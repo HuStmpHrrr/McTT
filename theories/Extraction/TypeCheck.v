@@ -26,7 +26,7 @@ Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
     - An application spine [M $ N1 $ ⋯ $ Nk] is checked against the value of
       the type of its head ([type_infer_val_in]): each argument instantiates
       the codomain closure of the current [Π] value with the argument's value
-      ([type_infer_app_in]), where [ati_app] substitutes the argument into the
+      ([type_infer_app_in]), where [alg_type_infer_app] substitutes the argument into the
       normal form of the codomain and normalizes that.  The type of the
       whole spine is read back once, at the end.
     - The inferred type of a checked term is a normal form, its own normal
@@ -154,16 +154,16 @@ Section type_check.
       environment. *)
   #[warnings="-cannot-define-projection"]
   Record typ_val G (P : tenv G) (v : domain) (T : nf) : Prop := mk_typ_val
-    { tv_lvl : nat
-    ; tv_env : env
-    ; tv_sem : domain
-    ; tv_rel : domain
-    ; tv_init : initial_env_f G tv_env
-    ; tv_agree : env_agree (fun _ => True) tv_env (proj1_sig P)
-    ; tv_typ : G ⊢ T : Typeω@tv_lvl
-    ; tv_eval : ⟦ T ⟧ tv_env ↘ tv_sem
-    ; tv_per : Dom tv_rel ≈ tv_sem ∈ per_univ tv_lvl
-    ; tv_sim : dsim tv_rel v }.
+    { typ_val_lvl : nat
+    ; typ_val_env : env
+    ; typ_val_sem : domain
+    ; typ_val_rel : domain
+    ; typ_val_init : initial_env_f G typ_val_env
+    ; typ_val_agree : env_agree (fun _ => True) typ_val_env (proj1_sig P)
+    ; typ_val_typ : G ⊢ T : Typeω@typ_val_lvl
+    ; typ_val_eval : ⟦ T ⟧ typ_val_env ↘ typ_val_sem
+    ; typ_val_per : Dom typ_val_rel ≈ typ_val_sem ∈ per_univ typ_val_lvl
+    ; typ_val_sim : dsim typ_val_rel v }.
 
   (** A type as a value reads back to the type it stands for. *)
   Lemma typ_val_rtyp : forall G P M v T,
@@ -206,7 +206,7 @@ Section type_check.
     eapply feval_exp_order_sound; exact Hv1'.
   Qed.
 
-  (** The value of the type of an application: [ati_app]'s type stands for
+  (** The value of the type of an application: [alg_type_infer_app]'s type stands for
       the codomain closure applied to the argument's value. *)
   Lemma typ_val_app_step : forall G P M N A B a ρ b n v,
       ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (Πᵈ a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
@@ -235,9 +235,9 @@ Section type_check.
       entry is then [𝕌ω@0], which nothing reads.  A numeral, a chain of
       [succ]s, is thus typed in linear time. *)
   Record app_cod_order G (P : tenv G) N ρ b : Prop := mk_app_cod_order
-    { aco_arg : feval_exp_order gc_deps gc_stack N (proj1_sig P)
-    ; aco_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n')
-    ; aco_unread : exp_freshb 0 b = true -> feval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0) }.
+    { app_cod_order_arg : feval_exp_order gc_deps gc_stack N (proj1_sig P)
+    ; app_cod_order_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n')
+    ; app_cod_order_unread : exp_freshb 0 b = true -> feval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0) }.
 
   Definition app_cod_val G (P : tenv G) N ρ b v : Prop :=
     (exp_freshb 0 b = true /\ ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ 𝕌ω@0) ↘ v) \/
@@ -247,11 +247,11 @@ Section type_check.
   Equations app_cod G (P : tenv G) N ρ b (H : app_cod_order G P N ρ b) : { v | app_cod_val G P N ρ b v } :=
   | G, P, N, ρ, b, H with inspect (exp_freshb 0 b) := {
     | exist _ true E =>
-        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ 𝕌ω@0) (aco_unread _ _ _ _ _ H E) in
+        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ 𝕌ω@0) (app_cod_order_unread _ _ _ _ _ H E) in
         exist _ v (or_introl (conj E Hv))
     | exist _ false E =>
-        let (n, Hn) := feval_exp_impl gc_deps gc_stack N (proj1_sig P) (aco_arg _ _ _ _ _ H) in
-        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ n) (aco_cod _ _ _ _ _ H n Hn) in
+        let (n, Hn) := feval_exp_impl gc_deps gc_stack N (proj1_sig P) (app_cod_order_arg _ _ _ _ _ H) in
+        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ n) (app_cod_order_cod _ _ _ _ _ H n Hn) in
         exist _ v (or_intror (ex_intro _ n (conj Hn Hv))) }.
 
   Lemma typ_val_app_cod_order : forall G P M N A B a ρ b,
@@ -363,7 +363,7 @@ Section type_check.
     functional_nbe_rewrite_clear;
     contradiction.
 
-  (** Its success: the rule [atc_ati], with the inferred type as its own
+  (** Its success: the rule [alg_type_check_ati], with the inferred type as its own
       normal form. *)
   #[local]
   Ltac ob_check_nf :=
@@ -731,7 +731,7 @@ Section type_check.
     destruct (wf_unf_pi_tm HBu HCv Hvw) as [k Hk].
     assert (G ⊢ unf_pi_tm u v ≈ W : Typeω@k) by (eapply soundness_ty'; eassumption).
     assert (HWk : G ⊢ W : Typeω@k) by (gen_presups; assumption).
-    split; [ eapply ati_pi; eassumption |].
+    split; [ eapply alg_type_infer_pi; eassumption |].
     split; [| eexists; exact HWk ].
     destruct (alg_type_infer_large_typ_complete (user_exp_nf W) HWk) as [? [? [? [? _]]]].
     do 2 eexists; split; eassumption.
@@ -1121,7 +1121,7 @@ Proof.
   intros * HΨ.
   assert (Horder : ext_order Ψ).
   { induction Ψ as [| [A | A M | U | A M U] Ψ IH]; inversion HΨ; subst; constructor;
-      eauto using type_infer_order_all, unit_order_all, tc_ti. }
+      eauto using type_infer_order_all, unit_order_all, type_check_order_ti. }
   exists Horder; destruct (ext_check G HG Ψ Horder); [ eexists; reflexivity | contradiction ].
 Qed.
 

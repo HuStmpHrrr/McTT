@@ -151,7 +151,7 @@ Section type_check.
 
   Definition path_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ fp :
       { R | mdenote gc_deps gc_stack Γ (me_unit fp) R } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_unit fp) R } :=
-    mdenote_impl gc_deps gc_stack Hg Γ (me_unit fp) (dno_path _ _ Γ fp).
+    mdenote_impl gc_deps gc_stack Hg Γ (me_unit fp) (dn_order_path _ _ Γ fp).
 
   (** What a local open of a module generates. *)
   Definition items_gen_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H its (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
@@ -395,85 +395,85 @@ Section type_check.
     end.
 
   Inductive type_check_order : exp -> Prop :=
-  | tc_ti : forall {A}, type_infer_order A -> type_check_order A
+  | type_check_order_ti : forall {A}, type_infer_order A -> type_check_order A
   with type_infer_order : exp -> Prop :=
-  | ti_typ : forall {i}, type_infer_order Typeω@i
-  | ti_suniv : forall {M}, type_infer_order M -> type_infer_order Type⟨M⟩
-  | ti_level : forall {n}, type_infer_order Level@n
-  | ti_llit : forall {o}, type_infer_order (𝕃ᵒ o)
-  | ti_succl : forall {M}, type_infer_order M -> type_infer_order (succl M)
-  | ti_maxl : forall {M N}, type_infer_order M -> type_infer_order N -> type_infer_order (maxl M N)
-  | ti_True : type_infer_order ⊤
-  | ti_true : type_infer_order ⋆
-  | ti_False : type_infer_order ⊥
-  | ti_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
-  | ti_indty : forall {p k}, type_infer_order (a_ind p k)
-  | ti_con : forall {p k c}, type_infer_order (a_con p k c)
+  | type_infer_order_typ : forall {i}, type_infer_order Typeω@i
+  | type_infer_order_suniv : forall {M}, type_infer_order M -> type_infer_order Type⟨M⟩
+  | type_infer_order_level : forall {n}, type_infer_order Level@n
+  | type_infer_order_llit : forall {o}, type_infer_order (𝕃ᵒ o)
+  | type_infer_order_succl : forall {M}, type_infer_order M -> type_infer_order (succl M)
+  | type_infer_order_maxl : forall {M N}, type_infer_order M -> type_infer_order N -> type_infer_order (maxl M N)
+  | type_infer_order_True : type_infer_order ⊤
+  | type_infer_order_true : type_infer_order ⋆
+  | type_infer_order_False : type_infer_order ⊥
+  | type_infer_order_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
+  | type_infer_order_indty : forall {p k}, type_infer_order (a_ind p k)
+  | type_infer_order_con : forall {p k c}, type_infer_order (a_con p k c)
   (** A numeral is expanded before it is checked; it has no type. *)
-  | ti_nlit : forall {n}, type_infer_order (a_nlit n)
-  | ti_ntok : type_infer_order a_ntok
+  | type_infer_order_nlit : forall {n}, type_infer_order (a_nlit n)
+  | type_infer_order_ntok : type_infer_order a_ntok
   (** An eliminator: its scrutinee and the annotations and motives of its
       blocks infer, its uniform parameters and the branches are checked. *)
-  | ti_elim : forall {oq Us m Bks M}, type_infer_order M ->
+  | type_infer_order_elim : forall {oq Us m Bks M}, type_infer_order M ->
       (forall U, List.In U Us -> type_check_order U) ->
       (forall b Z, List.In b Bks -> eb_ann b = Some Z -> type_infer_order Z) ->
       (forall b, List.In b Bks -> type_infer_order (eb_motive b)) ->
       (forall b br, List.In b Bks -> List.In br (eb_brs b) -> type_check_order (snd br)) ->
       type_infer_order (a_elim oq Us m Bks M)
-  | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
-  | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
-  | ti_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
-  | ti_let : forall {A M B}, type_infer_order A -> type_check_order M -> type_infer_order B -> type_infer_order (ℓ A ≔ M in B)
-  | ti_let_infer : forall {M B}, type_infer_order M -> type_infer_order B -> type_infer_order (ℓ ≔ M in B)
-  | ti_let_mod : forall {U B}, unit_order U -> type_infer_order B -> type_infer_order (ℓₘ U in B)
-  | ti_mem : forall {H x}, modexp_order H -> type_infer_order (a_mem H x)
-  | ti_vlookup : forall {x}, type_infer_order #x
+  | type_infer_order_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
+  | type_infer_order_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
+  | type_infer_order_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
+  | type_infer_order_let : forall {A M B}, type_infer_order A -> type_check_order M -> type_infer_order B -> type_infer_order (ℓ A ≔ M in B)
+  | type_infer_order_let_infer : forall {M B}, type_infer_order M -> type_infer_order B -> type_infer_order (ℓ ≔ M in B)
+  | type_infer_order_let_mod : forall {U B}, unit_order U -> type_infer_order B -> type_infer_order (ℓₘ U in B)
+  | type_infer_order_mem : forall {H x}, modexp_order H -> type_infer_order (a_mem H x)
+  | type_infer_order_vlookup : forall {x}, type_infer_order #x
   (** A record's type former recurses on nothing *)
-  | ti_record : forall {p}, type_infer_order (a_record p)
+  | type_infer_order_record : forall {p}, type_infer_order (a_record p)
   (** A tuple infers its annotation and checks its fields *)
-  | ti_tuple : forall {T fs}, type_infer_order T -> (forall fm, List.In fm fs -> type_check_order (snd fm)) ->
+  | type_infer_order_tuple : forall {T fs}, type_infer_order T -> (forall fm, List.In fm fs -> type_check_order (snd fm)) ->
       type_infer_order (a_tuple T fs)
   (** A projection infers its element *)
-  | ti_proj : forall {f M}, type_infer_order M -> type_infer_order (a_proj f M)
+  | type_infer_order_proj : forall {f M}, type_infer_order M -> type_infer_order (a_proj f M)
   (** An application, apart from its head: the checker computes the type
       of a spine of applications as a value ([type_infer_app_in]), and
       checks its head ([type_infer_val_in]) at the order of a check. *)
   with app_order : exp -> exp -> Prop :=
-  | ao_app : forall {M N}, type_check_order M -> type_check_order N -> app_order M N
+  | app_order_app : forall {M N}, type_check_order M -> type_check_order N -> app_order M N
   with ext_order : ctx -> Prop :=
-  | eo_nil : ext_order nil
-  | eo_ass : forall {A Ψ}, ext_order Ψ -> type_infer_order A -> ext_order (Ψ ▹ A)
-  | eo_def : forall {A M Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> ext_order (Ψ ▸ A ≔ M)
-  | eo_mod : forall {U Ψ}, ext_order Ψ -> unit_order U -> ext_order (Ψ ▹ₘ U)
+  | ext_order_nil : ext_order nil
+  | ext_order_ass : forall {A Ψ}, ext_order Ψ -> type_infer_order A -> ext_order (Ψ ▹ A)
+  | ext_order_def : forall {A M Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> ext_order (Ψ ▸ A ≔ M)
+  | ext_order_mod : forall {U Ψ}, ext_order Ψ -> unit_order U -> ext_order (Ψ ▹ₘ U)
   (** A definition with a module part: as a definition and as a slot *)
-  | eo_dm : forall {A M U Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> unit_order U ->
+  | ext_order_dm : forall {A M U Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> unit_order U ->
       ext_order (Ψ ▸ₘ A ≔ M ‖ U)
   with unit_order : gunit -> Prop :=
-  | uo_body : forall {Δ sm Φ}, ext_order Δ -> body_order Φ -> unit_order (gu_mk Δ (md_body sm Φ))
-  | uo_alias : forall {Δ E}, ext_order Δ -> modexp_order E -> unit_order (gu_mk Δ (md_alias E))
+  | unit_order_body : forall {Δ sm Φ}, ext_order Δ -> body_order Φ -> unit_order (gu_mk Δ (md_body sm Φ))
+  | unit_order_alias : forall {Δ E}, ext_order Δ -> modexp_order E -> unit_order (gu_mk Δ (md_alias E))
   (** A body, entry by entry; an entry no body may hold has nothing to
       check. *)
   with body_order : gmod -> Prop :=
-  | bo_nil : body_order gm_nil
-  | bo_def : forall {Φ x b pv A M}, body_order Φ -> type_infer_order A -> type_check_order M ->
+  | body_order_nil : body_order gm_nil
+  | body_order_def : forall {Φ x b pv A M}, body_order Φ -> type_infer_order A -> type_check_order M ->
       body_order (gm_ext Φ x (ge_def b pv A (Some M)))
-  | bo_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
-  | bo_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
-  | bo_ind : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
+  | body_order_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
+  | body_order_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
+  | body_order_ind_case : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
   (** A definition with a module part: its term part as a definition, its
       unit as a submodule *)
-  | bo_def_mod : forall {Φ x pv A M U}, body_order Φ -> type_infer_order A -> type_check_order M -> unit_order U ->
+  | body_order_def_mod : forall {Φ x pv A M U}, body_order Φ -> type_infer_order A -> type_check_order M -> unit_order U ->
       body_order (gm_ext Φ x (ge_def_mod pv A M U))
   (** A record declaration: as written in no local body, only the entries
       before it *)
-  | bo_record : forall {Φ x pv pr R Φr}, body_order Φ -> body_order (gm_ext Φ x (ge_record pv pr R Φr))
-  | bo_open : forall {Φ H its}, body_order Φ -> modexp_order H -> body_order (gm_open Φ H its)
+  | body_order_record : forall {Φ x pv pr R Φr}, body_order Φ -> body_order (gm_ext Φ x (ge_record pv pr R Φr))
+  | body_order_open : forall {Φ H its}, body_order Φ -> modexp_order H -> body_order (gm_open Φ H its)
   with modexp_order : modexp -> Prop :=
-  | mo_unit : forall {fp}, modexp_order (me_unit fp)
-  | mo_var : forall {x}, modexp_order (me_var x)
-  | mo_lit : forall {U}, unit_order U -> modexp_order (me_lit U)
-  | mo_mem : forall {H y}, modexp_order H -> modexp_order (me_mem H y)
-  | mo_app : forall {H N}, modexp_order H -> type_check_order N -> modexp_order (me_app H N)
+  | modexp_order_unit : forall {fp}, modexp_order (me_unit fp)
+  | modexp_order_var : forall {x}, modexp_order (me_var x)
+  | modexp_order_lit : forall {U}, unit_order U -> modexp_order (me_lit U)
+  | modexp_order_mem : forall {H y}, modexp_order H -> modexp_order (me_mem H y)
+  | modexp_order_app : forall {H N}, modexp_order H -> type_check_order N -> modexp_order (me_app H N)
   .
 
   #[local]
@@ -538,28 +538,28 @@ Section type_check.
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
     (* a tuple: its fields are checked *)
     all: try match goal with HF : List.Forall _ ?fs |- type_infer_order (a_tuple _ ?fs) =>
-           rewrite List.Forall_forall in HF; constructor; [ assumption | intros fm Hfm; apply tc_ti; auto ] end.
+           rewrite List.Forall_forall in HF; constructor; [ assumption | intros fm Hfm; apply type_check_order_ti; auto ] end.
     - (* an eliminator: its uniform parameters and branches are checked *)
       match goal with
       | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks |- type_infer_order (a_elim _ ?Us _ ?Bks _) =>
           rewrite List.Forall_forall in HU, HB
       end.
-      constructor; [ assumption | intros U HU'; apply tc_ti; auto
+      constructor; [ assumption | intros U HU'; apply type_check_order_ti; auto
                    | intros b Z Hb HZ; match goal with HB : forall x, List.In x _ -> _ |- _ => exact (proj1 (HB b Hb) Z HZ) end
                    | intros b Hb; match goal with HB : forall x, List.In x _ -> _ /\ _ |- _ => exact (proj1 (proj2 (HB b Hb))) end
-                   | intros b br Hb Hbr; apply tc_ti;
+                   | intros b br Hb Hbr; apply type_check_order_ti;
                      match goal with HB : forall x, List.In x _ -> _ /\ _ |- _ =>
                        exact (proj1 (List.Forall_forall _ _) (proj2 (proj2 (HB b Hb))) br Hbr) end ].
     - (* a local binding *)
       destruct b as [[A |] M | U]; destruct_conjs;
-        [ apply ti_let; [ eauto | constructor; assumption | assumption ]
-        | apply ti_let_infer; assumption
-        | apply ti_let_mod; assumption ].
+        [ apply type_infer_order_let; [ eauto | constructor; assumption | assumption ]
+        | apply type_infer_order_let_infer; assumption
+        | apply type_infer_order_let_mod; assumption ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
     - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? | ? ? ?]; destruct_conjs;
-        first [ apply bo_def; eauto with mctt | apply bo_mod; assumption
-              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_def_mod; eauto with mctt
-              | apply bo_record; assumption ].
+        first [ apply body_order_def; eauto with mctt | apply body_order_mod; assumption
+              | apply body_order_axiom; assumption | apply body_order_ind_case; assumption | apply body_order_def_mod; eauto with mctt
+              | apply body_order_record; assumption ].
   Qed.
 
   Lemma type_infer_order_all : forall M, type_infer_order M.
@@ -695,7 +695,7 @@ Ltac saturate_infer_univ :=
         assert T by (apply wf_exp_unf_large; eassumption)
     | HnC : nbe_ty _ _ (?G ▹ ?A) _ ?UB', Hv : is_univ_nf ?UB' ?v,
       HC : ?G ▹ ?A ⊢a ?B ⟹ ?UB, HB : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA _ |- _ =>
-        (** A codomain whose universe was normalised ([ati_pi]): its
+        (** A codomain whose universe was normalised ([alg_type_infer_pi]): its
             typing at the large level of the normal form's index. *)
         let T := constr:(G ▹ A ⊢ B : a_typ (unf_large v)) in
         assert_fails (assert T by assumption);
@@ -767,7 +767,7 @@ Ltac ctxp :=
 (** A loaded unit: what it denotes, and that is a module. *)
 Ltac mo_2 :=
   clear_defs; destruct_conjs;
-  solve [ eapply amod_unit; eassumption ].
+  solve [ eapply alg_modexp_unit; eassumption ].
 
 (** A failure of a selection or an application: its rule's premises are
     read off what it denotes. *)
@@ -793,7 +793,7 @@ Ltac mo_8 :=
                 Hn : nbe_ty_f ?G ?A _ |- _ =>
                   destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht) as [? ?]
               end;
-              split; [ eapply ati_mem; eassumption | eapply level_of_nbe; eassumption ] ].
+              split; [ eapply alg_type_infer_mem; eassumption | eapply level_of_nbe; eassumption ] ].
 
 Ltac mo_10 :=
   clear_defs; destruct_conjs;
@@ -935,7 +935,7 @@ Ltac ob_post := clear_defs; split; [ mauto 3 | is_type_obl ].
 Ltac ob_post_lvl :=
   clear_defs; destruct_conjs; subst;
   split; [ econstructor; eassumption |];
-  split; [ do 2 eexists; split; [ apply ati_level | constructor ] | exists 0; apply wf_level_large; assumption ].
+  split; [ do 2 eexists; split; [ apply alg_type_infer_level | constructor ] | exists 0; apply wf_level_large; assumption ].
 
 (** A closed type is a type. *)
 Ltac ob_typ_closed := clear_defs; exists 0; mauto 3.
@@ -1004,4 +1004,4 @@ Ltac ob_suniv_nbe := clear_defs; ob_suniv_lvl; eapply nbe_order_of_typ; eassumpt
 
 Ltac ob_suniv_post :=
   clear_defs; ob_suniv_lvl;
-  split; [ eapply ati_suniv; eassumption | eapply level_of_nbe; eassumption ].
+  split; [ eapply alg_type_infer_suniv; eassumption | eapply level_of_nbe; eassumption ].

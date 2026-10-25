@@ -194,7 +194,7 @@ module T where def x : Nat := 0 end def x : Nat := 0 end end
 Today and prototype: elaboration error `x is already declared`. With option
 O4a (drop the member–member check from the elaborator) the elaborator would
 emit both `cc_def`s and the core would reject with `duplicate name x`
-(`rc_def` needs `gs_fresh`).
+(`run_cmd_def` needs `gs_fresh`).
 
 ## 5. Options for the core (not implemented), with cost
 
@@ -230,7 +230,7 @@ Line estimates are for the current core; the core is being refactored on
   problem as O2(b). Saves `en_use` (≈ 10 lines). Cost ≈ 300–500 lines.
   **Not worth it.**
 * **O4. Freshness in the core.** (a) Member vs member is checked by the core
-  already (`gs_fresh` in `rc_def`/`rc_mod`/`rc_alias`), so the elaborator's
+  already (`gs_fresh` in `run_cmd_def`/`run_cmd_mod`/`run_cmd_alias`), so the elaborator's
   check is redundant there; dropping it splits one language rule over two
   layers and changes the message (`duplicate name x`). (b) Parameter vs
   member and duplicate parameters cannot move: core contexts are nameless.

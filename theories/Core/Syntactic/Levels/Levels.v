@@ -30,18 +30,18 @@ Import Syntax_Notations.
     order are needed, so they are proved once for the trees and transported
     along the coding, which is injective.
 
-    A tree node is [lt_node lbl child sibling]: the coding is first child,
+    A tree node is [ltree_node lbl child sibling]: the coding is first child,
     next sibling, so the children of a node are its [sibling]-chain. *)
 Inductive ltree : Set :=
-| lt_nil : ltree
-| lt_node : nat -> ltree -> ltree -> ltree.
+| ltree_nil : ltree
+| ltree_node : nat -> ltree -> ltree -> ltree.
 
 Fixpoint lt_cmp (s t : ltree) : comparison :=
   match s, t with
-  | lt_nil, lt_nil => Eq
-  | lt_nil, _ => Lt
-  | _, lt_nil => Gt
-  | lt_node a c r, lt_node b c' r' =>
+  | ltree_nil, ltree_nil => Eq
+  | ltree_nil, _ => Lt
+  | _, ltree_nil => Gt
+  | ltree_node a c r, ltree_node b c' r' =>
       match Nat.compare a b with
       | Eq => match lt_cmp c c' with
              | Eq => lt_cmp r r'
@@ -93,14 +93,14 @@ Qed.
     carries. *)
 Fixpoint str_code (x : string) (t : ltree) : ltree :=
   match x with
-  | EmptyString => lt_node 0 lt_nil t
-  | String ch r => lt_node (S (nat_of_ascii ch)) lt_nil (str_code r t)
+  | EmptyString => ltree_node 0 ltree_nil t
+  | String ch r => ltree_node (S (nat_of_ascii ch)) ltree_nil (str_code r t)
   end.
 
 Fixpoint strs_code (l : list string) (t : ltree) : ltree :=
   match l with
-  | nil => lt_node 0 lt_nil t
-  | x :: r => lt_node 1 (str_code x lt_nil) (strs_code r t)
+  | nil => ltree_node 0 ltree_nil t
+  | x :: r => ltree_node 1 (str_code x ltree_nil) (strs_code r t)
   end.
 
 (** A qualified name is coded by its two lists.  Both codings are stuck
@@ -129,8 +129,8 @@ Proof.
 Qed.
 
 Lemma qname_code_inj : forall p p',
-    strs_code (q_unit p) (strs_code (q_chain p) lt_nil)
-    = strs_code (q_unit p') (strs_code (q_chain p') lt_nil) -> p = p'.
+    strs_code (q_unit p) (strs_code (q_chain p) ltree_nil)
+    = strs_code (q_unit p') (strs_code (q_chain p') ltree_nil) -> p = p'.
 Proof.
   intros [u ch] [u' ch'] H; cbn in H.
   apply strs_code_inj in H as [-> H]; apply strs_code_inj in H as [-> _]; reflexivity.
@@ -141,66 +141,66 @@ Qed.
     [t]. *)
 Fixpoint list_code {A : Set} (f : A -> ltree) (l : list A) (t : ltree) : ltree :=
   match l with
-  | nil => lt_node 0 lt_nil t
-  | x :: r => lt_node 1 (f x) (list_code f r t)
+  | nil => ltree_node 0 ltree_nil t
+  | x :: r => ltree_node 1 (f x) (list_code f r t)
   end.
 
 (** The coding of the records normal forms hold, given that of what they
     hold.  An atom: its offset, the neutral, then its sort. *)
 Definition atom_code {E : Set} (f : E -> ltree) (a : level_atom_g E) : ltree :=
-  lt_node (atom_offset a) (f (atom_level a)) (lt_node (atom_sort a) lt_nil lt_nil).
+  ltree_node (atom_offset a) (f (atom_level a)) (ltree_node (atom_sort a) ltree_nil ltree_nil).
 
 (** A branch: its arity, its constructor, then its body. *)
 Definition branch_code {E : Set} (f : E -> ltree) (br : normal_branch_g E) : ltree :=
-  lt_node (branch_arity br) (str_code (branch_constructor br) lt_nil) (f (branch_body br)).
+  ltree_node (branch_arity br) (str_code (branch_constructor br) ltree_nil) (f (branch_body br)).
 
 (** A block: its arity, its motive, then its branches. *)
 Definition block_code {E : Set} (f : E -> ltree) (b : normal_block_g E) : ltree :=
-  lt_node (block_arity b) (f (block_motive b)) (list_code (branch_code f) (block_branches b) lt_nil).
+  ltree_node (block_arity b) (f (block_motive b)) (list_code (branch_code f) (block_branches b) ltree_nil).
 
 (** The coding of normal forms.  The tags order the constructors; in a
     neutral, [ne_var] comes first, so variables precede every other atom and
     are ordered by their index. *)
 Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   match M with
-  | nf_typ i => lt_node 0 (lt_node i lt_nil lt_nil) t
+  | nf_typ i => ltree_node 0 (ltree_node i ltree_nil ltree_nil) t
   | nf_univ (a, b) xs =>
-      lt_node 1 (lt_node a (lt_node b (list_code (atom_code (fun m => ne_code m lt_nil)) xs lt_nil) lt_nil) lt_nil) t
-  | nf_level n => lt_node 2 (lt_node n lt_nil lt_nil) t
+      ltree_node 1 (ltree_node a (ltree_node b (list_code (atom_code (fun m => ne_code m ltree_nil)) xs ltree_nil) ltree_nil) ltree_nil) t
+  | nf_level n => ltree_node 2 (ltree_node n ltree_nil ltree_nil) t
   | nf_lvl (a, b) xs =>
-      lt_node 3 (lt_node a (lt_node b (list_code (atom_code (fun m => ne_code m lt_nil)) xs lt_nil) lt_nil) lt_nil) t
-  | nf_True => lt_node 7 lt_nil t
-  | nf_true => lt_node 8 lt_nil t
-  | nf_False => lt_node 9 lt_nil t
-  | nf_pi A B => lt_node 10 (nf_code A (nf_code B lt_nil)) t
-  | nf_fn A M' => lt_node 11 (nf_code A (nf_code M' lt_nil)) t
-  | nf_neut m => lt_node 12 (ne_code m lt_nil) t
+      ltree_node 3 (ltree_node a (ltree_node b (list_code (atom_code (fun m => ne_code m ltree_nil)) xs ltree_nil) ltree_nil) ltree_nil) t
+  | nf_True => ltree_node 7 ltree_nil t
+  | nf_true => ltree_node 8 ltree_nil t
+  | nf_False => ltree_node 9 ltree_nil t
+  | nf_pi A B => ltree_node 10 (nf_code A (nf_code B ltree_nil)) t
+  | nf_fn A M' => ltree_node 11 (nf_code A (nf_code M' ltree_nil)) t
+  | nf_neut m => ltree_node 12 (ne_code m ltree_nil) t
   | nf_indty p k Ms =>
-      lt_node 13 (lt_node k (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                    (list_code (fun M => nf_code M lt_nil) Ms lt_nil)) t
+      ltree_node 13 (ltree_node k (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil))
+                    (list_code (fun M => nf_code M ltree_nil) Ms ltree_nil)) t
   | nf_con p k c Ms =>
-      lt_node 14 (lt_node k (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                    (lt_node 0 (str_code c lt_nil) (list_code (fun M => nf_code M lt_nil) Ms lt_nil))) t
+      ltree_node 14 (ltree_node k (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil))
+                    (ltree_node 0 (str_code c ltree_nil) (list_code (fun M => nf_code M ltree_nil) Ms ltree_nil))) t
   | nf_record p Ms =>
-      lt_node 15 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                    (list_code (fun M => nf_code M lt_nil) Ms lt_nil)) t
+      ltree_node 15 (ltree_node 0 (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil))
+                    (list_code (fun M => nf_code M ltree_nil) Ms ltree_nil)) t
   | nf_tuple p Ms fs Ns =>
-      lt_node 16 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                    (lt_node 0 (strs_code fs lt_nil)
-                       (lt_node 0 (list_code (fun M => nf_code M lt_nil) Ms lt_nil)
-                          (list_code (fun M => nf_code M lt_nil) Ns lt_nil)))) t
+      ltree_node 16 (ltree_node 0 (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil))
+                    (ltree_node 0 (strs_code fs ltree_nil)
+                       (ltree_node 0 (list_code (fun M => nf_code M ltree_nil) Ms ltree_nil)
+                          (list_code (fun M => nf_code M ltree_nil) Ns ltree_nil)))) t
   end
 with ne_code (m : ne) (t : ltree) : ltree :=
   match m with
-  | ne_var x => lt_node 0 (lt_node x lt_nil lt_nil) t
-  | ne_glob p => lt_node 1 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) t
-  | ne_app m' N => lt_node 2 (ne_code m' (nf_code N lt_nil)) t
-  | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
+  | ne_var x => ltree_node 0 (ltree_node x ltree_nil ltree_nil) t
+  | ne_glob p => ltree_node 1 (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil)) t
+  | ne_app m' N => ltree_node 2 (ne_code m' (nf_code N ltree_nil)) t
+  | ne_exfalso A m' => ltree_node 4 (nf_code A (ne_code m' ltree_nil)) t
   | ne_elim p Us m Bks m' =>
-      lt_node 5 (lt_node m (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                   (list_code (block_code (fun A => nf_code A lt_nil)) Bks
-                      (ne_code m' (list_code (fun M => nf_code M lt_nil) Us lt_nil)))) t
-  | ne_proj f m' => lt_node 6 (lt_node 0 (str_code f lt_nil) (ne_code m' lt_nil)) t
+      ltree_node 5 (ltree_node m (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil))
+                   (list_code (block_code (fun A => nf_code A ltree_nil)) Bks
+                      (ne_code m' (list_code (fun M => nf_code M ltree_nil) Us ltree_nil)))) t
+  | ne_proj f m' => ltree_node 6 (ltree_node 0 (str_code f ltree_nil) (ne_code m' ltree_nil)) t
   end.
 
 #[global] Arguments atom_code : simpl never.
@@ -247,7 +247,7 @@ Proof.
 Qed.
 
 (** The side condition of [list_code_inj] and the record lemmas at the
-    elements of a normal form: an element is coded at [lt_nil], and the
+    elements of a normal form: an element is coded at [ltree_nil], and the
     induction hypothesis at it says its coding is injective. *)
 #[local] Ltac code_elem_inj :=
   let x := fresh "x" in let Hx := fresh "Hx" in let y := fresh "y" in let Hy := fresh "Hy" in
@@ -280,7 +280,7 @@ Proof.
          | H : str_code _ _ = str_code _ _ |- _ => apply str_code_inj in H as [-> H]
          | H : strs_code _ _ = strs_code _ _ |- _ => apply qname_code_inj in H as ->
          | H : strs_code _ _ = strs_code _ _ |- _ => apply strs_code_inj in H as [-> H]
-         | H : lt_node _ _ _ = lt_node _ _ _ |- _ => injection H as; subst
+         | H : ltree_node _ _ _ = ltree_node _ _ _ |- _ => injection H as; subst
        end.
   all: try discriminate.
   all: split; first [ reflexivity | assumption ].
@@ -293,7 +293,7 @@ Lemma ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> m = m' /\ t
 Proof. apply nf_ne_code_inj. Qed.
 
 (** The order on the atoms of a level. *)
-Definition ne_cmp (m m' : ne) : comparison := lt_cmp (ne_code m lt_nil) (ne_code m' lt_nil).
+Definition ne_cmp (m m' : ne) : comparison := lt_cmp (ne_code m ltree_nil) (ne_code m' ltree_nil).
 
 Lemma ne_cmp_eq : forall m m', ne_cmp m m' = Eq <-> m = m'.
 Proof.
@@ -533,9 +533,9 @@ Qed.
 (** A canonical level: its atoms sorted, each of a sort the constant's tier
     does not exceed, and its constant zero or above every offset. *)
 Record lvl_canonical (l : lvl) : Prop := mk_lvl_canonical
-  { lc_sorted : la_sorted (snd l)
-  ; lc_sorts : forall k s a, la_In k s a (snd l) -> fst (fst l) <= s
-  ; lc_const : fst l = oz \/ olt (ofin (la_maxoff (snd l))) (fst l) }.
+  { lvl_canonical_sorted : la_sorted (snd l)
+  ; lvl_canonical_sorts : forall k s a, la_In k s a (snd l) -> fst (fst l) <= s
+  ; lvl_canonical_const : fst l = oz \/ olt (ofin (la_maxoff (snd l))) (fst l) }.
 
 Lemma lvl_canon_canonical : forall l, lvl_canonical (lvl_canon l).
 Proof.

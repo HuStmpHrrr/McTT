@@ -308,7 +308,7 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hlq) as [HDq Hcq].
   (** The uniform parameters. *)
   assert (HUt : forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Γ ⊢ U : T).
-  { eapply tele_insts_typed_all; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ) | apply wf_sub_id, HΓ |].
+  { eapply tele_insts_typed_all; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ) | apply wf_sub_id, HΓ |].
     intros j U X HU HX [iT HXt]; exact (HUs _ _ _ HU HX HΓ _ HXt). }
   (** The scrutinee, of the member's type. *)
   assert (exists kk, Γ ⊢ apps (a_ind pc k) (List.map nf_to_exp Rs) : Typeω@kk) as [kk Hkk] by (gen_presups; eauto).
@@ -321,7 +321,7 @@ Proof.
              List.nth_error (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) j = Some X -> Γ ⊢ N ≈ R : X).
   { intros j N R X HN HR HX.
     assert (Hj : j < ind_nu Dq) by (rewrite <- HPl; apply List.nth_error_Some; congruence).
-    eapply (nfs_agree_sound (ind_uparams Dq) Γ Γ Id Id); [ exact (dc_ass _ Hcq) | exact (wf_uparams_app _ _ _ HDq Hcq _ HΓ)
+    eapply (nfs_agree_sound (ind_uparams Dq) Γ Γ Id Id); [ exact (decl_closed_ass _ Hcq) | exact (wf_uparams_app _ _ _ HDq Hcq _ HΓ)
            | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite HPl; reflexivity | rewrite HRl'; reflexivity
            | exact HPt | exact HRu | exact Hag | exact HN | | exact HX ].
     rewrite List.nth_error_firstn; destruct (Nat.ltb_spec j (ind_nu Dq)); [ exact HR | lia ]. }
@@ -411,20 +411,20 @@ Qed.
     its expansion, which extends [Ψ], and the targets of its opens are
     well-formed modules where they stand. *)
 Record abody_ok (Γ0 Ψ Γ : ctx) (Φ Φx : gmod) : Prop := mk_abody_ok
-  { abo_xp : body_xp gc_deps gc_stack Γ Φ Φx
-  ; abo_ext : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ
-  ; abo_opens : forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> gc_deps ⍮ gc_stack ⍮ Ψo ++ Γ ⊢ᵐ H ≈ H }.
+  { abody_ok_xp : body_xp gc_deps gc_stack Γ Φ Φx
+  ; abody_ok_ext : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ
+  ; abody_ok_opens : forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> gc_deps ⍮ gc_stack ⍮ Ψo ++ Γ ⊢ᵐ H ≈ H }.
 
 Definition alg_body_sound (Γ : ctx) (Φ Φx : gmod) : Prop :=
   forall Γ0 Ψ, Γ = Ψ ++ Γ0 -> ⊢ Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ Ψ ≈ Ψ -> abody_ok Γ0 Ψ Γ Φ Φx.
 
-Lemma abody_nil_sound : forall Γ, alg_body_sound Γ gm_nil gm_nil.
+Lemma alg_body_nil_sound : forall Γ, alg_body_sound Γ gm_nil gm_nil.
 Proof.
   intros Γ Γ0 Ψ -> HΓ0 HΨ; constructor; [ constructor | exact HΨ |].
   intros [| k] * Hk; discriminate.
 Qed.
 
-Lemma abody_def_sound : forall Γ Φ Φx x b pv A M i,
+Lemma alg_body_def_sound : forall Γ Φ Φx x b pv A M i,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@i) ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ M : A) ->
@@ -440,7 +440,7 @@ Proof.
                         | exact HA | exact HM ].
 Qed.
 
-Lemma abody_mod_sound : forall Γ Φ Φx x pm U,
+Lemma alg_body_mod_sound : forall Γ Φ Φx x pm U,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵘ U ≈ U) ->
     alg_body_sound Γ (gm_ext Φ x (ge_mod pm U)) (gm_ext Φx x (ge_mod pm U)).
@@ -454,7 +454,7 @@ Proof.
 Qed.
 
 (** A definition with a module part: as a definition and as a submodule. *)
-Lemma abody_dm_sound : forall Γ Φ Φx x pv A M U i,
+Lemma alg_body_dm_sound : forall Γ Φ Φx x pv A M U i,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@i) ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ M : A) ->
@@ -471,7 +471,7 @@ Proof.
                        | exact HA | exact HM | exact HU | exact HU ].
 Qed.
 
-Lemma abody_open_sound : forall Γ Φ Φx H R Rm its gs,
+Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
     mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
@@ -491,7 +491,7 @@ Qed.
 
 (** A body: its parameters, its expansion, and the targets of its opens are
     well-formed, so it is a unit ([unit_full_body]). *)
-Lemma aunit_body_sound : forall Γ Δ Φ Φx,
+Lemma alg_unit_body_sound : forall Γ Δ Φ Φx,
     (⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ) -> tele_ass Δ -> alg_body_sound (Δ ++ Γ) Φ Φx ->
     body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
     ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ.
@@ -568,8 +568,8 @@ Proof.
   apply alg_type_mut_ind; intros; simpl_univ_nf; destruct_let_ann; simpl_let_guards;
     cbn [unf_tm] in *;
     (** Bodies, by their own lemmas. *)
-    try solve [ apply abody_nil_sound | eapply abody_mod_sound; eassumption | eapply abody_open_sound; eassumption
-              | eapply aunit_body_sound; eassumption ];
+    try solve [ apply alg_body_nil_sound | eapply alg_body_mod_sound; eassumption | eapply alg_body_open_sound; eassumption
+              | eapply alg_unit_body_sound; eassumption ];
     (** The eliminator has its own lemma ([alg_elim_sound]). *)
     try lazymatch goal with |- _ ⊢ a_elim _ _ _ _ _ : _ => fail | _ => mautosolve 4 end.
   (** The cases below are dispatched on the shape of the goal rather than by
@@ -769,7 +769,7 @@ Proof.
             let HA' := fresh "HA'" in
             assert (HA' : ⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@(unf_large u))
               by (intros HC; apply wf_exp_unf_large; rewrite <- nf_to_exp_univ_nf; exact (HA HC));
-            eapply (abody_def_sound _ _ _ _ _ _ _ _ (unf_large u)); [ exact IH | exact HA' | intros HC; exact (HM HC _ (HA' HC)) ]
+            eapply (alg_body_def_sound _ _ _ _ _ _ _ _ (unf_large u)); [ exact IH | exact HA' | intros HC; exact (HM HC _ (HA' HC)) ]
         end
     end.
   (** A definition with a module part of a body. *)
@@ -782,7 +782,7 @@ Proof.
             let HA' := fresh "HA'" in
             assert (HA' : ⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@(unf_large u))
               by (intros HC; apply wf_exp_unf_large; rewrite <- nf_to_exp_univ_nf; exact (HA HC));
-            eapply (abody_dm_sound _ _ _ _ _ _ _ _ (unf_large u));
+            eapply (alg_body_dm_sound _ _ _ _ _ _ _ _ (unf_large u));
               [ exact IH | exact HA' | intros HC; exact (HM HC _ (HA' HC)) | exact HU ]
         end
     end.
@@ -1343,7 +1343,7 @@ Proof.
         [ exact Hkv | rewrite <- nf_to_exp_univ_nf; exact HnB ]).
   destruct (wf_unf_pi_tm HA HB Hvws) as [j Hj].
   destruct (soundness_ty Hj) as [W [HW HeqW]].
-  econstructor; [ eapply ati_pi; [ eassumption | eassumption | eassumption | exact HnB | exact Hv | eassumption ] |].
+  econstructor; [ eapply alg_type_infer_pi; [ eassumption | eassumption | eassumption | exact HnB | exact Hv | eassumption ] |].
   apply alg_subtyping_complete.
   etransitivity; [| exact Hsub ].
   eapply wf_subtyp_refl'; symmetry; exact HeqW.
@@ -1387,7 +1387,7 @@ Proof.
   destruct (wf_unf_pi_tm HA HB Hvws) as [j Hj].
   destruct (soundness_ty Hj) as [W [HW _]].
   destruct (nbe_ty_unf_pi_tm_univ _ _ _ _ HW) as [w Hw].
-  exists W, w; split; [ eapply ati_pi; [ eassumption | eassumption | eassumption | exact HnB | exact Hv | eassumption ] | split; assumption ].
+  exists W, w; split; [ eapply alg_type_infer_pi; [ eassumption | eassumption | eassumption | exact HnB | exact Hv | eassumption ] | split; assumption ].
 Qed.
 
 (** The universe of a [Π] of two types below a large universe is below it. *)
@@ -1623,9 +1623,9 @@ Proof.
   destruct (subtyp_ind_nf HWs Hlq Hk HXl HXt HWW) as (Rs & -> & HRl & HXR).
   assert (Hti : tele_insts (im_params Dq Mk) Id (im_pre Mm Us ++ NsP)
                = tele_insts (ind_uparams Dq) Id (im_pre Mm Us) ++ tele_insts (im_nparams Mk) (sb_of_list Id (im_pre Mm Us)) NsP)
-    by (unfold im_params; apply tele_insts_app; [ exact (dc_ass _ Hcq) | exact HPrl ]).
+    by (unfold im_params; apply tele_insts_app; [ exact (decl_closed_ass _ Hcq) | exact HPrl ]).
   assert (Hl1 : List.length (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) = ind_nu Dq)
-    by (rewrite length_tele_insts by exact (dc_ass _ Hcq); rewrite HPrl; unfold ind_nu in *; lia).
+    by (rewrite length_tele_insts by exact (decl_closed_ass _ Hcq); rewrite HPrl; unfold ind_nu in *; lia).
   assert (HPR : forall j N R T, List.nth_error (im_pre Mm Us) j = Some N -> List.nth_error (List.map nf_to_exp Rs) j = Some R ->
              List.nth_error (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) j = Some T -> Γ ⊢ N ≈ R : T).
   { intros j N R T HN HR HT.
@@ -1655,9 +1655,9 @@ Proof.
   { intros j P P' T HP HP' HT.
     assert (EPs : Ps = Us ++ NsP) by (unfold Us, NsP; symmetry; apply List.firstn_skipn).
     rewrite EPs in HP, HT.
-    unfold im_params in HT; rewrite tele_insts_app in HT by (try exact (dc_ass _ Hc); exact HUl).
+    unfold im_params in HT; rewrite tele_insts_app in HT by (try exact (decl_closed_ass _ Hc); exact HUl).
     assert (Hl1 : List.length (tele_insts (ind_uparams D) Id Us) = ind_nu D)
-      by (rewrite length_tele_insts by exact (dc_ass _ Hc); rewrite HUl; unfold ind_nu in *; lia).
+      by (rewrite length_tele_insts by exact (decl_closed_ass _ Hc); rewrite HUl; unfold ind_nu in *; lia).
     destruct (Nat.lt_ge_cases j (ind_nu D)) as [Hj | Hj].
     - rewrite List.nth_error_app1 in HP, HP', HT by lia; rewrite HP in HP'; injection HP' as <-.
       apply wf_exp_eq_refl; exact (HUt _ _ _ HP HT).
@@ -1669,7 +1669,7 @@ Proof.
   clear HPP HPt' HNN.
   (** One universe for the annotations and the motives. *)
   assert (HΨ : forall j Mj, ind_member D j = Some Mj -> ⊢ (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ)%list).
-  { intros j Mj Hj; pose proof (ext_eq_ctx_left _ _ _ _ _ (bt_mctx _ _ _ _ _ _ _ _ HBt _ _ Hj)) as HC.
+  { intros j Mj Hj; pose proof (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_mctx _ _ _ _ _ _ _ _ HBt _ _ Hj)) as HC.
     unfold elim_mctx in HC; cbn [List.app] in HC; exact (proj1 (ctx_decomp HC)). }
   assert (Hmono : forall Δ A l l', ⊢ Δ -> l <= l' -> Δ ⊢a A ⟸ Typeω@l -> Δ ⊢a A ⟸ Typeω@l').
   { intros Δ A l l' HΔ Hll HA; destruct (Nat.eq_dec l l') as [<- | Hne]; [ exact HA |].
@@ -1691,19 +1691,19 @@ Proof.
   assert (exists jT, Γ ⊢ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] : Typeω@jT) as [jT HTt] by (gen_presups; eauto).
   destruct (soundness_ty HTt) as (T & HnT & HTe).
   econstructor.
-  - eapply ati_elim with (p := p) (D := D) (Mm := Mm) (Dq := Dq) (Mk := Mk) (bm := bm) (i := i'); try eassumption; try reflexivity.
-    + exact (bt_len _ _ _ _ _ _ _ _ HBt).
-    + exact (bt_nm _ _ _ _ _ _ _ _ HBt).
+  - eapply alg_type_infer_elim with (p := p) (D := D) (Mm := Mm) (Dq := Dq) (Mk := Mk) (bm := bm) (i := i'); try eassumption; try reflexivity.
+    + exact (blocks_typed_len _ _ _ _ _ _ _ _ HBt).
+    + exact (blocks_typed_nm _ _ _ _ _ _ _ _ HBt).
     + intros j Mj b Z Hj Hbj HZ.
-      assert (Hjl : j < List.length Bks) by (rewrite (bt_len _ _ _ _ _ _ _ _ HBt); exact (ind_member_lt _ _ _ Hj)).
+      assert (Hjl : j < List.length Bks) by (rewrite (blocks_typed_len _ _ _ _ _ _ _ _ HBt); exact (ind_member_lt _ _ _ Hj)).
       eapply (Hmono _ _ L); [ exact (HΨ _ _ Hj) | unfold i'; lia | exact (HL j Hjl _ _ _ Hj Hbj HZ) ].
     + intros j Mj b Z Hj Hbj HZ.
-      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ (bt_ann _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hbj HZ)) as (jZ & _ & _ & HZH & _).
+      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ (blocks_typed_ann _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hbj HZ)) as (jZ & _ & _ & HZH & _).
       exact (completeness_ty HZH).
     + intros j Mj b Hj Hbj; eapply (Hmono _ _ i);
-        [ exact (ext_eq_ctx_left _ _ _ _ _ (bt_mctx _ _ _ _ _ _ _ _ HBt _ _ Hj)) | unfold i'; lia | exact (HAc _ _ _ Hj Hbj) ].
-    + exact (bt_names _ _ _ _ _ _ _ _ HBt).
-    + exact (bt_counts _ _ _ _ _ _ _ _ HBt).
+        [ exact (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_mctx _ _ _ _ _ _ _ _ HBt _ _ Hj)) | unfold i'; lia | exact (HAc _ _ _ Hj Hbj) ].
+    + exact (blocks_typed_names _ _ _ _ _ _ _ _ HBt).
+    + exact (blocks_typed_counts _ _ _ _ _ _ _ _ HBt).
   - apply alg_subtyping_complete; eapply wf_subtyp_refl'.
     eapply exp_eq_trans_typ_max; [ symmetry; exact HTe | symmetry; exact Hmot ].
 Qed.
@@ -1748,7 +1748,7 @@ Proof.
   pose proof (ext_entries_head _ _ _ _ Hx ltac:(lia)) as He.
   pose proof (IH (ext_entries_app_r _ _ (e :: nil) _ Hx) ltac:(lia)) as Ht.
   destruct e; cbn [alg_entry] in He; destruct_all;
-    [ eapply aext_ass | eapply aext_def | eapply aext_mod | eapply aext_dm ]; eauto.
+    [ eapply alg_ext_ass | eapply alg_ext_def | eapply alg_ext_mod | eapply alg_ext_dm ]; eauto.
 Qed.
 
 (** A body checked from its expansion's entries: its own entries are
@@ -1799,10 +1799,10 @@ Proof.
     inversion Hm; subst; try (unfold gc_unit in *; cbn in *; discriminate).
     econstructor; eassumption.
   - destruct (me_mtele _ _ _ HH) as (R & T & Hm & Ht).
-    eapply amod_mem; [ apply IH; [ exact Hgen | lia ] | exact Hm | exact Ht ].
+    eapply alg_modexp_mem; [ apply IH; [ exact Hgen | lia ] | exact Hm | exact Ht ].
   - destruct Hgen as (HH0 & R & T & B & T1 & i & Hm & Ht & Hv & HB & HN).
-    eapply amod_app; [ apply IH; [ exact HH0 | lia ] | exact Hm | exact Ht | exact Hv | apply HM; [ exact HN | lia ] ].
-  - apply amod_lit, HU; [ exact (unit_eq_of_full _ _ _ _ Hgen) | exact Hl ].
+    eapply alg_modexp_app; [ apply IH; [ exact HH0 | lia ] | exact Hm | exact Ht | exact Hv | apply HM; [ exact HN | lia ] ].
+  - apply alg_modexp_lit, HU; [ exact (unit_eq_of_full _ _ _ _ Hgen) | exact Hl ].
 Qed.
 
 (** An extension of an extension is one extension. *)
@@ -1818,9 +1818,9 @@ Lemma alg_unit_flatten : forall Γ Δ Δ' D,
     Γ ⊢aˣ Δ -> tele_ass Δ -> Δ ++ Γ ⊢aᵘ gu_mk Δ' D -> Γ ⊢aᵘ gu_mk (Δ' ++ Δ) D.
 Proof.
   intros * HΔ Ha HU; inversion HU; subst.
-  - eapply aunit_body; [ eapply alg_ext_app; eassumption | apply List.Forall_app; split; assumption
+  - eapply alg_unit_body; [ eapply alg_ext_app; eassumption | apply List.Forall_app; split; assumption
                        | rewrite <- List.app_assoc; eassumption | assumption .. ].
-  - eapply aunit_alias; [ eapply alg_ext_app; eassumption | apply List.Forall_app; split; assumption
+  - eapply alg_unit_alias; [ eapply alg_ext_app; eassumption | apply List.Forall_app; split; assumption
                         | rewrite <- List.app_assoc; eassumption ].
 Qed.
 
@@ -1849,7 +1849,7 @@ Proof.
   intros * HΓ Hl.
   destruct (record_former_typed _ _ _ HΓ Hl) as [j [_ Hj]].
   destruct (soundness_ty Hj) as [W [HW HWe]].
-  econstructor; [ eapply ati_record; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+  econstructor; [ eapply alg_type_infer_record; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
 Qed.
 
 (** A tuple checks at its annotation: the annotation normalises to the
@@ -1880,7 +1880,7 @@ Proof.
   assert (Hlf : List.length fs = List.length (record_fields R))
     by (rewrite <- (List.length_map fst fs), <- (List.length_map fst (record_fields R)), Hfs; reflexivity).
   econstructor; [| apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
-  eapply ati_tuple; [ exact HTi | exact Hu | exact HW | exact Hl | exact Hfs |].
+  eapply alg_type_infer_tuple; [ exact HTi | exact Hu | exact HW | exact Hl | exact Hfs |].
   intros k f M U Hk Hfk.
   assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
   pose proof (record_fields_insts_eq _ _ _ p R Ns (List.map nf_to_exp Rs) fs fs Hrt Hl Hn HRl HNR Hfs eq_refl
@@ -1922,7 +1922,7 @@ Proof.
   destruct (soundness_ty HUR) as [V [HV HVe]].
   destruct (record_sort_large _ _ _ _ _ _ Hrt Hl Hn HNs) as [n Hm].
   pose proof (record_field_params_cong _ _ _ M p R Ns (List.map nf_to_exp Rs) n k f U HMt Hrt Hl Hn HRl HNs HNR Hm Hfk) as HUU.
-  econstructor; [ eapply ati_proj; [ exact HMi | exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hfk) | exact Hfk | exact HV ] |].
+  econstructor; [ eapply alg_type_infer_proj; [ exact HMi | exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hfk) | exact Hfk | exact HV ] |].
   apply alg_subtyping_complete; eapply wf_subtyp_refl'.
   eapply exp_eq_trans_typ_max; [ symmetry; exact HVe | symmetry; exact HUU ].
 Qed.
@@ -1983,7 +1983,7 @@ Proof.
                assert (HSU : Γ ⊢ Type⟨succl M⟩ : Typeω@0)
                  by (eapply wf_univ_large_tm; [ assumption | eapply wf_succl; eassumption ]);
                destruct (soundness_ty HSU) as [W [HW HWe]];
-               econstructor; [ eapply ati_suniv; eassumption |];
+               econstructor; [ eapply alg_type_infer_suniv; eassumption |];
                apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe
            end;
          (** The level forms infer a type of levels below the one they are
@@ -2033,7 +2033,7 @@ Proof.
         by (eapply soundness_ty; mauto 3).
       assert (Γ ⊢ C'[Id,,M] ⊆ C[Id,,M]) by mauto 3.
       assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
-      econstructor; [ eapply ati_let_none; eauto | mauto 4 using alg_subtyping_complete ]. }
+      econstructor; [ eapply alg_type_infer_let_none; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A module [let], through its body. *)
   11:{ destruct H0 as [HUa _].
        inversion H4 as [? C' ? ? HBi HBs]; subst.
@@ -2046,7 +2046,7 @@ Proof.
          by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
        assert (Γ ⊢ C'[Id ,,ₘ me_lit U] ⊆ C[Id ,,ₘ me_lit U]) by mauto 3.
        assert (Γ ⊢ W ⊆ C[Id ,,ₘ me_lit U]) by (transitivity C'[Id ,,ₘ me_lit U]; mauto 3).
-       econstructor; [ eapply ati_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
+       econstructor; [ eapply alg_type_infer_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A record's type former, a projection and a tuple ([alg_record_complete],
       [alg_proj_complete], [alg_tuple_complete]); the fields of a tuple are
       below its bound on [let]s ([tuple_field_lets]). *)
@@ -2070,7 +2070,7 @@ Proof.
         cbn [exp_lets] in Hb;
         let W := fresh "W" in let HW := fresh "HW" in let HWe := fresh "HWe" in
         destruct (soundness_ty HA) as [W [HW HWe]];
-        econstructor; [ eapply ati_mem; [ apply HmH; [ exact HH | lia ] | exact Hm | exact Ht | exact HW ]
+        econstructor; [ eapply alg_type_infer_mem; [ apply HmH; [ exact HH | lia ] | exact Hm | exact Ht | exact HW ]
                       | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ]
     end.
   - econstructor; mauto 3.
@@ -2085,12 +2085,12 @@ Proof.
   - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].
     destruct (ind_ty_typed _ _ _ _ _ _ HD Hc ltac:(eassumption) ltac:(eassumption)) as [j Hj].
     destruct (soundness_ty Hj) as [W [HW HWe]].
-    econstructor; [ eapply ati_ind; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+    econstructor; [ eapply alg_type_infer_ind_case; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
   - assert (HΓ1 : ⊢ Γ) by assumption.
     match goal with Hl : ind_lookup _ _ _ = Some _, Hk : ind_member _ _ = Some _, Hcon : ind_con _ _ = Some _ |- _ =>
       destruct (con_ty_typed _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ HΓ1) (decls_of_ctx _ _ _ HΓ1) Hl Hk Hcon HΓ1) as [j Hj] end.
     destruct (soundness_ty Hj) as [W [HW HWe]].
-    econstructor; [ eapply ati_con; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+    econstructor; [ eapply alg_type_infer_con; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
   (** The eliminator ([alg_elim_complete]): its parts by the induction
       hypotheses, under the bound on [let]s ([elim_lets_parts]). *)
   - match goal with
@@ -2130,8 +2130,8 @@ Proof.
           by (rewrite List.length_firstn; change (List.length (ind_uparams D)) with (ind_nu D); unfold im_np in HPl; lia);
         assert (HTP : List.nth_error (tele_insts (im_params D Mm) Id Ps) j = Some T)
           by (rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; unfold im_params;
-              rewrite tele_insts_app by (try exact (dc_ass _ Hc); exact HFl);
-              rewrite List.nth_error_app1; [ exact HT | rewrite length_tele_insts by exact (dc_ass _ Hc); unfold ind_nu in Hj; lia ]);
+              rewrite tele_insts_app by (try exact (decl_closed_ass _ Hc); exact HFl);
+              rewrite List.nth_error_app1; [ exact HT | rewrite length_tele_insts by exact (decl_closed_ass _ Hc); unfold ind_nu in Hj; lia ]);
         apply (HUs j U T HUP HTP eq_refl eq_refl (user_exp_all _));
         pose proof (HLu U (List.nth_error_In _ _ HU)); lia
     end.
@@ -2253,7 +2253,7 @@ Proof.
         destruct (body_shape_refl _ _ Hs) as (Hs1 & _ & _);
         destruct (body_shape_refl _ _ Hsx) as (Hsx1 & _ & _);
         rewrite gunit_lets_mk in *; cbn [moddef_lets] in *;
-        eapply aunit_body; [ apply (ext_entries_alg n); [ exact (ext_entries_app_r _ _ _ _ HXl) | lia ] | assumption | | exact Hs1 | exact Hsx1 | exact Hnd ];
+        eapply alg_unit_body; [ apply (ext_entries_alg n); [ exact (ext_entries_app_r _ _ _ _ HXl) | lia ] | assumption | | exact Hs1 | exact Hsx1 | exact Hnd ];
         eapply alg_body_of_entries; [ eassumption | exact HXl | lia | exact Hs1 |];
         intros k Ψ0 H0' Hk Hle; apply HmH; [ exact (Ho _ _ _ Hk) | lia ]
     end.
@@ -2267,7 +2267,7 @@ Proof.
         destruct (body_shape_refl _ _ Hs) as (_ & Hs2 & Hn);
         destruct (body_shape_refl _ _ Hsx) as (_ & Hsx2 & _);
         rewrite gunit_lets_mk in *; cbn [moddef_lets] in *;
-        eapply aunit_body; [ apply (ext_entries_alg n); [ exact (ext_entries_app_r _ _ _ _ HXr) | lia ] | assumption | | exact Hs2 | exact Hsx2 | rewrite <- Hn; exact Hnd ];
+        eapply alg_unit_body; [ apply (ext_entries_alg n); [ exact (ext_entries_app_r _ _ _ _ HXr) | lia ] | assumption | | exact Hs2 | exact Hsx2 | rewrite <- Hn; exact Hnd ];
         eapply alg_body_of_entries; [ eassumption | exact HXr | lia | exact Hs2 |];
         intros k Ψ1 H1' Hk Hle; apply HmH; [ exact (Ho _ _ _ Hk) | lia ]
     end.
@@ -2283,7 +2283,7 @@ Proof.
   (** Flattening: the alias of the literal, and the unit over both
       telescopes. *)
   - destruct H0 as [HXl _]; rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
-    apply aunit_alias; [ apply (ext_entries_alg n); [ exact HXl | lia ] | assumption | apply amod_lit, (proj1 H3) ].
+    apply alg_unit_alias; [ apply (ext_entries_alg n); [ exact HXl | lia ] | assumption | apply alg_modexp_lit, (proj1 H3) ].
   - destruct H0 as [HXl _]; rewrite gunit_lets_mk, ctx_lets_app in *.
     eapply alg_unit_flatten; [ apply (ext_entries_alg n); [ exact HXl | lia ] | assumption | exact (proj1 H3) ].
   - destruct H0; assumption.
@@ -2373,7 +2373,7 @@ Hint Resolve alg_type_infer_complete : mctt.
 
 (** The normal forms below a universe in the order on normal forms are the
     universes below it. *)
-Lemma asnf_univ_inv : forall W u,
+Lemma alg_subtyping_nf_univ_inv : forall W u,
     ⊢anf W ⊆ univ_nf u ->
     exists v, W = univ_nf v /\ unf_le v u.
 Proof.
@@ -2405,7 +2405,7 @@ Proof.
   inversion Hsub as [A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
   destruct (nbe_ty_univ_term HT Hnbe2) as [u ->].
-  destruct (asnf_univ_inv _ _ Hnfsub) as (v & -> & Hle).
+  destruct (alg_subtyping_nf_univ_inv _ _ Hnfsub) as (v & -> & Hle).
   exists u, v; split; [ exact Hnbe2 | split; [ exact Hinfer | exact Hle ] ].
 Qed.
 

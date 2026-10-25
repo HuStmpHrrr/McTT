@@ -48,12 +48,12 @@ Proof. intros * H; apply la_all_all_list, la_all_sort, la_all_all_list; assumpti
 (** A global that does not unfold: an opaque definition or an axiom. *)
 #[warnings="-cannot-define-projection"]
 Record gstuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop := mk_gstuck
-  { gst_transparent : bool
-  ; gst_private : bool
-  ; gst_typ : typ
-  ; gst_body : option exp
-  ; gst_resolve : gc_resolve Θ Ξ p = Some (ge_def gst_transparent gst_private gst_typ gst_body)
-  ; gst_opaque : gst_transparent = false \/ gst_body = None }.
+  { gstuck_transparent : bool
+  ; gstuck_private : bool
+  ; gstuck_typ : typ
+  ; gstuck_body : option exp
+  ; gstuck_resolve : gc_resolve Θ Ξ p = Some (ge_def gstuck_transparent gstuck_private gstuck_typ gstuck_body)
+  ; gstuck_opaque : gstuck_transparent = false \/ gstuck_body = None }.
 
 Section Stuck.
   Variables (Θ : gdeps) (Ξ : gstack).

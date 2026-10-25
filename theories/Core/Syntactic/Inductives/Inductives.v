@@ -572,11 +572,11 @@ Definition wrap_br (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list ebloc
     for [D]. *)
 Record vwrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_vwrap_ok
   { (** [vm] lists one member of [D] per member of the container's group. *)
-    vwo_length : List.length vm = List.length (ind_members D')
+    vwrap_ok_length : List.length vm = List.length (ind_members D')
   (** Each member [vm] lists is a member of [D] with as many non-uniform
       parameters as the container's, the same constructors, and arguments
       corresponding to the container's ([cargs_corr]). *)
-  ; vwo_members : forall i' Mi' v, ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
+  ; vwrap_ok_members : forall i' Mi' v, ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
       exists Mv, ind_member D v = Some Mv /\ im_nn Mv = im_nn Mi' /\
         List.map fst (im_cons Mv) = List.map fst (im_cons Mi') /\
         (forall c gs' gs, In (c, gs') (im_cons Mi') -> ind_con Mv c = Some gs -> cargs_corr vm gs' gs) }.
@@ -730,12 +730,12 @@ Definition mhead_mvc (h : mhead) : Prop :=
 (** No free module variable anywhere in a group. *)
 Record decl_mvc (D : ind_decl) : Prop := mk_decl_mvc
   { (** In the uniform parameters' types. *)
-    dmv_uparams : ctx_mvc (ind_uparams D)
+    decl_mvc_uparams : ctx_mvc (ind_uparams D)
   (** In the sort. *)
-  ; dmv_sort : exp_mvc 0 (ind_sort D)
+  ; decl_mvc_sort : exp_mvc 0 (ind_sort D)
   (** In each member's non-uniform parameters, view arguments and
       constructor arguments. *)
-  ; dmv_members : forall k M, ind_member D k = Some M ->
+  ; decl_mvc_members : forall k M, ind_member D k = Some M ->
       ctx_mvc (im_nparams M) /\ mhead_mvc (im_head M) /\
       (forall c gs, In (c, gs) (im_cons M) -> List.Forall carg_mvc gs) }.
 

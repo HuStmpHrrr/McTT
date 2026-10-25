@@ -273,7 +273,7 @@ Section GrecTyped.
     rewrite grec_case_tys_cons, List.rev_app_distr, <- List.app_assoc.
     assert (HM : ind_member D i = Some M) by (rewrite <- (Nat.add_0_r i); exact (Hms 0 M eq_refl)).
     pose proof (gcases_wf _ _ (im_cons M) k E HM
-                  (fun c gs Hin => cons_lookup_nodup _ _ _ (dt_nodup _ _ _ HD _ _ HM) Hin) HE HEw) as H1.
+                  (fun c gs Hin => cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ HD _ _ HM) Hin) HE HEw) as H1.
     pose proof (IH (S i) (k + List.length (im_cons M)) (List.rev (gcases i M k (im_cons M)) ++ E)
                   ltac:(intros j' M' Hj'; rewrite Nat.add_succ_comm; exact (Hms (S j') M' Hj'))
                   ltac:(rewrite List.length_app, List.length_rev, length_gcases, HE; lia)
@@ -489,12 +489,12 @@ Section GrecTyped.
     - (* the branches' arities *)
       intros k Mk b c gs n B HMk Hb Hcon Hin; rewrite (Hblk _ _ _ HMk Hb) in Hin; cbn [eb_brs] in Hin.
       destruct (grec_brs_in _ _ _ _ _ _ _ _ Hin) as (cs1 & gs' & cs2 & Hcs & -> & _).
-      assert (gs' = gs) as -> by (symmetry; eapply nodup_in_fst; [ exact (dt_nodup _ _ _ HD _ _ HMk) | exact (cons_lookup_in _ _ _ Hcon) | rewrite Hcs; apply List.in_elt ]).
+      assert (gs' = gs) as -> by (symmetry; eapply nodup_in_fst; [ exact (decl_typed_nodup _ _ _ HD _ _ HMk) | exact (cons_lookup_in _ _ _ Hcon) | rewrite Hcs; apply List.in_elt ]).
       reflexivity.
     - (* a branch: its case, applied to what the branch binds *)
       intros k Mk b c gs n B HMk Hb Hcon Hin; rewrite (Hblk _ _ _ HMk Hb) in Hin |- *; cbn [eb_brs eb_motive] in Hin |- *.
       destruct (grec_brs_in _ _ _ _ _ _ _ _ Hin) as (cs1 & gs' & cs2 & Hcs & Hn & HB).
-      assert (gs' = gs) as -> by (symmetry; eapply nodup_in_fst; [ exact (dt_nodup _ _ _ HD _ _ HMk) | exact (cons_lookup_in _ _ _ Hcon) | rewrite Hcs; apply List.in_elt ]).
+      assert (gs' = gs) as -> by (symmetry; eapply nodup_in_fst; [ exact (decl_typed_nodup _ _ _ HD _ _ HMk) | exact (cons_lookup_in _ _ _ Hcon) | rewrite Hcs; apply List.in_elt ]).
       assert (Hbm : blocks_motives Bks = grec_motives D (K + S nn)) by (unfold Bks; rewrite blocks_motives_grec; reflexivity).
       rewrite HF, Hbm.
       destruct (grec_case_tys_at _ _ _ _ _ _ HMk Hcs) as (A & B' & HA & HlA).

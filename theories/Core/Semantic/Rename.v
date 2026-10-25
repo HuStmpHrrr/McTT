@@ -196,9 +196,9 @@ Section Eval.
     all: try solve [ econstructor; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; rewrite <- kpad_rn; eassumption ].
     all: try solve [ econstructor; rewrite env_mod_rn; eassumption ].
-    all: try solve [ eapply uk_item_mod; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
-    all: try solve [ eapply uk_item_dm; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
-    all: try solve [ eapply uk_dm_step; [ eassumption | eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply ukind_item_mod; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply ukind_item_dm; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply ukind_dm_step; [ eassumption | eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
   Qed.
 
   Lemma eval_rn :

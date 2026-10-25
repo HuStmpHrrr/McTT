@@ -25,92 +25,92 @@ Generalizable All Variables.
     whether the chain goes on into it. *)
 
 Inductive dkind_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
-(** The path names a definition ([dk_global_here_def]): no recursion *)
-| dko_global_here_def :
+(** The path names a definition ([dkind_global_here_def]): no recursion *)
+| dkind_order_global_here_def :
   `( gc_resolve Θ Ξ pq = Some (ge_def b pv A B) ->
      dkind_order Θ Ξ (dm_global pq args) nil )
-(** The path names a body module or a frame ([dk_global_here_mod]): no
+(** The path names a body module or a frame ([dkind_global_here_mod]): no
     recursion *)
-| dko_global_here_mod :
+| dkind_order_global_here_mod :
   `( (exists T oD, gc_module Θ Ξ pq = Some (mr_body T oD)) \/ (exists TΦ, gc_frame Ξ pq = Some TΦ) ->
      dkind_order Θ Ξ (dm_global pq args) nil )
 (** The member [y] is a definition with a module part stored in place
-    ([dk_global_here_dm]): no recursion *)
-| dko_global_here_dm :
+    ([dkind_global_here_dm]): no recursion *)
+| dkind_order_global_here_dm :
   `( dm_path Θ Ξ (qname_app pq (y :: nil)) ->
      gc_loc Θ Ξ (qname_app pq (y :: nil)) = Some TΦ ->
      dkind_order Θ Ξ (dm_global pq args) (y :: nil) )
-(** The member [y] is an alias read past ([dk_global_alias]): the order of
+(** The member [y] is an alias read past ([dkind_global_alias_case]): the order of
     the chain in the alias's unit *)
-| dko_global_alias :
+| dkind_order_global_alias :
   `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias U) ->
      ch <> nil \/ ~ dm_path Θ Ξ (qname_app pq (y :: nil)) ->
      ukind_order Θ Ξ nil U ch ->
      dkind_order Θ Ξ (dm_global pq args) (y :: ch) )
 (** The member [y] is a definition with a module part stored as an alias
-    ([dk_global_alias_dm]): the order of the empty chain in the alias's
+    ([dkind_global_alias_dm]): the order of the empty chain in the alias's
     unit *)
-| dko_global_alias_dm :
+| dkind_order_global_alias_dm :
   `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias U) ->
      dm_path Θ Ξ (qname_app pq (y :: nil)) ->
      ukind_order Θ Ξ nil U nil ->
      dkind_order Θ Ξ (dm_global pq args) (y :: nil) )
-(** The member [y] is located in place ([dk_global_step]): the order of the
+(** The member [y] is located in place ([dkind_global_step]): the order of the
     rest of the chain at the path of [y] *)
-| dko_global_step :
+| dkind_order_global_step :
   `( (exists TΦ, gc_loc Θ Ξ (qname_app pq (y :: nil)) = Some TΦ) \/
      (exists b pv A B, gc_resolve Θ Ξ (qname_app pq (y :: nil)) = Some (ge_def b pv A B)) ->
      ch <> nil \/ ~ dm_path Θ Ξ (qname_app pq (y :: nil)) ->
      dkind_order Θ Ξ (dm_global (qname_app pq (y :: nil)) args) ch ->
      dkind_order Θ Ξ (dm_global pq args) (y :: ch) )
-(** A closure ([dk_local]): the order of its unit *)
-| dko_local :
+(** A closure ([dkind_local]): the order of its unit *)
+| dkind_order_local :
   `( ukind_order Θ Ξ p (gu_mk Δ D) ch ->
      dkind_order Θ Ξ (dm_local Δ D p) ch )
-(** A submodule closure ([dk_member], [dk_member_dm]): the order of the
+(** A submodule closure ([dkind_member], [dkind_member_dm]): the order of the
     longer chain *)
-| dko_member :
+| dkind_order_member :
   `( dkind_order Θ Ξ h (ch0 ++ ch) ->
      dkind_order Θ Ξ (dm_member h ch0) ch )
 
 with ukind_order (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> Prop :=
-(** A body at the empty chain ([uk_self]): no recursion *)
-| uko_self :
+(** A body at the empty chain ([ukind_self]): no recursion *)
+| ukind_order_self :
   `( ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) nil )
-(** A definition of the body ([uk_def]): no recursion *)
-| uko_def :
+(** A definition of the body ([ukind_def]): no recursion *)
+| ukind_order_def :
   `( gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
      ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (x :: nil) )
-(** A submodule of the body ([uk_mod]): the order of the entries before it,
+(** A submodule of the body ([ukind_mod]): the order of the entries before it,
     and of the rest of the chain in its unit, in each environment they
     make *)
-| uko_mod :
+| ukind_order_mod :
   `( gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      kenv_order Θ Ξ (kpad (List.length Δ) p) Φ' ->
      (forall p1, kenv Θ Ξ (kpad (List.length Δ) p) Φ' p1 -> ukind_order Θ Ξ p1 Uy ch) ->
      ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (y :: ch) )
 (** A definition with a module part of the body, at the end of the chain
-    ([uk_dm_here]): the order of the entries before it, and of the empty
+    ([ukind_dm_here]): the order of the entries before it, and of the empty
     chain in its module part, in each environment they make *)
-| uko_dm_here :
+| ukind_order_dm_here :
   `( gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
      kenv_order Θ Ξ (kpad (List.length Δ) p) Φ' ->
      (forall p1, kenv Θ Ξ (kpad (List.length Δ) p) Φ' p1 -> ukind_order Θ Ξ p1 Uy nil) ->
      ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (y :: nil) )
 (** A definition with a module part of the body, the chain going on
-    ([uk_dm_step]): the order of the entries before it, and of the rest of
+    ([ukind_dm_step]): the order of the entries before it, and of the rest of
     the chain in its module part, in each environment they make *)
-| uko_dm_step :
+| ukind_order_dm_step :
   `( gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
      ch <> nil ->
      kenv_order Θ Ξ (kpad (List.length Δ) p) Φ' ->
      (forall p1, kenv Θ Ξ (kpad (List.length Δ) p) Φ' p1 -> ukind_order Θ Ξ p1 Uy ch) ->
      ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (y :: ch) )
-(** An item naming a member of the target ([uk_item_def], [uk_item_mod],
-    [uk_item_dm]): the order of the entries before the open, of the
+(** An item naming a member of the target ([ukind_item_def], [ukind_item_mod],
+    [ukind_item_dm]): the order of the entries before the open, of the
     member's kind, and of the chain in the member when the member is a
     module or has a module part *)
-| uko_item_some :
+| ukind_order_item_some :
   `( gm_item_upto Φ x = Some (Φ0, E, its1, (Some n, d, pv)) ->
      kenv_order Θ Ξ (kpad (List.length Δ) p) Φ0 ->
      (forall p0, kenv Θ Ξ (kpad (List.length Δ) p) Φ0 p0 ->
@@ -119,85 +119,85 @@ with ukind_order (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> Pro
          (skind Θ Ξ p0 E (n :: nil) mk_mod /\ skind_order Θ Ξ p0 E (n :: ch)) \/
          (skind Θ Ξ p0 E (n :: nil) mk_dm /\ skind_order Θ Ξ p0 E (n :: ch)))) ->
      ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (x :: ch) )
-(** An item naming the target itself ([uk_item_self]): the order of the
+(** An item naming the target itself ([ukind_item_self]): the order of the
     entries before the open, and of the chain in the target *)
-| uko_item_none :
+| ukind_order_item_none :
   `( gm_item_upto Φ x = Some (Φ0, E, its1, (None, d, pv)) ->
      kenv_order Θ Ξ (kpad (List.length Δ) p) Φ0 ->
      (forall p0, kenv Θ Ξ (kpad (List.length Δ) p) Φ0 p0 -> skind_order Θ Ξ p0 E ch) ->
      ukind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (x :: ch) )
-(** An alias unit ([uk_alias]): the order of the chain in its target *)
-| uko_alias :
+(** An alias unit ([ukind_alias]): the order of the chain in its target *)
+| ukind_order_alias :
   `( skind_order Θ Ξ (kpad (List.length Δ) p) E ch ->
      ukind_order Θ Ξ p (gu_mk Δ (md_alias E)) ch )
 
 with skind_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list string -> Prop :=
-(** A unit ([sk_unit]): the order of the chain in its global module *)
-| sko_unit :
+(** A unit ([skind_unit]): the order of the chain in its global module *)
+| skind_order_unit :
   `( dkind_order Θ Ξ (dm_global (q_abs fp nil) nil) ch ->
      skind_order Θ Ξ p (me_unit fp) ch )
-(** A module slot ([sk_var]): the order of the chain in its value *)
-| sko_var :
+(** A module slot ([skind_var]): the order of the chain in its value *)
+| skind_order_var :
   `( dkind_order Θ Ξ (env_mod p x) ch ->
      skind_order Θ Ξ p (me_var x) ch )
-(** A literal unit ([sk_lit]): the order of the chain in the unit *)
-| sko_lit :
+(** A literal unit ([skind_lit]): the order of the chain in the unit *)
+| skind_order_lit :
   `( ukind_order Θ Ξ p U ch ->
      skind_order Θ Ξ p (me_lit U) ch )
-(** A selection ([sk_mem], [sk_mem_dm]): the order of the longer chain *)
-| sko_mem :
+(** A selection ([skind_mem], [skind_mem_dm]): the order of the longer chain *)
+| skind_order_mem :
   `( skind_order Θ Ξ p E (y :: ch) ->
      skind_order Θ Ξ p (me_mem E y) ch )
-(** An application ([sk_app]): the order of the chain in the module
+(** An application ([skind_app]): the order of the chain in the module
     applied *)
-| sko_app :
+| skind_order_app :
   `( skind_order Θ Ξ p E ch ->
      skind_order Θ Ξ p (me_app E N) ch )
 
 with kenv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 (** The empty body ([ke_nil]) *)
-| keo_nil :
+| kenv_order_nil :
   `( kenv_order Θ Ξ p gm_nil )
 (** An entry ([ke_ext]): the order of the body before it *)
-| keo_ext :
+| kenv_order_ext :
   `( kenv_order Θ Ξ p Φ ->
      kenv_order Θ Ξ p (gm_ext Φ y E) )
 (** An open ([ke_open]): the order of the body before it, and of its items
     in each environment that body makes *)
-| keo_open :
+| kenv_order_open :
   `( kenv_order Θ Ξ p Φ ->
      (forall p1, kenv Θ Ξ p Φ p1 -> kgens_order Θ Ξ p1 E its) ->
      kenv_order Θ Ξ p (gm_open Φ E its) )
 
 with kgens_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> Prop :=
-(** No items ([kg_nil]) *)
-| kgo_nil :
+(** No items ([kgens_nil]) *)
+| kgens_order_nil :
   `( kgens_order Θ Ξ p E nil )
-(** An item naming the target itself ([kg_self]): the order of the other
+(** An item naming the target itself ([kgens_self]): the order of the other
     items *)
-| kgo_self :
+| kgens_order_self :
   `( kgens_order Θ Ξ p E its ->
      kgens_order Θ Ξ p E ((None, d, pv) :: its) )
-(** An item naming a member ([kg_def], [kg_mod], [kg_dm]): the order of
+(** An item naming a member ([kgens_def], [kgens_mod], [kgens_dm]): the order of
     the member's kind, and of the other items *)
-| kgo_name :
+| kgens_order_name :
   `( skind_order Θ Ξ p E (n :: nil) ->
      kgens_order Θ Ξ p E its ->
      kgens_order Θ Ξ p E ((Some n, d, pv) :: its) ).
 
 (** The order of reading a body through the entries its opens generate. *)
 Inductive kbody_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
-(** The empty body ([kb_nil]) *)
-| kbo_nil :
+(** The empty body ([kbody_nil]) *)
+| kbody_order_nil :
   `( kbody_order Θ Ξ p gm_nil )
-(** An entry ([kb_ext]): the order of the body before it *)
-| kbo_ext :
+(** An entry ([kbody_ext]): the order of the body before it *)
+| kbody_order_ext :
   `( kbody_order Θ Ξ p Φ ->
      kbody_order Θ Ξ p (gm_ext Φ y E) )
-(** An open ([kb_open]): the order of the body before it, and, for each
+(** An open ([kbody_open]): the order of the body before it, and, for each
     expansion of that body, of the environment it makes and of the items in
     each such environment *)
-| kbo_open :
+| kbody_order_open :
   `( kbody_order Θ Ξ p Φ ->
      (forall Φx, kbody Θ Ξ p Φ Φx -> kenv_order Θ Ξ p Φx /\
         forall p1, kenv Θ Ξ p Φx p1 -> kgens_order Θ Ξ p1 E its) ->
@@ -217,15 +217,15 @@ Proof.
   intros Θ Ξ; pose proof (@functional_kind Θ Ξ) as (_ & _ & _ & Fk & Fb & _).
   apply kind_mut_ind; intros; try solve [ econstructor; eauto ].
   all: lazymatch goal with
-    | _ : gm_item_upto _ _ = Some (_, _, _, (Some _, _, _)) |- ukind_order _ _ _ _ _ => eapply uko_item_some
+    | _ : gm_item_upto _ _ = Some (_, _, _, (Some _, _, _)) |- ukind_order _ _ _ _ _ => eapply ukind_order_item_some
     | _ : gm_item_upto _ _ = Some (_, _, _, (None, _, _)) |- ukind_order _ _ _ _ _ =>
-        eapply uko_item_none
-    | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_mod _ _)) |- ukind_order _ _ _ _ _ => eapply uko_mod
+        eapply ukind_order_item_none
+    | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_mod _ _)) |- ukind_order _ _ _ _ _ => eapply ukind_order_mod
     | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)), _ : _ <> nil |- ukind_order _ _ _ _ _ =>
-        eapply uko_dm_step
-    | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- ukind_order _ _ _ _ _ => eapply uko_dm_here
-    | |- kbody_order _ _ _ (gm_open _ _ _) => eapply kbo_open
-    | _ : gc_module _ _ _ = Some (mr_alias _), _ : dm_path _ _ _ |- dkind_order _ _ _ (_ :: nil) => eapply dko_global_alias_dm
+        eapply ukind_order_dm_step
+    | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- ukind_order _ _ _ _ _ => eapply ukind_order_dm_here
+    | |- kbody_order _ _ _ (gm_open _ _ _) => eapply kbody_order_open
+    | _ : gc_module _ _ _ = Some (mr_alias _), _ : dm_path _ _ _ |- dkind_order _ _ _ (_ :: nil) => eapply dkind_order_global_alias_dm
     | |- _ => econstructor
     end; eauto; intros;
     repeat match goal with
@@ -359,13 +359,13 @@ Section KindImpl.
   Ltac kd_finish :=
     kd_glob;
     try solve [ intuition discriminate ];
-    try solve [ eapply dk_global_step;
+    try solve [ eapply dkind_global_step;
                 [ first [ left; eexists; eassumption | right; do 4 eexists; eassumption ]
                 | first [ left; discriminate | right; assumption ] | eassumption ] ];
     (** a selection away from the empty chain, or of no member with a term
         part and a module part *)
-    try solve [ first [ eapply dk_member | eapply sk_mem ]; [ eassumption | first [ left; discriminate | right; discriminate ] ] ];
-    try solve [ first [ apply dk_member_dm | apply sk_mem_dm ]; rewrite ?List.app_nil_r in *; eassumption ];
+    try solve [ first [ eapply dkind_member | eapply skind_mem ]; [ eassumption | first [ left; discriminate | right; discriminate ] ] ];
+    try solve [ first [ apply dkind_member_dm | apply skind_mem_dm ]; rewrite ?List.app_nil_r in *; eassumption ];
     try solve [ eauto 6 with mctt ];
     try econstructor; eauto with mctt.
 

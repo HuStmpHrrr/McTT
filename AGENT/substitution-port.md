@@ -216,7 +216,7 @@ weakening, and the trio `kripke_q_escape` / `kripke_preserves_exp_q` /
 `kripke_preserves_typ_q` is what covers the extended context instead. Read that
 file's header comment before touching it; the three things it records are:
 
-- The two constructors are `kwk_id` and `kwk_shift` (renamed: the old `wk_id` /
+- The two constructors are `wk_kripke_id` and `wk_kripke_shift` (renamed: the old `wk_id` /
   `wk_p` clashed with `Syntax.v`'s `wk_id`), and they recurse on the
   **codomain**, so the domain is a parameter. `kripke_compose` is then an
   induction on the *outer* weakening; recursing on the domain would need a

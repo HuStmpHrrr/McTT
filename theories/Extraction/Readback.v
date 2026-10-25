@@ -43,10 +43,10 @@ Qed.
 (** The variables of a telescope *)
 Inductive ffresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> Prop :=
 (** No entry *)
-| fftelo_nil :
+| ffresh_tele_order_nil :
   `( ffresh_tele_order Θ Ξ ρ nil s )
 (** The first entry's type, then the rest under its variable *)
-| fftelo_cons :
+| ffresh_tele_order_cons :
   `( feval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_tele_order Θ Ξ (ρ ↦ ⇑! a s) T (S s)) ->
      ffresh_tele_order Θ Ξ ρ (ce_ass A :: T) s ).
@@ -55,15 +55,15 @@ Inductive ffresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> n
 Inductive ffresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> Prop :=
 (** No argument *)
-| ffcargo_nil :
+| ffresh_cargs_order_nil :
   `( ffresh_cargs_order Θ Ξ p ups ρ nil s )
 (** A non-recursive argument's type, then the rest *)
-| ffcargo_arg :
+| ffresh_cargs_order_arg :
   `( feval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
 (** A recursive argument's type, then the rest *)
-| ffcargo_rec :
+| ffresh_cargs_order_rec_case :
   `( feval_shty_order Θ Ξ p ups ρ t ->
      ffresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
@@ -72,19 +72,19 @@ Inductive ffresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list 
 Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (B : exp) :
   env -> list carg -> list carg -> list domain -> nat -> Prop :=
 (** No argument *)
-| ffihso_nil :
+| ffresh_ihs_order_nil :
   `( ffresh_ihs_order Θ Ξ ρ As B ρa nil nil nil s )
 (** A non-recursive argument, entering the environment *)
-| ffihso_arg :
+| ffresh_ihs_order_arg :
   `( ffresh_ihs_order Θ Ξ ρ As B (ρa ↦ v) gs' gs vs s ->
      ffresh_ihs_order Θ Ξ ρ As B ρa (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) s )
 (** Recursive in both: its type when the branch reads it, then the rest *)
-| ffihso_rec :
+| ffresh_ihs_order_rec_case :
   `( (exp_freshb (cargs_nrec gs) B = false -> feval_ihty_order Θ Ξ ρ As ρa t v) ->
      ffresh_ihs_order Θ Ξ ρ As B ρa gs' gs vs (S s) ->
      ffresh_ihs_order Θ Ξ ρ As B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
 (** Nested through: the rest *)
-| ffihso_nest :
+| ffresh_ihs_order_nest :
   `( ffresh_ihs_order Θ Ξ ρ As B ρa gs' gs vs s ->
      ffresh_ihs_order Θ Ξ ρ As B ρa (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
 
@@ -92,19 +92,19 @@ Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp)
 Inductive fwrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) :
   list carg -> list carg -> list domain -> list domain -> Prop :=
 (** No argument *)
-| fwrapo_nil :
+| fwrap_ihs_order_nil :
   `( fwrap_ihs_order Θ Ξ ρ p ups Bks nil nil nil nil )
 (** Recursive in both: the rest *)
-| fwrapo_rec :
+| fwrap_ihs_order_rec_case :
   `( fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
      fwrap_ihs_order Θ Ξ ρ p ups Bks (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) (ih :: ihs) )
 (** Nested through: the eliminator at the argument, then the rest *)
-| fwrapo_nest :
+| fwrap_ihs_order_nest :
   `( feval_ih_order Θ Ξ ρ p ups Bks t v ->
      fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
      fwrap_ihs_order Θ Ξ ρ p ups Bks (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
 (** Non-recursive: the rest *)
-| fwrapo_arg :
+| fwrap_ihs_order_arg :
   `( fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
      fwrap_ihs_order Θ Ξ ρ p ups Bks (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) ihs ).
 
@@ -213,24 +213,24 @@ End FreshImpl.
 (** ** The Orders of Readback *)
 
 Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
-| frnf_type :
+| fread_nf_order_type :
   `( fread_typ_order Θ Ξ s a ->
     fread_nf_order Θ Ξ s ⇓ 𝕌ω@i a )
-| frnf_stype :
+| fread_nf_order_stype :
   `( fread_typ_order Θ Ξ s a ->
     fread_nf_order Θ Ξ s ⇓ 𝕌@n a )
-| frnf_lvl :
+| fread_nf_order_lvl :
   `( fread_la_order Θ Ξ s xs ->
      fread_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (lvᵈ c xs) )
-| frnf_lvl_neut :
+| fread_nf_order_lvl_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (⇑ a m) )
-| frnf_true :
+| fread_nf_order_true :
   `( fread_nf_order Θ Ξ s ⇓ ⊤ᵈ m )
-| frnf_False_neut :
+| fread_nf_order_False_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ ⊥ᵈ (⇑ a m) )
-| frnf_fn :
+| fread_nf_order_fn :
   `( fread_typ_order Θ Ξ s a ->
      feval_app_order Θ Ξ m ⇑! a s ->
      feval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
@@ -239,11 +239,11 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
          ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! a s ↘ b ->
          fread_nf_order Θ Ξ (S s) ⇓ b m') ->
      fread_nf_order Θ Ξ s ⇓ (Πᵈ a p B) m )
-| frnf_neut :
+| fread_nf_order_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ (⇑ a b) (⇑ c m) )
 (** A constructor of a declared member *)
-| frnf_con :
+| fread_nf_order_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      im_head Mk = mh_decl pm ->
@@ -254,7 +254,7 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
      fread_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (im_np D Mk) vs) ->
      fread_nf_order Θ Ξ s ⇓ (d_ind p k as') (d_con p k c vs) )
 (** A constructor at a view: its arguments are the last values *)
-| frnf_con_view :
+| fread_nf_order_con_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
@@ -265,11 +265,11 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
      fread_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs
        (List.skipn (List.length vs - List.length gs) vs) ->
      fread_nf_order Θ Ξ s ⇓ (d_ind p j as') (d_con qc k c vs) )
-| frnf_ind_neut :
+| fread_nf_order_ind_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ (d_ind p k as') (⇑ a m) )
 (** A value of a record type: the type's parameters, then the fields *)
-| frnf_record :
+| fread_nf_order_record :
   `( record_lookup Θ Ξ p = Some R ->
      List.length ns = List.length (record_params R) ->
      fread_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
@@ -277,24 +277,24 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
      fread_nf_order Θ Ξ s ⇓ (d_record p ns) v )
 
 with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
-| frne_var :
+| fread_ne_order_var :
   `( fread_ne_order Θ Ξ s #ᵈ x )
-| frne_app :
+| fread_ne_order_app :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s n ->
      fread_ne_order Θ Ξ s (m $ᵈ n) )
-| frne_exfalso :
+| fread_ne_order_exfalso :
   `( feval_exp_order Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) ->
      (forall b,
          ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! ⊥ᵈ s ↘ b ->
          fread_typ_order Θ Ξ (S s) b) ->
      fread_ne_order Θ Ξ s m ->
      fread_ne_order Θ Ξ s efqᵈ m under p return B )
-| frne_glob :
+| fread_ne_order_glob :
   `( fread_ne_order Θ Ξ s (d_glob p) )
 (** A stuck eliminator: the container's uniform parameters, the blocks
     read as the container's group's, and the scrutinee *)
-| frne_elim :
+| fread_ne_order_elim :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_ref p j Mj = (pc, k) ->
@@ -308,62 +308,62 @@ with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      fread_ne_order Θ Ξ s m ->
      fread_ne_order Θ Ξ s (d_elim ρ Bks p ups j as' m) )
 (** The field of a neutral *)
-| frne_proj :
+| fread_ne_order_proj :
   `( fread_ne_order Θ Ξ s m ->
      fread_ne_order Θ Ξ s (d_proj f m) )
 
 with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
-| frtyp_univ :
+| fread_typ_order_univ :
   `( fread_typ_order Θ Ξ s 𝕌ω@i )
 (** A small universe reads its level back. *)
-| frtyp_suniv :
+| fread_typ_order_suniv :
   `( fread_nf_order Θ Ξ s ⇓ Levelᵈ l ->
      fread_typ_order Θ Ξ s 𝕌@l )
-| frtyp_level :
+| fread_typ_order_level :
   `( fread_typ_order Θ Ξ s (Levelᵈ@n) )
-| frtyp_True :
+| fread_typ_order_True :
   `( fread_typ_order Θ Ξ s ⊤ᵈ )
-| frtyp_False :
+| fread_typ_order_False :
   `( fread_typ_order Θ Ξ s ⊥ᵈ )
-| frtyp_pi :
+| fread_typ_order_pi :
   `( fread_typ_order Θ Ξ s a ->
      feval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
      (forall b,
          ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! a s ↘ b ->
          fread_typ_order Θ Ξ (S s) b) ->
      fread_typ_order Θ Ξ s Πᵈ a p B)
-| frtyp_neut :
+| fread_typ_order_neut :
   `( fread_ne_order Θ Ξ s b ->
     fread_typ_order Θ Ξ s ⇑ a b )
 (** A type former without arguments: no lookup *)
-| frtyp_indty_nil :
+| fread_typ_order_indty_nil :
   `( fread_typ_order Θ Ξ s (d_ind p k nil) )
 (** At one argument or more *)
-| frtyp_indty :
+| fread_typ_order_indty :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      List.length (a :: as') = im_np D Mk ->
      fread_ps_order Θ Ξ s nil (List.rev (im_params D Mk)) (a :: as') ->
      fread_typ_order Θ Ξ s (d_ind p k (a :: as')) )
 (** A record type at all its parameters *)
-| frtyp_record :
+| fread_typ_order_record :
   `( record_lookup Θ Ξ p = Some R ->
      List.length ns = List.length (record_params R) ->
      fread_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
      fread_typ_order Θ Ξ s (d_record p ns) )
 
 with fread_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
-| frla_nil :
+| fread_la_order_nil :
   `( fread_la_order Θ Ξ s nil )
-| frla_cons :
+| fread_la_order_cons :
   `( fread_ne_order Θ Ξ s m ->
      fread_la_order Θ Ξ s xs ->
      fread_la_order Θ Ξ s ((k, n, m) :: xs) )
 
 with fread_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> Prop :=
-| frps_nil :
+| fread_ps_order_nil :
   `( fread_ps_order Θ Ξ s ρ nil nil )
-| frps_cons :
+| fread_ps_order_cons :
   `( feval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fread_nf_order Θ Ξ s ⇓ a v) ->
      fread_ps_order Θ Ξ s (ρ ↦ v) T vs ->
@@ -372,11 +372,11 @@ with fread_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> li
 (** The fields of a record value, each its projection at its type *)
 with fread_fields_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> Prop :=
 (** No field left *)
-| frflds_nil :
+| fread_fields_order_nil :
   `( fread_fields_order Θ Ξ s ρ nil v )
 (** The next field: its projection, its type, its readback, then the rest
     with the projection in the environment *)
-| frflds_cons :
+| fread_fields_order_cons :
   `( feval_proj_order Θ Ξ f v ->
      feval_exp_order Θ Ξ T ρ ->
      (forall r t, feval_proj Θ Ξ f v r -> ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ t -> fread_nf_order Θ Ξ s ⇓ t r) ->
@@ -384,15 +384,15 @@ with fread_fields_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string 
      fread_fields_order Θ Ξ s ρ ((f, T) :: fl) v )
 
 with fread_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> Prop :=
-| frcargs_nil :
+| fread_cargs_order_nil :
   `( fread_cargs_order Θ Ξ s p ups ρ nil nil )
-| frcargs_arg :
+| fread_cargs_order_arg :
   `( feval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fread_nf_order Θ Ξ s ⇓ a v) ->
      fread_cargs_order Θ Ξ s p ups (ρ ↦ v) gs vs ->
      fread_cargs_order Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) )
 (** A recursive argument, along its shape *)
-| frcargs_rec :
+| fread_cargs_order_rec_case :
   `( fread_shape_order Θ Ξ s p ups ρ t v ->
      fread_cargs_order Θ Ξ s p ups ρ gs vs ->
      fread_cargs_order Θ Ξ s p ups ρ (ca_rec t :: gs) (v :: vs) )
@@ -400,12 +400,12 @@ with fread_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain 
 (** A recursive argument of a shape *)
 with fread_shape_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> Prop :=
 (** At the end: the parameters, then the value at the member *)
-| frsh_self :
+| fread_shape_order_self :
   `( feval_exps_order Θ Ξ Ps ρ ->
      (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs -> fread_nf_order Θ Ξ s ⇓ (d_ind p j (ups ++ bs)) v) ->
      fread_shape_order Θ Ξ s p ups ρ (pt_self j Ps) v )
 (** At a domain: under a fresh variable of it *)
-| frsh_pi :
+| fread_shape_order_pi :
   `( feval_exp_order Θ Ξ B ρ ->
      (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> fread_typ_order Θ Ξ s b) ->
      (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> feval_app_order Θ Ξ v (⇑! b s)) ->
@@ -417,10 +417,10 @@ with fread_shape_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain 
 with fread_blocks_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                                   option (list nat) -> nat -> list imember -> Prop :=
 (** No member left *)
-| frblks_nil :
+| fread_blocks_order_nil :
   `( fread_blocks_order Θ Ξ s ρ p ups Bks sel i nil )
 (** The block of the member [Mi]: its motive, its branches, then the rest *)
-| frblks_cons :
+| fread_blocks_order_cons :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
      List.nth_error Bks (elim_src sel i) = Some b ->
@@ -444,10 +444,10 @@ with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list do
                                                imember -> exp -> imember -> (qname * nat * list domain) ->
                                                list (string * list carg) -> list (string * nat * exp) -> Prop :=
 (** No constructor left *)
-| frbrs_nil :
+| fread_brs_order_nil :
   `( fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r nil nil )
 (** The branch of the next constructor, then the rest *)
-| frbrs_cons :
+| fread_brs_order_cons :
   `( ind_con Mv c = Some gs ->
      Nat.eqb n0 (im_nn Mi + List.length gs' + cargs_nrec gs)%nat = true ->
      ind_lookup Θ Ξ p = Some D ->

@@ -1058,8 +1058,8 @@ Lemma ds_entry_scoped : forall R y Γy E rd n,
     ds_scoped n R -> ds_entry R y = Some (Γy, E, rd) ->
     ctx_scoped n Γy /\ entry_sc (length Γy + n) E /\
     match rd with
-    | rd_open Δ Φ' => Γy = body_ctx Φ' ++ Δ /\ ctx_scoped n Δ /\ gmod_scoped (length Δ + n) Φ'
-    | rd_closed Θ Ns M => Γy = nil /\ ctx_scoped n Θ /\ List.Forall (exp_scoped (length Θ + n)) Ns /\ exp_scoped (length Θ + n) M
+    | reader_open Δ Φ' => Γy = body_ctx Φ' ++ Δ /\ ctx_scoped n Δ /\ gmod_scoped (length Δ + n) Φ'
+    | reader_closed Θ Ns M => Γy = nil /\ ctx_scoped n Θ /\ List.Forall (exp_scoped (length Θ + n)) Ns /\ exp_scoped (length Θ + n) M
     end.
 Proof.
   intros [A om | Δ Φw Φ | Θ p0 T Φ Ns | Θd A M Rm] * HR He; cbn in He, HR; try discriminate.
@@ -1113,8 +1113,8 @@ Qed.
 
 Lemma ds_read_scoped : forall rd R R' n Γy,
     match rd with
-    | rd_open Δ Φ' => Γy = body_ctx Φ' ++ Δ /\ ctx_scoped n Δ /\ gmod_scoped (length Δ + n) Φ'
-    | rd_closed Θ Ns M => Γy = nil /\ ctx_scoped n Θ /\ List.Forall (exp_scoped (length Θ + n)) Ns /\ exp_scoped (length Θ + n) M
+    | reader_open Δ Φ' => Γy = body_ctx Φ' ++ Δ /\ ctx_scoped n Δ /\ gmod_scoped (length Δ + n) Φ'
+    | reader_closed Θ Ns M => Γy = nil /\ ctx_scoped n Θ /\ List.Forall (exp_scoped (length Θ + n)) Ns /\ exp_scoped (length Θ + n) M
     end ->
     ctx_scoped n Γy -> ds_scoped (length Γy + n) R -> ds_read rd R = Some R' -> ds_scoped n R'.
 Proof.
@@ -1145,7 +1145,7 @@ Proof.
       by (split; [ apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; exact HΔ | exact HT ] | rewrite length_app; exact HΦ1 ]).
     destruct ip as [| z ip]; [ injection He as <- <-; exact HU | exact (IH _ _ _ _ _ _ HU He) ].
   - destruct HE0 as [HD HΦ1].
-    assert (HU : unit_closed (ind_uparams D) Φ1) by (split; [ apply (dc_uparams _ HD) | exact HΦ1 ]).
+    assert (HU : unit_closed (ind_uparams D) Φ1) by (split; [ apply (decl_closed_uparams _ HD) | exact HΦ1 ]).
     destruct ip as [| z ip]; [ injection He as <- <-; exact HU | exact (IH _ _ _ _ _ _ HU He) ].
   - destruct HE0 as [[HF _] HΦ1].
     assert (HU : unit_closed (record_mod_tele pr Rr) Φ1)
@@ -1173,11 +1173,11 @@ Proof.
   - destruct (gs_find_unit _ _ _ _ Hf) as (mp & K & Hin & _).
     destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & _ & HU).
     destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
-    split; [ apply (dc_uparams _ HD) | exact HΦ ].
+    split; [ apply (decl_closed_uparams _ HD) | exact HΦ ].
   - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
     destruct (HΘ _ _ Hl) as (_ & HU).
     destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
-    split; [ apply (dc_uparams _ HD) | exact HΦ ].
+    split; [ apply (decl_closed_uparams _ HD) | exact HΦ ].
 Qed.
 
 (** The body at a located path, closed. *)
@@ -1472,7 +1472,7 @@ Ltac ind_decl_scoped :=
         lazymatch type of HSk with _ = List.map _ ?L =>
           eapply (view_is_scoped _ _ _ _ _ (tele_insts (ind_uparams D') Id L)) end;
         [ exact HSk
-        | rewrite length_tele_insts by exact (dc_ass _ (gctx_closed_ind _ _ _ _ Hc HD'));
+        | rewrite length_tele_insts by exact (decl_closed_ass _ (gctx_closed_ind _ _ _ _ Hc HD'));
           rewrite HSk, length_map in HlIs; unfold ind_nu in HlIs; lia
         | let HI0 := fresh "HI0" in let HT0 := fresh "HT0" in let HIs := fresh "HIs" in
           intros ? ? ? HI0 HT0; edestruct HI as (_ & HIs & _); [ exact HMk | exact Hh | exact HD' | exact HI0 | exact HT0 | exact HIs ] ]
@@ -1782,8 +1782,8 @@ Proof. intros * HΓ Hr; apply (wf_gc_resolve_closed _ _ _ _ _ _ _ _ HΓ Hr). Qed
 
 Definition rd_sub (rd : reader) (σ : sub) : reader :=
   match rd with
-  | rd_open Δ Φ' => rd_open (tele_sub Δ σ) (gmod_sub Φ' (sb_qn (length Δ) σ))
-  | rd_closed Θ Ns M => rd_closed (tele_sub Θ σ) (List.map (fun M => M[sb_qn (length Θ) σ]) Ns) M[sb_qn (length Θ) σ]
+  | reader_open Δ Φ' => reader_open (tele_sub Δ σ) (gmod_sub Φ' (sb_qn (length Δ) σ))
+  | reader_closed Θ Ns M => reader_closed (tele_sub Θ σ) (List.map (fun M => M[sb_qn (length Θ) σ]) Ns) M[sb_qn (length Θ) σ]
   end.
 
 Lemma map_sub_sub : forall Ns σ τ, List.map (fun M => M[τ]) (List.map (fun M => M[σ]) Ns) = List.map (fun M => M[σ ⨟ τ]) Ns.
@@ -2188,7 +2188,7 @@ Proof.
 Qed.
 
 Lemma ds_entry_open_rd : forall Δ Φw Φ y Γy E rd, ds_entry (ds_open Δ Φw Φ) y = Some (Γy, E, rd) ->
-    exists Φ', Γy = body_ctx Φ' ++ Δ /\ rd = rd_open Δ Φ'.
+    exists Φ', Γy = body_ctx Φ' ++ Δ /\ rd = reader_open Δ Φ'.
 Proof.
   intros * He; cbn in He.
   destruct (gm_prefix_upto Φ y) as [[| Φ' x E' | Φ' H its] |]; try discriminate.
@@ -2206,7 +2206,7 @@ Qed.
 
 Lemma ds_entry_closed : forall Θ p T Φ Ns y Γy E rd,
     unit_closed T Φ -> ds_entry (ds_closed Θ p T Φ Ns) y = Some (Γy, E, rd) ->
-    Γy = nil /\ entry_sc 0 E /\ rd = rd_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns).
+    Γy = nil /\ entry_sc 0 E /\ rd = reader_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns).
 Proof.
   intros * HU He.
   pose proof (ds_entry_scoped (ds_closed Θ p T Φ Ns) y Γy E rd 0) as Hs; cbn in He.
@@ -2555,25 +2555,25 @@ Proof.
   apply mdenote_all_ind.
   - (* a unit *)
     intros Γ H p T Φ hq e m HS HH Γ' σ Hσ.
-    rewrite (mod_qname_sub _ _ σ hq); cbn; apply dn_unit; assumption.
+    rewrite (mod_qname_sub _ _ σ hq); cbn; apply mdenote_unit; assumption.
   - (* a type's open frame: closed *)
     intros Γ H p pq k D Mk Tm Φm hq e eMk el m HS HH Γ' σ Hσ.
     rewrite (mod_qname_sub _ _ σ hq).
     rewrite (ds_closed_sub _ σ (ind_former_desc_scoped pq k D Mk (ds_closed nil p Tm Φm nil) 0
                                   (stack_closed_ind _ _ _ _ _ (proj2 Hc) e) eMk
                                   (conj I (conj (gc_loc_closed _ _ _ _ _ Hc el) (List.Forall_nil (exp_scoped _)))))).
-    eapply dn_ind_frame; eassumption.
+    eapply mdenote_ind_frame; eassumption.
   - (* a slot *)
     intros Γ x U R l u IHu m HS HH Γ' σ Hσ; cbn in HH.
     destruct (Hσ _ _ HH l) as [Hx | (y & Hx & Hy)]; cbn; rewrite Hx; cbn [sentry_modexp].
-    + apply dn_lit; eapply IHu; [ eassumption | left; exact (HS _ _ HH l) | eassumption ].
-    + eapply dn_slot; [ exact Hy |]; eapply IHu; [ eassumption | left; exact (HS _ _ HH l) | eassumption ].
+    + apply mdenote_lit; eapply IHu; [ eassumption | left; exact (HS _ _ HH l) | eassumption ].
+    + eapply mdenote_slot; [ exact Hy |]; eapply IHu; [ eassumption | left; exact (HS _ _ HH l) | eassumption ].
   - (* a literal *)
     intros Γ U R u IHu m HS HH Γ' σ Hσ; cbn in *.
-    apply dn_lit; eapply IHu; [ eassumption | left; eassumption | eassumption ].
+    apply mdenote_lit; eapply IHu; [ eassumption | left; eassumption | eassumption ].
   - (* an application *)
     intros Γ H N R R' d IHd e m HS HH Γ' σ Hσ; cbn in *; destruct HH as [HH HN].
-    eapply dn_app; [ eapply IHd; eassumption | apply ds_at_sub; exact e ].
+    eapply mdenote_app; [ eapply IHd; eassumption | apply ds_at_sub; exact e ].
   - (* a selection *)
     intros Γ H y R0 R0m Γy E rd R R' d0 IH0 em ee de IHe er m HS HH Γ' σ Hσ; cbn in HH |- *.
     pose proof (ds_mod_scoped _ _ _ (Hsm _ _ _ d0 m HS HH) em) as HR0m.
@@ -2581,7 +2581,7 @@ Proof.
     + (* an open body *)
       destruct (ds_entry_scoped _ _ _ _ _ _ HR0m ee) as (HΓy & HE & _).
       destruct (ds_entry_open_rd Δ0 Φ0 _ _ _ _ _ ee) as (Φ' & -> & ->).
-      eapply dn_mem; [ eapply IH0; eassumption | apply ds_mod_sub; exact em | apply ds_entry_sub_open; exact ee | |].
+      eapply mdenote_mem; [ eapply IH0; eassumption | apply ds_mod_sub; exact em | apply ds_entry_sub_open; exact ee | |].
       * rewrite ds_epath_sub; eapply IHe; [ apply slots_ok_app; eassumption | exact HE |].
         apply sub_mod_compat_lt_ext; assumption.
       * cbn in er |- *.
@@ -2593,7 +2593,7 @@ Proof.
       destruct HR0m as (HΘ0 & HU0 & HNs0).
       destruct (ds_entry_closed Θ0 q0 T0 Φ0 Ns0 _ _ _ _ HU0 ee) as (-> & HE & ->).
       assert (HR : ds_scoped 0 R) by (eapply Hse; [ exact de | intros ? ? Hx; lia | exact HE ]).
-      eapply dn_mem with (R := R); [ eapply IH0; eassumption | apply ds_mod_sub; exact em | apply ds_entry_sub_closed; exact ee | |].
+      eapply mdenote_mem with (R := R); [ eapply IH0; eassumption | apply ds_mod_sub; exact em | apply ds_entry_sub_closed; exact ee | |].
       * rewrite ds_epath_sub; apply (edenote_closed_any _ _ _ _ _ _ σ HE).
         rewrite <- (ds_closed_sub R σ HR) at 1.
         eapply IHe; [ cbn; eassumption | eapply entry_sc_mono0; [ exact HE | lia ] |]; cbn; assumption.
@@ -2611,26 +2611,26 @@ Proof.
     rewrite (ds_closed_sub _ σ (record_former_desc_scoped p R (ds_closed nil p Tm Φm nil) 0
                                   (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)) HS0
                                   (conj I (conj (gc_loc_closed _ _ _ _ _ Hc el) (List.Forall_nil (exp_scoped _)))))).
-    eapply dn_record_frame; eassumption.
+    eapply mdenote_record_frame; eassumption.
   - (* a body *)
     intros Γ o Δ sm Φ Φx R bx IHbx eb m HS HU Γ' σ Hσ.
     destruct HU as [HU | (T & Φ0 & Heq & HU)].
     + rewrite gunit_scoped_mk in HU; destruct HU as [HΔ [-> HΦ]].
       cbn in eb; injection eb as <-.
       rewrite gunit_sub_mk; cbn [moddef_sub].
-      eapply un_body; [| reflexivity ]; eapply IHbx; [ apply slots_ok_app; eassumption | exact HΦ |].
+      eapply udenote_body; [| reflexivity ]; eapply IHbx; [ apply slots_ok_app; eassumption | exact HΦ |].
       apply sub_mod_compat_lt_ext; assumption.
     + injection Heq as -> -> ->.
       rewrite (body_xp_closed _ _ _ _ _ _ (proj2 HU) bx) in eb.
       rewrite (unit_closed_sub _ _ _ HU).
       destruct o as [pq |]; cbn in eb; [ injection eb as <- | discriminate ]; cbn.
-      eapply un_body; [ eapply body_xp_closed_any, (proj2 HU) | reflexivity ].
+      eapply udenote_body; [ eapply body_xp_closed_any, (proj2 HU) | reflexivity ].
   - (* an alias *)
     intros Γ o Δ E R R' d IHd em m HS HU Γ' σ Hσ.
     destruct HU as [HU | (T & Φ0 & [=] & _)].
     rewrite gunit_scoped_mk in HU; destruct HU as [HΔ HE]; cbn in HE.
     rewrite gunit_sub_mk; cbn [moddef_sub]; rewrite ds_up_sub.
-    eapply un_alias; [| apply ds_mod_sub; exact em ].
+    eapply udenote_alias; [| apply ds_mod_sub; exact em ].
     eapply IHd; [ apply slots_ok_app; eassumption | exact HE |].
     apply sub_mod_compat_lt_ext; assumption.
   - (* a definition *)
@@ -2666,19 +2666,19 @@ Proof.
       by (apply slots_ok_app; [ assumption | apply gmod_scoped_body_ctx; assumption ]).
     rewrite length_body_ctx in Hok.
     rewrite <- (body_xp_binders _ _ _ _ _ bx) in HH.
-    eapply bx_open; [ eapply IHbx; eassumption | eapply IHd; eassumption | apply ds_mod_sub; exact em
+    eapply body_xp_open; [ eapply IHbx; eassumption | eapply IHd; eassumption | apply ds_mod_sub; exact em
                     | eapply IHig; [ exact Hok | exact HH | exact Hσ' ] | assumption ].
   - intros; constructor.
   - intros Γ H d pv its gs ig IHig m HS HH Γ' σ Hσ; cbn.
-    eapply ign_self; eapply IHig; eassumption.
+    eapply items_gen_self; eapply IHig; eassumption.
   - intros Γ H n d pv A om its gs dm IHdm ig IHig m HS HH Γ' σ Hσ.
-    cbn [List.map igen_sub]; eapply ign_def; [| eapply IHig; eassumption ].
+    cbn [List.map igen_sub]; eapply items_gen_def; [| eapply IHig; eassumption ].
     exact (IHdm m HS HH Γ' σ Hσ).
   - intros Γ H n d pv R its gs dm IHdm Hmod ig IHig m HS HH Γ' σ Hσ.
-    cbn [List.map igen_sub]; eapply ign_mod; [ exact (IHdm m HS HH Γ' σ Hσ) | | eapply IHig; eassumption ].
+    cbn [List.map igen_sub]; eapply items_gen_mod; [ exact (IHdm m HS HH Γ' σ Hσ) | | eapply IHig; eassumption ].
     destruct R; cbn in *; tauto.
   - intros Γ H n d pv R A Rm its gs dm IHdm Ht Hmod ig IHig m HS HH Γ' σ Hσ.
-    cbn [List.map igen_sub]; eapply ign_dm;
+    cbn [List.map igen_sub]; eapply items_gen_dm;
       [ exact (IHdm m HS HH Γ' σ Hσ) | apply ds_ty_sub; exact Ht | apply ds_mod_sub; exact Hmod | eapply IHig; eassumption ].
 Qed.
 

@@ -162,7 +162,7 @@ declaration's own parameters, then `Self : Π Δ. S`, bound outside them (but
 inside the parameters of the enclosing frames, which stay implicit).  A
 recursive occurrence is written Rocq-style with all the declaration's own
 parameters, `cons (x : A) (xs : List A)`.
-`rc_ind` classifies each argument (`cls_args nu np`,
+`run_cmd_ind_case` classifies each argument (`cls_args nu np`,
 `Core/Syntactic/System/Inductives/Classify.v`):
 
 * `cls_free`: `T = A[cls_wk np gs1]` — neither `Self` nor an earlier
@@ -190,7 +190,7 @@ cls_in_nf : (forall g', ~ cls_arg nu np gs1 T g') ->
 
 `rarg_ctx Ξ R args1 = rtele args1 ++ tele_wk (rd_params R) ↑ ++ Self :: gs_tele Ξ`,
 `Self : rd_self_ty R = Π (own params). S`.  The syntactic path comes first,
-so the classification is a function (`cls_arg_in_functional`); `rc_ind` has
+so the classification is a function (`cls_arg_in_functional`); `run_cmd_ind_case` has
 the premise `cls_cons_in Θ Ξ R cs`.  The nbe premise is in the command
 judgment, outside the mutual block; NbE builds no syntax.
 
@@ -207,7 +207,7 @@ judgment, outside the mutual block; NbE builds no syntax.
   global state is equivalent to the checker's, so the normal forms agree
   (`nbe_ty_ext`, `Core/Semantic/GlobalExt.v`).
 
-`rc_ind_con_types` (`Core/Consequences/FiledConstructorTypes.v`) states that after a run of a group
+`run_cmd_ind_con_types` (`Core/Consequences/FiledConstructorTypes.v`) states that after a run of a group
 each constructor of each declared member `j` is filed (`filed_con_ty`) at a
 type `≈` at `⋅` to the user's (`user_con_ty`, every `Self_i := a_ind p i` at
 the frames' parameters, `sb_selfs`): an argument classified is filed as its
@@ -221,7 +221,7 @@ equality moves through the instantiation of the `Self`s (`base_sub`,
 The filed (normal-form) types are what the constructors' members carry and
 what is printed (question G5): the user's term would need the constructor
 step to be proved never to fail at the user's type, beyond
-`rc_ind_con_types`.
+`run_cmd_ind_con_types`.
 
 ## Core
 
@@ -235,7 +235,7 @@ step to be proved never to fail at the user's type, beyond
 | PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
-| commands: `cc_ind`, `rc_ind`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `rd_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
+| commands: `cc_ind`, `run_cmd_ind_case`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `raw_decl_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
 | the checker's group step (`members_step`, `ind_step`) | `Extraction/Command.v` |
 
 ## The entry: `ge_ind pv D Φ`
@@ -275,10 +275,10 @@ stored closed over them, as every definition is.
   is open, the group is found through it (`gs_find_ind`; `ind_mlookup`
   reads the frame first). The frame denotes the member's type former with
   the frame's body so far as its module part,
-  `ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil)` (`dn_ind_frame`).
-* `rc_ind` (`System/Command.v`) checks the group as written (`rd_filed`,
+  `ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil)` (`mdenote_ind_frame`).
+* `run_cmd_ind_case` (`System/Command.v`) checks the group as written (`rd_filed`,
   `ind_nil_at`). Then `run_ind_members` runs each declared member in
-  order (`rim_cons`):
+  order (`run_ind_members_cons`):
   - it checks the member with an empty module;
   - it pushes the member's frame (`gs_push_ind`);
   - it runs the member's generated commands (`ind_mod_cmds`) as a module
@@ -296,7 +296,7 @@ stored closed over them, as every definition is.
 
 A member is typed by one rule, `wf_mem`, over what its module expression
 denotes (`mdenote`, `Core/Syntactic/Members.v`): a `ge_ind` entry denotes
-its type former, a `ds_dm` (`ind_former_desc`, `en_ind`) whose term part
+its type former, a `ds_dm` (`ind_former_desc`, `edenote_ind_case`) whose term part
 is the constant `a_ind pq k` of the type former's type and whose module
 part is the member's module.  Read at a closed module's arguments
 (`ds_ats_read`), the term part is applied to them (`ds_ats_tm`): its type
@@ -304,7 +304,7 @@ part is the member's module.  Read at a closed module's arguments
 δ-reduct (`ds_red`) is the type former applied to them
 (`wf_exp_eq_mem_delta`).  Selecting from it reads the module part
 (`ds_mod`): the inductive type's module, at its canonical path.  A record
-type is read the same way (`record_former_desc`, `en_record`).  A module
+type is read the same way (`record_former_desc`, `edenote_record`).  A module
 alias of it (`module M := N`) denotes the module, not the type former, so
 it is a module only:
 
@@ -315,12 +315,12 @@ eval M.z : N      (* N.z : N *)
 eval M.z : M      (* Error: Test.M is a module, not a term *)
 ```
 
-The checker names that case (`mod_blame`, `re_mod_term`).
+The checker names that case (`mod_blame`, `run_error_mod_term`).
 
 ## Inductive aliases
 
-`[private] inductive L (Δ) := E` (`cc_ind_alias`, `rc_ind_alias`) and
-`[private] record L (Δ) := E` (`cc_record_alias`, `rc_record_alias`) file
+`[private] inductive L (Δ) := E` (`cc_ind_alias`, `run_cmd_ind_alias`) and
+`[private] record L (Δ) := E` (`cc_record_alias`, `run_cmd_record_alias`) file
 a definition with a module part (`ge_def_mod pv A M U`, built by
 `dm_entry`, `Core/Syntactic/System/Command.v`).  `E`, a well-formed module
 expression in `Δ ++ gs_tele Ξ`, is read as a term (`modexp_as_term`), its
@@ -342,9 +342,9 @@ the alias of `E` over `Δ` and the frames' parameters.  The checker
   and `L.rec` the type's recursor.
 * `open … use (X)` declares a definition with a module part where `X` is
   an inductive type, a record type or such a definition (`items_gen`,
-  `ign_dm`, `ig_def_mod`); `open E as W` is always a plain module alias.
+  `items_gen_dm`, `ig_def_mod`); `open E as W` is always a plain module alias.
 * `builtin natural := X` reads `X` as a term, through its normal form
-  (`rc_builtin`), so through any alias.
+  (`run_cmd_builtin`), so through any alias.
 
 ```
 inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end
@@ -404,7 +404,7 @@ through the `fk_ind` frame. So `A.Rec.rec_B` types `a_ind pq 1` through
 
 ## Algorithmic layer and checker
 
-* `ati_ind`, `ati_con`, `ati_elim` (`Algorithmic/Typing/Definitions.v`); the
+* `alg_type_infer_ind_case`, `alg_type_infer_con`, `alg_type_infer_elim` (`Algorithmic/Typing/Definitions.v`); the
   eliminator's scrutinee infers `nf_indty p Rs`, and the motive and branches
   are checked at the parameters' normal forms `Rs`, related to the
   derivation's by `wf_elim_params_conv` (`Core/Syntactic/Inductives/IndConv.v`).
@@ -446,7 +446,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
 ```
 
 * **The configuration.**  `builtins` (`Core/Syntactic/Builtin.v`) is
-  `{ bt_nat : option qname }`, apart from the filed units and the stack;
+  `{ builtins_nat : option qname }`, apart from the filed units and the stack;
   no typing judgment reads it.  Records merge field by field (`bt_merge`):
   a field bound on one side keeps its binding, one bound on both sides must
   agree, else the merge fails.  `bt_merge` has the empty record as unit and
@@ -459,27 +459,27 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   unit to the record it ended with: `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c ⇝ Θ' ⍮ Ξ' ⍮
   B' ⍮ Rb'`.  The map is apart from `Θ` and the stack.  `run_unit ch u B Rb
   Θ U` runs from `bt_empty` and `nil` and returns the unit's record `B` and
-  the map `Rb` of what it filed.  `rc_load` merges the loaded unit's record
+  the map `Rb` of what it filed.  `run_cmd_load` merges the loaded unit's record
   in and files it in the map (`bm_merge Rb ((fp, BU) :: RbU)`);
-  `rc_load_filed` merges the record the map keeps (`bm_lookup Rb fp`).
+  `run_cmd_load_filed` merges the record the map keeps (`bm_lookup Rb fp`).
   `prog_sem prg B Θ U` hides the map.
-* **`rc_builtin`.**  `cc_builtin k H` with `k = natural`: `H` names, by
+* **`run_cmd_builtin`.**  `cc_builtin k H` with `k = natural`: `H` names, by
   `ind_target`, an inductive type `p` or an inductive alias of one with no
   parameter and no argument; `p`'s declaration has `nat_shape` (no
   parameter; one constructor without arguments and one with the single
   argument `ca_rec (pt_self 0 nil)`, in either order) and `ind_sort D =
   nat_sort` (`Type@0`); then `bt_bind_nat B p = Some B'`, the merge with
-  `{bt_nat := Some p}`: bound if nothing is, kept if `p` is, rejected if
+  `{builtins_nat := Some p}`: bound if nothing is, kept if `p` is, rejected if
   another type is.  Allowed anywhere a
   command is, also inside a module; the elaborator still rejects it in a
   local module.
 * **Literals.**  A numeral `a_nlit n` and the token `ℕ`, `a_ntok`, are
   core expressions with no typing, evaluation or readback rule.
-  `rcs_cons` fills them per command from the bindings, in the typed fill
+  `run_cmds_cons` fills them per command from the bindings, in the typed fill
   (`fill_cmd Θ Ξ B c c'`, `Core/TypedElab/Fill.v`; `fill_exp_nlit` and
   `fill_exp_ntok` over `nat_view Θ Ξ B`): a numeral becomes
   `nat_chain p z s n`, `ℕ` becomes `a_ind p 0`.  Unit parameters get
-  theirs in `ru_intro` (`fill_params`).  Without a binding read at the
+  theirs in `run_unit_intro` (`fill_params`).  Without a binding read at the
   state, a literal has no fill.  `fill_cmd_functional` and
   `fill_params_functional` (`Core/TypedElab/Lemmas.v`): one fill each,
   which is what `run_functional` needs.
@@ -496,7 +496,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
     of the filed units (`bm_wf Θ Rb`), through added entries, closed module
     frames (`ind_lookup_close`), filing, merging and record merges.
   - `canonical_form_of_bound_nat_prog` (`Core/Consequences/Consistency.v`):
-    with `bt_nat B = Some p` at the end of a program, a closed term of
+    with `builtins_nat B = Some p` at the end of a program, a closed term of
     `a_ind p` normalizes to `nat_chain p z s n`.  Below it,
     `canonical_form_of_ind_nat(_gctx)`, `…_stuck(_gctx)` and
     `…_no_axioms` are about any inductive type of `nat_shape`.
@@ -507,15 +507,15 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   conflict; a binding made in a body does not reach a unit imported later
   in it, and meets that unit's own binding there.
 * **Checker.**  `Extraction/Command.v`: `cstate` / `ustate` carry the
-  record (`cs_bt`, `us_bt`); the map of records is part of `kmap`, which
+  record (`cstate_bt`, `us_bt`); the map of records is part of `kmap`, which
   keeps, for each filed unit, its closure (`kfind`) and its record (`kbt`).
   The judgment's map is related by `rb_ok K ΘR RbR` (canonical, and the
   records `K` keeps); `post_*` quantify over it.  A loaded unit is checked
   from `bt_empty`; a load, fresh or shared, merges the unit's record, and
   reports a conflict as "the natural numbers are bound already, to X".
-  `builtin_step` runs `rc_builtin`, the literal pass runs before
-  expansion, and `prog_impl` returns the final record.  Errors: `re_lit
-  le` for a literal without a binding, and `re_nat Θ Ξ nv e`, wrapping the
+  `builtin_step` runs `run_cmd_builtin`, the literal pass runs before
+  expansion, and `prog_impl` returns the final record.  Errors: `run_error_lit
+  le` for a literal without a binding, and `run_error_nat Θ Ξ nv e`, wrapping the
   error of a command or a unit parameter with the state and the view, so
   the printer folds numerals in it.
 * **Printer** (`driver/PrettyPrinter.ml`): the bound type prints as `ℕ`
@@ -568,7 +568,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
    (`valid_exp_under_ctx_elim_of_emb` in `Completeness/Inductives/Elim.v`,
    `glu_rel_exp_elim_of_emb` in `Soundness/Inductives/Elim.v`) takes the
    `⊢ˣ` premises of `wf_elim` too.
-7. `ati_elim` has the premise `length (List.map nf_to_exp Rs) = ind_np D`; the
+7. `alg_type_infer_elim` has the premise `length (List.map nf_to_exp Rs) = ind_np D`; the
    checker decides it.
 8. The checker's message for an ill-formed declaration names the type only
    (`"ill-formed inductive declaration x"`), not the failing premise, except

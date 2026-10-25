@@ -845,12 +845,12 @@ Proof.
           eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ]. }
   1:{ deepexec glu_univ_elem_per_univ ltac:(fun H => pose proof H).
       firstorder.
-      specialize (H _ _ _ gta_elem) as [Htop _].
+      specialize (H _ _ _ glu_typ_at_elem) as [Htop _].
       econstructor; mauto 3.
       + apply_equiv_left. trivial.
       + intros.
         saturate_kripke_escape.
-        match goal with Hx : per_univ_elem _ _ m m |- _ => pose proof (Htop _ _ _ Hx gta_glu) as Ht end.
+        match goal with Hx : per_univ_elem _ _ m m |- _ => pose proof (Htop _ _ _ Hx glu_typ_at_glu) as Ht end.
         progressive_invert Ht.
         match goal with Hn : Rnf ⇓ 𝕌ω@_ m in _ ↘ _ |- _ => progressive_invert Hn end.
         match goal with Hr : forall _ _ _, _ ⊢ᵏ _ : Γ -> Rtyp m in _ ↘ _ -> _ |- _ =>

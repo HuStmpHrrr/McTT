@@ -324,7 +324,7 @@ let module M (A : Type@0) where def x : Nat := zero end
 - `wf_me_app` checks the argument against `B` where `tele_view T = Some (B,
   T1)`; an empty telescope rejects further arguments, and partial application
   stays (`F ℕ` has arity `⋅ ▹ Π ℕ ℕ` for `F (A : Type@0) (f : A -> A)`).
-  `amod_app` checks against `B` directly, with no normalization.
+  `alg_modexp_app` checks against `B` directly, with no normalization.
 - The semantics reads member types through `mres_ty` (`ctx_pi T ⊤` for a
   module), and `tele_view_pi` relates the two views; so the PER model,
   completeness and soundness are unchanged in substance.  `arity_pi` derives
@@ -371,31 +371,31 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   `E` is a module and each item a member, rejects a member both used and
   exported (`xe_both`) and a name declared twice (`xe_fresh`), and gives a
   definition `d : A := E.n` (`A` its member type) or an alias per item.
-  `rc_import` declares them with the premises of `rc_def`/`rc_alias`, so their freshness
+  `rc_import` declares them with the premises of `run_cmd_def`/`run_cmd_alias`, so their freshness
   is the ordinary one.  Loading is its own command, `cc_load`.
 - `mt : mt_oracle` stands for the member types; `mt_spec Θ Ξ mt` ties it to
   `member_type`, and any two such oracles agree (`mt_spec_ext`), so
   expansion is unique (`cmd_xp_ok_functional`).  The checker uses `mt_of`
   (`Extraction/MemberType.v`), total by `mt_order_total`.
 - A local import is the pre-form `gm_import Φ E items`, one binder per item
-  (`body_ctx` gives placeholder `ce_ass ℕ` entries).  `rcs_cons` and
-  `ru_intro` expand every command/parameter telescope first (`cmd_xp`,
+  (`body_ctx` gives placeholder `ce_ass ℕ` entries).  `run_cmds_cons` and
+  `run_unit_intro` expand every command/parameter telescope first (`cmd_xp`,
   `tele_xp`), turning each `gm_import` into `gm_ext` entries.  No typing rule
   mentions `gm_import`: `body_shape` is `False` on it, so typed units never
   contain one, and `wf_unit_eq_body` lost its import premises.
 - Privacy of local bodies: references carry a module table (`ptab`) read off
   the syntax in a scope; `pt_body ch es` checks the newest entry is public,
   `pt_glob H` the global check.  `pt_body` carries the chain `ch` of
-  submodules from the local module, for `re_private_local`.
-- Privacy checks what is written: `rcs_cons` checks
-  `acc_ok Θ Ξ (cmd_refs c)` on the command before expansion, `ru_intro` the
+  submodules from the local module, for `run_error_private_local`.
+- Privacy checks what is written: `run_cmds_cons` checks
+  `acc_ok Θ Ξ (cmd_refs c)` on the command before expansion, `run_unit_intro` the
   written parameters; no `run_cmd` rule checks privacy.  `rc_import` declares
   its generated entries by `gens_run` (outside the mutual block, the
-  premises of `rc_def`/`rc_alias` without privacy), so a generated type is
+  premises of `run_cmd_def`/`run_cmd_alias` without privacy), so a generated type is
   never checked.  An import's refs are its target and each member it names;
   in a local body, `btab` gives each item the table of what it names.
 - Typing is untouched: no rule mentions an import.  A generated definition
-  `d := E.n` is checked by `gr_def`'s premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_mem E n : A`
+  `d := E.n` is checked by `gens_run_def`'s premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_mem E n : A`
   through the ordinary member rules, a generated local entry by
   `wf_unit_eq_body` like a written one.
 - A unit's leading imports are commands of its own frame, after its
@@ -405,10 +405,10 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   aliases); the qualified name `Prelude::Arith::Equality.Eq` still works.
 
 ### 10.8 Import loads, open declares; definition keywords
-- `import X::Y` only loads (`cc_load`; a repeated one is `rc_load_filed`, a
+- `import X::Y` only loads (`cc_load`; a repeated one is `run_cmd_load_filed`, a
   no-op).  It names a unit: `import M` for a module in scope is a syntax
   error.  Declaring is `open E [as W] (use (…) | export (…))*`: the core
-  command `cc_import` is renamed `cc_open` (`rc_open`, `gm_open` for the
+  command `cc_import` is renamed `cc_open` (`run_cmd_open`, `gm_open` for the
   local pre-form), otherwise unchanged (`import_gen`, `gens_run`).
 - The parser splits the compound forms (`Cst.open_cmds`,
   `Cst.import_cmds`): `open E as W items` is `open E as W` then `open W
@@ -445,7 +445,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   files a unit by closing the only open frame, so the unit is checked
   against the units after it and its path is fresh there (`frame_fresh`).
   The mutual block has ten judgments.
-- Loading (model S2): a loaded unit runs from nothing; `rc_load` gives
+- Loading (model S2): a loaded unit runs from nothing; `run_cmd_load` gives
   `gds_merge Θ ((fp, U) :: ΘU)`, which adds the units of `(fp, U) :: ΘU`
   not in `Θ`, in their order, on top (`filter … ++ Θ`).  Shared units
   agree (`canon_agree`, from `run_functional`); `merge_left` needs no
@@ -468,7 +468,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   modifiers`.  Before the header it is a parse error; in a local body,
   `Error: axioms are not allowed in a local module` (elaborator).
 - Core: `cc_def : string -> bool -> bool -> typ -> option exp -> ccmd`.
-  `rc_def` runs `cc_def … (Some M)`; `rc_axiom` runs `cc_def … None`
+  `run_cmd_def` runs `cc_def … (Some M)`; `run_cmd_axiom` runs `cc_def … None`
   with premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i` and files
   `gs_axiom b pv Ξ A = ge_def b pv (ctx_pi (gs_tele Ξ) A) None`, as
   `wf_gentry_axiom`.  The elaborator emits `b = false` (opaque); readback
@@ -484,12 +484,12 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
 
 ### 10.11 Local opens read in place (`wip/local-opens`, 2026-10-15)
 Supersedes the expansion part of 10.7.
-- No pre-typing expansion: `rcs_cons` and `ru_intro` lost `cmd_xp_ok` and
+- No pre-typing expansion: `run_cmds_cons` and `run_unit_intro` lost `cmd_xp_ok` and
   `tele_xp_ok`; `Core/Syntactic/Imports.v`, `mt_oracle`, `mt_spec`,
   `xoracle` and `md_oracle` are gone.
 - One generation relation, `items_gen Θ Ξ io Γ H its gs`, shared by
-  `rc_open` (through `open_gens`, `io = Some (ind_target Θ Ξ)`) and by the
-  local rule `bx_open` of `body_xp Θ Ξ Γ Φ Φx` (`io = None`).  `body_xp` is
+  `run_cmd_open` (through `open_gens`, `io = Some (ind_target Θ Ξ)`) and by the
+  local rule `body_xp_open` of `body_xp Θ Ξ Γ Φ Φx` (`io = None`).  `body_xp` is
   in the `member_type` mutual block; every reader of a body (member types,
   `wf_unit_eq_body`, δ, evaluation, the semantic models) reads `gm_open` as
   its generated entries.
@@ -521,16 +521,16 @@ record type is accepted.
   typing (`wf_ctx_extend_dm`, `wf_ext_eq_dm`, `here_dm`, `def_here_dm`),
   the PER (`per_ctx_env_cons_dm` with `per_ctx_env_dm_rel`, `per_body_dm`,
   `per_env_extend_dm`), gluing (`cons_dm_glu_sub_pred`,
-  `glu_ctx_env_cons_dm`) and the algorithm (`aext_dm`, `abody_dm`).
+  `glu_ctx_env_cons_dm`) and the algorithm (`alg_ext_dm`, `alg_body_dm`).
 - A global selection of a term reads `gc_term` (a transparent definition's
   body, or a definition with a module part's term); the separate
   `eval_sel_global_def_mod` is gone.
 - Kinds (Option A): at the chain `[x]` of a member with a term part and a
-  module part the kind is `mk_dm` (`dk_global_here_dm`, `uk_dm_here`,
+  module part the kind is `mk_dm` (`dkind_global_here_dm`, `ukind_dm_here`,
   `dm_of`); at the empty chain a module value is `mk_mod`.
-  `dk_global_step` and `dk_global_alias` need `ch <> nil` or `~ dm_path`.
+  `dkind_global_step` and `dkind_global_alias_case` need `ch <> nil` or `~ dm_path`.
   `items_gen` lost its flag: global and local opens generate alike
-  (`ign_dm` is the item of such a member).
+  (`items_gen_dm` is the item of such a member).
 - The typed fill reads a dm binder in module position as a module
   (`term_binder`, `fill_read_slot`), as it reads a global dm member.
 - Local `inductive K ≔ H` and `record K ≔ H` stay rejected (owner): the

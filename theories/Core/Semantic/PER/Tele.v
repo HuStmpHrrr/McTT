@@ -377,7 +377,7 @@ Section Tele.
   Proof.
     intros * Hass HM Hk; destruct (nth_error_lt_some' _ _ Hk) as [e He].
     assert (Hf : List.Forall (fun e => exists A, e = ce_ass A) (List.rev (im_nparams Mm)))
-      by (apply List.Forall_rev; exact (gta_nparams _ Hass _ _ HM)).
+      by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
     rewrite List.Forall_forall in Hf; destruct (Hf e (List.nth_error_In _ _ He)) as [A ->]; eauto.
   Qed.
 

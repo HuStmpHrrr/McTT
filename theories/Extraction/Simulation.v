@@ -75,7 +75,7 @@ Inductive dsim : domain -> domain -> Prop :=
 (** A constructor at related arguments *)
 | ds_con : forall p k c args args', dsim_list args args' -> dsim (d_con p k c args) (d_con p k c args')
 (** The recursive result of a function shape: the environments agree where
-    the blocks' motives and branches may read, as [dsn_elim] *)
+    the blocks' motives and branches may read, as [dsim_ne_elim] *)
 | ds_ihfn : forall (ρ ρ' : env) Bks p ups ups' t f f',
     (forall b, In b Bks ->
        (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> desim (env_entry ρ x) (env_entry ρ' x)) /\
@@ -102,61 +102,61 @@ Inductive dsim : domain -> domain -> Prop :=
 | ds_tuple : forall vs vs', dsim_fields vs vs' -> dsim (d_tuple vs) (d_tuple vs')
 with dsim_ne : domain_ne -> domain_ne -> Prop :=
 (** A variable *)
-| dsn_var : forall x, dsim_ne (#ᵈ x) (#ᵈ x)
+| dsim_ne_var : forall x, dsim_ne (#ᵈ x) (#ᵈ x)
 (** An application *)
-| dsn_app : forall m m' n n', dsim_ne m m' -> dsim_nf n n' -> dsim_ne (m $ᵈ n) (m' $ᵈ n')
+| dsim_ne_app : forall m m' n n', dsim_ne m m' -> dsim_nf n n' -> dsim_ne (m $ᵈ n) (m' $ᵈ n')
 (** A stuck [efq]: environments agreeing where its motive reads *)
-| dsn_exfalso : forall (ρ ρ' : env) A m m',
+| dsim_ne_exfalso : forall (ρ ρ' : env) A m m',
     (forall x, ~ exp_fresh (S x) A -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim_ne m m' ->
     dsim_ne (efqᵈ m under ρ return A) (efqᵈ m' under ρ' return A)
 (** A global *)
-| dsn_glob : forall p, dsim_ne (d_glob p) (d_glob p)
+| dsim_ne_glob : forall p, dsim_ne (d_glob p) (d_glob p)
 (** A stuck eliminator: the environments agree where the blocks' motives
     and branches may read, under their binders. *)
-| dsn_elim : forall (ρ ρ' : env) Bks p ups ups' j args args' m m',
+| dsim_ne_elim : forall (ρ ρ' : env) Bks p ups ups' j args args' m m',
     (forall b, In b Bks ->
        (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> desim (env_entry ρ x) (env_entry ρ' x)) /\
        (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x))) ->
     dsim_list ups ups' -> dsim_list args args' -> dsim_ne m m' ->
     dsim_ne (d_elim ρ Bks p ups j args m) (d_elim ρ' Bks p ups' j args' m')
 (** The field of a neutral *)
-| dsn_proj : forall f m m', dsim_ne m m' -> dsim_ne (d_proj f m) (d_proj f m')
+| dsim_ne_proj : forall f m m', dsim_ne m m' -> dsim_ne (d_proj f m) (d_proj f m')
 with dsim_nf : domain_nf -> domain_nf -> Prop :=
 (** A value at a type, both related *)
-| dsf_dom : forall a a' m m', dsim a a' -> dsim m m' -> dsim_nf (⇓ a m) (⇓ a' m')
+| dsim_nf_dom : forall a a' m m', dsim a a' -> dsim m m' -> dsim_nf (⇓ a m) (⇓ a' m')
 with dmsim : dmod -> dmod -> Prop :=
 (** A global module at related arguments *)
-| dms_global : forall p args args', dsim_list args args' -> dmsim (dm_global p args) (dm_global p args')
+| dmsim_global : forall p args args', dsim_list args args' -> dmsim (dm_global p args) (dm_global p args')
 (** A closure: the environments agree where the unit may read. *)
-| dms_local : forall Δ D (ρ ρ' : env),
+| dmsim_local : forall Δ D (ρ ρ' : env),
     (forall x, ~ gunit_fresh x (gu_mk Δ D) -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dmsim (dm_local Δ D ρ) (dm_local Δ D ρ')
 (** A member closure of related module values *)
-| dms_member : forall h h' ch, dmsim h h' -> dmsim (dm_member h ch) (dm_member h' ch)
+| dmsim_member : forall h h' ch, dmsim h h' -> dmsim (dm_member h ch) (dm_member h' ch)
 with dsim_la : list (nat * nat * domain_ne) -> list (nat * nat * domain_ne) -> Prop :=
 (** No atom *)
-| dsl_nil : dsim_la nil nil
+| dsim_la_nil : dsim_la nil nil
 (** Related first atoms, then the rest *)
-| dsl_cons : forall k n m m' xs xs', dsim_ne m m' -> dsim_la xs xs' -> dsim_la ((k, n, m) :: xs) ((k, n, m') :: xs')
+| dsim_la_cons : forall k n m m' xs xs', dsim_ne m m' -> dsim_la xs xs' -> dsim_la ((k, n, m) :: xs) ((k, n, m') :: xs')
 with dsim_list : list domain -> list domain -> Prop :=
 (** No value *)
-| dsa_nil : dsim_list nil nil
+| dsim_list_nil : dsim_list nil nil
 (** Related first values, then the rest *)
-| dsa_cons : forall a a' args args', dsim a a' -> dsim_list args args' -> dsim_list (a :: args) (a' :: args')
+| dsim_list_cons : forall a a' args args', dsim a a' -> dsim_list args args' -> dsim_list (a :: args) (a' :: args')
 (** Named fields, the same names at related values *)
 with dsim_fields : list (string * domain) -> list (string * domain) -> Prop :=
 (** No field *)
-| dsfl_nil : dsim_fields nil nil
+| dsim_fields_nil : dsim_fields nil nil
 (** A field of the same name at related values, then the rest *)
-| dsfl_cons : forall f a a' vs vs', dsim a a' -> dsim_fields vs vs' -> dsim_fields ((f, a) :: vs) ((f, a') :: vs')
+| dsim_fields_cons : forall f a a' vs vs', dsim a a' -> dsim_fields vs vs' -> dsim_fields ((f, a) :: vs) ((f, a') :: vs')
 with desim : dentry -> dentry -> Prop :=
 (** Related terms *)
-| des_term : forall d d', dsim d d' -> desim (de_term d) (de_term d')
+| desim_term : forall d d', dsim d d' -> desim (de_term d) (de_term d')
 (** Related modules *)
-| des_mod : forall h h', dmsim h h' -> desim (de_mod h) (de_mod h')
+| desim_mod : forall h h', dmsim h h' -> desim (de_mod h) (de_mod h')
 (** Related terms with related module parts *)
-| des_dm : forall d d' h h', dsim d d' -> dmsim h h' -> desim (de_dm d h) (de_dm d' h').
+| desim_dm : forall d d' h h', dsim d d' -> dmsim h h' -> desim (de_dm d h) (de_dm d' h').
 
 #[export]
 Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list dsim_fields desim : mctt.
@@ -167,7 +167,7 @@ Definition env_agree (P : nat -> Prop) (ρ ρ' : env) : Prop :=
 
 (** Agreement of two environments where the blocks of an eliminator may
     read: each motive under its binders, and each branch under its own.
-    (The annotations are never evaluated.)  It is the premise of [dsn_elim]
+    (The annotations are never evaluated.)  It is the premise of [dsim_ne_elim]
     and [ds_ihfn]. *)
 Definition blocks_agree (Bks : list eblock) (ρ ρ' : env) : Prop :=
   forall b, In b Bks ->
@@ -307,9 +307,9 @@ Proof. intros * Hρ Ha Hl; eapply env_agree_args; [ exact Hρ | exact Ha |]; int
     [List.length l]. *)
 Inductive dsim_list_at (P : nat -> Prop) : list domain -> list domain -> Prop :=
 (** No value *)
-| dsat_nil : dsim_list_at P nil nil
+| dsim_list_at_nil : dsim_list_at P nil nil
 (** The first values related if [P] selects their entry, then the rest *)
-| dsat_cons : forall a a' l l', (P (List.length l) -> dsim a a') -> dsim_list_at P l l' ->
+| dsim_list_at_cons : forall a a' l l', (P (List.length l) -> dsim a a') -> dsim_list_at P l l' ->
     dsim_list_at P (a :: l) (a' :: l').
 
 #[export]
@@ -463,7 +463,7 @@ Ltac sim_inv :=
 Ltac ent_tac :=
   first [ constructor; eassumption
         | constructor; solve [ eauto with mctt ]
-        | apply des_mod; apply dms_local;
+        | apply desim_mod; apply dmsim_local;
           eapply env_agree_mono; [ eassumption | nf_sub ] ].
 
 (** An environment that agrees where a term may read, for one of its parts:
@@ -594,7 +594,7 @@ Section KindSim.
     destruct (kgens_shape _ _ _ _ _ _ Hg g (Hin g (or_introl eq_refl)))
       as [(d & pv & A0 & M & ->) | [(d & pv & E & ->) | (d & pv & A0 & M & E & ->)]];
       cbn [kentry]; [ repeat constructor | |].
-    - constructor; apply dms_local.
+    - constructor; apply dmsim_local.
       intros z Hz; apply Hρ; cbn in Hz.
       assert (Hz' : ~ modexp_fresh z (modexp_wk E (wk_shiftn k))) by (intros Hf; apply Hz; split; [ exact I | exact Hf ]).
       destruct (modexp_unfresh_shiftn _ _ _ Hz') as (w & -> & Hw).
@@ -603,7 +603,7 @@ Section KindSim.
       intros Hf; apply Hw; exact Hf.
     - (* a definition with a module part: a placeholder and the alias of
          the selection *)
-      constructor; [ constructor | apply dms_local ].
+      constructor; [ constructor | apply dmsim_local ].
       intros z Hz; apply Hρ; cbn in Hz.
       assert (Hz' : ~ modexp_fresh z (modexp_wk E (wk_shiftn k))) by (intros Hf; apply Hz; split; [ exact I | exact Hf ]).
       destruct (modexp_unfresh_shiftn _ _ _ Hz') as (w & -> & Hw).
@@ -628,10 +628,10 @@ Section KindSim.
     - intros * Hd Hl h' Hs; inversion Hs; subst; econstructor; eassumption.
     - intros * Hr Hc Hu _ h' Hs; inversion Hs; subst; econstructor; eassumption.
     - intros * Hr Hd Hu _ h' Hs; inversion Hs; subst; econstructor; eassumption.
-    - intros * Hna Hc _ IH h' Hs; inversion Hs; subst; apply dk_global_step; [ exact Hna | exact Hc | apply IH; constructor; assumption ].
+    - intros * Hna Hc _ IH h' Hs; inversion Hs; subst; apply dkind_global_step; [ exact Hna | exact Hc | apply IH; constructor; assumption ].
     - intros * Hu IH h' Hs; inversion Hs; subst; constructor; auto.
     - intros * Hd IH Hc h' Hs; inversion Hs; subst; constructor; auto.
-    - intros * Hd IH h' Hs; inversion Hs; subst; apply dk_member_dm; auto.
+    - intros * Hd IH h' Hs; inversion Hs; subst; apply dkind_member_dm; auto.
     (* units *)
     - intros; constructor.
     - intros; econstructor; eassumption.
@@ -640,7 +640,7 @@ Section KindSim.
       destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
       { intros x Hx Hf; apply Hx; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto. }
       { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
-      eapply uk_mod; [ eassumption | exact Hk1 |].
+      eapply ukind_mod; [ eassumption | exact Hk1 |].
       apply IHu; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy Hf; apply Hy; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto.
     - (* a definition with a module part of a body, itself: by its module
@@ -649,7 +649,7 @@ Section KindSim.
       destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
       { intros x Hx Hf; apply Hx; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto. }
       { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
-      eapply uk_dm_here; [ eassumption | exact Hk1 |].
+      eapply ukind_dm_here; [ eassumption | exact Hk1 |].
       apply IHu; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy Hf; apply Hy; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto.
     - (* a chain through a definition with a module part of a body *)
@@ -657,7 +657,7 @@ Section KindSim.
       destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
       { intros x Hx Hf; apply Hx; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto. }
       { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
-      eapply uk_dm_step; [ eassumption | exact Hc | exact Hk1 |].
+      eapply ukind_dm_step; [ eassumption | exact Hc | exact Hk1 |].
       apply IHu; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy Hf; apply Hy; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto.
     - (* a name an open declares, read in the open's target *)
@@ -668,7 +668,7 @@ Section KindSim.
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply uk_item_def; [ eassumption | exact Hk0 | auto ].
+      eapply ukind_item_def; [ eassumption | exact Hk0 | auto ].
     - intros * Hi Hk IHk Hs IHs Hs2 IHs2 ρ' Hρ.
       destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
@@ -676,7 +676,7 @@ Section KindSim.
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply uk_item_mod; [ eassumption | exact Hk0 | auto | auto ].
+      eapply ukind_item_mod; [ eassumption | exact Hk0 | auto | auto ].
     - intros * Hi Hk IHk Hs IHs Hs2 IHs2 ρ' Hρ.
       destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
@@ -684,7 +684,7 @@ Section KindSim.
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply uk_item_dm; [ eassumption | exact Hk0 | auto | auto ].
+      eapply ukind_item_dm; [ eassumption | exact Hk0 | auto | auto ].
     - intros * Hi Hk IHk Hs IHs ρ' Hρ.
       destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
@@ -692,7 +692,7 @@ Section KindSim.
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply uk_item_self; [ eassumption | exact Hk0 | auto ].
+      eapply ukind_item_self; [ eassumption | exact Hk0 | auto ].
     - intros * Hs IH ρ' Hρ; constructor; apply IH.
       eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf.
     (* module expressions *)
@@ -700,7 +700,7 @@ Section KindSim.
     - intros * Hd IH ρ' Hρ; constructor; apply IH; eapply env_agree_mod; [ exact Hρ | cbn; intros Hne; apply Hne; reflexivity ].
     - intros * Hu IH ρ' Hρ; constructor; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ].
     - intros * Hs IH Hc ρ' Hρ; constructor; [ apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ] | exact Hc ].
-    - intros * Hs IH ρ' Hρ; apply sk_mem_dm; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ].
+    - intros * Hs IH ρ' Hρ; apply skind_mem_dm; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ].
     - intros * Hs IH ρ' Hρ; constructor; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; cbn in Hf; tauto ].
     (* bodies *)
     - intros * HP Hρ; exists ρ'; split; [ constructor |].
@@ -732,14 +732,14 @@ Section KindSim.
       rewrite Nat.add_0_r in Hs; exact Hs.
     (* bodies read through their opens *)
     - intros; constructor.
-    - intros * Hb IH ρ' P HP Hρ; apply kb_ext; eapply IH; [| exact Hρ ]; intros z Hz; apply HP; intros Hf; apply Hz; cbn in Hf; tauto.
+    - intros * Hb IH ρ' P HP Hρ; apply kbody_ext; eapply IH; [| exact Hρ ]; intros z Hz; apply HP; intros Hf; apply Hz; cbn in Hf; tauto.
     - intros * Hb IH Hk IHk Hg IHg ρ' P HP Hρ.
       assert (HPΦ : forall z, ~ gmod_fresh z Φ -> P z) by (intros z Hz; apply HP; intros Hf; apply Hz; cbn in Hf; tauto).
       assert (Hbn : gm_binders Φx = gm_binders Φ)
         by (clear - Hb; induction Hb; cbn; auto; rewrite gens_append_binders; erewrite kgens_length by eassumption; lia).
       destruct (IHk ρ' P) as (ρ1' & Hk1 & Hρ1); [| exact Hρ |].
       { intros z Hz; apply HPΦ; intros Hf; apply Hz; exact (proj1 (kbody_fresh _ _ _ _ _ Hb _ Hf)). }
-      eapply kb_open; [ exact (IH _ _ HPΦ Hρ) | exact Hk1 |].
+      eapply kbody_open; [ exact (IH _ _ HPΦ Hρ) | exact Hk1 |].
       apply IHg; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy; apply HP; intros Hf; apply Hy; cbn in Hf; rewrite Hbn; tauto.
     (* generated entries *)
@@ -954,7 +954,7 @@ Section Eval.
             |];
           eexists; split;
             [ eapply feval_elim_neut; try eassumption; rewrite <- (dsim_list_length _ _ Has); exact Hl
-            | constructor; [ assumption | apply dsn_elim; [ exact HBk | exact Hu | exact Has | exact Hm ] ] ]
+            | constructor; [ assumption | apply dsim_ne_elim; [ exact HBk | exact Hu | exact Has | exact Hm ] ] ]
       end ].
     (** The recursive results: each is computed when the branch reads it,
         and skipped when it does not, as the fast rule decides. *)

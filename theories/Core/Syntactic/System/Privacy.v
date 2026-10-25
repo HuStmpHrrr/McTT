@@ -425,24 +425,24 @@ Fixpoint rargs_refs (S : list ptab) (args : list (string * exp)) : list (ptab * 
     parameters, its sort and its constructors' arguments, under the [nu]
     uniform parameters and the [nself] [Self]s. *)
 Definition rmem_refs (nu nself : nat) (Mr : raw_member) : list (ptab * string)%type :=
-  tele_refs (repeat pt_none nu) (rm_nparams Mr) ++
-  exp_refs (repeat pt_none nu) (rm_sort Mr) ++
-  flat_map (fun cg => rargs_refs (repeat pt_none (List.length (rm_nparams Mr) + nu + nself)) (snd cg)) (rm_cons Mr).
+  tele_refs (repeat pt_none nu) (raw_member_nparams Mr) ++
+  exp_refs (repeat pt_none nu) (raw_member_sort Mr) ++
+  flat_map (fun cg => rargs_refs (repeat pt_none (List.length (raw_member_nparams Mr) + nu + nself)) (snd cg)) (raw_member_cons Mr).
 
 (** The references a group declaration makes as written: its uniform
     parameters, then each member's. *)
 Definition decl_refs (R : raw_decl) : list (ptab * string)%type :=
-  tele_refs nil (rd_uparams R) ++
-  flat_map (rmem_refs (List.length (rd_uparams R)) (List.length (rd_members R))) (rd_members R).
+  tele_refs nil (raw_decl_uparams R) ++
+  flat_map (rmem_refs (List.length (raw_decl_uparams R)) (List.length (raw_decl_members R))) (raw_decl_members R).
 
 (** The references of a function of a [mutual def] as written, under the
     block's parameters: its non-uniform parameters, its scrutinee's type,
     its result type and its clauses. *)
 Definition rfun_refs (np : nat) (f : raw_fun) : list (ptab * string)%type :=
-  tele_refs (repeat pt_none np) (rf_nparams f) ++
-  exp_refs (repeat pt_none (List.length (rf_nparams f) + np)) (rf_scrut f) ++
-  exp_refs (repeat pt_none (S (List.length (rf_nparams f) + np))) (rf_res f) ++
-  flat_map (fun cl => exp_refs (repeat pt_none (snd (fst cl) + np)) (snd cl)) (rf_clauses f).
+  tele_refs (repeat pt_none np) (raw_fun_nparams f) ++
+  exp_refs (repeat pt_none (List.length (raw_fun_nparams f) + np)) (raw_fun_scrut f) ++
+  exp_refs (repeat pt_none (S (List.length (raw_fun_nparams f) + np))) (raw_fun_res f) ++
+  flat_map (fun cl => exp_refs (repeat pt_none (snd (fst cl) + np)) (snd cl)) (raw_fun_clauses f).
 
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
@@ -475,19 +475,19 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
 #[warnings="-cannot-define-projection"]
 Record open_anc (Ξ : gstack) (qd : qname) : Prop := mk_open_anc
   { (** The path of the open frame *)
-    oa_frame : qname
+    open_anc_frame : qname
     (** The frame's kind *)
-  ; oa_kind : frame_kind
+  ; open_anc_kind : frame_kind
     (** The frame's body so far *)
-  ; oa_unit : gunit
+  ; open_anc_unit : gunit
     (** The frame's path below [qd] *)
-  ; oa_suffix : list string
+  ; open_anc_suffix : list string
     (** The frame is on the stack *)
-  ; oa_in : List.In (oa_frame, oa_kind, oa_unit) Ξ
+  ; open_anc_in : List.In (open_anc_frame, open_anc_kind, open_anc_unit) Ξ
     (** It is in the unit of [qd] *)
-  ; oa_same_unit : q_unit oa_frame = q_unit qd
+  ; open_anc_same_unit : q_unit open_anc_frame = q_unit qd
     (** It is [qd] or below it *)
-  ; oa_chain : q_chain oa_frame = q_chain qd ++ oa_suffix }.
+  ; open_anc_chain : q_chain open_anc_frame = q_chain qd ++ open_anc_suffix }.
 
 (** A reference to [x] in a module reached from a unit is to a public
     member, or made inside the module declaring it. *)

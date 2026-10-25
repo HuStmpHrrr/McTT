@@ -348,37 +348,37 @@ Definition rview_mem (x : rview) (Vs : list rview) : bool :=
     argument as classified. *)
 Inductive rptyp : Set :=
 (** The declared member [j] at the non-uniform parameters [Ps]. *)
-| rp_self : nat -> list exp -> rptyp
+| rptyp_self : nat -> list exp -> rptyp
 (** A nested occurrence: the view of the instance [x], not yet numbered,
     at the non-uniform parameters [Ns]. *)
-| rp_nest : rview -> list exp -> rptyp
+| rptyp_nest : rview -> list exp -> rptyp
 (** A function from a [Self]-free domain into a shape. *)
-| rp_pi : exp -> rptyp -> rptyp.
+| rptyp_pi : exp -> rptyp -> rptyp.
 
 (** An argument as classified, its views not yet numbered. *)
 Inductive rcarg : Set :=
 (** A non-recursive argument, of a [Self]-free type. *)
-| rc_arg : exp -> rcarg
+| rcarg_arg : exp -> rcarg
 (** A recursive argument, of a shape. *)
-| rc_rec : rptyp -> rcarg.
+| rcarg_rec_case : rptyp -> rcarg.
 
 (** Whether a classified argument is recursive: its bit in the pattern of
     the arguments before the next one. *)
-Definition rcarg_bit (g : rcarg) : bool := match g with rc_rec _ => true | rc_arg _ => false end.
+Definition rcarg_bit (g : rcarg) : bool := match g with rcarg_rec_case _ => true | rcarg_arg _ => false end.
 
 (** The views numbered: the view [v] is the member [n + v]. *)
 Fixpoint rptyp_num (n : nat) (Vs : list rview) (t : rptyp) : option ptyp :=
   match t with
-  | rp_self j Ps => Some (pt_self j Ps)
-  | rp_nest x Ns => option_map (fun v => pt_self (n + v) Ns) (rview_index x Vs)
-  | rp_pi B t' => option_map (pt_pi B) (rptyp_num n Vs t')
+  | rptyp_self j Ps => Some (pt_self j Ps)
+  | rptyp_nest x Ns => option_map (fun v => pt_self (n + v) Ns) (rview_index x Vs)
+  | rptyp_pi B t' => option_map (pt_pi B) (rptyp_num n Vs t')
   end.
 
 (** A classified argument with its views numbered. *)
 Definition rcarg_num (n : nat) (Vs : list rview) (g : rcarg) : option carg :=
   match g with
-  | rc_arg A => Some (ca_arg A)
-  | rc_rec t => option_map ca_rec (rptyp_num n Vs t)
+  | rcarg_arg A => Some (ca_arg A)
+  | rcarg_rec_case t => option_map ca_rec (rptyp_num n Vs t)
   end.
 
 (** A constructor's classified arguments with their views numbered. *)
@@ -423,7 +423,7 @@ Section Classify.
     let b := (d + List.length pat + np)%nat in
     if (b <=? x) && (x <? b + n) then
       if list_eq_dec exp_eq_dec (List.firstn nu args) (vars_from (d + List.length pat + (np - nu)) nu)
-      then option_map (rp_self (n - 1 - (x - b))) (img_pats (cls_pat d np n pat) (List.skipn nu args))
+      then option_map (rptyp_self (n - 1 - (x - b))) (img_pats (cls_pat d np n pat) (List.skipn nu args))
       else None
     else None.
 
@@ -436,7 +436,7 @@ Section Classify.
         if m <=? List.length args then
           match img_pats (List.repeat true (d + List.length pat + (np - nu))) (List.firstn m args),
                 img_pats (cls_pat d np n pat) (List.skipn m args) with
-          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (rp_nest (qc, k, Cs) Ns) else None
+          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (rptyp_nest (qc, k, Cs) Ns) else None
           | _, _ => None
           end
         else None
@@ -451,7 +451,7 @@ Section Classify.
     match T with
     | a_pi B T' =>
         match img_pat (cls_pat d np n pat) B with
-        | Some B0 => option_map (rp_pi B0) (cls_sh (S d) T')
+        | Some B0 => option_map (rptyp_pi B0) (cls_sh (S d) T')
         | None => None
         end
     | _ =>
@@ -466,8 +466,8 @@ Section Classify.
       it), or recursive of a shape. *)
   Definition cls_arg (T : exp) : option rcarg :=
     match img_pat (cls_pat 0 np n pat) T with
-    | Some A => Some (rc_arg A)
-    | None => option_map rc_rec (cls_sh 0 T)
+    | Some A => Some (rcarg_arg A)
+    | None => option_map rcarg_rec_case (cls_sh 0 T)
     end.
 End Classify.
 
@@ -479,15 +479,15 @@ Definition grp_none : qname -> nat -> option nat := fun _ _ => None.
     shape ends in, if it ends in a nested occurrence. *)
 Fixpoint rptyp_view (t : rptyp) : list rview :=
   match t with
-  | rp_nest x _ => x :: nil
-  | rp_pi _ t' => rptyp_view t'
-  | rp_self _ _ => nil
+  | rptyp_nest x _ => x :: nil
+  | rptyp_pi _ t' => rptyp_view t'
+  | rptyp_self _ _ => nil
   end.
 
 (** The instance a classified argument meets, if it is a nested
     occurrence. *)
 Definition rcarg_view (g : rcarg) : list rview :=
-  match g with rc_rec t => rptyp_view t | rc_arg _ => nil end.
+  match g with rcarg_rec_case t => rptyp_view t | rcarg_arg _ => nil end.
 
 (** The instances the constructors [cs] meet, constructors in order,
     arguments left to right. *)

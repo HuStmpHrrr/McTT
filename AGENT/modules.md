@@ -56,7 +56,7 @@ by changing what the name resolves to inside the nest:
 `gdeps := list (path * gunit)`: the filed units, newest first, each checked
 against the ones after it (`wf_gstack_file`, which closes the only open frame,
 named by the unit's path).  Cycles are ruled out by the chain of units being
-loaded (`rc_load`), not by the shape of `gdeps`.  A loaded unit runs from
+loaded (`run_cmd_load`), not by the shape of `gdeps`.  A loaded unit runs from
 nothing; its result is merged by filter-and-append (`gds_merge`), and shared
 units agree because they come from runs of the same file (`canon_agree`).
 

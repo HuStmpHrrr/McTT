@@ -80,7 +80,7 @@ Proof. elab_ok. Qed.
 Example a_preapplied :
   sel (en_var "B" :: en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) :: en_var "A" :: nil) (var "a") (U_a $ #1).
 Proof.
-  apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil))) 1); [| apply dt_mem ].
+  apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil))) 1); [| apply den_term_mem ].
   apply (mk_bound _ _ _ _ _ (en_var "B" :: nil) (en_var "A" :: nil)); cbn; try reflexivity.
   intros [H | []]; discriminate.
 Qed.
@@ -1233,7 +1233,7 @@ Proof. elab_fails. Qed.
 
 (** A record alias reads its target as an inductive alias does: a module
     under its parameters, applied to them.  Whether it names a record
-    type is the core's to decide ([rc_record_alias]):
+    type is the core's to decide ([run_cmd_record_alias]):
 
 <<
 module T where

@@ -85,11 +85,11 @@ Proof.
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks c gs Ps As i
             ltac:(assumption) Hgr HMm Hbm Hcon HPl _ HAl _ _ Hnm _ _ HBn _ Har _ n B Hlk).
-  - intros * HP HT; exact (sea_rel (HPs _ _ _ HP HT _ _ Hμ)).
-  - intros * HN HT; exact (sea_rel (HAs _ _ _ HN HT _ _ Hμ)).
+  - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
+  - intros * HN HT; exact (sem_exp_eq_at_rel (HAs _ _ _ HN HT _ _ Hμ)).
   - intros * HMj; apply nth_error_lt_some'; rewrite HLb; apply List.nth_error_Some; unfold ind_member in HMj; congruence.
-  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sxa_ext (HMx _ _ HMk _ _ Hμ))).
-  - intros * HMk Hb; exact (sea_rel (HA _ _ _ HMk Hb _ _ Hμ)).
-  - intros * HMk Hc0; exact (valid_ctx_rel_ctx_wf (sxa_ext (HBc _ _ _ _ HMk Hc0 _ _ Hμ))).
-  - intros * HMk Hb Hc0 Hin; exact (sea_rel (HB _ _ _ _ _ _ _ HMk Hb Hc0 Hin _ _ Hμ)).
+  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMk _ _ Hμ))).
+  - intros * HMk Hb; exact (sem_exp_eq_at_rel (HA _ _ _ HMk Hb _ _ Hμ)).
+  - intros * HMk Hc0; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HBc _ _ _ _ HMk Hc0 _ _ Hμ))).
+  - intros * HMk Hb Hc0 Hin; exact (sem_exp_eq_at_rel (HB _ _ _ _ _ _ _ HMk Hb Hc0 Hin _ _ Hμ)).
 Qed.

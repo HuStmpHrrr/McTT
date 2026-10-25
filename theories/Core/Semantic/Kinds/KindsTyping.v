@@ -77,7 +77,7 @@ Proof.
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (items_gen_names _ _ _ _ _ _ Hg) in Hn.
   all: eexists nil, nil, _; split; [ reflexivity |]; split; [ constructor |].
-  all: split; [ solve [ econstructor; eauto using ign_nil ] |].
+  all: split; [ solve [ econstructor; eauto using items_gen_nil ] |].
   all: split; [ eexists _, _; split; reflexivity |].
   all: intros Φ kk; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
@@ -101,7 +101,7 @@ Proof.
             intros Φ k; cbn [gens_append app ig_entry]; apply Hp).
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (kgens_names _ _ _ _ _ _ Hg) in Hn.
-  all: eexists nil, _; split; [ solve [ econstructor; eauto using kg_nil ] |].
+  all: eexists nil, _; split; [ solve [ econstructor; eauto using kgens_nil ] |].
   all: intros Φ k; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
 Qed.

@@ -158,7 +158,7 @@ Proof.
   destruct D as [[] Φ | E]; cbn in Hf; try contradiction.
   - destruct Hf as (Φx & _ & Hx & _).
     exists (ds_open (Δ ++ ce_ass X :: nil) Φ Φx), (Δ ++ ce_ass X :: nil), X, Δ, i.
-    split; [ apply dn_lit; eapply un_body; [ exact Hx | reflexivity ] |].
+    split; [ apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ] |].
     split; [ reflexivity |]; split; [ apply tele_view_last |]; split; assumption.
   - destruct Hf as (HΔ & _ & HE).
     destruct (me_denotes _ _ _ _ _ HE) as (R & Rm & HR & HRm).
@@ -166,7 +166,7 @@ Proof.
     pose proof (ds_mod_is_mod _ _ HRm) as Hmod.
     destruct (desc_ok_tele _ _ _ _ Hok Hmod) as (T & Ht).
     exists (ds_up (Δ ++ ce_ass X :: nil) Rm), (T ++ Δ ++ ce_ass X :: nil), X, (T ++ Δ), i.
-    split; [ apply dn_lit; eapply un_alias; eassumption |].
+    split; [ apply mdenote_lit; eapply udenote_alias; eassumption |].
     split; [ unfold ds_mtele; rewrite (ds_is_mod_mod _ (ds_is_mod_up _ _ Hmod)); apply ds_tele_up; exact Ht |].
     split; [ rewrite app_assoc; apply tele_view_last |]; split; assumption.
 Qed.
@@ -403,7 +403,7 @@ Proof.
   cbn [me_apps].
   eapply (IH Γ (tele_sub Δ1 (Id,,N)) (ds_sub R (sb_qn (length Δ1) (Id,,N)))).
   - exact HHN.
-  - eapply dn_app; [ exact Hm | apply ds_at_up ].
+  - eapply mdenote_app; [ exact Hm | apply ds_at_up ].
   - apply ds_is_mod_sub; exact Hmod.
   - exact HΔN.
   - apply tele_ass_sub; exact Ha1.
@@ -722,7 +722,7 @@ Proof.
   (* the filed member itself, its lookup from the same entry *)
   destruct (filed_denote _ _ Hg _ _ _ Γ nil (gc_loc_of_loc _ _ Hg _ _ _ Hl)) as (Rp & Hmp & Hmdp); cbn [me_apps] in Hmp.
   assert (Hmx : mdenote Θ Ξ Γ (me_mem (qname_mod p) y) (ds_up nil Re))
-    by (eapply dn_mem; [ exact Hmp | exact Hmdp | cbn; rewrite Hp; reflexivity | exact Hed
+    by (eapply mdenote_mem; [ exact Hmp | exact Hmdp | cbn; rewrite Hp; reflexivity | exact Hed
                        | cbn [ds_read]; rewrite ds_ats_read_nil; reflexivity ]).
   pose proof (loc_modexp_wf _ _ _ HΓ _ _ _ Hl) as HwP.
   destruct (loc_valid _ _ _ _ _ Hv Hl) as [_ HvΦ].
@@ -803,7 +803,7 @@ Proof.
     destruct (gc_entry_ind _ _ _ _ _ _ _ _ HeΘ) as [_ Hml].
     pose proof (ind_mlookup_group _ _ Hg _ _ _ _ Hml) as Hl0.
     pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ _ (proj1 Hv) (proj2 Hv) Hl0) as HD; cbn [syn_VD] in HD.
-    pose proof (dc_ass _ (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl0)) as HaU.
+    pose proof (decl_closed_ass _ (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl0)) as HaU.
     assert (HargsU : args_ok Θ Ξ Γ (ind_uparams D) Ns) by (rewrite HΔ0; apply args_ok_ext; exact Hargs).
     unfold ind_former_desc in Hats; cbn [ds_ats_read] in Hats.
     rewrite (ds_ats_tm_ind _ _ _ _ _ HaU (args_ok_length _ _ _ _ _ HargsU)), ds_ats_closed_nil in Hats; cbn in Hats.
@@ -969,10 +969,10 @@ Proof.
   { eapply edenote_closed_move; [ exact Hc | exact HE | exact Hed |].
     apply wk_mod_compat_sub; cbn [List.app]; apply (wf_wk_mod_compat Θ Ξ); apply wf_wk_shiftn_app; [ exact HΘ' | exact HΓ ]. }
   assert (Hmx : mdenote Θ Ξ (Θ' ++ Γ) (me_mem (me_apps (qname_mod p) Ns) x) (ds_up nil (ds_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1))).
-  { assert (He' : ds_entry (ds_closed nil p T Φ Ns) x = Some (nil, E, rd_closed nil Ns (apps (a_mem (qname_mod p) x) Ns))).
+  { assert (He' : ds_entry (ds_closed nil p T Φ Ns) x = Some (nil, E, reader_closed nil Ns (apps (a_mem (qname_mod p) x) Ns))).
     { cbn in He |- *; destruct (gm_prefix_upto Φ x) as [[| ? ? ? | ? ? ?] |]; try discriminate.
       injection He as HE1; rewrite HE1; reflexivity. }
-    eapply dn_mem; [ exact Hm0' | exact Hmd' | exact He' | exact Hed' | cbn; rewrite Hats; reflexivity ]. }
+    eapply mdenote_mem; [ exact Hm0' | exact Hmd' | exact He' | exact Hed' | cbn; rewrite Hats; reflexivity ]. }
   rewrite (ds_named_self _ _ Hne) in Ht, Hm.
   change (ds_up Θ' (ds_self (apps (a_mem (qname_mod p) x) Ns) R1)) with (ds_up (nil ++ Θ') (ds_self (apps (a_mem (qname_mod p) x) Ns) R1)) in Ht, Hm.
   rewrite ds_up_cat in Ht, Hm.
@@ -1093,7 +1093,7 @@ Lemma unit_nf_step : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ K N RK RK', uni
       ds_mod RK'' = ds_mod RK'.
 Proof.
   intros Θ Ξ Hg * Hnf Hw Hm Ha.
-  assert (HmA : mdenote Θ Ξ Γ (me_app K N) RK') by (eapply dn_app; eassumption).
+  assert (HmA : mdenote Θ Ξ Γ (me_app K N) RK') by (eapply mdenote_app; eassumption).
   destruct Hnf as [p T Φ Ns Hl | Δ Φ | Δ E HΔ HE].
   - exists (me_app (me_apps (qname_mod p) Ns) N), RK'; split; [ rewrite <- me_apps_snoc; eapply unf_filed; exact Hl |].
     split; [ exact Hw |]; split; [ exact HmA | reflexivity ].
@@ -1140,12 +1140,12 @@ Proof.
     intros Γ H p T Φ Hq Hu HH Rm Hmd.
     destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq' & Hl); rewrite Hq in Hq'; injection Hq' as <-.
     exists H, (ds_closed nil p T Φ nil); split; [ rewrite (mod_qname_inv _ _ Hq); exact (unf_filed _ _ p T Φ nil Hl) |].
-    split; [ exact HH |]; split; [ apply dn_unit; assumption | exact Hmd ].
+    split; [ exact HH |]; split; [ apply mdenote_unit; assumption | exact Hmd ].
   - (* the open frame of a member's module: itself, a filed module *)
     intros Γ H p pq k D Mk Tm Φm Hq Hk HMk Hl HH Rm Hmd; cbn in Hmd.
     exists H, (ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil)).
     split; [ rewrite (mod_qname_inv _ _ Hq); exact (unf_filed _ _ p Tm Φm nil (gc_loc_loc _ _ _ _ _ Hl)) |].
-    split; [ exact HH |]; split; [ eapply dn_ind_frame; eassumption | exact Hmd ].
+    split; [ exact HH |]; split; [ eapply mdenote_ind_frame; eassumption | exact Hmd ].
   - (* a slot: its unit *)
     intros Γ x U R Hx Hu IH HH Rm Hmd.
     pose proof (presup_modexp_eq_ctx HH) as HΓ.
@@ -1174,7 +1174,7 @@ Proof.
     split; [ exact HmK' | rewrite HmdK''; exact HmdK' ].
   - (* a selection: the unit its module part stands for *)
     intros Γ H y R0 R0m Γy E rd R R' Hm _ Hmd0 He Hed _ Hrd HH Rm Hmd.
-    assert (Hsel : mdenote Θ Ξ Γ (me_mem H y) R') by (eapply dn_mem; eassumption).
+    assert (Hsel : mdenote Θ Ξ Γ (me_mem H y) R') by (eapply mdenote_mem; eassumption).
     pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hsel) Hmd) as Hc.
     pose proof (ds_mod_is_mod _ _ Hmd) as Him.
     destruct (ds_unit_denote _ _ _ Hg Hc Him Γ (wf_mdenote_mod_xp _ _ _ _ _ _ _ HH Hsel Hmd)) as (RK & HmK & HmdK).
@@ -1184,12 +1184,12 @@ Proof.
     intros Γ H p R Tm Φm Hq Hk Hl HH Rm Hmd; cbn in Hmd.
     exists H, (record_former_desc p R (ds_closed nil p Tm Φm nil)).
     split; [ rewrite (mod_qname_inv _ _ Hq); exact (unf_filed _ _ p Tm Φm nil (gc_loc_loc _ _ _ _ _ Hl)) |].
-    split; [ exact HH |]; split; [ eapply dn_record_frame; eassumption | exact Hmd ].
+    split; [ exact HH |]; split; [ eapply mdenote_record_frame; eassumption | exact Hmd ].
   - (* a body *)
     intros Γ o Δ sm Φ Φx R Hx _ Hb -> HU Rm Hmd.
     destruct sm; cbn in Hb; [ injection Hb as <- | discriminate ].
     exists (me_lit (gu_open Δ Φ)), (ds_open Δ Φ Φx); split; [ apply unf_body |].
-    split; [ apply wf_me_lit; exact HU |]; split; [ apply dn_lit; eapply un_body; [ exact Hx | reflexivity ] | exact Hmd ].
+    split; [ apply wf_me_lit; exact HU |]; split; [ apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ] | exact Hmd ].
   - (* an alias: with no parameter its target, otherwise over the unit its target is equal to *)
     intros Γ o Δ E R R' Hm IH HR' -> HU Rm Hmd.
     pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf; destruct Hf as (HΔ & Ha & HE).
@@ -1202,7 +1202,7 @@ Proof.
     + exists (me_lit (gu_mk (e :: Δ') (md_alias K))), (ds_up (e :: Δ') R'); split; [ apply unf_alias; [ discriminate | exact Hnf ] |].
       split; [ apply wf_me_lit; eapply wf_unit_eq_alias;
                [ apply ext_of_ctx; exact HΔ | exact Ha | exact Ha | exact HK | exact (wf_modexp_eq_refl_right HK) ] |].
-      split; [ apply dn_lit; eapply un_alias; [ exact HmK | exact HmdK ] | exact Hmd ].
+      split; [ apply mdenote_lit; eapply udenote_alias; [ exact HmK | exact HmdK ] | exact Hmd ].
 Qed.
 
 (** A well-formed module expression is equal to a unit in normal form
@@ -1317,7 +1317,7 @@ Proof.
   rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0 _ HmH), HmdH in Hmd; injection Hmd as <-.
   destruct (filed_denote _ _ Hg _ _ _ Γ nil (gc_loc_of_loc _ _ Hg _ _ _ Hl)) as (Rp & Hmp & Hmdp); cbn [me_apps] in Hmp.
   assert (Hmx : mdenote Θ Ξ Γ (me_mem (qname_mod p) x) R)
-    by (eapply dn_mem; [ exact Hmp | exact Hmdp | exact He | exact Hed | exact Hr ]).
+    by (eapply mdenote_mem; [ exact Hmp | exact Hmdp | exact He | exact Hed | exact Hr ]).
   eapply wf_exp_eq_mem_cong; [ exact HHp | exact Hm | exact Ht | exact Hmx | exact Ht |].
   exact (wf_mem_desc _ _ _ _ _ _ _ (wf_modexp_eq_refl_right HHp) Hmx Ht).
 Qed.

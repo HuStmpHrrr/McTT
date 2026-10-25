@@ -26,53 +26,53 @@ Generalizable All Variables.
     premises evaluate to. *)
 
 Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
-| feeo_typ :
+| feval_exp_order_typ :
   `( feval_exp_order Θ Ξ Typeω@i p )
 (** A small universe evaluates its level. *)
-| feeo_univ :
+| feval_exp_order_univ :
   `( feval_exp_order Θ Ξ M p ->
      feval_exp_order Θ Ξ Type⟨M⟩ p )
 (** An environment is total, so a variable always terminates. *)
-| feeo_var :
+| feval_exp_order_var :
   `( feval_exp_order Θ Ξ #x p )
-| feeo_level :
+| feval_exp_order_level :
   `( feval_exp_order Θ Ξ (Level@n) p )
-| feeo_llit :
+| feval_exp_order_llit :
   `( feval_exp_order Θ Ξ (𝕃ᵒ o) p )
-| feeo_succl :
+| feval_exp_order_succl :
   `( feval_exp_order Θ Ξ M p ->
      feval_exp_order Θ Ξ (succl M) p )
-| feeo_maxl :
+| feval_exp_order_maxl :
   `( feval_exp_order Θ Ξ M p ->
      feval_exp_order Θ Ξ N p ->
      feval_exp_order Θ Ξ (maxl M N) p )
-| feeo_True :
+| feval_exp_order_True :
   `( feval_exp_order Θ Ξ ⊤ p )
-| feeo_true :
+| feval_exp_order_true :
   `( feval_exp_order Θ Ξ ⋆ p )
-| feeo_False :
+| feval_exp_order_False :
   `( feval_exp_order Θ Ξ ⊥ p )
 (** The scrutinee of [efq] must evaluate to a neutral, since no other value
     has a rule. *)
-| feeo_exfalso :
+| feval_exp_order_exfalso :
   `( feval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> exists b n, m = ⇑ b n) ->
      (forall b m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ⇑ b m -> feval_exp_order Θ Ξ A (p ↦ ⇑ b m)) ->
      feval_exp_order Θ Ξ (efq M return A) p )
-| feeo_pi :
+| feval_exp_order_pi :
   `( feval_exp_order Θ Ξ A p ->
      feval_exp_order Θ Ξ (Π A B) p )
-| feeo_indty :
+| feval_exp_order_indty :
   `( feval_exp_order Θ Ξ (a_ind pq k) p )
 (** A constructor that is a value of its own before any argument *)
-| feeo_con :
+| feval_exp_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D k = Some Mk ->
      im_starts D Mk = true ->
      feval_exp_order Θ Ξ (a_con pq k c) p )
 (** A constructor of a view of a group with no uniform parameters: the
     view's arguments are evaluated *)
-| feeo_con_view :
+| feval_exp_order_con_view :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
@@ -81,29 +81,29 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      feval_exp_order Θ Ξ (a_con pq j c) p )
 (** The eliminator: its uniform parameters, its scrutinee, whose value
     names the group it eliminates by, and the elimination. *)
-| feeo_elim :
+| feval_exp_order_elim :
   `( feval_exps_order Θ Ξ Us p ->
      feval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> exists pq, elim_grp_of oq m = Some pq) ->
      (forall ups m pq, ⟦ Us ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ups -> ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> elim_grp_of oq m = Some pq ->
         feval_elim_order Θ Ξ p pq ups Bks j m) ->
      feval_exp_order Θ Ξ (a_elim oq Us j Bks M) p )
-| feeo_fn :
+| feval_exp_order_fn :
   `( feval_exp_order Θ Ξ (λ A M) p )
-| feeo_app :
+| feval_exp_order_app :
   `( feval_exp_order Θ Ξ M p ->
      feval_exp_order Θ Ξ N p ->
      (forall m n, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ n -> feval_app_order Θ Ξ m n) ->
      feval_exp_order Θ Ξ (M $ N) p )
-| feeo_let :
+| feval_exp_order_let :
   `( feval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> feval_exp_order Θ Ξ B (p ↦ m)) ->
      feval_exp_order Θ Ξ (a_let (b_def oA M) B) p )
-| feeo_let_mod :
+| feval_exp_order_let_mod :
   `( feval_close_order Θ Ξ Δ D p ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_exp_order Θ Ξ B (p ↦ᵐ h)) ->
      feval_exp_order Θ Ξ (ℓₘ (gu_mk Δ D) in B) p )
-| feeo_mem :
+| feval_exp_order_mem :
   `( modexp_spine H = (R, args, pre) ->
      feval_modexp_order Θ Ξ R p ->
      (forall h, ⟦ R ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_selc_order Θ Ξ h (pre ++ x :: nil)) ->
@@ -112,14 +112,14 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
         ⟦ args ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ns -> feval_apps_order Θ Ξ f ns) ->
      feval_exp_order Θ Ξ (a_mem H x) p )
 (** A record's type former is a value. *)
-| feeo_record :
+| feval_exp_order_record :
   `( feval_exp_order Θ Ξ (a_record pq) p )
 (** A record element: the values of its fields *)
-| feeo_tuple :
+| feval_exp_order_tuple :
   `( feval_exps_order Θ Ξ (List.map snd fs) p ->
      feval_exp_order Θ Ξ (a_tuple T fs) p )
 (** A field: the value, then the field of it *)
-| feeo_proj :
+| feval_exp_order_proj :
   `( feval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> feval_proj_order Θ Ξ f m) ->
      feval_exp_order Θ Ξ (a_proj f M) p )
@@ -127,12 +127,12 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 (** The field [f] of a value, as [feval_proj] reads it *)
 with feval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
 (** Of a tuple with the field *)
-| fepo_tuple :
+| feval_proj_order_tuple :
   `( field_lookup vs f <> None ->
      feval_proj_order Θ Ξ f (d_tuple vs) )
 (** Of a neutral of a record type with the field: the projections of the
     fields up to it, which reach it *)
-| fepo_neut :
+| feval_proj_order_neut :
   `( record_lookup Θ Ξ pq = Some R ->
      field_index (record_fields R) f = Some k ->
      feval_nflds_order Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil ->
@@ -143,10 +143,10 @@ with feval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
     them *)
 with feval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> Prop :=
 (** No field left *)
-| feno_nil :
+| feval_nflds_order_nil :
   `( feval_nflds_order Θ Ξ ns m nil pre )
 (** The next field's type, then the rest after its projection *)
-| feno_cons :
+| feval_nflds_order_cons :
   `( feval_exp_order Θ Ξ T (env_args nil (ns ++ pre)) ->
      (forall a, ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
         feval_nflds_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
@@ -157,7 +157,7 @@ with feval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> 
 with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> Prop :=
 (** On a saturated constructor: the recursive results the branch reads,
     then the branch *)
-| feelo_con :
+| feval_elim_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_ref pq j Mj = (pc, k) ->
@@ -173,7 +173,7 @@ with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -
         feval_exp_order Θ Ξ B (env_args p (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs))) ->
      feval_elim_order Θ Ξ p pq ups Bks j (d_con pc k c vs) )
 (** On a neutral: the motive's instance *)
-| feelo_neut :
+| feval_elim_order_neut :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_ref pq j Mj = (pc, k) ->
@@ -189,20 +189,20 @@ with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -
     branch [B] *)
 with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> exp -> list carg -> list domain -> Prop :=
 (** No argument *)
-| feiho_nil :
+| feval_ihs_order_nil :
   `( feval_ihs_order Θ Ξ p pq ups Bks B nil nil )
 (** A non-recursive argument *)
-| feiho_arg :
+| feval_ihs_order_arg :
   `( feval_ihs_order Θ Ξ p pq ups Bks B gs vs ->
      feval_ihs_order Θ Ξ p pq ups Bks B (ca_arg T :: gs) (v :: vs) )
 (** A recursive argument the branch reads: its result, then the rest *)
-| feiho_rec :
+| feval_ihs_order_rec_case :
   `( exp_freshb (cargs_nrec gs) B = false ->
      feval_ih_order Θ Ξ p pq ups Bks t v ->
      feval_ihs_order Θ Ξ p pq ups Bks B gs vs ->
      feval_ihs_order Θ Ξ p pq ups Bks B (ca_rec t :: gs) (v :: vs) )
 (** One it does not read: the rest only *)
-| feiho_skip :
+| feval_ihs_order_skip :
   `( exp_freshb (cargs_nrec gs) B = true ->
      feval_ihs_order Θ Ξ p pq ups Bks B gs vs ->
      feval_ihs_order Θ Ξ p pq ups Bks B (ca_rec t :: gs) (v :: vs) )
@@ -210,23 +210,23 @@ with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain ->
 (** The recursive result of an argument of a shape *)
 with feval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> Prop :=
 (** At the end: the eliminator at the member *)
-| feio_self :
+| feval_ih_order_self :
   `( feval_elim_order Θ Ξ p pq ups Bks j v ->
      feval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
 (** At a function shape: a closure *)
-| feio_pi :
+| feval_ih_order_pi :
   `( feval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
 
 (** The member a member of a group stands for, as [feval_mref] reads it *)
 with feval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> Prop :=
 (** A declared member *)
-| femro_decl :
+| feval_mref_order_decl :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_decl pm ->
      feval_mref_order Θ Ξ pq ups j )
 (** A view: the view's arguments at the uniform parameters *)
-| femro_view :
+| feval_mref_order_view :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
@@ -236,41 +236,41 @@ with feval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -
 (** The type of an argument of a shape *)
 with feval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
 (** At the end: the parameters, and the member stood for *)
-| festo_self :
+| feval_shty_order_self :
   `( feval_exps_order Θ Ξ Ps p ->
      feval_mref_order Θ Ξ pq ups j ->
      feval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
 (** At a domain *)
-| festo_pi :
+| feval_shty_order_pi :
   `( feval_exp_order Θ Ξ B p ->
      feval_shty_order Θ Ξ pq ups p (pt_pi B t) )
 
 (** The type of the recursive result of an argument of a shape *)
 with feval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> Prop :=
 (** At the end: the parameters, then the member's motive *)
-| feityo_self :
+| feval_ihty_order_self :
   `( feval_exps_order Θ Ξ Ps p ->
      (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ bs -> feval_exp_order Θ Ξ (List.nth j As a_True) (env_args pm (bs ++ v :: nil))) ->
      feval_ihty_order Θ Ξ pm As p (pt_self j Ps) v )
 (** At a domain *)
-| feityo_pi :
+| feval_ihty_order_pi :
   `( feval_exp_order Θ Ξ B p ->
      feval_ihty_order Θ Ξ pm As p (pt_pi B t) v )
 
 with feval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
-| feao_fn :
+| feval_app_order_fn :
   `( feval_exp_order Θ Ξ M (p ↦ n) ->
      feval_app_order Θ Ξ λᵈ p M n )
-| feao_neut :
+| feval_app_order_neut :
   `( feval_exp_order Θ Ξ B (p ↦ n) ->
      feval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
-| feao_indty :
+| feval_app_order_indty :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D k = Some Mk ->
      List.length as' < im_np D Mk ->
      feval_app_order Θ Ξ (d_ind pq k as') n )
 (** A constructor of a declared member *)
-| feao_con :
+| feval_app_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D k = Some Mk ->
      im_head Mk = mh_decl pm ->
@@ -278,103 +278,103 @@ with feval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      List.length vs < (im_np D Mk + List.length gs)%nat ->
      feval_app_order Θ Ξ (d_con pq k c vs) n )
 (** A constructor of a view, before its last uniform parameter *)
-| feao_con_view :
+| feval_app_order_con_view :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) < ind_nu D ->
      feval_app_order Θ Ξ (d_con pq j c vs) n )
 (** At its last uniform parameter: the view's arguments are evaluated *)
-| feao_con_view_ups :
+| feval_app_order_con_view_ups :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) = ind_nu D ->
      feval_exps_order Θ Ξ Is (env_args nil (vs ++ n :: nil)) ->
      feval_app_order Θ Ξ (d_con pq j c vs) n )
-| feao_ihfn :
+| feval_app_order_ihfn :
   `( feval_app_order Θ Ξ f n ->
      (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ih_order Θ Ξ p pq ups Bks t fn) ->
      feval_app_order Θ Ξ (d_ihfn p Bks pq ups t f) n )
-| feao_shfam :
+| feval_app_order_shfam :
   `( feval_shty_order Θ Ξ pq ups (p ↦ n) t ->
      feval_app_order Θ Ξ (d_shfam pq ups p t) n )
-| feao_ihfam :
+| feval_app_order_ihfam :
   `( feval_app_order Θ Ξ f n ->
      (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ihty_order Θ Ξ pm As (p ↦ n) t fn) ->
      feval_app_order Θ Ξ (d_ihfam pm As p t f) n )
-| feao_member :
+| feval_app_order_member :
   `( feval_appm_order Θ Ξ h n ->
      (forall h', $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' -> feval_selc_order Θ Ξ h' ch) ->
      feval_app_order Θ Ξ (d_member h ch) n )
 (** A record's type former, before its last parameter *)
-| feao_record :
+| feval_app_order_record :
   `( record_lookup Θ Ξ pq = Some R ->
      List.length ns < List.length (record_params R) ->
      feval_app_order Θ Ξ (d_record pq ns) n )
 
 with feval_exps_order (Θ : gdeps) (Ξ : gstack) : list exp -> env -> Prop :=
-| feso_nil :
+| feval_exps_order_nil :
   `( feval_exps_order Θ Ξ nil p )
-| feso_cons :
+| feval_exps_order_cons :
   `( feval_exp_order Θ Ξ M p ->
      feval_exps_order Θ Ξ Ms p ->
      feval_exps_order Θ Ξ (M :: Ms) p )
 
 with feval_apps_order (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> Prop :=
-| feaso_nil :
+| feval_apps_order_nil :
   `( feval_apps_order Θ Ξ m nil )
-| feaso_cons :
+| feval_apps_order_cons :
   `( feval_app_order Θ Ξ m n ->
      (forall m1, $ᶠ| m & n | Θ ⍮ Ξ ↘ m1 -> feval_apps_order Θ Ξ m1 args) ->
      feval_apps_order Θ Ξ m (n :: args) )
 
 with feval_modexp_order (Θ : gdeps) (Ξ : gstack) : modexp -> env -> Prop :=
-| femo_var :
+| feval_modexp_order_var :
   `( feval_modexp_order Θ Ξ (me_var x) p )
-| femo_unit :
+| feval_modexp_order_unit :
   `( feval_modexp_order Θ Ξ (me_unit fp) p )
-| femo_lit :
+| feval_modexp_order_lit :
   `( feval_close_order Θ Ξ Δ D p ->
      feval_modexp_order Θ Ξ (me_lit (gu_mk Δ D)) p )
-| femo_mem :
+| feval_modexp_order_mem :
   `( feval_modexp_order Θ Ξ H p ->
      (forall h, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_selm_order Θ Ξ h y) ->
      feval_modexp_order Θ Ξ (me_mem H y) p )
-| femo_app :
+| feval_modexp_order_app :
   `( feval_modexp_order Θ Ξ H p ->
      feval_exp_order Θ Ξ N p ->
      (forall h n, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ n -> feval_appm_order Θ Ξ h n) ->
      feval_modexp_order Θ Ξ (me_app H N) p )
 
 with feval_close_order (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> Prop :=
-| feclo_body :
+| feval_close_order_body :
   `( feval_close_order Θ Ξ Δ (md_body sm Φ) p )
-| feclo_alias :
+| feval_close_order_alias :
   `( feval_close_order Θ Ξ (e :: Δ) (md_alias E) p )
-| feclo_alias0 :
+| feval_close_order_alias0 :
   `( feval_modexp_order Θ Ξ E p ->
      feval_close_order Θ Ξ nil (md_alias E) p )
 
 with feval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
-| feapo_global :
+| feval_appm_order_global :
   `( feval_appm_order Θ Ξ (dm_global pq args) n )
 (** The outermost missing parameter is split off as the evaluator splits
     it off ([tele_snoc]), so that the order of the rest is a premise of the
     order of the whole. *)
-| feapo_local :
+| feval_appm_order_local :
   `( tele_snoc Δ = Some (Δ0, ce_ass A) ->
      feval_close_order Θ Ξ Δ0 D (p ↦ n) ->
      feval_appm_order Θ Ξ (dm_local Δ D p) n )
-| feapo_member :
+| feval_appm_order_member :
   `( feval_appm_order Θ Ξ h n ->
      (forall h', $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' -> feval_selmc_order Θ Ξ h' ch) ->
      feval_appm_order Θ Ξ (dm_member h ch) n )
 
 with feval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :=
-| feamo_nil :
+| feval_appms_order_nil :
   `( feval_appms_order Θ Ξ h nil )
-| feamo_cons :
+| feval_appms_order_cons :
   `( feval_appm_order Θ Ξ h n ->
      (forall h1, $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h1 -> feval_appms_order Θ Ξ h1 ns) ->
      feval_appms_order Θ Ξ h (n :: ns) )
@@ -382,94 +382,94 @@ with feval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop 
 with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 (** A term part of a global module ([gc_term]): it, closed, applied to the
     arguments *)
-| feslo_global :
+| feval_sel_order_global :
   `( gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
      feval_exp_order Θ Ξ M nil ->
      (forall f, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f -> feval_apps_order Θ Ξ f args) ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
-| feslo_global_neut :
+| feval_sel_order_global_neut :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv A B) ->
      b = false \/ B = None ->
      feval_exp_order Θ Ξ A nil ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ a -> feval_apps_order Θ Ξ (⇑ a (d_glob (qname_app pq (x :: nil)))) args) ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
-| feslo_global_ind :
+| feval_sel_order_global_ind :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      feval_apps_order Θ Ξ (d_ind pg k nil) args ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
-| feslo_unsat :
+| feval_sel_order_unsat :
   `( feval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
 (** A term part of a saturated body ([entry_tm]) *)
-| feslo_body :
+| feval_sel_order_body :
   `( kbody Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      feval_benv_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p' -> feval_exp_order Θ Ξ M p') ->
      feval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
-| feslo_member :
+| feval_sel_order_member :
   `( feval_sel_order Θ Ξ (dm_member h ch) x )
 (** A record type of a global module, not a definition: its type former,
     applied to the arguments *)
-| feslo_global_record :
+| feval_sel_order_global_record :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      record_lookup Θ Ξ (qname_app pq (x :: nil)) = Some R ->
      feval_apps_order Θ Ξ (d_record (qname_app pq (x :: nil)) nil) args ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
 
 with feval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
-| fesmo_global :
+| feval_selm_order_global :
   `( gc_loc Θ Ξ (qname_app pq (y :: nil)) = Some TΦ ->
      feval_selm_order Θ Ξ (dm_global pq args) y )
-| fesmo_global_alias :
+| feval_selm_order_global_alias :
   `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias (gu_mk Δ D)) ->
      feval_close_order Θ Ξ Δ D nil ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ nil ↘ h -> feval_appms_order Θ Ξ h args) ->
      feval_selm_order Θ Ξ (dm_global pq args) y )
-| fesmo_unsat :
+| feval_selm_order_unsat :
   `( feval_selm_order Θ Ξ (dm_local (e :: Δ) D p) y )
 (** A module part of a saturated body ([entry_unit]) *)
-| fesmo_body :
+| feval_selm_order_body :
   `( kbody Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      feval_benv_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p' -> feval_close_order Θ Ξ Δy Dy p') ->
      feval_selm_order Θ Ξ (dm_local nil (md_body sm Φ) p) y )
-| fesmo_member :
+| feval_selm_order_member :
   `( feval_selm_order Θ Ξ (dm_member h ch) y )
 
 with feval_selc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
-| fesco_one :
+| feval_selc_order_one :
   `( feval_sel_order Θ Ξ h x ->
      feval_selc_order Θ Ξ h (x :: nil) )
-| fesco_cons :
+| feval_selc_order_cons :
   `( feval_selm_order Θ Ξ h y ->
      (forall h1, h ·ₘᶠ y Θ ⍮ Ξ ↘ h1 -> feval_selc_order Θ Ξ h1 (z :: ch)) ->
      feval_selc_order Θ Ξ h (y :: z :: ch) )
 
 with feval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
-| fesmco_nil :
+| feval_selmc_order_nil :
   `( feval_selmc_order Θ Ξ h nil )
-| fesmco_cons :
+| feval_selmc_order_cons :
   `( feval_selm_order Θ Ξ h y ->
      (forall h1, h ·ₘᶠ y Θ ⍮ Ξ ↘ h1 -> feval_selmc_order Θ Ξ h1 ch) ->
      feval_selmc_order Θ Ξ h (y :: ch) )
 
 with feval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
-| febo_nil :
+| feval_benv_order_nil :
   `( feval_benv_order Θ Ξ p gm_nil )
-| febo_def :
+| feval_benv_order_def :
   `( feval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p1 -> feval_exp_order Θ Ξ M p1) ->
      feval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
-| febo_mod :
+| feval_benv_order_mod :
   `( feval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p1 -> feval_close_order Θ Ξ Δy Dy p1) ->
      feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) )
 (** A definition with a module part: its term and its unit's closure *)
-| febo_dm :
+| feval_benv_order_dm :
   `( feval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p1 -> feval_exp_order Θ Ξ M p1) ->
      (forall p1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p1 -> feval_close_order Θ Ξ Δy Dy p1) ->
@@ -586,7 +586,7 @@ Proof.
     try match goal with H : 0 < List.length ?Δ |- _ => destruct Δ; [ cbn in H; lia |] end;
     try match goal with H : feval_selc _ _ _ ?c _ |- feval_selc_order _ _ _ (_ :: ?c) =>
           destruct c; [ inversion H |] end;
-    solve [ eapply feslo_global_neut; eauto; intros; functional_feval_all; eauto
+    solve [ eapply feval_sel_order_global_neut; eauto; intros; functional_feval_all; eauto
           | econstructor; try eassumption; intros; functional_feval_all; eauto using kgens_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_feval_all; congruence

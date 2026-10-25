@@ -89,7 +89,7 @@ Section Gen.
     Proof. intros []; cbn; split; first [ tauto | discriminate | intros [] ]. Qed.
 
     (** The definition with a module part an item names: a member with a
-        term part and a module part ([ign_dm]), of the term part's type. *)
+        term part and a module part ([items_gen_dm]), of the term part's type. *)
     Definition dm_gen (d : string) (pv : bool) (n : string) (R : mdesc) : xres igen :=
       match ds_ty R, ds_mod R with
       | Some A, Some _ => xok (ig_def_mod d pv A (a_mem H n) (me_mem H n))
@@ -141,12 +141,12 @@ Section Gen.
       - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_spec in E.
         destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
         1-3: destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
-          first [ eapply ign_def; [ exact E | apply IH; reflexivity ]
-                | eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ] ].
+          first [ eapply items_gen_def; [ exact E | apply IH; reflexivity ]
+                | eapply items_gen_mod; [ exact E | exact I | apply IH; reflexivity ] ].
         unfold dm_gen in Hx; destruct (ds_ty _) as [A0 |] eqn:Et; [| discriminate ];
           destruct (ds_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
         destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
-        eapply ign_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
+        eapply items_gen_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
       - destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
         injection Hx as <-; constructor; apply IH; reflexivity.
     Qed.
@@ -437,31 +437,31 @@ Section OpenError.
       its constructors' arguments over the member's parameters and the
       declared types ([raw_member]). *)
   Definition oe_member (Su : skel) (S : skel) (Δu : ctx) (n : nat) (M : raw_member) : xres raw_member :=
-    let+ Δn := oe_tele Su (rm_nparams M) in
-    let+ A' := oe_exp Su (rm_sort M) in
+    let+ Δn := oe_tele Su (raw_member_nparams M) in
+    let+ A' := oe_exp Su (raw_member_sort M) in
     let Sm := map centry_skel Δn ++ map centry_skel Δu ++ List.repeat None n ++ S in
-    let+ cs' := xmap (fun cg => let+ args := oe_rargs Sm (snd cg) in xok (fst cg, args)) (rm_cons M) in
-    xok (mk_rmem (rm_name M) Δn A' cs').
+    let+ cs' := xmap (fun cg => let+ args := oe_rargs Sm (snd cg) in xok (fst cg, args)) (raw_member_cons M) in
+    xok (mk_rmem (raw_member_name M) Δn A' cs').
 
   (** A group as written: its uniform parameters as a telescope, then each
       member. *)
   Definition oe_decl (S : skel) (R : raw_decl) : xres raw_decl :=
-    let+ Δ' := oe_tele S (rd_uparams R) in
-    let+ ms' := xmap (oe_member (map centry_skel Δ' ++ S) S Δ' (List.length (rd_members R))) (rd_members R) in
-    xok (mk_raw Δ' ms' (rd_rec R)).
+    let+ Δ' := oe_tele S (raw_decl_uparams R) in
+    let+ ms' := xmap (oe_member (map centry_skel Δ' ++ S) S Δ' (List.length (raw_decl_members R))) (raw_decl_members R) in
+    xok (mk_raw Δ' ms' (raw_decl_rec_field R)).
 
   (** A function of a [mutual def] as written, over the block's parameters'
       skeleton [Sd]: its non-uniform parameters as a telescope, its
       scrutinee's type over them, its result type over them and the
       scrutinee, and its clauses under their binders. *)
   Definition oe_fun (Sd : skel) (f : raw_fun) : xres raw_fun :=
-    let+ ys := oe_tele Sd (rf_nparams f) in
+    let+ ys := oe_tele Sd (raw_fun_nparams f) in
     let Sy := map centry_skel ys ++ Sd in
-    let+ Z := oe_exp Sy (rf_scrut f) in
-    let+ A := oe_exp (None :: Sy) (rf_res f) in
+    let+ Z := oe_exp Sy (raw_fun_scrut f) in
+    let+ A := oe_exp (None :: Sy) (raw_fun_res f) in
     let+ cls := xmap (fun cl => let+ B := oe_exp (List.repeat None (snd (fst cl)) ++ Sd) (snd cl) in xok (fst cl, B))
-                  (rf_clauses f) in
-    xok (mk_rfun (rf_name f) ys Z A cls).
+                  (raw_fun_clauses f) in
+    xok (mk_rfun (raw_fun_name f) ys Z A cls).
 
   (** A command's own terms: the nested commands of a module are expanded
       when they run. *)

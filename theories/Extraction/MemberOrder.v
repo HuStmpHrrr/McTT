@@ -770,7 +770,7 @@ Section Typed.
     intros * HT He Hd Hr; cbn in He.
     destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
     destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
-    assert (Hrd : rd = rd_open Δ Φ' /\ Γy = body_ctx Φ' ++ Δ /\ E = E0).
+    assert (Hrd : rd = reader_open Δ Φ' /\ Γy = body_ctx Φ' ++ Δ /\ E = E0).
     { destruct E0 as [[|] pv A [M |] | pm U | | pv A M U | ]; try discriminate; injection He as <- <- <-; auto. }
     destruct Hrd as (-> & -> & ->).
     cbn in Hr.
@@ -956,7 +956,7 @@ Section Classify.
         pose proof He as He0; cbn in He.
         destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
         destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
-        assert (Hrd : rd = rd_open Δ Φ' /\ Γy = body_ctx Φ' ++ Δ /\ E = E0).
+        assert (Hrd : rd = reader_open Δ Φ' /\ Γy = body_ctx Φ' ++ Δ /\ E = E0).
         { destruct E0 as [[|] pv A [M |] | pm U | | pv A M U | ]; try discriminate; injection He as <- <- <-; auto. }
         destruct Hrd as (-> & -> & ->); cbn [ds_epath] in Hd.
         destruct IH0 as [HT | Hn]; [ left; eapply typed_open_read; eassumption |].
@@ -1054,39 +1054,39 @@ Section Order.
     split; [| split; [| split; [| split ] ] ].
     - (* module expressions *)
       intros Γ [fp | x | H y | H N | U] Hn; cbn [modexp_size] in Hn.
-      + apply dno_path.
-      + apply dno_var; intros U Hf; apply IHu.
+      + apply dn_order_path.
+      + apply dn_order_var; intros U Hf; apply IHu.
         pose proof (ctx_find_mod_size _ _ _ Hf); lia.
-      + destruct (gc_unit Θ Ξ (me_mem H y)) as [[T Φ] |] eqn:Eu; [ eapply dno_unit; exact Eu |].
-        apply dno_mem; [ apply IHd; lia |].
+      + destruct (gc_unit Θ Ξ (me_mem H y)) as [[T Φ] |] eqn:Eu; [ eapply dn_order_unit; exact Eu |].
+        apply dn_order_mem_case; [ apply IHd; lia |].
         intros; eapply entries_order_bounded; [ exact IHe | | eassumption .. ]; lia.
-      + apply dno_app, IHd; lia.
-      + apply dno_lit, IHu; lia.
+      + apply dn_order_app, IHd; lia.
+      + apply dn_order_lit, IHu; lia.
     - (* units *)
       intros Γ [Δ [sm Φ | E]] Hn; rewrite unit_size_mk in Hn; cbn [moddef_size] in Hn; rewrite <- ctx_sizes_app in Hn.
-      + apply uno_body, IHb; lia.
-      + apply uno_alias, IHd; lia.
+      + apply un_order_body, IHb; lia.
+      + apply un_order_alias, IHd; lia.
     - (* entries *)
       intros Γ [b pv A oM | pv U | pv p k D Φ | pv Ad Md [Δd [sm Φd | Ed]] | pv R Φ] Hn; cbn [gentry_size] in Hn;
-        [ constructor | constructor; apply IHu; lia | constructor | apply eno_def_mod_body | | constructor ].
+        [ constructor | constructor; apply IHu; lia | constructor | apply en_order_def_mod_body | | constructor ].
       (* a definition with a module part: its alias's target *)
       rewrite unit_size_mk in Hn; cbn [moddef_size] in Hn; rewrite <- ctx_sizes_app in Hn.
-      apply eno_def_mod, IHd; lia.
+      apply en_order_def_mod, IHd; lia.
     - (* bodies *)
-      intros Γ [| Φ x E | Φ H its] Hn; cbn [body_size fst] in Hn; [ apply bxo_nil | apply bxo_ext, IHb; lia |].
+      intros Γ [| Φ x E | Φ H its] Hn; cbn [body_size fst] in Hn; [ apply bx_order_nil | apply bx_order_ext, IHb; lia |].
       assert (Hx : forall Φx, body_xp Θ Ξ Γ Φ Φx ->
                  modexp_size (ctx_sizes (body_ctx Φx ++ Γ)) H
                  <= modexp_size (snd (body_size (ctx_sizes Γ) Φ) ++ ctx_sizes Γ) H).
       { intros Φx Hbx; rewrite ctx_sizes_app, (body_size_noopen_ctx _ _ (body_xp_result_noopen _ _ _ _ _ Hbx)).
         destruct (body_xp_size _ _ _ _ _ Hbx (ctx_sizes Γ)) as [_ H2].
         apply modexp_size_mono, sizes_le_app; [ exact H2 | apply sizes_le_refl ]. }
-      apply bxo_open; [ apply IHb; nia | intros Φx Hbx; apply IHd | intros Φx Hbx; apply IHi ];
+      apply bx_order_open; [ apply IHb; nia | intros Φx Hbx; apply IHd | intros Φx Hbx; apply IHi ];
         pose proof (Hx _ Hbx); nia.
     - (* items *)
       intros Γ H its Hn; induction its as [| [[[m |] d] pv] its IHits].
-      + apply igo_nil.
-      + apply igo_name; [ apply IHd; cbn [modexp_size]; lia | exact IHits ].
-      + apply igo_self; exact IHits.
+      + apply ig_order_nil.
+      + apply ig_order_name; [ apply IHd; cbn [modexp_size]; lia | exact IHits ].
+      + apply ig_order_self; exact IHits.
   Qed.
 
   (** Every module expression, in every context, has the termination

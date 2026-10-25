@@ -43,10 +43,10 @@ Section NestAcc.
       the ones before it. *)
   Inductive tele_elems (base : list domain) : list centry -> list domain -> Prop :=
   (** No entry, no element *)
-  | te_nil : tele_elems base nil nil
+  | tele_elems_nil : tele_elems base nil nil
   (** The next entry's type evaluates at [base] and the elements before
       it to a type of the model, and [v] is an element of it *)
-  | te_snoc : forall T vs A t (i : uidx) R v,
+  | tele_elems_snoc : forall T vs A t (i : uidx) R v,
       tele_elems base T vs ->
       ⟦ A ⟧ env_args nil (base ++ vs) ↘ t ->
       DF t ≈ t ∈ per_univ_elem i ↘ R ->
@@ -65,7 +65,7 @@ Section NestAcc.
   (** One step of nesting, out of a group at [ups]. *)
   Inductive grp_step : domain -> domain -> Prop :=
   (** The only rule *)
-  | gs_intro : forall b p k D ups ns m Mm c gs j A ms vs b0 i0 R0 z e i2 R2,
+  | grp_step_intro : forall b p k D ups ns m Mm c gs j A ms vs b0 i0 R0 z e i2 R2,
       (** [a] is a member of the group [D] at [p] at [ups] *)
       ind_lookup gc_deps gc_stack p = Some D ->
       List.length ups = ind_nu D ->
@@ -88,7 +88,7 @@ Section NestAcc.
   (** Accessibility for [grp_step]. *)
   Inductive nest_acc : domain -> Prop :=
   (** The only rule: every step out of [a] is accessible *)
-  | na_intro : forall a, (forall b, grp_step b a -> nest_acc b) -> nest_acc a.
+  | nest_acc_intro : forall a, (forall b, grp_step b a -> nest_acc b) -> nest_acc a.
 
   Lemma nest_acc_non_ind : forall a, (forall p k us, a <> d_ind p k us) -> nest_acc a.
   Proof. intros a Ha; constructor; intros b Hb; inversion Hb; subst; exfalso; eapply Ha; reflexivity. Qed.
@@ -197,7 +197,7 @@ Section NestAcc.
     assert (Hzb : per_univ i0 z ba) by (eapply per_univ_trans'; [ eexists; exact Hz | eexists; exact Hb1a ]).
     destruct Hzb as [R9 HR9].
     match goal with Hl1 : List.length ups1 = ind_nu D |- grp_step b (d_ind p k (ups1 ++ ?n1)) =>
-      exact (gs_intro b p k D ups1 n1 m Mm c gs j A ms vs ba i0 R9 z e i2 R2 HD Hl1 HMm Hc HA Hmsa Hvsa Eba HR9 Hse Hbe) end.
+      exact (grp_step_intro b p k D ups1 n1 m Mm c gs j A ms vs ba i0 R9 z e i2 R2 HD Hl1 HMm Hc HA Hmsa Hvsa Eba HR9 Hse Hbe) end.
   Qed.
 
   (** Accessibility is invariant along the relation. *)
@@ -217,7 +217,7 @@ Section NestAcc.
       subst.
     rewrite HD in HD'; injection HD' as <-.
     match goal with Hx : _ ++ _ = ups ++ ns |- _ => destruct (app_split_eq _ _ _ _ Hx ltac:(lia)) as [-> _] end.
-    eapply gs_intro; eauto.
+    eapply grp_step_intro; eauto.
   Qed.
 
   (** The induction hypothesis of [per_univ_nest_acc]: every type related

@@ -94,7 +94,7 @@ Ltac glu_intro :=
 Ltac glu_emb_wf :=
   match goal with Hμ : glu_emb _ _ _ _ |- _ =>
     let Hem := fresh "Hem" in
-    pose proof (gem_emb _ _ _ _ Hμ) as Hem;
+    pose proof (glu_emb_emb _ _ _ _ Hμ) as Hem;
     let Hwc := fresh "Hwc" in let Hwe := fresh "Hwe" in let Hweq := fresh "Hweq" in
     let Hwst := fresh "Hwst" in let Hwx := fresh "Hwx" in let Hwu := fresh "Hwu" in
     let Hwm := fresh "Hwm" in

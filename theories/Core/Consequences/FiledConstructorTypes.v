@@ -3,7 +3,7 @@
     A run of a group's declaration files, for each declared member, the
     constructor types the user wrote, up to conversion, with each [Self_i]
     the type former of the member [i] at the frames' parameters
-    ([rc_ind_con_types]).  An argument classified as written is filed as
+    ([run_cmd_ind_con_types]).  An argument classified as written is filed as
     its own image under that instantiation; one classified as its normal
     form is equal to it by soundness, and the equality moves through the
     instantiation of the [Self]s and the [Π]s over the arguments before it.
@@ -283,7 +283,7 @@ Qed.
 Lemma rms_filed_nth : forall Ξ n Vs ms css Ms, rms_filed Ξ n Vs ms css = Some Ms ->
     forall j Mr cs, List.nth_error ms j = Some Mr -> List.nth_error css j = Some cs ->
       List.nth_error Ms j
-      = option_map (fun cs' => mk_imember (mh_decl (ind_qname Ξ (rm_name Mr))) (rm_nparams Mr) cs') (rcons_num n Vs cs).
+      = option_map (fun cs' => mk_imember (mh_decl (ind_qname Ξ (raw_member_name Mr))) (raw_member_nparams Mr) cs') (rcons_num n Vs cs).
 Proof.
   induction ms as [| Mr0 ms IH]; intros [| cs0 css] Ms H j Mr cs Hj Hc; cbn in H; try discriminate; [ destruct j; discriminate |].
   destruct (rcons_num n Vs cs0) as [cs0' |] eqn:E0; [| discriminate ].
@@ -404,8 +404,8 @@ Proof. induction 1; cbn; auto. Qed.
     ([sb_selfs]), and the result is [Self_j] at all the member's
     parameters. *)
 Definition user_con_ty (p : qname) (R : raw_decl) (Mr : raw_member) (j : nat) (T : ctx) (args : list (string * exp)) : typ :=
-  let np := (List.length (rm_nparams Mr) + rd_nu R)%nat in
-  ctx_pi (rm_nparams Mr ++ rd_uparams R ++ T)
+  let np := (List.length (raw_member_nparams Mr) + rd_nu R)%nat in
+  ctx_pi (raw_member_nparams Mr ++ raw_decl_uparams R ++ T)
     (ctx_pi (rtele args) (apps (a_var (List.length args + np + (rd_n R - 1 - j))) (vars_from (List.length args) np)))
       [sb_selfs p np (rd_n R) (List.length T)].
 
@@ -414,19 +414,19 @@ Definition user_con_ty (p : qname) (R : raw_decl) (Mr : raw_member) (j : nat) (T
 #[warnings="-cannot-define-projection"]
 Record filed_con_ty (Θ : gdeps) (Ξ : gstack) (p : qname) (j : nat) (c : string) (U : typ) : Prop := mk_filed_con_ty
   { (** The filed group *)
-    fct_decl : ind_decl
+    filed_con_ty_decl : ind_decl
     (** The member [j] *)
-  ; fct_member : imember
+  ; filed_con_ty_member : imember
     (** The constructor's filed argument kinds *)
-  ; fct_args : list carg
+  ; filed_con_ty_args : list carg
     (** The group is found at [p] *)
-  ; fct_lookup : ind_lookup Θ Ξ p = Some fct_decl
+  ; filed_con_ty_lookup : ind_lookup Θ Ξ p = Some filed_con_ty_decl
     (** The member is the group's [j]-th *)
-  ; fct_member_at : ind_member fct_decl j = Some fct_member
+  ; filed_con_ty_member_at : ind_member filed_con_ty_decl j = Some filed_con_ty_member
     (** [c] is one of its constructors *)
-  ; fct_con : ind_con fct_member c = Some fct_args
+  ; filed_con_ty_con : ind_con filed_con_ty_member c = Some filed_con_ty_args
     (** The constructor's type is equal to [U] *)
-  ; fct_ty : exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p fct_decl j fct_member fct_args ≈ U : Typeω@i }.
+  ; filed_con_ty_ty : exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p filed_con_ty_decl j filed_con_ty_member filed_con_ty_args ≈ U : Typeω@i }.
 
 (** A filed constructor stays filed, at its type, along an embedding. *)
 Lemma filed_con_ty_emb : forall Θ Ξ Θ2 Ξ2 p j c U,
@@ -440,7 +440,7 @@ Qed.
 
 (** ** The Constructor Types of a Run
 
-    The premises of [rc_ind], the group filed as [D] at [p] in the stack
+    The premises of [run_cmd_ind_case], the group filed as [D] at [p] in the stack
     [Ξf] the entries make. *)
 
 Section ConTypes.
@@ -448,20 +448,20 @@ Section ConTypes.
     (csD : list (list (string * list rcarg))) (Vs : list rview) (Ss : list (list rview))
     (csV : list (list (string * list rcarg))) (Nvs : list ctx) (Ms Mvs : list imember) (Ξf : gstack).
 
-  #[local] Abbreviation p := (ind_qname Ξ (rm_name Mr0)).
+  #[local] Abbreviation p := (ind_qname Ξ (raw_member_name Mr0)).
   #[local] Abbreviation n := (rd_n R).
   #[local] Abbreviation nu := (rd_nu R).
   #[local] Abbreviation t := (List.length (gs_tele Ξ)).
-  #[local] Abbreviation D := (mk_ind (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr0) (Ms ++ Mvs)).
+  #[local] Abbreviation D := (mk_ind (raw_decl_uparams R ++ gs_tele Ξ) (raw_member_sort Mr0) (Ms ++ Mvs)).
 
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
-  Hypothesis HMr : rd_members R = Mr0 :: Mrs.
-  Hypothesis Hsort : Forall (fun Mr => rm_sort Mr = rm_sort Mr0) Mrs.
-  Hypothesis Hcls : Forall2 (rm_cls Θ Ξ R) (rd_members R) csD.
+  Hypothesis HMr : raw_decl_members R = Mr0 :: Mrs.
+  Hypothesis Hsort : Forall (fun Mr => raw_member_sort Mr = raw_member_sort Mr0) Mrs.
+  Hypothesis Hcls : Forall2 (rm_cls Θ Ξ R) (raw_decl_members R) csD.
   Hypothesis Hsibs : Forall2 (view_sibs Θ Ξ R) Vs Ss.
   Hypothesis Hvcls : Forall2 (view_cls Θ Ξ R) Vs csV.
   Hypothesis Hnps : Forall2 (view_nps Θ Ξ R) Vs Nvs.
-  Hypothesis Hms : rms_filed Ξ n Vs (rd_members R) csD = Some Ms.
+  Hypothesis Hms : rms_filed Ξ n Vs (raw_decl_members R) csD = Some Ms.
   Hypothesis Hmvs : rvs_filed Θ Ξ (sb_selfs p nu n t) n Vs Vs Ss csV Nvs = Some Mvs.
   (** The stack the declared members end on: well formed, the stack before
       embedded in it, the group found at its first member's path *)
@@ -537,7 +537,7 @@ Section ConTypes.
     split.
     - intros C HC.
       pose proof (decl_closed_head_scoped _ filed_decl_closed _ _ _ _ _ _ Hk eq_refl) as Hsc.
-      destruct (dmv_members _ (dt_mvc _ _ _ filed_decl_typed) _ _ Hk) as (_ & Hmv & _); cbn in Hmv.
+      destruct (decl_mvc_members _ (decl_typed_mvc _ _ _ filed_decl_typed) _ _ Hk) as (_ & Hmv & _); cbn in Hmv.
       rewrite List.Forall_forall in Hsc, Hmv.
       pose proof (List.in_map (fun C0 => C0[sb_selfs p nu n t]) _ _ HC) as HC'.
       rewrite filed_nu in Hsc; split; [ apply Hsc | apply Hmv ]; exact HC'.
@@ -545,9 +545,9 @@ Section ConTypes.
       rewrite List.map_map; reflexivity.
   Qed.
 
-  Lemma filed_member : forall j Mr cs, List.nth_error (rd_members R) j = Some Mr -> List.nth_error csD j = Some cs ->
+  Lemma filed_member : forall j Mr cs, List.nth_error (raw_decl_members R) j = Some Mr -> List.nth_error csD j = Some cs ->
       exists cs', rcons_num n Vs cs = Some cs' /\
-        ind_member D j = Some (mk_imember (mh_decl (ind_qname Ξ (rm_name Mr))) (rm_nparams Mr) cs').
+        ind_member D j = Some (mk_imember (mh_decl (ind_qname Ξ (raw_member_name Mr))) (raw_member_nparams Mr) cs').
   Proof.
     intros * Hj Hc.
     pose proof (rms_filed_nth _ _ _ _ _ _ Hms _ _ _ Hj Hc) as H.
@@ -559,14 +559,14 @@ Section ConTypes.
     - exfalso; apply List.nth_error_None in H; lia.
   Qed.
 
-  Lemma member_sort : forall Mr, In Mr (rd_members R) -> rm_sort Mr = rm_sort Mr0.
+  Lemma member_sort : forall Mr, In Mr (raw_decl_members R) -> raw_member_sort Mr = raw_member_sort Mr0.
   Proof.
     intros Mr Hin; rewrite HMr in Hin; destruct Hin as [<- | Hin]; [ reflexivity |].
     exact (proj1 (List.Forall_forall _ _) Hsort _ Hin).
   Qed.
 
-  Lemma filed_ind_ty : forall j Mr cs', List.nth_error (rd_members R) j = Some Mr ->
-      ind_ty D (mk_imember (mh_decl (ind_qname Ξ (rm_name Mr))) (rm_nparams Mr) cs') = ctx_pi (gs_tele Ξ) (rd_self_ty R Mr).
+  Lemma filed_ind_ty : forall j Mr cs', List.nth_error (raw_decl_members R) j = Some Mr ->
+      ind_ty D (mk_imember (mh_decl (ind_qname Ξ (raw_member_name Mr))) (raw_member_nparams Mr) cs') = ctx_pi (gs_tele Ξ) (rd_self_ty R Mr).
   Proof.
     intros * Hj; unfold ind_ty, rd_self_ty, im_params, im_nn; cbn [im_nparams ind_uparams ind_sort].
     rewrite (member_sort _ (List.nth_error_In _ _ Hj)), List.app_assoc, ctx_pi_app; reflexivity.
@@ -576,34 +576,34 @@ Section ConTypes.
       ones. *)
   Lemma frames_ass : tele_ass (gs_tele Ξ).
   Proof.
-    pose proof (dt_ass _ _ _ filed_decl_typed) as H; cbn [ind_uparams] in H.
+    pose proof (decl_typed_ass _ _ _ filed_decl_typed) as H; cbn [ind_uparams] in H.
     unfold tele_ass in *; apply List.Forall_app in H as [_ H]; exact H.
   Qed.
 
   Lemma frames_scoped : ctx_scoped 0 (gs_tele Ξ).
   Proof.
-    pose proof (dc_uparams _ filed_decl_closed) as H; cbn [ind_uparams] in H.
+    pose proof (decl_closed_uparams _ filed_decl_closed) as H; cbn [ind_uparams] in H.
     apply ctx_scoped_app in H as [_ H]; exact H.
   Qed.
 
   Lemma frames_mvc : ctx_mvc (gs_tele Ξ).
   Proof.
-    pose proof (dmv_uparams _ (dt_mvc _ _ _ filed_decl_typed)) as H; cbn [ind_uparams] in H.
+    pose proof (decl_mvc_uparams _ (decl_typed_mvc _ _ _ filed_decl_typed)) as H; cbn [ind_uparams] in H.
     unfold ctx_mvc in *; apply List.Forall_app in H as [_ H]; exact H.
   Qed.
 
   Lemma frames_wf : ⊢ Θ ⍮ Ξf ⍮ gs_tele Ξ.
-  Proof. pose proof (dt_uparams _ _ _ filed_decl_typed) as H; cbn [ind_uparams] in H; exact (ctx_app_wf_tail _ _ _ _ H). Qed.
+  Proof. pose proof (decl_typed_uparams_field _ _ _ filed_decl_typed) as H; cbn [ind_uparams] in H; exact (ctx_app_wf_tail _ _ _ _ H). Qed.
 
   (** The type former of a declared member at the frames' parameters is of
       its [Self]'s type. *)
-  Lemma self_frames_typed : forall i Mr, List.nth_error (rd_members R) i = Some Mr ->
+  Lemma self_frames_typed : forall i Mr, List.nth_error (raw_decl_members R) i = Some Mr ->
       Θ ⍮ Ξf ⍮ gs_tele Ξ ⊢ apps (a_ind p i) (vars_from 0 t) : rd_self_ty R Mr.
   Proof.
     intros * Hi.
     destruct (Forall2_nth_error_l _ _ _ _ _ Hcls Hi) as (cs & Hcs & _).
     destruct (filed_member _ _ _ Hi Hcs) as (cs' & _ & Hk).
-    set (Mi := mk_imember (mh_decl (ind_qname Ξ (rm_name Mr))) (rm_nparams Mr) cs') in *.
+    set (Mi := mk_imember (mh_decl (ind_qname Ξ (raw_member_name Mr))) (raw_member_nparams Mr) cs') in *.
     pose proof filed_decl_typed as HD; pose proof filed_decl_closed as Hc.
     pose proof (filed_ind_ty _ _ cs' Hi) as Hty; fold Mi in Hty.
     assert (Hlt : i < ind_ndecl D) by (rewrite filed_ndecl; unfold rd_n; apply List.nth_error_Some; congruence).
@@ -614,24 +614,24 @@ Section ConTypes.
     destruct (member_sort_typed _ _ _ _ _ HD Hk) as ([j Hj] & _).
     unfold im_params in HP, Hj; cbn [im_nparams ind_uparams] in HP, Hj; rewrite List.app_assoc in HP, Hj.
     destruct (ctx_pi_wf _ _ _ _ _ _ HP Hj) as [j' Hj'].
-    assert (EB : ctx_pi (rm_nparams Mr ++ rd_uparams R) (ind_sort D)[wk_shiftn (im_nn Mi)]ʷ = rd_self_ty R Mr)
+    assert (EB : ctx_pi (raw_member_nparams Mr ++ raw_decl_uparams R) (ind_sort D)[wk_shiftn (im_nn Mi)]ʷ = rd_self_ty R Mr)
       by (unfold rd_self_ty, im_nn; cbn [ind_sort im_nparams]; rewrite (member_sort _ (List.nth_error_In _ _ Hi)); reflexivity).
-    change (im_nparams Mi) with (rm_nparams Mr) in Hj'; rewrite EB in Hj'.
+    change (im_nparams Mi) with (raw_member_nparams Mr) in Hj'; rewrite EB in Hj'.
     assert (HsB : exp_scoped t (rd_self_ty R Mr)).
     { rewrite <- EB; pose proof (decl_closed_params _ _ _ Hc Hk) as Hs; unfold im_params in Hs; cbn [im_nparams ind_uparams Mi] in Hs.
       rewrite List.app_assoc in Hs; apply ctx_scoped_app in Hs as [Hs _]; rewrite Nat.add_0_r in Hs.
       apply ctx_pi_scoped; [ exact Hs |].
-      eapply exp_scoped_wk; [ exact (dc_sort _ Hc) |]; intros x Hx; cbn [ind_nu ind_uparams] in Hx.
+      eapply exp_scoped_wk; [ exact (decl_closed_sort _ Hc) |]; intros x Hx; cbn [ind_nu ind_uparams] in Hx.
       rewrite filed_nu in Hx; unfold wk_shiftn, im_nn, rd_nu in *; cbn [im_nparams Mi]; rewrite !List.length_app in *; lia. }
     assert (HmB : exp_mvc 0 (rd_self_ty R Mr)).
-    { rewrite <- EB; pose proof (dt_mvc _ _ _ HD) as Hm.
-      destruct (dmv_members _ Hm _ _ Hk) as (HnM & _ & _); pose proof (dmv_uparams _ Hm) as HuM.
+    { rewrite <- EB; pose proof (decl_typed_mvc _ _ _ HD) as Hm.
+      destruct (decl_mvc_members _ Hm _ _ Hk) as (HnM & _ & _); pose proof (decl_mvc_uparams _ Hm) as HuM.
       cbn [ind_uparams im_nparams Mi] in HnM, HuM.
       apply ctx_pi_mvc.
       - pose proof (decl_closed_params_ass _ _ _ Hc Hk) as Ha; unfold im_params in Ha; cbn [im_nparams ind_uparams Mi] in Ha.
         rewrite List.app_assoc in Ha; unfold tele_ass in *; apply List.Forall_app in Ha as [Ha _]; exact Ha.
       - unfold ctx_mvc in HuM; apply List.Forall_app in HuM as [HuM _]; apply List.Forall_app; split; assumption.
-      - eapply exp_mvc_mono; [| apply exp_mvc_wk; exact (dmv_sort _ Hm) ]; lia. }
+      - eapply exp_mvc_mono; [| apply exp_mvc_wk; exact (decl_mvc_sort _ Hm) ]; lia. }
     replace (rd_self_ty R Mr) with ((rd_self_ty R Mr)[sb_of_list Id (vars_from 0 t)]).
     - eapply wf_apps_closed_pi; [ exact frames_ass | exact frames_scoped | exact HsB | exact Hj' | exact frames_wf | exact Hind
                                 | rewrite length_vars_from; reflexivity |].
@@ -649,17 +649,17 @@ Section ConTypes.
   Proof.
     intros HS.
     assert (H : forall m, m <= n ->
-      ⊢ Θ ⍮ Ξf ⍮ rd_selfs_from R 0 (List.firstn m (rd_members R)) ++ gs_tele Ξ ->
+      ⊢ Θ ⍮ Ξf ⍮ rd_selfs_from R 0 (List.firstn m (raw_decl_members R)) ++ gs_tele Ξ ->
       Θ ⍮ Ξf ⍮ gs_tele Ξ ⊢ˢ sb_of_list Id (List.map (fun j => apps (a_ind p j) (vars_from 0 t)) (List.seq 0 m))
-        : rd_selfs_from R 0 (List.firstn m (rd_members R)) ++ gs_tele Ξ).
+        : rd_selfs_from R 0 (List.firstn m (raw_decl_members R)) ++ gs_tele Ξ).
     { induction m as [| m IH]; intros Hm Hctx.
       - cbn; apply wf_sub_id; exact frames_wf.
-      - destruct (List.nth_error (rd_members R) m) as [Mm |] eqn:HMm;
+      - destruct (List.nth_error (raw_decl_members R) m) as [Mm |] eqn:HMm;
           [| apply List.nth_error_None in HMm; unfold rd_n in Hm; lia ].
         rewrite (firstn_S_nth_error _ _ _ HMm) in Hctx |- * .
         rewrite rd_selfs_from_snoc in Hctx |- *; cbn [Nat.add] in Hctx |- *.
         rewrite List.length_firstn in Hctx |- *;
-          replace (Nat.min m (List.length (rd_members R))) with m in * by (unfold rd_n in Hm; lia).
+          replace (Nat.min m (List.length (raw_decl_members R))) with m in * by (unfold rd_n in Hm; lia).
         rewrite List.seq_S, List.map_app, sb_of_list_app; cbn [List.map sb_of_list Nat.add].
         destruct (ctx_decomp Hctx) as [Hctx' [i Hi]].
         eapply wf_sub_extend; [ apply IH; [ lia | exact Hctx' ] | exact Hi |].
@@ -676,16 +676,16 @@ Section ConTypes.
 
   (** The [Self]s instantiated, from the filed parameters of a declared
       member into the context its arguments are written in. *)
-  Lemma base_sub : forall Mr, ⊢ Θ ⍮ Ξf ⍮ rm_pctx Ξ R Mr -> ⊢ Θ ⍮ Ξf ⍮ rm_nparams Mr ++ rd_uparams R ++ gs_tele Ξ ->
-      Θ ⍮ Ξf ⍮ rm_nparams Mr ++ rd_uparams R ++ gs_tele Ξ ⊢ˢ sb_selfs p (List.length (rm_nparams Mr) + nu) n t : rm_pctx Ξ R Mr.
+  Lemma base_sub : forall Mr, ⊢ Θ ⍮ Ξf ⍮ rm_pctx Ξ R Mr -> ⊢ Θ ⍮ Ξf ⍮ raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ ->
+      Θ ⍮ Ξf ⍮ raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ ⊢ˢ sb_selfs p (List.length (raw_member_nparams Mr) + nu) n t : rm_pctx Ξ R Mr.
   Proof.
     intros Mr Hb HP; unfold rm_pctx in *.
     pose proof (selfs_sub_typed (ctx_app_wf_tail _ _ _ _ Hb)) as Hσ.
-    pose proof (wf_sub_ext _ _ (tele_wk (rm_nparams Mr ++ rd_uparams R) (wk_shiftn n)) _ _ _ Hσ) as H.
-    assert (E : tele_sub (tele_wk (rm_nparams Mr ++ rd_uparams R) (wk_shiftn n))
+    pose proof (wf_sub_ext _ _ (tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn n)) _ _ _ Hσ) as H.
+    assert (E : tele_sub (tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn n))
                 (sb_of_list Id (List.map (fun j => apps (a_ind p j) (vars_from 0 t)) (List.seq 0 n)))
-              = rm_nparams Mr ++ rd_uparams R)
-      by (pose proof (tele_wk_shiftn_sb_of_list (rm_nparams Mr ++ rd_uparams R)
+              = raw_member_nparams Mr ++ raw_decl_uparams R)
+      by (pose proof (tele_wk_shiftn_sb_of_list (raw_member_nparams Mr ++ raw_decl_uparams R)
                         (List.map (fun j => apps (a_ind p j) (vars_from 0 t)) (List.seq 0 n)) Id) as E;
           rewrite length_self_insts, tele_sub_id in E; exact E).
     rewrite E, length_tele_wk, List.length_app, <- List.app_assoc in H.
@@ -696,26 +696,26 @@ Section ConTypes.
       and as filed, give equal [Π]s into the member, when the arguments
       before give contexts the one below the other. *)
   Lemma conv_tail : forall j Mr Mj c gsall,
-      List.nth_error (rd_members R) j = Some Mr -> ind_member D j = Some Mj -> im_nparams Mj = rm_nparams Mr ->
+      List.nth_error (raw_decl_members R) j = Some Mr -> ind_member D j = Some Mj -> im_nparams Mj = raw_member_nparams Mr ->
       In (c, gsall) (im_cons Mj) ->
-      forall pat args1 args gsr2, cls_args_in Θ Ξ (rm_pctx Ξ R Mr) nu (List.length (rm_nparams Mr) + nu) n pat args1 args gsr2 ->
+      forall pat args1 args gsr2, cls_args_in Θ Ξ (rm_pctx Ξ R Mr) nu (List.length (raw_member_nparams Mr) + nu) n pat args1 args gsr2 ->
       forall gs1 gs2, rcargs_num n Vs gsr2 = Some gs2 -> gsall = gs1 ++ gs2 -> pat = cargs_pat gs1 ->
       List.length args1 = List.length gs1 ->
-      Θ ⍮ Ξf ⊢ tele_sub (rtele args1) (sb_selfs p (List.length (rm_nparams Mr) + nu) n t) ++ im_params D Mj
+      Θ ⍮ Ξf ⊢ tele_sub (rtele args1) (sb_selfs p (List.length (raw_member_nparams Mr) + nu) n t) ++ im_params D Mj
         ⊆ cargs_ctx p D Mj gs1 ++ im_params D Mj ->
-      exists i, Θ ⍮ Ξf ⍮ tele_sub (rtele args1) (sb_selfs p (List.length (rm_nparams Mr) + nu) n t) ++ im_params D Mj
-        ⊢ ctx_pi (tele_sub (rtele args) (sb_selfs p (List.length args1 + (List.length (rm_nparams Mr) + nu)) n t))
+      exists i, Θ ⍮ Ξf ⍮ tele_sub (rtele args1) (sb_selfs p (List.length (raw_member_nparams Mr) + nu) n t) ++ im_params D Mj
+        ⊢ ctx_pi (tele_sub (rtele args) (sb_selfs p (List.length args1 + (List.length (raw_member_nparams Mr) + nu)) n t))
             (ind_mty p D j (ind_uvars D (im_nn Mj) (List.length gsall)) (vars_from (List.length gsall) (im_nn Mj)))
         ≈ ctx_pi (cargs_ctx_aux p D (im_nn Mj) pat gs2)
             (ind_mty p D j (ind_uvars D (im_nn Mj) (List.length gsall)) (vars_from (List.length gsall) (im_nn Mj)))
         : Typeω@i.
   Proof.
     intros j Mr Mj c gsall Hj Hk Hnp Hin.
-    set (np := List.length (rm_nparams Mr) + nu).
+    set (np := List.length (raw_member_nparams Mr) + nu).
     induction 1 as [pat args1 | pat args1 y T args g gsr Hg Hgs IH]; intros gs1 gs2 Hn Hall Hpat Hlen Hsub.
     - (** No argument left: the result type. *)
       cbn in Hn; injection Hn as <-; rewrite List.app_nil_r in Hall; subst gsall.
-      pose proof (cons_lookup_nodup _ _ _ (dt_nodup _ _ _ filed_decl_typed _ _ Hk) Hin) as Hcon.
+      pose proof (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ filed_decl_typed _ _ Hk) Hin) as Hcon.
       destruct (con_cod_typed _ _ _ _ _ _ _ _ filed_wf (decls_of_ctx _ _ _ (wf_ctx_empty _ _ filed_wf)) filed_lookup Hk Hcon)
         as [i Hi].
       exists i; cbn [rtele tele_sub ctx_pi List.rev List.map cargs_ctx_aux].
@@ -740,8 +740,8 @@ Section ConTypes.
       assert (Hentry : T'[τ] = carg_entry p D (im_nn Mj) pat g').
       { unfold τ; replace (List.length args1) with (List.length pat) by (rewrite Hpat, length_cargs_pat; lia).
         unfold im_nn; rewrite Hnp.
-        exact (cls_arg_filed p D Vs nu n t (List.length (rm_nparams Mr)) filed_nu filed_mty_decl filed_view grp _ _ _ _ Hc Eg). }
-      assert (EP : im_params D Mj = rm_nparams Mr ++ rd_uparams R ++ gs_tele Ξ) by (unfold im_params; rewrite Hnp; reflexivity).
+        exact (cls_arg_filed p D Vs nu n t (List.length (raw_member_nparams Mr)) filed_nu filed_mty_decl filed_view grp _ _ _ _ Hc Eg). }
+      assert (EP : im_params D Mj = raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ) by (unfold im_params; rewrite Hnp; reflexivity).
       (** The filed entry is a type after the filed arguments before it. *)
       assert (Hin' : In (c, (gs1 ++ g' :: nil) ++ gs2') (im_cons Mj))
         by (rewrite <- List.app_assoc; cbn; rewrite <- Hall; exact Hin).
@@ -761,7 +761,7 @@ Section ConTypes.
         pose proof (proj1 (proj2 (proj2 (emb_preserves_wf _ _ _ _ filed_emb))) _ _ _ _ HTe) as HTe'.
         pose proof (presup_exp_eq_ctx HTe') as Hraw.
         assert (Hb : ⊢ Θ ⍮ Ξf ⍮ rm_pctx Ξ R Mr) by exact (ctx_app_wf_tail _ _ _ _ Hraw).
-        assert (HP : ⊢ Θ ⍮ Ξf ⍮ rm_nparams Mr ++ rd_uparams R ++ gs_tele Ξ)
+        assert (HP : ⊢ Θ ⍮ Ξf ⍮ raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ)
           by (rewrite <- EP; exact (member_params_wf _ _ _ _ _ filed_decl_typed Hk)).
         pose proof (wf_sub_ext _ _ (rtele args1) _ _ _ (base_sub Mr Hb HP)) as Hτ.
         rewrite <- EP in Hτ; specialize (Hτ (ctx_sub_dom _ _ _ _ Hsub) Hraw).
@@ -811,22 +811,22 @@ Section ConTypes.
 
   (** A constructor of a declared member is filed at a type equal to the
       user's. *)
-  Lemma member_con_ty : forall j Mr c args, List.nth_error (rd_members R) j = Some Mr -> In (c, args) (rm_cons Mr) ->
+  Lemma member_con_ty : forall j Mr c args, List.nth_error (raw_decl_members R) j = Some Mr -> In (c, args) (raw_member_cons Mr) ->
       filed_con_ty Θ Ξf p j c (user_con_ty p R Mr j (gs_tele Ξ) args).
   Proof.
     intros * Hj Hin.
     destruct (Forall2_nth_error_l _ _ _ _ _ Hcls Hj) as (cs & Hcs & Hcl).
     destruct (Forall2_in_left _ _ _ _ Hcl Hin) as ([c' gsr] & Hin' & Heq & Hc); cbn [fst snd] in Heq, Hc; subst c'.
     destruct (filed_member _ _ _ Hj Hcs) as (cs' & Hcs' & Hk).
-    set (Mj := mk_imember (mh_decl (ind_qname Ξ (rm_name Mr))) (rm_nparams Mr) cs') in *.
+    set (Mj := mk_imember (mh_decl (ind_qname Ξ (raw_member_name Mr))) (raw_member_nparams Mr) cs') in *.
     destruct (rcons_num_in _ _ _ _ _ _ Hcs' Hin') as (gs & Hgs & Hing).
     assert (HinM : In (c, gs) (im_cons Mj)) by exact Hing.
-    pose proof (cons_lookup_nodup _ _ _ (dt_nodup _ _ _ filed_decl_typed _ _ Hk) HinM) as Hcon.
+    pose proof (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ filed_decl_typed _ _ Hk) HinM) as Hcon.
     apply (mk_filed_con_ty _ _ _ _ _ _ D Mj gs filed_lookup Hk Hcon).
     pose proof (cls_args_in_length _ _ _ _ _ _ _ _ _ _ Hc) as Hlen.
     assert (Hjn : j < n) by (unfold rd_n; apply List.nth_error_Some; congruence).
     unfold con_ty, user_con_ty, cargs_ctx; rewrite ctx_pi_sub.
-    set (np := List.length (rm_nparams Mr) + nu) in *.
+    set (np := List.length (raw_member_nparams Mr) + nu) in *.
     rewrite length_rtele.
     assert (Lgs : List.length gs = List.length args).
     { rewrite <- Hlen; clear -Hgs; revert gs Hgs; induction gsr as [| g gsr IH]; intros gs H; cbn in H;
@@ -845,8 +845,8 @@ Section ConTypes.
       unfold sb_selfs at 1; rewrite vars_from_sub by lia.
       rewrite (filed_mty_decl _ _ _ Hjn), <- apps_exp_app; f_equal.
       unfold ind_uvars; rewrite filed_nu, Lgs; cbn [im_nn im_nparams Mj]; unfold np.
-      change (im_nn Mj) with (List.length (rm_nparams Mr)).
-      set (a := List.length args); set (k := List.length (rm_nparams Mr)).
+      change (im_nn Mj) with (List.length (raw_member_nparams Mr)).
+      set (a := List.length args); set (k := List.length (raw_member_nparams Mr)).
       replace (k + nu) with (nu + k) by lia; rewrite <- (vars_from_app a nu k).
       replace (nu + t) with (t + nu) by lia; rewrite <- (vars_from_app (a + k) t nu).
       rewrite List.app_assoc; do 3 f_equal; lia. }
@@ -869,12 +869,12 @@ End ConTypes.
     constructors the user wrote, at types equal to the user's with the
     [Self]s the members' type formers at the frames' parameters, in the
     global context the run makes. *)
-Theorem rc_ind_con_types : forall load_path read to_core ch B Rb Θ Ξ pv R B' Rb' Θ' Ξ' Mr0 Mrs,
+Theorem run_cmd_ind_con_types : forall load_path read to_core ch B Rb Θ Ξ pv R B' Rb' Θ' Ξ' Mr0 Mrs,
     Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> ⊢ᵍ Θ ⍮ Ξ ->
-    rd_members R = Mr0 :: Mrs ->
-    forall j Mr c args, List.nth_error (rd_members R) j = Some Mr -> In (c, args) (rm_cons Mr) ->
-      filed_con_ty Θ' Ξ' (ind_qname Ξ (rm_name Mr0)) j c
-        (user_con_ty (ind_qname Ξ (rm_name Mr0)) R Mr j (gs_tele Ξ) args).
+    raw_decl_members R = Mr0 :: Mrs ->
+    forall j Mr c args, List.nth_error (raw_decl_members R) j = Some Mr -> In (c, args) (raw_member_cons Mr) ->
+      filed_con_ty Θ' Ξ' (ind_qname Ξ (raw_member_name Mr0)) j c
+        (user_con_ty (ind_qname Ξ (raw_member_name Mr0)) R Mr j (gs_tele Ξ) args).
 Proof.
   intros * Hr HΞ HMr * Hj Hin.
   inversion Hr; subst.
@@ -883,7 +883,7 @@ Proof.
   | Hfiled : rd_filed _ _ R _ _ _ _ _ = Some _ |- _ => pose proof (rd_filed_uparams _ _ _ _ _ _ _ _ _ Hfiled) as Hu
   end.
   match goal with
-  | HM : rd_members R = _ :: _, Hfiled : rd_filed _ _ R _ _ _ _ _ = Some _ |- _ =>
+  | HM : raw_decl_members R = _ :: _, Hfiled : rd_filed _ _ R _ _ _ _ _ = Some _ |- _ =>
       rewrite HMr in HM; injection HM as <- <-;
       unfold rd_filed in Hfiled; rewrite HMr in Hfiled;
       destruct (rms_filed _ _ _ _ _) as [Ms |] eqn:Hms; [| discriminate ];

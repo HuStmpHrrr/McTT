@@ -223,7 +223,7 @@ Section Fixed_GCtx.
     - exists D, Ws; split; [ exact Hl | split; [ exact Hn |] ].
       exact (List.nth_error_In _ _ He).
     - destruct (decl_of_glookup _ _ _ _ Hg Hlv) as [_ Hcv].
-      rewrite (tele_insts_sub (ind_uparams Dv) 0 Id Id (sb_of_list sb_id (List.map nf_to_exp Ws)) Iv (dc_ass _ Hcv) (dc_uparams _ Hcv)
+      rewrite (tele_insts_sub (ind_uparams Dv) 0 Id Id (sb_of_list sb_id (List.map nf_to_exp Ws)) Iv (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv)
                  ltac:(intros; lia)) in Hnv.
       exists Dv, Wv; split; [ exact Hlv | split; [ exact Hnv | exact (List.nth_error_In _ _ He) ] ].
   Qed.
@@ -238,7 +238,7 @@ Section Fixed_GCtx.
     destruct (im_head Mjm) as [pm | qv kv Iv vm] eqn:Hh; cbn [fst] in HlQ.
     - rewrite Hl in HlQ; injection HlQ as <-; exact HCl.
     - destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
-      destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (Dv & Mk' & Hlv & _ & _ & HIl & _).
+      destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (Dv & Mk' & Hlv & _ & _ & HIl & _).
       rewrite HlQ in Hlv; injection Hlv as <-; rewrite List.length_map; exact HIl.
   Qed.
 
@@ -312,7 +312,7 @@ Section Fixed_GCtx.
             length_cargs_ctx; unfold im_nn; lia).
     assert (HΨa : tele_ass Ψ).
     { unfold Ψ; apply List.Forall_app; split; [ unfold doms_ctx; apply List.Forall_rev, tele_ass_map_ass |].
-      apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (dt_nparams_ass _ _ _ Hdt _ _ HM) ]. }
+      apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HM) ]. }
     assert (HΨΓ : ⊢ Ψ ++ Γu) by (unfold Ψ; rewrite <- List.app_assoc; gen_presups; assumption).
     assert (HCszl : List.length Csz = ind_nu Dq)
       by (apply (f_equal (@List.length _)) in HC2; rewrite List.length_firstn, !List.length_map in HC2; rewrite ?List.length_map in Hm2; lia).
@@ -332,7 +332,7 @@ Section Fixed_GCtx.
       destruct (HnthQ _ _ _ HQj HT0) as (W0 & HW0 & HQt & HnQj).
       destruct (nbe_wk_tele Ψ Γu Qj T0 W0 HΨa HΨΓ HQt HnQj) as (W' & HW' & HW'e).
       rewrite HlΨ in HW', HW'e.
-      pose proof (tele_insts_params_uniform_wk Dq Mkr Q args (wk_shiftn K) j T0 (dc_ass _ Hcq) (dc_uparams _ Hcq) HlQu Hfa HT0) as HT0w.
+      pose proof (tele_insts_params_uniform_wk Dq Mkr Q args (wk_shiftn K) j T0 (decl_closed_ass _ Hcq) (decl_closed_uparams _ Hcq) HlQu Hfa HT0) as HT0w.
       assert (HPj : List.nth_error args j = Some Qj[wk_shiftn K]ʷ)
         by (unfold args; rewrite List.nth_error_app1 by (rewrite List.length_map; lia); rewrite List.nth_error_map, HQj; reflexivity).
       destruct (nbe_ind_args _ _ _ _ _ _ _ HlQ HMkr HRl HRt HWE j _ _ HPj HT0w) as (R & HR & HnR).
@@ -580,12 +580,12 @@ Section Fixed_GCtx.
     intros * Hg Hl HM Hk Hgu Hu.
     destruct (valid_group_gc _ _ Hg Hl) as [Hvg _].
     destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
-    assert (Hd : im_is_decl Mk = true) by (apply (dt_order _ _ _ Hdt _ _ HM); exact Hk).
+    assert (Hd : im_is_decl Mk = true) by (apply (decl_typed_order _ _ _ Hdt _ _ HM); exact Hk).
     unfold im_is_decl in Hd; destruct (im_head Mk) as [pm | ? ? ? ?] eqn:Hh; [| discriminate ].
-    destruct (sort_value D (vgr_valid _ _ Hvg) ups Hgu Hu) as [a Ea].
+    destruct (sort_value D (valid_group_valid _ _ Hvg) ups Hgu Hu) as [a Ea].
     destruct (fresh_nparams_exist _ _ Hvg ups Hgu Hu k Mk 0 HM) as (ns & _ & Hns).
     exists ns, (univ_idx a); eexists.
-    exact (ind_relate D (vgr_valid _ _ Hvg) (vgr_closed _ _ Hvg) (vgr_sort _ _ Hvg) p Hl (vgr_ass _ _ Hvg)
+    exact (ind_relate D (valid_group_valid _ _ Hvg) (valid_group_closed _ _ Hvg) (valid_group_sort _ _ Hvg) p Hl (valid_group_ass _ _ Hvg)
              k Mk pm ups ups ns ns a HM Hh Hgu Hu Ea Hns).
   Qed.
 
@@ -625,8 +625,8 @@ Section Fixed_GCtx.
       by (unfold Δ; rewrite List.length_app, length_cargs_ctx; reflexivity).
     rewrite <- HlΔ in HT, HW.
     (** the values of [Cs], related at the uniform telescope *)
-    pose proof (vid_uparams _ (vgr_valid _ _ Hvg)) as HUs.
-    destruct (inst_gargs Γu (ind_uparams D) Cs ρ0 (dc_ass _ Hc) HUs HΓu ltac:(rewrite HCl; reflexivity) HCt Hρ0)
+    pose proof (valid_ind_decl_uparams _ (valid_group_valid _ _ Hvg)) as HUs.
+    destruct (inst_gargs Γu (ind_uparams D) Cs ρ0 (decl_closed_ass _ Hc) HUs HΓu ltac:(rewrite HCl; reflexivity) HCt Hρ0)
       as (us' & Eus' & Hgu & Hlu).
     pose proof (functional_eval_exps' _ _ _ _ Eus' Eus) as ->.
     (** the argument's type is one of the closed telescope of the
@@ -644,7 +644,7 @@ Section Fixed_GCtx.
     assert (HΔa : tele_ass (Δ ++ ind_uparams D)).
     { unfold Δ; rewrite <- List.app_assoc; change (im_nparams Mi ++ ind_uparams D) with (im_params D Mi).
       apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_params_ass _ _ _ Hc HM) ]. }
-    pose proof (dc_ass _ Hc) as HUa.
+    pose proof (decl_closed_ass _ Hc) as HUa.
     destruct (rel_ctx_wf_per_ctx_env HUs) as [RU HRU].
     assert (HUU : RU (env_args nil us) (env_args nil us)).
     { assert (HRU0 : EF ind_uparams D ++ ⋅ ≈ ind_uparams D ++ ⋅ ∈ per_ctx_env ↘ RU) by (rewrite List.app_nil_r; exact HRU).
@@ -730,7 +730,7 @@ Section Fixed_GCtx.
       by (unfold Ψ, doms_ctx; rewrite List.length_app, length_tele_sub, List.length_rev, List.length_map; lia).
     assert (HRE' : EF Ψ ++ Γu ≈ Ψ ++ Γu ∈ per_ctx_env ↘ RE) by (unfold Ψ; rewrite <- List.app_assoc; exact HRE).
     rewrite <- env_args_app in HEE, EmsE.
-    destruct (wk_inst_gargs Ψ Γu (ind_uparams Dz) Csz ρ0 (xs ++ ws) RE (dc_ass _ Hcz) (vid_uparams _ (vgr_valid _ _ Hvgz)) HΓu
+    destruct (wk_inst_gargs Ψ Γu (ind_uparams Dz) Csz ρ0 (xs ++ ws) RE (decl_closed_ass _ Hcz) (valid_ind_decl_uparams _ (valid_group_valid _ _ Hvgz)) HΓu
                 ltac:(rewrite HCzl; reflexivity) HCzt Hρ0 HRE' HEE ltac:(rewrite List.length_app, HlΨ, Hlw, Hlx, HlΔ; lia))
       as (usz & usE & Eusz & EusE & HgE).
     assert (Hfm : forall n Ms0 ms0 ρe, ⟦ Ms0 ⟧* gc_deps ⍮ gc_stack ⍮ ρe ↘ ms0 ->
@@ -752,13 +752,13 @@ Section Fixed_GCtx.
     destruct (List.nth_error (ind_members Dz) kz) as [Mkz |] eqn:HMkz;
       [| apply List.nth_error_None in HMkz; pose proof (ind_ndecl_le Dz); lia ].
     change (ind_member Dz kz = Some Mkz) in HMkz.
-    assert (Hdz : im_is_decl Mkz = true) by (apply (dt_order _ _ _ Hdtz _ _ HMkz); exact Hkz).
+    assert (Hdz : im_is_decl Mkz = true) by (apply (decl_typed_order _ _ _ Hdtz _ _ HMkz); exact Hkz).
     unfold im_is_decl in Hdz; destruct (im_head Mkz) as [pmz | ? ? ? ?] eqn:Hhz; [| discriminate ].
-    pose proof (icc_ns _ _ _ _ _ _ _ _ (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ HRe Hlz HlE HlE)) as HnsE.
+    pose proof (ind_canon_clause_ns _ _ _ _ _ _ _ _ (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ HRe Hlz HlE HlE)) as HnsE.
     unfold member_nparams in HnsE; rewrite HMkz in HnsE.
-    pose proof (uparams_refl_l Dz (vgr_valid _ _ Hvgz) Hcz _ _ HgE) as HgEE.
-    destruct (sort_value Dz (vgr_valid _ _ Hvgz) usE HgEE HlE) as [aE EaE].
-    pose proof (ind_relate Dz (vgr_valid _ _ Hvgz) Hcz (vgr_sort _ _ Hvgz) qz Hlz (vgr_ass _ _ Hvgz) kz Mkz pmz usE usz nsE nsE aE
+    pose proof (uparams_refl_l Dz (valid_group_valid _ _ Hvgz) Hcz _ _ HgE) as HgEE.
+    destruct (sort_value Dz (valid_group_valid _ _ Hvgz) usE HgEE HlE) as [aE EaE].
+    pose proof (ind_relate Dz (valid_group_valid _ _ Hvgz) Hcz (valid_group_sort _ _ Hvgz) qz Hlz (valid_group_ass _ _ Hvgz) kz Mkz pmz usE usz nsE nsE aE
                   HMkz Hhz HgE HlE EaE HnsE) as HEZ.
     (** the step *)
     exists usz, nsE; split; [ exact Eusz | split; [ exact HlZ |] ].
@@ -771,11 +771,11 @@ Section Fixed_GCtx.
     unfold Δ in Hxs; rewrite List.rev_app_distr, Hxs_eq in Hxs.
     destruct (per_gargs_app _ _ _ _ _ _ _ _ Hlr Hxs Hlr) as [Hms0 _].
     rewrite <- (List.app_nil_r us) in Hms0.
-    pose proof (per_gargs_tele_elems _ us nil nil ms Hms0 Hlr (te_nil _)) as Hms; cbn [List.app] in Hms.
+    pose proof (per_gargs_tele_elems _ us nil nil ms Hms0 Hlr (tele_elems_nil _)) as Hms; cbn [List.app] in Hms.
     pose proof (nonrec_elems p D m Mi c gs Hvg Hcv HM Hcon gs1 (ca_arg A :: gs2) us ms vs Heq ltac:(rewrite Hlu; reflexivity)
                   Hlms Hlvs Hall') as Hvs.
     rewrite <- Hfirst in Hvs.
-    exact (gs_intro _ p k D us nil m Mi c gs _ A ms _ a' i R0 w _ _ _ Hl ltac:(rewrite Hlu; reflexivity) HM Hcon HA Hms Hvs Ea'
+    exact (grp_step_intro _ p k D us nil m Mi c gs _ A ms _ a' i R0 w _ _ _ Hl ltac:(rewrite Hlu; reflexivity) HM Hcon HA Hms Hvs Ea'
              HR0 Hse (per_univ_sym _ _ _ _ HEZ)).
   Qed.
 End Fixed_GCtx.
@@ -844,8 +844,8 @@ Proof.
   pose proof (@completeness_fundamental_ctx (gc_mk Θ Ξ) _ HΓu) as HΓs.
   destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
   destruct (per_ctx_then_per_env_initial_env HRΓ) as (ρ & _ & Hρ & _ & _).
-  destruct (@inst_gargs (gc_mk Θ Ξ) Γu (ind_uparams Dx) Csx ρ (dc_ass _ Hc)
-              (@completeness_fundamental_ctx (gc_mk Θ Ξ) _ (dt_uparams _ _ _ Hdt)) HΓu
+  destruct (@inst_gargs (gc_mk Θ Ξ) Γu (ind_uparams Dx) Csx ρ (decl_closed_ass _ Hc)
+              (@completeness_fundamental_ctx (gc_mk Θ Ξ) _ (decl_typed_uparams_field _ _ _ Hdt)) HΓu
               ltac:(rewrite Hlen; reflexivity) Hty Hρ) as (us & Eus & Hgu & Hlu).
   destruct (@decl_member_type (gc_mk Θ Ξ) qx Dx kx Mk us Hg Hl HM Hk Hgu Hlu) as (ns & i & R & HR).
   eapply (view_below_acc Θ Ξ Γu _ (@per_univ_nest_acc_rel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR HR) qx kx Csx ρ us ns Dx Hρ Eus Hl Hlu eq_refl).
@@ -893,28 +893,28 @@ Section MeetsOffMembers.
     intros * Hg HΓu Hl HCl HCt HMi Hh Hlv Hn HMy.
     destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt Hc].
     destruct (decl_of_glookup _ _ _ _ Hg Hlv) as [Hdtv Hcv].
-    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMi Hh) as (Dqv' & My' & Hlv' & HMy' & Hkv & HIl & Hvml & Hvmk & Hnames & _).
+    destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMi Hh) as (Dqv' & My' & Hlv' & HMy' & Hkv & HIl & Hvml & Hvmk & Hnames & _).
     rewrite Hlv in Hlv'; injection Hlv' as <-; rewrite HMy in HMy'; injection HMy' as <-.
     set (σC := sb_of_list Id Cs) in *.
     set (σY := sb_of_list Id (List.map nf_to_exp Wv)) in *.
     set (σIv := sb_of_list Id (List.map (fun I => I[σC]) Iv)).
     pose proof (wf_uparams_sub _ _ _ _ _ Hdt HΓu HCl HCt) as HσC.
     (** the view's instance at [Cs] is equal to its normal form *)
-    rewrite (tele_insts_sub (ind_uparams Dqv) 0 Id Id σC Iv (dc_ass _ Hcv) (dc_uparams _ Hcv) ltac:(intros; lia)) in Hn.
+    rewrite (tele_insts_sub (ind_uparams Dqv) 0 Id Id σC Iv (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv) ltac:(intros; lia)) in Hn.
     assert (HσIY : Γu ⊢ˢ σIv ≈ σY : ind_uparams Dqv)
-      by (apply nbes_sub_eq; [ exact (dc_ass _ Hcv) | exact (dt_uparams _ _ _ Hdtv) | exact HΓu | rewrite List.length_map; exact HIl
+      by (apply nbes_sub_eq; [ exact (decl_closed_ass _ Hcv) | exact (decl_typed_uparams_field _ _ _ Hdtv) | exact HΓu | rewrite List.length_map; exact HIl
                              | exact Hn ]).
     (** the non-uniform parameters: the view equation at [Cs], then the
         instance replaced by its normal form *)
-    pose proof (dt_view_nparams _ _ _ _ Hg Hdt Hl i Mi qv kv Iv vm Dqv kv My i Mi HMi Hh Hlv HMy Hvmk HMi) as H1.
+    pose proof (decl_typed_view_nparams _ _ _ _ Hg Hdt Hl i Mi qv kv Iv vm Dqv kv My i Mi HMi Hh Hlv HMy Hvmk HMi) as H1.
     pose proof (sub_preserves_ext _ _ _ _ _ _ _ H1 HσC) as H1'.
     pose proof (tele_list_grp_sb 0 Iv σC (im_nparams My) ltac:(rewrite HIl; exact (decl_closed_nparams_scoped _ Hcv _ _ HMy))) as E0.
     fold σC in H1'; change (sb_qn 0 (sb_of_list Id Iv)) with (sb_of_list Id Iv) in E0; change (sb_qn 0 σC) with σC in E0.
     change (sb_qn 0 (sb_of_list Id (List.map (fun M => M[σC]) Iv))) with σIv in E0; rewrite E0 in H1'.
     pose proof (member_params_wf _ _ _ _ _ Hdtv HMy) as HPy.
-    pose proof (tele_sub_eq_ext (im_nparams My) (ind_uparams Dqv) Γu σIv σY (dt_nparams_ass _ _ _ Hdtv _ _ HMy) HPy HσIY) as H2.
-    pose proof (ext_eq_trans_ass _ _ _ _ (tele_ass_sub _ _ (dt_nparams_ass _ _ _ Hdt _ _ HMi))
-                  (tele_ass_sub _ _ (dt_nparams_ass _ _ _ Hdtv _ _ HMy)) H1' H2) as HNP.
+    pose proof (tele_sub_eq_ext (im_nparams My) (ind_uparams Dqv) Γu σIv σY (decl_typed_nparams_ass _ _ _ Hdtv _ _ HMy) HPy HσIY) as H2.
+    pose proof (ext_eq_trans_ass _ _ _ _ (tele_ass_sub _ _ (decl_typed_nparams_ass _ _ _ Hdt _ _ HMi))
+                  (tele_ass_sub _ _ (decl_typed_nparams_ass _ _ _ Hdtv _ _ HMy)) H1' H2) as HNP.
     assert (Hnn : im_nn Mi = im_nn My)
       by (pose proof (ext_eq_length _ _ _ _ _ HNP) as E; rewrite !length_tele_sub in E; exact E).
     split; [ exact Hnn | split; [ exact HNP |] ].
@@ -923,9 +923,9 @@ Section MeetsOffMembers.
     pose proof (cons_lookup_in _ _ _ Hc') as HIn'.
     assert (Hcn : In c (List.map fst (im_cons Mi))) by (rewrite Hnames; apply (List.in_map fst _ _ HIn')).
     apply List.in_map_iff in Hcn as ([c0 gs] & Hc0 & HIn); cbn in Hc0; subst c0.
-    pose proof (cons_lookup_nodup _ _ _ (dt_nodup _ _ _ Hdt _ _ HMi) HIn) as Hcon.
+    pose proof (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ Hdt _ _ HMi) HIn) as Hcon.
     exists gs; split; [ exact Hcon |].
-    pose proof (dt_view_args _ _ _ _ Hg Hdt Hl i Mi qv kv Iv vm Dqv kv My i Mi c gs' gs HMi Hh Hlv HMy Hvmk HMi Hc' Hcon) as H3.
+    pose proof (decl_typed_view_args _ _ _ _ Hg Hdt Hl i Mi qv kv Iv vm Dqv kv My i Mi c gs' gs HMi Hh Hlv HMy Hvmk HMi Hc' Hcon) as H3.
     pose proof (wf_sub_ext _ _ (im_nparams Mi) (ind_uparams D) Γu σC HσC (ext_eq_ctx_left _ _ _ _ _ HNP)
                   (member_params_wf _ _ _ _ _ Hdt HMi)) as Hτ.
     pose proof (sub_preserves_ext _ _ _ _ _ _ _ H3 Hτ) as H3'.
@@ -933,8 +933,8 @@ Section MeetsOffMembers.
     rewrite (tele_list_grp_sb (im_nn Mi) Iv σC (cargs_ctx qv Dqv My gs')) in H3'
       by (rewrite HIl, Hnn; exact (decl_closed_cargs_scoped _ Hcv _ _ _ _ _ HMy HIn')).
     fold σIv in H3'; rewrite Hnn in H3'.
-    pose proof (sb_qn_eq_ext (im_nparams My) (ind_uparams Dqv) Γu σIv σY (dt_nparams_ass _ _ _ Hdtv _ _ HMy) HPy HσIY) as HqY.
-    pose proof (ctxsub_ext_rev _ _ _ _ _ H1' (tele_ass_sub _ _ (dt_nparams_ass _ _ _ Hdt _ _ HMi))) as Hid.
+    pose proof (sb_qn_eq_ext (im_nparams My) (ind_uparams Dqv) Γu σIv σY (decl_typed_nparams_ass _ _ _ Hdtv _ _ HMy) HPy HσIY) as HqY.
+    pose proof (ctxsub_ext_rev _ _ _ _ _ H1' (tele_ass_sub _ _ (decl_typed_nparams_ass _ _ _ Hdt _ _ HMi))) as Hid.
     pose proof (ctxsub_sub_eq _ _ _ _ _ _ _ Hid HqY) as HqY'.
     change (List.length (im_nparams My)) with (im_nn My) in HqY'.
     destruct (cargs_ctx_wf _ _ _ _ _ _ _ _ Hg (fun pq D0 Hl0 => proj1 (decl_of_glookup _ _ _ _ Hg Hl0)) Hlv HMy HIn' gs' nil
@@ -972,7 +972,7 @@ Section MeetsOffMembers.
       set (Δ := tele_sub (cargs_ctx qx D Mi gs1 ++ im_nparams Mi) (sb_of_list Id Cs)) in *.
       destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
       assert (HΔa : tele_ass Δ)
-        by (apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (dt_nparams_ass _ _ _ Hdt _ _ HM) ]).
+        by (apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HM) ]).
       assert (HlΔ : List.length Δ = List.length pat + (im_nn Mi + nu - nu))
         by (unfold Δ; rewrite length_tele_sub, List.length_app, length_cargs_ctx; unfold im_nn; lia).
       destruct (nest_view_inv _ _ _ _ _ _ _ _ _ _ _ _ _ HΔa HlΔ HT HW Hcls Hin) as [[Dz Hlz Hkz HCzl HCzt _] _ _ _].
@@ -990,7 +990,7 @@ Section MeetsOffMembers.
       destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓu HRΓu].
       destruct (per_ctx_then_per_env_initial_env HRΓu) as (ρ0 & _ & Hρ0 & _ & _).
       destruct (decl_of_glookup _ _ _ _ Hg Hl) as [_ Hc].
-      destruct (inst_gargs Γu (ind_uparams D) Cs ρ0 (dc_ass _ Hc) (completeness_fundamental_ctx _ (dt_uparams _ _ _ Hdt)) HΓu
+      destruct (inst_gargs Γu (ind_uparams D) Cs ρ0 (decl_closed_ass _ Hc) (completeness_fundamental_ctx _ (decl_typed_uparams_field _ _ _ Hdt)) HΓu
                   ltac:(rewrite HCl; reflexivity) HCt Hρ0) as (us & Eus & _ & _).
       destruct (nonrec_meet_below Γu qx D kx Cs ρ0 us m Mi c gs gs1 A gs2 i W Bs qz kz Rs Dz Csz Hg HΓu Hl HCl HCt Hρ0 Eus
                   HM Hcon Heq HT HW HWe Hlz Hkz HCzl HCzt HC) as (usz & nsz & Eusz & Hlusz & Hstep).
@@ -1039,7 +1039,7 @@ Section MeetsOffMembers.
     apply List.in_map_iff in Hrc as ([c gs] & <- & HIn); cbn [fst snd] in Hsnd.
     destruct (cargs_sub_split _ _ _ _ _ _ _ _ _ Hsnd) as (gs1 & g' & gs2 & Heq & Hl1 & Hpre & ->).
     destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
-    pose proof (cons_lookup_nodup _ _ _ (dt_nodup _ _ _ Hdt _ _ HMj) HIn) as Hcon.
+    pose proof (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ Hdt _ _ HMj) HIn) as Hcon.
     rewrite Hpre, cargs_pre_ctx in Hgc.
     inversion Hgc as [g0 Hsyn | i W g0 Hnone HTt HW Hcl]; subst.
     - rewrite (cls_arg_none_view _ _ _ _ _ _ Hsyn) in Hin; destruct Hin.
@@ -1072,7 +1072,7 @@ Section MeetsOffMembers.
     destruct (cargs_sub_split _ _ _ _ _ _ _ _ _ Hsnd) as (gs1y & gy & gs2y & Heqy & Hl1y & Hpre & ->).
     destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
     destruct (decl_of_glookup _ _ _ _ Hg Hlv) as [Hdtv _].
-    pose proof (cons_lookup_nodup _ _ _ (dt_nodup _ _ _ Hdtv _ _ HMy) HIn') as Hc'.
+    pose proof (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ Hdtv _ _ HMy) HIn') as Hc'.
     destruct (view_sib_link Γu qx D Cs i Mi qv kv Iv vm Dqv Wv My Hg HΓu Hl HCl HCt HMi Hh Hlv Hnv HMy) as (Hnn & HNP & Hcons).
     destruct (Hcons c gs' Hc') as (gs & Hcon & HE2).
     rewrite Hpre in Hgc.
@@ -1094,14 +1094,14 @@ Section MeetsOffMembers.
     rewrite EX in HaD.
     (** the parameters and the arguments before, and the argument's
         types, equal *)
-    pose proof (ext_eq_app _ _ _ _ _ _ _ (tele_ass_sub _ _ (dt_nparams_ass _ _ _ Hdt _ _ HMi)) HaD HNP HE2) as HEall.
+    pose proof (ext_eq_app _ _ _ _ _ _ _ (tele_ass_sub _ _ (decl_typed_nparams_ass _ _ _ Hdt _ _ HMi)) HaD HNP HE2) as HEall.
     rewrite <- !List.app_assoc in HEall; cbn [List.app] in HEall.
     apply ext_eq_app_inv in HEall; [| rewrite HlX, HlXy; rewrite !List.length_app in Hlg; cbn in Hlg; lia ].
     destruct (ext_eq_ass_inv _ _ _ _ _ _ _ HEall) as (i0 & HE1 & HT' & HTT & HTy').
     assert (HaY : tele_ass (tele_sub (cargs_ctx qx D Mi gs1) (sb_qn (im_nn Mi) σC) ++ tele_sub (im_nparams Mi) σC))
-      by (apply List.Forall_app; split; apply tele_ass_sub; [ apply cargs_ctx_aux_ass | exact (dt_nparams_ass _ _ _ Hdt _ _ HMi) ]).
+      by (apply List.Forall_app; split; apply tele_ass_sub; [ apply cargs_ctx_aux_ass | exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HMi) ]).
     (** so the same normal form, in the member's context *)
-    pose proof (rxu_eq _ _ _ (proj1 completeness_fundamental_modules _ _ _ (ext_eq_sym_ass _ _ _ _ _ HaY HE1))) as HY2D.
+    pose proof (rel_ext_under_ctx_eq _ _ _ (proj1 completeness_fundamental_modules _ _ _ (ext_eq_sym_ass _ _ _ _ _ HaY HE1))) as HY2D.
     rewrite List.app_assoc in HTy, HWy.
     pose proof (ctxeq_nbe_ty_eq' _ _ _ _ _ HTy HY2D HWy) as HWD.
     destruct (completeness_ty HTT) as (W0 & HW0D & HW0Y).
@@ -1137,14 +1137,14 @@ Section MeetsOffMembers.
     destruct (nbes_ill _ _ _ _ Hn HΓu) as [HIv ->].
     apply List.map_eq_nil in HIv; subst Iv.
     destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
-    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (Dqv' & Mkv & Hlv' & _ & _ & _ & Hvml & _).
+    destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (Dqv' & Mkv & Hlv' & _ & _ & _ & Hvml & _).
     rewrite Hlv in Hlv'; injection Hlv' as <-.
     destruct (sibs_from_in _ _ _ _ _ _ _ _ Hssy _ He) as (i' & Mi' & HMi' & Hei' & Hse); cbn [Nat.add] in Hse.
     assert (Hi'l : i' < List.length vm) by (rewrite Hvml; apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some' vm i' Hi'l) as [v Hv].
     destruct (sibs_from_nth _ _ _ _ _ _ _ _ Hss) as [_ Hssn].
     inversion Hse as [? ? pm' Hhd | ? ? q'' k'' Is'' vm'' D'' We Hhd Hl'' Hne]; subst.
-    - destruct (dt_view_decl _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMm Hh Hlv HMi' Hhd Hv) as (Mv & vm' & HMv & HhMv).
+    - destruct (decl_typed_view_decl _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMm Hh Hlv HMi' Hhd Hv) as (Mv & vm' & HMv & HhMv).
       destruct (Hssn _ _ HMv) as (e0 & He0 & Hse0).
       inversion Hse0 as [? ? ? Hh0 | ? ? qv0 kv0 Iv0 vm0 Dv0 Ws0 Hh0 Hl0 Hn0]; subst; rewrite HhMv in Hh0; [ discriminate |].
       injection Hh0 as <- <- <- <-.
@@ -1152,7 +1152,7 @@ Section MeetsOffMembers.
       exact (List.nth_error_In _ _ He0).
     - destruct (nbes_ill _ _ _ _ Hne HΓu) as [HIs ->].
       apply List.map_eq_nil in HIs; subst Is''.
-      destruct (dt_view_view _ _ _ Hdt m Mm qv kv nil vm Dqv i' Mi' v q'' k'' nil vm'' HMm Hh Hlv HMi' Hhd Hv)
+      destruct (decl_typed_view_view _ _ _ Hdt m Mm qv kv nil vm Dqv i' Mi' v q'' k'' nil vm'' HMm Hh Hlv HMi' Hhd Hv)
         as (Mv & X & vm' & HMv & HhMv & HXl).
       destruct X; [| discriminate ].
       destruct (Hssn _ _ HMv) as (e0 & He0 & Hse0).

@@ -122,7 +122,7 @@ Proof.
   inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? ? ? ? Hq _ | ? ? ? ? Hl' Hu | | | | ? ? ? ? ? ? Hq _]; subst;
     [ cbn in Hq; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
   pose proof (ctx_lookup_mod_functional _ _ _ _ Hl Hl') as <-.
-  exact (valid_modexp_intro _ _ _ _ _ _ _ _ Hw Hm Hmd (rel_modexp_under_ctx_delta_slot _ _ _ HΓ Hl) HK (dn_lit _ _ _ _ _ Hu) Hmd).
+  exact (valid_modexp_intro _ _ _ _ _ _ _ _ Hw Hm Hmd (rel_modexp_under_ctx_delta_slot _ _ _ HΓ Hl) HK (mdenote_lit _ _ _ _ _ Hu) Hmd).
 Qed.
 
 (** Submodules of equal module expressions valid in what they denote. *)
@@ -174,7 +174,7 @@ Proof.
   pose proof (mdenote_lit_inv _ _ _ _ _ Hm) as Hu.
   destruct (valid_unit_lit_app Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ _ _ HK Hu HXw HNw HN) as (_ & R' & Ha & HKN & HK' & Hm' & Hmd').
   split; [ exact HKN |]; split; [| exact (valid_modexp_of_valid_unit _ _ Hgf _ _ HK') ].
-  exact (valid_modexp_intro _ _ _ _ _ _ _ _ Hwa (dn_app _ _ _ _ _ _ _ Hm Ha) Hmd' HKN HK' Hm' Hmd').
+  exact (valid_modexp_intro _ _ _ _ _ _ _ _ Hwa (mdenote_app _ _ _ _ _ _ _ Hm Ha) Hmd' HKN HK' Hm' Hmd').
 Qed.
 
 Lemma valid_modexp_beta_body : forall Γ Δ X Φ N,
@@ -272,7 +272,7 @@ Proof.
   pose proof (valid_unit_rel _ _ Hgf _ _ HK) as HV.
   pose proof (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ HK Ha) as HK'; cbn [gunit_abs] in HK'.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
-  split; [ constructor; [ exact HR | apply rel_unit_wf_alias; assumption | exact (ruu_right _ _ _ (valid_unit_lit_unit Hgw _ _ Hgm Hsub _ _ HK')) ] |].
+  split; [ constructor; [ exact HR | apply rel_unit_wf_alias; assumption | exact (rel_unit_under_ctx_right _ _ _ (valid_unit_lit_unit Hgw _ _ Hgm Hsub _ _ HK')) ] |].
   split; [| exact HK' ].
   eapply valid_unit_alias; [ exact Hw | exact Ha | exact HΓ | exact HΔΓ | exact (rel_modexp_refl_left HR) | exact HV
                    | exact (valid_modexp_of_valid_unit _ _ Hgf _ _ HK) ].
@@ -428,16 +428,16 @@ Lemma rel_unit_under_ctx_body_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx
     @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit (gu_open Δ Φ)) /\ @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit (gu_open Δ' Φ')).
 Proof.
   intros * He Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' HA HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd.
-  pose proof (vem_emb _ _ _ _ He) as Hemb.
+  pose proof (valid_emb_emb _ _ _ _ He) as Hemb.
   pose proof (em_res _ _ _ _ Hemb) as Hsub; pose proof (em_wf _ _ _ _ Hemb) as Hgw.
   change (⊢ᵍ @gc_deps (gc_mk Θ2 Ξ2) ⍮ @gc_stack (gc_mk Θ2 Ξ2)) in Hgw.
   change (gc_sub Θ Ξ (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2))) in Hsub.
-  apply (@rel_unit_under_ctx_body (gc_mk Θ2 Ξ2) Hgw _ _ (vem_wf _ _ _ _ He) Hsub (vem_filed _ _ _ _ He)
-           _ _ _ _ _ _ _ Hu Hx Hx' HΔ HΓ (rxu_left _ _ _ HC) HokC (rxu_left _ _ _ HC') HokC'); try assumption.
-  - intros * Hp HE Hp' HE' Hf Hf'; split; [ eexists; exact (sea_rel (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)) |].
-    exact (sea_rel (HM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)).
-  - intros * Hp HE Hp' HE' Hf Hf'; exact (ruu_lit _ _ _ (sna_rel (HU _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He))).
-  - intros * Hk Hk' Hf Hf'; exact (sma_rel (HO _ _ _ _ _ _ _ Hk Hk' Hf Hf' _ _ He)).
+  apply (@rel_unit_under_ctx_body (gc_mk Θ2 Ξ2) Hgw _ _ (valid_emb_wf _ _ _ _ He) Hsub (valid_emb_filed _ _ _ _ He)
+           _ _ _ _ _ _ _ Hu Hx Hx' HΔ HΓ (rel_ext_under_ctx_left _ _ _ HC) HokC (rel_ext_under_ctx_left _ _ _ HC') HokC'); try assumption.
+  - intros * Hp HE Hp' HE' Hf Hf'; split; [ eexists; exact (sem_exp_eq_at_rel (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)) |].
+    exact (sem_exp_eq_at_rel (HM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)).
+  - intros * Hp HE Hp' HE' Hf Hf'; exact (rel_unit_under_ctx_lit _ _ _ (sem_unit_eq_at_rel (HU _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He))).
+  - intros * Hk Hk' Hf Hf'; exact (sem_modexp_eq_at_rel (HO _ _ _ _ _ _ _ Hk Hk' Hf Hf' _ _ He)).
   - intros * Hk; destruct (Ho _ _ _ Hk _ _ He) as [_ HV HS _]; exact (conj HV HS).
   - intros * Hk; destruct (Ho' _ _ _ Hk _ _ He) as [_ HV HS _]; exact (conj HV HS).
 Qed.
@@ -550,7 +550,7 @@ Lemma sem_me_lit :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_lit U ≈ me_lit U' ).
 Proof.
-  intros * HU; sem_intro; [ assumption | exact (ruu_lit _ _ _ HU) | apply (valid_modexp_of_valid_unit _ _ Hgf); assumption .. ].
+  intros * HU; sem_intro; [ assumption | exact (rel_unit_under_ctx_lit _ _ _ HU) | apply (valid_modexp_of_valid_unit _ _ Hgf); assumption .. ].
 Qed.
 
 Lemma sem_me_mem :

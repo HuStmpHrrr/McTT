@@ -85,9 +85,9 @@ Section Fixed_GCtx.
     pose proof (wf_uparams_app _ _ _ HD Hc _ HΓ) as HUΓ.
     rewrite <- (tele_sub_id (ind_uparams D)) in HUΓ |- *.
     eapply (wf_vars_tele_gen _ _ nil (ind_uparams D) Id Id Γ 0); try eassumption.
-    - exact (dc_ass _ Hc).
-    - exact (dmv_uparams _ (dt_mvc _ _ _ HD)).
-    - exact (dc_uparams _ Hc).
+    - exact (decl_closed_ass _ Hc).
+    - exact (decl_mvc_uparams _ (decl_typed_mvc _ _ _ HD)).
+    - exact (decl_closed_uparams _ Hc).
     - intros; lia.
   Qed.
 
@@ -432,7 +432,7 @@ Section Fixed_GCtx.
         by (rewrite List.length_app, HlI, Hlc; unfold n; lia).
       apply wf_wk_shiftn_app'; rewrite <- List.app_assoc, <- EΔ; exact HΔ. }
     apply wf_sub_of_list; [ unfold ctel; apply List.Forall_app; split; apply tele_ass_sub;
-                              [ apply cargs_ctx_aux_ass | exact (dt_nparams_ass _ _ _ HD _ _ Hk) ]
+                              [ apply cargs_ctx_aux_ass | exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk) ]
                           | exact Hi | apply wf_sub_of_wk; exact Hw
                           | rewrite List.length_app, !length_vars_from, Hlc; lia |].
     rewrite vars_from_app.
@@ -445,7 +445,7 @@ Section Fixed_GCtx.
     replace (cargs_nrec gs) with (List.length IHc) in HN, HT by exact HlI.
     rewrite EΔ, Ect.
     eapply (wf_vars_tele_gen _ _ IHc _ (sb_of_list Id Us) _ Γ (ind_nu D));
-      [ apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (dt_nparams_ass _ _ _ HD _ _ Hk) ]
+      [ apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk) ]
       | apply List.Forall_app; split; [ eapply cargs_ctx_mvc; eassumption | exact (decl_nparams_mvc _ _ _ HD _ _ Hk) ]
       | apply ctx_scoped_app; split;
         [ rewrite length_im_nparams; eapply decl_closed_cargs_scoped; eassumption | eapply decl_closed_nparams_scoped; eassumption ]
@@ -493,7 +493,7 @@ Section Fixed_GCtx.
     (* the base, at both uniform parameters *)
     pose proof (bctx_base_typed _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUs HA Hcon) as Hb; cbv zeta in Hb; fold n nvars avars Δ in Hb.
     assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
-    { eapply wf_sub_eq_of_list_conv; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
+    { eapply wf_sub_eq_of_list_conv; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
                                      | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUs | exact HUs' | exact HUU ]. }
     assert (Hct : forall V, ctel p D Mk V gs = tele_sub (cargs_ctx p D Mk gs ++ im_nparams Mk) (sb_of_list Id V))
       by (intros; unfold ctel; rewrite tele_sub_app, length_im_nparams; reflexivity).
@@ -550,7 +550,7 @@ Section Fixed_GCtx.
         assert (HPl' : List.length (Usw' ++ nvars) = im_np D Mk) by (rewrite List.length_app, HUlw', HNl; unfold im_np; lia).
         assert (HPP : forall j N N' T, nth_error (Usw ++ nvars) j = Some N -> nth_error (Usw' ++ nvars) j = Some N' ->
                    nth_error (tele_insts (im_params D Mk) Id (Usw ++ nvars)) j = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ N ≈ N' : T).
-        { unfold im_params; apply list_eq_app; [ exact (dc_ass _ Hc) | exact HUlw | exact HUlw' | exact HUUw |].
+        { unfold im_params; apply list_eq_app; [ exact (decl_closed_ass _ Hc) | exact HUlw | exact HUlw' | exact HUUw |].
           intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl; exact (HNs _ _ _ HN HT). }
         assert (HAA : forall j N N' T, nth_error avars j = Some N -> nth_error avars j = Some N' ->
                    nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Usw ++ nvars)) avars) j = Some T ->
@@ -569,30 +569,30 @@ Section Fixed_GCtx.
         pose proof (HDs _ _ Hl3) as HD3; pose proof (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl3) as Hc3.
         assert (Hσw : Θ ⍮ Ξ ⍮ Δ ⊢ˢ sb_of_list Id Usw ≈ sb_of_list Id Usw' : ind_uparams D).
         { rewrite <- (List.app_nil_r (ind_uparams D)).
-          eapply wf_sub_eq_of_list_conv; [ exact (dc_ass _ Hc) | rewrite List.app_nil_r; exact (dt_uparams _ _ _ HD)
+          eapply wf_sub_eq_of_list_conv; [ exact (decl_closed_ass _ Hc) | rewrite List.app_nil_r; exact (decl_typed_uparams_field _ _ _ HD)
                                          | apply wf_sub_eq_refl, wf_sub_to_nil, HΔ | exact HUlw | exact HUlw'
                                          | exact HUsw | exact HUsw' | exact HUUw ]. }
-        destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hk Hh) as (D0 & Mk0 & Hl0 & _ & _ & HIl & _).
+        destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hk Hh) as (D0 & Mk0 & Hl0 & _ & _ & HIl & _).
         rewrite Hl3 in Hl0; injection Hl0 as <-.
         set (Ps := List.map (fun I => I[sb_of_list Id Usw]) Is ++ nvars) in *.
         set (Ps' := List.map (fun I => I[sb_of_list Id Usw']) Is ++ nvars) in *.
         assert (HPP : forall j N N' T, nth_error Ps j = Some N -> nth_error Ps' j = Some N' ->
                    nth_error (tele_insts (im_params D3 Mk3) Id Ps) j = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ N ≈ N' : T).
         { unfold Ps, Ps', im_params; apply list_eq_app;
-            [ exact (dc_ass _ Hc3) | rewrite List.length_map; exact HIl | rewrite List.length_map; exact HIl | |].
+            [ exact (decl_closed_ass _ Hc3) | rewrite List.length_map; exact HIl | rewrite List.length_map; exact HIl | |].
           - intros j N N' T HN HN' HT.
-            rewrite <- (tele_insts_sub (ind_uparams D3) 0 Id Id (sb_of_list Id Usw) Is (dc_ass _ Hc3) (dc_uparams _ Hc3)
+            rewrite <- (tele_insts_sub (ind_uparams D3) 0 Id Id (sb_of_list Id Usw) Is (decl_closed_ass _ Hc3) (decl_closed_uparams _ Hc3)
                           ltac:(intros; lia)) in HT.
             apply nth_error_map_inv in HN as (I & HI & ->); apply nth_error_map_inv in HN' as (I1 & HI1 & ->).
             rewrite HI in HI1; injection HI1 as <-.
             apply nth_error_map_inv in HT as (T0 & HT0 & ->).
-            exact (sub_eq_preserves_exp _ _ _ _ _ (dt_view_is _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ Hk Hh Hl3 HI HT0) _ _ _ Hσw).
+            exact (sub_eq_preserves_exp _ _ _ _ _ (decl_typed_view_is _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ Hk Hh Hl3 HI HT0) _ _ _ Hσw).
           - intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl.
             apply (HPs3 (List.length (List.map (fun I => I[sb_of_list Id Usw]) Is) + j)).
             + unfold Ps; rewrite List.nth_error_app2 by lia; replace (_ + j - _) with j by lia; exact HN.
-            + unfold Ps, im_params; rewrite tele_insts_app by (try exact (dc_ass _ Hc3); rewrite List.length_map; exact HIl).
-              rewrite List.nth_error_app2 by (rewrite length_tele_insts by exact (dc_ass _ Hc3); rewrite !List.length_map; unfold ind_nu in *; lia).
-              rewrite length_tele_insts by exact (dc_ass _ Hc3); rewrite !List.length_map.
+            + unfold Ps, im_params; rewrite tele_insts_app by (try exact (decl_closed_ass _ Hc3); rewrite List.length_map; exact HIl).
+              rewrite List.nth_error_app2 by (rewrite length_tele_insts by exact (decl_closed_ass _ Hc3); rewrite !List.length_map; unfold ind_nu in *; lia).
+              rewrite length_tele_insts by exact (decl_closed_ass _ Hc3); rewrite !List.length_map.
               replace (List.length Is + j - Nat.min (List.length (ind_uparams D3)) (List.length Is)) with j
                 by (unfold ind_nu in *; lia).
               exact HT. }
@@ -727,9 +727,9 @@ Section Fixed_GCtx.
                   = tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)
                     ++ tele_insts (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) (List.skipn (ind_nu D) Ps)).
     { rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; unfold im_params; apply tele_insts_app;
-        [ exact (dc_ass _ Hc) | exact HUl ]. }
+        [ exact (decl_closed_ass _ Hc) | exact HUl ]. }
     assert (Hl2 : List.length (tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)) = ind_nu D)
-      by (rewrite length_tele_insts by exact (dc_ass _ Hc); rewrite HUl; unfold ind_nu; lia).
+      by (rewrite length_tele_insts by exact (decl_closed_ass _ Hc); rewrite HUl; unfold ind_nu; lia).
     split; intros j N N' T HN HN' HT.
     - assert (Hj : j < ind_nu D) by (rewrite <- HUl; apply List.nth_error_Some; congruence).
       apply (HPs j);
@@ -764,9 +764,9 @@ Section Fixed_GCtx.
                   = tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)
                     ++ tele_insts (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) (List.skipn (ind_nu D) Ps)).
     { rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; unfold im_params; apply tele_insts_app;
-        [ exact (dc_ass _ Hc) | exact HUl ]. }
+        [ exact (decl_closed_ass _ Hc) | exact HUl ]. }
     assert (Hl2 : List.length (tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)) = ind_nu D)
-      by (rewrite length_tele_insts by exact (dc_ass _ Hc); rewrite HUl; unfold ind_nu; lia).
+      by (rewrite length_tele_insts by exact (decl_closed_ass _ Hc); rewrite HUl; unfold ind_nu; lia).
     split; intros j N N' T HN HN' HT.
     - assert (Hj : j < ind_nu D) by (rewrite <- HUl; apply List.nth_error_Some; congruence).
       apply (HPs j N);
@@ -819,12 +819,12 @@ Section Fixed_GCtx.
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUs) as Hσ.
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl' HUs') as Hσ'.
     assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
-    { eapply wf_sub_eq_of_list_conv; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
+    { eapply wf_sub_eq_of_list_conv; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
                                      | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUs | exact HUs' | exact HUU ]. }
     assert (HUU' : forall j U' U T, nth_error Us' j = Some U' -> nth_error Us j = Some U ->
                nth_error (tele_insts (ind_uparams D) Id Us') j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ U' ≈ U : T).
     { intros j U' U T HU' HU HT.
-      exact (wf_sub_eq_of_list_inv _ _ _ _ _ _ _ (dc_ass _ Hc) HUl' HUl (wf_sub_eq_sym _ _ _ _ _ _ Hσσ) _ _ _ _ HU' HU HT). }
+      exact (wf_sub_eq_of_list_inv _ _ _ _ _ _ _ (decl_closed_ass _ Hc) HUl' HUl (wf_sub_eq_sym _ _ _ _ _ _ Hσσ) _ _ _ _ HU' HU HT). }
     assert (HMc : forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us')
       by (intros k Mk Hk; exact (elim_mctx_us_eq _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσσ)).
     assert (HMv : forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us' ++ Γ ⊢ˢ Id : elim_mctx p D k Mk Us ++ Γ)
@@ -844,8 +844,8 @@ Section Fixed_GCtx.
     - intros k Mk b Z Hk' Hb HZb.
       pose proof (HZ _ _ _ _ Hk' Hb HZb) as HZ0; pose proof (HMc _ _ Hk') as HMk.
       unfold elim_mctx in HZ0, HMk |- *.
-      eapply ext_eq_ann_move; [ apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HD _ _ Hk')
-                              | apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HD _ _ Hk') | exact HZ0 | exact HMk ].
+      eapply ext_eq_ann_move; [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk')
+                              | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk') | exact HZ0 | exact HMk ].
     - intros k Mk b Hk' Hb; pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HAb _ _ _ Hk' Hb) (HMv _ _ Hk')) as H.
       rewrite !exp_sub_id in H; exact H.
     - intros k Mk Hk'; exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ _ _ Hc Hk') (HM' _ _ Hk')).
@@ -949,7 +949,7 @@ Proof.
   pose proof (blocks_typed_us_conv _ _ _ _ _ _ _ Hl HΓ HUl HUs HUl' HUs' HUe HBt) as HBt'.
   pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUs) as Hσ.
   assert (Hσσu : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
-  { eapply wf_sub_eq_of_list_conv; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
+  { eapply wf_sub_eq_of_list_conv; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
                                    | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUs | exact HUs' | exact HUe ]. }
   (* the non-uniform parameters, as a substitution *)
   assert (Hti : forall j T, nth_error (tele_insts (tele_sub (im_nparams Mm) (sb_of_list Id Us)) Id Ns) j = Some T ->
@@ -958,7 +958,7 @@ Proof.
     rewrite (tele_insts_sb_eq _ _ (sb_of_list Id Us)) in HT by apply sb_compose_id_right; exact HT. }
   assert (Hδδ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns ≈ sb_of_list Id Ns' : tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ).
   { eapply wf_sub_eq_of_list_left;
-      [ apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
+      [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
       | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite length_tele_sub; exact HNl | rewrite length_tele_sub; exact HNl' | | | ].
     - intros j N T HN HT; exact (HNs _ _ _ HN (Hti _ _ HT)).
     - intros j N' T HN' HT.

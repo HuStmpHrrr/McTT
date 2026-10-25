@@ -81,10 +81,10 @@ Proof.
   pose proof (valid_groups_valid VP HP pq G HPG) as Hg.
   pose proof (containers_valid_of_groups VP HP pq G HPG) as Hcv.
   pose proof (Hcv _ _ _ _ _ _ _ HMj Hh Hq) as HgQ.
-  destruct (dt_view _ _ _ (vgr_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Mk' & Hl2 & HMk' & Hkd & HIl & _ & Hvm & _).
+  destruct (decl_typed_view _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Mk' & Hl2 & HMk' & Hkd & HIl & _ & Hvm & _).
   rewrite Hq in Hl2; injection Hl2 as <-.
   assert (Hhd : exists pm, im_head Mk' = mh_decl pm).
-  { pose proof (proj2 (dt_order _ _ _ (vgr_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
+  { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
     unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate ]. }
   destruct Hhd as [pm Hhd].
   destruct (vg_view_args_values pq G Hg Hcv _ _ _ _ _ _ _ HMj Hh Hq _ _ Hgu Hu) as (c0 & c0' & E0 & E0' & Hcu).
@@ -93,8 +93,8 @@ Proof.
   assert (Hlc : List.length cups = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ Ecups); exact HIl).
   pose proof (view_agreement_canonical_all VP pq G HP HPG ups ups Hgu Hu j _ _ _ _ _ _ _ _ HMj Hh Hq Ecups Ecups) as Hvc.
   destruct (agree_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hvc _ _ HMk') as (v & Mv & Hvmb).
-  assert (v = j) as -> by (pose proof (vmb_v _ _ _ _ _ _ _ _ _ Hvmb) as Hv; rewrite Hvm in Hv; congruence).
-  assert (Mv = Mj) as -> by (pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMv; rewrite HMj in HMv; congruence).
+  assert (v = j) as -> by (pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvmb) as Hv; rewrite Hvm in Hv; congruence).
+  assert (Mv = Mj) as -> by (pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMv; rewrite HMj in HMv; congruence).
   unfold ntele_rel in Hbs; rewrite HMj in Hbs.
   pose proof (nr_from pq G ups ups _ _ _ qc Dq cups cups _ _ _ vm Hvc kc Mk' j Mj bs bs' HMk' Hvmb Hbs) as Hbs'.
   destruct (vg_relate qc Dq HgQ kc Mk' pm cups cs bs bs' HMk' Hhd Hcs Hlc Hbs') as [i W].
@@ -231,9 +231,9 @@ Lemma fresh_nparams_exist : forall pq G, valid_group pq G -> forall ups, per_gar
 Proof.
   intros pq G Hg ups Hgu Hu j Mj s HM.
   destruct (vg_canon pq G Hg ups Hgu Hu) as [CnP CnI CaP CaI CdP CdI].
-  pose proof (adm_fresh_of_uparams pq G ups _ _ _ (vgr_ass _ _ Hg) CnP CnI CaP CaI CdP CdI ups (vg_adm pq G Hg ups ups Hgu Hu Hgu))
+  pose proof (adm_fresh_of_uparams pq G ups _ _ _ (valid_group_ass _ _ Hg) CnP CnI CaP CaI CdP CdI ups (vg_adm pq G Hg ups ups Hgu Hu Hgu))
     as Ha.
-  destruct (fresh_tele_rel_ftele _ _ _ _ _ _ _ _ (afr_nparams _ _ _ _ _ _ _ Ha _ Mj s HM)) as (nsu & ns & Fu & Fa & Lu & Hua).
+  destruct (fresh_tele_rel_ftele _ _ _ _ _ _ _ _ (adm_fresh_nparams _ _ _ _ _ _ _ Ha _ Mj s HM)) as (nsu & ns & Fu & Fa & Lu & Hua).
   rewrite List.app_nil_r in Fu, Fa.
   pose proof (functional_fresh_tele' _ _ _ _ _ Fu Fa) as <-.
   exists nsu; split; [ exact Fu | split; assumption ].
@@ -249,10 +249,10 @@ Proof.
   pose proof (valid_groups_valid VP HP pq G HPG) as Hg.
   pose proof (containers_valid_of_groups VP HP pq G HPG) as Hcv.
   destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
-  - eexists; eapply eval_mref_decl; [ exact (vgr_lookup _ _ Hg) | exact HM | exact Hh ].
-  - destruct (gta_views _ (vgr_ass _ _ Hg) _ _ _ _ _ _ HM Hh) as (Dq & Mc & Hq & _).
+  - eexists; eapply eval_mref_decl; [ exact (valid_group_lookup _ _ Hg) | exact HM | exact Hh ].
+  - destruct (grp_tele_ass_views _ (valid_group_ass _ _ Hg) _ _ _ _ _ _ HM Hh) as (Dq & Mc & Hq & _).
     destruct (vg_view_args_values pq G Hg Hcv _ _ _ _ _ _ _ HM Hh Hq X X Hgx Hx) as (cs & _ & Ecs & _).
-    eexists; eapply eval_mref_view; [ exact (vgr_lookup _ _ Hg) | exact HM | exact Hh | exact Ecs ].
+    eexists; eapply eval_mref_view; [ exact (valid_group_lookup _ _ Hg) | exact HM | exact Hh | exact Ecs ].
 Qed.
 
 (** ** Values of Instances of a Closed Telescope *)
@@ -337,27 +337,27 @@ Proof.
   pose proof (containers_valid_of_groups VP HP qc D' HVQ) as HcvQ.
   pose proof (valid_groups_containers VP HP qc D' i' Mi' q'' k'' Is'' vm'' D'' HVQ HMi' Hh' Hq'') as HVQ2.
   pose proof (valid_groups_valid VP HP q'' D'' HVQ2) as HgQ2.
-  pose proof (vgr_closed _ _ HgQ2) as Hc2.
-  pose proof (dc_ass _ Hc2) as HaC; pose proof (vid_uparams _ (vgr_valid _ _ HgQ2)) as HWC.
-  pose proof (dc_ass _ (vgr_closed _ _ HgQ)) as HaQ; pose proof (vid_uparams _ (vgr_valid _ _ HgQ)) as HWQ.
-  pose proof (vid_uparams _ (vgr_valid _ _ Hg)) as HWG.
+  pose proof (valid_group_closed _ _ HgQ2) as Hc2.
+  pose proof (decl_closed_ass _ Hc2) as HaC; pose proof (valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ2)) as HWC.
+  pose proof (decl_closed_ass _ (valid_group_closed _ _ HgQ)) as HaQ; pose proof (valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ)) as HWQ.
+  pose proof (valid_ind_decl_uparams _ (valid_group_valid _ _ Hg)) as HWG.
   destruct (rel_ctx_wf_per_ctx_env HWC) as [RC HRC].
   assert (HPC : PER RC) by (eapply per_env_PER; exact HRC).
   destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].
   destruct (rel_ctx_wf_per_ctx_env HWG) as [RG HRG].
   (** The lengths of the instances. *)
-  destruct (gta_views _ (vgr_ass _ _ HgQ) _ _ _ _ _ _ HMi' Hh') as (D3 & Mc3 & Hq3 & _ & _ & HlI2).
+  destruct (grp_tele_ass_views _ (valid_group_ass _ _ HgQ) _ _ _ _ _ _ HMi' Hh') as (D3 & Mc3 & Hq3 & _ & _ & HlI2).
   rewrite Hq'' in Hq3; injection Hq3 as <-.
-  destruct (gta_views _ (vgr_ass _ _ Hg) _ _ _ _ _ _ HMv HhMv) as (D4 & Mc4 & Hq4 & _ & _ & HlX).
+  destruct (grp_tele_ass_views _ (valid_group_ass _ _ Hg) _ _ _ _ _ _ HMv HhMv) as (D4 & Mc4 & Hq4 & _ & _ & HlX).
   rewrite Hq'' in Hq4; injection Hq4 as <-.
-  destruct (gta_views _ (vgr_ass _ _ Hg) _ _ _ _ _ _ HMk Hh) as (D5 & Mc5 & Hq5 & _ & _ & HlIs).
+  destruct (grp_tele_ass_views _ (valid_group_ass _ _ Hg) _ _ _ _ _ _ HMk Hh) as (D5 & Mc5 & Hq5 & _ & _ & HlIs).
   rewrite Hq in Hq5; injection Hq5 as <-.
   assert (Hlc : List.length cups = ind_nu D') by (rewrite (eval_exps_length _ _ _ Ecups); exact HlIs).
   assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
   unfold ind_nu in HlI2, HlX, Hlc, Hlb.
   set (σ := sb_of_list Id Is).
   set (E0 := env_args nil ups).
-  assert (HE0 : RG E0 E0) by exact (uparams_rel_env G (vgr_valid _ _ Hg) ups ups Hgu Hu RG HRG).
+  assert (HE0 : RG E0 E0) by exact (uparams_rel_env G (valid_group_valid _ _ Hg) ups ups Hgu Hu RG HRG).
   assert (Eσ : ⟦ σ ⟧s E0 ↘ env_args E0 cups) by exact (eval_sb_of_list _ _ _ _ _ (eval_sub_id E0) Ecups).
   pose proof (gsub_valid (vg_view_args_gsub pq G Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq)) as Hσ.
   assert (HI2 : forall j I T, List.nth_error Is'' j = Some I -> List.nth_error (tele_insts (ind_uparams D'') Id Is'') j = Some T ->
@@ -376,7 +376,7 @@ Proof.
   (** At [cups], against at the value of [k]'s instance. *)
   destruct (closed_inst_cross _ _ Is'' Is'' HaC HWC HWQ HlI2 HlI2) as [Hsub3 _].
   { intros k0 N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; exact (HI2 _ _ _ HN HT). }
-  pose proof (uparams_refl_r D' (vgr_valid _ _ HgQ) (vgr_closed _ _ HgQ) _ _ Hub ltac:(unfold ind_nu; exact Hlb)) as Hcc.
+  pose proof (uparams_refl_r D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ Hub ltac:(unfold ind_nu; exact Hlb)) as Hcc.
   assert (HQ3 : RQ (env_args E0 cups) (env_args nil cups)).
   { pose proof (gargs_env_rel _ _ _ _ _ _ HRQ HWQ Hlc Hcc) as H0.
     eapply closed_env_base; [ exact HaQ | exact HWQ | exact HRQ | exact Hlc | exact Hlc | exact H0 ]. }
@@ -399,7 +399,7 @@ Proof.
   { intros k0 N N' T HN HN' HT.
     apply nth_error_map_inv in HN as (I & HI & ->).
     destruct (HTex _ _ HI) as [T0 HT0].
-    pose proof (tele_insts_closed_sub _ _ σ _ _ HaC (dc_uparams _ Hc2) HT0) as HT0'.
+    pose proof (tele_insts_closed_sub _ _ σ _ _ HaC (decl_closed_uparams _ Hc2) HT0) as HT0'.
     rewrite HT in HT0'; injection HT0' as ->.
     apply rel_exp_under_ctx_sym.
     exact (vg_view_view_is pq G Hg Hcv k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' k0 N' (I[σ]) T0
@@ -443,13 +443,13 @@ Section CrossFresh.
       and of the group's at [u0] are related at the group's relation. *)
   Record cross_params (nsA nsB : list domain) : Prop := mk_cross_params
     { (** Related at the group's member *)
-      cp_rel : tele_rel (nr v) (List.rev (im_nparams Mv)) nsA nsB
+      cross_params_rel : tele_rel (nr v) (List.rev (im_nparams Mv)) nsA nsB
       (** Related across at the container's member's telescope *)
-    ; cp_container : per_gargs (List.rev (im_params D' Mi')) nil nil (ub ++ nsA) (cups ++ nsB)
+    ; cross_params_container : per_gargs (List.rev (im_params D' Mi')) nil nil (ub ++ nsA) (cups ++ nsB)
       (** The group's side related to itself at the container's *)
-    ; cp_container_right : per_gargs (List.rev (im_params D' Mi')) nil nil (cups ++ nsB) (cups ++ nsB)
+    ; cross_params_container_right : per_gargs (List.rev (im_params D' Mi')) nil nil (cups ++ nsB) (cups ++ nsB)
       (** The group's side related to itself at the group's *)
-    ; cp_group_right : per_gargs (List.rev (im_params D Mv)) nil nil (u0 ++ nsB) (u0 ++ nsB) }.
+    ; cross_params_group_right : per_gargs (List.rev (im_params D Mv)) nil nil (u0 ++ nsB) (u0 ++ nsB) }.
 
   Lemma cross_fresh_nparams : forall s nsA nsB,
       Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ nsA ->
@@ -457,15 +457,15 @@ Section CrossFresh.
       cross_params nsA nsB.
   Proof.
     pose proof (view_nn p D Hg m Mm qc k' Is vm D' HMm Hh Hq i' Mi' v Mv HMi' Hv HMv) as Hnn.
-    pose proof (vgr_valid _ _ Hg) as HD; pose proof (vgr_closed _ _ Hg) as Hc.
-    pose proof (vgr_valid _ _ HgQ) as HDQ; pose proof (vgr_closed _ _ HgQ) as HcQ.
+    pose proof (valid_group_valid _ _ Hg) as HD; pose proof (valid_group_closed _ _ Hg) as Hc.
+    pose proof (valid_group_valid _ _ HgQ) as HDQ; pose proof (valid_group_closed _ _ HgQ) as HcQ.
     pose proof (view_cups_rel p D Hg Hcv m Mm qc k' Is vm D' HMm Hh Hq u0 cups Hgu Hu Ecups) as Hcc.
     pose proof (length_cups p D Hg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
     assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
     set (tc := List.rev (im_nparams Mi')); set (tg := List.rev (im_nparams Mv)).
     (** The container's base: [ub] and [cups] over no base, and [cups]
         over [u0] as the instance gives it. *)
-    pose proof (vid_uparams _ HDQ) as HUQ.
+    pose proof (valid_ind_decl_uparams _ HDQ) as HUQ.
     destruct (rel_ctx_wf_per_ctx_env HUQ) as [RQ HRQ].
     assert (HPQ : PER RQ) by (eapply per_env_PER; exact HRQ).
     assert (HQb : RQ (env_args nil ub) (env_args nil cups))
@@ -473,33 +473,33 @@ Section CrossFresh.
     assert (HQ0 : RQ (env_args nil cups) (env_args nil cups))
       by (apply (gargs_env_rel _ _ _ _ _ _ HRQ HUQ); [ exact Hlc | exact Hcc ]).
     set (Ec := env_args (env_args nil u0) cups); set (Eg := env_args nil u0).
-    assert (HQc : RQ (env_args nil cups) Ec) by exact (closed_env_base _ _ _ _ _ _ _ _ (dc_ass _ HcQ) HUQ HRQ Hlc Hlc HQ0).
+    assert (HQc : RQ (env_args nil cups) Ec) by exact (closed_env_base _ _ _ _ _ _ _ _ (decl_closed_ass _ HcQ) HUQ HRQ Hlc Hlc HQ0).
     assert (HQbE : RQ (env_args nil ub) Ec) by (etransitivity; [ exact HQb | exact HQc ]).
     assert (HQEE : RQ Ec Ec) by (etransitivity; [ symmetry; exact HQc | exact HQc ]).
     (** The two telescopes, equal under the view's instance. *)
     assert (Hac : tele_ass tc) by exact (List.Forall_rev (member_nparams_ass D' HcQ _ _ HMi')).
     assert (Hag : tele_ass tg) by exact (List.Forall_rev (member_nparams_ass D Hc _ _ HMv)).
-    assert (HWc0 : ⊨ List.rev tc ++ ind_uparams D') by (unfold tc; rewrite List.rev_involutive; exact (vid_params _ HDQ _ _ HMi')).
+    assert (HWc0 : ⊨ List.rev tc ++ ind_uparams D') by (unfold tc; rewrite List.rev_involutive; exact (valid_ind_decl_params _ HDQ _ _ HMi')).
     assert (HTc0 : forall j0 A, List.nth_error tc j0 = Some (ce_ass A) ->
                      exists i : nat, List.rev (List.firstn j0 tc) ++ ind_uparams D' ⊨ A : Typeω@i)
-      by (intros j0 A HA; exact (proj2 (vid_npar _ HDQ _ _ _ _ HMi' HA))).
-    pose proof (vid_uparams _ HD) as HUD.
+      by (intros j0 A HA; exact (proj2 (valid_ind_decl_npar _ HDQ _ _ _ _ HMi' HA))).
+    pose proof (valid_ind_decl_uparams _ HD) as HUD.
     destruct (rel_ctx_wf_per_ctx_env HUD) as [RU HRU].
     pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRU) as HρU.
     assert (HaC0 : tele_ass (List.rev tc ++ ind_uparams D'))
-      by (apply List.Forall_app; split; [ apply List.Forall_rev; exact Hac | exact (dc_ass _ HcQ) ]).
+      by (apply List.Forall_app; split; [ apply List.Forall_rev; exact Hac | exact (decl_closed_ass _ HcQ) ]).
     assert (HWc : ⊨ List.rev tc ++ ind_uparams D' ++ ind_uparams D)
       by (rewrite List.app_assoc; exact (proj1 (closed_app_sem _ _ HaC0 HWc0 HUD))).
     assert (HTc : forall j0 A, List.nth_error tc j0 = Some (ce_ass A) ->
                     exists i : nat, List.rev (List.firstn j0 tc) ++ ind_uparams D' ++ ind_uparams D ⊨ A : Typeω@i).
     { intros j0 A HA; destruct (HTc0 _ _ HA) as [i HAv].
       assert (Ha0 : tele_ass (List.rev (List.firstn j0 tc) ++ ind_uparams D'))
-        by (apply List.Forall_app; split; [ exact (tele_ass_firstn _ _ Hac) | exact (dc_ass _ HcQ) ]).
+        by (apply List.Forall_app; split; [ exact (tele_ass_firstn _ _ Hac) | exact (decl_closed_ass _ HcQ) ]).
       exists i; rewrite List.app_assoc; exact (closed_app_valid _ _ _ _ _ Ha0 (rel_ctx_wf_firstn _ _ j0 HWc0) HUD HAv). }
-    assert (HWg : ⊨ List.rev tg ++ ind_uparams D) by (unfold tg; rewrite List.rev_involutive; exact (vid_params _ HD _ _ HMv)).
+    assert (HWg : ⊨ List.rev tg ++ ind_uparams D) by (unfold tg; rewrite List.rev_involutive; exact (valid_ind_decl_params _ HD _ _ HMv)).
     assert (HTg : forall j0 A, List.nth_error tg j0 = Some (ce_ass A) ->
                     exists i : nat, List.rev (List.firstn j0 tg) ++ ind_uparams D ⊨ A : Typeω@i)
-      by (intros j0 A HA; exact (proj2 (vid_npar _ HD _ _ _ _ HMv HA))).
+      by (intros j0 A HA; exact (proj2 (valid_ind_decl_npar _ HD _ _ _ _ HMv HA))).
     assert (Heq : ind_uparams D ⊨ˣ tele_sub (List.rev tg) Id ≈ tele_sub (List.rev tc) (sb_of_list Id Is)).
     { unfold tg, tc; rewrite !List.rev_involutive, tele_sub_id.
       exact (vg_view_nparams p D Hg Hcv _ _ _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi' Hv HMv). }
@@ -744,7 +744,7 @@ Section CrossFresh.
       intros * HeB K4 K6 H.
       destruct Hcp as [Hns _ _ _].
       destruct (vg_canon p D Hg u0 Hgu Hu) as [CnP CnI CaP CaI CdP CdI].
-      pose proof (vgr_ass _ _ Hg) as Hass.
+      pose proof (valid_group_ass _ _ Hg) as Hass.
       pose proof (nparams_rel_sym p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv _ _ Hns) as Hsn.
       pose proof (nparams_rel_refl_r p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv _ _ Hns) as HBB.
       pose proof (nparams_rel_refl_l p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv _ _ Hns) as HAA.
@@ -771,22 +771,22 @@ Section CrossFresh.
     #[warnings="-cannot-define-projection"]
     Record cross_fresh_tail (gA1 gB1 gA2 gB2 : list carg) (vA1 vB1 : list domain) (s : nat) : Prop := mk_cross_fresh_tail
       { (** The container's fresh arguments *)
-        cft_vsA : list domain
+        cross_fresh_tail_vsA : list domain
         (** The group's fresh arguments *)
-      ; cft_vsB : list domain
+      ; cross_fresh_tail_vsB : list domain
         (** The container's are fresh at [ub] *)
-      ; cft_args_a : Fcargs gA2 of qc ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsA ++ nonrec_arg_vals gA1 vA1) ⍮ s ↘ cft_vsA
+      ; cross_fresh_tail_args_a : Fcargs gA2 of qc ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsA ++ nonrec_arg_vals gA1 vA1) ⍮ s ↘ cross_fresh_tail_vsA
         (** The group's are fresh at [u0] *)
-      ; cft_args_b : Fcargs gB2 of p u0 in gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ⍮ s ↘ cft_vsB
+      ; cross_fresh_tail_args_b : Fcargs gB2 of p u0 in gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ⍮ s ↘ cross_fresh_tail_vsB
         (** They are related at the group's relation *)
-      ; cft_related : con_args_rel p D (okr_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1)
-          (nsB ++ nonrec_arg_vals gB1 vB1) gB2 cft_vsA cft_vsB
+      ; cross_fresh_tail_related : con_args_rel p D (okr_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1)
+          (nsB ++ nonrec_arg_vals gB1 vB1) gB2 cross_fresh_tail_vsA cross_fresh_tail_vsB
         (** The non-recursive ones are related at their types *)
-      ; cft_nonrec : tele_rel_from (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1)
-          (nonrec_arg_vals gB2 cft_vsA) (nonrec_arg_vals gB2 cft_vsB)
+      ; cross_fresh_tail_nonrec : tele_rel_from (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1)
+          (nonrec_arg_vals gB2 cross_fresh_tail_vsA) (nonrec_arg_vals gB2 cross_fresh_tail_vsB)
         (** The types of the ones recursive in both read alike at their
             domains *)
-      ; cft_tops : cross_tops dr v (nsA ++ nonrec_arg_vals gB1 vA1) gA2 gB2 cft_vsA cft_vsB }.
+      ; cross_fresh_tail_tops : cross_tops dr v (nsA ++ nonrec_arg_vals gB1 vA1) gA2 gB2 cross_fresh_tail_vsA cross_fresh_tail_vsB }.
 
     Lemma cross_fresh_cargs : forall gA2 gB2 gA1 gB1 vA1 vB1, gsA = gA1 ++ gA2 -> gsB = gB1 ++ gB2 -> cargs_corr vm gA1 gB1 ->
         List.length vA1 = List.length gA1 -> List.length vB1 = List.length gB1 ->
@@ -814,9 +814,9 @@ Section CrossFresh.
         pose proof (view_nn p D Hg m Mm qc k' Is vm D' HMm Hh Hq i' Mi' v Mv HMi' Hv HMv) as Hnn.
         pose proof (length_cups p D Hg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
         assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
-        pose proof (uparams_refl_l D' (vgr_valid _ _ HgQ) (vgr_closed _ _ HgQ) _ _ Hub) as Hubub.
+        pose proof (uparams_refl_l D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ Hub) as Hubub.
         destruct (vg_canon p D Hg u0 Hgu Hu) as [CnP CnI CaP CaI CdP CdI].
-        pose proof (vgr_ass _ _ Hg) as Hass.
+        pose proof (valid_group_ass _ _ Hg) as Hass.
         pose proof (nparams_rel_refl_r p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv _ _ Hns) as HnsB.
         assert (HeA'' : gsA = (gA1 ++ gA :: nil) ++ gA2) by (rewrite <- List.app_assoc; exact HeA).
         assert (HeB'' : gsB = (gB1 ++ gB :: nil) ++ gB2) by (rewrite <- List.app_assoc; exact HeB).
@@ -838,7 +838,7 @@ Section CrossFresh.
         { assert (HW' : ⊨ List.rev (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) ++ ⋅)
             by (rewrite List.rev_involutive, List.app_nil_r; exact HWA0).
           assert (Hta : tele_ass (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')))
-            by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D' (vgr_closed _ _ HgQ) i' Mi' HMi') ]).
+            by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D' (valid_group_closed _ _ HgQ) i' Mi' HMi') ]).
           exact (per_gargs_refl_l _ _ _ per_ctx_env_nil_true HW' Hta _ _ _ _ I K1). }
         assert (RenvA : forall R, EF cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi' ≈ cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi' ∈ per_ctx_env ↘ R ->
                           R (env_args nil (ub ++ nsA ++ vA1)) (env_args nil (ub ++ nsA ++ vA1)))
@@ -1053,11 +1053,11 @@ Section CrossBot.
   Hypotheses (HP : valid_groups VP) (HPD : VP p D).
   Let Hvg := valid_groups_valid VP HP p D HPD.
   Let Hcv := containers_valid_of_groups VP HP p D HPD.
-  Let HD := vgr_valid _ _ Hvg.
-  Let Hc := vgr_closed _ _ Hvg.
-  Let Hl := vgr_lookup _ _ Hvg.
-  Let Hdt := vgr_typed _ _ Hvg.
-  Let Hass := vgr_ass _ _ Hvg.
+  Let HD := valid_group_valid _ _ Hvg.
+  Let Hc := valid_group_closed _ _ Hvg.
+  Let Hl := valid_group_lookup _ _ Hvg.
+  Let Hdt := valid_group_typed _ _ Hvg.
+  Let Hass := valid_group_ass _ _ Hvg.
   Variable (Γ : ctx) (RΓ : relation env).
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HΓ : ⊨ Γ).
   Variable (RU : relation env).
@@ -1070,9 +1070,9 @@ Section CrossBot.
   Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0).
   Variable (Bks : list eblock) (iA : nat).
   Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
-  Let HBks := vbs_has _ _ _ _ _ _ HBk.
-  Let HMall := vbs_mctx _ _ _ _ _ _ HBk.
-  Let HAv := vbs_motive _ _ _ _ _ _ HBk.
+  Let HBks := valid_blocks_has _ _ _ _ _ _ HBk.
+  Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
+  Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
   Let dr := canon_doms_rel u0.
@@ -1138,15 +1138,15 @@ Section CrossBot.
   Record cross_ih_pair (t t' : ptyp) (k : nat) (u u' pre pre' : list domain) (x x' : domain) : Prop :=
     mk_cross_ih_pair
     { (** The container's recursive result *)
-      cip_container : domain
+      cross_ih_pair_container : domain
       (** The group's recursive result *)
-    ; cip_group : domain
+    ; cross_ih_pair_group : domain
       (** The container's, under its eliminator *)
-    ; cip_container_eval : ⟦ih x of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cip_container
+    ; cross_ih_pair_container_eval : ⟦ih x of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cross_ih_pair_container
       (** The group's, under its own *)
-    ; cip_group_eval : ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cip_group
+    ; cross_ih_pair_group_eval : ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cross_ih_pair_group
       (** They are related as recursive results *)
-    ; cip_related : rec_result_rel dr Rel k u u' pre pre' t x x' cip_container cip_group }.
+    ; cross_ih_pair_related : rec_result_rel dr Rel k u u' pre pre' t x x' cross_ih_pair_container cross_ih_pair_group }.
 
   Lemma cross_ih_neut : forall t t' k u u' pre pre' a1 a2 e e', shape_corr vm t' t ->
       rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
@@ -1185,16 +1185,16 @@ Section CrossBot.
   Record cross_ih_types (t t' : ptyp) (k : nat) (u u' pre pre' : list domain) (ρ1 ρ2 : env) (x x' : domain) : Prop :=
     mk_cross_ih_types
     { (** The container's recursive result type *)
-      cit_container : domain
+      cross_ih_types_container : domain
       (** The group's recursive result type *)
-    ; cit_group : domain
+    ; cross_ih_types_group : domain
       (** The container's, under its motives *)
-    ; cit_container_eval : ⟦ihty x of t' under ρb (blocks_motives VBb) ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ cit_container
+    ; cross_ih_types_container_eval : ⟦ihty x of t' under ρb (blocks_motives VBb) ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ cross_ih_types_container
       (** The group's, under its own *)
-    ; cit_group_eval : ⟦ihty x' of t under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ cit_group
+    ; cross_ih_types_group_eval : ⟦ihty x' of t under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ cross_ih_types_group
       (** Their related neutrals are related as recursive results *)
-    ; cit_related : forall e2 e2', Dom e2 ≈ e2' ∈ per_bot ->
-        rec_result_rel dr Rel k u u' pre pre' t x x' (⇑ cit_container e2) (⇑ cit_group e2') }.
+    ; cross_ih_types_related : forall e2 e2', Dom e2 ≈ e2' ∈ per_bot ->
+        rec_result_rel dr Rel k u u' pre pre' t x x' (⇑ cross_ih_types_container e2) (⇑ cross_ih_types_group e2') }.
 
   Lemma cross_ih_fresh : forall t t' k u u' pre pre' ρ1 ρ2 a1 a2 e e', shape_corr vm t' t ->
       rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
@@ -1219,7 +1219,7 @@ Section CrossBot.
       rewrite skipn_app_exact in Hs1 by lia; rewrite skipn_app_exact in Hs2 by lia.
       pose proof (ind_rel_idx p D u0 nr ar dr Hass CnP CnI CaP CaI CdP CdI _ _ _ _ _ _ _ _ _ _ _ HM Hr Hs1 Hs2) as Hm1.
       destruct (XE cross_member j' j Hsc) as (Mj' & Mj0 & HMj' & Hvmb).
-      pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj0; rewrite HM in HMj0; injection HMj0 as <-.
+      pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj0; rewrite HM in HMj0; injection HMj0 as <-.
       destruct (HbB _ _ HMj') as [bb Hbb]; destruct (HBks _ _ HM) as [ba Hba].
       destruct (Hmot_x j' Mj' j bb ba u u' bs1 bs2 _ _ HMj' Hsc Hbb Hba Hm1) as (h1 & h2 & Eh1 & Eh2 & HR).
       apply (mk_cross_ih_types _ _ _ _ _ _ _ _ _ _ _ h1 h2).
@@ -1262,23 +1262,23 @@ Section CrossBot.
   Record cross_wrapped (k : nat) (pre pre' : list domain) (gq gA gB : list carg) (vA vB : list domain) (ρA ρB : env)
       (s2 : nat) : Prop := mk_cross_wrapped
     { (** The container's fresh recursive results *)
-      cw_ihsA : list domain
+      cross_wrapped_ihsA : list domain
       (** The group's fresh recursive results *)
-    ; cw_ihsB : list domain
+    ; cross_wrapped_ihsB : list domain
       (** The container's wrapped results *)
-    ; cw_wA : list domain
+    ; cross_wrapped_wA : list domain
       (** The group's wrapped results *)
-    ; cw_wB : list domain
+    ; cross_wrapped_wB : list domain
       (** The container's fresh results *)
-    ; cw_fresh_a : Fihs vA at gq gA under ρb (blocks_motives VBb) in gc_deps ⍮ gc_stack ⍮ ρA ⍮ s2 ↘ cw_ihsA
+    ; cross_wrapped_fresh_a : Fihs vA at gq gA under ρb (blocks_motives VBb) in gc_deps ⍮ gc_stack ⍮ ρA ⍮ s2 ↘ cross_wrapped_ihsA
       (** The group's fresh results *)
-    ; cw_fresh_b : Fihs vB at gq gB under C1 (blocks_motives Bks) in gc_deps ⍮ gc_stack ⍮ ρB ⍮ s2 ↘ cw_ihsB
+    ; cross_wrapped_fresh_b : Fihs vB at gq gB under C1 (blocks_motives Bks) in gc_deps ⍮ gc_stack ⍮ ρB ⍮ s2 ↘ cross_wrapped_ihsB
       (** The container's wrapped results, from them *)
-    ; cw_wrap_a : ⟦wihs vA of gq gA with cw_ihsA under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cw_wA
+    ; cross_wrapped_wrap_a : ⟦wihs vA of gq gA with cross_wrapped_ihsA under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cross_wrapped_wA
       (** The group's wrapped results, from them *)
-    ; cw_wrap_b : ⟦wihs vB of gq gB with cw_ihsB under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cw_wB
+    ; cross_wrapped_wrap_b : ⟦wihs vB of gq gB with cross_wrapped_ihsB under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cross_wrapped_wB
       (** The wrapped results are related *)
-    ; cw_related : cross_results_rel dr Rel k u0 u0 C1 p u0 Bks pre pre' gA gB vA vB cw_wA cw_wB }.
+    ; cross_wrapped_related : cross_results_rel dr Rel k u0 u0 C1 p u0 Bks pre pre' gA gB vA vB cross_wrapped_wA cross_wrapped_wB }.
 
   Lemma cross_wrapped_results : forall (rk : nat -> nat) r, (forall j', rk j' < r -> cross_bot j') ->
       forall k gq gA gB vA vB pre pre' ρA ρB s s2,
@@ -1355,8 +1355,8 @@ Section CrossBot.
           rewrite HMj in HMj0; injection HMj0 as <-.
           destruct (XE cross_member _ _ Hmt) as (Mi2 & Mj2 & HMi2 & Hvmb).
           rewrite HMj' in HMi2; injection HMi2 as <-.
-          pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj2; rewrite HMj in HMj2; injection HMj2 as <-.
-          pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn.
+          pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj2; rewrite HMj in HMj2; injection HMj2 as <-.
+          pose proof (view_member_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn.
           split; lia. }
         destruct (cross_ih_fresh t t' k u0 u0 pre pre' ρA ρB aA aB (d_var s) (d_var s) Hsc Hrr Hts EaA EaB Hpl)
           as [h1 h2 G1 G2 HG].
@@ -1383,43 +1383,43 @@ Section CrossBot.
   Record cross_block_site (rk : nat -> nat) (r : nat) (sela selb : option (list nat)) (n : nat) (Mn : imember) : Prop :=
     mk_cross_block_site
     { (** The container's member index *)
-      cbs_a : nat
+      cross_block_site_a : nat
       (** The container's member *)
-    ; cbs_Ma : imember
+    ; cross_block_site_Ma : imember
       (** The group's member index *)
-    ; cbs_b : nat
+    ; cross_block_site_b : nat
       (** The group's member *)
-    ; cbs_Mb : imember
+    ; cross_block_site_Mb : imember
       (** The common reference's group *)
-    ; cbs_hd : qname
+    ; cross_block_site_hd : qname
       (** The common reference's member *)
-    ; cbs_k : nat
+    ; cross_block_site_k : nat
       (** The container side's uniform parameters at the reference *)
-    ; cbs_prea : list domain
+    ; cross_block_site_prea : list domain
       (** The group side's uniform parameters at the reference *)
-    ; cbs_preb : list domain
+    ; cross_block_site_preb : list domain
       (** [sela] gives [a] *)
-    ; cbs_src_a : elim_src sela n = cbs_a
+    ; cross_block_site_src_a : elim_src sela n = cross_block_site_a
       (** [selb] gives [b] *)
-    ; cbs_src_b : elim_src selb n = cbs_b
+    ; cross_block_site_src_b : elim_src selb n = cross_block_site_b
       (** The view takes [a] to [b] *)
-    ; cbs_in_view_map : List.nth_error vm cbs_a = Some cbs_b
+    ; cross_block_site_in_view_map : List.nth_error vm cross_block_site_a = Some cross_block_site_b
       (** [a] is a member of the container *)
-    ; cbs_member_a : ind_member D' cbs_a = Some cbs_Ma
+    ; cross_block_site_member_a : ind_member D' cross_block_site_a = Some cross_block_site_Ma
       (** [b] is a member of the group *)
-    ; cbs_member_b : ind_member D cbs_b = Some cbs_Mb
+    ; cross_block_site_member_b : ind_member D cross_block_site_b = Some cross_block_site_Mb
       (** [Mn] has [a]'s non-uniform parameter count *)
-    ; cbs_nn : im_nn Mn = im_nn cbs_Ma
+    ; cross_block_site_nn : im_nn Mn = im_nn cross_block_site_Ma
       (** [Mn]'s constructors are [a]'s *)
-    ; cbs_names : List.map fst (im_cons Mn) = List.map fst (im_cons cbs_Ma)
+    ; cross_block_site_names : List.map fst (im_cons Mn) = List.map fst (im_cons cross_block_site_Ma)
       (** Their argument kinds are compatible with [a]'s *)
-    ; cbs_kinds : forall c gq gA, In (c, gq) (im_cons Mn) -> ind_con cbs_Ma c = Some gA -> cargs_kinds gq gA
+    ; cross_block_site_kinds : forall c gq gA, In (c, gq) (im_cons Mn) -> ind_con cross_block_site_Ma c = Some gA -> cargs_kinds gq gA
       (** [b] nests through only at members of rank below [r] *)
-    ; cbs_nest : forall c gq gB, In (c, gq) (im_cons Mn) -> ind_con cbs_Mb c = Some gB -> cargs_nest_ok rk r gq gB
+    ; cross_block_site_nest : forall c gq gB, In (c, gq) (im_cons Mn) -> ind_con cross_block_site_Mb c = Some gB -> cargs_nest_ok rk r gq gB
       (** [a]'s type at [ub] is at the reference *)
-    ; cbs_ref_a : ⟦mref cbs_a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (cbs_hd, cbs_k, cbs_prea)
+    ; cross_block_site_ref_a : ⟦mref cross_block_site_a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (cross_block_site_hd, cross_block_site_k, cross_block_site_prea)
       (** [b]'s type at [u0] is at the reference *)
-    ; cbs_ref_b : ⟦mref cbs_b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (cbs_hd, cbs_k, cbs_preb) }.
+    ; cross_block_site_ref_b : ⟦mref cross_block_site_b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (cross_block_site_hd, cross_block_site_k, cross_block_site_preb) }.
 
   Lemma cross_block_read : forall (rk : nat -> nat) r, (forall j', rk j' < r -> cross_bot j') ->
       forall s sela selb n Mn, cross_block_site rk r sela selb n Mn ->
@@ -1430,17 +1430,17 @@ Section CrossBot.
     pose proof (valid_groups_valid VP HP qc D' HVQ) as HgQ.
     pose proof (length_cups p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
     assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
-    pose proof (uparams_refl_l D' (vgr_valid _ _ HgQ) (vgr_closed _ _ HgQ) _ _ Hub) as Hubub.
+    pose proof (uparams_refl_l D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ Hub) as Hubub.
     destruct (XE cross_member a b Hvab) as (Ma0 & Mb0 & HMa0 & Hvmb).
     rewrite HMa in HMa0; injection HMa0 as <-.
-    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMb0; rewrite HMb in HMb0; injection HMb0 as <-.
+    pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMb0; rewrite HMb in HMb0; injection HMb0 as <-.
     destruct (mref_ref_len qc D' a Ma ub hd k prea Hq HMa Hlb Ra) as [Hra Hla].
     destruct (mref_ref_len p D b Mb u0 hd k preb Hl HMb u0_len' Rb) as [Hrb Hlb'].
-    pose proof (vmb_unu _ _ _ _ _ _ _ _ _ Hvmb) as Hunu.
-    pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
-    destruct (gta_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
+    pose proof (view_member_unu _ _ _ _ _ _ _ _ _ Hvmb) as Hunu.
+    pose proof (view_member_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
+    destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
     rewrite Hq in Hq2; injection Hq2 as <-.
-    destruct (vwo_members _ _ _ Hvw a Ma b HMa Hvab) as (Mb1 & HMb1 & _ & HnamesAB & _).
+    destruct (vwrap_ok_members _ _ _ Hvw a Ma b HMa Hvab) as (Mb1 & HMb1 & _ & HnamesAB & _).
     rewrite HMb in HMb1; injection HMb1 as <-.
     destruct (HbB _ _ HMa) as [blA HblA]; destruct (HBks _ _ HMb) as [blB HblB].
     destruct (fresh_nparams_exist qc D' HgQ ub Hubub Hlb a Ma s HMa) as (nsA & FnsA & HnsA).
@@ -1467,7 +1467,7 @@ Section CrossBot.
     - rewrite Hsa; exact HblA.
     - rewrite Hsb; exact HblB.
     - rewrite (HnmB _ _ _ HMa HblA), Hnn; reflexivity.
-    - rewrite (vbs_nm _ _ _ _ _ _ HBk _ _ _ HMb HblB), Hnn', Hnn; reflexivity.
+    - rewrite (valid_blocks_nm _ _ _ _ _ _ HBk _ _ _ HMb HblB), Hnn', Hnn; reflexivity.
     - rewrite Hsa; exact Ra.
     - rewrite Hsb; exact Rb.
     - exact FnsA.
@@ -1476,17 +1476,17 @@ Section CrossBot.
     - exact Eb.
     - exact (per_univ_then_per_top_typ HR).
     - pose proof (HnaB _ _ _ HMa HblA) as Hn0; unfold brs_names in *; rewrite Hnames; exact Hn0.
-    - pose proof (vbs_names _ _ _ _ _ _ HBk _ _ _ HMb HblB) as Hn0; unfold brs_names in *; rewrite Hnames, <- HnamesAB; exact Hn0.
+    - pose proof (valid_blocks_names _ _ _ _ _ _ HBk _ _ _ HMb HblB) as Hn0; unfold brs_names in *; rewrite Hnames, <- HnamesAB; exact Hn0.
     - (** A branch. *)
       intros c gq na Ba nb Bb Hin InA InB.
       assert (HinA : In c (List.map fst (im_cons Ma)))
         by (rewrite <- Hnames; apply List.in_map_iff; exists (c, gq); split; [ reflexivity | exact Hin ]).
       destruct (cons_lookup_names _ _ HinA) as [gsA HcA].
-      destruct (vmb_cons _ _ _ _ _ _ _ _ _ Hvmb c gsA HcA) as (gsB & HcB & Hcorr).
+      destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvmb c gsA HcA) as (gsB & HcB & Hcorr).
       pose proof (Hkinds c gq gsA Hin HcA) as Hkd.
       pose proof (Hnest c gq gsB Hin HcB) as Hno.
-      pose proof (gta_plen _ (vgr_ass _ _ HgQ) _ _ _ _ HMa (cons_lookup_in _ _ _ HcA)) as PA.
-      pose proof (gta_plen _ Hass _ _ _ _ HMb (cons_lookup_in _ _ _ HcB)) as PB.
+      pose proof (grp_tele_ass_plen _ (valid_group_ass _ _ HgQ) _ _ _ _ HMa (cons_lookup_in _ _ _ HcA)) as PA.
+      pose proof (grp_tele_ass_plen _ Hass _ _ _ _ HMb (cons_lookup_in _ _ _ HcB)) as PB.
       assert (K1 : per_gargs (List.rev (cargs_ctx qc D' Ma nil ++ im_params D' Ma)) nil nil (ub ++ nsA ++ nil) (cups ++ nsB ++ nil))
         by (cbn [cargs_ctx cargs_ctx_aux List.app]; rewrite !List.app_nil_r; exact HpA).
       assert (K2 : per_gargs (List.rev (cargs_ctx qc D' Ma nil ++ im_params D' Ma)) nil nil (cups ++ nsB ++ nil) (cups ++ nsB ++ nil))
@@ -1515,10 +1515,10 @@ Section CrossBot.
         - rewrite !skipn_app_exact by assumption; exact Hca. }
       assert (HnA : List.NoDup (List.map (fun b0 => fst (fst b0)) (eb_brs blA))).
       { pose proof (HnaB _ _ _ HMa HblA) as Hn0; unfold brs_names in Hn0; rewrite <- Hn0.
-        exact (dt_nodup _ _ _ (vgr_typed _ _ HgQ) _ _ HMa). }
+        exact (decl_typed_nodup _ _ _ (valid_group_typed _ _ HgQ) _ _ HMa). }
       assert (HnB : List.NoDup (List.map (fun b0 => fst (fst b0)) (eb_brs blB))).
-      { pose proof (vbs_names _ _ _ _ _ _ HBk _ _ _ HMb HblB) as Hn0; unfold brs_names in Hn0; rewrite <- Hn0.
-        exact (dt_nodup _ _ _ Hdt _ _ HMb). }
+      { pose proof (valid_blocks_names _ _ _ _ _ _ HBk _ _ _ HMb HblB) as Hn0; unfold brs_names in Hn0; rewrite <- Hn0.
+        exact (decl_typed_nodup _ _ _ Hdt _ _ HMb). }
       destruct (Hbr_x a Ma b Mb blA blB c gsA gsB na nb Ba Bb u0 u0 (prea ++ nsA) (preb ++ nsB) vsA vsB wA wB hd k
                   HMa Hvab HMb HblA HblB HcA HcB (brs_lookup_nodup_in _ _ _ _ HnA InA) (brs_lookup_nodup_in _ _ _ _ HnB InB))
         as (ra & rb & Era & Erb & Hrr).
@@ -1533,7 +1533,7 @@ Section CrossBot.
       + exact HcA.
       + exact HcB.
       + rewrite (HarB _ _ _ _ _ _ _ HMa HblA HcA InA), (cargs_kinds_length _ _ Hkd), Hnn; reflexivity.
-      + rewrite (vbs_arity _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMb HblB HcB InB), (cargs_kinds_length _ _ Hkd),
+      + rewrite (valid_blocks_arity _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMb HblB HcB InB), (cargs_kinds_length _ _ Hkd),
           (cargs_corr_len _ _ _ Hcorr), Hnn', Hnn; reflexivity.
       + exact PA.
       + exact PB.
@@ -1557,17 +1557,17 @@ Section CrossBot.
   #[warnings="-cannot-define-projection"]
   Record cross_ref_pair (a b : nat) : Prop := mk_cross_ref_pair
     { (** The common reference's group *)
-      crp_hd : qname
+      cross_ref_pair_hd : qname
       (** The common reference's member *)
-    ; crp_k : nat
+    ; cross_ref_pair_k : nat
       (** [a]'s uniform parameters at the reference *)
-    ; crp_prea : list domain
+    ; cross_ref_pair_prea : list domain
       (** [b]'s uniform parameters at the reference *)
-    ; crp_preb : list domain
+    ; cross_ref_pair_preb : list domain
       (** [a]'s type at [ub] is at the reference *)
-    ; crp_ref_a : ⟦mref a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (crp_hd, crp_k, crp_prea)
+    ; cross_ref_pair_ref_a : ⟦mref a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (cross_ref_pair_hd, cross_ref_pair_k, cross_ref_pair_prea)
       (** [b]'s type at [u0] is at the reference *)
-    ; crp_ref_b : ⟦mref b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (crp_hd, crp_k, crp_preb) }.
+    ; cross_ref_pair_ref_b : ⟦mref b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (cross_ref_pair_hd, cross_ref_pair_k, cross_ref_pair_preb) }.
 
   Lemma cross_refs : forall a Ma b Mb, List.nth_error vm a = Some b -> ind_member D' a = Some Ma -> ind_member D b = Some Mb ->
       cross_ref_pair a b.
@@ -1577,15 +1577,15 @@ Section CrossBot.
     pose proof (valid_groups_valid VP HP qc D' HVQ) as HgQ.
     pose proof (length_cups p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
     assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
-    pose proof (uparams_refl_l D' (vgr_valid _ _ HgQ) (vgr_closed _ _ HgQ) _ _ Hub) as Hubub.
+    pose proof (uparams_refl_l D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ Hub) as Hubub.
     destruct (XE cross_member a b Hvab) as (Ma0 & Mb0 & HMa0 & Hvmb).
     rewrite HMa in HMa0; injection HMa0 as <-.
-    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMb0; rewrite HMb in HMb0; injection HMb0 as <-.
+    pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMb0; rewrite HMb in HMb0; injection HMb0 as <-.
     destruct (mref_exists VP HP qc D' HVQ ub Hubub Hlb a Ma HMa) as [[[hda ka] prea] Ra].
     destruct (mref_exists VP HP p D HPD u0 u0_gargs' u0_len' b Mb HMb) as [[[hdb kb] preb] Rb].
     destruct (mref_ref_len qc D' a Ma ub hda ka prea Hq HMa Hlb Ra) as [Hra _].
     destruct (mref_ref_len p D b Mb u0 hdb kb preb Hl HMb u0_len' Rb) as [Hrb _].
-    pose proof (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb) as Href.
+    pose proof (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb) as Href.
     rewrite Hra, Hrb in Href; injection Href as <- <-.
     exact (mk_cross_ref_pair a b hdb kb prea preb Ra Rb).
   Qed.
@@ -1604,7 +1604,7 @@ Section CrossBot.
     intros i' Mi' j Mj hd k prea preb Dq Hvi HMi' HMj Ra Rb HDq.
     pose proof (length_cups p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
     assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
-    destruct (gta_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
+    destruct (grp_tele_ass_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
     rewrite Hvi in Hvj; injection Hvj as <-; rewrite HMj in HMjj; injection HMjj as <-.
     destruct (im_head Mi') as [pm | qv kv Iv vmv] eqn:Hh'.
     - destruct Hhm as [vm' Hhj].
@@ -1620,7 +1620,7 @@ Section CrossBot.
                   HMm Hh Hq HMi' Hh' HDq Hvi HMj Hhj u0 cups ub u0_gargs' u0_len' Ecups Hub) as (pa' & pb' & Epa' & Epb' & Hgp).
       pose proof (functional_eval_exps' _ _ _ _ Epa' Epa) as ->; pose proof (functional_eval_exps' _ _ _ _ Epb' Epb) as ->.
       pose proof (valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq) as HVQ.
-      destruct (gta_views _ (vgr_ass _ _ (valid_groups_valid VP HP qc D' HVQ)) _ _ _ _ _ _ HMi' Hh') as (D3 & Mc3 & Hq3 & _ & _ & HlIv).
+      destruct (grp_tele_ass_views _ (valid_group_ass _ _ (valid_groups_valid VP HP qc D' HVQ)) _ _ _ _ _ _ HMi' Hh') as (D3 & Mc3 & Hq3 & _ & _ & HlIv).
       rewrite HDq in Hq3; injection Hq3 as <-.
       assert (Lp : List.length pa = List.length (List.rev (ind_uparams Dq)))
         by (rewrite List.length_rev, (eval_exps_length _ _ _ Epa); exact HlIv).
@@ -1648,8 +1648,8 @@ Section CrossBot.
     inversion Hg1 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' w0 w0' HM0 Hr Hn L1 L2 Hs1 Hs2 He]; subst.
     rewrite HM in HM0; injection HM0 as <-.
     destruct (XE cross_member i' j Hvi) as (Mi' & Mj1 & HMi' & Hvmb).
-    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj1; rewrite HM in HMj1; injection HMj1 as <-.
-    pose proof (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb) as Href; rewrite Hr in Href; symmetry in Href.
+    pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj1; rewrite HM in HMj1; injection HMj1 as <-.
+    pose proof (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb) as Href; rewrite Hr in Href; symmetry in Href.
     destruct (XE self_ref_target j Mj hd k HM Hr) as (Dq & Mk & HDq & HMk & Hnnq & Hnuq).
     destruct (cross_refs i' Mi' j Mj Hvi HMi' HM) as [hd1 k1 prea preb Ra Rb].
     destruct (mref_ref_len qc D' i' Mi' ub hd1 k1 prea Hq HMi' Hlb Ra) as [Hra _].
@@ -1659,7 +1659,7 @@ Section CrossBot.
     - unfold im_np; lia.
     - unfold im_np; lia.
     - intros i0 Mi0 b HMi0 Hb; exact (HnmB _ _ _ HMi0 Hb).
-    - intros i0 Mi0 b HMi0 Hb; exact (vbs_nm _ _ _ _ _ _ HBk _ _ _ HMi0 Hb).
+    - intros i0 Mi0 b HMi0 Hb; exact (valid_blocks_nm _ _ _ _ _ _ HBk _ _ _ HMi0 Hb).
     - exact Ra.
     - exact Rb.
     - exact (cross_uparams_read i' Mi' j Mj hd k prea preb Dq Hvi HMi' HM Ra Rb HDq).
@@ -1667,9 +1667,9 @@ Section CrossBot.
     - (** The blocks. *)
       intros s n Mn HMn.
       apply (cross_block_read rk (rk j) HIH s).
-      destruct (gta_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
+      destruct (grp_tele_ass_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
       rewrite Hvi in Hvj; injection Hvj as <-; rewrite HM in HMjj; injection HMjj as <-.
-      pose proof (gta_view_maps_coherent _ Hass) as Hcoh.
+      pose proof (grp_tele_ass_view_maps_coherent _ Hass) as Hcoh.
       destruct (im_head Mi') as [pm | qv kv Iv vmv] eqn:Hh'.
       + (** A declared member of the container: the view's own map. *)
         destruct Hhm as [vm' Hhj].
@@ -1680,15 +1680,15 @@ Section CrossBot.
         rewrite Hsa, Hsb.
         unfold im_ref in Href; rewrite Hh' in Href; injection Href as <- <-.
         rewrite Hq in HDq; injection HDq as <-.
-        destruct (gta_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw); rewrite Hq in Hq2; injection Hq2 as <-.
+        destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw); rewrite Hq in Hq2; injection Hq2 as <-.
         assert (Hnl : n < List.length vm)
-          by (rewrite (vwo_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
+          by (rewrite (vwrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
         destruct (nth_error_lt_some' _ _ Hnl) as [b Hvb].
         destruct (XE cross_member n b Hvb) as (Mn0 & Mb & HMn0 & Hvmb2).
         rewrite HMn in HMn0; injection HMn0 as <-.
-        pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb2) as HMb.
+        pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb2) as HMb.
         destruct (cross_refs n Mn b Mb Hvb HMn HMb) as [hdn kn pran prbn Ran Rbn].
-        pose proof (dt_nodup _ _ _ (vgr_typed _ _ HgQ) _ _ HMn) as Hnd.
+        pose proof (decl_typed_nodup _ _ _ (valid_group_typed _ _ HgQ) _ _ HMn) as Hnd.
         apply (mk_cross_block_site rk (rk j) None (Some vm) n Mn n Mn b Mb hdn kn pran prbn).
         * reflexivity.
         * cbn; exact (List.nth_error_nth _ _ _ Hvb).
@@ -1701,7 +1701,7 @@ Section CrossBot.
           pose proof (cons_lookup_nodup_in _ _ _ Hnd Hin) as Hc0; unfold ind_con in HcA; rewrite Hc0 in HcA; injection HcA as <-.
           apply cargs_kinds_refl.
         * intros c gq gB Hin HcB.
-          exact (vro_nest _ _ _ _ Hrk j Mj qc i' Is vm D' n Mn b Mb c gq gB HM Hhj Hq HMn Hvb HMb
+          exact (view_rank_ok_nest _ _ _ _ Hrk j Mj qc i' Is vm D' n Mn b Mb c gq gB HM Hhj Hq HMn Hvb HMb
                    (cons_lookup_nodup_in _ _ _ Hnd Hin) HcB).
         * exact Ran.
         * exact Rbn.
@@ -1713,12 +1713,12 @@ Section CrossBot.
         assert (Hsb : im_sel Mj = Some vm') by (unfold im_sel; rewrite Hhj; reflexivity).
         rewrite Hsa, Hsb.
         unfold im_ref in Href; rewrite Hh' in Href; injection Href as <- <-.
-        destruct (gta_vwrap _ (vgr_ass _ _ HgQ) _ _ _ _ _ _ HMi' Hh') as (D2 & Hq2 & Hvw2).
+        destruct (grp_tele_ass_vwrap _ (valid_group_ass _ _ HgQ) _ _ _ _ _ _ HMi' Hh') as (D2 & Hq2 & Hvw2).
         rewrite HDq in Hq2; injection Hq2 as <-.
         assert (Hnl : n < List.length vmv)
-          by (rewrite (vwo_length _ _ _ Hvw2); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
+          by (rewrite (vwrap_ok_length _ _ _ Hvw2); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
         destruct (nth_error_lt_some' _ _ Hnl) as [a Hva].
-        destruct (vwo_members _ _ _ Hvw2 n Mn a HMn Hva) as (Ma & HMa & Hnna & Hnamesa & Hcorra).
+        destruct (vwrap_ok_members _ _ _ Hvw2 n Mn a HMn Hva) as (Ma & HMa & Hnna & Hnamesa & Hcorra).
         assert (Hb : exists b, List.nth_error vm' n = Some b /\ List.nth_error vm a = Some b).
         { pose proof (f_equal (fun l => List.nth_error l n) Hvma) as E; cbn beta in E.
           rewrite !List.nth_error_map, Hva in E; cbn in E.
@@ -1727,10 +1727,10 @@ Section CrossBot.
         destruct Hb as (b & Hvb' & Hvab).
         destruct (XE cross_member a b Hvab) as (Ma0 & Mb & HMa0 & Hvmb2).
         rewrite HMa in HMa0; injection HMa0 as <-.
-        pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb2) as HMb.
+        pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb2) as HMb.
         destruct (cross_refs a Ma b Mb Hvab HMa HMb) as [hdn kn pran prbn Ran Rbn].
         pose proof (HcvQ _ _ _ _ _ _ _ HMi' Hh' HDq) as HgD.
-        pose proof (dt_nodup _ _ _ (vgr_typed _ _ HgD) _ _ HMn) as Hnd.
+        pose proof (decl_typed_nodup _ _ _ (valid_group_typed _ _ HgD) _ _ HMn) as Hnd.
         apply (mk_cross_block_site rk (rk j) (Some vmv) (Some vm') n Mn a Ma b Mb hdn kn pran prbn).
         * cbn; exact (List.nth_error_nth _ _ _ Hva).
         * cbn; exact (List.nth_error_nth _ _ _ Hvb').
@@ -1741,7 +1741,7 @@ Section CrossBot.
         * symmetry; exact Hnamesa.
         * intros c gq gA Hin HcA; exact (cargs_kinds_of_corr _ _ _ (Hcorra c gq gA Hin HcA)).
         * intros c gq gB Hin HcB.
-          exact (vro_nest _ _ _ _ Hrk j Mj qv kv Is' vm' Dq n Mn b Mb c gq gB HM Hhj HDq HMn Hvb' HMb
+          exact (view_rank_ok_nest _ _ _ _ Hrk j Mj qv kv Is' vm' Dq n Mn b Mb c gq gB HM Hhj HDq HMn Hvb' HMb
                    (cons_lookup_nodup_in _ _ _ Hnd Hin) HcB).
         * exact Ran.
         * exact Rbn.
@@ -1752,7 +1752,7 @@ Section CrossBot.
       By strong induction on the rank. *)
   Theorem cross_bot_all : forall j, cross_bot j.
   Proof.
-    destruct (gta_rank _ Hass) as [rk Hrk].
+    destruct (grp_tele_ass_rank _ Hass) as [rk Hrk].
     assert (H : forall r j, rk j < r -> cross_bot j).
     { induction r as [| r IH]; intros j Hj; [ lia |].
       apply (cross_bot_rank rk Hrk j); intros j' Hj'; apply IH; lia. }

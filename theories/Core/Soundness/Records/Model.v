@@ -185,7 +185,7 @@ Section RecordAt.
     destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
     pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-    eapply mk_glu_rel_exp with (gre_lvl := j); [ exact HSb |]; intros Δ σ ρ Hσ.
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := j); [ exact HSb |]; intros Δ σ ρ Hσ.
     destruct (Hbody _ _ _ Hσ) as [a m P El Ea Em Hglu HMg].
     destruct (eval_record_apps_inv _ _ Hl _ _ _ Ea Hn) as (ns & Ens & ->).
     invert_glu_univ_elem Hglu.
@@ -277,7 +277,7 @@ Section RecordAt.
     assert (HMv : forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
                     Γ ⊨ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))])
       by (intros * HM HU; exact (completeness_fundamental_exp _ _ _ (HMt _ _ _ _ HM HU))).
-    eapply mk_glu_rel_exp with (gre_lvl := i); [ exact HSb |]; intros Δ σ ρ Hσ.
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSb |]; intros Δ σ ρ Hσ.
     pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
     assert (Hσt : Δ ⊢ˢ σ : Γ) by exact (glu_ctx_env_sub_escape HSb _ _ _ Hσ).
     assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ Hσt).

@@ -91,13 +91,13 @@ Qed.
     environment related to [ρr], one of [Ψ ++ Γ]. *)
 #[warnings="-cannot-define-projection"]
 Record sub_walk_inv (Γ' Γ : ctx) (σ : sub) (Ψ : ctx) (ρl ρr : env) : Prop := mk_sub_walk_inv
-  { swi_left_rel : relation env
-  ; swi_right_rel : relation env
-  ; swi_left_per : EF tele_sub Ψ σ ++ Γ' ≈ tele_sub Ψ σ ++ Γ' ∈ per_ctx_env ↘ swi_left_rel
-  ; swi_right_per : EF Ψ ++ Γ ≈ Ψ ++ Γ ∈ per_ctx_env ↘ swi_right_rel
-  ; swi_sub : (tele_sub Ψ σ ++ Γ') ⊨ˢ sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ : Ψ ++ Γ
-  ; swi_left : swi_left_rel ρl ρl
-  ; swi_link : exists ρm, ⟦ sb_qn (List.length Ψ) σ ⟧s ρl ↘ ρm /\ swi_right_rel ρm ρr }.
+  { sub_walk_inv_left_rel : relation env
+  ; sub_walk_inv_right_rel : relation env
+  ; sub_walk_inv_left_per : EF tele_sub Ψ σ ++ Γ' ≈ tele_sub Ψ σ ++ Γ' ∈ per_ctx_env ↘ sub_walk_inv_left_rel
+  ; sub_walk_inv_right_per : EF Ψ ++ Γ ≈ Ψ ++ Γ ∈ per_ctx_env ↘ sub_walk_inv_right_rel
+  ; sub_walk_inv_sub : (tele_sub Ψ σ ++ Γ') ⊨ˢ sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ : Ψ ++ Γ
+  ; sub_walk_inv_left : sub_walk_inv_left_rel ρl ρl
+  ; sub_walk_inv_link : exists ρm, ⟦ sb_qn (List.length Ψ) σ ⟧s ρl ↘ ρm /\ sub_walk_inv_right_rel ρm ρr }.
 
 Lemma sub_walk_init : forall Γ' Γ σ σ' R' R ρ ρσ,
     Γ' ⊨ˢ σ ≈ σ' : Γ ->
@@ -1092,7 +1092,7 @@ Proof.
         | exact HA' | exact HM' | exact Hσ' | exact HRC' | exact Hρ' | exact HR0' | exact Hev' | exact H1'
         | exact Ha | exact Ha' | exact HR |].
       pose proof (HU _ _ _ _ _ _ _ _ _ Hp eq_refl Hp' eq_refl Hf0 Hf0') as HUU'.
-      pose proof (ruu_lit _ _ _ HUd) as HUv; pose proof (ruu_lit _ _ _ HUd') as HUv'.
+      pose proof (rel_unit_under_ctx_lit _ _ _ HUd) as HUv; pose proof (rel_unit_under_ctx_lit _ _ _ HUd') as HUv'.
       destruct (mod_bridge _ _ _ _ (me_lit U) (me_lit U') _ _ _ _ _ _ _ _ _ _ _ _
                   HUv Hσ HRC Hρ HR0 Hev H1 HUU' HUv' Hσ' HRC' Hρ' HR0' Hev' H1')
         as [h h' Hh Hh' Hhh].
@@ -1119,7 +1119,7 @@ Proof.
       split; [ constructor; exact Hk' | split; [ exact Hkx' | split; [ reflexivity | left; reflexivity ] ] ].
     + (* a submodule each *)
       pose proof (HU _ _ _ _ _ _ _ _ _ Hp eq_refl Hp' eq_refl Hf0 Hf0') as HUU'.
-      pose proof (ruu_lit _ _ _ (rel_ctx_wf_mod_inv HC)) as HUv; pose proof (ruu_lit _ _ _ (rel_ctx_wf_mod_inv HC')) as HUv'.
+      pose proof (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC)) as HUv; pose proof (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC')) as HUv'.
       destruct (mod_bridge _ _ _ _ (me_lit U) (me_lit U') _ _ _ _ _ _ _ _ _ _ _ _
                   HUv Hσ HRC Hρ HR0 Hev H1 HUU' HUv' Hσ' HRC' Hρ' HR0' Hev' H1')
         as [h h' Hh Hh' Hhh].

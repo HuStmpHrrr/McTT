@@ -11,7 +11,7 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * Checking the Forms of Record Types
 
-    The cases of [ati_record], [ati_tuple] and [ati_proj], shared by both
+    The cases of [alg_type_infer_record], [alg_type_infer_tuple] and [alg_type_infer_proj], shared by both
     checkers ([Extraction.TypeCheck] and [Reference.TypeCheck]).  The type
     former recurses on nothing; a tuple recurses on its annotation and its
     fields, and a projection on its element, and they take those recursive
@@ -118,7 +118,7 @@ Defined.
 
 (** ** Tuples *)
 
-(** What [ati_tuple] asks of the field [k] of a tuple, at the parameters
+(** What [alg_type_infer_tuple] asks of the field [k] of a tuple, at the parameters
     [Rs]. *)
 Definition field_checks (G : ctx) (R : record_decl) (Rs : list nf) (fs : list (string * exp)) (k : nat) : Prop :=
   forall f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
@@ -181,7 +181,7 @@ Proof.
   assert (HTs : G ⊢ T : UT) by exact (alg_type_infer_sound HTi HG).
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HTs.
   pose proof (wf_exp_unf_large HTs) as HTl.
-  split; [ eapply ati_tuple; [ exact HTi | exact Hu | exact Hn | exact Hl | exact Hfs | intros k; exact (HQ k) ]
+  split; [ eapply alg_type_infer_tuple; [ exact HTi | exact Hu | exact Hn | exact Hl | exact Hfs | intros k; exact (HQ k) ]
          | eapply level_of_nbe; eassumption ].
 Qed.
 

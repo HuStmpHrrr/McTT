@@ -140,7 +140,7 @@ Proof.
   { intros m Mm xs xs' HM Hx s.
     destruct (Hps s) as (Ms1 & HM1 & HM1').
     assert (Hassn : tele_ass (List.rev (im_nparams Mm)))
-      by (apply List.Forall_rev; exact (gta_nparams _ Hass _ _ HM)).
+      by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
     destruct (read_ps_tele (List.rev (im_nparams Mm)) (nr m) (env_args nil ups) (env_args nil ups') Hassn
                 ltac:(intros k A pre pre' Hk Hp; rewrite <- !env_args_app; exact (Hn _ _ _ _ _ _ HM Hk Hp))
                 _ _ Hx s) as (Ms2 & HM2 & HM2').

@@ -59,7 +59,7 @@ Proof.
   intros * [Sb] Hx. gen Sb.
   induction Hx; intros; [ | | | destruct e as [B | B N | U | B N U] ];
     match_by_head1 glu_ctx_env ltac:(fun H => invert_glu_ctx_env H).
-  - eapply mk_glu_rel_exp with (gre_lvl := i); [econstructor; try reflexivity; mauto |].
+  - eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_glu_sub_pred i Γ A TSb) (Γ ▹ A))
       by (econstructor; try reflexivity; eassumption).
@@ -76,7 +76,7 @@ Proof.
     econstructor; mauto 3.
   - (** The head of a definition entry glues as the head of an assumption
         entry. *)
-    eapply mk_glu_rel_exp with (gre_lvl := i); [econstructor; try reflexivity; mauto |].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_def_glu_sub_pred i Γ A M TSb) (Γ ▸ A ≔ M))
       by (econstructor; try reflexivity; eassumption).
@@ -93,7 +93,7 @@ Proof.
     econstructor; mauto 3.
   - (** The head of a definition with a module part glues as the head of a
         definition entry. *)
-    eapply mk_glu_rel_exp with (gre_lvl := i); [econstructor; try reflexivity; mauto |].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_dm_glu_sub_pred i Γ A M U TSb) (Γ ▸ₘ A ≔ M ‖ U))
       by (econstructor; try reflexivity; eassumption).
@@ -112,7 +112,7 @@ Proof.
     assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
-    eapply mk_glu_rel_exp with (gre_lvl := max j k); [econstructor; try reflexivity; mauto |].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_glu_sub_pred i Γ B TSb) (Γ ▹ B))
       by (econstructor; try reflexivity; eassumption).
@@ -138,7 +138,7 @@ Proof.
     assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
-    eapply mk_glu_rel_exp with (gre_lvl := max j k); [econstructor; try reflexivity; mauto |].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_def_glu_sub_pred i Γ B N TSb) (Γ ▸ B ≔ N))
       by (econstructor; try reflexivity; eassumption).
@@ -165,7 +165,7 @@ Proof.
     assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
-    eapply mk_glu_rel_exp with (gre_lvl := max j k); [econstructor; try reflexivity; mauto |].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_mod_glu_sub_pred Γ U TSb) (Γ ▹ₘ U))
       by (econstructor; try reflexivity; eassumption).
@@ -192,7 +192,7 @@ Proof.
     assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
-    eapply mk_glu_rel_exp with (gre_lvl := max j k); [econstructor; try reflexivity; mauto |].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
     assert (glu_ctx_env (cons_dm_glu_sub_pred i Γ B N U TSb) (Γ ▸ₘ B ≔ N ‖ U))
       by (econstructor; try reflexivity; eassumption).

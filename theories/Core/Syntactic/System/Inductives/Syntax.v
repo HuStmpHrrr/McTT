@@ -401,22 +401,22 @@ Section Closed.
   Context (D : ind_decl) (HD : decl_closed D).
 
   Lemma decl_closed_nparams_scoped : forall k M, ind_member D k = Some M -> ctx_scoped (ind_nu D) (im_nparams M).
-  Proof. intros * HM; exact (mc_nparams _ _ (dc_members _ HD _ _ HM)). Qed.
+  Proof. intros * HM; exact (member_closed_nparams _ _ (decl_closed_members _ HD _ _ HM)). Qed.
 
   Lemma decl_closed_nparams_ass : forall k M, ind_member D k = Some M -> tele_ass (im_nparams M).
-  Proof. intros * HM; exact (mc_ass _ _ (dc_members _ HD _ _ HM)). Qed.
+  Proof. intros * HM; exact (member_closed_ass _ _ (decl_closed_members _ HD _ _ HM)). Qed.
 
   Lemma decl_closed_head_scoped : forall k M qc k' Is vm,
       ind_member D k = Some M -> im_head M = mh_view qc k' Is vm -> List.Forall (exp_scoped (ind_nu D)) Is.
-  Proof. intros * HM Hh; exact (mc_head _ _ (dc_members _ HD _ _ HM) _ _ _ _ Hh). Qed.
+  Proof. intros * HM Hh; exact (member_closed_head _ _ (decl_closed_members _ HD _ _ HM) _ _ _ _ Hh). Qed.
 
   Lemma decl_closed_cargs_scoped : forall pq k M c gs,
       ind_member D k = Some M -> In (c, gs) (im_cons M) -> ctx_scoped (im_np D M) (cargs_ctx pq D M gs).
   Proof.
-    intros * HM Hin; pose proof (dc_members _ HD _ _ HM) as HMc.
+    intros * HM Hin; pose proof (decl_closed_members _ HD _ _ HM) as HMc.
     apply (cargs_ctx_aux_scoped pq D (im_nn M) gs nil 0 HD eq_refl); intros; cbn.
-    - eapply (mc_args _ _ HMc); eassumption.
-    - eapply (mc_recs _ _ HMc); eassumption.
+    - eapply (member_closed_args _ _ HMc); eassumption.
+    - eapply (member_closed_recs _ _ HMc); eassumption.
   Qed.
 End Closed.
 
@@ -642,13 +642,13 @@ Lemma elim_bctx_sub : forall pq D k M c gs As As' Us τ,
     tele_sub (elim_bctx pq D M gs As Us) τ = elim_bctx pq D M gs As' (List.map (fun U => U[τ]) Us).
 Proof.
   intros * HD HM Hin Hl HAs; unfold elim_bctx.
-  pose proof (dc_members _ HD _ _ HM) as HMc.
+  pose proof (decl_closed_members _ HD _ _ HM) as HMc.
   rewrite !tele_sub_app, length_app, length_tele_sub, length_cargs_ctx, length_nparams_sub.
   f_equal; [| f_equal ].
   - apply (ihs_ctx_aux_sub (im_nn M) As As' Us (List.length gs) τ gs nil 0 eq_refl).
     intros * Heq; split.
-    + rewrite Hl; exact (mc_recs _ _ HMc _ _ _ _ _ Hin Heq).
-    + destruct (mc_rec_len _ _ HMc _ _ Hin _ _ _ Heq) as (Mj & HMj & HlMj).
+    + rewrite Hl; exact (member_closed_recs _ _ HMc _ _ _ _ _ Hin Heq).
+    + destruct (member_closed_rec_len _ _ HMc _ _ Hin _ _ _ Heq) as (Mj & HMj & HlMj).
       rewrite HlMj; apply HAs; exact HMj.
   - rewrite tele_sub_sub.
     rewrite (tele_sub_sb_eq _ _ (sb_qn (im_nn M) (sb_of_list Id Us ⨟ τ))) by (apply sb_qn_compose_ext; reflexivity).
@@ -855,7 +855,7 @@ Proof.
   rewrite List.firstn_map.
   eapply (elim_ihs_agree _ _ _ _ _ _ _ _ _ (List.length Ps)).
   - intros y Hy; cbn [sb_compose]; apply sb_of_list_lt_compose; exact Hy.
-  - intros gs1 t gs2 E; rewrite Hl; exact (mc_recs _ _ (dc_members _ HD _ _ HM) _ _ _ _ _ Hin E).
+  - intros gs1 t gs2 E; rewrite Hl; exact (member_closed_recs _ _ (decl_closed_members _ HD _ _ HM) _ _ _ _ _ Hin E).
 Qed.
 
 (** ** Lists of Branches *)
@@ -1088,7 +1088,7 @@ Proof.
     eapply (elim_ihs_agree _ _ _ _ _ _ _ _ _ (im_nn Mv + ind_nu D)).
     - intros y Hy; rewrite (sb_of_list_compose_gen _ _ _ y), map_app, HUs, (vars_from_sub _ _ n') by (subst n'; lia).
       apply sb_of_list_lt_base; rewrite length_app, !length_map, length_vars_from; lia.
-    - intros gs1 t gs2 E; exact (mc_recs _ _ (dc_members _ HD _ _ HMv) _ _ _ _ _ (cons_lookup_in _ _ _ Hgs) E). }
+    - intros gs1 t gs2 E; exact (member_closed_recs _ _ (decl_closed_members _ HD _ _ HMv) _ _ _ _ _ (cons_lookup_in _ _ _ Hgs) E). }
   assert (HL' : List.length LL' = (im_nn Mv + length gs + cargs_nrec gs)%nat)
     by (subst LL'; rewrite !length_app, !length_vars_from, (length_wrap_ihs _ _ _ _ _ _ Hc); lia).
   rewrite !exp_sub_sub; apply exp_sub_sb_eq.
@@ -1107,10 +1107,10 @@ Lemma vwrap_block_sub : forall pq D D' vm Us Bks i' Mi' τ,
 Proof.
   intros * HD Hvw Hl Hnm Hn HMi'.
   destruct (List.nth_error vm i') as [v |] eqn:Hv;
-    [| apply List.nth_error_None in Hv; pose proof (vwo_length _ _ _ Hvw) as Hlv;
+    [| apply List.nth_error_None in Hv; pose proof (vwrap_ok_length _ _ _ Hvw) as Hlv;
        assert (Hk : List.nth_error (ind_members D') i' <> None) by (unfold ind_member in HMi'; congruence);
        apply List.nth_error_Some in Hk; lia ].
-  destruct (vwo_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & _ & Hcs & Hcorr).
+  destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & _ & Hcs & Hcorr).
   unfold vwrap_block; rewrite (List.nth_error_nth _ _ _ Hv), nth_error_blocks_sub, HMv.
   destruct (List.nth_error Bks v) as [[nm oZ A Bs] |] eqn:Hb; cbn [option_map eblock_sub]; [| reflexivity ].
   f_equal; unfold brs_sub; rewrite map_map; apply map_ext_in; intros [c gs'] Hin; cbn [fst snd].

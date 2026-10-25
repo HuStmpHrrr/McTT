@@ -481,12 +481,12 @@ Proof.
   - (* a loaded unit or an open frame: its stored body, unsealed *)
     intros Γ H p T Φ Hq Hu _.
     exists (ds_closed nil p T (gm_unseal Φ) nil); split; [| constructor ].
-    eapply dn_unit; [ exact Hq | rewrite gc_unit_unseal, Hu; reflexivity ].
+    eapply mdenote_unit; [ exact Hq | rewrite gc_unit_unseal, Hu; reflexivity ].
   - (* the open frame of a member's module: its type former, with its
        module unsealed *)
     intros Γ H p pq k D Mk Tm Φm Hq Hk HMk Hl _.
     exists (ind_former_desc pq k D Mk (ds_closed nil p Tm (gm_unseal Φm) nil)); split;
-      [ eapply dn_ind_frame; [ exact Hq | rewrite gs_find_ind_unseal; exact Hk | exact HMk
+      [ eapply mdenote_ind_frame; [ exact Hq | rewrite gs_find_ind_unseal; exact Hk | exact HMk
                              | rewrite gc_loc_unseal, Hl; reflexivity ]
       | constructor; [ exact I | constructor ] ].
   - (* a slot *)
@@ -494,12 +494,12 @@ Proof.
     destruct Hw as [HH | (? & ? & [=] & _)].
     pose proof (ctx_lookup_mod_wf _ _ _ _ _ (presup_modexp_eq_ctx HH) Hx) as HU.
     destruct (IHu (upre_full _ _ _ _ (proj1 (unit_full_of_eq _ _ _ _ _ HU)))) as (R' & Hu' & Hd).
-    exists R'; split; [ eapply dn_slot; eassumption | exact Hd ].
+    exists R'; split; [ eapply mdenote_slot; eassumption | exact Hd ].
   - (* a literal *)
     intros Γ U R Hu IHu Hw.
     destruct Hw as [HH | (? & ? & [=] & _)].
     destruct (IHu (upre_full _ _ _ _ (proj1 (modexp_gen _ _ _ _ _ HH)))) as (R' & Hu' & Hd).
-    exists R'; split; [ apply dn_lit; exact Hu' | exact Hd ].
+    exists R'; split; [ apply mdenote_lit; exact Hu' | exact Hd ].
   - (* an application of a module *)
     intros Γ H N R R' Hm IH Ha Hw.
     destruct Hw as [HH | (? & ? & [=] & _)].
@@ -508,7 +508,7 @@ Proof.
     destruct (IH (or_introl HH0)) as (R0' & Hm' & Hd).
     assert (Hn : forall A om, R <> ds_term A om) by (intros A om ->; discriminate Ht).
     destruct (dle_at _ _ _ _ Hd Hn Ha) as (R1' & Ha' & Hd1 & _).
-    exists R1'; split; [ eapply dn_app; eassumption | exact Hd1 ].
+    exists R1'; split; [ eapply mdenote_app; eassumption | exact Hd1 ].
   - (* a selection *)
     intros Γ H y R0 R0m Γy E rd R R' Hm IH Hmod He Hd IHd Hr Hw.
     assert (HH0 : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H)
@@ -522,7 +522,7 @@ Proof.
       inversion Hok0 as [| ? ? ? ? HC _ _ _ _ _ _ | |]; subst.
       cbn in He; destruct (gm_prefix_upto Φ y) as [[| Φ' x E1 | ? ? ?] |] eqn:Hp; try discriminate.
       destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
-      assert (He1 : Γy = body_ctx Φ' ++ Δ /\ rd = rd_open Δ Φ' /\ E1 = E).
+      assert (He1 : Γy = body_ctx Φ' ++ Δ /\ rd = reader_open Δ Φ' /\ E1 = E).
       { destruct E1 as [[|] ? ? [] | | | | ]; try discriminate; injection He as <- <- <-; repeat split. }
       destruct He1 as (-> & -> & HE1).
       assert (Hep : epre Θ Ξ ((body_ctx Φ' ++ Δ) ++ Γ) None E).
@@ -533,7 +533,7 @@ Proof.
       destruct (IHd Hep) as (R'' & Hd'' & HdR).
       cbn in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
       exists (ds_up Δ (ds_sub R'' σ)); split; [| apply dle_up, dle_sub; exact HdR ].
-      eapply dn_mem; [ exact Hm' | exact Hmod' | cbn; rewrite Hp; exact He | exact Hd'' | cbn; rewrite Hf; reflexivity ].
+      eapply mdenote_mem; [ exact Hm' | exact Hmod' | cbn; rewrite Hp; exact He | exact Hd'' | cbn; rewrite Hf; reflexivity ].
     + (* a closed module: its stored entry, unsealed *)
       pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hl; cbn in Hl.
       pose proof (loc_closed _ _ Hg _ _ _ Hl) as [_ HcΦ].
@@ -591,13 +591,13 @@ Proof.
           destruct b; cbn in *; (exists R1; split; [ exact Hats | destruct (ds_ats_term _ _ _ _ Hats) as (? & ? & ->); constructor ]). }
       destruct Hats' as (R1' & Hats' & Hd1).
       exists (ds_up Θc (ds_named Θc Ns (apps (a_mem (qname_mod p) y) Ns) R1')); split; [| apply dle_up, dle_named; exact Hd1 ].
-      eapply dn_mem; [ exact Hm' | exact Hmod' | cbn; rewrite gm_prefix_upto_unseal, Hp; cbn; reflexivity
+      eapply mdenote_mem; [ exact Hm' | exact Hmod' | cbn; rewrite gm_prefix_upto_unseal, Hp; cbn; reflexivity
                      | cbn [ds_epath entry_at] in Hd'' |- *; rewrite <- ge_read_unseal in Hd''; exact Hd'' | cbn; rewrite Hats'; reflexivity ].
   - (* the open frame of a record's module: its type former, with its
        module unsealed *)
     intros Γ H p R Tm Φm Hq Hr Hl _.
     exists (record_former_desc p R (ds_closed nil p Tm (gm_unseal Φm) nil)); split;
-      [ eapply dn_record_frame; [ exact Hq | rewrite gs_find_record_unseal; exact Hr
+      [ eapply mdenote_record_frame; [ exact Hq | rewrite gs_find_record_unseal; exact Hr
                                 | rewrite gc_loc_unseal, Hl; reflexivity ]
       | constructor; [ exact I | constructor ] ].
   - (* a body: a stored one is closed, with no open *)
@@ -607,15 +607,15 @@ Proof.
       pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hx _ (body_xp_noopen _ _ _ _ Hno)) as ->.
       cbn in Hb; injection Hb as <-.
       exists (ds_closed nil pq Δ (gm_unseal Φ) nil); split; [| constructor ].
-      eapply un_body; [ apply body_xp_noopen, gm_noopen_unseal; exact Hno | reflexivity ].
-    + exists R; split; [ eapply un_body; [ exact (IHx (Hpre _ Hx)) | exact Hb ] |].
+      eapply udenote_body; [ apply body_xp_noopen, gm_noopen_unseal; exact Hno | reflexivity ].
+    + exists R; split; [ eapply udenote_body; [ exact (IHx (Hpre _ Hx)) | exact Hb ] |].
       destruct sm; cbn in Hb; [ injection Hb as <-; constructor | discriminate ].
   - (* an alias *)
     intros Γ o Δ E R R' Hm IH Hmod Hpre.
     destruct (IH (or_introl Hpre)) as (R1 & Hm1 & Hd).
     destruct (dle_mod _ _ _ Hd Hmod) as (Rm' & Hmod' & Hdm).
     exists (ds_up Δ Rm'); split; [| apply dle_up; exact Hdm ].
-    destruct o; cbn; eapply un_alias; eassumption.
+    destruct o; cbn; eapply udenote_alias; eassumption.
   - (* a definition: a stored one may gain its δ-reduct *)
     intros Γ o b pv A oM _.
     destruct o; cbn [entry_at ge_unseal].
@@ -630,7 +630,7 @@ Proof.
     intros Γ o pv pq k D Φ Mk pm Tm Φm HMk Hpm Hl _.
     exists (ind_former_desc pq k D Mk (ds_closed nil pm Tm (gm_unseal Φm) nil)); split.
     + destruct o; cbn [entry_at ge_unseal];
-        (eapply en_ind; [ exact HMk | exact Hpm | rewrite gc_loc_unseal, Hl; reflexivity ]).
+        (eapply edenote_ind_case; [ exact HMk | exact Hpm | rewrite gc_loc_unseal, Hl; reflexivity ]).
     + constructor; [ exact I | constructor ].
   - (* a definition with a module part: its module part, read unsealed *)
     intros Γ o pv A M Δ E Rm Hu IHu Hpre.
@@ -641,7 +641,7 @@ Proof.
   - (* a stored record type: its type former, with its module unsealed *)
     intros Γ p pv pr R Φ Tm Φm Hl _.
     exists (record_former_desc p R (ds_closed nil p Tm (gm_unseal Φm) nil)); split;
-      [ cbn [entry_at ge_unseal]; eapply en_record; rewrite gc_loc_unseal, Hl; reflexivity
+      [ cbn [entry_at ge_unseal]; eapply edenote_record; rewrite gc_loc_unseal, Hl; reflexivity
       | constructor; [ exact I | constructor ] ].
   - intros; constructor.
   - intros Γ Φ Φx x E Hx IHx Hpre; constructor; apply IHx; intros k Ψ H Hk; apply (Hpre k); exact Hk.
@@ -664,7 +664,7 @@ Proof.
     intros Γ H n d pv R A Rm its gs Hm IHm Hty Hmd Hig IHig HH.
     destruct (IHm (or_intror (ex_intro _ H (ex_intro _ n (conj eq_refl HH))))) as (R' & Hm' & Hd).
     destruct (dle_mod _ _ _ Hd Hmd) as (Rm' & Hmd' & _).
-    eapply ign_dm; [ exact Hm' | rewrite (dle_ty _ _ Hd); exact Hty | exact Hmd' | exact (IHig HH) ].
+    eapply items_gen_dm; [ exact Hm' | rewrite (dle_ty _ _ Hd); exact Hty | exact Hmd' | exact (IHig HH) ].
 Qed.
 
 
@@ -721,12 +721,12 @@ Proof.
   { (* the open frame of a member's module: its type former, its term part
        as it is *)
     left; eexists; split;
-      [ eapply dn_ind_frame; [ exact Hq | rewrite gs_find_ind_unseal; exact Hk | exact HMk
+      [ eapply mdenote_ind_frame; [ exact Hq | rewrite gs_find_ind_unseal; exact Hk | exact HMk
                              | rewrite gc_loc_unseal, Hl; reflexivity ]
       | split; [ exact Hr | reflexivity ] ]. }
   2: { (* the open frame of a record's module: likewise *)
     left; eexists; split;
-      [ eapply dn_record_frame; [ exact Hq | rewrite gs_find_record_unseal; exact Hk
+      [ eapply mdenote_record_frame; [ exact Hq | rewrite gs_find_record_unseal; exact Hk
                                 | rewrite gc_loc_unseal, Hl; reflexivity ]
       | split; [ exact Hr | reflexivity ] ]. }
   destruct (mdenote_unseal _ _ _ _ _ _ HH Hm0) as (R0' & Hm0' & Hd0).
@@ -739,7 +739,7 @@ Proof.
     destruct E1 as [[|] pv A [M0 |] | pv U | | pv Ad Md Ud | ]; try discriminate; injection He as <- <- <-.
     + exists R; split; [| split; [ exact Hr | reflexivity ] ].
       inversion Hed; subst.
-      eapply dn_mem; [ exact Hm0' | exact Hmd' | cbn; rewrite Hp; reflexivity | constructor | exact Hrd ].
+      eapply mdenote_mem; [ exact Hm0' | exact Hmd' | cbn; rewrite Hp; reflexivity | constructor | exact Hrd ].
     + exfalso; cbn in Hrd.
       destruct (gm_fill Φ') as [σ |]; cbn in Hrd; [ injection Hrd as <- | discriminate ].
       inversion Hed; subst.
@@ -757,7 +757,7 @@ Proof.
         [ rewrite <- app_assoc; apply upre_full, (proj1 (unit_full_of_eq _ _ _ _ _ HU)) |].
       cbn in Hrd; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hrd; [ injection Hrd as <- | discriminate ].
       eexists; split.
-      * eapply dn_mem; [ exact Hm0' | exact Hmd' | cbn; rewrite Hp; reflexivity | constructor; exact Hu'
+      * eapply mdenote_mem; [ exact Hm0' | exact Hmd' | cbn; rewrite Hp; reflexivity | constructor; exact Hu'
                        | cbn; rewrite Hf; reflexivity ].
       * split; [ exact Hr | reflexivity ].
   - (* a closed module part: its stored entry, unsealed *)
@@ -770,9 +770,9 @@ Proof.
                     exists R', mdenote (gds_unseal Θ) (gs_unseal Ξ) Γ (me_mem H y) R' /\ ds_red R' = Some M /\
                       ds_ty R' = ds_ty (ds_up Θc (ds_named Θc Ns (apps (a_mem (qname_mod p) y) Ns) R1))).
     { intros Hed'; eexists; split; [| split; [ exact Hr | reflexivity ] ].
-      assert (He' : ds_entry (ds_closed Θc p T (gm_unseal Φ) Ns) y = Some (nil, ge_read T (ge_unseal E0), rd_closed Θc Ns (apps (a_mem (qname_mod p) y) Ns)))
+      assert (He' : ds_entry (ds_closed Θc p T (gm_unseal Φ) Ns) y = Some (nil, ge_read T (ge_unseal E0), reader_closed Θc Ns (apps (a_mem (qname_mod p) y) Ns)))
         by (unfold ds_entry; rewrite gm_prefix_upto_unseal, Hp; reflexivity).
-      eapply dn_mem; [ exact Hm0' | exact Hmd' | exact He' | exact Hed' | cbn; rewrite Hats; reflexivity ]. }
+      eapply mdenote_mem; [ exact Hm0' | exact Hmd' | exact He' | exact Hed' | cbn; rewrite Hats; reflexivity ]. }
     assert (Hnone : forall Ns0 A1 R2, ds_ats (ds_term A1 None) Ns0 = Some R2 -> exists A2, R2 = ds_term A2 None).
     { induction Ns0 as [| N0 Ns0 IHN]; intros * Ha0; cbn in Ha0; [ injection Ha0 as <-; eauto |].
       destruct (pi_view A1) as [[? ?] |]; [ exact (IHN _ _ Ha0) | discriminate ]. }
@@ -1185,7 +1185,7 @@ Proof. induction 1; intros HΞ; [ exact HΞ |]; apply IHmdefs_run, gs_no_axioms_
 (** The recursor module of a group is a module of definitions. *)
 Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, cmds_no_axioms (rec_cmds Θ Ξ R pq D).
 Proof.
-  intros; unfold rec_cmds; destruct (rd_rec R); [| constructor ].
+  intros; unfold rec_cmds; destruct (raw_decl_rec_field R); [| constructor ].
   constructor; [| constructor ].
   unfold grec_mod_cmd; change (cmd_no_axioms (cc_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
@@ -1200,7 +1200,7 @@ Proof.
   apply List.Forall_app; split; [| apply List.Forall_app; split ].
   - apply List.Forall_forall; intros c Hin; apply List.in_map_iff in Hin as (cg & <- & _); cbn; discriminate.
   - destruct (ind_has_rec D); [ constructor; [ cbn; discriminate | constructor ] | constructor ].
-  - destruct (Nat.eqb k 0 && negb (rd_rec R))%bool; [| constructor ].
+  - destruct (Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool; [| constructor ].
     constructor; [| constructor ].
     unfold grec_mod_cmd; change (cmd_no_axioms (cc_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.

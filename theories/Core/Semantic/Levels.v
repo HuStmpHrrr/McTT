@@ -22,8 +22,8 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 Variant dlvl_shape : domain -> Prop :=
-| dls_lvl : forall c xs, dlvl_shape (lvᵈ c xs)
-| dls_neut : forall a m, dlvl_shape (⇑ a m).
+| dlvl_shape_lvl : forall c xs, dlvl_shape (lvᵈ c xs)
+| dlvl_shape_neut : forall a m, dlvl_shape (⇑ a m).
 
 Hint Constructors dlvl_shape : mctt.
 

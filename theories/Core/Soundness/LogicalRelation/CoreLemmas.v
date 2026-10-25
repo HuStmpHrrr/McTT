@@ -275,7 +275,7 @@ Lemma decl_member_lt : forall Γ p D k Mk pm, ⊢ Γ -> ind_lookup gc_deps gc_st
     ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> k < ind_ndecl D.
 Proof.
   intros * HΓ Hl HM Hh; destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD _].
-  apply (dt_order _ _ _ HD _ _ HM); unfold im_is_decl; rewrite Hh; reflexivity.
+  apply (decl_typed_order _ _ _ HD _ _ HM); unfold im_is_decl; rewrite Hh; reflexivity.
 Qed.
 
 (** The two premises of a gluing clause on a family, read at every
@@ -2075,7 +2075,7 @@ Proof.
   destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ HR Hl Hu Hu') as [Hass Hps _ _ _ _ _ _].
   destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ _ HR Hl Hu Hu') as (HevN & _ & _).
   destruct (Hps s) as (Ms1 & HM1 & HM1').
-  assert (Hassn : tele_ass (List.rev (im_nparams Mj))) by (apply List.Forall_rev; exact (gta_nparams _ Hass _ _ HMj)).
+  assert (Hassn : tele_ass (List.rev (im_nparams Mj))) by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HMj)).
   destruct (read_ps_tele (List.rev (im_nparams Mj)) (canon_nparams_rel D ups j) (env_args nil ups) (env_args nil ups') Hassn
               ltac:(intros j0 A pre pre' Hj0 Hp; rewrite <- !env_args_app;
                     destruct (HevN _ _ _ _ _ _ HMj Hj0 Hp) as [a a' Ea Ea' HRa];

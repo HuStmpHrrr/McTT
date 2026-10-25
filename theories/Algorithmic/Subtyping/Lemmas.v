@@ -99,7 +99,7 @@ Lemma alg_subtyping_nf_refl : forall A,
     ⊢anf A ⊆ A.
 Proof.
   induction A;
-    solve [constructor; simpl; trivial | apply asnf_suniv, lvl_le_refl | apply asnf_level; reflexivity].
+    solve [constructor; simpl; trivial | apply alg_subtyping_nf_suniv, lvl_le_refl | apply alg_subtyping_nf_level; reflexivity].
 Qed.
 
 #[local]
@@ -151,7 +151,7 @@ Proof.
     progressive_inversion.
     functional_initial_env_rewrite_clear.
     simplify_evals.
-    apply asnf_suniv; eapply read_max_lvl_le; eassumption.
+    apply alg_subtyping_nf_suniv; eapply read_max_lvl_le; eassumption.
   (** The types of levels are their own normal forms. *)
   - assert (Γ ⊢ Level@m : Typeω@0) by mauto 3.
     assert (Γ ⊢ Level@n : Typeω@0) by mauto 3.
@@ -159,14 +159,14 @@ Proof.
     destruct_all.
     econstructor; mauto 2.
     progressive_inversion.
-    apply asnf_level; assumption.
+    apply alg_subtyping_nf_level; assumption.
   - assert (Γ ⊢ Type⟨M⟩ : Typeω@0) by (eapply wf_univ_large_tm; eassumption).
     assert (Γ ⊢ Typeω@i : Typeω@(S i)) by mauto.
     on_all_hyp: fun H => apply soundness in H.
     destruct_all.
     econstructor; mauto 2.
     progressive_inversion.
-    apply asnf_small_large.
+    apply alg_subtyping_nf_small_large.
   - (** [ctxeq_nbe_eq] takes a semantic context equality, which
         [per_ctx_of_exp_eq] builds from the domains. *)
     assert (⊨ Γ ▹ A ≈ Γ ▹ A') by mauto.

@@ -29,7 +29,7 @@ Lemma record_lookup_of_glu_emb : forall Θ Ξ Θ2 Ξ2 p R, glu_emb Θ Ξ Θ2 Ξ2
     record_lookup Θ2 Ξ2 p = Some R.
 Proof.
   intros * Hμ Hl.
-  exact (record_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (gem_emb _ _ _ _ Hμ)) Hl).
+  exact (record_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (glu_emb_emb _ _ _ _ Hμ)) Hl).
 Qed.
 
 (** ** The Type Former *)

@@ -215,11 +215,11 @@ Qed.
     value related to [k]. *)
 #[warnings="-cannot-define-projection"]
 Record rel_mem_val (h k : dmod) (x : String.string) (R : relation domain) : Prop := mk_rel_mem_val
-  { rmv_left : domain
-  ; rmv_right : domain
-  ; rmv_eval_left : h ·ₜ x gc_deps ⍮ gc_stack ↘ rmv_left
-  ; rmv_eval_right : k ·ₜ x gc_deps ⍮ gc_stack ↘ rmv_right
-  ; rmv_rel : R rmv_left rmv_right }.
+  { rel_mem_val_left : domain
+  ; rel_mem_val_right : domain
+  ; rel_mem_val_eval_left : h ·ₜ x gc_deps ⍮ gc_stack ↘ rel_mem_val_left
+  ; rel_mem_val_eval_right : k ·ₜ x gc_deps ⍮ gc_stack ↘ rel_mem_val_right
+  ; rel_mem_val_rel : R rel_mem_val_left rel_mem_val_right }.
 
 Definition dmod_has_mem (k : dmod) (x : String.string) (R : relation domain) : Prop :=
   forall h, per_dmod h k -> rel_mem_val h k x R.
@@ -228,41 +228,41 @@ Definition dmod_has_mem (k : dmod) (x : String.string) (R : relation domain) : P
     at [RA] to the member's. *)
 #[warnings="-cannot-define-projection"]
 Record rel_mem_reduct (M : exp) (ρ : env) (k : dmod) (x : String.string) (RA : relation domain) : Prop := mk_rel_mem_reduct
-  { rmr_val : domain
-  ; rmr_mem : domain
-  ; rmr_eval : ⟦ M ⟧ ρ ↘ rmr_val
-  ; rmr_sel : k ·ₜ x gc_deps ⍮ gc_stack ↘ rmr_mem
-  ; rmr_rel : RA rmr_val rmr_mem }.
+  { rel_mem_reduct_val : domain
+  ; rel_mem_reduct_mem : domain
+  ; rel_mem_reduct_eval : ⟦ M ⟧ ρ ↘ rel_mem_reduct_val
+  ; rel_mem_reduct_sel : k ·ₜ x gc_deps ⍮ gc_stack ↘ rel_mem_reduct_mem
+  ; rel_mem_reduct_rel : RA rel_mem_reduct_val rel_mem_reduct_mem }.
 
 (** The member [x] of [K] at [ρ], of type [A] and δ-reduct [om]: [K]'s
     value has the member at the value of [A], and the reduct, if any, is
     related to it. *)
 #[warnings="-cannot-define-projection"]
 Record valid_mem_at (K : modexp) (x : String.string) (A : typ) (om : option exp) (ρ : env) : Prop := mk_valid_mem_at
-  { vma_mod : dmod
-  ; vma_typ : domain
-  ; vma_lvl : uidx
-  ; vma_rel : relation domain
-  ; vma_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ vma_mod
-  ; vma_eval_typ : ⟦ A ⟧ ρ ↘ vma_typ
-  ; vma_per : per_univ_elem vma_lvl vma_rel vma_typ vma_typ
-  ; vma_has_mem : dmod_has_mem vma_mod x vma_rel
-  ; vma_red : forall M, om = Some M -> rel_mem_reduct M ρ vma_mod x vma_rel }.
+  { valid_mem_at_mod : dmod
+  ; valid_mem_at_typ : domain
+  ; valid_mem_at_lvl : uidx
+  ; valid_mem_at_rel : relation domain
+  ; valid_mem_at_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ valid_mem_at_mod
+  ; valid_mem_at_eval_typ : ⟦ A ⟧ ρ ↘ valid_mem_at_typ
+  ; valid_mem_at_per : per_univ_elem valid_mem_at_lvl valid_mem_at_rel valid_mem_at_typ valid_mem_at_typ
+  ; valid_mem_at_has_mem : dmod_has_mem valid_mem_at_mod x valid_mem_at_rel
+  ; valid_mem_at_red : forall M, om = Some M -> rel_mem_reduct M ρ valid_mem_at_mod x valid_mem_at_rel }.
 
 Record valid_mem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : option exp) : Prop := mk_valid_mem
-  { vm_typ : exists i, Γ ⊨ A : Typeω@i
-  ; vm_body : forall M, om = Some M -> Γ ⊨ M : A
-  ; vm_vals : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> valid_mem_at K x A om ρ }.
+  { valid_mem_typ : exists i, Γ ⊨ A : Typeω@i
+  ; valid_mem_body : forall M, om = Some M -> Γ ⊨ M : A
+  ; valid_mem_vals : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> valid_mem_at K x A om ρ }.
 
 (** The submodule [y] of [K] at every environment, from any value related
     to [K]'s, related to the value of [V]. *)
 #[warnings="-cannot-define-projection"]
 Record valid_sel_at (K : modexp) (y : String.string) (V : modexp) (ρ : env) : Prop := mk_valid_sel_at
-  { vsa_mod : dmod
-  ; vsa_val : dmod
-  ; vsa_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ vsa_mod
-  ; vsa_eval_val : ⟦ V ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ vsa_val
-  ; vsa_sel : forall h, per_dmod h vsa_mod -> exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r /\ per_dmod r vsa_val }.
+  { valid_sel_at_mod : dmod
+  ; valid_sel_at_val : dmod
+  ; valid_sel_at_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ valid_sel_at_mod
+  ; valid_sel_at_eval_val : ⟦ V ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ valid_sel_at_val
+  ; valid_sel_at_sel : forall h, per_dmod h valid_sel_at_mod -> exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r /\ per_dmod r valid_sel_at_val }.
 
 Definition valid_sel (Γ : ctx) (K : modexp) (y : String.string) (V : modexp) : Prop :=
   forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> valid_sel_at K y V ρ.

@@ -361,7 +361,7 @@ Section type_check.
     destruct (wf_unf_pi_tm HBu HCv Hvw) as [k Hk].
     assert (G ⊢ unf_pi_tm u v ≈ W : Typeω@k) by (eapply soundness_ty'; eassumption).
     assert (HWk : G ⊢ W : Typeω@k) by (gen_presups; assumption).
-    split; [ eapply ati_pi; eassumption |].
+    split; [ eapply alg_type_infer_pi; eassumption |].
     split; [| eexists; exact HWk ].
     destruct (alg_type_infer_large_typ_complete (user_exp_nf W) HWk) as [? [? [? [? _]]]].
     do 2 eexists; split; eassumption.

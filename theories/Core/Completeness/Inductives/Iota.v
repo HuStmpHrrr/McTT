@@ -52,9 +52,9 @@ Section Blocks.
   Variable (VP : qname -> ind_decl -> Prop) (p : qname) (D : ind_decl).
   Hypotheses (HP : valid_groups VP) (HPD : VP p D).
   Let Hvg := valid_groups_valid VP HP p D HPD.
-  Let HD := vgr_valid _ _ Hvg.
-  Let Hc := vgr_closed _ _ Hvg.
-  Let Hdt := vgr_typed _ _ Hvg.
+  Let HD := valid_group_valid _ _ Hvg.
+  Let Hc := valid_group_closed _ _ Hvg.
+  Let Hdt := valid_group_typed _ _ Hvg.
   Let Ua : tele_ass (ind_uparams D) := uparams_ass D Hc.
 
   Variable (Γ : ctx) (oq : option qname) (Us : list exp) (Bks : list eblock) (i : nat).
@@ -145,7 +145,7 @@ Section Blocks.
     assert (Hgr : elim_grp D (if ind_has_views D then Some p else oq) p j).
     { destruct (ind_has_views D) eqn:Hv; [ left; reflexivity |].
       destruct Hoq as [-> | ->]; [ left; reflexivity | right; split; [ reflexivity |] ].
-      apply (dt_order _ _ _ Hdt _ _ HMj); exact (no_views_decl _ _ _ Hv HMj). }
+      apply (decl_typed_order _ _ _ Hdt _ _ HMj); exact (no_views_decl _ _ _ Hv HMj). }
     assert (Hb0 : List.nth_error Bks0 j = Some (eblock_sub b β)) by (unfold Bks0; rewrite nth_error_blocks_sub, Hb; reflexivity).
     pose proof (rel_exp_under_ctx_elim_at VP p D HP HPD Ψ _ _ j Mj (eblock_sub b β) Bks0 Bks0 Us0 Us0 Ns M M i HΨ Hgr Hgr
                   HMj Hb0 HBks0 HBks0 HUl0 HUs0 HUl0 HUU0 HNl HNs HM HnmA0 HnmA0 HMall0 HAA0 HnaA0
@@ -166,12 +166,12 @@ Section Iota.
   Hypotheses (HP : valid_groups VP) (HPD : VP p D).
   Let Hvg := valid_groups_valid VP HP p D HPD.
   Let Hcv := containers_valid_of_groups VP HP p D HPD.
-  Let HD := vgr_valid _ _ Hvg.
-  Let Hc := vgr_closed _ _ Hvg.
-  Let Hl := vgr_lookup _ _ Hvg.
-  Let Hdt := vgr_typed _ _ Hvg.
+  Let HD := valid_group_valid _ _ Hvg.
+  Let Hc := valid_group_closed _ _ Hvg.
+  Let Hl := valid_group_lookup _ _ Hvg.
+  Let Hdt := valid_group_typed _ _ Hvg.
   Let Ua : tele_ass (ind_uparams D) := uparams_ass D Hc.
-  Let Usem : ⊨ ind_uparams D := vid_uparams _ HD.
+  Let Usem : ⊨ ind_uparams D := valid_ind_decl_uparams _ HD.
 
   Variable (Γ : ctx) (oq : option qname) (m : nat) (Mm : imember) (bm : eblock) (Bks : list eblock)
     (c : String.string) (gs : list carg) (Ps As : list exp) (i : nat).
@@ -218,7 +218,7 @@ Section Iota.
   (** *** The Parameters and the Arguments Before a Position *)
   Lemma gsub_P : gsub Γ σP (im_params D Mm ++ Γ).
   Proof.
-    apply gsub_closed_inst; [ exact (member_params_ass D Hc _ _ HMm) | exact (vid_params _ HD _ _ HMm) | exact HΓ
+    apply gsub_closed_inst; [ exact (member_params_ass D Hc _ _ HMm) | exact (valid_ind_decl_params _ HD _ _ HMm) | exact HΓ
                             | rewrite length_im_params; exact HPl | exact HPs ].
   Qed.
 
@@ -262,7 +262,7 @@ Section Iota.
       by (apply List.Forall_app; split; [ rewrite cargs_strat_nonrec; apply List.Forall_rev, tele_ass_map_ass
                                        | exact (member_params_ass D Hc _ _ HMm) ]).
     assert (HSs : ⊨ cargs_strat gs1 ++ im_params D Mm)
-      by (rewrite (nonrec_args_prefix_cargs_strat gs1 gs2), <- Heq; apply (vid_strat _ HD _ _ _ _ _ HMm Hcon);
+      by (rewrite (nonrec_args_prefix_cargs_strat gs1 gs2), <- Heq; apply (valid_ind_decl_strat _ HD _ _ _ _ _ HMm Hcon);
           rewrite Heq, cargs_nonrec_app, List.length_app; lia).
     destruct (closed_app_sem _ _ HSa HSs HΓ) as [HSΓ _]; rewrite <- List.app_assoc in HSΓ.
     pose proof (gsub_wk _ _ _ (cargs_wk_ext VP p D HP HPD Γ HΓ Us i_HUl m Mm c gs HMm Hcon gs1 gs2 Heq) HpΓ HSΓ) as G0.
@@ -317,7 +317,7 @@ Section Iota.
     Proof. unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia. Qed.
 
     Lemma r_dctx : forall kd, kd <= L -> ⊨ doms_ctx (List.firstn kd (ptyp_doms t)) ++ cargs_strat gs1 ++ im_params D Mm.
-    Proof. intros kd Hk; rewrite r_strat; exact (vid_dctx _ HD m Mm c gs gs1 t gs2 kd HMm Hcon Heq Hk). Qed.
+    Proof. intros kd Hk; rewrite r_strat; exact (valid_ind_decl_dctx _ HD m Mm c gs gs1 t gs2 kd HMm Hcon Heq Hk). Qed.
 
     Lemma r_dass : forall kd, tele_ass (doms_ctx (List.firstn kd (ptyp_doms t)) ++ cargs_strat gs1 ++ im_params D Mm).
     Proof.
@@ -427,7 +427,7 @@ Section Iota.
         List.nth_error (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn (ptyp_depth t + K + im_nn Mm))) (ptyp_ps t)) kk = Some T0 ->
         ptyp_tele t ++ Tg ⊨ P : T0.
     Proof.
-      intros kk P0 T0 HP0 HT; pose proof (vid_rec _ HD m Mm c gs gs1 t gs2 Mj kk P0 T0 HMm Hcon Heq HMj HP0 HT) as H.
+      intros kk P0 T0 HP0 HT; pose proof (valid_ind_decl_rec_field _ HD m Mm c gs gs1 t gs2 Mj kk P0 T0 HMm Hcon Heq HMj HP0 HT) as H.
       rewrite <- r_strat in H.
       pose proof (r_dass L) as Ha; pose proof (r_dctx L (le_n _)) as Hs; rewrite <- r_tele in Ha, Hs.
       pose proof (closed_app_valid _ _ _ _ _ Ha Hs HΓ H) as H'; unfold Tg; rewrite <- !List.app_assoc in H'; exact H'.
@@ -522,7 +522,7 @@ Section Iota.
       - assert (Hk : kd < L) by lia.
         destruct (ptyp_skip_lt kd t Hk) as (Bk & HBk & Hs); rewrite Hs.
         cbn [ptyp_ih ptyp_ihty].
-        destruct (vid_dom _ HD m Mm c gs gs1 t gs2 kd Bk HMm Hcon Heq HBk) as (_ & j & HBv0); rewrite <- r_strat in HBv0.
+        destruct (valid_ind_decl_dom _ HD m Mm c gs gs1 t gs2 kd Bk HMm Hcon Heq HBk) as (_ & j & HBv0); rewrite <- r_strat in HBv0.
         pose proof (closed_app_valid _ _ _ _ _ (r_dass kd) (r_dctx kd ltac:(lia)) HΓ HBv0) as HBv1.
         rewrite <- !List.app_assoc in HBv1; fold Tg in HBv1.
         pose proof (rel_exp_under_ctx_gsub (r_gsub kd ltac:(lia)) HBv1) as HBk'; cbn [exp_sub] in HBk'.
@@ -670,7 +670,7 @@ Section Iota.
     unfold im_ref, im_unu; destruct (im_head Mm) as [pm | qc kc Is vm] eqn:Hh; cbn [fst snd].
     - exists D, Mm; repeat split; [ exact Hl | exact HMm ].
     - destruct (view_target_decl VP p D HP HPD m Mm HMm qc kc Is vm Hh) as (Dq & Mk' & pm & Hq & HMk' & _ & HIl).
-      destruct (gta_views _ (vgr_ass _ _ Hvg) m Mm qc kc Is vm HMm Hh) as (Dq0 & Mc & Hq0 & HMc & Hnn & _).
+      destruct (grp_tele_ass_views _ (valid_group_ass _ _ Hvg) m Mm qc kc Is vm HMm Hh) as (Dq0 & Mc & Hq0 & HMc & Hnn & _).
       rewrite Hq in Hq0; injection Hq0 as <-; rewrite HMk' in HMc; injection HMc as <-.
       exists Dq, Mk'; repeat split; [ exact Hq | exact HMk' | exact HIl | exact Hnn ].
   Qed.
@@ -690,7 +690,7 @@ Section Iota.
     intros j Mj HMj.
     destruct (ind_has_views D) eqn:Hv; [ left; reflexivity |].
     destruct Hoq as [-> | ->]; [ left; reflexivity | right; split; [ reflexivity |] ].
-    apply (dt_order _ _ _ Hdt _ _ HMj); exact (no_views_decl _ _ _ Hv HMj).
+    apply (decl_typed_order _ _ _ Hdt _ _ HMj); exact (no_views_decl _ _ _ Hv HMj).
   Qed.
 
   (** *** The Values at an Environment
@@ -717,14 +717,14 @@ Section Iota.
     #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us i_HUl i_HUs C u0 HCC HUC).
     #[local] Abbreviation u0_gargs' := (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us i_HUl i_HUs C u0 HCC HUC).
     #[local] Abbreviation Hcp := (vg_canon p D Hvg u0 u0_gargs' u0_len').
-    #[local] Abbreviation HnP := (icp_np_per _ _ Hcp).
-    #[local] Abbreviation HnI := (icp_np_iff _ _ Hcp).
-    #[local] Abbreviation HaP := (icp_arg_per _ _ Hcp).
-    #[local] Abbreviation HaI := (icp_arg_iff _ _ Hcp).
-    #[local] Abbreviation HdP := (icp_dom_per _ _ Hcp).
-    #[local] Abbreviation HdI := (icp_dom_iff _ _ Hcp).
+    #[local] Abbreviation HnP := (ind_canon_props_np_per _ _ Hcp).
+    #[local] Abbreviation HnI := (ind_canon_props_np_iff _ _ Hcp).
+    #[local] Abbreviation HaP := (ind_canon_props_arg_per _ _ Hcp).
+    #[local] Abbreviation HaI := (ind_canon_props_arg_iff _ _ Hcp).
+    #[local] Abbreviation HdP := (ind_canon_props_dom_per _ _ Hcp).
+    #[local] Abbreviation HdI := (ind_canon_props_dom_iff _ _ Hcp).
     #[local] Abbreviation Had := (vg_adm p D Hvg u0 u0 u0_gargs' u0_len' u0_gargs').
-    #[local] Abbreviation Hass := (vgr_ass _ _ Hvg).
+    #[local] Abbreviation Hass := (valid_group_ass _ _ Hvg).
     #[local] Abbreviation isym := (proj1 (ind_rel_sym_all p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr))).
     #[local] Abbreviation itrans := (proj1 (ind_rel_trans_all p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr))).
 
@@ -970,12 +970,12 @@ Section Iota.
           split; [ exact (HarA _ _ _ _ _ _ _ HMj0 Hb Hcon1 (brs_lookup_in _ _ _ _ Hlb))
                  | exact (HBv _ _ _ _ _ _ _ HMj0 Hb Hcon1 (brs_lookup_in _ _ _ _ Hlb)) ]. }
         pose proof (per_ind_elim_all p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i EL C (blocks_sub Bks σL) Bks wL u0 Hok
-                      Rel HbA1 HBks HnmA1 HnmA HnaA1 HnaA HarA1 HarA (dt_nodup _ _ _ Hdt)
+                      Rel HbA1 HBks HnmA1 HnmA HnaA1 HnaA HarA1 HarA (decl_typed_nodup _ _ _ Hdt)
                       (EP mot_link Bks HnmA HAA0 ΨL RΨ σL EL C HRΨ HwL HEL Hev HCC)
                       (EP br_out HBc Bks HB0s ΨL RΨ σL EL C HRΨ HwL HEL Hev HCC)) as [PE _].
         pose proof (isym _ _ _ _ _ _ _ HfmL) as HmLf.
         destruct (PE _ _ _ _ _ _ _ HmLf) as (r1 & r2 & Er1 & Er2 & Hr12).
-        destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj HmLf (dt_order _ _ _ Hdt) _ (elim_at_grp _ _ HMj)) as [Hgr1 _].
+        destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj HmLf (decl_typed_order _ _ _ Hdt) _ (elim_at_grp _ _ HMj)) as [Hgr1 _].
         exists r2, r1; split; [ exact Er2 | split ].
         - unfold elim_at; eapply eval_exp_elim; [ exact EwL | exact ExL | exact Hgr1 | exact Er1 ].
         - eapply rec_result_self; [ exact Ebs | exact Ebs'' |].
@@ -1150,7 +1150,7 @@ Section Iota.
       - rewrite (HarA _ _ _ _ _ _ _ HMm Hbm Hcon (brs_lookup_in _ _ _ _ Hlk)), Hnn; reflexivity.
       - rewrite Enp, skipn_app_exact by reflexivity; exact Ee.
       - rewrite Enp, skipn_app_exact, firstn_app_exact by reflexivity; rewrite <- Hunu, Hsk; exact Er1. }
-    destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMm Hself (dt_order _ _ _ Hdt) oq Hgr) as [Hgr1 _].
+    destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMm Hself (decl_typed_order _ _ _ Hdt) oq Hgr) as [Hgr1 _].
     assert (l' = r1) as -> by (eapply functional_eval_exp; [ exact El' | eapply eval_exp_elim; [ exact Hu0 | exact EMc | exact Hgr1 | exact Eel ] ]).
     (** The right side's value. *)
     set (Eτ := env_args ρ' (ns ++ avs ++ ihc)) in *.

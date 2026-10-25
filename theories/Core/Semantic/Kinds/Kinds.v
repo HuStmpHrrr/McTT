@@ -93,9 +93,9 @@ Section Kinds.
       ukind Θ Ξ ρ (gu_mk Δ D) ch k <-> ukind Θ Ξ (kpad (List.length Δ) ρ) (gu_mk nil D) ch k.
   Proof.
     intros; split; intros H; inversion H; subst;
-      first [ eapply uk_self | eapply uk_def; eassumption | eapply uk_mod; eassumption | eapply uk_dm_here; eassumption
-            | eapply uk_dm_step; eassumption | eapply uk_item_def; eassumption | eapply uk_item_mod; eassumption
-            | eapply uk_item_dm; eassumption | eapply uk_item_self; eassumption | eapply uk_alias; eassumption ].
+      first [ eapply ukind_self | eapply ukind_def; eassumption | eapply ukind_mod; eassumption | eapply ukind_dm_here; eassumption
+            | eapply ukind_dm_step; eassumption | eapply ukind_item_def; eassumption | eapply ukind_item_mod; eassumption
+            | eapply ukind_item_dm; eassumption | eapply ukind_item_self; eassumption | eapply ukind_alias; eassumption ].
   Qed.
 
   (** *** Lookups Past an Entry *)
@@ -140,7 +140,7 @@ Section Kinds.
   Proof.
     intros; split; intros Hk.
     - inversion Hk; subst; [ left; split; assumption | right; repeat split; assumption ].
-    - destruct Hk as [[Hk Hc] | (-> & -> & Hk)]; [ apply sk_mem; assumption | apply sk_mem_dm; exact Hk ].
+    - destruct Hk as [[Hk Hc] | (-> & -> & Hk)]; [ apply skind_mem; assumption | apply skind_mem_dm; exact Hk ].
   Qed.
 
   (** Away from the empty chain, a selection is read by the longer chain. *)
@@ -158,7 +158,7 @@ Section Kinds.
   Proof.
     intros; split; intros Hk.
     - inversion Hk; subst; [ left; split; assumption | right; repeat split; assumption ].
-    - destruct Hk as [[Hk Hc] | (-> & -> & Hk)]; [ apply dk_member; assumption | apply dk_member_dm; exact Hk ].
+    - destruct Hk as [[Hk Hc] | (-> & -> & Hk)]; [ apply dkind_member; assumption | apply dkind_member_dm; exact Hk ].
   Qed.
 
   Lemma dkind_member_cons_iff : forall h ch0 c ch k, dkind Θ Ξ (dm_member h ch0) (c :: ch) k <-> dkind Θ Ξ h (ch0 ++ c :: ch) k.
@@ -242,13 +242,13 @@ Section Kinds.
     intros H HH φ ρ ρ' Hφ its; induction its as [| [[[n |] d] pv] its IH]; intros gs0 Hg; inversion Hg; subst.
     - exists nil; split; [ constructor | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_def; [ apply (HH _ _ _ Hφ); eassumption | exact Hgs ] | reflexivity ].
+      eexists; split; [ apply kgens_def; [ apply (HH _ _ _ Hφ); eassumption | exact Hgs ] | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_mod; [ apply (HH _ _ _ Hφ); eassumption | exact Hgs ] | reflexivity ].
+      eexists; split; [ apply kgens_mod; [ apply (HH _ _ _ Hφ); eassumption | exact Hgs ] | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_dm; [ apply (HH _ _ _ Hφ); eassumption | exact Hgs ] | reflexivity ].
+      eexists; split; [ apply kgens_dm; [ apply (HH _ _ _ Hφ); eassumption | exact Hgs ] | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_self; exact Hgs | reflexivity ].
+      eexists; split; [ apply kgens_self; exact Hgs | reflexivity ].
   Qed.
 
   Lemma kgens_alias_target : forall ρ H its gs, kgens Θ Ξ ρ H its gs ->
@@ -342,9 +342,9 @@ Section Kinds.
   (** A body read by kinds at a renamed environment, against the body
       renamed: the environments it makes, both ways, and its members. *)
   Record kren_body_at (Φ : gmod) (φ : wk) (ρ ρ' : env) : Prop := mk_kren_body_at
-    { krb_fwd : forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1'
-    ; krb_bwd : forall ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1'
-    ; krb_kind : forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_wk Φ φ))) (x :: ch) k <->
+    { kren_body_at_fwd : forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1'
+    ; kren_body_at_bwd : forall ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1'
+    ; kren_body_at_kind : forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_wk Φ φ))) (x :: ch) k <->
         ukind Θ Ξ ρ' (gu_mk nil (md_body sm Φ)) (x :: ch) k }.
 
   Definition kren_body (Φ : gmod) : Prop :=
@@ -427,37 +427,37 @@ Section Kinds.
         assert (Ex : String.eqb x x = true) by apply String.eqb_refl.
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_wk] in *; rewrite ?Ex in *;
           try discriminate.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply ukind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn [gentry_wk] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_wk Φ φ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
-          eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn [gentry_wk] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_wk Φ φ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
-          eapply uk_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn [gentry_wk] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_wk Φ φ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
-          eapply uk_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
+          eapply ukind_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply ukind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
-          eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
-          eapply uk_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
-          eapply uk_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
+          eapply ukind_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
     - (* an open *)
       intros φ ρ ρ' Hφ; rename H0 into IHΦ, H1 into IHH; destruct (IHΦ _ _ _ Hφ) as [IH1 IH2 IH3].
@@ -489,10 +489,10 @@ Section Kinds.
         all: match goal with Hp : Some _ = Some (_, _, _, _) |- _ => injection Hp; intros; subst end.
         all: match goal with Hk1 : kenv _ _ ?e ?Q _, IH : forall r, kenv _ _ ?e ?Q r -> exists _, _ |- _ =>
                destruct (IH _ Hk1) as (ρ0 & Hk1' & Hr1) end.
-        all: first [ eapply uk_item_def; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption
-                   | eapply uk_item_mod; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
-                   | eapply uk_item_dm; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
-                   | eapply uk_item_self; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption ].
+        all: first [ eapply ukind_item_def; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption
+                   | eapply ukind_item_mod; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
+                   | eapply ukind_item_dm; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
+                   | eapply ukind_item_self; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption ].
     - (* a submodule entry *) exact H.
     - (* a definition with a module part: its module part *) exact H1.
   Qed.
@@ -554,9 +554,9 @@ Section Kinds.
   (** The same at a substituted environment, against the body
       substituted. *)
   Record ksub_body_at (Φ : gmod) (σ : sub) (ρ ρ' : env) : Prop := mk_ksub_body_at
-    { ksb_fwd : forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1'
-    ; ksb_bwd : forall ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1'
-    ; ksb_kind : forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_sub Φ σ))) (x :: ch) k <->
+    { ksub_body_at_fwd : forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1'
+    ; ksub_body_at_bwd : forall ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1'
+    ; ksub_body_at_kind : forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_sub Φ σ))) (x :: ch) k <->
         ukind Θ Ξ ρ' (gu_mk nil (md_body sm Φ)) (x :: ch) k }.
 
   Definition ksub_body (Φ : gmod) : Prop :=
@@ -582,13 +582,13 @@ Section Kinds.
     intros H HH σ ρ ρ' Hσ its; induction its as [| [[[n |] d] pv] its IH]; intros gs0 Hg; inversion Hg; subst.
     - exists nil; split; [ constructor | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_def; [ apply (HH _ _ _ Hσ); eassumption | exact Hgs ] | reflexivity ].
+      eexists; split; [ apply kgens_def; [ apply (HH _ _ _ Hσ); eassumption | exact Hgs ] | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_mod; [ apply (HH _ _ _ Hσ); eassumption | exact Hgs ] | reflexivity ].
+      eexists; split; [ apply kgens_mod; [ apply (HH _ _ _ Hσ); eassumption | exact Hgs ] | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_dm; [ apply (HH _ _ _ Hσ); eassumption | exact Hgs ] | reflexivity ].
+      eexists; split; [ apply kgens_dm; [ apply (HH _ _ _ Hσ); eassumption | exact Hgs ] | reflexivity ].
     - destruct (IH _ ltac:(eassumption)) as (gs1 & Hgs & ->).
-      eexists; split; [ apply kg_self; exact Hgs | reflexivity ].
+      eexists; split; [ apply kgens_self; exact Hgs | reflexivity ].
   Qed.
 
   Lemma kentry_alias_ksub : forall H, ksub_mod H -> forall σ ρ1 ρ1' A B E,
@@ -704,37 +704,37 @@ Section Kinds.
         assert (Ex : String.eqb x x = true) by apply String.eqb_refl.
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_sub] in *; rewrite ?Ex in *;
           try discriminate.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply ukind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn [gentry_sub] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_sub Φ σ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
-          eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn [gentry_sub] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_sub Φ σ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
-          eapply uk_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn [gentry_sub] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_sub Φ σ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
-          eapply uk_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
+          eapply ukind_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply ukind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
-          eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
-          eapply uk_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
+          eapply ukind_dm_here; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
         * destruct E as [| | | pv0 A0 M0 U0 |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- _ => injection Hp as <- <- <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
-          eapply uk_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
+          eapply ukind_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
     - (* an open *)
       intros σ ρ ρ' Hσ; rename H0 into IHΦ, H1 into IHH; destruct (IHΦ _ _ _ Hσ) as [IH1 IH2 IH3].
@@ -766,10 +766,10 @@ Section Kinds.
         all: match goal with Hp : Some _ = Some (_, _, _, _) |- _ => injection Hp; intros; subst end.
         all: match goal with Hk1 : kenv _ _ ?e ?Q _, IH : forall r, kenv _ _ ?e ?Q r -> exists _, _ |- _ =>
                destruct (IH _ Hk1) as (ρ0 & Hk1' & Hr1) end.
-        all: first [ eapply uk_item_def; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption
-                   | eapply uk_item_mod; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
-                   | eapply uk_item_dm; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
-                   | eapply uk_item_self; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption ].
+        all: first [ eapply ukind_item_def; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption
+                   | eapply ukind_item_mod; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
+                   | eapply ukind_item_dm; [ cbn; rewrite Ey; reflexivity | exact Hk1' | |]; apply (IHH _ _ _ Hr1); assumption
+                   | eapply ukind_item_self; [ cbn; rewrite Ey; reflexivity | exact Hk1' |]; apply (IHH _ _ _ Hr1); assumption ].
     - (* a submodule entry *) exact H.
     - (* a definition with a module part: its module part *) exact H1.
   Qed.

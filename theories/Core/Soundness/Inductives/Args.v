@@ -43,30 +43,30 @@ Section Fixed_GCtx.
 #[warnings="-cannot-define-projection"]
 Record glu_arg (Δ : ctx) (ρ : env) (A T M : exp) (v : domain) : Prop := mk_glu_arg
   { (** The universe index *)
-    ga_lvl : uidx
+    glu_arg_lvl : uidx
     (** The type's value *)
-  ; ga_val : domain
+  ; glu_arg_val : domain
     (** Its type predicate *)
-  ; ga_typ : glu_typ_pred
+  ; glu_arg_typ : glu_typ_pred
     (** Its element predicate *)
-  ; ga_exp : glu_exp_pred
+  ; glu_arg_exp : glu_exp_pred
     (** [A] evaluates in [ρ] to it *)
-  ; ga_eval : ⟦ A ⟧ ρ ↘ ga_val
+  ; glu_arg_eval : ⟦ A ⟧ ρ ↘ glu_arg_val
     (** It is glued at the universe *)
-  ; ga_elem : DG ga_val ∈ glu_univ_elem ga_lvl ↘ ga_typ ↘ ga_exp
+  ; glu_arg_elem : DG glu_arg_val ∈ glu_univ_elem glu_arg_lvl ↘ glu_arg_typ ↘ glu_arg_exp
     (** [T] is glued to it *)
-  ; ga_glu_typ : Δ ⊢ T ® ga_typ
+  ; glu_arg_glu_typ : Δ ⊢ T ® glu_arg_typ
     (** [M] at [T] is glued to [v] *)
-  ; ga_glu : Δ ⊢ M : T ® v ∈ ga_exp }.
+  ; glu_arg_glu : Δ ⊢ M : T ® v ∈ glu_arg_exp }.
 
 (** The terms [Ms] glued to the values [vs] along [C], positionwise. *)
 Record glu_args (Δ : ctx) (C : ctx) (τ : sub) (ρ : env) (Ms : list exp) (vs : list domain) : Prop := mk_glu_args
   { (** One term per entry *)
-    gas_len : List.length Ms = List.length C
+    glu_args_len : List.length Ms = List.length C
     (** One value per entry *)
-  ; gas_vals_len : List.length vs = List.length C
+  ; glu_args_vals_len : List.length vs = List.length C
     (** Each term glued to its value at its type, after those before *)
-  ; gas_glu : forall k M T v A, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C τ Ms) k = Some T ->
+  ; glu_args_glu : forall k M T v A, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C τ Ms) k = Some T ->
       List.nth_error vs k = Some v -> List.nth_error (List.rev C) k = Some (ce_ass A) ->
       glu_arg Δ (env_args ρ (List.firstn k vs)) A T M v }.
 
@@ -335,7 +335,7 @@ Lemma glu_closed_const : forall X T (i : nat) m0,
 Proof.
   intros * HXs HTs HT HXe H.
   assert (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) by (eapply ctx_wf_gctx; eapply presup_exp_ctx; exact HT).
-  eapply mk_glu_rel_exp with (gre_lvl := i); [ econstructor; [ reflexivity | exact Hg ] |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ econstructor; [ reflexivity | exact Hg ] |].
   intros Δ σ ρ Hσ; cbn in Hσ.
   destruct (typ_nil_rel' _ _ ρ nil HT) as (a & a0 & Ha & Ha0 & Haa).
   assert (Ha00 : Dom a0 ≈ a0 ∈ per_univ i) by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
@@ -357,7 +357,7 @@ Lemma glu_closed_const_by : forall X T (i : nat) (V : domain -> Prop),
 Proof.
   intros * HXs HTs HT HXe H.
   assert (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) by (eapply ctx_wf_gctx; eapply presup_exp_ctx; exact HT).
-  eapply mk_glu_rel_exp with (gre_lvl := i); [ econstructor; [ reflexivity | exact Hg ] |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ econstructor; [ reflexivity | exact Hg ] |].
   intros Δ σ ρ Hσ; cbn in Hσ.
   destruct (typ_nil_rel' _ _ ρ nil HT) as (a & a0 & Ha & Ha0 & Haa).
   assert (Ha00 : Dom a0 ≈ a0 ∈ per_univ i) by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
@@ -824,7 +824,7 @@ Qed.
 Lemma glu_rel_exp_nil_weaken : forall Γ N T, ⊩ Γ -> ⋅ ⊩ N : T -> Γ ⊩ N : T.
 Proof.
   intros * [SbΓ HΓ] [Sb0 H0 i Hi].
-  eapply mk_glu_rel_exp with (gre_lvl := i); [ exact HΓ |]; intros Δ σ ρ Hσ.
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HΓ |]; intros Δ σ ρ Hσ.
   apply Hi.
   inversion H0 as [Sb' Heq Hg | | | |]; subst.
   apply (Heq Δ σ ρ); cbn.
@@ -838,7 +838,7 @@ Proof.
   assert (HΓ : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HS; subst; eexists; eassumption).
   destruct HΓ as [TSb HΓ].
   destruct (glu_ctx_env_cons_clean_inversion HΓ HS) as (i & _ & HAs & _).
-  exists i; eapply mk_glu_rel_exp with (gre_lvl := S i); [ exact HΓ |]; intros Δ σ ρ Hσ.
+  exists i; eapply mk_glu_rel_exp with (glu_rel_exp_lvl := S i); [ exact HΓ |]; intros Δ σ ρ Hσ.
   exact (glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub (glu_ctx_env_sub_escape HΓ _ _ _ Hσ) (HAs _ _ _ Hσ)).
 Qed.
 

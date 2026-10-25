@@ -4,7 +4,7 @@
     projections, of their congruences, of field-β and of η.  Each holds
     because the record is valid at the target of a sound embedding
     ([record_model_of_emb]): its declaration is typed where it is looked
-    up, and valid at the target ([vem_record]); [Records/Model.v] then
+    up, and valid at the target ([valid_emb_record]); [Records/Model.v] then
     gives the rule. *)
 
 From Stdlib Require Import Lia List PeanoNat.
@@ -47,15 +47,15 @@ Lemma record_model_of_emb : forall Θ Ξ Θ2 Ξ2 p R, valid_emb Θ Ξ Θ2 Ξ2 ->
     @record_model (gc_mk Θ2 Ξ2) p R.
 Proof.
   intros * He Hl.
-  pose proof (vem_wf _ _ _ _ He) as Hg.
+  pose proof (valid_emb_wf _ _ _ _ He) as Hg.
   pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
   constructor.
-  - exact (record_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (vem_emb _ _ _ _ He)) Hl).
+  - exact (record_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (valid_emb_emb _ _ _ _ He)) Hl).
   - exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
   - exact (typed_params_ass _ _ _ Ht).
   - exact (typed_nodup _ _ _ Ht).
   - exact (record_typed_sort_univ _ _ _ Ht).
-  - exact (vem_record _ _ _ _ He _ _ Hl).
+  - exact (valid_emb_record _ _ _ _ He _ _ Hl).
 Qed.
 
 (** Put what the model asks of the record [R] at [p] in the context. *)
@@ -101,8 +101,8 @@ Proof.
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply valid_exp_under_ctx_tuple; try eassumption.
-  - intros * HN HA; exact (sea_rel (HNs _ _ _ HN HA _ _ Hμ)).
-  - intros * HM HU; exact (sea_rel (HMs _ _ _ _ HM HU _ _ Hμ)).
+  - intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
+  - intros * HM HU; exact (sem_exp_eq_at_rel (HMs _ _ _ _ HM HU _ _ Hμ)).
 Qed.
 
 Lemma sem_proj :
@@ -118,7 +118,7 @@ Proof.
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply valid_exp_under_ctx_proj; try eassumption.
-  intros * HN HA; exact (sea_rel (HNs _ _ _ HN HA _ _ Hμ)).
+  intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
 Qed.
 
 Lemma sem_exp_eq_tuple_cong :
@@ -140,8 +140,8 @@ Proof.
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_tuple_cong; try eassumption.
-  - intros * HN HA; exact (sea_rel (HNs _ _ _ HN HA _ _ Hμ)).
-  - intros * HM HM' HU; exact (sea_rel (HMs _ _ _ _ _ HM HM' HU _ _ Hμ)).
+  - intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
+  - intros * HM HM' HU; exact (sem_exp_eq_at_rel (HMs _ _ _ _ _ HM HM' HU _ _ Hμ)).
 Qed.
 
 Lemma sem_exp_eq_proj_cong :
@@ -157,7 +157,7 @@ Proof.
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_proj_cong; try eassumption.
-  intros * HN HA; exact (sea_rel (HNs _ _ _ HN HA _ _ Hμ)).
+  intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
 Qed.
 
 Lemma sem_exp_eq_field_beta :

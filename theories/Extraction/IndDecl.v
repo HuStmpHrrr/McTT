@@ -490,8 +490,8 @@ Section RankComplete.
     destruct (ind_con Mv c) as [gs |] eqn:Hc; [| contradiction ].
     assert (Hc' : ind_con Mi' c = Some gs').
     { unfold ind_con; apply cons_lookup_nodup; [| exact Hcg ].
-      exact (dt_nodup _ _ _ (HDs _ _ Hl) _ _ HMi'). }
-    exact (cargs_nest_targets_lt _ _ _ _ (vro_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv Hc' Hc) Hj).
+      exact (decl_typed_nodup _ _ _ (HDs _ _ Hl) _ _ HMi'). }
+    exact (cargs_nest_targets_lt _ _ _ _ (view_rank_ok_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv Hc' Hc) Hj).
   Qed.
 
   (** The members of rank below [k]'s. *)
@@ -1777,20 +1777,20 @@ End NilDecide.
     - [4]: a [Self] is an argument of a head that does not compute (an
       opaque definition, an axiom or a parameter), so its occurrence
       cannot be seen to be positive;
-    - [cw_unapplied k]: [Self_k], the declared member [k], is the head
+    - [cls_why_unapplied k]: [Self_k], the declared member [k], is the head
       and is not applied to the uniform parameters as declared;
-    - [cw_nested H]: a [Self] occurs in an argument of the type former [H]
+    - [cls_why_nested H]: a [Self] occurs in an argument of the type former [H]
       that is not one of its uniform arguments, or [H] is no declared
       member of a filed group. *)
 Inductive cls_why : Set :=
 (** One of the reasons above, by its code *)
-| cw_code : nat -> cls_why
+| cls_why_code : nat -> cls_why
 (** The declared member [k], written as the head, not applied to the
     uniform parameters as declared *)
-| cw_unapplied : nat -> cls_why
+| cls_why_unapplied : nat -> cls_why
 (** A [Self] in a non-uniform argument of a nested occurrence, or one under
     a type former of no declared member: the head *)
-| cw_nested : exp -> cls_why.
+| cls_why_nested : exp -> cls_why.
 
 (** Whether no [Self] occurs in [T], [d] domains down, past the arguments
     before ([pat]) and [np] parameters. *)
@@ -1799,21 +1799,21 @@ Definition selfs_free (np n : nat) (pat : list bool) (d : nat) (T : exp) : bool 
 
 Fixpoint sh_reason (np n : nat) (pat : list bool) (d : nat) (T : exp) : cls_why :=
   match T with
-  | a_pi A B => if selfs_free np n pat d A then sh_reason np n pat (S d) B else cw_code 2
+  | a_pi A B => if selfs_free np n pat d A then sh_reason np n pat (S d) B else cls_why_code 2
   | _ =>
       match app_head T with
       (* [Self_0] is outermost: the variable [b + i] is [Self_(n-1-i)]. *)
       | a_var j => let b := d + List.length pat + np in
-                   if (b <=? j) && (j <? b + n) then cw_unapplied (n - 1 - (j - b)) else cw_code 4
-      | a_mem _ _ => cw_code 4
-      | a_ind qc k => cw_nested (a_ind qc k)
-      | _ => cw_code 1
+                   if (b <=? j) && (j <? b + n) then cls_why_unapplied (n - 1 - (j - b)) else cls_why_code 4
+      | a_mem _ _ => cls_why_code 4
+      | a_ind qc k => cls_why_nested (a_ind qc k)
+      | _ => cls_why_code 1
       end
   end.
 
 (** The reason an argument [T] is rejected. *)
 Definition cls_reason (np n : nat) (pat : list bool) (T : exp) : cls_why :=
-  if selfs_free np n pat 0 T then cw_code 0 else sh_reason np n pat 0 T.
+  if selfs_free np n pat 0 T then cls_why_code 0 else sh_reason np n pat 0 T.
 
 Section Classify.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -1873,7 +1873,7 @@ Section Classify.
   (** The constructors of a declared member. *)
   Definition rm_cls_dec (R : raw_decl) (Mr : raw_member) :
     ({cs | rm_cls Θ Ξ R Mr cs} + {e : (string * string * cls_why) | forall cs, ~ rm_cls Θ Ξ R Mr cs})%type :=
-    cls_cons_in_dec (rm_pctx Ξ R Mr) (rd_nu R) (List.length (rm_nparams Mr) + rd_nu R) (rd_n R) (rm_cons Mr).
+    cls_cons_in_dec (rm_pctx Ξ R Mr) (rd_nu R) (List.length (raw_member_nparams Mr) + rd_nu R) (rd_n R) (raw_member_cons Mr).
 
   (** The declared members' constructors, member by member; a rejection
       names the member too. *)
@@ -1887,7 +1887,7 @@ Section Classify.
       + destruct (rms_cls_dec R ms') as [[css Hcss] | [e He']].
         * left; exists (cs :: css); constructor; assumption.
         * right; exists e; intros css H; inversion H; subst; eapply He'; eassumption.
-      + right; exists (rm_name Mr, c, y, r); intros css H; inversion H; subst; eapply He; eassumption.
+      + right; exists (raw_member_name Mr, c, y, r); intros css H; inversion H; subst; eapply He; eassumption.
   Defined.
 
   (** ** The Views' Relations, at a View *)
@@ -1895,28 +1895,28 @@ Section Classify.
   (** Why a view is rejected, for the checker's message. *)
   Inductive view_why : Set :=
   (** The instance is no declared member of a filed group *)
-  | vw_container : view_why
+  | view_why_container : view_why
   (** A container's argument at the instance is rejected: the constructor,
       the argument and why *)
-  | vw_cls : string -> string -> cls_why -> view_why
+  | view_why_cls : string -> string -> cls_why -> view_why
   (** A non-uniform parameter or a sibling's instance at the instance is
       not a type, or not typed *)
-  | vw_untyped : view_why
+  | view_why_untyped : view_why
   (** A non-uniform parameter at the instance mentions the group *)
-  | vw_mentions_group : view_why.
+  | view_why_mentions_group : view_why.
 
   (** The constructors of a view, classified. *)
   Definition view_cls_dec (R : raw_decl) (x : rview) :
     ({cs | view_cls Θ Ξ R x cs} + {e : view_why | forall cs, ~ view_cls Θ Ξ R x cs})%type.
   Proof.
     destruct x as [[qc k] Cs].
-    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists vw_container; intros cs H; inversion H; congruence ].
-    destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists vw_container; intros cs H; inversion H; subst; unify_found; congruence ].
+    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros cs H; inversion H; congruence ].
+    destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros cs H; inversion H; subst; unify_found; congruence ].
     destruct (cls_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ rd_uctx Ξ R) (rd_nu R) (im_nn Mk' + rd_nu R) (rd_n R)
                 (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id Cs)))))
                    (im_cons Mk'))) as [[cs Hcs] | [[[c y] r] He]].
     - left; exists cs; econstructor; eassumption.
-    - right; exists (vw_cls c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption.
+    - right; exists (view_why_cls c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption.
   Defined.
 
   (** A telescope of assumptions normalized entry by entry, each a type
@@ -1940,13 +1940,13 @@ Section Classify.
     ({Nv | view_nps Θ Ξ R x Nv} + {e : view_why | forall Nv, ~ view_nps Θ Ξ R x Nv})%type.
   Proof.
     destruct x as [[qc k] Cs].
-    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists vw_container; intros Nv H; inversion H; congruence ].
-    destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists vw_container; intros Nv H; inversion H; subst; unify_found; congruence ].
+    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros Nv H; inversion H; congruence ].
+    destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros Nv H; inversion H; subst; unify_found; congruence ].
     destruct (nbe_tele_dec (rd_uctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs))) as [[Ws HWs] | HnWs].
-    2:{ right; exists vw_untyped; intros Nv H; inversion H; subst; unify_found; eapply HnWs; eassumption. }
+    2:{ right; exists view_why_untyped; intros Nv H; inversion H; subst; unify_found; eapply HnWs; eassumption. }
     destruct (img_tele (List.repeat false (rd_nu R) ++ List.repeat true (rd_n R)) Ws) as [Nv |] eqn:Hi.
     - left; exists Nv; econstructor; eassumption.
-    - right; exists vw_mentions_group; intros Nv H; inversion H; subst; unify_found.
+    - right; exists view_why_mentions_group; intros Nv H; inversion H; subst; unify_found.
       match goal with H1 : nbe_tele _ _ _ _ ?W1 |- _ => pose proof (nbe_tele_functional _ _ _ _ _ _ HWs H1) as <- end.
       congruence.
   Defined.
@@ -1987,10 +1987,10 @@ Section Classify.
     ({ss | view_sibs Θ Ξ R x ss} + {e : view_why | forall ss, ~ view_sibs Θ Ξ R x ss})%type.
   Proof.
     destruct x as [[qc k] Cs].
-    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists vw_container; intros ss H; inversion H; congruence ].
+    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros ss H; inversion H; congruence ].
     destruct (sibs_from_dec (rd_uctx Ξ R) qc Cs 0 (ind_members D')) as [[ss Hss] | Hnss].
     - left; exists ss; econstructor; eassumption.
-    - right; exists vw_untyped; intros ss H; inversion H; subst; unify_found; eapply Hnss; eassumption.
+    - right; exists view_why_untyped; intros ss H; inversion H; subst; unify_found; eapply Hnss; eassumption.
   Defined.
 End Classify.
 
@@ -2157,7 +2157,7 @@ Section Equiv.
 
   Lemma equiv_rd_filed : forall R Vs Ss csD csV Nvs, rd_filed Θ Ξ R Vs Ss csD csV Nvs = rd_filed Θ' Ξ R Vs Ss csD csV Nvs.
   Proof.
-    intros; unfold rd_filed; destruct (rd_members R) as [| Mr0 Mrs]; [ reflexivity |].
+    intros; unfold rd_filed; destruct (raw_decl_members R) as [| Mr0 Mrs]; [ reflexivity |].
     assert (Hrv : forall σ n Vs0 xs Ss0 css Nvs0, rvs_filed Θ Ξ σ n Vs0 xs Ss0 css Nvs0 = rvs_filed Θ' Ξ σ n Vs0 xs Ss0 css Nvs0).
     { intros σ n Vs0 xs; induction xs as [| x xs IH]; intros [| ss Ss0] [| cs css] [| Nv Nvs0]; cbn; try reflexivity.
       rewrite IH; unfold rv_filed; destruct x as [[qc k] Cs]; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity. }

@@ -36,7 +36,7 @@ Inductive nfs_agree (Γ : ctx) : list exp -> list exp -> list typ -> Prop :=
 Definition alg_ty_conv (Γ : ctx) (A B : typ) : Prop := exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ B W.
 
 Inductive alg_type_check : ctx -> typ -> exp -> Prop :=
-| atc_ati :
+| alg_type_check_ati :
   `( Γ ⊢a M ⟹ A ->
      Γ ⊢a A ⊆ B ->
      Γ ⊢a M ⟸ B )
@@ -47,34 +47,34 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     of [Type⟨succl M⟩], as the type of an application is the normal form of
     the instantiated codomain: the side condition is a normalisation, not an
     index computed in the conclusion. *)
-| ati_typ :
+| alg_type_infer_typ :
   `( Γ ⊢a Typeω@i ⟹ Typeωⁿ@(S i) )
-| ati_suniv :
+| alg_type_infer_suniv :
   `( Γ ⊢a M ⟹ Levelⁿ@n ->
      nbe_ty_f Γ Type⟨succl M⟩ W ->
      Γ ⊢a Type⟨M⟩ ⟹ W )
 (** The closed small types infer the least universe. *)
-| ati_level :
+| alg_type_infer_level :
   `( Γ ⊢a Level@n ⟹ Typeⁿ@0 )
 (** A level literal is of the type of levels of its tier, the least one it
     is in; the two operations infer the types of levels of their arguments,
     and are of the larger. *)
-| ati_llit :
+| alg_type_infer_llit :
   `( Γ ⊢a 𝕃ᵒ o ⟹ Levelⁿ@(fst o) )
-| ati_succl :
+| alg_type_infer_succl :
   `( Γ ⊢a M ⟹ Levelⁿ@n ->
      Γ ⊢a succl M ⟹ Levelⁿ@n )
-| ati_maxl :
+| alg_type_infer_maxl :
   `( Γ ⊢a M ⟹ Levelⁿ@m ->
      Γ ⊢a N ⟹ Levelⁿ@n ->
      Γ ⊢a maxl M N ⟹ Levelⁿ@(Nat.max m n) )
-| ati_True :
+| alg_type_infer_True :
   `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
-| ati_true :
+| alg_type_infer_true :
   `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
-| ati_False :
+| alg_type_infer_False :
   `( Γ ⊢a ⊥ ⟹ Typeⁿ@0 )
-| ati_exfalso :
+| alg_type_infer_exfalso :
   `( Γ ▹ ⊥ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      Γ ⊢a M ⟸ ⊥ ->
@@ -82,13 +82,13 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a efq M return A ⟹ B )
 (** The type former of a declared member and a constructor of any member
     infer the normal forms of their closed types. *)
-| ati_ind :
+| alg_type_infer_ind_case :
   `( ind_lookup gc_deps gc_stack p = Some D ->
      ind_member D k = Some Mk ->
      k < ind_ndecl D ->
      nbe_ty_f Γ (ind_ty D Mk) W ->
      Γ ⊢a a_ind p k ⟹ W )
-| ati_con :
+| alg_type_infer_con :
   `( ind_lookup gc_deps gc_stack p = Some D ->
      ind_member D k = Some Mk ->
      ind_con Mk c = Some gs ->
@@ -105,7 +105,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     annotations and the motives at one universe [Typeω@i], an annotation
     of the member's type there, the branches at their types.  The type is
     the normal form of the motive's instance. *)
-| ati_elim :
+| alg_type_infer_elim :
   `( Γ ⊢a M ⟹ nf_indty pc k Rs ->
      ind_lookup gc_deps gc_stack p = Some D ->
      elim_grp D oq p m ->
@@ -152,7 +152,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     normal form are the sorts of the atoms' types.  (An inferred type is
     already normal, [alg_type_infer_normal], so [UB'] is [UB]; the premise
     is what lets soundness, which that theorem rests on, see it.) *)
-| ati_pi :
+| alg_type_infer_pi :
   `( Γ ⊢a A ⟹ UA ->
      Γ ▹ A ⊢a B ⟹ UB ->
      is_univ_nf UA u ->
@@ -160,13 +160,13 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      is_univ_nf UB' v ->
      nbe_ty_f Γ (unf_pi_tm u v) W ->
      Γ ⊢a Π A B ⟹ W )
-| ati_fn :
+| alg_type_infer_fn :
   `( Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      Γ ▹ A ⊢a M ⟹ B ->
      nbe_ty_f Γ A C ->
      Γ ⊢a λ A M ⟹ Πⁿ C B )
-| ati_app :
+| alg_type_infer_app :
   `( Γ ⊢a M ⟹ Πⁿ A B ->
      Γ ⊢a N ⟸ A ->
      nbe_ty_f Γ B[Id,,N] C ->
@@ -175,7 +175,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     against it; without one, the body infers the type.  Then the body of the
     [let].  The two cases are premises under the annotation they are about,
     so that the induction principle has a hypothesis for each. *)
-| ati_let :
+| alg_type_infer_let :
   `( let_ann oA A ->
      (oA = Some A -> Γ ⊢a A ⟹ UA) ->
      (oA = Some A -> is_univ_nf UA u) ->
@@ -185,7 +185,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ▸ A ≔ M ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id,,M] D ->
      Γ ⊢a a_let (b_def oA M) B ⟹ D )
-| ati_let_mod :
+| alg_type_infer_let_mod :
   `( Γ ⊢aᵘ U ->
      Γ ▹ₘ U ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id ,,ₘ me_lit U] D ->
@@ -193,25 +193,25 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** A member infers the normal form of the term part of what it denotes.
     Neither that type nor the member's δ-reduct is checked: of a well-formed
     module, the one is a type and the other inhabits it. *)
-| ati_mem :
+| alg_type_infer_mem :
   `( Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack Γ (me_mem H x) R ->
      ds_ty R = Some A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a a_mem H x ⟹ B )
-| ati_vlookup :
+| alg_type_infer_vlookup :
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
 (** A record's type former infers the normal form of its closed type. *)
-| ati_record :
+| alg_type_infer_record :
   `( record_lookup gc_deps gc_stack p = Some R ->
      nbe_ty_f Γ (record_ty R) W ->
      Γ ⊢a a_record p ⟹ W )
 (** A tuple: its annotation is a type whose normal form is the record
     type at normal parameters [Rs], and each field is checked at its type
     at [Rs] and the fields before it; the tuple infers that normal form. *)
-| ati_tuple :
+| alg_type_infer_tuple :
   `( Γ ⊢a T ⟹ UT ->
      is_univ_nf UT u ->
      nbe_ty_f Γ T (nf_record p Rs) ->
@@ -223,7 +223,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** A projection: the element infers a record type at normal parameters
     [Rs]; the field is the first one so named, and the projection infers
     the normal form of its type at [Rs] and the projections before it. *)
-| ati_proj :
+| alg_type_infer_proj :
   `( Γ ⊢a M ⟹ nf_record p Rs ->
      record_lookup gc_deps gc_stack p = Some R ->
      field_index (record_fields R) f = Some k ->
@@ -234,25 +234,25 @@ where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 (** The well-formedness of extensions, units and module expressions, entry by
     entry, part by part. *)
 with alg_ext : ctx -> ctx -> Prop :=
-| aext_nil :
+| alg_ext_nil :
   `( Γ ⊢aˣ ⋅ )
-| aext_ass :
+| alg_ext_ass :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      Γ ⊢aˣ Ψ ▹ A )
-| aext_def :
+| alg_ext_def :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      Ψ ++ Γ ⊢a M ⟸ A ->
      Γ ⊢aˣ Ψ ▸ A ≔ M )
-| aext_mod :
+| alg_ext_mod :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢aᵘ U ->
      Γ ⊢aˣ Ψ ▹ₘ U )
 (** A definition with a module part: as a definition and as a module slot. *)
-| aext_dm :
+| alg_ext_dm :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
@@ -263,7 +263,7 @@ where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
 (** A body: its parameters, and its entries, each read as it stands in the
     expansion of the body before it. *)
-| aunit_body :
+| alg_unit_body :
   `( Γ ⊢aˣ Δ ->
      tele_ass Δ ->
      Δ ++ Γ ⊢aᵇ Φ ⇝ Φx ->
@@ -271,7 +271,7 @@ with alg_unit : ctx -> gunit -> Prop :=
      body_shape Φx Φx ->
      List.NoDup (gm_names Φ) ->
      Γ ⊢aᵘ gu_open Δ Φ )
-| aunit_alias :
+| alg_unit_alias :
   `( Γ ⊢aˣ Δ ->
      tele_ass Δ ->
      Δ ++ Γ ⊢aᵐ E ->
@@ -282,28 +282,28 @@ where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
     expansion.  The entries a local open generates are not checked again:
     they are the members of a well-formed module at their types. *)
 with alg_body : ctx -> gmod -> gmod -> Prop :=
-| abody_nil :
+| alg_body_nil :
   `( Γ ⊢aᵇ gm_nil ⇝ gm_nil )
-| abody_def :
+| alg_body_def :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      body_ctx Φx ++ Γ ⊢a M ⟸ A ->
      Γ ⊢aᵇ gm_ext Φ x (ge_def b pv A (Some M)) ⇝ gm_ext Φx x (ge_def b pv A (Some M)) )
-| abody_mod :
+| alg_body_mod :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵘ U ->
      Γ ⊢aᵇ gm_ext Φ x (ge_mod pm U) ⇝ gm_ext Φx x (ge_mod pm U) )
 (** A definition with a module part: its term part as a definition, its
     unit as a submodule. *)
-| abody_dm :
+| alg_body_dm :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      body_ctx Φx ++ Γ ⊢a M ⟸ A ->
      body_ctx Φx ++ Γ ⊢aᵘ U ->
      Γ ⊢aᵇ gm_ext Φ x (ge_def_mod pv A M U) ⇝ gm_ext Φx x (ge_def_mod pv A M U) )
-| abody_open :
+| alg_body_open :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
@@ -313,24 +313,24 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
      Γ ⊢aᵇ gm_open Φ H its ⇝ gens_append Φx 0 gs )
 where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
-| amod_unit :
+| alg_modexp_unit :
   `( mdenote gc_deps gc_stack Γ (me_unit fp) R ->
      ds_mtele R = Some T ->
      Γ ⊢aᵐ me_unit fp )
-| amod_var :
+| alg_modexp_var :
   `( Γ ∋ #x ≔ₘ U ->
      Γ ⊢aᵐ me_var x )
-| amod_lit :
+| alg_modexp_lit :
   `( Γ ⊢aᵘ U ->
      Γ ⊢aᵐ me_lit U )
-| amod_mem :
+| alg_modexp_mem :
   `( Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack Γ (me_mem H y) R ->
      ds_mtele R = Some T ->
      Γ ⊢aᵐ me_mem H y )
 (** An argument is checked against the outermost parameter of the
     telescope. *)
-| amod_app :
+| alg_modexp_app :
   `( Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack Γ H R ->
      ds_mtele R = Some T ->
@@ -367,11 +367,11 @@ Combined Scheme alg_type_mut_ind from
   alg_body_mut_ind,
   alg_modexp_mut_ind.
 
-(** The two instances of [ati_let], with an annotation and without one. *)
+(** The two instances of [alg_type_infer_let], with an annotation and without one. *)
 Section LetInstances.
   Context {GC : GCtx}.
 
-  Lemma ati_let_some : forall Γ A UA u M B C D,
+  Lemma alg_type_infer_let_some : forall Γ A UA u M B C D,
       Γ ⊢a A ⟹ UA ->
       is_univ_nf UA u ->
       Γ ⊢a M ⟸ A ->
@@ -380,28 +380,28 @@ Section LetInstances.
       Γ ⊢a ℓ A ≔ M in B ⟹ D.
   Proof.
     intros * HA Hu HM HB HD.
-    eapply ati_let with (W := UA);
+    eapply alg_type_infer_let with (W := UA);
       [ right; reflexivity | intros _; exact HA | intros _; exact Hu | intros _; exact HM
       | discriminate | discriminate | exact HB | exact HD ].
   Qed.
 
-  Lemma ati_let_none : forall Γ M (A : nf) B C D,
+  Lemma alg_type_infer_let_none : forall Γ M (A : nf) B C D,
       Γ ⊢a M ⟹ A ->
       Γ ▸ (A : exp) ≔ M ⊢a B ⟹ C ->
       nbe_ty_f Γ C[Id,,M] D ->
       Γ ⊢a ℓ ≔ M in B ⟹ D.
   Proof.
     intros * HM HB HD.
-    eapply ati_let with (W := A) (UA := A) (u := unl 0);
+    eapply alg_type_infer_let with (W := A) (UA := A) (u := unl 0);
       [ left; reflexivity | discriminate | discriminate | discriminate
       | intros _; exact HM | intros _; reflexivity | exact HB | exact HD ].
   Qed.
 End LetInstances.
 
 #[export]
-Hint Resolve ati_let_some ati_let_none : mctt.
+Hint Resolve alg_type_infer_let_some alg_type_infer_let_none : mctt.
 
-(** The premises of [ati_let], read at the annotation: those about the other
+(** The premises of [alg_type_infer_let], read at the annotation: those about the other
     case are dropped, and those about this one are instantiated.  An
     annotation that is a constructor already fixes the type. *)
 Ltac simpl_let_guards :=

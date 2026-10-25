@@ -224,15 +224,15 @@ Qed.
 (** The values of a module expression lack a parameter of type [B]. *)
 #[warnings="-cannot-define-projection"]
 Record modexp_next_param_at (H : modexp) (B : typ) (ρ : env) : Prop := mk_modexp_next_param_at
-  { mnp_mod : dmod
-  ; mnp_param : domain
-  ; mnp_typ : domain
-  ; mnp_lvl : uidx
-  ; mnp_rel : relation domain
-  ; mnp_eval_mod : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ mnp_mod
-  ; mnp_next : nextparam mnp_mod mnp_param
-  ; mnp_eval_typ : ⟦ B ⟧ ρ ↘ mnp_typ
-  ; mnp_per : per_univ_elem mnp_lvl mnp_rel mnp_param mnp_typ }.
+  { modexp_next_param_at_mod : dmod
+  ; modexp_next_param_at_param : domain
+  ; modexp_next_param_at_typ : domain
+  ; modexp_next_param_at_lvl : uidx
+  ; modexp_next_param_at_rel : relation domain
+  ; modexp_next_param_at_eval_mod : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ modexp_next_param_at_mod
+  ; modexp_next_param_at_next : nextparam modexp_next_param_at_mod modexp_next_param_at_param
+  ; modexp_next_param_at_eval_typ : ⟦ B ⟧ ρ ↘ modexp_next_param_at_typ
+  ; modexp_next_param_at_per : per_univ_elem modexp_next_param_at_lvl modexp_next_param_at_rel modexp_next_param_at_param modexp_next_param_at_typ }.
 
 Definition modexp_next_param (Γ : ctx) (H : modexp) (B : typ) : Prop :=
   forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> modexp_next_param_at H B ρ.
@@ -328,7 +328,7 @@ Proof.
   destruct (unit_chain_at HU HR _ _ Hρ) as [h h' Hh Hh' Hd].
   pose proof (functional_eval_modexp _ _ _ _ Hh (lit_params_val _ _ _ _)) as ->.
   pose proof (functional_eval_modexp _ _ _ _ Hh' (lit_params_val _ _ _ _)) as ->.
-  destruct (per_dmod_appm _ _ _ Hd (np_local _ _ _ _ _ Ha)) as (i & RX & a' & Hp' & HRX & Hap).
+  destruct (per_dmod_appm _ _ _ Hd (nextparam_local _ _ _ _ _ Ha)) as (i & RX & a' & Hp' & HRX & Hap).
   inversion Hp' as [Δ0 A ? ? ? Ha' Hl | |]; subst.
   apply app_inj_tail in Hl as [-> [= ->]].
   destruct (Hap c c' (Hc _ _ _ _ Ha Ha' HRX)) as (hc & hc' & Hc1 & Hc2 & Hcc).

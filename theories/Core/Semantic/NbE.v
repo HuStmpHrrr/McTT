@@ -162,9 +162,9 @@ Hint Resolve functional_nbe_of_typ : mctt.
 Record nbe_ty (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : typ) (W : nf) : Prop := nbe_ty_run
   { ρ : env
   ; m : domain
-  ; nbt_init : initial_env Θ Ξ Γ ρ
-  ; nbt_eval : ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
-  ; nbt_read : Rtyp m in Θ ⍮ Ξ ⍮ length Γ ↘ W }.
+  ; nbe_ty_init : initial_env Θ Ξ Γ ρ
+  ; nbe_ty_eval : ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
+  ; nbe_ty_read : Rtyp m in Θ ⍮ Ξ ⍮ length Γ ↘ W }.
 
 #[export]
 Hint Constructors nbe_ty : mctt.

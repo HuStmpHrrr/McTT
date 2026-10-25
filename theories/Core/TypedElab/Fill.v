@@ -99,7 +99,7 @@ Section Fill.
       contexts are those of algorithmic typing: a binder's type is its
       filled type; an unannotated [let] binds its definition at the type
       it infers; an eliminator's annotations, motives and branches are
-      read in the contexts [ati_elim] reads them in, at its group and its
+      read in the contexts [alg_type_infer_elim] reads them in, at its group and its
       uniform parameters and filled motives; a local body's entries in the
       context of the expansion of the filled entries before them
       ([body_xp]). *)
@@ -132,7 +132,7 @@ Section Fill.
       fill_exp Γ A A' -> fill_exp Γ M M' -> fill_exp (Γ ▸ A' ≔ M') B B' ->
       fill_exp Γ (a_let (b_def (Some A) M) B) (a_let (b_def (Some A') M') B')
   (** A [let] without one: the definition at the type it infers, as
-      [ati_let] reads it *)
+      [alg_type_infer_let] reads it *)
   | fill_exp_let_infer : forall Γ M M' W B B',
       fill_exp Γ M M' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a M' ⟹ W -> fill_exp (Γ ▸ nf_to_exp W ≔ M') B B' ->
       fill_exp Γ (a_let (b_def None M) B) (a_let (b_def None M') B')
@@ -173,7 +173,7 @@ Section Fill.
       [j] on, at the uniform parameters [Us] and the motives [As]: each its
       annotation over its member's non-uniform parameters, its motive over
       them and the scrutinee, and its branches, with as many binders as
-      [ati_elim] asks *)
+      [alg_type_infer_elim] asks *)
   with fill_blocks : ctx -> qname -> ind_decl -> list exp -> list exp -> nat -> list eblock -> list eblock -> Prop :=
   (** No block *)
   | fill_blocks_nil : forall Γ p D Us As j, fill_blocks Γ p D Us As j nil nil
@@ -347,41 +347,41 @@ Section Fill.
       motives of the translation's own blocks ([mdef_blocks]). *)
 
   (** A function of a mutual definition over [Γ], its parameters and
-      scrutinee filled, as [rc_mdef] reads them, to [f']. *)
+      scrutinee filled, as [run_cmd_mdef] reads them, to [f']. *)
   Record fill_raw_fun_head (Γ : ctx) (f f' : raw_fun) : Prop := mk_fill_raw_fun_head
     { (** The name is kept *)
-      fill_raw_fun_head_name : rf_name f' = rf_name f
+      fill_raw_fun_head_name : raw_fun_name f' = raw_fun_name f
       (** The parameters, over [Γ], are filled *)
-    ; fill_raw_fun_head_nparams : fill_tele Γ (rf_nparams f) (rf_nparams f')
+    ; fill_raw_fun_head_nparams : fill_tele Γ (raw_fun_nparams f) (raw_fun_nparams f')
       (** The scrutinee's type, over the filled parameters, is filled *)
-    ; fill_raw_fun_head_scrut : fill_exp (rf_nparams f' ++ Γ) (rf_scrut f) (rf_scrut f')
+    ; fill_raw_fun_head_scrut : fill_exp (raw_fun_nparams f' ++ Γ) (raw_fun_scrut f) (raw_fun_scrut f')
       (** The result type is kept, filled with the clauses *)
-    ; fill_raw_fun_head_res : rf_res f' = rf_res f
+    ; fill_raw_fun_head_res : raw_fun_res f' = raw_fun_res f
       (** The clauses are kept, filled with the result type *)
-    ; fill_raw_fun_head_clauses : rf_clauses f' = rf_clauses f }.
+    ; fill_raw_fun_head_clauses : raw_fun_clauses f' = raw_fun_clauses f }.
 
   (** A function [f] of the member [m] of the group [D] at [pq], at the
       uniform parameters [Us] and the motives [As], over [Γ], its result
       and clauses filled to [f']: the result in the motive's context, the
-      clauses in their branches', as [ati_elim] reads them. *)
+      clauses in their branches', as [alg_type_infer_elim] reads them. *)
   Record fill_raw_fun_body (pq : qname) (D : ind_decl) (Us : list exp) (Γ : ctx) (As : list exp)
       (f : raw_fun) (m : nat) (f' : raw_fun) : Prop := mk_fill_raw_fun_body
     { (** The name is kept *)
-      fill_raw_fun_body_name : rf_name f' = rf_name f
+      fill_raw_fun_body_name : raw_fun_name f' = raw_fun_name f
       (** The parameters are kept, filled already *)
-    ; fill_raw_fun_body_nparams : rf_nparams f' = rf_nparams f
+    ; fill_raw_fun_body_nparams : raw_fun_nparams f' = raw_fun_nparams f
       (** The scrutinee's type is kept, filled already *)
-    ; fill_raw_fun_body_scrut : rf_scrut f' = rf_scrut f
+    ; fill_raw_fun_body_scrut : raw_fun_scrut f' = raw_fun_scrut f
       (** The member is one of the group *)
     ; fill_raw_fun_body_member : ind_member D m <> None
       (** The result type, over the member's parameters and the scrutinee,
           is filled *)
     ; fill_raw_fun_body_res : forall Mm, ind_member D m = Some Mm ->
-        fill_exp (elim_mctx pq D m Mm Us ++ Γ) (rf_res f) (rf_res f')
+        fill_exp (elim_mctx pq D m Mm Us ++ Γ) (raw_fun_res f) (raw_fun_res f')
       (** The clauses, each in its constructor's branch context, are
           filled *)
     ; fill_raw_fun_body_clauses : forall Mm, ind_member D m = Some Mm ->
-        fill_brs Γ pq D Mm Us As (rf_clauses f) (rf_clauses f') }.
+        fill_brs Γ pq D Mm Us As (raw_fun_clauses f) (raw_fun_clauses f') }.
 
   (** A constructor's arguments over [Γ], filled: the names kept, the
       types filled as a telescope, each over the ones before it, as
@@ -398,26 +398,26 @@ Section Fill.
       group. *)
   Record fill_raw_member (R' : raw_decl) (Mr Mr' : raw_member) : Prop := mk_fill_raw_member
     { (** The name is kept *)
-      fill_raw_member_name : rm_name Mr' = rm_name Mr
+      fill_raw_member_name : raw_member_name Mr' = raw_member_name Mr
       (** The parameters, over the uniform ones, are filled *)
-    ; fill_raw_member_nparams : fill_tele (rd_uparams R' ++ gs_tele Ξ) (rm_nparams Mr) (rm_nparams Mr')
+    ; fill_raw_member_nparams : fill_tele (raw_decl_uparams R' ++ gs_tele Ξ) (raw_member_nparams Mr) (raw_member_nparams Mr')
       (** The sort, over the uniform parameters, is filled *)
-    ; fill_raw_member_sort : fill_exp (rd_uparams R' ++ gs_tele Ξ) (rm_sort Mr) (rm_sort Mr')
+    ; fill_raw_member_sort : fill_exp (raw_decl_uparams R' ++ gs_tele Ξ) (raw_member_sort Mr) (raw_member_sort Mr')
       (** Each constructor keeps its name, and its arguments are filled
           over the member's context *)
     ; fill_raw_member_cons :
         Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
-          (rm_cons Mr) (rm_cons Mr') }.
+          (raw_member_cons Mr) (raw_member_cons Mr') }.
 
   (** [fill_raw_decl R R']: the group as written [R] is filled to [R'],
       each part in the context the classification reads it in. *)
   Record fill_raw_decl (R R' : raw_decl) : Prop := mk_fill_raw_decl
     { (** The uniform parameters, over the frames', are filled *)
-      fill_raw_decl_uparams : fill_tele (gs_tele Ξ) (rd_uparams R) (rd_uparams R')
+      fill_raw_decl_uparams : fill_tele (gs_tele Ξ) (raw_decl_uparams R) (raw_decl_uparams R')
       (** Whether the group files its recursor module is kept *)
-    ; fill_raw_decl_rec : rd_rec R' = rd_rec R
+    ; fill_raw_decl_rec : raw_decl_rec_field R' = raw_decl_rec_field R
       (** Each declared member is filled, in order *)
-    ; fill_raw_decl_members : Forall2 (fill_raw_member R') (rd_members R) (rd_members R') }.
+    ; fill_raw_decl_members : Forall2 (fill_raw_member R') (raw_decl_members R) (raw_decl_members R') }.
 
   (** [fill_cmd c c']: the command [c] is filled to [c'], its terms read in
       the frames' telescope.  One rule per kind of command; a module's
@@ -460,7 +460,7 @@ Section Fill.
   (** A group: each part in the context the classification reads it in *)
   | fill_cmd_ind_decl : forall pv R R', fill_raw_decl R R' -> fill_cmd (cc_ind pv R) (cc_ind pv R')
   (** A mutual definition: its telescope; its functions' parameters and
-      scrutinees, from which the group is read as [rc_mdef] reads it; then
+      scrutinees, from which the group is read as [run_cmd_mdef] reads it; then
       their results and clauses, at the group, at the motives of the
       blocks of the filled functions *)
   | fill_cmd_mdef : forall b pv Δ Δ' f0 fs fh0 fsh f0' fs' pq m0 Ps D Us ms,

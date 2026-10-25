@@ -407,7 +407,7 @@ Proof.
   { eapply (per_env_extend_def_intro _ HAσ' HMσ' Hρ'ρ'); [ | exact Hn4 | ].
     - eapply per_head_of; [ exact Ha4 | exact Ha4 | exact Ha44 | exact Hn44 ].
     - eapply per_head_of; [ exact Ha4 | exact Ha4 | exact Ha44 | exact Hn44 ]. }
-  destruct (rel_sub_under_ctx_q_at HΓ' HΓA Hσ'σ' HA _ _ _ _ _ _ (ped_ext _ _ _ _ _ Hpair) Hev' Hev')
+  destruct (rel_sub_under_ctx_q_at HΓ' HΓA Hσ'σ' HA _ _ _ _ _ _ (per_env_extend_def_ext _ _ _ _ _ Hpair) Hev' Hev')
     as [s [s' [Hqs [Hqs' Hqchain]]]].
   destruct (HB'gen _ _ HΓ'd _ _ Hq _ _ _ _ Hpair Hqs Hqs) as [R3 [HI3t HI3e]].
   destruct HI3t as [e1 e2 e3 e4 He1 He2 He3 He4 He1chain].

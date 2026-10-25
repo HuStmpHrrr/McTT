@@ -53,11 +53,11 @@ Section Fixed_GCtx.
     pose proof (blocks_typed_us_conv _ _ _ _ _ _ _ Hl HΓ HUl HUt HUl' HUt' HUe HBt) as HBt'.
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUt) as Hσ.
     assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
-    { eapply wf_sub_eq_of_list; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
+    { eapply wf_sub_eq_of_list; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
                                 | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUe ]. }
     (* the non-uniform parameters, as a substitution *)
     assert (Hδδ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns ≈ sb_of_list Id Ns' : tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ).
-    { eapply wf_sub_eq_of_list; [ apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
+    { eapply wf_sub_eq_of_list; [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
                                 | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite length_tele_sub; exact HNl
                                 | rewrite length_tele_sub; exact HNl' |].
       intros j N N' T HN HN' HT; rewrite tele_insts_tele_sub in HT.
@@ -79,7 +79,7 @@ Section Fixed_GCtx.
     assert (HM1 : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m Us Ns') by (eapply wf_conv'; [ exact HM | exact HT1 ]).
     split; [ eapply wf_conv'; [ exact HM1 | exact HT2 ] | split; [ exact HBt' |] ].
     (* the motive's instance *)
-    eapply sub_eq_preserves_typ; [ exact (bt_motive _ _ _ _ _ _ _ _ HBt _ _ _ Hm Hb) |].
+    eapply sub_eq_preserves_typ; [ exact (blocks_typed_motive _ _ _ _ _ _ _ _ HBt _ _ _ Hm Hb) |].
     rewrite !sb_of_list_app; cbn [sb_of_list].
     unfold elim_mctx; cbn [List.app].
     eapply wf_sub_eq_extend; [ exact Hδδ | exact Hhd | rewrite Ehd by assumption; exact HM | rewrite Ehd by assumption; exact HM1

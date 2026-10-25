@@ -1711,8 +1711,8 @@ Proof. intros [[] |]; reflexivity. Qed.
     [progressive_inversion] does not terminate on such a hypothesis — it
     inverts it to an equation of the same shape, for ever. *)
 Variant is_univ_nf : nf -> unf -> Prop :=
-| isu_typ : forall i, is_univ_nf (nf_typ i) (unl i)
-| isu_univ : forall c xs, is_univ_nf (nf_univ c xs) (uns (c, xs)).
+| is_univ_nf_typ : forall i, is_univ_nf (nf_typ i) (unl i)
+| is_univ_nf_univ : forall c xs, is_univ_nf (nf_univ c xs) (uns (c, xs)).
 
 Lemma is_univ_nf_univ_nf : forall u, is_univ_nf (univ_nf u) u.
 Proof. intros [[] |]; constructor. Qed.

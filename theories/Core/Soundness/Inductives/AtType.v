@@ -53,12 +53,12 @@ Section AtType.
   Let HG := HGall _ _ HPD.
   Let Hvg := valid_groups_valid VP HVP p D HPD.
   Let Hcv := containers_valid_of_groups VP HVP p D HPD.
-  Let Hl := vgr_lookup _ _ Hvg.
-  Let HD := vgr_valid _ _ Hvg.
-  Let Hc := vgr_closed _ _ Hvg.
-  Let Hsu := vgr_sort _ _ Hvg.
-  Let Hass := vgr_ass _ _ Hvg.
-  Let Hdt := vgr_typed _ _ Hvg.
+  Let Hl := valid_group_lookup _ _ Hvg.
+  Let HD := valid_group_valid _ _ Hvg.
+  Let Hc := valid_group_closed _ _ Hvg.
+  Let Hsu := valid_group_sort _ _ Hvg.
+  Let Hass := valid_group_ass _ _ Hvg.
+  Let Hdt := valid_group_typed _ _ Hvg.
 
   Variables (ups : list domain) (bu : domain) (u : uidx)
     (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
@@ -118,7 +118,7 @@ Section AtType.
     - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMk Hh Hr) as E; injection E as -> -> ->.
       exact (proj1 (vg_type_rel_base p D Hvg k Mk pm ups ups ups ups ns ns i R HMk Hh Hgu Hu Hgu Hgu HR)).
     - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMk Hh Hr) as (py & E & Epy); injection E as -> -> <-.
-      destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mk' & Hq & _).
+      destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mk' & Hq & _).
       destruct (vg_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMk Hh Hq ups ups Hgu Hu) as (c0 & c0' & E0 & E0' & Hc0).
       pose proof (functional_eval_exps' _ _ _ _ E0 Epy) as ->; pose proof (functional_eval_exps' _ _ _ _ E0' Epy) as ->.
       exact (Completeness.Inductives.Con.view_end_rel_all VP p D HVP HPD ups ups Hgu Hu k Mk qc kc Is vm Dq pre pre HMk Hh Hq Epy Epy pre pre ns ns i R Hc0 Hc0 HR).
@@ -182,7 +182,7 @@ Section AtType.
         exact (functional_eval_exps' _ _ _ _ Ecs HU). }
       destruct (vg_relate p D Hvg j Mj pm ups ups ns X HMj Hh Hgu Hu Hns) as [i0 Hi0]; eauto.
     - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hh Hr) as (py & E & Epy); injection E as -> -> <-.
-      destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq & Mkc & Hq & _).
+      destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq & Mkc & Hq & _).
       destruct (view_pre_values p D Hvg Hcv j Mj qc kc Is vm Dq ups Z RZ (X ++ ws) (im_nn Mj) L cs HMj Hh Hq Hu Hgu
                   HZ HRZ ltac:(lia) ltac:(rewrite List.length_app; lia) HE Ecs) as (cups & Ecups & Hgc).
       pose proof (functional_eval_exps' _ _ _ _ Ecups Epy) as ->.
@@ -211,8 +211,8 @@ Section AtType.
       DG d_ind hd k' (pre ++ bs) ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ im_ty_at p j Mj Us' Q ® P.
   Proof.
     intros * Hi HMj Hr HΔ HUs Hgn Hbs Hglu.
-    pose proof (gnp_len _ _ _ _ _ _ _ Hgn) as LQ.
-    pose proof (gnp_vals_len _ _ _ _ _ _ _ Hgn) as Lbs.
+    pose proof (glu_nparams_len _ _ _ _ _ _ _ Hgn) as LQ.
+    pose proof (glu_nparams_vals_len _ _ _ _ _ _ _ Hgn) as Lbs.
     destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _].
     pose proof (glu_args_of_nparams D ups u NP NEl AP AEl DP DEl Hf j Mj Δ Us' Q bs HMj Hgn Hbs) as HNs.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
@@ -220,7 +220,7 @@ Section AtType.
     - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMj Hh Hr) as E; injection E as -> -> ->.
       assert (Hlt : j < ind_ndecl D) by (eapply decl_member_lt; eassumption).
       assert (HgP : glu_args Δ (im_params D Mj) Id nil (Us' ++ Q) (ups ++ bs)).
-      { unfold im_params; apply glu_args_app; [ exact (dc_ass _ Hc) | exact LU | rewrite Hu; reflexivity |].
+      { unfold im_params; apply glu_args_app; [ exact (decl_closed_ass _ Hc) | exact LU | rewrite Hu; reflexivity |].
         split; [ exact HUs | exact HNs ]. }
       destruct (ind_glu_of_per p D Hl (ul i) R j Mj pm ups bs HMj Hh HR Hu)
         as [NP2 NEl2 AP2 AEl2 DP2 DEl2 P2 El2 R2 Hg2 HP2 HEl2 HR2 Hf2].
@@ -234,12 +234,12 @@ Section AtType.
       destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hg2) as [EP _].
       apply EP; exact HT2.
     - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hh Hr) as (py & E & Epy); injection E as -> -> <-.
-      destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq & Mkc & Hq & HMkc & Hkd & HIl & _ & Hvm & _).
+      destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq & Mkc & Hq & HMkc & Hkd & HIl & _ & Hvm & _).
       pose proof (valid_groups_containers VP HVP p D j Mj qc kc Is vm Dq HPD HMj Hh Hq) as HPq.
       pose proof (valid_groups_valid VP HVP qc Dq HPq) as HgQ.
       pose proof (HGall _ _ HPq) as HGq.
       assert (Hhc : exists pmc, im_head Mkc = mh_decl pmc).
-      { pose proof (proj2 (dt_order _ _ _ (vgr_typed _ _ HgQ) _ _ HMkc) Hkd) as Hd.
+      { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMkc) Hkd) as Hd.
         unfold im_is_decl in Hd; destruct (im_head Mkc); [ eauto | discriminate ]. }
       destruct Hhc as [pmc Hhc].
       assert (Hlpre : List.length pre = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ Epy); exact HIl).
@@ -247,23 +247,23 @@ Section AtType.
       pose proof (view_nparams_glu VP p D HVP HPD j Mj qc kc Is vm Dq HMj Hh Hq Δ Us' Q ups bs pre kc Mkc j Mj HΔ Hu HUs
                     HMkc Hvm HMj HNs Epy) as HNc.
       assert (HPc : glu_args Δ (im_params Dq Mkc) Id nil (List.map (fun I => I[sb_of_list Id Us']) Is ++ Q) (pre ++ bs)).
-      { unfold im_params; apply glu_args_app; [ exact (dc_ass _ (vgr_closed _ _ HgQ)) | rewrite List.length_map; exact HIl
+      { unfold im_params; apply glu_args_app; [ exact (decl_closed_ass _ (valid_group_closed _ _ HgQ)) | rewrite List.length_map; exact HIl
                                               | exact Hlpre |].
         split; [ exact HUc | exact HNc ]. }
-      destruct (ind_glu_of_per qc Dq (vgr_lookup _ _ HgQ) (ul i) R kc Mkc pmc pre bs HMkc Hhc HR Hlpre)
+      destruct (ind_glu_of_per qc Dq (valid_group_lookup _ _ HgQ) (ul i) R kc Mkc pmc pre bs HMkc Hhc HR Hlpre)
         as [NP2 NEl2 AP2 AEl2 DP2 DEl2 P2 El2 R2 Hg2 HP2 HEl2 HR2 Hf2].
       destruct (vg_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMj Hh Hq ups ups Hgu Hu) as (c0 & c0' & E0 & _ & Hc0).
       pose proof (functional_eval_exps' _ _ _ _ E0 Epy) as ->.
-      destruct (sort_value Dq (vgr_valid _ _ HgQ) pre ltac:(eapply uparams_refl_l; [ exact (vgr_valid _ _ HgQ)
-                                                                                     | exact (vgr_closed _ _ HgQ) | exact Hc0 ]) Hlpre)
+      destruct (sort_value Dq (valid_group_valid _ _ HgQ) pre ltac:(eapply uparams_refl_l; [ exact (valid_group_valid _ _ HgQ)
+                                                                                     | exact (valid_group_closed _ _ HgQ) | exact Hc0 ]) Hlpre)
         as [bq Ebq].
       assert (Hle' : uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul i))
         by (eapply uidx_le_trans; [ exact (Hnbq _ _ _ _ _ _ _ HMj Hh Hq _ _ Ebq) | exact (ul_mono _ _ Hi) ]).
       assert (HT2 : Δ ⊢ im_ty_at p j Mj Us' Q ® P2).
       { apply HP2; exists (List.map (fun I => I[sb_of_list Id Us']) Is ++ Q).
         unfold im_ty_at, im_ref, im_pre; rewrite Hh; cbn [fst snd].
-        exact (ind_typ_at_of_args qc Dq (vgr_lookup _ _ HgQ) HGq (vgr_closed _ _ HgQ) (vgr_typed _ _ HgQ) (vgr_sort _ _ HgQ)
-                 (vgr_ass _ _ HgQ) kc Mkc Δ _ pre bs bq (ul i) NP2 NEl2 AP2 AEl2 DP2 DEl2 HMkc Hkd HΔ HPc Hlpre Ebq Hle' Hf2). }
+        exact (ind_typ_at_of_args qc Dq (valid_group_lookup _ _ HgQ) HGq (valid_group_closed _ _ HgQ) (valid_group_typed _ _ HgQ) (valid_group_sort _ _ HgQ)
+                 (valid_group_ass _ _ HgQ) kc Mkc Δ _ pre bs bq (ul i) NP2 NEl2 AP2 AEl2 DP2 DEl2 HMkc Hkd HΔ HPc Hlpre Ebq Hle' Hf2). }
       destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hg2) as [EP _].
       apply EP; exact HT2.
   Qed.
@@ -363,7 +363,7 @@ Section AtType.
       basic_invert_per_univ_elem HRa.
       match goal with H : forall (c c' : domain) (_ : ?ir c c'), rel_mod_eval _ _ _ _ _ _ |- _ => rename H into Hcod end.
       destruct (glu_univ_elem_pi_clean_inversion1 equiv_a_a' Hglu) as (IP & IEl & OP & OEl & erel & Hgb1 & Hcodg & Hper & HPeq & _).
-      pose proof (ifg_dom_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hms Hc0 eq_refl Hws HB Hys Eb1) as HgD.
+      pose proof (ind_fams_glu_dom_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hms Hc0 eq_refl Hws HB Hys Eb1) as HgD.
       destruct (wf_pi_inversion' HAt) as [HITt HOTt].
       assert (Hui : uidx_le u (ul i)) by (eapply uidx_le_trans; [ exact Hnbu | exact (ul_mono _ _ Hi) ]).
       apply HPeq; econstructor.
@@ -390,7 +390,7 @@ Section AtType.
                   (q σs ⨟ ((ι φ),,M)) a2 j0 i); try eassumption.
         * reflexivity.
         * apply tele_prefix_rel_snoc; [ exact Hys |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB); exact Hdr.
-        * exact (glu_args_wk _ _ _ _ _ _ _ (dc_ass _ Hc) (dc_uparams _ Hc) Hφ HUs).
+        * exact (glu_args_wk _ _ _ _ _ _ _ (decl_closed_ass _ Hc) (decl_closed_uparams _ Hc) Hφ HUs).
         * unfold OTy; apply shape_ty_step; rewrite LU; reflexivity.
         * exact (sub_typ_extend _ _ _ _ _ _ _ HITt HOTt Hφ HMt).
         * replace (ups ++ ms ++ ws ++ ys ++ m :: nil) with ((ups ++ ms ++ ws ++ ys) ++ m :: nil)
@@ -477,7 +477,7 @@ Section AtType.
     match goal with H : forall (c c' : domain) (_ : ?ir c c'), rel_mod_eval _ _ _ _ _ _ |- _ => rename H into Hcod end.
     match goal with H : _ <~> (fun _ _ => forall _ _ _, rel_mod_app _ _ _ _ _) |- _ => rename H into HRE end.
     destruct (glu_univ_elem_pi_clean_inversion1 equiv_a_a' HgL) as (IP & IEl & OP & OEl & erel & Hgb1 & Hcodg & Hper & HPeq & HEleq).
-    pose proof (ifg_dom_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hms Hc0 eq_refl Hws HB Hys Eb1) as HgD.
+    pose proof (ind_fams_glu_dom_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hms Hc0 eq_refl Hws HB Hys Eb1) as HgD.
     pose proof (glu_univ_elem_univ_lvl_gen _ _ _ _ HgL _ _ HAPL) as HTyt; cbn [ulvl] in HTyt.
     destruct (wf_pi_inversion' HTyt) as [HITt HOTt].
     assert (HIT : forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® IP).
@@ -511,7 +511,7 @@ Section AtType.
     assert (Hys' : tele_prefix_rel (shape_doms_rel (dr k) ms ws (ptyp_doms t0)) (S d) (ys ++ n :: nil) (ys ++ n :: nil))
       by (apply tele_prefix_rel_snoc; [ exact Hys |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB); exact Hdr).
     assert (HUs' : glu_args Δ (ind_uparams D) Id nil (List.map (fun U => U[φ]ʷ) Us) ups)
-      by exact (glu_args_wk _ _ _ _ _ _ _ (dc_ass _ Hc) (dc_uparams _ Hc) Hφ HUs).
+      by exact (glu_args_wk _ _ _ _ _ _ _ (decl_closed_ass _ Hc) (decl_closed_uparams _ Hc) Hφ HUs).
     assert (HOTe : OTy[(ι φ),,N0] = ptyp_ty_at p D (List.map (fun U => U[φ]ʷ) Us) (q σs ⨟ ((ι φ),,N0)) t)
       by (unfold OTy; apply shape_ty_step; rewrite LU; reflexivity).
     exists fc; split; [ exact Efc |].
@@ -570,7 +570,7 @@ Section AtType.
 
     Lemma ac_params : glu_args Δ' (im_params D Mk) Id nil (Us' ++ Ns') (ups ++ X).
     Proof.
-      unfold im_params; apply glu_args_app; [ exact (dc_ass _ Hc) | exact (proj1 ac_lens) | rewrite Hu; reflexivity |].
+      unfold im_params; apply glu_args_app; [ exact (decl_closed_ass _ Hc) | exact (proj1 ac_lens) | rewrite Hu; reflexivity |].
       split; [ exact HUs | exact (glu_args_of_nparams D ups u NP NEl AP AEl DP DEl Hf k Mk Δ' Us' Ns' X HMk Hnp Hb) ].
     Qed.
 
@@ -641,7 +641,7 @@ Section AtType.
                         (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)))
           by (eapply nonrec_prefix_pre; [ exact Hv | exact Hvl | exact Heq ]).
         rewrite Lgs1 in Hpk; fold fa in Hpk.
-        pose proof (ifg_arg_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ HMk Hb Hcon HBk Hpk Ea') as Hgb.
+        pose proof (ind_fams_glu_arg_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ HMk Hb Hcon HBk Hpk Ea') as Hgb.
         rewrite Lgs1 in HNg; fold fa in HNg.
         destruct (glu_transfer_per_elem u i0 a' a _ _ Δ' _ N v Hgb (per_univ_sym' _ _ _ (ex_intro _ R0 HR0))
                     (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HNg) HNg) as (k' & P' & El' & Hg' & HT' & HM').
@@ -822,11 +822,11 @@ Section AtType.
             [ exact HΔ' | intros ρ0 b0 Eb0; exact (Hn0 _ _ Eb0 ib ltac:(unfold ib; lia)) | exact HgAll | exact Hw | exact Eb'
             | exact Hgb | exact Hper ].
         - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMk Hh Hr) as (py & E & Epy); injection E as Ehd Ek Epre.
-          destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mkc & Hq & HMkc & Hkd & _ & _ & Hvm & _).
+          destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mkc & Hq & HMkc & Hkd & _ & _ & Hvm & _).
           pose proof (valid_groups_containers VP HVP p D k Mk qc kc Is vm Dq HPD HMk Hh Hq) as HPq.
           pose proof (valid_groups_valid VP HVP qc Dq HPq) as HgQ.
           assert (Hhd : exists pmc, im_head Mkc = mh_decl pmc).
-          { pose proof (proj2 (dt_order _ _ _ (vgr_typed _ _ HgQ) _ _ HMkc) Hkd) as Hd0.
+          { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMkc) Hkd) as Hd0.
             unfold im_is_decl in Hd0; destruct (im_head Mkc); [ eauto | discriminate ]. }
           destruct Hhd as [pmc Hhc].
           destruct (Completeness.Inductives.Con.view_con_container p D Hass Hdt k Mk qc kc Is vm Dq Mkc c gs HMk Hh Hq HMkc Hcon)
@@ -902,7 +902,7 @@ Proof.
     destruct (im_head M) as [pm | qc kc Is vm] eqn:Hh.
     + exists n; intros * [<- | H] Hh' Hq; [ rewrite Hh in Hh'; discriminate | exact (Hn _ _ _ _ _ _ H Hh' Hq) ].
     + destruct (Hin M (or_introl eq_refl)) as [j Hj].
-      destruct (dt_view _ _ _ (vgr_typed _ _ (valid_groups_valid VP HVP p D HPD)) _ _ _ _ _ _ Hj Hh) as (Dq0 & _ & Hq0 & _).
+      destruct (decl_typed_view _ _ _ (valid_group_typed _ _ (valid_groups_valid VP HVP p D HPD)) _ _ _ _ _ _ Hj Hh) as (Dq0 & _ & Hq0 & _).
       destruct (sort_bound VP qc Dq0 HVP (valid_groups_containers VP HVP p D j M qc kc Is vm Dq0 HPD Hj Hh Hq0)) as [m Hm].
       exists (Nat.max n m); intros * [<- | H] Hh' Hq ρ bq Eb.
       * rewrite Hh in Hh'; injection Hh' as <- <- <- <-; rewrite Hq0 in Hq; injection Hq as <-.

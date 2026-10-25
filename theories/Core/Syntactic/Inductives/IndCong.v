@@ -122,7 +122,7 @@ Section Fixed_GCtx.
     eapply wf_exp_eq_apps_closed_pi;
       [ eapply decl_closed_params_ass; eassumption | eapply decl_closed_params; eassumption | | exact Hi | exact HΨ
       | | rewrite length_im_params; exact HMl | rewrite length_im_params; exact HMl' | exact HMs ].
-    - eapply exp_scoped_wk; [ exact (dc_sort _ Hc) |]; intros x Hx; rewrite length_im_params; unfold wk_shiftn, im_np; lia.
+    - eapply exp_scoped_wk; [ exact (decl_closed_sort _ Hc) |]; intros x Hx; rewrite length_im_params; unfold wk_shiftn, im_np; lia.
     - apply wf_exp_eq_refl; eapply wf_ind; eassumption.
   Qed.
 
@@ -343,7 +343,7 @@ Section Fixed_GCtx.
     destruct (member_sort_typed _ _ _ _ _ HD Hk) as ([i Hi] & _).
     pose proof (decl_closed_params_ass _ _ _ Hc Hk) as Hass; pose proof (decl_closed_params _ _ _ Hc Hk) as Hs.
     assert (HsB : exp_scoped (List.length (im_params D Mk)) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)
-      by (eapply exp_scoped_wk; [ exact (dc_sort _ Hc) |]; intros x Hx; rewrite length_im_params; unfold wk_shiftn, im_np; lia).
+      by (eapply exp_scoped_wk; [ exact (decl_closed_sort _ Hc) |]; intros x Hx; rewrite length_im_params; unfold wk_shiftn, im_np; lia).
     assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ im_params D Mk ++ ⋅) by (rewrite List.app_nil_r; eapply presup_exp_ctx; exact Hi).
     pose proof (wf_wk_shiftn_app Θ Ξ Ψ ⋅) as Hw; rewrite List.app_nil_r in Hw.
     specialize (Hw HΨ ltac:(constructor; eapply ctx_wf_gctx; eassumption)).

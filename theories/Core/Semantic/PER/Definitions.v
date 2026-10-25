@@ -36,9 +36,9 @@ Generalizable All Variables.
 Record rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop := mk_rel_mod_eval
   { a : domain
   ; a' : domain
-  ; rme_eval : ⟦ A ⟧ ρ ↘ a
-  ; rme_eval' : ⟦ A' ⟧ ρ' ↘ a'
-  ; rme_rel : DF a ≈ a' ∈ R ↘ R' }.
+  ; rel_mod_eval_eval : ⟦ A ⟧ ρ ↘ a
+  ; rel_mod_eval_eval' : ⟦ A' ⟧ ρ' ↘ a'
+  ; rel_mod_eval_rel : DF a ≈ a' ∈ R ↘ R' }.
 #[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
 Hint Constructors rel_mod_eval : mctt.
 (** [per_univ_elem_core] nests through [rel_mod_eval], so generating its
@@ -51,9 +51,9 @@ Scheme All for rel_mod_eval.
 Record rel_mod_app f a f' a' (R : relation domain) : Prop := mk_rel_mod_app
   { fa : domain
   ; f'a' : domain
-  ; rma_app : $| f & a |↘ fa
-  ; rma_app' : $| f' & a' |↘ f'a'
-  ; rma_rel : Dom fa ≈ f'a' ∈ R }.
+  ; rel_mod_app_app : $| f & a |↘ fa
+  ; rel_mod_app_app' : $| f' & a' |↘ f'a'
+  ; rel_mod_app_rel : Dom fa ≈ f'a' ∈ R }.
 #[global] Arguments mk_rel_mod_app {_ _ _ _ _}.
 Hint Constructors rel_mod_app : mctt.
 
@@ -94,10 +94,10 @@ Definition per_lvl : relation domain := fun m m' => Dom ⇓ Levelᵈ m ≈ ⇓ L
     not split it. *)
 #[warnings="-cannot-define-projection"]
 Record lvl_reads (n : nat) (m m' : domain) (s : nat) : Prop := mk_lvl_reads
-  { lr_lvl : lvl
-  ; lr_left : Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of lr_lvl
-  ; lr_right : Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of lr_lvl
-  ; lr_bnd : lvl_bnd n lr_lvl }.
+  { lvl_reads_lvl : lvl
+  ; lvl_reads_left : Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of lvl_reads_lvl
+  ; lvl_reads_right : Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of lvl_reads_lvl
+  ; lvl_reads_bnd : lvl_bnd n lvl_reads_lvl }.
 
 Definition per_lvl_at (n : nat) : relation domain :=
   fun m m' => forall s, lvl_reads n m m' s.
@@ -109,11 +109,11 @@ Definition per_lvl_at (n : nat) : relation domain :=
     [max u 3] and [3] have the same realiser and are not comparable. *)
 #[warnings="-cannot-define-projection"]
 Record sublvl_reads (l l' : domain) (s : nat) : Prop := mk_sublvl_reads
-  { slr_left_lvl : lvl
-  ; slr_right_lvl : lvl
-  ; slr_left : Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of slr_left_lvl
-  ; slr_right : Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of slr_right_lvl
-  ; slr_le : lvl_le slr_left_lvl slr_right_lvl }.
+  { sublvl_reads_left_lvl : lvl
+  ; sublvl_reads_right_lvl : lvl
+  ; sublvl_reads_left : Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of sublvl_reads_left_lvl
+  ; sublvl_reads_right : Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of sublvl_reads_right_lvl
+  ; sublvl_reads_le : lvl_le sublvl_reads_left_lvl sublvl_reads_right_lvl }.
 
 Definition per_sublvl (l l' : domain) : Prop :=
   forall s, sublvl_reads l l' s.
@@ -189,11 +189,11 @@ Definition shape_doms_rel (doms_rel : list domain -> exp -> relation domain) (ms
 (** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
 #[warnings="-cannot-define-projection"]
 Record rel_evals (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -> Prop) : Prop := mk_rel_evals
-  { rev_left : list domain
-  ; rev_right : list domain
-  ; rev_eval_left : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ rev_left
-  ; rev_eval_right : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ rev_right
-  ; rev_rel : R rev_left rev_right }.
+  { rel_evals_left : list domain
+  ; rel_evals_right : list domain
+  ; rel_evals_eval_left : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ rel_evals_left
+  ; rel_evals_eval_right : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ rel_evals_right
+  ; rel_evals_rel : R rel_evals_left rel_evals_right }.
 
 (** The relations of a group's components are indexed by the member: the
     non-uniform parameters of the member [m] ([nr m]), the non-recursive
@@ -211,21 +211,21 @@ Definition ntele_rel (D : ind_decl) (nr : nat -> nat -> list domain -> relation 
     are related by [R]. *)
 #[warnings="-cannot-define-projection"]
 Record rel_fresh_vars (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop := mk_rel_fresh_vars
-  { rfv_left : domain
-  ; rfv_right : domain
-  ; rfv_eval_left : ⟦ A ⟧ ρ ↘ rfv_left
-  ; rfv_eval_right : ⟦ A ⟧ ρ' ↘ rfv_right
-  ; rfv_rel : R (⇑! rfv_left s) (⇑! rfv_right s) }.
+  { rel_fresh_vars_left : domain
+  ; rel_fresh_vars_right : domain
+  ; rel_fresh_vars_eval_left : ⟦ A ⟧ ρ ↘ rel_fresh_vars_left
+  ; rel_fresh_vars_eval_right : ⟦ A ⟧ ρ' ↘ rel_fresh_vars_right
+  ; rel_fresh_vars_rel : R (⇑! rel_fresh_vars_left s) (⇑! rel_fresh_vars_right s) }.
 
 (** A domain of a shape at two environments: its two values, whose
     applications to arguments related by [R] read back alike. *)
 #[warnings="-cannot-define-projection"]
 Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_rel_dom_apps
-  { rda_left : domain
-  ; rda_right : domain
-  ; rda_eval_left : ⟦ B ⟧ ρ ↘ rda_left
-  ; rda_eval_right : ⟦ B ⟧ ρ' ↘ rda_right
-  ; rda_top : forall x x', R x x' -> per_top (d_dom rda_left x) (d_dom rda_right x') }.
+  { rel_dom_apps_left : domain
+  ; rel_dom_apps_right : domain
+  ; rel_dom_apps_eval_left : ⟦ B ⟧ ρ ↘ rel_dom_apps_left
+  ; rel_dom_apps_eval_right : ⟦ B ⟧ ρ' ↘ rel_dom_apps_right
+  ; rel_dom_apps_top : forall x x', R x x' -> per_top (d_dom rel_dom_apps_left x) (d_dom rel_dom_apps_right x') }.
 
 (** ** Admissible Uniform Parameters
 
@@ -344,10 +344,10 @@ Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain) (ua : list domain) : Prop := mk_adm_fresh
   { (** The fresh variables of each member's non-uniform parameters *)
-    afr_nparams : forall m Mm s, ind_member D m = Some Mm ->
+    adm_fresh_nparams : forall m Mm s, ind_member D m = Some Mm ->
       fresh_tele_rel (nparams_rel m) ups ua 0 nil nil s (List.rev (im_nparams Mm))
     (** The fresh variables of each constructor's arguments, after them *)
-  ; afr_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
+  ; adm_fresh_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
       fresh_cargs_rel D ups ua nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil (s + im_nn Mm) gs }.
@@ -549,31 +549,31 @@ Record view_member_image (D : ind_decl) (qc : qname) (Is : list exp) (vm : list 
     the section header). *)
 Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
   { (** The uniform parameters are assumptions *)
-    gta_uparams : tele_ass (ind_uparams D)
+    grp_tele_ass_uparams : tele_ass (ind_uparams D)
     (** Each member's non-uniform parameters are assumptions *)
-  ; gta_nparams : forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)
+  ; grp_tele_ass_nparams : forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)
     (** A view's container member exists, with as many non-uniform
         parameters as the view, at as many uniform arguments as the
         container has *)
-  ; gta_views : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; grp_tele_ass_views : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       exists Dq Mc, ind_lookup gc_deps gc_stack qc = Some Dq /\ ind_member Dq kc = Some Mc /\ im_nn Mc = im_nn Mv /\
         List.length Is = ind_nu Dq
     (** The members have a rank *)
-  ; gta_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
+  ; grp_tele_ass_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
     (** Each view's map takes the container's members to members of the
         same shapes *)
-  ; gta_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  ; grp_tele_ass_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok D D' vm
     (** The views agree on their maps *)
-  ; gta_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
+  ; grp_tele_ass_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
     (** Each container member has its image under a view's map *)
-  ; gta_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; grp_tele_ass_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_member_image D qc Is vm i' Mi'
     (** Each recursive argument of the group's constructors gives its
         member as many parameters as it has *)
-  ; gta_plen : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_plen D gs
+  ; grp_tele_ass_plen : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_plen D gs
     (** So does each of the views' containers' constructors *)
-  ; gta_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; grp_tele_ass_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.In (c, gs') (im_cons Mi') ->
       cargs_plen Dq gs' }.
 
@@ -1294,15 +1294,15 @@ Hint Unfold rel_elem : mctt.
     outermost missing parameter, in its environment; a global module's
     first parameter past its arguments; a submodule closure's base's. *)
 Inductive nextparam : dmod -> domain -> Prop :=
-| np_local : forall Δ A D ρ a,
+| nextparam_local : forall Δ A D ρ a,
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
     nextparam (dm_local (Δ ++ ce_ass A :: nil) D ρ) a
-| np_global : forall p T Φ args A a,
+| nextparam_global : forall p T Φ args A a,
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
     List.nth_error (List.rev T) (List.length args) = Some (ce_ass A) ->
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil args ↘ a ->
     nextparam (dm_global p args) a
-| np_member : forall h ch a,
+| nextparam_member : forall h ch a,
     nextparam h a ->
     nextparam (dm_member h ch) a.
 
@@ -1429,11 +1429,11 @@ Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
 (** Two module expressions evaluate to related module values. *)
 #[warnings="-cannot-define-projection"]
 Record rel_mexp (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop := mk_rel_mexp
-  { rme_left : dmod
-  ; rme_right : dmod
-  ; rme_eval_left : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ rme_left
-  ; rme_eval_right : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ rme_right
-  ; rme_rel : per_dmod rme_left rme_right }.
+  { rel_mexp_left : dmod
+  ; rel_mexp_right : dmod
+  ; rel_mexp_eval_left : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ rel_mexp_left
+  ; rel_mexp_eval_right : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ rel_mexp_right
+  ; rel_mexp_rel : per_dmod rel_mexp_left rel_mexp_right }.
 
 (** A module value is related to the value of a module expression. *)
 Definition tie_mod (m : dmod) (H : modexp) (ρ : env) : Prop :=

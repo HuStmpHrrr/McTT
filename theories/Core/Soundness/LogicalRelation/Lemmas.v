@@ -1996,7 +1996,7 @@ Proof.
     assert (HUs : Γ ⊨ᵘ U ≈ U) by (apply (proj1 (proj2 completeness_fundamental_modules)); eassumption).
     assert (⊢ Γ) by mauto 3.
     destruct (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ ltac:(eassumption))) as [tail_rel Htail].
-    pose proof (per_ctx_env_of_dm Htail HAs HMs (ruu_lit _ _ _ HUs)) as Hd.
+    pose proof (per_ctx_env_of_dm Htail HAs HMs (rel_unit_under_ctx_lit _ _ _ HUs)) as Hd.
     assert (E : env_rel <~> per_env_extend_dm A M U tail_rel) by (eapply per_ctx_env_right_irrel; eassumption).
     apply E.
     assert (Hρ : Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (eapply IHHglu; eassumption).

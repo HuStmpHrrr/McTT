@@ -119,15 +119,15 @@ Section KindsEval.
       dkind Θ Ξ (dm_global p args) ch k -> dkind Θ Ξ (dm_global p args') ch k.
   Proof.
     induction ch as [| y ch IH]; intros * Hk; inversion Hk; subst;
-      first [ eapply dk_global_here_def; eassumption | eapply dk_global_here_mod; eassumption
-            | eapply dk_global_here_dm; eassumption | eapply dk_global_alias_dm; eassumption
-            | eapply dk_global_alias; eassumption | eapply dk_global_step; [ eassumption | eassumption | eapply IH; eassumption ] ].
+      first [ eapply dkind_global_here_def; eassumption | eapply dkind_global_here_mod; eassumption
+            | eapply dkind_global_here_dm; eassumption | eapply dkind_global_alias_dm; eassumption
+            | eapply dkind_global_alias_case; eassumption | eapply dkind_global_step; [ eassumption | eassumption | eapply IH; eassumption ] ].
   Qed.
 
   (** A stored body is a module. *)
   Lemma dkind_global_loc : forall p args TΦ, gc_loc Θ Ξ p = Some TΦ -> dkind Θ Ξ (dm_global p args) nil mk_mod.
   Proof.
-    intros * Hl; apply dk_global_here_mod; unfold gc_loc in Hl; destruct (gc_frame Ξ p) eqn:Hf; [ right; eauto |].
+    intros * Hl; apply dkind_global_here_mod; unfold gc_loc in Hl; destruct (gc_frame Ξ p) eqn:Hf; [ right; eauto |].
     destruct TΦ; left; destruct (gc_body_module _ _ _ _ _ Hl); eauto.
   Qed.
 
@@ -143,14 +143,14 @@ Section KindsEval.
       split.
       + intros Hk; pose proof (proj1 (@functional_kind Θ Ξ) _ _ _ Hk _ Hm) as ->.
         destruct (dm_path_cases Θ Ξ (qname_app p (y :: nil))) as [Hd | Hd].
-        * right; repeat split; eapply dk_global_here_dm; [ exact Hd | exact Hl ].
-        * left; split; [ apply dk_global_step; [ left; eexists; exact Hl | right; exact Hd | exact Hm ] | right; discriminate ].
+        * right; repeat split; eapply dkind_global_here_dm; [ exact Hd | exact Hl ].
+        * left; split; [ apply dkind_global_step; [ left; eexists; exact Hl | right; exact Hd | exact Hm ] | right; discriminate ].
       + intros [[Hk Hc] | (_ & -> & _)]; [| exact Hm ].
         inversion Hk; subst;
           first [ destruct Hc as [Hc | Hc]; exfalso; exact (Hc eq_refl)
                 | exfalso; eapply gc_loc_not_alias; eassumption | assumption ].
     - rewrite dkind_member_cons_iff; cbn [app]; split; intros Hk.
-      + apply dk_global_step; [ left; eexists; exact Hl | left; discriminate | assumption ].
+      + apply dkind_global_step; [ left; eexists; exact Hl | left; discriminate | assumption ].
       + inversion Hk; subst; first [ exfalso; eapply gc_loc_not_alias; eassumption | assumption ].
   Qed.
 
@@ -175,9 +175,9 @@ Section KindsEval.
       + intros Hk; pose proof (Nd _ _ _ _ Hk eq_refl) as Hk'.
         destruct (dm_path_cases Θ Ξ (qname_app p (y :: nil))) as [Hd | Hd].
         * destruct (dm_of_cases k) as [(-> & _) | (Hm & Ek)].
-          -- right; repeat split; change mk_dm with (dm_of mk_mod); eapply dk_global_alias_dm; eassumption.
-          -- left; split; [ rewrite <- Ek; eapply dk_global_alias_dm; eassumption | right; exact Hk' ].
-        * left; split; [ eapply dk_global_alias; [ exact Ha | right; exact Hd | exact Hk ] | right; exact Hk' ].
+          -- right; repeat split; change mk_dm with (dm_of mk_mod); eapply dkind_global_alias_dm; eassumption.
+          -- left; split; [ rewrite <- Ek; eapply dkind_global_alias_dm; eassumption | right; exact Hk' ].
+        * left; split; [ eapply dkind_global_alias_case; [ exact Ha | right; exact Hd | exact Hk ] | right; exact Hk' ].
       + intros [[Hk Hc] | (_ & -> & Hk)].
         * inversion Hk; subst;
             try (match goal with Ha' : gc_module _ _ _ = Some (mr_alias _) |- _ => rewrite Ha in Ha'; injection Ha' as <- end).
@@ -195,7 +195,7 @@ Section KindsEval.
                rewrite Ek' in Ek; subst; exfalso; exact (Nd _ _ _ _ Hk0 eq_refl eq_refl) end.
           -- exfalso; eapply Hst; eassumption.
     - rewrite dkind_member_cons_iff; cbn [app]; split; intros Hk.
-      + eapply dk_global_alias; [ exact Ha | left; discriminate | exact Hk ].
+      + eapply dkind_global_alias_case; [ exact Ha | left; discriminate | exact Hk ].
       + inversion Hk; subst.
         * match goal with Ha' : gc_module _ _ _ = Some (mr_alias _) |- _ => rewrite Ha in Ha'; injection Ha' as <- end; assumption.
         * exfalso; eapply Hst; eassumption.
@@ -280,10 +280,10 @@ Section KindsEval.
       + right; right; right; do 5 eexists; repeat split; eassumption.
     - destruct Hu as [((b & pv & A & B & ->) & -> & ->) | [(pm & U & ρ1 & -> & Hk & Hu)
                      | [(pv & A & M & U & ρ1 & k0 & -> & -> & Hk & Hu & ->) | (pv & A & M & U & ρ1 & -> & Hc & Hk & Hu)]]].
-      + eapply uk_def; exact Hp.
-      + eapply uk_mod; [ exact Hp | exact Hk | exact Hu ].
-      + eapply uk_dm_here; [ exact Hp | exact Hk | exact Hu ].
-      + eapply uk_dm_step; [ exact Hp | exact Hc | exact Hk | exact Hu ].
+      + eapply ukind_def; exact Hp.
+      + eapply ukind_mod; [ exact Hp | exact Hk | exact Hu ].
+      + eapply ukind_dm_here; [ exact Hp | exact Hk | exact Hu ].
+      + eapply ukind_dm_step; [ exact Hp | exact Hc | exact Hk | exact Hu ].
   Qed.
 
   (** The kinds a body gives a name an open declares. *)
@@ -307,8 +307,8 @@ Section KindsEval.
         cbn [List.length kpad List.repeat app] in *; auto.
     - destruct it as [[[n |] d] pv].
       + destruct Hu as [(-> & -> & Hs) | [(Hs & Hs') | (Hs & Hs')]];
-          [ eapply uk_item_def | eapply uk_item_mod | eapply uk_item_dm ]; eassumption.
-      + eapply uk_item_self; eassumption.
+          [ eapply ukind_item_def | eapply ukind_item_mod | eapply ukind_item_dm ]; eassumption.
+      + eapply ukind_item_self; eassumption.
   Qed.
 
   (** A body has the kinds of the body read through its opens. *)
@@ -324,29 +324,29 @@ Section KindsEval.
       pose proof (kenv_kbody _ _ _ Hb _ Hk2) as Hk2x.
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?String.eqb_refl in *;
         try discriminate; match goal with Hp : Some _ = Some _ |- _ => injection Hp; intros; subst end.
-      + eapply uk_def; cbn; rewrite String.eqb_refl; reflexivity.
-      + eapply uk_mod; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2x |].
+      + eapply ukind_def; cbn; rewrite String.eqb_refl; reflexivity.
+      + eapply ukind_mod; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2x |].
         match goal with Hk0 : kenv _ _ ?e ?Q ?r, Hk3 : kenv _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
           pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) _ _ _ Hk0 _ Hk3); subst end; assumption.
-      + eapply uk_dm_here; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2x |].
+      + eapply ukind_dm_here; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2x |].
         match goal with Hk0 : kenv _ _ ?e ?Q ?r, Hk3 : kenv _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
           pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) _ _ _ Hk0 _ Hk3); subst end; assumption.
-      + eapply uk_dm_step; [ cbn; rewrite String.eqb_refl; reflexivity | assumption | exact Hk2x |].
+      + eapply ukind_dm_step; [ cbn; rewrite String.eqb_refl; reflexivity | assumption | exact Hk2x |].
         match goal with Hk0 : kenv _ _ ?e ?Q ?r, Hk3 : kenv _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
           pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) _ _ _ Hk0 _ Hk3); subst end; assumption.
-      + eapply uk_def; cbn; rewrite String.eqb_refl; reflexivity.
-      + eapply uk_mod; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2 |].
+      + eapply ukind_def; cbn; rewrite String.eqb_refl; reflexivity.
+      + eapply ukind_mod; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2 |].
         match goal with Hk0 : kenv _ _ ?e ?Q ?r, Hk3 : kenv _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
           pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) _ _ _ Hk0 _ Hk3); subst end; assumption.
-      + eapply uk_dm_here; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2 |].
+      + eapply ukind_dm_here; [ cbn; rewrite String.eqb_refl; reflexivity | exact Hk2 |].
         match goal with Hk0 : kenv _ _ ?e ?Q ?r, Hk3 : kenv _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
           pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) _ _ _ Hk0 _ Hk3); subst end; assumption.
-      + eapply uk_dm_step; [ cbn; rewrite String.eqb_refl; reflexivity | assumption | exact Hk2 |].
+      + eapply ukind_dm_step; [ cbn; rewrite String.eqb_refl; reflexivity | assumption | exact Hk2 |].
         match goal with Hk0 : kenv _ _ ?e ?Q ?r, Hk3 : kenv _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
           pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) _ _ _ Hk0 _ Hk3); subst end; assumption.
@@ -406,7 +406,7 @@ Section KindsEval.
              destruct ch as [| c ch].
              ++ pose proof (Fs _ _ _ _ Hs _ Hu) as <-.
                 right; right; left; do 6 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Hkx | split ] ] ];
-                  [ apply (Hsh (me_mem H n)), sk_mem_dm, Hs | reflexivity ].
+                  [ apply (Hsh (me_mem H n)), skind_mem_dm, Hs | reflexivity ].
              ++ right; right; right; do 5 eexists; split; [ reflexivity | split; [ discriminate | split; [ exact Hkx |] ] ].
                 apply (Hsh (me_mem H n)), skind_mem_cons_iff, Hu.
           -- intros [((? & ? & ? & ? & ?) & _) | [(? & ? & ? & [=] & _)

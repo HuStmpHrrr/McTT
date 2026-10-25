@@ -17,27 +17,27 @@ Definition not_univ_pi (A : nf) : Prop :=
 (** Subtyping of normal forms is purely syntactic: it neither evaluates nor
     refers to a judgment, so it is defined outside the fixed global context. *)
 Inductive alg_subtyping_nf : nf -> nf -> Prop :=
-| asnf_refl : forall A A',
+| alg_subtyping_nf_refl_case : forall A A',
     not_univ_pi A ->
     A = A' ->
     ⊢anf A ⊆ A'
-| asnf_univ : forall i j,
+| alg_subtyping_nf_univ : forall i j,
     i <= j ->
     ⊢anf Typeωⁿ@i ⊆ Typeωⁿ@j
 (** A small universe below one at a larger level: the decidable order on
     canonical levels ([Core.Syntactic.Levels.Levels.lvl_le]), which is the order on
     every assignment to the atoms, never the order on realisers. *)
-| asnf_suniv : forall c xs d ys,
+| alg_subtyping_nf_suniv : forall c xs d ys,
     lvl_le (c, xs) (d, ys) ->
     ⊢anf univⁿ c xs ⊆ univⁿ d ys
 (** A small universe below every large one. *)
-| asnf_small_large : forall c xs i,
+| alg_subtyping_nf_small_large : forall c xs i,
     ⊢anf univⁿ c xs ⊆ Typeωⁿ@i
 (** The types of levels, by the order on sorts. *)
-| asnf_level : forall m n,
+| alg_subtyping_nf_level : forall m n,
     m <= n ->
     ⊢anf Levelⁿ@m ⊆ Levelⁿ@n
-| asnf_pi : forall A B A' B',
+| alg_subtyping_nf_pi : forall A B A' B',
     A = A' ->
     ⊢anf B ⊆ B' ->
     ⊢anf Πⁿ A B ⊆ Πⁿ A' B'
@@ -53,9 +53,9 @@ Section Fixed_GCtx.
 Record alg_subtyping (Γ : ctx) (A B : typ) : Prop := alg_subtyp_run
   { A' : nf
   ; B' : nf
-  ; asub_nbe : nbe_ty_f Γ A A'
-  ; asub_nbe' : nbe_ty_f Γ B B'
-  ; asub_sub : ⊢anf A' ⊆ B' }.
+  ; alg_subtyping_nbe : nbe_ty_f Γ A A'
+  ; alg_subtyping_nbe' : nbe_ty_f Γ B B'
+  ; alg_subtyping_sub : ⊢anf A' ⊆ B' }.
 
 Notation "Γ ⊢a A ⊆ B" := (alg_subtyping Γ A B) : type_scope.
 

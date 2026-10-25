@@ -37,11 +37,11 @@ Section Fixed_GCtx.
 
 
 Lemma kripke_id : forall Γ, ⊢ Γ -> Γ ⊢ᵏ wk_id : Γ.
-Proof. intros; eapply kwk_id; [ mauto 2 | reflexivity ]. Qed.
+Proof. intros; eapply wk_kripke_id; [ mauto 2 | reflexivity ]. Qed.
 
 Lemma kripke_shift : forall Γ A, ⊢ Γ ▹ A -> Γ ▹ A ⊢ᵏ ↑ : Γ.
 Proof.
-  intros * H; eapply kwk_shift;
+  intros * H; eapply wk_kripke_shift;
     [ apply kripke_id; eassumption
     | mauto 3
     | symmetry; apply wk_compose_id_right ].
@@ -50,7 +50,7 @@ Qed.
 (** Past a definition entry, by forgetting the definition. *)
 Lemma kripke_shift_def : forall Γ A M, ⊢ Γ ▸ A ≔ M -> Γ ▸ A ≔ M ⊢ᵏ ↑ : Γ.
 Proof.
-  intros * H; eapply kwk_shift;
+  intros * H; eapply wk_kripke_shift;
     [ apply kripke_id; eassumption
     | mauto 3
     | symmetry; apply wk_compose_id_right ].
@@ -59,7 +59,7 @@ Qed.
 (** Past a module slot. *)
 Lemma kripke_shift_mod : forall Γ U, ⊢ Γ ▹ₘ U -> Γ ▹ₘ U ⊢ᵏ ↑ : Γ.
 Proof.
-  intros * H; eapply kwk_shift;
+  intros * H; eapply wk_kripke_shift;
     [ apply kripke_id; eassumption
     | mauto 3
     | symmetry; apply wk_compose_id_right ].
@@ -68,7 +68,7 @@ Qed.
 (** Past a definition with a module part. *)
 Lemma kripke_shift_dm : forall Γ A M U, ⊢ Γ ▸ₘ A ≔ M ‖ U -> Γ ▸ₘ A ≔ M ‖ U ⊢ᵏ ↑ : Γ.
 Proof.
-  intros * H; eapply kwk_shift;
+  intros * H; eapply wk_kripke_shift;
     [ apply kripke_id; eassumption
     | mauto 3
     | symmetry; apply wk_compose_id_right ].
@@ -84,8 +84,8 @@ Lemma kripke_ctxsub : forall Γ Δ Δ' φ,
     Γ ⊢ᵏ φ : Δ'.
 Proof.
   intros * H ?; destruct H.
-  - eapply kwk_id; [ etransitivity; eassumption | eassumption ].
-  - eapply kwk_shift; [ eassumption | etransitivity; eassumption | eassumption ].
+  - eapply wk_kripke_id; [ etransitivity; eassumption | eassumption ].
+  - eapply wk_kripke_shift; [ eassumption | etransitivity; eassumption | eassumption ].
 Qed.
 
 Hint Resolve kripke_ctxsub : mctt.
@@ -101,7 +101,7 @@ Proof.
   - rewrite wk_compose_id_left.
     eapply kripke_ctxsub; eassumption.
   - rewrite wk_compose_assoc.
-    eapply kwk_shift; [ | eassumption | reflexivity ].
+    eapply wk_kripke_shift; [ | eassumption | reflexivity ].
     eauto.
 Qed.
 

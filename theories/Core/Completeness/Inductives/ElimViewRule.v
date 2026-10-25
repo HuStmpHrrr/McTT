@@ -41,19 +41,19 @@ Section Fixed_GCtx.
 Record elim_exp_value (oq : option qname) (Us : list exp) (j : nat) (Bks : list eblock) (M : exp) (ρ : env) (r : domain) : Prop :=
   mk_elim_exp_value
   { (** The uniform parameters' values *)
-    eev_ups : list domain
+    elim_exp_value_ups : list domain
     (** The scrutinee's value *)
-  ; eev_scrut : domain
+  ; elim_exp_value_scrut : domain
     (** The group eliminated *)
-  ; eev_grp : qname
-    (** [Us] evaluate to [eev_ups] *)
-  ; eev_ups_eval : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ eev_ups
-    (** [M] evaluates to [eev_scrut] *)
-  ; eev_scrut_eval : ⟦ M ⟧ ρ ↘ eev_scrut
+  ; elim_exp_value_grp : qname
+    (** [Us] evaluate to [elim_exp_value_ups] *)
+  ; elim_exp_value_ups_eval : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ elim_exp_value_ups
+    (** [M] evaluates to [elim_exp_value_scrut] *)
+  ; elim_exp_value_scrut_eval : ⟦ M ⟧ ρ ↘ elim_exp_value_scrut
     (** The group is the annotation's, or the scrutinee's *)
-  ; eev_grp_of : elim_grp_of oq eev_scrut = Some eev_grp
+  ; elim_exp_value_grp_of : elim_grp_of oq elim_exp_value_scrut = Some elim_exp_value_grp
     (** The eliminator on the scrutinee's value gives [r] *)
-  ; eev_elim : ⟦elim eev_scrut at j of eev_grp eev_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
+  ; elim_exp_value_elim : ⟦elim elim_exp_value_scrut at j of elim_exp_value_grp elim_exp_value_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
 
 Lemma elim_exp_value_of : forall oq Us j Bks M ρ r, ⟦ a_elim oq Us j Bks M ⟧ ρ ↘ r -> elim_exp_value oq Us j Bks M ρ r.
 Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
@@ -64,13 +64,13 @@ Section ElimViewRule.
   Hypotheses (HP : valid_groups VP) (HPD : VP p D).
   Let Hvg := valid_groups_valid VP HP p D HPD.
   Let Hcv := containers_valid_of_groups VP HP p D HPD.
-  Let HD := vgr_valid _ _ Hvg.
-  Let Hc := vgr_closed _ _ Hvg.
-  Let Hl := vgr_lookup _ _ Hvg.
-  Let Hdt := vgr_typed _ _ Hvg.
-  Let Hass := vgr_ass _ _ Hvg.
+  Let HD := valid_group_valid _ _ Hvg.
+  Let Hc := valid_group_closed _ _ Hvg.
+  Let Hl := valid_group_lookup _ _ Hvg.
+  Let Hdt := valid_group_typed _ _ Hvg.
+  Let Hass := valid_group_ass _ _ Hvg.
   Let Ua : tele_ass (ind_uparams D) := uparams_ass D Hc.
-  Let Usem : ⊨ ind_uparams D := vid_uparams _ HD.
+  Let Usem : ⊨ ind_uparams D := valid_ind_decl_uparams _ HD.
   Variable (Γ : ctx) (RΓ : relation env).
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HΓ : ⊨ Γ).
   Variable (RU : relation env).
@@ -81,17 +81,17 @@ Section ElimViewRule.
              Γ ⊨ N : T).
   Variable (Bks : list eblock) (iA : nat).
   Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
-  Let HBks := vbs_has _ _ _ _ _ _ HBk.
-  Let HMall := vbs_mctx _ _ _ _ _ _ HBk.
-  Let HAv := vbs_motive _ _ _ _ _ _ HBk.
+  Let HBks := valid_blocks_has _ _ _ _ _ _ HBk.
+  Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
+  Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let τU := sb_of_list Id Us.
   Variable (qc : qname) (D' : ind_decl) (m : nat) (Mm : imember) (k' : nat) (Is : list exp) (vm : list nat).
   Hypotheses (Hq : ind_lookup gc_deps gc_stack qc = Some D') (HMm : ind_member D m = Some Mm)
     (Hh : im_head Mm = mh_view qc k' Is vm).
   Let HVQ := valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq.
   Let HgQ := valid_groups_valid VP HP qc D' HVQ.
-  Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (vgr_closed _ _ HgQ).
-  Let HWQ : ⊨ ind_uparams D' := vid_uparams _ (vgr_valid _ _ HgQ).
+  Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
+  Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
   Let VB := vwrap p D D' vm Us Bks.
 
   (** *** The Container's Uniform Parameters
@@ -105,7 +105,7 @@ Section ElimViewRule.
 
     Lemma pre_length : List.length Is = List.length (ind_uparams D').
     Proof.
-      destruct (gta_views _ Hass _ _ _ _ _ _ HMm Hh) as (D5 & Mc5 & Hq5 & _ & _ & HlIs).
+      destruct (grp_tele_ass_views _ Hass _ _ _ _ _ _ HMm Hh) as (D5 & Mc5 & Hq5 & _ & _ & HlIs).
       rewrite Hq in Hq5; injection Hq5 as <-; exact HlIs.
     Qed.
 
@@ -173,7 +173,7 @@ Section ElimViewRule.
       { intros j N T HN HT; unfold im_pre in HN, HT; rewrite Hh in HN, HT.
         apply nth_error_map_inv in HN as (I & HI & ->).
         destruct (pre_types _ _ HI) as [T0 HT0].
-        pose proof (tele_insts_closed_sub _ _ (sb_of_list Id Us) _ _ HaQ (dc_uparams _ (vgr_closed _ _ HgQ)) HT0) as HT0'.
+        pose proof (tele_insts_closed_sub _ _ (sb_of_list Id Us) _ _ HaQ (decl_closed_uparams _ (valid_group_closed _ _ HgQ)) HT0) as HT0'.
         rewrite HT in HT0'; injection HT0' as ->.
         pose proof (rel_exp_under_ctx_gsub HgU (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HI HT0))) as H.
         exact H. }
@@ -271,9 +271,9 @@ Section ElimViewRule.
     assert (ERM : Rt <~> RMe) by (eapply per_univ_elem_right_irrel; [ exact Ht | exact Ht23 ]).
     pose proof (proj1 (ERt _ _) (proj2 (ERM _ _) H12)) as G43.
     (** The group's eliminator at [C2]. *)
-    destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMm G33 (dt_order _ _ _ Hdt) oq Hgr) as [Hgr3 _].
+    destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMm G33 (decl_typed_order _ _ _ Hdt) oq Hgr) as [Hgr3 _].
     rewrite Hgr3 in Egr3; injection Egr3 as <-.
-    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (D2 & Mk' & Hl2 & HMk' & _ & _ & _ & Hvk & _).
+    destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (D2 & Mk' & Hl2 & HMk' & _ & _ & _ & Hvk & _).
     (** The view's instance at [C2] and moved. *)
     destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].
     assert (HPQ : PER RQ) by (eapply per_env_PER; exact HRQ).
@@ -385,7 +385,7 @@ Theorem rel_exp_under_ctx_elim_view : forall VP p D, valid_groups VP -> VP p D -
 Proof.
   intros VP p D HP HPD * HΓ Hgr HMm Hh Hq Hbm HLb HPl HPs HM HnmA HMall HAv HnaA HBc HarA HBv.
   pose proof (valid_groups_valid VP HP p D HPD) as Hvg.
-  pose proof (vgr_closed _ _ Hvg) as Hc; pose proof (vgr_valid _ _ Hvg) as HD.
+  pose proof (valid_group_closed _ _ Hvg) as Hc; pose proof (valid_group_valid _ _ Hvg) as HD.
   destruct (params_valid_split D m Mm Γ Ps Hc HMm HPl HPs) as [HUs HNs].
   set (Us := List.firstn (ind_nu D) Ps) in *.
   set (Ns := List.skipn (ind_nu D) Ps) in *.
@@ -397,7 +397,7 @@ Proof.
   pose proof (gsub_ns VP p D HP HPD Γ HΓ Us m Mm HMm (HMall _ _ HMm) Ns HNl HNs) as HgN.
   pose proof (gsub_tau VP p D HP HPD Γ HΓ Us HUl m Mm HMm (HMall _ _ HMm) Ns M HNl HNs HM) as Hg.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
-  destruct (rel_ctx_wf_per_ctx_env (vid_uparams _ HD)) as [RU HRU].
+  destruct (rel_ctx_wf_per_ctx_env (valid_ind_decl_uparams _ HD)) as [RU HRU].
   refine (mk_rel_exp_under_ctx _ _ _ _ RΓ HRΓ i _).
   intros Γ' RΓ' HRΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exact (view_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs Bks i HBk qc D' m Mm k' Is vm Hq HMm Hh

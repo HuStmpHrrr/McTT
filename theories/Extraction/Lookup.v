@@ -22,23 +22,23 @@ Proof. decide equality; apply list_eq_dec, string_dec. Defined.
     compared for equality, as extraction makes that comparison native. *)
 Inductive ptrie : Set := pnode : option gunit -> pkids -> ptrie
 with pkids : Set :=
-| pk_nil : pkids
-| pk_cons : string -> ptrie -> pkids -> pkids.
+| pkids_nil : pkids
+| pkids_cons : string -> ptrie -> pkids -> pkids.
 
-Definition ptrie_empty : ptrie := pnode None pk_nil.
+Definition ptrie_empty : ptrie := pnode None pkids_nil.
 
 Fixpoint kid_find (ks : pkids) (x : string) : option ptrie :=
   match ks with
-  | pk_nil => None
-  | pk_cons y t ks' => if String.eqb x y then Some t else kid_find ks' x
+  | pkids_nil => None
+  | pkids_cons y t ks' => if String.eqb x y then Some t else kid_find ks' x
   end.
 
 (** [ks] with the subtrie at [x] replaced by its image under [f], the empty
     trie's if there is none. *)
 Fixpoint kid_upd (ks : pkids) (x : string) (f : ptrie -> ptrie) : pkids :=
   match ks with
-  | pk_nil => pk_cons x (f ptrie_empty) pk_nil
-  | pk_cons y t ks' => if String.eqb x y then pk_cons y (f t) ks' else pk_cons y t (kid_upd ks' x f)
+  | pkids_nil => pkids_cons x (f ptrie_empty) pkids_nil
+  | pkids_cons y t ks' => if String.eqb x y then pkids_cons y (f t) ks' else pkids_cons y t (kid_upd ks' x f)
   end.
 
 Fixpoint pt_find (t : ptrie) (fp : path) {struct fp} : option gunit :=

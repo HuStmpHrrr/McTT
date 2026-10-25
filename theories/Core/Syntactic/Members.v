@@ -943,8 +943,8 @@ Qed.
     after it, and no more modules: the body of an open frame grows so as
     definitions are added to it. *)
 Inductive gm_grows (Φ : gmod) : gmod -> Prop :=
-| gmg_refl : gm_grows Φ Φ
-| gmg_ext : forall Φ' x b pv A B, gm_grows Φ Φ' -> gm_fresh x Φ' -> gm_grows Φ (Φ' ⊳ x ↦ ge_def b pv A B).
+| gm_grows_refl : gm_grows Φ Φ
+| gm_grows_ext : forall Φ' x b pv A B, gm_grows Φ Φ' -> gm_fresh x Φ' -> gm_grows Φ (Φ' ⊳ x ↦ ge_def b pv A B).
 
 #[export]
 Hint Constructors gm_grows : mctt.
@@ -982,30 +982,30 @@ Qed.
 (** [gc_sub Θ1 Ξ1 Θ2 Ξ2]: what [Θ1 ⍮ Ξ1] resolves, [Θ2 ⍮ Ξ2] resolves the
     same way, its bodies perhaps grown, its open frames perhaps closed. *)
 Record gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop := mk_gc_sub
-  { gcs_resolve : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E
-  ; gcs_module : forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r
-  ; gcs_body : forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) ->
+  { gc_sub_resolve_field : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E
+  ; gc_sub_module_field : forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r
+  ; gc_sub_body_field : forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) ->
       exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'
-  ; gcs_frame : forall p T Φ, gc_frame Ξ1 p = Some (T, Φ) ->
+  ; gc_sub_frame_field : forall p T Φ, gc_frame Ξ1 p = Some (T, Φ) ->
       exists Φ', (gc_frame Ξ2 p = Some (T, Φ') /\ gs_find_ind Ξ2 p = gs_find_ind Ξ1 p /\
                   gs_find_record Ξ2 p = gs_find_record Ξ1 p) \/
         (gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gc_module Θ2 Ξ2 p = Some (mr_body T (gs_find_ind Ξ1 p)) /\
          record_lookup Θ2 Ξ2 p = gs_find_record Ξ1 p)
-  ; gcs_entry : forall p E, gc_entry Θ1 Ξ1 p = Some E -> exists E', gc_entry Θ2 Ξ2 p = Some E' /\ entry_grows E E'
+  ; gc_sub_entry_field : forall p E, gc_entry Θ1 Ξ1 p = Some E -> exists E', gc_entry Θ2 Ξ2 p = Some E' /\ entry_grows E E'
     (** The member a type's open frame is the module of is still read
         there, open or filed *)
-  ; gcs_frame_ind : forall p r, gs_find_ind Ξ1 p = Some r -> ind_mlookup Θ2 Ξ2 p = Some r
+  ; gc_sub_frame_ind_field : forall p r, gs_find_ind Ξ1 p = Some r -> ind_mlookup Θ2 Ξ2 p = Some r
     (** The record type an open frame is the module of is still read
         there, open or filed *)
-  ; gcs_frame_record : forall p R, gs_find_record Ξ1 p = Some R -> record_lookup Θ2 Ξ2 p = Some R }.
+  ; gc_sub_frame_record_field : forall p R, gs_find_record Ξ1 p = Some R -> record_lookup Θ2 Ξ2 p = Some R }.
 
 Lemma gc_sub_resolve : forall Θ1 Ξ1 Θ2 Ξ2 p E,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E.
-Proof. intros * H; apply (gcs_resolve _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_resolve_field _ _ _ _ H). Qed.
 
 Lemma gc_sub_module : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
-Proof. intros * H; apply (gcs_module _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_module_field _ _ _ _ H). Qed.
 
 (** An open frame that is the module of no member and of no record type
     names no member with a term part and a module part in any global
@@ -1015,7 +1015,7 @@ Lemma frame_not_dm_sub : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ, gc_sub Θ1 Ξ1 Θ2 Ξ2 -
     gc_frame Ξ1 p = Some (T, Φ) -> gs_find_ind Ξ1 p = None -> gs_find_record Ξ1 p = None -> ~ dm_path Θ2 Ξ2 p.
 Proof.
   intros * Hs Hf Hk Hr.
-  destruct (gcs_frame _ _ _ _ Hs _ _ _ Hf) as (Φ' & [(Hf2 & Hk2 & Hr2) | (Hb2 & Hm2 & Hr2)]).
+  destruct (gc_sub_frame_field _ _ _ _ Hs _ _ _ Hf) as (Φ' & [(Hf2 & Hk2 & Hr2) | (Hb2 & Hm2 & Hr2)]).
   - rewrite Hk in Hk2; rewrite Hr in Hr2.
     assert (HT : exists U0 T0, gs_find_tele Ξ2 p = Some (U0, nil, T0)).
     { unfold gc_frame in Hf2; destruct (gs_find_tele Ξ2 p) as [[[U0 [| ? ?]] T0] |];
@@ -1032,7 +1032,7 @@ Qed.
 Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) ->
     exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'.
-Proof. intros * H; apply (gcs_body _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_body_field _ _ _ _ H). Qed.
 
 (** An open frame is still one, of the same kind, or has been closed into
     a body module, of the member of a group or the record type its kind
@@ -1043,15 +1043,15 @@ Lemma gc_sub_frame_loc : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
                 gs_find_record Ξ2 p = gs_find_record Ξ1 p) \/
       (gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gc_module Θ2 Ξ2 p = Some (mr_body T (gs_find_ind Ξ1 p)) /\
        record_lookup Θ2 Ξ2 p = gs_find_record Ξ1 p).
-Proof. intros * H; apply (gcs_frame _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_frame_field _ _ _ _ H). Qed.
 
 Lemma gc_sub_frame_ind : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gs_find_ind Ξ1 p = Some r -> ind_mlookup Θ2 Ξ2 p = Some r.
-Proof. intros * H; apply (gcs_frame_ind _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_frame_ind_field _ _ _ _ H). Qed.
 
 Lemma gc_sub_frame_record : forall Θ1 Ξ1 Θ2 Ξ2 p R,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gs_find_record Ξ1 p = Some R -> record_lookup Θ2 Ξ2 p = Some R.
-Proof. intros * H; apply (gcs_frame_record _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_frame_record_field _ _ _ _ H). Qed.
 
 Lemma ind_mlookup_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> ind_mlookup Θ1 Ξ1 p = Some r -> ind_mlookup Θ2 Ξ2 p = Some r.
@@ -1063,7 +1063,7 @@ Qed.
 (** What is stored at a path stays there, its bodies perhaps grown. *)
 Lemma gc_sub_entry : forall Θ1 Ξ1 Θ2 Ξ2 p E,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_entry Θ1 Ξ1 p = Some E -> exists E', gc_entry Θ2 Ξ2 p = Some E' /\ entry_grows E E'.
-Proof. intros * H; apply (gcs_entry _ _ _ _ H). Qed.
+Proof. intros * H; apply (gc_sub_entry_field _ _ _ _ H). Qed.
 
 (** A path naming an entry is no open frame's own path, so no record's
     open frame. *)
@@ -1112,7 +1112,7 @@ Proof.
 Qed.
 
 (** A record type stays, with the same declaration, along a growth of the
-    global context: an open frame's as [gcs_frame_record] says, a filed
+    global context: an open frame's as [gc_sub_frame_record_field] says, a filed
     one's as its entry grows. *)
 Lemma record_lookup_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2 p R,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> record_lookup Θ1 Ξ1 p = Some R -> record_lookup Θ2 Ξ2 p = Some R.
@@ -1233,11 +1233,11 @@ Proof. intros * Hg T oD [| x ip]; cbn; [ reflexivity | apply gm_grows_submodule;
 (** One body growing into another, as [gc_sub] asks of the frame holding
     it. *)
 Record gm_sub (Φ1 Φ2 : gmod) : Prop := mk_gm_sub
-  { gms_resolve : forall ip E, gm_resolve Φ1 ip = Some E -> gm_resolve Φ2 ip = Some E
-  ; gms_submodule : forall T z ip r, gm_submodule T Φ1 z ip = Some r -> gm_submodule T Φ2 z ip = Some r
-  ; gms_subbody : forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
+  { gm_sub_resolve : forall ip E, gm_resolve Φ1 ip = Some E -> gm_resolve Φ2 ip = Some E
+  ; gm_sub_submodule : forall T z ip r, gm_submodule T Φ1 z ip = Some r -> gm_submodule T Φ2 z ip = Some r
+  ; gm_sub_subbody : forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
       exists Φ', gm_subbody T Φ2 z ip = Some (T', Φ') /\ gm_grows Φ Φ'
-  ; gms_entry : forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E' }.
+  ; gm_sub_entry : forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E' }.
 
 Lemma gm_sub_refl : forall Φ, gm_sub Φ Φ.
 Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
@@ -2048,8 +2048,8 @@ Fixpoint ds_ats (R : mdesc) (Ns : list exp) : option mdesc :=
 (** How a member of a module description is read once its entry's
     description is known ([ds_read]). *)
 Inductive reader : Set :=
-| rd_open : ctx -> gmod -> reader
-| rd_closed : ctx -> list exp -> exp -> reader.
+| reader_open : ctx -> gmod -> reader
+| reader_closed : ctx -> list exp -> exp -> reader.
 
 (** A description under a substitution.  The parts of a description over
     the context are substituted; a closed module's stored unit is not, being
@@ -2234,8 +2234,8 @@ Proof. intros [| | |] Ns Hm; cbn in Hm; first [ contradiction | reflexivity ]. Q
     over the outside parameters. *)
 Definition ds_read (rd : reader) (R : mdesc) : option mdesc :=
   match rd with
-  | rd_open Δ Φ' => option_map (fun σ => ds_up Δ (ds_sub R σ)) (gm_fill Φ')
-  | rd_closed Θ Ns M => option_map (fun R1 => ds_up Θ (ds_named Θ Ns M R1)) (ds_ats_read R Ns)
+  | reader_open Δ Φ' => option_map (fun σ => ds_up Δ (ds_sub R σ)) (gm_fill Φ')
+  | reader_closed Θ Ns M => option_map (fun R1 => ds_up Θ (ds_named Θ Ns M R1)) (ds_ats_read R Ns)
   end.
 
 (** A term read as a name is a term. *)
@@ -2269,13 +2269,13 @@ Definition ds_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
               definition, and one without a body, are not: they are used
               only inside the body, as its definitions there. *)
           | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
-          | _ => Some (body_ctx Φ' ++ Δ, E, rd_open Δ Φ')
+          | _ => Some (body_ctx Φ' ++ Δ, E, reader_open Δ Φ')
           end
       | _ => None
       end
   | ds_closed Θ p T Φ Ns =>
       match gm_prefix_upto Φ y with
-      | Some (gm_ext _ _ E) => Some (nil, ge_read T E, rd_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns))
+      | Some (gm_ext _ _ E) => Some (nil, ge_read T E, reader_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns))
       | _ => None
       end
   | _ => None
@@ -2316,7 +2316,7 @@ Definition record_former_desc (p : qname) (R : record_decl) (Rm : mdesc) : mdesc
     frame, with its full telescope: an open frame's own parameters, then
     those of the frames outside it.  The open frame of the module of a
     member of a group, or of a record type, is not one: its path names the
-    member ([dn_ind_frame]) or the record type ([dn_record_frame]). *)
+    member ([mdenote_ind_frame]) or the record type ([mdenote_record_frame]). *)
 Definition gc_unit (Θ : gdeps) (Ξ : gstack) (H : modexp) : option (ctx * gmod) :=
   match mod_qname H with
   | Some mp =>
@@ -2409,7 +2409,7 @@ Qed.
     level, an item naming a type former (an inductive or a record type),
     and [open E as y] of one, declares a definition with a module part of
     it; a local open of one is rejected.  At the global level the generated
-    entries are filed by the command ([rc_open]);
+    entries are filed by the command ([run_cmd_open]);
     in a local body the open stays, and every reader of the body reads it
     as its generated entries ([body_xp]).  The two share the generation
     relation [items_gen], which reads the kind of each member off its member
@@ -2423,7 +2423,7 @@ Inductive igen : Set :=
 | ig_alias : string -> bool -> modexp -> igen
 (** [ig_def_mod d pv A M E]: the definition [d] of type [A] equal to [M],
     with the module part the alias of [E].  A global open files it at its
-    inferred type ([gr_def_mod]) *)
+    inferred type ([gens_run_def_mod]) *)
 | ig_def_mod : string -> bool -> typ -> exp -> modexp -> igen.
 
 (** A generated item as a body entry. *)
@@ -2529,38 +2529,38 @@ Qed.
     with what its unit denotes as its module part. *)
 Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
 (** A loaded unit or open frame: its stored closed unit, at its path *)
-| dn_unit : forall Γ H p T Φ,
+| mdenote_unit : forall Γ H p T Φ,
     mod_qname H = Some p ->
     gc_unit Θ Ξ H = Some (T, Φ) ->
     mdenote Θ Ξ Γ H (ds_closed nil p T Φ nil)
 (** The open frame of the module of a member of a group of inductive
     types: the member's type former, as it is read once filed there
-    ([en_ind]), of the declaration the frame carries, whose module part is
+    ([edenote_ind_case]), of the declaration the frame carries, whose module part is
     the frame's body so far; the member is filed only when the frame
     closes, so it is denoted so nowhere else *)
-| dn_ind_frame : forall Γ H p pq k D Mk Tm Φm,
+| mdenote_ind_frame : forall Γ H p pq k D Mk Tm Φm,
     mod_qname H = Some p ->
     gs_find_ind Ξ p = Some (pq, k, D) ->
     ind_member D k = Some Mk ->
     gc_loc Θ Ξ p = Some (Tm, Φm) ->
     mdenote Θ Ξ Γ H (ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil))
 (** A module slot: what its unit denotes *)
-| dn_slot : forall Γ x U R,
+| mdenote_slot : forall Γ x U R,
     Γ ∋ #x ≔ₘ U ->
     udenote Θ Ξ Γ None U R ->
     mdenote Θ Ξ Γ (me_var x) R
 (** A module literal: what its unit denotes *)
-| dn_lit : forall Γ U R,
+| mdenote_lit : forall Γ U R,
     udenote Θ Ξ Γ None U R ->
     mdenote Θ Ξ Γ (me_lit U) R
 (** An application: the head's description given the next argument *)
-| dn_app : forall Γ H N R R',
+| mdenote_app : forall Γ H N R R',
     mdenote Θ Ξ Γ H R ->
     ds_at R N = Some R' ->
     mdenote Θ Ξ Γ (me_app H N) R'
 (** A selection: the entry found in the module part of the selected
     module's description, denoted and read there *)
-| dn_mem : forall Γ H y R0 R0m Γy E rd R R',
+| mdenote_mem : forall Γ H y R0 R0m Γy E rd R R',
     mdenote Θ Ξ Γ H R0 ->
     ds_mod R0 = Some R0m ->
     ds_entry R0m y = Some (Γy, E, rd) ->
@@ -2568,10 +2568,10 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
     ds_read rd R = Some R' ->
     mdenote Θ Ξ Γ (me_mem H y) R'
 (** The open frame of the module of a record type: the record's type
-    former, as it is read once filed there ([en_record]), whose module
+    former, as it is read once filed there ([edenote_record]), whose module
     part is the frame's body so far; the record is filed only when the
     frame closes, so it is denoted so nowhere else *)
-| dn_record_frame : forall Γ H p R Tm Φm,
+| mdenote_record_frame : forall Γ H p R Tm Φm,
     mod_qname H = Some p ->
     gs_find_record Ξ p = Some R ->
     gc_loc Θ Ξ p = Some (Tm, Φm) ->
@@ -2579,30 +2579,30 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
 with udenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gunit -> mdesc -> Prop :=
 (** A body, read through the entries its local opens generate, by its
     storage *)
-| un_body : forall Γ o Δ sm Φ Φx R,
+| udenote_body : forall Γ o Δ sm Φ Φx R,
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
     ds_body o sm Δ Φ Φx = Some R ->
     udenote Θ Ξ Γ o (gu_mk Δ (md_body sm Φ)) R
 (** An alias: the module part of what its target denotes, abstracted over
     the alias's parameters *)
-| un_alias : forall Γ o Δ E R R',
+| udenote_alias : forall Γ o Δ E R R',
     mdenote Θ Ξ (Δ ++ Γ) E R ->
     ds_mod R = Some R' ->
     udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) (ds_up Δ R')
 with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc -> Prop :=
 (** A definition: a term of its type, with its body as δ-reduct when it is
     transparent *)
-| en_def : forall Γ o b pv A oM,
+| edenote_def : forall Γ o b pv A oM,
     edenote Θ Ξ Γ o (ge_def b pv A oM) (ds_term A (if b then oM else None))
 (** A module: what its unit denotes *)
-| en_mod : forall Γ o pv U R,
+| edenote_mod : forall Γ o pv U R,
     udenote Θ Ξ Γ o U R ->
     edenote Θ Ξ Γ o (ge_mod pv U) R
 (** An inductive member: its type former ([ind_former_desc]), whose module
     part is the member's module, stored at its path.  The declaration is
     the one the entry stores, not one looked up again by path; the two
     agree in a well-formed context. *)
-| en_ind : forall Γ o pv pq k D Φ Mk pm Tm Φm,
+| edenote_ind_case : forall Γ o pv pq k D Φ Mk pm Tm Φm,
     ind_member D k = Some Mk ->
     ind_mpath D k = Some pm ->
     gc_loc Θ Ξ pm = Some (Tm, Φm) ->
@@ -2611,13 +2611,13 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
     definition's, with what its unit, an alias, denotes as its module
     part.  A module part that is no alias denotes nothing, as it is no
     module ([gm_submodule]). *)
-| en_def_mod : forall Γ o pv A M Δ E Rm,
+| edenote_def_mod : forall Γ o pv A M Δ E Rm,
     udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) Rm ->
     edenote Θ Ξ Γ o (ge_def_mod pv A M (gu_mk Δ (md_alias E))) (ds_dm nil A M Rm)
 (** A record type stored at [p]: its type former ([record_former_desc]),
     whose module part is its module, stored at [p].  It denotes only where
     it is stored, read at the path it is found at *)
-| en_record : forall Γ p pv pr R Φ Tm Φm,
+| edenote_record : forall Γ p pv pr R Φ Tm Φm,
     gc_loc Θ Ξ p = Some (Tm, Φm) ->
     edenote Θ Ξ Γ (Some p) (ge_record pv pr R Φ) (record_former_desc p R (ds_closed nil p Tm Φm nil))
 (** [body_xp Θ Ξ Γ Φ Φx]: the body [Φ], read in [Γ], is [Φx] with every
@@ -2626,14 +2626,14 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
     looked into. *)
 with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
 (** The empty body expands to itself *)
-| bx_nil : forall Γ, body_xp Θ Ξ Γ gm_nil gm_nil
+| body_xp_nil : forall Γ, body_xp Θ Ξ Γ gm_nil gm_nil
 (** An entry is kept as it is *)
-| bx_ext : forall Γ Φ Φx x E,
+| body_xp_ext : forall Γ Φ Φx x E,
     body_xp Θ Ξ Γ Φ Φx ->
     body_xp Θ Ξ Γ (gm_ext Φ x E) (gm_ext Φx x E)
 (** A local open of a module is replaced by the entries its items
     generate *)
-| bx_open : forall Γ Φ Φx H its R Rm gs,
+| body_xp_open : forall Γ Φ Φx H its R Rm gs,
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
     ds_mod R = Some Rm ->
@@ -2648,19 +2648,19 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
     global open and a local one generate alike. *)
 with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list igen -> Prop :=
 (** No item generates nothing *)
-| ign_nil : forall Γ H, items_gen Θ Ξ Γ H nil nil
+| items_gen_nil : forall Γ H, items_gen Θ Ξ Γ H nil nil
 (** An item naming no member ([open E as y]): the alias of [H] itself,
     whatever [H] is *)
-| ign_self : forall Γ H d pv its gs,
+| items_gen_self : forall Γ H d pv its gs,
     items_gen Θ Ξ Γ H its gs ->
     items_gen Θ Ξ Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
 (** An item naming a term: a definition of its type, by selection *)
-| ign_def : forall Γ H n d pv A om its gs,
+| items_gen_def : forall Γ H n d pv A om its gs,
     mdenote Θ Ξ Γ (me_mem H n) (ds_term A om) ->
     items_gen Θ Ξ Γ H its gs ->
     items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_def d pv A (a_mem H n) :: gs)
 (** An item naming a module: an alias of the selection *)
-| ign_mod : forall Γ H n d pv R its gs,
+| items_gen_mod : forall Γ H n d pv R its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
     ds_is_mod R ->
     items_gen Θ Ξ Γ H its gs ->
@@ -2669,7 +2669,7 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list 
     type former, or a definition with a module part): a definition with a
     module part of the term part's type, the selection as its term and the
     alias of the selection as its module *)
-| ign_dm : forall Γ H n d pv R A Rm its gs,
+| items_gen_dm : forall Γ H n d pv R A Rm its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
     ds_ty R = Some A ->
     ds_mod R = Some Rm ->
@@ -2693,17 +2693,17 @@ Hint Constructors mdenote udenote edenote body_xp items_gen : mctt.
 #[warnings="-cannot-define-projection"]
 Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
   mk_open_gens
-  { og_desc : mdesc
-  ; og_mod : mdesc
-  ; og_denote : mdenote Θ Ξ Γ H og_desc
-  ; og_is_mod : ds_mod og_desc = Some og_mod
-  ; og_items : items_gen Θ Ξ Γ H its gs
-  ; og_ok : items_ok its }.
+  { open_gens_desc : mdesc
+  ; open_gens_mod : mdesc
+  ; open_gens_denote : mdenote Θ Ξ Γ H open_gens_desc
+  ; open_gens_is_mod : ds_mod open_gens_desc = Some open_gens_mod
+  ; open_gens_items : items_gen Θ Ξ Γ H its gs
+  ; open_gens_ok : items_ok its }.
 
 (** A unit with its body expanded; an alias is its own. *)
 Inductive unit_xp (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : gunit -> gunit -> Prop :=
-| ux_body : forall Δ sm Φ Φx, body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> unit_xp Θ Ξ Γ (gu_mk Δ (md_body sm Φ)) (gu_mk Δ (md_body sm Φx))
-| ux_alias : forall Δ E, unit_xp Θ Ξ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ (md_alias E)).
+| unit_xp_body : forall Δ sm Φ Φx, body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> unit_xp Θ Ξ Γ (gu_mk Δ (md_body sm Φ)) (gu_mk Δ (md_body sm Φx))
+| unit_xp_alias : forall Δ E, unit_xp Θ Ξ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ (md_alias E)).
 
 #[export]
 Hint Constructors unit_xp : mctt.
@@ -2926,7 +2926,7 @@ Inductive msite (Θ : gdeps) (Ξ : gstack) : modexp -> qname -> Prop :=
     msite Θ Ξ H p.
 
 Inductive mdecl (Θ : gdeps) (Ξ : gstack) (H : modexp) (y : string) : qname -> bool -> Prop :=
-| mdl_intro : forall pq E,
+| mdecl_intro : forall pq E,
     msite Θ Ξ H pq ->
     gc_entry Θ Ξ (qname_in pq y) = Some E ->
     mdecl Θ Ξ H y pq (ge_private E).

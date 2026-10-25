@@ -38,10 +38,10 @@ Qed.
 (** The variables of a telescope *)
 Inductive fresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> Prop :=
 (** No entry *)
-| telo_nil :
+| fresh_tele_order_nil :
   `( fresh_tele_order Θ Ξ ρ nil s )
 (** The first entry's type, then the rest under its variable *)
-| telo_cons :
+| fresh_tele_order_cons :
   `( eval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> fresh_tele_order Θ Ξ (ρ ↦ ⇑! a s) T (S s)) ->
      fresh_tele_order Θ Ξ ρ (ce_ass A :: T) s ).
@@ -50,15 +50,15 @@ Inductive fresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> na
 Inductive fresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> Prop :=
 (** No argument *)
-| cargo_nil :
+| fresh_cargs_order_nil :
   `( fresh_cargs_order Θ Ξ p ups ρ nil s )
 (** A non-recursive argument's type, then the rest *)
-| cargo_arg :
+| fresh_cargs_order_arg :
   `( eval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> fresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
      fresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
 (** A recursive argument's type, then the rest *)
-| cargo_rec :
+| fresh_cargs_order_rec_case :
   `( eval_shty_order Θ Ξ p ups ρ t ->
      fresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      fresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
@@ -67,19 +67,19 @@ Inductive fresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list d
 Inductive fresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) :
   env -> list carg -> list carg -> list domain -> nat -> Prop :=
 (** No argument *)
-| ihso_nil :
+| fresh_ihs_order_nil :
   `( fresh_ihs_order Θ Ξ ρ As ρa nil nil nil s )
 (** A non-recursive argument, entering the environment *)
-| ihso_arg :
+| fresh_ihs_order_arg :
   `( fresh_ihs_order Θ Ξ ρ As (ρa ↦ v) gs' gs vs s ->
      fresh_ihs_order Θ Ξ ρ As ρa (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) s )
 (** Recursive in both: its type, then the rest *)
-| ihso_rec :
+| fresh_ihs_order_rec_case :
   `( eval_ihty_order Θ Ξ ρ As ρa t v ->
      fresh_ihs_order Θ Ξ ρ As ρa gs' gs vs (S s) ->
      fresh_ihs_order Θ Ξ ρ As ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
 (** Nested through: the rest *)
-| ihso_nest :
+| fresh_ihs_order_nest :
   `( fresh_ihs_order Θ Ξ ρ As ρa gs' gs vs s ->
      fresh_ihs_order Θ Ξ ρ As ρa (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
 
@@ -87,19 +87,19 @@ Inductive fresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) 
 Inductive wrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) :
   list carg -> list carg -> list domain -> list domain -> Prop :=
 (** No argument *)
-| wrapo_nil :
+| wrap_ihs_order_nil :
   `( wrap_ihs_order Θ Ξ ρ p ups Bks nil nil nil nil )
 (** Recursive in both: the rest *)
-| wrapo_rec :
+| wrap_ihs_order_rec_case :
   `( wrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
      wrap_ihs_order Θ Ξ ρ p ups Bks (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) (ih :: ihs) )
 (** Nested through: the eliminator at the argument, then the rest *)
-| wrapo_nest :
+| wrap_ihs_order_nest :
   `( eval_ih_order Θ Ξ ρ p ups Bks t v ->
      wrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
      wrap_ihs_order Θ Ξ ρ p ups Bks (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
 (** Non-recursive: the rest *)
-| wrapo_arg :
+| wrap_ihs_order_arg :
   `( wrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
      wrap_ihs_order Θ Ξ ρ p ups Bks (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) ihs ).
 
@@ -200,24 +200,24 @@ End FreshImpl.
 (** ** The Orders of Readback *)
 
 Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
-| rnf_type :
+| read_nf_order_type :
   `( read_typ_order Θ Ξ s a ->
     read_nf_order Θ Ξ s ⇓ 𝕌ω@i a )
-| rnf_stype :
+| read_nf_order_stype :
   `( read_typ_order Θ Ξ s a ->
     read_nf_order Θ Ξ s ⇓ 𝕌@n a )
-| rnf_lvl :
+| read_nf_order_lvl :
   `( read_la_order Θ Ξ s xs ->
      read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (lvᵈ c xs) )
-| rnf_lvl_neut :
+| read_nf_order_lvl_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (⇑ a m) )
-| rnf_true :
+| read_nf_order_true :
   `( read_nf_order Θ Ξ s ⇓ ⊤ᵈ m )
-| rnf_False_neut :
+| read_nf_order_False_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ ⊥ᵈ (⇑ a m) )
-| rnf_fn :
+| read_nf_order_fn :
   `( read_typ_order Θ Ξ s a ->
      eval_app_order Θ Ξ m ⇑! a s ->
      eval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
@@ -226,11 +226,11 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
          ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! a s ↘ b ->
          read_nf_order Θ Ξ (S s) ⇓ b m') ->
      read_nf_order Θ Ξ s ⇓ (Πᵈ a p B) m )
-| rnf_neut :
+| read_nf_order_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ (⇑ a b) (⇑ c m) )
 (** A constructor of a declared member *)
-| rnf_con :
+| read_nf_order_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      im_head Mk = mh_decl pm ->
@@ -241,7 +241,7 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
      read_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (im_np D Mk) vs) ->
      read_nf_order Θ Ξ s ⇓ (d_ind p k as') (d_con p k c vs) )
 (** A constructor at a view: its arguments are the last values *)
-| rnf_con_view :
+| read_nf_order_con_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
@@ -252,11 +252,11 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
      read_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs
        (List.skipn (List.length vs - List.length gs) vs) ->
      read_nf_order Θ Ξ s ⇓ (d_ind p j as') (d_con qc k c vs) )
-| rnf_ind_neut :
+| read_nf_order_ind_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ (d_ind p k as') (⇑ a m) )
 (** A value of a record type: the type's parameters, then the fields *)
-| rnf_record :
+| read_nf_order_record :
   `( record_lookup Θ Ξ p = Some R ->
      List.length ns = List.length (record_params R) ->
      read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
@@ -264,24 +264,24 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
      read_nf_order Θ Ξ s ⇓ (d_record p ns) v )
 
 with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
-| rne_var :
+| read_ne_order_var :
   `( read_ne_order Θ Ξ s #ᵈ x )
-| rne_app :
+| read_ne_order_app :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s n ->
      read_ne_order Θ Ξ s (m $ᵈ n) )
-| rne_exfalso :
+| read_ne_order_exfalso :
   `( eval_exp_order Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) ->
      (forall b,
          ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! ⊥ᵈ s ↘ b ->
          read_typ_order Θ Ξ (S s) b) ->
      read_ne_order Θ Ξ s m ->
      read_ne_order Θ Ξ s efqᵈ m under p return B )
-| rne_glob :
+| read_ne_order_glob :
   `( read_ne_order Θ Ξ s (d_glob p) )
 (** A stuck eliminator: the container's uniform parameters, the blocks
     read as the container's group's, and the scrutinee *)
-| rne_elim :
+| read_ne_order_elim :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_ref p j Mj = (pc, k) ->
@@ -295,59 +295,59 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      read_ne_order Θ Ξ s m ->
      read_ne_order Θ Ξ s (d_elim ρ Bks p ups j as' m) )
 (** The field of a neutral *)
-| rne_proj :
+| read_ne_order_proj :
   `( read_ne_order Θ Ξ s m ->
      read_ne_order Θ Ξ s (d_proj f m) )
 
 with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
-| rtyp_univ :
+| read_typ_order_univ :
   `( read_typ_order Θ Ξ s 𝕌ω@i )
 (** A small universe reads its level back. *)
-| rtyp_suniv :
+| read_typ_order_suniv :
   `( read_nf_order Θ Ξ s ⇓ Levelᵈ l ->
      read_typ_order Θ Ξ s 𝕌@l )
-| rtyp_level :
+| read_typ_order_level :
   `( read_typ_order Θ Ξ s (Levelᵈ@n) )
-| rtyp_True :
+| read_typ_order_True :
   `( read_typ_order Θ Ξ s ⊤ᵈ )
-| rtyp_False :
+| read_typ_order_False :
   `( read_typ_order Θ Ξ s ⊥ᵈ )
-| rtyp_pi :
+| read_typ_order_pi :
   `( read_typ_order Θ Ξ s a ->
      eval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
      (forall b,
          ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! a s ↘ b ->
          read_typ_order Θ Ξ (S s) b) ->
      read_typ_order Θ Ξ s Πᵈ a p B)
-| rtyp_neut :
+| read_typ_order_neut :
   `( read_ne_order Θ Ξ s b ->
     read_typ_order Θ Ξ s ⇑ a b )
 (** A member of a group at all its parameters *)
-| rtyp_indty :
+| read_typ_order_indty :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      List.length as' = im_np D Mk ->
      read_ps_order Θ Ξ s nil (List.rev (im_params D Mk)) as' ->
      read_typ_order Θ Ξ s (d_ind p k as') )
 (** A record type at all its parameters *)
-| rtyp_record :
+| read_typ_order_record :
   `( record_lookup Θ Ξ p = Some R ->
      List.length ns = List.length (record_params R) ->
      read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
      read_typ_order Θ Ξ s (d_record p ns) )
 
 with read_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
-| rla_nil :
+| read_la_order_nil :
   `( read_la_order Θ Ξ s nil )
-| rla_cons :
+| read_la_order_cons :
   `( read_ne_order Θ Ξ s m ->
      read_la_order Θ Ξ s xs ->
      read_la_order Θ Ξ s ((k, n, m) :: xs) )
 
 with read_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> Prop :=
-| rps_nil :
+| read_ps_order_nil :
   `( read_ps_order Θ Ξ s ρ nil nil )
-| rps_cons :
+| read_ps_order_cons :
   `( eval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> read_nf_order Θ Ξ s ⇓ a v) ->
      read_ps_order Θ Ξ s (ρ ↦ v) T vs ->
@@ -356,11 +356,11 @@ with read_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> lis
 (** The fields of a record value, each its projection at its type *)
 with read_fields_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> Prop :=
 (** No field left *)
-| rflds_nil :
+| read_fields_order_nil :
   `( read_fields_order Θ Ξ s ρ nil v )
 (** The next field: its projection, its type, its readback, then the rest
     with the projection in the environment *)
-| rflds_cons :
+| read_fields_order_cons :
   `( eval_proj_order Θ Ξ f v ->
      eval_exp_order Θ Ξ T ρ ->
      (forall r t, eval_proj Θ Ξ f v r -> ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ t -> read_nf_order Θ Ξ s ⇓ t r) ->
@@ -368,15 +368,15 @@ with read_fields_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string *
      read_fields_order Θ Ξ s ρ ((f, T) :: fl) v )
 
 with read_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> Prop :=
-| rcargs_nil :
+| read_cargs_order_nil :
   `( read_cargs_order Θ Ξ s p ups ρ nil nil )
-| rcargs_arg :
+| read_cargs_order_arg :
   `( eval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> read_nf_order Θ Ξ s ⇓ a v) ->
      read_cargs_order Θ Ξ s p ups (ρ ↦ v) gs vs ->
      read_cargs_order Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) )
 (** A recursive argument, along its shape *)
-| rcargs_rec :
+| read_cargs_order_rec_case :
   `( read_shape_order Θ Ξ s p ups ρ t v ->
      read_cargs_order Θ Ξ s p ups ρ gs vs ->
      read_cargs_order Θ Ξ s p ups ρ (ca_rec t :: gs) (v :: vs) )
@@ -384,12 +384,12 @@ with read_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -
 (** A recursive argument of a shape *)
 with read_shape_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> Prop :=
 (** At the end: the parameters, then the value at the member *)
-| rsh_self :
+| read_shape_order_self :
   `( eval_exps_order Θ Ξ Ps ρ ->
      (forall bs, ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs -> read_nf_order Θ Ξ s ⇓ (d_ind p j (ups ++ bs)) v) ->
      read_shape_order Θ Ξ s p ups ρ (pt_self j Ps) v )
 (** At a domain: under a fresh variable of it *)
-| rsh_pi :
+| read_shape_order_pi :
   `( eval_exp_order Θ Ξ B ρ ->
      (forall b, ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b -> read_typ_order Θ Ξ s b) ->
      (forall b, ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b -> eval_app_order Θ Ξ v (⇑! b s)) ->
@@ -401,10 +401,10 @@ with read_shape_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -
 with read_blocks_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                                  option (list nat) -> nat -> list imember -> Prop :=
 (** No member left *)
-| rblks_nil :
+| read_blocks_order_nil :
   `( read_blocks_order Θ Ξ s ρ p ups Bks sel i nil )
 (** The block of the member [Mi]: its motive, its branches, then the rest *)
-| rblks_cons :
+| read_blocks_order_cons :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
      List.nth_error Bks (elim_src sel i) = Some b ->
@@ -428,10 +428,10 @@ with read_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list dom
                                               imember -> exp -> imember -> (qname * nat * list domain) ->
                                               list (string * list carg) -> list (string * nat * exp) -> Prop :=
 (** No constructor left *)
-| rbrs_nil :
+| read_brs_order_nil :
   `( read_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r nil nil )
 (** The branch of the next constructor, then the rest *)
-| rbrs_cons :
+| read_brs_order_cons :
   `( ind_con Mv c = Some gs ->
      Nat.eqb n0 (im_nn Mi + List.length gs' + cargs_nrec gs)%nat = true ->
      ind_lookup Θ Ξ p = Some D ->

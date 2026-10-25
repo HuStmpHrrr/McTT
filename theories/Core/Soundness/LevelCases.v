@@ -75,7 +75,7 @@ Lemma glu_rel_exp_of_level : forall {Γ Sb M},
     Γ ⊩ M : Level@n.
 Proof.
   intros * ? Hbody.
-  eapply mk_glu_rel_exp with (gre_lvl := 0); [ mauto 3 |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ mauto 3 |].
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -256,7 +256,7 @@ Proof.
   intros * HM.
   assert (⊩ Γ) as [Sb HSb] by mauto 3.
   pose proof (glu_rel_exp_succl HM) as HSM.
-  eapply mk_glu_rel_exp with (gre_lvl := 0); [ eassumption |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ eassumption |].
   intros Δ σ ρ Hσ.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -360,7 +360,7 @@ Lemma glu_rel_exp_of_suniv_tm : forall {Γ Sb T A},
     Γ ⊩ A : Type⟨T⟩.
 Proof.
   intros * HΓ HT Hbody.
-  eapply mk_glu_rel_exp with (gre_lvl := 0); [ eassumption |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ eassumption |].
   intros Δ σ ρ Hσ.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.

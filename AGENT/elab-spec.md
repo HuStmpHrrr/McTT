@@ -91,16 +91,16 @@ They are read twice (`slead`, then `scmds`):
 
 ```coq
 Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
-| sl_nil : forall L, slead L nil L nil
-| sl_import : forall L fq cs L' lds,
+| slead_nil : forall L, slead L nil L nil
+| slead_import : forall L fq cs L' lds,
     slead (en_unit fq :: L) cs L' lds ->
     slead L (Cst.c_import fq :: cs) L' (cc_load fq :: lds)
-| sl_open : forall L fq ip args its o E cs L' lds,
+| slead_open : forall L fq ip args its o E cs L' lds,
     itarget fq ip args = Some o -> selm L o E ->
     slead (open_ents E its ++ L) cs L' lds ->
     slead L (Cst.c_open fq ip args its :: cs) L' lds.
 
-| es_intro : forall leads fp ps cs L lds tys ccs,
+| elab_spec_intro : forall leads fp ps cs L lds tys ccs,
     slead nil leads L lds -> NoDup (map fst ps) -> sparams L ps tys ->
     scmds fp nil L (pents ps) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).

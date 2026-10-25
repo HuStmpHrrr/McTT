@@ -255,7 +255,7 @@ Section check_exp.
     exact (Hne m (functional_alg_type_infer (GC := gc_mk Θ Ξ) (ctx_wf_gctx _ _ _ HΓ) HB Hm)).
   Qed.
 
-  (** "Is [t] a level?", decided as the premise of [ati_suniv]: infer a type
+  (** "Is [t] a level?", decided as the premise of [alg_type_infer_suniv]: infer a type
       for [t], then require it to be a type of levels. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_level Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) t :
@@ -367,7 +367,7 @@ Section check_exp.
       pureb _
   .
   Obligation 1. (* type_check_order M *)
-    apply tc_ti, user_exp_to_type_infer_order, user_exp_all.
+    apply type_check_order_ti, user_exp_to_type_infer_order, user_exp_all.
   Defined.
   Obligation 2. (* the algorithmic check fails *)
     eapply H, alg_type_check_complete'; eassumption.

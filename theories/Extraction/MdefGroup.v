@@ -30,15 +30,15 @@ Definition opt_case {A} (o : option A) : {a | o = Some a} + {o = None} :=
     message. *)
 Inductive mdef_why : Set :=
 (** The type of the scrutinee is not a type *)
-| mw_scrut_untyped : mdef_why
+| mdef_why_scrut_untyped : mdef_why
 (** The type of a member at the uniform parameters is not a type *)
-| mw_member_untyped : nat -> mdef_why
+| mdef_why_member_untyped : nat -> mdef_why
 (** The scrutinee's type is that of no member of the group: its normal
     form *)
-| mw_no_member : nf -> mdef_why
+| mdef_why_no_member : nf -> mdef_why
 (** The member has another number of non-uniform parameters: theirs, then
     the function's *)
-| mw_nparams : nat -> nat -> mdef_why.
+| mdef_why_nparams : nat -> nat -> mdef_why.
 
 Section MdefDecide.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -63,24 +63,24 @@ Section MdefDecide.
   Definition mdef_member_dec (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (f : raw_fun) :
       ({m | mdef_member Θ Ξ pq D Us Δ f m} + {e : mdef_why | forall m, ~ mdef_member Θ Ξ pq D Us Δ f m})%type.
   Proof.
-    set (Γ := (rf_nparams f ++ Δ ++ gs_tele Ξ)%list).
-    set (n := List.length (rf_nparams f)).
+    set (Γ := (raw_fun_nparams f ++ Δ ++ gs_tele Ξ)%list).
+    set (n := List.length (raw_fun_nparams f)).
     set (T := fun jM : (nat * imember)%type =>
                 im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn n]ʷ) Us) (vars_from 0 n)).
-    destruct (typ_least_dec Θ Ξ HΞ Γ (rf_scrut f)) as [[i [HZ _]] | HnZ];
-      [| right; exists mw_scrut_untyped; intros m H; inversion H as [? ? ? ? ? [i' HZ'] _ _ _ _ _]; exact (HnZ _ HZ') ].
-    destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) Γ (rf_scrut f) (typ_nbe_ty_order Θ Ξ _ _ _ HZ)) as [W HW].
+    destruct (typ_least_dec Θ Ξ HΞ Γ (raw_fun_scrut f)) as [[i [HZ _]] | HnZ];
+      [| right; exists mdef_why_scrut_untyped; intros m H; inversion H as [? ? ? ? ? [i' HZ'] _ _ _ _ _]; exact (HnZ _ HZ') ].
+    destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) Γ (raw_fun_scrut f) (typ_nbe_ty_order Θ Ξ _ _ _ HZ)) as [W HW].
     destruct (tys_nbe_dec T Γ (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D))) as [[Ws HWs] | [j Hn]];
-      [| right; exists (mw_member_untyped j); intros m H; inversion H; subst; eapply Hn; eassumption ].
+      [| right; exists (mdef_why_member_untyped j); intros m H; inversion H; subst; eapply Hn; eassumption ].
     destruct (nf_index W Ws) as [m |] eqn:Hm.
-    2:{ right; exists (mw_no_member W); intros m H; inversion H as [? W' Ws' ? Mm _ HW' HWs' Hm' _ _]; subst.
+    2:{ right; exists (mdef_why_no_member W); intros m H; inversion H as [? W' Ws' ? Mm _ HW' HWs' Hm' _ _]; subst.
         pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
         assert (Ws' = Ws) as ->.
         { eapply Forall2_functional; [| exact HWs' | exact HWs ].
           intros x W1 W2 [_ H1] [_ H2]; exact (functional_nbe_ty _ _ _ _ H1 H2). }
         congruence. }
     destruct (ind_member D m) as [Mm |] eqn:HMm.
-    2:{ right; exists (mw_no_member W); intros m' H; inversion H as [? W' Ws' ? Mm _ HW' HWs' Hm' HMm' _]; subst.
+    2:{ right; exists (mdef_why_no_member W); intros m' H; inversion H as [? W' Ws' ? Mm _ HW' HWs' Hm' HMm' _]; subst.
         pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
         assert (Ws' = Ws) as ->.
         { eapply Forall2_functional; [| exact HWs' | exact HWs ].
@@ -88,7 +88,7 @@ Section MdefDecide.
         congruence. }
     destruct (PeanoNat.Nat.eq_dec (im_nn Mm) n) as [Hnn | Hnn].
     - left; exists m; econstructor; [ exists i; exact HZ | exact HW | exact HWs | exact Hm | exact HMm | exact Hnn ].
-    - right; exists (mw_nparams (im_nn Mm) n); intros m' H; inversion H as [? W' Ws' ? Mm' _ HW' HWs' Hm' HMm' Hnn']; subst.
+    - right; exists (mdef_why_nparams (im_nn Mm) n); intros m' H; inversion H as [? W' Ws' ? Mm' _ HW' HWs' Hm' HMm' Hnn']; subst.
       pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
       assert (Ws' = Ws) as ->.
       { eapply Forall2_functional; [| exact HWs' | exact HWs ].
@@ -105,7 +105,7 @@ Section MdefDecide.
     destruct fs as [| f fs'].
     - left; exists nil; constructor.
     - destruct (mdef_member_dec pq D Us Δ f) as [[m Hm] | [e He]];
-        [| right; exists (rf_name f, e); intros ms H; inversion H; subst; eapply He; eassumption ].
+        [| right; exists (raw_fun_name f, e); intros ms H; inversion H; subst; eapply He; eassumption ].
       destruct (mdef_members_dec pq D Us Δ fs') as [[ms Hms] | [e He]].
       + left; exists (m :: ms); constructor; assumption.
       + right; exists e; intros ms' H; inversion H; subst; eapply He; eassumption.
@@ -149,50 +149,50 @@ Qed.
     message. *)
 Inductive mdef_group_why : Set :=
 (** A function, named, has no member: why *)
-| mgw_function : string -> mdef_why -> mdef_group_why
+| mdef_group_why_function : string -> mdef_why -> mdef_group_why
 (** The first function's scrutinee's type, named by the function, is no
     inductive type *)
-| mgw_not_inductive : string -> mdef_group_why
+| mdef_group_why_not_inductive : string -> mdef_group_why
 (** The group its scrutinee's type names is not filed *)
-| mgw_no_group : qname -> mdef_group_why
+| mdef_group_why_no_group : qname -> mdef_group_why
 (** The first function's scrutinee's type is a view, not a declared type *)
-| mgw_view : string -> mdef_group_why
+| mdef_group_why_view : string -> mdef_group_why
 (** The uniform parameters of the first function's scrutinee's type
     depend on its non-uniform parameters *)
-| mgw_uparams : string -> mdef_group_why
+| mdef_group_why_uparams : string -> mdef_group_why
 (** Not one function per member: the members, then the functions *)
-| mgw_count : nat -> nat -> mdef_group_why
+| mdef_group_why_count : nat -> nat -> mdef_group_why
 (** Two functions are for the same member *)
-| mgw_shared : mdef_group_why.
+| mdef_group_why_shared : mdef_group_why.
 
 (** The group of a mutual definition's functions [f0 :: fs] over [Δ],
     checked premise by premise as [mdef_group] reads it. *)
 Definition mdef_group_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (Δ : ctx) (f0 : raw_fun) (fs : list raw_fun) :
     ({r : qname * nat * list nf * ind_decl * list exp * list nat |
        let '(pq, m0, Ps, D, Us, ms) := r in mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms} + mdef_group_why)%type :=
-  match typ_least_dec Θ Ξ HΞ (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) with
-  | inright _ => inr (mgw_function (rf_name f0) mw_scrut_untyped)
+  match typ_least_dec Θ Ξ HΞ (raw_fun_nparams f0 ++ Δ ++ gs_tele Ξ) (raw_fun_scrut f0) with
+  | inright _ => inr (mdef_group_why_function (raw_fun_name f0) mdef_why_scrut_untyped)
   | inleft (exist _ i (conj HZ _)) =>
-      match @nbe_ty_impl Θ Ξ (fctx_none _ _) (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) (typ_nbe_ty_order _ _ _ _ _ HZ) with
+      match @nbe_ty_impl Θ Ξ (fctx_none _ _) (raw_fun_nparams f0 ++ Δ ++ gs_tele Ξ) (raw_fun_scrut f0) (typ_nbe_ty_order _ _ _ _ _ HZ) with
       | exist _ (nf_indty pq m0 Ps) HW =>
           match opt_case (ind_lookup Θ Ξ pq) with
-          | inright _ => inr (mgw_no_group pq)
+          | inright _ => inr (mdef_group_why_no_group pq)
           | inleft (exist _ D Hl) =>
               match Compare_dec.lt_dec m0 (ind_ndecl D) with
-              | right _ => inr (mgw_view (rf_name f0))
+              | right _ => inr (mdef_group_why_view (raw_fun_name f0))
               | left Hm0 =>
-                  match inspect (img_pats (List.repeat true (List.length (rf_nparams f0)))
+                  match inspect (img_pats (List.repeat true (List.length (raw_fun_nparams f0)))
                                    (List.firstn (ind_nu D) (List.map nf_to_exp Ps))) with
-                  | exist _ None _ => inr (mgw_uparams (rf_name f0))
+                  | exist _ None _ => inr (mdef_group_why_uparams (raw_fun_name f0))
                   | exist _ (Some Us) HUs =>
                       match mdef_members_dec Θ Ξ HΞ pq D Us Δ (f0 :: fs) with
-                      | inr (exist _ (f, e) _) => inr (mgw_function f e)
+                      | inr (exist _ (f, e) _) => inr (mdef_group_why_function f e)
                       | inl (exist _ ms Hms) =>
                           match PeanoNat.Nat.eq_dec (List.length ms) (List.length (ind_members D)) with
-                          | right _ => inr (mgw_count (List.length (ind_members D)) (List.length ms))
+                          | right _ => inr (mdef_group_why_count (List.length (ind_members D)) (List.length ms))
                           | left Hlen =>
                               match members_distinct_dec ms with
-                              | right _ => inr mgw_shared
+                              | right _ => inr mdef_group_why_shared
                               | left Hnd =>
                                   inl (exist _ (pq, m0, Ps, D, Us, ms)
                                          (mk_mdef_group _ _ _ _ _ _ _ _ _ _ _ (ex_intro _ i HZ) HW Hl Hm0 HUs Hms Hlen Hnd))
@@ -202,7 +202,7 @@ Definition mdef_group_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (�
                   end
               end
           end
-      | exist _ _ _ => inr (mgw_not_inductive (rf_name f0))
+      | exist _ _ _ => inr (mdef_group_why_not_inductive (raw_fun_name f0))
       end
   end.
 

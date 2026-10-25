@@ -610,8 +610,8 @@ Lemma udenote_abs : forall Θ Ξ Γ Δ U R, udenote Θ Ξ (Δ ++ Γ) None U R ->
 Proof.
   intros * Hu; inversion Hu; subst; cbn [gunit_abs].
   - match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => destruct sm; cbn in Hb; [ injection Hb as <- | discriminate ] end.
-    eapply un_body; [ rewrite <- app_assoc; eassumption | reflexivity ].
-  - rewrite <- ds_up_cat; eapply un_alias; [ rewrite <- app_assoc; eassumption | eassumption ].
+    eapply udenote_body; [ rewrite <- app_assoc; eassumption | reflexivity ].
+  - rewrite <- ds_up_cat; eapply udenote_alias; [ rewrite <- app_assoc; eassumption | eassumption ].
 Qed.
 
 Lemma sub_mod_compat_single : forall Γ X N, sub_mod_compat (Id,,N) Γ (ce_ass X :: Γ).
@@ -627,8 +627,8 @@ Lemma udenote_last : forall Θ Ξ Γ Δ X D R,
 Proof.
   intros * Hu; inversion Hu; subst.
   - match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => destruct sm; cbn in Hb; [| discriminate ]; injection Hb as <- end.
-    exists (ds_open Δ Φ Φx); split; [ eapply un_body; [ rewrite <- List.app_assoc in *; eassumption | reflexivity ] | reflexivity ].
-  - exists (ds_up Δ R'); split; [ eapply un_alias; [ rewrite <- List.app_assoc in *; eassumption | eassumption ] |].
+    exists (ds_open Δ Φ Φx); split; [ eapply udenote_body; [ rewrite <- List.app_assoc in *; eassumption | reflexivity ] | reflexivity ].
+  - exists (ds_up Δ R'); split; [ eapply udenote_alias; [ rewrite <- List.app_assoc in *; eassumption | eassumption ] |].
     rewrite ds_up_cat; reflexivity.
 Qed.
 
@@ -662,8 +662,8 @@ Proof.
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU) as (HΓ & HUs & _).
   pose proof (wf_gctx_closed _ _ _ (presup_unit_eq_ctx HU)) as Hc.
   destruct (udenote_beta _ _ Hc _ _ _ _ N _ HΓ HUs Hu) as (R' & Ha & Hu').
-  exists R'; split; [ eapply dn_app; [ apply dn_lit; exact Hu | exact Ha ] |].
-  split; [ apply dn_lit; exact Hu' | apply ds_is_mod_mod; eapply udenote_is_mod; exact Hu' ].
+  exists R'; split; [ eapply mdenote_app; [ apply mdenote_lit; exact Hu | exact Ha ] |].
+  split; [ apply mdenote_lit; exact Hu' | apply ds_is_mod_mod; eapply udenote_is_mod; exact Hu' ].
 Qed.
 
 
@@ -764,7 +764,7 @@ Lemma mdenote_apps : forall Θ Ξ Γ Ns H R R', mdenote Θ Ξ Γ H R -> ds_ats R
 Proof.
   induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha |- *; [ injection Ha as <-; exact Hm |].
   destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
-  eapply IH; [ eapply dn_app; eassumption | exact Ha ].
+  eapply IH; [ eapply mdenote_app; eassumption | exact Ha ].
 Qed.
 
 (** A stored module, a body or the module of a member of a group of
@@ -1107,10 +1107,10 @@ Lemma ds_unit_denote : forall Θ Ξ Rm, ⊢ᵍ Θ ⍮ Ξ -> ds_canon Θ Ξ Rm ->
 Proof.
   intros * Hg Hc Hm Γ Hx; destruct Rm as [A om | Δ Φ Φx | [| e Θ'] p T Φ Ns | ? ? ? ?]; cbn in Hm, Hc, Hx |- *; try contradiction.
   - exists (ds_open Δ Φ Φx); split; [| reflexivity ].
-    apply dn_lit; eapply un_body; [ exact Hx | reflexivity ].
+    apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ].
   - exact (filed_denote _ _ Hg _ _ _ Γ Ns (gc_loc_of_loc _ _ Hg _ _ _ Hc)).
   - destruct (filed_denote _ _ Hg _ _ _ ((e :: Θ') ++ Γ) Ns (gc_loc_of_loc _ _ Hg _ _ _ Hc)) as (R & HR & HRm).
-    exists (ds_up (e :: Θ') (ds_closed nil p T Φ Ns)); split; [ apply dn_lit; eapply un_alias; eassumption | reflexivity ].
+    exists (ds_up (e :: Θ') (ds_closed nil p T Φ Ns)); split; [ apply mdenote_lit; eapply udenote_alias; eassumption | reflexivity ].
 Qed.
 
 Theorem denote_exists :
@@ -1157,7 +1157,7 @@ Proof.
   all: try solve [
     match goal with HR : udenote _ _ _ None (gu_mk ?Δ' ?D) ?R
       |- (exists _, udenote _ _ _ _ (gu_mk ?Δ (md_alias (me_lit (gu_mk ?Δ' ?D)))) _) /\ _ =>
-        split; [ eexists; eapply un_alias; [ apply dn_lit; exact HR | apply ds_is_mod_mod, (udenote_is_mod _ _ _ _ _ _ HR) ] |];
+        split; [ eexists; eapply udenote_alias; [ apply mdenote_lit; exact HR | apply ds_is_mod_mod, (udenote_is_mod _ _ _ _ _ _ HR) ] |];
         change (gu_mk (Δ' ++ Δ) D) with (gunit_abs Δ (gu_mk Δ' D)); eexists; apply udenote_abs; exact HR
     end ].
   (* two module expressions denoting the same module *)
@@ -1208,7 +1208,7 @@ Proof.
   all: try solve [
     match goal with Hu : gc_unit _ _ ?H = Some ?TΦ |- _ =>
       destruct TΦ as [T Φ]; destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & _);
-      split; exists (ds_closed nil mp T Φ nil), (ds_closed nil mp T Φ nil); (split; [ apply dn_unit; assumption | reflexivity ])
+      split; exists (ds_closed nil mp T Φ nil), (ds_closed nil mp T Φ nil); (split; [ apply mdenote_unit; assumption | reflexivity ])
     end ].
   (* [β]: both sides denote one module *)
   all: try solve [
@@ -1222,7 +1222,7 @@ Proof.
   (* an alias with no parameter *)
   all: try solve [
     match goal with HE : mdenote _ _ _ ?E ?R, HEm : ds_mod ?R = Some ?Rm |- (exists _ _, mdenote _ _ _ (me_lit (gu_mk nil (md_alias ?E))) _ /\ _) /\ _ =>
-      split; [ exists (ds_up nil Rm), (ds_up nil Rm); split; [ apply dn_lit; econstructor; eassumption |]
+      split; [ exists (ds_up nil Rm), (ds_up nil Rm); split; [ apply mdenote_lit; econstructor; eassumption |]
              | exists R, Rm; split; assumption ];
       rewrite ds_up_nil; apply ds_is_mod_mod; exact (ds_mod_is_mod _ _ HEm)
     end ].
@@ -1529,14 +1529,14 @@ Section DescOk.
       closed telescope [T], in [Γ]. *)
   #[warnings="-cannot-define-projection"]
   Record args_ok (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_args_ok
-    { ao_rest : ctx
-    ; ao_filled : ctx
-    ; ao_split : T = ao_rest ++ ao_filled
-    ; ao_length : length ao_filled = length Ns
-    ; ao_ass : tele_ass ao_filled
-    ; ao_scoped : ctx_scoped 0 ao_filled
-    ; ao_wf : ⊢ Θ ⍮ Ξ ⍮ ao_filled ++ Γ
-    ; ao_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts ao_filled Id Ns) k = Some A ->
+    { args_ok_rest : ctx
+    ; args_ok_filled : ctx
+    ; args_ok_split : T = args_ok_rest ++ args_ok_filled
+    ; args_ok_length_field : length args_ok_filled = length Ns
+    ; args_ok_ass : tele_ass args_ok_filled
+    ; args_ok_scoped : ctx_scoped 0 args_ok_filled
+    ; args_ok_wf : ⊢ Θ ⍮ Ξ ⍮ args_ok_filled ++ Γ
+    ; args_ok_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts args_ok_filled Id Ns) k = Some A ->
         Θ ⍮ Ξ ⍮ Γ ⊢ N : A }.
 
   (** [desc_ok Γ R]: the description [R] is typed in [Γ].  A term is of a
@@ -1549,14 +1549,14 @@ Section DescOk.
       grows. *)
   Inductive desc_ok : ctx -> mdesc -> Prop :=
   (** A term: its type is a type, its δ-reduct of that type *)
-  | dok_term : forall Γ A om,
+  | desc_ok_term : forall Γ A om,
       (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) ->
       (forall M, om = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
       desc_ok Γ (ds_term A om)
   (** An open module: a well-formed expanded body whose module parts of
       entries (of modules and of definitions with a module part) denote
       typed descriptions, and a well-formed written body *)
-  | dok_open : forall Γ Δ Φw Φ,
+  | desc_ok_open : forall Γ Δ Φw Φ,
       ⊢ Θ ⍮ Ξ ⍮ body_ctx Φ ++ Δ ++ Γ ->
       gm_noopen Φ ->
       (forall y Φ0 E U, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
@@ -1566,7 +1566,7 @@ Section DescOk.
       desc_ok Γ (ds_open Δ Φw Φ)
   (** A closed module: stored at a location of a past global context, given
       typed arguments *)
-  | dok_closed : forall Γ Θ' T Φ Ns Θ0 Ξ0 p,
+  | desc_ok_closed : forall Γ Θ' T Φ Ns Θ0 Ξ0 p,
       ⊢ᵍ Θ0 ⍮ Ξ0 -> gc_sub Θ0 Ξ0 Θ Ξ -> loc Θ0 Ξ0 p T Φ ->
       tele_ass T -> ctx_scoped 0 T -> ⊢ Θ ⍮ Ξ ⍮ T ->
       ⊢ Θ ⍮ Ξ ⍮ Θ' ++ Γ ->
@@ -1584,7 +1584,7 @@ Section DescOk.
       module part's outermost parameter; it is no constraint on stored
       entries, whose two parts are checked apart.  Nothing else ties
       them. *)
-  | dok_dm : forall Γ Θd A M Rm,
+  | desc_ok_dm : forall Γ Θd A M Rm,
       ⊢ Θ ⍮ Ξ ⍮ Θd ++ Γ ->
       tele_ass Θd ->
       (exists i, Θ ⍮ Ξ ⍮ Θd ++ Γ ⊢ A : Typeω@i) ->

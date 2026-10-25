@@ -93,9 +93,9 @@ Definition glu_lvl (n : nat) (Γ : ctx) (M : exp) (m : domain) : Prop :=
     Δ ⊢ M[φ]ʷ ≈ L : Level@n /\ nf_lvl_ws n Δ L.
 
 Record level_glu_exp (n : nat) (U : typ) (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop := mk_level_glu_exp
-  { lge_typ : Γ ⊢ A ≈ Level@n : U
-  ; lge_per : Dom m ≈ m ∈ per_lvl_at n
-  ; lge_lvl : glu_lvl n Γ M m }.
+  { level_glu_exp_typ : Γ ⊢ A ≈ Level@n : U
+  ; level_glu_exp_per : Dom m ≈ m ∈ per_lvl_at n
+  ; level_glu_exp_lvl : glu_lvl n Γ M m }.
 
 Definition level_glu_exp_pred (n : nat) (U : typ) : glu_exp_pred := level_glu_exp n U.
 
@@ -188,10 +188,10 @@ Transparent univ_glu_typ_pred.
     the same type. *)
 #[warnings="-cannot-define-projection"]
 Record suniv_glu_typ (l : domain) (U : typ) (Γ : ctx) (A : typ) : Prop := mk_suniv_glu_typ
-  { sgt_lvl : exp
-  ; sgt_sort : nat
-  ; sgt_glu : glu_lvl sgt_sort Γ sgt_lvl l
-  ; sgt_eq : Γ ⊢ A ≈ Type⟨sgt_lvl⟩ : U }.
+  { suniv_glu_typ_lvl : exp
+  ; suniv_glu_typ_sort : nat
+  ; suniv_glu_typ_glu : glu_lvl suniv_glu_typ_sort Γ suniv_glu_typ_lvl l
+  ; suniv_glu_typ_eq : Γ ⊢ A ≈ Type⟨suniv_glu_typ_lvl⟩ : U }.
 
 Definition suniv_glu_typ_pred (l : domain) (U : typ) : glu_typ_pred := suniv_glu_typ l U.
 
@@ -214,12 +214,12 @@ Definition exps_eq_at (Δ : ctx) (T : ctx) (Xs Ys : list exp) : Prop :=
 Record glu_params_top (Dh : ind_decl) (Mh : imember) (Γ : ctx) (Ps : list exp) (as' : list domain) : Prop :=
   mk_glu_params_top
   { (** As many parameters as the member has *)
-    gpt_len : List.length Ps = im_np Dh Mh
+    glu_params_top_len : List.length Ps = im_np Dh Mh
     (** Each typed at the member's telescope *)
-  ; gpt_typ : forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params Dh Mh) Id Ps) k = Some A ->
+  ; glu_params_top_typ : forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params Dh Mh) Id Ps) k = Some A ->
       Γ ⊢ P : A
     (** At every weakening, equal to the readback of the values *)
-  ; gpt_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps as' at List.rev (im_params Dh Mh) in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
+  ; glu_params_top_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps as' at List.rev (im_params Dh Mh) in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
       exps_eq_at Δ (im_params Dh Mh) (List.map (fun P => P[φ]ʷ) Ps) (List.map nf_to_exp Ms) }.
 
 (** The non-uniform parameters [Ns] of the member [Mk] (the member [k] of
@@ -228,11 +228,11 @@ Record glu_params_top (Dh : ind_decl) (Mh : imember) (Γ : ctx) (Ps : list exp) 
 Record glu_nparams (k : nat) (Mk : imember) (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (Γ : ctx) (Us Ns : list exp) (ns : list domain) : Prop := mk_glu_nparams
   { (** One term per non-uniform parameter *)
-    gnp_len : List.length Ns = im_nn Mk
+    glu_nparams_len : List.length Ns = im_nn Mk
     (** One value per non-uniform parameter *)
-  ; gnp_vals_len : List.length ns = im_nn Mk
+  ; glu_nparams_vals_len : List.length ns = im_nn Mk
     (** Each term glued to its value at its type *)
-  ; gnp_glu : forall j N A n, List.nth_error Ns j = Some N ->
+  ; glu_nparams_glu : forall j N A n, List.nth_error Ns j = Some N ->
       List.nth_error (tele_insts (im_nparams Mk) (sb_of_list Id Us) Ns) j = Some A ->
       List.nth_error ns j = Some n -> Γ ⊢ N : A ® n ∈ NEl k j (List.firstn j ns) }.
 
@@ -265,14 +265,14 @@ Record ind_glu_comps (p : qname) (D : ind_decl) (ups : list domain)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred)
     (Γ : ctx) (Us : list exp) : Prop := mk_ind_glu_comps
   { (** A non-uniform parameter's type, after glued ones before it *)
-    igc_nparams : forall m Mm k Ns ns T, ind_member D m = Some Mm -> List.length ns = k -> k < im_nn Mm ->
+    ind_glu_comps_nparams : forall m Mm k Ns ns T, ind_member D m = Some Mm -> List.length ns = k -> k < im_nn Mm ->
      List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) k = Some T ->
      (forall j N T' n, j < k -> List.nth_error Ns j = Some N ->
         List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) j = Some T' ->
         List.nth_error ns j = Some n -> Γ ⊢ N : T' ® n ∈ NEl m j (List.firstn j ns)) ->
      tele_prefix_rel (canon_nparams_rel D ups m) k ns ns -> Γ ⊢ T ® NP m k ns
     (** A non-recursive argument's type, after glued ones before it *)
-  ; igc_args : forall m Mm c gs gs1 A0 gs2 Ns ns As vs T, ind_member D m = Some Mm ->
+  ; ind_glu_comps_args : forall m Mm c gs gs1 A0 gs2 Ns ns As vs T, ind_member D m = Some Mm ->
      ind_con Mm c = Some gs -> gs = gs1 ++ ca_arg A0 :: gs2 ->
      glu_nparams m Mm NEl Γ Us Ns ns -> tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ns ns ->
      List.length vs = List.length gs1 ->
@@ -285,7 +285,7 @@ Record ind_glu_comps (p : qname) (D : ind_decl) (ups : list domain)
        (nonrec_arg_vals gs1 vs) ->
      Γ ⊢ T ® AP m ns c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vs)
     (** A recursive argument's type, along its shape *)
-  ; igc_recs : forall m Mm c gs gs1 t gs2 Ns ns As vs T, ind_member D m = Some Mm ->
+  ; ind_glu_comps_recs : forall m Mm c gs gs1 t gs2 Ns ns As vs T, ind_member D m = Some Mm ->
      ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
      glu_nparams m Mm NEl Γ Us Ns ns -> tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ns ns ->
      List.length vs = List.length gs1 ->
@@ -461,15 +461,15 @@ Record ind_glu_exp (p : qname) (D : ind_decl) (ups ns : list domain)
     (k : nat) (Mk : imember) (elem_rel : relation domain) (U : typ) (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop :=
   mk_ind_glu_exp
   { (** [M] is of type [A] *)
-    ige_typ : Γ ⊢ M : A
+    ind_glu_exp_typ : Γ ⊢ M : A
     (** [m] is related to itself *)
-  ; ige_per : Dom m ≈ m ∈ elem_rel
+  ; ind_glu_exp_per : Dom m ≈ m ∈ elem_rel
     (** The syntactic parameters of [A] *)
-  ; ige_params : list exp
+  ; ind_glu_exp_params : list exp
     (** [A] is the member's type at them *)
-  ; ige_at : ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk U Γ A ige_params
+  ; ind_glu_exp_at : ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk U Γ A ind_glu_exp_params
     (** At every weakening and equal instance, [M] is glued to [m] *)
-  ; ige_glu : forall Δ φ Ps', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (im_params D Mk) (List.map (fun P => P[φ]ʷ) ige_params) Ps' ->
+  ; ind_glu_exp_glu : forall Δ φ Ps', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (im_params D Mk) (List.map (fun P => P[φ]ʷ) ind_glu_exp_params) Ps' ->
       ind_glu_elem p D ups NEl AEl DP DEl k Δ (List.firstn (ind_nu D) Ps') (List.skipn (ind_nu D) Ps') M[φ]ʷ m }.
 
 (** The element predicate of the member [k]: [ind_glu_exp]. *)
@@ -592,19 +592,19 @@ Definition record_glu_exp_pred (p : qname) (R : record_decl) (ns : list domain)
     [suniv_glu_exp_pred] are these at [glu_univ_typ]. *)
 Record univ_glu_exp (U : typ) (j : nat) (univ_typ : domain -> glu_typ_pred)
   (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop := mk_univ_glu_exp
-  { uge_typ : Γ ⊢ M : A
-  ; uge_eq : Γ ⊢ A ≈ Typeω@j : U
-  ; uge_glu : Γ ⊢ M ® univ_typ m }.
+  { univ_glu_exp_typ : Γ ⊢ M : A
+  ; univ_glu_exp_eq : Γ ⊢ A ≈ Typeω@j : U
+  ; univ_glu_exp_glu : Γ ⊢ M ® univ_typ m }.
 
 Definition univ_glu_exp_pred' (U : typ) (j : nat) (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
   univ_glu_exp U j univ_typ.
 
 Record suniv_glu_exp (U : typ) (l : domain) (univ_typ : domain -> glu_typ_pred)
   (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop := mk_suniv_glu_exp
-  { sge_typ : Γ ⊢ M : A
-  ; sge_univ : Γ ⊢ A ® suniv_glu_typ_pred l U
-  ; sge_glu : Γ ⊢ M ® univ_typ m
-  ; sge_read : forall Δ φ W, Δ ⊢ᵏ φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ }.
+  { suniv_glu_exp_typ : Γ ⊢ M : A
+  ; suniv_glu_exp_univ : Γ ⊢ A ® suniv_glu_typ_pred l U
+  ; suniv_glu_exp_glu : Γ ⊢ M ® univ_typ m
+  ; suniv_glu_exp_read : forall Δ φ W, Δ ⊢ᵏ φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ }.
 
 Definition suniv_glu_exp_pred' (U : typ) (l : domain) (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
   suniv_glu_exp U l univ_typ.
@@ -768,10 +768,10 @@ Definition glu_empty : domain -> glu_typ_pred := fun _ _ _ => False.
 #[warnings="-cannot-define-projection"]
 Record glu_typ_at (G : glu_typ_pred -> glu_exp_pred -> domain -> Prop) (x : domain) (Γ : ctx) (A : typ) : Prop :=
   mk_glu_typ_at
-  { gta_typ : glu_typ_pred
-  ; gta_exp : glu_exp_pred
-  ; gta_elem : G gta_typ gta_exp x
-  ; gta_glu : Γ ⊢ A ® gta_typ }.
+  { glu_typ_at_typ : glu_typ_pred
+  ; glu_typ_at_exp : glu_exp_pred
+  ; glu_typ_at_elem : G glu_typ_at_typ glu_typ_at_exp x
+  ; glu_typ_at_glu : Γ ⊢ A ® glu_typ_at_typ }.
 
 Definition glu_rec_at (a : nat) (lower : nat -> nat -> domain -> glu_typ_pred) (inner : nat -> domain -> glu_typ_pred)
   : uidx -> domain -> glu_typ_pred :=
@@ -1069,28 +1069,28 @@ End GluingInduction.
 Record glu_elem_bot i a Γ A M m : Prop := glu_elem_bot_make
   { P : glu_typ_pred
   ; El : glu_exp_pred
-  ; geb_wf : Γ ⊢ M : A
-  ; geb_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
-  ; geb_typ : Γ ⊢ A ® P
-  ; geb_per : Dom m ≈ m ∈ per_bot
-  ; geb_read : forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : A[φ]ʷ }.
+  ; glu_elem_bot_wf : Γ ⊢ M : A
+  ; glu_elem_bot_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+  ; glu_elem_bot_typ : Γ ⊢ A ® P
+  ; glu_elem_bot_per : Dom m ≈ m ∈ per_bot
+  ; glu_elem_bot_read : forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : A[φ]ʷ }.
 Hint Constructors glu_elem_bot : mctt.
 
 #[warnings="-cannot-define-projection"]
 Record glu_elem_top i a Γ A M m : Prop := glu_elem_top_make
   { P : glu_typ_pred
   ; El : glu_exp_pred
-  ; get_wf : Γ ⊢ M : A
-  ; get_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
-  ; get_typ : Γ ⊢ A ® P
-  ; get_per : Dom ⇓ a m ≈ ⇓ a m ∈ per_top
-  ; get_read : forall Δ φ w, Δ ⊢ᵏ φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]ʷ ≈ w : A[φ]ʷ }.
+  ; glu_elem_top_wf : Γ ⊢ M : A
+  ; glu_elem_top_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+  ; glu_elem_top_typ : Γ ⊢ A ® P
+  ; glu_elem_top_per : Dom ⇓ a m ≈ ⇓ a m ∈ per_top
+  ; glu_elem_top_read : forall Δ φ w, Δ ⊢ᵏ φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]ʷ ≈ w : A[φ]ʷ }.
 Hint Constructors glu_elem_top : mctt.
 
 Record glu_typ_top (i : uidx) a Γ A : Prop := glu_typ_top_make
-  { gtt_wf : Γ ⊢ A : Typeω@(ulvl i)
-  ; gtt_per : Dom a ≈ a ∈ per_top_typ
-  ; gtt_read : forall Δ φ A', Δ ⊢ᵏ φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(ulvl i) }.
+  { glu_typ_top_wf : Γ ⊢ A : Typeω@(ulvl i)
+  ; glu_typ_top_per : Dom a ≈ a ∈ per_top_typ
+  ; glu_typ_top_read : forall Δ φ A', Δ ⊢ᵏ φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(ulvl i) }.
 Hint Constructors glu_typ_top : mctt.
 
 #[warnings="-cannot-define-projection"]
@@ -1098,9 +1098,9 @@ Record glu_rel_typ_with_sub (i : nat) Δ A σ ρ : Prop := mk_glu_rel_typ_with_s
   { a : domain
   ; P : glu_typ_pred
   ; El : glu_exp_pred
-  ; grts_eval : ⟦ A ⟧ ρ ↘ a
-  ; grts_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
-  ; grts_typ : Δ ⊢ A[σ] ® P }.
+  ; glu_rel_typ_with_sub_eval : ⟦ A ⟧ ρ ↘ a
+  ; glu_rel_typ_with_sub_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+  ; glu_rel_typ_with_sub_typ : Δ ⊢ A[σ] ® P }.
 
 #[warnings="-cannot-define-projection"]
 Record glu_rel_exp_with_sub (i : nat) Δ M A σ ρ : Prop := mk_glu_rel_exp_with_sub
@@ -1108,10 +1108,10 @@ Record glu_rel_exp_with_sub (i : nat) Δ M A σ ρ : Prop := mk_glu_rel_exp_with
   ; m : domain
   ; P : glu_typ_pred
   ; El : glu_exp_pred
-  ; gres_eval_typ : ⟦ A ⟧ ρ ↘ a
-  ; gres_eval : ⟦ M ⟧ ρ ↘ m
-  ; gres_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
-  ; gres_exp : Δ ⊢ M[σ] : A[σ] ® m ∈ El }.
+  ; glu_rel_exp_with_sub_eval_typ : ⟦ A ⟧ ρ ↘ a
+  ; glu_rel_exp_with_sub_eval : ⟦ M ⟧ ρ ↘ m
+  ; glu_rel_exp_with_sub_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+  ; glu_rel_exp_with_sub_exp : Δ ⊢ M[σ] : A[σ] ® m ∈ El }.
 
 Definition nil_glu_sub_pred : glu_sub_pred :=
   fun Δ σ ρ => Δ ⊢ˢ σ : ⋅.
@@ -1242,12 +1242,12 @@ Definition glu_rel_ctx Γ : Prop := exists Sb, EG Γ ∈ glu_ctx_env ↘ Sb.
     in the context. *)
 #[warnings="-cannot-define-projection"]
 Record glu_rel_exp Γ M A : Prop := mk_glu_rel_exp
-  { gre_sb : glu_sub_pred
-  ; gre_ctx : EG Γ ∈ glu_ctx_env ↘ gre_sb
-  ; gre_lvl : nat
-  ; gre_body : forall Δ σ ρ,
-      Δ ⊢ˢ σ ® ρ ∈ gre_sb ->
-      glu_rel_exp_with_sub gre_lvl Δ M A σ ρ }.
+  { glu_rel_exp_sb : glu_sub_pred
+  ; glu_rel_exp_ctx : EG Γ ∈ glu_ctx_env ↘ glu_rel_exp_sb
+  ; glu_rel_exp_lvl : nat
+  ; glu_rel_exp_body : forall Δ σ ρ,
+      Δ ⊢ˢ σ ® ρ ∈ glu_rel_exp_sb ->
+      glu_rel_exp_with_sub glu_rel_exp_lvl Δ M A σ ρ }.
 
 (** There is no gluing judgment for substitutions, so the fundamental theorem
     has two parts. A gluing predicate is indexed by a value, and
@@ -1375,12 +1375,12 @@ Section Fixed_GCtx.
 Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_views_self
   { (** Each view's uniform arguments are its [IsS] instance with the
         members sent to the group's own type formers ([grp_sb]) *)
-    gvs_link : forall mp, ind_mpath D 0 = Some mp ->
+    glu_views_self_link : forall mp, ind_mpath D 0 = Some mp ->
       forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
     (** Each instance argument is glued at the container's uniform
         telescope, over the members as variables *)
-  ; gvs_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  ; glu_views_self_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error (IsS k) j = Some I ->
       List.nth_error (tele_insts (ind_uparams Dq) Id (IsS k)) j = Some T ->
       grp_sctx D ⊩ I : T }.
@@ -1389,24 +1389,24 @@ Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_vi
     (see the section header). *)
 Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
 { (** Each member's parameters are a glued context *)
-  gid_params : forall k Mk, ind_member D k = Some Mk -> ⊩ im_params D Mk
+  glu_ind_decl_params : forall k Mk, ind_member D k = Some Mk -> ⊩ im_params D Mk
 (** The sort's level is a glued level over the uniform parameters *)
-; gid_lvl : exists n, ind_uparams D ⊩ ind_sort_lvl (ind_sort D) : Level@n
+; glu_ind_decl_lvl : exists n, ind_uparams D ⊩ ind_sort_lvl (ind_sort D) : Level@n
 (** And over each member's parameters *)
-; gid_lvlP : forall k Mk, ind_member D k = Some Mk ->
+; glu_ind_decl_lvlP : forall k Mk, ind_member D k = Some Mk ->
     exists n, im_params D Mk ⊩ (ind_sort_lvl (ind_sort D))[wk_shiftn (im_nn Mk)]ʷ : Level@n
 (** Each non-uniform parameter is a glued type of the sort, over those
     before it *)
-; gid_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
+; glu_ind_decl_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
     nparams_prefix Mk j ++ ind_uparams D ⊩ A : (ind_sort D)[wk_shiftn j]ʷ
 (** Each non-recursive argument is a glued type of the sort, over the
     non-recursive arguments before it *)
-; gid_arg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; glu_ind_decl_arg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     List.nth_error (cargs_nonrec gs) j = Some A ->
     nonrec_args_prefix gs j ++ im_params D Mk ⊩ A : (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ
 (** Each parameter of a recursive argument's shape is glued at its
     member's telescope *)
-; gid_rec : forall k Mk c gs gs1 t gs2 Mj m P T, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; glu_ind_decl_rec_field : forall k Mk c gs gs1 t gs2 Mj m P T, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
     List.nth_error (ptyp_ps t) m = Some P ->
     List.nth_error (tele_insts (im_nparams Mj)
@@ -1415,17 +1415,17 @@ Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
     ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk ⊩ P : T
 (** The domains of a recursive argument's shape, each over those before
     it, are types of the sort. *)
-; gid_dom : forall k Mk c gs gs1 t gs2 j B, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; glu_ind_decl_dom : forall k Mk c gs gs1 t gs2 j B, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error (ptyp_doms t) j = Some B ->
     doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
       ⊩ B : (ind_sort D)[wk_shiftn (j + List.length (cargs_nonrec gs1) + im_nn Mk)]ʷ
 (** The contexts of a shape's domains are glued *)
-; gid_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; glu_ind_decl_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
     ⊩ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
 (** The uniform arguments of a view's container, each at the instance of
     the container's telescope, over the group's members as variables. *)
-; gid_view_self : exists IsS, glu_views_self D IsS
+; glu_ind_decl_view_self : exists IsS, glu_views_self D IsS
 }.
 
 End Fixed_GCtx.
@@ -1436,9 +1436,9 @@ End Fixed_GCtx.
     declarations glue there, and so does a member of one of its stored
     bodies that is an axiom or an abstract definition, at its stored type. *)
 Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { gem_emb : Emb Θ1 Ξ1 Θ2 Ξ2
-  ; gem_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
-  ; gem_glob : forall p T Φ x Φ0 b pv A oM Γ,
+  { glu_emb_emb : Emb Θ1 Ξ1 Θ2 Ξ2
+  ; glu_emb_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
+  ; glu_emb_glob : forall p T Φ x Φ0 b pv A oM Γ,
       loc Θ1 Ξ1 p T Φ ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv A oM)) ->
       (if b then oM else None) = None ->
@@ -1459,12 +1459,12 @@ Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
 (** A universe at one target, as its two cases: large, or small at a level
     that glues. *)
 Record glu_is_univ_at (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U : typ) : Prop := mk_glu_is_univ_at
-  { giu_ctx : @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ
-  ; giu_univ : (exists i : nat, U = Typeω@i) \/
+  { glu_is_univ_at_ctx : @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ
+  ; glu_is_univ_at_univ : (exists i : nat, U = Typeω@i) \/
                (exists L (n : nat), U = Type⟨L⟩ /\ @glu_rel_exp (gc_mk Θ2 Ξ2) Γ L (Level@n)) }.
 
-Arguments giu_ctx {Θ2 Ξ2 Γ U}.
-Arguments giu_univ {Θ2 Ξ2 Γ U}.
+Arguments glu_is_univ_at_ctx {Θ2 Ξ2 Γ U}.
+Arguments glu_is_univ_at_univ {Θ2 Ξ2 Γ U}.
 
 Definition glu_ctx Θ Ξ Γ : Prop :=
   forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ.

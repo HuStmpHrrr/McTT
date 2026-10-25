@@ -98,13 +98,13 @@ Definition binders (S : list ent) : nat := fold_right (fun e n => ent_binders e 
     [k] core binders inside it and [n] outside. *)
 #[warnings="-cannot-define-projection"]
 Record bound (S : list ent) (x : string) (k : nat) (e : ent) (n : nat) : Prop := mk_bound
-  { bd_inner : list ent
-  ; bd_outer : list ent
-  ; bd_split : S = bd_inner ++ e :: bd_outer
-  ; bd_name : ent_name e = Some x
-  ; bd_first : ~ In x (names bd_inner)
-  ; bd_inner_binders : k = binders bd_inner
-  ; bd_outer_binders : n = binders bd_outer }.
+  { bound_inner : list ent
+  ; bound_outer : list ent
+  ; bound_split : S = bound_inner ++ e :: bound_outer
+  ; bound_name : ent_name e = Some x
+  ; bound_first : ~ In x (names bound_inner)
+  ; bound_inner_binders : k = binders bound_inner
+  ; bound_outer_binders : n = binders bound_outer }.
 
 (** A frame may bind a name once. *)
 Definition fresh (x : string) (F : list ent) : Prop := ~ In x (names F).
@@ -141,10 +141,10 @@ Definition open_mod (E : modexp) (oc : option string) : modexp :=
 (** As a term.  A module alias is not one.  A leading open's entry needs
     no weakening: its module is closed. *)
 Inductive den_term (k n : nat) : ent -> exp -> Prop :=
-| dt_var : forall x, den_term k n (en_var x) #k
-| dt_tvar : forall x, den_term k n (en_tvar x) #k
-| dt_mem : forall x p, den_term k n (en_mem x p) (apps (qname_term p) (vars_desc k n))
-| dt_open : forall x E c, den_term k n (en_open x E (Some c)) (a_mem E c).
+| den_term_var : forall x, den_term k n (en_var x) #k
+| den_term_tvar : forall x, den_term k n (en_tvar x) #k
+| den_term_mem : forall x p, den_term k n (en_mem x p) (apps (qname_term p) (vars_desc k n))
+| den_term_open : forall x E c, den_term k n (en_open x E (Some c)) (a_mem E c).
 
 (** As a module expression.  A variable that may hold a module is a module
     slot, which the core rejects if it holds a term; a term binder is the
@@ -307,9 +307,9 @@ with selm : list ent -> Cst.obj -> modexp -> Prop :=
     scope of the value. *)
 with stfields : list ent -> list (string * Cst.obj) -> list (string * exp) -> Prop :=
 (** No field *)
-| stf_nil : forall S, stfields S nil nil
+| stfields_nil : forall S, stfields S nil nil
 (** The first field, its name and its value, then the rest *)
-| stf_cons : forall S y oM fs M Ms,
+| stfields_cons : forall S y oM fs M Ms,
     sel S oM M -> stfields S fs Ms -> stfields S ((y, oM) :: fs) ((y, M) :: Ms)
 
 with sbrs : list ent -> list (string * list string * Cst.obj) -> list (string * nat * exp) -> Prop :=
@@ -323,8 +323,8 @@ with sbrs : list ent -> list (string * list string * Cst.obj) -> list (string * 
     branches. *)
 with sblocks : list ent -> list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj)) ->
     list eblock -> Prop :=
-| sbk_nil : forall S, sblocks S nil nil
-| sbk_cons : forall S k xs oA bs bks oZ A Bs Bks,
+| sblocks_nil : forall S, sblocks S nil nil
+| sblocks_cons : forall S k xs oA bs bks oZ A Bs Bks,
     sbinders S nil xs oZ ->
     sel (vents (List.map fst xs) ++ S) oA A -> sbrs S bs Bs -> sblocks S bks Bks ->
     sblocks S ((k, xs, oA, bs) :: bks) (eb_mk (List.length xs) oZ A Bs :: Bks)
@@ -333,24 +333,24 @@ with sblocks : list ent -> list (bool * list (string * option Cst.obj) * Cst.obj
     [pre], carry no type but the last, whose type, if written, is [oZ],
     read under the binders before it. *)
 with sbinders : list ent -> list string -> list (string * option Cst.obj) -> option exp -> Prop :=
-| sbd_nil : forall S pre, sbinders S pre nil None
-| sbd_last_bare : forall S pre x, sbinders S pre ((x, None) :: nil) None
-| sbd_last_typed : forall S pre x o Z,
+| sbinders_nil : forall S pre, sbinders S pre nil None
+| sbinders_last_bare : forall S pre x, sbinders S pre ((x, None) :: nil) None
+| sbinders_last_typed : forall S pre x o Z,
     sel (vents pre ++ S) o Z -> sbinders S pre ((x, Some o) :: nil) (Some Z)
-| sbd_cons : forall S pre x y xs oZ,
+| sbinders_cons : forall S pre x y xs oZ,
     sbinders S (pre ++ x :: nil) (y :: xs) oZ -> sbinders S pre ((x, None) :: y :: xs) oZ
 
 (** Each parameter's type sees the earlier parameters. *)
 with sparams : list ent -> list (string * Cst.obj) -> list (string * typ) -> Prop :=
-| sp_nil : forall S, sparams S nil nil
-| sp_cons : forall S x oA ps A tys,
+| sparams_nil : forall S, sparams S nil nil
+| sparams_cons : forall S x oA ps A tys,
     sel S oA A ->
     sparams (en_tvar x :: S) ps tys ->
     sparams S ((x, oA) :: ps) ((x, A) :: tys)
 
 (** A local module: its parameters, then its definition under them. *)
 with sunit : list ent -> list (string * Cst.obj) -> Cst.mdef -> gunit -> Prop :=
-| su_intro : forall S ps md tys D,
+| sunit_intro : forall S ps md tys D,
     NoDup (map fst ps) ->
     sparams S ps tys ->
     sdef (pents ps ++ S) md D ->
@@ -399,15 +399,15 @@ Fixpoint split_pis (o : Cst.obj) : (list (string * Cst.obj) * Cst.obj)%type :=
   end.
 
 Inductive srargs : list ent -> list (string * Cst.obj) -> list (string * exp) -> Prop :=
-| sra_nil : forall S, srargs S nil nil
-| sra_cons : forall S y oA args A args',
+| srargs_nil : forall S, srargs S nil nil
+| srargs_cons : forall S y oA args A args',
     sel S oA A -> srargs (en_tvar y :: S) args args' ->
     srargs S ((y, oA) :: args) ((y, A) :: args').
 
 Inductive srcons (S : list ent) :
     list (string * list (string * Cst.obj)) -> list (string * list (string * exp)) -> Prop :=
-| src_nil : srcons S nil nil
-| src_cons : forall c args cs args' cs',
+| srcons_nil : srcons S nil nil
+| srcons_cons : forall c args cs args' cs',
     srargs S args args' -> srcons S cs cs' ->
     srcons S ((c, args) :: cs) ((c, args') :: cs').
 
@@ -444,8 +444,8 @@ Definition fun_names (fs : list (string * list (string * Cst.obj) * Cst.obj * li
 
 Inductive sfuns (S : list ent) :
     list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj)) -> list raw_fun -> Prop :=
-| sf_nil : sfuns S nil nil
-| sf_cons : forall f ys z oZ oA bs fs ytys Z A Bs rfs,
+| sfuns_nil : sfuns S nil nil
+| sfuns_cons : forall f ys z oZ oA bs fs ytys Z A Bs rfs,
     NoDup (map fst (ys ++ (z, oZ) :: nil)) ->
     sparams S ys ytys ->
     sel (pents ys ++ S) oZ Z ->
@@ -608,8 +608,8 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
       (cc_record x pv (ptele tys) Srt fs' bcs :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
-| scs_nil : forall ch O F, scmds fp ch O F nil nil
-| scs_cons : forall ch O F c F' c' cs cs',
+| scmds_nil : forall ch O F, scmds fp ch O F nil nil
+| scmds_cons : forall ch O F c F' c' cs cs',
     scmd fp ch O F c F' c' ->
     scmds fp ch O F' cs cs' ->
     scmds fp ch O F (c :: cs) (c' ++ cs').
@@ -627,18 +627,18 @@ with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> 
 
     The unit's member chain is [nil]. *)
 Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
-| sl_nil : forall L, slead L nil L nil
-| sl_import : forall L fq cs L' lds,
+| slead_nil : forall L, slead L nil L nil
+| slead_import : forall L fq cs L' lds,
     slead (en_unit fq :: L) cs L' lds ->
     slead L (Cst.c_import fq :: cs) L' (cc_load fq :: lds)
-| sl_open : forall L fq ip args its o E cs L' lds,
+| slead_open : forall L fq ip args its o E cs L' lds,
     itarget fq ip args = Some o ->
     selm L o E ->
     slead (open_ents E its ++ L) cs L' lds ->
     slead L (Cst.c_open fq ip args its :: cs) L' lds.
 
 Inductive elab_spec : Cst.prog -> cunit -> Prop :=
-| es_intro : forall leads fp ps cs L lds tys ccs,
+| elab_spec_intro : forall leads fp ps cs L lds tys ccs,
     slead nil leads L lds ->
     NoDup (map fst ps) ->
     sparams L ps tys ->

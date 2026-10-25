@@ -53,7 +53,7 @@ Definition nat_sort : typ := a_univ (a_llit (0, 0)).
 
 (** The builtin bindings of a run: the path of the type bound as the
     natural numbers, if one is. *)
-Record builtins : Set := mk_builtins { bt_nat : option qname }.
+Record builtins : Set := mk_builtins { builtins_nat : option qname }.
 
 Definition bt_empty : builtins := mk_builtins None.
 
@@ -62,20 +62,20 @@ Definition bt_empty : builtins := mk_builtins None.
     is a condition on its own, not part of typing. *)
 #[warnings="-cannot-define-projection"]
 Record nat_binding_ok (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop := mk_nat_binding_ok
-  { nbo_decl : ind_decl
-  ; nbo_zero : string
-  ; nbo_succ : string
-  ; nbo_lookup : ind_lookup Θ Ξ p = Some nbo_decl
-  ; nbo_shape : nat_shape nbo_decl = Some (nbo_zero, nbo_succ)
-  ; nbo_sort : ind_sort nbo_decl = nat_sort }.
+  { nat_binding_ok_decl : ind_decl
+  ; nat_binding_ok_zero : string
+  ; nat_binding_ok_succ : string
+  ; nat_binding_ok_lookup : ind_lookup Θ Ξ p = Some nat_binding_ok_decl
+  ; nat_binding_ok_shape : nat_shape nat_binding_ok_decl = Some (nat_binding_ok_zero, nat_binding_ok_succ)
+  ; nat_binding_ok_sort : ind_sort nat_binding_ok_decl = nat_sort }.
 
 Definition builtins_wf (Θ : gdeps) (Ξ : gstack) (B : builtins) : Prop :=
-  forall p, bt_nat B = Some p -> nat_binding_ok Θ Ξ p.
+  forall p, builtins_nat B = Some p -> nat_binding_ok Θ Ξ p.
 
 (** What a literal stands for at a state: the bound type and its
     constructors, the one without arguments first. *)
 Definition nat_view (Θ : gdeps) (Ξ : gstack) (B : builtins) : option (qname * string * string) :=
-  match bt_nat B with
+  match builtins_nat B with
   | Some p =>
       match ind_lookup Θ Ξ p with
       | Some D =>
@@ -110,12 +110,12 @@ Inductive lerr : Set :=
     type.  A unit merges the record of each unit it imports into its own,
     and a [builtin] command merges the binding it makes. *)
 Definition bt_merge (B1 B2 : builtins) : option builtins :=
-  match bt_nat B1, bt_nat B2 with
+  match builtins_nat B1, builtins_nat B2 with
   | None, o | o, None => Some (mk_builtins o)
   | Some p1, Some p2 => if qname_eq_dec p1 p2 then Some (mk_builtins (Some p1)) else None
   end.
 
-Lemma bt_eta : forall B, mk_builtins (bt_nat B) = B.
+Lemma bt_eta : forall B, mk_builtins (builtins_nat B) = B.
 Proof. intros []; reflexivity. Qed.
 
 Lemma bt_merge_empty_l : forall B, bt_merge bt_empty B = Some B.
@@ -146,7 +146,7 @@ Qed.
 
 (** What a merge has: the bindings of both sides. *)
 Lemma bt_merge_inv : forall B1 B2 B p,
-    bt_merge B1 B2 = Some B -> bt_nat B = Some p -> bt_nat B1 = Some p \/ bt_nat B2 = Some p.
+    bt_merge B1 B2 = Some B -> builtins_nat B = Some p -> builtins_nat B1 = Some p \/ builtins_nat B2 = Some p.
 Proof.
   intros [[p1 |]] [[p2 |]] B p H Hp; unfold bt_merge in H; cbn in H;
     try (destruct (qname_eq_dec p1 p2)); try discriminate; injection H as <-; cbn in Hp; auto.
@@ -167,7 +167,7 @@ Definition bt_bind_nat (B : builtins) (p : qname) : option builtins := bt_merge 
     A record only gains bindings ([bt_merge_le]): those of an earlier point
     of a run are below those of a later one ([bt_le]). *)
 
-Definition bt_le (B1 B2 : builtins) : Prop := bt_nat B1 = None \/ B1 = B2.
+Definition bt_le (B1 B2 : builtins) : Prop := builtins_nat B1 = None \/ B1 = B2.
 
 Lemma bt_le_refl : forall B, bt_le B B.
 Proof. right; reflexivity. Qed.

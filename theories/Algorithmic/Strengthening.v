@@ -584,13 +584,13 @@ Proof.
   induction 1; intros s.
   1-4: try destruct (H s) as [L [HL HL']];
     do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption
-                                    | first [ apply asnf_level; assumption | constructor; cbn; auto ] ].
-  - do 2 eexists; repeat split; [ constructor | constructor | apply asnf_univ; assumption ].
+                                    | first [ apply alg_subtyping_nf_level; assumption | constructor; cbn; auto ] ].
+  - do 2 eexists; repeat split; [ constructor | constructor | apply alg_subtyping_nf_univ; assumption ].
   - destruct (H s) as [[c xs] [d ys] HL HL' Hle].
-    do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption | apply asnf_suniv; exact Hle ].
+    do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption | apply alg_subtyping_nf_suniv; exact Hle ].
   - destruct (H s) as [W [HW _]].
     destruct (read_nf_level_real _ _ _ _ HW) as [[c xs] [-> _]].
-    do 2 eexists; repeat split; [ econstructor; eassumption | constructor | apply asnf_small_large ].
+    do 2 eexists; repeat split; [ econstructor; eassumption | constructor | apply alg_subtyping_nf_small_large ].
   - (** The domains read back equally; the codomains at the fresh variable are
         below each other by the induction hypothesis. *)
     assert (Ha : per_univ_elem i in_rel a a)
@@ -607,15 +607,15 @@ Proof.
     exists (Πⁿ A C), (Πⁿ A C'); split; [| split ].
     + eapply read_typ_pi; [ exact HA | exact Hb | exact HC ].
     + eapply read_typ_pi; [ exact HA' | exact Hb' | exact HC' ].
-    + apply asnf_pi; [ reflexivity | exact HCC' ].
+    + apply alg_subtyping_nf_pi; [ reflexivity | exact HCC' ].
   - (** Related inductive types read back alike. *)
     destruct (per_univ_then_per_top_typ H s) as [W [HW HW']].
     exists W, W; split; [ exact HW | split; [ exact HW' |] ].
-    inversion HW; subst; apply asnf_refl; cbn; auto.
+    inversion HW; subst; apply alg_subtyping_nf_refl_case; cbn; auto.
   - (** So do related record types. *)
     destruct (per_univ_then_per_top_typ H s) as [W [HW HW']].
     exists W, W; split; [ exact HW | split; [ exact HW' |] ].
-    inversion HW; subst; apply asnf_refl; cbn; auto.
+    inversion HW; subst; apply alg_subtyping_nf_refl_case; cbn; auto.
 Qed.
 
 (** ** SubStr: Strengthening a Subtyping
@@ -1224,15 +1224,15 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hlq) as [HDq Hcq].
   unfold im_ref, im_pre in *; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
   - assert (Dq = D) as -> by congruence; split; [ exact HUl | exact HUs ].
-  - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & _ & HIl & _).
+  - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & _ & HIl & _).
     assert (D' = Dq) as -> by congruence.
     pose proof (wf_uparams_sub _ _ _ _ _ HD HΓ HUl HUs) as Hσ.
     split; [ rewrite List.length_map; exact HIl |].
     intros j N T HN HT.
-    rewrite <- (tele_insts_sub (ind_uparams Dq) 0 Id Id (sb_of_list Id Us) Is (dc_ass _ Hcq) (dc_uparams _ Hcq)
+    rewrite <- (tele_insts_sub (ind_uparams Dq) 0 Id Id (sb_of_list Id Us) Is (decl_closed_ass _ Hcq) (decl_closed_uparams _ Hcq)
                   ltac:(intros; lia)) in HT.
     apply nth_error_map_inv in HN as (I & HI & ->); apply nth_error_map_inv in HT as (T0 & HT0 & ->).
-    exact (sub_preserves_exp _ _ _ _ _ _ _ (dt_view_is _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq HI HT0) Hσ).
+    exact (sub_preserves_exp _ _ _ _ _ _ _ (decl_typed_view_is _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq HI HT0) Hσ).
 Qed.
 
 (** The group of a member's type former is filed, and has that member. *)
@@ -1243,7 +1243,7 @@ Proof.
   intros * HΓ Hl Hm Hr.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-; [ eauto |].
-  destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _); eauto.
+  destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _); eauto.
 Qed.
 
 Lemma im_ref_member : forall Γ p D m Mm pc k Dq,
@@ -1254,7 +1254,7 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-.
   - assert (Dq = D) as -> by congruence; eauto.
-  - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _).
+  - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _).
     assert (D' = Dq) as -> by congruence; eauto.
 Qed.
 
@@ -1269,9 +1269,9 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-.
   - assert (Dq = D) as -> by congruence; congruence.
-  - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & _ & _ & Hself & _).
+  - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & _ & _ & Hself & _).
     assert (D' = Dq) as -> by congruence; assert (Mk' = Mk) as -> by congruence.
-    pose proof (dt_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
+    pose proof (decl_typed_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
     unfold im_nn; rewrite (ext_eq_length _ _ _ _ _ HNeq), length_tele_sub; reflexivity.
 Qed.
 
@@ -1299,7 +1299,7 @@ Proof.
   unfold im_ref, im_pre in *; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
   - assert (Dq = D) as -> by congruence; assert (Mk = Mm) as -> by congruence.
     exact (params_typed_join _ _ D Hc _ _ _ Us Ns Hm HUl HUs HNs).
-  - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & HIl & _ & Hself & _).
+  - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & HIl & _ & Hself & _).
     assert (D' = Dq) as -> by congruence; assert (Mk' = Mk) as -> by congruence.
     exact (proj2 (view_params_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg Hl HDs HD Hc Hcq Hm Hh Hlq Hk Hself HIl HΓ HUl HUs HNl HNs)).
 Qed.
@@ -1327,7 +1327,7 @@ Proof.
   destruct (params_typed_split _ _ Dq Hcq _ _ _ Rs Hk HRl HRs) as [HRu HRn].
   (** The uniform arguments as a substitution, equal to the first [Rs]. *)
   assert (Hσσ : Γ ⊢ˢ sb_of_list Id Ps ≈ sb_of_list Id (List.firstn (ind_nu Dq) Rs) : ind_uparams Dq ++ Γ).
-  { eapply wf_sub_eq_of_list; [ exact (dc_ass _ Hcq) | exact (wf_uparams_app _ _ _ HDq Hcq _ HΓ)
+  { eapply wf_sub_eq_of_list; [ exact (decl_closed_ass _ Hcq) | exact (wf_uparams_app _ _ _ HDq Hcq _ HΓ)
                               | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite HPl; reflexivity | rewrite HRl'; reflexivity |].
     intros j N R T HN HR HT; apply (HPR j); [ exact HN | | exact HT ].
     rewrite <- (List.firstn_skipn (ind_nu Dq) Rs), List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact HR. }
@@ -1352,15 +1352,15 @@ Proof.
   assert (Hkl : k < ind_ndecl Dq).
   { unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
     - assert (Dq = D) as -> by congruence; assert (Mk = Mm) as -> by congruence; eapply member_decl_lt; eassumption.
-    - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & Hlt & _); congruence. }
+    - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & Hlt & _); congruence. }
   assert (HLc : List.length (Ps ++ Ns) = im_np Dq Mk) by (rewrite List.length_app, HPl, HNl; unfold im_np, im_nn; lia).
   pose proof (params_typed_join _ _ Dq Hcq _ _ _ Ps Ns Hk HPl HPt HNp) as HLt.
   assert (HLR : forall j N R T, List.nth_error (Ps ++ Ns) j = Some N -> List.nth_error Rs j = Some R ->
              List.nth_error (tele_insts (im_params Dq Mk) Id (Ps ++ Ns)) j = Some T -> Γ ⊢ N ≈ R : T).
   { intros j N R T HN HR HT; unfold im_params in HT.
-    rewrite tele_insts_app in HT by (try exact (dc_ass _ Hcq); exact HPl).
+    rewrite tele_insts_app in HT by (try exact (decl_closed_ass _ Hcq); exact HPl).
     assert (Hl1 : List.length (tele_insts (ind_uparams Dq) Id Ps) = ind_nu Dq)
-      by (rewrite length_tele_insts by exact (dc_ass _ Hcq); rewrite HPl; unfold ind_nu; lia).
+      by (rewrite length_tele_insts by exact (decl_closed_ass _ Hcq); rewrite HPl; unfold ind_nu; lia).
     destruct (Nat.lt_ge_cases j (ind_nu Dq)) as [Hj | Hj].
     - rewrite List.nth_error_app1 in HN, HT by lia; exact (HPR _ _ _ _ HN HR HT).
     - rewrite List.nth_error_app2 in HN, HT by lia; rewrite HPl in HN; rewrite Hl1 in HT.
@@ -1377,11 +1377,11 @@ Proof.
   - assert (Dq = D) as -> by congruence; assert (Mk = Mm) as -> by congruence.
     assert (Epre : im_pre Mm Us = Us) by (unfold im_pre; rewrite Hh; reflexivity); rewrite Epre in *.
     constructor; [ rewrite HNl; reflexivity | exact HNp | exists i; rewrite Hmty; symmetry; exact Heq ].
-  - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & HIl & _ & Hself & _).
+  - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & HIl & _ & Hself & _).
     assert (D' = Dq) as -> by congruence; assert (Mk' = Mk) as -> by congruence.
     assert (Epre : im_pre Mm Us = List.map (fun I => I[sb_of_list Id Us]) Is) by (unfold im_pre; rewrite Hh; reflexivity);
       rewrite Epre in *.
-    pose proof (dt_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
+    pose proof (decl_typed_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
     pose proof (wf_uparams_sub _ _ _ _ _ HD HΓ HUl HUs) as Hσ.
     pose proof (sub_preserves_ext _ _ _ _ _ _ _ HNeq Hσ) as HNeq'.
     rewrite (nparams_sub Dq k' Mk Is (sb_of_list Id Us) Hcq Hk HIl) in HNeq'.
@@ -1391,8 +1391,8 @@ Proof.
       rewrite (tele_insts_sb_eq _ (sb_of_list Id Us) (sb_of_list Id Us ⨟ Id)) in HT by (intro; symmetry; apply sb_compose_id_right).
       rewrite <- tele_insts_tele_sub in HT.
       eapply (tele_insts_conv_rev _ _ _ _ _ _ HNeq');
-        [ apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HD _ _ Hm)
-        | apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HDq _ _ Hk)
+        [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm)
+        | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HDq _ _ Hk)
         | rewrite length_tele_sub; exact HNl | | exact HN | exact HT ].
       intros k1 N1 T1 HN1 HT1; apply (HNp _ _ _ HN1).
       rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is))) in HT1
@@ -1450,7 +1450,7 @@ Proof.
     destruct (exp_eq_ind_apps_inv _ _ _ _ _ _ _ _ Hl Hm Heq HXl HXl' HX HX') as [_ HE].
     destruct (params_eq_split _ D _ _ _ _ Hc Hm HXl HXl' HE) as [_ HEn].
     rewrite !firstn_app_len, !skipn_app_len in HEn by exact HUl; exact HEn.
-  - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (Dq & Mk & Hlq & Hk & _ & HIl & _ & Hself & _).
+  - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (Dq & Mk & Hlq & Hk & _ & HIl & _ & Hself & _).
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hlq) as [HDq Hcq].
     destruct (view_params_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg Hl HDs HD Hc Hcq Hm Hh Hlq Hk Hself HIl HΓ HUl HUs HNl HNs)
       as [HNk HX].
@@ -1463,7 +1463,7 @@ Proof.
     destruct (exp_eq_ind_apps_inv _ _ _ _ _ _ _ _ Hlq Hk Heq HXl HXl' HX HX') as [_ HE].
     destruct (params_eq_split _ Dq _ _ _ _ Hcq Hk HXl HXl' HE) as [_ HEn].
     rewrite !firstn_app_len, !skipn_app_len in HEn by exact HPl.
-    pose proof (dt_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
+    pose proof (decl_typed_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
     pose proof (wf_uparams_sub _ _ _ _ _ HD HΓ HUl HUs) as Hσ.
     pose proof (sub_preserves_ext _ _ _ _ _ _ _ HNeq Hσ) as HNeq'.
     rewrite (nparams_sub Dq k' Mk Is (sb_of_list Id Us) Hcq Hk HIl) in HNeq'; fold Ps in HNeq'.
@@ -1471,8 +1471,8 @@ Proof.
     rewrite (tele_insts_sb_eq _ (sb_of_list Id Us) (sb_of_list Id Us ⨟ Id)) in HT by (intro; symmetry; apply sb_compose_id_right).
     rewrite <- tele_insts_tele_sub in HT.
     eapply (tele_insts_eq_conv_rev _ _ _ _ _ HNeq');
-      [ apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HD _ _ Hm)
-      | apply tele_ass_sub; exact (dt_nparams_ass _ _ _ HDq _ _ Hk)
+      [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm)
+      | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HDq _ _ Hk)
       | rewrite length_tele_sub; unfold im_nn in HNk; exact HNk
       | rewrite length_tele_sub; unfold im_nn in HNk; rewrite HNl', <- HNl; exact HNk | | exact HN | exact HN' | exact HT ].
     intros k1 N1 N1' T1 HN1 HN1' HT1; apply (HEn _ _ _ _ HN1 HN1').
@@ -1554,11 +1554,11 @@ Qed.
     the long one. *)
 #[warnings="-cannot-define-projection"]
 Record short_typ (Γ : ctx) (A : typ) (Δ : ctx) (C : typ) (M : exp) : Prop := mk_short_typ
-  { sty_typ : typ
-  ; sty_lvl : nat
-  ; sty_exp : (Δ ++ Γ)%list ⊢ M : sty_typ
-  ; sty_wf : (Δ ++ Γ)%list ⊢ sty_typ : Typeω@sty_lvl
-  ; sty_sub : (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ sty_typ[wk_qn (length Δ) ↑]ʷ ⊆ C }.
+  { short_typ_typ : typ
+  ; short_typ_lvl : nat
+  ; short_typ_exp : (Δ ++ Γ)%list ⊢ M : short_typ_typ
+  ; short_typ_wf : (Δ ++ Γ)%list ⊢ short_typ_typ : Typeω@short_typ_lvl
+  ; short_typ_sub : (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ short_typ_typ[wk_qn (length Δ) ↑]ʷ ⊆ C }.
 
 Definition exp_str (Γ : ctx) (A : typ) (M : exp) : Prop :=
   forall Δ C,
@@ -1743,12 +1743,12 @@ Proof.
   (** The uniform parameters, short. *)
   assert (HUt : forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
              (Δ ++ Γ)%list ⊢ U : T).
-  { eapply tele_insts_typed_all; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓs) | apply wf_sub_id, HΓs |].
+  { eapply tele_insts_typed_all; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓs) | apply wf_sub_id, HΓs |].
     intros j U T HU HT [iT HTt].
     pose proof (proj1 (List.Forall_forall _ _) IHUs U (List.nth_error_In _ _ HU)) as IHU.
     eapply (IHU Δ T iT Hass HΓf HTt).
     apply (HUtL j); [ rewrite List.nth_error_map, HU; reflexivity |].
-    rewrite <- tele_insts_closed_wk by (try exact (dc_ass _ Hc); exact (dc_uparams _ Hc)).
+    rewrite <- tele_insts_closed_wk by (try exact (decl_closed_ass _ Hc); exact (decl_closed_uparams _ Hc)).
     rewrite List.nth_error_map, HT; reflexivity. }
   (** The scrutinee's short type: the type former the member's type is
       headed by, at parameters [PsS]. *)
@@ -1769,9 +1769,9 @@ Proof.
   assert (Hnn : im_nn Mm = im_nn Mk).
   { unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-.
     - assert (Dq = D) as -> by congruence; congruence.
-    - destruct (dt_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & _ & _ & Hself & _).
+    - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & _ & _ & Hself & _).
       assert (D' = Dq) as -> by congruence; assert (Mk' = Mk) as -> by congruence.
-      pose proof (dt_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
+      pose proof (decl_typed_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
       unfold im_nn; rewrite (ext_eq_length _ _ _ _ _ HNeq), length_tele_sub; reflexivity. }
   (** The long parameters, the short ones weakened, are equal. *)
   assert (HUlL : List.length (List.map (fun U => U[φ]ʷ) Us) = ind_nu D) by (rewrite List.length_map; exact HUl).
@@ -1806,7 +1806,7 @@ Proof.
     assert (Hj : j < ind_nu Dq) by (rewrite <- HPlS; apply List.nth_error_Some; congruence).
     assert (HR' : List.nth_error (List.firstn (ind_nu Dq) PsS) j = Some R)
       by (rewrite List.nth_error_firstn; destruct (Nat.ltb_spec j (ind_nu Dq)); [ exact HR | lia ]).
-    eapply (tele_eq_strengthen _ _ _ (ind_uparams Dq)); [ exact Hass | exact HΓf | exact (dc_ass _ Hcq)
+    eapply (tele_eq_strengthen _ _ _ (ind_uparams Dq)); [ exact Hass | exact HΓf | exact (decl_closed_ass _ Hcq)
            | exact (wf_uparams_app _ _ _ HDq Hcq _ HΓs) | rewrite HPlS; reflexivity | rewrite HSl'; reflexivity
            | exact HPtS | exact HSu | | exact HN | exact HR' | exact HT ].
     clear j N R T HN HR HT Hj HR'.
@@ -1816,9 +1816,9 @@ Proof.
     - rewrite List.nth_error_app1 by lia; rewrite <- Epw, List.nth_error_map, HN; reflexivity.
     - rewrite List.nth_error_map; rewrite List.nth_error_firstn in HR; destruct (Nat.ltb_spec j (ind_nu Dq)); [| discriminate ].
       rewrite HR; reflexivity.
-    - unfold im_params; rewrite tele_insts_app by (try exact (dc_ass _ Hcq); exact HPlL).
-      rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact (dc_ass _ Hcq); rewrite HPlL; unfold ind_nu in *; lia).
-      rewrite <- Epw, <- tele_insts_closed_wk by (try exact (dc_ass _ Hcq); exact (dc_uparams _ Hcq)).
+    - unfold im_params; rewrite tele_insts_app by (try exact (decl_closed_ass _ Hcq); exact HPlL).
+      rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact (decl_closed_ass _ Hcq); rewrite HPlL; unfold ind_nu in *; lia).
+      rewrite <- Epw, <- tele_insts_closed_wk by (try exact (decl_closed_ass _ Hcq); exact (decl_closed_uparams _ Hcq)).
       rewrite List.nth_error_map, HT; reflexivity. }
   clear HPP' HSu HSl' HPtS HPtL HLl HSlL.
   (** So the rest of [PsS] are the member's non-uniform parameters, and the
@@ -1859,9 +1859,9 @@ Proof.
     assert (EPs : Ps = List.map (fun U => U[φ]ʷ) Us ++ NsL) by (rewrite HUL; unfold NsL; symmetry; apply List.firstn_skipn).
     assert (EPW : PsW = List.map (fun U => U[φ]ʷ) Us ++ List.map (fun N => N[φ]ʷ) NsS) by (unfold PsW; apply List.map_app).
     rewrite EPs in HP, HT; rewrite EPW in HP'.
-    unfold im_params in HT; rewrite tele_insts_app in HT by (try exact (dc_ass _ Hc); exact HUlL).
+    unfold im_params in HT; rewrite tele_insts_app in HT by (try exact (decl_closed_ass _ Hc); exact HUlL).
     assert (Hl1 : List.length (tele_insts (ind_uparams D) Id (List.map (fun U => U[φ]ʷ) Us)) = ind_nu D)
-      by (rewrite length_tele_insts by exact (dc_ass _ Hc); rewrite HUlL; unfold ind_nu in *; lia).
+      by (rewrite length_tele_insts by exact (decl_closed_ass _ Hc); rewrite HUlL; unfold ind_nu in *; lia).
     destruct (Nat.lt_ge_cases j (ind_nu D)) as [Hj | Hj].
     - rewrite List.nth_error_app1 in HP, HP', HT by lia; rewrite HP in HP'; injection HP' as <-.
       apply wf_exp_eq_refl; exact (HUtL _ _ _ HP HT).
@@ -1880,14 +1880,14 @@ Proof.
                        (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) (eb_brs b))))
     by (intros j [nm oZ A0 Bs0] Hj; unfold blocks_wk; rewrite List.nth_error_map, Hj; reflexivity).
   assert (HBnm : blocks_nm_ok D Bks).
-  { intros j Mj b Hj Hb0; pose proof (bt_nm _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as H; exact H. }
+  { intros j Mj b Hj Hb0; pose proof (blocks_typed_nm _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as H; exact H. }
   assert (HUt' : forall j Mj, ind_member D j = Some Mj -> ⊢ (elim_mctx pc D j Mj Us ++ Δ ++ Γ)%list)
     by (intros; eapply elim_mctx_wf; eassumption).
   assert (HBmot : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
              (elim_mctx pc D j Mj Us ++ Δ ++ Γ)%list ⊢ eb_motive b : Typeω@i).
   { intros j Mj b Hj Hb0.
     pose proof (proj1 (List.Forall_forall _ _) IHBs b (List.nth_error_In _ _ Hb0)) as (_ & IHm & _).
-    pose proof (bt_motive _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as HmL; cbn [eb_motive] in HmL.
+    pose proof (blocks_typed_motive _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as HmL; cbn [eb_motive] in HmL.
     rewrite (HBnm _ _ _ Hj Hb0) in HmL.
     assert (HLm : (tele_wk (elim_mctx pc D j Mj Us ++ Δ) ↑ ++ Γ ▹ A)%list
                   = (elim_mctx pc D j Mj (List.map (fun U => U[φ]ʷ) Us) ++ Lf)%list)
@@ -1899,7 +1899,7 @@ Proof.
     - rewrite <- List.app_assoc; apply wf_typ; exact (HUt' _ _ Hj).
     - rewrite HLm, List.length_app, length_elim_mctx, wk_qn_plus; cbn [exp_wk]; exact HmL. }
   assert (HBl : List.length Bks = List.length (ind_members D))
-    by (pose proof (bt_len _ _ _ _ _ _ _ _ HBt) as H; unfold blocks_wk in H; rewrite List.length_map in H; exact H).
+    by (pose proof (blocks_typed_len _ _ _ _ _ _ _ _ HBt) as H; unfold blocks_wk in H; rewrite List.length_map in H; exact H).
   assert (HAs : motives_typed gc_deps gc_stack (Δ ++ Γ)%list pc D Us (blocks_motives Bks) i).
   { intros j Mj Hj; destruct (blocks_nth _ _ _ _ HBl Hj) as [b Hb0].
     rewrite (blocks_motives_nth _ _ _ Hb0); exact (HBmot _ _ _ Hj Hb0). }
@@ -1911,8 +1911,8 @@ Proof.
     pose proof (proj1 (List.Forall_forall _ _) IHBs b (List.nth_error_In _ _ Hb0)) as (_ & _ & IHbr).
     pose proof (proj1 (List.Forall_forall _ _) IHbr _ Hin) as IHB; cbn [snd] in IHB.
     pose proof (List.in_map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) _ _ Hin) as Hin'; cbn [fst snd] in Hin'.
-    pose proof (bt_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as Hn.
-    pose proof (bt_brs _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as HBL; cbn [eb_motive] in HBL.
+    pose proof (blocks_typed_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as Hn.
+    pose proof (blocks_typed_brs _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as HBL; cbn [eb_motive] in HBL.
     rewrite (HBnm _ _ _ Hj Hb0) in HBL.
     pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj HΓs HUl HUt HUt' HAs Hcon) as Hbs.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HBmot _ _ _ Hj Hb0) Hbs) as Hbt.
@@ -1925,7 +1925,7 @@ Proof.
     rewrite List.app_assoc.
     eapply (IHB (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ) _ i).
     - apply List.Forall_app; split; [ eapply elim_bctx_ass; eassumption | exact Hass ].
-    - rewrite HLb; eapply ext_eq_ctx_left; exact (bt_bctx _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hcon).
+    - rewrite HLb; eapply ext_eq_ctx_left; exact (blocks_typed_bctx _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hcon).
     - rewrite <- List.app_assoc; exact Hbt.
     - rewrite HLb, List.length_app, length_elim_bctx, wk_qn_plus; fold φ.
       replace (cargs_nrec gs + List.length gs + im_nn Mj) with (im_nn Mj + List.length gs + cargs_nrec gs) by lia.
@@ -1935,12 +1935,12 @@ Proof.
     - intros j Mj b Z Hj Hb0 HZ.
       pose proof (proj1 (List.Forall_forall _ _) IHBs b (List.nth_error_In _ _ Hb0)) as (Hn & _); congruence.
     - intros j Mj Hj; apply ctx_ext_refl; [ eapply elim_mctx_ass; eassumption | exact (HUt' _ _ Hj) ].
-    - intros j Mj b Hj Hb0; pose proof (bt_names _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as H; cbn [eb_brs] in H.
+    - intros j Mj b Hj Hb0; pose proof (blocks_typed_names _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as H; cbn [eb_brs] in H.
       unfold brs_names in *; rewrite List.map_map in H; exact H.
     - intros j Mj c gs Hj Hcon; apply ctx_ext_refl; [ eapply elim_bctx_ass; eassumption | eapply elim_bctx_wf; eassumption ].
     - intros j Mj b c gs n B Hj Hb0 Hcon Hin.
       pose proof (List.in_map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) _ _ Hin) as Hin'; cbn [fst snd] in Hin'.
-      exact (bt_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin'). }
+      exact (blocks_typed_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin'). }
   (** The eliminator, short, at a type whose weakening is below [C]. *)
   destruct (blocks_nth _ _ _ _ HBl Hm) as [bm0 Hbm0].
   rewrite (Hbw _ _ Hbm0) in Hb; injection Hb as <-.

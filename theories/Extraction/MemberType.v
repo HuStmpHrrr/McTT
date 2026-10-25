@@ -27,71 +27,71 @@ Import Syntax_Notations GlobalCtx_Notations.
 (** ** The Termination Order *)
 
 Inductive dn_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> Prop :=
-| dno_unit : forall Γ H TΦ,
+| dn_order_unit : forall Γ H TΦ,
     gc_unit Θ Ξ H = Some TΦ ->
     dn_order Θ Ξ Γ H
 (** The open frame of a member's module, named by its path *)
-| dno_ind_frame : forall Γ H p r,
+| dn_order_ind_frame : forall Γ H p r,
     mod_qname H = Some p -> gs_find_ind Ξ p = Some r ->
     dn_order Θ Ξ Γ H
 (** The open frame of a record type's module, named by its path *)
-| dno_record_frame : forall Γ H p R,
+| dn_order_record_frame : forall Γ H p R,
     mod_qname H = Some p -> gs_find_record Ξ p = Some R ->
     dn_order Θ Ξ Γ H
-| dno_path : forall Γ fp,
+| dn_order_path : forall Γ fp,
     dn_order Θ Ξ Γ (me_unit fp)
-| dno_var : forall Γ x,
+| dn_order_var : forall Γ x,
     (forall U, ctx_find_mod Γ x = Some U -> un_order Θ Ξ Γ U) ->
     dn_order Θ Ξ Γ (me_var x)
-| dno_lit : forall Γ U,
+| dn_order_lit : forall Γ U,
     un_order Θ Ξ Γ U ->
     dn_order Θ Ξ Γ (me_lit U)
-| dno_app : forall Γ H N,
+| dn_order_app : forall Γ H N,
     dn_order Θ Ξ Γ H ->
     dn_order Θ Ξ Γ (me_app H N)
-| dno_mem : forall Γ H y,
+| dn_order_mem_case : forall Γ H y,
     dn_order Θ Ξ Γ H ->
     (forall R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> ds_mod R0 = Some R0m ->
        ds_entry R0m y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E) ->
     dn_order Θ Ξ Γ (me_mem H y)
 with un_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> Prop :=
-| uno_body : forall Γ Δ sm Φ,
+| un_order_body : forall Γ Δ sm Φ,
     bx_order Θ Ξ (Δ ++ Γ) Φ ->
     un_order Θ Ξ Γ (gu_mk Δ (md_body sm Φ))
-| uno_alias : forall Γ Δ E,
+| un_order_alias : forall Γ Δ E,
     dn_order Θ Ξ (Δ ++ Γ) E ->
     un_order Θ Ξ Γ (gu_mk Δ (md_alias E))
 with en_order (Θ : gdeps) (Ξ : gstack) : ctx -> gentry -> Prop :=
-| eno_def : forall Γ b pv A oM, en_order Θ Ξ Γ (ge_def b pv A oM)
-| eno_mod : forall Γ pv U,
+| en_order_def : forall Γ b pv A oM, en_order Θ Ξ Γ (ge_def b pv A oM)
+| en_order_mod : forall Γ pv U,
     un_order Θ Ξ Γ U ->
     en_order Θ Ξ Γ (ge_mod pv U)
-| eno_ind : forall Γ pv p k D Φ, en_order Θ Ξ Γ (ge_ind pv p k D Φ)
+| en_order_ind_case : forall Γ pv p k D Φ, en_order Θ Ξ Γ (ge_ind pv p k D Φ)
 (** A definition with a module part: its module part's target, under its
     parameters *)
-| eno_def_mod : forall Γ pv A M Δ E,
+| en_order_def_mod : forall Γ pv A M Δ E,
     dn_order Θ Ξ (Δ ++ Γ) E ->
     en_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_alias E)))
 (** One whose module part is a body denotes nothing *)
-| eno_def_mod_body : forall Γ pv A M Δ sm Φ, en_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_body sm Φ)))
+| en_order_def_mod_body : forall Γ pv A M Δ sm Φ, en_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_body sm Φ)))
 (** A record entry: its type former, where it is stored *)
-| eno_record : forall Γ pv pr R Φ, en_order Θ Ξ Γ (ge_record pv pr R Φ)
+| en_order_record : forall Γ pv pr R Φ, en_order Θ Ξ Γ (ge_record pv pr R Φ)
 with bx_order (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> Prop :=
-| bxo_nil : forall Γ, bx_order Θ Ξ Γ gm_nil
-| bxo_ext : forall Γ Φ x E,
+| bx_order_nil : forall Γ, bx_order Θ Ξ Γ gm_nil
+| bx_order_ext : forall Γ Φ x E,
     bx_order Θ Ξ Γ Φ ->
     bx_order Θ Ξ Γ (gm_ext Φ x E)
-| bxo_open : forall Γ Φ H its,
+| bx_order_open : forall Γ Φ H its,
     bx_order Θ Ξ Γ Φ ->
     (forall Φx, body_xp Θ Ξ Γ Φ Φx -> dn_order Θ Ξ (body_ctx Φx ++ Γ) H) ->
     (forall Φx, body_xp Θ Ξ Γ Φ Φx -> ig_order Θ Ξ (body_ctx Φx ++ Γ) H its) ->
     bx_order Θ Ξ Γ (gm_open Φ H its)
 with ig_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> Prop :=
-| igo_nil : forall Γ H, ig_order Θ Ξ Γ H nil
-| igo_self : forall Γ H d pv its,
+| ig_order_nil : forall Γ H, ig_order Θ Ξ Γ H nil
+| ig_order_self : forall Γ H d pv its,
     ig_order Θ Ξ Γ H its ->
     ig_order Θ Ξ Γ H ((None, d, pv) :: its)
-| igo_name : forall Γ H n d pv its,
+| ig_order_name : forall Γ H n d pv its,
     dn_order Θ Ξ Γ (me_mem H n) ->
     ig_order Θ Ξ Γ H its ->
     ig_order Θ Ξ Γ H ((Some n, d, pv) :: its).
@@ -170,7 +170,7 @@ Proof.
   unfold frame_ind_desc in Hd; rewrite Hq in Hd.
   destruct (ind_member D k) as [Mk |] eqn:HMk; [| discriminate ].
   destruct (gc_loc Θ Ξ p) as [[Tm Φm] |] eqn:Hl; [ injection Hd as <- | discriminate ].
-  eapply dn_ind_frame; eassumption.
+  eapply mdenote_ind_frame; eassumption.
 Qed.
 
 (** In a well-formed global context, the open frame of a member denotes. *)
@@ -213,7 +213,7 @@ Proof.
   intros * Hf Hd; destruct (frame_record_of_some _ _ _ _ Hf) as (Hq & Hk).
   unfold frame_record_desc in Hd.
   destruct (gc_loc Θ Ξ p) as [[Tm Φm] |] eqn:Hl; [ injection Hd as <- | discriminate ].
-  eapply dn_record_frame; eassumption.
+  eapply mdenote_record_frame; eassumption.
 Qed.
 
 (** In a well-formed global context, the open frame of a record type
@@ -306,7 +306,7 @@ Section DenoteImpl.
     | |- False => dn_neg
     | |- ~ _ => let Hd := fresh "Hd" in intros Hd; dn_neg
     | |- forall _, ~ _ => let r := fresh "r" in let Hd := fresh "Hd" in intros r Hd; dn_neg
-    | _ => try solve [ econstructor; eauto using ctx_find_mod_sound, un_alias; cbn; auto ]
+    | _ => try solve [ econstructor; eauto using ctx_find_mod_sound, udenote_alias; cbn; auto ]
     end.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
@@ -339,7 +339,7 @@ Section DenoteImpl.
   | Γ, me_mem H y, Ho with inspect (gc_unit Θ Ξ (me_mem H y)) := {
     | exist _ (Some (T, Φ)) Eu with inspect (mod_qname H) := {
       | exist _ (Some p) Eqp =>
-          inleft (exist _ (ds_closed nil (qname_in p y) T Φ nil) (dn_unit _ _ _ _ _ _ _ (mod_qname_mem_in _ _ _ Eqp) Eu))
+          inleft (exist _ (ds_closed nil (qname_in p y) T Φ nil) (mdenote_unit _ _ _ _ _ _ _ (mod_qname_mem_in _ _ _ Eqp) Eu))
       | exist _ None Eqp => False_rect _ (gc_unit_mem_qname _ _ _ _ _ Eu Eqp) }
     | exist _ None Eu with inspect (frame_ind_of Ξ (me_mem H y)) := {
       | exist _ (Some (pq, k, D)) Ek with inspect (frame_ind_desc Θ Ξ (me_mem H y) pq k D) := {
@@ -459,20 +459,20 @@ Section Orders.
   Proof.
     pose proof (mdenote_functional_all _ _ Hg) as (Fm & Fu & Fe & Fb & Fi).
     apply mdenote_all_ind; intros.
-    - eapply dno_unit; eassumption.
-    - eapply dno_ind_frame; eassumption.
-    - apply dno_var; intros U' Hf.
+    - eapply dn_order_unit; eassumption.
+    - eapply dn_order_ind_frame; eassumption.
+    - apply dn_order_var; intros U' Hf.
       match goal with Hl : _ ∋ # _ ≔ₘ _ |- _ => rewrite (ctx_find_mod_complete _ _ _ Hl) in Hf end.
       injection Hf as <-; assumption.
     - constructor; assumption.
     - constructor; assumption.
-    - apply dno_mem; [ assumption |].
+    - apply dn_order_mem_case; [ assumption |].
       intros R1 R1m Γy' E' rd' Hm1 Hd1 He1.
       match goal with Hm0 : mdenote _ _ _ H _ |- _ => rewrite <- (Fm _ _ _ Hm0 _ Hm1) in Hd1 end.
       match goal with Hd0 : ds_mod _ = Some _ |- _ => rewrite Hd0 in Hd1; injection Hd1 as <- end.
       match goal with He0 : ds_entry _ _ = Some _ |- _ => rewrite He0 in He1; injection He1 as <- <- <- end.
       assumption.
-    - eapply dno_record_frame; eassumption.
+    - eapply dn_order_record_frame; eassumption.
     - constructor; assumption.
     - constructor; assumption.
     - constructor.
@@ -580,7 +580,7 @@ Section Orders.
   Lemma dn_order_mem : forall Γ H y, dn_order Θ Ξ Γ H ->
       (forall R0, mdenote Θ Ξ Γ H R0 -> desc_ok Θ Ξ Γ R0) -> dn_order Θ Ξ Γ (me_mem H y).
   Proof.
-    intros * Ho Hok; apply dno_mem; [ exact Ho |].
+    intros * Ho Hok; apply dn_order_mem_case; [ exact Ho |].
     intros * Hm Hd He; eapply en_order_entry; [| exact He ].
     exact (desc_ok_mod _ _ Hg _ _ _ (Hok _ Hm) Hd).
   Qed.

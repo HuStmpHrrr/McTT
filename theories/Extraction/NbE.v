@@ -28,24 +28,24 @@ Import Domain_Notations.
 Generalizable All Variables.
 
 Inductive initial_env_order (Θ : gdeps) (Ξ : gstack) : ctx -> Prop :=
-| ie_nil : initial_env_order Θ Ξ nil
-| ie_cons :
+| initial_env_order_nil : initial_env_order Θ Ξ nil
+| initial_env_order_cons :
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_exp_order Θ Ξ A p) ->
      initial_env_order Θ Ξ (Γ ▹ A))
-| ie_cons_def :
+| initial_env_order_cons_def :
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_exp_order Θ Ξ M p) ->
      initial_env_order Θ Ξ (Γ ▸ A ≔ M))
-| ie_cons_mod :
+| initial_env_order_cons_mod :
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_modexp_order Θ Ξ (me_lit U) p) ->
      initial_env_order Θ Ξ (Γ ▹ₘ U))
 (** A definition with a module part: its term and its unit *)
-| ie_cons_dm :
+| initial_env_order_cons_dm :
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_exp_order Θ Ξ M p) ->
@@ -69,10 +69,10 @@ Hint Resolve initial_env_order_sound : mctt.
 
 (** The order of NbE in [Θ ⍮ Ξ ⍮ Γ]. *)
 Record nbe_order Θ Ξ G M A : Prop := nbe_order_run
-  { nord_init : initial_env_order Θ Ξ G
-  ; nord_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
-  ; nord_exp : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ M p
-  ; nord_read : forall p a m,
+  { nbe_order_init : initial_env_order Θ Ξ G
+  ; nbe_order_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
+  ; nbe_order_exp : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ M p
+  ; nbe_order_read : forall p a m,
       initial_env Θ Ξ G p ->
       ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
       ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
@@ -94,9 +94,9 @@ Qed.
 Hint Resolve nbe_order_sound : mctt.
 
 Record nbe_ty_order Θ Ξ G A : Prop := nbe_ty_order_run
-  { nto_init : initial_env_order Θ Ξ G
-  ; nto_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
-  ; nto_read : forall p a,
+  { nbe_ty_order_init : initial_env_order Θ Ξ G
+  ; nbe_ty_order_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
+  ; nbe_ty_order_read : forall p a,
       initial_env Θ Ξ G p ->
       ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
       read_typ_order Θ Ξ (List.length G) a }.

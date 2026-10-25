@@ -595,7 +595,7 @@ Proof.
   { constructor; [ exists iX; exact HXΓ | discriminate |].
     intros RΓ HR ρ Hρ.
     destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & _).
-    apply mk_valid_mem_at with (vma_mod := dm_global p ns) (vma_typ := a) (vma_lvl := iX) (vma_rel := RX); try assumption;
+    apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := iX) (valid_mem_at_rel := RX); try assumption;
       [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | discriminate ]. }
   destruct HredR1 as [HredR1 | (M1 & HredR1 & HM1 & HevM1)].
   2:{ (* a reduct: a term over the outer parameters, instantiated *)
@@ -605,7 +605,7 @@ Proof.
       exact (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HM1)).
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & _).
-      apply mk_valid_mem_at with (vma_mod := dm_global p ns) (vma_typ := a) (vma_lvl := iX) (vma_rel := RX);
+      apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := iX) (valid_mem_at_rel := RX);
         [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | exact Hmt |].
       intros M HM; injection HM as <-.
       destruct (closed_inst_exp _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HM1 HR _ Hρ)
@@ -631,7 +631,7 @@ Proof.
     + intros M HM; injection HM as <-; exact (valid_exp_eval_iff _ _ _ _ HKx Hiff).
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & Hkk).
-      apply mk_valid_mem_at with (vma_mod := dm_global p ns) (vma_typ := a) (vma_lvl := iX) (vma_rel := RX);
+      apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := iX) (valid_mem_at_rel := RX);
         [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | exact Hmt |].
       intros M HM; injection HM as <-.
       destruct (Hmt _ Hkk) as [r r' Hr Hr' Hrr].

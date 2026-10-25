@@ -10,7 +10,7 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * Checking the Forms of Inductive Types
 
-    The cases of [ati_ind], [ati_con] and [ati_elim], shared by both
+    The cases of [alg_type_infer_ind_case], [alg_type_infer_con] and [alg_type_infer_elim], shared by both
     checkers ([Extraction.TypeCheck] and [Reference.TypeCheck]).  The type
     former and a constructor recurse on nothing; the eliminator recurses on
     its scrutinee, its uniform parameters, and the annotations, motives and
@@ -147,7 +147,7 @@ Defined.
 
 (** ** The Eliminator *)
 
-(** What [ati_elim] asks of the eliminator [a_elim oq Us m Bks M] whose
+(** What [alg_type_infer_elim] asks of the eliminator [a_elim oq Us m Bks M] whose
     scrutinee infers [nf_indty pc k Rs], at the group [D] at [p] it
     eliminates, its member [Mm], the declared member [Mk] of the group
     [Dq] at [pc] the member's type is headed by, the member's block [bm],
@@ -207,8 +207,8 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
     (** The type is the normal form of the motive's instance *)
   ; elim_ok_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)] T }.
 
-(** The inversion of [ati_elim], at the scrutinee's inferred type. *)
-Lemma ati_elim_inv : forall G oq Us m Bks M T pc k Rs, ⊢ᵍ gc_deps ⍮ gc_stack ->
+(** The inversion of [alg_type_infer_elim], at the scrutinee's inferred type. *)
+Lemma alg_type_infer_elim_inv : forall G oq Us m Bks M T pc k Rs, ⊢ᵍ gc_deps ⍮ gc_stack ->
     G ⊢a a_elim oq Us m Bks M ⟹ T -> G ⊢a M ⟹ nf_indty pc k Rs ->
     exists p D Mm Dq Mk bm i, elim_alg_ok G oq Us m Bks M pc k Rs p D Mm Dq Mk bm i T.
 Proof.
@@ -223,12 +223,12 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma ati_elim_of_ok : forall G oq Us m Bks M T pc k Rs p D Mm Dq Mk bm i,
+Lemma alg_type_infer_elim_of_ok : forall G oq Us m Bks M T pc k Rs p D Mm Dq Mk bm i,
     elim_alg_ok G oq Us m Bks M pc k Rs p D Mm Dq Mk bm i T -> G ⊢a M ⟹ nf_indty pc k Rs ->
     G ⊢a a_elim oq Us m Bks M ⟹ T.
 Proof.
   intros * [] HM.
-  eapply ati_elim with (p := p) (D := D) (Mm := Mm) (Dq := Dq) (Mk := Mk) (bm := bm) (i := i); try eassumption; reflexivity.
+  eapply alg_type_infer_elim with (p := p) (D := D) (Mm := Mm) (Dq := Dq) (Mk := Mk) (bm := bm) (i := i); try eassumption; reflexivity.
 Qed.
 
 (** The group an eliminator eliminates: the one it names, or at a declared
@@ -501,7 +501,7 @@ End Blocks.
 Ltac inv_elim Hg HG HMi :=
   let H := match goal with H : _ ⊢a a_elim _ _ _ _ _ ⟹ _ |- _ => H end in
   let p' := fresh "p'" in
-  destruct (ati_elim_inv _ _ _ _ _ _ _ _ _ _ Hg H HMi) as (p' & ?D' & ?Mm' & ?Dq' & ?Mk' & ?bm' & ?i' & []);
+  destruct (alg_type_infer_elim_inv _ _ _ _ _ _ _ _ _ _ Hg H HMi) as (p' & ?D' & ?Mm' & ?Dq' & ?Mk' & ?bm' & ?i' & []);
   clear H;
   match goal with
   | Hl' : ind_lookup _ _ p' = Some _, Hgr : elim_grp _ _ p' _, Hm' : ind_member _ _ = Some _, Hr' : im_ref p' _ _ = _ |- _ =>
@@ -567,12 +567,12 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HG Hl) as [HD Hc].
   destruct (decl_of_lookup _ _ _ _ _ HG Hlq) as [HDq Hcq].
   (** The uniform parameters. *)
-  destruct (tele_check_dec G HG P (ind_uparams D) (dc_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) Us chkU) as [HUc | HUc];
+  destruct (tele_check_dec G HG P (ind_uparams D) (decl_closed_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) Us chkU) as [HUc | HUc];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   assert (HUt : forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
              G ⊢ U : T).
   { intros j U T HU HT.
-    exact (tele_checks_typed _ _ Us (S j) (dc_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) HG
+    exact (tele_checks_typed _ _ Us (S j) (decl_closed_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) HG
              (fun j' N T' _ HN HT' => HUc j' N T' HN HT') j U T (Nat.lt_succ_diag_r j) HU HT). }
   (** The member's uniform arguments, against the scrutinee type's. *)
   destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HG Hl Hm Hr Hlq HUl HUt) as [HPrl HPrt].
@@ -582,7 +582,7 @@ Proof.
   destruct (params_typed_split _ _ Dq Hcq _ _ _ _ Hk HRl HRt) as [HRu _].
   assert (HRl' : List.length (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) = List.length (ind_uparams Dq))
     by (rewrite List.length_firstn; unfold im_np in HRl; unfold ind_nu in *; lia).
-  destruct (nfs_agree_dec G HG P (ind_uparams Dq) (dc_ass _ Hcq) (wf_uparams_app _ _ _ HDq Hcq _ HG)
+  destruct (nfs_agree_dec G HG P (ind_uparams Dq) (decl_closed_ass _ Hcq) (wf_uparams_app _ _ _ HDq Hcq _ HG)
               (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) ltac:(unfold ind_nu in HPrl; exact HPrl) HRl' HPrt HRu)
     as [Hag | Hag];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
@@ -662,7 +662,7 @@ Proof.
     by (destruct (presup_exp_typ Hel) as [jT HTe]; exact (nbe_order_of_typ _ _ _ HTe)).
   refine (let (T', HT') := nbe_ty_env_impl gc_deps gc_stack G P _ Hord in inleft (exist _ T' _)).
   split; [| destruct (presup_exp_typ Hel) as [jT HTe]; eapply level_of_nbe; eassumption ].
-  eapply ati_elim_of_ok; [| exact HMi ].
+  eapply alg_type_infer_elim_of_ok; [| exact HMi ].
   econstructor; try eassumption.
   all: first
     [ intros j Mj b Z Hj Hb0 HZ;

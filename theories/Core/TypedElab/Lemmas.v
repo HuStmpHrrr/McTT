@@ -131,9 +131,9 @@ Section Functional.
 
   (** Two fills of a group's members, in groups of one set of uniform
       parameters, agree on the members' parameters and sorts. *)
-  Lemma fill_raw_members_heads_functional : forall R1 R2 ms ms1 ms2, rd_uparams R1 = rd_uparams R2 ->
+  Lemma fill_raw_members_heads_functional : forall R1 R2 ms ms1 ms2, raw_decl_uparams R1 = raw_decl_uparams R2 ->
       Forall2 (fill_raw_member Θ Ξ B R1) ms ms1 -> Forall2 (fill_raw_member Θ Ξ B R2) ms ms2 ->
-      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms1 ms2.
+      Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) ms1 ms2.
   Proof.
     pose proof fill_functional_all as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
     intros * Eu H1; revert ms2; induction H1 as [| Mr M1 ms ms1 [_ Hn1 Hs1 _] _ IH]; intros ms2 H2;
@@ -155,10 +155,10 @@ Section Functional.
 
   (** A group's members have one fill, in groups that agree on the
       uniform parameters and the members' parameters and sorts. *)
-  Lemma fill_raw_members_functional : forall R1 R2 ms ms1 ms2, rd_uparams R1 = rd_uparams R2 ->
-      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) (rd_members R1) (rd_members R2) ->
+  Lemma fill_raw_members_functional : forall R1 R2 ms ms1 ms2, raw_decl_uparams R1 = raw_decl_uparams R2 ->
+      Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) (raw_decl_members R1) (raw_decl_members R2) ->
       Forall2 (fill_raw_member Θ Ξ B R1) ms ms1 -> Forall2 (fill_raw_member Θ Ξ B R2) ms ms2 ->
-      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms1 ms2 -> ms1 = ms2.
+      Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) ms1 ms2 -> ms1 = ms2.
   Proof.
     intros * Eu Hh H1; revert ms2; induction H1 as [| Mr M1 ms ms1 [En1 _ _ Ec1] _ IH]; intros ms2 H2 Hh0;
       inversion H2 as [| ? M2 ? ms2' [En2 _ _ Ec2] H2']; subst; [ reflexivity |].
@@ -195,7 +195,7 @@ Section Functional.
   Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 hs ms fs1 fs2,
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As1 (fst fm) (snd fm) f') (List.combine hs ms) fs1 ->
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As2 (fst fm) (snd fm) f') (List.combine hs ms) fs2 ->
-      Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) fs1 fs2 /\
+      Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs1 fs2 /\
       (As1 = As2 -> fs1 = fs2).
   Proof.
     pose proof fill_functional_all as (Fe & _ & _ & Fb & _).

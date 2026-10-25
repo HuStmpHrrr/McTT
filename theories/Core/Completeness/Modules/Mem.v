@@ -55,7 +55,7 @@ Proof.
             intros Φ k; cbn [gens_append app ig_entry]; apply Hp).
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (kgens_names _ _ _ _ _ _ Hg) in Hn.
-  all: eexists nil, _, _; split; [ reflexivity |]; split; [ reflexivity |]; split; [ solve [ econstructor; eauto using kg_nil ] |].
+  all: eexists nil, _, _; split; [ reflexivity |]; split; [ reflexivity |]; split; [ solve [ econstructor; eauto using kgens_nil ] |].
   all: intros Φ k; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
 Qed.
@@ -476,14 +476,14 @@ Proof.
   - (* an open module part *)
     cbn in He; destruct (gm_prefix_upto Φx x) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
     pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
-    assert (He' : exists Ee', ds_entry (ds_open Δe Φ Φx) x = Some (body_ctx Φ' ++ Δe, Ee', rd_open Δe Φ') /\
-                    Ee = Ee' /\ Γy = body_ctx Φ' ++ Δe ++ Δ /\ rd = rd_open (Δe ++ Δ) Φ').
+    assert (He' : exists Ee', ds_entry (ds_open Δe Φ Φx) x = Some (body_ctx Φ' ++ Δe, Ee', reader_open Δe Φ') /\
+                    Ee = Ee' /\ Γy = body_ctx Φ' ++ Δe ++ Δ /\ rd = reader_open (Δe ++ Δ) Φ').
     { cbn; rewrite Hp; destruct E0 as [[|] ? ? [] | | | |]; try discriminate; injection He as <- <- <-; eexists; repeat split. }
     destruct He' as (Ee' & He' & -> & -> & ->).
     cbn [ds_read] in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
     exists (ds_up Δe (ds_sub R1 σ)); split; [| left; rewrite ds_up_cat; reflexivity ].
     cbn [ds_epath] in Hed; rewrite <- !app_assoc in Hed.
-    eapply dn_mem; [ exact HmE | exact HmodE | exact He' | cbn [ds_epath]; rewrite <- app_assoc; exact Hed | cbn; rewrite Hf; reflexivity ].
+    eapply mdenote_mem; [ exact HmE | exact HmodE | exact He' | cbn [ds_epath]; rewrite <- app_assoc; exact Hed | cbn; rewrite Hf; reflexivity ].
   - (* a closed module part *)
     cbn in He; destruct (gm_prefix_upto Φ x) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
     injection He as <- <- <-.
@@ -496,7 +496,7 @@ Proof.
              context *)
         pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgm HmE) HmodE) as Hc; cbn in Hc.
         pose proof (loc_closed _ _ Hgm _ _ _ Hc) as HU.
-        assert (He0 : ds_entry (ds_closed Θ p T Φ Ns) x = Some (nil, ge_read T E0, rd_closed Θ Ns (apps (a_mem (qname_mod p) x) Ns)))
+        assert (He0 : ds_entry (ds_closed Θ p T Φ Ns) x = Some (nil, ge_read T E0, reader_closed Θ Ns (apps (a_mem (qname_mod p) x) Ns)))
           by (subst E0; cbn; rewrite Hp; reflexivity).
         destruct (ds_entry_closed _ _ _ _ _ _ _ _ _ HU He0) as (_ & HsE & _).
         subst E0; cbn [ge_read] in HsE.
@@ -514,7 +514,7 @@ Proof.
       rewrite ds_up_cat in Ht.
       destruct R2; cbn in Hmod; try contradiction; rewrite ds_named_fix in Ht by reflexivity; cbn in Ht; discriminate. }
     exists (ds_up Θ (ds_named Θ Ns (apps (a_mem (qname_mod p) x) Ns) R2)); split.
-    { eapply dn_mem; [ exact HmE | exact HmodE | cbn; rewrite Hp; reflexivity | exact Hed' | cbn; rewrite Ha; reflexivity ]. }
+    { eapply mdenote_mem; [ exact HmE | exact HmodE | cbn; rewrite Hp; reflexivity | exact Hed' | cbn; rewrite Ha; reflexivity ]. }
     destruct (ds_named_app Θ Δ Ns (apps (a_mem (qname_mod p) x) Ns) R2) as [Hn | (-> & -> & A0 & -> & Hn)];
       rewrite Hn; [ left; rewrite ds_up_cat; reflexivity |].
     right; exists A0, RE, p, T, Φ; split; [ reflexivity | split; [ exact HmE | split; [ exact HmodE | reflexivity ] ] ].
@@ -538,7 +538,7 @@ Proof.
   destruct (rel_modexp_at _ _ _ _ _ HEP HR _ _ Hρ) as (k1 & kp & Hk1 & Hkp & Hkk).
   pose proof (functional_eval_modexp _ _ _ _ Hk1 Hk) as ->.
   destruct (Hmt _ (per_dmod_sym _ _ Hkk)) as [r r' Hr Hr' Hrr].
-  apply mk_valid_mem_at with (vma_mod := k) (vma_typ := a) (vma_lvl := i) (vma_rel := RA); try assumption.
+  apply mk_valid_mem_at with (valid_mem_at_mod := k) (valid_mem_at_typ := a) (valid_mem_at_lvl := i) (valid_mem_at_rel := RA); try assumption.
   intros M [= <-]; apply (mk_rel_mem_reduct _ _ _ _ _ r r'); [ eapply eval_mem_of_sel; eassumption | assumption | assumption ].
 Qed.
 
@@ -750,7 +750,7 @@ Proof.
                       exists a, i', Ra; repeat split; try assumption; intros M1 [= <-]; exists m, r; repeat split; assumption)
                 HRΓ _ Hρ _ Hk Hkk)
       as (a & i' & Ra & Ha & HRa & Hmt & Hred).
-    apply mk_valid_mem_at with (vma_mod := k) (vma_typ := a) (vma_lvl := i') (vma_rel := Ra);
+    apply mk_valid_mem_at with (valid_mem_at_mod := k) (valid_mem_at_typ := a) (valid_mem_at_lvl := i') (valid_mem_at_rel := Ra);
       [ exact Hk' | exact Ha | exact HRa | exact Hmt |].
     intros M' [= <-]; destruct (Hred _ eq_refl) as (m & r & Hm0 & Hr & Hmr).
     exact (mk_rel_mem_reduct _ _ _ _ _ m r Hm0 Hr Hmr).
@@ -783,7 +783,7 @@ Proof.
                       intros M0 HM0; destruct (Hred1 _ HM0) as [m r Hm2 Hr2 Hmr2]; exists m, r; repeat split; assumption)
                 HRΓ _ Hρ _ Hk Hkk)
       as (a & i' & Ra & Ha & HRa & Hmt & Hred).
-    apply mk_valid_mem_at with (vma_mod := k) (vma_typ := a) (vma_lvl := i') (vma_rel := Ra);
+    apply mk_valid_mem_at with (valid_mem_at_mod := k) (valid_mem_at_typ := a) (valid_mem_at_lvl := i') (valid_mem_at_rel := Ra);
       [ exact Hk' | exact Ha | exact HRa | exact Hmt |].
     intros M Hom; destruct om' as [M' |]; cbn in Hom; [ injection Hom as <- | discriminate ].
     destruct (Hred _ eq_refl) as (m & r & Hm0 & Hr & Hmr).
@@ -822,7 +822,7 @@ Proof.
       eapply filed_mem; eassumption. }
     pose proof (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm0 _ HmH) as ->.
     rewrite HmodH in Hmd; injection Hmd as <-.
-    assert (HmKx : mdenote Θm Ξm Γ (me_mem K x) R') by (eapply dn_mem; [ exact HmK | exact HmodK | exact He | exact Hed | exact Hr ]).
+    assert (HmKx : mdenote Θm Ξm Γ (me_mem K x) R') by (eapply mdenote_mem; [ exact HmK | exact HmodK | exact He | exact Hed | exact Hr ]).
     exact (valid_mem_transport _ _ _ _ _ _ HHK (IHK _ _ _ HmKx Ht)).
 Qed.
 

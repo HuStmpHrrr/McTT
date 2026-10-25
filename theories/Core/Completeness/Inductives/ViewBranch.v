@@ -134,25 +134,25 @@ Section Fixed_GCtx.
 Record valid_blocks (p : qname) (D : ind_decl) (Γ : ctx) (Us : list exp) (Bks : list eblock) (i : nat) : Prop :=
   mk_valid_blocks
   { (** A block per member *)
-    vbs_has : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bks j = Some b
+    valid_blocks_has : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bks j = Some b
     (** Each block binds as many variables as its member's motive *)
-  ; vbs_nm : blocks_nm_ok D Bks
+  ; valid_blocks_nm : blocks_nm_ok D Bks
     (** Each motive context is valid *)
-  ; vbs_mctx : forall j Mj, ind_member D j = Some Mj -> ⊨ elim_mctx p D j Mj Us ++ Γ
+  ; valid_blocks_mctx : forall j Mj, ind_member D j = Some Mj -> ⊨ elim_mctx p D j Mj Us ++ Γ
     (** Each motive is a valid type in its context *)
-  ; vbs_motive : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+  ; valid_blocks_motive : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@i
     (** Each block has one branch per constructor, in order *)
-  ; vbs_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
+  ; valid_blocks_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
     (** Each branch context is valid *)
-  ; vbs_bctx : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
+  ; valid_blocks_bctx : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
       ⊨ elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ
     (** Each branch binds the parameters, the arguments and the recursive
         results *)
-  ; vbs_arity : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
+  ; valid_blocks_arity : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
       In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat
     (** Each branch is valid at its branch type *)
-  ; vbs_branch : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
+  ; valid_blocks_branch : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
       In (c, n, B) (eb_brs b) ->
       elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_bty p j Mj c gs (eb_motive b) Us }.
 
@@ -329,10 +329,10 @@ Section WrapBranch.
   Hypotheses (HP : valid_groups VP) (HPD : VP p D).
   Let Hvg := valid_groups_valid VP HP p D HPD.
   Let Hcv := containers_valid_of_groups VP HP p D HPD.
-  Let HD := vgr_valid _ _ Hvg.
-  Let Hc := vgr_closed _ _ Hvg.
-  Let Hl := vgr_lookup _ _ Hvg.
-  Let Hdt := vgr_typed _ _ Hvg.
+  Let HD := valid_group_valid _ _ Hvg.
+  Let Hc := valid_group_closed _ _ Hvg.
+  Let Hl := valid_group_lookup _ _ Hvg.
+  Let Hdt := valid_group_typed _ _ Hvg.
   Let Ua : tele_ass (ind_uparams D) := uparams_ass D Hc.
 
   Variable (Γ : ctx) (Us : list exp) (Bks : list eblock) (i : nat).
@@ -354,7 +354,7 @@ Section WrapBranch.
 
   Lemma w_HΨc : ⊨ Ψc.
   Proof.
-    pose proof (vbs_bctx _ _ _ _ _ _ HBk _ _ _ _ HMv Hcon) as H; unfold elim_bctx in H; fold τU nn Cs Ns As in H.
+    pose proof (valid_blocks_bctx _ _ _ _ _ _ HBk _ _ _ _ HMv Hcon) as H; unfold elim_bctx in H; fold τU nn Cs Ns As in H.
     rewrite <- !List.app_assoc in H; exact (rel_ctx_wf_app_r _ _ H).
   Qed.
 
@@ -495,7 +495,7 @@ Section WrapBranch.
       pose proof (valid_blocks_gsub p D Γ Us Bks i (E ++ Ψc) (sb_of_wk (wk_shiftn n)) Hc HUl (gsub_wk _ _ _ w_wk HE HΓ) HBk) as HBk'.
       rewrite map_sub_of_wk, blocks_sub_of_wk in HBk'; fold Uw in HBk'; rewrite <- HfP in HBk'.
       destruct HBk' as [HBks' HnmA' HMall' HAv' HnaA' HBc' HarA' HBv'].
-      destruct (vbs_has _ _ _ _ _ _ HBk _ _ HMv) as [b Hb].
+      destruct (valid_blocks_has _ _ _ _ _ _ HBk _ _ HMv) as [b Hb].
       assert (Hb' : List.nth_error (blocks_wk Bks (wk_shiftn n)) v = Some (eblock_sub b (sb_of_wk (wk_shiftn n)))).
       { rewrite <- blocks_sub_of_wk, nth_error_blocks_sub, Hb; reflexivity. }
       assert (HPs : forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mv) Id Ps) k = Some T ->
@@ -519,7 +519,7 @@ Section WrapBranch.
       rewrite Ex in H.
       (** The instance of the parameters, at a base agreeing below them. *)
       assert (Hst : ptyp_scoped (List.length (cargs_nonrec gs1) + im_np D Mv) t).
-      { pose proof (mc_recs _ _ (dc_members _ Hc _ _ HMv) _ _ _ _ _ w_Hin Heq) as Hs.
+      { pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HMv) _ _ _ _ _ w_Hin Heq) as Hs.
         rewrite cargs_strat_nonrec, List.length_rev, List.length_map in Hs; exact Hs. }
       assert (Hag : forall y, y < List.length (cargs_nonrec gs1) + im_np D Mv ->
                  cargs_sub (sb_of_list Id Ps) gs1 Aw y = cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw y).
@@ -533,7 +533,7 @@ Section WrapBranch.
                 (a_var (List.length E + (na - 1 - List.length gs1))) t); [ exact H |].
       rewrite <- (ptyp_ihty_base t As _ (sb_of_wk (wk_shiftn n)) Id).
       - apply ptyp_ihty_sb_eq; [ apply sb_compose_id_right | reflexivity ].
-      - rewrite <- blocks_sub_of_wk, HPj; exact (blocks_motives_sub D Bks _ _ _ (vbs_nm _ _ _ _ _ _ HBk) HMj).
+      - rewrite <- blocks_sub_of_wk, HPj; exact (blocks_motives_sub D Bks _ _ _ (valid_blocks_nm _ _ _ _ _ _ HBk) HMj).
     Qed.
   End At.
 
@@ -545,7 +545,7 @@ Section WrapBranch.
             (a_var (cargs_nrec gs1 + na - 1 - List.length (cargs_pat gs1))) t : Typeω@j.
   Proof.
     intros * Heq.
-    pose proof (vbs_bctx _ _ _ _ _ _ HBk _ _ _ _ HMv Hcon) as H; unfold elim_bctx in H; fold τU nn Cs Ns As na in H.
+    pose proof (valid_blocks_bctx _ _ _ _ _ _ HBk _ _ _ _ HMv Hcon) as H; unfold elim_bctx in H; fold τU nn Cs Ns As na in H.
     rewrite Heq in H at 1; rewrite ihs_ctx_aux_app, List.app_nil_r in H; cbn [ihs_ctx_aux Nat.add] in H.
     rewrite <- !List.app_assoc in H; cbn [List.app] in H.
     pose proof (rel_ctx_wf_app_r _ _ H) as H'; cbn [List.app] in H'.
@@ -802,7 +802,7 @@ Section WrapBranch.
     intros * Hb Hlk.
     rewrite (wrap_br_snd _ _ _ _ _ _ _ _ _ _ _ Hcon Hlk).
     exact (rel_exp_under_ctx_gsub gsub_wrap_br
-             (vbs_branch _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMv Hb Hcon (brs_lookup_in _ _ _ _ Hlk))).
+             (valid_blocks_branch _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMv Hb Hcon (brs_lookup_in _ _ _ _ Hlk))).
   Qed.
 End WrapBranch.
 

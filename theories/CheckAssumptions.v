@@ -104,8 +104,8 @@ Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_gctx.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_nat.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_nat_stuck.
-Print Assumptions Mctt.Core.Consequences.FiledConstructorTypes.rc_ind_con_types.
-Print Assumptions Mctt.Core.Syntactic.System.Inductives.IndRuns.rc_ind_runs.
+Print Assumptions Mctt.Core.Consequences.FiledConstructorTypes.run_cmd_ind_con_types.
+Print Assumptions Mctt.Core.Syntactic.System.Inductives.IndRuns.run_cmd_ind_runs.
 (* Presupposition: local, and of the global context. *)
 Print Assumptions Mctt.Core.Syntactic.System.Lemmas.presup_exp.
 Print Assumptions Mctt.Core.Syntactic.Presup.presup_exp_eq.
@@ -131,7 +131,7 @@ Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_record_nf.
 (* Records: a field's projection of its module's value is of the field's
    type, and an accepted record declaration runs. *)
 Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.record_field_def_typed.
-Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.rc_record_runs.
+Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.run_cmd_record_runs.
 (* The typed fill of a command (its literals, its eliminators' groups,
    its accesses through terms) is functional, and decided by the
    checker. *)

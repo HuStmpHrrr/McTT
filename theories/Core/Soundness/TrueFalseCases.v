@@ -129,7 +129,7 @@ Lemma glu_rel_exp_true : forall {Γ},
     Γ ⊩ ⋆ : ⊤.
 Proof.
   intros * [Sb].
-  eapply mk_glu_rel_exp with (gre_lvl := 0); [ mauto 3 |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ mauto 3 |].
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -201,7 +201,7 @@ Proof.
   pose proof HA as HAglu.
   invert_glu_rel_exp HM.
   invert_glu_rel_exp HA.
-  eapply mk_glu_rel_exp with (gre_lvl := i); [eassumption |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [eassumption |].
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.

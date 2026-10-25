@@ -62,19 +62,19 @@ Ltac st_neg :=
 Ltac st_pos :=
   subst;
   lazymatch goal with
-  | |- ⊢anf Typeωⁿ@_ ⊆ Typeωⁿ@_ => apply asnf_univ; assumption
+  | |- ⊢anf Typeωⁿ@_ ⊆ Typeωⁿ@_ => apply alg_subtyping_nf_univ; assumption
   (** The decided level order arrives destructed into its two components
       (the constant and the sorted atoms), so the pair is rebuilt here. *)
   | |- ⊢anf univⁿ _ _ ⊆ univⁿ _ _ =>
-      apply asnf_suniv;
+      apply alg_subtyping_nf_suniv;
       first [ assumption
             | unfold lvl_le, lvl_canon; cbn; f_equal; assumption ]
-  | |- ⊢anf univⁿ _ _ ⊆ Typeωⁿ@_ => apply asnf_small_large
-  | |- ⊢anf Levelⁿ@_ ⊆ Levelⁿ@_ => apply asnf_level; assumption
-  | |- ⊢anf Πⁿ _ _ ⊆ Πⁿ _ _ => apply asnf_pi; [ first [ assumption | reflexivity ] | assumption ]
-  (** Every other normal form is below itself only, by [asnf_refl], whose
+  | |- ⊢anf univⁿ _ _ ⊆ Typeωⁿ@_ => apply alg_subtyping_nf_small_large
+  | |- ⊢anf Levelⁿ@_ ⊆ Levelⁿ@_ => apply alg_subtyping_nf_level; assumption
+  | |- ⊢anf Πⁿ _ _ ⊆ Πⁿ _ _ => apply alg_subtyping_nf_pi; [ first [ assumption | reflexivity ] | assumption ]
+  (** Every other normal form is below itself only, by [alg_subtyping_nf_refl_case], whose
       side condition holds by computation. *)
-  | |- ⊢anf ?A ⊆ ?A => apply asnf_refl; [ exact I | reflexivity ]
+  | |- ⊢anf ?A ⊆ ?A => apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ]
   end.
 
 Solve All Obligations with (repeat intro; first [ discriminate | st_neg | st_pos ]).

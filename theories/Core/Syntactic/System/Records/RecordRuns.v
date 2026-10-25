@@ -1,10 +1,10 @@
 (** * An Accepted Record Declaration Runs
 
-    For a record declaration [rc_record] checks with an empty module, the
-    field definitions it generates always run ([rc_record_runs]): each
+    For a record declaration [run_cmd_record] checks with an empty module, the
+    field definitions it generates always run ([run_cmd_record_runs]): each
     field's projection of the module's value is of the field's type at the
     module's parameters and the projections before it.  So a record
-    declaration that checks derives [rc_record] whenever its with-area
+    declaration that checks derives [run_cmd_record] whenever its with-area
     runs after its fields. *)
 
 From Stdlib Require Import Lia List PeanoNat String.
@@ -91,7 +91,7 @@ Section RecordRuns.
       A record checked with an empty module where it is declared, its name
       fresh: its field definitions run in its module's frame, and the
       record files whenever its with-area runs after them. *)
-  Theorem rc_record_runs : forall ch B Rb Θ Ξ x pv Δ Srt fs,
+  Theorem run_cmd_record_runs : forall ch B Rb Θ Ξ x pv Δ Srt fs,
       ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) ⋄ ->
       exists Ξf,
@@ -130,7 +130,7 @@ Section RecordRuns.
       replace (record_params R) with (Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ0)) in Ht by reflexivity; exact Ht.
     - exists ((mp, fk_record R, gu_body (ce_ass (record_self mp R) :: Δ) Φ') :: (mq, Kq, Uq) :: Ξ0); split.
       + unfold record_field_cmds; rewrite record_fields_cmds_defs; exact Hr.
-      + intros * Hcs; eapply rc_record; [ exact Hfr | exact HE | | exact Hcs ].
+      + intros * Hcs; eapply run_cmd_record; [ exact Hfr | exact HE | | exact Hcs ].
         unfold record_field_cmds; rewrite record_fields_cmds_defs; exact Hr.
   Qed.
 End RecordRuns.

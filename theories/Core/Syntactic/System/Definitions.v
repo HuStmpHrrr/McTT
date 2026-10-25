@@ -129,10 +129,10 @@ Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some 
     makes that recursion well founded. *)
 Record view_rank_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat) : Prop := mk_view_rank_ok
   { (** A declared member has rank [0] *)
-    vro_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
+    view_rank_ok_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
     (** A view's rank is above that of every member it nests through, in
         every block the eliminator at the view reads *)
-  ; vro_nest : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
+  ; view_rank_ok_nest : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm -> ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' ->
       List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
       cargs_nest_ok rk (rk k) gs' gs }.
@@ -1053,7 +1053,7 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ E' ≈ E' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
 (** An alias of a literal is the literal over both telescopes, the alias's
-    outermost: the merge lookup performs ([un_alias], [ds_up]).  The
+    outermost: the merge lookup performs ([udenote_alias], [ds_up]).  The
     alias's parameters form an extension of [Γ], and the literal is a unit
     under them. *)
 | wf_unit_eq_flatten :
@@ -1585,13 +1585,13 @@ Combined Scheme wf_mut_ind_all from
 #[warnings="-cannot-define-projection"]
 Record wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (U : gunit) : Prop := mk_wf_gunit
   { (** The unit's parameters *)
-    wgu_params : ctx
+    wf_gunit_params : ctx
     (** The unit's body *)
-  ; wgu_body : gmod
+  ; wf_gunit_body : gmod
     (** The unit is a body module *)
-  ; wgu_eq : U = gu_body wgu_params wgu_body
+  ; wf_gunit_eq : U = gu_body wf_gunit_params wf_gunit_body
     (** Its body is a module of kind [K] *)
-  ; wgu_wf : Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ wgu_params ⊢ᵍᵐ wgu_body }.
+  ; wf_gunit_wf : Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ wf_gunit_params ⊢ᵍᵐ wf_gunit_body }.
 Notation "Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U" := (wf_gunit Θ Ξ mp K U) : type_scope.
 
 Lemma wf_gunit_intro : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ gu_body Δ Φ.

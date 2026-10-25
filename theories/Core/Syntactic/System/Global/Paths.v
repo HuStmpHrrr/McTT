@@ -1107,16 +1107,16 @@ Qed.
     and the group at its first member. *)
 Record ind_selfpath (pq : qname) (k : nat) (D : ind_decl) (p : qname) : Prop := mk_ind_selfpath
   { (** The member's path is [p] *)
-    isp_path : ind_mpath D k = Some p
+    ind_selfpath_path : ind_mpath D k = Some p
     (** The group is named by its first member's path *)
-  ; isp_group : k = 0 -> pq = p
+  ; ind_selfpath_group : k = 0 -> pq = p
     (** The member is a declared one *)
-  ; isp_decl : k < ind_ndecl D }.
+  ; ind_selfpath_decl_field : k < ind_ndecl D }.
 
 (** A member at its own path is a member of the group. *)
 Lemma ind_selfpath_member : forall pq k D p, ind_selfpath pq k D p -> exists Mk, ind_member D k = Some Mk.
 Proof.
-  intros * Hsp; pose proof (isp_decl _ _ _ _ Hsp) as Hk; pose proof (ind_ndecl_le D) as Hle.
+  intros * Hsp; pose proof (ind_selfpath_decl_field _ _ _ _ Hsp) as Hk; pose proof (ind_ndecl_le D) as Hle.
   unfold ind_member; destruct (List.nth_error (ind_members D) k) as [Mk |] eqn:Hm; [ eauto |].
   apply List.nth_error_None in Hm; lia.
 Qed.
@@ -1213,7 +1213,7 @@ Lemma frame_ind_lookup : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p pq k D, gs_f
 Proof.
   intros * Hg * Hf.
   destruct k as [| k].
-  - rewrite (isp_group _ _ _ _ (frame_ind_selfpath _ _ Hg _ _ _ _ Hf) eq_refl), ind_lookup_unfold, ind_mlookup_unfold, Hf.
+  - rewrite (ind_selfpath_group _ _ _ _ (frame_ind_selfpath _ _ Hg _ _ _ _ Hf) eq_refl), ind_lookup_unfold, ind_mlookup_unfold, Hf.
     reflexivity.
   - destruct (gs_find_ind_split _ _ _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & _); rewrite HΞ in Hg |- *.
     destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 Hs].
@@ -1259,7 +1259,7 @@ Proof.
   pose proof Ht as Ht'.
   destruct (gs_find_tele_body _ _ Hg _ _ _ _ Ht) as (Δ & Φ & ->).
   assert (Hfr : gc_frame Ξ p = Some (Δ ++ T0, Φ)) by (unfold gc_frame; rewrite Ht; reflexivity).
-  pose proof (isp_decl _ _ _ _ (frame_ind_selfpath _ _ Hg _ _ _ _ Hf)) as Hk.
+  pose proof (ind_selfpath_decl_field _ _ _ _ (frame_ind_selfpath _ _ Hg _ _ _ _ Hf)) as Hk.
   pose proof (ind_ndecl_le D) as Hle.
   destruct (List.nth_error (ind_members D) k) as [Mk |] eqn:Hm;
     [| apply List.nth_error_None in Hm; lia ].
@@ -1503,10 +1503,10 @@ Proof.
     match goal with H1 : mdenote _ _ _ H _ |- _ => rewrite <- (IH _ H1) in * end; congruence.
   - intros * Hm IH Hmd He Hed IHe Hr R' Hm'; inversion Hm'; subst.
     + match goal with Hu' : gc_unit _ _ _ = Some _, Hq' : mod_qname _ = Some _ |- _ =>
-        exact (unit_denote_unique _ _ Hg _ _ _ _ _ _ Hq' Hu' ltac:(eapply dn_mem; eassumption)) end.
+        exact (unit_denote_unique _ _ Hg _ _ _ _ _ _ Hq' Hu' ltac:(eapply mdenote_mem; eassumption)) end.
     + match goal with Hk' : gs_find_ind _ _ = Some _, HMk' : ind_member _ _ = Some _,
                       Hl' : gc_loc _ _ _ = Some _, Hq' : mod_qname _ = Some _ |- _ =>
-        exact (proj1 (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq' ltac:(eapply dn_mem; eassumption))) _ _ _ _ _ _
+        exact (proj1 (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq' ltac:(eapply mdenote_mem; eassumption))) _ _ _ _ _ _
                  Hk' HMk' Hl') end.
     + match goal with H1 : mdenote _ _ _ H _ |- _ => rewrite <- (IH _ H1) in * end.
       match goal with H1 : ds_mod R0 = _ |- _ => rewrite Hmd in H1; injection H1 as <- end.
@@ -1515,7 +1515,7 @@ Proof.
       congruence.
     + match goal with Hk' : gs_find_record _ _ = Some _,
                       Hl' : gc_loc _ _ _ = Some _, Hq' : mod_qname _ = Some _ |- _ =>
-        exact (proj2 (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq' ltac:(eapply dn_mem; eassumption))) _ _ _
+        exact (proj2 (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq' ltac:(eapply mdenote_mem; eassumption))) _ _ _
                  Hk' Hl') end.
   - intros * Hq Hk Hl R' Hm'; symmetry;
       exact (proj2 (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq Hm')) _ _ _ Hk Hl).
@@ -2101,17 +2101,17 @@ Proof.
   { intros * Hq Hf; unfold loc_desc; destruct (gs_find_ind Ξ mp) as [[[pq k] D] |] eqn:Hk.
     - destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk) as (U & T0 & T' & Φ' & Mk & Ht & Hf' & Hl & HMk).
       rewrite Hf in Hf'; injection Hf' as <- <-.
-      exists (ind_former_desc pq k D Mk (ds_closed nil mp T Φ nil)); split; [ eapply dn_ind_frame; eassumption |].
+      exists (ind_former_desc pq k D Mk (ds_closed nil mp T Φ nil)); split; [ eapply mdenote_ind_frame; eassumption |].
       split; [ reflexivity |]; rewrite ind_mlookup_unfold, Hk.
       exists Mk; split; [ exact HMk | reflexivity ].
     - rewrite (frame_mlookup_none _ _ _ _ Hf Hk); unfold record_lookup.
       destruct (gs_find_record Ξ mp) as [Rr |] eqn:Hr.
       + destruct (frame_record_loc _ _ Hg _ _ Hr) as (U & T0 & T' & Φ' & Ht & Hf' & Hl).
         rewrite Hf in Hf'; injection Hf' as <- <-.
-        exists (record_former_desc mp Rr (ds_closed nil mp T Φ nil)); split; [ eapply dn_record_frame; eassumption |].
+        exists (record_former_desc mp Rr (ds_closed nil mp T Φ nil)); split; [ eapply mdenote_record_frame; eassumption |].
         split; reflexivity.
       + rewrite (gc_frame_entry_none Θ _ _ _ Hf).
-        exists (ds_closed nil mp T Φ nil); split; [ exact (dn_unit _ _ _ _ _ _ _ Hq (gc_unit_frame _ _ _ _ _ _ Hq Hf Hk Hr)) |].
+        exists (ds_closed nil mp T Φ nil); split; [ exact (mdenote_unit _ _ _ _ _ _ _ Hq (gc_unit_frame _ _ _ _ _ _ Hq Hf Hk Hr)) |].
         split; reflexivity. }
   induction H as [fp | x | H0 IH y | H0 IH N | U]; intros * Hq Hl; cbn in Hq; try discriminate.
   - injection Hq as <-; destruct Hl as [Hl | Hb]; [ exact (Hfr (me_unit fp) _ _ _ Γ eq_refl Hl) |].
@@ -2121,7 +2121,7 @@ Proof.
     + cbn in Hb |- *; destruct (gds_lookup Θ fp) as [Uf |] eqn:El; [| discriminate ].
       destruct (wf_gds_body _ _ Hg _ _ El) as (Δ & Φ0 & ->); cbn in Hb; injection Hb as <- <-.
       exists (ds_closed nil (q_abs fp nil) Δ Φ0 nil); split; [| split; [ reflexivity |] ].
-      * apply dn_unit; [ reflexivity |]; unfold gc_unit; cbn [mod_qname]; rewrite Ef; cbn; rewrite El; reflexivity.
+      * apply mdenote_unit; [ reflexivity |]; unfold gc_unit; cbn [mod_qname]; rewrite Ef; cbn; rewrite El; reflexivity.
       * unfold loc_desc; rewrite ind_mlookup_unfold, (gs_find_ind_none _ _ ltac:(intros ? ? Hc; rewrite Ef in Hc; discriminate)).
         unfold gc_module, gc_module_u; rewrite Ef; cbn; rewrite El.
         unfold record_lookup; rewrite (gs_find_record_none _ _ ltac:(intros ? ? Hc; rewrite Ef in Hc; discriminate)).
@@ -2144,9 +2144,9 @@ Proof.
       assert (Hl : gc_loc Θ Ξ (qname_in mq y) = Some (ind_uparams D, Φ'))
         by (unfold gc_loc; rewrite (gc_body_not_frame _ _ _ _ Hb), Hb; reflexivity).
       exists (ind_former_desc pq k D Mk (ds_closed nil (qname_in mq y) (ind_uparams D) Φ' nil)); split; [| split ].
-      * eapply dn_mem with (R := ind_former_desc pq k D Mk (ds_closed nil (qname_in mq y) (ind_uparams D) Φ' nil));
+      * eapply mdenote_mem with (R := ind_former_desc pq k D Mk (ds_closed nil (qname_in mq y) (ind_uparams D) Φ' nil));
           [ exact Hm0 | exact Hmd0 | cbn; rewrite Hp; reflexivity | | reflexivity ].
-        cbn [ge_read ds_epath]; econstructor; [ exact HMk | exact (isp_path _ _ _ _ Hsp) | exact Hl ].
+        cbn [ge_read ds_epath]; econstructor; [ exact HMk | exact (ind_selfpath_path _ _ _ _ Hsp) | exact Hl ].
       * reflexivity.
       * unfold loc_desc; rewrite Hml.
         exists Mk; split; [ exact HMk | reflexivity ].
@@ -2158,13 +2158,13 @@ Proof.
         { apply (record_lookup_entry_other _ _ _ _ (proj2 (loc_entry _ _ Hg _ _ _ Hlq _ _) He)); intros * [=]. }
         exists (ds_closed nil (qname_in mq y) (Δ ++ Tq) Φ nil); split;
           [| split; [ reflexivity | unfold loc_desc; rewrite Hml, Hr; reflexivity ] ].
-        eapply dn_mem with (R0 := R0) (Γy := nil) (rd := rd_closed nil nil (apps (a_mem (qname_mod mq) y) nil))
+        eapply mdenote_mem with (R0 := R0) (Γy := nil) (rd := reader_closed nil nil (apps (a_mem (qname_mod mq) y) nil))
           (E := ge_read Tq (ge_mod pv (gu_mk Δ (md_body sm_closed Φ)))) (R := ds_closed nil (qname_in mq y) (Δ ++ Tq) Φ nil).
         -- exact Hm0.
         -- exact Hmd0.
         -- cbn; rewrite Hp; reflexivity.
-        -- cbn [ge_read ds_epath]; apply en_mod.
-           eapply un_body; [ apply body_xp_noopen, (body_closed_entry_noopen _ _ _ _ _ _ _ Hcq He) | reflexivity ].
+        -- cbn [ge_read ds_epath]; apply edenote_mod.
+           eapply udenote_body; [ apply body_xp_noopen, (body_closed_entry_noopen _ _ _ _ _ _ _ Hcq He) | reflexivity ].
         -- reflexivity.
       * (* the module of a record type *)
         destruct (gm_entry_prefix _ _ _ (body_closed_noopen _ _ Hcq) He) as (Φ0 & Hp).
@@ -2175,13 +2175,13 @@ Proof.
           by (unfold gc_loc; rewrite (gc_body_not_frame _ _ _ _ Hb), Hb; reflexivity).
         exists (record_former_desc (qname_in mq y) Rr (ds_closed nil (qname_in mq y) (record_mod_tele pr Rr) Φ nil));
           split; [| split ].
-        -- eapply dn_mem with (R0 := R0) (Γy := nil) (rd := rd_closed nil nil (apps (a_mem (qname_mod mq) y) nil))
+        -- eapply mdenote_mem with (R0 := R0) (Γy := nil) (rd := reader_closed nil nil (apps (a_mem (qname_mod mq) y) nil))
              (E := ge_read Tq (ge_record pv pr Rr Φ))
              (R := record_former_desc (qname_in mq y) Rr (ds_closed nil (qname_in mq y) (record_mod_tele pr Rr) Φ nil)).
            ++ exact Hm0.
            ++ exact Hmd0.
            ++ cbn; rewrite Hp; reflexivity.
-           ++ cbn [ge_read ds_epath]; apply en_record; exact Hl.
+           ++ cbn [ge_read ds_epath]; apply edenote_record; exact Hl.
            ++ reflexivity.
         -- reflexivity.
         -- unfold loc_desc; rewrite Hml, Hr; reflexivity.
@@ -2521,7 +2521,7 @@ Section Grow.
       destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hl | (_ & Hc & Hb & Hm)]); rewrite Hq0 in Hq; injection Hq as <-.
       + destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hl) as (Φ' & [(Hl' & Hk' & Hr') | (Hb' & Hm' & Hr')]).
         * rewrite Hk1 in Hk'; rewrite Hr1 in Hr'.
-          exists (ds_closed nil p0 T Φ' nil); split; [ apply dn_unit; [ exact Hq0 | exact (gc_unit_frame _ _ _ _ _ _ Hq0 Hl' Hk' Hr') ] |].
+          exists (ds_closed nil p0 T Φ' nil); split; [ apply mdenote_unit; [ exact Hq0 | exact (gc_unit_frame _ _ _ _ _ _ Hq0 Hl' Hk' Hr') ] |].
           apply dsg_closed; left; eassumption.
         * rewrite Hk1 in Hm'; rewrite Hr1 in Hr'.
           exists (ds_closed nil p0 T Φ' nil); split; [ apply (mdenote_of_loc _ _ Hg2 _ p0); [ exact Hq0 | right; split; [| split ]; assumption ] |].
@@ -2540,7 +2540,7 @@ Section Grow.
       + (* still open *)
         rewrite <- Hk' in Hk.
         exists (ind_former_desc pq k D Mk (ds_closed nil p T Φ' nil)); split.
-        * eapply dn_ind_frame; [ exact Hq | exact Hk | exact HMk | unfold gc_loc; rewrite Hl'; reflexivity ].
+        * eapply mdenote_ind_frame; [ exact Hq | exact Hk | exact HMk | unfold gc_loc; rewrite Hl'; reflexivity ].
         * apply dsg_dm, dsg_closed; left; assumption.
       + (* closed into the member's module *)
         rewrite Hk in Hm'.
@@ -2584,7 +2584,7 @@ Section Grow.
                             (body_xp_noopen Θ1 Ξ1 _ _ (body_closed_entry_noopen _ _ _ _ _ _ _ Hc1 He1))) as <- end.
             match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
             exists (ds_closed nil (qname_in p x) (Δ ++ T) Φy2 nil); split.
-            + apply en_mod; eapply un_body; [ apply body_xp_noopen | reflexivity ].
+            + apply edenote_mod; eapply udenote_body; [ apply body_xp_noopen | reflexivity ].
               exact (body_closed_entry_noopen _ _ _ _ _ _ _ Hc2 He2).
             + cbn; apply dsg_closed; right;
                 [ exact (proj1 (loc_child_mod _ _ Hg1 _ _ _ H1 _ _ _ _ _ He1))
@@ -2609,7 +2609,7 @@ Section Grow.
         destruct HE as (R2 & Hed2 & Hd2).
         destruct (dsg_read _ _ _ _ Hd2 Hr) as (R2' & Hr2 & Hd2').
         exists R2'; split; [| exact Hd2' ].
-        eapply dn_mem; [ exact Hm2 | exact Hmd2 | cbn; rewrite Hp2; reflexivity | exact Hed2 | exact Hr2 ].
+        eapply mdenote_mem; [ exact Hm2 | exact Hmd2 | cbn; rewrite Hp2; reflexivity | exact Hed2 | exact Hr2 ].
     - (* the open frame of a record's module: still one, or closed into the record's module *)
       intros Γ H p R Tm Φm Hq Hk Hl.
       destruct (frame_record_loc _ _ Hg1 _ _ Hk) as (U & T0 & T & Φ & _ & Hf & HlE).
@@ -2621,7 +2621,7 @@ Section Grow.
       + (* still open *)
         rewrite <- Hr' in Hk.
         exists (record_former_desc p R (ds_closed nil p T Φ' nil)); split.
-        * eapply dn_record_frame; [ exact Hq | exact Hk | unfold gc_loc; rewrite Hl'; reflexivity ].
+        * eapply mdenote_record_frame; [ exact Hq | exact Hk | unfold gc_loc; rewrite Hl'; reflexivity ].
         * apply dsg_dm, dsg_closed; left; assumption.
       + (* closed into the record's module *)
         rewrite Hk in Hr'; rewrite Hki in Hm'.

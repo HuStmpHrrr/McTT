@@ -189,7 +189,7 @@ Proof.
       * eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | symmetry; exact Hm12 ].
     + (* a submodule: the closure of its filled-in unit, against its closure in the body's *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
-      pose proof (ruu_lit _ _ _ (rel_ctx_wf_mod_inv HC)) as HU.
+      pose proof (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC)) as HU.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
       destruct (IH _ _ Hn eq_refl HC0 _ _ HD HR0 _ Hρ) as (ρσ0 & ρ10 & Hσ0 & Hb0 & H0).
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0)) as Hτ.
@@ -212,7 +212,7 @@ Proof.
          unit as a submodule's *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
       destruct (rel_ctx_wf_dm_inv HC) as ([i HA] & HM & HUv).
-      pose proof (ruu_lit _ _ _ HUv) as HU.
+      pose proof (rel_unit_under_ctx_lit _ _ _ HUv) as HU.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
       destruct (IH _ _ Hn eq_refl HC0 _ _ HD HR0 _ Hρ) as (ρσ0 & ρ10 & Hσ0 & Hb0 & H0).
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0)) as Hτ.
@@ -304,9 +304,9 @@ Lemma per_dmod_nil_kind_all :
   (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> True).
 Proof.
   apply per_dmod_mut_ind_all; intros; try exact I.
-  - apply dk_global_here_mod; unfold gc_loc in *; destruct (gc_frame _ _) eqn:Hfr;
+  - apply dkind_global_here_mod; unfold gc_loc in *; destruct (gc_frame _ _) eqn:Hfr;
       [ right; eauto | left; destruct (gc_body_module _ _ _ _ _ ltac:(eassumption)); eauto ].
-  - apply dk_local, uk_self.
+  - apply dkind_local, ukind_self.
   - match goal with Hu : per_univ_elem _ _ _ _, E1 : forall c c', _ -> exists hc, eval_appm _ _ h c hc,
                     E2 : forall c c', _ -> exists hc', eval_appm _ _ h' c' hc',
                     IH : forall c c' hc hc', _ -> eval_appm _ _ h c hc -> eval_appm _ _ h' c' hc' -> dkind _ _ hc _ _ |- _ =>
@@ -535,7 +535,7 @@ Proof.
     replace mk_mod with (mdesc_kind R) by (destruct R; cbn in H1 |- *; first [ contradiction | reflexivity ]).
     exact (kinds_ok_mem _ _ _ _ Hk H0 _ _ HΓ Hρ).
   - (* a member with a term part and a module part *)
-    apply kg_dm; [| auto ].
+    apply kgens_dm; [| auto ].
     apply (skind_id _ _ _ _ (proj1 Hs)).
     replace mk_dm with (mdesc_kind R) by (destruct R; cbn in H1, H2 |- *; first [ discriminate | reflexivity ]).
     exact (kinds_ok_mem _ _ _ _ Hk H0 _ _ HΓ Hρ).
@@ -646,7 +646,7 @@ Proof.
   destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ _ _ _ _ _].
   rewrite (mod_qname_inv _ _ Hq0).
   apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)).
-  eapply dk_global_here_dm; [ exact Hdm | exact Hgl2 ].
+  eapply dkind_global_here_dm; [ exact Hdm | exact Hgl2 ].
 Qed.
 
 (** The open frame of a member's module a member names is that member. *)
@@ -656,7 +656,7 @@ Proof.
   intros * Hq Hk ρ; destruct r as [[pq k] D].
   destruct (frame_ind_loc _ _ Hgm _ _ _ _ Hk) as (? & ? & T & Φ & ? & _ & Hf & _ & _).
   apply (frame_dm_kind _ _ _ _ Hq Hf).
-  left; eexists; exact (gcs_frame_ind _ _ _ _ Hsb _ _ Hk).
+  left; eexists; exact (gc_sub_frame_ind_field _ _ _ _ Hsb _ _ Hk).
 Qed.
 
 (** So is the open frame of a record type's module. *)
@@ -666,7 +666,7 @@ Proof.
   intros * Hq Hk ρ.
   destruct (frame_record_loc _ _ Hgm _ _ Hk) as (? & ? & T & Φ & _ & Hf & _).
   apply (frame_dm_kind _ _ _ _ Hq Hf).
-  right; left; eexists; exact (gcs_frame_record _ _ _ _ Hsb _ _ Hk).
+  right; left; eexists; exact (gc_sub_frame_record_field _ _ _ _ Hsb _ _ Hk).
 Qed.
 
 Lemma frame_member_kind : forall H x,
@@ -689,7 +689,7 @@ Qed.
 
 Lemma ds_entry_open_inv : forall Δ Φ Φx y Γy E rd, ds_entry (ds_open Δ Φ Φx) y = Some (Γy, E, rd) ->
     exists Φ' E0, gm_prefix_upto Φx y = Some (gm_ext Φ' y E0) /\ entry_kind E = entry_kind E0 /\
-      Γy = body_ctx Φ' ++ Δ /\ rd = rd_open Δ Φ'.
+      Γy = body_ctx Φ' ++ Δ /\ rd = reader_open Δ Φ'.
 Proof.
   intros * He; cbn in He.
   destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
@@ -766,7 +766,7 @@ Proof.
     destruct (params_env _ _ _ _ HΔ HRΓ HRΔ _ Hρ) as (args & Hl & Hρa).
     pose proof (kshape_args_pad gc_deps gc_stack ρ _ _ Hl) as Hsa.
     destruct (kbody_exists _ _ _ Hx Hsx HC (fun k Ψ H Hk => proj1 (conj (IHops k Ψ H Hk) I)) _ _ _ HRΔ Hρa Hsa) as (Φk & Hb & Hk).
-    apply sk_lit, ukind_pad, (ukind_kbody _ _ _ _ _ Hb).
+    apply skind_lit, ukind_pad, (ukind_kbody _ _ _ _ _ Hb).
     destruct (body_eq_upto_types_prefix _ _ Hk _ _ _ Hp) as (Φk' & Ek & Hpk & Hk' & HE).
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
     destruct (prefix_shape _ _ _ _ Hsx Hp) as [Hsh' HshE].
@@ -774,12 +774,12 @@ Proof.
     destruct E0 as [b pv A0 oM | pm U | | pv A0 M0 U | ]; cbn in HshE; try contradiction;
       destruct HE as [-> | [(b' & pv' & A' & A'' & M' & -> & [= -> -> -> ->])
                             | [pv' A' A'' M' U' -> [= -> -> -> ->]]]]; cbn [entry_kind].
-    1,2: eapply uk_def; exact Hpk.
+    1,2: eapply ukind_def; exact Hpk.
     2,3: (* a definition with a module part: [dm_of] its unit's kind, a
             module's, at an environment of its context *)
       destruct (body_eq_upto_types_kenv_exists _ _ Hk' (kpad (List.length Δ) ρ)) as (σ1 & Hσ1);
       change mk_dm with (dm_of mk_mod);
-      eapply uk_dm_here; [ exact Hpk | exact Hσ1 |];
+      eapply ukind_dm_here; [ exact Hpk | exact Hσ1 |];
       destruct (prefix_body_ctx _ _ _ Hn Hp) as (X & HX);
       rewrite HX, <- app_assoc in HC; pose proof (rel_ctx_wf_app_r _ _ HC) as HC1; cbn [body_ctx app] in HC1;
       pose proof (rel_ctx_wf_tail HC1) as HC0;
@@ -789,10 +789,10 @@ Proof.
       apply (body_eq_upto_types_kenv _ _ Hk') in Hσ1;
       pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk1) as <-;
       apply (ukind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs1))), skind_lit_iff;
-      exact (valid_nil_kind _ _ _ (ruu_lit _ _ _ (proj2 (proj2 (rel_ctx_wf_dm_inv HC1)))) HR0 _ Hρ1).
+      exact (valid_nil_kind _ _ _ (rel_unit_under_ctx_lit _ _ _ (proj2 (proj2 (rel_ctx_wf_dm_inv HC1)))) HR0 _ Hρ1).
     + (* a submodule: a module, at an environment of its context *)
       destruct (body_eq_upto_types_kenv_exists _ _ Hk' (kpad (List.length Δ) ρ)) as (σ1 & Hσ1).
-      eapply uk_mod; [ exact Hpk | exact Hσ1 |].
+      eapply ukind_mod; [ exact Hpk | exact Hσ1 |].
       destruct (prefix_body_ctx _ _ _ Hn Hp) as (X & HX).
       rewrite HX, <- app_assoc in HC; pose proof (rel_ctx_wf_app_r _ _ HC) as HC1; cbn [body_ctx app] in HC1.
       pose proof (rel_ctx_wf_tail HC1) as HC0.
@@ -802,7 +802,7 @@ Proof.
       apply (body_eq_upto_types_kenv _ _ Hk') in Hσ1.
       pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk1) as <-.
       apply (ukind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs1))), skind_lit_iff.
-      exact (valid_nil_kind _ _ _ (ruu_lit _ _ _ (rel_ctx_wf_mod_inv HC1)) HR0 _ Hρ1).
+      exact (valid_nil_kind _ _ _ (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC1)) HR0 _ Hρ1).
   - (* an alias *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE.
     split; [| intros x (TΦ & Hu); cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate
@@ -815,7 +815,7 @@ Proof.
     destruct (rel_ctx_wf_per_ctx_env HΔΓ) as [RΔ HRΔ].
     destruct (params_env _ _ _ _ HΔ HRΓ HRΔ _ Hρ) as (args & Hl & Hρa).
     pose proof (kshape_args_pad gc_deps gc_stack ρ _ _ Hl) as Hsa.
-    apply sk_lit, uk_alias, (skind_id _ _ _ _ (proj1 Hsa)).
+    apply skind_lit, ukind_alias, (skind_id _ _ _ _ (proj1 Hsa)).
     exact (kinds_ok_entry _ _ IHE _ _ _ _ _ _ HmE HmodE He' _ _ HRΔ Hρa).
   - (* a module expression equal to a valid unit: as the unit *)
     intros Γ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK.

@@ -2775,9 +2775,9 @@ Definition def_tie (S : typ) (M : exp) (ρ : env) : Prop :=
   exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ per_head S S ρ↯ ρ↯.
 
 Record per_env_extend_def (S : typ) (M : exp) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_extend_def
-  { ped_ext : Dom ρ ≈ ρ' ∈ per_env_extend S S R
-  ; ped_tie_left : def_tie S M ρ
-  ; ped_tie_right : def_tie S M ρ' }.
+  { per_env_extend_def_ext : Dom ρ ≈ ρ' ∈ per_env_extend S S R
+  ; per_env_extend_def_tie_left : def_tie S M ρ
+  ; per_env_extend_def_tie_right : def_tie S M ρ' }.
 
 (** The head PER of a type is the same at any two related pairs of tails. *)
 Lemma per_head_resp_simple : forall {S R i},

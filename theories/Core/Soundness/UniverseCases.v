@@ -43,7 +43,7 @@ Lemma glu_rel_exp_of_univ : forall {Γ Sb A} {u : uidx},
     Γ ⊩ A : ulvl_tm u.
 Proof.
   intros * ? Hbody.
-  eapply mk_glu_rel_exp with (gre_lvl := ulvl_above u); [ eassumption |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := ulvl_above u); [ eassumption |].
   intros * HΔ.
   destruct (Hbody _ _ _ HΔ) as [H0 [a [? [[] [H3 Hrb]]]]].
   assert (⊢ Δ) by (gen_presups; eassumption).
@@ -192,7 +192,7 @@ Lemma glu_rel_exp_of_typ : forall {Γ Sb A} {i : nat},
     Γ ⊩ A : Typeω@i.
 Proof.
   intros * ? Hbody.
-  eapply mk_glu_rel_exp with (gre_lvl := S i); [ mauto |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := S i); [ mauto |].
   intros.
   edestruct Hbody as [? [? [? []]]]; mauto.
 Qed.

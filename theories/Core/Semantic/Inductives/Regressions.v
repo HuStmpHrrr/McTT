@@ -13,9 +13,9 @@
     - [C (A) : A → Type | mk (a : A) : C A a ; T := t (x : T) (c : C T x) : T]:
       the view [C T] would have a non-uniform parameter of type [T], which
       mentions the group, so [view_nps] has no derivation
-      ([view_nps_self_param_absurd]); and [rc_ind] rejects the
+      ([view_nps_self_param_absurd]); and [run_cmd_ind_case] rejects the
       declaration, already at [c], whose type mentions the recursive
-      argument [x] ([rc_ind_self_param_rejected]).
+      argument [x] ([run_cmd_ind_self_param_rejected]).
 
     The model lemmas assume only the lookups of the groups involved: the
     groups' telescopes are abstract, and no well-formedness of the global
@@ -466,8 +466,8 @@ End PhantomViews.
     normalized, mention the group, so [view_nps] has no derivation
     ([view_nps_self_param_absurd]).  The declaration does not get that
     far: [c]'s type mentions the recursive argument [x], so [c] is
-    classified neither as written nor as its normal form, and [rc_ind]
-    rejects the declaration ([rc_ind_self_param_rejected]). *)
+    classified neither as written nor as its normal form, and [run_cmd_ind_case]
+    rejects the declaration ([run_cmd_ind_self_param_rejected]). *)
 
 Lemma nbe_ty_var0 : forall Θ Ξ A Γ W, nbe_ty Θ Ξ (ce_ass A :: Γ) (a_var 0) W -> W = nf_neut (ne_var 0).
 Proof.
@@ -480,7 +480,7 @@ Proof.
 Qed.
 
 Lemma view_nps_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
-    rd_uparams R = nil -> rd_n R = 1 ->
+    raw_decl_uparams R = nil -> rd_n R = 1 ->
     ind_lookup Θ Ξ pC = Some DC -> ind_member DC 0 = Some MC -> im_nparams MC = ce_ass (a_var 0) :: nil ->
     ~ view_nps Θ Ξ R (pC, 0, a_var 0 :: nil) Nv.
 Proof.
@@ -556,7 +556,7 @@ Qed.
 Definition self_param_decl (pC : qname) (x : string) (ST : exp) : raw_decl :=
   mk_raw nil (mk_rmem x nil ST (("t", ("x", a_var 0) :: ("c", a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) :: nil) :: nil) :: nil) false.
 
-Theorem rc_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb' Θ' Ξ' pC DC MC iU x ST,
+Theorem run_cmd_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb' Θ' Ξ' pC DC MC iU x ST,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
     im_nparams MC = ce_ass (a_var 0) :: nil ->
     ~ (Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨lp ⍮ rd ⍮ tc⟩ cc_ind pv (self_param_decl pC x ST) ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb').
@@ -570,7 +570,7 @@ Proof.
   inversion Hargs as [| ? ? ? ? ? g1 ? Hg1 Hrest]; subst.
   inversion Hrest as [| ? ? ? ? ? g2 ? Hg2 _]; subst.
   (** The first argument, [x : T], is recursive. *)
-  assert (Eg1 : g1 = rc_rec (rp_self 0 nil)).
+  assert (Eg1 : g1 = rcarg_rec_case (rptyp_self 0 nil)).
   { inversion Hg1 as [? Hs | ? ? ? Hs]; subst; vm_compute in Hs; [ injection Hs as <-; reflexivity | discriminate ]. }
   subst g1; cbn [rcarg_bit] in Hg2.
   (** The second, [c : C T x], mentions it: it is classified neither as

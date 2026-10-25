@@ -73,13 +73,13 @@ Proof.
   refine (rel_exp_under_ctx_elim_cong _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq oq m Mm bm Bks Bks Ps Ps M M i
             ltac:(assumption) Hgr Hgr HMm Hbm HLb HLb HPl _ HPl _ ltac:(eassumption) Hnm Hnm _ _ HBn
             (fun _ _ _ H1 H2 => ltac:(rewrite H1 in H2; injection H2 as <-; reflexivity)) _ Har _).
-  - intros * HP HT; exact (sea_rel (HPs _ _ _ HP HT _ _ Hμ)).
-  - intros * HP HP' HT; rewrite HP in HP'; injection HP' as <-; exact (sea_rel (HPs _ _ _ HP HT _ _ Hμ)).
-  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sxa_ext (HMx _ _ HMk _ _ Hμ))).
-  - intros * HMk Hb Hb'; rewrite Hb in Hb'; injection Hb' as <-; exact (sea_rel (HA _ _ _ HMk Hb _ _ Hμ)).
-  - intros * HMk Hcon; exact (valid_ctx_rel_ctx_wf (sxa_ext (HBc _ _ _ _ HMk Hcon _ _ Hμ))).
+  - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
+  - intros * HP HP' HT; rewrite HP in HP'; injection HP' as <-; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
+  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMk _ _ Hμ))).
+  - intros * HMk Hb Hb'; rewrite Hb in Hb'; injection Hb' as <-; exact (sem_exp_eq_at_rel (HA _ _ _ HMk Hb _ _ Hμ)).
+  - intros * HMk Hcon; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HBc _ _ _ _ HMk Hcon _ _ Hμ))).
   - intros * HMk Hb Hb' Hj Hj' Hcon; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hj in Hj'; injection Hj' as <-.
-    exact (sea_rel (HB _ _ _ _ _ _ _ HMk Hb Hcon (List.nth_error_In _ _ Hj) _ _ Hμ)).
+    exact (sem_exp_eq_at_rel (HB _ _ _ _ _ _ _ HMk Hb Hcon (List.nth_error_In _ _ Hj) _ _ Hμ)).
 Qed.
 
 Lemma sem_exp_eq_elim_cong :
@@ -136,12 +136,12 @@ Proof.
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   refine (rel_exp_under_ctx_elim_cong _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq oq' m Mm bm Bks Bks' Ps Ps' M M' i
             ltac:(assumption) Hgr Hgr' HMm Hbm HLb HLb' HPl _ HPl' _ ltac:(eassumption) Hnm Hnm' _ _ HBn HBf _ Har _).
-  - intros * HP HT; exact (sea_rel (HPs _ _ _ HP HT _ _ Hμ)).
-  - intros * HP HP' HT; exact (sea_rel (HPP _ _ _ _ HP HP' HT _ _ Hμ)).
-  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sxa_ext (HMx _ _ HMk _ _ Hμ))).
-  - intros * HMk Hb Hb'; exact (sea_rel (HAA _ _ _ _ HMk Hb Hb' _ _ Hμ)).
-  - intros * HMk Hcon; exact (valid_ctx_rel_ctx_wf (sxa_ext (HBc _ _ _ _ HMk Hcon _ _ Hμ))).
-  - intros * HMk Hb Hb' Hj Hj' Hcon; exact (sea_rel (HBB _ _ _ _ _ _ _ _ _ _ HMk Hb Hb' Hj Hj' Hcon _ _ Hμ)).
+  - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
+  - intros * HP HP' HT; exact (sem_exp_eq_at_rel (HPP _ _ _ _ HP HP' HT _ _ Hμ)).
+  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMk _ _ Hμ))).
+  - intros * HMk Hb Hb'; exact (sem_exp_eq_at_rel (HAA _ _ _ _ HMk Hb Hb' _ _ Hμ)).
+  - intros * HMk Hcon; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HBc _ _ _ _ HMk Hcon _ _ Hμ))).
+  - intros * HMk Hb Hb' Hj Hj' Hcon; exact (sem_exp_eq_at_rel (HBB _ _ _ _ _ _ _ _ _ _ HMk Hb Hb' Hj Hj' Hcon _ _ Hμ)).
 Qed.
 
 (** The eliminator at a view is its container's at the wrapped blocks
@@ -187,12 +187,12 @@ Proof.
   intros * Hl Hgr HMm Hh Hq _ Hbm HLb HPl HPs HM -> Hnm _ HA HMx HBn HBc Har HB; sem_intro; [ assumption |].
   match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
   pose proof (valid_groups_of_emb _ _ _ _ Hμ) as HVP.
-  pose proof (vgr_lookup _ _ (valid_groups_valid _ HVP qc D' Hq)) as Hq'.
+  pose proof (valid_group_lookup _ _ (valid_groups_valid _ HVP qc D' Hq)) as Hq'.
   refine (rel_exp_under_ctx_elim_view _ _ _ HVP Hl Γ oq m Mm qc k' Is vm D' bm Bks Ps M i
             ltac:(assumption) Hgr HMm Hh Hq' Hbm HLb HPl _ ltac:(eassumption) Hnm _ _ HBn _ Har _).
-  - intros * HP HT; exact (sea_rel (HPs _ _ _ HP HT _ _ Hμ)).
-  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sxa_ext (HMx _ _ HMk _ _ Hμ))).
-  - intros * HMk Hb; exact (sea_rel (HA _ _ _ HMk Hb _ _ Hμ)).
-  - intros * HMk Hcon; exact (valid_ctx_rel_ctx_wf (sxa_ext (HBc _ _ _ _ HMk Hcon _ _ Hμ))).
-  - intros * HMk Hb Hcon Hin; exact (sea_rel (HB _ _ _ _ _ _ _ HMk Hb Hcon Hin _ _ Hμ)).
+  - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
+  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMk _ _ Hμ))).
+  - intros * HMk Hb; exact (sem_exp_eq_at_rel (HA _ _ _ HMk Hb _ _ Hμ)).
+  - intros * HMk Hcon; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HBc _ _ _ _ HMk Hcon _ _ Hμ))).
+  - intros * HMk Hb Hcon Hin; exact (sem_exp_eq_at_rel (HB _ _ _ _ _ _ _ HMk Hb Hcon Hin _ _ Hμ)).
 Qed.

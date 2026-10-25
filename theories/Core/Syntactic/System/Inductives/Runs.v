@@ -8,8 +8,8 @@
     ([grec_fn_typed]).  Each is a term of a [Π] over a telescope applied
     to the telescope's variables ([wf_apps_vars]), under [λ]s over the
     recursor's telescope.  So a declaration that meets the premises
-    [rc_ind] checks before its members runs, whatever it generates
-    ([rc_ind_runs]). *)
+    [run_cmd_ind_case] checks before its members runs, whatever it generates
+    ([run_cmd_ind_runs]). *)
 
 From Stdlib Require Import Lia List PeanoNat.
 From Stdlib Require Import String.
@@ -351,12 +351,12 @@ Section RecTyped.
   #[local] Abbreviation EK := (List.rev (rec_btys p D M 0 (im_cons M))).
 
   Lemma cons_con : forall c gs, In (c, gs) (im_cons M) -> ind_con M c = Some gs.
-  Proof. intros; apply cons_lookup_nodup; [ exact (dt_nodup _ _ _ HD _ _ HM) | assumption ]. Qed.
+  Proof. intros; apply cons_lookup_nodup; [ exact (decl_typed_nodup _ _ _ HD _ _ HM) | assumption ]. Qed.
 
   Lemma con_in : forall c gs gs', ind_con M c = Some gs -> In (c, gs') (im_cons M) -> gs = gs'.
   Proof.
     intros * Hcon Hin; apply cons_lookup_in in Hcon.
-    pose proof (dt_nodup _ _ _ HD _ _ HM) as Hnd.
+    pose proof (decl_typed_nodup _ _ _ HD _ _ HM) as Hnd.
     eapply nodup_in_fst; eassumption.
   Qed.
 

@@ -43,11 +43,11 @@ Proof. induction Ψ; intros * H; cbn in *; [ exact H | apply IHΨ; eapply rel_ct
 (** The relation of an extension by a slot over the tail relation [R]: the
     heads are tied to the values of both units over their own tails. *)
 Record env_ext_mod (U U' : gunit) (R : relation env) (ρ ρ' : env) : Prop := mk_env_ext_mod
-  { eem_tail : R ρ↯ ρ'↯
-  ; eem_left_l : tie_mod (env_mod ρ 0) (me_lit U) ρ↯
-  ; eem_left_r : tie_mod (env_mod ρ 0) (me_lit U') ρ↯
-  ; eem_right_l : tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯
-  ; eem_right_r : tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯ }.
+  { env_ext_mod_tail : R ρ↯ ρ'↯
+  ; env_ext_mod_left_l : tie_mod (env_mod ρ 0) (me_lit U) ρ↯
+  ; env_ext_mod_left_r : tie_mod (env_mod ρ 0) (me_lit U') ρ↯
+  ; env_ext_mod_right_l : tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯
+  ; env_ext_mod_right_r : tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯ }.
 
 (** The same relation, as the slot clause of [per_ctx_env] states it. *)
 Lemma env_ext_mod_inline : forall U U' R,
@@ -406,7 +406,7 @@ Proof.
     - exact (rel_ctx_wf_extend H2 HA').
     - exact (per_ctx_extend H3 HAA'). }
   constructor; [ assumption | exact Hr | apply valid_ctx_ass | apply valid_ctx_ass ];
-    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
+    first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.
 
 Lemma sem_ext_eq_def :
@@ -427,7 +427,7 @@ Proof.
     - exact (rel_ctx_wf_extend_def H2 HA' HM').
     - exact (per_ctx_env_extend_def_cross HR HAA' HMM'). }
   constructor; [ assumption | exact Hr | apply valid_ctx_def | apply valid_ctx_def ];
-    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
+    first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.
 
 Lemma sem_ext_eq_mod :
@@ -450,7 +450,7 @@ Proof.
       eapply per_ctx_env_cons_mod; [ exact HRx | eapply per_env_PER; exact HRx | | apply env_ext_mod_inline ].
       intros ρ ρ' Hρ; eapply unit_chain_at; [ exact HU | exact HR | apply E, Hρ ]. }
   constructor; [ assumption | exact Hr | apply valid_ctx_mod | apply valid_ctx_mod ];
-    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
+    first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.
 
 Section Fixed_GCtx.
@@ -926,7 +926,7 @@ Proof.
     - econstructor; [ exact H2 | exact (per_ctx_env_of_dm HR' HA' HM' HU') | exact HA' | exact HM' | exact HU' | exact HsU' ].
     - exact (per_ctx_env_extend_dm_cross HRx HAA' HMM' HU). }
   constructor; [ assumption | exact Hr | apply valid_ctx_dm | apply valid_ctx_dm ];
-    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
+    first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.
 
 Lemma sem_exp_eq_let_mod_zeta :

@@ -81,7 +81,7 @@ Section Clusters.
     destruct (decl_of_glookup _ _ _ _ HΞ Hl) as [Hdt _].
     inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv]; subst; cbn.
     - assert (Hd : im_is_decl M = true) by (unfold im_is_decl; rewrite Hh; reflexivity).
-      apply (dt_order _ _ _ Hdt _ _ HM) in Hd.
+      apply (decl_typed_order _ _ _ Hdt _ _ HM) in Hd.
       exact (mk_view_inv _ _ _ _ _ _ (mk_view_typed _ _ _ _ _ _ D Hl Hd HCl HCt HΓu) Ws HWs eq_refl).
     - exact (@sib_view_inv (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HM Hh Hlv Hnv).
   Qed.
@@ -258,7 +258,7 @@ Proof. intros * H Hf; induction H; constructor; auto. Qed.
 (** The name a rejected view is reported under: the declaration's first
     member's. *)
 Definition rd_first_name (R : raw_decl) : string :=
-  match rd_members R with Mr :: _ => rm_name Mr | nil => ""%string end.
+  match raw_decl_members R with Mr :: _ => raw_member_name Mr | nil => ""%string end.
 
 (** A run of the search, as the checker asks of the views. *)
 Lemma views_found_ok : forall Θ Ξ R csD Vf Af, NoDup Vf -> Forall2 (view_data_ok Θ Ξ R) Vf Af ->
@@ -281,7 +281,7 @@ Definition views_search (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R :
   | inl (exist _ (Vf, Af) (conj Hd (conj HF Hb))) =>
       Command.rok (existT _ Vf (existT _ (List.map data_sibs Af) (existT _ (List.map data_cons Af)
         (exist _ (List.map data_nparams Af) (views_found_ok Θ Ξ R csD Vf Af Hd HF Hb)))))
-  | inr (exist _ (x, e) _) => Command.rerr (Command.re_view (rd_first_name R) x e)
+  | inr (exist _ (x, e) _) => Command.rerr (Command.run_error_view (rd_first_name R) x e)
   end.
 
 (** The search finds the views whenever there are some. *)

@@ -155,7 +155,7 @@ Proof.
   pose proof (glu_emb_good _ _ _ _ Hg HG He) as Hμ.
   pose proof (em_res _ _ _ _ (Embx_emb _ _ _ _ He)) as Hs.
   destruct soundness_fundamental as (Kc & Ke & _).
-  destruct (dt_sort_lvl _ _ _ Hdt) as [n Hn].
+  destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n Hn].
   constructor.
   - intros * HMk; exact (Kc _ _ _ (member_params_wf _ _ _ _ _ Hdt HMk) _ _ Hμ).
   - exists n; exact (Ke _ _ _ _ _ Hn _ _ Hμ).
@@ -169,12 +169,12 @@ Proof.
   - intros * HMk HA0.
     destruct (Completeness.Inductives.Model.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
     assert (Hk : j < im_nn Mk) by (unfold im_nn; rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
-    pose proof (dt_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT.
+    pose proof (decl_typed_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT.
     rewrite Completeness.Inductives.Model.length_nparams_prefix in HT by lia.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
   - intros * HMk Hcon HA0.
     destruct (Completeness.Inductives.Model.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
-    pose proof (dt_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
+    pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     assert (Hls : List.length (cargs_strat gs1) = j)
       by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
     rewrite Hls, (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
@@ -183,13 +183,13 @@ Proof.
     assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
       by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hls in HT.
-    pose proof (dt_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
+    pose proof (decl_typed_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
     rewrite (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Ke _ _ _ _ _ H _ _ Hμ).
   - intros * HMk Hcon Heq HB.
     assert (Hsplit : ptyp_doms t = List.firstn j (ptyp_doms t) ++ B :: List.skipn (S j) (ptyp_doms t))
       by (rewrite <- (skipn_nth_cons' _ _ _ HB), List.firstn_skipn; reflexivity).
-    pose proof (dt_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
+    pose proof (decl_typed_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
     assert (Hk : List.length (List.firstn j (ptyp_doms t)) = j)
       by (rewrite List.length_firstn; assert (j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
@@ -200,12 +200,12 @@ Proof.
     pose proof (doms_prefix_wf _ _ _ _ _ _ _ Hdt HMk (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
     rewrite (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Kc _ _ _ H _ _ Hμ).
-  - destruct (dt_selfs _ _ _ Hdt) as [IsS HV]; exists IsS; constructor.
-    + exact (vst_link _ _ _ _ HV).
+  - destruct (decl_typed_selfs _ _ _ Hdt) as [IsS HV]; exists IsS; constructor.
+    + exact (views_self_typed_link _ _ _ _ HV).
     + intros * HMk Hh Hq HI HT.
       pose proof (decl_typed_container _ _ _ _ D Hs Hdt _ _ _ _ _ _ _ HMk Hh Hq) as HqS.
       eapply Ke; [| exact Hμ ].
-      eapply (vst_is _ _ _ _ HV); [ exact HMk | exact Hh | exact HqS | exact HI | exact HT ].
+      eapply (views_self_typed_is _ _ _ _ HV); [ exact HMk | exact Hh | exact HqS | exact HI | exact HT ].
 Qed.
 
 (** ** Every well-formed global context glues

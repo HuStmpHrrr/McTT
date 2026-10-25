@@ -119,7 +119,7 @@ Section SiteDesc.
   Proof.
     induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha |- *; [ injection Ha as <-; exact Hm |].
     destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
-    apply (IH _ _ R1); [ eapply dn_app; eassumption | exact Ha ].
+    apply (IH _ _ R1); [ eapply mdenote_app; eassumption | exact Ha ].
   Qed.
 
   (** An open frame, of either kind, named by its path, is stored there. *)
@@ -543,11 +543,11 @@ End Below.
     global contexts makes precise. *)
 
 Inductive site_order (Θ : gdeps) (Ξ : gstack) : modexp -> Prop :=
-| so_unit : forall fp, site_order Θ Ξ (me_unit fp)
-| so_var : forall x, site_order Θ Ξ (me_var x)
-| so_lit : forall U, site_order Θ Ξ (me_lit U)
-| so_app : forall H N, site_order Θ Ξ H -> site_order Θ Ξ (me_app H N)
-| so_mem : forall H z,
+| site_order_unit : forall fp, site_order Θ Ξ (me_unit fp)
+| site_order_var : forall x, site_order Θ Ξ (me_var x)
+| site_order_lit : forall U, site_order Θ Ξ (me_lit U)
+| site_order_app : forall H N, site_order Θ Ξ H -> site_order Θ Ξ (me_app H N)
+| site_order_mem : forall H z,
     site_order Θ Ξ H ->
     (forall pq E E', msite Θ Ξ H pq -> gc_entry Θ Ξ (qname_in pq z) = Some E -> entry_alias E = Some E' ->
        site_order Θ Ξ E') ->
@@ -588,7 +588,7 @@ Section Sited.
         - destruct (gs_find_ind_tele _ _ _ Hk) as (? & ? & Ht); eapply Hpar; eassumption.
         - destruct (gs_find_record_tele _ _ _ Hk) as (? & ? & Ht); eapply Hpar; eassumption. }
       destruct Hm0 as (Γ0 & R0 & Hm0).
-      apply so_mem; [ exact (IH _ _ Hm0) |].
+      apply site_order_mem; [ exact (IH _ _ Hm0) |].
       intros pq E E' Hs2 HE2 Hal.
       pose proof (msite_below _ _ _ _ Hg1 He _ _ Hs2 _ _ Hm0) as Hs1.
       destruct (mem_frame_cases _ _ Hg1 H0 z) as [(p1 & TΦ & Hq1 & Hf1) | (Hu1 & Hk1 & Hkr1)].
@@ -602,7 +602,7 @@ Section Sited.
         exact (Ha _ _ _ HE1 Hal).
     - inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? ? ? ? Hq _ | | | ? ? ? R0 ? Hm0 Ha0 | | ? ? ? ? ? ? Hq _]; subst;
         [ cbn in Hu; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
-      exact (so_app _ _ _ _ (IH _ _ Hm0)).
+      exact (site_order_app _ _ _ _ (IH _ _ Hm0)).
   Qed.
 End Sited.
 
@@ -664,8 +664,8 @@ Qed.
     an entry of a local body, at the chain of submodules [ch] from the local
     module. *)
 Inductive priv_err : Set :=
-| pe_global : qname -> string -> priv_err
-| pe_local : list string -> string -> priv_err.
+| priv_err_global : qname -> string -> priv_err
+| priv_err_local : list string -> string -> priv_err.
 
 Section PrivacyImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -798,7 +798,7 @@ Section PrivacyImpl.
   Proof.
     destruct (site_impl H (site_order_total _ _ Hg H)) as [[pq Hs] | HN].
     - destruct (gc_entry Θ Ξ (qname_in pq y)) as [E |] eqn:Ee.
-      + left; exists (pq, ge_private E); exact (mdl_intro _ _ _ _ _ _ Hs Ee).
+      + left; exists (pq, ge_private E); exact (mdecl_intro _ _ _ _ _ _ Hs Ee).
       + right; intros qd pv Hd; inversion Hd as [pq' E' Hs' He']; subst.
         rewrite (msite_functional _ _ Hg _ _ Hs _ Hs') in Ee; congruence.
     - right; intros qd pv Hd; inversion Hd; subst; eapply HN; eassumption.
@@ -842,9 +842,9 @@ Section PrivacyImpl.
   Proof.
     destruct r as [[| H | ch es] x]; unfold ref_ok; cbn [fst snd].
     - right; exact I.
-    - destruct (glob_check H x) as [[qx Hq] | Hok]; [ left; exists (pe_global (fst qx) (snd qx)); exact Hq | right; exact Hok ].
+    - destruct (glob_check H x) as [[qx Hq] | Hok]; [ left; exists (priv_err_global (fst qx) (snd qx)); exact Hq | right; exact Hok ].
     - destruct (option_map fst (tab_find x es)) as [[|] |] eqn:E.
-      + left; exists (pe_local ch x); intros Hn; apply Hn; reflexivity.
+      + left; exists (priv_err_local ch x); intros Hn; apply Hn; reflexivity.
       + right; discriminate.
       + right; discriminate.
   Defined.
@@ -960,7 +960,7 @@ Proof.
   destruct (gds_lookup Θ fp) as [U |] eqn:Hl; [| discriminate ].
   pose proof (List.app_removelast_last EmptyString Hch) as Ec.
   exists (q_abs fp (removelast c)), (ge_private E); split.
-  - apply mdl_intro; [ apply (site_resolve _ _ _ Hg Hl); intros pre' y suf Hpre |].
+  - apply mdecl_intro; [ apply (site_resolve _ _ _ Hg Hl); intros pre' y suf Hpre |].
     + apply (gm_resolve_walk _ _ _ Hr pre' y (suf ++ List.last c EmptyString :: nil)).
       * rewrite Ec at 1; rewrite Hpre, <- app_assoc; reflexivity.
       * destruct suf; discriminate.

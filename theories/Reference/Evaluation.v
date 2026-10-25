@@ -22,7 +22,7 @@ Generalizable All Variables.
 
 (** The termination orders mirror the evaluation relations, one for each, in
     the same global context.  A transparent global recurses into its resolved
-    body, which [eslo_global] records; a saturated alias recurses into its
+    body, which [eval_sel_order_global] records; a saturated alias recurses into its
     target.  Each premise that uses a value is quantified over the values its
     earlier premises evaluate to.  The orders split their cases as the
     evaluator does: a closure lacking a first parameter, a chain of two
@@ -30,53 +30,53 @@ Generalizable All Variables.
     splits it off. *)
 
 Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
-| eeo_typ :
+| eval_exp_order_typ :
   `( eval_exp_order Θ Ξ Typeω@i p )
 (** A small universe evaluates its level. *)
-| eeo_univ :
+| eval_exp_order_univ :
   `( eval_exp_order Θ Ξ M p ->
      eval_exp_order Θ Ξ Type⟨M⟩ p )
 (** An environment is total, so a variable always terminates. *)
-| eeo_var :
+| eval_exp_order_var :
   `( eval_exp_order Θ Ξ #x p )
-| eeo_level :
+| eval_exp_order_level :
   `( eval_exp_order Θ Ξ (Level@n) p )
-| eeo_llit :
+| eval_exp_order_llit :
   `( eval_exp_order Θ Ξ (𝕃ᵒ o) p )
-| eeo_succl :
+| eval_exp_order_succl :
   `( eval_exp_order Θ Ξ M p ->
      eval_exp_order Θ Ξ (succl M) p )
-| eeo_maxl :
+| eval_exp_order_maxl :
   `( eval_exp_order Θ Ξ M p ->
      eval_exp_order Θ Ξ N p ->
      eval_exp_order Θ Ξ (maxl M N) p )
-| eeo_True :
+| eval_exp_order_True :
   `( eval_exp_order Θ Ξ ⊤ p )
-| eeo_true :
+| eval_exp_order_true :
   `( eval_exp_order Θ Ξ ⋆ p )
-| eeo_False :
+| eval_exp_order_False :
   `( eval_exp_order Θ Ξ ⊥ p )
 (** The scrutinee of [efq] must evaluate to a neutral, since no other value
     has a rule. *)
-| eeo_exfalso :
+| eval_exp_order_exfalso :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists b n, m = ⇑ b n) ->
      (forall b m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ ⇑ b m -> eval_exp_order Θ Ξ A (p ↦ ⇑ b m)) ->
      eval_exp_order Θ Ξ (efq M return A) p )
-| eeo_pi :
+| eval_exp_order_pi :
   `( eval_exp_order Θ Ξ A p ->
      eval_exp_order Θ Ξ (Π A B) p )
-| eeo_indty :
+| eval_exp_order_indty :
   `( eval_exp_order Θ Ξ (a_ind pq k) p )
 (** A constructor that is a value of its own before any argument *)
-| eeo_con :
+| eval_exp_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D k = Some Mk ->
      im_starts D Mk = true ->
      eval_exp_order Θ Ξ (a_con pq k c) p )
 (** A constructor of a view of a group with no uniform parameters: the
     view's arguments are evaluated *)
-| eeo_con_view :
+| eval_exp_order_con_view :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
@@ -85,29 +85,29 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      eval_exp_order Θ Ξ (a_con pq j c) p )
 (** The eliminator: its uniform parameters, its scrutinee, whose value
     names the group it eliminates by, and the elimination. *)
-| eeo_elim :
+| eval_exp_order_elim :
   `( eval_exps_order Θ Ξ Us p ->
      eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists pq, elim_grp_of oq m = Some pq) ->
      (forall ups m pq, ⟦ Us ⟧* Θ ⍮ Ξ ⍮ p ↘ ups -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> elim_grp_of oq m = Some pq ->
         eval_elim_order Θ Ξ p pq ups Bks j m) ->
      eval_exp_order Θ Ξ (a_elim oq Us j Bks M) p )
-| eeo_fn :
+| eval_exp_order_fn :
   `( eval_exp_order Θ Ξ (λ A M) p )
-| eeo_app :
+| eval_exp_order_app :
   `( eval_exp_order Θ Ξ M p ->
      eval_exp_order Θ Ξ N p ->
      (forall m n, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n -> eval_app_order Θ Ξ m n) ->
      eval_exp_order Θ Ξ (M $ N) p )
-| eeo_let :
+| eval_exp_order_let :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_exp_order Θ Ξ B (p ↦ m)) ->
      eval_exp_order Θ Ξ (a_let (b_def oA M) B) p )
-| eeo_let_mod :
+| eval_exp_order_let_mod :
   `( eval_close_order Θ Ξ Δ D p ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ p ↘ h -> eval_exp_order Θ Ξ B (p ↦ᵐ h)) ->
      eval_exp_order Θ Ξ (ℓₘ (gu_mk Δ D) in B) p )
-| eeo_mem :
+| eval_exp_order_mem :
   `( modexp_spine H = (R, args, pre) ->
      eval_modexp_order Θ Ξ R p ->
      (forall h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selc_order Θ Ξ h (pre ++ x :: nil)) ->
@@ -116,14 +116,14 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
         ⟦ args ⟧* Θ ⍮ Ξ ⍮ p ↘ ns -> eval_apps_order Θ Ξ f ns) ->
      eval_exp_order Θ Ξ (a_mem H x) p )
 (** A record's type former is a value. *)
-| eeo_record :
+| eval_exp_order_record :
   `( eval_exp_order Θ Ξ (a_record pq) p )
 (** A record element: the values of its fields *)
-| eeo_tuple :
+| eval_exp_order_tuple :
   `( eval_exps_order Θ Ξ (List.map snd fs) p ->
      eval_exp_order Θ Ξ (a_tuple T fs) p )
 (** A field: the value, then the field of it *)
-| eeo_proj :
+| eval_exp_order_proj :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_proj_order Θ Ξ f m) ->
      eval_exp_order Θ Ξ (a_proj f M) p )
@@ -131,12 +131,12 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 (** The field [f] of a value, as [eval_proj] reads it *)
 with eval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
 (** Of a tuple with the field *)
-| epo_tuple :
+| eval_proj_order_tuple :
   `( field_lookup vs f <> None ->
      eval_proj_order Θ Ξ f (d_tuple vs) )
 (** Of a neutral of a record type with the field: the projections of the
     fields up to it, which reach it *)
-| epo_neut :
+| eval_proj_order_neut :
   `( record_lookup Θ Ξ pq = Some R ->
      field_index (record_fields R) f = Some k ->
      eval_nflds_order Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil ->
@@ -147,10 +147,10 @@ with eval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
     them *)
 with eval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> Prop :=
 (** No field left *)
-| eno_nil :
+| eval_nflds_order_nil :
   `( eval_nflds_order Θ Ξ ns m nil pre )
 (** The next field's type, then the rest after its projection *)
-| eno_cons :
+| eval_nflds_order_cons :
   `( eval_exp_order Θ Ξ T (env_args nil (ns ++ pre)) ->
      (forall a, ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
         eval_nflds_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
@@ -160,7 +160,7 @@ with eval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> l
     [eval_elim] reads it. *)
 with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> Prop :=
 (** On a saturated constructor: the recursive results, then the branch *)
-| eelo_con :
+| eval_elim_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_ref pq j Mj = (pc, k) ->
@@ -176,7 +176,7 @@ with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain ->
         eval_exp_order Θ Ξ B (env_args p (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs))) ->
      eval_elim_order Θ Ξ p pq ups Bks j (d_con pc k c vs) )
 (** On a neutral: the motive's instance *)
-| eelo_neut :
+| eval_elim_order_neut :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_ref pq j Mj = (pc, k) ->
@@ -191,14 +191,14 @@ with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain ->
 (** The recursive results of the arguments [vs] of kinds [gs] *)
 with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> list carg -> list domain -> Prop :=
 (** No argument *)
-| eiho_nil :
+| eval_ihs_order_nil :
   `( eval_ihs_order Θ Ξ p pq ups Bks nil nil )
 (** A non-recursive argument *)
-| eiho_arg :
+| eval_ihs_order_arg :
   `( eval_ihs_order Θ Ξ p pq ups Bks gs vs ->
      eval_ihs_order Θ Ξ p pq ups Bks (ca_arg T :: gs) (v :: vs) )
 (** A recursive argument: its result, then the rest *)
-| eiho_rec :
+| eval_ihs_order_rec_case :
   `( eval_ih_order Θ Ξ p pq ups Bks t v ->
      eval_ihs_order Θ Ξ p pq ups Bks gs vs ->
      eval_ihs_order Θ Ξ p pq ups Bks (ca_rec t :: gs) (v :: vs) )
@@ -206,23 +206,23 @@ with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> 
 (** The recursive result of an argument of a shape *)
 with eval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> Prop :=
 (** At the end: the eliminator at the member *)
-| eio_self :
+| eval_ih_order_self :
   `( eval_elim_order Θ Ξ p pq ups Bks j v ->
      eval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
 (** At a function shape: a closure *)
-| eio_pi :
+| eval_ih_order_pi :
   `( eval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
 
 (** The member a member of a group stands for, as [eval_mref] reads it *)
 with eval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> Prop :=
 (** A declared member *)
-| emro_decl :
+| eval_mref_order_decl :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_decl pm ->
      eval_mref_order Θ Ξ pq ups j )
 (** A view: the view's arguments at the uniform parameters *)
-| emro_view :
+| eval_mref_order_view :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
@@ -232,41 +232,41 @@ with eval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat ->
 (** The type of an argument of a shape *)
 with eval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
 (** At the end: the parameters, and the member stood for *)
-| esto_self :
+| eval_shty_order_self :
   `( eval_exps_order Θ Ξ Ps p ->
      eval_mref_order Θ Ξ pq ups j ->
      eval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
 (** At a domain *)
-| esto_pi :
+| eval_shty_order_pi :
   `( eval_exp_order Θ Ξ B p ->
      eval_shty_order Θ Ξ pq ups p (pt_pi B t) )
 
 (** The type of the recursive result of an argument of a shape *)
 with eval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> Prop :=
 (** At the end: the parameters, then the member's motive *)
-| eityo_self :
+| eval_ihty_order_self :
   `( eval_exps_order Θ Ξ Ps p ->
      (forall bs, ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ p ↘ bs -> eval_exp_order Θ Ξ (List.nth j As a_True) (env_args pm (bs ++ v :: nil))) ->
      eval_ihty_order Θ Ξ pm As p (pt_self j Ps) v )
 (** At a domain *)
-| eityo_pi :
+| eval_ihty_order_pi :
   `( eval_exp_order Θ Ξ B p ->
      eval_ihty_order Θ Ξ pm As p (pt_pi B t) v )
 
 with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
-| eao_fn :
+| eval_app_order_fn :
   `( eval_exp_order Θ Ξ M (p ↦ n) ->
      eval_app_order Θ Ξ λᵈ p M n )
-| eao_neut :
+| eval_app_order_neut :
   `( eval_exp_order Θ Ξ B (p ↦ n) ->
      eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
-| eao_indty :
+| eval_app_order_indty :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D k = Some Mk ->
      List.length as' < im_np D Mk ->
      eval_app_order Θ Ξ (d_ind pq k as') n )
 (** A constructor of a declared member *)
-| eao_con :
+| eval_app_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D k = Some Mk ->
      im_head Mk = mh_decl pm ->
@@ -274,103 +274,103 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      List.length vs < (im_np D Mk + List.length gs)%nat ->
      eval_app_order Θ Ξ (d_con pq k c vs) n )
 (** A constructor of a view, before its last uniform parameter *)
-| eao_con_view :
+| eval_app_order_con_view :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) < ind_nu D ->
      eval_app_order Θ Ξ (d_con pq j c vs) n )
 (** At its last uniform parameter: the view's arguments are evaluated *)
-| eao_con_view_ups :
+| eval_app_order_con_view_ups :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) = ind_nu D ->
      eval_exps_order Θ Ξ Is (env_args nil (vs ++ n :: nil)) ->
      eval_app_order Θ Ξ (d_con pq j c vs) n )
-| eao_ihfn :
+| eval_app_order_ihfn :
   `( eval_app_order Θ Ξ f n ->
      (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ih_order Θ Ξ p pq ups Bks t fn) ->
      eval_app_order Θ Ξ (d_ihfn p Bks pq ups t f) n )
-| eao_shfam :
+| eval_app_order_shfam :
   `( eval_shty_order Θ Ξ pq ups (p ↦ n) t ->
      eval_app_order Θ Ξ (d_shfam pq ups p t) n )
-| eao_ihfam :
+| eval_app_order_ihfam :
   `( eval_app_order Θ Ξ f n ->
      (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ihty_order Θ Ξ pm As (p ↦ n) t fn) ->
      eval_app_order Θ Ξ (d_ihfam pm As p t f) n )
-| eao_member :
+| eval_app_order_member :
   `( eval_appm_order Θ Ξ h n ->
      (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selc_order Θ Ξ h' ch) ->
      eval_app_order Θ Ξ (d_member h ch) n )
 (** A record's type former, before its last parameter *)
-| eao_record :
+| eval_app_order_record :
   `( record_lookup Θ Ξ pq = Some R ->
      List.length ns < List.length (record_params R) ->
      eval_app_order Θ Ξ (d_record pq ns) n )
 
 with eval_exps_order (Θ : gdeps) (Ξ : gstack) : list exp -> env -> Prop :=
-| eso_nil :
+| eval_exps_order_nil :
   `( eval_exps_order Θ Ξ nil p )
-| eso_cons :
+| eval_exps_order_cons :
   `( eval_exp_order Θ Ξ M p ->
      eval_exps_order Θ Ξ Ms p ->
      eval_exps_order Θ Ξ (M :: Ms) p )
 
 with eval_apps_order (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> Prop :=
-| easo_nil :
+| eval_apps_order_nil :
   `( eval_apps_order Θ Ξ m nil )
-| easo_cons :
+| eval_apps_order_cons :
   `( eval_app_order Θ Ξ m n ->
      (forall m1, $| m & n | Θ ⍮ Ξ ↘ m1 -> eval_apps_order Θ Ξ m1 args) ->
      eval_apps_order Θ Ξ m (n :: args) )
 
 with eval_modexp_order (Θ : gdeps) (Ξ : gstack) : modexp -> env -> Prop :=
-| emo_var :
+| eval_modexp_order_var :
   `( eval_modexp_order Θ Ξ (me_var x) p )
-| emo_unit :
+| eval_modexp_order_unit :
   `( eval_modexp_order Θ Ξ (me_unit fp) p )
-| emo_lit :
+| eval_modexp_order_lit :
   `( eval_close_order Θ Ξ Δ D p ->
      eval_modexp_order Θ Ξ (me_lit (gu_mk Δ D)) p )
-| emo_mem :
+| eval_modexp_order_mem :
   `( eval_modexp_order Θ Ξ H p ->
      (forall h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selm_order Θ Ξ h y) ->
      eval_modexp_order Θ Ξ (me_mem H y) p )
-| emo_app :
+| eval_modexp_order_app :
   `( eval_modexp_order Θ Ξ H p ->
      eval_exp_order Θ Ξ N p ->
      (forall h n, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n -> eval_appm_order Θ Ξ h n) ->
      eval_modexp_order Θ Ξ (me_app H N) p )
 
 with eval_close_order (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> Prop :=
-| eclo_body :
+| eval_close_order_body :
   `( eval_close_order Θ Ξ Δ (md_body sm Φ) p )
-| eclo_alias :
+| eval_close_order_alias :
   `( eval_close_order Θ Ξ (e :: Δ) (md_alias E) p )
-| eclo_alias0 :
+| eval_close_order_alias0 :
   `( eval_modexp_order Θ Ξ E p ->
      eval_close_order Θ Ξ nil (md_alias E) p )
 
 with eval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
-| eapo_global :
+| eval_appm_order_global :
   `( eval_appm_order Θ Ξ (dm_global pq args) n )
 (** The outermost missing parameter is split off as the evaluator splits
     it off ([tele_snoc]), so that the order of the rest is a premise of the
     order of the whole. *)
-| eapo_local :
+| eval_appm_order_local :
   `( tele_snoc Δ = Some (Δ0, ce_ass A) ->
      eval_close_order Θ Ξ Δ0 D (p ↦ n) ->
      eval_appm_order Θ Ξ (dm_local Δ D p) n )
-| eapo_member :
+| eval_appm_order_member :
   `( eval_appm_order Θ Ξ h n ->
      (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selmc_order Θ Ξ h' ch) ->
      eval_appm_order Θ Ξ (dm_member h ch) n )
 
 with eval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :=
-| eamo_nil :
+| eval_appms_order_nil :
   `( eval_appms_order Θ Ξ h nil )
-| eamo_cons :
+| eval_appms_order_cons :
   `( eval_appm_order Θ Ξ h n ->
      (forall h1, $ᵐ| h & n | Θ ⍮ Ξ ↘ h1 -> eval_appms_order Θ Ξ h1 ns) ->
      eval_appms_order Θ Ξ h (n :: ns) )
@@ -378,94 +378,94 @@ with eval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :
 with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 (** A term part of a global module ([gc_term]): it, closed, applied to the
     arguments *)
-| eslo_global :
+| eval_sel_order_global :
   `( gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
      eval_exp_order Θ Ξ M nil ->
      (forall f, ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
-| eslo_global_neut :
+| eval_sel_order_global_neut :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv A B) ->
      b = false \/ B = None ->
      eval_exp_order Θ Ξ A nil ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a -> eval_apps_order Θ Ξ (⇑ a (d_glob (qname_app pq (x :: nil)))) args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
-| eslo_global_ind :
+| eval_sel_order_global_ind :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      eval_apps_order Θ Ξ (d_ind pg k nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
-| eslo_unsat :
+| eval_sel_order_unsat :
   `( eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
 (** A term part of a saturated body ([entry_tm]) *)
-| eslo_body :
+| eval_sel_order_body :
   `( kbody Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      eval_benv_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_exp_order Θ Ξ M p') ->
      eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
-| eslo_member :
+| eval_sel_order_member :
   `( eval_sel_order Θ Ξ (dm_member h ch) x )
 (** A record type of a global module, not a definition: its type former,
     applied to the arguments *)
-| eslo_global_record :
+| eval_sel_order_global_record :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      record_lookup Θ Ξ (qname_app pq (x :: nil)) = Some R ->
      eval_apps_order Θ Ξ (d_record (qname_app pq (x :: nil)) nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
 
 with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
-| esmo_global :
+| eval_selm_order_global :
   `( gc_loc Θ Ξ (qname_app pq (y :: nil)) = Some TΦ ->
      eval_selm_order Θ Ξ (dm_global pq args) y )
-| esmo_global_alias :
+| eval_selm_order_global_alias :
   `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias (gu_mk Δ D)) ->
      eval_close_order Θ Ξ Δ D nil ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ nil ↘ h -> eval_appms_order Θ Ξ h args) ->
      eval_selm_order Θ Ξ (dm_global pq args) y )
-| esmo_unsat :
+| eval_selm_order_unsat :
   `( eval_selm_order Θ Ξ (dm_local (e :: Δ) D p) y )
 (** A module part of a saturated body ([entry_unit]) *)
-| esmo_body :
+| eval_selm_order_body :
   `( kbody Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      eval_benv_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_close_order Θ Ξ Δy Dy p') ->
      eval_selm_order Θ Ξ (dm_local nil (md_body sm Φ) p) y )
-| esmo_member :
+| eval_selm_order_member :
   `( eval_selm_order Θ Ξ (dm_member h ch) y )
 
 with eval_selc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
-| esco_one :
+| eval_selc_order_one :
   `( eval_sel_order Θ Ξ h x ->
      eval_selc_order Θ Ξ h (x :: nil) )
-| esco_cons :
+| eval_selc_order_cons :
   `( eval_selm_order Θ Ξ h y ->
      (forall h1, h ·ₘ y Θ ⍮ Ξ ↘ h1 -> eval_selc_order Θ Ξ h1 (z :: ch)) ->
      eval_selc_order Θ Ξ h (y :: z :: ch) )
 
 with eval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
-| esmco_nil :
+| eval_selmc_order_nil :
   `( eval_selmc_order Θ Ξ h nil )
-| esmco_cons :
+| eval_selmc_order_cons :
   `( eval_selm_order Θ Ξ h y ->
      (forall h1, h ·ₘ y Θ ⍮ Ξ ↘ h1 -> eval_selmc_order Θ Ξ h1 ch) ->
      eval_selmc_order Θ Ξ h (y :: ch) )
 
 with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
-| ebo_nil :
+| eval_benv_order_nil :
   `( eval_benv_order Θ Ξ p gm_nil )
-| ebo_def :
+| eval_benv_order_def :
   `( eval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
-| ebo_mod :
+| eval_benv_order_mod :
   `( eval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) )
 (** A definition with a module part: its term and its unit's closure *)
-| ebo_dm :
+| eval_benv_order_dm :
   `( eval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
@@ -581,7 +581,7 @@ Proof.
     try match goal with H : 0 < List.length ?Δ |- _ => destruct Δ; [ cbn in H; lia |] end;
     try match goal with H : eval_selc _ _ _ ?c _ |- eval_selc_order _ _ _ (_ :: ?c) =>
           destruct c; [ inversion H |] end;
-    solve [ eapply eslo_global_neut; eauto; intros; functional_eval_all; eauto
+    solve [ eapply eval_sel_order_global_neut; eauto; intros; functional_eval_all; eauto
           | econstructor; try eassumption; intros; functional_eval_all; eauto using kgens_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_eval_all; congruence

@@ -45,7 +45,7 @@ Section Fixed_GCtx.
     - (* global *)
       intros ch0 k0; split; apply dkind_global_args.
     - (* bodies *)
-      intros [| y ch] kk; rewrite !dkind_local_iff; [ split; intros Hu; inversion Hu; subst; apply uk_self | apply H ].
+      intros [| y ch] kk; rewrite !dkind_local_iff; [ split; intros Hu; inversion Hu; subst; apply ukind_self | apply H ].
     - (* a missing parameter: at the reflection of a variable *)
       match goal with Hu : per_univ_elem _ _ _ _ |- _ => pose proof (var_per_elem 0 Hu) as Hv end.
       match goal with E1 : forall c c', _ -> exists hc, $ᵐ| h & c | _ ⍮ _ ↘ hc,
@@ -60,7 +60,7 @@ Section Fixed_GCtx.
         [| rewrite (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
-        eapply uk_def; cbn [gm_prefix_upto]; rewrite Ex; reflexivity.
+        eapply ukind_def; cbn [gm_prefix_upto]; rewrite Ex; reflexivity.
     - (* a submodule each: their closures have the same kinds *)
       destruct (String.eqb_spec y0 y) as [-> | Hne];
         [| rewrite (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
@@ -75,8 +75,8 @@ Section Fixed_GCtx.
       all: match goal with Hk1 : kenv _ _ _ _ ?r, Hu1 : ukind _ _ ?r _ _ _ |- _ =>
              first [ rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk _ Hk1) in Hu1
                    | rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk' _ Hk1) in Hu1 ] end.
-      + eapply uk_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
-      + eapply uk_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
+      + eapply ukind_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
+      + eapply ukind_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
     - (* a definition with a module part each: their closures have the same
          kinds, at the empty chain as at a longer one *)
       destruct (String.eqb_spec y0 y) as [-> | Hne];
@@ -92,10 +92,10 @@ Section Fixed_GCtx.
       all: match goal with Hk1 : kenv _ _ _ _ ?r, Hu1 : ukind _ _ ?r _ _ _ |- _ =>
              first [ rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk _ Hk1) in Hu1
                    | rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk' _ Hk1) in Hu1 ] end.
-      + eapply uk_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
-      + eapply uk_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk' | apply HUy; assumption ].
-      + eapply uk_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
-      + eapply uk_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk | apply HUy; assumption ].
+      + eapply ukind_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
+      + eapply ukind_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk' | apply HUy; assumption ].
+      + eapply ukind_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
+      + eapply ukind_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk | apply HUy; assumption ].
     - (* an open each: their targets have the same kinds *)
       destruct (items_upto y its) as [[its1 it] |] eqn:Ey;
         [| rewrite (ukind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey), (ukind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey); apply H0 ].

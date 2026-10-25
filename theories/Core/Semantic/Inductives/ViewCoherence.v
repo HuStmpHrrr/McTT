@@ -81,20 +81,20 @@ Section Fixed_GCtx.
         container's, each argument corresponding. *)
     Record view_member (i' : nat) (Mi' : imember) (v : nat) (Mv : imember) : Prop := mk_view_member
       { (** [vm] takes [i'] to [v] *)
-        vmb_v : List.nth_error vm i' = Some v
+        view_member_v : List.nth_error vm i' = Some v
         (** [v] is a member of the group *)
-      ; vmb_mem : ind_member D v = Some Mv
+      ; view_member_mem : ind_member D v = Some Mv
         (** It has the same head: both are the same declared member *)
-      ; vmb_ref : im_ref p v Mv = im_ref qc i' Mi'
+      ; view_member_ref : im_ref p v Mv = im_ref qc i' Mi'
         (** As many own uniform parameters *)
-      ; vmb_unu : im_unu D Mv = im_unu Dq Mi'
+      ; view_member_unu : im_unu D Mv = im_unu Dq Mi'
         (** As many non-uniform parameters *)
-      ; vmb_nn : im_nn Mv = im_nn Mi'
+      ; view_member_nn : im_nn Mv = im_nn Mi'
         (** Each container constructor is one of [Mv]'s, its arguments
             corresponding *)
-      ; vmb_cons : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_corr vm gs' gs
+      ; view_member_cons : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_corr vm gs' gs
         (** And conversely *)
-      ; vmb_cons' : forall c gs, ind_con Mv c = Some gs -> exists gs', ind_con Mi' c = Some gs' /\ cargs_corr vm gs' gs }.
+      ; view_member_cons' : forall c gs, ind_con Mv c = Some gs -> exists gs', ind_con Mi' c = Some gs' /\ cargs_corr vm gs' gs }.
 
     (** The parameters a shape ends in, at a base and a prefix on each
         side, related at the member of the group the group's shape ends
@@ -102,15 +102,15 @@ Section Fixed_GCtx.
     #[warnings="-cannot-define-projection"]
     Record ps_link (Ps' Ps : list exp) (j : nat) (ρc ρg : env) : Prop := mk_ps_link
       { (** The container side's parameters *)
-        psl_c : list domain
+        ps_link_c : list domain
         (** The group side's parameters *)
-      ; psl_g : list domain
+      ; ps_link_g : list domain
         (** The container's shape's [Ps'] evaluate to them *)
-      ; psl_eval_c : ⟦ Ps' ⟧* gc_deps ⍮ gc_stack ⍮ ρc ↘ psl_c
+      ; ps_link_eval_c : ⟦ Ps' ⟧* gc_deps ⍮ gc_stack ⍮ ρc ↘ ps_link_c
         (** The group's shape's [Ps] evaluate to them *)
-      ; psl_eval_g : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρg ↘ psl_g
+      ; ps_link_eval_g : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρg ↘ ps_link_g
         (** They are related at the member [j] *)
-      ; psl_rel : ntele_rel D nr j psl_c psl_g }.
+      ; ps_link_rel : ntele_rel D nr j ps_link_c ps_link_g }.
 
     (** The view maps each member of the container's group, and the two
         telescopes agree position by position. *)
@@ -187,7 +187,7 @@ Section Fixed_GCtx.
       intros * HM Hv H.
       pose proof H as H0; rewrite tele_rel_iff in H0; destruct H0 as (Hl & Hl' & Hr).
       rewrite List.length_rev, length_im_nparams in Hl, Hl'.
-      rewrite tele_rel_iff, List.length_rev, length_im_nparams, (vmb_nn _ _ _ _ Hv).
+      rewrite tele_rel_iff, List.length_rev, length_im_nparams, (view_member_nn _ _ _ _ Hv).
       split; [ exact Hl | split; [ exact Hl' |] ].
       intros j x x' Hx Hx'.
       assert (Hj : j < im_nn Mi') by (rewrite <- Hl; apply List.nth_error_Some; congruence).
@@ -200,7 +200,7 @@ Section Fixed_GCtx.
     Proof.
       intros * HM Hv H.
       pose proof H as H0; rewrite tele_rel_iff in H0; destruct H0 as (Hl & Hl' & Hr).
-      rewrite List.length_rev, length_im_nparams, (vmb_nn _ _ _ _ Hv) in Hl, Hl'.
+      rewrite List.length_rev, length_im_nparams, (view_member_nn _ _ _ _ Hv) in Hl, Hl'.
       assert (Hpre : forall j, j <= im_nn Mi' -> tele_prefix_rel (nr' i') j (List.firstn j a) (List.firstn j b)).
       { induction j as [| j IH]; intros Hj; [ cbn; apply tele_prefix_rel_nil |].
         destruct (nth_error_lt_some' a j ltac:(lia)) as [x Hx]; destruct (nth_error_lt_some' b j ltac:(lia)) as [x' Hx'].
@@ -320,24 +320,24 @@ Section Fixed_GCtx.
       - (* a constructor *)
         intros k Mk hd k' ns ns' c gs' bs bs' vs vs' u u' HMk Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' v Hvm.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
-        assert (v0 = v) as -> by (rewrite (vmb_v _ _ _ _ Hv) in Hvm; congruence).
-        destruct (vmb_cons _ _ _ _ Hv c gs' Hcon) as (gs & Hc & Hcorr).
+        assert (v0 = v) as -> by (rewrite (view_member_v _ _ _ _ Hv) in Hvm; congruence).
+        destruct (view_member_cons _ _ _ _ Hv c gs' Hcon) as (gs & Hc & Hcorr).
         pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
         pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
         assert (Hms : tele_rel (nr' k) (List.rev (im_nparams Mk)) (List.skipn (im_unu Dq Mk) bs) (List.skipn (im_unu Dq Mk) bs')).
         { eapply (nparams_rel_trans qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk);
             [ exact (nparams_rel_sym qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk _ _ Hs) |].
           exact (nparams_rel_trans qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk _ _ _ Hns Hs'). }
-        rewrite <- (vmb_unu _ _ _ _ Hv) in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms.
-        rewrite <- (vmb_nn _ _ _ _ Hv) in Hlb, Hlb'.
+        rewrite <- (view_member_unu _ _ _ _ Hv) in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms.
+        rewrite <- (view_member_nn _ _ _ _ Hv) in Hlb, Hlb'.
         eapply ind_rel_con with (Mk := Mv) (gs := gs);
-          [ exact (vmb_mem _ _ _ _ Hv) | rewrite (vmb_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
+          [ exact (view_member_mem _ _ _ _ Hv) | rewrite (view_member_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
           | exact Hc | exact Hlb | exact Hlb' | exact (nr_to _ _ _ _ _ _ HMk Hv Hs) | exact (nr_to _ _ _ _ _ _ HMk Hv Hs') | |].
         + destruct Hnr as [Hl0 Hnr].
           split; [ rewrite length_nonrec_arg_vals by lia; reflexivity |].
           exact (nonrec_to _ _ _ _ c _ _ gs' gs nil nil nil nil vs vs' HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(lia) ltac:(lia)
                    Hms (tele_prefix_rel_nil _) Hnr).
-        + rewrite (vmb_unu _ _ _ _ Hv) in Hca, Hms, Hnr |- *.
+        + rewrite (view_member_unu _ _ _ _ Hv) in Hca, Hms, Hnr |- *.
           pose proof (IH Hu Hu' Mk v Mv c nil nil gs (List.skipn (im_unu Dq Mk) bs) (List.skipn (im_unu Dq Mk) bs') nil nil
                         HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
                         ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms (tele_prefix_rel_nil _) (proj2 Hnr)) as H.
@@ -345,10 +345,10 @@ Section Fixed_GCtx.
       - (* a neutral *)
         intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' v Hvm.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
-        assert (v0 = v) as -> by (rewrite (vmb_v _ _ _ _ Hv) in Hvm; congruence).
-        rewrite <- (vmb_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite <- (vmb_nn _ _ _ _ Hv) in Hl1, Hl2.
+        assert (v0 = v) as -> by (rewrite (view_member_v _ _ _ _ Hv) in Hvm; congruence).
+        rewrite <- (view_member_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite <- (view_member_nn _ _ _ _ Hv) in Hl1, Hl2.
         eapply ind_rel_neut with (Mk := Mv);
-          [ exact (vmb_mem _ _ _ _ Hv) | rewrite (vmb_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
+          [ exact (view_member_mem _ _ _ _ Hv) | rewrite (view_member_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
           | exact Hl1 | exact Hl2 | exact (nr_to _ _ _ _ _ _ HMk Hv Hs) | exact (nr_to _ _ _ _ _ _ HMk Hv Hs')
           | exact Hm ].
       - (* no argument *)
@@ -450,14 +450,14 @@ Section Fixed_GCtx.
           destruct HX as [e1 e2 Ee1 Ee2 He2]; pose proof (functional_eval_exps' _ _ _ _ Ee1 Eidx') as ->.
           unfold ntele_rel in Hidx'; destruct (ind_member Dq (ptyp_mem t')) as [Mj' |] eqn:HMj'; [| contradiction ].
           destruct (Hmem _ _ HMj') as (v' & Mv' & Hv').
-          assert (v' = ptyp_mem t) as -> by (rewrite (vmb_v _ _ _ _ Hv') in Hm; congruence).
+          assert (v' = ptyp_mem t) as -> by (rewrite (view_member_v _ _ _ _ Hv') in Hm; congruence).
           pose proof (nr_to _ _ _ _ _ _ HMj' Hv' Hidx') as Hidx.
-          rewrite (vmb_mem _ _ _ _ Hv') in HMj; injection HMj as <-.
+          rewrite (view_member_mem _ _ _ _ Hv') in HMj; injection HMj as <-.
           apply (mk_okr_at _ _ _ _ _ _ _ _ Ee2).
           eapply (ntele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI);
             [ exact (ntele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ He2) |].
           eapply (ntele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [| exact Hbg' ].
-          exact (ntele_rel_of p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ (vmb_mem _ _ _ _ Hv') Hidx).
+          exact (ntele_rel_of p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ (view_member_mem _ _ _ _ Hv') Hidx).
         + exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HMj Hg Hbgt Hbgt').
       - (* a domain of a shape *)
         intros k pre B' u u' pre' t3 f f' Hr IH Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
@@ -485,7 +485,7 @@ Section Fixed_GCtx.
 
     Corollary view_container_to_group : forall i' Mi' v Mv ns ns' x y, ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
         C i' cups cups' ns ns' x y -> G v ups ups' ns ns' x y.
-    Proof. intros * _ Hv H; exact (proj1 view_container_to_group_all _ _ _ _ _ _ _ H eq_refl eq_refl _ (vmb_v _ _ _ _ Hv)). Qed.
+    Proof. intros * _ Hv H; exact (proj1 view_container_to_group_all _ _ _ _ _ _ _ H eq_refl eq_refl _ (view_member_v _ _ _ _ Hv)). Qed.
 
     (** ** From the Group's to the Container's
 
@@ -539,32 +539,32 @@ Section Fixed_GCtx.
         apply ind_rel_mut_ind_all.
         - (* a constructor *)
           intros k Mk hd k' ns ns' c gs bs bs' vs vs' u u' HMk Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' i' Mi' Mw HMi Hv.
-          rewrite (vmb_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
-          destruct (vmb_cons' _ _ _ _ Hv c gs Hcon) as (gs' & Hc' & Hcorr).
+          rewrite (view_member_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
+          destruct (view_member_cons' _ _ _ _ Hv c gs Hcon) as (gs' & Hc' & Hcorr).
           pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
           pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
           assert (Hms : tele_rel (nr k) (List.rev (im_nparams Mw)) (List.skipn (im_unu D Mw) bs) (List.skipn (im_unu D Mw) bs')).
-          { eapply (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (vmb_mem _ _ _ _ Hv));
-              [ exact (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (vmb_mem _ _ _ _ Hv) _ _ Hs) |].
-            exact (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (vmb_mem _ _ _ _ Hv) _ _ _ Hns Hs'). }
-          rewrite (vmb_unu _ _ _ _ Hv) in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms, IH.
-          rewrite (vmb_nn _ _ _ _ Hv) in Hlb, Hlb'.
+          { eapply (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv));
+              [ exact (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv) _ _ Hs) |].
+            exact (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv) _ _ _ Hns Hs'). }
+          rewrite (view_member_unu _ _ _ _ Hv) in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms, IH.
+          rewrite (view_member_nn _ _ _ _ Hv) in Hlb, Hlb'.
           pose proof (nr_from _ _ _ _ _ _ HMi Hv Hms) as Hms'.
           destruct Hnr as [_ Hnr].
           pose proof (IH Hu Hu' i' Mi' Mw c nil nil gs' (List.skipn (im_unu Dq Mi') bs) (List.skipn (im_unu Dq Mi') bs') nil nil
                         HMi Hv Hc' Hcon I Hcorr eq_refl eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
                         ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
           cbn [nonrec_arg_vals] in Hca'; rewrite !List.app_nil_r in Hca'.
-          rewrite (vmb_ref _ _ _ _ Hv) in Href.
+          rewrite (view_member_ref _ _ _ _ Hv) in Href.
           eapply ind_rel_con with (Mk := Mi') (gs := gs');
             [ exact HMi | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns) | exact Hc' | exact Hlb | exact Hlb'
             | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs') | | exact Hca' ].
           split; [ rewrite length_nonrec_arg_vals by lia; reflexivity | exact Hnr' ].
         - (* a neutral *)
           intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' i' Mi' Mw HMi Hv.
-          rewrite (vmb_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
-          rewrite (vmb_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite (vmb_nn _ _ _ _ Hv) in Hl1, Hl2.
-          rewrite (vmb_ref _ _ _ _ Hv) in Href.
+          rewrite (view_member_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
+          rewrite (view_member_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite (view_member_nn _ _ _ _ Hv) in Hl1, Hl2.
+          rewrite (view_member_ref _ _ _ _ Hv) in Href.
           eapply ind_rel_neut with (Mk := Mi');
             [ exact HMi | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns)
             | exact Hl1 | exact Hl2 | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs')
@@ -658,12 +658,12 @@ Section Fixed_GCtx.
           destruct HRt as [bsc' e' Ebsc' Ee' Hbg']; pose proof (functional_eval_exps' _ _ _ _ Ee' Ebs') as ->.
           destruct (Hrm _ _ _ _ _ _ HM Hc') as (Mj' & HMj').
           destruct (Hmem _ _ HMj') as (v' & Mv' & Hv').
-          assert (v' = ptyp_mem t) as -> by (rewrite (vmb_v _ _ _ _ Hv') in Hm; congruence).
+          assert (v' = ptyp_mem t) as -> by (rewrite (view_member_v _ _ _ _ Hv') in Hm; congruence).
           pose proof (IH eq_refl eq_refl _ _ _ HMj' Hv') as Hg.
           assert (Hsym : forall a b, ntele_rel D nr (ptyp_mem t) a b -> tele_rel (nr' (ptyp_mem t')) (List.rev (im_nparams Mj')) b a).
           { intros a b H; apply (nr_from _ _ _ _ _ _ HMj' Hv').
             pose proof (ntele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ H) as H'.
-            unfold ntele_rel in H'; rewrite (vmb_mem _ _ _ _ Hv') in H'; exact H'. }
+            unfold ntele_rel in H'; rewrite (view_member_mem _ _ _ _ Hv') in H'; exact H'. }
           eapply rec_arg_self; [ exact Ebsc | exact Ebsc' | | | ].
           + apply (mk_okr_at _ _ _ _ _ _ _ _ Ebsc); unfold ntele_rel; rewrite HMj'.
             exact (nparams_rel_refl_r qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' _ _ HMj' _ _ (Hsym _ _ Hbg)).

@@ -73,7 +73,7 @@ Proof.
   destruct (rel_modexp_at _ _ _ _ _ HHK HR _ _ Hρ) as (h & k' & Hh & Hk' & Hhk).
   pose proof (functional_eval_modexp _ _ _ _ Hk' Hk) as ->.
   assert (HPA : PER RA) by (eapply per_elem_PER; exact HRA).
-  apply mk_valid_mem_at with (vma_mod := h) (vma_typ := a) (vma_lvl := i) (vma_rel := RA); try assumption;
+  apply mk_valid_mem_at with (valid_mem_at_mod := h) (valid_mem_at_typ := a) (valid_mem_at_lvl := i) (valid_mem_at_rel := RA); try assumption;
     [ eapply dmod_has_mem_resp; [ exact HPA | exact Hhk | exact Hm ] |].
   intros M HM0; destruct (Hred _ HM0) as [m r Hm0 Hr Hmr].
   destruct (Hm _ Hhk) as [r1 r2 Hr1 Hr2 Hrr].

@@ -35,7 +35,7 @@ Open Scope string_scope.
     equivalent dependencies. *)
 Lemma equiv_nat_view : forall Θ Θ' Ξ B, gds_equiv Θ Θ' -> nat_view Θ Ξ B = nat_view Θ' Ξ B.
 Proof.
-  intros * He; unfold nat_view; destruct (bt_nat B) as [p |]; [| reflexivity ].
+  intros * He; unfold nat_view; destruct (builtins_nat B) as [p |]; [| reflexivity ].
   rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity.
 Qed.
 
@@ -78,7 +78,7 @@ Section AlgEquiv.
     apply (@alg_type_mut_ind (gc_mk Θ Ξ)); intros; cbn [gc_deps gc_stack] in *;
       try solve [ econstructor; eauto 6 using equiv_nfs_agree, equiv_alg_subtyping ].
     (* an eliminator: at the groups it reads *)
-    eapply ati_elim with (D := D) (Dq := Dq) (Mm := Mm) (Mk := Mk) (bm := bm) (i := i) (p := p) (pc := pc) (k := k);
+    eapply alg_type_infer_elim with (D := D) (Dq := Dq) (Mm := Mm) (Mk := Mk) (bm := bm) (i := i) (p := p) (pc := pc) (k := k);
       try eassumption; eauto using equiv_nfs_agree.
     intros * Hj Hb HZ; destruct (a2 _ _ _ _ Hj Hb HZ) as (W & HW1 & HW2); exists W; split; auto.
   Qed.
@@ -662,10 +662,10 @@ Section Decide.
     match fs with
     | nil => fill_ok nil
     | f :: fs0 =>
-        let%a ys' := fill_tele_fn Γ (rf_nparams f) in
-        let%a Z' := fill_exp_fn (ys' ++ Γ) (rf_scrut f) in
+        let%a ys' := fill_tele_fn Γ (raw_fun_nparams f) in
+        let%a Z' := fill_exp_fn (ys' ++ Γ) (raw_fun_scrut f) in
         let%a fs0' := fill_rfun_heads_fn Γ fs0 in
-        fill_ok (mk_rfun (rf_name f) ys' Z' (rf_res f) (rf_clauses f) :: fs0')
+        fill_ok (mk_rfun (raw_fun_name f) ys' Z' (raw_fun_res f) (raw_fun_clauses f) :: fs0')
     end.
 
   (** The results of functions, each of its member, in the motive's
@@ -678,9 +678,9 @@ Section Decide.
         match ind_member D m with
         | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
-            let%a A' := fill_exp_fn (elim_mctx pq D m Mm Us ++ Γ) (rf_res f) in
+            let%a A' := fill_exp_fn (elim_mctx pq D m Mm Us ++ Γ) (raw_fun_res f) in
             let%a fs0' := fill_rfun_results_fn Γ pq D Us fms0 in
-            fill_ok (mk_rfun (rf_name f) (rf_nparams f) (rf_scrut f) A' (rf_clauses f) :: fs0')
+            fill_ok (mk_rfun (raw_fun_name f) (raw_fun_nparams f) (raw_fun_scrut f) A' (raw_fun_clauses f) :: fs0')
         end
     end.
 
@@ -694,9 +694,9 @@ Section Decide.
         match ind_member D m with
         | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
-            let%a Bs' := brs_fn Γ pq D Mm As Us (rf_clauses f) in
+            let%a Bs' := brs_fn Γ pq D Mm As Us (raw_fun_clauses f) in
             let%a fs0' := fill_rfun_clauses_fn Γ pq D Us As fms0 in
-            fill_ok (mk_rfun (rf_name f) (rf_nparams f) (rf_scrut f) (rf_res f) Bs' :: fs0')
+            fill_ok (mk_rfun (raw_fun_name f) (raw_fun_nparams f) (raw_fun_scrut f) (raw_fun_res f) Bs' :: fs0')
         end
     end.
 
@@ -751,10 +751,10 @@ Section Decide.
     match ms with
     | nil => fill_ok nil
     | Mr :: ms0 =>
-        let%a ys' := fill_tele_fn Γ (rm_nparams Mr) in
-        let%a S' := fill_exp_fn Γ (rm_sort Mr) in
+        let%a ys' := fill_tele_fn Γ (raw_member_nparams Mr) in
+        let%a S' := fill_exp_fn Γ (raw_member_sort Mr) in
         let%a ms0' := fill_raw_heads_fn Γ ms0 in
-        fill_ok (mk_rmem (rm_name Mr) ys' S' (rm_cons Mr) :: ms0')
+        fill_ok (mk_rmem (raw_member_name Mr) ys' S' (raw_member_cons Mr) :: ms0')
     end.
 
   (** Declared members' constructors, each over the member's context in
@@ -763,19 +763,19 @@ Section Decide.
     match ms with
     | nil => fill_ok nil
     | Mr :: ms0 =>
-        let%a cs' := fill_raw_cons_fn (rm_pctx Ξ Rh Mr) (rm_cons Mr) in
+        let%a cs' := fill_raw_cons_fn (rm_pctx Ξ Rh Mr) (raw_member_cons Mr) in
         let%a ms0' := fill_raw_bodies_fn Rh ms0 in
-        fill_ok (mk_rmem (rm_name Mr) (rm_nparams Mr) (rm_sort Mr) cs' :: ms0')
+        fill_ok (mk_rmem (raw_member_name Mr) (raw_member_nparams Mr) (raw_member_sort Mr) cs' :: ms0')
     end.
 
   (** A group as written, filled: its uniform parameters, its members'
       parameters and sorts, then their constructors' arguments in the
       group with those filled. *)
   Definition fill_raw_decl_fn (R : raw_decl) : fill_result raw_decl :=
-    let%a ups' := fill_tele_fn (gs_tele Ξ) (rd_uparams R) in
-    let%a hs := fill_raw_heads_fn (ups' ++ gs_tele Ξ) (rd_members R) in
-    let%a ms' := fill_raw_bodies_fn (mk_raw ups' hs (rd_rec R)) hs in
-    fill_ok (mk_raw ups' ms' (rd_rec R)).
+    let%a ups' := fill_tele_fn (gs_tele Ξ) (raw_decl_uparams R) in
+    let%a hs := fill_raw_heads_fn (ups' ++ gs_tele Ξ) (raw_decl_members R) in
+    let%a ms' := fill_raw_bodies_fn (mk_raw ups' hs (raw_decl_rec_field R)) hs in
+    fill_ok (mk_raw ups' ms' (raw_decl_rec_field R)).
 
   (** A command filled, part by part. *)
   Definition fill_cmd_fn (c : ccmd) : fill_result ccmd :=
@@ -1255,7 +1255,7 @@ Section Decide.
     pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     induction 1 as [| f h fs hs [En Ep Es Er Ec] _ IH]; cbn; [ reflexivity |].
     rewrite (Ct _ _ _ Ep); cbn; rewrite (Ce _ _ _ Es); cbn; rewrite IH; cbn.
-    rewrite <- (raw_fun_parts_eq (mk_rfun (rf_name f) (rf_nparams h) (rf_scrut h) (rf_res f) (rf_clauses f)) h
+    rewrite <- (raw_fun_parts_eq (mk_rfun (raw_fun_name f) (raw_fun_nparams h) (raw_fun_scrut h) (raw_fun_res f) (raw_fun_clauses f)) h
                   En eq_refl eq_refl Er Ec); reflexivity.
   Qed.
 
@@ -1266,7 +1266,7 @@ Section Decide.
       fill_rfun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs ->
       fill_rfun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs' ->
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' /\
-      Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) fs' rs.
+      Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs' rs.
   Proof.
     intros Γ pq D Us As hs; induction hs as [| h hs IH]; intros [| m ms] rs fs' Er Ec; cbn in Er;
       bind_inv; cbn in Ec; bind_inv; try (split; constructor).
@@ -1283,7 +1283,7 @@ Section Decide.
   Lemma fill_rfun_bodies_parts_complete : forall Γ pq D Us As hs ms fs',
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' ->
       exists rs, fill_rfun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs /\
-        Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) rs fs' /\
+        Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) rs fs' /\
         fill_rfun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs'.
   Proof.
     pose proof fill_fn_complete_all as (Ce & _ & _ & Cb & _).
@@ -1292,11 +1292,11 @@ Section Decide.
     cbn [fst snd] in *.
     destruct (ind_member D m) as [Mm |] eqn:Hj; [| contradiction ].
     destruct (IH _ _ Hb') as (rs & Er & Hrs & Ec).
-    exists (mk_rfun (rf_name h) (rf_nparams h) (rf_scrut h) (rf_res f') (rf_clauses h) :: rs); cbn.
+    exists (mk_rfun (raw_fun_name h) (raw_fun_nparams h) (raw_fun_scrut h) (raw_fun_res f') (raw_fun_clauses h) :: rs); cbn.
     rewrite Hj, (Ce _ _ _ (Hr Mm eq_refl)); cbn; rewrite Er; cbn.
     split; [ reflexivity | split; [ constructor; [ cbn; split; [ exact (eq_sym Ep) | reflexivity ] | exact Hrs ] |] ].
     rewrite (Cb _ _ _ _ _ _ _ _ (Hc Mm eq_refl)); cbn; rewrite Ec; cbn.
-    rewrite (raw_fun_parts_eq f' (mk_rfun (rf_name h) (rf_nparams h) (rf_scrut h) (rf_res f') (rf_clauses f'))
+    rewrite (raw_fun_parts_eq f' (mk_rfun (raw_fun_name h) (raw_fun_nparams h) (raw_fun_scrut h) (raw_fun_res f') (raw_fun_clauses f'))
                (eq_sym En) (eq_sym Ep) (eq_sym Es) eq_refl eq_refl); reflexivity.
   Qed.
 
@@ -1349,8 +1349,8 @@ Section Decide.
   Qed.
 
   Lemma fill_raw_heads_fn_sound : forall Γ ms hs, fill_raw_heads_fn Γ ms = fill_ok hs ->
-      Forall2 (fun Mr Mh => rm_name Mh = rm_name Mr /\ fill_tele Θ Ξ B Γ (rm_nparams Mr) (rm_nparams Mh) /\
-                            fill_exp Θ Ξ B Γ (rm_sort Mr) (rm_sort Mh) /\ rm_cons Mh = rm_cons Mr) ms hs.
+      Forall2 (fun Mr Mh => raw_member_name Mh = raw_member_name Mr /\ fill_tele Θ Ξ B Γ (raw_member_nparams Mr) (raw_member_nparams Mh) /\
+                            fill_exp Θ Ξ B Γ (raw_member_sort Mr) (raw_member_sort Mh) /\ raw_member_cons Mh = raw_member_cons Mr) ms hs.
   Proof.
     intros Γ ms; induction ms as [| Mr ms IH]; intros hs E; cbn in E; bind_inv; [ constructor |].
     constructor; [ cbn; repeat split; [ apply fill_tele_fn_sound | apply fill_exp_fn_sound ]; assumption
@@ -1358,9 +1358,9 @@ Section Decide.
   Qed.
 
   Lemma fill_raw_bodies_fn_sound : forall Rh hs ms', fill_raw_bodies_fn Rh hs = fill_ok ms' ->
-      Forall2 (fun Mh Mr' => rm_name Mr' = rm_name Mh /\ rm_nparams Mr' = rm_nparams Mh /\ rm_sort Mr' = rm_sort Mh /\
+      Forall2 (fun Mh Mr' => raw_member_name Mr' = raw_member_name Mh /\ raw_member_nparams Mr' = raw_member_nparams Mh /\ raw_member_sort Mr' = raw_member_sort Mh /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B (rm_pctx Ξ Rh Mh) (snd rc) (snd rc'))
-                               (rm_cons Mh) (rm_cons Mr')) hs ms'.
+                               (raw_member_cons Mh) (raw_member_cons Mr')) hs ms'.
   Proof.
     intros Rh hs; induction hs as [| Mh hs IH]; intros ms' E; cbn in E; bind_inv; [ constructor |].
     constructor; [ cbn; repeat split; apply fill_raw_cons_fn_sound; assumption | apply IH; assumption ].
@@ -1369,13 +1369,13 @@ Section Decide.
   (** The members' heads, then their constructors, filled in the group of
       the filled heads: the relation's members of the filled group. *)
   Lemma fill_raw_members_compose : forall ups rec hsG msG ms hs ms',
-      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) hsG msG ->
-      Forall2 (fun Mr Mh => rm_name Mh = rm_name Mr /\ fill_tele Θ Ξ B (ups ++ gs_tele Ξ) (rm_nparams Mr) (rm_nparams Mh) /\
-                            fill_exp Θ Ξ B (ups ++ gs_tele Ξ) (rm_sort Mr) (rm_sort Mh) /\ rm_cons Mh = rm_cons Mr) ms hs ->
-      Forall2 (fun Mh Mr' => rm_name Mr' = rm_name Mh /\ rm_nparams Mr' = rm_nparams Mh /\ rm_sort Mr' = rm_sort Mh /\
+      Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) hsG msG ->
+      Forall2 (fun Mr Mh => raw_member_name Mh = raw_member_name Mr /\ fill_tele Θ Ξ B (ups ++ gs_tele Ξ) (raw_member_nparams Mr) (raw_member_nparams Mh) /\
+                            fill_exp Θ Ξ B (ups ++ gs_tele Ξ) (raw_member_sort Mr) (raw_member_sort Mh) /\ raw_member_cons Mh = raw_member_cons Mr) ms hs ->
+      Forall2 (fun Mh Mr' => raw_member_name Mr' = raw_member_name Mh /\ raw_member_nparams Mr' = raw_member_nparams Mh /\ raw_member_sort Mr' = raw_member_sort Mh /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
                                                     fill_raw_args Θ Ξ B (rm_pctx Ξ (mk_raw ups hsG rec) Mh) (snd rc) (snd rc'))
-                               (rm_cons Mh) (rm_cons Mr')) hs ms' ->
+                               (raw_member_cons Mh) (raw_member_cons Mr')) hs ms' ->
       Forall2 (fill_raw_member Θ Ξ B (mk_raw ups msG rec)) ms ms'.
   Proof.
     intros * HG Hh; revert ms'; induction Hh as [| Mr Mh ms hs (En & Hn & Hs & Hc) _ IH]; intros ms' Hb;
@@ -1392,7 +1392,7 @@ Section Decide.
     rename x into ups', x0 into hs, x1 into ms'.
     pose proof (fill_raw_heads_fn_sound _ _ _ H0) as Hh.
     pose proof (fill_raw_bodies_fn_sound _ _ _ H1) as Hb.
-    assert (Hhb : Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) hs ms').
+    assert (Hhb : Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) hs ms').
     { eapply Forall2_impl; [| exact Hb ]; intros Mh Mr' (_ & Ep & Es & _); split; symmetry; assumption. }
     constructor; cbn; [ apply fill_tele_fn_sound; assumption | reflexivity |].
     exact (fill_raw_members_compose _ _ _ _ _ _ _ Hhb Hh Hb).
@@ -1400,31 +1400,31 @@ Section Decide.
 
   (** The relation's fill of a group is computed. *)
   Lemma fill_raw_heads_fn_complete : forall R' ms ms', Forall2 (fill_raw_member Θ Ξ B R') ms ms' ->
-      exists hs, fill_raw_heads_fn (rd_uparams R' ++ gs_tele Ξ) ms = fill_ok hs /\
-        Forall2 (fun Mh Mr' => rm_name Mh = rm_name Mr' /\ rm_nparams Mh = rm_nparams Mr' /\ rm_sort Mh = rm_sort Mr' /\
+      exists hs, fill_raw_heads_fn (raw_decl_uparams R' ++ gs_tele Ξ) ms = fill_ok hs /\
+        Forall2 (fun Mh Mr' => raw_member_name Mh = raw_member_name Mr' /\ raw_member_nparams Mh = raw_member_nparams Mr' /\ raw_member_sort Mh = raw_member_sort Mr' /\
                                Forall2 (fun rc rc' => fst rc' = fst rc /\
                                                       fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
-                                 (rm_cons Mh) (rm_cons Mr')) hs ms'.
+                                 (raw_member_cons Mh) (raw_member_cons Mr')) hs ms'.
   Proof.
     pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     induction 1 as [| Mr Mr' ms ms' [En Hn Hs Hc] _ (hs & Eh & Hhs)]; [ exists nil; split; [ reflexivity | constructor ] |].
-    exists (mk_rmem (rm_name Mr) (rm_nparams Mr') (rm_sort Mr') (rm_cons Mr) :: hs); cbn.
+    exists (mk_rmem (raw_member_name Mr) (raw_member_nparams Mr') (raw_member_sort Mr') (raw_member_cons Mr) :: hs); cbn.
     rewrite (Ct _ _ _ Hn); cbn [fill_result_bind]; rewrite (Ce _ _ _ Hs); cbn [fill_result_bind]; rewrite Eh.
     split; [ reflexivity | constructor; [ cbn; repeat split; [ exact (eq_sym En) | exact Hc ] | exact Hhs ] ].
   Qed.
 
-  Lemma fill_raw_bodies_fn_complete : forall Rh R' hs ms', rd_uparams Rh = rd_uparams R' ->
-      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) (rd_members Rh) (rd_members R') ->
-      Forall2 (fun Mh Mr' => rm_name Mh = rm_name Mr' /\ rm_nparams Mh = rm_nparams Mr' /\ rm_sort Mh = rm_sort Mr' /\
+  Lemma fill_raw_bodies_fn_complete : forall Rh R' hs ms', raw_decl_uparams Rh = raw_decl_uparams R' ->
+      Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) (raw_decl_members Rh) (raw_decl_members R') ->
+      Forall2 (fun Mh Mr' => raw_member_name Mh = raw_member_name Mr' /\ raw_member_nparams Mh = raw_member_nparams Mr' /\ raw_member_sort Mh = raw_member_sort Mr' /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
                                                     fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
-                               (rm_cons Mh) (rm_cons Mr')) hs ms' ->
+                               (raw_member_cons Mh) (raw_member_cons Mr')) hs ms' ->
       fill_raw_bodies_fn Rh hs = fill_ok ms'.
   Proof.
     intros * Eu HG; induction 1 as [| Mh Mr' hs ms' (En & Ep & Es & Hc) _ IH]; cbn; [ reflexivity |].
     rewrite (rm_pctx_heads_eq Ξ Rh R' Mh Mr' Eu HG Ep), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
     rewrite IH; cbn [fill_result_bind].
-    rewrite (raw_member_parts_eq Mr' (mk_rmem (rm_name Mh) (rm_nparams Mh) (rm_sort Mh) (rm_cons Mr')) En Ep Es eq_refl);
+    rewrite (raw_member_parts_eq Mr' (mk_rmem (raw_member_name Mh) (raw_member_nparams Mh) (raw_member_sort Mh) (raw_member_cons Mr')) En Ep Es eq_refl);
       reflexivity.
   Qed.
 
@@ -1433,8 +1433,8 @@ Section Decide.
     pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     intros R R' [Hu Hr Hm]; unfold fill_raw_decl_fn; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
     destruct (fill_raw_heads_fn_complete _ _ _ Hm) as (hs & Eh & Hhs); rewrite Eh; cbn [fill_result_bind].
-    rewrite (fill_raw_bodies_fn_complete (mk_raw (rd_uparams R') hs (rd_rec R)) R' hs (rd_members R') eq_refl); cbn.
-    - rewrite (raw_decl_parts_eq R' (mk_raw (rd_uparams R') (rd_members R') (rd_rec R)) eq_refl eq_refl (eq_sym Hr));
+    rewrite (fill_raw_bodies_fn_complete (mk_raw (raw_decl_uparams R') hs (raw_decl_rec_field R)) R' hs (raw_decl_members R') eq_refl); cbn.
+    - rewrite (raw_decl_parts_eq R' (mk_raw (raw_decl_uparams R') (raw_decl_members R') (raw_decl_rec_field R)) eq_refl eq_refl (eq_sym Hr));
         reflexivity.
     - eapply Forall2_impl; [| exact Hhs ]; intros Mh Mr' (_ & Ep & Es & _); split; assumption.
     - exact Hhs.

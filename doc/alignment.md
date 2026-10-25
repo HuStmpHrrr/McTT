@@ -160,8 +160,8 @@ KW-Id     ⊢ Γ                              KW-Shift  Γ ⊢ᵏ φ : Δ   Γ �
 
 ```coq
 Inductive wk_kripke : ctx -> ctx -> wk -> Prop :=
-| kwk_id   : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢ᵏ φ : Δ )
-| kwk_shift: `( Γ ⊢ᵏ ψ : Δ' ▹ A -> ⊢ Δ' ⊆ Δ ->
+| wk_kripke_id   : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢ᵏ φ : Δ )
+| wk_kripke_shift: `( Γ ⊢ᵏ ψ : Δ' ▹ A -> ⊢ Δ' ⊆ Δ ->
                 wk_eq φ (↑ ⊙ ψ) -> Γ ⊢ᵏ φ : Δ ).
 ```
 
@@ -541,7 +541,7 @@ judgment itself. Pre-port:
 Now:
 
 ```coq
-| kwk_id : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢ᵏ φ : Δ )
+| wk_kripke_id : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢ᵏ φ : Δ )
 ```
 
 A `wf_sub_eq` derivation became a `pointwise_relation nat eq`. Records instead

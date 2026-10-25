@@ -13,7 +13,7 @@ Import Syntax_Notations.
 
 (** A group of inductive declarations as written ([cc_ind]): one type, or
     the types of a mutual block, in order.  The group's own uniform
-    parameters [rd_uparams] (innermost first, over the enclosing frames'
+    parameters [raw_decl_uparams] (innermost first, over the enclosing frames'
     parameters) are shared; each member has its name, its non-uniform
     parameters (innermost first, over the uniform ones), its sort (over the
     uniform ones; the members' sorts are one) and its constructors, each
@@ -28,24 +28,24 @@ Import Syntax_Notations.
     structural declaration it files. *)
 Record raw_member : Set := mk_rmem
   { (** The member's name *)
-    rm_name : string
+    raw_member_name : string
     (** Its non-uniform parameters, innermost first *)
-  ; rm_nparams : ctx
+  ; raw_member_nparams : ctx
     (** Its sort, over the uniform parameters *)
-  ; rm_sort : exp
+  ; raw_member_sort : exp
     (** Its constructors, each with its named arguments, outermost
         first *)
-  ; rm_cons : list (string * list (string * exp)) }.
+  ; raw_member_cons : list (string * list (string * exp)) }.
 
 (** A group as written: see [raw_member]. *)
 Record raw_decl : Set := mk_raw
   { (** The group's own uniform parameters, innermost first *)
-    rd_uparams : ctx
+    raw_decl_uparams : ctx
     (** The declared members, in order *)
-  ; rd_members : list raw_member
+  ; raw_decl_members : list raw_member
     (** Whether the group files the recursor module [Rec] in its frame, as
         a group declared by [mutual T where] does *)
-  ; rd_rec : bool }.
+  ; raw_decl_rec_field : bool }.
 
 (** A function of a [mutual def] as written ([cc_mdef]): its name, its
     non-uniform parameters [ys] (innermost first, over the block's
@@ -55,15 +55,15 @@ Record raw_decl : Set := mk_raw
     arguments and the recursive results (over [Δ]). *)
 Record raw_fun : Set := mk_rfun
   { (** The function's name *)
-    rf_name : string
+    raw_fun_name : string
     (** Its non-uniform parameters [ys], innermost first *)
-  ; rf_nparams : ctx
+  ; raw_fun_nparams : ctx
     (** The scrutinee's type, over [ys] *)
-  ; rf_scrut : exp
+  ; raw_fun_scrut : exp
     (** The result type, over the scrutinee and [ys] *)
-  ; rf_res : exp
+  ; raw_fun_res : exp
     (** The clauses: constructor name, number of binders, body *)
-  ; rf_clauses : list (string * nat * exp) }.
+  ; raw_fun_clauses : list (string * nat * exp) }.
 
 
 (** The core commands. *)

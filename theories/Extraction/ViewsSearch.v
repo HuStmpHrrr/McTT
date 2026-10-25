@@ -258,16 +258,16 @@ Section Search.
   (** The views reachable from one view. *)
   Inductive reach_from (x : rview) : rview -> Prop :=
   (** The view itself *)
-  | rf_self : reach_from x x
+  | reach_from_self : reach_from x x
   (** A sibling of a view reachable from [x], or that view *)
-  | rf_sib : forall y a w, reach_from x y -> E y a -> In w (sibs_of a ++ y :: nil) -> reach_from x w
+  | reach_from_sib : forall y a w, reach_from x y -> E y a -> In w (sibs_of a ++ y :: nil) -> reach_from x w
   (** An instance a view reachable from [x] meets *)
-  | rf_meet : forall y a w, reach_from x y -> E y a -> In w (meets_of a) -> reach_from x w.
+  | reach_from_meet : forall y a w, reach_from x y -> E y a -> In w (meets_of a) -> reach_from x w.
 
   Lemma reach_from_trans : forall x y w, reach_from x y -> reach_from y w -> reach_from x w.
   Proof.
     intros x y w Hxy Hyw; induction Hyw as [| y' a w Hy IH He Hw | y' a w Hy IH He Hw ];
-      [ exact Hxy | eapply rf_sib | eapply rf_meet ]; eassumption.
+      [ exact Hxy | eapply reach_from_sib | eapply reach_from_meet ]; eassumption.
   Qed.
 
   (** Finitely many views are reachable from [x]. *)
@@ -360,11 +360,11 @@ Section Search.
       - left; exact (cluster_self _ _ HL).
       - destruct IHy as [HyL | (u & Hu & Huy)].
         + left; exact (cluster_closed _ _ HL _ _ HyL Ha _ Hw).
-        + right; exists u; split; [ exact Hu | eapply rf_sib; eassumption ].
+        + right; exists u; split; [ exact Hu | eapply reach_from_sib; eassumption ].
       - destruct IHy as [HyL | (u & Hu & Huy)].
         + destruct (HLL w (in_all_meets _ _ _ _ HyL Ha Hw)) as [HwL | Hf]; [ left; exact HwL |].
-          right; exists w; split; [ exact Hf | apply rf_self ].
-        + right; exists u; split; [ exact Hu | eapply rf_meet; eassumption ].
+          right; exists w; split; [ exact Hf | apply reach_from_self ].
+        + right; exists u; split; [ exact Hu | eapply reach_from_meet; eassumption ].
     Qed.
 
     (** From any view, finitely many views are reachable: its siblings, and
@@ -385,12 +385,12 @@ Section Search.
         + destruct IHy as [HyC | (u & Hu & Huy)].
           * destruct (HLC y HyC) as [Hs | Hf]; [ left; exact (Hs _ Ha _ Hw) |].
             right; exists y; split; [ intros w' Hw'; apply in_or_app; left; exact (Hf _ Hw') |].
-            eapply rf_sib; [ apply rf_self | exact Ha | exact Hw ].
-          * right; exists u; split; [ exact Hu | eapply rf_sib; eassumption ].
+            eapply reach_from_sib; [ apply reach_from_self | exact Ha | exact Hw ].
+          * right; exists u; split; [ exact Hu | eapply reach_from_sib; eassumption ].
         + destruct IHy as [HyC | (u & Hu & Huy)].
           * destruct (HLM w (in_all_meets _ _ _ _ HyC Ha Hw)) as [[] | Hf].
-            right; exists w; split; [ intros w' Hw'; apply in_or_app; right; exact (Hf _ Hw') | apply rf_self ].
-          * right; exists u; split; [ exact Hu | eapply rf_meet; eassumption ].
+            right; exists w; split; [ intros w' Hw'; apply in_or_app; right; exact (Hf _ Hw') | apply reach_from_self ].
+          * right; exists u; split; [ exact Hu | eapply reach_from_meet; eassumption ].
       - exists (x :: nil); intros w Hw.
         assert (Hx : w = x).
         { induction Hw as [| y a w Hy IHy Ha Hw | y a w Hy IHy Ha Hw]; [ reflexivity | |];
@@ -401,9 +401,9 @@ Section Search.
     Lemma reach_from_init : forall y, reach y -> exists x, In x init /\ reach_from x y.
     Proof.
       induction 1 as [x Hx | x a y Hx IH Ha Hy | x a y Hx IH Ha Hy].
-      - exists x; split; [ exact Hx | apply rf_self ].
-      - destruct IH as (x0 & Hx0 & Hr); exists x0; split; [ exact Hx0 | eapply rf_sib; eassumption ].
-      - destruct IH as (x0 & Hx0 & Hr); exists x0; split; [ exact Hx0 | eapply rf_meet; eassumption ].
+      - exists x; split; [ exact Hx | apply reach_from_self ].
+      - destruct IH as (x0 & Hx0 & Hr); exists x0; split; [ exact Hx0 | eapply reach_from_sib; eassumption ].
+      - destruct IH as (x0 & Hx0 & Hr); exists x0; split; [ exact Hx0 | eapply reach_from_meet; eassumption ].
     Qed.
 
     (** So the views reachable from the queue are finitely many. *)

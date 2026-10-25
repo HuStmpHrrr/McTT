@@ -47,10 +47,10 @@ Lemma sem_ind :
 Proof.
   intros * HΓ Hl HM Hlt; sem_intro; [ assumption |].
   match goal with He : valid_emb _ _ _ _ |- _ => pose proof (valid_groups_valid _ (valid_groups_of_emb _ _ _ _ He) p D Hl) as Hg end.
-  destruct (member_lt_decl _ _ _ _ _ (vgr_typed _ _ Hg) HM Hlt) as [pm Hh].
+  destruct (member_lt_decl _ _ _ _ _ (valid_group_typed _ _ Hg) HM Hlt) as [pm Hh].
   apply closed_weaken_valid; [ assumption |].
-  exact (valid_exp_under_ctx_ind D (vgr_valid _ _ Hg) (vgr_closed _ _ Hg) (vgr_sort _ _ Hg) p (vgr_lookup _ _ Hg)
-           (vgr_ass _ _ Hg) k M pm HM Hh).
+  exact (valid_exp_under_ctx_ind D (valid_group_valid _ _ Hg) (valid_group_closed _ _ Hg) (valid_group_sort _ _ Hg) p (valid_group_lookup _ _ Hg)
+           (valid_group_ass _ _ Hg) k M pm HM Hh).
 Qed.
 
 Lemma sem_con :

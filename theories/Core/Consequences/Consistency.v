@@ -231,16 +231,16 @@ Qed.
     order on levels, small below small by the order on level terms, small
     below large, and [Level@m] below [Level@n] by the order on sorts. *)
 Inductive univ_sub (Γ : ctx) : exp -> exp -> Prop :=
-| usub_large : forall i j, i <= j -> univ_sub Γ Typeω@i Typeω@j
-| usub_small : forall t t' n,
+| univ_sub_large : forall i j, i <= j -> univ_sub Γ Typeω@i Typeω@j
+| univ_sub_small : forall t t' n,
     Γ ⊢ t : Level@n ->
     Γ ⊢ t' : Level@n ->
     Γ ⊢ maxl t t' ≈ t' : Level@n ->
     univ_sub Γ Type⟨t⟩ Type⟨t'⟩
-| usub_small_large : forall t j n,
+| univ_sub_small_large : forall t j n,
     Γ ⊢ t : Level@n ->
     univ_sub Γ Type⟨t⟩ Typeω@j
-| usub_level : forall m n, m <= n -> univ_sub Γ Level@m Level@n.
+| univ_sub_level : forall m n, m <= n -> univ_sub Γ Level@m Level@n.
 Hint Constructors univ_sub : mctt.
 
 (** The two sides of [univ_sub]: a universe term or a type of levels. *)
@@ -1191,12 +1191,12 @@ Qed.
     arguments, and [s], with one recursive argument of the member itself. *)
 Record nat_member_shape (z s : String.string) (Mn : imember) : Prop := mk_nat_member_shape
   { (** The member is declared *)
-    nms_decl : im_is_decl Mn = true
+    nat_member_shape_decl : im_is_decl Mn = true
     (** It has no non-uniform parameter *)
-  ; nms_nparams : im_nparams Mn = nil
+  ; nat_member_shape_nparams : im_nparams Mn = nil
     (** Its constructors are [z], without arguments, and [s], with one
         recursive argument of itself *)
-  ; nms_cons : forall c gs, ind_con Mn c = Some gs -> (c = z /\ gs = nil) \/ (c = s /\ gs = ca_rec (pt_self 0 nil) :: nil) }.
+  ; nat_member_shape_cons : forall c gs, ind_con Mn c = Some gs -> (c = z /\ gs = nil) \/ (c = s /\ gs = ca_rec (pt_self 0 nil) :: nil) }.
 
 Lemma nat_shape_inv : forall D z s, nat_shape D = Some (z, s) ->
     ind_uparams D = nil /\ (forall k Mk, ind_member D k = Some Mk -> k = 0 /\ nat_member_shape z s Mk).
@@ -1233,9 +1233,9 @@ Qed.
     [z]. *)
 Inductive nat_chain_nf (p : qname) (z s : String.string) : nf -> Prop :=
 (** The constructor [z] *)
-| ncn_zero : nat_chain_nf p z s (nf_con p 0 z nil)
+| nat_chain_nf_zero : nat_chain_nf p z s (nf_con p 0 z nil)
 (** The constructor [s] at a chain *)
-| ncn_succ : forall W, nat_chain_nf p z s W -> nat_chain_nf p z s (nf_con p 0 s (cons W nil)).
+| nat_chain_nf_succ : forall W, nat_chain_nf p z s W -> nat_chain_nf p z s (nf_con p 0 s (cons W nil)).
 
 (** The number of constructors of one argument heading a normal form: the
     number a chain of [s] ending in [z] stands for. *)
@@ -1251,12 +1251,12 @@ Definition nf_succ_depth (W : nf) : nat :=
     readback of a value of the same type, or a neutral. *)
 Inductive nat_read_step (p : qname) (z s : String.string) : nf -> Prop :=
 (** The constructor [z] *)
-| nrs_zero : nat_read_step p z s (nf_con p 0 z nil)
+| nat_read_step_zero : nat_read_step p z s (nf_con p 0 z nil)
 (** The constructor [s] at the readback of a value of the same type *)
-| nrs_succ : forall v V, Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ V ->
+| nat_read_step_succ : forall v V, Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ V ->
     nat_read_step p z s (nf_con p 0 s (cons V nil))
 (** A neutral *)
-| nrs_neut : forall M, nat_read_step p z s ⇑ⁿ M.
+| nat_read_step_neut : forall M, nat_read_step p z s ⇑ⁿ M.
 
 Lemma nat_read_step_of_read : forall p D z s W v, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
     Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ W -> nat_read_step p z s W.
@@ -1465,11 +1465,11 @@ Qed.
     neutral whose globals satisfy [G], headed by one. *)
 Inductive nat_chain_stuck (G : qname -> Prop) (p : qname) (z s : String.string) : nf -> Prop :=
 (** The constructor [z] *)
-| ncs_zero : nat_chain_stuck G p z s (nf_con p 0 z nil)
+| nat_chain_stuck_zero : nat_chain_stuck G p z s (nf_con p 0 z nil)
 (** The constructor [s] at a chain *)
-| ncs_succ : forall W, nat_chain_stuck G p z s W -> nat_chain_stuck G p z s (nf_con p 0 s (cons W nil))
+| nat_chain_stuck_succ : forall W, nat_chain_stuck G p z s W -> nat_chain_stuck G p z s (nf_con p 0 s (cons W nil))
 (** A neutral headed by a global, its globals satisfying [G] *)
-| ncs_neut : forall W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ W.
+| nat_chain_stuck_neut : forall W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ W.
 #[export]
 Hint Constructors nat_chain_stuck : mctt.
 
@@ -1522,7 +1522,7 @@ Proof.
   intros G p D z s Hl Hs W; remember (nf_succ_depth W) as k eqn:Ek; revert W Ek.
   induction k as [| k IH]; intros W Ek v Hr Hc HT.
   all: destruct (nat_read_step_of_read _ _ _ _ _ _ Hl Hs Hr) as [| v' V Hr' | M].
-  all: try (cbn in Hc, HT; destruct (closed_neutral_head HT) as [h Hh]; eapply ncs_neut; eassumption).
+  all: try (cbn in Hc, HT; destruct (closed_neutral_head HT) as [h Hh]; eapply nat_chain_stuck_neut; eassumption).
   - constructor.
   - cbn in Ek; discriminate.
   - constructor.
@@ -1768,7 +1768,7 @@ Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms
 Corollary canonical_form_of_bound_nat_prog : forall prg B Θ U M p,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg B Θ U ->
     let Θ' := ((prog_path prg, U) :: Θ) in
-    bt_nat B = Some p ->
+    builtins_nat B = Some p ->
     Θ' ⍮ nil ⍮ ⋅ ⊢ M : a_ind p 0 ->
     exists z s V n, nat_view Θ' nil B = Some (p, z, s) /\
       nbe (gds_unseal Θ') nil ⋅ M (a_ind p 0) V /\ nf_to_exp V = nat_chain p z s n.

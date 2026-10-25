@@ -943,32 +943,32 @@ Fixpoint ptyp_scoped (n : nat) (t : ptyp) : Prop :=
     group, at its number of non-uniform parameters. *)
 Record member_closed (D : ind_decl) (M : imember) : Prop := mk_member_closed
   { (** The non-uniform parameters are assumptions *)
-    mc_ass : tele_ass (im_nparams M)
+    member_closed_ass : tele_ass (im_nparams M)
     (** They are over the uniform ones *)
-  ; mc_nparams : ctx_scoped (ind_nu D) (im_nparams M)
+  ; member_closed_nparams : ctx_scoped (ind_nu D) (im_nparams M)
     (** A view's uniform arguments are over the uniform parameters *)
-  ; mc_head : forall qc k' Is vm, im_head M = mh_view qc k' Is vm -> List.Forall (exp_scoped (ind_nu D)) Is
+  ; member_closed_head : forall qc k' Is vm, im_head M = mh_view qc k' Is vm -> List.Forall (exp_scoped (ind_nu D)) Is
     (** A non-recursive argument is over the parameters and the
         non-recursive arguments before it *)
-  ; mc_args : forall c gs gs1 A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg A :: gs2 ->
+  ; member_closed_args : forall c gs gs1 A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg A :: gs2 ->
       exp_scoped (List.length (cargs_strat gs1) + im_np D M) A
     (** So is a recursive argument's shape *)
-  ; mc_recs : forall c gs gs1 t gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
+  ; member_closed_recs : forall c gs gs1 t gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
       ptyp_scoped (List.length (cargs_strat gs1) + im_np D M) t
     (** A shape ends in a member, at its number of non-uniform
         parameters *)
-  ; mc_rec_len : forall c gs, In (c, gs) (im_cons M) -> cargs_plen D gs }.
+  ; member_closed_rec_len : forall c gs, In (c, gs) (im_cons M) -> cargs_plen D gs }.
 
 (** A closed group: see the section header. *)
 Record decl_closed (D : ind_decl) : Prop := mk_decl_closed
   { (** The uniform parameters are assumptions *)
-    dc_ass : tele_ass (ind_uparams D)
+    decl_closed_ass : tele_ass (ind_uparams D)
     (** They are a closed telescope *)
-  ; dc_uparams : ctx_scoped 0 (ind_uparams D)
+  ; decl_closed_uparams : ctx_scoped 0 (ind_uparams D)
     (** The sort is over the uniform parameters *)
-  ; dc_sort : exp_scoped (ind_nu D) (ind_sort D)
+  ; decl_closed_sort : exp_scoped (ind_nu D) (ind_sort D)
     (** Every member is closed *)
-  ; dc_members : forall k M, ind_member D k = Some M -> member_closed D M }.
+  ; decl_closed_members : forall k M, ind_member D k = Some M -> member_closed D M }.
 
 Lemma ptyp_scoped_mono : forall t n m, n <= m -> ptyp_scoped n t -> ptyp_scoped m t.
 Proof.
@@ -1077,14 +1077,14 @@ Qed.
 (** The parameters of a member of a closed group are closed. *)
 Lemma decl_closed_params : forall D k M, decl_closed D -> ind_member D k = Some M -> ctx_scoped 0 (im_params D M).
 Proof.
-  intros * HD HM; pose proof (dc_members _ HD _ _ HM) as HMc; unfold im_params.
-  apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; apply (mc_nparams _ _ HMc) | apply (dc_uparams _ HD) ].
+  intros * HD HM; pose proof (decl_closed_members _ HD _ _ HM) as HMc; unfold im_params.
+  apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; apply (member_closed_nparams _ _ HMc) | apply (decl_closed_uparams _ HD) ].
 Qed.
 
 Lemma decl_closed_params_ass : forall D k M, decl_closed D -> ind_member D k = Some M -> tele_ass (im_params D M).
 Proof.
-  intros * HD HM; pose proof (dc_members _ HD _ _ HM) as HMc; unfold im_params.
-  apply List.Forall_app; split; [ apply (mc_ass _ _ HMc) | apply (dc_ass _ HD) ].
+  intros * HD HM; pose proof (decl_closed_members _ HD _ _ HM) as HMc; unfold im_params.
+  apply List.Forall_app; split; [ apply (member_closed_ass _ _ HMc) | apply (decl_closed_ass _ HD) ].
 Qed.
 
 (** A member at uniform and non-uniform parameters as scoped as they are
@@ -1098,7 +1098,7 @@ Proof.
   unfold im_ty_at, im_pre; apply exp_scoped_apps; split; [ exact I |].
   apply List.Forall_app; split; [| exact HNs ].
   destruct (im_head Mj) as [pm | qc k' Is vm] eqn:Hh; [ exact HUs |].
-  apply List.Forall_map; eapply List.Forall_impl; [| exact (mc_head _ _ (dc_members _ HD _ _ Hj) _ _ _ _ Hh) ].
+  apply List.Forall_map; eapply List.Forall_impl; [| exact (member_closed_head _ _ (decl_closed_members _ HD _ _ Hj) _ _ _ _ Hh) ].
   intros I HI; apply exp_scoped_sb_of_list; [| exact HUs ].
   eapply exp_scoped_mono; [| exact HI ]; lia.
 Qed.
@@ -1147,7 +1147,7 @@ Qed.
 Lemma decl_closed_ind_ty : forall D k M, decl_closed D -> ind_member D k = Some M -> exp_scoped 0 (ind_ty D M).
 Proof.
   intros * HD HM; unfold ind_ty; apply ctx_pi_scoped; [ eapply decl_closed_params; eassumption |].
-  eapply exp_scoped_wk; [ exact (dc_sort _ HD) |]; intros x Hx; unfold im_params, im_nn, ind_nu in *.
+  eapply exp_scoped_wk; [ exact (decl_closed_sort _ HD) |]; intros x Hx; unfold im_params, im_nn, ind_nu in *.
   cbn; rewrite length_app; lia.
 Qed.
 
@@ -1163,7 +1163,7 @@ Proof.
   rewrite List.length_skipn, Hlen in HΔ1.
   replace (im_np D M - (im_np D M - k)) with k in HΔ1 by lia.
   apply ctx_pi_scoped; [ exact HΔ1 |].
-  rewrite List.length_firstn, Hlen; eapply exp_scoped_wk; [ exact (dc_sort _ HD) |]; intros x Hx;
+  rewrite List.length_firstn, Hlen; eapply exp_scoped_wk; [ exact (decl_closed_sort _ HD) |]; intros x Hx;
     unfold im_np, ind_nu in *; cbn; lia.
 Qed.
 
@@ -1182,14 +1182,14 @@ Qed.
 Lemma decl_closed_con_ty : forall p D k M c gs, decl_closed D -> ind_member D k = Some M -> In (c, gs) (im_cons M) ->
     exp_scoped 0 (con_ty p D k M gs).
 Proof.
-  intros p D k M c gs HD HM Hin; pose proof (dc_members _ HD _ _ HM) as HMc.
+  intros p D k M c gs HD HM Hin; pose proof (decl_closed_members _ HD _ _ HM) as HMc.
   unfold con_ty; apply ctx_pi_scoped; [ eapply decl_closed_params; eassumption |].
   rewrite Nat.add_0_r; apply ctx_pi_scoped.
   - assert (Hl : List.length (im_params D M) = im_nn M + ind_nu D)
       by (unfold im_params, im_nn, ind_nu; rewrite length_app; reflexivity).
     rewrite Hl; apply (cargs_ctx_aux_scoped p D (im_nn M) gs nil 0 HD eq_refl); intros; cbn.
-    + eapply (mc_args _ _ HMc); eassumption.
-    + eapply (mc_recs _ _ HMc); eassumption.
+    + eapply (member_closed_args _ _ HMc); eassumption.
+    + eapply (member_closed_recs _ _ HMc); eassumption.
   - rewrite length_cargs_ctx; apply ind_mty_scoped; [ exact HD | unfold ind_uvars; apply length_vars_from | |];
       apply vars_from_scoped; unfold im_params, im_nn, ind_nu; rewrite length_app; lia.
 Qed.
@@ -1394,7 +1394,7 @@ Lemma elim_ihs_scoped_at : forall pq D oq k M c gs Bks Ps As m,
     List.Forall (exp_scoped m) Ps -> List.Forall (exp_scoped m) As ->
     List.Forall (exp_scoped m) (elim_ihs pq D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As).
 Proof.
-  intros * Hc HM Hcon Hl Hnm HBs HPs HAs; pose proof (mc_recs _ _ (dc_members _ Hc _ _ HM)) as Ht.
+  intros * Hc HM Hcon Hl Hnm HBs HPs HAs; pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HM)) as Ht.
   eapply (elim_ihs_scoped _ _ _ _ _ _ _ _ _ (List.length Ps + 0)); [ exact Hc | | | exact Hnm | exact HBs | | | exact HAs ].
   - rewrite List.length_firstn; unfold im_np in Hl; lia.
   - apply Forall_firstn'; exact HPs.
@@ -1568,7 +1568,7 @@ Lemma im_pre_scoped : forall D k M Us n,
 Proof.
   intros * HD HM Hl HUs; unfold im_pre.
   destruct (im_head M) as [pm | qc k' Is vm] eqn:Hh; [ exact HUs |].
-  apply List.Forall_map; eapply List.Forall_impl; [| exact (mc_head _ _ (dc_members _ HD _ _ HM) _ _ _ _ Hh) ].
+  apply List.Forall_map; eapply List.Forall_impl; [| exact (member_closed_head _ _ (decl_closed_members _ HD _ _ HM) _ _ _ _ Hh) ].
   intros I HI; apply exp_scoped_sb_of_list; [| exact HUs ].
   eapply exp_scoped_mono; [| exact HI ]; lia.
 Qed.
@@ -1643,7 +1643,7 @@ Proof.
       * intros x Hx; apply (sb_of_list_bound _ _ 0); [ intros y Hy; lia | | ].
         -- apply List.Forall_app; split; [ exact HUs' | apply vars_from_scoped; subst n'; lia ].
         -- rewrite length_app, length_map, length_vars_from; lia.
-      * intros gs1 t gs2 E; pose proof (mc_recs _ _ HMv _ _ _ _ _ (cons_lookup_in _ _ _ Hgs) E) as Ht.
+      * intros gs1 t gs2 E; pose proof (member_closed_recs _ _ HMv _ _ _ _ _ (cons_lookup_in _ _ _ Hgs) E) as Ht.
         eapply ptyp_scoped_mono; [| exact Ht ]; unfold im_np; lia.
       * apply vars_from_scoped; subst n'; lia.
 Qed.
@@ -1661,11 +1661,11 @@ Proof.
   destruct (nth_error_vwrap_from _ _ _ _ _ _ _ _ _ Hb) as (Mi' & HMi' & ->); cbn [Nat.add].
   unfold vwrap_block.
   destruct (List.nth_error vm k) as [v |] eqn:Hv;
-    [| apply List.nth_error_None in Hv; pose proof (vwo_length _ _ _ Hvw) as Hlv;
+    [| apply List.nth_error_None in Hv; pose proof (vwrap_ok_length _ _ _ Hvw) as Hlv;
        assert (Hk : List.nth_error (ind_members D') k <> None) by congruence;
        apply List.nth_error_Some in Hk; unfold ind_member in *; lia ].
   rewrite (List.nth_error_nth _ _ _ Hv).
-  destruct (vwo_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hcs & Hcorr).
+  destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hcs & Hcorr).
   destruct (List.nth_error Bks v) as [[nm oZ A Bs] |] eqn:Hbv; [| cbn; repeat split; exact I ].
   rewrite HMv; cbn [eb_nm eb_ann eb_motive eb_brs opt_all].
   destruct (blocks_scoped_nth _ _ _ _ HBks Hbv) as (_ & HA & HBs); cbn in HA, HBs.
@@ -1675,7 +1675,7 @@ Proof.
   pose proof (f_equal (fun t => snd (fst t)) Ecg) as En'; pose proof (f_equal snd Ecg) as EB; cbn in En', EB.
   rewrite <- En', <- EB.
   assert (Hc' : c' = c) by (pose proof (f_equal (fun t => fst (fst t)) Ecg) as E; cbn in E; exact E); subst c'.
-  eapply wrap_br_scoped; [ exact HD | exact Hl | exact HUs | exact Hnm | exact HBks | exact (dc_members _ HD _ _ HMv) | | | | exact HBs ].
+  eapply wrap_br_scoped; [ exact HD | exact Hl | exact HUs | exact Hnm | exact HBks | exact (decl_closed_members _ HD _ _ HMv) | | | | exact HBs ].
   - intros gs Hgs; exact (Hcorr _ _ _ Hin' Hgs).
   - assert (Hc : In c (List.map fst (im_cons Mv))) by (rewrite Hcs; apply List.in_map_iff; exists (c, gs'); auto).
     apply List.in_map_iff in Hc as ([c0 gs0] & E0 & Hin0); cbn in E0; subst c0.
@@ -1848,7 +1848,7 @@ Proof.
       assert (Hu : unit_closed (Δ ++ T) Φ1) by (split; [ apply ctx_scoped_app_iff; auto | rewrite length_app; exact HΦ1 ]).
       exact (proj1 (IH _ _ Hu) _ _ Hr).
     + destruct HE as [HD HΦ1].
-      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply (dc_uparams _ HD) | exact HΦ1 ]).
+      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply (decl_closed_uparams _ HD) | exact HΦ1 ]).
       exact (proj1 (IH _ _ Hu) _ _ Hr).
     + destruct HE as [[HF _] HΦ1].
       assert (Hu : unit_closed (record_mod_tele pr Rr) Φ1)
@@ -1863,7 +1863,7 @@ Proof.
       exact (proj2 (IH _ _ Hu) _ _ _ Hr).
     + destruct ip; [ injection Hr as <-; exact HE | discriminate ].
     + destruct HE as [HD HΦ1].
-      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply (dc_uparams _ HD) | exact HΦ1 ]).
+      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply (decl_closed_uparams _ HD) | exact HΦ1 ]).
       destruct ip as [| z ip]; [ injection Hr as <-; split; [ apply Hu | exact HD ] |].
       exact (proj2 (IH _ _ Hu) _ _ _ Hr).
     + destruct ip; [ injection Hr as <-; exact (proj2 (proj2 HE)) | discriminate ].

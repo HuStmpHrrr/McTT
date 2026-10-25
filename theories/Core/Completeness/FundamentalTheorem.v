@@ -104,7 +104,7 @@ Lemma valid_exp_under_ctx_of_emb : forall Θ Ξ Θ2 Ξ2 Γ A M, valid_emb Θ Ξ 
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M.
 Proof.
   intros * Hμ HM; destruct completeness_fundamental as (_ & Ke & _).
-  exact (sea_rel (Ke _ _ _ _ _ HM _ _ Hμ)).
+  exact (sem_exp_eq_at_rel (Ke _ _ _ _ _ HM _ _ Hμ)).
 Qed.
 
 Lemma rel_ctx_wf_of_emb : forall Θ Ξ Θ2 Ξ2 Γ, valid_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> @rel_ctx_wf (gc_mk Θ2 Ξ2) Γ.
@@ -117,21 +117,21 @@ Lemma rel_exp_eq_of_emb : forall Θ Ξ Θ2 Ξ2 Γ A M M', valid_emb Θ Ξ Θ2 Ξ
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
 Proof.
   intros * Hμ HM; destruct completeness_fundamental as (_ & _ & Kq & _).
-  exact (sea_rel (Kq _ _ _ _ _ _ HM _ _ Hμ)).
+  exact (sem_exp_eq_at_rel (Kq _ _ _ _ _ _ HM _ _ Hμ)).
 Qed.
 
 Lemma rel_ext_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Ψ Ψ', valid_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ'.
 Proof.
   intros * Hμ HΨ; destruct completeness_fundamental as (_ & _ & _ & _ & _ & Kx & _).
-  exact (sxa_rel (Kx _ _ _ _ _ HΨ _ _ Hμ)).
+  exact (sem_ext_eq_at_rel (Kx _ _ _ _ _ HΨ _ _ Hμ)).
 Qed.
 
 Lemma rel_subtyp_of_emb : forall Θ Ξ Θ2 Ξ2 Γ A A', valid_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     @rel_subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
 Proof.
   intros * Hμ HA; destruct completeness_fundamental as (_ & _ & _ & Ks & _).
-  exact (ssa_rel (Ks _ _ _ _ _ HA _ _ Hμ)).
+  exact (sem_subtyp_at_rel (Ks _ _ _ _ _ HA _ _ Hμ)).
 Qed.
 
 (** ** Each entry is valid where it is checked *)
@@ -198,16 +198,16 @@ Qed.
 Lemma valid_ind_decl_of_typed : forall Θ Ξ D Θ2 Ξ2, decl_typed Θ Ξ D -> valid_emb Θ Ξ Θ2 Ξ2 -> @valid_ind_decl (gc_mk Θ2 Ξ2) D.
 Proof.
   intros * Hdt Hμ.
-  pose proof (dt_sort_univ _ _ _ Hdt) as Hsu.
-  pose proof (em_res _ _ _ _ (vem_emb _ _ _ _ Hμ)) as Hs.
-  pose proof (vem_wf _ _ _ _ Hμ) as Hg.
+  pose proof (decl_typed_sort_univ _ _ _ Hdt) as Hsu.
+  pose proof (em_res _ _ _ _ (valid_emb_emb _ _ _ _ Hμ)) as Hs.
+  pose proof (valid_emb_wf _ _ _ _ Hμ) as Hg.
   assert (Harg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
              List.nth_error (cargs_nonrec gs) j = Some A ->
              @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (nonrec_args_prefix gs j ++ im_params D Mk) ((ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ) A A /\
              exists i : nat, @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (nonrec_args_prefix gs j ++ im_params D Mk) (Typeω@i) A A).
   { intros * HMk Hcon HA0.
     destruct (nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
-    pose proof (dt_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
+    pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     assert (Hls : List.length (cargs_strat gs1) = j) by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
     rewrite Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
     pose proof (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HT) as H.
@@ -235,7 +235,7 @@ Proof.
   { intros * HMk Hcon Heq HB.
     assert (Hsplit : ptyp_doms t = List.firstn j (ptyp_doms t) ++ B :: List.skipn (S j) (ptyp_doms t))
       by (rewrite <- (skipn_nth_cons' _ _ _ HB), List.firstn_skipn; reflexivity).
-    pose proof (dt_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
+    pose proof (decl_typed_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
     assert (Hk : List.length (List.firstn j (ptyp_doms t)) = j)
       by (rewrite List.length_firstn; assert (j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
@@ -245,29 +245,29 @@ Proof.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
   - destruct (decl_typed_uparams _ _ _ Hdt) as [HU _]; exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ HU).
-  - destruct (dt_sort _ _ _ Hdt) as [i HS]; exists i; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HS).
-  - destruct (dt_sort_lvl _ _ _ Hdt) as [n HS]; exists n; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HS).
+  - destruct (decl_typed_sort _ _ _ Hdt) as [i HS]; exists i; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HS).
+  - destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n HS]; exists n; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HS).
   - intros * HMk; exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
   - intros * HMk; destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; exists j.
     exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ Hj).
   - intros * HMk HA0.
     destruct (nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
     assert (Hk : j < im_nn Mk) by (unfold im_nn; rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
-    pose proof (dt_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT; rewrite length_nparams_prefix in HT by lia.
+    pose proof (decl_typed_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT; rewrite length_nparams_prefix in HT by lia.
     pose proof (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ].
   - exact Hstrat.
   - exact Harg.
-  - exact (dt_nodup _ _ _ Hdt).
+  - exact (decl_typed_nodup _ _ _ Hdt).
   - intros * HMk Hcon Heq HMj HPk HT.
     assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
       by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hls in HT.
-    pose proof (dt_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
+    pose proof (decl_typed_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
     rewrite (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ H).
   - exact Hdom.
-  - intros * HMk Hcon; exact (dt_plen _ _ _ Hdt _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon)).
+  - intros * HMk Hcon; exact (decl_typed_plen _ _ _ Hdt _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon)).
   - intros k Mk c gs gs1 t gs2 j HMk Hcon Heq; induction j as [| j IH]; intros Hj.
     + cbn [List.firstn doms_ctx List.map List.rev List.app].
       apply (Hstrat k Mk c); [ exact HMk | exact Hcon | rewrite Heq, cargs_nonrec_app, List.length_app; lia ].
@@ -275,7 +275,7 @@ Proof.
       rewrite (firstn_S_snoc _ _ _ HB), doms_ctx_snoc; cbn [List.app].
       destruct (Hdom _ _ _ _ _ _ _ _ _ HMk Hcon Heq HB) as (_ & i & Hi).
       exact (@rel_ctx_wf_ext_typ (gc_mk Θ2 Ξ2) _ _ _ (IH ltac:(lia)) Hi).
-  - destruct (dt_selfs _ _ _ Hdt) as [IsS HV]; exists IsS.
+  - destruct (decl_typed_selfs _ _ _ Hdt) as [IsS HV]; exists IsS.
     (** The containers, found at the source. *)
     pose proof (decl_typed_container _ _ _ _ D Hs Hdt) as Hcont.
     assert (Hcont2 : forall k Mk qc k' Is vm D' i' Mi' q'' k'' Is'' vm'' D'', ind_member D k = Some Mk ->
@@ -284,36 +284,36 @@ Proof.
     { intros * HMk Hh Hq HMi' Hh' Hq2.
       exact (decl_typed_container _ _ _ _ D' Hs (proj1 (decl_of_glookup _ _ _ _ Hg Hq)) _ _ _ _ _ _ _ HMi' Hh' Hq2). }
     constructor.
-    + exact (vst_link _ _ _ _ HV).
+    + exact (views_self_typed_link _ _ _ _ HV).
     + intros * HMk Hh Hq HI HT.
       apply (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ).
-      eapply (vst_is _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HI | exact HT ].
+      eapply (views_self_typed_is _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HI | exact HT ].
     + intros * HMk Hh Hq HMi' Hh' Hq'' Hv HMv HhMv HC HC' HT.
       pose proof (Hcont _ _ _ _ _ _ _ HMk Hh Hq) as HqS.
       apply (rel_exp_eq_of_emb _ _ _ _ _ _ _ _ Hμ).
-      eapply (vst_view_is _ _ _ _ HV);
+      eapply (views_self_typed_view_is _ _ _ _ HV);
         [ exact HMk | exact Hh | exact HqS | exact HMi' | exact Hh' | exact (Hcont2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh HqS HMi' Hh' Hq'')
         | exact Hv | exact HMv | exact HhMv | exact HC | exact HC' | exact HT ].
     + intros * HMk Hh Hq HMi' Hv HMv.
       apply (rel_ext_of_emb _ _ _ _ _ _ _ Hμ).
-      eapply (vst_nparams _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv ].
+      eapply (views_self_typed_nparams _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv ].
     + intros * HMk Hh Hq HMi' Hv HMv Hc' Hc0.
       apply (rel_ext_of_emb _ _ _ _ _ _ _ Hμ).
-      eapply (vst_args _ _ _ _ HV);
+      eapply (views_self_typed_args _ _ _ _ HV);
         [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv | exact Hc' | exact Hc0 ].
     + intros * HMk Hh Hq HMi' Hv HMv Hc' Hc0 Heq' Heq Hl1 Hd.
-      edestruct (vst_doms _ _ _ _ HV) as [i Hi];
+      edestruct (views_self_typed_doms _ _ _ _ HV) as [i Hi];
         [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv | exact Hc' | exact Hc0
         | exact Heq' | exact Heq | exact Hl1 | exact Hd |].
       exists i; exact (rel_exp_eq_of_emb _ _ _ _ _ _ _ _ Hμ Hi).
     + intros * HMk Hh Hq HMi' Hv HMv Hc' Hc0 Heq' Heq Hl1 HMj HP' HP HT.
       apply (rel_exp_eq_of_emb _ _ _ _ _ _ _ _ Hμ).
-      eapply (vst_ps _ _ _ _ HV);
+      eapply (views_self_typed_ps _ _ _ _ HV);
         [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv | exact Hc' | exact Hc0
         | exact Heq' | exact Heq | exact Hl1 | exact HMj | exact HP' | exact HP | exact HT ].
     + intros * HMk Hh Hq.
       apply (rel_subtyp_of_emb _ _ _ _ _ _ _ Hμ).
-      eapply (vst_sort _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) ].
+      eapply (views_self_typed_sort _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) ].
 Qed.
 
 Lemma valid_entry_ind : forall Θ Ξ D Θ2 Ξ2,
@@ -325,7 +325,7 @@ Proof.
   split; [ split; [ exact (valid_ind_decl_of_typed _ _ _ _ _ Hdt Hμ) |] |].
   - intros k Mk Δ1 Δ2 HMk Hpar.
     assert (Hass : tele_ass (im_params D Mk))
-      by (apply List.Forall_app; split; [ exact (dt_nparams_ass _ _ _ Hdt _ _ HMk) | exact HUa ]).
+      by (apply List.Forall_app; split; [ exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HMk) | exact HUa ]).
     destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; unfold ind_ty in Hj.
     pose proof (proj1 (ctx_pi_split_typed _ _ _ _ Hass Hj) _ _ Hpar) as H; rewrite app_nil_r in H.
     exists j; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ H).
@@ -420,21 +420,21 @@ Section FundamentalTheorem.
   Proof.
     intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid.
     destruct completeness_fundamental as (_ & Ke & _).
-    pose proof (sea_rel (Ke _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
+    pose proof (sem_exp_eq_at_rel (Ke _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   Corollary completeness_fundamental_exp_eq : forall Γ M M' A, Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A.
   Proof.
     intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid.
     destruct completeness_fundamental as (_ & _ & Kq & _).
-    pose proof (sea_rel (Kq _ _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
+    pose proof (sem_exp_eq_at_rel (Kq _ _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   Corollary completeness_fundamental_subtyp : forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A'.
   Proof.
     intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid.
     destruct completeness_fundamental as (_ & _ & _ & Ks & _).
-    pose proof (ssa_rel (Ks _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
+    pose proof (sem_subtyp_at_rel (Ks _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   (** The module judgments. *)
@@ -448,9 +448,9 @@ Section FundamentalTheorem.
       [ pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HJ))) as Hid
       | pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HJ))) as Hid
       | pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
-      [ pose proof (sxa_rel (Kx _ _ _ _ _ HJ _ _ Hid)) as HR
-      | pose proof (sna_rel (Ku _ _ _ _ _ HJ _ _ Hid)) as HR
-      | pose proof (sma_rel (Km _ _ _ _ _ HJ _ _ Hid)) as HR ];
+      [ pose proof (sem_ext_eq_at_rel (Kx _ _ _ _ _ HJ _ _ Hid)) as HR
+      | pose proof (sem_unit_eq_at_rel (Ku _ _ _ _ _ HJ _ _ Hid)) as HR
+      | pose proof (sem_modexp_eq_at_rel (Km _ _ _ _ _ HJ _ _ Hid)) as HR ];
       destruct GC; exact HR.
   Qed.
 

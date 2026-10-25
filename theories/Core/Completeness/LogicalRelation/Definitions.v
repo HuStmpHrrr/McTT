@@ -64,11 +64,11 @@ Record rel_wk (φ : wk) (R R' : relation env) : Prop := mk_rel_wk
 
 #[warnings="-cannot-define-projection"]
 Record rel_wk_under_ctx Γ φ Δ : Prop := mk_rel_wk_under_ctx
-  { rwu_rel : relation env
-  ; rwu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rwu_rel
-  ; rwu_rel' : relation env
-  ; rwu_per' : EF Δ ≈ Δ ∈ per_ctx_env ↘ rwu_rel'
-  ; rwu_wk : rel_wk φ rwu_rel rwu_rel' }.
+  { rel_wk_under_ctx_rel : relation env
+  ; rel_wk_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_wk_under_ctx_rel
+  ; rel_wk_under_ctx_rel' : relation env
+  ; rel_wk_under_ctx_per' : EF Δ ≈ Δ ∈ per_ctx_env ↘ rel_wk_under_ctx_rel'
+  ; rel_wk_under_ctx_wk : rel_wk φ rel_wk_under_ctx_rel rel_wk_under_ctx_rel' }.
 
 Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
@@ -86,25 +86,25 @@ Record rel_sub (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : rela
   ; ρσ : env
   ; ρ'σ' : env
   ; ρ'σ'φ : env
-  ; rs_eval_wk : ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσφ
-  ; rs_eval : ⟦ σ ⟧s ⟪φ⟫ ρ ↘ ρσ
-  ; rs_eval' : ⟦ σ' ⟧s ⟪φ⟫ ρ' ↘ ρ'σ'
-  ; rs_eval_wk' : ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ
-  ; rs_chain : rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) }.
+  ; rel_sub_eval_wk : ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσφ
+  ; rel_sub_eval : ⟦ σ ⟧s ⟪φ⟫ ρ ↘ ρσ
+  ; rel_sub_eval' : ⟦ σ' ⟧s ⟪φ⟫ ρ' ↘ ρ'σ'
+  ; rel_sub_eval_wk' : ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ
+  ; rel_sub_chain : rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) }.
 #[global] Arguments mk_rel_sub {_ _ _ _ _ _}.
 Hint Constructors rel_sub : mctt.
 
 #[warnings="-cannot-define-projection"]
 Record rel_sub_under_ctx Γ Δ σ σ' : Prop := mk_rel_sub_under_ctx
-  { rsu_rel : relation env
-  ; rsu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rsu_rel
-  ; rsu_rel_o : relation env
-  ; rsu_per_o : EF Δ ≈ Δ ∈ per_ctx_env ↘ rsu_rel_o
-  ; rsu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') φ,
-      rel_wk φ env_rel' rsu_rel ->
+  { rel_sub_under_ctx_rel : relation env
+  ; rel_sub_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_sub_under_ctx_rel
+  ; rel_sub_under_ctx_rel_o : relation env
+  ; rel_sub_under_ctx_per_o : EF Δ ≈ Δ ∈ per_ctx_env ↘ rel_sub_under_ctx_rel_o
+  ; rel_sub_under_ctx_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') φ,
+      rel_wk φ env_rel' rel_sub_under_ctx_rel ->
       forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        rel_sub σ φ ρ σ' ρ' rsu_rel_o }.
+        rel_sub σ φ ρ σ' ρ' rel_sub_under_ctx_rel_o }.
 
 Definition valid_sub_under_ctx Γ Δ σ := rel_sub_under_ctx Γ Δ σ σ.
 #[global] Arguments valid_sub_under_ctx _ _ _ /.
@@ -132,11 +132,11 @@ Record rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (ρ' 
   ; m : domain
   ; m' : domain
   ; m'σ' : domain
-  ; re_eval_sub : ⟦ M[σ] ⟧ ρ ↘ mσ
-  ; re_eval : ⟦ M ⟧ ρσ ↘ m
-  ; re_eval' : ⟦ M' ⟧ ρ'σ' ↘ m'
-  ; re_eval_sub' : ⟦ M'[σ'] ⟧ ρ' ↘ m'σ'
-  ; re_chain : rel_chain R ([mσ; m; m'; m'σ']) }.
+  ; rel_exp_eval_sub : ⟦ M[σ] ⟧ ρ ↘ mσ
+  ; rel_exp_eval : ⟦ M ⟧ ρσ ↘ m
+  ; rel_exp_eval' : ⟦ M' ⟧ ρ'σ' ↘ m'
+  ; rel_exp_eval_sub' : ⟦ M'[σ'] ⟧ ρ' ↘ m'σ'
+  ; rel_exp_chain : rel_chain R ([mσ; m; m'; m'σ']) }.
 #[global] Arguments mk_rel_exp {_ _ _ _ _ _ _ _ _}.
 Hint Constructors rel_exp : mctt.
 
@@ -166,17 +166,17 @@ Hint Unfold rel_typ : mctt.
     equal, and [rel_chain_merge] applies. *)
 #[warnings="-cannot-define-projection"]
 Record rel_exp_under_ctx Γ A M M' : Prop := mk_rel_exp_under_ctx
-  { reu_rel : relation env
-  ; reu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ reu_rel
-  ; reu_lvl : nat
-  ; reu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+  { rel_exp_under_ctx_rel : relation env
+  ; rel_exp_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_exp_under_ctx_rel
+  ; rel_exp_under_ctx_lvl : nat
+  ; rel_exp_under_ctx_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         exists (elem_rel : relation domain),
-          rel_typ reu_lvl A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\
+          rel_typ rel_exp_under_ctx_lvl A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\
           rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel }.
 
 Definition valid_exp_under_ctx Γ A M := rel_exp_under_ctx Γ A M M.
@@ -192,30 +192,30 @@ Hint Unfold valid_exp_under_ctx : mctt.
 
 #[warnings="-cannot-define-projection"]
 Record rel_subtyp (i : nat) A σ ρ ρσ A' σ' ρ' ρ'σ' : Prop := mk_rel_subtyp
-  { rst_aσ : domain
-  ; rst_a : domain
-  ; rst_a'σ' : domain
-  ; rst_a' : domain
-  ; rst_eval_aσ : ⟦ A[σ] ⟧ ρ ↘ rst_aσ
-  ; rst_eval_a : ⟦ A ⟧ ρσ ↘ rst_a
-  ; rst_eval_a'σ' : ⟦ A'[σ'] ⟧ ρ' ↘ rst_a'σ'
-  ; rst_eval_a' : ⟦ A' ⟧ ρ'σ' ↘ rst_a'
-  ; rst_left : Dom rst_aσ ≈ rst_a ∈ per_univ i
-  ; rst_right : Dom rst_a'σ' ≈ rst_a' ∈ per_univ i
-  ; rst_sub : Sub rst_a <: rst_a' at i }.
+  { rel_subtyp_aσ : domain
+  ; rel_subtyp_a : domain
+  ; rel_subtyp_a'σ' : domain
+  ; rel_subtyp_a' : domain
+  ; rel_subtyp_eval_aσ : ⟦ A[σ] ⟧ ρ ↘ rel_subtyp_aσ
+  ; rel_subtyp_eval_a : ⟦ A ⟧ ρσ ↘ rel_subtyp_a
+  ; rel_subtyp_eval_a'σ' : ⟦ A'[σ'] ⟧ ρ' ↘ rel_subtyp_a'σ'
+  ; rel_subtyp_eval_a' : ⟦ A' ⟧ ρ'σ' ↘ rel_subtyp_a'
+  ; rel_subtyp_left : Dom rel_subtyp_aσ ≈ rel_subtyp_a ∈ per_univ i
+  ; rel_subtyp_right : Dom rel_subtyp_a'σ' ≈ rel_subtyp_a' ∈ per_univ i
+  ; rel_subtyp_sub : Sub rel_subtyp_a <: rel_subtyp_a' at i }.
 
 #[warnings="-cannot-define-projection"]
 Record rel_subtyp_under_ctx Γ A A' : Prop := mk_rel_subtyp_under_ctx
-  { rstu_rel : relation env
-  ; rstu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rstu_rel
-  ; rstu_lvl : nat
-  ; rstu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+  { rel_subtyp_under_ctx_rel : relation env
+  ; rel_subtyp_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_subtyp_under_ctx_rel
+  ; rel_subtyp_under_ctx_lvl : nat
+  ; rel_subtyp_under_ctx_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-        rel_subtyp rstu_lvl A σ ρ ρσ A' σ' ρ' ρ'σ' }.
+        rel_subtyp rel_subtyp_under_ctx_lvl A σ ρ ρσ A' σ' ρ' ρ'σ' }.
 
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
 Notation "Γ ⊨ M ⊆ M'" := (rel_subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
@@ -233,19 +233,19 @@ Record rel_modexp (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : s
   ; h : dmod
   ; h' : dmod
   ; h'σ' : dmod
-  ; rm_eval_sub : ⟦ H[σ]ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ hσ
-  ; rm_eval : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρσ ↘ h
-  ; rm_eval' : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ'σ' ↘ h'
-  ; rm_eval_sub' : ⟦ H'[σ']ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h'σ'
-  ; rm_chain : rel_chain per_dmod ([hσ; h; h'; h'σ']) }.
+  ; rel_modexp_eval_sub : ⟦ H[σ]ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ hσ
+  ; rel_modexp_eval : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρσ ↘ h
+  ; rel_modexp_eval' : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ'σ' ↘ h'
+  ; rel_modexp_eval_sub' : ⟦ H'[σ']ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h'σ'
+  ; rel_modexp_chain : rel_chain per_dmod ([hσ; h; h'; h'σ']) }.
 #[global] Arguments mk_rel_modexp {_ _ _ _ _ _ _ _}.
 Hint Constructors rel_modexp : mctt.
 
 #[warnings="-cannot-define-projection"]
 Record rel_modexp_under_ctx Γ H H' : Prop := mk_rel_modexp_under_ctx
-  { rmu_rel : relation env
-  ; rmu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rmu_rel
-  ; rmu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+  { rel_modexp_under_ctx_rel : relation env
+  ; rel_modexp_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_modexp_under_ctx_rel
+  ; rel_modexp_under_ctx_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
@@ -316,14 +316,14 @@ Hint Constructors rel_ctx_wf rel_unit_wf : mctt.
     valid in its parts.  Two extensions of a context are equivalent when
     both extended contexts are semantically well formed and related. *)
 Record rel_unit_under_ctx Γ U U' : Prop := mk_rel_unit_under_ctx
-  { ruu_lit : Γ ⊨ᵐ me_lit U ≈ me_lit U'
-  ; ruu_left : rel_unit_wf Γ U
-  ; ruu_right : rel_unit_wf Γ U' }.
+  { rel_unit_under_ctx_lit : Γ ⊨ᵐ me_lit U ≈ me_lit U'
+  ; rel_unit_under_ctx_left : rel_unit_wf Γ U
+  ; rel_unit_under_ctx_right : rel_unit_wf Γ U' }.
 
 Record rel_ext_under_ctx Γ Ψ Ψ' : Prop := mk_rel_ext_under_ctx
-  { rxu_left : ⊨ Ψ ++ Γ
-  ; rxu_right : ⊨ Ψ' ++ Γ
-  ; rxu_eq : ⊨ Ψ ++ Γ ≈ Ψ' ++ Γ }.
+  { rel_ext_under_ctx_left : ⊨ Ψ ++ Γ
+  ; rel_ext_under_ctx_right : ⊨ Ψ' ++ Γ
+  ; rel_ext_under_ctx_eq : ⊨ Ψ ++ Γ ≈ Ψ' ++ Γ }.
 
 Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
 Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).
@@ -356,13 +356,13 @@ Section Valid.
     [args_ok] says syntactically. *)
 #[warnings="-cannot-define-projection"]
 Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
-  { va_rest : ctx
-  ; va_filled : ctx
-  ; va_split : T = va_rest ++ va_filled
-  ; va_length : List.length va_filled = List.length Ns
-  ; va_ass : tele_ass va_filled
-  ; va_scoped : ctx_scoped 0 va_filled
-  ; va_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts va_filled Id Ns) k = Some A ->
+  { valid_args_rest : ctx
+  ; valid_args_filled : ctx
+  ; valid_args_split : T = valid_args_rest ++ valid_args_filled
+  ; valid_args_length : List.length valid_args_filled = List.length Ns
+  ; valid_args_ass : tele_ass valid_args_filled
+  ; valid_args_scoped : ctx_scoped 0 valid_args_filled
+  ; valid_args_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
       Γ ⊨ N : A }.
 
 (** A unit is valid when its parts are ([valid_unit]): a filed module at
@@ -453,12 +453,12 @@ Definition entry_kind (E : gentry) : mkind :=
     [ctx_pi T A0]. *)
 #[warnings="-cannot-define-projection"]
 Record rel_self (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
-  { rsl_lvl : uidx
-  ; rsl_rel : relation domain
-  ; rsl_typ : domain
-  ; rsl_eval : ⟦ ctx_pi T A0 ⟧ nil ↘ rsl_typ
-  ; rsl_per : per_univ_elem rsl_lvl rsl_rel rsl_typ rsl_typ
-  ; rsl_elem : rsl_rel g g }.
+  { rel_self_lvl : uidx
+  ; rel_self_rel : relation domain
+  ; rel_self_typ : domain
+  ; rel_self_eval : ⟦ ctx_pi T A0 ⟧ nil ↘ rel_self_typ
+  ; rel_self_per : per_univ_elem rel_self_lvl rel_self_rel rel_self_typ rel_self_typ
+  ; rel_self_elem : rel_self_rel g g }.
 
 (** The term member [x] of the filed module [p], over its telescope [T],
     read as [R0]: of a type over [T], of a value related to itself, with
@@ -468,43 +468,43 @@ Record rel_self (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
     member's value applied to them. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
-  { vft_typ : exp
-  ; vft_lvl : nat
-  ; vft_val : domain
-  ; vft_typed : T ⊨ vft_typ : Typeω@vft_lvl
-  ; vft_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
-      ds_ty R1 = Some (ctx_pi T1 vft_typ)[sb_of_list Id Ns] /\
+  { valid_filed_term_typ : exp
+  ; valid_filed_term_lvl : nat
+  ; valid_filed_term_val : domain
+  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : Typeω@valid_filed_term_lvl
+  ; valid_filed_term_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
+      ds_ty R1 = Some (ctx_pi T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
       (ds_red R1 = None \/
-       exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 vft_typ /\
+       exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 valid_filed_term_typ /\
          forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
-           $*| vft_val & ns | gc_deps ⍮ gc_stack ↘ m)
-  ; vft_sel : dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ vft_val
-  ; vft_self : rel_self T vft_typ vft_val }.
+           $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ m)
+  ; valid_filed_term_sel : dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ valid_filed_term_val
+  ; valid_filed_term_self : rel_self T valid_filed_term_typ valid_filed_term_val }.
 
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
-  { vfm_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
-  ; vfm_path : forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil
-  ; vfm_tele_wf : ⊨ T
-  ; vfm_tele_ass : tele_ass T
-  ; vfm_tele_scoped : ctx_scoped 0 T
-  ; vfm_kinds : forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+  { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
+  ; valid_filed_mod_path : forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil
+  ; valid_filed_mod_tele_wf : ⊨ T
+  ; valid_filed_mod_tele_ass : tele_ass T
+  ; valid_filed_mod_tele_scoped : ctx_scoped 0 T
+  ; valid_filed_mod_kinds : forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) (entry_kind E)
     (** A body stored below it is a module, unless it is the module of a
         member with a term part (whose kind is that member's) *)
-  ; vfm_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
+  ; valid_filed_mod_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
       ~ dm_path gc_deps gc_stack (qname_app p (x :: nil)) ->
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod
-  ; vfm_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+  ; valid_filed_mod_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       entry_term (Some (qname_in p x)) E = Some R0 ->
       valid_filed_term p T x R0
     (** The open frame of a member's module under it is its type former,
         as a filed member's entry is *)
-  ; vfm_ind_frames : forall x pq k D Mk, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
+  ; valid_filed_mod_ind_frames : forall x pq k D Mk, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
       valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
     (** So is the open frame of a record type's module under it *)
-  ; vfm_record_frames : forall x R, gs_find_record Ξm (qname_in p x) = Some R ->
+  ; valid_filed_mod_record_frames : forall x R, gs_find_record Ξm (qname_in p x) = Some R ->
       valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
-  ; vfm_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
+  ; valid_filed_mod_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.
 
@@ -523,22 +523,22 @@ Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List
 (** The views of a group with its members as variables ([grp_sctx]),
     read in the PER model: [views_self_typed], each judgment semantic.  The
     instances [IsS] are the views' arguments before the group is filed;
-    the filed ones are their images by [grp_sb] ([vsv_link]). *)
+    the filed ones are their images by [grp_sb] ([views_self_valid_link]). *)
 Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_views_self_valid
   { (** Each view's uniform arguments are its [IsS] instance with the
         members sent to the group's own type formers ([grp_sb]) *)
-    vsv_link : forall mp, ind_mpath D 0 = Some mp ->
+    views_self_valid_link : forall mp, ind_mpath D 0 = Some mp ->
       forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
     (** Each instance argument is valid at the container's uniform
         telescope, over the members as variables *)
-  ; vsv_is : forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  ; views_self_valid_is : forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> nth_error (IsS k) j = Some I ->
       nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
       grp_sctx D ⊨ I : T
     (** The view a view maps a container view to has, as instance, the
         container view's arguments at this view's instance *)
-  ; vsv_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
+  ; views_self_valid_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
       ind_lookup gc_deps gc_stack q'' = Some D'' ->
@@ -549,14 +549,14 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
       grp_sctx D ⊨ C ≈ C' : T[sb_of_list Id (IsS k)]
     (** A mapped member's non-uniform parameters are the container
         member's at the instance *)
-  ; vsv_nparams : forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk ->
+  ; views_self_valid_nparams : forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv ->
       grp_sctx D ⊨ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))
     (** A mapped member's constructor arguments are the container
         member's at the instance *)
-  ; vsv_args : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
+  ; views_self_valid_args : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
@@ -564,7 +564,7 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
         ⊨ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs
     (** The shapes' domains of corresponding recursive arguments agree at
         the instance *)
-  ; vsv_doms : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
+  ; views_self_valid_doms : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
@@ -576,7 +576,7 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
         ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i
     (** The parameters of corresponding recursive arguments agree at the
         instance *)
-  ; vsv_ps : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
+  ; views_self_valid_ps : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
@@ -591,43 +591,43 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
         ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
         : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
     (** The container's sort at the instance is below the group's *)
-  ; vsv_sort : forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  ; views_self_valid_sort : forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' ->
       grp_sctx D ⊨ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ }.
 
 (** A semantically valid group (see above). *)
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 { (** The uniform parameters are a valid context *)
-  vid_uparams : ⊨ ind_uparams D
+  valid_ind_decl_uparams : ⊨ ind_uparams D
 (** The sort is a valid type over them *)
-; vid_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
-(** The level of the sort, a level ([dt_sort_lvl]): a small sort is below
+; valid_ind_decl_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
+(** The level of the sort, a level ([decl_typed_sort_lvl]): a small sort is below
     the large universes. *)
-; vid_sort_lvl : exists n, ind_uparams D ⊨ ind_sort_lvl (ind_sort D) : Level@n
+; valid_ind_decl_sort_lvl : exists n, ind_uparams D ⊨ ind_sort_lvl (ind_sort D) : Level@n
 (** Each member's parameters are a valid context *)
-; vid_params : forall k Mk, ind_member D k = Some Mk -> ⊨ im_params D Mk
+; valid_ind_decl_params : forall k Mk, ind_member D k = Some Mk -> ⊨ im_params D Mk
 (** Each member's type is a valid closed type *)
-; vid_ty : forall k Mk, ind_member D k = Some Mk -> exists i, ⋅ ⊨ ind_ty D Mk : Typeω@i
+; valid_ind_decl_ty : forall k Mk, ind_member D k = Some Mk -> exists i, ⋅ ⊨ ind_ty D Mk : Typeω@i
 (** Each non-uniform parameter is a valid type of the sort, and a type,
     over those before it *)
-; vid_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
+; valid_ind_decl_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
     nparams_prefix Mk j ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn j]ʷ /\
     exists i, nparams_prefix Mk j ++ ind_uparams D ⊨ A : Typeω@i
 (** Each prefix of a constructor's non-recursive arguments is a valid
     context *)
-; vid_strat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
+; valid_ind_decl_strat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
     ⊨ nonrec_args_prefix gs j ++ im_params D Mk
 (** Each non-recursive argument is a valid type of the sort, and a type,
     over those before it *)
-; vid_arg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; valid_ind_decl_arg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     List.nth_error (cargs_nonrec gs) j = Some A ->
     nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ /\
     exists i, nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : Typeω@i
 (** Each member's constructor names are distinct *)
-; vid_nodup : forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))
+; valid_ind_decl_nodup : forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))
 (** Each parameter of a recursive argument's shape is valid at its
     member's telescope *)
-; vid_rec : forall k Mk c gs gs1 t gs2 Mj m P T, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; valid_ind_decl_rec_field : forall k Mk c gs gs1 t gs2 Mj m P T, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
     List.nth_error (ptyp_ps t) m = Some P ->
     List.nth_error (tele_insts (im_nparams Mj)
@@ -636,7 +636,7 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
     ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk ⊨ P : T
 (** The domains of a recursive argument's shape, each over those before
     it, are types of the sort. *)
-; vid_dom : forall k Mk c gs gs1 t gs2 j B, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; valid_ind_decl_dom : forall k Mk c gs gs1 t gs2 j B, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error (ptyp_doms t) j = Some B ->
     doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
       ⊨ B : (ind_sort D)[wk_shiftn (j + List.length (cargs_nonrec gs1) + im_nn Mk)]ʷ /\
@@ -644,13 +644,13 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
       ⊨ B : Typeω@i
 (** Each recursive argument gives its member as many parameters as it
     has *)
-; vid_plen : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> cargs_plen D gs
+; valid_ind_decl_plen : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> cargs_plen D gs
 (** The contexts of a shape's domains are valid *)
-; vid_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+; valid_ind_decl_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
     ⊨ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
 (** The views, with the group's members as variables. *)
-; vid_views : exists IsS, views_self_valid D IsS
+; valid_ind_decl_views : exists IsS, views_self_valid D IsS
 }.
 
 (** A semantically valid record declaration: its parameters, its sort and
@@ -673,11 +673,11 @@ End Filed.
 (** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, and what it
     files and has open is valid there, its declarations too. *)
 Record valid_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { vem_emb : Emb Θ1 Ξ1 Θ2 Ξ2
-  ; vem_wf : ⊢ᵍ Θ1 ⍮ Ξ1
-  ; vem_filed : @valid_filed_mods (gc_mk Θ2 Ξ2) Θ1 Ξ1
-  ; vem_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @valid_ind_decl (gc_mk Θ2 Ξ2) D
-  ; vem_record : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @valid_record_decl (gc_mk Θ2 Ξ2) R
+  { valid_emb_emb : Emb Θ1 Ξ1 Θ2 Ξ2
+  ; valid_emb_wf : ⊢ᵍ Θ1 ⍮ Ξ1
+  ; valid_emb_filed : @valid_filed_mods (gc_mk Θ2 Ξ2) Θ1 Ξ1
+  ; valid_emb_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @valid_ind_decl (gc_mk Θ2 Ξ2) D
+  ; valid_emb_record : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @valid_record_decl (gc_mk Θ2 Ξ2) R
   }.
 
 (** ** 4. The Semantic Judgments
@@ -695,60 +695,60 @@ Record valid_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Pro
 
 Record sem_exp_eq_at (Θ : gdeps) (Ξ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (A M M' : exp) : Prop :=
   mk_sem_exp_eq_at
-  { sea_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
-  ; sea_rel : @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M' }.
+  { sem_exp_eq_at_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
+  ; sem_exp_eq_at_rel : @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M' }.
 
 Record sem_subtyp_at (Θ : gdeps) (Ξ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (A A' : typ) : Prop :=
   mk_sem_subtyp_at
-  { ssa_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
-  ; ssa_rel : @rel_subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A' }.
+  { sem_subtyp_at_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
+  ; sem_subtyp_at_rel : @rel_subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A' }.
 
 (** A universe: large, or small at a valid level. *)
 Record sem_is_univ_at (Θ : gdeps) (Ξ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U : typ) : Prop :=
   mk_sem_is_univ_at
-  { sua_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
-  ; sua_univ : (exists i : nat, U = Typeω@i) \/
+  { sem_is_univ_at_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
+  ; sem_is_univ_at_univ : (exists i : nat, U = Typeω@i) \/
                (exists L (n : nat), U = Type⟨L⟩ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (Level@n) L L) }.
 
 Record sem_ext_eq_at (Θ : gdeps) (Ξ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Γ Ψ Ψ' : ctx) : Prop := mk_sem_ext_eq_at
-  { sxa_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
-  ; sxa_rel : @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ'
-  ; sxa_ext : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ (Ψ ++ Γ)
-  ; sxa_ext' : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ (Ψ' ++ Γ) }.
+  { sem_ext_eq_at_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
+  ; sem_ext_eq_at_rel : @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ'
+  ; sem_ext_eq_at_ext : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ (Ψ ++ Γ)
+  ; sem_ext_eq_at_ext' : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ (Ψ' ++ Γ) }.
 
 Record sem_unit_eq_at (Θ : gdeps) (Ξ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U U' : gunit) : Prop :=
   mk_sem_unit_eq_at
-  { sna_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
-  ; sna_rel : @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ U U'
-  ; sna_valid : @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit U)
-  ; sna_valid' : @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit U') }.
+  { sem_unit_eq_at_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
+  ; sem_unit_eq_at_rel : @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ U U'
+  ; sem_unit_eq_at_valid : @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit U)
+  ; sem_unit_eq_at_valid' : @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit U') }.
 
 (** Module expressions: related, and valid in what they denote. *)
 Record sem_modexp_eq_at (Θ : gdeps) (Ξ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (H H' : modexp) : Prop :=
   mk_sem_modexp_eq_at
-  { sma_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
-  ; sma_rel : @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) Γ H H'
-  ; sma_valid : @valid_modexp (gc_mk Θ2 Ξ2) Θ Ξ Γ H
-  ; sma_valid' : @valid_modexp (gc_mk Θ2 Ξ2) Θ Ξ Γ H' }.
+  { sem_modexp_eq_at_ctx : @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ
+  ; sem_modexp_eq_at_rel : @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) Γ H H'
+  ; sem_modexp_eq_at_valid : @valid_modexp (gc_mk Θ2 Ξ2) Θ Ξ Γ H
+  ; sem_modexp_eq_at_valid' : @valid_modexp (gc_mk Θ2 Ξ2) Θ Ξ Γ H' }.
 
-Arguments sea_ctx {Θ Ξ Θ2 Ξ2 Γ A M M'}.
-Arguments sea_rel {Θ Ξ Θ2 Ξ2 Γ A M M'}.
-Arguments ssa_ctx {Θ Ξ Θ2 Ξ2 Γ A A'}.
-Arguments ssa_rel {Θ Ξ Θ2 Ξ2 Γ A A'}.
-Arguments sua_ctx {Θ Ξ Θ2 Ξ2 Γ U}.
-Arguments sua_univ {Θ Ξ Θ2 Ξ2 Γ U}.
-Arguments sxa_ctx {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
-Arguments sxa_rel {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
-Arguments sxa_ext {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
-Arguments sxa_ext' {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
-Arguments sna_ctx {Θ Ξ Θ2 Ξ2 Γ U U'}.
-Arguments sna_rel {Θ Ξ Θ2 Ξ2 Γ U U'}.
-Arguments sna_valid {Θ Ξ Θ2 Ξ2 Γ U U'}.
-Arguments sna_valid' {Θ Ξ Θ2 Ξ2 Γ U U'}.
-Arguments sma_ctx {Θ Ξ Θ2 Ξ2 Γ H H'}.
-Arguments sma_rel {Θ Ξ Θ2 Ξ2 Γ H H'}.
-Arguments sma_valid {Θ Ξ Θ2 Ξ2 Γ H H'}.
-Arguments sma_valid' {Θ Ξ Θ2 Ξ2 Γ H H'}.
+Arguments sem_exp_eq_at_ctx {Θ Ξ Θ2 Ξ2 Γ A M M'}.
+Arguments sem_exp_eq_at_rel {Θ Ξ Θ2 Ξ2 Γ A M M'}.
+Arguments sem_subtyp_at_ctx {Θ Ξ Θ2 Ξ2 Γ A A'}.
+Arguments sem_subtyp_at_rel {Θ Ξ Θ2 Ξ2 Γ A A'}.
+Arguments sem_is_univ_at_ctx {Θ Ξ Θ2 Ξ2 Γ U}.
+Arguments sem_is_univ_at_univ {Θ Ξ Θ2 Ξ2 Γ U}.
+Arguments sem_ext_eq_at_ctx {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
+Arguments sem_ext_eq_at_rel {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
+Arguments sem_ext_eq_at_ext {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
+Arguments sem_ext_eq_at_ext' {Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'}.
+Arguments sem_unit_eq_at_ctx {Θ Ξ Θ2 Ξ2 Γ U U'}.
+Arguments sem_unit_eq_at_rel {Θ Ξ Θ2 Ξ2 Γ U U'}.
+Arguments sem_unit_eq_at_valid {Θ Ξ Θ2 Ξ2 Γ U U'}.
+Arguments sem_unit_eq_at_valid' {Θ Ξ Θ2 Ξ2 Γ U U'}.
+Arguments sem_modexp_eq_at_ctx {Θ Ξ Θ2 Ξ2 Γ H H'}.
+Arguments sem_modexp_eq_at_rel {Θ Ξ Θ2 Ξ2 Γ H H'}.
+Arguments sem_modexp_eq_at_valid {Θ Ξ Θ2 Ξ2 Γ H H'}.
+Arguments sem_modexp_eq_at_valid' {Θ Ξ Θ2 Ξ2 Γ H H'}.
 
 (** The judgments. *)
 

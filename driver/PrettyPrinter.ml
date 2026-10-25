@@ -1052,9 +1052,9 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (************************************************************)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
-  set_ind_decls r.ev_deps r.ev_stack;
-  set_nat_bind r.ev_deps r.ev_stack;
-  current_state := (r.ev_deps, r.ev_stack);
+  set_ind_decls r.eval_entry_deps r.ev_stack;
+  set_nat_bind r.eval_entry_deps r.ev_stack;
+  current_state := (r.eval_entry_deps, r.ev_stack);
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
     format_nf r.ev_nf format_exp r.ev_typ
 
@@ -1179,7 +1179,7 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
   match e with
   (* The natural numbers bound where the error occurred: the innermost
      state's. *)
-  | Coq_re_nat (deps, xi, nv, e') ->
+  | Coq_run_error_nat (deps, xi, nv, e') ->
      nat_bind := Option.map (fun ((p, z), s) -> (p, z, s)) nv;
      current_state := (deps, xi);
      set_ind_decls deps xi;
@@ -1188,12 +1188,12 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
   (* The stack of the failing command, where the error has it; the units
      it imports are not at hand. *)
   (match e with
-   | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
-   | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _)
-   | Coq_re_elim_blocks (xi, _, _, _, _, _) | Coq_re_elim_scrutinee (xi, _, _, _, _)
-   | Coq_re_elim_no_group (xi, _, _) | Coq_re_elim_ambiguous (xi, _, _, _)
-   | Coq_re_access_no_type (xi, _, _, _, _) | Coq_re_access_not_record (xi, _, _, _, _, _)
-   | Coq_re_record_field (xi, _, _, _, _, _, _) ->
+   | Coq_run_error_def (_, xi, _, _) | Coq_run_error_def_typ (_, xi, _) | Coq_run_error_eval_typ (xi, _, _)
+   | Coq_run_error_eval_check (xi, _, _) | Coq_run_error_eval_infer (xi, _) | Coq_run_error_level (xi, _, _)
+   | Coq_run_error_elim_blocks (xi, _, _, _, _, _) | Coq_run_error_elim_scrutinee (xi, _, _, _, _)
+   | Coq_run_error_elim_no_group (xi, _, _) | Coq_run_error_elim_ambiguous (xi, _, _, _)
+   | Coq_run_error_access_no_type (xi, _, _, _, _) | Coq_run_error_access_not_record (xi, _, _, _, _, _)
+   | Coq_run_error_record_field (xi, _, _, _, _, _, _) ->
       set_ind_decls (fst !current_state) xi;
       current_state := (fst !current_state, xi)
    | _ -> ());
@@ -1202,111 +1202,111 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
 and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   let open Format in
   function
-  | Coq_re_msg msg -> fprintf f "@[<hov 2>Error: %s@]" msg
-  | Coq_re_def (x, _, typ, exp) ->
+  | Coq_run_error_msg msg -> fprintf f "@[<hov 2>Error: %s@]" msg
+  | Coq_run_error_def (x, _, typ, exp) ->
      fprintf f "@[<hov 2>Error: the body of %s,@ %a,@ is not of type@ %a@]" x
        format_exp exp format_exp typ
-  | Coq_re_def_typ (x, _, typ) ->
+  | Coq_run_error_def_typ (x, _, typ) ->
      fprintf f "@[<hov 2>Error: the type of %s,@ %a,@ is not a type@]" x
        format_exp typ
-  | Coq_re_eval_typ (_, exp, typ) ->
+  | Coq_run_error_eval_typ (_, exp, typ) ->
      fprintf f "@[<hov 2>Error: the ascribed type of@ %a,@ %a,@ is not a type@]"
        format_exp exp format_exp typ
-  | Coq_re_eval_check (_, exp, typ) ->
+  | Coq_run_error_eval_check (_, exp, typ) ->
      fprintf f "@[<hov 2>Error:@ %a@ is not of type@ %a@]" format_exp exp
        format_exp typ
   (* The level of a universe that is no level, in the binders crossed to
      reach it; a numeral there is a natural number, not the level. *)
-  | Coq_re_level (_, delta, t) ->
+  | Coq_run_error_level (_, delta, t) ->
      let hint f () =
        match get_nat_of_obj (exp_to_obj ~delta t) with
        | Some n -> fprintf f ";@ write %dl for the level %d" n n
        | None -> () in
      fprintf f "@[<hov 2>Error:@ %a@ is not of type Level@@n for any n@ (the level of@ %a)%a@]"
        (format_exp_in delta) t (format_exp_in delta) (Coq_a_univ t) hint ()
-  | Coq_re_eval_infer (_, exp) ->
+  | Coq_run_error_eval_infer (_, exp) ->
      fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
-  | Coq_re_cycle ch ->
+  | Coq_run_error_cycle ch ->
      fprintf f "@[<hov 2>Error: cyclic import:@ %a@]"
        pp_u (String.concat (" " ^ s_arrow ^ " ") (List.map string_of_upath ch))
-  | Coq_re_unit (fp, msg) ->
+  | Coq_run_error_unit (fp, msg) ->
      fprintf f "@[<hov 2>Error: %a:@ %s@]" pp_upath fp msg
   (* A private member is named by the module declaring it, from its unit. *)
   (* Option B: an alias, or any module but by the direct path of an
      inductive type, is no term. *)
-  | Coq_re_mod_term q ->
+  | Coq_run_error_mod_term q ->
      fprintf f "@[<hov 2>Error: %a is a module, not a term@]" pp_u (string_of_qpath q.q_unit q.q_chain)
-  | Coq_re_not_ind q ->
+  | Coq_run_error_not_ind q ->
      fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit q.q_chain)
-  | Coq_re_private (q, x) ->
+  | Coq_run_error_private (q, x) ->
      fprintf f "@[<hov 2>Error: %a is private@]" pp_u (string_of_qpath q.q_unit (q.q_chain @ [x]))
   (* A member selected from a term, in the binders crossed to reach it:
      the term's type is not inferred, or is no record type. *)
-  | Coq_re_access_no_type (_, ox, delta, m, y) ->
+  | Coq_run_error_access_no_type (_, ox, delta, m, y) ->
      fprintf f "@[<hov 2>Error: %s is selected from@ %a,@ whose type cannot be inferred@]"
        y (format_exp_named ox delta) m
   (* A record type applied to a value where a term stands: what it is, and
      what to write instead. *)
-  | Coq_re_record_value_term (_, ox, delta, m, n) ->
+  | Coq_run_error_record_value_term (_, ox, delta, m, n) ->
      let head = McttExtracted.Group.app_head m and args = McttExtracted.Group.app_args m in
      let ty = McttExtracted.Syntax.apps_exp head (List.filteri (fun i _ -> i < n) args) in
      let v = List.nth args n in
      fprintf f "@[<hov 2>Error: %a@ is the module of the record value@ %a;@ write@ (%a).f@ for a field,@ or@ %a@ for the type@]"
        (format_exp_named ox delta) m (format_exp_named ox delta) v (format_exp_named ox delta) m
        (format_exp_named ox delta) ty
-  | Coq_re_record_fields_order (q, xs, y, x) ->
+  | Coq_run_error_record_fields_order (q, xs, y, x) ->
      fprintf f "@[<hov 2>Error: fields of %a must be given in order:@ %s;@ got %s before %s@]"
        pp_u (string_of_qpath q.q_unit q.q_chain) (String.concat ", " xs) y x
-  | Coq_re_record_field_unknown (q, y) ->
+  | Coq_run_error_record_field_unknown (q, y) ->
      fprintf f "@[<hov 2>Error: %s is not a field of record %a@]" y pp_u (string_of_qpath q.q_unit q.q_chain)
-  | Coq_re_record_field_missing (q, x) ->
+  | Coq_run_error_record_field_missing (q, x) ->
      fprintf f "@[<hov 2>Error: field %s of record %a is missing@]" x pp_u (string_of_qpath q.q_unit q.q_chain)
   (* A field whose value is not of its type, in the binders crossed to
      reach the record value: the type is the field's at the record's
      parameters and the fields before it. *)
-  | Coq_re_record_field (_, ox, delta, q, x, m, a) ->
+  | Coq_run_error_record_field (_, ox, delta, q, x, m, a) ->
      fprintf f "@[<hov 2>Error: field %s of record %a:@ %a@ is not of type@ %a@]"
        x pp_u (string_of_qpath q.q_unit q.q_chain) (format_exp_named ox delta) m (format_exp_named ox delta) a
-  | Coq_re_record_member (q, y) ->
+  | Coq_run_error_record_member (q, y) ->
      fprintf f "@[<hov 2>Error: %s is not a member of record %a: neither a field nor a member of its with-area@]"
        y pp_u (string_of_qpath q.q_unit q.q_chain)
-  | Coq_re_access_not_record (_, ox, delta, m, a, y) ->
+  | Coq_run_error_access_not_record (_, ox, delta, m, a, y) ->
      fprintf f "@[<hov 2>Error: %s is selected from@ %a,@ of type@ %a,@ which is not a record type@]"
        y (format_exp_named ox delta) m (format_exp_named ox delta) a
   (* A private entry of a local body, from the local module. *)
-  | Coq_re_private_local (ch, x) ->
+  | Coq_run_error_private_local (ch, x) ->
      fprintf f "@[<hov 2>Error: %s is private in a local module, but it is used outside it@]" (String.concat "." (ch @ [x]))
-  | Coq_re_nested (x, c, y, h) ->
+  | Coq_run_error_nested (x, c, y, h) ->
      fprintf f "@[<hov 2>Error: %s occurs in a non-uniform argument of@ %a@ in the argument %s of %s;@ a group may nest only at the uniform parameters of a declared type of a filed group@]"
        x format_exp h y c
-  | Coq_re_mdef_count (n, m) ->
+  | Coq_run_error_mdef_count (n, m) ->
      fprintf f "@[<hov 2>Error: a mutual definition has one function per member of its group:@ the group has %d %s,@ the definition %d %s@]"
        n (if n = 1 then "member" else "members") m (if m = 1 then "function" else "functions")
-  | Coq_re_mdef_nparams (g, m, n) ->
+  | Coq_run_error_mdef_nparams (g, m, n) ->
      fprintf f "@[<hov 2>Error: %s has %d non-uniform %s,@ its member %d@]"
        g m (if m = 1 then "parameter" else "parameters") n
   (* An eliminator's scrutinee whose type is not inferred, or is no
      inductive type: the eliminator's group is read off that type. *)
-  | Coq_re_elim_scrutinee (_, ox, delta, m, None) ->
+  | Coq_run_error_elim_scrutinee (_, ox, delta, m, None) ->
      fprintf f "@[<hov 2>Error: the scrutinee@ %a@ of an eliminator has no inferable type@]"
        (format_exp_named ox delta) m
-  | Coq_re_elim_scrutinee (_, ox, delta, m, Some a) ->
+  | Coq_run_error_elim_scrutinee (_, ox, delta, m, Some a) ->
      fprintf f "@[<hov 2>Error: the scrutinee@ %a@ of an eliminator is of type@ %a,@ which is not an inductive type@]"
        (format_exp_named ox delta) m (format_exp_named ox delta) a
   (* An eliminator no reading of which fits its blocks. *)
-  | Coq_re_elim_no_group (_, delta, e) ->
+  | Coq_run_error_elim_no_group (_, delta, e) ->
      let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
      fprintf f "@[<hov 2>Error: no group fits the blocks of the eliminator of@ %a@]" (format_exp_in delta) scr
   (* An eliminator several readings of which fit its blocks, each named by
      its group's type former at its uniform parameters. *)
-  | Coq_re_elim_ambiguous (_, delta, e, rs) ->
+  | Coq_run_error_elim_ambiguous (_, delta, e, rs) ->
      let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
      let reading (q, us) = Format.asprintf "%a" (format_exp_in delta) (McttExtracted.Syntax.apps_exp (Coq_a_ind (q, 0)) us) in
      fprintf f "@[<hov 2>Error: the eliminator of@ %a@ is ambiguous:@ its blocks fit the eliminators of@ %a@]"
        (format_exp_in delta) scr pp_u (String.concat " and of " (List.map reading rs))
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
-  | Coq_re_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
+  | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
      let deps, xi = !current_state in
      let ms = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
      let labels = List.mapi (fun k mk -> member_label delta p us k mk) ms in
@@ -1329,24 +1329,24 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        @ (if missing = [] && extra = [] then [ "the blocks are not in member order" ] else []) in
      fprintf f "@[<v 2>@[<hov 2>Error: an eliminator has one block per member of its group,@ in member order:@ %a;@ %a.@]@,The eliminator should read:@,%a@]"
        pp_u (String.concat ", " labels) pp_u (String.concat "; " why) (format_elim_skeleton delta) (p, us, j, scr)
-  | Coq_re_elim_blocks _ -> fprintf f "@[<hov 2>Error: the blocks of an eliminator are not those of its group@]"
-  | Coq_re_view (x, ((qc, k), cs), why) ->
+  | Coq_run_error_elim_blocks _ -> fprintf f "@[<hov 2>Error: the blocks of an eliminator are not those of its group@]"
+  | Coq_run_error_view (x, ((qc, k), cs), why) ->
      let open McttExtracted.IndDecl in
      let inst = McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) cs in
      (match why with
-      | Coq_vw_container ->
+      | Coq_view_why_container ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ which is no declared type of a filed group@]" x format_exp inst
-      | Coq_vw_cls (c, y, _) ->
+      | Coq_view_why_cls (c, y, _) ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ whose constructor %s's argument %s is not positive in %s there@]"
            x format_exp inst c y x
-      | Coq_vw_untyped ->
+      | Coq_view_why_untyped ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ at which a parameter or a sibling of the container is not typed@]" x format_exp inst
-      | Coq_vw_mentions_group ->
+      | Coq_view_why_mentions_group ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ a non-uniform parameter of which mentions the group@]" x format_exp inst)
-  | Coq_re_ind_npar (x, k, delta, t, s) ->
+  | Coq_run_error_ind_npar (x, k, delta, t, s) ->
      fprintf f "@[<hov 2>Error: the type of the non-uniform parameter %d of %s,@ %a,@ is not in the sort of %s,@ %a@]"
        (k + 1) x (format_exp_in delta) t x (format_exp_in delta) s
-  | Coq_re_import e ->
+  | Coq_run_error_import e ->
      let open McttExtracted.Opens in
      (match e with
       | Coq_xe_target _ -> fprintf f "@[<hov 2>Error: ill-formed open@]"
@@ -1361,7 +1361,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
-  | Coq_re_branch_arity (c, n, k, a, r) ->
+  | Coq_run_error_branch_arity (c, n, k, a, r) ->
      let count n one many = Printf.sprintf "%d %s" n (if n = 1 then one else many) in
      let parts =
        (if k > 0 then [count k "parameter" "parameters"] else [])
@@ -1369,20 +1369,20 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        @ (if r > 0 then [count r "induction hypothesis" "induction hypotheses"] else []) in
      fprintf f "@[<hov 2>Error: the branch %s binds %s but needs %d (%s)@]"
        c (count n "name" "names") (k + a + r) (String.concat ", " parts)
-  | Coq_re_branch_unknown c ->
+  | Coq_run_error_branch_unknown c ->
      fprintf f "@[<hov 2>Error: %s is not a constructor of the eliminated type@]" c
-  | Coq_re_branch_missing c ->
+  | Coq_run_error_branch_missing c ->
      fprintf f "@[<hov 2>Error: the eliminator has no branch for %s@]" c
-  | Coq_re_branch_dup c ->
+  | Coq_run_error_branch_dup c ->
      fprintf f "@[<hov 2>Error: the eliminator has two branches for %s@]" c
-  | Coq_re_branch_order cs ->
+  | Coq_run_error_branch_order cs ->
      fprintf f "@[<hov 2>Error: the branches must follow the order of the constructors:@ %s@]"
        (String.concat ", " cs)
-  | Coq_re_lit (McttExtracted.Builtin.Coq_le_num n) ->
+  | Coq_run_error_lit (McttExtracted.Builtin.Coq_le_num n) ->
      fprintf f "@[<hov 2>Error: unknown numeral %d: no natural-number type is bound@]" n
-  | Coq_re_lit McttExtracted.Builtin.Coq_le_tok ->
+  | Coq_run_error_lit McttExtracted.Builtin.Coq_le_tok ->
      fprintf f "@[<hov 2>Error: unknown type %a: no natural-number type is bound@]" pp_sym s_nat
-  | Coq_re_nat (_, _, _, e') -> format_run_error_in f e'
+  | Coq_run_error_nat (_, _, _, e') -> format_run_error_in f e'
 
 (* What [format_main_result] prints for each entry of a successful run's
    log, one string per eval, in order: each entry starts a line of its own,

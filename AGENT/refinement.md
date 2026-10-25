@@ -29,11 +29,11 @@ sections so that both checkers can use them).
 initial environment `P`, and `G ⊢ T : Typeω@i`.  It reads back to `T`
 (`typ_val_rtyp`), and a `Πᵈ a ρ' b` that stands for `Πⁿ A B` gives, at an
 argument `N : A`, the value `⟦ b ⟧ ρ' ↦ ⟦ N ⟧ ρ` that stands for the normal form
-of `B[Id,,N]` (`typ_val_pi`, `typ_val_app_step`): the result of `ati_app`
+of `B[Id,,N]` (`typ_val_pi`, `typ_val_app_step`): the result of `alg_type_infer_app`
 without the substitution and the re-normalization.
 
-The orders gained `app_order M N` (`ti_app : app_order M N -> type_infer_order
-(M $ N)`, `ao_app : type_check_order M -> type_check_order N -> app_order M N`)
+The orders gained `app_order M N` (`type_infer_order_app : app_order M N -> type_infer_order
+(M $ N)`, `app_order_app : type_check_order M -> type_check_order N -> app_order M N`)
 so that the head of an application is a strict subterm at the order of a
 check: `type_infer_val_in` recurses through `type_infer_app_in` on an
 application and calls `type_infer_in` otherwise, both structurally.
@@ -136,7 +136,7 @@ Two instances:
   command checker uses it only on its error paths (the blame searches).
 - `fctx_at Θ Ξ op`: the trie of `Θ` and, as seed, the declaration at `op`
   looked up through it.  A command builds `fctx_cmd B Θ Ξ := fctx_at Θ Ξ
-  (bt_nat B)` (`Extraction/Command.v`) for each check it runs: the
+  (builtins_nat B)` (`Extraction/Command.v`) for each check it runs: the
   eliminator of the type bound as the natural numbers then looks nothing
   up.
 
@@ -146,8 +146,8 @@ of a path:
 ```coq
 Inductive ptrie : Set := pnode : option gunit -> pkids -> ptrie
 with pkids : Set :=
-| pk_nil : pkids
-| pk_cons : string -> ptrie -> pkids -> pkids.
+| pkids_nil : pkids
+| pkids_cons : string -> ptrie -> pkids -> pkids.
 ```
 
 `pt_find t fp` compares one component per level with the components

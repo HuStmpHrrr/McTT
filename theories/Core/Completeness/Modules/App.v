@@ -69,7 +69,7 @@ Proof.
   destruct (wf_modexp_eq_scoped _ _ _ _ _ Hw) as (HΓs & HUs & _).
   destruct (udenote_beta _ _ (wf_gstack_closed _ _ Hgm) _ _ _ _ N _ HΓs HUs Hu) as (R1 & Ha1 & Hu1).
   split; [ eapply lit_params_lacks; exact HX |].
-  exists R1; split; [ exact Ha1 |]; split; [| split; [ exact HK' | split; [ apply dn_lit; exact Hu1 | apply ds_is_mod_mod; eapply udenote_is_mod; exact Hu1 ] ] ].
+  exists R1; split; [ exact Ha1 |]; split; [| split; [ exact HK' | split; [ apply mdenote_lit; exact Hu1 | apply ds_is_mod_mod; eapply udenote_is_mod; exact Hu1 ] ] ].
   exact (rel_modexp_under_ctx_beta _ _ _ _ _ _ HΓ (valid_unit_rel _ _ Hgf _ _ HK) (valid_unit_links_unabs1 Hgw _ _ Hgm Hsub Hgf _ _ _ _ HK) HX HN).
 Qed.
 
@@ -188,7 +188,7 @@ Proof.
     pose proof (modexp_next_param_resp _ _ _ _ HHK HlK) as Hl.
     split; [ exact Hl |].
     destruct (ds_mod_at_inv _ _ _ _ HmodH Ha) as (R' & HaR & HmodR').
-    eapply (valid_modexp_intro _ _ _ _ R' Rm' K' RK'); [ | eapply dn_app; eassumption | exact HmodR' | | exact HK' | exact HmK' | exact HmodK' ].
+    eapply (valid_modexp_intro _ _ _ _ R' Rm' K' RK'); [ | eapply mdenote_app; eassumption | exact HmodR' | | exact HK' | exact HmK' | exact HmodK' ].
     + assert (HmtR : ds_mtele R = Some T) by (unfold ds_mtele; rewrite HmodH; exact Ht).
       exact (app_wf _ _ _ _ _ _ _ _ HwH Hm HmtR Hv HBw HNw).
     + eapply rel_modexp_under_ctx_trans; [| exact HKN ].
@@ -225,7 +225,7 @@ Proof.
   eapply (IH Γ (tele_sub Δ1 (Id,,N)) (ds_sub R (sb_qn (List.length Δ1) (Id,,N)))).
   - exact HsN.
   - exact HHN.
-  - eapply dn_app; [ exact Hm | apply ds_at_up ].
+  - eapply mdenote_app; [ exact Hm | apply ds_at_up ].
   - apply ds_is_mod_sub; exact Hmod.
   - exact HΔN.
   - apply tele_ass_sub; exact Ha1.

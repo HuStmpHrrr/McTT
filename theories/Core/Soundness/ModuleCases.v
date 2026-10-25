@@ -40,7 +40,7 @@ Lemma glu_rel_exp_of_eq_of_emb : forall Θ Ξ Θ2 Ξ2 Γ M N A,
     glu_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ N : A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ N A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
 Proof.
   intros * He Heq Hg.
-  destruct (emb_preserves_wf _ _ _ _ (gem_emb _ _ _ _ He)) as (_ & _ & Hwq & _).
+  destruct (emb_preserves_wf _ _ _ _ (glu_emb_emb _ _ _ _ He)) as (_ & _ & Hwq & _).
   eapply (@glu_rel_exp_of_eq (gc_mk Θ2 Ξ2)); [ exact Hg | exact (Hwq _ _ _ _ Heq) ].
 Qed.
 
@@ -132,7 +132,7 @@ Proof.
     destruct (mem_no_red _ _ _ _ _ _ _ Hm Ht Hr) as (R0 & p & T & Φ & Φ0 & b & pv & oM & Hm0 & Hmd & Hp & Hn).
     pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm0) Hmd) as Hl; cbn in Hl.
     eapply glu_rel_exp_of_eq_of_emb; [ exact He | eapply mem_alias_filed; eassumption |].
-    eapply gem_glob; eassumption.
+    eapply glu_emb_glob; eassumption.
 Qed.
 
 (** ** 3. The rules

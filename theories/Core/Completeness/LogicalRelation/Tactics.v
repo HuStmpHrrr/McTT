@@ -29,7 +29,7 @@ Ltac eexists_rel_exp :=
   first [ eapply mk_rel_exp_under_ctx; [eassumption |] | eexists_ctx_level ].
 
 Ltac eexists_rel_exp_with i :=
-  first [ eapply mk_rel_exp_under_ctx with (reu_lvl := i); [eassumption |] | eexists_ctx_level_with i ].
+  first [ eapply mk_rel_exp_under_ctx with (rel_exp_under_ctx_lvl := i); [eassumption |] | eexists_ctx_level_with i ].
 
 Ltac eexists_rel_sub :=
   first [ eapply mk_rel_sub_under_ctx; [eassumption | eassumption |] | eexists_ctx_pair ].
@@ -43,7 +43,7 @@ Ltac eexists_subtyp :=
   first [ eapply mk_rel_subtyp_under_ctx; [eassumption |] | eexists_ctx_level ].
 
 Ltac eexists_subtyp_with i :=
-  first [ eapply mk_rel_subtyp_under_ctx with (rstu_lvl := i); [eassumption |] | eexists_ctx_level_with i ].
+  first [ eapply mk_rel_subtyp_under_ctx with (rel_subtyp_under_ctx_lvl := i); [eassumption |] | eexists_ctx_level_with i ].
 
 (** ** The Semantic Judgments *)
 
@@ -104,8 +104,8 @@ Ltac sem_intro0 :=
   match goal with He : valid_emb ?T1 ?X1 ?T2 ?X2 |- _ =>
     let Hemb := fresh "Hemb" in let Hgm := fresh "Hgm" in let Hgf := fresh "Hgf" in
     let Hsub := fresh "Hsub" in let Hgw := fresh "Hgw" in
-    pose proof (vem_emb _ _ _ _ He) as Hemb; pose proof (vem_wf _ _ _ _ He) as Hgm;
-    pose proof (vem_filed _ _ _ _ He) as Hgf;
+    pose proof (valid_emb_emb _ _ _ _ He) as Hemb; pose proof (valid_emb_wf _ _ _ _ He) as Hgm;
+    pose proof (valid_emb_filed _ _ _ _ He) as Hgf;
     pose proof (em_res _ _ _ _ Hemb) as Hsub; pose proof (em_wf _ _ _ _ Hemb) as Hgw;
     change (⊢ᵍ @gc_deps (gc_mk T2 X2) ⍮ @gc_stack (gc_mk T2 X2)) in Hgw;
     change (gc_sub T1 X1 (@gc_deps (gc_mk T2 X2)) (@gc_stack (gc_mk T2 X2))) in Hsub;

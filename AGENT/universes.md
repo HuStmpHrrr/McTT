@@ -37,7 +37,7 @@ take a level term `L` of `Γ`. The codomain is at the weakening of `L`:
 
 ## The algorithm
 
-`ati_pi` infers the normal form of `unf_pi_tm u v` (`Core/Syntactic/Fresh.v`),
+`alg_type_infer_pi` infers the normal form of `unf_pi_tm u v` (`Core/Syntactic/Fresh.v`),
 where `u` and `v` are the universes of the parts:
 
 - **Both parts small.** The result is always small:
@@ -50,7 +50,7 @@ where `u` and `v` are the universes of the parts:
 - **Otherwise.** The result is the large join, `unf_tm (unf_max u v)`, as
   before.
 
-The bound reads the sorts of the codomain level's atoms, so `ati_pi` takes
+The bound reads the sorts of the codomain level's atoms, so `alg_type_infer_pi` takes
 the codomain's universe in normal form (`nbe_ty_f (Γ ▹ A) UB UB'`, then
 `is_univ_nf UB' v`): the sort of an atom of a normal form is the sort its
 neutral is typed at (`soundness_lvl_ws`), which an inferred, unnormalised
@@ -58,7 +58,7 @@ universe does not promise.  The algorithm infers normal forms, so
 `UB' = UB` always (`alg_type_infer_self`).
 
 The result is the *normal form* of that term, a side condition
-`nbe_ty_f Γ (unf_pi_tm u v) W`, in the style of `ati_suniv`:
+`nbe_ty_f Γ (unf_pi_tm u v) W`, in the style of `alg_type_infer_suniv`:
 
 - **Why not compute the canonical join directly?** Un-weakening a canonical
   level breaks the order of its atoms. The canonical join would then be a

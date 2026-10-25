@@ -25,7 +25,7 @@ Proof.
   destruct_conjs.
   pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓ [HΓ [k Hsubsimple]]].
   invert_glu_rel_exp HA'.
-  eapply mk_glu_rel_exp with (gre_lvl := max i k); [eassumption |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i k); [eassumption |].
   intros Δ σ ρ HSb.
   destruct_glu_rel_exp_with_sub.
   simplify_evals.

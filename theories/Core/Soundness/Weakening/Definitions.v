@@ -37,11 +37,11 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 Inductive wk_kripke : ctx -> ctx -> wk -> Prop :=
-| kwk_id :
+| wk_kripke_id :
   `( Γ ⊆ Δ ->
      wk_eq φ wk_id ->
      Γ ⊢ᵏ φ : Δ )
-| kwk_shift :
+| wk_kripke_shift :
   `( Γ ⊢ᵏ ψ : e :: Δ' ->
      Δ' ⊆ Δ ->
      wk_eq φ (↑ ⊙ ψ) ->

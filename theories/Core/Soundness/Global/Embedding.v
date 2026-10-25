@@ -68,13 +68,13 @@ Section Cook.
     pose proof (glu_rel_exp_to_wf_exp HT) as HTwf.
     pose proof HT as [Sb0 H0 _ _].
     pose proof (glu_rel_exp_clean_inversion2' H0 HT) as HTi.
-    eapply mk_glu_rel_exp with (gre_lvl := i); [ exact H0 |]; intros Δ σ ρ Hσ.
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact H0 |]; intros Δ σ ρ Hσ.
     destruct (HTi _ _ _ Hσ) as [? ? ? ? Hevu HevT Hu HTσ].
     inversion Hevu; subst.
     match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
     apply_predicate_equivalence.
     destruct_glu_records; destruct_conjs.
-    rename gta_typ into Pa, gta_exp into Ela, gta_elem into HPa, gta_glu into HTPa.
+    rename glu_typ_at_typ into Pa, glu_typ_at_exp into Ela, glu_typ_at_elem into HPa, glu_typ_at_glu into HTPa.
     assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape H0 _ _ _ Hσ)).
     destruct (typ_nil_rel _ _ ρ nil HTwf) as (a1 & a0 & Ha1 & Ha0 & Hrel).
     functional_eval_rewrite_clear.
