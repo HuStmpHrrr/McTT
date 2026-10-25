@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab726"></a><h1 class="section">The Unit and Empty Types in the Gluing Model</h1>
+<a id="lab727"></a><h1 class="section">The Unit and Empty Types in the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -194,7 +194,7 @@ The lifting of a related substitution under a binder of type <span class="inline
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#c14c0b2265abf3ec26ac01165fe38870"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#23cbdfc5682aac18a33fdabe32ac5364"><span class="id" title="notation">⋆</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c157fef4ebd87b38ad564c1b1bbe6915"><span class="id" title="notation">⊤</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * [<span class="id" title="var">Sb</span>].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := 0); [ <span class="id" title="var">mauto</span> 3 |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">glu_rel_exp_lvl</span> := 0); [ <span class="id" title="var">mauto</span> 3 |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="var">saturate_sub</span>.<br/>
@@ -210,7 +210,7 @@ The lifting of a related substitution under a binder of type <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab727"></a><h2 class="section">Extension by <span class="inlinecode">⊥</span></h2>
+<a id="lab728"></a><h2 class="section">Extension by <span class="inlinecode">⊥</span></h2>
 
 </div>
 <div class="code">
@@ -262,7 +262,7 @@ The lifting of a related substitution under a binder of type <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab728"></a><h2 class="section">The Eliminator</h2>
+<a id="lab729"></a><h2 class="section">The Eliminator</h2>
 
 
 <div class="paragraph"> </div>
@@ -291,7 +291,7 @@ The lifting of a related substitution under a binder of type <span class="inline
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> <span class="id" title="var">HA</span> <span class="id" title="keyword">as</span> <span class="id" title="var">HAglu</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HM</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HA</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := <span class="id" title="var">i</span>); [<span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">glu_rel_exp_lvl</span> := <span class="id" title="var">i</span>); [<span class="id" title="var">eassumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="var">saturate_sub</span>.<br/>
@@ -378,7 +378,7 @@ The lifting of a related substitution under a binder of type <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab729"></a><h2 class="section">The Rules</h2>
+<a id="lab730"></a><h2 class="section">The Rules</h2>
 
 </div>
 <div class="code">

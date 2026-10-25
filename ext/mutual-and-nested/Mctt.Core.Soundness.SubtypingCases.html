@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab722"></a><h1 class="section">Subtyping and Conversion</h1>
+<a id="lab723"></a><h1 class="section">Subtyping and Conversion</h1>
 
 
 <div class="paragraph"> </div>
@@ -67,7 +67,7 @@
 &nbsp;&nbsp;<span class="id" title="var">destruct_conjs</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_subtyp_under_ctx_simple"><span class="id" title="lemma">rel_subtyp_under_ctx_simple</span></a> <span class="id" title="var">Hsub</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> [<span class="id" title="var">HΓ</span> [<span class="id" title="var">k</span> <span class="id" title="var">Hsubsimple</span>]]].<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HA'</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a> <span class="id" title="var">i</span> <span class="id" title="var">k</span>); [<span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">glu_rel_exp_lvl</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a> <span class="id" title="var">i</span> <span class="id" title="var">k</span>); [<span class="id" title="var">eassumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">HSb</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">destruct_glu_rel_exp_with_sub</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">simplify_evals</span>.<br/>
@@ -114,7 +114,7 @@
 </div>
 
 <div class="doc">
-<a id="lab723"></a><h2 class="section">The Rules</h2>
+<a id="lab724"></a><h2 class="section">The Rules</h2>
 
 </div>
 <div class="code">

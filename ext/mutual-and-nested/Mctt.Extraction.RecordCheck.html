@@ -46,12 +46,12 @@
 </div>
 
 <div class="doc">
-<a id="lab1309"></a><h1 class="section">Checking the Forms of Record Types</h1>
+<a id="lab1310"></a><h1 class="section">Checking the Forms of Record Types</h1>
 
 
 <div class="paragraph"> </div>
 
-    The cases of <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_record"><span class="id" title="constructor">ati_record</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_tuple"><span class="id" title="constructor">ati_tuple</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_proj"><span class="id" title="constructor">ati_proj</span></a></span>, shared by both
+    The cases of <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#alg_type_infer_record"><span class="id" title="constructor">alg_type_infer_record</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#alg_type_infer_tuple"><span class="id" title="constructor">alg_type_infer_tuple</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#alg_type_infer_proj"><span class="id" title="constructor">alg_type_infer_proj</span></a></span>, shared by both
     checkers (<span class="inlinecode"><span class="id" title="library">Extraction.TypeCheck</span></span> and <span class="inlinecode"><span class="id" title="library">Reference.TypeCheck</span></span>).  The type
     former recurses on nothing; a tuple recurses on its annotation and its
     fields, and a projection on its element, and they take those recursive
@@ -95,7 +95,7 @@ What an inference returns: the type, which infers a universe and is a
 </div>
 
 <div class="doc">
-<a id="lab1310"></a><h2 class="section">The Type Former</h2>
+<a id="lab1311"></a><h2 class="section">The Type Former</h2>
 
 </div>
 <div class="code">
@@ -135,7 +135,7 @@ A record's type former.
 </div>
 
 <div class="doc">
-<a id="lab1311"></a><h2 class="section">Projections</h2>
+<a id="lab1312"></a><h2 class="section">Projections</h2>
 
 </div>
 <div class="code">
@@ -207,11 +207,11 @@ A projection, from the inference of its element.
 </div>
 
 <div class="doc">
-<a id="lab1312"></a><h2 class="section">Tuples</h2>
+<a id="lab1313"></a><h2 class="section">Tuples</h2>
 
 <div class="paragraph"> </div>
 
- What <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_tuple"><span class="id" title="constructor">ati_tuple</span></a></span> asks of the field <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of a tuple, at the parameters
+ What <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#alg_type_infer_tuple"><span class="id" title="constructor">alg_type_infer_tuple</span></a></span> asks of the field <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of a tuple, at the parameters
     <span class="inlinecode"><span class="id" title="var">Rs</span></span>. 
 </div>
 <div class="code">
@@ -289,7 +289,7 @@ The type of the field <span class="inlinecode"><a class="idref" href="Mctt.Core.
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HTs</span> : <span class="id" title="var">G</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">T</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">:</span></a> <span class="id" title="var">UT</span>) <span class="id" title="tactic">by</span> <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Algorithmic.Typing.Lemmas.html#alg_type_infer_sound"><span class="id" title="lemma">alg_type_infer_sound</span></a> <span class="id" title="var">HTi</span> <span class="id" title="var">HG</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#is_univ_nf_eq"><span class="id" title="lemma">is_univ_nf_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hu</span>), <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_to_exp_univ_nf"><span class="id" title="lemma">nf_to_exp_univ_nf</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">HTs</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Algorithmic.Typing.Lemmas.html#wf_exp_unf_large"><span class="id" title="lemma">wf_exp_unf_large</span></a> <span class="id" title="var">HTs</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HTl</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_tuple"><span class="id" title="constructor">ati_tuple</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HTi</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hu</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hn</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hfs</span> | <span class="id" title="tactic">intros</span> <span class="id" title="var">k</span>; <span class="id" title="tactic">exact</span> (<span class="id" title="var">HQ</span> <span class="id" title="var">k</span>) ]<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#alg_type_infer_tuple"><span class="id" title="constructor">alg_type_infer_tuple</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HTi</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hu</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hn</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hfs</span> | <span class="id" title="tactic">intros</span> <span class="id" title="var">k</span>; <span class="id" title="tactic">exact</span> (<span class="id" title="var">HQ</span> <span class="id" title="var">k</span>) ]<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Extraction.TypeCheckBase.html#level_of_nbe"><span class="id" title="lemma">level_of_nbe</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 

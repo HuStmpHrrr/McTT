@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1076"></a><h1 class="section">A Declaration the Classifier Accepts Runs</h1>
+<a id="lab1077"></a><h1 class="section">A Declaration the Classifier Accepts Runs</h1>
 
 
 <div class="paragraph"> </div>
@@ -46,8 +46,8 @@
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#grec_fn_typed"><span class="id" title="lemma">grec_fn_typed</span></a></span>).  Each is a term of a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a telescope applied
     to the telescope's variables (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#wf_apps_vars"><span class="id" title="lemma">wf_apps_vars</span></a></span>), under <span class="inlinecode"><span class="id" title="var">λ</span></span>s over the
     recursor's telescope.  So a declaration that meets the premises
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_ind"><span class="id" title="constructor">rc_ind</span></a></span> checks before its members runs, whatever it generates
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#rc_ind_runs"><span class="id" title="lemma">rc_ind_runs</span></a></span>). 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmd_ind_case"><span class="id" title="constructor">run_cmd_ind_case</span></a></span> checks before its members runs, whatever it generates
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#run_cmd_ind_runs"><span class="id" title="lemma">run_cmd_ind_runs</span></a></span>). 
 </div>
 <div class="code">
 
@@ -71,7 +71,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1077"></a><h2 class="section">Applying to the Variables of a Telescope</h2>
+<a id="lab1078"></a><h2 class="section">Applying to the Variables of a Telescope</h2>
 
 </div>
 <div class="code">
@@ -187,7 +187,7 @@ A term of a <span class="inlinecode"><span class="id" title="var">Π</span></spa
 </div>
 
 <div class="doc">
-<a id="lab1078"></a><h2 class="section">The Recursor's Telescope</h2>
+<a id="lab1079"></a><h2 class="section">The Recursor's Telescope</h2>
 
 
 <div class="paragraph"> </div>
@@ -250,7 +250,7 @@ The eliminator's motive, at the scrutinee's parameters and the
 </div>
 
 <div class="doc">
-<a id="lab1079"></a><h2 class="section">The Recursor of a One-Member Group</h2>
+<a id="lab1080"></a><h2 class="section">The Recursor of a One-Member Group</h2>
 
 
 <div class="paragraph"> </div>
@@ -474,13 +474,13 @@ A branch's context and type, at the motive under <span class="inlinecode"><a cla
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="cons_con" class="idref" href="#cons_con"><span class="id" title="lemma">cons_con</span></a> : <span class="id" title="keyword">forall</span> <a id="c:133" class="idref" href="#c:133"><span class="id" title="binder">c</span></a> <a id="gs:134" class="idref" href="#gs:134"><span class="id" title="binder">gs</span></a>, <span class="id" title="definition">In</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#c:133"><span class="id" title="variable">c</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#gs:134"><span class="id" title="variable">gs</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_cons"><span class="id" title="projection">im_cons</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ind_con"><span class="id" title="definition">ind_con</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#c:133"><span class="id" title="variable">c</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#gs:134"><span class="id" title="variable">gs</span></a>.<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span>; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Command.html#cons_lookup_nodup"><span class="id" title="lemma">cons_lookup_nodup</span></a>; [ <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#dt_nodup"><span class="id" title="projection">dt_nodup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.HD"><span class="id" title="variable">HD</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#HM"><span class="id" title="lemma">HM</span></a>) | <span class="id" title="tactic">assumption</span> ]. <span class="id" title="keyword">Qed</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span>; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Command.html#cons_lookup_nodup"><span class="id" title="lemma">cons_lookup_nodup</span></a>; [ <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#decl_typed_nodup"><span class="id" title="projection">decl_typed_nodup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.HD"><span class="id" title="variable">HD</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#HM"><span class="id" title="lemma">HM</span></a>) | <span class="id" title="tactic">assumption</span> ]. <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="con_in" class="idref" href="#con_in"><span class="id" title="lemma">con_in</span></a> : <span class="id" title="keyword">forall</span> <a id="c:135" class="idref" href="#c:135"><span class="id" title="binder">c</span></a> <a id="gs:136" class="idref" href="#gs:136"><span class="id" title="binder">gs</span></a> <a id="gs':137" class="idref" href="#gs':137"><span class="id" title="binder">gs'</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ind_con"><span class="id" title="definition">ind_con</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#c:135"><span class="id" title="variable">c</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#gs:136"><span class="id" title="variable">gs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="definition">In</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#c:135"><span class="id" title="variable">c</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#gs':137"><span class="id" title="variable">gs'</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_cons"><span class="id" title="projection">im_cons</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#gs:136"><span class="id" title="variable">gs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#gs':137"><span class="id" title="variable">gs'</span></a>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">Hcon</span> <span class="id" title="var">Hin</span>; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cons_lookup_in"><span class="id" title="lemma">cons_lookup_in</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcon</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#dt_nodup"><span class="id" title="projection">dt_nodup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.HD"><span class="id" title="variable">HD</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#HM"><span class="id" title="lemma">HM</span></a>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hnd</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#decl_typed_nodup"><span class="id" title="projection">decl_typed_nodup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.HD"><span class="id" title="variable">HD</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#HM"><span class="id" title="lemma">HM</span></a>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hnd</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#nodup_in_fst"><span class="id" title="lemma">nodup_in_fst</span></a>; <span class="id" title="var">eassumption</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
 
@@ -638,7 +638,7 @@ The recursor is of its type over the module's parameters.
 </div>
 
 <div class="doc">
-<a id="lab1080"></a><h2 class="section">The Constructors</h2>
+<a id="lab1081"></a><h2 class="section">The Constructors</h2>
 
 
 <div class="paragraph"> </div>

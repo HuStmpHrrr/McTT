@@ -618,8 +618,9 @@
   <a class="mod" href="#Times">Times</a><span class="sym">.</span><a class="mod" href="Prelude.Algebra.Monoid.Properties.html#Power">Power</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.Properties.html#Power.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">2</span>
 <span class="kw">end</span>
 </pre>
-<div class="doc"><p>Rejected: module M ≔ List   then   eval M 0l ℕ Error: Tutorial.M is a module, not a term an <code>open … use (List)</code> in a local module body Error: an inductive type cannot be opened in a local module: List record R : Type@0 where a : ℕ end   in a local module body Error: a record type is not allowed in a local module</p>
-<p>Not yet: inductive and record aliases, and opens of types, inside a local module (section 12) come with the next stage, and their examples go here; today they give Error: an inductive alias is not allowed in a local module</p>
+<div class="doc"><p>Rejected: module M ≔ List   then   eval M 0l ℕ Error: Tutorial.M is a module, not a term record R : Type@0 where a : ℕ end   in a local module body Error: a record type is not allowed in a local module</p>
+<p>An <code>open … use (List)</code> in a local module body names the type and its module there, as at the top level.</p>
+<p>An inductive or record alias is not allowed in a local module; an open names the type there instead: inductive K ≔ D.N   in a local module body Error: an inductive alias is not allowed in a local module; write `open D use (N as K)` instead</p>
 </div>
 <pre class="code"><span class="kw">end</span></pre>
 </body></html>

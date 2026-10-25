@@ -369,9 +369,11 @@ constructor = &#39;|&#39; , id , {parameter};
 mutual = [&#39;private&#39;] , &#39;mutual&#39; , id , {parameter} , &#39;where&#39; ,
          &#39;inductive&#39; , id , &#39;:&#39; , member type , &#39;where&#39; , {constructor} ,
          { &#39;with&#39; , id , &#39;:&#39; , member type , &#39;where&#39; , {constructor} } , &#39;end&#39; , &#39;end&#39;;
-(* one function per member of a group, in any order *)
-mutual def = [&#39;private&#39;] , [&#39;abstract&#39;] , &#39;mutual&#39; , &#39;def&#39; , {parameter} ,
+(* one function per member of a group, in any order; the keyword after
+   &#39;mutual&#39; means what it means for a single definition *)
+mutual def = [&#39;private&#39;] , [&#39;abstract&#39;] , &#39;mutual&#39; , definition keyword , {parameter} ,
              function , { &#39;with&#39; , function } , &#39;end&#39;;
+definition keyword = &#39;def&#39; | &#39;theorem&#39; | &#39;lemma&#39; | &#39;fact&#39; | &#39;remark&#39; | &#39;let&#39; | &#39;given&#39;;
 function = id , parameter , {parameter} , &#39;:&#39; , type , ( &#39;≔&#39; | &#39;:=&#39; ) , {elim branch};</code></pre>
 <p>Where a parameter stands decides what it is: written left of
 <code>:</code> it is <strong>uniform</strong>, the same throughout the
@@ -438,10 +440,13 @@ written when the type has uniform parameters:
 carry a type.
 <code>mutual def (Δ) f (ys) (z : M) : A := | … with g … end</code>
 defines one function per member, matched to its member by its
-scrutinee’s type, each the group’s eliminator at its member. The
-constructor’s type is shown with the normal form of such an argument.
-The parameters of an enclosing module are not written: they are the
-type’s outermost uniform parameters, as for every member.</p>
+scrutinee’s type, each the group’s eliminator at its member. Any
+definition keyword may follow <code>mutual</code>
+(<code>mutual theorem</code>, <code>mutual let</code>, …), with the
+modifiers it implies for a single definition. The constructor’s type is
+shown with the normal form of such an argument. The parameters of an
+enclosing module are not written: they are the type’s outermost uniform
+parameters, as for every member.</p>
 <p>The declaration makes <code>X</code> a module over its uniform
 parameters, whose members are the constructors:
 <code>List.cons A x xs</code> is <code>(List A).cons x xs</code>, and

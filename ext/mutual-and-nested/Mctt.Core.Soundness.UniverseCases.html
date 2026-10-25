@@ -64,7 +64,7 @@ The readback clause of <span class="inlinecode"><a class="idref" href="Mctt.Core
 </div>
 
 <div class="doc">
-<a id="lab730"></a><h2 class="section">Universes at Any Index</h2>
+<a id="lab731"></a><h2 class="section">Universes at Any Index</h2>
 
 
 <div class="paragraph"> </div>
@@ -91,7 +91,7 @@ The readback clause of <span class="inlinecode"><a class="idref" href="Mctt.Core
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#A:4"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ulvl_tm"><span class="id" title="definition">ulvl_tm</span></a> <a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#u:5"><span class="id" title="variable">u</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * ? <span class="id" title="var">Hbody</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ulvl_above"><span class="id" title="definition">ulvl_above</span></a> <span class="id" title="var">u</span>); [ <span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">glu_rel_exp_lvl</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ulvl_above"><span class="id" title="definition">ulvl_above</span></a> <span class="id" title="var">u</span>); [ <span class="id" title="var">eassumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HΔ</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hbody</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΔ</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">H0</span> [<span class="id" title="var">a</span> [? [[] [<span class="id" title="var">H3</span> <span class="id" title="var">Hrb</span>]]]]].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Semantic.Fixed.html#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">Δ</span>) <span class="id" title="tactic">by</span> (<span class="id" title="var">gen_presups</span>; <span class="id" title="var">eassumption</span>).<br/>
@@ -275,7 +275,7 @@ Cumulativity of the gluing judgment, along the order of indices.
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#c89e33bdbed75848428cf76e1403e603"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#A:56"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#06cfb4a852f9f882889e4a44f0858cc1"><span class="id" title="notation">Type</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#06cfb4a852f9f882889e4a44f0858cc1"><span class="id" title="notation">ω@</span></a><a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#i:57"><span class="id" title="variable">i</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * ? <span class="id" title="var">Hbody</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">i</span>); [ <span class="id" title="var">mauto</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">glu_rel_exp_lvl</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">i</span>); [ <span class="id" title="var">mauto</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">edestruct</span> <span class="id" title="var">Hbody</span> <span class="id" title="keyword">as</span> [? [? [? []]]]; <span class="id" title="var">mauto</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
@@ -375,7 +375,7 @@ The small universe reads back as itself.
 </div>
 
 <div class="doc">
-<a id="lab731"></a><h2 class="section">The Rules</h2>
+<a id="lab732"></a><h2 class="section">The Rules</h2>
 
 </div>
 <div class="code">

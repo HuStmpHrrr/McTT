@@ -129,7 +129,7 @@ The sort of a glued level moves up: the readback equation does, by
 </div>
 
 <div class="doc">
-<a id="lab687"></a><h2 class="section">Cumulativity of an Element of a Small Universe</h2>
+<a id="lab688"></a><h2 class="section">Cumulativity of an Element of a Small Universe</h2>
 
 
 <div class="paragraph"> </div>
@@ -322,7 +322,7 @@ The same lemmas for <span class="inlinecode"><a class="idref" href="Mctt.Core.So
 </div>
 
 <div class="doc">
-<a id="lab688"></a><h2 class="section">The Elements of an Inductive Type</h2>
+<a id="lab689"></a><h2 class="section">The Elements of an Inductive Type</h2>
 
 </div>
 <div class="code">
@@ -392,7 +392,7 @@ A declared member's type at its parameters, and the position of a
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_member"><span class="id" title="definition">ind_member</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#D:106"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#k:107"><span class="id" title="variable">k</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Mk:108"><span class="id" title="variable">Mk</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_head"><span class="id" title="projection">im_head</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Mk:108"><span class="id" title="variable">Mk</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#mh_decl"><span class="id" title="constructor">mh_decl</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#pm:109"><span class="id" title="variable">pm</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#k:107"><span class="id" title="variable">k</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'&lt;'_x"><span class="id" title="notation">&lt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#ind_ndecl"><span class="id" title="definition">ind_ndecl</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#D:106"><span class="id" title="variable">D</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HΓ</span> <span class="id" title="var">Hl</span> <span class="id" title="var">HM</span> <span class="id" title="var">Hh</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#decl_of_lookup"><span class="id" title="lemma">decl_of_lookup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">Hl</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">HD</span> <span class="id" title="var">_</span>].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#dt_order"><span class="id" title="projection">dt_order</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HD</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HM</span>); <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_decl"><span class="id" title="definition">im_is_decl</span></a>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hh</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#decl_typed_order"><span class="id" title="projection">decl_typed_order</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HD</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HM</span>); <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_decl"><span class="id" title="definition">im_is_decl</span></a>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hh</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
@@ -1276,7 +1276,7 @@ The type at the parameters of a type predicate is the one at equal
 </div>
 
 <div class="doc">
-<a id="lab689"></a><h2 class="section">Record Types</h2>
+<a id="lab690"></a><h2 class="section">Record Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -2083,7 +2083,7 @@ The gluing of a universe at either tier, in one statement.
 </div>
 
 <div class="doc">
-<a id="lab690"></a><h3 class="section">Simple Morphism instance for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a></span></h3>
+<a id="lab691"></a><h3 class="section">Simple Morphism instance for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a></span></h3>
 
 </div>
 <div class="code">
@@ -2100,7 +2100,7 @@ The gluing of a universe at either tier, in one statement.
 </div>
 
 <div class="doc">
-<a id="lab691"></a><h3 class="section">Morphism instances for <span class="inlinecode"><span class="id" title="var">neut_glu_</span>*<span class="id" title="var">_pred</span></span>s</h3>
+<a id="lab692"></a><h3 class="section">Morphism instances for <span class="inlinecode"><span class="id" title="var">neut_glu_</span>*<span class="id" title="var">_pred</span></span>s</h3>
 
 </div>
 <div class="code">
@@ -2140,7 +2140,7 @@ The gluing of a universe at either tier, in one statement.
 </div>
 
 <div class="doc">
-<a id="lab692"></a><h3 class="section">Morphism instances for <span class="inlinecode"><span class="id" title="var">pi_glu_</span>*<span class="id" title="var">_pred</span></span>s</h3>
+<a id="lab693"></a><h3 class="section">Morphism instances for <span class="inlinecode"><span class="id" title="var">pi_glu_</span>*<span class="id" title="var">_pred</span></span>s</h3>
 
 </div>
 <div class="code">
@@ -2517,7 +2517,7 @@ The parameters of every member of a group at two related types of one
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Inductives.IndCanon.html#per_univ_elem_ind_canon"><span class="id" title="lemma">per_univ_elem_ind_canon</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">Hl</span> <span class="id" title="var">Hu</span> <span class="id" title="var">Hu'</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">Hass</span> <span class="id" title="var">Hps</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Inductives.IndCanon.html#per_univ_elem_ind_evals"><span class="id" title="lemma">per_univ_elem_ind_evals</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">Hl</span> <span class="id" title="var">Hu</span> <span class="id" title="var">Hu'</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">HevN</span> &amp; <span class="id" title="var">_</span> &amp; <span class="id" title="var">_</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hps</span> <span class="id" title="var">s</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">Ms1</span> &amp; <span class="id" title="var">HM1</span> &amp; <span class="id" title="var">HM1'</span>).<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hassn</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_ass"><span class="id" title="definition">tele_ass</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nparams"><span class="id" title="projection">im_nparams</span></a> <span class="id" title="var">Mj</span>))) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">apply</span> <span class="id" title="lemma">List.Forall_rev</span>; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#gta_nparams"><span class="id" title="projection">gta_nparams</span></a> <span class="id" title="var">_</span> <span class="id" title="var">Hass</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HMj</span>)).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hassn</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_ass"><span class="id" title="definition">tele_ass</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nparams"><span class="id" title="projection">im_nparams</span></a> <span class="id" title="var">Mj</span>))) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">apply</span> <span class="id" title="lemma">List.Forall_rev</span>; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#grp_tele_ass_nparams"><span class="id" title="projection">grp_tele_ass_nparams</span></a> <span class="id" title="var">_</span> <span class="id" title="var">Hass</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HMj</span>)).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_ps_tele"><span class="id" title="lemma">read_ps_tele</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nparams"><span class="id" title="projection">im_nparams</span></a> <span class="id" title="var">Mj</span>)) (<a class="idref" href="Mctt.Core.Semantic.Inductives.IndPER.html#canon_nparams_rel"><span class="id" title="definition">canon_nparams_rel</span></a> <span class="id" title="var">D</span> <span class="id" title="var">ups</span> <span class="id" title="var">j</span>) (<a class="idref" href="Mctt.Core.Semantic.Domain.html#env_args"><span class="id" title="definition">env_args</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">ups</span>) (<a class="idref" href="Mctt.Core.Semantic.Domain.html#env_args"><span class="id" title="definition">env_args</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">ups'</span>) <span class="id" title="var">Hassn</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">ltac</span>:(<span class="id" title="tactic">intros</span> <span class="id" title="var">j0</span> <span class="id" title="var">A</span> <span class="id" title="var">pre</span> <span class="id" title="var">pre'</span> <span class="id" title="var">Hj0</span> <span class="id" title="var">Hp</span>; <span class="id" title="tactic">rewrite</span> &lt;- !<a class="idref" href="Mctt.Core.Semantic.Domain.html#env_args_app"><span class="id" title="lemma">env_args_app</span></a>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">HevN</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HMj</span> <span class="id" title="var">Hj0</span> <span class="id" title="var">Hp</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">a</span> <span class="id" title="var">a'</span> <span class="id" title="var">Ea</span> <span class="id" title="var">Ea'</span> <span class="id" title="var">HRa</span>];<br/>
@@ -2762,7 +2762,7 @@ A small universe at a related level: the same realiser, and equivalent
 </div>
 
 <div class="doc">
-<a id="lab693"></a><h3 class="section">Morphism instances for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a></span></h3>
+<a id="lab694"></a><h3 class="section">Morphism instances for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a></span></h3>
 
 </div>
 <div class="code">
@@ -3333,7 +3333,7 @@ Transport along a context refinement, as in <span class="inlinecode"><a class="i
 </div>
 
 <div class="doc">
-<a id="lab694"></a><h3 class="section">Simple Morphism instance for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx_env"><span class="id" title="inductive">glu_ctx_env</span></a></span></h3>
+<a id="lab695"></a><h3 class="section">Simple Morphism instance for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx_env"><span class="id" title="inductive">glu_ctx_env</span></a></span></h3>
 
 </div>
 <div class="code">
@@ -3364,7 +3364,7 @@ Transport along a context refinement, as in <span class="inlinecode"><a class="i
 </div>
 
 <div class="doc">
-<a id="lab695"></a><h3 class="section">Gluing respects the element PER</h3>
+<a id="lab696"></a><h3 class="section">Gluing respects the element PER</h3>
 
 
 <div class="paragraph"> </div>

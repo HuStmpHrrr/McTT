@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab733"></a><h1 class="section">Commands</h1>
+<a id="lab734"></a><h1 class="section">Commands</h1>
 
 
 <div class="paragraph"> </div>
@@ -59,7 +59,7 @@
 <div class="doc">
 A group of inductive declarations as written (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_ind"><span class="id" title="constructor">cc_ind</span></a></span>): one type, or
     the types of a mutual block, in order.  The group's own uniform
-    parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#rd_uparams"><span class="id" title="projection">rd_uparams</span></a></span> (innermost first, over the enclosing frames'
+    parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#raw_decl_uparams"><span class="id" title="projection">raw_decl_uparams</span></a></span> (innermost first, over the enclosing frames'
     parameters) are shared; each member has its name, its non-uniform
     parameters (innermost first, over the uniform ones), its sort (over the
     uniform ones; the members' sorts are one) and its constructors, each
@@ -81,21 +81,21 @@ A group of inductive declarations as written (<span class="inlinecode"><a class=
 The member's name 
 </div>
 <div class="code">
-&nbsp;&nbsp;&nbsp;&nbsp;<a id="rm_name" class="idref" href="#rm_name"><span class="id" title="projection">rm_name</span></a> : <span class="id" title="inductive">string</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a id="raw_member_name" class="idref" href="#raw_member_name"><span class="id" title="projection">raw_member_name</span></a> : <span class="id" title="inductive">string</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 Its non-uniform parameters, innermost first 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rm_nparams" class="idref" href="#rm_nparams"><span class="id" title="projection">rm_nparams</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
+&nbsp;&nbsp;; <a id="raw_member_nparams" class="idref" href="#raw_member_nparams"><span class="id" title="projection">raw_member_nparams</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 Its sort, over the uniform parameters 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rm_sort" class="idref" href="#rm_sort"><span class="id" title="projection">rm_sort</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a><br/>
+&nbsp;&nbsp;; <a id="raw_member_sort" class="idref" href="#raw_member_sort"><span class="id" title="projection">raw_member_sort</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
@@ -103,7 +103,7 @@ Its constructors, each with its named arguments, outermost
         first 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rm_cons" class="idref" href="#rm_cons"><span class="id" title="projection">rm_cons</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>)) }.<br/>
+&nbsp;&nbsp;; <a id="raw_member_cons" class="idref" href="#raw_member_cons"><span class="id" title="projection">raw_member_cons</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>)) }.<br/>
 
 <br/>
 </div>
@@ -119,14 +119,14 @@ A group as written: see <span class="inlinecode"><a class="idref" href="Mctt.Cor
 The group's own uniform parameters, innermost first 
 </div>
 <div class="code">
-&nbsp;&nbsp;&nbsp;&nbsp;<a id="rd_uparams" class="idref" href="#rd_uparams"><span class="id" title="projection">rd_uparams</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a id="raw_decl_uparams" class="idref" href="#raw_decl_uparams"><span class="id" title="projection">raw_decl_uparams</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 The declared members, in order 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rd_members" class="idref" href="#rd_members"><span class="id" title="projection">rd_members</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#raw_member"><span class="id" title="record">raw_member</span></a><br/>
+&nbsp;&nbsp;; <a id="raw_decl_members" class="idref" href="#raw_decl_members"><span class="id" title="projection">raw_decl_members</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#raw_member"><span class="id" title="record">raw_member</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
@@ -134,7 +134,7 @@ Whether the group files the recursor module <span class="inlinecode"><span class
         a group declared by <span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> does 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rd_rec" class="idref" href="#rd_rec"><span class="id" title="projection">rd_rec</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> }.<br/>
+&nbsp;&nbsp;; <a id="raw_decl_rec_field" class="idref" href="#raw_decl_rec_field"><span class="id" title="projection">raw_decl_rec_field</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> }.<br/>
 
 <br/>
 </div>
@@ -155,35 +155,35 @@ A function of a <span class="inlinecode"><span class="id" title="var">mutual</sp
 The function's name 
 </div>
 <div class="code">
-&nbsp;&nbsp;&nbsp;&nbsp;<a id="rf_name" class="idref" href="#rf_name"><span class="id" title="projection">rf_name</span></a> : <span class="id" title="inductive">string</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a id="raw_fun_name" class="idref" href="#raw_fun_name"><span class="id" title="projection">raw_fun_name</span></a> : <span class="id" title="inductive">string</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 Its non-uniform parameters <span class="inlinecode"><span class="id" title="var">ys</span></span>, innermost first 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rf_nparams" class="idref" href="#rf_nparams"><span class="id" title="projection">rf_nparams</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
+&nbsp;&nbsp;; <a id="raw_fun_nparams" class="idref" href="#raw_fun_nparams"><span class="id" title="projection">raw_fun_nparams</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 The scrutinee's type, over <span class="inlinecode"><span class="id" title="var">ys</span></span> 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rf_scrut" class="idref" href="#rf_scrut"><span class="id" title="projection">rf_scrut</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a><br/>
+&nbsp;&nbsp;; <a id="raw_fun_scrut" class="idref" href="#raw_fun_scrut"><span class="id" title="projection">raw_fun_scrut</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 The result type, over the scrutinee and <span class="inlinecode"><span class="id" title="var">ys</span></span> 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rf_res" class="idref" href="#rf_res"><span class="id" title="projection">rf_res</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a><br/>
+&nbsp;&nbsp;; <a id="raw_fun_res" class="idref" href="#raw_fun_res"><span class="id" title="projection">raw_fun_res</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
 The clauses: constructor name, number of binders, body 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="rf_clauses" class="idref" href="#rf_clauses"><span class="id" title="projection">rf_clauses</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) }.<br/>
+&nbsp;&nbsp;; <a id="raw_fun_clauses" class="idref" href="#raw_fun_clauses"><span class="id" title="projection">raw_fun_clauses</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) }.<br/>
 
 <br/>
 </div>

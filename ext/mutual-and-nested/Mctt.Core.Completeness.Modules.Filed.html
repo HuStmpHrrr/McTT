@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab174"></a><h1 class="section">Filed Modules in the PER Model</h1>
+<a id="lab175"></a><h1 class="section">Filed Modules in the PER Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -80,7 +80,7 @@
 </div>
 
 <div class="doc">
-<a id="lab175"></a><h2 class="section">Global Module Values</h2>
+<a id="lab176"></a><h2 class="section">Global Module Values</h2>
 
 <div class="paragraph"> </div>
 
@@ -147,7 +147,7 @@
 </div>
 
 <div class="doc">
-<a id="lab176"></a><h2 class="section">Instances of Closed Telescopes</h2>
+<a id="lab177"></a><h2 class="section">Instances of Closed Telescopes</h2>
 
 </div>
 <div class="code">
@@ -259,7 +259,7 @@ Arguments valid at a closed telescope make environments of it, at
 </div>
 
 <div class="doc">
-<a id="lab177"></a><h2 class="section">Members of Global Modules</h2>
+<a id="lab178"></a><h2 class="section">Members of Global Modules</h2>
 
 <div class="paragraph"> </div>
 
@@ -440,7 +440,7 @@ The arguments of a filed module valid against its telescope are related
 </div>
 
 <div class="doc">
-<a id="lab178"></a><h2 class="section">Terms Evaluating Alike</h2>
+<a id="lab179"></a><h2 class="section">Terms Evaluating Alike</h2>
 
 </div>
 <div class="code">
@@ -497,7 +497,7 @@ A member of a filed module at arguments is the member of the module
 </div>
 
 <div class="doc">
-<a id="lab179"></a><h2 class="section">Filed Modules</h2>
+<a id="lab180"></a><h2 class="section">Filed Modules</h2>
 
 </div>
 <div class="code">
@@ -747,7 +747,7 @@ The term members of a filed module at arguments valid against its
 &nbsp;&nbsp;{ <span class="id" title="tactic">constructor</span>; [ <span class="id" title="tactic">exists</span> <span class="id" title="var">iX</span>; <span class="id" title="tactic">exact</span> <span class="id" title="var">HXΓ</span> | <span class="id" title="tactic">discriminate</span> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">RΓ</span> <span class="id" title="var">HR</span> ρ <span class="id" title="var">H</span>ρ.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hpt</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> (<span class="id" title="var">ns</span> &amp; <span class="id" title="var">a</span> &amp; <span class="id" title="var">RX</span> &amp; <span class="id" title="var">Hns</span> &amp; <span class="id" title="var">Ha1</span> &amp; <span class="id" title="var">Haa</span> &amp; <span class="id" title="var">Hmt</span> &amp; <span class="id" title="var">_</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">vma_mod</span> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_global"><span class="id" title="constructor">dm_global</span></a> <span class="id" title="var">p</span> <span class="id" title="var">ns</span>) (<span class="id" title="var">vma_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">vma_lvl</span> := <span class="id" title="var">iX</span>) (<span class="id" title="var">vma_rel</span> := <span class="id" title="var">RX</span>); <span class="id" title="tactic">try</span> <span class="id" title="tactic">assumption</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">valid_mem_at_mod</span> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_global"><span class="id" title="constructor">dm_global</span></a> <span class="id" title="var">p</span> <span class="id" title="var">ns</span>) (<span class="id" title="var">valid_mem_at_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">valid_mem_at_lvl</span> := <span class="id" title="var">iX</span>) (<span class="id" title="var">valid_mem_at_rel</span> := <span class="id" title="var">RX</span>); <span class="id" title="tactic">try</span> <span class="id" title="tactic">assumption</span>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Filed.html#eval_apps_filed"><span class="id" title="lemma">eval_apps_filed</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hl</span> <span class="id" title="var">Hns</span>) | <span class="id" title="tactic">discriminate</span> ]. }<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">HredR1</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HredR1</span> | (<span class="id" title="var">M1</span> &amp; <span class="id" title="var">HredR1</span> &amp; <span class="id" title="var">HM1</span> &amp; <span class="id" title="var">HevM1</span>)].<br/>
 &nbsp;&nbsp;2:{ <span class="comment">(*&nbsp;a&nbsp;reduct:&nbsp;a&nbsp;term&nbsp;over&nbsp;the&nbsp;outer&nbsp;parameters,&nbsp;instantiated&nbsp;*)</span><br/>
@@ -757,7 +757,7 @@ The term members of a filed module at arguments valid against its
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Instance.html#rel_exp_under_ctx_gsub"><span class="id" title="lemma">rel_exp_under_ctx_gsub</span></a> <span class="id" title="var">Hg</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#closed_app_valid"><span class="id" title="lemma">closed_app_valid</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HTa2</span> <span class="id" title="var">HT2</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">HM1</span>)).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> <span class="id" title="var">RΓ</span> <span class="id" title="var">HR</span> ρ <span class="id" title="var">H</span>ρ.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hpt</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> (<span class="id" title="var">ns</span> &amp; <span class="id" title="var">a</span> &amp; <span class="id" title="var">RX</span> &amp; <span class="id" title="var">Hns</span> &amp; <span class="id" title="var">Ha1</span> &amp; <span class="id" title="var">Haa</span> &amp; <span class="id" title="var">Hmt</span> &amp; <span class="id" title="var">_</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">vma_mod</span> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_global"><span class="id" title="constructor">dm_global</span></a> <span class="id" title="var">p</span> <span class="id" title="var">ns</span>) (<span class="id" title="var">vma_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">vma_lvl</span> := <span class="id" title="var">iX</span>) (<span class="id" title="var">vma_rel</span> := <span class="id" title="var">RX</span>);<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">valid_mem_at_mod</span> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_global"><span class="id" title="constructor">dm_global</span></a> <span class="id" title="var">p</span> <span class="id" title="var">ns</span>) (<span class="id" title="var">valid_mem_at_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">valid_mem_at_lvl</span> := <span class="id" title="var">iX</span>) (<span class="id" title="var">valid_mem_at_rel</span> := <span class="id" title="var">RX</span>);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Filed.html#eval_apps_filed"><span class="id" title="lemma">eval_apps_filed</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hl</span> <span class="id" title="var">Hns</span>) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Ha1</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Haa</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hmt</span> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">M</span> <span class="id" title="var">HM</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">HM</span> <span class="id" title="keyword">as</span> &lt;-.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Filed.html#closed_inst_exp"><span class="id" title="lemma">closed_inst_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HTa2</span> <span class="id" title="var">HT2</span> <span class="id" title="var">HΓ</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq_sym"><span class="id" title="definition">eq_sym</span></a> <span class="id" title="var">Hlen</span>) <span class="id" title="var">HNs</span> <span class="id" title="var">HM1</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ)<br/>
@@ -783,7 +783,7 @@ The term members of a filed module at arguments valid against its
 &nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> <span class="id" title="var">M</span> <span class="id" title="var">HM</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">HM</span> <span class="id" title="keyword">as</span> &lt;-; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Filed.html#valid_exp_eval_iff"><span class="id" title="lemma">valid_exp_eval_iff</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HKx</span> <span class="id" title="var">Hiff</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> <span class="id" title="var">RΓ</span> <span class="id" title="var">HR</span> ρ <span class="id" title="var">H</span>ρ.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hpt</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> (<span class="id" title="var">ns</span> &amp; <span class="id" title="var">a</span> &amp; <span class="id" title="var">RX</span> &amp; <span class="id" title="var">Hns</span> &amp; <span class="id" title="var">Ha1</span> &amp; <span class="id" title="var">Haa</span> &amp; <span class="id" title="var">Hmt</span> &amp; <span class="id" title="var">Hkk</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">vma_mod</span> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_global"><span class="id" title="constructor">dm_global</span></a> <span class="id" title="var">p</span> <span class="id" title="var">ns</span>) (<span class="id" title="var">vma_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">vma_lvl</span> := <span class="id" title="var">iX</span>) (<span class="id" title="var">vma_rel</span> := <span class="id" title="var">RX</span>);<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">valid_mem_at_mod</span> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_global"><span class="id" title="constructor">dm_global</span></a> <span class="id" title="var">p</span> <span class="id" title="var">ns</span>) (<span class="id" title="var">valid_mem_at_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">valid_mem_at_lvl</span> := <span class="id" title="var">iX</span>) (<span class="id" title="var">valid_mem_at_rel</span> := <span class="id" title="var">RX</span>);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Filed.html#eval_apps_filed"><span class="id" title="lemma">eval_apps_filed</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hl</span> <span class="id" title="var">Hns</span>) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Ha1</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Haa</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hmt</span> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">M</span> <span class="id" title="var">HM</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">HM</span> <span class="id" title="keyword">as</span> &lt;-.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hmt</span> <span class="id" title="var">_</span> <span class="id" title="var">Hkk</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">r</span> <span class="id" title="var">r'</span> <span class="id" title="var">Hr</span> <span class="id" title="var">Hr'</span> <span class="id" title="var">Hrr</span>].<br/>

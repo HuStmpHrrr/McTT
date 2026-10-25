@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab666"></a><h1 class="section">Local Definitions in the Gluing Model</h1>
+<a id="lab667"></a><h1 class="section">Local Definitions in the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -115,7 +115,7 @@
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5c4f10e5d28c751a6e924af1a16469a5"><span class="id" title="notation">EG</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#101fc5f6f77189be8e749d7f39ef80d4"><span class="id" title="notation">▸</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#101fc5f6f77189be8e749d7f39ef80d4"><span class="id" title="notation">≔</span></a> <span class="id" title="var">M</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5c4f10e5d28c751a6e924af1a16469a5"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx_env"><span class="id" title="inductive">glu_ctx_env</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5c4f10e5d28c751a6e924af1a16469a5"><span class="id" title="notation">↘</span></a> <span class="id" title="var">SbΓA</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">econstructor</span>; <span class="id" title="var">mauto</span> 3; <span class="id" title="tactic">reflexivity</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HB</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">exists</span></a> <a id="3b306e63dd62a9093b3adac569d8c13e" class="idref" href="#3b306e63dd62a9093b3adac569d8c13e"><span class="id" title="binder"><span id="4a32feff51f010606330e2476f75845d" class="id">env_relΓ</span></span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">EF</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">≈</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env"><span class="id" title="inductive">per_ctx_env</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Core.Soundness.LetCases.html#3b306e63dd62a9093b3adac569d8c13e"><span class="id" title="variable">env_relΓ</span></a>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> <span class="id" title="var">HΓ</span>] <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := <span class="id" title="var">k</span>); [ <span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">glu_rel_exp_lvl</span> := <span class="id" title="var">k</span>); [ <span class="id" title="var">eassumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">HSb</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 2.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
@@ -176,7 +176,7 @@
 </div>
 
 <div class="doc">
-<a id="lab667"></a><h2 class="section">The Rules</h2>
+<a id="lab668"></a><h2 class="section">The Rules</h2>
 
 </div>
 <div class="code">
