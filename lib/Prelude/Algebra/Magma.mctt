@@ -15,18 +15,18 @@
    [meetIsSemilattice : IsSemilattice A eq meet] and
    [joinIsSemilattice : IsSemilattice A eq join], so the carrier is shared
    by construction.  The inherited laws are forwarded, in the with-areas,
-   by [open … export].  The levels [c] and [r] are those of the carrier
-   and of the relation, [Prelude›Algebra›Setoid].
+   by [open … export].  The level [l] is that of the carrier and of the
+   relation, [Prelude›Algebra›Setoid].
 
    Under Leibniz equality every operation is a congruence, so
    [Prelude›Algebra›Leibniz.idIsMagma A op] fills the bottom predicate of a
    Leibniz instance in one line. *)
-module Prelude›Algebra›Magma (c : Level) (r : Level) where
+module Prelude›Algebra›Magma (l : Level) where
 
-import Prelude›Algebra›Setoid c r use (IsEquivalence; Setoid)
+import Prelude›Algebra›Setoid l use (IsEquivalence; Setoid)
 
-record IsMagma (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
-    (op : ∀ (x : A) (y : A) → A) : Type@{maxl c r} where
+record IsMagma (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
+    (op : ∀ (x : A) (y : A) → A) : Type@{l} where
   isEquivalence : IsEquivalence A eq;
   opCong : ∀ (a : A) (b : A) (c : A) (d : A) (hac : eq a c) (hbd : eq b d) →
     eq (op a b) (op c d)
@@ -34,9 +34,9 @@ with
   open isEquivalence export (refl; sym; trans)
 end
 
-record Magma : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Magma : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   op : ∀ (x : carrier) (y : carrier) → carrier;
   isMagma : IsMagma carrier eq op
 with

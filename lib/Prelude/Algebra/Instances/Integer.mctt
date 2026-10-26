@@ -1,6 +1,6 @@
 (* The integers of [Prelude›Data›Integer] as instances of the structures
-   of [Prelude›Algebra], up to Leibniz equality, at the levels [0l] and
-   [1l]: an abelian group under addition ([additive]) and a commutative
+   of [Prelude›Algebra], up to Leibniz equality, at the level [1l]: an
+   abelian group under addition ([additive]) and a commutative
    monoid under multiplication ([multiplicative]).  The laws are those of
    [Prelude›Data›Integer›Properties], already Leibniz equalities.  The
    ring of both needs distributivity, which that unit does not prove
@@ -17,12 +17,12 @@ open Prelude›Data›Integer›Properties.Add
 open Prelude›Data›Integer›Properties.Mul
   use (mulComm; mulIdentityLeft; mulIdentityRight; mulAssoc)
 import Prelude›Algebra›Leibniz 0l use (idIsMagma)
-import Prelude›Algebra›Semigroup 0l 1l use (IsSemigroup)
-import Prelude›Algebra›Monoid 0l 1l use (IsMonoid)
-import Prelude›Algebra›CommutativeMonoid 0l 1l
+import Prelude›Algebra›Semigroup 1l use (IsSemigroup)
+import Prelude›Algebra›Monoid 1l use (IsMonoid)
+import Prelude›Algebra›CommutativeMonoid 1l
   use (IsCommutativeMonoid; CommutativeMonoid)
-import Prelude›Algebra›Group 0l 1l use (IsGroup)
-import Prelude›Algebra›AbelianGroup 0l 1l use (IsAbelianGroup; AbelianGroup)
+import Prelude›Algebra›Group 1l use (IsGroup)
+import Prelude›Algebra›AbelianGroup 1l use (IsAbelianGroup; AbelianGroup)
 
 def additive : AbelianGroup ≔
   record AbelianGroup where

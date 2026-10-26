@@ -2,21 +2,21 @@
    structures of [Prelude›Algebra]: it is an equivalence
    ([idIsEquivalence]) and every operation respects it ([idIsMagma]), so a
    Leibniz instance fills its bottom predicate in one line.  The equality
-   [Id A] of a type of [Type@{c}] lives in [Type@{succl c}], so these are
-   predicates at the levels [c] and [succl c]. *)
-module Prelude›Algebra›Leibniz (c : Level) where
+   [Id A] of a type of [Type@{u}] lives in [Type@{succl u}], so these are
+   predicates at the level [succl u], where [A] is by cumulativity. *)
+module Prelude›Algebra›Leibniz (u : Level) where
 
-import Prelude›Logic›Leibniz c use (Id; idRefl; idSym; idTrans; idCongTwo)
-import Prelude›Algebra›Setoid c (succl c) use (IsEquivalence)
-import Prelude›Algebra›Magma c (succl c) use (IsMagma)
+import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCongTwo)
+import Prelude›Algebra›Setoid (succl u) use (IsEquivalence)
+import Prelude›Algebra›Magma (succl u) use (IsMagma)
 
-def idIsEquivalence (A : Type@{c}) : IsEquivalence A (Id A) ≔
+def idIsEquivalence (A : Type@{u}) : IsEquivalence A (Id A) ≔
   record IsEquivalence A (Id A) where
     refl ≔ idRefl A; sym ≔ idSym A; trans ≔ idTrans A
   end
 end
 
-def idIsMagma (A : Type@{c}) (op : ∀ (x : A) (y : A) → A) : IsMagma A (Id A) op ≔
+def idIsMagma (A : Type@{u}) (op : ∀ (x : A) (y : A) → A) : IsMagma A (Id A) op ≔
   record IsMagma A (Id A) op where
     isEquivalence ≔ idIsEquivalence A;
     opCong ≔ λ (w : A) (x : A) (y : A) (z : A) (hwy : Id A w y) (hxz : Id A x z) →

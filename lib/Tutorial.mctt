@@ -638,9 +638,9 @@ eval Fields.first
    a carrier, the relation, the operations and the predicate, and its
    with-area forwards the laws, [M.assoc], with [open … export]. A
    function over every monoid takes the bundle as an argument and selects
-   its members; the two levels of a monoid are those of its carrier and of
-   its relation. *)
-import Prelude›Algebra›Monoid 0l 0l use (Monoid)
+   its members; the level of a monoid is that of its carrier and of its
+   relation. *)
+import Prelude›Algebra›Monoid 0l use (Monoid)
 import Prelude›Algebra›Instances›Nat as NatAlgebra
 import Prelude›Algebra›Instances›Endo›Pointwise use (pointwise)
 
@@ -659,7 +659,7 @@ eval NatAlgebra.additive.comm 2 3
 (* The laws derived once for every monoid are a unit over the monoid:
    [pow] and [powPlus] at the multiplicative monoid are powers of
    numbers. *)
-import Prelude›Algebra›Monoid›Properties 0l 0l NatAlgebra.multiplicative.monoid
+import Prelude›Algebra›Monoid›Properties 0l NatAlgebra.multiplicative.monoid
   as Times
 
 eval Times.pow 3 4

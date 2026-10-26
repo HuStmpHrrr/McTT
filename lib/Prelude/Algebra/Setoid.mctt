@@ -6,24 +6,26 @@
    and so is the Leibniz equality of [Prelude›Logic›Leibniz], through
    [Prelude›Algebra›Leibniz].
 
-   Each unit of the hierarchy takes two levels: [c], of the carrier, and
-   [r], of the relation, [eq : A → A → Type@{r}].  The equality of numbers
-   [Eq] and the relation [Same] of [Prelude›Algebra›Integers] are at
-   [r = c]; the Leibniz equality of a type of [Type@{c}] lives one level
-   up, at [r = succl c].  A predicate lives in [Type@{maxl c r}] and a
-   bundle in [Type@{succl (maxl c r)}]. *)
-module Prelude›Algebra›Setoid (c : Level) (r : Level) where
+   Each unit of the hierarchy takes one level [l], of both the carrier,
+   [A : Type@{l}], and the relation, [eq : A → A → Type@{l}].  A carrier
+   and a relation at different levels are both at the larger one, by
+   cumulativity.  The equality of numbers [Eq] and the relation [Same] of
+   [Prelude›Algebra›Integers] are at the level of their carrier, [0l]; the
+   Leibniz equality of a type of [Type@{u}] lives one level up, so a
+   Leibniz instance is at [succl u], where the carrier is too.  A
+   predicate lives in [Type@{l}] and a bundle in [Type@{succl l}]. *)
+module Prelude›Algebra›Setoid (l : Level) where
 
-record IsEquivalence (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r}) :
-    Type@{maxl c r} where
+record IsEquivalence (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l}) :
+    Type@{l} where
   refl : ∀ (x : A) → eq x x;
   sym : ∀ (x : A) (y : A) (h : eq x y) → eq y x;
   trans : ∀ (x : A) (y : A) (z : A) (hxy : eq x y) (hyz : eq y z) → eq x z
 end
 
-record Setoid : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Setoid : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   isEquivalence : IsEquivalence carrier eq
 with
   open isEquivalence export (refl; sym; trans)

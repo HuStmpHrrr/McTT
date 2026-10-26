@@ -4,22 +4,22 @@
    with-area forwards the laws of both operations, under the names
    [meetAssoc] … [joinIdem], and gives their semilattices,
    [L.meetSemilattice] and [L.joinSemilattice]. *)
-module Prelude›Algebra›Lattice (c : Level) (r : Level) where
+module Prelude›Algebra›Lattice (l : Level) where
 
-import Prelude›Algebra›Semilattice c r use (IsSemilattice; Semilattice)
+import Prelude›Algebra›Semilattice l use (IsSemilattice; Semilattice)
 
-record IsLattice (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+record IsLattice (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
     (meet : ∀ (x : A) (y : A) → A) (join : ∀ (x : A) (y : A) → A) :
-    Type@{maxl c r} where
+    Type@{l} where
   meetIsSemilattice : IsSemilattice A eq meet;
   joinIsSemilattice : IsSemilattice A eq join;
   absorbMeet : ∀ (x : A) (y : A) → eq (meet x (join x y)) x;
   absorbJoin : ∀ (x : A) (y : A) → eq (join x (meet x y)) x
 end
 
-record Lattice : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Lattice : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   meet : ∀ (x : carrier) (y : carrier) → carrier;
   join : ∀ (x : carrier) (y : carrier) → carrier;
   isLattice : IsLattice carrier eq meet join

@@ -5,8 +5,8 @@
    [Prelude›Algebra›Semilattice›Properties] at [L.meetSemilattice] and at
    [L.joinSemilattice]. *)
 import Prelude›Algebra›Lattice
-module Prelude›Algebra›Lattice›Properties (c : Level) (r : Level)
-    (L : Prelude›Algebra›Lattice.Lattice c r) where
+module Prelude›Algebra›Lattice›Properties (l : Level)
+    (L : Prelude›Algebra›Lattice.Lattice l) where
 
 open L
   use (carrier as C; eq; meet; join; refl; sym; trans; meetCong; joinCong;

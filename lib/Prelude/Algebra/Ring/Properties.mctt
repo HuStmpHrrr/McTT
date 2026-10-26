@@ -3,10 +3,10 @@
    [(-x) y] is the inverse of [x y] since their sum is [(x + (-x)) y], that
    is [0 y], which is [0]. *)
 import Prelude›Algebra›Ring
-module Prelude›Algebra›Ring›Properties (c : Level) (r : Level)
-    (R : Prelude›Algebra›Ring.Ring c r) where
+module Prelude›Algebra›Ring›Properties (l : Level)
+    (R : Prelude›Algebra›Ring.Ring l) where
 
-import Prelude›Algebra›Group›Properties c r R.additiveGroup.group as Additive
+import Prelude›Algebra›Group›Properties l R.additiveGroup.group as Additive
 
 open R
   use (carrier as C; eq; plus; mul; zero; one; neg; refl; sym; trans;

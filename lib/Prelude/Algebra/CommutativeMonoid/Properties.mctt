@@ -5,10 +5,10 @@
    [Prelude›Algebra›Monoid›Properties] at [M.monoid]; [Base] is that
    unit here. *)
 import Prelude›Algebra›CommutativeMonoid
-module Prelude›Algebra›CommutativeMonoid›Properties (c : Level) (r : Level)
-    (M : Prelude›Algebra›CommutativeMonoid.CommutativeMonoid c r) where
+module Prelude›Algebra›CommutativeMonoid›Properties (l : Level)
+    (M : Prelude›Algebra›CommutativeMonoid.CommutativeMonoid l) where
 
-import Prelude›Algebra›Monoid›Properties c r M.monoid as Base
+import Prelude›Algebra›Monoid›Properties l M.monoid as Base
 open Base use (pow)
 open Base.Cong use (congLeft; congRight; assocBack)
 

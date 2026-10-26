@@ -1,6 +1,6 @@
 (* The functions from [A] to itself under composition, with the identity
    as the neutral element: the endomorphism monoid of [A], [endo], up to
-   Leibniz equality, at the levels [u] and [succl u].  Every law holds by
+   Leibniz equality, at the level [succl u].  Every law holds by
    computation and eta for functions, so each is [idRefl]: [compose f id]
    is [λ x → f x], which is [f].
 
@@ -11,8 +11,8 @@ module Prelude›Algebra›Instances›Endo (u : Level) (A : Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl)
 import Prelude›Algebra›Leibniz u use (idIsMagma)
-import Prelude›Algebra›Semigroup u (succl u) use (IsSemigroup)
-import Prelude›Algebra›Monoid u (succl u) use (IsMonoid; Monoid)
+import Prelude›Algebra›Semigroup (succl u) use (IsSemigroup)
+import Prelude›Algebra›Monoid (succl u) use (IsMonoid; Monoid)
 
 def Endo : Type@{u} ≔ ∀ (a : A) → A end
 

@@ -3,11 +3,11 @@
    homomorphism from [A] to itself.  The laws of every group are
    [Prelude›Algebra›Group›Properties] at [A.group]. *)
 import Prelude›Algebra›AbelianGroup
-module Prelude›Algebra›AbelianGroup›Properties (c : Level) (r : Level)
-    (A : Prelude›Algebra›AbelianGroup.AbelianGroup c r) where
+module Prelude›Algebra›AbelianGroup›Properties (l : Level)
+    (A : Prelude›Algebra›AbelianGroup.AbelianGroup l) where
 
-import Prelude›Algebra›Group›Properties c r A.group as GP
-import Prelude›Algebra›Group›Hom c r use (Hom)
+import Prelude›Algebra›Group›Properties l A.group as GP
+import Prelude›Algebra›Group›Hom l use (Hom)
 
 open A use (carrier as C)
 

@@ -5,10 +5,10 @@
 
    A structure is a record value, so it is passed to a function like any
    other argument, and its members are selected through it: [M.op],
-   [M.e], [R.additiveGroup].  A monoid's levels are those of its carrier
-   and of its relation: the numbers, compared by [Eq], are at [0l] and
-   [0l]; the booleans, lists and functions, compared by Leibniz equality,
-   at [0l] and [1l]. *)
+   [M.e], [R.additiveGroup].  A monoid has one level, of its carrier and
+   of its relation: the numbers, compared by [Eq], are at [0l]; the
+   booleans, lists and functions, compared by Leibniz equality, which
+   lives one level up, are at [1l]. *)
 module Hierarchy where
 
 import Prelude›Builtin›Nat use (succ)
@@ -26,61 +26,62 @@ import Prelude›Algebra›Instances›Bool use (conjunction; disjunction; ring)
 import Prelude›Algebra›Instances›List 0l ℕ use (freeMonoid)
 import Prelude›Algebra›Instances›Endo 0l ℕ use (Endo; endo)
 import Prelude›Algebra›Instances›Integer as Integer
-import Prelude›Algebra›Monoid›Hom 0l 0l as MH
+import Prelude›Algebra›Monoid›Hom 0l as MH
 
-(* Every element of a list, combined in a monoid [M] of any levels, from
-   the right: [concat c r M (cons a (cons b nil))] is
-   [M.op a (M.op b M.e)]. *)
-def concat (c : Level) (r : Level) (M : Prelude›Algebra›Monoid.Monoid c r)
-    (l : List c M.carrier) : M.carrier ≔
+(* Every element of a list, combined in a monoid [M] of any level, from
+   the right: [concat u M (cons a (cons b nil))] is
+   [M.op a (M.op b M.e)].  The list is at the level [u] of the monoid. *)
+def concat (u : Level) (M : Prelude›Algebra›Monoid.Monoid u)
+    (l : List u M.carrier) : M.carrier ≔
   elim l at z → M.carrier
   | nil ⇒ M.e
   | cons x xs, r ⇒ M.op x r
   end
 end
 
-(* Lists of numbers, booleans and functions. *)
+(* Lists of numbers, booleans and functions; those of booleans and of
+   functions are at [1l], the level of their monoids. *)
 inductive NatList ≔ List 0l ℕ
 
 def oneTwoThree : NatList ≔
   NatList.cons 1 (NatList.cons 2 (NatList.cons 3 NatList.nil))
 end
 
-def bools : List 0l Bool ≔
-  List.cons 0l Bool tt (List.cons 0l Bool ff (List.nil 0l Bool))
+def bools : List 1l Bool ≔
+  List.cons 1l Bool tt (List.cons 1l Bool ff (List.nil 1l Bool))
 end
 
 (* 1. One function, several monoids. *)
-eval concat 0l 0l additive.monoid oneTwoThree
+eval concat 0l additive.monoid oneTwoThree
 
-eval concat 0l 0l multiplicative.monoid oneTwoThree
+eval concat 0l multiplicative.monoid oneTwoThree
 
-eval concat 0l 1l conjunction.monoid bools
+eval concat 1l conjunction.monoid bools
 
-eval concat 0l 1l disjunction.monoid bools
+eval concat 1l disjunction.monoid bools
 
 (* In the free monoid, [concat] flattens a list of lists. *)
-eval concat 0l 1l freeMonoid
-       (List.cons 0l NatList oneTwoThree (List.cons 0l NatList oneTwoThree
-          (List.nil 0l NatList)))
+eval concat 1l freeMonoid
+       (List.cons 1l NatList oneTwoThree (List.cons 1l NatList oneTwoThree
+          (List.nil 1l NatList)))
 
 (* In the endomorphism monoid, [concat] composes: three successors. *)
-eval concat 0l 1l endo (List.cons 0l Endo succ (List.cons 0l Endo succ
-       (List.cons 0l Endo succ (List.nil 0l Endo)))) 4
+eval concat 1l endo (List.cons 1l Endo succ (List.cons 1l Endo succ
+       (List.cons 1l Endo succ (List.nil 1l Endo)))) 4
 
 (* Pairs of numbers, added in the first component and multiplied in the
    second. *)
-import Prelude›Algebra›Instances›Product 0l 0l additive.monoid
+import Prelude›Algebra›Instances›Product 0l additive.monoid
   multiplicative.monoid as Both
 
-eval concat 0l 0l Both.product
+eval concat 0l Both.product
        (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 2 3)
           (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 4 5)
              (List.nil 0l (Prod 0l ℕ ℕ))))
 
 (* 2. Derived laws, at instances.  The powers of the multiplicative monoid
    are the powers of numbers. *)
-import Prelude›Algebra›Monoid›Properties 0l 0l multiplicative.monoid as Times
+import Prelude›Algebra›Monoid›Properties 0l multiplicative.monoid as Times
 
 eval Times.pow 2 5
 
@@ -91,7 +92,7 @@ theorem twoPowFive : Eq (Times.pow 2 (plus 2 3))
 end
 
 (* The integers form a group; [invOp] computes the negative of a sum. *)
-import Prelude›Algebra›Group›Properties 0l 1l Integer.additive.group as IntGroup
+import Prelude›Algebra›Group›Properties 1l Integer.additive.group as IntGroup
 
 eval Integer.additive.inv (add (pos 2) (negsuc 4))
 
@@ -103,9 +104,9 @@ end
 (* The order of the [min]-semilattice of numbers: [Le 2 5] is
    [Eq (min 2 5) 2], which computes to [⊤], and in the lattice it gives
    [max 2 5 = 5]. *)
-import Prelude›Algebra›Semilattice›Properties 0l 0l minMax.meetSemilattice
+import Prelude›Algebra›Semilattice›Properties 0l minMax.meetSemilattice
   as MinOrder
-import Prelude›Algebra›Lattice›Properties 0l 0l minMax as MinMax
+import Prelude›Algebra›Lattice›Properties 0l minMax as MinMax
 
 def twoLeFive : MinOrder.Le 2 5 ≔ ⋆ end
 
@@ -116,7 +117,7 @@ end
 eval minMax.join 2 5
 
 (* The boolean ring: [(-a) (-b)] is [a b], and [-1] is [tt]. *)
-import Prelude›Algebra›Ring›Properties 0l 1l ring as BoolRing
+import Prelude›Algebra›Ring›Properties 1l ring as BoolRing
 
 theorem negMulNegTT :
     Id Bool (ring.mul (ring.neg tt) (ring.neg tt)) (ring.mul tt tt) ≔
@@ -130,8 +131,8 @@ eval ring.mul (ring.neg ring.one) tt
 (* 3. Homomorphisms.  The first projection of pairs is a homomorphism of
    monoids, so it takes powers to powers: the first component of the
    cube of [(2, 3)] is the triple sum of [2]. *)
-import Prelude›Algebra›Monoid›Properties 0l 0l Both.product as Pairs
-import Prelude›Algebra›Monoid›Properties 0l 0l additive.monoid as Plus
+import Prelude›Algebra›Monoid›Properties 0l Both.product as Pairs
+import Prelude›Algebra›Monoid›Properties 0l additive.monoid as Plus
 
 eval Pairs.pow (pair 0l ℕ ℕ 2 3) 3
 

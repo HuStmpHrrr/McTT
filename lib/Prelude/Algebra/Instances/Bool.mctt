@@ -1,5 +1,5 @@
 (* The booleans as instances of the structures of [Prelude›Algebra], up to
-   Leibniz equality, at the levels [0l] and [1l]: commutative monoids under
+   Leibniz equality, at the level [1l]: commutative monoids under
    [and] with [tt] ([conjunction]) and under [or] with [ff] ([disjunction]),
    the lattice of [and] and [or] ([andOr]), and the boolean ring of [xor]
    and [and] ([ring]), in which every element is its own negative.  The
@@ -21,14 +21,14 @@ open Prelude›Data›Bool›Properties.Xor
   use (xorIdentityRight; xorSelf; xorComm; xorAssoc; andXorDistribLeft;
        andXorDistribRight)
 import Prelude›Algebra›Leibniz 0l use (idIsMagma)
-import Prelude›Algebra›Semigroup 0l 1l use (IsSemigroup)
-import Prelude›Algebra›Monoid 0l 1l use (IsMonoid)
-import Prelude›Algebra›CommutativeMonoid 0l 1l
+import Prelude›Algebra›Semigroup 1l use (IsSemigroup)
+import Prelude›Algebra›Monoid 1l use (IsMonoid)
+import Prelude›Algebra›CommutativeMonoid 1l
   use (IsCommutativeMonoid; CommutativeMonoid)
-import Prelude›Algebra›Semilattice 0l 1l use (IsSemilattice)
-import Prelude›Algebra›Lattice 0l 1l use (IsLattice; Lattice)
-import Prelude›Algebra›Semiring 0l 1l use (IsSemiring)
-import Prelude›Algebra›Ring 0l 1l use (IsRing; Ring)
+import Prelude›Algebra›Semilattice 1l use (IsSemilattice)
+import Prelude›Algebra›Lattice 1l use (IsLattice; Lattice)
+import Prelude›Algebra›Semiring 1l use (IsSemiring)
+import Prelude›Algebra›Ring 1l use (IsRing; Ring)
 
 (* An associative operation on booleans. *)
 private def semigroupOf (op : ∀ (a : Bool) (b : Bool) → Bool)

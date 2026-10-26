@@ -6,15 +6,15 @@
    in its own predicate.  The bundle's with-area forwards the laws, under
    the names [plusAssoc] … [mulRightId], and gives the two monoids,
    [S.additiveMonoid] and [S.multiplicativeMonoid]. *)
-module Prelude›Algebra›Semiring (c : Level) (r : Level) where
+module Prelude›Algebra›Semiring (l : Level) where
 
-import Prelude›Algebra›Monoid c r use (IsMonoid; Monoid)
-import Prelude›Algebra›CommutativeMonoid c r
+import Prelude›Algebra›Monoid l use (IsMonoid; Monoid)
+import Prelude›Algebra›CommutativeMonoid l
   use (IsCommutativeMonoid; CommutativeMonoid)
 
-record IsSemiring (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+record IsSemiring (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
     (plus : ∀ (x : A) (y : A) → A) (mul : ∀ (x : A) (y : A) → A) (zero : A)
-    (one : A) : Type@{maxl c r} where
+    (one : A) : Type@{l} where
   plusIsCommutativeMonoid : IsCommutativeMonoid A eq plus zero;
   mulIsMonoid : IsMonoid A eq mul one;
   distribLeft : ∀ (x : A) (y : A) (z : A) →
@@ -25,9 +25,9 @@ record IsSemiring (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
   zeroRight : ∀ (x : A) → eq (mul x zero) zero
 end
 
-record Semiring : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Semiring : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   plus : ∀ (x : carrier) (y : carrier) → carrier;
   mul : ∀ (x : carrier) (y : carrier) → carrier;
   zero : carrier;

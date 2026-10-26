@@ -4,12 +4,12 @@
    bundle's with-area forwards the laws and gives the semigroup below.
    The order a semilattice defines is in
    [Prelude›Algebra›Semilattice›Properties]. *)
-module Prelude›Algebra›Semilattice (c : Level) (r : Level) where
+module Prelude›Algebra›Semilattice (l : Level) where
 
-import Prelude›Algebra›Semigroup c r use (IsSemigroup; Semigroup)
+import Prelude›Algebra›Semigroup l use (IsSemigroup; Semigroup)
 
-record IsSemilattice (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
-    (op : ∀ (x : A) (y : A) → A) : Type@{maxl c r} where
+record IsSemilattice (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
+    (op : ∀ (x : A) (y : A) → A) : Type@{l} where
   isSemigroup : IsSemigroup A eq op;
   comm : ∀ (x : A) (y : A) → eq (op x y) (op y x);
   idem : ∀ (x : A) → eq (op x x) x
@@ -17,9 +17,9 @@ with
   open isSemigroup export (refl; sym; trans; opCong; assoc)
 end
 
-record Semilattice : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Semilattice : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   op : ∀ (x : carrier) (y : carrier) → carrier;
   isSemilattice : IsSemilattice carrier eq op
 with

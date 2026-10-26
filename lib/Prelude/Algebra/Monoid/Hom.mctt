@@ -4,12 +4,12 @@
    up to [N.eq].  [identity] and [compose] are the identity and the
    composite of homomorphisms; the local module [Laws M N f] shows that a
    homomorphism [f] takes powers to powers. *)
-module Prelude›Algebra›Monoid›Hom (c : Level) (r : Level) where
+module Prelude›Algebra›Monoid›Hom (l : Level) where
 
-import Prelude›Algebra›Monoid c r use (Monoid)
+import Prelude›Algebra›Monoid l use (Monoid)
 import Prelude›Algebra›Monoid›Properties
 
-record Hom (M : Monoid) (N : Monoid) : Type@{maxl c r} where
+record Hom (M : Monoid) (N : Monoid) : Type@{l} where
   map : ∀ (x : M.carrier) → N.carrier;
   mapCong : ∀ (x : M.carrier) (y : M.carrier) (h : M.eq x y) →
     N.eq (map x) (map y);
@@ -48,8 +48,8 @@ end
 (* Laws of a homomorphism [f] from [M] to [N]. *)
 module Laws (M : Monoid) (N : Monoid) (f : Hom M N) where
 
-open Prelude›Algebra›Monoid›Properties c r M as PM
-open Prelude›Algebra›Monoid›Properties c r N as PN
+open Prelude›Algebra›Monoid›Properties l M as PM
+open Prelude›Algebra›Monoid›Properties l N as PN
 
 (* [f] takes the [n]-th power of [x] to the [n]-th power of [f.map x]. *)
 theorem mapPow : ∀ (x : M.carrier) (n : ℕ) →

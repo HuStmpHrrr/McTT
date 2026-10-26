@@ -4,7 +4,7 @@
    monoids under addition ([additive]), multiplication ([multiplicative])
    and maximum ([maximum]), the semiring of addition and multiplication
    ([semiring]), and the lattice of [min] and [max] ([minMax]).  [Eq] is a
-   relation into [Type@0], so the levels are [0l] and [0l].
+   relation into [Type@0], so the level is [0l].
 
    Every operation on numbers respects [Eq] ([congBoth]), so each magma
    predicate comes from [magmaOf]; the predicates of addition and
@@ -25,15 +25,15 @@ open Prelude›Arith›MinMax.Laws
   use (minComm; minIdem; maxComm; maxIdem; maxIdentityRight)
 import Prelude›Arith›Lattice.Algebra
   use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb)
-import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
-import Prelude›Algebra›Magma 0l 0l use (IsMagma)
-import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
-import Prelude›Algebra›Monoid 0l 0l use (IsMonoid)
-import Prelude›Algebra›CommutativeMonoid 0l 0l
+import Prelude›Algebra›Setoid 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l use (IsMonoid)
+import Prelude›Algebra›CommutativeMonoid 0l
   use (IsCommutativeMonoid; CommutativeMonoid)
-import Prelude›Algebra›Semiring 0l 0l use (IsSemiring; Semiring)
-import Prelude›Algebra›Semilattice 0l 0l use (IsSemilattice)
-import Prelude›Algebra›Lattice 0l 0l use (IsLattice; Lattice)
+import Prelude›Algebra›Semiring 0l use (IsSemiring; Semiring)
+import Prelude›Algebra›Semilattice 0l use (IsSemilattice)
+import Prelude›Algebra›Lattice 0l use (IsLattice; Lattice)
 
 (* Every binary operation on numbers respects equality on both sides. *)
 theorem congBoth : ∀ (f : ∀ (x : ℕ) (y : ℕ) → ℕ)

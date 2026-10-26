@@ -3,21 +3,21 @@
    [Semigroup] is a carrier, a relation, an operation and that predicate.
    The with-areas forward the laws below, and the bundle's gives the
    magma, [S.magma]. *)
-module Prelude›Algebra›Semigroup (c : Level) (r : Level) where
+module Prelude›Algebra›Semigroup (l : Level) where
 
-import Prelude›Algebra›Magma c r use (IsMagma; Magma)
+import Prelude›Algebra›Magma l use (IsMagma; Magma)
 
-record IsSemigroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
-    (op : ∀ (x : A) (y : A) → A) : Type@{maxl c r} where
+record IsSemigroup (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
+    (op : ∀ (x : A) (y : A) → A) : Type@{l} where
   isMagma : IsMagma A eq op;
   assoc : ∀ (x : A) (y : A) (z : A) → eq (op (op x y) z) (op x (op y z))
 with
   open isMagma export (refl; sym; trans; opCong)
 end
 
-record Semigroup : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Semigroup : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   op : ∀ (x : carrier) (y : carrier) → carrier;
   isSemigroup : IsSemigroup carrier eq op
 with

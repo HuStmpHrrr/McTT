@@ -6,15 +6,15 @@
    the semiring, [R.semiring], and the additive group, [R.additiveGroup].
    That [zero] absorbs is part of the semiring, though in a ring it would
    follow from the other laws. *)
-module Prelude›Algebra›Ring (c : Level) (r : Level) where
+module Prelude›Algebra›Ring (l : Level) where
 
-import Prelude›Algebra›Group c r use (IsGroup)
-import Prelude›Algebra›AbelianGroup c r use (IsAbelianGroup; AbelianGroup)
-import Prelude›Algebra›Semiring c r use (IsSemiring; Semiring)
+import Prelude›Algebra›Group l use (IsGroup)
+import Prelude›Algebra›AbelianGroup l use (IsAbelianGroup; AbelianGroup)
+import Prelude›Algebra›Semiring l use (IsSemiring; Semiring)
 
-record IsRing (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+record IsRing (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
     (plus : ∀ (x : A) (y : A) → A) (mul : ∀ (x : A) (y : A) → A) (zero : A)
-    (one : A) (neg : ∀ (x : A) → A) : Type@{maxl c r} where
+    (one : A) (neg : ∀ (x : A) → A) : Type@{l} where
   isSemiring : IsSemiring A eq plus mul zero one;
   negCong : ∀ (a : A) (b : A) (h : eq a b) → eq (neg a) (neg b);
   negLeft : ∀ (x : A) → eq (plus (neg x) x) zero
@@ -39,9 +39,9 @@ with
   end
 end
 
-record Ring : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Ring : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   plus : ∀ (x : carrier) (y : carrier) → carrier;
   mul : ∀ (x : carrier) (y : carrier) → carrier;
   zero : carrier;

@@ -2,21 +2,21 @@
    and [e] form a monoid up to [eq], its predicate [isMonoid], and [op] is
    commutative.  The bundle's with-area forwards the laws and gives the
    monoid below, [M.monoid]. *)
-module Prelude›Algebra›CommutativeMonoid (c : Level) (r : Level) where
+module Prelude›Algebra›CommutativeMonoid (l : Level) where
 
-import Prelude›Algebra›Monoid c r use (IsMonoid; Monoid)
+import Prelude›Algebra›Monoid l use (IsMonoid; Monoid)
 
-record IsCommutativeMonoid (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
-    (op : ∀ (x : A) (y : A) → A) (e : A) : Type@{maxl c r} where
+record IsCommutativeMonoid (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
+    (op : ∀ (x : A) (y : A) → A) (e : A) : Type@{l} where
   isMonoid : IsMonoid A eq op e;
   comm : ∀ (x : A) (y : A) → eq (op x y) (op y x)
 with
   open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
 end
 
-record CommutativeMonoid : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record CommutativeMonoid : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   op : ∀ (x : carrier) (y : carrier) → carrier;
   e : carrier;
   isCommutativeMonoid : IsCommutativeMonoid carrier eq op e

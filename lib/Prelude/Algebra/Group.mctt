@@ -5,13 +5,13 @@
    the uniqueness of inverses, the inverses of [e], of an inverse, of a
    product and of a power) are in [Prelude›Algebra›Group›Properties], the
    homomorphisms in [Prelude›Algebra›Group›Hom]. *)
-module Prelude›Algebra›Group (c : Level) (r : Level) where
+module Prelude›Algebra›Group (l : Level) where
 
-import Prelude›Algebra›Monoid c r use (IsMonoid; Monoid)
+import Prelude›Algebra›Monoid l use (IsMonoid; Monoid)
 
-record IsGroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+record IsGroup (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
     (op : ∀ (x : A) (y : A) → A) (e : A) (inv : ∀ (x : A) → A) :
-    Type@{maxl c r} where
+    Type@{l} where
   isMonoid : IsMonoid A eq op e;
   invCong : ∀ (a : A) (b : A) (h : eq a b) → eq (inv a) (inv b);
   leftInv : ∀ (x : A) → eq (op (inv x) x) e;
@@ -20,9 +20,9 @@ with
   open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
 end
 
-record Group : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record Group : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   op : ∀ (x : carrier) (y : carrier) → carrier;
   e : carrier;
   inv : ∀ (x : carrier) → carrier;

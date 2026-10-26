@@ -3,11 +3,11 @@
    operation ([Cong]), the uniqueness of the neutral element ([Neutral]),
    and the laws of the powers [pow x n], [x] combined with itself [n]
    times ([Power]).  The unit takes the monoid as a parameter:
-   [import Prelude›Algebra›Monoid›Properties 0l 0l additive.monoid as P]
+   [import Prelude›Algebra›Monoid›Properties 0l additive.monoid as P]
    gives the laws of numbers under addition. *)
 import Prelude›Algebra›Monoid
-module Prelude›Algebra›Monoid›Properties (c : Level) (r : Level)
-    (M : Prelude›Algebra›Monoid.Monoid c r) where
+module Prelude›Algebra›Monoid›Properties (l : Level)
+    (M : Prelude›Algebra›Monoid.Monoid l) where
 
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)

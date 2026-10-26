@@ -4,15 +4,15 @@
    predicate, [isCommutativeMonoid]; the bundle's forwards the laws and
    gives the group, [A.group], and the commutative monoid,
    [A.commutativeMonoid]. *)
-module Prelude›Algebra›AbelianGroup (c : Level) (r : Level) where
+module Prelude›Algebra›AbelianGroup (l : Level) where
 
-import Prelude›Algebra›Group c r use (IsGroup; Group)
-import Prelude›Algebra›CommutativeMonoid c r
+import Prelude›Algebra›Group l use (IsGroup; Group)
+import Prelude›Algebra›CommutativeMonoid l
   use (IsCommutativeMonoid; CommutativeMonoid)
 
-record IsAbelianGroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+record IsAbelianGroup (A : Type@{l}) (eq : ∀ (x : A) (y : A) → Type@{l})
     (op : ∀ (x : A) (y : A) → A) (e : A) (inv : ∀ (x : A) → A) :
-    Type@{maxl c r} where
+    Type@{l} where
   isGroup : IsGroup A eq op e inv;
   comm : ∀ (x : A) (y : A) → eq (op x y) (op y x)
 with
@@ -26,9 +26,9 @@ with
   end
 end
 
-record AbelianGroup : Type@{succl (maxl c r)} where
-  carrier : Type@{c};
-  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+record AbelianGroup : Type@{succl l} where
+  carrier : Type@{l};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{l};
   op : ∀ (x : carrier) (y : carrier) → carrier;
   e : carrier;
   inv : ∀ (x : carrier) → carrier;

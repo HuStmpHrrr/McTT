@@ -14,22 +14,22 @@ import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Pow use (pow)
 import Prelude›Arith›MinMax use (max)
 open Prelude›Arith›MinMax.Laws use (maxIdem; maxIdentityRight)
-import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
-import Prelude›Algebra›Magma 0l 0l use (IsMagma)
-import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
-import Prelude›Algebra›Monoid 0l 0l use (IsMonoid; Monoid)
+import Prelude›Algebra›Setoid 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l use (IsMonoid; Monoid)
 import Prelude›Algebra›Instances›Nat
   use (additive; multiplicative; maximum; eqIsEquivalence; congBoth)
 import Prelude›Algebra›Instances›Endo 0l ℕ use (Endo; compose)
 import Prelude›Algebra›Instances›Endo›Pointwise use (Pointwise; pointwise)
-import Prelude›Algebra›Monoid›Properties 0l 0l additive.monoid as Additive
-import Prelude›Algebra›Monoid›Properties 0l 0l multiplicative.monoid
+import Prelude›Algebra›Monoid›Properties 0l additive.monoid as Additive
+import Prelude›Algebra›Monoid›Properties 0l multiplicative.monoid
   as Multiplicative
-import Prelude›Algebra›Monoid›Properties 0l 0l maximum.monoid as Maximum
-import Prelude›Algebra›Monoid›Properties 0l 0l pointwise as Composition
-import Prelude›Algebra›CommutativeMonoid›Properties 0l 0l additive
+import Prelude›Algebra›Monoid›Properties 0l maximum.monoid as Maximum
+import Prelude›Algebra›Monoid›Properties 0l pointwise as Composition
+import Prelude›Algebra›CommutativeMonoid›Properties 0l additive
   as AdditiveComm
-import Prelude›Algebra›CommutativeMonoid›Properties 0l 0l multiplicative
+import Prelude›Algebra›CommutativeMonoid›Properties 0l multiplicative
   as MultiplicativeComm
 
 (* Powers in each monoid. *)
@@ -153,7 +153,7 @@ def natMonoid (op : ∀ (x : ℕ) (y : ℕ) → ℕ)
   end
 end
 
-import Prelude›Algebra›Monoid›Properties 0l 0l
+import Prelude›Algebra›Monoid›Properties 0l
   (natMonoid plus plusAssoc 0 refl plusIdentityRight) as Sums
 
 eval Sums.pow 6 3

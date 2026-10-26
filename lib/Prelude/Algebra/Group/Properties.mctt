@@ -9,15 +9,15 @@
    equations, and [Product] computes the products that cancel. *)
 import Prelude›Algebra›Group
 import Prelude›Algebra›Monoid›Properties
-module Prelude›Algebra›Group›Properties (c : Level) (r : Level)
-    (G : Prelude›Algebra›Group.Group c r) where
+module Prelude›Algebra›Group›Properties (l : Level)
+    (G : Prelude›Algebra›Group.Group l) where
 
 open G
   use (carrier as C; eq as R; op; e; inv; invCong; assoc; leftId; rightId;
        leftInv; rightInv; refl as rRefl; sym as rSym; trans as rTrans)
 
 (* The underlying monoid's laws. *)
-module Base ≔ Prelude›Algebra›Monoid›Properties c r G.monoid
+module Base ≔ Prelude›Algebra›Monoid›Properties l G.monoid
 
 open Base use (pow)
 open Base.Cong use (congLeft; congRight; assocBack)

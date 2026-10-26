@@ -5845,15 +5845,15 @@ let%expect_test "an inductive type of a parameterized module, by its bare name i
 let%expect_test "lib/Hierarchy.mctt" =
   let _ = main_of_lib "Hierarchy.mctt" in
   [%expect {|
-    Evaluate concat 0l 0l additive.monoid oneTwoThree --> 6 : ℕ
-    Evaluate concat 0l 0l multiplicative.monoid oneTwoThree --> 6 : ℕ
-    Evaluate concat 0l 1l conjunction.monoid bools --> Prelude›Data›Bool.Bool.ff
+    Evaluate concat 0l additive.monoid oneTwoThree --> 6 : ℕ
+    Evaluate concat 0l multiplicative.monoid oneTwoThree --> 6 : ℕ
+    Evaluate concat 1l conjunction.monoid bools --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
-    Evaluate concat 0l 1l disjunction.monoid bools --> Prelude›Data›Bool.Bool.tt
+    Evaluate concat 1l disjunction.monoid bools --> Prelude›Data›Bool.Bool.tt
       : Prelude›Data›Bool.Bool
-    Evaluate concat 0l 1l freeMonoid
-               (List.cons 0l NatList oneTwoThree
-                 (List.cons 0l NatList oneTwoThree (List.nil 0l NatList)))
+    Evaluate concat 1l freeMonoid
+               (List.cons 1l NatList oneTwoThree
+                 (List.cons 1l NatList oneTwoThree (List.nil 1l NatList)))
       --> Prelude›Data›List.List.cons 0l ℕ 1
             (Prelude›Data›List.List.cons 0l ℕ 2
               (Prelude›Data›List.List.cons 0l ℕ 3
@@ -5862,12 +5862,12 @@ let%expect_test "lib/Hierarchy.mctt" =
                     (Prelude›Data›List.List.cons 0l ℕ 3
                       (Prelude›Data›List.List.nil 0l ℕ))))))
       : Prelude›Data›List.List 0l ℕ
-    Evaluate concat 0l 1l endo
-               (List.cons 0l Endo succ
-                 (List.cons 0l Endo succ
-                   (List.cons 0l Endo succ (List.nil 0l Endo))))
+    Evaluate concat 1l endo
+               (List.cons 1l Endo succ
+                 (List.cons 1l Endo succ
+                   (List.cons 1l Endo succ (List.nil 1l Endo))))
                4 --> 7 : ℕ
-    Evaluate concat 0l 0l Both.product
+    Evaluate concat 0l Both.product
                (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 2 3)
                  (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 4 5)
                    (List.nil 0l (Prod 0l ℕ ℕ))))

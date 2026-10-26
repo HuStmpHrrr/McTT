@@ -20,12 +20,12 @@ open Prelude›Arith›Plus.Cancel use (plusCancelRight)
 import Prelude›Arith›Sub use (monus)
 import Prelude›Arith›Order use (leb)
 import Prelude›Data›Bool use (Bool; not)
-import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
-import Prelude›Algebra›Magma 0l 0l use (IsMagma)
-import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
-import Prelude›Algebra›Monoid 0l 0l use (IsMonoid)
-import Prelude›Algebra›Group 0l 0l use (IsGroup)
-import Prelude›Algebra›AbelianGroup 0l 0l use (IsAbelianGroup; AbelianGroup)
+import Prelude›Algebra›Setoid 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l use (IsMonoid)
+import Prelude›Algebra›Group 0l use (IsGroup)
+import Prelude›Algebra›AbelianGroup 0l use (IsAbelianGroup; AbelianGroup)
 import Prelude›Algebra›Group›Properties
 import Prelude›Algebra›CommutativeMonoid›Properties
 
@@ -226,10 +226,10 @@ end
 
 (* The laws of the group: [Additive.Base.pow x n] is [n] times [x], and
    [Additive.Laws] has cancellation and the laws of inverses. *)
-module Additive ≔ Prelude›Algebra›Group›Properties 0l 0l additiveGroup.group
+module Additive ≔ Prelude›Algebra›Group›Properties 0l additiveGroup.group
 
 module AdditiveComm ≔
-  Prelude›Algebra›CommutativeMonoid›Properties 0l 0l
+  Prelude›Algebra›CommutativeMonoid›Properties 0l
     additiveGroup.commutativeMonoid
 
 (* The numbers embed into the integers. *)

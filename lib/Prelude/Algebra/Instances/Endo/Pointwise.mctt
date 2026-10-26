@@ -2,15 +2,15 @@
    equality of numbers [Eq]: [Pointwise f g] holds when [f n] and [g n] are
    equal for every [n].  It is an equivalence, composition respects it, and
    the monoid laws hold pointwise by computation ([pointwise], at the
-   levels [0l] and [0l]); its powers iterate a function. *)
+   level [0l]); its powers iterate a function. *)
 module Prelude›Algebra›Instances›Endo›Pointwise where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Algebra›Instances›Endo 0l ℕ use (Endo; compose; identity)
-import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
-import Prelude›Algebra›Magma 0l 0l use (IsMagma)
-import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
-import Prelude›Algebra›Monoid 0l 0l use (IsMonoid; Monoid)
+import Prelude›Algebra›Setoid 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l use (IsMonoid; Monoid)
 
 def Pointwise (f : Endo) (g : Endo) : Type@0 ≔ ∀ (n : ℕ) → Eq (f n) (g n) end
 

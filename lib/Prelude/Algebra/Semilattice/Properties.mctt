@@ -3,12 +3,12 @@
    idempotence, antisymmetric by commutativity and transitive by
    associativity, and [S.op x y] is below both [x] and [y]. *)
 import Prelude›Algebra›Semilattice
-module Prelude›Algebra›Semilattice›Properties (c : Level) (r : Level)
-    (S : Prelude›Algebra›Semilattice.Semilattice c r) where
+module Prelude›Algebra›Semilattice›Properties (l : Level)
+    (S : Prelude›Algebra›Semilattice.Semilattice l) where
 
 open S use (carrier as C; op; eq; refl; sym; trans; opCong; assoc; comm; idem)
 
-def Le (x : C) (y : C) : Type@{r} ≔ eq (op x y) x end
+def Le (x : C) (y : C) : Type@{l} ≔ eq (op x y) x end
 
 module Order where
 

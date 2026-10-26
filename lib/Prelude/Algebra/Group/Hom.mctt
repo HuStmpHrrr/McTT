@@ -5,13 +5,13 @@
    [Laws G H f] derives that [f] takes [G.e] to [H.e] ([mapE]) and
    inverses to inverses ([mapInv]), and gives the homomorphism of the
    underlying monoids ([toMonoid]). *)
-module Prelude›Algebra›Group›Hom (c : Level) (r : Level) where
+module Prelude›Algebra›Group›Hom (l : Level) where
 
-import Prelude›Algebra›Group c r use (Group)
-import Prelude›Algebra›Monoid›Hom c r as MonoidHom
+import Prelude›Algebra›Group l use (Group)
+import Prelude›Algebra›Monoid›Hom l as MonoidHom
 import Prelude›Algebra›Group›Properties
 
-record Hom (G : Group) (H : Group) : Type@{maxl c r} where
+record Hom (G : Group) (H : Group) : Type@{l} where
   map : ∀ (x : G.carrier) → H.carrier;
   mapCong : ∀ (x : G.carrier) (y : G.carrier) (h : G.eq x y) →
     H.eq (map x) (map y);
@@ -30,7 +30,7 @@ end
 (* Laws of a homomorphism [f] from [G] to [H]. *)
 module Laws (G : Group) (H : Group) (f : Hom G H) where
 
-open Prelude›Algebra›Group›Properties c r H as PH
+open Prelude›Algebra›Group›Properties l H as PH
 
 (* [f.map G.e] times itself is [f.map (G.op G.e G.e)], that is
    [f.map G.e], which is [f.map G.e] times [H.e]; cancel it on the
