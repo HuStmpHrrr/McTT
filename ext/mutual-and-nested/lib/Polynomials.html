@@ -130,9 +130,9 @@
 <div class="doc"><p><code>1 + 2 x + 3 x^2 + 4 x^3</code> at 2, both ways: 1 + 4 + 12 + 32.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.horner">horner</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.horner 2 (cubic 1 2 3 4) 4 --&gt; 49 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.horner 2 (cubic 1 2 3 4) 4 --&gt; 49 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.naive">naive</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.naive 2 (cubic 1 2 3 4) 4 --&gt; 49 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.naive 2 (cubic 1 2 3 4) 4 --&gt; 49 : ℕ</pre></details>
 <div class="doc"><p>An evaluator for a fixed polynomial, made locally: the values at the points below <code>k</code>, summed, and their maximum.  The maximum comes from an open inside the local body.  A local body may not import, so the unit is loaded just before.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Arith.MinMax.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.MinMax.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.MinMax.html">MinMax</a>
@@ -147,7 +147,7 @@
      <span class="kw">end</span>
      <span class="kw">in</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="sym">(</span><a class="var" href="#l437">Table</a><span class="sym">.</span><a class="var" href="#l450">total</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">1</span> <span class="num">0</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span><span class="sym">)</span> <span class="sym">(</span><a class="var" href="#l437">Table</a><span class="sym">.</span><a class="var" href="#l455">peak</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">0</span> <span class="num">0</span> <span class="num">1</span> <span class="num">0</span><span class="sym">)</span> <span class="num">5</span><span class="sym">)</span>
      <span class="kw">end</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 (x1 : Coeffs) where
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 (x1 : Coeffs) where
                open Prelude›Arith›MinMax use (max)
                def value : ∀ (x2 : ℕ) → ℕ ≔
                  λ (x3 : ℕ) → At.horner x3 x1 4
@@ -169,10 +169,10 @@
 <div class="doc"><p>Closed instances of the theorems normalize to <code>⋆</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.hornerNaive">hornerNaive</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">0</span> <span class="num">1</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.hornerNaive 2 (cubic 1 0 1 0) 4 --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.hornerNaive 2 (cubic 1 0 1 0) 4 --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.hornerNaive">hornerNaive</a> <span class="num">3</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">2</span> <span class="num">1</span> <span class="num">0</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4 --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4 --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#hornerAtOne">hornerAtOne</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">3</span> <span class="num">1</span> <span class="num">4</span> <span class="num">1</span><span class="sym">)</span> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate hornerAtOne (cubic 3 1 4 1) 4 --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate hornerAtOne (cubic 3 1 4 1) 4 --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">end</span></pre>
 </body></html>

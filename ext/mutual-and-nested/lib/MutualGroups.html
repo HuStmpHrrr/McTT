@@ -48,7 +48,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#size">size</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate size example --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate size example --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p>The same, as a mutual definition: one function per member, in any order, each with its induction hypotheses.</p>
 </div>
 <pre class="code"><span class="kw">mutual</span> <span class="kw">def</span>
@@ -61,11 +61,11 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#spineLength">spineLength</a> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Sp">Sp</a><span class="sym">.</span><a class="def" href="#Syntax.Sp.scons">scons</a> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Tm">Tm</a><span class="sym">.</span><a class="def" href="#Syntax.Tm.var">var</a> <span class="num">1</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Sp">Sp</a><span class="sym">.</span><a class="def" href="#Syntax.Sp.scons">scons</a> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Tm">Tm</a><span class="sym">.</span><a class="def" href="#Syntax.Tm.var">var</a> <span class="num">2</span><span class="sym">)</span> <a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Sp">Sp</a><span class="sym">.</span><a class="def" href="#Syntax.Sp.snil">snil</a><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate spineLength
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate spineLength
            (Syntax.Sp.scons (Syntax.Tm.var 1)
              (Syntax.Sp.scons (Syntax.Tm.var 2) Syntax.Sp.snil)) --&gt; 2 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#heads">heads</a> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Tm">Tm</a><span class="sym">.</span><a class="def" href="#Syntax.Tm.app">app</a> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Tm">Tm</a><span class="sym">.</span><a class="def" href="#Syntax.Tm.app">app</a> <span class="sym">(</span><a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Tm">Tm</a><span class="sym">.</span><a class="def" href="#Syntax.Tm.var">var</a> <span class="num">0</span><span class="sym">)</span> <a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Sp">Sp</a><span class="sym">.</span><a class="def" href="#Syntax.Sp.snil">snil</a><span class="sym">)</span> <a class="mod" href="#Syntax">Syntax</a><span class="sym">.</span><a class="mod" href="#Syntax.Sp">Sp</a><span class="sym">.</span><a class="def" href="#Syntax.Sp.snil">snil</a><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate heads
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate heads
            (Syntax.Tm.app (Syntax.Tm.app (Syntax.Tm.var 0) Syntax.Sp.snil)
              Syntax.Sp.snil) --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>Rose trees with forests: <code>List (Rose A)</code> is a view of the group, the container <code>List</code> at the instance; its block comes after <code>Rose</code>'s.</p>
@@ -104,9 +104,9 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#nodes">nodes</a> <a class="def" href="#forest">forest</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nodes forest --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nodes forest --&gt; 4 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#total">total</a> <a class="def" href="#forest">forest</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate total forest --&gt; 6 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate total forest --&gt; 6 : ℕ</pre></details>
 <div class="doc"><p>A forest is eliminated at its own block: the scrutinee is the view's.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="forestNodes">forestNodes</span> <span class="sym">(</span><span class="var bind" id="l252">f</span> <span class="sym">:</span> <a class="mod" href="#List">List</a> <span class="sym">(</span><a class="mod" href="#Rose">Rose</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">:=</span>
@@ -119,7 +119,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#forestNodes">forestNodes</a> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.cons">cons</a> <span class="sym">(</span><a class="mod" href="#Rose">Rose</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><a class="def" href="#leaf">leaf</a> <span class="num">1</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.cons">cons</a> <span class="sym">(</span><a class="mod" href="#Rose">Rose</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><a class="def" href="#leaf">leaf</a> <span class="num">2</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.nil">nil</a> <span class="sym">(</span><a class="mod" href="#Rose">Rose</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate forestNodes
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate forestNodes
            (List.cons (Rose ℕ) (leaf 1)
              (List.cons (Rose ℕ) (leaf 2) (List.nil (Rose ℕ)))) --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>Terms with argument lists: the mutual group, nested through <code>List</code> at both members.</p>
@@ -152,7 +152,7 @@
 
 <span class="kw">eval</span> <a class="def" href="#termSize">termSize</a> <span class="sym">(</span><a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Term">Term</a><span class="sym">.</span><a class="def" href="#Lam.Term.block">block</a> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.cons">cons</a> <a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Bind">Bind</a> <span class="sym">(</span><a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Bind">Bind</a><span class="sym">.</span><a class="def" href="#Lam.Bind.bind">bind</a> <span class="num">0</span> <span class="sym">(</span><a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Term">Term</a><span class="sym">.</span><a class="def" href="#Lam.Term.var">var</a> <span class="num">1</span><span class="sym">)</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.nil">nil</a> <a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Bind">Bind</a><span class="sym">)</span><span class="sym">)</span>
                  <span class="sym">(</span><a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Term">Term</a><span class="sym">.</span><a class="def" href="#Lam.Term.call">call</a> <span class="num">0</span> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.cons">cons</a> <a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Term">Term</a> <span class="sym">(</span><a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Term">Term</a><span class="sym">.</span><a class="def" href="#Lam.Term.var">var</a> <span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#List">List</a><span class="sym">.</span><a class="def" href="#List.nil">nil</a> <a class="mod" href="#Lam">Lam</a><span class="sym">.</span><a class="mod" href="#Lam.Term">Term</a><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate termSize
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate termSize
            (Lam.Term.block
               (List.cons Lam.Bind (Lam.Bind.bind 0 (Lam.Term.var 1))
                 (List.nil Lam.Bind))
@@ -188,6 +188,6 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#depth">depth</a> <a class="mod" href="#T">T</a><span class="sym">.</span><a class="def" href="#T.stop">stop</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate depth T.stop --&gt; 0 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate depth T.stop --&gt; 0 : ℕ</pre></details>
 <pre class="code"><span class="kw">end</span></pre>
 </body></html>

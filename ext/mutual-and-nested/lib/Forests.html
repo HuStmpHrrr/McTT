@@ -29,11 +29,11 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.sizeTree">sizeTree</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.sizeTree example --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.sizeTree example --&gt; 4 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.depthTree">depthTree</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.depthTree example --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.depthTree example --&gt; 3 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.flattenTree">flattenTree</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flattenTree example
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flattenTree example
   --&gt; Prelude›Data›List.List.cons 0l ℕ 1
         (Prelude›Data›List.List.cons 0l ℕ 2
           (Prelude›Data›List.List.cons 0l ℕ 3
@@ -41,7 +41,7 @@
               (Prelude›Data›List.List.nil 0l ℕ))))
   : Prelude›Data›List.List 0l ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.flattenTree">flattenTree</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.mapTree">mapTree</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="def" href="#example">example</a><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flattenTree (R.mapTree ℕ succ example)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flattenTree (R.mapTree ℕ succ example)
   --&gt; Prelude›Data›List.List.cons 0l ℕ 2
         (Prelude›Data›List.List.cons 0l ℕ 3
           (Prelude›Data›List.List.cons 0l ℕ 4
@@ -51,17 +51,17 @@
 <div class="doc"><p>The sum of the labels, as a fold.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.foldTree">foldTree</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">0</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.foldTree ℕ ℕ plus 0 plus example --&gt; 10 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.foldTree ℕ ℕ plus 0 plus example --&gt; 10 : ℕ</pre></details>
 <div class="doc"><p>A forest of two trees, and its list of trees.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="pair">pair</span> <span class="sym">:</span> <a class="mod" href="#F">F</a> <span class="sym">≔</span> <a class="mod" href="#F">F</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#TreeForest.Forest.cons">cons</a> <a class="def" href="#example">example</a> <span class="sym">(</span><a class="mod" href="#F">F</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#TreeForest.Forest.cons">cons</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.leaf">leaf</a> <span class="num">5</span><span class="sym">)</span> <a class="mod" href="#F">F</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#TreeForest.Forest.nil">nil</a><span class="sym">)</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.sizeForest">sizeForest</a> <a class="def" href="#pair">pair</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.sizeForest pair --&gt; 5 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.sizeForest pair --&gt; 5 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#LO">LO</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#Ops.length">length</a> <span class="num">0l</span> <a class="mod" href="#T">T</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.toList">toList</a> <a class="def" href="#pair">pair</a><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate LO.length 0l T (R.toList pair) --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate LO.length 0l T (R.toList pair) --&gt; 2 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.flattenForest">flattenForest</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.fromList">fromList</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.html#Ops.toList">toList</a> <a class="def" href="#pair">pair</a><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flattenForest (R.fromList (R.toList pair))
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flattenForest (R.fromList (R.toList pair))
   --&gt; Prelude›Data›List.List.cons 0l ℕ 1
         (Prelude›Data›List.List.cons 0l ℕ 2
           (Prelude›Data›List.List.cons 0l ℕ 3
@@ -87,7 +87,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#leaves">leaves</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leaves example --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leaves example --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>The largest label, by the recursor module of the group: one motive per member, then one case per constructor.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="largest">largest</span> <span class="sym">(</span><span class="var bind" id="l151">t</span> <span class="sym">:</span> <a class="mod" href="#T">T</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
@@ -99,16 +99,16 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#largest">largest</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate largest example --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate largest example --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p>Closed instances of the laws: each normalizes to <code>⋆</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#P">P</a><span class="sym">.</span><a class="mod" href="Prelude.Data.Tree.Forest.Properties.html#Maps">Maps</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.Properties.html#Maps.sizeMapTree">sizeMapTree</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Maps.sizeMapTree ℕ succ example --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Maps.sizeMapTree ℕ succ example --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#P">P</a><span class="sym">.</span><a class="mod" href="Prelude.Data.Tree.Forest.Properties.html#Flatten">Flatten</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.Properties.html#Flatten.lengthFlattenTree">lengthFlattenTree</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Flatten.lengthFlattenTree example --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Flatten.lengthFlattenTree example --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#P">P</a><span class="sym">.</span><a class="mod" href="Prelude.Data.Tree.Forest.Properties.html#Flatten">Flatten</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.Properties.html#Flatten.lengthFlattenForest">lengthFlattenForest</a> <a class="def" href="#pair">pair</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Flatten.lengthFlattenForest pair --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Flatten.lengthFlattenForest pair --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#P">P</a><span class="sym">.</span><a class="mod" href="Prelude.Data.Tree.Forest.Properties.html#Folds">Folds</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Forest.Properties.html#Folds.sizeFold">sizeFold</a> <a class="def" href="#example">example</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Folds.sizeFold example --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate P.Folds.sizeFold example --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">end</span></pre>
 </body></html>

@@ -21,25 +21,25 @@
 <p>Symbols have a Unicode and an ASCII spelling, and either may be used anywhere; this file uses the Unicode ones, which the checker also prints: →  -&gt;      ⇒  =&gt;      ≔  :=      ›  :: λ  fun     ∀  forall (or Π) ⊤  True    ⊥  False   ⋆  true    ω  omega Identifiers are ASCII letters, so the symbols need no spaces around them: <code>λ(x:ℕ)→x</code> is <code>fun (x : ℕ) -&gt; x</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="def" href="Prelude.Builtin.Nat.html#Nat.zero">zero</a><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : ℕ</pre></details>
 <div class="doc"><p>2. Evaluation. <code>eval M</code> normalizes M and infers its type; <code>eval M : T</code> checks M against T first.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="num">3</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : ℕ</pre></details>
 <div class="doc"><p>3. Universes and types. Type@i is the universe of level i, with Type@i : Type@(i+1). ℕ is in Type@0, with zero and succ.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ℕ --&gt; ℕ : Type@0</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ℕ --&gt; ℕ : Type@0</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Type@0 --&gt; Type@0 : Type@1</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Type@0 --&gt; Type@0 : Type@1</pre></details>
 <div class="doc"><p>A function is <code>λ (x : A) → M</code>; its type is <code>∀ (x : A) → B</code>, where B may mention x. Application is juxtaposition. Several binders abbreviate nested ones.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l19">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l20">x</span> <span class="sym">:</span> <a class="var" href="#l19">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l20">x</a><span class="sym">)</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (λ (A1 : Type@0)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (λ (A1 : Type@0)
             (x1 : A1)
            → x1) ℕ 4 --&gt; 4 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l23">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l24">x</span> <span class="sym">:</span> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l24">x</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate λ (A1 : Type@0)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate λ (A1 : Type@0)
            (x1 : A1)
            → x1 --&gt; λ (A1 : Type@0)
                       (x1 : A1)
@@ -49,7 +49,7 @@
 <div class="doc"><p>4. Recursion. <code>elim n at y → T | zero ⇒ z | succ p, r ⇒ s end</code> is primitive recursion on n, the eliminator of Nat: T is the motive, which binds y, p the predecessor and r the result for p. The branches are named by the constructors.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="kw">elim</span> <span class="num">3</span> <span class="kw">at</span> <span class="var bind" id="l27">y</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <span class="num">0</span> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l30">p</span><span class="sym">,</span> <span class="var bind" id="l31">r</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l31">r</a><span class="sym">)</span> <span class="kw">end</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate elim 3 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end --&gt; 6
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate elim 3 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end --&gt; 6
   : ℕ</pre></details>
 <div class="doc"><p>The motive may compute a type: here, the type of n-ary functions on ℕ.</p>
 </div>
@@ -57,16 +57,16 @@
      <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
      <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l38">p</span><span class="sym">,</span> <span class="var bind" id="l39">r</span> <span class="sym">⇒</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l40">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l39">r</a>
      <span class="kw">end</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate elim 2 at x1 → Type@0 | zero ⇒ ℕ | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1 end
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate elim 2 at x1 → Type@0 | zero ⇒ ℕ | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1 end
   --&gt; ∀ (x1 : ℕ)
         (x2 : ℕ)
         → ℕ : Type@0</pre></details>
 <div class="doc"><p>5. Unit and empty types. ⊤ has the one element ⋆; ⊥ has none. <code>exfalso h return x . P</code> eliminates h : ⊥ into any type P.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="kw">⋆</span> <span class="sym">:</span> <span class="ty">⊤</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ⋆ --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ⋆ --&gt; ⋆ : ⊤</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l42">h</span> <span class="sym">:</span> <span class="ty">⊥</span><span class="sym">)</span> <span class="sym">→</span> <span class="kw">exfalso</span> <a class="var" href="#l42">h</a> <span class="kw">return</span> <span class="var bind" id="l44">x</span> <span class="sym">.</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate λ (x1 : ⊥) → exfalso x1 return x2 . ℕ
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate λ (x1 : ⊥) → exfalso x1 return x2 . ℕ
   --&gt; λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ</pre></details>
 <div class="doc"><p>6. Local definitions. <code>let x : A ≔ a; y ≔ b in M end</code> binds each name in the later bindings and in M. A binding is transparent, so its value is known while checking the rest; an unannotated one has its type inferred. <code>Eq n m</code>, imported above, computes to ⊤ exactly when n and m are equal, so <code>⋆</code> proves <code>Eq 3 3</code>.</p>
 </div>
@@ -75,7 +75,7 @@
          <span class="var bind" id="l50">p</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="sym">(</span><a class="var" href="#l46">f</a> <a class="var" href="#l45">n</a><span class="sym">)</span> <span class="num">3</span> <span class="sym">≔</span> <span class="kw">⋆</span>
      <span class="kw">in</span> <a class="var" href="#l46">f</a> <span class="sym">(</span><a class="var" href="#l46">f</a> <a class="var" href="#l45">n</a><span class="sym">)</span>
      <span class="kw">end</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let x1 : ℕ ≔ 2; x2 ≔ λ (x3 : ℕ) → succ x3; x4 : Eq (x2 x1) 3 ≔ ⋆
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let x1 : ℕ ≔ 2; x2 ≔ λ (x3 : ℕ) → succ x3; x4 : Eq (x2 x1) 3 ≔ ⋆
          in x2 (x2 x1)
          end --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p>7. Definitions. <code>def f (x : A) : T ≔ M end</code> is <code>def f : ∀ (x : A) → T ≔ λ (x : A) → M end</code>. A definition is transparent: it unfolds wherever it is used.</p>
@@ -85,13 +85,13 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#double">double</a> <span class="num">3</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double 3 --&gt; 6 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double 3 --&gt; 6 : ℕ</pre></details>
 <div class="doc"><p>An <code>abstract</code> definition is opaque: it is checked, but never unfolds, so its uses are stuck.</p>
 </div>
 <pre class="code"><span class="kw">abstract</span> <span class="kw">def</span> <span class="def bind" id="four">four</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span> <span class="num">4</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#double">double</a> <a class="def" href="#four">four</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double four
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double four
   --&gt; elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ</pre></details>
 <div class="doc"><p>A <code>private</code> definition is usable only inside its module (section 10). Both modifiers combine, in either order.</p>
 </div>
@@ -102,7 +102,7 @@
 <span class="kw">abstract</span> <span class="kw">private</span> <span class="kw">def</span> <span class="def bind" id="hiddenSix">hiddenSix</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span> <span class="num">6</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="def" href="#helper">helper</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate succ helper --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate succ helper --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>8. Definition keywords. Each is <code>def</code> with modifiers implied: theorem, lemma = abstract; fact, remark = abstract private; let, given = private. <code>refl n</code> proves <code>Eq n n</code>.</p>
 </div>
 <pre class="code"><span class="kw">theorem</span> <span class="def bind" id="doubleTwo">doubleTwo</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="sym">(</span><a class="def" href="#double">double</a> <span class="num">2</span><span class="sym">)</span> <span class="num">4</span> <span class="sym">≔</span> <a class="def" href="Prelude.Arith.Equality.html#refl">refl</a> <span class="num">4</span> <span class="kw">end</span>
@@ -118,7 +118,7 @@
 <span class="kw">given</span> <span class="def bind" id="two">two</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span> <span class="num">2</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#double">double</a> <a class="def" href="#two">two</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double two --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double two --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p>A keyword takes only the modifiers it does not imply: <code>private theorem</code> and <code>abstract let</code> are allowed; fact and remark take none.</p>
 </div>
 <pre class="code"><span class="kw">private</span> <span class="kw">theorem</span> <span class="def bind" id="privateThm">privateThm</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="num">1</span> <span class="num">1</span> <span class="sym">≔</span> <span class="kw">⋆</span> <span class="kw">end</span>
@@ -132,7 +132,7 @@
 <pre class="code"><span class="kw">axiom</span> <span class="def bind" id="k">k</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
 
 <span class="kw">eval</span> <a class="def" href="#double">double</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="def" href="#k">k</a><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double (succ k)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double (succ k)
   --&gt; succ
         (succ
           (elim k at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end))
@@ -147,7 +147,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Outer">Outer</a><span class="sym">.</span><a class="mod" href="#Outer.Inner">Inner</a><span class="sym">.</span><a class="def" href="#Outer.Inner.next">next</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Outer.Inner.next --&gt; 11 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Outer.Inner.next --&gt; 11 : ℕ</pre></details>
 <div class="doc"><p>A module with parameters abstracts every member over them. Its arguments follow the selection, or apply the module in parentheses.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Twice">Twice</span> <span class="sym">(</span><span class="var bind" id="l108">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l109">f</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l110">a</span> <span class="sym">:</span> <a class="var" href="#l108">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l108">A</a><span class="sym">)</span> <span class="kw">where</span>
@@ -155,9 +155,9 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Twice">Twice</a><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="#double">double</a> <span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Twice.twice ℕ double 1 --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Twice.twice ℕ double 1 --&gt; 4 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="sym">(</span><a class="mod" href="#Twice">Twice</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="#double">double</a><span class="sym">)</span><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (Twice ℕ double).twice 1 --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (Twice ℕ double).twice 1 --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p><code>module Y ≔ E</code> declares an alias. Applying a module to some of its parameters is partial application.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="NatTwice">NatTwice</span> <span class="sym">≔</span> <a class="mod" href="#Twice">Twice</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
@@ -165,7 +165,7 @@
 <span class="kw">module</span> <span class="mod bind" id="Quadruple">Quadruple</span> <span class="sym">≔</span> <a class="mod" href="#NatTwice">NatTwice</a> <a class="def" href="#double">double</a>
 
 <span class="kw">eval</span> <a class="mod" href="#Quadruple">Quadruple</a><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Quadruple.twice 1 --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Quadruple.twice 1 --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p><code>module A.B where … end</code> declares B inside A.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Shapes">Shapes</span><span class="sym">.</span><span class="mod bind" id="Shapes.Square">Square</span> <span class="kw">where</span>
@@ -173,7 +173,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Shapes">Shapes</a><span class="sym">.</span><a class="mod" href="#Shapes.Square">Square</a><span class="sym">.</span><a class="def" href="#Shapes.Square.side">side</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Shapes.Square.side --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Shapes.Square.side --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>10. Privacy. A private member is usable inside the module that declares it, including its nested modules, and nowhere else.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Vault">Vault</span> <span class="kw">where</span>
@@ -185,9 +185,9 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Vault">Vault</a><span class="sym">.</span><a class="def" href="#Vault.reveal">reveal</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Vault.reveal --&gt; 8 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Vault.reveal --&gt; 8 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#Vault">Vault</a><span class="sym">.</span><a class="mod" href="#Vault.Inside">Inside</a><span class="sym">.</span><a class="def" href="#Vault.Inside.peek">peek</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Vault.Inside.peek --&gt; 7 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Vault.Inside.peek --&gt; 7 : ℕ</pre></details>
 <div class="doc"><p>Rejected: eval Vault.secret   Error: Tutorial.Vault.secret is private</p>
 </div>
 <div class="doc"><p>11. Units, imports and opens. The unit X›Y is the file X/Y.mctt under a search root: the directories given by <code>--search-root</code> (the flag may be repeated), then those of the variable MCTT_SEARCH_ROOT, then the current directory, in that order. <code>import X›Y</code> only loads the unit X›Y: its members are reached by their full name.</p>
@@ -195,7 +195,7 @@
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a>
 
 <span class="kw">eval</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">2</span> <span class="num">3</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Prelude›Arith›Plus.plus 2 3 --&gt; 5 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Prelude›Arith›Plus.plus 2 3 --&gt; 5 : ℕ</pre></details>
 <div class="doc"><p><code>open E as Z use (a; c as d) export (e)</code> declares, in this module, a private alias <code>module Z ≔ E</code>, private definitions <code>a ≔ Z.a</code> and <code>d ≔ Z.c</code>, and a public definition <code>e ≔ Z.e</code>. Items naming a submodule declare aliases instead.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Adding">Adding</span> <span class="kw">where</span>
@@ -204,9 +204,9 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Adding">Adding</a><span class="sym">.</span><a class="def" href="#Adding.five">five</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Adding.five --&gt; 5 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Adding.five --&gt; 5 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#Adding">Adding</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Plus.html#Algebra">Algebra</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#Algebra.plusComm">plusComm</a> <span class="num">1</span> <span class="num">2</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Adding.Algebra.plusComm 1 2 --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Adding.Algebra.plusComm 1 2 --&gt; ⋆ : ⊤</pre></details>
 <div class="doc"><p>Rejected: eval Adding.add   Error: Tutorial.Adding.add is private</p>
 </div>
 <div class="doc"><p>The long form <code>import X›Y as Z use (…)</code> is <code>import X›Y</code> then <code>open X›Y as Z use (…)</code>. Prelude›Arith›Plus is loaded already, and a repeated import does nothing, so this one only opens it.</p>
@@ -217,7 +217,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Counting">Counting</a><span class="sym">.</span><a class="def" href="#Counting.seven">seven</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Counting.seven --&gt; 7 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Counting.seven --&gt; 7 : ℕ</pre></details>
 <div class="doc"><p>Imports and opens may also precede the unit's header. By convention they are only those the unit's parameter types need; everything else is imported inside the module, as at the top of this file. Leading ones may <code>use</code> and <code>as</code> but not <code>export</code>: import Prelude›Arith›Equality use (Eq) module Proofs (h : Eq 1 1) where … end</p>
 </div>
 <div class="doc"><p>12. Local modules. <code>let module X (ps) where … end in M end</code> declares a module inside a term, and <code>let module X ≔ E in M end</code> an alias. The body may <code>open</code> modules and declare private members, which M cannot use. (Aliases and opens of types in a local module come with the next stage; see the end of the file.)</p>
@@ -230,7 +230,7 @@
        <span class="kw">module</span> <span class="var bind" id="l199">DoublerOne</span> <span class="sym">≔</span> <a class="var" href="#l188">Doubler</a> <span class="num">1</span>
      <span class="kw">in</span> <a class="var" href="#l199">DoublerOne</a><span class="sym">.</span><a class="var" href="#l196">sum</a>
      <span class="kw">end</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 (x1 : ℕ) where
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 (x1 : ℕ) where
                open Twice ℕ double use (twice)
                private def base : ℕ ≔
                  twice x1
@@ -269,7 +269,7 @@
        <span class="kw">end</span>
      <span class="kw">in</span> <a class="var" href="#l247">Five</a><span class="sym">.</span><a class="def" href="#Adder.addIter">addIter</a> <a class="var" href="#l247">Five</a><span class="sym">.</span><a class="var" href="#l251">eight</a>
      <span class="kw">end</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 where
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 where
                open Adder 5 use (add) export (addIter)
                def eight : ℕ ≔
                  add 3
@@ -280,9 +280,9 @@
 <div class="doc"><p>14. Universe levels. <code>Level</code> is a type, with the literals <code>0l</code>, <code>1l</code>, …, and the operations <code>succl</code> and <code>maxl</code>; levels are compared by normalization, so <code>maxl 1l (succl 2l)</code> is <code>3l</code>. <code>Type@{t}</code> is the universe at the level <code>t</code>, and <code>Type@n</code> abbreviates <code>Type@{nl}</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="kw">maxl</span> <span class="num">1l</span> <span class="sym">(</span><span class="kw">succl</span> <span class="num">2l</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxl 1l (succl 2l) --&gt; 3l : Level</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxl 1l (succl 2l) --&gt; 3l : Level</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><span class="kw">maxl</span> <span class="num">1l</span> <span class="num">2l</span><span class="sym">}</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Type@{maxl 1l 2l} --&gt; Type@2 : Type@3</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Type@{maxl 1l 2l} --&gt; Type@2 : Type@3</pre></details>
 <div class="doc"><p>A level-polymorphic definition takes its level as an argument. A function type of types of <code>Type@{u}</code> is in <code>Type@{u}</code>, even for a variable <code>u</code>.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="applyTwice">applyTwice</span> <span class="sym">(</span><span class="var bind" id="l258">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l259">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l258">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l261">f</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l262">a</span> <span class="sym">:</span> <a class="var" href="#l259">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l259">A</a><span class="sym">)</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l265">a</span> <span class="sym">:</span> <a class="var" href="#l259">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l259">A</a> <span class="sym">≔</span>
@@ -290,9 +290,9 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#applyTwice">applyTwice</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="#double">double</a> <span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate applyTwice 0l ℕ double 1 --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate applyTwice 0l ℕ double 1 --&gt; 4 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#applyTwice">applyTwice</a> <span class="num">1l</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l276">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">→</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l277">a</span> <span class="sym">:</span> <a class="var" href="#l276">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l276">A</a><span class="sym">)</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate applyTwice 1l Type@0 (λ (A1 : Type@0) → ∀ (x1 : A1) → A1) ℕ
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate applyTwice 1l Type@0 (λ (A1 : Type@0) → ∀ (x1 : A1) → A1) ℕ
   --&gt; ∀ (x1 : ∀ (x2 : ℕ) → ℕ)
         (x3 : ℕ)
         → ℕ : Type@0</pre></details>
@@ -307,29 +307,29 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Pointed">Pointed</a><span class="sym">.</span><a class="def" href="#Pointed.point">point</a> <span class="num">1l</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Pointed.point 1l Type@0 ℕ --&gt; ℕ : Type@0</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Pointed.point 1l Type@0 ℕ --&gt; ℕ : Type@0</pre></details>
 <div class="doc"><p>A Church encoding quantifies over a universe, so it lives one level up: the conjunction of the Prelude, <code>Prelude›Logic.Conj u</code>, is in <code>Type@{succl u}</code>. A type quantifying over levels themselves is in <code>Type@ω</code>, the universe at the level ω, above every <code>Type@{u}</code> with <code>u</code> in <code>Level</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l299">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">→</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l299">u</a><span class="sym">}</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ∀ (x1 : Level) → Type@{x1} --&gt; ∀ (x1 : Level) → Type@{x1} : Type@ω</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ∀ (x1 : Level) → Type@{x1} --&gt; ∀ (x1 : Level) → Type@{x1} : Type@ω</pre></details>
 <div class="doc"><p>Sorted levels. The levels of <code>Level</code> are the finite ones; ω and the levels above it are in sorted types of levels. <code>Level@n</code> holds the levels below ω·(n+1), and <code>Level</code> is <code>Level@0</code>; <code>Level@{n}</code> is another spelling of <code>Level@n</code>. A sort is included in every larger one, <code>Level@m ⊆ Level@n</code> for m ≤ n, and every <code>Level@n</code> is in <code>Type@0</code>. Beyond <code>0l</code>, <code>1l</code>, …, the literals are <code>ω</code>, <code>ω + b</code> and <code>ω·a + b</code>, with <code>*</code> the ASCII spelling of <code>·</code>. The Prelude stays at <code>Level</code>: its level-polymorphic definitions take their levels there.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="num">ω</span> <span class="sym">+</span> <span class="num">1</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">@</span><span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ω+1 --&gt; ω+1 : Level@1</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ω+1 --&gt; ω+1 : Level@1</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="num">ω</span><span class="sym">·</span><span class="num">2</span> <span class="sym">+</span> <span class="num">1</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">@</span><span class="num">2</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ω·2+1 --&gt; ω·2+1 : Level@2</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ω·2+1 --&gt; ω·2+1 : Level@2</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="ty">Level</span><span class="sym">@</span><span class="num">1</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Level@1 --&gt; Level@1 : Type@0</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Level@1 --&gt; Level@1 : Type@0</pre></details>
 <div class="doc"><p>A finite level is a level of every sort.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="lift">lift</span> <span class="sym">(</span><span class="var bind" id="l302">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">@</span><span class="num">1</span> <span class="sym">≔</span> <a class="var" href="#l302">u</a> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#lift">lift</a> <span class="num">3l</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lift 3l --&gt; 3l : Level@1</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lift 3l --&gt; 3l : Level@1</pre></details>
 <div class="doc"><p>Quantifying over the levels of <code>Level@1</code> gives a type at ω·2.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l305">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">@</span><span class="num">1</span><span class="sym">)</span> <span class="sym">→</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l305">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><span class="num">ω</span><span class="sym">·</span><span class="num">2</span><span class="sym">}</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ∀ (x1 : Level@1) → Type@{x1} --&gt; ∀ (x1 : Level@1) → Type@{x1}
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ∀ (x1 : Level@1) → Type@{x1} --&gt; ∀ (x1 : Level@1) → Type@{x1}
   : Type@{ω·2}</pre></details>
 <div class="doc"><p>15. Inductive types. <code>inductive T (ps) : Type@n where | c (x : A) … end</code> declares a type and its constructors, and <code>T.c</code> reaches a constructor. <code>elim t at z → P | c x ⇒ … end</code> eliminates <code>t</code>: one branch per constructor, in order, and a recursive argument also gives an induction hypothesis, named after a comma.</p>
 </div>
@@ -344,17 +344,17 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#size">size</a> <span class="sym">(</span><a class="mod" href="#Shape">Shape</a><span class="sym">.</span><a class="def" href="#Shape.stack">stack</a> <span class="sym">(</span><a class="mod" href="#Shape">Shape</a><span class="sym">.</span><a class="def" href="#Shape.line">line</a> <span class="num">3</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate size (Shape.stack (Shape.line 3)) --&gt; 4 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate size (Shape.stack (Shape.line 3)) --&gt; 4 : ℕ</pre></details>
 <div class="doc"><p>The natural numbers are such a type too. Prelude›Builtin›Nat declares <code>inductive Nat</code> and then <code>builtin natural ≔ Nat</code>, which binds it as the natural numbers: from then on ℕ denotes <code>Nat</code> and the numerals denote chains of its constructors, in every unit that imports it. A second binding is rejected (&quot;the natural numbers are bound already&quot;).</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a><span class="sym">.</span><a class="mod" href="Prelude.Builtin.Nat.html#Nat">Nat</a><span class="sym">.</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="num">2</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : ℕ</pre></details>
 <div class="doc"><p>An inductive type of another unit is reached through its import, by name with <code>use</code> or through an <code>as</code> alias: <code>L.List 0l ℕ</code> is a type, and <code>L.List.nil 0l ℕ</code> one of its elements. The parameters of the type come first in its constructors. A type with parameters is eliminated as <code>Shape</code> is: the eliminator reads the parameters off the scrutinee's type, so neither the motive's binder <code>z</code> nor the branches mention them.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Data.List.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.List.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.List.html">List</a> <span class="kw">as</span> <span class="mod bind" id="L">L</span> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="List" href="Prelude.Data.List.html#List">List</a><span class="sym">)</span>
 
 <span class="kw">eval</span> <a class="mod" href="#L">L</a><span class="sym">.</span><a class="mod" href="Prelude.Data.List.html#List">List</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#List.cons">cons</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="num">1</span> <span class="sym">(</span><a class="mod" href="#L">L</a><span class="sym">.</span><a class="mod" href="Prelude.Data.List.html#List">List</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#List.nil">nil</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate L.List.cons 0l ℕ 1 (L.List.nil 0l ℕ)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate L.List.cons 0l ℕ 1 (L.List.nil 0l ℕ)
   --&gt; Prelude›Data›List.List.cons 0l ℕ 1 (Prelude›Data›List.List.nil 0l ℕ)
   : Prelude›Data›List.List 0l ℕ</pre></details>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="countDown">countDown</span> <span class="sym">(</span><span class="var bind" id="l350">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.List.html#List">List</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
@@ -369,7 +369,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#total">total</a> <span class="sym">(</span><a class="def" href="#countDown">countDown</a> <span class="num">4</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate total (countDown 4) --&gt; 10 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate total (countDown 4) --&gt; 10 : ℕ</pre></details>
 <div class="doc"><p><code>inductive A ≔ T ps</code> declares an inductive alias: <code>A</code> is <code>T</code> at those parameters, with <code>T</code>'s constructors, which then take no parameters. An alias of an alias is an alias of the same type, and an alias may leave some parameters to its own: <code>Lists u</code> is <code>List u</code>.</p>
 </div>
 <pre class="code"><span class="kw">inductive</span> <span class="mod bind" id="NatList">NatList</span> <span class="sym">≔</span> <a class="mod" href="Prelude.Data.List.html#List">List</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
@@ -381,15 +381,15 @@
 <span class="kw">def</span> <span class="def bind" id="oneTwo">oneTwo</span> <span class="sym">:</span> <a class="mod" href="#Numbers">Numbers</a> <span class="sym">≔</span> <a class="mod" href="#Numbers">Numbers</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#List.cons">cons</a> <span class="num">1</span> <span class="sym">(</span><a class="mod" href="#NatList">NatList</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#List.cons">cons</a> <span class="num">2</span> <a class="mod" href="#NatList">NatList</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#List.nil">nil</a><span class="sym">)</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#L">L</a><span class="sym">.</span><a class="mod" href="Prelude.Data.List.html#Ops">Ops</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#Ops.length">length</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="#oneTwo">oneTwo</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate L.Ops.length 0l ℕ oneTwo --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate L.Ops.length 0l ℕ oneTwo --&gt; 2 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#Lists">Lists</a><span class="sym">.</span><a class="def" href="Prelude.Data.List.html#List.nil">nil</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">:</span> <a class="mod" href="#NatList">NatList</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Lists.nil 0l ℕ --&gt; Prelude›Data›List.List.nil 0l ℕ : NatList</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Lists.nil 0l ℕ --&gt; Prelude›Data›List.List.nil 0l ℕ : NatList</pre></details>
 <div class="doc"><p><code>open T use (c)</code> declares constructors of <code>T</code> as names. The data units of the Prelude keep their constructors to their type, so a client opens the ones it uses; <code>Nat</code> and <code>Bool</code> export theirs.</p>
 </div>
 <pre class="code"><span class="kw">open</span> <a class="mod" href="#NatList">NatList</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="nil" href="Prelude.Data.List.html#List.nil">nil</a><span class="sym">;</span> <a class="def bind" id="cons" href="Prelude.Data.List.html#List.cons">cons</a><span class="sym">)</span>
 
 <span class="kw">eval</span> <a class="def" href="Prelude.Data.List.html#List.cons">cons</a> <span class="num">3</span> <a class="def" href="Prelude.Data.List.html#List.nil">nil</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate cons 3 nil
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate cons 3 nil
   --&gt; Prelude›Data›List.List.cons 0l ℕ 3 (Prelude›Data›List.List.nil 0l ℕ)
   : Prelude›Data›List.List 0l ℕ</pre></details>
 <div class="doc"><p>16. Indexed types. A parameter right of the &quot;:&quot;, bound by a <code>∀</code> in front of the sort, is non-uniform: a recursive argument may give it a new value. <code>Climb n</code> is a climb that starts at height <code>n</code>: it stops there, or steps on to a climb from <code>succ n</code>. The motive binds the parameter (<code>k</code>) before the scrutinee, and a branch binds the constructor's value of it (<code>m</code>) first.</p>
@@ -409,12 +409,12 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#summit">summit</a> <span class="num">0</span> <span class="sym">(</span><a class="mod" href="#Climb">Climb</a><span class="sym">.</span><a class="def" href="#Climb.step">step</a> <span class="num">0</span> <span class="sym">(</span><a class="mod" href="#Climb">Climb</a><span class="sym">.</span><a class="def" href="#Climb.step">step</a> <span class="num">1</span> <span class="sym">(</span><a class="mod" href="#Climb">Climb</a><span class="sym">.</span><a class="def" href="#Climb.stop">stop</a> <span class="num">2</span><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate summit 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2))) --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate summit 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2))) --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>17. Recursors. Each inductive type <code>T</code> has the recursor <code>T.rec</code>, a function: the level of the motive, the motive, one case per constructor, then the scrutinee. <code>elim</code> is its readable form.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#Shape">Shape</a><span class="sym">.</span><a class="mod" href="#Shape">rec</a> <span class="num">0l</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l447">z</span> <span class="sym">:</span> <a class="mod" href="#Shape">Shape</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="num">0</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l449">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l449">n</a><span class="sym">)</span>
        <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l451">t</span> <span class="sym">:</span> <a class="mod" href="#Shape">Shape</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l453">r</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l453">r</a><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#Shape">Shape</a><span class="sym">.</span><a class="def" href="#Shape.stack">stack</a> <span class="sym">(</span><a class="mod" href="#Shape">Shape</a><span class="sym">.</span><a class="def" href="#Shape.line">line</a> <span class="num">3</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Shape.rec 0l (λ (x1 : Shape) → ℕ) 0 (λ (x2 : ℕ) → x2)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Shape.rec 0l (λ (x1 : Shape) → ℕ) 0 (λ (x2 : ℕ) → x2)
            (λ (x3 : Shape)
               (x4 : ℕ)
              → succ x4)
@@ -441,7 +441,7 @@
 
 <span class="kw">eval</span> <a class="def" href="#half">half</a> <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">.</span><a class="def" href="#Parity.Even.esucc">esucc</a> <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">.</span><a class="def" href="#Parity.Odd.osucc">osucc</a> <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">.</span><a class="def" href="#Parity.Even.esucc">esucc</a>
        <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">.</span><a class="def" href="#Parity.Odd.osucc">osucc</a> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">.</span><a class="def" href="#Parity.Even.ezero">ezero</a><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate half
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate half
            (Parity.Even.esucc
              (Parity.Odd.osucc
                (Parity.Even.esucc (Parity.Odd.osucc Parity.Even.ezero))))
@@ -453,7 +453,7 @@
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Rec">Rec</a><span class="sym">.</span><a class="def" href="#Parity.Rec.rec_Odd">rec_Odd</a> <span class="num">0l</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l510">z</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l513">z</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span>
        <span class="num">0</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l516">o</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l519">h</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l519">h</a><span class="sym">)</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l521">e</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l524">h</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l524">h</a><span class="sym">)</span>
        <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">.</span><a class="def" href="#Parity.Odd.osucc">osucc</a> <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">.</span><a class="def" href="#Parity.Even.ezero">ezero</a><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Parity.Rec.rec_Odd 0l (λ (x1 : Parity.Even) → ℕ)
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Parity.Rec.rec_Odd 0l (λ (x1 : Parity.Even) → ℕ)
            (λ (x2 : Parity.Odd) → ℕ)
            0
            (λ (x3 : Parity.Odd)
@@ -475,7 +475,7 @@
 
 <span class="kw">eval</span> <a class="def" href="#oddLength">oddLength</a> <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">.</span><a class="def" href="#Parity.Odd.osucc">osucc</a> <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">.</span><a class="def" href="#Parity.Even.esucc">esucc</a> <span class="sym">(</span><a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Odd">Odd</a><span class="sym">.</span><a class="def" href="#Parity.Odd.osucc">osucc</a>
        <a class="mod" href="#Parity">Parity</a><span class="sym">.</span><a class="mod" href="#Parity.Even">Even</a><span class="sym">.</span><a class="def" href="#Parity.Even.ezero">ezero</a><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate oddLength
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate oddLength
            (Parity.Odd.osucc
              (Parity.Even.esucc (Parity.Odd.osucc Parity.Even.ezero))) --&gt; 3
   : ℕ</pre></details>
@@ -502,7 +502,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#labels">labels</a> <a class="def" href="#tree">tree</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate labels tree --&gt; 6 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate labels tree --&gt; 6 : ℕ</pre></details>
 <pre class="code"><span class="kw">mutual</span> <span class="kw">def</span>
   <span class="def bind" id="nodes">nodes</span> <span class="sym">(</span><span class="var bind" id="l633">r</span> <span class="sym">:</span> <a class="mod" href="#Rose">Rose</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
     <span class="sym">|</span> <span class="free">node</span> <span class="var bind" id="l636">x</span> <span class="var bind" id="l637">ts</span><span class="sym">,</span> <span class="var bind" id="l638">h</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l638">h</a>
@@ -512,7 +512,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#nodes">nodes</a> <a class="def" href="#tree">tree</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nodes tree --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nodes tree --&gt; 3 : ℕ</pre></details>
 <div class="doc"><p>20. Records. <code>record R (ps) : Type@n where f : A; … end</code> declares a record type, each field's type seeing the fields before it, and <code>record R ps where f ≔ M; … end</code> is a value, its fields in order.</p>
 </div>
 <pre class="code"><span class="kw">record</span> <span class="mod bind" id="Point">Point</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
@@ -533,17 +533,17 @@
 <div class="doc"><p>A field or a with-area member is selected through any term of the record type: a definition, a term applied, a value in parentheses.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#origin">origin</a><span class="sym">.</span><a class="def" href="#Point.x">x</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate origin.x --&gt; 0 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate origin.x --&gt; 0 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="sym">(</span><a class="def" href="#onDiagonal">onDiagonal</a> <span class="num">3</span><span class="sym">)</span><span class="sym">.</span><a class="def" href="#Point.sum">sum</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (onDiagonal 3).sum --&gt; 6 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (onDiagonal 3).sum --&gt; 6 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <span class="sym">(</span><span class="kw">record</span> <a class="mod" href="#Point">Point</a> <span class="kw">where</span> <span class="free">x</span> <span class="sym">≔</span> <span class="num">1</span><span class="sym">;</span> <span class="free">y</span> <span class="sym">≔</span> <span class="num">2</span> <span class="kw">end</span><span class="sym">)</span><span class="sym">.</span><a class="def" href="#Point.flip">flip</a><span class="sym">.</span><a class="def" href="#Point.x">x</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let x1 ≔ let x2 ≔ record Point where x ≔ 1; y ≔ 2 end in x2.flip end
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let x1 ≔ let x2 ≔ record Point where x ≔ 1; y ≔ 2 end in x2.flip end
          in x1.x
          end --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>The record type is also a module over its parameters and a value: <code>Point.flip p</code> is <code>p.flip</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#Point">Point</a><span class="sym">.</span><a class="def" href="#Point.flip">flip</a> <a class="def" href="#corner">corner</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Point.flip corner --&gt; record Point where x ≔ 5; y ≔ 3 end : Point</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Point.flip corner --&gt; record Point where x ≔ 5; y ≔ 3 end : Point</pre></details>
 <div class="doc"><p>η: a record value is determined by its fields, so <code>p</code> and the point of <code>p.x</code> and <code>p.y</code> are the same, by conversion.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Logic.Leibniz.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Logic.Leibniz.html">Logic</a><span class="sym">›</span><a class="unit" href="Prelude.Logic.Leibniz.html">Leibniz</a> <span class="num">0l</span> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Id" href="Prelude.Logic.Leibniz.html#Id">Id</a><span class="sym">;</span> <a class="def bind" id="idRefl" href="Prelude.Logic.Leibniz.html#idRefl">idRefl</a><span class="sym">)</span>
@@ -564,9 +564,9 @@
 <span class="kw">def</span> <span class="def bind" id="twoThree">twoThree</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.Sigma.html#Sigma">Sigma</a> <span class="sym">≔</span> <a class="def" href="Prelude.Data.Sigma.html#pair">pair</a> <span class="num">2</span> <span class="num">3</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Pairs">Pairs</a><span class="sym">.</span><a class="def" href="Prelude.Data.Sigma.html#Sigma.snd">snd</a> <a class="def" href="#twoThree">twoThree</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Pairs.snd twoThree --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Pairs.snd twoThree --&gt; 3 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#twoThree">twoThree</a><span class="sym">.</span><a class="def" href="Prelude.Data.Sigma.html#Sigma.snd">snd</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate twoThree.snd --&gt; 3 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate twoThree.snd --&gt; 3 : ℕ</pre></details>
 <div class="doc"><p><code>record A ≔ R ps</code> declares a record alias, which, like an inductive alias, may leave some parameters: <code>SamePair A</code> is <code>Prod 0l A A</code>. An <code>import … use (R)</code> or <code>open … use (R)</code> brings a record in as both a type and a module, and <code>open q as W</code> makes a record value <code>q</code> a module.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Data.Prod.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Prod.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Prod.html">Prod</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Prod" href="Prelude.Data.Prod.html#Prod">Prod</a><span class="sym">)</span>
@@ -578,7 +578,7 @@
 <span class="kw">def</span> <span class="def bind" id="fiveSix">fiveSix</span> <span class="sym">:</span> <a class="mod" href="#NatPair">NatPair</a> <span class="sym">≔</span> <span class="kw">record</span> <a class="mod" href="Prelude.Data.Prod.html#Prod">Prod</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="kw">where</span> <span class="free">fst</span> <span class="sym">≔</span> <span class="num">5</span><span class="sym">;</span> <span class="free">snd</span> <span class="sym">≔</span> <span class="num">6</span> <span class="kw">end</span> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#fiveSix">fiveSix</a><span class="sym">.</span><a class="def" href="Prelude.Data.Prod.html#Prod.swap">swap</a> <span class="sym">:</span> <a class="mod" href="#SamePair">SamePair</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fiveSix.swap
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fiveSix.swap
   --&gt; record Prelude›Data›Prod.Prod 0l ℕ ℕ where fst ≔ 6; snd ≔ 5 end
   : SamePair ℕ</pre></details>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Fields">Fields</span> <span class="kw">where</span>
@@ -587,7 +587,7 @@
 <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Fields">Fields</a><span class="sym">.</span><a class="def" href="#Fields.first">first</a></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Fields.first --&gt; 5 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Fields.first --&gt; 5 : ℕ</pre></details>
 <div class="doc"><p>21. A showcase: the algebraic hierarchy of Prelude›Algebra. Each structure has two records. A predicate holds its laws, over a carrier, a relation <code>eq</code> that the laws are stated up to, and the operations, and extends the predicate below by a field: <code>IsMonoid A eq op e</code> has <code>isSemigroup : IsSemigroup A eq op</code>, which has <code>isMagma</code>. A bundle holds a carrier, the relation, the operations and the predicate, and its with-area forwards the laws, <code>M.assoc</code>, with <code>open … export</code>. A function over every monoid takes the bundle as an argument and selects its members; the two levels of a monoid are those of its carrier and of its relation.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Algebra.Monoid.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Algebra.Monoid.html">Algebra</a><span class="sym">›</span><a class="unit" href="Prelude.Algebra.Monoid.html">Monoid</a> <span class="num">0l</span> <span class="num">0l</span> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Monoid" href="Prelude.Algebra.Monoid.html#Monoid">Monoid</a><span class="sym">)</span>
@@ -597,22 +597,22 @@
 <span class="kw">def</span> <span class="def bind" id="square">square</span> <span class="sym">(</span><span class="var bind" id="l801">M</span> <span class="sym">:</span> <a class="mod" href="Prelude.Algebra.Monoid.html#Monoid">Monoid</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l803">a</span> <span class="sym">:</span> <a class="var" href="#l801">M</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#Monoid.carrier">carrier</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l801">M</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#Monoid.carrier">carrier</a> <span class="sym">≔</span> <a class="var" href="#l801">M</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#Monoid.op">op</a> <a class="var" href="#l803">a</a> <a class="var" href="#l803">a</a> <span class="kw">end</span>
 
 <span class="kw">eval</span> <a class="def" href="#square">square</a> <a class="mod" href="#NatAlgebra">NatAlgebra</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Instances.Nat.html#additive">additive</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.CommutativeMonoid.html#CommutativeMonoid.monoid">monoid</a> <span class="num">7</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate square NatAlgebra.additive.monoid 7 --&gt; 14 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate square NatAlgebra.additive.monoid 7 --&gt; 14 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#square">square</a> <a class="mod" href="#NatAlgebra">NatAlgebra</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Instances.Nat.html#multiplicative">multiplicative</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.CommutativeMonoid.html#CommutativeMonoid.monoid">monoid</a> <span class="num">7</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate square NatAlgebra.multiplicative.monoid 7 --&gt; 49 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate square NatAlgebra.multiplicative.monoid 7 --&gt; 49 : ℕ</pre></details>
 <pre class="code"><span class="kw">eval</span> <a class="def" href="#square">square</a> <a class="def" href="Prelude.Algebra.Instances.Endo.Pointwise.html#pointwise">pointwise</a> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="num">0</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate square pointwise succ 0 --&gt; 2 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate square pointwise succ 0 --&gt; 2 : ℕ</pre></details>
 <div class="doc"><p>The numbers are compared by <code>Eq</code>, which computes, so a law at closed numbers is <code>⊤</code> and its proof normalizes to <code>⋆</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <a class="mod" href="#NatAlgebra">NatAlgebra</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Instances.Nat.html#additive">additive</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.CommutativeMonoid.html#CommutativeMonoid.comm">comm</a> <span class="num">2</span> <span class="num">3</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate NatAlgebra.additive.comm 2 3 --&gt; ⋆ : ⊤</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate NatAlgebra.additive.comm 2 3 --&gt; ⋆ : ⊤</pre></details>
 <div class="doc"><p>The laws derived once for every monoid are a unit over the monoid: <code>pow</code> and <code>powPlus</code> at the multiplicative monoid are powers of numbers.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Algebra.Monoid.Properties.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Algebra.Monoid.Properties.html">Algebra</a><span class="sym">›</span><a class="unit" href="Prelude.Algebra.Monoid.Properties.html">Monoid</a><span class="sym">›</span><a class="unit" href="Prelude.Algebra.Monoid.Properties.html">Properties</a> <span class="num">0l</span> <span class="num">0l</span> <a class="mod" href="#NatAlgebra">NatAlgebra</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Instances.Nat.html#multiplicative">multiplicative</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.CommutativeMonoid.html#CommutativeMonoid.monoid">monoid</a>
   <span class="kw">as</span> <span class="mod bind" id="Times">Times</span>
 
 <span class="kw">eval</span> <a class="mod" href="#Times">Times</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.Properties.html#pow">pow</a> <span class="num">3</span> <span class="num">4</span></pre>
-<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Times.pow 3 4 --&gt; 81 : ℕ</pre></details>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Times.pow 3 4 --&gt; 81 : ℕ</pre></details>
 <pre class="code"><span class="kw">theorem</span> <span class="def bind" id="powers">powers</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="sym">(</span><a class="mod" href="#Times">Times</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.Properties.html#pow">pow</a> <span class="num">2</span> <span class="sym">(</span><a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">1</span> <span class="num">2</span><span class="sym">)</span><span class="sym">)</span>
     <span class="sym">(</span><a class="mod" href="#NatAlgebra">NatAlgebra</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Instances.Nat.html#multiplicative">multiplicative</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.CommutativeMonoid.html#CommutativeMonoid.op">op</a> <span class="sym">(</span><a class="mod" href="#Times">Times</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.Properties.html#pow">pow</a> <span class="num">2</span> <span class="num">1</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#Times">Times</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.Properties.html#pow">pow</a> <span class="num">2</span> <span class="num">2</span><span class="sym">)</span><span class="sym">)</span> <span class="sym">≔</span>
   <a class="mod" href="#Times">Times</a><span class="sym">.</span><a class="mod" href="Prelude.Algebra.Monoid.Properties.html#Power">Power</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.Properties.html#Power.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">2</span>

@@ -29,7 +29,13 @@ a.toc-open{display:block;position:fixed;top:.5em;right:.5em;z-index:5;padding:.2
 a.toc-close{display:inline;font-size:1.4em;line-height:1;color:#555}
 :target{scroll-margin-top:2.6em}
 }
-details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em}
+details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em;margin-left:var(--col,0)}
 details.eval summary{cursor:pointer;color:#6a737d;font-size:.9em;width:max-content}
 details.eval pre.out{cursor:pointer;margin:.2em 0;padding:.3em .8em;border:1px solid #dde3ea;border-radius:3px;background:#fbfcfd;white-space:pre-wrap;line-height:1.4}
 ul.units{list-style:none;padding-left:0}ul.units li{margin:.5em 0}ul.units p{display:inline;margin:0;color:#555}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (max-width:40em){
+body{overflow-wrap:anywhere}
+pre.verb{overflow-x:auto}
+details.eval{margin-left:min(var(--col,0px),25%)}
+}
