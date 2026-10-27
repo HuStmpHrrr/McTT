@@ -28,13 +28,304 @@ Fixpoint brs_lookup (Bs : list (string * nat * exp)) (c : string) : option (nat 
   | (c', n, B) :: Bs' => if String.eqb c c' then Some (n, B) else brs_lookup Bs' c
   end.
 
-(** The number of recursive arguments among [gs]. *)
-Fixpoint cargs_nrec (gs : list carg) : nat :=
+(** ** Leaf Paths
+
+    A recursive argument has one recursive result per leaf path of its
+    shape: the way from the argument to one of the elements of the group
+    it holds, through the domains of its function shape and, at an end in
+    a record view, through the projections of the view's recursive fields,
+    on into their shapes.  A record view has no eliminator, so a path never
+    ends in one: it goes through its fields instead.
+
+    The components of a path (domains, parameters) are over the binders
+    passed on the way to them: a domain adds one, a projection the
+    projections of the non-recursive fields before the field, and then the
+    context of the argument's shape. *)
+Inductive leaf_path : Set :=
+(** The end: the member [j] at the non-uniform parameters [Ps]. *)
+| leaf_self : nat -> list exp -> leaf_path
+(** Apply to an element of the domain [B], then the rest, under one more
+    binder. *)
+| leaf_pi : exp -> leaf_path -> leaf_path
+(** [leaf_proj f ns l]: project the field [f] of a record view, then the
+    rest, whose components are over the projections of the non-recursive
+    fields [ns] before [f], in order. *)
+| leaf_proj : string -> list string -> leaf_path -> leaf_path.
+
+(** The member a leaf path ends in. *)
+Fixpoint leaf_mem (l : leaf_path) : nat :=
+  match l with
+  | leaf_self j _ => j
+  | leaf_pi _ l => leaf_mem l
+  | leaf_proj _ _ l => leaf_mem l
+  end.
+
+(** The non-uniform parameters at which a leaf path ends. *)
+Fixpoint leaf_ps (l : leaf_path) : list exp :=
+  match l with
+  | leaf_self _ Ps => Ps
+  | leaf_pi _ l => leaf_ps l
+  | leaf_proj _ _ l => leaf_ps l
+  end.
+
+(** A leaf path whose components are moved by [φ], under the binders the
+    path passes. *)
+Fixpoint leaf_wk (φ : wk) (l : leaf_path) : leaf_path :=
+  match l with
+  | leaf_self j Ps => leaf_self j (List.map (fun P => exp_wk P φ) Ps)
+  | leaf_pi B l => leaf_pi (exp_wk B φ) (leaf_wk (wk_q φ) l)
+  | leaf_proj f ns l => leaf_proj f ns (leaf_wk (wk_qn (List.length ns) φ) l)
+  end.
+
+Section Leaves.
+  (** The leaf paths of the record views met so far, by member: [Some ls]
+      at a record view, its paths over the group's uniform parameters,
+      [None] at any other member. *)
+  Variable (tbl : nat -> option (list leaf_path)).
+
+  (** The leaf paths of a shape whose components are over [m] binders
+      above the uniform parameters: through each domain, and at the end
+      the member's own end, or, at a record view, the view's paths moved
+      past the [m] binders. *)
+  Fixpoint shape_leaves (m : nat) (t : ptyp) : list leaf_path :=
+    match t with
+    | pt_pi B t' => List.map (leaf_pi B) (shape_leaves (S m) t')
+    | pt_self j Ps =>
+        match tbl j with
+        | Some ls => List.map (leaf_wk (wk_shiftn m)) ls
+        | None => leaf_self j Ps :: nil
+        end
+    end.
+
+  (** The leaf paths of the fields [fs] of a record view, after the
+      non-recursive fields [ns]: none at a non-recursive field, which joins
+      [ns]; those of a recursive field's shape, each through the field's
+      projection. *)
+  Fixpoint fields_leaves (ns : list string) (fs : list (string * carg)) : list leaf_path :=
+    match fs with
+    | nil => nil
+    | (f, ca_arg _) :: fs' => fields_leaves (ns ++ f :: nil) fs'
+    | (f, ca_rec t) :: fs' => List.map (leaf_proj f ns) (shape_leaves (List.length ns) t) ++ fields_leaves ns fs'
+    end.
+End Leaves.
+
+(** The names of the non-recursive fields among [fs], in order: those a
+    projection's leaf path is over ([fields_leaves]). *)
+Fixpoint fields_args (fs : list (string * carg)) : list string :=
+  match fs with
+  | nil => nil
+  | (f, ca_arg _) :: fs' => f :: fields_args fs'
+  | (_, ca_rec _) :: fs' => fields_args fs'
+  end.
+
+(** A leaf path of fields goes through the projection of one of their
+    recursive fields, over the non-recursive fields before it, on into the
+    field's shape. *)
+Lemma fields_leaves_in : forall tbl fs ns l, In l (fields_leaves tbl ns fs) ->
+    exists fs1 f t fs2 l1, fs = fs1 ++ (f, ca_rec t) :: fs2 /\ l = leaf_proj f (ns ++ fields_args fs1) l1 /\
+      In l1 (shape_leaves tbl (List.length (ns ++ fields_args fs1)) t).
+Proof.
+  intros tbl; induction fs as [| [f [A | t]] fs IH]; intros ns l Hin; cbn [fields_leaves] in Hin; [ destruct Hin | |].
+  - destruct (IH _ _ Hin) as (fs1 & f' & t & fs2 & l1 & -> & -> & Hl1).
+    exists ((f, ca_arg A) :: fs1), f', t, fs2, l1; cbn [fields_args List.app].
+    rewrite <- List.app_assoc in Hl1 |- *; cbn [List.app] in Hl1 |- *; auto.
+  - apply List.in_app_or in Hin as [Hin | Hin].
+    + apply List.in_map_iff in Hin as (l1 & <- & Hl1).
+      exists nil, f, t, fs, l1; cbn [fields_args List.app]; rewrite List.app_nil_r; auto.
+    + destruct (IH _ _ Hin) as (fs1 & f' & t' & fs2 & l1 & -> & -> & Hl1).
+      exists ((f, ca_rec t) :: fs1), f', t', fs2, l1; cbn [fields_args List.app]; auto.
+Qed.
+
+(** The leaf paths of a member, if it is a record view, given those of
+    the members before it: its fields' ([fields_leaves]), its fields named
+    as its head names them. *)
+Definition member_leaves (tbl : nat -> option (list leaf_path)) (M : imember) : option (list leaf_path) :=
+  match im_head M, im_cons M with
+  | mh_record _ _ fl, (_, gs) :: nil => Some (fields_leaves tbl nil (List.combine fl gs))
+  | _, _ => None
+  end.
+
+(** The table of the leaf paths of the record views, member by member:
+    each from the table of the members before it.  The record views'
+    fields end only in members before them ([rview_order_ok]), so the
+    table is a fold, without a measure. *)
+Fixpoint leaves_tbl_from (acc : list (option (list leaf_path))) (ms : list imember) : list (option (list leaf_path)) :=
+  match ms with
+  | nil => acc
+  | M :: ms' => leaves_tbl_from (acc ++ member_leaves (fun j => List.nth j acc None) M :: nil) ms'
+  end.
+
+(** The leaf paths of the record view [j] of the group [D]. *)
+Definition rv_leaves (D : ind_decl) (j : nat) : option (list leaf_path) :=
+  List.nth j (leaves_tbl_from nil (ind_members D)) None.
+
+(** The number of leaf paths of a shape does not depend on the binders
+    its components are over. *)
+Lemma length_shape_leaves : forall tbl t m m',
+    List.length (shape_leaves tbl m t) = List.length (shape_leaves tbl m' t).
+Proof.
+  intros tbl t; induction t as [j Ps | B t IH]; intros m m'; cbn.
+  - destruct (tbl j); rewrite ?List.length_map; reflexivity.
+  - rewrite !List.length_map; apply IH.
+Qed.
+
+(** The record views' fields end only in record views before them: what
+    makes the table a fold.  The core command lists the record views so
+    (children before parents, after every other member). *)
+Definition rview_order_ok (D : ind_decl) : Prop :=
+  forall j Mj qr Is fl c gs gs1 t gs2 Mi,
+    ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl -> im_cons Mj = (c, gs) :: nil ->
+    gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mi -> im_is_rview Mi = true ->
+    ptyp_mem t < j.
+
+(** The table gives each record view the leaf paths of its fields, read
+    off the table itself: the fact about the table that the semantics
+    needs ([rview_order_ok] gives it, [leaves_coherent_of_order]). *)
+Definition leaves_coherent (D : ind_decl) : Prop :=
+  forall j Mj qr Is fl c gs, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl -> im_cons Mj = (c, gs) :: nil ->
+    rv_leaves D j = Some (fields_leaves (rv_leaves D) nil (List.combine fl gs)).
+
+(** The leaf paths of a shape read only the table's entry at the member
+    the shape ends in. *)
+Lemma shape_leaves_ext : forall tbl1 tbl2 t m, tbl1 (ptyp_mem t) = tbl2 (ptyp_mem t) ->
+    shape_leaves tbl1 m t = shape_leaves tbl2 m t.
+Proof.
+  intros tbl1 tbl2 t; induction t as [j Ps | B t IH]; intros m H; cbn in *; [ rewrite H; reflexivity |].
+  rewrite IH by exact H; reflexivity.
+Qed.
+
+Lemma fields_leaves_ext : forall tbl1 tbl2 fs ns,
+    (forall f t, In (f, ca_rec t) fs -> tbl1 (ptyp_mem t) = tbl2 (ptyp_mem t)) ->
+    fields_leaves tbl1 ns fs = fields_leaves tbl2 ns fs.
+Proof.
+  intros tbl1 tbl2; induction fs as [| [f [A | t]] fs IH]; intros ns H; cbn; [ reflexivity | |].
+  - apply IH; intros; apply (H f0); right; assumption.
+  - rewrite (shape_leaves_ext tbl1 tbl2) by (apply (H f); left; reflexivity).
+    rewrite IH by (intros; apply (H f0); right; assumption); reflexivity.
+Qed.
+
+(** The table from [acc]: [acc], then one entry per member, each read off
+    the table before it. *)
+Lemma leaves_tbl_from_prefix : forall ms acc,
+    List.length (leaves_tbl_from acc ms) = List.length acc + List.length ms /\
+    List.firstn (List.length acc) (leaves_tbl_from acc ms) = acc.
+Proof.
+  induction ms as [| M ms IH]; intros acc; cbn; [ rewrite Nat.add_0_r, List.firstn_all; auto |].
+  destruct (IH (acc ++ member_leaves (fun j => List.nth j acc None) M :: nil)) as [Hl Hf].
+  rewrite List.length_app in Hl; cbn in Hl; split; [ lia |].
+  set (acc' := acc ++ _ :: nil) in *.
+  assert (E : List.firstn (List.length acc) (leaves_tbl_from acc' ms) =
+              List.firstn (List.length acc) (List.firstn (List.length acc') (leaves_tbl_from acc' ms))).
+  { rewrite List.firstn_firstn, Nat.min_l; [ reflexivity | unfold acc'; rewrite List.length_app; cbn; lia ]. }
+  rewrite E, Hf; unfold acc'; rewrite List.firstn_app, List.firstn_all, Nat.sub_diag; cbn; rewrite List.app_nil_r; reflexivity.
+Qed.
+
+(** The entry of the member [k] is its leaf paths read off the table
+    before it. *)
+Lemma leaves_tbl_from_nth : forall ms acc k M, List.nth_error ms k = Some M ->
+    List.nth (List.length acc + k) (leaves_tbl_from acc ms) None =
+      member_leaves (fun j => List.nth j (List.firstn (List.length acc + k) (leaves_tbl_from acc ms)) None) M.
+Proof.
+  induction ms as [| M0 ms IH]; intros acc k M H; [ destruct k; discriminate |].
+  destruct k as [| k]; cbn in H |- *.
+  - injection H as ->; rewrite Nat.add_0_r.
+    set (acc' := acc ++ member_leaves (fun j => List.nth j acc None) M :: nil).
+    destruct (leaves_tbl_from_prefix ms acc') as [_ Hf].
+    assert (Hl : List.length acc' = S (List.length acc)) by (unfold acc'; rewrite List.length_app; cbn; lia).
+    assert (Hp : List.firstn (List.length acc) (leaves_tbl_from acc' ms) = acc).
+    { assert (E : List.firstn (List.length acc) (leaves_tbl_from acc' ms) =
+              List.firstn (List.length acc) (List.firstn (List.length acc') (leaves_tbl_from acc' ms)))
+        by (rewrite List.firstn_firstn, Nat.min_l; [ reflexivity | lia ]).
+      rewrite E, Hf; unfold acc'; rewrite List.firstn_app, List.firstn_all, Nat.sub_diag; cbn; rewrite List.app_nil_r; reflexivity. }
+    assert (Hn : List.nth (List.length acc) (leaves_tbl_from acc' ms) None = List.nth (List.length acc) acc' None).
+    { rewrite <- Hf at 2; rewrite List.nth_firstn, Hl.
+      destruct (Nat.ltb_spec (List.length acc) (S (List.length acc))); [ reflexivity | lia ]. }
+    rewrite Hn, Hp; unfold acc'; rewrite List.app_nth2, Nat.sub_diag by lia; reflexivity.
+  - pose proof (IH (acc ++ member_leaves (fun j => List.nth j acc None) M0 :: nil) k M H) as E.
+    rewrite List.length_app in E; cbn in E.
+    replace (List.length acc + S k) with (List.length acc + 1 + k) by lia; exact E.
+Qed.
+
+(** A member's leaf paths read off two tables that agree everywhere. *)
+Lemma member_leaves_ext : forall tbl1 tbl2 M, (forall j, tbl1 j = tbl2 j) -> member_leaves tbl1 M = member_leaves tbl2 M.
+Proof.
+  intros * H; unfold member_leaves.
+  destruct (im_head M), (im_cons M) as [| [c gs] [|]]; try reflexivity.
+  rewrite (fields_leaves_ext tbl1 tbl2) by (intros; apply H); reflexivity.
+Qed.
+
+(** The entry of the member [k] of a group, read off the entries before
+    it. *)
+Lemma rv_leaves_member : forall D k M, ind_member D k = Some M ->
+    rv_leaves D k = member_leaves (fun j => if j <? k then rv_leaves D j else None) M.
+Proof.
+  intros * HM; unfold rv_leaves.
+  pose proof (leaves_tbl_from_nth (ind_members D) nil k M HM) as E; cbn in E; rewrite E.
+  apply member_leaves_ext; intros j.
+  rewrite List.nth_firstn; destruct (Nat.ltb_spec j k); reflexivity.
+Qed.
+
+(** A member that is no record view has no entry. *)
+Lemma rv_leaves_not_rview : forall D k M, ind_member D k = Some M -> im_is_rview M = false -> rv_leaves D k = None.
+Proof.
+  intros * HM Hr; rewrite (rv_leaves_member _ _ _ HM); unfold member_leaves, im_is_rview in *.
+  destruct (im_head M); [ reflexivity | reflexivity | discriminate ].
+Qed.
+
+(** Nor has a position past the members. *)
+Lemma rv_leaves_none : forall D k, ind_member D k = None -> rv_leaves D k = None.
+Proof.
+  intros * HM; unfold rv_leaves, ind_member in *.
+  destruct (leaves_tbl_from_prefix (ind_members D) nil) as [Hl _]; cbn in Hl.
+  apply List.nth_overflow; apply List.nth_error_None in HM; lia.
+Qed.
+
+(** The order of the record views makes the table coherent. *)
+Lemma leaves_coherent_of_order : forall D, rview_order_ok D -> leaves_coherent D.
+Proof.
+  intros D Ho j Mj qr Is fl c gs HM Hh Hc.
+  rewrite (rv_leaves_member _ _ _ HM); unfold member_leaves; rewrite Hh, Hc; f_equal.
+  apply fields_leaves_ext; intros f t Hin.
+  apply List.in_combine_r, List.in_split in Hin as (gs1 & gs2 & Egs).
+  destruct (Nat.ltb_spec (ptyp_mem t) j) as [Hlt | Hge]; [ reflexivity |].
+  destruct (ind_member D (ptyp_mem t)) as [Mi |] eqn:HMi; [| symmetry; exact (rv_leaves_none _ _ HMi) ].
+  destruct (im_is_rview Mi) eqn:Hr.
+  - exfalso; pose proof (Ho _ _ _ _ _ _ _ _ _ _ _ HM Hh Hc Egs HMi Hr); lia.
+  - symmetry; exact (rv_leaves_not_rview _ _ _ HMi Hr).
+Qed.
+
+Fixpoint cargs_nrec (D : ind_decl) (gs : list carg) : nat :=
   match gs with
   | nil => 0
-  | ca_arg _ :: gs' => cargs_nrec gs'
-  | ca_rec _ :: gs' => S (cargs_nrec gs')
+  | ca_arg _ :: gs' => cargs_nrec D gs'
+  | ca_rec t :: gs' => List.length (shape_leaves (rv_leaves D) 0 t) + cargs_nrec D gs'
   end.
+
+(** A record view's fields, named, have as many leaf paths as its
+    constructor's arguments have recursive results. *)
+Lemma length_fields_leaves_combine : forall D fl gs ns, List.length fl = List.length gs ->
+    List.length (fields_leaves (rv_leaves D) ns (List.combine fl gs)) = cargs_nrec D gs.
+Proof.
+  intros D; induction fl as [| f fl IH]; intros [| [A | t] gs] ns Hl; cbn in *; try discriminate; [ reflexivity | |].
+  - apply IH; lia.
+  - rewrite List.length_app, List.length_map, IH, (length_shape_leaves _ _ _ 0) by lia; reflexivity.
+Qed.
+
+(** At a record view with a coherent table, the leaf paths of a shape
+    ending in it are its fields'. *)
+Lemma length_shape_leaves_rview : forall D j Mj qr Is fl c gs Ps m,
+    leaves_coherent D -> ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl -> im_cons Mj = (c, gs) :: nil ->
+    List.length fl = List.length gs ->
+    List.length (shape_leaves (rv_leaves D) m (pt_self j Ps)) = cargs_nrec D gs.
+Proof.
+  intros * Hc HM Hh Hcs Hl; cbn; rewrite (Hc _ _ _ _ _ _ _ HM Hh Hcs), List.length_map.
+  exact (length_fields_leaves_combine D fl gs nil Hl).
+Qed.
+
+(** At a member with a block, one. *)
+Lemma length_shape_leaves_self : forall D j Mj Ps m, ind_member D j = Some Mj -> im_is_rview Mj = false ->
+    shape_leaves (rv_leaves D) m (pt_self j Ps) = leaf_self j Ps :: nil.
+Proof. intros * HM Hr; cbn; rewrite (rv_leaves_not_rview _ _ _ HM Hr); reflexivity. Qed.
 
 (** ** A Property of All the Members of a List
 
@@ -184,6 +475,22 @@ Definition cargs_plen (D : ind_decl) (gs : list carg) : Prop :=
   forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
     exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj.
 
+(** The leaf paths through the record views of [D] end at as many
+    parameters as their members have non-uniform ones: each record view's
+    fields do, and they end only in record views before it, so a walk down
+    the fields stops.  Readback asks it of the group of a stuck eliminator
+    ([read_ne_elim]), as it asks [blocks_nm_at]: the type of a recursive
+    result along a path through a record view is its end member's motive,
+    evaluated under the end's parameters, which must be as many as the
+    motive binds.  Every declared group has it. *)
+Record rview_leaf_arity (D : ind_decl) : Prop := mk_rview_leaf_arity
+  { (** The shapes of a record view's fields end at as many parameters as
+        their members have non-uniform ones *)
+    rview_leaf_plen : forall k Mk c gs, ind_member D k = Some Mk -> im_is_rview Mk = true -> In (c, gs) (im_cons Mk) ->
+      cargs_plen D gs
+    (** A record view's fields end only in record views before it *)
+  ; rview_leaf_order : rview_order_ok D }.
+
 (** The rest of a shape after [n] of its domains. *)
 Fixpoint ptyp_skip (n : nat) (t : ptyp) : ptyp :=
   match n, t with
@@ -268,13 +575,14 @@ Definition self_wk (D : ind_decl) (k : nat) : wk := wk_qn k (wk_shiftn (ind_ndec
 (** The type of the member [j] with the members as variables, [d] binders
     above the [Self]s, at the non-uniform parameters [Ns]: [Self_j] at a
     declared member, the container's at the view's instance [IsS j] at a
-    view. *)
+    view, the record type at its instance [IsS j] at a record view. *)
 Definition self_mty (D : ind_decl) (IsS : nat -> list exp) (j d : nat) (Ns : list exp) : typ :=
   match ind_member D j with
   | Some Mj =>
       match im_head Mj with
       | mh_decl _ => apps_exp (a_var (d + (ind_ndecl D - 1 - j))) Ns
       | mh_view qc kc _ _ => apps_exp (a_ind qc kc) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
+      | mh_record qr _ _ => apps_exp (a_record qr) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
       end
   | None => a_True
   end.
@@ -337,62 +645,100 @@ Fixpoint ptyp_ty_at (pq : qname) (D : ind_decl) (Us : list exp) (σ : sub) (t : 
   | pt_self j Ps => ind_mty pq D j Us (List.map (fun P => P[σ]) Ps)
   end.
 
-(** The type of the recursive result of an argument [x] of shape [t]: the
-    motive of the member the shape ends in, among the motives [As], at the
-    shape's non-uniform parameters and [x], under the shape's domains, at
-    which [x] is applied.  The motives' context, the eliminator's, is moved
-    by [β], the shape's components by [σ]. *)
-Fixpoint ptyp_ihty (As : list exp) (β σ : sub) (x : exp) (t : ptyp) : typ :=
-  match t with
-  | pt_pi B t => a_pi B[σ] (ptyp_ihty As (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) t)
-  | pt_self j Ps => (List.nth j As a_True)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
+(** A map on the second components of a list of pairs is a map on the
+    list it is combined from: how the fields of a tuple move. *)
+Lemma combine_map_snd : forall {A B C : Type} (f : B -> C) (xs : list A) (ys : list B),
+    List.map (fun p => (fst p, f (snd p))) (List.combine xs ys) = List.combine xs (List.map f ys).
+Proof. intros A B C f; induction xs as [| x xs IH]; intros [| y ys]; cbn; f_equal; auto. Qed.
+
+(** The projections of [x] at the fields [ns], in order: what the
+    components of a leaf path after a projection are over. *)
+Definition projections_of (ns : list string) (x : exp) : list exp := List.map (fun g => a_proj g x) ns.
+
+(** The type of the recursive result of an argument [x] along a leaf path
+    [l]: the motive of the member the path ends in, among the motives [As],
+    at the path's non-uniform parameters and [x] at the end of the path:
+    [x] applied to the domains the path passes (a [Π] over each), and
+    projected at the fields it passes.  The motives' context, the
+    eliminator's, is moved by [β], the path's components by [σ], which a
+    projection extends by the projections of the non-recursive fields
+    before the field. *)
+Fixpoint leaf_ihty (As : list exp) (β σ : sub) (x : exp) (l : leaf_path) : typ :=
+  match l with
+  | leaf_pi B l => a_pi B[σ] (leaf_ihty As (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) l)
+  | leaf_self j Ps => (List.nth j As a_True)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
+  | leaf_proj f ns l => leaf_ihty As β (sb_of_list σ (projections_of ns x)) (a_proj f x) l
   end.
 
 (** The recursive results of a constructor's arguments: the motive of the
-    member each recursive argument's shape ends in, at the argument and the
-    non-uniform parameters it is declared at.  [i] arguments of [gs] and [j]
-    results come before; [na] is the number of all the arguments, [nn] that
-    of the member's non-uniform parameters.  [ihs_sub] moves a shape's
-    components from the context of the non-recursive arguments before it
-    and the parameters to the branch's: past the recursive arguments before
-    it, the uniform parameters instantiated by [Us], past the arguments
-    after it and the results before it. *)
+    member each leaf path of each recursive argument ends in, at the
+    argument along the path.  [i] arguments of [gs] and [j] results come
+    before; [na] is the number of all the arguments, [nn] that of the
+    member's non-uniform parameters.  [ihs_sub] moves a shape's components
+    from the context of the non-recursive arguments before it and the
+    parameters to the branch's: past the recursive arguments before it, the
+    uniform parameters instantiated by [Us], past the arguments after it
+    and the results before it. *)
 Definition ihs_sub (nn : nat) (Us : list exp) (na : nat) (pat : list bool) (j : nat) : sub :=
   (sb_of_wk (wk_pat pat) ⨟ sb_qn (List.length pat + nn) (sb_of_list Id Us))
     ⨟ sb_of_wk (wk_shiftn (na - List.length pat + j)).
 
+(** The number of non-recursive arguments a pattern tells. *)
+Fixpoint pat_nargs (pat : list bool) : nat :=
+  match pat with
+  | nil => 0
+  | false :: pat' => S (pat_nargs pat')
+  | true :: pat' => pat_nargs pat'
+  end.
+
+(** The recursive results of a recursive argument along its leaf paths
+    [ls], after [j] results, as a context: one per path, of its motive's
+    type ([leaf_ihty]); [pat] tells which arguments before the argument
+    are recursive. *)
+Fixpoint leaves_ctx (nn : nat) (As : list exp) (Us : list exp) (na : nat)
+    (pat : list bool) (j : nat) (ls : list leaf_path) : ctx :=
+  match ls with
+  | nil => nil
+  | l :: ls' =>
+      leaves_ctx nn As Us na pat (S j) ls' ++
+        ce_ass (leaf_ihty As (sb_of_wk (wk_shiftn (j + na + nn))) (ihs_sub nn Us na pat j)
+                  (a_var (j + na - 1 - List.length pat)) l) :: nil
+  end.
+
 (** The recursive results of a branch, after [j] of them, as a context:
-    one per recursive argument, of its motive's type ([ihty]). *)
-Fixpoint ihs_ctx_aux (nn : nat) (As : list exp) (Us : list exp) (na : nat)
+    one per leaf path of each recursive argument, of its motive's type;
+    the leaf paths are read off the table [tbl] of the group's record
+    views. *)
+Fixpoint ihs_ctx_aux (tbl : nat -> option (list leaf_path)) (nn : nat) (As : list exp) (Us : list exp) (na : nat)
     (pat : list bool) (j : nat) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
-  | ca_arg _ :: gs' => ihs_ctx_aux nn As Us na (false :: pat) j gs'
+  | ca_arg _ :: gs' => ihs_ctx_aux tbl nn As Us na (false :: pat) j gs'
   | ca_rec t :: gs' =>
-      ihs_ctx_aux nn As Us na (true :: pat) (S j) gs' ++
-        ce_ass (ptyp_ihty As (sb_of_wk (wk_shiftn (j + na + nn))) (ihs_sub nn Us na pat j)
-                  (a_var (j + na - 1 - List.length pat)) t) :: nil
+      let ls := shape_leaves tbl (pat_nargs pat + nn) t in
+      ihs_ctx_aux tbl nn As Us na (true :: pat) (List.length ls + j) gs' ++
+        leaves_ctx nn As Us na pat j ls
   end.
 
 (** The context of the branch of a constructor with arguments [gs] of the
     member [M]: the non-uniform parameters, the arguments and the recursive
     results, the motives being [As]. *)
 Definition elim_bctx (pq : qname) (D : ind_decl) (M : imember) (gs : list carg) (As : list exp) (Us : list exp) : ctx :=
-  ihs_ctx_aux (im_nn M) As Us (List.length gs) nil 0 gs ++
+  ihs_ctx_aux (rv_leaves D) (im_nn M) As Us (List.length gs) nil 0 gs ++
   tele_sub (cargs_ctx pq D M gs) (sb_qn (im_nn M) (sb_of_list Id Us)) ++
   tele_sub (im_nparams M) (sb_of_list Id Us).
 
-(** The type of the branch: the motive [A] of the member [k] at the
+(** The type of the branch: the motive [A] of the member [k] of [D] at the
     constructor applied to the parameters and the arguments. *)
-Definition elim_bty (pq : qname) (k : nat) (M : imember) (c : string) (gs : list carg) (A : exp) (Us : list exp) : typ :=
+Definition elim_bty (pq : qname) (D : ind_decl) (k : nat) (M : imember) (c : string) (gs : list carg) (A : exp) (Us : list exp) : typ :=
   let na := List.length gs in
   let nn := im_nn M in
-  let n := (nn + na + cargs_nrec gs)%nat in
+  let n := (nn + na + cargs_nrec D gs)%nat in
   A[sb_of_list (sb_of_wk (wk_shiftn n))
-      (vars_from (cargs_nrec gs + na) nn ++
+      (vars_from (cargs_nrec D gs + na) nn ++
        apps_exp (a_con (fst (im_ref pq k M)) (snd (im_ref pq k M)) c)
          (im_pre M (List.map (fun U => U[wk_shiftn n]ʷ) Us) ++
-          vars_from (cargs_nrec gs + na) nn ++ vars_from (cargs_nrec gs) na) :: nil)].
+          vars_from (cargs_nrec D gs + na) nn ++ vars_from (cargs_nrec D gs) na) :: nil)].
 
 (** The branches under [φ], each under the binders it has: what
     weakening does to the branches of an eliminator. *)
@@ -426,8 +772,8 @@ Definition blocks_motives (Bks : list eblock) : list exp := List.map eb_motive B
     [vm] lists at a view.  Nothing is built: a block is looked up. *)
 Definition im_sel (M : imember) : option (list nat) :=
   match im_head M with
-  | mh_decl _ => None
   | mh_view _ _ _ vm => Some vm
+  | _ => None
   end.
 
 (** The member of this group whose block the eliminator reads for the
@@ -456,26 +802,32 @@ Definition blocks_nm_at (Dq : ind_decl) (sel : option (list nat)) (Bks : list eb
 Definition elim_at (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock) (j : nat) (M : exp) : exp :=
   a_elim (if ind_has_views D then Some pq else oq) Us j Bks M.
 
-(** The recursive result of an argument [M] of shape [t], as an
-    elimination: under the shape's domains, moved by [σ], the eliminator at
-    [M] applied to them. *)
-Fixpoint ptyp_ih (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock)
-    (σ : sub) (M : exp) (t : ptyp) : exp :=
-  match t with
-  | pt_pi B t =>
-      a_fn B[σ] (ptyp_ih pq D oq (List.map (fun U => U[wk_shift]ʷ) Us) (blocks_wk Bks wk_shift) (sb_q σ)
-                   (a_app M[wk_shift]ʷ (a_var 0)) t)
-  | pt_self j _ => elim_at pq D oq Us Bks j M
+(** The recursive result of an argument [M] along a leaf path [l], as an
+    elimination: under the domains the path passes, moved by [σ], the
+    eliminator at [M] applied to them and projected at the fields the path
+    passes; a projection extends [σ] by the projections of the
+    non-recursive fields before the field. *)
+Fixpoint leaf_ih (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock)
+    (σ : sub) (M : exp) (l : leaf_path) : exp :=
+  match l with
+  | leaf_pi B l =>
+      a_fn B[σ] (leaf_ih pq D oq (List.map (fun U => U[wk_shift]ʷ) Us) (blocks_wk Bks wk_shift) (sb_q σ)
+                   (a_app M[wk_shift]ʷ (a_var 0)) l)
+  | leaf_self j _ => elim_at pq D oq Us Bks j M
+  | leaf_proj f ns l => leaf_ih pq D oq Us Bks (sb_of_list σ (projections_of ns M)) (a_proj f M) l
   end.
 
 (** The recursive results of the arguments [As] of a constructor, as
-    eliminations; [σ] instantiates the parameters and the non-recursive
-    arguments before, which the shapes' domains are over. *)
+    eliminations, one per leaf path of each recursive argument; [σ]
+    instantiates the parameters and the non-recursive arguments before,
+    [m] of them above the uniform parameters, which the shapes' components
+    are over. *)
 Fixpoint elim_ihs (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock)
-    (σ : sub) (gs : list carg) (As : list exp) : list exp :=
+    (σ : sub) (m : nat) (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
-  | ca_arg _ :: gs', N :: As' => elim_ihs pq D oq Us Bks (σ ,, N) gs' As'
-  | ca_rec t :: gs', M :: As' => ptyp_ih pq D oq Us Bks σ M t :: elim_ihs pq D oq Us Bks σ gs' As'
+  | ca_arg _ :: gs', N :: As' => elim_ihs pq D oq Us Bks (σ ,, N) (S m) gs' As'
+  | ca_rec t :: gs', M :: As' =>
+      List.map (leaf_ih pq D oq Us Bks σ M) (shape_leaves (rv_leaves D) m t) ++ elim_ihs pq D oq Us Bks σ m gs' As'
   | _, _ => nil
   end.
 
@@ -515,18 +867,6 @@ Fixpoint cargs_corr (vm : list nat) (gs' gs : list carg) : Prop :=
   | _, _ => False
   end.
 
-(** The arguments of a view's constructor that the view nests through
-    (non-recursive in the container [gs'], recursive in the view [gs]) end
-    in members of rank below [r] ([rk]).  The eliminator at a view reads
-    back its branches with the eliminator at those members applied to fresh
-    variables; the rank orders these readbacks. *)
-Fixpoint cargs_nest_ok (rk : nat -> nat) (r : nat) (gs' gs : list carg) : Prop :=
-  match gs', gs with
-  | ca_arg _ :: gs1', ca_rec t :: gs1 => rk (ptyp_mem t) < r /\ cargs_nest_ok rk r gs1' gs1
-  | _ :: gs1', _ :: gs1 => cargs_nest_ok rk r gs1' gs1
-  | _, _ => True
-  end.
-
 (** ** The Eliminator at a View, as the Container's
 
     The eliminator of a group at its view of the declared member [k'] of
@@ -537,33 +877,234 @@ Fixpoint cargs_nest_ok (rk : nat -> nat) (r : nat) (gs' gs : list carg) : Prop :
     its body the view's branch, whose recursive results are the
     container's where the argument is recursive in the container, and the
     eliminator of the group at the argument where it is recursive in the
-    view only.  [wrap_ihs gs' gs ihs r' nr']: the recursive results of the
-    view's branch, [ihs] the group's ones, [r'] container's ones before,
-    [nr'] the container's in all. *)
-Fixpoint wrap_ihs (gs' gs : list carg) (ihs : list exp) (r' nr' : nat) : list exp :=
+    view only.  The recursive results go by leaf path: a path of the
+    view's argument is one of the container's ([leaf_in]) when every field
+    it projects is recursive in the container's record view too.
+    [wrap_ihs D' D gs' gs ihs r' nr']: the recursive results of the view's
+    branch, [ihs] the group's ones, [r'] container's ones before, [nr'] the
+    container's in all. *)
+Fixpoint leaf_in (D' : ind_decl) (t' : ptyp) (l : leaf_path) {struct l} : bool :=
+  match t', l with
+  | pt_pi _ t1', leaf_pi _ l1 => leaf_in D' t1' l1
+  | pt_self j' _, leaf_self _ _ =>
+      match ind_member D' j' with Some M' => negb (im_is_rview M') | None => false end
+  | pt_self j' _, leaf_proj f _ l1 =>
+      match ind_member D' j' with
+      | Some M' =>
+          match im_head M', im_cons M' with
+          | mh_record _ _ fl, (_, gs') :: nil =>
+              match List.find (fun fg => String.eqb (fst fg) f) (List.combine fl gs') with
+              | Some (_, ca_rec t1') => leaf_in D' t1' l1
+              | _ => false
+              end
+          | _, _ => false
+          end
+      | None => false
+      end
+  | _, _ => false
+  end.
+
+(** The arguments of a view's constructor that the view nests through end
+    in members of rank below [r] ([rk]): a whole argument non-recursive in
+    the container [gs'] and recursive in the view [gs], and, of an argument
+    recursive in both, each leaf path of the view's ([D]'s table) that is
+    not the container's [D'] ([leaf_in]).  The eliminator at a view reads
+    back its branches with the eliminator at those members applied to fresh
+    variables; the rank orders these readbacks. *)
+Fixpoint cargs_nest_ok (D D' : ind_decl) (rk : nat -> nat) (r : nat) (gs' gs : list carg) : Prop :=
   match gs', gs with
-  | ca_rec _ :: gs1', ca_rec _ :: gs1 => a_var (nr' - 1 - r') :: wrap_ihs gs1' gs1 (List.tl ihs) (S r') nr'
-  | ca_arg _ :: gs1', ca_rec _ :: gs1 => List.hd a_True ihs :: wrap_ihs gs1' gs1 (List.tl ihs) r' nr'
-  | _ :: gs1', ca_arg _ :: gs1 => wrap_ihs gs1' gs1 ihs r' nr'
+  | ca_arg _ :: gs1', ca_rec t :: gs1 => rk (ptyp_mem t) < r /\ cargs_nest_ok D D' rk r gs1' gs1
+  | ca_rec t' :: gs1', ca_rec t :: gs1 =>
+      (forall l, In l (shape_leaves (rv_leaves D) 0 t) -> leaf_in D' t' l = false -> rk (leaf_mem l) < r) /\
+      cargs_nest_ok D D' rk r gs1' gs1
+  | _ :: gs1', _ :: gs1 => cargs_nest_ok D D' rk r gs1' gs1
+  | _, _ => True
+  end.
+
+(** A whole argument nested through ends in a member of rank below [r]. *)
+Lemma cargs_nest_ok_at : forall D D' rk r gs1' A' gs2' gs1 t gs2, List.length gs1' = List.length gs1 ->
+    cargs_nest_ok D D' rk r (gs1' ++ ca_arg A' :: gs2') (gs1 ++ ca_rec t :: gs2) -> rk (ptyp_mem t) < r.
+Proof.
+  intros D D' rk r gs1'; induction gs1' as [| g' gs1' IH]; intros A' gs2' [| g gs1] t gs2 Hl H; cbn in Hl;
+    try discriminate; cbn in H.
+  - exact (proj1 H).
+  - injection Hl as Hl; destruct g', g; cbn in H; first [ exact (IH _ _ _ _ _ Hl H) | exact (IH _ _ _ _ _ Hl (proj2 H)) ].
+Qed.
+
+(** So does each leaf path of an argument recursive in both that is not
+    the container's. *)
+Lemma cargs_nest_ok_leaf_at : forall D D' rk r gs1' t' gs2' gs1 t gs2 l, List.length gs1' = List.length gs1 ->
+    cargs_nest_ok D D' rk r (gs1' ++ ca_rec t' :: gs2') (gs1 ++ ca_rec t :: gs2) ->
+    In l (shape_leaves (rv_leaves D) 0 t) -> leaf_in D' t' l = false -> rk (leaf_mem l) < r.
+Proof.
+  intros D D' rk r gs1'; induction gs1' as [| g' gs1' IH]; intros t' gs2' [| g gs1] t gs2 l Hl H Hin Hn; cbn in Hl;
+    try discriminate; cbn in H.
+  - exact (proj1 H _ Hin Hn).
+  - injection Hl as Hl; destruct g', g; cbn in H;
+      first [ exact (IH _ _ _ _ _ _ Hl H Hin Hn) | exact (IH _ _ _ _ _ _ Hl (proj2 H) Hin Hn) ].
+Qed.
+
+(** Whether a path is the container's does not depend on its components. *)
+Lemma leaf_in_wk : forall D' l t' φ, leaf_in D' t' (leaf_wk φ l) = leaf_in D' t' l.
+Proof.
+  intros D' l; induction l as [j Ps | B l IH | f ns l IH]; intros [j' Ps' | B' t'] φ; cbn [leaf_wk leaf_in]; auto.
+  destruct (ind_member D' j') as [M' |]; [| reflexivity ].
+  destruct (im_head M'), (im_cons M') as [| [? ?] [|]]; try reflexivity.
+  destruct (List.find _ _) as [[? [] ] |]; try reflexivity; apply IH.
+Qed.
+
+(** A field found by its name among distinct names. *)
+Lemma find_name_split : forall (pre post : list (String.string * carg)) f g,
+    List.NoDup (List.map fst (pre ++ (f, g) :: post)) ->
+    List.find (fun fg => String.eqb (fst fg) f) (pre ++ (f, g) :: post) = Some (f, g).
+Proof.
+  induction pre as [| [f0 g0] pre IH]; intros * Hnd; cbn [List.app List.find fst].
+  - rewrite String.eqb_refl; reflexivity.
+  - cbn [List.map List.app] in Hnd; inversion Hnd as [| ? ? Hn Hnd']; subst.
+    destruct (String.eqb_spec f0 f) as [-> | _]; [| apply IH; exact Hnd' ].
+    exfalso; apply Hn; rewrite List.map_app; apply List.in_app_iff; right; left; reflexivity.
+Qed.
+
+Lemma combine_fst_eq : forall {X Y : Type} (xs : list X) (ys : list Y), List.length xs = List.length ys ->
+    List.map fst (List.combine xs ys) = xs.
+Proof. induction xs as [| x xs IH]; intros [| y ys] H; cbn in *; try discriminate; [ reflexivity | rewrite IH; auto ]. Qed.
+
+Lemma combine_snd_eq : forall {X Y : Type} (xs : list X) (ys : list Y), List.length xs = List.length ys ->
+    List.map snd (List.combine xs ys) = ys.
+Proof. induction xs as [| x xs IH]; intros [| y ys] H; cbn in *; try discriminate; [ reflexivity | rewrite IH; auto ]. Qed.
+
+(** The fields of a record view after the fields [fs1]: their names and
+    kinds. *)
+Lemma combine_app_split : forall (fl : list String.string) (gs : list carg) fs1 fs2,
+    List.length fl = List.length gs -> List.combine fl gs = fs1 ++ fs2 ->
+    fl = List.map fst fs1 ++ List.map fst fs2 /\ gs = List.map snd fs1 ++ List.map snd fs2.
+Proof.
+  intros * Hl E; split.
+  - rewrite <- List.map_app, <- E; symmetry; apply combine_fst_eq; exact Hl.
+  - rewrite <- List.map_app, <- E; symmetry; apply combine_snd_eq; exact Hl.
+Qed.
+
+(** The number of steps of a leaf path. *)
+Fixpoint leaf_size (l : leaf_path) : nat :=
+  match l with
+  | leaf_self _ _ => 0
+  | leaf_pi _ l => S (leaf_size l)
+  | leaf_proj _ _ l => S (leaf_size l)
+  end.
+
+Lemma leaf_size_wk : forall l φ, leaf_size (leaf_wk φ l) = leaf_size l.
+Proof. induction l; intros; cbn; auto. Qed.
+
+Lemma leaf_mem_wk : forall l φ, leaf_mem (leaf_wk φ l) = leaf_mem l.
+Proof. induction l; intros; cbn; auto. Qed.
+
+(** Every leaf path of a shape of a group is the group's own: read as its
+    own container, a group has every recursive result of its own, when its
+    table is coherent, its record views' fields are distinct and as many
+    as their one constructor's arguments, and every shape ends in a
+    member. *)
+Lemma leaf_in_own : forall D, leaves_coherent D ->
+    (forall j Mj qr Is fl, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+       List.NoDup fl /\ exists c gs, im_cons Mj = (c, gs) :: nil /\ List.length fl = List.length gs) ->
+    (forall j Mj qr Is fl c gs1 t gs2, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+       im_cons Mj = (c, gs1 ++ ca_rec t :: gs2) :: nil -> exists M, ind_member D (ptyp_mem t) = Some M) ->
+    forall t m l, (exists M, ind_member D (ptyp_mem t) = Some M) ->
+      In l (shape_leaves (rv_leaves D) m t) -> leaf_in D t l = true.
+Proof.
+  intros D Hc Hrv Hfm.
+  enough (H : forall n l, leaf_size l < n -> forall t m, (exists M, ind_member D (ptyp_mem t) = Some M) ->
+                In l (shape_leaves (rv_leaves D) m t) -> leaf_in D t l = true)
+    by (intros t m l HM Hin; exact (H (S (leaf_size l)) l ltac:(lia) t m HM Hin)).
+  induction n as [| n IH]; intros l Hs t m [M HM] Hin; [ lia |].
+  destruct t as [j Ps | B t1]; cbn [ptyp_mem] in HM; cbn [shape_leaves] in Hin.
+  - destruct (rv_leaves D j) as [ls |] eqn:Hr.
+    + (** A record view: a projection of one of its recursive fields. *)
+      apply List.in_map_iff in Hin as (l0 & <- & Hl0).
+      rewrite leaf_size_wk in Hs; rewrite leaf_in_wk.
+      destruct (im_is_rview M) eqn:Hm; [| rewrite (rv_leaves_not_rview _ _ _ HM Hm) in Hr; discriminate Hr ].
+      unfold im_is_rview in Hm; destruct (im_head M) as [| | qr Is fl] eqn:Hh; try discriminate Hm.
+      destruct (Hrv _ _ _ _ _ HM Hh) as (Hnd & c & gs & Hcs & Hlen).
+      rewrite (Hc _ _ _ _ _ _ _ HM Hh Hcs) in Hr; injection Hr as <-.
+      destruct (fields_leaves_in _ _ _ _ Hl0) as (fs1 & f & t1 & fs2 & l1 & Hfs & -> & Hl1).
+      cbn [leaf_in leaf_size] in Hs |- *; rewrite HM, Hh, Hcs, Hfs.
+      rewrite find_name_split by (rewrite <- Hfs, combine_fst_eq by exact Hlen; exact Hnd).
+      apply (IH l1 ltac:(lia) t1 (List.length (nil ++ fields_args fs1))); [| exact Hl1 ].
+      assert (Hgs : gs = List.map snd fs1 ++ ca_rec t1 :: List.map snd fs2)
+        by (rewrite <- (combine_snd_eq fl gs Hlen), Hfs, List.map_app; reflexivity).
+      rewrite Hgs in Hcs; exact (Hfm _ _ _ _ _ _ _ _ _ HM Hh Hcs).
+    + (** A member with a block. *)
+      destruct Hin as [<- | []]; cbn [leaf_in]; rewrite HM.
+      destruct (im_is_rview M) eqn:Hm; [| reflexivity ].
+      unfold im_is_rview in Hm; destruct (im_head M) as [| | qr Is fl] eqn:Hh; try discriminate Hm.
+      destruct (Hrv _ _ _ _ _ HM Hh) as (_ & c & gs & Hcs & _).
+      rewrite (Hc _ _ _ _ _ _ _ HM Hh Hcs) in Hr; discriminate Hr.
+  - apply List.in_map_iff in Hin as (l1 & <- & Hl1); cbn [leaf_in leaf_size] in Hs |- *.
+    exact (IH l1 ltac:(lia) t1 _ (ex_intro _ M HM) Hl1).
+Qed.
+
+(** At rank [0] below [1], every argument may be nested through. *)
+Lemma cargs_nest_ok_zero : forall D D' gs' gs, cargs_nest_ok D D' (fun _ => 0) 1 gs' gs.
+Proof.
+  intros D D'; induction gs' as [| g' gs' IH]; intros gs; [ destruct gs; cbn; auto |].
+  destruct gs as [| g gs]; [ destruct g'; cbn; auto |].
+  destruct g', g; cbn; auto.
+Qed.
+
+(** The recursive results along the leaf paths [ls] of an argument
+    recursive in both: the next of the container's at a path of the
+    container's, the group's eliminator [ih] at one nested through. *)
+Fixpoint wrap_leaves (D' : ind_decl) (t' : ptyp) (ls : list leaf_path) (ihs : list exp) (r' nr' : nat) : list exp :=
+  match ls, ihs with
+  | l :: ls', ih :: ihs' =>
+      if leaf_in D' t' l then a_var (nr' - 1 - r') :: wrap_leaves D' t' ls' ihs' (S r') nr'
+      else ih :: wrap_leaves D' t' ls' ihs' r' nr'
   | _, _ => nil
   end.
 
-(** The branch of the container's constructor [c] with arguments [gs'], the
-    view's member [Mv] and its block's branches [Bs], under the context of
-    the eliminator; [nn] non-uniform parameters. *)
-Definition wrap_br (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock)
+(** The number of the leaf paths [ls] that are the container's. *)
+Definition leaves_in_count (D' : ind_decl) (t' : ptyp) (ls : list leaf_path) : nat :=
+  List.length (List.filter (leaf_in D' t') ls).
+
+(** The number of the leaf paths of the arguments [gs] of the group [D]
+    that are the container's [D'], whose constructor has the arguments
+    [gs']: the recursive results a branch of the container's binds. *)
+Fixpoint cargs_nin (D D' : ind_decl) (gs' gs : list carg) : nat :=
+  match gs', gs with
+  | ca_rec t' :: gs1', ca_rec t :: gs1 => leaves_in_count D' t' (shape_leaves (rv_leaves D) 0 t) + cargs_nin D D' gs1' gs1
+  | _ :: gs1', _ :: gs1 => cargs_nin D D' gs1' gs1
+  | _, _ => 0
+  end.
+
+Fixpoint wrap_ihs (D' D : ind_decl) (gs' gs : list carg) (ihs : list exp) (r' nr' : nat) : list exp :=
+  match gs', gs with
+  | ca_rec t' :: gs1', ca_rec t :: gs1 =>
+      let ls := shape_leaves (rv_leaves D) 0 t in
+      wrap_leaves D' t' ls (List.firstn (List.length ls) ihs) r' nr' ++
+        wrap_ihs D' D gs1' gs1 (List.skipn (List.length ls) ihs) (leaves_in_count D' t' ls + r') nr'
+  | ca_arg _ :: gs1', ca_rec t :: gs1 =>
+      let n := List.length (shape_leaves (rv_leaves D) 0 t) in
+      List.firstn n ihs ++ wrap_ihs D' D gs1' gs1 (List.skipn n ihs) r' nr'
+  | _ :: gs1', ca_arg _ :: gs1 => wrap_ihs D' D gs1' gs1 ihs r' nr'
+  | _, _ => nil
+  end.
+
+(** The branch of the container's constructor [c] with arguments [gs'], of
+    the container's group [D'], the view's member [Mv] and its block's
+    branches [Bs], under the context of the eliminator; [nn] non-uniform
+    parameters. *)
+Definition wrap_br (pq : qname) (D D' : ind_decl) (Us : list exp) (Bks : list eblock)
     (Mv : imember) (Bs : list (string * nat * exp)) (c : string) (gs' : list carg) : (string * nat * exp)%type :=
   let nn := im_nn Mv in
   let na := List.length gs' in
-  let nr' := cargs_nrec gs' in
+  let nr' := cargs_nrec D' gs' in
   let n' := (nn + na + nr')%nat in
   let gs := match ind_con Mv c with Some gs => gs | None => gs' end in
   let B := match brs_lookup Bs c with Some (_, B) => B | None => a_True end in
   let Us' := List.map (fun U => U[wk_shiftn n']ʷ) Us in
   let nvars := vars_from (nr' + na) nn in
   let avars := vars_from nr' na in
-  let ihs := elim_ihs pq D (Some pq) Us' (blocks_wk Bks (wk_shiftn n')) (sb_of_list (sb_of_wk (wk_shiftn n')) (Us' ++ nvars)) gs avars in
-  (c, n', B[sb_of_list (sb_of_wk (wk_shiftn n')) (nvars ++ avars ++ wrap_ihs gs' gs ihs 0 nr')]).
+  let ihs := elim_ihs pq D (Some pq) Us' (blocks_wk Bks (wk_shiftn n')) (sb_of_list (sb_of_wk (wk_shiftn n')) (Us' ++ nvars)) nn gs avars in
+  (c, n', B[sb_of_list (sb_of_wk (wk_shiftn n')) (nvars ++ avars ++ wrap_ihs D' D gs' gs ihs 0 nr')]).
 
 (** The members [vm] lists of [D] are those of the container's group [D']
     at the view's arguments, as the group's declaration says: as many,
@@ -581,32 +1122,53 @@ Record vwrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_vwrap_ok
         List.map fst (im_cons Mv) = List.map fst (im_cons Mi') /\
         (forall c gs' gs, In (c, gs') (im_cons Mi') -> ind_con Mv c = Some gs -> cargs_corr vm gs' gs) }.
 
-(** The container's blocks: one per member of the container's group [D']. *)
-Definition vwrap_block (pq : qname) (D : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
+(** The container's blocks: one per member of the container's group [D']
+    that has a block. *)
+Definition vwrap_block (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
     (i' : nat) (Mi' : imember) : eblock :=
   let v := List.nth i' vm 0 in
   match List.nth_error Bks v, ind_member D v with
   | Some (eb_mk nm _ A Bs), Some Mv =>
-      eb_mk nm None A (List.map (fun cg => wrap_br pq D Us Bks Mv Bs (fst cg) (snd cg)) (im_cons Mi'))
+      eb_mk nm None A (List.map (fun cg => wrap_br pq D D' Us Bks Mv Bs (fst cg) (snd cg)) (im_cons Mi'))
   | _, _ => eb_mk 0 None a_True nil
   end.
 
 (** The container's blocks for its members [ms], from the member [i'] on. *)
-Fixpoint vwrap_from (pq : qname) (D : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
+Fixpoint vwrap_from (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
     (i' : nat) (ms : list imember) : list eblock :=
   match ms with
   | nil => nil
-  | Mi' :: ms' => vwrap_block pq D vm Us Bks i' Mi' :: vwrap_from pq D vm Us Bks (S i') ms'
+  | Mi' :: ms' => vwrap_block pq D D' vm Us Bks i' Mi' :: vwrap_from pq D D' vm Us Bks (S i') ms'
   end.
 
-(** The blocks of the container's eliminator that the eliminator at a view
-    reads as: one per member of the container's group [D']. *)
-Definition vwrap (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock) : list eblock :=
-  vwrap_from pq D vm Us Bks 0 (ind_members D').
+(** The members of a group that have a block: all but the record views,
+    which come last. *)
+Definition ind_bmembers (D : ind_decl) : list imember := List.firstn (ind_nblk D) (ind_members D).
 
-Lemma nth_error_vwrap_from : forall pq D vm Us Bks ms s k b,
-    List.nth_error (vwrap_from pq D vm Us Bks s ms) k = Some b ->
-    exists Mi', List.nth_error ms k = Some Mi' /\ b = vwrap_block pq D vm Us Bks (s + k) Mi'.
+(** The blocks of the container's eliminator that the eliminator at a view
+    reads as: one per member of the container's group [D'] that has a
+    block. *)
+Definition vwrap (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock) : list eblock :=
+  vwrap_from pq D D' vm Us Bks 0 (ind_bmembers D').
+
+(** There are at most as many members with a block as members. *)
+Lemma ind_nblk_le : forall D, ind_nblk D <= List.length (ind_members D).
+Proof. intros; unfold ind_nblk; apply List.filter_length_le. Qed.
+
+(** A member with a block is a member. *)
+Lemma ind_bmembers_member : forall D k M, List.nth_error (ind_bmembers D) k = Some M ->
+    ind_member D k = Some M /\ k < ind_nblk D.
+Proof.
+  intros * H; unfold ind_bmembers, ind_member in *.
+  rewrite List.nth_error_firstn in H; destruct (Nat.ltb_spec k (ind_nblk D)); [ split; [ exact H | lia ] | discriminate ].
+Qed.
+
+Lemma length_ind_bmembers : forall D, List.length (ind_bmembers D) = ind_nblk D.
+Proof. intros; unfold ind_bmembers; rewrite List.length_firstn; pose proof (ind_nblk_le D); lia. Qed.
+
+Lemma nth_error_vwrap_from : forall pq D D' vm Us Bks ms s k b,
+    List.nth_error (vwrap_from pq D D' vm Us Bks s ms) k = Some b ->
+    exists Mi', List.nth_error ms k = Some Mi' /\ b = vwrap_block pq D D' vm Us Bks (s + k) Mi'.
 Proof.
   induction ms as [| M ms IH]; intros * H; [ destruct k; discriminate |].
   destruct k as [| k]; cbn in H.
@@ -614,9 +1176,9 @@ Proof.
   - destruct (IH _ _ _ H) as (Mi' & HM & ->); exists Mi'; split; [ exact HM | f_equal; lia ].
 Qed.
 
-Lemma length_vwrap : forall pq D D' vm Us Bks, List.length (vwrap pq D D' vm Us Bks) = List.length (ind_members D').
+Lemma length_vwrap : forall pq D D' vm Us Bks, List.length (vwrap pq D D' vm Us Bks) = List.length (ind_bmembers D').
 Proof.
-  intros; unfold vwrap; generalize 0; induction (ind_members D'); intros; cbn; [ reflexivity | f_equal; apply IHl ].
+  intros; unfold vwrap; generalize 0; induction (ind_bmembers D'); intros; cbn; [ reflexivity | f_equal; apply IHl ].
 Qed.
 
 (** The sort of a declaration is a universe. *)
@@ -720,11 +1282,13 @@ Definition carg_mvc (g : carg) : Prop :=
   | ca_rec t => List.Forall (exp_mvc 0) (ptyp_doms t) /\ List.Forall (exp_mvc 0) (ptyp_ps t)
   end.
 
-(** A view's uniform arguments have no free module variable. *)
+(** A view's uniform arguments, and a record view's instance, have no free
+    module variable. *)
 Definition mhead_mvc (h : mhead) : Prop :=
   match h with
   | mh_decl _ => True
   | mh_view _ _ Is _ => List.Forall (exp_mvc 0) Is
+  | mh_record _ Is _ => List.Forall (exp_mvc 0) Is
   end.
 
 (** No free module variable anywhere in a group. *)
@@ -793,27 +1357,34 @@ Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?length_app, ?IH; cbn;
 Lemma length_cargs_ctx : forall pq D M gs, List.length (cargs_ctx pq D M gs) = List.length gs.
 Proof. intros; apply length_cargs_ctx_aux. Qed.
 
-Lemma length_ihs_ctx_aux : forall nn As Us na gs pat j,
-    List.length (ihs_ctx_aux nn As Us na pat j gs) = cargs_nrec gs.
-Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?length_app, ?IH; cbn; lia. Qed.
+Lemma length_leaves_ctx : forall nn As Us na pat ls j,
+    List.length (leaves_ctx nn As Us na pat j ls) = List.length ls.
+Proof. induction ls as [| l ls IH]; intros; cbn; rewrite ?length_app, ?IH; cbn; lia. Qed.
+
+Lemma length_ihs_ctx_aux : forall D nn As Us na gs pat j,
+    List.length (ihs_ctx_aux (rv_leaves D) nn As Us na pat j gs) = cargs_nrec D gs.
+Proof.
+  induction gs as [| [] gs IH]; intros; cbn; rewrite ?length_app, ?IH, ?length_leaves_ctx; cbn; [ reflexivity | reflexivity |].
+  rewrite (length_shape_leaves _ _ _ 0); lia.
+Qed.
 
 Lemma length_elim_mctx : forall pq D k M Us, List.length (elim_mctx pq D k M Us) = S (im_nn M).
 Proof. intros; unfold elim_mctx; cbn; rewrite length_tele_sub; reflexivity. Qed.
 
 Lemma length_elim_bctx : forall pq D M gs As Us,
-    List.length (elim_bctx pq D M gs As Us) = (cargs_nrec gs + List.length gs + im_nn M)%nat.
+    List.length (elim_bctx pq D M gs As Us) = (cargs_nrec D gs + List.length gs + im_nn M)%nat.
 Proof.
   intros; unfold elim_bctx; rewrite !length_app, length_ihs_ctx_aux, !length_tele_sub, length_cargs_ctx.
   unfold im_nn; lia.
 Qed.
 
-Lemma length_elim_ihs : forall pq D oq Us Bks σ gs As,
-    List.length As = List.length gs -> List.length (elim_ihs pq D oq Us Bks σ gs As) = cargs_nrec gs.
+Lemma length_elim_ihs : forall pq D oq Us Bks σ m gs As,
+    List.length As = List.length gs -> List.length (elim_ihs pq D oq Us Bks σ m gs As) = cargs_nrec D gs.
 Proof.
-  intros pq D oq Us Bks σ gs; revert σ.
-  induction gs as [| [] gs IH]; intros σ [| N As] Hl; cbn in *; try discriminate; try reflexivity.
+  intros pq D oq Us Bks σ m gs; revert σ m.
+  induction gs as [| [] gs IH]; intros σ m [| N As] Hl; cbn in *; try discriminate; try reflexivity.
   - apply IH; lia.
-  - f_equal; apply IH; lia.
+  - rewrite length_app, length_map, (length_shape_leaves _ _ _ 0), IH by lia; reflexivity.
 Qed.
 
 Lemma length_vars_from : forall k n, List.length (vars_from k n) = n.

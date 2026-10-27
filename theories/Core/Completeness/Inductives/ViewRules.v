@@ -74,7 +74,10 @@ Proof.
       apply (proj2 (HE _ _)); pose proof (proj1 (HE _ _) Hx) as Hx' end.
     match goal with HL : ind_lookup _ _ p = Some D, HM : ind_member D k = Some M, HH : im_head M = mh_decl _ |- _ =>
       rename HL into HlD; rename HM into HMk; rename HH into HhM end.
-    inversion Hx'; subst.
+    inversion Hx'; subst;
+      (** not a record view's element: [M] is a declared member *)
+      try (match goal with H1 : ind_member D k = Some ?M1, H2 : im_head ?M1 = mh_record _ _ _ |- _ =>
+             rewrite HMk in H1; injection H1 as <-; congruence end).
     match goal with H1 : ind_member D k = Some ?M1 |- _ => rewrite HMk in H1; injection H1 as <- end.
     match goal with H1 : im_ref p k M = (hd, kq) |- _ => unfold im_ref in H1; rewrite HhM in H1; injection H1 as <- <- end.
     rewrite HlD in Hq; injection Hq as <-.
@@ -133,7 +136,8 @@ Proof.
   apply eval_apps_app in Eap as (g & Eg & Eap).
   pose proof (con_value_apps P p D HP HPD j Mj c nil HMj us nil f0 g ltac:(cbn [List.length]; unfold im_np; lia) Hf0 Eg) as Hg.
   cbn [List.app] in Hg.
-  inversion Hg as [pm' xs Hh0 | qc' kc' Is' vm' xs Hh0 Hlt | qc' kc' Is' vm' xs cs Hh0 Hle Ecs]; subst; rewrite Hh in Hh0;
+  inversion Hg as [pm' xs Hh0 | qc' kc' Is' vm' xs Hh0 Hlt | qc' kc' Is' vm' xs cs Hh0 Hle Ecs
+                  | qr' Is' fl' xs Hh0 Hlt | qr' Is' fl' xs Hh0 Hlt]; subst; rewrite Hh in Hh0;
     try discriminate; [ lia |].
   injection Hh0 as <- <- <- <-.
   rewrite List.skipn_all2, List.app_nil_r in Eap by lia.
@@ -171,5 +175,64 @@ Proof.
   apply ER; apply ER in Hll'.
   symmetry; symmetry in Hll'.
   exact (per_elem_con_prefix _ _ _ _ HR0 _ _ _ _ _ _ _ _ _ _ Hq HMk Hh' Lcs Lcs' Hll').
+Qed.
+
+(** ** A Record View's Constructor
+
+    The constructor of a record view at the group's uniform parameters and
+    all its fields is the tuple of the fields, by name, at the fields'
+    values: the record view's constructor and the tuple evaluate to the
+    same value. *)
+Lemma con_rview_value : forall P p D, valid_groups P -> P p D ->
+    forall j Mj qr Is fl c ρ Us Ms l, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    List.length Us = ind_nu D -> List.length Ms = List.length fl ->
+    ⟦ apps (a_con p j c) (Us ++ Ms) ⟧ ρ ↘ l ->
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ l = d_tuple (List.combine fl ms).
+Proof.
+  intros P p D HP HPD * HMj Hh HUl HMl El.
+  pose proof (valid_group_typed _ _ (valid_groups_valid P HP p D HPD)) as Hdt.
+  destruct (rview_struct_con _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as (gs & _ & Hlen).
+  pose proof (rview_struct_nparams _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as Hnp.
+  assert (Hnn : im_nn Mj = 0) by (unfold im_nn; rewrite Hnp; reflexivity).
+  apply eval_apps_exp in El as (f & zs & Ef & Ezs & Eap).
+  apply eval_exps_app_inv in Ezs as (us & ms & -> & Eus & Ems).
+  assert (Lus : List.length us = ind_nu D) by (rewrite (eval_exps_length _ _ _ Eus); exact HUl).
+  assert (Lms : List.length ms = List.length fl) by (rewrite (eval_exps_length _ _ _ Ems); exact HMl).
+  destruct (con_value_start P p D HP HPD j Mj c HMj ρ) as (f0 & Ef0 & Hf0).
+  pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.
+  pose proof (con_value_apps P p D HP HPD j Mj c gs HMj (us ++ ms) nil f0 l
+                ltac:(cbn [List.length]; rewrite List.length_app; unfold im_np; lia) Hf0 Eap) as Hl.
+  cbn [List.app] in Hl.
+  exists ms; split; [ exact Ems |].
+  inversion Hl as [pm' xs Hh0 | qc' kc' Is' vm' xs Hh0 Hlt | qc' kc' Is' vm' xs cs Hh0 Hle Ecs
+                  | qr' Is' fl' xs Hh0 Hlt | qr' Is' fl' xs Hh0 Hlt]; subst; rewrite Hh in Hh0; try discriminate.
+  - rewrite List.length_app in Hlt; injection Hh0 as <- <- <-; lia.
+  - injection Hh0 as <- <- <-.
+    rewrite List.skipn_app, List.skipn_all2 by lia.
+    replace (ind_nu D - List.length us) with 0 by lia; reflexivity.
+Qed.
+
+(** The rule: the record view's constructor and the tuple of its fields,
+    at any type both are at. *)
+Theorem rel_exp_under_ctx_con_rview : forall P p D, valid_groups P -> P p D ->
+    forall Γ j Mj qr Is fl c Us Ms A, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    List.length Us = ind_nu D -> List.length Ms = List.length fl ->
+    Γ ⊨ apps (a_con p j c) (Us ++ Ms) : A ->
+    Γ ⊨ a_tuple (apps (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ->
+    Γ ⊨ apps (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A.
+Proof.
+  intros P p D HP HPD * HMj Hh HUl HMl HL HR.
+  pose proof HL as [RΓ HRΓ i0 _].
+  apply (rel_exp_under_ctx_of_simple HRΓ HL HR).
+  intros ρ ρ' Hρρ'.
+  destruct (rel_exp_under_ctx_simple_at HRΓ HL _ _ Hρρ') as (l & l' & El & El' & Hll').
+  destruct (rel_exp_under_ctx_simple_at HRΓ HR _ _ Hρρ') as (r & r' & Er & Er' & _).
+  exists l, r'; split; [ exact El | split; [ exact Er' |] ].
+  destruct (con_rview_value P p D HP HPD j Mj qr Is fl c ρ' Us Ms l' HMj Hh HUl HMl El') as (ms & Ems & ->).
+  inversion Er'; subst.
+  rewrite combine_snd_eq in * by (symmetry; exact HMl).
+  rewrite combine_fst_eq by (symmetry; exact HMl).
+  match goal with H : ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ?vs |- _ => pose proof (functional_eval_exps' _ _ _ _ H Ems) as -> end.
+  exact Hll'.
 Qed.
 End Fixed_GCtx.

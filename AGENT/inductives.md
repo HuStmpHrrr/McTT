@@ -368,6 +368,98 @@ The doc tool (`driver/Doc.ml`) cannot link a branch's constructor name
 to its declaration, since nothing in the syntax names the type: such names
 are marked `bare` and left unlinked (accepted for now).
 
+### Record views: the three semantic gates
+
+A record view (`mh_record qr Is fl`) has no block: the eliminator at a
+member nesting through a record reads the record's fields' recursive
+results along *leaf paths* (`shape_leaves (rv_leaves D)`), one recursive
+result per path. Three premises of the semantic rules hold of every typed
+group. They are stated on the rules so that the semantic lemmas do not
+need typing:
+
+- **`rview_leaf_arity D` on `read_ne_elim`.** Each path through the
+  group's record views ends at a member with as many parameters as its
+  motive binds (`rview_leaf_plen`), and fields end only in record views
+  earlier in the group (`rview_leaf_order`). The readback of a stuck
+  eliminator needs it to bound, rename and relate the motives along each
+  path: `Rename.read_rn` (`ihs_motives_dbd`), `Avoid.read_av`
+  (`ends_fresh_of_blocks`, `cargs_ends_fresh`) and
+  `Extraction.Simulation.fread_sim` (`ends_agree_of_blocks`,
+  `cargs_ends_agree`). It is also the source of the next gate's
+  `leaves_coherent` in readback (`leaves_coherent_of_order
+  (rview_leaf_order …)`). Discharged by `grp_tele_ass_leaf_arity`.
+- **`leaves_coherent D` on `eval_elim_con`.** A record view's leaf table
+  agrees with its fields, so `⟦ih …⟧` yields one result per leaf path
+  (`eval_ih_length_all`, `eval_ihs_length`). That count is the count of
+  the branch's binders (`n = im_nn + |gs| + cargs_nrec D gs`). The
+  evaluation lemmas of `Rename`, `Avoid` and `IndElim` use it, as do
+  `wrap_ihs_eval_length` and the fast evaluator's skip of unread results
+  (`ihs_skipb`, `Simulation.ffresh_wrap_sim`). Discharged by
+  `leaves_coherent_of_order (rview_struct_order …)`.
+- **`cargs_nin D Dc gs' gs = cargs_nrec Dc gs'` on `read_brs_cons`.** The
+  fresh variables for the paths of the group read `Dc` are exactly as
+  many as the branch read binds. This keeps them below the length the
+  branch is read at (`s + n`), which `read_av` and `read_rn` need. It is
+  the twin of `eval_elim_con`'s count. Discharged by
+  `ViewCount.cargs_nin_view` (and the `branch_read_pair_count_*` fields of
+  `ReadPairs`).
+
+In the Extraction and Reference implementations the gates are premises of
+the termination orders (`feval_elim_order_con`, `fread_ne_order_elim`,
+`fread_brs_order_cons` and the Reference twins). They are Prop domain
+conditions, not checks the evaluator runs.
+
+### Record views: classification, filing and the search
+
+- **Keys.** The view search works on `view_key`s (`Group.v`):
+  `vk_ind qc k Cs` is an inductive view, and `vk_record qr Is` is a
+  record view, the record at all its parameters `Is`.
+- **Classification.** The classification on normal forms finds a record
+  view at the end of an argument's shape, `a_record qr` at all its
+  parameters (`cls_record_view`, `rec_info`). Two conditions apply:
+  - a `Self` must occur in the instance (otherwise the argument is
+    `Self`-free, e.g. `Box T` with no recursive field: no IH);
+  - the instance must be guarded (`selfs_guarded`): a `Self` may be an
+    argument only of a type former, a record type or a `Self`.
+  `node (b : Box (F (T F)))` is rejected with "T appears as an argument of
+  F in the type of b" (`cls_why_self_arg`, `run_error_self_arg`).
+- **Data.**
+  - A record view's siblings are itself alone (`view_sibs_record`).
+  - Its constructor `rview_con` takes the record's fields at `Is`, classified
+    as a declared member's arguments are (`view_cls_record`).
+  - It has no non-uniform parameters (`view_nps_record`).
+  - A container's record member gives a record sibling (`sibs_from_record`).
+- **Search order.** `views_dfs` searches depth first. Newly met instances
+  go to the front of the queue (`ViewsSearch.v`).
+- **Filing order** (`rd_filed`, `filed_keys`):
+  1. the declared members;
+  2. the inductive views, in the search's order;
+  3. the record views, stably sorted by record height (`sort_by_height`).
+  So the record views come last (`rview_suffix_ok`), and their fields end
+  only in record views before them (`rview_order_ok`), even when a record
+  view is met inside another one through an inductive view (the cycle
+  `L A := cons (p : Q (Pair A (L A)))`, `T := node (p : Pair T (L T))`).
+  The checker computes the filing through the filed units (`rd_filed_f`,
+  `rd_filed_case`).
+- **Mutual definitions.** A mutual definition has one function per member
+  with a block (`mdef_group_count : length ms = ind_nblk D`, `mdef_member`
+  over `ind_bmembers D`). A record view has no function.
+- **Termination of the search** (`ViewsCluster.v`, `ViewsFound.v`).
+  - `NestAcc.grp_step_record` is a nesting step out of a record type into
+    a field's type, at elements of the fields before. `per_univ_nest_acc`
+    proves it accessible through the PER model's record clause, whose
+    `fields_evals` carries each field's induction hypothesis.
+  - `view_lt` on keys (`view_below`, `key_type`) uses both kinds of step.
+  - A record view is its own cluster. Every instance it meets is below it
+    (`record_view_meets_below`).
+  - A record sibling's meets are its container member's, by the record view
+    equations (`record_sib_link`, `record_sib_meets`).
+
+`view_rank_ok_rview` constrains the rank at *each* constructor of a record
+view (`List.In (c, gs) (im_cons Mk)`), not only at its one constructor.
+`rank_check` reads every constructor, so `rank_check_complete` needs the
+stronger field; under `rview_struct_con` the two are equivalent.
+
 ## The recursor (item 4b)
 
 A group of one member and no view also generates the member `rec` of

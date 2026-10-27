@@ -162,6 +162,12 @@ Section Lookups.
     exist _ (gc_module_u (fc_units F) Ξ p) (eq_sym (gc_module_u_ok _ _ (fc_units_ok F) Ξ p)).
   Definition ind_lookup_f p : { o | ind_lookup Θ Ξ p = o } :=
     exist _ (ind_lookup_u (fc_units F) Ξ p) (eq_sym (ind_lookup_u_ok _ _ (fc_units_ok F) Ξ p)).
+  (** The member of a group whose module is at [p] *)
+  Definition ind_mlookup_f p : { o | ind_mlookup Θ Ξ p = o } :=
+    exist _ (ind_mlookup_u (fc_units F) Ξ p) (eq_sym (ind_mlookup_u_ok _ _ (fc_units_ok F) Ξ p)).
+  (** The record type at [p] *)
+  Definition record_lookup_f p : { o | record_lookup Θ Ξ p = o } :=
+    exist _ (record_lookup_u (fc_units F) Ξ p) (eq_sym (record_lookup_u_ok _ _ (fc_units_ok F) Ξ p)).
 
   Definition cache_lookup (ck : lk_cache Θ Ξ) (p : qname) : { o | ind_lookup Θ Ξ p = o } :=
     match ck with

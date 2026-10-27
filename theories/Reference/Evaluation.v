@@ -83,6 +83,23 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      ind_nu D = 0 ->
      eval_exps_order Θ Ξ Is (env_args nil nil) ->
      eval_exp_order Θ Ξ (a_con pq j c) p )
+(** The constructor of a record view of a group with no uniform
+    parameters, of a record with fields: a value of its own *)
+| eval_exp_order_con_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     ind_nu D = 0 ->
+     0 < List.length fl ->
+     eval_exp_order Θ Ξ (a_con pq j c) p )
+(** The constructor of a record view of a group with no uniform
+    parameters, of a record without fields: the empty tuple *)
+| eval_exp_order_con_rview_empty :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is nil ->
+     ind_nu D = 0 ->
+     eval_exp_order Θ Ξ (a_con pq j c) p )
 (** The eliminator: its uniform parameters, its scrutinee, whose value
     names the group it eliminates by, and the elimination. *)
 | eval_exp_order_elim :
@@ -159,7 +176,9 @@ with eval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> l
 (** The eliminator of the group at [pq] at its member [j], on a value, as
     [eval_elim] reads it. *)
 with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> Prop :=
-(** On a saturated constructor: the recursive results, then the branch *)
+(** On a saturated constructor: the recursive results, then the branch.
+    The group's table of leaf paths is coherent, the gate [eval_elim_con]
+    has: a premise of the domain, not a check the evaluator runs *)
 | eval_elim_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
@@ -170,7 +189,8 @@ with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain ->
      List.length vs = (im_np Dq Mk + List.length gs)%nat ->
      List.nth_error Bks j = Some b ->
      brs_lookup (eb_brs b) c = Some (n, B) ->
-     n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat ->
+     n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat ->
+     leaves_coherent D ->
      eval_ihs_order Θ Ξ p pq ups Bks gs (skipn (im_np Dq Mk) vs) ->
      (forall ihs, ⟦ihs skipn (im_np Dq Mk) vs of gs under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs ->
         eval_exp_order Θ Ξ B (env_args p (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs))) ->
@@ -203,15 +223,40 @@ with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> 
      eval_ihs_order Θ Ξ p pq ups Bks gs vs ->
      eval_ihs_order Θ Ξ p pq ups Bks (ca_rec t :: gs) (v :: vs) )
 
-(** The recursive result of an argument of a shape *)
+(** The recursive results of an argument of a shape *)
 with eval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> Prop :=
-(** At the end: the eliminator at the member *)
+(** At the end, at a member with a block: the eliminator at the member *)
 | eval_ih_order_self :
-  `( eval_elim_order Θ Ξ p pq ups Bks j v ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     eval_elim_order Θ Ξ p pq ups Bks j v ->
      eval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
-(** At a function shape: a closure *)
+(** At the end, at a record view: the projections, then their recursive
+    results *)
+| eval_ih_order_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     im_cons Mj = (c, gs) :: nil ->
+     eval_projs_order Θ Ξ fl v ->
+     (forall ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> eval_ihs_order Θ Ξ p pq ups Bks gs ws) ->
+     eval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
+(** At a function shape: closures, one per leaf path of the rest *)
 | eval_ih_order_pi :
-  `( eval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
+  `( ind_lookup Θ Ξ pq = Some D ->
+     eval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
+
+(** The projections of a value at a list of fields *)
+with eval_projs_order (Θ : gdeps) (Ξ : gstack) : list string -> domain -> Prop :=
+(** No field *)
+| eval_projs_order_nil :
+  `( eval_projs_order Θ Ξ nil v )
+(** The first field's projection, then the rest *)
+| eval_projs_order_cons :
+  `( eval_proj_order Θ Ξ f v ->
+     eval_projs_order Θ Ξ fl v ->
+     eval_projs_order Θ Ξ (f :: fl) v )
 
 (** The member a member of a group stands for, as [eval_mref] reads it *)
 with eval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> Prop :=
@@ -233,25 +278,65 @@ with eval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat ->
 with eval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
 (** At the end: the parameters, and the member stood for *)
 | eval_shty_order_self :
-  `( eval_exps_order Θ Ξ Ps p ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     eval_exps_order Θ Ξ Ps p ->
      eval_mref_order Θ Ξ pq ups j ->
+     eval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
+(** At the end, at a record view: the view's instance *)
+| eval_shty_order_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     eval_exps_order Θ Ξ Is (env_args nil ups) ->
      eval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
 (** At a domain *)
 | eval_shty_order_pi :
   `( eval_exp_order Θ Ξ B p ->
      eval_shty_order Θ Ξ pq ups p (pt_pi B t) )
 
-(** The type of the recursive result of an argument of a shape *)
-with eval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> Prop :=
-(** At the end: the parameters, then the member's motive *)
+(** The types of the recursive results of an argument of a shape *)
+with eval_ihty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> ptyp -> domain -> Prop :=
+(** At the end, at a member with a block: the parameters, then the
+    member's motive *)
 | eval_ihty_order_self :
-  `( eval_exps_order Θ Ξ Ps p ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     eval_exps_order Θ Ξ Ps p ->
      (forall bs, ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ p ↘ bs -> eval_exp_order Θ Ξ (List.nth j As a_True) (env_args pm (bs ++ v :: nil))) ->
-     eval_ihty_order Θ Ξ pm As p (pt_self j Ps) v )
+     eval_ihty_order Θ Ξ pq ups pm As p (pt_self j Ps) v )
+(** At the end, at a record view: the projections, then their recursive
+    results' types *)
+| eval_ihty_order_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     im_cons Mj = (c, gs) :: nil ->
+     eval_projs_order Θ Ξ fl v ->
+     (forall ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> eval_ihtys_order Θ Ξ pq ups pm As (env_args nil ups) gs ws) ->
+     eval_ihty_order Θ Ξ pq ups pm As p (pt_self j Ps) v )
 (** At a domain *)
 | eval_ihty_order_pi :
-  `( eval_exp_order Θ Ξ B p ->
-     eval_ihty_order Θ Ξ pm As p (pt_pi B t) v )
+  `( ind_lookup Θ Ξ pq = Some D ->
+     eval_exp_order Θ Ξ B p ->
+     eval_ihty_order Θ Ξ pq ups pm As p (pt_pi B t) v )
+
+(** The types of the recursive results of a record view's fields *)
+with eval_ihtys_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> list carg -> list domain -> Prop :=
+(** No field *)
+| eval_ihtys_order_nil :
+  `( eval_ihtys_order Θ Ξ pq ups pm As p nil nil )
+(** A non-recursive field: the rest, under it *)
+| eval_ihtys_order_arg :
+  `( eval_ihtys_order Θ Ξ pq ups pm As (p ↦ v) gs vs ->
+     eval_ihtys_order Θ Ξ pq ups pm As p (ca_arg T :: gs) (v :: vs) )
+(** A recursive field: its shape's, then the rest *)
+| eval_ihtys_order_rec :
+  `( eval_ihty_order Θ Ξ pq ups pm As p t v ->
+     eval_ihtys_order Θ Ξ pq ups pm As p gs vs ->
+     eval_ihtys_order Θ Ξ pq ups pm As p (ca_rec t :: gs) (v :: vs) )
 
 with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | eval_app_order_fn :
@@ -288,17 +373,38 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      S (List.length vs) = ind_nu D ->
      eval_exps_order Θ Ξ Is (env_args nil (vs ++ n :: nil)) ->
      eval_app_order Θ Ξ (d_con pq j c vs) n )
+(** A constructor of a record view, before its last argument *)
+| eval_app_order_con_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     S (List.length vs) < ind_nu D + List.length fl ->
+     eval_app_order Θ Ξ (d_con pq j c vs) n )
+(** At its last: the tuple of the fields *)
+| eval_app_order_con_rview_full :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     S (List.length vs) = ind_nu D + List.length fl ->
+     eval_app_order Θ Ξ (d_con pq j c vs) n )
+(** The [i]-th recursive result of a function shape: those of the rest at
+    the function's value, which has an [i]-th *)
 | eval_app_order_ihfn :
   `( eval_app_order Θ Ξ f n ->
      (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ih_order Θ Ξ p pq ups Bks t fn) ->
-     eval_app_order Θ Ξ (d_ihfn p Bks pq ups t f) n )
+     (forall fn rs, $| f & n | Θ ⍮ Ξ ↘ fn -> ⟦ih fn of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ rs -> List.nth_error rs i <> None) ->
+     eval_app_order Θ Ξ (d_ihfn p Bks pq ups t i f) n )
 | eval_app_order_shfam :
   `( eval_shty_order Θ Ξ pq ups (p ↦ n) t ->
      eval_app_order Θ Ξ (d_shfam pq ups p t) n )
+(** The [i]-th recursive result's family: those of the rest, which has an
+    [i]-th *)
 | eval_app_order_ihfam :
   `( eval_app_order Θ Ξ f n ->
-     (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ihty_order Θ Ξ pm As (p ↦ n) t fn) ->
-     eval_app_order Θ Ξ (d_ihfam pm As p t f) n )
+     (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ihty_order Θ Ξ pq ups pm As (p ↦ n) t fn) ->
+     (forall fn as', $| f & n | Θ ⍮ Ξ ↘ fn -> ⟦ihty fn of t at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↦ n ↘ as' ->
+        List.nth_error as' i <> None) ->
+     eval_app_order Θ Ξ (d_ihfam pm As pq ups p t i f) n )
 | eval_app_order_member :
   `( eval_appm_order Θ Ξ h n ->
      (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selc_order Θ Ξ h' ch) ->
@@ -474,7 +580,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 #[local]
 Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_close_order eval_appm_order eval_appms_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
-  eval_benv_order eval_proj_order eval_nflds_order : mctt.
+  eval_benv_order eval_proj_order eval_nflds_order eval_projs_order eval_ihtys_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
 Ltac functional_eval_all :=
@@ -537,9 +643,15 @@ Ltac functional_eval_all :=
     | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_shty _ _ _ _ _ _ H1 H2); subst; clear H2
-    | H1 : eval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
+    | H1 : eval_ihty ?T ?X ?p ?u ?ρm ?A ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?p ?u ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_eval_ihty _ _ _ _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_eval_ihty _ _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_ihtys ?T ?X ?p ?u ?ρm ?A ?ρ ?gs ?vs ?r1, H2 : eval_ihtys ?T ?X ?p ?u ?ρm ?A ?ρ ?gs ?vs ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_ihtys _ _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_projs ?T ?X ?fl ?v ?r1, H2 : eval_projs ?T ?X ?fl ?v ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_projs _ _ _ _ H1 H2); subst; clear H2
     | H1 : kgens ?T ?X ?p ?E ?its ?g1, H2 : kgens ?T ?X ?p ?E ?its ?g2 |- _ =>
         assert_fails (constr_eq g1 g2);
         pose proof (functional_kgens _ _ _ _ _ H1 H2); subst; clear H2
@@ -571,9 +683,12 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall p pq ups Bks t v r, ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_ih_order Θ Ξ p pq ups Bks t v) /\
     (forall pq ups j r, ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r -> eval_mref_order Θ Ξ pq ups j) /\
     (forall pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t) /\
-    (forall pm As p t v a, ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm As p t v) /\
+    (forall pq ups pm As p t v a, ⟦ihty v of t at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pq ups pm As p t v) /\
     (forall f m r, eval_proj Θ Ξ f m r -> eval_proj_order Θ Ξ f m) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> eval_nflds_order Θ Ξ ns m fl pre).
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> eval_nflds_order Θ Ξ ns m fl pre) /\
+    (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> eval_projs_order Θ Ξ fl v) /\
+    (forall pq ups pm As p gs vs rs, ⟦ihtys vs of gs at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ rs ->
+       eval_ihtys_order Θ Ξ pq ups pm As p gs vs).
 Proof.
   intros Θ Ξ; apply eval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -582,6 +697,11 @@ Proof.
     try match goal with H : eval_selc _ _ _ ?c _ |- eval_selc_order _ _ _ (_ :: ?c) =>
           destruct c; [ inversion H |] end;
     solve [ eapply eval_sel_order_global_neut; eauto; intros; functional_eval_all; eauto
+          (** A shape's end at a member with a block: the member its type
+              stands for has one, not a record view. *)
+          | match goal with H : eval_mref _ _ ?pq _ ?j _ |- eval_shty_order _ _ ?pq _ _ (pt_self ?j _) =>
+              inversion H; subst; eapply eval_shty_order_self; try eassumption;
+              unfold im_is_rview; match goal with Hh : im_head _ = _ |- _ => rewrite Hh end; reflexivity end
           | econstructor; try eassumption; intros; functional_eval_all; eauto using kgens_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_eval_all; congruence
@@ -607,7 +727,8 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (eval_order_sound 
 Lemma eval_shty_order_sound : forall Θ Ξ pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
-Lemma eval_ihty_order_sound : forall Θ Ξ pm As p t v a, ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm As p t v.
+Lemma eval_ihty_order_sound : forall Θ Ξ pq ups pm As p t v a, ⟦ihty v of t at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
+    eval_ihty_order Θ Ξ pq ups pm As p t v.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
@@ -624,8 +745,11 @@ Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Q
 Lemma eval_proj_order_sound : forall Θ Ξ f m r, eval_proj Θ Ξ f m r -> eval_proj_order Θ Ξ f m.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
+Lemma eval_projs_order_sound : forall Θ Ξ fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> eval_projs_order Θ Ξ fl v.
+Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
 #[export]
-Hint Resolve eval_ih_order_sound eval_mref_order_sound eval_proj_order_sound : mctt.
+Hint Resolve eval_ih_order_sound eval_mref_order_sound eval_proj_order_sound eval_projs_order_sound : mctt.
 
 (** The member a member stands for is the one [im_ref] names. *)
 Lemma eval_mref_im_ref : forall Θ Ξ p ups j pc k pre D Mj,
@@ -682,7 +806,9 @@ Section EvalImpl.
     | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
-    | H : eval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_ihty_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_ihtys_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_projs_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_proj_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_nflds_order _ _ _ _ _ _ |- _ => progressive_invert H
     end.
@@ -797,6 +923,18 @@ Section EvalImpl.
       | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = None |- _ =>
           rewrite H1 in H2; discriminate H2
       | H1 : ?x <> None, H2 : ?x = None |- _ => exfalso; exact (H1 H2)
+      (** A record view, by its head; its one constructor. *)
+      | H1 : im_is_rview ?M = false, H2 : im_head ?M = mh_record _ _ _ |- _ =>
+          exfalso; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1
+      | H : im_head ?M = mh_decl _ |- im_is_rview ?M = false => unfold im_is_rview; rewrite H; reflexivity
+      | H : im_head ?M = mh_view _ _ _ _ |- im_is_rview ?M = false => unfold im_is_rview; rewrite H; reflexivity
+      | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
+          rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+      | H1 : im_starts ?D ?M = false, H2 : im_head ?M = mh_record _ _ _ |- ind_nu ?D = 0 =>
+          unfold im_starts, im_is_decl in H1; rewrite H2 in H1; apply Bool.orb_false_elim in H1 as [_ H1];
+          apply Nat.ltb_ge in H1; lia
+      | H1 : im_starts ?D ?M = true, H2 : im_head ?M = mh_record _ _ _, H3 : ind_nu ?D = 0 |- _ =>
+          unfold im_starts, im_is_decl in H1; rewrite H2, H3 in H1; discriminate H1
       end.
 
   (** The [efq] case: the order says that the scrutinee evaluates to a
@@ -812,6 +950,14 @@ Section EvalImpl.
       (** The projections of a neutral reach the field projected. *)
       | H : forall rs, eval_nflds _ _ ?ns ?m ?fl ?pre rs -> _, Hm : eval_nflds _ _ ?ns ?m ?fl ?pre _ |- _ =>
           specialize (H _ Hm)
+      (** A function shape's recursive results, or their types, have the
+          one applied. *)
+      | H : forall fn rs, eval_app _ _ ?f ?n fn -> eval_ih _ _ _ _ _ _ _ fn rs -> _,
+        Hf : eval_app _ _ ?f ?n ?fn, Hr : eval_ih _ _ _ _ _ _ _ ?fn ?rs |- _ =>
+          specialize (H _ _ Hf Hr)
+      | H : forall fn as', eval_app _ _ ?f ?n fn -> eval_ihty _ _ _ _ _ _ _ _ fn as' -> _,
+        Hf : eval_app _ _ ?f ?n ?fn, Hr : eval_ihty _ _ _ _ _ _ _ _ ?fn ?ys |- _ =>
+          specialize (H _ _ Hf Hr)
       end.
 
   #[local]
@@ -832,7 +978,9 @@ Section EvalImpl.
     | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
-    | H : eval_ihty_order _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_ihty_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_ihtys_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_projs_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_proj_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_nflds_order _ _ _ _ _ _ |- _ => dependent destruction H
     end.
@@ -864,7 +1012,11 @@ Section EvalImpl.
   Ltac ev_obl :=
     intros; cbv beta in *;
     repeat impl_obl_tac1;
-    first [ solve [ impl_obl_finish ]
+    first [ (** The member a shape's end stands for: its order is a
+                premise of the shape's, so the recursive call is on a
+                subterm *)
+            lazymatch goal with |- eval_mref_order _ _ _ _ _ => solve [ impl_obl_split; impl_obl_finish ] end
+          | solve [ impl_obl_finish ]
           | solve [ impl_obl_split; impl_obl_finish ]
           | impl_obl_finish ].
 
@@ -893,7 +1045,9 @@ Section EvalImpl.
     | |- eval_ihs_order _ _ _ _ _ _ _ _ => ev_obl
     | |- eval_ih_order _ _ _ _ _ _ _ _ => ev_obl
     | |- eval_shty_order _ _ _ _ _ _ => ev_obl
-    | |- eval_ihty_order _ _ _ _ _ _ _ => ev_obl
+    | |- eval_ihty_order _ _ _ _ _ _ _ _ _ => ev_obl
+    | |- eval_ihtys_order _ _ _ _ _ _ _ _ _ => ev_obl
+    | |- eval_projs_order _ _ _ _ => ev_obl
     | |- eval_proj_order _ _ _ _ => ev_obl
     | |- eval_nflds_order _ _ _ _ _ _ => ev_obl
     | |- _ => abstract ev_obl
@@ -936,6 +1090,8 @@ Section EvalImpl.
           | exist _ (mh_view qc k' Is vm) Eh =>
               let (cups, Hc) := eval_exps_impl Is (env_args nil nil) _ in
               exist _ (d_con qc k' c cups) _
+          | exist _ (mh_record qr Is nil) Eh => exist _ (d_tuple nil) _
+          | exist _ (mh_record qr Is (_ :: _)) Eh => exist _ (d_con pq k c nil) _
           | exist _ (mh_decl _) Eh => False_rect _ _ } }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
@@ -1039,15 +1195,36 @@ Section EvalImpl.
   | p, pq, ups, Bks, ca_rec t :: gs, v :: vs, H =>
       let (ih, Hih) := eval_ih_impl p pq ups Bks t v _ in
       let (ihs, Hihs) := eval_ihs_impl p pq ups Bks gs vs _ in
-      exist _ (ih :: ihs) _
+      exist _ (ih ++ ihs) _
   | p, pq, ups, Bks, _, _, H => False_rect _ _
 
   with eval_ih_impl p pq ups Bks t v (H : eval_ih_order Θ Ξ p pq ups Bks t v) :
-      { r | ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
-  | p, pq, ups, Bks, pt_self j Ps, v, H =>
-      let (r, Hr) := eval_elim_impl p pq ups Bks j v _ in
-      exist _ r _
-  | p, pq, ups, Bks, pt_pi B t, v, H => exist _ (d_ihfn p Bks pq ups t v) _
+      { rs | ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ rs } by struct H :=
+  | p, pq, ups, Bks, pt_self j Ps, v, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
+          | exist _ ((c, gs) :: nil) Ec =>
+              let (ws, Hws) := eval_projs_impl fl v _ in
+              let (rs, Hrs) := eval_ihs_impl p pq ups Bks gs ws _ in
+              exist _ rs _
+          | exist _ _ Ec => False_rect _ _ }
+        | exist _ _ Eh =>
+            let (r, Hr) := eval_elim_impl p pq ups Bks j v _ in
+            exist _ (r :: nil) _ }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
+  | p, pq, ups, Bks, pt_pi B t, v, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed =>
+        exist _ (List.map (fun i => d_ihfn p Bks pq ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
+    | exist _ None Ed => False_rect _ _ }
+
+  with eval_projs_impl fl v (H : eval_projs_order Θ Ξ fl v) : { ws | ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws } by struct H :=
+  | nil, v, H => exist _ nil _
+  | f :: fl, v, H =>
+      let (w, Hw) := eval_proj_impl f v _ in
+      let (ws, Hws) := eval_projs_impl fl v _ in
+      exist _ (w :: ws) _
 
   with eval_mref_impl pq ups j (H : eval_mref_order Θ Ξ pq ups j) : { r | ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r } by struct H :=
   | pq, ups, j, H with inspect (ind_lookup Θ Ξ pq) := {
@@ -1056,26 +1233,62 @@ Section EvalImpl.
         | exist _ (mh_decl _) Eh => exist _ (pq, j, ups) _
         | exist _ (mh_view qc k Is vm) Eh =>
             let (cups, Hc) := eval_exps_impl Is (env_args nil ups) _ in
-            exist _ (qc, k, cups) _ }
+            exist _ (qc, k, cups) _
+        | exist _ (mh_record _ _ _) Eh => False_rect _ _ }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
 
   with eval_shty_impl pq ups p t (H : eval_shty_order Θ Ξ pq ups p t) : { a | ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pq, ups, p, pt_self j Ps, H with eval_exps_impl Ps p _ := {
-    | exist _ bs Hbs with eval_mref_impl pq ups j _ := {
-      | exist _ (pc, k, pre) Hm => exist _ (d_ind pc k (pre ++ bs)) _ } }
+  | pq, ups, p, pt_self j Ps, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_record qr Is fl) Eh =>
+            let (cups, Hc) := eval_exps_impl Is (env_args nil ups) _ in
+            exist _ (d_record qr cups) _
+        | exist _ _ Eh with eval_exps_impl Ps p _ := {
+          | exist _ bs Hbs with eval_mref_impl pq ups j _ := {
+            | exist _ (pc, k, pre) Hm => exist _ (d_ind pc k (pre ++ bs)) _ } } }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
   | pq, ups, p, pt_pi B t, H =>
       let (b, Hb) := eval_exp_impl B p _ in
       exist _ (Πᵈ b (nil ↦ d_shfam pq ups p t) fam_cod) _
 
-  with eval_ihty_impl pm As p t v (H : eval_ihty_order Θ Ξ pm As p t v) : { a | ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pm, As, p, pt_self j Ps, v, H =>
-      let (bs, Hbs) := eval_exps_impl Ps p _ in
-      let (a, Ha) := eval_exp_impl (List.nth j As a_True) (env_args pm (bs ++ v :: nil)) _ in
-      exist _ a _
-  | pm, As, p, pt_pi B t, v, H =>
-      let (b, Hb) := eval_exp_impl B p _ in
-      exist _ (Πᵈ b (nil ↦ d_ihfam pm As p t v) fam_cod) _
+  with eval_ihty_impl pq ups pm As p t v (H : eval_ihty_order Θ Ξ pq ups pm As p t v) :
+      { as' | ⟦ihty v of t at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ as' } by struct H :=
+  | pq, ups, pm, As, p, pt_self j Ps, v, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
+          | exist _ ((c, gs) :: nil) Ec =>
+              let (ws, Hws) := eval_projs_impl fl v _ in
+              let (rs, Hrs) := eval_ihtys_impl pq ups pm As (env_args nil ups) gs ws _ in
+              exist _ rs _
+          | exist _ _ Ec => False_rect _ _ }
+        | exist _ _ Eh =>
+            let (bs, Hbs) := eval_exps_impl Ps p _ in
+            let (a, Ha) := eval_exp_impl (List.nth j As a_True) (env_args pm (bs ++ v :: nil)) _ in
+            exist _ (a :: nil) _ }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
+  | pq, ups, pm, As, p, pt_pi B t, v, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed =>
+        let (b, Hb) := eval_exp_impl B p _ in
+        exist _ (List.map (fun i => Πᵈ b (nil ↦ d_ihfam pm As pq ups p t i v) fam_cod)
+                   (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
+    | exist _ None Ed => False_rect _ _ }
+
+  with eval_ihtys_impl pq ups pm As p gs vs (H : eval_ihtys_order Θ Ξ pq ups pm As p gs vs) :
+      { rs | ⟦ihtys vs of gs at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ rs } by struct H :=
+  | pq, ups, pm, As, p, nil, nil, H => exist _ nil _
+  | pq, ups, pm, As, p, ca_arg T :: gs, v :: vs, H =>
+      let (rs, Hrs) := eval_ihtys_impl pq ups pm As (p ↦ v) gs vs _ in
+      exist _ rs _
+  | pq, ups, pm, As, p, ca_rec t :: gs, v :: vs, H =>
+      let (rs1, Hrs1) := eval_ihty_impl pq ups pm As p t v _ in
+      let (rs, Hrs) := eval_ihtys_impl pq ups pm As p gs vs _ in
+      exist _ (rs1 ++ rs) _
+  | pq, ups, pm, As, p, _, _, H => False_rect _ _
 
   with eval_app_impl m n (H : eval_app_order Θ Ξ m n) : { d | $| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
   | λᵈ p M        , n, H =>
@@ -1097,20 +1310,25 @@ Section EvalImpl.
           | exist _ true El => exist _ (d_con pq k c (vs ++ n :: nil)) _
           | exist _ false El =>
               let (cups, Hc) := eval_exps_impl Is (env_args nil (vs ++ n :: nil)) _ in
-              exist _ (d_con qc k' c cups) _ } }
+              exist _ (d_con qc k' c cups) _ }
+        | exist _ (mh_record qr Is fl) Eh with inspect (S (List.length vs) <? ind_nu D + List.length fl) := {
+          | exist _ true El => exist _ (d_con pq k c (vs ++ n :: nil)) _
+          | exist _ false El => exist _ (d_tuple (List.combine fl (List.skipn (ind_nu D) (vs ++ n :: nil)))) _ } }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | d_ihfn p Bks pq ups t f, n, H =>
-      let (fn, Hfn) := eval_app_impl f n _ in
-      let (r, Hr) := eval_ih_impl p pq ups Bks t fn _ in
-      exist _ r _
+  | d_ihfn p Bks pq ups t i f, n, H with eval_app_impl f n _ := {
+    | exist _ fn Hfn with eval_ih_impl p pq ups Bks t fn _ := {
+      | exist _ rs Hrs with inspect (List.nth_error rs i) := {
+        | exist _ (Some r) Er => exist _ r _
+        | exist _ None Er => False_rect _ _ } } }
   | d_shfam pq ups p t, n, H =>
       let (a, Ha) := eval_shty_impl pq ups (p ↦ n) t _ in
       exist _ a _
-  | d_ihfam pm As p t f, n, H =>
-      let (fn, Hfn) := eval_app_impl f n _ in
-      let (a, Ha) := eval_ihty_impl pm As (p ↦ n) t fn _ in
-      exist _ a _
+  | d_ihfam pm As pq ups p t i f, n, H with eval_app_impl f n _ := {
+    | exist _ fn Hfn with eval_ihty_impl pq ups pm As (p ↦ n) t fn _ := {
+      | exist _ as' Has with inspect (List.nth_error as' i) := {
+        | exist _ (Some a) Ea => exist _ a _
+        | exist _ None Ea => False_rect _ _ } } }
   | d_record pq ns, n, H => exist _ (d_record pq (ns ++ n :: nil)) _
   | _, n, H => False_rect _ _
 

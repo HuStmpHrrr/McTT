@@ -79,6 +79,23 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      ind_nu D = 0 ->
      feval_exps_order Θ Ξ Is (env_args nil nil) ->
      feval_exp_order Θ Ξ (a_con pq j c) p )
+(** The constructor of a record view of a group with no uniform
+    parameters, of a record with fields: a value of its own *)
+| feval_exp_order_con_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     ind_nu D = 0 ->
+     0 < List.length fl ->
+     feval_exp_order Θ Ξ (a_con pq j c) p )
+(** The constructor of a record view of a group with no uniform
+    parameters, of a record without fields: the empty tuple *)
+| feval_exp_order_con_rview_empty :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is nil ->
+     ind_nu D = 0 ->
+     feval_exp_order Θ Ξ (a_con pq j c) p )
 (** The eliminator: its uniform parameters, its scrutinee, whose value
     names the group it eliminates by, and the elimination. *)
 | feval_exp_order_elim :
@@ -156,7 +173,9 @@ with feval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> 
     [feval_elim] reads it. *)
 with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> Prop :=
 (** On a saturated constructor: the recursive results the branch reads,
-    then the branch *)
+    then the branch.  The group's table of leaf paths is coherent, the
+    gate [feval_elim_con] has: a premise of the domain, not a check the
+    evaluator runs *)
 | feval_elim_order_con :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
@@ -167,9 +186,10 @@ with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -
      List.length vs = (im_np Dq Mk + List.length gs)%nat ->
      List.nth_error Bks j = Some b ->
      brs_lookup (eb_brs b) c = Some (n, B) ->
-     n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat ->
-     feval_ihs_order Θ Ξ p pq ups Bks B gs (skipn (im_np Dq Mk) vs) ->
-     (forall ihs, ⟦ihsᶠ skipn (im_np Dq Mk) vs of gs under pq ups Bks for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs ->
+     n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat ->
+     leaves_coherent D ->
+     feval_ihs_order Θ Ξ p pq ups Bks (Some B) gs (skipn (im_np Dq Mk) vs) ->
+     (forall ihs, ⟦ihsᶠ skipn (im_np Dq Mk) vs of gs under pq ups Bks for (Some B) ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs ->
         feval_exp_order Θ Ξ B (env_args p (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs))) ->
      feval_elim_order Θ Ξ p pq ups Bks j (d_con pc k c vs) )
 (** On a neutral: the motive's instance *)
@@ -186,36 +206,64 @@ with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -
      feval_elim_order Θ Ξ p pq ups Bks j (⇑ (d_ind pc k as') m) )
 
 (** The recursive results of the arguments [vs] of kinds [gs], for the
-    branch [B] *)
-with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> exp -> list carg -> list domain -> Prop :=
+    branch [oB] ([None]: all of them) *)
+with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> option exp -> list carg -> list domain -> Prop :=
 (** No argument *)
 | feval_ihs_order_nil :
-  `( feval_ihs_order Θ Ξ p pq ups Bks B nil nil )
+  `( feval_ihs_order Θ Ξ p pq ups Bks oB nil nil )
 (** A non-recursive argument *)
 | feval_ihs_order_arg :
-  `( feval_ihs_order Θ Ξ p pq ups Bks B gs vs ->
-     feval_ihs_order Θ Ξ p pq ups Bks B (ca_arg T :: gs) (v :: vs) )
-(** A recursive argument the branch reads: its result, then the rest *)
+  `( feval_ihs_order Θ Ξ p pq ups Bks oB gs vs ->
+     feval_ihs_order Θ Ξ p pq ups Bks oB (ca_arg T :: gs) (v :: vs) )
+(** A recursive argument the branch reads one result of: its results,
+    then the rest *)
 | feval_ihs_order_rec_case :
-  `( exp_freshb (cargs_nrec gs) B = false ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = false ->
      feval_ih_order Θ Ξ p pq ups Bks t v ->
-     feval_ihs_order Θ Ξ p pq ups Bks B gs vs ->
-     feval_ihs_order Θ Ξ p pq ups Bks B (ca_rec t :: gs) (v :: vs) )
-(** One it does not read: the rest only *)
+     feval_ihs_order Θ Ξ p pq ups Bks oB gs vs ->
+     feval_ihs_order Θ Ξ p pq ups Bks oB (ca_rec t :: gs) (v :: vs) )
+(** One it reads none of: the rest only *)
 | feval_ihs_order_skip :
-  `( exp_freshb (cargs_nrec gs) B = true ->
-     feval_ihs_order Θ Ξ p pq ups Bks B gs vs ->
-     feval_ihs_order Θ Ξ p pq ups Bks B (ca_rec t :: gs) (v :: vs) )
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = true ->
+     feval_ihs_order Θ Ξ p pq ups Bks oB gs vs ->
+     feval_ihs_order Θ Ξ p pq ups Bks oB (ca_rec t :: gs) (v :: vs) )
 
-(** The recursive result of an argument of a shape *)
+(** The recursive results of an argument of a shape *)
 with feval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> Prop :=
-(** At the end: the eliminator at the member *)
+(** At the end, at a member with a block: the eliminator at the member *)
 | feval_ih_order_self :
-  `( feval_elim_order Θ Ξ p pq ups Bks j v ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     feval_elim_order Θ Ξ p pq ups Bks j v ->
      feval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
-(** At a function shape: a closure *)
+(** At the end, at a record view: the projections, then all their
+    recursive results *)
+| feval_ih_order_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     im_cons Mj = (c, gs) :: nil ->
+     feval_projs_order Θ Ξ fl v ->
+     (forall ws, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws -> feval_ihs_order Θ Ξ p pq ups Bks None gs ws) ->
+     feval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
+(** At a function shape: closures, one per leaf path of the rest *)
 | feval_ih_order_pi :
-  `( feval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
+  `( ind_lookup Θ Ξ pq = Some D ->
+     feval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
+
+(** The projections of a value at a list of fields *)
+with feval_projs_order (Θ : gdeps) (Ξ : gstack) : list string -> domain -> Prop :=
+(** No field *)
+| feval_projs_order_nil :
+  `( feval_projs_order Θ Ξ nil v )
+(** The first field's projection, then the rest *)
+| feval_projs_order_cons :
+  `( feval_proj_order Θ Ξ f v ->
+     feval_projs_order Θ Ξ fl v ->
+     feval_projs_order Θ Ξ (f :: fl) v )
 
 (** The member a member of a group stands for, as [feval_mref] reads it *)
 with feval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> Prop :=
@@ -237,25 +285,65 @@ with feval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -
 with feval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
 (** At the end: the parameters, and the member stood for *)
 | feval_shty_order_self :
-  `( feval_exps_order Θ Ξ Ps p ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     feval_exps_order Θ Ξ Ps p ->
      feval_mref_order Θ Ξ pq ups j ->
+     feval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
+(** At the end, at a record view: the view's instance *)
+| feval_shty_order_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     feval_exps_order Θ Ξ Is (env_args nil ups) ->
      feval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
 (** At a domain *)
 | feval_shty_order_pi :
   `( feval_exp_order Θ Ξ B p ->
      feval_shty_order Θ Ξ pq ups p (pt_pi B t) )
 
-(** The type of the recursive result of an argument of a shape *)
-with feval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> Prop :=
-(** At the end: the parameters, then the member's motive *)
+(** The types of the recursive results of an argument of a shape *)
+with feval_ihty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> ptyp -> domain -> Prop :=
+(** At the end, at a member with a block: the parameters, then the
+    member's motive *)
 | feval_ihty_order_self :
-  `( feval_exps_order Θ Ξ Ps p ->
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     feval_exps_order Θ Ξ Ps p ->
      (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ bs -> feval_exp_order Θ Ξ (List.nth j As a_True) (env_args pm (bs ++ v :: nil))) ->
-     feval_ihty_order Θ Ξ pm As p (pt_self j Ps) v )
+     feval_ihty_order Θ Ξ pq ups pm As p (pt_self j Ps) v )
+(** At the end, at a record view: the projections, then their recursive
+    results' types *)
+| feval_ihty_order_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     im_cons Mj = (c, gs) :: nil ->
+     feval_projs_order Θ Ξ fl v ->
+     (forall ws, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws -> feval_ihtys_order Θ Ξ pq ups pm As (env_args nil ups) gs ws) ->
+     feval_ihty_order Θ Ξ pq ups pm As p (pt_self j Ps) v )
 (** At a domain *)
 | feval_ihty_order_pi :
-  `( feval_exp_order Θ Ξ B p ->
-     feval_ihty_order Θ Ξ pm As p (pt_pi B t) v )
+  `( ind_lookup Θ Ξ pq = Some D ->
+     feval_exp_order Θ Ξ B p ->
+     feval_ihty_order Θ Ξ pq ups pm As p (pt_pi B t) v )
+
+(** The types of the recursive results of a record view's fields *)
+with feval_ihtys_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> list carg -> list domain -> Prop :=
+(** No field *)
+| feval_ihtys_order_nil :
+  `( feval_ihtys_order Θ Ξ pq ups pm As p nil nil )
+(** A non-recursive field: the rest, under it *)
+| feval_ihtys_order_arg :
+  `( feval_ihtys_order Θ Ξ pq ups pm As (p ↦ v) gs vs ->
+     feval_ihtys_order Θ Ξ pq ups pm As p (ca_arg T :: gs) (v :: vs) )
+(** A recursive field: its shape's, then the rest *)
+| feval_ihtys_order_rec :
+  `( feval_ihty_order Θ Ξ pq ups pm As p t v ->
+     feval_ihtys_order Θ Ξ pq ups pm As p gs vs ->
+     feval_ihtys_order Θ Ξ pq ups pm As p (ca_rec t :: gs) (v :: vs) )
 
 with feval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | feval_app_order_fn :
@@ -292,17 +380,38 @@ with feval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      S (List.length vs) = ind_nu D ->
      feval_exps_order Θ Ξ Is (env_args nil (vs ++ n :: nil)) ->
      feval_app_order Θ Ξ (d_con pq j c vs) n )
+(** A constructor of a record view, before its last argument *)
+| feval_app_order_con_rview :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     S (List.length vs) < ind_nu D + List.length fl ->
+     feval_app_order Θ Ξ (d_con pq j c vs) n )
+(** At its last: the tuple of the fields *)
+| feval_app_order_con_rview_full :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     S (List.length vs) = ind_nu D + List.length fl ->
+     feval_app_order Θ Ξ (d_con pq j c vs) n )
+(** The [i]-th recursive result of a function shape: those of the rest at
+    the function's value, which has an [i]-th *)
 | feval_app_order_ihfn :
   `( feval_app_order Θ Ξ f n ->
      (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ih_order Θ Ξ p pq ups Bks t fn) ->
-     feval_app_order Θ Ξ (d_ihfn p Bks pq ups t f) n )
+     (forall fn rs, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> ⟦ihᶠ fn of t under pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ rs -> List.nth_error rs i <> None) ->
+     feval_app_order Θ Ξ (d_ihfn p Bks pq ups t i f) n )
 | feval_app_order_shfam :
   `( feval_shty_order Θ Ξ pq ups (p ↦ n) t ->
      feval_app_order Θ Ξ (d_shfam pq ups p t) n )
+(** The [i]-th recursive result's family: those of the rest, which has an
+    [i]-th *)
 | feval_app_order_ihfam :
   `( feval_app_order Θ Ξ f n ->
-     (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ihty_order Θ Ξ pm As (p ↦ n) t fn) ->
-     feval_app_order Θ Ξ (d_ihfam pm As p t f) n )
+     (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ihty_order Θ Ξ pq ups pm As (p ↦ n) t fn) ->
+     (forall fn as', $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> ⟦ihtyᶠ fn of t at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ n ↘ as' ->
+        List.nth_error as' i <> None) ->
+     feval_app_order Θ Ξ (d_ihfam pm As pq ups p t i f) n )
 | feval_app_order_member :
   `( feval_appm_order Θ Ξ h n ->
      (forall h', $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' -> feval_selc_order Θ Ξ h' ch) ->
@@ -478,7 +587,7 @@ with feval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 #[local]
 Hint Constructors feval_exp_order feval_elim_order feval_ihs_order feval_ih_order feval_mref_order feval_shty_order feval_ihty_order feval_app_order feval_exps_order feval_apps_order
   feval_modexp_order feval_close_order feval_appm_order feval_appms_order feval_sel_order feval_selm_order feval_selc_order feval_selmc_order
-  feval_benv_order feval_proj_order feval_nflds_order : mctt.
+  feval_benv_order feval_proj_order feval_nflds_order feval_projs_order feval_ihtys_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
 Ltac functional_feval_all :=
@@ -541,9 +650,15 @@ Ltac functional_feval_all :=
     | H1 : feval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : feval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_shty _ _ _ _ _ _ H1 H2); subst; clear H2
-    | H1 : feval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r1, H2 : feval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
+    | H1 : feval_ihty ?T ?X ?p ?u ?ρm ?A ?ρ ?t ?v ?r1, H2 : feval_ihty ?T ?X ?p ?u ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_feval_ihty _ _ _ _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_feval_ihty _ _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_ihtys ?T ?X ?p ?u ?ρm ?A ?ρ ?gs ?vs ?r1, H2 : feval_ihtys ?T ?X ?p ?u ?ρm ?A ?ρ ?gs ?vs ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_feval_ihtys _ _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_projs ?T ?X ?fl ?v ?r1, H2 : feval_projs ?T ?X ?fl ?v ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_feval_projs _ _ _ _ H1 H2); subst; clear H2
     | H1 : kgens ?T ?X ?p ?E ?its ?g1, H2 : kgens ?T ?X ?p ?E ?its ?g2 |- _ =>
         assert_fails (constr_eq g1 g2);
         pose proof (functional_kgens _ _ _ _ _ H1 H2); subst; clear H2
@@ -576,9 +691,12 @@ Lemma feval_order_sound : forall Θ Ξ,
     (forall p pq ups Bks t v r, ⟦ihᶠ v of t under pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r -> feval_ih_order Θ Ξ p pq ups Bks t v) /\
     (forall pq ups j r, ⟦mrefᶠ j of pq ups ⟧ᶠ Θ ⍮ Ξ ↘ r -> feval_mref_order Θ Ξ pq ups j) /\
     (forall pq ups p t a, ⟦shtyᶠ t of pq ups ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_shty_order Θ Ξ pq ups p t) /\
-    (forall pm As p t v a, ⟦ihtyᶠ v of t under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_ihty_order Θ Ξ pm As p t v) /\
+    (forall pq ups pm As p t v a, ⟦ihtyᶠ v of t at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_ihty_order Θ Ξ pq ups pm As p t v) /\
     (forall f m r, feval_proj Θ Ξ f m r -> feval_proj_order Θ Ξ f m) /\
-    (forall ns m fl pre rs, feval_nflds Θ Ξ ns m fl pre rs -> feval_nflds_order Θ Ξ ns m fl pre).
+    (forall ns m fl pre rs, feval_nflds Θ Ξ ns m fl pre rs -> feval_nflds_order Θ Ξ ns m fl pre) /\
+    (forall fl v ws, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws -> feval_projs_order Θ Ξ fl v) /\
+    (forall pq ups pm As p gs vs rs, ⟦ihtysᶠ vs of gs at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ rs ->
+       feval_ihtys_order Θ Ξ pq ups pm As p gs vs).
 Proof.
   intros Θ Ξ; apply feval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -587,6 +705,11 @@ Proof.
     try match goal with H : feval_selc _ _ _ ?c _ |- feval_selc_order _ _ _ (_ :: ?c) =>
           destruct c; [ inversion H |] end;
     solve [ eapply feval_sel_order_global_neut; eauto; intros; functional_feval_all; eauto
+          (** A shape's end at a member with a block: the member its type
+              stands for has one, not a record view. *)
+          | match goal with H : feval_mref _ _ ?pq _ ?j _ |- feval_shty_order _ _ ?pq _ _ (pt_self ?j _) =>
+              inversion H; subst; eapply feval_shty_order_self; try eassumption;
+              unfold im_is_rview; match goal with Hh : im_head _ = _ |- _ => rewrite Hh end; reflexivity end
           | econstructor; try eassumption; intros; functional_feval_all; eauto using kgens_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_feval_all; congruence
@@ -612,7 +735,8 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (feval_order_sound
 Lemma feval_shty_order_sound : forall Θ Ξ pq ups p t a, ⟦shtyᶠ t of pq ups ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
-Lemma feval_ihty_order_sound : forall Θ Ξ pm A p t v a, ⟦ihtyᶠ v of t under pm A ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_ihty_order Θ Ξ pm A p t v.
+Lemma feval_ihty_order_sound : forall Θ Ξ pq ups pm A p t v a, ⟦ihtyᶠ v of t at pq ups under pm A ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a ->
+    feval_ihty_order Θ Ξ pq ups pm A p t v.
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 Lemma feval_ih_order_sound : forall Θ Ξ p pq ups Bks t v r, ⟦ihᶠ v of t under pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r ->
@@ -625,10 +749,13 @@ Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. 
 Lemma feval_proj_order_sound : forall Θ Ξ f m r, feval_proj Θ Ξ f m r -> feval_proj_order Θ Ξ f m.
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
+Lemma feval_projs_order_sound : forall Θ Ξ fl v ws, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws -> feval_projs_order Θ Ξ fl v.
+Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
 #[export]
 Hint Resolve feval_exp_order_sound feval_app_order_sound feval_exps_order_sound feval_modexp_order_sound
   feval_shty_order_sound feval_ihty_order_sound feval_ih_order_sound feval_mref_order_sound
-  feval_proj_order_sound : mctt.
+  feval_proj_order_sound feval_projs_order_sound : mctt.
 
 (** The member a member stands for is the one [im_ref] names. *)
 Lemma feval_mref_im_ref : forall Θ Ξ p ups j pc k pre D Mj,
@@ -708,7 +835,9 @@ Section EvalImpl.
     | H : feval_ihs_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
-    | H : feval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_ihty_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_ihtys_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_projs_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_proj_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_nflds_order _ _ _ _ _ _ |- _ => progressive_invert H
     end.
@@ -845,6 +974,18 @@ Section EvalImpl.
       | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = None |- _ =>
           rewrite H1 in H2; discriminate H2
       | H1 : ?x <> None, H2 : ?x = None |- _ => exfalso; exact (H1 H2)
+      (** A record view, by its head; its one constructor. *)
+      | H1 : im_is_rview ?M = false, H2 : im_head ?M = mh_record _ _ _ |- _ =>
+          exfalso; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1
+      | H : im_head ?M = mh_decl _ |- im_is_rview ?M = false => unfold im_is_rview; rewrite H; reflexivity
+      | H : im_head ?M = mh_view _ _ _ _ |- im_is_rview ?M = false => unfold im_is_rview; rewrite H; reflexivity
+      | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
+          rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+      | H1 : im_starts ?D ?M = false, H2 : im_head ?M = mh_record _ _ _ |- ind_nu ?D = 0 =>
+          unfold im_starts, im_is_decl in H1; rewrite H2 in H1; apply Bool.orb_false_elim in H1 as [_ H1];
+          apply Nat.ltb_ge in H1; lia
+      | H1 : im_starts ?D ?M = true, H2 : im_head ?M = mh_record _ _ _, H3 : ind_nu ?D = 0 |- _ =>
+          unfold im_starts, im_is_decl in H1; rewrite H2, H3 in H1; discriminate H1
       end.
 
   (** The [efq] case: the order says that the scrutinee evaluates to a
@@ -860,6 +1001,14 @@ Section EvalImpl.
       (** The projections of a neutral reach the field projected. *)
       | H : forall rs, feval_nflds _ _ ?ns ?m ?fl ?pre rs -> _, Hm : feval_nflds _ _ ?ns ?m ?fl ?pre _ |- _ =>
           specialize (H _ Hm)
+      (** A function shape's recursive results, or their types, have the
+          one applied. *)
+      | H : forall fn rs, feval_app _ _ ?f ?n fn -> feval_ih _ _ _ _ _ _ _ fn rs -> _,
+        Hf : feval_app _ _ ?f ?n ?fn, Hr : feval_ih _ _ _ _ _ _ _ ?fn ?rs |- _ =>
+          specialize (H _ _ Hf Hr)
+      | H : forall fn as', feval_app _ _ ?f ?n fn -> feval_ihty _ _ _ _ _ _ _ _ fn as' -> _,
+        Hf : feval_app _ _ ?f ?n ?fn, Hr : feval_ihty _ _ _ _ _ _ _ _ ?fn ?ys |- _ =>
+          specialize (H _ _ Hf Hr)
       end.
 
   #[local]
@@ -880,7 +1029,9 @@ Section EvalImpl.
     | H : feval_ihs_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
-    | H : feval_ihty_order _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_ihty_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_ihtys_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_projs_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_proj_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_nflds_order _ _ _ _ _ _ |- _ => dependent destruction H
     end.
@@ -918,7 +1069,11 @@ Section EvalImpl.
     intros; cbv beta in *;
     rewrite ?elim_env_eq in *;
     repeat impl_obl_tac1;
-    first [ solve [ impl_obl_finish ]
+    first [ (** The member a shape's end stands for: its order is a
+                premise of the shape's, so the recursive call is on a
+                subterm *)
+            lazymatch goal with |- feval_mref_order _ _ _ _ _ => solve [ impl_obl_split; impl_obl_finish ] end
+          | solve [ impl_obl_finish ]
           | solve [ impl_obl_split; impl_obl_finish ]
           | impl_obl_finish ].
 
@@ -959,6 +1114,8 @@ Section EvalImpl.
           | exist _ (mh_view qc k' Is vm) Eh =>
               let (cups, Hc) := feval_exps_impl Is (env_args nil nil) _ in
               exist _ (d_con qc k' c cups) _
+          | exist _ (mh_record qr Is nil) Eh => exist _ (d_tuple nil) _
+          | exist _ (mh_record qr Is (_ :: _)) Eh => exist _ (d_con pq k c nil) _
           | exist _ (mh_decl _) Eh => False_rect _ _ } }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
@@ -1005,7 +1162,7 @@ Section EvalImpl.
   | f, d_tuple vs, H with inspect (field_lookup vs f) := {
     | exist _ (Some r) E => exist _ r _
     | exist _ None E => False_rect _ _ }
-  | f, ⇑ (d_record pq ns) m, H with inspect (record_lookup Θ Ξ pq) := {
+  | f, ⇑ (d_record pq ns) m, H with record_lookup_f Θ Ξ pq := {
     | exist _ (Some R) El with inspect (field_index (record_fields R) f) := {
       | exist _ (Some k) Ek with feval_nflds_impl ns m (List.firstn (S k) (record_fields R)) nil _ := {
         | exist _ rs Hrs with inspect (List.nth_error rs k) := {
@@ -1036,7 +1193,7 @@ Section EvalImpl.
             | exist _ (Some gs) Ec with inspect (List.nth_error Bks j) := {
               | exist _ (Some b) Eb with inspect (brs_lookup (eb_brs b) c) := {
                 | exist _ (Some (n, B)) Ebr =>
-                    let (ihs, Hihs) := feval_ihs_impl p pq ups Bks B gs (skipn (im_np Dq Mk) vs) (Some (exist _ (pq, D) Ed)) _ in
+                    let (ihs, Hihs) := feval_ihs_impl p pq ups Bks (Some B) gs (skipn (im_np Dq Mk) vs) (Some (exist _ (pq, D) Ed)) _ in
                     let (r, Hr) := feval_exp_impl B (elim_env p Dq Mk vs ihs) _ in
                     exist _ r _
                 | exist _ None Ebr => False_rect _ _ }
@@ -1055,30 +1212,54 @@ Section EvalImpl.
     | exist _ None Edq => False_rect _ _ }
   | p, pq, ups, Bks, j, _, ck, H => False_rect _ _
 
-  with feval_ihs_impl p pq ups Bks B gs vs (ck : lk_cache Θ Ξ) (H : feval_ihs_order Θ Ξ p pq ups Bks B gs vs) :
-      { ihs | ⟦ihsᶠ vs of gs under pq ups Bks for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
-  | p, pq, ups, Bks, B, nil, nil, ck, H => exist _ nil _
-  | p, pq, ups, Bks, B, ca_arg T :: gs, v :: vs, ck, H =>
-      let (ihs, Hihs) := feval_ihs_impl p pq ups Bks B gs vs ck _ in
+  with feval_ihs_impl p pq ups Bks oB gs vs (ck : lk_cache Θ Ξ) (H : feval_ihs_order Θ Ξ p pq ups Bks oB gs vs) :
+      { ihs | ⟦ihsᶠ vs of gs under pq ups Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
+  | p, pq, ups, Bks, oB, nil, nil, ck, H => exist _ nil _
+  | p, pq, ups, Bks, oB, ca_arg T :: gs, v :: vs, ck, H =>
+      let (ihs, Hihs) := feval_ihs_impl p pq ups Bks oB gs vs ck _ in
       exist _ ihs _
-  | p, pq, ups, Bks, B, ca_rec t :: gs, v :: vs, ck, H with inspect (exp_freshb (cargs_nrec gs) B) := {
-    (** The branch does not read the recursive result: it is not
-        computed. *)
-    | exist _ true E =>
-        let (ihs, Hihs) := feval_ihs_impl p pq ups Bks B gs vs ck _ in
-        exist _ (𝕌ω@0 :: ihs) _
-    | exist _ false E =>
-        let (ih, Hih) := feval_ih_impl p pq ups Bks t v ck _ in
-        let (ihs, Hihs) := feval_ihs_impl p pq ups Bks B gs vs ck _ in
-        exist _ (ih :: ihs) _ }
-  | p, pq, ups, Bks, B, _, _, ck, H => False_rect _ _
+  | p, pq, ups, Bks, oB, ca_rec t :: gs, v :: vs, ck, H with cache_lookup Θ Ξ ck pq := {
+    | exist _ (Some D) Ed
+        with inspect (ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) := {
+      (** The branch reads none of the argument's recursive results: they
+          are not computed. *)
+      | exist _ true E =>
+          let (ihs, Hihs) := feval_ihs_impl p pq ups Bks oB gs vs ck _ in
+          exist _ (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t)) ++ ihs) _
+      | exist _ false E =>
+          let (ih, Hih) := feval_ih_impl p pq ups Bks t v ck _ in
+          let (ihs, Hihs) := feval_ihs_impl p pq ups Bks oB gs vs ck _ in
+          exist _ (ih ++ ihs) _ }
+    | exist _ None Ed => False_rect _ _ }
+  | p, pq, ups, Bks, oB, _, _, ck, H => False_rect _ _
 
   with feval_ih_impl p pq ups Bks t v (ck : lk_cache Θ Ξ) (H : feval_ih_order Θ Ξ p pq ups Bks t v) :
-      { r | ⟦ihᶠ v of t under pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
-  | p, pq, ups, Bks, pt_self j Ps, v, ck, H =>
-      let (r, Hr) := feval_elim_impl p pq ups Bks j v ck _ in
-      exist _ r _
-  | p, pq, ups, Bks, pt_pi B t, v, ck, H => exist _ (d_ihfn p Bks pq ups t v) _
+      { rs | ⟦ihᶠ v of t under pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ rs } by struct H :=
+  | p, pq, ups, Bks, pt_self j Ps, v, ck, H with cache_lookup Θ Ξ ck pq := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
+          | exist _ ((c, gs) :: nil) Ec =>
+              let (ws, Hws) := feval_projs_impl fl v _ in
+              let (rs, Hrs) := feval_ihs_impl p pq ups Bks None gs ws ck _ in
+              exist _ rs _
+          | exist _ _ Ec => False_rect _ _ }
+        | exist _ _ Eh =>
+            let (r, Hr) := feval_elim_impl p pq ups Bks j v ck _ in
+            exist _ (r :: nil) _ }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
+  | p, pq, ups, Bks, pt_pi B t, v, ck, H with cache_lookup Θ Ξ ck pq := {
+    | exist _ (Some D) Ed =>
+        exist _ (List.map (fun i => d_ihfn p Bks pq ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
+    | exist _ None Ed => False_rect _ _ }
+
+  with feval_projs_impl fl v (H : feval_projs_order Θ Ξ fl v) : { ws | ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws } by struct H :=
+  | nil, v, H => exist _ nil _
+  | f :: fl, v, H =>
+      let (w, Hw) := feval_proj_impl f v _ in
+      let (ws, Hws) := feval_projs_impl fl v _ in
+      exist _ (w :: ws) _
 
   with feval_mref_impl pq ups j (H : feval_mref_order Θ Ξ pq ups j) : { r | ⟦mrefᶠ j of pq ups ⟧ᶠ Θ ⍮ Ξ ↘ r } by struct H :=
   | pq, ups, j, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
@@ -1087,26 +1268,62 @@ Section EvalImpl.
         | exist _ (mh_decl _) Eh => exist _ (pq, j, ups) _
         | exist _ (mh_view qc k Is vm) Eh =>
             let (cups, Hc) := feval_exps_impl Is (env_args nil ups) _ in
-            exist _ (qc, k, cups) _ }
+            exist _ (qc, k, cups) _
+        | exist _ (mh_record _ _ _) Eh => False_rect _ _ }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
 
   with feval_shty_impl pq ups p t (H : feval_shty_order Θ Ξ pq ups p t) : { a | ⟦shtyᶠ t of pq ups ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pq, ups, p, pt_self j Ps, H with feval_exps_impl Ps p _ := {
-    | exist _ bs Hbs with feval_mref_impl pq ups j _ := {
-      | exist _ (pc, k, pre) Hm => exist _ (d_ind pc k (pre ++ bs)) _ } }
+  | pq, ups, p, pt_self j Ps, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_record qr Is fl) Eh =>
+            let (cups, Hc) := feval_exps_impl Is (env_args nil ups) _ in
+            exist _ (d_record qr cups) _
+        | exist _ _ Eh with feval_exps_impl Ps p _ := {
+          | exist _ bs Hbs with feval_mref_impl pq ups j _ := {
+            | exist _ (pc, k, pre) Hm => exist _ (d_ind pc k (pre ++ bs)) _ } } }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
   | pq, ups, p, pt_pi B t, H =>
       let (b, Hb) := feval_exp_impl B p _ in
       exist _ (Πᵈ b (nil ↦ d_shfam pq ups p t) fam_cod) _
 
-  with feval_ihty_impl pm As p t v (H : feval_ihty_order Θ Ξ pm As p t v) : { a | ⟦ihtyᶠ v of t under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pm, As, p, pt_self j Ps, v, H =>
-      let (bs, Hbs) := feval_exps_impl Ps p _ in
-      let (a, Ha) := feval_exp_impl (List.nth j As a_True) (env_args pm (bs ++ v :: nil)) _ in
-      exist _ a _
-  | pm, As, p, pt_pi B t, v, H =>
-      let (b, Hb) := feval_exp_impl B p _ in
-      exist _ (Πᵈ b (nil ↦ d_ihfam pm As p t v) fam_cod) _
+  with feval_ihty_impl pq ups pm As p t v (H : feval_ihty_order Θ Ξ pq ups pm As p t v) :
+      { as' | ⟦ihtyᶠ v of t at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ as' } by struct H :=
+  | pq, ups, pm, As, p, pt_self j Ps, v, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
+          | exist _ ((c, gs) :: nil) Ec =>
+              let (ws, Hws) := feval_projs_impl fl v _ in
+              let (rs, Hrs) := feval_ihtys_impl pq ups pm As (env_args nil ups) gs ws _ in
+              exist _ rs _
+          | exist _ _ Ec => False_rect _ _ }
+        | exist _ _ Eh =>
+            let (bs, Hbs) := feval_exps_impl Ps p _ in
+            let (a, Ha) := feval_exp_impl (List.nth j As a_True) (env_args pm (bs ++ v :: nil)) _ in
+            exist _ (a :: nil) _ }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
+  | pq, ups, pm, As, p, pt_pi B t, v, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+    | exist _ (Some D) Ed =>
+        let (b, Hb) := feval_exp_impl B p _ in
+        exist _ (List.map (fun i => Πᵈ b (nil ↦ d_ihfam pm As pq ups p t i v) fam_cod)
+                   (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
+    | exist _ None Ed => False_rect _ _ }
+
+  with feval_ihtys_impl pq ups pm As p gs vs (H : feval_ihtys_order Θ Ξ pq ups pm As p gs vs) :
+      { rs | ⟦ihtysᶠ vs of gs at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ rs } by struct H :=
+  | pq, ups, pm, As, p, nil, nil, H => exist _ nil _
+  | pq, ups, pm, As, p, ca_arg T :: gs, v :: vs, H =>
+      let (rs, Hrs) := feval_ihtys_impl pq ups pm As (p ↦ v) gs vs _ in
+      exist _ rs _
+  | pq, ups, pm, As, p, ca_rec t :: gs, v :: vs, H =>
+      let (rs1, Hrs1) := feval_ihty_impl pq ups pm As p t v _ in
+      let (rs, Hrs) := feval_ihtys_impl pq ups pm As p gs vs _ in
+      exist _ (rs1 ++ rs) _
+  | pq, ups, pm, As, p, _, _, H => False_rect _ _
 
   with feval_app_impl m n (H : feval_app_order Θ Ξ m n) : { d | $ᶠ| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
   | λᵈ p M        , n, H =>
@@ -1128,20 +1345,25 @@ Section EvalImpl.
           | exist _ true El => exist _ (d_con pq k c (vs ++ n :: nil)) _
           | exist _ false El =>
               let (cups, Hc) := feval_exps_impl Is (env_args nil (vs ++ n :: nil)) _ in
-              exist _ (d_con qc k' c cups) _ } }
+              exist _ (d_con qc k' c cups) _ }
+        | exist _ (mh_record qr Is fl) Eh with inspect (S (List.length vs) <? ind_nu D + List.length fl) := {
+          | exist _ true El => exist _ (d_con pq k c (vs ++ n :: nil)) _
+          | exist _ false El => exist _ (d_tuple (List.combine fl (List.skipn (ind_nu D) (vs ++ n :: nil)))) _ } }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | d_ihfn p Bks pq ups t f, n, H =>
-      let (fn, Hfn) := feval_app_impl f n _ in
-      let (r, Hr) := feval_ih_impl p pq ups Bks t fn (@fc_seed Θ Ξ F) _ in
-      exist _ r _
+  | d_ihfn p Bks pq ups t i f, n, H with feval_app_impl f n _ := {
+    | exist _ fn Hfn with feval_ih_impl p pq ups Bks t fn (@fc_seed Θ Ξ F) _ := {
+      | exist _ rs Hrs with inspect (List.nth_error rs i) := {
+        | exist _ (Some r) Er => exist _ r _
+        | exist _ None Er => False_rect _ _ } } }
   | d_shfam pq ups p t, n, H =>
       let (a, Ha) := feval_shty_impl pq ups (p ↦ n) t _ in
       exist _ a _
-  | d_ihfam pm As p t f, n, H =>
-      let (fn, Hfn) := feval_app_impl f n _ in
-      let (a, Ha) := feval_ihty_impl pm As (p ↦ n) t fn _ in
-      exist _ a _
+  | d_ihfam pm As pq ups p t i f, n, H with feval_app_impl f n _ := {
+    | exist _ fn Hfn with feval_ihty_impl pq ups pm As (p ↦ n) t fn _ := {
+      | exist _ as' Has with inspect (List.nth_error as' i) := {
+        | exist _ (Some a) Ea => exist _ a _
+        | exist _ None Ea => False_rect _ _ } } }
   | d_record pq ns, n, H => exist _ (d_record pq (ns ++ n :: nil)) _
   | _, n, H => False_rect _ _
 
@@ -1215,7 +1437,7 @@ Section EvalImpl.
         let (a, Ha) := feval_exp_impl A nil _ in
         let (r, Hr) := feval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
-    | exist _ (Some (ge_mod _ _)) E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
+    | exist _ (Some (ge_mod _ _)) E with ind_mlookup_f Θ Ξ (qname_app pq (x :: nil)) := {
       | exist _ (Some (pg, k, D)) El =>
           let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
           exist _ r _
@@ -1228,18 +1450,18 @@ Section EvalImpl.
         let (r, Hr) := feval_apps_impl f args _ in
         exist _ r _
     (** A stored record type: its type former *)
-    | exist _ (Some (ge_record _ _ _ _)) E with inspect (record_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+    | exist _ (Some (ge_record _ _ _ _)) E with record_lookup_f Θ Ξ (qname_app pq (x :: nil)) := {
       | exist _ (Some R) Er =>
           let (r, Hr) := feval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
           exist _ r _
       | exist _ None Er => False_rect _ _ }
     (** The open frame of a member's module or of a record type's module:
         its type former *)
-    | exist _ None E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
+    | exist _ None E with ind_mlookup_f Θ Ξ (qname_app pq (x :: nil)) := {
       | exist _ (Some (pg, k, D)) El =>
           let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
           exist _ r _
-      | exist _ None El with inspect (record_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+      | exist _ None El with record_lookup_f Θ Ξ (qname_app pq (x :: nil)) := {
         | exist _ (Some R) Er =>
             let (r, Hr) := feval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
             exist _ r _

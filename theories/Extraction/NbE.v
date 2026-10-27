@@ -121,7 +121,7 @@ Hint Resolve nbe_ty_order_sound : mctt.
 
 (** An environment related, entry by entry, to the initial environment of
     [G]. *)
-Definition fenv Θ Ξ G := { p' | exists p, initial_env Θ Ξ G p /\ env_agree (fun _ => True) p p' }.
+Definition fenv Θ Ξ G := { p' | exists p, initial_env Θ Ξ G p /\ env_agree Θ Ξ (fun _ => True) p p' }.
 
 Section Orders.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -129,8 +129,8 @@ Section Orders.
   (** The fast evaluation terminates where the reference one does, from an
       environment that agrees where the term may read, at a related value. *)
   Lemma feval_of_ref : forall M p p' a,
-      ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> env_agree (fun x => ~ exp_fresh x M) p p' ->
-      Evaluation.feval_exp_order Θ Ξ M p' /\ forall a', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p' ↘ a' -> dsim a a'.
+      ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> env_agree Θ Ξ (fun x => ~ exp_fresh x M) p p' ->
+      Evaluation.feval_exp_order Θ Ξ M p' /\ forall a', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p' ↘ a' -> dsim Θ Ξ a a'.
   Proof.
     intros * Ha Hp.
     destruct (feval_exp_sim Θ Ξ _ _ _ Ha _ Hp) as (a'' & Ha'' & Hs).
@@ -143,8 +143,8 @@ Section Orders.
 
   (** Likewise for a module expression. *)
   Lemma feval_modexp_of_ref : forall H p p' h,
-      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> env_agree (fun x => ~ modexp_fresh x H) p p' ->
-      Evaluation.feval_modexp_order Θ Ξ H p' /\ forall h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p' ↘ h' -> dmsim h h'.
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> env_agree Θ Ξ (fun x => ~ modexp_fresh x H) p p' ->
+      Evaluation.feval_modexp_order Θ Ξ H p' /\ forall h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p' ↘ h' -> dmsim Θ Ξ h h'.
   Proof.
     intros * Hh Hp.
     destruct (feval_modexp_sim Θ Ξ _ _ _ Hh _ Hp) as (h'' & Hh'' & Hs).
@@ -161,7 +161,7 @@ Section Orders.
   Lemma read_nf_of_order : forall s d, read_nf_order Θ Ξ s d -> exists W, Rnf d in Θ ⍮ Ξ ⍮ s ↘ W.
   Proof. intros * H; destruct (read_nf_impl Θ Ξ s d H) as [W HW]; eauto. Qed.
 
-  Lemma agree_all : forall P p p', env_agree (fun _ => True) p p' -> env_agree P p p'.
+  Lemma agree_all : forall P p p', env_agree Θ Ξ (fun _ => True) p p' -> env_agree Θ Ξ P p p'.
   Proof. intros * H; eapply env_agree_mono; [ exact H | intros; exact I ]. Qed.
 End Orders.
 

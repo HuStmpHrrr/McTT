@@ -173,8 +173,8 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
   ; elim_ok_nparams : List.length (List.map nf_to_exp Rs) = im_np Dq Mk
     (** The member's block *)
   ; elim_ok_block : List.nth_error Bks m = Some bm
-    (** One block per member *)
-  ; elim_ok_block_count : List.length Bks = List.length (ind_members D)
+    (** One block per member with a block *)
+  ; elim_ok_block_count : List.length Bks = ind_nblk D
     (** One uniform parameter per uniform parameter of the group *)
   ; elim_ok_nuparams : List.length Us = ind_nu D
     (** The uniform parameters are checked at the group's telescope *)
@@ -199,11 +199,11 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
   ; elim_ok_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
     (** Each branch binds its constructor's arguments and recursive results *)
   ; elim_ok_counts : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-      ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat
+      ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat
     (** The branches are checked at their types *)
   ; elim_ok_branches : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-      elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us
+      elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us
     (** The type is the normal form of the motive's instance *)
   ; elim_ok_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)] T }.
 
@@ -559,13 +559,16 @@ Proof.
     destruct (Nat.eq_dec k' k) as [-> | Hne]; [ left; reflexivity | right; intros [=]; contradiction ]. }
   destruct Hrd as [Hr | Hr]; [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   destruct (List.nth_error Bks m) as [bm |] eqn:Hb; [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
-  destruct (Nat.eq_dec (List.length Bks) (List.length (ind_members D))) as [HBl | HBl];
+  destruct (Nat.eq_dec (List.length Bks) (ind_nblk D)) as [HBl | HBl];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   destruct (Nat.eq_dec (List.length Us) (ind_nu D)) as [HUl | HUl];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   remember (elim_target oq pc) as p eqn:Ep in Hl, Hgrp, Hr.
   destruct (decl_of_lookup _ _ _ _ _ HG Hl) as [HD Hc].
   destruct (decl_of_lookup _ _ _ _ _ HG Hlq) as [HDq Hcq].
+  (** The member eliminated has a block: it is no record view. *)
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ HD)) as Hsuf.
+  pose proof (block_member_not_rview _ _ _ _ _ Hsuf HBl Hm Hb) as Hnr.
   (** The uniform parameters. *)
   destruct (tele_check_dec G HG P (ind_uparams D) (decl_closed_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) Us chkU) as [HUc | HUc];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
@@ -575,7 +578,7 @@ Proof.
     exact (tele_checks_typed _ _ Us (S j) (decl_closed_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) HG
              (fun j' N T' _ HN HT' => HUc j' N T' HN HT') j U T (Nat.lt_succ_diag_r j) HU HT). }
   (** The member's uniform arguments, against the scrutinee type's. *)
-  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HG Hl Hm Hr Hlq HUl HUt) as [HPrl HPrt].
+  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HG Hl Hm Hnr Hr Hlq HUl HUt) as [HPrl HPrt].
   assert (HRt : forall j R T', List.nth_error (List.map nf_to_exp Rs) j = Some R ->
              List.nth_error (tele_insts (im_params Dq Mk) Id (List.map nf_to_exp Rs)) j = Some T' -> G ⊢ R : T')
     by (destruct HTt as [iT HTt]; exact (wf_ind_apps_inv _ _ _ _ _ _ _ Hlq Hk HTt HRl)).
@@ -603,37 +606,38 @@ Proof.
               (fun j Mj b _ _ => list_eq_dec string_dec _ _)) as [HBn | HBn];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   assert (Hcount : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-             { forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat }
-             + { ~ forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat }).
+             { forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat }
+             + { ~ forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat }).
   { intros j Mj b _ _.
     destruct (forall_in_dec (fun br => forall gs, ind_con Mj (fst (fst br)) = Some gs ->
-                                       snd (fst br) = (im_nn Mj + List.length gs + cargs_nrec gs)%nat) (eb_brs b)) as [Ha | Ha].
+                                       snd (fst br) = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat) (eb_brs b)) as [Ha | Ha].
     - intros br _; destruct (ind_con Mj (fst (fst br))) as [gs |]; [| left; intros ? [=] ].
-      destruct (Nat.eq_dec (snd (fst br)) (im_nn Mj + List.length gs + cargs_nrec gs)) as [E | E];
+      destruct (Nat.eq_dec (snd (fst br)) (im_nn Mj + List.length gs + cargs_nrec D gs)) as [E | E];
         [ left; intros ? [= <-]; exact E | right; intros H; exact (E (H gs eq_refl)) ].
     - left; intros c gs n B Hcon Hin; exact (Ha _ Hin gs Hcon).
     - right; intros H; apply Ha; intros [[c n] B] Hin gs Hcon; exact (H _ _ _ _ Hcon Hin). }
   destruct (blocks_dec D Bks _ Hcount) as [HBa | HBa]; [| right; intros T' H; inv_elim Hg HG HMi; apply HBa; intros; eauto ].
   (** The branches, at their types: the motives are typed at [L]. *)
   assert (HAs : motives_typed gc_deps gc_stack G p D Us (blocks_motives Bks) L).
-  { intros j Mj Hj; destruct (blocks_nth _ _ _ _ HBl Hj) as [b Hb0].
+  { intros j Mj Hj Hjr; destruct (blocks_nth _ _ _ _ Hsuf HBl Hj Hjr) as [b Hb0].
     rewrite (blocks_motives_nth _ _ _ Hb0).
     assert (Hjl : j < List.length Bks) by (apply List.nth_error_Some; congruence).
     exact (check_typ_sound _ _ _ (HC _ _ Hj) (proj2 (HL j Hjl) _ _ Hj Hb0)). }
   assert (Hbt : forall j Mj b c gs, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
-             exists i, elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢ elim_bty p j Mj c gs (eb_motive b) Us : Typeω@i).
+             exists i, elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢ elim_bty p D j Mj c gs (eb_motive b) Us : Typeω@i).
   { intros j Mj b c gs Hj Hb0 Hcon; exists L.
     assert (Hjl : j < List.length Bks) by (apply List.nth_error_Some; congruence).
-    pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj HG HUl HUt HC HAs Hcon) as Hbs.
+    pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0)
+                  HG HUl HUt HC HAs Hcon) as Hbs.
     exact (sub_preserves_exp _ _ _ _ _ _ _ (check_typ_sound _ _ _ (HC _ _ Hj) (proj2 (HL j Hjl) _ _ Hj Hb0)) Hbs). }
   assert (Hbr : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
              { forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us }
+                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us }
              + { ~ forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us }).
+                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us }).
   { intros j Mj b Hj Hb0.
     destruct (forall_in_dec (fun br => forall gs, ind_con Mj (fst (fst br)) = Some gs ->
-                elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a snd br ⟸ elim_bty p j Mj (fst (fst br)) gs (eb_motive b) Us)
+                elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a snd br ⟸ elim_bty p D j Mj (fst (fst br)) gs (eb_motive b) Us)
                 (eb_brs b)) as [Ha | Ha].
     - intros br Hin; destruct (ind_con Mj (fst (fst br))) as [gs |] eqn:Hcon; [| left; intros ? [=] ].
       pose proof (Hbt _ _ _ _ _ Hj Hb0 Hcon) as HT.

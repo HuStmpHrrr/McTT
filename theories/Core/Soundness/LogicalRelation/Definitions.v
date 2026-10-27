@@ -363,9 +363,11 @@ Section GluInd.
       and the domain), it is a recursive argument of the rest of the shape;
       its domain type is glued at [DP k]. *)
   Inductive ind_glu_elem : nat -> ctx -> list exp -> list exp -> exp -> domain -> Prop :=
-  (** A constructor of the member, at glued parameters and arguments *)
+  (** A constructor of the member, not a record view (whose elements are
+      only [ind_glu_elem_record]'s), at glued parameters and arguments *)
   | ind_glu_elem_con :
     `{ ind_member D k = Some Mk ->
+       im_is_rview Mk = false ->
        im_ref p k Mk = (hd, k') ->
        ind_con Mk c = Some gs ->
        List.length Us = ind_nu D ->
@@ -393,14 +395,58 @@ Section GluInd.
           List.nth_error vs (List.length gs1) = Some v ->
           glu_rec k Γ Us (List.skipn (im_unu D Mk) bs ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v) ->
        ind_glu_elem k Γ Us Ns M (d_con hd k' c (bs ++ vs)) }
-  (** A neutral of the member, equal to its readback at every weakening *)
+  (** A neutral of the member, not a record view (whose neutrals are only
+      [ind_glu_elem_record]'s, by their projections), equal to its
+      readback at every weakening *)
   | ind_glu_elem_neut :
     `{ ind_member D k = Some Mk ->
+       im_is_rview Mk = false ->
        im_ref p k Mk = (hd, k') ->
        per_bot m m ->
        (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
           Δ ⊢ M[φ]ʷ ≈ M' : (im_ty_at p k Mk Us Ns)[φ]ʷ) ->
        ind_glu_elem k Γ Us Ns M (⇑ (d_ind hd k' as') m) }
+  (** An element of a record view, a tuple and a neutral alike (η): equal
+      to the record view's constructor at the group's uniform parameters
+      [Us] and fields [As] glued to the value's projections [vs] as a
+      constructor's arguments are, at the view's own telescope: a
+      non-recursive field at its type, a recursive one by its shape.  A
+      record view has no non-uniform parameters, so the fields' values
+      come right after [nil].  (By [wf_exp_eq_con_rview] the constructor
+      is the tuple of [As]; for a neutral [M], [As] are its
+      projections.) *)
+  | ind_glu_elem_record :
+    `{ (** [k] is a record view of one constructor [c] of arguments [gs] *)
+       ind_member D k = Some Mk ->
+       im_head Mk = mh_record qr Is fl ->
+       im_cons Mk = (c, gs) :: nil ->
+       (** As many parameters and fields as the view takes *)
+       List.length Us = ind_nu D ->
+       List.length Ns = im_nn Mk ->
+       List.length As = List.length gs ->
+       (** The value's projections *)
+       ⟦projs fl of m ⟧ gc_deps ⍮ gc_stack ↘ vs ->
+       (** [M] is the constructor at the fields [As] *)
+       Γ ⊢ M ≈ apps_exp (a_con p k c) (Us ++ Ns ++ As) : im_ty_at p k Mk Us Ns ->
+       (** The non-recursive projections are related to themselves *)
+       tele_rel (canon_args_rel D ups k nil c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs) ->
+       (** Each field is typed at the view's telescope *)
+       (forall j N A, List.nth_error As j = Some N ->
+          List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) j = Some A -> Γ ⊢ N : A) ->
+       (** A non-recursive field is glued at its type *)
+       (forall gs1 A0 gs2 N A v, gs = gs1 ++ ca_arg A0 :: gs2 ->
+          List.nth_error As (List.length gs1) = Some N ->
+          List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+          List.nth_error vs (List.length gs1) = Some v ->
+          Γ ⊢ N : A ® v ∈ AEl k nil c (List.length (cargs_nonrec gs1))
+                             (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))) ->
+       (** A recursive field is a recursive argument of its shape *)
+       (forall gs1 t gs2 N A v, gs = gs1 ++ ca_rec t :: gs2 ->
+          List.nth_error As (List.length gs1) = Some N ->
+          List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+          List.nth_error vs (List.length gs1) = Some v ->
+          glu_rec k Γ Us (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v) ->
+       ind_glu_elem k Γ Us Ns M m }
   (** A recursive argument [N] of type [A] and shape [t] of a constructor
       of the member [k], at the group's uniform parameters [Us], after the
       values [pre] of the shape's components (the uniform parameters left
@@ -1367,6 +1413,18 @@ Ltac glu_univ_elem_induction1 :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** The judgments of a record's declaration, glued: what the rule of the
+    type former premises, read in the gluing model. *)
+Record glu_record_decl (R : record_decl) : Prop := mk_glu_record_decl
+  { (** The parameters are a glued context *)
+    glued_params : ⊩ record_params R
+    (** The sort is a universe, small at a glued level *)
+  ; glued_sort : (exists i : nat, record_sort R = Typeω@i) \/
+      (exists L (n : nat), record_sort R = Type⟨L⟩ /\ record_params R ⊩ L : Level@n)
+    (** Each field is glued at the sort over the fields before it *)
+  ; glued_fields : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+      record_fctx R k ++ record_params R ⊩ T : (record_sort R)[wk_shiftn k]ʷ }.
+
 (** The views of a group with its members as variables ([grp_sctx]), as
     [views_self_valid] reads them in the PER model: each view's instance is
     [IsS] there, read at the group's own path, and is glued there.  Once
@@ -1383,7 +1441,22 @@ Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_vi
   ; glu_views_self_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error (IsS k) j = Some I ->
       List.nth_error (tele_insts (ind_uparams Dq) Id (IsS k)) j = Some T ->
-      grp_sctx D ⊩ I : T }.
+      grp_sctx D ⊩ I : T
+    (** Each record view's instance is its [IsS] instance with the members
+        sent to the group's own type formers *)
+  ; glu_views_self_rlink : forall mp, ind_mpath D 0 = Some mp ->
+      forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
+    (** Each record view's instance argument is glued at the record's
+        parameters, over the members as variables *)
+  ; glu_views_self_ris : forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      record_lookup gc_deps gc_stack qr = Some R -> List.nth_error (IsS k) j = Some I ->
+      List.nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
+      grp_sctx D ⊩ I : T
+    (** Each record view's record is glued: the local counterpart of
+        completeness' [valid_group_records] *)
+  ; glu_views_self_records : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R }.
 
 (** A group glued: the judgments of its typing, read in the gluing model
     (see the section header). *)

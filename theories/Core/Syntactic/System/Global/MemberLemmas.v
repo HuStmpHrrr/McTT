@@ -1458,11 +1458,16 @@ Ltac ind_decl_scoped :=
            Is = List.map _ _,
     HI : forall k Mk qc k' Is vm D' j I T, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
            ind_lookup _ _ qc = Some D' -> nth_error _ j = Some I -> nth_error _ j = Some T ->
+           (_ /\ _) /\ exp_scoped _ I /\ _,
+    HRD : rview_struct_ok _ _ _,
+    HRS : forall k Mk qr Is fl, ind_member _ k = Some Mk -> im_head Mk = mh_record qr Is fl -> Is = List.map _ _,
+    HRI : forall k Mk qr Is fl R j I T, ind_member _ k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+           record_lookup _ _ qr = Some R -> nth_error _ j = Some I -> nth_error _ j = Some T ->
            (_ /\ _) /\ exp_scoped _ I /\ _
     |- decl_closed _ =>
       apply decl_closed_intro; [ assumption | assumption | assumption |];
       let HMk := fresh "HMk" in
-      intros ? ? HMk; apply member_closed_intro; [ assumption | assumption | eauto | | | | | | ];
+      intros ? ? HMk; apply member_closed_intro; [ assumption | assumption | eauto | | | | | | | | | ];
       [ let E := fresh "E" in let HT := fresh "HT" in
         intros * E; edestruct HN as (_ & HT & _); [ exact HMk | exact E | exact HT ]
       | let Hh := fresh "Hh" in let D' := fresh "D'" in let HD' := fresh "HD'" in let HlIs := fresh "HlIs" in
@@ -1476,6 +1481,22 @@ Ltac ind_decl_scoped :=
           rewrite HSk, length_map in HlIs; unfold ind_nu in HlIs; lia
         | let HI0 := fresh "HI0" in let HT0 := fresh "HT0" in let HIs := fresh "HIs" in
           intros ? ? ? HI0 HT0; edestruct HI as (_ & HIs & _); [ exact HMk | exact Hh | exact HD' | exact HI0 | exact HT0 | exact HIs ] ]
+      | let Hh := fresh "Hh" in let R := fresh "R" in let HRf := fresh "HRf" in let HSk := fresh "HSk" in
+        intros * Hh; destruct (rview_struct_record _ _ _ HRD _ _ _ _ _ HMk Hh) as [R HRf];
+        pose proof (HRS _ _ _ _ _ HMk Hh) as HSk;
+        lazymatch type of HSk with _ = List.map _ ?L =>
+          eapply (view_is_scoped _ _ _ _ _ (tele_insts (record_params R) Id L)) end;
+        [ exact HSk
+        | rewrite length_tele_insts by exact (rview_record_ass _ _ _ _ _ _ HRf);
+          pose proof (rview_record_count _ _ _ _ _ _ HRf) as HlIs; rewrite HSk, length_map in HlIs; lia
+        | let HI0 := fresh "HI0" in let HT0 := fresh "HT0" in let HIs := fresh "HIs" in
+          intros ? ? ? HI0 HT0; edestruct HRI as (_ & HIs & _);
+            [ exact HMk | exact Hh | exact (rview_record_lookup _ _ _ _ _ _ HRf) | exact HI0 | exact HT0 | exact HIs ] ]
+      | let Hh := fresh "Hh" in intros * Hh; exact (rview_struct_nparams _ _ _ HRD _ _ _ _ _ HMk Hh)
+      | let Hh := fresh "Hh" in let Hin := fresh "Hin" in let gs0 := fresh "gs0" in let Hc0 := fresh "Hc0" in
+        let Hl0 := fresh "Hl0" in
+        intros * Hh Hin; destruct (rview_struct_con _ _ _ HRD _ _ _ _ _ HMk Hh) as (gs0 & Hc0 & Hl0);
+        rewrite Hc0 in Hin; destruct Hin as [Hin | []]; injection Hin as _ <-; symmetry; exact Hl0
       | let Hin := fresh "Hin" in let E := fresh "E" in let HA0 := fresh "HA0" in
         intros * Hin E; edestruct HA as (_ & HA0 & _); [ exact HMk | exact Hin | exact E | exact HA0 ]
       | let Hin := fresh "Hin" in let E := fresh "E" in let Ed := fresh "Ed" in let HB0 := fresh "HB0" in

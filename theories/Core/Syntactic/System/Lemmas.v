@@ -432,7 +432,7 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq Us m Mm Bks bm Ps M i,
     elim_grp D oq p m ->
     ind_member D m = Some Mm ->
     List.nth_error Bks m = Some bm ->
-    List.length Bks = List.length (ind_members D) ->
+    List.length Bks = ind_nblk D ->
     List.length Ps = im_np D Mm ->
     (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
@@ -506,15 +506,15 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq Us m Mm Bks bm Ps M i,
            ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ')) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-       n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-         : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+         : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] ≈ (a_elim oq Us m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
@@ -548,7 +548,7 @@ Proof.
   assert (HB1 : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0])
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
   pose proof (sub_as_sub_dom Θ Ξ) as Rd; pose proof (sub_as_sub_ext Θ Ξ) as Re.
   rewrite !exp_sub_elim, (elim_type_sub D Mm bm) by eauto.
@@ -619,7 +619,7 @@ Proof.
     erewrite elim_bctx_sub in Hlift;
       [| eassumption | eassumption | apply cons_lookup_in; eassumption | eassumption | intros j0 Mj HMj; eapply blocks_motives_sub; eassumption ].
     rewrite List.firstn_map; erewrite <- elim_bty_sub by eassumption.
-    replace (im_nn Mk + List.length gs + cargs_nrec gs) with (cargs_nrec gs + List.length gs + im_nn Mk) by lia.
+    replace (im_nn Mk + List.length gs + cargs_nrec D gs) with (cargs_nrec D gs + List.length gs + im_nn Mk) by lia.
     exact (IHB _ _ _ _ _ _ _ HMk Hb0 Hc Hin _ _ _ Hlift).
 Qed.
 

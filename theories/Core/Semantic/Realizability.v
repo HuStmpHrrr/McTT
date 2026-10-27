@@ -75,10 +75,11 @@ Lemma eval_fam_cod_shfam : forall p ups ρ t x a,
     ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ t ↦ x ↘ a.
 Proof. intros; unfold fam_cod; econstructor; [ apply eval_exp_var | apply eval_exp_var | econstructor; eassumption ]. Qed.
 
-Lemma eval_fam_cod_ihfam : forall ρm A ρ t f x fx a,
+Lemma eval_fam_cod_ihfam : forall ρm A p ups ρ t i f x fx as' a,
     $| f & x | gc_deps ⍮ gc_stack ↘ fx ->
-    ⟦ihty fx of t under ρm A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ↘ a ->
-    ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm A ρ t f ↦ x ↘ a.
+    ⟦ihty fx of t at p ups under ρm A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ↘ as' ->
+    List.nth_error as' i = Some a ->
+    ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm A p ups ρ t i f ↦ x ↘ a.
 Proof. intros; unfold fam_cod; econstructor; [ apply eval_exp_var | apply eval_exp_var | econstructor; eassumption ]. Qed.
 
 Lemma env_args_snoc3 : forall (u a b c : list domain) x,
@@ -206,7 +207,7 @@ Proof.
   { apply ind_rel_mut_ind_all.
     - (** A constructor: its parameters off the type, its arguments at the
           member's telescopes, at a declared member or a view alike. *)
-      intros k0 Mk0 hd k' ns0 ns0' c gs bs bs' vs vs' u u' HM Hr Hn0 Hc Hb Hb' Hs Hs' Ha0 Hia IH Mk1 xs xs' HM1 Hx Hx' s.
+      intros k0 Mk0 hd k' ns0 ns0' c gs bs bs' vs vs' u u' HM Hrv Hr Hn0 Hc Hb Hb' Hs Hs' Ha0 Hia IH Mk1 xs xs' HM1 Hx Hx' s.
       rewrite HM in HM1; injection HM1 as <-.
       assert (Hxx : tele_rel (nr k0) (List.rev (im_nparams Mk0)) xs xs')
         by exact (ttrans _ _ HM _ _ _ Hx (ttrans _ _ HM _ _ _ Hn0 (tsym _ _ HM _ _ Hx'))).
@@ -220,7 +221,8 @@ Proof.
                    (ttrans _ _ HM _ _ _ (ttrans _ _ HM _ _ _ (tsym _ _ HM _ _ Hs) Hn0) Hs')
                    (ttrans _ _ HM _ _ _ Hx Hs) (ttrans _ _ HM _ _ _ Hx' Hs') Hc eq_refl Ha0 s) as (Vs & HV & HV').
       cbn [nonrec_arg_vals List.app] in HV, HV'; rewrite List.app_nil_r in HV, HV'.
-      unfold im_ref in Hr; destruct (im_head Mk0) as [pm | qc kc Is vm] eqn:Hh; injection Hr as <- <-.
+      unfold im_ref in Hr; destruct (im_head Mk0) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-;
+        [| | exfalso; exact (not_rview_record _ _ _ _ Hrv Hh) ].
       + assert (Hu0 : im_unu D Mk0 = ind_nu D) by (unfold im_unu; rewrite Hh; reflexivity).
         exists (nf_con p k0 c (Ms ++ Vs)%list); split;
           (eapply read_nf_con; [ exact Hl | exact HM | exact Hh | exact Hc | eassumption | | eassumption |]).
@@ -235,8 +237,24 @@ Proof.
         * eapply read_nf_con_view with (n := List.length bs');
             [ exact Hl | exact HM | exact Hh | exact Hc | exact Hl2 | rewrite List.length_app; lia | exact HMs' |].
           rewrite firstn_app_exact by exact Hu'; rewrite skipn_app_exact by reflexivity; exact HV'.
-    - intros k0 Mk0 hd k' ns0 ns0' as1 as2 m m' _ _ _ _ _ _ _ _ _ Hm Mk1 xs xs' _ _ _ s; destruct (Hm s) as (L & HL & HL').
-      exists (⇑ⁿ L); split; constructor; assumption.
+    - intros k0 Mk0 hd k' ns0 ns0' as1 as2 m m' _ _ HM Hrv _ _ _ _ _ _ Hm Mk1 xs xs' _ _ _ s; destruct (Hm s) as (L & HL & HL').
+      exists (⇑ⁿ L); split; (eapply read_nf_ind_neut; [ exact Hl | exact HM | exact Hrv | exact HL || exact HL' ]).
+    - (** A record view: its projections at the pseudo-constructor's
+          arguments, at the group's uniform parameters only. *)
+      intros k0 Mk0 qr Is fl c gs v vs v' vs' u u' HM Hh Hnp Hcs Hp Hp' Ha0 Hia IH Mk1 xs xs' HM1 Hx Hx' s.
+      rewrite HM in HM1; injection HM1 as <-.
+      pose proof (ind_con_single _ _ _ Hcs) as Hc.
+      assert (Hn0 : tele_rel (nr k0) (List.rev (im_nparams Mk0)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
+      assert (Hxs : forall zs, tele_rel (nr k0) (List.rev (im_nparams Mk0)) zs nil -> zs = nil)
+        by (intros zs [Hz _]; rewrite Hnp in Hz; destruct zs; [ reflexivity | discriminate Hz ]).
+      rewrite (Hxs _ Hx), (Hxs _ Hx') in *; rewrite !List.app_nil_r.
+      destruct (IH Mk0 nil nil nil nil c gs nil nil nil HM eq_refl eq_refl eq_refl eq_refl Hn0 Hn0 Hn0 Hc eq_refl Ha0 s)
+        as (Vs & HV & HV').
+      cbn [nonrec_arg_vals List.app] in HV, HV'; rewrite List.app_nil_r in HV, HV'.
+      destruct (Hps s) as (Ms & HMs & HMs').
+      exists (nf_con p k0 c (Ms ++ Vs)%list); split;
+        (eapply read_nf_rview; [ exact Hl | exact HM | exact Hh | exact Hcs | | eassumption | eassumption | eassumption ]);
+        assumption.
     - intros; exists nil; split; constructor.
     - intros k0 u u' pre v pre' v' gs vs vs' A Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' Hl1 Hl2 Hm Hx Hx'
         Hc Heq Ha0 s.
@@ -399,7 +417,7 @@ Proof.
   pose proof Hns as Hl; rewrite tele_rel_iff in Hl; destruct Hl as (Hl1 & Hl2 & _).
   rewrite List.length_rev in Hl1, Hl2.
   assert (Hu0 : im_unu D Mk = ind_nu D) by (unfold im_unu; rewrite Hh; reflexivity).
-  eapply ind_rel_neut; [ exact HM | unfold im_ref; rewrite Hh; reflexivity | exact Hns | | | | | exact Hc ];
+  eapply ind_rel_neut; [ exact HM | unfold im_is_rview; rewrite Hh; reflexivity | unfold im_ref; rewrite Hh; reflexivity | exact Hns | | | | | exact Hc ];
     rewrite Hu0.
   - rewrite List.length_app; unfold im_np, im_nn; lia.
   - rewrite List.length_app; unfold im_np, im_nn; lia.

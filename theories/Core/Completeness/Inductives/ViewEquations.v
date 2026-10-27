@@ -265,40 +265,8 @@ Proof.
     etransitivity; [ symmetry; exact (per_head_left Ea1 Ea2 HR) | exact (per_head_right Ea1 Ea2 HR) ].
 Qed.
 
-(** ** The Members a View Takes the Container's To
-
-    The field [agree_members] of [view_agreement]: syntactic, from the group's
-    conditions ([grp_tele_ass_vwrap], [grp_tele_ass_vm], [grp_tele_ass_views]). *)
-Lemma view_agree_members : forall p D k Mk qc k' Is vm Dq, grp_tele_ass D ->
-    ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
-    forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member p D qc Dq vm i' Mi' v Mv.
-Proof.
-  intros * Hass HMk Hh HDq i' Mi' HMi'.
-  destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMk Hh) as (D' & HD' & Hvw).
-  rewrite HDq in HD'; injection HD' as <-.
-  destruct (grp_tele_ass_vm _ Hass _ _ _ _ _ _ _ _ _ HMk Hh HDq HMi') as [v Mv Hv HMv Hnn Hhead].
-  destruct (grp_tele_ass_views _ Hass _ _ _ _ _ _ HMk Hh) as (Dq' & Mc & HDq' & _ & _ & HlIs).
-  rewrite HDq in HDq'; injection HDq' as <-.
-  destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv' & HMv' & _ & Hnames & Hcorr).
-  rewrite HMv in HMv'; injection HMv' as <-.
-  exists v, Mv; refine (mk_view_member _ _ _ _ _ _ _ _ _ Hv HMv _ _ Hnn _ _).
-  - unfold im_ref; destruct (im_head Mi') as [? | qv kv Is'' vm''];
-      [ destruct Hhead as [vm' ->] | destruct Hhead as (Is' & vm' & -> & _) ]; reflexivity.
-  - unfold im_unu; destruct (im_head Mi') as [? | qv kv Is'' vm''];
-      [ destruct Hhead as [vm' ->]; exact HlIs | destruct Hhead as (Is' & vm' & -> & HlI); exact HlI ].
-  - intros c gs' Hc.
-    pose proof (cons_lookup_in _ _ _ Hc) as Hin.
-    assert (Hn : List.In c (List.map fst (im_cons Mv))) by (rewrite Hnames; exact (List.in_map fst _ (c, gs') Hin)).
-    apply List.in_map_iff in Hn; destruct Hn as ([c0 gs0] & Ec & Hin0); cbn in Ec; subst c0.
-    destruct (cons_lookup_of_in _ _ _ Hin0) as [gs HCv].
-    exists gs; split; [ exact HCv | exact (Hcorr c gs' gs Hin HCv) ].
-  - intros c gs Hc.
-    pose proof (cons_lookup_in _ _ _ Hc) as Hin.
-    assert (Hn : List.In c (List.map fst (im_cons Mi'))) by (rewrite <- Hnames; exact (List.in_map fst _ (c, gs) Hin)).
-    apply List.in_map_iff in Hn; destruct Hn as ([c0 gs0] & Ec & Hin0); cbn in Ec; subst c0.
-    destruct (cons_lookup_of_in _ _ _ Hin0) as [gs' HCi].
-    exists gs'; split; [ exact HCi | exact (Hcorr c gs' gs (cons_lookup_in _ _ _ HCi) Hc) ].
-Qed.
+(** The field [agree_members] of [view_agreement], [view_agree_members], is
+    in [Core.Semantic.Inductives.ViewCount]. *)
 
 (** The field [agree_recursive_targets]: a recursive argument of the container's
     ends in a member of its group ([grp_tele_ass_plen] of the container). *)

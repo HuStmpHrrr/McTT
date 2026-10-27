@@ -517,9 +517,11 @@ Section KindsEval.
     (forall ρ p ups Bks t v r, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> True) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
-    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
+    (forall p ups ρm As ρ t v a, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
     (forall f m r, eval_proj Θ Ξ f m r -> True) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> True).
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> True) /\
+    (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> True) /\
+    (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> True).
   Proof.
     apply eval_mut_ind; intros; try exact I.
     (* module expressions *)

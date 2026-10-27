@@ -119,12 +119,13 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
                ctx_fn Δ (ctx_fn (raw_fun_nparams f)
                            (a_fn (raw_fun_scrut f)
                               (a_elim (Some pq) (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
-                                 (mdef_blocks k (List.length (ind_members D)) fs ms) (a_var 0))))))
+                                 (mdef_blocks k (ind_nblk D) fs ms) (a_var 0))))))
     (List.combine fs ms).
 
 (** The member [m] of a function: its scrutinee's normal form is first
     that of [m]'s type at [Us] and at the function's non-uniform
-    parameters. *)
+    parameters, among the members with a block (a record view has none,
+    so no function). *)
 Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) :
     raw_fun -> nat -> Prop :=
 (** The only rule: the scrutinee's type and the members' types are types
@@ -140,7 +141,7 @@ Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us
                nbe_ty Θ Ξ (raw_fun_nparams f ++ Δ ++ gs_tele Ξ)
                  (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (raw_fun_nparams f))]ʷ) Us)
                     (vars_from 0 (List.length (raw_fun_nparams f)))) Wj)
-      (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) Ws ->
+      (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) Ws ->
     nf_index W Ws = Some m ->
     ind_member D m = Some Mm ->
     im_nn Mm = List.length (raw_fun_nparams f) ->
@@ -168,8 +169,8 @@ Record mdef_group (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (f0 : raw_fun) (fs : lis
       img_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us
     (** Each function's member *)
   ; mdef_group_members : Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms
-    (** One function per member *)
-  ; mdef_group_count : List.length ms = List.length (ind_members D)
+    (** One function per member with a block: all but the record views *)
+  ; mdef_group_count : List.length ms = ind_nblk D
     (** No member has two functions *)
   ; mdef_group_distinct : List.NoDup ms }.
 

@@ -1,6 +1,6 @@
 (** * The View Search, as a Total Function
 
-    The views of a group declaration are found breadth-first ([views_bfs],
+    The views of a group declaration are found depth first ([views_dfs],
     in [Core.Syntactic.Inductives.Group]) from the instances its
     constructors meet.  This file computes them with no fuel, generically
     over the data the checker files for each view: a functional relation
@@ -12,7 +12,7 @@
       proof in [Prop] (erased by extraction), for the order "more views
       found, or as many and a shorter queue" ([search_lt]); it needs only
       that the views reachable from the queue form a finite set
-      ([reach_finite]).  It is sound and complete for [views_bfs].
+      ([reach_finite]).  It is sound and complete for [views_dfs].
     - The finiteness itself follows from a cluster argument
       ([reach_finite_of_clusters]): every view of an invariant [Inv] has a
       finite cluster closed under siblings, whose meets stay in it or
@@ -30,20 +30,20 @@ Section Search.
   (** The data of a view. *)
   Variable A : Type.
   (** The view [x] has the data [a]. *)
-  Variable E : rview -> A -> Prop.
+  Variable E : view_key -> A -> Prop.
   (** The siblings, and the instances met, read off the data. *)
-  Variables (sibs_of meets_of : A -> list rview).
+  Variables (sibs_of meets_of : A -> list view_key).
   Hypothesis E_functional : forall x a a', E x a -> E x a' -> a = a'.
   (** Why a view has no data. *)
   Variable Err : Type.
   Variable E_dec : forall x, ({a | E x a} + {e : Err | forall a, ~ E x a})%type.
   (** The instances the declared members' constructors meet. *)
-  Variable init : list rview.
+  Variable init : list view_key.
 
   (** The views reachable from the queue: an over-approximation of what the
       search visits (it follows the siblings of every reachable view, the
       search only those of the views it meets). *)
-  Inductive reach : rview -> Prop :=
+  Inductive reach : view_key -> Prop :=
   (** An instance of the queue *)
   | reach_init : forall x, In x init -> reach x
   (** A sibling of a reachable view, or the view itself *)
@@ -52,12 +52,12 @@ Section Search.
   | reach_meet : forall x a y, reach x -> E x a -> In y (meets_of a) -> reach y.
 
   (** The table of the instances met, aligned with the views. *)
-  Definition mtbl (Vs : list rview) (Ms : list (list rview)) (x : rview) : list rview :=
-    match rview_index x Vs with Some v => List.nth v Ms nil | None => nil end.
+  Definition mtbl (Vs : list view_key) (Ms : list (list view_key)) (x : view_key) : list view_key :=
+    match view_key_index x Vs with Some v => List.nth v Ms nil | None => nil end.
 
   Lemma meets_tbl_mtbl : forall Vs csV x, meets_tbl Vs csV x = mtbl Vs (List.map rcons_views csV) x.
   Proof.
-    intros; unfold meets_tbl, mtbl; destruct (rview_index x Vs); [| reflexivity ].
+    intros; unfold meets_tbl, mtbl; destruct (view_key_index x Vs); [| reflexivity ].
     change nil with (rcons_views nil) at 2; rewrite List.map_nth; reflexivity.
   Qed.
 
@@ -74,10 +74,10 @@ Section Search.
       sibs_tbl Vs (List.map sibs_of As) y = sibs_of a /\ mtbl Vs (List.map meets_of As) y = meets_of a.
   Proof.
     intros * HF Hy Ha; unfold sibs_tbl, mtbl.
-    destruct (rview_index y Vs) as [v |] eqn:Hv.
-    2:{ exfalso; destruct (rview_mem y Vs) eqn:Hm; [| apply (proj2 (rview_mem_spec y Vs)) in Hy; congruence ].
-        unfold rview_mem in Hm; rewrite Hv in Hm; discriminate. }
-    apply rview_index_in in Hv.
+    destruct (view_key_index y Vs) as [v |] eqn:Hv.
+    2:{ exfalso; destruct (view_key_mem y Vs) eqn:Hm; [| apply (proj2 (view_key_mem_spec y Vs)) in Hy; congruence ].
+        unfold view_key_mem in Hm; rewrite Hv in Hm; discriminate. }
+    apply view_key_index_in in Hv.
     destruct (Forall2_nth _ _ _ _ _ HF Hv) as (a' & Ha' & He); rewrite (E_functional _ _ _ He Ha) in Ha'.
     split; apply List.nth_error_nth; rewrite List.nth_error_map, Ha'; reflexivity.
   Qed.
@@ -85,18 +85,18 @@ Section Search.
   Lemma views_new_incl : forall acc ss y, In y (views_new acc ss) -> In y ss.
   Proof.
     intros acc ss; revert acc; induction ss as [| s ss IH]; cbn; intros acc y H; [ exact H |].
-    destruct (rview_mem s acc); [ right; eapply IH; eauto |].
+    destruct (view_key_mem s acc); [ right; eapply IH; eauto |].
     destruct H as [<- | H]; [ left; reflexivity | right; eapply IH; eauto ].
   Qed.
 
   Lemma views_new_nodup : forall acc ss, NoDup acc -> NoDup (acc ++ views_new acc ss).
   Proof.
     intros acc ss; revert acc; induction ss as [| s ss IH]; cbn; intros acc Hd; [ rewrite app_nil_r; exact Hd |].
-    destruct (rview_mem s acc) eqn:Hm; [ apply IH, Hd |].
+    destruct (view_key_mem s acc) eqn:Hm; [ apply IH, Hd |].
     replace (acc ++ s :: views_new (acc ++ [s]) ss) with ((acc ++ [s]) ++ views_new (acc ++ [s]) ss)
       by (rewrite <- List.app_assoc; reflexivity).
     apply IH; apply NoDup_app; [ exact Hd | constructor; [ intros [] | constructor ] |].
-    intros y Hy [Heq | []]; subst y; apply (proj2 (rview_mem_spec s acc)) in Hy; congruence.
+    intros y Hy [Heq | []]; subst y; apply (proj2 (view_key_mem_spec s acc)) in Hy; congruence.
   Qed.
 
   (** ** The Search's Order
@@ -105,10 +105,10 @@ Section Search.
       are distinct and reachable, so there are boundedly many. *)
 
   (** The views found are distinct and reachable. *)
-  Definition found_ok (Vs : list rview) : Prop := NoDup Vs /\ forall y, In y Vs -> reach y.
+  Definition found_ok (Vs : list view_key) : Prop := NoDup Vs /\ forall y, In y Vs -> reach y.
 
   (** The order of the search's states (the views found, the queue). *)
-  Definition search_lt (s' s : prod (list rview) (list rview)) : Prop :=
+  Definition search_lt (s' s : prod (list view_key) (list view_key)) : Prop :=
     found_ok (fst s') /\
     ((incl (fst s) (fst s') /\ List.length (fst s) < List.length (fst s')) \/
      (fst s' = fst s /\ List.length (snd s') < List.length (snd s))).
@@ -133,39 +133,39 @@ Section Search.
 
   (** The data of a list of views, or the first one that has none, with
       why; the data [ak] of the view [k] is known already. *)
-  Fixpoint data_of (k : rview) (ak : A) (Hk : E k ak) (ys : list rview) :
-      ({As | Forall2 E ys As} + {ye : rview * Err | In (fst ye) ys /\ forall a, ~ E (fst ye) a})%type.
+  Fixpoint data_of (k : view_key) (ak : A) (Hk : E k ak) (ys : list view_key) :
+      ({As | Forall2 E ys As} + {ye : view_key * Err | In (fst ye) ys /\ forall a, ~ E (fst ye) a})%type.
   Proof.
     destruct ys as [| y ys].
     - left; exists nil; constructor.
     - assert (Hy : ({a | E y a} + {e : Err | forall a, ~ E y a})%type).
-      { destruct (rview_eq_dec y k) as [-> | _]; [ left; exists ak; exact Hk | exact (E_dec y) ]. }
+      { destruct (view_key_eq_dec y k) as [-> | _]; [ left; exists ak; exact Hk | exact (E_dec y) ]. }
       destruct Hy as [[a Ha] | [e Hn]]; [| right; exists (y, e); split; [ left; reflexivity | exact Hn ] ].
       destruct (data_of k ak Hk ys) as [[As HAs] | [ye [Hy Hn]]]; [ left; exists (a :: As); constructor; assumption |].
       right; exists ye; split; [ right; exact Hy | exact Hn ].
   Defined.
 
   (** What the search returns from the views [Vs] found and the queue
-      [tr]: the views [Vf] (with their data [Af]) of a run of [views_bfs]
+      [tr]: the views [Vf] (with their data [Af]) of a run of [views_dfs]
       at the tables of the data, or a view with no data (with why) and a
       refutation of every run whose tables agree with [E] and whose views
       all have data. *)
-  Definition result (Vs tr : list rview) : Type :=
-    ({p : prod (list rview) (list A) |
+  Definition result (Vs tr : list view_key) : Type :=
+    ({p : prod (list view_key) (list A) |
       NoDup (fst p) /\ Forall2 E (fst p) (snd p) /\
-      views_bfs (sibs_tbl (fst p) (List.map sibs_of (snd p))) (mtbl (fst p) (List.map meets_of (snd p))) Vs tr (fst p)}
-    + {ye : rview * Err | forall sibs meets Vf, views_bfs sibs meets Vs tr Vf ->
+      views_dfs (sibs_tbl (fst p) (List.map sibs_of (snd p))) (mtbl (fst p) (List.map meets_of (snd p))) Vs tr (fst p)}
+    + {ye : view_key * Err | forall sibs meets Vf, views_dfs sibs meets Vs tr Vf ->
         (forall y a, In y Vf -> E y a -> sibs y = sibs_of a /\ meets y = meets_of a) ->
         (forall y, In y Vf -> exists a, E y a) -> False})%type.
 
   Lemma views_met_new : forall sibs Vs x, ~ In x Vs -> views_met sibs Vs x = views_new Vs (sibs x ++ [x]).
   Proof.
-    intros * Hx; unfold views_met; destruct (rview_mem x Vs) eqn:Hm; [| reflexivity ].
-    exfalso; apply Hx, rview_mem_spec, Hm.
+    intros * Hx; unfold views_met; destruct (view_key_mem x Vs) eqn:Hm; [| reflexivity ].
+    exfalso; apply Hx, view_key_mem_spec, Hm.
   Qed.
 
   Lemma views_met_old : forall sibs Vs x, In x Vs -> views_met sibs Vs x = nil.
-  Proof. intros * Hx; unfold views_met; apply rview_mem_spec in Hx; rewrite Hx; reflexivity. Qed.
+  Proof. intros * Hx; unfold views_met; apply view_key_mem_spec in Hx; rewrite Hx; reflexivity. Qed.
 
   Lemma in_views_met : forall sibs Vs x, ~ In x Vs -> In x (views_met sibs Vs x).
   Proof.
@@ -181,20 +181,20 @@ Section Search.
   Qed.
 
   (** The search, by recursion on the accessibility proof. *)
-  Fixpoint search (Vs : list rview) (As : list A) (tr : list rview)
+  Fixpoint search (Vs : list view_key) (As : list A) (tr : list view_key)
       (Hd : NoDup Vs) (HF : Forall2 E Vs As) (Hr : forall y, In y Vs -> reach y)
       (Ht : forall y, In y tr -> reach y) (Hacc : Acc search_lt (Vs, tr)) {struct Hacc} : result Vs tr.
   Proof.
     destruct Hacc as [Hacc].
     destruct tr as [| x tr'].
     { left; exists (Vs, As); cbn; split; [ exact Hd | split; [ exact HF | constructor ] ]. }
-    destruct (in_dec rview_eq_dec x Vs) as [Hx | Hx].
+    destruct (in_dec view_key_eq_dec x Vs) as [Hx | Hx].
     - (* met already: nothing found, the queue shrinks *)
       refine (match search Vs As tr' Hd HF Hr (fun y Hy => Ht y (or_intror Hy)) (Hacc (Vs, tr') _) with
               | inl p => inl _ | inr Hf => inr _ end).
       + split; [ split; assumption | right; cbn; split; [ reflexivity | lia ] ].
       + destruct p as [[Vf Af] (Hd' & HF' & Hb)]; exists (Vf, Af); cbn in *; split; [ exact Hd' | split; [ exact HF' |] ].
-        apply views_bfs_step; rewrite views_met_old by exact Hx; cbn; rewrite !app_nil_r; exact Hb.
+        apply views_dfs_step; rewrite views_met_old by exact Hx; cbn; rewrite !app_nil_r; exact Hb.
       + destruct Hf as [ye Hf]; exists ye.
         intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
         rewrite views_met_old in * by exact Hx; cbn in *; rewrite !app_nil_r in *.
@@ -202,46 +202,46 @@ Section Search.
     - destruct (E_dec x) as [[ax Hax] | [e Hn]].
       2:{ right; exists (x, e); intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
           destruct (Hex x) as [a Ha]; [| exact (Hn a Ha) ].
-          eapply views_bfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]. }
+          eapply views_dfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]. }
       remember (views_new Vs (sibs_of ax ++ [x])) as nw eqn:Hnw.
       assert (Hxnew : In x nw).
       { rewrite Hnw; destruct (views_new_in Vs (sibs_of ax ++ [x]) x ltac:(apply in_or_app; right; left; reflexivity)); tauto. }
       destruct (data_of x ax Hax nw) as [[bs Hbs] | [ye [Hy Hny]]].
       2:{ right; exists ye; intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
-          assert (HxVf : In x Vf) by (eapply views_bfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]).
+          assert (HxVf : In x Vf) by (eapply views_dfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]).
           rewrite views_met_new, (proj1 (Hag x ax HxVf Hax)) in * by exact Hx.
           destruct (Hex (fst ye)) as [b Hb']; [| exact (Hny b Hb') ].
-          eapply views_bfs_incl; [ eassumption | apply in_or_app; right; exact Hy ]. }
+          eapply views_dfs_incl; [ eassumption | apply in_or_app; right; exact Hy ]. }
       assert (Hrnew : forall y, In y nw -> reach y)
         by (intros y Hy; rewrite Hnw in Hy; apply views_new_incl in Hy;
             eapply reach_sib; [ apply Ht; left; reflexivity | exact Hax | exact Hy ]).
       assert (Hok : found_ok (Vs ++ nw)).
       { split; [ rewrite Hnw; apply views_new_nodup, Hd |].
         intros y Hy; apply in_app_or in Hy as [Hy | Hy]; auto. }
-      assert (Htr : forall y, In y (tr' ++ List.concat (List.map meets_of bs)) -> reach y).
-      { intros y Hy; apply in_app_or in Hy as [Hy | Hy]; [ apply Ht; right; exact Hy |].
+      assert (Htr : forall y, In y (List.concat (List.map meets_of bs) ++ tr') -> reach y).
+      { intros y Hy; apply in_app_or in Hy as [Hy | Hy]; [| apply Ht; right; exact Hy ].
         apply in_concat in Hy as (ms & Hms & Hy); apply in_map_iff in Hms as (b & <- & Hb).
         destruct (In_nth_error _ _ Hb) as [v Hv].
         destruct (Forall2_nth _ _ _ _ _ (Forall2_flip Hbs) Hv) as (z & Hz & Hzb).
         eapply reach_meet; [ apply Hrnew, (nth_error_In _ _ Hz) | exact Hzb | exact Hy ]. }
-      assert (Hlt : search_lt (Vs ++ nw, tr' ++ List.concat (List.map meets_of bs)) (Vs, x :: tr')).
+      assert (Hlt : search_lt (Vs ++ nw, List.concat (List.map meets_of bs) ++ tr') (Vs, x :: tr')).
       { split; [ exact Hok | left; cbn; split; [ intros y Hy; apply in_or_app; left; exact Hy |] ].
         rewrite length_app; destruct nw; [ destruct Hxnew | cbn; lia ]. }
-      refine (match search (Vs ++ nw) (As ++ bs) (tr' ++ List.concat (List.map meets_of bs))
+      refine (match search (Vs ++ nw) (As ++ bs) (List.concat (List.map meets_of bs) ++ tr')
                 (proj1 Hok) (Forall2_app HF Hbs) (proj2 Hok) Htr (Hacc _ Hlt) with
               | inl p => inl _ | inr Hf => inr _ end).
       + destruct p as [[Vf Af] (Hd' & HF' & Hb)]; exists (Vf, Af); cbn in *; split; [ exact Hd' | split; [ exact HF' |] ].
-        assert (Hinc : incl (Vs ++ nw) Vf) by (intros y Hy; eapply views_bfs_incl; eassumption).
-        apply views_bfs_step; rewrite views_met_new by exact Hx.
+        assert (Hinc : incl (Vs ++ nw) Vf) by (intros y Hy; eapply views_dfs_incl; eassumption).
+        apply views_dfs_step; rewrite views_met_new by exact Hx.
         rewrite (proj1 (tbl_at _ _ _ _ HF' (Hinc x ltac:(apply in_or_app; right; exact Hxnew)) Hax)).
         rewrite <- Hnw, (map_tbl _ _ _ _ Hd' HF' (fun y Hy => Hinc y (in_or_app _ _ _ (or_intror Hy))) Hbs); exact Hb.
       + destruct Hf as [ye Hf]; exists ye.
         intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
-        assert (HxVf : In x Vf) by (eapply views_bfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]).
+        assert (HxVf : In x Vf) by (eapply views_dfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]).
         rewrite views_met_new, (proj1 (Hag x ax HxVf Hax)) in * by exact Hx.
         assert (Hm : List.map meets (views_new Vs (sibs_of ax ++ [x])) = List.map meets_of bs).
         { assert (Hi : incl (views_new Vs (sibs_of ax ++ [x])) Vf)
-            by (intros y Hy; eapply views_bfs_incl; [ eassumption | apply in_or_app; right; exact Hy ]).
+            by (intros y Hy; eapply views_dfs_incl; [ eassumption | apply in_or_app; right; exact Hy ]).
           clear - Hbs Hag Hi; revert Hi; induction Hbs as [| y b ys bs' Hyb _ IH]; intros Hi; cbn; [ reflexivity |].
           f_equal; [ exact (proj2 (Hag y b (Hi y (or_introl eq_refl)) Hyb)) | apply IH; intros z Hz; apply Hi; right; exact Hz ]. }
         rewrite Hm in *; eapply Hf; eassumption.
@@ -256,7 +256,7 @@ Section Search.
   (** ** Finiteness from Clusters *)
 
   (** The views reachable from one view. *)
-  Inductive reach_from (x : rview) : rview -> Prop :=
+  Inductive reach_from (x : view_key) : view_key -> Prop :=
   (** The view itself *)
   | reach_from_self : reach_from x x
   (** A sibling of a view reachable from [x], or that view *)
@@ -271,12 +271,12 @@ Section Search.
   Qed.
 
   (** Finitely many views are reachable from [x]. *)
-  Definition fin_from (x : rview) : Prop := exists L, forall y, reach_from x y -> In y L.
+  Definition fin_from (x : view_key) : Prop := exists L, forall y, reach_from x y -> In y L.
 
   (** The views of a list that the queue reaches, each either known by
       [Q] or with finitely many reachable views: one list holds all of
       those. *)
-  Lemma cover : forall (Q : rview -> Prop) (ys : list rview),
+  Lemma cover : forall (Q : view_key -> Prop) (ys : list view_key),
       (forall y, In y ys -> Q y \/ fin_from y) ->
       exists L, forall y, In y ys -> Q y \/ forall w, reach_from y w -> In w L.
   Proof.
@@ -290,7 +290,7 @@ Section Search.
   Qed.
 
   (** The instances the views of [L] that have data meet. *)
-  Definition all_meets (L : list rview) : list rview :=
+  Definition all_meets (L : list view_key) : list view_key :=
     List.concat (List.map (fun y => match E_dec y with inl (exist _ a _) => meets_of a | inr _ => nil end) L).
 
   Lemma in_all_meets : forall L y a z, In y L -> E y a -> In z (meets_of a) -> In z (all_meets L).
@@ -320,12 +320,12 @@ Section Search.
   Section Clusters.
     (** The views of the invariant: those whose data is read off the PER
         model. *)
-    Variable Inv : rview -> Prop.
+    Variable Inv : view_key -> Prop.
     (** The order the meets leaving a cluster descend. *)
-    Variable lt : rview -> rview -> Prop.
+    Variable lt : view_key -> view_key -> Prop.
 
     (** [L] is a cluster of the view [x]. *)
-    Record cluster_of (x : rview) (L : list rview) : Prop := mk_cluster_of
+    Record cluster_of (x : view_key) (L : list view_key) : Prop := mk_cluster_of
       { (** It holds [x] *)
         cluster_self : In x L
         (** Its views are of the invariant *)

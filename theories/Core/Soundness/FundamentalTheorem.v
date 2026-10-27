@@ -74,7 +74,7 @@ Proof.
     | eapply glu_exp_eq_elim_cong | eapply glu_exp_eq_pi_cong | eapply glu_exp_eq_fn_cong
     | eapply glu_exp_eq_app_cong | eapply glu_exp_eq_let_cong | eapply glu_exp_eq_let_mod_cong
     | eapply glu_exp_eq_mem_cong with (R := R) (A := A) | eapply glu_exp_eq_var | eapply glu_exp_eq_pi_beta
-    | eapply glu_exp_eq_elim_iota | eapply glu_exp_eq_elim_view | eapply glu_exp_eq_con_view
+    | eapply glu_exp_eq_elim_iota | eapply glu_exp_eq_elim_view | eapply glu_exp_eq_con_view | eapply glu_exp_eq_con_rview
     | eapply glu_exp_eq_let_zeta | eapply glu_exp_eq_let_mod_zeta
     | eapply glu_exp_eq_mem_delta | eapply glu_exp_eq_var_delta | eapply glu_exp_eq_fn_eta
     | eapply glu_exp_eq_true_eta
@@ -206,6 +206,25 @@ Proof.
       pose proof (decl_typed_container _ _ _ _ D Hs Hdt _ _ _ _ _ _ _ HMk Hh Hq) as HqS.
       eapply Ke; [| exact Hμ ].
       eapply (views_self_typed_is _ _ _ _ HV); [ exact HMk | exact Hh | exact HqS | exact HI | exact HT ].
+    + exact (views_self_typed_rlink _ _ _ _ HV).
+    + intros * HMk Hh HlR HI HT.
+      destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R0 HR0].
+      pose proof (rview_record_lookup _ _ _ _ _ _ HR0) as HlR0.
+      pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR0) as ElR.
+      cbn [gc_deps gc_stack] in HlR; rewrite ElR in HlR; injection HlR as <-.
+      eapply Ke; [| exact Hμ ].
+      eapply (views_self_typed_ris _ _ _ _ HV); [ exact HMk | exact Hh | exact HlR0 | exact HI | exact HT ].
+    + (** A record view's record: its typing at the source, glued. *)
+      intros * HMk Hh HlR.
+      destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R0 HR0].
+      pose proof (rview_record_lookup _ _ _ _ _ _ HR0) as HlR0.
+      pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR0) as ElR.
+      cbn [gc_deps gc_stack] in HlR; rewrite ElR in HlR; injection HlR as <-.
+      pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ HlR0) as Ht.
+      destruct soundness_fundamental as (_ & _ & _ & _ & Ku & _).
+      destruct (Ku _ _ _ _ (typed_sort _ _ _ Ht) _ _ Hμ) as [HPg HSu].
+      constructor; [ exact HPg | exact HSu |].
+      intros * Hk; exact (Ke _ _ _ _ _ (typed_fields _ _ _ Ht _ _ _ Hk) _ _ Hμ).
 Qed.
 
 (** ** Every well-formed global context glues

@@ -61,10 +61,10 @@ Section ElimTarget.
   Variables (Θ : gdeps) (Ξ : gstack).
 
   (** Whether the blocks as written are those of the group [D]: one per
-      member, each with one branch per constructor of its member, by name,
-      in order. *)
+      member before the record views ([ind_nblk]), each with one branch
+      per constructor of its member, by name, in order. *)
   Definition blocks_fit (D : ind_decl) (Bks : list eblock) : bool :=
-    Nat.eqb (List.length Bks) (List.length (ind_members D)) &&
+    Nat.eqb (List.length Bks) (ind_nblk D) &&
     List.forallb (fun Mb : prod imember eblock =>
       if list_eq_dec string_dec (List.map fst (im_cons (fst Mb))) (List.map (fun b => fst (fst b)) (eb_brs (snd Mb)))
       then true else false)
@@ -89,7 +89,7 @@ Section ElimTarget.
     | Some Mm =>
         match im_head Mm with
         | mh_view qc k' _ _ => (if qname_eq_dec qc pc then true else false) && Nat.eqb k' k
-        | mh_decl _ => false
+        | mh_decl _ | mh_record _ _ _ => false
         end
     | None => false
     end.

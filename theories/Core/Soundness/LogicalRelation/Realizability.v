@@ -92,7 +92,7 @@ Qed.
     at the member's own telescopes, at a declared member and at a view
     alike ([read_nf_con], [read_nf_con_view]). *)
 Lemma read_nf_con_member_inv : forall s p D k Mk hd k' c gs bs vs as' w,
-    ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> im_ref p k Mk = (hd, k') ->
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> im_is_rview Mk = false -> im_ref p k Mk = (hd, k') ->
     ind_con Mk c = Some gs -> List.length bs = (im_unu D Mk + im_nn Mk)%nat -> List.length vs = List.length gs ->
     Rnf ⇓ (d_ind p k as') (d_con hd k' c (bs ++ vs)) in gc_deps ⍮ gc_stack ⍮ s ↘ w ->
     forall (Q : nf -> Prop),
@@ -101,13 +101,14 @@ Lemma read_nf_con_member_inv : forall s p D k Mk hd k' c gs bs vs as' w,
          Q (nf_con p k c (PN ++ Args))) ->
       Q w.
 Proof.
-  intros * Hl HM Href Hc Hbl Hvl Hw Q HQ.
+  intros * Hl HM Hrv Href Hc Hbl Hvl Hw Q HQ.
   unfold im_ref in Href.
   inversion Hw; subst;
     match goal with H : ind_lookup _ _ ?qn = Some ?D1, H' : ind_lookup _ _ ?qn = Some ?D2 |- _ =>
       assert_fails (unify D1 D2); rewrite H in H'; injection H' as <- end;
     match goal with H : ind_member ?D0 ?k0 = Some ?M1, H' : ind_member ?D0 ?k0 = Some ?M2 |- _ =>
       assert_fails (unify M1 M2); rewrite H in H'; injection H' as <- end;
+    try (exfalso; eapply not_rview_record; eassumption);
     match goal with H : ind_con ?M0 ?c0 = Some ?g1, H' : ind_con ?M0 ?c0 = Some ?g2 |- _ =>
       assert_fails (unify g1 g2); rewrite H in H'; injection H' as <- end.
   - (** A declared member: its stored uniform parameters are the group's. *)
@@ -123,6 +124,33 @@ Proof.
       H' : Rcargs List.skipn ?n _ at _ of _ _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ _ |- _ =>
         rewrite List.length_app in H; rewrite skipn_app_exact in H' by lia; exact H'
     end.
+Qed.
+
+(** Any value at a record view of a group, at the type of the view: read
+    as the view's constructor at the group's uniform parameters, its
+    arguments the value's projections ([read_nf_rview]). *)
+Lemma read_nf_rview_member_inv : forall s p D k Mk qr Is fl c gs as' v w,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+    im_cons Mk = (c, gs) :: nil ->
+    Rnf ⇓ (d_ind p k as') v in gc_deps ⍮ gc_stack ⍮ s ↘ w ->
+    forall (Q : nf -> Prop),
+      (forall ws PN Args, ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws ->
+         Rps as' at List.rev (ind_uparams D) in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ PN ->
+         Rcargs ws at gs of p as' in gc_deps ⍮ gc_stack ⍮ env_args nil as' ⍮ s ↘ Args ->
+         Q (nf_con p k c (PN ++ Args))) ->
+      Q w.
+Proof.
+  intros * Hl HM Hh Hcs Hw Q HQ.
+  inversion Hw; subst;
+    match goal with H : ind_lookup _ _ ?qn = Some ?D1, H' : ind_lookup _ _ ?qn = Some ?D2 |- _ =>
+      assert_fails (unify D1 D2); rewrite H in H'; injection H' as <- end;
+    match goal with H : ind_member ?D0 ?k0 = Some ?M1, H' : ind_member ?D0 ?k0 = Some ?M2 |- _ =>
+      assert_fails (unify M1 M2); rewrite H in H'; injection H' as <- end;
+    try match goal with H : im_head Mk = _ |- _ => rewrite Hh in H; discriminate H end;
+    try (exfalso; eapply not_rview_record; eassumption).
+  match goal with H : im_head Mk = mh_record _ _ _ |- _ => rewrite Hh in H; injection H as <- <- <- end.
+  match goal with H : im_cons Mk = _ |- _ => rewrite Hcs in H; injection H as <- <- end.
+  eapply HQ; eassumption.
 Qed.
 
 (** A constructor of any member of a group applied to equal parameters and
@@ -251,7 +279,8 @@ Section IndRealize.
     intros Δ φ Ps' Hφ HPs'.
     pose proof (ind_typ_at_params_conv p D ups ns NP NEl AP AEl DP DEl k Mk pm _ Γ A Ps Δ φ Ps' Hl HMk Hh HPs Hφ HPs') as HPeq.
     destruct HPs as [HAPs _].
-    eapply ind_glu_elem_neut; [ exact HMk | unfold im_ref; rewrite Hh; reflexivity | exact Hm |].
+    eapply ind_glu_elem_neut; [ exact HMk | unfold im_is_rview; rewrite Hh; reflexivity | unfold im_ref; rewrite Hh; reflexivity
+                              | exact Hm |].
     intros Θ ψ M' Hψ Hr.
     pose proof (kripke_compose _ _ _ _ _ Hψ Hφ) as Hc.
     rewrite exp_wk_wk, (im_ty_at_decl _ _ _ _ _ _ Hh), List.firstn_skipn.
@@ -338,18 +367,23 @@ Section IndRealize.
                 forall (V : nf), Rsh v at t of p ups in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ xs ++ ws ++ ys) ⍮ length Γ ↘ V ->
                 Γ ⊢ N ≈ V : A)).
     2:{ (** A neutral reads back by its gluing. *)
-        intros k' Mk0 hd k'' m Γ Us Ns M as' HMk0 Href Hm Hr HΓ Mk' ns' HMk' Hpt Hrel w Hw.
+        intros k' Mk0 hd k'' m Γ Us Ns M as' HMk0 Hrv Href Hm Hr HΓ Mk' ns' HMk' Hpt Hrel w Hw.
         rewrite HMk0 in HMk'; injection HMk' as <-.
-        clear - Hr Hw HΓ. inversion Hw; subst.
+        clear - Hr Hw HΓ HMk0 Hrv Hl. inversion Hw; subst;
+          try solve [ match goal with H : ind_lookup _ _ p = Some ?D1 |- _ =>
+                        assert_fails (unify D1 D); rewrite Hl in H; injection H as <- end;
+                      match goal with H : ind_member D k' = Some ?M1 |- _ =>
+                        assert_fails (unify M1 Mk0); rewrite HMk0 in H; injection H as <- end;
+                      exfalso; eapply not_rview_record; eassumption ].
         assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
         match goal with H : Rne m in _ ↘ ?M0 |- _ => pose proof (Hr _ _ _ Hid H) as Heq end.
         rewrite !exp_wk_id in Heq; exact Heq. }
     - (** A constructor: its parameters and arguments read back as the
           constructor's, at the type's parameters. *)
-      intros k' Mk0 hd k'' c gs Us Ns bs vs As Γ M HMk0 Href Hc HUl HNl Hbl Hvl HAl Heq Hnr Har Hnp Htyp Harg Hrec IHrec
+      intros k' Mk0 hd k'' c gs Us Ns bs vs As Γ M HMk0 Hrv Href Hc HUl HNl Hbl Hvl HAl Heq Hnr Har Hnp Htyp Harg Hrec IHrec
         HΓ Mk' ns' HMk' Hpt Hrel w Hw.
       rewrite HMk0 in HMk'; injection HMk' as <-.
-      destruct (ind_rel_con_inv p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hrel HMk0 Hbl)
+      destruct (ind_rel_con_inv p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hrel HMk0 Hrv Hbl)
         as (gs0 & bs' & vs' & Heqd & _ & Hns & Hc0 & Hbl' & Ho & _ & Ha & Hia).
       rewrite Hc in Hc0; injection Hc0 as <-.
       injection Heqd as Heqd.
@@ -357,7 +391,7 @@ Section IndRealize.
       clear Hrel.
       destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hdc].
       assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
-      apply (read_nf_con_member_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hl HMk0 Href Hc Hbl Hvl Hw); intros PN Args HRps HRc.
+      apply (read_nf_con_member_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hl HMk0 Hrv Href Hc Hbl Hvl Hw); intros PN Args HRps HRc.
       rewrite firstn_app_exact in HRc by exact Hu.
       destruct Hpt as [HPsl HPst HPsr].
       pose proof (HPsr Γ wk_id PN Hid HRps) as HPsN; rewrite map_wk_id_exp in HPsN.
@@ -429,6 +463,94 @@ Section IndRealize.
         eapply (IHrec _ _ _ _ _ _ Heq0 HN HT Hv0 HΓ (Htyp _ _ _ HN HT) HTf Mk0 ns' ms c gs1 Pr gs2 pv 0 nil);
           [ exact HMk0 | rewrite List.app_nil_r; reflexivity | exact Ho | rewrite <- Heq0; exact Hc | exact Hpre | reflexivity
           | lia | apply tele_prefix_rel_nil | exact Hsh0 | exact HUl | rewrite List.app_nil_r; exact HRV ].
+    - (** A record view: its projections read back as the view's
+          constructor's arguments, at the group's uniform parameters. *)
+      intros k' Mk0 qr Is fl c gs Us Ns As m vs Γ M HMk0 Hhr Hcs HUl HNl HAl Hps Heq Har Htyp Harg Hrec IHrec
+        HΓ Mk' ns' HMk' Hpt Hrel w Hw.
+      rewrite HMk0 in HMk'; injection HMk' as <-.
+      destruct (ind_rel_record_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrel HMk0 Hhr Hcs) as [vs0 vs1 -> _ Hps0 Hps1 _ Hia].
+      pose proof (functional_eval_projs _ _ _ _ Hps Hps0) as <-.
+      pose proof (functional_eval_projs _ _ _ _ Hps Hps1) as <-.
+      clear Hrel.
+      pose proof (rview_struct_nparams _ _ _ (grp_tele_ass_rstruct _ Hass) _ _ _ _ _ HMk0 Hhr) as Hnp0.
+      pose proof (ind_con_single _ _ _ Hcs) as Hc.
+      destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Hvl _].
+      assert (Hn0 : tele_rel (nr k') (List.rev (im_nparams Mk0)) nil nil) by (rewrite Hnp0; split; reflexivity + exact I).
+      assert (HNs : Ns = nil) by (destruct Ns; [ reflexivity | unfold im_nn in HNl; rewrite Hnp0 in HNl; discriminate HNl ]).
+      subst Ns; rewrite !List.app_nil_r in Hw, Hpt, Htyp, Harg, Hrec, IHrec; cbn [List.app] in Heq.
+      assert (HPeq : im_params D Mk0 = ind_uparams D) by (unfold im_params; rewrite Hnp0; reflexivity).
+      destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hdc].
+      assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+      apply (read_nf_rview_member_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hl HMk0 Hhr Hcs Hw); intros ws PN Args Hws HRps HRc.
+      pose proof (functional_eval_projs _ _ _ _ Hws Hps) as ->.
+      destruct Hpt as [HPsl HPst HPsr].
+      rewrite HPeq, ?List.app_nil_r in HPsr.
+      pose proof (HPsr Γ wk_id PN Hid HRps) as HPsN; rewrite map_wk_id_exp in HPsN.
+      destruct HPsN as [HlN HPcN].
+      clear HPsr HPst.
+      cbn [nf_to_exp]; rewrite List.map_app.
+      etransitivity; [ exact Heq |].
+      replace (im_ty_at p k' Mk0 Us nil) with (ind_mty p D k' (List.firstn (ind_nu D) Us) (List.skipn (ind_nu D) Us))
+        by (unfold ind_mty; rewrite HMk0, <- HUl, List.firstn_all, List.skipn_all; reflexivity).
+      destruct (read_cargs_nth _ _ _ _ _ _ _ HRc) as (HArl & HArg & HArec).
+      eapply wf_exp_eq_con_apps_member; [ exact Hl | exact HMk0 | exact Hc | exact HΓ | unfold im_np, im_nn; rewrite Hnp0; cbn; lia
+                                        | rewrite <- HlN; unfold im_np, im_nn; rewrite Hnp0; cbn; lia
+                                        | rewrite HPeq; exact HPcN | exact HAl | exact HArl |].
+      intros j N V T HN HV HT.
+      assert (Hj : j < length gs) by (rewrite <- HAl; apply List.nth_error_Some; congruence).
+      destruct (nth_error_lt_some' gs j Hj) as [g Hg].
+      destruct (List.nth_error_split gs j Hg) as (gs1 & gs2 & Heq0 & Hlg).
+      subst j.
+      destruct (nth_error_lt_some' vs (length gs1) ltac:(lia)) as [v Hv0].
+      set (pv := nonrec_arg_vals gs1 (List.firstn (length gs1) vs)) in *.
+      destruct g as [A0 | Pr].
+      + (** A non-recursive field reads back by its gluing. *)
+        assert (HK : length (cargs_nonrec gs1) < length (cargs_nonrec gs))
+          by (rewrite Heq0, cargs_nonrec_app, List.length_app; cbn; lia).
+        assert (HA0' : List.nth_error (cargs_nonrec gs) (length (cargs_nonrec gs1)) = Some A0)
+          by (rewrite Heq0, cargs_nonrec_app, List.nth_error_app2 by lia;
+              replace (length (cargs_nonrec gs1) - length (cargs_nonrec gs1)) with 0 by lia; reflexivity).
+        pose proof (nonrec_prefix_pre _ _ _ _ _ _ Har Hvl Heq0) as Hpre.
+        destruct (HeA _ _ _ _ _ _ _ _ HMk0 Hn0 Hc HA0' Hpre) as [b Eb].
+        pose proof (HgA _ _ _ _ _ _ _ _ _ HMk0 Hn0 Hc HA0' Hpre Eb) as Hgb.
+        destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
+        pose proof (nonrec_nth_arg _ _ _ _ _ _ Heq0 Hvl Hv0) as Hn1.
+        pose proof Har as Hv'; rewrite tele_rel_iff in Hv'; destruct Hv' as (_ & _ & Hvr).
+        pose proof (Hvr _ _ _ Hn1 Hn1) as Hvv0.
+        rewrite (nonrec_firstn _ _ _ _ _ Heq0 Hvl) in Hvv0.
+        pose proof Hvv0 as Hvv.
+        unfold ar, canon_args_rel in Hvv; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMk0 Hc HA0') in Hvv.
+        pose proof (per_head_iff Eb Eb HRb) as HRh.
+        assert (Hvv' : Rb v v) by (apply HRh; exact Hvv).
+        pose proof (HtA _ _ _ _ _ _ _ _ _ HMk0 Hn0 Hc HA0' Hpre Eb _ _ _ _ _ Hgb (Harg _ _ _ _ _ _ Heq0 HN HT Hv0) HRb Hvv')
+          as Htop.
+        destruct Htop as [P' El' _ _ _ _ Hrbt].
+        destruct (HArg _ _ _ _ Heq0 Hv0) as (a & V' & Ea & HRa & HnV).
+        rewrite HV in HnV; injection HnV as ->.
+        rewrite <- env_args_app in Ea.
+        destruct (HevAr _ _ _ _ _ _ _ _ _ _ HMk0 Hn0 Hc HA0' Hpre) as [a0 a1 Ea0 Ea1 Ha01].
+        rewrite List.app_nil_l in Ea0, Ea1.
+        assert (a0 = b) as -> by (eapply functional_eval_exp; [ exact Ea0 | rewrite List.app_nil_l in Eb; exact Eb ]).
+        assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+        pose proof (per_elem_then_per_top Ha01 Hvv0) as Htp.
+        destruct (Htp (length Γ)) as (W & HW1 & HW2).
+        pose proof (functional_read_nf _ _ _ _ HW2 HRa) as ->.
+        pose proof (Hrbt Γ wk_id V' Hid HW1) as Heqn.
+        rewrite !exp_wk_id in Heqn.
+        exact Heqn.
+      + (** A recursive field, by induction on its shape. *)
+        destruct (HArec _ _ _ _ Heq0 Hv0) as (V' & HRV & HnV).
+        rewrite HV in HnV; injection HnV as ->.
+        rewrite <- env_args_app in HRV.
+        pose proof (nonrec_prefix_pre _ _ _ _ _ _ Har Hvl Heq0) as Hpre.
+        pose proof (con_args_rel_rec _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq0 Hv0 Hv0) as Hsh0.
+        assert (HTf : exists σ', T = ptyp_ty_at p D Us σ' Pr).
+        { eexists; rewrite (cargs_rec_type_at p D Mk0 gs gs1 Pr gs2 Us As T Heq0 Hdc
+                              ltac:(unfold im_np, im_nn; rewrite Hnp0; cbn; lia) HT).
+          rewrite <- HUl, List.firstn_all; reflexivity. }
+        eapply (IHrec _ _ _ _ _ _ Heq0 HN HT Hv0 HΓ (Htyp _ _ _ HN HT) HTf Mk0 nil nil c gs1 Pr gs2 pv 0 nil);
+          [ exact HMk0 | rewrite List.app_nil_r; reflexivity | exact Hn0 | rewrite <- Heq0; exact Hc | exact Hpre | reflexivity
+          | lia | apply tele_prefix_rel_nil | exact Hsh0 | exact HUl | rewrite List.app_nil_r, List.app_nil_l; exact HRV ].
     - (** The end of a shape: the element read back at the parameters the
           shape evaluates to at the type's prefix, related to those at the
           element's own by the admissibility of [ups] beside itself. *)

@@ -16,6 +16,39 @@ From Mctt.Core.Semantic Require Import PER.Definitions.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
+(** ** Record Views in the Elements *)
+
+(** The only constructor of a member with one constructor (a record
+    view's pseudo-constructor). *)
+Lemma ind_con_single : forall Mk c gs, im_cons Mk = (c, gs) :: nil -> ind_con Mk c = Some gs.
+Proof. intros * H; unfold ind_con; rewrite H; cbn; rewrite String.eqb_refl; reflexivity. Qed.
+
+(** A member that is not a record view has no record head. *)
+Lemma not_rview_record : forall M qr Is fl, im_is_rview M = false -> im_head M = mh_record qr Is fl -> False.
+Proof. intros * H1 H2; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1. Qed.
+
+(** At a member that is not a record view, [ind_rel_record] does not
+    apply: closes a goal whose hypotheses give the member [k] both a
+    record head and [im_is_rview = false]. *)
+Ltac no_rview_rel :=
+  match goal with
+  | H0 : ind_member ?D ?k = Some ?M0, H1 : im_head ?M0 = mh_record _ _ _,
+    HM : ind_member ?D ?k = Some ?M, Hr : im_is_rview ?M = false |- _ =>
+      rewrite HM in H0; injection H0 as <-; exfalso; exact (not_rview_record _ _ _ _ Hr H1)
+  end.
+
+(** At a record view [M] of the member [k] (no non-uniform parameters,
+    one constructor), the facts the [ind_rel_con] case of an induction
+    gets from its premises: the constructor and the empty parameters'
+    relation, named [Hc] and [Hn]. *)
+Ltac rview_case_facts :=
+  match goal with
+  | HM : ind_member _ ?k = Some ?M, Hnp : im_nparams ?M = nil, Hcs : im_cons ?M = (_, _) :: nil
+    |- context [ind_rel _ _ _ ?nr _ _ _ _ _ _ _ _ _] =>
+      pose proof (ind_con_single _ _ _ Hcs) as Hc;
+      assert (Hn : tele_rel (nr k) (List.rev (im_nparams M)) nil nil) by (rewrite Hnp; split; reflexivity + exact I)
+  end.
+
 Section Tele.
   Context {GC : GCtx}.
 
@@ -135,6 +168,10 @@ Section Tele.
   Proof.
     intros * H; rewrite tele_prefix_rel_iff in H; rewrite tele_rel_iff; exact H.
   Qed.
+
+  (** Related to the empty list: the empty list. *)
+  Lemma tele_rel_nil_l : forall {X} tr (T : list X) vs, tele_rel tr T nil vs -> vs = nil.
+  Proof. intros * [_ H]; destruct vs; [ reflexivity | destruct H ]. Qed.
 
   Lemma tele_rel_pre : forall {X} tr (T : list X) vs vs',
       tele_rel tr T vs vs' -> tele_prefix_rel tr (List.length T) vs vs'.
@@ -889,17 +926,23 @@ Section Tele.
              rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u' u pre' pre t f' a' f a).
     Proof.
       intros okr; apply ind_rel_mut_ind_all.
-      - intros * HM Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH.
+      - intros * HM Hrv Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH.
         assert (Hm : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs'))
           by exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ Hs) Hn) Hs').
-        econstructor; [ exact HM | exact Hr | exact (nparams_rel_sym _ _ HM _ _ Hn) | exact Hc | exact Hb' | exact Hb | exact Hs' | exact Hs
+        eapply ind_rel_con; [ exact HM | exact Hrv | exact Hr | exact (nparams_rel_sym _ _ HM _ _ Hn) | exact Hc | exact Hb' | exact Hb | exact Hs' | exact Hs
                       | exact (args_rel_inst _ _ HM _ _ _ _ _ _ Hm Hc
                                  (args_rel_sym _ _ HM _ _ _ (nparams_rel_refl_l _ _ HM _ _ Hm) Hc _ _ Ha)) |].
         apply (IH Mk (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') c gs nil nil nil HM);
           cbn; rewrite ?List.app_nil_r; try reflexivity; assumption.
-      - intros * HM Hh Hn L1 L2 H1 H2 Hm.
-        econstructor; try eassumption; [ exact (nparams_rel_sym _ _ HM _ _ Hn) |].
+      - intros * HM Hrv Hh Hn L1 L2 H1 H2 Hm.
+        eapply ind_rel_neut; try eassumption; [ exact (nparams_rel_sym _ _ HM _ _ Hn) |].
         intros s; destruct (Hm s) as (L & HL & HL'); eauto.
+      - intros * HM Hh Hnp Hcs Hp Hp' Ha Hia IH.
+        assert (Hn : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
+        pose proof (ind_con_single _ _ _ Hcs) as Hc.
+        eapply ind_rel_record; [ exact HM | exact Hh | exact Hnp | exact Hcs | exact Hp' | exact Hp
+                               | exact (args_rel_sym _ _ HM _ _ _ Hn Hc _ _ Ha) |].
+        apply (IH Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
       - intros; constructor.
       - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
         constructor.
@@ -941,7 +984,7 @@ Section Tele.
         the parameters and the arguments. *)
     Lemma ind_rel_con_inv : forall okr k u u' ns ns' Mk hd k' c bs vs z,
         ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' (d_con hd k' c (bs ++ vs)) z ->
-        ind_member D k = Some Mk -> List.length bs = (im_unu D Mk + im_nn Mk)%nat ->
+        ind_member D k = Some Mk -> im_is_rview Mk = false -> List.length bs = (im_unu D Mk + im_nn Mk)%nat ->
         exists gs bs' vs', z = d_con hd k' c (bs' ++ vs') /\ im_ref p k Mk = (hd, k') /\
           tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns ns' /\ ind_con Mk c = Some gs /\
           List.length bs' = (im_unu D Mk + im_nn Mk)%nat /\
@@ -951,7 +994,8 @@ Section Tele.
           con_args_rel p D okr nparams_rel args_rel doms_rel k u u'
             (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs'.
     Proof.
-      intros * H HM Hl; inversion H as [k0 Mk0 hd0 k'0 ns0 ns0' c0 gs bs0 bs' vs0 vs' u0 u0' HM0 Hr Hn Hc Hb Hb' Hs Hs' Ha Hia |]; subst.
+      intros * H HM Hrv Hl; inversion H as [k0 Mk0 hd0 k'0 ns0 ns0' c0 gs bs0 bs' vs0 vs' u0 u0' HM0 Hrv0 Hr Hn Hc Hb Hb' Hs Hs' Ha Hia | |]; subst;
+        [| no_rview_rel ].
       rewrite HM in HM0; injection HM0 as <-.
       match goal with He : _ ++ _ = bs ++ vs |- _ => destruct (app_split_eq _ _ _ _ He ltac:(congruence)) as [-> ->] end.
       exists gs, bs', vs'; exact (conj eq_refl (conj Hr (conj Hn (conj Hc (conj Hb' (conj Hs (conj Hs' (conj Ha Hia)))))))).
@@ -992,14 +1036,14 @@ Section Tele.
              rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u1 u3 pre1 pre3 t f1 a1 f3 a3).
     Proof.
       intros okr; apply ind_rel_mut_ind_all.
-      - intros k Mk hd k' ns1 ns2 c gs bs1 bs2 vs1 vs2 u1 u2 HM Hr Hn Hc Hb1 Hb2 Hs1 Hs2 Ha Hia IH u3 ns3 ns4 z Hz.
-        destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hz HM Hb2)
+      - intros k Mk hd k' ns1 ns2 c gs bs1 bs2 vs1 vs2 u1 u2 HM Hrv Hr Hn Hc Hb1 Hb2 Hs1 Hs2 Ha Hia IH u3 ns3 ns4 z Hz.
+        destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hz HM Hrv Hb2)
           as (gs0 & bs3 & vs3 & -> & _ & Hn' & Hc0 & Hb3 & Hs2' & Hs3 & Ha' & Hia').
         rewrite Hc in Hc0; injection Hc0 as <-.
         assert (H12 : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) bs1) (List.skipn (im_unu D Mk) bs2))
           by exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ Hs1) Hn) Hs2).
         eapply ind_rel_con with (gs := gs);
-          [ exact HM | exact Hr
+          [ exact HM | exact Hrv | exact Hr
           | exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ Hn
                      (nparams_rel_trans _ _ HM _ _ _ Hs2 (nparams_rel_sym _ _ HM _ _ Hs2'))) Hn')
           | exact Hc | exact Hb1 | exact Hb3 | exact Hs1 | exact Hs3
@@ -1007,14 +1051,27 @@ Section Tele.
                      (args_rel_inst _ _ HM _ _ _ _ _ _ (nparams_rel_sym _ _ HM _ _ H12) Hc Ha')) |].
         apply (IH _ _ _ Mk (List.skipn (im_unu D Mk) bs1) (List.skipn (im_unu D Mk) bs2) c gs nil nil nil HM);
           cbn; rewrite ?List.app_nil_r; try reflexivity; assumption.
-      - intros k Mk hd k' ns1 ns2 as1 as2 m1 m2 u1 u2 HM Hr Hn L1 L2 H1 H2 Hm u3 ns3 ns4 z Hz.
-        inversion Hz as [| k0 Mk0 hd0 k0' ns3' ns4' as2' as3 m2' m3 u2' u3' HM' Hr' Hn' L2' L3 H2' H3 Hm']; subst.
+      - intros k Mk hd k' ns1 ns2 as1 as2 m1 m2 u1 u2 HM Hrv Hr Hn L1 L2 H1 H2 Hm u3 ns3 ns4 z Hz.
+        inversion Hz as [| k0 Mk0 hd0 k0' ns3' ns4' as2' as3 m2' m3 u2' u3' HM' Hrv' Hr' Hn' L2' L3 H2' H3 Hm' |]; subst;
+          [| no_rview_rel ].
         rewrite HM in HM'; injection HM' as <-.
         econstructor; try eassumption.
         + exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ Hn
                    (nparams_rel_trans _ _ HM _ _ _ H2 (nparams_rel_sym _ _ HM _ _ H2'))) Hn').
         + intros s0; destruct (Hm s0) as (L & HL & HL'); destruct (Hm' s0) as (L' & HL0 & HL'').
           pose proof (functional_read_ne _ _ _ _ HL' HL0) as <-; eauto.
+      - intros * HM Hh Hnp Hcs Hp1 Hp2 Ha Hia IH u3 ns3 ns4 z Hz.
+        pose proof (ind_con_single _ _ _ Hcs) as Hc.
+        assert (Hn : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
+        inversion Hz; subst; try no_rview_rel.
+        match goal with H0 : ind_member D k = Some ?M0, H0' : im_head ?M0 = _, H0'' : im_cons ?M0 = _ |- _ =>
+          rewrite HM in H0; injection H0 as <-; rewrite Hh in H0'; injection H0' as <- <- <-;
+          rewrite Hcs in H0''; injection H0'' as <- <- end.
+        match goal with H1 : ⟦projs _ of v' ⟧ _ ⍮ _ ↘ ?w, H2 : ⟦projs _ of v' ⟧ _ ⍮ _ ↘ ?w' |- _ =>
+          pose proof (functional_eval_projs _ _ _ _ Hp2 H1) as <- end.
+        eapply ind_rel_record; [ exact HM | exact Hh | exact Hnp | exact Hcs | exact Hp1 | eassumption
+                               | eapply (args_rel_trans _ _ HM _ _ _ Hn Hc); eassumption |].
+        apply (IH _ _ _ Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
       - intros * _ _ _ _ _ _ _ _ _ Hz; inversion Hz; subst; constructor.
       - intros k u1 u2 pre1 v1 pre2 v2 gs vs1 vs2 A Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 Hl1 Hl2 Hn Hc Heq Ha Hz.
         inversion Hz; subst.
@@ -1071,9 +1128,11 @@ Section Tele.
         ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns1 ns1' x y.
     Proof.
       intros * HM H H1 H1'.
-      destruct H as [k0 Mk0 hd k' ns0 ns0' c gs bs bs' vs vs' u0 u0' HM0 Hr Hn Hc Hb Hb' Hs Hs' Ha Hia
-                    | k0 Mk0 hd k' ns0 ns0' as1 as2 m m' u0 u0' HM0 Hr Hn L1 L2 Hs Hs' Hm];
-        rewrite HM in HM0; injection HM0 as <-.
+      destruct H as [k0 Mk0 hd k' ns0 ns0' c gs bs bs' vs vs' u0 u0' HM0 Hrv Hr Hn Hc Hb Hb' Hs Hs' Ha Hia
+                    | k0 Mk0 hd k' ns0 ns0' as1 as2 m m' u0 u0' HM0 Hrv Hr Hn L1 L2 Hs Hs' Hm
+                    | ];
+        [ rewrite HM in HM0; injection HM0 as <- .. |
+          rewrite (tele_rel_nil_l _ _ _ H1), (tele_rel_nil_l _ _ _ H1'); econstructor; eassumption ].
       - eapply ind_rel_con with (gs := gs); try eassumption;
           [ exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ H1) (nparams_rel_trans _ _ HM _ _ _ Hn H1'))
           | exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ H1) Hs)
@@ -1090,7 +1149,9 @@ Section Tele.
         tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns ns'.
     Proof.
       intros * HM H; destruct H;
-        match goal with H0 : ind_member D _ = Some _ |- _ => rewrite HM in H0; injection H0 as <- end; assumption.
+        match goal with H0 : ind_member D _ = Some _ |- _ => rewrite HM in H0; injection H0 as <- end;
+        [ assumption | assumption |].
+      match goal with Hn : im_nparams _ = nil |- _ => rewrite Hn; split; reflexivity + exact I end.
     Qed.
 
     (** The admissibility the swapped type needs: of [ups] and of [ups']
@@ -1247,13 +1308,16 @@ Section Tele.
                rec_arg_app_rel p D (okr_at D ups' nparams_rel) nparams_rel args_rel doms_rel k u u' pre pre' t f a f' a').
       Proof.
         apply ind_rel_mut_ind_all.
-        - intros * HM Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH.
+        - intros * HM Hrv Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH.
           assert (Hm : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs'))
             by exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ Hs) Hn) Hs').
-          econstructor; try eassumption.
+          eapply ind_rel_con; try eassumption.
           apply (IH Mk (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') c gs nil nil nil HM);
             cbn; rewrite ?List.app_nil_r; try reflexivity; assumption.
-        - intros; econstructor; eassumption.
+        - intros; eapply ind_rel_neut; eassumption.
+        - intros * HM Hh Hnp Hcs Hp Hp' Ha Hia IH; rview_case_facts.
+          eapply ind_rel_record; try eassumption.
+          apply (IH Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
         - intros; constructor.
         - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
           constructor.
@@ -1341,13 +1405,16 @@ Section Tele.
                rec_arg_app_rel p D (okr_at D ups nparams_rel) nparams_rel args_rel doms_rel k u ups' pre pre' t f a f' a').
       Proof.
         intros u1 Hu1; apply ind_rel_mut_ind_all.
-        - intros * HM Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH Hu.
+        - intros * HM Hrv Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH Hu.
           assert (Hm : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs'))
             by exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ Hs) Hn) Hs').
-          econstructor; try eassumption.
+          eapply ind_rel_con; try eassumption.
           apply (IH Mk (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') c gs nil nil nil Hu HM);
             cbn; rewrite ?List.app_nil_r; try reflexivity; assumption.
-        - intros; econstructor; eassumption.
+        - intros; eapply ind_rel_neut; eassumption.
+        - intros * HM Hh Hnp Hcs Hp Hp' Ha Hia IH Hu; rview_case_facts.
+          eapply ind_rel_record; try eassumption.
+          apply (IH Mk nil nil c gs nil nil nil Hu HM); cbn; try reflexivity; assumption.
         - intros; constructor.
         - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' Hu HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
           constructor.
@@ -1441,13 +1508,16 @@ Section Tele.
                rec_arg_app_rel p D (okr_at D ups nparams_rel) nparams_rel args_rel doms_rel k u ups' pre pre' t f a f' a').
       Proof.
         intros Hcd; apply ind_rel_mut_ind_all.
-        - intros * HM Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH.
+        - intros * HM Hrv Hr Hn Hc Hb Hb' Hs Hs' Ha Hia IH.
           assert (Hm : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs'))
             by exact (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_trans _ _ HM _ _ _ (nparams_rel_sym _ _ HM _ _ Hs) Hn) Hs').
-          econstructor; try eassumption.
+          eapply ind_rel_con; try eassumption.
           apply (IH Mk (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') c gs nil nil nil HM);
             cbn; rewrite ?List.app_nil_r; try reflexivity; assumption.
-        - intros; econstructor; eassumption.
+        - intros; eapply ind_rel_neut; eassumption.
+        - intros * HM Hh Hnp Hcs Hp Hp' Ha Hia IH; rview_case_facts.
+          eapply ind_rel_record; try eassumption.
+          apply (IH Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
         - intros; constructor.
         - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
           constructor.
@@ -1813,15 +1883,23 @@ Section Tele.
            rec_arg_app_rel p D okr2 nparams_rel2 args_rel2 doms_rel2 k u u' pre pre' t f a f' a').
     Proof.
       intros okr1 okr2 HK Hr1; apply ind_rel_mut_ind_all.
-      - intros * HM Hr Hns Hc Hb Hb' Hs Hs' Har Hia IH.
+      - intros * HM Hrv Hr Hns Hc Hb Hb' Hs Hs' Har Hia IH.
         pose proof (Hr1 _ _ _ _ HM Hs) as Hss.
-        econstructor; try eassumption; try (apply (tele_rel_nr_change _ _ HM); eassumption).
+        eapply ind_rel_con; try eassumption; try (apply (tele_rel_nr_change _ _ HM); eassumption).
         + apply (tele_rel_map _ (args_rel1 k (List.skipn (im_unu D Mk) bs) c)); [| eassumption ].
           intros; eapply Ha; try eassumption; apply (tele_rel_nr_change _ _ HM); eassumption.
         + apply (IH Mk (List.skipn (im_unu D Mk) bs) c gs nil nil nil HM);
             [ cbn; rewrite List.app_nil_r; reflexivity | reflexivity | reflexivity | exact Hss | exact Hc | reflexivity | exact Har ].
-      - intros * HM Hh Hn1 L1 L2 H1 H2 Hm.
-        econstructor; try eassumption; try (apply (tele_rel_nr_change _ _ HM); eassumption); apply HO; eassumption.
+      - intros * HM Hrv Hh Hn1 L1 L2 H1 H2 Hm.
+        eapply ind_rel_neut; try eassumption; try (apply (tele_rel_nr_change _ _ HM); eassumption); apply HO; eassumption.
+      - intros * HM Hh Hnp Hcs Hp Hp' Har Hia IH.
+        pose proof (ind_con_single _ _ _ Hcs) as Hc.
+        assert (Hn1 : tele_rel (nparams_rel1 k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
+        eapply ind_rel_record; try eassumption.
+        + apply (tele_rel_map _ (args_rel1 k nil c)); [| eassumption ].
+          intros; eapply Ha; try eassumption; apply (tele_rel_nr_change _ _ HM); eassumption.
+        + apply (IH Mk nil c gs nil nil nil HM);
+            [ reflexivity | reflexivity | reflexivity | exact Hn1 | exact Hc | reflexivity | exact Har ].
       - intros; constructor.
       - intros * Hia IH Mk ms c gsf gs1 vp vp' HM Hρ Hl Hl' Hn' Hc Heq Har.
         constructor.

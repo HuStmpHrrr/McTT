@@ -516,7 +516,7 @@ Proof.
               forall σ, List.length Us = ind_nu D -> A = ptyp_ty_at p D Us σ t ->
               ind_comps_kripke p D ups NP NEl AP AEl DP DEl Γ Us ->
               glu_rec p D ups NEl AEl DP DEl k Γ Us pre t A N v)).
-  - intros k Mk hd k' c gs Us Ns bs vs As Γ M HMk Href Hcon HUl HNl' Hbl Hvl HAl' HM Hb Hv Hnp HAs Harg Hrec IH Hk.
+  - intros k Mk hd k' c gs Us Ns bs vs As Γ M HMk Hrv Href Hcon HUl HNl' Hbl Hvl HAl' HM Hb Hv Hnp HAs Harg Hrec IH Hk.
     assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
     assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
@@ -532,7 +532,7 @@ Proof.
     { pose proof (ind_comps_lower_a _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ gs nil As vs Hc0 HAl HMk Hnp' Hb Hcon
                     ltac:(rewrite List.app_nil_r; reflexivity) Hvl Hv) as L.
       exact (L Harg). }
-    eapply ind_glu_elem_con; [ exact HMk | exact Href | exact Hcon | exact HUl | exact HNl' | exact Hbl | exact Hvl | exact HAl'
+    eapply ind_glu_elem_con; [ exact HMk | exact Hrv | exact Href | exact Hcon | exact HUl | exact HNl' | exact Hbl | exact Hvl | exact HAl'
                              | exact HM | exact Hb | exact Hv | exact Hnp' | exact HAs | exact HargL |].
     intros gs1 t gs2 N A v Heq HN0 HA0 Hv0.
     assert (Hlt : List.length gs1 < List.length vs) by (rewrite Hvl, Heq, List.length_app; cbn; lia).
@@ -556,7 +556,58 @@ Proof.
              (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) 0 nil HMk
              ltac:(rewrite List.app_nil_r; reflexivity) Hb ltac:(rewrite <- Heq; exact Hcon) Hpw eq_refl ltac:(lia)
              (tele_prefix_rel_nil _) Hsh HΓ _ HUl HAσ Hk).
-  - intros k Mk hd k' m Γ Us Ns M as' HMk Href Hm Hr _; eapply ind_glu_elem_neut; eassumption.
+  - intros k Mk hd k' m Γ Us Ns M as' HMk Hrv Href Hm Hr _; eapply ind_glu_elem_neut; eassumption.
+  - (** A record view: its fields, as a constructor's arguments after no
+        non-uniform parameter. *)
+    intros k Mk qr Is fl c gs Us Ns As m vs Γ M HMk Hh Hcs HUl HNl' HAl' Hps HM Hv HAs Harg Hrec IH Hk.
+    assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+    destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
+    assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+    pose proof (proj1 (Hk _ _ Hid)) as Hc0.
+    rewrite map_wk_id in Hc0.
+    pose proof (rview_struct_nparams _ _ _ (grp_tele_ass_rstruct _ Hass) _ _ _ _ _ HMk Hh) as Hnp0.
+    destruct (rview_struct_con _ _ _ (grp_tele_ass_rstruct _ Hass) _ _ _ _ _ HMk Hh) as (gs0 & Hcs0 & Hlg).
+    rewrite Hcs in Hcs0; injection Hcs0 as _ <-.
+    pose proof (ind_con_single _ _ _ Hcs) as Hcon.
+    assert (Hvl : List.length vs = List.length gs) by (rewrite (eval_projs_length _ _ _ Hps); congruence).
+    assert (Hb : tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) nil nil)
+      by (rewrite Hnp0; split; reflexivity + exact I).
+    assert (Hnp' : glu_nparams k Mk NEl Γ Us Ns nil).
+    { constructor; [ exact HNl' | unfold im_nn; rewrite Hnp0; reflexivity |].
+      intros j N A n _ _ Hn; destruct j; discriminate Hn. }
+    assert (HargL : forall gs1 A0 gs2 N A v, gs = gs1 ++ ca_arg A0 :: gs2 ->
+              List.nth_error As (List.length gs1) = Some N ->
+              List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+              List.nth_error vs (List.length gs1) = Some v ->
+              Γ ⊢ N : A ® v ∈ AEl k nil c (List.length (cargs_nonrec gs1))
+                                 (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))).
+    { pose proof (ind_comps_lower_a _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ gs nil As vs Hc0 HAl HMk Hnp' Hb Hcon
+                    ltac:(rewrite List.app_nil_r; reflexivity) Hvl Hv) as L.
+      exact (L Harg). }
+    eapply ind_glu_elem_record; [ exact HMk | exact Hh | exact Hcs | exact HUl | exact HNl' | exact HAl' | exact Hps
+                                | exact HM | exact Hv | exact HAs | exact HargL |].
+    intros gs1 t gs2 N A v Heq HN0 HA0 Hv0.
+    assert (Hlt : List.length gs1 < List.length vs) by (rewrite Hvl, Heq, List.length_app; cbn; lia).
+    assert (Hpw : tele_prefix_rel (canon_args_rel D ups k nil c) (List.length (cargs_nonrec gs1))
+                    (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)))
+      by (eapply nonrec_prefix_pre; eassumption).
+    assert (Hsh : glu_shape_typ (canon_doms_rel ups k) (DP k) (DEl k) Γ
+                    (nil ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A).
+    { destruct Hc0 as [_ _ HCR].
+      refine (HCR k Mk c gs gs1 t gs2 _ _ As (List.firstn (List.length gs1) vs) A HMk Hcon Heq Hnp' Hb
+                ltac:(rewrite List.length_firstn; lia) HA0 _ Hpw).
+      intros hs1 B hs2 N' T' v' Heq1 HN' HT' Hv'.
+      assert (Hh1 : List.length hs1 < List.length gs1) by (rewrite Heq1, List.length_app; cbn; lia).
+      rewrite List.nth_error_firstn in Hv'; destruct (Nat.ltb_spec (List.length hs1) (List.length gs1)); [| lia ].
+      rewrite List.firstn_firstn, Nat.min_l by lia.
+      eapply (HargL hs1 B (hs2 ++ ca_rec t :: gs2));
+        [ rewrite Heq, Heq1, <- List.app_assoc; reflexivity | exact HN' | exact HT' | exact Hv' ]. }
+    pose proof (cargs_rec_type_at p D Mk _ _ _ _ (Us ++ Ns) _ _ Heq Hc ltac:(rewrite List.length_app; unfold im_np; lia) HA0) as HAσ.
+    rewrite firstn_app_exact in HAσ by exact HUl.
+    apply (IH _ _ _ _ _ _ Heq HN0 HA0 Hv0 Mk nil c gs1 t gs2
+             (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) 0 nil HMk
+             ltac:(rewrite List.app_nil_r; reflexivity) Hb ltac:(rewrite <- Heq; exact Hcon) Hpw eq_refl ltac:(lia)
+             (tele_prefix_rel_nil _) Hsh HΓ _ HUl HAσ Hk).
   - intros j Mj Ps pre A Us Γ N x k HMj Hc1 Hc2 IH2 Mk ms c0 gs1 t0 gs2 ws k1 ys HMk Hpre Hm Hc Hw Hsk Hk1 Hy _ HΓ σ HUl HA Hk.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hcl].
     assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.

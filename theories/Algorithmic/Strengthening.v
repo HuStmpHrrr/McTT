@@ -1207,22 +1207,37 @@ Record mty_params_link (Γ : ctx) (p : qname) (D : ind_decl) (m : nat) (Mm : ime
     (** The type former at [Rs] is the member's type at [Us] and [Ns] *)
   ; link_types_equal : exists i, Γ ⊢ apps (a_ind pc k) Rs ≈ ind_mty p D m Us Ns : Typeω@i }.
 
+(** A member with a block of an eliminator is not a record view: those
+    come last, past the blocks. *)
+Lemma block_member_not_rview : forall D (Bks : list eblock) k Mk b, rview_suffix_ok D ->
+    List.length Bks = ind_nblk D -> ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> im_is_rview Mk = false.
+Proof.
+  intros * Hs Hl Hk Hb; destruct (im_is_rview Mk) eqn:E; [| reflexivity ].
+  apply (Hs _ _ Hk) in E.
+  assert (k < List.length Bks) by (apply List.nth_error_Some; congruence); lia.
+Qed.
+
 (** The uniform arguments of a member's type at typed uniform parameters
-    are typed at its type former's uniform telescope. *)
+    are typed at its type former's uniform telescope.  Not at a record
+    view: its type is a record type, not an inductive type former's
+    application, and its "uniform arguments" are the record's
+    parameters. *)
 Lemma im_pre_typed : forall Γ p D m Mm pc k Dq Us,
-    ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm -> im_ref p m Mm = (pc, k) ->
-    ind_lookup gc_deps gc_stack pc = Some Dq ->
+    ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm -> im_is_rview Mm = false ->
+    im_ref p m Mm = (pc, k) -> ind_lookup gc_deps gc_stack pc = Some Dq ->
     List.length Us = ind_nu D ->
     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Γ ⊢ U : T) ->
     List.length (im_pre Mm Us) = ind_nu Dq /\
     forall j N T, List.nth_error (im_pre Mm Us) j = Some N ->
       List.nth_error (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) j = Some T -> Γ ⊢ N : T.
 Proof.
-  intros * HΓ Hl Hm Hr Hlq HUl HUs.
+  intros * HΓ Hl Hm Hnr Hr Hlq HUl HUs.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hlq) as [HDq Hcq].
-  unfold im_ref, im_pre in *; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
+  unfold im_ref, im_pre in *;
+    destruct (im_head Mm) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-;
+    [| | exfalso; unfold im_is_rview in Hnr; rewrite Hh in Hnr; discriminate ].
   - assert (Dq = D) as -> by congruence; split; [ exact HUl | exact HUs ].
   - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & _ & HIl & _).
     assert (D' = Dq) as -> by congruence.
@@ -1242,7 +1257,7 @@ Lemma im_ref_lookup : forall Γ p D m Mm pc k,
 Proof.
   intros * HΓ Hl Hm Hr.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
-  unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-; [ eauto |].
+  unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-; [ eauto | | eauto ].
   destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _); eauto.
 Qed.
 
@@ -1252,10 +1267,11 @@ Lemma im_ref_member : forall Γ p D m Mm pc k Dq,
 Proof.
   intros * HΓ Hl Hm Hr Hlq.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
-  unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-.
+  unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-.
   - assert (Dq = D) as -> by congruence; eauto.
   - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _).
     assert (D' = Dq) as -> by congruence; eauto.
+  - assert (Dq = D) as -> by congruence; eauto.
 Qed.
 
 (** A member has as many non-uniform parameters as the member of its type
@@ -1267,19 +1283,21 @@ Proof.
   intros * HΓ Hl Hm Hr Hlq Hk.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
-  unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-.
+  unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-.
   - assert (Dq = D) as -> by congruence; congruence.
   - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & _ & _ & Hself & _).
     assert (D' = Dq) as -> by congruence; assert (Mk' = Mk) as -> by congruence.
     pose proof (decl_typed_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
     unfold im_nn; rewrite (ext_eq_length _ _ _ _ _ HNeq), length_tele_sub; reflexivity.
+  - assert (Dq = D) as -> by congruence; congruence.
 Qed.
 
 (** The parameters of a member's type former at typed parameters of the
-    member are typed. *)
+    member are typed.  Not at a record view, whose type is a record type
+    ([im_pre_typed]); without record views the premise always holds. *)
 Lemma im_pre_params_typed : forall Γ p D m Mm pc k Dq Mk Us Ns,
-    ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm -> im_ref p m Mm = (pc, k) ->
-    ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
+    ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm -> im_is_rview Mm = false ->
+    im_ref p m Mm = (pc, k) -> ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
     List.length Us = ind_nu D ->
     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Γ ⊢ U : T) ->
     List.length Ns = im_nn Mm ->
@@ -1289,14 +1307,16 @@ Lemma im_pre_params_typed : forall Γ p D m Mm pc k Dq Mk Us Ns,
     forall j P T, List.nth_error (im_pre Mm Us ++ Ns) j = Some P ->
       List.nth_error (tele_insts (im_params Dq Mk) Id (im_pre Mm Us ++ Ns)) j = Some T -> Γ ⊢ P : T.
 Proof.
-  intros * HΓ Hl Hm Hr Hlq Hk HUl HUs HNl HNs.
+  intros * HΓ Hl Hm Hnr Hr Hlq Hk HUl HUs HNl HNs.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hlq) as [HDq Hcq].
   pose proof (im_ref_nn _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hr Hlq Hk) as Hnn.
-  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hr Hlq HUl HUs) as [HPl _].
+  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hnr Hr Hlq HUl HUs) as [HPl _].
   split; [ rewrite List.length_app, HPl, HNl, Hnn; unfold im_np; lia |].
-  unfold im_ref, im_pre in *; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
+  unfold im_ref, im_pre in *;
+    destruct (im_head Mm) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-;
+    [| | exfalso; unfold im_is_rview in Hnr; rewrite Hh in Hnr; discriminate ].
   - assert (Dq = D) as -> by congruence; assert (Mk = Mm) as -> by congruence.
     exact (params_typed_join _ _ D Hc _ _ _ Us Ns Hm HUl HUs HNs).
   - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & HIl & _ & Hself & _).
@@ -1304,9 +1324,14 @@ Proof.
     exact (proj2 (view_params_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg Hl HDs HD Hc Hcq Hm Hh Hlq Hk Hself HIl HΓ HUl HUs HNl HNs)).
 Qed.
 
+(** Parameters of the type former whose uniform ones are the member's
+    uniform arguments give the member's non-uniform parameters.  Not at a
+    record view: its type is a record type, not the type former's
+    application ([im_pre_typed]); without record views the premise always
+    holds. *)
 Lemma mty_params_conv : forall Γ p D m Mm pc k Dq Mk Us Rs,
-    ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm -> im_ref p m Mm = (pc, k) ->
-    ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
+    ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm -> im_is_rview Mm = false ->
+    im_ref p m Mm = (pc, k) -> ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
     List.length Us = ind_nu D ->
     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Γ ⊢ U : T) ->
     List.length Rs = im_np Dq Mk ->
@@ -1315,11 +1340,11 @@ Lemma mty_params_conv : forall Γ p D m Mm pc k Dq Mk Us Rs,
        List.nth_error (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) j = Some T -> Γ ⊢ N ≈ R : T) ->
     mty_params_link Γ p D m Mm Us (List.skipn (ind_nu Dq) Rs) pc k Rs.
 Proof.
-  intros * HΓ Hl Hm Hr Hlq Hk HUl HUs HRl HRs HPR.
+  intros * HΓ Hl Hm Hnr Hr Hlq Hk HUl HUs HRl HRs HPR.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hlq) as [HDq Hcq].
-  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hr Hlq HUl HUs) as [HPl HPt].
+  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hnr Hr Hlq HUl HUs) as [HPl HPt].
   set (Ps := im_pre Mm Us) in *.
   set (Ns := List.skipn (ind_nu Dq) Rs).
   assert (HRl' : List.length (List.firstn (ind_nu Dq) Rs) = ind_nu Dq)
@@ -1350,9 +1375,10 @@ Proof.
   (** The type former at the uniform arguments and the rest, equal to it
       at [Rs]. *)
   assert (Hkl : k < ind_ndecl Dq).
-  { unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
+  { unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-.
     - assert (Dq = D) as -> by congruence; assert (Mk = Mm) as -> by congruence; eapply member_decl_lt; eassumption.
-    - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & Hlt & _); congruence. }
+    - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & _ & Hlt & _); congruence.
+    - exfalso; unfold im_is_rview in Hnr; rewrite Hh in Hnr; discriminate. }
   assert (HLc : List.length (Ps ++ Ns) = im_np Dq Mk) by (rewrite List.length_app, HPl, HNl; unfold im_np, im_nn; lia).
   pose proof (params_typed_join _ _ Dq Hcq _ _ _ Ps Ns Hk HPl HPt HNp) as HLt.
   assert (HLR : forall j N R T, List.nth_error (Ps ++ Ns) j = Some N -> List.nth_error Rs j = Some R ->
@@ -1369,11 +1395,15 @@ Proof.
       rewrite HN in HR'; injection HR' as <-; apply wf_exp_eq_refl; exact (HNp _ _ _ HN HT). }
   destruct (ind_apps_conv_large _ _ _ _ _ _ _ _ _ Hg HDs Hlq Hk Hkl HΓ HLc HRl HLt HRs HLR) as (i & _ & _ & Heq).
   assert (Hmty : ind_mty p D m Us Ns = apps (a_ind pc k) (Ps ++ Ns))
-    by (unfold ind_mty; rewrite Hm; unfold im_ty_at; rewrite Hr; reflexivity).
+    by (unfold ind_mty; rewrite Hm; unfold im_ty_at;
+        destruct (im_head Mm) eqn:Hh0; [ rewrite Hr; reflexivity | rewrite Hr; reflexivity |];
+        exfalso; unfold im_is_rview in Hnr; rewrite Hh0 in Hnr; discriminate).
   clear HLR HLt HRu.
   (** At a view, its own non-uniform telescope is its container's at the
       view's instance. *)
-  unfold Ps in *; clear Ps; unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; injection Hr as <- <-.
+  unfold Ps in *; clear Ps; unfold im_ref in Hr;
+    destruct (im_head Mm) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-;
+    [| | exfalso; unfold im_is_rview in Hnr; rewrite Hh in Hnr; discriminate ].
   - assert (Dq = D) as -> by congruence; assert (Mk = Mm) as -> by congruence.
     assert (Epre : im_pre Mm Us = Us) by (unfold im_pre; rewrite Hh; reflexivity); rewrite Epre in *.
     constructor; [ rewrite HNl; reflexivity | exact HNp | exists i; rewrite Hmty; symmetry; exact Heq ].
@@ -1442,7 +1472,11 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   unfold ind_mty in Heq; rewrite Hm in Heq; unfold im_ty_at, im_ref, im_pre in Heq.
-  destruct (im_head Mm) as [pm | qc k' Is vm] eqn:Hh; cbn [fst snd] in Heq.
+  destruct (im_head Mm) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; cbn [fst snd] in Heq.
+  3: { (** A record view has no non-uniform parameters. *)
+       destruct (rview_params _ _ _ _ _ _ _ _ HD Hm Hh) as [_ Hn0].
+       rewrite Hn0 in HNl; apply List.length_zero_iff_nil in HNl as ->.
+       intros j N N' T HN; rewrite List.nth_error_nil in HN; discriminate. }
   - pose proof (params_typed_join _ _ D Hc _ _ _ Us Ns Hm HUl HUs HNs) as HX.
     pose proof (params_typed_join _ _ D Hc _ _ _ Us Ns' Hm HUl HUs HNs') as HX'.
     assert (HXl : List.length (Us ++ Ns) = im_np D Mm) by (rewrite List.length_app, HUl, HNl; unfold im_np; lia).
@@ -1735,6 +1769,8 @@ Proof.
   destruct Hg as [Eq | [Eq _]]; [ injection Eq as Ep; subst p | discriminate ].
   pose proof (ctx_wf_gctx _ _ _ HΓs) as Hg; pose proof (decls_of_ctx _ _ _ HΓs) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ HD)) as Hsuf.
+  pose proof (block_member_not_rview _ _ _ _ _ Hsuf (blocks_typed_len _ _ _ _ _ _ _ _ HBt) Hm Hb) as Hnr.
   assert (HUl : List.length Us = ind_nu D)
     by (apply (f_equal (@List.length _)) in HUL; rewrite List.length_map, List.length_firstn in HUL; unfold im_np in HPl; lia).
   destruct (params_typed_split _ _ D Hc _ _ _ Ps Hm HPl HPs) as [HUtL HNtL].
@@ -1756,7 +1792,9 @@ Proof.
   fold φ Lf in Hs0.
   destruct (im_ref pc k Mm) as [qr k'] eqn:Hr.
   assert (Emty : forall Us' Ns', ind_mty pc D k Us' Ns' = apps (a_ind qr k') (im_pre Mm Us' ++ Ns'))
-    by (intros; unfold ind_mty; rewrite Hm; unfold im_ty_at; rewrite Hr; reflexivity).
+    by (intros; unfold ind_mty; rewrite Hm; unfold im_ty_at;
+        destruct (im_head Mm) eqn:Hh0; [ rewrite Hr; reflexivity | rewrite Hr; reflexivity |];
+        exfalso; unfold im_is_rview in Hnr; rewrite Hh0 in Hnr; discriminate).
   rewrite Emty in Hs0.
   destruct (typ_ind_shape_strengthen _ _ _ _ _ _ _ _ Hass HΓf HT0 Hs0) as [Rs HRs].
   destruct (typ_ind_shape _ _ _ _ _ _ HT0 HRs) as (Dq & Mk & PsS & Hlq & Hk & HSl & HSt & HTeq & _).
@@ -1767,15 +1805,10 @@ Proof.
     by (etransitivity; [ eapply wf_subtyp_refl'; symmetry; exact HTeqL | exact Hs0 ]).
   destruct (subtyp_ind_inv HsubL) as [kk HeqL].
   assert (Hnn : im_nn Mm = im_nn Mk).
-  { unfold im_ref in Hr; destruct (im_head Mm) as [pm | qc k1 Is vm] eqn:Hh; injection Hr as <- <-.
-    - assert (Dq = D) as -> by congruence; congruence.
-    - destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ Hm Hh) as (D' & Mk' & Hl' & Hk' & _ & _ & _ & Hself & _).
-      assert (D' = Dq) as -> by congruence; assert (Mk' = Mk) as -> by congruence.
-      pose proof (decl_typed_view_nparams _ _ _ _ Hg HD Hl _ _ _ _ _ _ _ _ _ _ _ Hm Hh Hlq Hk Hself Hm) as HNeq.
-      unfold im_nn; rewrite (ext_eq_length _ _ _ _ _ HNeq), length_tele_sub; reflexivity. }
+  { exact (im_ref_nn _ _ _ _ _ _ _ _ _ HΓs Hl Hm Hr Hlq Hk). }
   (** The long parameters, the short ones weakened, are equal. *)
   assert (HUlL : List.length (List.map (fun U => U[φ]ʷ) Us) = ind_nu D) by (rewrite List.length_map; exact HUl).
-  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓf Hl Hm Hr Hlq HUlL HUtL) as [HPlL HPtL].
+  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓf Hl Hm Hnr Hr Hlq HUlL HUtL) as [HPlL HPtL].
   assert (HNlL : List.length NsL = im_nn Mm) by (unfold NsL; rewrite List.length_skipn, HPl; unfold im_np; lia).
   assert (HLl : List.length (im_pre Mm (List.map (fun U => U[φ]ʷ) Us) ++ NsL) = im_np Dq Mk)
     by (rewrite List.length_app, HPlL, HNlL, Hnn; unfold im_np; lia).
@@ -1794,7 +1827,7 @@ Proof.
   clear HPP HStL HsubL Hs0 HTeqL HRs Hkt HLt.
   (** The short uniform parameters of [PsS] are the member's uniform
       arguments. *)
-  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓs Hl Hm Hr Hlq HUl HUt) as [HPlS HPtS].
+  destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓs Hl Hm Hnr Hr Hlq HUl HUt) as [HPlS HPtS].
   destruct (params_typed_split _ _ Dq Hcq _ _ _ PsS Hk HSl HSt) as [HSu HSn].
   assert (HSl' : List.length (List.firstn (ind_nu Dq) PsS) = ind_nu Dq)
     by (rewrite List.length_firstn; unfold im_np in HSl; lia).
@@ -1823,7 +1856,7 @@ Proof.
   clear HPP' HSu HSl' HPtS HPtL HLl HSlL.
   (** So the rest of [PsS] are the member's non-uniform parameters, and the
       scrutinee is short of the member's type. *)
-  destruct (mty_params_conv _ _ _ _ _ _ _ _ _ _ _ HΓs Hl Hm Hr Hlq Hk HUl HUt HSl HSt HPR) as [HNl HNt [iE HE]].
+  destruct (mty_params_conv _ _ _ _ _ _ _ _ _ _ _ HΓs Hl Hm Hnr Hr Hlq Hk HUl HUt HSl HSt HPR) as [HNl HNt [iE HE]].
   set (NsS := List.skipn (ind_nu Dq) PsS) in *.
   assert (HuS : (Δ ++ Γ)%list ⊢ u : ind_mty pc D k Us NsS)
     by (eapply wf_conv'; [ eapply wf_conv'; [ exact HuT | exact HTeq ] | exact HE ]).
@@ -1898,23 +1931,24 @@ Proof.
     - rewrite HLm; eapply blocks_mctx_wf; eassumption.
     - rewrite <- List.app_assoc; apply wf_typ; exact (HUt' _ _ Hj).
     - rewrite HLm, List.length_app, length_elim_mctx, wk_qn_plus; cbn [exp_wk]; exact HmL. }
-  assert (HBl : List.length Bks = List.length (ind_members D))
+  assert (HBl : List.length Bks = ind_nblk D)
     by (pose proof (blocks_typed_len _ _ _ _ _ _ _ _ HBt) as H; unfold blocks_wk in H; rewrite List.length_map in H; exact H).
   assert (HAs : motives_typed gc_deps gc_stack (Δ ++ Γ)%list pc D Us (blocks_motives Bks) i).
-  { intros j Mj Hj; destruct (blocks_nth _ _ _ _ HBl Hj) as [b Hb0].
+  { intros j Mj Hj Hjr; destruct (blocks_nth _ _ _ _ Hsuf HBl Hj Hjr) as [b Hb0].
     rewrite (blocks_motives_nth _ _ _ Hb0); exact (HBmot _ _ _ Hj Hb0). }
   pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓs HUl HUt) as Hσ.
   assert (HBbr : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
              ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-             (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ ++ Γ)%list ⊢ B : elim_bty pc j Mj c gs (eb_motive b) Us).
+             (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ ++ Γ)%list ⊢ B : elim_bty pc D j Mj c gs (eb_motive b) Us).
   { intros j Mj b c gs n B Hj Hb0 Hcon Hin.
+    pose proof (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0) as Hjr.
     pose proof (proj1 (List.Forall_forall _ _) IHBs b (List.nth_error_In _ _ Hb0)) as (_ & _ & IHbr).
     pose proof (proj1 (List.Forall_forall _ _) IHbr _ Hin) as IHB; cbn [snd] in IHB.
     pose proof (List.in_map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) _ _ Hin) as Hin'; cbn [fst snd] in Hin'.
     pose proof (blocks_typed_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as Hn.
     pose proof (blocks_typed_brs _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as HBL; cbn [eb_motive] in HBL.
     rewrite (HBnm _ _ _ Hj Hb0) in HBL.
-    pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj HΓs HUl HUt HUt' HAs Hcon) as Hbs.
+    pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj Hjr HΓs HUl HUt HUt' HAs Hcon) as Hbs.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HBmot _ _ _ Hj Hb0) Hbs) as Hbt.
     assert (HLb : (tele_wk (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ) ↑ ++ Γ ▹ A)%list
                   = (elim_bctx pc D Mj gs (blocks_motives (blocks_wk Bks φ)) (List.map (fun U => U[φ]ʷ) Us) ++ Lf)%list).
@@ -1928,7 +1962,7 @@ Proof.
     - rewrite HLb; eapply ext_eq_ctx_left; exact (blocks_typed_bctx _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hcon).
     - rewrite <- List.app_assoc; exact Hbt.
     - rewrite HLb, List.length_app, length_elim_bctx, wk_qn_plus; fold φ.
-      replace (cargs_nrec gs + List.length gs + im_nn Mj) with (im_nn Mj + List.length gs + cargs_nrec gs) by lia.
+      replace (cargs_nrec D gs + List.length gs + im_nn Mj) with (im_nn Mj + List.length gs + cargs_nrec D gs) by lia.
       rewrite (elim_bty_wk pc D j Mj c gs (eb_motive b) Us φ Hc Hj HUl), <- Hn; exact HBL. }
   assert (HBts : blocks_typed gc_deps gc_stack (Δ ++ Γ)%list pc D Us Bks i).
   { constructor; [ exact HBl | exact HBnm | | exact HBmot | | | | | exact HBbr ].
@@ -1942,7 +1976,7 @@ Proof.
       pose proof (List.in_map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) _ _ Hin) as Hin'; cbn [fst snd] in Hin'.
       exact (blocks_typed_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin'). }
   (** The eliminator, short, at a type whose weakening is below [C]. *)
-  destruct (blocks_nth _ _ _ _ HBl Hm) as [bm0 Hbm0].
+  destruct (blocks_nth _ _ _ _ Hsuf HBl Hm Hnr) as [bm0 Hbm0].
   rewrite (Hbw _ _ Hbm0) in Hb; injection Hb as <-.
   pose proof (wf_elim_blocks _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl (or_introl eq_refl) Hm Hbm0 HBts HUl HUt HNl HNt HuS) as Hel.
   destruct (presup_exp_typ Hel) as [i' Hi'].

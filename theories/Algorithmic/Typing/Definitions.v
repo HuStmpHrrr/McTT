@@ -115,7 +115,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      ind_member Dq k = Some Mk ->
      List.length (List.map nf_to_exp Rs) = im_np Dq Mk ->
      List.nth_error Bks m = Some bm ->
-     List.length Bks = List.length (ind_members D) ->
+     List.length Bks = ind_nblk D ->
      List.length Us = ind_nu D ->
      (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
         Γ ⊢a U ⟸ T) ->
@@ -133,10 +133,10 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)) ->
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat) ->
+        n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat) ->
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-        elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us) ->
+        elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us) ->
      nbe_ty_f Γ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] T ->
      Γ ⊢a a_elim oq Us m Bks M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a

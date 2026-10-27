@@ -99,9 +99,13 @@ Import Domain_Notations.
           ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall p ups j r1, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r1 -> forall r2, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall p ups ρ t a1, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
-      (forall ρm As ρ t v a1, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
+      (forall p ups ρm As ρ t v a1, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 ->
+          forall a2, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
       (forall f m r1, eval_proj Θ Ξ f m r1 -> forall r2, eval_proj Θ Ξ f m r2 -> r1 = r2) /\
-      (forall ns m fl pre rs1, eval_nflds Θ Ξ ns m fl pre rs1 -> forall rs2, eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2).
+      (forall ns m fl pre rs1, eval_nflds Θ Ξ ns m fl pre rs1 -> forall rs2, eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2) /\
+      (forall fl v ws1, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws1 -> forall ws2, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws2 -> ws1 = ws2) /\
+      (forall p ups ρm As ρ gs vs r1, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -144,6 +148,15 @@ Import Domain_Notations.
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : im_starts _ ?M = true, H2 : im_head ?M = mh_view _ _ _ _ |- _ =>
             unfold im_starts, im_is_decl in H1; rewrite H2 in H1; cbn [orb] in H1; apply Nat.ltb_lt in H1
+        | H1 : im_starts _ ?M = true, H2 : im_head ?M = mh_record _ _ _ |- _ =>
+            unfold im_starts, im_is_decl in H1; rewrite H2 in H1; cbn [orb] in H1; apply Nat.ltb_lt in H1
+        | H1 : im_is_rview ?M = false, H2 : im_head ?M = mh_record _ _ _ |- _ =>
+            exfalso; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1
+        | H : 0 < List.length nil |- _ => exfalso; cbn in H; lia
+        | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : eval_mref Θ Ξ ?p _ ?j _, H2 : ind_member _ ?j = Some ?M, H3 : im_head ?M = mh_record _ _ _ |- _ =>
+            inversion H1; subst; clear H1
         | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = Some _ |- _ =>
@@ -231,8 +244,23 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_ihty : forall {Θ Ξ} ρm As ρ t v a1 a2,
-      ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
+  Corollary functional_eval_ihty : forall {Θ Ξ} p ups ρm As ρ t v a1 a2,
+      ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  (** The projections of a value at its fields are one list. *)
+  Corollary functional_eval_projs : forall {Θ Ξ} fl v ws1 ws2,
+      ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws1 -> ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws2 -> ws1 = ws2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  (** So are the types of the recursive results of a record view's
+      fields. *)
+  Corollary functional_eval_ihtys : forall {Θ Ξ} p ups ρm As ρ gs vs r1 r2,
+      ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
@@ -283,7 +311,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_nflds : mctt.
+Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_nflds functional_eval_projs functional_eval_ihtys : mctt.
 
 
 
@@ -306,7 +334,11 @@ Ltac functional_eval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : eval_ihty ?T ?X ?ρm ?As ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?ρm ?As ?ρ ?t ?v ?r2 |- _ =>
+  | H1 : eval_ihty ?T ?X ?p ?ups ?ρm ?As ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?p ?ups ?ρm ?As ?ρ ?t ?v ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_ihtys ?T ?X ?p ?ups ?ρm ?As ?ρ ?gs ?vs ?r1, H2 : eval_ihtys ?T ?X ?p ?ups ?ρm ?As ?ρ ?gs ?vs ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_projs ?T ?X ?fl ?v ?r1, H2 : eval_projs ?T ?X ?fl ?v ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_proj ?T ?X ?f ?m ?r1, H2 : eval_proj ?T ?X ?f ?m ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
@@ -324,8 +356,145 @@ Proof. intros ? ? [] ?; cbn; repeat econstructor. Qed.
 #[export]
 Hint Resolve eval_ulvl_tm : mctt.
 
-(** One recursive result per recursive argument. *)
-Lemma eval_ihs_length : forall {Θ Ξ} ρ p ups Bks gs vs ihs,
+(** One recursive result per leaf path of each recursive argument, of an
+    argument of a shape per leaf path of the shape, and one projection per
+    field, when the group's table is coherent. *)
+Lemma eval_ih_length_all : forall {Θ Ξ},
+    (forall ρ p ups Bks gs vs ihs,
+        ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+        forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+        List.length vs = List.length gs /\ List.length ihs = cargs_nrec D gs) /\
+    (forall ρ p ups Bks t v r,
+        ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+        forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+        List.length r = List.length (shape_leaves (rv_leaves D) 0 t)) /\
+    (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> List.length ws = List.length fl).
+Proof.
+  intros Θ Ξ.
+  pose proof (eval_mut_ind Θ Ξ
+             (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True)
+             (fun _ _ _ _ => True)
+             (fun _ _ _ _ _ _ _ _ => True)
+             (fun ρ p ups Bks gs vs ihs _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+                List.length vs = List.length gs /\ List.length ihs = cargs_nrec D gs)
+             (fun ρ p ups Bks t v r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+                List.length r = List.length (shape_leaves (rv_leaves D) 0 t))
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True) (fun _ _ _ _ _ _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
+             (fun fl v ws _ => List.length ws = List.length fl)
+             (fun _ _ _ _ _ _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _);
+    clear H; [ .. | split; [ exact Hihs | split; [ exact Hih | exact Hp ] ] ]; intros; try exact I.
+  - (* no argument *) cbn; auto.
+  - (* a non-recursive argument *)
+    match goal with IH : forall D, _ -> _ -> _ /\ _, HD : ind_lookup _ _ _ = Some ?D, Hc : leaves_coherent ?D |- _ =>
+      destruct (IH _ HD Hc) as [? ?] end; cbn; auto.
+  - (* a recursive argument *)
+    match goal with
+    | IH1 : forall D, _ -> _ -> List.length ?ih = _, IH2 : forall D, _ -> _ -> _ /\ _,
+      HD : ind_lookup _ _ _ = Some ?D, Hc : leaves_coherent ?D |- _ =>
+        pose proof (IH1 _ HD Hc); destruct (IH2 _ HD Hc) as [? ?]
+    end; cbn; rewrite List.length_app; auto.
+  - (* at a member with a block *)
+    match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
+      rewrite HD in HD'; injection HD' as <- end.
+    erewrite length_shape_leaves_self by eassumption; reflexivity.
+  - (* at a record view *)
+    match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
+      rewrite HD in HD'; injection HD' as <- end.
+    match goal with IH : forall D, _ -> _ -> _ /\ _, HD : ind_lookup _ _ _ = Some ?D, Hc : leaves_coherent ?D |- _ =>
+      destruct (IH _ HD Hc) as [Hlw Hlr] end.
+    erewrite length_shape_leaves_rview by (eauto; congruence); exact Hlr.
+  - (* at a function shape *)
+    match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
+      rewrite HD in HD'; injection HD' as <- end.
+    cbn; rewrite List.length_map, List.length_seq, List.length_map; apply length_shape_leaves.
+  - (* no field *) reflexivity.
+  - (* a field *) cbn; congruence.
+Qed.
+
+(** One type per leaf path, likewise. *)
+Lemma eval_ihty_length_all : forall {Θ Ξ},
+    (forall p ups ρm As ρ t v r,
+        ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+        forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+        List.length r = List.length (shape_leaves (rv_leaves D) 0 t)) /\
+    (forall p ups ρm As ρ gs vs r,
+        ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+        forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+        List.length vs = List.length gs /\ List.length r = cargs_nrec D gs).
+Proof.
+  intros Θ Ξ.
+  pose proof (eval_mut_ind Θ Ξ
+             (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True) (fun _ _ _ _ => True)
+             (fun _ _ _ _ => True)
+             (fun _ _ _ _ _ _ _ _ => True)
+             (fun _ _ _ _ _ _ _ _ => True)
+             (fun _ _ _ _ _ _ _ _ => True)
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
+             (fun p ups ρm As ρ t v r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+                List.length r = List.length (shape_leaves (rv_leaves D) 0 t))
+             (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
+             (fun fl v ws _ => List.length ws = List.length fl)
+             (fun p ups ρm As ρ gs vs r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+                List.length vs = List.length gs /\ List.length r = cargs_nrec D gs)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys);
+    clear H; [ .. | split; [ exact Hty | exact Htys ] ]; intros; try exact I.
+  - (* at a member with a block *)
+    match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
+      rewrite HD in HD'; injection HD' as <- end.
+    erewrite length_shape_leaves_self by eassumption; reflexivity.
+  - (* at a record view *)
+    match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
+      rewrite HD in HD'; injection HD' as <- end.
+    match goal with IH : forall D, _ -> _ -> _ /\ _, HD : ind_lookup _ _ _ = Some ?D, Hc : leaves_coherent ?D |- _ =>
+      destruct (IH _ HD Hc) as [Hlw Hlr] end.
+    erewrite length_shape_leaves_rview by (eauto; congruence); exact Hlr.
+  - (* at a function shape *)
+    match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
+      rewrite HD in HD'; injection HD' as <- end.
+    cbn; rewrite List.length_map, List.length_seq, List.length_map; apply length_shape_leaves.
+  - (* no field *) reflexivity.
+  - (* a field *) cbn; congruence.
+  - (* no argument *) cbn; auto.
+  - (* a non-recursive argument *)
+    match goal with IH : forall D, _ -> _ -> _ /\ _, HD : ind_lookup _ _ _ = Some ?D, Hc : leaves_coherent ?D |- _ =>
+      destruct (IH _ HD Hc) as [? ?] end; cbn; auto.
+  - (* a recursive argument *)
+    match goal with
+    | IH1 : forall D, _ -> _ -> List.length ?ih = _, IH2 : forall D, _ -> _ -> _ /\ _,
+      HD : ind_lookup _ _ _ = Some ?D, Hc : leaves_coherent ?D |- _ =>
+        pose proof (IH1 _ HD Hc); destruct (IH2 _ HD Hc) as [? ?]
+    end; cbn; rewrite List.length_app; auto.
+Qed.
+
+Lemma eval_ihs_length : forall {Θ Ξ} ρ p ups Bks gs vs ihs D,
+    ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
     ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-    List.length vs = List.length gs /\ List.length ihs = cargs_nrec gs.
-Proof. induction 1; cbn; intuition congruence. Qed.
+    List.length vs = List.length gs /\ List.length ihs = cargs_nrec D gs.
+Proof. intros * HD Hc H; exact (proj1 (@eval_ih_length_all Θ Ξ) _ _ _ _ _ _ _ H _ HD Hc). Qed.
+
+(** The projections of a value at the fields [fl]: one per field. *)
+Lemma eval_projs_length : forall {Θ Ξ} fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> List.length ws = List.length fl.
+Proof. induction 1; cbn; congruence. Qed.
+
+(** The projections of a value at the fields [fs], [f] and more: the one
+    after [fs] is that of [f]. *)
+Lemma eval_projs_at : forall {Θ Ξ} (fs : list String.string) f fl' m ws, ⟦projs fs ++ f :: fl' of m ⟧ Θ ⍮ Ξ ↘ ws ->
+    exists w, List.nth_error ws (List.length fs) = Some w /\ eval_proj Θ Ξ f m w.
+Proof.
+  intros Θ Ξ; induction fs as [| g fs IH]; intros * Hps; cbn [List.app] in Hps; inversion Hps; subst;
+    [ eexists; split; [ reflexivity | eassumption ] |].
+  destruct (IH _ _ _ _ ltac:(eassumption)) as (w' & Hw & Hp); exists w'; split; [ exact Hw | exact Hp ].
+Qed.
+
+(** A constructor has no projection: its projections are at no field. *)
+Lemma projs_con : forall {Θ Ξ} fl hd k' c xs ws, ⟦projs fl of d_con hd k' c xs ⟧ Θ ⍮ Ξ ↘ ws -> fl = nil /\ ws = nil.
+Proof.
+  intros * H; inversion H as [| f0 v0 w0 fl0 ws0 Ep]; subst; [ split; reflexivity |].
+  inversion Ep.
+Qed.

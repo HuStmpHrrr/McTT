@@ -38,6 +38,17 @@ Section Fixed_GCtx.
     - f_equal; exact (IH _ (proj2 (proj2 H))).
   Qed.
 
+  (** Constructors of one name: the one found. *)
+  Lemma cons_single_names : forall cs c gs, List.map fst cs = c :: nil -> cons_lookup cs c = Some gs -> cs = (c, gs) :: nil.
+  Proof.
+    intros [| [c0 g0] [| ? ?]] * Hn Hl; cbn in Hn; try discriminate.
+    injection Hn as ->; cbn in Hl; rewrite String.eqb_refl in Hl; injection Hl as ->; reflexivity.
+  Qed.
+
+  (** No non-uniform parameter. *)
+  Lemma nparams_nil_of_nn : forall M, im_nn M = 0 -> im_nparams M = nil.
+  Proof. intros M H; unfold im_nn in H; destruct (im_nparams M); [ reflexivity | discriminate ]. Qed.
+
   Lemma con_args_rel_len : forall p D okr nr ar dr k u u' pre pre' gs vs vs',
       con_args_rel p D okr nr ar dr k u u' pre pre' gs vs vs' -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
   Proof. induction 1; cbn; lia. Qed.
@@ -84,10 +95,17 @@ Section Fixed_GCtx.
         view_member_v : List.nth_error vm i' = Some v
         (** [v] is a member of the group *)
       ; view_member_mem : ind_member D v = Some Mv
-        (** It has the same head: both are the same declared member *)
-      ; view_member_ref : im_ref p v Mv = im_ref qc i' Mi'
-        (** As many own uniform parameters *)
-      ; view_member_unu : im_unu D Mv = im_unu Dq Mi'
+        (** Both are record views, or neither *)
+      ; view_member_is_rview : im_is_rview Mv = im_is_rview Mi'
+        (** Not a record view, it has the same head: both are the same
+            declared member *)
+      ; view_member_ref : im_is_rview Mi' = false -> im_ref p v Mv = im_ref qc i' Mi'
+        (** Not a record view, as many own uniform parameters *)
+      ; view_member_unu : im_is_rview Mi' = false -> im_unu D Mv = im_unu Dq Mi'
+        (** A record view, a record view of the same record and fields *)
+      ; view_member_rview : forall qr Is fl, im_head Mi' = mh_record qr Is fl -> exists Is', im_head Mv = mh_record qr Is' fl
+        (** The same constructor names, in order *)
+      ; view_member_names : List.map fst (im_cons Mv) = List.map fst (im_cons Mi')
         (** As many non-uniform parameters *)
       ; view_member_nn : im_nn Mv = im_nn Mi'
         (** Each container constructor is one of [Mv]'s, its arguments
@@ -318,9 +336,11 @@ Section Fixed_GCtx.
     Proof.
       apply ind_rel_mut_ind_all.
       - (* a constructor *)
-        intros k Mk hd k' ns ns' c gs' bs bs' vs vs' u u' HMk Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' v Hvm.
+        intros k Mk hd k' ns ns' c gs' bs bs' vs vs' u u' HMk Hrv Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' v Hvm.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
         assert (v0 = v) as -> by (rewrite (view_member_v _ _ _ _ Hv) in Hvm; congruence).
+        pose proof (view_member_unu _ _ _ _ Hv Hrv) as Hunu; pose proof (view_member_ref _ _ _ _ Hv Hrv) as Hrefv.
+        pose proof (eq_trans (view_member_is_rview _ _ _ _ Hv) Hrv) as Hrvv.
         destruct (view_member_cons _ _ _ _ Hv c gs' Hcon) as (gs & Hc & Hcorr).
         pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
         pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
@@ -328,29 +348,53 @@ Section Fixed_GCtx.
         { eapply (nparams_rel_trans qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk);
             [ exact (nparams_rel_sym qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk _ _ Hs) |].
           exact (nparams_rel_trans qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk _ _ _ Hns Hs'). }
-        rewrite <- (view_member_unu _ _ _ _ Hv) in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms.
+        rewrite <- Hunu in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms.
         rewrite <- (view_member_nn _ _ _ _ Hv) in Hlb, Hlb'.
         eapply ind_rel_con with (Mk := Mv) (gs := gs);
-          [ exact (view_member_mem _ _ _ _ Hv) | rewrite (view_member_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
+          [ exact (view_member_mem _ _ _ _ Hv) | exact Hrvv | rewrite Hrefv; exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
           | exact Hc | exact Hlb | exact Hlb' | exact (nr_to _ _ _ _ _ _ HMk Hv Hs) | exact (nr_to _ _ _ _ _ _ HMk Hv Hs') | |].
         + destruct Hnr as [Hl0 Hnr].
           split; [ rewrite length_nonrec_arg_vals by lia; reflexivity |].
           exact (nonrec_to _ _ _ _ c _ _ gs' gs nil nil nil nil vs vs' HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(lia) ltac:(lia)
                    Hms (tele_prefix_rel_nil _) Hnr).
-        + rewrite (view_member_unu _ _ _ _ Hv) in Hca, Hms, Hnr |- *.
+        + rewrite Hunu in Hca, Hms, Hnr |- *.
           pose proof (IH Hu Hu' Mk v Mv c nil nil gs (List.skipn (im_unu Dq Mk) bs) (List.skipn (im_unu Dq Mk) bs') nil nil
                         HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
                         ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms (tele_prefix_rel_nil _) (proj2 Hnr)) as H.
           cbn [nonrec_arg_vals] in H; rewrite !List.app_nil_r in H; exact H.
       - (* a neutral *)
-        intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' v Hvm.
+        intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Hrv Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' v Hvm.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
         assert (v0 = v) as -> by (rewrite (view_member_v _ _ _ _ Hv) in Hvm; congruence).
-        rewrite <- (view_member_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite <- (view_member_nn _ _ _ _ Hv) in Hl1, Hl2.
+        pose proof (view_member_unu _ _ _ _ Hv Hrv) as Hunu; pose proof (view_member_ref _ _ _ _ Hv Hrv) as Hrefv.
+        pose proof (eq_trans (view_member_is_rview _ _ _ _ Hv) Hrv) as Hrvv.
+        rewrite <- Hunu in Hl1, Hl2, Hs, Hs'; rewrite <- (view_member_nn _ _ _ _ Hv) in Hl1, Hl2.
         eapply ind_rel_neut with (Mk := Mv);
-          [ exact (view_member_mem _ _ _ _ Hv) | rewrite (view_member_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
+          [ exact (view_member_mem _ _ _ _ Hv) | exact Hrvv | rewrite Hrefv; exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
           | exact Hl1 | exact Hl2 | exact (nr_to _ _ _ _ _ _ HMk Hv Hs) | exact (nr_to _ _ _ _ _ _ HMk Hv Hs')
           | exact Hm ].
+      - (* a record view: the view's record view, of the same fields *)
+        intros k Mk qr Is fl c gs' w ws w' ws' u u' HMk Hh Hnp Hcs Hp Hp' Hnr Hca IH Hu Hu' v Hvm.
+        destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
+        assert (v0 = v) as -> by (rewrite (view_member_v _ _ _ _ Hv) in Hvm; congruence).
+        destruct (view_member_rview _ _ _ _ Hv _ _ _ Hh) as (Is' & Hhv).
+        pose proof (ind_con_single _ _ _ Hcs) as Hcon.
+        destruct (view_member_cons _ _ _ _ Hv c gs' Hcon) as (gs & Hc & Hcorr).
+        assert (Hcsv : im_cons Mv = (c, gs) :: nil)
+          by (apply cons_single_names; [ rewrite (view_member_names _ _ _ _ Hv), Hcs; reflexivity | exact Hc ]).
+        assert (Hnpv : im_nparams Mv = nil)
+          by (apply nparams_nil_of_nn; rewrite (view_member_nn _ _ _ _ Hv); unfold im_nn; rewrite Hnp; reflexivity).
+        assert (Hns : tele_rel (nr' k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
+        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
+        pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
+        destruct Hnr as [_ Hnr].
+        eapply ind_rel_record with (Mk := Mv) (gs := gs);
+          [ exact (view_member_mem _ _ _ _ Hv) | exact Hhv | exact Hnpv | exact Hcsv | exact Hp | exact Hp' | |].
+        + split; [ rewrite length_nonrec_arg_vals by lia; reflexivity |].
+          exact (nonrec_to _ _ _ _ c _ _ gs' gs nil nil nil nil ws ws' HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(lia) ltac:(lia)
+                   Hns (tele_prefix_rel_nil _) Hnr).
+        + exact (IH Hu Hu' Mk v Mv c nil nil gs nil nil nil nil HMk Hv Hcon Hc I Hcorr eq_refl eq_refl eq_refl eq_refl
+                   Hns (tele_prefix_rel_nil _) Hnr).
       - (* no argument *)
         intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
         destruct gs; cbn in Hcorr; [ constructor | contradiction ].
@@ -538,8 +582,10 @@ Section Fixed_GCtx.
       Proof.
         apply ind_rel_mut_ind_all.
         - (* a constructor *)
-          intros k Mk hd k' ns ns' c gs bs bs' vs vs' u u' HMk Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' i' Mi' Mw HMi Hv.
+          intros k Mk hd k' ns ns' c gs bs bs' vs vs' u u' HMk Hrv Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' i' Mi' Mw HMi Hv.
           rewrite (view_member_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
+          pose proof (eq_trans (eq_sym (view_member_is_rview _ _ _ _ Hv)) Hrv) as Hrvc.
+          pose proof (view_member_unu _ _ _ _ Hv Hrvc) as Hunu; pose proof (view_member_ref _ _ _ _ Hv Hrvc) as Hrefv.
           destruct (view_member_cons' _ _ _ _ Hv c gs Hcon) as (gs' & Hc' & Hcorr).
           pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
           pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
@@ -547,7 +593,7 @@ Section Fixed_GCtx.
           { eapply (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv));
               [ exact (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv) _ _ Hs) |].
             exact (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv) _ _ _ Hns Hs'). }
-          rewrite (view_member_unu _ _ _ _ Hv) in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms, IH.
+          rewrite Hunu in Hlb, Hlb', Hs, Hs', Hnr, Hca, Hms, IH.
           rewrite (view_member_nn _ _ _ _ Hv) in Hlb, Hlb'.
           pose proof (nr_from _ _ _ _ _ _ HMi Hv Hms) as Hms'.
           destruct Hnr as [_ Hnr].
@@ -555,20 +601,43 @@ Section Fixed_GCtx.
                         HMi Hv Hc' Hcon I Hcorr eq_refl eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
                         ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
           cbn [nonrec_arg_vals] in Hca'; rewrite !List.app_nil_r in Hca'.
-          rewrite (view_member_ref _ _ _ _ Hv) in Href.
+          rewrite Hrefv in Href.
           eapply ind_rel_con with (Mk := Mi') (gs := gs');
-            [ exact HMi | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns) | exact Hc' | exact Hlb | exact Hlb'
+            [ exact HMi | exact Hrvc | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns) | exact Hc' | exact Hlb | exact Hlb'
             | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs') | | exact Hca' ].
           split; [ rewrite length_nonrec_arg_vals by lia; reflexivity | exact Hnr' ].
         - (* a neutral *)
-          intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' i' Mi' Mw HMi Hv.
+          intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Hrv Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' i' Mi' Mw HMi Hv.
           rewrite (view_member_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
-          rewrite (view_member_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite (view_member_nn _ _ _ _ Hv) in Hl1, Hl2.
-          rewrite (view_member_ref _ _ _ _ Hv) in Href.
+          pose proof (eq_trans (eq_sym (view_member_is_rview _ _ _ _ Hv)) Hrv) as Hrvc.
+          pose proof (view_member_unu _ _ _ _ Hv Hrvc) as Hunu; pose proof (view_member_ref _ _ _ _ Hv Hrvc) as Hrefv.
+          rewrite Hunu in Hl1, Hl2, Hs, Hs'; rewrite (view_member_nn _ _ _ _ Hv) in Hl1, Hl2.
+          rewrite Hrefv in Href.
           eapply ind_rel_neut with (Mk := Mi');
-            [ exact HMi | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns)
+            [ exact HMi | exact Hrvc | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns)
             | exact Hl1 | exact Hl2 | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs')
             | exact Hm ].
+        - (* a record view: the container's record view, of the same fields *)
+          intros k Mk qr Is fl c gs w ws w' ws' u u' HMk Hh Hnp Hcs Hp Hp' Hnr Hca IH Hu Hu' i' Mi' Mw HMi Hv.
+          rewrite (view_member_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
+          assert (Hri : im_is_rview Mi' = true)
+            by (rewrite <- (view_member_is_rview _ _ _ _ Hv); unfold im_is_rview; rewrite Hh; reflexivity).
+          unfold im_is_rview in Hri; destruct (im_head Mi') as [? | ? ? ? ? | qr'' Is'' fl''] eqn:Hhi; try discriminate Hri.
+          destruct (view_member_rview _ _ _ _ Hv _ _ _ Hhi) as (Is' & Hhw); rewrite Hh in Hhw; injection Hhw as E1 E2 E3; subst qr'' fl''.
+          pose proof (ind_con_single _ _ _ Hcs) as Hcon.
+          destruct (view_member_cons' _ _ _ _ Hv c gs Hcon) as (gs' & Hc' & Hcorr).
+          assert (Hcsi : im_cons Mi' = (c, gs') :: nil)
+            by (apply cons_single_names; [ rewrite <- (view_member_names _ _ _ _ Hv), Hcs; reflexivity | exact Hc' ]).
+          assert (Hnpi : im_nparams Mi' = nil)
+            by (apply nparams_nil_of_nn; rewrite <- (view_member_nn _ _ _ _ Hv); unfold im_nn; rewrite Hnp; reflexivity).
+          assert (Hns' : tele_rel (nr' i') (List.rev (im_nparams Mi')) nil nil) by (rewrite Hnpi; split; reflexivity + exact I).
+          destruct Hnr as [_ Hnr].
+          destruct (IH Hu Hu' i' Mi' Mw c nil nil gs' nil nil nil nil HMi Hv Hc' Hcon I Hcorr eq_refl eq_refl eq_refl eq_refl
+                      Hns' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
+          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca') as [Hlv Hlv'].
+          eapply ind_rel_record with (Mk := Mi') (gs := gs');
+            [ exact HMi | exact Hhi | exact Hnpi | exact Hcsi | exact Hp | exact Hp' | | exact Hca' ].
+          split; [ rewrite length_nonrec_arg_vals by lia; reflexivity | exact Hnr' ].
         - (* no argument *)
           intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
           destruct gs'; [ split; [ constructor | exact I ] | destruct c0; contradiction ].

@@ -411,7 +411,7 @@ Section Decide.
                                           match ind_con Mj c with
                                           | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
                                           | Some gs =>
-                                              if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec gs) then
+                                              if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec D gs) then
                                                 let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us ++ Γ) B0 in
                                                 let%a Bs0' := brs Bs0 in
                                                 fill_ok ((c, n, B') :: Bs0')
@@ -606,7 +606,7 @@ Section Decide.
           match ind_con Mj c with
           | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
           | Some gs =>
-              if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec gs) then
+              if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec D gs) then
                 let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us ++ Γ) B0 in
                 let%a Bs0' := brs Bs0 in
                 fill_ok ((c, n, B') :: Bs0')
@@ -711,7 +711,7 @@ Section Decide.
         | inr e => fill_error (fill_failure_mdef_group e)
         | inl (exist _ (pq, m0, Ps, D, Us, ms) _) =>
             let%a rs := fill_rfun_results_fn Γ pq D Us (List.combine hs ms) in
-            fill_rfun_clauses_fn Γ pq D Us (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) rs ms))
+            fill_rfun_clauses_fn Γ pq D Us (blocks_motives (mdef_blocks 0 (ind_nblk D) rs ms))
               (List.combine rs ms)
         end
     end.
@@ -1001,7 +1001,7 @@ Section Decide.
     intros Γ p D Mj As Us; induction Bs as [| [[c n] B0] Bs IH]; intros Bs' HB E; cbn in E; bind_inv; [ constructor |].
     inversion HB; subst.
     destruct (ind_con Mj c) as [gs |] eqn:Ec; [| discriminate ].
-    destruct (Nat.eqb_spec n (im_nn Mj + List.length gs + cargs_nrec gs)); [| discriminate ].
+    destruct (Nat.eqb_spec n (im_nn Mj + List.length gs + cargs_nrec D gs)); [| discriminate ].
     bind_inv; econstructor; eauto.
   Qed.
 
@@ -1447,7 +1447,7 @@ Section Decide.
       exists f0' fs0' pq m0 Ps D Us ms, fs' = f0' :: fs0' /\
         mdef_group Θ Ξ Δ' h0 hs0 pq m0 Ps D Us ms /\
         Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ
-                                (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) (f0' :: fs0') ms))
+                                (blocks_motives (mdef_blocks 0 (ind_nblk D) (f0' :: fs0') ms))
                                 (fst fm) (snd fm) f')
           (List.combine (h0 :: hs0) ms) (f0' :: fs0').
   Proof.
@@ -1465,7 +1465,7 @@ Section Decide.
   Lemma fill_rfun_bodies_fn_complete : forall Δ' h0 hs0 f0' fs0' pq m0 Ps D Us ms,
       mdef_group Θ Ξ Δ' h0 hs0 pq m0 Ps D Us ms ->
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us (Δ' ++ gs_tele Ξ)%list
-                              (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) (f0' :: fs0') ms))
+                              (blocks_motives (mdef_blocks 0 (ind_nblk D) (f0' :: fs0') ms))
                               (fst fm) (snd fm) f')
         (List.combine (h0 :: hs0) ms) (f0' :: fs0') ->
       fill_rfun_bodies_fn (Δ' ++ gs_tele Ξ)%list Δ' (h0 :: hs0) = fill_ok (f0' :: fs0').

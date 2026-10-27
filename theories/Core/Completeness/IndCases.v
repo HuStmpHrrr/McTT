@@ -108,3 +108,19 @@ Proof.
     exact (rel_exp_under_ctx_con_view _ _ _ (valid_groups_of_emb _ _ _ _ He) Hl _ _ _ _ _ _ _ _ _ _ _ HMj Hh HUl
              ltac:(eassumption) ltac:(eassumption)) end.
 Qed.
+
+Lemma sem_exp_eq_con_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     List.length Us = ind_nu D ->
+     List.length Ms = List.length fl ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ apps_exp (a_con p j c) (Us ++ Ms) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ apps_exp (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ).
+Proof.
+  intros * Hl HMj Hh HUl HMl HL HR; sem_intro; [ assumption |].
+  match goal with He : valid_emb _ _ _ _ |- _ =>
+    exact (rel_exp_under_ctx_con_rview _ _ _ (valid_groups_of_emb _ _ _ _ He) Hl _ _ _ _ _ _ _ _ _ _ HMj Hh HUl HMl
+             ltac:(eassumption) ltac:(eassumption)) end.
+Qed.

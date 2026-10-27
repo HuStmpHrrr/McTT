@@ -131,20 +131,69 @@ Record view_rank_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat) 
   { (** A declared member has rank [0] *)
     view_rank_ok_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
     (** A view's rank is above that of every member it nests through, in
-        every block the eliminator at the view reads *)
+        every block the eliminator at the view reads: by a whole argument or
+        along a leaf path of an argument recursive in both *)
   ; view_rank_ok_nest : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm -> ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' ->
       List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
-      cargs_nest_ok rk (rk k) gs' gs }.
+      cargs_nest_ok D D' rk (rk k) gs' gs
+    (** A record view's rank is above that of every member its recursive
+        fields end in, at each of its constructors (it has one,
+        [rview_struct_con]; the rank does not rely on that, as the check
+        [rank_check] reads them all) *)
+  ; view_rank_ok_rview : forall k Mk qr Is fl c gs gs1 t gs2, ind_member D k = Some Mk ->
+      im_head Mk = mh_record qr Is fl -> List.In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
+      rk (ptyp_mem t) < rk k }.
+
+(** A record view's head [mh_record qr Is fl] names the record [R] filed
+    at [qr], at as many arguments as it has parameters, its fields as
+    [R]'s. *)
+Record rview_record_facts (Θ : gdeps) (Ξ : gstack) (R : record_decl) (qr : qname) (Is : list exp) (fl : list String.string) : Prop :=
+  mk_rview_record_facts
+  { (** [R] is the record filed at [qr] *)
+    rview_record_lookup : record_lookup Θ Ξ qr = Some R
+    (** The fields are named as [R]'s, in order *)
+  ; rview_record_names : fl = List.map fst (record_fields R)
+    (** There are as many arguments as [R] has parameters *)
+  ; rview_record_count : List.length Is = List.length (record_params R)
+    (** [R]'s parameters are assumptions *)
+  ; rview_record_ass : tele_ass (record_params R)
+    (** The fields have distinct names, so a leaf path's projection names
+        one field ([leaf_in]) *)
+  ; rview_record_nodup : List.NoDup fl }.
+
+(** The facts about the record views of a group [D] that involve no
+    judgment: each is a record's at its instance ([rview_record_facts]),
+    with no non-uniform parameters, its one constructor [rview_con] taking
+    its fields in order; the record views come last ([rview_suffix_ok])
+    and their fields end only in record views before them
+    ([rview_order_ok]). *)
+Record rview_struct_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_rview_struct_ok
+  { (** A record view is a filed record at as many arguments as it has
+        parameters, its fields named as its head names them *)
+    rview_struct_record : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      exists R, rview_record_facts Θ Ξ R qr Is fl
+    (** It has no non-uniform parameters *)
+  ; rview_struct_nparams : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      im_nparams Mk = nil
+    (** Its one constructor is [rview_con], of one argument per field *)
+  ; rview_struct_con : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      exists gs, im_cons Mk = (rview_con, gs) :: nil /\ List.length gs = List.length fl
+    (** The record views come last *)
+  ; rview_struct_suffix : rview_suffix_ok D
+    (** Their fields end only in record views before them *)
+  ; rview_struct_order : rview_order_ok D }.
 
 (** [vmv] is the map of the view of [D] that a view with map [vm] takes
     the container's member [M] to: [vm] itself at a declared [M]; at a
     view [M] with map [vm''], [vm''] followed by [vm], each of its members
-    one [vm] maps. *)
+    one [vm] maps.  A record view is taken to a record view, never to a
+    view. *)
 Definition view_map_at (vm : list nat) (M : imember) (vmv : list nat) : Prop :=
   match im_head M with
   | mh_decl _ => vmv = vm
   | mh_view _ _ _ vm'' => List.map (List.nth_error vm) vm'' = List.map Some vmv
+  | mh_record _ _ _ => False
   end.
 
 (** The views of a group agree on their maps: of a view [k] with map [vm]
@@ -283,13 +332,20 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     of [j].  The parameters are typed one by one, at the instances of their
     telescope.  The eliminator carries the uniform parameters [Us], those
     of the scrutinee's type: the scrutinee and each annotated block are at
-    the members' types at them. *)
+    the members' types at them.  The record views have no block (there are
+    [ind_nblk D] blocks, for the members before them), and a recursive
+    argument at a record view has the results of its fields' leaf paths.
+    The premises on the motives' and the branches' contexts range over
+    every member, the record views too; this is harmless: a record view's
+    motive context is its record type at [Us] and its branch context its
+    fields with their leaf paths' results, both well formed by the
+    declaration, and no block reads them. *)
 | wf_elim :
   `( ind_lookup Θ Ξ p = Some D ->
      elim_grp D oq p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
-     List.length Bks = List.length (ind_members D) ->
+     List.length Bks = ind_nblk D ->
      List.length Ps = im_np D Mm ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
@@ -301,19 +357,18 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
-     (forall k Mk, ind_member D k = Some Mk ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
                      ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+        n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A [Π] is in a universe its domain and codomain are in, small or large.
     The codomain's universe is the weakening of the domain's: a universe that
@@ -528,8 +583,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      elim_grp D oq' p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
-     List.length Bks = List.length (ind_members D) ->
-     List.length Bks' = List.length (ind_members D) ->
+     List.length Bks = ind_nblk D ->
+     List.length Bks' = ind_nblk D ->
      List.length Ps = im_np D Mm ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
@@ -551,8 +606,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
      (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : Typeω@i) ->
-     (forall k Mk, ind_member D k = Some Mk ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k b b', List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
         List.map fst (eb_brs b) = List.map fst (eb_brs b')) ->
@@ -561,13 +615,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
                      ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+        n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b b' i c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         List.nth_error Bks' k = Some b' ->
         nth_error (eb_brs b) i = Some (c, n, B) -> nth_error (eb_brs b') i = Some (c, n, B') ->
         ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M ≈ a_elim oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
@@ -637,7 +691,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
      ind_con Mm c = Some gs ->
-     List.length Bks = List.length (ind_members D) ->
+     List.length Bks = ind_nblk D ->
      List.length Ps = im_np D Mm ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
@@ -651,24 +705,23 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
-     (forall k Mk, ind_member D k = Some Mk ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
                      ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+        n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
-                          elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As)]
+                          elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                           apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                             (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] )
@@ -686,7 +739,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      ind_lookup Θ Ξ qc = Some D' ->
      vwrap_ok D D' vm ->
      List.nth_error Bks m = Some bm ->
-     List.length Bks = List.length (ind_members D) ->
+     List.length Bks = ind_nblk D ->
      List.length Ps = im_np D Mm ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
@@ -698,19 +751,18 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
-     (forall k Mk, ind_member D k = Some Mk ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
                      ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+        n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M
        ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
            (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
@@ -726,6 +778,19 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A )
+(** The constructor of a record view at the group's uniform parameters
+    [Us] and the fields [Ms] is the tuple of the fields, by name, at the
+    record type at the view's instance there, both sides at the same
+    type. *)
+| wf_exp_eq_con_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     List.length Us = ind_nu D ->
+     List.length Ms = List.length fl ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -1339,6 +1404,50 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' ->
         Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
+     (** the record views: the facts without a judgment
+         ([rview_struct_ok]); each instance is [IsS] with the members as
+         variables, and, there, each instance typed at the record's
+         parameters, the record's fields at it equal to the view's
+         classified ones (the record view equations), and the record's
+         sort at it in the group's *)
+     rview_struct_ok Θ Ξ D ->
+     (forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        Is = List.map (fun I => I[grp_sb mp D]) (IsS k)) ->
+     (forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        record_lookup Θ Ξ qr = Some R -> nth_error (IsS k) j = Some I ->
+        nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) ->
+     (forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        record_lookup Θ Ξ qr = Some R -> im_cons Mk = (c, gs) :: nil ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
+                              ≈ scargs_ctx D IsS Mk gs) ->
+     (forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        record_lookup Θ Ξ qr = Some R ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
+     (** the record view's type is in the group's sort.  This follows in
+         principle from the instance's typing and the sort premise by the
+         record's formation rule, but that rule holds at the record's own
+         position in the global context, and moving it into [grp_sctx D]
+         needs a weakening of the global context the presupposition does
+         not have; so it is a premise *)
+     (forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ) ->
+     (** a view's map takes its container's record views to record views
+         of the same record, at instances equal to the container's at the
+         view's instance *)
+     (forall k Mk qc k' Is vm D' i' Mi' v q'' Is'' fl'', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+        ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_record q'' Is'' fl'' ->
+        nth_error vm i' = Some v ->
+        exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\ List.length X = List.length Is'') ->
+     (forall k Mk qc k' Is vm D' i' Mi' v q'' Is'' fl'' R'' Mv X fl j' C C' T,
+        ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+        ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_record q'' Is'' fl'' ->
+        record_lookup Θ Ξ q'' = Some R'' ->
+        nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_record q'' X fl ->
+        nth_error (IsS v) j' = Some C ->
+        nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+        nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
      (** the views' nesting is well founded *)
      (exists rk, view_rank_ok Θ Ξ D rk) ->
      (** each view's members are those of the container's group, as the

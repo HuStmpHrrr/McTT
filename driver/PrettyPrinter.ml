@@ -621,7 +621,7 @@ let unview (e : exp) : exp option =
                  let rest = List.filteri (fun i _ -> i >= nu) args in
                  let h' = match h with Coq_a_con (_, _, c) -> Coq_a_con (qc, k, c) | _ -> Coq_a_ind (qc, k) in
                  Some (McttExtracted.Syntax.apps_exp h' (McttExtracted.Group.im_pre mj us @ rest))
-              | Coq_mh_decl _ -> None)
+              | Coq_mh_decl _ | Coq_mh_record _ -> None)
           | None -> None)
       | None -> None)
   | _ -> None
@@ -655,10 +655,11 @@ let record_value_of (h : modexp) : exp option =
 let elim_groups (bks : exp eblock_g list) : (exp, centry) ind_decl_g list =
   List.filter
     (fun d ->
-      List.length d.ind_members = List.length bks
+      let ms = McttExtracted.Inductives.ind_bmembers d in
+      List.length ms = List.length bks
       && List.for_all2
            (fun mk (Coq_eb_mk (_, _, _, bs)) -> List.map fst mk.im_cons = List.map (fun ((c, _), _) -> c) bs)
-           d.ind_members bks)
+           ms bks)
     !ind_decls
 
 (* The members the block [j] of an eliminator can be for: the member [j]
@@ -666,19 +667,24 @@ let elim_groups (bks : exp eblock_g list) : (exp, centry) ind_decl_g list =
 (* With the group known, the member [j] if the block's branches are for its
    constructors, otherwise every member they are for (a block out of
    place), and the member [j] if none is. *)
-let block_members (oq : qname option) (bks : exp eblock_g list) (j : int) : (exp, centry) imember_g list =
+let block_members (oq : qname option) (bks : exp eblock_g list) (j : int)
+    : ((exp, centry) ind_decl_g * (exp, centry) imember_g) list =
   match oq with
   | Some p ->
      let names = match List.nth_opt bks j with
        | Some (Coq_eb_mk (_, _, _, bs)) -> List.map (fun ((c, _), _) -> c) bs
        | None -> [] in
      let fits (mk : (exp, centry) imember_g) = List.map fst mk.im_cons = names in
-     (match group_member p j with
-      | Some mk when fits mk -> [ mk ]
-      | o ->
-         let deps, xi = !current_state in
-         let all = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
-         (match List.filter fits all with [] -> Option.to_list o | l -> l))
+     let deps, xi = !current_state in
+     (match McttExtracted.Members.ind_lookup deps xi p with
+      | None -> []
+      | Some d ->
+         (match McttExtracted.Syntax.ind_member d j with
+          | Some mk when fits mk -> [ (d, mk) ]
+          | o ->
+             (match List.filter fits d.ind_members with
+              | [] -> List.map (fun mk -> (d, mk)) (Option.to_list o)
+              | l -> List.map (fun mk -> (d, mk)) l)))
   | None ->
      (match elim_groups bks with
       | [] ->
@@ -687,23 +693,30 @@ let block_members (oq : qname option) (bks : exp eblock_g list) (j : int) : (exp
          let names = match List.nth_opt bks j with
            | Some (Coq_eb_mk (_, _, _, bs)) -> List.map (fun ((c, _), _) -> c) bs
            | None -> [] in
-         List.filter (fun (mk : (exp, centry) imember_g) -> List.map fst mk.im_cons = names)
-           (List.concat_map (fun d -> d.ind_members) !ind_decls)
-      | gs -> List.filter_map (fun d -> McttExtracted.Syntax.ind_member d j) gs)
+         List.concat_map
+           (fun d ->
+             List.map (fun mk -> (d, mk))
+               (List.filter (fun (mk : (exp, centry) imember_g) -> List.map fst mk.im_cons = names) d.ind_members))
+           !ind_decls
+      | gs -> List.filter_map (fun d -> Option.map (fun mk -> (d, mk)) (McttExtracted.Syntax.ind_member d j)) gs)
 
-let ihs_count (mk : (exp, centry) imember_g option) (c : string) (n : int) : int =
-  match mk with
+(* The number of induction hypotheses a branch of [n] binders for the
+   constructor [c] of the member [mk] of the group [d] binds, one per leaf
+   path of its recursive arguments, where it binds as many names as it
+   should. *)
+let ihs_count (dmk : ((exp, centry) ind_decl_g * (exp, centry) imember_g) option) (c : string) (n : int) : int =
+  match dmk with
   | None -> 0
-  | Some mk ->
+  | Some (d, mk) ->
      (match McttExtracted.Inductives.ind_con mk c with
       | None -> 0
       | Some gs ->
-         let k = McttExtracted.Inductives.cargs_nrec gs in
+         let k = McttExtracted.Inductives.cargs_nrec d gs in
          if n <> McttExtracted.Syntax.im_nn mk + List.length gs + k then 0 else k)
 
 (* The number of induction hypotheses a branch of [n] binders for [c] binds,
    where every member its block can be for agrees on it. *)
-let ihs_agreed (mks : (exp, centry) imember_g list) (c : string) (n : int) : int =
+let ihs_agreed (mks : ((exp, centry) ind_decl_g * (exp, centry) imember_g) list) (c : string) (n : int) : int =
   match List.map (fun mk -> ihs_count (Some mk) c n) mks with
   | k :: ks when List.for_all (( = ) k) ks -> k
   | _ -> 0
@@ -1041,6 +1054,39 @@ let given_names (ox : string option) (delta : centry list) : string option list 
 
 let format_exp_named ox delta f exp = format_obj f (exp_to_obj ~delta ~names:(given_names ox delta) exp)
 
+(* The group of inductive types the type [x] is declared in, among the
+   commands [cs], as declared: its uniform parameters and its members. *)
+let rec find_ind_decl (cs : Cst.cmd list) (x : string) =
+  List.find_map
+    (function
+     | Cst.Coq_c_ind (_, _, ps, ms) when List.exists (fun ((y, _), _) -> y = x) ms -> Some (ps, ms)
+     | Cst.Coq_c_mod (_, _, [], Cst.Coq_md_where cs') -> find_ind_decl cs' x
+     | _ -> None)
+    cs
+
+(* The names the source gives the context of the argument [y] of the
+   constructor [c] of the type [x] of the innermost frame, innermost
+   first: the arguments before [y], [x]'s own parameters, the group's
+   uniform parameters, then its types (the context [rm_pctx] of the
+   classification); none past them. *)
+let ind_arg_names (x : string) (c : string) (y : string) : string option list =
+  let _, xi = !current_state in
+  let cmds = match xi, !current_prog with
+    | (((q : qname), _), _) :: _, Some (_, ((path, _), cs)) when q.q_unit = path -> declared_cmds cs q.q_chain
+    | _ -> None in
+  let rec pi_names t = match t with Cst.Coq_pi (z, _, t') -> z :: pi_names t' | _ -> [] in
+  let rec before = function [] -> [] | (z, _) :: rest -> if z = y then [] else z :: before rest in
+  let named l = List.map (fun z -> Some z) l in
+  match Option.bind cmds (fun cs -> find_ind_decl cs x) with
+  | None -> []
+  | Some (ps, ms) ->
+     (match List.find_opt (fun ((z, _), _) -> z = x) ms with
+      | None -> []
+      | Some ((_, t), cons) ->
+         let args = match List.assoc_opt c cons with Some a -> a | None -> [] in
+         named (List.rev (before args)) @ named (List.rev (pi_names t)) @ named (List.rev (List.map fst ps))
+         @ named (List.rev (List.map (fun ((z, _), _) -> z) ms)))
+
 (************************************************************)
 (* Formatting nf *)
 (************************************************************)
@@ -1107,6 +1153,7 @@ let member_names (p : qname) (k : int) (mk : (exp, centry) imember_g) : string l
     match mk.im_head with
     | Coq_mh_decl _ -> decl_names (member_path p k)
     | Coq_mh_view (qc, kc, _, _) -> decl_names (member_path qc kc)
+    | Coq_mh_record _ -> None
   in
   let nn = McttExtracted.Syntax.im_nn mk in
   let ps = match names with
@@ -1123,13 +1170,36 @@ let member_names (p : qname) (k : int) (mk : (exp, centry) imember_g) : string l
   in
   (ps, cons)
 
-(* The induction hypotheses of a branch: one per recursive argument, [h]
-   alone for one, else [h] then the argument's name. *)
-let ih_names (gs : exp carg_g list) (ys : string list) : string list =
-  let recs = List.filteri (fun i _ -> match List.nth_opt gs i with Some (Coq_ca_rec _) -> true | _ -> false) ys in
-  match recs with
+(* The induction hypotheses of a branch of the group [d]: one per leaf path
+   of each recursive argument, [h] alone for one in all, else [h] then the
+   argument's name, then the fields the path projects, each after [_]. *)
+let ih_names (d : (exp, centry) ind_decl_g option) (gs : exp carg_g list) (ys : string list) : string list =
+  let rec fields (l : McttExtracted.Inductives.leaf_path) : string list =
+    match l with
+    | Coq_leaf_self _ -> []
+    | Coq_leaf_pi (_, l) -> fields l
+    | Coq_leaf_proj (f, _, l) -> f :: fields l
+  in
+  let leaves (t : exp ptyp_g) : McttExtracted.Inductives.leaf_path list =
+    match d with
+    | Some d -> McttExtracted.Inductives.shape_leaves (McttExtracted.Inductives.rv_leaves d) 0 t
+    | None -> [ Coq_leaf_self (0, []) ]
+  in
+  let names =
+    List.concat
+      (List.mapi
+         (fun i y ->
+           match List.nth_opt gs i with
+           | Some (Coq_ca_rec t) ->
+              List.map
+                (fun l -> match fields l with [] -> "h" ^ y | fs -> "h" ^ y ^ "_" ^ String.concat "_" fs)
+                (leaves t)
+           | _ -> [])
+         ys)
+  in
+  match names with
   | [ _ ] -> [ "h" ]
-  | _ -> List.map (fun y -> "h" ^ y) recs
+  | _ -> names
 
 (* The name of a member in a message: a declared one's, a view's type. *)
 let member_label (delta : centry list) (p : qname) (us : exp list) (k : int) (mk : (exp, centry) imember_g) : string =
@@ -1137,6 +1207,9 @@ let member_label (delta : centry list) (p : qname) (us : exp list) (k : int) (mk
   | Coq_mh_decl _ -> (match List.rev (member_path p k).q_chain with x :: _ -> x | [] -> "?")
   | Coq_mh_view _ ->
      Format.asprintf "%a" (format_exp_in delta) (McttExtracted.Syntax.apps_exp (Coq_a_ind (p, k)) us)
+  | Coq_mh_record (qr, _, _) ->
+     Format.asprintf "%a" (format_exp_in delta)
+       (McttExtracted.Syntax.apps_exp (Coq_a_record qr) (McttExtracted.Group.im_pre mk us))
 
 (* The eliminator [elim scr] of the group at [p] at the uniform parameters
    [us], as it should be written, one line per block head and per branch:
@@ -1146,7 +1219,10 @@ let member_label (delta : centry list) (p : qname) (us : exp list) (k : int) (mk
 let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j, scr) : unit =
   let open Format in
   let deps, xi = !current_state in
-  let ms = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
+  let od = McttExtracted.Members.ind_lookup deps xi p in
+  let ms = match od with
+    | Some d -> McttExtracted.Inductives.ind_bmembers d
+    | None -> [] in
   let j = if j < List.length ms then j else 0 in
   let str obj = asprintf "%a" format_obj obj in
   pp_open_vbox f 0;
@@ -1162,7 +1238,7 @@ let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j,
       List.iter
         (fun (c, ys) ->
           let gs = match McttExtracted.Inductives.ind_con mk c with Some gs -> gs | None -> [] in
-          let hs = ih_names gs ys in
+          let hs = ih_names od gs ys in
           pp_print_cut f ();
           fprintf f "%a" pp_u
             (Printf.sprintf "| %s%s%s %s \u{2026}" c
@@ -1279,6 +1355,12 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_run_error_nested (x, c, y, h) ->
      fprintf f "@[<hov 2>Error: %s occurs in a non-uniform argument of@ %a@ in the argument %s of %s;@ a group may nest only at the uniform parameters of a declared type of a filed group@]"
        x format_exp h y c
+  (* A record's instance that passes a type of the group to a head that may
+     compute with it, named in the declaration's context. *)
+  | Coq_run_error_self_arg (s, x, c, y, k, delta, h) ->
+     let names = List.init k (fun _ -> None) @ ind_arg_names x c y in
+     fprintf f "@[<hov 2>Error: %s appears as an argument of %a in the type of %s@]"
+       s (fun f e -> format_obj f (exp_to_obj ~delta ~names e)) h y
   | Coq_run_error_mdef_count (n, m) ->
      fprintf f "@[<hov 2>Error: a mutual definition has one function per member of its group:@ the group has %d %s,@ the definition %d %s@]"
        n (if n = 1 then "member" else "members") m (if m = 1 then "function" else "functions")
@@ -1308,7 +1390,9 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      missing, extra or out of order, then the eliminator as it should be. *)
   | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
      let deps, xi = !current_state in
-     let ms = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
+     let ms = match McttExtracted.Members.ind_lookup deps xi p with
+       | Some d -> McttExtracted.Inductives.ind_bmembers d
+       | None -> [] in
      let labels = List.mapi (fun k mk -> member_label delta p us k mk) ms in
      let label k = Option.value (List.nth_opt labels k) ~default:"?" in
      let block i =
@@ -1330,9 +1414,11 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<v 2>@[<hov 2>Error: an eliminator has one block per member of its group,@ in member order:@ %a;@ %a.@]@,The eliminator should read:@,%a@]"
        pp_u (String.concat ", " labels) pp_u (String.concat "; " why) (format_elim_skeleton delta) (p, us, j, scr)
   | Coq_run_error_elim_blocks _ -> fprintf f "@[<hov 2>Error: the blocks of an eliminator are not those of its group@]"
-  | Coq_run_error_view (x, ((qc, k), cs), why) ->
+  | Coq_run_error_view (x, key, why) ->
      let open McttExtracted.IndDecl in
-     let inst = McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) cs in
+     let inst = match key with
+       | McttExtracted.Group.Coq_vk_ind (qc, k, cs) -> McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) cs
+       | McttExtracted.Group.Coq_vk_record (qr, is) -> McttExtracted.Syntax.apps_exp (Coq_a_record qr) is in
      (match why with
       | Coq_view_why_container ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ which is no declared type of a filed group@]" x format_exp inst

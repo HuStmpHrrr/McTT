@@ -126,7 +126,7 @@ Proof.
   exact (grec_fresh_names_nodup _ nil (NoDup_nil _)).
 Qed.
 
-Lemma length_grec_names : forall Θ Ξ D, List.length (grec_names Θ Ξ D) = List.length (ind_members D).
+Lemma length_grec_names : forall Θ Ξ D, List.length (grec_names Θ Ξ D) = List.length (ind_bmembers D).
 Proof. intros; unfold grec_names; rewrite List.length_map, length_grec_fresh_names, List.length_map; reflexivity. Qed.
 
 (** ** The Recursor Module's Parameters Are Assumptions *)
@@ -330,7 +330,7 @@ Section IndRuns.
   Qed.
 
   Lemma grec_tele_app : forall pq D Δu Γ,
-      grec_tele pq D Δu ++ Γ = List.rev (grec_case_tys pq D 0 0 (ind_members D)) ++ List.rev (grec_motive_tys pq D) ++ ce_ass (a_level 0) :: (Δu ++ Γ).
+      grec_tele pq D Δu ++ Γ = List.rev (grec_case_tys pq D 0 0 (ind_bmembers D)) ++ List.rev (grec_motive_tys pq D) ++ ce_ass (a_level 0) :: (Δu ++ Γ).
   Proof. intros; unfold grec_tele; rewrite <- !List.app_assoc; reflexivity. Qed.
 
   (** The recursor module of a group found at [pq], at a stack over its
@@ -344,7 +344,7 @@ Section IndRuns.
     intros * Hg Hl Hu Hfr.
     destruct (group_facts _ _ _ _ Hg Hl) as (Hds & HD & Hc & HU & Ha).
     assert (HaΔ : tele_ass Δu) by (rewrite Hu in Ha; apply List.Forall_app in Ha; tauto).
-    assert (HT : grec_tele pq D Δu ++ gs_tele Ξ = List.rev (grec_case_tys pq D 0 0 (ind_members D)) ++ List.rev (grec_motive_tys pq D) ++ ce_ass (a_level 0) :: ind_uparams D)
+    assert (HT : grec_tele pq D Δu ++ gs_tele Ξ = List.rev (grec_case_tys pq D 0 0 (ind_bmembers D)) ++ List.rev (grec_motive_tys pq D) ++ ce_ass (a_level 0) :: ind_uparams D)
       by (rewrite grec_tele_app, Hu; reflexivity).
     destruct Ξ as [| [[mq Kq] Uq] Ξs]; [ contradiction |].
     set (Ξ := (mq, Kq, Uq) :: Ξs) in *.
@@ -353,16 +353,16 @@ Section IndRuns.
     { apply wf_gstack_cons; [ exact Hg | constructor; [ apply grec_tele_ass; exact HaΔ | rewrite HT; exact (CT_wf _ _ _ _ Hg Hds HD Hc Hl HU) ] |].
       cbn; exists "Rec"%string; split; [ reflexivity | exact Hfr ]. }
     set (ds := List.map (fun jx => let '(j, Mj, x) := jx in (x, (grec_fn_ty pq D j Mj, grec_fn pq D j Mj)))
-                 (List.combine (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) (grec_names Θ0 Ξ0 D))).
+                 (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names Θ0 Ξ0 D))).
     assert (Hcmds : List.map (fun jx => let '(j, Mj, x) := jx in cc_gen (cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
-                      (List.combine (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) (grec_names Θ0 Ξ0 D))
+                      (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names Θ0 Ξ0 D))
                     = List.map (fun d => cc_gen (cc_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) ds).
     { unfold ds; rewrite List.map_map; apply List.map_ext; intros [[j Mj] x]; reflexivity. }
     assert (Hnames : List.map fst ds = grec_names Θ0 Ξ0 D).
     { unfold ds; rewrite List.map_map.
-      transitivity (List.map snd (List.combine (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) (grec_names Θ0 Ξ0 D))).
+      transitivity (List.map snd (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names Θ0 Ξ0 D))).
       - apply List.map_ext; intros [[j Mj] x]; reflexivity.
-      - apply map_snd_combine_le; rewrite List.length_combine, List.length_seq, length_grec_names; lia. }
+      - apply map_snd_combine_le; rewrite List.length_combine, List.length_seq, length_grec_names, length_ind_bmembers; lia. }
     destruct (gen_defs_run ch B Rb Θ mr fk_module (grec_tele pq D Δu) Ξ true false ds ⋄ Hpush) as (Φ' & Hr & _).
     - rewrite Hnames; apply grec_names_nodup.
     - apply Forall_forall; intros; intros [].
@@ -372,7 +372,7 @@ Section IndRuns.
         eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact (proj2 (proj2 (wf_gstack_cons_inv _ _ _ _ _ Hpush))) | exact Hl ]. }
       destruct (group_facts _ _ _ _ Hg' Hl') as (Hds' & HD' & _ & HU' & _).
       apply Forall_forall; intros d Hin; unfold ds in Hin; apply List.in_map_iff in Hin as ([[j Mj] x] & <- & Hin); cbn [fst snd].
-      apply List.in_combine_l in Hin; apply In_combine_seq in Hin.
+      apply List.in_combine_l in Hin; rewrite <- length_ind_bmembers in Hin; apply In_combine_seq in Hin.
       rewrite HT.
       exact (grec_fn_typed _ _ _ _ Hg' Hds' HD' Hc Hl' HU' j Mj Hin).
     - exists (gu_body (grec_tele pq D Δu) Φ'); unfold grec_mod_cmd; rewrite Hcmds.
@@ -432,11 +432,14 @@ Section IndRuns.
                      Θ ⍮ (mp, K, gu_body Δu Φ2) :: Ξ ⍮ B ⍮ Rb /\ ⊢ᵍ Θ ⍮ (mp, K, gu_body Δu Φ2) :: Ξ /\
                      ((Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool = true -> gm_fresh "Rec" Φ2)).
     { unfold ind_rec_cmds; destruct (ind_has_rec D) eqn:Hhr; [| exists Φ1; split; [ constructor | split; [ exact Hg1 | exact HRec1 ] ] ].
-      assert (Hone : ind_members D = M :: nil /\ k = 0).
-      { unfold ind_has_rec in Hhr; apply Nat.eqb_eq in Hhr; unfold ind_member in HM.
-        destruct (ind_members D) as [| M0 [| M1 Ms]]; cbn in Hhr; try discriminate.
-        destruct k as [| [| k']]; cbn in HM; try discriminate; injection HM as <-; split; reflexivity. }
-      destruct Hone as [Hone Hk0].
+      assert (Hone : ind_nblk D = 1) by (unfold ind_has_rec in Hhr; apply Nat.eqb_eq in Hhr; exact Hhr).
+      (* the declared member is the one with a block, the first *)
+      assert (Hk0 : k = 0).
+      { pose proof (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ HD) _ _ HM) as Hs.
+        assert (Hr : im_is_rview M = false) by (unfold im_is_rview; rewrite Hh; reflexivity).
+        destruct (Nat.ltb_spec k 1) as [| Hle]; [ lia |].
+        rewrite <- Hone in Hle; apply Hs in Hle; congruence. }
+      assert (HM0 : ind_member D 0 = Some M) by (rewrite <- Hk0; exact HM).
       destruct (gen_defs_run ch B Rb Θ mp K Δu Ξ true false (("rec"%string, (rec_ty pq D M, rec_fn pq D M)) :: nil) Φ1 Hg1)
         as (Φ2 & Hr2 & Hg2 & _ & Hf2).
       - constructor; [ intros [] | constructor ].
@@ -444,7 +447,7 @@ Section IndRuns.
         rewrite Hn1; subst k; exact (Hrnc eq_refl M HM).
       - intros Φ' Hg' _; destruct (Hfacts Φ' Hg') as (Hl' & Hds' & HD' & _ & HU').
         constructor; [| constructor ]; cbn [fst snd]; cbn [gs_tele gu_params]; unfold Δu; rewrite <- Hu.
-        exact (rec_typed _ _ _ _ _ _ Hg' Hds' HD' Hc Hl' Hone Hh HU').
+        exact (rec_typed _ _ _ _ _ _ Hg' Hds' HD' Hc Hl' Hone HM0 Hh HU').
       - exists Φ2; split; [ exact Hr2 | split; [ exact Hg2 |] ].
         intros Hb; apply Hf2; [ exact (HRec1 Hb) | cbn; intros [H | []]; discriminate H ]. }
     destruct Hrec as (Φ2 & Hr2 & Hg2 & HRec2).
@@ -514,7 +517,7 @@ Section IndRuns.
       Forall2 (view_sibs Θ Ξ R) Vs Ss ->
       Forall2 (view_cls Θ Ξ R) Vs csV ->
       Forall2 (view_nps Θ Ξ R) Vs Nvs ->
-      views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
+      views_dfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
       rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
       ind_nil_at Θ Ξ (ind_qname Ξ (raw_member_name Mr0)) D (grp_self_insts (ind_qname Ξ (raw_member_name Mr0)) D) ->
       gen_names_free Ξ R D ->

@@ -1,0 +1,88 @@
+(* Binary trees whose subtrees come in a pair: a tree is a [leaf a] with a
+   label [a : A], or a [node p] whose argument [p : Prod u T T] is a pair of
+   trees, the records of [Prelude›Data›Prod].  The tree type is nested
+   through the record: [p]'s fields [fst] and [snd] are trees, so the
+   eliminator gives a recursive result for each, [p.fst] first, and a
+   branch reads them as [| node p, h1 h2 ⇒ …].  The record's instance is a
+   member of the group with no block of its own.
+
+   The operations over a fixed [A] are in the module [Ops u A]: the number
+   of leaves [size], the depth [depth], [map], the labels left to right
+   [flatten], [mirror], which exchanges the subtrees at every node, and the
+   fold [fold]. *)
+module Prelude›Data›Tree›Paired where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›MinMax use (max)
+import Prelude›Data›Prod use (Prod; pair)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as LO
+
+(* The subtrees of a node, as a pair, at the same parameters. *)
+inductive Paired (u : Level) (A : Type@{u}) : Type@{u} where
+| leaf (a : A)
+| node (p : Prod u (Paired u A) (Paired u A))
+end
+
+module Ops (u : Level) (A : Type@{u}) where
+
+private inductive T ≔ Paired u A
+
+(* A node of two subtrees. *)
+def branch (l : T) (r : T) : T ≔ T.node (pair u T T l r) end
+
+(* The number of leaves; [h1] and [h2] are the sizes of [p.fst] and
+   [p.snd]. *)
+def size (t : T) : ℕ ≔
+  elim t at (z : T) -> ℕ
+  | leaf a ⇒ 1
+  | node p, h1 h2 ⇒ plus h1 h2
+  end
+end
+
+(* The number of nodes on a longest path from the root, a leaf counting
+   one. *)
+def depth (t : T) : ℕ ≔
+  elim t at (z : T) -> ℕ
+  | leaf a ⇒ 1
+  | node p, h1 h2 ⇒ succ (max h1 h2)
+  end
+end
+
+(* The labels changed by [f], the shape kept. *)
+def map (B : Type@{u}) (f : ∀ (a : A) → B) (t : T) : Paired u B ≔
+  elim t at (z : T) -> Paired u B
+  | leaf a ⇒ Paired.leaf u B (f a)
+  | node p, h1 h2 ⇒ Paired.node u B (pair u (Paired u B) (Paired u B) h1 h2)
+  end
+end
+
+(* The labels left to right. *)
+def flatten (t : T) : List u A ≔
+  elim t at (z : T) -> List u A
+  | leaf a ⇒ List.cons u A a (List.nil u A)
+  | node p, h1 h2 ⇒ LO.append u A h1 h2
+  end
+end
+
+(* The subtrees exchanged at every node. *)
+def mirror (t : T) : T ≔
+  elim t at (z : T) -> T
+  | leaf a ⇒ T.leaf a
+  | node p, h1 h2 ⇒ branch h2 h1
+  end
+end
+
+(* The fold into [R]: [l] at a leaf, [n] combining the results of the two
+   subtrees at a node. *)
+def fold (R : Type@{u}) (l : ∀ (a : A) → R) (n : ∀ (x : R) (y : R) → R) (t : T) : R ≔
+  elim t at (z : T) -> R
+  | leaf a ⇒ l a
+  | node p, h1 h2 ⇒ n h1 h2
+  end
+end
+
+end
+
+end

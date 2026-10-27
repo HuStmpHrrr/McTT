@@ -75,8 +75,8 @@ Section NbE.
   Context {F : FCtx Θ Ξ}.
 
   Theorem eval_exp_impl_refines_f : forall M p p' H H',
-      env_agree (fun x => ~ exp_fresh x M) p p' ->
-      dsim (proj1_sig (Reference.Evaluation.eval_exp_impl Θ Ξ M p H))
+      env_agree Θ Ξ (fun x => ~ exp_fresh x M) p p' ->
+      dsim Θ Ξ (proj1_sig (Reference.Evaluation.eval_exp_impl Θ Ξ M p H))
            (proj1_sig (Extraction.Evaluation.feval_exp_impl Θ Ξ M p' H')).
   Proof.
     intros * Hp.
@@ -87,7 +87,7 @@ Section NbE.
   Qed.
 
   Theorem read_typ_impl_refines_f : forall s a a' H H',
-      dsim a a' ->
+      dsim Θ Ξ a a' ->
       proj1_sig (Reference.Readback.read_typ_impl Θ Ξ s a H) =
       proj1_sig (Extraction.Readback.fread_typ_impl Θ Ξ s a' H').
   Proof.
@@ -98,7 +98,7 @@ Section NbE.
   Qed.
 
   Theorem read_nf_impl_refines_f : forall s d d' H H',
-      dsim_nf d d' ->
+      dsim_nf Θ Ξ d d' ->
       proj1_sig (Reference.Readback.read_nf_impl Θ Ξ s d H) =
       proj1_sig (Extraction.Readback.fread_nf_impl Θ Ξ s d' H').
   Proof.
@@ -109,7 +109,7 @@ Section NbE.
   Qed.
 
   Theorem initial_env_impl_refines_f : forall G H H',
-      env_agree (fun _ => True) (proj1_sig (Reference.NbE.initial_env_impl Θ Ξ G H))
+      env_agree Θ Ξ (fun _ => True) (proj1_sig (Reference.NbE.initial_env_impl Θ Ξ G H))
                 (proj1_sig (Extraction.NbE.initial_env_impl Θ Ξ G H')).
   Proof.
     intros.

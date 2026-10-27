@@ -196,7 +196,7 @@ Section Fill.
   (** The branch of the constructor [c], then the rest *)
   | fill_brs_cons : forall Γ p D Mj Us As c gs n B B' Bs Bs',
       ind_con Mj c = Some gs ->
-      n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat ->
+      n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat ->
       fill_exp (elim_bctx p D Mj gs As Us ++ Γ) B B' ->
       fill_brs Γ p D Mj Us As Bs Bs' ->
       fill_brs Γ p D Mj Us As ((c, n, B) :: Bs) ((c, n, B') :: Bs')
@@ -468,7 +468,7 @@ Section Fill.
       Forall2 (fill_raw_fun_head (Δ' ++ gs_tele Ξ)) (f0 :: fs) (fh0 :: fsh) ->
       mdef_group Θ Ξ Δ' fh0 fsh pq m0 Ps D Us ms ->
       Forall2 (fun fm f' => fill_raw_fun_body pq D Us (Δ' ++ gs_tele Ξ)
-                              (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) (f0' :: fs') ms))
+                              (blocks_motives (mdef_blocks 0 (ind_nblk D) (f0' :: fs') ms))
                               (fst fm) (snd fm) f')
         (List.combine (fh0 :: fsh) ms) (f0' :: fs') ->
       fill_cmd (cc_mdef b pv Δ (f0 :: fs)) (cc_mdef b pv Δ' (f0' :: fs'))

@@ -69,6 +69,11 @@ Lemma wf_exp_is_univ_large : forall {Θ Ξ Γ U A},
     Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> Θ ⍮ Ξ ⍮ Γ ⊢ A : U -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof. intros * HU HA; inversion HU; subst; [ eexists; exact HA | exists 0; eapply wf_exp_suniv_large; eassumption ]. Qed.
 
+(** Equal types of a universe are equal types of a large universe. *)
+Lemma wf_exp_eq_is_univ_large : forall {Θ Ξ Γ U A A'},
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : U -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
+Proof. intros * HU HA; inversion HU; subst; [ eexists; exact HA | exists 0; eapply wf_exp_eq_suniv_large; eassumption ]. Qed.
+
 (** The small [Π] and its congruence at a literal level, whose weakening is
     itself. *)
 Lemma wf_pi_small_lit : forall {Θ Ξ Γ A B n},
@@ -489,10 +494,16 @@ Lemma ctx_app_wf_tail : forall Θ Ξ Ψ Γ, ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ -> ⊢ Θ
 Proof. induction Ψ; intros; cbn in *; eauto using ctx_decomp_tail. Qed.
 
 (** The motive's and the branches' contexts are of assumptions. *)
-Lemma ihs_ctx_aux_ass : forall nn As Us na gs pat j, tele_ass (ihs_ctx_aux nn As Us na pat j gs).
+Lemma leaves_ctx_ass : forall nn As Us na pat j ls, tele_ass (leaves_ctx nn As Us na pat j ls).
 Proof.
-  induction gs as [| [] gs IH]; intros; cbn; [ constructor | apply IH |].
+  intros nn As Us na pat j ls; revert j; induction ls as [| l ls IH]; intros; cbn; [ constructor |].
   apply List.Forall_app; split; [ apply IH | constructor; eauto ].
+Qed.
+
+Lemma ihs_ctx_aux_ass : forall tbl nn As Us na gs pat j, tele_ass (ihs_ctx_aux tbl nn As Us na pat j gs).
+Proof.
+  intros tbl nn As Us na; induction gs as [| [] gs IH]; intros; cbn; [ constructor | apply IH |].
+  apply List.Forall_app; split; [ apply IH | apply leaves_ctx_ass ].
 Qed.
 
 Lemma elim_mctx_ass : forall pq D k M Us, decl_closed D -> ind_member D k = Some M -> tele_ass (elim_mctx pq D k M Us).
@@ -741,11 +752,11 @@ Section ElimMove.
       Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (elim_bctx p D M gs (blocks_motives Bks) Us) σ
                    ≈ tele_sub (elim_bctx p D M gs (blocks_motives Bks) Us) σ ->
       R (elim_bctx p D M gs (blocks_motives (blocks_sub Bks σ)) (List.map (fun U => U[σ]) Us) ++ Δ)
-        (sb_qn (im_nn M + List.length gs + cargs_nrec gs) σ) (elim_bctx p D M gs (blocks_motives Bks) Us ++ Γ).
+        (sb_qn (im_nn M + List.length gs + cargs_nrec D gs) σ) (elim_bctx p D M gs (blocks_motives Bks) Us ++ Γ).
   Proof.
     intros * HD HM Hc Hl Hnm HR HΨ HΨσ.
     erewrite <- elim_bctx_sub; [| eassumption | eassumption | apply cons_lookup_in; eassumption | eassumption |].
-    - replace (im_nn M + List.length gs + cargs_nrec gs) with (List.length (elim_bctx p D M gs (blocks_motives Bks) Us))
+    - replace (im_nn M + List.length gs + cargs_nrec D gs) with (List.length (elim_bctx p D M gs (blocks_motives Bks) Us))
         by (rewrite length_elim_bctx; lia).
       apply mv_ext; assumption.
     - intros j Mj HMj; eapply blocks_motives_sub; eassumption.
@@ -791,8 +802,8 @@ Section ElimMove.
 
   Lemma mv_blocks_motive : forall Γ Δ σ p D Bks Us i,
       decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks -> R Δ σ Γ ->
-      (forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us) ->
-      (forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, R Δ0 σ0 Γ ->
+      (forall k Mk, ind_member D k = Some Mk ->Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us) ->
+      (forall k Mk, ind_member D k = Some Mk ->forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk Us) σ0 ≈ tele_sub (elim_mctx p D k Mk Us) σ0) ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          forall Δ0 σ0, R Δ0 σ0 (elim_mctx p D k Mk Us ++ Γ) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : Typeω@i[σ0]) ->
@@ -808,8 +819,8 @@ Section ElimMove.
 
   Lemma mv_blocks_motive_eq : forall Γ Δ σ p D Bks Bks' Us i,
       decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks -> blocks_nm_ok D Bks' -> R Δ σ Γ ->
-      (forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us) ->
-      (forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, R Δ0 σ0 Γ ->
+      (forall k Mk, ind_member D k = Some Mk ->Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us) ->
+      (forall k Mk, ind_member D k = Some Mk ->forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk Us) σ0 ≈ tele_sub (elim_mctx p D k Mk Us) σ0) ->
       (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
          forall Δ0 σ0, R Δ0 σ0 (elim_mctx p D k Mk Us ++ Γ) ->
@@ -848,9 +859,9 @@ Section ElimMove.
 
   Lemma mv_blocks_counts : forall D Bks σ,
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error (blocks_sub Bks σ) k = Some b ->
-        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat.
+        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat.
   Proof.
     intros * Hk k Mk b' c gs n B' HMk Hb' Hc Hin; rewrite nth_error_blocks_sub in Hb'.
     destruct (List.nth_error Bks k) as [[nm oZ A Bs] |] eqn:Hb; cbn in Hb'; [| discriminate ]; injection Hb' as <-.
@@ -867,15 +878,15 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) Us) σ0
                       ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) Us) σ0) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) Us ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) Us)[σ0]) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) Us)[σ0]) ->
       forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error (blocks_sub Bks σ) k = Some b ->
         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives (blocks_sub Bks σ)) (List.map (fun U => U[σ]) Us) ++ Δ
-          ⊢ B : elim_bty p k Mk c gs (eb_motive b) (List.map (fun U => U[σ]) Us).
+          ⊢ B : elim_bty p D k Mk c gs (eb_motive b) (List.map (fun U => U[σ]) Us).
   Proof.
     intros * HD Hl Hnm HR HΨB IHΨB Hk IHB k Mk b' c gs n B' HMk Hb' Hc Hin.
     rewrite nth_error_blocks_sub in Hb'.
@@ -897,19 +908,19 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) Us) σ0
                       ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) Us) σ0) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       (forall k Mk b b' i c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          List.nth_error Bks' k = Some b' ->
          List.nth_error (eb_brs b) i = Some (c, n, B) -> List.nth_error (eb_brs b') i = Some (c, n, B') ->
          ind_con Mk c = Some gs ->
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) Us ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] ≈ B'[σ0] : (elim_bty p k Mk c gs (eb_motive b) Us)[σ0]) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] ≈ B'[σ0] : (elim_bty p D k Mk c gs (eb_motive b) Us)[σ0]) ->
       forall k Mk b b' i c gs n B B', ind_member D k = Some Mk -> List.nth_error (blocks_sub Bks σ) k = Some b ->
         List.nth_error (blocks_sub Bks' σ) k = Some b' ->
         List.nth_error (eb_brs b) i = Some (c, n, B) -> List.nth_error (eb_brs b') i = Some (c, n, B') ->
         ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives (blocks_sub Bks σ)) (List.map (fun U => U[σ]) Us) ++ Δ
-          ⊢ B ≈ B' : elim_bty p k Mk c gs (eb_motive b) (List.map (fun U => U[σ]) Us).
+          ⊢ B ≈ B' : elim_bty p D k Mk c gs (eb_motive b) (List.map (fun U => U[σ]) Us).
   Proof.
     intros * HD Hl Hnm Hnm' HR HΨB IHΨB Hk IHB k Mk b1 b1' i c gs n B1 B1' HMk Hb1 Hb1' Hi Hi' Hc.
     rewrite nth_error_blocks_sub in Hb1, Hb1'.
@@ -931,7 +942,7 @@ Section ElimMove.
       elim_grp D oq p m ->
       ind_member D m = Some Mm ->
       List.nth_error Bks m = Some bm ->
-      List.length Bks = List.length (ind_members D) ->
+      List.length Bks = ind_nblk D ->
       List.length Ps = im_np D Mm ->
       (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0]) ->
@@ -946,9 +957,8 @@ Section ElimMove.
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          forall Δ0 σ0, R Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : Typeω@i[σ0]) ->
-      (forall k Mk, ind_member D k = Some Mk ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-      (forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, R Δ0 σ0 Γ ->
+      (forall k Mk, ind_member D k = Some Mk ->         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+      (forall k Mk, ind_member D k = Some Mk ->forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -960,11 +970,11 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       R Δ σ Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
   Proof.
@@ -993,8 +1003,8 @@ Section ElimMove.
       elim_grp D oq' p m ->
       ind_member D m = Some Mm ->
       List.nth_error Bks m = Some bm ->
-      List.length Bks = List.length (ind_members D) ->
-      List.length Bks' = List.length (ind_members D) ->
+      List.length Bks = ind_nblk D ->
+      List.length Bks' = ind_nblk D ->
       List.length Ps = im_np D Mm ->
       (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0]) ->
@@ -1022,9 +1032,8 @@ Section ElimMove.
       (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
          forall Δ0 σ0, R Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] ≈ (eb_motive b')[σ0] : Typeω@i[σ0]) ->
-      (forall k Mk, ind_member D k = Some Mk ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-      (forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, R Δ0 σ0 Γ ->
+      (forall k Mk, ind_member D k = Some Mk ->         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+      (forall k Mk, ind_member D k = Some Mk ->forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -1038,13 +1047,13 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       (forall k Mk b b' i c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          List.nth_error Bks' k = Some b' ->
          List.nth_error (eb_brs b) i = Some (c, n, B) -> List.nth_error (eb_brs b') i = Some (c, n, B') ->
          ind_con Mk c = Some gs ->
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] ≈ B'[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] ≈ B'[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       R Δ σ Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] ≈ (a_elim oq' Us' m Bks' M')[σ]
         : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
@@ -1082,7 +1091,7 @@ Section ElimMove.
       ind_member D m = Some Mm ->
       List.nth_error Bks m = Some bm ->
       ind_con Mm c = Some gs ->
-      List.length Bks = List.length (ind_members D) ->
+      List.length Bks = ind_nblk D ->
       List.length Ps = im_np D Mm ->
       (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0]) ->
@@ -1098,9 +1107,8 @@ Section ElimMove.
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          forall Δ0 σ0, R Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : Typeω@i[σ0]) ->
-      (forall k Mk, ind_member D k = Some Mk ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-      (forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, R Δ0 σ0 Γ ->
+      (forall k Mk, ind_member D k = Some Mk ->         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+      (forall k Mk, ind_member D k = Some Mk ->forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -1112,17 +1120,17 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       brs_lookup (eb_brs bm) c = Some (n, B) ->
       R Δ σ Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                       (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As)))[σ]
         ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
-                            elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As)])[σ]
+                            elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)])[σ]
         : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                             apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                               (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)])[σ].
@@ -1136,7 +1144,7 @@ Section ElimMove.
     rewrite exp_sub_sb_of_list, !apps_exp_sub, !List.map_app; cbn [exp_sub].
     erewrite im_pre_sub, elim_ihs_sub_inst by first [ eassumption | apply cons_lookup_in; eassumption ].
     rewrite <- !List.skipn_map, <- List.firstn_map.
-    replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As))
+    replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As))
       with n by (rewrite !List.length_app, List.length_skipn, length_elim_ihs by assumption; unfold im_np in HlP; lia).
     eapply wf_exp_eq_elim_iota with (n := n) (B := B[sb_qn n σ]);
       [ exact (R_dom _ _ _ HR) | exact Hl | exact Hg | exact HMm | rewrite nth_error_blocks_sub, Hbm; reflexivity
@@ -1164,7 +1172,7 @@ Section ElimMove.
       ind_lookup Θ Ξ qc = Some D' ->
       vwrap_ok D D' vm ->
       List.nth_error Bks m = Some bm ->
-      List.length Bks = List.length (ind_members D) ->
+      List.length Bks = ind_nblk D ->
       List.length Ps = im_np D Mm ->
       (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0]) ->
@@ -1179,9 +1187,8 @@ Section ElimMove.
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          forall Δ0 σ0, R Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : Typeω@i[σ0]) ->
-      (forall k Mk, ind_member D k = Some Mk ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-      (forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, R Δ0 σ0 Γ ->
+      (forall k Mk, ind_member D k = Some Mk ->         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+      (forall k Mk, ind_member D k = Some Mk ->forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -1193,11 +1200,11 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
                       ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+         ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
       (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
          ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       R Δ σ Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ]
         ≈ (a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
@@ -2209,6 +2216,27 @@ Proof.
         eapply wf_exp_eq_con_view; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                    | exact E1 | exact E2 ]
     end ].
+  (** A constructor of a record view at the uniform parameters and the
+      fields: the instance moves with the parameters, the tuple's fields
+      with the fields. *)
+  all: try solve [
+    match goal with
+    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
+      HF : List.length ?Ms = List.length ?fl,
+      IH1 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (apps_exp (a_con _ _ _) (?Us ++ ?Ms))[φ0]ʷ,
+      IH2 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (a_tuple _ _),
+      Hφ : wf_wk _ _ _ _ ?φ |- _ =>
+        let HD := fresh "HD" in
+        assert (HD : decl_closed D)
+          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]);
+        pose proof (IH1 _ _ Hφ) as E1; pose proof (IH2 _ _ Hφ) as E2;
+        rewrite apps_exp_wk, List.map_app in E1; rewrite apps_exp_wk, List.map_app;
+        rewrite apps_exp_wk in E2 |- *; cbn [exp_wk] in E2 |- *;
+        rewrite (combine_map_snd (fun N => N[φ]ʷ)) in E2 |- *;
+        rewrite (im_pre_wk D _ Mj Us) in E2 |- * by eassumption;
+        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
+                                    | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
+    end ].
 Qed.
 
 Corollary wk_preserves_exp : forall Θ Ξ Γ Δ A M φ,
@@ -3166,6 +3194,25 @@ Proof.
         rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption;
         eapply wf_exp_eq_con_view; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                    | exact E1 | exact E2 ]
+    end ].
+  (** A constructor of a record view, as for weakening. *)
+  all: try solve [
+    match goal with
+    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
+      HF : List.length ?Ms = List.length ?fl,
+      IH1 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (apps_exp (a_con _ _ _) (?Us ++ ?Ms))[σ0],
+      IH2 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (a_tuple _ _),
+      Hσ : wf_sub _ _ _ _ ?σ |- _ =>
+        let HD := fresh "HD" in
+        assert (HD : decl_closed D)
+          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
+        pose proof (IH1 _ _ Hσ) as E1; pose proof (IH2 _ _ Hσ) as E2;
+        rewrite apps_exp_sub, List.map_app in E1; rewrite apps_exp_sub, List.map_app;
+        rewrite apps_exp_sub in E2 |- *; cbn [exp_sub] in E2 |- *;
+        rewrite (combine_map_snd (fun N => N[σ])) in E2 |- *;
+        rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption;
+        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
+                                    | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
 Qed.
 

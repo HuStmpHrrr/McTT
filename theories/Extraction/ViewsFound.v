@@ -22,14 +22,14 @@ From Mctt.Extraction Require Command.
     its filed non-uniform parameters. *)
 Record view_data : Type := mk_view_data
   { (** The siblings *)
-    data_sibs : list rview
+    data_sibs : list view_key
     (** The constructors, classified *)
   ; data_cons : list (string * list rcarg)
     (** The non-uniform parameters, filed *)
   ; data_nparams : ctx }.
 
 (** [a] is the data of the view [x] of the declaration [R]. *)
-Record view_data_ok (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (x : rview) (a : view_data) : Prop := mk_view_data_ok
+Record view_data_ok (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (x : view_key) (a : view_data) : Prop := mk_view_data_ok
   { (** Its siblings *)
     data_ok_sibs : view_sibs Θ Ξ R x (data_sibs a)
     (** Its constructors *)
@@ -38,7 +38,7 @@ Record view_data_ok (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (x : rview) (a : v
   ; data_ok_nparams : view_nps Θ Ξ R x (data_nparams a) }.
 
 (** The instances a view's constructors meet. *)
-Definition data_meets (a : view_data) : list rview := rcons_views (data_cons a).
+Definition data_meets (a : view_data) : list view_key := rcons_views (data_cons a).
 
 Lemma view_data_functional : forall Θ Ξ R x a a', view_data_ok Θ Ξ R x a -> view_data_ok Θ Ξ R x a' -> a = a'.
 Proof.
@@ -49,7 +49,7 @@ Qed.
 
 (** The data of a view, or why it has none: its siblings first, then its
     constructors, then its parameters. *)
-Definition view_data_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) (x : rview) :
+Definition view_data_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) (x : view_key) :
     ({a | view_data_ok Θ Ξ R x a} + {e : view_why | forall a, ~ view_data_ok Θ Ξ R x a})%type.
 Proof.
   destruct (view_sibs_dec Θ Ξ HΞ R x) as [[ss Hs] | [e He]];
@@ -69,40 +69,65 @@ Section Clusters.
   (** The views whose data the PER model reads: typed views whose
       arguments are their own normal forms, over the declaration's
       context. *)
-  Definition view_good (x : rview) : Prop :=
-    let '(q, k, Cs) := x in view_inv Θ Ξ (rd_uctx Ξ R) q k Cs.
+  Definition view_good (x : view_key) : Prop := key_inv Θ Ξ (rd_uctx Ξ R) x.
 
   (** A sibling of a good view, in its context if well formed, is good. *)
-  Lemma sib_good : forall qx kx Cs D i M y, view_good (qx, kx, Cs) -> ind_lookup Θ Ξ qx = Some D -> ind_member D i = Some M ->
+  Lemma sib_good : forall qx kx Cs D i M y, view_good (vk_ind qx kx Cs) -> ind_lookup Θ Ξ qx = Some D -> ind_member D i = Some M ->
       sib_entry Θ Ξ (rd_uctx Ξ R) qx Cs i M y -> view_good y.
   Proof.
     intros * [[D' Hl' Hk HCl HCt HΓu] Ws HWs HCs] Hl HM Hse.
     rewrite Hl in Hl'; injection Hl' as <-.
     destruct (decl_of_glookup _ _ _ _ HΞ Hl) as [Hdt _].
-    inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv]; subst; cbn.
+    inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv | ? ? qr Ir fl Rr Wr Hh Hlr Hnr]; subst; cbn [view_good key_inv].
     - assert (Hd : im_is_decl M = true) by (unfold im_is_decl; rewrite Hh; reflexivity).
       apply (decl_typed_order _ _ _ Hdt _ _ HM) in Hd.
       exact (mk_view_inv _ _ _ _ _ _ (mk_view_typed _ _ _ _ _ _ D Hl Hd HCl HCt HΓu) Ws HWs eq_refl).
     - exact (@sib_view_inv (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HM Hh Hlv Hnv).
+    - exact (@sib_record_inv (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HM Hh Hlr Hnr).
+  Qed.
+
+  (** The data of a record view: itself its only sibling, its constructor
+      its record's fields at its instance. *)
+  Lemma record_view_data : forall qx Isx a, view_data_ok Θ Ξ R (vk_record qx Isx) a ->
+      data_sibs a = vk_record qx Isx :: nil /\
+      exists Rx, record_lookup Θ Ξ qx = Some Rx /\
+        cls_cons_in Θ Ξ (rd_uctx Ξ R) (rd_nu R) (rd_nu R) (rd_n R)
+          ((rview_con, ctx_args (tele_sub (record_fctx Rx (List.length (record_fields Rx))) (sb_of_list sb_id Isx))) :: nil)
+          (data_cons a).
+  Proof.
+    intros * [Hs Hc _].
+    inversion Hs; subst; split; [ reflexivity |].
+    inversion Hc as [| ? ? Rx cs Hl Hcls]; subst; exists Rx; split; assumption.
   Qed.
 
   (** A good view has a cluster: its siblings and itself. *)
   Theorem views_cluster : forall x, view_good x ->
       exists L, cluster_of view_data (view_data_ok Θ Ξ R) data_sibs data_meets view_good (view_lt Θ Ξ (rd_uctx Ξ R)) x L.
   Proof.
-    intros [[qx kx] Cs] Hx.
-    destruct (view_data_dec Θ Ξ HΞ R (qx, kx, Cs)) as [[a Ha] | [e Hn]].
+    intros x Hx.
+    destruct (view_data_dec Θ Ξ HΞ R x) as [[a Ha] | [e Hn]].
     2:{ (** no data: the view alone *)
-        exists ((qx, kx, Cs) :: nil); constructor.
+        exists (x :: nil); constructor.
         - left; reflexivity.
         - intros y [<- | []]; exact Hx.
         - intros y ay [<- | []] Hay; exfalso; exact (Hn _ Hay).
         - intros y ay z [<- | []] Hay; exfalso; exact (Hn _ Hay). }
+    destruct x as [qx kx Cs | qx Isx].
+    2:{ (** a record view: itself alone, whose meets are below it *)
+        exists (vk_record qx Isx :: nil); constructor.
+        - left; reflexivity.
+        - intros y [<- | []]; exact Hx.
+        - intros y ay [<- | []] Hay; destruct (record_view_data _ _ _ Hay) as [-> _].
+          intros w [<- | [<- | []]]; left; reflexivity.
+        - intros y ay z [<- | []] Hay Hz; right.
+          destruct (record_view_data _ _ _ Hay) as [_ (Rx & Hl & Hcls)].
+          exact (@record_view_meets_below (gc_mk Θ Ξ) (rd_uctx Ξ R) qx Isx Rx (data_cons ay) (rd_nu R) (rd_n R) z
+                   HΞ (record_inv_typed _ _ _ _ _ Hx) Hl Hcls Hz). }
     pose proof Hx as Hx'; destruct Hx' as [[D Hl Hk HCl HCt HΓu] Ws HWs HCs].
     pose proof Ha as [Hs _ _].
-    inversion Hs as [? ? ? D' ss' Hl' Hss]; subst.
+    inversion Hs as [? ? ? D' ss' Hl' Hss |]; subst.
     rewrite Hl in Hl'; injection Hl' as <-.
-    exists (data_sibs a ++ (qx, kx, List.map nf_to_exp Ws) :: nil); constructor.
+    exists (data_sibs a ++ vk_ind qx kx (List.map nf_to_exp Ws) :: nil); constructor.
     - apply List.in_or_app; right; left; reflexivity.
     - (** the siblings of a good view are good *)
       intros y Hy; apply List.in_app_or in Hy as [Hy | [<- | []]]; [| exact Hx ].
@@ -114,58 +139,67 @@ Section Clusters.
       2:{ rewrite (view_data_functional _ _ _ _ _ _ Hay Ha) in Hz; exact Hz. }
       destruct (sibs_from_in _ _ _ _ _ _ _ _ Hss _ Hy) as (j & M & HM & _ & Hse).
       apply List.in_or_app; left.
-      inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv]; subst.
+      inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv | ? ? qr Ir fl Rr Wr Hh Hlr Hnr]; subst.
       + rewrite (view_sibs_same _ _ _ _ _ _ _ _ _ (data_ok_sibs _ _ _ _ _ Hay) Hs) in Hz.
         apply List.in_app_or in Hz as [Hz | [<- | []]]; assumption.
       + pose proof (data_ok_sibs _ _ _ _ _ Hay) as Hsy.
-        inversion Hsy as [? ? ? Dv' ssy Hlv' Hssy]; subst.
+        inversion Hsy as [? ? ? Dv' ssy Hlv' Hssy |]; subst.
         rewrite Hlv in Hlv'; injection Hlv' as <-.
         pose proof (@view_entry_sibs (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HCl HCt HM Hh Hlv Hnv Hss Hssy) as Hinc.
         apply List.in_app_or in Hz as [Hz | [<- | []]]; [ exact (Hinc _ Hz) | exact Hy ].
+      + (** a record view: itself alone *)
+        destruct (record_view_data _ _ _ Hay) as [Esy _]; rewrite Esy in Hz.
+        destruct Hz as [<- | [<- | []]]; exact Hy.
     - (** the instances they meet are siblings, or below the view *)
       intros y ay z Hy Hay Hz; unfold data_meets in Hz.
       pose proof (data_ok_cons _ _ _ _ _ Hay) as Hcy.
-      assert (Hin : forall z', In z' (data_sibs a) -> In z' (data_sibs a ++ (qx, kx, List.map nf_to_exp Ws) :: nil))
+      assert (Hin : forall z', In z' (data_sibs a) -> In z' (data_sibs a ++ vk_ind qx kx (List.map nf_to_exp Ws) :: nil))
         by (intros; apply List.in_or_app; left; assumption).
       apply List.in_app_or in Hy as [Hy | [<- | []]].
-      2:{ inversion Hcy as [? ? ? D'' Mk' cs' Hl'' HMk' Hcls]; subst.
+      2:{ inversion Hcy as [? ? ? D'' Mk' cs' Hl'' HMk' Hcls |]; subst.
           rewrite Hl in Hl''; injection Hl'' as <-.
           destruct (@member_meets (gc_mk Θ Ξ) (rd_uctx Ξ R) qx D kx _ Ws (data_sibs a) kx Mk' (data_cons ay) (rd_nu R) (rd_n R) z
                       HΞ HΓu Hl HCl HCt (HWs D Hl) eq_refl Hss HMk' Hcls Hz)
             as [Hz' | Hlt]; [ left; exact (Hin _ Hz') | right; exact Hlt ]. }
       destruct (sibs_from_in _ _ _ _ _ _ _ _ Hss _ Hy) as (j & M & HM & _ & Hse).
-      inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv]; subst.
-      + inversion Hcy as [? ? ? D'' Mk' cs' Hl'' HMk' Hcls]; subst.
+      inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv | ? ? qr Ir fl Rr Wr Hh Hlr Hnr]; subst.
+      + inversion Hcy as [? ? ? D'' Mk' cs' Hl'' HMk' Hcls |]; subst.
         rewrite Hl in Hl''; injection Hl'' as <-.
         destruct (@member_meets (gc_mk Θ Ξ) (rd_uctx Ξ R) qx D kx _ Ws (data_sibs a) j Mk' (data_cons ay) (rd_nu R) (rd_n R) z
                     HΞ HΓu Hl HCl HCt (HWs D Hl) eq_refl Hss HMk' Hcls Hz)
           as [Hz' | Hlt]; [ left; exact (Hin _ Hz') | right; exact Hlt ].
-      + inversion Hcy as [? ? ? D'' My cs' Hl'' HMy Hcls]; subst.
+      + inversion Hcy as [? ? ? D'' My cs' Hl'' HMy Hcls |]; subst.
         rewrite Hlv in Hl''; injection Hl'' as <-.
         destruct (@view_sib_meets (gc_mk Θ Ξ) (rd_uctx Ξ R) qx D kx _ Ws (data_sibs a) j M qv kv Iv vmv Dv Wv My (data_cons ay)
                     (rd_nu R) (rd_n R) z HΞ HΓu Hl HCl HCt (HWs D Hl) eq_refl Hss HM Hh Hlv Hnv HMy Hcls Hz)
+          as [Hz' | Hlt]; [ left; exact (Hin _ Hz') | right; exact Hlt ].
+      + destruct (record_view_data _ _ _ Hay) as [_ (Rr' & Hlr' & Hcls)].
+        rewrite Hlr in Hlr'; injection Hlr' as <-.
+        destruct (@record_sib_meets (gc_mk Θ Ξ) (rd_uctx Ξ R) qx D kx _ Ws (data_sibs a) j M qr Ir fl Rr Wr (data_cons ay)
+                    (rd_nu R) (rd_n R) z HΞ HΓu Hl HCl HCt (HWs D Hl) eq_refl Hss HM Hh Hlr Hnr Hcls Hz)
           as [Hz' | Hlt]; [ left; exact (Hin _ Hz') | right; exact Hlt ].
   Qed.
 
   (** The instances any view meets are good. *)
   Lemma views_meets_good : forall x ax z, view_data_ok Θ Ξ R x ax -> In z (data_meets ax) -> view_good z.
-  Proof.
-    intros * Hx Hz; pose proof (view_meets_inv _ _ _ _ _ _ (data_ok_cons _ _ _ _ _ Hx) Hz) as H.
-    destruct z as [[qz kz] Csz]; exact H.
-  Qed.
+  Proof. intros * Hx Hz; exact (view_meets_inv _ _ _ _ _ _ (data_ok_cons _ _ _ _ _ Hx) Hz). Qed.
 
   (** The siblings of any view are good, or have no siblings but its
       siblings. *)
   Lemma views_sibs_good : forall x ax y, view_data_ok Θ Ξ R x ax -> In y (data_sibs ax ++ x :: nil) ->
       view_good y \/ forall ay, view_data_ok Θ Ξ R y ay -> incl (data_sibs ay ++ y :: nil) (data_sibs ax ++ x :: nil).
   Proof.
-    intros [[qx kx] Cs] ax y Hx Hy.
+    intros x ax y Hx Hy.
     apply List.in_app_or in Hy as [Hy | [<- | []]].
     2:{ right; intros ay Hay; rewrite (view_data_functional _ _ _ _ _ _ Hay Hx); apply incl_refl. }
+    destruct x as [qx kx Cs | qx Isx].
+    2:{ (** a record view: itself alone *)
+        destruct (record_view_data _ _ _ Hx) as [Es _]; rewrite Es in Hy; destruct Hy as [<- | []].
+        right; intros ay Hay; rewrite (view_data_functional _ _ _ _ _ _ Hay Hx); apply incl_refl. }
     pose proof (data_ok_sibs _ _ _ _ _ Hx) as Hs.
-    inversion Hs as [? ? ? D ss Hl Hss]; subst.
+    inversion Hs as [? ? ? D ss Hl Hss |]; subst.
     destruct (sibs_from_in _ _ _ _ _ _ _ _ Hss _ Hy) as (j & M & HM & _ & Hse).
-    inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv]; subst.
+    inversion Hse as [? ? pm Hh | ? ? qv kv Iv vmv Dv Wv Hh Hlv Hnv | ? ? qr Ir fl Rr Wr Hh Hlr Hnr]; subst.
     - (** a declared member: the same siblings *)
       right; intros ay Hay.
       rewrite (view_sibs_same _ _ _ _ _ _ _ _ _ (data_ok_sibs _ _ _ _ _ Hay) Hs).
@@ -176,15 +210,18 @@ Section Clusters.
       + (** a view in an ill-formed one: siblings of the view *)
         right; intros ay Hay.
         pose proof (data_ok_sibs _ _ _ _ _ Hay) as Hsy.
-        inversion Hsy as [? ? ? Dv' ssy Hlv' Hssy]; subst.
+        inversion Hsy as [? ? ? Dv' ssy Hlv' Hssy |]; subst.
         rewrite Hlv in Hlv'; injection Hlv' as <-.
         pose proof (@view_entry_sibs_ill (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HM Hh Hlv Hnv Hss Hssy) as Hinc.
         intros w Hw; apply List.in_app_or in Hw as [Hw | [<- | []]]; apply List.in_or_app; left; [ exact (Hinc _ Hw) | exact Hy ].
+    - (** a record view: itself alone, a sibling *)
+      right; intros ay Hay; destruct (record_view_data _ _ _ Hay) as [Esy _]; rewrite Esy.
+      intros w [<- | [<- | []]]; apply List.in_or_app; left; exact Hy.
   Qed.
 
   (** Good views are accessible for the nesting order. *)
   Lemma views_lt_acc : forall x, view_good x -> Acc (view_lt Θ Ξ (rd_uctx Ξ R)) x.
-  Proof. intros [[q k] Cs] Hx; exact (view_inv_acc _ _ _ _ _ _ HΞ Hx). Qed.
+  Proof. intros x Hx; exact (key_inv_acc _ _ _ _ HΞ Hx). Qed.
 
   (** ** Termination
 
@@ -243,8 +280,8 @@ End Clusters.
 (** ** The Views Found, as the Checker Asks *)
 
 (** A run of the search is one with any tables equal pointwise. *)
-Lemma views_bfs_ext : forall sibs sibs' meets meets' acc tr Vs, (forall x, sibs x = sibs' x) -> (forall x, meets x = meets' x) ->
-    views_bfs sibs meets acc tr Vs -> views_bfs sibs' meets' acc tr Vs.
+Lemma views_dfs_ext : forall sibs sibs' meets meets' acc tr Vs, (forall x, sibs x = sibs' x) -> (forall x, meets x = meets' x) ->
+    views_dfs sibs meets acc tr Vs -> views_dfs sibs' meets' acc tr Vs.
 Proof.
   intros * Hs Hm H; induction H as [acc | acc x tr Vs _ IH]; [ constructor |].
   assert (E : views_met sibs acc x = views_met sibs' acc x) by (unfold views_met; rewrite Hs; reflexivity).
@@ -262,14 +299,14 @@ Definition rd_first_name (R : raw_decl) : string :=
 
 (** A run of the search, as the checker asks of the views. *)
 Lemma views_found_ok : forall Θ Ξ R csD Vf Af, NoDup Vf -> Forall2 (view_data_ok Θ Ξ R) Vf Af ->
-    views_bfs (sibs_tbl Vf (List.map data_sibs Af)) (mtbl Vf (List.map data_meets Af)) nil (List.concat (List.map rcons_views csD)) Vf ->
+    views_dfs (sibs_tbl Vf (List.map data_sibs Af)) (mtbl Vf (List.map data_meets Af)) nil (List.concat (List.map rcons_views csD)) Vf ->
     Command.views_ok Θ Ξ R csD Vf (List.map data_sibs Af) (List.map data_cons Af) (List.map data_nparams Af).
 Proof.
   intros * _ HF Hb; constructor.
   - exact (Forall2_map_impl _ _ _ _ _ HF (fun x a H => data_ok_sibs _ _ _ _ _ H)).
   - exact (Forall2_map_impl _ _ _ _ _ HF (fun x a H => data_ok_cons _ _ _ _ _ H)).
   - exact (Forall2_map_impl _ _ _ _ _ HF (fun x a H => data_ok_nparams _ _ _ _ _ H)).
-  - eapply views_bfs_ext; [ intros; reflexivity | | exact Hb ].
+  - eapply views_dfs_ext; [ intros; reflexivity | | exact Hb ].
     intros x; rewrite meets_tbl_mtbl, List.map_map; reflexivity.
 Defined.
 
@@ -292,10 +329,10 @@ Proof.
   destruct (views_search_run Θ Ξ HΞ R csD) as [[[Vf Af] (Hd & HF & Hbf)] | [[x e] Hf]]; [ eexists; reflexivity |].
   exfalso; apply (Hf (sibs_tbl Vs Ss) (meets_tbl Vs csV) Vs Hb).
   - intros y a Hy Ha.
-    destruct (rview_index_in_some _ _ Hy) as [v Hv]; unfold sibs_tbl, meets_tbl, data_meets; rewrite Hv; split.
+    destruct (view_key_index_in_some _ _ Hy) as [v Hv]; unfold sibs_tbl, meets_tbl, data_meets; rewrite Hv; split.
     + exact (view_sibs_functional _ _ _ _ _ _ (Forall2_index _ _ _ _ _ _ Hs Hv) (data_ok_sibs _ _ _ _ _ Ha)).
     + f_equal; exact (view_cls_functional _ _ _ _ _ _ (Forall2_index _ _ _ _ _ _ Hc Hv) (data_ok_cons _ _ _ _ _ Ha)).
-  - intros y Hy; destruct (rview_index_in_some _ _ Hy) as [v Hv].
+  - intros y Hy; destruct (view_key_index_in_some _ _ Hy) as [v Hv].
     exists (mk_view_data (List.nth v Ss nil) (List.nth v csV nil) (List.nth v Nvs nil)); constructor; cbn.
     + exact (Forall2_index _ _ _ _ _ _ Hs Hv).
     + exact (Forall2_index _ _ _ _ _ _ Hc Hv).

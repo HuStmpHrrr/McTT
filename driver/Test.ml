@@ -3766,7 +3766,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    581 evals, 581 boxes, 581 equal to mctt's output
+    588 evals, 588 boxes, 588 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3843,7 +3843,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    3037 links to Nat, 0 other links, 0 without a link
+    3052 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -5220,6 +5220,30 @@ let%expect_test "lib/Forests.mctt" =
     Evaluate P.Folds.sizeFold example --> ⋆ : ⊤
     |}]
 
+let%expect_test "lib/PairedTrees.mctt" =
+  let _ = main_of_lib "PairedTrees.mctt" in
+  [%expect {|
+    Evaluate R.size example --> 3 : ℕ
+    Evaluate R.depth example --> 3 : ℕ
+    Evaluate R.flatten example
+      --> Prelude›Data›List.List.cons 0l ℕ 1
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 3
+                (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ
+    Evaluate R.flatten (R.mirror example)
+      --> Prelude›Data›List.List.cons 0l ℕ 3
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 1
+                (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ
+    Evaluate R.flatten (R.map ℕ succ example)
+      --> Prelude›Data›List.List.cons 0l ℕ 2
+            (Prelude›Data›List.List.cons 0l ℕ 3
+              (Prelude›Data›List.List.cons 0l ℕ 4
+                (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ
+    Evaluate R.fold ℕ (λ (x1 : ℕ) → x1) plus example --> 6 : ℕ
+    Evaluate largest example --> 3 : ℕ
+    |}]
+
 let%expect_test "lib/Roses.mctt" =
   let _ = main_of_lib "Roses.mctt" in
   [%expect {|
@@ -5946,4 +5970,299 @@ let%expect_test "lib/GroupRecursors.mctt" =
                (Odd.osucc
                  (Even.esucc (Odd.osucc (Even.esucc (Odd.osucc Even.ezero)))))
       --> 2 : ℕ
+    |}]
+
+(** Nesting through records: a record's instance that mentions the group
+    is a record view of the group, with no block; a branch gets one
+    induction hypothesis per path to a member of the group through its
+    fields, depth first. *)
+
+let pair_record = "record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B end "
+
+let%expect_test "a group nests through a record in a module: one IH per field" =
+  let _ = main_of_body
+    "module P where record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B end end \
+     inductive T : Type@0 where | leaf | node (p : P.Pair T T) end \
+     def count (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 1 | node p, h1 h2 => succ h2 end end \
+     eval count (T.node (record P.Pair T T where fst := T.leaf; snd := T.leaf end))" in
+  [%expect {|
+    Evaluate count
+               (T.node (record P.Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end))
+      --> 2 : ℕ
+    |}]
+
+let%expect_test "nested records give their IHs depth first" =
+  let _ = main_of_body (pair_record ^
+    "inductive T : Type@0 where | leaf | node (p : Pair (Pair T T) T) end \
+     def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 0 | node p, h1 h2 h3 => succ h3 end end \
+     eval c (T.node (record Pair (Pair T T) T where \
+       fst := record Pair T T where fst := T.leaf; snd := T.leaf end; \
+       snd := T.node (record Pair (Pair T T) T where \
+         fst := record Pair T T where fst := T.leaf; snd := T.leaf end; snd := T.leaf end) end))") in
+  [%expect {|
+    Evaluate c
+               (T.node
+                 (record Pair (Pair T T) T where
+                    fst ≔ record Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end;
+                    snd ≔
+                      T.node
+                        (record Pair (Pair T T) T where
+                           fst ≔
+                             record Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end;
+                           snd ≔ T.leaf
+                         end)
+                  end)) --> 2 : ℕ
+    |}]
+
+let%expect_test "a record argument with no recursive field gives no IH" =
+  let _ = main_of_body
+    "record Box (A : Type@0) : Type@0 where n : Nat end \
+     inductive T : Type@0 where | leaf | node (b : Box T) end \
+     def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 0 | node b => b.n end end \
+     eval c (T.node (record Box T where n := 3 end))" in
+  [%expect {| Evaluate c (T.node (record Box T where n ≔ 3 end)) --> 3 : ℕ |}]
+
+let%expect_test "a group nests through a dependent record" =
+  let _ = main_of_body
+    "record Sigma (A : Type@0) (B : forall (a : A) -> Type@0) : Type@0 where fst : A; snd : B fst end \
+     inductive T : Type@0 where | leaf | node (s : Sigma T (fun (x : T) -> Nat)) end \
+     def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 0 | node s, h => succ h end end \
+     eval c (T.node (record Sigma T (fun (x : T) -> Nat) where \
+       fst := T.node (record Sigma T (fun (x : T) -> Nat) where fst := T.leaf; snd := 5 end); snd := 7 end))" in
+  [%expect {|
+    Evaluate c
+               (T.node
+                 (record Sigma T (λ (x2 : T) → ℕ) where
+                    fst ≔
+                      T.node
+                        (record Sigma T (λ (x1 : T) → ℕ) where
+                           fst ≔ T.leaf;
+                           snd ≔ 5
+                         end);
+                    snd ≔ 7
+                  end)) --> 2 : ℕ
+    |}]
+
+let%expect_test "a view's constructor argument nests through a record" =
+  let _ = main_of_body (pair_record ^
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     inductive T : Type@0 where | leaf | node (ps : List (Pair T T)) end \
+     def c (t : T) : Nat := \
+       elim t at (z : T) -> Nat | leaf => 1 | node ps, h => h \
+       with (z : List (Pair T T)) -> Nat | nil => 0 | cons x xs, h1 h2 h3 => succ h3 end end \
+     eval c (T.node (List.cons (Pair T T) (record Pair T T where fst := T.leaf; snd := T.leaf end) (List.nil (Pair T T))))") in
+  [%expect {|
+    Evaluate c
+               (T.node
+                 (List.cons (Pair T T)
+                    (record Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end)
+                   (List.nil (Pair T T)))) --> 1 : ℕ
+    |}]
+
+let%expect_test "a record's field nests through a view" =
+  let _ = main_of_body (pair_record ^
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     inductive T : Type@0 where | leaf | node (p : Pair (List T) T) end \
+     def c (t : T) : Nat := \
+       elim t at (z : T) -> Nat | leaf => 1 | node p, h1 h2 => succ h2 \
+       with (z : List T) -> Nat | nil => 0 | cons x xs, h1 h2 => succ h2 end end \
+     eval c (T.node (record Pair (List T) T where fst := List.nil T; snd := T.leaf end))") in
+  [%expect {|
+    Evaluate c
+               (T.node
+                 (record Pair (List T) T where fst ≔ List.nil T; snd ≔ T.leaf end))
+      --> 2 : ℕ
+    |}]
+
+let%expect_test "a function argument ends in a record" =
+  let _ = main_of_body (pair_record ^
+    "inductive T : Type@0 where | leaf | node (f : forall (n : Nat) -> Pair T T) end \
+     def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 0 | node f, h1 h2 => succ (h2 0) end end \
+     eval c (T.node (fun (n : Nat) -> record Pair T T where fst := T.leaf; snd := T.leaf end))") in
+  [%expect {|
+    Evaluate c
+               (T.node
+                 (λ (x1 : ℕ)
+                   → record Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end)) --> 1
+      : ℕ
+    |}]
+
+let%expect_test "a record's field is a function into the group" =
+  let _ = main_of_body (pair_record ^
+    "inductive T : Type@0 where | leaf | node (p : Pair (forall (n : Nat) -> T) T) end \
+     def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 0 | node p, h1 h2 => succ (h1 0) end end \
+     eval c (T.node (record Pair (forall (n : Nat) -> T) T where fst := fun (n : Nat) -> T.leaf; snd := T.leaf end))") in
+  [%expect {|
+    Evaluate c
+               (T.node
+                 (record Pair (∀ (x2 : ℕ) → T) T where
+                    fst ≔ λ (x1 : ℕ) → T.leaf;
+                    snd ≔ T.leaf
+                  end)) --> 1 : ℕ
+    |}]
+
+let%expect_test "a container that nests through a record is a view" =
+  let _ = main_of_body (pair_record ^
+    "inductive Tree (A : Type@0) : Type@0 where | leaf (a : A) | node (p : Pair (Tree A) (Tree A)) end \
+     inductive Foo : Type@0 where | stop | mk (t : Tree Foo) end \
+     def c (x : Foo) : Nat := \
+       elim x at (z : Foo) -> Nat | stop => 0 | mk t, h => succ h \
+       with (z : Tree Foo) -> Nat | leaf a, h => h | node p, h1 h2 => succ h2 end end \
+     eval c (Foo.mk (Tree.node Foo (record Pair (Tree Foo) (Tree Foo) where \
+       fst := Tree.leaf Foo Foo.stop; snd := Tree.leaf Foo (Foo.mk (Tree.leaf Foo Foo.stop)) end)))") in
+  [%expect {|
+    Evaluate c
+               (Foo.mk
+                 (Tree.node Foo
+                   (record Pair (Tree Foo) (Tree Foo) where
+                      fst ≔ Tree.leaf Foo Foo.stop;
+                      snd ≔ Tree.leaf Foo (Foo.mk (Tree.leaf Foo Foo.stop))
+                    end))) --> 3 : ℕ
+    |}]
+
+let%expect_test "a mutual group nests through records: its recursor and a mutual definition" =
+  let _ = main_of_body (pair_record ^
+    "mutual S where inductive A : Type@0 where | a0 | a (p : Pair A B) \
+     with B : Type@0 where | b (q : Pair B A) | b0 end end \
+     eval S.Rec.rec_A 0l (fun (z : S.A) -> Nat) (fun (z : S.B) -> Nat) 0 \
+       (fun (p : Pair S.A S.B) (h1 : Nat) (h2 : Nat) -> succ h2) \
+       (fun (q : Pair S.B S.A) (h1 : Nat) (h2 : Nat) -> succ h1) 0 \
+       (S.A.a (record Pair S.A S.B where fst := S.A.a0; \
+         snd := S.B.b (record Pair S.B S.A where fst := S.B.b0; snd := S.A.a0 end) end)) \
+     mutual def fa (z : S.A) : Nat := | a0 => 0 | a p, h1 h2 => succ h2 \
+     with fb (z : S.B) : Nat := | b q, h1 h2 => succ h1 | b0 => 0 end \
+     eval fa (S.A.a (record Pair S.A S.B where fst := S.A.a0; \
+       snd := S.B.b (record Pair S.B S.A where fst := S.B.b0; snd := S.A.a0 end) end))") in
+  [%expect {|
+    Evaluate S.Rec.rec_A 0l (λ (x1 : S.A) → ℕ) (λ (x2 : S.B) → ℕ) 0
+               (λ (x3 : Pair S.A S.B)
+                  (x4 : ℕ)
+                  (x5 : ℕ)
+                 → succ x5)
+               (λ (x6 : Pair S.B S.A)
+                  (x7 : ℕ)
+                  (x8 : ℕ)
+                 → succ x7)
+               0
+               (S.A.a
+                 (record Pair S.A S.B where
+                    fst ≔ S.A.a0;
+                    snd ≔
+                      S.B.b
+                        (record Pair S.B S.A where fst ≔ S.B.b0; snd ≔ S.A.a0 end)
+                  end)) --> 2 : ℕ
+    Evaluate fa
+               (S.A.a
+                 (record Pair S.A S.B where
+                    fst ≔ S.A.a0;
+                    snd ≔
+                      S.B.b
+                        (record Pair S.B S.A where fst ≔ S.B.b0; snd ≔ S.A.a0 end)
+                  end)) --> 2 : ℕ
+    |}]
+
+let%expect_test "an eliminator through a record infers its group from the scrutinee" =
+  let _ = main_of_body (pair_record ^
+    "inductive T : Type@0 where | leaf | node (p : Pair T T) end \
+     eval elim T.node (record Pair T T where fst := T.leaf; snd := T.leaf end) at y -> Nat \
+       | leaf => 0 | node p, h1 h2 => succ h1 end") in
+  [%expect {|
+    Evaluate elim T.node (record Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end)
+             at x1 → ℕ
+             | leaf ⇒ 0
+             | node x2, x3 x4 ⇒ succ x3
+             end --> 1 : ℕ
+    |}]
+
+let%expect_test "a record's instance may not pass the group to a variable head" =
+  let _ = main_of_body
+    "record Box (A : Type@0) : Type@0 where unbox : A end \
+     inductive T (F : forall (X : Type@0) -> Type@0) : Type@0 where | leaf | node (b : Box (F (T F))) end" in
+  [%expect {| Error: T appears as an argument of F in the type of b |}]
+
+let%expect_test "the skeleton of an eliminator through a record has one IH per field" =
+  let _ = main_of_body (pair_record ^
+    "inductive T : Type@0 where | leaf | node (p : Pair T T) end \
+     def c (t : T) : Nat := \
+       elim t at (z : T) -> Nat | leaf => 1 | node p, h1 h2 => succ h2 \
+       with (z : T) -> Nat | leaf => 0 | node p => 0 end end") in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      T; block 2 (branches leaf, node) is for no member left.
+      The eliminator should read:
+      elim x1 at (z : T) → …
+      | leaf ⇒ …
+      | node p, hp_fst hp_snd ⇒ …
+      end
+    |}]
+
+let%expect_test "views through a record are found depth first" =
+  let _ = main_of_body (pair_record ^
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     inductive Option (A : Type@0) : Type@0 where | none | some (x : A) end \
+     inductive T : Type@0 where | leaf | node (p : Pair (List T) (Option T)) end \
+     def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 1 | node p, h1 h2 => succ h2 end end") in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      T, List T, Option T; the blocks for List T, Option T are missing.
+      The eliminator should read:
+      elim x1 at (z : T) → …
+      | leaf ⇒ …
+      | node p, hp_fst hp_snd ⇒ …
+      with (z : List T) → …
+      | nil ⇒ …
+      | cons x xs, hx hxs ⇒ …
+      with (z : Option T) → …
+      | none ⇒ …
+      | some x, h ⇒ …
+      end
+    |}]
+
+(* [L] nests through the record [Q] at [Pair A (L A)], and [T] through
+   [Pair] at [L T]: the record views of [T]'s group are [Pair T (L T)] and,
+   inside [L T]'s constructor, [Q (Pair T (L T))], whose field is the first
+   record view again. *)
+let cycle_records = pair_record ^
+  "record Q (B : Type@0) : Type@0 where q : B end \
+   inductive L (A : Type@0) : Type@0 where | nil | cons (p : Q (Pair A (L A))) end \
+   inductive T : Type@0 where | leaf | node (p : Pair T (L T)) end "
+
+let%expect_test "the skeleton of the cycle through a record has the IHs of its view" =
+  let _ = main_of_body (cycle_records ^
+    "def c (t : T) : Nat := elim t at (z : T) -> Nat | leaf => 0 | node p, h1 h2 => succ h2 end end") in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      T, L T; the block for L T is missing.
+      The eliminator should read:
+      elim x1 at (z : T) → …
+      | leaf ⇒ …
+      | node p, hp_fst hp_snd ⇒ …
+      with (z : L T) → …
+      | nil ⇒ …
+      | cons p, hp_q_fst hp_q_snd ⇒ …
+      end
+    |}]
+
+let%expect_test "a record view inside a view's record: the cycle through a record" =
+  let _ = main_of_body (cycle_records ^
+    "def d (t : T) : Nat := \
+       elim t at (z : T) -> Nat | leaf => 0 | node p, h1 h2 => succ h2 \
+       with (z : L T) -> Nat | nil => 0 | cons p, h1 h2 => succ h2 end end \
+     eval d (T.node (record Pair T (L T) where fst := T.leaf; \
+       snd := L.cons T (record Q (Pair T (L T)) where q := record Pair T (L T) where fst := T.leaf; snd := L.nil T end end) end))") in
+  [%expect {|
+    Evaluate d
+               (T.node
+                 (record Pair T (L T) where
+                    fst ≔ T.leaf;
+                    snd ≔
+                      L.cons T
+                        (record Q (Pair T (L T)) where
+                           q ≔
+                             record Pair T (L T) where
+                               fst ≔ T.leaf;
+                               snd ≔ L.nil T
+                             end
+                         end)
+                  end)) --> 2 : ℕ
     |}]

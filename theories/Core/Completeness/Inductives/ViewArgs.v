@@ -31,9 +31,9 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Substitution Instance
 From Mctt.Core.Completeness Require Import LetCases UnitCases.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes ViewEquations.
+From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes ViewEquations RviewEnds.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence.
+From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence ViewCount.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations.
@@ -402,12 +402,12 @@ Section ViewArgs.
       tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
         (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp) ->
       tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mv)) ms ms ->
-      view_end_rel p D ups ups (ptyp_mem t) ->
+      view_end_rel p D ups ups (ptyp_mem t) -> rview_end_rel p D ups ups (ptyp_mem t) ->
       (canon_args_rel Dq cups i' ms c (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp)
          <~> rec_arg_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups)
                (canon_doms_rel ups) v ups ups (ms ++ nonrec_arg_vals gs1 vp) (ms ++ nonrec_arg_vals gs1 vp) t).
   Proof.
-    intros * Heq' Heq Hc Hlp Hpre Hnsd Hend.
+    intros * Heq' Heq Hc Hlp Hpre Hnsd Hend Hrend.
     pose proof view_nn as Hnn.
     pose proof (cargs_corr_len _ _ _ Hc) as Hl1.
     destruct (view_args_complete gs1 gs1' (ca_arg A' :: gs2') (ca_rec t :: gs2) vp Heq' Heq Hc Hlp Hpre)
@@ -435,7 +435,7 @@ Section ViewArgs.
                      (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs)) nil nil) by (cbn; constructor).
     assert (Ebg0 : ⟦ ptyp_ty p D (im_nn Mv) (List.repeat false 0 ++ cargs_pat gs1) (ptyp_skip 0 t) ⟧
                      env_args nil (ups ++ ms ++ vs ++ nil) ↘ bg) by (rewrite List.app_nil_r; exact Ebg).
-    pose proof (shape_char p D Hg Hcv v Mv c gs HMv Hcon HΨ gs1 t gs2 Heq ups ms vs Hu Hlms Hl Hgu Hnsd Ha HpreR Hend
+    pose proof (shape_char p D Hg Hcv v Mv c gs HMv Hcon HΨ gs1 t gs2 Heq ups ms vs Hu Hlms Hl Hgu Hnsd Ha HpreR Hend Hrend
                   (List.length (ptyp_doms t)) 0 nil bg ig Rg eq_refl Hy0 Hgy0 Ebg0 HRg) as Hsh.
     rewrite List.app_nil_r in Hsh; cbn [ptyp_skip] in Hsh.
     rewrite <- Hn, <- Hng.
@@ -829,14 +829,26 @@ Section ViewAgreementParts.
     destruct (length_rec_ps D (valid_group_valid _ _ Hg) v Mv HMv c gs gs1 t gs2 Hcon Heq) as (Mj & HMj & HlPs).
     destruct (length_rec_ps Dq (valid_group_valid _ _ HgQ) i' Mi' HMi' c gs' gs1' t' gs2' Hcon' Heq') as (Mj' & HMj' & HlPs').
     unfold ntele_rel in HtG, HtC |- *; rewrite HMj in HtG |- *; rewrite HMj' in HtC.
+    destruct (grp_tele_ass_vm D (valid_group_ass _ _ Hg) k Mk qc kc Is vm Dq (ptyp_mem t') Mj' HMk Hh Hq HMj') as [jj Mjj Hvj HMjj Hnnj Hhead].
+    rewrite Hmem in Hvj; injection Hvj as <-; rewrite HMj in HMjj; injection HMjj as <-.
+    (** A record view at the ends: no parameters. *)
+    destruct (im_is_rview Mj) eqn:Hrvj.
+    { assert (Hnp0 : im_nparams Mj = nil).
+      { unfold im_is_rview in Hrvj; destruct (im_head Mj) eqn:E; try discriminate Hrvj.
+        exact (rview_struct_nparams _ _ _ (decl_typed_rstruct _ _ _ (valid_group_typed _ _ Hg)) _ _ _ _ _ HMj E). }
+      assert (Hnn0 : im_nn Mj = 0) by (unfold im_nn; rewrite Hnp0; reflexivity).
+      pose proof (eval_exps_length _ _ _ EbsC) as LC; pose proof (eval_exps_length _ _ _ EbsG) as LG.
+      rewrite Hnp0; destruct bsC; [| cbn in LC; lia ]; destruct bsG; [| cbn in LG; lia ].
+      split; [ reflexivity | exact I ]. }
+    assert (Hrvj' : im_is_rview Mj' = false).
+    { unfold im_is_rview; destruct (im_head Mj') eqn:Hh'; [ reflexivity | reflexivity |].
+      destruct Hhead as (? & Hhj & _); unfold im_is_rview in Hrvj; rewrite Hhj in Hrvj; discriminate Hrvj. }
     (** The ends' types, related. *)
-    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj Eag) as (csg & bsg & Ecsg & Ebsg & ->).
-    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj' Eac) as (csc & bsc & Ecsc & Ebsc & ->).
+    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj Hrvj Eag) as (csg & bsg & Ecsg & Ebsg & ->).
+    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj' Hrvj' Eac) as (csc & bsc & Ecsc & Ebsc & ->).
     pose proof (functional_eval_exps' _ _ _ _ Ebsg EbsG1) as ->.
     pose proof (functional_eval_exps' _ _ _ _ Ebsc EbsC1) as ->.
     pose proof (per_univ_sym _ _ _ _ HR) as HRs.
-    destruct (grp_tele_ass_vm D (valid_group_ass _ _ Hg) k Mk qc kc Is vm Dq (ptyp_mem t') Mj' HMk Hh Hq HMj') as [jj Mjj Hvj HMjj Hnnj Hhead].
-    rewrite Hmem in Hvj; injection Hvj as <-; rewrite HMj in HMjj; injection HMjj as <-.
     pose proof HtG as HlbG; destruct HlbG as [HlbG _]; rewrite List.length_rev, length_im_nparams in HlbG.
     assert (HlbC1 : List.length bsC1 = im_nn Mj') by (rewrite (eval_exps_length _ _ _ EbsC1), List.length_map; exact HlPs').
     clear Eag Eac HR Ebsg Ebsc.
@@ -855,7 +867,8 @@ Section ViewAgreementParts.
     (** The two ends' parameters at all the arguments, related at the
         container's member [j']. *)
     assert (X1 : tele_rel (canon_nparams_rel Dq cups (ptyp_mem t')) (List.rev (im_nparams Mj')) bsC1 bsG1).
-    { destruct (im_head Mj') as [pm' | qv kv Is'' vm''] eqn:Hh'.
+    { destruct (im_head Mj') as [pm' | qv kv Is'' vm'' | qr'' Is'' fl''] eqn:Hh';
+        [| | unfold im_is_rview in Hrvj'; rewrite Hh' in Hrvj'; discriminate Hrvj' ].
       - (** [j'] declared: the view [j] is of it at the same instance. *)
         destruct Hhead as [vm' Hhj].
         unfold im_ref, im_pre in HRs, Ecsg, Ecsc; rewrite Hhj in HRs, Ecsg; rewrite Hh' in HRs, Ecsc; cbn [fst snd] in HRs.
@@ -880,7 +893,7 @@ Section ViewAgreementParts.
         rewrite HqX in HqX'; injection HqX' as <-; rewrite HMc in HMc'; injection HMc' as <-.
         assert (Hhc : exists pm, im_head Mc = mh_decl pm).
         { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgX) _ _ HMc) Hkd) as Hd.
-          unfold im_is_decl in Hd; destruct (im_head Mc); [ eauto | discriminate ]. }
+          unfold im_is_decl in Hd; destruct (im_head Mc); [ eauto | discriminate .. ]. }
         destruct Hhc as [pmc Hhc].
         destruct (vg_view_args_values qc Dq HgQ HcvQ _ _ _ _ _ _ _ HMj' Hh' HqX cups cups Hcr Hlc) as (xc & _ & Exc & _ & _).
         (** The end's uniform arguments, related to the view's instance. *)
@@ -1131,12 +1144,12 @@ Section ViewAgreementCanonical.
       tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
         (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-      view_end_rel p D ups ups (ptyp_mem t) ->
+      view_end_rel p D ups ups (ptyp_mem t) -> rview_end_rel p D ups ups (ptyp_mem t) ->
       (canon_args_rel Dq cups i' ms c (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) x y <->
        rec_arg_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups)
          (canon_doms_rel ups) v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp') t x y).
   Proof.
-    intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre Hend.
+    intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre Hend Hrend.
     pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv; pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) as HMv.
     destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvm _ _ Hc') as (gs0 & Hc0 & Hcorr); rewrite Hc in Hc0; injection Hc0 as <-.
     destruct (view_member_params_of p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hgd Hu Ec i' Mi' v Mv HMi' Hv HMv ms ms' Hms)
@@ -1147,7 +1160,7 @@ Section ViewAgreementCanonical.
     pose proof (args_rel_pre_refl_l qc Dq cups _ _ _ (valid_group_ass _ _ HgQ) CnP CnI CaP CaI CdP CdI i' Mi' HMi' ms c _ Hns_c Hc'
                   _ _ _ HK Hpre) as Hpre_d.
     pose proof (nested_arg_rel_agree p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cups Hgd Hu Ec i' Mi' v Mv HMi' Hv HMv
-                  c _ _ Hc' Hc Hcorr ms Hlms Hms_g Hms_c gs1' A' gs2' gs1 t gs2 vp eq_refl eq_refl Hc1 Hlp Hpre_d Hns_g Hend) as EN.
+                  c _ _ Hc' Hc Hcorr ms Hlms Hms_g Hms_c gs1' A' gs2' gs1 t gs2 vp eq_refl eq_refl Hc1 Hlp Hpre_d Hns_g Hend Hrend) as EN.
     pose proof (view_nparams_transfer p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hgd Hu Ec i' Mi' v Mv HMi' Hv HMv
                   _ _ Hms) as Hms_v.
     pose proof (view_nonrec_prefix p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cups Hgd Hu Ec i' Mi' v Mv HMi' Hv HMv
@@ -1265,7 +1278,7 @@ Lemma view_agreement_canonical_of_ends : forall P p D, valid_groups P -> P p D -
                  im_head Mk = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
                  List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
                  ind_con Mi' c = Some (gs1' ++ ca_arg A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
-                 cargs_corr vm gs1' gs1 -> view_end_rel p D ups ups (ptyp_mem t)) ->
+                 cargs_corr vm gs1' gs1 -> view_end_rel p D ups ups (ptyp_mem t) /\ rview_end_rel p D ups ups (ptyp_mem t)) ->
       view_agreement_canonical p D ups ups' k.
 Proof.
   intros P p D HP HPD ups ups' Hgu Hu k Hend Mk qc kc Is vm Dq cups cups' HMk Hh Hq Ec Ec'.
@@ -1280,7 +1293,7 @@ Proof.
     eapply (agree_args_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
   - intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre.
     pose proof (Hend _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' (view_member_v _ _ _ _ _ _ _ _ _ Hvm)
-                  (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) Hc' Hc Hc1) as He.
+                  (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) Hc' Hc Hc1) as [He Hre].
     eapply (agree_nested_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
   - intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' HB' HB Hms Hpre Hys.
     eapply (agree_doms_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
@@ -1288,26 +1301,16 @@ Proof.
     eapply (agree_params_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
 Qed.
 
-(** The rank of a view bounds the ranks of the members the shapes it nests
-    through end in. *)
-Lemma cargs_nest_ok_at : forall rk r gs1' A' gs2' gs1 t gs2, List.length gs1' = List.length gs1 ->
-    cargs_nest_ok rk r (gs1' ++ ca_arg A' :: gs2') (gs1 ++ ca_rec t :: gs2) -> rk (ptyp_mem t) < r.
-Proof.
-  intros rk r; induction gs1' as [| g' gs1' IH]; intros A' gs2' [| g gs1] t gs2 Hl H; cbn in Hl; try discriminate.
-  - cbn in H; exact (proj1 H).
-  - destruct g' as [B' | t'], g as [B | t0]; cbn [List.app cargs_nest_ok] in H;
-      [ exact (IH A' gs2' gs1 t gs2 ltac:(lia) H) | exact (IH A' gs2' gs1 t gs2 ltac:(lia) (proj2 H))
-      | exact (IH A' gs2' gs1 t gs2 ltac:(lia) H) | exact (IH A' gs2' gs1 t gs2 ltac:(lia) H) ].
-Qed.
+(** ** Every View Agrees with its Container, and Every Record View with
+       its Record
 
-(** ** Every View Agrees with its Container
-
-    By induction on the views' ranks: the members a view nests through are
-    of lower rank, so their types' relations are the group's
-    ([view_end_rel_of_agreement]). *)
-Theorem view_agreement_canonical_all : forall P p D, valid_groups P -> P p D ->
+    By induction on the members' ranks: the members a view nests through,
+    and those a record view's recursive fields end in, are of lower rank,
+    so their types' relations are the group's
+    ([view_end_rel_of_agreement], [rview_end_rel_of_ends]). *)
+Theorem end_rels_canonical_all : forall P p D, valid_groups P -> P p D ->
     forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-    forall k, view_agreement_canonical p D ups ups' k.
+    forall k, view_agreement_canonical p D ups ups' k /\ rview_end_rel p D ups ups' k.
 Proof.
   intros P p D HP HPD ups ups' Hgu Hu k.
   pose proof (valid_groups_valid P HP p D HPD) as Hg.
@@ -1315,14 +1318,45 @@ Proof.
   pose proof (uparams_refl_l D (valid_group_valid _ _ Hg) (valid_group_closed _ _ Hg) _ _ Hgu) as Hgd.
   destruct (decl_typed_rank _ _ _ (valid_group_typed _ _ Hg)) as [rk Hrk].
   assert (Hall : forall n j u', rk j < n -> per_gargs (List.rev (ind_uparams D)) nil nil ups u' ->
-                   view_agreement_canonical p D ups u' j).
+                   view_agreement_canonical p D ups u' j /\ rview_end_rel p D ups u' j).
   { induction n as [| n IH]; intros j u' Hj Hgu'; [ lia |].
-    apply (view_agreement_canonical_of_ends P p D HP HPD ups u' Hgu' Hu j).
-    intros * HMj Hh Hq HMi' Hv HMv Hc' Hc Hc1.
-    pose proof (view_rank_ok_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hq HMi' Hv HMv Hc' Hc) as Hn.
-    pose proof (cargs_nest_ok_at _ _ _ _ _ _ _ _ (cargs_corr_len _ _ _ Hc1) Hn) as Hlt.
-    exact (view_end_rel_of_agreement p D Hg Hcv ups ups Hgd Hu _ (IH (ptyp_mem t) ups ltac:(lia) Hgd)). }
+    (** The members of lower rank, at the bases [ups]. *)
+    assert (Hlow : forall j', rk j' < rk j -> view_end_rel p D ups ups j' /\ rview_end_rel p D ups ups j').
+    { intros j' Hj'; destruct (IH j' ups ltac:(lia) Hgd) as [Ha Hr].
+      split; [ exact (view_end_rel_of_agreement p D Hg Hcv ups ups Hgd Hu _ Ha) | exact Hr ]. }
+    split.
+    - apply (view_agreement_canonical_of_ends P p D HP HPD ups u' Hgu' Hu j).
+      intros * HMj Hh Hq HMi' Hv HMv Hc' Hc Hc1.
+      pose proof (view_rank_ok_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hq HMi' Hv HMv Hc' Hc) as Hn.
+      exact (Hlow _ (cargs_nest_ok_at _ _ _ _ _ _ _ _ _ _ (cargs_corr_len _ _ _ Hc1) Hn)).
+    - apply (rview_end_rel_of_ends p D Hg Hcv ups u' Hgu' Hu j).
+      intros * HMj Hh Hcs Heq.
+      exact (Hlow _ (view_rank_ok_rview _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ HMj Hh ltac:(rewrite Hcs; left; reflexivity) Heq)). }
   exact (Hall (S (rk k)) k ups' ltac:(lia) Hgu).
 Qed.
+
+Corollary view_agreement_canonical_all : forall P p D, valid_groups P -> P p D ->
+    forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+    forall k, view_agreement_canonical p D ups ups' k.
+Proof. intros * HP HPD * Hgu Hu k; exact (proj1 (end_rels_canonical_all P p D HP HPD ups ups' Hgu Hu k)). Qed.
+
+(** ** The Relation of a Member's Type
+
+    The relation of a view's type, the container's at the view's instance,
+    is the group's at the view; that of a record view's, the record at the
+    view's instance, the group's at the record view. *)
+Corollary view_end_rel_all : forall P p D, valid_groups P -> P p D ->
+    forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+    forall j, view_end_rel p D ups ups' j.
+Proof.
+  intros * HP HPD * Hgu Hu j.
+  exact (view_end_rel_of_agreement p D (valid_groups_valid P HP p D HPD) (containers_valid_of_groups P HP p D HPD)
+           ups ups' Hgu Hu j (view_agreement_canonical_all P p D HP HPD ups ups' Hgu Hu j)).
+Qed.
+
+Corollary rview_end_rel_all : forall P p D, valid_groups P -> P p D ->
+    forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+    forall j, rview_end_rel p D ups ups' j.
+Proof. intros * HP HPD * Hgu Hu j; exact (proj2 (end_rels_canonical_all P p D HP HPD ups ups' Hgu Hu j)). Qed.
 
 End Fixed_GCtx.

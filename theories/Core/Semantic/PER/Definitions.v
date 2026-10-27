@@ -370,11 +370,14 @@ Record okr_at (D : ind_decl) (ups : list domain) (nparams_rel : nat -> nat -> li
   ; okr_rel : ntele_rel D nparams_rel j okr_idx bs }.
 
 (** A member's own uniform parameters: the group's for a declared one, the
-    container's for a view. *)
+    container's for a view.  A record view's pseudo-constructor is the
+    group's own, at the group's uniform parameters (its saturated value is
+    a tuple, never a [d_con], so this is never read). *)
 Definition im_unu (D : ind_decl) (M : imember) : nat :=
   match im_head M with
   | mh_decl _ => ind_nu D
   | mh_view _ _ Is _ => List.length Is
+  | mh_record _ _ _ => ind_nu D
   end.
 
 (** ** The Elements of a Group
@@ -407,9 +410,11 @@ Inductive ind_rel (p : qname) (D : ind_decl)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
-(** Two saturated constructors of the member *)
+(** Two saturated constructors of the member, not a record view (whose
+    elements are only [ind_rel_record]'s) *)
 | ind_rel_con :
   `{ ind_member D k = Some Mk ->
+     im_is_rview Mk = false ->
      im_ref p k Mk = (hd, k') ->
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns ns' ->
      ind_con Mk c = Some gs ->
@@ -421,9 +426,11 @@ Inductive ind_rel (p : qname) (D : ind_decl)
      con_args_rel p D okr nparams_rel args_rel doms_rel k u u'
        (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs' ->
      ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) }
-(** Two neutrals of the member that read back equally *)
+(** Two neutrals of the member that read back equally, not a record view
+    (whose neutrals are only [ind_rel_record]'s, by their projections) *)
 | ind_rel_neut :
   `{ ind_member D k = Some Mk ->
+     im_is_rview Mk = false ->
      im_ref p k Mk = (hd, k') ->
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns ns' ->
      List.length as1 = (im_unu D Mk + im_nn Mk)%nat ->
@@ -432,6 +439,22 @@ Inductive ind_rel (p : qname) (D : ind_decl)
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns' (List.skipn (im_unu D Mk) as2) ->
      Dom m ≈ m' ∈ per_bot ->
      ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' (⇑ (d_ind hd k' as1) m) (⇑ (d_ind hd k' as2) m') }
+(** Two elements of a record view [k], each taken apart by its
+    projections at the record's fields: a tuple and a neutral alike (η).
+    The projections are related as the arguments of the record view's
+    pseudo-constructor: the non-recursive ones at their types, the
+    recursive ones by their shapes.  A record view has no non-uniform
+    parameters. *)
+| ind_rel_record :
+  `{ ind_member D k = Some Mk ->
+     im_head Mk = mh_record qr Is fl ->
+     im_nparams Mk = nil ->
+     im_cons Mk = (c, gs) :: nil ->
+     ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ vs ->
+     ⟦projs fl of v' ⟧ gc_deps ⍮ gc_stack ↘ vs' ->
+     tele_rel (args_rel k nil c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
+     con_args_rel p D okr nparams_rel args_rel doms_rel k u u' nil nil gs vs vs' ->
+     ind_rel p D okr nparams_rel args_rel doms_rel k u u' nil nil v v' }
 (** The arguments of two constructors of the member [k] at the bases [u]
     and [u'], after the values [pre] and [pre'] of their non-uniform
     parameters and the non-recursive arguments before them: a recursive
@@ -543,6 +566,7 @@ Record view_member_image (D : ind_decl) (qc : qname) (Is : list exp) (vm : list 
   ; image_head_matches : match im_head Mi' with
                | mh_decl _ => exists vm', im_head image_member = mh_view qc i' Is vm'
                | mh_view qv kv Is'' _ => exists Is' vm', im_head image_member = mh_view qv kv Is' vm' /\ List.length Is' = List.length Is''
+               | mh_record qr Is'' fl => exists Is', im_head image_member = mh_record qr Is' fl /\ List.length Is' = List.length Is''
                end }.
 
 (** The structural facts about a group the universe clause asks for (see
@@ -575,7 +599,31 @@ Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
     (** So does each of the views' containers' constructors *)
   ; grp_tele_ass_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.In (c, gs') (im_cons Mi') ->
-      cargs_plen Dq gs' }.
+      cargs_plen Dq gs'
+    (** The record views' facts without a judgment: each a record's at its
+        instance, of no non-uniform parameter and one constructor, after
+        every other member, their fields ending in record views before
+        them *)
+  ; grp_tele_ass_rstruct : rview_struct_ok gc_deps gc_stack D
+    (** A view's container's record views come last, after its members
+        with a block *)
+  ; grp_tele_ass_csuffix : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq -> rview_suffix_ok Dq
+    (** A view's container's record views' facts without a judgment, as
+        the group's own ([grp_tele_ass_rstruct]): what the count of the
+        container's leaf paths among the view's reads
+        ([ViewCount.cargs_nin_view]) *)
+  ; grp_tele_ass_crstruct : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq -> rview_struct_ok gc_deps gc_stack Dq }.
+
+(** A group of these facts has the arities readback asks of a stuck
+    eliminator's group ([read_ne_elim]). *)
+Lemma grp_tele_ass_leaf_arity : forall D, grp_tele_ass D -> rview_leaf_arity D.
+Proof.
+  intros D HD; constructor.
+  - intros * HMk _ Hin; exact (grp_tele_ass_plen _ HD _ _ _ _ HMk Hin).
+  - exact (rview_struct_order _ _ _ (grp_tele_ass_rstruct _ HD)).
+Qed.
 
 (** The non-uniform parameters' relations are PERs at related prefixes. *)
 Definition nparams_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) : Prop :=

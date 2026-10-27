@@ -622,6 +622,20 @@ Definition record_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option record_
       end
   end.
 
+(** [record_lookup] at a function giving the filed units, [gc_entry_u]
+    in place of [gc_entry]: the lookup the checker runs, through a trie
+    ([Extraction.Lookup]); equal to [record_lookup] at a function agreeing
+    with [gds_lookup Θ] ([record_lookup_u_ok]). *)
+Definition record_lookup_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option record_decl :=
+  match gs_find_record Ξ p with
+  | Some R => Some R
+  | None =>
+      match gc_entry_u uf Ξ p with
+      | Some (ge_record _ _ R _) => Some R
+      | _ => None
+      end
+  end.
+
 (** A global path naming a member with a term part and a module part: an
     inductive type or a record type, stored or with its module's frame
     open, or a definition with a module part. *)
@@ -685,6 +699,9 @@ Section UnitsOk.
 
   Lemma gc_entry_u_ok : forall Ξ p, gc_entry_u uf Ξ p = gc_entry Θ Ξ p.
   Proof. intros; unfold gc_entry, gc_entry_u; rewrite Huf; reflexivity. Qed.
+
+  Lemma record_lookup_u_ok : forall Ξ p, record_lookup_u uf Ξ p = record_lookup Θ Ξ p.
+  Proof. intros; unfold record_lookup_u, record_lookup; rewrite gc_entry_u_ok; reflexivity. Qed.
 End UnitsOk.
 
 (** ** One Lookup for a Global

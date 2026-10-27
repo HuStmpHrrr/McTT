@@ -1182,7 +1182,11 @@ Proof.
   destruct (eval_ind_value _ _ _ _ _ Ha) as [ms ->].
   inversion Hr; subst.
   1,2: do 5 eexists; split; [ eassumption | split; [ eassumption | split; [ eassumption | reflexivity ] ] ].
-  exfalso; cbn in Hc, HW; eapply no_closed_neutral; eassumption.
+  (* a record view's value: its one constructor *)
+  - do 5 eexists; split; [ eassumption | split; [ eassumption | split; [| reflexivity ] ] ].
+    match goal with Hc : im_cons ?Mj = (?c, ?gs) :: nil |- ind_con ?Mj _ = _ =>
+      unfold ind_con; rewrite Hc; cbn; rewrite String.eqb_refl; reflexivity end.
+  - exfalso; cbn in Hc, HW; eapply no_closed_neutral; eassumption.
 Qed.
 
 (** The member of a group of the shape of the natural numbers
@@ -1203,7 +1207,7 @@ Lemma nat_shape_inv : forall D z s, nat_shape D = Some (z, s) ->
 Proof.
   intros [Δ S ms] z s H; unfold nat_shape in H; cbn in H.
   destruct Δ; [| discriminate ].
-  destruct ms as [| [[pm | ? ? ? ?] [|] cs] [|]]; try discriminate.
+  destruct ms as [| [[pm | ? ? ? ? | ? ? ?] [|] cs] [|]]; try discriminate.
   split; [ reflexivity |].
   intros [| k] Mk Hk; cbn in Hk; [| destruct k; discriminate ].
   injection Hk as <-; split; [ reflexivity |].
@@ -1262,11 +1266,12 @@ Lemma nat_read_step_of_read : forall p D z s W v, ind_lookup gc_deps gc_stack p 
     Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ W -> nat_read_step p z s W.
 Proof.
   intros * Hl Hs Hr; destruct (nat_shape_inv _ _ _ Hs) as (Hnu & Hms).
-  inversion Hr; subst; [| | constructor ].
+  inversion Hr; subst; [| | | constructor ].
   all: match goal with H : ind_lookup _ _ _ = Some ?D0 |- _ => assert (D0 = D) as -> by congruence end.
   all: match goal with H : ind_member _ 0 = Some _ |- _ => destruct (Hms _ _ H) as [_ [Hdec Hnp Hcs]] end.
-  (** A view is not a declared member. *)
+  (** A view, or a record view, is not a declared member. *)
   2: match goal with H : im_head _ = mh_view _ _ _ _ |- _ => unfold im_is_decl in Hdec; rewrite H in Hdec; discriminate end.
+  2: match goal with H : im_head _ = mh_record _ _ _ |- _ => unfold im_is_decl in Hdec; rewrite H in Hdec; discriminate end.
   match goal with H : ind_con _ _ = Some _ |- _ => destruct (Hcs _ _ H) as [[-> ->] | [-> ->]] end.
   all: unfold im_params, im_np, im_nn, ind_nu in *; rewrite Hnu, Hnp in *; cbn in *.
   all: match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst end.
@@ -1300,7 +1305,7 @@ Proof.
   apply wf_con_inversion in Hf as [D' Mk gs Hl' Hk Hc Hsub].
   rewrite Hl in Hl'; injection Hl' as <-.
   destruct (Hms _ _ Hk) as [_ [Hdec Hnp Hcs]].
-  unfold im_is_decl in Hdec; destruct (im_head Mk) eqn:Eh; [| discriminate ].
+  unfold im_is_decl in Hdec; destruct (im_head Mk) eqn:Eh; [| discriminate | discriminate ].
   destruct (Hcs _ _ Hc) as [[_ ->] | [_ ->]].
   all: unfold con_ty, im_params, cargs_ctx, im_nn in Hsub; rewrite Hnu, Hnp in Hsub; cbn in Hsub.
   all: unfold ind_mty in Hsub; rewrite Hk in Hsub.

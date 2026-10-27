@@ -49,7 +49,9 @@
 ./Core/Completeness/Inductives/Model.v
 ./Core/Completeness/Inductives/FiledViews.v
 ./Core/Completeness/Inductives/ArgTypes.v
+./Core/Completeness/Inductives/CargsRel.v
 ./Core/Completeness/Inductives/ViewEquations.v
+./Core/Completeness/Inductives/RviewEnds.v
 ./Core/Completeness/Inductives/ViewArgs.v
 ./Core/Completeness/Inductives/Con.v
 ./Core/Completeness/Inductives/Elim.v
@@ -95,6 +97,7 @@
 ./Core/Semantic/Inductives/IndElim.v
 ./Core/Semantic/Inductives/ReadPairs.v
 ./Core/Semantic/Inductives/ViewCoherence.v
+./Core/Semantic/Inductives/ViewCount.v
 ./Core/Semantic/Inductives/NestAcc.v
 ./Core/Semantic/Inductives/Regressions.v
 ./Core/Semantic/Stuck.v

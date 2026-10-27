@@ -238,6 +238,7 @@ Definition mhead_mvcb (h : mhead) : bool :=
   match h with
   | mh_decl _ => true
   | mh_view _ _ Is _ => forallb (exp_mvcb 0) Is
+  | mh_record _ Is _ => forallb (exp_mvcb 0) Is
   end.
 
 (** A member without free module variables, computed. *)
@@ -265,7 +266,8 @@ Qed.
 Lemma mhead_mvcb_spec : forall h, mhead_mvcb h = true <-> mhead_mvc h.
 Proof.
   destruct mvcb_spec as (He & _).
-  intros [pm | qc k Is vm]; cbn; [ split; auto | apply (forallb_Forall _ _ _ (fun M => He M 0)) ].
+  intros [pm | qc k Is vm | qr Is fl]; cbn;
+    [ split; auto | apply (forallb_Forall _ _ _ (fun M => He M 0)) | apply (forallb_Forall _ _ _ (fun M => He M 0)) ].
 Qed.
 
 Lemma member_mvcb_spec : forall M, member_mvcb M = true <->
@@ -424,7 +426,7 @@ Qed.
 Lemma view_map_at_check_complete : forall vm M vmv, view_map_at vm M vmv -> view_map_at_check vm M vmv = true.
 Proof.
   intros * H; unfold view_map_at in H; unfold view_map_at_check.
-  destruct (im_head M); destruct (list_eq_dec _ _ _) as [_ | Hne]; first [ reflexivity | contradiction ].
+  destruct (im_head M); [| | contradiction ]; destruct (list_eq_dec _ _ _) as [_ | Hne]; first [ reflexivity | contradiction ].
 Qed.
 
 (** Views that agree on their maps pass the check. *)
@@ -432,13 +434,13 @@ Theorem view_maps_check_complete : forall Θ Ξ D, view_maps_coherent Θ Ξ D ->
 Proof.
   intros * H; unfold view_maps_check; apply List.forallb_forall; intros Mk HMk.
   apply List.In_nth_error in HMk as [k HMk].
-  destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ reflexivity |].
+  destruct (im_head Mk) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; [ reflexivity | | reflexivity ].
   destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| reflexivity ].
   apply List.forallb_forall; intros [i' Mi'] Hin; cbn [fst snd].
   pose proof (in_combine_seq0 _ _ _ Hin) as HMi'.
   destruct (List.nth_error vm i') as [v |] eqn:Hv; [| reflexivity ].
   destruct (ind_member D v) as [Mv |] eqn:HMv; [| reflexivity ].
-  destruct (im_head Mv) as [pm' | qv kv Iv vmv] eqn:HhMv; [ reflexivity |].
+  destruct (im_head Mv) as [pm' | qv kv Iv vmv | qr' Is' fl'] eqn:HhMv; [ reflexivity | | reflexivity ].
   exact (view_map_at_check_complete _ _ _ (H _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv HhMv)).
 Qed.
 
@@ -464,23 +466,46 @@ Proof.
   - specialize (IH Hin Hp Hw); destruct (p y) eqn:Ep; [ rewrite (Hpw _ Ep); cbn; lia |]; destruct (pw y); cbn; lia.
 Qed.
 
+(** A member a constructor's recursive arguments end in is that of one of
+    them. *)
+Lemma in_cargs_rec_mems_inv : forall gs j, In j (cargs_rec_mems gs) ->
+    exists gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 /\ ptyp_mem t = j.
+Proof.
+  induction gs as [| [A | t] gs IH]; intros j Hj; cbn in Hj; [ contradiction | |].
+  - destruct (IH _ Hj) as (gs1 & t & gs2 & -> & <-); exists (ca_arg A :: gs1), t, gs2; split; reflexivity.
+  - destruct Hj as [<- | Hj]; [ exists nil, t, gs; split; reflexivity |].
+    destruct (IH _ Hj) as (gs1 & t' & gs2 & -> & <-); exists (ca_rec t :: gs1), t', gs2; split; reflexivity.
+Qed.
+
+(** A member's head is a declared member's or not. *)
+Lemma mhead_decl_cases : forall M : imember, (exists pm, im_head M = mh_decl pm) \/ (forall pm, im_head M <> mh_decl pm).
+Proof. intros M; destruct (im_head M); [ left; eauto | right; congruence | right; congruence ]. Qed.
+
 Section RankComplete.
   Variables (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat).
   Hypothesis HDs : decls_typed Θ Ξ.
   Hypothesis Hrk : view_rank_ok Θ Ξ D rk.
 
-  Lemma cargs_nest_targets_lt : forall r gs' gs j, cargs_nest_ok rk r gs' gs -> In j (cargs_nest_targets gs' gs) -> rk j < r.
+  Lemma cargs_nest_targets_lt : forall D' r gs' gs j, cargs_nest_ok D D' rk r gs' gs ->
+      In j (cargs_nest_targets D D' gs' gs) -> rk j < r.
   Proof.
-    intros r; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] j Hok Hj; cbn in Hok, Hj; try contradiction;
+    intros D' r; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] j Hok Hj; cbn in Hok, Hj; try contradiction;
       first [ destruct Hok as [Hlt Hok]; destruct Hj as [<- | Hj]; [ exact Hlt | exact (IH _ _ Hok Hj) ]
-            | exact (IH _ _ Hok Hj) ].
+            | exact (IH _ _ Hok Hj) | idtac ].
+    destruct Hok as [Hlv Hok]; apply List.in_app_or in Hj as [Hj | Hj]; [| exact (IH _ _ Hok Hj) ].
+    apply List.in_map_iff in Hj as (l & <- & Hl); apply List.filter_In in Hl as [Hl Hn].
+    apply Hlv; [ exact Hl | destruct (leaf_in D' t' l); [ discriminate Hn | reflexivity ] ].
   Qed.
 
   (** A view's rank is above that of every member it nests through. *)
   Lemma member_nest_targets_lt : forall k Mk j, ind_member D k = Some Mk -> In j (member_nest_targets Θ Ξ D Mk) -> rk j < rk k.
   Proof.
     intros * HMk Hj; unfold member_nest_targets in Hj.
-    destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ contradiction |].
+    destruct (im_head Mk) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; [ contradiction | |].
+    2: { (** A record view: above each member its recursive fields end in *)
+      apply List.in_concat in Hj as (l & Hl & Hj); apply List.in_map_iff in Hl as ([c gs] & <- & Hcg); cbn [snd] in Hj.
+      destruct (in_cargs_rec_mems_inv _ _ Hj) as (gs1 & t & gs2 & Egs & <-).
+      exact (view_rank_ok_rview _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ HMk Hh Hcg Egs). }
     destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| contradiction ].
     apply List.in_concat in Hj as (l1 & Hl1 & Hj); apply List.in_map_iff in Hl1 as ([i' Mi'] & <- & Hin); cbn [fst snd] in Hj.
     pose proof (in_combine_seq0 _ _ _ Hin) as HMi'.
@@ -491,7 +516,7 @@ Section RankComplete.
     assert (Hc' : ind_con Mi' c = Some gs').
     { unfold ind_con; apply cons_lookup_nodup; [| exact Hcg ].
       exact (decl_typed_nodup _ _ _ (HDs _ _ Hl) _ _ HMi'). }
-    exact (cargs_nest_targets_lt _ _ _ _ (view_rank_ok_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv Hc' Hc) Hj).
+    exact (cargs_nest_targets_lt _ _ _ _ _ (view_rank_ok_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv Hc' Hc) Hj).
   Qed.
 
   (** The members of rank below [k]'s. *)
@@ -519,10 +544,15 @@ Section RankComplete.
   Lemma iter_nonmember : forall m j, ind_member D j = None -> grp_rank_iter Θ Ξ D m j = 0.
   Proof. intros [| m] j Hj; cbn; [ reflexivity | rewrite Hj; reflexivity ]. Qed.
 
-  Lemma iter_view : forall m k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  (** A view's or a record view's candidate rank: one above those of the
+      members it nests through *)
+  Lemma iter_view : forall m k Mk, ind_member D k = Some Mk -> (forall pm, im_head Mk <> mh_decl pm) ->
       grp_rank_iter Θ Ξ D (S m) k =
         S (List.fold_right Nat.max 0 (List.map (grp_rank_iter Θ Ξ D m) (member_nest_targets Θ Ξ D Mk))).
-  Proof. intros * Hk Hh; cbn [grp_rank_iter]; rewrite Hk, Hh; reflexivity. Qed.
+  Proof.
+    intros * Hk Hh; cbn [grp_rank_iter]; rewrite Hk.
+    destruct (im_head Mk) eqn:E; [ exfalso; exact (Hh _ eq_refl) | reflexivity | reflexivity ].
+  Qed.
 
   (** The candidate rank of a member is stable after as many rounds as
       there are members below it. *)
@@ -532,8 +562,8 @@ Section RankComplete.
     induction r as [r IH] using lt_wf_ind; intros k m Hr Hm.
     destruct m as [| m]; [ lia |].
     destruct (ind_member D k) as [Mk |] eqn:Hk; [| rewrite !iter_nonmember by exact Hk; reflexivity ].
-    destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ cbn [grp_rank_iter]; rewrite Hk, Hh; reflexivity |].
-    rewrite (iter_view m _ _ _ _ _ _ Hk Hh), (iter_view (S m) _ _ _ _ _ _ Hk Hh).
+    destruct (mhead_decl_cases Mk) as [[pm Hh] | Hh]; [ cbn [grp_rank_iter]; rewrite Hk, Hh; reflexivity |].
+    rewrite (iter_view m _ _ Hk Hh), (iter_view (S m) _ _ Hk Hh).
     f_equal; f_equal; apply List.map_ext_in; intros j Hj.
     pose proof (member_nest_targets_lt _ _ _ Hk Hj) as Hlt.
     assert (Hcase : (exists Mj, ind_member D j = Some Mj) \/ ind_member D j = None)
@@ -553,9 +583,17 @@ Section RankComplete.
     assert (Hkn : k < List.length (ind_members D)) by (apply List.nth_error_Some; congruence).
     pose proof (rank_below_bound k Hkn) as Hb.
     destruct (List.length (ind_members D)) as [| n'] eqn:En; [ lia |].
-    destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh.
-    - cbn [grp_rank_iter]; unfold ind_member; rewrite HMk, Hh; reflexivity.
-    - apply List.forallb_forall; intros j Hj; apply Nat.ltb_lt.
+    destruct (mhead_decl_cases Mk) as [[pm Hh] | Hh].
+    - rewrite Hh; cbn [grp_rank_iter]; unfold ind_member; rewrite HMk, Hh; reflexivity.
+    - replace (match im_head Mk with
+               | mh_decl _ => Nat.eqb (grp_rank_iter Θ Ξ D (S n') k) 0
+               | _ => List.forallb (fun j => Nat.ltb (grp_rank_iter Θ Ξ D (S n') j) (grp_rank_iter Θ Ξ D (S n') k))
+                        (member_nest_targets Θ Ξ D Mk)
+               end)
+        with (List.forallb (fun j => Nat.ltb (grp_rank_iter Θ Ξ D (S n') j) (grp_rank_iter Θ Ξ D (S n') k))
+                (member_nest_targets Θ Ξ D Mk))
+        by (destruct (im_head Mk) eqn:E; [ exfalso; exact (Hh _ eq_refl) | reflexivity | reflexivity ]).
+      apply List.forallb_forall; intros j Hj; apply Nat.ltb_lt.
       assert (Hjk : rk j < rk k) by exact (member_nest_targets_lt _ _ _ HMk Hj).
       assert (Hj' : grp_rank_iter Θ Ξ D n' j = grp_rank_iter Θ Ξ D (S n') j).
       { assert (Hcase : (exists Mj, ind_member D j = Some Mj) \/ ind_member D j = None)
@@ -565,7 +603,7 @@ Section RankComplete.
           pose proof (rank_below_lt k j ltac:(rewrite En; exact Hjn) Hjk).
           apply (iter_stable (rk j)); [ reflexivity | lia ].
         - rewrite !iter_nonmember by exact Hjm; reflexivity. }
-      rewrite <- Hj', (iter_view n' _ _ _ _ _ _ HMk Hh).
+      rewrite <- Hj', (iter_view n' _ _ HMk Hh).
       pose proof (fold_max_ge _ _ (List.in_map (grp_rank_iter Θ Ξ D n') _ _ Hj)); lia.
   Qed.
 End RankComplete.
@@ -618,11 +656,29 @@ Definition views_dec (D : ind_decl) (Q : nat -> imember -> qname -> nat -> list 
 Proof.
   destruct (members_dec D (fun k Mk => forall qc k' Is vm, im_head Mk = mh_view qc k' Is vm -> Q k Mk qc k' Is vm))
     as [H | H].
-  - intros k Mk Hk; destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ left; intros; discriminate |].
+  - intros k Mk Hk; destruct (im_head Mk) as [pm | qc k' Is vm | qr Is fl] eqn:Hh;
+      [ left; intros; discriminate | | left; intros; discriminate ].
     destruct (f _ _ _ _ _ _ Hk Hh) as [HQ | HQ];
       [ left; intros ? ? ? ? [= <- <- <- <-]; exact HQ | right; intros H'; exact (HQ (H' _ _ _ _ eq_refl)) ].
   - left; intros * Hk Hh; exact (H _ _ Hk _ _ _ _ Hh).
   - right; intros H'; apply H; intros * Hk * Hh; exact (H' _ _ _ _ _ _ Hk Hh).
+Defined.
+
+(** A property of every record view of a group, decided at each. *)
+Definition rviews_dec (D : ind_decl) (Q : nat -> imember -> qname -> list exp -> list string -> Prop)
+    (f : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       {Q k Mk qr Is fl} + {~ Q k Mk qr Is fl}) :
+  {forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl -> Q k Mk qr Is fl}
+  + {~ forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl -> Q k Mk qr Is fl}.
+Proof.
+  destruct (members_dec D (fun k Mk => forall qr Is fl, im_head Mk = mh_record qr Is fl -> Q k Mk qr Is fl))
+    as [H | H].
+  - intros k Mk Hk; destruct (im_head Mk) as [pm | qc k' Is vm | qr Is fl] eqn:Hh;
+      [ left; intros; discriminate | left; intros; discriminate |].
+    destruct (f _ _ _ _ _ Hk Hh) as [HQ | HQ];
+      [ left; intros ? ? ? [= <- <- <-]; exact HQ | right; intros H'; exact (HQ (H' _ _ _ eq_refl)) ].
+  - left; intros * Hk Hh; exact (H _ _ Hk _ _ _ Hh).
+  - right; intros H'; apply H; intros * Hk * Hh; exact (H' _ _ _ _ _ Hk Hh).
 Defined.
 
 (** The same with one bound. *)
@@ -636,7 +692,8 @@ Proof.
   destruct (members_bound_dec D (fun k Mk l => forall qc k' Is vm, im_head Mk = mh_view qc k' Is vm -> Q k Mk qc k' Is vm l))
     as [[l H] | H].
   - intros * Hle HQ * Hh; exact (Hmono _ _ _ _ _ _ _ _ Hle (HQ _ _ _ _ Hh)).
-  - intros k Mk Hk; destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ left; exists 0; intros; discriminate |].
+  - intros k Mk Hk; destruct (im_head Mk) as [pm | qc k' Is vm | qr Is fl] eqn:Hh;
+      [ left; exists 0; intros; discriminate | | left; exists 0; intros; discriminate ].
     destruct (f _ _ _ _ _ _ Hk Hh) as [[l HQ] | HQ];
       [ left; exists l; intros ? ? ? ? [= <- <- <- <-]; exact HQ | right; intros l H'; exact (HQ l (H' _ _ _ _ eq_refl)) ].
   - left; exists l; intros * Hk Hh; exact (H _ _ Hk _ _ _ _ Hh).
@@ -937,6 +994,7 @@ Ltac vacuous := left; intros; unify_found; congruence.
 
 Section NilDecide.
   Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
   Variables (mp : qname) (D : ind_decl) (IsS : nat -> list exp).
 
@@ -970,7 +1028,7 @@ Section NilDecide.
       + {forall M0, ~ (ind_member D 0 = Some M0 /\ im_head M0 = mh_decl mp)}.
   Proof.
     destruct (ind_member D 0) as [M0 |] eqn:H0; [| right; intros M0 [[=] _] ].
-    destruct (im_head M0) as [pm | qc k Is vm] eqn:Hh; [| right; intros M0' [[= <-] Hh']; congruence ].
+    destruct (im_head M0) as [pm | qc k Is vm | qr Is fl] eqn:Hh; [| right; intros M0' [[= <-] Hh']; congruence .. ].
     destruct (qname_eq_dec pm mp) as [-> | Hne]; [ left; exists M0; split; [ reflexivity | exact Hh ] |].
     right; intros M0' [[= <-] Hh']; rewrite Hh in Hh'; injection Hh' as ->; contradiction.
   Defined.
@@ -1209,13 +1267,15 @@ Section NilDecide.
       destruct (members_dec D' (fun i' Mi' => forall pm', im_head Mi' = mh_decl pm' -> forall v, nth_error vm i' = Some v ->
                   exists Mv vm', ind_member D v = Some Mv /\ im_head Mv = mh_view qc i' Is vm')) as [HM | HM].
       + intros i' Mi' _.
-        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2] eqn:Hh'; [| left; intros ? [=] ].
+        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [| left; intros ? [=] .. ].
         destruct (List.nth_error vm i') as [v |] eqn:Hv; [| left; intros ? _ ? [=] ].
         destruct (ind_member D v) as [Mv |] eqn:Hmv;
           [| right; intros H; destruct (H pm' eq_refl v eq_refl) as (? & ? & Hm & _); rewrite Hmv in Hm; discriminate ].
-        destruct (im_head Mv) as [pmv | qv kv Iv vmv] eqn:Hhv;
+        destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv;
           [ right; intros H; destruct (H pm' eq_refl v eq_refl) as (? & ? & Hm & Hhm); rewrite Hmv in Hm; injection Hm as <-;
-            congruence |].
+            congruence | |
+            right; intros H; destruct (H pm' eq_refl v eq_refl) as (? & ? & Hm & Hhm); rewrite Hmv in Hm; injection Hm as <-;
+            congruence ].
         destruct (qname_eq_dec qv qc) as [-> | Hq];
           [| right; intros H; destruct (H pm' eq_refl v eq_refl) as (? & ? & Hm & Hhm); rewrite Hmv in Hm; injection Hm as <-;
              rewrite Hhv in Hhm; injection Hhm; intros; contradiction ].
@@ -1256,7 +1316,7 @@ Section NilDecide.
                   exists Mv X vm', ind_member D v = Some Mv /\ im_head Mv = mh_view q'' k'' X vm' /\
                     List.length X = List.length Is'')) as [HM | HM].
       + intros i' Mi' _.
-        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2] eqn:Hh'; [ left; intros ? ? ? ? [=] |].
+        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [ left; intros ? ? ? ? [=] | | left; intros ? ? ? ? [=] ].
         destruct (List.nth_error vm i') as [v |] eqn:Hv; [| left; intros ? ? ? ? _ ? [=] ].
         Local Ltac view_maps_len_rej Hmv Hhv :=
           let H := fresh "H" in
@@ -1264,9 +1324,11 @@ Section NilDecide.
           rewrite Hmv in Hm; try (injection Hm as <-; rewrite Hhv in Hhm; injection Hhm; intros; subst); first [ discriminate | contradiction | congruence ].
         destruct (ind_member D v) as [Mv |] eqn:Hmv; [| right; intros H; destruct (H _ _ _ _ eq_refl _ eq_refl) as (? & ? & ? & Hm & _);
                                                             rewrite Hmv in Hm; discriminate ].
-        destruct (im_head Mv) as [pmv | qv kv Iv vmv] eqn:Hhv;
+        destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv;
           [ right; intros H; destruct (H _ _ _ _ eq_refl _ eq_refl) as (? & ? & ? & Hm & Hhm & _); rewrite Hmv in Hm;
-            injection Hm as <-; congruence |].
+            injection Hm as <-; congruence | |
+            right; intros H; destruct (H _ _ _ _ eq_refl _ eq_refl) as (? & ? & ? & Hm & Hhm & _); rewrite Hmv in Hm;
+            injection Hm as <-; congruence ].
         destruct (qname_eq_dec qv q2) as [-> | Hq];
           [| right; intros H; destruct (H _ _ _ _ eq_refl _ eq_refl) as (? & ? & ? & Hm & Hhm & _); rewrite Hmv in Hm;
              injection Hm as <-; rewrite Hhv in Hhm; injection Hhm; intros; contradiction ].
@@ -1323,11 +1385,11 @@ Section NilDecide.
                   nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
                   Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [HM | HM].
       + intros i' Mi' _.
-        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2] eqn:Hh'; [ vacuous |].
+        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [ vacuous | | vacuous ].
         destruct (ind_lookup Θ Ξ q2) as [D2 |] eqn:Hl2; [| vacuous ].
         destruct (List.nth_error vm i') as [v |] eqn:Hv; [| vacuous ].
         destruct (ind_member D v) as [Mv |] eqn:Hmv; [| vacuous ].
-        destruct (im_head Mv) as [pmv | qv kv Iv vmv] eqn:Hhv; [ vacuous |].
+        destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv; [ vacuous | | vacuous ].
         destruct (qname_eq_dec qv q2) as [-> | Hq]; [| vacuous ].
         destruct (Nat.eq_dec kv k2) as [-> | Hk2]; [| vacuous ].
         destruct (forall_nth3_dec (fun C C' T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])
@@ -1712,6 +1774,281 @@ Section NilDecide.
     - right; intros (D'' & [= <-] & Hw); rewrite (vwrap_check_complete _ _ _ Hw) in Hc; discriminate.
   Defined.
 
+  (** ** The Record Views
+
+      The records are looked up through the filed units ([record_lookup_f]). *)
+
+  (** A record view's head names a filed record at its arguments, its
+      fields named as the record's. *)
+  Definition rview_record_facts_dec (qr : qname) (Is : list exp) (fl : list string) :
+    {exists R, rview_record_facts Θ Ξ R qr Is fl} + {~ exists R, rview_record_facts Θ Ξ R qr Is fl}.
+  Proof.
+    destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl];
+      [| right; intros (R & HR); rewrite (rview_record_lookup _ _ _ _ _ _ HR) in Hl; discriminate ].
+    Local Ltac rview_facts_rej Hl :=
+      let R' := fresh "R'" in let HL := fresh "HL" in
+      right; intros (R' & [HL ? ? ? ?]); rewrite Hl in HL; injection HL as <-; contradiction.
+    destruct (list_eq_dec string_dec fl (List.map fst (record_fields R))) as [Hn | Hn]; [| rview_facts_rej Hl ].
+    destruct (Nat.eq_dec (List.length Is) (List.length (record_params R))) as [Hc | Hc]; [| rview_facts_rej Hl ].
+    destruct (tele_ass_dec (record_params R)) as [Ha | Ha]; [| rview_facts_rej Hl ].
+    destruct (nodup_dec fl) as [Hd | Hd]; [| rview_facts_rej Hl ].
+    left; exists R; constructor; assumption.
+  Defined.
+
+  (** A record view's one constructor, [rview_con], of one argument per
+      field *)
+  Definition rview_con_dec (Mk : imember) (fl : list string) :
+    {exists gs, im_cons Mk = (rview_con, gs) :: nil /\ List.length gs = List.length fl}
+    + {~ exists gs, im_cons Mk = (rview_con, gs) :: nil /\ List.length gs = List.length fl}.
+  Proof.
+    destruct (im_cons Mk) as [| [c gs] [| cg rest]];
+      [ right; intros (gs & E & _); discriminate | | right; intros (gs' & E & _); discriminate ].
+    destruct (string_dec c rview_con) as [-> | Hc]; [| right; intros (gs' & E & _); injection E; intros; congruence ].
+    destruct (Nat.eq_dec (List.length gs) (List.length fl)) as [HL | HL];
+      [ left; exists gs; split; [ reflexivity | exact HL ] | right; intros (gs' & E & HL'); injection E as <-; contradiction ].
+  Defined.
+
+  (** The fields of a record view end only in record views before it. *)
+  Definition rview_order_dec : {rview_order_ok D} + {~ rview_order_ok D}.
+  Proof.
+    destruct (rviews_dec D (fun j Mj _ _ _ => forall c gs, im_cons Mj = (c, gs) :: nil ->
+                forall gs1 g gs2, gs = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
+                forall Mi, ind_member D (ptyp_mem t) = Some Mi -> im_is_rview Mi = true -> ptyp_mem t < j)) as [H | H].
+    - intros j Mj qr Is fl _ _.
+      destruct (im_cons Mj) as [| [c gs] [| cg rest]] eqn:Ec; [ left; intros ? ? [=] | | left; intros ? ? [=] ].
+      destruct (forall_split_dec gs (fun gs1 g gs2 => forall t, g = ca_rec t ->
+                  forall Mi, ind_member D (ptyp_mem t) = Some Mi -> im_is_rview Mi = true -> ptyp_mem t < j)) as [HS | HS].
+      + intros gs1 [A | t] gs2 _; [ left; intros ? [=] |].
+        destruct (ind_member D (ptyp_mem t)) as [Mi |] eqn:HMi; [| left; intros ? [= <-] ? HMi'; congruence ].
+        destruct (im_is_rview Mi) eqn:Er; [| left; intros ? [= <-] ? HMi' Er'; rewrite HMi in HMi'; injection HMi' as <-; congruence ].
+        destruct (Compare_dec.lt_dec (ptyp_mem t) j) as [Hlt | Hlt];
+          [ left; intros ? [= <-] _ _ _; exact Hlt | right; intros H; exact (Hlt (H t eq_refl Mi HMi Er)) ].
+      + left; intros c' gs' [= <- <-]; intros; subst; eapply HS; eauto.
+      + right; intros H; apply HS; intros gs1 g gs2 E; exact (H c gs eq_refl gs1 g gs2 E).
+    - left; intros j Mj qr Is fl c gs gs1 t gs2 Mi Hj Hh Hc E HMi Er; exact (H j Mj qr Is fl Hj Hh c gs Hc gs1 _ gs2 E t eq_refl Mi HMi Er).
+    - right; intros Ho; apply H; intros j Mj qr Is fl Hj Hh c gs Hc gs1 g gs2 E t -> Mi HMi Er;
+        exact (Ho j Mj qr Is fl c gs gs1 t gs2 Mi Hj Hh Hc E HMi Er).
+  Defined.
+
+  (** The record views come last. *)
+  Definition rview_suffix_dec : {rview_suffix_ok D} + {~ rview_suffix_ok D}.
+  Proof.
+    unfold rview_suffix_ok; apply members_dec; intros k M _.
+    destruct (bool_dec (im_is_rview M) true) as [Hd | Hd]; destruct (Compare_dec.le_dec (ind_nblk D) k) as [Hl | Hl];
+      first [ left; split; intros; assumption | left; split; intros; contradiction | right; intros [H1 H2]; tauto ].
+  Defined.
+
+  (** The record views' facts without a judgment. *)
+  Definition rview_struct_dec : {rview_struct_ok Θ Ξ D} + {~ rview_struct_ok Θ Ξ D}.
+  Proof.
+    destruct (rviews_dec D (fun _ _ qr Is fl => exists R, rview_record_facts Θ Ξ R qr Is fl)
+                (fun _ _ qr Is fl _ _ => rview_record_facts_dec qr Is fl)) as [H1 | H1];
+      [| right; intros Hs; apply H1; exact (rview_struct_record _ _ _ Hs) ].
+    destruct (rviews_dec D (fun _ Mk _ _ _ => im_nparams Mk = nil)
+                (fun _ Mk _ _ _ _ _ => list_eq_dec centry_eq_dec (im_nparams Mk) nil)) as [H2 | H2];
+      [| right; intros Hs; apply H2; exact (rview_struct_nparams _ _ _ Hs) ].
+    destruct (rviews_dec D (fun _ Mk _ _ fl => exists gs, im_cons Mk = (rview_con, gs) :: nil /\ List.length gs = List.length fl)
+                (fun _ Mk _ _ fl _ _ => rview_con_dec Mk fl)) as [H3 | H3];
+      [| right; intros Hs; apply H3; exact (rview_struct_con _ _ _ Hs) ].
+    destruct rview_suffix_dec as [H4 | H4]; [| right; intros Hs; exact (H4 (rview_struct_suffix _ _ _ Hs)) ].
+    destruct rview_order_dec as [H5 | H5]; [| right; intros Hs; exact (H5 (rview_struct_order _ _ _ Hs)) ].
+    left; constructor; assumption.
+  Defined.
+
+  (** Each record view's instance is [IsS] with the members as variables. *)
+  Definition rview_instance_link_dec :
+    {forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       Is = List.map (fun I => I[grp_sb mp D]) (IsS k)}
+    + {~ forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       Is = List.map (fun I => I[grp_sb mp D]) (IsS k)}.
+  Proof. apply rviews_dec; intros k Mk qr Is fl _ _; apply (list_eq_dec exp_eq_dec). Defined.
+
+  (** Each record view's instance argument is typed at the record's
+      parameters, over the members as variables. *)
+  Definition rview_instance_typed_dec :
+    {forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       record_lookup Θ Ξ qr = Some R -> nth_error (IsS k) j = Some I ->
+       nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T}
+    + {~ forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       record_lookup Θ Ξ qr = Some R -> nth_error (IsS k) j = Some I ->
+       nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T}.
+  Proof.
+    destruct (rviews_dec D (fun k Mk qr Is fl => forall R, record_lookup Θ Ξ qr = Some R ->
+                forall j I T, nth_error (IsS k) j = Some I -> nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
+                Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T)) as [H | H].
+    - intros k Mk qr Is fl _ _.
+      destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (forall_nth2_dec (fun I T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) (fun I T => check_exp_at Θ Ξ HΞ (grp_sctx D) T I)
+                  (IsS k) (tele_insts (record_params R) Id (IsS k))) as [HI | HI];
+        [ left; intros R' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HI | right; intros H; exact (HI (H _ Hl)) ].
+    - dec_left H.
+    - dec_right H.
+  Defined.
+
+  (** A record view's fields at the record's instance are its
+      constructor's arguments. *)
+  Definition rview_fields_eq_dec :
+    {forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       record_lookup Θ Ξ qr = Some R -> im_cons Mk = (c, gs) :: nil ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
+                             ≈ scargs_ctx D IsS Mk gs}
+    + {~ forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       record_lookup Θ Ξ qr = Some R -> im_cons Mk = (c, gs) :: nil ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
+                             ≈ scargs_ctx D IsS Mk gs}.
+  Proof.
+    destruct (rviews_dec D (fun k Mk qr Is fl => forall R, record_lookup Θ Ξ qr = Some R -> forall c gs,
+                im_cons Mk = (c, gs) :: nil ->
+                Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
+                                      ≈ scargs_ctx D IsS Mk gs)) as [H | H].
+    - intros k Mk qr Is fl _ _.
+      destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (im_cons Mk) as [| [c gs] [| cg rest]] eqn:Ec; [ left; intros ? ? ? ? [=] | | left; intros ? ? ? ? [=] ].
+      destruct (ext_eq_dec Θ Ξ HΞ (grp_sctx D) (tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k)))
+                  (scargs_ctx D IsS Mk gs)
+                  (tele_ass_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
+                                ltac:(unfold record_fctx, tele_ass;
+                                          apply List.Forall_rev, List.Forall_map, List.Forall_forall; intros; eauto)))
+        as [HE | HE];
+        [ left; intros R' Hl' c' gs' [= <- <-]; rewrite Hl in Hl'; injection Hl' as <-; exact HE
+        | right; intros H; exact (HE (H _ Hl _ _ eq_refl)) ].
+    - dec_left H.
+    - dec_right H.
+  Defined.
+
+  (** The sort of each record view's record at the instance is in the
+      group's. *)
+  Definition rview_sort_sub_dec :
+    {forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       record_lookup Θ Ξ qr = Some R ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ}
+    + {~ forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       record_lookup Θ Ξ qr = Some R ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ}.
+  Proof.
+    destruct (rviews_dec D (fun k Mk qr Is fl => forall R, record_lookup Θ Ξ qr = Some R ->
+                Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ)) as [H | H].
+    - intros k Mk qr Is fl _ _.
+      destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (sub_dec Θ Ξ HΞ (grp_sctx D) (record_sort R)[sb_of_list Id (IsS k)] (ind_sort D)[self_wk D 0]ʷ) as [HS | HS];
+        [ left; intros R' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HS | right; intros H; exact (HS (H _ Hl)) ].
+    - dec_left H.
+    - dec_right H.
+  Defined.
+
+  (** Each record view's type is in the group's sort. *)
+  Definition rview_typed_dec :
+    {forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ}
+    + {~ forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ}.
+  Proof.
+    apply rviews_dec; intros k Mk qr Is fl _ _.
+    exact (check_exp_at Θ Ξ HΞ (grp_sctx D) (ind_sort D)[self_wk D 0]ʷ (apps_exp (a_record qr) (IsS k))).
+  Defined.
+
+  (** A view takes its container's record views to record views of the
+      same record and as many arguments. *)
+  Definition rview_maps_dec :
+    {forall k Mk qc k' Is vm D' i' Mi' v q'' Is'' fl'', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_record q'' Is'' fl'' ->
+       nth_error vm i' = Some v ->
+       exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\ List.length X = List.length Is''}
+    + {~ forall k Mk qc k' Is vm D' i' Mi' v q'' Is'' fl'', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_record q'' Is'' fl'' ->
+       nth_error vm i' = Some v ->
+       exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\ List.length X = List.length Is''}.
+  Proof.
+    destruct (views_dec D (fun k Mk qc k' Is vm => forall D', ind_lookup Θ Ξ qc = Some D' ->
+                forall i' Mi', ind_member D' i' = Some Mi' -> forall q'' Is'' fl'', im_head Mi' = mh_record q'' Is'' fl'' ->
+                forall v, nth_error vm i' = Some v ->
+                exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\
+                  List.length X = List.length Is'')) as [H | H].
+    - intros k Mk qc k' Is vm _ _.
+      destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (members_dec D' (fun i' Mi' => forall q'' Is'' fl'', im_head Mi' = mh_record q'' Is'' fl'' ->
+                  forall v, nth_error vm i' = Some v ->
+                  exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\
+                    List.length X = List.length Is'')) as [HM | HM].
+      + intros i' Mi' _.
+        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [ left; intros ? ? ? [=] .. |].
+        destruct (List.nth_error vm i') as [v |] eqn:Hv; [| left; intros ? ? ? _ ? [=] ].
+        Local Ltac rview_maps_rej :=
+          let H := fresh "H" in
+          right; intros H; destruct (H _ _ _ eq_refl _ eq_refl) as (? & ? & Hm & Hhm & Hlen); unify_found;
+          first [ discriminate | congruence ].
+        destruct (ind_member D v) as [Mv |] eqn:Hmv; [| rview_maps_rej ].
+        destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv; [ rview_maps_rej | rview_maps_rej |].
+        destruct (qname_eq_dec qv q2) as [-> | Hq]; [| rview_maps_rej ].
+        destruct (list_eq_dec string_dec flv fl2) as [-> | Hf]; [| rview_maps_rej ].
+        destruct (Nat.eq_dec (List.length Iv) (List.length Is2)) as [HL | HL]; [| rview_maps_rej ].
+        left; intros ? ? ? [= <- <- <-] ? [= <-]; exists Mv, Iv; repeat split; assumption.
+      + left; intros D'' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HM.
+      + right; intros H'; apply HM; exact (H' D' Hl).
+    - dec_left H.
+    - dec_right H.
+  Defined.
+
+  (** The record view a view takes a container's record view to has the
+      container's arguments at this view's instance. *)
+  Definition rview_instance_eq_dec :
+    {forall k Mk qc k' Is vm D' i' Mi' v q'' Is'' fl'' R'' Mv X fl j' C C' T,
+       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_record q'' Is'' fl'' ->
+       record_lookup Θ Ξ q'' = Some R'' ->
+       nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_record q'' X fl ->
+       nth_error (IsS v) j' = Some C ->
+       nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+       nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]}
+    + {~ forall k Mk qc k' Is vm D' i' Mi' v q'' Is'' fl'' R'' Mv X fl j' C C' T,
+       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_record q'' Is'' fl'' ->
+       record_lookup Θ Ξ q'' = Some R'' ->
+       nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_record q'' X fl ->
+       nth_error (IsS v) j' = Some C ->
+       nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+       nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]}.
+  Proof.
+    destruct (views_dec D (fun k Mk qc k' Is vm => forall D', ind_lookup Θ Ξ qc = Some D' ->
+                forall i' Mi', ind_member D' i' = Some Mi' -> forall q'' Is'' fl'', im_head Mi' = mh_record q'' Is'' fl'' ->
+                forall R'', record_lookup Θ Ξ q'' = Some R'' -> forall v, nth_error vm i' = Some v ->
+                forall Mv, ind_member D v = Some Mv -> forall X fl, im_head Mv = mh_record q'' X fl ->
+                forall j' C C' T, nth_error (IsS v) j' = Some C ->
+                nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+                nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
+                Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [H | H].
+    - intros k Mk qc k' Is vm _ _.
+      destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (members_dec D' (fun i' Mi' => forall q'' Is'' fl'', im_head Mi' = mh_record q'' Is'' fl'' ->
+                  forall R'', record_lookup Θ Ξ q'' = Some R'' -> forall v, nth_error vm i' = Some v ->
+                  forall Mv, ind_member D v = Some Mv -> forall X fl, im_head Mv = mh_record q'' X fl ->
+                  forall j' C C' T, nth_error (IsS v) j' = Some C ->
+                  nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+                  nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
+                  Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [HM | HM].
+      + intros i' Mi' _.
+        destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [ vacuous | vacuous |].
+        destruct (record_lookup_f Θ Ξ q2) as [[R2 |] Hl2]; [| vacuous ].
+        destruct (List.nth_error vm i') as [v |] eqn:Hv; [| vacuous ].
+        destruct (ind_member D v) as [Mv |] eqn:Hmv; [| vacuous ].
+        destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv; [ vacuous | vacuous |].
+        destruct (qname_eq_dec qv q2) as [-> | Hq]; [| vacuous ].
+        destruct (forall_nth3_dec (fun C C' T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])
+                    (fun C C' T => eq_at_dec Θ Ξ HΞ (grp_sctx D) T[sb_of_list Id (IsS k)] C C')
+                    (IsS v) (List.map (fun I => I[sb_of_list Id (IsS k)]) Is2) (tele_insts (record_params R2) Id Is2))
+          as [HC | HC].
+        * left; intros ? ? ? [= <- <- <-] R2' Hl2' v' Hv' Mv' Hmv' X fl Hhv'; unify_found; intros; eapply HC; eassumption.
+        * right; intros H; exact (HC (H _ _ _ eq_refl _ Hl2 _ eq_refl _ Hmv _ _ Hhv)).
+      + left; intros D'' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HM.
+      + right; intros H'; apply HM; exact (H' D' Hl).
+    - dec_left H.
+    - dec_right H.
+  Defined.
+
   (** A premise of [ind_nil_at] that fails: the group is not checked. *)
   Local Ltac nil_rej :=
     let Hn := fresh "Hn" in
@@ -1753,6 +2090,14 @@ Section NilDecide.
     destruct ps_typed_dec as [HPt | HPt]; [| nil_rej ].
     destruct ps_eq_dec as [HPe | HPe]; [| nil_rej ].
     destruct sort_sub_dec as [HSs | HSs]; [| nil_rej ].
+    destruct rview_struct_dec as [HRs | HRs]; [| nil_rej ].
+    destruct rview_instance_link_dec as [HRl | HRl]; [| nil_rej ].
+    destruct rview_instance_typed_dec as [HRi | HRi]; [| nil_rej ].
+    destruct rview_fields_eq_dec as [HRe | HRe]; [| nil_rej ].
+    destruct rview_sort_sub_dec as [HRss | HRss]; [| nil_rej ].
+    destruct rview_typed_dec as [HRt | HRt]; [| nil_rej ].
+    destruct rview_maps_dec as [HRm | HRm]; [| nil_rej ].
+    destruct rview_instance_eq_dec as [HRie | HRie]; [| nil_rej ].
     destruct (rank_check Θ Ξ D) eqn:Hrk;
       [| right; intros Hn0; destruct Hn0;
          rewrite (rank_check_complete _ _ _ (decls_of_ctx _ _ _ HU) ltac:(eassumption)) in Hrk; discriminate ].
@@ -1781,7 +2126,9 @@ End NilDecide.
       and is not applied to the uniform parameters as declared;
     - [cls_why_nested H]: a [Self] occurs in an argument of the type former [H]
       that is not one of its uniform arguments, or [H] is no declared
-      member of a filed group. *)
+      member of a filed group;
+    - [cls_why_self_arg j k Δ H]: in a record's instance, [Self_j] is an
+      argument of the neutral head [H] ([selfs_guarded]). *)
 Inductive cls_why : Set :=
 (** One of the reasons above, by its code *)
 | cls_why_code : nat -> cls_why
@@ -1790,7 +2137,65 @@ Inductive cls_why : Set :=
 | cls_why_unapplied : nat -> cls_why
 (** A [Self] in a non-uniform argument of a nested occurrence, or one under
     a type former of no declared member: the head *)
-| cls_why_nested : exp -> cls_why.
+| cls_why_nested : exp -> cls_why
+(** A record's instance that is not guarded: the member [j] of the [Self]
+    that occurs, the head [H] it is an argument of, and the context [Δ]
+    [H] is in, its first [k] entries unnamed (the domains and binders
+    crossed inside the argument's type) *)
+| cls_why_self_arg : nat -> nat -> ctx -> exp -> cls_why.
+
+(** The offset, among the [n] [Self]s from the variable [lo] on, of the
+    first one some term of [Ms] mentions. *)
+Definition first_self_mentioned (lo n : nat) (Ms : list exp) : option nat :=
+  List.find (fun x => List.existsb (mentions_vars (lo + x) 1) Ms) (List.seq 0 n).
+
+(** Where [selfs_neutral_head] finds a [Self] as an argument of a neutral
+    head: the [Self]'s member (the variable [lo + x] is [Self_(n-1-x)]),
+    the binders crossed, and the head. *)
+Fixpoint self_arg_site (lo n depth : nat) (M : exp) {struct M} : option (nat * nat * exp) :=
+  match M with
+  | a_pi A B =>
+      match self_arg_site lo n depth A with
+      | Some r => Some r
+      | None => self_arg_site (S lo) n (S depth) B
+      end
+  | a_app M1 M2 =>
+      if head_takes_selfs lo n (app_head M1) then
+        match self_arg_spine lo n depth M1 with
+        | Some r => Some r
+        | None => self_arg_site lo n depth M2
+        end
+      else
+        match first_self_mentioned lo n (app_args M) with
+        | Some x => Some (n - 1 - x, depth, app_head M1)
+        | None => None
+        end
+  | _ => None
+  end
+(** The arguments of an application spine whose head may take a [Self] *)
+with self_arg_spine (lo n depth : nat) (M : exp) {struct M} : option (nat * nat * exp) :=
+  match M with
+  | a_app M1 M2 =>
+      match self_arg_spine lo n depth M1 with
+      | Some r => Some r
+      | None => self_arg_site lo n depth M2
+      end
+  | _ => None
+  end.
+
+(** The first argument of a record's instance with such a site. *)
+Fixpoint self_arg_sites (lo n : nat) (Is : list exp) : option (nat * nat * exp) :=
+  match Is with
+  | nil => None
+  | M :: Is' => match self_arg_site lo n 0 M with Some r => Some r | None => self_arg_sites lo n Is' end
+  end.
+
+(** A reason's context, its unnamed entries over [Γ]. *)
+Definition self_arg_in (Γ : ctx) (r : cls_why) : cls_why :=
+  match r with
+  | cls_why_self_arg j k _ H => cls_why_self_arg j k (List.repeat (ce_ass a_True) k ++ Γ) H
+  | _ => r
+  end.
 
 (** Whether no [Self] occurs in [T], [d] domains down, past the arguments
     before ([pat]) and [np] parameters. *)
@@ -1807,6 +2212,11 @@ Fixpoint sh_reason (np n : nat) (pat : list bool) (d : nat) (T : exp) : cls_why 
                    if (b <=? j) && (j <? b + n) then cls_why_unapplied (n - 1 - (j - b)) else cls_why_code 4
       | a_mem _ _ => cls_why_code 4
       | a_ind qc k => cls_why_nested (a_ind qc k)
+      | a_record _ =>
+          match self_arg_sites (d + List.length pat + np) n (app_args T) with
+          | Some (j, k, h) => cls_why_self_arg j (d + k) nil h
+          | None => cls_why_code 1
+          end
       | _ => cls_why_code 1
       end
   end.
@@ -1817,20 +2227,30 @@ Definition cls_reason (np n : nat) (pat : list bool) (T : exp) : cls_why :=
 
 Section Classify.
   Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
+
+  (** The number of parameters of the record at [qr], if it is one, read
+      through the filed units ([rec_info]). *)
+  Definition rec_info_f (qr : qname) : option nat :=
+    option_map (fun R => List.length (record_params R)) (proj1_sig (record_lookup_f Θ Ξ qr)).
+
+  Lemma rec_info_f_ok : forall qr, rec_info_f qr = rec_info Θ Ξ qr.
+  Proof. intros qr; unfold rec_info_f, rec_info; destruct (record_lookup_f Θ Ξ qr) as [o E]; cbn; rewrite E; reflexivity. Qed.
 
   (** An argument as written, or, failing that, as its normal form. *)
   Definition cls_arg_in_dec (Γ : ctx) (nu np n : nat) (pat : list bool) (T : exp) :
     ({g | cls_arg_in Θ Ξ Γ nu np n pat T g} + {r : cls_why | forall g, ~ cls_arg_in Θ Ξ Γ nu np n pat T g})%type.
   Proof.
-    destruct (cls_arg grp_none nu np n pat T) as [g |] eqn:Hs; [ left; exists g; apply cls_in_syn; exact Hs |].
+    destruct (cls_arg grp_none rec_none nu np n pat T) as [g |] eqn:Hs; [ left; exists g; apply cls_in_syn; exact Hs |].
     destruct (typ_least_dec Θ Ξ HΞ Γ T) as [[i [HT _]] | HnT].
     2:{ right; exists (cls_reason np n pat T); intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst;
         [ congruence | exact (HnT _ HT) ]. }
     destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) Γ T (typ_nbe_ty_order Θ Ξ _ _ _ HT)) as [W HW].
-    destruct (cls_arg (grp_info Θ Ξ) nu np n pat (nf_to_exp W)) as [g |] eqn:Hn.
+    destruct (cls_arg (grp_info Θ Ξ) rec_info_f nu np n pat (nf_to_exp W)) as [g |] eqn:Hn;
+      rewrite (cls_arg_rec_ext _ _ _ rec_info_f_ok) in Hn.
     - left; exists g; eapply cls_in_nf; eassumption.
-    - right; exists (cls_reason np n pat (nf_to_exp W)).
+    - right; exists (self_arg_in Γ (cls_reason np n pat (nf_to_exp W))).
       intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' Hg']; subst; [ congruence |].
       pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence.
   Defined.
@@ -1894,7 +2314,7 @@ Section Classify.
 
   (** Why a view is rejected, for the checker's message. *)
   Inductive view_why : Set :=
-  (** The instance is no declared member of a filed group *)
+  (** The instance is no declared member of a filed group, or no record *)
   | view_why_container : view_why
   (** A container's argument at the instance is rejected: the constructor,
       the argument and why *)
@@ -1906,10 +2326,17 @@ Section Classify.
   | view_why_mentions_group : view_why.
 
   (** The constructors of a view, classified. *)
-  Definition view_cls_dec (R : raw_decl) (x : rview) :
+  Definition view_cls_dec (R : raw_decl) (x : view_key) :
     ({cs | view_cls Θ Ξ R x cs} + {e : view_why | forall cs, ~ view_cls Θ Ξ R x cs})%type.
   Proof.
-    destruct x as [[qc k] Cs].
+    destruct x as [qc k Cs | qr Is].
+    2:{ destruct (record_lookup_f Θ Ξ qr) as [[Rr |] Hl];
+          [| right; exists view_why_container; intros cs H; inversion H; congruence ].
+        destruct (cls_cons_in_dec (rd_uctx Ξ R) (rd_nu R) (rd_nu R) (rd_n R)
+                    ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id Is)))
+                       :: nil)) as [[cs Hcs] | [[[c y] r] He]].
+        - left; exists cs; econstructor; eassumption.
+        - right; exists (view_why_cls c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption. }
     destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros cs H; inversion H; congruence ].
     destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros cs H; inversion H; subst; unify_found; congruence ].
     destruct (cls_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ rd_uctx Ξ R) (rd_nu R) (im_nn Mk' + rd_nu R) (rd_n R)
@@ -1936,10 +2363,10 @@ Section Classify.
   Defined.
 
   (** The non-uniform parameters of a view, filed. *)
-  Definition view_nps_dec (R : raw_decl) (x : rview) :
+  Definition view_nps_dec (R : raw_decl) (x : view_key) :
     ({Nv | view_nps Θ Ξ R x Nv} + {e : view_why | forall Nv, ~ view_nps Θ Ξ R x Nv})%type.
   Proof.
-    destruct x as [[qc k] Cs].
+    destruct x as [qc k Cs | qr Is]; [| left; exists nil; constructor ].
     destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros Nv H; inversion H; congruence ].
     destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros Nv H; inversion H; subst; unify_found; congruence ].
     destruct (nbe_tele_dec (rd_uctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs))) as [[Ws HWs] | HnWs].
@@ -1971,22 +2398,31 @@ Section Classify.
     - left; exists nil; constructor.
     - destruct (sibs_from_dec Γc qc Cs (S i) ms') as [[ss Hss] | Hnss];
         [| right; intros ss H; inversion H; subst; eapply Hnss; eassumption ].
-      destruct (im_head M) as [pm | qv kv Iv vmv] eqn:Hh.
-      + left; exists ((qc, i, Cs) :: ss); eapply sibs_from_decl; eassumption.
-      + destruct (ind_lookup_f Θ Ξ qv) as [[Dv |] Hlv]; [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
+      destruct (im_head M) as [pm | qv kv Iv vmv | qr Ir flr] eqn:Hh;
+        [ left; exists (vk_ind qc i Cs :: ss); eapply sibs_from_decl; eassumption | |].
+      + destruct (ind_lookup_f Θ Ξ qv) as [[Dv |] Hlv];
+          [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
         destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
                     (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv))) as [[Ws HWs] | HnWs].
-        * left; exists ((qv, kv, List.map nf_to_exp Ws) :: ss); eapply sibs_from_view; eassumption.
-        * right; intros ss' H; inversion H; subst; unify_found; [ congruence |].
+        * left; exists (vk_ind qv kv (List.map nf_to_exp Ws) :: ss); eapply sibs_from_view; eassumption.
+        * right; intros ss' H; inversion H; subst; unify_found; try congruence.
           match goal with Hh' : im_head M = mh_view _ _ _ _ |- _ => rewrite Hh in Hh'; injection Hh'; intros; subst end.
+          unify_found; eapply HnWs; eassumption.
+      + destruct (record_lookup_f Θ Ξ qr) as [[Rr |] Hlr];
+          [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
+        destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Ir)
+                    (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (record_params Rr) sb_id Ir))) as [[Ws HWs] | HnWs].
+        * left; exists (vk_record qr (List.map nf_to_exp Ws) :: ss); eapply sibs_from_record; eassumption.
+        * right; intros ss' H; inversion H; subst; unify_found; try congruence.
+          match goal with Hh' : im_head M = mh_record _ _ _ |- _ => rewrite Hh in Hh'; injection Hh'; intros; subst end.
           unify_found; eapply HnWs; eassumption.
   Defined.
 
   (** The siblings of a view. *)
-  Definition view_sibs_dec (R : raw_decl) (x : rview) :
+  Definition view_sibs_dec (R : raw_decl) (x : view_key) :
     ({ss | view_sibs Θ Ξ R x ss} + {e : view_why | forall ss, ~ view_sibs Θ Ξ R x ss})%type.
   Proof.
-    destruct x as [[qc k] Cs].
+    destruct x as [qc k Cs | qr Is]; [| left; exists (vk_record qr Is :: nil); constructor ].
     destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros ss H; inversion H; congruence ].
     destruct (sibs_from_dec (rd_uctx Ξ R) qc Cs 0 (ind_members D')) as [[ss Hss] | Hnss].
     - left; exists ss; econstructor; eassumption.
@@ -2085,17 +2521,17 @@ Section Equiv.
   Qed.
 
   (** The classification reads the filed groups through [grp_info] alone. *)
-  Lemma cls_sh_ext : forall (g1 g2 : qname -> nat -> option nat) nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
-      forall T d, cls_sh g1 nu np n pat d T = cls_sh g2 nu np n pat d T.
+  Lemma cls_sh_ext : forall (g1 g2 : qname -> nat -> option nat) recs nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
+      forall T d, cls_sh g1 recs nu np n pat d T = cls_sh g2 recs nu np n pat d T.
   Proof.
     intros * Hg T; induction T; intros d; cbn [cls_sh]; try reflexivity;
       try (destruct (app_head _) eqn:?; try reflexivity; unfold cls_nest; rewrite Hg; reflexivity).
     destruct (img_pat _ _); [ rewrite IHT2; reflexivity | reflexivity ].
   Qed.
 
-  Lemma cls_arg_ext : forall (g1 g2 : qname -> nat -> option nat) nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
-      forall T, cls_arg g1 nu np n pat T = cls_arg g2 nu np n pat T.
-  Proof. intros * Hg T; unfold cls_arg; rewrite (cls_sh_ext g1 g2 _ _ _ _ Hg); reflexivity. Qed.
+  Lemma cls_arg_ext : forall (g1 g2 : qname -> nat -> option nat) recs nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
+      forall T, cls_arg g1 recs nu np n pat T = cls_arg g2 recs nu np n pat T.
+  Proof. intros * Hg T; unfold cls_arg; rewrite (cls_sh_ext g1 g2 _ _ _ _ _ Hg); reflexivity. Qed.
 
   Lemma equiv_typ : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ' ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
   Proof. intros; eapply equiv_exp; eassumption. Qed.
@@ -2105,8 +2541,9 @@ Section Equiv.
   Proof.
     intros * H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
     eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ' HT) | exact (equiv_nbe_ty _ _ _ HW) |].
-    rewrite <- (cls_arg_ext (grp_info Θ Ξ)); [ exact Hg |].
-    intros; unfold grp_info; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity.
+    rewrite <- (cls_arg_ext (grp_info Θ Ξ)) by (intros; unfold grp_info; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity).
+    rewrite <- (cls_arg_rec_ext _ (rec_info Θ Ξ)) by (intros; unfold rec_info; rewrite (gds_equiv_record_lookup _ _ _ _ He); reflexivity).
+    exact Hg.
   Qed.
 
   Lemma equiv_cls_args_in : forall Γp nu np n pat args1 args gs,
@@ -2124,8 +2561,12 @@ Section Equiv.
 
   Lemma equiv_view_cls : forall R x cs, view_cls Θ Ξ R x cs -> view_cls Θ' Ξ R x cs.
   Proof.
-    intros * []; econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | eassumption |].
-    apply equiv_cls_cons_in; assumption.
+    intros * [| ]; econstructor.
+    - rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption.
+    - eassumption.
+    - apply equiv_cls_cons_in; assumption.
+    - rewrite <- (gds_equiv_record_lookup _ _ _ _ He); eassumption.
+    - apply equiv_cls_cons_in; assumption.
   Qed.
 
   Lemma equiv_nbe_tele : forall Γ Δ Δ', nbe_tele Θ Ξ Γ Δ Δ' -> nbe_tele Θ' Ξ Γ Δ Δ'.
@@ -2135,7 +2576,8 @@ Section Equiv.
 
   Lemma equiv_view_nps : forall R x Nv, view_nps Θ Ξ R x Nv -> view_nps Θ' Ξ R x Nv.
   Proof.
-    intros * []; econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | eassumption | | eassumption ].
+    intros * [| ]; [| constructor ].
+    econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | eassumption | | eassumption ].
     apply equiv_nbe_tele; assumption.
   Qed.
 
@@ -2146,28 +2588,42 @@ Section Equiv.
 
   Lemma equiv_sibs_from : forall Γc qc Cs i ms ss, sibs_from Θ Ξ Γc qc Cs i ms ss -> sibs_from Θ' Ξ Γc qc Cs i ms ss.
   Proof.
-    induction 1; [ constructor | eapply sibs_from_decl; eassumption |].
-    eapply sibs_from_view; [ eassumption | rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | apply equiv_nbes; eassumption | assumption ].
+    induction 1; [ constructor | eapply sibs_from_decl; eassumption | |].
+    - eapply sibs_from_view; [ eassumption | rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | apply equiv_nbes; eassumption
+                             | assumption ].
+    - eapply sibs_from_record; [ eassumption | rewrite <- (gds_equiv_record_lookup _ _ _ _ He); eassumption
+                               | apply equiv_nbes; eassumption | assumption ].
   Qed.
 
   Lemma equiv_view_sibs : forall R x ss, view_sibs Θ Ξ R x ss -> view_sibs Θ' Ξ R x ss.
   Proof.
-    intros * []; econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | apply equiv_sibs_from; assumption ].
+    intros * [| ]; [| constructor ].
+    econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | apply equiv_sibs_from; assumption ].
   Qed.
 
   Lemma equiv_rd_filed : forall R Vs Ss csD csV Nvs, rd_filed Θ Ξ R Vs Ss csD csV Nvs = rd_filed Θ' Ξ R Vs Ss csD csV Nvs.
   Proof.
     intros; unfold rd_filed; destruct (raw_decl_members R) as [| Mr0 Mrs]; [ reflexivity |].
-    assert (Hrv : forall σ n Vs0 xs Ss0 css Nvs0, rvs_filed Θ Ξ σ n Vs0 xs Ss0 css Nvs0 = rvs_filed Θ' Ξ σ n Vs0 xs Ss0 css Nvs0).
-    { intros σ n Vs0 xs; induction xs as [| x xs IH]; intros [| ss Ss0] [| cs css] [| Nv Nvs0]; cbn; try reflexivity.
-      rewrite IH; unfold rv_filed; destruct x as [[qc k] Cs]; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity. }
+    assert (Hrv : forall σ n Ks0 xs Vs0 Ss0 css Nvs0,
+               rvs_filed Θ Ξ σ n Ks0 xs Vs0 Ss0 css Nvs0 = rvs_filed Θ' Ξ σ n Ks0 xs Vs0 Ss0 css Nvs0).
+    { intros σ n Ks0 xs; induction xs as [| x xs IH]; intros; cbn; [ reflexivity |].
+      rewrite IH; unfold rv_filed; destruct x as [qc k Cs | qr Is];
+        [ rewrite (gds_equiv_ind_lookup _ _ _ _ He) | rewrite (gds_equiv_record_lookup _ _ _ _ He) ]; reflexivity. }
     rewrite Hrv; reflexivity.
   Qed.
 
   Lemma equiv_view_rank_ok : forall D rk, view_rank_ok Θ Ξ D rk -> view_rank_ok Θ' Ξ D rk.
   Proof.
-    intros * [Hd Hn]; constructor; [ exact Hd |].
+    intros * [Hd Hn Hr]; constructor; [ exact Hd | | exact Hr ].
     intros *; rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eapply Hn.
+  Qed.
+
+  (** Nor do the record views' facts without a judgment. *)
+  Lemma equiv_rview_struct_ok : forall D, rview_struct_ok Θ Ξ D -> rview_struct_ok Θ' Ξ D.
+  Proof.
+    intros * [Hr Hn Hc Hsu Ho]; constructor; try assumption.
+    intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has Hnd]]; exists R; constructor; try assumption.
+    rewrite <- (gds_equiv_record_lookup _ _ _ _ He); exact Hl.
   Qed.
 
   Lemma equiv_view_maps_coherent : forall D, view_maps_coherent Θ Ξ D -> view_maps_coherent Θ' Ξ D.
@@ -2178,11 +2634,13 @@ Section Equiv.
   Proof.
     destruct (deps_grow Θ Θ' Ξ (proj1 He) Hb) as (Hc & Hx & Hq & Hs & Hext & _ & _).
     assert (Hl : forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) by (intros; apply gds_equiv_ind_lookup, He).
+    assert (Hr : forall p, record_lookup Θ Ξ p = record_lookup Θ' Ξ p) by (intros; apply gds_equiv_record_lookup, He).
     intros * [Δ M0 i n H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H18 H19 H20 H21 H22 H23 H24 H25 H26 H27 H28
-                H29 H30 [rk Hrk] H32 H33].
+                H29 H30 H31 H32 H33 H34 H35 H36 H37 H38 [rk Hrk] H40 H41].
     apply (mk_ind_nil_at Θ' Ξ mp D IsS Δ M0 i n); auto.
-    all: try (intros; rewrite <- ?Hl in *; eauto; fail).
+    all: try (intros; rewrite <- ?Hl, <- ?Hr in *; eauto; fail).
+    - apply equiv_rview_struct_ok, H31.
     - exists rk; apply equiv_view_rank_ok, Hrk.
-    - apply equiv_view_maps_coherent, H33.
+    - apply equiv_view_maps_coherent, H41.
   Qed.
 End Equiv.

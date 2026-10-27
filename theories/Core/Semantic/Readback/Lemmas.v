@@ -26,19 +26,45 @@ Import Domain_Notations.
       functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ As ρa gs' gs vs s ihs1, Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
-      forall ihs2, Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
+  Lemma functional_fresh_leaf_vars : forall bs as' s vs1, fresh_leaf_vars bs as' s vs1 ->
+      forall vs2, fresh_leaf_vars bs as' s vs2 -> vs1 = vs2.
+  Proof. induction 1; intros * H2; inversion H2; subst; f_equal; auto. Qed.
+
+  Lemma functional_wrap_leaf_vals : forall bs rs ihs ihs1 out1, wrap_leaf_vals bs rs ihs ihs1 out1 ->
+      forall ihs2 out2, wrap_leaf_vals bs rs ihs ihs2 out2 -> ihs1 = ihs2 /\ out1 = out2.
   Proof.
-    induction 1; intros * H2; inversion H2; subst; auto.
-    functional_eval_rewrite_clear; f_equal; auto.
+    induction 1; intros * Hother; inversion Hother; subst; auto.
+    all: match goal with H : wrap_leaf_vals _ _ _ _ _ |- _ => destruct (IHwrap_leaf_vals _ _ H) as [-> ->] end; auto.
   Qed.
 
-  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p ups Bks gs' gs vs ihs r1,
-      ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      forall r2, ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ As p ups Dc ρa gs' gs vs s ihs1,
+      Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
+      forall ihs2, Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
   Proof.
-    induction 1; intros * H2; inversion H2; subst; auto.
-    all: functional_eval_rewrite_clear; f_equal; auto.
+    induction 1; intros * Hother; inversion Hother; subst; auto.
+    repeat match goal with
+           | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
+               rewrite H1 in H2; injection H2 as ?; subst
+           end.
+    functional_eval_rewrite_clear.
+    match goal with H1 : fresh_leaf_vars ?b ?a ?s ?v1, H2 : fresh_leaf_vars ?b ?a ?s ?v2 |- _ =>
+      pose proof (functional_fresh_leaf_vars _ _ _ _ H1 _ H2); subst end.
+    f_equal; auto.
+  Qed.
+
+  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p ups Bks Dc gs' gs vs ihs r1,
+      ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      forall r2, ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Proof.
+    induction 1; intros * Hother; inversion Hother; subst; auto.
+    all: repeat match goal with
+           | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
+               rewrite H1 in H2; injection H2 as ?; subst
+           end.
+    all: functional_eval_rewrite_clear.
+    all: try match goal with H1 : wrap_leaf_vals ?b ?r ?i _ _, H2 : wrap_leaf_vals ?b ?r ?i _ _ |- _ =>
+           destruct (functional_wrap_leaf_vals _ _ _ _ _ H1 _ _ H2); subst end.
+    all: f_equal; auto.
   Qed.
 
   Ltac functional_fresh_rewrite_clear :=
@@ -47,10 +73,16 @@ Import Domain_Notations.
           pose proof (functional_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
           pose proof (functional_fresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs' ?gs ?vs ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs' ?gs ?vs ?s ?i2 |- _ =>
-          pose proof (functional_fresh_ihs _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?g' ?g ?vs ?ih ?r1, H2 : wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?g' ?g ?vs ?ih ?r2 |- _ =>
-          pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?ρa ?gs' ?gs ?vs ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?ρa ?gs' ?gs ?vs ?s ?i2 |- _ =>
+          pose proof (functional_fresh_ihs _ _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r1, H2 : wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r2 |- _ =>
+          pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : eval_projs ?T ?X ?fl ?v ?w1, H2 : eval_projs ?T ?X ?fl ?v ?w2 |- _ =>
+          pose proof (functional_eval_projs _ _ _ _ H1 H2); subst; clear H2
+      | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
+          rewrite H1 in H2; injection H2; intros; subst; clear H2
+      | H1 : im_is_rview ?M = false, H2 : im_head ?M = mh_record _ _ _ |- _ =>
+          exfalso; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1
       | H1 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b1, H2 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b2 |- _ =>
           pose proof (functional_eval_exps _ _ _ _ H1 H2); subst; clear H2
       | H1 : eval_mref ?T ?X ?p ?ups ?j ?r1, H2 : eval_mref ?T ?X ?p ?ups ?j ?r2 |- _ =>
@@ -99,10 +131,10 @@ Import Domain_Notations.
          forall Vs2, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
       (forall s p ups ρ t v V1, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V1 ->
          forall V2, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V2 -> V1 = V2) /\
-      (forall s ρ p ups Bks sel i Ms NBks1, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
-         forall NBks2, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
-      (forall s ρ p ups Bks Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
-         forall Bs2, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2) /\
+      (forall s ρ p ups Bks Dc sel i Ms NBks1, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
+         forall NBks2, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
+      (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
+         forall Bs2, Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2) /\
       (forall s ρ fl v Fs1, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
@@ -220,6 +252,17 @@ Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma fresh_ihs_length : forall {Θ Ξ} ρ As ρa gs' gs vs s ihs,
-    Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nrec gs'.
+Lemma fresh_leaf_vars_length : forall bs as' s vs, fresh_leaf_vars bs as' s vs ->
+    List.length vs = List.length (List.filter (fun b => b) bs).
 Proof. induction 1; cbn; congruence. Qed.
+
+Lemma fresh_ihs_length : forall {Θ Ξ} ρ As p ups Dc ρa gs' gs vs s ihs D, ind_lookup Θ Ξ p = Some D ->
+    Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nin D Dc gs' gs.
+Proof.
+  intros * HD H; induction H; cbn; try congruence.
+  match goal with H1 : ind_lookup _ _ _ = Some _, H2 : ind_lookup _ _ _ = Some _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  rewrite List.length_app, (fresh_leaf_vars_length _ _ _ _ H1), IHfresh_ihs by assumption.
+  unfold leaves_in_count; f_equal.
+  clear; induction (shape_leaves (rv_leaves D) 0 t); cbn; [ reflexivity |].
+  destruct (leaf_in Dc t' a); cbn; congruence.
+Qed.

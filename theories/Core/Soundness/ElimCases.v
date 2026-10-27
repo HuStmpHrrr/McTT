@@ -51,7 +51,7 @@ Lemma glu_elim :
      elim_grp D oq p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
-     List.length Bks = List.length (ind_members D) ->
+     List.length Bks = ind_nblk D ->
      List.length Ps = im_np D Mm ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
@@ -76,15 +76,15 @@ Lemma glu_elim :
                      ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+        n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊩ B
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ).
 Proof.
   intros * Hl Hgr HMm Hbm HLb HPl HPt HPg HMt HMg -> Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg Θ2 Ξ2 Hμ.

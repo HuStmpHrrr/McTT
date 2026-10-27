@@ -81,7 +81,7 @@ Section ElimViewRule.
              Γ ⊨ N : T).
   Variable (Bks : list eblock) (iA : nat).
   Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
-  Let HBks := valid_blocks_has _ _ _ _ _ _ HBk.
+  Let HBks := valid_blocks_has _ _ _ _ _ _ Hdt HBk.
   Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
   Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let τU := sb_of_list Id Us.
@@ -218,7 +218,7 @@ Section ElimViewRule.
         rel_exp (a_elim oq Us m Bks M) σ ρ C1 (a_elim (Some qc) (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
   Proof.
     intros * HRΓ' Hσ Hρ Hev Hev'.
-    pose proof HBk as [_ HnmA _ _ HnaA HBc HarA HBv].
+    pose proof HBk as [HLb0 HnmA _ _ HnaA HBc HarA HBv].
     assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
     assert (HPΓ' : PER RΓ') by (eapply per_env_PER; exact HRΓ').
     assert (HC12 : RΓ C1 C2) by (eapply (rel_sub_under_ctx_at' Hσ HRΓ' HRΓ); eassumption).
@@ -237,11 +237,11 @@ Section ElimViewRule.
     assert (HBB : forall k Mk b b' c0 gs0 n0 B0 B0', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
                List.nth_error Bks k = Some b' -> ind_con Mk c0 = Some gs0 ->
                brs_lookup (eb_brs b) c0 = Some (n0, B0) -> brs_lookup (eb_brs b') c0 = Some (n0, B0') ->
-               elim_bctx p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_bty p k Mk c0 gs0 (eb_motive b) Us)
+               elim_bctx p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_bty p D k Mk c0 gs0 (eb_motive b) Us)
       by (intros * HMk Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
           exact (HBv _ _ _ _ _ _ _ HMk Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
     destruct (elim_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC1 C2 HC12 Bks iA HBks HMall HAv
-                oq oq Us m Mm bm Bks Ns M M Hgr Hgr HMm Hbm HBks HnmA HnmA HnaA
+                oq oq Us m Mm bm Bks Ns M M Hgr Hgr HMm Hbm HLb0 HLb0 HnmA HnmA HnaA
                 (fun _ _ _ H1 H2 => ltac:(rewrite H1 in H2; injection H2 as <-; reflexivity)) HarA HBc HAA HBB HNl HgN Hg HM
                 HUl HUU Γ' RΓ' σ σ' ρ ρ' HRΓ' Hσ Hρ Hev Hev') as (RT & HTy & HLv).
     exists RT; split; [ exact HTy |].
@@ -256,7 +256,8 @@ Section ElimViewRule.
     assert (m3' = m3) as -> by (eapply functional_eval_exp; eassumption).
     assert (m3'' = m3) as -> by (eapply functional_eval_exp; eassumption).
     pose proof (Hmm _ _ _ _ Et3 Et3 Ht) as Hm33.
-    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMm Et3) as (cs3 & ns3 & _ & Ens3 & _).
+    assert (HrvM : im_is_rview Mm = false) by (unfold im_is_rview; rewrite Hh; reflexivity).
+    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMm HrvM Et3) as (cs3 & ns3 & _ & Ens3 & _).
     destruct (scrut_rel VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 m Mm HMm (HMall _ _ HMm) Ns HNl HgN
                 C2 HC22 ns3 ns3 Ens3 Ens3 t3 t3 _ Rt Et3 Et3 Ht) as [_ ERt].
     pose proof (proj1 (ERt _ _) Hm33) as G33.
@@ -308,7 +309,8 @@ Section ElimViewRule.
                   Hq HMm Hh C2 VB uB HbB HnmB HnaB HarB Hmot Hbr cups Ecups HubB) as Hbot.
     destruct (cross_elim_all VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 Bks iA HBk qc D' m Mm k' Is vm
                 Hq HMm Hh C2 VB uB HbB HnmB HnaB HarB Hmot Hbr (fun i' j => Hbot j i')) as [CE _].
-    destruct (CE _ _ _ _ _ _ _ G33 k' Hvk) as (rc & rg & Erc & Erg & HRc).
+    destruct (CE _ _ _ _ _ _ _ G33 k' Hvk) as [Mi1 Mj1 rc rg _ _ _ _ Erc Erg HRc | ? Mj1 ? ? ? ? ? ? ? ? ? ? ? ? _ _ _ HMj1 Hhj1 _ _ _ _ _ _];
+      [| exfalso; rewrite HMm in HMj1; injection HMj1 as <-; rewrite Hh in Hhj1; discriminate Hhj1 ].
     pose proof (functional_eval_elim _ _ _ _ _ _ _ _ Erg Eel3) as ->.
     (** The container's eliminator at the moved blocks, against the group's. *)
     pose proof (moved_at_has VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 Bks iA HBk qc D' m Mm k' Is vm
@@ -327,7 +329,8 @@ Section ElimViewRule.
                   Hq HMm Hh ρ' (blocks_sub VB σ') ub' HbB' HnmB' HnaB' HarB' Hmot' Hbr' cups Ecups HubB') as Hbot'.
     destruct (cross_elim_all VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 Bks iA HBk qc D' m Mm k' Is vm
                 Hq HMm Hh ρ' (blocks_sub VB σ') ub' HbB' HnmB' HnaB' HarB' Hmot' Hbr' (fun i' j => Hbot' j i')) as [CE' _].
-    destruct (CE' _ _ _ _ _ _ _ G43 k' Hvk) as (rd & rg' & Erd & Erg' & HRd).
+    destruct (CE' _ _ _ _ _ _ _ G43 k' Hvk) as [Mi2 Mj2 rd rg' _ _ _ _ Erd Erg' HRd | ? Mj2 ? ? ? ? ? ? ? ? ? ? ? ? _ _ _ HMj2 Hhj2 _ _ _ _ _ _];
+      [| exfalso; rewrite HMm in HMj2; injection HMj2 as <-; rewrite Hh in Hhj2; discriminate Hhj2 ].
     pose proof (functional_eval_elim _ _ _ _ _ _ _ _ Erg' Eel3) as ->.
     (** The family's relation at [C2], the type's. *)
     destruct HTy as [y1 y2 y3 y4 Ey1 Ey2 Ey3 Ey4 Hyc].
@@ -342,7 +345,7 @@ Section ElimViewRule.
                      (env_args C2 (ns3 ++ m3 :: nil)) (env_args C2 (ns3 ++ m3 :: nil)) a b -> RT a b).
     { intros a b H; apply ER1, ER2; rewrite (blocks_motives_nth _ _ _ Hbm) in H; exact H. }
     pose proof (rel_resp VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 C2 HC22 Bks iA HBks HMall HAv
-                  m Mm HMm _ _ _ _ _ _ ns3 m4 ns3 m3 ns3 m3 ns3 m3 G43 G33 G33) as ER3.
+                  m Mm HMm HrvM _ _ _ _ _ _ ns3 m4 ns3 m3 ns3 m3 ns3 m3 G43 G33 G33) as ER3.
     assert (Hrc : RT rc r3) by (apply Hfin; exact HRc).
     assert (Hrd : RT rd r3) by (apply Hfin, ER3; exact HRd).
     destruct Hch as (Hr12 & Hr23 & _).
@@ -362,7 +365,7 @@ Theorem rel_exp_under_ctx_elim_view : forall VP p D, valid_groups VP -> VP p D -
     forall Γ oq m Mm qc k' Is vm D' bm Bks Ps M (i : nat),
     ⊨ Γ -> elim_grp D oq p m ->
     ind_member D m = Some Mm -> im_head Mm = mh_view qc k' Is vm -> ind_lookup gc_deps gc_stack qc = Some D' ->
-    List.nth_error Bks m = Some bm -> List.length Bks = List.length (ind_members D) ->
+    List.nth_error Bks m = Some bm -> List.length Bks = ind_nblk D ->
     List.length Ps = im_np D Mm ->
     (forall k Pk T, List.nth_error Ps k = Some Pk -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Γ ⊨ Pk : T) ->
     Γ ⊨ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
@@ -374,11 +377,11 @@ Theorem rel_exp_under_ctx_elim_view : forall VP p D, valid_groups VP -> VP p D -
     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
        ⊨ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> ind_con Mk c = Some gs ->
-       In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+       In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> ind_con Mk c = Some gs ->
        In (c, n, B) (eb_brs b) ->
        elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
-         : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+         : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     Γ ⊨ a_elim oq (List.firstn (ind_nu D) Ps) m Bks M
       ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k' (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
@@ -391,9 +394,7 @@ Proof.
   set (Ns := List.skipn (ind_nu D) Ps) in *.
   assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; unfold im_np in HPl; lia).
   assert (HNl : List.length Ns = im_nn Mm) by (unfold Ns; rewrite List.length_skipn; unfold im_np in HPl; lia).
-  assert (HBks : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bks j = Some b).
-  { intros * HMj; apply nth_error_lt_some'; rewrite HLb; apply List.nth_error_Some; unfold ind_member in HMj; congruence. }
-  pose proof (mk_valid_blocks p D Γ Us Bks i HBks HnmA HMall HAv HnaA HBc HarA HBv) as HBk.
+  pose proof (mk_valid_blocks p D Γ Us Bks i HLb HnmA HMall HAv HnaA HBc HarA HBv) as HBk.
   pose proof (gsub_ns VP p D HP HPD Γ HΓ Us m Mm HMm (HMall _ _ HMm) Ns HNl HNs) as HgN.
   pose proof (gsub_tau VP p D HP HPD Γ HΓ Us HUl m Mm HMm (HMall _ _ HMm) Ns M HNl HNs HM) as Hg.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].

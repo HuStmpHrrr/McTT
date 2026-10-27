@@ -73,7 +73,7 @@ Proof.
     | eapply sem_exp_eq_elim_cong | eapply sem_exp_eq_pi_cong | eapply sem_exp_eq_fn_cong
     | eapply sem_exp_eq_app_cong | eapply sem_exp_eq_let_cong | eapply sem_exp_eq_let_mod_cong
     | eapply sem_exp_eq_mem_cong | eapply sem_exp_eq_var | eapply sem_exp_eq_pi_beta
-    | eapply sem_exp_eq_elim_iota | eapply sem_exp_eq_elim_view | eapply sem_exp_eq_con_view
+    | eapply sem_exp_eq_elim_iota | eapply sem_exp_eq_elim_view | eapply sem_exp_eq_con_view | eapply sem_exp_eq_con_rview
     | eapply sem_exp_eq_let_zeta | eapply sem_exp_eq_let_mod_zeta
     | eapply sem_exp_eq_mem_delta | eapply sem_exp_eq_var_delta | eapply sem_exp_eq_fn_eta
     | eapply sem_exp_eq_true_eta | eapply sem_exp_eq_record_cong | eapply sem_exp_eq_tuple_cong
@@ -314,6 +314,21 @@ Proof.
     + intros * HMk Hh Hq.
       apply (rel_subtyp_of_emb _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_sort _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) ].
+    + exact (views_self_typed_rlink _ _ _ _ HV).
+    + intros * HMk Hh HlR HI HT.
+      destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
+      pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
+      cbn in HlR; rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR') in HlR; injection HlR as <-.
+      apply (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ).
+      exact (views_self_typed_ris _ _ _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR' HI HT).
+    + intros * HMk Hh HlR Hcs.
+      destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
+      pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
+      cbn in HlR; rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR') in HlR; injection HlR as <-.
+      apply (rel_ext_of_emb _ _ _ _ _ _ _ Hμ).
+      exact (views_self_typed_rfields _ _ _ _ HV _ _ _ _ _ _ _ _ HMk Hh HlR' Hcs).
+    + intros * HMk Hh; apply (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ).
+      exact (views_self_typed_rtype _ _ _ _ HV _ _ _ _ _ HMk Hh).
 Qed.
 
 Lemma valid_entry_ind : forall Θ Ξ D Θ2 Ξ2,

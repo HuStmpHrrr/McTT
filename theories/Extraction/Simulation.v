@@ -38,6 +38,13 @@ Fixpoint pt_fresh (k : nat) (t : ptyp) : Prop :=
   | pt_self _ Ps => Forall (exp_fresh k) Ps
   end.
 
+(** The relation is over a global context: the family of the types of a
+    function shape's recursive result reads the motives of the members its
+    leaf paths end in, which the group's declaration fixes
+    ([ends_agree]). *)
+Section Sim.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
 (** [dsim a a']: the reference value [a] and the fast value [a'] are equal
     up to the entries of closures' environments that the closures' bodies
     do not read; mutually, for neutrals, normal values, module values, level
@@ -74,28 +81,28 @@ Inductive dsim : domain -> domain -> Prop :=
 | ds_indty : forall p k args args', dsim_list args args' -> dsim (d_ind p k args) (d_ind p k args')
 (** A constructor at related arguments *)
 | ds_con : forall p k c args args', dsim_list args args' -> dsim (d_con p k c args) (d_con p k c args')
-(** The recursive result of a function shape: the environments agree where
+(** A recursive result of a function shape: the environments agree where
     the blocks' motives and branches may read, as [dsim_ne_elim] *)
-| ds_ihfn : forall (ρ ρ' : env) Bks p ups ups' t f f',
+| ds_ihfn : forall (ρ ρ' : env) Bks p ups ups' t i f f',
     (forall b, In b Bks ->
        (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> desim (env_entry ρ x) (env_entry ρ' x)) /\
        (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x))) ->
     dsim_list ups ups' ->
-    dsim f f' -> dsim (d_ihfn ρ Bks p ups t f) (d_ihfn ρ' Bks p ups' t f')
+    dsim f f' -> dsim (d_ihfn ρ Bks p ups t i f) (d_ihfn ρ' Bks p ups' t i f')
 (** The family of the type of an argument of a function shape: where the
     rest of the shape may read under the domain the family binds *)
 | ds_shfam : forall p ups ups' (ρ ρ' : env) t,
     dsim_list ups ups' ->
     (forall x, ~ pt_fresh (S x) t -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim (d_shfam p ups ρ t) (d_shfam p ups' ρ' t)
-(** The family of the type of a recursive result: where the motive of the
-    member the shape ends in may read under the shape's parameters and the
-    argument, and where the rest of the shape may read *)
-| ds_ihfam : forall (ρm ρm' : env) As (ρ ρ' : env) t f f',
-    (forall x, ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True) ->
-       desim (env_entry ρm x) (env_entry ρm' x)) ->
+(** The family of the type of a recursive result: where the motives of the
+    members the shape's leaf paths end in may read ([ends_agree]), at
+    related uniform parameters, and where the rest of the shape may read *)
+| ds_ihfam : forall (ρm ρm' : env) As p ups ups' (ρ ρ' : env) t i f f',
+    ends_agree p As ρm ρm' t ->
+    dsim_list ups ups' ->
     (forall x, ~ pt_fresh (S x) t -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    dsim f f' -> dsim (d_ihfam ρm As ρ t f) (d_ihfam ρm' As ρ' t f')
+    dsim f f' -> dsim (d_ihfam ρm As p ups ρ t i f) (d_ihfam ρm' As p ups' ρ' t i f')
 (** A record's type former at related arguments *)
 | ds_record : forall p args args', dsim_list args args' -> dsim (d_record p args) (d_record p args')
 (** A tuple of related fields *)
@@ -156,10 +163,29 @@ with desim : dentry -> dentry -> Prop :=
 (** Related modules *)
 | desim_mod : forall h h', dmsim h h' -> desim (de_mod h) (de_mod h')
 (** Related terms with related module parts *)
-| desim_dm : forall d d' h h', dsim d d' -> dmsim h h' -> desim (de_dm d h) (de_dm d' h').
+| desim_dm : forall d d' h h', dsim d d' -> dmsim h h' -> desim (de_dm d h) (de_dm d' h')
+(** [ends_agree p As ρm ρm' t]: the motives [As] in [ρm] and [ρm'] agree
+    where the motive of each member a leaf path of the shape [t] ends in
+    may read, under that path's end's parameters and the argument; at a
+    record view, along its recursive fields, as [Core.Semantic.Avoid]'s
+    [ends_fresh] *)
+with ends_agree : qname -> list exp -> env -> env -> ptyp -> Prop :=
+(** The end, at a member with a block: its motive *)
+| ends_agree_self : forall p As ρm ρm' D j Mj Ps,
+    ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_is_rview Mj = false ->
+    (forall x, ~ exp_fresh (S (List.length Ps) + x) (List.nth j As a_True) -> desim (env_entry ρm x) (env_entry ρm' x)) ->
+    ends_agree p As ρm ρm' (pt_self j Ps)
+(** The end, at a record view: along each of its recursive fields *)
+| ends_agree_rview : forall p As ρm ρm' D j Mj qr Is fl Ps,
+    ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    (forall c gs gs1 t gs2, im_cons Mj = (c, gs) :: nil -> gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρm ρm' t) ->
+    ends_agree p As ρm ρm' (pt_self j Ps)
+(** A domain: the rest *)
+| ends_agree_pi : forall p As ρm ρm' B t,
+    ends_agree p As ρm ρm' t -> ends_agree p As ρm ρm' (pt_pi B t).
 
-#[export]
-Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list dsim_fields desim : mctt.
+#[local]
+Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list dsim_fields desim ends_agree : mctt.
 
 (** Agreement of two environments at the entries [P] selects. *)
 Definition env_agree (P : nat -> Prop) (ρ ρ' : env) : Prop :=
@@ -312,7 +338,7 @@ Inductive dsim_list_at (P : nat -> Prop) : list domain -> list domain -> Prop :=
 | dsim_list_at_cons : forall a a' l l', (P (List.length l) -> dsim a a') -> dsim_list_at P l l' ->
     dsim_list_at P (a :: l) (a' :: l').
 
-#[export]
+#[local]
 Hint Constructors dsim_list_at : mctt.
 
 Lemma dsim_list_at_app : forall P l1 l1' l2 l2', dsim_list l1 l1' -> dsim_list_at P l2 l2' ->
@@ -373,21 +399,47 @@ Proof.
   match goal with H : dsim _ _ |- _ => destruct H; reflexivity end.
 Qed.
 
-(** The motive of each recursive argument's member, among the blocks'
-    motives, read where the blocks may: through the member each shape ends
-    in, whose block binds its non-uniform parameters and the argument. *)
-Lemma ihs_motives_agree : forall D Bks ρ ρ' gs, cargs_plen D gs -> blocks_nm_at D None Bks -> blocks_agree Bks ρ ρ' ->
-    forall t, In (ca_rec t) gs ->
-      env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) (blocks_motives Bks) a_True)) ρ ρ'.
+(** The motives at the ends of the leaf paths of a shape, read where the
+    blocks may: each end at as many parameters as its member's motive
+    binds ([rview_leaf_arity], [blocks_nm_at]), down the record views'
+    fields by their order, as [Core.Semantic.Avoid]'s
+    [ends_fresh_of_blocks]. *)
+Lemma ends_agree_of_blocks : forall p D Bks ρ ρ', ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
+    blocks_nm_at D None Bks -> blocks_agree Bks ρ ρ' ->
+    forall t, (exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj) ->
+      ends_agree p (blocks_motives Bks) ρ ρ' t.
 Proof.
-  intros * Hpl Hnm HB t Ht; pose proof (plen_forall _ _ Hpl) as Hf.
-  destruct (proj1 (Forall_forall _ _) Hf _ Ht) as (Mj & HMj & Hl).
-  pose proof (nth_motives_sel None Bks (ptyp_mem t)) as Hm; cbn [motives_sel elim_src] in Hm.
-  destruct Hm as [-> | (b & Hb & ->)]; [ intros x Hx; exfalso; apply Hx; exact I |].
-  rewrite Hl, <- (Hnm _ _ _ HMj Hb); exact (proj1 (HB _ (List.nth_error_In _ _ Hb))).
+  intros p D Bks ρ ρ' HD Har Hnm HB.
+  enough (H : forall n t, (forall Mj, ind_member D (ptyp_mem t) = Some Mj -> im_is_rview Mj = true -> ptyp_mem t < n) ->
+                (exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj) ->
+                ends_agree p (blocks_motives Bks) ρ ρ' t)
+    by (intros t Hpl; apply (H (S (ptyp_mem t)) t); [ intros; lia | exact Hpl ]).
+  induction n as [n IHn] using Wf_nat.lt_wf_ind.
+  induction t as [j Ps | B t IHt]; intros Hrk (Mj & HMj & Hl); cbn [ptyp_mem ptyp_ps] in *.
+  - destruct (im_is_rview Mj) eqn:Hrv.
+    + (** A record view: its fields, at members before it. *)
+      unfold im_is_rview in Hrv; destruct (im_head Mj) as [| | qr Is fl] eqn:Hh; try discriminate Hrv.
+      eapply ends_agree_rview; [ exact HD | exact HMj | exact Hh |].
+      intros c gs gs1 t gs2 Hcs E.
+      pose proof (rview_leaf_plen _ Har _ _ _ _ HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)
+                    ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 E) as Hpt.
+      apply (IHn j (Hrk Mj HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)) t); [| exact Hpt ].
+      intros Mt HMt HrT; exact (rview_leaf_order _ Har _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs E HMt HrT).
+    + (** A member with a block: its motive. *)
+      eapply ends_agree_self; [ exact HD | exact HMj | exact Hrv |].
+      pose proof (nth_motives_sel None Bks j) as Hm; cbn [motives_sel elim_src] in Hm.
+      destruct Hm as [-> | (b & Hb & ->)]; [ intros x Hx; exfalso; apply Hx; exact I |].
+      rewrite Hl, <- (Hnm _ _ _ HMj Hb); exact (proj1 (HB _ (List.nth_error_In _ _ Hb))).
+  - apply ends_agree_pi, IHt; [ exact Hrk | exists Mj; split; assumption ].
 Qed.
 
-#[export]
+(** And so at every recursive argument of a constructor of [D]. *)
+Lemma cargs_ends_agree : forall p D Bks ρ ρ' gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
+    blocks_nm_at D None Bks -> blocks_agree Bks ρ ρ' -> cargs_plen D gs ->
+    forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p (blocks_motives Bks) ρ ρ' t.
+Proof. intros * HD Har Hnm HB Hpl gs1 t gs2 E; exact (ends_agree_of_blocks _ _ _ _ _ HD Har Hnm HB t (Hpl gs1 t gs2 E)). Qed.
+
+#[local]
 Hint Resolve dsim_lvl_suc dsim_lvl_max dsim_list_snoc env_agree_nil
   dsim_list_app dsim_list_firstn dsim_list_skipn env_agree_all_args env_agree_all_cons : mctt.
 
@@ -425,7 +477,7 @@ Proof.
     cbn in Hf; destruct (modexp_spine_fresh _ _ _ _ _ Hs Hf); assumption.
 Qed.
 
-#[export]
+#[local]
 Hint Resolve nil_agree : mctt.
 
 (** ** Evaluation *)
@@ -580,7 +632,6 @@ Proof.
 Qed.
 
 Section KindSim.
-  Variables (Θ : gdeps) (Ξ : gstack).
 
   Lemma kgens_env_sim : forall ρ0 H its gs, kgens Θ Ξ ρ0 H its gs ->
       forall (Q : nat -> Prop), (forall x, ~ modexp_fresh x H -> Q x) ->
@@ -751,8 +802,66 @@ Section KindSim.
   Qed.
 End KindSim.
 
+(** ** Recursive Results
+
+    The entries of a list of recursive results that are read: those the
+    branch [B] reads, at [Some B]; all of them, at [None]. *)
+Definition ihs_read (oB : option exp) : nat -> Prop :=
+  match oB with Some B => fun x => ~ exp_fresh x B | None => fun _ => True end.
+
+(** The group's table of leaf paths is coherent where results may be
+    skipped: the skipped results of an argument are as many as its leaf
+    paths. *)
+Definition ihs_coh (p : qname) (oB : option exp) : Prop :=
+  match oB with Some _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D | None => True end.
+
+(** Lists related at every entry are related. *)
+Lemma dsim_list_at_true : forall l l', dsim_list_at (fun _ => True) l l' -> dsim_list l l'.
+Proof. induction 1; constructor; auto. Qed.
+
+(** A block of entries none of which is read, before related ones. *)
+Lemma dsim_list_at_skip : forall P l1 l1' l2 l2', List.length l1 = List.length l1' ->
+    (forall i, i < List.length l1 -> ~ P (List.length l2 + i)) -> dsim_list_at P l2 l2' ->
+    dsim_list_at P (l1 ++ l2) (l1' ++ l2').
+Proof.
+  induction l1 as [| a l1 IH]; intros [| a' l1'] * Hl HP H2; cbn in Hl; try discriminate; cbn; [ exact H2 |].
+  injection Hl as Hl; constructor; [| apply IH; [ exact Hl | intros; apply HP; cbn; lia | exact H2 ] ].
+  intros Hp; exfalso; apply (HP (List.length l1)); [ cbn; lia |].
+  rewrite List.length_app in Hp; replace (List.length l2 + List.length l1) with (List.length l1 + List.length l2) by lia; exact Hp.
+Qed.
+
+(** The recursive results of an argument are of a filed group. *)
+Lemma eval_ih_lookup : forall ρ p ups Bks t v rs, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
+    exists D, ind_lookup Θ Ξ p = Some D.
+Proof. inversion 1; subst; eauto. Qed.
+
+(** The recursive results of a function shape, one closure per leaf path,
+    over related parts. *)
+Lemma dsim_list_map_ihfn : forall ρ ρ' Bks p ups ups' t f f' n,
+    blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim f f' ->
+    dsim_list (List.map (fun i => d_ihfn ρ Bks p ups t i f) (List.seq 0 n))
+              (List.map (fun i => d_ihfn ρ' Bks p ups' t i f') (List.seq 0 n)).
+Proof.
+  intros * HB Hu Hf; generalize 0; induction n as [| n IH]; intros k; cbn; constructor; [| apply IH ].
+  constructor; [ exact HB | exact Hu | exact Hf ].
+Qed.
+
+(** The types of the recursive results of a function shape, one family per
+    leaf path, over related parts. *)
+Lemma dsim_list_map_ihfam : forall b b' ρm ρm' As p ups ups' ρ ρ' t f f' n,
+    dsim b b' -> ends_agree p As ρm ρm' t -> dsim_list ups ups' ->
+    env_agree (fun x => ~ pt_fresh (S x) t) ρ ρ' -> dsim f f' ->
+    dsim_list (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ t i f) fam_cod) (List.seq 0 n))
+              (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρm' As p ups' ρ' t i f') fam_cod) (List.seq 0 n)).
+Proof.
+  intros * Hb HA Hu Hρ Hf; generalize 0; induction n as [| n IH]; intros k; cbn; constructor; [| apply IH ].
+  apply dsim_fam_pi; [ exact Hb | constructor; [ exact HA | exact Hu | exact Hρ | exact Hf ] ].
+Qed.
+
+#[local]
+Hint Resolve dsim_fields_combine : mctt.
+
 Section Eval.
-  Variables (Θ : gdeps) (Ξ : gstack).
 
   Theorem feval_sim :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
@@ -781,27 +890,32 @@ Section Eval.
     (forall ρ p ups Bks j m r, ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
        blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
        exists r', ⟦elimᶠ m' at j of p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
-    (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' ups' vs' B,
-       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' ->
-       exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
-       dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs') /\
+    (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' ups' vs' oB,
+       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' -> ihs_coh p oB ->
+       exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
+       dsim_list_at (ihs_read oB) ihs ihs') /\
     (forall ρ p ups Bks t m r, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
        blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
-       exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
+       exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim_list r r') /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> forall ups', dsim_list ups ups' ->
        exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ dsim_list (snd r) pre') /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
        dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
        exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a') /\
-    (forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
-       env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
-       env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-       exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a') /\
+    (forall p ups ρm As ρ t m a, ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρm' ρ' m',
+       dsim_list ups ups' -> ends_agree p As ρm ρm' t -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
+       exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim_list a a') /\
     (forall f m r, eval_proj Θ Ξ f m r -> forall m', dsim m m' ->
        exists r', feval_proj Θ Ξ f m' r' /\ dsim r r') /\
     (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> forall ns' m' pre',
        dsim_list ns ns' -> dsim_ne m m' -> dsim_list pre pre' ->
-       exists rs', feval_nflds Θ Ξ ns' m' fl pre' rs' /\ dsim_list rs rs').
+       exists rs', feval_nflds Θ Ξ ns' m' fl pre' rs' /\ dsim_list rs rs') /\
+    (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> forall v', dsim v v' ->
+       exists ws', ⟦projsᶠ fl of v' ⟧ᶠ Θ ⍮ Ξ ↘ ws' /\ dsim_list ws ws') /\
+    (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> forall ups' ρm' ρ' vs',
+       dsim_list ups ups' -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρm ρm' t) ->
+       env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' ->
+       exists rs', ⟦ihtysᶠ vs' of gs at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ rs' /\ dsim_list rs rs').
   Proof.
     apply (eval_mut_ind Θ Ξ
       (fun M ρ m _ => forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
@@ -827,26 +941,30 @@ Section Eval.
       (fun ρ p ups Bks j m r _ => forall ρ' ups' m',
          blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
          exists r', ⟦elimᶠ m' at j of p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
-      (fun ρ p ups Bks gs vs ihs _ => forall ρ' ups' vs' B,
-         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' ->
-         exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
-         dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs')
+      (fun ρ p ups Bks gs vs ihs _ => forall ρ' ups' vs' oB,
+         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' -> ihs_coh p oB ->
+         exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
+         dsim_list_at (ihs_read oB) ihs ihs')
       (fun ρ p ups Bks t m r _ => forall ρ' ups' m',
          blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
-         exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
+         exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim_list r r')
       (fun p ups j r _ => forall ups', dsim_list ups ups' ->
          exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ dsim_list (snd r) pre')
       (fun p ups ρ t a _ => forall ups' ρ',
          dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
          exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a')
-      (fun ρm As ρ t m a _ => forall ρm' ρ' m',
-         env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
-         env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-         exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a')
+      (fun p ups ρm As ρ t m a _ => forall ups' ρm' ρ' m',
+         dsim_list ups ups' -> ends_agree p As ρm ρm' t -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
+         exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim_list a a')
       (fun f m r _ => forall m', dsim m m' -> exists r', feval_proj Θ Ξ f m' r' /\ dsim r r')
       (fun ns m fl pre rs _ => forall ns' m' pre',
          dsim_list ns ns' -> dsim_ne m m' -> dsim_list pre pre' ->
-         exists rs', feval_nflds Θ Ξ ns' m' fl pre' rs' /\ dsim_list rs rs'));
+         exists rs', feval_nflds Θ Ξ ns' m' fl pre' rs' /\ dsim_list rs rs')
+      (fun fl v ws _ => forall v', dsim v v' -> exists ws', ⟦projsᶠ fl of v' ⟧ᶠ Θ ⍮ Ξ ↘ ws' /\ dsim_list ws ws')
+      (fun p ups ρm As ρ gs vs rs _ => forall ups' ρm' ρ' vs',
+         dsim_list ups ups' -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρm ρm' t) ->
+         env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' ->
+         exists rs', ⟦ihtysᶠ vs' of gs at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ rs' /\ dsim_list rs rs'));
       intros; cbn [fst snd ptyp_ps ptyp_mem] in *.
     (** Records: a tuple's fields, a field of a value, and the projections
         of a neutral, each from related parts. *)
@@ -915,22 +1033,28 @@ Section Eval.
     (** On a constructor: the recursive results, then the branch, in the
         environment of the parameters, the arguments and the results. *)
     all: try solve [ match goal with
-      | IHi : forall ρ0 ups0 vs0 B0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list (skipn _ ?vs) vs0 -> exists _, _ /\ _,
+      | IHi : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list (skipn _ ?vs) vs0 ->
+              ihs_coh ?p oB0 -> exists _, _ /\ _,
         IHB : forall ρ0, env_agree (fun x => ~ exp_fresh x ?B) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
         HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups',
         Hvs : dsim_list ?vs ?vs', Hb : nth_error ?Bks _ = Some ?bk, e : brs_lookup (eb_brs ?bk) ?c = Some (_, ?B),
         Hl : List.length ?vs = (im_np ?Dq ?Mk + List.length ?gs)%nat,
+        Hlk : ind_lookup _ _ ?p = Some ?D, Hco : leaves_coherent ?D,
         Hih : ⟦ihs _ of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
           let ihs' := fresh "ihs'" in let Hihs' := fresh "Hihs'" in let Hsi := fresh "Hsi" in
-          let r' := fresh "r'" in
-          destruct (IHi ρ' ups' (skipn (im_np Dq Mk) vs') B HBk Hu (dsim_list_skipn _ _ _ Hvs)) as (ihs' & Hihs' & Hsi);
+          let r' := fresh "r'" in let Hcoh := fresh "Hcoh" in
+          assert (Hcoh : ihs_coh p (Some B))
+            by (let D0 := fresh "D0" in let HD0 := fresh "HD0" in
+                intros D0 HD0; rewrite Hlk in HD0; injection HD0 as <-; exact Hco);
+          destruct (IHi ρ' ups' (skipn (im_np Dq Mk) vs') (Some B) HBk Hu (dsim_list_skipn _ _ _ Hvs) Hcoh)
+            as (ihs' & Hihs' & Hsi); cbn [ihs_read] in Hsi;
           destruct (IHB (env_args ρ' (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs') ++ skipn (im_np Dq Mk) vs' ++ ihs')))
             as (r' & ? & ?);
             [ eapply env_agree_binders_at;
                 [ exact (proj2 (HBk _ (nth_error_In _ _ Hb)) _ _ _ (brs_lookup_in _ _ _ _ e))
                 | apply dsim_list_at_app; [ apply dsim_list_skipn, dsim_list_firstn, Hvs
                                           | apply dsim_list_at_app; [ apply dsim_list_skipn, Hvs | exact Hsi ] ]
-                | rewrite (ind_branch_args_length _ _ _ _ _ Hl), (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
+                | rewrite (ind_branch_args_length _ _ _ _ _ Hl), (proj2 (eval_ihs_length _ _ _ _ _ _ _ _ Hlk Hco Hih));
                   first [ reflexivity | lia ] ]
             |];
           exists r'; split;
@@ -956,41 +1080,154 @@ Section Eval.
             [ eapply feval_elim_neut; try eassumption; rewrite <- (dsim_list_length _ _ Has); exact Hl
             | constructor; [ assumption | apply dsim_ne_elim; [ exact HBk | exact Hu | exact Has | exact Hm ] ] ]
       end ].
-    (** The recursive results: each is computed when the branch reads it,
-        and skipped when it does not, as the fast rule decides. *)
+    (** The recursive results: those of an argument are computed when the
+        branch reads one of them, and skipped when it reads none, as the
+        fast rule decides; skipped ones are as many as the argument's leaf
+        paths, the group's table being coherent. *)
     all: try solve [ eexists; split; [ constructor | constructor ] ].
     all: try solve [ match goal with
-      | IH : forall ρ0 ups0 vs0 B0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list ?vs vs0 -> exists _, _ /\ _,
-        HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hvs : dsim_list ?vs ?vs'
-        |- exists _, ⟦ihsᶠ _ of ?gs0 under _ _ _ for ?B ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
+      | IH : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list ?vs vs0 -> ihs_coh ?p oB0 -> exists _, _ /\ _,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hvs : dsim_list ?vs ?vs', Hc : ihs_coh ?p ?oB
+        |- exists _, feval_ihs _ _ _ _ _ _ ?oB (ca_arg _ :: _) _ _ /\ _ =>
           let ihs' := fresh "ihs'" in
-          destruct (IH ρ' ups' vs' B HBk Hu Hvs) as (ihs' & ? & ?);
-          first [ exists ihs'; split; [ constructor; eassumption | assumption ]
-                | match goal with
-                  | IHe : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?v m0 -> exists _, _ /\ _,
-                    Hv : dsim ?v ?v', Hih : ⟦ihs ?vs of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
-                      let Hf := fresh "Hf" in
-                      destruct (exp_freshb (cargs_nrec gs) B) eqn:Hf;
-                      [ exists (𝕌ω@0 :: ihs'); split;
-                          [ apply feval_ihs_skip; assumption
-                          | constructor; [| assumption ];
-                            rewrite (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
-                            intros Hn; exfalso; exact (Hn (exp_freshb_sound _ _ Hf)) ]
-                      | let ih' := fresh "ih'" in
-                        destruct (IHe ρ' ups' v' HBk Hu Hv) as (ih' & ? & ?);
-                        exists (ih' :: ihs'); split;
-                          [ eapply feval_ihs_rec; eassumption | constructor; [ intros; assumption | assumption ] ] ]
-                  end ]
+          destruct (IH ρ' ups' vs' oB HB Hu Hvs Hc) as (ihs' & ? & ?);
+          exists ihs'; split; [ constructor; eassumption | assumption ]
+      | IHi : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?v m0 -> exists _, feval_ih _ _ _ _ _ _ _ _ _ /\ _,
+        IHs : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list ?vs vs0 -> ihs_coh ?p oB0 -> exists _, _ /\ _,
+        Hi : eval_ih _ _ ?ρ ?p ?ups ?Bks ?t ?v ?ihs1, Hs : eval_ihs _ _ ?ρ ?p ?ups ?Bks ?gs ?vs ?ihs,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v', Hvs : dsim_list ?vs ?vs', Hc : ihs_coh ?p ?oB
+        |- exists _, feval_ihs _ _ _ _ _ _ ?oB (ca_rec ?t :: ?gs) _ _ /\ _ =>
+          let D := fresh "D" in let HD := fresh "HD" in let ihs' := fresh "ihs'" in let Hsi := fresh "Hsi" in
+          let Hsk := fresh "Hsk" in
+          destruct (eval_ih_lookup _ _ _ _ _ _ _ Hi) as (D & HD);
+          destruct (IHs ρ' ups' vs' oB HB Hu Hvs Hc) as (ihs' & ? & Hsi);
+          destruct (ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) eqn:Hsk;
+          [ let B := fresh "B" in let HBf := fresh "HBf" in let Hco := fresh "Hco" in let Hli := fresh "Hli" in
+            destruct (ihs_skipb_sound _ _ _ Hsk) as (B & -> & HBf);
+            pose proof (Hc D HD) as Hco;
+            pose proof (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Hi _ HD Hco) as Hli;
+            exists (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t)) ++ ihs'); split;
+            [ eapply feval_ihs_skip; eassumption
+            | apply dsim_list_at_skip;
+              [ rewrite List.repeat_length; exact Hli
+              | let i0 := fresh "i0" in let Hi0 := fresh "Hi0" in let Hn := fresh "Hn" in
+                intros i0 Hi0; cbn [ihs_read]; rewrite (proj2 (eval_ihs_length _ _ _ _ _ _ _ _ HD Hco Hs));
+                intros Hn; apply Hn, HBf; rewrite Hli in Hi0; exact Hi0
+              | exact Hsi ] ]
+          | let ih' := fresh "ih'" in
+            destruct (IHi ρ' ups' v' HB Hu Hv) as (ih' & ? & ?);
+            exists (ih' ++ ihs'); split; [ eapply feval_ihs_rec; eassumption | apply dsim_list_at_app; assumption ] ]
       end ].
-    (** Function shapes.  The recursive result of a function shape and the
-        families of its types, applied; the recursive result at a leaf; and
-        the types, a [Π] over the family. *)
+    (** Function shapes.  A recursive result of a function shape and the
+        families of their types, applied; the recursive results at a leaf,
+        at a member with a block or at a record view; the types, a [Π] over
+        each family; the projections along a record view's path, and the
+        types of its fields' recursive results. *)
     all: try solve [ match goal with
       | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?fn m0 -> exists _, feval_ih _ _ _ _ _ _ _ _ _ /\ _,
-        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups',
-        Hf : dsim ?fn ?x, Ha : $ᶠ| _ & _ | _ ⍮ _ ↘ ?x |- exists _, $ᶠ| d_ihfn _ _ _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hf : dsim ?fn ?x, Ha : $ᶠ| _ & _ | _ ⍮ _ ↘ ?x,
+        Hi : nth_error ?rs ?i = Some _ |- exists _, $ᶠ| d_ihfn _ _ _ _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
+          let rs' := fresh "rs'" in let Hrs := fresh "Hrs" in let r' := fresh "r'" in
+          destruct (IH _ _ _ HB Hu Hf) as (rs' & ? & Hrs);
+          destruct (dsim_list_nth_error _ _ _ _ Hrs Hi) as (r' & ? & ?);
+          exists r'; split; [ econstructor; eassumption | assumption ]
+      | IH : forall ups0 ρm0 ρ0 m0, dsim_list ?ups ups0 -> ends_agree _ _ ?ρm ρm0 _ -> env_agree _ (?ρ ↦ ?n) ρ0 -> dsim ?fn m0 ->
+             exists _, _ /\ _,
+        Hu : dsim_list ?ups ?ups', HA : ends_agree _ _ ?ρm ?ρm' _, Hρ : env_agree (fun x => ~ pt_fresh (S x) ?t) ?ρ ?ρ',
+        Hn : dsim ?n ?n', Hf : dsim ?fn ?x, Ha : $ᶠ| _ & _ | _ ⍮ _ ↘ ?x, Hi : nth_error ?ys ?i = Some _
+        |- exists _, $ᶠ| d_ihfam _ _ _ _ _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
+          let ys' := fresh "ys'" in let Hys := fresh "Hys" in let a' := fresh "a'" in
+          destruct (IH ups' ρm' (ρ' ↦ n') x Hu HA) as (ys' & ? & Hys);
+            [ unfold extend_env; eapply env_agree_cons; [ exact Hρ | constructor; exact Hn | intros y Hy; exact Hy ] | exact Hf |];
+          destruct (dsim_list_nth_error _ _ _ _ Hys Hi) as (a' & ? & ?);
+          exists a'; split; [ econstructor; eassumption | assumption ]
+      | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?v m0 -> exists _, feval_elim _ _ _ _ _ _ _ _ _ /\ _,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v'
+        |- exists _, feval_ih _ _ _ _ _ _ (pt_self _ _) _ _ /\ dsim_list (_ :: nil) _ =>
           let r' := fresh "r'" in
-          destruct (IH _ _ _ HB Hu Hf) as (r' & ? & ?); exists r'; split; [ econstructor; eassumption | assumption ]
+          destruct (IH ρ' ups' v' HB Hu Hv) as (r' & ? & ?); exists (r' :: nil); split;
+            [ econstructor; eassumption | repeat constructor; assumption ]
+      | IHp : forall v0, dsim ?v v0 -> exists _, feval_projs _ _ _ _ _ /\ _,
+        IHs : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list ?ws vs0 -> ihs_coh _ oB0 ->
+              exists _, _ /\ _,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v'
+        |- exists _, feval_ih _ _ _ _ _ _ _ _ _ /\ _ =>
+          let ws' := fresh "ws'" in let Hws := fresh "Hws" in let rs' := fresh "rs'" in let Hrs := fresh "Hrs" in
+          destruct (IHp v' Hv) as (ws' & ? & Hws); destruct (IHs ρ' ups' ws' None HB Hu Hws I) as (rs' & ? & Hrs);
+          exists rs'; split; [ econstructor; eassumption | apply dsim_list_at_true; exact Hrs ]
+      | HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v', e : ind_lookup _ _ ?p = Some ?D
+        |- exists _, feval_ih _ _ _ ?p _ ?Bks (pt_pi _ _) _ _ /\ _ =>
+          eexists; split; [ econstructor; exact e | apply dsim_list_map_ihfn; assumption ]
+      | IHf : forall m0, dsim ?v m0 -> exists _, feval_proj _ _ _ _ _ /\ _,
+        IHr : forall v0, dsim ?v v0 -> exists _, feval_projs _ _ _ _ _ /\ _, Hv : dsim ?v ?v'
+        |- exists _, feval_projs _ _ _ _ _ /\ _ =>
+          let w' := fresh "w'" in let ws' := fresh "ws'" in
+          destruct (IHf v' Hv) as (w' & ? & ?); destruct (IHr v' Hv) as (ws' & ? & ?);
+          exists (w' :: ws'); split; [ econstructor; eassumption | constructor; assumption ]
+      | |- exists _, feval_projs _ _ nil _ _ /\ _ => exists nil; split; constructor
+      | |- exists _, feval_ihtys _ _ _ _ _ _ _ nil nil _ /\ _ => exists nil; split; constructor
+      | IH : forall ups0 ρm0 ρ0 vs0, dsim_list ?ups ups0 -> _ -> env_agree _ (?ρ ↦ ?v) ρ0 -> dsim_list ?vs vs0 -> exists _, _ /\ _,
+        Hu : dsim_list ?ups ?ups', HA : forall gs1 t gs2, _ -> ends_agree _ _ _ ?ρm' _,
+        Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hv : dsim ?v ?v', Hvs : dsim_list ?vs ?vs'
+        |- exists _, feval_ihtys _ _ _ _ _ _ _ (ca_arg ?T :: _) _ _ /\ _ =>
+          let rs' := fresh "rs'" in
+          destruct (IH ups' ρm' (ρ' ↦ v') vs' Hu) as (rs' & ? & ?);
+            [ let gs1 := fresh "gs1" in let t := fresh "t" in let gs2 := fresh "gs2" in let E := fresh "E" in
+              intros gs1 t gs2 E; apply (HA (ca_arg T :: gs1) t gs2); rewrite E; reflexivity
+            | apply env_agree_all_cons; assumption | exact Hvs |];
+          exists rs'; split; [ constructor; eassumption | assumption ]
+      | IHt : forall ups0 ρm0 ρ0 m0, dsim_list ?ups ups0 -> ends_agree _ _ _ ρm0 ?t -> env_agree _ ?ρ ρ0 -> dsim ?v m0 -> exists _, _ /\ _,
+        IH : forall ups0 ρm0 ρ0 vs0, dsim_list ?ups ups0 -> _ -> env_agree _ ?ρ ρ0 -> dsim_list ?vs vs0 -> exists _, _ /\ _,
+        Hu : dsim_list ?ups ?ups', HA : forall gs1 t0 gs2, ca_rec ?t :: _ = _ -> ends_agree _ _ _ ?ρm' _,
+        Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hv : dsim ?v ?v', Hvs : dsim_list ?vs ?vs'
+        |- exists _, feval_ihtys _ _ _ _ _ _ _ (ca_rec _ :: _) _ _ /\ _ =>
+          let rs1' := fresh "rs1'" in let rs' := fresh "rs'" in
+          destruct (IHt ups' ρm' ρ' v' Hu (HA nil t _ eq_refl)) as (rs1' & ? & ?);
+            [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] | exact Hv |];
+          destruct (IH ups' ρm' ρ' vs' Hu) as (rs' & ? & ?);
+            [ let gs1 := fresh "gs1" in let t0 := fresh "t0" in let gs2 := fresh "gs2" in let E := fresh "E" in
+              intros gs1 t0 gs2 E; apply (HA (ca_rec t :: gs1) t0 gs2); rewrite E; reflexivity
+            | exact Hρ | exact Hvs |];
+          exists (rs1' ++ rs'); split; [ econstructor; eassumption | apply dsim_list_app; assumption ]
+      | Hea : ends_agree ?p ?As ?ρm ?ρm' (pt_self ?j ?Ps), Hl : ind_lookup _ _ ?p = Some ?D, Hm : ind_member ?D ?j = Some ?Mj,
+        Hr : im_is_rview ?Mj = false, e2 : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs,
+        IH : forall ρ0, env_agree _ (env_args ?ρm (?bs ++ ?v :: nil)) ρ0 -> exists _, _ /\ _,
+        Hbs : dsim_list ?bs ?bs', Hv : dsim ?v ?v', HbsF : ⟦ ?Ps ⟧*ᶠ _ ⍮ _ ⍮ _ ↘ ?bs'
+        |- exists _, feval_ihty _ _ _ _ _ _ _ (pt_self _ _) _ _ /\ _ =>
+          let Hlb := fresh "Hlb" in let a' := fresh "a'" in
+          assert (Hlb : List.length bs = List.length Ps) by (clear - e2; induction e2; cbn; congruence);
+          inversion Hea as [? ? ? ? D0 j0 Mj0 Ps0 HD0 HM0 HR0 HA0 | ? ? ? ? D0 j0 Mj0 qr0 Is0 fl0 Ps0 HD0 HM0 Hh0 _ |]; subst;
+          rewrite Hl in HD0; injection HD0 as <-; rewrite Hm in HM0; injection HM0 as <-;
+          [| exfalso; unfold im_is_rview in Hr; rewrite Hh0 in Hr; discriminate Hr ];
+          destruct (IH (env_args ρm' (bs' ++ v' :: nil))) as (a' & ? & ?);
+            [ eapply env_agree_binders; [ exact HA0 | apply dsim_list_app; [ exact Hbs | repeat constructor; assumption ] |];
+              rewrite List.length_app, Hlb; cbn; lia |];
+          exists (a' :: nil); split; [ econstructor; eassumption | repeat constructor; assumption ]
+      | Hea : ends_agree ?p ?As ?ρm ?ρm' (pt_self ?j ?Ps), Hl : ind_lookup _ _ ?p = Some ?D, Hm : ind_member ?D ?j = Some ?Mj,
+        Hh : im_head ?Mj = mh_record _ _ _, Hc : im_cons ?Mj = (_, ?gs) :: nil, Hpj : eval_projs _ _ _ _ _,
+        IHp : forall v0, dsim ?v v0 -> exists _, feval_projs _ _ _ _ _ /\ _,
+        IH : forall ups0 ρm0 ρ0 vs0, dsim_list ?ups ups0 -> _ -> env_agree _ (env_args nil ?ups) ρ0 -> _ -> exists _, _ /\ _,
+        Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v'
+        |- exists _, feval_ihty _ _ _ _ _ _ _ (pt_self _ _) _ _ /\ _ =>
+          let ws' := fresh "ws'" in let Hws := fresh "Hws" in let rs' := fresh "rs'" in
+          inversion Hea as [? ? ? ? D0 j0 Mj0 Ps0 HD0 HM0 HR0 HA0 | ? ? ? ? D0 j0 Mj0 qr0 Is0 fl0 Ps0 HD0 HM0 Hh0 HF |]; subst;
+          rewrite Hl in HD0; injection HD0 as <-; rewrite Hm in HM0; injection HM0 as <-;
+          [ exfalso; unfold im_is_rview in HR0; rewrite Hh in HR0; discriminate HR0 |];
+          clear Hh0;
+          destruct (IHp v' Hv) as (ws' & ? & Hws);
+          destruct (IH ups' ρm' (env_args nil ups') ws' Hu) as (rs' & ? & ?);
+            [ let gs1 := fresh "gs1" in let t := fresh "t" in let gs2 := fresh "gs2" in let E := fresh "E" in
+              intros gs1 t gs2 E; eapply HF; [ exact Hc | exact E ]
+            | apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] | exact Hws |];
+          exists rs'; split; [ eapply feval_ihty_rview; eassumption | assumption ]
+      | Hea : ends_agree _ _ _ _ (pt_pi _ _), Hu : dsim_list ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh x (pt_pi _ _)) _ _,
+        Hv : dsim _ ?v', He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : dsim _ ?b', e : ind_lookup _ _ _ = Some _
+        |- exists _, feval_ihty _ _ _ _ _ _ _ (pt_pi _ _) ?v' _ /\ _ =>
+          let Ht := fresh "Ht" in
+          inversion Hea as [| | ? ? ? ? ? ? Ht]; subst;
+          eexists; split; [ econstructor; [ exact e | exact He ] | apply dsim_list_map_ihfam; [ exact Hb | exact Ht | exact Hu | | exact Hv ] ];
+          let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
+          intros y Hy; apply Hρ; cbn; intros [_ Hf]; exact (Hy Hf)
       | IH : forall ups0 ρ0, dsim_list ?ups ups0 -> env_agree _ (?ρ ↦ ?n) ρ0 -> exists _, _ /\ _,
         Hu : dsim_list ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh (S x) ?t) ?ρ ?ρ', Hn : dsim ?n ?n'
         |- exists _, $ᶠ| d_shfam _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
@@ -998,35 +1235,9 @@ Section Eval.
           destruct (IH ups' (ρ' ↦ n') Hu) as (a' & ? & ?);
             [ unfold extend_env; eapply env_agree_cons; [ exact Hρ | constructor; exact Hn | intros y Hy; exact Hy ] |];
           exists a'; split; [ econstructor; eassumption | assumption ]
-      | IH : forall ρm0 ρ0 m0, env_agree _ ?ρm ρm0 -> env_agree _ (?ρ ↦ ?n) ρ0 -> dsim ?fn m0 -> exists _, _ /\ _,
-        HA : env_agree _ ?ρm ?ρm', Hρ : env_agree (fun x => ~ pt_fresh (S x) ?t) ?ρ ?ρ', Hn : dsim ?n ?n',
-        Hf : dsim ?fn ?x, Ha : $ᶠ| _ & _ | _ ⍮ _ ↘ ?x |- exists _, $ᶠ| d_ihfam _ _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
-          let a' := fresh "a'" in
-          destruct (IH ρm' (ρ' ↦ n') x HA) as (a' & ? & ?);
-            [ unfold extend_env; eapply env_agree_cons; [ exact Hρ | constructor; exact Hn | intros y Hy; exact Hy ]
-            | exact Hf |];
-          exists a'; split; [ econstructor; eassumption | assumption ]
-      | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?v m0 -> exists _, _ /\ _,
-        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v'
-        |- exists _, feval_ih _ _ _ _ _ _ (pt_self _ _) _ _ /\ _ =>
-          let r' := fresh "r'" in
-          destruct (IH ρ' ups' v' HB Hu Hv) as (r' & ? & ?); exists r'; split; [ constructor; assumption | assumption ]
       | Hu : dsim_list ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh x (pt_pi _ _)) _ _,
         He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : dsim _ ?b' |- exists _, feval_shty _ _ _ _ _ _ _ /\ _ =>
           eexists; split; [ constructor; exact He | apply dsim_fam_pi; [ exact Hb | constructor; [ exact Hu |] ] ];
-          let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
-          intros y Hy; apply Hρ; cbn; intros [_ Hf]; exact (Hy Hf)
-      | e : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs, IH : forall ρ0, env_agree _ (env_args ?ρm (?bs ++ ?v :: nil)) ρ0 -> exists _, _ /\ _,
-        HA : env_agree _ ?ρm ?ρm', Hbs : dsim_list ?bs ?bs', Hv : dsim ?v ?v' |- exists _, feval_ihty _ _ _ _ _ _ _ _ /\ _ =>
-          let Hlb := fresh "Hlb" in
-          assert (Hlb : List.length bs = List.length Ps) by (clear - e; induction e; cbn; congruence);
-          destruct (IH (env_args ρm' (bs' ++ v' :: nil))) as (? & ? & ?);
-            [ eapply env_agree_binders; [ exact HA | apply dsim_list_app; [ exact Hbs | repeat constructor; assumption ] |];
-              rewrite length_app, Hlb; cbn; lia |];
-          eexists; split; [ econstructor; eassumption | assumption ]
-      | HA : env_agree _ ?ρm ?ρm', Hρ : env_agree (fun x => ~ pt_fresh x (pt_pi _ _)) _ _, Hv : dsim _ ?v',
-        He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : dsim _ ?b' |- exists _, feval_ihty _ _ _ _ _ _ ?v' _ /\ _ =>
-          eexists; split; [ constructor; exact He | apply dsim_fam_pi; [ exact Hb | constructor; [ exact HA | | exact Hv ] ] ];
           let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
           intros y Hy; apply Hρ; cbn; intros [_ Hf]; exact (Hy Hf)
       end ].
@@ -1060,7 +1271,7 @@ Section Eval.
             by (eapply env_agree_mono; [ exact Hρ |];
                 let z := fresh "z" in let Hz := fresh "Hz" in let Hf := fresh "Hf" in
                 intros z Hz Hf; apply Hz; cbn in Hf; destruct Hf as [_ Hf]; exact Hf);
-          pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (kind_sim Θ Ξ))))) _ _ _ Hk ρ' _ (fun z Hz => Hz) HΦ) as Hk';
+          pose proof (proj1 (proj2 (proj2 (proj2 (proj2 kind_sim)))) _ _ _ Hk ρ' _ (fun z Hz => Hz) HΦ) as Hk';
           assert (HE : forall z, gmod_fresh z Φ -> gmod_fresh z (gm_ext Φ' _ E))
             by (let z := fresh "z" in let Hf := fresh "Hf" in
                 intros z Hf; exact (prefix_upto_fresh _ _ _ _ Hp (proj1 (kbody_fresh _ _ _ _ _ Hk _ Hf))));
@@ -1135,23 +1346,22 @@ Section Eval.
 End Eval.
 
 Section Read.
-  Variables (Θ : gdeps) (Ξ : gstack).
 
   Lemma feval_exp_sim : forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
       exists m', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ m' /\ dsim m m'.
-  Proof. exact (proj1 (feval_sim Θ Ξ)). Qed.
+  Proof. exact (proj1 feval_sim). Qed.
 
   Lemma feval_app_sim : forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> forall m' n', dsim m m' -> dsim n n' ->
       exists r', $ᶠ| m' & n' | Θ ⍮ Ξ ↘ r' /\ dsim r r'.
-  Proof. exact (proj1 (proj2 (feval_sim Θ Ξ))). Qed.
+  Proof. exact (proj1 (proj2 feval_sim)). Qed.
 
   Lemma feval_exps_sim : forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
       exists ms', ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ms' /\ dsim_list ms ms'.
-  Proof. exact (proj1 (proj2 (proj2 (feval_sim Θ Ξ)))). Qed.
+  Proof. exact (proj1 (proj2 (proj2 feval_sim))). Qed.
 
   Lemma feval_modexp_sim : forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall ρ', env_agree (fun x => ~ modexp_fresh x H) ρ ρ' ->
       exists h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ' ↘ h' /\ dmsim h h'.
-  Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (feval_sim Θ Ξ)))))). Qed.
+  Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 feval_sim))))). Qed.
 
   (** A closure, at one or two related arguments. *)
   Lemma feval_clo_sim : forall B (ρ ρ' : env) c c' b,
@@ -1195,16 +1405,16 @@ Section Read.
 
   Lemma feval_ih_sim : forall ρ p ups Bks t m r, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
-      exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r'.
+      exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim_list r r'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hi & _).
+    intros * H; destruct feval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hi & _).
     exact (Hi _ _ _ _ _ _ _ H).
   Qed.
 
   Lemma feval_mref_sim : forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> forall ups', dsim_list ups ups' ->
       exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ dsim_list (snd r) pre'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & _).
+    intros * H; destruct feval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & _).
     exact (Hm _ _ _ _ H).
   Qed.
 
@@ -1212,24 +1422,33 @@ Section Read.
       dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
       exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+    intros * H; destruct feval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
-  Lemma feval_ihty_sim : forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
-      env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
+  Lemma feval_ihty_sim : forall p ups ρm As ρ t m a, ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+      forall ups' ρm' ρ' m', dsim_list ups ups' -> ends_agree p As ρm ρm' t ->
       env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-      exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
+      exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim_list a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
-    exact (Hy _ _ _ _ _ _ H).
+    intros * H; destruct feval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
+    exact (Hy _ _ _ _ _ _ _ _ H).
+  Qed.
+
+  (** The fields along a record view's path of related values: related
+      values. *)
+  Lemma feval_projs_sim : forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> forall v', dsim v v' ->
+      exists ws', ⟦projsᶠ fl of v' ⟧ᶠ Θ ⍮ Ξ ↘ ws' /\ dsim_list ws ws'.
+  Proof.
+    intros * H; destruct feval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp & _).
+    exact (Hp _ _ _ H).
   Qed.
 
   (** A field of related values: related values. *)
   Lemma feval_proj_sim : forall f m r, eval_proj Θ Ξ f m r -> forall m', dsim m m' ->
       exists r', feval_proj Θ Ξ f m' r' /\ dsim r r'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp & _).
+    intros * H; destruct feval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp & _).
     exact (Hp _ _ _ H).
   Qed.
 
@@ -1249,54 +1468,150 @@ Section Read.
       exists (⇑! a' s :: vs'); split; [ constructor; assumption | repeat constructor; assumption ].
   Qed.
 
+  (** ** The Leaf Paths of a Recursive Argument
+
+      The fresh variables at the paths of the container's, and the results
+      along each path, by the paths' flags. *)
+  Lemma fresh_leaf_vars_lengths : forall bs as' s vs, fresh_leaf_vars bs as' s vs -> List.length as' = List.length bs.
+  Proof. induction 1; cbn; congruence. Qed.
+
+  Lemma fresh_leaf_vars_exists : forall bs as' s, List.length as' = List.length bs -> exists vs, fresh_leaf_vars bs as' s vs.
+  Proof.
+    induction bs as [| b bs IH]; intros [| a as'] s Hl; cbn in Hl; try discriminate; [ eexists; constructor |].
+    injection Hl as Hl; destruct b.
+    - destruct (IH as' (S s) Hl) as (vs & Hvs); eexists; constructor; exact Hvs.
+    - destruct (IH as' s Hl) as (vs & Hvs); eexists; constructor; exact Hvs.
+  Qed.
+
+  Lemma fresh_leaf_vars_sim : forall bs as1 s vs1, fresh_leaf_vars bs as1 s vs1 ->
+      forall as2 vs2, fresh_leaf_vars bs as2 s vs2 -> dsim_list as1 as2 -> dsim_list vs1 vs2.
+  Proof.
+    induction 1; intros * H2 Ha; inversion H2; subst; inversion Ha; subst; [ constructor | | ].
+    - constructor; [ repeat constructor; assumption | eauto ].
+    - eauto.
+  Qed.
+
+  (** Results along the paths take, of [l1 ++ l2], the variables [l1] at the
+      paths of the container's, as many as those. *)
+  Lemma wrap_leaf_vals_app : forall bs rs l ihs' out, wrap_leaf_vals bs rs l ihs' out ->
+      forall l1 l2, l = l1 ++ l2 -> List.length l1 = List.length (List.filter (fun b => b) bs) ->
+      ihs' = l2 /\ wrap_leaf_vals bs rs l1 nil out.
+  Proof.
+    induction 1; intros l1 l2 E Hl; cbn in Hl.
+    - destruct l1; [ cbn in E; subst; split; [ reflexivity | constructor ] | discriminate ].
+    - destruct l1 as [| x l1]; [ discriminate | cbn in E; injection E as -> E; injection Hl as Hl ].
+      destruct (IHwrap_leaf_vals _ _ E Hl) as [-> Hw]; split; [ reflexivity | constructor; exact Hw ].
+    - destruct (IHwrap_leaf_vals _ _ E Hl) as [-> Hw]; split; [ reflexivity | constructor; exact Hw ].
+  Qed.
+
+  Lemma wrap_leaf_vals_extend : forall bs rs l1 out, wrap_leaf_vals bs rs l1 nil out ->
+      forall l2, wrap_leaf_vals bs rs (l1 ++ l2) l2 out.
+  Proof.
+    intros * H; remember nil as e eqn:Ee; revert Ee; induction H; intros -> l2; cbn; constructor; auto.
+  Qed.
+
+  Lemma wrap_leaf_vals_exists : forall bs rs l1, List.length rs = List.length bs ->
+      List.length l1 = List.length (List.filter (fun b => b) bs) -> exists out, wrap_leaf_vals bs rs l1 nil out.
+  Proof.
+    induction bs as [| b bs IH]; intros [| r rs] l1 Hl Hl1; cbn in Hl, Hl1; try discriminate.
+    - destruct l1; [ eexists; constructor | discriminate ].
+    - injection Hl as Hl; destruct b.
+      + destruct l1 as [| x l1]; [ discriminate | injection Hl1 as Hl1 ].
+        destruct (IH rs l1 Hl Hl1) as (out & Ho); eexists; constructor; exact Ho.
+      + destruct (IH rs l1 Hl Hl1) as (out & Ho); eexists; constructor; exact Ho.
+  Qed.
+
+  Lemma wrap_leaf_vals_sim : forall bs rs1 l1 e1 out1, wrap_leaf_vals bs rs1 l1 e1 out1 ->
+      forall rs2 l2 e2 out2, wrap_leaf_vals bs rs2 l2 e2 out2 -> dsim_list rs1 rs2 ->
+      dsim_list (List.firstn (List.length (List.filter (fun b => b) bs)) l1)
+                (List.firstn (List.length (List.filter (fun b => b) bs)) l2) ->
+      dsim_list out1 out2.
+  Proof.
+    induction 1; intros * H2 Hr Hl; inversion H2; subst; inversion Hr; subst; cbn in Hl; [ constructor | | ].
+    - inversion Hl; subst; constructor; [ assumption | eauto ].
+    - constructor; [ assumption | eauto ].
+  Qed.
+
   (** The recursive results a branch [B] is read under, fresh and wrapped:
-      related where [B] reads them, the head of the wrapped results being
-      the entry [List.length] of their tail.  One the branch does not read
-      is a variable of type [𝕌ω@0] in the fast readback. *)
-  Lemma ffresh_wrap_sim : forall ρ As ρa gs' gs vs s ihs, Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
-      forall p ups Bks wihs, ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
-      forall B ρ' ρa' ups' vs',
-      (forall t, In (ca_rec t) gs ->
-         env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρ ρ') ->
+      related where [B] reads them.  The results of an argument the branch
+      reads none of are variables of type [𝕌ω@0] in the fast readback,
+      along the paths of the container's. *)
+  Lemma ffresh_wrap_sim : forall ρ As p ups Dc ρa gs' gs vs s ihs,
+      Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
+      forall Bks wihs, ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
+      forall D B ρ' ρa' ups' vs', ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
+      (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρ ρ' t) ->
       env_agree (fun _ => True) ρa ρa' -> blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' ->
-      exists ihs' wihs', Fihsᶠ vs' at gs' gs under ρ' As for B in Θ ⍮ Ξ ⍮ ρa' ⍮ s ↘ ihs' /\
-        ⟦wihsᶠ vs' of gs' gs with ihs' under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ wihs' /\
+      exists ihs' wihs', Fihsᶠ vs' at gs' gs of Dc under ρ' As at p ups' for B in Θ ⍮ Ξ ⍮ ρa' ⍮ s ↘ ihs' /\
+        ⟦wihsᶠ vs' of gs' gs of Dc with ihs' under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ wihs' /\
         dsim_list_at (fun x => ~ exp_fresh x B) wihs wihs'.
   Proof.
-    induction 1; intros p ups Bks wihs Hw B ρ' ρa' ups' vs' HA Hρa HB Hu Hv; inversion Hw; subst; clear Hw.
+    induction 1; intros Bks wihs Hw D0 B ρ' ρa' ups' vs' HD Hco HA Hρa HB Hu Hv; inversion Hw; subst; clear Hw.
     - inversion Hv; subst; exists nil, nil; repeat constructor.
     - inversion Hv; subst.
-      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _ |- _ =>
-        destruct (IHfresh_ihs _ _ _ _ Hw1 B ρ' (ρa' ↦ v1) ups' vs1
-                    ltac:(intros; apply HA; right; assumption) ltac:(apply env_agree_all_cons; assumption) HB Hu Hv2)
+      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+        destruct (IHfresh_ihs _ _ Hw1 D0 B ρ' (ρa' ↦ v1) ups' vs1 HD Hco
+                    ltac:(intros gs1 t gs2 E; apply (HA (ca_arg T :: gs1) t gs2); rewrite E; reflexivity)
+                    ltac:(apply env_agree_all_cons; assumption) HB Hu Hv2)
           as (ihs' & wihs' & ? & ? & ?) end.
       exists ihs', wihs'; repeat split; [ constructor; assumption | constructor; assumption | assumption ].
-    - inversion Hv; subst.
-      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ ?r |- _ =>
-        let ihs' := fresh "ihs'" in let wihs' := fresh "wihs'" in let Ef := fresh "Ef" in
-        let a' := fresh "a'" in let Hl := fresh "Hl" in
-        destruct (IHfresh_ihs _ _ _ _ Hw1 B ρ' ρa' ups' vs1
-                    ltac:(intros; apply HA; right; assumption) Hρa HB Hu Hv2) as (ihs' & wihs' & ? & ? & ?);
-        pose proof (proj1 (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ Hw1)) as Hl;
-        destruct (exp_freshb (cargs_nrec gs) B) eqn:Ef;
-        [ exists (⇑! 𝕌ω@0 s :: ihs'), (⇑! 𝕌ω@0 s :: wihs'); repeat split;
-            [ apply ffresh_ihs_skip; assumption | constructor; assumption
-            | constructor; [ intros Hr; exfalso; apply Hr; rewrite Hl; apply exp_freshb_sound; exact Ef | assumption ] ]
-        | destruct (feval_ihty_sim _ _ _ _ _ _ H ρ' ρa' v1) as (a' & ? & ?);
-            [ apply HA; left; reflexivity | eapply env_agree_mono; [ exact Hρa | intros; exact I ] | exact Hv1 |];
-          exists (⇑! a' s :: ihs'), (⇑! a' s :: wihs'); repeat split;
-            [ apply ffresh_ihs_rec; assumption | constructor; assumption
-            | constructor; [ intros _; repeat constructor; assumption | assumption ] ] ]
-      end.
-    - inversion Hv; subst.
-      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _,
+    - (** Recursive in both: the variables at the paths of the container's,
+          then the rest *)
+      inversion Hv; subst.
+      repeat match goal with H1 : ind_lookup _ _ ?p = Some _, H2 : ind_lookup _ _ ?p = Some _ |- _ =>
+               rewrite H1 in H2; injection H2 as <- end.
+      rename H into HD', H0 into Hty, H1 into Hfl, H12 into Hih, H13 into Hwl, H14 into Hw1, H5 into Hv1, H7 into Hv2.
+      pose proof (fresh_leaf_vars_length _ _ _ _ Hfl) as Hl1.
+      destruct (wrap_leaf_vals_app _ _ _ _ _ Hwl _ _ eq_refl Hl1) as [<- Hwl1].
+      destruct (IHfresh_ihs _ _ Hw1 D B ρ' ρa' ups' args' HD' Hco
+                  ltac:(intros gs1 t0 gs2 E; apply (HA (ca_rec t :: gs1) t0 gs2); rewrite E; reflexivity)
+                  Hρa HB Hu Hv2) as (ihs'0 & wihs' & ? & ? & Hsi).
+      destruct (feval_ih_sim _ _ _ _ _ _ _ Hih ρ' ups' a' HB Hu Hv1) as (rs' & ? & Hrs).
+      pose proof (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Hih _ HD' Hco) as Hlr.
+      assert (Hlb : List.length (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
+                    = List.length (shape_leaves (rv_leaves D) 0 t)) by apply List.length_map.
+      destruct (ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) eqn:Hsk.
+      + (** Skipped: variables at [𝕌ω@0], none read *)
+        destruct (fresh_leaf_vars_exists (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
+                    (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s
+                    ltac:(rewrite List.repeat_length, Hlb; reflexivity)) as (ihs1' & Hfl').
+        destruct (wrap_leaf_vals_exists _ rs' ihs1' ltac:(rewrite <- (dsim_list_length _ _ Hrs), Hlr, Hlb; reflexivity)
+                    (fresh_leaf_vars_length _ _ _ _ Hfl')) as (out' & Hout).
+        exists (ihs1' ++ ihs'0), (out' ++ wihs'); repeat split.
+        * eapply ffresh_ihs_skip; [ exact HD' | exact Hsk | exact Hfl' | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl'), <- Hl1; assumption ].
+        * eapply fwrap_ihs_eval_rec; [ exact HD' | eassumption | apply wrap_leaf_vals_extend; exact Hout | assumption ].
+        * destruct (ihs_skipb_sound _ _ _ Hsk) as (B0 & EB & HBf); injection EB as <-.
+          apply dsim_list_at_skip.
+          -- rewrite (wrap_leaf_vals_length _ _ _ _ _ Hwl1), (wrap_leaf_vals_length _ _ _ _ _ Hout); reflexivity.
+          -- intros i0 Hi0 Hn; apply Hn.
+             rewrite (proj1 (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ _ _ HD' Hco Hw1)); apply HBf.
+             rewrite (wrap_leaf_vals_length _ _ _ _ _ Hwl1), Hlb in Hi0; exact Hi0.
+          -- exact Hsi.
+      + (** Computed: variables at the related types *)
+        destruct (feval_ihty_sim _ _ _ _ _ _ _ _ Hty ups' ρ' ρa' a' Hu (HA nil t gs eq_refl)
+                    ltac:(eapply env_agree_mono; [ exact Hρa | intros; exact I ]) Hv1) as (a2 & ? & Ha2).
+        destruct (fresh_leaf_vars_exists (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) a2 s
+                    ltac:(rewrite <- (dsim_list_length _ _ Ha2); exact (fresh_leaf_vars_lengths _ _ _ _ Hfl))) as (ihs1' & Hfl').
+        destruct (wrap_leaf_vals_exists _ rs' ihs1' ltac:(rewrite <- (dsim_list_length _ _ Hrs), Hlr, Hlb; reflexivity)
+                    (fresh_leaf_vars_length _ _ _ _ Hfl')) as (out' & Hout).
+        exists (ihs1' ++ ihs'0), (out' ++ wihs'); repeat split.
+        * eapply ffresh_ihs_rec; [ exact HD' | exact Hsk | eassumption | exact Hfl' | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl'), <- Hl1; assumption ].
+        * eapply fwrap_ihs_eval_rec; [ exact HD' | eassumption | apply wrap_leaf_vals_extend; exact Hout | assumption ].
+        * apply dsim_list_at_app; [| exact Hsi ].
+          eapply wrap_leaf_vals_sim; [ exact Hwl1 | exact Hout | exact Hrs |].
+          rewrite !List.firstn_all2 by (first [ rewrite Hl1 | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl') ]; lia).
+          exact (fresh_leaf_vars_sim _ _ _ _ Hfl _ _ Hfl' Ha2).
+    - (** Nested through: the eliminator's results along each path *)
+      inversion Hv; subst.
+      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _ _,
                       Hi : eval_ih _ _ _ _ _ _ _ _ _ |- _ =>
-        let ih' := fresh "ih'" in
-        destruct (feval_ih_sim _ _ _ _ _ _ _ Hi ρ' ups' v1 HB Hu Hv1) as (ih' & ? & ?);
-        destruct (IHfresh_ihs _ _ _ _ Hw1 B ρ' ρa' ups' vs1
-                    ltac:(intros; apply HA; right; assumption) Hρa HB Hu Hv2) as (ihs' & wihs' & ? & ? & ?);
-        exists ihs', (ih' :: wihs'); repeat split;
-          [ constructor; assumption | econstructor; eassumption | constructor; [ intros _; assumption | assumption ] ]
+        let rs' := fresh "rs'" in
+        destruct (feval_ih_sim _ _ _ _ _ _ _ Hi ρ' ups' v1 HB Hu Hv1) as (rs' & ? & ?);
+        destruct (IHfresh_ihs _ _ Hw1 D0 B ρ' ρa' ups' vs1 HD Hco
+                    ltac:(intros gs1 t0 gs2 E; apply (HA (ca_rec t :: gs1) t0 gs2); rewrite E; reflexivity)
+                    Hρa HB Hu Hv2) as (ihs' & wihs' & ? & ? & ?);
+        exists ihs', (rs' ++ wihs'); repeat split;
+          [ constructor; assumption | econstructor; eassumption | apply dsim_list_at_app; assumption ]
       end.
   Qed.
 
@@ -1312,16 +1627,17 @@ Section Read.
        dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rcargsᶠ vs' at gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms) /\
     (forall s p ups ρ t v V, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> forall ups' ρ' v',
        dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rshᶠ v' at t of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ V) /\
-    (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks -> forall ρ' ups' D,
+    (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks -> forall ρ' ups' D,
        blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
-       Rblksᶠ i Ms from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks) /\
-    (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+       rview_leaf_arity D ->
+       Rblksᶠ i Ms of Dc from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks) /\
+    (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall ρ' ups' pre' D,
        blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list (snd r) pre' ->
-       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
+       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
        env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs') /\
+       Rbrsᶠ Bs at cs of Mi (fst r, pre') of Dc from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs') /\
     (forall s ρ fl v Fs, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs -> forall ρ' v',
        env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rfldsᶠ v' at fl in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Fs).
   Proof.
@@ -1336,15 +1652,16 @@ Section Read.
          dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rcargsᶠ vs' at gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms)
       (fun s p ups ρ t v V _ => forall ups' ρ' v',
          dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rshᶠ v' at t of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ V)
-      (fun s ρ p ups Bks sel i Ms NBks _ => forall ρ' ups' D,
+      (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall ρ' ups' D,
          blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
-         Rblksᶠ i Ms from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks)
-      (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => forall ρ' ups' pre' D,
+         rview_leaf_arity D ->
+         Rblksᶠ i Ms of Dc from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks)
+      (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall ρ' ups' pre' D,
          blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list (snd r) pre' ->
-         ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
+         ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
          env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs')
+         Rbrsᶠ Bs at cs of Mi (fst r, pre') of Dc from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs')
       (fun s ρ fl v Fs _ => forall ρ' v',
          env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rfldsᶠ v' at fl in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Fs));
       intros; cbn [fst snd] in *;
@@ -1423,6 +1740,22 @@ Section Read.
             | apply IH1; [ apply env_agree_nil | exact Ha ]
             | apply IH2; [ apply dsim_list_firstn, Ha | apply env_agree_all_args; [ apply env_agree_nil | exact Ha ]
                          | apply dsim_list_skipn, Hv ] ]
+      end ].
+    (** A value at a record view, read as the view's constructor: its
+        arguments the value's projections, related. *)
+    all: try solve [ match goal with
+      | e : ⟦projs ?fl of ?v ⟧ Θ ⍮ Ξ ↘ ?ws,
+        IH1 : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?as' vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
+        IH2 : forall ups0 ρ0 vs0, dsim_list ?as' ups0 -> env_agree _ (env_args nil ?as') ρ0 -> dsim_list ?ws vs0 ->
+              fread_cargs _ _ _ _ ups0 ρ0 _ vs0 ?Args,
+        Ha : dsim_list ?as' ?as'', Hv : dsim ?v ?v'
+        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') ?v' in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (?Ps ++ ?Args) =>
+          let ws' := fresh "ws'" in let Hws := fresh "Hws" in
+          destruct (feval_projs_sim _ _ _ e _ Hv) as (ws' & ? & Hws);
+          eapply fread_nf_rview; try eassumption;
+            [ rewrite <- (dsim_list_length _ _ Ha); assumption
+            | apply IH1; [ apply env_agree_nil | exact Ha ]
+            | apply IH2; [ exact Ha | apply env_agree_all_args; [ apply env_agree_nil | exact Ha ] | exact Hws ] ]
       end ].
     all: try solve [ match goal with
       | IH : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?as' vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
@@ -1532,12 +1865,13 @@ Section Read.
     all: try solve [ match goal with
       | f : fresh_tele _ _ (env_args nil ?ups) (List.rev (im_nparams ?Mv)) ?s ?ns,
         f0 : fresh_cargs _ _ ?p ?ups (env_args nil (?ups ++ ?ns)) ?gs _ ?vs,
-        f2 : fresh_ihs _ _ ?ρ _ _ ?gs' ?gs ?vs _ ?ihs,
-        fw : wrap_ihs_eval _ _ ?ρ _ _ _ ?gs' ?gs ?vs ?ihs ?wihs,
+        f2 : fresh_ihs _ _ ?ρ _ _ _ _ _ ?gs' ?gs ?vs _ ?ihs,
+        fw : wrap_ihs_eval _ _ ?ρ _ _ _ _ ?gs' ?gs ?vs ?ihs ?wihs,
         e0 : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?wihs) ↘ ?b,
         e1 : ⟦ ?A ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ d_con ?pk ?k ?c (?pre ++ _) :: nil) ↘ ?t,
         Hn0 : ?n0 = _, Hpl : cargs_plen ?D0 ?gs, HD0 : ind_lookup Θ Ξ ?p = Some ?D0,
-        Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Hnn : im_nn ?Mv = im_nn ?Mi,
+        Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
+        Hnn : im_nn ?Mv = im_nn ?Mi,
         IHV : forall n0, dsim_nf (⇓ ?t ?b) n0 -> _,
         IHT : forall ρ0 ups0 pre0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,
         HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hpre : dsim_list ?pre ?pre',
@@ -1547,16 +1881,18 @@ Section Read.
           let Hsn := fresh "Hsn" in let Hsv := fresh "Hsv" in let Hsi := fresh "Hsi" in
           let b' := fresh "b'" in let t' := fresh "t'" in
           let Hl1 := fresh "Hl" in let Hl2 := fresh "Hl" in let Hl3 := fresh "Hl" in
+          let Hco := fresh "Hco" in
           rewrite HD0 in Hl; injection Hl as <-;
+          pose proof (leaves_coherent_of_order _ (rview_leaf_order _ Har)) as Hco;
           pose proof (fresh_tele_length _ _ _ _ f) as Hl1; rewrite length_rev in Hl1;
           change (List.length (im_nparams Mv)) with (im_nn Mv) in Hl1;
-          pose proof (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ fw) as [Hl2 Hl3];
+          pose proof (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ _ _ HD0 Hco fw) as [Hl2 Hl3];
           destruct (ffresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
             [ apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] |];
           destruct (ffresh_cargs_sim _ _ _ _ _ _ f0 ups' (env_args nil (ups' ++ ns'))) as (vs' & ? & Hsv);
             [ exact Hu | apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ] |];
-          destruct (ffresh_wrap_sim _ _ _ _ _ _ _ _ f2 _ _ _ _ fw B ρ' (env_args nil (ups' ++ ns')) ups' vs'
-                      (ihs_motives_agree _ _ _ _ _ Hpl Hnm HBk)
+          destruct (ffresh_wrap_sim _ _ _ _ _ _ _ _ _ _ _ f2 _ _ fw _ B ρ' (env_args nil (ups' ++ ns')) ups' vs' HD0 Hco
+                      (cargs_ends_agree _ _ _ _ _ _ HD0 Har Hnm HBk Hpl)
                       ltac:(apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ])
                       HBk Hu Hsv) as (ihs' & wihs' & ? & ? & Hsi);
           destruct (feval_exp_sim _ _ _ e0 (env_args ρ' (ns' ++ vs' ++ wihs'))) as (b' & ? & ?);
@@ -1598,3 +1934,10 @@ Section Read.
   Corollary fread_nf_sim : forall s n n' W, Rnf n in Θ ⍮ Ξ ⍮ s ↘ W -> dsim_nf n n' -> Rnfᶠ n' in Θ ⍮ Ξ ⍮ s ↘ W.
   Proof. intros; eapply (proj1 fread_sim); eassumption. Qed.
 End Read.
+End Sim.
+
+#[export]
+Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list dsim_fields desim ends_agree dsim_list_at : mctt.
+#[export]
+Hint Resolve dsim_lvl_suc dsim_lvl_max dsim_list_snoc env_agree_nil
+  dsim_list_app dsim_list_firstn dsim_list_skipn env_agree_all_args env_agree_all_cons nil_agree : mctt.

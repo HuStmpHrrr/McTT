@@ -92,9 +92,10 @@ Proof.
     by (eapply wf_con; [ constructor; exact Hg0 | eassumption .. ]).
   pose proof (Hwe _ _ _ HT) as HT2; pose proof (Hwe _ _ _ Hc0) as Hc2.
   apply glu_rel_exp_nil_weaken; [ exact (HΓg _ _ Hμ) |].
-  destruct (im_head M) as [pm | qc kc Is vm] eqn:Hh.
+  destruct (im_head M) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
   - exact (glu_rel_exp_con0 _ p D HVP Hl (HGall _ _ Hl) (Hviewsall _ _ Hl) k M pm c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
   - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall p D Hl k M qc kc Is vm c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
+  - exact (glu_rel_exp_con_rview0 _ HVP HGall Hviewsall p D Hl k M qr Is fl c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
 Qed.
 
 Lemma glu_exp_eq_ind_cong :
@@ -111,6 +112,13 @@ Proof. glu_ctx_case. Qed.
 
 (** A constructor of a view against the container's: the context. *)
 Lemma glu_exp_eq_con_view :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+(** A constructor of a record view against the tuple of its fields: the
+    context. *)
+Lemma glu_exp_eq_con_rview :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.

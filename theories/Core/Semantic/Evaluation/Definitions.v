@@ -14,7 +14,9 @@ Reserved Notation "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ 
 Reserved Notation "'⟦ihs' vs 'of' gs 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦ih' v 'of' t 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, p at level 0, ups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ihty' v 'of' t 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, p at level 0, ups at level 0, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihtys' vs 'of' gs 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦projs' fl 'of' v '⟧' Θ '⍮' Ξ '↘' ws" (at level 70, fl at level 69, v at level 69, Θ at level 69, Ξ at level 69, ws at level 69).
 Reserved Notation "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" (at level 70, j at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" (at level 70, e at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, d at level 69).
 Reserved Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
@@ -423,6 +425,24 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ind_nu D = 0 ->
      ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil nil ↘ cups ->
      ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con qc k c cups )
+(** The constructor of a record view of a group with no uniform
+    parameters, of a record with fields: a value of its own, waiting for
+    the fields. *)
+| eval_exp_con_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     ind_nu D = 0 ->
+     0 < List.length fl ->
+     ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con p j c nil )
+(** The constructor of a record view of a group with no uniform
+    parameters, of a record without fields: at once the empty tuple. *)
+| eval_exp_con_rview_empty :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is nil ->
+     ind_nu D = 0 ->
+     ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple nil )
 (** The eliminator evaluates its scrutinee, then eliminates the value, by
     the blocks of its group: the one written, or the group of the value,
     at the group's uniform parameters it carries. *)
@@ -524,7 +544,11 @@ with eval_nflds (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (s
     [ups] the eliminator carries. *)
 with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> domain -> Prop :=
 (** On a saturated constructor: its branch, at the non-uniform parameters,
-    the arguments and the recursive results *)
+    the arguments and the recursive results.  The group's table of leaf
+    paths is coherent ([leaves_coherent D]), a gate on the group, the twin
+    of readback's [rview_leaf_arity]: the recursive results along the
+    record views' fields are then as many as the branch binds
+    ([cargs_nrec]). *)
 | eval_elim_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -535,7 +559,8 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      List.length vs = (im_np Dq Mk + List.length gs)%nat ->
      List.nth_error Bks j = Some b ->
      brs_lookup (eb_brs b) c = Some (n, B) ->
-     n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat ->
+     n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat ->
+     leaves_coherent D ->
      ⟦ihs skipn (im_np Dq Mk) vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs) ↘ r ->
      ⟦elim d_con pc k c vs at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
@@ -552,7 +577,8 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil) ↘ a ->
      ⟦elim ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p ups j as' m) )
 where "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p ups Bks j m r)
-(** The recursive results of the arguments [vs], one per recursive argument. *)
+(** The recursive results of the arguments [vs], one per leaf path of each
+    recursive argument, in order. *)
 with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> list carg -> list domain -> list domain -> Prop :=
 (** No argument, no result *)
 | eval_ihs_nil :
@@ -561,24 +587,54 @@ with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list e
 | eval_ihs_arg :
   `( ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihs v :: vs of ca_arg T :: gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
-(** A recursive argument has its recursive result *)
+(** A recursive argument has its recursive results *)
 | eval_ihs_rec :
-  `( ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+  `( ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs1 ->
      ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihs v :: vs of ca_rec t :: gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+     ⟦ihs v :: vs of ca_rec t :: gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs1 ++ ihs )
 where "'⟦ihs' vs 'of' gs 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ p ups Bks gs vs r)
-(** The recursive result of an argument [v] of shape [t]: the eliminator
-    at [v], at the member the shape ends in, or, at a function shape, the
-    family of the eliminator at [v]'s values. *)
-with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> domain -> Prop :=
-(** At the end of a shape: the eliminator at the member [j] *)
+(** The recursive results of an argument [v] of shape [t], one per leaf
+    path: the eliminator at [v], at the member the shape ends in; at a
+    record view, those of the view's fields, at [v]'s projections; at a
+    function shape, the family of each recursive result at [v]'s
+    values. *)
+with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> list domain -> Prop :=
+(** At the end of a shape, at a member with a block: the eliminator at the
+    member [j] *)
 | eval_ih_self :
-  `( ⟦elim v at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ih v of pt_self j Ps under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** At a function shape: the family of the eliminator at [v]'s values *)
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     ⟦elim v at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ih v of pt_self j Ps under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r :: nil )
+(** At the end of a shape, at a record view: the recursive results of its
+    fields at the projections of [v] *)
+| eval_ih_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     im_cons Mj = (c, gs) :: nil ->
+     ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws ->
+     ⟦ihs ws of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
+     ⟦ih v of pt_self j Ps under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs )
+(** At a function shape: the family of each recursive result of the rest
+    at [v]'s values, one per leaf path of the rest *)
 | eval_ih_pi :
-  `( ⟦ih v of pt_pi B t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ Bks p ups t v )
+  `( ind_lookup Θ Ξ p = Some D ->
+     ⟦ih v of pt_pi B t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ
+       ↘ List.map (fun i => d_ihfn ρ Bks p ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t))) )
 where "'⟦ih' v 'of' t 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ p ups Bks t v r)
+(** The projections of a value at the fields [fl], in order. *)
+with eval_projs (Θ : gdeps) (Ξ : gstack) : list string -> domain -> list domain -> Prop :=
+(** No field *)
+| eval_projs_nil :
+  `( ⟦projs nil of v ⟧ Θ ⍮ Ξ ↘ nil )
+(** The first field's projection, then the rest *)
+| eval_projs_cons :
+  `( eval_proj Θ Ξ f v w ->
+     ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws ->
+     ⟦projs f :: fl of v ⟧ Θ ⍮ Ξ ↘ w :: ws )
+where "'⟦projs' fl 'of' v '⟧' Θ '⍮' Ξ '↘' ws" := (eval_projs Θ Ξ fl v ws)
 (** The member [j] of the group at [p] at the uniform parameters [ups]:
     the declared member [k] of the group at [q] at the uniform parameters
     [pre] ([im_ref], [im_pre]), the group itself and [ups] at a declared
@@ -610,25 +666,71 @@ with eval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp 
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pc k (pre ++ bs) )
+(** At the end, at a record view: the record type at the view's instance
+    at [ups] *)
+| eval_shty_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
+     ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record qr cups )
 (** At a domain: a [Π] over it, of the shape family *)
 | eval_shty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
 where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shty Θ Ξ p ups ρ t r)
-(** The type of the recursive result of an argument [v] of shape [t], its
-    components in [ρ]: the motive of the member the shape ends in, among
-    [As] in [ρm], at the shape's non-uniform parameters and [v]. *)
-with eval_ihty (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> domain -> Prop :=
-(** At the end: the member's motive at the shape's parameters and [v] *)
+(** The types of the recursive results of an argument [v] of shape [t],
+    one per leaf path, its components in [ρ], of the group at [p] at the
+    uniform parameters [ups]: the motive of the member the shape ends in,
+    among [As] in [ρm], at the shape's non-uniform parameters and [v]; at a
+    record view, those of its fields at [v]'s projections, their components
+    over [ups]; at a function shape, a [Π] over the domain of each. *)
+with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> ptyp -> domain -> list domain -> Prop :=
+(** At the end, at a member with a block: the member's motive at the
+    shape's parameters and [v] *)
 | eval_ihty_self :
-  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_is_rview Mj = false ->
+     ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦ List.nth j As a_True ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
-     ⟦ihty v of pt_self j Ps under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a )
-(** At a domain: a [Π] over it, of the recursive result's family *)
+     ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
+(** At the end, at a record view: those of its fields at [v]'s
+    projections *)
+| eval_ihty_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     im_cons Mj = (c, gs) :: nil ->
+     ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws ->
+     ⟦ihtys ws of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ env_args nil ups ↘ rs ->
+     ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs )
+(** At a domain: a [Π] over it, of each recursive result's family *)
 | eval_ihty_pi :
-  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦ihty v of pt_pi B t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_ihfam ρm As ρ t v) fam_cod )
-where "'⟦ihty' v 'of' t 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ ρm As ρ t v r)
+  `( ind_lookup Θ Ξ p = Some D ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
+     ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ
+       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ t i v) fam_cod)
+           (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t))) )
+where "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ p ups ρm As ρ t v r)
+(** The types of the recursive results of the fields [vs] of a record
+    view, of kinds [gs], their components in [ρ], which a non-recursive
+    field extends. *)
+with eval_ihtys (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> list carg -> list domain -> list domain -> Prop :=
+(** No field, no result *)
+| eval_ihtys_nil :
+  `( ⟦ihtys nil of nil at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+(** A non-recursive field has none, and extends the components'
+    environment *)
+| eval_ihtys_arg :
+  `( ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ v ↘ rs ->
+     ⟦ihtys v :: vs of ca_arg T :: gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs )
+(** A recursive field has those of its shape *)
+| eval_ihtys_rec :
+  `( ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs1 ->
+     ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
+     ⟦ihtys v :: vs of ca_rec t :: gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs1 ++ rs )
+where "'⟦ihtys' vs 'of' gs 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihtys Θ Ξ p ups ρm As ρ gs vs r)
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
@@ -674,21 +776,40 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      S (List.length vs) = ind_nu D ->
      ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil (vs ++ n :: nil) ↘ cups ->
      $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con qc k c cups )
-(** The recursive result of a function shape, at the argument's value. *)
+(** The constructor of a record view takes the group's uniform parameters
+    and the fields; before the last of them it waits for more *)
+| eval_app_con_rview :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     S (List.length vs) < ind_nu D + List.length fl ->
+     $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con p j c (vs ++ n :: nil) )
+(** At the last one, the tuple of the fields, by name: a record value
+    carries no parameters *)
+| eval_app_con_rview_full :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_record qr Is fl ->
+     S (List.length vs) = ind_nu D + List.length fl ->
+     $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_tuple (List.combine fl (List.skipn (ind_nu D) (vs ++ n :: nil))) )
+(** The [i]-th recursive result of a function shape, at the argument's
+    value: the [i]-th of the rest's at the function's value there. *)
 | eval_app_ihfn :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ih fn of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     $| d_ihfn ρ Bks p ups t f & n | Θ ⍮ Ξ ↘ r )
+     ⟦ih fn of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
+     List.nth_error rs i = Some r ->
+     $| d_ihfn ρ Bks p ups t i f & n | Θ ⍮ Ξ ↘ r )
 (** The families of the types of an argument of a function shape and of its
     recursive result. *)
 | eval_app_shfam :
   `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
      $| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
-(** The recursive result's family, at the argument's value *)
+(** The [i]-th recursive result's family, at the argument's value *)
 | eval_app_ihfam :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ihty fn of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
-     $| d_ihfam ρm As ρ t f & n | Θ ⍮ Ξ ↘ a )
+     ⟦ihty fn of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ as' ->
+     List.nth_error as' i = Some a ->
+     $| d_ihfam ρm As p ups ρ t i f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -937,7 +1058,9 @@ with eval_mref_mut_ind := Induction for eval_mref Sort Prop
 with eval_shty_mut_ind := Induction for eval_shty Sort Prop
 with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop
 with eval_proj_mut_ind := Induction for eval_proj Sort Prop
-with eval_nflds_mut_ind := Induction for eval_nflds Sort Prop.
+with eval_nflds_mut_ind := Induction for eval_nflds Sort Prop
+with eval_projs_mut_ind := Induction for eval_projs Sort Prop
+with eval_ihtys_mut_ind := Induction for eval_ihtys Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_app_mut_ind,
@@ -959,10 +1082,12 @@ Combined Scheme eval_mut_ind from
   eval_shty_mut_ind,
   eval_ihty_mut_ind,
   eval_proj_mut_ind,
-  eval_nflds_mut_ind.
+  eval_nflds_mut_ind,
+  eval_projs_mut_ind,
+  eval_ihtys_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_proj eval_nflds eval_elim eval_ihs eval_ih eval_mref eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
+Hint Constructors eval_exp eval_proj eval_nflds eval_projs eval_elim eval_ihs eval_ih eval_mref eval_shty eval_ihty eval_ihtys eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

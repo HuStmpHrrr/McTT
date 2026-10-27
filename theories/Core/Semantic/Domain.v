@@ -76,12 +76,13 @@ Inductive domain : Set :=
     only until it has the group's uniform parameters, then the container's
     at the view's arguments there. *)
 | d_con : qname -> nat -> string -> list domain -> domain
-(** [d_ihfn ρ Bks p ups t f]: the recursive result of an argument [f] of a
-    function shape, whose shape after the first domain is [t]: applied to
-    [c], the recursive result of shape [t] at [f c], by the eliminator of
-    the group at [p] with the blocks [Bks] in [ρ], at the group's uniform
-    parameters [ups]. *)
-| d_ihfn : list dentry -> list eblock -> qname -> list domain -> ptyp -> domain -> domain
+(** [d_ihfn ρ Bks p ups t i f]: the [i]-th recursive result of an argument
+    [f] of a function shape, whose shape after the first domain is [t]:
+    applied to [c], the [i]-th of the recursive results of shape [t] at
+    [f c] (one per leaf path of [t]), by the eliminator of the group at [p]
+    with the blocks [Bks] in [ρ], at the group's uniform parameters
+    [ups]. *)
+| d_ihfn : list dentry -> list eblock -> qname -> list domain -> ptyp -> nat -> domain -> domain
 (** [d_shfam p ups ρ t]: the codomain of the type of an argument of a
     function shape, whose shape after the first domain is [t]: applied to
     [c], the type of shape [t] in [ρ] extended by [c], at the uniform
@@ -89,12 +90,14 @@ Inductive domain : Set :=
     [#1 $ #0] in the environment of this family is the type of such an
     argument. *)
 | d_shfam : qname -> list domain -> list dentry -> ptyp -> domain
-(** [d_ihfam ρm As ρ t f]: the codomain of the type of the recursive result
-    of an argument [f] of a function shape, whose shape after the first
-    domain is [t]: applied to [c], the type of the recursive result of shape
-    [t] at [f c], the motives [As] of the members in [ρm], the shape's
-    components in [ρ] extended by [c]. *)
-| d_ihfam : list dentry -> list exp -> list dentry -> ptyp -> domain -> domain
+(** [d_ihfam ρm As p ups ρ t i f]: the codomain of the type of the [i]-th
+    recursive result of an argument [f] of a function shape, whose shape
+    after the first domain is [t]: applied to [c], the type of the [i]-th
+    recursive result of shape [t] at [f c], the motives [As] of the members
+    in [ρm], the shape's components in [ρ] extended by [c], the group at
+    [p] at the uniform parameters [ups] (whose record views' components are
+    over them). *)
+| d_ihfam : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> nat -> domain -> domain
 (** [d_record p ns]: the type former of the record at [p] applied to
     [ns]; a type once [ns] holds all its parameters, a function before *)
 | d_record : qname -> list domain -> domain

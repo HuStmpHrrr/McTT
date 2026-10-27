@@ -461,16 +461,37 @@ Arguments ca_rec {E}.
     one of all of them: [vm] lists, for each member of [q]'s group in its
     order, the member of this group that is that member at [Is] (the
     [k]-th is the view itself).  The eliminator at a view reads back as
-    [q]'s group's eliminator, whose blocks are those of these members. *)
+    [q]'s group's eliminator, whose blocks are those of these members.
+
+    Or a record view ([mh_record q Is fl]): the record type filed at [q]
+    at the arguments [Is], in which this group's members occur, stored as
+    a view's, and the names [fl] of its fields, in order.  A record view
+    has one constructor, [rview_con], whose arguments are the record's
+    fields in order, classified as a constructor's arguments are; its
+    elements are taken apart by
+    projection.  No eliminator eliminates at a record view: the record
+    views come after every other member and have no block, and the
+    recursive results of an argument of a record view are those of its
+    fields ([shape_leaves]). *)
 Inductive mhead_g (E : Set) : Set :=
 (** A declared type, named by the canonical path of its own entry. *)
 | mh_decl : qname -> mhead_g E
 (** A view: the declared member [k] of the group at [q] at the uniform
     arguments [Is], and the members [vm] of this group its group's members
     are at [Is]. *)
-| mh_view : qname -> nat -> list E -> list nat -> mhead_g E.
+| mh_view : qname -> nat -> list E -> list nat -> mhead_g E
+(** A record view: the record type at [q] at the arguments [Is], its
+    fields named [fl]. *)
+| mh_record : qname -> list E -> list string -> mhead_g E.
 Arguments mh_decl {E}.
 Arguments mh_view {E}.
+Arguments mh_record {E}.
+
+(** The name of the one constructor of a record view: no identifier of
+    the surface syntax ([A-Za-z_][A-Za-z0-9_]*, the lexer's) is spelled
+    so, so it can be neither written nor captured; the printer shows its
+    elements as tuples of the record. *)
+Definition rview_con : string := "(tuple)".
 
 (** A member: its head, its non-uniform parameters (a telescope over the
     uniform ones, innermost first) and its constructors, in order, each with
@@ -1082,7 +1103,7 @@ Definition im_np (D : ind_decl) (M : imember) : nat := im_nn M + ind_nu D.
 
 (** A declared member, and the path of its entry. *)
 Definition im_path (M : imember) : option qname :=
-  match im_head M with mh_decl p => Some p | mh_view _ _ _ _ => None end.
+  match im_head M with mh_decl p => Some p | _ => None end.
 
 (** The module of the inductive type [D] of body [Φ], as a unit: it takes
     the uniform parameters, with the frames' parameters outside them, so

@@ -159,11 +159,11 @@ Section type_check.
     ; typ_val_sem : domain
     ; typ_val_rel : domain
     ; typ_val_init : initial_env_f G typ_val_env
-    ; typ_val_agree : env_agree (fun _ => True) typ_val_env (proj1_sig P)
+    ; typ_val_agree : env_agree gc_deps gc_stack (fun _ => True) typ_val_env (proj1_sig P)
     ; typ_val_typ : G ⊢ T : Typeω@typ_val_lvl
     ; typ_val_eval : ⟦ T ⟧ typ_val_env ↘ typ_val_sem
     ; typ_val_per : Dom typ_val_rel ≈ typ_val_sem ∈ per_univ typ_val_lvl
-    ; typ_val_sim : dsim typ_val_rel v }.
+    ; typ_val_sim : dsim gc_deps gc_stack typ_val_rel v }.
 
   (** A type as a value reads back to the type it stands for. *)
   Lemma typ_val_rtyp : forall G P M v T,
@@ -197,7 +197,7 @@ Section type_check.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
-    destruct (feval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ Hag)) as [HoN HsN].
+    destruct (feval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ _ _ Hag)) as [HoN HsN].
     split; [ exact HoN |].
     intros n' Hn'.
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
@@ -217,7 +217,7 @@ Section type_check.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ Hag)) _ Hn') as HsN.
+    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ _ _ Hag)) _ Hn') as HsN.
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
@@ -301,7 +301,7 @@ Section type_check.
   Proof.
     intros G [p' (p & Hp & Hag)] * HT Hv; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & Haa).
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ Hag)) _ Hv).
+    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag)) _ Hv).
     apply (mk_typ_val _ _ _ _ i p a a); assumption.
   Qed.
 
@@ -311,7 +311,7 @@ Section type_check.
   Proof.
     intros G [p' (p & Hp & Hag)] * HT; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & _).
-    exact (proj1 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ Hag))).
+    exact (proj1 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag))).
   Qed.
 
   (** Whether a term is an application, and a value a [Π]. *)

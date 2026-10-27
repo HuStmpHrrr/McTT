@@ -322,14 +322,21 @@ Proof.
     destruct (nth_error_lt_some' _ _ Hi') as [w Hw].
     destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hw) as (Mw & HMw & Hnn & _).
     refine (mk_view_member_image _ _ _ _ _ _ w Mw Hw HMw Hnn _).
-    destruct (im_head Mi') as [pm' | q'' k'' Is'' vm''] eqn:Hh'.
+    destruct (im_head Mi') as [pm' | q'' k'' Is'' vm'' | q'' Is'' fl''] eqn:Hh'.
     + destruct (decl_typed_view_decl _ _ _ HD _ _ _ _ _ _ _ _ _ _ _ HMv Hh HDq HMi' Hh' Hw) as (Mw' & vm' & HMw' & Hhw).
       rewrite HMw in HMw'; injection HMw' as <-; exists vm'; exact Hhw.
     + destruct (decl_typed_view_view _ _ _ HD _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMv Hh HDq HMi' Hh' Hw) as (Mw' & X & vm' & HMw' & Hhw & HlX).
       rewrite HMw in HMw'; injection HMw' as <-; exists X, vm'; split; [ exact Hhw | exact HlX ].
+    + destruct (decl_typed_view_rview _ _ _ HD _ _ _ _ _ _ _ _ _ _ _ _ _ HMv Hh HDq HMi' Hh' Hw) as (Mw' & X & HMw' & Hhw & HlX).
+      rewrite HMw in HMw'; injection HMw' as <-; exists X; split; [ exact Hhw | exact HlX ].
   - exact (decl_typed_plen _ _ _ HD).
   - intros v Mv qc kc Is vm Dq i' Mi' c gs' HMv Hh HDq HMi' Hin.
     exact (decl_typed_plen _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq) _ _ _ _ HMi' Hin).
+  - exact (decl_typed_rstruct _ _ _ HD).
+  - intros v Mv qc kc Is vm Dq HMv Hh HDq.
+    exact (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq))).
+  - intros v Mv qc kc Is vm Dq HMv Hh HDq.
+    exact (decl_typed_rstruct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq)).
 Qed.
 
 (** The values of the declared members of the group at [p] at the uniform
@@ -1104,7 +1111,7 @@ Section Sort.
       intros * HMj Hj * Hg Hu * Ea Ea' HR.
       assert (Hd : im_is_decl Mj = true) by (apply (proj2 (Hord _ _ HMj)); exact Hj).
       assert (Hh : exists pm, im_head Mj = mh_decl pm)
-        by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate ]).
+        by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate .. ]).
       destruct Hh as [pm Hh].
       pose proof (length_ups_gargs _ _ Hg Hu) as Hu'.
       unfold self_ty in Ea, Ea'; rewrite <- (List.rev_involutive (im_nparams Mj)) in Ea, Ea'.
@@ -1256,7 +1263,7 @@ Section Sort.
       intros * HMj Hj.
       assert (Hd : im_is_decl Mj = true) by (apply (proj2 (Hord _ _ HMj)); exact Hj).
       assert (Hh : exists pm, im_head Mj = mh_decl pm)
-        by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate ]).
+        by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate .. ]).
       destruct Hh as [pm Hh].
       pose proof (closed_weaken_valid _ _ _ _ uparams_sem (valid_exp_under_ctx_ind _ _ _ HMj Hh)) as HI.
       unfold ind_ty, im_params in HI; rewrite ctx_pi_app in HI; fold (self_ty D Mj) in HI.
@@ -1325,10 +1332,22 @@ End Sort.
 
 (** ** Valid Filed Groups
 
-    What the semantic lemmas about a group filed at [p] ask of it: it is
+    The record a record view is a view of: found at [qr], valid and
+    closed. *)
+Record valid_rview_record (qr : qname) (R : record_decl) : Prop := mk_valid_rview_record
+  { (** [R] is the record filed at [qr] *)
+    valid_rview_record_lookup : record_lookup gc_deps gc_stack qr = Some R
+    (** It is semantically valid *)
+  ; valid_rview_record_valid : valid_record_decl R
+    (** It is closed *)
+  ; valid_rview_record_closed : record_closed R
+    (** It is typed *)
+  ; valid_rview_record_typed : record_typed gc_deps gc_stack R }.
+
+(** What the semantic lemmas about a group filed at [p] ask of it: it is
     found there, valid, closed, of a universe as its sort, with the
-    conditions of the universe clause, typed, and filed at the path of its
-    first member. *)
+    conditions of the universe clause, typed, filed at the path of its
+    first member, and the records of its record views are valid. *)
 Record valid_group (p : qname) (D : ind_decl) : Prop := mk_valid_group
   { (** It is found at [p] *)
     valid_group_lookup : ind_lookup gc_deps gc_stack p = Some D
@@ -1343,7 +1362,10 @@ Record valid_group (p : qname) (D : ind_decl) : Prop := mk_valid_group
     (** It is typed *)
   ; valid_group_typed : decl_typed gc_deps gc_stack D
     (** It is filed at its first member's path *)
-  ; valid_group_mpath : ind_mpath D 0 = Some p }.
+  ; valid_group_mpath : ind_mpath D 0 = Some p
+    (** The record of each record view is valid *)
+  ; valid_group_records : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      exists R, valid_rview_record qr R }.
 
 (** The groups the views of a group nest through are valid. *)
 Definition containers_valid (D : ind_decl) : Prop :=

@@ -810,13 +810,21 @@ Qed.
 (** The rank of a group's views does not see seals. *)
 Lemma view_rank_ok_unseal : forall Θ Ξ D rk, view_rank_ok Θ Ξ D rk -> view_rank_ok (gds_unseal Θ) (gs_unseal Ξ) D rk.
 Proof.
-  intros * [Hr0 Hr1]; constructor; [ exact Hr0 |].
+  intros * [Hr0 Hr1 Hr2]; constructor; [ exact Hr0 | | exact Hr2 ].
   intros * Hk Hh Hl; rewrite ind_lookup_unseal in Hl; eapply Hr1; eassumption.
 Qed.
 
 (** Nor does the agreement of its views' maps. *)
 Lemma view_maps_coherent_unseal : forall Θ Ξ D, view_maps_coherent Θ Ξ D -> view_maps_coherent (gds_unseal Θ) (gs_unseal Ξ) D.
 Proof. unfold view_maps_coherent; intros * Hc * Hk Hh Hl; rewrite ind_lookup_unseal in Hl; eapply Hc; eassumption. Qed.
+
+(** Nor do the facts about its record views without a judgment. *)
+Lemma rview_struct_ok_unseal : forall Θ Ξ D, rview_struct_ok Θ Ξ D -> rview_struct_ok (gds_unseal Θ) (gs_unseal Ξ) D.
+Proof.
+  intros * [Hr Hn Hc Hsu Ho]; constructor; try assumption.
+  intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has Hnd]]; exists R; constructor; try assumption.
+  rewrite record_lookup_unseal; exact Hl.
+Qed.
 
 (** ** Unsealing Preserves Every Judgment *)
 
@@ -950,12 +958,16 @@ Proof.
               exists rk; exact (view_rank_ok_unseal _ _ _ _ Hrk) end).
   all: try (match goal with Hvc : view_maps_coherent _ _ ?D |- view_maps_coherent _ _ ?D =>
               exact (view_maps_coherent_unseal _ _ _ Hvc) end).
+  all: try (match goal with Hrs : rview_struct_ok _ _ ?D |- rview_struct_ok _ _ ?D =>
+              exact (rview_struct_ok_unseal _ _ _ Hrs) end).
   all: try (match goal with Hq : ind_lookup ?Θ ((?mq, ?Kq, gu_body ?Δ ?Φ0) :: ?Ξ) ?p = Some ?D
                 |- ind_lookup (gds_unseal ?Θ) ((?mq, ?Kq, gu_body ?Δ (gm_unseal ?Φ0)) :: gs_unseal ?Ξ) ?p = Some ?D =>
               exact (eq_trans (ind_lookup_unseal Θ ((mq, Kq, gu_body Δ Φ0) :: Ξ) p) Hq) end).
   all: cbn [gs_tele]; rewrite ?gu_params_unseal, ?gs_tele_unseal.
-  all: intros; repeat match goal with Hq : ind_lookup (gds_unseal _) (gs_unseal _) _ = Some _ |- _ =>
-                       rewrite ind_lookup_unseal in Hq end.
+  all: intros; repeat match goal with
+                 | Hq : ind_lookup (gds_unseal _) (gs_unseal _) _ = Some _ |- _ => rewrite ind_lookup_unseal in Hq
+                 | Hq : record_lookup (gds_unseal _) (gs_unseal _) _ = Some _ |- _ => rewrite record_lookup_unseal in Hq
+                 end.
   all: try rewrite !ind_lookup_unseal; try rewrite !ind_mlookup_unseal.
   all: try solve [ first [ eapply proj2; eauto | eauto ] ].
 Qed.

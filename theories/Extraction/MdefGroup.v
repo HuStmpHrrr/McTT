@@ -70,7 +70,7 @@ Section MdefDecide.
     destruct (typ_least_dec Θ Ξ HΞ Γ (raw_fun_scrut f)) as [[i [HZ _]] | HnZ];
       [| right; exists mdef_why_scrut_untyped; intros m H; inversion H as [? ? ? ? ? [i' HZ'] _ _ _ _ _]; exact (HnZ _ HZ') ].
     destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) Γ (raw_fun_scrut f) (typ_nbe_ty_order Θ Ξ _ _ _ HZ)) as [W HW].
-    destruct (tys_nbe_dec T Γ (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D))) as [[Ws HWs] | [j Hn]];
+    destruct (tys_nbe_dec T Γ (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D))) as [[Ws HWs] | [j Hn]];
       [| right; exists (mdef_why_member_untyped j); intros m H; inversion H; subst; eapply Hn; eassumption ].
     destruct (nf_index W Ws) as [m |] eqn:Hm.
     2:{ right; exists (mdef_why_no_member W); intros m H; inversion H as [? W' Ws' ? Mm _ HW' HWs' Hm' _ _]; subst.
@@ -188,8 +188,8 @@ Definition mdef_group_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (�
                       match mdef_members_dec Θ Ξ HΞ pq D Us Δ (f0 :: fs) with
                       | inr (exist _ (f, e) _) => inr (mdef_group_why_function f e)
                       | inl (exist _ ms Hms) =>
-                          match PeanoNat.Nat.eq_dec (List.length ms) (List.length (ind_members D)) with
-                          | right _ => inr (mdef_group_why_count (List.length (ind_members D)) (List.length ms))
+                          match PeanoNat.Nat.eq_dec (List.length ms) (ind_nblk D) with
+                          | right _ => inr (mdef_group_why_count (ind_nblk D) (List.length ms))
                           | left Hlen =>
                               match members_distinct_dec ms with
                               | right _ => inr mdef_group_why_shared

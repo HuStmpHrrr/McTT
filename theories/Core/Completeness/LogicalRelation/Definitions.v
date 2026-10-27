@@ -593,7 +593,26 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
     (** The container's sort at the instance is below the group's *)
   ; views_self_valid_sort : forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' ->
-      grp_sctx D ⊨ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ }.
+      grp_sctx D ⊨ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ
+    (** Each record view's instance is its [IsS] instance with the members
+        sent to the group's own type formers *)
+  ; views_self_valid_rlink : forall mp, ind_mpath D 0 = Some mp ->
+      forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+        Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
+    (** Each record view's instance argument is valid at the record's
+        parameters, over the members as variables *)
+  ; views_self_valid_ris : forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      record_lookup gc_deps gc_stack qr = Some R -> nth_error (IsS k) j = Some I ->
+      nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
+      grp_sctx D ⊨ I : T
+    (** The record's fields at a record view's instance are the view's
+        classified ones (the record view equations) *)
+  ; views_self_valid_rfields : forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      record_lookup gc_deps gc_stack qr = Some R -> im_cons Mk = (c, gs) :: nil ->
+      grp_sctx D ⊨ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k)) ≈ scargs_ctx D IsS Mk gs
+    (** A record view's type is in the group's sort *)
+  ; views_self_valid_rtype : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      grp_sctx D ⊨ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ }.
 
 (** A semantically valid group (see above). *)
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl

@@ -1,0 +1,44 @@
+(* A client of the paired trees of [Prelude›Data›Tree›Paired]: the
+   operations on a closed tree of numbers, and a function written with
+   the type's recursor, whose case at a node takes one result per
+   subtree. *)
+module PairedTrees where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›MinMax use (max)
+import Prelude›Data›Prod use (Prod; pair)
+import Prelude›Data›Tree›Paired use (Paired)
+open Prelude›Data›Tree›Paired.Ops 0l ℕ as R
+
+inductive T ≔ Paired 0l ℕ
+
+(* The tree
+       .
+      / \
+     1   .
+        / \
+       2   3      *)
+def example : T ≔ R.branch (T.leaf 1) (R.branch (T.leaf 2) (T.leaf 3)) end
+
+eval R.size example
+eval R.depth example
+eval R.flatten example
+eval R.flatten (R.mirror example)
+eval R.flatten (R.map ℕ succ example)
+
+(* The sum of the labels, as a fold. *)
+eval R.fold ℕ (λ (a : ℕ) → a) plus example
+
+(* The largest label, by the recursor: the case at a node takes the pair
+   and the results for its two subtrees. *)
+def largest (t : T) : ℕ ≔
+  Paired.rec 0l ℕ 0l (λ (z : T) → ℕ)
+    (λ (a : ℕ) → a)
+    (λ (p : Prod 0l T T) (m : ℕ) (n : ℕ) → max m n)
+    t
+end
+
+eval largest example
+
+end

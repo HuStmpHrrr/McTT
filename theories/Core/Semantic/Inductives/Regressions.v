@@ -75,6 +75,24 @@ Ltac grp_vacuous_step :=
 
 Ltac grp_vacuous := repeat grp_vacuous_step.
 
+(** A view's rank above the members it nests through, along every leaf
+    path not of its container's: in a group without record views, each
+    argument has one leaf path, the container's. *)
+Ltac grp_rank_nest :=
+  cbn; repeat split; try lia;
+  intros ? Hin Hn; cbn in Hin; repeat (destruct Hin as [<- | Hin]; [ vm_compute in Hn; discriminate Hn |]);
+  contradiction.
+
+(** A group without record views has its record views after every other
+    member. *)
+Ltac grp_suffix_none := intros ? ? ?; grp_cases; vm_compute; (split; intros Hx; [ discriminate Hx | lia ]).
+
+(** A group without record views: the record views' facts hold
+    vacuously. *)
+Ltac grp_rstruct_none :=
+  constructor; [ intros * ? ?; grp_cases | intros * ? ?; grp_cases | intros * ? ?; grp_cases | grp_suffix_none
+               | hnf; intros * ? ?; grp_cases ].
+
 (** A declared member, without parameters, of a group of that kind: its
     clause of the model, all but [grp_tele_ass]. *)
 Ltac grp_in_model Hl Hta G :=
@@ -146,7 +164,8 @@ Section ChainedViews.
     constructor.
     - intros k Mk pm Hk Hh; grp_cases; reflexivity.
     - intros * Hk Hh Hl Hi' Hv HMv Hc' Hc; grp_cases.
-      all: cbn; repeat split; lia.
+      all: grp_rank_nest.
+    - intros * Hk Hh; grp_cases.
   Qed.
 
   Lemma t_over_c_vwrap : forall k Mk qc k' Is vm, ind_member t_over_c_group k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
@@ -206,6 +225,9 @@ Section ChainedViews.
     - exact t_over_c_images.
     - exact t_over_c_plen.
     - exact t_over_c_container_plen.
+    - grp_rstruct_none.
+    - intros * Hv Hh Hl; grp_cases; grp_suffix_none.
+    - intros * Hv Hh Hl; grp_cases; grp_rstruct_none.
   Qed.
 
   (** [T] is a type of the model, its elements the group's relation. *)
@@ -264,7 +286,8 @@ Section RoseViews.
     constructor.
     - intros k Mk pm Hk Hh; grp_cases; reflexivity.
     - intros * Hk Hh Hl Hi' Hv HMv Hc' Hc; grp_cases.
-      all: cbn; repeat split; lia.
+      all: grp_rank_nest.
+    - intros * Hk Hh; grp_cases.
   Qed.
 
   Lemma t_over_rose_vwrap : forall k Mk qc k' Is vm, ind_member t_over_rose_group k = Some Mk ->
@@ -328,6 +351,9 @@ Section RoseViews.
     - exact t_over_rose_images.
     - exact t_over_rose_plen.
     - exact t_over_rose_container_plen.
+    - grp_rstruct_none.
+    - intros * Hv Hh Hl; grp_cases; grp_suffix_none.
+    - intros * Hv Hh Hl; grp_cases; grp_rstruct_none.
   Qed.
 
   (** [T] is a type of the model, its elements the group's relation. *)
@@ -372,7 +398,8 @@ Section PhantomViews.
     constructor.
     - intros k Mk pm Hk Hh; grp_cases; reflexivity.
     - intros * Hk Hh Hl Hi' Hv HMv Hc' Hc; grp_cases.
-      all: cbn; repeat split; lia.
+      all: grp_rank_nest.
+    - intros * Hk Hh; grp_cases.
   Qed.
 
   Lemma t_over_phantom_vwrap : forall k Mk qc k' Is vm, ind_member t_over_phantom_group k = Some Mk ->
@@ -436,6 +463,9 @@ Section PhantomViews.
     - exact t_over_phantom_images.
     - exact t_over_phantom_plen.
     - exact t_over_phantom_container_plen.
+    - grp_rstruct_none.
+    - intros * Hv Hh Hl; grp_cases; grp_suffix_none.
+    - intros * Hv Hh Hl; grp_cases; grp_rstruct_none.
   Qed.
 
   (** [T] at uniform parameters [g] and [g'] whose readbacks agree: related
@@ -482,10 +512,10 @@ Qed.
 Lemma view_nps_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
     raw_decl_uparams R = nil -> rd_n R = 1 ->
     ind_lookup Θ Ξ pC = Some DC -> ind_member DC 0 = Some MC -> im_nparams MC = ce_ass (a_var 0) :: nil ->
-    ~ view_nps Θ Ξ R (pC, 0, a_var 0 :: nil) Nv.
+    ~ view_nps Θ Ξ R (vk_ind pC 0 (a_var 0 :: nil)) Nv.
 Proof.
   intros * Hu Hn Hl Hk Hnp Hv.
-  inversion Hv as [? ? ? D' Mk' Ws ? Hl' Hk' Hnbe Himg]; subst.
+  inversion Hv as [? ? ? D' Mk' Ws ? Hl' Hk' Hnbe Himg |]; subst.
   rewrite Hl in Hl'; injection Hl' as <-; rewrite Hk in Hk'; injection Hk' as <-.
   rewrite Hnp in Hnbe; cbn in Hnbe.
   destruct R as [Us [| Mr [| ? ?]]]; cbn in Hu, Hn; try discriminate; subst Us.
@@ -541,10 +571,10 @@ Qed.
 (** The container at [Self] and a recursive argument is no argument: the
     recursive argument is neither a uniform argument nor a [Self]-free
     non-uniform one, whatever the uniform parameters of the container. *)
-Lemma cls_container_at_rec_none : forall grp pC,
-    cls_arg grp 0 0 1 (true :: nil) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) = None.
+Lemma cls_container_at_rec_none : forall grp recs pC,
+    cls_arg grp recs 0 0 1 (true :: nil) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) = None.
 Proof.
-  intros grp pC; unfold cls_arg.
+  intros grp recs pC; unfold cls_arg.
   unfold img_pat at 1.
   match goal with |- context [exp_eq_dec ?T ?T'] => destruct (exp_eq_dec T T') as [E | _] end.
   { exfalso; cbn in E; injection E; intros; discriminate. }

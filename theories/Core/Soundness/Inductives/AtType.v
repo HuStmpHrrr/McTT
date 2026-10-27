@@ -18,7 +18,11 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes FiledViews ViewEquations ViewArgs.
-From Mctt.Core.Completeness.Inductives Require Con ViewReadback Elim.
+From Mctt.Core.Completeness.Inductives Require Con ViewReadback Elim RviewEnds CargsRel.
+From Mctt.Core.Completeness.Records Require Model.
+From Mctt.Core.Syntactic Require Import Records.
+From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
+From Mctt.Core.Soundness.Records Require Model.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Semantic Require Import Realizability.
@@ -89,6 +93,17 @@ Section AtType.
       DG d_ind hd k' (pre ++ ns) ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ im_ty_at p k Mk Us' Ns' ® P ->
       Δ' ⊢ M' : im_ty_at p k Mk Us' Ns' ® mv ∈ El.
 
+  (** An element [M'] of the record view [k], glued in the group: at any
+      gluing of the record type at the view's instance, at which its type
+      is glued, it is glued. *)
+  Definition rview_glu_at_type (k : nat) (Δ' : ctx) (Us' Ns' : list exp) (M' : exp) (mv : domain) : Prop :=
+    forall Mk qr Is fl cups (i : nat) P El, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
+      glu_args Δ' (ind_uparams D) Id nil Us' ups -> Δ' ⊢ M' : im_ty_at p k Mk Us' Ns' ->
+      G k ups ups nil nil mv mv ->
+      DG d_record qr cups ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ im_ty_at p k Mk Us' Ns' ® P ->
+      Δ' ⊢ M' : im_ty_at p k Mk Us' Ns' ® mv ∈ El.
+
   (** A recursive argument [N] of shape [t] of a constructor [c0] of the
       member [k], after [d] domains of the shape, glued in the group: at
       any gluing of the value of its shape's type at which its type is
@@ -106,7 +121,23 @@ Section AtType.
 
   (** ** The Relation of a Member's Type
 
-      The relation of the value of a member's type, as [mref] reads its
+      [mref] reads no record view: its type is a record type. *)
+  Lemma mref_not_rview : forall k Mk qr Is fl r, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      ⟦mref k of p ups ⟧ gc_deps ⍮ gc_stack ↘ r -> False.
+  Proof.
+    intros * HMk Hh Hr; inversion Hr; subst;
+      match goal with H : ind_lookup _ _ _ = Some ?D' |- _ => rewrite Hl in H; injection H as <- end; congruence.
+  Qed.
+
+  (** So a member [mref] reads is not a record view. *)
+  Lemma mref_rview_false : forall k Mk r, ind_member D k = Some Mk -> ⟦mref k of p ups ⟧ gc_deps ⍮ gc_stack ↘ r ->
+      im_is_rview Mk = false.
+  Proof.
+    intros * HMk Hr; unfold im_is_rview; destruct (im_head Mk) eqn:Hh; [ reflexivity | reflexivity |].
+    exfalso; exact (mref_not_rview _ _ _ _ _ _ HMk Hh Hr).
+  Qed.
+
+  (** The relation of the value of a member's type, as [mref] reads its
       head and uniform parameters, is the group's at the member. *)
   Lemma mref_rel : forall k Mk hd k' pre ns (i : uidx) R, ind_member D k = Some Mk ->
       ⟦mref k of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k', pre) ->
@@ -114,24 +145,37 @@ Section AtType.
       (R <~> G k ups ups ns ns).
   Proof.
     intros * HMk Hr HR.
-    destruct (im_head Mk) as [pm | qc kc Is vm] eqn:Hh.
+    destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; [| | exfalso; exact (mref_not_rview _ _ _ _ _ _ HMk Hh Hr) ].
     - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMk Hh Hr) as E; injection E as -> -> ->.
       exact (proj1 (vg_type_rel_base p D Hvg k Mk pm ups ups ups ups ns ns i R HMk Hh Hgu Hu Hgu Hgu HR)).
     - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMk Hh Hr) as (py & E & Epy); injection E as -> -> <-.
       destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mk' & Hq & _).
       destruct (vg_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMk Hh Hq ups ups Hgu Hu) as (c0 & c0' & E0 & E0' & Hc0).
       pose proof (functional_eval_exps' _ _ _ _ E0 Epy) as ->; pose proof (functional_eval_exps' _ _ _ _ E0' Epy) as ->.
-      exact (Completeness.Inductives.Con.view_end_rel_all VP p D HVP HPD ups ups Hgu Hu k Mk qc kc Is vm Dq pre pre HMk Hh Hq Epy Epy pre pre ns ns i R Hc0 Hc0 HR).
+      exact (Completeness.Inductives.ViewArgs.view_end_rel_all VP p D HVP HPD ups ups Hgu Hu k Mk qc kc Is vm Dq pre pre HMk Hh Hq Epy Epy pre pre ns ns i R Hc0 Hc0 HR).
+  Qed.
+
+  (** The relation of a record view's type, the record at the view's
+      instance, is the group's at the record view ([rview_end_rel_all]). *)
+  Lemma rview_rel : forall j Mj qr Is fl cups (i : uidx) R, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
+      DF d_record qr cups ≈ d_record qr cups ∈ per_univ_elem i ↘ R -> (R <~> G j ups ups nil nil).
+  Proof.
+    intros * HMj Hh Ecups HR.
+    destruct (valid_group_records _ _ Hvg _ _ _ _ _ HMj Hh) as [R0 HR0].
+    pose proof (RviewEnds.rv_cups_rel p D Hvg j Mj qr Is fl R0 HMj Hh HR0 ups cups Hgu Hu Ecups) as Hc0.
+    exact (Completeness.Inductives.ViewArgs.rview_end_rel_all VP p D HVP HPD ups ups Hgu Hu j Mj qr Is fl R0 cups cups HMj Hh
+             (valid_rview_record_lookup _ _ HR0) Ecups Ecups cups cups i R Hc0 Hc0 HR).
   Qed.
 
   (** ** Neutrals *)
-  Lemma elem_at_neut : forall k Mk hd k' m Δ' Us' Ns' M' as', ind_member D k = Some Mk -> im_ref p k Mk = (hd, k') ->
-      Dom m ≈ m ∈ per_bot ->
+  Lemma elem_at_neut : forall k Mk hd k' m Δ' Us' Ns' M' as', ind_member D k = Some Mk -> im_is_rview Mk = false ->
+      im_ref p k Mk = (hd, k') -> Dom m ≈ m ∈ per_bot ->
       (forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
          Δ ⊢ M'[φ]ʷ ≈ M0 : (im_ty_at p k Mk Us' Ns')[φ]ʷ) ->
       elem_glu_at_type k Δ' Us' Ns' M' (⇑ (d_ind hd k' as') m).
   Proof.
-    intros * HMk Href Hm Hrb Mk0 ns hd0 k0 pre i P El HMk0 Hr _ HM' _ Hns HGm Hglu HT.
+    intros * HMk Hrv Href Hm Hrb Mk0 ns hd0 k0 pre i P El HMk0 Hr _ HM' _ Hns HGm Hglu HT.
     rewrite HMk in HMk0; injection HMk0 as <-.
     destruct (ViewReadback.mref_ref_len p D k Mk ups hd0 k0 pre Hl HMk Hu Hr) as [Href0 Lpre].
     rewrite Href in Href0; injection Href0 as <- <-.
@@ -142,9 +186,11 @@ Section AtType.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
     eapply glu_univ_elem_trm_resp_per_elem; [ exact Hglu | exact HR | exact HEl |].
     apply (mref_rel k Mk hd k' pre ns i R HMk Hr HR).
-    inversion HGm as [| ? ? ? ? ? ? as1 as2 ? ? ? ? HM1 Hr1 Hn1 L1 L2 Hs1 Hs2 He]; subst.
+    inversion HGm as [| ? ? ? ? ? ? as1 as2 ? ? ? ? HM1 _ Hr1 Hn1 L1 L2 Hs1 Hs2 He |]; subst;
+      [| match goal with H1 : ind_member D k = Some ?M1, H2 : im_head ?M1 = mh_record _ _ _ |- _ =>
+           rewrite HMk in H1; injection H1 as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv H2) end ].
     rewrite HMk in HM1; injection HM1 as <-.
-    eapply ind_rel_neut; [ exact HMk | exact Href | exact Hns | rewrite List.length_app, Lpre; lia | exact L2
+    eapply ind_rel_neut; [ exact HMk | exact Hrv | exact Href | exact Hns | rewrite List.length_app, Lpre; lia | exact L2
                          | rewrite skipn_app_exact by exact Lpre; exact Hns | exact Hs2 | exact He ].
   Qed.
 
@@ -166,12 +212,12 @@ Section AtType.
   Proof.
     intros * HMj Hr HZ HRZ Lz LX Lw HE Eb Hns.
     destruct (ViewReadback.mref_ref_len p D j Mj ups hd k' pre Hl HMj Hu Hr) as [Href _].
-    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj Eb) as (cs & xs & Ecs & Exs & ->).
+    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj (mref_rview_false _ _ _ HMj Hr) Eb) as (cs & xs & Ecs & Exs & ->).
     rewrite Href; cbn [fst snd].
     assert (EX : ⟦ vars_from L (im_nn Mj) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ X ++ ws) ↘ X).
     { rewrite env_args_app, <- LX, <- Lw; apply Decl.eval_vars_from_args. }
     pose proof (functional_eval_exps' _ _ _ _ Exs EX) as ->.
-    destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
+    destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; [| | exfalso; exact (mref_not_rview _ _ _ _ _ _ HMj Hh Hr) ].
     - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMj Hh Hr) as E; injection E as -> -> ->.
       assert (cs = ups) as ->.
       { unfold im_pre in Ecs; rewrite Hh in Ecs.
@@ -199,7 +245,11 @@ Section AtType.
   Hypotheses (Hnbu : uidx_le u (ul nb))
     (Hnbq : forall j Mj qc kc Is vm Dq, ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
               ind_lookup gc_deps gc_stack qc = Some Dq -> forall ρ bq, ⟦ ind_sort Dq ⟧ ρ ↘ bq ->
-              uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul nb)).
+              uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul nb))
+    (** ... and above the sorts of the records of the record views *)
+    (Hnbr : forall j Mj qr Is fl R, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+              record_lookup gc_deps gc_stack qr = Some R -> forall ρ b, ⟦ record_sort R ⟧ ρ ↘ b ->
+              uidx_le (Completeness.Inductives.Decl.univ_idx b) (ul nb)).
 
   Lemma ul_mono : forall a b, a <= b -> uidx_le (ul a) (ul b).
   Proof. intros a b Hab; apply uidx_le_ul_max; cbn; exact Hab. Qed.
@@ -216,7 +266,7 @@ Section AtType.
     destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _].
     pose proof (glu_args_of_nparams D ups u NP NEl AP AEl DP DEl Hf j Mj Δ Us' Q bs HMj Hgn Hbs) as HNs.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
-    destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
+    destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; [| | exfalso; exact (mref_not_rview _ _ _ _ _ _ HMj Hh Hr) ].
     - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMj Hh Hr) as E; injection E as -> -> ->.
       assert (Hlt : j < ind_ndecl D) by (eapply decl_member_lt; eassumption).
       assert (HgP : glu_args Δ (im_params D Mj) Id nil (Us' ++ Q) (ups ++ bs)).
@@ -240,7 +290,7 @@ Section AtType.
       pose proof (HGall _ _ HPq) as HGq.
       assert (Hhc : exists pmc, im_head Mkc = mh_decl pmc).
       { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMkc) Hkd) as Hd.
-        unfold im_is_decl in Hd; destruct (im_head Mkc); [ eauto | discriminate ]. }
+        unfold im_is_decl in Hd; destruct (im_head Mkc); [ eauto | discriminate | discriminate ]. }
       destruct Hhc as [pmc Hhc].
       assert (Hlpre : List.length pre = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ Epy); exact HIl).
       pose proof (view_uparams_glu VP p D HVP HPD HG j Mj qc kc Is vm Dq HMj Hh Hq Δ Us' ups pre HΔ HUs Epy) as HUc.
@@ -266,6 +316,33 @@ Section AtType.
                  (valid_group_ass _ _ HgQ) kc Mkc Δ _ pre bs bq (ul i) NP2 NEl2 AP2 AEl2 DP2 DEl2 HMkc Hkd HΔ HPc Hlpre Ebq Hle' Hf2). }
       destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hg2) as [EP _].
       apply EP; exact HT2.
+  Qed.
+
+  (** The type of a record view at glued uniform parameters, at and above
+      [nb]: the record type at the view's instance, glued at its value's
+      gluing, the record being glued ([glu_views_self_records]). *)
+  Lemma rview_mty_glu : forall j Mj qr Is fl cups Δ Us' (i : nat) P El, nb <= i -> ind_member D j = Some Mj ->
+      im_head Mj = mh_record qr Is fl -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> ⊢ Δ ->
+      glu_args Δ (ind_uparams D) Id nil Us' ups ->
+      DG d_record qr cups ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ im_ty_at p j Mj Us' nil ® P.
+  Proof.
+    intros * Hi HMj Hh Ecups HΔ HUs Hglu.
+    destruct (valid_group_records _ _ Hvg _ _ _ _ _ HMj Hh) as [R HR].
+    pose proof (valid_rview_record_lookup _ _ HR) as HlR.
+    pose proof (ctx_wf_gctx _ _ _ HΔ) as Hgc.
+    destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
+    pose proof (glu_views_self_records _ _ HV _ _ _ _ _ _ HMj Hh HlR) as HGR.
+    pose proof (record_typed_former _ _ ⋅ _ _ (valid_rview_record_typed _ _ HR) HlR ltac:(constructor; exact Hgc)) as Hrt0.
+    destruct (presup_exp Hrt0) as [_ [i0 Hty]].
+    pose proof (rview_uparams_glu VP p D HVP HPD HG j Mj qr Is fl R HMj Hh HR Δ Us' ups cups HΔ HUs Ecups) as HNs.
+    pose proof (valid_rview_record_valid _ _ HR) as [HWR [is HS] _ _].
+    destruct (Completeness.Records.Model.sort_tele_value (record_params R) (record_sort R) HWR (ex_intro _ is HS) cups
+                (RviewEnds.rv_cups_rel p D Hvg j Mj qr Is fl R HMj Hh HR ups cups Hgu Hu Ecups)
+                (RviewEnds.rv_cups_len p D Hvg j Mj qr Is fl R HMj Hh HR ups cups Ecups)) as [b Eb].
+    assert (Hbi : uidx_le (Completeness.Inductives.Decl.univ_idx b) i)
+      by (eapply uidx_le_trans; [ exact (Hnbr _ _ _ _ _ _ HMj Hh HlR _ _ Eb) | exact (ul_mono _ _ Hi) ]).
+    unfold im_ty_at, im_pre; rewrite Hh, List.app_nil_r.
+    exact (Mctt.Core.Soundness.Records.Model.record_typ_glu qr R Hgc HlR HGR i0 Hty Δ _ cups b i P El HΔ HNs Eb Hbi Hglu).
   Qed.
 
   (** ** Types of Recursive Arguments
@@ -328,10 +405,28 @@ Section AtType.
       exists b, ⟦ B ⟧ ρ ↘ b /\ a = Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod.
   Proof. intros * H; inversion H; subst; eauto. Qed.
 
-  Lemma eval_shty_self_inv : forall j Ps ρ a, ⟦shty pt_self j Ps of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
+  (** The type of a shape ending in a member that is not a record view. *)
+  Lemma eval_shty_self_inv : forall j Mj Ps ρ a, ind_member D j = Some Mj -> im_is_rview Mj = false ->
+      ⟦shty pt_self j Ps of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
       exists bs pc kc pre, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ bs /\ ⟦mref j of p ups ⟧ gc_deps ⍮ gc_stack ↘ (pc, kc, pre) /\
         a = d_ind pc kc (pre ++ bs).
-  Proof. intros * H; inversion H; subst; eauto 10. Qed.
+  Proof.
+    intros * HMj Hrv H; inversion H; subst; [ eauto 10 |].
+    match goal with H1 : ind_lookup _ _ p = Some ?D', H2 : ind_member ?D' j = Some ?M', H3 : im_head ?M' = mh_record _ _ _ |- _ =>
+      rewrite Hl in H1; injection H1 as <-; rewrite HMj in H2; injection H2 as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv H3) end.
+  Qed.
+
+  (** The type of a shape ending in a record view: the record type at the
+      view's instance at [ups]. *)
+  Lemma eval_shty_rview_inv : forall j Mj qr Is fl Ps ρ a, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+      ⟦shty pt_self j Ps of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
+      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\ a = d_record qr cups.
+  Proof.
+    intros * HMj Hh H; inversion H; subst; [ exfalso; eapply mref_not_rview; eassumption |].
+    match goal with H1 : ind_lookup _ _ p = Some ?D', H2 : ind_member ?D' j = Some ?M', H3 : im_head ?M' = mh_record _ _ _ |- _ =>
+      rewrite Hl in H1; injection H1 as <-; rewrite HMj in H2; injection H2 as <-; rewrite Hh in H3; injection H3 as <- <- <- end.
+    eauto.
+  Qed.
 
   Lemma rec_typ_glu : forall t k Δ' Us' pre A N v, glu_rec p D ups NEl AEl DP DEl k Δ' Us' pre t A N v ->
       forall Mk ms c0 gs1 t0 gs2 ws d ys σs a (j0 i : nat) P El,
@@ -347,7 +442,18 @@ Section AtType.
     all: assert (HΔ' : ⊢ Δ') by (gen_presups; assumption).
     all: destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _].
     - subst; destruct (glu_rec_self_inv _ _ _ _ _ _ _ _ _ Hgr) as (Mj & HMj & Hs1 & _).
-      destruct (eval_shty_self_inv _ _ _ _ Ea) as (bs & pc & kc & pre' & Ebs & Hr & ->).
+      destruct (im_is_rview Mj) eqn:Hrv.
+      { (** A record view: the record type at the view's instance. *)
+        destruct (im_head Mj) as [| | qr Is fl] eqn:Hh; unfold im_is_rview in Hrv; rewrite Hh in Hrv; try discriminate.
+        destruct (eval_shty_rview_inv _ _ _ _ _ _ _ _ HMj Hh Ea) as (cups & Ecups & ->).
+        destruct (valid_ind_decl_plen _ HD k Mk c0 _ HMk Hc0 gs1 t0 gs2 eq_refl) as (Mj' & HMj' & HPl).
+        rewrite <- (ptyp_mem_skip d t0), <- (ptyp_ps_skip d t0), Hsk in *; cbn [ptyp_mem ptyp_ps] in HMj', HPl.
+        rewrite HMj in HMj'; injection HMj' as <-.
+        rewrite (RviewEnds.rv_nn p D Hvg j Mj qr Is fl HMj Hh) in HPl.
+        destruct Ps; [| discriminate HPl ].
+        cbn [ptyp_ty_at List.map]; unfold ind_mty; rewrite HMj.
+        exact (rview_mty_glu j Mj qr Is fl cups Δ' Us' i P El Hi HMj Hh Ecups HΔ' HUs Hglu). }
+      destruct (eval_shty_self_inv _ _ _ _ _ HMj Hrv Ea) as (bs & pc & kc & pre' & Ebs & Hr & ->).
       destruct (Hs1 _ (List.map (fun P0 => P0[σs]) Ps) Ebs ltac:(cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj; reflexivity))
         as (_ & Hbs & Hgn).
       cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj.
@@ -411,22 +517,44 @@ Section AtType.
       (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr -> A = im_ty_at p j Mj Us Q ->
          forall Δ φ Us' Q', Δ ⊢ᵏ φ : Γ -> List.length Us' = ind_nu D ->
            exps_eq_at Δ (im_params D Mj) (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (Us' ++ Q') ->
-           elem_glu_at_type j Δ Us' Q' N[φ]ʷ v) ->
+           elem_glu_at_type j Δ Us' Q' N[φ]ʷ v /\ rview_glu_at_type j Δ Us' Q' N[φ]ʷ v) ->
       rec_glu_at_type k Γ Us pre (pt_self j Ps) A N v.
   Proof.
     intros * HMj Hs1 IH; unfold rec_glu_at_type.
     intros Mk ms c0 gs1 t0 gs2 ws d ys σs a i P El HMk Hc0 Hpre Hms Hws Hsk Hys HUs HA HN Ea HRv Hglu HAP.
-    destruct (eval_shty_self_inv _ _ _ _ Ea) as (bs & pc & kc & pre' & Ebs & Hr & ->).
+    assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+    pose proof (kripke_id _ HΓ) as Hid.
+    destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _].
+    destruct (im_is_rview Mj) eqn:Hrv.
+    { (** At a record view: the record type at the view's instance. *)
+      destruct (im_head Mj) as [| | qr Is fl] eqn:Hh; unfold im_is_rview in Hrv; rewrite Hh in Hrv; try discriminate.
+      destruct (eval_shty_rview_inv _ _ _ _ _ _ _ _ HMj Hh Ea) as (cups & Ecups & ->).
+      destruct (valid_ind_decl_plen _ HD k Mk c0 _ HMk Hc0 gs1 t0 gs2 eq_refl) as (Mj' & HMj' & HPl).
+      rewrite <- (ptyp_mem_skip d t0), Hsk in HMj'; rewrite <- (ptyp_ps_skip d t0), Hsk in HPl.
+      cbn [ptyp_mem ptyp_ps] in HMj', HPl.
+      rewrite HMj in HMj'; injection HMj' as <-.
+      rewrite (RviewEnds.rv_nn p D Hvg j Mj qr Is fl HMj Hh) in HPl.
+      destruct Ps; [| discriminate HPl ].
+      assert (HAQ : A = im_ty_at p j Mj Us nil) by (rewrite HA; cbn [ptyp_ty_at List.map]; unfold ind_mty; rewrite HMj; reflexivity).
+      assert (Ebs : ⟦ nil ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ nil) by constructor.
+      destruct (Hs1 _ _ Ebs HAQ) as (_ & Hbs & Hgn).
+      destruct (Hgn _ Hbs) as [_ Htop].
+      pose proof (IH _ _ Ebs HAQ Γ wk_id Us nil Hid LU
+                    ltac:(pose proof (glu_params_top_refl _ _ _ _ _ (Htop _ _ Hid)) as H; rewrite map_wk_id in H;
+                          rewrite map_wk_id; exact H)) as [_ He].
+      rewrite exp_wk_id in He.
+      destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
+      pose proof (proj1 (rview_rel j Mj qr Is fl cups i R HMj Hh Ecups HR v v) (HRv _ HR)) as HGv.
+      rewrite HAQ in HN, HAP |- *.
+      exact (He Mj qr Is fl cups i P El HMj Hh Ecups HUs HN HGv Hglu HAP). }
+    destruct (eval_shty_self_inv _ _ _ _ _ HMj Hrv Ea) as (bs & pc & kc & pre' & Ebs & Hr & ->).
     assert (HAQ : A = im_ty_at p j Mj Us (List.map (fun P0 => P0[σs]) Ps))
       by (rewrite HA; cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj; reflexivity).
     destruct (Hs1 _ _ Ebs HAQ) as (_ & Hbs & Hgn).
     destruct (Hgn _ Hbs) as [Hgn' Htop].
-    assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-    pose proof (kripke_id _ HΓ) as Hid.
-    destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _].
     pose proof (IH _ _ Ebs HAQ Γ wk_id Us (List.map (fun P0 => P0[σs]) Ps) Hid LU
                   ltac:(pose proof (glu_params_top_refl _ _ _ _ _ (Htop _ _ Hid)) as H; rewrite map_wk_id in H;
-                        rewrite map_wk_id; exact H)) as He.
+                        rewrite map_wk_id; exact H)) as [He _].
     rewrite exp_wk_id in He.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
     pose proof (proj1 (mref_rel j Mj pc kc pre' bs i R HMj Hr HR v v) (HRv _ HR)) as HGv.
@@ -532,40 +660,39 @@ Section AtType.
       at the values before them, which the arguments before them relate. *)
   Section AtCon.
     Variables (k : nat) (Mk : imember) (c : String.string) (gs : list carg)
-      (Us' Ns' : list exp) (bs vs : list domain) (As : list exp) (Δ' : ctx).
+      (Us' Ns' : list exp) (X vs : list domain) (As : list exp) (Δ' : ctx).
     Hypotheses (HMk : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs)
-      (HNl' : List.length Ns' = im_nn Mk) (Hbl : List.length bs = (im_unu D Mk + im_nn Mk)%nat)
+      (HNl' : List.length Ns' = im_nn Mk) (HXl : List.length X = im_nn Mk)
       (Hvl : List.length vs = List.length gs) (HAl : List.length As = List.length gs)
-      (Hb : tele_rel (nr k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs))
-      (Hv : tele_rel (ar k (List.skipn (im_unu D Mk) bs) c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs))
-      (Hnp : glu_nparams k Mk NEl Δ' Us' Ns' (List.skipn (im_unu D Mk) bs))
+      (Hb : tele_rel (nr k) (List.rev (im_nparams Mk)) X X)
+      (Hv : tele_rel (ar k X c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs))
+      (Hnp : glu_nparams k Mk NEl Δ' Us' Ns' X)
       (HAs : forall j N A, List.nth_error As j = Some N ->
           List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us' ++ Ns')) As) j = Some A -> Δ' ⊢ N : A)
       (Harg : forall gs1 A0 gs2 N A v, gs = gs1 ++ ca_arg A0 :: gs2 ->
           List.nth_error As (List.length gs1) = Some N ->
           List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us' ++ Ns')) As) (List.length gs1) = Some A ->
           List.nth_error vs (List.length gs1) = Some v ->
-          Δ' ⊢ N : A ® v ∈ AEl k (List.skipn (im_unu D Mk) bs) c (List.length (cargs_nonrec gs1))
+          Δ' ⊢ N : A ® v ∈ AEl k X c (List.length (cargs_nonrec gs1))
                              (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)))
       (Hrec : forall gs1 t gs2 N A v, gs = gs1 ++ ca_rec t :: gs2 ->
           List.nth_error As (List.length gs1) = Some N ->
           List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us' ++ Ns')) As) (List.length gs1) = Some A ->
           List.nth_error vs (List.length gs1) = Some v ->
-          glu_rec p D ups NEl AEl DP DEl k Δ' Us' (List.skipn (im_unu D Mk) bs ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v)
+          glu_rec p D ups NEl AEl DP DEl k Δ' Us' (X ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v)
       (IH : forall gs1 t gs2 N A v, gs = gs1 ++ ca_rec t :: gs2 ->
           List.nth_error As (List.length gs1) = Some N ->
           List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us' ++ Ns')) As) (List.length gs1) = Some A ->
           List.nth_error vs (List.length gs1) = Some v ->
-          rec_glu_at_type k Δ' Us' (List.skipn (im_unu D Mk) bs ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v).
+          rec_glu_at_type k Δ' Us' (X ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v).
     Hypotheses (HΔ' : ⊢ Δ') (HUs : glu_args Δ' (ind_uparams D) Id nil Us' ups)
       (Hia : con_args_rel p D (okr_at D ups nr) nr ar dr k ups ups
-               (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs) gs vs vs).
-    #[local] Abbreviation X := (List.skipn (im_unu D Mk) bs).
+               X X gs vs vs).
 
     Lemma ac_lens : List.length Us' = ind_nu D /\ List.length X = im_nn Mk.
     Proof.
       destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _].
-      split; [ exact LU | rewrite List.length_skipn; lia ].
+      split; [ exact LU | exact HXl ].
     Qed.
 
     Lemma ac_params : glu_args Δ' (im_params D Mk) Id nil (Us' ++ Ns') (ups ++ X).
@@ -682,11 +809,12 @@ Section AtType.
           as (bsh & Ebsh & Hab).
         cbn [ptyp_skip] in Ebsh; rewrite List.app_nil_r in Ebsh; fold nv in Ebsh.
         pose proof (shape_char p D Hvg Hcv k Mk c gs HMk Hcon ac_HΨ gs1 t gs2 Heq ups X fa Hu LX ltac:(lia) Hgu Hb Hpk Hpre_env
-                      (Completeness.Inductives.Con.view_end_rel_all VP p D HVP HPD ups ups Hgu Hu (ptyp_mem t))
+                      (Completeness.Inductives.ViewArgs.view_end_rel_all VP p D HVP HPD ups ups Hgu Hu (ptyp_mem t))
+                      (Completeness.Inductives.ViewArgs.rview_end_rel_all VP p D HVP HPD ups ups Hgu Hu (ptyp_mem t))
                       (List.length (ptyp_doms t)) 0 nil acl jc Rcl ltac:(lia) (tele_prefix_rel_nil _)
                       ltac:(cbn; apply per_gargs_nil)
                       ltac:(cbn [List.repeat List.app ptyp_skip]; rewrite List.app_nil_r; exact Eacl) HRcl) as ERcl.
-        destruct (Elim.con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t gs2 Heq) as (x & x' & Hx & Hx' & Hra).
+        destruct (Completeness.Inductives.CargsRel.con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t gs2 Heq) as (x & x' & Hx & Hx' & Hra).
         rewrite Hvn in Hx; injection Hx as <-; rewrite Hvn in Hx'; injection Hx' as <-.
         assert (HRv : Rcl v v).
         { apply ERcl; cbn [ptyp_skip]; rewrite List.app_nil_r; unfold nv, fa; rewrite <- Lgs1; exact Hra. }
@@ -722,11 +850,13 @@ Section AtType.
 
     (** The type of the constructor's application at the parameters and
         arguments: the member's type at the parameters. *)
-    Lemma ac_ty : (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk)))
-                    [sb_of_list Id ((Us' ++ Ns') ++ As)] = im_ty_at p k Mk Us' Ns'.
+    Lemma ac_ty : im_is_rview Mk = false ->
+        (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk)))
+          [sb_of_list Id ((Us' ++ Ns') ++ As)] = im_ty_at p k Mk Us' Ns'.
     Proof.
-      destruct ac_lens as [LU _].
-      destruct (im_head Mk) as [pm | qc kc Is vm] eqn:Hh.
+      intros Hrv; destruct ac_lens as [LU _].
+      destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh;
+        [| | exfalso; exact (not_rview_record _ _ _ _ Hrv Hh) ].
       - rewrite (con_codomain_inst p D k Mk pm gs HMk Hh) by (rewrite !List.length_app; unfold im_np; lia).
         rewrite firstn_app_exact by (rewrite List.length_app; unfold im_np; lia).
         symmetry; exact (im_ty_at_decl p k Mk pm Us' Ns' Hh).
@@ -739,11 +869,12 @@ Section AtType.
         [con_base] (declared) or [con_view_base] (view) at the value of the
         constructor's codomain, which is related to the type's value, and
         at the stored uniform parameters [pre] the type is at. *)
-    Lemma elem_at_con : forall hd k' M', im_ref p k Mk = (hd, k') ->
+    Lemma elem_at_con : forall bs hd k' M', List.length bs = (im_unu D Mk + im_nn Mk)%nat ->
+        List.skipn (im_unu D Mk) bs = X -> im_ref p k Mk = (hd, k') ->
         Δ' ⊢ M' ≈ apps (a_con p k c) (Us' ++ Ns' ++ As) : im_ty_at p k Mk Us' Ns' ->
         elem_glu_at_type k Δ' Us' Ns' M' (d_con hd k' c (bs ++ vs)).
     Proof.
-      intros hd k' M' Href HMeq Mk0 ns hd0 k0 pre i P El HMk0 Hr _ _ _ Hns HGm Hglu HT.
+      intros bs hd k' M' Hbl EX Href HMeq Mk0 ns hd0 k0 pre i P El HMk0 Hr _ _ _ Hns HGm Hglu HT.
       rewrite HMk in HMk0; injection HMk0 as <-.
       destruct (ViewReadback.mref_ref_len p D k Mk ups hd0 k0 pre Hl HMk Hu Hr) as [Href0 Lpre].
       rewrite Href in Href0; injection Href0 as <- <-.
@@ -772,10 +903,12 @@ Section AtType.
       rewrite <- List.app_assoc in Eb.
       (** The scrutinee's parameters, related to the stored ones. *)
       assert (Hns' : tele_rel (nr k) (List.rev (im_nparams Mk)) ns X).
-      { unfold grp_rel in HGm; inversion HGm; subst.
-        match goal with H1 : ind_member D k = Some ?M1 |- _ => rewrite HMk in H1; injection H1 as <- end.
+      { pose proof (mref_rview_false _ _ _ HMk Hr) as Hrv.
+        unfold grp_rel in HGm; inversion HGm; subst;
+          match goal with H1 : ind_member D k = Some ?M1 |- _ => rewrite HMk in H1; injection H1 as <- end;
+          [| match goal with H2 : im_head Mk = mh_record _ _ _ |- _ => exfalso; exact (not_rview_record _ _ _ _ Hrv H2) end ].
         match goal with E : (?a ++ ?b = bs ++ vs)%list |- _ => apply app_split_eq in E; [| lia ]; destruct E as [-> ->] end.
-        assumption. }
+        first [ assumption | rewrite <- EX; assumption ]. }
       (** The type's value, related to the codomain's. *)
       assert (HZ : ⊨ (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D) by (rewrite <- List.app_assoc; exact ac_HΨ).
       assert (HRZ : EF (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D
@@ -789,7 +922,8 @@ Section AtType.
       (** The constructor's value, related to the scrutinee. *)
       destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
       pose proof (mref_rel k Mk hd k' pre ns i R HMk Hr HR) as ER.
-      assert (Ebs : bs ++ vs = List.firstn (im_unu D Mk) bs ++ (X ++ vs)) by (rewrite List.app_assoc, List.firstn_skipn; reflexivity).
+      assert (Ebs : bs ++ vs = List.firstn (im_unu D Mk) bs ++ (X ++ vs))
+        by (rewrite <- EX, List.app_assoc, List.firstn_skipn; reflexivity).
       assert (Hwm : G k ups ups ns ns (d_con hd k' c (pre ++ X ++ vs)) (d_con hd k' c (bs ++ vs))).
       { rewrite Ebs in HGm |- *; unfold grp_rel in *.
         eapply Completeness.Inductives.Elim.ind_rel_con_prefix_l;
@@ -814,7 +948,7 @@ Section AtType.
                       : (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk)))
                           [sb_of_list Id ((Us' ++ Ns') ++ As)]
                       ® d_con hd k' c (pre ++ X ++ vs) ∈ Elb).
-      { destruct (im_head Mk) as [pm | qc kc Is vm] eqn:Hh.
+      { destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; [| | exfalso; exact (mref_not_rview _ _ _ _ _ _ HMk Hh Hr) ].
         - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMk Hh Hr) as E; injection E as Ehd Ek Epre.
           assert (Hw : Completeness.Inductives.Con.con_value p D k Mk c ((ups ++ X) ++ vs) (d_con hd k' c (pre ++ X ++ vs))).
           { rewrite Ehd, Ek, Epre, List.app_assoc; exact (Completeness.Inductives.Con.con_value_decl p D k Mk c pm _ Hh). }
@@ -827,7 +961,7 @@ Section AtType.
           pose proof (valid_groups_valid VP HVP qc Dq HPq) as HgQ.
           assert (Hhd : exists pmc, im_head Mkc = mh_decl pmc).
           { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMkc) Hkd) as Hd0.
-            unfold im_is_decl in Hd0; destruct (im_head Mkc); [ eauto | discriminate ]. }
+            unfold im_is_decl in Hd0; destruct (im_head Mkc); [ eauto | discriminate | discriminate ]. }
           destruct Hhd as [pmc Hhc].
           destruct (Completeness.Inductives.Con.view_con_container p D Hass Hdt k Mk qc kc Is vm Dq Mkc c gs HMk Hh Hq HMkc Hcon)
             as (gs' & Hcon' & Hcorr).
@@ -841,7 +975,7 @@ Section AtType.
             [ exact Hq | exact HMkc | exact Hhc | exact Hvm | exact Hcon' | exact Hcorr | exact HΔ'
             | intros ρ0 b0 Eb0; eapply uidx_le_trans; [ exact (Hnbq _ _ _ _ _ _ _ HMk Hh Hq _ _ Eb0) | apply ul_mono; unfold ib; lia ]
             | exact HgAll | exact Hw | exact Eb' | exact Hgb | exact Hper ]. }
-      rewrite ac_ty in Hcb.
+      rewrite (ac_ty (mref_rview_false _ _ _ HMk Hr)) in Hcb.
       (** At the type's gluing, then at the scrutinee's value and term. *)
       pose proof (glu_univ_elem_univ_lvl_gen _ _ _ _ Hglu _ _ HT) as HTy.
       pose proof (glu_elem_conv ib i (ulvl i0) (ulvl i) _ _ _ _ _ _ Δ' _ _ _ _ Hgb Hglu
@@ -857,27 +991,145 @@ Section AtType.
 
       Every element glued in the group, and every recursive argument, is
       glued at its type's own gluing, by induction on the group's gluing. *)
+  (** ** Record Views
+
+      An element of a record view glued in the group is glued at the
+      record type: its fields, glued at the view's constructor's telescope
+      as a constructor's arguments are ([ac_args_prefix]), are glued along
+      the record's fields ([rview_cargs_to_fields]); so are the
+      projections of their tuple (field-β), and the tuple is the element
+      ([rview_con_tuple]). *)
+  Lemma elem_at_record : forall k Mk qr Is fl c gs Us Ns As vs Γ M m,
+      ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl -> im_cons Mk = (c, gs) :: nil ->
+      List.length Us = ind_nu D -> List.length Ns = im_nn Mk -> List.length As = List.length gs ->
+      ⟦projs fl of m ⟧ gc_deps ⍮ gc_stack ↘ vs ->
+      Γ ⊢ M ≈ apps_exp (a_con p k c) (Us ++ Ns ++ As) : im_ty_at p k Mk Us Ns ->
+      tele_rel (ar k nil c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs) ->
+      (forall j N A, List.nth_error As j = Some N ->
+         List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) j = Some A -> Γ ⊢ N : A) ->
+      (forall gs1 A0 gs2 N A v, gs = gs1 ++ ca_arg A0 :: gs2 ->
+         List.nth_error As (List.length gs1) = Some N ->
+         List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+         List.nth_error vs (List.length gs1) = Some v ->
+         Γ ⊢ N : A ® v ∈ AEl k nil c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))) ->
+      (forall gs1 t gs2 N A v, gs = gs1 ++ ca_rec t :: gs2 ->
+         List.nth_error As (List.length gs1) = Some N ->
+         List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+         List.nth_error vs (List.length gs1) = Some v ->
+         glu_rec p D ups NEl AEl DP DEl k Γ Us (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v) ->
+      (forall gs1 t gs2 N A v, gs = gs1 ++ ca_rec t :: gs2 ->
+         List.nth_error As (List.length gs1) = Some N ->
+         List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+         List.nth_error vs (List.length gs1) = Some v ->
+         rec_glu_at_type k Γ Us (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N v) ->
+      rview_glu_at_type k Γ Us Ns M m.
+  Proof.
+    intros k Mk qr Is fl c gs Us Ns As vs Γ M m HMk Hh Hcs HUl HNl HAl Hps HMeq Hv HAs Harg Hrec IH.
+    intros Mk0 qr0 Is0 fl0 cups i P El HMk0 Hh0 Ecups HUs HM' HGm Hglu HT.
+    rewrite HMk in HMk0; injection HMk0 as <-; rewrite Hh in Hh0; injection Hh0 as <- <- <-.
+    pose proof (RviewEnds.rv_nn p D Hvg k Mk qr Is fl HMk Hh) as Hnn.
+    destruct Ns as [| ? ?]; [| cbn in HNl; lia ].
+    assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+    pose proof (ind_con_single _ _ _ Hcs) as Hcon.
+    destruct (valid_group_records _ _ Hvg _ _ _ _ _ HMk Hh) as [R HR].
+    pose proof (valid_rview_record_lookup _ _ HR) as HlR.
+    pose proof (ctx_wf_gctx _ _ _ HΓ) as Hgc.
+    pose proof (RviewEnds.rv_len p D Hvg k Mk qr Is fl R c gs HMk Hh HR Hcs) as Hlg.
+    pose proof (RviewEnds.rv_names p D Hvg k Mk qr Is fl R HMk Hh HR) as Hfl.
+    assert (Hvl : List.length vs = List.length gs)
+      by (rewrite (eval_projs_length _ _ _ Hps), Hfl, List.length_map; lia).
+    (** The fields, glued at the view's constructor's telescope. *)
+    unfold grp_rel in HGm.
+    destruct (ind_rel_record_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HGm HMk Hh Hcs) as [ws ws' _ _ Hp Hp' _ Hca].
+    pose proof (functional_eval_projs _ _ _ _ Hp Hps) as ->.
+    pose proof (functional_eval_projs _ _ _ _ Hp' Hps) as ->.
+    assert (Hb : tele_rel (nr k) (List.rev (im_nparams Mk)) nil nil)
+      by (rewrite (RviewEnds.rv_nparams p D Hvg k Mk qr Is fl HMk Hh); split; reflexivity + exact I).
+    assert (Hnp : glu_nparams k Mk NEl Γ Us nil nil)
+      by (constructor; [ cbn; lia | cbn; lia | intros [] *; discriminate ]).
+    pose proof (ac_args_prefix k Mk c gs Us nil nil vs As Γ HMk Hcon ltac:(cbn; lia) ltac:(cbn; lia) Hvl HAl Hb Hv Hnp HAs
+                  Harg Hrec IH HUs Hca (List.length gs) (le_n _)) as HgC.
+    rewrite !List.firstn_all2 in HgC by lia.
+    rewrite !List.app_nil_r in HgC.
+    (** Along the record's fields, at the view's instance. *)
+    pose proof (rview_cargs_to_fields p D Hvg Hcv k Mk qr Is fl R c gs HMk Hh HR Hcs ups cups Hgu Hu Ecups Γ Us As vs HΓ HUs HgC)
+      as HgF.
+    set (Ns' := List.map (fun I => I[sb_of_list Id Us]) Is).
+    pose proof (valid_rview_record_closed _ _ HR) as HcR.
+    pose proof (rview_record_len p D Hvg k Mk qr Is fl R HMk Hh HR) as HIl.
+    assert (HsF : ctx_scoped (List.length (record_params R)) (record_fctx R (List.length (record_fields R)))).
+    { apply ctx_scoped_app_iff, (record_fctx_scoped R _ (le_n _)); [| exact (closed_params _ HcR) ].
+      intros k0 f T HfT _; exact (closed_fields _ HcR _ _ _ HfT). }
+    pose proof (glu_args_base_agree _ _ _ _ (sb_of_list Id Ns') _ _ _ (record_fctx_ass _ _) HsF
+                  ltac:(intros x Hx; cbn [sb_compose]; apply sb_of_list_lt_compose; lia) HgF) as HgF'.
+    pose proof (rview_uparams_glu VP p D HVP HPD HG k Mk qr Is fl R HMk Hh HR Γ Us ups cups HΓ HUs Ecups) as HNs'.
+    (** The element is the tuple of the fields. *)
+    destruct (decl_typed_uparams _ _ _ Hdt) as [_ HUa].
+    assert (HAs' : forall j N A, List.nth_error As j = Some N ->
+               List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id Us) As) j = Some A -> Γ ⊢ N : A)
+      by (rewrite List.app_nil_r in HAs; exact HAs).
+    pose proof (rview_con_tuple Γ p D k Mk qr Is fl c gs Us As Hl HMk Hh Hcs HΓ HUl (glu_args_typed _ _ _ _ _ _ HUa HUs) HAl HAs')
+      as Hct.
+    assert (Hpre : im_pre Mk Us = Ns') by (unfold im_pre; rewrite Hh; reflexivity).
+    assert (HTy : im_ty_at p k Mk Us nil = apps_exp (a_record qr) Ns')
+      by (unfold im_ty_at, im_pre; rewrite Hh, List.app_nil_r; reflexivity).
+    rewrite Hpre, HTy in Hct.
+    set (Tp := a_tuple (apps_exp (a_record qr) Ns') (List.combine fl As)) in *.
+    assert (HTpt : Γ ⊢ Tp : apps_exp (a_record qr) Ns') by (gen_presups; eassumption).
+    destruct (presup_exp HTpt) as [_ [jT HjT]].
+    pose proof (record_typed_former _ _ Γ _ _ (valid_rview_record_typed _ _ HR) HlR HΓ) as Hrt.
+    assert (HNl' : List.length Ns' = List.length (record_params R)) by (unfold Ns'; rewrite List.length_map; exact HIl).
+    assert (Hfs : List.map fst (List.combine fl As) = List.map fst (record_fields R))
+      by (rewrite map_fst_combine_len by (rewrite Hfl, List.length_map; lia); exact Hfl).
+    rewrite <- (map_snd_combine_eq fl As ltac:(rewrite Hfl, List.length_map; lia)) in HgF'.
+    pose proof (Mctt.Core.Soundness.Records.Model.glu_args_tuple_projs qr R Hgc HlR Γ _ Ns' _ jT _ vs HTpt
+                  (wf_exp_eq_refl HjT) Hrt HNl'
+                  (glu_args_typed _ _ _ _ _ _ (typed_params_ass _ _ _ (valid_rview_record_typed _ _ HR)) HNs') Hfs HgF') as HgT.
+    (** The value, related at the record's relation. *)
+    pose proof (RviewEnds.rv_cups_rel p D Hvg k Mk qr Is fl R HMk Hh HR ups cups Hgu Hu Ecups) as Hc0.
+    destruct (vrr_type_rel qr R cups cups HR Hc0 ltac:(rewrite (eval_exps_length _ _ _ Ecups); exact HIl)) as [i1 HR1].
+    pose proof (proj2 (rview_rel k Mk qr Is fl cups i1 _ HMk Hh Ecups HR1 m m) HGm) as Hm.
+    pose proof (proj2 (RviewEnds.record_projs_iff R fl m vs Hfl) Hps) as Hvs.
+    rewrite HTy in HT |- *.
+    pose proof (Mctt.Core.Soundness.Records.Model.record_glu_of_fields qr R Hgc HlR Γ _ Tp Ns' cups m vs i P El
+                  Hglu HT HTpt HNs' Hm Hvs HgT) as HTg.
+    eapply (glu_univ_elem_trm_resp_exp_eq _ _ _ _ Hglu); [ exact HTg |].
+    rewrite HTy in HMeq; cbn [List.app] in HMeq.
+    eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact Hct | apply wf_exp_eq_sym; exact HMeq ].
+  Qed.
+
   Theorem glu_at_type_all :
-    (forall k Γ Us Ns M mv, ind_glu_elem p D ups NEl AEl DP DEl k Γ Us Ns M mv -> elem_glu_at_type k Γ Us Ns M mv) /\
+    (forall k Γ Us Ns M mv, ind_glu_elem p D ups NEl AEl DP DEl k Γ Us Ns M mv ->
+       elem_glu_at_type k Γ Us Ns M mv /\ rview_glu_at_type k Γ Us Ns M mv) /\
     (forall k Γ Us pre t A N v, glu_rec p D ups NEl AEl DP DEl k Γ Us pre t A N v -> rec_glu_at_type k Γ Us pre t A N v).
   Proof.
     apply (ind_glu_elem_mut_ind_all p D ups NEl AEl DP DEl
-             (fun k Γ Us Ns M mv _ => elem_glu_at_type k Γ Us Ns M mv)
+             (fun k Γ Us Ns M mv _ => elem_glu_at_type k Γ Us Ns M mv /\ rview_glu_at_type k Γ Us Ns M mv)
              (fun k Γ Us pre t A N v _ => rec_glu_at_type k Γ Us pre t A N v)).
-    - intros k Mk hd k' c gs Us Ns bs vs As Γ M HMk Href Hcon HUl HNl Hbl Hvl HAl HMeq Hb Hv Hnp HAs Harg Hrec IH.
+    - intros k Mk hd k' c gs Us Ns bs vs As Γ M HMk Hrv Href Hcon HUl HNl Hbl Hvl HAl HMeq Hb Hv Hnp HAs Harg Hrec IH.
+      split; [| intros Mk0 qr0 Is0 fl0 *; intros HMk0 Hh0; rewrite HMk in HMk0; injection HMk0 as <-;
+                exfalso; exact (not_rview_record _ _ _ _ Hrv Hh0) ].
       intros Mk0 ns hd0 k0 pre i P El HMk0 Hr HUs HM' Hgn Hns HGm Hglu HT.
       assert (Hia : con_args_rel p D (okr_at D ups nr) nr ar dr k ups ups
                       (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs) gs vs vs).
-      { unfold grp_rel in HGm; inversion HGm; subst.
-        match goal with H1 : ind_member D k = Some ?M1 |- _ => rewrite HMk in H1; injection H1 as <- end.
+      { unfold grp_rel in HGm; inversion HGm; subst;
+          match goal with H1 : ind_member D k = Some ?M1 |- _ => rewrite HMk in H1; injection H1 as <- end;
+          [| match goal with H2 : im_head Mk = mh_record _ _ _ |- _ => exfalso; exact (not_rview_record _ _ _ _ Hrv H2) end ].
         match goal with H1 : ind_con Mk c = Some ?g1 |- _ => rewrite Hcon in H1; injection H1 as <- end.
         repeat match goal with E : (?a ++ ?b = bs ++ vs)%list |- _ => apply app_split_eq in E; [| lia ]; destruct E as [-> ->] end.
         assumption. }
       assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-      exact (elem_at_con k Mk c gs Us Ns bs vs As Γ HMk Hcon HNl Hbl Hvl HAl Hb Hv Hnp HAs Harg Hrec IH HΓ HUs Hia
-               hd k' M Href HMeq Mk0 ns hd0 k0 pre i P El HMk0 Hr HUs HM' Hgn Hns HGm Hglu HT).
-    - intros k Mk hd k' m Γ Us Ns M as' HMk Href Hm Hrb.
-      exact (elem_at_neut k Mk hd k' m Γ Us Ns M as' HMk Href Hm Hrb).
+      exact (elem_at_con k Mk c gs Us Ns (List.skipn (im_unu D Mk) bs) vs As Γ HMk Hcon HNl
+               ltac:(rewrite List.length_skipn; lia) Hvl HAl Hb Hv Hnp HAs Harg Hrec IH HΓ HUs Hia
+               bs hd k' M Hbl eq_refl Href HMeq Mk0 ns hd0 k0 pre i P El HMk0 Hr HUs HM' Hgn Hns HGm Hglu HT).
+    - intros k Mk hd k' m Γ Us Ns M as' HMk Hrv Href Hm Hrb.
+      split; [ exact (elem_at_neut k Mk hd k' m Γ Us Ns M as' HMk Hrv Href Hm Hrb) |].
+      intros Mk0 qr0 Is0 fl0 *; intros HMk0 Hh0; rewrite HMk in HMk0; injection HMk0 as <-.
+      exfalso; exact (not_rview_record _ _ _ _ Hrv Hh0).
+    - intros * HMk Hh Hcs HUl HNl HAl Hps HMeq Hv HAs Harg Hrec IH.
+      split; [ intros Mk0 *; intros HMk0 Hr; rewrite HMk in HMk0; injection HMk0 as <-;
+               exfalso; exact (mref_not_rview _ _ _ _ _ _ HMk Hh Hr) |].
+      exact (elem_at_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hcs HUl HNl HAl Hps HMeq Hv HAs Harg Hrec IH).
     - intros j Mj Ps pre A Us Γ N v k HMj Hs1 _ IH.
       exact (rec_at_self j Mj Ps pre A Us Γ N v k HMj Hs1 IH).
     - intros A Γ k pre B v Us t N Hq1 Hq2 Hq3 IH.
@@ -899,7 +1151,7 @@ Proof.
   intros VP p D HVP HPD; induction l as [| M l IH]; intros Hin.
   - exists 0; intros * [].
   - destruct (IH (fun Mj H => Hin Mj (or_intror H))) as [n Hn].
-    destruct (im_head M) as [pm | qc kc Is vm] eqn:Hh.
+    destruct (im_head M) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
     + exists n; intros * [<- | H] Hh' Hq; [ rewrite Hh in Hh'; discriminate | exact (Hn _ _ _ _ _ _ H Hh' Hq) ].
     + destruct (Hin M (or_introl eq_refl)) as [j Hj].
       destruct (decl_typed_view _ _ _ (valid_group_typed _ _ (valid_groups_valid VP HVP p D HPD)) _ _ _ _ _ _ Hj Hh) as (Dq0 & _ & Hq0 & _).
@@ -908,19 +1160,143 @@ Proof.
       * rewrite Hh in Hh'; injection Hh' as <- <- <- <-; rewrite Hq0 in Hq; injection Hq as <-.
         exact (Hm _ _ Eb (Nat.max n m) ltac:(lia)).
       * eapply uidx_le_trans; [ exact (Hn _ _ _ _ _ _ H Hh' Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+    + exists n; intros * [<- | H] Hh' Hq; [ rewrite Hh in Hh'; discriminate | exact (Hn _ _ _ _ _ _ H Hh' Hq) ].
 Qed.
 
-Lemma nb_exists : forall VP p D, valid_groups VP -> VP p D -> forall u : uidx,
-    exists nb : nat, uidx_le u (ul nb) /\
-      forall j Mj qc kc Is vm Dq, ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
-        ind_lookup gc_deps gc_stack qc = Some Dq -> forall ρ bq, ⟦ ind_sort Dq ⟧ ρ ↘ bq ->
-        uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul nb).
+(** Likewise, the sorts of the records of the record views. *)
+Lemma rviews_sort_bound : forall VP p D, valid_groups VP -> VP p D ->
+    forall l, (forall Mj, In Mj l -> exists j, ind_member D j = Some Mj) ->
+    exists n, forall Mj qr Is fl R, In Mj l -> im_head Mj = mh_record qr Is fl -> record_lookup gc_deps gc_stack qr = Some R ->
+      forall ρ b, ⟦ record_sort R ⟧ ρ ↘ b -> uidx_le (Completeness.Inductives.Decl.univ_idx b) (ul n).
+Proof.
+  intros VP p D HVP HPD; induction l as [| M l IH]; intros Hin.
+  - exists 0; intros * [].
+  - destruct (IH (fun Mj H => Hin Mj (or_intror H))) as [n Hn].
+    destruct (im_head M) as [pm | qc kc Is vm | qr Is fl] eqn:Hh;
+      [ exists n; intros * [<- | H] Hh' Hq; [ rewrite Hh in Hh'; discriminate | exact (Hn _ _ _ _ _ H Hh' Hq) ] .. |].
+    destruct (Hin M (or_introl eq_refl)) as [j Hj].
+    destruct (valid_group_records _ _ (valid_groups_valid VP HVP p D HPD) _ _ _ _ _ Hj Hh) as [R0 HR0].
+    pose proof (record_typed_sort_univ _ _ _ (valid_rview_record_typed _ _ HR0)) as Hsu.
+    assert (Hm : exists m, forall ρ b, ⟦ record_sort R0 ⟧ ρ ↘ b -> forall i, m <= i ->
+                   uidx_le (Completeness.Inductives.Decl.univ_idx b) (ul i)).
+    { destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq; [ exists i0 | exists 0 ]; intros * Hb i Hi;
+        inversion Hb; subst; cbn; [ lia | exact I ]. }
+    destruct Hm as [m Hm].
+    exists (Nat.max n m); intros * [<- | H] Hh' Hq ρ b Eb.
+    + rewrite Hh in Hh'; injection Hh' as <- <- <-.
+      rewrite (valid_rview_record_lookup _ _ HR0) in Hq; injection Hq as <-.
+      exact (Hm _ _ Eb (Nat.max n m) ltac:(lia)).
+    + eapply uidx_le_trans; [ exact (Hn _ _ _ _ _ H Hh' Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+Qed.
+
+(** A common bound of finitely many bounds, each closed upward. *)
+Lemma list_level_bound : forall {A : Type} (Q : A -> nat -> Prop), (forall a i i', Q a i -> i <= i' -> Q a i') ->
+    forall l, (forall a, In a l -> exists i, Q a i) -> exists n, forall a, In a l -> Q a n.
+Proof.
+  intros A Q HQ; induction l as [| a l IH]; intros H; [ exists 0; intros ? [] |].
+  destruct (H a (or_introl eq_refl)) as [i Hi]; destruct (IH (fun a' Ha' => H a' (or_intror Ha'))) as [n Hn].
+  exists (Nat.max i n); intros a' [<- | Ha']; [ apply (HQ _ i); [ exact Hi | lia ] | apply (HQ _ n); [ exact (Hn _ Ha') | lia ] ].
+Qed.
+
+(** The domains of the shapes of a valid group are typed, in their
+    contexts, at one level. *)
+Lemma doms_level_bound : forall VP p D, valid_groups VP -> VP p D ->
+    exists n, forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+      gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
+      doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk ⊢ B : Typeω@n.
+Proof.
+  intros VP p D HVP HPD.
+  pose proof (valid_group_typed _ _ (valid_groups_valid VP HVP p D HPD)) as Hdt.
+  set (Qd := fun (Mk : imember) (gs1 : list carg) (t : ptyp) (n : nat) =>
+               forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 -> doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk ⊢ B : Typeω@n).
+  assert (Mono : forall Mk gs1 t i i', Qd Mk gs1 t i -> i <= i' -> Qd Mk gs1 t i')
+    by (intros * H Hi; unfold Qd in *; intros * E; exact (lift_exp_ge _ _ _ _ _ _ Hi (H _ _ _ E))).
+  (** One shape. *)
+  assert (H1 : forall k Mk c gs gs1 t gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
+                 exists n, Qd Mk gs1 t n).
+  { intros * HMk Hin Heq.
+    destruct (decl_shape_facts _ _ _ _ _ _ _ _ _ _ Hdt HMk Hin Heq) as (_ & _ & _ & HBd & _).
+    set (Q1 := fun (d n : nat) => forall B, List.nth_error (ptyp_doms t) d = Some B ->
+                 doms_ctx (List.firstn d (ptyp_doms t)) ++ cargs_strat gs1 ++ im_params D Mk ⊢ B : Typeω@n).
+    assert (Mono1 : forall d i i', Q1 d i -> i <= i' -> Q1 d i')
+      by (intros * H Hi; unfold Q1 in *; intros B0 HB0; exact (lift_exp_ge _ _ _ _ _ _ Hi (H _ HB0))).
+    destruct (list_level_bound Q1 Mono1 (List.seq 0 (List.length (ptyp_doms t)))) as [n Hn].
+    - intros d Hd; apply List.in_seq in Hd.
+      destruct (nth_error_lt_some (ptyp_doms t) d ltac:(lia)) as [B0 HB0].
+      assert (Esplit : ptyp_doms t = List.firstn d (ptyp_doms t) ++ B0 :: List.skipn (S d) (ptyp_doms t))
+        by (rewrite <- (skipn_nth_cons' _ _ _ HB0), List.firstn_skipn; reflexivity).
+      destruct (HBd _ _ _ Esplit) as [j Hj]; exists j; intros B HB; rewrite HB0 in HB; injection HB as <-; exact Hj.
+    - exists n; unfold Qd; intros Bs1 B Bs2 E.
+      assert (Hd : List.nth_error (ptyp_doms t) (List.length Bs1) = Some B)
+        by (rewrite E, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
+      assert (Ef : List.firstn (List.length Bs1) (ptyp_doms t) = Bs1) by (rewrite E; apply firstn_app_exact; reflexivity).
+      rewrite <- Ef; apply Hn; [ apply List.in_seq; split; [ lia | apply List.nth_error_Some; congruence ] | exact Hd ]. }
+  (** One constructor. *)
+  assert (H2 : forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
+                 exists n, forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> Qd Mk gs1 t n).
+  { intros * HMk Hin.
+    destruct (list_level_bound (fun i n => forall t, List.nth_error gs i = Some (ca_rec t) -> Qd Mk (List.firstn i gs) t n)
+                ltac:(intros * H Hi t0 Ht0; exact (Mono _ _ _ _ _ (H _ Ht0) Hi)) (List.seq 0 (List.length gs))) as [n Hn].
+    - intros i Hi; apply List.in_seq in Hi.
+      destruct (nth_error_lt_some gs i ltac:(lia)) as [g Hg].
+      destruct g as [A0 | t0]; [ exists 0; intros t Ht; rewrite Hg in Ht; discriminate |].
+      destruct (H1 k Mk c gs (List.firstn i gs) t0 (List.skipn (S i) gs) HMk Hin
+                  ltac:(rewrite <- (skipn_nth_cons' _ _ _ Hg), List.firstn_skipn; reflexivity)) as [m Hm].
+      exists m; intros t Ht; rewrite Hg in Ht; injection Ht as <-; exact Hm.
+    - exists n; intros gs1 t gs2 E.
+      assert (Hi : List.nth_error gs (List.length gs1) = Some (ca_rec t)) by (rewrite E, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
+      assert (Ef : List.firstn (List.length gs1) gs = gs1) by (rewrite E; apply firstn_app_exact; reflexivity).
+      rewrite <- Ef; apply Hn; [ apply List.in_seq; split; [ lia | apply List.nth_error_Some; congruence ] | exact Hi ]. }
+  (** One member. *)
+  assert (H3 : forall k Mk, ind_member D k = Some Mk ->
+                 exists n, forall c gs gs1 t gs2, In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 -> Qd Mk gs1 t n).
+  { intros * HMk.
+    destruct (list_level_bound (fun cg n => forall gs1 t gs2, snd cg = gs1 ++ ca_rec t :: gs2 -> Qd Mk gs1 t n)
+                ltac:(intros * H Hi gs1 t gs2 E; exact (Mono _ _ _ _ _ (H _ _ _ E) Hi)) (im_cons Mk)) as [n Hn].
+    - intros [c gs] Hin; exact (H2 k Mk c gs HMk Hin).
+    - exists n; intros * Hin E; exact (Hn _ Hin _ _ _ E). }
+  set (Q4 := fun (Mk : imember) (n : nat) => forall c gs gs1 t gs2, In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
+               Qd Mk gs1 t n).
+  assert (Mono4 : forall Mk i i', Q4 Mk i -> i <= i' -> Q4 Mk i')
+    by (intros * H Hi; unfold Q4 in *; intros * Hin E; exact (Mono _ _ _ _ _ (H _ _ _ _ _ Hin E) Hi)).
+  destruct (list_level_bound Q4 Mono4 (ind_members D)) as [n Hn].
+  - intros Mk Hin; destruct (List.In_nth_error _ _ Hin) as [k HMk]; exact (H3 k Mk HMk).
+  - exists n; intros k Mk c gs gs1 t gs2 Bs1 B Bs2 HMk Hcon Heq E.
+    exact (Hn _ (List.nth_error_In _ _ HMk) _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq _ _ _ E).
+Qed.
+
+(** A level for [AtType]'s [nb]: above [u], the sorts of the views'
+    containers and those of the record views' records, and the domains
+    of the group's shapes. *)
+Record level_bound (p : qname) (D : ind_decl) (u : uidx) (nb : nat) : Prop := mk_level_bound
+  { (** Above [u] *)
+    level_bound_clause : uidx_le u (ul nb)
+    (** Above the sorts of the views' containers *)
+  ; level_bound_views : forall j Mj qc kc Is vm Dq, ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq -> forall ρ bq, ⟦ ind_sort Dq ⟧ ρ ↘ bq ->
+      uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul nb)
+    (** Above the sorts of the record views' records *)
+  ; level_bound_records : forall j Mj qr Is fl R, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+      record_lookup gc_deps gc_stack qr = Some R -> forall ρ b, ⟦ record_sort R ⟧ ρ ↘ b ->
+      uidx_le (Completeness.Inductives.Decl.univ_idx b) (ul nb)
+    (** Above the levels the domains of the shapes are typed at, in
+        their contexts *)
+  ; level_bound_doms : forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+      gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
+      doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk ⊢ B : Typeω@nb }.
+
+Lemma nb_exists : forall VP p D, valid_groups VP -> VP p D -> forall u : uidx, exists nb : nat, level_bound p D u nb.
 Proof.
   intros VP p D HVP HPD u.
   destruct (views_sort_bound VP p D HVP HPD (ind_members D) (fun Mj H => List.In_nth_error _ _ H)) as [n Hn].
-  exists (Nat.max n (ulvl u)); split; [ apply uidx_le_ul_max; lia |].
-  intros * HMj Hh Hq ρ bq Eb.
-  eapply uidx_le_trans; [ exact (Hn _ _ _ _ _ _ (List.nth_error_In _ _ HMj) Hh Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+  destruct (rviews_sort_bound VP p D HVP HPD (ind_members D) (fun Mj H => List.In_nth_error _ _ H)) as [m Hm].
+  destruct (doms_level_bound VP p D HVP HPD) as [d Hd].
+  exists (Nat.max (Nat.max (Nat.max n m) (ulvl u)) d); constructor; [ apply uidx_le_ul_max; lia | | |].
+  - intros * HMj Hh Hq ρ bq Eb.
+    eapply uidx_le_trans; [ exact (Hn _ _ _ _ _ _ (List.nth_error_In _ _ HMj) Hh Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+  - intros * HMj Hh Hq ρ b Eb.
+    eapply uidx_le_trans; [ exact (Hm _ _ _ _ _ (List.nth_error_In _ _ HMj) Hh Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+  - intros * HMk Hcon Heq E; eapply lift_exp_ge; [| exact (Hd _ _ _ _ _ _ _ _ _ _ HMk Hcon Heq E) ]; lia.
 Qed.
 
 End Fixed_GCtx.

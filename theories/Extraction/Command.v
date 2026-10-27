@@ -195,6 +195,10 @@ Inductive run_error : Set :=
 (** The argument [y] of the constructor [c] of the type [x] has [x] in an
     argument of another inductive type, its head. *)
 | run_error_nested : string -> string -> string -> exp -> run_error
+(** The argument [y] of the constructor [c] of the type [x] has a record
+    at an instance in which [Self] [s] is an argument of the head [h], in
+    the context [Δ], its first [k] entries unnamed. *)
+| run_error_self_arg : string -> string -> string -> string -> nat -> ctx -> exp -> run_error
 (** The non-uniform parameter at a position (outermost [0]) of the type
     [x]: its type is not in the sort; both live in the context. *)
 | run_error_ind_npar : string -> nat -> ctx -> typ -> typ -> run_error
@@ -251,7 +255,7 @@ Inductive run_error : Set :=
 (** A view of the group being declared, an instance of a container met in
     the arguments, rejected: the group's first member, the instance, and
     why ([view_why]). *)
-| run_error_view : string -> rview -> view_why -> run_error
+| run_error_view : string -> view_key -> view_why -> run_error
 (** An error, with the state it occurred in, for the printer: the units
     imported, the stack, and the natural numbers bound there, their type
     and constructors as [nat_view] gives them. *)
@@ -381,9 +385,9 @@ Section BranchBlame.
   Definition ctx_inds (Θ : gdeps) (Ξ : gstack) : list ind_decl :=
     flat_map (fun e => gmod_inds (gu_mod (snd e))) Θ ++ flat_map (fun e => gmod_inds (gu_mod (snd e))) Ξ.
 
-  (** The members of those groups. *)
-  Definition ctx_members (Θ : gdeps) (Ξ : gstack) : list imember :=
-    flat_map (@ind_members _ _) (ctx_inds Θ Ξ).
+  (** The members of those groups, each with its group. *)
+  Definition ctx_members (Θ : gdeps) (Ξ : gstack) : list (ind_decl * imember) :=
+    flat_map (fun D => List.map (pair D) (ind_members D)) (ctx_inds Θ Ξ).
 
   Definition brs_has (Bs : list (string * nat * exp)) (c : string) : nat :=
     List.length (List.filter (fun b => String.eqb (fst (fst b)) c) Bs).
@@ -396,9 +400,10 @@ Section BranchBlame.
     end.
 
   (** The first mismatch of the branches [Bs] against the constructors of
-      the member [Mk]: a branch's binders, then a constructor without a
-      branch or with two, then the order of the branches. *)
-  Definition branch_check (Mk : imember) (Bs : list (string * nat * exp)) : option run_error :=
+      the member [Mk] of the group [D]: a branch's binders, then a
+      constructor without a branch or with two, then the order of the
+      branches. *)
+  Definition branch_check (D : ind_decl) (Mk : imember) (Bs : list (string * nat * exp)) : option run_error :=
     first_some (first_some
       ((fix go (Bs0 : list (string * nat * exp)) : option run_error :=
           match Bs0 with
@@ -406,8 +411,8 @@ Section BranchBlame.
           | (c, n, _) :: Bs0' =>
               match ind_con Mk c with
               | Some gs =>
-                  if Nat.eqb n (im_nn Mk + List.length gs + cargs_nrec gs) then go Bs0'
-                  else Some (run_error_branch_arity c n (im_nn Mk) (List.length gs) (cargs_nrec gs))
+                  if Nat.eqb n (im_nn Mk + List.length gs + cargs_nrec D gs) then go Bs0'
+                  else Some (run_error_branch_arity c n (im_nn Mk) (List.length gs) (cargs_nrec D gs))
               | None => Some (run_error_branch_unknown c)
               end
           end) Bs)
@@ -442,13 +447,13 @@ Section BranchBlame.
     match Bs with
     | nil => None
     | _ =>
-        let is_con Mk b := match ind_con Mk (fst (fst b)) with Some _ => true | None => false end in
+        let is_con (DM : (ind_decl * imember)%type) b := match ind_con (snd DM) (fst (fst b)) with Some _ => true | None => false end in
         let cands :=
-          match List.filter (fun Mk => forallb (is_con Mk) Bs) (ctx_members Θ Ξ) with
-          | nil => List.filter (fun Mk => existsb (is_con Mk) Bs) (ctx_members Θ Ξ)
+          match List.filter (fun DM => forallb (is_con DM) Bs) (ctx_members Θ Ξ) with
+          | nil => List.filter (fun DM => existsb (is_con DM) Bs) (ctx_members Θ Ξ)
           | Ms => Ms
           end in
-        match List.map (fun Mk => branch_check Mk Bs) cands with
+        match List.map (fun DM => branch_check (fst DM) (snd DM) Bs) cands with
         | Some e :: rs => if forallb (fun r => match r with Some e' => run_error_eqb e e' | None => false end) rs then Some e else None
         | _ => None
         end
@@ -581,7 +586,7 @@ Section BlocksBlame.
         | None => None
         | Some (p, D) =>
             let E := a_elim (Some p) Us m Bks M0 in
-            let Ms := ind_members D in
+            let Ms := ind_bmembers D in
             let a := blocks_members Ms nil None Bks in
             let missing :=
               List.filter (fun j => negb (existsb (fun o => match o with Some j' => Nat.eqb j j' | None => false end) a))
@@ -1019,12 +1024,107 @@ Qed.
 Definition fctx_cmd (B : builtins) (Θ : gdeps) (Ξ : gstack) : FCtx Θ Ξ :=
   fctx_at Θ Ξ (builtins_nat B).
 
+(** ** Filing a Group, Through the Filed Units
+
+    [rd_filed] with its lookups through an [FCtx]: what the checker
+    computes, equal to [rd_filed] ([rd_filed_f_ok]). *)
+
+Section FiledThroughUnits.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
+
+  (** [rv_filed], its container and record found through [F]. *)
+  Definition rv_filed_f (σ : sub) (n : nat) (Ks : list view_key) (x : view_key) (ss : list view_key)
+      (cs : list (string * list rcarg)) (Nv : ctx) : option imember :=
+    match x with
+    | vk_ind qc k Cs =>
+        let Is := List.map (fun C => C[σ]) Cs in
+        match proj1_sig (ind_lookup_f Θ Ξ qc) with
+        | Some D' =>
+            match ind_member D' k, rcons_num n Ks cs with
+            | Some _, Some cs' =>
+                Some (mk_imember
+                        (mh_view qc k Is (List.map (fun s => n + match view_key_index s Ks with Some v => v | None => 0 end) ss))
+                        Nv cs')
+            | _, _ => None
+            end
+        | None => None
+        end
+    | vk_record qr Cs =>
+        match proj1_sig (record_lookup_f Θ Ξ qr), rcons_num n Ks cs with
+        | Some Rr, Some cs' =>
+            Some (mk_imember (mh_record qr (List.map (fun C => C[σ]) Cs) (List.map fst (record_fields Rr))) Nv cs')
+        | _, _ => None
+        end
+    end.
+
+  Lemma rv_filed_f_ok : forall σ n Ks x ss cs Nv, rv_filed_f σ n Ks x ss cs Nv = rv_filed Θ Ξ σ n Ks x ss cs Nv.
+  Proof.
+    intros; destruct x as [qc k Cs | qr Is]; unfold rv_filed_f, rv_filed.
+    - destruct (ind_lookup_f Θ Ξ qc) as [o E]; cbn [proj1_sig]; rewrite E; reflexivity.
+    - destruct (record_lookup_f Θ Ξ qr) as [o E]; cbn [proj1_sig]; rewrite E; reflexivity.
+  Qed.
+
+  (** [rvs_filed] through [rv_filed_f]. *)
+  Fixpoint rvs_filed_f (σ : sub) (n : nat) (Ks xs Vs : list view_key) (Ss : list (list view_key))
+      (css : list (list (string * list rcarg))) (Nvs : list ctx) : option (list imember) :=
+    match xs with
+    | nil => Some nil
+    | x :: xs' =>
+        match view_key_index x Vs with
+        | Some v =>
+            match rv_filed_f σ n Ks x (List.nth v Ss nil) (List.nth v css nil) (List.nth v Nvs nil),
+                  rvs_filed_f σ n Ks xs' Vs Ss css Nvs with
+            | Some M, Some Ms => Some (M :: Ms)
+            | _, _ => None
+            end
+        | None => None
+        end
+    end.
+
+  Lemma rvs_filed_f_ok : forall σ n Ks xs Vs Ss css Nvs,
+      rvs_filed_f σ n Ks xs Vs Ss css Nvs = rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs.
+  Proof.
+    induction xs as [| x xs IH]; intros; cbn [rvs_filed_f rvs_filed]; [ reflexivity |].
+    destruct (view_key_index x Vs); [ rewrite rv_filed_f_ok, IH |]; reflexivity.
+  Qed.
+
+  (** [rd_filed] through [rvs_filed_f]. *)
+  Definition rd_filed_f (R : raw_decl) (Vs : list view_key) (Ss : list (list view_key))
+      (csD csV : list (list (string * list rcarg))) (Nvs : list ctx) : option ind_decl :=
+    match raw_decl_members R with
+    | Mr0 :: _ =>
+        let σ := sb_selfs (ind_qname Ξ (raw_member_name Mr0)) (rd_nu R) (rd_n R) (List.length (gs_tele Ξ)) in
+        let Ks := filed_keys (meets_tbl Vs csV) Vs in
+        match rms_filed Ξ (rd_n R) Ks (raw_decl_members R) csD, rvs_filed_f σ (rd_n R) Ks Ks Vs Ss csV Nvs with
+        | Some Ms, Some Mv => Some (mk_ind (raw_decl_uparams R ++ gs_tele Ξ) (raw_member_sort Mr0) (Ms ++ Mv))
+        | _, _ => None
+        end
+    | nil => None
+    end.
+
+  Lemma rd_filed_f_ok : forall R Vs Ss csD csV Nvs, rd_filed_f R Vs Ss csD csV Nvs = rd_filed Θ Ξ R Vs Ss csD csV Nvs.
+  Proof.
+    intros; unfold rd_filed_f, rd_filed; destruct (raw_decl_members R); [ reflexivity |].
+    rewrite rvs_filed_f_ok; reflexivity.
+  Qed.
+
+  (** The filed group, or that there is none, computed by [rd_filed_f]. *)
+  Definition rd_filed_case (R : raw_decl) (Vs : list view_key) (Ss : list (list view_key))
+      (csD csV : list (list (string * list rcarg))) (Nvs : list ctx) :
+      {Dd | rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some Dd} + {rd_filed Θ Ξ R Vs Ss csD csV Nvs = None} :=
+    match opt_case (rd_filed_f R Vs Ss csD csV Nvs) with
+    | inleft (exist _ Dd E) => inleft (exist _ Dd (eq_trans (eq_sym (rd_filed_f_ok R Vs Ss csD csV Nvs)) E))
+    | inright E => inright (eq_trans (eq_sym (rd_filed_f_ok R Vs Ss csD csV Nvs)) E)
+    end.
+End FiledThroughUnits.
+
 (** ** The Views of a Group *)
 
 (** The views [Vs] of the declaration [R] whose declared members'
     constructors classify as [csD], with what [run_cmd_ind_case] asks of them. *)
 Record views_ok (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (csD : list (list (string * list rcarg)))
-    (Vs : list rview) (Ss : list (list rview)) (csV : list (list (string * list rcarg))) (Nvs : list ctx) : Prop :=
+    (Vs : list view_key) (Ss : list (list view_key)) (csV : list (list (string * list rcarg))) (Nvs : list ctx) : Prop :=
   mk_views_ok
   { (** each view's siblings *)
     views_siblings : Forall2 (view_sibs Θ Ξ R) Vs Ss;
@@ -1033,11 +1133,11 @@ Record views_ok (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (csD : list (list (str
     (** each view's non-uniform parameters, filed *)
     views_nparams : Forall2 (view_nps Θ Ξ R) Vs Nvs;
     (** the views, found from the instances met *)
-    views_search_run : views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs }.
+    views_search_run : views_dfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs }.
 
 (** The views found, with their tables. *)
 Definition views_found (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (csD : list (list (string * list rcarg))) : Type :=
-  {Vs : list rview & {Ss : list (list rview) & {csV : list (list (string * list rcarg)) &
+  {Vs : list view_key & {Ss : list (list view_key) & {csV : list (list (string * list rcarg)) &
      {Nvs : list ctx | views_ok Θ Ξ R csD Vs Ss csV Nvs}}}}.
 
 (** The views alike along an equivalence. *)
@@ -1058,11 +1158,11 @@ Proof.
   intros * [Hs Hv Hn Hb] [Hs' Hv' Hn' Hb'].
   assert (Agree : forall x, In x Vs -> In x Vs' -> sibs_tbl Vs Ss x = sibs_tbl Vs' Ss' x /\ meets_tbl Vs csV x = meets_tbl Vs' csV' x).
   { intros x Hx Hx'.
-    destruct (rview_index_in_some _ _ Hx) as [v Hvi]; destruct (rview_index_in_some _ _ Hx') as [v' Hvi'].
+    destruct (view_key_index_in_some _ _ Hx) as [v Hvi]; destruct (view_key_index_in_some _ _ Hx') as [v' Hvi'].
     unfold sibs_tbl, meets_tbl; rewrite Hvi, Hvi'; split.
     - eapply view_sibs_functional; eapply Forall2_index; eassumption.
     - f_equal; eapply view_cls_functional; eapply Forall2_index; eassumption. }
-  pose proof (views_bfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree) as <-.
+  pose proof (views_dfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree) as <-.
   split; [ reflexivity |].
   split; [ eapply Forall2_functional; [ exact (view_sibs_functional Θ Ξ R) | exact Hs | exact Hs' ] |].
   split; [ eapply Forall2_functional; [ exact (view_cls_functional Θ Ξ R) | exact Hv | exact Hv' ] |].
@@ -1870,10 +1970,12 @@ Section Impl.
     intros * He; unfold grec_mod_cmd, grec_names.
     assert (Hn : forall p j, member_name Θ1 Ξ p j = member_name Θ2 Ξ p j)
       by (intros; unfold member_name; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity).
-    assert (Hm : List.map (grec_member_name Θ1 Ξ) (ind_members Dd) = List.map (grec_member_name Θ2 Ξ) (ind_members Dd)).
-    { apply List.map_ext; intros M; unfold grec_member_name; destruct (im_head M) as [pm | qc k Is vm]; [ reflexivity |].
-      rewrite Hn; f_equal; f_equal; apply List.map_ext; intros I.
-      destruct (app_head I); try reflexivity; rewrite Hn; reflexivity. }
+    assert (Hm : List.map (grec_member_name Θ1 Ξ) (ind_bmembers Dd) = List.map (grec_member_name Θ2 Ξ) (ind_bmembers Dd)).
+    { assert (Hi : forall Is, inst_member_names Θ1 Ξ Is = inst_member_names Θ2 Ξ Is)
+        by (intros; unfold inst_member_names; f_equal; apply List.map_ext; intros I;
+            destruct (app_head I); try reflexivity; rewrite Hn; reflexivity).
+      apply List.map_ext; intros M; unfold grec_member_name; destruct (im_head M) as [pm | qc k Is vm | qr Is fl];
+        [ reflexivity | rewrite Hn, Hi; reflexivity | rewrite Hi; reflexivity ]. }
     rewrite Hm; reflexivity.
   Qed.
 
@@ -2140,7 +2242,7 @@ Section Impl.
     Forall2 (view_sibs (gds_restrict D Θ) Ξ R) Vs Ss ->
     Forall2 (view_cls (gds_restrict D Θ) Ξ R) Vs csV ->
     Forall2 (view_nps (gds_restrict D Θ) Ξ R) Vs Nvs ->
-    views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
+    views_dfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
     rd_filed (gds_restrict D Θ) Ξ R Vs Ss csD csV Nvs = Some Dd ->
     ind_nil_at (gds_restrict D Θ) Ξ (ind_qname Ξ (raw_member_name Mr0)) Dd (grp_self_insts (ind_qname Ξ (raw_member_name Mr0)) Dd) ->
     gen_names_free Ξ R Dd ->
@@ -2968,15 +3070,17 @@ Section Impl.
     | inleft (existT _ Mr0 (exist _ Mrs HR))
         with Forall_dec (fun Mr => raw_member_sort Mr = raw_member_sort Mr0) (fun Mr => exp_eq_dec (raw_member_sort Mr) (raw_member_sort Mr0)) Mrs => {
       | right _ => rerr (run_error_msg ("the types declared with " ++ raw_member_name Mr0 ++ " are not all of its sort"))
-      | left Hsort with rms_cls_dec (gds_restrict D Θ) Ξ (pre_gctx H) R (raw_decl_members R) => {
+      | left Hsort with @rms_cls_dec (gds_restrict D Θ) Ξ (fctx_cmd B (gds_restrict D Θ) Ξ) (pre_gctx H) R (raw_decl_members R) => {
         | inr (exist _ (x, c, y, cls_why_code sf) _) => rerr (run_error_msg (cls_msg x c y sf))
         | inr (exist _ (x, c, y, cls_why_unapplied k) _) =>
             rerr (run_error_msg (cls_msg (List.nth k (List.map raw_member_name (raw_decl_members R)) x) c y 3))
         | inr (exist _ (x, c, y, cls_why_nested h) _) => rerr (run_error_nested x c y h)
+        | inr (exist _ (x, c, y, cls_why_self_arg j k Δ h) _) =>
+            rerr (run_error_self_arg (List.nth j (List.map raw_member_name (raw_decl_members R)) x) x c y k Δ h)
         | inl (exist _ csD Hcls) with views_search (gds_restrict D Θ) Ξ (pre_gctx H) R csD => {
           | rerr e => rerr e
           | rok (existT _ Vs (existT _ Ss (existT _ csV (exist _ Nvs Hv))))
-              with opt_case (rd_filed (gds_restrict D Θ) Ξ R Vs Ss csD csV Nvs) => {
+              with @rd_filed_case (gds_restrict D Θ) Ξ (fctx_cmd B (gds_restrict D Θ) Ξ) R Vs Ss csD csV Nvs => {
             | inright _ => rerr (run_error_msg ("internal error: the group of " ++ raw_member_name Mr0 ++ " cannot be filed"))
             | inleft (exist _ Dd Hfil) with nodup_dec (List.map raw_member_name (raw_decl_members R)) => {
               | right _ => rerr (run_error_msg ("two types declared with " ++ raw_member_name Mr0 ++ " have one name"))
@@ -2984,7 +3088,7 @@ Section Impl.
                 | right _ =>
                     rerr (run_error_msg ("duplicate name " ++ match first_taken Ξ (raw_decl_members R) with Some x => x | None => raw_member_name Mr0 end))
                 | left Hfr
-                    with ind_nil_at_dec (gds_restrict D Θ) Ξ (pre_gctx H) (ind_qname Ξ (raw_member_name Mr0)) Dd
+                    with @ind_nil_at_dec (gds_restrict D Θ) Ξ (fctx_cmd B (gds_restrict D Θ) Ξ) (pre_gctx H) (ind_qname Ξ (raw_member_name Mr0)) Dd
                            (grp_self_insts (ind_qname Ξ (raw_member_name Mr0)) Dd) => {
                   | right _ => rerr (ind_wf_error (gds_restrict D Θ) Ξ (pre_gctx H) R Mr0 Dd)
                   | left Hnil with inspect (gen_names_blame Ξ R Dd (raw_member_name Mr0)) => {
@@ -3109,8 +3213,8 @@ Section Impl.
       not match its member's constructors ([branch_check]), the blocks
       taken in member order. *)
   Definition blocks_branch_blame (D : ind_decl) (Bks : list eblock) : option run_error :=
-    List.fold_right (fun mb r => first_some (branch_check (fst mb) (eb_brs (snd mb))) (fun _ => r)) None
-      (List.combine (ind_members D) Bks).
+    List.fold_right (fun mb r => first_some (branch_check D (fst mb) (eb_brs (snd mb))) (fun _ => r)) None
+      (List.combine (ind_bmembers D) Bks).
 
   (** Why a command declaring [ox] has no fill, as a run error: a term's
       context is given past the stack's telescope.  An eliminator no
@@ -3789,7 +3893,7 @@ Section Impl.
     destruct (list_case (raw_decl_members R)) as [[Mr0' [Mrs' HR']] | HR']; [| congruence ].
     pose proof (eq_trans (eq_sym HR) HR') as ER; injection ER as <- <-; simp ind_step.
     destruct (Forall_dec _ _ Mrs) as [Hsort' | Hsort']; [| contradiction ]; simp ind_step.
-    destruct (rms_cls_dec _ _ _ R (raw_decl_members R)) as [[csD' Hcls'] | [[[[x c] y] w] Hn]];
+    destruct (@rms_cls_dec _ _ (fctx_cmd B _ _) _ R (raw_decl_members R)) as [[csD' Hcls'] | [[[[x c] y] w] Hn]];
       [| exfalso; exact (Hn _ HclsR) ].
     assert (csD' = csD) as ->
       by (eapply Forall2_functional; [| exact Hcls' | exact HclsR ];
@@ -3800,13 +3904,13 @@ Section Impl.
     destruct (views_ok_functional _ _ _ _ _ _ _ _ _ _ _ _ Hv' HvR) as (-> & -> & -> & ->).
     assert (HfilR : rd_filed (gds_restrict D Θ) Ξ R Vs Ss csD csV Nvs = Some Dd)
       by (rewrite <- (equiv_rd_filed _ _ _ He); exact Hfil).
-    destruct (opt_case (rd_filed _ _ _ _ _ _ _ _)) as [[Dd' Hfil'] | Hfil']; [| congruence ].
+    destruct (@rd_filed_case _ _ (fctx_cmd B _ _) _ _ _ _ _ _) as [[Dd' Hfil'] | Hfil']; [| congruence ].
     assert (Dd' = Dd) as -> by congruence; simp ind_step.
     destruct (nodup_dec _) as [Hnd' | Hnd']; [| contradiction ]; simp ind_step.
     destruct (Forall_dec _ _ (raw_decl_members R)) as [Hfr' | Hfr'].
     2:{ exfalso; apply Hfr'; rewrite List.Forall_map in Hfr; exact Hfr. }
     simp ind_step.
-    destruct (ind_nil_at_dec _ _ _ _ _ _) as [Hnil' | Hnil']; [| contradiction ]; simp ind_step.
+    destruct (@ind_nil_at_dec _ _ (fctx_cmd B _ _) _ _ _ _) as [Hnil' | Hnil']; [| contradiction ]; simp ind_step.
     destruct (inspect (gen_names_blame Ξ R Dd (raw_member_name Mr0))) as [[e |] Egn];
       [ exfalso; rewrite (gen_names_blame_free Hgn) in Egn; discriminate |]; simp ind_step.
     (* the members, then the recursor module from where they end *)

@@ -147,21 +147,24 @@ Proof.
 Qed.
 
 Section Filed.
-  Variables (p : qname) (D : ind_decl) (Vs : list rview) (nu n t nn : nat).
+  Variables (p : qname) (D : ind_decl) (Ks : list view_key) (nu n t nn : nat).
   Hypothesis HDnu : ind_nu D = nu + t.
   Hypothesis Hdecl : forall i Us Ns, i < n -> ind_mty p D i Us Ns = apps (a_ind p i) (Us ++ Ns).
-  Hypothesis Hview : forall v qc k Cs, List.nth_error Vs v = Some (qc, k, Cs) ->
-    (forall C, In C Cs -> exp_scoped (nu + t) C[sb_selfs p nu n t] /\ exp_mvc 0 C[sb_selfs p nu n t]) /\
-    forall Us Ns, ind_mty p D (n + v) Us Ns = apps (a_ind qc k) (List.map (fun C => C[sb_selfs p nu n t][sb_of_list Id Us]) Cs ++ Ns).
+  Hypothesis Hview : forall v x, List.nth_error Ks v = Some x ->
+    (forall C, In C (view_key_args x) -> exp_scoped (nu + t) C[sb_selfs p nu n t] /\ exp_mvc 0 C[sb_selfs p nu n t]) /\
+    forall Us Ns, ind_mty p D (n + v) Us Ns
+                  = apps (view_key_head x) (List.map (fun C => C[sb_selfs p nu n t][sb_of_list Id Us]) (view_key_args x) ++ Ns).
   Variable grp_nu : qname -> nat -> option nat.
+  Variable rec_np : qname -> option nat.
 
   Lemma cls_head_filed : forall pat d T r s,
       match app_head T with
       | a_var x => cls_self nu (nn + nu) n pat d x (app_args T)
       | a_ind qc k => cls_nest grp_nu nu (nn + nu) n pat d qc k (app_args T)
+      | a_record qr => cls_record_view rec_np nu (nn + nu) n pat d qr (app_args T)
       | _ => None
       end = Some r ->
-      rptyp_num n Vs r = Some s ->
+      rptyp_num n Ks r = Some s ->
       T[sb_selfs p (d + List.length pat + (nn + nu)) n t] = ptyp_ty p D nn (List.repeat false d ++ pat) s.
   Proof.
     intros * H Hs; rewrite (apps_app_head_args T); set (args := app_args T) in *.
@@ -176,9 +179,9 @@ Section Filed.
       destruct (img_pats (cls_pat d (nn + nu) n pat) (List.skipn m args)) as [Ns |] eqn:ENs; [| discriminate ].
       destruct (selfs_occur nu n Cs); [| discriminate ].
       injection H as <-; cbn [rptyp_num] in Hs.
-      destruct (rview_index (qc, k, Cs) Vs) as [v |] eqn:Ev; [| discriminate ]; cbn in Hs; injection Hs as <-.
-      apply rview_index_in in Ev.
-      destruct (Hview _ _ _ _ Ev) as [HsC Hty].
+      destruct (view_key_index (vk_ind qc k Cs) Ks) as [v |] eqn:Ev; [| discriminate ]; cbn in Hs; injection Hs as <-.
+      apply view_key_index_in in Ev.
+      destruct (Hview _ _ Ev) as [HsC Hty]; cbn [view_key_head view_key_args] in HsC, Hty.
       cbn [ptyp_ty]; rewrite Hty.
       rewrite apps_exp_sub; cbn [exp_sub].
       rewrite <- (List.firstn_skipn m args), List.map_app.
@@ -223,9 +226,34 @@ Section Filed.
         replace b with (List.length (List.repeat false d ++ pat) + (nn + nu))
           by (unfold b; rewrite List.length_app, List.repeat_length; lia).
         unfold sb_selfs; apply wk_cls_sub; apply length_self_insts.
+    - (** A record at its instance: the record view of the instance. *)
+      match goal with Eh : app_head T = a_record ?a |- _ => rename a into qr end.
+      unfold cls_record_view in H.
+      destruct (rec_np qr) as [m |] eqn:Em; [| discriminate ].
+      destruct (Nat.eqb m (List.length args)) eqn:Eml; [| discriminate ].
+      destruct (img_pats (List.repeat true (d + List.length pat + (nn + nu - nu))) args) as [Is |] eqn:EIs; [| discriminate ].
+      destruct (selfs_occur nu n Is && selfs_guarded nu n Is)%bool; [| discriminate ].
+      injection H as <-; cbn [rptyp_num] in Hs.
+      destruct (view_key_index (vk_record qr Is) Ks) as [v |] eqn:Ev; [| discriminate ]; cbn in Hs; injection Hs as <-.
+      apply view_key_index_in in Ev.
+      destruct (Hview _ _ Ev) as [HsC Hty]; cbn [view_key_head view_key_args] in HsC, Hty.
+      cbn [ptyp_ty List.map]; rewrite Hty, List.app_nil_r.
+      rewrite apps_exp_sub; cbn [exp_sub].
+      rewrite (img_pats_some _ _ _ EIs), !List.map_map.
+      f_equal.
+      apply List.map_ext_in; intros C HC.
+      destruct (HsC _ HC) as [HCs HCm].
+      unfold ind_uvars; rewrite HDnu, List.length_app, List.repeat_length.
+      rewrite exp_at_vars by assumption.
+      rewrite <- exp_sub_of_wk with (φ := wk_pat _),
+        exp_sub_sb_eq with (σ := ι (wk_pat _)) (τ := ι (wk_shiftn (d + List.length pat + nn))).
+      + rewrite exp_sub_of_wk.
+        unfold sb_selfs; replace (d + List.length pat + (nn + nu)) with ((d + List.length pat + nn) + nu) by lia.
+        rewrite exp_shiftn_sub_qn; reflexivity.
+      + intros x; cbn; rewrite wk_pat_trues; f_equal; lia.
   Qed.
 
-  Lemma cls_sh_filed : forall pat T d r s, cls_sh grp_nu nu (nn + nu) n pat d T = Some r -> rptyp_num n Vs r = Some s ->
+  Lemma cls_sh_filed : forall pat T d r s, cls_sh grp_nu rec_np nu (nn + nu) n pat d T = Some r -> rptyp_num n Ks r = Some s ->
       T[sb_selfs p (d + List.length pat + (nn + nu)) n t] = ptyp_ty p D nn (List.repeat false d ++ pat) s.
   Proof.
     intros pat T; induction T; intros d0 r0 s0 Hcls Hnum.
@@ -233,9 +261,9 @@ Section Filed.
     (** A [Π] over a [Self]-free domain. *)
     cbn [cls_sh] in Hcls.
     destruct (img_pat (cls_pat d0 (nn + nu) n pat) T1) as [B0 |] eqn:EB; [| discriminate ].
-    destruct (cls_sh grp_nu nu (nn + nu) n pat (S d0) T2) as [r' |] eqn:Er; [| discriminate ].
+    destruct (cls_sh grp_nu rec_np nu (nn + nu) n pat (S d0) T2) as [r' |] eqn:Er; [| discriminate ].
     cbn in Hcls; injection Hcls as <-; cbn [rptyp_num] in Hnum.
-    destruct (rptyp_num n Vs r') as [s' |] eqn:Es; [| discriminate ]; cbn in Hnum; injection Hnum as <-.
+    destruct (rptyp_num n Ks r') as [s' |] eqn:Es; [| discriminate ]; cbn in Hnum; injection Hnum as <-.
     cbn [exp_sub ptyp_ty]; f_equal.
     - rewrite (img_pat_some _ _ _ EB); unfold cls_pat; rewrite List.app_assoc.
       replace (d0 + List.length pat + (nn + nu)) with (List.length (List.repeat false d0 ++ pat) + (nn + nu))
@@ -244,7 +272,7 @@ Section Filed.
     - exact (IHT2 _ _ _ Er Es).
   Qed.
 
-  Lemma cls_arg_filed : forall pat T g g', cls_arg grp_nu nu (nn + nu) n pat T = Some g -> rcarg_num n Vs g = Some g' ->
+  Lemma cls_arg_filed : forall pat T g g', cls_arg grp_nu rec_np nu (nn + nu) n pat T = Some g -> rcarg_num n Ks g = Some g' ->
       T[sb_selfs p (List.length pat + (nn + nu)) n t] = carg_entry p D nn pat g'.
   Proof.
     intros * Hc Hn; unfold cls_arg in Hc.
@@ -252,9 +280,9 @@ Section Filed.
     - injection Hc as <-; cbn in Hn; injection Hn as <-; cbn [carg_entry].
       rewrite (img_pat_some _ _ _ EA); unfold cls_pat; cbn [List.repeat List.app].
       unfold sb_selfs; apply wk_cls_sub; apply length_self_insts.
-    - destruct (cls_sh grp_nu nu (nn + nu) n pat 0 T) as [r |] eqn:Er; [| discriminate ].
+    - destruct (cls_sh grp_nu rec_np nu (nn + nu) n pat 0 T) as [r |] eqn:Er; [| discriminate ].
       injection Hc as <-; cbn in Hn.
-      destruct (rptyp_num n Vs r) as [s |] eqn:Es; [| discriminate ]; injection Hn as <-; cbn [carg_entry].
+      destruct (rptyp_num n Ks r) as [s |] eqn:Es; [| discriminate ]; injection Hn as <-; cbn [carg_entry].
       exact (cls_sh_filed _ _ _ _ _ Er Es).
   Qed.
 
@@ -301,45 +329,51 @@ Proof.
   constructor; [ reflexivity | eapply IH; exact E ].
 Qed.
 
-Lemma rv_filed_view : forall Θ Ξ σ n Vs x ss cs Nv M, rv_filed Θ Ξ σ n Vs x ss cs Nv = Some M -> im_is_decl M = false.
+Lemma rv_filed_view : forall Θ Ξ σ n Ks x ss cs Nv M, rv_filed Θ Ξ σ n Ks x ss cs Nv = Some M -> im_is_decl M = false.
 Proof.
-  intros * H; destruct x as [[qc k] Cs]; unfold rv_filed in H.
-  destruct (ind_lookup Θ Ξ qc); [| discriminate ].
-  destruct (ind_member _ k); [| discriminate ].
-  destruct (rcons_num n Vs cs); [| discriminate ].
-  injection H as <-; reflexivity.
+  intros * H; destruct x as [qc k Cs | qr Is]; unfold rv_filed in H.
+  - destruct (ind_lookup Θ Ξ qc); [| discriminate ].
+    destruct (ind_member _ k); [| discriminate ].
+    destruct (rcons_num n Ks cs); [| discriminate ].
+    injection H as <-; reflexivity.
+  - destruct (record_lookup Θ Ξ qr); [| discriminate ].
+    destruct (rcons_num n Ks cs); [| discriminate ].
+    injection H as <-; reflexivity.
 Qed.
 
-Lemma rvs_filed_views : forall Θ Ξ σ n Vs xs Ss css Nvs Mvs, rvs_filed Θ Ξ σ n Vs xs Ss css Nvs = Some Mvs ->
+Lemma rvs_filed_views : forall Θ Ξ σ n Ks xs Vs Ss css Nvs Mvs, rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs = Some Mvs ->
     Forall (fun M => im_is_decl M = false) Mvs.
 Proof.
-  induction xs as [| x xs IH]; intros [| ss Ss] [| cs css] [| Nv Nvs] Mvs H; cbn in H; try discriminate;
-    [ injection H as <-; constructor |].
-  destruct (rv_filed Θ Ξ σ n Vs x ss cs Nv) as [M |] eqn:E1; [| discriminate ].
-  destruct (rvs_filed Θ Ξ σ n Vs xs Ss css Nvs) as [Ms' |] eqn:E2; [| discriminate ]; injection H as <-.
+  induction xs as [| x xs IH]; intros * H; cbn in H; [ injection H as <-; constructor |].
+  destruct (view_key_index x Vs) as [w |]; [| discriminate ].
+  destruct (rv_filed _ _ _ _ _ _ _ _ _) as [M |] eqn:E1; [| discriminate ].
+  destruct (rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs) as [Ms' |] eqn:E2; [| discriminate ]; injection H as <-.
   constructor; [ exact (rv_filed_view _ _ _ _ _ _ _ _ _ _ E1) | eapply IH; exact E2 ].
 Qed.
 
-Lemma rvs_filed_nth : forall Θ Ξ σ n Vs xs Ss css Nvs Mvs, rvs_filed Θ Ξ σ n Vs xs Ss css Nvs = Some Mvs ->
-    forall v x ss cs Nv, List.nth_error xs v = Some x -> List.nth_error Ss v = Some ss -> List.nth_error css v = Some cs ->
-      List.nth_error Nvs v = Some Nv -> List.nth_error Mvs v = rv_filed Θ Ξ σ n Vs x ss cs Nv.
+(** The [v]-th view filed is the [v]-th key's, its data read off the
+    tables at the key's position among the views found. *)
+Lemma rvs_filed_nth : forall Θ Ξ σ n Ks xs Vs Ss css Nvs Mvs, rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs = Some Mvs ->
+    forall v x, List.nth_error xs v = Some x ->
+      exists w, view_key_index x Vs = Some w /\
+        List.nth_error Mvs v = rv_filed Θ Ξ σ n Ks x (List.nth w Ss nil) (List.nth w css nil) (List.nth w Nvs nil).
 Proof.
-  induction xs as [| x0 xs IH]; intros [| ss0 Ss] [| cs0 css] [| Nv0 Nvs] Mvs H v x ss cs Nv Hx Hs Hc HN; cbn in H;
-    try discriminate; try (destruct v; discriminate).
-  destruct (rv_filed Θ Ξ σ n Vs x0 ss0 cs0 Nv0) as [M |] eqn:E1; [| discriminate ].
-  destruct (rvs_filed Θ Ξ σ n Vs xs Ss css Nvs) as [Ms' |] eqn:E2; [| discriminate ]; injection H as <-.
-  destruct v as [| v]; cbn in Hx, Hs, Hc, HN |- *.
-  - injection Hx as <-; injection Hs as <-; injection Hc as <-; injection HN as <-; symmetry; exact E1.
-  - exact (IH _ _ _ _ E2 _ _ _ _ _ Hx Hs Hc HN).
+  induction xs as [| x0 xs IH]; intros * H v x Hx; cbn in H; [ destruct v; discriminate |].
+  destruct (view_key_index x0 Vs) as [w0 |] eqn:Ew; [| discriminate ].
+  destruct (rv_filed _ _ _ _ _ _ _ _ _) as [M |] eqn:E1; [| discriminate ].
+  destruct (rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs) as [Ms' |] eqn:E2; [| discriminate ]; injection H as <-.
+  destruct v as [| v]; cbn in Hx |- *.
+  - injection Hx as <-; exists w0; split; [ exact Ew | symmetry; exact E1 ].
+  - exact (IH _ _ _ _ _ E2 _ _ Hx).
 Qed.
 
-Lemma rvs_filed_length : forall Θ Ξ σ n Vs xs Ss css Nvs Mvs, rvs_filed Θ Ξ σ n Vs xs Ss css Nvs = Some Mvs ->
+Lemma rvs_filed_length : forall Θ Ξ σ n Ks xs Vs Ss css Nvs Mvs, rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs = Some Mvs ->
     List.length Mvs = List.length xs.
 Proof.
-  induction xs as [| x xs IH]; intros [| ss Ss] [| cs css] [| Nv Nvs] Mvs H; cbn in H; try discriminate;
-    [ injection H as <-; reflexivity |].
-  destruct (rv_filed Θ Ξ σ n Vs x ss cs Nv) as [M |] eqn:E1; [| discriminate ].
-  destruct (rvs_filed Θ Ξ σ n Vs xs Ss css Nvs) as [Ms' |] eqn:E2; [| discriminate ]; injection H as <-.
+  induction xs as [| x xs IH]; intros * H; cbn in H; [ injection H as <-; reflexivity |].
+  destruct (view_key_index x Vs) as [w |]; [| discriminate ].
+  destruct (rv_filed _ _ _ _ _ _ _ _ _) as [M |] eqn:E1; [| discriminate ].
+  destruct (rvs_filed Θ Ξ σ n Ks xs Vs Ss css Nvs) as [Ms' |] eqn:E2; [| discriminate ]; injection H as <-.
   cbn; f_equal; eapply IH; exact E2.
 Qed.
 
@@ -445,7 +479,7 @@ Qed.
 
 Section ConTypes.
   Variables (Θ : gdeps) (Ξ : gstack) (pv : bool) (R : raw_decl) (Mr0 : raw_member) (Mrs : list raw_member)
-    (csD : list (list (string * list rcarg))) (Vs : list rview) (Ss : list (list rview))
+    (csD : list (list (string * list rcarg))) (Vs : list view_key) (Ss : list (list view_key))
     (csV : list (list (string * list rcarg))) (Nvs : list ctx) (Ms Mvs : list imember) (Ξf : gstack).
 
   #[local] Abbreviation p := (ind_qname Ξ (raw_member_name Mr0)).
@@ -453,6 +487,8 @@ Section ConTypes.
   #[local] Abbreviation nu := (rd_nu R).
   #[local] Abbreviation t := (List.length (gs_tele Ξ)).
   #[local] Abbreviation D := (mk_ind (raw_decl_uparams R ++ gs_tele Ξ) (raw_member_sort Mr0) (Ms ++ Mvs)).
+  (** The views in filing order *)
+  #[local] Abbreviation Ks := (filed_keys (meets_tbl Vs csV) Vs).
 
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
   Hypothesis HMr : raw_decl_members R = Mr0 :: Mrs.
@@ -461,8 +497,8 @@ Section ConTypes.
   Hypothesis Hsibs : Forall2 (view_sibs Θ Ξ R) Vs Ss.
   Hypothesis Hvcls : Forall2 (view_cls Θ Ξ R) Vs csV.
   Hypothesis Hnps : Forall2 (view_nps Θ Ξ R) Vs Nvs.
-  Hypothesis Hms : rms_filed Ξ n Vs (raw_decl_members R) csD = Some Ms.
-  Hypothesis Hmvs : rvs_filed Θ Ξ (sb_selfs p nu n t) n Vs Vs Ss csV Nvs = Some Mvs.
+  Hypothesis Hms : rms_filed Ξ n Ks (raw_decl_members R) csD = Some Ms.
+  Hypothesis Hmvs : rvs_filed Θ Ξ (sb_selfs p nu n t) n Ks Ks Vs Ss csV Nvs = Some Mvs.
   (** The stack the declared members end on: well formed, the stack before
       embedded in it, the group found at its first member's path *)
   Hypothesis Hfwf : ⊢ᵍ Θ ⍮ Ξf.
@@ -497,7 +533,7 @@ Section ConTypes.
       by (induction 1 as [| M l HM _ IH]; cbn; [ reflexivity | rewrite HM, IH; reflexivity ]).
     assert (H2 : forall l, Forall (fun M => im_is_decl M = false) l -> List.filter im_is_decl l = nil)
       by (induction 1 as [| M l HM _ IH]; cbn; [ reflexivity | rewrite HM, IH; reflexivity ]).
-    rewrite (H1 _ (rms_filed_decl _ _ _ _ _ _ Hms)), (H2 _ (rvs_filed_views _ _ _ _ _ _ _ _ _ _ Hmvs)), List.app_nil_r.
+    rewrite (H1 _ (rms_filed_decl _ _ _ _ _ _ Hms)), (H2 _ (rvs_filed_views _ _ _ _ _ _ _ _ _ _ _ Hmvs)), List.app_nil_r.
     exact length_filed_decls.
   Qed.
 
@@ -509,44 +545,52 @@ Section ConTypes.
     rewrite List.nth_error_app1 by (rewrite length_filed_decls; exact Hi).
     destruct (nth_error_lt_some Ms i ltac:(rewrite length_filed_decls; exact Hi)) as [M HM]; rewrite HM.
     pose proof (proj1 (List.Forall_forall _ _) (rms_filed_decl _ _ _ _ _ _ Hms) M (List.nth_error_In _ _ HM)) as Hd.
-    unfold im_ty_at, im_ref, im_pre, im_is_decl in *; destruct (im_head M); [ reflexivity | discriminate ].
+    unfold im_ty_at, im_ref, im_pre, im_is_decl in *; destruct (im_head M); [ reflexivity | discriminate | discriminate ].
   Qed.
 
-  Lemma filed_view : forall v qc k Cs, List.nth_error Vs v = Some (qc, k, Cs) ->
-      (forall C, In C Cs -> exp_scoped (nu + t) C[sb_selfs p nu n t] /\ exp_mvc 0 C[sb_selfs p nu n t]) /\
+  Lemma filed_view : forall v x, List.nth_error Ks v = Some x ->
+      (forall C, In C (view_key_args x) -> exp_scoped (nu + t) C[sb_selfs p nu n t] /\ exp_mvc 0 C[sb_selfs p nu n t]) /\
       forall Us Ns, ind_mty p D (n + v) Us Ns
-                    = apps (a_ind qc k) (List.map (fun C => C[sb_selfs p nu n t][sb_of_list Id Us]) Cs ++ Ns).
+                    = apps (view_key_head x) (List.map (fun C => C[sb_selfs p nu n t][sb_of_list Id Us]) (view_key_args x) ++ Ns).
   Proof.
     intros * Hv.
-    destruct (Forall2_nth_error_l _ _ _ _ _ Hsibs Hv) as (ss & Hss & _).
-    destruct (Forall2_nth_error_l _ _ _ _ _ Hvcls Hv) as (cs & Hcs & _).
-    destruct (Forall2_nth_error_l _ _ _ _ _ Hnps Hv) as (Nv & HNv & _).
-    pose proof (rvs_filed_nth _ _ _ _ _ _ _ _ _ _ Hmvs _ _ _ _ _ Hv Hss Hcs HNv) as Hnth.
+    destruct (rvs_filed_nth _ _ _ _ _ _ _ _ _ _ _ Hmvs _ _ Hv) as (w & _ & Hnth).
     assert (Hlt : v < List.length Mvs)
-      by (rewrite (rvs_filed_length _ _ _ _ _ _ _ _ _ _ Hmvs); apply List.nth_error_Some; congruence).
+      by (rewrite (rvs_filed_length _ _ _ _ _ _ _ _ _ _ _ Hmvs); apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some Mvs v Hlt) as [M HM].
-    rewrite HM in Hnth; symmetry in Hnth; unfold rv_filed in Hnth.
-    destruct (ind_lookup Θ Ξ qc); [| discriminate ].
-    destruct (ind_member _ k); [| discriminate ].
-    destruct (rcons_num n Vs cs); [| discriminate ].
-    injection Hnth as <-.
-    match type of HM with List.nth_error _ _ = Some ?M0 => set (M := M0) in HM end.
     assert (Hk : ind_member D (n + v) = Some M).
     { unfold ind_member; cbn [ind_members]; rewrite List.nth_error_app2 by (rewrite length_filed_decls; lia).
       rewrite length_filed_decls; replace (n + v - n) with v by lia; exact HM. }
-    split.
-    - intros C HC.
-      pose proof (decl_closed_head_scoped _ filed_decl_closed _ _ _ _ _ _ Hk eq_refl) as Hsc.
-      destruct (decl_mvc_members _ (decl_typed_mvc _ _ _ filed_decl_typed) _ _ Hk) as (_ & Hmv & _); cbn in Hmv.
-      rewrite List.Forall_forall in Hsc, Hmv.
-      pose proof (List.in_map (fun C0 => C0[sb_selfs p nu n t]) _ _ HC) as HC'.
-      rewrite filed_nu in Hsc; split; [ apply Hsc | apply Hmv ]; exact HC'.
-    - intros Us Ns; unfold ind_mty; rewrite Hk; unfold im_ty_at, im_ref, im_pre; cbn [im_head fst snd M].
-      rewrite List.map_map; reflexivity.
+    rewrite HM in Hnth; symmetry in Hnth; unfold rv_filed in Hnth.
+    destruct (decl_mvc_members _ (decl_typed_mvc _ _ _ filed_decl_typed) _ _ Hk) as (_ & Hmv & _).
+    destruct x as [qc k Cs | qr Is]; cbn [view_key_head view_key_args].
+    - destruct (ind_lookup Θ Ξ qc); [| discriminate ].
+      destruct (ind_member _ k); [| discriminate ].
+      destruct (rcons_num n Ks _); [| discriminate ].
+      injection Hnth as <-.
+      split.
+      + intros C HC.
+        pose proof (decl_closed_head_scoped _ filed_decl_closed _ _ _ _ _ _ Hk eq_refl) as Hsc.
+        cbn in Hmv; rewrite List.Forall_forall in Hsc, Hmv.
+        pose proof (List.in_map (fun C0 => C0[sb_selfs p nu n t]) _ _ HC) as HC'.
+        rewrite filed_nu in Hsc; split; [ apply Hsc | apply Hmv ]; exact HC'.
+      + intros Us Ns; unfold ind_mty; rewrite Hk; unfold im_ty_at, im_ref, im_pre; cbn [im_head fst snd].
+        rewrite List.map_map; reflexivity.
+    - destruct (record_lookup Θ Ξ qr); [| discriminate ].
+      destruct (rcons_num n Ks _); [| discriminate ].
+      injection Hnth as <-.
+      split.
+      + intros C HC.
+        pose proof (decl_closed_rhead_scoped _ filed_decl_closed _ _ _ _ _ Hk eq_refl) as Hsc.
+        cbn in Hmv; rewrite List.Forall_forall in Hsc, Hmv.
+        pose proof (List.in_map (fun C0 => C0[sb_selfs p nu n t]) _ _ HC) as HC'.
+        rewrite filed_nu in Hsc; split; [ apply Hsc | apply Hmv ]; exact HC'.
+      + intros Us Ns; unfold ind_mty; rewrite Hk; unfold im_ty_at, im_pre; cbn [im_head].
+        rewrite List.map_map; reflexivity.
   Qed.
 
   Lemma filed_member : forall j Mr cs, List.nth_error (raw_decl_members R) j = Some Mr -> List.nth_error csD j = Some cs ->
-      exists cs', rcons_num n Vs cs = Some cs' /\
+      exists cs', rcons_num n Ks cs = Some cs' /\
         ind_member D j = Some (mk_imember (mh_decl (ind_qname Ξ (raw_member_name Mr))) (raw_member_nparams Mr) cs').
   Proof.
     intros * Hj Hc.
@@ -554,7 +598,7 @@ Section ConTypes.
     assert (Hlt : j < List.length Ms)
       by (rewrite length_filed_decls; unfold rd_n; apply List.nth_error_Some; congruence).
     unfold ind_member; cbn [ind_members]; rewrite List.nth_error_app1 by exact Hlt.
-    destruct (rcons_num n Vs cs) as [cs' |]; cbn in H.
+    destruct (rcons_num n Ks cs) as [cs' |]; cbn in H.
     - exists cs'; split; [ reflexivity | exact H ].
     - exfalso; apply List.nth_error_None in H; lia.
   Qed.
@@ -699,7 +743,7 @@ Section ConTypes.
       List.nth_error (raw_decl_members R) j = Some Mr -> ind_member D j = Some Mj -> im_nparams Mj = raw_member_nparams Mr ->
       In (c, gsall) (im_cons Mj) ->
       forall pat args1 args gsr2, cls_args_in Θ Ξ (rm_pctx Ξ R Mr) nu (List.length (raw_member_nparams Mr) + nu) n pat args1 args gsr2 ->
-      forall gs1 gs2, rcargs_num n Vs gsr2 = Some gs2 -> gsall = gs1 ++ gs2 -> pat = cargs_pat gs1 ->
+      forall gs1 gs2, rcargs_num n Ks gsr2 = Some gs2 -> gsall = gs1 ++ gs2 -> pat = cargs_pat gs1 ->
       List.length args1 = List.length gs1 ->
       Θ ⍮ Ξf ⊢ tele_sub (rtele args1) (sb_selfs p (List.length (raw_member_nparams Mr) + nu) n t) ++ im_params D Mj
         ⊆ cargs_ctx p D Mj gs1 ++ im_params D Mj ->
@@ -725,22 +769,23 @@ Section ConTypes.
     - (** An argument: equal at its type as written and as filed, then the
           rest. *)
       cbn [rcargs_num] in Hn.
-      destruct (rcarg_num n Vs g) as [g' |] eqn:Eg; [| discriminate ].
-      destruct (rcargs_num n Vs gsr) as [gs2' |] eqn:Egs; [| discriminate ].
+      destruct (rcarg_num n Ks g) as [g' |] eqn:Eg; [| discriminate ].
+      destruct (rcargs_num n Ks gsr) as [gs2' |] eqn:Egs; [| discriminate ].
       injection Hn as <-.
       set (τ := sb_selfs p (List.length args1 + np) n t).
       (** The argument as classified, as written or as its normal form, and
           its filed entry. *)
-      assert (HT' : exists grp T', cls_arg grp nu np n pat T' = Some g /\
+      assert (HT' : exists grp recs T', cls_arg grp recs nu np n pat T' = Some g /\
                 (T' = T \/ exists i, Θ ⍮ Ξ ⍮ rtele args1 ++ rm_pctx Ξ R Mr ⊢ T ≈ T' : Typeω@i)).
-      { destruct Hg as [g0 Hc | i W g0 _ HTt HW Hc]; [ exists grp_none, T; split; [ exact Hc | left; reflexivity ] |].
-        exists (grp_info Θ Ξ), (nf_to_exp W); split; [ exact Hc | right; exists i ].
+      { destruct Hg as [g0 Hc | i W g0 _ HTt HW Hc]; [ exists grp_none, rec_none, T; split; [ exact Hc | left; reflexivity ] |].
+        exists (grp_info Θ Ξ), (rec_info Θ Ξ), (nf_to_exp W); split; [ exact Hc | right; exists i ].
         exact (@soundness_ty' (gc_mk Θ Ξ) _ _ _ _ HTt HW). }
-      destruct HT' as (grp & T' & Hc & HTT).
+      destruct HT' as (grp & recs & T' & Hc & HTT).
       assert (Hentry : T'[τ] = carg_entry p D (im_nn Mj) pat g').
       { unfold τ; replace (List.length args1) with (List.length pat) by (rewrite Hpat, length_cargs_pat; lia).
         unfold im_nn; rewrite Hnp.
-        exact (cls_arg_filed p D Vs nu n t (List.length (raw_member_nparams Mr)) filed_nu filed_mty_decl filed_view grp _ _ _ _ Hc Eg). }
+        exact (cls_arg_filed p D Ks nu n t (List.length (raw_member_nparams Mr)) filed_nu filed_mty_decl filed_view grp recs
+                 _ _ _ _ Hc Eg). }
       assert (EP : im_params D Mj = raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ) by (unfold im_params; rewrite Hnp; reflexivity).
       (** The filed entry is a type after the filed arguments before it. *)
       assert (Hin' : In (c, (gs1 ++ g' :: nil) ++ gs2') (im_cons Mj))
@@ -831,7 +876,7 @@ Section ConTypes.
     assert (Lgs : List.length gs = List.length args).
     { rewrite <- Hlen; clear -Hgs; revert gs Hgs; induction gsr as [| g gsr IH]; intros gs H; cbn in H;
         [ injection H as <-; reflexivity |].
-      destruct (rcarg_num n Vs g); [| discriminate ]; destruct (rcargs_num n Vs gsr) eqn:E; [| discriminate ].
+      destruct (rcarg_num n Ks g); [| discriminate ]; destruct (rcargs_num n Ks gsr) eqn:E; [| discriminate ].
       injection H as <-; cbn; f_equal; apply IH; reflexivity. }
     (** The result type: [Self_j] at the member's parameters is the type
         former at the frames' and the member's parameters. *)
@@ -887,7 +932,7 @@ Proof.
       rewrite HMr in HM; injection HM as <- <-;
       unfold rd_filed in Hfiled; rewrite HMr in Hfiled;
       destruct (rms_filed _ _ _ _ _) as [Ms |] eqn:Hms; [| discriminate ];
-      destruct (rvs_filed _ _ _ _ _ _ _ _ _) as [Mvs |] eqn:Hmvs; [| discriminate ];
+      destruct (rvs_filed _ _ _ _ _ _ _ _ _ _) as [Mvs |] eqn:Hmvs; [| discriminate ];
       injection Hfiled as <-; rewrite <- HMr in Hms
   end.
   (** The declared members, each with its module, file no unit and embed the
