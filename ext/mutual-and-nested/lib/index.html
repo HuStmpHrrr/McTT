@@ -190,6 +190,8 @@
 </li>
 <li><a class="unit" href="Prelude.Data.Tree.Forest.Properties.html">Prelude›<wbr>Data›<wbr>Tree›<wbr>Forest›<wbr>Properties</a> <p>Laws of <code>Prelude›Data›Tree›Forest</code> over labels <code>A</code> of <code>Type@{u}</code>: <code>map</code> keeps the size and is a functor; the preorder list of labels has the size as its length and commutes with <code>map</code>; the size and the preorder list are folds, by conversion; and <code>toList</code> and <code>fromList</code> are inverse.</p>
 </li>
+<li><a class="unit" href="Prelude.Data.Tree.Paired.html">Prelude›<wbr>Data›<wbr>Tree›<wbr>Paired</a> <p>Binary trees whose subtrees come in a pair: a tree is a <code>leaf a</code> with a label <code>a : A</code>, or a <code>node p</code> whose argument <code>p : Prod u T T</code> is a pair of trees, the records of <code>Prelude›Data›Prod</code>.</p>
+</li>
 <li><a class="unit" href="Prelude.Data.Tree.Rose.html">Prelude›<wbr>Data›<wbr>Tree›<wbr>Rose</a> <p>Rose trees, a nested inductive type: a tree <code>node x ts</code> has a label <code>x : A</code> and a list <code>ts : List u (Rose u A)</code> of children, the lists of <code>Prelude›Data›List</code>.</p>
 </li>
 <li><a class="unit" href="Prelude.Data.Tree.Rose.Properties.html">Prelude›<wbr>Data›<wbr>Tree›<wbr>Rose›<wbr>Properties</a> <p>Laws of <code>Prelude›Data›Tree›Rose</code> over labels <code>A</code> of <code>Type@{u}</code>: <code>map</code> keeps the size, is a functor, and is <code>List</code>'s <code>map</code> on forests; the preorder list of labels has the size as its length and commutes with <code>map</code>.</p>
@@ -253,6 +255,8 @@
 <li><a class="unit" href="NumberTheory.html">NumberTheory</a> <p>A client of <code>Prelude›Arith›Gcd</code>, its laws, and <code>Prelude›Arith›Prime</code>: greatest common divisors, the primes below 30, and closed instances of the theorems, which normalize to <code>⋆</code>.</p>
 </li>
 <li><a class="unit" href="OrderParity.html">OrderParity</a> <p>A client of <code>Prelude›Arith›Order</code> and <code>Prelude›Arith›Parity</code>: closed instances of their theorems normalize to <code>⋆</code>, and <code>leb</code> decides the order.</p>
+</li>
+<li><a class="unit" href="PairedTrees.html">PairedTrees</a> <p>A client of the paired trees of <code>Prelude›Data›Tree›Paired</code>: the operations on a closed tree of numbers, and a function written with the type's recursor, whose case at a node takes one result per subtree.</p>
 </li>
 <li><a class="unit" href="Polynomials.html">Polynomials</a> <p>Polynomials with natural coefficients, evaluated at a point.</p>
 </li>

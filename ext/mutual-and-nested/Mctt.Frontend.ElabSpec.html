@@ -43,7 +43,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1338"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
+<a id="lab1391"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
 
 
 <div class="paragraph"> </div>
@@ -122,7 +122,7 @@ y, x, B, id ↦ Main.M.id, A
     <span class="inlinecode">⟨<span class="id" title="var">Main.M</span>⟩</span> and <span class="inlinecode"><span class="id" title="var">M.id</span></span> <span class="inlinecode"><span class="id" title="library">Nat</span></span> selects its member <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> and applies it. 
 <div class="paragraph"> </div>
 
-<a id="lab1339"></a><h2 class="section">Entries</h2>
+<a id="lab1392"></a><h2 class="section">Entries</h2>
 
 </div>
 <div class="code">
@@ -248,7 +248,7 @@ The entries of names bound in order, innermost first: the binders of
 </div>
 
 <div class="doc">
-<a id="lab1340"></a><h2 class="section">What an Entry Denotes</h2>
+<a id="lab1393"></a><h2 class="section">What an Entry Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -332,7 +332,7 @@ A term binder: the binder, which the core fills when the term is of a
 </div>
 
 <div class="doc">
-<a id="lab1341"></a><h2 class="section">What an Open Declares</h2>
+<a id="lab1394"></a><h2 class="section">What an Open Declares</h2>
 
 
 <div class="paragraph"> </div>
@@ -396,7 +396,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1342"></a><h2 class="section">Eliminators</h2>
+<a id="lab1395"></a><h2 class="section">Eliminators</h2>
 
 
 <div class="paragraph"> </div>
@@ -423,7 +423,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1343"></a><h2 class="section">Objects</h2>
+<a id="lab1396"></a><h2 class="section">Objects</h2>
 
 
 <div class="paragraph"> </div>
@@ -450,7 +450,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#ptele"><span class="id" title="definition">ptele</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span> is the parameter list <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span> as a core context, innermost
+<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#ptele"><span class="id" title="definition">ptele</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span> is the parameter list <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span> as a core context, innermost
     first. 
 </div>
 <div class="code">
@@ -520,7 +520,7 @@ Without an annotation, none is emitted: the core infers it.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><span class="id" title="var">md</span></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is the slot of the local module. 
+<span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><span class="id" title="var">md</span></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is the slot of the local module. 
 </div>
 <div class="code">
 | <a id="sel_let_mod" class="idref" href="#sel_let_mod"><span class="id" title="constructor">sel_let_mod</span></a> : <span class="id" title="keyword">forall</span> <a id="S:179" class="idref" href="#S:179"><span class="id" title="binder">S</span></a> <a id="x:180" class="idref" href="#x:180"><span class="id" title="binder">x</span></a> <a id="ps:181" class="idref" href="#ps:181"><span class="id" title="binder">ps</span></a> <a id="md:182" class="idref" href="#md:182"><span class="id" title="binder">md</span></a> <a id="ob:183" class="idref" href="#ob:183"><span class="id" title="binder">ob</span></a> <a id="U:184" class="idref" href="#U:184"><span class="id" title="binder">U</span></a> <a id="B:185" class="idref" href="#B:185"><span class="id" title="binder">B</span></a>,<br/>
@@ -698,7 +698,7 @@ It loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1344"></a><h2 class="section">Inductive Declarations</h2>
+<a id="lab1397"></a><h2 class="section">Inductive Declarations</h2>
 
 
 <div class="paragraph"> </div>
@@ -768,7 +768,7 @@ The members of a group, under its uniform parameters <span class="inlinecode"><a
 </div>
 
 <div class="doc">
-<a id="lab1345"></a><h2 class="section">Mutual Definitions</h2>
+<a id="lab1398"></a><h2 class="section">Mutual Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -813,7 +813,7 @@ The entries of names filed in order in the open frame at member chain
 </div>
 
 <div class="doc">
-<a id="lab1346"></a><h2 class="section">Record Types</h2>
+<a id="lab1399"></a><h2 class="section">Record Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -835,7 +835,7 @@ The entries of names filed in order in the open frame at member chain
 </div>
 
 <div class="doc">
-The entries of the frame of the record <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> with the parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span>
+The entries of the frame of the record <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> with the parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span>
     and the fields <span class="inlinecode"><span class="id" title="var">fs</span></span>, declared at member chain <span class="inlinecode"><span class="id" title="var">ch</span></span> of the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>,
     before its with-area: the fields, the value, then the parameters,
     innermost first. 
@@ -865,7 +865,7 @@ The names a command declares in its frame.
 </div>
 
 <div class="doc">
-<a id="lab1347"></a><h2 class="section">Commands</h2>
+<a id="lab1400"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
@@ -898,7 +898,7 @@ An axiom is opaque, and has no body.
 </div>
 
 <div class="doc">
-The parameters of <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">body</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span> are read in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#NbE.F"><span class="id" title="variable">F</span></a></span>, its
+The parameters of <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">body</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span> are read in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#NbE.F"><span class="id" title="variable">F</span></a></span>, its
     body in a new frame inside. 
 </div>
 <div class="code">
@@ -912,7 +912,7 @@ The parameters of <span class="inlinecode"><span class="id" title="var">module</
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> is read under the parameters. 
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> is read under the parameters. 
 </div>
 <div class="code">
 | <a id="sc_alias" class="idref" href="#sc_alias"><span class="id" title="constructor">sc_alias</span></a> : <span class="id" title="keyword">forall</span> <a id="ch:404" class="idref" href="#ch:404"><span class="id" title="binder">ch</span></a> <a id="O:405" class="idref" href="#O:405"><span class="id" title="binder">O</span></a> <a id="F:406" class="idref" href="#F:406"><span class="id" title="binder">F</span></a> <a id="pv:407" class="idref" href="#pv:407"><span class="id" title="binder">pv</span></a> <a id="x:408" class="idref" href="#x:408"><span class="id" title="binder">x</span></a> <a id="ps:409" class="idref" href="#ps:409"><span class="id" title="binder">ps</span></a> <a id="oE:410" class="idref" href="#oE:410"><span class="id" title="binder">oE</span></a> <a id="tys:411" class="idref" href="#tys:411"><span class="id" title="binder">tys</span></a> <a id="E:412" class="idref" href="#E:412"><span class="id" title="binder">E</span></a>,<br/>
@@ -971,7 +971,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Read.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the common parameters are read in
+<span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the common parameters are read in
     <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#NbE.F"><span class="id" title="variable">F</span></a></span>, the functions under them.  It declares each function. 
 </div>
 <div class="code">
@@ -986,7 +986,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> is read under the parameters, as an
+<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> is read under the parameters, as an
     alias's target is; whether it names an inductive type, and its
     arguments the type's, is the core's to check. 
 </div>
@@ -1001,7 +1001,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: as an inductive alias; whether <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> names a record
+<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: as an inductive alias; whether <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> names a record
     type is the core's to check. 
 </div>
 <div class="code">
@@ -1025,7 +1025,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Read.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the parameters are
+<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the parameters are
     read in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#NbE.F"><span class="id" title="variable">F</span></a></span>, the sort under them, each field's type under them and the
     fields before it.  The with-area is read in the record's frame
     (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#record_ents"><span class="id" title="definition">record_ents</span></a></span>), with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> in scope outside it; no name it declares is
@@ -1054,7 +1054,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1348"></a><h2 class="section">Units</h2>
+<a id="lab1401"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>
@@ -1064,7 +1064,7 @@ An open loads nothing, so a unit it names must be nameable already.
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> Before the unit's header, they give the scope <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.WrapClo.WrapIhAt.L"><span class="id" title="variable">L</span></a></span> of its parameter
+<li> Before the unit's header, they give the scope <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.GroupElim.Base.Motives.Frame.L"><span class="id" title="variable">L</span></a></span> of its parameter
       types (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#slead"><span class="id" title="inductive">slead</span></a></span>): their units, and the names their opens declare, as
       what they name (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#open_ents"><span class="id" title="definition">open_ents</span></a></span>).  No parameter is in scope there.  Their
       loads run before the unit.
@@ -1105,7 +1105,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1349"></a><h2 class="section">Elaborated Commands Are Written</h2>
+<a id="lab1402"></a><h2 class="section">Elaborated Commands Are Written</h2>
 
 
 <div class="paragraph"> </div>

@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab408"></a><h1 class="section">Consistency of the Core</h1>
+<a id="lab435"></a><h1 class="section">Consistency of the Core</h1>
 
 
 <div class="paragraph"> </div>
@@ -133,7 +133,7 @@
 </div>
 
 <div class="doc">
-<a id="lab409"></a><h2 class="section">The Parameters of an Inductive Type</h2>
+<a id="lab436"></a><h2 class="section">The Parameters of an Inductive Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -257,7 +257,7 @@ A type whose normal form is an inductive type is equal to the type
 </div>
 
 <div class="doc">
-<a id="lab410"></a><h2 class="section">Small Universes Are Injective</h2>
+<a id="lab437"></a><h2 class="section">Small Universes Are Injective</h2>
 
 
 <div class="paragraph"> </div>
@@ -310,7 +310,7 @@ Both level terms move to the larger of their two sorts, where the
 </div>
 
 <div class="doc">
-<a id="lab411"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
+<a id="lab438"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -720,7 +720,7 @@ A type below an inductive type normalises to an inductive type, at the
 </div>
 
 <div class="doc">
-<a id="lab412"></a><h2 class="section">The Parameters of a Record Type</h2>
+<a id="lab439"></a><h2 class="section">The Parameters of a Record Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -964,7 +964,7 @@ The large tier is never below the small one.
 </div>
 
 <div class="doc">
-<a id="lab413"></a><h2 class="section">The Normal Forms of Small Types</h2>
+<a id="lab440"></a><h2 class="section">The Normal Forms of Small Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1036,7 +1036,7 @@ A record type applied to its parameters; its sort is not recorded
 </div>
 
 <div class="doc">
-<a id="lab414"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
+<a id="lab441"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
 
 
 <div class="paragraph"> </div>
@@ -1519,7 +1519,7 @@ In the empty context, a neutral without a global head has no type: its
 </div>
 
 <div class="doc">
-<a id="lab415"></a><h2 class="section">Canonical Forms and Consistency</h2>
+<a id="lab442"></a><h2 class="section">Canonical Forms and Consistency</h2>
 
 
 <div class="paragraph"> </div>
@@ -1643,7 +1643,7 @@ Consistency at a universe: there is no closed inhabitant of <span class="inlinec
 </div>
 
 <div class="doc">
-<a id="lab416"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
+<a id="lab443"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1669,7 +1669,11 @@ Consistency at a universe: there is no closed inhabitant of <span class="inlinec
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Consequences.Types.html#eval_ind_value"><span class="id" title="lemma">eval_ind_value</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Ha</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">ms</span> -&gt;].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hr</span>; <span class="id" title="tactic">subst</span>.<br/>
 &nbsp;&nbsp;1,2: <span class="id" title="tactic">do</span> 5 <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">reflexivity</span> ] ] ].<br/>
-&nbsp;&nbsp;<span class="id" title="var">exfalso</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hc</span>, <span class="id" title="var">HW</span>; <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#no_closed_neutral"><span class="id" title="lemma">no_closed_neutral</span></a>; <span class="id" title="var">eassumption</span>.<br/>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;a&nbsp;record&nbsp;view's&nbsp;value:&nbsp;its&nbsp;one&nbsp;constructor&nbsp;*)</span><br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">do</span> 5 <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">split</span>; [| <span class="id" title="tactic">reflexivity</span> ] ] ].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Hc</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_cons"><span class="id" title="projection">im_cons</span></a> ?<span class="id" title="var">Mj</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a>?<span class="id" title="var">c</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> ?<span class="id" title="var">gs</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> |- <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ind_con"><span class="id" title="definition">ind_con</span></a> ?<span class="id" title="var">Mj</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ind_con"><span class="id" title="definition">ind_con</span></a>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hc</span>; <span class="id" title="var">cbn</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">String.eqb_refl</span>; <span class="id" title="tactic">reflexivity</span> <span class="id" title="keyword">end</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="var">exfalso</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hc</span>, <span class="id" title="var">HW</span>; <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#no_closed_neutral"><span class="id" title="lemma">no_closed_neutral</span></a>; <span class="id" title="var">eassumption</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
@@ -1712,7 +1716,7 @@ Its constructors are <span class="inlinecode"><span class="id" title="var">z</sp
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> [<span class="id" title="var">Δ</span> <span class="id" title="var">S</span> <span class="id" title="var">ms</span>] <span class="id" title="var">z</span> <span class="id" title="var">s</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Builtin.html#nat_shape"><span class="id" title="definition">nat_shape</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Δ</span>; [| <span class="id" title="tactic">discriminate</span> ].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">ms</span> <span class="id" title="keyword">as</span> [| [[<span class="id" title="var">pm</span> | ? ? ? ?] [|] <span class="id" title="var">cs</span>] [|]]; <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">ms</span> <span class="id" title="keyword">as</span> [| [[<span class="id" title="var">pm</span> | ? ? ? ? | ? ? ?] [|] <span class="id" title="var">cs</span>] [|]]; <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">reflexivity</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> [| <span class="id" title="var">k</span>] <span class="id" title="var">Mk</span> <span class="id" title="var">Hk</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hk</span>; [| <span class="id" title="tactic">destruct</span> <span class="id" title="var">k</span>; <span class="id" title="tactic">discriminate</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">injection</span> <span class="id" title="var">Hk</span> <span class="id" title="keyword">as</span> &lt;-; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">reflexivity</span> |].<br/>
@@ -1821,16 +1825,17 @@ A neutral
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#3d476e31e96267ffb844104e9f0eb179"><span class="id" title="notation">Rnf</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#0b6e5f57d5364b7925009ac598539a44"><span class="id" title="notation">⇓</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#0b6e5f57d5364b7925009ac598539a44"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_ind"><span class="id" title="constructor">d_ind</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#p:448"><span class="id" title="variable">p</span></a> 0 <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="Mctt.Core.Semantic.Domain.html#0b6e5f57d5364b7925009ac598539a44"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#v:453"><span class="id" title="variable">v</span></a> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#3d476e31e96267ffb844104e9f0eb179"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_deps"><span class="id" title="method">gc_deps</span></a> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#3d476e31e96267ffb844104e9f0eb179"><span class="id" title="notation">⍮</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_stack"><span class="id" title="method">gc_stack</span></a> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#3d476e31e96267ffb844104e9f0eb179"><span class="id" title="notation">⍮</span></a> 0 <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#3d476e31e96267ffb844104e9f0eb179"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#W:452"><span class="id" title="variable">W</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#nat_read_step"><span class="id" title="inductive">nat_read_step</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#p:448"><span class="id" title="variable">p</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#z:450"><span class="id" title="variable">z</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#s:451"><span class="id" title="variable">s</span></a> <a class="idref" href="Mctt.Core.Consequences.Consistency.html#W:452"><span class="id" title="variable">W</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">Hl</span> <span class="id" title="var">Hs</span> <span class="id" title="var">Hr</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Consequences.Consistency.html#nat_shape_inv"><span class="id" title="lemma">nat_shape_inv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hs</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">Hnu</span> &amp; <span class="id" title="var">Hms</span>).<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hr</span>; <span class="id" title="tactic">subst</span>; [| | <span class="id" title="tactic">constructor</span> ].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hr</span>; <span class="id" title="tactic">subst</span>; [| | | <span class="id" title="tactic">constructor</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup"><span class="id" title="definition">ind_lookup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> ?<span class="id" title="var">D0</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">assert</span> (<span class="id" title="var">D0</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">D</span>) <span class="id" title="keyword">as</span> -&gt; <span class="id" title="tactic">by</span> <span class="id" title="tactic">congruence</span> <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_member"><span class="id" title="definition">ind_member</span></a> <span class="id" title="var">_</span> 0 <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hms</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">_</span> [<span class="id" title="var">Hdec</span> <span class="id" title="var">Hnp</span> <span class="id" title="var">Hcs</span>]] <span class="id" title="keyword">end</span>.<br/>
 </div>
 
 <div class="doc">
-A view is not a declared member. 
+A view, or a record view, is not a declared member. 
 </div>
 <div class="code">
 &nbsp;&nbsp;2: <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_head"><span class="id" title="projection">im_head</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#mh_view"><span class="id" title="constructor">mh_view</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_decl"><span class="id" title="definition">im_is_decl</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hdec</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">H</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hdec</span>; <span class="id" title="tactic">discriminate</span> <span class="id" title="keyword">end</span>.<br/>
+&nbsp;&nbsp;2: <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_head"><span class="id" title="projection">im_head</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#mh_record"><span class="id" title="constructor">mh_record</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_decl"><span class="id" title="definition">im_is_decl</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hdec</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">H</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hdec</span>; <span class="id" title="tactic">discriminate</span> <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ind_con"><span class="id" title="definition">ind_con</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hcs</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>) <span class="id" title="keyword">as</span> [[-&gt; -&gt;] | [-&gt; -&gt;]] <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_np"><span class="id" title="definition">im_np</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nn"><span class="id" title="definition">im_nn</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_nu"><span class="id" title="definition">ind_nu</span></a> <span class="id" title="tactic">in</span> *; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hnu</span>, <span class="id" title="var">Hnp</span> <span class="id" title="tactic">in</span> *; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> *.<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">Rps</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">at</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">in</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#5c48c6bf043241e5aaa4cd78f86ab2f3"><span class="id" title="notation">↘</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">subst</span> <span class="id" title="keyword">end</span>.<br/>
@@ -1876,7 +1881,7 @@ The argument of the constructor <span class="inlinecode"><span class="id" title=
 &nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#wf_con_inversion"><span class="id" title="lemma">wf_con_inversion</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">D'</span> <span class="id" title="var">Mk</span> <span class="id" title="var">gs</span> <span class="id" title="var">Hl'</span> <span class="id" title="var">Hk</span> <span class="id" title="var">Hc</span> <span class="id" title="var">Hsub</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hl'</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">Hl'</span> <span class="id" title="keyword">as</span> &lt;-.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hms</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hk</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">_</span> [<span class="id" title="var">Hdec</span> <span class="id" title="var">Hnp</span> <span class="id" title="var">Hcs</span>]].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_decl"><span class="id" title="definition">im_is_decl</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hdec</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_head"><span class="id" title="projection">im_head</span></a> <span class="id" title="var">Mk</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">Eh</span>; [| <span class="id" title="tactic">discriminate</span> ].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_decl"><span class="id" title="definition">im_is_decl</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hdec</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_head"><span class="id" title="projection">im_head</span></a> <span class="id" title="var">Mk</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">Eh</span>; [| <span class="id" title="tactic">discriminate</span> | <span class="id" title="tactic">discriminate</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hcs</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hc</span>) <span class="id" title="keyword">as</span> [[<span class="id" title="var">_</span> -&gt;] | [<span class="id" title="var">_</span> -&gt;]].<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#con_ty"><span class="id" title="definition">con_ty</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_ctx"><span class="id" title="definition">cargs_ctx</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nn"><span class="id" title="definition">im_nn</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hsub</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hnu</span>, <span class="id" title="var">Hnp</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hsub</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hsub</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ind_mty"><span class="id" title="definition">ind_mty</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hsub</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hk</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hsub</span>.<br/>
@@ -2027,7 +2032,7 @@ The theorems above, with the global context explicit.
 </div>
 
 <div class="doc">
-<a id="lab417"></a><h2 class="section">Opaque Definitions</h2>
+<a id="lab444"></a><h2 class="section">Opaque Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -2320,7 +2325,7 @@ Canonicity at a universe, at any global context: the normal form is of
 </div>
 
 <div class="doc">
-<a id="lab418"></a><h3 class="section">Without Axioms</h3>
+<a id="lab445"></a><h3 class="section">Without Axioms</h3>
 
 </div>
 <div class="code">
@@ -2466,7 +2471,7 @@ At a universe term <span class="inlinecode"><a class="idref" href="Mctt.Core.Sem
 </div>
 
 <div class="doc">
-<a id="lab419"></a><h3 class="section">Every Program</h3>
+<a id="lab446"></a><h3 class="section">Every Program</h3>
 
 
 <div class="paragraph"> </div>

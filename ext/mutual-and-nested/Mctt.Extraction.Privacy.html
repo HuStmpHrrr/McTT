@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1271"></a><h1 class="section">Checking Privacy</h1>
+<a id="lab1323"></a><h1 class="section">Checking Privacy</h1>
 
 
 <div class="paragraph"> </div>
@@ -63,19 +63,19 @@
 </div>
 
 <div class="doc">
-<a id="lab1272"></a><h2 class="section">Where a Module Is Stored, and What It Denotes</h2>
+<a id="lab1324"></a><h2 class="section">Where a Module Is Stored, and What It Denotes</h2>
 
 
 <div class="paragraph"> </div>
 
-    A module expression stored at <span class="inlinecode"><span class="id" title="var">pq</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#msite"><span class="id" title="inductive">msite</span></a></span>) denotes a module read off
-    what is stored there: a closed module stored at <span class="inlinecode"><span class="id" title="var">pq</span></span>, or a term part
-    with a module part that is a closed module stored at <span class="inlinecode"><span class="id" title="var">pq</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Privacy.html#site_desc"><span class="id" title="definition">site_desc</span></a></span>):
+    A module expression stored at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#msite"><span class="id" title="inductive">msite</span></a></span>) denotes a module read off
+    what is stored there: a closed module stored at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span>, or a term part
+    with a module part that is a closed module stored at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Privacy.html#site_desc"><span class="id" title="definition">site_desc</span></a></span>):
     a definition with a module part, or the type former of the member of an
-    inductive group or of the record type stored at <span class="inlinecode"><span class="id" title="var">pq</span></span>. 
+    inductive group or of the record type stored at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span>. 
 <div class="paragraph"> </div>
 
- A closed module stored at <span class="inlinecode"><span class="id" title="var">pq</span></span>. 
+ A closed module stored at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="site_closed" class="idref" href="#site_closed"><span class="id" title="definition">site_closed</span></a> (<a id="9a8b14c362f893ac43e46f6a3df6db9f" class="idref" href="#9a8b14c362f893ac43e46f6a3df6db9f"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="15e8c24b72dd286d43d25c6004c5b75e" class="idref" href="#15e8c24b72dd286d43d25c6004c5b75e"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="pq:3" class="idref" href="#pq:3"><span class="id" title="binder">pq</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="R:4" class="idref" href="#R:4"><span class="id" title="binder">R</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#mdesc"><span class="id" title="inductive">mdesc</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -85,7 +85,7 @@
 </div>
 
 <div class="doc">
-Read off what is stored at <span class="inlinecode"><span class="id" title="var">pq</span></span>: a closed module there, or a term part
+Read off what is stored at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span>: a closed module there, or a term part
     with such a module part. 
 </div>
 <div class="code">
@@ -360,7 +360,7 @@ What a stored module expression denotes is read off its storage.
 </div>
 
 <div class="doc">
-<a id="lab1273"></a><h2 class="section">What Is Stored Below Stays Below</h2>
+<a id="lab1325"></a><h2 class="section">What Is Stored Below Stays Below</h2>
 
 
 <div class="paragraph"> </div>
@@ -695,7 +695,7 @@ A loaded unit or an open frame of the smaller context is, in the
 </div>
 
 <div class="doc">
-<a id="lab1274"></a><h2 class="section">The Order of Sites</h2>
+<a id="lab1326"></a><h2 class="section">The Order of Sites</h2>
 
 
 <div class="paragraph"> </div>
@@ -1113,7 +1113,7 @@ A reference to a member is checked where the member is declared; a
 </div>
 
 <div class="doc">
-<a id="lab1275"></a><h2 class="section">Where a Member is Declared</h2>
+<a id="lab1327"></a><h2 class="section">Where a Member is Declared</h2>
 
 
 <div class="paragraph"> </div>
