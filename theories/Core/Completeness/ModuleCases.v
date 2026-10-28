@@ -127,14 +127,14 @@ Qed.
 
 (** Submodules of equal module expressions valid in what they denote. *)
 Lemma valid_modexp_mem : forall Γ H H' y R T R' T', Γ ⊨ᵐ H ≈ H' -> valid_modexp Γ H -> valid_modexp Γ H' ->
-    mdenote Θm Ξm Γ (me_mem H y) R -> ds_mtele R = Some T ->
-    mdenote Θm Ξm Γ (me_mem H' y) R' -> ds_mtele R' = Some T' ->
+    mdenote Θm Ξm Γ (me_mem H y) R -> mdesc_mod_tele R = Some T ->
+    mdenote Θm Ξm Γ (me_mem H' y) R' -> mdesc_mod_tele R' = Some T' ->
     Γ ⊨ᵐ me_mem H y ≈ me_mem H' y /\ valid_modexp Γ (me_mem H y) /\ valid_modexp Γ (me_mem H' y).
 Proof.
   intros * HH Hs Hs' Hm Ht Hm' Ht'.
-  unfold ds_mtele in Ht, Ht'.
-  destruct (ds_mod R) as [Rm |] eqn:Hmd; [| discriminate ].
-  destruct (ds_mod R') as [Rm' |] eqn:Hmd'; [| discriminate ].
+  unfold mdesc_mod_tele in Ht, Ht'.
+  destruct (mdesc_mod R) as [Rm |] eqn:Hmd; [| discriminate ].
+  destruct (mdesc_mod R') as [Rm' |] eqn:Hmd'; [| discriminate ].
   destruct (valid_modexp_sel Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ Hs Hm Hmd) as (Hy & Hsy & HK).
   destruct (valid_modexp_sel Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ Hs' Hm' Hmd') as (_ & Hsy' & _).
   destruct (proj2 (valid_unit_sel_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs _ _ _ Hm Hmd) as [HS _].
@@ -146,9 +146,9 @@ Qed.
 (** Applications of equal module expressions valid in what they denote. *)
 Lemma valid_modexp_app : forall Γ H H' N N' R T B T1 i R' T' B' T1' j,
     Γ ⊨ᵐ H ≈ H' -> valid_modexp Γ H -> valid_modexp Γ H' ->
-    mdenote Θm Ξm Γ H R -> ds_mtele R = Some T -> tele_view T = Some (B, T1) ->
+    mdenote Θm Ξm Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
     Θm ⍮ Ξm ⍮ Γ ⊢ B : Typeω@i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N ≈ N' : B ->
-    mdenote Θm Ξm Γ H' R' -> ds_mtele R' = Some T' -> tele_view T' = Some (B', T1') ->
+    mdenote Θm Ξm Γ H' R' -> mdesc_mod_tele R' = Some T' -> tele_view T' = Some (B', T1') ->
     Θm ⍮ Ξm ⍮ Γ ⊢ B' : Typeω@j -> Θm ⍮ Ξm ⍮ Γ ⊢ N' : B' -> Γ ⊨ N' : B' ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N' /\ valid_modexp Γ (me_app H N) /\ valid_modexp Γ (me_app H' N').
 Proof.
@@ -556,22 +556,22 @@ Qed.
 Lemma sem_me_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mtele R = Some T ->
+     mdesc_mod_tele R = Some T ->
      mdenote Θ Ξ Γ (me_mem H' y) R' ->
-     ds_mtele R' = Some T' ->
+     mdesc_mod_tele R' = Some T' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_mem H y ≈ me_mem H' y ).
 Proof. intros; sem_intro0; close_modexp valid_modexp_mem. Qed.
 
 Lemma sem_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ H R ->
-     ds_mtele R = Some T ->
+     mdesc_mod_tele R = Some T ->
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
-     ds_mtele R' = Some T' ->
+     mdesc_mod_tele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Typeω@j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
@@ -594,11 +594,11 @@ Qed.
 Lemma sem_me_delta_sel :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_mem H y ≈ me_mem H y ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mod R = Some Rm ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_mem H y ≈ ds_unit Rm ).
+     mdesc_mod R = Some Rm ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_mem H y ≈ mdesc_unit Rm ).
 Proof.
   intros * HH Hm Hmd; sem_intro; try assumption;
-    assert (Hc : Γ ⊨ᵐ me_mem H y ≈ ds_unit Rm /\ valid_unit Θ Ξ Γ (ds_unit Rm))
+    assert (Hc : Γ ⊨ᵐ me_mem H y ≈ mdesc_unit Rm /\ valid_unit Θ Ξ Γ (mdesc_unit Rm))
       by (eapply valid_modexp_canon; eassumption).
   - exact (proj1 Hc).
   - exact (valid_modexp_of_valid_unit _ _ Hgf _ _ (proj2 Hc)).
@@ -633,27 +633,27 @@ Proof. intros; sem_intro0; close_modexp_left valid_modexp_beta_alias0. Qed.
 Lemma sem_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty R = Some A ->
+     mdesc_type R = Some A ->
      Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
-     (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊨ M : A) ->
+     (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊨ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x : A ).
 Proof.
   intros * HH Hm Ht _ _; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
   exact (rel_mem_of_valid_mem _ _ _ _ _ _ HH Hsm).
 Qed.
 
 Lemma sem_exp_eq_mem_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty R = Some A ->
+     mdesc_type R = Some A ->
      mdenote Θ Ξ Γ (me_mem H' x) R' ->
-     ds_ty R' = Some A' ->
+     mdesc_type R' = Some A' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H' x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x ≈ a_mem H' x : A ).
 Proof.
   intros * HH Hm Ht Hm' Ht' _; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
   apply rel_exp_under_ctx_sym.
   exact (rel_mem_of_valid_mem _ _ _ _ _ _ (rel_modexp_under_ctx_sym HH) Hsm).
 Qed.
@@ -661,12 +661,12 @@ Qed.
 Lemma sem_exp_eq_mem_delta :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty R = Some A ->
-     ds_red R = Some M ->
+     mdesc_type R = Some A ->
+     mdesc_reduct R = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x ≈ M : A ).
 Proof.
   intros * HH Hm Ht Hr; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
   rewrite Hr in Hsm.
   exact (rel_mem_red_of_valid_mem _ _ _ _ _ _ HH Hsm).
 Qed.

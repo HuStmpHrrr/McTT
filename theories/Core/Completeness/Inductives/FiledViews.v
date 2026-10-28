@@ -103,9 +103,9 @@ Section FiledViews.
     destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ Hk Hh) as (D2 & Mk' & Hl2 & _ & _ & HIl & _).
     rewrite Hq in Hl2; injection Hl2 as <-.
     split; [ rewrite (filed_link _ _ _ _ _ _ Hk Hh), List.length_map in HIl; exact HIl |].
-    destruct (decl_typed_vwrap _ _ _ Hdt _ _ _ _ _ _ Hk Hh) as (D2 & Hl2 & Hw).
+    destruct (decl_typed_view_wrap _ _ _ Hdt _ _ _ _ _ _ Hk Hh) as (D2 & Hl2 & Hw).
     rewrite Hq in Hl2; injection Hl2 as <-.
-    destruct (vwrap_ok_members _ _ _ Hw _ _ _ Hi' Hv) as (Mv' & HMv' & Hnn & _).
+    destruct (view_wrap_ok_members _ _ _ Hw _ _ _ Hi' Hv) as (Mv' & HMv' & Hnn & _).
     rewrite HMv in HMv'; injection HMv' as <-; exact Hnn.
   Qed.
 

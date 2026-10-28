@@ -96,15 +96,15 @@ Definition nf_is_universe_dec (W : nf) : {nf_is_universe W} + {~ nf_is_universe 
 
 (** For each filed unit, the units its run filed, and the record of builtin
     bindings it ended with. *)
-Definition kmap : Set := list (path * (list path * builtins)).
+Definition unit_closure_map : Set := list (path * (list path * builtins)).
 
-Equations kfind (K : kmap) (fp : path) : option (list path) by struct K :=
+Equations unit_closure_find (K : unit_closure_map) (fp : path) : option (list path) by struct K :=
 | nil, _ => None
-| (fq, (D, _)) :: K', fp => if path_beq fp fq then Some D else kfind K' fp.
+| (fq, (D, _)) :: K', fp => if path_beq fp fq then Some D else unit_closure_find K' fp.
 
-Equations kbt (K : kmap) (fp : path) : option builtins by struct K :=
+Equations unit_closure_builtins (K : unit_closure_map) (fp : path) : option builtins by struct K :=
 | nil, _ => None
-| (fq, (_, B)) :: K', fp => if path_beq fp fq then Some B else kbt K' fp.
+| (fq, (_, B)) :: K', fp => if path_beq fp fq then Some B else unit_closure_builtins K' fp.
 
 Definition p_union (A B : list path) : list path :=
   fold_right (fun x acc => if in_dec path_eq_dec x acc then acc else x :: acc) A B.
@@ -209,7 +209,7 @@ Inductive run_error : Type :=
 | run_error_not_ind : qname -> run_error
 (** A literal, a numeral or the token [ℕ], with no natural-number type
     bound ([Builtin]). *)
-| run_error_lit : lerr -> run_error
+| run_error_lit : literal_failure_reason -> run_error
 (** A branch of an eliminator that binds [n] names where its constructor
     needs [k] non-uniform parameters, [a] arguments and [r] recursive
     results: [run_error_branch_arity c n k a r]. *)
@@ -868,11 +868,11 @@ Record eval_ok (e : eval_entry) : Prop := mk_eval_ok
 Definition logs_ok (l : list eval_entry) : Prop := forall e, In e l -> eval_ok e.
 
 (** The log of a run, in program order, with every entry certified. *)
-Definition elog : Type := {l | logs_ok l}.
+Definition certified_log : Type := {l | logs_ok l}.
 
-Definition log_nil : elog := exist logs_ok nil (fun e (H : In e nil) => False_ind _ H).
+Definition log_nil : certified_log := exist logs_ok nil (fun e (H : In e nil) => False_ind _ H).
 
-Definition log_app (l1 l2 : elog) : elog.
+Definition log_app (l1 l2 : certified_log) : certified_log.
 Proof.
   refine (exist _ (List.app (proj1_sig l1) (proj1_sig l2)) _).
   abstract (intros e He; apply in_app_or in He as [He | He]; [ exact (proj2_sig l1 _ He) | exact (proj2_sig l2 _ He) ]).
@@ -926,7 +926,7 @@ Qed.
 
 (** The entry of a checked [eval], normalized at the fast context [F] *)
 Definition eval_log (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (M : exp) (A : typ)
-  (HM : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ M : A) : elog :=
+  (HM : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ M : A) : certified_log :=
   match nbe_impl F (fc_tele F) M A (typed_nbe_order HM) with
   | exist _ W HW => exist _ _ (eval_log_ok HΞ HM HW)
   end.
@@ -1215,23 +1215,23 @@ Section Impl.
   Definition set_eq (A B : list path) : Prop := forall x, In x A <-> In x B.
 
   (** A set of paths closed under the closures [K] records. *)
-  Definition closedK (K : kmap) (D : list path) : Prop :=
-    forall x Dx, In x D -> kfind K x = Some Dx -> incl Dx D.
+  Definition closed_under_unit_closures (K : unit_closure_map) (D : list path) : Prop :=
+    forall x Dx, In x D -> unit_closure_find K x = Some Dx -> incl Dx D.
 
   (** The records of a map are those [K] keeps. *)
-  Definition rb_in (K : kmap) (Rb : bmap) : Prop :=
-    forall fp BU, bm_lookup Rb fp = Some BU -> kbt K fp = Some BU.
+  Definition builtin_records_in (K : unit_closure_map) (Rb : bmap) : Prop :=
+    forall fp BU, bm_lookup Rb fp = Some BU -> unit_closure_builtins K fp = Some BU.
 
   (** The records of the judgment's state [ΘR]: canonical, and those [K]
       keeps. *)
-  Definition rb_ok (K : kmap) (ΘR : gdeps) (Rb : bmap) : Prop := canon Rb ΘR /\ rb_in K Rb.
+  Definition builtin_records_ok (K : unit_closure_map) (ΘR : gdeps) (Rb : bmap) : Prop := canon Rb ΘR /\ builtin_records_in K Rb.
 
   (** A filed unit is what loading its file yields, under a chain starting
       with it, and [K] keeps the record that run ends with.  The state that
       run ended in is filed as well, below the unit in [Θ], and [K] records
       its domain, closed, and the records of what it filed. *)
   #[warnings="-cannot-define-projection"]
-  Record entry_ok (Θ : gdeps) (K : kmap) (fp : path) (U : gunit) : Prop := mk_entry_ok
+  Record entry_ok (Θ : gdeps) (K : unit_closure_map) (fp : path) (U : gunit) : Prop := mk_entry_ok
     { entry_ok_dom : list path
     ; entry_ok_bt : builtins
     ; entry_ok_src : string
@@ -1240,9 +1240,9 @@ Section Impl.
     ; entry_ok_chain : list path
     ; entry_ok_rb : bmap
     ; entry_ok_deps : gdeps
-    ; entry_ok_kfind : kfind K fp = Some entry_ok_dom
-    ; entry_ok_kbt : kbt K fp = Some entry_ok_bt
-    ; entry_ok_closed : closedK K entry_ok_dom
+    ; entry_ok_unit_closure_find : unit_closure_find K fp = Some entry_ok_dom
+    ; entry_ok_unit_closure_builtins : unit_closure_builtins K fp = Some entry_ok_bt
+    ; entry_ok_closed : closed_under_unit_closures K entry_ok_dom
     ; entry_ok_load : load_path fp = Some entry_ok_src
     ; entry_ok_read : read entry_ok_src = Some entry_ok_prog
     ; entry_ok_path : prog_path entry_ok_prog = fp
@@ -1250,10 +1250,10 @@ Section Impl.
     ; entry_ok_run : run_unit (fp :: entry_ok_chain) entry_ok_unit entry_ok_bt entry_ok_rb entry_ok_deps U
     ; entry_ok_sub_field : entry_ok_deps ⊑ Θ
     ; entry_ok_set : set_eq entry_ok_dom (gds_dom entry_ok_deps)
-    ; entry_ok_rb_in : rb_in K entry_ok_rb }.
+    ; entry_ok_builtin_records_in : builtin_records_in K entry_ok_rb }.
 
   (** Each filed unit is [entry_ok] for the units below it. *)
-  Fixpoint entries_ok (K : kmap) (Θ : gdeps) : Prop :=
+  Fixpoint entries_ok (K : unit_closure_map) (Θ : gdeps) : Prop :=
     match Θ with
     | nil => True
     | (fp, U) :: Θ' => entry_ok Θ' K fp U /\ entries_ok K Θ'
@@ -1261,27 +1261,27 @@ Section Impl.
 
   (** The invariant of the global state for a run under chain [ch]; in
       particular, nothing on the chain is filed yet. *)
-  Record ginv (ch : list path) (Θ : gdeps) (K : kmap) : Prop :=
+  Record ginv (ch : list path) (Θ : gdeps) (K : unit_closure_map) : Prop :=
     { gi_wf : ⊢ᵍ Θ ⍮ nil
     ; gi_chain : forall x, In x ch -> gds_lookup Θ x = None
     ; gi_entry : entries_ok K Θ
-    ; gi_kdom : forall fp D, kfind K fp = Some D -> gds_lookup Θ fp <> None }.
+    ; gi_kdom : forall fp D, unit_closure_find K fp = Some D -> gds_lookup Θ fp <> None }.
 
   (** The invariant of the unit being run, relative to the judgment's state
       [ΘR]: the units [D] it imported are those of [ΘR], filed identically
-      in [Θ].  The judgment's records are [rb_ok], apart. *)
-  Record linv (ch : list path) (Θ : gdeps) (K : kmap) (D : list path) (ΘR : gdeps) (Ξ : gstack) : Prop :=
+      in [Θ].  The judgment's records are [builtin_records_ok], apart. *)
+  Record linv (ch : list path) (Θ : gdeps) (K : unit_closure_map) (D : list path) (ΘR : gdeps) (Ξ : gstack) : Prop :=
     { li_g : ginv ch Θ K
     ; li_sub : ΘR ⊑ Θ
     ; li_dom : set_eq D (gds_dom ΘR)
-    ; li_closed : closedK K D
+    ; li_closed : closed_under_unit_closures K D
     ; li_wf : ⊢ᵍ ΘR ⍮ Ξ
     ; li_stack : stack_in ch Ξ }.
 
-  Record ext (Θ : gdeps) (K : kmap) (Θ' : gdeps) (K' : kmap) : Prop := mk_ext
+  Record ext (Θ : gdeps) (K : unit_closure_map) (Θ' : gdeps) (K' : unit_closure_map) : Prop := mk_ext
     { ext_sub : Θ ⊑ Θ'
-    ; ext_kfind : forall x Dx, kfind K x = Some Dx -> kfind K' x = Some Dx
-    ; ext_kbt : forall x Bx, kbt K x = Some Bx -> kbt K' x = Some Bx }.
+    ; ext_unit_closure_find : forall x Dx, unit_closure_find K x = Some Dx -> unit_closure_find K' x = Some Dx
+    ; ext_unit_closure_builtins : forall x Bx, unit_closure_builtins K x = Some Bx -> unit_closure_builtins K' x = Some Bx }.
 
   (** Whatever a run files, it imports; hence at the top level the result has
       exactly the domain of the judgment's state. *)
@@ -1294,7 +1294,7 @@ Section Impl.
     { (** every unit filed so far *)
       cstate_deps : gdeps
       (** the closure and the record of each filed unit *)
-    ; cstate_k : kmap
+    ; cstate_k : unit_closure_map
       (** what the unit being run imported *)
     ; cstate_dom : list path
       (** the builtin bindings *)
@@ -1307,7 +1307,7 @@ Section Impl.
     { (** every unit filed so far *)
       us_deps : gdeps
       (** the closure and the record of each filed unit *)
-    ; us_k : kmap
+    ; us_k : unit_closure_map
       (** what the unit imported *)
     ; us_dom : list path
       (** the builtin bindings it ends with *)
@@ -1321,7 +1321,7 @@ Section Impl.
     { (** every unit filed so far *)
       cs_units : funits
       (** the closure and the record of each filed unit *)
-    ; cs_k : kmap
+    ; cs_k : unit_closure_map
       (** what the unit being run imported *)
     ; cs_dom : list path
       (** the builtin bindings *)
@@ -1338,7 +1338,7 @@ Section Impl.
     { (** every unit filed so far *)
       usf_units : funits
       (** the closure and the record of each filed unit *)
-    ; usf_k : kmap
+    ; usf_k : unit_closure_map
       (** what the unit imported *)
     ; usf_dom : list path
       (** the builtin bindings it ends with *)
@@ -1354,40 +1354,40 @@ Section Impl.
       the judgment's state and records the run started at, reaches [cmd_post_deps]
       and [cmd_post_rb] ([run]), and the invariants hold again. *)
   #[warnings="-cannot-define-projection"]
-  Record cmd_post (run : bmap -> gdeps -> Prop) ch (Θ : gdeps) (K : kmap) (r : cstate_c) : Prop := mk_cmd_post
+  Record cmd_post (run : bmap -> gdeps -> Prop) ch (Θ : gdeps) (K : unit_closure_map) (r : cstate_c) : Prop := mk_cmd_post
     { cmd_post_deps : gdeps
     ; cmd_post_rb : bmap
     ; cmd_post_run : run cmd_post_rb cmd_post_deps
     ; cmd_post_linv : linv ch (cstate_deps r) (cstate_k r) (cstate_dom r) cmd_post_deps (cstate_stack r)
-    ; cmd_post_rb_ok : rb_ok (cstate_k r) cmd_post_deps cmd_post_rb
+    ; cmd_post_builtin_records_ok : builtin_records_ok (cstate_k r) cmd_post_deps cmd_post_rb
     ; cmd_post_ext : ext Θ K (cstate_deps r) (cstate_k r)
     ; cmd_post_grows : grows Θ (cstate_deps r) (cstate_dom r) }.
 
   Definition post_cmd ch Θ K D B Ξ c (r : cstate_c) : Prop :=
-    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
       cmd_post (fun RbR' ΘR' => ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ cstate_stack r ⍮ cstate_bt r ⍮ RbR') ch Θ K r.
 
   Definition post_cmds ch Θ K D B Ξ cs (r : cstate_c) : Prop :=
-    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
       cmd_post (fun RbR' ΘR' => ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ cstate_stack r ⍮ cstate_bt r ⍮ RbR') ch Θ K r.
 
   (** A command filled ([fill_cmd]) and run, as [run_cmds_cons] does. *)
   Definition post_lcmd ch Θ K D B Ξ c (r : cstate_c) : Prop :=
-    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
       cmd_post (fun RbR' ΘR' => exists c', fill_cmd ΘR Ξ B c c' /\
                                   ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c' ⇝ ΘR' ⍮ cstate_stack r ⍮ cstate_bt r ⍮ RbR') ch Θ K r.
 
   (** A unit runs from no binding and nothing filed. *)
   #[warnings="-cannot-define-projection"]
-  Record unit_post ch (Θ : gdeps) (K : kmap) (u : cunit) (r : ustate_c) : Prop := mk_unit_post
+  Record unit_post ch (Θ : gdeps) (K : unit_closure_map) (u : cunit) (r : ustate_c) : Prop := mk_unit_post
     { unit_post_rb : bmap
     ; unit_post_deps : gdeps
     ; unit_post_run : run_unit ch u (us_bt r) unit_post_rb unit_post_deps (us_unit r)
     ; unit_post_ginv : ginv ch (us_deps r) (us_k r)
     ; unit_post_sub : unit_post_deps ⊑ us_deps r
     ; unit_post_set : set_eq (us_dom r) (gds_dom unit_post_deps)
-    ; unit_post_closed : closedK (us_k r) (us_dom r)
-    ; unit_post_rb_in : rb_in (us_k r) unit_post_rb
+    ; unit_post_closed : closed_under_unit_closures (us_k r) (us_dom r)
+    ; unit_post_builtin_records_in : builtin_records_in (us_k r) unit_post_rb
     ; unit_post_ext : ext Θ K (us_deps r) (us_k r)
     ; unit_post_grows : grows Θ (us_deps r) (us_dom r) }.
 
@@ -1415,7 +1415,7 @@ Section Impl.
   Lemma ginv_entry {ch Θ K} : ginv ch Θ K -> forall fp U, gds_lookup Θ fp = Some U -> entry_ok Θ K fp U.
   Proof. intros G; exact (entries_ok_lookup _ _ (gi_wf _ _ _ G) (gi_entry _ _ _ G)). Qed.
 
-  Lemma entries_closure : forall K D Θ, closedK K D -> entries_ok K Θ -> closure_ok D Θ.
+  Lemma entries_closure : forall K D Θ, closed_under_unit_closures K D -> entries_ok K Θ -> closure_ok D Θ.
   Proof.
     intros K D; induction Θ as [| [fp U] Θ IH]; intros Hcl HΘ; [ exact I |].
     destruct HΘ as [[Dfp BU src prg u ch0 RbU ΘU HK _ _ _ _ _ _ Hu Hsub Hdom _] HΘ].
@@ -1425,7 +1425,7 @@ Section Impl.
     intros x Hx; apply (Hcl _ _ Hin HK), Hdom, Hx.
   Qed.
 
-  Lemma ginv_restrict_wf {ch Θ K D} : ginv ch Θ K -> closedK K D -> ⊢ᵍ gds_restrict D Θ ⍮ nil.
+  Lemma ginv_restrict_wf {ch Θ K D} : ginv ch Θ K -> closed_under_unit_closures K D -> ⊢ᵍ gds_restrict D Θ ⍮ nil.
   Proof. intros G Hcl; exact (restrict_wf _ _ (gi_wf _ _ _ G) (entries_closure _ _ _ Hcl (gi_entry _ _ _ G))). Qed.
 
   Lemma linv_in {ch Θ K D ΘR Ξ} : linv ch Θ K D ΘR Ξ -> forall x, In x D -> gds_lookup Θ x <> None.
@@ -1459,7 +1459,7 @@ Section Impl.
 
   Lemma linv_run_wf {ch Θ K D B RbR ΘR Ξ c B' RbR' ΘR' Ξ'} :
     linv ch Θ K D ΘR Ξ -> canon RbR ΘR -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
-    ⊢ᵍ ΘR' ⍮ Ξ' /\ canon RbR' ΘR' /\ ΘR ⊑ ΘR' /\ bt_le B B'.
+    ⊢ᵍ ΘR' ⍮ Ξ' /\ canon RbR' ΘR' /\ ΘR ⊑ ΘR' /\ builtins_le B B'.
   Proof.
     intros Hli Hc Hr;
       exact (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr (li_wf _ _ _ _ _ _ Hli) Hc (li_stack _ _ _ _ _ _ Hli)).
@@ -1514,20 +1514,20 @@ Section Impl.
   Lemma grows_refl : forall Θ D, grows Θ Θ D.
   Proof. intros ? ? ? ?; left; assumption. Qed.
 
-  Lemma closedK_cons : forall K T fp Dfp Bfp,
-      closedK K T -> (forall y, In y T -> y <> fp) -> closedK ((fp, (Dfp, Bfp)) :: K) T.
+  Lemma closed_under_unit_closures_cons : forall K T fp Dfp Bfp,
+      closed_under_unit_closures K T -> (forall y, In y T -> y <> fp) -> closed_under_unit_closures ((fp, (Dfp, Bfp)) :: K) T.
   Proof.
-    intros * Hcl Hne y Dy Hy HK; simp kfind in HK; rewrite (path_beq_false _ _ (Hne _ Hy)) in HK; eauto.
+    intros * Hcl Hne y Dy Hy HK; simp unit_closure_find in HK; rewrite (path_beq_false _ _ (Hne _ Hy)) in HK; eauto.
   Qed.
 
-  Lemma rb_in_cons : forall K fp Dfp Bfp Rb,
-      (forall y By, bm_lookup Rb y = Some By -> y <> fp) -> rb_in K Rb -> rb_in ((fp, (Dfp, Bfp)) :: K) Rb.
+  Lemma builtin_records_in_cons : forall K fp Dfp Bfp Rb,
+      (forall y By, bm_lookup Rb y = Some By -> y <> fp) -> builtin_records_in K Rb -> builtin_records_in ((fp, (Dfp, Bfp)) :: K) Rb.
   Proof.
-    intros * Hne HR y By Hy; simp kbt; rewrite (path_beq_false _ _ (Hne _ _ Hy)); exact (HR _ _ Hy).
+    intros * Hne HR y By Hy; simp unit_closure_builtins; rewrite (path_beq_false _ _ (Hne _ _ Hy)); exact (HR _ _ Hy).
   Qed.
 
   Lemma entries_ok_cons_K : forall K fp Dfp Bfp Θ,
-      (forall y Dy, kfind K y = Some Dy -> y <> fp) -> (forall y By, kbt K y = Some By -> y <> fp) ->
+      (forall y Dy, unit_closure_find K y = Some Dy -> y <> fp) -> (forall y By, unit_closure_builtins K y = Some By -> y <> fp) ->
       (forall y, In y (gds_dom Θ) -> y <> fp) ->
       entries_ok K Θ -> entries_ok ((fp, (Dfp, Bfp)) :: K) Θ.
   Proof.
@@ -1535,10 +1535,10 @@ Section Impl.
     destruct HΘ as [[Dy By src prg u ch RbU ΘUy HKy HBy Hcly Hl Hr Hp Ht Hu Hsuby Hdomy HRy] HΘ].
     split; [| apply IH; [ exact HK | exact HKb | intros y Hy; apply Hd; right; exact Hy | exact HΘ ] ].
     apply (mk_entry_ok _ _ _ _ Dy By src prg u ch RbU ΘUy); try assumption.
-    - simp kfind; rewrite path_beq_false by (eapply HK; eassumption); exact HKy.
-    - simp kbt; rewrite path_beq_false by (eapply HK; eassumption); exact HBy.
-    - apply closedK_cons; [ exact Hcly | intros z Hz; apply Hd; right; apply (sub_dom _ _ _ Hsuby), Hdomy, Hz ].
-    - intros z Bz Hz; simp kbt; rewrite path_beq_false; [ exact (HRy _ _ Hz) | exact (HKb _ _ (HRy _ _ Hz)) ].
+    - simp unit_closure_find; rewrite path_beq_false by (eapply HK; eassumption); exact HKy.
+    - simp unit_closure_builtins; rewrite path_beq_false by (eapply HK; eassumption); exact HBy.
+    - apply closed_under_unit_closures_cons; [ exact Hcly | intros z Hz; apply Hd; right; apply (sub_dom _ _ _ Hsuby), Hdomy, Hz ].
+    - intros z Bz Hz; simp unit_closure_builtins; rewrite path_beq_false; [ exact (HRy _ _ Hz) | exact (HKb _ _ (HRy _ _ Hz)) ].
   Qed.
 
   Lemma ginv_nil : forall ch, ginv ch nil nil.
@@ -1550,7 +1550,7 @@ Section Impl.
     constructor; constructor; constructor.
   Qed.
 
-  Lemma rb_ok_nil : forall K, rb_ok K nil nil.
+  Lemma builtin_records_ok_nil : forall K, builtin_records_ok K nil nil.
   Proof. intros; split; [ apply canon_nil | intros ? ? H; discriminate H ]. Qed.
 
   (** A command filled at the restriction, then run, is filled and run at
@@ -1612,7 +1612,7 @@ Section Impl.
     nf_is_universe W ->
     nbe (gds_restrict D Θ) Ξ (gs_tele Ξ) M (nf_to_exp W) (nf_indty p 0 nil) ->
     ind_lookup (gds_restrict D Θ) Ξ p = Some Dd -> nat_shape Dd = Some (z, s) -> ind_sort Dd = nat_sort ->
-    bt_bind_nat B p = Some B' ->
+    builtins_bind_nat B p = Some B' ->
     post_cmd ch Θ K D B Ξ (core_cmd_builtin nat_kind E) (cstc Θ K D B' Ξ).
   Proof.
     intros Ht HW HM Hu Hn Hl Hs Hsort Hb ΘR RbR Hli Hrb; cbn [cstate_deps cstate_k cstate_dom cstate_bt cstate_stack].
@@ -1724,7 +1724,7 @@ Section Impl.
   (** A unit the unit being run imported already: its record, kept in [K],
       is merged in again. *)
   Lemma load_in_ok {ch Θ K D B Ξ fp U BU B'} :
-    In fp D -> gds_lookup Θ fp = Some U -> kbt K fp = Some BU -> bt_merge B BU = Some B' ->
+    In fp D -> gds_lookup Θ fp = Some U -> unit_closure_builtins K fp = Some BU -> builtins_merge B BU = Some B' ->
     post_cmd ch Θ K D B Ξ (core_cmd_load fp) (cstc Θ K D B' Ξ).
   Proof.
     intros Hin HU HB Hm ΘR RbR Hli Hrb; cbn [cstate_deps cstate_k cstate_dom cstate_bt cstate_stack].
@@ -1737,22 +1737,22 @@ Section Impl.
   Qed.
 
   (** A record kept in [K] is of a unit [K] has the closure of. *)
-  Lemma kbt_kfind : forall K fp B, kbt K fp = Some B -> exists D, kfind K fp = Some D.
+  Lemma unit_closure_builtins_unit_closure_find : forall K fp B, unit_closure_builtins K fp = Some B -> exists D, unit_closure_find K fp = Some D.
   Proof.
-    induction K as [| [fq [Dq Bq]] K IH]; intros fp B H; simp kbt in H; [ discriminate |].
-    simp kfind; destruct (path_beq fp fq); [ eauto | exact (IH _ _ H) ].
+    induction K as [| [fq [Dq Bq]] K IH]; intros fp B H; simp unit_closure_builtins in H; [ discriminate |].
+    simp unit_closure_find; destruct (path_beq fp fq); [ eauto | exact (IH _ _ H) ].
   Qed.
 
   (** Loading a filed unit that the unit being run has not imported yet:
       the judgment loads it, which the entry of [Θ] justifies once the chain
       is changed; it ends with the record [K] keeps. *)
   Lemma hit_linv {ch Θ K D Ξ fp U Dfp BU} :
-    ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp -> kbt K fp = Some BU ->
-    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    ~ In fp D -> gds_lookup Θ fp = Some U -> unit_closure_find K fp = Some Dfp -> unit_closure_builtins K fp = Some BU ->
+    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
     exists src prg u RbU ΘU, gds_lookup ΘR fp = None /\ ~ In fp ch /\ load_path fp = Some src /\
       read src = Some prg /\ prog_path prg = fp /\ to_core prg = Some u /\ run_unit (fp :: ch) u BU RbU ΘU U /\
       linv ch Θ K (p_union D (fp :: Dfp)) (gds_merge ΘR ((fp, U) :: ΘU)) Ξ /\
-      rb_ok K (gds_merge ΘR ((fp, U) :: ΘU)) (bm_merge RbR ((fp, BU) :: RbU)).
+      builtin_records_ok K (gds_merge ΘR ((fp, U) :: ΘU)) (bm_merge RbR ((fp, BU) :: RbU)).
   Proof.
     intros Hnin HU HK HB ΘR RbR Hli Hrb.
     pose proof (li_g _ _ _ _ _ _ Hli) as G.
@@ -1787,7 +1787,7 @@ Section Impl.
   Qed.
 
   Lemma load_hit_ok {ch Θ K D B Ξ fp U Dfp BU B'} :
-    ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp -> kbt K fp = Some BU -> bt_merge B BU = Some B' ->
+    ~ In fp D -> gds_lookup Θ fp = Some U -> unit_closure_find K fp = Some Dfp -> unit_closure_builtins K fp = Some BU -> builtins_merge B BU = Some B' ->
     post_cmd ch Θ K D B Ξ (core_cmd_load fp) (cstc Θ K (p_union D (fp :: Dfp)) B' Ξ).
   Proof.
     intros Hnin HU HK HB Hm ΘR RbR Hli Hrb; cbn [cstate_deps cstate_k cstate_dom cstate_bt cstate_stack].
@@ -1814,11 +1814,11 @@ Section Impl.
   Lemma load_linv {ch Θ K D Ξ fp src prg u r B'} :
     gds_lookup Θ fp = None -> ~ In fp ch ->
     load_path fp = Some src -> read src = Some prg -> prog_path prg = fp -> to_core prg = Some u ->
-    post_unit (fp :: ch) Θ K u r -> forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    post_unit (fp :: ch) Θ K u r -> forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
     exists RbU ΘU, gds_lookup ΘR fp = None /\ run_unit (fp :: ch) u (us_bt r) RbU ΘU (us_unit r) /\
       linv ch (cstate_deps (load_state fp D Ξ B' r)) (cstate_k (load_state fp D Ξ B' r)) (cstate_dom (load_state fp D Ξ B' r))
         (gds_merge ΘR ((fp, us_unit r) :: ΘU)) Ξ /\
-      rb_ok (cstate_k (load_state fp D Ξ B' r)) (gds_merge ΘR ((fp, us_unit r) :: ΘU)) (bm_merge RbR ((fp, us_bt r) :: RbU)) /\
+      builtin_records_ok (cstate_k (load_state fp D Ξ B' r)) (gds_merge ΘR ((fp, us_unit r) :: ΘU)) (bm_merge RbR ((fp, us_bt r) :: RbU)) /\
       ext Θ K (cstate_deps (load_state fp D Ξ B' r)) (cstate_k (load_state fp D Ξ B' r)) /\
       grows Θ (cstate_deps (load_state fp D Ξ B' r)) (cstate_dom (load_state fp D Ξ B' r)).
   Proof.
@@ -1840,25 +1840,25 @@ Section Impl.
     assert (Hsub1N : Θ1 ⊑ ΘN) by exact (gds_sub_cons _ _ _ Hn1).
     assert (HfpN : gds_lookup ΘN fp = Some U) by (cbn; rewrite path_beq_refl; reflexivity).
     assert (HsubU : ΘU ⊑ ΘN) by exact (gds_sub_trans _ _ _ Hsub1 Hsub1N).
-    assert (HK1 : forall y Dy, kfind K1 y = Some Dy -> y <> fp)
+    assert (HK1 : forall y Dy, unit_closure_find K1 y = Some Dy -> y <> fp)
       by (intros y Dy HKy ->; exact (gi_kdom _ _ _ G1 _ _ HKy Hn1)).
-    assert (HKb1 : forall y By, kbt K1 y = Some By -> y <> fp)
-      by (intros y By HKy; destruct (kbt_kfind _ _ _ HKy) as [Dy HKy']; exact (HK1 _ _ HKy')).
+    assert (HKb1 : forall y By, unit_closure_builtins K1 y = Some By -> y <> fp)
+      by (intros y By HKy; destruct (unit_closure_builtins_unit_closure_find _ _ _ HKy) as [Dy HKy']; exact (HK1 _ _ HKy')).
     assert (Hd1 : forall y, In y (gds_dom Θ1) -> y <> fp)
       by (intros y Hy ->; apply gds_dom_lookup in Hy; contradiction).
     assert (Hdfp : forall y, In y Dfp -> y <> fp)
       by (intros y Hy; apply Hd1, (sub_dom _ _ _ Hsub1), Hdom1, Hy).
-    assert (HRU' : rb_in ((fp, (Dfp, B1)) :: K1) RbU)
-      by (apply rb_in_cons; [ intros y By Hy; exact (HKb1 _ _ (HRU _ _ Hy)) | exact HRU ]).
+    assert (HRU' : builtin_records_in ((fp, (Dfp, B1)) :: K1) RbU)
+      by (apply builtin_records_in_cons; [ intros y By Hy; exact (HKb1 _ _ (HRU _ _ Hy)) | exact HRU ]).
     assert (GN : ginv ch ΘN ((fp, (Dfp, B1)) :: K1)).
     { constructor; [ exact HwN | | | ].
       - intros y Hy; cbn; rewrite path_beq_false by (intros ->; contradiction).
         exact (gi_chain _ _ _ G1 _ (or_intror Hy)).
       - split; [| exact (entries_ok_cons_K _ _ _ _ _ HK1 HKb1 Hd1 (gi_entry _ _ _ G1)) ].
         apply (mk_entry_ok _ _ _ _ Dfp B1 src prg u ch RbU ΘU);
-          [ simp kfind; rewrite path_beq_refl; reflexivity | simp kbt; rewrite path_beq_refl; reflexivity
-          | exact (closedK_cons _ _ _ _ _ Hcl1 Hdfp) | assumption .. ].
-      - intros y Dy HKy; simp kfind in HKy; destruct (path_beq y fp) eqn:Hb.
+          [ simp unit_closure_find; rewrite path_beq_refl; reflexivity | simp unit_closure_builtins; rewrite path_beq_refl; reflexivity
+          | exact (closed_under_unit_closures_cons _ _ _ _ _ Hcl1 Hdfp) | assumption .. ].
+      - intros y Dy HKy; simp unit_closure_find in HKy; destruct (path_beq y fp) eqn:Hb.
         + apply path_beq_true in Hb as ->; rewrite HfpN; discriminate.
         + intros E; apply (gi_kdom _ _ _ G1 _ _ HKy), (sub_none _ _ _ Hsub1N), E. }
     assert (Hfresh : forall y, gds_lookup Θ y <> None -> y <> fp) by (intros y Hy ->; contradiction).
@@ -1872,7 +1872,7 @@ Section Impl.
           apply path_beq_true in Hb as ->; injection HV as <-; exact HfpN.
       + intros y; rewrite p_union_iff, dom_merge, dom_cons, <- (li_dom _ _ _ _ _ _ Hli y), <- (Hdom1 y); cbn [In].
         intuition congruence.
-      + intros y Dy Hy HKy; simp kfind in HKy; destruct (path_beq y fp) eqn:Hb.
+      + intros y Dy Hy HKy; simp unit_closure_find in HKy; destruct (path_beq y fp) eqn:Hb.
         * apply path_beq_true in Hb as ->; injection HKy as <-; intros z Hz; apply p_union_iff; right; right; exact Hz.
         * intros z Hz; apply p_union_iff; apply p_union_iff in Hy as [Hy | [<- | Hy]].
           -- left; pose proof (linv_in Hli _ Hy) as Hy'.
@@ -1884,17 +1884,17 @@ Section Impl.
           -- right; right; exact (Hcl1 _ _ Hy HKy _ Hz).
     - split; [ exact Hc' |].
       intros y By Hy; rewrite bm_lookup_merge in Hy; destruct (bm_lookup RbR y) eqn:E.
-      + injection Hy as <-; simp kbt; rewrite path_beq_false; [ exact (HextB _ _ (proj2 Hrb _ _ E)) |].
+      + injection Hy as <-; simp unit_closure_builtins; rewrite path_beq_false; [ exact (HextB _ _ (proj2 Hrb _ _ E)) |].
         apply Hfresh; intros Hny; apply (proj2 (proj1 Hrb) _ _ E).
         destruct (gds_lookup ΘR y) eqn:Ey; [ exfalso; rewrite (li_sub _ _ _ _ _ _ Hli _ _ Ey) in Hny; discriminate | reflexivity ].
       + cbn in Hy; destruct (path_beq y fp) eqn:Hb.
-        * apply path_beq_true in Hb as ->; injection Hy as <-; simp kbt; rewrite path_beq_refl; reflexivity.
+        * apply path_beq_true in Hb as ->; injection Hy as <-; simp unit_closure_builtins; rewrite path_beq_refl; reflexivity.
         * exact (HRU' _ _ Hy).
     - constructor; [ exact (gds_sub_trans _ _ _ Hext1 Hsub1N) | |].
-      + intros y Dy HKy; simp kfind; rewrite path_beq_false; [ exact (HextK _ _ HKy) |].
+      + intros y Dy HKy; simp unit_closure_find; rewrite path_beq_false; [ exact (HextK _ _ HKy) |].
         intros ->; exact (gi_kdom _ _ _ G _ _ HKy Hn).
-      + intros y By HKy; simp kbt; rewrite path_beq_false; [ exact (HextB _ _ HKy) |].
-        destruct (kbt_kfind _ _ _ HKy) as [Dy HKy']; intros ->; exact (gi_kdom _ _ _ G _ _ HKy' Hn).
+      + intros y By HKy; simp unit_closure_builtins; rewrite path_beq_false; [ exact (HextB _ _ HKy) |].
+        destruct (unit_closure_builtins_unit_closure_find _ _ _ HKy) as [Dy HKy']; intros ->; exact (gi_kdom _ _ _ G _ _ HKy' Hn).
     - intros y Hy; unfold ΘN in Hy; apply dom_cons in Hy as [-> | Hy].
       + right; apply p_union_iff; right; left; reflexivity.
       + destruct (Hgr1 _ Hy) as [H | H]; [ left; exact H | right; apply p_union_iff; right; right; exact H ].
@@ -1903,7 +1903,7 @@ Section Impl.
   Lemma load_ok {ch Θ K D B Ξ fp src prg u r B'} :
     gds_lookup Θ fp = None -> ~ In fp ch ->
     load_path fp = Some src -> read src = Some prg -> prog_path prg = fp -> to_core prg = Some u ->
-    post_unit (fp :: ch) Θ K u r -> bt_merge B (us_bt r) = Some B' ->
+    post_unit (fp :: ch) Θ K u r -> builtins_merge B (us_bt r) = Some B' ->
     post_cmd ch Θ K D B Ξ (core_cmd_load fp) (load_state fp D Ξ B' r).
   Proof.
     intros Hn Hnch Hl Hrd Hp Ht Hpost Hm ΘR RbR Hli Hrb.
@@ -2140,30 +2140,30 @@ Section Impl.
 
   (** The records [K] keeps of the units of [ΘR]: the judgment's records
       exist whenever its state does. *)
-  Fixpoint rb_of (K : kmap) (Θ : gdeps) : bmap :=
+  Fixpoint builtin_records_of (K : unit_closure_map) (Θ : gdeps) : bmap :=
     match Θ with
     | nil => nil
-    | (fp, _) :: Θ' => match kbt K fp with Some B => (fp, B) :: rb_of K Θ' | None => rb_of K Θ' end
+    | (fp, _) :: Θ' => match unit_closure_builtins K fp with Some B => (fp, B) :: builtin_records_of K Θ' | None => builtin_records_of K Θ' end
     end.
 
-  Lemma bm_lookup_rb_of : forall K Θ fp,
-      bm_lookup (rb_of K Θ) fp = match gds_lookup Θ fp with Some _ => kbt K fp | None => None end.
+  Lemma bm_lookup_builtin_records_of : forall K Θ fp,
+      bm_lookup (builtin_records_of K Θ) fp = match gds_lookup Θ fp with Some _ => unit_closure_builtins K fp | None => None end.
   Proof.
-    intros K; induction Θ as [| [fq V] Θ IH]; intros fp; [ reflexivity |]; cbn [rb_of gds_lookup].
-    destruct (kbt K fq) as [Bq |] eqn:Eq; cbn [bm_lookup]; destruct (path_beq fp fq) eqn:Hb;
+    intros K; induction Θ as [| [fq V] Θ IH]; intros fp; [ reflexivity |]; cbn [builtin_records_of gds_lookup].
+    destruct (unit_closure_builtins K fq) as [Bq |] eqn:Eq; cbn [bm_lookup]; destruct (path_beq fp fq) eqn:Hb;
       try (apply path_beq_true in Hb as ->); rewrite ?IH; try reflexivity;
       try (symmetry; exact Eq); destruct (gds_lookup Θ fq); congruence.
   Qed.
 
-  Lemma linv_rb {ch Θ K D ΘR Ξ} : linv ch Θ K D ΘR Ξ -> exists RbR, rb_ok K ΘR RbR.
+  Lemma linv_rb {ch Θ K D ΘR Ξ} : linv ch Θ K D ΘR Ξ -> exists RbR, builtin_records_ok K ΘR RbR.
   Proof.
-    intros Hli; exists (rb_of K ΘR); split; [ split |].
+    intros Hli; exists (builtin_records_of K ΘR); split; [ split |].
     - intros fp U HU.
       destruct (ginv_entry (li_g _ _ _ _ _ _ Hli) _ _ (li_sub _ _ _ _ _ _ Hli _ _ HU))
         as [D0 BU src prg u ch0 RbU ΘU _ HB _ Hl Hr _ Ht Hu _ _ _].
-      apply (mk_canon_entry _ _ _ _ _ _ BU src prg u ch0 RbU ΘU); [ rewrite bm_lookup_rb_of, HU; exact HB | assumption .. ].
-    - intros fp BU HB; rewrite bm_lookup_rb_of in HB; destruct (gds_lookup ΘR fp); [ discriminate | discriminate HB ].
-    - intros fp BU HB; rewrite bm_lookup_rb_of in HB; destruct (gds_lookup ΘR fp); [ exact HB | discriminate HB ].
+      apply (mk_canon_entry _ _ _ _ _ _ BU src prg u ch0 RbU ΘU); [ rewrite bm_lookup_builtin_records_of, HU; exact HB | assumption .. ].
+    - intros fp BU HB; rewrite bm_lookup_builtin_records_of in HB; destruct (gds_lookup ΘR fp); [ discriminate | discriminate HB ].
+    - intros fp BU HB; rewrite bm_lookup_builtin_records_of in HB; destruct (gds_lookup ΘR fp); [ exact HB | discriminate HB ].
   Qed.
 
   Lemma nil_ok {ch Θ K D B Ξ} : post_cmds ch Θ K D B Ξ nil (cstc Θ K D B Ξ).
@@ -2243,7 +2243,7 @@ Section Impl.
     (forall ΘR, linv ch Θ K D ΘR Ξ -> ΘR ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv pq k Dd ⋄) ->
     post_cmds ch Θ K D B (gs_push_ind (ind_qname Ξ x) pq k Dd (raw_decl_uparams R) Ξ) (ind_mod_cmds (gds_restrict D Θ) (gs_push_ind (ind_qname Ξ x) pq k Dd (raw_decl_uparams R) Ξ) R pq Dd k M) r1 ->
     cstate_stack r1 = (mp, Kf, U) :: Ξ2 ->
-    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
       cmd_post (fun RbR' ΘR' => ΘR ⍮ gs_push_ind (ind_qname Ξ x) pq k Dd (raw_decl_uparams R) Ξ ⍮ B ⍮ RbR
                                   ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩
                                   ind_mod_cmds ΘR (gs_push_ind (ind_qname Ξ x) pq k Dd (raw_decl_uparams R) Ξ) R pq Dd k M ⇝*
@@ -2276,7 +2276,7 @@ Section Impl.
 
   (** What a run of the declared members [k], [k + 1], … named [xs] proves. *)
   Definition post_mems ch Θ K D B Ξ pv R pq Dd k xs (r : cstate_c) : Prop :=
-    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
+    forall ΘR RbR, linv ch Θ K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
       cmd_post (fun RbR' ΘR' => run_ind_members load_path read to_core ch B RbR ΘR Ξ pv R pq Dd k xs
                                   (cstate_bt r) RbR' ΘR' (cstate_stack r)) ch Θ K r.
 
@@ -2430,22 +2430,22 @@ Section Impl.
   (** The imports run on the empty stack, from no binding, and leave the
       stack empty. *)
   Lemma unit_imports {ch Θ K imps r1} :
-    ginv ch Θ K -> post_cmds ch Θ K nil bt_empty nil imps r1 ->
-    exists ΘR1 RbR1, nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ imps ⇝* ΘR1 ⍮ nil ⍮ cstate_bt r1 ⍮ RbR1 /\ cstate_stack r1 = nil /\
-      linv ch (cstate_deps r1) (cstate_k r1) (cstate_dom r1) ΘR1 nil /\ rb_ok (cstate_k r1) ΘR1 RbR1 /\
+    ginv ch Θ K -> post_cmds ch Θ K nil builtins_empty nil imps r1 ->
+    exists ΘR1 RbR1, nil ⍮ nil ⍮ builtins_empty ⍮ nil ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ imps ⇝* ΘR1 ⍮ nil ⍮ cstate_bt r1 ⍮ RbR1 /\ cstate_stack r1 = nil /\
+      linv ch (cstate_deps r1) (cstate_k r1) (cstate_dom r1) ΘR1 nil /\ builtin_records_ok (cstate_k r1) ΘR1 RbR1 /\
       ext Θ K (cstate_deps r1) (cstate_k r1) /\ grows Θ (cstate_deps r1) (cstate_dom r1).
   Proof.
-    intros G Hp; destruct (Hp _ _ (nil_linv G) (rb_ok_nil K)) as [ΘR1 RbR1 Hr1 Hli1 Hrb1 He1 Hg1]; cbn beta in Hr1.
+    intros G Hp; destruct (Hp _ _ (nil_linv G) (builtin_records_ok_nil K)) as [ΘR1 RbR1 Hr1 Hli1 Hrb1 He1 Hg1]; cbn beta in Hr1.
     pose proof (run_cmds_empty _ _ _ _ _ _ _ _ _ _ _ _ Hr1) as HΞ; rewrite HΞ in Hr1, Hli1.
     exists ΘR1, RbR1; exact (conj Hr1 (conj HΞ (conj Hli1 (conj Hrb1 (conj He1 Hg1))))).
   Qed.
 
   Lemma unit_gctx {ch Θ K imps r1} :
-    ginv ch Θ K -> post_cmds ch Θ K nil bt_empty nil imps r1 -> ⊢ᵍ gds_restrict (cstate_dom r1) (cstate_deps r1) ⍮ nil.
+    ginv ch Θ K -> post_cmds ch Θ K nil builtins_empty nil imps r1 -> ⊢ᵍ gds_restrict (cstate_dom r1) (cstate_deps r1) ⍮ nil.
   Proof. intros G Hp; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & _ & Hli1 & _); exact (linv_restrict_gctx Hli1). Qed.
 
   Lemma unit_body_pre {fp ch Θ K imps r1 P} :
-    ginv (fp :: ch) Θ K -> post_cmds (fp :: ch) Θ K nil bt_empty nil imps r1 -> tele_ass P ->
+    ginv (fp :: ch) Θ K -> post_cmds (fp :: ch) Θ K nil builtins_empty nil imps r1 -> tele_ass P ->
     ⊢ gds_restrict (cstate_dom r1) (cstate_deps r1) ⍮ nil ⍮ P ->
     exists ΘR, linv (fp :: ch) (cstate_deps r1) (cstate_k r1) (cstate_dom r1) ΘR (gs_push (q_abs fp nil) P nil).
   Proof.
@@ -2454,7 +2454,7 @@ Section Impl.
   Qed.
 
   Lemma unit_ok {fp ch Θ K imps P0 P cs r1 r2 mp Kf U Ξ2} :
-    post_cmds (fp :: ch) Θ K nil bt_empty nil imps r1 ->
+    post_cmds (fp :: ch) Θ K nil builtins_empty nil imps r1 ->
     fill_params (gds_restrict (cstate_dom r1) (cstate_deps r1)) nil (cstate_bt r1) P0 P ->
     tele_ass P ->
     ⊢ gds_restrict (cstate_dom r1) (cstate_deps r1) ⍮ nil ⍮ P ->
@@ -2522,7 +2522,7 @@ Section Impl.
 
   (** What a step needs of the state it runs at, fast: the invariant of its
       reading, and that it refines it *)
-  Record pre (ch : list path) (s : funits) (K : kmap) (D : list path) (fs : fstack) : Prop := mk_pre
+  Record pre (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (fs : fstack) : Prop := mk_pre
     { (** the invariant of the reading *)
       pre_linv : exists ΘR, linv ch (dec_units s) K D ΘR (dec_stack fs)
       (** the filed units refine their reading *)
@@ -2682,22 +2682,22 @@ Section Impl.
 
   (** How a unit loaded under chain [ch] is run.  Its log holds the evals of
       the unit itself, not of the units it loads. *)
-  Record ures (ch : list path) (s : funits) (K : kmap) (u : cunit) (r : ustate) : Prop := mk_ures
+  Record unit_run_ok (ch : list path) (s : funits) (K : unit_closure_map) (u : cunit) (r : ustate) : Prop := mk_unit_run_ok
     { (** what the run proves of the reading *)
-      ures_post : post_unit ch (dec_units s) K u (us_read r)
+      unit_run_ok_post : post_unit ch (dec_units s) K u (us_read r)
       (** the filed units refine their reading *)
-    ; ures_units : units_rep (usf_units r) (dec_units (usf_units r))
+    ; unit_run_ok_units : units_rep (usf_units r) (dec_units (usf_units r))
       (** the unit is the translation of its reading *)
-    ; ures_unit : usf_unit r = tr_unit (dec_unit (usf_unit r)) }.
+    ; unit_run_ok_unit : usf_unit r = tr_unit (dec_unit (usf_unit r)) }.
 
   Definition loader (ch : list path) : Type :=
     forall fp src, ~ In fp ch -> load_path fp = Some src ->
       forall s K u, ginv (fp :: ch) (dec_units s) K -> units_rep s (dec_units s) ->
-        run_result ({r | ures (fp :: ch) s K u r} * elog)%type.
+        run_result ({r | unit_run_ok (fp :: ch) s K u r} * certified_log)%type.
 
   Definition cmd_fun (ch : list path) : Type :=
     forall s K D B fs c (H : pre ch s K D fs),
-      run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r} * elog)%type.
+      run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r} * certified_log)%type.
 
   (** The invariant where a command ends *)
   Lemma cons_pre_f {ch s K D B fs c r} : pre ch s K D fs -> fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r ->
@@ -2714,10 +2714,10 @@ Section Impl.
 
   Equations cmds_step (ch : list path) (rc : cmd_fun ch) :
     forall s K D B fs cs (H : pre ch s K D fs),
-      run_result ({r | fast_res (post_cmds ch (dec_units s) K D B (dec_stack fs) cs) r} * elog)%type :=
+      run_result ({r | fast_res (post_cmds ch (dec_units s) K D B (dec_stack fs) cs) r} * certified_log)%type :=
   cmds_step ch rc := go
   where go s0 K0 D0 B0 fs0 (cs : list core_cmd) (H0 : pre ch s0 K0 D0 fs0) :
-    run_result ({r | fast_res (post_cmds ch (dec_units s0) K0 D0 B0 (dec_stack fs0) cs) r} * elog)%type by struct cs :=
+    run_result ({r | fast_res (post_cmds ch (dec_units s0) K0 D0 B0 (dec_stack fs0) cs) r} * certified_log)%type by struct cs :=
   | s0, K0, D0, B0, fs0, nil, H0 => run_success (exist _ _ (same_res H0 nil_ok), log_nil)
   | s0, K0, D0, B0, fs0, c :: cs', H0 with refs_check (cmd_F B0 H0) (pre_gctx_f B0 H0) (cmd_refs c) => {
     | inleft (exist _ e _) => run_failure (run_error_nat (cmd_view s0 D0) fs0 (nat_view_f (cmd_F B0 H0) B0) (priv_error e))
@@ -2728,7 +2728,7 @@ Section Impl.
         | run_success (exist _ r2 Hr2, l2) => run_success (exist _ _ (cons_res (cmd_acc B0 H0 _ Hac) Hr1 Hr2), log_app l1 l2) } } }.
 
   (** A step whose result changes the frames only *)
-  Definition da_ok {ch s K D B fs c fs'}
+  Definition defalias_ok {ch s K D B fs c fs'}
       (Hp : post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B (dec_stack fs')) /\ fs' = fs_of (dec_stack fs')) :
       {fs0 | post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B (dec_stack fs0)) /\ fs0 = fs_of (dec_stack fs0)} :=
     exist _ fs' Hp.
@@ -2736,7 +2736,7 @@ Section Impl.
   (** A definition or an alias, checked as written: the non-recursive step
       of [core_cmd_def] and [core_cmd_alias], which also runs the commands an import
       generates. *)
-  Equations defalias_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations defalias_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (c : core_cmd) (H : pre ch s K D fs) :
     run_result {fs' | post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B (dec_stack fs')) /\ fs' = fs_of (dec_stack fs')} :=
   | ch, s, K, D, B, fs, core_cmd_def x b pv A (Some M), H with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
@@ -2745,7 +2745,7 @@ Section Impl.
       | inright _ => run_failure (blame_error fs (find_level_blame (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A)
                             (mod_error (cmd_F B H) (Some x) (A :: nil) (run_error_def_typ x fs A)))
       | inleft (exist _ i HA) with check_exp_typed (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A (ex_intro _ i HA) M => {
-        | left HM => run_success (da_ok (add_post H (f_equal tr_entry (fs_def_dec b pv fs A M)) (def_ok Hfr (cmd_exp B H nil M A HM))))
+        | left HM => run_success (defalias_ok (add_post H (f_equal tr_entry (fs_def_dec b pv fs A M)) (def_ok Hfr (cmd_exp B H nil M A HM))))
         | right _ =>
             run_failure (mod_error (cmd_F B H) (Some x) (M :: nil)
                     (field_error (cmd_F B H) (Some x) (pre_ctx_f B H) M (run_error_def x fs A M))) } } }
@@ -2753,7 +2753,7 @@ Section Impl.
     | right _ => run_failure (run_error_msg (x ++ " is already declared"))
     | left Hfr with check_typ (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A => {
       | inleft (exist _ i HA) =>
-          run_success (da_ok (add_post H (f_equal tr_entry (fs_axiom_dec b pv fs A)) (axiom_ok Hfr (cmd_exp B H nil A Typeω@i HA))))
+          run_success (defalias_ok (add_post H (f_equal tr_entry (fs_axiom_dec b pv fs A)) (axiom_ok Hfr (cmd_exp B H nil A Typeω@i HA))))
       | inright _ =>
           run_failure (blame_error fs (find_level_blame (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A)
                   (mod_error (cmd_F B H) (Some x) (A :: nil) (run_error_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
@@ -2768,7 +2768,7 @@ Section Impl.
         | left HE with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
           | right _ => run_failure (run_error_msg (x ++ " is already declared"))
           | left Hfr =>
-              run_success (da_ok (add_post H (e := tr_entry (ge_mod pv (gu_mk (Δ ++ fs_tele fs) (md_alias E))))
+              run_success (defalias_ok (add_post H (e := tr_entry (ge_mod pv (gu_mk (Δ ++ fs_tele fs) (md_alias E))))
                             (eq_sym (f_equal (fun T => tr_entry (ge_mod pv (gu_mk (Δ ++ T) (md_alias E)))) (fs_tele_dec fs)))
                             (alias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) Hfr))) } } } }
   | _, _, _, _, _, _, _, _ => run_failure (run_error_msg "internal error: not a definition or an alias").
@@ -2792,7 +2792,7 @@ Section Impl.
 
   (** The entries an import generates, in order, as [gens_run] declares
       them: written by no one, so with no privacy check. *)
-  Fixpoint gens_impl (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Fixpoint gens_impl (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (gs : list generated_item) (H : pre ch s K D fs) {struct gs} :
     run_result {fs' | post_gens ch (dec_units s) K D (dec_stack fs) gs (dec_stack fs') /\ fs' = fs_of (dec_stack fs')} :=
     match gs as gs0 return run_result {fs' | post_gens ch (dec_units s) K D (dec_stack fs) gs0 (dec_stack fs') /\ fs' = fs_of (dec_stack fs')} with
@@ -2877,7 +2877,7 @@ Section Impl.
     "one constructor without arguments and one with a single recursive argument".
 
   (** A builtin binding's post, as its result, at the fast state [s], [fs] *)
-  Definition bt_cmd_ok {ch s K D B fs c B'}
+  Definition builtins_cmd_ok {ch s K D B fs c B'}
       (Hp : post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B' (dec_stack fs))) :
       {B0 | post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B0 (dec_stack fs))} := exist _ B' Hp.
 
@@ -2894,7 +2894,7 @@ Section Impl.
 
   (** A builtin binding, checked premise by premise: the module expression
       read as a term, its inferred type, then its normal form. *)
-  Equations builtin_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations builtin_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (k : string) (E : modexp) (H : pre ch s K D fs) :
     run_result {B' | post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_builtin k E) (cstc (dec_units s) K D B' (dec_stack fs))} :=
   | ch, s, K, D, B, fs, k, E, H with string_dec k nat_kind => {
@@ -2915,10 +2915,10 @@ Section Impl.
                 | exist _ None _ => run_failure (run_error_msg (nat_shape_msg p))
                 | exist _ (Some (z, sc)) Hs with inspect (is_nat_sort (ind_sort Dd)) => {
                   | exist _ false _ => run_failure (run_error_msg ("the natural numbers must be declared in Type@0, not " ++ ind_short p))
-                  | exist _ true Ek with inspect (bt_bind_nat B p) => {
+                  | exist _ true Ek with inspect (builtins_bind_nat B p) => {
                     | exist _ None _ => run_failure (run_error_msg (bound_msg B))
                     | exist _ (Some B') Hb =>
-                        run_success (bt_cmd_ok (eq_rect _ (fun k0 => post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_builtin k0 E)
+                        run_success (builtins_cmd_ok (eq_rect _ (fun k0 => post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_builtin k0 E)
                                                                (cstc (dec_units s) K D B' (dec_stack fs)))
                                          (builtin_ok Ht (cmd_infer B H nil W M (proj1 HWs))
                                             (cmd_exp B H nil M (nf_to_exp W) (alg_type_infer_sound (proj1 HWs) (pre_ctx_f B H))) Hu
@@ -2956,7 +2956,7 @@ Section Impl.
   Definition alias_wf_error (x : string) (F : FCtx) (Hg : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Γ : ctx) (E : modexp)
       (Hh : fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ᵐ fst (me_unapps E) ≈ fst (me_unapps E)) : run_error :=
     match mdenote_impl F Hg Γ (fst (me_unapps E)) (mdenote_order_of_wf _ _ Hg _ _ _ Hh) with
-    | inleft (exist _ (fds_dm Θ0 _ M _) _) =>
+    | inleft (exist _ (fmdesc_dm Θ0 _ M _) _) =>
         (* a type former: its term part is the group's constant applied to
            the arguments given so far *)
         match app_head M with
@@ -2980,7 +2980,7 @@ Section Impl.
   (** An inductive alias, checked premise by premise: its parameters, the
       module it applies, the module expression, read as a term, its type
       inferred, and whether it is a type former of an inductive type. *)
-  Equations indalias_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations indalias_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) :
     run_result {fs' | post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_inductive_alias x pv Δ E) (cstc (dec_units s) K D B (dec_stack fs')) /\
                 fs' = fs_of (dec_stack fs')} :=
@@ -3008,14 +3008,14 @@ Section Impl.
                 | left Hf with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
                   | right _ => run_failure (run_error_msg (x ++ " is already declared"))
                   | left Hfr =>
-                      run_success (da_ok (add_post H (f_equal tr_entry (fs_dm_entry_dec fs pv Δ (nf_to_exp W) M E))
+                      run_success (defalias_ok (add_post H (f_equal tr_entry (fs_dm_entry_dec fs pv Δ (nf_to_exp W) M E))
                                     (indalias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) Ht (cmd_infer B H Δ W M (proj1 HWs))
                                        (cmd_exp B H Δ M (nf_to_exp W) (alg_type_infer_sound (proj1 HWs) (ext_eq_ctx_left _ _ _ _ _ HΔ)))
                                        (cmd_ind_former B H Δ M W Hf) Hfr))) } } } } } } } }.
 
   (** A record alias, checked as an inductive alias is, for a type former
       of a record type. *)
-  Equations recalias_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations recalias_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) :
     run_result {fs' | post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_record_alias x pv Δ E) (cstc (dec_units s) K D B (dec_stack fs')) /\
                 fs' = fs_of (dec_stack fs')} :=
@@ -3041,7 +3041,7 @@ Section Impl.
               | left Hf with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
                 | right _ => run_failure (run_error_msg (x ++ " is already declared"))
                 | left Hfr =>
-                    run_success (da_ok (add_post H (f_equal tr_entry (fs_dm_entry_dec fs pv Δ (nf_to_exp W) M E))
+                    run_success (defalias_ok (add_post H (f_equal tr_entry (fs_dm_entry_dec fs pv Δ (nf_to_exp W) M E))
                                   (recalias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) Ht (cmd_infer B H Δ W M (proj1 HWs))
                                      (cmd_exp B H Δ M (nf_to_exp W) (alg_type_infer_sound (proj1 HWs) (ext_eq_ctx_left _ _ _ _ _ HΔ)))
                                      (cmd_record_former B H Δ M W Hf) Hfr))) } } } } } } }.
@@ -3093,7 +3093,7 @@ Section Impl.
     rewrite (mdefs_run_stack _ _ _ _ _ _ Hr) in Hr |- *; exact (mdef_ok Htel HΔ Hgp Hr).
   Qed.
 
-  Equations mdef_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations mdef_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (b pv : bool) (Δ : ctx) (fns : list raw_fun) (H : pre ch s K D fs) :
     run_result {fs' | post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_mdef b pv Δ fns) (cstc (dec_units s) K D B (dec_stack fs')) /\
                 fs' = fs_of (dec_stack fs')} :=
@@ -3109,7 +3109,7 @@ Section Impl.
             with mdefs_dec (cmd_view s D) b pv (mdef_defs pq Dd Us Δ (f0 :: fns) ms) fs (pre_fctx_ok H) (pre_gctx_view H) => {
           | inr (exist _ e _) => run_failure (mdefs_why_error e)
           | inl (exist _ fs' (conj Hok' Hr)) =>
-              run_success (da_ok (mdef_res Htel (cmd_ctx B H Δ HΔ) (cmd_mdef_group B H _ _ _ _ _ _ _ _ _ Hgp) Hok' Hr)) } } } }.
+              run_success (defalias_ok (mdef_res Htel (cmd_ctx B H Δ HΔ) (cmd_mdef_group B H _ _ _ _ _ _ _ _ _ Hgp) Hok' Hr)) } } } }.
 
   (** ** The Recursor Module of a Group
 
@@ -3165,7 +3165,7 @@ Section Impl.
   (** Running a list of commands, from each state the invariant holds at. *)
   Definition cmds_fun (ch : list path) : Type :=
     forall s K D B fs cs (H : pre ch s K D fs),
-      run_result ({r | fast_res (post_cmds ch (dec_units s) K D B (dec_stack fs) cs) r} * elog)%type.
+      run_result ({r | fast_res (post_cmds ch (dec_units s) K D B (dec_stack fs) cs) r} * certified_log)%type.
 
   (** *** Frames Opened and Closed, Fast *)
 
@@ -3248,8 +3248,8 @@ Section Impl.
       fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_gen c)) r.
   Proof. intros [Hp Hu Hv Hf] Hgen; constructor; [ exact (gen_lift Hp Hgen) | exact Hu | exact Hv | exact Hf ]. Qed.
 
-  Definition gen_wrap {ch s K D B fs c} (x : run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) c) r} * elog)%type)
-      (Hgen : cmd_genable c) : run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_gen c)) r} * elog)%type :=
+  Definition gen_wrap {ch s K D B fs c} (x : run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) c) r} * certified_log)%type)
+      (Hgen : cmd_genable c) : run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_gen c)) r} * certified_log)%type :=
     match x with
     | run_success (exist _ r Hr, l) => run_success (exist _ r (gen_lift_res Hr Hgen), l)
     | run_failure e => run_failure e
@@ -3263,9 +3263,9 @@ Section Impl.
 
   (** A generated module, its body run by [rb], its parameters as
       generated. *)
-  Equations gen_mod_step (ch : list path) (rb : cmds_fun ch) (s : funits) (K : kmap) (D : list path) (B : builtins)
+  Equations gen_mod_step (ch : list path) (rb : cmds_fun ch) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins)
     (fs : fstack) (x : string) (pv : bool) (Δ : ctx) (cs : list core_cmd) (H : pre ch s K D fs) :
-    run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_mod x pv Δ cs)) r} * elog)%type :=
+    run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_mod x pv Δ cs)) r} * certified_log)%type :=
   | ch, rb, s, K, D, B, fs, x, pv, Δ, cs, H with tele_ass_dec Δ => {
     | right _ => run_failure (run_error_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ctx (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
@@ -3282,7 +3282,7 @@ Section Impl.
   (** A generated definition, as generated. *)
   Definition gen_def_cmd (ch : list path) : cmd_fun ch :=
     fun s K D B fs c H =>
-      match c as c0 return run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c0) r} * elog)%type with
+      match c as c0 return run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c0) r} * certified_log)%type with
       | core_cmd_gen (core_cmd_def x b pv A (Some M)) =>
           match defalias_step ch s K D B fs (core_cmd_def x b pv A (Some M)) H with
           | run_success Hp => run_success (exist _ _ (gen_lift_res (proj2_sig (frames_ok H Hp)) I), log_nil)
@@ -3295,7 +3295,7 @@ Section Impl.
       definitions, each generated. *)
   Definition rec_cmd (ch : list path) : cmd_fun ch :=
     fun s K D B fs c H =>
-      match c as c0 return run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c0) r} * elog)%type with
+      match c as c0 return run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c0) r} * certified_log)%type with
       | core_cmd_gen (core_cmd_mod x pv Δ cs) => gen_wrap (gen_mod_step ch (cmds_step ch (gen_def_cmd ch)) s K D B fs x pv Δ cs H) I
       | c0 => gen_def_cmd ch s K D B fs c0 H
       end.
@@ -3410,10 +3410,10 @@ Section Impl.
     exact (mems_cons_ok HM (mems_fresh_head Hp) (mems_pre_uparams _ _ _ _ _ _ Hp) HE (member_core H Hp HE Hr1) Est Hr2).
   Qed.
 
-  Equations members_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations members_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (pv : bool) (R : raw_decl) (pq : qname) (Dd : ind_decl) (k : nat) (xs : list string)
     (H : pre ch s K D fs) (Hp : mems_pre (dec_stack fs) R pq Dd k xs) (HE : head_entry ch (dec_units s) K D (dec_stack fs) pv pq Dd k xs) :
-    run_result ({r | fast_res (post_mems ch (dec_units s) K D B (dec_stack fs) pv R pq Dd k xs) r} * elog)%type by struct xs :=
+    run_result ({r | fast_res (post_mems ch (dec_units s) K D B (dec_stack fs) pv R pq Dd k xs) r} * certified_log)%type by struct xs :=
   | ch, s, K, D, B, fs, pv, R, pq, Dd, k, nil, H, Hp, HE => run_success (exist _ _ (same_res H mems_nil_ok), log_nil)
   | ch, s, K, D, B, fs, pv, R, pq, Dd, k, x :: xs', H, Hp, HE with member_case Dd k => {
     | inright _ => run_failure (run_error_msg "internal error: a declared member is missing")
@@ -3680,9 +3680,9 @@ Section Impl.
       instances read back, and the names it generates free; then its
       members, each with its module, by [members_step], and its recursor
       module, if any, by [rec_step]. *)
-  Equations ind_step (ch : list path) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
+  Equations ind_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (pv : bool) (R : raw_decl) (H : pre ch s K D fs) :
-    run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_inductive pv R)) r} * elog)%type :=
+    run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_inductive pv R)) r} * certified_log)%type :=
   | ch, s, K, D, B, fs, pv, R, H with list_case (raw_decl_members R) => {
     | inright _ => run_failure (run_error_msg "a declaration of no inductive type")
     | inleft (existT _ Mr0 (exist _ Mrs HR))
@@ -3749,7 +3749,7 @@ Section Impl.
   Qed.
 
   (** A builtin binding's result *)
-  Definition bt_ok {ch s K D B fs c} (H : pre ch s K D fs)
+  Definition builtins_ok {ch s K D B fs c} (H : pre ch s K D fs)
       (x : {B' | post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B' (dec_stack fs))}) :
       {r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) c) r} :=
     let (B', Hp) := x in exist _ (cst s K D B' fs) (state_res H Hp).
@@ -3771,7 +3771,7 @@ Section Impl.
 
   (** They are the units filed at the paths imported after the load. *)
   Lemma load_vis {ch s K D fs fp u0} {r : ustate} : pre ch s K D fs -> fus_find s fp = None -> ~ In fp ch ->
-      ures (fp :: ch) s K u0 r -> vis_rep (load_units s fp r) (p_union D (fp :: usf_dom r)).
+      unit_run_ok (fp :: ch) s K u0 r -> vis_rep (load_units s fp r) (p_union D (fp :: usf_dom r)).
   Proof.
     intros H Hn Hnch [Hpost Hu _].
     pose proof (load_pre (pre_linv _ _ _ _ _ H) (units_none H Hn) Hnch) as G.
@@ -3797,7 +3797,7 @@ Section Impl.
   Lemma load_res {ch s K D B fs fp src prg u} {r : ustate} {B'} (H : pre ch s K D fs) :
       fus_find s fp = None -> ~ In fp ch ->
       load_path fp = Some src -> read src = Some prg -> prog_path prg = fp -> to_core prg = Some u ->
-      ures (fp :: ch) s K u r -> bt_merge B (usf_bt r) = Some B' ->
+      unit_run_ok (fp :: ch) s K u r -> builtins_merge B (usf_bt r) = Some B' ->
       fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) (core_cmd_load fp))
         (cst (load_units s fp r) ((fp, (usf_dom r, usf_bt r)) :: usf_k r) (p_union D (fp :: usf_dom r)) B' fs).
   Proof.
@@ -3830,8 +3830,8 @@ Section Impl.
   Qed.
 
   (** Every expanded command but a module, which recurses on its body. *)
-  Equations simple_step (ch : list path) (L : loader ch) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
-    (c : core_cmd) (H : pre ch s K D fs) : run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) c) r} * elog)%type :=
+  Equations simple_step (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
+    (c : core_cmd) (H : pre ch s K D fs) : run_result ({r | fast_res (post_cmd ch (dec_units s) K D B (dec_stack fs) c) r} * certified_log)%type :=
   | ch, L, s, K, D, B, fs, core_cmd_def x b pv A M, H with defalias_step ch s K D B fs (core_cmd_def x b pv A M) H => {
     | run_failure e => run_failure e
     | run_success Hp => run_success (frames_ok H Hp, log_nil) }
@@ -3842,13 +3842,13 @@ Section Impl.
   | ch, L, s, K, D, B, fs, core_cmd_record _ _ _ _ _ _, H => run_failure (run_error_msg "internal error: a record is run by its own step")
   | ch, L, s, K, D, B, fs, core_cmd_gen _, H => run_failure (run_error_msg "internal error: a generated command is run by its own step")
   | ch, L, s, K, D, B, fs, core_cmd_load fp, H with opt_case (fus_find s fp) => {
-    | inleft (exist _ u HU) with opt_case (kbt K fp) => {
+    | inleft (exist _ u HU) with opt_case (unit_closure_builtins K fp) => {
       | inright _ => run_failure (run_error_msg "internal error: a filed unit has no record")
-      | inleft (exist _ BU HB) with inspect (bt_merge B BU) => {
+      | inleft (exist _ BU HB) with inspect (builtins_merge B BU) => {
         | exist _ None _ => run_failure (run_error_msg (bound_msg B))
         | exist _ (Some B') Hm with in_dec path_eq_dec fp D => {
           | left Hin => run_success (exist _ _ (state_res H (load_in_ok Hin (units_found H HU) HB Hm)), log_nil)
-          | right Hnin with opt_case (kfind K fp) => {
+          | right Hnin with opt_case (unit_closure_find K fp) => {
             | inleft (exist _ Dfp HK) => run_success (exist _ _ (see_res (fp :: Dfp) H (load_hit_ok Hnin (units_found H HU) HK HB Hm)), log_nil)
             | inright _ => run_failure (run_error_msg "internal error: a filed unit has no closure") } } } }
     | inright Hn with in_dec path_eq_dec fp ch => {
@@ -3864,7 +3864,7 @@ Section Impl.
               | inleft (exist _ u Hu)
                   with L fp src Hnch Hsrc s K u (load_pre (pre_linv _ _ _ _ _ H) (units_none H Hn) Hnch) (pre_units _ _ _ _ _ H) => {
                 | run_failure e => run_failure e
-                | run_success (exist _ r Hr, _) with inspect (bt_merge B (usf_bt r)) => {
+                | run_success (exist _ r Hr, _) with inspect (builtins_merge B (usf_bt r)) => {
                   | exist _ None _ => run_failure (run_error_msg (bound_msg B))
                   | exist _ (Some B') Hm => run_success (exist _ _ (load_res H Hn Hnch Hsrc Hprg Hp Hu Hr Hm), log_nil) } } } } } } } }
   | ch, L, s, K, D, B, fs, core_cmd_open E its, H with check_modexp (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E => {
@@ -3895,7 +3895,7 @@ Section Impl.
                 (field_error (cmd_F B H) None (pre_ctx_f B H) M (run_error_eval_infer fs M))) }
   | ch, L, s, K, D, B, fs, core_cmd_builtin k p, H with builtin_step ch s K D B fs k p H => {
     | run_failure e => run_failure e
-    | run_success Hp => run_success (bt_ok H Hp, log_nil) }
+    | run_success Hp => run_success (builtins_ok H Hp, log_nil) }
   | ch, L, s, K, D, B, fs, core_cmd_inductive_alias x pv Δ E, H with indalias_step ch s K D B fs x pv Δ E H => {
     | run_failure e => run_failure e
     | run_success Hp => run_success (frames_ok H Hp, log_nil) }
@@ -4056,8 +4056,8 @@ Section Impl.
     rewrite HΞ in Hf; cbn [tr_entry]; rewrite <- (frame_body_tr _ _ Hf), fs_ind_qname_dec, fs_record_at_dec; reflexivity.
   Qed.
 
-  Definition fill_simple (ch : list path) (L : loader ch) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
-    (c : core_cmd) (H : pre ch s K D fs) : run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r} * elog)%type :=
+  Definition fill_simple (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
+    (c : core_cmd) (H : pre ch s K D fs) : run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r} * certified_log)%type :=
     match inspect (fill_cmd_fn (cmd_F B H) B (pre_gctx_f B H) c) with
     | exist _ (fill_error e) _ =>
         if fill_failure_final e then run_failure (fill_run_error (cmd_F B H) (pre_gctx_f B H) (cmd_decl_name c) e)
@@ -4074,8 +4074,8 @@ Section Impl.
     end.
 
   #[derive(eliminator=no)]
-  Equations run_cmd_impl (ch : list path) (L : loader ch) (s : funits) (K : kmap) (D : list path) (B : builtins) (fs : fstack)
-    (c : core_cmd) (H : pre ch s K D fs) : run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r} * elog)%type by struct c :=
+  Equations run_cmd_impl (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
+    (c : core_cmd) (H : pre ch s K D fs) : run_result ({r | fast_res (post_lcmd ch (dec_units s) K D B (dec_stack fs) c) r} * certified_log)%type by struct c :=
   | ch, L, s, K, D, B, fs, core_cmd_mod x pv Δ0 cs, H
       with inspect (fill_params_fn (cmd_F B H) B (pre_gctx_f B H) Δ0) => {
     | exist _ (fill_error e) _ => run_failure (fill_run_error (cmd_F B H) (pre_gctx_f B H) None e)
@@ -4151,7 +4151,7 @@ Section Impl.
 
   (** Where a unit's imports end, nothing is open. *)
   Lemma unit_mid_pre {ch s K imps} {r1 : cstate} : ginv ch (dec_units s) K ->
-      fast_res (post_cmds ch (dec_units s) K nil bt_empty nil imps) r1 -> pre ch (cs_units r1) (cs_k r1) (cs_dom r1) nil.
+      fast_res (post_cmds ch (dec_units s) K nil builtins_empty nil imps) r1 -> pre ch (cs_units r1) (cs_k r1) (cs_dom r1) nil.
   Proof.
     intros G [Hp Hu Hv _]; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & _ & Hli1 & _).
     constructor; [ exists ΘR1; exact Hli1 | exact Hu | exact Hv | reflexivity ].
@@ -4174,7 +4174,7 @@ Section Impl.
 
   (** A unit run: its frame closed into the unit, fast *)
   Lemma unit_res {fp ch s K imps P0 P cs} (r1 r2 : cstate) {f fs2} :
-      fast_res (post_cmds (fp :: ch) (dec_units s) K nil bt_empty nil imps) r1 ->
+      fast_res (post_cmds (fp :: ch) (dec_units s) K nil builtins_empty nil imps) r1 ->
       fill_params (gds_restrict (cs_dom r1) (dec_units (cs_units r1))) nil (cs_bt r1) P0 P ->
       tele_ass P ->
       ⊢ gds_restrict (cs_dom r1) (dec_units (cs_units r1)) ⍮ nil ⍮ P ->
@@ -4182,7 +4182,7 @@ Section Impl.
       fast_res (post_cmds (fp :: ch) (dec_units (cs_units r1)) (cs_k r1) (cs_dom r1) (cs_bt r1)
                   (dec_stack (fs_push (q_abs fp nil) P nil)) cs) r2 ->
       cs_frames r2 = f :: fs2 ->
-      ures (fp :: ch) s K (imps, P0, cs) (ust (cs_units r2) (cs_k r2) (cs_dom r2) (cs_bt r2) (fu_mk (ff_params f) (fmd_body (ff_body f)))).
+      unit_run_ok (fp :: ch) s K (imps, P0, cs) (ust (cs_units r2) (cs_k r2) (cs_dom r2) (cs_bt r2) (fu_mk (ff_params f) (fmd_body (ff_body f)))).
   Proof.
     intros [Hp1 _ _ _] Hfa Htel HP Hac [Hp2 Hu _ Hf] HΞ.
     assert (Est : cstate_stack (cs_read r2) = dec_frame f :: dec_stack fs2) by (cbn [cs_read cstate_stack]; rewrite HΞ; reflexivity).
@@ -4194,14 +4194,14 @@ Section Impl.
 
   (** A unit: its imports, its parameters filled and checked, then its
       body in its own frame. *)
-  Definition run_unit_step (ch : list path) (L : loader ch) (s : funits) (K : kmap) (u : cunit)
-    (G : ginv ch (dec_units s) K) (Hs : units_rep s (dec_units s)) : run_result ({r | ures ch s K u r} * elog)%type :=
-    match ch as ch0 return loader ch0 -> ginv ch0 (dec_units s) K -> run_result ({r | ures ch0 s K u r} * elog)%type with
+  Definition run_unit_step (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (u : cunit)
+    (G : ginv ch (dec_units s) K) (Hs : units_rep s (dec_units s)) : run_result ({r | unit_run_ok ch s K u r} * certified_log)%type :=
+    match ch as ch0 return loader ch0 -> ginv ch0 (dec_units s) K -> run_result ({r | unit_run_ok ch0 s K u r} * certified_log)%type with
     | nil => fun _ _ => run_failure (run_error_msg "internal error: no unit to run")
     | fp :: ch0 => fun L G =>
-    match u as u0 return run_result ({r | ures (fp :: ch0) s K u0 r} * elog)%type with
+    match u as u0 return run_result ({r | unit_run_ok (fp :: ch0) s K u0 r} * certified_log)%type with
     | (imps, P0, cs) =>
-        match run_cmds_impl (fp :: ch0) L (fus_with_vis s (PM.empty _)) K nil bt_empty nil imps (unit_pre_f G Hs) with
+        match run_cmds_impl (fp :: ch0) L (fus_with_vis s (PM.empty _)) K nil builtins_empty nil imps (unit_pre_f G Hs) with
         | run_failure e => run_failure e
         | run_success (exist _ r1 Hr1, l1) =>
             let H1 := unit_mid_pre G Hr1 in
@@ -4245,7 +4245,7 @@ Section Impl.
 
   #[derive(eliminator=no)]
   Equations run_unit_impl (ch : list path) (Hacc : Acc load_step ch) :
-    forall s K u, ginv ch (dec_units s) K -> units_rep s (dec_units s) -> run_result ({r | ures ch s K u r} * elog)%type by struct Hacc :=
+    forall s K u, ginv ch (dec_units s) K -> units_rep s (dec_units s) -> run_result ({r | unit_run_ok ch s K u r} * certified_log)%type by struct Hacc :=
   run_unit_impl ch Hacc :=
     run_unit_step ch (fun fp src Hn Hs => run_unit_impl (fp :: ch) (Acc_inv Hacc (load_step_intro Hn Hs))).
 
@@ -4305,7 +4305,7 @@ Section Impl.
   (** The run reaches the reading of the fast state it ends with; the
       frames it starts at are read the same way. *)
   Theorem run_cmd_impl_sound : forall ch L s K D B fs c H r ΘR RbR,
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR -> run_cmd_impl ch L s K D B fs c H = run_success r ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR -> run_cmd_impl ch L s K D B fs c H = run_success r ->
       exists c' ΘR' RbR', fill_cmd ΘR (dec_stack fs) B c c' /\
         ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c' ⇝
           ΘR' ⍮ cstate_stack (cs_read (proj1_sig (fst r))) ⍮ cstate_bt (cs_read (proj1_sig (fst r))) ⍮ RbR' /\
@@ -4317,7 +4317,7 @@ Section Impl.
   Qed.
 
   Theorem run_cmds_impl_sound : forall ch L s K D B fs cs H r ΘR RbR,
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR -> run_cmds_impl ch L s K D B fs cs H = run_success r ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR -> run_cmds_impl ch L s K D B fs cs H = run_success r ->
       exists ΘR' RbR', ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝*
           ΘR' ⍮ cstate_stack (cs_read (proj1_sig (fst r))) ⍮ cstate_bt (cs_read (proj1_sig (fst r))) ⍮ RbR' /\
         linv ch (cstate_deps (cs_read (proj1_sig (fst r)))) (cstate_k (cs_read (proj1_sig (fst r))))
@@ -4388,7 +4388,7 @@ Section Impl.
     match goal with
     | Ht0 : modexp_as_term E = Some ?M0, HW0 : alg_type_infer _ ?W0 ?M0, Hn0 : nbe _ _ _ ?M0 _ (nf_indty ?p0 0 nil),
       Hl0 : ind_lookup _ _ ?p0 = Some ?Dd0, Hs0 : nat_shape ?Dd0 = Some _, Hsort0 : ind_sort ?Dd0 = nat_sort,
-      Hb0 : bt_bind_nat _ ?p0 = Some _ |- _ =>
+      Hb0 : builtins_bind_nat _ ?p0 = Some _ |- _ =>
         rename Ht0 into Ht; rename HW0 into HW; rename Hn0 into Hn; rename Hl0 into Hl; rename Hs0 into Hs;
         rename Hsort0 into Hsort; rename Hb0 into Hb; rename p0 into p; rename Dd0 into Dd; rename M0 into M;
         rename W0 into W
@@ -4417,7 +4417,7 @@ Section Impl.
     destruct (inspect (nat_shape Dd)) as [[[z' s'] |] Es]; simp builtin_step; [| congruence ].
     destruct (inspect (is_nat_sort (ind_sort Dd))) as [[|] Ek]; simp builtin_step;
       [| rewrite Hsort in Ek; discriminate ].
-    destruct (inspect (bt_bind_nat B p)) as [[B1 |] Eb]; simp builtin_step; [ eexists; reflexivity | congruence ].
+    destruct (inspect (builtins_bind_nat B p)) as [[B1 |] Eb]; simp builtin_step; [ eexists; reflexivity | congruence ].
   Qed.
 
   Lemma indalias_complete : forall ch B RbR ΘR x pv Δ E B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
@@ -4631,11 +4631,11 @@ Section Impl.
 
   Lemma cmds_step_complete (ch : list path) (rc : cmd_fun ch) (P : core_cmd -> Prop) :
     (forall s K D B fs (H : pre ch s K D fs) ΘR RbR c c' B' RbR' ΘR' Ξ',
-        P c -> linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR -> fill_cmd ΘR (dec_stack fs) B c c' ->
+        P c -> linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR -> fill_cmd ΘR (dec_stack fs) B c c' ->
         ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c' ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
         exists r, rc s K D B fs c H = run_success r) ->
     forall cs, Forall P cs -> forall s K D B fs (H : pre ch s K D fs) ΘR RbR B' RbR' ΘR' Ξ',
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, cmds_step ch rc s K D B fs cs H = run_success r.
   Proof.
@@ -4672,10 +4672,10 @@ Section Impl.
   Lemma gen_mod_step_complete : forall ch (rb : cmds_fun ch) s K D B fs (H : pre ch s K D fs) ΘR RbR
       x pv Δ cs B' RbR' ΘR' Ξ',
       (forall s1 K1 D1 B1 fs1 (H1 : pre ch s1 K1 D1 fs1) ΘR1 RbR1 B2 RbR2 ΘR2 Ξ2,
-         linv ch (dec_units s1) K1 D1 ΘR1 (dec_stack fs1) -> rb_ok K1 ΘR1 RbR1 ->
+         linv ch (dec_units s1) K1 D1 ΘR1 (dec_stack fs1) -> builtin_records_ok K1 ΘR1 RbR1 ->
          ΘR1 ⍮ dec_stack fs1 ⍮ B1 ⍮ RbR1 ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR2 ⍮ Ξ2 ⍮ B2 ⍮ RbR2 ->
          exists r, rb s1 K1 D1 B1 fs1 cs H1 = run_success r) ->
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_mod x pv Δ cs ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, gen_mod_step ch rb s K D B fs x pv Δ cs H = run_success r.
   Proof.
@@ -4717,7 +4717,7 @@ Section Impl.
 
   (** Generated commands the judgment runs, [rec_step] runs. *)
   Lemma gen_step_complete : forall ch cs s K D B fs (H : pre ch s K D fs) ΘR RbR B' RbR' ΘR' Ξ',
-      Forall cmd_is_gen cs -> linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      Forall cmd_is_gen cs -> linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, rec_step ch s K D B fs cs H = run_success r.
   Proof.
@@ -4750,7 +4750,7 @@ Section Impl.
 
   Lemma members_step_complete : forall ch xs s K D B fs pv R pq Dd k (H : pre ch s K D fs) Hp HE
       ΘR RbR B' RbR' ΘR' Ξ',
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       run_ind_members load_path read to_core ch B RbR ΘR (dec_stack fs) pv R pq Dd k xs B' RbR' ΘR' Ξ' ->
       exists r, members_step ch s K D B fs pv R pq Dd k xs H Hp HE = run_success r.
   Proof.
@@ -4791,7 +4791,7 @@ Section Impl.
 
   (** The recursor module of a group the judgment runs, [rec_step] runs. *)
   Lemma rec_step_complete : forall ch R pq Dd s K D B fs (H : pre ch s K D fs) ΘR RbR B' RbR' ΘR' Ξ',
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ rec_cmds_f (cmd_F B H) R pq Dd ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, rec_step ch s K D B fs (rec_cmds_f (cmd_F B H) R pq Dd) H = run_success r.
   Proof.
@@ -4802,7 +4802,7 @@ Section Impl.
 
   (** A group declaration the judgment runs, the executable runs. *)
   Lemma ind_complete : forall ch B RbR ΘR pv R B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_inductive pv R ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, ind_step ch s K D B fs pv R H = run_success r.
   Proof.
@@ -4898,11 +4898,11 @@ Section Impl.
 
   Theorem run_impl_complete :
     (forall ch B RbR ΘR Ξ c' B' RbR' ΘR' Ξ', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c' ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
-       forall Hacc s K D fs (H : pre ch s K D fs), dec_stack fs = Ξ -> linv ch (dec_units s) K D ΘR Ξ -> rb_ok K ΘR RbR ->
+       forall Hacc s K D fs (H : pre ch s K D fs), dec_stack fs = Ξ -> linv ch (dec_units s) K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
        forall c, fill_cmd ΘR Ξ B c c' ->
          exists r, run_cmd_impl ch (loader_of ch Hacc) s K D B fs c H = run_success r) /\
     (forall ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
-       forall Hacc s K D fs (H : pre ch s K D fs), dec_stack fs = Ξ -> linv ch (dec_units s) K D ΘR Ξ -> rb_ok K ΘR RbR ->
+       forall Hacc s K D fs (H : pre ch s K D fs), dec_stack fs = Ξ -> linv ch (dec_units s) K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
          exists r, run_cmds_impl ch (loader_of ch Hacc) s K D B fs cs H = run_success r) /\
     (forall ch u B' RbU ΘU U, run_unit ch u B' RbU ΘU U ->
        forall Hacc s K (G : ginv ch (dec_units s) K) (Hs : units_rep s (dec_units s)),
@@ -4961,9 +4961,9 @@ Section Impl.
       destruct (opt_case (fus_find s fp)) as [[u' HU'] | HU']; [| rewrite HU' in HUg; discriminate ].
       simp simple_step.
       pose proof (proj2 Hrb _ _ HBU) as HB.
-      destruct (opt_case (kbt K fp)) as [[BU' HB'] | HB']; [| congruence ].
+      destruct (opt_case (unit_closure_builtins K fp)) as [[BU' HB'] | HB']; [| congruence ].
       assert (BU' = BU) as -> by congruence; simp simple_step.
-      destruct (inspect (bt_merge B BU)) as [[B1 |] Em]; [| congruence ]; simp simple_step.
+      destruct (inspect (builtins_merge B BU)) as [[B1 |] Em]; [| congruence ]; simp simple_step.
       destruct (in_dec path_eq_dec fp D) as [Hin' | Hin']; [| contradiction ]; simp simple_step.
       eexists; reflexivity.
     - (* a load: shared if some other unit filed it, run otherwise *)
@@ -4978,11 +4978,11 @@ Section Impl.
         assert (src' = src) as -> by congruence; assert (prg' = prg) as -> by congruence; assert (u' = u) as -> by congruence.
         destruct (run_unit_functional load_path read to_core (fp :: ch0) (fp :: ch) _ _ _ _ _ _ _ _ _ eq_refl Hu' Hu)
           as (_ & _ & <- & _).
-        destruct (opt_case (kbt K fp)) as [[BU1 HB1] | HB1]; [| congruence ].
+        destruct (opt_case (unit_closure_builtins K fp)) as [[BU1 HB1] | HB1]; [| congruence ].
         assert (BU1 = BU') as -> by congruence; simp simple_step.
-        destruct (inspect (bt_merge B BU')) as [[B1 |] Em]; [| congruence ]; simp simple_step.
+        destruct (inspect (builtins_merge B BU')) as [[B1 |] Em]; [| congruence ]; simp simple_step.
         destruct (in_dec path_eq_dec fp D) as [Hin | Hin]; [ contradiction |]; simp simple_step.
-        destruct (opt_case (kfind K fp)) as [[Dfp' HK'] | HK']; [| congruence ]; simp simple_step.
+        destruct (opt_case (unit_closure_find K fp)) as [[Dfp' HK'] | HK']; [| congruence ]; simp simple_step.
         eexists; reflexivity.
       + destruct (in_dec path_eq_dec fp ch) as [Hin | Hin]; [ contradiction |]; simp simple_step.
         destruct (opt_case (load_path fp)) as [[src' Hl'] | Hl']; [| congruence ].
@@ -4995,11 +4995,11 @@ Section Impl.
         unfold loader_of.
         match goal with |- context [run_unit_impl (fp :: ch) ?a s K u ?b ?c] =>
           destruct (IH a s K b c) as [[[r Hpost] l] E']; rewrite E'; simp simple_step;
-          destruct (ures_post _ _ _ _ _ Hpost b) as [RbU' ΘU' Hu' _ _ _ _ _ _ _]
+          destruct (unit_run_ok_post _ _ _ _ _ Hpost b) as [RbU' ΘU' Hu' _ _ _ _ _ _ _]
         end.
         destruct (run_unit_functional load_path read to_core (fp :: ch) (fp :: ch) _ _ _ _ _ _ _ _ _ eq_refl Hu' Hu)
           as (_ & _ & HB & _).
-        destruct (inspect (bt_merge B (usf_bt r))) as [[B1 |] Em];
+        destruct (inspect (builtins_merge B (usf_bt r))) as [[B1 |] Em];
           [| exfalso; pose proof Em as Em'; cbn [us_read us_bt] in HB; rewrite HB in Em'; congruence ]; simp simple_step.
         eexists; reflexivity.
     - (* an import: its target, then its generated commands *)
@@ -5161,9 +5161,9 @@ Section Impl.
     - (* a unit *)
       intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs ΘR1 ΘR2 mp Kf U Hi IHi HPa Htel HP Hac Hb IHb Hacc s K G Hs.
       rewrite run_unit_impl_unfold; cbn [run_unit_step].
-      destruct (IHi Hacc (fus_with_vis s (PM.empty _)) K nil nil (unit_pre_f G Hs) eq_refl (nil_linv G) (rb_ok_nil K))
+      destruct (IHi Hacc (fus_with_vis s (PM.empty _)) K nil nil (unit_pre_f G Hs) eq_refl (nil_linv G) (builtin_records_ok_nil K))
         as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota zeta.
-      destruct (fres_post _ _ Hp1 _ _ (nil_linv G) (rb_ok_nil K)) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
+      destruct (fres_post _ _ Hp1 _ _ (nil_linv G) (builtin_records_ok_nil K)) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
       destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hi Hr1) as (<- & HΞ & HB & HR);
         rewrite <- HΞ in Hli1.
       subst B1 Rb1.
@@ -5194,13 +5194,13 @@ Section Impl.
 
   (** The result is the judgment's, by determinism. *)
   Corollary run_cmd_impl_complete : forall ch B RbR ΘR c0 c B' RbR' ΘR' Ξ' Hacc s K D fs (H : pre ch s K D fs),
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR -> fill_cmd ΘR (dec_stack fs) B c0 c ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR -> fill_cmd ΘR (dec_stack fs) B c0 c ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, run_cmd_impl ch (loader_of ch Hacc) s K D B fs c0 H = run_success r /\ cstate_stack (cs_read (proj1_sig (fst r))) = Ξ' /\
         cstate_bt (cs_read (proj1_sig (fst r))) = B' /\
         linv ch (cstate_deps (cs_read (proj1_sig (fst r)))) (cstate_k (cs_read (proj1_sig (fst r))))
           (cstate_dom (cs_read (proj1_sig (fst r)))) ΘR' Ξ' /\
-        rb_ok (cstate_k (cs_read (proj1_sig (fst r)))) ΘR' RbR'.
+        builtin_records_ok (cstate_k (cs_read (proj1_sig (fst r)))) ΘR' RbR'.
   Proof.
     intros * Hli Hrb Hfc Hr;
       destruct (proj1 run_impl_complete _ _ _ _ _ _ _ _ _ _ Hr Hacc _ _ _ _ H eq_refl Hli Hrb _ Hfc) as [r E].
@@ -5213,13 +5213,13 @@ Section Impl.
   Qed.
 
   Corollary run_cmds_impl_complete : forall ch B RbR ΘR cs B' RbR' ΘR' Ξ' Hacc s K D fs (H : pre ch s K D fs),
-      linv ch (dec_units s) K D ΘR (dec_stack fs) -> rb_ok K ΘR RbR ->
+      linv ch (dec_units s) K D ΘR (dec_stack fs) -> builtin_records_ok K ΘR RbR ->
       ΘR ⍮ dec_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, run_cmds_impl ch (loader_of ch Hacc) s K D B fs cs H = run_success r /\ cstate_stack (cs_read (proj1_sig (fst r))) = Ξ' /\
         cstate_bt (cs_read (proj1_sig (fst r))) = B' /\
         linv ch (cstate_deps (cs_read (proj1_sig (fst r)))) (cstate_k (cs_read (proj1_sig (fst r))))
           (cstate_dom (cs_read (proj1_sig (fst r)))) ΘR' Ξ' /\
-        rb_ok (cstate_k (cs_read (proj1_sig (fst r)))) ΘR' RbR'.
+        builtin_records_ok (cstate_k (cs_read (proj1_sig (fst r)))) ΘR' RbR'.
   Proof.
     intros * Hli Hrb Hr; destruct (proj1 (proj2 run_impl_complete) _ _ _ _ _ _ _ _ _ _ Hr Hacc _ _ _ _ H eq_refl Hli Hrb) as [r E].
     exists r; split; [ exact E |].
@@ -5239,7 +5239,7 @@ Section Impl.
     intros * Hu; destruct (proj1 (proj2 (proj2 run_impl_complete)) _ _ _ _ _ _ Hu Hacc _ _ G Hs) as [r E].
     exists r; split; [ exact E |].
     destruct r as [[r Hp] l]; cbn [proj1_sig fst].
-    destruct (unit_equiv G (ures_post _ _ _ _ _ Hp)) as (RbU' & ΘU' & Hu' & G' & Heq & _).
+    destruct (unit_equiv G (unit_run_ok_post _ _ _ _ _ Hp)) as (RbU' & ΘU' & Hu' & G' & Heq & _).
     destruct (run_unit_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ eq_refl Hu Hu') as (<- & HU & HB & _).
     rewrite <- HU, <- HB; split; [ reflexivity | split; [ reflexivity | split; assumption ] ].
   Qed.

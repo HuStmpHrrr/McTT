@@ -224,12 +224,12 @@ Section Fill.
       rejects *)
   | fill_read_mem_module : forall Γ H H' op y,
       fill_mod Γ H H' op -> sel_ok op y ->
-      (forall A oM, ~ mdenote Θ Ξ Γ (me_mem H' y) (ds_term A oM)) ->
+      (forall A oM, ~ mdenote Θ Ξ Γ (me_mem H' y) (mdesc_term A oM)) ->
       fill_read Γ (me_mem H y) (read_module (me_mem H' y))
   (** A member that is a term: the term *)
   | fill_read_mem_term : forall Γ H H' op y A oM,
       fill_mod Γ H H' op -> sel_ok op y ->
-      mdenote Θ Ξ Γ (me_mem H' y) (ds_term A oM) ->
+      mdenote Θ Ξ Γ (me_mem H' y) (mdesc_term A oM) ->
       fill_read Γ (me_mem H y) (read_term (a_mem H' y))
   (** A module applied: a module *)
   | fill_read_app_module : forall Γ H H' N N',

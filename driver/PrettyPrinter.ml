@@ -405,7 +405,7 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
 let current_unit : string list ref = ref []
 
 (* The builtin bindings the run ended with ([builtin natural]). *)
-let current_bt : McttExtracted.Builtin.builtins ref = ref McttExtracted.Builtin.bt_empty
+let current_bt : McttExtracted.Builtin.builtins ref = ref McttExtracted.Builtin.builtins_empty
 
 (* The natural numbers bound where the terms printed are, as the bindings
    see them in the state of the eval printed: the type and its two
@@ -1456,9 +1456,9 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_run_error_branch_order cs ->
      fprintf f "@[<hov 2>Error: the branches must follow the order of the constructors:@ %s@]"
        (String.concat ", " cs)
-  | Coq_run_error_lit (McttExtracted.Builtin.Coq_le_num n) ->
+  | Coq_run_error_lit (McttExtracted.Builtin.Coq_literal_failure_reason_numeral n) ->
      fprintf f "@[<hov 2>Error: unknown numeral %d: no natural-number type is bound@]" n
-  | Coq_run_error_lit McttExtracted.Builtin.Coq_le_tok ->
+  | Coq_run_error_lit McttExtracted.Builtin.Coq_literal_failure_reason_token ->
      fprintf f "@[<hov 2>Error: unknown type %a: no natural-number type is bound@]" pp_sym s_nat
   | Coq_run_error_nat (_, _, _, e') -> format_run_error_in f e'
 

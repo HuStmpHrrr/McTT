@@ -78,7 +78,7 @@ Section Fixed_GCtx.
   Qed.
 
   Section Canon.
-    Variable (u : uidx) (p : qname) (D : ind_decl) (ups ups' : list domain).
+    Variable (u : universe_index) (p : qname) (D : ind_decl) (ups ups' : list domain).
     Let nr := canon_nparams_rel D ups.
     Let ar := canon_args_rel D ups.
     Let dr := canon_doms_rel ups.

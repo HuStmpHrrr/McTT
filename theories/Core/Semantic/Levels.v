@@ -47,14 +47,14 @@ Proof. reflexivity. Qed.
 Fact dlvl_atoms_lit : forall n, dlvl_atoms (dlvl_lit n) = nil.
 Proof. reflexivity. Qed.
 
-Fact dlvl_cst_suc : forall l, dlvl_cst (dlvl_suc l) = osuc (dlvl_cst l).
+Fact dlvl_cst_suc : forall l, dlvl_cst (dlvl_suc l) = ordinal_succ (dlvl_cst l).
 Proof. reflexivity. Qed.
 
 Fact dlvl_atoms_suc : forall l,
     dlvl_atoms (dlvl_suc l) = List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms l).
 Proof. reflexivity. Qed.
 
-Fact dlvl_cst_max : forall l l', dlvl_cst (dlvl_max l l') = omax (dlvl_cst l) (dlvl_cst l').
+Fact dlvl_cst_max : forall l l', dlvl_cst (dlvl_max l l') = ordinal_max (dlvl_cst l) (dlvl_cst l').
 Proof. reflexivity. Qed.
 
 Fact dlvl_atoms_max : forall l l', dlvl_atoms (dlvl_max l l') = dlvl_atoms l ++ dlvl_atoms l'.
@@ -62,7 +62,7 @@ Proof. reflexivity. Qed.
 
 (** ** Readback of the Atoms *)
 
-Lemma read_la_app : forall s xs ys xs' ys',
+Lemma read_level_atoms_app : forall s xs ys xs' ys',
     Rla xs in s ↘ ys ->
     Rla xs' in s ↘ ys' ->
     Rla (xs ++ xs') in s ↘ (ys ++ ys').
@@ -70,14 +70,14 @@ Proof.
   intros * H H'; induction H; cbn; eauto with mctt.
 Qed.
 
-Lemma read_la_suc : forall s xs ys,
+Lemma read_level_atoms_suc : forall s xs ys,
     Rla xs in s ↘ ys ->
-    Rla (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) in s ↘ la_suc ys.
+    Rla (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) in s ↘ level_atoms_suc ys.
 Proof.
   intros * H; induction H; cbn; eauto with mctt.
 Qed.
 
-Hint Resolve read_la_app read_la_suc : mctt.
+Hint Resolve read_level_atoms_app read_level_atoms_suc : mctt.
 
 (** ** The Canonical Form of a Level at a Length
 
@@ -109,7 +109,7 @@ Proof.
     eexists (lvl_canon (_, _)); split; [ reflexivity |].
     eexists; split; [ eassumption | reflexivity ].
   - split; [ constructor |].
-    exists (oz, cons (mk_level_atom 0 (dsort a) M) nil); split; [ reflexivity |].
+    exists (ordinal_zero, cons (mk_level_atom 0 (domain_level_sort a) M) nil); split; [ reflexivity |].
     eexists; split; [ repeat constructor; eassumption | reflexivity ].
 Qed.
 
@@ -119,7 +119,7 @@ Lemma dlvl_canon_functional : forall s l L L',
     L = L'.
 Proof.
   intros * [ys [Hys ->]] [ys' [Hys' ->]].
-  assert (ys = ys') as -> by (eapply functional_read_la; eassumption).
+  assert (ys = ys') as -> by (eapply functional_read_level_atoms; eassumption).
   reflexivity.
 Qed.
 
@@ -142,7 +142,7 @@ Lemma dlvl_canon_suc : forall s l L,
     dlvl_canon s (dlvl_suc l) (lvl_canon (lvl_suc L)).
 Proof.
   intros * [ys [Hys ->]]; eexists; rewrite dlvl_atoms_suc, dlvl_cst_suc.
-  split; [ apply read_la_suc; eassumption |].
+  split; [ apply read_level_atoms_suc; eassumption |].
   rewrite lvl_canon_suc; reflexivity.
 Qed.
 
@@ -152,7 +152,7 @@ Lemma dlvl_canon_max : forall s l L m M,
     dlvl_canon s (dlvl_max l m) (lvl_canon (lvl_max L M)).
 Proof.
   intros * [ys [Hys ->]] [zs [Hzs ->]]; eexists; rewrite dlvl_atoms_max, dlvl_cst_max.
-  split; [ apply read_la_app; eassumption |].
+  split; [ apply read_level_atoms_app; eassumption |].
   rewrite lvl_canon_max_l, lvl_canon_max_r; reflexivity.
 Qed.
 
@@ -384,7 +384,7 @@ Qed.
 
 Lemma per_lvl_max_zero : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    Dom dlvl_max (dlvl_lit oz) l ≈ l' ∈ per_lvl.
+    Dom dlvl_max (dlvl_lit ordinal_zero) l ≈ l' ∈ per_lvl.
 Proof.
   intros * H.
   pose proof (per_lvl_shape _ _ H) as [Hl Hl'].
@@ -394,7 +394,7 @@ Proof.
   - intros s; exact (per_lvl_ex_right _ _ H s).
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ H s) as [A HA].
-    assert (L = lvl_canon (lvl_max (lvl_lit oz) A)) as ->
+    assert (L = lvl_canon (lvl_max (lvl_lit ordinal_zero) A)) as ->
       by (eapply dlvl_canon_functional;
           [ exact HL | apply dlvl_canon_max; [ apply dlvl_canon_lit | exact HA ] ]).
     assert (L' = A) as -> by (symmetry; eapply per_lvl_eq; [ exact H | exact HA | exact HL' ]).
@@ -588,7 +588,7 @@ Hint Constructors dlvl_shape : mctt.
 #[export]
 Hint Resolve dlvl_shape_suc dlvl_shape_max dlvl_shape_lit : mctt.
 #[export]
-Hint Resolve read_la_app read_la_suc : mctt.
+Hint Resolve read_level_atoms_app read_level_atoms_suc : mctt.
 #[export]
 Hint Resolve dlvl_canon_lit dlvl_canon_suc dlvl_canon_max : mctt.
 #[export]

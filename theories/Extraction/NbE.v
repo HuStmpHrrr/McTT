@@ -9,7 +9,7 @@
     and the specifications are those of [Reference.NbE].
 
     An environment the normalizers start from is related to the initial
-    environment of its context ([fenv]); the checker computes it once per
+    environment of its context ([fast_env]); the checker computes it once per
     context ([initial_env_impl]) and extends it under binders. *)
 From Equations Require Import Equations.
 
@@ -121,7 +121,7 @@ Hint Resolve nbe_ty_order_sound : mctt.
 
 (** An environment related, entry by entry, to the initial environment of
     [G]. *)
-Definition fenv Θ Ξ G := { p' | exists p, initial_env Θ Ξ G p /\ env_agree Θ Ξ (fun _ => True) p p' }.
+Definition fast_env Θ Ξ G := { p' | exists p, initial_env Θ Ξ G p /\ env_agree Θ Ξ (fun _ => True) p p' }.
 
 Section Orders.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -180,7 +180,7 @@ Section InitialEnvImpl.
   #[local] Abbreviation Ξ := (fc_stack F).
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations initial_env_impl G (H : initial_env_order Θ Ξ G) : fenv Θ Ξ G by struct H :=
+  Equations initial_env_impl G (H : initial_env_order Θ Ξ G) : fast_env Θ Ξ G by struct H :=
   | nil, H => exist _ nil _
   | cons (ce_ass A) G, H =>
       let (p, Hp) := initial_env_impl G _ in
@@ -277,7 +277,7 @@ Section NbETyEnvDef.
   #[local] Abbreviation Ξ := (fc_stack F).
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations nbe_ty_env_impl G (P : fenv Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
+  Equations nbe_ty_env_impl G (P : fast_env Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
     { w | nbe_ty Θ Ξ G A w } :=
   | G, exist _ p Hp, A, H =>
       let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ in
@@ -379,7 +379,7 @@ Section NbEEnvDef.
   (** The normal form of a term at a type, from an environment related to
       the context's initial one. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations nbe_env_impl G (P : fenv Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
+  Equations nbe_env_impl G (P : fast_env Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
   | G, exist _ p Hp, M, A, H =>
       let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ in
       let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ in

@@ -88,7 +88,7 @@ Qed.
     [wf_mem] on it. *)
 Lemma glu_rel_exp_mem : forall {Γ H x R A M},
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    mdenote gc_deps gc_stack Γ (me_mem H x) R -> ds_ty R = Some A -> ds_red R = Some M ->
+    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
     Γ ⊩ M : A ->
     Γ ⊩ a_mem H x : A.
 Proof.

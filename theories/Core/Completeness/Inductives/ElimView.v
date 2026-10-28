@@ -2,7 +2,7 @@
 
     The eliminator of a group [D] at its view [m] of the container's
     declared member [k'] at the instance [Is] is the container's
-    eliminator at [k'], at the view's blocks wrapped ([vwrap]).  At related
+    eliminator at [k'], at the view's blocks wrapped ([view_wrap]).  At related
     environments the two eliminate related elements to related values
     (the cross relation): by induction on the group's elements, a
     constructor's branch against its wrapped branch, which is the group's
@@ -2074,9 +2074,9 @@ Section CrossElim.
       exists Mi' Mj, ind_member D' i' = Some Mi' /\ view_member p D qc D' vm i' Mi' j Mj.
   Proof.
     intros i' j Hv.
-    destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
+    destruct (grp_tele_ass_view_wrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
     rewrite Hq in Hq2; injection Hq2 as <-.
-    assert (Hi : i' < List.length (ind_members D')) by (rewrite <- (vwrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
+    assert (Hi : i' < List.length (ind_members D')) by (rewrite <- (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some' _ _ Hi) as [Mi' HMi'].
     destruct (view_agree_members p D m Mm qc k' Is vm D' Hass HMm Hh Hq i' Mi' HMi') as (v & Mv & Hvm).
     pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv'; rewrite Hv in Hv'; injection Hv' as <-.
@@ -2335,7 +2335,7 @@ End CrossElim.
 
 (** ** The Container's Wrapped Blocks
 
-    The blocks [vwrap] of the view [m] of the container's group [D'] at
+    The blocks [view_wrap] of the view [m] of the container's group [D'] at
     [qc] meet the conditions of [CrossElim], at [C1] and moved by a
     substitution into [C1]'s class.  The container's members with a block
     are taken to the group's members with one ([view_member]); its record
@@ -2382,7 +2382,7 @@ Section WrappedBlocks.
   Let HrsQ : rview_struct_ok gc_deps gc_stack D' := decl_typed_rstruct _ _ _ HdtQ.
   Let HassQ := valid_group_ass _ _ HgQ.
   Let HlcQ : leaves_coherent D' := leaves_coherent_of_order D' (rview_struct_order _ _ _ (grp_tele_ass_rstruct _ HassQ)).
-  Let VB := vwrap p D D' vm Us Bks.
+  Let VB := view_wrap p D D' vm Us Bks.
 
   (** Each member of the container's group, the member of the group the
       view's map takes it to. *)
@@ -2393,9 +2393,9 @@ Section WrappedBlocks.
       exists Mj' Mj, ind_member D' j' = Some Mj' /\ view_member p D qc D' vm j' Mj' j Mj.
   Proof.
     intros j' j Hv.
-    destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
+    destruct (grp_tele_ass_view_wrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
     rewrite Hq in Hq2; injection Hq2 as <-.
-    assert (Hi : j' < List.length (ind_members D')) by (rewrite <- (vwrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
+    assert (Hi : j' < List.length (ind_members D')) by (rewrite <- (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some' _ _ Hi) as [Mj' HMj'].
     destruct (wrapped_view_member j' Mj' HMj') as (v & Mv & Hvm).
     pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv'; rewrite Hv in Hv'; injection Hv' as <-.
@@ -2443,8 +2443,8 @@ Section WrappedBlocks.
     - intros c gs' gs Hc' Hcn.
       destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvm c gs' Hc') as (gs0 & Hc0 & Hco).
       rewrite Hcn in Hc0; injection Hc0 as <-; exact Hco.
-    - unfold VB; rewrite (nth_error_vwrap _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ HrsQ) HMi' Hrv').
-      rewrite (vwrap_block_eq _ _ _ _ _ _ _ _ _ _ _ Hv Hbv HMv); reflexivity.
+    - unfold VB; rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ HrsQ) HMi' Hrv').
+      rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ Hv Hbv HMv); reflexivity.
   Qed.
 
   (** A block of the wrapped blocks is of a member that is not a record
@@ -2452,8 +2452,8 @@ Section WrappedBlocks.
   Lemma wrapped_at_not_rview : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VB i' = Some b ->
       im_is_rview Mi' = false.
   Proof.
-    intros * HMi' Hb; unfold VB, vwrap in Hb.
-    destruct (nth_error_vwrap_from _ _ _ _ _ _ _ _ _ _ Hb) as (Mi'' & Hi & _).
+    intros * HMi' Hb; unfold VB, view_wrap in Hb.
+    destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ Hb) as (Mi'' & Hi & _).
     destruct (ind_bmembers_member _ _ _ Hi) as [HM Hlt].
     rewrite HMi' in HM; injection HM as <-.
     destruct (im_is_rview Mi') eqn:E; [| reflexivity ].

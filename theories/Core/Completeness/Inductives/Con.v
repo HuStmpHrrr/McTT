@@ -46,7 +46,7 @@ Section Fixed_GCtx.
     next argument, when the arguments are related at the telescope so
     far. *)
 Lemma ctx_pi_rel_elem_by : forall (Fr : list domain -> domain -> Prop) B ts, tele_ass ts ->
-    forall ρ ρ' xs xs' v v' a a' (i : uidx) R,
+    forall ρ ρ' xs xs' v v' a a' (i : universe_index) R,
       List.length xs' = List.length xs -> Fr xs v -> Fr xs' v' ->
       (forall ys ys' y y' w, List.length ys < List.length ts ->
          per_gargs (List.firstn (S (List.length ys)) ts) (env_args ρ xs) (env_args ρ' xs') (ys ++ y :: nil) (ys' ++ y' :: nil) ->

@@ -168,8 +168,8 @@ Section ChainedViews.
     - intros * Hk Hh; grp_cases.
   Qed.
 
-  Lemma t_over_c_vwrap : forall k Mk qc k' Is vm, ind_member t_over_c_group k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok t_over_c_group D' vm.
+  Lemma t_over_c_view_wrap : forall k Mk qc k' Is vm, ind_member t_over_c_group k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ view_wrap_ok t_over_c_group D' vm.
   Proof.
     intros * Hk Hh; grp_cases.
     all: eexists; split; [ eassumption |].
@@ -220,7 +220,7 @@ Section ChainedViews.
     - intros * Hv Hh; grp_cases.
       all: do 2 eexists; split; [ eassumption | split; [ reflexivity | split; reflexivity ] ].
     - exists (fun k => k); exact t_over_c_rank.
-    - exact t_over_c_vwrap.
+    - exact t_over_c_view_wrap.
     - exact t_over_c_coherent.
     - exact t_over_c_images.
     - exact t_over_c_plen.
@@ -290,9 +290,9 @@ Section RoseViews.
     - intros * Hk Hh; grp_cases.
   Qed.
 
-  Lemma t_over_rose_vwrap : forall k Mk qc k' Is vm, ind_member t_over_rose_group k = Some Mk ->
+  Lemma t_over_rose_view_wrap : forall k Mk qc k' Is vm, ind_member t_over_rose_group k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
-      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok t_over_rose_group D' vm.
+      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ view_wrap_ok t_over_rose_group D' vm.
   Proof.
     intros * Hk Hh; grp_cases.
     all: eexists; split; [ eassumption |].
@@ -346,7 +346,7 @@ Section RoseViews.
     - intros * Hv Hh; grp_cases.
       all: do 2 eexists; split; [ eassumption | split; [ reflexivity | split; reflexivity ] ].
     - exists (fun k => k); exact t_over_rose_rank.
-    - exact t_over_rose_vwrap.
+    - exact t_over_rose_view_wrap.
     - exact t_over_rose_coherent.
     - exact t_over_rose_images.
     - exact t_over_rose_plen.
@@ -402,9 +402,9 @@ Section PhantomViews.
     - intros * Hk Hh; grp_cases.
   Qed.
 
-  Lemma t_over_phantom_vwrap : forall k Mk qc k' Is vm, ind_member t_over_phantom_group k = Some Mk ->
+  Lemma t_over_phantom_view_wrap : forall k Mk qc k' Is vm, ind_member t_over_phantom_group k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
-      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok t_over_phantom_group D' vm.
+      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ view_wrap_ok t_over_phantom_group D' vm.
   Proof.
     intros * Hk Hh; grp_cases.
     all: eexists; split; [ eassumption |].
@@ -458,7 +458,7 @@ Section PhantomViews.
     - intros * Hv Hh; grp_cases.
       all: do 2 eexists; split; [ eassumption | split; [ reflexivity | split; reflexivity ] ].
     - exists (fun k => k); exact t_over_phantom_rank.
-    - exact t_over_phantom_vwrap.
+    - exact t_over_phantom_view_wrap.
     - exact t_over_phantom_coherent.
     - exact t_over_phantom_images.
     - exact t_over_phantom_plen.

@@ -79,9 +79,9 @@ Proof. elab_ok. Qed.
     records the one binder ([A]) outside it, so it is [U.a] applied to
     [#1]. *)
 Example a_preapplied :
-  sel (scope_entry_var "B" :: scope_entry_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1 :: scope_entry_var "A" :: nil) (var "a") (U_a $ #1).
+  spec_exp (scope_entry_var "B" :: scope_entry_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1 :: scope_entry_var "A" :: nil) (var "a") (U_a $ #1).
 Proof.
-  apply (sel_var _ _ 1 (scope_entry_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1)); [| apply entry_denotes_term_mem ].
+  apply (spec_exp_var _ _ 1 (scope_entry_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1)); [| apply entry_denotes_term_mem ].
   apply (mk_bound _ _ _ _ (scope_entry_var "B" :: nil) (scope_entry_var "A" :: nil)); cbn; try reflexivity.
   intros [H | []]; discriminate.
 Qed.

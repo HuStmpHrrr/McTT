@@ -46,7 +46,7 @@ Proof.
   all: try solve [ match goal with
     | H1 : mdenote _ _ ?G ?H ?R1, H2 : mdenote _ _ ?G ?H ?R2 |- _ =>
         pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ H1 _ H2) as <-;
-        match goal with E1 : ds_ty R1 = Some ?A1, E2 : ds_ty R1 = Some ?A2 |- _ =>
+        match goal with E1 : mdesc_type R1 = Some ?A1, E2 : mdesc_type R1 = Some ?A2 |- _ =>
           assert (A1 = A2) as <- by congruence end;
         functional_nbe_rewrite_clear; reflexivity end ].
   (** The level operations: the arguments infer the same types of levels. *)

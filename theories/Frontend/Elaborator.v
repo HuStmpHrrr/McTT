@@ -179,7 +179,7 @@ Definition blk_ann_msg : string := "only the last binder of a block (the scrutin
     marked [at]. *)
 Definition elim_at_msg : string := "exactly one block of an eliminator is marked at, the scrutinee's".
 
-(** The type written on the last binder of a block ([sbinders]), under the
+(** The type written on the last binder of a block ([spec_binders]), under the
     binders [pre] before it; a type on any other binder is rejected. *)
 Definition elab_binders_with (f : list scope_entry -> Cst.expression -> elab_result exp) (S : list scope_entry) :=
   fix go (pre : list string) (xs : list (string * option Cst.expression)) : elab_result (option exp) :=
@@ -399,7 +399,7 @@ Fixpoint elab_rcons (S : list scope_entry) (cs : list (string * list (string * C
   end.
 
 (** The members of a group, under its uniform parameters [ups], the
-    members' names [xs] in scope in the arguments ([smembers]). *)
+    members' names [xs] in scope in the arguments ([spec_members]). *)
 Fixpoint elab_members (S : list scope_entry) (ups : list (string * Cst.expression)) (xs : list string)
     (ms : list (string * Cst.expression * list (string * list (string * Cst.expression)))) : elab_result (list raw_member) :=
   match ms with
@@ -414,7 +414,7 @@ Fixpoint elab_members (S : list scope_entry) (ups : list (string * Cst.expressio
       elab_success (mk_rmem x (ptele ntys) A cs' :: rms)
   end.
 
-(** The functions of a mutual definition ([sfuns]): each its parameters,
+(** The functions of a mutual definition ([spec_functions]): each its parameters,
     the last its scrutinee. *)
 Fixpoint elab_funs (S : list scope_entry)
     (fs : list (string * list (string * Cst.expression) * Cst.expression * list (string * list string * Cst.expression))) :

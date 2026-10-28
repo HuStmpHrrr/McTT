@@ -24,34 +24,34 @@ Section Fixed_GCtx.
 
 (** ** Universes at Any Index
 
-    A type at an index [u] is a term of the universe [ulvl_tm u], whose value
-    [ulvl_val u] is glued at the ambient index [ulvl_above u].  The two
+    A type at an index [u] is a term of the universe [universe_index_term u], whose value
+    [universe_index_value u] is glued at the ambient index [large_level_above u].  The two
     lemmas below are inverse to each other; the large forms used by the rest
     of the development are their instances at [ul i]. *)
 
-Lemma glu_rel_exp_of_univ : forall {Γ Sb A} {u : uidx},
+Lemma glu_rel_exp_of_univ : forall {Γ Sb A} {u : universe_index},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
         Δ ⊢ˢ σ ® ρ ∈ Sb ->
-        Δ ⊢ A[σ] : ulvl_tm u /\
+        Δ ⊢ A[σ] : universe_index_term u /\
           exists a,
             ⟦ A ⟧ ρ ↘ a /\
               Dom a ≈ a ∈ per_univ u /\
               (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
               (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
-                         Δ' ⊢ A[σ][φ]ʷ ≈ W : ulvl_tm u)) ->
-    Γ ⊩ A : ulvl_tm u.
+                         Δ' ⊢ A[σ][φ]ʷ ≈ W : universe_index_term u)) ->
+    Γ ⊩ A : universe_index_term u.
 Proof.
   intros * ? Hbody.
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := ulvl_above u); [ eassumption |].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := large_level_above u); [ eassumption |].
   intros * HΔ.
   destruct (Hbody _ _ _ HΔ) as [H0 [a [? [[] [H3 Hrb]]]]].
   assert (⊢ Δ) by (gen_presups; eassumption).
   assert (exists P El, DG a ∈ glu_univ_elem u ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
-  econstructor; [ apply eval_ulvl_tm | eassumption
-                | apply glu_univ_elem_univ_at, uidx_lt_ulvl_above |].
-  rewrite exp_sub_ulvl_tm.
-  destruct u as [n | j]; cbn [univ_glu_exp_pred_at ulvl_tm ulvl_above] in *.
+  econstructor; [ apply eval_universe_index_term | eassumption
+                | apply glu_univ_elem_univ_at, universe_index_lt_large_level_above |].
+  rewrite exp_sub_universe_index_term.
+  destruct u as [n | j]; cbn [univ_glu_exp_pred_at universe_index_term large_level_above] in *.
   - (** A type of a small universe at a literal level: the level term is the
         literal, and the readback clause is the premise's. *)
     econstructor.
@@ -65,34 +65,34 @@ Proof.
     + exact (mk_glu_typ_at _ _ _ _ P El HPEl (H3 P El HPEl)).
 Qed.
 
-(** The universe at [u] is itself a term of [Typeω@(ulvl_above u)]: the
+(** The universe at [u] is itself a term of [Typeω@(large_level_above u)]: the
     ambient universe the inversion below is stated at. *)
-Lemma glu_rel_exp_univ_tm : forall {Γ} {u : uidx},
+Lemma glu_rel_exp_univ_tm : forall {Γ} {u : universe_index},
     ⊩ Γ ->
-    Γ ⊩ ulvl_tm u : Typeω@(ulvl_above u).
+    Γ ⊩ universe_index_term u : Typeω@(large_level_above u).
 Proof.
   intros * [Sb HΓ].
   assert (⊢ Γ) by mauto 2.
-  eapply (glu_rel_exp_of_univ (u := ul (ulvl_above u))); [ eassumption |].
+  eapply (glu_rel_exp_of_univ (u := ul (large_level_above u))); [ eassumption |].
   intros Δ σ ρ HΔ.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
-  rewrite exp_sub_ulvl_tm.
-  split; [ apply wf_ulvl_tm; assumption |].
-  exists (ulvl_val u).
-  split; [ apply eval_ulvl_tm |].
-  split; [ eexists; apply per_univ_elem_ulvl_val, uidx_lt_ulvl_above |].
+  rewrite exp_sub_universe_index_term.
+  split; [ apply wf_universe_index_term; assumption |].
+  exists (universe_index_value u).
+  split; [ apply eval_universe_index_term |].
+  split; [ eexists; apply per_univ_elem_universe_index_value, universe_index_lt_large_level_above |].
   split.
   - intros P El HPEl.
-    pose proof (glu_univ_elem_univ_at (u := u) (i := ul (ulvl_above u)) (uidx_lt_ulvl_above u)).
+    pose proof (glu_univ_elem_univ_at (u := u) (i := ul (large_level_above u)) (universe_index_lt_large_level_above u)).
     handle_functional_glu_univ_elem.
-    destruct u as [n | j]; cbn [univ_glu_typ_pred_at ulvl_tm ulvl_above ulvl] in *.
+    destruct u as [n | j]; cbn [univ_glu_typ_pred_at universe_index_term large_level_above large_level] in *.
     + apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ n) (fst n)); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
     + apply wf_exp_eq_typ_cong; assumption.
   - (** The universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-    destruct u as [n | j]; cbn [ulvl_val ulvl_tm ulvl_above] in *;
+    destruct u as [n | j]; cbn [universe_index_value universe_index_term large_level_above] in *;
       inversion Hr; subst; cbn.
     + assert (Hn := read_nf_dlvl_lit n (length Δ')); unfold dlvl_lit in Hn.
       assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
@@ -100,34 +100,34 @@ Proof.
     + mauto 3.
 Qed.
 
-Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : uidx},
+Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : universe_index},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ A : ulvl_tm u ->
+    Γ ⊩ A : universe_index_term u ->
     forall Δ σ ρ,
       Δ ⊢ˢ σ ® ρ ∈ Sb ->
-      Δ ⊢ A[σ] : ulvl_tm u /\
+      Δ ⊢ A[σ] : universe_index_term u /\
         exists a,
           ⟦ A ⟧ ρ ↘ a /\
             Dom a ≈ a ∈ per_univ u /\
             (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
             (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
-                       Δ' ⊢ A[σ][φ]ʷ ≈ W : ulvl_tm u).
+                       Δ' ⊢ A[σ][φ]ʷ ≈ W : universe_index_term u).
 Proof.
   intros * HΓ HA * HΔ.
-  assert (Γ ⊩ ulvl_tm u : Typeω@(ulvl_above u)) by (eapply glu_rel_exp_univ_tm; eexists; eassumption).
+  assert (Γ ⊩ universe_index_term u : Typeω@(large_level_above u)) by (eapply glu_rel_exp_univ_tm; eexists; eassumption).
   eapply glu_rel_exp_clean_inversion2 in HA; [| eassumption | eassumption ].
   destruct (HA _ _ _ HΔ).
-  pose proof (eval_ulvl_tm gc_deps gc_stack u ρ).
+  pose proof (eval_universe_index_term gc_deps gc_stack u ρ).
   functional_eval_rewrite_clear.
-  pose proof (glu_univ_elem_univ_at (u := u) (i := ul (ulvl_above u)) (uidx_lt_ulvl_above u)).
+  pose proof (glu_univ_elem_univ_at (u := u) (i := ul (large_level_above u)) (universe_index_lt_large_level_above u)).
   handle_functional_glu_univ_elem.
   (** The element predicate of the ambient universe is the gluing of a type at
       [u]: that is the information the small tier needs.  Its readback clause
       is part of it in the small tier, and realizability in the large one. *)
-  destruct u as [n | j]; cbn [univ_glu_exp_pred_at ulvl_tm ulvl_above] in *.
+  destruct u as [n | j]; cbn [univ_glu_exp_pred_at universe_index_term large_level_above] in *.
   - match goal with H : suniv_glu_exp_pred _ _ _ _ _ _ |- _ =>
       destruct H as [HAσ _ [Pm Elm HPEl HP] Hrb] end.
-    rewrite ?exp_sub_ulvl_tm in *.
+    rewrite ?exp_sub_universe_index_term in *.
     split; [ assumption |].
     exists m; split; [ assumption | split; [| split ] ].
     + eapply glu_univ_elem_per_univ; eassumption.
@@ -137,7 +137,7 @@ Proof.
     + exact Hrb.
   - match goal with H : univ_glu_exp_pred _ _ _ _ _ _ |- _ =>
       destruct H as [HAσ Heq [Pm Elm HPEl HP]] end.
-    rewrite ?exp_sub_ulvl_tm in *.
+    rewrite ?exp_sub_universe_index_term in *.
     split; [ assumption |].
     exists m; split; [ assumption | split; [| split ] ].
     + eapply glu_univ_elem_per_univ; eassumption.
@@ -148,36 +148,36 @@ Proof.
       intros; eauto.
 Qed.
 
-(** A type at an index [u] is a type at the large level [ulvl u], which is
+(** A type at an index [u] is a type at the large level [large_level u], which is
     the index a context entry is glued at. *)
-Lemma glu_rel_typ_with_sub_uidx : forall {u : uidx} {Δ A σ ρ},
+Lemma glu_rel_typ_with_sub_universe_index : forall {u : universe_index} {Δ A σ ρ},
     (exists a,
         ⟦ A ⟧ ρ ↘ a /\
           Dom a ≈ a ∈ per_univ u /\
           forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
-    glu_rel_typ_with_sub (ulvl u) Δ A σ ρ.
+    glu_rel_typ_with_sub (large_level u) Δ A σ ρ.
 Proof.
   intros * [a [Hae [[R HR] HaP]]].
   assert (exists P El, DG a ∈ glu_univ_elem u ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
-  assert (exists P' El', DG a ∈ glu_univ_elem (ulvl u) ↘ P' ↘ El') as [P' [El' HPEl']]
-      by (eapply (glu_univ_elem_cumu_ge_uidx (i := u)); [ apply uidx_le_ulvl | exact HPEl ]).
+  assert (exists P' El', DG a ∈ glu_univ_elem (large_level u) ↘ P' ↘ El') as [P' [El' HPEl']]
+      by (eapply (glu_univ_elem_cumu_ge_universe_index (i := u)); [ apply universe_index_le_large_level | exact HPEl ]).
   econstructor; [ exact Hae | exact HPEl' |].
-  eapply (glu_univ_elem_typ_cumu_ge_uidx (i := u) (j := ulvl u));
-    [ apply uidx_le_ulvl | exact HPEl | exact HPEl' | exact (HaP P El HPEl) ].
+  eapply (glu_univ_elem_typ_cumu_ge_universe_index (i := u) (j := large_level u));
+    [ apply universe_index_le_large_level | exact HPEl | exact HPEl' | exact (HaP P El HPEl) ].
 Qed.
 
 (** Cumulativity of the gluing judgment, along the order of indices. *)
-Lemma glu_rel_exp_lift_uidx : forall {Γ A} {u v : uidx},
-    uidx_le u v ->
-    Γ ⊩ A : ulvl_tm u ->
-    Γ ⊩ A : ulvl_tm v.
+Lemma glu_rel_exp_lift_universe_index : forall {Γ A} {u v : universe_index},
+    universe_index_le u v ->
+    Γ ⊩ A : universe_index_term u ->
+    Γ ⊩ A : universe_index_term v.
 Proof.
   intros * Hle HA.
   assert (⊢ Γ) by mauto 3 using glu_rel_exp_to_wf_exp.
   eapply glu_rel_exp_subtyp;
     [ exact HA
     | eapply glu_rel_exp_univ_tm; destruct HA as [Sb ? ? ?]; eexists; eassumption
-    | apply wf_subtyp_uidx; assumption ].
+    | apply wf_subtyp_universe_index; assumption ].
 Qed.
 
 Lemma glu_rel_exp_of_typ : forall {Γ Sb A} {i : nat},
@@ -212,7 +212,7 @@ Proof.
   split; [ apply wf_univ_lit; assumption |].
   exists 𝕌@(dlvl_lit (a, n)).
   split; [ apply eval_exp_univ, eval_exp_llit |].
-  split; [ eexists; apply (per_univ_elem_ulvl_val (us (a, n)) (us (a, S n))); cbn; ord |].
+  split; [ eexists; apply (per_univ_elem_universe_index_value (us (a, n)) (us (a, S n))); cbn; ord |].
   split.
   - intros P El HPEl.
     pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ord)).

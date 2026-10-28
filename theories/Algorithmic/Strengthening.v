@@ -763,12 +763,12 @@ Qed.
 Lemma lvl_exp_of_inv : forall Γ c xs C,
     Γ ⊢ lvl_exp_of c xs : C ->
     (exists n, Γ ⊢ Level@n ⊆ C /\ fst c <= n /\ List.Forall (fun p => Γ ⊢ snd p : Level@n) xs) \/
-      (exists a, c = oz /\ xs = (0, a) :: nil).
+      (exists a, c = ordinal_zero /\ xs = (0, a) :: nil).
 Proof.
   intros * H; destruct xs as [| [k a] r].
   - cbn in H; left; destruct (wf_llit_inversion_sort _ _ _ _ _ H) as (n & Hcn & Hn).
     exists n; split; [ exact Hn | split; [ exact Hcn | constructor ] ].
-  - destruct (o2_eq_dec c oz) as [-> | Hc]; [ cbn in H |].
+  - destruct (o2_eq_dec c ordinal_zero) as [-> | Hc]; [ cbn in H |].
     2: assert (E : lvl_exp_of c ((k, a) :: r) = lvl_fold (maxl (𝕃ᵒ c) (succl_n k a)) r)
          by (destruct c as [[|] [|]]; [ exfalso; apply Hc; reflexivity | reflexivity .. ]);
        rewrite E in H; clear E.
@@ -826,8 +826,8 @@ Proof.
     pose proof (proj1 (modexp_gen _ _ _ _ _ HH)) as HH0; cbn in HH0.
     destruct (me_denotes _ _ _ _ _ HH) as (R & Rm & Hm & Hmd).
     destruct (desc_ok_tele _ _ _ _ (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm) Hmd)
-                (ds_mod_is_mod _ _ Hmd)) as [T HT].
-    assert (Hmt : ds_mtele R = Some T) by (unfold ds_mtele; rewrite Hmd; exact HT).
+                (mdesc_mod_is_mod _ _ Hmd)) as [T HT].
+    assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite Hmd; exact HT).
     pose proof (mdenote_closed_any _ _ (wf_gstack_closed _ _ Hg) _ _ _ Γ' Hm
                   (mod_qname_scoped (me_mem H y) (qname_app p0 (y :: nil)) 0 ltac:(cbn; rewrite E; reflexivity))) as Hm'.
     eapply wf_me_mem; [ eapply IH; [ reflexivity | exact HH0 | exact HΓ' ] | exact Hm' | exact Hmt | exact Hm' | exact Hmt ].
@@ -847,14 +847,14 @@ Proof.
   induction HM; intros Hm pm xm Hpm EMm; subst; try discriminate; try (injection EMm as <- <-).
   - (** The type the member is looked up at: closed, as the lookup reads
         nothing of the context. *)
-    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ ?H0, Hd : mdenote _ _ _ (me_mem ?H0 ?y) ?R, Ht : ds_ty ?R = Some ?A0,
+    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ ?H0, Hd : mdenote _ _ _ (me_mem ?H0 ?y) ?R, Ht : mdesc_type ?R = Some ?A0,
                     HA0 : _ ⊢ ?A0 : Typeω@_ |- _ =>
       pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg;
       pose proof (wf_gstack_closed _ _ Hg) as Hc;
       assert (HHs : modexp_scoped 0 (me_mem H0 y)) by (cbn; exact (mod_qname_scoped _ _ _ Hpm));
       assert (HA : exp_scoped 0 A0)
         by (pose proof (proj1 (mdenote_scoped_all _ _ Hc) _ _ _ Hd 0 ltac:(intros ? ? Hx; lia) HHs) as HR;
-            exact (ds_ty_scoped _ _ _ HR Ht));
+            exact (mdesc_type_scoped _ _ _ HR Ht));
       exists A0; split; [ exact HA | split; [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; exact HA0 |] ];
       intros Γ' HΓ';
       eapply wf_mem_desc; [ eapply path_wf_any_ctx; [ exact Hpm | exact HH | exact HΓ' ] | | exact Ht ];
@@ -1712,14 +1712,14 @@ Proof.
     [ exact Hass | exact HΓf | exact HT | apply (wf_level_large (i := 0)), HΓs | exact Hs ].
 Qed.
 
-Lemma la_wf_strengthen : forall Γ A Δ n xs,
-    la_all (ne_str Γ A) xs ->
+Lemma level_atoms_wf_strengthen : forall Γ A Δ n xs,
+    level_atoms_all (ne_str Γ A) xs ->
     tele_ass Δ ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
     ⊢ (Δ ++ Γ)%list ->
     List.Forall (fun p => (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ snd p : Level@n)
       (List.map (fun p => (fst p, (snd p)[wk_qn (length Δ) ↑]ʷ)) (List.map atom_exp xs)) ->
-    @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs.
+    @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs.
 Proof.
   intros Γ A Δ n xs; induction xs as [| [k s u] r IH]; cbn; [ intros; exact I |].
   intros [Hu Hr] Hass HΓf HΓs HF.
@@ -1738,7 +1738,7 @@ Proof.
 Qed.
 
 (** A weakened atom list with a single entry and no offset. *)
-Lemma la_map_single : forall φ xs a,
+Lemma level_atoms_map_single : forall φ xs a,
     List.map (fun p => (fst p, (snd p)[φ]ʷ)) (List.map atom_exp xs) = (0, a) :: nil ->
     exists s u, xs = cons (mk_level_atom 0 s u) nil /\ a = (u : exp)[φ]ʷ.
 Proof.
@@ -2224,13 +2224,13 @@ Proof.
     apply wf_typ_inversion in HW.
     eapply wf_exp_subtyp; [ apply wf_typ, HΓs | exact HT |].
     eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply wf_typ, HΓs | exact HT | reflexivity | exact HW ].
-  - intros c xs IH * Hass HΓf HT HW; apply list_all_la_all in IH; cbn [nf_to_exp exp_wk] in HW.
+  - intros c xs IH * Hass HΓf HT HW; apply list_all_level_atoms_all in IH; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     pose proof (wf_univ_inversion HW) as Hs.
     apply wf_univ_lvl_inversion in HW as [n HW].
     rewrite lvl_exp_of_wk in HW.
-    assert (Hla : @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
-      by (eapply la_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
+    assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
+      by (eapply level_atoms_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
     assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
       by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_cst_sort HW) | assumption | assumption ]).
     eapply wf_exp_subtyp; [ eapply wf_univ; exact HL | exact HT |].
@@ -2241,19 +2241,19 @@ Proof.
     apply wf_level_inversion in HW.
     eapply wf_exp_subtyp; [ apply wf_level, HΓs | exact HT |].
     eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - intros c xs IH * Hass HΓf HT HW; apply list_all_la_all in IH; cbn [nf_to_exp exp_wk] in HW.
+  - intros c xs IH * Hass HΓf HT HW; apply list_all_level_atoms_all in IH; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     rewrite lvl_exp_of_wk in HW.
     destruct (lvl_exp_of_inv _ _ _ _ HW) as [(n & HsL & Hcn & HF) | (a & -> & Hmap)].
-    + assert (Hla : @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
-        by (eapply la_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | exact HF ]).
+    + assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
+        by (eapply level_atoms_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | exact HF ]).
       assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
         by (apply lvl_exp_of_wf; [ exact Hcn | assumption | assumption ]).
       eapply wf_exp_subtyp; [ exact HL | exact HT |].
       eapply subtyp_strengthen_closed;
         [ exact Hass | exact HΓf | apply (wf_level_large (i := 0)), HΓs | exact HT | reflexivity | exact HsL ].
     + (** A single atom with no offset is the atom itself. *)
-      destruct (la_map_single _ _ _ Hmap) as (s & u & -> & ->).
+      destruct (level_atoms_map_single _ _ _ Hmap) as (s & u & -> & ->).
       destruct IH as [Hu _].
       cbn in HW |- *.
       destruct (Hu _ _ Hass HΓf HΓs HW) as [T0 j HuT HT0 Hs].

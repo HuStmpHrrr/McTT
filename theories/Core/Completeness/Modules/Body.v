@@ -485,18 +485,18 @@ Proof.
   rewrite modexp_sub_of_wk in H1; exists h1; exact H1.
 Qed.
 
-Lemma kbody_binders : forall ρ Φ Φk, kbody gc_deps gc_stack ρ Φ Φk -> gm_binders Φk = gm_binders Φ.
+Lemma kinds_body_xp_binders : forall ρ Φ Φk, kinds_body_xp gc_deps gc_stack ρ Φ Φk -> gm_binders Φk = gm_binders Φ.
 Proof.
   induction 1; cbn; auto.
-  rewrite gens_append_binders; erewrite kgens_length by eassumption; lia.
+  rewrite gens_append_binders; erewrite kinds_items_gen_length by eassumption; lia.
 Qed.
 
 (** What the kinds read off an open of a target, read off an open of a
     module expression with the same kinds. *)
-Lemma kgens_transfer : forall ρl ρr H τ its gs,
-    kgens gc_deps gc_stack ρr H its gs ->
-    (forall n k, skind gc_deps gc_stack ρr H (n :: nil) k -> skind gc_deps gc_stack ρl H[τ]ᵐ (n :: nil) k) ->
-    kgens gc_deps gc_stack ρl H[τ]ᵐ its (List.map (fun g => generated_item_sub g τ) gs).
+Lemma kinds_items_gen_transfer : forall ρl ρr H τ its gs,
+    kinds_items_gen gc_deps gc_stack ρr H its gs ->
+    (forall n k, modexp_member_kind gc_deps gc_stack ρr H (n :: nil) k -> modexp_member_kind gc_deps gc_stack ρl H[τ]ᵐ (n :: nil) k) ->
+    kinds_items_gen gc_deps gc_stack ρl H[τ]ᵐ its (List.map (fun g => generated_item_sub g τ) gs).
 Proof. intros * Hg Hs; induction Hg; cbn [List.map generated_item_sub exp_sub modexp_sub]; constructor; auto. Qed.
 
 Lemma body_shape_gens_any : forall gs Φ Φ' k, body_shape (gens_append Φ k gs) (gens_append Φ k gs) ->
@@ -536,8 +536,8 @@ Lemma sub_walk_body : forall Γ' Γ σ Φ Φx Ψ ρl ρr,
        Ψo ++ Ψ ++ Γ ⊨ᵐ H ≈ H /\ kinds_ok Θm Ξm (Ψo ++ Ψ ++ Γ) H) ->
     sub_walk_inv Γ' Γ σ Ψ ρl ρr ->
     per_body ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) ρr Φ /\
-    exists Φr ρl1 ρr1, kbody gc_deps gc_stack ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) (gmod_sub Φr (sb_qn (List.length Ψ) σ)) /\
-      kbody gc_deps gc_stack ρr Φ Φr /\ body_eq_upto_types Φr Φx /\
+    exists Φr ρl1 ρr1, kinds_body_xp gc_deps gc_stack ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) (gmod_sub Φr (sb_qn (List.length Ψ) σ)) /\
+      kinds_body_xp gc_deps gc_stack ρr Φ Φr /\ body_eq_upto_types Φr Φx /\
       ⟦ gmod_sub Φr (sb_qn (List.length Ψ) σ) ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρl ↘ ρl1 /\ ⟦ Φr ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρr ↘ ρr1 /\
       sub_walk_inv Γ' Γ σ (body_ctx Φx ++ Ψ) ρl1 ρr1.
 Proof.
@@ -554,7 +554,7 @@ Proof.
       destruct (IH _ _ _ _ Hx0 Hs Hsx (rel_ctx_wf_tail HΦ) Ho Hinv) as (Hb & Φr & ρl1 & ρr1 & Hkl & Hkr & Hkx & Hb1 & Hb1' & Hi1).
       rewrite app_assoc in HA, HM.
       destruct (sub_walk_def _ _ _ _ _ _ _ _ _ Hi1 HA HM) as (j & R & HR & HMr & Hstep).
-      assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kbody_binders _ _ _ Hkr).
+      assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kinds_body_xp_binders _ _ _ Hkr).
       rewrite (exp_sub_sb_eq A _ _ Hq), (exp_sub_sb_eq M _ _ Hq).
       split; [ eapply per_body_def; [ exact Hb | exact Hkl | exact Hkr | exact Hb1 | exact Hb1' | exact HR | exact HMr ] |].
       destruct HMr as [m m' Hm Hm' Hmm'].
@@ -568,7 +568,7 @@ Proof.
       destruct (IH _ _ _ _ Hx0 Hs Hsx (rel_ctx_wf_tail HΦ) Ho Hinv) as (Hb & Φr & ρl1 & ρr1 & Hkl & Hkr & Hkx & Hb1 & Hb1' & Hi1).
       rewrite app_assoc in HU.
       destruct (sub_walk_mod _ _ _ _ _ _ _ Hi1 HU) as (hl & hr & Hhl & Hhr & Hlr & Hstep).
-      assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kbody_binders _ _ _ Hkr).
+      assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kinds_body_xp_binders _ _ _ Hkr).
       destruct Uy as [Δy Dy].
       rewrite (gunit_sub_sb_eq (gu_mk Δy Dy) _ _ Hq), gunit_sub_mk.
       rewrite gunit_sub_mk in Hhl; apply eval_me_lit_iff in Hhl, Hhr.
@@ -584,7 +584,7 @@ Proof.
       destruct (IH _ _ _ _ Hx0 Hs Hsx (rel_ctx_wf_tail HΦ) Ho Hinv) as (Hb & Φr & ρl1 & ρr1 & Hkl & Hkr & Hkx & Hb1 & Hb1' & Hi1).
       rewrite app_assoc in HA, HM, HU.
       destruct (sub_walk_dm _ _ _ _ _ _ _ _ _ _ Hi1 HA HM HU) as (j & R & hl & hr & HR & HMr & Hhl & Hhr & Hlr & Hstep).
-      assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kbody_binders _ _ _ Hkr).
+      assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kinds_body_xp_binders _ _ _ Hkr).
       destruct Uy as [Δy Dy].
       rewrite (exp_sub_sb_eq A _ _ Hq), (exp_sub_sb_eq M _ _ Hq), (gunit_sub_sb_eq (gu_mk Δy Dy) _ _ Hq), gunit_sub_mk.
       rewrite gunit_sub_mk in Hhl; apply eval_me_lit_iff in Hhl, Hhr.
@@ -610,25 +610,25 @@ Proof.
     destruct (IH _ _ _ _ Hx0 Hs Hsx0 HΦ0 (fun k => Ho (S k)) Hinv) as (Hb & Φr & ρl1 & ρr1 & Hkl & Hkr & Hkx & Hb1 & Hb1' & Hi1).
     destruct (Ho 0 _ _ eq_refl) as [HH Hko]; rewrite app_assoc in HH, Hko.
     destruct (sub_walk_alias _ _ _ _ _ _ _ Hi1 HH) as (hl & hr & Hhl & Hhr & Hhh).
-    assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kbody_binders _ _ _ Hkr).
+    assert (Hbr : gm_binders Φr = gm_binders Φ) by exact (kinds_body_xp_binders _ _ _ Hkr).
     set (τ1 := sb_qn (List.length (body_ctx Φx0 ++ Ψ)) σ) in *.
     assert (Hq : sb_eq (sb_qn (gm_binders Φ) (sb_qn (List.length Ψ) σ)) τ1)
       by (subst τ1; rewrite sb_qn_add, length_app, length_body_ctx, (body_xp_binders _ _ _ _ _ Hx0); reflexivity).
     cbn [gmod_sub]; rewrite (modexp_sub_sb_eq H _ _ Hq).
     set (gse := List.map generated_item_erase gs).
     destruct (sub_walk_right _ _ _ _ _ _ Hi1) as (Rr1 & HRr1 & Hρr1).
-    destruct (body_eq_upto_types_kenv_exists _ _ Hkx ρr) as (σr1 & Hσr1).
+    destruct (body_eq_upto_types_kinds_env_exists _ _ Hkx ρr) as (σr1 & Hσr1).
     destruct (kind_eval_benv _ _ _ _ _ Hb1' _ (kshape_refl _ _ ρr)) as (σ' & Hk' & Hs').
     pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσr1 _ Hk') as <-.
     clear Hk'.
     rewrite <- app_assoc in HRr1, Hko.
-    pose proof (items_kgens _ _ _ _ _ _ Hgs Hko _ _ _ HRr1 Hρr1 Hs') as Hkgr.
+    pose proof (items_kinds_items_gen _ _ _ _ _ _ Hgs Hko _ _ _ HRr1 Hρr1 Hs') as Hkgr.
     destruct (kind_eval_benv _ _ _ _ _ Hb1 _ (kshape_refl _ _ ρl)) as (σl1 & Hσl1 & Hsl).
-    assert (Hkgl : kgens gc_deps gc_stack σl1 H[τ1]ᵐ its (List.map (fun g => generated_item_sub g τ1) gse)).
-    { apply (kgens_transfer σl1 σr1); [ exact Hkgr |].
+    assert (Hkgl : kinds_items_gen gc_deps gc_stack σl1 H[τ1]ᵐ its (List.map (fun g => generated_item_sub g τ1) gse)).
+    { apply (kinds_items_gen_transfer σl1 σr1); [ exact Hkgr |].
       intros n k Hk.
-      apply (skind_id _ _ _ _ (proj1 Hsl)), (kind_eval_modexp _ _ _ _ _ Hhl), (per_dmod_kequiv _ _ Hhh),
-            (kind_eval_modexp _ _ _ _ _ Hhr), (skind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs'))); exact Hk. }
+      apply (modexp_member_kind_id _ _ _ _ (proj1 Hsl)), (kind_eval_modexp _ _ _ _ _ Hhl), (per_dmod_kinds_equiv _ _ Hhh),
+            (kind_eval_modexp _ _ _ _ _ Hhr), (modexp_member_kind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs'))); exact Hk. }
     set (gsl := List.map (fun g => generated_item_sub g τ1) gse) in *.
     assert (Eg : forall g, generated_item_sub g (sb_qn (gm_binders Φr) (sb_qn (List.length Ψ) σ)) = generated_item_sub g τ1).
     { rewrite Hbr; intros [d pv A0 M0 | d pv E0 | d pv A0 M0 E0]; cbn [generated_item_sub]; try reflexivity.
@@ -666,10 +666,10 @@ Proof.
       by (apply eval_gens_split; exists ρl1; split; [ exact Hb1 | exact Hb2 ]).
     assert (Hbo' : ⟦ gens_append Φr 0 gse ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρr ↘ ρr2)
       by (apply eval_gens_split; exists ρr1; split; [ exact Hb1' | exact Hb2' ]).
-    assert (Hko' : kbody gc_deps gc_stack ρl (gm_open (gmod_sub Φ (sb_qn (List.length Ψ) σ)) H[τ1]ᵐ its)
+    assert (Hko' : kinds_body_xp gc_deps gc_stack ρl (gm_open (gmod_sub Φ (sb_qn (List.length Ψ) σ)) H[τ1]ᵐ its)
                      (gens_append (gmod_sub Φr (sb_qn (List.length Ψ) σ)) 0 gsl))
       by (econstructor; [ exact Hkl | exact Hσl1 | exact Hkgl ]).
-    assert (Hkor : kbody gc_deps gc_stack ρr (gm_open Φ H its) (gens_append Φr 0 gse))
+    assert (Hkor : kinds_body_xp gc_deps gc_stack ρr (gm_open Φ H its) (gens_append Φr 0 gse))
       by (econstructor; [ exact Hkr | exact Hσr1 | exact Hkgr ]).
     split; [| exists (gens_append Φr 0 gse), ρl2, ρr2; rewrite Ex;
               split; [ exact Hko' |]; split; [ exact Hkor |]; split; [ exact (body_eq_upto_types_gens _ _ _ _ Hkx) |];
@@ -1042,7 +1042,7 @@ Lemma fw_body : forall Φ Φ' Φx Φx' C C' RC RC',
     EF C ≈ C ∈ per_ctx_env ↘ RC -> EF C' ≈ C' ∈ per_ctx_env ↘ RC' ->
     forall ρa ρa', RC ρa ρa' -> RC' ρa' ρa' ->
     per_body ρa Φ ρa' Φ' /\
-    exists Φk Φk', kbody gc_deps gc_stack ρa Φ Φk /\ body_eq_upto_types Φk Φx /\ kbody gc_deps gc_stack ρa' Φ' Φk' /\ body_eq_upto_types Φk' Φx'.
+    exists Φk Φk', kinds_body_xp gc_deps gc_stack ρa Φ Φk /\ body_eq_upto_types Φk Φx /\ kinds_body_xp gc_deps gc_stack ρa' Φ' Φk' /\ body_eq_upto_types Φk' Φx'.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros [| Φ' y' E' | Φ' H' its'] * Hx Hx' Hs Hsx Hsx' Hnd Hnd' HC HC'
     HD HU HO Ho Ho' HRC HRC' ρa ρa' Hρ Hρ'; cbn [body_shape] in Hs; try contradiction.
@@ -1170,11 +1170,11 @@ Proof.
     assert (H11' : R0' ρ1' ρ1') by (assert (PER R0') by (eapply per_env_PER; exact HR0'); etransitivity; [ symmetry; exact H1' | exact H1' ]).
     destruct (kind_eval_benv _ _ _ _ _ Hb1k _ (kshape_refl _ _ ρa)) as (σ1 & Hσ1 & Hs1).
     destruct (kind_eval_benv _ _ _ _ _ Hb1k' _ (kshape_refl _ _ ρa')) as (σ1' & Hσ1' & Hs1').
-    pose proof (items_kgens _ _ _ _ _ _ Hgs Hko _ _ _ HR0 H11 Hs1) as Hkg.
-    pose proof (items_kgens _ _ _ _ _ _ Hgs' Hko' _ _ _ HR0' H11' Hs1') as Hkg'.
-    assert (Hko1 : kbody gc_deps gc_stack ρa (gm_open Φ H its) (gens_append Φk 0 (List.map generated_item_erase gs)))
+    pose proof (items_kinds_items_gen _ _ _ _ _ _ Hgs Hko _ _ _ HR0 H11 Hs1) as Hkg.
+    pose proof (items_kinds_items_gen _ _ _ _ _ _ Hgs' Hko' _ _ _ HR0' H11' Hs1') as Hkg'.
+    assert (Hko1 : kinds_body_xp gc_deps gc_stack ρa (gm_open Φ H its) (gens_append Φk 0 (List.map generated_item_erase gs)))
       by (econstructor; [ exact Hk | exact Hσ1 | exact Hkg ]).
-    assert (Hko1' : kbody gc_deps gc_stack ρa' (gm_open Φ' H' its) (gens_append Φk' 0 (List.map generated_item_erase gs')))
+    assert (Hko1' : kinds_body_xp gc_deps gc_stack ρa' (gm_open Φ' H' its) (gens_append Φk' 0 (List.map generated_item_erase gs')))
       by (econstructor; [ exact Hk' | exact Hσ1' | exact Hkg' ]).
     pose proof (body_eq_upto_types_gens gs _ _ 0 Hkx) as Hkxo; pose proof (body_eq_upto_types_gens gs' _ _ 0 Hkx') as Hkxo'.
     (* the whole blocks evaluate *)

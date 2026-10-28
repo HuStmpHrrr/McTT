@@ -61,8 +61,8 @@ Proof.
       by (eapply wf_exp_subtyp'; [ exact Ht' | apply wf_subtyp_level; [ lia | mauto 2 ] ]).
     eapply wf_subtyp_suniv; [ assumption | eassumption | eassumption |].
     apply lvl_exp_of_le; [ lia | lia | assumption
-                         | eapply la_ws_mono; [| exact Hxs ]; lia
-                         | eapply la_ws_mono; [| exact Hys ]; lia | assumption ].
+                         | eapply level_atoms_well_scoped_mono; [| exact Hxs ]; lia
+                         | eapply level_atoms_well_scoped_mono; [| exact Hys ]; lia | assumption ].
   - gen_presups.
     assert (exists n, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n) as [n Ht]
       by (eapply wf_univ_lvl_inversion; eassumption).

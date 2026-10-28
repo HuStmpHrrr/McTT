@@ -57,12 +57,12 @@ Section GlobalExt.
   Proof. intros; unfold dm_path; rewrite ind_mlookup_ext, Hrec, Hent; reflexivity. Qed.
 
   Lemma kind_ext :
-    (forall h ch k, dkind Θ1 Ξ1 h ch k -> dkind Θ2 Ξ2 h ch k) /\
-    (forall ρ U ch k, ukind Θ1 Ξ1 ρ U ch k -> ukind Θ2 Ξ2 ρ U ch k) /\
-    (forall ρ H ch k, skind Θ1 Ξ1 ρ H ch k -> skind Θ2 Ξ2 ρ H ch k) /\
-    (forall ρ Φ ρ', kenv Θ1 Ξ1 ρ Φ ρ' -> kenv Θ2 Ξ2 ρ Φ ρ') /\
-    (forall ρ Φ Φx, kbody Θ1 Ξ1 ρ Φ Φx -> kbody Θ2 Ξ2 ρ Φ Φx) /\
-    (forall ρ H its gs, kgens Θ1 Ξ1 ρ H its gs -> kgens Θ2 Ξ2 ρ H its gs).
+    (forall h ch k, dmod_member_kind Θ1 Ξ1 h ch k -> dmod_member_kind Θ2 Ξ2 h ch k) /\
+    (forall ρ U ch k, gunit_member_kind Θ1 Ξ1 ρ U ch k -> gunit_member_kind Θ2 Ξ2 ρ U ch k) /\
+    (forall ρ H ch k, modexp_member_kind Θ1 Ξ1 ρ H ch k -> modexp_member_kind Θ2 Ξ2 ρ H ch k) /\
+    (forall ρ Φ ρ', kinds_env Θ1 Ξ1 ρ Φ ρ' -> kinds_env Θ2 Ξ2 ρ Φ ρ') /\
+    (forall ρ Φ Φx, kinds_body_xp Θ1 Ξ1 ρ Φ Φx -> kinds_body_xp Θ2 Ξ2 ρ Φ Φx) /\
+    (forall ρ H its gs, kinds_items_gen Θ1 Ξ1 ρ H its gs -> kinds_items_gen Θ2 Ξ2 ρ H its gs).
   Proof.
     apply kind_mut_ind; intros;
       repeat match goal with
@@ -176,7 +176,7 @@ Section GlobalExt.
              (fun s m M _ => read_nf Θ2 Ξ2 s m M)
              (fun s m M _ => read_ne Θ2 Ξ2 s m M)
              (fun s m M _ => read_typ Θ2 Ξ2 s m M)
-             (fun s xs ys _ => read_la Θ2 Ξ2 s xs ys)
+             (fun s xs ys _ => read_level_atoms Θ2 Ξ2 s xs ys)
              (fun s ρ T vs Ms _ => read_ps Θ2 Ξ2 s ρ T vs Ms)
              (fun s p ups ρ gs vs Ms _ => read_cargs Θ2 Ξ2 s p ups ρ gs vs Ms)
              (fun s p ups ρ t v V _ => read_shape Θ2 Ξ2 s p ups ρ t v V)

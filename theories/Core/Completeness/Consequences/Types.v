@@ -56,16 +56,16 @@ Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 
 (** The same at either tier, and across them: the universes at two different
     indices are never equal, since their values are not related. *)
-Lemma exp_eq_ulvl_tm_implies_eq : forall {Γ} {u v : uidx} {k},
-    Γ ⊢ ulvl_tm u ≈ ulvl_tm v : Typeω@k ->
+Lemma exp_eq_universe_index_term_implies_eq : forall {Γ} {u v : universe_index} {k},
+    Γ ⊢ universe_index_term u ≈ universe_index_term v : Typeω@k ->
     u = v.
 Proof.
   intros * H%completeness_fundamental_exp_eq.
   destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a = ulvl_val u) as ->
-      by (eapply functional_eval_exp; [ exact Ha | apply eval_ulvl_tm ]).
-  assert (a' = ulvl_val v) as ->
-      by (eapply functional_eval_exp; [ exact Ha' | apply eval_ulvl_tm ]).
+  assert (a = universe_index_value u) as ->
+      by (eapply functional_eval_exp; [ exact Ha | apply eval_universe_index_term ]).
+  assert (a' = universe_index_value v) as ->
+      by (eapply functional_eval_exp; [ exact Ha' | apply eval_universe_index_term ]).
   destruct u as [n | n], v as [m | m]; cbn in HR;
     invert_per_univ_elem HR; try congruence.
   (** Two small universes at literal levels: their levels are related, so
@@ -79,7 +79,7 @@ Corollary exp_eq_univ_implies_eq_level : forall {Γ} {n m k},
     n = m.
 Proof.
   intros * H.
-  assert (us n = us m) as Heq by (eapply (exp_eq_ulvl_tm_implies_eq (u := us n) (v := us m)); exact H).
+  assert (us n = us m) as Heq by (eapply (exp_eq_universe_index_term_implies_eq (u := us n) (v := us m)); exact H).
   injection Heq; trivial.
 Qed.
 
@@ -295,9 +295,9 @@ Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
     so these lemmas state what a judgment with a universe term on one side
     says about the other. *)
 
-Lemma univ_term_ulvl_tm : forall u, univ_term (ulvl_tm u).
+Lemma univ_term_universe_index_term : forall u, univ_term (universe_index_term u).
 Proof. intros []; constructor. Qed.
-Hint Resolve univ_term_ulvl_tm : mctt.
+Hint Resolve univ_term_universe_index_term : mctt.
 
 Lemma pi_not_univ_term : forall A B, ~ univ_term (Π A B).
 Proof. intros * H; inversion H. Qed.
@@ -364,20 +364,20 @@ Proof.
 Qed.
 
 (** A rigid type equal to a universe is that universe, at either tier. *)
-Corollary rigid_typ_eq_ulvl_tm : forall Γ A (u : uidx) k,
+Corollary rigid_typ_eq_universe_index_term : forall Γ A (u : universe_index) k,
     rigid_typ Γ A ->
-    Γ ⊢ A ≈ ulvl_tm u : Typeω@k ->
-    A = ulvl_tm u.
+    Γ ⊢ A ≈ universe_index_term u : Typeω@k ->
+    A = universe_index_term u.
 Proof. intros * ? H; destruct u as [n | i]; cbn in H |- *; mauto 3. Qed.
 
 (** A type constructor other than a universe is never a universe: the goal is
     closed by inspecting the two tiers. *)
-Lemma var_neq_ulvl_tm : forall x (u : uidx), #x <> ulvl_tm u.
+Lemma var_neq_universe_index_term : forall x (u : universe_index), #x <> universe_index_term u.
 Proof. intros ? []; discriminate. Qed.
 
 (** A [Π] is never a universe, at either tier. *)
-Corollary pi_ulvl_tm_absurd : forall Γ A B (u : uidx) k,
-    Γ ⊢ Π A B ≈ ulvl_tm u : Typeω@k ->
+Corollary pi_universe_index_term_absurd : forall Γ A B (u : universe_index) k,
+    Γ ⊢ Π A B ≈ universe_index_term u : Typeω@k ->
     False.
 Proof.
   intros * H; destruct u as [n | i]; cbn in H;
@@ -398,13 +398,13 @@ Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 #[export]
 Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
 #[export]
-Hint Resolve pi_ulvl_tm_absurd rigid_typ_eq_ulvl_tm var_neq_ulvl_tm : mctt.
+Hint Resolve pi_universe_index_term_absurd rigid_typ_eq_universe_index_term var_neq_universe_index_term : mctt.
 #[export]
 Hint Constructors univ_term : mctt.
 #[export]
-Hint Resolve univ_term_ulvl_tm : mctt.
+Hint Resolve univ_term_universe_index_term : mctt.
 (** A concrete type that is not a universe is not a universe term. *)
 #[export] Hint Extern 1 (~ univ_term _) =>
   (let Hu := fresh "Hu" in intro Hu; inversion Hu; fail) : mctt.
-#[export] Hint Extern 1 (forall _ : uidx, _ <> ulvl_tm _) => (intros []; discriminate) : mctt.
-#[export] Hint Extern 1 (_ <> ulvl_tm _) => (destruct_all uidx; discriminate) : mctt.
+#[export] Hint Extern 1 (forall _ : universe_index, _ <> universe_index_term _) => (intros []; discriminate) : mctt.
+#[export] Hint Extern 1 (_ <> universe_index_term _) => (destruct_all universe_index; discriminate) : mctt.

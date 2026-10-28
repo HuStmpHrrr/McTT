@@ -44,18 +44,18 @@ Qed.
 (** ** The Members a View Takes the Container's To
 
     The field [agree_members] of [view_agreement]: syntactic, from the group's
-    conditions ([grp_tele_ass_vwrap], [grp_tele_ass_vm], [grp_tele_ass_views]). *)
+    conditions ([grp_tele_ass_view_wrap], [grp_tele_ass_vm], [grp_tele_ass_views]). *)
 Lemma view_agree_members : forall p D k Mk qc k' Is vm Dq, grp_tele_ass D ->
     ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
     forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member p D qc Dq vm i' Mi' v Mv.
 Proof.
   intros * Hass HMk Hh HDq i' Mi' HMi'.
-  destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMk Hh) as (D' & HD' & Hvw).
+  destruct (grp_tele_ass_view_wrap _ Hass _ _ _ _ _ _ HMk Hh) as (D' & HD' & Hvw).
   rewrite HDq in HD'; injection HD' as <-.
   destruct (grp_tele_ass_vm _ Hass _ _ _ _ _ _ _ _ _ HMk Hh HDq HMi') as [v Mv Hv HMv Hnn Hhead].
   destruct (grp_tele_ass_views _ Hass _ _ _ _ _ _ HMk Hh) as (Dq' & Mc & HDq' & _ & _ & HlIs).
   rewrite HDq in HDq'; injection HDq' as <-.
-  destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv' & HMv' & _ & Hnames & Hcorr).
+  destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv' & HMv' & _ & Hnames & Hcorr).
   rewrite HMv in HMv'; injection HMv' as <-.
   exists v, Mv.
   assert (Hc1 : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_corr vm gs' gs).
@@ -101,9 +101,9 @@ Lemma view_members_of_ass : forall p D k Mk qc k' Is vm Dq, grp_tele_ass D ->
       exists Mj' Mj, ind_member Dq j' = Some Mj' /\ view_member p D qc Dq vm j' Mj' j Mj.
 Proof.
   intros * Hass HMk Hh Hq j' j Hv.
-  destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMk Hh) as (D2 & Hq2 & Hvw).
+  destruct (grp_tele_ass_view_wrap _ Hass _ _ _ _ _ _ HMk Hh) as (D2 & Hq2 & Hvw).
   rewrite Hq in Hq2; injection Hq2 as <-.
-  assert (Hi : j' < List.length (ind_members Dq)) by (rewrite <- (vwrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
+  assert (Hi : j' < List.length (ind_members Dq)) by (rewrite <- (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
   destruct (List.nth_error (ind_members Dq) j') as [Mj' |] eqn:HMj'; [| apply List.nth_error_None in HMj'; lia ].
   destruct (view_agree_members p D k Mk qc k' Is vm Dq Hass HMk Hh Hq j' Mj' HMj') as (v & Mv & Hvm).
   pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv'; rewrite Hv in Hv'; injection Hv' as <-.

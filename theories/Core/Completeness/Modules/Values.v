@@ -241,7 +241,7 @@ Record rel_mem_reduct (M : exp) (ρ : env) (k : dmod) (x : String.string) (RA : 
 Record valid_mem_at (K : modexp) (x : String.string) (A : typ) (om : option exp) (ρ : env) : Prop := mk_valid_mem_at
   { valid_mem_at_mod : dmod
   ; valid_mem_at_typ : domain
-  ; valid_mem_at_lvl : uidx
+  ; valid_mem_at_lvl : universe_index
   ; valid_mem_at_rel : relation domain
   ; valid_mem_at_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ valid_mem_at_mod
   ; valid_mem_at_eval_typ : ⟦ A ⟧ ρ ↘ valid_mem_at_typ

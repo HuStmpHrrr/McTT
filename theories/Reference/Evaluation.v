@@ -505,7 +505,7 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
 (** A term part of a saturated body ([entry_tm]) *)
 | eval_sel_order_body :
-  `( kbody Θ Ξ p Φ Φx ->
+  `( kinds_body_xp Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      eval_benv_order Θ Ξ p Φ' ->
@@ -534,7 +534,7 @@ with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( eval_selm_order Θ Ξ (dm_local (e :: Δ) D p) y )
 (** A module part of a saturated body ([entry_unit]) *)
 | eval_selm_order_body :
-  `( kbody Θ Ξ p Φ Φx ->
+  `( kinds_body_xp Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      eval_benv_order Θ Ξ p Φ' ->
@@ -610,9 +610,9 @@ Ltac functional_eval_all :=
     | H1 : eval_appms ?T ?X ?m ?n ?r1, H2 : eval_appms ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
-    | H1 : kbody ?T ?X ?p ?Φ ?r1, H2 : kbody ?T ?X ?p ?Φ ?r2 |- _ =>
+    | H1 : kinds_body_xp ?T ?X ?p ?Φ ?r1, H2 : kinds_body_xp ?T ?X ?p ?Φ ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_kbody _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst; clear H2
     | H1 : eval_sel ?T ?X ?m ?n ?r1, H2 : eval_sel ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
@@ -653,9 +653,9 @@ Ltac functional_eval_all :=
     | H1 : eval_projs ?T ?X ?fl ?v ?r1, H2 : eval_projs ?T ?X ?fl ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_projs _ _ _ _ H1 H2); subst; clear H2
-    | H1 : kgens ?T ?X ?p ?E ?its ?g1, H2 : kgens ?T ?X ?p ?E ?its ?g2 |- _ =>
+    | H1 : kinds_items_gen ?T ?X ?p ?E ?its ?g1, H2 : kinds_items_gen ?T ?X ?p ?E ?its ?g2 |- _ =>
         assert_fails (constr_eq g1 g2);
-        pose proof (functional_kgens _ _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_kinds_items_gen _ _ _ _ _ H1 H2); subst; clear H2
     | H : d_neut _ _ = d_neut _ _ |- _ => injection H; clear H; intros; subst
     | H1 : eval_proj ?T ?X ?f ?m ?r1, H2 : eval_proj ?T ?X ?f ?m ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
@@ -703,7 +703,7 @@ Proof.
           | match goal with H : eval_mref _ _ ?pq _ ?j _ |- eval_shty_order _ _ ?pq _ _ (pt_self ?j _) =>
               inversion H; subst; eapply eval_shty_order_self; try eassumption;
               unfold im_is_rview; match goal with Hh : im_head _ = _ |- _ => rewrite Hh end; reflexivity end
-          | econstructor; try eassumption; intros; functional_eval_all; eauto using kgens_order_sound, tele_snoc_app
+          | econstructor; try eassumption; intros; functional_eval_all; eauto using kinds_items_gen_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_eval_all; congruence
           (** The eliminator: the group the scrutinee's value names, once. *)
@@ -775,7 +775,7 @@ Proof.
   - destruct (existsb _ _); [ discriminate | eauto ].
 Qed.
 
-#[local] Hint Resolve kbody_order_sound : core.
+#[local] Hint Resolve kinds_body_xp_order_sound : core.
 
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -849,8 +849,8 @@ Section EvalImpl.
           exfalso; exact (ind_lookup_not_alias _ _ _ _ _ H1 H2)
       | H1 : gc_loc _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _) |- _ =>
           exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
-      | H1 : kbody _ _ ?p ?Φ ?r1, H2 : kbody _ _ ?p ?Φ ?r2 |- _ =>
-          assert_fails (constr_eq r1 r2); pose proof (functional_kbody _ _ _ _ H1 H2); subst; clear H2
+      | H1 : kinds_body_xp _ _ ?p ?Φ ?r1, H2 : kinds_body_xp _ _ ?p ?Φ ?r2 |- _ =>
+          assert_fails (constr_eq r1 r2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst; clear H2
       | H : tele_snoc _ = None |- _ => rewrite tele_snoc_app in H; discriminate H
       | H1 : tele_snoc ?Δ = Some _, H2 : tele_snoc ?Δ = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
@@ -1425,7 +1425,7 @@ Section EvalImpl.
           | exist _ _ Ea => False_rect _ _ } } } }
   | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
-  | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {
+  | dm_local nil (md_body sm Φ) p, x, H with kinds_body_xp_impl Θ Ξ p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_tm E) := {
         | exist _ (Some (A, M)) Et =>
@@ -1445,7 +1445,7 @@ Section EvalImpl.
     | exist _ _ E => exist _ (dm_global (qname_app pq (y :: nil)) args) _ }
   | dm_local (e :: Δ) D p, y, H => exist _ (dm_member (dm_local (e :: Δ) D p) (y :: nil)) _
   | dm_local nil (md_alias E) p, y, H => False_rect _ _
-  | dm_local nil (md_body sm Φ) p, y, H with kbody_impl Θ Ξ p Φ _ := {
+  | dm_local nil (md_body sm Φ) p, y, H with kinds_body_xp_impl Θ Ξ p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx y) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_unit E) := {
         | exist _ (Some (gu_mk Δy Dy)) Eu =>

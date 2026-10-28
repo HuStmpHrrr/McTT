@@ -91,11 +91,11 @@ Qed.
 
 (** ** Aliases of Canonical Units *)
 
-Lemma rel_alias_unit_up : forall Γ Δ X, Δ <> nil -> tele_ass Δ -> ds_is_mod X -> valid_unit (Δ ++ Γ) (ds_unit X) ->
-    Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (ds_unit X))) ≈ ds_unit (ds_up Δ X) /\ valid_unit Γ (ds_unit (ds_up Δ X)).
+Lemma rel_alias_unit_up : forall Γ Δ X, Δ <> nil -> tele_ass Δ -> mdesc_is_mod X -> valid_unit (Δ ++ Γ) (mdesc_unit X) ->
+    Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (mdesc_unit X))) ≈ mdesc_unit (mdesc_up Δ X) /\ valid_unit Γ (mdesc_unit (mdesc_up Δ X)).
 Proof.
   intros * Hne HΔ Hm HK.
-  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction; cbn [ds_up ds_unit] in HK |- *.
+  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction; cbn [mdesc_up mdesc_unit] in HK |- *.
   - (* a local body *)
     split; [ exact (rel_lit_flatten _ _ _ _ HΔ HK) | exact (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ HK HΔ) ].
   - (* a filed module at arguments: the alias is the unit *)
@@ -118,10 +118,10 @@ Qed.
 (** ** Canonical Units *)
 
 Lemma valid_unit_canon_all :
-  (forall Γ K, valid_unit Γ K -> forall RK Rm, mdenote Θm Ξm Γ K RK -> ds_mod RK = Some Rm ->
-     Γ ⊨ᵐ K ≈ ds_unit Rm /\ valid_unit Γ (ds_unit Rm)) /\
-  (forall Γ H, valid_modexp Γ H -> forall R Rm, mdenote Θm Ξm Γ H R -> ds_mod R = Some Rm ->
-     Γ ⊨ᵐ H ≈ ds_unit Rm /\ valid_unit Γ (ds_unit Rm)).
+  (forall Γ K, valid_unit Γ K -> forall RK Rm, mdenote Θm Ξm Γ K RK -> mdesc_mod RK = Some Rm ->
+     Γ ⊨ᵐ K ≈ mdesc_unit Rm /\ valid_unit Γ (mdesc_unit Rm)) /\
+  (forall Γ H, valid_modexp Γ H -> forall R Rm, mdenote Θm Ξm Γ H R -> mdesc_mod R = Some Rm ->
+     Γ ⊨ᵐ H ≈ mdesc_unit Rm /\ valid_unit Γ (mdesc_unit Rm)).
 Proof.
   apply valid_unit_modexp_ind.
   - (* a filed module at arguments *)
@@ -129,21 +129,21 @@ Proof.
     pose proof (valid_unit_filed _ _ _ _ _ _ _ Hw Hgl HΓ Hs) as HK.
     destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R1 & Hm1 & Hmod1).
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ Hm1), Hmod1 in Hmd; injection Hmd as <-.
-    cbn [ds_unit]; split; [ exact (valid_unit_rel _ _ Hgf _ _ HK) | exact HK ].
+    cbn [mdesc_unit]; split; [ exact (valid_unit_rel _ _ Hgf _ _ HK) | exact HK ].
   - (* a body: its own literal *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC Hsl IHsl Hs Hsx HU Hopv Hops IHops RK Rm Hm Hmd.
     pose proof (valid_unit_body _ _ _ _ _ _ Hw Hx HΔ HΓ HC Hsl Hs Hsx HU Hopv Hops) as HK.
     apply mdenote_lit_inv in Hm; inversion Hm; subst.
-    match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
-    cbn in Hmd; injection Hmd as <-; cbn [ds_unit]; split; [ exact HU | exact HK ].
+    match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
+    cbn in Hmd; injection Hmd as <-; cbn [mdesc_unit]; split; [ exact HU | exact HK ].
   - (* an alias: its target's unit, abstracted *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HU HE Hsmt IHE RK Rm Hm Hmd.
     apply mdenote_lit_inv in Hm; inversion Hm as [| ? ? ? ? RE REm HmE HmdE]; subst.
-    pose proof (ds_mod_is_mod _ _ HmdE) as Him.
-    rewrite (ds_is_mod_mod _ (ds_is_mod_up _ _ Him)) in Hmd; injection Hmd as <-.
+    pose proof (mdesc_mod_is_mod _ _ HmdE) as Him.
+    rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Him)) in Hmd; injection Hmd as <-.
     destruct (IHE _ _ HmE HmdE) as [HEu HKu].
     destruct Δ as [| e Δ0].
-    + rewrite ds_up_nil; cbn [List.app] in *.
+    + rewrite mdesc_up_nil; cbn [List.app] in *.
       split; [ exact (rel_modexp_under_ctx_trans (rel_modexp_under_ctx_beta_alias0 _ _ HE) HEu) | exact HKu ].
     + destruct (rel_alias_unit_up Γ (e :: Δ0) REm ltac:(discriminate) HΔ Him HKu) as [Hup HKup].
       split; [| exact HKup ].
@@ -155,8 +155,8 @@ Proof.
     destruct (IHK _ _ HmK HmodK) as [HKu HKK]; split; [ exact (rel_modexp_under_ctx_trans HHK HKu) | exact HKK ].
 Qed.
 
-Corollary valid_modexp_canon : forall Γ H R Rm, valid_modexp Γ H -> mdenote Θm Ξm Γ H R -> ds_mod R = Some Rm ->
-    Γ ⊨ᵐ H ≈ ds_unit Rm /\ valid_unit Γ (ds_unit Rm).
+Corollary valid_modexp_canon : forall Γ H R Rm, valid_modexp Γ H -> mdenote Θm Ξm Γ H R -> mdesc_mod R = Some Rm ->
+    Γ ⊨ᵐ H ≈ mdesc_unit Rm /\ valid_unit Γ (mdesc_unit Rm).
 Proof. intros * HH Hm Hmd; exact (proj2 valid_unit_canon_all _ _ HH _ _ Hm Hmd). Qed.
 
 Lemma valid_modexp_of_valid_unit : forall Γ K, valid_unit Γ K -> valid_modexp Γ K.

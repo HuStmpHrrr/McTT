@@ -246,7 +246,7 @@ Module Domain_Notations.
 End Domain_Notations.
 
 (** The value of the universe at an index, at either tier. *)
-Definition ulvl_val (u : uidx) : domain :=
+Definition universe_index_value (u : universe_index) : domain :=
   match u with us o => d_suniv (d_lvl o nil) | ul n => d_univ n end.
 
 (** ** Level Values
@@ -254,7 +254,7 @@ Definition ulvl_val (u : uidx) : domain :=
     The sort of a neutral level, read off its type: a neutral of type
     [Levelᵈ@n] is an atom of sort [n].  No other type has neutral levels, so
     the default is never used. *)
-Definition dsort (a : domain) : nat :=
+Definition domain_level_sort (a : domain) : nat :=
   match a with d_level n => n | _ => 0 end.
 
 (** The flat view of a value of type [Level]: a flat level is its own view, and
@@ -263,8 +263,8 @@ Definition dsort (a : domain) : nat :=
 Definition dlvl_view (d : domain) : o2 * list (nat * nat * domain_ne) :=
   match d with
   | d_lvl c xs => (c, xs)
-  | d_neut a m => (oz, (0, dsort a, m) :: nil)
-  | _ => (oz, nil)
+  | d_neut a m => (ordinal_zero, (0, domain_level_sort a, m) :: nil)
+  | _ => (ordinal_zero, nil)
   end.
 
 Definition dlvl_cst (d : domain) : o2 := fst (dlvl_view d).
@@ -272,10 +272,10 @@ Definition dlvl_atoms (d : domain) : list (nat * nat * domain_ne) := snd (dlvl_v
 
 (** The successor and the join of levels: both only flatten. *)
 Definition dlvl_suc (d : domain) : domain :=
-  d_lvl (osuc (dlvl_cst d)) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms d)).
+  d_lvl (ordinal_succ (dlvl_cst d)) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms d)).
 
 Definition dlvl_max (d e : domain) : domain :=
-  d_lvl (omax (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
+  d_lvl (ordinal_max (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
 
 Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
 
@@ -286,12 +286,12 @@ Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
     a level's canonical form depends on the length of the context, so no
     finer index would be stable.  See [Core.Syntactic.Levels.Levels.lvl_real]. *)
 (** The maximum of the offsets of the atoms and the constant.  The constant is
-    the base of the fold rather than an [omax] on top of it, so that the
+    the base of the fold rather than an [ordinal_max] on top of it, so that the
     realiser of a literal level is that literal by computation. *)
 Fixpoint dla_max (c : o2) (xs : list (nat * nat * domain_ne)) : o2 :=
   match xs with
   | nil => c
-  | ka :: r => omax (ofin (fst (fst ka))) (dla_max c r)
+  | ka :: r => ordinal_max (ofin (fst (fst ka))) (dla_max c r)
   end.
 
 Definition dlvl_real (d : domain) : o2 := dla_max (dlvl_cst d) (dlvl_atoms d).
@@ -299,11 +299,11 @@ Definition dlvl_real (d : domain) : o2 := dla_max (dlvl_cst d) (dlvl_atoms d).
 Fact dlvl_real_lit : forall o, dlvl_real (dlvl_lit o) = o.
 Proof. reflexivity. Qed.
 
-Fact dlvl_real_neut : forall a m, dlvl_real (d_neut a m) = oz.
+Fact dlvl_real_neut : forall a m, dlvl_real (d_neut a m) = ordinal_zero.
 Proof. reflexivity. Qed.
 
 Fact dla_max_app : forall c c' xs ys,
-    dla_max (omax c c') (xs ++ ys) = omax (dla_max c xs) (dla_max c' ys).
+    dla_max (ordinal_max c c') (xs ++ ys) = ordinal_max (dla_max c xs) (dla_max c' ys).
 Proof.
   intros c c' xs ys; induction xs as [| ka xs IH]; cbn [dla_max List.app].
   - induction ys as [| ka ys IH]; cbn [dla_max]; [ reflexivity |].
@@ -312,20 +312,20 @@ Proof.
 Qed.
 
 Fact dla_max_suc : forall c xs,
-    dla_max (osuc c) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) = osuc (dla_max c xs).
+    dla_max (ordinal_succ c) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) = ordinal_succ (dla_max c xs).
 Proof.
   intros c xs; induction xs as [| ka xs IH]; cbn [dla_max List.map fst snd];
     [ reflexivity | rewrite IH; generalize (dla_max c xs); intros; ord ].
 Qed.
 
-Fact dlvl_real_suc : forall l, dlvl_real (dlvl_suc l) = osuc (dlvl_real l).
+Fact dlvl_real_suc : forall l, dlvl_real (dlvl_suc l) = ordinal_succ (dlvl_real l).
 Proof.
   intros; unfold dlvl_real, dlvl_suc, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
   apply dla_max_suc.
 Qed.
 
 Fact dlvl_real_max : forall l l',
-    dlvl_real (dlvl_max l l') = omax (dlvl_real l) (dlvl_real l').
+    dlvl_real (dlvl_max l l') = ordinal_max (dlvl_real l) (dlvl_real l').
 Proof.
   intros; unfold dlvl_real, dlvl_max, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
   apply dla_max_app.

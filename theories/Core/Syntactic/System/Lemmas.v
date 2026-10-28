@@ -1064,7 +1064,7 @@ Proof.
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HH) as (_ & (R1 & _ & HR1 & _) & (R2 & _ & HR2 & _)).
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 desc_typed)))))) _ _ _ _ _ HH Hv) as (_ & HK1 & HK2).
   assert (Ht : forall Δ X D R, mdenote Θ Ξ Γ (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) R -> desc_ok Θ Ξ Γ R ->
-            exists T1, ds_mtele R = Some (T1 ++ ce_ass X :: nil)).
+            exists T1, mdesc_mod_tele R = Some (T1 ++ ce_ass X :: nil)).
   { intros * Hm Hok; inversion Hm; subst; try (unfold gc_unit in *; cbn in *; discriminate).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ =>
       destruct (udenote_last _ _ _ _ _ _ _ Hu) as (R0 & Hu0 & ->);
@@ -1275,8 +1275,8 @@ Proof.
         first [ exact IH1 | exact IH2
               | eapply wf_sub_mdenote_mem; [ exact HHl | exact Hm | eassumption ]
               | eapply wf_sub_mdenote_mem; [ exact HHr | exact Hm' | eassumption ]
-              | eapply wf_sub_ds_mtele_mem; [ exact HHl | exact Hm | eassumption | eassumption ]
-              | eapply wf_sub_ds_mtele_mem; [ exact HHr | exact Hm' | eassumption | eassumption ] ]
+              | eapply wf_sub_mdesc_mod_tele_mem; [ exact HHl | exact Hm | eassumption | eassumption ]
+              | eapply wf_sub_mdesc_mod_tele_mem; [ exact HHr | exact Hm' | eassumption | eassumption ] ]
     end ].
   all: try solve [
     match goal with
@@ -1286,33 +1286,33 @@ Proof.
       HN : wf_exp _ _ _ ?B ?N, IHN : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?N _) _,
       HB' : wf_exp _ _ _ (a_typ _) ?B', IHB' : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B' _) _,
       HN' : wf_exp _ _ _ ?B' ?N', IHN' : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?N' _) _,
-      Hm : mdenote _ _ _ ?H ?R, HT : ds_mtele ?R = Some _, Hv : tele_view _ = Some (?B, _),
-      Hm' : mdenote _ _ _ ?H' ?R', HT' : ds_mtele ?R' = Some _, Hv' : tele_view _ = Some (?B', _)
+      Hm : mdenote _ _ _ ?H ?R, HT : mdesc_mod_tele ?R = Some _, Hv : tele_view _ = Some (?B, _),
+      Hm' : mdenote _ _ _ ?H' ?R', HT' : mdesc_mod_tele ?R' = Some _, Hv' : tele_view _ = Some (?B', _)
       |- wf_modexp_eq _ _ _ (modexp_sub (me_app ?H ?N) ?σ) _ /\ _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
         pose proof (wf_modexp_eq_refl_left HH) as HHl; pose proof (wf_modexp_eq_refl_right HH) as HHr;
         destruct (IH _ _ _ Hσ) as [IH1 IH2]; cbn; split; eapply wf_me_app;
         [ exact IH1
         | eapply wf_sub_mdenote; [ exact HHl | exact Hm | exact Hl ]
-        | eapply wf_sub_ds_mtele; [ exact HHl | exact Hm | exact HT | exact Hl ]
+        | eapply wf_sub_mdesc_mod_tele; [ exact HHl | exact Hm | exact HT | exact Hl ]
         | eapply tele_view_sub_some; exact Hv
         | eapply sub_preserves_typ; [ exact HB | exact Hl ]
         | eapply sub_preserves_exp; [ exact HN | exact Hl ]
         | exact (IHN _ _ _ Hσ)
         | eapply wf_sub_mdenote; [ exact HHl | exact Hm | exact Hr ]
-        | eapply wf_sub_ds_mtele; [ exact HHl | exact Hm | exact HT | exact Hr ]
+        | eapply wf_sub_mdesc_mod_tele; [ exact HHl | exact Hm | exact HT | exact Hr ]
         | eapply tele_view_sub_some; exact Hv
         | eapply sub_preserves_typ; [ exact HB | exact Hr ]
         | eapply sub_preserves_exp; [ exact HN | exact Hr ]
         | exact IH2
         | eapply wf_sub_mdenote; [ exact HHr | exact Hm' | exact Hl ]
-        | eapply wf_sub_ds_mtele; [ exact HHr | exact Hm' | exact HT' | exact Hl ]
+        | eapply wf_sub_mdesc_mod_tele; [ exact HHr | exact Hm' | exact HT' | exact Hl ]
         | eapply tele_view_sub_some; exact Hv'
         | eapply sub_preserves_typ; [ exact HB' | exact Hl ]
         | eapply sub_preserves_exp; [ exact HN' | exact Hl ]
         | exact (IHN' _ _ _ Hσ)
         | eapply wf_sub_mdenote; [ exact HHr | exact Hm' | exact Hr ]
-        | eapply wf_sub_ds_mtele; [ exact HHr | exact Hm' | exact HT' | exact Hr ]
+        | eapply wf_sub_mdesc_mod_tele; [ exact HHr | exact Hm' | exact HT' | exact Hr ]
         | eapply tele_view_sub_some; exact Hv'
         | eapply sub_preserves_typ; [ exact HB' | exact Hr ]
         | eapply sub_preserves_exp; [ exact HN' | exact Hr ] ]
@@ -1334,9 +1334,9 @@ Proof.
   all: try solve [
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HH : wf_modexp_eq _ _ _ (me_mem ?H ?y) (me_mem ?H ?y),
-      Hm : mdenote _ _ _ (me_mem ?H ?y) ?R, Hd : ds_mod ?R = Some ?Rm,
+      Hm : mdenote _ _ _ (me_mem ?H ?y) ?R, Hd : mdesc_mod ?R = Some ?Rm,
       IHs : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub (me_mem ?H ?y) _) _ /\ _
-      |- wf_modexp_eq _ _ _ (modexp_sub (me_mem ?H ?y) ?σ) _ /\ wf_modexp_eq _ _ _ (modexp_sub (ds_unit ?Rm) _) _ =>
+      |- wf_modexp_eq _ _ _ (modexp_sub (me_mem ?H ?y) ?σ) _ /\ wf_modexp_eq _ _ _ (modexp_sub (mdesc_unit ?Rm) _) _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
         pose proof (wf_me_delta_sel _ _ _ _ _ _ _ HH Hm Hd) as Hδ;
         split; [ exact (proj1 (IHs _ _ _ Hσ)) |];
@@ -1378,8 +1378,8 @@ Proof.
   all: try solve [
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HH : wf_modexp_eq _ _ _ ?H ?H, Hm : mdenote _ _ _ (me_mem ?H ?x) ?R,
-      Ht : ds_ty ?R = Some ?A, HA : wf_exp _ _ _ (a_typ _) ?A,
-      HMr : forall _, ds_red ?R = Some _ -> wf_exp _ _ _ ?A _,
+      Ht : mdesc_type ?R = Some ?A, HA : wf_exp _ _ _ (a_typ _) ?A,
+      HMr : forall _, mdesc_reduct ?R = Some _ -> wf_exp _ _ _ ?A _,
       IHA : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
       IH : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?H _) _ /\ _
       |- wf_exp_eq _ _ _ (exp_sub ?A ?σ) (exp_sub (a_mem ?H ?x) ?σ) (exp_sub (a_mem ?H ?x) ?σ') =>
@@ -1390,16 +1390,16 @@ Proof.
         cbn [exp_sub]; eapply wf_exp_eq_mem_cong;
         [ exact (proj1 (IH _ _ _ Hσ))
         | eapply wf_sub_mdenote_mem; [ exact HH | exact Hm | exact Hl ]
-        | eapply ds_ty_sub; exact Ht
+        | eapply mdesc_type_sub; exact Ht
         | eapply wf_sub_mdenote_mem; [ exact HH | exact Hm | exact Hr ]
-        | eapply ds_ty_sub; exact Ht
+        | eapply mdesc_type_sub; exact Ht
         | eapply wf_exp_subtyp;
           [ eapply wf_mem; [ eapply sub_preserves_modexp; [ exact HH | exact Hr ]
                            | eapply wf_sub_mdenote_mem; [ exact HH | exact Hm | exact Hr ]
-                           | eapply ds_ty_sub; exact Ht
+                           | eapply mdesc_type_sub; exact Ht
                            | eapply sub_preserves_typ; [ exact HA | exact Hr ]
                            | let HM' := fresh "HM'" in
-                             intros ? HM'; destruct (ds_red_sub_inv _ _ _ HM') as (? & ? & ->);
+                             intros ? HM'; destruct (mdesc_reduct_sub_inv _ _ _ HM') as (? & ? & ->);
                              eapply sub_preserves_exp; [ eapply HMr; eassumption | exact Hr ] ]
           | eapply sub_preserves_typ; [ exact HA | exact Hl ]
           | eapply wf_subtyp_refl; [ eapply sub_preserves_typ; [ exact HA | exact Hl ] | apply wf_exp_eq_sym; exact HAσ ] ] ]

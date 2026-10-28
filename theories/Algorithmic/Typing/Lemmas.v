@@ -129,7 +129,7 @@ Qed.
 Definition unf_ws (Γ : ctx) (u : unf) : Prop :=
   match u with
   | uns L => exists n, Γ ⊢ lvl_exp_of (fst L) (List.map atom_exp (snd L)) : Level@n /\
-                    fst (fst L) <= n /\ @la_ws gc_deps gc_stack n Γ (snd L)
+                    fst (fst L) <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Γ (snd L)
   | unl _ => True
   end.
 
@@ -164,24 +164,24 @@ Proof.
     destruct Hv as (nB & HLB0 & Hd & Hys); cbn [fst snd] in *.
     unfold lvl_bound; cbn [fst snd].
     set (LA := lvl_exp_of c (List.map atom_exp xs)) in *.
-    set (cb := omax d (la_open_bound 0 ys)) in *.
-    set (fp := la_fresh_part 0 ys) in *.
+    set (cb := ordinal_max d (level_atoms_open_bound 0 ys)) in *.
+    set (fp := level_atoms_fresh_part 0 ys) in *.
     set (LBs := lvl_exp_of cb (List.map atom_exp (List.map (map_level_atom (ne_unwk 0)) fp))).
     assert (exists nA, Γ ⊢ LA : Level@nA) as [nA HLA0]
       by (assert (exists k, Γ ⊢ Type⟨LA⟩ : Typeω@k) as [k Hk] by (gen_presups; eauto 2);
           eapply wf_univ_lvl_inversion; exact Hk).
     set (N := S (Nat.max nA nB)).
     assert (Hcb : fst cb <= N)
-      by (subst cb N; apply omax_fst_le;
-          [ lia | eapply Nat.le_trans; [ apply la_open_bound_fst; eapply la_ws_sorts; exact Hys | lia ] ]).
-    assert (HysN : @la_ws gc_deps gc_stack N (Γ ▹ A) ys) by (eapply la_ws_mono; [| exact Hys ]; lia).
-    assert (HfpN : @la_ws gc_deps gc_stack N (Γ ▹ A) fp) by (apply la_ws_fresh_part; exact HysN).
+      by (subst cb N; apply ordinal_max_fst_le;
+          [ lia | eapply Nat.le_trans; [ apply level_atoms_open_bound_fst; eapply level_atoms_well_scoped_sorts; exact Hys | lia ] ]).
+    assert (HysN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) ys) by (eapply level_atoms_well_scoped_mono; [| exact Hys ]; lia).
+    assert (HfpN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) fp) by (apply level_atoms_well_scoped_fresh_part; exact HysN).
     assert (HLB : Γ ▹ A ⊢ lvl_exp_of d (List.map atom_exp ys) : Level@N) by (eapply wf_exp_level_up; [| exact HLB0 ]; lia).
     (** The bound, weakened back, is the level of its fresh atoms. *)
     assert (Hfresh : lvl_exp_of cb (List.map atom_exp fp) = LBs[↑]ʷ)
-      by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (la_fresh_part_fresh 0 ys)).
+      by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (level_atoms_fresh_part_fresh 0 ys)).
     assert (HLBl : Γ ▹ A ⊢ LBs[↑]ʷ : Level@N)
-      by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply la_ws_wf; exact HfpN ]).
+      by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply level_atoms_well_scoped_wf; exact HfpN ]).
     assert (Habove : Γ ▹ A ⊢ maxl (lvl_exp_of d (List.map atom_exp ys)) LBs[↑]ʷ ≈ LBs[↑]ʷ : Level@N).
     { rewrite <- Hfresh.
       apply lvl_exp_of_le; [ lia | exact Hcb | exact HΓA | exact HysN | exact HfpN |].
@@ -478,7 +478,7 @@ Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
     mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
-    ds_mod R = Some Rm ->
+    mdesc_mod R = Some Rm ->
     items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
     alg_body_sound Γ (gm_open Φ H its) (gens_append Φx 0 gs).
@@ -629,7 +629,7 @@ Proof.
       eapply wf_let_mod; eauto
   (** A member, at the normal form of the type its module's description
       reads. *)
-  | Hm : mdenote _ _ _ (me_mem ?H0 ?x0) _, Ht : ds_ty _ = Some _ |- _ ⊢ a_mem _ _ : _ =>
+  | Hm : mdenote _ _ _ (me_mem ?H0 ?x0) _, Ht : mdesc_type _ = Some _ |- _ ⊢ a_mem _ _ : _ =>
       assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H0 ≈ H0) by eauto;
       destruct (member_wf _ _ _ _ _ HH Hm Ht) as ([i HA] & _ & HMt);
       assert (Γ ⊢ A ≈ B : Typeω@i) as <- by mauto 3 using soundness_ty';
@@ -667,14 +667,14 @@ Proof.
         pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end;
       eapply wf_unit_eq_alias; eauto
   (** A module expression applied. *)
-  | Hm : mdenote _ _ _ ?H0 _, Htl : ds_mtele _ = Some _, Hv : tele_view _ = Some _
+  | Hm : mdenote _ _ _ ?H0 _, Htl : mdesc_mod_tele _ = Some _, Hv : tele_view _ = Some _
     |- wf_modexp_eq _ _ _ (me_app _ _) _ =>
       assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H0 ≈ H0) by eauto;
       destruct (mtele_head_wf _ _ _ _ _ _ HH Hm Htl Hv) as [i HB];
       assert (Γ ⊢ N : B) by eauto;
       eapply wf_me_app; eauto using wf_exp_eq_refl
   (** A selection that is a module. *)
-  | Hm : mdenote _ _ _ (me_mem ?H0 _) _, Htl : ds_mtele _ = Some _ |- wf_modexp_eq _ _ _ _ _ =>
+  | Hm : mdenote _ _ _ (me_mem ?H0 _) _, Htl : mdesc_mod_tele _ = Some _ |- wf_modexp_eq _ _ _ _ _ =>
       assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H0 ≈ H0) by eauto;
       eapply wf_me_mem; eassumption
   (** A loaded unit. *)
@@ -966,7 +966,7 @@ Proof.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_mod _ _ _ _ HU)); (f_equiv; mautosolve 4).
   (** A member infers the normal form of the type its module's description
       reads, a type ([member_wf]). *)
-  - match goal with Hm : mdenote _ _ _ (me_mem _ _) _, Ht : ds_ty _ = Some _ |- _ =>
+  - match goal with Hm : mdenote _ _ _ (me_mem _ _) _, Ht : mdesc_type _ = Some _ |- _ =>
       destruct (member_wf _ _ _ _ _ ltac:(eapply alg_modexp_sound; eassumption) Hm Ht) as ([i HA] & _) end.
     (f_equiv; mautosolve 4).
   - assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
@@ -1262,7 +1262,7 @@ Proof.
     | apply wf_llit; [ subst N; lia | exact HΓ ] |].
   assert (HcN : fst c <= N) by (subst N; lia).
   assert (HmN : fst m <= N) by (subst N; lia).
-  assert (HxsN : @la_ws gc_deps gc_stack N Γ xs) by (eapply la_ws_mono; [| exact Hxs ]; subst N; lia).
+  assert (HxsN : @level_atoms_well_scoped gc_deps gc_stack N Γ xs) by (eapply level_atoms_well_scoped_mono; [| exact Hxs ]; subst N; lia).
   exact (lvl_exp_of_le (n := N) c xs m nil HcN HmN HΓ HxsN I Hle).
 Qed.
 
@@ -1456,17 +1456,17 @@ Proof.
   apply exp_eq_suniv_tm_inj in HTt as [nT HTt0], HTt' as [nT' HTt'0].
   (** All of them move to the largest of the sorts, one above the
       codomain's, where the bound of its open atoms lives. *)
-  set (cb := omax d (la_open_bound 0 ys)) in *.
-  set (fp := la_fresh_part 0 ys) in *.
+  set (cb := ordinal_max d (level_atoms_open_bound 0 ys)) in *.
+  set (fp := level_atoms_fresh_part 0 ys) in *.
   set (N := S (Nat.max (Nat.max n (Nat.max nA nB)) (Nat.max nT nT'))).
   assert (Hcb : fst cb <= N)
-    by (subst cb N; apply omax_fst_le;
-        [ lia | eapply Nat.le_trans; [ apply la_open_bound_fst; eapply la_ws_sorts; exact Hys | lia ] ]).
-  assert (HxsN : @la_ws gc_deps gc_stack N Γ xs) by (eapply la_ws_mono; [| exact Hxs ]; subst N; lia).
-  assert (HzsN : @la_ws gc_deps gc_stack N Γ zs) by (eapply la_ws_mono; [| exact Hzs ]; subst N; lia).
-  assert (HwsN : @la_ws gc_deps gc_stack N (Γ ▹ A) ws) by (eapply la_ws_mono; [| exact Hws ]; subst N; lia).
-  assert (HfpN : @la_ws gc_deps gc_stack N (Γ ▹ A) fp)
-    by (apply la_ws_fresh_part; eapply la_ws_mono; [| exact Hys ]; subst N; lia).
+    by (subst cb N; apply ordinal_max_fst_le;
+        [ lia | eapply Nat.le_trans; [ apply level_atoms_open_bound_fst; eapply level_atoms_well_scoped_sorts; exact Hys | lia ] ]).
+  assert (HxsN : @level_atoms_well_scoped gc_deps gc_stack N Γ xs) by (eapply level_atoms_well_scoped_mono; [| exact Hxs ]; subst N; lia).
+  assert (HzsN : @level_atoms_well_scoped gc_deps gc_stack N Γ zs) by (eapply level_atoms_well_scoped_mono; [| exact Hzs ]; subst N; lia).
+  assert (HwsN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) ws) by (eapply level_atoms_well_scoped_mono; [| exact Hws ]; subst N; lia).
+  assert (HfpN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) fp)
+    by (apply level_atoms_well_scoped_fresh_part; eapply level_atoms_well_scoped_mono; [| exact Hys ]; subst N; lia).
   assert (HL : Γ ⊢ L : Level@N) by (eapply wf_exp_level_up; [| exact HL0 ]; subst N; lia).
   assert (HLAe : Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@N) by (eapply wf_exp_level_up; [| exact HLAe0 ]; subst N; lia).
   assert (HTt : Γ ⊢ L ≈ lvl_exp_of e (List.map atom_exp zs) : Level@N) by (eapply wf_exp_eq_level_up; [| exact HTt0 ]; subst N; lia).
@@ -1476,9 +1476,9 @@ Proof.
   set (LAe := lvl_exp_of c (List.map atom_exp xs)) in *.
   set (LBs := lvl_exp_of cb (List.map atom_exp (List.map (map_level_atom (ne_unwk 0)) fp))).
   assert (Hfresh : lvl_exp_of cb (List.map atom_exp fp) = LBs[↑]ʷ)
-    by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (la_fresh_part_fresh 0 ys)).
+    by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (level_atoms_fresh_part_fresh 0 ys)).
   assert (HLBl : Γ ▹ A ⊢ LBs[↑]ʷ : Level@N)
-    by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply la_ws_wf; exact HfpN ]).
+    by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply level_atoms_well_scoped_wf; exact HfpN ]).
   assert (HLBs : Γ ⊢ LBs : Level@N) by exact (level_nf_strengthen Γ A N (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) HΓA HLBl).
   eapply wf_subtyp_suniv; [ exact HΓ | apply wf_maxl; eassumption | exact HL |].
   apply lvl_sub_maxl_lub; [ exact HLAe | exact HLBs | exact HL | |].
@@ -2072,7 +2072,7 @@ Proof.
   (** A member, at the normal form of the type its module's description
       reads; the module, by generation. *)
   all: try match goal with
-    | HH : _ ⍮ _ ⍮ ?G ⊢ᵐ ?H0 ≈ ?H0, Hm : mdenote _ _ ?G (me_mem ?H0 ?x0) _, Ht : ds_ty _ = Some ?A0,
+    | HH : _ ⍮ _ ⍮ ?G ⊢ᵐ ?H0 ≈ ?H0, Hm : mdenote _ _ ?G (me_mem ?H0 ?x0) _, Ht : mdesc_type _ = Some ?A0,
       HA : ?G ⊢ ?A0 : Typeω@_, Hb : exp_lets (a_mem ?H0 ?x0) <= _ |-?G ⊢a a_mem ?H0 ?x0 ⟸ ?A0 =>
         cbn [exp_lets] in Hb;
         let W := fresh "W" in let HW := fresh "HW" in let HWe := fresh "HWe" in

@@ -879,7 +879,7 @@ Section Fixed_GCtx.
           per_top_ps (List.rev (ind_uparams Dq)) pa pb }.
 
     Section ElimRel.
-      Variable (i : uidx) (ρa ρb : env) (Bksa Bksb : list eblock) (ua ub : list domain).
+      Variable (i : universe_index) (ρa ρb : env) (Bksa Bksb : list eblock) (ua ub : list domain).
       Hypothesis (Hups : elim_ups_ok ua ub).
       Variable (Rel : nat -> list domain -> domain -> list domain -> domain -> relation domain).
       (** A block for each member but the record views *)
@@ -1909,9 +1909,9 @@ Section Fixed_GCtx.
           - unfold im_ref in Hr; rewrite Hh in Hr; injection Hr as <- <-.
             assert (Hsel : im_sel Mj = Some vm) by (unfold im_sel; rewrite Hh; reflexivity); rewrite Hsel.
             destruct (grp_tele_ass_vm _ Hass j Mj qc kc Is vm Dq n Mi HM Hh Hq Hn0) as [v Mv Hvm HMv Hnn Hhm].
-            destruct (grp_tele_ass_vwrap _ Hass j Mj qc kc Is vm HM Hh) as (D' & Hq' & Hvw).
+            destruct (grp_tele_ass_view_wrap _ Hass j Mj qc kc Is vm HM Hh) as (D' & Hq' & Hvw).
             rewrite Hq in Hq'; injection Hq' as <-.
-            destruct (vwrap_ok_members _ _ _ Hvw n Mi v Hn0 Hvm) as (Mv' & HMv' & _ & Hnames & Hcorr).
+            destruct (view_wrap_ok_members _ _ _ Hvw n Mi v Hn0 Hvm) as (Mv' & HMv' & _ & Hnames & Hcorr).
             rewrite HMv in HMv'; injection HMv' as <-.
             (** The container's member has a block, so is no record view,
                 nor is its image. *)

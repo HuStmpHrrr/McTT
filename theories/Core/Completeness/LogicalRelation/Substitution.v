@@ -639,7 +639,7 @@ Lemma rel_exp_of_univ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' j en
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
-    Δ ▹ A ⊨ B ≈ B' : ulvl_tm j ->
+    Δ ▹ A ⊨ B ≈ B' : universe_index_term j ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
       ⟦ σ ⟧s ρ ↘ ρσ ->

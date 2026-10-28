@@ -227,7 +227,7 @@ Record modexp_next_param_at (H : modexp) (B : typ) (ρ : env) : Prop := mk_modex
   { modexp_next_param_at_mod : dmod
   ; modexp_next_param_at_param : domain
   ; modexp_next_param_at_typ : domain
-  ; modexp_next_param_at_lvl : uidx
+  ; modexp_next_param_at_lvl : universe_index
   ; modexp_next_param_at_rel : relation domain
   ; modexp_next_param_at_eval_mod : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ modexp_next_param_at_mod
   ; modexp_next_param_at_next : nextparam modexp_next_param_at_mod modexp_next_param_at_param

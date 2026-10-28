@@ -41,7 +41,7 @@ Section Fixed_GCtx.
 Lemma glu_sub_qn : forall C Γb Sb_b, tele_ass C -> EG Γb ∈ glu_ctx_env ↘ Sb_b ->
     forall Sb, EG C ++ Γb ∈ glu_ctx_env ↘ Sb ->
     forall Δ σ ρ xs, Δ ⊢ˢ σ ® ρ ∈ Sb_b -> List.length xs = List.length C ->
-    (forall k A a (i : uidx) R, List.nth_error (List.rev C) k = Some (ce_ass A) -> ⟦ A ⟧ env_args ρ (List.firstn k xs) ↘ a ->
+    (forall k A a (i : universe_index) R, List.nth_error (List.rev C) k = Some (ce_ass A) -> ⟦ A ⟧ env_args ρ (List.firstn k xs) ↘ a ->
        DF a ≈ a ∈ per_univ_elem i ↘ R -> exists x, List.nth_error xs k = Some x /\ R (⇑! a (List.length Δ + k)) x) ->
     tele_sub C σ ++ Δ ⊢ˢ sb_qn (List.length C) σ ® env_args ρ xs ∈ Sb.
 Proof.
@@ -55,7 +55,7 @@ Proof.
     assert (HC' : exists TSb, EG C ++ Γb ∈ glu_ctx_env ↘ TSb) by (inversion HC; subst; eauto).
     destruct HC' as [TSb HTSb].
     destruct (glu_ctx_env_cons_clean_inversion HTSb HC) as (i & HA & HT & HSb).
-    assert (Hx' : forall k A0 a (i0 : uidx) R, List.nth_error (List.rev C) k = Some (ce_ass A0) ->
+    assert (Hx' : forall k A0 a (i0 : universe_index) R, List.nth_error (List.rev C) k = Some (ce_ass A0) ->
               ⟦ A0 ⟧ env_args ρ (List.firstn k xs') ↘ a -> DF a ≈ a ∈ per_univ_elem i0 ↘ R ->
               exists x0, List.nth_error xs' k = Some x0 /\ R (⇑! a (List.length Δ + k)) x0).
     { intros * HA0 Ea HR.
@@ -146,7 +146,7 @@ Qed.
 
 (** A variable of a context, at a type glued at the gluing of a type's
     value, is glued at it to the fresh variable of its level. *)
-Lemma var_glu_elem_at : forall (i : uidx) a P El Δ T x, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ T ® P ->
+Lemma var_glu_elem_at : forall (i : universe_index) a P El Δ T x, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ T ® P ->
     Δ ⊢ #x : T -> x < List.length Δ -> Δ ⊢ #x : T ® ⇑! a (List.length Δ - 1 - x) ∈ El.
 Proof.
   intros * Hg HT Hx Hlt.

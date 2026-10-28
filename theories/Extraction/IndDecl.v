@@ -20,7 +20,7 @@ Import Syntax_Notations GlobalCtx_Notations.
     premises quantifying over the members, the arguments of the
     constructors and the non-uniform parameters are decided along the
     lists, at each way of splitting them ([forall_split_dec]).  The checks
-    of the views' rank, maps and members ([rank_check], [vwrap_check],
+    of the views' rank, maps and members ([rank_check], [view_wrap_check],
     [view_maps_check]) are complete as well as sound. *)
 
 (** ** Module Variables
@@ -383,7 +383,7 @@ Defined.
 
 (** ** The Checks of a Group's Views Are Complete
 
-    [rank_check], [vwrap_check] and [view_maps_check] accept every group
+    [rank_check], [view_wrap_check] and [view_maps_check] accept every group
     that has a rank, whose views' members are the container's, and whose
     views agree on their maps: the checker rejects no group the
     declarative rule accepts. *)
@@ -409,9 +409,9 @@ Proof.
 Qed.
 
 (** A view's members that are the container's members pass the check. *)
-Theorem vwrap_check_complete : forall D D' vm, vwrap_ok D D' vm -> vwrap_check D D' vm = true.
+Theorem view_wrap_check_complete : forall D D' vm, view_wrap_ok D D' vm -> view_wrap_check D D' vm = true.
 Proof.
-  intros * [Hl Hm]; unfold vwrap_check; apply andb_true_iff; split; [ apply Nat.eqb_eq; exact Hl |].
+  intros * [Hl Hm]; unfold view_wrap_check; apply andb_true_iff; split; [ apply Nat.eqb_eq; exact Hl |].
   apply List.forallb_forall; intros [i' Mi'] Hin; cbn [fst snd].
   pose proof (in_combine_seq0 _ _ _ Hin) as HMi'.
   destruct (List.nth_error vm i') as [v |] eqn:Hv; [| reflexivity ].
@@ -1801,17 +1801,17 @@ Section NilDecide.
   Defined.
 
   (** Each view's members are those of the container's group. *)
-  Definition vwrap_dec :
+  Definition view_wrap_dec :
     {forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-       exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm}
+       exists D', ind_lookup Θ Ξ qc = Some D' /\ view_wrap_ok D D' vm}
     + {~ forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-       exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm}.
+       exists D', ind_lookup Θ Ξ qc = Some D' /\ view_wrap_ok D D' vm}.
   Proof.
     apply views_dec; intros k Mk qc k' Is vm _ _.
     destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| right; intros (D' & HD' & _); discriminate ].
-    destruct (vwrap_check D D' vm) eqn:Hc.
-    - left; exists D'; split; [ reflexivity | exact (vwrap_check_sound _ _ _ Hc) ].
-    - right; intros (D'' & [= <-] & Hw); rewrite (vwrap_check_complete _ _ _ Hw) in Hc; discriminate.
+    destruct (view_wrap_check D D' vm) eqn:Hc.
+    - left; exists D'; split; [ reflexivity | exact (view_wrap_check_sound _ _ _ Hc) ].
+    - right; intros (D'' & [= <-] & Hw); rewrite (view_wrap_check_complete _ _ _ Hw) in Hc; discriminate.
   Defined.
 
   (** ** The Record Views
@@ -2142,7 +2142,7 @@ Section NilDecide.
     destruct (rank_check_f F D) eqn:Hrk; rewrite rank_check_f_ok in Hrk;
       [| right; intros Hn0; destruct Hn0;
          rewrite (rank_check_complete _ _ _ (decls_of_ctx _ _ _ HU) ltac:(eassumption)) in Hrk; discriminate ].
-    destruct vwrap_dec as [HVw | HVw]; [| nil_rej ].
+    destruct view_wrap_dec as [HVw | HVw]; [| nil_rej ].
     destruct (view_maps_check_f F D) eqn:Hvm; rewrite view_maps_check_f_ok in Hvm;
       [| right; intros Hn0; destruct Hn0; rewrite (view_maps_check_complete _ _ _ ltac:(eassumption)) in Hvm; discriminate ].
     left; apply (mk_ind_nil_at Θ Ξ mp D IsS Δ M0 (Nat.max lS lD) n); try assumption.

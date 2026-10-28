@@ -861,7 +861,7 @@ Qed.
 Lemma univ_nf_ws : forall {Γ c xs A},
     Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : A ->
     nbe_ty_f Γ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ (univⁿ c xs) ->
-    exists n, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n /\ fst c <= n /\ @la_ws gc_deps gc_stack n Γ xs.
+    exists n, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n /\ fst c <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Γ xs.
 Proof.
   intros * HA Hn.
   destruct (wf_univ_lvl_inversion HA) as [n Ht].

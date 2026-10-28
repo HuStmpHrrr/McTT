@@ -152,7 +152,7 @@ Lemma sem_exp_eq_elim_view :
      ind_member D m = Some Mm ->
      im_head Mm = mh_view qc k' Is vm ->
      ind_lookup Θ Ξ qc = Some D' ->
-     vwrap_ok D D' vm ->
+     view_wrap_ok D D' vm ->
      List.nth_error Bks m = Some bm ->
      List.length Bks = ind_nblk D ->
      List.length Ps = im_np D Mm ->
@@ -181,7 +181,7 @@ Lemma sem_exp_eq_elim_view :
           : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_elim oq Us m Bks M
        ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-           (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+           (view_wrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ).
 Proof.
   intros * Hl Hgr HMm Hh Hq _ Hbm HLb HPl HPs HM -> Hnm _ HA HMx HBn HBc Har HB; sem_intro; [ assumption |].

@@ -34,7 +34,7 @@ Section Fixed_GCtx.
   Proof. intros * H; unfold nth_ftyp; rewrite H; reflexivity. Qed.
 
   Section Canon.
-    Variable (u : uidx) (p : qname) (R : record_decl) (ns ns' : list domain).
+    Variable (u : universe_index) (p : qname) (R : record_decl) (ns ns' : list domain).
     Let fr := canon_fields_rel R ns.
     Hypothesis (Hl : record_lookup gc_deps gc_stack p = Some R)
       (Hnd : List.NoDup (List.map fst (record_fields R)))
@@ -201,7 +201,7 @@ Section Fixed_GCtx.
   (** What a related pair of record types gives, at the canonical
       relations: the conditions of the clause. *)
   #[warnings="-cannot-define-projection"]
-  Record record_canon_facts (i : uidx) (R : record_decl) (ns ns' : list domain) (elem_rel : relation domain) : Prop :=
+  Record record_canon_facts (i : universe_index) (R : record_decl) (ns ns' : list domain) (elem_rel : relation domain) : Prop :=
     mk_record_canon_facts
     { (** The field names are distinct *)
       record_canon_facts_nodup : List.NoDup (List.map fst (record_fields R))

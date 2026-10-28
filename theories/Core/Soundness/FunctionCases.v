@@ -80,34 +80,34 @@ Qed.
 
 (** [Π] at either tier: the rule keeps both sides in the same universe, so
     the proof is one, at an index [u]. *)
-Lemma glu_rel_exp_pi_univ : forall {Γ A B} {u : uidx},
-    Γ ⊩ A : ulvl_tm u ->
-    Γ ▹ A ⊩ B : ulvl_tm u ->
-    Γ ⊩ Π A B : ulvl_tm u.
+Lemma glu_rel_exp_pi_univ : forall {Γ A B} {u : universe_index},
+    Γ ⊩ A : universe_index_term u ->
+    Γ ▹ A ⊩ B : universe_index_term u ->
+    Γ ⊩ Π A B : universe_index_term u.
 Proof.
   intros * HA HB.
   assert (⊩ Γ) as [SbΓ] by mauto.
-  assert (Γ ⊢ A : ulvl_tm u) by mauto 3 using glu_rel_exp_to_wf_exp.
-  assert (Γ ⊢ A : Typeω@(ulvl u))
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ]).
+  assert (Γ ⊢ A : universe_index_term u) by mauto 3 using glu_rel_exp_to_wf_exp.
+  assert (Γ ⊢ A : Typeω@(large_level u))
+    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | eassumption ]).
   pose proof (glu_rel_exp_of_univ_inversion ltac:(eassumption) HA) as HAg.
-  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred (ulvl u) Γ A SbΓ)
+  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred (large_level u) Γ A SbΓ)
     by (eapply glu_ctx_env_cons; [ eassumption | eassumption
-                                 | intros Δ σ ρ HΔ; apply glu_rel_typ_with_sub_uidx;
+                                 | intros Δ σ ρ HΔ; apply glu_rel_typ_with_sub_universe_index;
                                    destruct (HAg _ _ _ HΔ) as [_ [a [? [? [? _]]]]];
                                    exists a; repeat split; eassumption
                                  | reflexivity ]).
-  assert (Γ ▹ A ⊢ B : ulvl_tm u) by mauto 3 using glu_rel_exp_to_wf_exp.
+  assert (Γ ▹ A ⊢ B : universe_index_term u) by mauto 3 using glu_rel_exp_to_wf_exp.
   pose proof (glu_rel_exp_of_univ_inversion ltac:(eassumption) HB) as HBg.
-  assert (Γ ⊨ A : ulvl_tm u) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_univ_inversion_simple
+  assert (Γ ⊨ A : universe_index_term u) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_univ_inversion_simple
       by mauto 3 using completeness_fundamental_exp.
   assert (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
-            exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ (ulvl u)) as HAlarge
+            exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ (large_level u)) as HAlarge
       by (intros ρ ρ' Hρ; destruct (HAsimple _ _ Hρ) as [a [a' [? [? ?]]]];
           exists a, a'; repeat split; try eassumption;
-          eapply (per_univ_cumu_uidx (u := u)); [ apply uidx_le_ulvl | eassumption ]).
+          eapply (per_univ_cumu_universe_index (u := u)); [ apply universe_index_le_large_level | eassumption ]).
   pose proof (per_ctx_env_extend HΓ HAlarge) as HΓA.
-  assert (Γ ▹ A ⊨ B : ulvl_tm u) as [env_relΓA [HΓA' HBsimple]]%rel_exp_of_univ_inversion_simple
+  assert (Γ ▹ A ⊨ B : universe_index_term u) as [env_relΓA [HΓA' HBsimple]]%rel_exp_of_univ_inversion_simple
       by mauto 3 using completeness_fundamental_exp.
   handle_per_ctx_env_irrel.
   eapply glu_rel_exp_of_univ; [ eassumption |].
@@ -115,8 +115,8 @@ Proof.
   assert (Δ ⊢ˢ σ : Γ) by mauto 4.
   destruct (HAg _ _ _ HSb) as [HAσ [a [Hae [[in_rel Hin] [HaP HaR]]]]].
   assert (Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : ulvl_tm u)
-    by (rewrite <- (exp_sub_ulvl_tm u (q σ)); mauto 3).
+  assert (Δ ▹ A[σ] ⊢ B[q σ] : universe_index_term u)
+    by (rewrite <- (exp_sub_universe_index_term u (q σ)); mauto 3).
   split; [ cbn; apply wf_pi_univ; assumption |].
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
   assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ u) as [elem_rel Helem].
@@ -136,35 +136,35 @@ Proof.
       intros Δ' φ W Hφ Hr.
       assert (⊢ Δ') by (eapply kripke_dom; eassumption).
       inversion Hr; subst.
-      assert (HA0 : Δ' ⊢ A[σ][φ]ʷ ≈ A0 : ulvl_tm u) by eauto.
+      assert (HA0 : Δ' ⊢ A[σ][φ]ʷ ≈ A0 : universe_index_term u) by eauto.
       assert (exists P El, DG a ∈ glu_univ_elem u ↘ P ↘ El) as [Pa [Ela Hga]] by mauto 3.
       assert (HPa : Δ' ⊢ A[σ][φ]ʷ ® Pa)
         by (eapply (glu_univ_elem_typ_monotone _ _ _ _ Hga); [ apply (HaP _ _ Hga) | exact Hφ ]).
       pose proof (var0_glu_elem Hga HPa) as Hv.
-      (** The entry of the glued context is at the large level [ulvl u], so
+      (** The entry of the glued context is at the large level [large_level u], so
           the variable moves up by cumulativity. *)
-      assert (exists P' El', DG a ∈ glu_univ_elem (ulvl u) ↘ P' ↘ El') as [P' [El' Hl]]
-        by (eapply (glu_univ_elem_cumu_ge_uidx (i := u)); [ apply uidx_le_ulvl | exact Hga ]).
+      assert (exists P' El', DG a ∈ glu_univ_elem (large_level u) ↘ P' ↘ El') as [P' [El' Hl]]
+        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := u)); [ apply universe_index_le_large_level | exact Hga ]).
       assert (Hv' : Δ' ▹ A[σ][φ]ʷ ⊢ #0 : A[σ][φ]ʷ[↑]ʷ ® ⇑! a (length Δ') ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := u) (j := ulvl u));
-            [ apply uidx_le_ulvl | exact Hga | exact Hl | exact Hv ]).
-      assert (HAφ : Δ' ⊢ A[σ][φ]ʷ : ulvl_tm u) by (gen_presups; eassumption).
-      assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@(ulvl u))
-        by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HAφ ]).
+        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := u) (j := large_level u));
+            [ apply universe_index_le_large_level | exact Hga | exact Hl | exact Hv ]).
+      assert (HAφ : Δ' ⊢ A[σ][φ]ʷ : universe_index_term u) by (gen_presups; eassumption).
+      assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@(large_level u))
+        by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HAφ ]).
       assert (⊢ Δ' ▹ A[σ][φ]ʷ) by mauto 3.
       assert (Hk : Δ' ▹ A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
       rewrite exp_wk_wk in Hv'.
       assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢ˢ (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
-                        ∈ cons_glu_sub_pred (ulvl u) Γ A SbΓ) by mauto 2.
+                        ∈ cons_glu_sub_pred (large_level u) Γ A SbΓ) by mauto 2.
       destruct (HBg _ _ _ Hcons) as [_ [b0 [Hb0 [_ [_ HbR]]]]].
       simplify_evals.
-      assert (HBW : Δ' ▹ A[σ][φ]ʷ ⊢ B[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ ≈ B' : ulvl_tm u)
+      assert (HBW : Δ' ▹ A[σ][φ]ʷ ⊢ B[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ ≈ B' : universe_index_term u)
         by (apply HbR; [ mauto 3 | eassumption ]).
       rewrite exp_wk_id in HBW.
-      assert (HAσl : Δ ⊢ A[σ] : Typeω@(ulvl u))
-        by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HAσ ]).
+      assert (HAσl : Δ ⊢ A[σ] : Typeω@(large_level u))
+        by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HAσ ]).
       pose proof (kripke_q_var_eq _ _ _ _ _ _ _ H6 HAσl Hφ) as Hq.
-      rewrite exp_sub_q_extend_wk, exp_wk_ulvl_tm in Hq.
+      rewrite exp_sub_q_extend_wk, exp_wk_universe_index_term in Hq.
       cbn [exp_sub exp_wk].
       apply wf_exp_eq_pi_cong_univ; [ exact HA0 |].
       etransitivity; [ symmetry; exact Hq | exact HBW ]. }
@@ -174,14 +174,14 @@ Proof.
   handle_functional_glu_univ_elem.
   (** [(Π A B)[σ]] is [Π A[σ] B[q σ]] by definition, so the first premise of
       [mk_pi_glu_typ_pred] is reflexivity; it determines [IT] and [OT]. *)
-  assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@(ulvl u)) as HPieq
-    by (eapply (lift_exp_eq_uidx _ _ _ _ _ u (ulvl u));
-        [ apply uidx_le_ulvl | apply wf_exp_eq_pi_cong_univ; mauto 3 ]).
+  assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@(large_level u)) as HPieq
+    by (eapply (lift_exp_eq_universe_index _ _ _ _ _ u (large_level u));
+        [ apply universe_index_le_large_level | apply wf_exp_eq_pi_cong_univ; mauto 3 ]).
   (** The type-level gluing is at the ambient large universe of the index. *)
-  assert (Δ ⊢ A[σ] : Typeω@(ulvl u))
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HAσ ]).
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@(ulvl u))
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ]).
+  assert (Δ ⊢ A[σ] : Typeω@(large_level u))
+    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HAσ ]).
+  assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@(large_level u))
+    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | eassumption ]).
   econstructor; [ eassumption | mauto 3 | eassumption | | ]; intros Δ' φ **.
   - (** The domain's gluing predicate is an existential from
         [invert_glu_univ_elem], so take it from the context. *)
@@ -189,15 +189,15 @@ Proof.
       assert (Δ ⊢ A[σ] ® P) by exact (HaP P El Hx) end.
     eapply glu_univ_elem_typ_monotone; eassumption.
   - rewrite exp_sub_q_extend_wk.
-    (** The entry of the glued context is at the large level [ulvl u], so the
+    (** The entry of the glued context is at the large level [large_level u], so the
         element of the domain moves up by cumulativity. *)
     match goal with Hx : glu_univ_elem u ?P ?El a, HM : ?El _ _ ?M ?m |- _ =>
-      assert (exists P' El', DG a ∈ glu_univ_elem (ulvl u) ↘ P' ↘ El') as [P' [El' Hl]]
-        by (eapply (glu_univ_elem_cumu_ge_uidx (i := u)); [ apply uidx_le_ulvl | exact Hx ]);
+      assert (exists P' El', DG a ∈ glu_univ_elem (large_level u) ↘ P' ↘ El') as [P' [El' Hl]]
+        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := u)); [ apply universe_index_le_large_level | exact Hx ]);
       assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := u) (j := ulvl u));
-            [ apply uidx_le_ulvl | exact Hx | exact Hl | exact HM ]) end.
-    assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred (ulvl u) Γ A SbΓ) as Hcons by mauto 2.
+        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := u) (j := large_level u));
+            [ apply universe_index_le_large_level | exact Hx | exact Hl | exact HM ]) end.
+    assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred (large_level u) Γ A SbΓ) as Hcons by mauto 2.
     destruct (HBg _ _ _ Hcons) as [? [b [Hbe [? [HbP _]]]]].
     simplify_evals.
     (** The codomain families are existentials from [invert_glu_univ_elem], so
@@ -237,7 +237,7 @@ Proof.
   { eapply glu_ctx_env_cons; [ eassumption | exact HAl | | reflexivity ].
     intros Δ σ ρ HΔ.
     destruct (HAg _ _ _ HΔ) as (l & _ & _ & _ & _ & a & ? & ? & ? & _).
-    apply (glu_rel_typ_with_sub_uidx (u := us (dlvl_real l))).
+    apply (glu_rel_typ_with_sub_universe_index (u := us (dlvl_real l))).
     exists a; repeat split; eassumption. }
   assert (HBw : Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩) by (eapply glu_rel_exp_to_wf_exp; exact HB).
   pose proof (glu_rel_exp_of_suniv_tm_inversion' HSbA HB) as HBg.
@@ -295,9 +295,9 @@ Proof.
         by (eapply (glu_univ_elem_typ_monotone _ _ _ _ Hga); [ apply (HaP _ _ Hga) | exact Hφ ]).
       pose proof (var0_glu_elem Hga HPa) as Hv.
       assert (exists P' El', DG a ∈ glu_univ_elem 0 ↘ P' ↘ El') as [P' [El' Hl0']]
-        by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n)); [ exact I | exact Hga ]).
+        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := us n)); [ exact I | exact Hga ]).
       assert (Hv' : Δ' ▹ A[σ][φ]ʷ ⊢ #0 : A[σ][φ]ʷ[↑]ʷ ® ⇑! a (length Δ') ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := us n) (j := ul 0));
+        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := us n) (j := ul 0));
             [ exact I | exact Hga | exact Hl0' | exact Hv ]).
       assert (HAφ : Δ' ⊢ A[σ][φ]ʷ : Type⟨L[σ][φ]ʷ⟩) by (gen_presups; eassumption).
       assert (exists k, Δ' ⊢ Type⟨L[σ][φ]ʷ⟩ : Typeω@k) as [k Hk] by (gen_presups; eexists; eassumption).
@@ -339,9 +339,9 @@ Proof.
   - rewrite exp_sub_q_extend_wk.
     match goal with Hx : glu_univ_elem (us n) ?P ?El a, HM : ?El _ _ ?M ?m |- _ =>
       assert (exists P' El', DG a ∈ glu_univ_elem 0 ↘ P' ↘ El') as [P' [El' Hl0']]
-        by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n)); [ exact I | exact Hx ]);
+        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := us n)); [ exact I | exact Hx ]);
       assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := us n) (j := ul 0));
+        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := us n) (j := ul 0));
             [ exact I | exact Hx | exact Hl0' | exact HM ]) end.
     assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred 0 Γ A SbΓ) as Hcons by mauto 2.
     destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b & Hbe & _ & HbP & _).

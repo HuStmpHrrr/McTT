@@ -1,7 +1,7 @@
 (** * The Branches of a View's Blocks in its Container's Eliminator
 
     The eliminator of a group [D] at its view is the container's
-    eliminator at the view's blocks wrapped ([vwrap], E1′): the block of
+    eliminator at the view's blocks wrapped ([view_wrap], E1′): the block of
     the container's member [i'] is that of the member [v] the view takes it
     to, each branch the group's at an instance ([wrap_br]).  The instance
     is a substitution of the group's branch's context, from a context made

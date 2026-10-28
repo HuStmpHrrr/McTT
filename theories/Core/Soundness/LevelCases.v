@@ -35,9 +35,9 @@ Section Fixed_GCtx.
 
 (** [Level@n] is a type at every index: the rule gives it the small universe
     [Type@0], and the other forms are instances. *)
-Lemma glu_rel_exp_level_univ : forall {Γ} {u : uidx},
+Lemma glu_rel_exp_level_univ : forall {Γ} {u : universe_index},
     ⊩ Γ ->
-    Γ ⊩ Level@n : ulvl_tm u.
+    Γ ⊩ Level@n : universe_index_term u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -62,7 +62,7 @@ Proof. intros; apply (glu_rel_exp_level_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_level_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ Level@n : Type@0.
-Proof. intros; apply (glu_rel_exp_level_univ (u := us oz)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_level_univ (u := us ordinal_zero)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_level : mctt.
 
@@ -162,13 +162,13 @@ Proof.
   assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply dlvl_canon_read; [ exact Hsh | exact HA ]).
   destruct (Hglu _ _ _ Hφ HrA) as [HMA HwsA].
   destruct A as [c xs]; cbn in HwsA; destruct HwsA as [Hc0 Hws].
-  pose proof (la_ws_wf _ Hws) as Hwf.
-  assert (Hcs : fst (osuc c) <= n) by (rewrite osuc_fst; exact Hc0).
-  assert (Hws' : @la_ws gc_deps gc_stack n Δ' (la_suc xs)) by (apply la_ws_suc; exact Hws).
+  pose proof (level_atoms_well_scoped_wf _ Hws) as Hwf.
+  assert (Hcs : fst (ordinal_succ c) <= n) by (rewrite ordinal_succ_fst; exact Hc0).
+  assert (Hws' : @level_atoms_well_scoped gc_deps gc_stack n Δ' (level_atoms_suc xs)) by (apply level_atoms_well_scoped_suc; exact Hws).
   assert (Hcc : fst (fst (lvl_canon (lvl_suc (c, xs)))) <= n)
     by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcs ]).
-  assert (Hwsc : @la_ws gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_suc (c, xs)))))
-    by (unfold lvl_canon, lvl_suc; cbn; apply la_ws_keep, la_ws_sort; exact Hws').
+  assert (Hwsc : @level_atoms_well_scoped gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_suc (c, xs)))))
+    by (unfold lvl_canon, lvl_suc; cbn; apply level_atoms_well_scoped_keep, level_atoms_well_scoped_sort; exact Hws').
   split.
   - (** The syntax is the canonical form of the argument; the successor of
         that is, by the level equations, the canonical form of the
@@ -182,7 +182,7 @@ Proof.
       [ apply lvl_tm_suc; [ exact Hc0 | assumption | exact Hwf ] |].
     transitivity (lvl_tm (fst (lvl_canon (lvl_suc (c, xs)))) (snd (lvl_canon (lvl_suc (c, xs)))));
       [ apply lvl_tm_canon; [ exact Hcs | assumption | exact Hws' ] |].
-    apply wf_exp_eq_sym, lvl_exp_of_tm; [ exact Hcc | assumption | apply la_ws_wf; exact Hwsc ].
+    apply wf_exp_eq_sym, lvl_exp_of_tm; [ exact Hcc | assumption | apply level_atoms_well_scoped_wf; exact Hwsc ].
   - unfold nf_lvl_of; cbn; split; assumption.
 Qed.
 
@@ -217,13 +217,13 @@ Proof.
   destruct (Hglu' _ _ _ Hφ HrB) as [HNB HwsB].
   destruct A as [c xs]; destruct B as [d ys].
   cbn in HwsA, HwsB; destruct HwsA as [Hc0 Hwsx]; destruct HwsB as [Hd0 Hwsy].
-  pose proof (la_ws_wf _ Hwsx) as Hwfx; pose proof (la_ws_wf _ Hwsy) as Hwfy.
-  assert (Hcd : fst (omax c d) <= n) by (apply omax_fst_le; assumption).
-  assert (Hwsa : @la_ws gc_deps gc_stack n Δ' (xs ++ ys)%list) by (apply la_ws_app; [ exact Hwsx | exact Hwsy ]).
+  pose proof (level_atoms_well_scoped_wf _ Hwsx) as Hwfx; pose proof (level_atoms_well_scoped_wf _ Hwsy) as Hwfy.
+  assert (Hcd : fst (ordinal_max c d) <= n) by (apply ordinal_max_fst_le; assumption).
+  assert (Hwsa : @level_atoms_well_scoped gc_deps gc_stack n Δ' (xs ++ ys)%list) by (apply level_atoms_well_scoped_app; [ exact Hwsx | exact Hwsy ]).
   assert (Hcc : fst (fst (lvl_canon (lvl_max (c, xs) (d, ys)))) <= n)
     by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcd ]).
-  assert (Hwsm : @la_ws gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_max (c, xs) (d, ys)))))
-    by (unfold lvl_canon, lvl_max; cbn; apply la_ws_keep, la_ws_sort; exact Hwsa).
+  assert (Hwsm : @level_atoms_well_scoped gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_max (c, xs) (d, ys)))))
+    by (unfold lvl_canon, lvl_max; cbn; apply level_atoms_well_scoped_keep, level_atoms_well_scoped_sort; exact Hwsa).
   split.
   - simplify_subs; cbn [exp_wk].
     transitivity (maxl (nf_lvl_of (c, xs)) (nf_lvl_of (d, ys))); [ mauto 3 |].
@@ -236,7 +236,7 @@ Proof.
     transitivity (lvl_tm (fst (lvl_canon (lvl_max (c, xs) (d, ys))))
                          (snd (lvl_canon (lvl_max (c, xs) (d, ys)))));
       [ apply lvl_tm_canon; [ exact Hcd | assumption | exact Hwsa ] |].
-    apply wf_exp_eq_sym, lvl_exp_of_tm; [ exact Hcc | assumption | apply la_ws_wf; exact Hwsm ].
+    apply wf_exp_eq_sym, lvl_exp_of_tm; [ exact Hcc | assumption | apply level_atoms_well_scoped_wf; exact Hwsm ].
   - unfold nf_lvl_of; cbn; split; assumption.
 Qed.
 

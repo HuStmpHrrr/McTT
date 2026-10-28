@@ -231,29 +231,29 @@ Proof.
   assumption.
 Qed.
 
-(** A universe, as the term [ulvl_tm u], is closed, so it is its own
+(** A universe, as the term [universe_index_term u], is closed, so it is its own
     transport: the gluing predicates state every equation in it. *)
-Fact exp_wk_ulvl_tm : forall u φ, (ulvl_tm u)[φ]ʷ = ulvl_tm u.
+Fact exp_wk_universe_index_term : forall u φ, (universe_index_term u)[φ]ʷ = universe_index_term u.
 Proof. intros [] ?; reflexivity. Qed.
 
 Corollary kripke_preserves_exp_univ : forall Γ Δ A φ u,
-    Δ ⊢ A : ulvl_tm u ->
+    Δ ⊢ A : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ : universe_index_term u.
 Proof.
   intros.
-  assert (Γ ⊢ exp_wk A φ : exp_wk (ulvl_tm u) φ) by mauto 2.
-  rewrite exp_wk_ulvl_tm in *; assumption.
+  assert (Γ ⊢ exp_wk A φ : exp_wk (universe_index_term u) φ) by mauto 2.
+  rewrite exp_wk_universe_index_term in *; assumption.
 Qed.
 
 Corollary kripke_preserves_exp_eq_univ : forall Γ Δ A A' φ u,
-    Δ ⊢ A ≈ A' : ulvl_tm u ->
+    Δ ⊢ A ≈ A' : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : universe_index_term u.
 Proof.
   intros.
-  assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (ulvl_tm u) φ) by mauto 2.
-  rewrite exp_wk_ulvl_tm in *; assumption.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (universe_index_term u) φ) by mauto 2.
+  rewrite exp_wk_universe_index_term in *; assumption.
 Qed.
 
 Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ : mctt.
@@ -262,43 +262,43 @@ Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ : mctt.
     universe of its index: the right-hand sides are closed, so they are their
     own transports — again invisible to [eauto]. *)
 Corollary kripke_preserves_univ_eq_True : forall Γ Δ A φ u,
-    Δ ⊢ A ≈ ⊤ : ulvl_tm u ->
+    Δ ⊢ A ≈ ⊤ : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ⊤ : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ ⊤ : universe_index_term u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊤ : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊤ : exp)[φ]ʷ : universe_index_term u) by mauto 2; assumption.
 Qed.
 
 Corollary kripke_preserves_univ_eq_False : forall Γ Δ A φ u,
-    Δ ⊢ A ≈ ⊥ : ulvl_tm u ->
+    Δ ⊢ A ≈ ⊥ : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ⊥ : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ ⊥ : universe_index_term u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊥ : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊥ : exp)[φ]ʷ : universe_index_term u) by mauto 2; assumption.
 Qed.
 
 Corollary kripke_preserves_univ_eq_typ : forall Γ Δ A φ u j,
-    Δ ⊢ A ≈ Typeω@j : ulvl_tm u ->
+    Δ ⊢ A ≈ Typeω@j : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Typeω@j : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ Typeω@j : universe_index_term u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Typeω@j)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Typeω@j)[φ]ʷ : universe_index_term u) by mauto 2; assumption.
 Qed.
 
 Corollary kripke_preserves_univ_eq_suniv : forall Γ Δ A φ u t,
-    Δ ⊢ A ≈ Type⟨t⟩ : ulvl_tm u ->
+    Δ ⊢ A ≈ Type⟨t⟩ : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : universe_index_term u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Type⟨t⟩)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Type⟨t⟩)[φ]ʷ : universe_index_term u) by mauto 2; assumption.
 Qed.
 
 Corollary kripke_preserves_univ_eq_level : forall Γ Δ A φ u,
-    Δ ⊢ A ≈ Level : ulvl_tm u ->
+    Δ ⊢ A ≈ Level : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Level : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ Level : universe_index_term u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Level : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Level : exp)[φ]ʷ : universe_index_term u) by mauto 2; assumption.
 Qed.
 
 Hint Resolve kripke_preserves_univ_eq_True
@@ -418,17 +418,17 @@ Qed.
 (** The same in any universe: the codomain of a glued [Π] is typed in the
     ambient universe of the index. *)
 Corollary kripke_preserves_univ_q : forall Γ Δ A B φ u v,
-    Δ ▹ A ⊢ B : ulvl_tm v ->
-    Δ ⊢ A : ulvl_tm u ->
+    Δ ▹ A ⊢ B : universe_index_term v ->
+    Δ ⊢ A : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : ulvl_tm v.
+    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : universe_index_term v.
 Proof.
   intros * HB HA Hφ.
-  assert (Δ ⊢ A : Typeω@(ulvl u))
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
-  assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (ulvl_tm v) (wk_q φ))
+  assert (Δ ⊢ A : Typeω@(large_level u))
+    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]).
+  assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (universe_index_term v) (wk_q φ))
     by (eapply kripke_preserves_exp_q; eassumption).
-  rewrite exp_wk_ulvl_tm in *; assumption.
+  rewrite exp_wk_universe_index_term in *; assumption.
 Qed.
 
 Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q : mctt.
@@ -465,19 +465,19 @@ Qed.
 (** The same with the domain in any universe. *)
 Corollary kripke_q_var_eq_univ : forall Γ Δ A B M φ u,
     Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : ulvl_tm u ->
+    Δ ⊢ A : universe_index_term u ->
     Γ ⊢ᵏ φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros * HM HA Hφ.
-  assert (Δ ⊢ A : Typeω@(ulvl u))
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
+  assert (Δ ⊢ A : Typeω@(large_level u))
+    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]).
   eapply kripke_q_var_eq; eassumption.
 Qed.
 
 Corollary shift_var_eq : forall Δ A B M u,
     Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : ulvl_tm u ->
+    Δ ⊢ A : universe_index_term u ->
     Δ ▹ A ⊢ M[ι ↑,,#0] ≈ M : B.
 Proof.
   intros * HM HA.

@@ -586,8 +586,8 @@ Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
   ; grp_tele_ass_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
     (** Each view's map takes the container's members to members of the
         same shapes *)
-  ; grp_tele_ass_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok D D' vm
+  ; grp_tele_ass_view_wrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ view_wrap_ok D D' vm
     (** The views agree on their maps *)
   ; grp_tele_ass_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
     (** Each container member has its image under a view's map *)
@@ -773,8 +773,8 @@ Record record_rel (R : record_decl) (fr : nat -> list domain -> relation domain)
 
 Section Per_univ_elem_core_def.
   Variable
-    (i : uidx)
-      (per_univ_rec : uidx -> relation domain).
+    (i : universe_index)
+      (per_univ_rec : universe_index -> relation domain).
 
   (** [per_univ_elem_core R a a']: [a] and [a'] are related types of the
       universe at [i], and [R] is the relation of their elements; the
@@ -783,7 +783,7 @@ Section Per_univ_elem_core_def.
   (** A smaller large universe, its elements the types of that universe. *)
   | per_univ_elem_core_univ :
     `{ forall (elem_rel : relation domain)
-          (lt_j_i : uidx_lt (ul j) i),
+          (lt_j_i : universe_index_lt (ul j) i),
           j = j' ->
           (elem_rel <~> per_univ_rec (ul j)) ->
           DF 𝕌ω@j ≈ 𝕌ω@j' ∈ per_univ_elem_core ↘ elem_rel }
@@ -793,7 +793,7 @@ Section Per_univ_elem_core_def.
       ordinal a level determines independently of a length. *)
   | per_univ_elem_core_suniv :
     `{ forall (elem_rel : relation domain)
-          (lt_j_i : uidx_lt (us (dlvl_real l)) i),
+          (lt_j_i : universe_index_lt (us (dlvl_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
           DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
@@ -886,11 +886,11 @@ Section Per_univ_elem_core_def.
 
   Hypothesis
     (motive : relation domain -> domain -> domain -> Prop)
-      (case_U : forall {j j' elem_rel} (lt_j_i : uidx_lt (ul j) i),
+      (case_U : forall {j j' elem_rel} (lt_j_i : universe_index_lt (ul j) i),
           j = j' ->
           (elem_rel <~> per_univ_rec (ul j)) ->
           motive elem_rel 𝕌ω@j 𝕌ω@j')
-      (case_SU : forall {l l' elem_rel} (lt_j_i : uidx_lt (us (dlvl_real l)) i),
+      (case_SU : forall {l l' elem_rel} (lt_j_i : universe_index_lt (us (dlvl_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
           motive elem_rel 𝕌@l 𝕌@l')
@@ -1017,7 +1017,7 @@ Hint Constructors per_univ_elem_core : mctt.
 Definition empty_rel : relation domain := fun _ _ => False.
 
 Definition per_rec_at (a : nat) (lower : nat -> nat -> relation domain) (inner : nat -> relation domain)
-  : uidx -> relation domain :=
+  : universe_index -> relation domain :=
   fun v => match v with
         | us (a', b') => if a' <? a then lower a' b' else if a' =? a then inner b' else empty_rel
         | ul _ => empty_rel
@@ -1047,7 +1047,7 @@ Fixpoint per_tiers_below (a : nat) : nat -> nat -> relation domain :=
   end.
 
 (** The small universes below the small index [j]. *)
-Definition per_univ_rec_s (j : o2) : uidx -> relation domain :=
+Definition per_univ_rec_s (j : o2) : universe_index -> relation domain :=
   per_rec_at (fst j) (per_tiers_below (fst j)) (per_univ_below_in (fst j) (per_tiers_below (fst j)) (snd j)).
 
 (** The small universe at [m], the entry of every large index. *)
@@ -1064,13 +1064,13 @@ Fixpoint per_univ_below_l (n : nat) : nat -> relation domain :=
       else per_univ_below_l n' m
   end.
 
-Definition per_univ_below (u : uidx) : uidx -> relation domain :=
+Definition per_univ_below (u : universe_index) : universe_index -> relation domain :=
   match u with
   | us j => per_univ_rec_s j
   | ul n => fun v => match v with us k => per_suniv k | ul k => per_univ_below_l n k end
   end.
 
-Definition per_univ_elem (i : uidx) : relation domain -> domain -> domain -> Prop :=
+Definition per_univ_elem (i : universe_index) : relation domain -> domain -> domain -> Prop :=
   per_univ_elem_core i (per_univ_below i).
 #[global] Arguments per_univ_elem : simpl never.
 
@@ -1081,7 +1081,7 @@ Proof. reflexivity. Qed.
 Hint Rewrite per_univ_elem_equation_1 : per_univ_elem.
 
 Lemma per_univ_below_spec : forall i j,
-    uidx_lt j i ->
+    universe_index_lt j i ->
     per_univ_below i j = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R'.
 Proof.
   assert (Hin : forall a lower b m, m < b -> per_univ_below_in a lower b m = per_tier a lower m).
@@ -1104,7 +1104,7 @@ Proof.
     apply IHn; lia. }
   intros [[a b] | n] [[a' b'] | m] Hlt; cbn in Hlt; try contradiction.
   - unfold per_univ_below, per_univ_rec_s, per_rec_at; cbn [fst snd].
-    unfold olt in Hlt; cbn [fst snd] in Hlt.
+    unfold ordinal_lt in Hlt; cbn [fst snd] in Hlt.
     destruct (Nat.ltb_spec a' a) as [Ha | Ha].
     + rewrite Htiers by exact Ha; apply Htier.
     + destruct (Nat.eqb_spec a' a) as [-> | Hne]; [| lia ].
@@ -1113,13 +1113,13 @@ Proof.
   - apply Hl; assumption.
 Qed.
 
-Definition per_univ (i : uidx) : relation domain := fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem i ↘ R'.
+Definition per_univ (i : universe_index) : relation domain := fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem i ↘ R'.
 #[global] Arguments per_univ _ _ _ /.
 Hint Transparent per_univ : mctt.
 Hint Unfold per_univ : mctt.
 
 Lemma per_univ_elem_core_univ' : forall j i elem_rel,
-    uidx_lt (ul j) i ->
+    universe_index_lt (ul j) i ->
     (elem_rel <~> per_univ j) ->
     DF 𝕌ω@j ≈ 𝕌ω@j ∈ per_univ_elem i ↘ elem_rel.
 Proof.
@@ -1132,7 +1132,7 @@ Qed.
 
 Lemma per_univ_elem_core_suniv' : forall l l' i elem_rel,
     Dom l ≈ l' ∈ per_lvl ->
-    uidx_lt (us (dlvl_real l)) i ->
+    universe_index_lt (us (dlvl_real l)) i ->
     (elem_rel <~> per_univ (us (dlvl_real l))) ->
     DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
@@ -1149,14 +1149,14 @@ Hint Resolve per_univ_elem_core_univ' per_univ_elem_core_suniv' : mctt.
 
 Section Per_univ_elem_ind_def.
   Hypothesis
-    (motive : uidx -> relation domain -> domain -> domain -> Prop)
+    (motive : universe_index -> relation domain -> domain -> domain -> Prop)
       (case_U : forall i {j j' elem_rel},
-          uidx_lt (ul j) i -> j = j' ->
+          universe_index_lt (ul j) i -> j = j' ->
           (elem_rel <~> per_univ j) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
           motive i elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall i {l l' elem_rel},
-          uidx_lt (us (dlvl_real l)) i ->
+          universe_index_lt (us (dlvl_real l)) i ->
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ (us (dlvl_real l))) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem (us (dlvl_real l)) ↘ R ->
@@ -1227,7 +1227,7 @@ Section Per_univ_elem_ind_def.
   Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.
   Proof.
     revert a b R H.
-    induction i as [i IHi] using (well_founded_ind uidx_wf).
+    induction i as [i IHi] using (well_founded_ind universe_index_wf).
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
               (fun _ _ => case_L i) (fun _ => case_True i) (fun _ => case_False i)
@@ -1250,7 +1250,7 @@ End Per_univ_elem_ind_def.
 
 (** [per_subtyp i a b]: the type [a] is below [b], both types of the
     universe at [i]. *)
-Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
+Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
 (** Equal neutral types. *)
 | per_subtyp_neut :
   `( Dom b ≈ b' ∈ per_bot ->
@@ -1268,18 +1268,18 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 (** A universe below a larger one. *)
 | per_subtyp_univ :
   `( i <= j ->
-     uidx_lt (ul j) k ->
+     universe_index_lt (ul j) k ->
      Sub 𝕌ω@i <: 𝕌ω@j at k )
 (** A small universe below a larger one: the canonical order on their levels
     ([per_sublvl]), never the order on realisers. *)
 | per_subtyp_suniv :
   `( per_sublvl l l' ->
-     uidx_lt (us (dlvl_real l')) k ->
+     universe_index_lt (us (dlvl_real l')) k ->
      Sub 𝕌@l <: 𝕌@l' at k )
 (** A small universe below a large one. *)
 | per_subtyp_small_large :
   `( Dom l ≈ l ∈ per_lvl ->
-     uidx_lt (ul j) k ->
+     universe_index_lt (ul j) k ->
      Sub 𝕌@l <: 𝕌ω@j at k )
 (** A [Π] below another with an equal domain and a smaller codomain. *)
 | per_subtyp_pi :
@@ -1392,7 +1392,7 @@ with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop
        per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
 (** Two bodies as written, each entry seen in the environment its
     predecessors make, read through the entries their local opens generate
-    ([kbody], [eval_benv]). *)
+    ([kinds_body_xp], [eval_benv]). *)
 with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** Two empty bodies. *)
 | per_body_nil :
@@ -1401,8 +1401,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 | per_body_def :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
-       kbody gc_deps gc_stack ρ Φ Φx ->
-       kbody gc_deps gc_stack ρ' Φ' Φx' ->
+       kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
+       kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
        ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
        ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
@@ -1411,8 +1411,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** A submodule each, with related closures. *)
 | per_body_mod :
   `{ per_body ρ Φ ρ' Φ' ->
-     kbody gc_deps gc_stack ρ Φ Φx ->
-     kbody gc_deps gc_stack ρ' Φ' Φx' ->
+     kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
+     kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
      ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
      ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
      ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
@@ -1424,8 +1424,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 | per_body_dm :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
-       kbody gc_deps gc_stack ρ Φ Φx ->
-       kbody gc_deps gc_stack ρ' Φ' Φx' ->
+       kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
+       kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
        ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
        ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
@@ -1440,15 +1440,15 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
     a value related to its value before them. *)
 | per_body_open :
   `{ per_body ρ Φ ρ' Φ' ->
-     kbody gc_deps gc_stack ρ Φ Φx ->
-     kbody gc_deps gc_stack ρ' Φ' Φx' ->
+     kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
+     kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
      ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
      ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
      ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
      ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
      per_dmod h h' ->
-     kbody gc_deps gc_stack ρ (gm_open Φ H its) Φo ->
-     kbody gc_deps gc_stack ρ' (gm_open Φ' H' its) Φo' ->
+     kinds_body_xp gc_deps gc_stack ρ (gm_open Φ H its) Φo ->
+     kinds_body_xp gc_deps gc_stack ρ' (gm_open Φ' H' its) Φo' ->
      ⟦ Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρo ->
      ⟦ Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρo' ->
      (forall k ρk, k < List.length its ->

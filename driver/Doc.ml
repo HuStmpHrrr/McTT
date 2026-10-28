@@ -1077,7 +1077,7 @@ let record_selections (u : unit_info) th (gu : FG.funit) log : unit =
    the program run, so a unit another one imports needs a run of its own.
 
    The bindings are those the run ends with: its own [builtin] commands and
-   those of the units it imports, merged ([Builtin.bt_merge]).  They are
+   those of the units it imports, merged ([Builtin.builtins_merge]).  They are
    those of every point of the unit at which [ℕ] occurs: a run only gains
    bindings and never rebinds one, and a unit using [ℕ] where nothing is
    bound is rejected. *)

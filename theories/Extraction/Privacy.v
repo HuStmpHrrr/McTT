@@ -27,98 +27,98 @@ Import Syntax_Notations.
 
 (** A closed module stored at [pq]. *)
 Definition site_closed (Θ : gdeps) (Ξ : gstack) (pq : qname) (R : mdesc) : Prop :=
-  exists Θ' T Φ Ns, R = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ.
+  exists Θ' T Φ Ns, R = mdesc_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ.
 
 (** Read off what is stored at [pq]: a closed module there, or a term part
     with such a module part. *)
 Definition site_desc (Θ : gdeps) (Ξ : gstack) (pq : qname) (R : mdesc) : Prop :=
   site_closed Θ Ξ pq R \/
-  (exists Θd A M Rm, R = ds_dm Θd A M Rm /\ site_closed Θ Ξ pq Rm).
+  (exists Θd A M Rm, R = mdesc_dm Θd A M Rm /\ site_closed Θ Ξ pq Rm).
 
 Section SiteDesc.
   Variables (Θ : gdeps) (Ξ : gstack).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
 
-  Lemma site_closed_at : forall pq R N R', site_closed Θ Ξ pq R -> ds_at R N = Some R' -> site_closed Θ Ξ pq R'.
+  Lemma site_closed_at : forall pq R N R', site_closed Θ Ξ pq R -> mdesc_at R N = Some R' -> site_closed Θ Ξ pq R'.
   Proof.
     intros * (Θ' & T & Φ & Ns & -> & Hl) Ha; cbn in Ha.
     destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; do 4 eexists; (split; [ reflexivity | exact Hl ]).
   Qed.
 
-  Lemma site_closed_ats : forall Ns pq R R', site_closed Θ Ξ pq R -> ds_ats R Ns = Some R' -> site_closed Θ Ξ pq R'.
+  Lemma site_closed_ats : forall Ns pq R R', site_closed Θ Ξ pq R -> mdesc_ats R Ns = Some R' -> site_closed Θ Ξ pq R'.
   Proof.
     induction Ns as [| N Ns IH]; intros * Hs Ha; cbn in Ha; [ injection Ha as <-; exact Hs |].
-    destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
+    destruct (mdesc_at R N) as [R1 |] eqn:E; [| discriminate ].
     exact (IH _ _ _ (site_closed_at _ _ _ _ Hs E) Ha).
   Qed.
 
-  Lemma site_closed_up : forall pq Θ' R, site_closed Θ Ξ pq R -> site_closed Θ Ξ pq (ds_up Θ' R).
-  Proof. intros * (Θ0 & T & Φ & Ns & -> & Hl); cbn [ds_up]; do 4 eexists; split; [ reflexivity | exact Hl ]. Qed.
+  Lemma site_closed_up : forall pq Θ' R, site_closed Θ Ξ pq R -> site_closed Θ Ξ pq (mdesc_up Θ' R).
+  Proof. intros * (Θ0 & T & Φ & Ns & -> & Hl); cbn [mdesc_up]; do 4 eexists; split; [ reflexivity | exact Hl ]. Qed.
 
-  Lemma site_closed_sub : forall pq R σ, site_closed Θ Ξ pq R -> site_closed Θ Ξ pq (ds_sub R σ).
-  Proof. intros * (Θ0 & T & Φ & Ns & -> & Hl); cbn [ds_sub]; do 4 eexists; split; [ reflexivity | exact Hl ]. Qed.
+  Lemma site_closed_sub : forall pq R σ, site_closed Θ Ξ pq R -> site_closed Θ Ξ pq (mdesc_sub R σ).
+  Proof. intros * (Θ0 & T & Φ & Ns & -> & Hl); cbn [mdesc_sub]; do 4 eexists; split; [ reflexivity | exact Hl ]. Qed.
 
-  Lemma site_desc_at : forall pq R N R', site_desc Θ Ξ pq R -> ds_at R N = Some R' -> site_desc Θ Ξ pq R'.
+  Lemma site_desc_at : forall pq R N R', site_desc Θ Ξ pq R -> mdesc_at R N = Some R' -> site_desc Θ Ξ pq R'.
   Proof.
     intros * [Hc | (Θd & A & M & Rm & -> & Hc)] Ha.
     - left; exact (site_closed_at _ _ _ _ Hc Ha).
     - (* a term part with a module part: its module part at [N] *)
-      cbn in Ha; destruct (ds_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
+      cbn in Ha; destruct (mdesc_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
       pose proof (site_closed_at _ _ _ _ Hc E) as Hc'.
       destruct (tele_split (rev Θd)) as [[[? ?] ?] | ?]; injection Ha as <-; [ right; do 4 eexists; split; [ reflexivity | exact Hc' ] | left; exact Hc' ].
   Qed.
 
-  Lemma site_desc_ats : forall Ns pq R R', site_desc Θ Ξ pq R -> ds_ats R Ns = Some R' -> site_desc Θ Ξ pq R'.
+  Lemma site_desc_ats : forall Ns pq R R', site_desc Θ Ξ pq R -> mdesc_ats R Ns = Some R' -> site_desc Θ Ξ pq R'.
   Proof.
     induction Ns as [| N Ns IH]; intros * Hs Ha; cbn in Ha; [ injection Ha as <-; exact Hs |].
-    destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
+    destruct (mdesc_at R N) as [R1 |] eqn:E; [| discriminate ].
     exact (IH _ _ _ (site_desc_at _ _ _ _ Hs E) Ha).
   Qed.
 
-  Lemma site_desc_up : forall pq Θ' R, site_desc Θ Ξ pq R -> site_desc Θ Ξ pq (ds_up Θ' R).
+  Lemma site_desc_up : forall pq Θ' R, site_desc Θ Ξ pq R -> site_desc Θ Ξ pq (mdesc_up Θ' R).
   Proof.
-    intros * [Hc | (Θd & A & M & Rm & -> & Hc)]; cbn [ds_up].
+    intros * [Hc | (Θd & A & M & Rm & -> & Hc)]; cbn [mdesc_up].
     - left; exact (site_closed_up _ _ _ Hc).
     - right; do 4 eexists; split; [ reflexivity | exact (site_closed_up _ _ _ Hc) ].
   Qed.
 
-  Lemma site_desc_sub : forall pq R σ, site_desc Θ Ξ pq R -> site_desc Θ Ξ pq (ds_sub R σ).
+  Lemma site_desc_sub : forall pq R σ, site_desc Θ Ξ pq R -> site_desc Θ Ξ pq (mdesc_sub R σ).
   Proof.
-    intros * [Hc | (Θd & A & M & Rm & -> & Hc)]; cbn [ds_sub].
+    intros * [Hc | (Θd & A & M & Rm & -> & Hc)]; cbn [mdesc_sub].
     - left; exact (site_closed_sub _ _ _ Hc).
     - right; do 4 eexists; split; [ reflexivity | exact (site_closed_sub _ _ _ Hc) ].
   Qed.
 
-  Lemma site_desc_read : forall pq rd R R', site_desc Θ Ξ pq R -> ds_read rd R = Some R' -> site_desc Θ Ξ pq R'.
+  Lemma site_desc_read : forall pq rd R R', site_desc Θ Ξ pq R -> mdesc_read rd R = Some R' -> site_desc Θ Ξ pq R'.
   Proof.
-    intros * Hs Hr; destruct rd as [Θ' Φ' | Θ' Ns]; cbn [ds_read] in Hr.
+    intros * Hs Hr; destruct rd as [Θ' Φ' | Θ' Ns]; cbn [mdesc_read] in Hr.
     - destruct (gm_fill Φ') as [σ |]; cbn in Hr; [ injection Hr as <- | discriminate ].
       apply site_desc_up, site_desc_sub; exact Hs.
-    - destruct (ds_ats_read R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
+    - destruct (mdesc_ats_read R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
       apply site_desc_up.
       assert (Hs1 : site_desc Θ Ξ pq R1).
-      { destruct (ds_ats_read_inv _ _ _ E) as [Ha | (A & M & Rm & B & M' & Rm' & -> & -> & _ & Ha)];
+      { destruct (mdesc_ats_read_inv _ _ _ E) as [Ha | (A & M & Rm & B & M' & Rm' & -> & -> & _ & Ha)];
           [ exact (site_desc_ats _ _ _ _ Hs Ha) |].
         destruct Hs as [(? & ? & ? & ? & [=] & _) | (Θd & A1 & M1 & Rm1 & [= <- <- <- <-] & Hc)].
         right; do 4 eexists; split; [ reflexivity | exact (site_closed_ats _ _ _ _ Hc Ha) ]. }
-      apply (ds_named_cases (site_desc Θ Ξ pq)); [ exact Hs1 |].
-      destruct Hs1 as [(Θ0 & T & Φ & Ns0 & -> & Hl) | (Θd & A & M & Rm & -> & Hc)]; cbn [ds_self].
+      apply (mdesc_named_cases (site_desc Θ Ξ pq)); [ exact Hs1 |].
+      destruct Hs1 as [(Θ0 & T & Φ & Ns0 & -> & Hl) | (Θd & A & M & Rm & -> & Hc)]; cbn [mdesc_self].
       + left; do 4 eexists; split; [ reflexivity | exact Hl ].
       + right; do 4 eexists; split; [ reflexivity | exact Hc ].
   Qed.
 
   (** The module part of a description read off storage is stored there. *)
-  Lemma site_desc_mod : forall pq R Rm, site_desc Θ Ξ pq R -> ds_mod R = Some Rm ->
-      exists Θ' T Φ Ns, Rm = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ.
+  Lemma site_desc_mod : forall pq R Rm, site_desc Θ Ξ pq R -> mdesc_mod R = Some Rm ->
+      exists Θ' T Φ Ns, Rm = mdesc_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ.
   Proof.
     intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θd & A & M & Rm0 & -> & (Θ' & T & Φ & Ns' & -> & Hl))] Hm; cbn in Hm;
       injection Hm as <-; (do 4 eexists; split; [ reflexivity | exact Hl ]).
   Qed.
 
-  Lemma mdenote_apps : forall Ns Γ H R R', mdenote Θ Ξ Γ H R -> ds_ats R Ns = Some R' -> mdenote Θ Ξ Γ (me_apps H Ns) R'.
+  Lemma mdenote_apps : forall Ns Γ H R R', mdenote Θ Ξ Γ H R -> mdesc_ats R Ns = Some R' -> mdenote Θ Ξ Γ (me_apps H Ns) R'.
   Proof.
     induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha |- *; [ injection Ha as <-; exact Hm |].
-    destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
+    destruct (mdesc_at R N) as [R1 |] eqn:E; [| discriminate ].
     apply (IH _ _ R1); [ eapply mdenote_app; eassumption | exact Ha ].
   Qed.
 
@@ -199,7 +199,7 @@ Section SiteDesc.
           match goal with Hx : body_xp _ _ _ Φy ?Φx |- _ =>
             pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hx _
                           (body_xp_noopen Θ Ξ _ _ (body_closed_noopen _ _ HcΦy))) as <- end.
-          match goal with Hbd : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hbd; injection Hbd as <- end.
+          match goal with Hbd : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hbd; injection Hbd as <- end.
           left; do 4 eexists; split; [ reflexivity |].
           right; exact (proj1 (loc_child_mod _ _ Hg _ _ _ Hl _ _ _ _ _ Hent)).
         * (* an inductive type: its type former, with its module stored at
@@ -233,17 +233,17 @@ Section SiteDesc.
         * cbn [ge_read] in Hed; inversion Hed; subst.
           match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
           apply site_desc_up.
-          match goal with Hm1 : mdenote _ _ _ E'' ?R2, Hd : ds_mod ?R2 = Some _ |- _ =>
+          match goal with Hm1 : mdenote _ _ _ E'' ?R2, Hd : mdesc_mod ?R2 = Some _ |- _ =>
             destruct (site_desc_mod _ _ _ (IH' _ _ Hm1) Hd) as (Θ2 & T2 & Φ2 & Ns2 & -> & Hl2) end.
           left; do 4 eexists; split; [ reflexivity | exact Hl2 ].
         * (* a definition with a module part: its module part where its
              target is *)
           cbn [ge_read] in Hed; inversion Hed; subst.
           match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
-          match goal with Hm1 : mdenote _ _ _ E'' ?R2, Hd : ds_mod ?R2 = Some _ |- _ =>
+          match goal with Hm1 : mdenote _ _ _ E'' ?R2, Hd : mdesc_mod ?R2 = Some _ |- _ =>
             destruct (site_desc_mod _ _ _ (IH' _ _ Hm1) Hd) as (Θ2 & T2 & Φ2 & Ns2 & -> & Hl2) end.
           right; do 4 eexists; split; [ reflexivity |].
-          cbn [ds_up]; do 4 eexists; split; [ reflexivity | exact Hl2 ].
+          cbn [mdesc_up]; do 4 eexists; split; [ reflexivity | exact Hl2 ].
       + exfalso; exact (record_frame_no_entry _ _ _ _ _ _ Hs He Hq Hk).
     - (* an application *)
       inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? ? ? ? Hq _ | | | ? ? ? R0 ? Hm0 Ha0 | | ? ? ? ? ? ? Hq _]; subst;
@@ -396,7 +396,7 @@ Section Below.
         destruct (frame_parent _ _ Hg2 _ _ _ _ Ht2) as (Tq2 & Φq2 & Hfq2 & _).
         destruct (IH _ _ _ Hq0 Hfq2 _ _ Hm0) as (Tq & Φq & Hfq & _).
         (* what the parent denotes is its frame *)
-        assert (Hmd : R0m = ds_closed nil p0 Tq Φq nil).
+        assert (Hmd : R0m = mdesc_closed nil p0 Tq Φq nil).
         { destruct (frame_denote_unique _ _ Hg1 _ _ _ _ Hq0 Hm0) as [Hu0 [Hk0 Hr0]].
           destruct (gs_find_ind Ξ1 p0) as [[[pq k] D] |] eqn:Hk.
           - destruct (frame_ind_loc _ _ Hg1 _ _ _ _ Hk) as (U' & T0' & T' & Φ' & Mk' & Ht' & Hf' & Hl' & HMk').
@@ -859,19 +859,19 @@ Section PrivacyImpl.
     - right; intros qd' Hd'; exfalso; exact (HN _ _ Hd').
   Defined.
 
-  Definition ref_check (r : (ptab * string)%type) :
+  Definition ref_check (r : (privacy_table * string)%type) :
       { e : priv_err | ~ ref_ok Θ Ξ r } + { ref_ok Θ Ξ r }.
   Proof.
     destruct r as [[| H | ch es] x]; unfold ref_ok; cbn [fst snd].
     - right; exact I.
     - destruct (glob_check H x) as [[qx Hq] | Hok]; [ left; exists (priv_err_global (fst qx) (snd qx)); exact Hq | right; exact Hok ].
-    - destruct (option_map fst (tab_find x es)) as [[|] |] eqn:E.
+    - destruct (option_map fst (privacy_table_find x es)) as [[|] |] eqn:E.
       + left; exists (priv_err_local ch x); intros Hn; apply Hn; reflexivity.
       + right; discriminate.
       + right; discriminate.
   Defined.
 
-  Definition refs_check : forall (l : list (ptab * string)%type),
+  Definition refs_check : forall (l : list (privacy_table * string)%type),
       { e : priv_err | ~ acc_ok Θ Ξ l } + { acc_ok Θ Ξ l }.
   Proof.
     induction l as [| r l IH]; [ right; constructor |].

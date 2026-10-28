@@ -306,21 +306,21 @@ Proof.
   - exact (decl_typed_nparams_ass _ _ _ HD).
   - intros v Mv qc kc Is vm HMv Hh.
     destruct (decl_typed_view _ _ _ HD _ _ _ _ _ _ HMv Hh) as (Dq & Mc & HDq & HMc & _ & HlIs & _ & Hvm & _).
-    destruct (decl_typed_vwrap _ _ _ HD _ _ _ _ _ _ HMv Hh) as (D' & HD' & Hvw).
+    destruct (decl_typed_view_wrap _ _ _ HD _ _ _ _ _ _ HMv Hh) as (D' & HD' & Hvw).
     rewrite HDq in HD'; injection HD' as <-.
-    destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMc Hvm) as (Mv' & HMv' & Hnn & _).
+    destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMc Hvm) as (Mv' & HMv' & Hnn & _).
     rewrite HMv in HMv'; injection HMv' as <-.
     exists Dq, Mc; repeat split; [ exact HDq | exact HMc | exact (eq_sym Hnn) | exact HlIs ].
   - exact (decl_typed_rank _ _ _ HD).
-  - exact (decl_typed_vwrap _ _ _ HD).
+  - exact (decl_typed_view_wrap _ _ _ HD).
   - exact (decl_typed_view_maps_coherent _ _ _ HD).
   - intros v Mv qc kc Is vm Dq i' Mi' HMv Hh HDq HMi'.
-    destruct (decl_typed_vwrap _ _ _ HD _ _ _ _ _ _ HMv Hh) as (D' & HD' & Hvw).
+    destruct (decl_typed_view_wrap _ _ _ HD _ _ _ _ _ _ HMv Hh) as (D' & HD' & Hvw).
     rewrite HDq in HD'; injection HD' as <-.
     assert (Hi' : i' < List.length vm)
-      by (rewrite (vwrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMi'; congruence).
+      by (rewrite (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMi'; congruence).
     destruct (nth_error_lt_some' _ _ Hi') as [w Hw].
-    destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hw) as (Mw & HMw & Hnn & _).
+    destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hw) as (Mw & HMw & Hnn & _).
     refine (mk_view_member_image _ _ _ _ _ _ w Mw Hw HMw Hnn _).
     destruct (im_head Mi') as [pm' | q'' k'' Is'' vm'' | q'' Is'' fl''] eqn:Hh'.
     + destruct (decl_typed_view_decl _ _ _ HD _ _ _ _ _ _ _ _ _ _ _ HMv Hh HDq HMi' Hh' Hw) as (Mw' & vm' & HMw' & Hhw).

@@ -97,7 +97,7 @@ fresh; `env_agree P ρ ρ'` is agreement at the entries `P` selects.
 So the fast normalizers meet `nbe`/`nbe_ty` (`Extraction/NbE.v`): the order
 gives the reference derivation, `fast_eval_sim`/`fast_read_sim` the fast one, and
 determinism of fast readback the equality.  The checker's environment
-`tenv G` is `fenv`: a fast environment related to the initial environment of
+`tenv G` is `fast_env`: a fast environment related to the initial environment of
 `G` entry by entry.
 
 ## What the extracted code looks up in (`Extraction/FastContext.v`, `Lookup.v`)
@@ -173,7 +173,7 @@ same three refinements.  How the refinement is kept:
   `close_res`, `mod_res`, `record_res`);
 - a unit filed is the translation of a canonical unit (`load_res`,
   `dec_units_file`, `units_rep_file`); a unit's run returns its unit fast,
-  `usf_unit r = tr_unit (dec_unit (usf_unit r))` (`ures`, `unit_res`).
+  `usf_unit r = tr_unit (dec_unit (usf_unit r))` (`unit_run_ok`, `unit_res`).
 
 The main theorems read the fast results in Core: `prog_impl_sound`,
 `prog_impl_complete`, `main_sound`, `main_complete` at `dec_units s` and

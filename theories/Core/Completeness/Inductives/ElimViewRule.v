@@ -2,7 +2,7 @@
 
     The semantic rule E1′: the eliminator of a valid group at its view [m]
     of the container's member [k'] is the container's eliminator at [k']
-    with the wrapped blocks ([vwrap]).  At a semantic substitution of
+    with the wrapped blocks ([view_wrap]).  At a semantic substitution of
     values [C1] and [C2], the chain of four values links through the
     group's eliminator at [C2]: the group's eliminator against itself
     ([elim_stage]), and the container's at [C2] and at the moved blocks
@@ -92,7 +92,7 @@ Section ElimViewRule.
   Let HgQ := valid_groups_valid VP HP qc D' HVQ.
   Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
   Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
-  Let VB := vwrap p D D' vm Us Bks.
+  Let VB := view_wrap p D D' vm Us Bks.
 
   (** *** The Container's Uniform Parameters
 
@@ -383,7 +383,7 @@ Theorem rel_exp_under_ctx_elim_view : forall VP p D, valid_groups VP -> VP p D -
        elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     Γ ⊨ a_elim oq (List.firstn (ind_nu D) Ps) m Bks M
-      ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k' (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+      ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k' (view_wrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros VP p D HP HPD * HΓ Hgr HMm Hh Hq Hbm HLb HPl HPs HM HnmA HMall HAv HnaA HBc HarA HBv.

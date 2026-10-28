@@ -762,7 +762,7 @@ Section Fixed_GCtx.
   Lemma decl_member_type : forall p D k Mk ups, ⊢ᵍ gc_deps ⍮ gc_stack -> ind_lookup gc_deps gc_stack p = Some D ->
       ind_member D k = Some Mk -> k < ind_ndecl D ->
       per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
-      exists ns (i : uidx) R, DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups ++ ns) ∈ per_univ_elem i ↘ R.
+      exists ns (i : universe_index) R, DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups ++ ns) ∈ per_univ_elem i ↘ R.
   Proof.
     intros * Hg Hl HM Hk Hgu Hu.
     destruct (valid_group_gc _ _ Hg Hl) as [Hvg _].
@@ -875,7 +875,7 @@ Section Fixed_GCtx.
          Γu ⊢ C : T) ->
       List.firstn (ind_nu Dz) (List.map nf_to_exp Rs) = List.map (fun C => C[wk_pat (List.repeat true (List.length Ψ))]ʷ) Csz ->
       exists usz nsz, ⟦ Csz ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ usz /\ List.length usz = ind_nu Dz /\
-        exists j : uidx, per_univ j (d_ind qz kz (usz ++ nsz)) e.
+        exists j : universe_index, per_univ j (d_ind qz kz (usz ++ nsz)) e.
   Proof.
     intros * Hg HΓu Hρ0 HRE HEE Hlz HEt Ee Hlz' Hkz HCzl HCzt HCz.
     destruct (valid_group_gc _ _ Hg Hlz') as [Hvgz _].
@@ -934,7 +934,7 @@ Section Fixed_GCtx.
          Γu ⊢ C : T) ->
       List.map nf_to_exp Rs = List.map (fun C => C[wk_pat (List.repeat true (List.length Ψ))]ʷ) Isz ->
       exists usz, ⟦ Isz ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ usz /\ List.length usz = List.length (record_params Rz) /\
-        exists j : uidx, exists R, DF d_record qz usz ≈ e ∈ per_univ_elem j ↘ R.
+        exists j : universe_index, exists R, DF d_record qz usz ≈ e ∈ per_univ_elem j ↘ R.
   Proof.
     intros * Hg HΓu Hρ0 HRE HEE Hlz Ee Hlr HIzl HIzt HCz.
     pose proof Ee as Ee0.
@@ -978,7 +978,7 @@ Section Fixed_GCtx.
           ≈ (doms_ctx Bs ++ tele_sub (cargs_ctx p D Mi gs1 ++ im_nparams Mi) (sb_of_list Id Cs)) ++ Γu ∈ per_ctx_env ↘ RE /\
         RE (env_args ρ0 zs) (env_args ρ0 zs) /\ List.length zs = List.length Bs + List.length gs1 + im_nn Mi /\
         ⟦ E ⟧ env_args ρ0 zs ↘ e /\
-        forall b (j : uidx) R, DF b ≈ e ∈ per_univ_elem j ↘ R -> grp_step b (d_ind p k us).
+        forall b (j : universe_index) R, DF b ≈ e ∈ per_univ_elem j ↘ R -> grp_step b (d_ind p k us).
   Proof.
     intros * Hg HΓu Hl HCl HCt Hρ0 Eus HM Hcon Heq HT HW HWe.
     set (Δ := cargs_ctx p D Mi gs1 ++ im_nparams Mi) in *.
@@ -1061,7 +1061,7 @@ Section Fixed_GCtx.
           ≈ (doms_ctx Bs ++ tele_sub (record_fctx Rx j) (sb_of_list Id Isx)) ++ Γu ∈ per_ctx_env ↘ RE /\
         RE (env_args ρ0 zs) (env_args ρ0 zs) /\ List.length zs = List.length Bs + j /\
         ⟦ E ⟧ env_args ρ0 zs ↘ e /\
-        forall b (j' : uidx) R, DF b ≈ e ∈ per_univ_elem j' ↘ R -> grp_step b (d_record qx usx).
+        forall b (j' : universe_index) R, DF b ≈ e ∈ per_univ_elem j' ↘ R -> grp_step b (d_record qx usx).
   Proof.
     intros * Hg HΓu Hl HIl HIt Hρ0 Eus HfA HT HW HWe.
     pose proof (valid_rview_record_gc _ _ Hg Hl) as HvR.

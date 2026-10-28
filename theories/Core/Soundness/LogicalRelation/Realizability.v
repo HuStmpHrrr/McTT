@@ -42,7 +42,7 @@ Lemma var_glu_elem_bot : forall a i P El Γ A,
     Γ ▹ A ⊢ #0 : A[↑]ʷ ® #ᵈ (length Γ) ∈ glu_elem_bot i a.
 Proof.
   intros. saturate_glu_info.
-  (** The ambient universe of the index is the large universe [Typeω@(ulvl i)],
+  (** The ambient universe of the index is the large universe [Typeω@(large_level i)],
       at which the syntactic rules apply directly. *)
   econstructor; mauto 4.
   - eapply glu_univ_elem_typ_monotone; eauto.
@@ -234,7 +234,7 @@ Lemma map_wk_id_exp : forall Ps, List.map (fun P => P[wk_id]ʷ) Ps = Ps.
 Proof. intros; rewrite (List.map_ext _ (fun P => P) exp_wk_id), List.map_id; reflexivity. Qed.
 
 Section IndRealize.
-  Variables (i : uidx) (p : qname) (D : ind_decl) (k : nat) (Mk : imember) (pm : qname) (ups ns : list domain)
+  Variables (i : universe_index) (p : qname) (D : ind_decl) (k : nat) (Mk : imember) (pm : qname) (ups ns : list domain)
     (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
@@ -243,8 +243,8 @@ Section IndRealize.
   Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (Hu : List.length ups = ind_nu D)
     (Hass : grp_tele_ass D) (HMk : ind_member D k = Some Mk) (Hh : im_head Mk = mh_decl pm)
     (Hper : DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups ++ ns) ∈ per_univ_elem i ↘ elem_rel)
-    (HP : P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k Mk Typeω@(ulvl i))
-    (HEl : El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k Mk elem_rel Typeω@(ulvl i)).
+    (HP : P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k Mk Typeω@(large_level i))
+    (HEl : El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k Mk elem_rel Typeω@(large_level i)).
 
   Lemma ind_realize_typ : forall Γ A, Γ ⊢ A ® P -> Γ ⊢ A ® glu_typ_top i (d_ind p k (ups ++ ns)).
   Proof.
@@ -681,7 +681,7 @@ End IndRealize.
     as the tuple of the readbacks of its projections, equal to it by η, at
     the readback of its parameters. *)
 Section RecordRealize.
-  Variables (i : uidx) (p : qname) (R : record_decl) (ns : list domain)
+  Variables (i : universe_index) (p : qname) (R : record_decl) (ns : list domain)
     (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
     (elem_rel : relation domain) (P : glu_typ_pred) (El : glu_exp_pred).
   Hypothesis (Hl : record_lookup gc_deps gc_stack p = Some R)
@@ -697,19 +697,19 @@ Section RecordRealize.
        (forall Γ M A m R0, DG b ∈ glu_univ_elem i ↘ FP k vs ↘ FEl k vs ->
           Γ ⊢ M : A ® m ∈ FEl k vs -> DF b ≈ b ∈ per_univ_elem i ↘ R0 -> Dom m ≈ m ∈ R0 ->
           Γ ⊢ M : A ® m ∈ glu_elem_top i b))
-    (HP : P <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(ulvl i)))
-    (HEl : El <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(ulvl i))).
+    (HP : P <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(large_level i)))
+    (HEl : El <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(large_level i))).
 
   (** A type at syntactic parameters, at a weakening: equal to the type
       former at them, which are typed at its telescope, its sort in the
       ambient universe. *)
-  Lemma record_typ_at_facts : forall Γ A Ns Δ φ, record_typ_at p R ns FP FEl (Typeω@(ulvl i)) Γ A Ns -> Δ ⊢ᵏ φ : Γ ->
-      Δ ⊢ A[φ]ʷ ≈ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) : Typeω@(ulvl i) /\
+  Lemma record_typ_at_facts : forall Γ A Ns Δ φ, record_typ_at p R ns FP FEl (Typeω@(large_level i)) Γ A Ns -> Δ ⊢ᵏ φ : Γ ->
+      Δ ⊢ A[φ]ʷ ≈ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) : Typeω@(large_level i) /\
       Δ ⊢ a_record p : record_ty R /\
       List.length (List.map (fun N => N[φ]ʷ) Ns) = List.length (record_params R) /\
       (forall j N A0, List.nth_error (List.map (fun N => N[φ]ʷ) Ns) j = Some N ->
          List.nth_error (tele_insts (record_params R) Id (List.map (fun N => N[φ]ʷ) Ns)) j = Some A0 -> Δ ⊢ N : A0) /\
-      Δ ⊢ (record_sort R)[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns)] ⊆ Typeω@(ulvl i).
+      Δ ⊢ (record_sort R)[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns)] ⊆ Typeω@(large_level i).
   Proof.
     intros * HNs Hφ.
     destruct (record_typ_at_wk _ _ _ _ _ _ _ _ _ _ _ HNs Hφ) as [HAφ _].
@@ -766,7 +766,7 @@ Section RecordRealize.
     assert (HNt' : forall j Y T0, List.nth_error Ns' j = Some Y -> List.nth_error (tele_insts (record_params R) Id Ns') j = Some T0 ->
                Δ ⊢ Y : T0)
       by (eapply (record_params_eq_right _ _ _ R (List.map (fun N => N[φ]ʷ) Ns) Ns'); eassumption).
-    assert (Happs : Δ ⊢ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) ≈ apps_exp (a_record p) Ns' : Typeω@(ulvl i))
+    assert (Happs : Δ ⊢ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) ≈ apps_exp (a_record p) Ns' : Typeω@(large_level i))
       by (eapply wf_exp_eq_subtyp'; [ exact (wf_exp_eq_record_apps _ _ _ _ _ _ _ Hrt Hl HNl HNl'' HNN) | exact HS ]).
     assert (HMφ : Δ ⊢ M[φ]ʷ : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) by (eapply wf_conv'; [ mauto 3 | exact HAφ ]).
     assert (HMb : Δ ⊢ M[φ]ʷ : apps_exp (a_record p) Ns') by (eapply wf_conv'; [ exact HMφ | exact Happs ]).
@@ -813,13 +813,13 @@ Section RecordRealize.
       destruct (record_typ_at_facts _ _ _ _ _ HNs Hc') as (HAd & Hrt' & HNld & HNtd & HSd).
       assert (HMW' : Δ' ⊢ M[φ ⊙ φ']ʷ ≈ W1 : apps_exp (a_record p) (List.map (fun N => N[φ ⊙ φ']ʷ) Ns))
         by (eapply wf_exp_eq_conv'; [ exact HMW | exact HAd ]).
-      destruct (record_proj_cong_at _ _ _ _ _ p R _ (ulvl i) k f T HMW' Hrt' Hl HNld HNtd HSd Hjf) as [_ Hpp].
+      destruct (record_proj_cong_at _ _ _ _ _ p R _ (large_level i) k f T HMW' Hrt' Hl HNld HNtd HSd Hjf) as [_ Hpp].
       assert (HTeq : Δ ⊢ T[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns ++ record_pre R k M[φ]ʷ)]
-                       ≈ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)] : Typeω@(ulvl i))
+                       ≈ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)] : Typeω@(large_level i))
         by (eapply record_field_params_cong; [ exact HMφ | exact Hrt | exact Hl | exact HNl | exact HNl'' | exact HNt
                                               | exact HNN | exact HS | exact Hjf ]).
       assert (HTeq' : Δ' ⊢ T[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns ++ record_pre R k M[φ]ʷ)][φ']ʷ
-                        ≈ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)][φ']ʷ : Typeω@(ulvl i)) by mauto 3.
+                        ≈ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)][φ']ʷ : Typeω@(large_level i)) by mauto 3.
       assert (HLk : List.length (record_pre R k M[φ]ʷ) = k) by (apply length_record_pre; lia).
       rewrite (record_field_wk R k f T (List.map (fun N => N[φ]ʷ) Ns) (record_pre R k M[φ]ʷ) φ' Hc Hjf HNl HLk) in HTeq'.
       rewrite (record_field_wk R k f T Ns' (record_pre R k M[φ]ʷ) φ' Hc Hjf HNl'' HLk) in HTeq'.
@@ -857,7 +857,7 @@ Section RecordRealize.
     assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
     pose proof (HPr Δ wk_id Ps Hid HRps) as HPs; rewrite map_wk_id_exp in HPs; destruct HPs as [HPl HPs].
     assert (HMφ : Δ ⊢ M[φ]ʷ : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) by (eapply wf_conv'; [ mauto 3 | exact HAφ ]).
-    assert (HT : Δ ⊢ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) : Typeω@(ulvl i)) by (gen_presups; eassumption).
+    assert (HT : Δ ⊢ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) : Typeω@(large_level i)) by (gen_presups; eassumption).
     pose proof (wf_record_eta_tuple _ _ _ _ _ _ _ _ HMφ Hrt Hl HNl HNt HS HT) as Hetat.
     assert (Heta : Δ ⊢ M[φ]ʷ ≈ a_tuple (apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) (record_eta_fields R M[φ]ʷ)
                      : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns))
@@ -947,7 +947,7 @@ Proof.
     match_by_head glu_elem_bot ltac:(fun H => destruct_anon H);
     destruct_all; destruct_glu_records.
   (** The two universe clauses, large then small.  The large one's equations
-      are at the ambient [Typeω@(ulvl i)].  The small one's element predicate
+      are at the ambient [Typeω@(large_level i)].  The small one's element predicate
       carries its own readback clause, at the element's type, so its top case
       is that clause, and its bottom case lifts the neutral's equations to the
       ambient [Typeω@0] by cumulativity. *)
@@ -987,7 +987,7 @@ Proof.
       inversion Hr; subst.
       match goal with Hg : glu_lvl ?n _ ?t _ |- _ =>
         assert (Δ ⊢ t[φ]ʷ ≈ nf_lvl_of L : Level@n) by (eapply glu_lvl_readback; eassumption);
-        assert (Δ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : Typeω@(ulvl i)) by mauto 3 end.
+        assert (Δ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : Typeω@(large_level i)) by mauto 3 end.
       etransitivity; [ eassumption |].
       eapply wf_exp_eq_univ_cong_large_tm; [ assumption | gen_presups; eassumption | eassumption ]. }
   (** A neutral of a small universe: its type-level gluing is a neutral type's
@@ -1023,7 +1023,7 @@ Proof.
   - handle_functional_glu_univ_elem.
     match_by_head glu_univ_elem invert_glu_univ_elem.
     apply_equiv_left.
-    assert (HA : Γ ⊢ A ≈ Level@n : Typeω@(ulvl i)) by eauto.
+    assert (HA : Γ ⊢ A ≈ Level@n : Typeω@(large_level i)) by eauto.
     econstructor; [ exact HA | apply per_bot_then_per_lvl_at; assumption |].
     (** A neutral level reads back as the atom of its sort, a level of that
         sort by its readback equation. *)
@@ -1084,7 +1084,7 @@ Proof.
       rewrite exp_wk_id in HIT.
       dir_inversion_clear_by_head read_typ.
       assert (Γ ⊢ IT ® glu_typ_top i a) as Hgtt by mauto 3; destruct_anon Hgtt.
-      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HA' by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(large_level i)) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.
       simpl. apply wf_exp_eq_pi_cong_large'; [ firstorder | ].
       pose proof (var_per_elem (length Δ) H0).
@@ -1098,8 +1098,8 @@ Proof.
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
       assert (Δ ▹ IT[φ]ʷ ⊢ᵏ φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
-      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(ulvl i))
-        by (assert (Hqv := kripke_q_var_eq _ _ _ (Typeω@(ulvl i)) _ _ (ulvl i) H12 H17 H16);
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(large_level i))
+        by (assert (Hqv := kripke_q_var_eq _ _ _ (Typeω@(large_level i)) _ _ (large_level i) H12 H17 H16);
             cbn in Hqv; exact Hqv).
       specialize (H8 _ _ _ H27 HOP) as [].
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact HOT |].
@@ -1117,7 +1117,7 @@ Proof.
     simplify_evals.
     eexists; repeat split; mauto 3.
     eapply H2; eauto.
-    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(large_level i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
     assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
     assert (Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N]) as HMN
       by (rewrite <- exp_sub_wk_q_extend; eapply wf_app'; eassumption).
@@ -1130,7 +1130,7 @@ Proof.
     + intros Δ0 φ0 M' Hk Hrb.
       progressive_invert Hrb.
       assert (Δ0 ⊢ᵏ φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
-      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Typeω@(ulvl i)) as HAeq'
+      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Typeω@(large_level i)) as HAeq'
         by (rewrite <- exp_wk_pi; mauto 3).
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
       eapply wf_exp_eq_app_cong'.
@@ -1152,7 +1152,7 @@ Proof.
       pose proof (H10 Γ wk_id ltac:(mauto 3)) as HITId.
       rewrite exp_wk_id in HITId.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [? ? HITrb] by mauto 3.
-      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(large_level i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
       assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
       eapply wf_exp_eq_conv'; [ | symmetry; eapply HAeq ].
       (** Read back a function by η-expanding it and recursing into the body. *)
@@ -1177,8 +1177,8 @@ Proof.
       specialize (Htop _ _ _ _ _ HG HOEl ltac:(eassumption) ltac:(eassumption)) as [? ? ? ? ? ? Hrbtop].
       specialize (Hrbtop (Δ ▹ IT[φ]ʷ) wk_id M0 ltac:(mauto 3) Hrb).
       repeat rewrite exp_wk_id in Hrbtop.
-      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(ulvl i))
-        by (assert (Hqv := kripke_q_var_eq Δ Γ IT (Typeω@(ulvl i)) OT φ (ulvl i) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption));
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(large_level i))
+        by (assert (Hqv := kripke_q_var_eq Δ Γ IT (Typeω@(large_level i)) OT φ (large_level i) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption));
             cbn in Hqv; exact Hqv).
       eapply wf_exp_eq_conv'; [ exact Hrbtop | exact HOT ].
   (* neut *)
@@ -1239,7 +1239,7 @@ Qed.
 
 Hint Resolve realize_glu_typ_top realize_glu_elem_top : mctt.
 
-Corollary var0_glu_elem : forall {i : uidx} {a P El Γ A},
+Corollary var0_glu_elem : forall {i : universe_index} {a P El Γ A},
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Γ ▹ A ⊢ #0 : A[↑]ʷ ® ⇑! a (length Γ) ∈ El.

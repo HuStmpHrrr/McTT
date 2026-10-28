@@ -17,7 +17,7 @@
     everywhere.
 
     The proof is structural, in the pattern of [Core.Semantic.Transparency]
-    ([dclean]); readback is where the level arithmetic happens: a variable at
+    ([domain_clean]); readback is where the level arithmetic happens: a variable at
     level [x] reads back at length [n] as the index [n - x - 1], which is not
     [n - v - 1] when [x <> v] and both are below [n]. *)
 From Stdlib Require Import Arith Lia List PeanoNat String.
@@ -397,15 +397,15 @@ Proof.
   apply IH; [ cbn; split; [ exact HΦ | apply gentry_fresh_shiftn; exact Hg1 ] | exact Hgs ].
 Qed.
 
-Lemma kgens_entries_fresh : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs ->
+Lemma kinds_items_gen_entries_fresh : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs ->
     forall k, modexp_fresh k H -> List.Forall (fun g => gentry_fresh k (snd (generated_item_entry g))) gs.
 Proof. induction 1; intros k Hk; constructor; cbn; auto. Qed.
 
 Lemma optional_gmod_fresh_gens : forall Θ Ξ ρ H its gs K,
-    kgens Θ Ξ ρ H its gs -> optional_modexp_fresh K H -> optional_gmod_fresh K (gens_append gm_nil 0 gs).
+    kinds_items_gen Θ Ξ ρ H its gs -> optional_modexp_fresh K H -> optional_gmod_fresh K (gens_append gm_nil 0 gs).
 Proof.
   intros * Hg; destruct K as [k |]; cbn; [| auto ]; intros Hk.
-  exact (gens_append_fresh gs gm_nil k I (kgens_entries_fresh _ _ _ _ _ _ Hg _ Hk)).
+  exact (gens_append_fresh gs gm_nil k I (kinds_items_gen_entries_fresh _ _ _ _ _ _ Hg _ Hk)).
 Qed.
 
 (** The entries generated items add after a body, the [j]-th weakened past
@@ -424,19 +424,19 @@ Qed.
 
 (** A body read through the entries its local opens generate is fresh
     where the body is. *)
-Lemma kbody_fresh : forall Θ Ξ ρ Φ Φx, kbody Θ Ξ ρ Φ Φx -> forall k, gmod_fresh k Φ -> gmod_fresh k Φx /\ gm_binders Φx = gm_binders Φ.
+Lemma kinds_body_xp_fresh : forall Θ Ξ ρ Φ Φx, kinds_body_xp Θ Ξ ρ Φ Φx -> forall k, gmod_fresh k Φ -> gmod_fresh k Φx /\ gm_binders Φx = gm_binders Φ.
 Proof.
   induction 1 as [| ρ Φ Φx x E Hb IH | ρ Φ Φx ρ1 H its gs Hb IH Hk Hg]; intros k Hf.
   - split; [ exact I | reflexivity ].
   - cbn in Hf |- *; destruct Hf as [Hf HE]; destruct (IH _ Hf) as [Hx Hn]; rewrite Hn; auto.
   - cbn in Hf; destruct Hf as [Hf HH]; destruct (IH _ Hf) as [Hx Hn].
-    rewrite gens_append_binders, (kgens_length _ _ _ _ _ _ Hg); cbn [gm_binders]; split; [| lia ].
+    rewrite gens_append_binders, (kinds_items_gen_length _ _ _ _ _ _ Hg); cbn [gm_binders]; split; [| lia ].
     apply gens_append_fresh0 with (m := gm_binders Φx); [ lia | exact Hx |].
-    rewrite Hn; exact (kgens_entries_fresh _ _ _ _ _ _ Hg _ HH).
+    rewrite Hn; exact (kinds_items_gen_entries_fresh _ _ _ _ _ _ Hg _ HH).
 Qed.
 
-Lemma kbody_optional_gmod_fresh : forall Θ Ξ ρ Φ Φx K, kbody Θ Ξ ρ Φ Φx -> optional_gmod_fresh K Φ -> optional_gmod_fresh K Φx.
-Proof. intros * Hb; destruct K as [k |]; cbn; [ intros Hf; exact (proj1 (kbody_fresh _ _ _ _ _ Hb _ Hf)) | auto ]. Qed.
+Lemma kinds_body_xp_optional_gmod_fresh : forall Θ Ξ ρ Φ Φx K, kinds_body_xp Θ Ξ ρ Φ Φx -> optional_gmod_fresh K Φ -> optional_gmod_fresh K Φx.
+Proof. intros * Hb; destruct K as [k |]; cbn; [ intros Hf; exact (proj1 (kinds_body_xp_fresh _ _ _ _ _ Hb _ Hf)) | auto ]. Qed.
 
 (** A unit lacking one parameter fewer, the parameter now a variable. *)
 Lemma optional_gunit_fresh_snoc : forall K Δ e D, optional_gunit_fresh K (gu_mk (Δ ++ e :: nil) D) -> optional_gunit_fresh (optional_shift 1 K) (gu_mk Δ D).
@@ -959,18 +959,18 @@ Section Eval.
       match goal with IH : domain_avoids _ _ (d_ind _ _ _) -> _ -> _, Ha : forall a, In a _ -> domain_avoids _ _ a |- _ =>
         apply IH; [ constructor; intros ? [] | exact Ha ] end.
     - (* a term part of a saturated body, in its expansion *)
-      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_tm _ = Some _,
+      match goal with Hb : kinds_body_xp _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_tm _ = Some _,
                       Hu : optional_gunit_fresh ?K (gu_mk nil (md_body _ ?Φ)),
                       IHb : optional_gmod_fresh ?K _ -> _, IHM : forall K0, _ -> optional_exp_fresh K0 _ -> _ |- _ =>
         pose proof (optional_gunit_fresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite optional_shift_zero in HΦ;
-        pose proof (optional_exp_fresh_prefix_upto _ _ _ _ Hp (kbody_optional_gmod_fresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
+        pose proof (optional_exp_fresh_prefix_upto _ _ _ _ Hp (kinds_body_xp_optional_gmod_fresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
         exact (IHM _ (IHb (optional_gmod_fresh_ext_prefix _ _ _ _ HΦ')) (optional_gmod_fresh_tm_body _ _ _ _ _ _ HE HΦ')) end.
     - (* a module part of a saturated body, in its expansion *)
-      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_unit _ = Some _,
+      match goal with Hb : kinds_body_xp _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_unit _ = Some _,
                       Hu : optional_gunit_fresh ?K (gu_mk nil (md_body _ ?Φ)),
                       IHb : optional_gmod_fresh ?K _ -> _, IHM : forall K0, _ -> optional_gunit_fresh K0 _ -> _ |- _ =>
         pose proof (optional_gunit_fresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite optional_shift_zero in HΦ;
-        pose proof (optional_exp_fresh_prefix_upto _ _ _ _ Hp (kbody_optional_gmod_fresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
+        pose proof (optional_exp_fresh_prefix_upto _ _ _ _ Hp (kinds_body_xp_optional_gmod_fresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
         exact (IHM _ (IHb (optional_gmod_fresh_ext_prefix _ _ _ _ HΦ')) (optional_gmod_fresh_unit_unit _ _ _ _ _ HE HΦ')) end.
     - (* the empty body *)
       cbn [gm_binders]; rewrite optional_shift_zero; assumption.
@@ -1186,9 +1186,9 @@ Proof. intros * Hb H a Ha; exact (domain_avoids_mono' _ _ _ _ Hb (H a Ha)). Qed.
 
 (** ** Readback Introduces Only Variables Above the Ones in Scope *)
 
-Lemma la_fresh_canon : forall k c xs, all_list (fun a => ne_fresh k (atom_level a)) xs ->
+Lemma level_atoms_fresh_canon : forall k c xs, all_list (fun a => ne_fresh k (atom_level a)) xs ->
     all_list (fun a => ne_fresh k (atom_level a)) (snd (lvl_canon (c, xs))).
-Proof. intros * H; apply la_all_all_list, la_all_canon, la_all_all_list; assumption. Qed.
+Proof. intros * H; apply level_atoms_all_all_list, level_atoms_all_canon, level_atoms_all_all_list; assumption. Qed.
 
 Section Read.
   Variables (v : nat).
@@ -1478,7 +1478,7 @@ Section Read.
     all: try exact I.
     all: try lia.
     all: try solve [ eauto 3 with mctt ].
-    all: try solve [ apply la_fresh_canon; eauto 3 with mctt ].
+    all: try solve [ apply level_atoms_fresh_canon; eauto 3 with mctt ].
     (** Inductive types.  The parameters and the arguments of a constructor,
         and the parameters of a type, are read back at their types, which
         are closed. *)

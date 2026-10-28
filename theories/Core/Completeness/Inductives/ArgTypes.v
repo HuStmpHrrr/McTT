@@ -225,7 +225,7 @@ Section GroupFacts.
   (** The domains of the shapes at related prefixes, at [ups] and at
       uniform parameters [ups2] related to it: their values related. *)
   Lemma vg_doms_related : forall ups ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
-      per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 -> exists u : uidx, doms_related u D ups ups2.
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 -> exists u : universe_index, doms_related u D ups ups2.
   Proof.
     intros ups ups2 Hgd Hu Hg2; destruct (sort_value D HD ups Hgd Hu) as [a Ha].
     exists (univ_idx a); exact (canon_hd D HD Hc Hsu ups a Hu Ha ups2 Hg2).
@@ -390,8 +390,8 @@ Proof.
   assert (Dom m2 ≈ m2 ∈ per_lvl) by lvl_pw.
   exists 𝕌@m1 𝕌@m2 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ; eassumption); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv'; [ eassumption | exact I | reflexivity ].
-  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
-  - apply per_subtyp_small_large; [ assumption | solve_uidx ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
+  - apply per_subtyp_small_large; [ assumption | solve_universe_index ].
 Qed.
 
 Lemma rel_exp_typ_at : forall Γ (i : nat), ⊨ Γ -> Γ ⊨ Typeω@i : Typeω@(S i).
@@ -400,7 +400,7 @@ Proof.
   pose proof (rel_ctx_wf_per_ctx_env H) as [env_relΓ HΓ].
   eexists_rel_exp_of_typ.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_univ (S i) 𝕌ω@i 𝕌ω@i) by (eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ]).
+  assert (Hu : per_univ (S i) 𝕌ω@i 𝕌ω@i) by (eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
 Qed.
@@ -552,9 +552,9 @@ Proof.
     { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
       unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate .. ]. }
     destruct Hhd as [pm Hhd].
-    destruct (decl_typed_vwrap _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Hq2 & Hvw).
+    destruct (decl_typed_view_wrap _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Hq2 & Hvw).
     rewrite Hq in Hq2; injection Hq2 as <-.
-    destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMk' Hvm) as (Mv & HMv & Hnn & _).
+    destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMk' Hvm) as (Mv & HMv & Hnn & _).
     rewrite HMj in HMv; injection HMv as <-.
     pose proof (decl_closed_head_scoped _ Hc _ _ _ _ _ _ HMj Hh) as HsIs.
     pose proof (proj1 (proj2 (decl_mvc_members _ Hmv _ _ HMj))) as HmIs; rewrite Hh in HmIs; cbn in HmIs.
@@ -891,7 +891,7 @@ Definition view_end_rel (p : qname) (D : ind_decl) (ups ups' : list domain) (j :
   forall Mj qc kc Is vm Dq cups cups', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
     ind_lookup gc_deps gc_stack qc = Some Dq ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' ->
-    forall cs cs' ns ns' (i : uidx) R,
+    forall cs cs' ns ns' (i : universe_index) R,
       per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs -> per_gargs (List.rev (ind_uparams Dq)) nil nil cups' cs' ->
       DF d_ind qc kc (cs ++ ns) ≈ d_ind qc kc (cs' ++ ns') ∈ per_univ_elem i ↘ R ->
       (R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) j ups ups' ns ns').
@@ -903,7 +903,7 @@ Definition rview_end_rel (p : qname) (D : ind_decl) (ups ups' : list domain) (j 
   forall Mj qr Is fl R cups cups', ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
     record_lookup gc_deps gc_stack qr = Some R ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' ->
-    forall cs cs' (i : uidx) Rel,
+    forall cs cs' (i : universe_index) Rel,
       per_gargs (List.rev (record_params R)) nil nil cups cs -> per_gargs (List.rev (record_params R)) nil nil cups' cs' ->
       DF d_record qr cs ≈ d_record qr cs' ∈ per_univ_elem i ↘ Rel ->
       (Rel <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) j ups ups' nil nil).
@@ -996,7 +996,7 @@ Qed.
     the canonical record relation at the left parameters. *)
 Lemma vrr_type_rel : forall qr R cups cs, valid_rview_record qr R ->
     per_gargs (List.rev (record_params R)) nil nil cups cs -> List.length cups = List.length (record_params R) ->
-    exists (i : uidx), DF d_record qr cups ≈ d_record qr cs ∈ per_univ_elem i ↘ record_rel R (canon_fields_rel R cups).
+    exists (i : universe_index), DF d_record qr cups ≈ d_record qr cs ∈ per_univ_elem i ↘ record_rel R (canon_fields_rel R cups).
 Proof.
   intros * [Hl Hv Hc Ht] Hg Hu.
   destruct Hv as [HP [i HS] HF HT].
@@ -1466,7 +1466,7 @@ Section ShapeChar.
            ind_lookup gc_deps gc_stack qc = Some Dq -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
            per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs ->
            ntele_rel D (canon_nparams_rel D ups) (ptyp_mem t) bs bs' ->
-           exists (i : uidx) R, DF d_ind qc kc (cups ++ bs) ≈ d_ind qc kc (cs ++ bs') ∈ per_univ_elem i ↘ R) ->
+           exists (i : universe_index) R, DF d_ind qc kc (cups ++ bs) ≈ d_ind qc kc (cs ++ bs') ∈ per_univ_elem i ↘ R) ->
         forall n kk ys a (i : nat) R, kk + n = List.length (ptyp_doms t) ->
           tele_prefix_rel (shape_doms_rel (canon_doms_rel ups k) ns (nonrec_arg_vals gs1 fa) (ptyp_doms t)) kk ys ys ->
           per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t))))

@@ -256,7 +256,7 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
   `( read_typ_order Θ Ξ s a ->
     read_nf_order Θ Ξ s ⇓ 𝕌@n a )
 | read_nf_order_lvl :
-  `( read_la_order Θ Ξ s xs ->
+  `( read_level_atoms_order Θ Ξ s xs ->
      read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (lvᵈ c xs) )
 | read_nf_order_lvl_neut :
   `( read_ne_order Θ Ξ s m ->
@@ -402,13 +402,13 @@ with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
      read_typ_order Θ Ξ s (d_record p ns) )
 
-with read_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
-| read_la_order_nil :
-  `( read_la_order Θ Ξ s nil )
-| read_la_order_cons :
+with read_level_atoms_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
+| read_level_atoms_order_nil :
+  `( read_level_atoms_order Θ Ξ s nil )
+| read_level_atoms_order_cons :
   `( read_ne_order Θ Ξ s m ->
-     read_la_order Θ Ξ s xs ->
-     read_la_order Θ Ξ s ((k, n, m) :: xs) )
+     read_level_atoms_order Θ Ξ s xs ->
+     read_level_atoms_order Θ Ξ s ((k, n, m) :: xs) )
 
 with read_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> Prop :=
 | read_ps_order_nil :
@@ -538,7 +538,7 @@ with read_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list dom
      read_brs_order Θ Ξ s ρ p ups Bks Dc Mv A Mi (pk, k, pre) ((c, gs') :: cs) ((c, n0, B) :: Bs) ).
 
 #[local]
-Hint Constructors read_nf_order read_ne_order read_typ_order read_la_order
+Hint Constructors read_nf_order read_ne_order read_typ_order read_level_atoms_order
   read_ps_order read_fields_order read_cargs_order read_shape_order read_blocks_order read_brs_order : mctt.
 
 (** Every readback derivation is within its order. *)
@@ -546,7 +546,7 @@ Lemma read_order_sound : forall Θ Ξ,
     (forall s d m, Rnf d in Θ ⍮ Ξ ⍮ s ↘ m -> read_nf_order Θ Ξ s d) /\
     (forall s d m, Rne d in Θ ⍮ Ξ ⍮ s ↘ m -> read_ne_order Θ Ξ s d) /\
     (forall s d m, Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m -> read_typ_order Θ Ξ s d) /\
-    (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys -> read_la_order Θ Ξ s xs) /\
+    (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys -> read_level_atoms_order Θ Ξ s xs) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> read_ps_order Θ Ξ s ρ T vs) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> read_cargs_order Θ Ξ s p ups ρ gs vs) /\
     (forall s p ups ρ t v V, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> read_shape_order Θ Ξ s p ups ρ t v) /\
@@ -577,7 +577,7 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (read_order_sound Θ Ξ))). Qed.
 Lemma read_typ_order_sound : forall Θ Ξ s d m, Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m -> read_typ_order Θ Ξ s d.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (read_order_sound Θ Ξ)))). Qed.
 
-Lemma read_la_order_sound : forall Θ Ξ s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys -> read_la_order Θ Ξ s xs.
+Lemma read_level_atoms_order_sound : forall Θ Ξ s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys -> read_level_atoms_order Θ Ξ s xs.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (read_order_sound Θ Ξ))))). Qed.
 
 Lemma read_ps_order_sound : forall Θ Ξ s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> read_ps_order Θ Ξ s ρ T vs.
@@ -604,7 +604,7 @@ Lemma read_fields_order_sound : forall Θ Ξ s ρ fl v Fs,
 Proof. intros Θ Ξ; pose proof (read_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
-Hint Resolve read_nf_order_sound read_ne_order_sound read_typ_order_sound read_la_order_sound
+Hint Resolve read_nf_order_sound read_ne_order_sound read_typ_order_sound read_level_atoms_order_sound
   read_ps_order_sound read_cargs_order_sound read_shape_order_sound read_blocks_order_sound
   read_brs_order_sound read_fields_order_sound : mctt.
 
@@ -629,7 +629,7 @@ Ltac impl_obl_tac1 :=
   | H : read_nf_order _ _ _ _ |- _ => progressive_invert H
   | H : read_ne_order _ _ _ _ |- _ => progressive_invert H
   | H : read_typ_order _ _ _ _ |- _ => progressive_invert H
-  | H : read_la_order _ _ _ _ |- _ => progressive_invert H
+  | H : read_level_atoms_order _ _ _ _ |- _ => progressive_invert H
   | H : read_ps_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : read_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : read_cargs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
@@ -654,11 +654,11 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (A, HA) := read_typ_impl s a _ in
     exist _ A _
 | s, ⇓ (Levelᵈ@n) (lvᵈ c xs), H =>
-    let (ys, Hys) := read_la_impl s xs _ in
+    let (ys, Hys) := read_level_atoms_impl s xs _ in
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
 | s, ⇓ (Levelᵈ@n) (⇑ a m), H =>
     let (M, HM) := read_ne_impl s m _ in
-    exist _ (lvⁿ oz (cons (mk_level_atom 0 (dsort a) M) nil)) _
+    exist _ (lvⁿ ordinal_zero (cons (mk_level_atom 0 (domain_level_sort a) M) nil)) _
 | s, ⇓ ⊤ᵈ m, H => exist _ ⋆ⁿ _
 | s, ⇓ ⊥ᵈ (⇑ _ m), H =>
     let (M, HM) := read_ne_impl s m _ in
@@ -775,11 +775,11 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
       exist _ (nf_record p Ps) _
   | exist _ None El => False_rect _ _ }
 
-  with read_la_impl s xs (H : read_la_order Θ Ξ s xs) : { ys | Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
+  with read_level_atoms_impl s xs (H : read_level_atoms_order Θ Ξ s xs) : { ys | Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
 | s, nil, H => exist _ nil _
 | s, cons (k, n, m) xs, H =>
     let (M, HM) := read_ne_impl s m _ in
-    let (ys, Hys) := read_la_impl s xs _ in
+    let (ys, Hys) := read_level_atoms_impl s xs _ in
     exist _ (cons (mk_level_atom k n M) ys) _
 
   with read_ps_impl s ρ T vs (H : read_ps_order Θ Ξ s ρ T vs) : { Ms | Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
@@ -869,7 +869,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     the whole by inversion, or the readback itself, by its rule.  The
     lookups the order records are the ones computed. *)
 #[local]
-Ltac rb_unify x y :=
+Ltac readback_unify x y :=
   let Heq := fresh "Heq" in
   intro Heq;
   first [ is_var y; lazymatch goal with |- context [y] => subst y end
@@ -877,20 +877,20 @@ Ltac rb_unify x y :=
         | subst ].
 
 #[local]
-Ltac rb_glob :=
+Ltac readback_glob :=
   repeat match goal with
     | H1 : ind_lookup _ _ ?p = Some ?x, H2 : ind_lookup _ _ ?p = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : ind_con ?D ?c = Some ?x, H2 : ind_con ?D ?c = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : ind_member ?D ?k = Some ?x, H2 : ind_member ?D ?k = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : List.nth_error ?Bks ?j = Some ?x, H2 : List.nth_error ?Bks ?j = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
         rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
     | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
@@ -903,7 +903,7 @@ Ltac rb_glob :=
     (** A record, looked up once *)
     | H1 : record_lookup _ _ ?p = Some ?x, H2 : record_lookup _ _ ?p = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     (** The member a member stands for, at the reference the order records *)
     | Hm : eval_mref _ _ ?p _ ?j (?a, ?b, _), Hl : ind_lookup _ _ ?p = Some _, Hj : ind_member _ ?j = Some _,
       Hr : im_ref ?p ?j _ = (?c, ?d) |- _ =>
@@ -914,20 +914,20 @@ Ltac rb_glob :=
     end.
 
 #[local]
-Ltac rb_ord :=
-  repeat impl_obl_tac1; rb_glob;
+Ltac readback_order :=
+  repeat impl_obl_tac1; readback_glob;
   first [ eassumption
         | solve [ eauto 2 ] ].
 
 #[local]
-Ltac rb_eqb := repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end.
+Ltac readback_eqb := repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end.
 
 #[local]
-Ltac rb_run := repeat impl_obl_tac1; rb_glob; rb_eqb; econstructor; eassumption.
+Ltac readback_run := repeat impl_obl_tac1; readback_glob; readback_eqb; econstructor; eassumption.
 
 #[local]
-Ltac rb_ind :=
-  repeat impl_obl_tac1; rb_glob; rb_eqb;
+Ltac readback_ind :=
+  repeat impl_obl_tac1; readback_glob; readback_eqb;
   first [ congruence
         | solve [ eapply read_nf_con_view_last; eassumption ]
         (** A neutral of a member with a block: its head is not a record
@@ -937,33 +937,33 @@ Ltac rb_ind :=
         | econstructor; try eassumption; eauto 3 ].
 
 #[local]
-Ltac rb_obl_auto :=
+Ltac readback_obligation_auto :=
   intros; cbv beta in *;
   lazymatch goal with
-  | |- read_nf_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_ne_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_typ_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_la_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_ps_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_fields_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- eval_proj_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_cargs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_shape_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_blocks_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- read_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fresh_cargs_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- wrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- eval_projs_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- eval_exp_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- eval_exps_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- eval_app_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- eval_mref_order _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- _ => abstract (first [ rb_ord | rb_run | eapply read_typ_suniv_of_nf; eassumption | rb_ind ])
+  | |- read_nf_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_ne_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_typ_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_level_atoms_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_ps_order _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_fields_order _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- eval_proj_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_cargs_order _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_shape_order _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_blocks_order _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- read_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fresh_tele_order _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fresh_cargs_order _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- wrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- eval_projs_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- eval_exp_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- eval_exps_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- eval_app_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- eval_mref_order _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- _ => abstract (first [ readback_order | readback_run | eapply read_typ_suniv_of_nf; eassumption | readback_ind ])
   end.
 
-Solve All Obligations with rb_obl_auto.
+Solve All Obligations with readback_obligation_auto.
 
 (** The [read_*_impl] functions are sound by construction.  Completeness
     follows from the soundness of the readback orders and the functionality
@@ -1005,9 +1005,9 @@ Proof.
   intros; functional_read_complete.
 Qed.
 
-Lemma read_la_impl_complete : forall s xs ys,
+Lemma read_level_atoms_impl_complete : forall s xs ys,
     Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-    exists H H', read_la_impl s xs H = exist _ ys H'.
+    exists H H', read_level_atoms_impl s xs H = exist _ ys H'.
 Proof.
   intros; functional_read_complete.
 Qed.

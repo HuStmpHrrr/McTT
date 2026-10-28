@@ -157,8 +157,8 @@ Qed.
 (** ** Open Targets *)
 
 (** A projection chain is a module expression's spine of [me_mem]s. *)
-Lemma selm_proj_chain : forall S ip o E,
-    selm S (fold_left Cst.proj ip o) E <-> exists H, selm S o H /\ E = fold_left me_mem ip H.
+Lemma spec_modexp_proj_chain : forall S ip o E,
+    spec_modexp S (fold_left Cst.proj ip o) E <-> exists H, spec_modexp S o H /\ E = fold_left me_mem ip H.
 Proof.
   intros S; induction ip as [| y ip IH]; intros o E; cbn [fold_left].
   - split; [ eauto | intros (H & HH & ->); assumption ].
@@ -168,9 +168,9 @@ Proof.
 Qed.
 
 (** And the arguments of a module are its spine of [me_app]s. *)
-Lemma selm_app_chain : forall S args o E,
-    selm S (fold_left Cst.app args o) E <->
-    exists H Ns, selm S o H /\ Forall2 (sel S) args Ns /\ E = mapps H Ns.
+Lemma spec_modexp_app_chain : forall S args o E,
+    spec_modexp S (fold_left Cst.app args o) E <->
+    exists H Ns, spec_modexp S o H /\ Forall2 (spec_exp S) args Ns /\ E = mapps H Ns.
 Proof.
   intros S; induction args as [| a args IH]; intros o E; cbn [fold_left].
   - split; [ intros; exists E, nil; auto | intros (H & Ns & HH & HN & ->); inversion HN; subst; assumption ].
@@ -186,7 +186,7 @@ Lemma name_mod_iff : forall S x H,
     match lookup x S with
     | Some (k, e) => entry_to_mod k e
     | None => unit_mod x S
-    end = elab_success H <-> selm S (Cst.var x) H.
+    end = elab_success H <-> spec_modexp S (Cst.var x) H.
 Proof.
   intros; case_eq (lookup x S); [ intros [k e] El | intros El ]; split.
   - intros Hd; econstructor; [ apply lookup_iff; eassumption | apply entry_to_mod_iff; assumption ].
@@ -196,26 +196,26 @@ Proof.
     + exfalso; match goal with Hn : ~ In x (names S) |- _ => apply Hn end.
       eapply bound_in, lookup_iff, El.
   - unfold unit_mod; destruct (unit_in_b (x :: nil) S) eqn:Eu; [| discriminate ].
-    intros [= <-]; apply selm_unit1; [ apply lookup_none; exact El | apply unit_in_b_iff; exact Eu ].
+    intros [= <-]; apply spec_modexp_unit1; [ apply lookup_none; exact El | apply unit_in_b_iff; exact Eu ].
   - intros Hs; inversion Hs; subst.
     + match goal with Hb : bound _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
     + unfold unit_mod; match goal with Hu : In (scope_entry_unit _) S |- _ => apply unit_in_b_iff in Hu; rewrite Hu end; reflexivity.
 Qed.
 
 Lemma ihead_iff : forall S fq ip H,
-    elab_ihead S fq ip = elab_success H <-> exists o, ihead fq ip = Some o /\ selm S o H.
+    elab_ihead S fq ip = elab_success H <-> exists o, ihead fq ip = Some o /\ spec_modexp S o H.
 Proof.
   intros. destruct fq as [| f fq]; [ destruct ip as [| x ip] |]; cbn [elab_ihead ihead].
   - split; [ discriminate | intros (? & [=] & _) ].
   - rewrite elab_bind_elab_success; split.
     + intros (H' & Hx & [=<-]). eexists; split; [ reflexivity |].
-      apply selm_proj_chain; exists H'; split; [ apply name_mod_iff; assumption | reflexivity ].
-    + intros (o & [=<-] & Hs). apply selm_proj_chain in Hs as (H' & Hs & ->).
+      apply spec_modexp_proj_chain; exists H'; split; [ apply name_mod_iff; assumption | reflexivity ].
+    + intros (o & [=<-] & Hs). apply spec_modexp_proj_chain in Hs as (H' & Hs & ->).
       exists H'; split; [ apply name_mod_iff; assumption | reflexivity ].
   - rewrite elab_bind_elab_success; split.
     + intros ([] & Hu & [=<-]); apply elab_check_elab_success, unit_in_b_iff in Hu.
-      eexists; split; [ reflexivity |]. apply selm_proj_chain; eexists; split; [ constructor; eassumption | reflexivity ].
-    + intros (o & [=<-] & Hs). apply selm_proj_chain in Hs as (H' & Hs & ->). inversion Hs; subst.
+      eexists; split; [ reflexivity |]. apply spec_modexp_proj_chain; eexists; split; [ constructor; eassumption | reflexivity ].
+    + intros (o & [=<-] & Hs). apply spec_modexp_proj_chain in Hs as (H' & Hs & ->). inversion Hs; subst.
       exists tt; split; [ apply elab_check_elab_success, unit_in_b_iff; assumption | reflexivity ].
 Qed.
 
@@ -252,10 +252,10 @@ Fixpoint elab_body (S : list scope_entry) (Φ : gmod) (cs : list Cst.cmd) : elab
 Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S gm_nil cs in elab_success (md_body sm_open Φ).
 Proof. reflexivity. Qed.
 
-Definition Pterm (o : Cst.expression) : Prop := forall S M, elab S o = elab_success M <-> sel S o M.
-Definition Pmod (o : Cst.expression) : Prop := forall S H, elab_mod S o = elab_success H <-> selm S o H.
-Definition Pmdef (md : Cst.mdef) : Prop := forall S D, elab_mdef S md = elab_success D <-> sdef S md D.
-Definition Pbody (cs : list Cst.cmd) : Prop := forall S Φ Φ', elab_body S Φ cs = elab_success Φ' <-> sbody S Φ cs Φ'.
+Definition Pterm (o : Cst.expression) : Prop := forall S M, elab S o = elab_success M <-> spec_exp S o M.
+Definition Pmod (o : Cst.expression) : Prop := forall S H, elab_mod S o = elab_success H <-> spec_modexp S o H.
+Definition Pmdef (md : Cst.mdef) : Prop := forall S D, elab_mdef S md = elab_success D <-> spec_def S md D.
+Definition Pbody (cs : list Cst.cmd) : Prop := forall S Φ Φ', elab_body S Φ cs = elab_success Φ' <-> spec_body S Φ cs Φ'.
 Definition Pbcmd (c : Cst.cmd) : Prop := forall cs, Pbody cs -> Pbody (c :: cs).
 
 (** Turn the elaborator's results into the specification's premises, and
@@ -274,11 +274,11 @@ Ltac to_spec :=
 
 Ltac to_elab :=
   repeat match goal with
-    | H : sel ?S ?o _, IH : forall S M, elab S ?o = elab_success M <-> _ |- _ => apply IH in H
-    | H : selm ?S ?o _, IH : forall S H, elab_mod S ?o = elab_success H <-> _ |- _ => apply IH in H
-    | H : sdef ?S ?o _, IH : forall S D, elab_mdef S ?o = elab_success D <-> _ |- _ => apply IH in H
-    | H : sbody _ _ ?cs _, IH : forall S Φ Φ', elab_body S Φ ?cs = elab_success Φ' <-> _ |- _ => apply IH in H
-    | H : sparams _ ?ps _, IH : forall S tys, elab_params_with elab S ?ps = elab_success tys <-> _ |- _ => apply IH in H
+    | H : spec_exp ?S ?o _, IH : forall S M, elab S ?o = elab_success M <-> _ |- _ => apply IH in H
+    | H : spec_modexp ?S ?o _, IH : forall S H, elab_mod S ?o = elab_success H <-> _ |- _ => apply IH in H
+    | H : spec_def ?S ?o _, IH : forall S D, elab_mdef S ?o = elab_success D <-> _ |- _ => apply IH in H
+    | H : spec_body _ _ ?cs _, IH : forall S Φ Φ', elab_body S Φ ?cs = elab_success Φ' <-> _ |- _ => apply IH in H
+    | H : spec_params _ ?ps _, IH : forall S tys, elab_params_with elab S ?ps = elab_success tys <-> _ |- _ => apply IH in H
     | H : NoDup (map fst ?ps) |- _ => apply (check_params_ok ps tt) in H
     | H : fresh ?x ?F |- _ => apply (check_fresh_ok x F tt) in H
     end;
@@ -293,7 +293,7 @@ Ltac iff_case :=
   | inversion Hg; subst; to_elab; reflexivity ].
 
 Lemma params_iff : forall ps, Forall (fun p => Pterm (snd p)) ps ->
-    forall S tys, elab_params_with elab S ps = elab_success tys <-> sparams S ps tys.
+    forall S tys, elab_params_with elab S ps = elab_success tys <-> spec_params S ps tys.
 Proof.
   induction 1 as [| [x oA] ps HA Hps IH]; intros S tys; cbn [elab_params_with].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -301,7 +301,7 @@ Proof.
 Qed.
 
 Lemma args_iff : forall args, Forall Pterm args ->
-    forall S Ns, elab_args_with elab S args = elab_success Ns <-> Forall2 (sel S) args Ns.
+    forall S Ns, elab_args_with elab S args = elab_success Ns <-> Forall2 (spec_exp S) args Ns.
 Proof.
   induction 1 as [| o args Ho Hargs IH]; intros S Ns; cbn [elab_args_with].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -314,21 +314,21 @@ Qed.
 
 (** The target of an open, as [elab_mod] would read it. *)
 Lemma target_iff : forall S fq ip args E, Forall Pterm args ->
-    elab_target_with elab S fq ip args = elab_success E <-> exists o, itarget fq ip args = Some o /\ selm S o E.
+    elab_target_with elab S fq ip args = elab_success E <-> exists o, itarget fq ip args = Some o /\ spec_modexp S o E.
 Proof.
   intros * Hargs. unfold elab_target_with, itarget. rewrite elab_bind_elab_success. split.
   - intros (H & Hh & HE); apply elab_bind_elab_success in HE as (Ns & HNs & [=<-]).
     apply ihead_iff in Hh as (o & Ho & Hs). rewrite Ho; cbn [option_map].
-    eexists; split; [ reflexivity |]. apply selm_app_chain; exists H, Ns; repeat split; try assumption.
+    eexists; split; [ reflexivity |]. apply spec_modexp_app_chain; exists H, Ns; repeat split; try assumption.
     apply (args_iff _ Hargs); assumption.
   - intros (o' & Ho' & Hs). destruct (ihead fq ip) as [o |] eqn:Ho; [| discriminate ]. injection Ho' as <-.
-    apply selm_app_chain in Hs as (H & Ns & Hs & HNs & ->).
+    apply spec_modexp_app_chain in Hs as (H & Ns & Hs & HNs & ->).
     exists H; split; [ apply ihead_iff; eauto |].
     rewrite (proj2 (args_iff _ Hargs _ _)) by eassumption. reflexivity.
 Qed.
 
 Lemma brs_iff : forall bs, Forall (fun b => Pterm (snd b)) bs ->
-    forall S Bs, elab_brs_with elab S bs = elab_success Bs <-> sbrs S bs Bs.
+    forall S Bs, elab_brs_with elab S bs = elab_success Bs <-> spec_branches S bs Bs.
 Proof.
   induction 1 as [| [[c ys] oB] bs HB Hbs IH]; intros S Bs; cbn [elab_brs_with].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -341,7 +341,7 @@ Qed.
 
 (** The binders of a block, as [elab_binders_with] reads them. *)
 Lemma binders_iff : forall xs, Forall (fun x => match snd x with Some A => Pterm A /\ Pmod A | None => True end) xs ->
-    forall S pre oZ, elab_binders_with elab S pre xs = elab_success oZ <-> sbinders S pre xs oZ.
+    forall S pre oZ, elab_binders_with elab S pre xs = elab_success oZ <-> spec_binders S pre xs oZ.
 Proof.
   induction 1 as [| [x oo] xs Hx Hxs IH]; intros S pre oZ; cbn [elab_binders_with].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -358,13 +358,13 @@ Lemma blocks_iff : forall bks,
     Forall (fun bk => Forall (fun x => match snd x with Some A => Pterm A /\ Pmod A | None => True end) (snd (fst (fst bk))) /\
                       (Pterm (snd (fst bk)) /\ Pmod (snd (fst bk))) /\
                       Forall (fun b => Pterm (snd b) /\ Pmod (snd b)) (snd bk)) bks ->
-    forall S Bks, elab_blocks_with elab S bks = elab_success Bks <-> sblocks S bks Bks.
+    forall S Bks, elab_blocks_with elab S bks = elab_success Bks <-> spec_blocks S bks Bks.
 Proof.
   induction 1 as [| [[[k xs] oA] bs] bks [Hxs [[HA _] Hbs]] _ IH]; intros S Bks; cbn [elab_blocks_with].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
   - cbn [fst snd] in *.
     pose proof (binders_iff _ Hxs) as Hxi.
-    assert (Hb : forall S Bs, elab_brs_with elab S bs = elab_success Bs <-> sbrs S bs Bs)
+    assert (Hb : forall S Bs, elab_brs_with elab S bs = elab_success Bs <-> spec_branches S bs Bs)
       by (apply brs_iff; eapply Forall_impl; [| exact Hbs ]; intros ? []; assumption).
     unfold Pterm in HA; split.
     + intros H; apply elab_bind_elab_success in H as (oZ & HZ & H); apply elab_bind_elab_success in H as (A & HA' & H).
@@ -379,7 +379,7 @@ Qed.
 
 (** The fields of a record value, as [elab_tfields_with] reads them. *)
 Lemma tfields_iff : forall fs, Forall (fun f => Pterm (snd f)) fs ->
-    forall S Ms, elab_tfields_with elab S fs = elab_success Ms <-> stfields S fs Ms.
+    forall S Ms, elab_tfields_with elab S fs = elab_success Ms <-> spec_tuple_fields S fs Ms.
 Proof.
   induction 1 as [| [y oM] fs HM Hfs IH]; intros S Ms; cbn [elab_tfields_with].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -395,12 +395,12 @@ Lemma Pterm_params : forall ps : list (string * Cst.expression),
 Proof. intros ps; apply Forall_impl; intros ? []; assumption. Qed.
 
 (** A local module, as [elab] and [elab_body] build it. *)
-Lemma sunit_iff : forall S ps md U,
+Lemma spec_unit_iff : forall S ps md U,
     Forall (fun p => Pterm (snd p)) ps -> Pmdef md ->
     (let* _ := check_params ps in
      let* tys := elab_params_with elab S ps in
      let* D := elab_mdef (param_scope_entries ps ++ S) md in
-     elab_success (gu_mk (ptele tys) D)) = elab_success U <-> sunit S ps md U.
+     elab_success (gu_mk (ptele tys) D)) = elab_success U <-> spec_unit S ps md U.
 Proof.
   intros * Hps Hmd. pose proof (params_iff _ Hps) as IHps. unfold Pmdef in Hmd. iff_case.
 Qed.
@@ -425,7 +425,7 @@ Qed.
 Lemma expressions_iff :
   (forall o, Pterm o /\ Pmod o) /\
   (forall d, forall ob, Pterm ob -> forall S M,
-      elab S (Cst.letb d ob) = elab_success M <-> sel S (Cst.letb d ob) M) /\
+      elab S (Cst.letb d ob) = elab_success M <-> spec_exp S (Cst.letb d ob) M) /\
   (forall md, Pmdef md) /\ (forall c, Pbcmd c).
 Proof.
   apply Cst.cst_ind; unfold Pterm, Pmod, Pmdef, Pbcmd, Pbody.
@@ -452,7 +452,7 @@ Proof.
     + destruct (expression_path o) eqn:Ep; split; intros Hg.
       * apply elab_bind_elab_success in Hg as (H & HH & Hg); inv_elab_success; constructor; [ exact Ep | apply IHm; exact HH ].
       * inversion Hg; subst; [ rewrite (proj2 (IHm _ _)) by eassumption; reflexivity | congruence ].
-      * apply elab_bind_elab_success in Hg as (M' & HM & Hg); inv_elab_success; apply sel_proj_let; [ exact Ep | apply IHt; exact HM ].
+      * apply elab_bind_elab_success in Hg as (M' & HM & Hg); inv_elab_success; apply spec_exp_proj_let; [ exact Ep | apply IHt; exact HM ].
       * inversion Hg; subst; [ congruence | rewrite (proj2 (IHt _ _)) by eassumption; reflexivity ].
     + split; intros Hg.
       * apply elab_bind_elab_success in Hg as (H & HH & Hg); inv_elab_success; constructor; apply IHm; exact HH.
@@ -475,7 +475,7 @@ Proof.
     + split; [ discriminate | intros Hg; inversion Hg ].
   - (* tuple *)
     intros oT [IHT _] fs Hfs; apply list_all_snd in Hfs.
-    assert (Hf : forall S Ms, elab_tfields_with elab S fs = elab_success Ms <-> stfields S fs Ms)
+    assert (Hf : forall S Ms, elab_tfields_with elab S fs = elab_success Ms <-> spec_tuple_fields S fs Ms)
       by (apply tfields_iff; eapply Forall_impl; [| exact Hfs ]; intros ? []; assumption).
     split; intros S M; cbn [elab elab_mod].
     + split; intros Hg.
@@ -489,14 +489,14 @@ Proof.
     intros x [o1 |] HA o2 [IH2 _] ob IHb S M; [ apply option_all_match in HA; destruct HA as [IH1 _] |]; cbn [elab]; iff_case.
   - (* d_mod *)
     intros x ps Hps md Hmd ob IHb S M. apply list_all_snd, Pterm_params in Hps.
-    pose proof (sunit_iff S ps md) as Hu. cbn [elab]; split; intros Hg.
+    pose proof (spec_unit_iff S ps md) as Hu. cbn [elab]; split; intros Hg.
     + dest_elab_success. econstructor; [ apply Hu; [ assumption | exact Hmd |] | apply IHb; eassumption ].
       to_elab; reflexivity.
-    + inversion Hg; subst. match goal with Hs : sunit _ _ _ _ |- _ => apply Hu in Hs; [| assumption | exact Hmd ] end.
+    + inversion Hg; subst. match goal with Hs : spec_unit _ _ _ _ |- _ => apply Hu in Hs; [| assumption | exact Hmd ] end.
       dest_elab_success. to_elab. reflexivity.
   - (* md_where *)
     intros cs Hcs S D. apply list_all_Forall in Hcs. rewrite elab_mdef_where, elab_bind_elab_success.
-    assert (Hb : forall S Φ Φ', elab_body S Φ cs = elab_success Φ' <-> sbody S Φ cs Φ').
+    assert (Hb : forall S Φ Φ', elab_body S Φ cs = elab_success Φ' <-> spec_body S Φ cs Φ').
     { induction Hcs as [| c cs Hc Hcs IH]; intros S' Φ Φ'.
       - cbn; split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
       - apply Hc; intros; apply IH. }
@@ -507,11 +507,11 @@ Proof.
     intros o [_ IHm] S D; cbn [elab_mdef]. iff_case.
   - (* c_mod *)
     intros pv x ps Hps md Hmd cs Hcs S Φ Φ'. apply list_all_snd, Pterm_params in Hps.
-    pose proof (sunit_iff S ps md) as Hu. cbn [elab_body].
+    pose proof (spec_unit_iff S ps md) as Hu. cbn [elab_body].
     split; intros Hg.
     + dest_elab_success. econstructor; [ apply Hu; [ assumption | exact Hmd |] | apply Hcs; eassumption ].
       to_elab; reflexivity.
-    + inversion Hg; subst. match goal with Hs : sunit _ _ _ _ |- _ => apply Hu in Hs; [| assumption | exact Hmd ] end.
+    + inversion Hg; subst. match goal with Hs : spec_unit _ _ _ _ |- _ => apply Hu in Hs; [| assumption | exact Hmd ] end.
       dest_elab_success. to_elab. reflexivity.
   - (* c_def *)
     intros m x o1 [IH1 _] o2 [IH2 _] cs Hcs S Φ Φ'; cbn [elab_body].
@@ -549,30 +549,30 @@ Proof.
     intros pv x ps _ o _ fs _ cs' _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
 Qed.
 
-Lemma elab_iff : forall S o M, elab S o = elab_success M <-> sel S o M.
+Lemma elab_iff : forall S o M, elab S o = elab_success M <-> spec_exp S o M.
 Proof. intros; apply (proj1 (proj1 expressions_iff o)). Qed.
 
-Lemma elab_mod_iff : forall S o H, elab_mod S o = elab_success H <-> selm S o H.
+Lemma elab_mod_iff : forall S o H, elab_mod S o = elab_success H <-> spec_modexp S o H.
 Proof. intros; apply (proj2 (proj1 expressions_iff o)). Qed.
 
-Lemma elab_params_iff : forall S ps tys, elab_params S ps = elab_success tys <-> sparams S ps tys.
+Lemma elab_params_iff : forall S ps tys, elab_params S ps = elab_success tys <-> spec_params S ps tys.
 Proof.
   intros; apply params_iff, Forall_forall; intros ? _ ? ?; apply elab_iff.
 Qed.
 
 Lemma elab_target_iff : forall S fq ip args E,
-    elab_target_with elab S fq ip args = elab_success E <-> exists o, itarget fq ip args = Some o /\ selm S o E.
+    elab_target_with elab S fq ip args = elab_success E <-> exists o, itarget fq ip args = Some o /\ spec_modexp S o E.
 Proof.
   intros; apply target_iff, Forall_forall; intros ? _ ? ?; apply elab_iff.
 Qed.
 
-Lemma elab_args_iff : forall S os Ns, elab_args_with elab S os = elab_success Ns <-> Forall2 (sel S) os Ns.
+Lemma elab_args_iff : forall S os Ns, elab_args_with elab S os = elab_success Ns <-> Forall2 (spec_exp S) os Ns.
 Proof. intros; apply args_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
 
-Lemma elab_brs_iff : forall S bs Bs, elab_brs_with elab S bs = elab_success Bs <-> sbrs S bs Bs.
+Lemma elab_brs_iff : forall S bs Bs, elab_brs_with elab S bs = elab_success Bs <-> spec_branches S bs Bs.
 Proof. intros; apply brs_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
 
-Lemma elab_rargs_iff : forall args S args', elab_rargs S args = elab_success args' <-> srargs S args args'.
+Lemma elab_rargs_iff : forall args S args', elab_rargs S args = elab_success args' <-> spec_constructor_args S args args'.
 Proof.
   induction args as [| [y oA] args IH]; intros S args'; cbn [elab_rargs].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -584,7 +584,7 @@ Proof.
       rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
 Qed.
 
-Lemma elab_rcons_iff : forall S cs cs', elab_rcons S cs = elab_success cs' <-> srcons S cs cs'.
+Lemma elab_rcons_iff : forall S cs cs', elab_rcons S cs = elab_success cs' <-> spec_constructors S cs cs'.
 Proof.
   intros S; induction cs as [| [c args] cs IH]; intros cs'; cbn [elab_rcons].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -596,7 +596,7 @@ Proof.
       rewrite (proj2 (IH _)) by eassumption. reflexivity.
 Qed.
 
-Lemma elab_members_iff : forall ms S ups xs rms, elab_members S ups xs ms = elab_success rms <-> smembers S ups xs ms rms.
+Lemma elab_members_iff : forall ms S ups xs rms, elab_members S ups xs ms = elab_success rms <-> spec_members S ups xs ms rms.
 Proof.
   induction ms as [| [[x oT] cs] ms IH]; intros S ups xs rms; cbn [elab_members].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -615,7 +615,7 @@ Proof.
       rewrite (proj2 (IH _ _ _ _)) by eassumption; reflexivity.
 Qed.
 
-Lemma elab_funs_iff : forall fs S rfs, elab_funs S fs = elab_success rfs <-> sfuns S fs rfs.
+Lemma elab_funs_iff : forall fs S rfs, elab_funs S fs = elab_success rfs <-> spec_functions S fs rfs.
 Proof.
   induction fs as [| [[[f ps] oA] bs] fs IH]; intros S rfs; cbn [elab_funs].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].
@@ -707,16 +707,16 @@ Section Commands.
   Variable fp : path.
 
   (** A command keeps the binders of its scope. *)
-  Lemma scmd_binders : forall ch P S c S' c', scmd fp ch P S c S' c' -> binders S' = binders S.
+  Lemma spec_cmd_binders : forall ch P S c S' c', spec_cmd fp ch P S c S' c' -> binders S' = binders S.
   Proof.
     intros * H; destruct H; rewrite ?binders_app, ?binders_mem, ?binders_item_mems, ?binders_filed_mems; reflexivity.
   Qed.
 
   (** [nb] is the count of the scope's binders the elaborator carries. *)
   Definition Pcmd (c : Cst.cmd) : Prop :=
-    forall ch P nb S S' cs', nb = binders S -> (elab_cmd fp ch P nb S c = elab_success (S', cs') <-> scmd fp ch P S c S' cs').
+    forall ch P nb S S' cs', nb = binders S -> (elab_cmd fp ch P nb S c = elab_success (S', cs') <-> spec_cmd fp ch P S c S' cs').
   Definition Pcmds (cs : list Cst.cmd) : Prop :=
-    forall ch P nb S ccs, nb = binders S -> (elab_cmds fp ch P nb S cs = elab_success ccs <-> scmds fp ch P S cs ccs).
+    forall ch P nb S ccs, nb = binders S -> (elab_cmds fp ch P nb S cs = elab_success ccs <-> spec_cmds fp ch P S cs ccs).
 
   Lemma cmds_iff : forall cs, Forall Pcmd cs -> Pcmds cs.
   Proof.
@@ -726,11 +726,11 @@ Section Commands.
       + intros H; apply elab_bind_elab_success in H as ([S' c'] & H1 & H); apply elab_bind_elab_success in H as (ccs' & H2 & H); inv_elab_success.
         cbn [fst snd] in *. apply (Hc _ _ _ _ _ _ eq_refl) in H1.
         econstructor; [ exact H1 |].
-        refine (proj1 (IH _ _ _ _ _ _) H2). rewrite (scmd_binders _ _ _ _ _ _ H1); reflexivity.
+        refine (proj1 (IH _ _ _ _ _ _) H2). rewrite (spec_cmd_binders _ _ _ _ _ _ H1); reflexivity.
       + intros H; inversion H; subst.
         rewrite (proj2 (Hc _ _ _ _ _ _ eq_refl)) by eassumption; cbn [elab_bind fst snd].
         change (elab_cmds_with (elab_cmd fp) ch P (binders S) S' cs) with (elab_cmds fp ch P (binders S) S' cs).
-        rewrite (proj2 (IH _ _ _ _ _ (eq_sym (scmd_binders _ _ _ _ _ _ ltac:(eassumption))))) by eassumption.
+        rewrite (proj2 (IH _ _ _ _ _ (eq_sym (spec_cmd_binders _ _ _ _ _ _ ltac:(eassumption))))) by eassumption.
         reflexivity.
   Qed.
 
@@ -750,10 +750,10 @@ Section Commands.
 
   Ltac cmd_elab :=
     repeat match goal with
-      | H : sel _ _ _ |- _ => apply elab_iff in H
-      | H : selm _ _ _ |- _ => apply elab_mod_iff in H
-      | H : sparams _ _ _ |- _ => apply elab_params_iff in H
-      | H : scmds fp _ _ ?S ?cs _, IH : Pcmds ?cs |- _ =>
+      | H : spec_exp _ _ _ |- _ => apply elab_iff in H
+      | H : spec_modexp _ _ _ |- _ => apply elab_mod_iff in H
+      | H : spec_params _ _ _ |- _ => apply elab_params_iff in H
+      | H : spec_cmds fp _ _ ?S ?cs _, IH : Pcmds ?cs |- _ =>
           apply (proj2 (IH _ _ _ _ _ eq_refl)) in H; rewrite ?binders_app, ?binders_mem, ?binders_record_scope_entries in H
       | H : NoDup (map fst ?ps) |- _ => apply (check_params_ok ps tt) in H
       | H : fresh ?x ?F |- _ => apply (check_fresh_ok x F tt) in H
@@ -839,13 +839,13 @@ Section Commands.
         rewrite (proj2 (elab_rargs_iff _ _ _)) by eassumption; cbn [elab_bind].
         rewrite (proj2 (check_no_field_ok _ _ _ tt)) by assumption; cbn [elab_bind].
         change (elab_cmds_with (elab_cmd fp)) with (elab_cmds fp).
-        match goal with Hb : scmds fp _ _ _ cs _ |- _ => apply (proj2 (Hcs _ _ _ _ _ eq_refl)) in Hb;
+        match goal with Hb : spec_cmds fp _ _ _ cs _ |- _ => apply (proj2 (Hcs _ _ _ _ _ eq_refl)) in Hb;
           rewrite binders_app, binders_mem, binders_record_scope_entries in Hb; rewrite Hb end.
         reflexivity.
   Qed.
 
   Corollary elab_cmds_iff : forall ch P S cs ccs,
-      elab_cmds fp ch P (binders S) S cs = elab_success ccs <-> scmds fp ch P S cs ccs.
+      elab_cmds fp ch P (binders S) S cs = elab_success ccs <-> spec_cmds fp ch P S cs ccs.
   Proof. intros; apply cmds_iff; [ apply Forall_forall; intros; apply commands_iff | reflexivity ]. Qed.
 End Commands.
 
@@ -914,8 +914,8 @@ Section Counts.
   Variable fp : path.
 
   (** A command keeps its scope counted. *)
-  Lemma scmd_mems_counted : forall ch P S c S' c',
-      scmd fp ch P S c S' c' -> mems_counted S -> mems_counted S'.
+  Lemma spec_cmd_mems_counted : forall ch P S c S' c',
+      spec_cmd fp ch P S c S' c' -> mems_counted S -> mems_counted S'.
   Proof.
     intros * H HS; destruct H; try exact HS.
     all: first
@@ -928,13 +928,13 @@ Section Counts.
 
   (** So does a run of commands: each command [c] of a frame, after the
       commands [cs0], reads a counted scope. *)
-  Lemma scmds_mems_counted : forall ch P cs0 c cs1 S ccs,
-      scmds fp ch P S (cs0 ++ c :: cs1) ccs -> mems_counted S ->
-      exists S1 S1' c', scmd fp ch P S1 c S1' c' /\ mems_counted S1.
+  Lemma spec_cmds_mems_counted : forall ch P cs0 c cs1 S ccs,
+      spec_cmds fp ch P S (cs0 ++ c :: cs1) ccs -> mems_counted S ->
+      exists S1 S1' c', spec_cmd fp ch P S1 c S1' c' /\ mems_counted S1.
   Proof.
     intros ch P cs0; induction cs0 as [| c0 cs0 IH]; intros c cs1 S ccs H HS; inversion H; subst.
     - do 3 eexists; split; eassumption.
-    - eapply IH; [ eassumption | eapply scmd_mems_counted; eassumption ].
+    - eapply IH; [ eassumption | eapply spec_cmd_mems_counted; eassumption ].
   Qed.
 
   (** A nested module's scope is counted when its enclosing one is: its
@@ -972,8 +972,8 @@ Proof.
 Qed.
 
 (** The leading scope has no member, so a unit's frame starts counted. *)
-Lemma slead_no_mem : forall L cs L' lds,
-    slead L cs L' lds -> (forall x p m, ~ In (scope_entry_mem x p m) L) -> forall x p m, ~ In (scope_entry_mem x p m) L'.
+Lemma spec_lead_no_mem : forall L cs L' lds,
+    spec_lead L cs L' lds -> (forall x p m, ~ In (scope_entry_mem x p m) L) -> forall x p m, ~ In (scope_entry_mem x p m) L'.
 Proof.
   induction 1 as [| L fq cs L' lds _ IH | L fq ip args its o E cs L' lds _ _ _ IH]; intros Hn; [ exact Hn | |].
   - apply IH; intros x p m [[=] | Hin]; exact (Hn x p m Hin).
@@ -984,16 +984,16 @@ Qed.
 (** The scope a unit's frame starts in, its parameters over the leading
     scope ([elab_spec_intro]), is counted. *)
 Lemma elab_spec_frame_counted : forall leads ps L lds,
-    slead nil leads L lds -> mems_counted (param_scope_entries ps ++ L).
+    spec_lead nil leads L lds -> mems_counted (param_scope_entries ps ++ L).
 Proof.
   intros * Hl; apply counted_no_mem; intros x p m Hin; apply in_app_or in Hin as [Hin | Hin].
   - unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
-  - exact (slead_no_mem _ _ _ _ Hl (fun _ _ _ H => H) x p m Hin).
+  - exact (spec_lead_no_mem _ _ _ _ Hl (fun _ _ _ H => H) x p m Hin).
 Qed.
 
 (** ** Units *)
 
-Lemma lead_iff : forall cs L L' lds, elab_lead L cs = elab_success (L', lds) <-> slead L cs L' lds.
+Lemma lead_iff : forall cs L L' lds, elab_lead L cs = elab_success (L', lds) <-> spec_lead L cs L' lds.
 Proof.
   induction cs as [| c cs IH]; intros L L' lds; cbn [elab_lead].
   - split; [ intros H; inv_elab_success; constructor | intros H; inversion H; reflexivity ].

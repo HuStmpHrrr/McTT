@@ -21,7 +21,7 @@ Generalizable All Variables.
     back as [nf_lvl_of] of a canonical level ([fast_read_nf_level_lvl_of_nf]), so
     the default is never reached. *)
 Definition lvl_of_nf (W : nf) : lvl :=
-  match W with nf_lvl c xs => (c, xs) | _ => (oz, nil) end.
+  match W with nf_lvl c xs => (c, xs) | _ => (ordinal_zero, nil) end.
 
 Lemma fast_read_nf_level_lvl_of_nf : forall Θ Ξ s l W,
     Rnfᶠ ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
@@ -354,7 +354,7 @@ Inductive fast_read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Pr
   `( fast_read_typ_order Θ Ξ s a ->
     fast_read_nf_order Θ Ξ s ⇓ 𝕌@n a )
 | fast_read_nf_order_lvl :
-  `( fast_read_la_order Θ Ξ s xs ->
+  `( fast_read_level_atoms_order Θ Ξ s xs ->
      fast_read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (lvᵈ c xs) )
 | fast_read_nf_order_lvl_neut :
   `( fast_read_ne_order Θ Ξ s m ->
@@ -503,13 +503,13 @@ with fast_read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      fast_read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
      fast_read_typ_order Θ Ξ s (d_record p ns) )
 
-with fast_read_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
-| fast_read_la_order_nil :
-  `( fast_read_la_order Θ Ξ s nil )
-| fast_read_la_order_cons :
+with fast_read_level_atoms_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
+| fast_read_level_atoms_order_nil :
+  `( fast_read_level_atoms_order Θ Ξ s nil )
+| fast_read_level_atoms_order_cons :
   `( fast_read_ne_order Θ Ξ s m ->
-     fast_read_la_order Θ Ξ s xs ->
-     fast_read_la_order Θ Ξ s ((k, n, m) :: xs) )
+     fast_read_level_atoms_order Θ Ξ s xs ->
+     fast_read_level_atoms_order Θ Ξ s ((k, n, m) :: xs) )
 
 with fast_read_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> Prop :=
 | fast_read_ps_order_nil :
@@ -639,7 +639,7 @@ with fast_read_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> lis
      fast_read_brs_order Θ Ξ s ρ p ups Bks Dc Mv A Mi (pk, k, pre) ((c, gs') :: cs) ((c, n0, B) :: Bs) ).
 
 #[local]
-Hint Constructors fast_read_nf_order fast_read_ne_order fast_read_typ_order fast_read_la_order
+Hint Constructors fast_read_nf_order fast_read_ne_order fast_read_typ_order fast_read_level_atoms_order
   fast_read_ps_order fast_read_fields_order fast_read_cargs_order fast_read_shape_order fast_read_blocks_order fast_read_brs_order : mctt.
 
 (** Every readback derivation is within its order: by the mutual induction
@@ -649,7 +649,7 @@ Lemma fast_read_order_sound : forall Θ Ξ,
     (forall s d m, Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fast_read_nf_order Θ Ξ s d) /\
     (forall s d m, Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fast_read_ne_order Θ Ξ s d) /\
     (forall s d m, Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fast_read_typ_order Θ Ξ s d) /\
-    (forall s xs ys, Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys -> fast_read_la_order Θ Ξ s xs) /\
+    (forall s xs ys, Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys -> fast_read_level_atoms_order Θ Ξ s xs) /\
     (forall s ρ T vs Ms, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fast_read_ps_order Θ Ξ s ρ T vs) /\
     (forall s p ups ρ gs vs Ms, Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fast_read_cargs_order Θ Ξ s p ups ρ gs vs) /\
     (forall s p ups ρ t v V, Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> fast_read_shape_order Θ Ξ s p ups ρ t v) /\
@@ -680,7 +680,7 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (fast_read_order_sound Θ Ξ))). Qed.
 Lemma fast_read_typ_order_sound : forall Θ Ξ s d m, Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fast_read_typ_order Θ Ξ s d.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (fast_read_order_sound Θ Ξ)))). Qed.
 
-Lemma fast_read_la_order_sound : forall Θ Ξ s xs ys, Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys -> fast_read_la_order Θ Ξ s xs.
+Lemma fast_read_level_atoms_order_sound : forall Θ Ξ s xs ys, Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys -> fast_read_level_atoms_order Θ Ξ s xs.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (fast_read_order_sound Θ Ξ))))). Qed.
 
 Lemma fast_read_ps_order_sound : forall Θ Ξ s ρ T vs Ms, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fast_read_ps_order Θ Ξ s ρ T vs.
@@ -707,7 +707,7 @@ Lemma fast_read_fields_order_sound : forall Θ Ξ s ρ fl v Fs,
 Proof. intros Θ Ξ; pose proof (fast_read_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
-Hint Resolve fast_read_nf_order_sound fast_read_ne_order_sound fast_read_typ_order_sound fast_read_la_order_sound
+Hint Resolve fast_read_nf_order_sound fast_read_ne_order_sound fast_read_typ_order_sound fast_read_level_atoms_order_sound
   fast_read_ps_order_sound fast_read_cargs_order_sound fast_read_shape_order_sound fast_read_blocks_order_sound
   fast_read_brs_order_sound fast_read_fields_order_sound : mctt.
 
@@ -732,7 +732,7 @@ Ltac impl_obl_tac1 :=
   | H : fast_read_nf_order _ _ _ _ |- _ => progressive_invert H
   | H : fast_read_ne_order _ _ _ _ |- _ => progressive_invert H
   | H : fast_read_typ_order _ _ _ _ |- _ => progressive_invert H
-  | H : fast_read_la_order _ _ _ _ |- _ => progressive_invert H
+  | H : fast_read_level_atoms_order _ _ _ _ |- _ => progressive_invert H
   | H : fast_read_ps_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : fast_read_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : fast_read_cargs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
@@ -759,11 +759,11 @@ Equations fast_read_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fast_read_nf_order 
     let (A, HA) := fast_read_typ_impl_c s a ck _ in
     exist _ A _
 | s, ⇓ (Levelᵈ@n) (lvᵈ c xs), ck, H =>
-    let (ys, Hys) := fast_read_la_impl_c s xs ck _ in
+    let (ys, Hys) := fast_read_level_atoms_impl_c s xs ck _ in
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
 | s, ⇓ (Levelᵈ@n) (⇑ a m), ck, H =>
     let (M, HM) := fast_read_ne_impl_c s m ck _ in
-    exist _ (lvⁿ oz (cons (mk_level_atom 0 (dsort a) M) nil)) _
+    exist _ (lvⁿ ordinal_zero (cons (mk_level_atom 0 (domain_level_sort a) M) nil)) _
 | s, ⇓ ⊤ᵈ m, ck, H => exist _ ⋆ⁿ _
 | s, ⇓ ⊥ᵈ (⇑ _ m), ck, H =>
     let (M, HM) := fast_read_ne_impl_c s m ck _ in
@@ -884,11 +884,11 @@ Equations fast_read_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fast_read_nf_order 
       exist _ (nf_record p Ps) _
   | exist _ None El => False_rect _ _ }
 
-  with fast_read_la_impl_c s xs (ck : lk_cache Θ Ξ) (H : fast_read_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
+  with fast_read_level_atoms_impl_c s xs (ck : lk_cache Θ Ξ) (H : fast_read_level_atoms_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
 | s, nil, ck, H => exist _ nil _
 | s, cons (k, n, m) xs, ck, H =>
     let (M, HM) := fast_read_ne_impl_c s m ck _ in
-    let (ys, Hys) := fast_read_la_impl_c s xs ck _ in
+    let (ys, Hys) := fast_read_level_atoms_impl_c s xs ck _ in
     exist _ (cons (mk_level_atom k n M) ys) _
 
   with fast_read_ps_impl_c s ρ T vs (ck : lk_cache Θ Ξ) (H : fast_read_ps_order Θ Ξ s ρ T vs) : { Ms | Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
@@ -982,7 +982,7 @@ Equations fast_read_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fast_read_nf_order 
     about the recorded one are then the arguments of the recursion as they
     stand, which the structural recursion needs. *)
 #[local]
-Ltac rb_unify x y :=
+Ltac readback_unify x y :=
   let Heq := fresh "Heq" in
   intro Heq;
   first [ is_var y; lazymatch goal with |- context [y] => subst y end
@@ -990,20 +990,20 @@ Ltac rb_unify x y :=
         | subst ].
 
 #[local]
-Ltac rb_glob :=
+Ltac readback_glob :=
   repeat match goal with
     | H1 : ind_lookup _ _ ?p = Some ?x, H2 : ind_lookup _ _ ?p = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : ind_con ?D ?c = Some ?x, H2 : ind_con ?D ?c = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : ind_member ?D ?k = Some ?x, H2 : ind_member ?D ?k = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : List.nth_error ?Bks ?j = Some ?x, H2 : List.nth_error ?Bks ?j = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
         rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
     | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
@@ -1016,7 +1016,7 @@ Ltac rb_glob :=
     (** A record, looked up once *)
     | H1 : record_lookup _ _ ?p = Some ?x, H2 : record_lookup _ _ ?p = Some ?y |- _ =>
         assert_fails (constr_eq x y);
-        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+        rewrite H1 in H2; injection H2; clear H2; readback_unify x y
     (** The member a member stands for, at the reference the order records *)
     | Hm : fast_eval_mref _ _ ?p _ ?j (?a, ?b, _), Hl : ind_lookup _ _ ?p = Some _, Hj : ind_member _ ?j = Some _,
       Hr : im_ref ?p ?j _ = (?c, ?d) |- _ =>
@@ -1027,24 +1027,24 @@ Ltac rb_glob :=
     end.
 
 #[local]
-Ltac rb_ord :=
-  repeat impl_obl_tac1; rb_glob;
+Ltac readback_order :=
+  repeat impl_obl_tac1; readback_glob;
   first [ eassumption
         (** A readback under a binder: the order of the body is a premise
             quantified over the results of the evaluations above it. *)
         | solve [ eauto 2 ] ].
 
 #[local]
-Ltac rb_eqb := repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end.
+Ltac readback_eqb := repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end.
 
 #[local]
-Ltac rb_run := repeat impl_obl_tac1; rb_glob; rb_eqb; econstructor; eassumption.
+Ltac readback_run := repeat impl_obl_tac1; readback_glob; readback_eqb; econstructor; eassumption.
 
 (** The rules of inductive types have premises the order records under
     quantifiers, and lookups the order rules out when they fail. *)
 #[local]
-Ltac rb_ind :=
-  repeat impl_obl_tac1; rb_glob; rb_eqb;
+Ltac readback_ind :=
+  repeat impl_obl_tac1; readback_glob; readback_eqb;
   first [ congruence
         | solve [ eapply fast_read_nf_con_view_last; eassumption ]
         (** A neutral of a member with a block: its head is not a record
@@ -1054,38 +1054,38 @@ Ltac rb_ind :=
         | econstructor; try eassumption; eauto 3 ].
 
 #[local]
-Ltac rb_obl_auto :=
+Ltac readback_obligation_auto :=
   intros; cbv beta in *;
   lazymatch goal with
-  | |- fast_read_nf_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_ne_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_typ_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_la_order _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fast_read_nf_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_ne_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_typ_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_level_atoms_order _ _ _ _ => first [ readback_order | readback_run ]
   (** The parameters of a type former with arguments: read off its order
       before inversion takes the arguments apart. *)
   | |- fast_read_ps_order _ _ _ _ _ _ =>
       first [ solve [ match goal with H : fast_read_typ_order _ _ _ (d_ind _ _ (_ :: _)) |- _ =>
-                        inversion H; subst; rb_glob; assumption end ]
-            | rb_ord | rb_run ]
-  | |- fast_read_fields_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_eval_proj_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_cargs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_shape_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_blocks_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_read_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_fresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_fresh_cargs_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_fresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_wrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_eval_projs_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_eval_exp_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_eval_exps_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_eval_app_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fast_eval_mref_order _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- _ => abstract (first [ rb_ord | rb_run | eapply fast_read_typ_suniv_of_nf; eassumption | rb_ind ])
+                        inversion H; subst; readback_glob; assumption end ]
+            | readback_order | readback_run ]
+  | |- fast_read_fields_order _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_eval_proj_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_cargs_order _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_shape_order _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_blocks_order _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_read_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_fresh_tele_order _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_fresh_cargs_order _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_fresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_wrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_eval_projs_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_eval_exp_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_eval_exps_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_eval_app_order _ _ _ _ => first [ readback_order | readback_run ]
+  | |- fast_eval_mref_order _ _ _ _ _ => first [ readback_order | readback_run ]
+  | |- _ => abstract (first [ readback_order | readback_run | eapply fast_read_typ_suniv_of_nf; eassumption | readback_ind ])
   end.
 
-Solve All Obligations with rb_obl_auto.
+Solve All Obligations with readback_obligation_auto.
 
 (** The [fast_read_*_impl] functions are sound by construction.  Completeness
     follows from the soundness of the readback orders and the functionality
@@ -1099,8 +1099,8 @@ Definition fast_read_ne_impl s d (H : fast_read_ne_order Θ Ξ s d) : { m | Rne�
   fast_read_ne_impl_c s d (fc_seed F) H.
 Definition fast_read_typ_impl s d (H : fast_read_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
   fast_read_typ_impl_c s d (fc_seed F) H.
-Definition fast_read_la_impl s xs (H : fast_read_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } :=
-  fast_read_la_impl_c s xs (fc_seed F) H.
+Definition fast_read_level_atoms_impl s xs (H : fast_read_level_atoms_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } :=
+  fast_read_level_atoms_impl_c s xs (fc_seed F) H.
 
 #[local]
 Ltac functional_fast_read_complete :=
@@ -1138,9 +1138,9 @@ Proof.
   intros; functional_fast_read_complete.
 Qed.
 
-Lemma fast_read_la_impl_complete : forall s xs ys,
+Lemma fast_read_level_atoms_impl_complete : forall s xs ys,
     Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-    exists H H', fast_read_la_impl s xs H = exist _ ys H'.
+    exists H H', fast_read_level_atoms_impl s xs H = exist _ ys H'.
 Proof.
   intros; functional_fast_read_complete.
 Qed.
@@ -1150,7 +1150,7 @@ End ReadbackImpl.
 Extraction Inline fast_read_nf_impl_c_functional
   fast_read_ne_impl_c_functional
   fast_read_typ_impl_c_functional
-  fast_read_la_impl_c_functional
+  fast_read_level_atoms_impl_c_functional
   fast_read_ps_impl_c_functional
   fast_read_fields_impl_c_functional
   fast_read_cargs_impl_c_functional

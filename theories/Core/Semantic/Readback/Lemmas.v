@@ -167,7 +167,7 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_read Θ Ξ); firstorder.
   Qed.
 
-  Lemma functional_read_la : forall {Θ Ξ} s xs ys1 ys2,
+  Lemma functional_read_level_atoms : forall {Θ Ξ} s xs ys1 ys2,
       Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys1 ->
       Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
       ys1 = ys2.
@@ -198,9 +198,9 @@ Import Domain_Notations.
     it reads back as.  This is what makes the realiser of a level a sound
     index for a small universe in the models: it does not depend on the
     length. *)
-  Lemma read_la_max : forall {Θ Ξ} s xs ys,
+  Lemma read_level_atoms_max : forall {Θ Ξ} s xs ys,
       Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-      forall c, la_max c ys = dla_max c xs.
+      forall c, level_atoms_max c ys = dla_max c xs.
   Proof.
     intros * H; induction H; intros c; cbn; [ reflexivity | congruence ].
   Qed.
@@ -221,12 +221,12 @@ Import Domain_Notations.
     - eexists; split; [ reflexivity |].
       rewrite lvl_real_canon.
       unfold lvl_real, dlvl_real; cbn.
-      erewrite read_la_max by eassumption; reflexivity.
-    - exists (oz, (mk_level_atom 0 (dsort a) M :: nil)%list); split; [ reflexivity | reflexivity ].
+      erewrite read_level_atoms_max by eassumption; reflexivity.
+    - exists (ordinal_zero, (mk_level_atom 0 (domain_level_sort a) M :: nil)%list); split; [ reflexivity | reflexivity ].
   Qed.
 
 #[export]
-Hint Resolve functional_read_nf functional_read_ne functional_read_typ functional_read_la : mctt.
+Hint Resolve functional_read_nf functional_read_ne functional_read_typ functional_read_level_atoms : mctt.
 
 Ltac functional_read_rewrite_clear1 :=
   let tactic_error o1 o2 := fail 3 "functional_read equality between" o1 "and" o2 "cannot be solved by mauto" in

@@ -412,13 +412,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     type, as the induction moving a typing along equivalent substitutions
     needs it, and the δ-reduct, if any, to inhabit it, as soundness needs
     it.  A filed axiom or abstract definition read bare has no δ-reduct
-    ([ds_named]), so the premise never asks for the member itself. *)
+    ([mdesc_named]), so the premise never asks for the member itself. *)
 | wf_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty R = Some A ->
+     mdesc_type R = Some A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
+     (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
 (** A variable, at the type the context gives it. *)
 | wf_vlookup :
@@ -663,9 +663,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_mem_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty R = Some A ->
+     mdesc_type R = Some A ->
      mdenote Θ Ξ Γ (me_mem H' x) R' ->
-     ds_ty R' = Some A' ->
+     mdesc_type R' = Some A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H' x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A )
 | wf_exp_eq_var :
@@ -728,7 +728,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** The eliminator at a view is the eliminator of the view's own group at
     the container's member, its blocks those of the members of this group
     that are the container's group's members at the view's arguments
-    ([vwrap], E1′): a stuck eliminator at a view is a stuck one of the
+    ([view_wrap], E1′): a stuck eliminator at a view is a stuck one of the
     container, at the container's uniform parameters (the view's
     arguments) when the container's group has views too. *)
 | wf_exp_eq_elim_view :
@@ -737,7 +737,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      ind_member D m = Some Mm ->
      im_head Mm = mh_view qc k' Is vm ->
      ind_lookup Θ Ξ qc = Some D' ->
-     vwrap_ok D D' vm ->
+     view_wrap_ok D D' vm ->
      List.nth_error Bks m = Some bm ->
      List.length Bks = ind_nblk D ->
      List.length Ps = im_np D Mm ->
@@ -765,7 +765,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
           : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M
        ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-           (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+           (view_wrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A constructor of a view at the group's uniform parameters [Us] is the
     container's constructor at the view's arguments there, both sides at
@@ -810,8 +810,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_mem_delta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty R = Some A ->
-     ds_red R = Some M ->
+     mdesc_type R = Some A ->
+     mdesc_reduct R = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** [δ] for local definitions: a defined variable is its body.  It is stated
     at every depth, since weakening moves a definition arbitrarily deep. *)
@@ -1118,7 +1118,7 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ E' ≈ E' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
 (** An alias of a literal is the literal over both telescopes, the alias's
-    outermost: the merge lookup performs ([udenote_alias], [ds_up]).  The
+    outermost: the merge lookup performs ([udenote_alias], [mdesc_up]).  The
     alias's parameters form an extension of [Γ], and the literal is a unit
     under them. *)
 | wf_unit_eq_flatten :
@@ -1136,7 +1136,7 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
 where "Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'" := (wf_unit_eq Θ Ξ Γ U U') : type_scope
 
 (** Module expressions.  A module expression is a module when the module
-    part of what it denotes has a telescope ([ds_mtele]), and an argument is
+    part of what it denotes has a telescope ([mdesc_mod_tele]), and an argument is
     checked against the outermost parameter of that telescope
     ([tele_view]): a module is applied to at most as many arguments as it has
     parameters.  Both arguments are typed, as the parts of an extension are,
@@ -1160,22 +1160,22 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
 | wf_me_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mtele R = Some T ->
+     mdesc_mod_tele R = Some T ->
      mdenote Θ Ξ Γ (me_mem H' y) R' ->
-     ds_mtele R' = Some T' ->
+     mdesc_mod_tele R' = Some T' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H' y )
 (** An application: the argument is checked against the outermost
     parameter of the telescope of what the module expression denotes. *)
 | wf_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ H R ->
-     ds_mtele R = Some T ->
+     mdesc_mod_tele R = Some T ->
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
-     ds_mtele R' = Some T' ->
+     mdesc_mod_tele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Typeω@j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
@@ -1187,14 +1187,14 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      Γ ∋ #x ≔ₘ U ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_var x ≈ me_lit U )
 (** A module member is the unit the module part of what the selection looks
-    up stands for ([ds_unit]): a body module of a filed module, the filed
+    up stands for ([mdesc_unit]): a body module of a filed module, the filed
     module at its own path; an alias, its target's; a module of a local
     body, its literal with the entries before it filled in. *)
 | wf_me_delta_sel :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mod R = Some Rm ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ ds_unit Rm )
+     mdesc_mod R = Some Rm ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ mdesc_unit Rm )
 (** *** [β] *)
 (** A literal body or alias given its outermost parameter is the literal
     instantiated; an alias with no parameter is its target. *)
@@ -1453,7 +1453,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (** each view's members are those of the container's group, as the
          eliminator at the view reads them *)
      (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-        exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm) ->
+        exists D', ind_lookup Θ Ξ qc = Some D' /\ view_wrap_ok D D' vm) ->
      (** the views agree on their maps *)
      view_maps_coherent Θ Ξ D ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp 0 D ⋄ )
@@ -2073,13 +2073,13 @@ Proof.
     apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption.
 Qed.
 
-Lemma wf_exp_eq_maxl_llit_ole : forall {Θ Ξ Γ} o o' n,
-    ole o o' ->
+Lemma wf_exp_eq_maxl_llit_ordinal_le : forall {Θ Ξ Γ} o o' n,
+    ordinal_le o o' ->
     fst o' <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ o) (𝕃ᵒ o') ≈ 𝕃ᵒ o' : Level@n.
 Proof.
-  intros Θ Ξ Γ [a b] [a' b'] n Hle Hn HΓ; unfold ole in Hle; cbn in Hle, Hn.
+  intros Θ Ξ Γ [a b] [a' b'] n Hle Hn HΓ; unfold ordinal_le in Hle; cbn in Hle, Hn.
   destruct Hle as [Ha | [<- Hb]].
   - apply wf_exp_eq_maxl_llit_lower; assumption.
   - replace b' with ((b' - b) + b) by lia; apply wf_exp_eq_maxl_llit_tier; assumption.
@@ -2090,16 +2090,16 @@ Lemma wf_subtyp_small_large_lit : forall {Θ Ξ Γ o i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ⊆ Typeω@i.
 Proof. intros; eapply wf_subtyp_small_large; [ assumption | apply wf_llit_ord; assumption ]. Qed.
 
-Lemma wf_subtyp_suniv_ole : forall {Θ Ξ Γ o o'},
+Lemma wf_subtyp_suniv_ordinal_le : forall {Θ Ξ Γ o o'},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    ole o o' ->
+    ordinal_le o o' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ⊆ Type⟨𝕃ᵒ o'⟩.
 Proof.
   intros * HΓ Hle.
-  assert (fst o <= fst o') by (destruct o, o'; unfold ole in Hle; cbn in *; lia).
+  assert (fst o <= fst o') by (destruct o, o'; unfold ordinal_le in Hle; cbn in *; lia).
   eapply (wf_subtyp_suniv _ _ _ (fst o'));
     [ assumption | apply wf_llit; assumption | apply wf_llit; [ reflexivity | assumption ]
-    | apply wf_exp_eq_maxl_llit_ole; [ assumption | reflexivity | assumption ] ].
+    | apply wf_exp_eq_maxl_llit_ordinal_le; [ assumption | reflexivity | assumption ] ].
 Qed.
 
 Lemma wf_subtyp_suniv_succl : forall {Θ Ξ Γ a b},
@@ -2143,19 +2143,19 @@ Hint Resolve wf_univ_lit wf_exp_eq_univ_cong_lit : mctt.
 (** The universe at an index [u], as a term of the large universe just above
     it: [Typeω@j] is in [Typeω@(S j)], and every small universe is in
     [Typeω@0]. *)
-Lemma wf_ulvl_tm : forall {Θ Ξ Γ} {u : uidx},
-    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u : Typeω@(ulvl_above u).
+Lemma wf_universe_index_term : forall {Θ Ξ Γ} {u : universe_index},
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ universe_index_term u : Typeω@(large_level_above u).
 Proof. intros ? ? ? []; [ apply wf_univ_large | apply wf_typ ]. Qed.
 
 (** A universe is closed, so no substitution reaches it. *)
-Lemma exp_sub_ulvl_tm : forall u σ, (ulvl_tm u)[σ] = ulvl_tm u.
+Lemma exp_sub_universe_index_term : forall u σ, (universe_index_term u)[σ] = universe_index_term u.
 Proof. intros [] ?; reflexivity. Qed.
 
 
 (** As hints, these fix a large universe the goal leaves open to [Typeω@0]
     (a small one to [Type@0]), so that a search never ends with an
     uninstantiated level. *)
-Ltac fix_open_level i := first [ is_evar i; first [ unify i 0 | unify i oz ] | idtac ].
+Ltac fix_open_level i := first [ is_evar i; first [ unify i 0 | unify i ordinal_zero ] | idtac ].
 
 (** [wf_subtyp_small_large] constrains nothing about the small level, so as a
     constructor hint it would leave it open whenever the left-hand side is;

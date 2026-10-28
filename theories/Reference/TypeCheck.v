@@ -142,7 +142,7 @@ Section type_check.
     | a_mem M' x =>
         let*b->o HM := modexp_check G HG M' _ while _ in
         let*o (exist _ R _) := mem_denote_dec F _ G M' x _ while _ in
-        let*o (exist _ A _) := ds_ty_dec R while _ in
+        let*o (exist _ A _) := mdesc_type_dec R while _ in
         let (B, _) := nbe_ty_env_impl F G P A _ in
         pureo (exist _ B _)
     | #x =>
@@ -198,7 +198,7 @@ Section type_check.
   with modexp_check G (HG : ⊢ G) M (H : modexp_order M) : { G ⊢aᵐ M } + { ~ G ⊢aᵐ M } by struct H :=
   | G, HG, me_unit fp, H =>
       let*o->b (exist _ R _) := path_denote_dec F _ G fp while _ in
-      let*o->b (exist _ T _) := ds_mtele_dec R while _ in
+      let*o->b (exist _ T _) := mdesc_mod_tele_dec R while _ in
       pureb _
   | G, HG, me_var x, H with inspect (ctx_find_mod G x) := {
     | exist _ (Some U) E => left _
@@ -209,12 +209,12 @@ Section type_check.
   | G, HG, me_mem M y, H =>
       let*b HM := modexp_check G HG M _ while _ in
       let*o->b (exist _ R _) := mem_denote_dec F _ G M y _ while _ in
-      let*o->b (exist _ T _) := ds_mtele_dec R while _ in
+      let*o->b (exist _ T _) := mdesc_mod_tele_dec R while _ in
       pureb _
   | G, HG, me_app M N, H =>
       let*b HM := modexp_check G HG M _ while _ in
       let*o->b (exist _ R _) := mdenote_dec F _ G M _ while _ in
-      let*o->b (exist _ T _) := ds_mtele_dec R while _ in
+      let*o->b (exist _ T _) := mdesc_mod_tele_dec R while _ in
       let*o->b (existT _ B (exist _ T1 _)) := tele_view_dec T while _ in
       let*b _ := type_check_in G B _ (tenv_of F G HG) N _ while _ in
       pureb _
@@ -249,7 +249,7 @@ Section type_check.
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
       let*b->o HM := modexp_check (body_ctx Φx ++ G) _ M _ while _ in
       let*o (exist _ R _) := mdenote_dec F _ (body_ctx Φx ++ G) M _ while _ in
-      let*o (exist _ Rm _) := ds_mod_dec R while _ in
+      let*o (exist _ Rm _) := mdesc_mod_dec R while _ in
       let*o (exist _ gs _) := items_gen_dec F _ (body_ctx Φx ++ G) M its _ while _ in
       let*b->o _ := items_ok_dec its while _ in
       pureo (exist _ (gens_append Φx 0 gs) _)

@@ -81,9 +81,9 @@ Proof.
 Qed.
 
 (** A type at a small index is also one at a large index. *)
-Lemma per_univ_elem_to_nat : forall (i : uidx) R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+Lemma per_univ_elem_to_nat : forall (i : universe_index) R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R ->
     exists n : nat, DF a ≈ a' ∈ per_univ_elem n ↘ R.
-Proof. intros [o | n] * H; [ exists 0; eapply per_univ_elem_cumu_uidx; [ exact H | exact I ] | exists n; exact H ]. Qed.
+Proof. intros [o | n] * H; [ exists 0; eapply per_univ_elem_cumu_universe_index; [ exact H | exact I ] | exists n; exact H ]. Qed.
 
 (** ** The Elements of a [Π] over a Telescope
 
@@ -93,7 +93,7 @@ Proof. intros [o | n] * H; [ exists 0; eapply per_univ_elem_cumu_uidx; [ exact H
 Lemma ctx_pi_rel_elem : forall N (f : list domain -> domain) B,
     (forall xs x, List.length xs < N -> $| f xs & x | gc_deps ⍮ gc_stack ↘ f (xs ++ x :: nil)) ->
     forall ts, tele_ass ts ->
-    forall ρ ρ' xs xs' a a' (i : uidx) R,
+    forall ρ ρ' xs xs' a a' (i : universe_index) R,
       List.length xs + List.length ts = N -> List.length xs' = List.length xs ->
       ⟦ ctx_pi (List.rev ts) B ⟧ env_args ρ xs ↘ a -> ⟦ ctx_pi (List.rev ts) B ⟧ env_args ρ' xs' ↘ a' ->
       DF a ≈ a' ∈ per_univ_elem i ↘ R ->
@@ -250,7 +250,7 @@ Qed.
 (** ** Universes *)
 
 (** The index of the elements of a universe. *)
-Definition univ_idx (a : domain) : uidx :=
+Definition univ_idx (a : domain) : universe_index :=
   match a with
   | d_univ j => ul j
   | d_suniv l => us (dlvl_real l)
@@ -259,7 +259,7 @@ Definition univ_idx (a : domain) : uidx :=
 
 Definition is_univ (a : domain) : Prop := (exists j, a = d_univ j) \/ (exists l, a = d_suniv l).
 
-Lemma per_univ_elem_univ : forall (i : uidx) R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R -> is_univ a ->
+Lemma per_univ_elem_univ : forall (i : universe_index) R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R -> is_univ a ->
     univ_idx a' = univ_idx a /\ (R <~> per_univ (univ_idx a)).
 Proof.
   intros * H [[j ->] | [l ->]]; basic_invert_per_univ_elem H; cbn [univ_idx].

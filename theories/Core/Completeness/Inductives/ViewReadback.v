@@ -49,7 +49,7 @@ Section Fixed_GCtx.
     [cups].  The container's member [i'] and the group's member [v] the
     view takes it to. *)
 (** The relations of types linked by a related pair agree. *)
-Lemma rel_link : forall (i j k : uidx) R T S a b c d, DF a ≈ b ∈ per_univ_elem i ↘ R -> DF b ≈ c ∈ per_univ_elem j ↘ T ->
+Lemma rel_link : forall (i j k : universe_index) R T S a b c d, DF a ≈ b ∈ per_univ_elem i ↘ R -> DF b ≈ c ∈ per_univ_elem j ↘ T ->
     DF c ≈ d ∈ per_univ_elem k ↘ S -> (R <~> S).
 Proof.
   intros * H1 H2 H3.
@@ -57,7 +57,7 @@ Proof.
 Qed.
 
 (** A fresh variable of a type is related to one of a related type. *)
-Lemma fresh_var_rel : forall (i : uidx) R a b s, DF a ≈ b ∈ per_univ_elem i ↘ R -> R (⇑! a s) (⇑! b s).
+Lemma fresh_var_rel : forall (i : universe_index) R a b s, DF a ≈ b ∈ per_univ_elem i ↘ R -> R (⇑! a s) (⇑! b s).
 Proof. intros * H; exact (per_bot_then_per_elem H var_per_bot). Qed.
 
 Lemma fresh_tele_cons_inv : forall A T ρ s vs, Ftele ce_ass A :: T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
@@ -75,7 +75,7 @@ Lemma view_end_type : forall VP, valid_groups VP -> forall pq G, VP pq G ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
       per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs ->
       ntele_rel G (canon_nparams_rel G ups) j bs bs' ->
-      exists (i : uidx) R, DF d_ind qc kc (cups ++ bs) ≈ d_ind qc kc (cs ++ bs') ∈ per_univ_elem i ↘ R.
+      exists (i : universe_index) R, DF d_ind qc kc (cups ++ bs) ≈ d_ind qc kc (cs ++ bs') ∈ per_univ_elem i ↘ R.
 Proof.
   intros VP HP pq G HPG ups Hgu Hu j Mj qc kc Is vm Dq cups cs bs bs' HMj Hh Hq Ecups Hcs Hbs.
   pose proof (valid_groups_valid VP HP pq G HPG) as Hg.
@@ -162,7 +162,7 @@ Lemma cross_doms_fresh : forall p D, valid_group p D -> forall u0, per_gargs (Li
     forall v Mv c gs gs1 t gs2 ms ms' ws ws', ind_member D v = Some Mv -> ind_con Mv c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
       tele_rel (canon_nparams_rel D u0 v) (List.rev (im_nparams Mv)) ms ms' ->
       tele_prefix_rel (canon_args_rel D u0 v ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-      forall qc ub n kk t' preQ ys ys' a1 a2 (i : uidx) R, kk + n = List.length (ptyp_doms t) -> ptyp_depth t' = n ->
+      forall qc ub n kk t' preQ ys ys' a1 a2 (i : universe_index) R, kk + n = List.length (ptyp_doms t) -> ptyp_depth t' = n ->
         tele_prefix_rel (shape_doms_rel (canon_doms_rel u0 v) ms ws (ptyp_doms t)) kk ys ys' ->
         ⟦shty t' of qc ub ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ preQ) ↘ a1 ->
         ⟦shty ptyp_skip kk t of p u0 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ ms' ++ ws' ++ ys') ↘ a2 ->
@@ -703,7 +703,7 @@ Section CrossFresh.
         (** The two variables related at [CG] *)
       ; fresh_heads_agree : per_head CG CG (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)) (⇑! aA s) (⇑! aB s)
         (** Their types related *)
-      ; fresh_types_related : exists (i : uidx) R, DF aA ≈ aB ∈ per_univ_elem i ↘ R }.
+      ; fresh_types_related : exists (i : universe_index) R, DF aA ≈ aB ∈ per_univ_elem i ↘ R }.
 
     (** One position:the container's type there [CA], the group's [CG],
         the container's variable's type [aA] related to [CA] at its side,
@@ -2914,9 +2914,9 @@ Section CrossBot.
         assert (HrvN : im_is_rview Mn = false).
         { destruct (im_is_rview Mn) eqn:E; [| reflexivity ].
           apply (proj1 (rview_struct_suffix _ _ _ HrsQ _ _ HMn)) in E; lia. }
-        destruct (grp_tele_ass_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw); rewrite Hq in Hq2; injection Hq2 as <-.
+        destruct (grp_tele_ass_view_wrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw); rewrite Hq in Hq2; injection Hq2 as <-.
         assert (Hnl : n < List.length vm)
-          by (rewrite (vwrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
+          by (rewrite (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
         destruct (nth_error_lt_some' _ _ Hnl) as [b Hvb].
         destruct (cross_view_members n b Hvb) as (Mn0 & Mb & HMn0 & Hvmb2).
         rewrite HMn in HMn0; injection HMn0 as <-.
@@ -2970,10 +2970,10 @@ Section CrossBot.
         assert (Hvmv : forall a' a, List.nth_error vmv a' = Some a ->
                   exists Ma' Ma, ind_member Dq a' = Some Ma' /\ view_member qc D' qv Dq vmv a' Ma' a Ma).
         { intros a' a Hva'.
-          destruct (grp_tele_ass_vwrap _ HassQ _ _ _ _ _ _ HMi' Hh') as (D3 & Hq3 & Hvw3).
+          destruct (grp_tele_ass_view_wrap _ HassQ _ _ _ _ _ _ HMi' Hh') as (D3 & Hq3 & Hvw3).
           rewrite HDq in Hq3; injection Hq3 as <-.
           assert (Hi : a' < List.length (ind_members Dq))
-            by (rewrite <- (vwrap_ok_length _ _ _ Hvw3); apply List.nth_error_Some; congruence).
+            by (rewrite <- (view_wrap_ok_length _ _ _ Hvw3); apply List.nth_error_Some; congruence).
           destruct (nth_error_lt_some' _ _ Hi) as [Ma' HMa'].
           destruct (view_agree_members qc D' i' Mi' qv kv Iv vmv Dq HassQ HMi' Hh' HDq a' Ma' HMa') as (a0 & Ma & Hvm0).
           pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm0) as Hv0; rewrite Hva' in Hv0; injection Hv0 as <-.

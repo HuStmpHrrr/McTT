@@ -244,38 +244,38 @@ Proof. intros; apply (proj2 nf_cmp_wk); assumption. Qed.
 Lemma at_cmp_wk : forall φ a s b t, wk_mono φ -> at_cmp (ne_wk φ a) s (ne_wk φ b) t = at_cmp a s b t.
 Proof. intros; unfold at_cmp; rewrite ne_cmp_wk by assumption; reflexivity. Qed.
 
-Lemma la_ins_wk : forall φ, wk_mono φ ->
-    forall k s a ys, List.map (map_level_atom (ne_wk φ)) (la_ins k s a ys)
-                     = la_ins k s (ne_wk φ a) (List.map (map_level_atom (ne_wk φ)) ys).
+Lemma level_atoms_insert_wk : forall φ, wk_mono φ ->
+    forall k s a ys, List.map (map_level_atom (ne_wk φ)) (level_atoms_insert k s a ys)
+                     = level_atoms_insert k s (ne_wk φ a) (List.map (map_level_atom (ne_wk φ)) ys).
 Proof.
-  intros φ Hφ k s a; induction ys as [| [k' t b] r IH]; cbn [la_ins List.map]; [ reflexivity |].
+  intros φ Hφ k s a; induction ys as [| [k' t b] r IH]; cbn [level_atoms_insert List.map]; [ reflexivity |].
   unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level].
   rewrite at_cmp_wk by assumption.
   destruct (at_cmp a s b t); cbn [List.map]; rewrite ?IH; reflexivity.
 Qed.
 
-Lemma la_sort_wk : forall φ, wk_mono φ -> forall xs,
-    List.map (map_level_atom (ne_wk φ)) (la_sort xs) = la_sort (List.map (map_level_atom (ne_wk φ)) xs).
+Lemma level_atoms_sort_wk : forall φ, wk_mono φ -> forall xs,
+    List.map (map_level_atom (ne_wk φ)) (level_atoms_sort xs) = level_atoms_sort (List.map (map_level_atom (ne_wk φ)) xs).
 Proof.
-  intros φ Hφ; induction xs as [| [k s a] r IH]; cbn [la_sort List.map]; [ reflexivity |].
-  rewrite la_ins_wk, IH by assumption; reflexivity.
+  intros φ Hφ; induction xs as [| [k s a] r IH]; cbn [level_atoms_sort List.map]; [ reflexivity |].
+  rewrite level_atoms_insert_wk, IH by assumption; reflexivity.
 Qed.
 
-Lemma la_keep_wk : forall φ c xs,
-    List.map (map_level_atom (ne_wk φ)) (la_keep c xs) = la_keep c (List.map (map_level_atom (ne_wk φ)) xs).
+Lemma level_atoms_keep_wk : forall φ c xs,
+    List.map (map_level_atom (ne_wk φ)) (level_atoms_keep c xs) = level_atoms_keep c (List.map (map_level_atom (ne_wk φ)) xs).
 Proof.
-  intros φ c; induction xs as [| [k s a] r IH]; cbn [la_keep List.map]; [ reflexivity |].
-  unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level la_keep].
+  intros φ c; induction xs as [| [k s a] r IH]; cbn [level_atoms_keep List.map]; [ reflexivity |].
+  unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level level_atoms_keep].
   destruct (fst c <=? s); cbn [List.map]; rewrite IH; reflexivity.
 Qed.
 
-Lemma la_maxoff_wk : forall φ xs, la_maxoff (List.map (map_level_atom (ne_wk φ)) xs) = la_maxoff xs.
+Lemma level_atoms_max_offset_wk : forall φ xs, level_atoms_max_offset (List.map (map_level_atom (ne_wk φ)) xs) = level_atoms_max_offset xs.
 Proof. intros φ; induction xs as [| [k s a] r IH]; cbn; congruence. Qed.
 
 Theorem lvl_canon_wk : forall φ, wk_mono φ -> forall l, lvl_canon (lvl_wk φ l) = lvl_wk φ (lvl_canon l).
 Proof.
   intros φ Hφ [c xs]; unfold lvl_canon, lvl_wk; cbn [fst snd].
-  rewrite <- la_sort_wk, <- la_keep_wk, la_maxoff_wk by assumption; reflexivity.
+  rewrite <- level_atoms_sort_wk, <- level_atoms_keep_wk, level_atoms_max_offset_wk by assumption; reflexivity.
 Qed.
 
 (** ** Freshness

@@ -26,7 +26,7 @@
     so every value evaluated in it.
 
     That readback only meets levels below [s] is the invariant [domain_avoids] of
-    [Core.Semantic.Avoid], at every excluded level [v ≥ s] ([dbd]). *)
+    [Core.Semantic.Avoid], at every excluded level [v ≥ s] ([domain_bounded]). *)
 From Stdlib Require Import Arith Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
@@ -120,11 +120,11 @@ Section Rename.
   Lemma env_args_rn : forall args ρ, env_rename (env_args ρ args) = env_args (env_rename ρ) (List.map domain_rename args).
   Proof. induction args; intros; cbn; [ reflexivity | apply IHargs ]. Qed.
 
-  Lemma dsort_rn : forall d, dsort (domain_rename d) = dsort d.
+  Lemma domain_level_sort_rn : forall d, domain_level_sort (domain_rename d) = domain_level_sort d.
   Proof. destruct d; reflexivity. Qed.
 
   Lemma dlvl_view_rn : forall d, dlvl_view (domain_rename d) = (fst (dlvl_view d), level_atoms_rename (snd (dlvl_view d))).
-  Proof. destruct d; cbn; try reflexivity; rewrite dsort_rn; reflexivity. Qed.
+  Proof. destruct d; cbn; try reflexivity; rewrite domain_level_sort_rn; reflexivity. Qed.
 
   Lemma dlvl_suc_rn : forall d, domain_rename (dlvl_suc d) = dlvl_suc (domain_rename d).
   Proof.
@@ -166,39 +166,39 @@ Section Eval.
   #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn dlvl_suc_rn dlvl_max_rn
     List.map_app List.length_map List.firstn_map List.skipn_map : rn.
 
-  Lemma kpad_rn : forall n ρ, env_rename f (kpad n ρ) = kpad n (env_rename f ρ).
-  Proof. intros; unfold kpad, env_rename; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
+  Lemma kinds_placeholders_rn : forall n ρ, env_rename f (kinds_placeholders n ρ) = kinds_placeholders n (env_rename f ρ).
+  Proof. intros; unfold kinds_placeholders, env_rename; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
 
-  Lemma kbentry_rn : forall ρ E, dentry_rename f (kbentry ρ E) = kbentry (env_rename f ρ) E.
+  Lemma kinds_body_entry_rn : forall ρ E, dentry_rename f (kinds_body_entry ρ E) = kinds_body_entry (env_rename f ρ) E.
   Proof. intros ρ [? ? ? ? | ? [] | ? ? ? ? ? | ? ? ? [] | ? ? ? ?]; reflexivity. Qed.
 
-  Lemma kgens_env_rn : forall gs ρ k, env_rename f (kgens_env ρ k gs) = kgens_env (env_rename f ρ) k gs.
+  Lemma kinds_items_gen_env_rn : forall gs ρ k, env_rename f (kinds_items_gen_env ρ k gs) = kinds_items_gen_env (env_rename f ρ) k gs.
   Proof.
-    induction gs as [| g gs IH]; intros; cbn [kgens_env]; [ reflexivity |].
+    induction gs as [| g gs IH]; intros; cbn [kinds_items_gen_env]; [ reflexivity |].
     rewrite IH; f_equal; destruct g; reflexivity.
   Qed.
 
   (** Kinds read no level. *)
   Lemma kind_rn :
-    (forall h ch k, dkind Θ Ξ h ch k -> dkind Θ Ξ (dmod_rename f h) ch k) /\
-    (forall ρ U ch k, ukind Θ Ξ ρ U ch k -> ukind Θ Ξ (env_rename f ρ) U ch k) /\
-    (forall ρ H ch k, skind Θ Ξ ρ H ch k -> skind Θ Ξ (env_rename f ρ) H ch k) /\
-    (forall ρ Φ ρ', kenv Θ Ξ ρ Φ ρ' -> kenv Θ Ξ (env_rename f ρ) Φ (env_rename f ρ')) /\
-    (forall ρ Φ Φx, kbody Θ Ξ ρ Φ Φx -> kbody Θ Ξ (env_rename f ρ) Φ Φx) /\
-    (forall ρ H its gs, kgens Θ Ξ ρ H its gs -> kgens Θ Ξ (env_rename f ρ) H its gs).
+    (forall h ch k, dmod_member_kind Θ Ξ h ch k -> dmod_member_kind Θ Ξ (dmod_rename f h) ch k) /\
+    (forall ρ U ch k, gunit_member_kind Θ Ξ ρ U ch k -> gunit_member_kind Θ Ξ (env_rename f ρ) U ch k) /\
+    (forall ρ H ch k, modexp_member_kind Θ Ξ ρ H ch k -> modexp_member_kind Θ Ξ (env_rename f ρ) H ch k) /\
+    (forall ρ Φ ρ', kinds_env Θ Ξ ρ Φ ρ' -> kinds_env Θ Ξ (env_rename f ρ) Φ (env_rename f ρ')) /\
+    (forall ρ Φ Φx, kinds_body_xp Θ Ξ ρ Φ Φx -> kinds_body_xp Θ Ξ (env_rename f ρ) Φ Φx) /\
+    (forall ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs -> kinds_items_gen Θ Ξ (env_rename f ρ) H its gs).
   Proof.
     apply kind_mut_ind; intros; cbn [dmod_rename env_rename List.map dentry_rename domain_rename] in *;
       repeat change (List.map (dentry_rename f) ?ρ) with (env_rename f ρ) in *;
-      rewrite ?kpad_rn in *; try rewrite <- kpad_rn in *;
+      rewrite ?kinds_placeholders_rn in *; try rewrite <- kinds_placeholders_rn in *;
       try solve [ econstructor; eauto ].
-    all: try solve [ rewrite kgens_env_rn; econstructor; eauto ].
-    all: try solve [ rewrite kbentry_rn; econstructor; eauto ].
-    all: try solve [ econstructor; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
-    all: try solve [ econstructor; rewrite <- kpad_rn; eassumption ].
+    all: try solve [ rewrite kinds_items_gen_env_rn; econstructor; eauto ].
+    all: try solve [ rewrite kinds_body_entry_rn; econstructor; eauto ].
+    all: try solve [ econstructor; [ eassumption | rewrite <- kinds_placeholders_rn; eassumption | eassumption ] ].
+    all: try solve [ econstructor; rewrite <- kinds_placeholders_rn; eassumption ].
     all: try solve [ econstructor; rewrite env_mod_rn; eassumption ].
-    all: try solve [ eapply ukind_item_mod; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
-    all: try solve [ eapply ukind_item_dm; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
-    all: try solve [ eapply ukind_dm_step; [ eassumption | eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply gunit_member_kind_item_mod; [ eassumption | rewrite <- kinds_placeholders_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply gunit_member_kind_item_dm; [ eassumption | rewrite <- kinds_placeholders_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply gunit_member_kind_dm_step; [ eassumption | eassumption | rewrite <- kinds_placeholders_rn; eassumption | eassumption ] ].
   Qed.
 
   Lemma eval_rn :
@@ -305,12 +305,12 @@ End Eval.
 Section Bound.
   Variables (Θ : gdeps) (Ξ : gstack).
 
-  Definition dbd (b : nat) (d : domain) : Prop := forall v, b <= v -> domain_avoids Θ Ξ v b d.
-  Definition dbd_ne (b : nat) (m : domain_ne) : Prop := forall v, b <= v -> domain_ne_avoids Θ Ξ v b m.
-  Definition dbd_nf (b : nat) (n : domain_nf) : Prop := forall v, b <= v -> domain_nf_avoids Θ Ξ v b n.
-  Definition dbd_la (b : nat) (xs : list (nat * nat * domain_ne)) : Prop := forall v, b <= v -> level_atoms_avoid Θ Ξ v b xs.
+  Definition domain_bounded (b : nat) (d : domain) : Prop := forall v, b <= v -> domain_avoids Θ Ξ v b d.
+  Definition domain_ne_bounded (b : nat) (m : domain_ne) : Prop := forall v, b <= v -> domain_ne_avoids Θ Ξ v b m.
+  Definition domain_nf_bounded (b : nat) (n : domain_nf) : Prop := forall v, b <= v -> domain_nf_avoids Θ Ξ v b n.
+  Definition level_atoms_bounded (b : nat) (xs : list (nat * nat * domain_ne)) : Prop := forall v, b <= v -> level_atoms_avoid Θ Ξ v b xs.
 
-  Ltac dbd_inv := unfold dbd, dbd_ne, dbd_nf, dbd_la in *; intros * H; repeat split; intros v Hv;
+  Ltac domain_bounded_inv := unfold domain_bounded, domain_ne_bounded, domain_nf_bounded, level_atoms_bounded in *; intros * H; repeat split; intros v Hv;
     repeat match goal with H : forall v, _ <= v -> _ |- _ => specialize (H v ltac:(lia)) end;
     repeat match goal with
       | H : domain_avoids _ _ _ _ (_ _) |- _ => inversion_clear H
@@ -324,48 +324,48 @@ Section Bound.
       end;
     try lia; try assumption.
 
-  Lemma dbd_nf_inv : forall b a m, dbd_nf b (⇓ a m) -> dbd b a /\ dbd b m.
-  Proof. dbd_inv. Qed.
-  Lemma dbd_neut_inv : forall b a m, dbd b (⇑ a m) -> dbd b a /\ dbd_ne b m.
-  Proof. dbd_inv. Qed.
-  Lemma dbd_suniv_inv : forall b l, dbd b 𝕌@l -> dbd b l.
-  Proof. dbd_inv. Qed.
-  Lemma dbd_lvl_inv : forall b c xs, dbd b (lvᵈ c xs) -> dbd_la b xs.
-  Proof. dbd_inv. Qed.
-  Lemma dbd_la_inv : forall b k n m xs, dbd_la b ((k, n, m) :: xs) -> dbd_ne b m /\ dbd_la b xs.
-  Proof. dbd_inv. Qed.
-  Lemma dbd_app_inv : forall b m n, dbd_ne b (m $ᵈ n) -> dbd_ne b m /\ dbd_nf b n.
-  Proof. dbd_inv. Qed.
-  Lemma dbd_var_inv : forall b x, dbd_ne b (#ᵈ x) -> x < b.
+  Lemma domain_nf_bounded_inv : forall b a m, domain_nf_bounded b (⇓ a m) -> domain_bounded b a /\ domain_bounded b m.
+  Proof. domain_bounded_inv. Qed.
+  Lemma domain_bounded_neut_inv : forall b a m, domain_bounded b (⇑ a m) -> domain_bounded b a /\ domain_ne_bounded b m.
+  Proof. domain_bounded_inv. Qed.
+  Lemma domain_bounded_suniv_inv : forall b l, domain_bounded b 𝕌@l -> domain_bounded b l.
+  Proof. domain_bounded_inv. Qed.
+  Lemma domain_bounded_lvl_inv : forall b c xs, domain_bounded b (lvᵈ c xs) -> level_atoms_bounded b xs.
+  Proof. domain_bounded_inv. Qed.
+  Lemma level_atoms_bounded_inv : forall b k n m xs, level_atoms_bounded b ((k, n, m) :: xs) -> domain_ne_bounded b m /\ level_atoms_bounded b xs.
+  Proof. domain_bounded_inv. Qed.
+  Lemma domain_bounded_app_inv : forall b m n, domain_ne_bounded b (m $ᵈ n) -> domain_ne_bounded b m /\ domain_nf_bounded b n.
+  Proof. domain_bounded_inv. Qed.
+  Lemma domain_bounded_var_inv : forall b x, domain_ne_bounded b (#ᵈ x) -> x < b.
   Proof. intros * H; specialize (H b (le_n _)); inversion H; assumption. Qed.
 
-  Lemma dbd_mono : forall b b' d, b <= b' -> dbd b d -> dbd b' d.
+  Lemma domain_bounded_mono : forall b b' d, b <= b' -> domain_bounded b d -> domain_bounded b' d.
   Proof. intros * Hb H v Hv; eapply domain_avoids_mono'; [| apply H ]; lia. Qed.
 
-  Lemma dbd_fresh : forall b s a, s < b -> dbd s a -> dbd b (⇑! a s).
+  Lemma domain_bounded_fresh : forall b s a, s < b -> domain_bounded s a -> domain_bounded b (⇑! a s).
   Proof.
     intros * Hs Ha v Hv; constructor; [ eapply domain_avoids_mono'; [| apply Ha ]; lia | constructor; lia ].
   Qed.
 
-  Lemma dbd_bot : forall b, dbd b ⊥ᵈ.
+  Lemma domain_bounded_bot : forall b, domain_bounded b ⊥ᵈ.
   Proof. intros b v Hv; constructor. Qed.
-  Lemma dbd_level : forall b n, dbd b (Levelᵈ@n).
+  Lemma domain_bounded_level : forall b n, domain_bounded b (Levelᵈ@n).
   Proof. intros b v Hv; constructor. Qed.
 
-  Lemma dbd_nf_dom : forall b a m, dbd b a -> dbd b m -> dbd_nf b (⇓ a m).
+  Lemma domain_nf_bounded_dom : forall b a m, domain_bounded b a -> domain_bounded b m -> domain_nf_bounded b (⇓ a m).
   Proof. intros * Ha Hm v Hv; constructor; auto. Qed.
 
-  Lemma dbd_app : forall b m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dbd b m -> dbd b n -> dbd b r.
+  Lemma domain_bounded_app : forall b m n r, $| m & n | Θ ⍮ Ξ ↘ r -> domain_bounded b m -> domain_bounded b n -> domain_bounded b r.
   Proof. intros * Hr Hm Hn v Hv; eapply app_avoids; eauto. Qed.
 
   (** A closure of a bounded value, evaluated at bounded arguments, at any
       larger bound. *)
-  Definition dbd_clo (b : nat) (ρ : env) (B : exp) : Prop :=
-    forall b' c d, b <= b' -> dbd b' c -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ↘ d -> dbd b' d.
-  Definition dbd_clo2 (b : nat) (ρ : env) (B : exp) : Prop :=
-    forall b' c1 c2 d, b <= b' -> dbd b' c1 -> dbd b' c2 -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c1 ↦ c2 ↘ d -> dbd b' d.
+  Definition domain_bounded_clo (b : nat) (ρ : env) (B : exp) : Prop :=
+    forall b' c d, b <= b' -> domain_bounded b' c -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ↘ d -> domain_bounded b' d.
+  Definition domain_bounded_clo2 (b : nat) (ρ : env) (B : exp) : Prop :=
+    forall b' c1 c2 d, b <= b' -> domain_bounded b' c1 -> domain_bounded b' c2 -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c1 ↦ c2 ↘ d -> domain_bounded b' d.
 
-  Lemma dbd_pi_inv : forall b a ρ B, dbd b (Πᵈ a ρ B) -> dbd b a /\ dbd_clo b ρ B.
+  Lemma domain_bounded_pi_inv : forall b a ρ B, domain_bounded b (Πᵈ a ρ B) -> domain_bounded b a /\ domain_bounded_clo b ρ B.
   Proof.
     intros * H; split; [ intros v Hv; specialize (H v Hv); inversion H; assumption |].
     intros b' c d Hb Hc Hd v Hv.
@@ -373,8 +373,8 @@ Section Bound.
     eapply eval_clo_avoids; [ eapply env_avoids_mono; [| eassumption ]; lia | eassumption | apply Hc; lia | exact Hd ].
   Qed.
 
-  Lemma dbd_exfalso_inv : forall b ρ A m,
-      dbd_ne b (efqᵈ m under ρ return A) -> dbd_ne b m /\ dbd_clo b ρ A.
+  Lemma domain_bounded_exfalso_inv : forall b ρ A m,
+      domain_ne_bounded b (efqᵈ m under ρ return A) -> domain_ne_bounded b m /\ domain_bounded_clo b ρ A.
   Proof.
     intros * H; split; [ intros v Hv; specialize (H v Hv); inversion H; assumption |].
     intros b' c d Hb Hc Hd v Hv.
@@ -385,18 +385,18 @@ Section Bound.
   (** ** Inductive Types
 
       An environment of bounded values, and a closure under [n] binders. *)
-  Definition env_dbd (b : nat) (ρ : env) : Prop := forall v, b <= v -> env_avoids Θ Ξ v b None ρ.
+  Definition env_domain_bounded (b : nat) (ρ : env) : Prop := forall v, b <= v -> env_avoids Θ Ξ v b None ρ.
 
-  Definition dbd_clon (b : nat) (ρ : env) (B : exp) (n : nat) : Prop :=
-    forall b' cs d, b <= b' -> List.length cs = n -> (forall c, In c cs -> dbd b' c) ->
-               ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ cs ↘ d -> dbd b' d.
+  Definition domain_bounded_clon (b : nat) (ρ : env) (B : exp) (n : nat) : Prop :=
+    forall b' cs d, b <= b' -> List.length cs = n -> (forall c, In c cs -> domain_bounded b' c) ->
+               ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ cs ↘ d -> domain_bounded b' d.
 
   (** A closure under [n] binders whose environment avoids the excluded
       level at every position its body reads, as the invariant states it. *)
-  Definition dbd_eclo (b : nat) (ρ : env) (B : exp) (n : nat) : Prop :=
+  Definition domain_bounded_eclo (b : nat) (ρ : env) (B : exp) (n : nat) : Prop :=
     forall v, b <= v -> exists K, env_avoids Θ Ξ v b K ρ /\ optional_exp_fresh (optional_shift n K) B.
 
-  Lemma dbd_eclo_clon : forall b ρ B n, dbd_eclo b ρ B n -> dbd_clon b ρ B n.
+  Lemma domain_bounded_eclo_clon : forall b ρ B n, domain_bounded_eclo b ρ B n -> domain_bounded_clon b ρ B n.
   Proof.
     intros * H b' cs d Hb Hl Hc Hd v Hv; destruct (H v ltac:(lia)) as (K & HK & HB).
     eapply (proj1 (eval_avoids Θ Ξ v b'));
@@ -404,79 +404,79 @@ Section Bound.
     rewrite Hl; exact HB.
   Qed.
 
-  Lemma env_dbd_nil : forall b, env_dbd b nil.
+  Lemma env_domain_bounded_nil : forall b, env_domain_bounded b nil.
   Proof. intros b v _; apply env_avoids_nil. Qed.
 
-  Lemma env_dbd_args : forall b ρ args, env_dbd b ρ -> (forall a, In a args -> dbd b a) -> env_dbd b (env_args ρ args).
+  Lemma env_domain_bounded_args : forall b ρ args, env_domain_bounded b ρ -> (forall a, In a args -> domain_bounded b a) -> env_domain_bounded b (env_args ρ args).
   Proof. intros * Hρ Ha v Hv; apply env_avoids_args_none; [ apply Hρ, Hv | intros; apply Ha; assumption ]. Qed.
 
-  Lemma env_dbd_cons : forall b ρ d, env_dbd b ρ -> dbd b d -> env_dbd b (ρ ↦ d).
+  Lemma env_domain_bounded_cons : forall b ρ d, env_domain_bounded b ρ -> domain_bounded b d -> env_domain_bounded b (ρ ↦ d).
   Proof. intros * Hρ Hd v Hv; apply env_avoids_cons_none; [ apply Hρ, Hv | apply Hd, Hv ]. Qed.
 
-  Lemma env_dbd_mono : forall b b' ρ, b <= b' -> env_dbd b ρ -> env_dbd b' ρ.
+  Lemma env_domain_bounded_mono : forall b b' ρ, b <= b' -> env_domain_bounded b ρ -> env_domain_bounded b' ρ.
   Proof. intros * Hb Hρ v Hv; eapply env_avoids_mono; [| apply Hρ ]; lia. Qed.
 
-  Lemma eval_dbd : forall M ρ a b, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_dbd b ρ -> dbd b a.
+  Lemma eval_domain_bounded : forall M ρ a b, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_domain_bounded b ρ -> domain_bounded b a.
   Proof. intros * H Hρ v Hv; eapply (proj1 (eval_avoids Θ Ξ v b)); [ exact H | apply Hρ, Hv | exact I ]. Qed.
 
-  Lemma dbd_indty : forall b p k args, (forall a, In a args -> dbd b a) -> dbd b (d_ind p k args).
+  Lemma domain_bounded_indty : forall b p k args, (forall a, In a args -> domain_bounded b a) -> domain_bounded b (d_ind p k args).
   Proof. intros * Ha v Hv; constructor; intros; apply Ha; assumption. Qed.
 
-  Lemma dbd_con : forall b p k c args, (forall a, In a args -> dbd b a) -> dbd b (d_con p k c args).
+  Lemma domain_bounded_con : forall b p k c args, (forall a, In a args -> domain_bounded b a) -> domain_bounded b (d_con p k c args).
   Proof. intros * Ha v Hv; constructor; intros; apply Ha; assumption. Qed.
 
-  Lemma dbd_indty_inv : forall b p k args, dbd b (d_ind p k args) -> forall a, In a args -> dbd b a.
+  Lemma domain_bounded_indty_inv : forall b p k args, domain_bounded b (d_ind p k args) -> forall a, In a args -> domain_bounded b a.
   Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
 
-  Lemma dbd_con_inv : forall b p k c args, dbd b (d_con p k c args) -> forall a, In a args -> dbd b a.
+  Lemma domain_bounded_con_inv : forall b p k c args, domain_bounded b (d_con p k c args) -> forall a, In a args -> domain_bounded b a.
   Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
 
   (** Records: the arguments of a type former, the neutral a field is
       projected from, and a field of a bounded value. *)
-  Lemma dbd_record_inv : forall b p args, dbd b (d_record p args) -> forall a, In a args -> dbd b a.
+  Lemma domain_bounded_record_inv : forall b p args, domain_bounded b (d_record p args) -> forall a, In a args -> domain_bounded b a.
   Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
 
-  Lemma dbd_proj_inv : forall b g m, dbd_ne b (d_proj g m) -> dbd_ne b m.
+  Lemma domain_bounded_proj_inv : forall b g m, domain_ne_bounded b (d_proj g m) -> domain_ne_bounded b m.
   Proof. intros * H v Hv; specialize (H v Hv); inversion H; assumption. Qed.
 
-  Lemma dbd_proj : forall b g m r, eval_proj Θ Ξ g m r -> dbd b m -> dbd b r.
+  Lemma domain_bounded_proj : forall b g m r, eval_proj Θ Ξ g m r -> domain_bounded b m -> domain_bounded b r.
   Proof. intros * H Hm v Hv; exact (proj_avoids _ _ _ _ _ _ _ H (Hm v Hv)). Qed.
 
   (** The fields along a record view's path of a bounded value. *)
-  Lemma projs_dbd : forall b fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> dbd b m -> forall a, In a ws -> dbd b a.
+  Lemma projs_domain_bounded : forall b fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> domain_bounded b m -> forall a, In a ws -> domain_bounded b a.
   Proof. intros * H Hm a Ha v Hv; exact (projs_avoids _ _ _ _ _ _ _ H (Hm v Hv) a Ha). Qed.
 
   (** The blocks of an eliminator, closures in an environment that avoids
       the excluded level at every position they read. *)
-  Definition dbd_blocks (b : nat) (ρ : env) (Bks : list eblock) : Prop :=
+  Definition domain_bounded_blocks (b : nat) (ρ : env) (Bks : list eblock) : Prop :=
     forall v, b <= v -> exists K, env_avoids Θ Ξ v b K ρ /\ blocks_optional_exp_fresh K Bks.
 
-  Lemma dbd_blocks_motive : forall b ρ Bks bk, dbd_blocks b ρ Bks -> In bk Bks -> dbd_eclo b ρ (eb_motive bk) (eb_nm bk).
+  Lemma domain_bounded_blocks_motive : forall b ρ Bks bk, domain_bounded_blocks b ρ Bks -> In bk Bks -> domain_bounded_eclo b ρ (eb_motive bk) (eb_nm bk).
   Proof.
     intros * H Hin v Hv; destruct (H v Hv) as (K & HK & HB); exists K; split; [ exact HK | exact (proj1 (HB _ Hin)) ].
   Qed.
 
-  Lemma dbd_blocks_branch : forall b ρ Bks bk, dbd_blocks b ρ Bks -> In bk Bks ->
-      forall c n B, In (c, n, B) (eb_brs bk) -> dbd_clon b ρ B n.
+  Lemma domain_bounded_blocks_branch : forall b ρ Bks bk, domain_bounded_blocks b ρ Bks -> In bk Bks ->
+      forall c n B, In (c, n, B) (eb_brs bk) -> domain_bounded_clon b ρ B n.
   Proof.
     intros * H Hin c n B HB b' cs d Hb Hl Hc Hd v Hv; destruct (H v ltac:(lia)) as (K & HK & HBk).
     eapply (proj1 (eval_avoids Θ Ξ v b')); [ exact Hd | apply env_avoids_args; [ eapply env_avoids_mono; [| exact HK ]; lia | intros; apply Hc; [ assumption | lia ] ] |].
     rewrite Hl; exact (proj2 (HBk _ Hin) _ _ _ HB).
   Qed.
 
-  Lemma dbd_blocks_mono : forall b b' ρ Bks, b <= b' -> dbd_blocks b ρ Bks -> dbd_blocks b' ρ Bks.
+  Lemma domain_bounded_blocks_mono : forall b b' ρ Bks, b <= b' -> domain_bounded_blocks b ρ Bks -> domain_bounded_blocks b' ρ Bks.
   Proof.
     intros * Hb H v Hv; destruct (H v ltac:(lia)) as (K & HK & HB); exists K; split; [ eapply env_avoids_mono; [| exact HK ]; lia | exact HB ].
   Qed.
 
-  Lemma mref_dbd : forall p ups j r b, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r ->
-      (forall u, In u ups -> dbd b u) -> forall a, In a (snd r) -> dbd b a.
+  Lemma mref_domain_bounded : forall p ups j r b, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r ->
+      (forall u, In u ups -> domain_bounded b u) -> forall a, In a (snd r) -> domain_bounded b a.
   Proof. intros * H Hu a Ha v Hv; eapply mref_avoids; [ exact H | intros; apply Hu; assumption | exact Ha ]. Qed.
 
-  Lemma dbd_elim_inv : forall b ρ Bks p ups j args m,
-      dbd_ne b (d_elim ρ Bks p ups j args m) ->
-      dbd_ne b m /\ (forall a, In a args -> dbd b a) /\ dbd_blocks b ρ Bks /\
-      (forall a, In a ups -> dbd b a).
+  Lemma domain_bounded_elim_inv : forall b ρ Bks p ups j args m,
+      domain_ne_bounded b (d_elim ρ Bks p ups j args m) ->
+      domain_ne_bounded b m /\ (forall a, In a args -> domain_bounded b a) /\ domain_bounded_blocks b ρ Bks /\
+      (forall a, In a ups -> domain_bounded b a).
   Proof.
     intros * H; repeat split.
     - intros v Hv; specialize (H v Hv); inversion H; assumption.
@@ -486,61 +486,61 @@ Section Bound.
   Qed.
 
   (** The uniform parameters an eliminator carries, bounded. *)
-  Definition ups_dbd (b : nat) (ups : list domain) : Prop := forall a, In a ups -> dbd b a.
+  Definition ups_domain_bounded (b : nat) (ups : list domain) : Prop := forall a, In a ups -> domain_bounded b a.
 
-  Lemma ups_dbd_avoids : forall b ups, ups_dbd b ups -> forall v, b <= v -> ups_avoids Θ Ξ v b ups.
+  Lemma ups_domain_bounded_avoids : forall b ups, ups_domain_bounded b ups -> forall v, b <= v -> ups_avoids Θ Ξ v b ups.
   Proof. intros * H v Hv a Ha; exact (H a Ha v Hv). Qed.
 
-  Lemma ups_dbd_mono : forall b b' ups, b <= b' -> ups_dbd b ups -> ups_dbd b' ups.
-  Proof. intros * Hb H a Ha; exact (dbd_mono _ _ _ Hb (H a Ha)). Qed.
+  Lemma ups_domain_bounded_mono : forall b b' ups, b <= b' -> ups_domain_bounded b ups -> ups_domain_bounded b' ups.
+  Proof. intros * Hb H a Ha; exact (domain_bounded_mono _ _ _ Hb (H a Ha)). Qed.
 
   (** The fresh variables of the telescopes of a declaration are above the
       readback length, and below the length past them. *)
-  Lemma fresh_tele_dbd : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns -> env_dbd s ρ ->
-      forall a, In a ns -> dbd (s + List.length T) a.
+  Lemma fresh_tele_domain_bounded : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns -> env_domain_bounded s ρ ->
+      forall a, In a ns -> domain_bounded (s + List.length T) a.
   Proof.
     induction 1; intros Hρ; [ intros ? [] |].
-    assert (Ha : dbd s a) by (eapply eval_dbd; eassumption).
+    assert (Ha : domain_bounded s a) by (eapply eval_domain_bounded; eassumption).
     cbn [List.length]; replace (s + S (List.length T)) with (S s + List.length T) by lia.
     intros d [<- | Hd].
-    - apply dbd_fresh; [ lia | exact Ha ].
-    - apply IHfresh_tele; [| exact Hd ]. apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Ha ] ].
+    - apply domain_bounded_fresh; [ lia | exact Ha ].
+    - apply IHfresh_tele; [| exact Hd ]. apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_fresh; [ lia | exact Ha ] ].
   Qed.
 
-  Lemma shty_dbd : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-      env_dbd b ρ -> (forall u, In u ups -> dbd b u) -> dbd b a.
+  Lemma shty_domain_bounded : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+      env_domain_bounded b ρ -> (forall u, In u ups -> domain_bounded b u) -> domain_bounded b a.
   Proof.
     intros * H Hρ Hu v Hv; eapply shty_avoids; [ exact H | apply Hρ, Hv | apply optional_ptyp_fresh_none | intros; apply Hu; assumption ].
   Qed.
 
-  Lemma fresh_cargs_dbd : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
-      env_dbd s ρ -> (forall a, In a ups -> dbd s a) ->
-      forall a, In a vs -> dbd (s + List.length gs) a.
+  Lemma fresh_cargs_domain_bounded : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
+      env_domain_bounded s ρ -> (forall a, In a ups -> domain_bounded s a) ->
+      forall a, In a vs -> domain_bounded (s + List.length gs) a.
   Proof.
     induction 1; intros Hρ Hu.
     - intros ? [].
-    - assert (Ha : dbd s a) by (eapply eval_dbd; eassumption).
+    - assert (Ha : domain_bounded s a) by (eapply eval_domain_bounded; eassumption).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
-      intros d [<- | Hd]; [ apply dbd_fresh; [ lia | exact Ha ] |].
+      intros d [<- | Hd]; [ apply domain_bounded_fresh; [ lia | exact Ha ] |].
       apply IHfresh_cargs;
-        [ apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Ha ] ]
-        | intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
-    - assert (Ha : dbd s a) by (eapply shty_dbd; eassumption).
+        [ apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_fresh; [ lia | exact Ha ] ]
+        | intros; eapply domain_bounded_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
+    - assert (Ha : domain_bounded s a) by (eapply shty_domain_bounded; eassumption).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
-      intros d [<- | Hd]; [ apply dbd_fresh; [ lia | exact Ha ] |].
+      intros d [<- | Hd]; [ apply domain_bounded_fresh; [ lia | exact Ha ] |].
       apply IHfresh_cargs;
-        [ eapply env_dbd_mono; [| exact Hρ ]; lia | intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
+        [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | intros; eapply domain_bounded_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
   Qed.
 
   (** The fresh variables along the leaf paths of the container's: one
       above the other, from [s] on. *)
-  Lemma fresh_leaf_vars_dbd : forall bs as' s vs, fresh_leaf_vars bs as' s vs ->
-      (forall a, In a as' -> dbd s a) -> forall a, In a vs -> dbd (s + List.length vs) a.
+  Lemma fresh_leaf_vars_domain_bounded : forall bs as' s vs, fresh_leaf_vars bs as' s vs ->
+      (forall a, In a as' -> domain_bounded s a) -> forall a, In a vs -> domain_bounded (s + List.length vs) a.
   Proof.
     induction 1; intros Ha; [ apply all_in_nil | | ].
     - cbn [List.length]; replace (s + S (List.length vs)) with (S s + List.length vs) by lia.
-      apply all_in_cons; [ apply dbd_fresh; [ lia | exact (all_in_head _ _ _ Ha) ] |].
-      apply IHfresh_leaf_vars; intros; eapply dbd_mono; [| apply Ha; right; eassumption ]; lia.
+      apply all_in_cons; [ apply domain_bounded_fresh; [ lia | exact (all_in_head _ _ _ Ha) ] |].
+      apply IHfresh_leaf_vars; intros; eapply domain_bounded_mono; [| apply Ha; right; eassumption ]; lia.
     - apply IHfresh_leaf_vars; exact (all_in_tail _ _ _ Ha).
   Qed.
 
@@ -548,36 +548,36 @@ Section Bound.
       readback length [s], as many as there are; their types are the
       motives [As] in [ρ], which avoid the excluded level wherever the
       recursive arguments' shapes end ([ends_fresh]). *)
-  Lemma fresh_ihs_dbd : forall ρ As p ups Dc ρa gs' gs vs s ihs,
+  Lemma fresh_ihs_domain_bounded : forall ρ As p ups Dc ρa gs' gs vs s ihs,
       Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
-      forall b, b <= s -> env_dbd s ρa -> ups_dbd s ups ->
+      forall b, b <= s -> env_domain_bounded s ρa -> ups_domain_bounded s ups ->
       (forall v, b <= v -> exists K, env_avoids Θ Ξ v b K ρ /\
                               forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh Θ Ξ p K As t) ->
-      (forall a, In a vs -> dbd s a) ->
-      forall a, In a ihs -> dbd (s + List.length ihs) a.
+      (forall a, In a vs -> domain_bounded s a) ->
+      forall a, In a ihs -> domain_bounded (s + List.length ihs) a.
   Proof.
     induction 1; intros b0 Hb Hρa Hu Hl Hvs.
     - apply all_in_nil.
     - apply (IHfresh_ihs b0); try assumption.
-      + apply env_dbd_cons; [ exact Hρa | exact (all_in_head _ _ _ Hvs) ].
+      + apply env_domain_bounded_cons; [ exact Hρa | exact (all_in_head _ _ _ Hvs) ].
       + intros w Hw; destruct (Hl w Hw) as (K & HK & HK'); exists K; split; [ exact HK |].
         intros gs1 t gs2 E; apply (HK' (ca_arg T :: gs1) t gs2); rewrite E; reflexivity.
       + exact (all_in_tail _ _ _ Hvs).
-    - assert (Has : forall a, In a as' -> dbd s a).
+    - assert (Has : forall a, In a as' -> domain_bounded s a).
       { intros a Ha w Hw; destruct (Hl w ltac:(lia)) as (K & HK & HK').
         eapply ihty_avoids; [ eassumption | eapply env_avoids_mono; [| exact HK ]; lia | exact (HK' nil t gs eq_refl)
-                        | exact (ups_dbd_avoids _ _ Hu _ Hw) | exact (Hρa w Hw) | apply optional_ptyp_fresh_none
+                        | exact (ups_domain_bounded_avoids _ _ Hu _ Hw) | exact (Hρa w Hw) | apply optional_ptyp_fresh_none
                         | exact (all_in_head _ _ _ Hvs w Hw) | exact Ha ]. }
-      match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => pose proof (fresh_leaf_vars_dbd _ _ _ _ Hf Has) as Hfl end.
+      match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => pose proof (fresh_leaf_vars_domain_bounded _ _ _ _ Hf Has) as Hfl end.
       rewrite List.length_app; apply all_in_app.
-      + intros a Ha; eapply dbd_mono; [| exact (Hfl a Ha) ]; lia.
-      + assert (Hr : forall a, In a ihs -> dbd (List.length ihs1 + s + List.length ihs) a).
+      + intros a Ha; eapply domain_bounded_mono; [| exact (Hfl a Ha) ]; lia.
+      + assert (Hr : forall a, In a ihs -> domain_bounded (List.length ihs1 + s + List.length ihs) a).
         { apply (IHfresh_ihs b0);
-            [ lia | eapply env_dbd_mono; [| exact Hρa ]; lia | eapply ups_dbd_mono; [| exact Hu ]; lia
-            | | intros; eapply dbd_mono; [| apply Hvs; right; eassumption ]; lia ].
+            [ lia | eapply env_domain_bounded_mono; [| exact Hρa ]; lia | eapply ups_domain_bounded_mono; [| exact Hu ]; lia
+            | | intros; eapply domain_bounded_mono; [| apply Hvs; right; eassumption ]; lia ].
           intros w Hw; destruct (Hl w Hw) as (K & HK & HK'); exists K; split; [ exact HK |].
           intros gs1 t0 gs2 E; apply (HK' (ca_rec t :: gs1) t0 gs2); rewrite E; reflexivity. }
-        intros a Ha; eapply dbd_mono; [| exact (Hr a Ha) ]; lia.
+        intros a Ha; eapply domain_bounded_mono; [| exact (Hr a Ha) ]; lia.
     - apply (IHfresh_ihs b0); try assumption.
       + intros w Hw; destruct (Hl w Hw) as (K & HK & HK'); exists K; split; [ exact HK |].
         intros gs1 t0 gs2 E; apply (HK' (ca_rec t :: gs1) t0 gs2); rewrite E; reflexivity.
@@ -587,8 +587,8 @@ Section Bound.
   (** The motives at the recursive arguments of the eliminator's group, from
       the blocks: their shapes end where the motives avoid the excluded
       level. *)
-  Lemma ihs_motives_dbd : forall p D Bks b ρ gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-      cargs_plen D gs -> blocks_nm_at D None Bks -> dbd_blocks b ρ Bks ->
+  Lemma ihs_motives_domain_bounded : forall p D Bks b ρ gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
+      cargs_plen D gs -> blocks_nm_at D None Bks -> domain_bounded_blocks b ρ Bks ->
       forall v, b <= v -> exists K, env_avoids Θ Ξ v b K ρ /\
                               forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh Θ Ξ p K (blocks_motives Bks) t.
   Proof.
@@ -597,30 +597,30 @@ Section Bound.
   Qed.
 
   (** The recursive results a branch is read under. *)
-  Lemma wrap_ihs_eval_dbd : forall ρ p ups Bks Dc gs' gs vs ihs r b,
+  Lemma wrap_ihs_eval_domain_bounded : forall ρ p ups Bks Dc gs' gs vs ihs r b,
       ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-      dbd_blocks b ρ Bks -> ups_dbd b ups -> (forall a, In a vs -> dbd b a) -> (forall a, In a ihs -> dbd b a) ->
-      forall a, In a r -> dbd b a.
+      domain_bounded_blocks b ρ Bks -> ups_domain_bounded b ups -> (forall a, In a vs -> domain_bounded b a) -> (forall a, In a ihs -> domain_bounded b a) ->
+      forall a, In a r -> domain_bounded b a.
   Proof.
     intros * H HB Ho Hv Hi a Ha w Hw; destruct (HB w Hw) as (K & HK & HBk).
-    eapply wrap_ihs_eval_avoids; [ exact H | exact HK | exact HBk | exact (ups_dbd_avoids _ _ Ho _ Hw)
+    eapply wrap_ihs_eval_avoids; [ exact H | exact HK | exact HBk | exact (ups_domain_bounded_avoids _ _ Ho _ Hw)
                              | intros; apply Hv; assumption | intros; apply Hi; assumption | exact Ha ].
   Qed.
 
 (** The bound of a value built during readback: by its constructor, by
     monotonicity, or by the evaluation it came from. *)
-Ltac dbd_solve :=
+Ltac domain_bounded_solve :=
   first [ eassumption
-        | apply dbd_nf_dom; dbd_solve
-        | apply dbd_fresh; [ lia | dbd_solve ]
-        | apply dbd_bot | apply dbd_level
+        | apply domain_nf_bounded_dom; domain_bounded_solve
+        | apply domain_bounded_fresh; [ lia | domain_bounded_solve ]
+        | apply domain_bounded_bot | apply domain_bounded_level
         | match goal with
-          | Hc : dbd_clo ?b ?ρ ?B, e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↦ ?c ↘ ?d |- dbd ?b' ?d =>
-              apply (Hc b' c d); [ lia | dbd_solve | exact e ]
-          | Hc : dbd_clo2 ?b ?ρ ?B, e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↦ ?c1 ↦ ?c2 ↘ ?d |- dbd ?b' ?d =>
-              apply (Hc b' c1 c2 d); [ lia | dbd_solve | dbd_solve | exact e ]
-          | e : $| ?m & ?n | _ ⍮ _ ↘ ?r |- dbd ?b ?r => apply (dbd_app b m n r e); dbd_solve
-          | H : dbd ?b0 ?d |- dbd ?b ?d => apply (dbd_mono b0 b d); [ lia | exact H ]
+          | Hc : domain_bounded_clo ?b ?ρ ?B, e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↦ ?c ↘ ?d |- domain_bounded ?b' ?d =>
+              apply (Hc b' c d); [ lia | domain_bounded_solve | exact e ]
+          | Hc : domain_bounded_clo2 ?b ?ρ ?B, e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↦ ?c1 ↦ ?c2 ↘ ?d |- domain_bounded ?b' ?d =>
+              apply (Hc b' c1 c2 d); [ lia | domain_bounded_solve | domain_bounded_solve | exact e ]
+          | e : $| ?m & ?n | _ ⍮ _ ↘ ?r |- domain_bounded ?b ?r => apply (domain_bounded_app b m n r e); domain_bounded_solve
+          | H : domain_bounded ?b0 ?d |- domain_bounded ?b ?d => apply (domain_bounded_mono b0 b d); [ lia | exact H ]
           end ].
 
 (** ** Readback Is Equivariant
@@ -788,67 +788,67 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
 
   Lemma read_rn :
     (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W ->
-       forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W) /\
+       forall s' φ, rn_ok f s s' φ -> domain_nf_bounded s m -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W) /\
     (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-       forall s' φ, rn_ok f s s' φ -> dbd_ne s m -> Rne domain_ne_rename f m in Θ ⍮ Ξ ⍮ s' ↘ ne_wk φ M) /\
+       forall s' φ, rn_ok f s s' φ -> domain_ne_bounded s m -> Rne domain_ne_rename f m in Θ ⍮ Ξ ⍮ s' ↘ ne_wk φ M) /\
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
-       forall s' φ, rn_ok f s s' φ -> dbd s a -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A) /\
+       forall s' φ, rn_ok f s s' φ -> domain_bounded s a -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-       forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla level_atoms_rename f xs in Θ ⍮ Ξ ⍮ s' ↘ List.map (map_level_atom (ne_wk φ)) ys) /\
+       forall s' φ, rn_ok f s s' φ -> level_atoms_bounded s xs -> Rla level_atoms_rename f xs in Θ ⍮ Ξ ⍮ s' ↘ List.map (map_level_atom (ne_wk φ)) ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
-       forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
+       forall s' φ, rn_ok f s s' φ -> env_domain_bounded s ρ -> (forall a, In a vs -> domain_bounded s a) ->
        Rps List.map (domain_rename f) vs at T in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
-       forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) -> env_dbd s ρ ->
-       (forall a, In a vs -> dbd s a) ->
+       forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> domain_bounded s a) -> env_domain_bounded s ρ ->
+       (forall a, In a vs -> domain_bounded s a) ->
        Rcargs List.map (domain_rename f) vs at gs of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
-       forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) -> env_dbd s ρ -> dbd s x ->
+       forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> domain_bounded s a) -> env_domain_bounded s ρ -> domain_bounded s x ->
        Rsh domain_rename f x at t of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ nf_wk φ X) /\
     (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-       forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
+       forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
        (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
-       (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> dbd s a) ->
+       (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> domain_bounded s a) ->
        Rblks i Ms of Dc from p (List.map (domain_rename f) ups) Bks sel in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-       forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
+       forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
        (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
        (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> im_nn Mv = im_nn Mi ->
-       dbd_eclo s ρ A (S (im_nn Mi)) ->
-       (forall c n B, In (c, n, B) Bs -> dbd_clon s ρ B n) -> (forall a, In a ups -> dbd s a) ->
-       (forall a, In a (snd r) -> dbd s a) ->
+       domain_bounded_eclo s ρ A (S (im_nn Mi)) ->
+       (forall c n B, In (c, n, B) Bs -> domain_bounded_clon s ρ B n) -> (forall a, In a ups -> domain_bounded s a) ->
+       (forall a, In a (snd r) -> domain_bounded s a) ->
        Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (domain_rename f) (snd r)) of Dc from p (List.map (domain_rename f) ups)
          Bks Mv A in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (map_normal_branch (fun n => nf_wk (wk_qn n φ))) Bs') /\
     (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
-       forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> dbd s d ->
+       forall s' φ, rn_ok f s s' φ -> env_domain_bounded s ρ -> domain_bounded s d ->
        Rflds domain_rename f d at fl in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (nf_wk φ) Fs).
   Proof.
     apply (read_mut_ind Θ Ξ
-             (fun s m W _ => forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W)
-             (fun s m M _ => forall s' φ, rn_ok f s s' φ -> dbd_ne s m -> Rne domain_ne_rename f m in Θ ⍮ Ξ ⍮ s' ↘ ne_wk φ M)
-             (fun s a A _ => forall s' φ, rn_ok f s s' φ -> dbd s a -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A)
-             (fun s xs ys _ => forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla level_atoms_rename f xs in Θ ⍮ Ξ ⍮ s' ↘ List.map (map_level_atom (ne_wk φ)) ys)
-             (fun s ρ T vs Ms _ => forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
+             (fun s m W _ => forall s' φ, rn_ok f s s' φ -> domain_nf_bounded s m -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W)
+             (fun s m M _ => forall s' φ, rn_ok f s s' φ -> domain_ne_bounded s m -> Rne domain_ne_rename f m in Θ ⍮ Ξ ⍮ s' ↘ ne_wk φ M)
+             (fun s a A _ => forall s' φ, rn_ok f s s' φ -> domain_bounded s a -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A)
+             (fun s xs ys _ => forall s' φ, rn_ok f s s' φ -> level_atoms_bounded s xs -> Rla level_atoms_rename f xs in Θ ⍮ Ξ ⍮ s' ↘ List.map (map_level_atom (ne_wk φ)) ys)
+             (fun s ρ T vs Ms _ => forall s' φ, rn_ok f s s' φ -> env_domain_bounded s ρ -> (forall a, In a vs -> domain_bounded s a) ->
                 Rps List.map (domain_rename f) vs at T in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms)
-             (fun s p ups ρ gs vs Ms _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) ->
-                env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
+             (fun s p ups ρ gs vs Ms _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> domain_bounded s a) ->
+                env_domain_bounded s ρ -> (forall a, In a vs -> domain_bounded s a) ->
                 Rcargs List.map (domain_rename f) vs at gs of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms)
-             (fun s p ups ρ t x X _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) ->
-                env_dbd s ρ -> dbd s x ->
+             (fun s p ups ρ t x X _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> domain_bounded s a) ->
+                env_domain_bounded s ρ -> domain_bounded s x ->
                 Rsh domain_rename f x at t of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ nf_wk φ X)
-             (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
+             (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
-                (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> dbd s a) ->
+                (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> domain_bounded s a) ->
                 Rblks i Ms of Dc from p (List.map (domain_rename f) ups) Bks sel in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks)
-             (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
+             (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> im_nn Mv = im_nn Mi ->
-                dbd_eclo s ρ A (S (im_nn Mi)) ->
-                (forall c n B, In (c, n, B) Bs -> dbd_clon s ρ B n) -> (forall a, In a ups -> dbd s a) ->
-                (forall a, In a (snd r) -> dbd s a) ->
+                domain_bounded_eclo s ρ A (S (im_nn Mi)) ->
+                (forall c n B, In (c, n, B) Bs -> domain_bounded_clon s ρ B n) -> (forall a, In a ups -> domain_bounded s a) ->
+                (forall a, In a (snd r) -> domain_bounded s a) ->
                 Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (domain_rename f) (snd r)) of Dc from p (List.map (domain_rename f) ups)
                   Bks Mv A in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (map_normal_branch (fun n => nf_wk (wk_qn n φ))) Bs')
-             (fun s ρ fl d Fs _ => forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> dbd s d ->
+             (fun s ρ fl d Fs _ => forall s' φ, rn_ok f s s' φ -> env_domain_bounded s ρ -> domain_bounded s d ->
                 Rflds domain_rename f d at fl in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (nf_wk φ) Fs));
       intros; cbn [domain_rename domain_ne_rename domain_nf_rename dmod_rename dentry_rename nf_wk ne_wk level_atoms_rename List.map fst snd] in *;
       unfold map_level_atom, map_normal_block, map_normal_branch in *;
@@ -856,19 +856,19 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
            branch_constructor branch_arity branch_body] in *.
     (** The bounds of the parts. *)
     all: repeat match goal with
-      | H : dbd_nf _ (d_dom _ _) |- _ => apply dbd_nf_inv in H as [? ?]
-      | H : dbd _ (d_neut _ _) |- _ => apply dbd_neut_inv in H as [? ?]
-      | H : dbd _ (d_suniv _) |- _ => apply dbd_suniv_inv in H
-      | H : dbd _ (d_lvl _ _) |- _ => apply dbd_lvl_inv in H
-      | H : dbd _ (d_pi _ _ _) |- _ => apply dbd_pi_inv in H as [? ?]
-      | H : dbd_la _ ((_, _) :: _) |- _ => apply dbd_la_inv in H as [? ?]
-      | H : dbd_ne _ (d_app _ _) |- _ => apply dbd_app_inv in H as [? ?]
-      | H : dbd_ne _ (d_exfalso _ _ _) |- _ => apply dbd_exfalso_inv in H as [? ?]
-      | H : dbd _ (d_ind _ _ _) |- _ => pose proof (dbd_indty_inv _ _ _ _ H); clear H
-      | H : dbd _ (d_con _ _ _ _) |- _ => pose proof (dbd_con_inv _ _ _ _ _ H); clear H
-      | H : dbd_ne _ (d_elim _ _ _ _ _ _ _) |- _ => apply dbd_elim_inv in H as (? & ? & ? & ?)
-      | H : dbd _ (d_record _ _) |- _ => pose proof (dbd_record_inv _ _ _ H); clear H
-      | H : dbd_ne _ (d_proj _ _) |- _ => apply dbd_proj_inv in H
+      | H : domain_nf_bounded _ (d_dom _ _) |- _ => apply domain_nf_bounded_inv in H as [? ?]
+      | H : domain_bounded _ (d_neut _ _) |- _ => apply domain_bounded_neut_inv in H as [? ?]
+      | H : domain_bounded _ (d_suniv _) |- _ => apply domain_bounded_suniv_inv in H
+      | H : domain_bounded _ (d_lvl _ _) |- _ => apply domain_bounded_lvl_inv in H
+      | H : domain_bounded _ (d_pi _ _ _) |- _ => apply domain_bounded_pi_inv in H as [? ?]
+      | H : level_atoms_bounded _ ((_, _) :: _) |- _ => apply level_atoms_bounded_inv in H as [? ?]
+      | H : domain_ne_bounded _ (d_app _ _) |- _ => apply domain_bounded_app_inv in H as [? ?]
+      | H : domain_ne_bounded _ (d_exfalso _ _ _) |- _ => apply domain_bounded_exfalso_inv in H as [? ?]
+      | H : domain_bounded _ (d_ind _ _ _) |- _ => pose proof (domain_bounded_indty_inv _ _ _ _ H); clear H
+      | H : domain_bounded _ (d_con _ _ _ _) |- _ => pose proof (domain_bounded_con_inv _ _ _ _ _ H); clear H
+      | H : domain_ne_bounded _ (d_elim _ _ _ _ _ _ _) |- _ => apply domain_bounded_elim_inv in H as (? & ? & ? & ?)
+      | H : domain_bounded _ (d_record _ _) |- _ => pose proof (domain_bounded_record_inv _ _ _ H); clear H
+      | H : domain_ne_bounded _ (d_proj _ _) |- _ => apply domain_bounded_proj_inv in H
       end.
     (** The fresh levels correspond, under one binder and under two. *)
     all: match goal with Hok : rn_ok f ?s ?s' ?φ |- _ =>
@@ -897,15 +897,15 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
          end.
     (** A variable: the index of [x] at [s] is renamed to that of [f x] at [s']. *)
     all: try match goal with
-         | Hok : rn_ok f ?s _ _, Hx : dbd_ne _ (d_var ?x) |- read_ne _ _ _ (d_var _) _ =>
+         | Hok : rn_ok f ?s _ _, Hx : domain_ne_bounded _ (d_var ?x) |- read_ne _ _ _ (d_var _) _ =>
              let Hφ := fresh "Hφ" in
-             pose proof (rn_index _ _ _ _ Hok) as Hφ; rewrite Hφ by (eapply dbd_var_inv; exact Hx)
+             pose proof (rn_index _ _ _ _ Hok) as Hφ; rewrite Hφ by (eapply domain_bounded_var_inv; exact Hx)
          end.
     (** A small universe: the same through [nf_univ_of]. *)
     all: try match goal with |- read_typ _ _ _ (d_suniv _) _ => rewrite nf_univ_of_wk end.
     (** A neutral level: its sort is that of its type, which the renaming
         keeps. *)
-    all: try match goal with |- context [dsort ?a] => rewrite <- (dsort_rn f a) end.
+    all: try match goal with |- context [domain_level_sort ?a] => rewrite <- (domain_level_sort_rn f a) end.
     (** Inductive types.  A constructor at its type: the parameters and the
         arguments, renamed, at their renamed types. *)
     all: try solve [ lazymatch goal with |- read_nf _ _ _ _ (nf_con _ _ _ _) =>
@@ -913,16 +913,16 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       | Hl : ind_lookup _ _ ?p = Some ?D, Hk : ind_member ?D ?k = Some ?Mk, Hh : im_head ?Mk = mh_decl _,
         Hc : ind_con ?Mk ?c = Some ?gs,
         Hla : List.length ?as' = im_np _ _, Hlv : List.length ?vs = _,
-        IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_dbd ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> dbd ?s a, Hvs : forall a, In a ?vs -> dbd ?s a |- _ =>
+        IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_domain_bounded ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> domain_bounded ?s a, Hvs : forall a, In a ?vs -> domain_bounded ?s a |- _ =>
           rewrite List.map_app;
           eapply read_nf_con; [ exact Hl | exact Hk | exact Hh | exact Hc | rewrite List.length_map; exact Hla
-                              | rewrite List.length_map; exact Hlv | exact (IH1 s' φ Hok (env_dbd_nil _) Has) | ];
+                              | rewrite List.length_map; exact Hlv | exact (IH1 s' φ Hok (env_domain_bounded_nil _) Has) | ];
           rewrite List.firstn_map, List.skipn_map;
           change (env_args nil (List.map (domain_rename f) as')) with (env_args (env_rename f nil) (List.map (domain_rename f) as'));
           rewrite <- env_args_rn;
-          apply IH2; [ exact Hok | all_in_with assumption | apply env_dbd_args; [ apply env_dbd_nil | exact Has ]
+          apply IH2; [ exact Hok | all_in_with assumption | apply env_domain_bounded_args; [ apply env_domain_bounded_nil | exact Has ]
                      | all_in_with assumption ]
       end end ].
     (** A constructor at a view: as at a declared member, the arguments
@@ -932,17 +932,17 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       | Hl : ind_lookup _ _ ?p = Some ?D, Hk : ind_member ?D ?j = Some ?Mj, Hh : im_head ?Mj = mh_view _ _ _ _,
         Hc : ind_con ?Mj ?c = Some ?gs,
         Hla : List.length ?as' = im_np _ _, Hlv : List.length ?vs = _,
-        IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_dbd ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> dbd ?s a, Hvs : forall a, In a ?vs -> dbd ?s a |- _ =>
+        IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_domain_bounded ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> domain_bounded ?s a, Hvs : forall a, In a ?vs -> domain_bounded ?s a |- _ =>
           rewrite List.map_app;
           eapply read_nf_con_view; [ exact Hl | exact Hk | exact Hh | exact Hc
                                    | rewrite List.length_map; exact Hla
-                                   | rewrite List.length_map; exact Hlv | exact (IH1 s' φ Hok (env_dbd_nil _) Has) | ];
+                                   | rewrite List.length_map; exact Hlv | exact (IH1 s' φ Hok (env_domain_bounded_nil _) Has) | ];
           rewrite List.firstn_map, List.skipn_map;
           change (env_args nil (List.map (domain_rename f) as')) with (env_args (env_rename f nil) (List.map (domain_rename f) as'));
           rewrite <- env_args_rn;
-          apply IH2; [ exact Hok | all_in_with assumption | apply env_dbd_args; [ apply env_dbd_nil | exact Has ]
+          apply IH2; [ exact Hok | all_in_with assumption | apply env_domain_bounded_args; [ apply env_domain_bounded_nil | exact Has ]
                      | all_in_with assumption ]
       end end ].
     (** A value at a record view: the uniform parameters, then the fields
@@ -952,16 +952,16 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       | Hl : ind_lookup _ _ ?p = Some ?D, Hk : ind_member ?D ?j = Some ?Mj, Hh : im_head ?Mj = mh_record _ _ _,
         Hc : im_cons ?Mj = (?c, ?gs) :: nil, Hla : List.length ?as' = ind_nu _,
         Hw : eval_projs _ _ _ ?v ?ws,
-        IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_dbd ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> dbd ?s a, Hv : dbd ?s ?v |- _ =>
+        IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_domain_bounded ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> domain_bounded ?s a, Hv : domain_bounded ?s ?v |- _ =>
           rewrite List.map_app;
           eapply read_nf_rview; [ exact Hl | exact Hk | exact Hh | exact Hc | rewrite List.length_map; exact Hla
-                                | exact (projs_rn _ _ _ Hw) | exact (IH1 s' φ Hok (env_dbd_nil _) Has) | ];
+                                | exact (projs_rn _ _ _ Hw) | exact (IH1 s' φ Hok (env_domain_bounded_nil _) Has) | ];
           change (env_args nil (List.map (domain_rename f) as')) with (env_args (env_rename f nil) (List.map (domain_rename f) as'));
           rewrite <- env_args_rn;
-          apply IH2; [ exact Hok | exact Has | apply env_dbd_args; [ apply env_dbd_nil | exact Has ]
-                     | exact (projs_dbd _ _ _ _ Hw Hv) ]
+          apply IH2; [ exact Hok | exact Has | apply env_domain_bounded_args; [ apply env_domain_bounded_nil | exact Has ]
+                     | exact (projs_domain_bounded _ _ _ _ Hw Hv) ]
       end end ].
     (** A stuck eliminator: the blocks of the group read, renamed, at the
         renamed uniform parameters. *)
@@ -971,15 +971,15 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
         Hl' : ind_lookup _ _ ?pc = Some ?Dq, Hk : ind_member ?Dq ?k = Some ?Mk, Hlen : List.length ?as' = im_np _ _,
         Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
         Hm : eval_mref _ _ ?p ?ups ?j (?pc, ?k, ?pre),
-        IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        IHb : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> read_blocks _ _ s0 _ _ _ _ _ _ _ _ _,
-        IHm : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_ne ?s ?m -> read_ne _ _ s0 _ _,
-        Hok : rn_ok f ?s ?s' ?φ, HBd : dbd_blocks ?s ?ρ ?Bks, Hmd : dbd_ne ?s ?m,
-        Hu : forall a, In a ?ups -> dbd ?s a |- _ =>
+        IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        IHb : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> read_blocks _ _ s0 _ _ _ _ _ _ _ _ _,
+        IHm : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_ne_bounded ?s ?m -> read_ne _ _ s0 _ _,
+        Hok : rn_ok f ?s ?s' ?φ, HBd : domain_bounded_blocks ?s ?ρ ?Bks, Hmd : domain_ne_bounded ?s ?m,
+        Hu : forall a, In a ?ups -> domain_bounded ?s a |- _ =>
           eapply read_ne_elim; [ exact Hl | exact Hj | exact Hr | exact Hl' | exact Hk
                                | rewrite List.length_map; exact Hlen | exact Hnm | exact Har
                                | exact (mref_rn _ _ _ _ _ _ Hm)
-                               | exact (IHp s' φ Hok (env_dbd_nil _) (mref_dbd _ _ _ _ _ Hm Hu))
+                               | exact (IHp s' φ Hok (env_domain_bounded_nil _) (mref_domain_bounded _ _ _ _ _ Hm Hu))
                                | apply (IHb s' φ Hok HBd); [ | | exact Hu ]
                                | apply IHm; [ exact Hok | exact Hmd ] ];
           intros D0 HD0; rewrite Hl in HD0; injection HD0 as <-; assumption
@@ -993,14 +993,14 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
         Hm : eval_mref _ _ ?p ?X (elim_src ?sel ?i) (?hd, ?k, ?pre),
         f0 : fresh_tele _ _ (env_args nil ?X) _ ?s ?ns,
         e2 : ⟦ eb_motive ?bk ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ _) ↘ ?a,
-        IHA : forall s0 φ0, rn_ok f (S (?s + im_nn ?Mi)) s0 φ0 -> dbd _ ?a -> read_typ _ _ s0 _ _,
-        IHB : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> dbd_eclo ?s ?ρ (eb_motive ?bk) _ ->
+        IHA : forall s0 φ0, rn_ok f (S (?s + im_nn ?Mi)) s0 φ0 -> domain_bounded _ ?a -> read_typ _ _ s0 _ _,
+        IHB : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> domain_bounded_eclo ?s ?ρ (eb_motive ?bk) _ ->
               _ -> _ -> _ -> read_brs _ _ s0 _ _ _ _ _ _ _ _ _ _ _ _,
-        IHK : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> read_blocks _ _ s0 _ _ _ _ _ _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, HBd : dbd_blocks ?s ?ρ ?Bks,
+        IHK : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> read_blocks _ _ s0 _ _ _ _ _ _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, HBd : domain_bounded_blocks ?s ?ρ ?Bks,
         Hnm : forall D0, ind_lookup _ _ ?p = Some D0 -> blocks_nm_at _ _ _,
         Har : forall D0, ind_lookup _ _ ?p = Some D0 -> rview_leaf_arity _,
-        HX : forall a, In a ?X -> dbd ?s a |- _ =>
+        HX : forall a, In a ?X -> domain_bounded ?s a |- _ =>
           let Hss := fresh "Hss" in let Hfx := fresh "Hfx" in
           let Hlen := fresh "Hlen" in let Hns := fresh "Hns" in let Hp := fresh "Hp" in let Hfn := fresh "Hfn" in
           let Hin := fresh "Hin" in let Hnn := fresh "Hnn" in
@@ -1009,12 +1009,12 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
           assert (Hnn : im_nn Mv = im_nn Mi) by (pose proof (Hnm _ Hl _ _ _ Hv Hb) as Hx; congruence);
           pose proof (fresh_tele_length _ _ _ _ f0) as Hlen; rewrite List.length_rev in Hlen;
           change (List.length (im_nparams Mv)) with (im_nn Mv) in Hlen; rewrite Hnn in Hlen;
-          assert (Hns : forall x, In x ns -> dbd (s + im_nn Mi) x)
+          assert (Hns : forall x, In x ns -> domain_bounded (s + im_nn Mi) x)
             by (let H' := fresh in
-                pose proof (fresh_tele_dbd _ _ _ _ f0 ltac:(apply env_dbd_args; [ apply env_dbd_nil | exact HX ])) as H';
+                pose proof (fresh_tele_domain_bounded _ _ _ _ f0 ltac:(apply env_domain_bounded_args; [ apply env_domain_bounded_nil | exact HX ])) as H';
                 rewrite List.length_rev in H'; change (List.length (im_nparams Mv)) with (im_nn Mv) in H';
                 rewrite Hnn in H'; exact H');
-          pose proof (mref_dbd _ _ _ _ _ Hm HX) as Hp; cbn [snd] in Hp;
+          pose proof (mref_domain_bounded _ _ _ _ _ Hm HX) as Hp; cbn [snd] in Hp;
           assert (Hfn : f (s + im_nn Mi) = s' + im_nn Mi) by (rewrite Hfx; lia);
           eapply read_blocks_cons;
           [ exact Hl | exact Hv | exact Hb | exact Hnmb | exact (mref_rn _ _ _ _ _ _ Hm)
@@ -1024,36 +1024,36 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
             cbn [List.map domain_rename domain_ne_rename] in H'; rewrite Hfn, List.map_app in H'; exact H'
           | replace (S (s' + im_nn Mi)) with (S (im_nn Mi) + s') by lia; apply IHA;
             [ replace (S (s + im_nn Mi)) with (S (im_nn Mi) + s) by lia; apply rn_ok_qn, Hok |];
-            eapply (dbd_eclo_clon _ _ _ _ (dbd_blocks_motive _ _ _ _ HBd Hin)); [ lia | | | exact e2 ];
+            eapply (domain_bounded_eclo_clon _ _ _ _ (domain_bounded_blocks_motive _ _ _ _ HBd Hin)); [ lia | | | exact e2 ];
               [ rewrite length_app, Hlen, Hnmb; cbn; lia |];
-              apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia |];
+              apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; lia |];
               apply all_in_cons; [| apply all_in_nil ];
-              apply dbd_fresh; [ lia |]; apply dbd_indty; apply all_in_app;
-                [ intros; eapply dbd_mono; [| apply Hp; eassumption ]; lia | exact Hns ]
+              apply domain_bounded_fresh; [ lia |]; apply domain_bounded_indty; apply all_in_app;
+                [ intros; eapply domain_bounded_mono; [| apply Hp; eassumption ]; lia | exact Hns ]
           | apply IHB; [ exact Hok | exact HBd | exact Hnm | exact Har | exact Hnn
-                       | rewrite <- Hnmb; exact (dbd_blocks_motive _ _ _ _ HBd Hin)
-                       | exact (dbd_blocks_branch _ _ _ _ HBd Hin) | exact HX | exact Hp ]
+                       | rewrite <- Hnmb; exact (domain_bounded_blocks_motive _ _ _ _ HBd Hin)
+                       | exact (domain_bounded_blocks_branch _ _ _ _ HBd Hin) | exact HX | exact Hp ]
           | apply IHK; [ exact Hok | exact HBd | exact Hnm | exact Har | exact HX ] ]
       end end ].
     (** An inductive type at its parameters. *)
     all: try solve [ lazymatch goal with |- read_typ _ _ _ (d_ind _ _ _) _ =>
       match goal with
-      | IH : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> dbd ?s a |- _ =>
-          econstructor; try eassumption; [ rewrite List.length_map; assumption | exact (IH s' φ Hok (env_dbd_nil _) Has) ]
+      | IH : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> domain_bounded ?s a |- _ =>
+          econstructor; try eassumption; [ rewrite List.length_map; assumption | exact (IH s' φ Hok (env_domain_bounded_nil _) Has) ]
       end end ].
     (** A parameter or an argument at its type, and the rest in the
         environment extended by it. *)
     all: try solve [ lazymatch goal with |- read_ps _ _ _ _ (_ :: _) _ _ =>
       econstructor;
       [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e)
-      | apply H; [ exact H1 | apply dbd_nf_dom; [ eapply eval_dbd; eassumption | apply (all_in_head _ _ _ H3) ] ]
-      | apply H0; [ exact H1 | apply env_dbd_cons; [ assumption | apply (all_in_head _ _ _ H3) ] | exact (all_in_tail _ _ _ H3) ] ] end ].
+      | apply H; [ exact H1 | apply domain_nf_bounded_dom; [ eapply eval_domain_bounded; eassumption | apply (all_in_head _ _ _ H3) ] ]
+      | apply H0; [ exact H1 | apply env_domain_bounded_cons; [ assumption | apply (all_in_head _ _ _ H3) ] | exact (all_in_tail _ _ _ H3) ] ] end ].
     all: try solve [ lazymatch goal with |- read_cargs _ _ _ _ _ _ (ca_arg _ :: _) _ _ =>
       econstructor;
       [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e)
-      | apply H; [ exact H1 | apply dbd_nf_dom; [ eapply eval_dbd; eassumption | apply (all_in_head _ _ _ H4) ] ]
-      | apply H0; [ exact H1 | exact H2 | apply env_dbd_cons; [ assumption | apply (all_in_head _ _ _ H4) ]
+      | apply H; [ exact H1 | apply domain_nf_bounded_dom; [ eapply eval_domain_bounded; eassumption | apply (all_in_head _ _ _ H4) ] ]
+      | apply H0; [ exact H1 | exact H2 | apply env_domain_bounded_cons; [ assumption | apply (all_in_head _ _ _ H4) ]
                   | exact (all_in_tail _ _ _ H4) ] ] end ].
     all: try solve [ lazymatch goal with |- read_cargs _ _ _ _ _ _ (ca_rec _ :: _) _ _ =>
       econstructor;
@@ -1069,14 +1069,14 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
         Fi : fresh_ihs _ _ ?ρ _ _ _ ?Dc _ ?gs' ?gs ?vs _ ?ihs, Fw : wrap_ihs_eval _ _ ?ρ _ _ _ ?Dc ?gs' ?gs ?vs ?ihs ?wihs,
         e0 : ⟦ ?B ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?wihs) ↘ ?bv,
         e1 : ⟦ ?A ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ _) ↘ ?t,
-        IHB : forall s0 φ0, rn_ok f (?s + ?n) s0 φ0 -> dbd_nf _ (⇓ ?t ?bv) -> read_nf _ _ s0 _ _,
-        IHR : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
+        IHB : forall s0 φ0, rn_ok f (?s + ?n) s0 φ0 -> domain_nf_bounded _ (⇓ ?t ?bv) -> read_nf _ _ s0 _ _,
+        IHR : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
               read_brs _ _ s0 _ _ _ _ _ _ _ _ _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, HBd : dbd_blocks ?s ?ρ ?Bks,
+        Hok : rn_ok f ?s ?s' ?φ, HBd : domain_bounded_blocks ?s ?ρ ?Bks,
         Hnm : forall D0, ind_lookup _ _ ?p = Some D0 -> blocks_nm_at _ _ _,
         Har : forall D0, ind_lookup _ _ ?p = Some D0 -> rview_leaf_arity _, Hnn : im_nn ?Mv = im_nn ?Mi,
-        HAd : dbd_eclo ?s ?ρ ?A _, HBs : forall c0 n1 B0, In (c0, n1, B0) _ -> dbd_clon ?s ?ρ B0 n1,
-        HX : forall a, In a ?X -> dbd ?s a, Hp : forall a, In a ?pre -> dbd ?s a |- _ =>
+        HAd : domain_bounded_eclo ?s ?ρ ?A _, HBs : forall c0 n1 B0, In (c0, n1, B0) _ -> domain_bounded_clon ?s ?ρ B0 n1,
+        HX : forall a, In a ?X -> domain_bounded ?s a, Hp : forall a, In a ?pre -> domain_bounded ?s a |- _ =>
           let Hss := fresh "Hss" in let Hfx := fresh "Hfx" in let Hnm' := fresh "Hnm" in let Har' := fresh "Har" in
           let Hl1 := fresh "Hl" in let Hl2 := fresh "Hl" in let Hl3 := fresh "Hl" in let Hl4 := fresh "Hl" in
           let Hl5 := fresh "Hl" in
@@ -1091,26 +1091,26 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
                       (leaves_coherent_of_order _ (rview_leaf_order _ Har')) Fw) as [Hl3 Hl4];
           pose proof (fresh_ihs_length _ _ _ _ _ _ _ _ _ _ _ _ Hl Fi) as Hl5; rewrite Hcnt in Hl5;
           assert (Hgl : List.length gs = List.length gs') by congruence;
-          assert (Hns : forall x, In x ns -> dbd (s + im_nn Mi) x)
+          assert (Hns : forall x, In x ns -> domain_bounded (s + im_nn Mi) x)
             by (let H' := fresh in
-                pose proof (fresh_tele_dbd _ _ _ _ f0 ltac:(apply env_dbd_args; [ apply env_dbd_nil | exact HX ])) as H';
+                pose proof (fresh_tele_domain_bounded _ _ _ _ f0 ltac:(apply env_domain_bounded_args; [ apply env_domain_bounded_nil | exact HX ])) as H';
                 rewrite List.length_rev in H'; change (List.length (im_nparams Mv)) with (im_nn Mv) in H';
                 rewrite Hnn in H'; exact H');
-          assert (Hρa : env_dbd (s + im_nn Mi) (env_args nil (X ++ ns)))
-            by (apply env_dbd_args; [ apply env_dbd_nil | apply all_in_app; [ intros; eapply dbd_mono; [| apply HX; eassumption ]; lia | exact Hns ] ]);
-          pose proof (fresh_cargs_dbd _ _ _ _ _ _ Fc Hρa
-                        ltac:(intros; eapply dbd_mono; [| apply HX; eassumption ]; lia)) as Hvs;
+          assert (Hρa : env_domain_bounded (s + im_nn Mi) (env_args nil (X ++ ns)))
+            by (apply env_domain_bounded_args; [ apply env_domain_bounded_nil | apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply HX; eassumption ]; lia | exact Hns ] ]);
+          pose proof (fresh_cargs_domain_bounded _ _ _ _ _ _ Fc Hρa
+                        ltac:(intros; eapply domain_bounded_mono; [| apply HX; eassumption ]; lia)) as Hvs;
           rewrite Hgl in Hvs;
-          pose proof (fresh_ihs_dbd _ _ _ _ _ _ _ _ _ _ _ Fi s ltac:(lia)
-                        ltac:(eapply env_dbd_mono; [| exact Hρa ]; lia)
-                        ltac:(intros ? ?; eapply dbd_mono; [| apply HX; eassumption ]; lia)
-                        (ihs_motives_dbd _ _ _ _ _ _ Hl Har' Hpl Hnm' HBd) Hvs) as Hihs;
+          pose proof (fresh_ihs_domain_bounded _ _ _ _ _ _ _ _ _ _ _ Fi s ltac:(lia)
+                        ltac:(eapply env_domain_bounded_mono; [| exact Hρa ]; lia)
+                        ltac:(intros ? ?; eapply domain_bounded_mono; [| apply HX; eassumption ]; lia)
+                        (ihs_motives_domain_bounded _ _ _ _ _ _ Hl Har' Hpl Hnm' HBd) Hvs) as Hihs;
           rewrite Hl5 in Hihs;
-          assert (Hw : forall x, In x wihs -> dbd (s + n) x)
-            by (eapply wrap_ihs_eval_dbd; [ exact Fw | eapply dbd_blocks_mono; [| exact HBd ]; lia
-                                                  | eapply ups_dbd_mono; [| exact HX ]; lia
-                                                  | intros; eapply dbd_mono; [| apply Hvs; eassumption ]; lia
-                                                  | intros; eapply dbd_mono; [| apply Hihs; eassumption ]; lia ]);
+          assert (Hw : forall x, In x wihs -> domain_bounded (s + n) x)
+            by (eapply wrap_ihs_eval_domain_bounded; [ exact Fw | eapply domain_bounded_blocks_mono; [| exact HBd ]; lia
+                                                  | eapply ups_domain_bounded_mono; [| exact HX ]; lia
+                                                  | intros; eapply domain_bounded_mono; [| apply Hvs; eassumption ]; lia
+                                                  | intros; eapply domain_bounded_mono; [| apply Hihs; eassumption ]; lia ]);
           eapply read_brs_cons;
           [ exact Hc | exact Hl | exact Hn0 | exact Hn | exact Hcnt | exact Hpl
           | let H' := fresh in pose proof (fresh_tele_rn _ _ _ _ f0 s' Hfx Hss) as H'; rewrite env_args_rn in H';
@@ -1128,16 +1128,16 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
             cbn [List.map domain_rename] in H'; rewrite !List.map_app in H'; exact H'
           | replace (s' + n) with (n + s') by lia;
             apply IHB; [ replace (s + n) with (n + s) by lia; apply rn_ok_qn, Hok |];
-            apply dbd_nf_dom;
-            [ eapply (dbd_eclo_clon _ _ _ _ HAd); [ lia | | | exact e1 ]; [ rewrite length_app, Hl1; cbn; lia |];
-              apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia |];
+            apply domain_nf_bounded_dom;
+            [ eapply (domain_bounded_eclo_clon _ _ _ _ HAd); [ lia | | | exact e1 ]; [ rewrite length_app, Hl1; cbn; lia |];
+              apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; lia |];
               apply all_in_cons; [| apply all_in_nil ];
-              apply dbd_con, all_in_app; [ intros; eapply dbd_mono; [| apply Hp; eassumption ]; lia |];
-              apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia
-                                | intros; eapply dbd_mono; [| apply Hvs; eassumption ]; lia ]
+              apply domain_bounded_con, all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hp; eassumption ]; lia |];
+              apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; lia
+                                | intros; eapply domain_bounded_mono; [| apply Hvs; eassumption ]; lia ]
             | eapply (HBs c n0 B (or_introl eq_refl)); [ lia | | | exact e0 ]; [ rewrite !length_app, Hl1, Hl2, Hgl, Hl3; lia |];
-              apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia |];
-              apply all_in_app; [ intros; eapply dbd_mono; [| apply Hvs; eassumption ]; lia | exact Hw ] ]
+              apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; lia |];
+              apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hvs; eassumption ]; lia | exact Hw ] ]
           | apply IHR; [ exact Hok | exact HBd | exact Hnm | exact Har | exact Hnn | exact HAd
                        | intros ? ? ? Hin; exact (HBs _ _ _ (or_intror Hin)) | exact HX | exact Hp ] ]
       end | _ => idtac end.
@@ -1145,11 +1145,11 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
         renamed parameters. *)
     all: try solve [ lazymatch goal with |- read_shape _ _ _ _ _ _ (pt_self _ _) _ _ =>
       match goal with
-      | e : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ ?ρ ↘ ?bs, IH : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_nf ?s _ -> read_nf _ _ s0 _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Hρ : env_dbd ?s ?ρ |- _ =>
+      | e : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ ?ρ ↘ ?bs, IH : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_nf_bounded ?s _ -> read_nf _ _ s0 _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hρ : env_domain_bounded ?s ?ρ |- _ =>
           econstructor; [ exact (proj1 (proj2 (proj2 (eval_rn Θ Ξ f))) _ _ _ e) |];
-          rewrite <- List.map_app; apply (IH s' φ Hok); apply dbd_nf_dom; [| assumption ];
-          apply dbd_indty; intros a Ha; apply List.in_app_or in Ha as [Ha | Ha]; [ auto |];
+          rewrite <- List.map_app; apply (IH s' φ Hok); apply domain_nf_bounded_dom; [| assumption ];
+          apply domain_bounded_indty; intros a Ha; apply List.in_app_or in Ha as [Ha | Ha]; [ auto |];
           intros w Hw;
           exact (proj1 (proj2 (proj2 (eval_avoids Θ Ξ w s))) _ _ _ e None (Hρ w Hw) (proj2 (List.Forall_forall _ _) (fun _ _ => I)) _ Ha)
       end end ].
@@ -1158,66 +1158,66 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
     all: try solve [ lazymatch goal with |- read_shape _ _ _ _ _ _ (pt_pi _ _) _ _ =>
       match goal with
       | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b, e0 : $| ?x & ⇑! ?b ?s | _ ⍮ _ ↘ ?r, Er : $| domain_rename f ?x & _ | _ ⍮ _ ↘ domain_rename f ?r,
-        IHA : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd ?s ?b -> read_typ _ _ s0 _ _,
-        IHV : forall s0 φ0, rn_ok f (S ?s) s0 φ0 -> _ -> env_dbd (S ?s) (?ρ ↦ _) -> dbd (S ?s) ?r -> _,
+        IHA : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded ?s ?b -> read_typ _ _ s0 _ _,
+        IHV : forall s0 φ0, rn_ok f (S ?s) s0 φ0 -> _ -> env_domain_bounded (S ?s) (?ρ ↦ _) -> domain_bounded (S ?s) ?r -> _,
         Hok : rn_ok f ?s ?s' ?φ, Hok1 : rn_ok f (S ?s) (S ?s') _, Hf0 : f ?s = ?s',
-        Hρ : env_dbd ?s ?ρ, Hu : forall a, In a ?ups -> dbd ?s a, Hx : dbd ?s ?x |- _ =>
+        Hρ : env_domain_bounded ?s ?ρ, Hu : forall a, In a ?ups -> domain_bounded ?s a, Hx : domain_bounded ?s ?x |- _ =>
           let Hbd := fresh "Hbd" in
-          assert (Hbd : dbd s b) by (eapply eval_dbd; eassumption);
+          assert (Hbd : domain_bounded s b) by (eapply eval_domain_bounded; eassumption);
           econstructor; [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e) | exact (IHA s' φ Hok Hbd) | exact Er |];
           change (env_rename f (ρ ↦ ⇑! b s)) with (env_rename f ρ ↦ domain_rename f (⇑! b s)) in IHV; cbn [domain_rename domain_ne_rename] in IHV; rewrite Hf0 in IHV;
           apply (IHV (S s') (wk_q φ) Hok1);
-          [ intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia
-          | apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Hbd ] ]
-          | eapply dbd_app; [ exact e0 | eapply dbd_mono; [| exact Hx ]; lia | apply dbd_fresh; [ lia | exact Hbd ] ] ]
+          [ intros; eapply domain_bounded_mono; [| apply Hu; eassumption ]; lia
+          | apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_fresh; [ lia | exact Hbd ] ]
+          | eapply domain_bounded_app; [ exact e0 | eapply domain_bounded_mono; [| exact Hx ]; lia | apply domain_bounded_fresh; [ lia | exact Hbd ] ] ]
       end end ].
     (** Records: a tuple at its record type, the parameters and the fields
         renamed; a record type at its parameters; a field, projected and
         read at its renamed type, then the rest with it. *)
     all: try solve [ lazymatch goal with |- read_nf _ _ _ (d_dom (d_record _ _) _) _ =>
       match goal with
-      | IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        IHf : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s (env_args nil ?ns) -> _ -> read_fields _ _ s0 _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Hns : forall a, In a ?ns -> dbd ?s a |- _ =>
+      | IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        IHf : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s (env_args nil ?ns) -> _ -> read_fields _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hns : forall a, In a ?ns -> domain_bounded ?s a |- _ =>
           econstructor; [ eassumption | rewrite List.length_map; eassumption
-                        | exact (IHp s' φ Hok (env_dbd_nil _) Hns) |];
+                        | exact (IHp s' φ Hok (env_domain_bounded_nil _) Hns) |];
           change (env_args nil (List.map (domain_rename f) ns)) with (env_args (env_rename f nil) (List.map (domain_rename f) ns));
           rewrite <- env_args_rn;
-          apply IHf; [ exact Hok | apply env_dbd_args; [ apply env_dbd_nil | exact Hns ] | assumption ]
+          apply IHf; [ exact Hok | apply env_domain_bounded_args; [ apply env_domain_bounded_nil | exact Hns ] | assumption ]
       end end ].
     all: try solve [ lazymatch goal with |- read_typ _ _ _ (d_record _ _) _ =>
       match goal with
-      | IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Hns : forall a, In a ?ns -> dbd ?s a |- _ =>
-          econstructor; [ eassumption | rewrite List.length_map; eassumption | exact (IHp s' φ Hok (env_dbd_nil _) Hns) ]
+      | IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hns : forall a, In a ?ns -> domain_bounded ?s a |- _ =>
+          econstructor; [ eassumption | rewrite List.length_map; eassumption | exact (IHp s' φ Hok (env_domain_bounded_nil _) Hns) ]
       end end ].
     all: try solve [ lazymatch goal with |- read_fields _ _ _ _ (_ :: _) _ _ =>
       match goal with
       | e : eval_proj _ _ _ ?d ?r, e0 : ⟦ ?T ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?t,
-        IHF : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_nf ?s _ -> read_nf _ _ s0 _ _,
-        IHR : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s (?ρ ↦ ?r) -> _ -> read_fields _ _ s0 _ _ _ _,
-        Hok : rn_ok f ?s ?s' ?φ, Hρ : env_dbd ?s ?ρ, Hd : dbd ?s ?d |- _ =>
+        IHF : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_nf_bounded ?s _ -> read_nf _ _ s0 _ _,
+        IHR : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s (?ρ ↦ ?r) -> _ -> read_fields _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hρ : env_domain_bounded ?s ?ρ, Hd : domain_bounded ?s ?d |- _ =>
           let Hr := fresh "Hr" in
-          assert (Hr : dbd s r) by exact (dbd_proj _ _ _ _ e Hd);
+          assert (Hr : domain_bounded s r) by exact (domain_bounded_proj _ _ _ _ e Hd);
           econstructor; [ exact (proj_rn _ _ _ e) | exact (proj1 (eval_rn Θ Ξ f) _ _ _ e0)
-                        | apply (IHF s' φ Hok); apply dbd_nf_dom; [ eapply eval_dbd; eassumption | exact Hr ]
-                        | apply (IHR s' φ Hok); [ apply env_dbd_cons; assumption | exact Hd ] ]
+                        | apply (IHF s' φ Hok); apply domain_nf_bounded_dom; [ eapply eval_domain_bounded; eassumption | exact Hr ]
+                        | apply (IHR s' φ Hok); [ apply env_domain_bounded_cons; assumption | exact Hd ] ]
       end end ].
     all: econstructor.
     all: try rewrite <- nf_lvl_of_wk.
     all: try eassumption.
     all: match goal with
-         | IH : _ |- _ => solve [ eapply IH; [ eassumption | dbd_solve ] ]
+         | IH : _ |- _ => solve [ eapply IH; [ eassumption | domain_bounded_solve ] ]
          end.
   Qed.
 
   Corollary read_nf_rn : forall s s' φ m W,
-      rn_ok f s s' φ -> dbd_nf s m ->
+      rn_ok f s s' φ -> domain_nf_bounded s m ->
       Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W.
   Proof. intros * ? ? H; eapply (proj1 read_rn); eassumption. Qed.
 
   Corollary read_typ_rn : forall s s' φ a A,
-      rn_ok f s s' φ -> dbd s a ->
+      rn_ok f s s' φ -> domain_bounded s a ->
       Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A.
   Proof. intros * ? ? H; eapply (proj1 (proj2 (proj2 read_rn))); eassumption. Qed.
 End Bound.
@@ -1280,8 +1280,8 @@ Qed.
 
 (** A value of the initial environment mentions only the levels of the
     context. *)
-Lemma eval_initial_dbd : forall Θ Ξ Γ ρ M m,
-    initial_env Θ Ξ Γ ρ -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> dbd Θ Ξ (List.length Γ) m.
+Lemma eval_initial_domain_bounded : forall Θ Ξ Γ ρ M m,
+    initial_env Θ Ξ Γ ρ -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> domain_bounded Θ Ξ (List.length Γ) m.
 Proof.
   intros * Hρ Hm v Hv.
   apply (proj1 (eval_avoids Θ Ξ v (List.length Γ)) _ _ _ Hm None); [| exact I ].
@@ -1302,7 +1302,7 @@ Theorem read_shift : forall Θ Ξ Γ ρ A M a m W,
 Proof.
   intros * Hρ Ha Hm HW.
   pose proof (read_nf_rn Θ Ξ (lvl_shift_above (List.length Γ)) _ _ _ _ _ (rn_ok_shift _)
-                (dbd_nf_dom _ _ _ _ _ (eval_initial_dbd _ _ _ _ _ _ Hρ Ha) (eval_initial_dbd _ _ _ _ _ _ Hρ Hm)) HW)
+                (domain_nf_bounded_dom _ _ _ _ _ (eval_initial_domain_bounded _ _ _ _ _ _ Hρ Ha) (eval_initial_domain_bounded _ _ _ _ _ _ Hρ Hm)) HW)
     as HW'.
   cbn [domain_nf_rename] in HW'.
   rewrite (eval_initial_rn _ _ _ _ _ _ Hρ Ha _ (lvl_shift_above_lt _)),
@@ -1318,7 +1318,7 @@ Theorem read_typ_shift : forall Θ Ξ Γ ρ A a W,
 Proof.
   intros * Hρ Ha HW.
   pose proof (read_typ_rn Θ Ξ (lvl_shift_above (List.length Γ)) _ _ _ _ _ (rn_ok_shift _)
-                (eval_initial_dbd _ _ _ _ _ _ Hρ Ha) HW) as HW'.
+                (eval_initial_domain_bounded _ _ _ _ _ _ Hρ Ha) HW) as HW'.
   rewrite (eval_initial_rn _ _ _ _ _ _ Hρ Ha _ (lvl_shift_above_lt _)) in HW'.
   exact HW'.
 Qed.

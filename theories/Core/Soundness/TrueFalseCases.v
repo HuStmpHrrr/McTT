@@ -62,9 +62,9 @@ Qed.
 #[local]
 Hint Resolve cons_glu_sub_pred_q_helper : mctt.
 
-Lemma glu_rel_exp_True_univ : forall {Γ} {u : uidx},
+Lemma glu_rel_exp_True_univ : forall {Γ} {u : universe_index},
     ⊩ Γ ->
-    Γ ⊩ ⊤ : ulvl_tm u.
+    Γ ⊩ ⊤ : universe_index_term u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -89,13 +89,13 @@ Proof. intros; apply (glu_rel_exp_True_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_True_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ ⊤ : Type@0.
-Proof. intros; apply (glu_rel_exp_True_univ (u := us oz)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_True_univ (u := us ordinal_zero)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_True : mctt.
 
-Lemma glu_rel_exp_False_univ : forall {Γ} {u : uidx},
+Lemma glu_rel_exp_False_univ : forall {Γ} {u : universe_index},
     ⊩ Γ ->
-    Γ ⊩ ⊥ : ulvl_tm u.
+    Γ ⊩ ⊥ : universe_index_term u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -120,7 +120,7 @@ Proof. intros; apply (glu_rel_exp_False_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_False_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ ⊥ : Type@0.
-Proof. intros; apply (glu_rel_exp_False_univ (u := us oz)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_False_univ (u := us ordinal_zero)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_False : mctt.
 
@@ -150,7 +150,7 @@ Proof.
   intros * ? HM ?.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
-  assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred (ulvl_tm i) ↘ False_glu_exp_pred (ulvl_tm i))
+  assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred (universe_index_term i) ↘ False_glu_exp_pred (universe_index_term i))
     by (glu_univ_elem_econstructor; reflexivity).
   eapply cons_glu_sub_pred_helper; mauto 3.
   econstructor; [unfold False_glu_typ_pred |]; simplify_subs; mauto 3.

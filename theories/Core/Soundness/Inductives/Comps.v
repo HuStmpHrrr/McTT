@@ -43,7 +43,7 @@ Section Fixed_GCtx.
     The gluings the clause of [d_ind] gives the types of the telescopes of
     the members of [D] at [ups], at the canonical relations, at the index
     [u]: the types evaluate, and their values are glued at the families. *)
-Record ind_fams_glu (D : ind_decl) (ups : list domain) (u : uidx)
+Record ind_fams_glu (D : ind_decl) (ups : list domain) (u : universe_index)
     (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
@@ -94,13 +94,13 @@ Section Comps.
   Variable (p : qname) (D : ind_decl).
   Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (HG : glu_ind_decl D) (Hc : decl_closed D)
     (Hdt : decl_typed gc_deps gc_stack D) (Hsu : ind_sort_univ (ind_sort D)) (Hass : grp_tele_ass D).
-  Variable (ups : list domain) (bu : domain) (u : uidx)
+  Variable (ups : list domain) (bu : domain) (u : universe_index)
     (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred).
   Hypothesis (Hu : List.length ups = ind_nu D) (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
-    (Hule : uidx_le (Completeness.Inductives.Decl.univ_idx bu) u)
+    (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
 
   Let HeN := ind_fams_glu_npar_eval _ _ _ _ _ _ _ _ _ Hf.
@@ -212,7 +212,7 @@ Section Comps.
     destruct (tele_insts_nth _ _ _ _ _ HT) as (A0 & HA0 & ->).
     rewrite HA in HA0; injection HA0 as <-.
     rewrite <- sb_of_list_app.
-    eapply glu_univ_elem_typ_cumu_ge_uidx; [ exact Hule | exact Hgb | exact Hga | exact (HP _ _ Hgb) ].
+    eapply glu_univ_elem_typ_cumu_ge_universe_index; [ exact Hule | exact Hgb | exact Hga | exact (HP _ _ Hgb) ].
   Qed.
 
   Lemma glu_args_of_nparams : forall m Mm Δ Us Ns ns, ind_member D m = Some Mm -> glu_nparams m Mm NEl Δ Us Ns ns ->
@@ -367,7 +367,7 @@ Section Comps.
     rewrite exp_wk_pat_sb_of_list in ET by (rewrite List.length_firstn; lia).
     fold As1 in ET; fold Ns' in ET.
     rewrite ET, <- !sb_of_list_app, <- List.app_assoc.
-    eapply glu_univ_elem_typ_cumu_ge_uidx; [ exact Hule | exact Hgb | exact Hga | exact (HP _ _ Hgb) ].
+    eapply glu_univ_elem_typ_cumu_ge_universe_index; [ exact Hule | exact Hgb | exact Hga | exact (HP _ _ Hgb) ].
   Qed.
 
   (** Glued arguments of the non-uniform parameters' telescope are glued
@@ -403,7 +403,7 @@ Section Comps.
       rewrite List.firstn_firstn, Nat.min_l by lia.
       rewrite List.nth_error_firstn in Hv'; destruct (Nat.ltb_spec j' n); [| discriminate ].
       eapply IH; eauto; lia. }
-    eapply glu_univ_elem_exp_conv_uidx; [ eapply glu_univ_elem_per_univ; exact Hglu' | exact Hglu' | exact Hgu | exact HM' | exact HTP ].
+    eapply glu_univ_elem_exp_conv_universe_index; [ eapply glu_univ_elem_per_univ; exact Hglu' | exact Hglu' | exact Hgu | exact HM' | exact HTP ].
   Qed.
 
   (** A glued instance of a shape's context after [k] domains, weakened and
@@ -487,7 +487,7 @@ Section Comps.
       assert (a = b0) as -> by (eapply functional_eval_exp; eassumption).
       destruct (per_univ_glu_univ_elem _ _ Hpa) as (Pb & Elb & Hgb).
       rewrite exp_wk_sub.
-      eapply glu_univ_elem_typ_cumu_ge_uidx; [ exact Hule | exact Hgb | exact Hgb0 | exact (HP _ _ Hgb) ]. }
+      eapply glu_univ_elem_typ_cumu_ge_universe_index; [ exact Hule | exact Hgb | exact Hgb0 | exact (HP _ _ Hgb) ]. }
     split; [ exact HTy |].
     intros Δ' φ b c' Hφ Hc' Hb.
     assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
@@ -558,7 +558,7 @@ End Comps.
 (** The gluing of a declared member's type in the PER model: its families,
     and the type and element predicates at them. *)
 #[warnings="-cannot-define-projection"]
-Record ind_glu_of_type (p : qname) (D : ind_decl) (ups ns : list domain) (u : uidx) (k : nat) (Mk : imember)
+Record ind_glu_of_type (p : qname) (D : ind_decl) (ups ns : list domain) (u : universe_index) (k : nat) (Mk : imember)
     (R : relation domain) : Prop := mk_ind_glu_of_type
   { (** The non-uniform parameters' type predicates *)
     ind_glu_of_type_NP : nat -> nat -> list domain -> glu_typ_pred
@@ -581,9 +581,9 @@ Record ind_glu_of_type (p : qname) (D : ind_decl) (ups ns : list domain) (u : ui
     (** The type is glued at them *)
   ; ind_glu_of_type_glu : DG d_ind p k (ups ++ ns) ∈ glu_univ_elem u ↘ ind_glu_of_type_P ↘ ind_glu_of_type_El
     (** The type predicate is the inductive one *)
-  ; ind_glu_of_type_typ : ind_glu_of_type_P <∙> ind_glu_typ_pred p D ups ns ind_glu_of_type_NP ind_glu_of_type_NEl ind_glu_of_type_AP ind_glu_of_type_AEl ind_glu_of_type_DP ind_glu_of_type_DEl k Mk Typeω@(ulvl u)
+  ; ind_glu_of_type_typ : ind_glu_of_type_P <∙> ind_glu_typ_pred p D ups ns ind_glu_of_type_NP ind_glu_of_type_NEl ind_glu_of_type_AP ind_glu_of_type_AEl ind_glu_of_type_DP ind_glu_of_type_DEl k Mk Typeω@(large_level u)
     (** The element predicate is the inductive one *)
-  ; ind_glu_of_type_exp : ind_glu_of_type_El <∙> ind_glu_exp_pred p D ups ns ind_glu_of_type_NP ind_glu_of_type_NEl ind_glu_of_type_AP ind_glu_of_type_AEl ind_glu_of_type_DP ind_glu_of_type_DEl k Mk ind_glu_of_type_R Typeω@(ulvl u)
+  ; ind_glu_of_type_exp : ind_glu_of_type_El <∙> ind_glu_exp_pred p D ups ns ind_glu_of_type_NP ind_glu_of_type_NEl ind_glu_of_type_AP ind_glu_of_type_AEl ind_glu_of_type_DP ind_glu_of_type_DEl k Mk ind_glu_of_type_R Typeω@(large_level u)
     (** [R] is the clause's relation *)
   ; ind_glu_of_type_rel : R <~> ind_glu_of_type_R
     (** The families are glued *)
@@ -608,7 +608,7 @@ Section Former.
   Lemma ind_sort_le : forall k Mk Δ Ms bu ups, ind_member D k = Some Mk -> ⊢ Δ -> List.length Ms = im_np D Mk ->
       (forall j M T, List.nth_error Ms j = Some M -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T -> Δ ⊢ M : T) ->
       ⟦ ind_sort D ⟧ env_args nil ups ↘ bu ->
-      Δ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms] ⊆ Typeω@(ulvl (Completeness.Inductives.Decl.univ_idx bu)).
+      Δ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms] ⊆ Typeω@(large_level (Completeness.Inductives.Decl.univ_idx bu)).
   Proof.
     intros * HM HΔ HMl HMs Hbu.
     assert (HUl : List.length (List.firstn (ind_nu D) Ms) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in *; lia).
@@ -618,7 +618,7 @@ Section Former.
     rewrite <- (List.firstn_skipn (ind_nu D) Ms) at 1.
     replace (im_nn Mk) with (List.length (List.skipn (ind_nu D) Ms)) by (rewrite List.length_skipn; unfold im_np in *; lia).
     rewrite exp_shift_past.
-    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hbu, Hn |- *; inversion Hbu; subst; cbn [Completeness.Inductives.Decl.univ_idx ulvl exp_sub].
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hbu, Hn |- *; inversion Hbu; subst; cbn [Completeness.Inductives.Decl.univ_idx large_level exp_sub].
     - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
     - cbn in Hn; eapply wf_subtyp_small_large; eassumption.
   Qed.
@@ -636,21 +636,21 @@ Section Former.
 
   (** A declared member's type at parameters glued to [ups ++ ns], at
       gluings of the clause at [ups]. *)
-  Lemma ind_typ_at_of_args : forall k Mk Δ Ms ups ns bu (u : uidx) NP NEl AP AEl DP DEl,
+  Lemma ind_typ_at_of_args : forall k Mk Δ Ms ups ns bu (u : universe_index) NP NEl AP AEl DP DEl,
       ind_member D k = Some Mk -> k < ind_ndecl D -> ⊢ Δ ->
       glu_args Δ (im_params D Mk) Id nil Ms (ups ++ ns) -> List.length ups = ind_nu D ->
-      ⟦ ind_sort D ⟧ env_args nil ups ↘ bu -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) u ->
+      ⟦ ind_sort D ⟧ env_args nil ups ↘ bu -> universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u ->
       ind_fams_glu D ups u NP NEl AP AEl DP DEl ->
-      ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk Typeω@(ulvl u) Δ (apps (a_ind p k) Ms) Ms.
+      ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk Typeω@(large_level u) Δ (apps (a_ind p k) Ms) Ms.
   Proof.
     intros * HM Hlt HΔ Hg Hu Hbu Hule Hf.
     assert (Hsub : forall Δ' Ms', ⊢ Δ' -> List.length Ms' = im_np D Mk ->
               (forall j M T, List.nth_error Ms' j = Some M -> List.nth_error (tele_insts (im_params D Mk) Id Ms') j = Some T -> Δ' ⊢ M : T) ->
-              Δ' ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms'] ⊆ Typeω@(ulvl u)).
+              Δ' ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms'] ⊆ Typeω@(large_level u)).
     { intros Δ' Ms' HΔ'0 HMl' HMs'.
       eapply wf_subtyp_trans; [ eapply ind_sort_le; eassumption |].
-      pose proof (uidx_le_ulvl_le _ _ Hule) as Hlv.
-      destruct (Nat.eq_dec (ulvl (Completeness.Inductives.Decl.univ_idx bu)) (ulvl u)) as [-> | Hne].
+      pose proof (universe_index_le_large_level_le _ _ Hule) as Hlv.
+      destruct (Nat.eq_dec (large_level (Completeness.Inductives.Decl.univ_idx bu)) (large_level u)) as [-> | Hne].
       - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
       - apply wf_subtyp_univ; [ exact HΔ'0 | lia ]. }
     pose proof (decl_closed_params_ass D k Mk Hc HM) as HassP.
@@ -674,7 +674,7 @@ Section Former.
   Qed.
 
   (** The gluing of a declared member's type in the PER model. *)
-  Lemma ind_glu_of_per : forall (u : uidx) R k Mk pm ups ns, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+  Lemma ind_glu_of_per : forall (u : universe_index) R k Mk pm ups ns, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
       DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups ++ ns) ∈ per_univ_elem u ↘ R -> List.length ups = ind_nu D ->
       ind_glu_of_type p D ups ns u k Mk R.
   Proof.
@@ -792,7 +792,7 @@ Section Former.
     apply HRb' in Hdind; destruct Hdind as [R' HR'].
     rewrite <- Hidx in HR'; rewrite Hvs in HR', Hg.
     destruct (ind_glu_of_per _ R' k Mk pm ups ns HM Hh HR' Hu) as [NP NEl AP AEl DP DEl Pd Eld R'' Hglud HPd HEd HRR Hf].
-    pose proof (ind_typ_at_of_args k Mk Δ Ms ups ns bu _ NP NEl AP AEl DP DEl HM Hlt HΔ Hg Hu Hbu (uidx_le_refl _) Hf) as Hit.
+    pose proof (ind_typ_at_of_args k Mk Δ Ms ups ns bu _ NP NEl AP AEl DP DEl HM Hlt HΔ Hg Hu Hbu (universe_index_le_refl _) Hf) as Hit.
     assert (Hgd : glu_univ_typ (Completeness.Inductives.Decl.univ_idx bu) (d_ind p k vs) Δ (apps (a_ind p k) Ms))
       by (rewrite Hvs; apply (mk_glu_typ_at _ _ _ _ Pd Eld); [ exact Hglud | apply HPd; exists Ms; exact Hit ]).
     clear HPER.

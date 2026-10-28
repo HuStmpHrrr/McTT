@@ -103,11 +103,11 @@ Lemma glu_arg_transfer : forall Δ ρ ρ' A A' T T' M v a' (k j : nat), glu_arg 
 Proof.
   intros * [l a P El Ea Hg HP HM] Ea' Hrel HTT.
   destruct (Hrel _ Ea) as [R HR].
-  set (n := Nat.max (ulvl l) (Nat.max k j)).
-  assert (Hln : uidx_le l (ul n)) by (apply uidx_le_ul_max; unfold n; lia).
-  destruct (glu_univ_elem_cumu_ge_uidx Hln Hg) as (Pn & Eln & Hgn).
-  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hln Hg Hgn HP) as HPn.
-  pose proof (glu_univ_elem_exp_cumu_ge_uidx Hln Hg Hgn HM) as HMn.
+  set (n := Nat.max (large_level l) (Nat.max k j)).
+  assert (Hln : universe_index_le l (ul n)) by (apply universe_index_le_ul_max; unfold n; lia).
+  destruct (glu_univ_elem_cumu_ge_universe_index Hln Hg) as (Pn & Eln & Hgn).
+  pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hln Hg Hgn HP) as HPn.
+  pose proof (glu_univ_elem_exp_cumu_ge_universe_index Hln Hg Hgn HM) as HMn.
   pose proof (per_univ_elem_cumu_ge k n _ _ _ ltac:(unfold n; lia) HR) as HRn.
   pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ R HRn) Hgn) as Hgn'.
   pose proof (lift_exp_eq_ge _ _ _ _ _ j n ltac:(unfold n; lia) HTT) as HTTn.
@@ -159,9 +159,9 @@ Proof.
       destruct Hga' as [l' a'' P' El' Ea'' Hg' _ HM'].
       destruct (glu_univ_elem_per_univ _ _ _ _ Hg') as [R' HR'].
       pose proof (glu_univ_elem_per_elem _ _ _ _ Hg' _ _ _ _ _ HM' HR') as Hvv.
-      apply (Decl.per_gargs_snoc _ _ _ _ _ _ _ _ (ulvl l') R');
+      apply (Decl.per_gargs_snoc _ _ _ _ _ _ _ _ (large_level l') R');
         [ rewrite List.length_firstn, List.length_firstn, List.length_rev; lia | exact IHp | | exact Hvv ].
-      exact (mk_rel_mod_eval a'' a'' Ea'' Ea'' (per_univ_elem_cumu_uidx _ _ _ _ HR' _ (uidx_le_ulvl l'))). }
+      exact (mk_rel_mod_eval a'' a'' Ea'' Ea'' (per_univ_elem_cumu_universe_index _ _ _ _ HR' _ (universe_index_le_large_level l'))). }
   constructor; [ lia | lia |].
   intros k M T v A' HM HT Hv HA'.
   assert (Hk : k < List.length C) by (assert (k < List.length vs) by (apply List.nth_error_Some; congruence); lia).
@@ -172,15 +172,15 @@ Qed.
 
 (** A term glued at a type of one of two related values is glued at that
     type of the other, at some universe. *)
-Lemma glu_transfer_per_elem : forall (j : uidx) (i : nat) a b P El Γ T M m, DG a ∈ glu_univ_elem j ↘ P ↘ El ->
+Lemma glu_transfer_per_elem : forall (j : universe_index) (i : nat) a b P El Γ T M m, DG a ∈ glu_univ_elem j ↘ P ↘ El ->
     Dom a ≈ b ∈ per_univ i -> Γ ⊢ T ® P -> Γ ⊢ M : T ® m ∈ El ->
-    exists (k : uidx) P' El', DG b ∈ glu_univ_elem k ↘ P' ↘ El' /\ Γ ⊢ T ® P' /\ Γ ⊢ M : T ® m ∈ El'.
+    exists (k : universe_index) P' El', DG b ∈ glu_univ_elem k ↘ P' ↘ El' /\ Γ ⊢ T ® P' /\ Γ ⊢ M : T ® m ∈ El'.
 Proof.
   intros * Hg Hab HT HM.
-  destruct (glu_univ_elem_cumu_ge_uidx (i := j) (j := ul (Nat.max (ulvl j) i)) ltac:(apply uidx_le_max) Hg) as (P1 & El1 & Hg1).
-  pose proof (glu_univ_elem_typ_cumu_ge_uidx (uidx_le_max _ _) Hg Hg1 HT) as HT1.
-  pose proof (glu_univ_elem_exp_cumu_ge_uidx (uidx_le_max _ _) Hg Hg1 HM) as HM1.
-  destruct (glu_transfer_per (Nat.max (ulvl j) i) i a b P1 El1 Γ T M m Hg1 Hab HT1 HM1) as (k & P' & El' & H1 & H2 & H3).
+  destruct (glu_univ_elem_cumu_ge_universe_index (i := j) (j := ul (Nat.max (large_level j) i)) ltac:(apply universe_index_le_max) Hg) as (P1 & El1 & Hg1).
+  pose proof (glu_univ_elem_typ_cumu_ge_universe_index (universe_index_le_max _ _) Hg Hg1 HT) as HT1.
+  pose proof (glu_univ_elem_exp_cumu_ge_universe_index (universe_index_le_max _ _) Hg Hg1 HM) as HM1.
+  destruct (glu_transfer_per (Nat.max (large_level j) i) i a b P1 El1 Γ T M m Hg1 Hab HT1 HM1) as (k & P' & El' & H1 & H2 & H3).
   exists k, P', El'; auto.
 Qed.
 
@@ -754,7 +754,7 @@ Section SelfArgs.
         parameters, and moved to the value given. *)
     destruct (self_entry_glu k Mk Δ Us ups HMk Hk HΔ HUs) as [i0 a0 P0 El0 Ea0 Hg0 HP0 HM0].
     destruct (self_wk_rel ups Hgu Lu k Mk a a0 Hk HMk Ea Ea0) as [l Hl'].
-    eapply glu_univ_elem_exp_conv_uidx; [ symmetry; exact Hl' | exact Hg0 | exact Hga | exact HM0 | exact HPT ].
+    eapply glu_univ_elem_exp_conv_universe_index; [ symmetry; exact Hl' | exact Hg0 | exact Hga | exact HM0 | exact HPT ].
   Qed.
 End SelfArgs.
 
@@ -1701,7 +1701,7 @@ Qed.
 
 (** The universes of a sort, below a large one. *)
 Lemma sort_bound_of : forall D : ind_decl, ind_sort_univ (ind_sort D) ->
-    exists n, forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> forall i, n <= i -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) (ul i).
+    exists n, forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> forall i, n <= i -> universe_index_le (Completeness.Inductives.Decl.univ_idx bu) (ul i).
 Proof.
   intros D Hsu; destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq; [ exists i0 | exists 0 ]; intros * Hb i Hi;
     inversion Hb; subst; cbn; [ lia | exact I ].
@@ -1754,7 +1754,7 @@ Section ConViewFT.
   Lemma con_view_base : forall Dq Mkc pmc gs' (i : nat) Δ Ms vs w b P El, ind_lookup gc_deps gc_stack qc = Some Dq ->
       ind_member Dq kc = Some Mkc -> im_head Mkc = mh_decl pmc -> List.nth_error vm kc = Some k ->
       ind_con Mkc c = Some gs' -> cargs_corr vm gs' gs -> ⊢ Δ ->
-      (forall ρ bu, ⟦ ind_sort Dq ⟧ ρ ↘ bu -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) (ul i)) ->
+      (forall ρ bu, ⟦ ind_sort Dq ⟧ ρ ↘ bu -> universe_index_le (Completeness.Inductives.Decl.univ_idx bu) (ul i)) ->
       glu_args Δ (cargs_ctx p D Mk gs ++ im_params D Mk) Id nil Ms vs ->
       Completeness.Inductives.Con.con_value p D k Mk c vs w ->
       ⟦ ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk)) ⟧ env_args nil vs ↘ b ->
@@ -1873,7 +1873,7 @@ Section ConViewFT.
       destruct (sort_value Dq HDQ cs0 (uparams_refl_l Dq HDQ HcQ _ _ Hgc') Hl0) as [aq Eaq].
       pose proof (ind_relate Dq HDQ HcQ (valid_group_sort _ _ HgQ) qc (valid_group_lookup _ _ HgQ) (valid_group_ass _ _ HgQ) kc Mkc pmc cs0 cs ns ns aq
                     HMkc Hhc Hgc' Hl0 Eaq Hns) as Hrel.
-      eexists; exact (per_univ_elem_cumu_uidx _ _ _ _ Hrel _ (Hbnd _ _ Eaq)). }
+      eexists; exact (per_univ_elem_cumu_universe_index _ _ _ _ Hrel _ (Hbnd _ _ Eaq)). }
     destruct Hbb as [Rbb Hbb].
     pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ Rbb Hbb) Hglu) as Hglu'.
     assert (HPER' : forall R, DF b' ≈ b' ∈ per_univ_elem i ↘ R -> R (d_con qc kc c ((cs ++ ns) ++ ws)) (d_con qc kc c ((cs ++ ns) ++ ws))).

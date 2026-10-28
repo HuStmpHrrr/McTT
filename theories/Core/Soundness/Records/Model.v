@@ -140,7 +140,7 @@ Section RecordAt.
   Qed.
 
   (** Two types of a value related to one glued at [i] are glued at [i]. *)
-  Lemma glu_univ_elem_resp_per_univ_at : forall (i j : uidx) t u P El, DG u ∈ glu_univ_elem i ↘ P ↘ El ->
+  Lemma glu_univ_elem_resp_per_univ_at : forall (i j : universe_index) t u P El, DG u ∈ glu_univ_elem i ↘ P ↘ El ->
       Dom t ≈ u ∈ per_univ j -> DG t ∈ glu_univ_elem i ↘ P ↘ El.
   Proof.
     intros * Hu Htu.
@@ -301,7 +301,7 @@ Section RecordAt.
     pose proof (tuple_projs R Hnd fs ms Hfs Hlms) as Hvs.
     pose proof (record_params_glu_args_at _ _ _ _ _ _ _ HSb Hσ Hn HNt HNg Ens) as HNσ.
     (* the type is the record type at the substituted parameters *)
-    assert (HTat : record_typ_at p R ns FP FEl Typeω@(ulvl i) Δ T[σ] (List.map (fun N => N[σ]) Ns)).
+    assert (HTat : record_typ_at p R ns FP FEl Typeω@(large_level i) Δ T[σ] (List.map (fun N => N[σ]) Ns)).
     { destruct (proj1 (HPP _ _) (HPa _ _ Hga)) as [Ns1 HNs1].
       eapply record_typ_at_params_change; [ exact Hl | intros n0; destruct (Htop n0) as (Cs & HCs & _); exists Cs; exact HCs | | exact HNs1 ].
       intros Δ' φ Hφ; apply glu_args_params_glu_top; [ exact Hass | exact (closed_params _ Hc) |].
@@ -472,11 +472,11 @@ Section RecordAt.
       eapply wf_sub_of_list; [ exact (typed_params_ass _ _ _ HRt) | rewrite List.app_nil_r; exact HPw
                              | exact (wf_sub_to_nil _ _ _ HΔ) | exact Hn | exact HNt ]. }
     destruct (wf_exp_eq_is_univ_large HSs HUU) as [j HUUj].
-    set (nn := Nat.max (ulvl lv) j).
-    assert (Hle : uidx_le lv (ul nn)) by (apply uidx_le_ul_max; unfold nn; lia).
-    destruct (glu_univ_elem_cumu_ge_uidx Hle Hga) as (Pn & Eln & Hgn).
-    pose proof (glu_univ_elem_typ_cumu_ge_uidx Hle Hga Hgn HP) as HPn.
-    pose proof (glu_univ_elem_exp_cumu_ge_uidx Hle Hga Hgn HMg) as HMn.
+    set (nn := Nat.max (large_level lv) j).
+    assert (Hle : universe_index_le lv (ul nn)) by (apply universe_index_le_ul_max; unfold nn; lia).
+    destruct (glu_univ_elem_cumu_ge_universe_index Hle Hga) as (Pn & Eln & Hgn).
+    pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hle Hga Hgn HP) as HPn.
+    pose proof (glu_univ_elem_exp_cumu_ge_universe_index Hle Hga Hgn HMg) as HMn.
     pose proof (lift_exp_eq_ge _ _ _ _ _ j nn ltac:(unfold nn; lia) HUUj) as HUUn.
     refine (mk_glu_arg _ _ _ _ _ _ (ul nn) a Pn Eln Ea Hgn _ _).
     - exact (glu_univ_elem_typ_resp_exp_eq _ _ _ _ Hgn _ _ _ HPn (wf_exp_eq_sym _ _ _ _ _ _ HUUn)).
@@ -514,7 +514,7 @@ Section RecordAt.
     pose proof (record_projs_length _ _ _ Hvs) as Lw.
     (** The type, at the given parameters. *)
     destruct (proj1 (HPP _ _) HW) as [Ns0 HNs0].
-    assert (HTat : record_typ_at p R ns FP FEl Typeω@(ulvl i) Δ W Ns).
+    assert (HTat : record_typ_at p R ns FP FEl Typeω@(large_level i) Δ W Ns).
     { eapply record_typ_at_params_change;
         [ exact Hl | intros n0; destruct (Htop n0) as (Cs & HCs & _); exists Cs; exact HCs | | exact HNs0 ].
       intros Δ' φ Hφ; apply glu_args_params_glu_top; [ exact Hass | exact (closed_params _ Hc) |].
@@ -565,7 +565,7 @@ Section RecordAt.
         replace (List.firstn j (record_pre R n0 M)) with (record_pre R j M)
           by (unfold record_pre; rewrite List.firstn_map, List.firstn_firstn, Nat.min_l by lia; reflexivity).
         exact (IH _ _ _ _ Hjn Hj Hmj). }
-      eapply glu_univ_elem_exp_conv_uidx; [ eapply glu_univ_elem_per_univ; exact Hg' | exact Hg' | exact Hgu | exact HM' | exact HFPk ]. }
+      eapply glu_univ_elem_exp_conv_universe_index; [ eapply glu_univ_elem_per_univ; exact Hg' | exact Hg' | exact Hgu | exact HM' | exact HFPk ]. }
     refine (mk_record_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ (proj2 (HE _ _) Hm) Ns HTat ms Hvs _); [ exact HM |].
     (** At a weakening and an equal instance of the parameters. *)
     intros Δ' φ Ns' Hφ HNs' k f U r Hfk Hr.
@@ -627,11 +627,11 @@ Section RecordAt.
     (** The sort at glued parameters is below the universe it denotes. *)
     Lemma record_sort_le : forall Δ Ms vs b, ⊢ Δ -> glu_args Δ (record_params R) Id nil Ms vs ->
         ⟦ record_sort R ⟧ env_args nil vs ↘ b ->
-        Δ ⊢ (record_sort R)[sb_of_list Id Ms] ⊆ Typeω@(ulvl (Completeness.Inductives.Decl.univ_idx b)).
+        Δ ⊢ (record_sort R)[sb_of_list Id Ms] ⊆ Typeω@(large_level (Completeness.Inductives.Decl.univ_idx b)).
     Proof.
       intros * HΔ Hgs Hb.
       destruct (glued_sort _ HG) as [[j Heq] | (L & n & Heq & HL)]; rewrite Heq in Hb |- *; inversion Hb; subst;
-        cbn [Completeness.Inductives.Decl.univ_idx ulvl exp_sub].
+        cbn [Completeness.Inductives.Decl.univ_idx large_level exp_sub].
       - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
       - pose proof HL as [SbP HSbP _ _].
         pose proof (record_params_glu_sub _ _ _ _ HΔ HSbP Hgs) as Hσ.
@@ -675,9 +675,9 @@ Section RecordAt.
 
     (** The fields at glued parameters are glued at the families of the
         clause of [d_record] at the universe the sort denotes. *)
-    Lemma record_fields_glu_of_args : forall Δ Ns vs b (u : uidx) FP FEl, ⊢ Δ ->
+    Lemma record_fields_glu_of_args : forall Δ Ns vs b (u : universe_index) FP FEl, ⊢ Δ ->
         glu_args Δ (record_params R) Id nil Ns vs -> ⟦ record_sort R ⟧ env_args nil vs ↘ b ->
-        uidx_le (Completeness.Inductives.Decl.univ_idx b) u ->
+        universe_index_le (Completeness.Inductives.Decl.univ_idx b) u ->
         (forall k f T ws, List.nth_error (record_fields R) k = Some (f, T) ->
            tele_prefix_rel (canon_fields_rel R vs) k ws ws -> exists c, ⟦ T ⟧ env_args nil (vs ++ ws) ↘ c) ->
         (forall k f T ws c, List.nth_error (record_fields R) k = Some (f, T) ->
@@ -716,7 +716,7 @@ Section RecordAt.
       destruct (record_sort_typ_glued (record_fctx R k) T Sbk Δ _ vs mfs b HCk ltac:(lia) Hb HSbk
                   ltac:(rewrite HlenF; exact HTk) Hσ) as (a & Ha & Hpa & HP).
       destruct (per_univ_glu_univ_elem _ _ Hpa) as (P0 & El0 & Hg0).
-      exact (glu_univ_elem_typ_cumu_ge_uidx Hub Hg0 (HgF _ _ _ _ _ Hk Hp Ha) (HP _ _ Hg0)).
+      exact (glu_univ_elem_typ_cumu_ge_universe_index Hub Hg0 (HgF _ _ _ _ _ Hk Hp Ha) (HP _ _ Hg0)).
     Qed.
 
     (** The type former applied to glued parameters is glued at the sort
@@ -747,7 +747,7 @@ Section RecordAt.
       match goal with HgF : forall k f T vs b, _ -> _ -> _ -> glu_univ_elem _ _ _ _ |- _ => rename HgF into HgF0 end.
       match goal with HeT : forall k f T vs, _ -> _ -> exists b, _ |- _ => rename HeT into HeT0 end.
       match goal with HP : _ <∙> record_glu_typ_pred _ _ _ _ _ _ |- _ => rename HP into HPd end.
-      assert (Hit : record_typ_at p R vs FP FEl Typeω@(ulvl (Completeness.Inductives.Decl.univ_idx b)) Δ (apps_exp (a_record p) Ms) Ms).
+      assert (Hit : record_typ_at p R vs FP FEl Typeω@(large_level (Completeness.Inductives.Decl.univ_idx b)) Δ (apps_exp (a_record p) Ms) Ms).
       { constructor; [ eapply wf_exp_eq_subtyp'; [ exact HAeq | exact (record_sort_le _ _ _ _ HΔ HMs Hb) ] |].
         intros Δ' φ Hφ.
         assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
@@ -755,7 +755,7 @@ Section RecordAt.
         constructor; [ exact (glu_args_params_glu_top _ _ _ _ Hass (closed_params _ Hc) Hg') | exact (record_sort_le _ _ _ _ HΔ' Hg' Hb) |].
         intros Ns' HNs'.
         pose proof (glu_args_resp_eq _ _ _ _ _ _ Hass (presup_is_univ_ctx (typed_sort _ _ _ Ht)) HΔ' HNs' Hg') as Hg''.
-        eapply record_fields_glu_of_args; [ exact HΔ' | exact Hg'' | exact Hb | apply uidx_le_refl | exact HeT0 | exact HgF0 ]. }
+        eapply record_fields_glu_of_args; [ exact HΔ' | exact Hg'' | exact Hb | apply universe_index_le_refl | exact HeT0 | exact HgF0 ]. }
       assert (Hgd : glu_univ_typ (Completeness.Inductives.Decl.univ_idx b) (d_record p vs) Δ (apps_exp (a_record p) Ms))
         by (eapply mk_glu_typ_at; [ exact Hglud | apply HPd; exists Ms; exact Hit ]).
       clear HPER.
@@ -798,7 +798,7 @@ Section RecordAt.
         gluing of the record type at them, at a universe above the sort's
         value there. *)
     Lemma record_typ_glu : forall Δ Ms vs b (i : nat) P El, ⊢ Δ -> glu_args Δ (record_params R) Id nil Ms vs ->
-        ⟦ record_sort R ⟧ env_args nil vs ↘ b -> uidx_le (Completeness.Inductives.Decl.univ_idx b) i ->
+        ⟦ record_sort R ⟧ env_args nil vs ↘ b -> universe_index_le (Completeness.Inductives.Decl.univ_idx b) i ->
         DG d_record p vs ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ apps_exp (a_record p) Ms ® P.
     Proof.
       intros * HΔ HMs Hb Hbi Hglu.
@@ -809,11 +809,11 @@ Section RecordAt.
       { eapply wf_exp_eq_record_apps; [ exact Hrt | exact Hl | exact HMl | exact HMl |].
         intros j X Y T HX HY HT; rewrite HX in HY; injection HY as <-; apply wf_exp_eq_refl; eapply HMt; eassumption. }
       assert (Hsi : forall Δ' Ms', ⊢ Δ' -> glu_args Δ' (record_params R) Id nil Ms' vs ->
-                 Δ' ⊢ (record_sort R)[sb_of_list Id Ms'] ⊆ Typeω@(ulvl i)).
+                 Δ' ⊢ (record_sort R)[sb_of_list Id Ms'] ⊆ Typeω@(large_level i)).
       { intros Δ' Ms' HΔ' HMs'.
         eapply wf_subtyp_trans; [ exact (record_sort_le _ _ _ _ HΔ' HMs' Hb) |].
-        pose proof (uidx_le_ulvl_le _ _ Hbi) as Hle; cbn [ulvl] in Hle |- *.
-        destruct (Nat.eq_dec (ulvl (Completeness.Inductives.Decl.univ_idx b)) i) as [-> | Hne];
+        pose proof (universe_index_le_large_level_le _ _ Hbi) as Hle; cbn [large_level] in Hle |- *.
+        destruct (Nat.eq_dec (large_level (Completeness.Inductives.Decl.univ_idx b)) i) as [-> | Hne];
           [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3 | apply wf_subtyp_univ; [ exact HΔ' | lia ] ]. }
       pose proof Hglu as Hglu'; invert_glu_univ_elem Hglu'.
       match goal with H : record_lookup _ _ p = Some ?R0 |- _ => rewrite Hl in H; injection H as <- end.

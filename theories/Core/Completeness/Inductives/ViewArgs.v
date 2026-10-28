@@ -88,9 +88,9 @@ Section ViewArgs.
 
   Lemma view_nn : im_nn Mv = im_nn Mi'.
   Proof.
-    destruct (decl_typed_vwrap _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMk Hh) as (D2 & Hq2 & Hvw).
+    destruct (decl_typed_view_wrap _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMk Hh) as (D2 & Hq2 & Hvw).
     rewrite Hq in Hq2; injection Hq2 as <-.
-    destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv' & HMv' & Hnn & _).
+    destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv' & HMv' & Hnn & _).
     rewrite HMv in HMv'; injection HMv' as <-; exact Hnn.
   Qed.
 

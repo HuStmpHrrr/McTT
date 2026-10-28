@@ -175,14 +175,14 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
     merged, and a dominated constant is dropped ([lvl_canon]).  Evaluation
     flattens only, so this is where levels equal by the level equations become
     the same normal form.  A neutral level is the single atom at offset [0],
-    of the sort of its type ([dsort]), which is already canonical: the sort
+    of the sort of its type ([domain_level_sort]), which is already canonical: the sort
     is read off the neutral's type, not off the type it is read back at. *)
 | read_nf_lvl :
   `( Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rnf ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (mk_level_atom 0 (dsort a) M :: nil) )
+     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) M :: nil) )
 (** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
 | read_nf_true :
   `( Rnf ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
@@ -354,16 +354,16 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp d_record p ns in Θ ⍮ Ξ ⍮ s ↘ nf_record p Ps )
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
-with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
+with read_level_atoms (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
 (** No atom *)
-| read_la_nil :
+| read_level_atoms_nil :
   `( Rla nil in Θ ⍮ Ξ ⍮ s ↘ nil )
 (** The first atom's neutral, then the rest *)
-| read_la_cons :
+| read_level_atoms_cons :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rla (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ mk_level_atom k n M :: ys )
-where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_la Θ Ξ s xs ys) : type_scope
+where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_level_atoms Θ Ξ s xs ys) : type_scope
 (** Values at a telescope, outermost first, each at its type in the
     environment of the values before it. *)
 with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> list nf -> Prop :=
@@ -506,7 +506,7 @@ where "'Rbrs' Bs 'at' cs 'of' Mi r 'of' Dc 'from' p ups Bks Mv A 'in' Θ '⍮' �
 Scheme read_nf_mut_ind := Induction for read_nf Sort Prop
 with read_ne_mut_ind := Induction for read_ne Sort Prop
 with read_typ_mut_ind := Induction for read_typ Sort Prop
-with read_la_mut_ind := Induction for read_la Sort Prop
+with read_level_atoms_mut_ind := Induction for read_level_atoms Sort Prop
 with read_ps_mut_ind := Induction for read_ps Sort Prop
 with read_cargs_mut_ind := Induction for read_cargs Sort Prop
 with read_shape_mut_ind := Induction for read_shape Sort Prop
@@ -517,7 +517,7 @@ Combined Scheme read_mut_ind from
   read_nf_mut_ind,
   read_ne_mut_ind,
   read_typ_mut_ind,
-  read_la_mut_ind,
+  read_level_atoms_mut_ind,
   read_ps_mut_ind,
   read_cargs_mut_ind,
   read_shape_mut_ind,
@@ -526,4 +526,4 @@ Combined Scheme read_mut_ind from
   read_fields_mut_ind.
 
 #[export]
-Hint Constructors read_nf read_ne read_typ read_la read_ps read_fields read_cargs read_shape read_blocks read_brs : mctt.
+Hint Constructors read_nf read_ne read_typ read_level_atoms read_ps read_fields read_cargs read_shape read_blocks read_brs : mctt.

@@ -32,9 +32,9 @@ Import Domain_Notations.
 
 (** The components of a shape, each under the domains before it, are fresh
     at [k]. *)
-Fixpoint pt_fresh (k : nat) (t : ptyp) : Prop :=
+Fixpoint ptyp_fresh (k : nat) (t : ptyp) : Prop :=
   match t with
-  | pt_pi B t => exp_fresh k B /\ pt_fresh (S k) t
+  | pt_pi B t => exp_fresh k B /\ ptyp_fresh (S k) t
   | pt_self _ Ps => Forall (exp_fresh k) Ps
   end.
 
@@ -93,7 +93,7 @@ Inductive domain_simulation : domain -> domain -> Prop :=
     rest of the shape may read under the domain the family binds *)
 | domain_simulation_shfam : forall p ups ups' (ρ ρ' : env) t,
     domain_list_simulation ups ups' ->
-    (forall x, ~ pt_fresh (S x) t -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
+    (forall x, ~ ptyp_fresh (S x) t -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
     domain_simulation (d_shfam p ups ρ t) (d_shfam p ups' ρ' t)
 (** The family of the type of a recursive result: where the motives of the
     members the shape's leaf paths end in may read ([ends_agree]), at
@@ -101,7 +101,7 @@ Inductive domain_simulation : domain -> domain -> Prop :=
 | domain_simulation_ihfam : forall (ρm ρm' : env) As p ups ups' (ρ ρ' : env) t i f f',
     ends_agree p As ρm ρm' t ->
     domain_list_simulation ups ups' ->
-    (forall x, ~ pt_fresh (S x) t -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
+    (forall x, ~ ptyp_fresh (S x) t -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
     domain_simulation f f' -> domain_simulation (d_ihfam ρm As p ups ρ t i f) (d_ihfam ρm' As p ups' ρ' t i f')
 (** A record's type former at related arguments *)
 | domain_simulation_record : forall p args args', domain_list_simulation args args' -> domain_simulation (d_record p args) (d_record p args')
@@ -237,7 +237,7 @@ Proof. intros * H Hx; unfold env_mod; destruct (H x Hx); [ repeat constructor | 
 
 (** ** Levels *)
 
-Lemma dsort_sim : forall a a', domain_simulation a a' -> dsort a = dsort a'.
+Lemma domain_level_sort_sim : forall a a', domain_simulation a a' -> domain_level_sort a = domain_level_sort a'.
 Proof. intros * H; destruct H; reflexivity. Qed.
 
 Lemma dlvl_cst_sim : forall d d', domain_simulation d d' -> dlvl_cst d = dlvl_cst d'.
@@ -246,7 +246,7 @@ Proof. intros * H; destruct H; reflexivity. Qed.
 Lemma dlvl_atoms_sim : forall d d', domain_simulation d d' -> level_atoms_simulation (dlvl_atoms d) (dlvl_atoms d').
 Proof.
   intros * H; destruct H; cbn; try constructor; try assumption.
-  erewrite dsort_sim by eassumption; repeat constructor; assumption.
+  erewrite domain_level_sort_sim by eassumption; repeat constructor; assumption.
 Qed.
 
 Lemma level_atoms_simulation_suc : forall xs xs', level_atoms_simulation xs xs' ->
@@ -602,10 +602,10 @@ Ltac sim_fin :=
     entries the syntax reads, so environments that agree where the syntax
     may read give the same kinds, and the same generated entries. *)
 
-Lemma env_agree_kpad : forall n (P Q : nat -> Prop) ρ ρ', env_agree P ρ ρ' -> (forall y, Q (n + y) -> P y) ->
-    env_agree Q (kpad n ρ) (kpad n ρ').
+Lemma env_agree_kinds_placeholders : forall n (P Q : nat -> Prop) ρ ρ', env_agree P ρ ρ' -> (forall y, Q (n + y) -> P y) ->
+    env_agree Q (kinds_placeholders n ρ) (kinds_placeholders n ρ').
 Proof.
-  unfold kpad; induction n as [| n IH]; intros * Hρ HQ; cbn [List.repeat app].
+  unfold kinds_placeholders; induction n as [| n IH]; intros * Hρ HQ; cbn [List.repeat app].
   - eapply env_agree_mono; [ exact Hρ | exact HQ ].
   - eapply env_agree_cons with (P := fun y => Q (S y)); [| repeat constructor | intros; assumption ].
     eapply IH; [ exact Hρ | intros y Hy; apply HQ; exact Hy ].
@@ -633,24 +633,24 @@ Qed.
 
 Section KindSim.
 
-  Lemma kgens_env_sim : forall ρ0 H its gs, kgens Θ Ξ ρ0 H its gs ->
+  Lemma kinds_items_gen_env_sim : forall ρ0 H its gs, kinds_items_gen Θ Ξ ρ0 H its gs ->
       forall (Q : nat -> Prop), (forall x, ~ modexp_fresh x H -> Q x) ->
       forall gs1, (forall g, In g gs1 -> In g gs) ->
       forall k ρ ρ', env_agree (above k Q) ρ ρ' ->
-      env_agree (above (List.length gs1 + k) Q) (kgens_env ρ k gs1) (kgens_env ρ' k gs1).
+      env_agree (above (List.length gs1 + k) Q) (kinds_items_gen_env ρ k gs1) (kinds_items_gen_env ρ' k gs1).
   Proof.
-    intros * Hg Q HQ gs1; induction gs1 as [| g gs1 IH]; intros Hin k ρ ρ' Hρ; cbn [kgens_env List.length]; [ exact Hρ |].
+    intros * Hg Q HQ gs1; induction gs1 as [| g gs1 IH]; intros Hin k ρ ρ' Hρ; cbn [kinds_items_gen_env List.length]; [ exact Hρ |].
     rewrite Nat.add_succ_comm; apply IH; [ intros; apply Hin; right; assumption |].
     apply env_agree_above_cons; [ exact Hρ |].
-    destruct (kgens_shape _ _ _ _ _ _ Hg g (Hin g (or_introl eq_refl)))
+    destruct (kinds_items_gen_shape _ _ _ _ _ _ Hg g (Hin g (or_introl eq_refl)))
       as [(d & pv & A0 & M & ->) | [(d & pv & E & ->) | (d & pv & A0 & M & E & ->)]];
-      cbn [kentry]; [ repeat constructor | |].
+      cbn [kinds_generated_entry]; [ repeat constructor | |].
     - constructor; apply dmod_simulation_local.
       intros z Hz; apply Hρ; cbn in Hz.
       assert (Hz' : ~ modexp_fresh z (modexp_wk E (wk_shiftn k))) by (intros Hf; apply Hz; split; [ exact I | exact Hf ]).
       destruct (modexp_unfresh_shiftn _ _ _ Hz') as (w & -> & Hw).
       right; exists w; split; [ reflexivity | apply HQ ].
-      destruct (kgens_alias_target _ _ _ _ _ _ Hg _ _ _ (Hin _ (or_introl eq_refl))) as [-> | (n & ->)]; [ exact Hw |].
+      destruct (kinds_items_gen_alias_target _ _ _ _ _ _ Hg _ _ _ (Hin _ (or_introl eq_refl))) as [-> | (n & ->)]; [ exact Hw |].
       intros Hf; apply Hw; exact Hf.
     - (* a definition with a module part: a placeholder and the alias of
          the selection *)
@@ -659,19 +659,19 @@ Section KindSim.
       assert (Hz' : ~ modexp_fresh z (modexp_wk E (wk_shiftn k))) by (intros Hf; apply Hz; split; [ exact I | exact Hf ]).
       destruct (modexp_unfresh_shiftn _ _ _ Hz') as (w & -> & Hw).
       right; exists w; split; [ reflexivity | apply HQ ].
-      destruct (kgens_dm_target _ _ _ _ _ _ Hg _ _ _ _ _ (Hin _ (or_introl eq_refl))) as (n & ->).
+      destruct (kinds_items_gen_dm_target _ _ _ _ _ _ Hg _ _ _ _ _ (Hin _ (or_introl eq_refl))) as (n & ->).
       intros Hf; apply Hw; exact Hf.
   Qed.
 
   Lemma kind_sim :
-    (forall h ch k, dkind Θ Ξ h ch k -> forall h', dmod_simulation h h' -> dkind Θ Ξ h' ch k) /\
-    (forall ρ U ch k, ukind Θ Ξ ρ U ch k -> forall ρ', env_agree (fun x => ~ gunit_fresh x U) ρ ρ' -> ukind Θ Ξ ρ' U ch k) /\
-    (forall ρ H ch k, skind Θ Ξ ρ H ch k -> forall ρ', env_agree (fun x => ~ modexp_fresh x H) ρ ρ' -> skind Θ Ξ ρ' H ch k) /\
-    (forall ρ Φ ρ1, kenv Θ Ξ ρ Φ ρ1 -> forall ρ' (P : nat -> Prop), (forall x, ~ gmod_fresh x Φ -> P x) -> env_agree P ρ ρ' ->
-       exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ env_agree (above (gm_binders Φ) P) ρ1 ρ1') /\
-    (forall ρ Φ Φx, kbody Θ Ξ ρ Φ Φx -> forall ρ' (P : nat -> Prop), (forall x, ~ gmod_fresh x Φ -> P x) -> env_agree P ρ ρ' ->
-       kbody Θ Ξ ρ' Φ Φx) /\
-    (forall ρ H its gs, kgens Θ Ξ ρ H its gs -> forall ρ', env_agree (fun x => ~ modexp_fresh x H) ρ ρ' -> kgens Θ Ξ ρ' H its gs).
+    (forall h ch k, dmod_member_kind Θ Ξ h ch k -> forall h', dmod_simulation h h' -> dmod_member_kind Θ Ξ h' ch k) /\
+    (forall ρ U ch k, gunit_member_kind Θ Ξ ρ U ch k -> forall ρ', env_agree (fun x => ~ gunit_fresh x U) ρ ρ' -> gunit_member_kind Θ Ξ ρ' U ch k) /\
+    (forall ρ H ch k, modexp_member_kind Θ Ξ ρ H ch k -> forall ρ', env_agree (fun x => ~ modexp_fresh x H) ρ ρ' -> modexp_member_kind Θ Ξ ρ' H ch k) /\
+    (forall ρ Φ ρ1, kinds_env Θ Ξ ρ Φ ρ1 -> forall ρ' (P : nat -> Prop), (forall x, ~ gmod_fresh x Φ -> P x) -> env_agree P ρ ρ' ->
+       exists ρ1', kinds_env Θ Ξ ρ' Φ ρ1' /\ env_agree (above (gm_binders Φ) P) ρ1 ρ1') /\
+    (forall ρ Φ Φx, kinds_body_xp Θ Ξ ρ Φ Φx -> forall ρ' (P : nat -> Prop), (forall x, ~ gmod_fresh x Φ -> P x) -> env_agree P ρ ρ' ->
+       kinds_body_xp Θ Ξ ρ' Φ Φx) /\
+    (forall ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs -> forall ρ', env_agree (fun x => ~ modexp_fresh x H) ρ ρ' -> kinds_items_gen Θ Ξ ρ' H its gs).
   Proof.
     apply kind_mut_ind.
     (* values *)
@@ -679,88 +679,88 @@ Section KindSim.
     - intros * Hd Hl h' Hs; inversion Hs; subst; econstructor; eassumption.
     - intros * Hr Hc Hu _ h' Hs; inversion Hs; subst; econstructor; eassumption.
     - intros * Hr Hd Hu _ h' Hs; inversion Hs; subst; econstructor; eassumption.
-    - intros * Hna Hc _ IH h' Hs; inversion Hs; subst; apply dkind_global_step; [ exact Hna | exact Hc | apply IH; constructor; assumption ].
+    - intros * Hna Hc _ IH h' Hs; inversion Hs; subst; apply dmod_member_kind_global_step; [ exact Hna | exact Hc | apply IH; constructor; assumption ].
     - intros * Hu IH h' Hs; inversion Hs; subst; constructor; auto.
     - intros * Hd IH Hc h' Hs; inversion Hs; subst; constructor; auto.
-    - intros * Hd IH h' Hs; inversion Hs; subst; apply dkind_member_dm; auto.
+    - intros * Hd IH h' Hs; inversion Hs; subst; apply dmod_member_kind_member_dm; auto.
     (* units *)
     - intros; constructor.
     - intros; econstructor; eassumption.
     - (* a module of a body, read in the environment of the body before it *)
       intros * Hp Hk IHk Hu IHu ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
       { intros x Hx Hf; apply Hx; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
-      eapply ukind_mod; [ eassumption | exact Hk1 |].
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      eapply gunit_member_kind_mod; [ eassumption | exact Hk1 |].
       apply IHu; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy Hf; apply Hy; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto.
     - (* a definition with a module part of a body, itself: by its module
          part, read in the environment of the body before it *)
       intros * Hp Hk IHk Hu IHu ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
       { intros x Hx Hf; apply Hx; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
-      eapply ukind_dm_here; [ eassumption | exact Hk1 |].
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      eapply gunit_member_kind_dm_here; [ eassumption | exact Hk1 |].
       apply IHu; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy Hf; apply Hy; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto.
     - (* a chain through a definition with a module part of a body *)
       intros * Hp Hc Hk IHk Hu IHu ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ1' & Hk1 & Hρ1).
       { intros x Hx Hf; apply Hx; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
-      eapply ukind_dm_step; [ eassumption | exact Hc | exact Hk1 |].
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      eapply gunit_member_kind_dm_step; [ eassumption | exact Hc | exact Hk1 |].
       apply IHu; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy Hf; apply Hy; pose proof (prefix_upto_fresh _ _ _ _ Hp Hf) as Hf'; cbn in Hf'; tauto.
     - (* a name an open declares, read in the open's target *)
       intros * Hi Hk IHk Hs IHs ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply ukind_item_def; [ eassumption | exact Hk0 | auto ].
+      eapply gunit_member_kind_item_def; [ eassumption | exact Hk0 | auto ].
     - intros * Hi Hk IHk Hs IHs Hs2 IHs2 ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply ukind_item_mod; [ eassumption | exact Hk0 | auto | auto ].
+      eapply gunit_member_kind_item_mod; [ eassumption | exact Hk0 | auto | auto ].
     - intros * Hi Hk IHk Hs IHs Hs2 IHs2 ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply ukind_item_dm; [ eassumption | exact Hk0 | auto | auto ].
+      eapply gunit_member_kind_item_dm; [ eassumption | exact Hk0 | auto | auto ].
     - intros * Hi Hk IHk Hs IHs ρ' Hρ.
-      destruct (IHk (kpad (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
+      destruct (IHk (kinds_placeholders (List.length Δ) ρ') (fun x => ~ gmod_fresh x Φ)) as (ρ0' & Hk0 & Hρ0).
       { intros x0 Hx Hf; apply Hx; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      { eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
+      { eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf. }
       assert (Hq : env_agree (fun x => ~ modexp_fresh x H) ρ0 ρ0').
       { eapply env_agree_mono; [ exact Hρ0 | apply above_of ].
         intros y0 Hy Hf; apply Hy; pose proof (item_upto_fresh _ _ _ _ _ _ _ Hi Hf) as Hf'; cbn in Hf'; tauto. }
-      eapply ukind_item_self; [ eassumption | exact Hk0 | auto ].
+      eapply gunit_member_kind_item_self; [ eassumption | exact Hk0 | auto ].
     - intros * Hs IH ρ' Hρ; constructor; apply IH.
-      eapply env_agree_kpad; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf.
+      eapply env_agree_kinds_placeholders; [ exact Hρ |]; intros y0 Hy Hf; apply Hy; cbn in Hf |- *; destruct Hf as [_ Hf]; exact Hf.
     (* module expressions *)
     - intros * Hd _ ρ' _; constructor; exact Hd.
     - intros * Hd IH ρ' Hρ; constructor; apply IH; eapply env_agree_mod; [ exact Hρ | cbn; intros Hne; apply Hne; reflexivity ].
     - intros * Hu IH ρ' Hρ; constructor; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ].
     - intros * Hs IH Hc ρ' Hρ; constructor; [ apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ] | exact Hc ].
-    - intros * Hs IH ρ' Hρ; apply skind_mem_dm; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ].
+    - intros * Hs IH ρ' Hρ; apply modexp_member_kind_mem_dm; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; exact Hf ].
     - intros * Hs IH ρ' Hρ; constructor; apply IH; eapply env_agree_mono; [ exact Hρ | intros x Hx Hf; apply Hx; cbn in Hf; tauto ].
     (* bodies *)
     - intros * HP Hρ; exists ρ'; split; [ constructor |].
       eapply env_agree_mono; [ exact Hρ | intros ? ?; apply above_zero; assumption ].
     - intros * Hk IH ρ' P HP Hρ.
       destruct (IH ρ' P) as (ρ1' & Hk1 & Hρ1); [ intros x Hx; apply HP; cbn; tauto | exact Hρ |].
-      exists (kbentry ρ1' E :: ρ1'); split; [ constructor; exact Hk1 |].
+      exists (kinds_body_entry ρ1' E :: ρ1'); split; [ constructor; exact Hk1 |].
       cbn [gm_binders]; apply env_agree_above_cons; [ exact Hρ1 |].
-      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | pv A M U | ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
+      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | pv A M U | ? ? ?]; cbn [kinds_body_entry]; try (repeat constructor; fail).
       + destruct U as [Δu Du]; cbn [dm_clo]; constructor; constructor.
         eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
         intros y0 Hy; apply HP; intros Hf; apply Hy; cbn [gmod_fresh gentry_fresh] in Hf; destruct Hf as [_ Hf]; exact Hf.
@@ -775,22 +775,22 @@ Section KindSim.
       { apply above_of; intros y0 Hy; apply HP; intros Hf; apply Hy; cbn in Hf; tauto. }
       assert (HHa : env_agree (fun x => ~ modexp_fresh x H) ρ1 ρ1')
         by (eapply env_agree_mono; [ exact Hρ1 | exact HH ]).
-      exists (kgens_env ρ1' 0 gs); split; [ econstructor; [ exact Hk1 | auto ] |].
-      cbn [gm_binders]; rewrite <- (kgens_length _ _ _ _ _ _ Hg).
+      exists (kinds_items_gen_env ρ1' 0 gs); split; [ econstructor; [ exact Hk1 | auto ] |].
+      cbn [gm_binders]; rewrite <- (kinds_items_gen_length _ _ _ _ _ _ Hg).
       eapply env_agree_mono; [| intros z Hz; apply above_above_inv; exact Hz ].
-      pose proof (kgens_env_sim _ _ _ _ Hg _ HH gs (fun g Hin => Hin) 0 ρ1 ρ1'
+      pose proof (kinds_items_gen_env_sim _ _ _ _ Hg _ HH gs (fun g Hin => Hin) 0 ρ1 ρ1'
                     (env_agree_mono _ _ _ _ Hρ1 (fun z Hz => above_zero _ _ Hz))) as Hs.
       rewrite Nat.add_0_r in Hs; exact Hs.
     (* bodies read through their opens *)
     - intros; constructor.
-    - intros * Hb IH ρ' P HP Hρ; apply kbody_ext; eapply IH; [| exact Hρ ]; intros z Hz; apply HP; intros Hf; apply Hz; cbn in Hf; tauto.
+    - intros * Hb IH ρ' P HP Hρ; apply kinds_body_xp_ext; eapply IH; [| exact Hρ ]; intros z Hz; apply HP; intros Hf; apply Hz; cbn in Hf; tauto.
     - intros * Hb IH Hk IHk Hg IHg ρ' P HP Hρ.
       assert (HPΦ : forall z, ~ gmod_fresh z Φ -> P z) by (intros z Hz; apply HP; intros Hf; apply Hz; cbn in Hf; tauto).
       assert (Hbn : gm_binders Φx = gm_binders Φ)
-        by (clear - Hb; induction Hb; cbn; auto; rewrite gens_append_binders; erewrite kgens_length by eassumption; lia).
+        by (clear - Hb; induction Hb; cbn; auto; rewrite gens_append_binders; erewrite kinds_items_gen_length by eassumption; lia).
       destruct (IHk ρ' P) as (ρ1' & Hk1 & Hρ1); [| exact Hρ |].
-      { intros z Hz; apply HPΦ; intros Hf; apply Hz; exact (proj1 (kbody_fresh _ _ _ _ _ Hb _ Hf)). }
-      eapply kbody_open; [ exact (IH _ _ HPΦ Hρ) | exact Hk1 |].
+      { intros z Hz; apply HPΦ; intros Hf; apply Hz; exact (proj1 (kinds_body_xp_fresh _ _ _ _ _ Hb _ Hf)). }
+      eapply kinds_body_xp_open; [ exact (IH _ _ HPΦ Hρ) | exact Hk1 |].
       apply IHg; eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy; apply HP; intros Hf; apply Hy; cbn in Hf; rewrite Hbn; tauto.
     (* generated entries *)
@@ -850,7 +850,7 @@ Qed.
     leaf path, over related parts. *)
 Lemma domain_list_simulation_map_ihfam : forall b b' ρm ρm' As p ups ups' ρ ρ' t f f' n,
     domain_simulation b b' -> ends_agree p As ρm ρm' t -> domain_list_simulation ups ups' ->
-    env_agree (fun x => ~ pt_fresh (S x) t) ρ ρ' -> domain_simulation f f' ->
+    env_agree (fun x => ~ ptyp_fresh (S x) t) ρ ρ' -> domain_simulation f f' ->
     domain_list_simulation (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ t i f) fam_cod) (List.seq 0 n))
               (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρm' As p ups' ρ' t i f') fam_cod) (List.seq 0 n)).
 Proof.
@@ -900,10 +900,10 @@ Section Eval.
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> forall ups', domain_list_simulation ups ups' ->
        exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ domain_list_simulation (snd r) pre') /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
-       domain_list_simulation ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
+       domain_list_simulation ups ups' -> env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' ->
        exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_simulation a a') /\
     (forall p ups ρm As ρ t m a, ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρm' ρ' m',
-       domain_list_simulation ups ups' -> ends_agree p As ρm ρm' t -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> domain_simulation m m' ->
+       domain_list_simulation ups ups' -> ends_agree p As ρm ρm' t -> env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' -> domain_simulation m m' ->
        exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_list_simulation a a') /\
     (forall f m r, eval_proj Θ Ξ f m r -> forall m', domain_simulation m m' ->
        exists r', fast_eval_proj Θ Ξ f m' r' /\ domain_simulation r r') /\
@@ -951,10 +951,10 @@ Section Eval.
       (fun p ups j r _ => forall ups', domain_list_simulation ups ups' ->
          exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ domain_list_simulation (snd r) pre')
       (fun p ups ρ t a _ => forall ups' ρ',
-         domain_list_simulation ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
+         domain_list_simulation ups ups' -> env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' ->
          exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_simulation a a')
       (fun p ups ρm As ρ t m a _ => forall ups' ρm' ρ' m',
-         domain_list_simulation ups ups' -> ends_agree p As ρm ρm' t -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> domain_simulation m m' ->
+         domain_list_simulation ups ups' -> ends_agree p As ρm ρm' t -> env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' -> domain_simulation m m' ->
          exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_list_simulation a a')
       (fun f m r _ => forall m', domain_simulation m m' -> exists r', fast_eval_proj Θ Ξ f m' r' /\ domain_simulation r r')
       (fun ns m fl pre rs _ => forall ns' m' pre',
@@ -1133,7 +1133,7 @@ Section Eval.
           exists r'; split; [ econstructor; eassumption | assumption ]
       | IH : forall ups0 ρm0 ρ0 m0, domain_list_simulation ?ups ups0 -> ends_agree _ _ ?ρm ρm0 _ -> env_agree _ (?ρ ↦ ?n) ρ0 -> domain_simulation ?fn m0 ->
              exists _, _ /\ _,
-        Hu : domain_list_simulation ?ups ?ups', HA : ends_agree _ _ ?ρm ?ρm' _, Hρ : env_agree (fun x => ~ pt_fresh (S x) ?t) ?ρ ?ρ',
+        Hu : domain_list_simulation ?ups ?ups', HA : ends_agree _ _ ?ρm ?ρm' _, Hρ : env_agree (fun x => ~ ptyp_fresh (S x) ?t) ?ρ ?ρ',
         Hn : domain_simulation ?n ?n', Hf : domain_simulation ?fn ?x, Ha : $ᶠ| _ & _ | _ ⍮ _ ↘ ?x, Hi : nth_error ?ys ?i = Some _
         |- exists _, $ᶠ| d_ihfam _ _ _ _ _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
           let ys' := fresh "ys'" in let Hys := fresh "Hys" in let a' := fresh "a'" in
@@ -1220,7 +1220,7 @@ Section Eval.
               intros gs1 t gs2 E; eapply HF; [ exact Hc | exact E ]
             | apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] | exact Hws |];
           exists rs'; split; [ eapply fast_eval_ihty_rview; eassumption | assumption ]
-      | Hea : ends_agree _ _ _ _ (pt_pi _ _), Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh x (pt_pi _ _)) _ _,
+      | Hea : ends_agree _ _ _ _ (pt_pi _ _), Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ ptyp_fresh x (pt_pi _ _)) _ _,
         Hv : domain_simulation _ ?v', He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : domain_simulation _ ?b', e : ind_lookup _ _ _ = Some _
         |- exists _, fast_eval_ihty _ _ _ _ _ _ _ (pt_pi _ _) ?v' _ /\ _ =>
           let Ht := fresh "Ht" in
@@ -1229,13 +1229,13 @@ Section Eval.
           let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
           intros y Hy; apply Hρ; cbn; intros [_ Hf]; exact (Hy Hf)
       | IH : forall ups0 ρ0, domain_list_simulation ?ups ups0 -> env_agree _ (?ρ ↦ ?n) ρ0 -> exists _, _ /\ _,
-        Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh (S x) ?t) ?ρ ?ρ', Hn : domain_simulation ?n ?n'
+        Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ ptyp_fresh (S x) ?t) ?ρ ?ρ', Hn : domain_simulation ?n ?n'
         |- exists _, $ᶠ| d_shfam _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
           let a' := fresh "a'" in
           destruct (IH ups' (ρ' ↦ n') Hu) as (a' & ? & ?);
             [ unfold extend_env; eapply env_agree_cons; [ exact Hρ | constructor; exact Hn | intros y Hy; exact Hy ] |];
           exists a'; split; [ econstructor; eassumption | assumption ]
-      | Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh x (pt_pi _ _)) _ _,
+      | Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ ptyp_fresh x (pt_pi _ _)) _ _,
         He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : domain_simulation _ ?b' |- exists _, fast_eval_shty _ _ _ _ _ _ _ /\ _ =>
           eexists; split; [ constructor; exact He | apply domain_simulation_fam_pi; [ exact Hb | constructor; [ exact Hu |] ] ];
           let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
@@ -1260,7 +1260,7 @@ Section Eval.
         the environment of the body before it agrees where the body may read,
         and so where the member may. *)
     all: try solve [ match goal with
-      | Hk : kbody _ _ ?ρ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some (gm_ext ?Φ' _ ?E),
+      | Hk : kinds_body_xp _ _ ?ρ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some (gm_ext ?Φ' _ ?E),
         IHb : forall ρ0 (P : nat -> Prop), (forall x, ~ gmod_fresh x ?Φ' -> P x) -> env_agree P ?ρ ρ0 -> _,
         IH : forall ρ0, env_agree _ ?ρ1 ρ0 -> exists _, _ /\ _,
         Hρ : env_agree (fun x => ~ gunit_fresh x (gu_mk nil (md_body ?sm ?Φ))) ?ρ ?ρ' |- _ =>
@@ -1274,7 +1274,7 @@ Section Eval.
           pose proof (proj1 (proj2 (proj2 (proj2 (proj2 kind_sim)))) _ _ _ Hk ρ' _ (fun z Hz => Hz) HΦ) as Hk';
           assert (HE : forall z, gmod_fresh z Φ -> gmod_fresh z (gm_ext Φ' _ E))
             by (let z := fresh "z" in let Hf := fresh "Hf" in
-                intros z Hf; exact (prefix_upto_fresh _ _ _ _ Hp (proj1 (kbody_fresh _ _ _ _ _ Hk _ Hf))));
+                intros z Hf; exact (prefix_upto_fresh _ _ _ _ Hp (proj1 (kinds_body_xp_fresh _ _ _ _ _ Hk _ Hf))));
           destruct (IHb ρ' (fun z => ~ gmod_fresh z Φ)) as (ρ1' & Hb' & Hab);
             [ let z := fresh "z" in let Hz := fresh "Hz" in let Hf := fresh "Hf" in
               intros z Hz Hf; apply Hz; exact (proj1 (HE _ Hf))
@@ -1419,7 +1419,7 @@ Section Read.
   Qed.
 
   Lemma fast_eval_shty_sim : forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
-      domain_list_simulation ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
+      domain_list_simulation ups ups' -> env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' ->
       exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_simulation a a'.
   Proof.
     intros * H; destruct fast_eval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
@@ -1428,7 +1428,7 @@ Section Read.
 
   Lemma fast_eval_ihty_sim : forall p ups ρm As ρ t m a, ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
       forall ups' ρm' ρ' m', domain_list_simulation ups ups' -> ends_agree p As ρm ρm' t ->
-      env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> domain_simulation m m' ->
+      env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' -> domain_simulation m m' ->
       exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_list_simulation a a'.
   Proof.
     intros * H; destruct fast_eval_sim as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
@@ -1924,7 +1924,7 @@ Section Read.
           destruct (fast_eval_app_sim _ _ _ He m' _ Hm ltac:(eauto with mctt)) as (? & ? & ?); clear He
       end.
     (** A neutral level's sort is read off its type, which is related. *)
-    all: try (erewrite dsort_sim by eassumption).
+    all: try (erewrite domain_level_sort_sim by eassumption).
     all: solve [ econstructor; eauto 6 with mctt ].
   Qed.
 

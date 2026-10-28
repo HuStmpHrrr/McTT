@@ -1322,7 +1322,7 @@ Qed.
 
 (** A unit's path is no member's module: what it denotes is the unit. *)
 Lemma mdenote_unit_inv : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ fp R, mdenote Θ Ξ Γ (me_unit fp) R ->
-    exists T Φ, gc_unit Θ Ξ (me_unit fp) = Some (T, Φ) /\ R = ds_closed nil (q_abs fp nil) T Φ nil.
+    exists T Φ, gc_unit Θ Ξ (me_unit fp) = Some (T, Φ) /\ R = mdesc_closed nil (q_abs fp nil) T Φ nil.
 Proof.
   intros * Hg * Hm; inversion Hm as [? ? ? T Φ Hq Hu | ? ? ? ? ? ? ? ? ? Hq Hk | | | | | ? ? ? ? ? ? Hq Hk]; subst.
   - cbn in Hq; injection Hq as <-; eauto.
@@ -1428,11 +1428,11 @@ Qed.
     member, or the record type. *)
 Lemma frame_denote_unique : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H Γ R p,
     mod_qname H = Some p -> mdenote Θ Ξ Γ H R ->
-    (forall T Φ, gc_unit Θ Ξ H = Some (T, Φ) -> R = ds_closed nil p T Φ nil) /\
+    (forall T Φ, gc_unit Θ Ξ H = Some (T, Φ) -> R = mdesc_closed nil p T Φ nil) /\
     (forall pq k D Mk T Φ, gs_find_ind Ξ p = Some (pq, k, D) -> ind_member D k = Some Mk ->
-       gc_loc Θ Ξ p = Some (T, Φ) -> R = ind_former_desc pq k D Mk (ds_closed nil p T Φ nil)) /\
+       gc_loc Θ Ξ p = Some (T, Φ) -> R = ind_former_desc pq k D Mk (mdesc_closed nil p T Φ nil)) /\
     (forall Rr T Φ, gs_find_record Ξ p = Some Rr ->
-       gc_loc Θ Ξ p = Some (T, Φ) -> R = record_former_desc p Rr (ds_closed nil p T Φ nil)).
+       gc_loc Θ Ξ p = Some (T, Φ) -> R = record_former_desc p Rr (mdesc_closed nil p T Φ nil)).
 Proof.
   intros Θ Ξ Hg; induction H as [fp | x | H0 IH y | H0 IH N | U]; intros * Hq Hm; inversion Hm; subst;
     try (cbn in Hq; discriminate).
@@ -1459,15 +1459,15 @@ Proof.
   change {| q_unit := q_unit mq; q_chain := q_chain mq ++ y :: nil |} with (qname_in mq y).
   assert (Hno : forall U T0, gs_find_tele Ξ (qname_in mq y) = Some (U, nil, T0) -> False).
   { intros U T0 Ef; destruct (frame_parent _ _ Hg _ _ _ _ Ef) as (T' & Φ' & Hf & Hy).
-    match goal with H1 : mdenote _ _ _ H0 ?R0, Hmd : ds_mod ?R0 = Some _, He : ds_entry _ _ = Some _ |- _ =>
+    match goal with H1 : mdenote _ _ _ H0 ?R0, Hmd : mdesc_mod ?R0 = Some _, He : mdesc_entry _ _ = Some _ |- _ =>
       destruct (IH _ _ _ eq_refl H1) as (IH1 & IH2 & IH3);
       destruct (gs_find_ind Ξ mq) as [[[pq k] D] |] eqn:Hk;
       [ destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk) as (U2 & T02 & T2 & Φ2 & Mk2 & Ht2 & Hf2 & Hl2 & HMk2);
-        rewrite (IH2 _ _ _ _ _ _ eq_refl HMk2 Hl2) in Hmd; cbn [ind_former_desc ds_mod] in Hmd;
+        rewrite (IH2 _ _ _ _ _ _ eq_refl HMk2 Hl2) in Hmd; cbn [ind_former_desc mdesc_mod] in Hmd;
         rewrite Hf in Hf2; injection Hf2 as <- <-
       | destruct (gs_find_record Ξ mq) as [Rr |] eqn:Hr;
         [ destruct (frame_record_loc _ _ Hg _ _ Hr) as (U2 & T02 & T2 & Φ2 & Ht2 & Hf2 & Hl2);
-          rewrite (IH3 _ _ _ eq_refl Hl2) in Hmd; cbn [record_former_desc ds_mod] in Hmd;
+          rewrite (IH3 _ _ _ eq_refl Hl2) in Hmd; cbn [record_former_desc mdesc_mod] in Hmd;
           rewrite Hf in Hf2; injection Hf2 as <- <-
         | rewrite (IH1 _ _ (gc_unit_frame _ _ _ _ _ _ Hq0 Hf Hk Hr)) in Hmd; cbn in Hmd ] ];
       injection Hmd as <-; cbn in He; rewrite (gm_prefix_upto_fresh _ _ Hy) in He; discriminate
@@ -1482,7 +1482,7 @@ Proof.
 Qed.
 
 Lemma unit_denote_unique : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H Γ R p T Φ,
-    mod_qname H = Some p -> gc_unit Θ Ξ H = Some (T, Φ) -> mdenote Θ Ξ Γ H R -> R = ds_closed nil p T Φ nil.
+    mod_qname H = Some p -> gc_unit Θ Ξ H = Some (T, Φ) -> mdenote Θ Ξ Γ H R -> R = mdesc_closed nil p T Φ nil.
 Proof. intros * Hg * Hq Hu Hm; exact (proj1 (frame_denote_unique _ _ Hg _ _ _ _ Hq Hm) _ _ Hu). Qed.
 
 Theorem mdenote_functional_all : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
@@ -1509,8 +1509,8 @@ Proof.
         exact (proj1 (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq' ltac:(eapply mdenote_mem; eassumption))) _ _ _ _ _ _
                  Hk' HMk' Hl') end.
     + match goal with H1 : mdenote _ _ _ H _ |- _ => rewrite <- (IH _ H1) in * end.
-      match goal with H1 : ds_mod R0 = _ |- _ => rewrite Hmd in H1; injection H1 as <- end.
-      match goal with H1 : ds_entry R0m y = _ |- _ => rewrite He in H1; injection H1 as <- <- <- end.
+      match goal with H1 : mdesc_mod R0 = _ |- _ => rewrite Hmd in H1; injection H1 as <- end.
+      match goal with H1 : mdesc_entry R0m y = _ |- _ => rewrite He in H1; injection H1 as <- <- <- end.
       match goal with H1 : edenote _ _ _ _ _ _ |- _ => rewrite <- (IHe _ H1) in * end.
       congruence.
     + match goal with Hk' : gs_find_record _ _ = Some _,
@@ -1543,14 +1543,14 @@ Proof.
   - intros * Hm IHm Hk Hgn IH gs' Hg'; inversion Hg'; subst;
       match goal with H1 : mdenote _ _ _ (me_mem _ _) _ |- _ => pose proof (IHm _ H1) as E end; subst;
       try (cbn in Hk; contradiction);
-      try (match goal with Ht : ds_ty ?R1 = Some _ |- _ => destruct R1; cbn in Hk, Ht; first [ contradiction | discriminate ] end).
+      try (match goal with Ht : mdesc_type ?R1 = Some _ |- _ => destruct R1; cbn in Hk, Ht; first [ contradiction | discriminate ] end).
     f_equal; eauto.
   - (* a member with a term part and a module part *)
     intros * Hm IHm Hty Hmd Hgn IH gs' Hg'; inversion Hg'; subst;
       match goal with H1 : mdenote _ _ _ (me_mem _ _) _ |- _ =>
         assert_fails (constr_eq H1 Hm); pose proof (IHm _ H1) as E end; subst.
     + cbn in Hmd; discriminate.
-    + match goal with Hk : ds_is_mod ?R1 |- _ => destruct R1; cbn in Hk, Hty; first [ contradiction | discriminate ] end.
+    + match goal with Hk : mdesc_is_mod ?R1 |- _ => destruct R1; cbn in Hk, Hty; first [ contradiction | discriminate ] end.
     + f_equal; [ f_equal; congruence | eauto ].
 Qed.
 
@@ -1571,11 +1571,11 @@ Proof. intros * [[H _] | [H _]]; [ left | right ]; exact H. Qed.
     body as its module part; or the stored module itself. *)
 Definition loc_desc (Θ : gdeps) (Ξ : gstack) (p : qname) (T : ctx) (Φ : gmod) (R : mdesc) : Prop :=
   match ind_mlookup Θ Ξ p with
-  | Some (pq, k, D) => exists Mk, ind_member D k = Some Mk /\ R = ind_former_desc pq k D Mk (ds_closed nil p T Φ nil)
+  | Some (pq, k, D) => exists Mk, ind_member D k = Some Mk /\ R = ind_former_desc pq k D Mk (mdesc_closed nil p T Φ nil)
   | None =>
       match record_lookup Θ Ξ p with
-      | Some Rr => R = record_former_desc p Rr (ds_closed nil p T Φ nil)
-      | None => R = ds_closed nil p T Φ nil
+      | Some Rr => R = record_former_desc p Rr (mdesc_closed nil p T Φ nil)
+      | None => R = mdesc_closed nil p T Φ nil
       end
   end.
 
@@ -2092,26 +2092,26 @@ Qed.
 
 Theorem mdenote_of_loc_any : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H mp T Φ Γ,
     mod_qname H = Some mp -> loc Θ Ξ mp T Φ ->
-    exists R, mdenote Θ Ξ Γ H R /\ ds_mod R = Some (ds_closed nil mp T Φ nil) /\ loc_desc Θ Ξ mp T Φ R.
+    exists R, mdenote Θ Ξ Γ H R /\ mdesc_mod R = Some (mdesc_closed nil mp T Φ nil) /\ loc_desc Θ Ξ mp T Φ R.
 Proof.
   intros Θ Ξ Hg.
   (* an open frame: a unit, the module of a member, or of a record *)
   assert (Hfr : forall H mp T Φ Γ, mod_qname H = Some mp -> gc_frame Ξ mp = Some (T, Φ) ->
-            exists R, mdenote Θ Ξ Γ H R /\ ds_mod R = Some (ds_closed nil mp T Φ nil) /\ loc_desc Θ Ξ mp T Φ R).
+            exists R, mdenote Θ Ξ Γ H R /\ mdesc_mod R = Some (mdesc_closed nil mp T Φ nil) /\ loc_desc Θ Ξ mp T Φ R).
   { intros * Hq Hf; unfold loc_desc; destruct (gs_find_ind Ξ mp) as [[[pq k] D] |] eqn:Hk.
     - destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk) as (U & T0 & T' & Φ' & Mk & Ht & Hf' & Hl & HMk).
       rewrite Hf in Hf'; injection Hf' as <- <-.
-      exists (ind_former_desc pq k D Mk (ds_closed nil mp T Φ nil)); split; [ eapply mdenote_ind_frame; eassumption |].
+      exists (ind_former_desc pq k D Mk (mdesc_closed nil mp T Φ nil)); split; [ eapply mdenote_ind_frame; eassumption |].
       split; [ reflexivity |]; rewrite ind_mlookup_unfold, Hk.
       exists Mk; split; [ exact HMk | reflexivity ].
     - rewrite (frame_mlookup_none _ _ _ _ Hf Hk); unfold record_lookup.
       destruct (gs_find_record Ξ mp) as [Rr |] eqn:Hr.
       + destruct (frame_record_loc _ _ Hg _ _ Hr) as (U & T0 & T' & Φ' & Ht & Hf' & Hl).
         rewrite Hf in Hf'; injection Hf' as <- <-.
-        exists (record_former_desc mp Rr (ds_closed nil mp T Φ nil)); split; [ eapply mdenote_record_frame; eassumption |].
+        exists (record_former_desc mp Rr (mdesc_closed nil mp T Φ nil)); split; [ eapply mdenote_record_frame; eassumption |].
         split; reflexivity.
       + rewrite (gc_frame_entry_none Θ _ _ _ Hf).
-        exists (ds_closed nil mp T Φ nil); split; [ exact (mdenote_unit _ _ _ _ _ _ _ Hq (gc_unit_frame _ _ _ _ _ _ Hq Hf Hk Hr)) |].
+        exists (mdesc_closed nil mp T Φ nil); split; [ exact (mdenote_unit _ _ _ _ _ _ _ Hq (gc_unit_frame _ _ _ _ _ _ Hq Hf Hk Hr)) |].
         split; reflexivity. }
   induction H as [fp | x | H0 IH y | H0 IH N | U]; intros * Hq Hl; cbn in Hq; try discriminate.
   - injection Hq as <-; destruct Hl as [Hl | Hb]; [ exact (Hfr (me_unit fp) _ _ _ Γ eq_refl Hl) |].
@@ -2120,7 +2120,7 @@ Proof.
       apply qname_strip_length in HF; cbn in HF; lia.
     + cbn in Hb |- *; destruct (gds_lookup Θ fp) as [Uf |] eqn:El; [| discriminate ].
       destruct (wf_gds_body _ _ Hg _ _ El) as (Δ & Φ0 & ->); cbn in Hb; injection Hb as <- <-.
-      exists (ds_closed nil (q_abs fp nil) Δ Φ0 nil); split; [| split; [ reflexivity |] ].
+      exists (mdesc_closed nil (q_abs fp nil) Δ Φ0 nil); split; [| split; [ reflexivity |] ].
       * apply mdenote_unit; [ reflexivity |]; unfold gc_unit; cbn [mod_qname]; rewrite Ef; cbn; rewrite El; reflexivity.
       * unfold loc_desc; rewrite ind_mlookup_unfold, (gs_find_ind_none _ _ ltac:(intros ? ? Hc; rewrite Ef in Hc; discriminate)).
         unfold gc_module, gc_module_u; rewrite Ef; cbn; rewrite El.
@@ -2143,10 +2143,10 @@ Proof.
       destruct (ind_selfpath_member _ _ _ _ Hsp) as [Mk HMk].
       assert (Hl : gc_loc Θ Ξ (qname_in mq y) = Some (ind_uparams D, Φ'))
         by (unfold gc_loc; rewrite (gc_body_not_frame _ _ _ _ Hb), Hb; reflexivity).
-      exists (ind_former_desc pq k D Mk (ds_closed nil (qname_in mq y) (ind_uparams D) Φ' nil)); split; [| split ].
-      * eapply mdenote_mem with (R := ind_former_desc pq k D Mk (ds_closed nil (qname_in mq y) (ind_uparams D) Φ' nil));
+      exists (ind_former_desc pq k D Mk (mdesc_closed nil (qname_in mq y) (ind_uparams D) Φ' nil)); split; [| split ].
+      * eapply mdenote_mem with (R := ind_former_desc pq k D Mk (mdesc_closed nil (qname_in mq y) (ind_uparams D) Φ' nil));
           [ exact Hm0 | exact Hmd0 | cbn; rewrite Hp; reflexivity | | reflexivity ].
-        cbn [ge_read ds_epath]; econstructor; [ exact HMk | exact (ind_selfpath_path _ _ _ _ Hsp) | exact Hl ].
+        cbn [ge_read mdesc_entry_path]; econstructor; [ exact HMk | exact (ind_selfpath_path _ _ _ _ Hsp) | exact Hl ].
       * reflexivity.
       * unfold loc_desc; rewrite Hml.
         exists Mk; split; [ exact HMk | reflexivity ].
@@ -2156,14 +2156,14 @@ Proof.
         destruct (gm_entry_prefix _ _ _ (body_closed_noopen _ _ Hcq) He) as (Φ0 & Hp).
         assert (Hr : record_lookup Θ Ξ (qname_in mq y) = None).
         { apply (record_lookup_entry_other _ _ _ _ (proj2 (loc_entry _ _ Hg _ _ _ Hlq _ _) He)); intros * [=]. }
-        exists (ds_closed nil (qname_in mq y) (Δ ++ Tq) Φ nil); split;
+        exists (mdesc_closed nil (qname_in mq y) (Δ ++ Tq) Φ nil); split;
           [| split; [ reflexivity | unfold loc_desc; rewrite Hml, Hr; reflexivity ] ].
         eapply mdenote_mem with (R0 := R0) (Γy := nil) (rd := reader_closed nil nil (apps (a_mem (qname_mod mq) y) nil))
-          (E := ge_read Tq (ge_mod pv (gu_mk Δ (md_body sm_closed Φ)))) (R := ds_closed nil (qname_in mq y) (Δ ++ Tq) Φ nil).
+          (E := ge_read Tq (ge_mod pv (gu_mk Δ (md_body sm_closed Φ)))) (R := mdesc_closed nil (qname_in mq y) (Δ ++ Tq) Φ nil).
         -- exact Hm0.
         -- exact Hmd0.
         -- cbn; rewrite Hp; reflexivity.
-        -- cbn [ge_read ds_epath]; apply edenote_mod.
+        -- cbn [ge_read mdesc_entry_path]; apply edenote_mod.
            eapply udenote_body; [ apply body_xp_noopen, (body_closed_entry_noopen _ _ _ _ _ _ _ Hcq He) | reflexivity ].
         -- reflexivity.
       * (* the module of a record type *)
@@ -2173,15 +2173,15 @@ Proof.
           by (unfold record_lookup; rewrite (gc_entry_record_frame_none _ _ _ _ Hge), Hge; reflexivity).
         assert (Hl : gc_loc Θ Ξ (qname_in mq y) = Some (record_mod_tele pr Rr, Φ))
           by (unfold gc_loc; rewrite (gc_body_not_frame _ _ _ _ Hb), Hb; reflexivity).
-        exists (record_former_desc (qname_in mq y) Rr (ds_closed nil (qname_in mq y) (record_mod_tele pr Rr) Φ nil));
+        exists (record_former_desc (qname_in mq y) Rr (mdesc_closed nil (qname_in mq y) (record_mod_tele pr Rr) Φ nil));
           split; [| split ].
         -- eapply mdenote_mem with (R0 := R0) (Γy := nil) (rd := reader_closed nil nil (apps (a_mem (qname_mod mq) y) nil))
              (E := ge_read Tq (ge_record pv pr Rr Φ))
-             (R := record_former_desc (qname_in mq y) Rr (ds_closed nil (qname_in mq y) (record_mod_tele pr Rr) Φ nil)).
+             (R := record_former_desc (qname_in mq y) Rr (mdesc_closed nil (qname_in mq y) (record_mod_tele pr Rr) Φ nil)).
            ++ exact Hm0.
            ++ exact Hmd0.
            ++ cbn; rewrite Hp; reflexivity.
-           ++ cbn [ge_read ds_epath]; apply edenote_record; exact Hl.
+           ++ cbn [ge_read mdesc_entry_path]; apply edenote_record; exact Hl.
            ++ reflexivity.
         -- reflexivity.
         -- unfold loc_desc; rewrite Hml, Hr; reflexivity.
@@ -2190,7 +2190,7 @@ Qed.
 (** Where a body module that is the module of no member and of no record
     type is stored, its path denotes that body, with no argument. *)
 Theorem mdenote_of_loc : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H mp T Φ Γ,
-    mod_qname H = Some mp -> loc_mod Θ Ξ mp T Φ -> mdenote Θ Ξ Γ H (ds_closed nil mp T Φ nil).
+    mod_qname H = Some mp -> loc_mod Θ Ξ mp T Φ -> mdenote Θ Ξ Γ H (mdesc_closed nil mp T Φ nil).
 Proof.
   intros * Hg * Hq Hl.
   destruct (mdenote_of_loc_any _ _ Hg _ _ _ _ Γ Hq (loc_mod_loc _ _ _ _ _ Hl)) as (R & Hm & _ & HR).
@@ -2224,10 +2224,10 @@ Definition entry_oa (E : gentry) : Prop :=
 
 (** Whether a description reads a closed body: a closed module, or a
     definition with a module part whose module part does. *)
-Fixpoint ds_closedb (R : mdesc) : bool :=
+Fixpoint mdesc_closedb (R : mdesc) : bool :=
   match R with
-  | ds_closed _ _ _ _ _ => true
-  | ds_dm _ _ _ Rm => ds_closedb Rm
+  | mdesc_closed _ _ _ _ _ => true
+  | mdesc_dm _ _ _ Rm => mdesc_closedb Rm
   | _ => false
   end.
 
@@ -2235,16 +2235,16 @@ Fixpoint ds_closedb (R : mdesc) : bool :=
     [R2] in the bigger one. *)
 Inductive mdesc_grows (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : mdesc -> mdesc -> Prop :=
 (** A description reading no closed body stays as it is *)
-| mdesc_grows_same : forall R, ds_closedb R = false -> mdesc_grows Θ1 Ξ1 Θ2 Ξ2 R R
+| mdesc_grows_same : forall R, mdesc_closedb R = false -> mdesc_grows Θ1 Ξ1 Θ2 Ξ2 R R
 (** A closed description is related through its storage, at the same path
     in both *)
 | mdesc_grows_closed : forall Θ' T Φ1 Φ2 Ns p,
     loc Θ1 Ξ1 p T Φ1 -> loc Θ2 Ξ2 p T Φ2 ->
-    mdesc_grows Θ1 Ξ1 Θ2 Ξ2 (ds_closed Θ' p T Φ1 Ns) (ds_closed Θ' p T Φ2 Ns)
+    mdesc_grows Θ1 Ξ1 Θ2 Ξ2 (mdesc_closed Θ' p T Φ1 Ns) (mdesc_closed Θ' p T Φ2 Ns)
 (** A definition with a module part keeps its term part and grows its
     module part *)
 | mdesc_grows_dm : forall Θd A M R1 R2,
-    mdesc_grows Θ1 Ξ1 Θ2 Ξ2 R1 R2 -> mdesc_grows Θ1 Ξ1 Θ2 Ξ2 (ds_dm Θd A M R1) (ds_dm Θd A M R2).
+    mdesc_grows Θ1 Ξ1 Θ2 Ξ2 R1 R2 -> mdesc_grows Θ1 Ξ1 Θ2 Ξ2 (mdesc_dm Θd A M R1) (mdesc_dm Θd A M R2).
 
 (** A path is stored as one module at most. *)
 Lemma loc_functional : forall Θ Ξ p T Φ T' Φ', loc Θ Ξ p T Φ -> loc Θ Ξ p T' Φ' -> T = T' /\ Φ = Φ'.
@@ -2255,49 +2255,49 @@ Proof.
   all: rewrite H1 in H2; injection H2 as <- <-; split; reflexivity.
 Qed.
 
-Lemma ds_closedb_at : forall R N R', ds_at R N = Some R' -> ds_closedb R' = ds_closedb R.
+Lemma mdesc_closedb_at : forall R N R', mdesc_at R N = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
   induction R as [A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 A M Rm IH]; intros N R' Ha; cbn in Ha.
   - destruct (pi_view A) as [[? ?] |]; [| discriminate ].
     destruct om as [M |]; [ destruct (fn_view M); [| discriminate ] |]; injection Ha as <-; reflexivity.
   - destruct (tele_split (rev Δ)) as [[[? ?] ?] | ?]; [ injection Ha as <-; reflexivity | discriminate ].
   - destruct (tele_split (rev Θ0)) as [[[? ?] ?] | ?]; injection Ha as <-; reflexivity.
-  - destruct (ds_at Rm N) as [Rm' |] eqn:Ea; [| discriminate ].
+  - destruct (mdesc_at Rm N) as [Rm' |] eqn:Ea; [| discriminate ].
     destruct (tele_split (rev Θ0)) as [[[? ?] ?] | ?]; injection Ha as <-; cbn; exact (IH _ _ Ea).
 Qed.
 
-Lemma ds_closedb_sub : forall R σ, ds_closedb (ds_sub R σ) = ds_closedb R.
+Lemma mdesc_closedb_sub : forall R σ, mdesc_closedb (mdesc_sub R σ) = mdesc_closedb R.
 Proof. induction R; intros; cbn; auto. Qed.
 
-Lemma ds_closedb_self : forall M R, ds_closedb (ds_self M R) = ds_closedb R.
+Lemma mdesc_closedb_self : forall M R, mdesc_closedb (mdesc_self M R) = mdesc_closedb R.
 Proof. intros M [? [] | | |]; reflexivity. Qed.
 
-Lemma ds_closedb_ats : forall Ns R R', ds_ats R Ns = Some R' -> ds_closedb R' = ds_closedb R.
+Lemma mdesc_closedb_ats : forall Ns R R', mdesc_ats R Ns = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
   induction Ns as [| N Ns IH]; intros * Ha; cbn in Ha; [ injection Ha as <-; reflexivity |].
-  destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
-  rewrite (IH _ _ Ha); exact (ds_closedb_at _ _ _ E).
+  destruct (mdesc_at R N) as [R1 |] eqn:E; [| discriminate ].
+  rewrite (IH _ _ Ha); exact (mdesc_closedb_at _ _ _ E).
 Qed.
 
-Lemma ds_closedb_up : forall Θ' R, ds_closedb (ds_up Θ' R) = ds_closedb R.
+Lemma mdesc_closedb_up : forall Θ' R, mdesc_closedb (mdesc_up Θ' R) = mdesc_closedb R.
 Proof. intros Θ' R; induction R; cbn; auto. Qed.
 
-Lemma ds_closedb_ats_read : forall Ns R R', ds_ats_read R Ns = Some R' -> ds_closedb R' = ds_closedb R.
+Lemma mdesc_closedb_ats_read : forall Ns R R', mdesc_ats_read R Ns = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
-  intros * Ha; destruct (ds_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & B & M' & Rm' & -> & -> & _ & E)];
-    [ exact (ds_closedb_ats _ _ _ Ha') | exact (ds_closedb_ats _ _ _ E) ].
+  intros * Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & B & M' & Rm' & -> & -> & _ & E)];
+    [ exact (mdesc_closedb_ats _ _ _ Ha') | exact (mdesc_closedb_ats _ _ _ E) ].
 Qed.
 
-Lemma ds_closedb_read : forall rd R R', ds_read rd R = Some R' -> ds_closedb R' = ds_closedb R.
+Lemma mdesc_closedb_read : forall rd R R', mdesc_read rd R = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
   intros [Θ' Φ' | Θ' Ns M] * Hr; cbn in Hr.
   { destruct (gm_fill Φ') as [σ |]; cbn in Hr; [ injection Hr as <- | discriminate ].
-    rewrite ds_closedb_up; apply ds_closedb_sub. }
-  destruct (ds_ats_read R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
-  rewrite ds_closedb_up, <- (ds_closedb_ats_read _ _ _ E); destruct Θ', Ns; first [ reflexivity | apply ds_closedb_self ].
+    rewrite mdesc_closedb_up; apply mdesc_closedb_sub. }
+  destruct (mdesc_ats_read R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
+  rewrite mdesc_closedb_up, <- (mdesc_closedb_ats_read _ _ _ E); destruct Θ', Ns; first [ reflexivity | apply mdesc_closedb_self ].
 Qed.
 
-Lemma entry_term_open : forall o E R, entry_term o E = Some R -> ds_closedb R = false.
+Lemma entry_term_open : forall o E R, entry_term o E = Some R -> mdesc_closedb R = false.
 Proof.
   intros o [| | ? ? k D ? | |] R He; cbn in He; try discriminate; try (injection He as <-; reflexivity).
   - destruct (ind_member D k); cbn in He; [ injection He as <-; reflexivity | discriminate ].
@@ -2324,26 +2324,26 @@ Section Grow.
   Hypothesis Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2.
   Hypothesis Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2.
 
-  Lemma mdesc_grows_refl : forall R, ds_closedb R = false -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R.
+  Lemma mdesc_grows_refl : forall R, mdesc_closedb R = false -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R.
   Proof. intros; apply mdesc_grows_same; assumption. Qed.
 
   (** A description reading no closed body grows into itself only. *)
-  Lemma mdesc_grows_open_eq : forall R R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R2 -> ds_closedb R = false -> R2 = R.
+  Lemma mdesc_grows_open_eq : forall R R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R2 -> mdesc_closedb R = false -> R2 = R.
   Proof. induction 1; cbn; intros Hc; [ reflexivity | discriminate | rewrite IHmdesc_grows by exact Hc; reflexivity ]. Qed.
 
   (** An abstracted description grows into one abstracted alike. *)
-  Lemma mdesc_grows_up_inv : forall Θd R R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (ds_up Θd R) R2 ->
-      exists R', R2 = ds_up Θd R' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R'.
+  Lemma mdesc_grows_up_inv : forall Θd R R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_up Θd R) R2 ->
+      exists R', R2 = mdesc_up Θd R' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R'.
   Proof.
     intros Θd R; induction R as [A om | Δ Φ Φx | Θ' p T Φ Ns | Θ' A M Rm IH]; intros R2 Hd;
-      cbn [ds_up] in Hd; inversion Hd; subst.
-    - exists (ds_term A om); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (ds_closedb_up Θd); assumption ].
-    - exists (ds_open Δ Φ Φx); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (ds_closedb_up Θd); assumption ].
-    - exists (ds_closed Θ' p T Φ Ns); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (ds_closedb_up Θd); assumption ].
-    - eexists (ds_closed Θ' p T _ Ns); split; [ reflexivity | apply mdesc_grows_closed; assumption ].
-    - exists (ds_dm Θ' A M Rm); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (ds_closedb_up Θd); assumption ].
-    - match goal with Hd' : mdesc_grows _ _ _ _ (ds_up Θd Rm) ?R2' |- _ => destruct (IH _ Hd') as (Rm' & -> & HRm) end.
-      exists (ds_dm Θ' A M Rm'); split; [ reflexivity | apply mdesc_grows_dm; exact HRm ].
+      cbn [mdesc_up] in Hd; inversion Hd; subst.
+    - exists (mdesc_term A om); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
+    - exists (mdesc_open Δ Φ Φx); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
+    - exists (mdesc_closed Θ' p T Φ Ns); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
+    - eexists (mdesc_closed Θ' p T _ Ns); split; [ reflexivity | apply mdesc_grows_closed; assumption ].
+    - exists (mdesc_dm Θ' A M Rm); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
+    - match goal with Hd' : mdesc_grows _ _ _ _ (mdesc_up Θd Rm) ?R2' |- _ => destruct (IH _ Hd') as (Rm' & -> & HRm) end.
+      exists (mdesc_dm Θ' A M Rm'); split; [ reflexivity | apply mdesc_grows_dm; exact HRm ].
   Qed.
 
   (** A stored body is stored in the bigger context, perhaps grown: an open
@@ -2366,32 +2366,32 @@ Section Grow.
       cbn in *; rewrite (mdesc_grows_open_eq _ _ Hd ltac:(assumption)); reflexivity.
   Qed.
 
-  Lemma mdesc_grows_ty : forall R1 R2 A, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_ty R1 = Some A -> ds_ty R2 = Some A.
+  Lemma mdesc_grows_ty : forall R1 R2 A, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_type R1 = Some A -> mdesc_type R2 = Some A.
   Proof.
     intros * [R1 _ | ? ? ? ? ? ? _ _ | ? ? ? ? ? _] Ht; cbn in *; try discriminate; assumption.
   Qed.
 
-  Lemma mdesc_grows_red : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_red R1 = ds_red R2.
+  Lemma mdesc_grows_red : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_reduct R1 = mdesc_reduct R2.
   Proof. intros * []; reflexivity. Qed.
 
-  Lemma mdesc_grows_tele : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_tele R1 = ds_tele R2.
+  Lemma mdesc_grows_tele : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_tele R1 = mdesc_tele R2.
   Proof. intros * []; reflexivity. Qed.
 
-  Lemma mdesc_grows_is_mod : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_is_mod R1 -> ds_is_mod R2.
+  Lemma mdesc_grows_is_mod : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_is_mod R1 -> mdesc_is_mod R2.
   Proof. intros * Hd Him; destruct Hd; first [ exact Him | exact I ]. Qed.
 
   (** The module part of a description reading no closed body, in the
       bigger context. *)
-  Lemma mdesc_grows_mod_same : forall R1 R1m, ds_closedb R1 = false -> ds_mod R1 = Some R1m ->
-      exists R2m, ds_mod R1 = Some R2m /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1m R2m.
+  Lemma mdesc_grows_mod_same : forall R1 R1m, mdesc_closedb R1 = false -> mdesc_mod R1 = Some R1m ->
+      exists R2m, mdesc_mod R1 = Some R2m /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1m R2m.
   Proof.
     induction R1 as [| | | Θd A M R1 IH]; intros R1m Hc Hm; cbn in *; try discriminate;
         try (injection Hm as <-; eexists; split; [ reflexivity | apply mdesc_grows_refl; exact Hc ]).
     exact (IH _ Hc Hm).
   Qed.
 
-  Lemma mdesc_grows_mod : forall R1 R2 R1m, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_mod R1 = Some R1m ->
-      exists R2m, ds_mod R2 = Some R2m /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1m R2m.
+  Lemma mdesc_grows_mod : forall R1 R2 R1m, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_mod R1 = Some R1m ->
+      exists R2m, mdesc_mod R2 = Some R2m /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1m R2m.
   Proof.
     intros R1 R2 R1m Hd; revert R1m; induction Hd as [R1 Hc | Θ' T Φ1 Φ2 Ns p H1 H2 | Θd A M R1 R2 Hd IH];
       intros R1m Hm; cbn in *.
@@ -2400,72 +2400,72 @@ Section Grow.
     - exact (IH _ Hm).
   Qed.
 
-  Lemma mdesc_grows_mtele : forall R1 R2 T, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_mtele R1 = Some T -> ds_mtele R2 = Some T.
+  Lemma mdesc_grows_mtele : forall R1 R2 T, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_mod_tele R1 = Some T -> mdesc_mod_tele R2 = Some T.
   Proof.
-    intros * Hd Ht; unfold ds_mtele in *.
-    destruct (ds_mod R1) as [R1m |] eqn:Hm; [| discriminate ].
+    intros * Hd Ht; unfold mdesc_mod_tele in *.
+    destruct (mdesc_mod R1) as [R1m |] eqn:Hm; [| discriminate ].
     destruct (mdesc_grows_mod _ _ _ Hd Hm) as (R2m & -> & Hdm); rewrite <- (mdesc_grows_tele _ _ Hdm); exact Ht.
   Qed.
 
-  Lemma mdesc_grows_at : forall R1 R2 N R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_at R1 N = Some R1' -> exists R2', ds_at R2 N = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
+  Lemma mdesc_grows_at : forall R1 R2 N R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_at R1 N = Some R1' -> exists R2', mdesc_at R2 N = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
   Proof.
     intros R1 R2 N R1' Hd; revert R1'; induction Hd as [R Hc | Θ' T Φ1 Φ2 Ns p H1 H2 | Θd A M R1 R2 Hd IH]; intros R1' Ha.
-    - eexists; split; [ exact Ha | apply mdesc_grows_refl; rewrite (ds_closedb_at _ _ _ Ha); exact Hc ].
+    - eexists; split; [ exact Ha | apply mdesc_grows_refl; rewrite (mdesc_closedb_at _ _ _ Ha); exact Hc ].
     - cbn in *; destruct (tele_split (rev Θ')) as [((?, ?), ?) | ?]; injection Ha as <-;
         (eexists; split; [ reflexivity | apply mdesc_grows_closed; assumption ]).
-    - cbn in *; destruct (ds_at R1 N) as [R1a |] eqn:Ea; [| discriminate ].
+    - cbn in *; destruct (mdesc_at R1 N) as [R1a |] eqn:Ea; [| discriminate ].
       destruct (IH _ eq_refl) as (R2a & -> & Hda).
       destruct (tele_split (rev Θd)) as [((?, ?), ?) | ?]; injection Ha as <-;
         (eexists; split; [ reflexivity | first [ apply mdesc_grows_dm; exact Hda | exact Hda ] ]).
   Qed.
 
-  Lemma mdesc_grows_ats : forall Ns R1 R2 R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_ats R1 Ns = Some R1' -> exists R2', ds_ats R2 Ns = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
+  Lemma mdesc_grows_ats : forall Ns R1 R2 R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_ats R1 Ns = Some R1' -> exists R2', mdesc_ats R2 Ns = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
   Proof.
     induction Ns as [| N Ns IH]; intros * Hd Ha; cbn in *; [ injection Ha as <-; eauto |].
-    destruct (ds_at R1 N) as [R1a |] eqn:Ea; [| discriminate ].
+    destruct (mdesc_at R1 N) as [R1a |] eqn:Ea; [| discriminate ].
     destruct (mdesc_grows_at _ _ _ _ Hd Ea) as (R2a & -> & Hda); eauto.
   Qed.
 
-  Lemma mdesc_grows_up : forall Θ' R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (ds_up Θ' R1) (ds_up Θ' R2).
+  Lemma mdesc_grows_up : forall Θ' R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_up Θ' R1) (mdesc_up Θ' R2).
   Proof.
     intros Θ' R1 R2 Hd; induction Hd as [R Hc | Θ0 T Φ1 Φ2 Ns p H1 H2 | Θd A M R1 R2 Hd IH];
-      [ apply mdesc_grows_refl; rewrite ds_closedb_up; exact Hc | cbn; apply mdesc_grows_closed; assumption | cbn; apply mdesc_grows_dm; exact IH ].
+      [ apply mdesc_grows_refl; rewrite mdesc_closedb_up; exact Hc | cbn; apply mdesc_grows_closed; assumption | cbn; apply mdesc_grows_dm; exact IH ].
   Qed.
 
-  Lemma mdesc_grows_sub : forall σ R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (ds_sub R1 σ) (ds_sub R2 σ).
+  Lemma mdesc_grows_sub : forall σ R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_sub R1 σ) (mdesc_sub R2 σ).
   Proof.
     intros σ R1 R2 Hd; induction Hd as [R Hc | Θ0 T Φ1 Φ2 Ns p H1 H2 | Θd A M R1 R2 Hd IH];
-      [ apply mdesc_grows_refl; rewrite ds_closedb_sub; exact Hc | cbn; apply mdesc_grows_closed; assumption | cbn; apply mdesc_grows_dm; exact IH ].
+      [ apply mdesc_grows_refl; rewrite mdesc_closedb_sub; exact Hc | cbn; apply mdesc_grows_closed; assumption | cbn; apply mdesc_grows_dm; exact IH ].
   Qed.
 
-  Lemma mdesc_grows_self : forall M R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (ds_self M R1) (ds_self M R2).
+  Lemma mdesc_grows_self : forall M R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_self M R1) (mdesc_self M R2).
   Proof.
     intros * [R Hc | Θ0 T Φ1 Φ2 Ns p H1 H2 | Θd A M0 R1 R2 Hd];
-      [ apply mdesc_grows_refl; rewrite ds_closedb_self; exact Hc | cbn; apply mdesc_grows_closed; assumption | cbn; apply mdesc_grows_dm; exact Hd ].
+      [ apply mdesc_grows_refl; rewrite mdesc_closedb_self; exact Hc | cbn; apply mdesc_grows_closed; assumption | cbn; apply mdesc_grows_dm; exact Hd ].
   Qed.
 
-  Lemma mdesc_grows_named : forall Θ Ns M R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (ds_named Θ Ns M R1) (ds_named Θ Ns M R2).
-  Proof. intros [|] [|] * Hd; cbn [ds_named]; first [ exact Hd | apply mdesc_grows_self; exact Hd ]. Qed.
+  Lemma mdesc_grows_named : forall Θ Ns M R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_named Θ Ns M R1) (mdesc_named Θ Ns M R2).
+  Proof. intros [|] [|] * Hd; cbn [mdesc_named]; first [ exact Hd | apply mdesc_grows_self; exact Hd ]. Qed.
 
-  Lemma mdesc_grows_ats_read : forall Ns R1 R2 R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_ats_read R1 Ns = Some R1' ->
-      exists R2', ds_ats_read R2 Ns = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
+  Lemma mdesc_grows_ats_read : forall Ns R1 R2 R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_ats_read R1 Ns = Some R1' ->
+      exists R2', mdesc_ats_read R2 Ns = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
   Proof.
     intros * Hd Ha; destruct Hd as [R Hc | Θ0 T Φ1 Φ2 Ns0 p H1 H2 | Θd A M R1 R2 Hd].
-    - eexists; split; [ exact Ha | apply mdesc_grows_refl; rewrite (ds_closedb_ats_read _ _ _ Ha); exact Hc ].
+    - eexists; split; [ exact Ha | apply mdesc_grows_refl; rewrite (mdesc_closedb_ats_read _ _ _ Ha); exact Hc ].
     - exact (mdesc_grows_ats _ _ _ _ ltac:(apply mdesc_grows_closed; eassumption) Ha).
     - destruct Θd as [| e Θd]; [| exact (mdesc_grows_ats _ _ _ _ (mdesc_grows_dm _ _ _ _ _ _ _ _ _ Hd) Ha) ].
-      cbn [ds_ats_read] in Ha |- *.
-      destruct (ds_ats_tm (ds_term A (Some M)) Ns) as [[B [M' |] | | |] |]; try discriminate.
-      destruct (ds_ats R1 Ns) as [R1a |] eqn:Ea; [| discriminate ]; injection Ha as <-.
+      cbn [mdesc_ats_read] in Ha |- *.
+      destruct (mdesc_term_part_ats (mdesc_term A (Some M)) Ns) as [[B [M' |] | | |] |]; try discriminate.
+      destruct (mdesc_ats R1 Ns) as [R1a |] eqn:Ea; [| discriminate ]; injection Ha as <-.
       destruct (mdesc_grows_ats _ _ _ _ Hd Ea) as (R2a & -> & Hda); eexists; split; [ reflexivity | apply mdesc_grows_dm; exact Hda ].
   Qed.
 
-  Lemma mdesc_grows_read : forall rd R1 R2 R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_read rd R1 = Some R1' -> exists R2', ds_read rd R2 = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
+  Lemma mdesc_grows_read : forall rd R1 R2 R1', (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_read rd R1 = Some R1' -> exists R2', mdesc_read rd R2 = Some R2' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1' R2'.
   Proof.
     intros [Θ' Φ' | Θ' Ns M] * Hd Hr; cbn in *.
     - destruct (gm_fill Φ') as [σ |]; cbn in *; [ injection Hr as <- | discriminate ].
       eexists; split; [ reflexivity | apply mdesc_grows_up, mdesc_grows_sub; exact Hd ].
-    - destruct (ds_ats_read R1 Ns) as [R1a |] eqn:Ea; [| discriminate ]; injection Hr as <-.
+    - destruct (mdesc_ats_read R1 Ns) as [R1a |] eqn:Ea; [| discriminate ]; injection Hr as <-.
       destruct (mdesc_grows_ats_read _ _ _ _ Hd Ea) as (R2a & -> & Hda); eexists; split; [ reflexivity | apply mdesc_grows_up, mdesc_grows_named; exact Hda ].
   Qed.
 
@@ -2498,7 +2498,7 @@ Section Grow.
       context. *)
   Lemma former_grow : forall A M pm Tm Φm1, gc_loc Θ1 Ξ1 pm = Some (Tm, Φm1) ->
       exists Φm2, gc_loc Θ2 Ξ2 pm = Some (Tm, Φm2) /\
-        (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (ds_dm nil A M (ds_closed nil pm Tm Φm1 nil)) (ds_dm nil A M (ds_closed nil pm Tm Φm2 nil)).
+        (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_dm nil A M (mdesc_closed nil pm Tm Φm1 nil)) (mdesc_dm nil A M (mdesc_closed nil pm Tm Φm2 nil)).
   Proof.
     intros * Hl; destruct (gc_loc_grow _ _ _ Hl) as (Φm2 & Hl2 & H1 & H2).
     exists Φm2; split; [ exact Hl2 | apply mdesc_grows_dm, mdesc_grows_closed; assumption ].
@@ -2521,15 +2521,15 @@ Section Grow.
       destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hl | (_ & Hc & Hb & Hm)]); rewrite Hq0 in Hq; injection Hq as <-.
       + destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hl) as (Φ' & [(Hl' & Hk' & Hr') | (Hb' & Hm' & Hr')]).
         * rewrite Hk1 in Hk'; rewrite Hr1 in Hr'.
-          exists (ds_closed nil p0 T Φ' nil); split; [ apply mdenote_unit; [ exact Hq0 | exact (gc_unit_frame _ _ _ _ _ _ Hq0 Hl' Hk' Hr') ] |].
+          exists (mdesc_closed nil p0 T Φ' nil); split; [ apply mdenote_unit; [ exact Hq0 | exact (gc_unit_frame _ _ _ _ _ _ Hq0 Hl' Hk' Hr') ] |].
           apply mdesc_grows_closed; left; eassumption.
         * rewrite Hk1 in Hm'; rewrite Hr1 in Hr'.
-          exists (ds_closed nil p0 T Φ' nil); split; [ apply (mdenote_of_loc _ _ Hg2 _ p0); [ exact Hq0 | right; split; [| split ]; assumption ] |].
+          exists (mdesc_closed nil p0 T Φ' nil); split; [ apply (mdenote_of_loc _ _ Hg2 _ p0); [ exact Hq0 | right; split; [| split ]; assumption ] |].
           apply mdesc_grows_closed; [ left | right ]; eassumption.
       + destruct (gc_sub_body _ _ _ _ _ _ _ Hs Hb) as (Φ' & Hb' & _).
         pose proof (gc_sub_module _ _ _ _ _ _ Hs Hm) as Hm'.
         pose proof (gc_body_root_record _ _ _ _ _ Hb' Hc) as Hr'.
-        exists (ds_closed nil p0 T Φ' nil); split; [ apply (mdenote_of_loc _ _ Hg2 _ p0); [ exact Hq0 | right; split; [| split ]; assumption ] |].
+        exists (mdesc_closed nil p0 T Φ' nil); split; [ apply (mdenote_of_loc _ _ Hg2 _ p0); [ exact Hq0 | right; split; [| split ]; assumption ] |].
         apply mdesc_grows_closed; right; eassumption.
     - (* the open frame of a member's module: still one, or closed into the
          member's module; its term part is the same *)
@@ -2539,7 +2539,7 @@ Section Grow.
       destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf) as (Φ' & [(Hl' & Hk' & _) | (Hb' & Hm' & _)]).
       + (* still open *)
         rewrite <- Hk' in Hk.
-        exists (ind_former_desc pq k D Mk (ds_closed nil p T Φ' nil)); split.
+        exists (ind_former_desc pq k D Mk (mdesc_closed nil p T Φ' nil)); split.
         * eapply mdenote_ind_frame; [ exact Hq | exact Hk | exact HMk | unfold gc_loc; rewrite Hl'; reflexivity ].
         * apply mdesc_grows_dm, mdesc_grows_closed; left; assumption.
       + (* closed into the member's module *)
@@ -2548,7 +2548,7 @@ Section Grow.
         unfold loc_desc in HR; rewrite (ind_mlookup_body _ _ _ _ _ Hm') in HR.
         destruct HR as (Mk' & HMk' & ->).
         rewrite HMk in HMk'; injection HMk' as <-.
-        exists (ind_former_desc pq k D Mk (ds_closed nil p T Φ' nil)); split;
+        exists (ind_former_desc pq k D Mk (mdesc_closed nil p T Φ' nil)); split;
           [ exact HmR | apply mdesc_grows_dm, mdesc_grows_closed; [ left | right ]; assumption ].
     - intros * Hl Hu IH; destruct (IH (or_introl eq_refl)) as (R2 & Hu2 & Hd); exists R2; split; [ econstructor; eassumption | exact Hd ].
     - intros * Hu IH; destruct (IH (or_introl eq_refl)) as (R2 & Hu2 & Hd); exists R2; split; [ econstructor; eassumption | exact Hd ].
@@ -2582,8 +2582,8 @@ Section Grow.
             match goal with Hx : body_xp _ _ _ Φy1 _ |- _ =>
               pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg1)))) _ _ _ Hx _
                             (body_xp_noopen Θ1 Ξ1 _ _ (body_closed_entry_noopen _ _ _ _ _ _ _ Hc1 He1))) as <- end.
-            match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
-            exists (ds_closed nil (qname_in p x) (Δ ++ T) Φy2 nil); split.
+            match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
+            exists (mdesc_closed nil (qname_in p x) (Δ ++ T) Φy2 nil); split.
             + apply edenote_mod; eapply udenote_body; [ apply body_xp_noopen | reflexivity ].
               exact (body_closed_entry_noopen _ _ _ _ _ _ _ Hc2 He2).
             + cbn; apply mdesc_grows_closed; right;
@@ -2620,21 +2620,21 @@ Section Grow.
       destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf) as (Φ' & [(Hl' & _ & Hr') | (Hb' & Hm' & Hr')]).
       + (* still open *)
         rewrite <- Hr' in Hk.
-        exists (record_former_desc p R (ds_closed nil p T Φ' nil)); split.
+        exists (record_former_desc p R (mdesc_closed nil p T Φ' nil)); split.
         * eapply mdenote_record_frame; [ exact Hq | exact Hk | unfold gc_loc; rewrite Hl'; reflexivity ].
         * apply mdesc_grows_dm, mdesc_grows_closed; left; assumption.
       + (* closed into the record's module *)
         rewrite Hk in Hr'; rewrite Hki in Hm'.
         destruct (mdenote_of_loc_any _ _ Hg2 _ _ _ _ Γ Hq (or_intror Hb')) as (R0 & HmR & _ & HR).
         unfold loc_desc in HR; rewrite (ind_mlookup_body _ _ _ _ _ Hm'), Hr' in HR; subst R0.
-        exists (record_former_desc p R (ds_closed nil p T Φ' nil)); split;
+        exists (record_former_desc p R (mdesc_closed nil p T Φ' nil)); split;
           [ exact HmR | apply mdesc_grows_dm, mdesc_grows_closed; [ left | right ]; assumption ].
     - intros * Hx IH Hb Ho; exists R; split; [ econstructor; [ exact IH | exact Hb ] |].
       apply mdesc_grows_refl; destruct sm; cbn in Hb; [ injection Hb as <-; reflexivity |].
       destruct Ho as [-> | []]; discriminate.
     - intros * Hm IH Hmd _; destruct IH as (R2 & Hm2 & Hd).
       destruct (mdesc_grows_mod _ _ _ Hd Hmd) as (R2m & Hmd2 & Hdm).
-      exists (ds_up Δ R2m); split; [ econstructor; eassumption | apply mdesc_grows_up; exact Hdm ].
+      exists (mdesc_up Δ R2m); split; [ econstructor; eassumption | apply mdesc_grows_up; exact Hdm ].
     - intros; eexists; split; [ constructor | apply mdesc_grows_refl; reflexivity ].
     - intros * Hu IH Ho; destruct IH as (R2 & Hu2 & Hd); [ exact Ho | exists R2; split; [ constructor; exact Hu2 | exact Hd ] ].
     - (* an inductive type: its type former, its module part grown *)
@@ -2644,7 +2644,7 @@ Section Grow.
       eexists; split; [ econstructor; eassumption | exact Hdg ].
     - (* a definition with a module part: its module part grows *)
       intros * Hu IH Ho; destruct IH as (R2 & Hu2 & Hd); [ right; exact I |].
-      exists (ds_dm nil A M R2); split; [ constructor; exact Hu2 | apply mdesc_grows_dm; exact Hd ].
+      exists (mdesc_dm nil A M R2); split; [ constructor; exact Hu2 | apply mdesc_grows_dm; exact Hd ].
     - (* a record type: its type former, its module part grown *)
       intros * Hl Ho.
       destruct (former_grow (ctx_pi (record_params R) (record_sort R)) (a_record p) _ _ _ Hl) as (Φm2 & Hl2 & Hdg).
@@ -2667,7 +2667,7 @@ Section Grow.
   Qed.
 
   (** A description grown stands for the same unit. *)
-  Lemma mdesc_grows_unit : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> ds_unit R1 = ds_unit R2.
+  Lemma mdesc_grows_unit : forall R1 R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R1 R2 -> mdesc_unit R1 = mdesc_unit R2.
   Proof. intros * [R1 _ | Θ0 T Φ1 Φ2 Ns p _ _ | Θd A M R1 R2 _]; [ reflexivity | destruct Θ0; reflexivity | reflexivity ]. Qed.
 
 End Grow.
@@ -2686,12 +2686,12 @@ Qed.
 
 (** A module applied to arguments denotes what it denotes, at them. *)
 Lemma mdenote_apps_inv : forall Θ Ξ Γ Ns H R, mdenote Θ Ξ Γ (me_apps H Ns) R ->
-    exists R0, mdenote Θ Ξ Γ H R0 /\ ds_ats R0 Ns = Some R.
+    exists R0, mdenote Θ Ξ Γ H R0 /\ mdesc_ats R0 Ns = Some R.
 Proof.
   induction Ns as [| N Ns IH]; intros * Hm; cbn in Hm |- *; [ eauto |].
   destruct (IH _ _ Hm) as (R1 & Hm1 & Ha).
   inversion Hm1; subst; try (unfold gc_unit in *; cbn in *; discriminate).
-  match goal with Hat : ds_at ?R0 N = Some R1 |- _ => exists R0; rewrite Hat end.
+  match goal with Hat : mdesc_at ?R0 N = Some R1 |- _ => exists R0; rewrite Hat end.
   split; assumption.
 Qed.
 

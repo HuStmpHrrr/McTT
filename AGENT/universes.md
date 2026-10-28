@@ -118,7 +118,7 @@ The completeness argument for the small case (`alg_pi_small_complete`) then
 runs in five steps:
 
 1. Below the normal form of `Type⟨L[↑]ʷ⟩`, which is fresh, the codomain's
-   level is fresh too (`lvl_le_la_fresh`).
+   level is fresh too (`lvl_le_level_atoms_fresh`).
 2. Both parts' levels are below `L`.
 3. The codomain's level is below `L` in `Γ ▹ A`.
 4. That inequality strengthens to `Γ` (`exp_eq_strengthen`).
@@ -186,14 +186,14 @@ and readback at `s + 1` to the fresh level `s + 1`. So `read_rn` is stated
 for a renaming `f` of levels:
 
 ```
-rn_ok f s s' φ -> dbd_nf s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W
+rn_ok f s s' φ -> domain_nf_bounded s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W
 ```
 
 - `rn_ok f s s' φ` says that `φ` sends the index of `x` at `s` to the index
   of `f x` at `s'`, for each level `x < s`. From `s` on, `f` is the shift by
   `s' - s`, so the fresh levels of the two readbacks correspond. It is
   preserved by `wk_q`.
-- `dbd s m` says that `m` mentions only levels below `s`. It is
+- `domain_bounded s m` says that `m` mentions only levels below `s`. It is
   `Avoid.domain_avoids v s` at every `v ≥ s`. That invariant already handles closures
   whose environment holds the new variable.
 - **Evaluation is equivariant under every `f`** (`eval_rn`). It never looks

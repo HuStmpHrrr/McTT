@@ -44,9 +44,9 @@ Two facts make this enough:
   `"unbalanced modules"` and `"no module to close"` disappear.
 
 The spec (`ElabSpec.v`) is a homomorphism on every constructor except the two
-name rules (`sel_var`, `selm_var`: `bound` + `entry_denotes_term`/`entry_denotes_mod`) and
-`selm_glob` (`In (en_unit fq) S`). Commands are `scmd fp ch O F c F' c'` and
-`scmds` (one mutual pair), leading imports `simports`, the unit `elab_spec`.
+name rules (`spec_exp_var`, `spec_modexp_var`: `bound` + `entry_denotes_term`/`entry_denotes_mod`) and
+`spec_modexp_glob` (`In (en_unit fq) S`). Commands are `spec_cmd fp ch O F c F' c'` and
+`spec_cmds` (one mutual pair), leading imports `simports`, the unit `elab_spec`.
 No invariant: freshness is a premise `fresh x F := ~ In x (names F)`, not a
 property the proof must preserve.
 
@@ -55,7 +55,7 @@ property the proof must preserve.
 | Responsibility | Today | Prototype | Core cost |
 |---|---|---|---|
 | Names → de Bruijn | `lb_lookup`, `fr_lookup`, `alias_lookup`; three searches, unordered, need `sf_wf` | one `lookup` over `list ent`, first match (`bound`) | 0 |
-| Term vs module by position | `sel`/`selm` | same | 0 |
+| Term vs module by position | `spec_exp`/`spec_modexp` | same | 0 |
 | Pre-application of open-frame members | `preapp`, `tele`, `vars_desc off (tele …)`, offsets in `fbind` | `vars_desc k n` read off the entry's position | 0 (removal: option O6, large) |
 | Open frames | `sframe` stack in `ustate`, open/close | none; body elaborated by structural recursion | 0 |
 | `import … as y` / `use (n)` | `sscope`, `starget`, `wk_starget`, `ss_add`, `ibinds`, `use_binds` over a separate alias list | entries `en_as`/`en_use`, weakened by `k` at use (`mwk E k`) | 0 (move: options O2/O3) |
@@ -222,7 +222,7 @@ Line estimates are for the current core; the core is being refactored on
 * **O3. `import E use (n)` as a core member.**
   ```coq
   | core_cmd_use : modexp -> string -> core_cmd
-  | rc_use_def : …, member_type Θ Ξ (gs_tele Ξ) E (n :: nil) mk_term A ->
+  | rc_use_def : …, member_type Θ Ξ (gs_tele Ξ) E (n :: nil) member_kind_term A ->
       Θ ⍮ Ξ ⊢[ch] core_cmd_use E n ⇝ Θ ⍮ gs_add n (gs_def true true Ξ A (a_mem E n)) Ξ
   | rc_use_mod : …, (* n is a submodule of E *) ->
       Θ ⍮ Ξ ⊢[ch] core_cmd_use E n ⇝ Θ ⍮ gs_add n (ge_mod (gu_mk (gs_tele Ξ) (md_alias (me_mem E n)))) Ξ

@@ -107,49 +107,49 @@ Remove Hints wf_exp_eq_conv : mctt.
 Corollary wf_level_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_level; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_level; assumption ]. Qed.
 
 Corollary wf_True_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_True; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_True; assumption ]. Qed.
 
 Corollary wf_False_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_False; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_False; assumption ]. Qed.
 
 Corollary wf_univ' : forall Θ Ξ Γ o o',
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    olt o o' ->
+    ordinal_lt o o' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ : Type⟨𝕃ᵒ o'⟩.
 Proof.
   intros * ? Hlt; destruct o as [a b].
-  eapply (lift_exp_uidx _ _ _ _ (us (a, S b)) (us o')); [ cbn; ord | apply wf_univ_lit; assumption ].
+  eapply (lift_exp_universe_index _ _ _ _ (us (a, S b)) (us o')); [ cbn; ord | apply wf_univ_lit; assumption ].
 Qed.
 
 Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_level_cong; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_True_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_True_cong; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_exp_eq_True_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_False_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_False_cong; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_exp_eq_False_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_univ_cong_small : forall Θ Ξ Γ o o',
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    olt o o' ->
+    ordinal_lt o o' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ≈ Type⟨𝕃ᵒ o⟩ : Type⟨𝕃ᵒ o'⟩.
 Proof.
   intros * ? Hlt; destruct o as [a b].
-  eapply (lift_exp_eq_uidx _ _ _ _ _ (us (a, S b)) (us o'));
+  eapply (lift_exp_eq_universe_index _ _ _ _ _ (us (a, S b)) (us o'));
     [ cbn; ord | apply wf_exp_eq_univ_cong_lit; assumption ].
 Qed.
 
@@ -455,23 +455,23 @@ Remove Hints wf_subtyp_pi : mctt.
     model states every type equation in the ambient universe of its index. *)
 Corollary wf_conv_univ : forall Θ Ξ Γ M A A' u,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : universe_index_term u ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
   intros * HM HA.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(ulvl u))
-    by (eapply (lift_exp_eq_uidx _ _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(large_level u))
+    by (eapply (lift_exp_eq_universe_index _ _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]).
   eapply wf_exp_subtyp'; [ exact HM | mauto 3 ].
 Qed.
 
 Corollary wf_exp_eq_conv_univ : forall Θ Ξ Γ M M' A A' u,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : universe_index_term u ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   intros * HM HA.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(ulvl u))
-    by (eapply (lift_exp_eq_uidx _ _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(large_level u))
+    by (eapply (lift_exp_eq_universe_index _ _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]).
   eapply wf_exp_eq_subtyp'; [ exact HM | mauto 3 ].
 Qed.
 
@@ -482,28 +482,28 @@ Hint Resolve wf_conv_univ wf_exp_eq_conv_univ : mctt.
     [wf_pi_large]/[wf_pi_lvl] and [wf_exp_eq_pi_cong_large]/[wf_exp_eq_pi_cong_lvl]
     as one statement over the index. *)
 Corollary wf_pi_univ : forall Θ Ξ Γ A B u,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : ulvl_tm u.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : universe_index_term u.
 Proof.
   intros * HA HB; destruct u; cbn in *; [ apply wf_pi_small_lit | apply wf_pi_large ]; assumption.
 Qed.
 
 (** The principal universe of a [Π] is the join of those of its parts. *)
-Corollary wf_pi_umax : forall Θ Ξ Γ A B u v,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : ulvl_tm v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : ulvl_tm (umax u v).
+Corollary wf_pi_universe_index_max : forall Θ Ξ Γ A B u v,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : universe_index_term v ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : universe_index_term (universe_index_max u v).
 Proof.
   intros * HA HB; apply wf_pi_univ;
-    [ eapply (lift_exp_uidx _ _ _ _ u); [ apply uidx_le_umax_left | exact HA ]
-    | eapply (lift_exp_uidx _ _ _ _ v); [ apply uidx_le_umax_right | exact HB ] ].
+    [ eapply (lift_exp_universe_index _ _ _ _ u); [ apply universe_index_le_universe_index_max_left | exact HA ]
+    | eapply (lift_exp_universe_index _ _ _ _ v); [ apply universe_index_le_universe_index_max_right | exact HB ] ].
 Qed.
 
 Corollary wf_exp_eq_pi_cong_univ : forall Θ Ξ Γ A A' B B' u,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : ulvl_tm u.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : universe_index_term u.
 Proof.
   intros * HA HB; destruct u; cbn in *;
     [ apply wf_exp_eq_pi_cong_small_lit; [ gen_presups; eassumption | assumption | assumption ]
@@ -511,17 +511,17 @@ Proof.
 Qed.
 
 #[export]
-Hint Resolve wf_pi_univ wf_pi_umax wf_exp_eq_pi_cong_univ : mctt.
+Hint Resolve wf_pi_univ wf_pi_universe_index_max wf_exp_eq_pi_cong_univ : mctt.
 
 (** The [λ] congruence with the domain equation in any universe. *)
 Corollary wf_exp_eq_fn_cong_univ : forall Θ Ξ Γ A A' B M M' u,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : universe_index_term u ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : Π A B.
 Proof.
   intros * HA HM.
   eapply wf_exp_eq_fn_cong'; [| eassumption ].
-  eapply (lift_exp_eq_uidx _ _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ].
+  eapply (lift_exp_eq_universe_index _ _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ].
 Qed.
 
 #[export]
@@ -531,13 +531,13 @@ Hint Resolve wf_exp_eq_fn_cong_univ : mctt.
     model rewrites types along equations in the ambient universe of its
     index. *)
 Add Parametric Morphism u Θ Ξ Γ : (wf_exp Θ Ξ Γ)
-    with signature wf_exp_eq Θ Ξ Γ (ulvl_tm u) ==> eq ==> iff as wf_exp_morphism_iff_univ.
+    with signature wf_exp_eq Θ Ξ Γ (universe_index_term u) ==> eq ==> iff as wf_exp_morphism_iff_univ.
 Proof.
   split; intros; eapply wf_conv_univ; [ eassumption | eassumption | eassumption | symmetry; eassumption ].
 Qed.
 
 Add Parametric Morphism u Θ Ξ Γ : (wf_exp_eq Θ Ξ Γ)
-    with signature wf_exp_eq Θ Ξ Γ (ulvl_tm u) ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff_univ.
+    with signature wf_exp_eq Θ Ξ Γ (universe_index_term u) ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff_univ.
 Proof.
   split; intros; eapply wf_exp_eq_conv_univ; [ eassumption | eassumption | eassumption | symmetry; eassumption ].
 Qed.
@@ -546,11 +546,11 @@ Qed.
     which is where [wf_subtyp_refl] takes it. *)
 #[local] Ltac subtyp_univ_step HAA' :=
   let H := fresh "H" in
-  pose proof (lift_exp_eq_uidx _ _ _ _ _ _ _ (uidx_le_ulvl _) HAA') as H;
+  pose proof (lift_exp_eq_universe_index _ _ _ _ _ _ _ (universe_index_le_large_level _) HAA') as H;
   eapply wf_subtyp_refl; [ gen_presups; eassumption | first [ exact H | symmetry; exact H ] ].
 
 Add Parametric Morphism u Θ Ξ Γ : (wf_subtyp Θ Ξ Γ)
-    with signature (wf_exp_eq Θ Ξ Γ (ulvl_tm u)) ==> eq ==> iff as wf_subtyp_morphism_iff1_univ.
+    with signature (wf_exp_eq Θ Ξ Γ (universe_index_term u)) ==> eq ==> iff as wf_subtyp_morphism_iff1_univ.
 Proof.
   intros A A' HAA' B; split; intros Hsub;
     ((etransitivity; [ idtac | exact Hsub ]) || (etransitivity; [ exact Hsub | idtac ]));
@@ -558,7 +558,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism u Θ Ξ Γ : (wf_subtyp Θ Ξ Γ)
-    with signature eq ==> (wf_exp_eq Θ Ξ Γ (ulvl_tm u)) ==> iff as wf_subtyp_morphism_iff2_univ.
+    with signature eq ==> (wf_exp_eq Θ Ξ Γ (universe_index_term u)) ==> iff as wf_subtyp_morphism_iff2_univ.
 Proof.
   intros A B B' HBB'; split; intros Hsub;
     (etransitivity; [ exact Hsub | idtac ]);

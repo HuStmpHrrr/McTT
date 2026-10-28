@@ -1,11 +1,11 @@
 (** * Related Module Values Have the Same Kinds
 
-    Related module values have the same kinds ([per_dmod_kequiv]): two unit
+    Related module values have the same kinds ([per_dmod_kinds_equiv]): two unit
     closures are related through related arguments, and every parameter's
     type has some, the reflection of a variable ([var_per_elem]); a module
     expression has the kinds of its value ([kind_eval]).  So the
     environments a context PER relates match the context
-    ([per_ctx_env_kmatch]). *)
+    ([per_ctx_env_kinds_match]). *)
 
 From Stdlib Require Import Lia List String.
 Import ListNotations.
@@ -24,28 +24,28 @@ Section Fixed_GCtx.
 
   (** The environment a body makes, as kinds read it, has the kinds of the
       environment its expansion evaluates to. *)
-  Lemma body_kenv : forall ρ Φ Φx, kbody gc_deps gc_stack ρ Φ Φx -> forall ρ1, ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
-      exists σ, kenv gc_deps gc_stack ρ Φ σ /\ kshape gc_deps gc_stack ρ1 σ.
+  Lemma body_kinds_env : forall ρ Φ Φx, kinds_body_xp gc_deps gc_stack ρ Φ Φx -> forall ρ1, ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+      exists σ, kinds_env gc_deps gc_stack ρ Φ σ /\ kshape gc_deps gc_stack ρ1 σ.
   Proof.
     intros * Hb * He.
     destruct (kind_eval_benv _ _ _ _ _ He ρ (kshape_refl _ _ ρ)) as (σ & Hk & Hs).
-    destruct (kenv_of_kbody _ _ _ _ _ Hb) as (σw & Hkw).
-    pose proof (kenv_eq_kbody _ _ _ _ _ _ _ Hb Hkw Hk) as ->.
+    destruct (kinds_env_of_kinds_body_xp _ _ _ _ _ Hb) as (σw & Hkw).
+    pose proof (kinds_env_eq_kinds_body_xp _ _ _ _ _ _ _ Hb Hkw Hk) as ->.
     exists σ; split; assumption.
   Qed.
 
-  Lemma per_dmod_kequiv_all :
-    (forall h h', per_dmod h h' -> kequiv gc_deps gc_stack h h') /\
+  Lemma per_dmod_kinds_equiv_all :
+    (forall h h', per_dmod h h' -> kinds_equiv gc_deps gc_stack h h') /\
     (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> True) /\
     (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' ->
-       forall sm sm' y ch k, ukind gc_deps gc_stack ρ (gu_mk nil (md_body sm Φ)) (y :: ch) k <->
-                          ukind gc_deps gc_stack ρ' (gu_mk nil (md_body sm' Φ')) (y :: ch) k).
+       forall sm sm' y ch k, gunit_member_kind gc_deps gc_stack ρ (gu_mk nil (md_body sm Φ)) (y :: ch) k <->
+                          gunit_member_kind gc_deps gc_stack ρ' (gu_mk nil (md_body sm' Φ')) (y :: ch) k).
   Proof.
     apply per_dmod_mut_ind_all; intros; try exact I.
     - (* global *)
-      intros ch0 k0; split; apply dkind_global_args.
+      intros ch0 k0; split; apply dmod_member_kind_global_args.
     - (* bodies *)
-      intros [| y ch] kk; rewrite !dkind_local_iff; [ split; intros Hu; inversion Hu; subst; apply ukind_self | apply H ].
+      intros [| y ch] kk; rewrite !dmod_member_kind_local_iff; [ split; intros Hu; inversion Hu; subst; apply gunit_member_kind_self | apply H ].
     - (* a missing parameter: at the reflection of a variable *)
       match goal with Hu : per_univ_elem _ _ _ _ |- _ => pose proof (var_per_elem 0 Hu) as Hv end.
       match goal with E1 : forall c c', _ -> exists hc, $ᵐ| h & c | _ ⍮ _ ↘ hc,
@@ -57,92 +57,92 @@ Section Fixed_GCtx.
       split; intros Hu; inversion Hu; subst; cbn in *; discriminate.
     - (* a definition each *)
       destruct (String.eqb_spec y0 y) as [-> | Hne];
-        [| rewrite (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
+        [| rewrite (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
-        eapply ukind_def; cbn [gm_prefix_upto]; rewrite Ex; reflexivity.
+        eapply gunit_member_kind_def; cbn [gm_prefix_upto]; rewrite Ex; reflexivity.
     - (* a submodule each: their closures have the same kinds *)
       destruct (String.eqb_spec y0 y) as [-> | Hne];
-        [| rewrite (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
+        [| rewrite (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
-      destruct (body_kenv _ _ _ k _ e) as (σ & Hk & Hs).
-      destruct (body_kenv _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
-      assert (HUy : forall ch k, ukind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> ukind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
-      { intros chx kx; rewrite <- (ukind_id _ _ _ _ (proj1 Hs)), <- (ukind_id _ _ _ _ (proj1 Hs')),
+      destruct (body_kinds_env _ _ _ k _ e) as (σ & Hk & Hs).
+      destruct (body_kinds_env _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
+      assert (HUy : forall ch k, gunit_member_kind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> gunit_member_kind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
+      { intros chx kx; rewrite <- (gunit_member_kind_id _ _ _ _ (proj1 Hs)), <- (gunit_member_kind_id _ _ _ _ (proj1 Hs')),
           <- (kind_eval_close _ _ _ _ _ _ e1), <- (kind_eval_close _ _ _ _ _ _ e2); apply H0. }
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
         match goal with Hp : Some _ = Some _ |- _ => inversion Hp; subst end.
-      all: match goal with Hk1 : kenv _ _ _ _ ?r, Hu1 : ukind _ _ ?r _ _ _ |- _ =>
+      all: match goal with Hk1 : kinds_env _ _ _ _ ?r, Hu1 : gunit_member_kind _ _ ?r _ _ _ |- _ =>
              first [ rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk _ Hk1) in Hu1
                    | rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk' _ Hk1) in Hu1 ] end.
-      + eapply ukind_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
-      + eapply ukind_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
+      + eapply gunit_member_kind_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
+      + eapply gunit_member_kind_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
     - (* a definition with a module part each: their closures have the same
          kinds, at the empty chain as at a longer one *)
       destruct (String.eqb_spec y0 y) as [-> | Hne];
-        [| rewrite (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
+        [| rewrite (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
-      destruct (body_kenv _ _ _ k _ e) as (σ & Hk & Hs).
-      destruct (body_kenv _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
-      assert (HUy : forall ch k, ukind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> ukind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
-      { intros chx kx; rewrite <- (ukind_id _ _ _ _ (proj1 Hs)), <- (ukind_id _ _ _ _ (proj1 Hs')),
+      destruct (body_kinds_env _ _ _ k _ e) as (σ & Hk & Hs).
+      destruct (body_kinds_env _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
+      assert (HUy : forall ch k, gunit_member_kind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> gunit_member_kind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
+      { intros chx kx; rewrite <- (gunit_member_kind_id _ _ _ _ (proj1 Hs)), <- (gunit_member_kind_id _ _ _ _ (proj1 Hs')),
           <- (kind_eval_close _ _ _ _ _ _ e1), <- (kind_eval_close _ _ _ _ _ _ e2); apply H0. }
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
         match goal with Hp : Some _ = Some _ |- _ => inversion Hp; subst end.
-      all: match goal with Hk1 : kenv _ _ _ _ ?r, Hu1 : ukind _ _ ?r _ _ _ |- _ =>
+      all: match goal with Hk1 : kinds_env _ _ _ _ ?r, Hu1 : gunit_member_kind _ _ ?r _ _ _ |- _ =>
              first [ rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk _ Hk1) in Hu1
                    | rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk' _ Hk1) in Hu1 ] end.
-      + eapply ukind_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
-      + eapply ukind_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk' | apply HUy; assumption ].
-      + eapply ukind_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
-      + eapply ukind_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk | apply HUy; assumption ].
+      + eapply gunit_member_kind_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
+      + eapply gunit_member_kind_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk' | apply HUy; assumption ].
+      + eapply gunit_member_kind_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
+      + eapply gunit_member_kind_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk | apply HUy; assumption ].
     - (* an open each: their targets have the same kinds *)
       destruct (items_upto y its) as [[its1 it] |] eqn:Ey;
-        [| rewrite (ukind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey), (ukind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey); apply H0 ].
-      destruct (body_kenv _ _ _ k _ e) as (σ & Hk & Hs).
-      destruct (body_kenv _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
-      assert (HH : forall ch k, skind gc_deps gc_stack σ H ch k <-> skind gc_deps gc_stack σ' H' ch k).
-      { intros chx kx; rewrite <- (skind_id _ _ _ _ (proj1 Hs)), <- (skind_id _ _ _ _ (proj1 Hs')),
+        [| rewrite (gunit_member_kind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey), (gunit_member_kind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey); apply H0 ].
+      destruct (body_kinds_env _ _ _ k _ e) as (σ & Hk & Hs).
+      destruct (body_kinds_env _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
+      assert (HH : forall ch k, modexp_member_kind gc_deps gc_stack σ H ch k <-> modexp_member_kind gc_deps gc_stack σ' H' ch k).
+      { intros chx kx; rewrite <- (modexp_member_kind_id _ _ _ _ (proj1 Hs)), <- (modexp_member_kind_id _ _ _ _ (proj1 Hs')),
           <- (kind_eval_modexp _ _ _ _ _ e1), <- (kind_eval_modexp _ _ _ _ _ e2); apply H1. }
       assert (Hi : gm_item_upto (gm_open Φ H its) y = Some (Φ, H, its1, it)) by (cbn; rewrite Ey; reflexivity).
       assert (Hi' : gm_item_upto (gm_open Φ' H' its) y = Some (Φ', H', its1, it)) by (cbn; rewrite Ey; reflexivity).
-      rewrite (ukind_body_item _ _ _ _ _ _ _ _ _ _ _ _ _ Hi Hk), (ukind_body_item _ _ _ _ _ _ _ _ _ _ _ _ _ Hi' Hk').
+      rewrite (gunit_member_kind_body_item _ _ _ _ _ _ _ _ _ _ _ _ _ Hi Hk), (gunit_member_kind_body_item _ _ _ _ _ _ _ _ _ _ _ _ _ Hi' Hk').
       destruct it as [[[n |] d] pv]; rewrite ?HH; reflexivity.
   Qed.
 
-  Corollary per_dmod_kequiv : forall h h', per_dmod h h' -> kequiv gc_deps gc_stack h h'.
-  Proof. exact (proj1 per_dmod_kequiv_all). Qed.
+  Corollary per_dmod_kinds_equiv : forall h h', per_dmod h h' -> kinds_equiv gc_deps gc_stack h h'.
+  Proof. exact (proj1 per_dmod_kinds_equiv_all). Qed.
 
-  Lemma per_ctx_env_kmatch : forall Γ Γ' R, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
-      forall ρ ρ', R ρ ρ' -> kmatch gc_deps gc_stack Γ ρ /\ kmatch gc_deps gc_stack Γ' ρ'.
+  Lemma per_ctx_env_kinds_match : forall Γ Γ' R, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
+      forall ρ ρ', R ρ ρ' -> kinds_match gc_deps gc_stack Γ ρ /\ kinds_match gc_deps gc_stack Γ' ρ'.
   Proof.
     induction 1; intros ρ ρ' Hρ.
-    - split; apply kmatch_nil.
+    - split; apply kinds_match_nil.
     - apply H1 in Hρ as [Ht _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kmatch_drop_term; first [ assumption | discriminate ].
+      split; apply kinds_match_drop_term; first [ assumption | discriminate ].
     - apply H2 in Hρ as [Ht _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kmatch_drop_term; first [ assumption | discriminate ].
+      split; apply kinds_match_drop_term; first [ assumption | discriminate ].
     - apply H1 in Hρ as (Ht & P1 & P2 & P3 & P4).
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kmatch_drop_mod; try assumption.
+      split; apply kinds_match_drop_mod; try assumption.
       + destruct P1 as (h & Hh & Hr).
-        eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.
+        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
+        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
       + destruct P4 as (h & Hh & Hr).
-        eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.
+        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
+        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
     - (* a definition with a module part: its unit as a slot's *)
       apply H3 in Hρ as [Ht _ _ _ _ _ P1 _ _ P4].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kmatch_drop_dm; try assumption.
+      split; apply kinds_match_drop_dm; try assumption.
       + destruct P1 as (h & Hh & Hr).
-        eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.
+        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
+        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
       + destruct P4 as (h & Hh & Hr).
-        eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.
+        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
+        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
   Qed.
 
 End Fixed_GCtx.

@@ -330,7 +330,7 @@ let module M (A : Type@0) where def x : Nat := zero end
   completeness and soundness are unchanged in substance.  `arity_pi` derives
   the `Π` of an arity from `sem_mt`, which replaced the rule's former
   `A ≈ Π B C` premise.
-- `mkind` survives as `mres_kind`, the sort of a member; the termination order
+- `member_kind` survives as `mres_kind`, the sort of a member; the termination order
   `mt_order` and the extracted `member_type_impl` no longer take a kind
   (member types are unique: `member_type_functional`).
 
@@ -362,7 +362,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   unannotated `let`s.
 - Frontend: `Cst.d_def : string -> option expression -> expression -> decl`; the parser
   accepts `x := a` in a `let`; the elaborator passes the option through
-  (`sel_let_infer`).  `def` keeps its required type.
+  (`spec_exp_let_infer`).  `def` keeps its required type.
 
 ### 10.7 Imports generate definitions
 - `import E items` is the command `core_cmd_import E items` (`iitem := option
@@ -383,9 +383,9 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   `tele_xp`), turning each `gm_import` into `gm_ext` entries.  No typing rule
   mentions `gm_import`: `body_shape` is `False` on it, so typed units never
   contain one, and `wf_unit_eq_body` lost its import premises.
-- Privacy of local bodies: references carry a module table (`ptab`) read off
-  the syntax in a scope; `pt_body ch es` checks the newest entry is public,
-  `pt_glob H` the global check.  `pt_body` carries the chain `ch` of
+- Privacy of local bodies: references carry a module table (`privacy_table`) read off
+  the syntax in a scope; `privacy_table_body ch es` checks the newest entry is public,
+  `privacy_table_global H` the global check.  `privacy_table_body` carries the chain `ch` of
   submodules from the local module, for `run_error_private_local`.
 - Privacy checks what is written: `run_cmds_cons` checks
   `acc_ok Θ Ξ (cmd_refs c)` on the command before expansion, `run_unit_intro` the
@@ -498,11 +498,11 @@ Supersedes the expansion part of 10.7.
   applications, slots and literals.  `ign_ind`/`ign_ind_mod` exist only for
   `io = Some _`, so a local open of an inductive has no derivation; the
   checker says "an inductive type cannot be opened in a local module: X"
-  (`xe_ind`).  `items_noind`, `no_ind` and the growth fields that kept
+  (`open_failure_reason_inductive`).  `items_noind`, `no_ind` and the growth fields that kept
   `ind_alias_lookup` are gone.
 - Evaluation reads an opened name off the open's target (`eval_sel_item`,
   `eval_selm_item`), and a body through the entries an open generates
-  (`eval_benv_open`), by the kinds of the members (`kgens`); no term is
+  (`eval_benv_open`), by the kinds of the members (`kinds_items_gen`); no term is
   built.  Kinds are computed by `Extraction/Kinds.v`.
 - The checker checks bodies entry by entry (`alg_body`, `body_check`).  The
   error of a rejected command names the first failing open
@@ -526,9 +526,9 @@ record type is accepted.
   body, or a definition with a module part's term); the separate
   `eval_sel_global_def_mod` is gone.
 - Kinds (Option A): at the chain `[x]` of a member with a term part and a
-  module part the kind is `mk_dm` (`dkind_global_here_dm`, `ukind_dm_here`,
-  `dm_of`); at the empty chain a module value is `mk_mod`.
-  `dkind_global_step` and `dkind_global_alias_case` need `ch <> nil` or `~ dm_path`.
+  module part the kind is `member_kind_dm` (`dmod_member_kind_global_here_dm`, `gunit_member_kind_dm_here`,
+  `dm_of`); at the empty chain a module value is `member_kind_mod`.
+  `dmod_member_kind_global_step` and `dmod_member_kind_global_alias_case` need `ch <> nil` or `~ dm_path`.
   `items_gen` lost its flag: global and local opens generate alike
   (`items_gen_dm` is the item of such a member).
 - The typed fill reads a dm binder in module position as a module

@@ -8,7 +8,7 @@
     ancestor of one, that is, the reference is made inside the module
     declaring the member.  Aliases are followed through the global context to
     the module that declares the member.  A reference into a local body, read
-    off the syntax by module tables ([ptab]), is to a public entry: inside
+    off the syntax by module tables ([privacy_table]), is to a public entry: inside
     the body, its entries are variables. *)
 
 From Stdlib Require Import List String.
@@ -194,58 +194,58 @@ Proof. intros * [pq E _ He]; exists E; split; [ exact He | reflexivity ]. Qed.
     What a reference may know of the module it selects from: nothing, that
     the module is reached from a unit (the global check below decides), or
     the entries of a body, newest first, each with its privacy and its own
-    table.  [pt_body ch es] also records the chain [ch] of submodules
+    table.  [privacy_table_body ch es] also records the chain [ch] of submodules
     selected from the local module it was read from, which the checker
     reports.  The tables are read off the syntax, in a scope [S] giving the
-    table of each index: binders hold [pt_none], a local module the table of
+    table of each index: binders hold [privacy_table_none], a local module the table of
     its unit. *)
 (** No induction principle: tables are only computed and read. *)
 Unset Elimination Schemes.
-Inductive ptab : Set :=
+Inductive privacy_table : Set :=
 (** Nothing is known: a term variable, a parameter, a definition *)
-| pt_none : ptab
+| privacy_table_none : privacy_table
 (** A chain from a unit, arguments dropped *)
-| pt_glob : modexp -> ptab
+| privacy_table_global : modexp -> privacy_table
 (** The entries of a local body, newest first *)
-| pt_body : list string -> list (string * bool * ptab) -> ptab.
+| privacy_table_body : list string -> list (string * bool * privacy_table) -> privacy_table.
 Set Elimination Schemes.
 
 (** The newest entry [x] of a body's table. *)
-Fixpoint tab_find (x : string) (es : list (string * bool * ptab)) : option (bool * ptab) :=
+Fixpoint privacy_table_find (x : string) (es : list (string * bool * privacy_table)) : option (bool * privacy_table) :=
   match es with
   | nil => None
-  | (y, pv, t) :: es' => if String.eqb x y then Some (pv, t) else tab_find x es'
+  | (y, pv, t) :: es' => if String.eqb x y then Some (pv, t) else privacy_table_find x es'
   end.
 
 (** The table of the submodule [y]. *)
-Definition tab_sel (t : ptab) (y : string) : ptab :=
+Definition privacy_table_select (t : privacy_table) (y : string) : privacy_table :=
   match t with
-  | pt_none => pt_none
-  | pt_glob H => pt_glob (me_mem H y)
-  | pt_body ch es =>
-      match tab_find y es with
-      | Some (_, pt_body _ es') => pt_body (ch ++ y :: nil) es'
+  | privacy_table_none => privacy_table_none
+  | privacy_table_global H => privacy_table_global (me_mem H y)
+  | privacy_table_body ch es =>
+      match privacy_table_find y es with
+      | Some (_, privacy_table_body _ es') => privacy_table_body (ch ++ y :: nil) es'
       | Some (_, t') => t'
-      | None => pt_none
+      | None => privacy_table_none
       end
   end.
 
 (** The tables a body's entries bind, newest first, as a scope. *)
-Definition tab_scope (es : list (string * bool * ptab)) : list ptab := map snd es.
+Definition privacy_table_scope (es : list (string * bool * privacy_table)) : list privacy_table := map snd es.
 
 (** Whether an import item declares a private name. *)
 Definition iitem_private (it : iitem) : bool := let '(_, _, pv) := it in pv.
 
 (** What an import item names, in the table [t] of the imported module:
     the module itself, or its member. *)
-Definition item_tab (t : ptab) (it : iitem) : ptab :=
+Definition item_privacy_table (t : privacy_table) (it : iitem) : privacy_table :=
   match it with
   | (None, _, _) => t
-  | (Some n, _, _) => tab_sel t n
+  | (Some n, _, _) => privacy_table_select t n
   end.
 
 (** The references an import's items make: each member it names. *)
-Definition item_refs (t : ptab) (its : list iitem) : list (ptab * string)%type :=
+Definition item_refs (t : privacy_table) (its : list iitem) : list (privacy_table * string)%type :=
   flat_map (fun it => match it with
                       | (Some n, _, _) => (t, n) :: nil
                       | (None, _, _) => nil
@@ -253,45 +253,45 @@ Definition item_refs (t : ptab) (its : list iitem) : list (ptab * string)%type :
 
 (** The privacy table of the module a module expression names, the
     tables of the module variables in scope being [S]. *)
-Fixpoint modexp_privacy_table (S : list ptab) (H : modexp) : ptab :=
+Fixpoint modexp_privacy_table (S : list privacy_table) (H : modexp) : privacy_table :=
   match H with
-  | me_unit fp => pt_glob (me_unit fp)
-  | me_var k => nth k S pt_none
-  | me_mem H y => tab_sel (modexp_privacy_table S H) y
+  | me_unit fp => privacy_table_global (me_unit fp)
+  | me_var k => nth k S privacy_table_none
+  | me_mem H y => privacy_table_select (modexp_privacy_table S H) y
   | me_app H _ => modexp_privacy_table S H
   | me_lit U => gunit_privacy_table S U
   end
-with gunit_privacy_table (S : list ptab) (U : gunit) : ptab :=
+with gunit_privacy_table (S : list privacy_table) (U : gunit) : privacy_table :=
   match U with
-  | gu_mk Δ D => moddef_privacy_table (repeat pt_none (List.length Δ) ++ S) D
+  | gu_mk Δ D => moddef_privacy_table (repeat privacy_table_none (List.length Δ) ++ S) D
   end
-with moddef_privacy_table (S : list ptab) (D : moddef) : ptab :=
+with moddef_privacy_table (S : list privacy_table) (D : moddef) : privacy_table :=
   match D with
-  | md_body sm Φ => pt_body nil (gmod_privacy_tables S Φ)
+  | md_body sm Φ => privacy_table_body nil (gmod_privacy_tables S Φ)
   | md_alias E => modexp_privacy_table S E
   end
-with gmod_privacy_tables (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
+with gmod_privacy_tables (S : list privacy_table) (Φ : gmod) : list (string * bool * privacy_table) :=
   match Φ with
   | gm_nil => nil
-  | gm_ext Φ x E => let es := gmod_privacy_tables S Φ in (x, ge_private E, gentry_privacy_table (tab_scope es ++ S) E) :: es
+  | gm_ext Φ x E => let es := gmod_privacy_tables S Φ in (x, ge_private E, gentry_privacy_table (privacy_table_scope es ++ S) E) :: es
   | gm_open Φ H its =>
       let es := gmod_privacy_tables S Φ in
-      let t := modexp_privacy_table (tab_scope es ++ S) H in
-      rev (map (fun it => (iitem_name it, iitem_private it, item_tab t it)) its) ++ es
+      let t := modexp_privacy_table (privacy_table_scope es ++ S) H in
+      rev (map (fun it => (iitem_name it, iitem_private it, item_privacy_table t it)) its) ++ es
   end
-with gentry_privacy_table (S : list ptab) (E : gentry) : ptab :=
+with gentry_privacy_table (S : list privacy_table) (E : gentry) : privacy_table :=
   match E with
-  | ge_def _ _ _ _ => pt_none
+  | ge_def _ _ _ _ => privacy_table_none
   | ge_mod _ U => gunit_privacy_table S U
-  | ge_ind _ _ _ D Φ => pt_body nil (gmod_privacy_tables (repeat pt_none (ind_nu D) ++ S) Φ)
+  | ge_ind _ _ _ D Φ => privacy_table_body nil (gmod_privacy_tables (repeat privacy_table_none (ind_nu D) ++ S) Φ)
   | ge_def_mod _ _ _ U => gunit_privacy_table S U
-  | ge_record _ _ R Φ => pt_body nil (gmod_privacy_tables (repeat pt_none (Nat.succ (List.length (record_params R))) ++ S) Φ)
+  | ge_record _ _ R Φ => privacy_table_body nil (gmod_privacy_tables (repeat privacy_table_none (Nat.succ (List.length (record_params R))) ++ S) Φ)
   end.
 
 (** The table a local binding gives its index. *)
-Definition bnd_tab (S : list ptab) (b : bnd) : ptab :=
+Definition bnd_privacy_table (S : list privacy_table) (b : bnd) : privacy_table :=
   match b with
-  | b_def _ _ => pt_none
+  | b_def _ _ => privacy_table_none
   | b_mod U => gunit_privacy_table S U
   end.
 
@@ -299,10 +299,10 @@ Definition bnd_tab (S : list ptab) (b : bnd) : ptab :=
 
 (** The references a name from a unit is written with, as a chain of
     selections: each member, from the chain before it. *)
-Fixpoint chain_refs (H : modexp) (ch : list string) : list (ptab * string)%type :=
+Fixpoint chain_refs (H : modexp) (ch : list string) : list (privacy_table * string)%type :=
   match ch with
   | nil => nil
-  | y :: ch' => (pt_glob H, y) :: chain_refs (me_mem H y) ch'
+  | y :: ch' => (privacy_table_global H, y) :: chain_refs (me_mem H y) ch'
   end.
 
 (** The member references a term is written with, each with the table of
@@ -313,80 +313,80 @@ Fixpoint chain_refs (H : modexp) (ch : list string) : list (ptab * string)%type 
     as a global alias command checks its target ([cmd_refs]): local and
     global aliases are checked alike.  Its type and its term are read off
     the target, not written, so they are not checked. *)
-Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
+Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * string)%type :=
   match M with
   | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ => nil
   | a_succl M | a_univ M => exp_refs S M
   | a_maxl M N => exp_refs S M ++ exp_refs S N
-  | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
+  | a_exfalso A M => exp_refs (privacy_table_none :: S) A ++ exp_refs S M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => nil
   | a_elim _ Us _ Bks M =>
-      (fix ups_refs (Us : list exp) : list (ptab * string)%type :=
+      (fix ups_refs (Us : list exp) : list (privacy_table * string)%type :=
          match Us with
          | nil => nil
          | U :: Us' => exp_refs S U ++ ups_refs Us'
          end) Us ++
-      (fix blks_refs (Bks : list eblock) : list (ptab * string)%type :=
+      (fix blks_refs (Bks : list eblock) : list (privacy_table * string)%type :=
          match Bks with
          | nil => nil
          | eb_mk nm oZ A Bs :: Bks' =>
-             match oZ with Some Z => exp_refs (repeat pt_none (nm - 1) ++ S) Z | None => nil end ++
-             exp_refs (repeat pt_none nm ++ S) A ++
-             (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
+             match oZ with Some Z => exp_refs (repeat privacy_table_none (nm - 1) ++ S) Z | None => nil end ++
+             exp_refs (repeat privacy_table_none nm ++ S) A ++
+             (fix brs_refs (Bs : list (string * nat * exp)) : list (privacy_table * string)%type :=
                 match Bs with
                 | nil => nil
-                | b :: Bs' => exp_refs (repeat pt_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
+                | b :: Bs' => exp_refs (repeat privacy_table_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
                 end) Bs ++ blks_refs Bks'
          end) Bks ++ exp_refs S M
-  | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (pt_none :: S) M
+  | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
   | a_app M N => exp_refs S M ++ exp_refs S N
-  | a_let b B => bnd_refs S b ++ exp_refs (bnd_tab S b :: S) B
+  | a_let b B => bnd_refs S b ++ exp_refs (bnd_privacy_table S b :: S) B
   | a_mem H x => (modexp_privacy_table S H, x) :: modexp_refs S H
   | a_record _ => nil
   | a_tuple T fs =>
       exp_refs S T ++
-      (fix fields_refs (fs : list (string * exp)) : list (ptab * string)%type :=
+      (fix fields_refs (fs : list (string * exp)) : list (privacy_table * string)%type :=
          match fs with
          | nil => nil
          | f :: fs' => exp_refs S (snd f) ++ fields_refs fs'
          end) fs
   | a_proj _ M => exp_refs S M
   end
-with modexp_refs (S : list ptab) (H : modexp) : list (ptab * string)%type :=
+with modexp_refs (S : list privacy_table) (H : modexp) : list (privacy_table * string)%type :=
   match H with
   | me_unit _ | me_var _ => nil
   | me_mem H y => (modexp_privacy_table S H, y) :: modexp_refs S H
   | me_app H N => modexp_refs S H ++ exp_refs S N
   | me_lit U => gunit_refs S U
   end
-with bnd_refs (S : list ptab) (b : bnd) : list (ptab * string)%type :=
+with bnd_refs (S : list privacy_table) (b : bnd) : list (privacy_table * string)%type :=
   match b with
   | b_def oA M => match oA with Some A => exp_refs S A | None => nil end ++ exp_refs S M
   | b_mod U => gunit_refs S U
   end
-with gunit_refs (S : list ptab) (U : gunit) : list (ptab * string)%type :=
+with gunit_refs (S : list privacy_table) (U : gunit) : list (privacy_table * string)%type :=
   match U with
   | gu_mk Δ D =>
-      (fix tele_refs (Δ : list centry) : list (ptab * string)%type :=
+      (fix tele_refs (Δ : list centry) : list (privacy_table * string)%type :=
          match Δ with
          | nil => nil
-         | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs Δ'
-         end) Δ ++ moddef_refs (repeat pt_none (List.length Δ) ++ S) D
+         | e :: Δ' => centry_refs (repeat privacy_table_none (List.length Δ') ++ S) e ++ tele_refs Δ'
+         end) Δ ++ moddef_refs (repeat privacy_table_none (List.length Δ) ++ S) D
   end
-with moddef_refs (S : list ptab) (D : moddef) : list (ptab * string)%type :=
+with moddef_refs (S : list privacy_table) (D : moddef) : list (privacy_table * string)%type :=
   match D with
   | md_body sm Φ => gmod_refs S Φ
   | md_alias E => modexp_refs S E
   end
-with gmod_refs (S : list ptab) (Φ : gmod) : list (ptab * string)%type :=
+with gmod_refs (S : list privacy_table) (Φ : gmod) : list (privacy_table * string)%type :=
   match Φ with
   | gm_nil => nil
-  | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (tab_scope (gmod_privacy_tables S Φ) ++ S) E
+  | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) E
   | gm_open Φ H its =>
-      gmod_refs S Φ ++ modexp_refs (tab_scope (gmod_privacy_tables S Φ) ++ S) H ++
-        item_refs (modexp_privacy_table (tab_scope (gmod_privacy_tables S Φ) ++ S) H) its
+      gmod_refs S Φ ++ modexp_refs (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) H ++
+        item_refs (modexp_privacy_table (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) H) its
   end
-with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
+with gentry_refs (S : list privacy_table) (E : gentry) : list (privacy_table * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
@@ -396,7 +396,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   | ge_def_mod _ _ _ U => gunit_refs S U
   | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => nil
   end
-with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
+with centry_refs (S : list privacy_table) (e : centry) : list (privacy_table * string)%type :=
   match e with
   | ce_ass A => exp_refs S A
   | ce_def A M => exp_refs S A ++ exp_refs S M
@@ -404,10 +404,10 @@ with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   | ce_dm _ _ U => gunit_refs S U
   end.
 
-Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
+Fixpoint tele_refs (S : list privacy_table) (Δ : ctx) : list (privacy_table * string)%type :=
   match Δ with
   | nil => nil
-  | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
+  | e :: Δ' => centry_refs (repeat privacy_table_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
   end.
 
 (** The references of a group as written: its uniform parameters, and of
@@ -415,40 +415,40 @@ Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
     and its constructors' arguments over the declared types and all the
     member's parameters, each argument binding a variable for the ones after
     it. *)
-Fixpoint rargs_refs (S : list ptab) (args : list (string * exp)) : list (ptab * string)%type :=
+Fixpoint rargs_refs (S : list privacy_table) (args : list (string * exp)) : list (privacy_table * string)%type :=
   match args with
   | nil => nil
-  | (_, T) :: args' => exp_refs S T ++ rargs_refs (pt_none :: S) args'
+  | (_, T) :: args' => exp_refs S T ++ rargs_refs (privacy_table_none :: S) args'
   end.
 
 (** The references a declared member makes as written: its non-uniform
     parameters, its sort and its constructors' arguments, under the [nu]
     uniform parameters and the [nself] [Self]s. *)
-Definition rmem_refs (nu nself : nat) (Mr : raw_member) : list (ptab * string)%type :=
-  tele_refs (repeat pt_none nu) (raw_member_nparams Mr) ++
-  exp_refs (repeat pt_none nu) (raw_member_sort Mr) ++
-  flat_map (fun cg => rargs_refs (repeat pt_none (List.length (raw_member_nparams Mr) + nu + nself)) (snd cg)) (raw_member_cons Mr).
+Definition rmem_refs (nu nself : nat) (Mr : raw_member) : list (privacy_table * string)%type :=
+  tele_refs (repeat privacy_table_none nu) (raw_member_nparams Mr) ++
+  exp_refs (repeat privacy_table_none nu) (raw_member_sort Mr) ++
+  flat_map (fun cg => rargs_refs (repeat privacy_table_none (List.length (raw_member_nparams Mr) + nu + nself)) (snd cg)) (raw_member_cons Mr).
 
 (** The references a group declaration makes as written: its uniform
     parameters, then each member's. *)
-Definition decl_refs (R : raw_decl) : list (ptab * string)%type :=
+Definition decl_refs (R : raw_decl) : list (privacy_table * string)%type :=
   tele_refs nil (raw_decl_uparams R) ++
   flat_map (rmem_refs (List.length (raw_decl_uparams R)) (List.length (raw_decl_members R))) (raw_decl_members R).
 
 (** The references of a function of a [mutual def] as written, under the
     block's parameters: its non-uniform parameters, its scrutinee's type,
     its result type and its clauses. *)
-Definition rfun_refs (np : nat) (f : raw_fun) : list (ptab * string)%type :=
-  tele_refs (repeat pt_none np) (raw_fun_nparams f) ++
-  exp_refs (repeat pt_none (List.length (raw_fun_nparams f) + np)) (raw_fun_scrut f) ++
-  exp_refs (repeat pt_none (S (List.length (raw_fun_nparams f) + np))) (raw_fun_res f) ++
-  flat_map (fun cl => exp_refs (repeat pt_none (snd (fst cl) + np)) (snd cl)) (raw_fun_clauses f).
+Definition rfun_refs (np : nat) (f : raw_fun) : list (privacy_table * string)%type :=
+  tele_refs (repeat privacy_table_none np) (raw_fun_nparams f) ++
+  exp_refs (repeat privacy_table_none (List.length (raw_fun_nparams f) + np)) (raw_fun_scrut f) ++
+  exp_refs (repeat privacy_table_none (S (List.length (raw_fun_nparams f) + np))) (raw_fun_res f) ++
+  flat_map (fun cl => exp_refs (repeat privacy_table_none (snd (fst cl) + np)) (snd cl)) (raw_fun_clauses f).
 
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
     commands are checked when they run.  A generated command makes none:
     it is not written ([core_cmd_gen]). *)
-Definition cmd_refs (c : core_cmd) : list (ptab * string)%type :=
+Definition cmd_refs (c : core_cmd) : list (privacy_table * string)%type :=
   match c with
   | core_cmd_gen _ => nil
   | core_cmd_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
@@ -465,7 +465,7 @@ Definition cmd_refs (c : core_cmd) : list (ptab * string)%type :=
   (** A record's parameters, sort and fields, each field binding a variable
       for the ones after it; its with-area is checked when it runs *)
   | core_cmd_record _ _ Δ Srt fs _ =>
-      tele_refs nil Δ ++ exp_refs (repeat pt_none (List.length Δ)) Srt ++ rargs_refs (repeat pt_none (List.length Δ)) fs
+      tele_refs nil Δ ++ exp_refs (repeat privacy_table_none (List.length Δ)) Srt ++ rargs_refs (repeat privacy_table_none (List.length Δ)) fs
   end.
 
 (** ** Accessibility *)
@@ -496,14 +496,14 @@ Definition glob_ok (Θ : gdeps) (Ξ : gstack) (H : modexp) (x : string) : Prop :
 
 (** A reference into a local body is to a public entry: inside the body,
     its entries are variables, not references. *)
-Definition ref_ok (Θ : gdeps) (Ξ : gstack) (r : (ptab * string)%type) : Prop :=
+Definition ref_ok (Θ : gdeps) (Ξ : gstack) (r : (privacy_table * string)%type) : Prop :=
   match fst r with
-  | pt_glob H => glob_ok Θ Ξ H (snd r)
-  | pt_body _ es => option_map fst (tab_find (snd r) es) <> Some true
-  | pt_none => True
+  | privacy_table_global H => glob_ok Θ Ξ H (snd r)
+  | privacy_table_body _ es => option_map fst (privacy_table_find (snd r) es) <> Some true
+  | privacy_table_none => True
   end.
 
-Definition acc_ok (Θ : gdeps) (Ξ : gstack) (l : list (ptab * string)%type) : Prop :=
+Definition acc_ok (Θ : gdeps) (Ξ : gstack) (l : list (privacy_table * string)%type) : Prop :=
   List.Forall (ref_ok Θ Ξ) l.
 
 (** Accessibility reads declarations, which equal lookups preserve. *)

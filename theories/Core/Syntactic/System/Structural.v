@@ -566,7 +566,7 @@ Hint Resolve wf_wk_mod_compat wf_sub_mod_compat : mctt.
     weakening or substitution, and so do its term part and its telescope. *)
 Lemma wf_wk_mdenote : forall Θ Ξ Γ H H' R Δ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    mdenote Θ Ξ Δ (modexp_wk H φ) (ds_sub R (ι φ)).
+    mdenote Θ Ξ Δ (modexp_wk H φ) (mdesc_sub R (ι φ)).
 Proof.
   intros * HH Hm Hφ; destruct (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
   eapply mdenote_wk; eauto using wf_gctx_closed, presup_modexp_eq_ctx, wf_wk_mod_compat.
@@ -574,7 +574,7 @@ Qed.
 
 Lemma wf_wk_mdenote_mem : forall Θ Ξ Γ H H' x R Δ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    mdenote Θ Ξ Δ (me_mem (modexp_wk H φ) x) (ds_sub R (ι φ)).
+    mdenote Θ Ξ Δ (me_mem (modexp_wk H φ) x) (mdesc_sub R (ι φ)).
 Proof.
   intros * HH Hm Hφ; destruct (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
   exact (mdenote_wk _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)).
@@ -582,7 +582,7 @@ Qed.
 
 Lemma wf_sub_mdenote : forall Θ Ξ Γ H H' R Δ σ,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    mdenote Θ Ξ Δ H[σ]ᵐ (ds_sub R σ).
+    mdenote Θ Ξ Δ H[σ]ᵐ (mdesc_sub R σ).
 Proof.
   intros * HH Hm Hσ; destruct (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
   eapply mdenote_sub; eauto using wf_gctx_closed, presup_modexp_eq_ctx, wf_sub_mod_compat.
@@ -590,38 +590,38 @@ Qed.
 
 Lemma wf_sub_mdenote_mem : forall Θ Ξ Γ H H' x R Δ σ,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    mdenote Θ Ξ Δ (me_mem H[σ]ᵐ x) (ds_sub R σ).
+    mdenote Θ Ξ Δ (me_mem H[σ]ᵐ x) (mdesc_sub R σ).
 Proof.
   intros * HH Hm Hσ; destruct (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
   exact (mdenote_sub _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)).
 Qed.
 
-Lemma wf_wk_ds_mtele : forall Θ Ξ Γ H H' R T Δ φ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    ds_mtele (ds_sub R (ι φ)) = Some (tele_wk T φ).
+Lemma wf_wk_mdesc_mod_tele : forall Θ Ξ Γ H H' R T Δ φ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> mdesc_mod_tele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+    mdesc_mod_tele (mdesc_sub R (ι φ)) = Some (tele_wk T φ).
 Proof.
-  intros * HH Hm HT Hφ; eapply ds_mtele_wk; [ eapply wf_mdenote_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hφ; eapply mdesc_mod_tele_wk; [ eapply wf_mdenote_scoped; eassumption | exact HT ].
 Qed.
 
-Lemma wf_wk_ds_mtele_mem : forall Θ Ξ Γ H H' x R T Δ φ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    ds_mtele (ds_sub R (ι φ)) = Some (tele_wk T φ).
+Lemma wf_wk_mdesc_mod_tele_mem : forall Θ Ξ Γ H H' x R T Δ φ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_mod_tele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+    mdesc_mod_tele (mdesc_sub R (ι φ)) = Some (tele_wk T φ).
 Proof.
-  intros * HH Hm HT Hφ; eapply ds_mtele_wk; [ eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hφ; eapply mdesc_mod_tele_wk; [ eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
 Qed.
 
-Lemma wf_sub_ds_mtele : forall Θ Ξ Γ H H' R T Δ σ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    ds_mtele (ds_sub R σ) = Some (tele_sub T σ).
+Lemma wf_sub_mdesc_mod_tele : forall Θ Ξ Γ H H' R T Δ σ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> mdesc_mod_tele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+    mdesc_mod_tele (mdesc_sub R σ) = Some (tele_sub T σ).
 Proof.
-  intros * HH Hm HT Hσ; eapply ds_mtele_sub; [ eapply wf_mdenote_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hσ; eapply mdesc_mod_tele_sub; [ eapply wf_mdenote_scoped; eassumption | exact HT ].
 Qed.
 
-Lemma wf_sub_ds_mtele_mem : forall Θ Ξ Γ H H' x R T Δ σ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    ds_mtele (ds_sub R σ) = Some (tele_sub T σ).
+Lemma wf_sub_mdesc_mod_tele_mem : forall Θ Ξ Γ H H' x R T Δ σ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_mod_tele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+    mdesc_mod_tele (mdesc_sub R σ) = Some (tele_sub T σ).
 Proof.
-  intros * HH Hm HT Hσ; eapply ds_mtele_sub; [ eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hσ; eapply mdesc_mod_tele_sub; [ eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
 Qed.
 
 Lemma ext_eq_length : forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> length Ψ = length Ψ'.
@@ -1170,7 +1170,7 @@ Section ElimMove.
       ind_member D m = Some Mm ->
       im_head Mm = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' ->
-      vwrap_ok D D' vm ->
+      view_wrap_ok D D' vm ->
       List.nth_error Bks m = Some bm ->
       List.length Bks = ind_nblk D ->
       List.length Ps = im_np D Mm ->
@@ -1208,7 +1208,7 @@ Section ElimMove.
       R Δ σ Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ]
         ≈ (a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-             (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M)[σ]
+             (view_wrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M)[σ]
         : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
   Proof.
     intros * Hl Hg HMm Hh HD' Hvw Hbm HlB HlP IHPs IHM Hann Hnm IHZ IHA HΨ IHΨ Hn HΨB IHΨB Hk IHB HR.
@@ -1216,7 +1216,7 @@ Section ElimMove.
     assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HlP; lia).
     rewrite !exp_sub_elim, (elim_type_sub D Mm bm) by eauto.
     rewrite (im_pre_sub D m Mm) by assumption.
-    rewrite vwrap_sub, <- List.firstn_map by assumption.
+    rewrite view_wrap_sub, <- List.firstn_map by assumption.
     eapply wf_exp_eq_elim_view;
       [ exact Hl | exact Hg | exact HMm | exact Hh | exact HD' | exact Hvw | rewrite nth_error_blocks_sub, Hbm; reflexivity
       | rewrite length_blocks_sub; exact HlB | rewrite List.length_map; exact HlP | .. ].
@@ -1938,23 +1938,23 @@ Section WkMem.
   Lemma wk_mem_case : forall H x R A i,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[φ0]ʷ : (Typeω@i)[φ0]ʷ) ->
-      (forall M, ds_red R = Some M -> forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[φ0]ʷ : A[φ0]ʷ) ->
+      (forall M, mdesc_reduct R = Some M -> forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[φ0]ʷ : A[φ0]ʷ) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[φ]ʷ : A[φ]ʷ.
   Proof.
     intros * HH IH Hm Ht IHA IHM Hφ; cbn; eapply wf_mem;
       [ exact (IH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption
-      | eapply ds_ty_wk; exact Ht | exact (IHA _ _ Hφ) |].
-    intros M' HM'; destruct (ds_red_wk_inv _ _ _ HM') as (M0 & HM0 & ->); exact (IHM _ HM0 _ _ Hφ).
+      | eapply mdesc_type_wk; exact Ht | exact (IHA _ _ Hφ) |].
+    intros M' HM'; destruct (mdesc_reduct_wk_inv _ _ _ HM') as (M0 & HM0 & ->); exact (IHM _ HM0 _ _ Hφ).
   Qed.
 
   Lemma wk_mem_cong_case : forall H H' x R A R' A',
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H' φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
-      mdenote Θ Ξ Γ (me_mem H' x) R' -> ds_ty R' = Some A' ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H' x) R' -> mdesc_type R' = Some A' ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_mem H' x)[φ0]ʷ : A[φ0]ʷ) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[φ]ʷ ≈ (a_mem H' x)[φ]ʷ : A[φ]ʷ.
@@ -1962,32 +1962,32 @@ Section WkMem.
     intros * HH IHH Hm Ht Hm' Ht' IHM Hφ; cbn.
     pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc.
     eapply wf_exp_eq_mem_cong;
-      [ exact (IHH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption | eapply ds_ty_wk; eassumption
+      [ exact (IHH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption | eapply mdesc_type_wk; eassumption
       | eapply wf_wk_mdenote_mem; [ exact (wf_modexp_eq_refl_right HH) | eassumption | eassumption ]
-      | eapply ds_ty_wk; eassumption | exact (IHM _ _ Hφ) ].
+      | eapply mdesc_type_wk; eassumption | exact (IHM _ _ Hφ) ].
   Qed.
 
   Lemma wk_mem_delta_case : forall H x R A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A -> ds_red R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[φ]ʷ ≈ M[φ]ʷ : A[φ]ʷ.
   Proof.
     intros * HH IH Hm Ht Hr Hφ; cbn.
     pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc.
     eapply wf_exp_eq_mem_delta;
-      [ exact (IH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption | eapply ds_ty_wk; eassumption | apply ds_red_wk; exact Hr ].
+      [ exact (IH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption | eapply mdesc_type_wk; eassumption | apply mdesc_reduct_wk; exact Hr ].
   Qed.
 
   Lemma wk_me_delta_sel_case : forall H y R Rm,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk (me_mem H y) φ0 ≈ modexp_wk (me_mem H y) φ0) ->
-      mdenote Θ Ξ Γ (me_mem H y) R -> ds_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk (me_mem H y) φ ≈ modexp_wk (ds_unit Rm) φ.
+      mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk (me_mem H y) φ ≈ modexp_wk (mdesc_unit Rm) φ.
   Proof.
     intros * HH IH Hm Hd Hφ.
-    rewrite <- (modexp_sub_of_wk (ds_unit Rm) φ), <- ds_unit_sub; cbn.
-    eapply wf_me_delta_sel; [ exact (IH _ _ Hφ) | | apply ds_mod_sub; exact Hd ].
+    rewrite <- (modexp_sub_of_wk (mdesc_unit Rm) φ), <- mdesc_unit_sub; cbn.
+    eapply wf_me_delta_sel; [ exact (IH _ _ Hφ) | | apply mdesc_mod_sub; exact Hd ].
     pose proof (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
     exact (mdenote_wk _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)).
   Qed.
@@ -2081,15 +2081,15 @@ Proof.
   all: try solve [ eapply wf_me_delta_slot; [ eauto | eapply wf_wk_lookup_mod; eauto ] ].
   all: try solve [ eapply wf_me_mem;
                    [ eauto
-                   | eapply wf_wk_mdenote_mem; eassumption | eapply wf_wk_ds_mtele_mem; eassumption
+                   | eapply wf_wk_mdenote_mem; eassumption | eapply wf_wk_mdesc_mod_tele_mem; eassumption
                    | eapply wf_wk_mdenote_mem; [ apply wf_me_sym | ..]; eassumption
-                   | eapply wf_wk_ds_mtele_mem; [ apply wf_me_sym | ..]; eassumption ] ].
+                   | eapply wf_wk_mdesc_mod_tele_mem; [ apply wf_me_sym | ..]; eassumption ] ].
   all: try solve [ eapply wf_me_app;
                    [ eauto
-                   | eapply wf_wk_mdenote; eassumption | eapply wf_wk_ds_mtele; eassumption
+                   | eapply wf_wk_mdenote; eassumption | eapply wf_wk_mdesc_mod_tele; eassumption
                    | eapply tele_view_wk_some; eassumption | eauto | eauto | eauto
                    | eapply wf_wk_mdenote; [ apply wf_me_sym | ..]; eassumption
-                   | eapply wf_wk_ds_mtele; [ apply wf_me_sym | ..]; eassumption
+                   | eapply wf_wk_mdesc_mod_tele; [ apply wf_me_sym | ..]; eassumption
                    | eapply tele_view_wk_some; eassumption | eauto | eauto ] ].
   (** Extensions: the entry is moved by the weakening lifted over the
       extension before it. *)
@@ -2751,7 +2751,7 @@ Ltac lift_sub := repeat first [ lift_sub_False | lift_sub_step | lift_sub_def ].
 Lemma me_apps_slot_root : forall Ns Γ H, me_slot_root Γ (me_apps H Ns) <-> me_slot_root Γ H.
 Proof. induction Ns as [| N Ns IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-Lemma ds_unit_slot_root : forall Γ R, me_slot_root Γ (ds_unit R).
+Lemma mdesc_unit_slot_root : forall Γ R, me_slot_root Γ (mdesc_unit R).
 Proof.
   intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | A M Rm]; cbn; try exact I.
   apply me_apps_slot_root; eapply mod_qname_slot_root, qname_mod_qname.
@@ -2764,7 +2764,7 @@ Proof. intros * Hu; unfold gc_unit in Hu; destruct (mod_qname H) eqn:E; [ eapply
 Lemma modexp_eq_slot_root : forall Θ Ξ Γ H H',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> me_slot_root Γ H /\ me_slot_root Γ H'.
 Proof.
-  induction 1; cbn; destruct_all; eauto 6 using mod_qname_slot_root, ds_unit_slot_root, gc_unit_slot_root.
+  induction 1; cbn; destruct_all; eauto 6 using mod_qname_slot_root, mdesc_unit_slot_root, gc_unit_slot_root.
 Qed.
 
 Lemma wf_sub_ext_of_ext : forall Θ Ξ Γ Ψ Ψ' Δ σ,
@@ -2943,23 +2943,23 @@ Section SubMem.
   Lemma sub_mem_case : forall H x R A i,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σ0] : (Typeω@i)[σ0]) ->
-      (forall M, ds_red R = Some M -> forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : A[σ0]) ->
+      (forall M, mdesc_reduct R = Some M -> forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : A[σ0]) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[σ] : A[σ].
   Proof.
     intros * HH IH Hm Ht IHA IHM Hσ; cbn; eapply wf_mem;
       [ exact (IH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption
-      | eapply ds_ty_sub; exact Ht | exact (IHA _ _ Hσ) |].
-    intros M' HM'; destruct (ds_red_sub_inv _ _ _ HM') as (M0 & HM0 & ->); exact (IHM _ HM0 _ _ Hσ).
+      | eapply mdesc_type_sub; exact Ht | exact (IHA _ _ Hσ) |].
+    intros M' HM'; destruct (mdesc_reduct_sub_inv _ _ _ HM') as (M0 & HM0 & ->); exact (IHM _ HM0 _ _ Hσ).
   Qed.
 
   Lemma sub_mem_cong_case : forall H H' x R A R' A',
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H'[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
-      mdenote Θ Ξ Γ (me_mem H' x) R' -> ds_ty R' = Some A' ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H' x) R' -> mdesc_type R' = Some A' ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_mem H' x)[σ0] : A[σ0]) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[σ] ≈ (a_mem H' x)[σ] : A[σ].
@@ -2967,32 +2967,32 @@ Section SubMem.
     intros * HH IHH Hm Ht Hm' Ht' IHM Hσ; cbn.
     pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc.
     eapply wf_exp_eq_mem_cong;
-      [ exact (IHH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption | eapply ds_ty_sub; eassumption
+      [ exact (IHH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption | eapply mdesc_type_sub; eassumption
       | eapply wf_sub_mdenote_mem; [ exact (wf_modexp_eq_refl_right HH) | eassumption | eassumption ]
-      | eapply ds_ty_sub; eassumption | exact (IHM _ _ Hσ) ].
+      | eapply mdesc_type_sub; eassumption | exact (IHM _ _ Hσ) ].
   Qed.
 
   Lemma sub_mem_delta_case : forall H x R A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A -> ds_red R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[σ] ≈ M[σ] : A[σ].
   Proof.
     intros * HH IH Hm Ht Hr Hσ; cbn.
     pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc.
     eapply wf_exp_eq_mem_delta;
-      [ exact (IH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption | eapply ds_ty_sub; eassumption | apply ds_red_sub; exact Hr ].
+      [ exact (IH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption | eapply mdesc_type_sub; eassumption | apply mdesc_reduct_sub; exact Hr ].
   Qed.
 
   Lemma sub_me_delta_sel_case : forall H y R Rm,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ (me_mem H y)[σ0]ᵐ ≈ (me_mem H y)[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H y) R -> ds_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ᵐ (me_mem H y)[σ]ᵐ ≈ (ds_unit Rm)[σ]ᵐ.
+      mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ᵐ (me_mem H y)[σ]ᵐ ≈ (mdesc_unit Rm)[σ]ᵐ.
   Proof.
     intros * HH IH Hm Hd Hσ.
-    rewrite <- ds_unit_sub; cbn.
-    eapply wf_me_delta_sel; [ exact (IH _ _ Hσ) | | apply ds_mod_sub; exact Hd ].
+    rewrite <- mdesc_unit_sub; cbn.
+    eapply wf_me_delta_sel; [ exact (IH _ _ Hσ) | | apply mdesc_mod_sub; exact Hd ].
     pose proof (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
     exact (mdenote_sub _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)).
   Qed.
@@ -3144,15 +3144,15 @@ Proof.
     end ].
   all: try solve [ eapply wf_me_mem;
                    [ eauto
-                   | eapply wf_sub_mdenote_mem; eassumption | eapply wf_sub_ds_mtele_mem; eassumption
+                   | eapply wf_sub_mdenote_mem; eassumption | eapply wf_sub_mdesc_mod_tele_mem; eassumption
                    | eapply wf_sub_mdenote_mem; [ apply wf_me_sym | ..]; eassumption
-                   | eapply wf_sub_ds_mtele_mem; [ apply wf_me_sym | ..]; eassumption ] ].
+                   | eapply wf_sub_mdesc_mod_tele_mem; [ apply wf_me_sym | ..]; eassumption ] ].
   all: try solve [ eapply wf_me_app;
                    [ eauto
-                   | eapply wf_sub_mdenote; eassumption | eapply wf_sub_ds_mtele; eassumption
+                   | eapply wf_sub_mdenote; eassumption | eapply wf_sub_mdesc_mod_tele; eassumption
                    | eapply tele_view_sub_some; eassumption | eauto | eauto | eauto
                    | eapply wf_sub_mdenote; [ apply wf_me_sym | ..]; eassumption
-                   | eapply wf_sub_ds_mtele; [ apply wf_me_sym | ..]; eassumption
+                   | eapply wf_sub_mdesc_mod_tele; [ apply wf_me_sym | ..]; eassumption
                    | eapply tele_view_sub_some; eassumption | eauto | eauto ] ].
   (** [Π], as for weakening. *)
   all: try solve [
@@ -3739,76 +3739,76 @@ Qed.
 Hint Resolve lift_exp_ge lift_exp_eq_ge : mctt.
 
 (** The same along the order of universe indices, where a universe is written
-    as the term [ulvl_tm u]: inside a tier it is the order on levels, and from
+    as the term [universe_index_term u]: inside a tier it is the order on levels, and from
     the small tier to the large one it is [wf_subtyp_small_large]. *)
-Lemma lift_exp_uidx : forall Θ Ξ Γ A u v,
-    uidx_le u v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm v.
+Lemma lift_exp_universe_index : forall Θ Ξ Γ A u v,
+    universe_index_le u v ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_index_term v.
 Proof.
   intros * Hle HA; destruct u as [n | n], v as [m | m]; cbn in Hle, HA |- *;
-    [ eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_suniv_ole; [ mauto 2 | assumption ] ]
+    [ eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_suniv_ordinal_le; [ mauto 2 | assumption ] ]
     | eapply wf_exp_small_large; eassumption
     | contradiction
     | eapply lift_exp_ge; eassumption ].
 Qed.
 
-Lemma lift_exp_eq_uidx : forall Θ Ξ Γ A A' u v,
-    uidx_le u v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm v.
+Lemma lift_exp_eq_universe_index : forall Θ Ξ Γ A A' u v,
+    universe_index_le u v ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : universe_index_term u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : universe_index_term v.
 Proof.
   intros * Hle HA; destruct u as [n | n], v as [m | m]; cbn in Hle, HA |- *;
-    [ eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_suniv_ole; [ mauto 2 | assumption ] ]
+    [ eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_suniv_ordinal_le; [ mauto 2 | assumption ] ]
     | eapply wf_exp_eq_small_large; eassumption
     | contradiction
     | eapply lift_exp_eq_ge; eassumption ].
 Qed.
 
 #[export]
-Hint Resolve lift_exp_uidx lift_exp_eq_uidx : mctt.
+Hint Resolve lift_exp_universe_index lift_exp_eq_universe_index : mctt.
 
 (** The closed small types are types of every universe, small or large: their
-    rules give them [Type@0], which [uidx_le_least] lifts anywhere. *)
-Lemma wf_level_univ : forall {Θ Ξ Γ n} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : ulvl_tm u.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_level; assumption ]. Qed.
+    rules give them [Type@0], which [universe_index_le_least] lifts anywhere. *)
+Lemma wf_level_univ : forall {Θ Ξ Γ n} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : universe_index_term u.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_level; assumption ]. Qed.
 
-Lemma wf_True_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : ulvl_tm u.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_True; assumption ]. Qed.
+Lemma wf_True_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : universe_index_term u.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_True; assumption ]. Qed.
 
-Lemma wf_False_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : ulvl_tm u.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_False; assumption ]. Qed.
+Lemma wf_False_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : universe_index_term u.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_False; assumption ]. Qed.
 
-Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ n} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : ulvl_tm u.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_level_cong; assumption ]. Qed.
+Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ n} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : universe_index_term u.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
-Lemma wf_exp_eq_True_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : ulvl_tm u.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_True_cong; assumption ]. Qed.
+Lemma wf_exp_eq_True_cong_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : universe_index_term u.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_exp_eq_True_cong; assumption ]. Qed.
 
-Lemma wf_exp_eq_False_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : ulvl_tm u.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_False_cong; assumption ]. Qed.
+Lemma wf_exp_eq_False_cong_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : universe_index_term u.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_exp_eq_False_cong; assumption ]. Qed.
 
 (** Not hints: they would fire on a goal whose type is still an evar and
     leave the index open.  Apply them by name. *)
 
 (** The order on indices is subtyping of the universes. *)
-Lemma wf_subtyp_uidx : forall {Θ Ξ Γ} {u v : uidx},
+Lemma wf_subtyp_universe_index : forall {Θ Ξ Γ} {u v : universe_index},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    uidx_le u v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u ⊆ ulvl_tm v.
+    universe_index_le u v ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ universe_index_term u ⊆ universe_index_term v.
 Proof.
   intros * HΓ Hle; destruct u as [n | n], v as [m | m]; cbn in Hle |- *;
-    [ apply wf_subtyp_suniv_ole; assumption
+    [ apply wf_subtyp_suniv_ordinal_le; assumption
     | eapply wf_subtyp_small_large; mauto 3
     | contradiction
     | apply wf_subtyp_ge; assumption ].
 Qed.
 
 (** The same from a type of any universe, large or small. *)
-Lemma wf_subtyp_refl_univ : forall Θ Ξ Γ A u, Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
+Lemma wf_subtyp_refl_univ : forall Θ Ξ Γ A u, Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_index_term u -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
 Proof.
-  intros * HA; eapply wf_subtyp_refl_typ, (lift_exp_uidx _ _ _ _ u (ulvl u));
-    [ apply uidx_le_ulvl | exact HA ].
+  intros * HA; eapply wf_subtyp_refl_typ, (lift_exp_universe_index _ _ _ _ u (large_level u));
+    [ apply universe_index_le_large_level | exact HA ].
 Qed.
 
 #[export]

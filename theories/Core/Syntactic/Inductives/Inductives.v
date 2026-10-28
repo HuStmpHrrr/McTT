@@ -1111,20 +1111,20 @@ Definition wrap_br (pq : qname) (D D' : ind_decl) (Us : list exp) (Bks : list eb
     each a member of [D], with as many non-uniform parameters, the same
     constructors, and the arguments of each as the container's, classified
     for [D]. *)
-Record vwrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_vwrap_ok
+Record view_wrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_view_wrap_ok
   { (** [vm] lists one member of [D] per member of the container's group. *)
-    vwrap_ok_length : List.length vm = List.length (ind_members D')
+    view_wrap_ok_length : List.length vm = List.length (ind_members D')
   (** Each member [vm] lists is a member of [D] with as many non-uniform
       parameters as the container's, the same constructors, and arguments
       corresponding to the container's ([cargs_corr]). *)
-  ; vwrap_ok_members : forall i' Mi' v, ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
+  ; view_wrap_ok_members : forall i' Mi' v, ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
       exists Mv, ind_member D v = Some Mv /\ im_nn Mv = im_nn Mi' /\
         List.map fst (im_cons Mv) = List.map fst (im_cons Mi') /\
         (forall c gs' gs, In (c, gs') (im_cons Mi') -> ind_con Mv c = Some gs -> cargs_corr vm gs' gs) }.
 
 (** The container's blocks: one per member of the container's group [D']
     that has a block. *)
-Definition vwrap_block (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
+Definition view_wrap_block (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
     (i' : nat) (Mi' : imember) : eblock :=
   let v := List.nth i' vm 0 in
   match List.nth_error Bks v, ind_member D v with
@@ -1134,11 +1134,11 @@ Definition vwrap_block (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list
   end.
 
 (** The container's blocks for its members [ms], from the member [i'] on. *)
-Fixpoint vwrap_from (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
+Fixpoint view_wrap_from (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
     (i' : nat) (ms : list imember) : list eblock :=
   match ms with
   | nil => nil
-  | Mi' :: ms' => vwrap_block pq D D' vm Us Bks i' Mi' :: vwrap_from pq D D' vm Us Bks (S i') ms'
+  | Mi' :: ms' => view_wrap_block pq D D' vm Us Bks i' Mi' :: view_wrap_from pq D D' vm Us Bks (S i') ms'
   end.
 
 (** The members of a group that have a block: all but the record views,
@@ -1148,8 +1148,8 @@ Definition ind_bmembers (D : ind_decl) : list imember := List.firstn (ind_nblk D
 (** The blocks of the container's eliminator that the eliminator at a view
     reads as: one per member of the container's group [D'] that has a
     block. *)
-Definition vwrap (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock) : list eblock :=
-  vwrap_from pq D D' vm Us Bks 0 (ind_bmembers D').
+Definition view_wrap (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock) : list eblock :=
+  view_wrap_from pq D D' vm Us Bks 0 (ind_bmembers D').
 
 (** There are at most as many members with a block as members. *)
 Lemma ind_nblk_le : forall D, ind_nblk D <= List.length (ind_members D).
@@ -1166,9 +1166,9 @@ Qed.
 Lemma length_ind_bmembers : forall D, List.length (ind_bmembers D) = ind_nblk D.
 Proof. intros; unfold ind_bmembers; rewrite List.length_firstn; pose proof (ind_nblk_le D); lia. Qed.
 
-Lemma nth_error_vwrap_from : forall pq D D' vm Us Bks ms s k b,
-    List.nth_error (vwrap_from pq D D' vm Us Bks s ms) k = Some b ->
-    exists Mi', List.nth_error ms k = Some Mi' /\ b = vwrap_block pq D D' vm Us Bks (s + k) Mi'.
+Lemma nth_error_view_wrap_from : forall pq D D' vm Us Bks ms s k b,
+    List.nth_error (view_wrap_from pq D D' vm Us Bks s ms) k = Some b ->
+    exists Mi', List.nth_error ms k = Some Mi' /\ b = view_wrap_block pq D D' vm Us Bks (s + k) Mi'.
 Proof.
   induction ms as [| M ms IH]; intros * H; [ destruct k; discriminate |].
   destruct k as [| k]; cbn in H.
@@ -1176,9 +1176,9 @@ Proof.
   - destruct (IH _ _ _ H) as (Mi' & HM & ->); exists Mi'; split; [ exact HM | f_equal; lia ].
 Qed.
 
-Lemma length_vwrap : forall pq D D' vm Us Bks, List.length (vwrap pq D D' vm Us Bks) = List.length (ind_bmembers D').
+Lemma length_view_wrap : forall pq D D' vm Us Bks, List.length (view_wrap pq D D' vm Us Bks) = List.length (ind_bmembers D').
 Proof.
-  intros; unfold vwrap; generalize 0; induction (ind_bmembers D'); intros; cbn; [ reflexivity | f_equal; apply IHl ].
+  intros; unfold view_wrap; generalize 0; induction (ind_bmembers D'); intros; cbn; [ reflexivity | f_equal; apply IHl ].
 Qed.
 
 (** The sort of a declaration is a universe. *)

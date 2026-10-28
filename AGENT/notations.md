@@ -165,9 +165,9 @@ finite literal, so a lemma about any literal is stated with `𝕃ᵒ`.
 for `M : Level@n` (`wf_exp_eq_maxl_absorb`).  An atom of a level normal form
 carries its sort, `mk_level_atom k s a` (offset, sort, neutral; a
 `level_atom`, and the atoms are a `list level_atom`); in values the
-sort is read from the annotation of the neutral, `dsort (Levelᵈ@s) = s`.
+sort is read from the annotation of the neutral, `domain_level_sort (Levelᵈ@s) = s`.
 The canonical form drops an atom whose sort is below the constant's tier
-(`la_keep`), and `lvl_canon_iff` holds over the assignments that put an atom
+(`level_atoms_keep`), and `lvl_canon_iff` holds over the assignments that put an atom
 of sort `s` below ω·(s+1) (`lvl_adm`).
 
 The surface syntax matches.  A level literal is `nl` (finite, `𝕃ᵒ (0, n)`),

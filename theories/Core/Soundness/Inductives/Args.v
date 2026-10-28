@@ -43,7 +43,7 @@ Section Fixed_GCtx.
 #[warnings="-cannot-define-projection"]
 Record glu_arg (Δ : ctx) (ρ : env) (A T M : exp) (v : domain) : Prop := mk_glu_arg
   { (** The universe index *)
-    glu_arg_lvl : uidx
+    glu_arg_lvl : universe_index
     (** The type's value *)
   ; glu_arg_val : domain
     (** Its type predicate *)
@@ -141,8 +141,8 @@ Proof.
     destruct (glu_ctx_env_cons_clean_inversion H0 HC1) as (i' & HA & HT & HSb1).
     destruct (HT _ _ _ Hσ) as [a' P' El' Ha' Hglu' HP'].
     assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
-    destruct (glu_univ_elem_cumu_ge_uidx (i := i) (j := ul (ulvl i)) (uidx_le_ulvl i) Hglu) as (P1 & El1 & Hglu1).
-    assert (HM1 : Δ ⊢ M0 : A[σ0] ® v0 ∈ El1) by (eapply glu_univ_elem_exp_cumu_ge_uidx; [ apply uidx_le_ulvl | exact Hglu | exact Hglu1 | exact HM ]).
+    destruct (glu_univ_elem_cumu_ge_universe_index (i := i) (j := ul (large_level i)) (universe_index_le_large_level i) Hglu) as (P1 & El1 & Hglu1).
+    assert (HM1 : Δ ⊢ M0 : A[σ0] ® v0 ∈ El1) by (eapply glu_univ_elem_exp_cumu_ge_universe_index; [ apply universe_index_le_large_level | exact Hglu | exact Hglu1 | exact HM ]).
     assert (HM' : Δ ⊢ M0 : A[σ0] ® v0 ∈ El')
       by (eapply glu_univ_elem_exp_conv; [ eapply glu_univ_elem_per_univ; exact Hglu1 | exact Hglu1 | exact Hglu' | exact HM1 | exact HP' ]).
     assert (Hσ1 : Δ ⊢ˢ σ0,,M0 ® ρ0 ↦ v0 ∈ Sb1)
@@ -371,7 +371,7 @@ Qed.
 (** ** The Entries of a Glued Telescope *)
 
 Lemma glu_rel_exp_lift_nat : forall Γ A (i j : nat), i <= j -> Γ ⊩ A : Typeω@i -> Γ ⊩ A : Typeω@j.
-Proof. intros * Hle HA; exact (glu_rel_exp_lift_uidx (u := ul i) (v := ul j) Hle HA). Qed.
+Proof. intros * Hle HA; exact (glu_rel_exp_lift_universe_index (u := ul i) (v := ul j) Hle HA). Qed.
 
 Lemma glu_ctx_env_head_valid : forall Γ A Sb, EG Γ ▹ A ∈ glu_ctx_env ↘ Sb -> exists i, Γ ⊩ A : Typeω@i.
 Proof.
@@ -400,7 +400,7 @@ Qed.
 
 (** ** Glued Arguments of Closed Telescopes *)
 
-Lemma uidx_le_max : forall u j, uidx_le u (ul (Nat.max (ulvl u) j)).
+Lemma universe_index_le_max : forall u j, universe_index_le u (ul (Nat.max (large_level u) j)).
 Proof. intros [] j; cbn; [ exact I | lia ]. Qed.
 
 Lemma wf_sub_nil' : forall Δ σ, ⊢ Δ -> Δ ⊢ˢ σ : ⋅.
@@ -454,15 +454,15 @@ Proof.
   assert (HCe : ⊢ C ++ ⋅) by (rewrite List.app_nil_r; exact HC).
   assert (HId : Δ ⊢ˢ Id ≈ Id : ⋅) by (apply wf_sub_eq_refl, wf_sub_nil'; exact HΔ).
   destruct (tele_insts_cong C Δ ⋅ Id Id Ms Ms' Hass HCe HId L1 ltac:(lia) HMM k T T' HT HT') as [j HTT].
-  pose proof (uidx_le_max i j) as Hij.
-  destruct (glu_univ_elem_cumu_ge_uidx (i := i) (j := ul (Nat.max (ulvl i) j)) Hij Hglu) as (P' & El' & Hglu').
-  assert (HP' : Δ ⊢ T ® P') by (eapply glu_univ_elem_typ_cumu_ge_uidx; [ exact Hij | exact Hglu | exact Hglu' | exact HP ]).
-  assert (HTT' : Δ ⊢ T ≈ T' : Typeω@(Nat.max (ulvl i) j)) by (eapply lift_exp_eq_ge; [| exact HTT ]; lia).
-  apply (mk_glu_arg _ _ _ _ _ _ (ul (Nat.max (ulvl i) j)) a P' El' Ha Hglu');
+  pose proof (universe_index_le_max i j) as Hij.
+  destruct (glu_univ_elem_cumu_ge_universe_index (i := i) (j := ul (Nat.max (large_level i) j)) Hij Hglu) as (P' & El' & Hglu').
+  assert (HP' : Δ ⊢ T ® P') by (eapply glu_univ_elem_typ_cumu_ge_universe_index; [ exact Hij | exact Hglu | exact Hglu' | exact HP ]).
+  assert (HTT' : Δ ⊢ T ≈ T' : Typeω@(Nat.max (large_level i) j)) by (eapply lift_exp_eq_ge; [| exact HTT ]; lia).
+  apply (mk_glu_arg _ _ _ _ _ _ (ul (Nat.max (large_level i) j)) a P' El' Ha Hglu');
     [ eapply glu_univ_elem_typ_resp_exp_eq; eassumption |].
   eapply glu_univ_elem_trm_resp_typ_exp_eq; [ exact Hglu' | | exact HTT' ].
   eapply glu_univ_elem_trm_resp_exp_eq;
-    [ exact Hglu' | eapply glu_univ_elem_exp_cumu_ge_uidx; [ exact Hij | exact Hglu | exact Hglu' | exact HMg ] | exact (HMM _ _ _ _ HM HM' HT) ].
+    [ exact Hglu' | eapply glu_univ_elem_exp_cumu_ge_universe_index; [ exact Hij | exact Hglu | exact Hglu' | exact HMg ] | exact (HMM _ _ _ _ HM HM' HT) ].
 Qed.
 
 Lemma firstn_app_ge : forall {X} (l1 l2 : list X) k, List.length l1 <= k ->
@@ -662,7 +662,7 @@ Qed.
     related to it, at a larger universe. *)
 Lemma glu_transfer_per : forall (j i : nat) a b P El Γ T M m, DG a ∈ glu_univ_elem j ↘ P ↘ El -> Dom a ≈ b ∈ per_univ i ->
     Γ ⊢ T ® P -> Γ ⊢ M : T ® m ∈ El ->
-    exists (k : uidx) P' El', DG b ∈ glu_univ_elem k ↘ P' ↘ El' /\ Γ ⊢ T ® P' /\ Γ ⊢ M : T ® m ∈ El'.
+    exists (k : universe_index) P' El', DG b ∈ glu_univ_elem k ↘ P' ↘ El' /\ Γ ⊢ T ® P' /\ Γ ⊢ M : T ® m ∈ El'.
 Proof.
   intros * Hg [R HR] HT HM.
   destruct (glu_univ_elem_cumu_ge (i := j) (j := Nat.max j i) (Nat.le_max_l _ _) Hg) as (P1 & El1 & Hg1).
@@ -766,40 +766,40 @@ Qed.
 
 (** An element glued at a type of a value is glued at another type of it,
     at another gluing of it. *)
-Lemma glu_elem_retype : forall (i j : uidx) a P El P' El' Γ A A' M m,
+Lemma glu_elem_retype : forall (i j : universe_index) a P El P' El' Γ A A' M m,
     DG a ∈ glu_univ_elem i ↘ P ↘ El -> DG a ∈ glu_univ_elem j ↘ P' ↘ El' ->
     Γ ⊢ A ® P -> Γ ⊢ M : A ® m ∈ El -> Γ ⊢ A' ® P' -> Γ ⊢ M : A' ® m ∈ El'.
 Proof.
   intros * Hi Hj HA HM HA'.
-  set (n := Nat.max (ulvl i) (ulvl j)).
-  assert (Hin : uidx_le i (ul n)) by (apply uidx_le_ul_max; unfold n; lia).
-  assert (Hjn : uidx_le j (ul n)) by (apply uidx_le_ul_max; unfold n; lia).
-  destruct (glu_univ_elem_cumu_ge_uidx Hin Hi) as (Pn & Eln & Hn).
-  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hin Hi Hn HA) as HAn.
-  pose proof (glu_univ_elem_exp_cumu_ge_uidx Hin Hi Hn HM) as HMn.
-  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hjn Hj Hn HA') as HA'n.
+  set (n := Nat.max (large_level i) (large_level j)).
+  assert (Hin : universe_index_le i (ul n)) by (apply universe_index_le_ul_max; unfold n; lia).
+  assert (Hjn : universe_index_le j (ul n)) by (apply universe_index_le_ul_max; unfold n; lia).
+  destruct (glu_univ_elem_cumu_ge_universe_index Hin Hi) as (Pn & Eln & Hn).
+  pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hin Hi Hn HA) as HAn.
+  pose proof (glu_univ_elem_exp_cumu_ge_universe_index Hin Hi Hn HM) as HMn.
+  pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hjn Hj Hn HA') as HA'n.
   pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hn HAn HA'n) as HE.
   pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hn _ _ _ _ _ HMn HE) as HMn'.
-  exact (glu_univ_elem_exp_lower_uidx Hjn Hj Hn HA' HMn').
+  exact (glu_univ_elem_exp_lower_universe_index Hjn Hj Hn HA' HMn').
 Qed.
 
 (** A type glued at a value of a lower index is glued at a related value
     of a higher one. *)
-Lemma glu_typ_transfer : forall (i j k : uidx) a a' P El P' El' Γ A,
-    uidx_le i j -> uidx_le k j -> Dom a ≈ a' ∈ per_univ k ->
+Lemma glu_typ_transfer : forall (i j k : universe_index) a a' P El P' El' Γ A,
+    universe_index_le i j -> universe_index_le k j -> Dom a ≈ a' ∈ per_univ k ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El -> DG a' ∈ glu_univ_elem j ↘ P' ↘ El' ->
     Γ ⊢ A ® P -> Γ ⊢ A ® P'.
 Proof.
   intros * Hij Hkj [R HR] Hi Hj HA.
-  destruct (glu_univ_elem_cumu_ge_uidx Hij Hi) as (Pj & Elj & Hgj).
-  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hij Hi Hgj HA) as HAj.
-  pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ R (per_univ_elem_cumu_uidx _ _ _ _ HR _ Hkj)) Hgj) as Hgj'.
+  destruct (glu_univ_elem_cumu_ge_universe_index Hij Hi) as (Pj & Elj & Hgj).
+  pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hij Hi Hgj HA) as HAj.
+  pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ R (per_univ_elem_cumu_universe_index _ _ _ _ HR _ Hkj)) Hgj) as Hgj'.
   destruct (functional_glu_univ_elem _ _ _ _ _ _ Hgj' Hj) as [EP _].
   apply EP; exact HAj.
 Qed.
 
 (** An element of the relation of a domain's type, read at a related value. *)
-Lemma dr_to_rel : forall B ρ b a1 c (i : uidx) R (jd : uidx), ⟦ B ⟧ ρ ↘ b -> Dom a1 ≈ b ∈ per_univ jd ->
+Lemma dr_to_rel : forall B ρ b a1 c (i : universe_index) R (jd : universe_index), ⟦ B ⟧ ρ ↘ b -> Dom a1 ≈ b ∈ per_univ jd ->
     DF a1 ≈ a1 ∈ per_univ_elem i ↘ R -> per_head B B ρ ρ c c -> R c c.
 Proof.
   intros * Eb [Rab HRab] HR Hc.

@@ -275,7 +275,7 @@ stored closed over them, as every definition is.
   is open, the group is found through it (`gs_find_ind`; `ind_mlookup`
   reads the frame first). The frame denotes the member's type former with
   the frame's body so far as its module part,
-  `ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil)` (`mdenote_ind_frame`).
+  `ind_former_desc pq k D Mk (mdesc_closed nil p Tm Φm nil)` (`mdenote_ind_frame`).
 * `run_cmd_ind_case` (`System/Command.v`) checks the group as written (`rd_filed`,
   `ind_nil_at`). Then `run_ind_members` runs each declared member in
   order (`run_ind_members_cons`):
@@ -296,14 +296,14 @@ stored closed over them, as every definition is.
 
 A member is typed by one rule, `wf_mem`, over what its module expression
 denotes (`mdenote`, `Core/Syntactic/Members.v`): a `ge_ind` entry denotes
-its type former, a `ds_dm` (`ind_former_desc`, `edenote_ind_case`) whose term part
+its type former, a `mdesc_dm` (`ind_former_desc`, `edenote_ind_case`) whose term part
 is the constant `a_ind pq k` of the type former's type and whose module
 part is the member's module.  Read at a closed module's arguments
-(`ds_ats_read`), the term part is applied to them (`ds_ats_tm`): its type
-(`ds_ty`) is the type former's at the arguments (`ind_ty_at`), and its
-δ-reduct (`ds_red`) is the type former applied to them
+(`mdesc_ats_read`), the term part is applied to them (`mdesc_term_part_ats`): its type
+(`mdesc_type`) is the type former's at the arguments (`ind_ty_at`), and its
+δ-reduct (`mdesc_reduct`) is the type former applied to them
 (`wf_exp_eq_mem_delta`).  Selecting from it reads the module part
-(`ds_mod`): the inductive type's module, at its canonical path.  A record
+(`mdesc_mod`): the inductive type's module, at its canonical path.  A record
 type is read the same way (`record_former_desc`, `edenote_record`).  A module
 alias of it (`module M := N`) denotes the module, not the type former, so
 it is a module only:
@@ -336,9 +336,9 @@ the alias of `E` over `Δ` and the frames' parameters.  The checker
 (`ind_former_dec`, `record_former_dec`); the wrong keyword is reported
 ("use record" / "use inductive").
 
-* As a term, `L` is a transparent definition (`entry_term`, `ds_dm`'s
+* As a term, `L` is a transparent definition (`entry_term`, `mdesc_dm`'s
   term part), δ-reducing to `λΔ. E`.
-* As a module, `L.cons` is `E.cons` (`ds_dm`'s module part, the alias),
+* As a module, `L.cons` is `E.cons` (`mdesc_dm`'s module part, the alias),
   and `L.rec` the type's recursor.
 * `open … use (X)` declares a definition with a module part where `X` is
   an inductive type, a record type or such a definition (`items_gen`,
@@ -382,7 +382,7 @@ need typing:
   motive binds (`rview_leaf_plen`), and fields end only in record views
   earlier in the group (`rview_leaf_order`). The readback of a stuck
   eliminator needs it to bound, rename and relate the motives along each
-  path: `Rename.read_rn` (`ihs_motives_dbd`), `Avoid.read_avoids`
+  path: `Rename.read_rn` (`ihs_motives_domain_bounded`), `Avoid.read_avoids`
   (`ends_fresh_of_blocks`, `cargs_ends_fresh`) and
   `Extraction.Simulation.fast_read_sim` (`ends_agree_of_blocks`,
   `cargs_ends_agree`). It is also the source of the next gate's
@@ -539,18 +539,18 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
 
 * **The configuration.**  `builtins` (`Core/Syntactic/Builtin.v`) is
   `{ builtins_nat : option qname }`, apart from the filed units and the stack;
-  no typing judgment reads it.  Records merge field by field (`bt_merge`):
+  no typing judgment reads it.  Records merge field by field (`builtins_merge`):
   a field bound on one side keeps its binding, one bound on both sides must
-  agree, else the merge fails.  `bt_merge` has the empty record as unit and
-  is commutative, associative up to failure (`bt_merge_assoc`, in the
-  option monad), idempotent, and keeps well-formedness (`bt_merge_wf`).
+  agree, else the merge fails.  `builtins_merge` has the empty record as unit and
+  is commutative, associative up to failure (`builtins_merge_assoc`, in the
+  option monad), idempotent, and keeps well-formedness (`builtins_merge_wf`).
 * **Scope.**  A unit sees the bindings it makes and those of the units it
   imports, transitively, never those of the unit importing it.
   `run_cmd`/`run_cmds` (`Core/Syntactic/System/Command.v`) thread the
   record `B` of the unit being run and a map `Rb : bmap` from each filed
   unit to the record it ended with: `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c ⇝ Θ' ⍮ Ξ' ⍮
   B' ⍮ Rb'`.  The map is apart from `Θ` and the stack.  `run_unit ch u B Rb
-  Θ U` runs from `bt_empty` and `nil` and returns the unit's record `B` and
+  Θ U` runs from `builtins_empty` and `nil` and returns the unit's record `B` and
   the map `Rb` of what it filed.  `run_cmd_load` merges the loaded unit's record
   in and files it in the map (`bm_merge Rb ((fp, BU) :: RbU)`);
   `run_cmd_load_filed` merges the record the map keeps (`bm_lookup Rb fp`).
@@ -560,7 +560,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   parameter and no argument; `p`'s declaration has `nat_shape` (no
   parameter; one constructor without arguments and one with the single
   argument `ca_rec (pt_self 0 nil)`, in either order) and `ind_sort D =
-  nat_sort` (`Type@0`); then `bt_bind_nat B p = Some B'`, the merge with
+  nat_sort` (`Type@0`); then `builtins_bind_nat B p = Some B'`, the merge with
   `{builtins_nat := Some p}`: bound if nothing is, kept if `p` is, rejected if
   another type is.  Allowed anywhere a
   command is, also inside a module; the elaborator still rejects it in a
@@ -581,7 +581,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
     chains have the same head.
   - `run_wf`: carries `canon Rb Θ` (every filed unit is what loading its
     file yields, and `Rb` has the record that run ends with, for exactly
-    the filed units) and `bt_le B B'` (a record only gains bindings).
+    the filed units) and `builtins_le B B'` (a record only gains bindings).
   - `run_builtins_wf`, `prog_sem_builtins_wf`: the record stays read at
     its state, `builtins_wf Θ Ξ B` (the bound type is found by
     `ind_lookup`, has `nat_shape`, is in `Type@0`), and so are the records
@@ -599,11 +599,11 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   conflict; a binding made in a body does not reach a unit imported later
   in it, and meets that unit's own binding there.
 * **Checker.**  `Extraction/Command.v`: `cstate` / `ustate` carry the
-  record (`cstate_bt`, `us_bt`); the map of records is part of `kmap`, which
-  keeps, for each filed unit, its closure (`kfind`) and its record (`kbt`).
-  The judgment's map is related by `rb_ok K ΘR RbR` (canonical, and the
+  record (`cstate_bt`, `us_bt`); the map of records is part of `unit_closure_map`, which
+  keeps, for each filed unit, its closure (`unit_closure_find`) and its record (`unit_closure_builtins`).
+  The judgment's map is related by `builtin_records_ok K ΘR RbR` (canonical, and the
   records `K` keeps); `post_*` quantify over it.  A loaded unit is checked
-  from `bt_empty`; a load, fresh or shared, merges the unit's record, and
+  from `builtins_empty`; a load, fresh or shared, merges the unit's record, and
   reports a conflict as "the natural numbers are bound already, to X".
   `builtin_step` runs `run_cmd_builtin`, the literal pass runs before
   expansion, and `prog_impl` returns the final record.  Errors: `run_error_lit

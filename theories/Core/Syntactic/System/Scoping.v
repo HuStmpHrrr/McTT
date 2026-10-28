@@ -1831,24 +1831,24 @@ Proof.
 Qed.
 
 (** The container's blocks at a view, scoped. *)
-Lemma vwrap_scoped : forall pq D D' vm Us Bks m,
-    decl_closed D -> vwrap_ok D D' vm -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
+Lemma view_wrap_scoped : forall pq D D' vm Us Bks m,
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
-    blocks_scoped m (vwrap pq D D' vm Us Bks).
+    blocks_scoped m (view_wrap pq D D' vm Us Bks).
 Proof.
   intros * HD Hvw Hl HUs Hnm HBks Hnames Hn; apply all_blocks_nth; intros k b Hb.
-  destruct (nth_error_vwrap_from _ _ _ _ _ _ _ _ _ _ Hb) as (Mi' & HMi'b & ->); cbn [Nat.add].
+  destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ Hb) as (Mi' & HMi'b & ->); cbn [Nat.add].
   destruct (ind_bmembers_member _ _ _ HMi'b) as [HMi' _].
-  unfold vwrap_block.
+  unfold view_wrap_block.
   destruct (List.nth_error vm k) as [v |] eqn:Hv;
-    [| apply List.nth_error_None in Hv; pose proof (vwrap_ok_length _ _ _ Hvw) as Hlv;
+    [| apply List.nth_error_None in Hv; pose proof (view_wrap_ok_length _ _ _ Hvw) as Hlv;
        assert (Hk : List.nth_error (ind_members D') k <> None) by (unfold ind_member in HMi'; congruence);
        apply List.nth_error_Some in Hk; unfold ind_member in *; lia ].
   rewrite (List.nth_error_nth _ _ _ Hv).
-  destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hcs & Hcorr).
+  destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hcs & Hcorr).
   destruct (List.nth_error Bks v) as [[nm oZ A Bs] |] eqn:Hbv; [| cbn; repeat split; exact I ].
   rewrite HMv; cbn [eb_nm eb_ann eb_motive eb_brs opt_all].
   destruct (blocks_scoped_nth _ _ _ _ HBks Hbv) as (_ & HA & HBs); cbn in HA, HBs.

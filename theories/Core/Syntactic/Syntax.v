@@ -1273,44 +1273,44 @@ End Ctx_Notations.
     Every small index is below every large one.  The large tier is the
     default: [ul] is a coercion, so [per_univ_elem i] for a natural number
     [i] is the large universe [Typeω²+i]. *)
-Inductive uidx : Set :=
-| us : o2 -> uidx
-| ul : nat -> uidx.
+Inductive universe_index : Set :=
+| us : o2 -> universe_index
+| ul : nat -> universe_index.
 
-Coercion ul : nat >-> uidx.
+Coercion ul : nat >-> universe_index.
 
-Definition uidx_lt (u v : uidx) : Prop :=
+Definition universe_index_lt (u v : universe_index) : Prop :=
   match u, v with
-  | us j, us k => olt j k
+  | us j, us k => ordinal_lt j k
   | us _, ul _ => True
   | ul _, us _ => False
   | ul j, ul k => j < k
   end.
 
-Definition uidx_le (u v : uidx) : Prop :=
+Definition universe_index_le (u v : universe_index) : Prop :=
   match u, v with
-  | us j, us k => ole j k
+  | us j, us k => ordinal_le j k
   | us _, ul _ => True
   | ul _, us _ => False
   | ul j, ul k => j <= k
   end.
 
-Lemma uidx_lt_le_trans : forall u v w, uidx_lt u v -> uidx_le v w -> uidx_lt u w.
+Lemma universe_index_lt_le_trans : forall u v w, universe_index_lt u v -> universe_index_le v w -> universe_index_lt u w.
 Proof. intros [] [] []; cbn; intros; auto; try lia; ord. Qed.
 
-Lemma uidx_le_refl : forall u, uidx_le u u.
+Lemma universe_index_le_refl : forall u, universe_index_le u u.
 Proof. intros []; cbn; [ ord | lia ]. Qed.
 
-Lemma uidx_le_trans : forall u v w, uidx_le u v -> uidx_le v w -> uidx_le u w.
+Lemma universe_index_le_trans : forall u v w, universe_index_le u v -> universe_index_le v w -> universe_index_le u w.
 Proof. intros [] [] []; cbn; intros; auto; try lia; ord. Qed.
 
-Lemma uidx_lt_le : forall u v, uidx_lt u v -> uidx_le u v.
+Lemma universe_index_lt_le : forall u v, universe_index_lt u v -> universe_index_le u v.
 Proof. intros [] []; cbn; intros; auto; try lia; ord. Qed.
 
-Lemma uidx_wf : well_founded uidx_lt.
+Lemma universe_index_wf : well_founded universe_index_lt.
 Proof.
-  assert (Hs : forall j, Acc uidx_lt (us j)).
-  { intros j; induction j as [j IH] using (well_founded_ind olt_wf).
+  assert (Hs : forall j, Acc universe_index_lt (us j)).
+  { intros j; induction j as [j IH] using (well_founded_ind ordinal_lt_wf).
     constructor; intros [k | k] Hk; cbn in Hk; [ apply IH; exact Hk | contradiction ]. }
   intros [j | n]; [ apply Hs |].
   induction n as [n IH] using lt_wf_ind; constructor; intros [k | k] Hk; cbn in Hk; [ apply Hs | apply IH; exact Hk ].
@@ -1320,59 +1320,59 @@ Qed.
 
     A judgment in a universe is the four-value pattern of its two sides in the
     universe's element PER, whichever tier the universe is in.  The lemmas
-    are stated at an index [u], through the universe's term [ulvl_tm u] and
-    value [ulvl_val u]; the large forms below are their instances at [ul i],
+    are stated at an index [u], through the universe's term [universe_index_term u] and
+    value [universe_index_value u]; the large forms below are their instances at [ul i],
     which is [Typeω@i] by computation. *)
-Definition ulvl_tm (u : uidx) : exp :=
+Definition universe_index_term (u : universe_index) : exp :=
   match u with us o => a_univ (a_llit o) | ul n => a_typ n end.
 
 (** A large level whose universe contains the universe at [u]. *)
-Definition ulvl_above (u : uidx) : nat :=
+Definition large_level_above (u : universe_index) : nat :=
   match u with us _ => 0 | ul n => S n end.
 
 (** The large level a type at [u] is also a type of. *)
-Definition ulvl (u : uidx) : nat :=
+Definition large_level (u : universe_index) : nat :=
   match u with us _ => 0 | ul n => n end.
 
-Lemma uidx_lt_ulvl_above : forall u, uidx_lt u (ulvl_above u).
+Lemma universe_index_lt_large_level_above : forall u, universe_index_lt u (large_level_above u).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
-Lemma uidx_le_ulvl : forall u, uidx_le u (ulvl u).
+Lemma universe_index_le_large_level : forall u, universe_index_le u (large_level u).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
 (** The least index: [Type@0] is below every universe. *)
-Lemma uidx_le_least : forall u, uidx_le (us oz) u.
+Lemma universe_index_le_least : forall u, universe_index_le (us ordinal_zero) u.
 Proof. intros []; cbn; [ ord | exact I ]. Qed.
 
 (** The large levels of two ordered indices are ordered: a small universe
     lives in [Typeω@0], and the large tier's order is the order on levels. *)
-Lemma uidx_le_ulvl_le : forall u v, uidx_le u v -> ulvl u <= ulvl v.
+Lemma universe_index_le_large_level_le : forall u v, universe_index_le u v -> large_level u <= large_level v.
 Proof. intros [] []; cbn; intros; lia. Qed.
 
 (** The join of two indices: a large universe absorbs a small one. *)
-Definition umax (u v : uidx) : uidx :=
+Definition universe_index_max (u v : universe_index) : universe_index :=
   match u, v with
-  | us n, us m => us (omax n m)
+  | us n, us m => us (ordinal_max n m)
   | us _, ul i => ul i
   | ul i, us _ => ul i
   | ul i, ul j => ul (max i j)
   end.
 
-Lemma uidx_le_umax_left : forall u v, uidx_le u (umax u v).
+Lemma universe_index_le_universe_index_max_left : forall u v, universe_index_le u (universe_index_max u v).
 Proof. intros [] []; cbn; try exact I; try lia; ord. Qed.
 
-Lemma uidx_le_umax_right : forall u v, uidx_le v (umax u v).
+Lemma universe_index_le_universe_index_max_right : forall u v, universe_index_le v (universe_index_max u v).
 Proof. intros [] []; cbn; try exact I; try lia; ord. Qed.
 
-Lemma umax_lub : forall u v w, uidx_le u w -> uidx_le v w -> uidx_le (umax u v) w.
+Lemma universe_index_max_lub : forall u v w, universe_index_le u w -> universe_index_le v w -> universe_index_le (universe_index_max u v) w.
 Proof. intros [] [] []; cbn; intros; try contradiction; try exact I; try lia; ord. Qed.
 
 (** Discharges the order side conditions between universe indices. *)
-Ltac solve_uidx :=
-  first [ assumption | exact I | solve [ cbn [uidx_lt uidx_le] in *; lia ]
-        | solve [ cbn [uidx_lt uidx_le] in *; ord ]
-        | solve [ repeat match goal with k : uidx |- _ => destruct k end;
-                  cbn [uidx_lt uidx_le] in *; first [ contradiction | exact I | lia | ord ] ] ].
+Ltac solve_universe_index :=
+  first [ assumption | exact I | solve [ cbn [universe_index_lt universe_index_le] in *; lia ]
+        | solve [ cbn [universe_index_lt universe_index_le] in *; ord ]
+        | solve [ repeat match goal with k : universe_index |- _ => destruct k end;
+                  cbn [universe_index_lt universe_index_le] in *; first [ contradiction | exact I | lia | ord ] ] ].
 
 
 (** * Levels as Expressions
@@ -1701,7 +1701,7 @@ Proof. intros ? ? H; apply nf_lvl_of_inj in H as ->; reflexivity. Qed.
 
     The universe a type is inferred at, as the algorithmic layer sees it: a
     small universe at a canonical level, or a large one.  It is not the
-    semantic index [uidx]: a small universe's semantic index is the realiser
+    semantic index [universe_index]: a small universe's semantic index is the realiser
     of its level, an ordinal below ω², while the checker compares the canonical
     levels themselves (see [Core.Syntactic.Levels.Levels]: [unf_le], [unf_max]). *)
 Inductive unf : Set :=

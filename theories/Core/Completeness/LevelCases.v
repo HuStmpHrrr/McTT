@@ -84,7 +84,7 @@ Hint Resolve valid_exp_under_ctx_level : mctt.
 (** [Level@n] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_level : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ Level@n ≈ Level@n : ulvl_tm u.
+    Γ ⊨ Level@n ≈ Level@n : universe_index_term u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.
@@ -327,7 +327,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  apply (mk_rel_exp (dlvl_max (dlvl_lit oz) m1) (dlvl_max (dlvl_lit oz) m2) m3 m4);
+  apply (mk_rel_exp (dlvl_max (dlvl_lit ordinal_zero) m1) (dlvl_max (dlvl_lit ordinal_zero) m2) m3 m4);
     try (apply eval_exp_maxl; [ apply eval_exp_llit | eassumption ]);
     try eassumption.
   apply rel_chain_4;
@@ -607,7 +607,7 @@ Proof.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [t [_ [? ? ? ? ? ? ? ? Hchain]]].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption ].
-  intros ? ? Hx; eapply (per_univ_cumu_uidx (u := us _)); [| exact Hx ]; exact I.
+  intros ? ? Hx; eapply (per_univ_cumu_universe_index (u := us _)); [| exact Hx ]; exact I.
 Qed.
 
 (** [Type⟨M⟩] is a type of [Type⟨succl M⟩]: its four values are small
@@ -704,8 +704,8 @@ Proof.
   exists 𝕌@m1 𝕌@m2 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ; eassumption); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv';
       [ eassumption | exact I | reflexivity ].
-  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
-  - apply per_subtyp_small_large; [ assumption | solve_uidx ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
+  - apply per_subtyp_small_large; [ assumption | solve_universe_index ].
 Qed.
 
 #[export]

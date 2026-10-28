@@ -110,7 +110,7 @@ Hint Resolve per_lvl_then_per_top : mctt.
 
 (** A literal level reads back as itself, so it is related to itself and the
     literals are ordered by their indices.  These are the only levels the
-    universes at a [uidx] use. *)
+    universes at a [universe_index] use. *)
 Lemma read_nf_dlvl_lit : forall n s,
     Rnf ⇓ Levelᵈ (dlvl_lit n) in s ↘ nf_lvl_of (lvl_lit n).
 Proof.
@@ -127,7 +127,7 @@ Qed.
 Hint Resolve per_lvl_lit : mctt.
 
 Lemma per_sublvl_lit : forall n m,
-    ole n m ->
+    ordinal_le n m ->
     per_sublvl (dlvl_lit n) (dlvl_lit m).
 Proof.
   intros n m Hle s; exists (lvl_lit n) (lvl_lit m); [ apply read_nf_dlvl_lit | apply read_nf_dlvl_lit |].
@@ -174,7 +174,7 @@ Hint Resolve per_sublvl_left per_sublvl_right : mctt.
 
 Lemma per_sublvl_real : forall l l',
     per_sublvl l l' ->
-    ole (dlvl_real l) (dlvl_real l').
+    ordinal_le (dlvl_real l) (dlvl_real l').
 Proof.
   intros * H; destruct (H 0) as [L L' HL HL' Hle].
   apply read_nf_level_real in HL as [L1 [HL1 <-]].
@@ -236,13 +236,13 @@ Qed.
     neutral's type, so two neutrals are related levels only at types of one
     sort. *)
 Lemma per_bot_then_per_lvl : forall m m' a a',
-    dsort a = dsort a' ->
+    domain_level_sort a = domain_level_sort a' ->
     Dom m ≈ m' ∈ per_bot ->
     Dom ⇑ a m ≈ ⇑ a' m' ∈ per_lvl.
 Proof.
   intros * Ha H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (lvⁿ oz (cons (mk_level_atom 0 (dsort a) M) nil)); split; [| rewrite Ha ]; econstructor; eassumption.
+  exists (lvⁿ ordinal_zero (cons (mk_level_atom 0 (domain_level_sort a) M) nil)); split; [| rewrite Ha ]; econstructor; eassumption.
 Qed.
 
 Hint Resolve per_bot_then_per_lvl : mctt.
@@ -289,7 +289,7 @@ Lemma per_bot_then_per_lvl_at : forall n m m',
 Proof.
   intros * H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (oz, cons (mk_level_atom 0 n M) nil); [ econstructor; eassumption .. | split; [ cbn; lia |] ].
+  exists (ordinal_zero, cons (mk_level_atom 0 n M) nil); [ econstructor; eassumption .. | split; [ cbn; lia |] ].
   intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
 Qed.
 
@@ -1445,14 +1445,14 @@ Section Fixed_GCtx.
 
 (** Cumulativity, along the order of universe indices: in particular, a
     small universe is in every large one. *)
-Lemma per_univ_elem_cumu_uidx : forall i a0 a1 R,
+Lemma per_univ_elem_cumu_universe_index : forall i a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
-    forall i', uidx_le i i' ->
+    forall i', universe_index_le i i' ->
     DF a0 ≈ a1 ∈ per_univ_elem i' ↘ R.
 Proof.
   simpl.
   per_univ_elem_induction1; intros; subst;
-    per_univ_elem_econstructor; eauto; try solve_uidx.
+    per_univ_elem_econstructor; eauto; try solve_universe_index.
   1: intros; destruct_rel_mod_eval; econstructor; solve [eauto].
   (** An inductive type, a record type: their telescopes, lifted one by
       one. *)
@@ -1471,7 +1471,7 @@ Lemma per_univ_elem_cumu : forall (i : nat) a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
     DF a0 ≈ a1 ∈ per_univ_elem (S i) ↘ R.
 Proof.
-  intros; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
+  intros; eapply per_univ_elem_cumu_universe_index; [ eassumption | cbn; lia ].
 Qed.
 
 Hint Resolve per_univ_elem_cumu : mctt.
@@ -1481,7 +1481,7 @@ Lemma per_univ_elem_cumu_ge : forall (i i' : nat) a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
     DF a0 ≈ a1 ∈ per_univ_elem i' ↘ R.
 Proof.
-  intros; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
+  intros; eapply per_univ_elem_cumu_universe_index; [ eassumption | cbn; lia ].
 Qed.
 
 Hint Resolve per_univ_elem_cumu_ge : mctt.
@@ -1527,11 +1527,11 @@ Proof.
       the small one along the order on the realisers, which [per_sublvl]
       bounds, and across the tiers immediately. *)
   -
-    destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx;
+    destruct_conjs; eexists; eapply per_univ_elem_cumu_universe_index;
       [ eassumption
       | cbn; first [ apply per_sublvl_real; assumption | exact I | lia ] ].
   -
-    destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx;
+    destruct_conjs; eexists; eapply per_univ_elem_cumu_universe_index;
       [ eassumption
       | cbn; first [ apply per_sublvl_real; assumption | exact I | lia ] ].
   - intros.
@@ -1599,7 +1599,7 @@ Lemma per_subtyp_trans : forall a1 a2 i,
 Proof.
   induction 1; intros ? Hsub; simpl in *.
   1-8: progressive_inversion; mauto.
-  all: try solve [ econstructor; solve [ lia | solve_uidx ] ].
+  all: try solve [ econstructor; solve [ lia | solve_universe_index ] ].
   - (** A small universe below a small one, which is in turn below either a
         small or a large one: the first composes by the transitivity of the
         order on levels, the second needs only that the left level is
@@ -1647,13 +1647,13 @@ Proof.
   mauto using per_subtyp_refl1, per_subtyp_refl2.
 Qed.
 
-Lemma per_subtyp_cumu_uidx : forall a1 a2 i,
+Lemma per_subtyp_cumu_universe_index : forall a1 a2 i,
     Sub a1 <: a2 at i ->
     forall j,
-      uidx_le i j ->
+      universe_index_le i j ->
       Sub a1 <: a2 at j.
 Proof.
-  induction 1; intros; econstructor; eauto using per_univ_elem_cumu_uidx; solve_uidx.
+  induction 1; intros; econstructor; eauto using per_univ_elem_cumu_universe_index; solve_universe_index.
 Qed.
 
 Lemma per_subtyp_cumu : forall a1 a2 (i : nat),
@@ -1662,7 +1662,7 @@ Lemma per_subtyp_cumu : forall a1 a2 (i : nat),
       i <= j ->
       Sub a1 <: a2 at j.
 Proof.
-  intros; eapply per_subtyp_cumu_uidx; [ eassumption | cbn; lia ].
+  intros; eapply per_subtyp_cumu_universe_index; [ eassumption | cbn; lia ].
 Qed.
 
 Hint Resolve per_subtyp_cumu : mctt.
@@ -1791,8 +1791,8 @@ Proof. induction 1; cbn; congruence. Qed.
 (** The expansion and environment of one body read twice are one. *)
 Ltac solve_mid_body :=
   repeat match goal with
-    | H1 : kbody _ _ ?ρ ?Φ ?Φ1, H2 : kbody _ _ ?ρ ?Φ ?Φ2 |- _ =>
-        assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kbody _ _ _ _ H1 H2); subst Φ2
+    | H1 : kinds_body_xp _ _ ?ρ ?Φ ?Φ1, H2 : kinds_body_xp _ _ ?ρ ?Φ ?Φ2 |- _ =>
+        assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
     | H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
         assert_fails (constr_eq r1 r2); assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst r2
     end.
@@ -3371,17 +3371,17 @@ Proof.
 Qed.
 
 (** Cumulativity on [per_univ], along the order of indices. *)
-Corollary per_univ_cumu_uidx : forall {u v a a'},
-    uidx_le u v ->
+Corollary per_univ_cumu_universe_index : forall {u v a a'},
+    universe_index_le u v ->
     Dom a ≈ a' ∈ per_univ u ->
     Dom a ≈ a' ∈ per_univ v.
-Proof. intros * ? [R ?]; eexists; eapply per_univ_elem_cumu_uidx; eassumption. Qed.
+Proof. intros * ? [R ?]; eexists; eapply per_univ_elem_cumu_universe_index; eassumption. Qed.
 
 (** The universe at an index is in every universe above it, at either tier,
     with its own elements as the relation. *)
-Lemma per_univ_elem_ulvl_val : forall u i,
-    uidx_lt u i ->
-    DF ulvl_val u ≈ ulvl_val u ∈ per_univ_elem i ↘ per_univ u.
+Lemma per_univ_elem_universe_index_value : forall u i,
+    universe_index_lt u i ->
+    DF universe_index_value u ≈ universe_index_value u ∈ per_univ_elem i ↘ per_univ u.
 Proof.
   intros [n | n] * Hlt; cbn.
   - (** The small universe at [n] is the one at the literal level [n], whose
@@ -3400,4 +3400,4 @@ Hint Resolve per_ctx_subtyp_trans : mctt.
 #[export] Existing Instance per_ctx_env_Proper.
 
 #[export]
-Hint Resolve per_univ_elem_ulvl_val : mctt.
+Hint Resolve per_univ_elem_universe_index_value : mctt.

@@ -15,7 +15,7 @@ Import Syntax_Notations.
     equation of the theory, which is what this file proves:
 
 <<
-    la_wf Γ xs -> Γ ⊢ ⌈c, xs⌉ ≈ ⌈lvl_canon (c, xs)⌉ : Level@n
+    level_atoms_wf Γ xs -> Γ ⊢ ⌈c, xs⌉ ≈ ⌈lvl_canon (c, xs)⌉ : Level@n
 >>
     where [⌈c, xs⌉] is [lvl_exp_of c (List.map atom_exp xs)], the expression a
     canonical level reads back as.  Each step of [lvl_canon] is an instance of
@@ -23,8 +23,8 @@ Import Syntax_Notations.
     [maxl (k + a) (k' + a) ≈ max k k' + a], dropping an atom of a sort below
     the constant's tier is absorption, and dropping the constant is
     [c ≤ k -> maxl c (k + a) ≈ k + a].  Absorption needs every atom typed at
-    its own sort ([la_ws]); the other steps only at the sort of the whole
-    ([la_wf]).
+    its own sort ([level_atoms_well_scoped]); the other steps only at the sort of the whole
+    ([level_atoms_wf]).
 
     The proofs are easier on a right-nested fold with the constant innermost
     ([lvl_tm_from]) than on the left-nested fold readback produces, so the two
@@ -223,21 +223,21 @@ Qed.
 (** ** The Atoms of a Level, Well Typed *)
 
 (** Every atom a level of the sort [n] of the whole. *)
-Fixpoint la_wf (Γ : ctx) (xs : list level_atom) : Prop :=
+Fixpoint level_atoms_wf (Γ : ctx) (xs : list level_atom) : Prop :=
   match xs with
   | nil => True
-  | mk_level_atom _ _ a :: r => Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n /\ la_wf Γ r
+  | mk_level_atom _ _ a :: r => Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n /\ level_atoms_wf Γ r
   end.
 
 (** Every atom a level of its own sort, at most [n]: the atoms of a level
     readback produces are of this kind, their sorts read off their types. *)
-Fixpoint la_ws (Γ : ctx) (xs : list level_atom) : Prop :=
+Fixpoint level_atoms_well_scoped (Γ : ctx) (xs : list level_atom) : Prop :=
   match xs with
   | nil => True
-  | mk_level_atom _ s a :: r => (s <= n /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s) /\ la_ws Γ r
+  | mk_level_atom _ s a :: r => (s <= n /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s) /\ level_atoms_well_scoped Γ r
   end.
 
-Lemma la_ws_wf : forall {Γ} xs, la_ws Γ xs -> la_wf Γ xs.
+Lemma level_atoms_well_scoped_wf : forall {Γ} xs, level_atoms_well_scoped Γ xs -> level_atoms_wf Γ xs.
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
   destruct H as [[Hs Ha] Hr]; split; [| auto ].
@@ -245,83 +245,83 @@ Proof.
   eapply wf_exp_subtyp'; [ exact Ha | apply wf_subtyp_level; assumption ].
 Qed.
 
-Lemma la_wf_ins : forall {Γ} k s (a : ne) ys,
+Lemma level_atoms_wf_ins : forall {Γ} k s (a : ne) ys,
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n ->
-    la_wf Γ ys ->
-    la_wf Γ (la_ins k s a ys).
+    level_atoms_wf Γ ys ->
+    level_atoms_wf Γ (level_atoms_insert k s a ys).
 Proof.
   intros Γ k s a ys Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys; [ split; assumption |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t); cbn; split; auto.
 Qed.
 
-Lemma la_wf_sort : forall {Γ} xs,
-    la_wf Γ xs ->
-    la_wf Γ (la_sort xs).
+Lemma level_atoms_wf_sort : forall {Γ} xs,
+    level_atoms_wf Γ xs ->
+    level_atoms_wf Γ (level_atoms_sort xs).
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
-  destruct H; apply la_wf_ins; auto.
+  destruct H; apply level_atoms_wf_ins; auto.
 Qed.
 
-Lemma la_wf_keep : forall {Γ} c xs,
-    la_wf Γ xs ->
-    la_wf Γ (la_keep c xs).
+Lemma level_atoms_wf_keep : forall {Γ} c xs,
+    level_atoms_wf Γ xs ->
+    level_atoms_wf Γ (level_atoms_keep c xs).
 Proof.
-  intros Γ c xs; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros H; [ exact I |].
+  intros Γ c xs; induction xs as [| [k s a] r IH]; cbn [level_atoms_keep]; intros H; [ exact I |].
   destruct H; destruct (fst c <=? s); cbn; auto.
 Qed.
 
-Lemma la_ws_ins : forall {Γ} k s (a : ne) ys,
+Lemma level_atoms_well_scoped_ins : forall {Γ} k s (a : ne) ys,
     s <= n ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s ->
-    la_ws Γ ys ->
-    la_ws Γ (la_ins k s a ys).
+    level_atoms_well_scoped Γ ys ->
+    level_atoms_well_scoped Γ (level_atoms_insert k s a ys).
 Proof.
   intros Γ k s a ys Hs Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys; [ auto |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t); cbn; auto.
 Qed.
 
-Lemma la_ws_sort : forall {Γ} xs,
-    la_ws Γ xs ->
-    la_ws Γ (la_sort xs).
+Lemma level_atoms_well_scoped_sort : forall {Γ} xs,
+    level_atoms_well_scoped Γ xs ->
+    level_atoms_well_scoped Γ (level_atoms_sort xs).
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
-  destruct H as [[? ?] ?]; apply la_ws_ins; auto.
+  destruct H as [[? ?] ?]; apply level_atoms_well_scoped_ins; auto.
 Qed.
 
-Lemma la_ws_keep : forall {Γ} c xs,
-    la_ws Γ xs ->
-    la_ws Γ (la_keep c xs).
+Lemma level_atoms_well_scoped_keep : forall {Γ} c xs,
+    level_atoms_well_scoped Γ xs ->
+    level_atoms_well_scoped Γ (level_atoms_keep c xs).
 Proof.
-  intros Γ c xs; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros H; [ exact I |].
+  intros Γ c xs; induction xs as [| [k s a] r IH]; cbn [level_atoms_keep]; intros H; [ exact I |].
   destruct H; destruct (fst c <=? s); cbn; auto.
 Qed.
 
-Lemma la_ws_fresh_part : forall {Γ} k xs,
-    la_ws Γ xs ->
-    la_ws Γ (la_fresh_part k xs).
+Lemma level_atoms_well_scoped_fresh_part : forall {Γ} k xs,
+    level_atoms_well_scoped Γ xs ->
+    level_atoms_well_scoped Γ (level_atoms_fresh_part k xs).
 Proof.
-  intros Γ k xs; induction xs as [| [j s a] r IH]; cbn [la_fresh_part]; intros H; [ exact I |].
+  intros Γ k xs; induction xs as [| [j s a] r IH]; cbn [level_atoms_fresh_part]; intros H; [ exact I |].
   destruct H; destruct (ne_freshb k a); cbn; auto.
 Qed.
 
-Lemma la_ws_sorts : forall {Γ} xs, la_ws Γ xs -> forall j s a, la_In j s a xs -> s <= n.
+Lemma level_atoms_well_scoped_sorts : forall {Γ} xs, level_atoms_well_scoped Γ xs -> forall j s a, level_atoms_In j s a xs -> s <= n.
 Proof.
   intros Γ xs; induction xs as [| [j0 t b] r IH]; cbn; intros H j s a Hin; [ destruct Hin |].
   destruct H as [[Ht _] Hr]; destruct Hin as [(_ & -> & _) | Hin]; [ exact Ht | eapply IH; eassumption ].
 Qed.
 
-Lemma la_ws_app : forall {Γ} xs ys,
-    la_ws Γ xs ->
-    la_ws Γ ys ->
-    la_ws Γ (xs ++ ys).
+Lemma level_atoms_well_scoped_app : forall {Γ} xs ys,
+    level_atoms_well_scoped Γ xs ->
+    level_atoms_well_scoped Γ ys ->
+    level_atoms_well_scoped Γ (xs ++ ys).
 Proof.
   intros Γ xs ys; induction xs as [| [k s a] r IH]; cbn; intros Hxs Hys;
     [ exact Hys | destruct Hxs; split; auto ].
 Qed.
 
-Lemma la_ws_suc : forall {Γ} xs,
-    la_ws Γ xs ->
-    la_ws Γ (la_suc xs).
+Lemma level_atoms_well_scoped_suc : forall {Γ} xs,
+    level_atoms_well_scoped Γ xs ->
+    level_atoms_well_scoped Γ (level_atoms_suc xs).
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros Hxs;
     [ exact I | destruct Hxs; split; auto ].
@@ -341,7 +341,7 @@ Definition lvl_tm (c : o2) (xs : list level_atom) : exp := lvl_tm_from (𝕃ᵒ 
 
 Lemma lvl_tm_from_wf : forall {Γ} hd xs,
     Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level@n ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from hd xs : Level@n.
 Proof.
   intros Γ hd xs; revert hd; induction xs as [| [k s a] r IH]; cbn; intros hd Hhd Hxs;
@@ -356,7 +356,7 @@ Hint Resolve lvl_tm_from_wf : mctt.
     canonicalisation moves the atoms over. *)
 Lemma lvl_tm_from_zero_wf : forall {Γ} xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃@0) xs : Level@n.
 Proof. intros; apply lvl_tm_from_wf; [ apply wf_llit; [ cbn; lia | assumption ] | assumption ]. Qed.
 
@@ -365,7 +365,7 @@ Hint Resolve lvl_tm_from_zero_wf : mctt.
 Lemma lvl_tm_wf : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs : Level@n.
 Proof. intros; unfold lvl_tm; apply lvl_tm_from_wf; [ apply wf_llit; assumption | assumption ]. Qed.
 
@@ -374,7 +374,7 @@ Hint Resolve lvl_tm_wf : mctt.
 (** The innermost expression of the fold comes out. *)
 Lemma lvl_tm_from_out : forall {Γ} hd xs,
     Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level@n ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from hd xs ≈ maxl hd (lvl_tm_from (𝕃@0) xs) : Level@n.
 Proof.
   intros Γ hd xs; revert hd; induction xs as [| [k s a] r IH]; cbn; intros hd Hhd Hxs.
@@ -395,7 +395,7 @@ Qed.
 
 Lemma lvl_fold_tm_from : forall {Γ} xs hd,
     Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level@n ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold hd (List.map atom_exp xs) ≈ lvl_tm_from hd xs : Level@n.
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros hd Hhd Hxs; [ mauto 3 |].
@@ -415,7 +415,7 @@ Qed.
 Lemma lvl_exp_of_tm : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs) ≈ lvl_tm c xs : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs; unfold lvl_tm.
@@ -453,15 +453,15 @@ Lemma wf_exp_eq_maxl_llit : forall {Γ} c d,
     fst c <= n ->
     fst d <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ c) (𝕃ᵒ d) ≈ 𝕃ᵒ (omax c d) : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ c) (𝕃ᵒ d) ≈ 𝕃ᵒ (ordinal_max c d) : Level@n.
 Proof.
   intros Γ c d Hc Hd HΓ.
-  destruct (ole_or_olt c d) as [Hle | Hlt].
-  - rewrite omax_r by exact Hle; apply wf_exp_eq_maxl_llit_ole; assumption.
-  - rewrite omax_l by (apply olt_ole; exact Hlt).
+  destruct (ordinal_le_or_ordinal_lt c d) as [Hle | Hlt].
+  - rewrite ordinal_max_r by exact Hle; apply wf_exp_eq_maxl_llit_ordinal_le; assumption.
+  - rewrite ordinal_max_l by (apply ordinal_lt_ordinal_le; exact Hlt).
     transitivity (maxl (𝕃ᵒ d) (𝕃ᵒ c));
       [ apply wf_exp_eq_maxl_comm; apply wf_llit; assumption |].
-    apply wf_exp_eq_maxl_llit_ole; [ apply olt_ole; exact Hlt | exact Hc | exact HΓ ].
+    apply wf_exp_eq_maxl_llit_ordinal_le; [ apply ordinal_lt_ordinal_le; exact Hlt | exact Hc | exact HΓ ].
 Qed.
 
 (** The two operations on the fold: the successor raises every offset and the
@@ -470,8 +470,8 @@ Qed.
 Lemma lvl_tm_suc : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ succl (lvl_tm c xs) ≈ lvl_tm (osuc c) (la_suc xs) : Level@n.
+    level_atoms_wf Γ xs ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ succl (lvl_tm c xs) ≈ lvl_tm (ordinal_succ c) (level_atoms_suc xs) : Level@n.
 Proof.
   intros Γ c xs Hc; revert c Hc; induction xs as [| [k s a] r IH]; cbn; intros c Hc HΓ Hxs;
     [ unfold lvl_tm; cbn; destruct c; apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption |].
@@ -488,22 +488,22 @@ Lemma lvl_tm_max : forall {Γ} c xs d ys,
     fst c <= n ->
     fst d <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
-    la_wf Γ ys ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_tm c xs) (lvl_tm d ys) ≈ lvl_tm (omax c d) (xs ++ ys) : Level@n.
+    level_atoms_wf Γ xs ->
+    level_atoms_wf Γ ys ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_tm c xs) (lvl_tm d ys) ≈ lvl_tm (ordinal_max c d) (xs ++ ys) : Level@n.
 Proof.
   intros Γ c xs d ys Hc Hd; revert c Hc; induction xs as [| [k s a] r IH]; cbn; intros c Hc HΓ Hxs Hys.
   - (** No atom on the left: the two constants join in front of the right. *)
     assert (Hct : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c : Level@n) by (apply wf_llit; assumption).
     assert (Hdt : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ d : Level@n) by (apply wf_llit; assumption).
     assert (HT0 : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃@0) ys : Level@n) by mauto 3.
-    assert (Hcd : fst (omax c d) <= n) by (apply omax_fst_le; assumption).
+    assert (Hcd : fst (ordinal_max c d) <= n) by (apply ordinal_max_fst_le; assumption).
     unfold lvl_tm; cbn.
     transitivity (maxl (𝕃ᵒ c) (maxl (𝕃ᵒ d) (lvl_tm_from (𝕃@0) ys)));
       [ apply wf_exp_eq_maxl_cong; [ mauto 3 | apply lvl_tm_from_out; [ exact Hdt | exact Hys ] ] |].
     transitivity (maxl (maxl (𝕃ᵒ c) (𝕃ᵒ d)) (lvl_tm_from (𝕃@0) ys));
       [ apply wf_exp_eq_sym, wf_exp_eq_maxl_assoc; assumption |].
-    transitivity (maxl (𝕃ᵒ (omax c d)) (lvl_tm_from (𝕃@0) ys));
+    transitivity (maxl (𝕃ᵒ (ordinal_max c d)) (lvl_tm_from (𝕃@0) ys));
       [ apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_maxl_llit; assumption | mauto 3 ] |].
     apply wf_exp_eq_sym, lvl_tm_from_out; [ apply wf_llit; assumption | exact Hys ].
   - destruct Hxs as [Ha Hr].
@@ -522,8 +522,8 @@ Lemma lvl_tm_ins : forall {Γ} c k s (a : ne) ys,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n ->
-    la_wf Γ ys ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_ins k s a ys) ≈ maxl (succl_n k a) (lvl_tm c ys) : Level@n.
+    level_atoms_wf Γ ys ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (level_atoms_insert k s a ys) ≈ maxl (succl_n k a) (lvl_tm c ys) : Level@n.
 Proof.
   intros Γ c k s a ys Hc HΓ Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys;
     [ unfold lvl_tm; cbn; apply wf_exp_eq_refl, wf_maxl; mauto 3 |].
@@ -559,13 +559,13 @@ Qed.
 Lemma lvl_tm_sort : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_sort xs) ≈ lvl_tm c xs : Level@n.
+    level_atoms_wf Γ xs ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (level_atoms_sort xs) ≈ lvl_tm c xs : Level@n.
 Proof.
   intros Γ c xs Hc HΓ; induction xs as [| [k s a] r IH]; cbn; intros Hxs; [ mauto 3 |].
   destruct Hxs as [Ha Hr].
-  transitivity (maxl (succl_n k a) (lvl_tm c (la_sort r)));
-    [ apply lvl_tm_ins; [ assumption | assumption | assumption | apply la_wf_sort; assumption ] |].
+  transitivity (maxl (succl_n k a) (lvl_tm c (level_atoms_sort r)));
+    [ apply lvl_tm_ins; [ assumption | assumption | assumption | apply level_atoms_wf_sort; assumption ] |].
   unfold lvl_tm; cbn.
   apply wf_exp_eq_maxl_cong; [ mauto 3 | apply IH; assumption ].
 Qed.
@@ -587,7 +587,7 @@ Proof.
   assert (Hl : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ(S s, 0) : Level@n) by (apply wf_llit; [ cbn; lia | exact HΓ ]).
   assert (Hct : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c : Level@n) by (apply wf_llit; assumption).
   assert (Hlc : Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ(S s, 0)) (𝕃ᵒ c) ≈ 𝕃ᵒ c : Level@n)
-    by (apply wf_exp_eq_maxl_llit_ole; [ destruct c; unfold ole; cbn in *; lia | exact Hc | exact HΓ ]).
+    by (apply wf_exp_eq_maxl_llit_ordinal_le; [ destruct c; unfold ordinal_le; cbn in *; lia | exact Hc | exact HΓ ]).
   assert (Habs : Θ ⍮ Ξ ⍮ Γ ⊢ maxl (succl_n k M) (𝕃ᵒ(S s, 0)) ≈ 𝕃ᵒ(S s, 0) : Level@n).
   { eapply wf_exp_eq_subtyp';
       [ apply wf_exp_eq_maxl_absorb; exact HkMs | apply wf_subtyp_level; [ lia | exact HΓ ] ]. }
@@ -602,12 +602,12 @@ Qed.
 Lemma lvl_tm_keep : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_ws Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_keep c xs) ≈ lvl_tm c xs : Level@n.
+    level_atoms_well_scoped Γ xs ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (level_atoms_keep c xs) ≈ lvl_tm c xs : Level@n.
 Proof.
-  intros Γ c xs Hc HΓ; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros Hxs; [ mauto 3 |].
+  intros Γ c xs Hc HΓ; induction xs as [| [k s a] r IH]; cbn [level_atoms_keep]; intros Hxs; [ mauto 3 |].
   destruct Hxs as [[Hs Ha] Hr].
-  pose proof (la_ws_wf _ Hr) as Hrw.
+  pose proof (level_atoms_well_scoped_wf _ Hr) as Hrw.
   assert (Han : Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n)
     by (eapply wf_exp_subtyp'; [ exact Ha | apply wf_subtyp_level; assumption ]).
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level@n) by (apply (wf_succl_n k); exact Han).
@@ -631,9 +631,9 @@ Qed.
     constant is finite. *)
 Lemma lvl_tm_drop_fin : forall {Γ} c xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
-    c <= la_maxoff xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm (ofin c) xs ≈ lvl_tm oz xs : Level@n.
+    level_atoms_wf Γ xs ->
+    c <= level_atoms_max_offset xs ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm (ofin c) xs ≈ lvl_tm ordinal_zero xs : Level@n.
 Proof.
   intros Γ c xs HΓ; induction xs as [| [k s a] r IH]; cbn; intros Hxs Hle.
   - (** No atom: the constant is [0] already. *)
@@ -657,21 +657,21 @@ Proof.
         [ apply wf_exp_eq_maxl_comm; [ exact Hka | exact Hc ] |].
       apply wf_exp_eq_maxl_llit_succl_n; [ exact Hck | exact Ha ].
     + (** Some atom of the tail does. *)
-      assert (c <= la_maxoff r) by lia.
+      assert (c <= level_atoms_max_offset r) by lia.
       apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_refl; exact Hka |].
       apply IH; assumption.
 Qed.
 
 Lemma lvl_tm_drop : forall {Γ} c xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
-    ole c (ofin (la_maxoff xs)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm oz xs : Level@n.
+    level_atoms_wf Γ xs ->
+    ordinal_le c (ofin (level_atoms_max_offset xs)) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm ordinal_zero xs : Level@n.
 Proof.
   intros Γ [a c] xs HΓ Hxs Hle.
-  assert (a = 0) as -> by (unfold ole in Hle; cbn in Hle; lia).
+  assert (a = 0) as -> by (unfold ordinal_le in Hle; cbn in Hle; lia).
   apply lvl_tm_drop_fin;
-    [ assumption | assumption | unfold ole in Hle; cbn in Hle; lia ].
+    [ assumption | assumption | unfold ordinal_le in Hle; cbn in Hle; lia ].
 Qed.
 
 (** ** The Canonical Form
@@ -686,33 +686,33 @@ Qed.
 Theorem lvl_tm_canon : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_ws Γ xs ->
+    level_atoms_well_scoped Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm (fst (lvl_canon (c, xs))) (snd (lvl_canon (c, xs))) : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs; unfold lvl_canon; cbn [fst snd].
-  pose proof (la_ws_wf _ Hxs) as Hxw.
-  assert (Hsk : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_keep c (la_sort xs)) ≈ lvl_tm c xs : Level@n).
-  { transitivity (lvl_tm c (la_sort xs));
-      [ apply lvl_tm_keep; [ assumption | assumption | apply la_ws_sort; assumption ]
+  pose proof (level_atoms_well_scoped_wf _ Hxs) as Hxw.
+  assert (Hsk : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (level_atoms_keep c (level_atoms_sort xs)) ≈ lvl_tm c xs : Level@n).
+  { transitivity (lvl_tm c (level_atoms_sort xs));
+      [ apply lvl_tm_keep; [ assumption | assumption | apply level_atoms_well_scoped_sort; assumption ]
       | apply lvl_tm_sort; assumption ]. }
-  destruct (o2_dominated c (la_maxoff (la_keep c (la_sort xs)))) eqn:Hle; cbn;
+  destruct (o2_dominated c (level_atoms_max_offset (level_atoms_keep c (level_atoms_sort xs)))) eqn:Hle; cbn;
     [ apply o2_dominated_spec in Hle |].
-  - transitivity (lvl_tm c (la_keep c (la_sort xs))); [ apply wf_exp_eq_sym; exact Hsk |].
-    apply lvl_tm_drop; [ exact HΓ | apply la_wf_keep, la_wf_sort; exact Hxw | exact Hle ].
+  - transitivity (lvl_tm c (level_atoms_keep c (level_atoms_sort xs))); [ apply wf_exp_eq_sym; exact Hsk |].
+    apply lvl_tm_drop; [ exact HΓ | apply level_atoms_wf_keep, level_atoms_wf_sort; exact Hxw | exact Hle ].
   - apply wf_exp_eq_sym; exact Hsk.
 Qed.
 
 Theorem lvl_exp_of_canon : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_ws Γ xs ->
+    level_atoms_well_scoped Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs)
              ≈ nf_to_exp (nf_lvl_of (lvl_canon (c, xs))) : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs.
-  pose proof (la_ws_wf _ Hxs) as Hxw.
-  assert (Hcanon : la_wf Γ (snd (lvl_canon (c, xs))))
-    by (unfold lvl_canon; cbn; apply la_wf_keep, la_wf_sort; assumption).
+  pose proof (level_atoms_well_scoped_wf _ Hxs) as Hxw.
+  assert (Hcanon : level_atoms_wf Γ (snd (lvl_canon (c, xs))))
+    by (unfold lvl_canon; cbn; apply level_atoms_wf_keep, level_atoms_wf_sort; assumption).
   assert (Hcc : fst (fst (lvl_canon (c, xs))) <= n) by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hc ]).
   transitivity (lvl_tm c xs); [ apply lvl_exp_of_tm; assumption |].
   transitivity (lvl_tm (fst (lvl_canon (c, xs))) (snd (lvl_canon (c, xs))));
@@ -748,7 +748,7 @@ Qed.
 Lemma lvl_exp_of_wf : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_wf Γ xs ->
+    level_atoms_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs.
@@ -763,22 +763,22 @@ Lemma lvl_exp_of_le : forall {Γ} c xs d ys,
     fst c <= n ->
     fst d <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    la_ws Γ xs ->
-    la_ws Γ ys ->
+    level_atoms_well_scoped Γ xs ->
+    level_atoms_well_scoped Γ ys ->
     lvl_le (c, xs) (d, ys) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_exp_of c (List.map atom_exp xs)) (lvl_exp_of d (List.map atom_exp ys))
              ≈ lvl_exp_of d (List.map atom_exp ys) : Level@n.
 Proof.
   intros Γ c xs d ys Hc Hd HΓ Hxs Hys Hle.
-  pose proof (la_ws_wf _ Hxs) as Hxw; pose proof (la_ws_wf _ Hys) as Hyw.
-  assert (Hcd : fst (omax c d) <= n) by (apply omax_fst_le; assumption).
+  pose proof (level_atoms_well_scoped_wf _ Hxs) as Hxw; pose proof (level_atoms_well_scoped_wf _ Hys) as Hyw.
+  assert (Hcd : fst (ordinal_max c d) <= n) by (apply ordinal_max_fst_le; assumption).
   transitivity (lvl_tm (fst (lvl_canon (lvl_max (c, xs) (d, ys))))
                        (snd (lvl_canon (lvl_max (c, xs) (d, ys))))).
   - transitivity (maxl (lvl_tm c xs) (lvl_tm d ys));
       [ apply wf_exp_eq_maxl_cong; apply lvl_exp_of_tm; assumption |].
-    transitivity (lvl_tm (omax c d) (xs ++ ys));
+    transitivity (lvl_tm (ordinal_max c d) (xs ++ ys));
       [ apply lvl_tm_max; assumption |].
-    apply lvl_tm_canon; [ exact Hcd | exact HΓ | cbn; apply la_ws_app; assumption ].
+    apply lvl_tm_canon; [ exact Hcd | exact HΓ | cbn; apply level_atoms_well_scoped_app; assumption ].
   - unfold lvl_le in Hle; rewrite Hle.
     apply wf_exp_eq_sym.
     transitivity (lvl_tm d ys); [ apply lvl_exp_of_tm; assumption |].
@@ -789,10 +789,10 @@ End Fixed_GCtx.
 
 (** An atom typed at its own sort, at most [m], is at a sort at most every
     [n ≥ m]. *)
-Lemma la_ws_mono : forall {Θ Ξ} m n Γ xs,
+Lemma level_atoms_well_scoped_mono : forall {Θ Ξ} m n Γ xs,
     m <= n ->
-    @la_ws Θ Ξ m Γ xs ->
-    @la_ws Θ Ξ n Γ xs.
+    @level_atoms_well_scoped Θ Ξ m Γ xs ->
+    @level_atoms_well_scoped Θ Ξ n Γ xs.
 Proof.
   intros * Hmn; induction xs as [| [k s a] r IH]; cbn; [ auto |].
   intros [[Hs Ha] Hr]; split; [ split; [ lia | exact Ha ] | auto ].

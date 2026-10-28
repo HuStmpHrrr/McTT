@@ -243,14 +243,14 @@ Proof.
     destruct (wf_modexp_eq_scoped _ _ _ _ _ HwK) as (_ & HKs & _).
     pose proof (wf_sub_mod_compat _ _ _ _ _ Hτ) as Hc.
     pose proof (wf_gstack_closed _ _ Hgm) as Hcl.
-    eapply (valid_modexp_intro _ _ _ _ (ds_sub R τ) (ds_sub Rm τ) K[τ]ᵐ (ds_sub RK τ)).
+    eapply (valid_modexp_intro _ _ _ _ (mdesc_sub R τ) (mdesc_sub Rm τ) K[τ]ᵐ (mdesc_sub RK τ)).
     + exact (sub_preserves_modexp _ _ _ _ _ _ _ HwH Hτ).
     + exact (mdenote_sub _ _ Hcl _ _ _ HmH HΔs HHs _ _ Hc).
-    + apply ds_mod_sub; exact HmodH.
+    + apply mdesc_mod_sub; exact HmodH.
     + exact (rel_modexp_under_ctx_gsub Hg HHK).
     + exact (IHK _ _ Hg Hτ).
     + exact (mdenote_sub _ _ Hcl _ _ _ HmK HΔs HKs _ _ Hc).
-    + apply ds_mod_sub; exact HmodK.
+    + apply mdesc_mod_sub; exact HmodK.
 Qed.
 
 Corollary valid_unit_gsub : forall Δ K Γ τ, valid_unit Δ K -> gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ -> valid_unit Γ K[τ]ᵐ.

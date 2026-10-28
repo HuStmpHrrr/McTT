@@ -1043,7 +1043,7 @@ Inductive ind_nil_at (Θ : gdeps) (Ξ : gstack) (mp : qname) (D : ind_decl) (IsS
     (exists rk, view_rank_ok Θ Ξ D rk) ->
     (** each view's members are those of the container's group *)
     (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-       exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm) ->
+       exists D', ind_lookup Θ Ξ qc = Some D' /\ view_wrap_ok D D' vm) ->
     (** the views agree on their maps *)
     view_maps_coherent Θ Ξ D ->
     ind_nil_at Θ Ξ mp D IsS.
@@ -1225,7 +1225,7 @@ Section Semantics.
   | run_cmd_load_filed : forall ch B Rb B' Θ Ξ fp U BU,
       gds_lookup Θ fp = Some U ->
       bm_lookup Rb fp = Some BU ->
-      bt_merge B BU = Some B' ->
+      builtins_merge B BU = Some B' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_load fp ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
   (** Not filed: load it, run it from nothing with itself added to the chain,
       file it on top of what it filed, and merge that in.  A unit already in the
@@ -1240,7 +1240,7 @@ Section Semantics.
       prog_path prg = fp ->
       to_core prg = Some u ->
       run_unit (fp :: ch) u BU RbU ΘU U ->
-      bt_merge B BU = Some B' ->
+      builtins_merge B BU = Some B' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU)
   (** An open checks that its target is a module, and declares the
       definitions and aliases its items generate in this frame. *)
@@ -1285,7 +1285,7 @@ Section Semantics.
   (** [builtin natural := X]: [X], read as a term, is in normal form the
       type former of the first member of a group, at no argument, with the
       shape of the natural numbers, in [Type@0]; its binding is merged in
-      ([bt_bind_nat]), so it is bound unless another type is.  [X] is read
+      ([builtins_bind_nat]), so it is bound unless another type is.  [X] is read
       through its normal form, so through any alias or definition.  Its
       typing at the inferred type follows from the inference; it is a
       premise only because the well-formedness of a run is proved before
@@ -1299,7 +1299,7 @@ Section Semantics.
       ind_lookup Θ Ξ p = Some D ->
       nat_shape D = Some (z, s) ->
       ind_sort D = nat_sort ->
-      bt_bind_nat B p = Some B' ->
+      builtins_bind_nat B p = Some B' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_builtin nat_kind H ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
   (** [inductive x Δ := H]: both parts alias [H] as written.  Read as a
       term, [H] has the inferred type [W] over [Δ] and the frames'
@@ -1396,7 +1396,7 @@ Section Semantics.
       the unit, [B] its own record. *)
   with run_unit : list path -> cunit -> builtins -> bmap -> gdeps -> gunit -> Prop :=
   | run_unit_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P' cs Θ1 Θ2 mp K U,
-      nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
+      nil ⍮ nil ⍮ builtins_empty ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       fill_params Θ1 nil B1 P P' ->
       tele_ass P' ->
       ⊢ Θ1 ⍮ nil ⍮ P' ->
@@ -1979,8 +1979,8 @@ Section GrowDeps.
       (* the views' members, at the containers found at [Θ'] *)
       all: try solve [ match goal with
         | Hvw : forall k Mk qc k' Is vm, ind_member ?D0 k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-                  exists D', ind_lookup _ _ qc = Some D' /\ vwrap_ok ?D0 D' vm,
-          Hk : ind_member ?D0 _ = Some _, Hh : im_head _ = mh_view _ _ _ _ |- exists D', _ /\ vwrap_ok _ _ _ =>
+                  exists D', ind_lookup _ _ qc = Some D' /\ view_wrap_ok ?D0 D' vm,
+          Hk : ind_member ?D0 _ = Some _, Hh : im_head _ = mh_view _ _ _ _ |- exists D', _ /\ view_wrap_ok _ _ _ =>
             destruct (Hvw _ _ _ _ _ _ Hk Hh) as (D' & Hl & Hw);
             exists D'; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Hw ]
         end ].
@@ -2530,22 +2530,22 @@ Section WellFormed.
 
   Theorem run_wf :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B') /\
+       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ builtins_le B B') /\
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B') /\
+       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ builtins_le B B') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
        ⊢ᵍ Θ ⍮ nil /\ canon Rb Θ /\ Θ ⍮ nil ⍮ q_abs (hd nil ch) nil ⍮ fk_module ⊢ᵍᵘ U) /\
     (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ind_uparams D = raw_decl_uparams R ++ gs_tele Ξ ->
-       ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B').
+       ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ builtins_le B B').
   Proof.
     apply run_mut_dind.
     - (* a definition: the new member is checked against the frame so far *)
       intros ch B Rb Θ Ξ x b pv A M HM Hfr HΞ Hc Hst.
-      repeat split; [ apply add_def_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ apply add_def_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* an axiom: its type is checked against the frame so far *)
       intros ch B Rb Θ Ξ x b pv A i HA Hfr HΞ Hc Hst.
-      repeat split; [ eapply add_axiom_wf; eassumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ eapply add_axiom_wf; eassumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a module: its body ends on a frame with the path and parameters it opened with *)
       intros ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp' K' U Htel HΔ Hfr Hr IH HΞ Hc Hst.
       destruct Ξ as [| [[mp K] [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
@@ -2561,10 +2561,10 @@ Section WellFormed.
       cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
     - (* an alias: checked against the frame so far, as a definition is *)
       intros ch B Rb Θ Ξ x pv Δ E Htel HΔ HE Hfr HΞ Hc Hst.
-      repeat split; [ apply add_alias_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ apply add_alias_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a shared unit: its record merged in *)
       intros * _ _ Hm HΞ Hc Hst.
-      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (proj1 (bt_merge_le _ _ _ Hm)) ].
+      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (proj1 (builtins_merge_le _ _ _ Hm)) ].
     - (* a load: the unit is filed on its own, then merged in; the frames are
          of units on the chain, so it files none of them.  What was filed
          before was loaded from the same files, so it agrees with what the
@@ -2585,31 +2585,31 @@ Section WellFormed.
           -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
           -- rewrite (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
       + pose proof (canon_merge _ _ _ _ Hc Hcf) as Hcm.
-        repeat split; [ exact (proj1 Hcm) | exact (proj2 Hcm) | apply merge_left | exact (proj1 (bt_merge_le _ _ _ Hm)) ].
+        repeat split; [ exact (proj1 Hcm) | exact (proj2 Hcm) | apply merge_left | exact (proj1 (builtins_merge_le _ _ _ Hm)) ].
     - (* an import: what its generated commands make *)
       intros * _ _ Hg HΞ Hc Hst.
-      repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a group: its members, each with its module, then its recursor
          module, run as written commands are *)
       intros * _ _ _ _ _ _ _ Hf _ _ Hm IHm Hr IHr HΞ Hc Hst.
       destruct (IHm HΞ Hc Hst (rd_filed_uparams _ _ _ _ _ _ _ _ _ Hf)) as (H1 & Hc1 & Hs1 & Hl1).
       pose proof (stack_in_shape _ _ _ (proj2 (proj2 (proj2 run_params)) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm) Hst) as Hst1.
       destruct (IHr H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
-      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
+      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, builtins_le_trans ] ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
       intros * _ _ _ Hd HΞ Hc Hst.
       repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
-                    | apply gds_sub_refl | apply bt_le_refl ].
+                    | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a builtin binding: nothing filed, and its binding merged in *)
       intros * _ _ _ _ _ _ _ _ Hb HΞ Hc Hst.
-      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (bt_bind_nat_le _ _ _ Hb) ].
+      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (builtins_bind_nat_le _ _ _ Hb) ].
     - (* an inductive alias: a definition with a module part, checked
          where it is declared *)
       intros * Htel HΔ HH _ _ HM _ Hfr HΞ Hc Hst.
-      repeat split; [ apply add_dm_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ apply add_dm_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a record alias: likewise *)
       intros * Htel HΔ HH _ _ HM _ Hfr HΞ Hc Hst.
-      repeat split; [ apply add_dm_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ apply add_dm_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a record: checked with an empty module, its module's frame opened
          over its parameters and a value of it, its field definitions and
          its with-area run in it, and the record filed with the body they
@@ -2628,14 +2628,14 @@ Section WellFormed.
       pose proof (eq_trans (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr2) (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr1))
         as Hp; cbn in Hp; injection Hp as -> -> HP.
       destruct (wf_gstack_cons_inv _ _ _ _ _ H2) as (H20 & [Δ2 Φ -> HΦ] & _); cbn in HP; subst Δ2.
-      split; [| split; [ exact Hc2 | split; [ eapply gds_sub_trans; eassumption | eapply bt_le_trans; eassumption ] ] ].
+      split; [| split; [ exact Hc2 | split; [ eapply gds_sub_trans; eassumption | eapply builtins_le_trans; eassumption ] ] ].
       apply add_entry_wf; [ exact H20 | | exact Hfr ].
       eapply wf_gentry_record_body; [ reflexivity | exact HΦ ].
-    - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
-    - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
+    - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a generated definition: as a definition *)
       intros ch B Rb Θ Ξ x b pv A M HM Hfr HΞ Hc Hst.
-      repeat split; [ apply add_def_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ apply add_def_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a generated module: as a module *)
       intros ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp' K' U Htel HΔ Hfr Hr IH HΞ Hc Hst.
       destruct Ξ as [| [[mp K] [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
@@ -2649,12 +2649,12 @@ Section WellFormed.
       inversion Hs1 as [| | ? ? ? ? ? ? Hs0 HV Hff0]; subst.
       apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
       cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
-    - intros * HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - intros * HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - intros * _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
       destruct (IH1 HΞ Hc Hst) as (H1 & Hc1 & Hs1 & Hl1).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH2 H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
-      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
+      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, builtins_le_trans ] ].
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
       intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs Θ1 Θ2 mp K U Hi IHi _ Htel HP _ Hb IHb.
@@ -2672,7 +2672,7 @@ Section WellFormed.
       split; [ eapply wf_gstack_deps; eassumption | split; [ exact Hc2 | cbn; apply wf_gunit_intro; assumption ] ].
     - (* no member left *)
       intros ch B Rb Θ Ξ pv R pq D k HΞ Hc Hst Hu.
-      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl ].
     - (* a member: checked with an empty module, its module's frame opened
          over the group's uniform parameters, its commands run in it, and
          the member filed with the body they end with *)
@@ -2689,7 +2689,7 @@ Section WellFormed.
       { apply add_entry_wf; [ exact H10 | | exact Hfr ].
         eapply wf_gentry_ind_body; [ exact Hu | exact HΦ ]. }
       destruct (IHrest Hadd Hc1 (stack_in_add _ _ _ _ Hst) ltac:(rewrite gs_tele_add; exact Hu)) as (H2 & Hc2 & Hs2 & Hl2).
-      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
+      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, builtins_le_trans ] ].
   Qed.
 
   (** ** Runs of Generated Commands
@@ -2959,7 +2959,7 @@ Section WellFormed.
       A binding is made of an inductive type of the right shape where it is
       read ([run_cmd_builtin]), and a run keeps reading it: entries are added,
       module frames are closed into members, units are filed and merged,
-      and records are merged ([bt_merge_wf]).  The record of a unit, and
+      and records are merged ([builtins_merge_wf]).  The record of a unit, and
       those of the units it filed, are read where it is filed. *)
   Theorem run_builtins_wf :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
@@ -3000,7 +3000,7 @@ Section WellFormed.
     - intros * _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - (* a shared unit: its record, read where it is filed, merged in *)
       intros ch B Rb B' Θ Ξ fp U BU _ HBU Hm HΞ _ _ Hb HR; split; [| exact HR ].
-      eapply bt_merge_wf; [ exact Hb | | exact Hm ].
+      eapply builtins_merge_wf; [ exact Hb | | exact Hm ].
       apply builtins_wf_below; [ exact (wf_gstack_frames _ _ HΞ) | exact (HR _ _ HBU) ].
     - (* a load: the unit's record is read where it is filed, and so is what
          was read before *)
@@ -3022,7 +3022,7 @@ Section WellFormed.
             by (intros fr Br Hr0; cbn in Hr0; destruct (path_beq fr fp); [ injection Hr0 as <-; exact HbU | exact (HRU _ _ Hr0) ]).
           exact (bm_wf_sub _ _ _ Hsub' HRU' _ _ Hq). }
       split; [| exact HRm ].
-      eapply bt_merge_wf; [| | exact Hm ].
+      eapply builtins_merge_wf; [| | exact Hm ].
       + eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] | exact Hb ].
       + apply builtins_wf_below; [ exact (wf_gstack_frames _ _ HΞ') |].
         eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub' | eassumption ] | exact HbU ].
@@ -3039,7 +3039,7 @@ Section WellFormed.
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
       intros ch B Rb B' Θ Ξ H M W p D z0 s0 _ _ _ _ _ Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
-      eapply bt_merge_wf; [ exact Hb | | exact Hbd ].
+      eapply builtins_merge_wf; [ exact Hb | | exact Hbd ].
       intros p1 Hq; cbn in Hq; injection Hq as <-; exact (mk_nat_binding_ok _ _ _ D z0 s0 Hs Ho Hso).
     - intros * _ _ _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - intros * _ _ _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
@@ -3509,7 +3509,7 @@ Qed.
     group has members.  A group accepted by the check has a rank
     ([rank_check_sound]); a group with a cycle of nest edges has none, and
     is rejected.  The members a view's [vm] lists are checked likewise
-    ([vwrap_check_sound]), and so is the agreement of the views' maps
+    ([view_wrap_check_sound]), and so is the agreement of the views' maps
     ([view_maps_check_sound]). *)
 
 (** The members the positions of a view's block nest through: a whole
@@ -3660,11 +3660,11 @@ Proof.
   apply Nat.eqb_eq in H1, H2; subst; auto.
 Qed.
 
-(** The check of [vwrap_ok D D' vm]: [vm] has one entry per member of the
+(** The check of [view_wrap_ok D D' vm]: [vm] has one entry per member of the
     container group [D'], and each listed member of [D] has the
     container member's parameter count, constructor names and argument
     shapes. *)
-Definition vwrap_check (D D' : ind_decl) (vm : list nat) : bool :=
+Definition view_wrap_check (D D' : ind_decl) (vm : list nat) : bool :=
   Nat.eqb (List.length vm) (List.length (ind_members D')) &&
   List.forallb (fun iM =>
     match List.nth_error vm (fst iM) with
@@ -3685,9 +3685,9 @@ Definition vwrap_check (D D' : ind_decl) (vm : list nat) : bool :=
 
 (** A view's members the check accepts are the container group's members
     at the view's arguments. *)
-Theorem vwrap_check_sound : forall D D' vm, vwrap_check D D' vm = true -> vwrap_ok D D' vm.
+Theorem view_wrap_check_sound : forall D D' vm, view_wrap_check D D' vm = true -> view_wrap_ok D D' vm.
 Proof.
-  intros * H; unfold vwrap_check in H; apply andb_true_iff in H as [Hl H].
+  intros * H; unfold view_wrap_check in H; apply andb_true_iff in H as [Hl H].
   rewrite List.forallb_forall in H; constructor; [ apply Nat.eqb_eq; exact Hl |].
   intros i' Mi' v HMi' Hv.
   specialize (H _ (in_combine_seq _ _ _ HMi')); cbn [fst snd] in H; rewrite Hv in H.

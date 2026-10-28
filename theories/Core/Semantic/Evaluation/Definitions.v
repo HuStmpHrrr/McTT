@@ -58,10 +58,10 @@ Definition elim_grp_of (oq : option qname) (m : domain) : option qname :=
     kind of the member it names ([items_gen]).  Evaluation must tell them
     apart without a type: the kind of a member is read off the module value
     and the syntax of the units it closes over.  A body is read through the
-    entries it makes ([kenv]), as evaluation would but with a placeholder
+    entries it makes ([kinds_env]), as evaluation would but with a placeholder
     for every definition, so that no term is evaluated: a kind does not
     depend on the values of terms, nor on a module's arguments, which are
-    terms ([kpad]).  The relations mirror [member_type] with the types left
+    terms ([kinds_placeholders]).  The relations mirror [member_type] with the types left
     out, and read a closure or a submodule closure as selection on module
     values does ([eval_selm]). *)
 
@@ -71,12 +71,12 @@ Definition dm_clo (U : gunit) (ρ : env) : dmod :=
   match U with gu_mk Δ D => dm_local Δ D ρ end.
 
 (** [n] placeholders for parameters, terms, over [ρ]. *)
-Definition kpad (n : nat) (ρ : env) : env := List.repeat (de_term d_true) n ++ ρ.
+Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat (de_term d_true) n ++ ρ.
 
 (** The entry a body's entry adds over [ρ], as kinds read it: a module, its
     closure; a definition with a module part, a placeholder and the
     closure of its unit; any other, a placeholder, as in [body_ctx]. *)
-Definition kbentry (ρ : env) (E : gentry) : dentry :=
+Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
   match E with
   | ge_mod _ U => de_mod (dm_clo U ρ)
   | ge_def_mod _ _ _ U => de_dm d_true (dm_clo U ρ)
@@ -87,31 +87,31 @@ Definition kbentry (ρ : env) (E : gentry) : dentry :=
     [k]-th under the [k] before it: an alias, the closure of its unit; a
     definition with a module part, a placeholder and the closure of its
     module part's unit; a definition, a placeholder. *)
-Definition kentry (ρ : env) (k : nat) (g : generated_item) : dentry :=
+Definition kinds_generated_entry (ρ : env) (k : nat) (g : generated_item) : dentry :=
   match g with
   | generated_item_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
   | generated_item_def_mod _ _ _ _ E => de_dm d_true (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
   | _ => de_term d_true
   end.
 
-Fixpoint kgens_env (ρ : env) (k : nat) (gs : list generated_item) : env :=
+Fixpoint kinds_items_gen_env (ρ : env) (k : nat) (gs : list generated_item) : env :=
   match gs with
   | nil => ρ
-  | g :: gs' => kgens_env (kentry ρ k g :: ρ) (S k) gs'
+  | g :: gs' => kinds_items_gen_env (kinds_generated_entry ρ k g :: ρ) (S k) gs'
   end.
 
 (** The kind of a member with a term part and a module part, by its module
-    part's kind at the empty chain: a module makes it [mk_dm].  For a typed
-    program the module part is always a module, so this is always [mk_dm];
+    part's kind at the empty chain: a module makes it [member_kind_dm].  For a typed
+    program the module part is always a module, so this is always [member_kind_dm];
     the other cases exist only so that the kind theorems ([kind_eval]) hold
     without typing, of module parts that are no modules. *)
-Definition dm_of (k : mkind) : mkind :=
+Definition dm_of (k : member_kind) : member_kind :=
   match k with
-  | mk_mod => mk_dm
+  | member_kind_mod => member_kind_dm
   | _ => k
   end.
 
-Inductive dkind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> mkind -> Prop :=
+Inductive dmod_member_kind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> member_kind -> Prop :=
 (** A chain of a global module, read off the global context one name at a
     time, as selection on module values reads it ([eval_selm]): the path
     reached names a definition, a term, or a body module or an open frame,
@@ -121,227 +121,227 @@ Inductive dkind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> mkind -> Pro
     At the empty chain a module value, whatever member it is the module
     part of, is a module. *)
 (** The path names a definition: a term *)
-| dkind_global_here_def : forall p args b pv A B,
+| dmod_member_kind_global_here_def : forall p args b pv A B,
     gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
-    dkind Θ Ξ (dm_global p args) nil mk_term
+    dmod_member_kind Θ Ξ (dm_global p args) nil member_kind_term
 (** The path names a body module or an open frame: a module *)
-| dkind_global_here_mod : forall p args,
+| dmod_member_kind_global_here_mod : forall p args,
     (exists T oD, gc_module Θ Ξ p = Some (mr_body T oD)) \/ (exists TΦ, gc_frame Ξ p = Some TΦ) ->
-    dkind Θ Ξ (dm_global p args) nil mk_mod
+    dmod_member_kind Θ Ξ (dm_global p args) nil member_kind_mod
 (** The member [y] of the module at the path is a definition with a module
     part stored in place (its module part a body, located by [gc_loc]):
     a definition with a module part *)
-| dkind_global_here_dm : forall p args y TΦ,
+| dmod_member_kind_global_here_dm : forall p args y TΦ,
     dm_path Θ Ξ (qname_app p (y :: nil)) ->
     gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ ->
-    dkind Θ Ξ (dm_global p args) (y :: nil) mk_dm
+    dmod_member_kind Θ Ξ (dm_global p args) (y :: nil) member_kind_dm
 (** The member [y] is an alias, other than the module part of a definition
     at the end of the chain: the chain after [y] is read in the alias *)
-| dkind_global_alias_case : forall p args y ch U k,
+| dmod_member_kind_global_alias_case : forall p args y ch U k,
     gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U) ->
     ch <> nil \/ ~ dm_path Θ Ξ (qname_app p (y :: nil)) ->
-    ukind Θ Ξ nil U ch k ->
-    dkind Θ Ξ (dm_global p args) (y :: ch) k
+    gunit_member_kind Θ Ξ nil U ch k ->
+    dmod_member_kind Θ Ξ (dm_global p args) (y :: ch) k
 (** A definition with a module part stored as an alias: [dm_of] its alias's
     kind *)
-| dkind_global_alias_dm : forall p args y U k,
+| dmod_member_kind_global_alias_dm : forall p args y U k,
     gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U) ->
     dm_path Θ Ξ (qname_app p (y :: nil)) ->
-    ukind Θ Ξ nil U nil k ->
-    dkind Θ Ξ (dm_global p args) (y :: nil) (dm_of k)
+    gunit_member_kind Θ Ξ nil U nil k ->
+    dmod_member_kind Θ Ξ (dm_global p args) (y :: nil) (dm_of k)
 (** The member [y] is located in place (a body, a frame or a definition),
     and the chain does not stop at the module part of a definition: the
     rest of the chain is read at the path of [y] *)
-| dkind_global_step : forall p args y ch k,
+| dmod_member_kind_global_step : forall p args y ch k,
     (exists TΦ, gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ) \/
     (exists b pv A B, gc_resolve Θ Ξ (qname_app p (y :: nil)) = Some (ge_def b pv A B)) ->
     ch <> nil \/ ~ dm_path Θ Ξ (qname_app p (y :: nil)) ->
-    dkind Θ Ξ (dm_global (qname_app p (y :: nil)) args) ch k ->
-    dkind Θ Ξ (dm_global p args) (y :: ch) k
+    dmod_member_kind Θ Ξ (dm_global (qname_app p (y :: nil)) args) ch k ->
+    dmod_member_kind Θ Ξ (dm_global p args) (y :: ch) k
 (** A closure, by its unit. *)
-| dkind_local : forall Δ D ρ ch k,
-    ukind Θ Ξ ρ (gu_mk Δ D) ch k ->
-    dkind Θ Ξ (dm_local Δ D ρ) ch k
+| dmod_member_kind_local : forall Δ D ρ ch k,
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ D) ch k ->
+    dmod_member_kind Θ Ξ (dm_local Δ D ρ) ch k
 (** A submodule closure, by the longer chain; at the empty chain it is a
     module, its member's module part when that member has a term part too. *)
 (** The longer chain, unless it is the empty chain at a definition with a
     module part *)
-| dkind_member : forall h ch0 ch k,
-    dkind Θ Ξ h (ch0 ++ ch) k ->
-    ch <> nil \/ k <> mk_dm ->
-    dkind Θ Ξ (dm_member h ch0) ch k
+| dmod_member_kind_member : forall h ch0 ch k,
+    dmod_member_kind Θ Ξ h (ch0 ++ ch) k ->
+    ch <> nil \/ k <> member_kind_dm ->
+    dmod_member_kind Θ Ξ (dm_member h ch0) ch k
 (** The empty chain at a definition with a module part: the closure is its
     module part, a module *)
-| dkind_member_dm : forall h ch0,
-    dkind Θ Ξ h ch0 mk_dm ->
-    dkind Θ Ξ (dm_member h ch0) nil mk_mod
-with ukind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> mkind -> Prop :=
+| dmod_member_kind_member_dm : forall h ch0,
+    dmod_member_kind Θ Ξ h ch0 member_kind_dm ->
+    dmod_member_kind Θ Ξ (dm_member h ch0) nil member_kind_mod
+with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> member_kind -> Prop :=
 (** A body itself, at the empty chain: a module *)
-| ukind_self : forall ρ Δ sm Φ, ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) nil mk_mod
+| gunit_member_kind_self : forall ρ Δ sm Φ, gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) nil member_kind_mod
 (** A definition of the body: a term *)
-| ukind_def : forall ρ Δ sm Φ Φ' x b pv A B,
+| gunit_member_kind_def : forall ρ Δ sm Φ Φ' x b pv A B,
     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) mk_term
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) member_kind_term
 (** A submodule of the body: the rest of the chain read in its unit, in the
     environment of the entries before it *)
-| ukind_mod : forall ρ Δ sm Φ Φ' y pm Uy ρ1 ch k,
+| gunit_member_kind_mod : forall ρ Δ sm Φ Φ' y pm Uy ρ1 ch k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ' ρ1 ->
-    ukind Θ Ξ ρ1 Uy ch k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ' ρ1 ->
+    gunit_member_kind Θ Ξ ρ1 Uy ch k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
 (** A definition with a module part is one ([dm_of] its module part's
     kind), and a chain through it is read in its module part, as at the
     global level. *)
 (** A definition with a module part of the body, at the end of the chain:
     [dm_of] the kind of its module part *)
-| ukind_dm_here : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 k,
+| gunit_member_kind_dm_here : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ' ρ1 ->
-    ukind Θ Ξ ρ1 Uy nil k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: nil) (dm_of k)
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ' ρ1 ->
+    gunit_member_kind Θ Ξ ρ1 Uy nil k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: nil) (dm_of k)
 (** A definition with a module part of the body, the chain going on: the
     rest of the chain read in its module part, in the environment of the
     entries before it *)
-| ukind_dm_step : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 ch k,
+| gunit_member_kind_dm_step : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 ch k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
     ch <> nil ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ' ρ1 ->
-    ukind Θ Ξ ρ1 Uy ch k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ' ρ1 ->
+    gunit_member_kind Θ Ξ ρ1 Uy ch k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
 (** A name a local open declares, by the kind of the member it names in the
-    open's target, as the open generates it ([kgens]): a definition of a term
+    open's target, as the open generates it ([kinds_items_gen]): a definition of a term
     member, an alias of a module member or of the target itself, and a
     definition with a module part of a member with both parts. *)
 (** The item names a term member of the target: a term *)
-| ukind_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x,
+| gunit_member_kind_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x,
     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
-    skind Θ Ξ ρ0 H (n :: nil) mk_term ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) mk_term
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_term ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) member_kind_term
 (** The item names a module member of the target: the chain is read in
     that member *)
-| ukind_item_mod : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
+| gunit_member_kind_item_mod : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
-    skind Θ Ξ ρ0 H (n :: nil) mk_mod ->
-    skind Θ Ξ ρ0 H (n :: ch) k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_mod ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: ch) k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
 (** The item names a member of the target with a term part and a module
     part: the chain is read in that member, so at the empty chain it is a
     definition with a module part *)
-| ukind_item_dm : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
+| gunit_member_kind_item_dm : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
-    skind Θ Ξ ρ0 H (n :: nil) mk_dm ->
-    skind Θ Ξ ρ0 H (n :: ch) k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_dm ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: ch) k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
 (** The item names the target itself: the chain is read in the target *)
-| ukind_item_self : forall ρ Δ sm Φ Φ0 H its1 d pv ρ0 x ch k,
+| gunit_member_kind_item_self : forall ρ Δ sm Φ Φ0 H its1 d pv ρ0 x ch k,
     gm_item_upto Φ x = Some (Φ0, H, its1, (None, d, pv)) ->
-    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
-    skind Θ Ξ ρ0 H ch k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
+    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H ch k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
 (** An alias unit: the chain is read in its target *)
-| ukind_alias : forall ρ Δ E ch k,
-    skind Θ Ξ (kpad (List.length Δ) ρ) E ch k ->
-    ukind Θ Ξ ρ (gu_mk Δ (md_alias E)) ch k
-with skind (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list string -> mkind -> Prop :=
+| gunit_member_kind_alias : forall ρ Δ E ch k,
+    modexp_member_kind Θ Ξ (kinds_placeholders (List.length Δ) ρ) E ch k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_alias E)) ch k
+with modexp_member_kind (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list string -> member_kind -> Prop :=
 (** A unit: the chain read in the global module of the unit *)
-| skind_unit : forall ρ fp ch k,
-    dkind Θ Ξ (dm_global (q_abs fp nil) nil) ch k ->
-    skind Θ Ξ ρ (me_unit fp) ch k
+| modexp_member_kind_unit : forall ρ fp ch k,
+    dmod_member_kind Θ Ξ (dm_global (q_abs fp nil) nil) ch k ->
+    modexp_member_kind Θ Ξ ρ (me_unit fp) ch k
 (** A module slot: the chain read in the module value of the slot *)
-| skind_var : forall ρ x ch k,
-    dkind Θ Ξ (env_mod ρ x) ch k ->
-    skind Θ Ξ ρ (me_var x) ch k
+| modexp_member_kind_var : forall ρ x ch k,
+    dmod_member_kind Θ Ξ (env_mod ρ x) ch k ->
+    modexp_member_kind Θ Ξ ρ (me_var x) ch k
 (** A literal unit: the chain read in the unit *)
-| skind_lit : forall ρ U ch k,
-    ukind Θ Ξ ρ U ch k ->
-    skind Θ Ξ ρ (me_lit U) ch k
+| modexp_member_kind_lit : forall ρ U ch k,
+    gunit_member_kind Θ Ξ ρ U ch k ->
+    modexp_member_kind Θ Ξ ρ (me_lit U) ch k
 (** A selection, by the longer chain; at the empty chain it is a module,
     its member's module part when that member has a term part too. *)
 (** The longer chain, unless it is the empty chain at a definition with a
     module part *)
-| skind_mem : forall ρ H y ch k,
-    skind Θ Ξ ρ H (y :: ch) k ->
-    ch <> nil \/ k <> mk_dm ->
-    skind Θ Ξ ρ (me_mem H y) ch k
+| modexp_member_kind_mem : forall ρ H y ch k,
+    modexp_member_kind Θ Ξ ρ H (y :: ch) k ->
+    ch <> nil \/ k <> member_kind_dm ->
+    modexp_member_kind Θ Ξ ρ (me_mem H y) ch k
 (** The empty chain at a definition with a module part: the selection is
     its module part, a module *)
-| skind_mem_dm : forall ρ H y,
-    skind Θ Ξ ρ H (y :: nil) mk_dm ->
-    skind Θ Ξ ρ (me_mem H y) nil mk_mod
+| modexp_member_kind_mem_dm : forall ρ H y,
+    modexp_member_kind Θ Ξ ρ H (y :: nil) member_kind_dm ->
+    modexp_member_kind Θ Ξ ρ (me_mem H y) nil member_kind_mod
 (** An application: the chain read in the module applied *)
-| skind_app : forall ρ H N ch k,
-    skind Θ Ξ ρ H ch k ->
-    skind Θ Ξ ρ (me_app H N) ch k
+| modexp_member_kind_app : forall ρ H N ch k,
+    modexp_member_kind Θ Ξ ρ H ch k ->
+    modexp_member_kind Θ Ξ ρ (me_app H N) ch k
 (** The environment a body makes, as kinds read it: an entry each body
-    entry adds ([kbentry]), and the entries an open generates. *)
-with kenv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
+    entry adds ([kinds_body_entry]), and the entries an open generates. *)
+with kinds_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** The empty body adds nothing *)
-| ke_nil : forall ρ, kenv Θ Ξ ρ gm_nil ρ
-(** An entry adds its [kbentry] *)
-| ke_ext : forall ρ Φ ρ1 y E,
-    kenv Θ Ξ ρ Φ ρ1 ->
-    kenv Θ Ξ ρ (gm_ext Φ y E) (kbentry ρ1 E :: ρ1)
+| kinds_env_nil : forall ρ, kinds_env Θ Ξ ρ gm_nil ρ
+(** An entry adds its [kinds_body_entry] *)
+| kinds_env_ext : forall ρ Φ ρ1 y E,
+    kinds_env Θ Ξ ρ Φ ρ1 ->
+    kinds_env Θ Ξ ρ (gm_ext Φ y E) (kinds_body_entry ρ1 E :: ρ1)
 (** An open adds the entries its items generate *)
-| ke_open : forall ρ Φ ρ1 H its gs,
-    kenv Θ Ξ ρ Φ ρ1 ->
-    kgens Θ Ξ ρ1 H its gs ->
-    kenv Θ Ξ ρ (gm_open Φ H its) (kgens_env ρ1 0 gs)
+| kinds_env_open : forall ρ Φ ρ1 H its gs,
+    kinds_env Θ Ξ ρ Φ ρ1 ->
+    kinds_items_gen Θ Ξ ρ1 H its gs ->
+    kinds_env Θ Ξ ρ (gm_open Φ H its) (kinds_items_gen_env ρ1 0 gs)
 (** A body read through the entries its local opens generate, as kinds read
     them: [body_xp] with the types left out.  Each open's items are read in
     the environment of the expanded body before it. *)
-with kbody (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
+with kinds_body_xp (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
 (** The empty body is its own expansion *)
-| kbody_nil : forall ρ, kbody Θ Ξ ρ gm_nil gm_nil
+| kinds_body_xp_nil : forall ρ, kinds_body_xp Θ Ξ ρ gm_nil gm_nil
 (** An entry stays as it is *)
-| kbody_ext : forall ρ Φ Φx x E,
-    kbody Θ Ξ ρ Φ Φx ->
-    kbody Θ Ξ ρ (gm_ext Φ x E) (gm_ext Φx x E)
+| kinds_body_xp_ext : forall ρ Φ Φx x E,
+    kinds_body_xp Θ Ξ ρ Φ Φx ->
+    kinds_body_xp Θ Ξ ρ (gm_ext Φ x E) (gm_ext Φx x E)
 (** An open is replaced by the entries its items generate *)
-| kbody_open : forall ρ Φ Φx ρ1 H its gs,
-    kbody Θ Ξ ρ Φ Φx ->
-    kenv Θ Ξ ρ Φx ρ1 ->
-    kgens Θ Ξ ρ1 H its gs ->
-    kbody Θ Ξ ρ (gm_open Φ H its) (gens_append Φx 0 gs)
+| kinds_body_xp_open : forall ρ Φ Φx ρ1 H its gs,
+    kinds_body_xp Θ Ξ ρ Φ Φx ->
+    kinds_env Θ Ξ ρ Φx ρ1 ->
+    kinds_items_gen Θ Ξ ρ1 H its gs ->
+    kinds_body_xp Θ Ξ ρ (gm_open Φ H its) (gens_append Φx 0 gs)
 (** What the items of an open of [H] generate, by the kinds of the members
     they name, in [ρ]; a generated definition carries no type. *)
-with kgens (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list generated_item -> Prop :=
+with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list generated_item -> Prop :=
 (** No items generate nothing *)
-| kgens_nil : forall ρ H, kgens Θ Ξ ρ H nil nil
+| kinds_items_gen_nil : forall ρ H, kinds_items_gen Θ Ξ ρ H nil nil
 (** An item naming the target itself: an alias of the target *)
-| kgens_self : forall ρ H d pv its gs,
-    kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
+| kinds_items_gen_self : forall ρ H d pv its gs,
+    kinds_items_gen Θ Ξ ρ H its gs ->
+    kinds_items_gen Θ Ξ ρ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
 (** An item naming a term member: a definition of the member *)
-| kgens_def : forall ρ H n d pv its gs,
-    skind Θ Ξ ρ H (n :: nil) mk_term ->
-    kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv a_True (a_mem H n) :: gs)
+| kinds_items_gen_def : forall ρ H n d pv its gs,
+    modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_term ->
+    kinds_items_gen Θ Ξ ρ H its gs ->
+    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv a_True (a_mem H n) :: gs)
 (** An item naming a module member: an alias of the member *)
-| kgens_mod : forall ρ H n d pv its gs,
-    skind Θ Ξ ρ H (n :: nil) mk_mod ->
-    kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_alias d pv (me_mem H n) :: gs)
+| kinds_items_gen_mod : forall ρ H n d pv its gs,
+    modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_mod ->
+    kinds_items_gen Θ Ξ ρ H its gs ->
+    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_alias d pv (me_mem H n) :: gs)
 (** An item naming a member with a term part and a module part: a
     definition with a module part, the member as its term part and as the
     target of its module part *)
-| kgens_dm : forall ρ H n d pv its gs,
-    skind Θ Ξ ρ H (n :: nil) mk_dm ->
-    kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv a_True (a_mem H n) (me_mem H n) :: gs).
+| kinds_items_gen_dm : forall ρ H n d pv its gs,
+    modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_dm ->
+    kinds_items_gen Θ Ξ ρ H its gs ->
+    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv a_True (a_mem H n) (me_mem H n) :: gs).
 
-Scheme dkind_mut_ind := Induction for dkind Sort Prop
-with ukind_mut_ind := Induction for ukind Sort Prop
-with skind_mut_ind := Induction for skind Sort Prop
-with kenv_mut_ind := Induction for kenv Sort Prop
-with kbody_mut_ind := Induction for kbody Sort Prop
-with kgens_mut_ind := Induction for kgens Sort Prop.
-Combined Scheme kind_mut_ind from dkind_mut_ind, ukind_mut_ind, skind_mut_ind, kenv_mut_ind, kbody_mut_ind, kgens_mut_ind.
+Scheme dmod_member_kind_mut_ind := Induction for dmod_member_kind Sort Prop
+with gunit_member_kind_mut_ind := Induction for gunit_member_kind Sort Prop
+with modexp_member_kind_mut_ind := Induction for modexp_member_kind Sort Prop
+with kinds_env_mut_ind := Induction for kinds_env Sort Prop
+with kinds_body_xp_mut_ind := Induction for kinds_body_xp Sort Prop
+with kinds_items_gen_mut_ind := Induction for kinds_items_gen Sort Prop.
+Combined Scheme kind_mut_ind from dmod_member_kind_mut_ind, gunit_member_kind_mut_ind, modexp_member_kind_mut_ind, kinds_env_mut_ind, kinds_body_xp_mut_ind, kinds_items_gen_mut_ind.
 
 #[export]
-Hint Constructors dkind ukind skind kenv kbody kgens : mctt.
+Hint Constructors dmod_member_kind gunit_member_kind modexp_member_kind kinds_env kinds_body_xp kinds_items_gen : mctt.
 
 (** * Evaluation of Expressions
 
@@ -940,7 +940,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
     the entries its local opens generate: it, in the environment of the
     body before it. *)
 | eval_sel_body :
-  `( kbody Θ Ξ ρ Φ Φx ->
+  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
@@ -981,7 +981,7 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
     entries its local opens generate: its unit's closure, in the
     environment of the body before it. *)
 | eval_selm_body :
-  `( kbody Θ Ξ ρ Φ Φx ->
+  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->

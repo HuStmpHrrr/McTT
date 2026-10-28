@@ -111,51 +111,51 @@ End Closed.
 
 (** ** 3. Descriptions abstracted over a telescope, at arguments *)
 
-Lemma ds_red_sub_map : forall R σ, ds_red (ds_sub R σ) = option_map (fun M => M[σ]) (ds_red R).
+Lemma mdesc_reduct_sub_map : forall R σ, mdesc_reduct (mdesc_sub R σ) = option_map (fun M => M[σ]) (mdesc_reduct R).
 Proof.
-  intros R σ; destruct (ds_red R) as [M |] eqn:E; [ exact (ds_red_sub _ _ _ E) |].
+  intros R σ; destruct (mdesc_reduct R) as [M |] eqn:E; [ exact (mdesc_reduct_sub _ _ _ E) |].
   destruct R as [A [M |] | | | ]; cbn in E |- *; congruence.
 Qed.
 
 (** An abstracted description, substituted under its parameters: the term
     part and the reduct, substituted. *)
-Lemma ds_up_sub_parts : forall Θa R σ,
-    (forall A, ds_ty (ds_up Θa R) = Some A ->
-       ds_ty (ds_up (tele_sub Θa σ) (ds_sub R (sb_qn (length Θa) σ))) = Some A[σ]) /\
-    ds_red (ds_up (tele_sub Θa σ) (ds_sub R (sb_qn (length Θa) σ))) = option_map (fun M => M[σ]) (ds_red (ds_up Θa R)).
+Lemma mdesc_up_sub_parts : forall Θa R σ,
+    (forall A, mdesc_type (mdesc_up Θa R) = Some A ->
+       mdesc_type (mdesc_up (tele_sub Θa σ) (mdesc_sub R (sb_qn (length Θa) σ))) = Some A[σ]) /\
+    mdesc_reduct (mdesc_up (tele_sub Θa σ) (mdesc_sub R (sb_qn (length Θa) σ))) = option_map (fun M => M[σ]) (mdesc_reduct (mdesc_up Θa R)).
 Proof.
   intros Θa R σ; split.
-  - intros A Ht; destruct (ds_ty_up_inv _ _ _ Ht) as (A0 & Ht0 & ->).
-    rewrite ctx_pi_sub; apply ds_ty_up, ds_ty_sub; assumption.
-  - rewrite !ds_red_up, ds_red_sub_map; destruct (ds_red R) as [M |]; cbn; [ rewrite ctx_fn_sub |]; reflexivity.
+  - intros A Ht; destruct (mdesc_type_up_inv _ _ _ Ht) as (A0 & Ht0 & ->).
+    rewrite ctx_pi_sub; apply mdesc_type_up, mdesc_type_sub; assumption.
+  - rewrite !mdesc_reduct_up, mdesc_reduct_sub_map; destruct (mdesc_reduct R) as [M |]; cbn; [ rewrite ctx_fn_sub |]; reflexivity.
 Qed.
 
 (** A description abstracted over [Θa] and then a telescope [T2], given
     arguments for all of [T2]: its term part and reduct are those of the
     description abstracted over [Θa], instantiated. *)
-Lemma ds_ats_up_parts : forall Ns T2 Θa R R1,
-    tele_ass T2 -> length T2 = length Ns -> ds_ats (ds_up (Θa ++ T2) R) Ns = Some R1 ->
-    (forall A, ds_ty (ds_up Θa R) = Some A -> ds_ty R1 = Some A[sb_of_list Id Ns]) /\
-    ds_red R1 = option_map (fun M => M[sb_of_list Id Ns]) (ds_red (ds_up Θa R)).
+Lemma mdesc_ats_up_parts : forall Ns T2 Θa R R1,
+    tele_ass T2 -> length T2 = length Ns -> mdesc_ats (mdesc_up (Θa ++ T2) R) Ns = Some R1 ->
+    (forall A, mdesc_type (mdesc_up Θa R) = Some A -> mdesc_type R1 = Some A[sb_of_list Id Ns]) /\
+    mdesc_reduct R1 = option_map (fun M => M[sb_of_list Id Ns]) (mdesc_reduct (mdesc_up Θa R)).
 Proof.
   induction Ns as [| N Ns IH]; intros * HT Hl Ha.
   - destruct T2; [| cbn in Hl; discriminate ]; cbn in Ha; injection Ha as <-; rewrite app_nil_r.
     split; [ intros A Ht; rewrite Ht, exp_sub_id; reflexivity |].
-    destruct (ds_red (ds_up Θa R)); cbn; rewrite ?exp_sub_id; reflexivity.
+    destruct (mdesc_reduct (mdesc_up Θa R)); cbn; rewrite ?exp_sub_id; reflexivity.
   - destruct (List.exists_last (l := T2)) as (T2' & e & ->); [ intros ->; cbn in Hl; discriminate |].
     destruct (tele_ass_app_inv _ _ HT) as [HT' He]; inversion He as [| ? ? [B ->] _]; subst.
     rewrite List.length_app in Hl; cbn in Hl.
-    cbn [ds_ats] in Ha; rewrite app_assoc, ds_at_up, tele_sub_app, List.length_app, sb_qn_plus in Ha.
+    cbn [mdesc_ats] in Ha; rewrite app_assoc, mdesc_at_up, tele_sub_app, List.length_app, sb_qn_plus in Ha.
     set (σ := sb_qn (length T2') (Id,,N)) in Ha.
     destruct (IH _ _ _ _ (tele_ass_sub _ _ HT') ltac:(rewrite length_tele_sub; lia) Ha) as [Hty Hred].
-    destruct (ds_up_sub_parts Θa R σ) as [Hty0 Hred0].
+    destruct (mdesc_up_sub_parts Θa R σ) as [Hty0 Hred0].
     assert (Hσ : forall M, M[σ][sb_of_list Id Ns] = M[sb_of_list Id (N :: Ns)]).
     { intros M; subst σ; cbn [sb_of_list]; rewrite exp_sub_sub; apply exp_sub_sb_eq.
       replace (length T2') with (length Ns) by lia.
       etransitivity; [ apply sb_qn_of_list | apply sb_of_list_cong, sb_compose_id_right ]. }
     split.
     + intros A Ht; rewrite (Hty _ (Hty0 _ Ht)), Hσ; reflexivity.
-    + rewrite Hred, Hred0; destruct (ds_red (ds_up Θa R)); cbn; rewrite ?Hσ; reflexivity.
+    + rewrite Hred, Hred0; destruct (mdesc_reduct (mdesc_up Θa R)); cbn; rewrite ?Hσ; reflexivity.
 Qed.
 
 (** ** 4. What an entry is worth at the target *)
@@ -224,9 +224,9 @@ Proof.
 Qed.
 
 (** A stored body is a module. *)
-Lemma gc_loc_kind : forall Θ Ξ pl TΦ args, gc_loc Θ Ξ pl = Some TΦ -> dkind Θ Ξ (dm_global pl args) nil mk_mod.
+Lemma gc_loc_kind : forall Θ Ξ pl TΦ args, gc_loc Θ Ξ pl = Some TΦ -> dmod_member_kind Θ Ξ (dm_global pl args) nil member_kind_mod.
 Proof.
-  intros * Hl; apply dkind_global_here_mod; unfold gc_loc in Hl; destruct (gc_frame Ξ pl) eqn:Hf; [ right; eauto |].
+  intros * Hl; apply dmod_member_kind_global_here_mod; unfold gc_loc in Hl; destruct (gc_frame Ξ pl) eqn:Hf; [ right; eauto |].
   destruct TΦ; left; destruct (gc_body_module _ _ _ _ _ Hl); eauto.
 Qed.
 
@@ -361,7 +361,7 @@ Section FiledOk.
       definition with a module part, a member with both parts. *)
   Lemma fo_alias_kind : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_alias_unit E = Some Ua ->
-      dkind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
+      dmod_member_kind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
   Proof.
     intros * Hl Hp HUa.
     pose proof (fo_alias_module _ _ _ _ _ _ _ Hl Hp HUa) as Hm; rewrite qname_in_app in Hm.
@@ -377,14 +377,14 @@ Section FiledOk.
     pose proof (valid_nil_kind _ _ _ (valid_unit_alias_rel0 _ _ _ _ HK) per_ctx_env_nil_true nil I) as Hk.
     inversion Hk; subst.
     destruct E as [| pv Ue | | pv Ad Md Ud |]; cbn in HUa; try discriminate; cbn [entry_kind].
-    - eapply dkind_global_alias_case; [ exact Hm | right; exact (module_alias_not_dm _ _ _ _ _ _ Hm HeE2) | eassumption ].
-    - change mk_dm with (dm_of mk_mod).
-      eapply dkind_global_alias_dm; [ exact Hm | right; right; do 4 eexists; exact HeE2 | eassumption ].
+    - eapply dmod_member_kind_global_alias_case; [ exact Hm | right; exact (module_alias_not_dm _ _ _ _ _ _ Hm HeE2) | eassumption ].
+    - change member_kind_dm with (dm_of member_kind_mod).
+      eapply dmod_member_kind_global_alias_dm; [ exact Hm | right; right; do 4 eexists; exact HeE2 | eassumption ].
   Qed.
 
   (** Each entry of a stored body has its kind at the target. *)
   Lemma fo_kind : forall p T Φ x Φ0 E, gc_loc Θm Ξm p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
-      dkind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
+      dmod_member_kind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
   Proof.
     intros * Hl Hp.
     destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & _).
@@ -393,13 +393,13 @@ Section FiledOk.
     pose proof HeE2 as HeE2'; rewrite qname_in_app in HeE2'.
     destruct E2 as [b pv A B | pv [Δ [sm Φ' | Ea]] | pv pq k D ΦD | pv Ad Md Ud | pv pr Rr ΦR]; cbn [entry_kind].
     - apply gc_entry_def in HeE2; rewrite qname_in_app in HeE2.
-      eapply dkind_global_step; [ right; do 4 eexists; exact HeE2 | right; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ HeE2)
-                             | eapply dkind_global_here_def; exact HeE2 ].
+      eapply dmod_member_kind_global_step; [ right; do 4 eexists; exact HeE2 | right; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ HeE2)
+                             | eapply dmod_member_kind_global_here_def; exact HeE2 ].
     - (* a body module: a body stored at its path, which names no member with both parts *)
       destruct (loc_child_mod _ _ fo_wf _ _ _ Hlc2 _ _ _ _ _ Hent2) as [Hb Hm].
       destruct (gc_body_loc _ _ _ _ Hb) as (r & Hr).
       rewrite qname_in_app in Hr, Hm.
-      eapply dkind_global_step; [ left; eexists; exact Hr | right | exact (gc_loc_kind _ _ _ _ _ Hr) ].
+      eapply dmod_member_kind_global_step; [ left; eexists; exact Hr | right | exact (gc_loc_kind _ _ _ _ _ Hr) ].
       exact (module_body_not_dm _ _ _ _ Hm (module_entry_no_record _ _ _ _ _ _ Hm HeE2')).
     - assert (HE : E = ge_mod pv (gu_mk Δ (md_alias Ea)))
         by (apply entry_grows_eq; [ exact Hgr | intros * [=] | intros * [=] | intros * [=] ]).
@@ -407,7 +407,7 @@ Section FiledOk.
     - (* an inductive type: a member with both parts, its module a body stored at its path *)
       destruct (gc_body_loc _ _ _ _ (loc_child_ind _ _ fo_wf _ _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
       rewrite qname_in_app in Hr.
-      eapply dkind_global_here_dm; [ left | exact Hr ].
+      eapply dmod_member_kind_global_here_dm; [ left | exact Hr ].
       rewrite ind_mlookup_unfold; destruct (gs_find_ind Ξ2 (qname_app p (x :: nil))); [ eexists; reflexivity |].
       destruct (gm_entry_head _ _ _ Hent2) as (z & ip & [= <- <-] & Hin).
       rewrite (proj1 (proj2 (proj2 (loc_read _ _ fo_wf _ _ _ Hlc2 _ Hin nil)))),
@@ -422,7 +422,7 @@ Section FiledOk.
     - (* a record type: a member with both parts, its module a body stored at its path *)
       destruct (gc_body_loc _ _ _ _ (loc_child_record _ _ fo_wf _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
       rewrite qname_in_app in Hr.
-      eapply dkind_global_here_dm; [ right; left | exact Hr ].
+      eapply dmod_member_kind_global_here_dm; [ right; left | exact Hr ].
       unfold record_lookup; destruct (gs_find_record Ξ2 (qname_app p (x :: nil))); [ eexists; reflexivity |].
       rewrite HeE2'; eexists; reflexivity.
   Qed.
@@ -431,11 +431,11 @@ Section FiledOk.
       term part, is a module at the target. *)
   Lemma fo_sub_kind : forall p x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
       ~ dm_path Θ2 Ξ2 (qname_app p (x :: nil)) ->
-      dkind Θ2 Ξ2 (dm_global p nil) (x :: nil) mk_mod.
+      dmod_member_kind Θ2 Ξ2 (dm_global p nil) (x :: nil) member_kind_mod.
   Proof.
     intros * Hl Hdm; destruct TΦ as [T Φ].
     destruct (gc_loc_grow _ _ _ _ fo_wf fo_sub _ _ _ Hl) as (Φ2 & Hl2 & _).
-    eapply dkind_global_step; [ left; eexists; exact Hl2 | right; exact Hdm | exact (gc_loc_kind _ _ _ _ _ Hl2) ].
+    eapply dmod_member_kind_global_step; [ left; eexists; exact Hl2 | right; exact Hdm | exact (gc_loc_kind _ _ _ _ _ Hl2) ].
   Qed.
 
   (** Each alias stored in a stored body is a valid unit in any valid context. *)
@@ -457,13 +457,13 @@ Section FiledOk.
       valid body, the member's value its value. *)
   Lemma fo_term_fn : forall T A0 i M0 R0 g, tele_ass T -> ⊨ T -> T ⊨ A0 : Typeω@i -> T ⊨ M0 : A0 ->
       ⟦ ctx_fn T M0 ⟧ nil ↘ g ->
-      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
-         ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-         ds_red R1 = Some (ctx_fn T1 M0)[sb_of_list Id Ns]) ->
-      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
-         ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-         (ds_red R1 = None \/
-          exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
+      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
+         mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+         mdesc_reduct R1 = Some (ctx_fn T1 M0)[sb_of_list Id Ns]) ->
+      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
+         mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+         (mdesc_reduct R1 = None \/
+          exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
             forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
               $*| g & ns | gc_deps ⍮ gc_stack ↘ m)) /\
       rel_self T A0 g.
@@ -485,12 +485,12 @@ Section FiledOk.
 
   (** The reduct clause for an abstracted description, by its parts. *)
   Lemma fo_ats_up : forall T R Ns R1 T1 T2, T = T1 ++ T2 -> tele_ass T -> List.length T2 = List.length Ns ->
-      ds_ats (ds_up T R) Ns = Some R1 ->
-      (forall A, ds_ty (ds_up T1 R) = Some A -> ds_ty R1 = Some A[sb_of_list Id Ns]) /\
-      ds_red R1 = option_map (fun M => M[sb_of_list Id Ns]) (ds_red (ds_up T1 R)).
+      mdesc_ats (mdesc_up T R) Ns = Some R1 ->
+      (forall A, mdesc_type (mdesc_up T1 R) = Some A -> mdesc_type R1 = Some A[sb_of_list Id Ns]) /\
+      mdesc_reduct R1 = option_map (fun M => M[sb_of_list Id Ns]) (mdesc_reduct (mdesc_up T1 R)).
   Proof.
     intros * -> HTa Hl Ha.
-    exact (ds_ats_up_parts _ _ _ _ _ (proj2 (tele_ass_app_inv _ _ HTa)) Hl Ha).
+    exact (mdesc_ats_up_parts _ _ _ _ _ (proj2 (tele_ass_app_inv _ _ HTa)) Hl Ha).
   Qed.
 
   Lemma per_bot_glob : forall pg, per_bot (d_glob pg) (d_glob pg).
@@ -503,7 +503,7 @@ Section FiledOk.
       ind_mlookup Θm Ξm (qname_in p x) = Some (pq, k, D) -> ind_selfpath pq k D (qname_in p x) ->
       ind_member D k = Some Mk -> ind_uparams D = Δu ++ T ->
       gc_resolve Θ2 Ξ2 (qname_in p x) = None -> ind_mlookup Θ2 Ξ2 (qname_in p x) = Some (pq, k, D) ->
-      valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
+      valid_filed_term p T x (mdesc_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
   Proof.
     intros * Hl Hindm Hsp HMk HU Hres2 Hind2.
     destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] _].
@@ -528,13 +528,13 @@ Section FiledOk.
       [ exact HA0 | | | ].
     - intros Ns R1 T1 T2 HT12 Hlen Ha.
       assert (Hle : length Ns <= length (ind_uparams D)) by (rewrite HU, HT12, !length_app; lia).
-      unfold S' in Ha; rewrite (ds_ats_tm_ind _ _ _ _ _ (decl_closed_ass _ Hc) Hle) in Ha; injection Ha as <-.
+      unfold S' in Ha; rewrite (mdesc_term_part_ats_ind _ _ _ _ _ (decl_closed_ass _ Hc) Hle) in Ha; injection Ha as <-.
       split.
-      + cbn [ds_ty]; f_equal.
+      + cbn [mdesc_type]; f_equal.
         unfold ind_ty_at; rewrite <- length_im_params, Hpar, HT12, app_assoc, length_app, <- Hlen, Nat.add_sub, firstn_app,
           Nat.sub_diag, firstn_all; cbn [List.firstn]; rewrite app_nil_r, ctx_pi_app; reflexivity.
       + right; exists (apps_exp (a_ind pq k) (vars_from 0 (length T2))).
-        split; [ cbn [ds_red]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
+        split; [ cbn [mdesc_reduct]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
         destruct (tele_ass_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
         assert (HT12' : ⊨ T1 ++ T2) by (rewrite <- HT12; exact HT).
         pose proof (rel_ctx_wf_app_r _ _ HT12') as HT2.
@@ -563,7 +563,7 @@ Section FiledOk.
       frame of a record type's module both are. *)
   Lemma fo_record_term : forall p T Φ x R Δ0, gc_loc Θm Ξm p = Some (T, Φ) ->
       record_lookup Θm Ξm (qname_in p x) = Some R -> record_params R = Δ0 ++ T ->
-      valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
+      valid_filed_term p T x (mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
     intros * Hl Hrl HP.
     destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] _].
@@ -588,13 +588,13 @@ Section FiledOk.
       [ exact HA0 | | | ].
     - intros Ns R1 T1 T2 HT12 Hlen Ha.
       assert (Hle : length Ns <= length (record_params R)) by (rewrite HP, HT12, !length_app; lia).
-      rewrite (ds_ats_tm_record _ _ _ Hass Hle) in Ha; injection Ha as <-.
+      rewrite (mdesc_term_part_ats_record _ _ _ Hass Hle) in Ha; injection Ha as <-.
       split.
-      + cbn [ds_ty]; f_equal.
+      + cbn [mdesc_type]; f_equal.
         unfold record_ty_at; rewrite HP, HT12, app_assoc, length_app, <- Hlen, Nat.add_sub, firstn_app,
           Nat.sub_diag, firstn_all; cbn [List.firstn]; rewrite app_nil_r, ctx_pi_app; reflexivity.
       + right; exists (apps_exp (a_record (qname_in p x)) (vars_from 0 (length T2))).
-        split; [ cbn [ds_red]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
+        split; [ cbn [mdesc_reduct]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
         destruct (tele_ass_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
         assert (HT12' : ⊨ T1 ++ T2) by (rewrite <- HT12; exact HT).
         pose proof (rel_ctx_wf_app_r _ _ HT12') as HT2.
@@ -633,15 +633,15 @@ Section FiledOk.
       assert (HE2 : ge_def b pv (ctx_pi T A0) (option_map (ctx_fn T) oM0) = E2)
         by (apply entry_grows_eq; [ exact Hgr | intros * -> | intros * -> | intros * -> ]; cbn in Hgr; discriminate).
       subst E2; apply gc_entry_def in HeE2; rewrite qname_in_app in HeE2.
-      assert (HR : ds_term (ctx_pi T A0) (if b then option_map (ctx_fn T) oM0 else None) =
-                   ds_up T (ds_term A0 (if b then oM0 else None))) by (destruct b; reflexivity).
+      assert (HR : mdesc_term (ctx_pi T A0) (if b then option_map (ctx_fn T) oM0 else None) =
+                   mdesc_up T (mdesc_term A0 (if b then oM0 else None))) by (destruct b; reflexivity).
       rewrite HR.
       assert (Hats : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns ->
-                ds_ats_tm (ds_up T (ds_term A0 (if b then oM0 else None))) Ns = Some R1 ->
-                ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-                ds_red R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (if b then oM0 else None)).
+                mdesc_term_part_ats (mdesc_up T (mdesc_term A0 (if b then oM0 else None))) Ns = Some R1 ->
+                mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+                mdesc_reduct R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (if b then oM0 else None)).
       { intros * HT12 Hlen Ha.
-        rewrite (ds_ats_tm_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
+        rewrite (mdesc_term_part_ats_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
         destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; cbn; destruct (if b then oM0 else None); reflexivity ]. }
       destruct b; [ destruct oM0 as [M0 |] |].
@@ -685,13 +685,13 @@ Section FiledOk.
       assert (HE2 : ge_def_mod pv (ctx_pi T A0) (ctx_fn T M0) U = E2)
         by (apply entry_grows_eq; [ exact Hgr | intros * -> | intros * -> | intros * -> ]; cbn in Hgr; discriminate).
       subst E2; rewrite qname_in_app in HeE2.
-      change (ds_term (ctx_pi T A0) (Some (ctx_fn T M0))) with (ds_up T (ds_term A0 (Some M0))).
+      change (mdesc_term (ctx_pi T A0) (Some (ctx_fn T M0))) with (mdesc_up T (mdesc_term A0 (Some M0))).
       assert (Hats : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns ->
-                ds_ats_tm (ds_up T (ds_term A0 (Some M0))) Ns = Some R1 ->
-                ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-                ds_red R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (Some M0)).
+                mdesc_term_part_ats (mdesc_up T (mdesc_term A0 (Some M0))) Ns = Some R1 ->
+                mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+                mdesc_reduct R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (Some M0)).
       { intros * HT12 Hlen Ha.
-        rewrite (ds_ats_tm_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
+        rewrite (mdesc_term_part_ats_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
         destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; reflexivity ]. }
       assert (HT0 : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT).
@@ -712,7 +712,7 @@ Section FiledOk.
       type former, as a filed record entry is. *)
   Lemma fo_record_frame : forall p T Φ x R, gc_loc Θm Ξm p = Some (T, Φ) ->
       gs_find_record Ξm (qname_in p x) = Some R ->
-      valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
+      valid_filed_term p T x (mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
     intros * Hl Hk.
     assert (Hrl : record_lookup Θm Ξm (qname_in p x) = Some R) by (unfold record_lookup; rewrite Hk; reflexivity).
@@ -728,7 +728,7 @@ Section FiledOk.
       former, as a filed member's entry is. *)
   Lemma fo_ind_frame : forall p T Φ x pq k D Mk, gc_loc Θm Ξm p = Some (T, Φ) ->
       gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
-      valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
+      valid_filed_term p T x (mdesc_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
   Proof.
     intros * Hl Hk HMk.
     assert (Hindm : ind_mlookup Θm Ξm (qname_in p x) = Some (pq, k, D)) by (rewrite ind_mlookup_unfold, Hk; reflexivity).

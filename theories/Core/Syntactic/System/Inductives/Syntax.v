@@ -1234,21 +1234,21 @@ Proof.
 Qed.
 
 (** The container's block for its member [i'], moved. *)
-Lemma vwrap_block_sub : forall pq D D' vm Us Bks i' Mi' τ,
-    decl_closed D -> vwrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+Lemma view_wrap_block_sub : forall pq D D' vm Us Bks i' Mi' τ,
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     ind_member D' i' = Some Mi' ->
-    eblock_sub (vwrap_block pq D D' vm Us Bks i' Mi') τ
-    = vwrap_block pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) i' Mi'.
+    eblock_sub (view_wrap_block pq D D' vm Us Bks i' Mi') τ
+    = view_wrap_block pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) i' Mi'.
 Proof.
   intros * HD Hvw Hl Hnm Hn HMi'.
   destruct (List.nth_error vm i') as [v |] eqn:Hv;
-    [| apply List.nth_error_None in Hv; pose proof (vwrap_ok_length _ _ _ Hvw) as Hlv;
+    [| apply List.nth_error_None in Hv; pose proof (view_wrap_ok_length _ _ _ Hvw) as Hlv;
        assert (Hk : List.nth_error (ind_members D') i' <> None) by (unfold ind_member in HMi'; congruence);
        apply List.nth_error_Some in Hk; lia ].
-  destruct (vwrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & _ & Hcs & Hcorr).
-  unfold vwrap_block; rewrite (List.nth_error_nth _ _ _ Hv), nth_error_blocks_sub, HMv.
+  destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & _ & Hcs & Hcorr).
+  unfold view_wrap_block; rewrite (List.nth_error_nth _ _ _ Hv), nth_error_blocks_sub, HMv.
   destruct (List.nth_error Bks v) as [[nm oZ A Bs] |] eqn:Hb; cbn [option_map eblock_sub]; [| reflexivity ].
   f_equal; unfold brs_sub; rewrite map_map; apply map_ext_in; intros [c gs'] Hin; cbn [fst snd].
   assert (Hc : In c (List.map fst (im_cons Mv))) by (rewrite Hcs; apply List.in_map_iff; exists (c, gs'); auto).
@@ -1259,26 +1259,26 @@ Proof.
 Qed.
 
 (** The container's blocks at a view, moved. *)
-Lemma vwrap_sub : forall pq D D' vm Us Bks τ,
-    decl_closed D -> vwrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+Lemma view_wrap_sub : forall pq D D' vm Us Bks τ,
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
-    blocks_sub (vwrap pq D D' vm Us Bks) τ = vwrap pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ).
+    blocks_sub (view_wrap pq D D' vm Us Bks) τ = view_wrap pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ).
 Proof.
-  intros * HD Hvw Hl Hnm Hn; unfold vwrap.
+  intros * HD Hvw Hl Hnm Hn; unfold view_wrap.
   assert (H : forall ms s, (forall i Mi', List.nth_error ms i = Some Mi' -> ind_member D' (s + i) = Some Mi') ->
-            blocks_sub (vwrap_from pq D D' vm Us Bks s ms) τ
-            = vwrap_from pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) s ms).
+            blocks_sub (view_wrap_from pq D D' vm Us Bks s ms) τ
+            = view_wrap_from pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) s ms).
   { induction ms as [| Mi' ms IH]; intros s Hms; [ reflexivity |].
-    unfold blocks_sub in *; cbn [vwrap_from List.map]; f_equal.
-    - eapply vwrap_block_sub; try eassumption; rewrite <- (Nat.add_0_r s); exact (Hms 0 _ eq_refl).
+    unfold blocks_sub in *; cbn [view_wrap_from List.map]; f_equal.
+    - eapply view_wrap_block_sub; try eassumption; rewrite <- (Nat.add_0_r s); exact (Hms 0 _ eq_refl).
     - apply IH; intros i Mi Hi; replace (S s + i) with (s + S i) by lia; exact (Hms (S i) _ Hi). }
   apply H; intros i Mi' Hi; exact (proj1 (ind_bmembers_member _ _ _ Hi)).
 Qed.
 
-Lemma vwrap_wk : forall pq D D' vm Us Bks φ,
-    decl_closed D -> vwrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+Lemma view_wrap_wk : forall pq D D' vm Us Bks φ,
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
-    blocks_wk (vwrap pq D D' vm Us Bks) φ = vwrap pq D D' vm (List.map (fun U => U[φ]ʷ) Us) (blocks_wk Bks φ).
-Proof. intros; rewrite <- !blocks_sub_of_wk, <- map_sub_of_wk; apply vwrap_sub; assumption. Qed.
+    blocks_wk (view_wrap pq D D' vm Us Bks) φ = view_wrap pq D D' vm (List.map (fun U => U[φ]ʷ) Us) (blocks_wk Bks φ).
+Proof. intros; rewrite <- !blocks_sub_of_wk, <- map_sub_of_wk; apply view_wrap_sub; assumption. Qed.

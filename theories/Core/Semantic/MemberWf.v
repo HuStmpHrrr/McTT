@@ -25,8 +25,8 @@ Section Fixed_GCtx.
     a type, with its δ-reduct, if any, of it. *)
 Corollary member_wf : forall Γ H x R A,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ (me_mem H x) R ->
-    ds_ty R = Some A ->
-    (exists i, Γ ⊢ A : Typeω@i) /\ (forall M, ds_red R = Some M -> Γ ⊢ M : A) /\ Γ ⊢ a_mem H x : A.
+    mdesc_type R = Some A ->
+    (exists i, Γ ⊢ A : Typeω@i) /\ (forall M, mdesc_reduct R = Some M -> Γ ⊢ M : A) /\ Γ ⊢ a_mem H x : A.
 Proof.
   intros * HH Hm Ht.
   pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv.
@@ -56,7 +56,7 @@ Qed.
 (** The outermost parameter a typed module description still takes is a
     type. *)
 Lemma desc_ok_tele_head : forall Γ Rm T B T1,
-    desc_ok gc_deps gc_stack Γ Rm -> ds_tele Rm = Some T -> tele_view T = Some (B, T1) ->
+    desc_ok gc_deps gc_stack Γ Rm -> mdesc_tele Rm = Some T -> tele_view T = Some (B, T1) ->
     exists i, Γ ⊢ B : Typeω@i.
 Proof.
   intros * HR Ht Hv.
@@ -89,26 +89,26 @@ Qed.
     a type. *)
 Corollary mtele_head_wf : forall Γ H R T B T1,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ H R ->
-    ds_mtele R = Some T -> tele_view T = Some (B, T1) ->
+    mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
     exists i, Γ ⊢ B : Typeω@i.
 Proof.
   intros * HH Hm Ht Hv.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
-  unfold ds_mtele in Ht; destruct (ds_mod R) as [Rm |] eqn:Hmd; [| discriminate ].
+  unfold mdesc_mod_tele in Ht; destruct (mdesc_mod R) as [Rm |] eqn:Hmd; [| discriminate ].
   exact (desc_ok_tele_head _ _ _ _ _ (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm) Hmd) Ht Hv).
 Qed.
 
 (** A well-formed module expression denotes a module with a telescope. *)
 Lemma me_mtele : forall Γ H H',
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H' ->
-    exists R T, mdenote gc_deps gc_stack Γ H R /\ ds_mtele R = Some T.
+    exists R T, mdenote gc_deps gc_stack Γ H R /\ mdesc_mod_tele R = Some T.
 Proof.
   intros * HH.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
   destruct (me_denotes _ _ _ _ _ HH) as (R & Rm & Hm & Hmd).
   pose proof (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm) Hmd) as Hok.
-  destruct (desc_ok_tele _ _ _ _ Hok (ds_mod_is_mod _ _ Hmd)) as [T HT].
-  exists R, T; split; [ exact Hm | unfold ds_mtele; rewrite Hmd; exact HT ].
+  destruct (desc_ok_tele _ _ _ _ Hok (mdesc_mod_is_mod _ _ Hmd)) as [T HT].
+  exists R, T; split; [ exact Hm | unfold mdesc_mod_tele; rewrite Hmd; exact HT ].
 Qed.
 
 (** ** What a Local Open Generates Is Well-Formed
@@ -153,7 +153,7 @@ Proof.
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
     destruct (desc_ok_tele _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hmod) as [T HT].
-    assert (Hmt : ds_mtele R = Some T) by (unfold ds_mtele; rewrite (ds_is_mod_mod _ Hmod); exact HT).
+    assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite (mdesc_is_mod_mod _ Hmod); exact HT).
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
     assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias (me_mem H n)) ≈ gu_mk nil (md_alias (me_mem H n)))
@@ -170,8 +170,8 @@ Proof.
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
     pose proof (desc_ok_mod _ _ Hg _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hmd) as Hok.
-    destruct (desc_ok_tele _ _ _ _ Hok (ds_mod_is_mod _ _ Hmd)) as [T HT].
-    assert (Hmt : ds_mtele R = Some T) by (unfold ds_mtele; rewrite Hmd; exact HT).
+    destruct (desc_ok_tele _ _ _ _ Hok (mdesc_mod_is_mod _ _ Hmd)) as [T HT].
+    assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite Hmd; exact HT).
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
     assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias (me_mem H n)) ≈ gu_mk nil (md_alias (me_mem H n)))

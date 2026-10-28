@@ -2572,7 +2572,7 @@ Section GroupElim.
           ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ B1 ↘ u1 -> RU (env_args nil u1) (env_args nil u0) ->
           forall RS, EF tele_sub (im_nparams Mk) τU ++ Γ ≈ tele_sub (im_nparams Mk) τU ++ Γ ∈ per_ctx_env ↘ RS ->
           forall ns ns', tele_rel (nr k) T ns ns' -> RS (env_args B1 ns) (env_args B1 ns) ->
-          forall t1 t2 (i : uidx) R, ⟦ IT ⟧ env_args B1 ns ↘ t1 -> ⟦ IT ⟧ env_args B2 ns' ↘ t2 ->
+          forall t1 t2 (i : universe_index) R, ⟦ IT ⟧ env_args B1 ns ↘ t1 -> ⟦ IT ⟧ env_args B2 ns' ↘ t2 ->
           DF t1 ≈ t2 ∈ per_univ_elem i ↘ R -> (R <~> G k u0 u0 ns ns').
       Proof.
         intros * HB Hu1 H10 RS HRS * Hns HEE * Et1 Et2 HR.
@@ -2665,7 +2665,7 @@ Section GroupElim.
     Lemma scrut_rel : forall m Mm, ind_member D m = Some Mm -> ⊨ elim_mctx p D m Mm Us ++ Γ ->
         forall Ns, List.length Ns = im_nn Mm -> gsub Γ (sb_of_list Id Ns) (tele_sub (im_nparams Mm) τU ++ Γ) ->
         forall C2', RΓ C1 C2' -> forall ns ns', ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ ns -> ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C2' ↘ ns' ->
-        forall t t' (i : uidx) R, ⟦ ind_mty p D m Us Ns ⟧ C1 ↘ t -> ⟦ ind_mty p D m Us Ns ⟧ C2' ↘ t' ->
+        forall t t' (i : universe_index) R, ⟦ ind_mty p D m Us Ns ⟧ C1 ↘ t -> ⟦ ind_mty p D m Us Ns ⟧ C2' ↘ t' ->
         DF t ≈ t' ∈ per_univ_elem i ↘ R ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns' /\ (R <~> G m u0 u0 ns ns').
     Proof.

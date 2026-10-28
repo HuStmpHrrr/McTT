@@ -29,7 +29,7 @@ Section Fixed_GCtx.
 
 
 Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
-    Γ ⊨ A ≈ A' : ulvl_tm u ->
+    Γ ⊨ A ≈ A' : universe_index_term u ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
@@ -45,11 +45,11 @@ Proof.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
   destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
   simpl in Hchain; destruct Hchain as [? [? ?]].
-  destruct u; cbn [ulvl_tm] in *; invert_rel_typ_body; eassumption.
+  destruct u; cbn [universe_index_term] in *; invert_rel_typ_body; eassumption.
 Qed.
 
 Corollary rel_exp_of_univ_inversion_simple : forall {Γ A A' u},
-    Γ ⊨ A ≈ A' : ulvl_tm u ->
+    Γ ⊨ A ≈ A' : universe_index_term u ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_rel ->
@@ -79,24 +79,24 @@ Lemma rel_exp_of_univ : forall {Γ A A' u},
           ⟦ σ ⟧s ρ ↘ ρσ ->
           ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
           rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ u)) ->
-    Γ ⊨ A ≈ A' : ulvl_tm u.
+    Γ ⊨ A ≈ A' : universe_index_term u.
 Proof.
   intros * [env_relΓ [HΓ H]].
-  eexists_rel_exp_with (ulvl_above u).
+  eexists_rel_exp_with (large_level_above u).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists (per_univ u).
   split; [| eapply H; eassumption].
-  pose proof (per_univ_elem_ulvl_val u _ (uidx_lt_ulvl_above u)) as Hu.
-  destruct u; econstructor; try apply (eval_ulvl_tm _ _ (us _)); try apply (eval_ulvl_tm _ _ (ul _));
+  pose proof (per_univ_elem_universe_index_value u _ (universe_index_lt_large_level_above u)) as Hu.
+  destruct u; econstructor; try apply (eval_universe_index_term _ _ (us _)); try apply (eval_universe_index_term _ _ (ul _));
     apply rel_chain_4; assumption.
 Qed.
 
 (** Cumulativity across the tiers, in particular from a small universe to
     every large one. *)
 Lemma rel_exp_under_ctx_univ_cumu : forall {Γ A A' u v},
-    uidx_le u v ->
-    Γ ⊨ A ≈ A' : ulvl_tm u ->
-    Γ ⊨ A ≈ A' : ulvl_tm v.
+    universe_index_le u v ->
+    Γ ⊨ A ≈ A' : universe_index_term u ->
+    Γ ⊨ A ≈ A' : universe_index_term v.
 Proof.
   intros * Huv H%rel_exp_of_univ_inversion.
   destruct H as [env_relΓ [HΓ HA]].
@@ -107,7 +107,7 @@ Proof.
     as [? ? ? ? ? ? ? ? Hchain].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption].
-  intros ? ? [R HR]; exists R; eapply per_univ_elem_cumu_uidx; eassumption.
+  intros ? ? [R HR]; exists R; eapply per_univ_elem_cumu_universe_index; eassumption.
 Qed.
 
 Corollary rel_exp_under_ctx_small_large : forall {Γ A A' n} {i : nat},
@@ -277,7 +277,7 @@ Proof.
   exists (per_univ i).
   split; [| eapply H; eassumption].
   assert (Hu : per_univ_elem (S i) (per_univ i) 𝕌ω@i 𝕌ω@i)
-    by (apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ]).
+    by (apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
 Qed.
@@ -324,7 +324,7 @@ Proof.
     named by the caller are unused. *)
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hu : per_univ (S i) 𝕌ω@i 𝕌ω@i)
-    by (eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ]).
+    by (eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
 Qed.

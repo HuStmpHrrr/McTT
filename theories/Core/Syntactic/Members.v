@@ -1823,15 +1823,15 @@ Proof. reflexivity. Qed.
 (** ** Descriptions
 
     A description says what a module expression denotes ([mdenote] below):
-    a term of a type with its δ-reduct, if it has one ([ds_term]); an open
+    a term of a type with its δ-reduct, if it has one ([mdesc_term]); an open
     (local) module, its parameters, its body as written and the body read
-    through the entries its local opens generate ([ds_open Δ Φ Φx]: the
+    through the entries its local opens generate ([mdesc_open Δ Φ Φx]: the
     module is the written body, its entries are read in the expansion); a closed module,
     stored at its canonical path [p] closed over its full telescope [T],
     given the arguments [Ns] and still abstracted over the parameters [Θ]
-    that come from outside it ([ds_closed Θ p T Φ Ns]): the path is what
+    that come from outside it ([mdesc_closed Θ p T Φ Ns]): the path is what
     identifies a filed module, two filed modules with equal bodies staying
-    distinct; or a term part with a module part ([ds_dm Θ A M Rm]): a
+    distinct; or a term part with a module part ([mdesc_dm Θ A M Rm]): a
     definition with a module part, or the type former of an inductive or
     a record type with its module ([ind_former_desc],
     [record_former_desc]).  The
@@ -1840,43 +1840,43 @@ Proof. reflexivity. Qed.
     is left.
 
     A lookup returns the whole description, and each rule takes the part it
-    expects: the term part ([ds_ty], [ds_red]), the module part
-    ([ds_mod]). *)
+    expects: the term part ([mdesc_type], [mdesc_reduct]), the module part
+    ([mdesc_mod]). *)
 
 (** The sort of a member, as evaluation reads it. *)
-Inductive mkind : Set :=
+Inductive member_kind : Set :=
 (** A definition *)
-| mk_term
+| member_kind_term
 (** A module *)
-| mk_mod
+| member_kind_mod
 (** A member with a term part and a module part: an inductive type, a
     record type, or a definition with a module part *)
-| mk_dm.
+| member_kind_dm.
 
 (** A member description: what a module expression or an entry denotes
     (see the section header above). *)
 Inductive mdesc : Set :=
 (** A term of the type, with its δ-reduct if it is transparent *)
-| ds_term : typ -> option exp -> mdesc
+| mdesc_term : typ -> option exp -> mdesc
 (** An open body module: its parameters, its written body and its
     expansion *)
-| ds_open : ctx -> gmod -> gmod -> mdesc
+| mdesc_open : ctx -> gmod -> gmod -> mdesc
 (** A closed module, at its canonical path, over its full telescope, given
     the arguments so far, abstracted over the outer parameters *)
-| ds_closed : ctx -> qname -> ctx -> gmod -> list exp -> mdesc
-(** [ds_dm Θd A M Rm]: what a definition with a module part
+| mdesc_closed : ctx -> qname -> ctx -> gmod -> list exp -> mdesc
+(** [mdesc_dm Θd A M Rm]: what a definition with a module part
     ([ge_def_mod]) denotes, and the type former of an inductive or a
     record type with its module ([ind_former_desc],
     [record_former_desc]).  Its term part is read as a transparent
     definition's is: the term [M] of the type [A], both over the outer
-    parameters [Θd], given the arguments so far as [ds_term A (Some M)] is
-    ([ds_ats_read]); its module part is [Rm] *)
-| ds_dm : ctx -> typ -> exp -> mdesc -> mdesc.
+    parameters [Θd], given the arguments so far as [mdesc_term A (Some M)] is
+    ([mdesc_ats_read]); its module part is [Rm] *)
+| mdesc_dm : ctx -> typ -> exp -> mdesc -> mdesc.
 
 (** A description of a module, of either storage. *)
-Definition ds_is_mod (R : mdesc) : Prop :=
+Definition mdesc_is_mod (R : mdesc) : Prop :=
   match R with
-  | ds_open _ _ _ | ds_closed _ _ _ _ _ => True
+  | mdesc_open _ _ _ | mdesc_closed _ _ _ _ _ => True
   | _ => False
   end.
 
@@ -1885,50 +1885,50 @@ Definition ds_is_mod (R : mdesc) : Prop :=
     its body and the expansion; a closed one, stored at the path [o] it is
     read at, is given no argument yet.  A closed body is a module only where
     it is stored: read anywhere else, it has no description. *)
-Definition ds_body (o : option qname) (sm : smark) (Δ : ctx) (Φ Φx : gmod) : option mdesc :=
+Definition mdesc_body (o : option qname) (sm : smark) (Δ : ctx) (Φ Φx : gmod) : option mdesc :=
   match sm with
-  | sm_open => Some (ds_open Δ Φ Φx)
-  | sm_closed => option_map (fun pq => ds_closed nil pq Δ Φx nil) o
+  | sm_open => Some (mdesc_open Δ Φ Φx)
+  | sm_closed => option_map (fun pq => mdesc_closed nil pq Δ Φx nil) o
   end.
 
 (** The term part: the type of a definition, or of a definition with a
     module part, over the outside parameters. *)
-Definition ds_ty (R : mdesc) : option typ :=
+Definition mdesc_type (R : mdesc) : option typ :=
   match R with
-  | ds_term A _ => Some A
+  | mdesc_term A _ => Some A
   (** A definition with a module part: its term part's type *)
-  | ds_dm Θd A _ _ => Some (ctx_pi Θd A)
+  | mdesc_dm Θd A _ _ => Some (ctx_pi Θd A)
   | _ => None
   end.
 
 (** The δ-reduct of the term part: the body of a transparent definition, or
     of a definition with a module part; an axiom and an abstract
     definition have none. *)
-Definition ds_red (R : mdesc) : option exp :=
+Definition mdesc_reduct (R : mdesc) : option exp :=
   match R with
-  | ds_term _ om => om
-  | ds_dm Θd _ M _ => Some (ctx_fn Θd M)
+  | mdesc_term _ om => om
+  | mdesc_dm Θd _ M _ => Some (ctx_fn Θd M)
   | _ => None
   end.
 
 (** The module part: a module is its own, and a definition with a module
     part's is that of its module part. *)
-Fixpoint ds_mod (R : mdesc) : option mdesc :=
+Fixpoint mdesc_mod (R : mdesc) : option mdesc :=
   match R with
-  | ds_open _ _ _ | ds_closed _ _ _ _ _ => Some R
+  | mdesc_open _ _ _ | mdesc_closed _ _ _ _ _ => Some R
   (** A definition with a module part: the module of its module part, so
       that a module part is always read as a module *)
-  | ds_dm _ _ _ Rm => ds_mod Rm
-  | ds_term _ _ => None
+  | mdesc_dm _ _ _ Rm => mdesc_mod Rm
+  | mdesc_term _ _ => None
   end.
 
 (** The telescope of parameters a module still takes: an open module's
     parameters; a closed one's outside parameters, then the rest of its
     telescope after the arguments given, instantiated by them. *)
-Definition ds_tele (R : mdesc) : option ctx :=
+Definition mdesc_tele (R : mdesc) : option ctx :=
   match R with
-  | ds_open Δ _ _ => Some Δ
-  | ds_closed Θ' _ T _ Ns =>
+  | mdesc_open Δ _ _ => Some Δ
+  | mdesc_closed Θ' _ T _ Ns =>
       if Nat.leb (List.length Ns) (List.length T)
       then Some (tele_sub (List.firstn (List.length T - List.length Ns) T) (sb_of_list Id Ns) ++ Θ')
       else None
@@ -1937,21 +1937,21 @@ Definition ds_tele (R : mdesc) : option ctx :=
 
 (** The telescope of the module part: what a module expression used as a
     module still takes. *)
-Definition ds_mtele (R : mdesc) : option ctx :=
-  match ds_mod R with
-  | Some Rm => ds_tele Rm
+Definition mdesc_mod_tele (R : mdesc) : option ctx :=
+  match mdesc_mod R with
+  | Some Rm => mdesc_tele Rm
   | None => None
   end.
 
 (** Abstraction: a description from inside an open body, the body's
     parameters and the entries before the member being [Θ'], re-expressed
     outside it.  [Π] and [λ] read a definition entry of [Θ'] as a [let]. *)
-Fixpoint ds_up (Θ' : ctx) (R : mdesc) : mdesc :=
+Fixpoint mdesc_up (Θ' : ctx) (R : mdesc) : mdesc :=
   match R with
-  | ds_term A om => ds_term (ctx_pi Θ' A) (option_map (ctx_fn Θ') om)
-  | ds_open Δ Φ Φx => ds_open (Δ ++ Θ') Φ Φx
-  | ds_closed Θ p T Φ Ns => ds_closed (Θ ++ Θ') p T Φ Ns
-  | ds_dm Θd A M Rm => ds_dm (Θd ++ Θ') A M (ds_up Θ' Rm)
+  | mdesc_term A om => mdesc_term (ctx_pi Θ' A) (option_map (ctx_fn Θ') om)
+  | mdesc_open Δ Φ Φx => mdesc_open (Δ ++ Θ') Φ Φx
+  | mdesc_closed Θ p T Φ Ns => mdesc_closed (Θ ++ Θ') p T Φ Ns
+  | mdesc_dm Θd A M Rm => mdesc_dm (Θd ++ Θ') A M (mdesc_up Θ' Rm)
   end.
 
 (** The [λ] a term is, looking through local definitions and local modules
@@ -2010,60 +2010,60 @@ Fixpoint tele_split (R : list centry) : ((typ * ctx * sub) + sub)%type :=
     part applied: the term reading and the module reading of [K N] are
     separate, and an application is a module reading.  (Its term part takes
     only the arguments of the frames it is filed in, when it is read as a
-    member of a closed module at them: [ds_read].) *)
-Fixpoint ds_at (R : mdesc) (N : exp) : option mdesc :=
+    member of a closed module at them: [mdesc_read].) *)
+Fixpoint mdesc_at (R : mdesc) (N : exp) : option mdesc :=
   match R with
-  | ds_term A om =>
+  | mdesc_term A om =>
       match pi_view A with
       | Some (_, C) =>
           match om with
-          | None => Some (ds_term C[Id,,N] None)
+          | None => Some (mdesc_term C[Id,,N] None)
           | Some M =>
               match fn_view M with
-              | Some M' => Some (ds_term C[Id,,N] (Some M'[Id,,N]))
+              | Some M' => Some (mdesc_term C[Id,,N] (Some M'[Id,,N]))
               | None => None
               end
           end
       | None => None
       end
-  | ds_open Δ Φ Φx =>
+  | mdesc_open Δ Φ Φx =>
       match tele_split (rev Δ) with
       | inl (_, Δ', τ) =>
-          Some (ds_open (tele_sub Δ' (Id,,N)) (gmod_sub Φ (τ ⨟ sb_qn (List.length Δ') (Id,,N)))
+          Some (mdesc_open (tele_sub Δ' (Id,,N)) (gmod_sub Φ (τ ⨟ sb_qn (List.length Δ') (Id,,N)))
                   (gmod_sub Φx (τ ⨟ sb_qn (List.length Δ') (Id,,N))))
       | inr _ => None
       end
-  | ds_closed Θ p T Φ Ns =>
+  | mdesc_closed Θ p T Φ Ns =>
       match tele_split (rev Θ) with
       | inl (_, Θ', τ) =>
-          Some (ds_closed (tele_sub Θ' (Id,,N)) p T Φ (List.map (fun M => M[τ ⨟ sb_qn (List.length Θ') (Id,,N)]) Ns))
-      | inr τ => Some (ds_closed nil p T Φ (List.map (fun M => M[τ]) Ns ++ N :: nil))
+          Some (mdesc_closed (tele_sub Θ' (Id,,N)) p T Φ (List.map (fun M => M[τ ⨟ sb_qn (List.length Θ') (Id,,N)]) Ns))
+      | inr τ => Some (mdesc_closed nil p T Φ (List.map (fun M => M[τ]) Ns ++ N :: nil))
       end
-  | ds_dm Θ A M Rm =>
-      match ds_at Rm N with
+  | mdesc_dm Θ A M Rm =>
+      match mdesc_at Rm N with
       | None => None
       | Some Rm' =>
           match tele_split (rev Θ) with
           | inl (_, Θ', τ) =>
-              Some (ds_dm (tele_sub Θ' (Id,,N)) A[τ ⨟ sb_qn (List.length Θ') (Id,,N)] M[τ ⨟ sb_qn (List.length Θ') (Id,,N)] Rm')
+              Some (mdesc_dm (tele_sub Θ' (Id,,N)) A[τ ⨟ sb_qn (List.length Θ') (Id,,N)] M[τ ⨟ sb_qn (List.length Θ') (Id,,N)] Rm')
           | inr _ => Some Rm'
           end
       end
   end.
 
 (** "R at N₁ … Nₖ". *)
-Fixpoint ds_ats (R : mdesc) (Ns : list exp) : option mdesc :=
+Fixpoint mdesc_ats (R : mdesc) (Ns : list exp) : option mdesc :=
   match Ns with
   | nil => Some R
   | N :: Ns' =>
-      match ds_at R N with
-      | Some R' => ds_ats R' Ns'
+      match mdesc_at R N with
+      | Some R' => mdesc_ats R' Ns'
       | None => None
       end
   end.
 
 (** How a member of a module description is read once its entry's
-    description is known ([ds_read]). *)
+    description is known ([mdesc_read]). *)
 Inductive reader : Set :=
 | reader_open : ctx -> gmod -> reader
 | reader_closed : ctx -> list exp -> exp -> reader.
@@ -2071,12 +2071,12 @@ Inductive reader : Set :=
 (** A description under a substitution.  The parts of a description over
     the context are substituted; a closed module's stored unit is not, being
     closed. *)
-Fixpoint ds_sub (R : mdesc) (σ : sub) : mdesc :=
+Fixpoint mdesc_sub (R : mdesc) (σ : sub) : mdesc :=
   match R with
-  | ds_term A om => ds_term A[σ] (option_map (fun M => M[σ]) om)
-  | ds_open Δ Φ Φx => ds_open (tele_sub Δ σ) (gmod_sub Φ (sb_qn (List.length Δ) σ)) (gmod_sub Φx (sb_qn (List.length Δ) σ))
-  | ds_closed Θ p T Φ Ns => ds_closed (tele_sub Θ σ) p T Φ (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
-  | ds_dm Θd A M Rm => ds_dm (tele_sub Θd σ) A[sb_qn (List.length Θd) σ] M[sb_qn (List.length Θd) σ] (ds_sub Rm σ)
+  | mdesc_term A om => mdesc_term A[σ] (option_map (fun M => M[σ]) om)
+  | mdesc_open Δ Φ Φx => mdesc_open (tele_sub Δ σ) (gmod_sub Φ (sb_qn (List.length Δ) σ)) (gmod_sub Φx (sb_qn (List.length Δ) σ))
+  | mdesc_closed Θ p T Φ Ns => mdesc_closed (tele_sub Θ σ) p T Φ (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
+  | mdesc_dm Θd A M Rm => mdesc_dm (tele_sub Θd σ) A[sb_qn (List.length Θd) σ] M[sb_qn (List.length Θd) σ] (mdesc_sub Rm σ)
   end.
 
 (** The entries of a local body before a member, filled in: the
@@ -2095,9 +2095,9 @@ Fixpoint gm_fill (Φ : gmod) : option sub :=
 
 (** A term with no δ-reduct read as the name [M]: a filed axiom or abstract
     definition δ-reduces to its own name. *)
-Definition ds_self (M : exp) (R : mdesc) : mdesc :=
+Definition mdesc_self (M : exp) (R : mdesc) : mdesc :=
   match R with
-  | ds_term A None => ds_term A (Some M)
+  | mdesc_term A None => mdesc_term A (Some M)
   | _ => R
   end.
 
@@ -2105,39 +2105,39 @@ Definition ds_self (M : exp) (R : mdesc) : mdesc :=
     arguments [Ns], as the name [M] there: with an outside parameter or an
     argument, one with no δ-reduct δ-reduces to its name; read bare, at
     neither, it is its own name already, and has no δ-reduct. *)
-Definition ds_named (Θ : ctx) (Ns : list exp) (M : exp) (R : mdesc) : mdesc :=
+Definition mdesc_named (Θ : ctx) (Ns : list exp) (M : exp) (R : mdesc) : mdesc :=
   match Θ, Ns with
   | nil, nil => R
-  | _, _ => ds_self M R
+  | _, _ => mdesc_self M R
   end.
 (** It is read through its lemmas, not unfolded. *)
-Arguments ds_named : simpl never.
+Arguments mdesc_named : simpl never.
 
-Lemma ds_named_nil : forall M R, ds_named nil nil M R = R.
+Lemma mdesc_named_nil : forall M R, mdesc_named nil nil M R = R.
 Proof. reflexivity. Qed.
 
 (** It reads only whether there are outside parameters or arguments. *)
-Lemma ds_named_length : forall Θ Θ' Ns Ns', List.length Θ' = List.length Θ -> List.length Ns' = List.length Ns ->
-    ds_named Θ' Ns' = ds_named Θ Ns.
+Lemma mdesc_named_length : forall Θ Θ' Ns Ns', List.length Θ' = List.length Θ -> List.length Ns' = List.length Ns ->
+    mdesc_named Θ' Ns' = mdesc_named Θ Ns.
 Proof. intros [|] [|] [|] [|]; cbn; intros; first [ reflexivity | discriminate ]. Qed.
 
-(** It is the description or its [ds_self]. *)
-Lemma ds_named_cases : forall (P : mdesc -> Prop) Θ Ns M R, P R -> P (ds_self M R) -> P (ds_named Θ Ns M R).
+(** It is the description or its [mdesc_self]. *)
+Lemma mdesc_named_cases : forall (P : mdesc -> Prop) Θ Ns M R, P R -> P (mdesc_self M R) -> P (mdesc_named Θ Ns M R).
 Proof. intros P [|] [|] * H1 H2; exact H1 + exact H2. Qed.
 
-(** What [ds_self] leaves as it is, it leaves as it is. *)
-Lemma ds_named_fix : forall Θ Ns M R, ds_self M R = R -> ds_named Θ Ns M R = R.
+(** What [mdesc_self] leaves as it is, it leaves as it is. *)
+Lemma mdesc_named_fix : forall Θ Ns M R, mdesc_self M R = R -> mdesc_named Θ Ns M R = R.
 Proof. intros [|] [|] * H; cbn; first [ reflexivity | exact H ]. Qed.
 
 (** A term of no δ-reduct is read bare as itself, and otherwise as its
     name. *)
-Lemma ds_named_term_none : forall Θ Ns M A,
-    (ds_named Θ Ns M (ds_term A None) = ds_term A None /\ Θ = nil /\ Ns = nil) \/
-    ds_named Θ Ns M (ds_term A None) = ds_term A (Some M).
+Lemma mdesc_named_term_none : forall Θ Ns M A,
+    (mdesc_named Θ Ns M (mdesc_term A None) = mdesc_term A None /\ Θ = nil /\ Ns = nil) \/
+    mdesc_named Θ Ns M (mdesc_term A None) = mdesc_term A (Some M).
 Proof. intros [|] [|] *; cbn; auto. Qed.
 
-(** Read at an outside parameter or an argument, it is [ds_self]. *)
-Lemma ds_named_self : forall Θ Ns, (Θ <> nil \/ Ns <> nil) -> ds_named Θ Ns = ds_self.
+(** Read at an outside parameter or an argument, it is [mdesc_self]. *)
+Lemma mdesc_named_self : forall Θ Ns, (Θ <> nil \/ Ns <> nil) -> mdesc_named Θ Ns = mdesc_self.
 Proof. intros [|] [|] H; cbn; try reflexivity; destruct H as [H | H]; contradiction H; reflexivity. Qed.
 
 (** Whether a term is a type former, an inductive's or a record's,
@@ -2150,44 +2150,44 @@ Fixpoint app_const (M : exp) : bool :=
   end.
 
 (** The term part of a description given the argument [N]: by [β] when
-    its body is a [λ], as [ds_at]; a type former applied, applied to [N]
-    (see [ds_ats_read]). *)
-Definition ds_at_tm (R : mdesc) (N : exp) : option mdesc :=
+    its body is a [λ], as [mdesc_at]; a type former applied, applied to [N]
+    (see [mdesc_ats_read]). *)
+Definition mdesc_term_part_at (R : mdesc) (N : exp) : option mdesc :=
   match R with
-  | ds_term A (Some M) =>
+  | mdesc_term A (Some M) =>
       match pi_view A with
       | Some (_, C) =>
           match fn_view M with
-          | Some M' => Some (ds_term C[Id,,N] (Some M'[Id,,N]))
-          | None => if app_const M then Some (ds_term C[Id,,N] (Some (a_app M N))) else None
+          | Some M' => Some (mdesc_term C[Id,,N] (Some M'[Id,,N]))
+          | None => if app_const M then Some (mdesc_term C[Id,,N] (Some (a_app M N))) else None
           end
       | None => None
       end
-  | _ => ds_at R N
+  | _ => mdesc_at R N
   end.
 
-(** [ds_at_tm] at [N₁ … Nₖ]. *)
-Fixpoint ds_ats_tm (R : mdesc) (Ns : list exp) : option mdesc :=
+(** [mdesc_term_part_at] at [N₁ … Nₖ]. *)
+Fixpoint mdesc_term_part_ats (R : mdesc) (Ns : list exp) : option mdesc :=
   match Ns with
   | nil => Some R
   | N :: Ns' =>
-      match ds_at_tm R N with
-      | Some R' => ds_ats_tm R' Ns'
+      match mdesc_term_part_at R N with
+      | Some R' => mdesc_term_part_ats R' Ns'
       | None => None
       end
   end.
 
 (** An entry's description given the arguments of the closed module it is
     a member of, which are those of the frames it is filed in: as applied
-    ([ds_ats]), but a definition with a module part, or a type former,
+    ([mdesc_ats]), but a definition with a module part, or a type former,
     with no outside parameter is given them in both its parts: its term
-    part as a transparent definition is ([ds_term A (Some M)]), its module
+    part as a transparent definition is ([mdesc_term A (Some M)]), its module
     part as a module is.  So [F 3 .K], for a def-mod [K] filed in
     [module F (n : ℕ)], is K's term at [3] as well as its module at [3];
     an application [K N] as a module, past the frames' arguments, is its
-    module part only ([ds_at]).
+    module part only ([mdesc_at]).
 
-    The term part is given each argument by [ds_at_tm]: as [ds_at] does,
+    The term part is given each argument by [mdesc_term_part_at]: as [mdesc_at] does,
     by [β], when its body is a [λ], and otherwise, when its body is a type
     former applied ([app_const]), by applying it to the argument.  The
     second step is stable: it runs only at a filed entry's frame
@@ -2198,69 +2198,69 @@ Fixpoint ds_ats_tm (R : mdesc) (Ns : list exp) : option mdesc :=
     it a [λ] ([app_const] is kept by substitution).  So [F 3 .K] is [K]'s
     body at [3], and [P ℕ .N], for an inductive [N] filed in
     [module P (A : Type@0)], is [N ℕ]. *)
-Definition ds_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
+Definition mdesc_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
   match R with
-  | ds_dm nil A M Rm =>
-      match ds_ats_tm (ds_term A (Some M)) Ns, ds_ats Rm Ns with
-      | Some (ds_term B (Some M')), Some Rm' => Some (ds_dm nil B M' Rm')
+  | mdesc_dm nil A M Rm =>
+      match mdesc_term_part_ats (mdesc_term A (Some M)) Ns, mdesc_ats Rm Ns with
+      | Some (mdesc_term B (Some M')), Some Rm' => Some (mdesc_dm nil B M' Rm')
       | _, _ => None
       end
-  | _ => ds_ats R Ns
+  | _ => mdesc_ats R Ns
   end.
 
-(** [H : (the [ds_dm nil] case of [ds_ats_read]) = Some R]: [R] is a
-    [ds_dm nil] of the two parts given the arguments. *)
-Ltac ds_dm_read_shape H :=
+(** [H : (the [mdesc_dm nil] case of [mdesc_ats_read]) = Some R]: [R] is a
+    [mdesc_dm nil] of the two parts given the arguments. *)
+Ltac mdesc_dm_read_shape H :=
   match type of H with
-  | context [ds_ats_tm ?R ?Ns] => destruct (ds_ats_tm R Ns) as [[? [?|] | | |] |]; cbn in H; try discriminate H
+  | context [mdesc_term_part_ats ?R ?Ns] => destruct (mdesc_term_part_ats R Ns) as [[? [?|] | | |] |]; cbn in H; try discriminate H
   end;
   match type of H with
-  | context [ds_ats ?R ?Ns] => destruct (ds_ats R Ns); cbn in H; [ injection H as <- | discriminate H ]
+  | context [mdesc_ats ?R ?Ns] => destruct (mdesc_ats R Ns); cbn in H; [ injection H as <- | discriminate H ]
   end.
 
-(** [ds_ats_read] is [ds_ats], but on a definition with a module part and
+(** [mdesc_ats_read] is [mdesc_ats], but on a definition with a module part and
     no outside parameter, given the arguments in both its parts. *)
-Lemma ds_ats_read_inv : forall R Ns R', ds_ats_read R Ns = Some R' ->
-    ds_ats R Ns = Some R' \/
-    exists A M Rm B M' Rm', R = ds_dm nil A M Rm /\ R' = ds_dm nil B M' Rm' /\
-      ds_ats_tm (ds_term A (Some M)) Ns = Some (ds_term B (Some M')) /\ ds_ats Rm Ns = Some Rm'.
+Lemma mdesc_ats_read_inv : forall R Ns R', mdesc_ats_read R Ns = Some R' ->
+    mdesc_ats R Ns = Some R' \/
+    exists A M Rm B M' Rm', R = mdesc_dm nil A M Rm /\ R' = mdesc_dm nil B M' Rm' /\
+      mdesc_term_part_ats (mdesc_term A (Some M)) Ns = Some (mdesc_term B (Some M')) /\ mdesc_ats Rm Ns = Some Rm'.
 Proof.
-  intros [| | | [| e Θd] A M Rm] Ns R' Ha; cbn [ds_ats_read] in Ha; try (left; exact Ha).
-  right; destruct (ds_ats_tm (ds_term A (Some M)) Ns) as [[B [M' |] | | |] |] eqn:Et; try discriminate.
-  destruct (ds_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
+  intros [| | | [| e Θd] A M Rm] Ns R' Ha; cbn [mdesc_ats_read] in Ha; try (left; exact Ha).
+  right; destruct (mdesc_term_part_ats (mdesc_term A (Some M)) Ns) as [[B [M' |] | | |] |] eqn:Et; try discriminate.
+  destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
   do 6 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Et | exact E ] ] ].
 Qed.
 
-(** At no argument, [ds_ats_read] reads the description as it is. *)
-Lemma ds_ats_read_nil : forall R, ds_ats_read R nil = Some R.
+(** At no argument, [mdesc_ats_read] reads the description as it is. *)
+Lemma mdesc_ats_read_nil : forall R, mdesc_ats_read R nil = Some R.
 Proof. intros [| | | [| e Θd] A M Rm]; reflexivity. Qed.
 
-(** On anything but a definition with a module part, [ds_ats_read] is
-    [ds_ats]. *)
-Lemma ds_ats_read_other : forall R Ns, (forall Θd A M Rm, R <> ds_dm Θd A M Rm) -> ds_ats_read R Ns = ds_ats R Ns.
+(** On anything but a definition with a module part, [mdesc_ats_read] is
+    [mdesc_ats]. *)
+Lemma mdesc_ats_read_other : forall R Ns, (forall Θd A M Rm, R <> mdesc_dm Θd A M Rm) -> mdesc_ats_read R Ns = mdesc_ats R Ns.
 Proof. intros [| | | Θd A M Rm] Ns Hn; try reflexivity; exfalso; eapply Hn; reflexivity. Qed.
 
-(** On a module, [ds_ats_read] is [ds_ats]. *)
-Lemma ds_ats_read_mod : forall R Ns, ds_is_mod R -> ds_ats_read R Ns = ds_ats R Ns.
+(** On a module, [mdesc_ats_read] is [mdesc_ats]. *)
+Lemma mdesc_ats_read_mod : forall R Ns, mdesc_is_mod R -> mdesc_ats_read R Ns = mdesc_ats R Ns.
 Proof. intros [| | |] Ns Hm; cbn in Hm; first [ contradiction | reflexivity ]. Qed.
 
 (** How an entry's description is read: one of an open body, the entries
     before it [Φ'] filled in, abstracted over the body's parameters [Δ]; one
-    of a closed body, given the arguments recorded ([ds_ats_read]), a term
-    with no δ-reduct being its name [M] there ([ds_named]), then abstracted
+    of a closed body, given the arguments recorded ([mdesc_ats_read]), a term
+    with no δ-reduct being its name [M] there ([mdesc_named]), then abstracted
     over the outside parameters. *)
-Definition ds_read (rd : reader) (R : mdesc) : option mdesc :=
+Definition mdesc_read (rd : reader) (R : mdesc) : option mdesc :=
   match rd with
-  | reader_open Δ Φ' => option_map (fun σ => ds_up Δ (ds_sub R σ)) (gm_fill Φ')
-  | reader_closed Θ Ns M => option_map (fun R1 => ds_up Θ (ds_named Θ Ns M R1)) (ds_ats_read R Ns)
+  | reader_open Δ Φ' => option_map (fun σ => mdesc_up Δ (mdesc_sub R σ)) (gm_fill Φ')
+  | reader_closed Θ Ns M => option_map (fun R1 => mdesc_up Θ (mdesc_named Θ Ns M R1)) (mdesc_ats_read R Ns)
   end.
 
 (** A term read as a name is a term. *)
-Lemma ds_named_term : forall Θ Ns M A om, exists om', ds_named Θ Ns M (ds_term A om) = ds_term A om'.
+Lemma mdesc_named_term : forall Θ Ns M A om, exists om', mdesc_named Θ Ns M (mdesc_term A om) = mdesc_term A om'.
 Proof. intros [|] [|] * ; destruct om; cbn; eexists; reflexivity. Qed.
 
-Lemma ds_mod_named_term : forall Δ Θ Ns M A om, ds_mod (ds_up Δ (ds_named Θ Ns M (ds_term A om))) = None.
-Proof. intros; destruct (ds_named_term Θ Ns M A om) as [om' ->]; reflexivity. Qed.
+Lemma mdesc_mod_named_term : forall Δ Θ Ns M A om, mdesc_mod (mdesc_up Δ (mdesc_named Θ Ns M (mdesc_term A om))) = None.
+Proof. intros; destruct (mdesc_named_term Θ Ns M A om) as [om' ->]; reflexivity. Qed.
 
 (** A stored closed entry read in a closed body of telescope [T]: as it is,
     except that a closed submodule, stored with its own parameters only,
@@ -2274,9 +2274,9 @@ Definition ge_read (T : ctx) (E : gentry) : gentry :=
 (** [entry R y]: the entry [y] of the module described by [R], the context
     it is read in (over the module's context) and how its description is
     read; [None] for a term, or when [R] has no entry [y]. *)
-Definition ds_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
+Definition mdesc_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
   match R with
-  | ds_open Δ _ Φx =>
+  | mdesc_open Δ _ Φx =>
       match gm_prefix_upto Φx y with
       | Some (gm_ext Φ' _ E) =>
           match E with
@@ -2290,7 +2290,7 @@ Definition ds_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
           end
       | _ => None
       end
-  | ds_closed Θ p T Φ Ns =>
+  | mdesc_closed Θ p T Φ Ns =>
       match gm_prefix_upto Φ y with
       | Some (gm_ext _ _ E) => Some (nil, ge_read T E, reader_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns))
       | _ => None
@@ -2302,32 +2302,32 @@ Definition ds_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
     literal as written; a closed module with no outside parameter is the filed module at
     its arguments, and with outside parameters the alias of it over them.
     Anything else is no module, and stands for the empty body. *)
-Definition ds_unit (R : mdesc) : modexp :=
+Definition mdesc_unit (R : mdesc) : modexp :=
   match R with
-  | ds_open Δ Φ _ => me_lit (gu_mk Δ (md_body sm_open Φ))
-  | ds_closed nil p _ _ Ns => me_apps (qname_mod p) Ns
-  | ds_closed Θ' p _ _ Ns => me_lit (gu_mk Θ' (md_alias (me_apps (qname_mod p) Ns)))
+  | mdesc_open Δ Φ _ => me_lit (gu_mk Δ (md_body sm_open Φ))
+  | mdesc_closed nil p _ _ Ns => me_apps (qname_mod p) Ns
+  | mdesc_closed Θ' p _ _ Ns => me_lit (gu_mk Θ' (md_alias (me_apps (qname_mod p) Ns)))
   | _ => me_lit (gu_mk nil (md_body sm_open gm_nil))
   end.
 
 (** The path an entry of a module is stored at: that of a closed module's
     entries; a local entry has none. *)
-Definition ds_epath (R : mdesc) (y : string) : option qname :=
+Definition mdesc_entry_path (R : mdesc) (y : string) : option qname :=
   match R with
-  | ds_closed _ p _ _ _ => Some (qname_in p y)
+  | mdesc_closed _ p _ _ _ => Some (qname_in p y)
   | _ => None
   end.
 
 (** The type former of member [k] of the group [D] declared at [pq], of
     its type, with the module part [Rm]; read at the frames' arguments
-    ([ds_ats_read]), it is the type former at them. *)
+    ([mdesc_ats_read]), it is the type former at them. *)
 Definition ind_former_desc (pq : qname) (k : nat) (D : ind_decl) (Mk : imember) (Rm : mdesc) : mdesc :=
-  ds_dm nil (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (a_ind pq k) Rm.
+  mdesc_dm nil (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (a_ind pq k) Rm.
 
 (** The type former of the record type [R] declared at [p], of its type,
     with the module part [Rm]. *)
 Definition record_former_desc (p : qname) (R : record_decl) (Rm : mdesc) : mdesc :=
-  ds_dm nil (ctx_pi (record_params R) (record_sort R)) (a_record p) Rm.
+  mdesc_dm nil (ctx_pi (record_params R) (record_sort R)) (a_record p) Rm.
 
 (** The stored unit a path [P] names when it is a loaded unit or an open
     frame, with its full telescope: an open frame's own parameters, then
@@ -2534,7 +2534,7 @@ Qed.
     [udenote Θ Ξ Γ o U R], [Γ ⊢ U ⇓ R]: what a module value denotes, [o]
     being the path it is stored at, if it is stored.  A body, read through
     the entries its local opens generate ([body_xp]), by its storage
-    ([ds_body]): a closed body only at its path; an alias, the module part
+    ([mdesc_body]): a closed body only at its path; an alias, the module part
     of what its target denotes, abstracted over the alias's parameters.
     Aliases are resolved here only.
 
@@ -2549,7 +2549,7 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
 | mdenote_unit : forall Γ H p T Φ,
     mod_qname H = Some p ->
     gc_unit Θ Ξ H = Some (T, Φ) ->
-    mdenote Θ Ξ Γ H (ds_closed nil p T Φ nil)
+    mdenote Θ Ξ Γ H (mdesc_closed nil p T Φ nil)
 (** The open frame of the module of a member of a group of inductive
     types: the member's type former, as it is read once filed there
     ([edenote_ind_case]), of the declaration the frame carries, whose module part is
@@ -2560,7 +2560,7 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
     gs_find_ind Ξ p = Some (pq, k, D) ->
     ind_member D k = Some Mk ->
     gc_loc Θ Ξ p = Some (Tm, Φm) ->
-    mdenote Θ Ξ Γ H (ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil))
+    mdenote Θ Ξ Γ H (ind_former_desc pq k D Mk (mdesc_closed nil p Tm Φm nil))
 (** A module slot: what its unit denotes *)
 | mdenote_slot : forall Γ x U R,
     Γ ∋ #x ≔ₘ U ->
@@ -2573,16 +2573,16 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
 (** An application: the head's description given the next argument *)
 | mdenote_app : forall Γ H N R R',
     mdenote Θ Ξ Γ H R ->
-    ds_at R N = Some R' ->
+    mdesc_at R N = Some R' ->
     mdenote Θ Ξ Γ (me_app H N) R'
 (** A selection: the entry found in the module part of the selected
     module's description, denoted and read there *)
 | mdenote_mem : forall Γ H y R0 R0m Γy E rd R R',
     mdenote Θ Ξ Γ H R0 ->
-    ds_mod R0 = Some R0m ->
-    ds_entry R0m y = Some (Γy, E, rd) ->
-    edenote Θ Ξ (Γy ++ Γ) (ds_epath R0m y) E R ->
-    ds_read rd R = Some R' ->
+    mdesc_mod R0 = Some R0m ->
+    mdesc_entry R0m y = Some (Γy, E, rd) ->
+    edenote Θ Ξ (Γy ++ Γ) (mdesc_entry_path R0m y) E R ->
+    mdesc_read rd R = Some R' ->
     mdenote Θ Ξ Γ (me_mem H y) R'
 (** The open frame of the module of a record type: the record's type
     former, as it is read once filed there ([edenote_record]), whose module
@@ -2592,25 +2592,25 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
     mod_qname H = Some p ->
     gs_find_record Ξ p = Some R ->
     gc_loc Θ Ξ p = Some (Tm, Φm) ->
-    mdenote Θ Ξ Γ H (record_former_desc p R (ds_closed nil p Tm Φm nil))
+    mdenote Θ Ξ Γ H (record_former_desc p R (mdesc_closed nil p Tm Φm nil))
 with udenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gunit -> mdesc -> Prop :=
 (** A body, read through the entries its local opens generate, by its
     storage *)
 | udenote_body : forall Γ o Δ sm Φ Φx R,
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
-    ds_body o sm Δ Φ Φx = Some R ->
+    mdesc_body o sm Δ Φ Φx = Some R ->
     udenote Θ Ξ Γ o (gu_mk Δ (md_body sm Φ)) R
 (** An alias: the module part of what its target denotes, abstracted over
     the alias's parameters *)
 | udenote_alias : forall Γ o Δ E R R',
     mdenote Θ Ξ (Δ ++ Γ) E R ->
-    ds_mod R = Some R' ->
-    udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) (ds_up Δ R')
+    mdesc_mod R = Some R' ->
+    udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) (mdesc_up Δ R')
 with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc -> Prop :=
 (** A definition: a term of its type, with its body as δ-reduct when it is
     transparent *)
 | edenote_def : forall Γ o b pv A oM,
-    edenote Θ Ξ Γ o (ge_def b pv A oM) (ds_term A (if b then oM else None))
+    edenote Θ Ξ Γ o (ge_def b pv A oM) (mdesc_term A (if b then oM else None))
 (** A module: what its unit denotes *)
 | edenote_mod : forall Γ o pv U R,
     udenote Θ Ξ Γ o U R ->
@@ -2623,20 +2623,20 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
     ind_member D k = Some Mk ->
     ind_mpath D k = Some pm ->
     gc_loc Θ Ξ pm = Some (Tm, Φm) ->
-    edenote Θ Ξ Γ o (ge_ind pv pq k D Φ) (ind_former_desc pq k D Mk (ds_closed nil pm Tm Φm nil))
+    edenote Θ Ξ Γ o (ge_ind pv pq k D Φ) (ind_former_desc pq k D Mk (mdesc_closed nil pm Tm Φm nil))
 (** A definition with a module part: its term, a transparent
     definition's, with what its unit, an alias, denotes as its module
     part.  A module part that is no alias denotes nothing, as it is no
     module ([gm_submodule]). *)
 | edenote_def_mod : forall Γ o pv A M Δ E Rm,
     udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) Rm ->
-    edenote Θ Ξ Γ o (ge_def_mod pv A M (gu_mk Δ (md_alias E))) (ds_dm nil A M Rm)
+    edenote Θ Ξ Γ o (ge_def_mod pv A M (gu_mk Δ (md_alias E))) (mdesc_dm nil A M Rm)
 (** A record type stored at [p]: its type former ([record_former_desc]),
     whose module part is its module, stored at [p].  It denotes only where
     it is stored, read at the path it is found at *)
 | edenote_record : forall Γ p pv pr R Φ Tm Φm,
     gc_loc Θ Ξ p = Some (Tm, Φm) ->
-    edenote Θ Ξ Γ (Some p) (ge_record pv pr R Φ) (record_former_desc p R (ds_closed nil p Tm Φm nil))
+    edenote Θ Ξ Γ (Some p) (ge_record pv pr R Φ) (record_former_desc p R (mdesc_closed nil p Tm Φm nil))
 (** [body_xp Θ Ξ Γ Φ Φx]: the body [Φ], read in [Γ], is [Φx] with every
     local open replaced by the entries it generates ([items_gen]), in the
     context its own expanded prefix makes.  The entries themselves are not
@@ -2653,7 +2653,7 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
 | body_xp_open : forall Γ Φ Φx H its R Rm gs,
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
-    ds_mod R = Some Rm ->
+    mdesc_mod R = Some Rm ->
     items_gen Θ Ξ (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
     body_xp Θ Ξ Γ (gm_open Φ H its) (gens_append Φx 0 gs)
@@ -2673,13 +2673,13 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list 
     items_gen Θ Ξ Γ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
 (** An item naming a term: a definition of its type, by selection *)
 | items_gen_def : forall Γ H n d pv A om its gs,
-    mdenote Θ Ξ Γ (me_mem H n) (ds_term A om) ->
+    mdenote Θ Ξ Γ (me_mem H n) (mdesc_term A om) ->
     items_gen Θ Ξ Γ H its gs ->
     items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_def d pv A (a_mem H n) :: gs)
 (** An item naming a module: an alias of the selection *)
 | items_gen_mod : forall Γ H n d pv R its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
-    ds_is_mod R ->
+    mdesc_is_mod R ->
     items_gen Θ Ξ Γ H its gs ->
     items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_alias d pv (me_mem H n) :: gs)
 (** An item naming a member with both a term part and a module part (a
@@ -2688,8 +2688,8 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list 
     alias of the selection as its module *)
 | items_gen_dm : forall Γ H n d pv R A Rm its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
-    ds_ty R = Some A ->
-    ds_mod R = Some Rm ->
+    mdesc_type R = Some A ->
+    mdesc_mod R = Some Rm ->
     items_gen Θ Ξ Γ H its gs ->
     items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv A (a_mem H n) (me_mem H n) :: gs).
 
@@ -2713,7 +2713,7 @@ Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list 
   { open_gens_desc : mdesc
   ; open_gens_mod : mdesc
   ; open_gens_denote : mdenote Θ Ξ Γ H open_gens_desc
-  ; open_gens_is_mod : ds_mod open_gens_desc = Some open_gens_mod
+  ; open_gens_is_mod : mdesc_mod open_gens_desc = Some open_gens_mod
   ; open_gens_items : items_gen Θ Ξ Γ H its gs
   ; open_gens_ok : items_ok its }.
 
@@ -3059,13 +3059,13 @@ Qed.
     so it describes its type former only where it is stored. *)
 Definition entry_term (o : option qname) (E : gentry) : option mdesc :=
   match E with
-  | ge_def b _ A oM => Some (ds_term A (if b then oM else None))
+  | ge_def b _ A oM => Some (mdesc_term A (if b then oM else None))
   | ge_ind _ pq k D _ =>
-      option_map (fun Mk => ds_term (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
+      option_map (fun Mk => mdesc_term (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
         (ind_member D k)
-  | ge_def_mod _ A M _ => Some (ds_term A (Some M))
+  | ge_def_mod _ A M _ => Some (mdesc_term A (Some M))
   | ge_mod _ _ => None
-  | ge_record _ _ R _ => option_map (fun p => ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
+  | ge_record _ _ R _ => option_map (fun p => mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
   end.
 
 (** A stored alias entry as the alias unit it is, over its full telescope:

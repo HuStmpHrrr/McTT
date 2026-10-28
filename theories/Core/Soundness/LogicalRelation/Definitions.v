@@ -47,7 +47,7 @@ Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Typ
 Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
 
 (** The gluing predicates take the ambient universe as a *term* [U].  It is
-    the large universe of the tier, [Typeω@(ulvl i)]: [Typeω@i] in the large
+    the large universe of the tier, [Typeω@(large_level i)]: [Typeω@i] in the large
     tier, and [Typeω@0] at every small index.  A small universe's index is the
     realiser of its level, an ordinal below ω², while the universe a small type
     is in is [Type⟨t⟩] for a level *term* [t]; no term is determined by the
@@ -75,13 +75,13 @@ Definition level_glu_typ_pred (n : nat) (U : typ) : glu_typ_pred := fun Γ A => 
     [level_glu_exp_pred] for the same reason. *)
 (** The readback of a level of sort [n] is a canonical level of sort [n]:
     its constant is of a tier at most [n], and each atom is a level of its
-    own sort ([la_ws]).  The atoms' sorts are read off the types of the
+    own sort ([level_atoms_well_scoped]).  The atoms' sorts are read off the types of the
     neutrals, and this is what makes them reliable: the equations of a
     canonical form drop an atom by absorption, which needs it typed at its
     sort. *)
 Definition nf_lvl_ws (n : nat) (Δ : ctx) (L : nf) : Prop :=
   match L with
-  | nf_lvl c xs => fst c <= n /\ @la_ws gc_deps gc_stack n Δ xs
+  | nf_lvl c xs => fst c <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Δ xs
   | _ => False
   end.
 
@@ -669,43 +669,43 @@ Hint Extern 1 =>
 
 Section Gluing.
   Variable
-    (i : uidx)
-      (glu_univ_typ_rec : uidx -> domain -> glu_typ_pred).
+    (i : universe_index)
+      (glu_univ_typ_rec : universe_index -> domain -> glu_typ_pred).
 
   Inductive glu_univ_elem_core : glu_typ_pred -> glu_exp_pred -> domain -> Prop :=
   | glu_univ_elem_core_univ :
     `{ forall typ_rel
          el_rel
-         (lt_j_i : uidx_lt (ul j) i),
-          typ_rel <∙> univ_glu_typ_pred j (Typeω@(ulvl i)) ->
-          el_rel <∙> univ_glu_exp_pred' (Typeω@(ulvl i)) j (glu_univ_typ_rec (ul j)) ->
+         (lt_j_i : universe_index_lt (ul j) i),
+          typ_rel <∙> univ_glu_typ_pred j (Typeω@(large_level i)) ->
+          el_rel <∙> univ_glu_exp_pred' (Typeω@(large_level i)) j (glu_univ_typ_rec (ul j)) ->
           DG 𝕌ω@j ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_suniv :
     `{ forall typ_rel
          el_rel
-         (lt_j_i : uidx_lt (us (dlvl_real l)) i),
+         (lt_j_i : universe_index_lt (us (dlvl_real l)) i),
           Dom l ≈ l ∈ per_lvl ->
-          typ_rel <∙> suniv_glu_typ_pred l (Typeω@(ulvl i)) ->
-          el_rel <∙> suniv_glu_exp_pred' (Typeω@(ulvl i)) l (glu_univ_typ_rec (us (dlvl_real l))) ->
+          typ_rel <∙> suniv_glu_typ_pred l (Typeω@(large_level i)) ->
+          el_rel <∙> suniv_glu_exp_pred' (Typeω@(large_level i)) l (glu_univ_typ_rec (us (dlvl_real l))) ->
           DG 𝕌@l ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_level :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> level_glu_typ_pred n (Typeω@(ulvl i)) ->
-          el_rel <∙> level_glu_exp_pred n (Typeω@(ulvl i)) ->
+          typ_rel <∙> level_glu_typ_pred n (Typeω@(large_level i)) ->
+          el_rel <∙> level_glu_exp_pred n (Typeω@(large_level i)) ->
           DG Levelᵈ@n ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_True :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> True_glu_typ_pred (Typeω@(ulvl i)) ->
-          el_rel <∙> True_glu_exp_pred (Typeω@(ulvl i)) ->
+          typ_rel <∙> True_glu_typ_pred (Typeω@(large_level i)) ->
+          el_rel <∙> True_glu_exp_pred (Typeω@(large_level i)) ->
           DG ⊤ᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_False :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> False_glu_typ_pred (Typeω@(ulvl i)) ->
-          el_rel <∙> False_glu_exp_pred (Typeω@(ulvl i)) ->
+          typ_rel <∙> False_glu_typ_pred (Typeω@(large_level i)) ->
+          el_rel <∙> False_glu_exp_pred (Typeω@(large_level i)) ->
           DG ⊥ᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_pi :
@@ -721,15 +721,15 @@ Section Gluing.
               ⟦ B ⟧ ρ ↦ c ↘ b ->
               DG b ∈ glu_univ_elem_core ↘ OP _ equiv_c ↘ OEl _ equiv_c) ->
           DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
-          typ_rel <∙> pi_glu_typ_pred (Typeω@(ulvl i)) in_rel IP IEl OP ->
-          el_rel <∙> pi_glu_exp_pred (Typeω@(ulvl i)) in_rel IP IEl elem_rel OEl ->
+          typ_rel <∙> pi_glu_typ_pred (Typeω@(large_level i)) in_rel IP IEl OP ->
+          el_rel <∙> pi_glu_exp_pred (Typeω@(large_level i)) in_rel IP IEl elem_rel OEl ->
           DG Πᵈ a ρ B ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_neut :
     `{ forall typ_rel el_rel,
           Dom b ≈ b ∈ per_bot ->
-          typ_rel <∙> neut_glu_typ_pred (Typeω@(ulvl i)) b ->
-          el_rel <∙> neut_glu_exp_pred (Typeω@(ulvl i)) b ->
+          typ_rel <∙> neut_glu_typ_pred (Typeω@(large_level i)) b ->
+          el_rel <∙> neut_glu_exp_pred (Typeω@(large_level i)) b ->
           DG ⇑ a b ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   (** A declared member of a group at its parameters: the types of every
@@ -780,8 +780,8 @@ Section Gluing.
              tele_prefix_rel (shape_doms_rel (canon_doms_rel ups m) ms ws (ptyp_doms t)) j ys ys ->
              ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
              DG b ∈ glu_univ_elem_core ↘ DP m (ms ++ ws ++ ys) B ↘ DEl m (ms ++ ws ++ ys) B) ->
-          typ_rel <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k M (Typeω@(ulvl i)) ->
-          el_rel <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k M elem_rel (Typeω@(ulvl i)) ->
+          typ_rel <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k M (Typeω@(large_level i)) ->
+          el_rel <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k M elem_rel (Typeω@(large_level i)) ->
           DG d_ind p k (ups ++ ns) ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   (** A record type at its parameters: the type of each field glues at the
@@ -797,8 +797,8 @@ Section Gluing.
           (forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
              tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
              DG b ∈ glu_univ_elem_core ↘ FP k vs ↘ FEl k vs) ->
-          typ_rel <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(ulvl i)) ->
-          el_rel <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(ulvl i)) ->
+          typ_rel <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(large_level i)) ->
+          el_rel <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(large_level i)) ->
           DG d_record p ns ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }.
 End Gluing.
 
@@ -820,7 +820,7 @@ Record glu_typ_at (G : glu_typ_pred -> glu_exp_pred -> domain -> Prop) (x : doma
   ; glu_typ_at_glu : Γ ⊢ A ® glu_typ_at_typ }.
 
 Definition glu_rec_at (a : nat) (lower : nat -> nat -> domain -> glu_typ_pred) (inner : nat -> domain -> glu_typ_pred)
-  : uidx -> domain -> glu_typ_pred :=
+  : universe_index -> domain -> glu_typ_pred :=
   fun v => match v with
         | us (a', b') => if a' <? a then lower a' b' else if a' =? a then inner b' else glu_empty
         | ul _ => glu_empty
@@ -845,7 +845,7 @@ Fixpoint glu_tiers_below (a : nat) : nat -> nat -> domain -> glu_typ_pred :=
   | S a' => fun a'' => if Nat.eqb a'' a' then glu_tier a' (glu_tiers_below a') else glu_tiers_below a' a''
   end.
 
-Definition glu_univ_rec_s (j : o2) : uidx -> domain -> glu_typ_pred :=
+Definition glu_univ_rec_s (j : o2) : universe_index -> domain -> glu_typ_pred :=
   glu_rec_at (fst j) (glu_tiers_below (fst j)) (glu_univ_below_in (fst j) (glu_tiers_below (fst j)) (snd j)).
 
 Definition glu_suniv (m : o2) : domain -> glu_typ_pred :=
@@ -861,13 +861,13 @@ Fixpoint glu_univ_below_l (n : nat) : nat -> domain -> glu_typ_pred :=
       else glu_univ_below_l n' m
   end.
 
-Definition glu_univ_below (u : uidx) : uidx -> domain -> glu_typ_pred :=
+Definition glu_univ_below (u : universe_index) : universe_index -> domain -> glu_typ_pred :=
   match u with
   | us j => glu_univ_rec_s j
   | ul n => fun v => match v with us k => glu_suniv k | ul k => glu_univ_below_l n k end
   end.
 
-Definition glu_univ_elem (i : uidx) : glu_typ_pred -> glu_exp_pred -> domain -> Prop :=
+Definition glu_univ_elem (i : universe_index) : glu_typ_pred -> glu_exp_pred -> domain -> Prop :=
   glu_univ_elem_core i (glu_univ_below i).
 #[global] Arguments glu_univ_elem : simpl never.
 
@@ -877,13 +877,13 @@ Proof. reflexivity. Qed.
 
 Hint Rewrite glu_univ_elem_equation_1 : glu_univ_elem.
 
-Definition glu_univ_typ (i : uidx) (a : domain) : glu_typ_pred := glu_typ_at (glu_univ_elem i) a.
+Definition glu_univ_typ (i : universe_index) (a : domain) : glu_typ_pred := glu_typ_at (glu_univ_elem i) a.
 
 Hint Constructors glu_typ_at : mctt.
 Hint Extern 1 => match goal with |- glu_univ_typ _ _ _ _ => econstructor end : mctt.
 
 Lemma glu_univ_below_spec : forall i j,
-    uidx_lt j i ->
+    universe_index_lt j i ->
     glu_univ_below i j = glu_univ_typ j.
 Proof.
   assert (Hin : forall a lower b m, m < b -> glu_univ_below_in a lower b m = glu_tier a lower m).
@@ -905,7 +905,7 @@ Proof.
     apply IHn; lia. }
   intros [[a b] | n] [[a' b'] | m] Hlt; cbn in Hlt; try contradiction.
   - unfold glu_univ_below, glu_univ_rec_s, glu_rec_at; cbn [fst snd].
-    unfold olt in Hlt; cbn [fst snd] in Hlt.
+    unfold ordinal_lt in Hlt; cbn [fst snd] in Hlt.
     destruct (Nat.ltb_spec a' a) as [Ha | Ha].
     + rewrite Htiers by exact Ha; apply Htier.
     + destruct (Nat.eqb_spec a' a) as [-> | Hne]; [| lia ].
@@ -926,17 +926,17 @@ Hint Extern 1 =>
   end : mctt.
 
 (** The two tiers' universe predicates, at an index: the predicates of the
-    universe [ulvl_val u], which is [𝕌ω@j] in the large tier and the small
+    universe [universe_index_value u], which is [𝕌ω@j] in the large tier and the small
     universe at the literal level [n] in the small one.  Stating them by cases
     lets the gluing of the universe at an index be stated once for both
     tiers ([glu_univ_elem_univ_at]). *)
-Definition univ_glu_typ_pred_at (u : uidx) (U : typ) : glu_typ_pred :=
+Definition univ_glu_typ_pred_at (u : universe_index) (U : typ) : glu_typ_pred :=
   match u with
   | us n => suniv_glu_typ_pred (dlvl_lit n) U
   | ul j => univ_glu_typ_pred j U
   end.
 
-Definition univ_glu_exp_pred_at (u : uidx) (U : typ) : glu_exp_pred :=
+Definition univ_glu_exp_pred_at (u : universe_index) (U : typ) : glu_exp_pred :=
   match u with
   | us n => suniv_glu_exp_pred (dlvl_lit n) U
   | ul j => univ_glu_exp_pred j U
@@ -944,42 +944,42 @@ Definition univ_glu_exp_pred_at (u : uidx) (U : typ) : glu_exp_pred :=
 
 Section GluingInduction.
   Hypothesis
-    (motive : uidx -> glu_typ_pred -> glu_exp_pred -> domain -> Prop)
+    (motive : universe_index -> glu_typ_pred -> glu_exp_pred -> domain -> Prop)
 
       (case_univ :
         forall i j
-          (P : glu_typ_pred) (El : glu_exp_pred) (lt_j_i : uidx_lt (ul j) i),
+          (P : glu_typ_pred) (El : glu_exp_pred) (lt_j_i : universe_index_lt (ul j) i),
           (forall P' El' a, DG a ∈ glu_univ_elem j ↘ P' ↘ El' -> motive j P' El' a) ->
-          P <∙> univ_glu_typ_pred j (Typeω@(ulvl i)) ->
-          El <∙> univ_glu_exp_pred j (Typeω@(ulvl i)) ->
+          P <∙> univ_glu_typ_pred j (Typeω@(large_level i)) ->
+          El <∙> univ_glu_exp_pred j (Typeω@(large_level i)) ->
           motive i P El 𝕌ω@j)
 
       (case_suniv :
         forall i l
-          (P : glu_typ_pred) (El : glu_exp_pred) (lt_j_i : uidx_lt (us (dlvl_real l)) i),
+          (P : glu_typ_pred) (El : glu_exp_pred) (lt_j_i : universe_index_lt (us (dlvl_real l)) i),
           Dom l ≈ l ∈ per_lvl ->
           (forall P' El' a, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P' ↘ El' ->
                             motive (us (dlvl_real l)) P' El' a) ->
-          P <∙> suniv_glu_typ_pred l (Typeω@(ulvl i)) ->
-          El <∙> suniv_glu_exp_pred l (Typeω@(ulvl i)) ->
+          P <∙> suniv_glu_typ_pred l (Typeω@(large_level i)) ->
+          El <∙> suniv_glu_exp_pred l (Typeω@(large_level i)) ->
           motive i P El 𝕌@l)
 
       (case_level :
         forall i n (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> level_glu_typ_pred n (Typeω@(ulvl i)) ->
-          El <∙> level_glu_exp_pred n (Typeω@(ulvl i)) ->
+          P <∙> level_glu_typ_pred n (Typeω@(large_level i)) ->
+          El <∙> level_glu_exp_pred n (Typeω@(large_level i)) ->
           motive i P El (Levelᵈ@n))
 
       (case_True :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> True_glu_typ_pred (Typeω@(ulvl i)) ->
-          El <∙> True_glu_exp_pred (Typeω@(ulvl i)) ->
+          P <∙> True_glu_typ_pred (Typeω@(large_level i)) ->
+          El <∙> True_glu_exp_pred (Typeω@(large_level i)) ->
           motive i P El ⊤ᵈ)
 
       (case_False :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> False_glu_typ_pred (Typeω@(ulvl i)) ->
-          El <∙> False_glu_exp_pred (Typeω@(ulvl i)) ->
+          P <∙> False_glu_typ_pred (Typeω@(large_level i)) ->
+          El <∙> False_glu_exp_pred (Typeω@(large_level i)) ->
           motive i P El ⊥ᵈ)
 
       (case_pi :
@@ -997,8 +997,8 @@ Section GluingInduction.
               ⟦ B ⟧ ρ ↦ c ↘ b ->
               motive i (OP c equiv_c) (OEl c equiv_c) b) ->
           DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
-          P <∙> pi_glu_typ_pred (Typeω@(ulvl i)) in_rel IP IEl OP ->
-          El <∙> pi_glu_exp_pred (Typeω@(ulvl i)) in_rel IP IEl elem_rel OEl ->
+          P <∙> pi_glu_typ_pred (Typeω@(large_level i)) in_rel IP IEl OP ->
+          El <∙> pi_glu_exp_pred (Typeω@(large_level i)) in_rel IP IEl elem_rel OEl ->
           motive i P El Πᵈ a ρ B)
 
       (case_neut :
@@ -1006,8 +1006,8 @@ Section GluingInduction.
           (P : glu_typ_pred)
           (El : glu_exp_pred),
           Dom b ≈ b ∈ per_bot ->
-          P <∙> neut_glu_typ_pred (Typeω@(ulvl i)) b ->
-          El <∙> neut_glu_exp_pred (Typeω@(ulvl i)) b ->
+          P <∙> neut_glu_typ_pred (Typeω@(large_level i)) b ->
+          El <∙> neut_glu_exp_pred (Typeω@(large_level i)) b ->
           motive i P El ⇑ a b)
 
       (case_indty :
@@ -1068,8 +1068,8 @@ Section GluingInduction.
              tele_prefix_rel (shape_doms_rel (canon_doms_rel ups m) ms ws (ptyp_doms t)) j ys ys ->
              ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
              motive i (DP m (ms ++ ws ++ ys) B) (DEl m (ms ++ ws ++ ys) B) b) ->
-          P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k M (Typeω@(ulvl i)) ->
-          El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k M elem_rel (Typeω@(ulvl i)) ->
+          P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k M (Typeω@(large_level i)) ->
+          El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k M elem_rel (Typeω@(large_level i)) ->
           motive i P El (d_ind p k (ups ++ ns)))
 
       (case_record :
@@ -1085,8 +1085,8 @@ Section GluingInduction.
           (forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
              tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
              motive i (FP k vs) (FEl k vs) b) ->
-          P <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(ulvl i)) ->
-          El <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(ulvl i)) ->
+          P <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(large_level i)) ->
+          El <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(large_level i)) ->
           motive i P El (d_record p ns))
   .
 
@@ -1094,7 +1094,7 @@ Section GluingInduction.
     (H : glu_univ_elem i P El a) : motive i P El a.
   Proof.
     revert P El a H.
-    induction i as [i IHi] using (well_founded_ind uidx_wf).
+    induction i as [i IHi] using (well_founded_ind universe_index_wf).
     intros P El a H.
     induction H.
     - rewrite glu_univ_below_spec in * by assumption.
@@ -1133,10 +1133,10 @@ Record glu_elem_top i a Γ A M m : Prop := glu_elem_top_make
   ; glu_elem_top_read : forall Δ φ w, Δ ⊢ᵏ φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]ʷ ≈ w : A[φ]ʷ }.
 Hint Constructors glu_elem_top : mctt.
 
-Record glu_typ_top (i : uidx) a Γ A : Prop := glu_typ_top_make
-  { glu_typ_top_wf : Γ ⊢ A : Typeω@(ulvl i)
+Record glu_typ_top (i : universe_index) a Γ A : Prop := glu_typ_top_make
+  { glu_typ_top_wf : Γ ⊢ A : Typeω@(large_level i)
   ; glu_typ_top_per : Dom a ≈ a ∈ per_top_typ
-  ; glu_typ_top_read : forall Δ φ A', Δ ⊢ᵏ φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(ulvl i) }.
+  ; glu_typ_top_read : forall Δ φ A', Δ ⊢ᵏ φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(large_level i) }.
 Hint Constructors glu_typ_top : mctt.
 
 #[warnings="-cannot-define-projection"]

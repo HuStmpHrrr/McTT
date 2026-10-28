@@ -97,19 +97,19 @@ Section Gen.
     Hypothesis HH : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'.
 
     (** Whether a description is a module only, an open or a closed one. *)
-    Definition ds_is_modb (R : mdesc) : bool :=
+    Definition mdesc_is_modb (R : mdesc) : bool :=
       match R with
-      | ds_open _ _ _ | ds_closed _ _ _ _ _ => true
+      | mdesc_open _ _ _ | mdesc_closed _ _ _ _ _ => true
       | _ => false
       end.
 
-    Lemma ds_is_modb_spec : forall R, ds_is_modb R = true <-> ds_is_mod R.
+    Lemma mdesc_is_modb_spec : forall R, mdesc_is_modb R = true <-> mdesc_is_mod R.
     Proof. intros []; cbn; split; first [ tauto | discriminate | intros [] ]. Qed.
 
     (** The definition with a module part an item names: a member with a
         term part and a module part ([items_gen_dm]), of the term part's type. *)
     Definition dm_gen (d : string) (pv : bool) (n : string) (R : fmdesc) : open_result generated_item :=
-      match fds_ty R, fds_mod R with
+      match fmdesc_type R, fmdesc_mod R with
       | Some A, Some _ => open_success (generated_item_def_mod d pv A (a_mem H n) (me_mem H n))
       | _, _ => open_failure (open_failure_reason_member H n)
       end.
@@ -123,9 +123,9 @@ Section Gen.
       | (None, d, pv) => open_success (generated_item_alias d pv H)
       | (Some n, d, pv) =>
           match mdenote_with_order Γ (me_mem H n) (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) with
-          | Some (fds_term A _) => open_success (generated_item_def d pv A (a_mem H n))
+          | Some (fmdesc_term A _) => open_success (generated_item_def d pv A (a_mem H n))
           | Some R =>
-              if fds_is_modb R then open_success (generated_item_alias d pv (me_mem H n))
+              if fmdesc_is_modb R then open_success (generated_item_alias d pv (me_mem H n))
               else dm_gen d pv n R
           | None => open_failure (open_failure_reason_member H n)
           end
@@ -135,7 +135,7 @@ Section Gen.
         no member is both used and exported, and the names declared are
         distinct; then each item's declaration, all in [Γ]. *)
     Definition import_gen (its : list iitem) : open_result (list generated_item) :=
-      match option_map fds_mod (mdenote_with_order Γ H (mdenote_order_of_wf _ _ Hg _ _ _ HH)) with
+      match option_map fmdesc_mod (mdenote_with_order Γ H (mdenote_order_of_wf _ _ Hg _ _ _ HH)) with
       | Some (Some _) =>
           let+ gs := open_map item_gen its in
           match both_dup its with
@@ -162,10 +162,10 @@ Section Gen.
           cbn [dec_desc] in E;
           first [ eapply items_gen_def; [ exact E | apply IH; reflexivity ]
                 | eapply items_gen_mod; [ exact E | exact I | apply IH; reflexivity ] ].
-        unfold dm_gen in Hx; destruct (fds_ty _) as [A0 |] eqn:Et; [| discriminate ];
-          destruct (fds_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
+        unfold dm_gen in Hx; destruct (fmdesc_type _) as [A0 |] eqn:Et; [| discriminate ];
+          destruct (fmdesc_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
         destruct (open_map item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
-        eapply items_gen_dm; [ exact E | rewrite fds_ty_dec; exact Et | rewrite fds_mod_dec, Em; reflexivity | apply IH; reflexivity ].
+        eapply items_gen_dm; [ exact E | rewrite fmdesc_type_dec; exact Et | rewrite fmdesc_mod_dec, Em; reflexivity | apply IH; reflexivity ].
       - destruct (open_map item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
         injection Hx as <-; constructor; apply IH; reflexivity.
     Qed.
@@ -178,16 +178,16 @@ Section Gen.
       - match goal with Hm : mdenote _ _ _ _ _ |- _ =>
           destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & ER) end.
         destruct R'; cbn in ER; try discriminate; injection ER as <- <-; rewrite (IH _ ltac:(eassumption)); reflexivity.
-      - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
+      - match goal with Hm : mdenote _ _ _ _ ?R, Hk : mdesc_is_mod ?R |- _ =>
           destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
           rewrite (IH _ ltac:(eassumption));
           destruct R'; cbn in Hk; try contradiction; reflexivity end.
-      - match goal with Hm : mdenote _ _ _ _ ?R, Ht : ds_ty ?R = Some _, Hd : ds_mod ?R = Some _ |- _ =>
+      - match goal with Hm : mdenote _ _ _ _ ?R, Ht : mdesc_type ?R = Some _, Hd : mdesc_mod ?R = Some _ |- _ =>
           destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
-          rewrite fds_ty_dec in Ht; rewrite fds_mod_dec in Hd;
+          rewrite fmdesc_type_dec in Ht; rewrite fmdesc_mod_dec in Hd;
           destruct R'; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
-          cbn [fds_is_modb]; unfold dm_gen; rewrite Ht;
-          destruct (fds_mod _); [| discriminate ]; rewrite (IH _ ltac:(eassumption)); reflexivity end.
+          cbn [fmdesc_is_modb]; unfold dm_gen; rewrite Ht;
+          destruct (fmdesc_mod _); [| discriminate ]; rewrite (IH _ ltac:(eassumption)); reflexivity end.
       - rewrite (IH _ ltac:(eassumption)); reflexivity.
     Qed.
 
@@ -202,16 +202,16 @@ Section Gen.
       intros; unfold import_gen.
       destruct (mdenote_with_order Γ H _) as [R |] eqn:E; cbn [option_map].
       - apply mdenote_with_order_sound in E.
-        destruct (fds_mod R) as [Rm |] eqn:Em.
+        destruct (fmdesc_mod R) as [Rm |] eqn:Em.
         + destruct (open_map item_gen its) as [gs' | e] eqn:Er; cbn.
           * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
             destruct (name_dup (map iitem_name its)) eqn:En; [ split; [ discriminate | intros [_ _ _ _ _ [_ Hn]]; congruence ] |].
             split; [ intros [= <-]; eapply mk_open_gens;
-                     [ exact E | rewrite fds_mod_dec, Em; reflexivity | apply open_map_item_gen_spec; exact Er | split; assumption ] |].
+                     [ exact E | rewrite fmdesc_mod_dec, Em; reflexivity | apply open_map_item_gen_spec; exact Er | split; assumption ] |].
             intros [_ _ _ _ Hi _]; apply open_map_item_gen_spec in Hi; congruence.
           * split; [ discriminate |]; intros [_ _ _ _ Hi _]; apply open_map_item_gen_spec in Hi; congruence.
         + split; [ discriminate |]; intros [R' Rm' HR HRm _ _].
-          rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E), fds_mod_dec, Em in HRm; discriminate.
+          rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E), fmdesc_mod_dec, Em in HRm; discriminate.
       - split; [ discriminate |]; intros [R' Rm' HR _ _ _].
         destruct (mdenote_with_order_complete _ _ (mdenote_order_of_wf _ _ Hg _ _ _ HH) _ HR) as (R'' & E' & _); congruence.
     Qed.

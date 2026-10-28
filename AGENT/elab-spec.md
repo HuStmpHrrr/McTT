@@ -2,7 +2,7 @@
 
 | File | What |
 | --- | --- |
-| `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> cunit -> Prop`: the scope (`scope_entry`, `bound`), objects (`sel`, `selm`, `sparams`, `sunit`, `sdef`, `sbody`), opens (`item_scope_entries`, `item_mems`, `open_scope_entries`, `itarget`), commands (`scmd`, `scmds`), the leading scope (`slead`). |
+| `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> cunit -> Prop`: the scope (`scope_entry`, `bound`), objects (`spec_exp`, `spec_modexp`, `spec_params`, `spec_unit`, `spec_def`, `spec_body`), opens (`item_scope_entries`, `item_mems`, `open_scope_entries`, `itarget`), commands (`spec_cmd`, `spec_cmds`), the leading scope (`spec_lead`). |
 | `theories/Frontend/Elaborator.v` | `elaborate_core`, on the spec's own scope of entries. |
 | `theories/Frontend/ElabCorrect.v` | `elaborate_core_iff`, soundness, completeness, functionality, failure characterization. |
 | `theories/Frontend/ElabExamples.v` | Hand-written `Cst.prog`s with their core units: the running example, pre-application, every module form (`module … where`, `module x (ps) := E`, `module A.B`, `let module` with a body or an alias, opens in a local body and the rejection of an unloaded unit there, the rejection of imports and evals in a local body, private entries of a local body), the definition keywords and each modifier rejection, opens with arguments, `use … as`, `export` and lists in any order, a repeated import, leading imports and opens (the parameter-type scope, and the frame), and every rejection of the one-binding rule, with its message. |
@@ -31,7 +31,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   entry `scope_entry_mem x q n` records the `n` binders outside it, `binders S` of the
   scope it is declared in: exactly the parameters it is generalized over.  A
   use is pre-applied to `vars_desc k n`.  A scope only grows at its front, so
-  the count stays right (`mems_counted`, `scmd_mems_counted`,
+  the count stays right (`mems_counted`, `spec_cmd_mems_counted`,
   `bound_mem_counted` in `ElabCorrect.v`), and a lookup never reads past the
   entry it finds.
 * A command is read in one scope `S`, the frame's entries so far followed by
@@ -40,7 +40,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   frame (members, units and open items are no binders).
 * The position decides what an object is: the head of a projection, the head
   of an application there, an alias body and an open target are module
-  expressions (`selm`); everything else is a term (`sel`).  A projection is
+  expressions (`spec_modexp`); everything else is a term (`spec_exp`).  A projection is
   the core's member selection (`a_mem`, `me_mem`).  So member existence,
   module arity and whether `M.x` is a term are left to typing, and privacy
   to the core's command judgment (`run_cmd`, `acc_ok`); the elaborator checks
@@ -56,7 +56,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
 * `import X::Y` (`Cst.c_import fq`) emits `core_cmd_load fq` and puts the unit in
   scope (`scope_entry_unit fq`); it declares nothing, and a repeated one is the core's
   no-op.  `open fq.ip args items` (`Cst.c_open`) has the target `itarget fq
-  ip args`, read by `selm` like an alias body, so a unit it names must be
+  ip args`, read by `spec_modexp` like an alias body, so a unit it names must be
   imported (`the unit is not imported`); it loads nothing.
 * In a frame, an open emits `core_cmd_open E items`; the core checks the target
   and the items and runs the definitions and aliases they generate.  Each
@@ -94,7 +94,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   elaborator emits such a unit as written, and an elaboration error later in
   the unit is reported first;
 * a member against the frame's parameters: the elaborator, `fresh x P` with
-  `P` the parameter names `scmd` carries, since the core's parameter contexts
+  `P` the parameter names `spec_cmd` carries, since the core's parameter contexts
   are nameless.  A record's with-area has the record's parameters as `P`; its
   names against the fields are `check_no_field`'s.
 
@@ -104,26 +104,26 @@ lookup is first-match, the rule is a premise only, not an invariant.
 
 ## Leading imports and opens
 
-They are read twice (`slead`, then `scmds`):
+They are read twice (`spec_lead`, then `spec_cmds`):
 
 ```coq
-Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list core_cmd -> Prop :=
-| slead_nil : forall L, slead L nil L nil
-| slead_import : forall L fq cs L' lds,
-    slead (scope_entry_unit fq :: L) cs L' lds ->
-    slead L (Cst.c_import fq :: cs) L' (core_cmd_load fq :: lds)
-| slead_open : forall L fq ip args its o E cs L' lds,
-    itarget fq ip args = Some o -> selm L o E ->
-    slead (open_scope_entries E its ++ L) cs L' lds ->
-    slead L (Cst.c_open fq ip args its :: cs) L' lds.
+Inductive spec_lead : list scope_entry -> list Cst.cmd -> list scope_entry -> list core_cmd -> Prop :=
+| spec_lead_nil : forall L, spec_lead L nil L nil
+| spec_lead_import : forall L fq cs L' lds,
+    spec_lead (scope_entry_unit fq :: L) cs L' lds ->
+    spec_lead L (Cst.c_import fq :: cs) L' (core_cmd_load fq :: lds)
+| spec_lead_open : forall L fq ip args its o E cs L' lds,
+    itarget fq ip args = Some o -> spec_modexp L o E ->
+    spec_lead (open_scope_entries E its ++ L) cs L' lds ->
+    spec_lead L (Cst.c_open fq ip args its :: cs) L' lds.
 
 | elab_spec_intro : forall leads fp ps cs L lds tys ccs,
-    slead nil leads L lds -> NoDup (map fst ps) -> sparams L ps tys ->
-    scmds fp nil (map fst ps) (param_scope_entries ps ++ L) (leads ++ cs) ccs ->
+    spec_lead nil leads L lds -> NoDup (map fst ps) -> spec_params L ps tys ->
+    spec_cmds fp nil (map fst ps) (param_scope_entries ps ++ L) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).
 ```
 
-* **Before the header** (`slead`), in no binder: their units are in scope,
+* **Before the header** (`spec_lead`), in no binder: their units are in scope,
   and each name an open declares is an entry `scope_entry_open d E oc` (`open_scope_entries`),
   denoting the member `oc` of the module `E` (`a_mem E c` / `me_mem E c`),
   or `E` itself for an `as` alias.  This is the scope `L` of the unit's
@@ -140,7 +140,7 @@ Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list c
 * A leading open (or long-form import) may `use` and `as`, but not
   `export`: the parser's `Cst.lead_cmds` replaces such a command by
   `c_error "export is not allowed before the module header"`, which
-  `elab_lead` reports (no `slead` rule relates it).
+  `elab_lead` reports (no `spec_lead` rule relates it).
 
 ```
 import Prelude::Arith::Equality
@@ -192,7 +192,7 @@ target), `args_iff`/`target_iff` (open targets, computed without building
 the object, so that the elaborator's local bodies stay structural),
 `expressions_iff` (by `Cst.cst_ind`), `commands_iff` (by `Cst.cst_ind`, motive `md = md_where body
 -> Pcmds body`; `Pcmd`/`Pcmds` assume the carried count is `binders S`, and
-`scmd_binders` says a command keeps it), `lead_iff`, `elaborate_core_iff`.  `Cst.cst_ind` is the
+`spec_cmd_binders` says a command keeps it), `lead_iff`, `elaborate_core_iff`.  `Cst.cst_ind` is the
 generated mutual principle (`Scheme … Combined Scheme`): with `All` schemes
 for `list`, `prod` and `option` registered in `Core/Base.v`, a list of
 pairs carries `list_all (prod_all …)` of the motive, which `list_all_snd`,

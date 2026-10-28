@@ -811,7 +811,7 @@ with fast_eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop
     the entries its local opens generate: it, in the environment of the
     body before it. *)
 | fast_eval_sel_body :
-  `( kbody Θ Ξ ρ Φ Φx ->
+  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
@@ -852,7 +852,7 @@ with fast_eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop 
     entries its local opens generate: its unit's closure, in the
     environment of the body before it. *)
 | fast_eval_selm_body :
-  `( kbody Θ Ξ ρ Φ Φx ->
+  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
@@ -1070,10 +1070,10 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_nflds fast_eval_projs f
             exfalso; exact (H2 _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : kgens Θ Ξ ?ρ ?H ?its ?g1, H2 : kgens Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
-            assert_fails (constr_eq g1 g2); pose proof (functional_kgens _ _ _ _ _ H1 H2); subst g2
-        | H1 : kbody Θ Ξ ?ρ ?Φ ?Φ1, H2 : kbody Θ Ξ ?ρ ?Φ ?Φ2 |- _ =>
-            assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kbody _ _ _ _ H1 H2); subst Φ2
+        | H1 : kinds_items_gen Θ Ξ ?ρ ?H ?its ?g1, H2 : kinds_items_gen Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
+            assert_fails (constr_eq g1 g2); pose proof (functional_kinds_items_gen _ _ _ _ _ H1 H2); subst g2
+        | H1 : kinds_body_xp Θ Ξ ?ρ ?Φ ?Φ1, H2 : kinds_body_xp Θ Ξ ?ρ ?Φ ?Φ2 |- _ =>
+            assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
         | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
             exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
         | H : _ ++ ce_ass _ :: nil = _ ++ ce_ass _ :: nil |- _ =>
@@ -1355,10 +1355,10 @@ Inductive fast_read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Pr
   `( Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rnfᶠ ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 (** A neutral level is the single atom at offset [0], of the sort of its
-    type ([dsort]) *)
+    type ([domain_level_sort]) *)
 | fast_read_nf_lvl_neut :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (mk_level_atom 0 (dsort a) M :: nil) )
+     Rnfᶠ ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) M :: nil) )
 (** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
 | fast_read_nf_true :
   `( Rnfᶠ ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
@@ -1524,16 +1524,16 @@ with fast_read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtypᶠ d_record p ns in Θ ⍮ Ξ ⍮ s ↘ nf_record p Ps )
 where "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fast_read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
-with fast_read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
+with fast_read_level_atoms (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
 (** No atom *)
-| fast_read_la_nil :
+| fast_read_level_atoms_nil :
   `( Rlaᶠ nil in Θ ⍮ Ξ ⍮ s ↘ nil )
 (** The first atom's neutral, then the rest *)
-| fast_read_la_cons :
+| fast_read_level_atoms_cons :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rlaᶠ (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ mk_level_atom k n M :: ys )
-where "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (fast_read_la Θ Ξ s xs ys) : type_scope
+where "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (fast_read_level_atoms Θ Ξ s xs ys) : type_scope
 (** Values at a telescope, outermost first. *)
 with fast_read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> list nf -> Prop :=
 (** No value *)
@@ -1652,7 +1652,7 @@ where "'Rbrsᶠ' Bs 'at' cs 'of' Mi r 'of' Dc 'from' p ups Bks Mv A 'in' Θ '⍮
 Scheme fast_read_nf_mut_ind := Induction for fast_read_nf Sort Prop
 with fast_read_ne_mut_ind := Induction for fast_read_ne Sort Prop
 with fast_read_typ_mut_ind := Induction for fast_read_typ Sort Prop
-with fast_read_la_mut_ind := Induction for fast_read_la Sort Prop
+with fast_read_level_atoms_mut_ind := Induction for fast_read_level_atoms Sort Prop
 with fast_read_ps_mut_ind := Induction for fast_read_ps Sort Prop
 with fast_read_cargs_mut_ind := Induction for fast_read_cargs Sort Prop
 with fast_read_shape_mut_ind := Induction for fast_read_shape Sort Prop
@@ -1663,7 +1663,7 @@ Combined Scheme fast_read_mut_ind from
   fast_read_nf_mut_ind,
   fast_read_ne_mut_ind,
   fast_read_typ_mut_ind,
-  fast_read_la_mut_ind,
+  fast_read_level_atoms_mut_ind,
   fast_read_ps_mut_ind,
   fast_read_cargs_mut_ind,
   fast_read_shape_mut_ind,
@@ -1672,7 +1672,7 @@ Combined Scheme fast_read_mut_ind from
   fast_read_fields_mut_ind.
 
 #[export]
-Hint Constructors fast_read_nf fast_read_ne fast_read_typ fast_read_la fast_read_ps fast_read_fields fast_read_cargs fast_read_shape fast_read_blocks fast_read_brs : mctt.
+Hint Constructors fast_read_nf fast_read_ne fast_read_typ fast_read_level_atoms fast_read_ps fast_read_fields fast_read_cargs fast_read_shape fast_read_blocks fast_read_brs : mctt.
 
   Lemma functional_fast_fresh_tele : forall {Θ Ξ} ρ T s vs1, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
       forall vs2, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
@@ -1816,7 +1816,7 @@ Hint Constructors fast_read_nf fast_read_ne fast_read_typ fast_read_la fast_read
     intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder.
   Qed.
 
-  Lemma functional_fast_read_la : forall {Θ Ξ} s xs ys1 ys2,
+  Lemma functional_fast_read_level_atoms : forall {Θ Ξ} s xs ys1 ys2,
       Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys1 ->
       Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
       ys1 = ys2.
@@ -1841,7 +1841,7 @@ Hint Constructors fast_read_nf fast_read_ne fast_read_typ fast_read_la fast_read
   Qed.
 
 #[export]
-Hint Resolve functional_fast_read_nf functional_fast_read_ne functional_fast_read_typ functional_fast_read_la : mctt.
+Hint Resolve functional_fast_read_nf functional_fast_read_ne functional_fast_read_typ functional_fast_read_level_atoms : mctt.
 
 Ltac functional_fast_read_rewrite_clear1 :=
   let tactic_error o1 o2 := fail 3 "functional_fast_read equality between" o1 "and" o2 "cannot be solved by mauto" in

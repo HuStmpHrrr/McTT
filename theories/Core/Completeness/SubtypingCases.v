@@ -155,9 +155,9 @@ Proof.
   eexists_subtyp_with (S j).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌ω@i 𝕌ω@i 𝕌ω@j 𝕌ω@j; try apply eval_exp_typ.
-  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
-  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
-  - apply per_subtyp_univ; solve [ lia | solve_uidx ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
+  - apply per_subtyp_univ; solve [ lia | solve_universe_index ].
 Qed.
 
 (** ** Types of Levels
@@ -188,7 +188,7 @@ Section Fixed_GCtx.
     one; any ambient level relates small universes. *)
 Lemma rel_subtyp_under_ctx_suniv : forall {Γ n m},
     ⊨ Γ ->
-    ole n m ->
+    ordinal_le n m ->
     Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Type⟨𝕃ᵒ m⟩.
 Proof.
   intros * HΓsem Hnm.
@@ -196,9 +196,9 @@ Proof.
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit m) 𝕌@(dlvl_lit m); try (apply eval_exp_univ, eval_exp_llit).
-  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
-  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
-  - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_uidx ].
+  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
+  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
+  - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_universe_index ].
 Qed.
 
 Lemma rel_subtyp_under_ctx_small_large : forall {Γ n} {i : nat},
@@ -210,9 +210,9 @@ Proof.
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
-  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
-  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
-  - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_uidx ].
+  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
+  - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_universe_index ].
 Qed.
 
 Hint Resolve rel_subtyp_under_ctx_suniv rel_subtyp_under_ctx_small_large : mctt.

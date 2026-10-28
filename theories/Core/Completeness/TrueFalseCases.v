@@ -106,7 +106,7 @@ Hint Resolve valid_exp_under_ctx_False : mctt.
 (** [⊤] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_True : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ⊤ ≈ ⊤ : ulvl_tm u.
+    Γ ⊨ ⊤ ≈ ⊤ : universe_index_term u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.
@@ -141,7 +141,7 @@ Section Fixed_GCtx.
 (** [⊥] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_False : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ⊥ ≈ ⊥ : ulvl_tm u.
+    Γ ⊨ ⊥ ≈ ⊥ : universe_index_term u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.

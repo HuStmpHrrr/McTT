@@ -579,35 +579,35 @@ Qed.
     [k] is not an atom of the larger, and the assignment that makes it alone
     large, at [ω·s + N] for its sort [s], is below the larger level only if
     that level's constant is at least [ω·(s+1)]. *)
-Lemma la_fresh_In : forall k ys j s a, all_list (fun a => ne_fresh k (atom_level a)) ys -> la_In j s a ys -> ne_fresh k a.
+Lemma level_atoms_fresh_In : forall k ys j s a, all_list (fun a => ne_fresh k (atom_level a)) ys -> level_atoms_In j s a ys -> ne_fresh k a.
 Proof.
   induction ys as [| [j0 t b] r IH]; cbn; intros j s a Hf Hi; [ contradiction |].
   destruct Hf as [Hb Hr]; destruct Hi as [(_ & _ & ->) | Hi]; [ exact Hb | eapply IH; eassumption ].
 Qed.
 
-Lemma lvl_le_la_fresh : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
-    forall j s a, la_In j s a (snd l) -> ~ ne_fresh k a -> s < fst (fst l').
+Lemma lvl_le_level_atoms_fresh : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
+    forall j s a, level_atoms_In j s a (snd l) -> ~ ne_fresh k a -> s < fst (fst l').
 Proof.
   intros k [c xs] [d ys] Hle Hys j s a Hin Ha; cbn [fst snd] in *.
   rewrite lvl_le_correct in Hle.
   destruct (Nat.lt_ge_cases s (fst d)) as [| Hs]; [ assumption | exfalso ].
-  assert (Hn : la_look a s ys = None).
-  { destruct (la_look a s ys) eqn:L; [| reflexivity ].
-    apply la_look_In in L; exfalso; apply Ha; eapply la_fresh_In; eassumption. }
-  set (N := S (snd d + la_maxoff ys)).
+  assert (Hn : level_atoms_lookup a s ys = None).
+  { destruct (level_atoms_lookup a s ys) eqn:L; [| reflexivity ].
+    apply level_atoms_lookup_In in L; exfalso; apply Ha; eapply level_atoms_fresh_In; eassumption. }
+  set (N := S (snd d + level_atoms_max_offset ys)).
   specialize (Hle (ν_at a s N) (ν_at_adm _ _ _)).
   unfold lvl_ev in Hle; cbn [fst snd] in Hle.
-  rewrite (la_ev_at_none _ _ _ _ Hn) in Hle.
-  assert (Hge : ole (s, N) (la_ev (ν_at a s N) xs)).
+  rewrite (level_atoms_eval_at_none _ _ _ _ Hn) in Hle.
+  assert (Hge : ordinal_le (s, N) (level_atoms_eval (ν_at a s N) xs)).
   { clear Hle; induction xs as [| [j0 t b] r IH]; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [(<- & <- & <-) | Hin].
     - unfold ν_at at 1; rewrite at_cmp_refl.
-      generalize (la_ev (ν_at a s N) r); intros; ord.
-    - specialize (IH Hin); revert IH; generalize (la_ev (ν_at a s N) r) (ν_at a s N b t); intros; ord. }
+      generalize (level_atoms_eval (ν_at a s N) r); intros; ord.
+    - specialize (IH Hin); revert IH; generalize (level_atoms_eval (ν_at a s N) r) (ν_at a s N b t); intros; ord. }
   assert (HN1 : snd d < N) by (subst N; lia).
-  assert (HN2 : la_maxoff ys < N) by (subst N; lia).
+  assert (HN2 : level_atoms_max_offset ys < N) by (subst N; lia).
   clearbody N.
-  revert Hle Hge Hs HN1 HN2; generalize (la_ev (ν_at a s N) xs) (la_maxoff ys); intros; ord.
+  revert Hle Hge Hs HN1 HN2; generalize (level_atoms_eval (ν_at a s N) xs) (level_atoms_max_offset ys); intros; ord.
 Qed.
 
 (** ** The Bound of a Level Under a Binder
@@ -617,108 +617,108 @@ Qed.
     at [k] stays, un-weakened, and an atom that mentions [k], of sort [s],
     ranges over the ordinals below [ω·(s+1)], which is the bound it
     contributes ([lvl_bound_le], [lvl_le_bound]). *)
-Fixpoint la_fresh_part (k : nat) (xs : list level_atom) : list level_atom :=
+Fixpoint level_atoms_fresh_part (k : nat) (xs : list level_atom) : list level_atom :=
   match xs with
   | nil => nil
-  | mk_level_atom j s a :: r => if ne_freshb k a then mk_level_atom j s a :: la_fresh_part k r else la_fresh_part k r
+  | mk_level_atom j s a :: r => if ne_freshb k a then mk_level_atom j s a :: level_atoms_fresh_part k r else level_atoms_fresh_part k r
   end.
 
-Fixpoint la_open_bound (k : nat) (xs : list level_atom) : o2 :=
+Fixpoint level_atoms_open_bound (k : nat) (xs : list level_atom) : o2 :=
   match xs with
-  | nil => oz
-  | mk_level_atom j s a :: r => if ne_freshb k a then la_open_bound k r else omax (S s, 0) (la_open_bound k r)
+  | nil => ordinal_zero
+  | mk_level_atom j s a :: r => if ne_freshb k a then level_atoms_open_bound k r else ordinal_max (S s, 0) (level_atoms_open_bound k r)
   end.
 
 Definition lvl_bound (k : nat) (l : lvl) : lvl :=
-  (omax (fst l) (la_open_bound k (snd l)), List.map (map_level_atom (ne_unwk k)) (la_fresh_part k (snd l))).
+  (ordinal_max (fst l) (level_atoms_open_bound k (snd l)), List.map (map_level_atom (ne_unwk k)) (level_atoms_fresh_part k (snd l))).
 
 (** The bound, weakened back, is above the level: the fresh atoms are the
     same, and an atom of sort [s] is below [ω·(s+1)]. *)
 Lemma lvl_bound_above : forall k l,
-    lvl_le l (omax (fst l) (la_open_bound k (snd l)), la_fresh_part k (snd l)).
+    lvl_le l (ordinal_max (fst l) (level_atoms_open_bound k (snd l)), level_atoms_fresh_part k (snd l)).
 Proof.
   intros k [c xs]; apply lvl_le_correct; intros ν Hν; unfold lvl_ev; cbn [fst snd].
-  enough (ole (la_ev ν xs) (omax (la_open_bound k xs) (la_ev ν (la_fresh_part k xs)))) as H
-    by (revert H; generalize (la_ev ν xs) (la_open_bound k xs) (la_ev ν (la_fresh_part k xs)); intros; ord).
-  induction xs as [| [j s a] r IH]; cbn [la_ev la_open_bound la_fresh_part]; [ ord |].
+  enough (ordinal_le (level_atoms_eval ν xs) (ordinal_max (level_atoms_open_bound k xs) (level_atoms_eval ν (level_atoms_fresh_part k xs)))) as H
+    by (revert H; generalize (level_atoms_eval ν xs) (level_atoms_open_bound k xs) (level_atoms_eval ν (level_atoms_fresh_part k xs)); intros; ord).
+  induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_open_bound level_atoms_fresh_part]; [ ord |].
   specialize (Hν a s).
-  destruct (ne_freshb k a); cbn [la_ev].
-  - revert IH; generalize (la_ev ν r) (la_open_bound k r) (la_ev ν (la_fresh_part k r)) (ν a s); intros; ord.
-  - revert IH Hν; generalize (la_ev ν r) (la_open_bound k r) (la_ev ν (la_fresh_part k r)) (ν a s); intros; ord.
+  destruct (ne_freshb k a); cbn [level_atoms_eval].
+  - revert IH; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ord.
+  - revert IH Hν; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ord.
 Qed.
 
 (** The bound is below every level fresh at [k] above the level, un-weakened:
     so it is the least such level of the context. *)
-Lemma la_ev_unwk : forall ν k xs,
-    la_ev ν (List.map (map_level_atom (ne_unwk k)) xs) = la_ev (fun a s => ν (ne_unwk k a) s) xs.
+Lemma level_atoms_eval_unwk : forall ν k xs,
+    level_atoms_eval ν (List.map (map_level_atom (ne_unwk k)) xs) = level_atoms_eval (fun a s => ν (ne_unwk k a) s) xs.
 Proof. intros ν k; induction xs as [| [j s a] r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-Lemma la_ev_fresh_part : forall ν k xs, ole (la_ev ν (la_fresh_part k xs)) (la_ev ν xs).
+Lemma level_atoms_eval_fresh_part : forall ν k xs, ordinal_le (level_atoms_eval ν (level_atoms_fresh_part k xs)) (level_atoms_eval ν xs).
 Proof.
-  intros ν k; induction xs as [| [j s a] r IH]; cbn [la_ev la_fresh_part]; [ ord |].
-  destruct (ne_freshb k a); cbn [la_ev];
-    revert IH; generalize (la_ev ν r) (la_ev ν (la_fresh_part k r)) (ν a s); intros; ord.
+  intros ν k; induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_fresh_part]; [ ord |].
+  destruct (ne_freshb k a); cbn [level_atoms_eval];
+    revert IH; generalize (level_atoms_eval ν r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ord.
 Qed.
 
-Lemma la_open_bound_le : forall k xs d,
-    (forall j s a, la_In j s a xs -> ~ ne_fresh k a -> s < fst d) ->
-    ole (la_open_bound k xs) d.
+Lemma level_atoms_open_bound_le : forall k xs d,
+    (forall j s a, level_atoms_In j s a xs -> ~ ne_fresh k a -> s < fst d) ->
+    ordinal_le (level_atoms_open_bound k xs) d.
 Proof.
-  intros k xs d; induction xs as [| [j s a] r IH]; cbn [la_open_bound]; intros H; [ apply ole_zero |].
-  assert (IH' : ole (la_open_bound k r) d) by (apply IH; intros; eapply H; [ right |]; eassumption).
+  intros k xs d; induction xs as [| [j s a] r IH]; cbn [level_atoms_open_bound]; intros H; [ apply ordinal_le_zero |].
+  assert (IH' : ordinal_le (level_atoms_open_bound k r) d) by (apply IH; intros; eapply H; [ right |]; eassumption).
   destruct (ne_freshb k a) eqn:E; [ exact IH' |].
   assert (Hs : s < fst d).
   { eapply H; [ left; auto |]. intros Hf; apply (proj2 nf_freshb_iff) in Hf; congruence. }
-  revert IH' Hs; generalize (la_open_bound k r); intros; ord.
+  revert IH' Hs; generalize (level_atoms_open_bound k r); intros; ord.
 Qed.
 
 Lemma lvl_le_bound : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
     lvl_le (lvl_bound k l) (fst l', List.map (map_level_atom (ne_unwk k)) (snd l')).
 Proof.
   intros k [c xs] [d ys] Hle Hys; cbn [fst snd] in *.
-  pose proof (lvl_le_la_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
-  pose proof (la_open_bound_le k xs d Hs) as Hb.
+  pose proof (lvl_le_level_atoms_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
+  pose proof (level_atoms_open_bound_le k xs d Hs) as Hb.
   rewrite lvl_le_correct in Hle |- *; intros ν Hν.
   set (ν' := fun a s => ν (ne_unwk k a) s).
   assert (Hν' : lvl_adm ν') by (intros a s; apply Hν).
   specialize (Hle ν' Hν'); unfold lvl_bound, lvl_ev in *; cbn [fst snd] in *.
-  rewrite !la_ev_unwk; fold ν'.
-  pose proof (la_ev_fresh_part ν' k xs) as Hf.
-  revert Hle Hb Hf; generalize (la_ev ν' xs) (la_ev ν' ys) (la_ev ν' (la_fresh_part k xs)) (la_open_bound k xs); intros; ord.
+  rewrite !level_atoms_eval_unwk; fold ν'.
+  pose proof (level_atoms_eval_fresh_part ν' k xs) as Hf.
+  revert Hle Hb Hf; generalize (level_atoms_eval ν' xs) (level_atoms_eval ν' ys) (level_atoms_eval ν' (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ord.
 Qed.
 
 (** The fresh atoms are fresh and are atoms of the level; the bound of the
     others is of the tier just above their largest sort. *)
-Lemma la_fresh_part_fresh : forall k xs, all_list (fun a => ne_fresh k (atom_level a)) (la_fresh_part k xs).
+Lemma level_atoms_fresh_part_fresh : forall k xs, all_list (fun a => ne_fresh k (atom_level a)) (level_atoms_fresh_part k xs).
 Proof.
-  intros k; induction xs as [| [j s a] r IH]; cbn [la_fresh_part]; [ exact I |].
+  intros k; induction xs as [| [j s a] r IH]; cbn [level_atoms_fresh_part]; [ exact I |].
   destruct (ne_freshb k a) eqn:E; cbn; [| exact IH ].
   split; [ apply (proj2 nf_freshb_iff); exact E | exact IH ].
 Qed.
 
-Lemma la_open_bound_fst : forall k xs n,
-    (forall j s a, la_In j s a xs -> s <= n) ->
-    fst (la_open_bound k xs) <= S n.
+Lemma level_atoms_open_bound_fst : forall k xs n,
+    (forall j s a, level_atoms_In j s a xs -> s <= n) ->
+    fst (level_atoms_open_bound k xs) <= S n.
 Proof.
-  intros k xs n; induction xs as [| [j s a] r IH]; cbn [la_open_bound]; intros H; [ cbn; lia |].
-  assert (IH' : fst (la_open_bound k r) <= S n) by (apply IH; intros; eapply H; right; eassumption).
+  intros k xs n; induction xs as [| [j s a] r IH]; cbn [level_atoms_open_bound]; intros H; [ cbn; lia |].
+  assert (IH' : fst (level_atoms_open_bound k r) <= S n) by (apply IH; intros; eapply H; right; eassumption).
   assert (Hs : s <= n) by (eapply H; left; auto).
   destruct (ne_freshb k a); [ exact IH' |].
-  apply omax_fst_le; [ cbn; lia | exact IH' ].
+  apply ordinal_max_fst_le; [ cbn; lia | exact IH' ].
 Qed.
 
 (** The bound, weakened back, is below every level fresh at [k] above the
     level. *)
 Lemma lvl_le_bound_wk : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
-    lvl_le (omax (fst l) (la_open_bound k (snd l)), la_fresh_part k (snd l)) l'.
+    lvl_le (ordinal_max (fst l) (level_atoms_open_bound k (snd l)), level_atoms_fresh_part k (snd l)) l'.
 Proof.
   intros k [c xs] [d ys] Hle Hys; cbn [fst snd] in *.
-  pose proof (lvl_le_la_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
-  pose proof (la_open_bound_le k xs d Hs) as Hb.
+  pose proof (lvl_le_level_atoms_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
+  pose proof (level_atoms_open_bound_le k xs d Hs) as Hb.
   rewrite lvl_le_correct in Hle |- *; intros ν Hν.
   specialize (Hle ν Hν); unfold lvl_ev in *; cbn [fst snd] in *.
-  pose proof (la_ev_fresh_part ν k xs) as Hf.
-  revert Hle Hb Hf; generalize (la_ev ν xs) (la_ev ν ys) (la_ev ν (la_fresh_part k xs)) (la_open_bound k xs); intros; ord.
+  pose proof (level_atoms_eval_fresh_part ν k xs) as Hf.
+  revert Hle Hb Hf; generalize (level_atoms_eval ν xs) (level_atoms_eval ν ys) (level_atoms_eval ν (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ord.
 Qed.
 
 (** ** The Universe of a [Π]

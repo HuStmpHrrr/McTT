@@ -43,7 +43,7 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma per_univ_of_elem : forall (i : uidx) R a b, DF a ≈ b ∈ per_univ_elem i ↘ R -> Dom a ≈ b ∈ per_univ i.
+Lemma per_univ_of_elem : forall (i : universe_index) R a b, DF a ≈ b ∈ per_univ_elem i ↘ R -> Dom a ≈ b ∈ per_univ i.
 Proof. intros * H; exists R; exact H. Qed.
 
 (** A record type former applied to arguments determines them, as
@@ -71,7 +71,7 @@ Proof.
     rewrite List.rev_app_distr; cbn [List.rev List.app].
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
     pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ HM HR) as Hv.
-    apply (per_gargs_cons (i := ulvl i) R); [ exact (mk_rel_mod_eval a a Ha Ha (per_univ_elem_cumu_uidx _ _ _ _ HR _ (uidx_le_ulvl i)))
+    apply (per_gargs_cons (i := large_level i) R); [ exact (mk_rel_mod_eval a a Ha Ha (per_univ_elem_cumu_universe_index _ _ _ _ HR _ (universe_index_le_large_level i)))
                                            | exact Hv | exact (IH _ _ _ _ _ Hass Hg) ].
 Qed.
 
@@ -211,7 +211,7 @@ Definition glu_view_end_at (p : qname) (D : ind_decl) (ups : list domain)
     (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) (j : nat) : Prop :=
-  forall Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Q W N v (i : uidx) P El,
+  forall Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Q W N v (i : universe_index) P El,
     ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs ->
     tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bs bs1 ->
@@ -233,7 +233,7 @@ Definition glu_rview_end_at (p : qname) (D : ind_decl) (ups : list domain)
     (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) (j : nat) : Prop :=
-  forall Mj qr Is fl R cups cs Δ Us W N v (i : uidx) P El,
+  forall Mj qr Is fl R cups cs Δ Us W N v (i : universe_index) P El,
     ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl -> record_lookup gc_deps gc_stack qr = Some R ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> per_gargs (List.rev (record_params R)) nil nil cups cs ->
     DG d_record qr cs ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -277,14 +277,14 @@ Section ConGlu.
   Variables (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
   Hypotheses (HMk : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
   Let HΨs := vg_cargs_sem p D Hg Hcv k Mk c gs HMk Hcon.
-  Variables (ups : list domain) (bu : domain) (u : uidx)
+  Variables (ups : list domain) (bu : domain) (u : universe_index)
     (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred).
   Hypothesis (Hu : List.length ups = ind_nu D) (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil ups ups)
     (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
-    (Hule : uidx_le (Completeness.Inductives.Decl.univ_idx bu) u)
+    (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
   Hypothesis (Hview : glu_view_end_ok p D ups NEl AEl DP DEl).
 
@@ -321,7 +321,7 @@ Section ConGlu.
     destruct (canon_hn D HD Hc Hsu ups bu Hu Hbu ups Hgu _ _ _ _ _ _ HM HS Hp) as (a & a' & Ea & Ea' & Haa).
     assert (a = b) as -> by (eapply functional_eval_exp; eassumption).
     destruct Haa as [Rh HRh].
-    pose proof (per_univ_elem_cumu_uidx _ _ _ _ HRh _ Hule) as HRh'.
+    pose proof (per_univ_elem_cumu_universe_index _ _ _ _ HRh _ Hule) as HRh'.
     pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro (fun R => per_univ_elem u R b a') Rh HRh') Hgb) as Hga'.
     pose proof (HNP _ _ _ _ _ _ HM HS Hd' Ea') as Hgb'.
     destruct (functional_glu_univ_elem _ _ _ _ _ _ Hga' Hgb') as [_ HEq].
@@ -370,7 +370,7 @@ Section ConGlu.
     destruct (HeA _ _ _ _ _ _ _ _ HMk Hns Hcon HBk Hpk) as [b Hb].
     pose proof (HAP _ _ _ _ _ _ _ _ _ HMk Hns Hcon HBk Hpk Hb) as Hgb.
     (** The two values of the argument's type. *)
-    assert (Hrel : exists k0 : uidx, Dom a1 ≈ b ∈ per_univ k0).
+    assert (Hrel : exists k0 : universe_index, Dom a1 ≈ b ∈ per_univ k0).
     { assert (HgA1 : glu_args Δ (cargs_ctx p D Mk hs1) (sb_of_list Id (Us ++ Ns)) (env_args nil (ups ++ ns))
                        (List.firstn (List.length hs1) As) (List.firstn (List.length hs1) ws)).
       { pose proof HgA as HgA'.
@@ -400,7 +400,7 @@ Section ConGlu.
       rewrite List.firstn_firstn, Nat.min_l by lia.
       rewrite List.nth_error_firstn in Hv'; destruct (Nat.ltb_spec (List.length hs1') (List.length hs1)); [| discriminate ].
       eapply (IH hs1' B' (hs2' ++ ca_arg B :: hs2)); [ lia | rewrite Heq, Heq1, <- List.app_assoc; reflexivity | exact HN' | exact HT' | exact Hv' ]. }
-    eapply glu_univ_elem_exp_conv_uidx; [ exact Hrel | exact Hglu' | exact Hgb | exact HM' | exact HTP ].
+    eapply glu_univ_elem_exp_conv_universe_index; [ exact Hrel | exact Hglu' | exact Hgb | exact HM' | exact HTP ].
   Qed.
 
   (** The parameters of the type of a recursive argument, at an instance
@@ -488,7 +488,7 @@ Section ConGlu.
       of the value of the type of [j] at parameters glued to related values,
       an element of [j] at every weakening and every instance of the
       parameters equal to them. *)
-  Lemma rec_end_decl : forall j Mj pm Δ Us Q W N v (i : uidx) P El bs bs1, ind_member D j = Some Mj -> im_head Mj = mh_decl pm ->
+  Lemma rec_end_decl : forall j Mj pm Δ Us Q W N v (i : universe_index) P El bs bs1, ind_member D j = Some Mj -> im_head Mj = mh_decl pm ->
       ⊢ Δ -> tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bs bs1 ->
       DG d_ind p j (ups ++ bs1) ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ N : W ® v ∈ El ->
       glu_args Δ (im_params D Mj) Id nil (Us ++ Q) (ups ++ bs) -> List.length Us = ind_nu D ->
@@ -498,12 +498,12 @@ Section ConGlu.
   Proof.
     intros * HMj Hh HΔ Hbs Hgl0 HN0 HQp HUl Δ' φ Us' Q' Hφ HUl' HE.
     (** At a universe above the clause's. *)
-    set (n := ul (Nat.max (ulvl i) (ulvl u))).
-    assert (Hin : uidx_le i n) by (apply uidx_le_ul_max; unfold n; lia).
-    assert (Hun : uidx_le u n) by (apply uidx_le_ul_max; unfold n; lia).
-    destruct (glu_univ_elem_cumu_ge_uidx Hin Hgl0) as (Pn & Eln & Hgl).
-    pose proof (glu_univ_elem_typ_cumu_ge_uidx Hin Hgl0 Hgl (glu_univ_elem_trm_typ _ _ _ _ Hgl0 _ _ _ _ HN0)) as HWP.
-    pose proof (glu_univ_elem_exp_cumu_ge_uidx Hin Hgl0 Hgl HN0) as HNW.
+    set (n := ul (Nat.max (large_level i) (large_level u))).
+    assert (Hin : universe_index_le i n) by (apply universe_index_le_ul_max; unfold n; lia).
+    assert (Hun : universe_index_le u n) by (apply universe_index_le_ul_max; unfold n; lia).
+    destruct (glu_univ_elem_cumu_ge_universe_index Hin Hgl0) as (Pn & Eln & Hgl).
+    pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hin Hgl0 Hgl (glu_univ_elem_trm_typ _ _ _ _ Hgl0 _ _ _ _ HN0)) as HWP.
+    pose proof (glu_univ_elem_exp_cumu_ge_universe_index Hin Hgl0 Hgl HN0) as HNW.
     clear Hgl0 HN0.
     pose proof con_canon as Hcp.
     assert (Hlt : j < ind_ndecl D) by (eapply decl_member_lt; eassumption).
@@ -512,7 +512,7 @@ Section ConGlu.
     assert (Hbb : tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bs bs)
       by exact (canon_nparams_rel_trans p D ups Hass Hcp _ _ _ _ _ HMj Hbs (canon_nparams_rel_sym p D ups Hass Hcp _ _ _ _ HMj Hbs)).
     pose proof (ind_relate D HD Hc Hsu p Hl Hass j Mj pm ups ups bs bs bu HMj Hh Hgu Hu Hbu Hbb) as HRq0.
-    pose proof (per_univ_elem_cumu_uidx _ _ _ _ HRq0 _ Hule) as HRq.
+    pose proof (per_univ_elem_cumu_universe_index _ _ _ _ HRq0 _ Hule) as HRq.
     destruct (ind_glu_of_per p D Hl u _ j Mj pm ups bs HMj Hh HRq Hu)
       as [NP2 NEl2 AP2 AEl2 DP2 DEl2 P2 El2 R2 Hg2 HP2 HEl2 HR2 Hf2].
     assert (HT2 : Δ ⊢ im_ty_at p j Mj Us Q ® P2).
@@ -523,11 +523,11 @@ Section ConGlu.
     pose proof (ind_relate D HD Hc Hsu p Hl Hass j Mj pm ups ups bs1 bs bu HMj Hh Hgu Hu Hbu
                   (canon_nparams_rel_sym p D ups Hass Hcp _ _ _ _ HMj Hbs)) as Hab.
     (** The element's type is the member's at the parameters. *)
-    assert (Hbn : uidx_le (Completeness.Inductives.Decl.univ_idx bu) n) by (eapply uidx_le_trans; [ exact Hule | exact Hun ]).
+    assert (Hbn : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) n) by (eapply universe_index_le_trans; [ exact Hule | exact Hun ]).
     pose proof (glu_typ_transfer u n _ _ _ _ _ _ _ Δ _ Hun Hbn (per_univ_sym' _ _ _ (per_univ_of_elem _ _ _ _ Hab)) Hg2 Hgl HT2) as HTn.
     pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hgl HWP HTn) as HWT.
     pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgl _ _ _ _ _ HNW HWT) as HN.
-    pose proof (glu_univ_elem_exp_conv_uidx (per_univ_of_elem _ _ _ _ Hab) Hgl Hg2 HN HT2) as HM2.
+    pose proof (glu_univ_elem_exp_conv_universe_index (per_univ_of_elem _ _ _ _ Hab) Hgl Hg2 HN HT2) as HM2.
     apply HEl2 in HM2; destruct HM2 as [_ _ Ps2 HPs2 Hk2].
     assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
     pose proof (glu_args_params_top _ _ _ _ _ HassP Hs (glu_args_wk _ _ _ _ _ _ _ HassP Hs Hφ HQp)) as Ht.
@@ -571,7 +571,7 @@ Section ConGlu.
       (forall R, EF cargs_ctx p D Mk gs1 ++ im_params D Mk ≈ cargs_ctx p D Mk gs1 ++ im_params D Mk ∈ per_ctx_env ↘ R ->
          R (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa))) ->
       glu_end_at p D ups NEl AEl DP DEl (ptyp_mem t) ->
-      forall t' kk ys Δ τ Us Ys SbC W N v a (i : uidx) P El,
+      forall t' kk ys Δ τ Us Ys SbC W N v a (i : universe_index) P El,
         ptyp_skip kk t = t' -> kk <= List.length (ptyp_doms t) ->
         tele_prefix_rel (shape_doms_rel (canon_doms_rel ups k) ns (nonrec_arg_vals gs1 fa) (ptyp_doms t)) kk ys ys ->
         per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t))))
@@ -643,14 +643,14 @@ Section ConGlu.
         set (σ := sb_of_list τ (Us ++ Ys)) in *.
         set (E := env_args nil (ups ++ ns ++ fa ++ ys)) in *.
         (** A level above the ones at hand. *)
-        set (n := ul (Nat.max (ulvl i) (Nat.max (ulvl u) jd))).
-        assert (Hin : uidx_le i n) by (apply uidx_le_ul_max; unfold n; lia).
-        assert (Hun : uidx_le u n) by (apply uidx_le_ul_max; unfold n; lia).
-        assert (Hjn : uidx_le (ul jd) n) by (apply uidx_le_ul_max; unfold n; cbn; lia).
-        destruct (glu_univ_elem_cumu_ge_uidx Hin Hgl) as (Pn & Eln & Hgn).
-        pose proof (glu_univ_elem_exp_cumu_ge_uidx Hin Hgl Hgn HN) as HNn.
+        set (n := ul (Nat.max (large_level i) (Nat.max (large_level u) jd))).
+        assert (Hin : universe_index_le i n) by (apply universe_index_le_ul_max; unfold n; lia).
+        assert (Hun : universe_index_le u n) by (apply universe_index_le_ul_max; unfold n; lia).
+        assert (Hjn : universe_index_le (ul jd) n) by (apply universe_index_le_ul_max; unfold n; cbn; lia).
+        destruct (glu_univ_elem_cumu_ge_universe_index Hin Hgl) as (Pn & Eln & Hgn).
+        pose proof (glu_univ_elem_exp_cumu_ge_universe_index Hin Hgl Hgn HN) as HNn.
         pose proof (per_univ_trans _ _ _ _ _ _ HRab (per_univ_sym _ _ _ _ HRab)) as HRaa.
-        pose proof (per_univ_elem_cumu_uidx _ _ _ _ HRaa _ Hjn) as HRaan.
+        pose proof (per_univ_elem_cumu_universe_index _ _ _ _ HRaa _ Hjn) as HRaan.
         destruct (glu_univ_elem_pi_clean_inversion1 HRaan Hgn) as (IP & IEl & OP & OEl & elem_rel & HgI & HgO & Hper & EP & EEl).
         apply EEl in HNn.
         inversion_clear HNn as [? ? ? ? IT2 OT2 HMt Hm HAeq HITt HOTt HIP HApp].
@@ -663,7 +663,7 @@ Section ConGlu.
           pose proof (dr_to_rel B _ b0 a1 c' (ul jd) Rab (ul jd) Eb0 (per_univ_of_elem _ _ _ _ HRab) HRaa Hc') as Hcc.
           pose proof (glu_typ_transfer u n (ul jd) b0 a1 _ _ IP IEl Δ' _ Hun Hjn (per_univ_sym' _ _ _ (per_univ_of_elem _ _ _ _ HRab))
                         Hgb0 HgI (HshD _ _ Hφ)) as HTyI.
-          pose proof (glu_univ_elem_exp_conv_uidx (per_univ_sym' _ _ _ (per_univ_of_elem _ _ _ _ HRab)) Hgb0 HgI Hb HTyI) as HbI.
+          pose proof (glu_univ_elem_exp_conv_universe_index (per_univ_sym' _ _ _ (per_univ_of_elem _ _ _ _ HRab)) Hgb0 HgI Hb HTyI) as HbI.
           split; [ exact Hcc | split; [ exact HTyI | split; [ exact HbI |] ] ].
           exact (glu_elem_retype n n a1 IP IEl IP IEl Δ' _ _ b c' HgI HgI HTyI HbI (HIP _ _ Hφ)). }
         apply glu_rec_pi.
@@ -1110,9 +1110,9 @@ End ConGlu.
     at every uniform parameters related to themselves, at the families of
     the clause. *)
 Definition glu_views_ok (p : qname) (D : ind_decl) : Prop :=
-  forall ups bu (u : uidx) NP NEl AP AEl DP DEl, List.length ups = ind_nu D ->
+  forall ups bu (u : universe_index) NP NEl AP AEl DP DEl, List.length ups = ind_nu D ->
     per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> ⟦ ind_sort D ⟧ env_args nil ups ↘ bu ->
-    uidx_le (Completeness.Inductives.Decl.univ_idx bu) u -> ind_fams_glu D ups u NP NEl AP AEl DP DEl ->
+    universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u -> ind_fams_glu D ups u NP NEl AP AEl DP DEl ->
     glu_view_end_ok p D ups NEl AEl DP DEl.
 
 Lemma exps_eq_at_app_refl : forall Δ C1 C2 Xs Ys Zs, tele_ass C1 -> tele_ass C2 -> List.length Xs = List.length C1 ->
@@ -1150,7 +1150,7 @@ Section ConFT.
 
   (** The universes of the sort, below a large one. *)
   Lemma sort_bound : exists n, forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> forall i, n <= i ->
-      uidx_le (Completeness.Inductives.Decl.univ_idx bu) (ul i).
+      universe_index_le (Completeness.Inductives.Decl.univ_idx bu) (ul i).
   Proof.
     destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq; [ exists i0 | exists 0 ]; intros * Hb i Hi; inversion Hb; subst; cbn; [ lia | exact I ].
   Qed.
@@ -1190,7 +1190,7 @@ Section ConFT.
   (** The constructor applied to glued parameters and arguments is glued at
       the type at the parameters. *)
   Lemma con_base : forall Δ Ms vs w (i : nat) b P El, ⊢ Δ ->
-      (forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) (ul i)) ->
+      (forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> universe_index_le (Completeness.Inductives.Decl.univ_idx bu) (ul i)) ->
       glu_args Δ (cargs_ctx p D Mk gs ++ im_params D Mk) Id nil Ms vs ->
       Completeness.Inductives.Con.con_value p D k Mk c vs w ->
       ⟦ ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk)) ⟧ env_args nil vs ↘ b ->

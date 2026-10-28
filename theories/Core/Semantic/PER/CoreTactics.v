@@ -58,13 +58,13 @@ Ltac destruct_rel_typ :=
 (** Helper tactics for the universe/element PER. *)
 
 (** State the universes below a level, [per_univ_below i j], by
-    [per_univ_below_spec], wherever [uidx_lt j i] is known. *)
+    [per_univ_below_spec], wherever [universe_index_lt j i] is known. *)
 Ltac rewrite_per_univ_below :=
   repeat match goal with
     | H : context [per_univ_below ?i ?j] |- _ =>
-        rewrite (per_univ_below_spec i j) in H by solve_uidx
+        rewrite (per_univ_below_spec i j) in H by solve_universe_index
     | |- context [per_univ_below ?i ?j] =>
-        rewrite (per_univ_below_spec i j) by solve_uidx
+        rewrite (per_univ_below_spec i j) by solve_universe_index
     end.
 
 Ltac basic_invert_per_univ_elem H :=

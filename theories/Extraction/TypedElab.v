@@ -158,7 +158,7 @@ Inductive fill_failure : Set :=
     why *)
 | fill_failure_mdef_group : mdef_group_why -> fill_failure
 (** A literal, with no natural-number type bound *)
-| fill_failure_literal : lerr -> fill_failure
+| fill_failure_literal : literal_failure_reason -> fill_failure
 (** An eliminator's scrutinee, filled, in its context: its type, if
     inferred, is not an inductive type *)
 | fill_failure_elim_scrutinee : ctx -> exp -> option nf -> fill_failure
@@ -265,7 +265,7 @@ Section Decide.
   (** Whether the member [y] of [H] is a term. *)
   Definition member_term_b (Γ : ctx) (H : modexp) (y : string) : bool :=
     match mdenote_dec F Hg Γ (me_mem H y) with
-    | inleft (exist _ (fds_term _ _) _) => true
+    | inleft (exist _ (fmdesc_term _ _) _) => true
     | _ => false
     end.
 
@@ -323,12 +323,12 @@ Section Decide.
     | a_nlit n =>
         match nat_view_f F B with
         | Some (p, z, s) => fill_ok (nat_chain p z s n)
-        | None => fill_error (fill_failure_literal (le_num n))
+        | None => fill_error (fill_failure_literal (literal_failure_reason_numeral n))
         end
     | a_ntok =>
         match nat_view_f F B with
         | Some (p, _, _) => fill_ok (a_ind p 0)
-        | None => fill_error (fill_failure_literal le_tok)
+        | None => fill_error (fill_failure_literal literal_failure_reason_token)
         end
     | a_univ M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_univ M')
     | a_succl M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_succl M')
@@ -930,7 +930,7 @@ Section Decide.
   Qed.
 
   Lemma member_term_b_spec : forall Γ H y,
-      member_term_b Γ H y = true <-> exists A oM, mdenote Θ Ξ Γ (me_mem H y) (ds_term A oM).
+      member_term_b Γ H y = true <-> exists A oM, mdenote Θ Ξ Γ (me_mem H y) (mdesc_term A oM).
   Proof.
     intros; unfold member_term_b.
     destruct (mdenote_dec F Hg Γ (me_mem H y)) as [[R HR] | Hn].
