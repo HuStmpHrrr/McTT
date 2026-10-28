@@ -24,9 +24,10 @@ sections so that both checkers can use them).
 
 ## The value of a type (`typ_val`)
 
-`typ_val G P v T`: `v` is related by `per_univ i` to `⟦ T ⟧ ρ`, `ρ` the
-initial environment `P`, and `G ⊢ T : Typeω@i`.  It reads back to `T`
-(`typ_val_rtyp`), and a `Πᵈ a ρ' b` that stands for `Πⁿ A B` gives, at an
+`typ_val G P v T`: the fast value `v` stands (`fast_value_simulation`) for
+a value related by `per_univ i` to `⟦ T ⟧ ρ`, `ρ` the initial environment
+`P` agrees with, and `G ⊢ T : Typeω@i`.  It reads back to `T`
+(`typ_val_rtyp`), and a `fd_pi a ρ' b` that stands for `Πⁿ A B` gives, at an
 argument `N : A`, the value `⟦ b ⟧ ρ' ↦ ⟦ N ⟧ ρ` that stands for the normal form
 of `B[Id,,N]` (`typ_val_pi`, `typ_val_app_step`): the result of `alg_type_infer_app`
 without the substitution and the re-normalization.
@@ -195,6 +196,37 @@ function with a `Θ` or `Ξ` argument that is not `Prop` (an implicit
 it), or a `{GC : GCtx}` instance.  The fix is a twin over `F`, or the
 indices taken from `F` (`{F : FCtx}`, as `blame_error` and
 `level_blame_app` do).
+
+## Fast values (`Extraction/FastDomain.v`)
+
+The extracted evaluator and readback compute on `fdomain`, a copy of Core's
+`domain` in which a type former `fd_ind p oD k vs` and a constructor
+`fd_con p oD k c vs` carry `oD : option ind_decl`, and a stuck eliminator
+`fd_elim ρ Bks p D ups j as' m` carries `D : ind_decl`: the declaration of
+the group `p`, read there instead of looked up (`carried_lookup`).  `None`
+is a value made where the declaration was not at hand (`a_ind`, a view's
+constructor, a selection); its consumer looks it up.
+
+- The relations of `FastEval.v` stay over Core values.  A fast value
+  stands for its erasure `fdomain_erase`, which drops the declarations; the
+  implementations' specifications are `{ d | Rel (erase inputs) (fdomain_erase d)
+  /\ fdomain_ok Θ Ξ d }`.  The erasure is types and proofs only: no `_erase`
+  name reaches `driver/extracted`, nor Core's `Domain` module.
+- `fdomain_ok Θ Ξ d`: every declaration `d` carries is the one its group's
+  name finds (`decl_carried_ok p oD := forall D, oD = Some D -> ind_lookup
+  Θ Ξ p = Some D`).  The implementations take it of their inputs.
+- `fast_member_reference` is the fast result of `⟦mrefᶠ⟧`, with
+  `fast_member_reference_erase` and `fast_member_reference_ok`.
+- `fast_value_simulation Θ Ξ a a' := domain_simulation Θ Ξ a (fdomain_erase a')
+  /\ fdomain_ok Θ Ξ a'` and `fast_env_agree Θ Ξ P ρ ρ' := env_agree Θ Ξ P ρ
+  (fenv_erase ρ') /\ fenv_ok Θ Ξ ρ'` (`Simulation.v`) relate reference
+  values to fast ones; `fast_env`, `typ_val` and the refinement theorems
+  of evaluation and the initial environment use them.
+- Tactics: `ferase_norm` rewrites erasures inwards through the operations
+  (their erasure equations); `ok_solve` proves rightness from the parts.
+  The operations are `#[local] Opaque` in each file that defines
+  implementations, so that Equations does not unfold them in obligations
+  (`Opaque` has no `export` form).
 
 ## Fast paths of the evaluator and readback (`Extraction/Evaluation.v`, `Readback.v`)
 

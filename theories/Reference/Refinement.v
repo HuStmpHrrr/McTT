@@ -10,7 +10,9 @@
       they give the same decision and the same inferred normal form
       ([functional_alg_type_infer]);
     - the normalizers give the same normal form ([functional_nbe]);
-    - the evaluators give related values ([domain_simulation], [Extraction.Simulation]),
+    - the evaluators give related values ([fast_value_simulation]: the
+      erasure of the fast value is related by [domain_simulation],
+      [Extraction.Simulation], and the declarations it carries are right),
       from environments that agree where the term may read, and readback of
       related values gives the same normal form.
 
@@ -28,7 +30,7 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import Evaluation Readback.
-From Mctt.Extraction Require Import Lookup FastEval Simulation TypeCheckBase.
+From Mctt.Extraction Require Import Lookup FastEval FastDomain Simulation TypeCheckBase.
 From Mctt.Extraction Require Evaluation Readback NbE TypeCheck.
 From Mctt.Reference Require Evaluation Readback NbE TypeCheck.
 Import Domain_Notations Fixed_Notations.
@@ -97,45 +99,45 @@ Section NbEProofs.
   Variables (F : FCtx) (Θ : gdeps) (Ξ : gstack).
   Hypotheses (HΘ : fc_deps F = Θ) (HΞ : fc_stack F = Ξ).
 
-  Lemma eval_exp_impl_refines_eq : forall M p p' H H',
-      env_agree Θ Ξ (fun x => ~ exp_fresh x M) p p' ->
-      domain_simulation Θ Ξ (proj1_sig (Reference.Evaluation.eval_exp_impl Θ Ξ M p H))
-           (proj1_sig (Extraction.Evaluation.fast_eval_exp_impl F M p' H')).
+  Lemma eval_exp_impl_refines_eq : forall M p p' Hp' H H',
+      env_agree Θ Ξ (fun x => ~ exp_fresh x M) p (fenv_erase p') ->
+      fast_value_simulation Θ Ξ (proj1_sig (Reference.Evaluation.eval_exp_impl Θ Ξ M p H))
+           (proj1_sig (Extraction.Evaluation.fast_eval_exp_impl F M p' Hp' H')).
   Proof.
     intros * Hp.
     destruct (Reference.Evaluation.eval_exp_impl Θ Ξ M p H) as [a Ha],
-             (Extraction.Evaluation.fast_eval_exp_impl F M p' H') as [a' Ha']; cbn.
-    rewrite HΘ, HΞ in Ha'.
+             (Extraction.Evaluation.fast_eval_exp_impl F M p' Hp' H') as [a' [Ha' Hok]]; cbn.
+    rewrite HΘ, HΞ in Ha', Hok.
     destruct (fast_eval_exp_sim _ _ _ _ _ Ha _ Hp) as (a'' & Ha'' & Hs).
-    rewrite (functional_fast_eval_exp _ _ _ _ Ha' Ha''); exact Hs.
+    split; [ rewrite (functional_fast_eval_exp _ _ _ _ Ha' Ha''); exact Hs | exact Hok ].
   Qed.
 
-  Lemma read_typ_impl_refines_eq : forall s a a' H H',
-      domain_simulation Θ Ξ a a' ->
+  Lemma read_typ_impl_refines_eq : forall s a a' Ha' H H',
+      domain_simulation Θ Ξ a (fdomain_erase a') ->
       proj1_sig (Reference.Readback.read_typ_impl Θ Ξ s a H) =
-      proj1_sig (Extraction.Readback.fast_read_typ_impl F s a' H').
+      proj1_sig (Extraction.Readback.fast_read_typ_impl F s a' Ha' H').
   Proof.
     intros * Ha.
     destruct (Reference.Readback.read_typ_impl Θ Ξ s a H) as [W HW],
-             (Extraction.Readback.fast_read_typ_impl F s a' H') as [W' HW']; cbn.
+             (Extraction.Readback.fast_read_typ_impl F s a' Ha' H') as [W' HW']; cbn.
     rewrite HΘ, HΞ in HW'.
     eapply functional_fast_read_typ; [ eapply fast_read_typ_sim; eassumption | eassumption ].
   Qed.
 
-  Lemma read_nf_impl_refines_eq : forall s d d' H H',
-      domain_nf_simulation Θ Ξ d d' ->
+  Lemma read_nf_impl_refines_eq : forall s d d' Hd' H H',
+      domain_nf_simulation Θ Ξ d (fdomain_nf_erase d') ->
       proj1_sig (Reference.Readback.read_nf_impl Θ Ξ s d H) =
-      proj1_sig (Extraction.Readback.fast_read_nf_impl F s d' H').
+      proj1_sig (Extraction.Readback.fast_read_nf_impl F s d' Hd' H').
   Proof.
     intros * Hd.
     destruct (Reference.Readback.read_nf_impl Θ Ξ s d H) as [W HW],
-             (Extraction.Readback.fast_read_nf_impl F s d' H') as [W' HW']; cbn.
+             (Extraction.Readback.fast_read_nf_impl F s d' Hd' H') as [W' HW']; cbn.
     rewrite HΘ, HΞ in HW'.
     eapply functional_fast_read_nf; [ eapply fast_read_nf_sim; eassumption | eassumption ].
   Qed.
 
   Lemma initial_env_impl_refines_eq : forall G H H',
-      env_agree Θ Ξ (fun _ => True) (proj1_sig (Reference.NbE.initial_env_impl Θ Ξ G H))
+      fast_env_agree Θ Ξ (fun _ => True) (proj1_sig (Reference.NbE.initial_env_impl Θ Ξ G H))
                 (proj1_sig (Extraction.NbE.initial_env_impl F G H')).
   Proof.
     intros.
@@ -181,26 +183,26 @@ End NbEProofs.
 Section NbE.
   Variable F : FCtx.
 
-  Theorem eval_exp_impl_refines : forall M p p' H H',
-      env_agree (fc_deps F) (fc_stack F) (fun x => ~ exp_fresh x M) p p' ->
-      domain_simulation (fc_deps F) (fc_stack F) (proj1_sig (Reference.Evaluation.eval_exp_impl (fc_deps F) (fc_stack F) M p H))
-           (proj1_sig (Extraction.Evaluation.fast_eval_exp_impl F M p' H')).
+  Theorem eval_exp_impl_refines : forall M p p' Hp' H H',
+      env_agree (fc_deps F) (fc_stack F) (fun x => ~ exp_fresh x M) p (fenv_erase p') ->
+      fast_value_simulation (fc_deps F) (fc_stack F) (proj1_sig (Reference.Evaluation.eval_exp_impl (fc_deps F) (fc_stack F) M p H))
+           (proj1_sig (Extraction.Evaluation.fast_eval_exp_impl F M p' Hp' H')).
   Proof. exact (eval_exp_impl_refines_eq F _ _ eq_refl eq_refl). Qed.
 
-  Theorem read_typ_impl_refines : forall s a a' H H',
-      domain_simulation (fc_deps F) (fc_stack F) a a' ->
+  Theorem read_typ_impl_refines : forall s a a' Ha' H H',
+      domain_simulation (fc_deps F) (fc_stack F) a (fdomain_erase a') ->
       proj1_sig (Reference.Readback.read_typ_impl (fc_deps F) (fc_stack F) s a H) =
-      proj1_sig (Extraction.Readback.fast_read_typ_impl F s a' H').
+      proj1_sig (Extraction.Readback.fast_read_typ_impl F s a' Ha' H').
   Proof. exact (read_typ_impl_refines_eq F _ _ eq_refl eq_refl). Qed.
 
-  Theorem read_nf_impl_refines : forall s d d' H H',
-      domain_nf_simulation (fc_deps F) (fc_stack F) d d' ->
+  Theorem read_nf_impl_refines : forall s d d' Hd' H H',
+      domain_nf_simulation (fc_deps F) (fc_stack F) d (fdomain_nf_erase d') ->
       proj1_sig (Reference.Readback.read_nf_impl (fc_deps F) (fc_stack F) s d H) =
-      proj1_sig (Extraction.Readback.fast_read_nf_impl F s d' H').
+      proj1_sig (Extraction.Readback.fast_read_nf_impl F s d' Hd' H').
   Proof. exact (read_nf_impl_refines_eq F _ _ eq_refl eq_refl). Qed.
 
   Theorem initial_env_impl_refines : forall G H H',
-      env_agree (fc_deps F) (fc_stack F) (fun _ => True)
+      fast_env_agree (fc_deps F) (fc_stack F) (fun _ => True)
                 (proj1_sig (Reference.NbE.initial_env_impl (fc_deps F) (fc_stack F) G H))
                 (proj1_sig (Extraction.NbE.initial_env_impl F G H')).
   Proof. exact (initial_env_impl_refines_eq F _ _ eq_refl eq_refl). Qed.
@@ -226,26 +228,26 @@ End NbE.
 Section NbEAt.
   Variables (Θ : gdeps) (Ξ : gstack) (HcΘ : canon_deps Θ) (HcΞ : canon_stack Ξ).
 
-  Corollary eval_exp_impl_refines_at : forall M p p' H H',
-      env_agree Θ Ξ (fun x => ~ exp_fresh x M) p p' ->
-      domain_simulation Θ Ξ (proj1_sig (Reference.Evaluation.eval_exp_impl Θ Ξ M p H))
-           (proj1_sig (Extraction.Evaluation.fast_eval_exp_impl (fctx_of Θ Ξ HcΘ HcΞ) M p' H')).
+  Corollary eval_exp_impl_refines_at : forall M p p' Hp' H H',
+      env_agree Θ Ξ (fun x => ~ exp_fresh x M) p (fenv_erase p') ->
+      fast_value_simulation Θ Ξ (proj1_sig (Reference.Evaluation.eval_exp_impl Θ Ξ M p H))
+           (proj1_sig (Extraction.Evaluation.fast_eval_exp_impl (fctx_of Θ Ξ HcΘ HcΞ) M p' Hp' H')).
   Proof. exact (eval_exp_impl_refines_eq _ _ _ (fctx_of_deps _ _ _ _) (fctx_of_stack _ _ _ _)). Qed.
 
-  Corollary read_typ_impl_refines_at : forall s a a' H H',
-      domain_simulation Θ Ξ a a' ->
+  Corollary read_typ_impl_refines_at : forall s a a' Ha' H H',
+      domain_simulation Θ Ξ a (fdomain_erase a') ->
       proj1_sig (Reference.Readback.read_typ_impl Θ Ξ s a H) =
-      proj1_sig (Extraction.Readback.fast_read_typ_impl (fctx_of Θ Ξ HcΘ HcΞ) s a' H').
+      proj1_sig (Extraction.Readback.fast_read_typ_impl (fctx_of Θ Ξ HcΘ HcΞ) s a' Ha' H').
   Proof. exact (read_typ_impl_refines_eq _ _ _ (fctx_of_deps _ _ _ _) (fctx_of_stack _ _ _ _)). Qed.
 
-  Corollary read_nf_impl_refines_at : forall s d d' H H',
-      domain_nf_simulation Θ Ξ d d' ->
+  Corollary read_nf_impl_refines_at : forall s d d' Hd' H H',
+      domain_nf_simulation Θ Ξ d (fdomain_nf_erase d') ->
       proj1_sig (Reference.Readback.read_nf_impl Θ Ξ s d H) =
-      proj1_sig (Extraction.Readback.fast_read_nf_impl (fctx_of Θ Ξ HcΘ HcΞ) s d' H').
+      proj1_sig (Extraction.Readback.fast_read_nf_impl (fctx_of Θ Ξ HcΘ HcΞ) s d' Hd' H').
   Proof. exact (read_nf_impl_refines_eq _ _ _ (fctx_of_deps _ _ _ _) (fctx_of_stack _ _ _ _)). Qed.
 
   Corollary initial_env_impl_refines_at : forall G H H',
-      env_agree Θ Ξ (fun _ => True) (proj1_sig (Reference.NbE.initial_env_impl Θ Ξ G H))
+      fast_env_agree Θ Ξ (fun _ => True) (proj1_sig (Reference.NbE.initial_env_impl Θ Ξ G H))
                 (proj1_sig (Extraction.NbE.initial_env_impl (fctx_of Θ Ξ HcΘ HcΞ) G H')).
   Proof. exact (initial_env_impl_refines_eq _ _ _ (fctx_of_deps _ _ _ _) (fctx_of_stack _ _ _ _)). Qed.
 

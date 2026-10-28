@@ -10,7 +10,7 @@ From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
-From Mctt.Extraction Require Import FastEval Simulation Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Extraction Require Import FastEval FastDomain Simulation Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
 From Mctt.Extraction Require Export TypeCheckBase.
 From Mctt.Extraction Require Import IndCheck RecordCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -150,38 +150,66 @@ Section type_check.
   #[local]
   Hint Constructors type_check_order type_infer_order app_order ext_order unit_order modexp_order : mctt.
 
-  (** The type of a term as a value at the environment [P]: a value related
-      ([domain_simulation]) to one that stands for the normal form [T] at the initial
-      environment. *)
+  (** The type of a term as a value at the environment [P]: a fast value
+      related ([fast_value_simulation]) to one that stands for the normal
+      form [T] at the initial environment. *)
   #[warnings="-cannot-define-projection"]
-  Record typ_val G (P : tenv G) (v : domain) (T : nf) : Prop := mk_typ_val
-    { typ_val_lvl : nat
-    ; typ_val_env : env
-    ; typ_val_sem : domain
-    ; typ_val_rel : domain
-    ; typ_val_init : initial_env_f G typ_val_env
-    ; typ_val_agree : env_agree gc_deps gc_stack (fun _ => True) typ_val_env (proj1_sig P)
-    ; typ_val_typ : G ⊢ T : Typeω@typ_val_lvl
-    ; typ_val_eval : ⟦ T ⟧ typ_val_env ↘ typ_val_sem
-    ; typ_val_per : Dom typ_val_rel ≈ typ_val_sem ∈ per_univ typ_val_lvl
-    ; typ_val_sim : domain_simulation gc_deps gc_stack typ_val_rel v }.
+  Record typ_val G (P : tenv G) (v : fdomain) (T : nf) : Prop := mk_typ_val
+    { (** The universe level of [T] *)
+      typ_val_lvl : nat
+    ; (** The initial environment of [G] *)
+      typ_val_env : env
+    ; (** The value of [T] there *)
+      typ_val_sem : domain
+    ; (** The reference value [v] stands for *)
+      typ_val_rel : domain
+    ; (** [typ_val_env] is the initial environment *)
+      typ_val_init : initial_env_f G typ_val_env
+    ; (** [P] agrees with it *)
+      typ_val_agree : fast_env_agree gc_deps gc_stack (fun _ => True) typ_val_env (proj1_sig P)
+    ; (** [T] is a type *)
+      typ_val_typ : G ⊢ T : Typeω@typ_val_lvl
+    ; (** [T]'s value *)
+      typ_val_eval : ⟦ T ⟧ typ_val_env ↘ typ_val_sem
+    ; (** The reference value is related to it in the universe *)
+      typ_val_per : Dom typ_val_rel ≈ typ_val_sem ∈ per_univ typ_val_lvl
+    ; (** [v] stands for the reference value *)
+      typ_val_sim : fast_value_simulation gc_deps gc_stack typ_val_rel v }.
+
+  (** A type as a value is right. *)
+  Lemma typ_val_ok : forall G P v T, typ_val G P v T -> fdomain_ok gc_deps gc_stack v.
+  Proof. intros * [_ _ _ _ _ _ _ _ _ [_ Hok]]; exact Hok. Qed.
+
+  (** The same, from a result of the checker *)
+  Lemma typ_val_ok_of : forall G P (Q : nf -> Prop) v, (exists T, Q T /\ typ_val G P v T) -> fdomain_ok gc_deps gc_stack v.
+  Proof. intros * (T & _ & Hv); eapply typ_val_ok; exact Hv. Qed.
+
+  (** The domain and the environment of a [Π] value, from a result of the
+      checker, are right. *)
+  Lemma typ_val_pi_dom_ok : forall G P (Q : nf -> Prop) v a ρ b,
+      (exists T, Q T /\ typ_val G P v T) -> v = fd_pi a ρ b -> fdomain_ok gc_deps gc_stack a.
+  Proof. intros * Hv ->; apply typ_val_ok_of in Hv; inversion Hv; assumption. Qed.
+
+  Lemma typ_val_pi_env_ok : forall G P (Q : nf -> Prop) v a ρ b,
+      (exists T, Q T /\ typ_val G P v T) -> v = fd_pi a ρ b -> fenv_ok gc_deps gc_stack ρ.
+  Proof. intros * Hv ->; apply typ_val_ok_of in Hv; inversion Hv; assumption. Qed.
 
   (** A type as a value reads back to the type it stands for. *)
   Lemma typ_val_rtyp : forall G P M v T,
-      ⊢ G -> G ⊢a M ⟹ T -> typ_val G P v T -> Rtypᶠ v in gc_deps ⍮ gc_stack ⍮ (List.length G) ↘ T.
+      ⊢ G -> G ⊢a M ⟹ T -> typ_val G P v T -> Rtypᶠ fdomain_erase v in gc_deps ⍮ gc_stack ⍮ (List.length G) ↘ T.
   Proof.
-    intros * HG HM [i p a v0 Hp _ HT Ha Hv0 Hs].
+    intros * HG HM [i p a v0 Hp _ HT Ha Hv0 [Hs _]].
     eapply fast_read_typ_sim; [| exact Hs ].
     eapply typ_val_read; [ eassumption | eapply alg_type_infer_self; eassumption | eassumption | eassumption ].
   Qed.
 
   (** A [Π] value stands for a [Π] normal form. *)
   Lemma typ_val_pi_parts : forall G P M T a ρ b,
-      ⊢ G -> G ⊢a M ⟹ T -> typ_val G P (Πᵈ a ρ b) T ->
-      exists A B (i : nat), T = Πⁿ A B /\ Rtypᶠ a in gc_deps ⍮ gc_stack ⍮ (List.length G) ↘ A /\ G ⊢ Π A B : Typeω@i.
+      ⊢ G -> G ⊢a M ⟹ T -> typ_val G P (fd_pi a ρ b) T ->
+      exists A B (i : nat), T = Πⁿ A B /\ Rtypᶠ fdomain_erase a in gc_deps ⍮ gc_stack ⍮ (List.length G) ↘ A /\ G ⊢ Π A B : Typeω@i.
   Proof.
     intros * HG HM Hv.
-    pose proof (typ_val_rtyp _ _ _ _ _ HG HM Hv) as Hr.
+    pose proof (typ_val_rtyp _ _ _ _ _ HG HM Hv) as Hr; cbn in Hr.
     inversion Hr; subst.
     destruct Hv as [i _ _ _ _ _ HT _ _ _].
     do 3 eexists; repeat split; eassumption.
@@ -190,15 +218,16 @@ Section type_check.
   (** The argument of an application, and the codomain closure at its value,
       evaluate. *)
   Lemma typ_val_app_order : forall G P M N A B a ρ b,
-      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (Πᵈ a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
-      fast_eval_exp_order gc_deps gc_stack N (proj1_sig P) /\
-      forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> fast_eval_exp_order gc_deps gc_stack b (ρ ↦ n').
+      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (fd_pi a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
+      fast_eval_exp_order gc_deps gc_stack N (fenv_erase (proj1_sig P)) /\
+      forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase (proj1_sig P) ↘ n' ->
+            fast_eval_exp_order gc_deps gc_stack b (fenv_erase ρ ↦ n').
   Proof.
-    intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HT Ha1 Hv0 Hs] HN; cbn in *.
+    intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HT Ha1 Hv0 [Hs _]] HN; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
-    destruct (fast_eval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ _ _ Hag)) as [HoN HsN].
+    destruct (fast_eval_of_ref _ _ _ _ _ _ Hn (fast_env_agree_all _ _ _ _ _ Hag)) as [HoN HsN].
     split; [ exact HoN |].
     intros n' Hn'.
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
@@ -210,24 +239,25 @@ Section type_check.
   (** The value of the type of an application: [alg_type_infer_app]'s type stands for
       the codomain closure applied to the argument's value. *)
   Lemma typ_val_app_step : forall G P M N A B a ρ b n v,
-      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (Πᵈ a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
-      ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n -> ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ n) ↘ v ->
+      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (fd_pi a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
+      ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase (proj1_sig P) ↘ n ->
+      ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (fenv_erase ρ ↦ n) ↘ fdomain_erase v -> fdomain_ok gc_deps gc_stack v ->
       exists T, G ⊢a M $ N ⟹ T /\ typ_val G P v T.
   Proof.
-    intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HΠ Ha1 Hv0 Hs] HN Hn' Hv'; cbn in *.
+    intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HΠ Ha1 Hv0 [Hs _]] HN Hn' Hv' Hok; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
-    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ _ _ Hag)) _ Hn') as HsN.
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hn0 (fast_env_agree_all _ _ _ _ _ Hag)) _ Hn') as HsN.
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (fast_eval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
-    rewrite (functional_fast_eval_exp _ _ _ _ Hv' Hv1') in *.
+    rewrite <- (functional_fast_eval_exp _ _ _ _ Hv' Hv1') in Hs1.
     assert (HBN : G ⊢ B[Id,,N] : Typeω@i) by mauto 3.
     destruct (soundness_ty HBN) as (W & HW & HeqW).
     destruct (typ_val_conv _ _ _ _ _ _ _ Hp HeqW Hc Hv1c) as (c' & Hc' & Hvc').
     exists W; split; [ econstructor; eassumption |].
-    apply (mk_typ_val _ _ _ _ i p c' v1); try assumption.
+    apply (mk_typ_val _ _ _ _ i p c' v1); try assumption; try (split; assumption).
     gen_presups; assumption.
   Qed.
 
@@ -235,35 +265,43 @@ Section type_check.
       the argument when the codomain does not read it ([exp_freshb]): its
       entry is then [𝕌ω@0], which nothing reads.  A numeral, a chain of
       [succ]s, is thus typed in linear time. *)
-  Record app_cod_order G (P : tenv G) N ρ b : Prop := mk_app_cod_order
-    { app_cod_order_arg : fast_eval_exp_order gc_deps gc_stack N (proj1_sig P)
-    ; app_cod_order_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> fast_eval_exp_order gc_deps gc_stack b (ρ ↦ n')
-    ; app_cod_order_unread : exp_freshb 0 b = true -> fast_eval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0) }.
+  Record app_cod_order G (P : tenv G) N (ρ : fenv) b : Prop := mk_app_cod_order
+    { (** The argument evaluates *)
+      app_cod_order_arg : fast_eval_exp_order gc_deps gc_stack N (fenv_erase (proj1_sig P))
+    ; (** The codomain, at the argument's value *)
+      app_cod_order_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase (proj1_sig P) ↘ n' ->
+                            fast_eval_exp_order gc_deps gc_stack b (fenv_erase ρ ↦ n')
+    ; (** The codomain, at [𝕌ω@0], when it does not read the argument *)
+      app_cod_order_unread : exp_freshb 0 b = true -> fast_eval_exp_order gc_deps gc_stack b (fenv_erase ρ ↦ 𝕌ω@0) }.
 
-  Definition app_cod_val G (P : tenv G) N ρ b v : Prop :=
-    (exp_freshb 0 b = true /\ ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ 𝕌ω@0) ↘ v) \/
-    (exists n, ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n /\ ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ n) ↘ v).
+  Definition app_cod_val G (P : tenv G) N (ρ : fenv) b (v : fdomain) : Prop :=
+    (exp_freshb 0 b = true /\ ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (fenv_erase ρ ↦ 𝕌ω@0) ↘ fdomain_erase v) \/
+    (exists n, ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase (proj1_sig P) ↘ fdomain_erase n /\
+          ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (fenv_erase ρ ↦ fdomain_erase n) ↘ fdomain_erase v).
 
   #[derive(equations=no,eliminator=no)]
-  Equations app_cod G (P : tenv G) N ρ b (H : app_cod_order G P N ρ b) : { v | app_cod_val G P N ρ b v } :=
-  | G, P, N, ρ, b, H with inspect (exp_freshb 0 b) := {
+  Equations app_cod G (P : tenv G) N (ρ : fenv) b (Hρ : fenv_ok gc_deps gc_stack ρ) (H : app_cod_order G P N ρ b) :
+      { v | app_cod_val G P N ρ b v /\ fdomain_ok gc_deps gc_stack v } :=
+  | G, P, N, ρ, b, Hρ, H with inspect (exp_freshb 0 b) := {
     | exist _ true E =>
-        let (v, Hv) := fast_eval_exp_impl F b (ρ ↦ 𝕌ω@0) (app_cod_order_unread _ _ _ _ _ H E) in
-        exist _ v (or_introl (conj E Hv))
+        let (v, Hv) := fast_eval_exp_impl F b (fextend_env ρ (fd_univ 0))
+                         (fextend_env_ok _ _ _ _ Hρ (fdomain_ok_univ _ _ 0)) (app_cod_order_unread _ _ _ _ _ H E) in
+        exist _ v (conj (or_introl (conj E (proj1 Hv))) (proj2 Hv))
     | exist _ false E =>
-        let (n, Hn) := fast_eval_exp_impl F N (proj1_sig P) (app_cod_order_arg _ _ _ _ _ H) in
-        let (v, Hv) := fast_eval_exp_impl F b (ρ ↦ n) (app_cod_order_cod _ _ _ _ _ H n Hn) in
-        exist _ v (or_intror (ex_intro _ n (conj Hn Hv))) }.
+        let (n, Hn) := fast_eval_exp_impl F N (proj1_sig P) (tenv_ok G (proj1_sig P) (proj2_sig P)) (app_cod_order_arg _ _ _ _ _ H) in
+        let (v, Hv) := fast_eval_exp_impl F b (fextend_env ρ n) (fextend_env_ok _ _ _ _ Hρ (proj2 Hn))
+                         (app_cod_order_cod _ _ _ _ _ H _ (proj1 Hn)) in
+        exist _ v (conj (or_intror (ex_intro _ n (conj (proj1 Hn) (proj1 Hv)))) (proj2 Hv)) }.
 
   Lemma typ_val_app_cod_order : forall G P M N A B a ρ b,
-      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (Πᵈ a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
+      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (fd_pi a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
       app_cod_order G P N ρ b.
   Proof.
     intros * HG HM Hv HN.
     destruct (typ_val_app_order _ _ _ _ _ _ _ _ _ HG HM Hv HN) as [Ho1 Ho2].
     constructor; [ exact Ho1 | exact Ho2 |].
     intros Ef; apply exp_freshb_sound in Ef.
-    destruct P as [p' Hp']; destruct Hv as [i p a1 v0 Hp Hag HT Ha1 Hv0 Hs]; cbn in *.
+    destruct P as [p' Hp']; destruct Hv as [i p a1 v0 Hp Hag HT Ha1 Hv0 [Hs _]]; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
@@ -274,45 +312,46 @@ Section type_check.
   Qed.
 
   Lemma typ_val_app_cod_step : forall G P M N A B a ρ b v,
-      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (Πᵈ a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
-      app_cod_val G P N ρ b v ->
+      ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (fd_pi a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
+      app_cod_val G P N ρ b v -> fdomain_ok gc_deps gc_stack v ->
       exists T, G ⊢a M $ N ⟹ T /\ typ_val G P v T.
   Proof.
-    intros * HG HM Hv HN [(Ef & Hv') | (n & Hn' & Hv')]; [| eapply typ_val_app_step; eassumption ].
+    intros * HG HM Hv HN [(Ef & Hv') | (n & Hn' & Hv')] Hok; [| eapply typ_val_app_step; eassumption ].
     apply exp_freshb_sound in Ef.
-    destruct P as [p' Hp']; destruct Hv as [i p a1 v0 Hp Hag HΠ Ha1 Hv0 Hs]; cbn in *.
+    destruct P as [p' Hp']; destruct Hv as [i p a1 v0 Hp Hag HΠ Ha1 Hv0 [Hs _]]; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (fast_eval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & Hs1).
-    rewrite (functional_fast_eval_exp _ _ _ _ Hv' Hv1') in *.
+    rewrite <- (functional_fast_eval_exp _ _ _ _ Hv' Hv1') in Hs1.
     assert (HBN : G ⊢ B[Id,,N] : Typeω@i) by mauto 3.
     destruct (soundness_ty HBN) as (W & HW & HeqW).
     destruct (typ_val_conv _ _ _ _ _ _ _ Hp HeqW Hc Hv1c) as (c' & Hc' & Hvc').
     exists W; split; [ econstructor; eassumption |].
-    apply (mk_typ_val _ _ _ _ i p c' v1); try assumption.
+    apply (mk_typ_val _ _ _ _ i p c' v1); try assumption; try (split; assumption).
     gen_presups; assumption.
   Qed.
 
   (** The type of a term as a value, from its normal form. *)
   Lemma typ_val_of_eval : forall G P (T : nf) (i : nat) v,
-      G ⊢ T : Typeω@i -> ⟦ T ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ v -> typ_val G P v T.
+      G ⊢ T : Typeω@i -> ⟦ T ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase (proj1_sig P) ↘ fdomain_erase v ->
+      fdomain_ok gc_deps gc_stack v -> typ_val G P v T.
   Proof.
-    intros G [p' (p & Hp & Hag)] * HT Hv; cbn in *.
+    intros G [p' (p & Hp & Hag)] * HT Hv Hok; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & Haa).
-    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag)) _ Hv).
-    apply (mk_typ_val _ _ _ _ i p a a); assumption.
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (fast_env_agree_all _ _ _ _ _ Hag)) _ Hv).
+    apply (mk_typ_val _ _ _ _ i p a a); try assumption; split; assumption.
   Qed.
 
   (** The type of a term as a value evaluates. *)
   Lemma typ_val_eval_order : forall G (P : tenv G) (T : nf) (i : nat),
-      G ⊢ T : Typeω@i -> fast_eval_exp_order gc_deps gc_stack T (proj1_sig P).
+      G ⊢ T : Typeω@i -> fast_eval_exp_order gc_deps gc_stack T (fenv_erase (proj1_sig P)).
   Proof.
     intros G [p' (p & Hp & Hag)] * HT; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & _).
-    exact (proj1 (fast_eval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag))).
+    exact (proj1 (fast_eval_of_ref _ _ _ _ _ _ Ha (fast_env_agree_all _ _ _ _ _ Hag))).
   Qed.
 
   (** Whether a term is an application, and a value a [Π]. *)
@@ -323,8 +362,8 @@ Section type_check.
   .
 
   #[derive(equations=no,eliminator=no)]
-  Equations get_pi_val (v : domain) : { a & { ρ & { b | v = Πᵈ a ρ b } } } + { forall a ρ b, v <> Πᵈ a ρ b } :=
-  | Πᵈ a ρ b => pureo (existT _ a (existT _ ρ (exist _ b _)))
+  Equations get_pi_val (v : fdomain) : { a & { ρ & { b | v = fd_pi a ρ b } } } + { forall a ρ b, v <> fd_pi a ρ b } :=
+  | fd_pi a ρ b => pureo (existT _ a (existT _ ρ (exist _ b _)))
   | _        => inright _
   .
 
@@ -342,7 +381,7 @@ Section type_check.
   Ltac ob_pi_parts :=
     clear_defs; destruct_conjs; subst;
     match goal with
-    | HG : ⊢ ?G, HM : ?G ⊢a ?M ⟹ ?T, Hv : typ_val ?G ?P (Πᵈ ?a ?ρ ?b) ?T |- _ =>
+    | HG : ⊢ ?G, HM : ?G ⊢a ?M ⟹ ?T, Hv : typ_val ?G ?P (fd_pi ?a ?ρ ?b) ?T |- _ =>
         let A0 := fresh "A0" in let B0 := fresh "B0" in let i := fresh "i" in
         destruct (typ_val_pi_parts _ _ _ _ _ _ _ HG HM Hv) as (A0 & B0 & i & -> & ? & ?)
     end;
@@ -456,8 +495,8 @@ Section type_check.
         let (A'', _) := nbe_ty_env_impl F G P A' _ in
         pureo (exist _ (Πⁿ A'' B') _)
     | M' $ N' =>
-        let*o (exist _ v _) := type_infer_app_in G HG P M' N' _ while _ in
-        let (W, _) := fast_read_typ_impl F (List.length G) v _ in
+        let*o (exist _ v Hv) := type_infer_app_in G HG P M' N' _ while _ in
+        let (W, _) := fast_read_typ_impl F (List.length G) v (typ_val_ok_of _ _ _ _ Hv) _ in
         pureo (exist _ W _)
     | ℓ A' ≔ M' in B' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
@@ -563,25 +602,25 @@ Section type_check.
       pureb _
   (** The type of an application [M $ N], as a value. *)
   with type_infer_app_in G (HG : ⊢ G) (P : tenv G) M N (H : app_order M N) :
-      { v : domain | exists T, G ⊢a M $ N ⟹ T /\ typ_val G P v T } + { forall A, ~ G ⊢a M $ N ⟹ A } by struct H :=
+      { v : fdomain | exists T, G ⊢a M $ N ⟹ T /\ typ_val G P v T } + { forall A, ~ G ⊢a M $ N ⟹ A } by struct H :=
   | G, HG, P, M, N, H =>
-      let*o (exist _ v _) := type_infer_val_in G HG P M _ while _ in
-      let*o (existT _ a (existT _ ρ' (exist _ b _))) := get_pi_val v while _ in
-      let (A, _) := fast_read_typ_impl F (List.length G) a _ in
+      let*o (exist _ v Hv) := type_infer_val_in G HG P M _ while _ in
+      let*o (existT _ a (existT _ ρ' (exist _ b Eb))) := get_pi_val v while _ in
+      let (A, _) := fast_read_typ_impl F (List.length G) a (typ_val_pi_dom_ok _ _ _ _ _ _ _ Hv Eb) _ in
       let*b->o _ := type_check_in G (A : nf) _ P N _ while _ in
-      let (v', _) := app_cod G P N ρ' b _ in
+      let (v', _) := app_cod G P N ρ' b (typ_val_pi_env_ok _ _ _ _ _ _ _ Hv Eb) _ in
       pureo (exist _ v' _)
   (** The type of the head of an application, as a value: an application's
       directly, any other term's by evaluating its normal form. *)
   with type_infer_val_in G (HG : ⊢ G) (P : tenv G) M (H : type_check_order M) :
-      { v : domain | exists T, G ⊢a M ⟹ T /\ typ_val G P v T } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
+      { v : fdomain | exists T, G ⊢a M ⟹ T /\ typ_val G P v T } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
   | G, HG, P, M, H with get_app_parts M => {
     | inleft (existT _ M1 (exist _ N1 _)) =>
         let*o (exist _ v _) := type_infer_app_in G HG P M1 N1 _ while _ in
         pureo (exist _ v _)
     | inright _ =>
         let*o (exist _ T _) := type_infer_in G HG P M _ while _ in
-        let (v, _) := fast_eval_exp_impl F T (proj1_sig P) _ in
+        let (v, _) := fast_eval_exp_impl F T (proj1_sig P) (tenv_ok G (proj1_sig P) (proj2_sig P)) _ in
         pureo (exist _ v _) }
   (** A body, entry by entry, as the entries its opens generate: each in the
       context of the expanded body before it. *)
@@ -979,7 +1018,9 @@ Section type_check.
     functional_alg_type_infer_rewrite_clear.
     match goal with Hi : G ⊢a M ⟹ ?T, Hv : typ_val G P ?v ?T |- _ =>
       pose proof (typ_val_rtyp _ _ _ _ _ HG Hi Hv) as Hr end.
-    inversion Hr; subst.
+    (** The value, read back to a [Π], is one *)
+    match goal with Hr : Rtypᶠ fdomain_erase ?v in _ ⍮ _ ⍮ _ ↘ _ |- _ =>
+      destruct v; cbn [fdomain_erase] in Hr; inversion Hr; subst end.
     firstorder congruence.
   Qed.
   Obligation 188. (* read_typ_order gc_deps gc_stack (List.length G) a *)

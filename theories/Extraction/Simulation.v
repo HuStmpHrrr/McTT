@@ -24,7 +24,7 @@ From Mctt.Core.Syntactic Require Import Substitution Members Records Fresh.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Domain Evaluation Readback Avoid.
 From Mctt.Core.Semantic.Kinds Require Import Kinds.
-From Mctt.Extraction Require Import FastEval.
+From Mctt.Extraction Require Import FastEval FastDomain.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
@@ -1941,3 +1941,55 @@ Hint Constructors domain_simulation domain_ne_simulation domain_nf_simulation dm
 #[export]
 Hint Resolve domain_simulation_lvl_suc domain_simulation_lvl_max domain_list_simulation_snoc env_agree_nil
   domain_list_simulation_app domain_list_simulation_firstn domain_list_simulation_skipn env_agree_all_args env_agree_all_cons nil_agree : mctt.
+
+(** ** Fast Values
+
+    A fast value ([Extraction.FastDomain]) is related to a reference one
+    through its erasure, and the declarations it carries are right. *)
+Section FastSim.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  (** The reference value [a] and the fast value [a'] *)
+  Definition fast_value_simulation (a : domain) (a' : fdomain) : Prop :=
+    domain_simulation Θ Ξ a (fdomain_erase a') /\ fdomain_ok Θ Ξ a'.
+
+  (** A reference environment and a fast one, agreeing at the entries [P]
+      selects *)
+  Definition fast_env_agree (P : nat -> Prop) (ρ : env) (ρ' : fenv) : Prop :=
+    env_agree Θ Ξ P ρ (fenv_erase ρ') /\ fenv_ok Θ Ξ ρ'.
+
+  Lemma fast_env_agree_all : forall P ρ ρ', fast_env_agree (fun _ => True) ρ ρ' -> env_agree Θ Ξ P ρ (fenv_erase ρ').
+  Proof. intros * [H _]; eapply env_agree_mono; [ exact H | intros; exact I ]. Qed.
+
+  Lemma fast_env_agree_ok : forall P ρ ρ', fast_env_agree P ρ ρ' -> fenv_ok Θ Ξ ρ'.
+  Proof. intros * [_ H]; exact H. Qed.
+
+  Lemma fast_env_agree_nil : forall P, fast_env_agree P nil nil.
+  Proof. intros; split; [ apply env_agree_nil | constructor ]. Qed.
+
+  (** One entry more, of each kind *)
+  Lemma fast_env_agree_term : forall ρ ρ' d d', fast_env_agree (fun _ => True) ρ ρ' ->
+      domain_simulation Θ Ξ d (fdomain_erase d') -> fdomain_ok Θ Ξ d' ->
+      fast_env_agree (fun _ => True) (ρ ↦ d) (fextend_env ρ' d').
+  Proof.
+    intros * [Hag Hok] Hs Hd; split; [ rewrite fextend_env_erase | apply fextend_env_ok; assumption ].
+    eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
+  Qed.
+
+  Lemma fast_env_agree_mod : forall ρ ρ' h h', fast_env_agree (fun _ => True) ρ ρ' ->
+      dmod_simulation Θ Ξ h (fdmod_erase h') -> fdmod_ok Θ Ξ h' ->
+      fast_env_agree (fun _ => True) (ρ ↦ᵐ h) (fextend_env_mod ρ' h').
+  Proof.
+    intros * [Hag Hok] Hs Hh; split; [ rewrite fextend_env_mod_erase | apply fextend_env_mod_ok; assumption ].
+    eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
+  Qed.
+
+  Lemma fast_env_agree_dm : forall ρ ρ' d d' h h', fast_env_agree (fun _ => True) ρ ρ' ->
+      domain_simulation Θ Ξ d (fdomain_erase d') -> fdomain_ok Θ Ξ d' ->
+      dmod_simulation Θ Ξ h (fdmod_erase h') -> fdmod_ok Θ Ξ h' ->
+      fast_env_agree (fun _ => True) (ρ ↦ᵈ d ‖ h) (fextend_env_dm ρ' d' h').
+  Proof.
+    intros * [Hag Hok] Hs Hd Hsh Hh; split; [ rewrite fextend_env_dm_erase | apply fextend_env_dm_ok; assumption ].
+    eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
+  Qed.
+End FastSim.

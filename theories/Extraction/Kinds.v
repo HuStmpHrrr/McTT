@@ -7,6 +7,7 @@ From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Extraction Require Import Lookup.
+From Mctt.Extraction Require Export FastDomain.
 Import Domain_Notations.
 
 Generalizable All Variables.
@@ -277,6 +278,10 @@ Proof.
   left; right; right; exists pv, A, M, (dec_unit u); rewrite fc_entry_ok, Ee; reflexivity.
 Defined.
 
+(** The operations on fast values, read through their erasure equations *)
+#[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdlvl_suc fdlvl_max
+  fdlvl_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
+
 (** The kinds, computed through the fast context [F] *)
 Section KindImpl.
   Variable F : FCtx.
@@ -385,7 +390,7 @@ Section KindImpl.
 
   #[local]
   Ltac kd_obl :=
-    intros; cbv beta in *; cbn [option_map dec_loc fst snd] in *; repeat kd_inv;
+    intros; cbv beta in *; cbn [option_map dec_loc fst snd] in *; ferase_norm; repeat kd_inv;
     first [ solve [ kd_finish ] | solve [ kd_split; kd_finish ] | kd_finish ].
 
   #[local]
@@ -402,15 +407,16 @@ Section KindImpl.
     end.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations dmod_member_kind_impl h ch (H : dmod_member_kind_order Θ Ξ h ch) : { k | dmod_member_kind Θ Ξ h ch k } by struct H :=
-  | dm_global pq args, nil, H with gc_frame_f F pq := {
+  Equations dmod_member_kind_impl (h : fdmod) ch (H : dmod_member_kind_order Θ Ξ (fdmod_erase h) ch) :
+      { k | dmod_member_kind Θ Ξ (fdmod_erase h) ch k } by struct H :=
+  | fdm_global pq args, nil, H with gc_frame_f F pq := {
     | exist _ (Some TΦ) Ef => exist _ member_kind_mod _
     | exist _ None Ef with gc_module_f F pq := {
       | exist _ (Some (mr_body T oD)) E => exist _ member_kind_mod _
       | exist _ _ E with gc_resolve_f F pq := {
         | exist _ (Some (ge_def b pv A B)) E2 => exist _ member_kind_term _
         | exist _ _ E2 => False_rect _ _ } } }
-  | dm_global pq args, y :: ch, H with dm_path_fdec F (qname_app pq (y :: nil)), ch := {
+  | fdm_global pq args, y :: ch, H with dm_path_fdec F (qname_app pq (y :: nil)), ch := {
     | left Hd, nil with gc_module_f F (qname_app pq (y :: nil)) := {
       (** a definition with a module part stored as an alias: [dm_of] its
           alias's kind *)
@@ -423,12 +429,12 @@ Section KindImpl.
           let (k, Hk) := gunit_member_kind_impl nil U ch' _ in
           exist _ k _
       | exist _ _ E =>
-          let (k, Hk) := dmod_member_kind_impl (dm_global (qname_app pq (y :: nil)) args) ch' _ in
+          let (k, Hk) := dmod_member_kind_impl (fdm_global (qname_app pq (y :: nil)) args) ch' _ in
           exist _ k _ } }
-  | dm_local Δ D p, ch, H =>
+  | fdm_local Δ D p, ch, H =>
       let (k, Hk) := gunit_member_kind_impl p (gu_mk Δ D) ch _ in
       exist _ k _
-  | dm_member h ch0, ch, H with dmod_member_kind_impl h (ch0 ++ ch) _ := {
+  | fdm_member h ch0, ch, H with dmod_member_kind_impl h (ch0 ++ ch) _ := {
     (** at the empty chain, a member with a term part and a module part is
         selected as a module *)
     | exist _ member_kind_dm Hk with ch := {
@@ -436,10 +442,11 @@ Section KindImpl.
       | _ :: _ => exist _ member_kind_dm _ }
     | exist _ k Hk => exist _ k _ }
 
-  with gunit_member_kind_impl p U ch (H : gunit_member_kind_order Θ Ξ p U ch) : { k | gunit_member_kind Θ Ξ p U ch k } by struct H :=
+  with gunit_member_kind_impl (p : fenv) U ch (H : gunit_member_kind_order Θ Ξ (fenv_erase p) U ch) :
+      { k | gunit_member_kind Θ Ξ (fenv_erase p) U ch k } by struct H :=
   | p, gu_mk Δ (md_body sm Φ), nil, H => exist _ member_kind_mod _
   | p, gu_mk Δ (md_body sm Φ), x :: ch, H with inspect (gm_item_upto Φ x) := {
-    | exist _ (Some (Φ0, E, its1, (Some n, d, pv))) Ei with kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ0 _ := {
+    | exist _ (Some (Φ0, E, its1, (Some n, d, pv))) Ei with kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ0 _ := {
       | exist _ p0 Hp0 with modexp_member_kind_impl p0 E (n :: nil) _ := {
         | exist _ member_kind_term Hk0 => exist _ member_kind_term _
         | exist _ member_kind_mod Hk0 =>
@@ -449,36 +456,37 @@ Section KindImpl.
             let (k, Hk) := modexp_member_kind_impl p0 E (n :: ch) _ in
             exist _ k _ } }
     | exist _ (Some (Φ0, E, its1, (None, d, pv))) Ei =>
-        let (p0, Hp0) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ0 _ in
+        let (p0, Hp0) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ0 _ in
         let (k, Hk) := modexp_member_kind_impl p0 E ch _ in
         exist _ k _
     | exist _ None Ei with inspect (gm_prefix_upto Φ x) := {
       | exist _ (Some (gm_ext Φ' _ (ge_def b pv A B))) P => exist _ member_kind_term _
       | exist _ (Some (gm_ext Φ' _ (ge_mod pm Uy))) P =>
-          let (p1, Hp1) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ' _ in
+          let (p1, Hp1) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ' _ in
           let (k, Hk) := gunit_member_kind_impl p1 Uy ch _ in
           exist _ k _
       | exist _ (Some (gm_ext Φ' _ (ge_def_mod pv A M Uy))) P with ch := {
         (** itself: [dm_of] its module part's kind *)
         | nil =>
-            let (p1, Hp1) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ' _ in
+            let (p1, Hp1) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ' _ in
             let (k, Hk) := gunit_member_kind_impl p1 Uy nil _ in
             exist _ (dm_of k) _
         | c :: ch' =>
-            let (p1, Hp1) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ' _ in
+            let (p1, Hp1) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ' _ in
             let (k, Hk) := gunit_member_kind_impl p1 Uy (c :: ch') _ in
             exist _ k _ }
       | exist _ _ P => False_rect _ _ } }
   | p, gu_mk Δ (md_alias E), ch, H =>
-      let (k, Hk) := modexp_member_kind_impl (kinds_placeholders (List.length Δ) p) E ch _ in
+      let (k, Hk) := modexp_member_kind_impl (fkinds_placeholders (List.length Δ) p) E ch _ in
       exist _ k _
 
-  with modexp_member_kind_impl p E ch (H : modexp_member_kind_order Θ Ξ p E ch) : { k | modexp_member_kind Θ Ξ p E ch k } by struct H :=
+  with modexp_member_kind_impl (p : fenv) E ch (H : modexp_member_kind_order Θ Ξ (fenv_erase p) E ch) :
+      { k | modexp_member_kind Θ Ξ (fenv_erase p) E ch k } by struct H :=
   | p, me_unit fp, ch, H =>
-      let (k, Hk) := dmod_member_kind_impl (dm_global (q_abs fp nil) nil) ch _ in
+      let (k, Hk) := dmod_member_kind_impl (fdm_global (q_abs fp nil) nil) ch _ in
       exist _ k _
   | p, me_var x, ch, H =>
-      let (k, Hk) := dmod_member_kind_impl (env_mod p x) ch _ in
+      let (k, Hk) := dmod_member_kind_impl (fenv_mod p x) ch _ in
       exist _ k _
   | p, me_lit U, ch, H =>
       let (k, Hk) := gunit_member_kind_impl p U ch _ in
@@ -494,17 +502,19 @@ Section KindImpl.
       let (k, Hk) := modexp_member_kind_impl p E ch _ in
       exist _ k _
 
-  with kinds_env_impl p Φ (H : kinds_env_order Θ Ξ p Φ) : { p1 | kinds_env Θ Ξ p Φ p1 } by struct H :=
+  with kinds_env_impl (p : fenv) Φ (H : kinds_env_order Θ Ξ (fenv_erase p) Φ) :
+      { p1 : fenv | kinds_env Θ Ξ (fenv_erase p) Φ (fenv_erase p1) } by struct H :=
   | p, gm_nil, H => exist _ p _
   | p, gm_ext Φ y E, H =>
       let (p1, Hp1) := kinds_env_impl p Φ _ in
-      exist _ (kinds_body_entry p1 E :: p1) _
+      exist _ (fkinds_body_entry p1 E :: p1) _
   | p, gm_open Φ E its, H =>
       let (p1, Hp1) := kinds_env_impl p Φ _ in
       let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
-      exist _ (kinds_items_gen_env p1 0 gs) _
+      exist _ (fkinds_items_gen_env p1 0 gs) _
 
-  with kinds_items_gen_impl p E its (H : kinds_items_gen_order Θ Ξ p E its) : { gs | kinds_items_gen Θ Ξ p E its gs } by struct H :=
+  with kinds_items_gen_impl (p : fenv) E its (H : kinds_items_gen_order Θ Ξ (fenv_erase p) E its) :
+      { gs | kinds_items_gen Θ Ξ (fenv_erase p) E its gs } by struct H :=
   | p, E, nil, H => exist _ nil _
   | p, E, (None, d, pv) :: its, H =>
       let (gs, Hgs) := kinds_items_gen_impl p E its _ in
@@ -524,7 +534,8 @@ Section KindImpl.
 
   (** A body read through the entries its opens generate. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations kinds_body_xp_impl p Φ (H : kinds_body_xp_order Θ Ξ p Φ) : { Φx | kinds_body_xp Θ Ξ p Φ Φx } by struct H :=
+  Equations kinds_body_xp_impl (p : fenv) Φ (H : kinds_body_xp_order Θ Ξ (fenv_erase p) Φ) :
+      { Φx | kinds_body_xp Θ Ξ (fenv_erase p) Φ Φx } by struct H :=
   | p, gm_nil, H => exist _ gm_nil _
   | p, gm_ext Φ y E, H =>
       let (Φx, HΦx) := kinds_body_xp_impl p Φ _ in
