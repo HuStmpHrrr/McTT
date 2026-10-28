@@ -27,9 +27,17 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   imported units (`en_unit`), and, for the unit's parameter types only, the
   names of its leading opens (`en_open`).  An open's declarations are
   ordinary entries: `en_mem` in a frame, `en_var` in a local body.  A name denotes
-  its innermost entry (`bound`), with `k` binders inside the entry and `n`
-  outside.  A member is pre-applied to `vars_desc k n`: the binders outside
-  it are exactly the parameters it is generalized over.
+  its innermost entry (`bound`), with `k` binders inside the entry.  A member's
+  entry `en_mem x q n` records the `n` binders outside it, `binders S` of the
+  scope it is declared in: exactly the parameters it is generalized over.  A
+  use is pre-applied to `vars_desc k n`.  A scope only grows at its front, so
+  the count stays right (`mems_counted`, `scmd_mems_counted`,
+  `bound_mem_counted` in `ElabCorrect.v`), and a lookup never reads past the
+  entry it finds.
+* A command is read in one scope `S`, the frame's entries so far followed by
+  everything outside it, and pushes its declarations on the front: nothing is
+  copied.  The elaborator carries `binders S` as a number, constant within a
+  frame (members, units and open items are no binders).
 * The position decides what an object is: the head of a projection, the head
   of an application there, an alias body and an open target are module
   expressions (`selm`); everything else is a term (`sel`).  A projection is
@@ -53,10 +61,10 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
 * In a frame, an open emits `cc_open E items`; the core checks the target
   and the items and runs the definitions and aliases they generate.  Each
   item's name is bound as a member of the frame (`en_mem d (q_abs fp (ch ++
-  [d]))`) and must be fresh in the frame *before* the open (`d is already
-  declared`); a name the open itself declares twice, or a member both used
-  and exported, is the core's to reject (`n is already declared`, `c is used
-  and exported`).
+  [d])) n`) and may not be a parameter's of the frame (`d is already
+  declared`); a name the open declares twice, or one the frame has declared,
+  or a member both used and exported, is the core's to reject (`n is already
+  declared`, `c is used and exported`).
 * In a local body, an open emits the pre-form `gm_open Φ E items`, which
   the core expands into ordinary entries, and binds one core binder per item
   (`item_ents`).  Local bodies have no `import`s (`import is not allowed in a
@@ -79,11 +87,20 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
 
 ## The naming rule
 
-**One binding per name per frame**: `fresh x F`, where `F` is what the current
-frame has bound (parameters, members, open declarations).  Binding a name an
-enclosing frame binds is shadowing.  Local bodies follow the ordinary scoping
-of binders; the core checks their names distinct.  Since lookup is
-first-match, the rule is a premise only, not an invariant.
+**One binding per name per frame**, checked in two places:
+
+* a member (an open's declarations included) against the other members: the
+  core's command judgment (`gs_fresh`, "x is already declared"), so the
+  elaborator emits such a unit as written, and an elaboration error later in
+  the unit is reported first;
+* a member against the frame's parameters: the elaborator, `fresh x P` with
+  `P` the parameter names `scmd` carries, since the core's parameter contexts
+  are nameless.  A record's with-area has the record's parameters as `P`; its
+  names against the fields are `check_no_field`'s.
+
+Binding a name an enclosing frame binds is shadowing.  Local bodies follow
+the ordinary scoping of binders; the core checks their names distinct.  Since
+lookup is first-match, the rule is a premise only, not an invariant.
 
 ## Leading imports and opens
 
@@ -102,7 +119,7 @@ Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
 
 | elab_spec_intro : forall leads fp ps cs L lds tys ccs,
     slead nil leads L lds -> NoDup (map fst ps) -> sparams L ps tys ->
-    scmds fp nil L (pents ps) (leads ++ cs) ccs ->
+    scmds fp nil (map fst ps) (pents ps ++ L) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).
 ```
 
@@ -115,8 +132,8 @@ Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
   elaborator does more than resolve a name to a binder or a member.
 * **In the frame**, after the parameters, they are ordinary commands of the
   unit's own frame: the import loads again (a no-op), the open declares
-  members of the unit (`cc_open`), applied to its parameters, fresh against
-  them and against each other.  The body's scope outside the frame is `L`,
+  members of the unit (`cc_open`), applied to its parameters, not named as
+  them (the elaborator) nor as each other (the core).  The body's scope outside the frame is `L`,
   whose `en_open` entries are always shadowed by those members.
 * So a leading open's arguments may not name the parameters (`unbound name
   n`): they precede the header.
@@ -164,7 +181,7 @@ cc_def "j" (Π ℕ ℕ) (a_mem ⟨Main.M⟩ "id" $ ℕ)
 ```
 
 In the body of `k` the scope is `y, x, B, id ↦ Main.M.id, A`.  `id` has three
-binders inside and one outside, so it is `Main.M.id $ vars_desc 3 1 =
+binders inside, and its entry records one outside, so it is `Main.M.id $ vars_desc 3 1 =
 Main.M.id $ #3`.  In `j`, `M` is closed, so `M` in module position is
 `⟨Main.M⟩`.
 
@@ -174,7 +191,8 @@ One `iff` per function: `lookup_iff`, `ihead_iff` (the head of an open
 target), `args_iff`/`target_iff` (open targets, computed without building
 the object, so that the elaborator's local bodies stay structural),
 `objects_iff` (by `Cst.cst_ind`), `commands_iff` (by `Cst.cst_ind`, motive `md = md_where body
--> Pcmds body`), `lead_iff`, `elaborate_core_iff`.  `Cst.cst_ind` is the
+-> Pcmds body`; `Pcmd`/`Pcmds` assume the carried count is `binders S`, and
+`scmd_binders` says a command keeps it), `lead_iff`, `elaborate_core_iff`.  `Cst.cst_ind` is the
 generated mutual principle (`Scheme … Combined Scheme`): with `All` schemes
 for `list`, `prod` and `option` registered in `Core/Base.v`, a list of
 pairs carries `list_all (prod_all …)` of the motive, which `list_all_snd`,

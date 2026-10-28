@@ -194,7 +194,9 @@ module T where def x : Nat := 0 end def x : Nat := 0 end end
 Today and prototype: elaboration error `x is already declared`. With option
 O4a (drop the member–member check from the elaborator) the elaborator would
 emit both `cc_def`s and the core would reject with `duplicate name x`
-(`run_cmd_def` needs `gs_fresh`).
+(`run_cmd_def` needs `gs_fresh`).  *Since `wip/elab-perf` (2026-10-28) this
+is what happens (O4a is implemented), and the core's message is `x is
+already declared`; see the naming rule in [`elab-spec.md`](elab-spec.md).*
 
 ## 5. Options for the core (not implemented), with cost
 
@@ -236,7 +238,10 @@ Line estimates are for the current core; the core is being refactored on
   member and duplicate parameters cannot move: core contexts are nameless.
   Giving `cc_mod`/`cc_alias`/`cunit` parameter names and the stack a name list
   touches `gstack`, i.e. all of typing. **Keep the check in the elaborator**:
-  without the invariant it is one premise per declaring rule.
+  without the invariant it is one premise per declaring rule.  *Historical:
+  since `wip/elab-perf` (2026-10-28), (a) is done (the core's message is
+  `x is already declared`), and the elaborator keeps only (b), checking a
+  member against the frame's parameter names.*
 * **O5. Unit reachability in the core.** The core types `me_path (p_abs fq
   nil)` whenever `fq` is filed, which includes units loaded transitively or by
   a closed module. Moving the lexical rule needs a per-frame "imported units"

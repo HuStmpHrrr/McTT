@@ -2545,6 +2545,46 @@ let%expect_test "a module alias may not reuse a name" =
   let _ = main_of_body "module M where end module M := M" in
   [%expect {| Error: M is already declared |}]
 
+(* That a member is declared once is the core's to check, so an
+   elaboration error later in the unit is reported first. *)
+let%expect_test "a repeated member is reported after the unit elaborates" =
+  let _ = main_of_body "def x : Nat := 0 end def x : Nat := y end" in
+  [%expect {| Error: unbound name y |}];
+  let _ = main_of_body "def x : Nat := 0 end def x : Nat := 1 end" in
+  [%expect {| Error: x is already declared |}]
+
+(* The core rejects a repeated member, so the run fails (exit code 3); a
+   member taking a parameter's name is an elaboration failure (4). *)
+let%expect_test "the exit codes of a repeated member and of a parameter clash" =
+  Printf.printf "exit %d\n" (main_of_body "def x : Nat := 0 end def x : Nat := 1 end");
+  [%expect {|
+    Error: x is already declared
+    exit 3
+    |}];
+  Printf.printf "exit %d\n" (main_of_body "module M (x : Nat) where def x : Nat := 0 end end");
+  [%expect {|
+    Error: x is already declared
+    exit 4
+    |}]
+
+(* That a member does not take a parameter's name is the elaborator's: the
+   core's parameters are nameless. *)
+let%expect_test "a member may not take a parameter's name" =
+  let _ = main_of_body "module M (x : Nat) where def x : Nat := 0 end end" in
+  [%expect {| Error: x is already declared |}];
+  let _ = main_of_body "module M (x : Nat) where module N where end open N as x end" in
+  [%expect {| Error: x is already declared |}];
+  let _ = main_of_body "record R (A : Type@0) : Type@0 where a : A with def A : Nat := 0 end end" in
+  [%expect {| Error: A is already declared |}]
+
+let%expect_test "a nested frame's parameter may shadow an enclosing one" =
+  let _ = main_of_body "module M (x : Nat) where module N (x : Nat) where def y : Nat := x end end \
+                        eval N.y 3 end eval M.N.y 1 2" in
+  [%expect {|
+    Evaluate N.y 3 --> 3 : ℕ
+    Evaluate M.N.y 1 2 --> 2 : ℕ
+    |}]
+
 let%expect_test "a local module may not repeat a parameter" =
   let _ = main_of_body "eval let module X (n : Nat) (n : Nat) where end in 0 end" in
   [%expect {| Error: duplicate parameter n |}]

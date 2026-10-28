@@ -265,7 +265,7 @@ let continues st =
 let lookup env x : (E.ent * vb option) option =
   match El.lookup x env.sc with
   | None -> None
-  | Some ((k, e), _) ->
+  | Some (k, e) ->
       (match e with
        | E.Coq_en_var _ | E.Coq_en_tvar _ ->
            if E.binders env.sc <> List.length env.vs then
@@ -285,7 +285,7 @@ let head st env i x : mden =
       refer st i (Site { s_unit = [ x ]; s_anchor = "" }); MGlobal (S.Coq_me_unit [ x ], [])
   | None -> MNone
   | Some (_, Some v) -> refer st i v.v_link; v.v_mod
-  | Some (E.Coq_en_mem (_, p), _) ->
+  | Some (E.Coq_en_mem (_, p, _), _) ->
       refer st i (Member (st.unit, S.Coq_me_unit p.S.q_unit, p.S.q_chain)); qname_mden p
   | Some (E.Coq_en_open (d, h, oc), _) ->
       (match oc with
@@ -397,7 +397,7 @@ and target st env fq ip args : mden =
     | [], x :: ip' when cont ->
         (match lookup env x with
          | Some (_, Some v) -> (v.v_mod, ip')
-         | Some (E.Coq_en_mem (_, p), _) -> (qname_mden p, ip')
+         | Some (E.Coq_en_mem (_, p, _), _) -> (qname_mden p, ip')
          | Some (E.Coq_en_open (_, h, oc), _) -> (MGlobal (h, opt_list oc), ip')
          | None when El.unit_in_b [ x ] env.sc -> (MGlobal (S.Coq_me_unit [ x ], []), ip')
          | _ -> (MNone, ip'))
@@ -467,12 +467,13 @@ let def_kw st i =
   | P.THEOREM _ -> "theorem" | P.LEMMA _ -> "lemma" | P.FACT _ -> "fact" | P.REMARK _ -> "remark"
   | P.LET _ -> "let" | P.GIVEN _ -> "given" | _ -> "def"
 
-(* [cmd st fp ch o ov f fv c]: the command [c] in the frame at member chain
-   [ch], whose entries are [f] inside the scope [o]; [fv] and [ov] are the
-   binders of [f] and [o].  The frame's next entries are [elab_cmd]'s.  Each
+(* [cmd st fp ch pn (s, sv) c]: the command [c] in the frame at member
+   chain [ch], whose parameters are named [pn], read in the scope [s] (the
+   frame's entries, then everything outside it); [sv] are the binders of
+   [s].  The scope after it is [elab_cmd]'s; a command adds no binder.  Each
    declaration of the body is an entry of the unit's contents. *)
-let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
-  let env = { sc = f @ o; vs = fv @ ov } in
+let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.ent list =
+  let env = { sc = s; vs = sv } in
   (* The selections of an enclosing command, set aside while this one's
      are gathered. *)
   let outer = st.sels in
@@ -560,7 +561,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
         | C.Coq_md_where body ->
             let k = st.frame_ps in
             st.frame_ps <- k + List.length ps;
-            ignore (cmds st fp (ch @ [ x ]) (f @ o, fv @ ov) (E.pents ps, List.rev vbs) body);
+            ignore (cmds st fp (ch @ [ x ]) (List.map fst ps) (E.pents ps @ s, List.rev vbs @ sv) body);
             st.frame_ps <- k
         | C.Coq_md_alias e -> ignore (modv st env' e));
        L_mod (ch, x)
@@ -595,10 +596,10 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
       sort, then its fields, members of its module, each type seeing the
       fields before it, then its with-area, in the record's frame
       ([ElabSpec.record_ents]), the record in scope outside it. *)
-   | C.Coq_c_record (_, x, ps, s, fs, cs) ->
+   | C.Coq_c_record (_, x, ps, srt, fs, cs) ->
        ignore (decl (Some "record") x Mod);
        let env', vbs = params st env ps in
-       term st env' s;
+       term st env' srt;
        ignore (List.fold_left (fun envf (y, a) ->
            let i = next st y in
            declare st i (anchor_of (ch @ [ x ]) y) Def;
@@ -611,8 +612,9 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        let p = { S.q_unit = fp; S.q_chain = ch @ [ x ] } in
        let k = st.frame_ps in
        st.frame_ps <- k + List.length ps + 1;
-       ignore (cmds st fp (ch @ [ x ]) (E.Coq_en_mem (x, p) :: f @ o, fv @ ov)
-                 (E.record_ents fp ch x ps fs, self :: List.rev vbs) cs);
+       let nb = List.length sv in
+       ignore (cmds st fp (ch @ [ x ]) (List.map fst ps)
+                 (E.record_ents fp ch nb x ps fs @ E.Coq_en_mem (x, p, nb) :: s, self :: List.rev vbs @ sv) cs);
        st.frame_ps <- k;
        L_record (ch, x, k)
    (* A builtin binding: its kind, which declares nothing and links where
@@ -643,20 +645,21 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
   in
   st.cmd_recs <- { cr_loc = loc; cr_sels = List.rev st.sels } :: st.cmd_recs;
   st.sels <- outer;
-  next_frame st fp ch o f c
+  next_frame st fp ch pn (s, sv) c
 
-and next_frame st fp ch o f c =
-  match El.elab_cmd fp ch o f c with
-  | El.Coq_eok (f', _) -> f'
-  | El.Coq_eerr e -> st.notes <- ("elaboration: " ^ e) :: st.notes; f
+(* The scope after [c], [elab_cmd]'s; [sv] counts the scope's binders. *)
+and next_frame st fp ch pn (s, sv) c =
+  match El.elab_cmd fp ch pn (List.length sv) s c with
+  | El.Coq_eok (s', _) -> s'
+  | El.Coq_eerr e -> st.notes <- ("elaboration: " ^ e) :: st.notes; s
 
-and cmds st fp ch (o, ov) (f, fv) cs =
-  List.fold_left (fun f c -> cmd st fp ch (o, ov) (f, fv) c) f cs
+and cmds st fp ch pn (s, sv) cs =
+  List.fold_left (fun s c -> cmd st fp ch pn (s, sv) c) s cs
 
 (* A leading import or open: read in the scope [l] of the parameter types,
    which [elab_lead] extends. *)
 let lead st fp (l : E.ent list) (c : C.cmd) : E.ent list =
-  ignore (cmd st fp [] (l, []) ([], []) c);
+  ignore (cmd st fp [] [] (l, []) c);
   match El.elab_lead l [ c ] with
   | El.Coq_eok (l', _) -> l'
   | El.Coq_eerr e -> st.notes <- ("elaboration: " ^ e) :: st.notes; l
@@ -735,8 +738,9 @@ let walk (file : string list) (src : string) (items : (string list * string list
   st.cmd_recs <- { cr_loc = L_params; cr_sels = List.rev st.sels } :: st.cmd_recs;
   st.sels <- [];
   (* The leading commands again, as the frame's first commands. *)
-  let f = List.fold_left (fun f c -> next_frame st fp [] l f c) (E.pents ps) leads in
-  ignore (cmds st fp [] (l, []) (f, List.rev vbs) cs);
+  let pn = List.map fst ps and sv = List.rev vbs in
+  let s = List.fold_left (fun s c -> next_frame st fp [] pn (s, sv) c) (E.pents ps @ l) leads in
+  ignore (cmds st fp [] pn (s, sv) cs);
   if st.cur <> Array.length vars then
     raise (Misaligned (Printf.sprintf "%d of %d names paired" st.cur (Array.length vars)));
   { u_file = file; u_path = fp; u_src = src; u_toks = toks; u_comments = comments src toks;

@@ -50,42 +50,47 @@ Definition binds_b (x : string) (e : ent) : bool :=
   | None => false
   end.
 
-(** The innermost entry binding [x], with the binders inside and outside it. *)
-Fixpoint lookup (x : string) (S : list ent) : option (nat * ent * nat) :=
+(** The innermost entry binding [x], with the binders inside it.  The walk
+    stops there: nothing outside the entry is read. *)
+Fixpoint lookup (x : string) (S : list ent) : option (nat * ent) :=
   match S with
   | nil => None
   | e :: S' =>
-      if binds_b x e then Some (0, e, binders S')
-      else option_map (fun '(k, e', n) => (ent_binders e + k, e', n)) (lookup x S')
+      if binds_b x e then Some (0, e)
+      else option_map (fun '(k, e') => (ent_binders e + k, e')) (lookup x S')
   end.
 
-Definition den_to_term (k n : nat) (e : ent) : eres exp :=
+(** What an entry, under [k] binders, denotes as a term ([den_term]) *)
+Definition den_to_term (k : nat) (e : ent) : eres exp :=
   match e with
   | en_var _ | en_tvar _ => eok #k
-  | en_mem _ p => eok (apps (qname_term p) (vars_desc k n))
+  | en_mem _ p m => eok (apps (qname_term p) (vars_desc k m))
   | en_unit _ => eerr "a unit is not a term"
   | en_open _ E (Some c) => eok (a_mem E c)
   | en_open _ _ None => eerr "a module is not a term"
   end.
 
-Definition den_to_mod (k n : nat) (e : ent) : eres modexp :=
+(** What an entry, under [k] binders, denotes as a module ([den_mod]) *)
+Definition den_to_mod (k : nat) (e : ent) : eres modexp :=
   match e with
   | en_var _ => eok (me_var k)
   | en_tvar _ => eok (me_var k)
-  | en_mem _ p => eok (mapps (qname_mod p) (vars_desc k n))
+  | en_mem _ p m => eok (mapps (qname_mod p) (vars_desc k m))
   | en_unit _ => eerr "not a module"
   | en_open _ E oc => eok (open_mod E oc)
   end.
 
-Definition check_fresh (x : string) (F : list ent) : eres unit :=
-  echeck (negb (mem_b x (names F))) (x ++ " is already declared").
+(** A declared name is not one of the frame's parameters [P] ([fresh]). *)
+Definition check_fresh (x : string) (P : list string) : eres unit :=
+  echeck (negb (mem_b x P)) (x ++ " is already declared").
 
-Fixpoint check_fresh_all (xs : list string) (F : list ent) : eres unit :=
+(** Alike for each of several declared names *)
+Fixpoint check_fresh_all (xs : list string) (P : list string) : eres unit :=
   match xs with
   | nil => eok tt
   | x :: xs' =>
-      let* _ := check_fresh x F in
-      check_fresh_all xs' F
+      let* _ := check_fresh x P in
+      check_fresh_all xs' P
   end.
 
 (** A name repeated in a parameter telescope. *)
@@ -119,7 +124,7 @@ Definition elab_ihead (S : list ent) (fq ip : list string) : eres modexp :=
   match fq, ip with
   | nil, x :: ip' =>
       let* H := match lookup x S with
-                | Some (k, e, n) => den_to_mod k n e
+                | Some (k, e) => den_to_mod k e
                 | None => unit_mod x S
                 end in
       eok (fold_left me_mem ip' H)
@@ -275,7 +280,7 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       eok (M $ N)
   | Cst.var x =>
       match lookup x S with
-      | Some (k, e, n) => den_to_term k n e
+      | Some (k, e) => den_to_term k e
       | None => eerr ("unbound name " ++ x)
       end
   | Cst.glob _ => eerr "a unit is not a term"
@@ -318,7 +323,7 @@ with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
   match o with
   | Cst.var x =>
       match lookup x S with
-      | Some (k, e, n) => den_to_mod k n e
+      | Some (k, e) => den_to_mod k e
       | None => unit_mod x S
       end
   | Cst.glob fq =>
@@ -450,103 +455,107 @@ Definition check_no_field (x : string) (fs : list string) (cs : list Cst.cmd) : 
 
     A module body is elaborated where it stands: the body of [module x …
     where body end] is elaborated by [elab_cmd] itself, so no stack of frames
-    is needed.  A command takes the frame's entries [F] to [F'] and emits its
-    core commands. *)
-Definition elab_cmds_with (f : list string -> list ent -> list ent -> Cst.cmd -> eres (list ent * list ccmd)%type)
-  (ch : list string) (O : list ent) :=
-  fix go (F : list ent) (cs : list Cst.cmd) : eres (list ccmd) :=
+    is needed.  A command, in a frame whose parameters are named [P], takes
+    the scope [S] (the frame's entries so far, then everything outside it)
+    to [S'] and emits its core commands; a new entry is pushed on the front
+    of the scope, so no command copies it.  [nb] is the number of binders
+    of the scope, [binders S], which a member's entry records; a frame's
+    members add none, so [nb] is the frame's, and is never recounted. *)
+Definition elab_cmds_with (f : list string -> list string -> nat -> list ent -> Cst.cmd -> eres (list ent * list ccmd)%type)
+  (ch : list string) (P : list string) (nb : nat) :=
+  fix go (S : list ent) (cs : list Cst.cmd) : eres (list ccmd) :=
     match cs with
     | nil => eok nil
     | c :: cs' =>
-        let* r := f ch O F c in
+        let* r := f ch P nb S c in
         let* ccs := go (fst r) cs' in
         eok (snd r ++ ccs)%list
     end.
 
-Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) {struct c}
+Fixpoint elab_cmd (fp : path) (ch : list string) (P : list string) (nb : nat) (S : list ent) (c : Cst.cmd) {struct c}
   : eres (list ent * list ccmd)%type :=
   match c with
   | Cst.c_def m x oA oM =>
-      let* _ := check_fresh x F in
-      let* A := elab (F ++ O) oA in
-      let* M := elab (F ++ O) oM in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
+      let* _ := check_fresh x P in
+      let* A := elab S oA in
+      let* M := elab S oM in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
   (** An axiom is opaque: it has no body to unfold. *)
   | Cst.c_axiom x oA =>
-      let* _ := check_fresh x F in
-      let* A := elab (F ++ O) oA in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x false false A None :: nil)
+      let* _ := check_fresh x P in
+      let* A := elab S oA in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_def x false false A None :: nil)
   | Cst.c_mod pv x ps (Cst.md_where body) =>
-      let* _ := check_fresh x F in
+      let* _ := check_fresh x P in
       let* _ := check_params ps in
-      let* tys := elab_params (F ++ O) ps in
-      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (F ++ O) (pents ps) body in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_mod x pv (ptele tys) bcs :: nil)
+      let* tys := elab_params S ps in
+      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (map fst ps) (binders (pents ps) + nb) (pents ps ++ S) body in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_mod x pv (ptele tys) bcs :: nil)
   | Cst.c_mod pv x ps (Cst.md_alias oE) =>
-      let* _ := check_fresh x F in
+      let* _ := check_fresh x P in
       let* _ := check_params ps in
-      let* tys := elab_params (F ++ O) ps in
-      let* E := elab_mod (pents ps ++ F ++ O) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_alias x pv (ptele tys) E :: nil)
-  | Cst.c_import fq => eok (en_unit fq :: F, cc_load fq :: nil)
+      let* tys := elab_params S ps in
+      let* E := elab_mod (pents ps ++ S) oE in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_alias x pv (ptele tys) E :: nil)
+  | Cst.c_import fq => eok (en_unit fq :: S, cc_load fq :: nil)
   | Cst.c_open fq ip args its =>
-      let* E := elab_target_with elab (F ++ O) fq ip args in
-      let* _ := check_fresh_all (map iitem_name its) F in
-      eok (item_mems fp ch its ++ F, cc_open E its :: nil)%list
+      let* E := elab_target_with elab S fq ip args in
+      let* _ := check_fresh_all (map iitem_name its) P in
+      eok (item_mems fp ch nb its ++ S, cc_open E its :: nil)%list
   | Cst.c_error e => eerr e
   | Cst.c_eval oM None =>
-      let* M := elab (F ++ O) oM in
-      eok (F, cc_eval M None :: nil)
+      let* M := elab S oM in
+      eok (S, cc_eval M None :: nil)
   | Cst.c_eval oM (Some oA) =>
-      let* M := elab (F ++ O) oM in
-      let* A := elab (F ++ O) oA in
-      eok (F, cc_eval M (Some A) :: nil)
+      let* M := elab S oM in
+      let* A := elab S oA in
+      eok (S, cc_eval M (Some A) :: nil)
   | Cst.c_ind pv wr ups ms =>
       let* _ := check_distinct "a group" (member_names ms) in
-      let* _ := check_fresh_all (member_names ms) F in
-      let* tys := elab_params (F ++ O) ups in
-      let* rms := elab_members (F ++ O) ups (member_names ms) ms in
-      eok (filed_mems fp ch (member_names ms) ++ F, cc_ind pv (mk_raw (ptele tys) rms wr) :: nil)%list
+      let* _ := check_fresh_all (member_names ms) P in
+      let* tys := elab_params S ups in
+      let* rms := elab_members S ups (member_names ms) ms in
+      eok (filed_mems fp ch nb (member_names ms) ++ S, cc_ind pv (mk_raw (ptele tys) rms wr) :: nil)%list
   | Cst.c_mdef m ps fs =>
       let* _ := check_params ps in
       let* _ := check_distinct "a mutual definition" (fun_names fs) in
-      let* _ := check_fresh_all (fun_names fs) F in
-      let* tys := elab_params (F ++ O) ps in
-      let* rfs := elab_funs (pents ps ++ F ++ O) fs in
-      eok (filed_mems fp ch (fun_names fs) ++ F,
+      let* _ := check_fresh_all (fun_names fs) P in
+      let* tys := elab_params S ps in
+      let* rfs := elab_funs (pents ps ++ S) fs in
+      eok (filed_mems fp ch nb (fun_names fs) ++ S,
            cc_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)%list
   (** The type is a module, as written; the command declares nothing. *)
   | Cst.c_builtin k oX =>
-      let* H := elab_mod (F ++ O) oX in
-      eok (F, cc_builtin k H :: nil)
+      let* H := elab_mod S oX in
+      eok (S, cc_builtin k H :: nil)
   (** The target is a module, read under the parameters, as an alias's
       is. *)
   | Cst.c_ind_alias pv x ps oE =>
-      let* _ := check_fresh x F in
+      let* _ := check_fresh x P in
       let* _ := check_params ps in
-      let* tys := elab_params (F ++ O) ps in
-      let* E := elab_mod (pents ps ++ F ++ O) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind_alias x pv (ptele tys) E :: nil)
+      let* tys := elab_params S ps in
+      let* E := elab_mod (pents ps ++ S) oE in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_ind_alias x pv (ptele tys) E :: nil)
   (** A record alias, as an inductive alias is. *)
   | Cst.c_record_alias pv x ps oE =>
-      let* _ := check_fresh x F in
+      let* _ := check_fresh x P in
       let* _ := check_params ps in
-      let* tys := elab_params (F ++ O) ps in
-      let* E := elab_mod (pents ps ++ F ++ O) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_record_alias x pv (ptele tys) E :: nil)
+      let* tys := elab_params S ps in
+      let* E := elab_mod (pents ps ++ S) oE in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_record_alias x pv (ptele tys) E :: nil)
   (** The parameters, the sort and the fields' types are read as an
       inductive type's are; the with-area in the record's frame, the record
       in scope outside it. *)
   | Cst.c_record pv x ps oS fs cs =>
-      let* _ := check_fresh x F in
+      let* _ := check_fresh x P in
       let* _ := check_params ps in
-      let* tys := elab_params (F ++ O) ps in
-      let* Srt := elab (pents ps ++ F ++ O) oS in
-      let* fs' := elab_rargs (pents ps ++ F ++ O) fs in
+      let* tys := elab_params S ps in
+      let* Srt := elab (pents ps ++ S) oS in
+      let* fs' := elab_rargs (pents ps ++ S) fs in
       let* _ := check_no_field x (map fst fs) cs in
-      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F ++ O)
-                    (record_ents fp ch x ps fs) cs in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_record x pv (ptele tys) Srt fs' bcs :: nil)
+      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (map fst ps) (binders (en_self :: pents ps) + nb)
+                    (record_ents fp ch nb x ps fs ++ en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S) cs in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_record x pv (ptele tys) Srt fs' bcs :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).
@@ -577,7 +586,7 @@ Definition elaborate_core (prg : Cst.prog) : eres cunit :=
   let '(L, lds) := r in
   let* _ := check_params ps in
   let* tys := elab_params L ps in
-  let* ccs := elab_cmds fp nil L (pents ps) (leads ++ cs) in
+  let* ccs := elab_cmds fp nil (map fst ps) (binders (pents ps ++ L)) (pents ps ++ L) (leads ++ cs) in
   eok (lds, ptele tys, ccs).
 
 Definition to_core (prg : Cst.prog) : option cunit :=

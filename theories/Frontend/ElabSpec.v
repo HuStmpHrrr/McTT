@@ -24,9 +24,10 @@ Import Syntax_Notations.
       open frame is generalized over the parameters of its frame and of the
       frames enclosing it, which are exactly the binders outside its entry;
       a use applies it to those variables.
-    - A frame binds each name at most once ([fresh]): a parameter or a
-      member, an open's declarations included.  A name an enclosing frame
-      binds may be shadowed.
+    - A member of a frame, an open's declarations included, does not take
+      the name of a parameter of the frame ([fresh]); that the frame
+      declares no member twice is the core's to check.  A name an
+      enclosing frame binds may be shadowed.
     - Where an object stands decides what it is: the head of a projection,
       the head of an application there, an alias body and an open target
       are module expressions ([selm]), everything else is a term ([sel]).
@@ -67,8 +68,10 @@ Inductive ent : Set :=
     declaration declares.  It is no module. *)
 | en_tvar : string -> ent
 (** A member of an open frame (an open's declarations included), named by
-    its qualified name. *)
-| en_mem : string -> qname -> ent
+    its qualified name, generalized over the [m] binders outside it: the
+    parameters of its frame and of the frames enclosing it.  [m] is fixed
+    when the member is declared ([binders] of the scope there). *)
+| en_mem : string -> qname -> nat -> ent
 (** [import X::Y]: the unit [X::Y] may be named by its path. *)
 | en_unit : path -> ent
 (** A name a leading open declares, as the unit's parameter types see it:
@@ -78,7 +81,7 @@ Inductive ent : Set :=
 
 Definition ent_name (e : ent) : option string :=
   match e with
-  | en_var x | en_tvar x | en_mem x _ | en_open x _ _ => Some x
+  | en_var x | en_tvar x | en_mem x _ _ | en_open x _ _ => Some x
   | en_unit _ => None
   end.
 
@@ -94,20 +97,28 @@ Definition names (S : list ent) : list string :=
 
 Definition binders (S : list ent) : nat := fold_right (fun e n => ent_binders e + n) 0 S.
 
-(** [bound S x k e n]: [e] is the innermost entry of [S] that binds [x], with
-    [k] core binders inside it and [n] outside. *)
+(** [bound S x k e]: [e] is the innermost entry of [S] that binds [x], with
+    [k] core binders inside it. *)
 #[warnings="-cannot-define-projection"]
-Record bound (S : list ent) (x : string) (k : nat) (e : ent) (n : nat) : Prop := mk_bound
-  { bound_inner : list ent
-  ; bound_outer : list ent
-  ; bound_split : S = bound_inner ++ e :: bound_outer
-  ; bound_name : ent_name e = Some x
-  ; bound_first : ~ In x (names bound_inner)
-  ; bound_inner_binders : k = binders bound_inner
-  ; bound_outer_binders : n = binders bound_outer }.
+Record bound (S : list ent) (x : string) (k : nat) (e : ent) : Prop := mk_bound
+  { (** The entries inside [e] *)
+    bound_inner : list ent
+  ; (** The entries outside [e] *)
+    bound_outer : list ent
+  ; (** [S] is the inner entries, [e], then the outer ones. *)
+    bound_split : S = bound_inner ++ e :: bound_outer
+  ; (** [e] binds [x]. *)
+    bound_name : ent_name e = Some x
+  ; (** No inner entry binds [x]. *)
+    bound_first : ~ In x (names bound_inner)
+  ; (** [k] is the number of core binders inside [e]. *)
+    bound_inner_binders : k = binders bound_inner }.
 
-(** A frame may bind a name once. *)
-Definition fresh (x : string) (F : list ent) : Prop := ~ In x (names F).
+(** A member of a frame may not take the name of one of the frame's
+    parameters, [P].  That a frame declares no member twice is the core's
+    to check ([gs_fresh]); but the core's parameter contexts are nameless
+    ([ptele]: assumptions only), so it cannot check this clash. *)
+Definition fresh (x : string) (P : list string) : Prop := ~ In x P.
 
 (** The entries of a parameter list, innermost first. *)
 Definition pents (ps : list (string * Cst.obj)) : list ent := rev (map (fun p => en_tvar (fst p)) ps).
@@ -118,8 +129,9 @@ Definition vents (xs : list string) : list ent := rev (map en_tvar xs).
 
 (** ** What an Entry Denotes
 
-    [k] binders lie inside the entry and [n] outside it.  The parameters
-    outside a member, in declaration order, are [vars_desc k n]:
+    [k] binders lie inside the entry.  A member is generalized over the
+    [n] binders outside it, which its entry records; those parameters, in
+    declaration order, are [vars_desc k n]:
 
 <<
 #(k + n - 1), …, #(k + 1), #k
@@ -140,24 +152,31 @@ Definition open_mod (E : modexp) (oc : option string) : modexp :=
 
 (** As a term.  A module alias is not one.  A leading open's entry needs
     no weakening: its module is closed. *)
-Inductive den_term (k n : nat) : ent -> exp -> Prop :=
-| den_term_var : forall x, den_term k n (en_var x) #k
-| den_term_tvar : forall x, den_term k n (en_tvar x) #k
-| den_term_mem : forall x p, den_term k n (en_mem x p) (apps (qname_term p) (vars_desc k n))
-| den_term_open : forall x E c, den_term k n (en_open x E (Some c)) (a_mem E c).
+Inductive den_term (k : nat) : ent -> exp -> Prop :=
+(** A binder that may hold a module: the variable *)
+| den_term_var : forall x, den_term k (en_var x) #k
+(** A term binder: the variable *)
+| den_term_tvar : forall x, den_term k (en_tvar x) #k
+(** A member: its qualified name applied to the parameters outside it *)
+| den_term_mem : forall x p m, den_term k (en_mem x p m) (apps (qname_term p) (vars_desc k m))
+(** A leading open's name of a member: that member of the module *)
+| den_term_open : forall x E c, den_term k (en_open x E (Some c)) (a_mem E c).
 
 (** As a module expression.  A variable that may hold a module is a module
     slot, which the core rejects if it holds a term; a term binder is the
     binder too: the core fills it, a term of a record type standing for
     the record's module at the term ([fill_mod_term]), and rejects any
     other. *)
-Inductive den_mod (k n : nat) : ent -> modexp -> Prop :=
-| dm_var : forall x, den_mod k n (en_var x) (me_var k)
+Inductive den_mod (k : nat) : ent -> modexp -> Prop :=
+(** A binder that may hold a module: the module slot *)
+| dm_var : forall x, den_mod k (en_var x) (me_var k)
 (** A term binder: the binder, which the core fills when the term is of a
     record type *)
-| dm_tvar : forall x, den_mod k n (en_tvar x) (me_var k)
-| dm_mem : forall x p, den_mod k n (en_mem x p) (mapps (qname_mod p) (vars_desc k n))
-| dm_open : forall x E oc, den_mod k n (en_open x E oc) (open_mod E oc).
+| dm_tvar : forall x, den_mod k (en_tvar x) (me_var k)
+(** A member: its qualified name applied to the parameters outside it *)
+| dm_mem : forall x p m, den_mod k (en_mem x p m) (mapps (qname_mod p) (vars_desc k m))
+(** A leading open's name: what it names in the module *)
+| dm_open : forall x E oc, den_mod k (en_open x E oc) (open_mod E oc).
 
 (** ** What an Open Declares
 
@@ -170,10 +189,10 @@ Inductive den_mod (k n : nat) : ent -> modexp -> Prop :=
     core binder each, newest first. *)
 Definition item_ents (its : list iitem) : list ent := rev (map (fun it => en_var (iitem_name it)) its).
 
-(** In the open frame at member chain [ch] of the unit [fp], they are
-    members of the frame. *)
-Definition item_mems (fp : path) (ch : list string) (its : list iitem) : list ent :=
-  rev (map (fun it => en_mem (iitem_name it) (q_abs fp (ch ++ iitem_name it :: nil))) its).
+(** In the open frame at member chain [ch] of the unit [fp], with [n]
+    binders outside the frame's members, they are members of the frame. *)
+Definition item_mems (fp : path) (ch : list string) (n : nat) (its : list iitem) : list ent :=
+  rev (map (fun it => en_mem (iitem_name it) (q_abs fp (ch ++ iitem_name it :: nil)) n) its).
 
 (** Before the unit's header, in the scope of its parameter types, they
     denote what they name in the module [E]. *)
@@ -254,8 +273,8 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
     sel S oA A -> sel (en_tvar x :: S) oM M -> sel S (Cst.fn x oA oM) (λ A M)
 | sel_app : forall S o1 o2 M N,
     sel S o1 M -> sel S o2 N -> sel S (Cst.app o1 o2) (M $ N)
-| sel_var : forall S x k e n M,
-    bound S x k e n -> den_term k n e M -> sel S (Cst.var x) M
+| sel_var : forall S x k e M,
+    bound S x k e -> den_term k e M -> sel S (Cst.var x) M
 (** A projection selects a member of the module its head denotes, a
     name, a member of one, or one applied ([obj_path]). *)
 | sel_proj : forall S o x H,
@@ -290,8 +309,8 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
     sel S oT T -> stfields S fs Ms -> sel S (Cst.tuple oT fs) (a_tuple T Ms)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
-| selm_var : forall S x k e n H,
-    bound S x k e n -> den_mod k n e H -> selm S (Cst.var x) H
+| selm_var : forall S x k e H,
+    bound S x k e -> den_mod k e H -> selm S (Cst.var x) H
 | selm_glob : forall S fq,
     In (en_unit fq) S -> selm S (Cst.glob fq) (me_unit fq)
 (** A name no binding in scope has is the imported unit of that one-segment
@@ -455,9 +474,10 @@ Inductive sfuns (S : list ent) :
     sfuns S ((f, ys ++ (z, oZ) :: nil, oA, bs) :: fs) (mk_rfun f (ptele ytys) Z A Bs :: rfs).
 
 (** The entries of names filed in order in the open frame at member chain
-    [ch] of the unit [fp], innermost first. *)
-Definition filed_mems (fp : path) (ch : list string) (xs : list string) : list ent :=
-  rev (map (fun x => en_mem x (q_abs fp (ch ++ x :: nil))) xs).
+    [ch] of the unit [fp], with [n] binders outside the frame's members,
+    innermost first. *)
+Definition filed_mems (fp : path) (ch : list string) (n : nat) (xs : list string) : list ent :=
+  rev (map (fun x => en_mem x (q_abs fp (ch ++ x :: nil)) n) xs).
 
 (** ** Record Types
 
@@ -472,11 +492,12 @@ Definition filed_mems (fp : path) (ch : list string) (xs : list string) : list e
 Definition en_self : ent := en_tvar "".
 
 (** The entries of the frame of the record [x] with the parameters [ps]
-    and the fields [fs], declared at member chain [ch] of the unit [fp],
-    before its with-area: the fields, the value, then the parameters,
-    innermost first. *)
-Definition record_ents (fp : path) (ch : list string) (x : string) (ps fs : list (string * Cst.obj)) : list ent :=
-  filed_mems fp (ch ++ x :: nil) (map fst fs) ++ en_self :: pents ps.
+    and the fields [fs], declared at member chain [ch] of the unit [fp]
+    with [n] binders outside the record, before its with-area: the fields,
+    the value, then the parameters, innermost first.  The fields lie under
+    the value and the parameters. *)
+Definition record_ents (fp : path) (ch : list string) (n : nat) (x : string) (ps fs : list (string * Cst.obj)) : list ent :=
+  filed_mems fp (ch ++ x :: nil) (binders (en_self :: pents ps) + n) (map fst fs) ++ en_self :: pents ps.
 
 (** The names a command declares in its frame. *)
 Definition cmd_decls (c : Cst.cmd) : list string :=
@@ -491,128 +512,137 @@ Definition cmd_decls (c : Cst.cmd) : list string :=
 
 (** ** Commands
 
-    [scmd fp ch O F c F' c']: the command [c], in the open frame at member
-    chain [ch] of the unit [fp], which binds [F] so far inside the scope
-    [O], binds [F'] after it and emits the core commands [c'].  [scmds]
-    runs the commands of a body in order.  A definition keyword with a
-    modifier it implies ([Cst.c_error]) has no rule. *)
-Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> list ent -> list ccmd -> Prop :=
-| sc_def : forall ch O F m x oA oM A M,
-    fresh x F ->
-    sel (F ++ O) oA A ->
-    sel (F ++ O) oM M ->
-    scmd fp ch O F (Cst.c_def m x oA oM) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+    [scmd fp ch P S c S' c']: the command [c], in the open frame at member
+    chain [ch] of the unit [fp], whose parameters are named [P], read in
+    the scope [S] (the frame's entries so far, innermost first, then
+    everything outside the frame), extends the scope to [S'] and emits the
+    core commands [c'].  [scmds] runs the commands of a body in order.  A
+    definition keyword with a modifier it implies ([Cst.c_error]) has no
+    rule. *)
+Inductive scmd (fp : path) : list string -> list string -> list ent -> Cst.cmd -> list ent -> list ccmd -> Prop :=
+(** A definition: its type and its body, read in the scope. *)
+| sc_def : forall ch P S m x oA oM A M,
+    fresh x P ->
+    sel S oA A ->
+    sel S oM M ->
+    scmd fp ch P S (Cst.c_def m x oA oM) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
 (** An axiom is opaque, and has no body. *)
-| sc_axiom : forall ch O F x oA A,
-    fresh x F ->
-    sel (F ++ O) oA A ->
-    scmd fp ch O F (Cst.c_axiom x oA) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+| sc_axiom : forall ch P S x oA A,
+    fresh x P ->
+    sel S oA A ->
+    scmd fp ch P S (Cst.c_axiom x oA) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_def x false false A None :: nil)
-(** The parameters of [module x (ps) where body end] are read in [F], its
-    body in a new frame inside. *)
-| sc_mod : forall ch O F pv x ps body tys bcs,
-    fresh x F ->
+(** The parameters of [module x (ps) where body end] are read in the
+    scope, its body in a new frame inside, whose parameters are [ps]. *)
+| sc_mod : forall ch P S pv x ps body tys bcs,
+    fresh x P ->
     NoDup (map fst ps) ->
-    sparams (F ++ O) ps tys ->
-    scmds fp (ch ++ x :: nil) (F ++ O) (pents ps) body bcs ->
-    scmd fp ch O F (Cst.c_mod pv x ps (Cst.md_where body)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+    sparams S ps tys ->
+    scmds fp (ch ++ x :: nil) (map fst ps) (pents ps ++ S) body bcs ->
+    scmd fp ch P S (Cst.c_mod pv x ps (Cst.md_where body)) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_mod x pv (ptele tys) bcs :: nil)
 (** [module x (ps) := E]: [E] is read under the parameters. *)
-| sc_alias : forall ch O F pv x ps oE tys E,
-    fresh x F ->
+| sc_alias : forall ch P S pv x ps oE tys E,
+    fresh x P ->
     NoDup (map fst ps) ->
-    sparams (F ++ O) ps tys ->
-    selm (pents ps ++ F ++ O) oE E ->
-    scmd fp ch O F (Cst.c_mod pv x ps (Cst.md_alias oE)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+    sparams S ps tys ->
+    selm (pents ps ++ S) oE E ->
+    scmd fp ch P S (Cst.c_mod pv x ps (Cst.md_alias oE)) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_alias x pv (ptele tys) E :: nil)
 (** [import X::Y] loads the unit, which may be named from then on. *)
-| sc_import : forall ch O F fq,
-    scmd fp ch O F (Cst.c_import fq) (en_unit fq :: F) (cc_load fq :: nil)
+| sc_import : forall ch P S fq,
+    scmd fp ch P S (Cst.c_import fq) (en_unit fq :: S) (cc_load fq :: nil)
 (** An open loads nothing, so a unit it names must be nameable already.
-    Each name it declares is fresh in the frame before it; whether it
-    declares one twice is the core's to check. *)
-| sc_open : forall ch O F fq ip args its o E,
+    No name it declares is a parameter's; whether it declares one twice,
+    or one the frame has declared, is the core's to check. *)
+| sc_open : forall ch P S fq ip args its o E,
     itarget fq ip args = Some o ->
-    selm (F ++ O) o E ->
-    Forall (fun d => fresh d F) (map iitem_name its) ->
-    scmd fp ch O F (Cst.c_open fq ip args its) (item_mems fp ch its ++ F) (cc_open E its :: nil)
-| sc_eval : forall ch O F oM M,
-    sel (F ++ O) oM M ->
-    scmd fp ch O F (Cst.c_eval oM None) F (cc_eval M None :: nil)
-| sc_eval_typ : forall ch O F oM oA M A,
-    sel (F ++ O) oM M ->
-    sel (F ++ O) oA A ->
-    scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A) :: nil)
+    selm S o E ->
+    Forall (fun d => fresh d P) (map iitem_name its) ->
+    scmd fp ch P S (Cst.c_open fq ip args its) (item_mems fp ch (binders S) its ++ S) (cc_open E its :: nil)
+(** An evaluation, read in the scope; it declares nothing. *)
+| sc_eval : forall ch P S oM M,
+    sel S oM M ->
+    scmd fp ch P S (Cst.c_eval oM None) S (cc_eval M None :: nil)
+(** An evaluation at a type written out *)
+| sc_eval_typ : forall ch P S oM oA M A,
+    sel S oM M ->
+    sel S oA A ->
+    scmd fp ch P S (Cst.c_eval oM (Some oA)) S (cc_eval M (Some A) :: nil)
 (** [inductive x (ups) : T where cs with y : U where … end]: the uniform
-    parameters are read in [F], each member's non-uniform ones and sort
-    under them, the constructors' arguments under all, with the members'
-    names in scope.  It declares each member, a module whose members are
-    the constructors.  The group files its recursor module as written
-    ([wr]). *)
-| sc_ind : forall ch O F pv wr ups ms tys rms,
+    parameters are read in the scope, each member's non-uniform ones and
+    sort under them, the constructors' arguments under all, with the
+    members' names in scope.  It declares each member, a module whose
+    members are the constructors.  The group files its recursor module as
+    written ([wr]). *)
+| sc_ind : forall ch P S pv wr ups ms tys rms,
     NoDup (member_names ms) ->
-    Forall (fun x => fresh x F) (member_names ms) ->
-    sparams (F ++ O) ups tys ->
-    smembers (F ++ O) ups (member_names ms) ms rms ->
-    scmd fp ch O F (Cst.c_ind pv wr ups ms) (filed_mems fp ch (member_names ms) ++ F)
+    Forall (fun x => fresh x P) (member_names ms) ->
+    sparams S ups tys ->
+    smembers S ups (member_names ms) ms rms ->
+    scmd fp ch P S (Cst.c_ind pv wr ups ms) (filed_mems fp ch (binders S) (member_names ms) ++ S)
       (cc_ind pv (mk_raw (ptele tys) rms wr) :: nil)
 (** [mutual def (ps) f … with g … end]: the common parameters are read in
-    [F], the functions under them.  It declares each function. *)
-| sc_mdef : forall ch O F m ps fs tys rfs,
+    the scope, the functions under them.  It declares each function. *)
+| sc_mdef : forall ch P S m ps fs tys rfs,
     NoDup (map fst ps) ->
     NoDup (fun_names fs) ->
-    Forall (fun x => fresh x F) (fun_names fs) ->
-    sparams (F ++ O) ps tys ->
-    sfuns (pents ps ++ F ++ O) fs rfs ->
-    scmd fp ch O F (Cst.c_mdef m ps fs) (filed_mems fp ch (fun_names fs) ++ F)
+    Forall (fun x => fresh x P) (fun_names fs) ->
+    sparams S ps tys ->
+    sfuns (pents ps ++ S) fs rfs ->
+    scmd fp ch P S (Cst.c_mdef m ps fs) (filed_mems fp ch (binders S) (fun_names fs) ++ S)
       (cc_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)
 (** [inductive x (ps) := E]: [E] is read under the parameters, as an
     alias's target is; whether it names an inductive type, and its
     arguments the type's, is the core's to check. *)
-| sc_ind_alias : forall ch O F pv x ps oE tys E,
-    fresh x F ->
+| sc_ind_alias : forall ch P S pv x ps oE tys E,
+    fresh x P ->
     NoDup (map fst ps) ->
-    sparams (F ++ O) ps tys ->
-    selm (pents ps ++ F ++ O) oE E ->
-    scmd fp ch O F (Cst.c_ind_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+    sparams S ps tys ->
+    selm (pents ps ++ S) oE E ->
+    scmd fp ch P S (Cst.c_ind_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_ind_alias x pv (ptele tys) E :: nil)
 (** [record x (ps) := E]: as an inductive alias; whether [E] names a record
     type is the core's to check. *)
-| sc_record_alias : forall ch O F pv x ps oE tys E,
-    fresh x F ->
+| sc_record_alias : forall ch P S pv x ps oE tys E,
+    fresh x P ->
     NoDup (map fst ps) ->
-    sparams (F ++ O) ps tys ->
-    selm (pents ps ++ F ++ O) oE E ->
-    scmd fp ch O F (Cst.c_record_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+    sparams S ps tys ->
+    selm (pents ps ++ S) oE E ->
+    scmd fp ch P S (Cst.c_record_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_record_alias x pv (ptele tys) E :: nil)
 (** [builtin k := X]: [X] is a module, as written; whether it is an
     inductive type of the right shape is the core's to check. *)
-| sc_builtin : forall ch O F k oX H,
-    selm (F ++ O) oX H ->
-    scmd fp ch O F (Cst.c_builtin k oX) F (cc_builtin k H :: nil)
+| sc_builtin : forall ch P S k oX H,
+    selm S oX H ->
+    scmd fp ch P S (Cst.c_builtin k oX) S (cc_builtin k H :: nil)
 (** [record x (ps) : S where f : A ; … with cs end]: the parameters are
-    read in [F], the sort under them, each field's type under them and the
-    fields before it.  The with-area is read in the record's frame
-    ([record_ents]), with [x] in scope outside it; no name it declares is
-    a field's.  It declares [x], a type and a module. *)
-| sc_record : forall ch O F pv x ps oS fs cs tys Srt fs' bcs,
-    fresh x F ->
+    read in the scope, the sort under them, each field's type under them
+    and the fields before it.  The with-area is read in the record's frame
+    ([record_ents]), whose parameters are [ps], with [x] in scope outside
+    it; no name it declares is a field's.  It declares [x], a type and a
+    module. *)
+| sc_record : forall ch P S pv x ps oS fs cs tys Srt fs' bcs,
+    fresh x P ->
     NoDup (map fst ps) ->
-    sparams (F ++ O) ps tys ->
-    sel (pents ps ++ F ++ O) oS Srt ->
-    srargs (pents ps ++ F ++ O) fs fs' ->
+    sparams S ps tys ->
+    sel (pents ps ++ S) oS Srt ->
+    srargs (pents ps ++ S) fs fs' ->
     Forall (fun y => ~ In y (map fst fs)) (flat_map cmd_decls cs) ->
-    scmds fp (ch ++ x :: nil) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F ++ O) (record_ents fp ch x ps fs) cs bcs ->
-    scmd fp ch O F (Cst.c_record pv x ps oS fs cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+    scmds fp (ch ++ x :: nil) (map fst ps)
+      (record_ents fp ch (binders S) x ps fs ++ en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S) cs bcs ->
+    scmd fp ch P S (Cst.c_record pv x ps oS fs cs) (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
       (cc_record x pv (ptele tys) Srt fs' bcs :: nil)
 
-with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
-| scmds_nil : forall ch O F, scmds fp ch O F nil nil
-| scmds_cons : forall ch O F c F' c' cs cs',
-    scmd fp ch O F c F' c' ->
-    scmds fp ch O F' cs cs' ->
-    scmds fp ch O F (c :: cs) (c' ++ cs').
+with scmds (fp : path) : list string -> list string -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
+(** No command *)
+| scmds_nil : forall ch P S, scmds fp ch P S nil nil
+(** The first command, then the rest in the scope it leaves *)
+| scmds_cons : forall ch P S c S' c' cs cs',
+    scmd fp ch P S c S' c' ->
+    scmds fp ch P S' cs cs' ->
+    scmds fp ch P S (c :: cs) (c' ++ cs').
 
 (** ** Units
 
@@ -623,7 +653,8 @@ with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> 
       what they name ([open_ents]).  No parameter is in scope there.  Their
       loads run before the unit.
     - After its parameters, they are the first commands of the unit's own
-      frame, where their names are members ([scmds]).
+      frame, where their names are members ([scmds]), read in the scope
+      [pents ps ++ L].
 
     The unit's member chain is [nil]. *)
 Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
@@ -642,7 +673,7 @@ Inductive elab_spec : Cst.prog -> cunit -> Prop :=
     slead nil leads L lds ->
     NoDup (map fst ps) ->
     sparams L ps tys ->
-    scmds fp nil L (pents ps) (leads ++ cs) ccs ->
+    scmds fp nil (map fst ps) (pents ps ++ L) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).
 
 (** ** Elaborated Commands Are Written
@@ -653,7 +684,7 @@ Inductive elab_spec : Cst.prog -> cunit -> Prop :=
 Scheme scmd_mind := Minimality for scmd Sort Prop
 with scmds_mind := Minimality for scmds Sort Prop.
 
-Lemma scmds_written : forall fp ch O F cs ccs, scmds fp ch O F cs ccs -> cmds_written ccs.
+Lemma scmds_written : forall fp ch P S cs ccs, scmds fp ch P S cs ccs -> cmds_written ccs.
 Proof.
   intros fp.
   apply (scmds_mind fp (fun _ _ _ _ _ c' => cmds_written c') (fun _ _ _ _ ccs => cmds_written ccs));

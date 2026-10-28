@@ -48,15 +48,16 @@ Section Main.
   Variable read : string -> option Cst.prog.
   Hypothesis Hwf : well_founded (load_step load_path).
 
-  (** The program is elaborated here only to report the error message, since
-      the interpreter's [to_core] returns an option. *)
+  (** The program is elaborated here, to report the error message, since
+      the interpreter's [to_core] returns an option; its unit is then run
+      as it is ([unit_run]), so it is elaborated once. *)
   Definition main (log_fuel : nat) (buf : buffer) : main_result :=
     match Parser.prog log_fuel buf with
     | Parsed_pr prg _ =>
         match elaborate_core prg with
         | eerr msg => ElaborationFailure prg msg
-        | eok _ =>
-            match prog_impl load_path read to_core ViewsFound.views_search prg (Hwf _) with
+        | eok u0 =>
+            match unit_run load_path read to_core ViewsFound.views_search prg u0 (Hwf _) with
             | rok (B, s, u, log) => AllGood prg B s u log
             | rerr e => RunFailure prg e
             end
@@ -64,6 +65,14 @@ Section Main.
     | Fail_pr_full s t => ParserFailure s t
     | Timeout_pr => ParserTimeout log_fuel
     end.
+
+  (** Running the unit the program elaborates to is running the program. *)
+  Lemma main_unit_run : forall prg u, elaborate_core prg = eok u ->
+      unit_run load_path read to_core ViewsFound.views_search prg u (Hwf _) =
+      prog_impl load_path read to_core ViewsFound.views_search prg (Hwf _).
+  Proof.
+    intros * He; symmetry; apply prog_impl_unit_run; unfold to_core; rewrite He; reflexivity.
+  Qed.
 
   (** What [AllGood] certifies: the program denotes a well-formed global
       context, equal to the computed one up to the order of units within a
@@ -81,7 +90,8 @@ Section Main.
   Proof.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
-    destruct (elaborate_core _); try discriminate.
+    destruct (elaborate_core _) as [u0 |] eqn:He; try discriminate.
+    rewrite (main_unit_run _ _ He) in H.
     destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
       try discriminate.
     injection H as <- <- <- <- <-.
@@ -99,7 +109,8 @@ Section Main.
   Proof.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
-    destruct (elaborate_core _); try discriminate.
+    destruct (elaborate_core _) as [u0 |] eqn:He; try discriminate.
+    rewrite (main_unit_run _ _ He) in H.
     destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
       try discriminate.
     injection H as <- <- <- <- <-.
@@ -115,6 +126,7 @@ Section Main.
   Proof.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.
     destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].
+    rewrite (main_unit_run _ _ He).
     destruct (prog_impl_complete _ _ _ _ ViewsFound.views_search_complete _ _ _ _ Hsem (Hwf _))
       as (s & u & log & Hr & HU & Heq).
     rewrite Hr; exists s, u, log; split; [ reflexivity | split; assumption ].

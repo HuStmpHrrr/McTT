@@ -75,13 +75,14 @@ Example nested_spec :
 Proof. elab_ok. Qed.
 
 (** The first [eval] of [M], derived from the rules.  It is read in the
-    scope [B, a ↦ U.a, A]: [a] lies under one binder ([B]) and over one
-    ([A]), so it is [U.a] applied to [#1]. *)
+    scope [B, a ↦ U.a, A]: [a] lies under one binder ([B]), and its entry
+    records the one binder ([A]) outside it, so it is [U.a] applied to
+    [#1]. *)
 Example a_preapplied :
-  sel (en_var "B" :: en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) :: en_var "A" :: nil) (var "a") (U_a $ #1).
+  sel (en_var "B" :: en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1 :: en_var "A" :: nil) (var "a") (U_a $ #1).
 Proof.
-  apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil))) 1); [| apply den_term_mem ].
-  apply (mk_bound _ _ _ _ _ (en_var "B" :: nil) (en_var "A" :: nil)); cbn; try reflexivity.
+  apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1)); [| apply den_term_mem ].
+  apply (mk_bound _ _ _ _ (en_var "B" :: nil) (en_var "A" :: nil)); cbn; try reflexivity.
   intros [H | []]; discriminate.
 Qed.
 
@@ -221,16 +222,19 @@ Example private_nested : exists u, elab_spec (unit_of
    c_mod false "I" nil (md_where (c_eval (var "s") None :: nil)) :: nil)) u.
 Proof. eexists; elab_ok. Qed.
 
-(** Redeclaring in the same frame is an error … *)
-Example redeclare_same : forall u, ~ elab_spec (unit_of
-  (c_def md_pub "x" nat (num 0) :: c_def md_pub "x" nat (num 0) :: nil)) u.
-Proof. elab_fails. Qed.
+(** Redeclaring a member in the same frame is the core's to reject
+    ([gs_fresh], "x is already declared"): the elaborator emits both
+    definitions … *)
+Example redeclare_same : elab_spec (unit_of
+  (c_def md_pub "x" nat (num 0) :: c_def md_pub "x" nat (num 0) :: nil))
+  (nil, ⋅, cc_def "x" true false ℕ (Some (a_nlit 0)) :: cc_def "x" true false ℕ (Some (a_nlit 0)) :: nil).
+Proof. elab_ok. Qed.
 
 (** … also over an alias … *)
-Example redeclare_alias : forall u, ~ elab_spec (unit_of
+Example redeclare_alias : exists u, elab_spec (unit_of
   (c_mod false "I" nil (md_where nil) :: c_open nil ("I" :: nil) nil (i_as "x") ::
    c_def md_pub "x" nat (num 0) :: nil)) u.
-Proof. elab_fails. Qed.
+Proof. eexists; elab_ok. Qed.
 
 (** … but shadowing an enclosing frame's member is allowed. *)
 Example shadow_parent :
@@ -386,34 +390,44 @@ Proof. elab_ok. Qed.
 
 (** ** One Binding per Name per Frame
 
-    Each program below is rejected by the elaborator with the message shown,
-    and so related to nothing by the specification. *)
+    A frame declares a name once.  That no member takes another member's
+    name is the core's to check ([gs_fresh]: "x is already declared"), so
+    the elaborator emits such a program as it is.  That no member takes a
+    parameter's name is the elaborator's: the core's parameters are
+    nameless.  Each program below the first three is rejected by the
+    elaborator with the message shown, and so related to nothing by the
+    specification. *)
 
 Ltac elab_err := vm_compute; reflexivity.
 
-(** [def x … ; open M as x]: an alias may not take a member's name. *)
+(** [def x … ; open M as x]: the alias takes a member's name; the core
+    rejects it. *)
 Definition alias_after_member : Cst.prog := unit_of
   (c_mod false "M" nil (md_where nil) :: c_def md_pub "x" nat (num 0) ::
    c_open nil ("M" :: nil) nil (i_as "x") :: nil).
-Example alias_after_member_err : elaborate_core alias_after_member = eerr "x is already declared".
-Proof. elab_err. Qed.
-Example alias_after_member_spec : forall u, ~ elab_spec alias_after_member u.
-Proof. elab_fails. Qed.
+Example alias_after_member_spec :
+  elab_spec alias_after_member
+    (nil, ⋅,
+     cc_mod "M" false ⋅ nil :: cc_def "x" true false ℕ (Some (a_nlit 0)) ::
+     cc_open (mpath ("T" :: nil) ("M" :: nil)) ((None, "x", true) :: nil) :: nil).
+Proof. elab_ok. Qed.
 
-(** [open M as x ; def x …]: a member may not take an alias's name. *)
+(** [open M as x ; def x …]: a member takes an alias's name; the core
+    rejects it. *)
 Definition member_after_alias : Cst.prog := unit_of
   (c_mod false "M" nil (md_where nil) :: c_open nil ("M" :: nil) nil (i_as "x") ::
    c_def md_pub "x" nat (num 0) :: nil).
-Example member_after_alias_err : elaborate_core member_after_alias = eerr "x is already declared".
-Proof. elab_err. Qed.
+Example member_after_alias_spec : exists u, elab_spec member_after_alias u.
+Proof. eexists; elab_ok. Qed.
 
-(** [def exposed … ; open Impl use (exposed)]: nor may a [use]d name. *)
+(** [def exposed … ; open Impl use (exposed)]: a [use]d name takes a
+    member's; the core rejects it. *)
 Definition use_after_member : Cst.prog := unit_of
   (c_mod false "Impl" nil (md_where (c_def md_pub "exposed" nat (num 0) :: nil)) ::
    c_def md_pub "exposed" nat (num 0) ::
    c_open nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) :: nil).
-Example use_after_member_err : elaborate_core use_after_member = eerr "exposed is already declared".
-Proof. elab_err. Qed.
+Example use_after_member_spec : exists u, elab_spec use_after_member u.
+Proof. eexists; elab_ok. Qed.
 
 (** [module M (x : ℕ) where def x … end]: a member may not take a
     parameter's name … *)
@@ -440,6 +454,14 @@ Proof. elab_err. Qed.
 Example alias_param_spec : forall u, ~ elab_spec alias_param u.
 Proof. elab_fails. Qed.
 
+(** Nor may a member of a record's with-area take a parameter's name:
+    [record R (A : Type@0) : Type@0 where a : A with def A : ℕ := 0 end end]. *)
+Definition record_param : Cst.prog := unit_of
+  (c_record false "R" (("A", typ 0) :: nil) (typ 0) (("a", var "A") :: nil)
+     (c_def md_pub "A" nat (num 0) :: nil) :: nil).
+Example record_param_err : elaborate_core record_param = eerr "A is already declared".
+Proof. elab_err. Qed.
+
 (** [module M (x : ℕ) (x : ℕ)]: a telescope may not repeat a name … *)
 Definition dup_params : Cst.prog := unit_of
   (c_mod false "M" (("x", nat) :: ("x", nat) :: nil) (md_where nil) :: nil).
@@ -453,12 +475,13 @@ Definition dup_unit_params : Cst.prog := (nil, ("T" :: nil, ("x", nat) :: ("x", 
 Example dup_unit_params_err : elaborate_core dup_unit_params = eerr "duplicate parameter x".
 Proof. elab_err. Qed.
 
-(** Leading imports: an alias is fresh against the earlier leading aliases. *)
+(** Leading imports: an alias that takes an earlier leading alias's name is
+    the core's to reject, as in the frame. *)
 Definition dup_leading : Cst.prog :=
   (import_cmds ("L" :: "A" :: nil) nil nil (Some "N") nil ++ import_cmds ("L" :: "B" :: nil) nil nil (Some "N") nil,
    ("T" :: nil, nil, nil)).
-Example dup_leading_err : elaborate_core dup_leading = eerr "N is already declared".
-Proof. elab_err. Qed.
+Example dup_leading_spec : exists u, elab_spec dup_leading u.
+Proof. eexists; elab_ok. Qed.
 
 (** Across frames, shadowing is allowed: a module's parameter may reuse a
     member name of the enclosing frame, and a nested member may reuse the
@@ -762,12 +785,13 @@ Example term_not_module :
   elaborate_core (unit_of (c_mod false "P" nil (md_alias nat) :: nil)) = eerr "not a module".
 Proof. elab_err. Qed.
 
-(** An alias is a member: its name must be fresh. *)
+(** An alias is a member: that its name is fresh among the members is the
+    core's to check, and the alias's body reads the earlier [M]. *)
 Example alias_redeclared :
-  elaborate_core (unit_of
+  elab_spec (unit_of
     (c_mod false "M" nil (md_where nil) :: c_mod false "M" nil (md_alias (var "M")) :: nil))
-  = eerr "M is already declared".
-Proof. elab_err. Qed.
+    (nil, ⋅, cc_mod "M" false ⋅ nil :: cc_alias "M" false ⋅ (mpath ("T" :: nil) ("M" :: nil)) :: nil).
+Proof. elab_ok. Qed.
 
 (** A local module's telescope may not repeat a name. *)
 Example local_dup_params :
@@ -812,14 +836,21 @@ Example import_items :
      cc_eval (qname_term (q_abs ("T" :: nil) ("e" :: nil)) $ #0) None :: nil).
 Proof. elab_ok. Qed.
 
-(** An item's name must be fresh in the frame before the open, *)
+(** An item's name must not be a parameter's (the unit's [d] here); *)
 Example import_item_fresh :
-  elaborate_core (unit_of
-    (c_mod false "M" nil (md_where (c_def md_pub "c" nat (num 0) :: nil)) ::
-     c_def md_pub "d" nat (num 0) ::
-     c_open nil ("M" :: nil) nil (i_items nil (("c", "d") :: nil)) :: nil))
+  elaborate_core (nil, ("T" :: nil, ("d", nat) :: nil,
+    c_mod false "M" nil (md_where (c_def md_pub "c" nat (num 0) :: nil)) ::
+    c_open nil ("M" :: nil) nil (i_items nil (("c", "d") :: nil)) :: nil))
   = eerr "d is already declared".
 Proof. elab_err. Qed.
+
+(** that it is not a member's already is the core's to check. *)
+Example import_item_member :
+  exists u, elab_spec (unit_of
+    (c_mod false "M" nil (md_where (c_def md_pub "c" nat (num 0) :: nil)) ::
+     c_def md_pub "d" nat (num 0) ::
+     c_open nil ("M" :: nil) nil (i_items nil (("c", "d") :: nil)) :: nil)) u.
+Proof. eexists; elab_ok. Qed.
 
 (** but whether an open declares a name twice, or uses and exports one
     member, is the core's to check ([xe_fresh], [xe_both]). *)
@@ -863,12 +894,11 @@ Example leading_param :
   = eerr "A is already declared".
 Proof. elab_err. Qed.
 
-(** and the unit's members against them. *)
+(** while the core checks the unit's members against them. *)
 Example leading_member :
-  elaborate_core (import_cmds ("L" :: "X" :: nil) nil nil None (i_items (("f", "f") :: nil) nil),
-                  ("T" :: nil, nil, c_def md_pub "f" nat (num 0) :: nil))
-  = eerr "f is already declared".
-Proof. elab_err. Qed.
+  exists u, elab_spec (import_cmds ("L" :: "X" :: nil) nil nil None (i_items (("f", "f") :: nil) nil),
+                       ("T" :: nil, nil, c_def md_pub "f" nat (num 0) :: nil)) u.
+Proof. eexists; elab_ok. Qed.
 
 (** In the parameter types, a name a leading open declares denotes what it
     names: [Eq] is the member [Eq] of the unit, and [W] the unit.  In the

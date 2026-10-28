@@ -2740,7 +2740,7 @@ Section Impl.
     (c : ccmd) (H : pre ch s K D fs) :
     rres {fs' | post_cmd ch (dec_units s) K D B (dec_stack fs) c (cstc (dec_units s) K D B (dec_stack fs')) /\ fs' = fs_of (dec_stack fs')} :=
   | ch, s, K, D, B, fs, cc_def x b pv A (Some M), H with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-    | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+    | right _ => rerr (run_error_msg (x ++ " is already declared"))
     | left Hfr with check_typ (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A => {
       | inright _ => rerr (blame_error fs (find_level_blame (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A)
                             (mod_error (cmd_F B H) (Some x) (A :: nil) (run_error_def_typ x fs A)))
@@ -2750,7 +2750,7 @@ Section Impl.
             rerr (mod_error (cmd_F B H) (Some x) (M :: nil)
                     (field_error (cmd_F B H) (Some x) (pre_ctx_f B H) M (run_error_def x fs A M))) } } }
   | ch, s, K, D, B, fs, cc_def x b pv A None, H with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-    | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+    | right _ => rerr (run_error_msg (x ++ " is already declared"))
     | left Hfr with check_typ (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A => {
       | inleft (exist _ i HA) =>
           rok (da_ok (add_post H (f_equal tr_entry (fs_axiom_dec b pv fs A)) (axiom_ok Hfr (cmd_exp B H nil A Typeω@i HA))))
@@ -2766,7 +2766,7 @@ Section Impl.
       | left HΔ with check_modexp (cmd_F B H) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
         | right _ => rerr (run_error_msg ("ill-formed module expression for module " ++ x))
         | left HE with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-          | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+          | right _ => rerr (run_error_msg (x ++ " is already declared"))
           | left Hfr =>
               rok (da_ok (add_post H (e := tr_entry (ge_mod pv (gu_mk (Δ ++ fs_tele fs) (md_alias E))))
                             (eq_sym (f_equal (fun T => tr_entry (ge_mod pv (gu_mk (Δ ++ T) (md_alias E)))) (fs_tele_dec fs)))
@@ -2799,7 +2799,7 @@ Section Impl.
     | nil => rok (exist _ fs (conj gens_nil_ok (pre_frames _ _ _ _ _ H)))
     | ig_def d pv A M :: gs' =>
         match fs_fresh_sum d fs (pre_frames _ _ _ _ _ H) (pre_canon H) with
-        | right _ => rerr (run_error_msg ("duplicate name " ++ d))
+        | right _ => rerr (run_error_msg (d ++ " is already declared"))
         | left Hfr =>
             match check_exp (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A M with
             | right _ => rerr (run_error_def d fs A M)
@@ -2818,7 +2818,7 @@ Section Impl.
         end
     | ig_alias d pv E :: gs' =>
         match fs_fresh_sum d fs (pre_frames _ _ _ _ _ H) (pre_canon H) with
-        | right _ => rerr (run_error_msg ("duplicate name " ++ d))
+        | right _ => rerr (run_error_msg (d ++ " is already declared"))
         | left Hfr =>
             match check_modexp (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E with
             | right _ => rerr (run_error_msg ("ill-formed module expression for module " ++ d))
@@ -2837,7 +2837,7 @@ Section Impl.
         end
     | ig_def_mod d pv A M E :: gs' =>
         match fs_fresh_sum d fs (pre_frames _ _ _ _ _ H) (pre_canon H) with
-        | right _ => rerr (run_error_msg ("duplicate name " ++ d))
+        | right _ => rerr (run_error_msg (d ++ " is already declared"))
         | left Hfr =>
             match type_infer (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) M (type_infer_order_all M) with
             | inright _ => rerr (run_error_msg ("ill-formed definition " ++ d))
@@ -3006,7 +3006,7 @@ Section Impl.
                   | left _ => rerr (run_error_msg ("inductive alias " ++ x ++ " names a record type: use record"))
                   | right _ => rerr (alias_target_error x E) }
                 | left Hf with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-                  | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+                  | right _ => rerr (run_error_msg (x ++ " is already declared"))
                   | left Hfr =>
                       rok (da_ok (add_post H (f_equal tr_entry (fs_dm_entry_dec fs pv Δ (nf_to_exp W) M E))
                                     (indalias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) Ht (cmd_infer B H Δ W M (proj1 HWs))
@@ -3039,7 +3039,7 @@ Section Impl.
                 | left _ => rerr (run_error_msg ("record alias " ++ x ++ " names an inductive type: use inductive"))
                 | right _ => rerr (recalias_target_error x) }
               | left Hf with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-                | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+                | right _ => rerr (run_error_msg (x ++ " is already declared"))
                 | left Hfr =>
                     rok (da_ok (add_post H (f_equal tr_entry (fs_dm_entry_dec fs pv Δ (nf_to_exp W) M E))
                                   (recalias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) Ht (cmd_infer B H Δ W M (proj1 HWs))
@@ -3058,7 +3058,7 @@ Section Impl.
   (** The message of a definition not filed. *)
   Definition mdefs_why_error (e : mdefs_why) : run_error :=
     match e with
-    | mdefs_why_dup x => run_error_msg ("duplicate name " ++ x)
+    | mdefs_why_dup x => run_error_msg (x ++ " is already declared")
     | mdefs_why_untyped x Ξ A M => run_error_def x Ξ A M
     end.
 
@@ -3271,7 +3271,7 @@ Section Impl.
     | left Htel with check_ctx (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
       | right _ => rerr (run_error_msg ("ill-formed parameters of module " ++ x))
       | left HΔ with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-        | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+        | right _ => rerr (run_error_msg (x ++ " is already declared"))
         | left Hfr with rb s K D B (fs_push (qname_in (fs_path fs) x) Δ fs) cs
                           (pre_push_mod H (mod_pre (pre_linv _ _ _ _ _ H) Htel Hfr (cmd_ctx B H Δ HΔ))) => {
           | rerr e => rerr e
@@ -3539,7 +3539,7 @@ Section Impl.
     else if (raw_decl_rec_field R && List.existsb (String.eqb "Rec") (List.map raw_member_name (raw_decl_members R)))%bool then
       Some (run_error_msg ("Rec is the recursor module of " ++ qname_last (gs_path Ξ) ++ ", not a member"))
     else if (raw_decl_rec_field R && negb (if gs_fresh_dec "Rec" Ξ then true else false))%bool then
-      Some (run_error_msg "duplicate name Rec")
+      Some (run_error_msg "Rec is already declared")
     else None.
 
   Lemma gen_names_blame_none {Ξ R D x0} : gen_names_blame Ξ R D x0 = None -> gen_names_free Ξ R D.
@@ -3590,7 +3590,7 @@ Section Impl.
     else if (raw_decl_rec_field R && List.existsb (String.eqb "Rec") (List.map raw_member_name (raw_decl_members R)))%bool then
       Some (run_error_msg ("Rec is the recursor module of " ++ qname_last (fs_path fs) ++ ", not a member"))
     else if (raw_decl_rec_field R && negb (fs_fresh_dec "Rec" fs))%bool then
-      Some (run_error_msg "duplicate name Rec")
+      Some (run_error_msg "Rec is already declared")
     else None.
 
   Lemma gen_names_blame_f_eq : forall fs R D x0, fs = fs_of (dec_stack fs) -> canon_stack (dec_stack fs) ->
@@ -3705,7 +3705,8 @@ Section Impl.
               | left Hnd with Forall_dec (fun Mr => gs_fresh (raw_member_name Mr) (dec_stack fs))
                                 (fun Mr => fs_fresh_sum (raw_member_name Mr) fs (pre_frames _ _ _ _ _ H) (pre_canon H)) (raw_decl_members R) => {
                 | right _ =>
-                    rerr (run_error_msg ("duplicate name " ++ match first_taken fs (raw_decl_members R) with Some x => x | None => raw_member_name Mr0 end))
+                    rerr (run_error_msg (match first_taken fs (raw_decl_members R) with Some x => x | None => raw_member_name Mr0 end
+                                         ++ " is already declared"))
                 | left Hfr
                     with ind_nil_at_dec (cmd_F B H) (pre_gctx_f B H) (fs_ind_qname fs (raw_member_name Mr0)) Dd
                            (grp_self_insts (fs_ind_qname fs (raw_member_name Mr0)) Dd) => {
@@ -4087,7 +4088,7 @@ Section Impl.
                   (tele_blame_error fs (find_tele_blame (cmd_F B H) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
                      (run_error_msg ("ill-formed parameters of module " ++ x))))
       | left HΔ with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-        | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+        | right _ => rerr (run_error_msg (x ++ " is already declared"))
         | left Hfr with cmds_step ch (run_cmd_impl ch L) s K D B (fs_push (qname_in (fs_path fs) x) Δ fs) cs
                           (pre_push_mod H (mod_pre (pre_linv _ _ _ _ _ H) Htel Hfr (cmd_ctx B H Δ HΔ))) => {
           | rerr e => rerr e
@@ -4105,7 +4106,7 @@ Section Impl.
         with record_typed_dec (cmd_F B H) (pre_gctx_f B H) (fs_record_at fs Δ Srt fds) => {
     | inr (exist _ e _) => rerr (record_why_error x fds e)
     | inl Ht with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
-      | right _ => rerr (run_error_msg ("duplicate name " ++ x))
+      | right _ => rerr (run_error_msg (x ++ " is already declared"))
       | left Hfr with inspect (field_clash fds cs) => {
       | exist _ (Some f) _ => rerr (run_error_msg (f ++ " is a field of record " ++ x))
       | exist _ None _
@@ -4259,16 +4260,28 @@ Section Impl.
       the result has the bindings the run ends with, which the printer
       reads.  The log holds its own evals; those of the units it loads are
       checked but not returned. *)
+  (** The unit [u] of the program [prg] run like an imported unit, with
+      [prg]'s path as the whole chain, nothing filed and no builtin
+      binding.  The driver, which has elaborated the program already to
+      report an elaboration error, runs its unit by this, so that the
+      program is elaborated once ([prog_impl_unit_run]). *)
+  Definition unit_run (prg : Cst.prog) (u : cunit) (Hacc : Acc load_step (prog_path prg :: nil)) :
+    rres (builtins * funits * funit * list eval_entry)%type :=
+    match run_unit_impl (prog_path prg :: nil) Hacc funits_empty nil u (ginv_nil _) units_rep_empty with
+    | rok (exist _ r _, l) => rok (usf_bt r, usf_units r, usf_unit r, proj1_sig l)
+    | rerr e => rerr e
+    end.
+
   Definition prog_impl (prg : Cst.prog) (Hacc : Acc load_step (prog_path prg :: nil)) :
     rres (builtins * funits * funit * list eval_entry)%type :=
     match to_core prg with
     | None => rerr (run_error_msg "cannot elaborate the program")
-    | Some u =>
-        match run_unit_impl (prog_path prg :: nil) Hacc funits_empty nil u (ginv_nil _) units_rep_empty with
-        | rok (exist _ r _, l) => rok (usf_bt r, usf_units r, usf_unit r, proj1_sig l)
-        | rerr e => rerr e
-        end
+    | Some u => unit_run prg u Hacc
     end.
+
+  (** Run on the unit it elaborates to, the program runs as that unit. *)
+  Lemma prog_impl_unit_run : forall prg u Hacc, to_core prg = Some u -> prog_impl prg Hacc = unit_run prg u Hacc.
+  Proof. intros * Ht; unfold prog_impl; rewrite Ht; reflexivity. Qed.
 
   (** ** Soundness
 
@@ -5246,7 +5259,7 @@ Section Impl.
          ⊢ᵍ eval_entry_deps e ⍮ eval_entry_stack e /\ eval_entry_deps e ⍮ eval_entry_stack e ⍮ gs_tele (eval_entry_stack e) ⊢ eval_entry_exp e : eval_entry_typ e /\
          nbe (eval_entry_deps e) (eval_entry_stack e) (gs_tele (eval_entry_stack e)) (eval_entry_exp e) (eval_entry_typ e) (eval_entry_nf e)).
   Proof.
-    unfold prog_impl; intros * E.
+    unfold prog_impl, unit_run; intros * E.
     destruct (to_core prg) as [u0 |] eqn:Ht; [| discriminate ].
     revert E; match goal with |- context [run_unit_impl ?a ?b ?c ?d ?e ?f ?g] =>
       destruct (run_unit_impl a b c d e f g) as [[[r [Hp _ _]] [l Hl]] | e'] end; intros E; [| discriminate ].
@@ -5265,7 +5278,7 @@ Section Impl.
   Theorem prog_impl_rep : forall prg Hacc B s u log,
       prog_impl prg Hacc = rok (B, s, u, log) -> units_rep s (dec_units s) /\ u = tr_unit (dec_unit u).
   Proof.
-    unfold prog_impl; intros * E.
+    unfold prog_impl, unit_run; intros * E.
     destruct (to_core prg) as [u0 |]; [| discriminate ].
     revert E; match goal with |- context [run_unit_impl ?a ?b ?c ?d ?e ?f ?g] =>
       destruct (run_unit_impl a b c d e f g) as [[[r [_ Hs Hu]] l] | e'] end; intros E; [| discriminate ].
@@ -5280,7 +5293,7 @@ Section Impl.
     destruct (proj1 (proj2 (proj2 run_impl_complete)) _ _ _ _ _ _ Hu Hacc funits_empty nil (ginv_nil _) units_rep_empty)
       as [[[r Hp] l] E].
     assert (Hprog : prog_impl prg Hacc = rok (usf_bt r, usf_units r, usf_unit r, proj1_sig l))
-      by (unfold prog_impl; revert E; rewrite Ht; intros E; rewrite E; reflexivity).
+      by (unfold prog_impl, unit_run; revert E; rewrite Ht; intros E; rewrite E; reflexivity).
     destruct (prog_impl_sound _ _ _ _ _ _ Hprog) as [(ΘR' & [u' Rb' Ht' Hu'] & Heq) _].
     rewrite Ht in Ht'; injection Ht' as <-.
     destruct (run_unit_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ eq_refl Hu Hu') as (<- & HU & HB & _).
