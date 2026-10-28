@@ -802,8 +802,9 @@ Qed.
 #[local] Hint Resolve kbody_order_sound : core.
 
 Section EvalImpl.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
 
   (** A variable is looked up in the environment, without recursion. *)
@@ -1066,7 +1067,7 @@ Section EvalImpl.
 
   #[local]
   Ltac ev_obl :=
-    intros; cbv beta in *;
+    intros; cbv beta in *; cbn [option_map dec_entry] in *;
     rewrite ?elim_env_eq in *;
     repeat impl_obl_tac1;
     first [ (** The member a shape's end stands for: its order is a
@@ -1106,7 +1107,7 @@ Section EvalImpl.
       exist _ Πᵈ r p B _
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq k, p, H => exist _ (d_ind pq k nil) _
-  | a_con pq k c, p, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+  | a_con pq k c, p, H with cache_lookup F (fc_seed F) pq := {
     | exist _ (Some D) Ed with inspect (ind_member D k) := {
       | exist _ (Some Mk) Em with inspect (im_starts D Mk) := {
         | exist _ true Es => exist _ (d_con pq k c nil) _
@@ -1126,7 +1127,7 @@ Section EvalImpl.
     | exist _ ups Hups with feval_exp_impl M p _ := {
       | exist _ m Hm with inspect (elim_grp_of oq m) := {
         | exist _ (Some pq) Eg =>
-            let (r, Hr) := feval_elim_impl p pq ups Bks j m (@fc_seed Θ Ξ F) _ in
+            let (r, Hr) := feval_elim_impl p pq ups Bks j m (fc_seed F) _ in
             exist _ r _
         | exist _ None Eg => False_rect _ _ } } }
   | M $ N   , p, H =>
@@ -1162,7 +1163,7 @@ Section EvalImpl.
   | f, d_tuple vs, H with inspect (field_lookup vs f) := {
     | exist _ (Some r) E => exist _ r _
     | exist _ None E => False_rect _ _ }
-  | f, ⇑ (d_record pq ns) m, H with record_lookup_f Θ Ξ pq := {
+  | f, ⇑ (d_record pq ns) m, H with record_lookup_f F pq := {
     | exist _ (Some R) El with inspect (field_index (record_fields R) f) := {
       | exist _ (Some k) Ek with feval_nflds_impl ns m (List.firstn (S k) (record_fields R)) nil _ := {
         | exist _ rs Hrs with inspect (List.nth_error rs k) := {
@@ -1185,9 +1186,9 @@ Section EvalImpl.
       recursive results: a lookup of the same name is a comparison. *)
   with feval_elim_impl p pq ups Bks j m (ck : lk_cache Θ Ξ) (H : feval_elim_order Θ Ξ p pq ups Bks j m) :
       { r | ⟦elimᶠ m at j of pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
-  | p, pq, ups, Bks, j, d_con pc k c vs, ck, H with cache_lookup Θ Ξ ck pq := {
+  | p, pq, ups, Bks, j, d_con pc k c vs, ck, H with cache_lookup F ck pq := {
     | exist _ (Some D) Ed with inspect (ind_member D j) := {
-      | exist _ (Some Mj) Em with cache_lookup Θ Ξ (Some (exist _ (pq, D) Ed)) pc := {
+      | exist _ (Some Mj) Em with cache_lookup F (Some (exist _ (pq, D) Ed)) pc := {
         | exist _ (Some Dq) Edq with inspect (ind_member Dq k) := {
           | exist _ (Some Mk) Emk with inspect (ind_con Mj c) := {
             | exist _ (Some gs) Ec with inspect (List.nth_error Bks j) := {
@@ -1203,7 +1204,7 @@ Section EvalImpl.
         | exist _ None Edq => False_rect _ _ }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | p, pq, ups, Bks, j, ⇑ (d_ind pc k as') m, ck, H with cache_lookup Θ Ξ ck pc := {
+  | p, pq, ups, Bks, j, ⇑ (d_ind pc k as') m, ck, H with cache_lookup F ck pc := {
     | exist _ (Some Dq) Edq with inspect (List.nth_error Bks j) := {
       | exist _ (Some b) Eb =>
           let (a, Ha) := feval_exp_impl (eb_motive b) (env_args p (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil)) _ in
@@ -1218,7 +1219,7 @@ Section EvalImpl.
   | p, pq, ups, Bks, oB, ca_arg T :: gs, v :: vs, ck, H =>
       let (ihs, Hihs) := feval_ihs_impl p pq ups Bks oB gs vs ck _ in
       exist _ ihs _
-  | p, pq, ups, Bks, oB, ca_rec t :: gs, v :: vs, ck, H with cache_lookup Θ Ξ ck pq := {
+  | p, pq, ups, Bks, oB, ca_rec t :: gs, v :: vs, ck, H with cache_lookup F ck pq := {
     | exist _ (Some D) Ed
         with inspect (ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) := {
       (** The branch reads none of the argument's recursive results: they
@@ -1235,7 +1236,7 @@ Section EvalImpl.
 
   with feval_ih_impl p pq ups Bks t v (ck : lk_cache Θ Ξ) (H : feval_ih_order Θ Ξ p pq ups Bks t v) :
       { rs | ⟦ihᶠ v of t under pq ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ rs } by struct H :=
-  | p, pq, ups, Bks, pt_self j Ps, v, ck, H with cache_lookup Θ Ξ ck pq := {
+  | p, pq, ups, Bks, pt_self j Ps, v, ck, H with cache_lookup F ck pq := {
     | exist _ (Some D) Ed with inspect (ind_member D j) := {
       | exist _ (Some Mj) Em with inspect (im_head Mj) := {
         | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
@@ -1249,7 +1250,7 @@ Section EvalImpl.
             exist _ (r :: nil) _ }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | p, pq, ups, Bks, pt_pi B t, v, ck, H with cache_lookup Θ Ξ ck pq := {
+  | p, pq, ups, Bks, pt_pi B t, v, ck, H with cache_lookup F ck pq := {
     | exist _ (Some D) Ed =>
         exist _ (List.map (fun i => d_ihfn p Bks pq ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
     | exist _ None Ed => False_rect _ _ }
@@ -1262,7 +1263,7 @@ Section EvalImpl.
       exist _ (w :: ws) _
 
   with feval_mref_impl pq ups j (H : feval_mref_order Θ Ξ pq ups j) : { r | ⟦mrefᶠ j of pq ups ⟧ᶠ Θ ⍮ Ξ ↘ r } by struct H :=
-  | pq, ups, j, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+  | pq, ups, j, H with cache_lookup F (fc_seed F) pq := {
     | exist _ (Some D) Ed with inspect (ind_member D j) := {
       | exist _ (Some Mj) Em with inspect (im_head Mj) := {
         | exist _ (mh_decl _) Eh => exist _ (pq, j, ups) _
@@ -1274,7 +1275,7 @@ Section EvalImpl.
     | exist _ None Ed => False_rect _ _ }
 
   with feval_shty_impl pq ups p t (H : feval_shty_order Θ Ξ pq ups p t) : { a | ⟦shtyᶠ t of pq ups ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pq, ups, p, pt_self j Ps, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+  | pq, ups, p, pt_self j Ps, H with cache_lookup F (fc_seed F) pq := {
     | exist _ (Some D) Ed with inspect (ind_member D j) := {
       | exist _ (Some Mj) Em with inspect (im_head Mj) := {
         | exist _ (mh_record qr Is fl) Eh =>
@@ -1291,7 +1292,7 @@ Section EvalImpl.
 
   with feval_ihty_impl pq ups pm As p t v (H : feval_ihty_order Θ Ξ pq ups pm As p t v) :
       { as' | ⟦ihtyᶠ v of t at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ as' } by struct H :=
-  | pq, ups, pm, As, p, pt_self j Ps, v, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+  | pq, ups, pm, As, p, pt_self j Ps, v, H with cache_lookup F (fc_seed F) pq := {
     | exist _ (Some D) Ed with inspect (ind_member D j) := {
       | exist _ (Some Mj) Em with inspect (im_head Mj) := {
         | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
@@ -1306,7 +1307,7 @@ Section EvalImpl.
             exist _ (a :: nil) _ }
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | pq, ups, pm, As, p, pt_pi B t, v, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+  | pq, ups, pm, As, p, pt_pi B t, v, H with cache_lookup F (fc_seed F) pq := {
     | exist _ (Some D) Ed =>
         let (b, Hb) := feval_exp_impl B p _ in
         exist _ (List.map (fun i => Πᵈ b (nil ↦ d_ihfam pm As pq ups p t i v) fam_cod)
@@ -1337,7 +1338,7 @@ Section EvalImpl.
       let (r, Hr) := feval_selc_impl h' ch _ in
       exist _ r _
   | d_ind pq k as', n, H => exist _ (d_ind pq k (as' ++ n :: nil)) _
-  | d_con pq k c vs, n, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) pq := {
+  | d_con pq k c vs, n, H with cache_lookup F (fc_seed F) pq := {
     | exist _ (Some D) Ed with inspect (ind_member D k) := {
       | exist _ (Some Mk) Em with inspect (im_head Mk) := {
         | exist _ (mh_decl _) Eh => exist _ (d_con pq k c (vs ++ n :: nil)) _
@@ -1352,7 +1353,7 @@ Section EvalImpl.
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
   | d_ihfn p Bks pq ups t i f, n, H with feval_app_impl f n _ := {
-    | exist _ fn Hfn with feval_ih_impl p pq ups Bks t fn (@fc_seed Θ Ξ F) _ := {
+    | exist _ fn Hfn with feval_ih_impl p pq ups Bks t fn (fc_seed F) _ := {
       | exist _ rs Hrs with inspect (List.nth_error rs i) := {
         | exist _ (Some r) Er => exist _ r _
         | exist _ None Er => False_rect _ _ } } }
@@ -1424,51 +1425,51 @@ Section EvalImpl.
       exist _ r _
 
   with feval_sel_impl h x (H : feval_sel_order Θ Ξ h x) : { r | h ·ₜᶠ x Θ ⍮ Ξ ↘ r } by struct H :=
-  | dm_global pq args, x, H with gc_entry_f Θ Ξ (qname_app pq (x :: nil)) := {
-    | exist _ (Some (ge_def true pv A (Some M))) E =>
+  | dm_global pq args, x, H with gc_entry_f F (qname_app pq (x :: nil)) := {
+    | exist _ (Some (fe_def true pv A (Some M))) E =>
         let (f, Hf) := feval_exp_impl M nil _ in
         let (r, Hr) := feval_apps_impl f args _ in
         exist _ r _
-    | exist _ (Some (ge_def true _ A None)) E =>
+    | exist _ (Some (fe_def true _ A None)) E =>
         let (a, Ha) := feval_exp_impl A nil _ in
         let (r, Hr) := feval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
-    | exist _ (Some (ge_def false _ A B)) E =>
+    | exist _ (Some (fe_def false _ A B)) E =>
         let (a, Ha) := feval_exp_impl A nil _ in
         let (r, Hr) := feval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
-    | exist _ (Some (ge_mod _ _)) E with ind_mlookup_f Θ Ξ (qname_app pq (x :: nil)) := {
+    | exist _ (Some (fe_mod _ _)) E with ind_mlookup_f F (qname_app pq (x :: nil)) := {
       | exist _ (Some (pg, k, D)) El =>
           let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
           exist _ r _
       | exist _ None El => False_rect _ _ }
-    | exist _ (Some (ge_ind _ pg k D _)) E =>
+    | exist _ (Some (fe_ind _ pg k D _)) E =>
         let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
         exist _ r _
-    | exist _ (Some (ge_def_mod _ _ M _)) E =>
+    | exist _ (Some (fe_def_mod _ _ M _)) E =>
         let (f, Hf) := feval_exp_impl M nil _ in
         let (r, Hr) := feval_apps_impl f args _ in
         exist _ r _
     (** A stored record type: its type former *)
-    | exist _ (Some (ge_record _ _ _ _)) E with record_lookup_f Θ Ξ (qname_app pq (x :: nil)) := {
+    | exist _ (Some (fe_record _ _ _ _)) E with record_lookup_f F (qname_app pq (x :: nil)) := {
       | exist _ (Some R) Er =>
           let (r, Hr) := feval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
           exist _ r _
       | exist _ None Er => False_rect _ _ }
     (** The open frame of a member's module or of a record type's module:
         its type former *)
-    | exist _ None E with ind_mlookup_f Θ Ξ (qname_app pq (x :: nil)) := {
+    | exist _ None E with ind_mlookup_f F (qname_app pq (x :: nil)) := {
       | exist _ (Some (pg, k, D)) El =>
           let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
           exist _ r _
-      | exist _ None El with record_lookup_f Θ Ξ (qname_app pq (x :: nil)) := {
+      | exist _ None El with record_lookup_f F (qname_app pq (x :: nil)) := {
         | exist _ (Some R) Er =>
             let (r, Hr) := feval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
             exist _ r _
         | exist _ None Er => False_rect _ _ } } }
   | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
-  | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {
+  | dm_local nil (md_body sm Φ) p, x, H with kbody_impl F p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_tm E) := {
         | exist _ (Some (A, M)) Et =>
@@ -1480,7 +1481,7 @@ Section EvalImpl.
   | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
 
   with feval_selm_impl h y (H : feval_selm_order Θ Ξ h y) : { r | h ·ₘᶠ y Θ ⍮ Ξ ↘ r } by struct H :=
-  | dm_global pq args, y, H with gc_module_f Θ Ξ (qname_app pq (y :: nil)) := {
+  | dm_global pq args, y, H with gc_module_f F (qname_app pq (y :: nil)) := {
     | exist _ (Some (mr_alias (gu_mk Δ D))) E =>
         let (h, Hh) := feval_close_impl Δ D nil _ in
         let (r, Hr) := feval_appms_impl h args _ in
@@ -1488,7 +1489,7 @@ Section EvalImpl.
     | exist _ _ E => exist _ (dm_global (qname_app pq (y :: nil)) args) _ }
   | dm_local (e :: Δ) D p, y, H => exist _ (dm_member (dm_local (e :: Δ) D p) (y :: nil)) _
   | dm_local nil (md_alias E) p, y, H => False_rect _ _
-  | dm_local nil (md_body sm Φ) p, y, H with kbody_impl Θ Ξ p Φ _ := {
+  | dm_local nil (md_body sm Φ) p, y, H with kbody_impl F p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx y) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_unit E) := {
         | exist _ (Some (gu_mk Δy Dy)) Eu =>
@@ -1580,16 +1581,16 @@ Ltac functional_feval_complete :=
       end
   end.
 
-Lemma feval_exp_impl_complete : forall Θ Ξ {F : FCtx Θ Ξ} M p m,
-    ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m ->
-    exists H H', feval_exp_impl Θ Ξ M p H = exist _ m H'.
+Lemma feval_exp_impl_complete : forall (F : FCtx) M p m,
+    ⟦ M ⟧ᶠ fc_deps F ⍮ fc_stack F ⍮ p ↘ m ->
+    exists H H', feval_exp_impl F M p H = exist _ m H'.
 Proof.
   intros; functional_feval_complete.
 Qed.
 
-Lemma feval_app_impl_complete : forall Θ Ξ {F : FCtx Θ Ξ} m n r,
-    $ᶠ| m & n | Θ ⍮ Ξ ↘ r ->
-    exists H H', feval_app_impl Θ Ξ m n H = exist _ r H'.
+Lemma feval_app_impl_complete : forall (F : FCtx) m n r,
+    $ᶠ| m & n | fc_deps F ⍮ fc_stack F ↘ r ->
+    exists H H', feval_app_impl F m n H = exist _ r H'.
 Proof.
   intros; functional_feval_complete.
 Qed.

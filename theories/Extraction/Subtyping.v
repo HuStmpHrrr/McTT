@@ -120,12 +120,18 @@ Ltac subtyping_impl_tac1 :=
 Ltac subtyping_impl_tac :=
   repeat subtyping_impl_tac1; try econstructor; mauto.
 
+(** The implementations, through a fast context [F]; the judgments are
+    those of the global context it stands for. *)
+Section SubtypingImpl.
+Variable F : FCtx.
+#[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations subtyping_impl {GC : GCtx} {F : FCtx gc_deps gc_stack} G A B (H : subtyping_order G A B) :
+Equations subtyping_impl G A B (H : subtyping_order G A B) :
   { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
 | G, A, B, H =>
-    let (a, Ha) := nbe_ty_impl gc_deps gc_stack G A _ in
-    let (b, Hb) := nbe_ty_impl gc_deps gc_stack G B _ in
+    let (a, Ha) := nbe_ty_impl F G A _ in
+    let (b, Hb) := nbe_ty_impl F G B _ in
     let*b _ := subtyping_nf_impl a b while _ in
     pureb _.
 (** The two normalizations are the two halves of the order. *)
@@ -149,11 +155,11 @@ Qed.
 (** [subtyping_impl] at an initial environment of [G] computed beforehand,
     which both normalizations share. *)
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations subtyping_env_impl {GC : GCtx} {F : FCtx gc_deps gc_stack} G (P : fenv gc_deps gc_stack G) A B
+Equations subtyping_env_impl G (P : fenv gc_deps gc_stack G) A B
   (H : subtyping_order G A B) : { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
 | G, P, A, B, H =>
-    let (a, Ha) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
-    let (b, Hb) := nbe_ty_env_impl gc_deps gc_stack G P B _ in
+    let (a, Ha) := nbe_ty_env_impl F G P A _ in
+    let (b, Hb) := nbe_ty_env_impl F G P B _ in
     let*b _ := subtyping_nf_impl a b while _ in
     pureb _.
 Obligation 1. (* nbe_ty_order gc_deps gc_stack G A *)
@@ -173,7 +179,7 @@ Qed.
 
 (** The same holds for [subtyping_impl]. *)
 
-Theorem subtyping_impl_complete' : forall {GC : GCtx} {F : FCtx gc_deps gc_stack} G A B,
+Theorem subtyping_impl_complete' : forall G A B,
     G ⊢a A ⊆ B ->
     forall (H : subtyping_order G A B),
       exists H', subtyping_impl G A B H = left H'.
@@ -184,9 +190,10 @@ Qed.
 #[local]
 Hint Resolve subtyping_order_sound subtyping_impl_complete' : mctt.
 
-Theorem subtyping_impl_complete : forall {GC : GCtx} {F : FCtx gc_deps gc_stack} G A B,
+Theorem subtyping_impl_complete : forall G A B,
     G ⊢a A ⊆ B ->
     exists H H', subtyping_impl G A B H = left H'.
 Proof.
   repeat unshelve mauto.
 Qed.
+End SubtypingImpl.

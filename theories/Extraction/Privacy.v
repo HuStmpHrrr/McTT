@@ -13,7 +13,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths DescTyping Presup.
 From Mctt.Core.Syntactic.System Require Import Privacy.
-From Mctt.Extraction Require Import MemberType.
+From Mctt.Extraction Require Import Lookup FastDesc LookupTwins MemberType.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
@@ -667,18 +667,26 @@ Inductive priv_err : Set :=
 | priv_err_global : qname -> string -> priv_err
 | priv_err_local : list string -> string -> priv_err.
 
+Definition entry_is_body_b (E : gentry) : bool :=
+  match E with
+  | ge_mod _ (gu_mk _ (md_body _ _)) | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => true
+  | _ => false
+  end.
+
+Lemma entry_is_body_b_spec : forall E, entry_is_body_b E = true <-> entry_is_body E.
+Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn; split; intros; auto; try discriminate; contradiction. Qed.
+
+(** The fast test is the test of the entry a fast one stands for. *)
+Lemma fe_is_body_b_core : forall e, fe_is_body_b e = entry_is_body_b (dec_entry e).
+Proof. intros [| pv [Δ [t] | [Δ [sm Φ | E]]] | | pv A M [Δ [t] | [Δ [sm Φ | E]]] |]; reflexivity. Qed.
+
 Section PrivacyImpl.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  (** The fast context the sites are looked up in; the judgments are at
+      the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
-
-  Definition entry_is_body_b (E : gentry) : bool :=
-    match E with
-    | ge_mod _ (gu_mk _ (md_body _ _)) | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => true
-    | _ => false
-    end.
-
-  Lemma entry_is_body_b_spec : forall E, entry_is_body_b E = true <-> entry_is_body E.
-  Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn; split; intros; auto; try discriminate; contradiction. Qed.
 
   Lemma gc_unit_qname : forall H T Φ, gc_unit Θ Ξ H = Some (T, Φ) -> mod_qname H = None -> False.
   Proof. intros * Hu Hq; unfold gc_unit in Hu; rewrite Hq in Hu; discriminate. Qed.
@@ -696,6 +704,13 @@ Section PrivacyImpl.
   #[local]
   Ltac site_obl :=
     intros; cbv beta in *;
+    (** the fast data found, read as the Core data it stands for, which is
+        all the obligations are about *)
+    cbn [option_map dec_loc] in *; rewrite ?fe_alias_dec, ?fe_is_body_b_core in *;
+    repeat match goal with e : fentry |- _ =>
+      let E := fresh "E" in set (E := dec_entry e) in *; clearbody E; clear e end;
+    repeat match goal with t : ftrie |- _ =>
+      let Φ := fresh "Φ" in set (Φ := dec_mod t) in *; clearbody Φ; clear t end;
     repeat match goal with
       | H : site_order _ _ (me_mem _ _) |- _ => progressive_invert H
       | H : site_order _ _ (me_app _ _) |- _ => progressive_invert H
@@ -735,11 +750,11 @@ Section PrivacyImpl.
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations site_impl H (Ho : site_order Θ Ξ H) : { pq | msite Θ Ξ H pq } + { forall pq, ~ msite Θ Ξ H pq }
       by struct Ho :=
-  | me_unit fp, Ho with inspect (gc_unit Θ Ξ (me_unit fp)) := {
-    | exist _ (Some (T, Φ)) Eu => inleft (exist _ (q_abs fp nil) _)
-    | exist _ None Eu with inspect (frame_ind_of Ξ (me_unit fp)) := {
+  | me_unit fp, Ho with gc_unit_f F (me_unit fp) := {
+    | exist _ (Some (T, t)) Eu => inleft (exist _ (q_abs fp nil) _)
+    | exist _ None Eu with fast_frame_ind_of F (me_unit fp) := {
       | exist _ (Some r) Ek => inleft (exist _ (q_abs fp nil) _)
-      | exist _ None Ek with inspect (frame_record_of Ξ (me_unit fp)) := {
+      | exist _ None Ek with fast_frame_record_of F (me_unit fp) := {
         | exist _ (Some (p, Rr)) Er => inleft (exist _ p (site_of_frame_record _ _ _ Er))
         | exist _ None Er => inright _ } } }
   | me_var x, Ho => inright _
@@ -747,27 +762,27 @@ Section PrivacyImpl.
   | me_app H N, Ho with site_impl H _ := {
     | inleft (exist _ pq Hs) => inleft (exist _ pq _)
     | inright HN => inright _ }
-  | me_mem H z, Ho with inspect (gc_unit Θ Ξ (me_mem H z)) := {
-    | exist _ (Some (T, Φ)) Eu with inspect (mod_qname H) := {
+  | me_mem H z, Ho with gc_unit_f F (me_mem H z) := {
+    | exist _ (Some (T, t)) Eu with inspect (mod_qname H) := {
       | exist _ (Some p0) Eqm => inleft (exist _ (qname_in p0 z) _)
       | exist _ None Eqm => False_rect _ _ }
-    | exist _ None Eu with inspect (frame_ind_of Ξ (me_mem H z)) := {
+    | exist _ None Eu with fast_frame_ind_of F (me_mem H z) := {
       (** The open frame of a member's module: stored at its own path *)
       | exist _ (Some r) Ek with inspect (mod_qname H) := {
         | exist _ (Some p0) Eqm => inleft (exist _ (qname_in p0 z) _)
         | exist _ None Eqm => False_rect _ _ }
-      | exist _ None Ek with inspect (frame_record_of Ξ (me_mem H z)) := {
+      | exist _ None Ek with fast_frame_record_of F (me_mem H z) := {
         (** The open frame of a record type's module: stored at its own path *)
         | exist _ (Some (p, Rr)) Er => inleft (exist _ p (site_of_frame_record _ _ _ Er))
         | exist _ None Er with site_impl H _ := {
           | inright HN => inright _
-          | inleft (exist _ pq Hs) with inspect (gc_entry Θ Ξ (qname_in pq z)) := {
+          | inleft (exist _ pq Hs) with gc_entry_f F (qname_in pq z) := {
             | exist _ None Ee => inright _
-            | exist _ (Some E) Ee with inspect (entry_alias E) := {
+            | exist _ (Some e) Ee with inspect (fe_alias e) := {
               | exist _ (Some E') Ea with site_impl E' _ := {
                 | inleft (exist _ pq' Hs') => inleft (exist _ pq' _)
                 | inright HN => inright _ }
-              | exist _ None Ea with inspect (entry_is_body_b E) := {
+              | exist _ None Ea with inspect (fe_is_body_b e) := {
                 | exist _ true Eb => inleft (exist _ (qname_in pq z) _)
                 | exist _ false Eb => inright _ } } } } } } }.
   Next Obligation. site_obl. Defined.
@@ -797,8 +812,8 @@ Section PrivacyImpl.
       { d : qname * bool | mdecl Θ Ξ H y (fst d) (snd d) } + { forall qd pv, ~ mdecl Θ Ξ H y qd pv }.
   Proof.
     destruct (site_impl H (site_order_total _ _ Hg H)) as [[pq Hs] | HN].
-    - destruct (gc_entry Θ Ξ (qname_in pq y)) as [E |] eqn:Ee.
-      + left; exists (pq, ge_private E); exact (mdecl_intro _ _ _ _ _ _ Hs Ee).
+    - destruct (gc_entry_f F (qname_in pq y)) as [[e |] Ee]; cbn [option_map] in Ee.
+      + left; exists (pq, fe_private e); cbn [fst snd]; rewrite fe_private_dec; exact (mdecl_intro _ _ _ _ _ _ Hs Ee).
       + right; intros qd pv Hd; inversion Hd as [pq' E' Hs' He']; subst.
         rewrite (msite_functional _ _ Hg _ _ Hs _ Hs') in Ee; congruence.
     - right; intros qd pv Hd; inversion Hd; subst; eapply HN; eassumption.
@@ -806,13 +821,20 @@ Section PrivacyImpl.
 
   (** Whether a module is an open frame or an ancestor of one. *)
   Definition open_anc_b (qd : qname) : bool :=
-    existsb (fun e => let '(mp, _, _) := e in
-                      andb (path_beq (q_unit mp) (q_unit qd))
-                        (match strip_prefix (q_chain qd) (q_chain mp) with Some _ => true | None => false end)) Ξ.
+    existsb (fun f => andb (path_beq (q_unit (ff_path f)) (q_unit qd))
+                        (match strip_prefix (q_chain qd) (q_chain (ff_path f)) with Some _ => true | None => false end))
+      (fc_frames F).
 
   Lemma open_anc_b_spec : forall qd, open_anc_b qd = true <-> open_anc Ξ qd.
   Proof.
-    intros qd; unfold open_anc_b; rewrite existsb_exists; split.
+    intros qd.
+    assert (E : open_anc_b qd =
+                existsb (fun e => let '(mp, _, _) := e in
+                                  andb (path_beq (q_unit mp) (q_unit qd))
+                                    (match strip_prefix (q_chain qd) (q_chain mp) with Some _ => true | None => false end)) Ξ)
+      by (rewrite fc_stack_frames; unfold open_anc_b, dec_stack;
+          induction (fc_frames F) as [| f fs IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]).
+    rewrite E, existsb_exists; clear E; split.
     - intros ([[mp K] U] & Hin & Hb); apply andb_prop in Hb as [H1 H2]; cbn in *.
       apply path_beq_true in H1.
       destruct (strip_prefix (q_chain qd) (q_chain mp)) as [suf |] eqn:E; [| discriminate ].
@@ -860,30 +882,31 @@ End PrivacyImpl.
 
 (** ** Where a Member is Declared
 
-    [def_site Θ Hg H ch] is the qualified name of the member at the chain
+    [def_site F Hg H ch] is the qualified name of the member at the chain
     [ch] of [H] where it is declared: the module [mdecl] finds for the last
     name of [ch], from [H] selected along the others, following aliases,
-    then the member's own name.  The documentation generator links a use of
-    a member to it.  The proof [Hg] that [Θ] is well formed only bounds the
+    then the member's own name, all in the Core context the fast context
+    [F] stands for.  The documentation generator links a use of a member
+    to it.  The proof [Hg] that the context is well formed only bounds the
     recursion, and extraction erases it. *)
-Definition def_site (Θ : gdeps) (Hg : ⊢ᵍ Θ ⍮ nil) (H : modexp) (ch : list string) : option qname :=
+Definition def_site (F : FCtx) (Hg : ⊢ᵍ fc_deps F ⍮ fc_stack F) (H : modexp) (ch : list string) : option qname :=
   match ch with
   | nil => None
   | _ :: _ =>
-      match decl_impl Θ nil Hg (me_mems H (removelast ch)) (List.last ch EmptyString) with
+      match decl_impl F Hg (me_mems H (removelast ch)) (List.last ch EmptyString) with
       | inleft (exist _ (qd, _) _) => Some (qname_in qd (List.last ch EmptyString))
       | inright _ => None
       end
   end.
 
-Lemma def_site_spec : forall Θ Hg H ch qx,
-    def_site Θ Hg H ch = Some qx <->
-    ch <> nil /\ exists qd pv, mdecl Θ nil (me_mems H (removelast ch)) (List.last ch EmptyString) qd pv /\
+Lemma def_site_spec : forall F Hg H ch qx,
+    def_site F Hg H ch = Some qx <->
+    ch <> nil /\ exists qd pv, mdecl (fc_deps F) (fc_stack F) (me_mems H (removelast ch)) (List.last ch EmptyString) qd pv /\
       qx = qname_in qd (List.last ch EmptyString).
 Proof.
   intros *; unfold def_site.
   destruct ch as [| z ch']; [ split; [ discriminate | intros [Hn _]; contradiction ] |].
-  destruct (decl_impl _ _ _ _ _) as [[[qd pv] Hd] | HN]; cbn [fst snd] in *; split.
+  destruct (decl_impl _ _ _ _) as [[[qd pv] Hd] | HN]; cbn [fst snd] in *; split.
   - intros [= <-]; split; [ discriminate |]; exists qd, pv; split; [ exact Hd | reflexivity ].
   - intros (_ & qd' & pv' & Hd' & ->); destruct (mdecl_functional _ _ Hg _ _ _ _ Hd _ _ Hd') as [<- _]; reflexivity.
   - discriminate.
@@ -891,8 +914,8 @@ Proof.
 Qed.
 
 (** The name found is that of an entry. *)
-Corollary def_site_entry : forall Θ Hg H ch qx, ch <> nil ->
-    def_site Θ Hg H ch = Some qx -> exists E, gc_entry Θ nil qx = Some E.
+Corollary def_site_entry : forall F Hg H ch qx, ch <> nil ->
+    def_site F Hg H ch = Some qx -> exists E, gc_entry (fc_deps F) (fc_stack F) qx = Some E.
 Proof.
   intros * _ Hq; apply def_site_spec in Hq as (_ & qd & pv & Hd & ->).
   destruct (mdecl_entry _ _ _ _ _ _ Hd) as (E & HE & _); exists E; exact HE.
@@ -946,10 +969,12 @@ Proof.
 Qed.
 
 (** A definition reached through body modules is declared where it stands. *)
-Corollary def_site_resolve : forall Θ Hg p E,
-    gc_resolve Θ nil p = Some E -> def_site Θ Hg (me_unit (q_unit p)) (q_chain p) = Some p.
+Corollary def_site_resolve : forall F Hg p E, fc_stack F = nil ->
+    gc_resolve (fc_deps F) nil p = Some E -> def_site F Hg (me_unit (q_unit p)) (q_chain p) = Some p.
 Proof.
-  intros * Hr; apply def_site_spec.
+  intros * Hnil Hr; apply def_site_spec; rewrite Hnil.
+  assert (Hg' : ⊢ᵍ fc_deps F ⍮ nil) by (rewrite <- Hnil; exact Hg); clear Hg; rename Hg' into Hg.
+  set (Θ := fc_deps F) in *; clearbody Θ.
   assert (Hch : q_chain p <> nil).
   { intros Hn; unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr; rewrite Hn in Hr.
     destruct (gds_lookup Θ (q_unit p)); [ rewrite gm_resolve_nil in Hr |]; discriminate. }

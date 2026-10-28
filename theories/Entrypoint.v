@@ -7,7 +7,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Semantic Require Import NbE.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Import Command.
+From Mctt.Extraction Require Import FastGlobal Command.
 From Mctt.Extraction Require ViewsFound.
 From Mctt.Frontend Require Import Elaborator Parser.
 Import MenhirLibParser.Inter.
@@ -26,10 +26,17 @@ Import Syntax_Notations GlobalCtx_Notations.
 
     Termination of the loader is a [Prop] argument, erased by extraction; it
     holds when the search roots have finitely many units ([load_step_wf],
-    given a thunk [all_files : unit -> list path] enumerating them). *)
+    given a thunk [all_files : unit -> list path] enumerating them).
+
+    The run returns the filed units and the program's unit fast
+    ([Extraction.FastGlobal]); the statements read them in Core
+    ([dec_units], [dec_unit]), and [main_rep] says the fast results are the
+    translations of their readings. *)
 
 Variant main_result :=
-  | AllGood : Cst.prog -> builtins -> gdeps -> gunit -> list eval_entry -> main_result
+  (** The program, the builtin bindings it ends with, every unit filed,
+      fast, the program's own unit, fast, and the log of its evals *)
+  | AllGood : Cst.prog -> builtins -> funits -> funit -> list eval_entry -> main_result
   | ElaborationFailure : Cst.prog -> string -> main_result
   | RunFailure : Cst.prog -> run_error -> main_result
   | ParserFailure : Aut.state -> Aut.Gram.token -> main_result
@@ -50,7 +57,7 @@ Section Main.
         | eerr msg => ElaborationFailure prg msg
         | eok _ =>
             match prog_impl load_path read to_core ViewsFound.views_search prg (Hwf _) with
-            | rok (B, Θ, U, log) => AllGood prg B Θ U log
+            | rok (B, s, u, log) => AllGood prg B s u log
             | rerr e => RunFailure prg e
             end
         end
@@ -62,11 +69,12 @@ Section Main.
       context, equal to the computed one up to the order of units within a
       level, with the builtin bindings shown, and every reported [eval] is
       well typed, in the context of the parameters of its enclosing frames,
-      with the normal form shown. *)
-  Theorem main_sound : forall log_fuel buf prg B Θ U log,
-      main log_fuel buf = AllGood prg B Θ U log ->
-      (exists ΘR, prog_sem load_path read to_core prg B ΘR U /\ gds_equiv ΘR Θ /\
-                  ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ U) /\
+      with the normal form shown.  The computed context and unit are read
+      off the fast ones. *)
+  Theorem main_sound : forall log_fuel buf prg B s u log,
+      main log_fuel buf = AllGood prg B s u log ->
+      (exists ΘR, prog_sem load_path read to_core prg B ΘR (dec_unit u) /\ gds_equiv ΘR (dec_units s) /\
+                  ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ dec_unit u) /\
       (forall e, In e log ->
          ⊢ᵍ eval_entry_deps e ⍮ eval_entry_stack e /\ eval_entry_deps e ⍮ eval_entry_stack e ⍮ gs_tele (eval_entry_stack e) ⊢ eval_entry_exp e : eval_entry_typ e /\
          nbe (eval_entry_deps e) (eval_entry_stack e) (gs_tele (eval_entry_stack e)) (eval_entry_exp e) (eval_entry_typ e) (eval_entry_nf e)).
@@ -74,7 +82,7 @@ Section Main.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
     destruct (elaborate_core _); try discriminate.
-    destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' Θ'] U'] log'] |] eqn:Hr;
+    destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
       try discriminate.
     injection H as <- <- <- <- <-.
     destruct (prog_impl_sound _ _ _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
@@ -83,18 +91,33 @@ Section Main.
     exists ΘR; tauto.
   Qed.
 
+  (** The fast results of [AllGood] are the translations of their
+      readings: the filed units refine [dec_units s], and [u] is the
+      translation of [dec_unit u]. *)
+  Theorem main_rep : forall log_fuel buf prg B s u log,
+      main log_fuel buf = AllGood prg B s u log -> units_rep s (dec_units s) /\ u = tr_unit (dec_unit u).
+  Proof.
+    intros * H; unfold main in H.
+    destruct (Parser.prog log_fuel buf); try discriminate.
+    destruct (elaborate_core _); try discriminate.
+    destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
+      try discriminate.
+    injection H as <- <- <- <- <-.
+    exact (prog_impl_rep _ _ _ _ _ _ _ _ _ _ Hr).
+  Qed.
+
   (** A program that has a meaning runs to completion. *)
   Theorem main_complete : forall log_fuel buf prg buf' B ΘR U,
       Parser.prog log_fuel buf = Parsed_pr prg buf' ->
       prog_sem load_path read to_core prg B ΘR U ->
       (forall msg, elaborate_core prg <> eerr msg) ->
-      exists Θ log, main log_fuel buf = AllGood prg B Θ U log /\ gds_equiv ΘR Θ.
+      exists s u log, main log_fuel buf = AllGood prg B s u log /\ dec_unit u = U /\ gds_equiv ΘR (dec_units s).
   Proof.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.
     destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].
     destruct (prog_impl_complete _ _ _ _ ViewsFound.views_search_complete _ _ _ _ Hsem (Hwf _))
-      as (Θ & log & Hr & Heq).
-    rewrite Hr; eauto.
+      as (s & u & log & Hr & HU & Heq).
+    rewrite Hr; exists s, u, log; split; [ reflexivity | split; assumption ].
   Qed.
 End Main.
 
@@ -102,3 +125,16 @@ Extraction Language OCaml.
 
 Set Extraction Flag 1007.
 Set Extraction Output Directory "../driver/extracted".
+
+(** [String.compare], which orders the keys of the fast tables
+    ([Extraction.FastGlobal]), runs as OCaml's.  Strings are OCaml's native
+    strings ([ExtrOcamlNativeString]), and the two orders agree: Rocq's
+    compares two strings character by character, a character by its code
+    ([Ascii.compare], on [N]), the first difference deciding and a proper
+    prefix coming first; OCaml's [String.compare] is lexicographic on the
+    bytes as unsigned codes, a proper prefix coming first.  The directive
+    replaces a linear walk over the string as a list of characters by the
+    native comparison; the comparison it returns is mapped onto Rocq's
+    [comparison]. *)
+Extract Inlined Constant String.compare =>
+  "(fun a b -> let c = Stdlib.String.compare a b in if c = 0 then Eq else if c < 0 then Lt else Gt)".

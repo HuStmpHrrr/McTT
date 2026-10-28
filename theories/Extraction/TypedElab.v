@@ -18,7 +18,7 @@ From Mctt.Core.Syntactic.System.Global Require Import Paths.
 From Mctt.Algorithmic.Typing Require Import Definitions Functional.
 From Mctt.Extraction Require Import Lookup TypeCheckBase TypeCheck GlobalCheck MemberType MemberOrder Privacy.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Import IndDecl MdefGroup.
+From Mctt.Extraction Require Import IndDecl MdefGroup FastDesc LookupTwins.
 Import Syntax_Notations.
 
 Open Scope string_scope.
@@ -206,20 +206,49 @@ Proof.
   - destruct H as (? & ? & _); discriminate.
 Qed.
 
+(** ** A Module's and a Record's Fills
+
+    The fill of a module declaration is its telescope's, that of a record
+    declaration its telescope's, sort's and fields'.  At any context. *)
+
+Lemma fill_cmd_mod_params : forall Θ Ξ B x pv Δ Δ' cs,
+    fill_params Θ Ξ B Δ Δ' -> fill_cmd Θ Ξ B (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs).
+Proof. intros * Ht; apply fill_cmd_mod; exact Ht. Qed.
+
+Lemma fill_cmd_mod_inv : forall Θ Ξ B x pv Δ cs c',
+    fill_cmd Θ Ξ B (cc_mod x pv Δ cs) c' -> exists Δ', c' = cc_mod x pv Δ' cs /\ fill_params Θ Ξ B Δ Δ'.
+Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
+
+(** What fills to a module is a module with the same name and body, its
+    parameters filled. *)
+Lemma fill_cmd_to_mod : forall Θ Ξ B c x pv Δ' cs,
+    fill_cmd Θ Ξ B c (cc_mod x pv Δ' cs) -> exists Δ, c = cc_mod x pv Δ cs /\ fill_params Θ Ξ B Δ Δ'.
+Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
+
+(** What fills to a record declaration is one with the same name and
+    with-area. *)
+Lemma fill_cmd_to_record : forall Θ Ξ B c x pv Δ' Srt' fs' cs,
+    fill_cmd Θ Ξ B c (cc_record x pv Δ' Srt' fs' cs) -> exists Δ Srt fs, c = cc_record x pv Δ Srt fs cs.
+Proof. intros * H; inversion H; subst; eauto. Qed.
+
 Section Decide.
-  Variables (Θ : gdeps) (Ξ : gstack) (B : builtins).
+  (** The fast context the typed checks look names up in
+      ([Extraction.Lookup]); the fill decided is at the Core context it
+      stands for. *)
+  Variable F : FCtx.
+  #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
+  Variable B : builtins.
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
-  (** The data the typed checks look names up in ([Extraction.Lookup]). *)
-  Variable FF : forall Θ Ξ, FCtx Θ Ξ.
-  #[local] Instance GCd : GCtx := gc_mk Θ Ξ.
 
   (** ** What the Fill Reads *)
 
   (** The type a term infers in a well-formed context. *)
   Definition infer_at (Γ : ctx) (M : exp) : option nf :=
-    match check_ctx FF Θ Ξ Hg Γ with
+    match check_ctx F Hg Γ with
     | left HΓ =>
-        match @type_infer GCd (FF Θ Ξ) Γ HΓ M (type_infer_order_all M) with
+        match type_infer F Γ HΓ M (type_infer_order_all M) with
         | inleft (exist _ W _) => Some W
         | inright _ => None
         end
@@ -235,8 +264,8 @@ Section Decide.
 
   (** Whether the member [y] of [H] is a term. *)
   Definition member_term_b (Γ : ctx) (H : modexp) (y : string) : bool :=
-    match mdenote_dec Θ Ξ Hg Γ (me_mem H y) with
-    | inleft (exist _ (ds_term _ _) _) => true
+    match mdenote_dec F Hg Γ (me_mem H y) with
+    | inleft (exist _ (fds_term _ _) _) => true
     | _ => false
     end.
 
@@ -246,7 +275,7 @@ Section Decide.
     match op with
     | None => None
     | Some p =>
-        match glob_check Θ Ξ Hg (qname_mod p) y with
+        match glob_check F Hg (qname_mod p) y with
         | inleft (exist _ qx _) => Some qx
         | inright _ => None
         end
@@ -265,7 +294,7 @@ Section Decide.
 
   (** The expansion of a body. *)
   Definition body_xp_fn (Γ : ctx) (Φ : gmod) : fill_result gmod :=
-    match body_xp_dec Θ Ξ Hg Γ Φ with
+    match body_xp_dec F Hg Γ Φ with
     | inleft (exist _ Φx _) => fill_ok Φx
     | inright _ => fill_error (fill_failure_body Γ Φ)
     end.
@@ -292,12 +321,12 @@ Section Decide.
     | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False
     | a_ind _ _ | a_con _ _ _ | a_var _ | a_record _ => fill_ok M
     | a_nlit n =>
-        match nat_view Θ Ξ B with
+        match nat_view_f F B with
         | Some (p, z, s) => fill_ok (nat_chain p z s n)
         | None => fill_error (fill_failure_literal (le_num n))
         end
     | a_ntok =>
-        match nat_view Θ Ξ B with
+        match nat_view_f F B with
         | Some (p, _, _) => fill_ok (a_ind p 0)
         | None => fill_error (fill_failure_literal le_tok)
         end
@@ -363,9 +392,9 @@ Section Decide.
         let%a M' := fill_exp_fn Γ M0 in
         match infer_at Γ M' with
         | Some (nf_indty pc k Rs) =>
-            match elim_target Θ Ξ pc k Rs m Bks with
+            match elim_target_f F pc k Rs m Bks with
             | elim_target_one p Us =>
-                match ind_lookup Θ Ξ p with
+                match fc_ind F p with
                 | None => fill_error (fill_failure_message "internal error: an eliminator of no group")
                 | Some D =>
                     (** first each block's annotation and motive, at the
@@ -638,9 +667,9 @@ Section Decide.
   Definition elim_fill_fn (Γ : ctx) (m : nat) (Bks : list eblock) (M' : exp) : fill_result exp :=
     match infer_at Γ M' with
     | Some (nf_indty pc k Rs) =>
-        match elim_target Θ Ξ pc k Rs m Bks with
+        match elim_target_f F pc k Rs m Bks with
         | elim_target_one p Us =>
-            match ind_lookup Θ Ξ p with
+            match fc_ind F p with
             | None => fill_error (fill_failure_message "internal error: an eliminator of no group")
             | Some D =>
                 let%a hs := heads_fn Γ p D Us 0 Bks in
@@ -707,7 +736,7 @@ Section Decide.
     match hs with
     | nil => fill_error (fill_failure_message "a mutual definition with no function")
     | h0 :: hs0 =>
-        match mdef_group_dec Θ Ξ Hg Δ' h0 hs0 with
+        match mdef_group_dec F Hg Δ' h0 hs0 with
         | inr e => fill_error (fill_failure_mdef_group e)
         | inl (exist _ (pq, m0, Ps, D, Us, ms) _) =>
             let%a rs := fill_rfun_results_fn Γ pq D Us (List.combine hs ms) in
@@ -759,80 +788,100 @@ Section Decide.
 
   (** Declared members' constructors, each over the member's context in
       the group [Rh], whose parameters and sorts are filled. *)
-  Fixpoint fill_raw_bodies_fn (Rh : raw_decl) (ms : list raw_member) : fill_result (list raw_member) :=
+  (** The context of a member's constructors ([rm_pctx]), over the frames'
+      parameters [Γt] *)
+  Definition rm_pctx_at (Γt : ctx) (R : raw_decl) (Mr : raw_member) : ctx :=
+    tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ Γt.
+
+  (** The fills below of a command and of what it is made of, over the
+      frames' parameters [Γt]: the extracted checker computes them over
+      the fast telescope of the frames ([fc_tele]), the lemmas read them
+      over the Core one ([gs_tele]), which it is ([fc_tele_ok]). *)
+  Fixpoint fill_raw_bodies_at (Γt : ctx) (Rh : raw_decl) (ms : list raw_member) : fill_result (list raw_member) :=
     match ms with
     | nil => fill_ok nil
     | Mr :: ms0 =>
-        let%a cs' := fill_raw_cons_fn (rm_pctx Ξ Rh Mr) (raw_member_cons Mr) in
-        let%a ms0' := fill_raw_bodies_fn Rh ms0 in
+        let%a cs' := fill_raw_cons_fn (rm_pctx_at Γt Rh Mr) (raw_member_cons Mr) in
+        let%a ms0' := fill_raw_bodies_at Γt Rh ms0 in
         fill_ok (mk_rmem (raw_member_name Mr) (raw_member_nparams Mr) (raw_member_sort Mr) cs' :: ms0')
     end.
 
   (** A group as written, filled: its uniform parameters, its members'
       parameters and sorts, then their constructors' arguments in the
       group with those filled. *)
-  Definition fill_raw_decl_fn (R : raw_decl) : fill_result raw_decl :=
-    let%a ups' := fill_tele_fn (gs_tele Ξ) (raw_decl_uparams R) in
-    let%a hs := fill_raw_heads_fn (ups' ++ gs_tele Ξ) (raw_decl_members R) in
-    let%a ms' := fill_raw_bodies_fn (mk_raw ups' hs (raw_decl_rec_field R)) hs in
+  Definition fill_raw_decl_at (Γt : ctx) (R : raw_decl) : fill_result raw_decl :=
+    let%a ups' := fill_tele_fn Γt (raw_decl_uparams R) in
+    let%a hs := fill_raw_heads_fn (ups' ++ Γt) (raw_decl_members R) in
+    let%a ms' := fill_raw_bodies_at Γt (mk_raw ups' hs (raw_decl_rec_field R)) hs in
     fill_ok (mk_raw ups' ms' (raw_decl_rec_field R)).
 
   (** A command filled, part by part. *)
-  Definition fill_cmd_fn (c : ccmd) : fill_result ccmd :=
+  Definition fill_cmd_at (Γt : ctx) (c : ccmd) : fill_result ccmd :=
     match c with
     | cc_def x b pv A oM =>
-        let%a A' := fill_exp_fn (gs_tele Ξ) A in
-        let%a oM' := fill_oexp_fn (gs_tele Ξ) oM in
+        let%a A' := fill_exp_fn Γt A in
+        let%a oM' := fill_oexp_fn Γt oM in
         fill_ok (cc_def x b pv A' oM')
-    | cc_mod x pv Δ cs => let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in fill_ok (cc_mod x pv Δ' cs)
+    | cc_mod x pv Δ cs => let%a Δ' := fill_tele_fn Γt Δ in fill_ok (cc_mod x pv Δ' cs)
     | cc_alias x pv Δ E =>
-        let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in
-        let%a r := fill_mod_fn (Δ' ++ gs_tele Ξ) "" E in
+        let%a Δ' := fill_tele_fn Γt Δ in
+        let%a r := fill_mod_fn (Δ' ++ Γt) "" E in
         fill_ok (cc_alias x pv Δ' (fst r))
     | cc_ind_alias x pv Δ E =>
-        let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in
-        let%a r := fill_mod_fn (Δ' ++ gs_tele Ξ) "" E in
+        let%a Δ' := fill_tele_fn Γt Δ in
+        let%a r := fill_mod_fn (Δ' ++ Γt) "" E in
         match snd r with
         | None => fill_ok (cc_ind_alias x pv Δ' (fst r))
         | Some _ => fill_error (fill_failure_message ("the inductive alias " ++ x ++ " names a record value, not an inductive type"))
         end
     | cc_record_alias x pv Δ E =>
-        let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in
-        let%a r := fill_mod_fn (Δ' ++ gs_tele Ξ) "" E in
+        let%a Δ' := fill_tele_fn Γt Δ in
+        let%a r := fill_mod_fn (Δ' ++ Γt) "" E in
         match snd r with
         | None => fill_ok (cc_record_alias x pv Δ' (fst r))
         | Some _ => fill_error (fill_failure_message ("the record alias " ++ x ++ " names a record value, not a record type"))
         end
     | cc_open E its =>
-        let%a r := fill_mod_fn (gs_tele Ξ) "" E in
+        let%a r := fill_mod_fn Γt "" E in
         let%a _ := sels_check (snd r) (items_members its) in
         fill_ok (cc_open (fst r) its)
     | cc_builtin k E =>
-        let%a r := fill_mod_fn (gs_tele Ξ) "" E in
+        let%a r := fill_mod_fn Γt "" E in
         match snd r with
         | None => fill_ok (cc_builtin k (fst r))
         | Some _ => fill_error (fill_failure_message "a builtin binding names a record value, not an inductive type")
         end
     | cc_eval M oA =>
-        let%a M' := fill_exp_fn (gs_tele Ξ) M in
-        let%a oA' := fill_oexp_fn (gs_tele Ξ) oA in
+        let%a M' := fill_exp_fn Γt M in
+        let%a oA' := fill_oexp_fn Γt oA in
         fill_ok (cc_eval M' oA')
     | cc_record x pv Δ Srt fs cs =>
-        let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in
-        let%a Srt' := fill_exp_fn (Δ' ++ gs_tele Ξ) Srt in
-        let%a fs' := fill_fields_fn (Δ' ++ gs_tele Ξ) fs in
+        let%a Δ' := fill_tele_fn Γt Δ in
+        let%a Srt' := fill_exp_fn (Δ' ++ Γt) Srt in
+        let%a fs' := fill_fields_fn (Δ' ++ Γt) fs in
         fill_ok (cc_record x pv Δ' Srt' fs' cs)
     | cc_mdef b pv Δ fs =>
-        let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in
-        let%a hs := fill_rfun_heads_fn (Δ' ++ gs_tele Ξ) fs in
-        let%a fs' := fill_rfun_bodies_fn (Δ' ++ gs_tele Ξ) Δ' hs in
+        let%a Δ' := fill_tele_fn Γt Δ in
+        let%a hs := fill_rfun_heads_fn (Δ' ++ Γt) fs in
+        let%a fs' := fill_rfun_bodies_fn (Δ' ++ Γt) Δ' hs in
         fill_ok (cc_mdef b pv Δ' fs')
-    | cc_ind pv R => let%a R' := fill_raw_decl_fn R in fill_ok (cc_ind pv R')
+    | cc_ind pv R => let%a R' := fill_raw_decl_at Γt R in fill_ok (cc_ind pv R')
     | cc_load _ | cc_gen _ => fill_ok c
     end.
 
+  (** A command filled, over the fast telescope of the frames *)
+  Definition fill_cmd_fn (c : ccmd) : fill_result ccmd := fill_cmd_at (fc_tele F) c.
+
+  (** It is the fill over the Core telescope. *)
+  Lemma fill_cmd_fn_core : forall c, fill_cmd_fn c = fill_cmd_at (gs_tele Ξ) c.
+  Proof. intros; unfold fill_cmd_fn; rewrite fc_tele_ok; reflexivity. Qed.
+
   (** A unit's parameter telescope filled. *)
-  Definition fill_params_fn (Δ : ctx) : fill_result ctx := fill_tele_fn (gs_tele Ξ) Δ.
+  Definition fill_params_fn (Δ : ctx) : fill_result ctx := fill_tele_fn (fc_tele F) Δ.
+
+  (** It is the fill over the Core telescope. *)
+  Lemma fill_params_fn_core : forall Δ, fill_params_fn Δ = fill_tele_fn (gs_tele Ξ) Δ.
+  Proof. intros; unfold fill_params_fn; rewrite fc_tele_ok; reflexivity. Qed.
 
   (** An eliminator as written, through the named loops. *)
   Lemma fill_exp_fn_elim : forall Γ m Bks M0,
@@ -855,21 +904,23 @@ Section Decide.
 
   (** ** What the Fill Reads, Specified *)
 
-  Lemma infer_at_sound : forall Γ M W, infer_at Γ M = Some W -> ⊢ Θ ⍮ Ξ ⍮ Γ /\ Γ ⊢a M ⟹ W.
+  (** The inference found, at the global context the fill relation reads
+      it at ([gc_mk Θ Ξ], [fc_gctx_eta]) *)
+  Lemma infer_at_sound : forall Γ M W, infer_at Γ M = Some W -> ⊢ Θ ⍮ Ξ ⍮ Γ /\ @alg_type_infer (gc_mk Θ Ξ) Γ W M.
   Proof.
     intros * E; unfold infer_at in E.
-    destruct (check_ctx FF Θ Ξ Hg Γ) as [HΓ |]; [| discriminate ].
-    destruct (@type_infer GCd (FF Θ Ξ) Γ HΓ M (type_infer_order_all M)) as [[W0 [HW _]] |]; [| discriminate ].
-    injection E as <-; split; assumption.
+    destruct (check_ctx F Hg Γ) as [HΓ |]; [| discriminate ].
+    destruct (type_infer F Γ HΓ M (type_infer_order_all M)) as [[W0 [HW _]] |]; [| discriminate ].
+    injection E as <-; rewrite (fc_gctx_eta F) in HW; split; assumption.
   Qed.
 
-  Lemma infer_at_complete : forall Γ M W, ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a M ⟹ W -> infer_at Γ M = Some W.
+  Lemma infer_at_complete : forall Γ M W, ⊢ Θ ⍮ Ξ ⍮ Γ -> @alg_type_infer (gc_mk Θ Ξ) Γ W M -> infer_at Γ M = Some W.
   Proof.
-    intros * HΓ HW; unfold infer_at.
-    destruct (check_ctx FF Θ Ξ Hg Γ) as [HΓ' | Hn]; [| contradiction ].
-    destruct (@type_infer GCd (FF Θ Ξ) Γ HΓ' M (type_infer_order_all M)) as [[W0 [HW0 _]] | Hn];
+    intros * HΓ HW; rewrite <- (fc_gctx_eta F) in HW; unfold infer_at.
+    destruct (check_ctx F Hg Γ) as [HΓ' | Hn]; [| contradiction ].
+    destruct (type_infer F Γ HΓ' M (type_infer_order_all M)) as [[W0 [HW0 _]] | Hn];
       [| exfalso; exact (Hn _ HW) ].
-    rewrite (@functional_alg_type_infer GCd _ _ _ _ Hg HW0 HW); reflexivity.
+    rewrite (@functional_alg_type_infer (fc_gctx F) _ _ _ _ Hg HW0 HW); reflexivity.
   Qed.
 
   Lemma term_binder_b_spec : forall Γ k, term_binder_b Γ k = true <-> term_binder Γ k.
@@ -882,7 +933,7 @@ Section Decide.
       member_term_b Γ H y = true <-> exists A oM, mdenote Θ Ξ Γ (me_mem H y) (ds_term A oM).
   Proof.
     intros; unfold member_term_b.
-    destruct (mdenote_dec Θ Ξ Hg Γ (me_mem H y)) as [[R HR] | Hn].
+    destruct (mdenote_dec F Hg Γ (me_mem H y)) as [[R HR] | Hn].
     - destruct R; split; intros E; try discriminate; eauto;
         destruct E as (A & oM & HA); pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ HA); discriminate.
     - split; [ discriminate | intros (A & oM & HA); exfalso; exact (Hn _ HA) ].
@@ -891,7 +942,7 @@ Section Decide.
   Lemma sel_check_spec : forall op y, sel_check op y = None <-> sel_ok Θ Ξ op y.
   Proof.
     intros [p |] y; cbn; [| split; auto ].
-    destruct (glob_check Θ Ξ Hg (qname_mod p) y) as [[qx Hn] | Hok]; split; auto; [ discriminate | contradiction ].
+    destruct (glob_check F Hg (qname_mod p) y) as [[qx Hn] | Hok]; split; auto; [ discriminate | contradiction ].
   Qed.
 
   Lemma sels_check_spec : forall op ys, sels_check op ys = fill_ok tt <-> Forall (sel_ok Θ Ξ op) ys.
@@ -904,7 +955,7 @@ Section Decide.
 
   Lemma body_xp_fn_spec : forall Γ Φ Φx, body_xp_fn Γ Φ = fill_ok Φx <-> body_xp Θ Ξ Γ Φ Φx.
   Proof.
-    intros; unfold body_xp_fn; destruct (body_xp_dec Θ Ξ Hg Γ Φ) as [[Φx0 HΦ] | Hn]; split; try discriminate.
+    intros; unfold body_xp_fn; destruct (body_xp_dec F Hg Γ Φ) as [[Φx0 HΦ] | Hn]; split; try discriminate.
     - intros [= <-]; exact HΦ.
     - intros HΦ'; f_equal; exact (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ HΦ _ HΦ').
     - intros HΦ'; exfalso; exact (Hn _ HΦ').
@@ -915,7 +966,7 @@ Section Decide.
       fill_mod_of Γ y (fill_ok r) = fill_ok (H', op) ->
       match r with
       | read_module H0 => H' = H0 /\ op = None
-      | read_term M => ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists p Rs, Γ ⊢a M ⟹ nf_record p Rs /\ H' = record_value_module p Rs M /\ op = Some p
+      | read_term M => ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists p Rs, @alg_type_infer (gc_mk Θ Ξ) Γ (nf_record p Rs) M /\ H' = record_value_module p Rs M /\ op = Some p
       end.
   Proof.
     intros * E; destruct r as [H0 | M]; cbn in E; [ injection E as <- <-; auto |].
@@ -1036,8 +1087,8 @@ Section Decide.
     destruct (infer_at Γ M') as [W |] eqn:Ei; [| discriminate ].
     destruct W as [| | | | | | | | | pc k Rs | | | | ]; try discriminate.
     apply infer_at_sound in Ei as [HΓ HW].
-    destruct (elim_target Θ Ξ pc k Rs m Bks) as [p Us | rs |] eqn:Et; try discriminate.
-    destruct (ind_lookup Θ Ξ p) as [D |] eqn:El; [| discriminate ].
+    destruct (elim_target_f F pc k Rs m Bks) as [p Us | rs |] eqn:Et; rewrite elim_target_f_ok in Et; try discriminate.
+    destruct (fc_ind F p) as [D |] eqn:El; rewrite <- fc_ind_ok in El; [| discriminate ].
     bind_inv.
     destruct (blocks_fill_sound _ _ _ _ _ _ _ _ _ HB H H0) as [Hbk Hm].
     eapply fill_exp_elim; [ exact HM | exact HΓ | exact HW | exact Et | exact El | rewrite Hm; exact Hbk ].
@@ -1064,9 +1115,9 @@ Section Decide.
       end; bind_inv.
     all: try solve [ apply fill_exp_leaf; reflexivity | econstructor; eauto ].
     - (* a numeral *)
-      destruct (nat_view Θ Ξ B) as [[[p z] s] |] eqn:Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
+      destruct (nat_view_f F B) as [[[p z] s] |] eqn:Ev; rewrite nat_view_f_ok in Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
     - (* the token [ℕ] *)
-      destruct (nat_view Θ Ξ B) as [[[p z] s] |] eqn:Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
+      destruct (nat_view_f F B) as [[[p z] s] |] eqn:Ev; rewrite nat_view_f_ok in Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
     - (* an eliminator: written without its group, its scrutinee, then the
          reading and its blocks *)
       match goal with Ee : fill_exp_fn _ (a_elim _ _ _ _ _) = fill_ok _ |- _ => rename Ee into E end.
@@ -1157,16 +1208,16 @@ Section Decide.
     - (* a term with no subterm *)
       destruct M; try discriminate; reflexivity.
     - (* a numeral *)
-      rewrite e; reflexivity.
+      rewrite nat_view_f_ok, e; reflexivity.
     - (* the token [ℕ] *)
-      rewrite e; reflexivity.
+      rewrite nat_view_f_ok, e; reflexivity.
     - (* an unannotated let: its definition infers the type *)
       rewrite (infer_at_complete _ _ _ w a); cbn; rewrite H0; reflexivity.
     - (* a member *)
       unfold fill_mod_fn in H0; rewrite (H0 x); cbn; rewrite (proj2 (sel_check_spec _ _) s); reflexivity.
     - (* an eliminator: the reading, then its blocks, whose motives are
          those its branches are read at *)
-      unfold elim_fill_fn; rewrite (infer_at_complete _ _ _ w a), e, e0.
+      unfold elim_fill_fn; rewrite (infer_at_complete _ _ _ w a), elim_target_f_ok, e, <- fc_ind_ok, e0.
       destruct H0 as [Hh Hb]; rewrite Hh; cbn.
       replace (List.map snd (block_heads Bks')) with (blocks_motives Bks')
         by (clear; induction Bks' as [| [] ? IH]; cbn; [ reflexivity | f_equal; exact IH ]).
@@ -1357,7 +1408,7 @@ Section Decide.
                  | apply IH; assumption ].
   Qed.
 
-  Lemma fill_raw_bodies_fn_sound : forall Rh hs ms', fill_raw_bodies_fn Rh hs = fill_ok ms' ->
+  Lemma fill_raw_bodies_fn_sound : forall Rh hs ms', fill_raw_bodies_at (gs_tele Ξ) Rh hs = fill_ok ms' ->
       Forall2 (fun Mh Mr' => raw_member_name Mr' = raw_member_name Mh /\ raw_member_nparams Mr' = raw_member_nparams Mh /\ raw_member_sort Mr' = raw_member_sort Mh /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B (rm_pctx Ξ Rh Mh) (snd rc) (snd rc'))
                                (raw_member_cons Mh) (raw_member_cons Mr')) hs ms'.
@@ -1386,9 +1437,9 @@ Section Decide.
   Qed.
 
   (** The computed fill of a group is the relation's. *)
-  Lemma fill_raw_decl_fn_sound : forall R R', fill_raw_decl_fn R = fill_ok R' -> fill_raw_decl Θ Ξ B R R'.
+  Lemma fill_raw_decl_fn_sound : forall R R', fill_raw_decl_at (gs_tele Ξ) R = fill_ok R' -> fill_raw_decl Θ Ξ B R R'.
   Proof.
-    intros R R' E; unfold fill_raw_decl_fn in E; bind_inv.
+    intros R R' E; unfold fill_raw_decl_at in E; bind_inv.
     rename x into ups', x0 into hs, x1 into ms'.
     pose proof (fill_raw_heads_fn_sound _ _ _ H0) as Hh.
     pose proof (fill_raw_bodies_fn_sound _ _ _ H1) as Hb.
@@ -1419,19 +1470,20 @@ Section Decide.
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
                                                     fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
                                (raw_member_cons Mh) (raw_member_cons Mr')) hs ms' ->
-      fill_raw_bodies_fn Rh hs = fill_ok ms'.
+      fill_raw_bodies_at (gs_tele Ξ) Rh hs = fill_ok ms'.
   Proof.
     intros * Eu HG; induction 1 as [| Mh Mr' hs ms' (En & Ep & Es & Hc) _ IH]; cbn; [ reflexivity |].
+    change (rm_pctx_at (gs_tele Ξ)) with (rm_pctx Ξ).
     rewrite (rm_pctx_heads_eq Ξ Rh R' Mh Mr' Eu HG Ep), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
     rewrite IH; cbn [fill_result_bind].
     rewrite (raw_member_parts_eq Mr' (mk_rmem (raw_member_name Mh) (raw_member_nparams Mh) (raw_member_sort Mh) (raw_member_cons Mr')) En Ep Es eq_refl);
       reflexivity.
   Qed.
 
-  Lemma fill_raw_decl_fn_complete : forall R R', fill_raw_decl Θ Ξ B R R' -> fill_raw_decl_fn R = fill_ok R'.
+  Lemma fill_raw_decl_fn_complete : forall R R', fill_raw_decl Θ Ξ B R R' -> fill_raw_decl_at (gs_tele Ξ) R = fill_ok R'.
   Proof.
     pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
-    intros R R' [Hu Hr Hm]; unfold fill_raw_decl_fn; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
+    intros R R' [Hu Hr Hm]; unfold fill_raw_decl_at; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
     destruct (fill_raw_heads_fn_complete _ _ _ Hm) as (hs & Eh & Hhs); rewrite Eh; cbn [fill_result_bind].
     rewrite (fill_raw_bodies_fn_complete (mk_raw (raw_decl_uparams R') hs (raw_decl_rec_field R)) R' hs (raw_decl_members R') eq_refl); cbn.
     - rewrite (raw_decl_parts_eq R' (mk_raw (raw_decl_uparams R') (raw_decl_members R') (raw_decl_rec_field R)) eq_refl eq_refl (eq_sym Hr));
@@ -1452,7 +1504,7 @@ Section Decide.
           (List.combine (h0 :: hs0) ms) (f0' :: fs0').
   Proof.
     intros * -> E; unfold fill_rfun_bodies_fn in E.
-    destruct (mdef_group_dec Θ Ξ Hg Δ' h0 hs0) as [[[[[[[pq m0] Ps] D] Us] ms] Hgp] | e]; [| discriminate ].
+    destruct (mdef_group_dec F Hg Δ' h0 hs0) as [[[[[[[pq m0] Ps] D] Us] ms] Hgp] | e]; [| discriminate ].
     bind_inv.
     destruct (fill_rfun_bodies_parts_sound _ _ _ _ _ _ _ _ _ H E) as [Hb Hrs].
     pose proof (mdef_group_members _ _ _ _ _ _ _ _ _ _ _ Hgp) as Hms.
@@ -1471,7 +1523,7 @@ Section Decide.
       fill_rfun_bodies_fn (Δ' ++ gs_tele Ξ)%list Δ' (h0 :: hs0) = fill_ok (f0' :: fs0').
   Proof.
     intros * Hgp Hb; unfold fill_rfun_bodies_fn.
-    destruct (mdef_group_dec_complete _ _ Hg _ _ _ _ _ _ _ _ _ Hgp) as [Hp ->].
+    destruct (mdef_group_dec_complete _ Hg _ _ _ _ _ _ _ _ _ Hgp) as [Hp ->].
     destruct (fill_rfun_bodies_parts_complete _ _ _ _ _ _ _ _ Hb) as (rs & Er & Hrs & Ec).
     rewrite Er; cbn; rewrite (mdef_blocks_motives_eq _ _ _ _ _ Hrs); exact Ec.
   Qed.
@@ -1479,7 +1531,7 @@ Section Decide.
   (** The computed fill of a command is the relation's. *)
   Theorem fill_cmd_fn_sound : forall c c', fill_cmd_fn c = fill_ok c' -> fill_cmd Θ Ξ B c c'.
   Proof.
-    intros c c'; destruct c; cbn [fill_cmd_fn]; intros E; bind_inv; try discriminate.
+    intros c c'; rewrite fill_cmd_fn_core; destruct c; cbn [fill_cmd_at]; intros E; bind_inv; try discriminate.
     - constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
     - constructor; apply fill_tele_fn_sound; assumption.
     - destruct x0 as [E' op]; econstructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
@@ -1514,7 +1566,7 @@ Section Decide.
   Theorem fill_cmd_fn_complete : forall c c', fill_cmd Θ Ξ B c c' -> fill_cmd_fn c = fill_ok c'.
   Proof.
     pose proof fill_fn_complete_all as (Ce & _ & _ & _ & Co & _ & Cm & _ & _ & Ct & _).
-    intros c c' H; inversion H; subst; cbn [fill_cmd_fn]; try reflexivity.
+    intros c c' H; rewrite fill_cmd_fn_core; inversion H; subst; cbn [fill_cmd_at]; try reflexivity.
     - rewrite (Ce _ _ _ H0); cbn; rewrite (Co _ _ _ H1); reflexivity.
     - rewrite (Ct _ _ _ H0); reflexivity.
     - rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
@@ -1534,38 +1586,13 @@ Section Decide.
 
   (** A unit's parameters, likewise. *)
   Theorem fill_params_fn_sound : forall Δ Δ', fill_params_fn Δ = fill_ok Δ' -> fill_params Θ Ξ B Δ Δ'.
-  Proof. intros * E; apply fill_tele_fn_sound; exact E. Qed.
+  Proof. intros * E; rewrite fill_params_fn_core in E; apply fill_tele_fn_sound; exact E. Qed.
 
   Theorem fill_params_fn_complete : forall Δ Δ', fill_params Θ Ξ B Δ Δ' -> fill_params_fn Δ = fill_ok Δ'.
   Proof.
     pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
-    intros * H; exact (Ct _ _ _ H).
+    intros * H; rewrite fill_params_fn_core; exact (Ct _ _ _ H).
   Qed.
-
-  (** ** A Module's and a Record's Fills
-
-      The fill of a module declaration is its telescope's, that of a record
-      declaration its telescope's, sort's and fields'. *)
-
-  Lemma fill_cmd_mod_params : forall x pv Δ Δ' cs,
-      fill_params Θ Ξ B Δ Δ' -> fill_cmd Θ Ξ B (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs).
-  Proof. intros * Ht; apply fill_cmd_mod; exact Ht. Qed.
-
-  Lemma fill_cmd_mod_inv : forall x pv Δ cs c',
-      fill_cmd Θ Ξ B (cc_mod x pv Δ cs) c' -> exists Δ', c' = cc_mod x pv Δ' cs /\ fill_params Θ Ξ B Δ Δ'.
-  Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
-
-  (** What fills to a module is a module with the same name and body, its
-      parameters filled. *)
-  Lemma fill_cmd_to_mod : forall c x pv Δ' cs,
-      fill_cmd Θ Ξ B c (cc_mod x pv Δ' cs) -> exists Δ, c = cc_mod x pv Δ cs /\ fill_params Θ Ξ B Δ Δ'.
-  Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
-
-  (** What fills to a record declaration is one with the same name and
-      with-area. *)
-  Lemma fill_cmd_to_record : forall c x pv Δ' Srt' fs' cs,
-      fill_cmd Θ Ξ B c (cc_record x pv Δ' Srt' fs' cs) -> exists Δ Srt fs, c = cc_record x pv Δ Srt fs cs.
-  Proof. intros * H; inversion H; subst; eauto. Qed.
 
   (** A record declaration's telescope, sort and fields filled. *)
   Definition fill_record_fn (x : string) (pv : bool) (Δ : ctx) (Srt : typ) (fs : list (string * typ)) (cs : list ccmd) :

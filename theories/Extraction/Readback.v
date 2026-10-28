@@ -229,8 +229,9 @@ Qed.
 Hint Resolve ffresh_tele_order_sound ffresh_cargs_order_sound ffresh_ihs_order_sound fwrap_ihs_order_sound : mctt.
 
 Section FreshImpl.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   #[local]
   Ltac fr_obl :=
@@ -271,7 +272,7 @@ Section FreshImpl.
   Equations ffresh_tele_impl ρ T s (H : ffresh_tele_order Θ Ξ ρ T s) : { vs | Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs } by struct H :=
   | ρ, nil, s, H => exist _ nil _
   | ρ, ce_ass A :: T, s, H =>
-      let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
+      let (a, Ha) := feval_exp_impl F A ρ _ in
       let (vs, Hvs) := ffresh_tele_impl (ρ ↦ ⇑! a s) T (S s) _ in
       exist _ (⇑! a s :: vs) _
   | ρ, _, s, H => False_rect _ _.
@@ -282,11 +283,11 @@ Section FreshImpl.
     { vs | Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs } by struct H :=
   | p, ups, ρ, nil, s, H => exist _ nil _
   | p, ups, ρ, ca_arg A :: gs, s, H =>
-      let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
+      let (a, Ha) := feval_exp_impl F A ρ _ in
       let (vs, Hvs) := ffresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
       exist _ (⇑! a s :: vs) _
   | p, ups, ρ, ca_rec t :: gs, s, H =>
-      let (a, Ha) := feval_shty_impl Θ Ξ p ups ρ t _ in
+      let (a, Ha) := feval_shty_impl F p ups ρ t _ in
       let (vs, Hvs) := ffresh_cargs_impl p ups ρ gs (S s) _ in
       exist _ (⇑! a s :: vs) _.
   Solve All Obligations with fr_obl.
@@ -298,7 +299,7 @@ Section FreshImpl.
   | ρ, As, p, ups, Dc, B, ρa, ca_arg _ :: gs', ca_arg _ :: gs, v :: vs, s, H =>
       let (ihs, Hihs) := ffresh_ihs_impl ρ As p ups Dc B (ρa ↦ v) gs' gs vs s _ in
       exist _ ihs _
-  | ρ, As, p, ups, Dc, B, ρa, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, s, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) p := {
+  | ρ, As, p, ups, Dc, B, ρa, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, s, H with cache_lookup F (fc_seed F) p := {
     | exist _ (Some D) Ed
         with inspect (ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) := {
       (** The branch reads none of the argument's results: their types are
@@ -310,7 +311,7 @@ Section FreshImpl.
           exist _ (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
                      (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s ++ ihs) _
       | exist _ false E =>
-          let (as', Has) := feval_ihty_impl Θ Ξ p ups ρ As ρa t v _ in
+          let (as', Has) := feval_ihty_impl F p ups ρ As ρa t v _ in
           let (ihs, Hihs) := ffresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
                                (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s) + s) _ in
           exist _ (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s ++ ihs) _ }
@@ -325,15 +326,15 @@ Section FreshImpl.
   Equations fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs (H : fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs) :
     { r | ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r } by struct H :=
   | ρ, p, ups, Bks, Dc, nil, nil, nil, nil, H => exist _ nil _
-  | ρ, p, ups, Bks, Dc, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, ihs, H with cache_lookup Θ Ξ (@fc_seed Θ Ξ F) p := {
+  | ρ, p, ups, Bks, Dc, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, ihs, H with cache_lookup F (fc_seed F) p := {
     | exist _ (Some D) Ed =>
-        let (rs, Hrs) := feval_ih_impl Θ Ξ ρ p ups Bks t v (@fc_seed Θ Ξ F) _ in
+        let (rs, Hrs) := feval_ih_impl F ρ p ups Bks t v (fc_seed F) _ in
         let (r, Hr) := fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs
                          (snd (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs)) _ in
         exist _ (fst (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs) ++ r) _
     | exist _ None Ed => False_rect _ _ }
   | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, ihs, H =>
-      let (rs, Hrs) := feval_ih_impl Θ Ξ ρ p ups Bks t v (@fc_seed Θ Ξ F) _ in
+      let (rs, Hrs) := feval_ih_impl F ρ p ups Bks t v (fc_seed F) _ in
       let (r, Hr) := fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs _ in
       exist _ (rs ++ r) _
   | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_arg _ :: gs, _ :: vs, ihs, H =>
@@ -745,8 +746,9 @@ Ltac impl_obl_tac1 :=
   end.
 
 Section ReadbackImpl.
-Variables (Θ : gdeps) (Ξ : gstack).
-Context {F : FCtx Θ Ξ}.
+Variable F : FCtx.
+#[local] Abbreviation Θ := (fc_deps F).
+#[local] Abbreviation Ξ := (fc_stack F).
 
 #[tactic="idtac",derive(equations=no,eliminator=no)]
 Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
@@ -768,21 +770,21 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     exist _ ⇑ⁿ M _
 | s, ⇓ (Πᵈ a p B) m, ck, H =>
     let (A, HA) := fread_typ_impl_c s a ck _ in
-    let (m', Hm') := feval_app_impl Θ Ξ m ⇑! a s _ in
-    let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! a s) _ in
+    let (m', Hm') := feval_app_impl F m ⇑! a s _ in
+    let (b, Hb) := feval_exp_impl F B (p ↦ ⇑! a s) _ in
     let (M, HM) := fread_nf_impl_c (S s) ⇓ b m' ck _ in
     exist _ (λⁿ A M) _
 | s, ⇓ (⇑ a b) (⇑ c m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
-| s, ⇓ (d_ind p j as') v, ck, H with cache_lookup Θ Ξ ck p := {
+| s, ⇓ (d_ind p j as') v, ck, H with cache_lookup F ck p := {
   | exist _ (Some D) Ed with inspect (ind_member D j) := {
     | exist _ (Some Mj) Em with inspect (im_head Mj) := {
       (** At a record view, any value: the view's constructor, its
           arguments the value's projections *)
       | exist _ (mh_record qr Is fl) Eh with inspect (im_cons Mj) := {
         | exist _ ((c, gs) :: nil) Ec =>
-            let (ws, Hws) := feval_projs_impl Θ Ξ fl v _ in
+            let (ws, Hws) := feval_projs_impl F fl v _ in
             let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_uparams D)) as' ck _ in
             let (Args, HArgs) := fread_cargs_impl_c s p as' (env_args nil as') gs ws (Some (exist _ (p, D) Ed)) _ in
             exist _ (nf_con p j c (Ps ++ Args)%list) _
@@ -816,7 +818,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
         | _ => False_rect _ _ } }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
-| s, ⇓ (d_record p ns) v, ck, H with record_lookup_f Θ Ξ p := {
+| s, ⇓ (d_record p ns) v, ck, H with record_lookup_f F p := {
   | exist _ (Some R) El =>
       let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (record_params R)) ns ck _ in
       let (Fs, HFs) := fread_fields_impl_c s (env_args nil ns) (record_fields R) v ck _ in
@@ -831,15 +833,15 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (N, HN) := fread_nf_impl_c s n ck _ in
     exist _ (M $ⁿ N) _
 | s, efqᵈ m under p return B, ck, H =>
-    let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) _ in
+    let (b, Hb) := feval_exp_impl F B (p ↦ ⇑! ⊥ᵈ s) _ in
     let (B', HB') := fread_typ_impl_c (S s) b ck _ in
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ (efqⁿ M return B') _
-| s, d_elim ρ Bks p ups j as' m, ck, H with cache_lookup Θ Ξ ck p := {
+| s, d_elim ρ Bks p ups j as' m, ck, H with cache_lookup F ck p := {
   | exist _ (Some D) Ed with inspect (ind_member D j) := {
     | exist _ (Some Mj) Em with inspect (im_ref p j Mj) := {
-      | exist _ (pc, k) Er with cache_lookup Θ Ξ (Some (exist _ (p, D) Ed)) pc := {
-        | exist _ (Some Dq) Edq with feval_mref_impl Θ Ξ p ups j _ := {
+      | exist _ (pc, k) Er with cache_lookup F (Some (exist _ (p, D) Ed)) pc := {
+        | exist _ (Some Dq) Edq with feval_mref_impl F p ups j _ := {
           | exist _ (_, _, pre) Hm =>
               let (Us, HUs) := fread_ps_impl_c s nil (List.rev (ind_uparams Dq)) pre ck _ in
               let (NBks, HNBks) := fread_blocks_impl_c s ρ p ups Bks Dq (im_sel Mj) 0 (ind_bmembers Dq) (Some (exist _ (p, D) Ed)) _ in
@@ -862,21 +864,21 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ⊥ᵈ, ck, H => exist _ ⊥ⁿ _
 | s, Πᵈ a p B, ck, H =>
     let (A, HA) := fread_typ_impl_c s a ck _ in
-    let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! a s) _ in
+    let (b, Hb) := feval_exp_impl F B (p ↦ ⇑! a s) _ in
     let (B', HB') := fread_typ_impl_c (S s) b ck _ in
     exist _ (Πⁿ A B') _
 | s, ⇑ a b, ck, H =>
     let (B, HB) := fread_ne_impl_c s b ck _ in
     exist _ ⇑ⁿ B _
 | s, d_ind p k nil, ck, H => exist _ (nf_indty p k nil) _
-| s, d_ind p k as', ck, H with cache_lookup Θ Ξ ck p := {
+| s, d_ind p k as', ck, H with cache_lookup F ck p := {
   | exist _ (Some D) Ed with inspect (ind_member D k) := {
     | exist _ (Some Mk) Em =>
         let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (im_params D Mk)) as' ck _ in
         exist _ (nf_indty p k Ps) _
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
-| s, d_record p ns, ck, H with record_lookup_f Θ Ξ p := {
+| s, d_record p ns, ck, H with record_lookup_f F p := {
   | exist _ (Some R) El =>
       let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (record_params R)) ns ck _ in
       exist _ (nf_record p Ps) _
@@ -892,7 +894,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
   with fread_ps_impl_c s ρ T vs (ck : lk_cache Θ Ξ) (H : fread_ps_order Θ Ξ s ρ T vs) : { Ms | Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
 | s, ρ, nil, nil, ck, H => exist _ nil _
 | s, ρ, ce_ass A :: T, v :: vs, ck, H =>
-    let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
+    let (a, Ha) := feval_exp_impl F A ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
     let (Vs, HVs) := fread_ps_impl_c s (ρ ↦ v) T vs ck _ in
     exist _ (cons V Vs) _
@@ -902,8 +904,8 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     { Fs | Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs } by struct H :=
 | s, ρ, nil, v, ck, H => exist _ nil _
 | s, ρ, (f, T) :: fl, v, ck, H =>
-    let (r, Hr) := feval_proj_impl Θ Ξ f v _ in
-    let (t, Ht) := feval_exp_impl Θ Ξ T ρ _ in
+    let (r, Hr) := feval_proj_impl F f v _ in
+    let (t, Ht) := feval_exp_impl F T ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ t r ck _ in
     let (Vs, HVs) := fread_fields_impl_c s (ρ ↦ r) fl v ck _ in
     exist _ (cons V Vs) _
@@ -912,7 +914,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     { Ms | Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
 | s, p, ups, ρ, nil, nil, ck, H => exist _ nil _
 | s, p, ups, ρ, ca_arg A :: gs, v :: vs, ck, H =>
-    let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
+    let (a, Ha) := feval_exp_impl F A ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
     let (Vs, HVs) := fread_cargs_impl_c s p ups (ρ ↦ v) gs vs ck _ in
     exist _ (cons V Vs) _
@@ -925,26 +927,26 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
   with fread_shape_impl_c s p ups ρ t v (ck : lk_cache Θ Ξ) (H : fread_shape_order Θ Ξ s p ups ρ t v) :
     { V | Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V } by struct H :=
 | s, p, ups, ρ, pt_self j Ps, v, ck, H =>
-    let (bs, Hbs) := feval_exps_impl Θ Ξ Ps ρ _ in
+    let (bs, Hbs) := feval_exps_impl F Ps ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ (d_ind p j (ups ++ bs)) v ck _ in
     exist _ V _
 | s, p, ups, ρ, pt_pi B t, v, ck, H =>
-    let (b, Hb) := feval_exp_impl Θ Ξ B ρ _ in
+    let (b, Hb) := feval_exp_impl F B ρ _ in
     let (A, HA) := fread_typ_impl_c s b ck _ in
-    let (r, Hr) := feval_app_impl Θ Ξ v (⇑! b s) _ in
+    let (r, Hr) := feval_app_impl F v (⇑! b s) _ in
     let (V, HV) := fread_shape_impl_c (S s) p ups (ρ ↦ ⇑! b s) t r ck _ in
     exist _ (λⁿ A V) _
 
   with fread_blocks_impl_c s ρ p ups Bks Dc sel i Ms (ck : lk_cache Θ Ξ) (H : fread_blocks_order Θ Ξ s ρ p ups Bks Dc sel i Ms) :
     { NBks | Rblksᶠ i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks } by struct H :=
 | s, ρ, p, ups, Bks, Dc, sel, i, nil, ck, H => exist _ nil _
-| s, ρ, p, ups, Bks, Dc, sel, i, Mi :: Ms, ck, H with cache_lookup Θ Ξ ck p := {
+| s, ρ, p, ups, Bks, Dc, sel, i, Mi :: Ms, ck, H with cache_lookup F ck p := {
   | exist _ (Some D) Ed with inspect (ind_member D (elim_src sel i)) := {
     | exist _ (Some Mv) Em with inspect (List.nth_error Bks (elim_src sel i)) := {
-      | exist _ (Some b) Eb with feval_mref_impl Θ Ξ p ups (elim_src sel i) _ := {
+      | exist _ (Some b) Eb with feval_mref_impl F p ups (elim_src sel i) _ := {
         | exist _ (pk, k, pre) Hm =>
-            let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
-            let (a, Ha) := feval_exp_impl Θ Ξ (eb_motive b)
+            let (ns, Hns) := ffresh_tele_impl F (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
+            let (a, Ha) := feval_exp_impl F (eb_motive b)
                              (env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil)) _ in
             let (A', HA') := fread_typ_impl_c (S (s + im_nn Mi)) a ck _ in
             let (Bs', HBs') := fread_brs_impl_c s ρ p ups Bks Dc Mv (eb_motive b) Mi (pk, k, pre) (im_cons Mi) (eb_brs b) ck _ in
@@ -960,13 +962,13 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ρ, p, ups, Bks, Dc, Mv, A, Mi, r, nil, nil, ck, H => exist _ nil _
 | s, ρ, p, ups, Bks, Dc, Mv, A, Mi, (pk, k, pre), (c, gs') :: cs, (_, _, B) :: Bs, ck, H with inspect (ind_con Mv c) := {
   | exist _ (Some gs) Ec =>
-      let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
-      let (vs, Hvs) := ffresh_cargs_impl Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi) _ in
-      let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ (blocks_motives Bks) p ups Dc B (env_args nil (ups ++ ns)) gs' gs vs
+      let (ns, Hns) := ffresh_tele_impl F (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
+      let (vs, Hvs) := ffresh_cargs_impl F p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi) _ in
+      let (ihs, Hihs) := ffresh_ihs_impl F ρ (blocks_motives Bks) p ups Dc B (env_args nil (ups ++ ns)) gs' gs vs
                            (s + im_nn Mi + List.length gs') _ in
-      let (wihs, Hw) := fwrap_ihs_impl Θ Ξ ρ p ups Bks Dc gs' gs vs ihs _ in
-      let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (ns ++ vs ++ wihs)) _ in
-      let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil)) _ in
+      let (wihs, Hw) := fwrap_ihs_impl F ρ p ups Bks Dc gs' gs vs ihs _ in
+      let (b, Hb) := feval_exp_impl F B (env_args ρ (ns ++ vs ++ wihs)) _ in
+      let (t, Ht) := feval_exp_impl F A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil)) _ in
       let (B', HB') := fread_nf_impl_c (s + (im_nn Mi + List.length gs' + cargs_nrec Dc gs')) ⇓ t b ck _ in
       let (Bs', HBs') := fread_brs_impl_c s ρ p ups Bks Dc Mv A Mi (pk, k, pre) cs Bs ck _ in
       exist _ (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec Dc gs') B') Bs') _
@@ -1092,13 +1094,13 @@ Solve All Obligations with rb_obl_auto.
 (** The entries of readback, from the declaration the command looked up
     ([fc_seed]). *)
 Definition fread_nf_impl s d (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
-  fread_nf_impl_c s d (@fc_seed Θ Ξ F) H.
+  fread_nf_impl_c s d (fc_seed F) H.
 Definition fread_ne_impl s d (H : fread_ne_order Θ Ξ s d) : { m | Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
-  fread_ne_impl_c s d (@fc_seed Θ Ξ F) H.
+  fread_ne_impl_c s d (fc_seed F) H.
 Definition fread_typ_impl s d (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
-  fread_typ_impl_c s d (@fc_seed Θ Ξ F) H.
+  fread_typ_impl_c s d (fc_seed F) H.
 Definition fread_la_impl s xs (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } :=
-  fread_la_impl_c s xs (@fc_seed Θ Ξ F) H.
+  fread_la_impl_c s xs (fc_seed F) H.
 
 #[local]
 Ltac functional_fread_complete :=

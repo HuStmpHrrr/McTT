@@ -21,6 +21,7 @@ From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths DescTyping Presup.
 From Mctt.Core.Syntactic.Inductives Require Import Group.
+From Mctt.Extraction Require Import Lookup FastDesc.
 Import Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -226,28 +227,137 @@ Proof.
   unfold frame_record_desc in Hd; rewrite Hl in Hd; discriminate.
 Qed.
 
+(** A fast entry whose unit is Core's own but holds a body is no
+    translation of a canonical entry. *)
+Lemma canon_fe_core_body : forall pv Δ sm Φ, canon_fentry (fe_mod pv (fu_core (gu_mk Δ (md_body sm Φ)))) -> False.
+Proof.
+  intros * (E & HE & Hc); destruct E as [| pv' [Δ' [[|] Φ' | E']] | | |]; cbn in HE, Hc; try discriminate; contradiction.
+Qed.
+
+(** The trie of a canonical closed submodule entry is canonical. *)
+Lemma canon_fe_mod_trie : forall pv Δ t, canon_fentry (fe_mod pv (fu_mk Δ (fmd_body t))) -> canon_trie t.
+Proof.
+  intros * (E & HE & Hc); destruct E as [| pv' [Δ' [[|] Φ' | E']] | | |]; cbn in HE, Hc; try discriminate; try contradiction.
+  injection HE as _ _ ->; exists Φ'; split; [ reflexivity | exact Hc ].
+Qed.
+
+(** A canonical body expands to itself. *)
+Lemma body_xp_canon : forall Θ Ξ Γ Φ, canon_mod Φ -> body_xp Θ Ξ Γ Φ Φ.
+Proof.
+  intros Θ Ξ Γ; induction Φ as [| Φ IH x E | Φ IH H its]; intros Hc; cbn in Hc; [ constructor | | contradiction ].
+  constructor; apply IH; tauto.
+Qed.
+
+(** A stored closed submodule, read at its path *)
+Lemma edenote_fast_closed : forall Θ Ξ Γ pq pv Δ t, canon_trie t ->
+    edenote Θ Ξ Γ (Some pq) (ge_mod pv (gu_mk Δ (md_body sm_closed (dec_mod t)))) (ds_closed nil pq Δ (dec_mod t) nil).
+Proof.
+  intros * (Φ & -> & Hc); rewrite dec_tr_mod by exact Hc.
+  constructor; econstructor; [ apply body_xp_canon, Hc | reflexivity ].
+Qed.
+
+(** A selection, read through the fast descriptions *)
+Lemma mdenote_mem_dec : forall Θ Ξ Γ H y R0 R0m Γy s rd R R',
+    mdenote Θ Ξ Γ H (dec_desc R0) -> ds_mod (dec_desc R0) = Some (dec_desc R0m) ->
+    ds_entry (dec_desc R0m) y = Some (Γy, dec_esrc s, rd) ->
+    edenote Θ Ξ (Γy ++ Γ) (fds_epath R0m y) (dec_esrc s) (dec_desc R) ->
+    ds_read rd (dec_desc R) = Some (dec_desc R') -> mdenote Θ Ξ Γ (me_mem H y) (dec_desc R').
+Proof. intros * H1 H2 H3 H4 H5; econstructor; [ exact H1 | exact H2 | exact H3 | rewrite fds_epath_dec; exact H4 | exact H5 ]. Qed.
+
+(** A closed submodule read at no path denotes nothing. *)
+Lemma edenote_closed_none : forall Θ Ξ Γ pv Δ Φ R, ~ edenote Θ Ξ Γ None (ge_mod pv (gu_mk Δ (md_body sm_closed Φ))) R.
+Proof. intros * He; inversion He; subst; match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end; discriminate. Qed.
+
+(** A definition with a module part whose unit is a body denotes
+    nothing. *)
+Lemma edenote_dm_body : forall Θ Ξ Γ o pv A M Δ sm Φ R, ~ edenote Θ Ξ Γ o (ge_def_mod pv A M (gu_mk Δ (md_body sm Φ))) R.
+Proof. intros * He; inversion He. Qed.
+
+(** Where an entry of a description may be read: a local entry at no
+    path, as [ds_epath] gives for a local body. *)
+Definition esrc_ok (o : option qname) (s : esrc) : Prop :=
+  match s with
+  | es_core _ => o = None
+  | es_fast _ _ _ => True
+  end.
+
+(** What the descriptions of [Θ ⍮ Ξ] are, computed through the fast
+    context [F]: the descriptions are fast ([fmdesc]), and stand for the
+    Core ones the relations name ([dec_desc]). *)
 Section DenoteImpl.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
 
-  Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
+  (** [frame_ind_of], fast *)
+  Definition fast_frame_ind_of (H : modexp) : { o | frame_ind_of Ξ H = o } :=
+    match mod_qname H as m return { o | match m with Some p => gs_find_ind Ξ p | None => None end = o } with
+    | Some p => gs_find_ind_f F p
+    | None => exist _ None eq_refl
+    end.
+
+  (** [frame_record_of], fast *)
+  Definition fast_frame_record_of (H : modexp) : { o | frame_record_of Ξ H = o } :=
+    match mod_qname H as m return { o | match m with Some p => option_map (fun R => (p, R)) (gs_find_record Ξ p) | None => None end = o } with
+    | Some p => let (o, E) := gs_find_record_f F p in exist _ (option_map (fun R => (p, R)) o) (f_equal _ E)
+    | None => exist _ None eq_refl
+    end.
+
+  (** [frame_ind_desc], fast *)
+  Definition fast_frame_ind_desc (H : modexp) (pq : qname) (k : nat) (D : ind_decl) :
+      { o | frame_ind_desc Θ Ξ H pq k D = option_map dec_desc o }.
+  Proof.
+    unfold frame_ind_desc; destruct (mod_qname H) as [p |]; [| exact (exist _ None eq_refl) ].
+    destruct (ind_member D k) as [Mk |]; [| exact (exist _ None eq_refl) ].
+    destruct (gc_loc_cf F p) as [[[Tm tm] |] [El Hc]].
+    - refine (exist _ (Some (fast_ind_former_desc pq k D Mk (fds_closed nil p Tm tm (Hc _ _ eq_refl) nil))) _).
+      rewrite El; reflexivity.
+    - refine (exist _ None _); rewrite El; reflexivity.
+  Defined.
+
+  (** [frame_record_desc], fast *)
+  Definition fast_frame_record_desc (p : qname) (R : record_decl) :
+      { o | frame_record_desc Θ Ξ p R = option_map dec_desc o }.
+  Proof.
+    unfold frame_record_desc; destruct (gc_loc_cf F p) as [[[Tm tm] |] [El Hc]].
+    - refine (exist _ (Some (fast_record_former_desc p R (fds_closed nil p Tm tm (Hc _ _ eq_refl) nil))) _).
+      rewrite El; reflexivity.
+    - refine (exist _ None _); rewrite El; reflexivity.
+  Defined.
+
+  (** The twins of the operations on descriptions, with their equations *)
+  Definition fds_at_s R N : { o | ds_at (dec_desc R) N = option_map dec_desc o } := exist _ (fds_at R N) (fds_at_dec R N).
+  Definition fds_mod_s R : { o | ds_mod (dec_desc R) = option_map dec_desc o } := exist _ (fds_mod R) (fds_mod_dec R).
+  Definition fds_ty_s R : { o | ds_ty (dec_desc R) = o } := exist _ (fds_ty R) (fds_ty_dec R).
+  Definition fds_read_s rd R : { o | ds_read rd (dec_desc R) = option_map dec_desc o } :=
+    exist _ (fds_read rd R) (fds_read_dec rd R).
+  Definition fds_entry_s R y :
+      { o | ds_entry (dec_desc R) y = option_map (fun r => (fst (fst r), dec_esrc (snd (fst r)), snd r)) o /\
+            forall Γy s rd, o = Some (Γy, s, rd) -> esrc_ok (fds_epath R y) s } :=
+    exist _ (fds_entry R y)
+      (conj (fds_entry_dec R y)
+         (fun Γy s rd E => match s as s0 return esrc_path s0 = fds_epath R y -> esrc_ok (fds_epath R y) s0 with
+                           | es_core _ => fun Ep => eq_sym Ep
+                           | es_fast _ _ _ => fun _ => I
+                           end (fds_entry_path R y Γy s rd E))).
 
   #[local]
   Ltac dn_close :=
     repeat match goal with
-      | H1 : mdenote Θ Ξ ?G ?H ?A1, H2 : mdenote Θ Ξ ?G ?H ?A2 |- _ =>
+      | H1 : mdenote _ _ ?G ?H ?A1, H2 : mdenote _ _ ?G ?H ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
           pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ H1 _ H2); subst; clear H2
-      | H1 : udenote Θ Ξ ?G ?o ?U ?A1, H2 : udenote Θ Ξ ?G ?o ?U ?A2 |- _ =>
+      | H1 : udenote _ _ ?G ?o ?U ?A1, H2 : udenote _ _ ?G ?o ?U ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
           pose proof (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : edenote Θ Ξ ?G ?o ?E ?A1, H2 : edenote Θ Ξ ?G ?o ?E ?A2 |- _ =>
+      | H1 : edenote _ _ ?G ?o ?E ?A1, H2 : edenote _ _ ?G ?o ?E ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
           pose proof (proj1 (proj2 (proj2 (mdenote_functional_all _ _ Hg))) _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : body_xp Θ Ξ ?G ?Φ ?A1, H2 : body_xp Θ Ξ ?G ?Φ ?A2 |- _ =>
+      | H1 : body_xp _ _ ?G ?Φ ?A1, H2 : body_xp _ _ ?G ?Φ ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
           pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ H1 _ H2); subst; clear H2
-      | H1 : items_gen Θ Ξ ?b ?G ?H ?its ?A1, H2 : items_gen Θ Ξ ?b ?G ?H ?its ?A2 |- _ =>
+      | H1 : items_gen _ _ ?b ?G ?H ?its ?A1, H2 : items_gen _ _ ?b ?G ?H ?its ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
           pose proof (proj2 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : ?f = Some ?a, H2 : ?f = Some ?b |- _ =>
@@ -265,11 +375,12 @@ Section DenoteImpl.
           | match goal with Hq : mod_qname _ = Some _ |- _ => solve [ cbn in Hq; congruence ] end
           | match goal with HN : forall r, ~ _ |- _ => solve [ eapply HN; eassumption ] end
           | intuition congruence
+          | solve [ cbn in *; discriminate ]
           | cbn in *; contradiction ].
 
   #[local]
   Ltac dn_neg_after :=
-    rewrite ?gc_unit_var, ?gc_unit_lit, ?gc_unit_app in *; dn_close;
+    rewrite ?gc_unit_var, ?gc_unit_lit, ?gc_unit_app in *; dn_close; rewrite ?fds_epath_dec in *; dn_close;
     (* the module part of a definition with a module part: its alias *)
     try (match goal with Hu : udenote _ _ _ _ (gu_mk _ (md_alias _)) _ |- _ => inversion Hu; subst; clear Hu end; dn_close);
     dn_finish.
@@ -287,6 +398,10 @@ Section DenoteImpl.
   #[local]
   Ltac impl_obl_tac :=
     intros; cbv beta in *;
+    cbn [option_map dec_desc dec_esrc dec_entry dec_unit dec_loc fst snd esrc_ok] in *;
+    rewrite ?fds_epath_dec, ?fds_up_dec in *;
+    repeat match goal with H : _ = _ /\ _ |- _ => destruct H end;
+    repeat match goal with H : ?o = None |- _ => is_var o; subst o end;
     repeat match goal with
       | H : dn_order _ _ _ _ |- _ => progressive_invert H
       | H : un_order _ _ _ _ |- _ => progressive_invert H
@@ -311,92 +426,133 @@ Section DenoteImpl.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations mdenote_impl Γ H (Ho : dn_order Θ Ξ Γ H) :
-      { R | mdenote Θ Ξ Γ H R } + { forall R, ~ mdenote Θ Ξ Γ H R } by struct Ho :=
-  | Γ, me_unit fp, Ho with inspect (gc_unit Θ Ξ (me_unit fp)) := {
-    | exist _ (Some (T, Φ)) Eu => inleft (exist _ (ds_closed nil (q_abs fp nil) T Φ nil) _)
-    | exist _ None Eu with inspect (frame_ind_of Ξ (me_unit fp)) := {
-      | exist _ (Some (pq, k, D)) Ek with inspect (frame_ind_desc Θ Ξ (me_unit fp) pq k D) := {
+      { R : fmdesc | mdenote Θ Ξ Γ H (dec_desc R) } + { forall R, ~ mdenote Θ Ξ Γ H R } by struct Ho :=
+  | Γ, me_unit fp, Ho with gc_unit_cf F (me_unit fp) := {
+    | exist _ (Some (T, t)) Eu => inleft (exist _ (fds_closed nil (q_abs fp nil) T t (proj2 Eu T t eq_refl) nil) _)
+    | exist _ None Eu with fast_frame_ind_of (me_unit fp) := {
+      | exist _ (Some (pq, k, D)) Ek with fast_frame_ind_desc (me_unit fp) pq k D := {
         | exist _ (Some R) Ed => inleft (exist _ R (dn_of_frame_ind _ _ _ _ _ _ _ _ Ek Ed))
         | exist _ None Ed => False_rect _ (frame_ind_desc_some _ _ Hg _ _ _ _ Ek Ed) }
-      | exist _ None Ek with inspect (frame_record_of Ξ (me_unit fp)) := {
-        | exist _ (Some (p, R)) Er with inspect (frame_record_desc Θ Ξ p R) := {
+      | exist _ None Ek with fast_frame_record_of (me_unit fp) := {
+        | exist _ (Some (p, R)) Er with fast_frame_record_desc p R := {
           | exist _ (Some Rd) Ed => inleft (exist _ Rd (dn_of_frame_record _ _ _ _ _ _ _ Er Ed))
           | exist _ None Ed => False_rect _ (frame_record_desc_some _ _ Hg _ _ _ Er Ed) }
         | exist _ None Er => inright _ } } }
   | Γ, me_var x, Ho with inspect (ctx_find_mod Γ x) := {
-    | exist _ (Some U) Ef with udenote_impl Γ None U _ := {
+    | exist _ (Some U) Ef with udenote_impl Γ U _ := {
       | inleft (exist _ R HR) => inleft (exist _ R _)
       | inright HN => inright _ }
     | exist _ None Ef => inright _ }
-  | Γ, me_lit U, Ho with udenote_impl Γ None U _ := {
+  | Γ, me_lit U, Ho with udenote_impl Γ U _ := {
     | inleft (exist _ R HR) => inleft (exist _ R _)
     | inright HN => inright _ }
   | Γ, me_app H N, Ho with mdenote_impl Γ H _ := {
-    | inleft (exist _ R HR) with inspect (ds_at R N) := {
+    | inleft (exist _ R HR) with fds_at_s R N := {
       | exist _ (Some R') Ea => inleft (exist _ R' _)
       | exist _ None Ea => inright _ }
     | inright HN => inright _ }
-  | Γ, me_mem H y, Ho with inspect (gc_unit Θ Ξ (me_mem H y)) := {
-    | exist _ (Some (T, Φ)) Eu with inspect (mod_qname H) := {
+  | Γ, me_mem H y, Ho with gc_unit_cf F (me_mem H y) := {
+    | exist _ (Some (T, t)) Eu with inspect (mod_qname H) := {
       | exist _ (Some p) Eqp =>
-          inleft (exist _ (ds_closed nil (qname_in p y) T Φ nil) (mdenote_unit _ _ _ _ _ _ _ (mod_qname_mem_in _ _ _ Eqp) Eu))
-      | exist _ None Eqp => False_rect _ (gc_unit_mem_qname _ _ _ _ _ Eu Eqp) }
-    | exist _ None Eu with inspect (frame_ind_of Ξ (me_mem H y)) := {
-      | exist _ (Some (pq, k, D)) Ek with inspect (frame_ind_desc Θ Ξ (me_mem H y) pq k D) := {
+          inleft (exist _ (fds_closed nil (qname_in p y) T t (proj2 Eu T t eq_refl) nil)
+                    (mdenote_unit _ _ _ _ _ _ _ (mod_qname_mem_in _ _ _ Eqp) (proj1 Eu)))
+      | exist _ None Eqp => False_rect _ (gc_unit_mem_qname _ _ _ _ _ (proj1 Eu) Eqp) }
+    | exist _ None Eu with fast_frame_ind_of (me_mem H y) := {
+      | exist _ (Some (pq, k, D)) Ek with fast_frame_ind_desc (me_mem H y) pq k D := {
         | exist _ (Some R) Ed => inleft (exist _ R (dn_of_frame_ind _ _ _ _ _ _ _ _ Ek Ed))
         | exist _ None Ed => False_rect _ (frame_ind_desc_some _ _ Hg _ _ _ _ Ek Ed) }
-      | exist _ None Ek with inspect (frame_record_of Ξ (me_mem H y)) := {
-        | exist _ (Some (p, Rr)) Erf with inspect (frame_record_desc Θ Ξ p Rr) := {
+      | exist _ None Ek with fast_frame_record_of (me_mem H y) := {
+        | exist _ (Some (p, Rr)) Erf with fast_frame_record_desc p Rr := {
           | exist _ (Some Rd) Ed => inleft (exist _ Rd (dn_of_frame_record _ _ _ _ _ _ _ Erf Ed))
           | exist _ None Ed => False_rect _ (frame_record_desc_some _ _ Hg _ _ _ Erf Ed) }
         | exist _ None Erf with mdenote_impl Γ H _ := {
           | inright HN => inright _
-          | inleft (exist _ R0 HR0) with inspect (ds_mod R0) := {
+          | inleft (exist _ R0 HR0) with fds_mod_s R0 := {
             | exist _ None Em => inright _
-            | exist _ (Some R0m) Em with inspect (ds_entry R0m y) := {
+            | exist _ (Some R0m) Em with fds_entry_s R0m y := {
               | exist _ None Ee => inright _
-              | exist _ (Some (Γy, E, rd)) Ee with edenote_impl (Γy ++ Γ) (ds_epath R0m y) E _ := {
+              | exist _ (Some (Γy, s, rd)) Ee with edenote_impl (Γy ++ Γ) (fds_epath R0m y) s (proj2 Ee _ _ _ eq_refl) _ := {
                 | inright HN => inright _
-                | inleft (exist _ R HR) with inspect (ds_read rd R) := {
+                | inleft (exist _ R HR) with fds_read_s rd R := {
                   | exist _ None Er => inright _
-                  | exist _ (Some R') Er => inleft (exist _ R' _) } } } } } } } }
+                  | exist _ (Some R') Er => inleft (exist _ R' (mdenote_mem_dec _ _ _ _ _ _ _ _ _ _ _ _ HR0 Em (proj1 Ee) HR Er)) } } } } } } } }
 
-  with udenote_impl Γ o U (Ho : un_order Θ Ξ Γ U) :
-      { R | udenote Θ Ξ Γ o U R } + { forall R, ~ udenote Θ Ξ Γ o U R } by struct Ho :=
-  | Γ, o, gu_mk Δ (md_body sm Φ), Ho with body_xp_impl (Δ ++ Γ) Φ _ := {
-    | inleft (exist _ Φx Hx) with inspect (ds_body o sm Δ Φ Φx) := {
-      | exist _ (Some R) Eb => inleft (exist _ R _)
-      | exist _ None Eb => inright _ }
+  (** A Core unit, read at no path: a local module *)
+  with udenote_impl Γ U (Ho : un_order Θ Ξ Γ U) :
+      { R : fmdesc | udenote Θ Ξ Γ None U (dec_desc R) } + { forall R, ~ udenote Θ Ξ Γ None U R } by struct Ho :=
+  | Γ, gu_mk Δ (md_body sm_open Φ), Ho with body_xp_impl (Δ ++ Γ) Φ _ := {
+    | inleft (exist _ Φx Hx) => inleft (exist _ (fds_open Δ Φ Φx) _)
     | inright HN => inright _ }
-  | Γ, o, gu_mk Δ (md_alias E), Ho with mdenote_impl (Δ ++ Γ) E _ := {
+  | Γ, gu_mk Δ (md_body sm_closed Φ), Ho => inright _
+  | Γ, gu_mk Δ (md_alias E), Ho with mdenote_impl (Δ ++ Γ) E _ := {
     | inright HN => inright _
-    | inleft (exist _ R HR) with inspect (ds_mod R) := {
-      | exist _ (Some R') Em => inleft (exist _ (ds_up Δ R') _)
+    | inleft (exist _ R HR) with fds_mod_s R := {
+      | exist _ (Some R') Em => inleft (exist _ (fds_up Δ R') _)
       | exist _ None Em => inright _ } }
 
-  with edenote_impl Γ o E (Ho : en_order Θ Ξ Γ E) :
-      { R | edenote Θ Ξ Γ o E R } + { forall R, ~ edenote Θ Ξ Γ o E R } by struct Ho :=
-  | Γ, o, ge_def b pv A oM, Ho => inleft (exist _ (ds_term A (if b then oM else None)) _)
-  | Γ, o, ge_mod pv U, Ho with udenote_impl Γ o U _ := {
+  (** An entry, read at [o] *)
+  with edenote_impl Γ o s (Hos : esrc_ok o s) (Ho : en_order Θ Ξ Γ (dec_esrc s)) :
+      { R : fmdesc | edenote Θ Ξ Γ o (dec_esrc s) (dec_desc R) } + { forall R, ~ edenote Θ Ξ Γ o (dec_esrc s) R }
+      by struct Ho :=
+  (** A local entry, at no path *)
+  | Γ, o, es_core (ge_def b pv A oM), Hos, Ho => inleft (exist _ (fds_term A (if b then oM else None)) _)
+  | Γ, o, es_core (ge_mod pv U), Hos, Ho with udenote_impl Γ U _ := {
     | inleft (exist _ R HR) => inleft (exist _ R _)
     | inright HN => inright _ }
-  | Γ, o, ge_ind pv p k D Φ, Ho with inspect (ind_member D k) := {
+  | Γ, o, es_core (ge_ind pv p k D Φ), Hos, Ho with inspect (ind_member D k) := {
     | exist _ None EMk => inright _
     | exist _ (Some Mk) EMk with inspect (ind_mpath D k) := {
       | exist _ None Ep => inright _
-      | exist _ (Some pm) Ep with inspect (gc_loc Θ Ξ pm) := {
+      | exist _ (Some pm) Ep with gc_loc_cf F pm := {
         | exist _ None El => inright _
-        | exist _ (Some (Tm, Φm)) El => inleft (exist _ (ind_former_desc p k D Mk (ds_closed nil pm Tm Φm nil)) _) } } }
-  | Γ, o, ge_def_mod pv A M (gu_mk Δ (md_alias E)), Ho with mdenote_impl (Δ ++ Γ) E _ := {
+        | exist _ (Some (Tm, tm)) El =>
+            inleft (exist _ (fast_ind_former_desc p k D Mk (fds_closed nil pm Tm tm (proj2 El Tm tm eq_refl) nil)) _) } } }
+  | Γ, o, es_core (ge_def_mod pv A M (gu_mk Δ (md_alias E))), Hos, Ho with mdenote_impl (Δ ++ Γ) E _ := {
     | inright HN => inright _
-    | inleft (exist _ R HR) with inspect (ds_mod R) := {
-      | exist _ (Some R') Em => inleft (exist _ (ds_dm nil A M (ds_up Δ R')) _)
+    | inleft (exist _ R HR) with fds_mod_s R := {
+      | exist _ (Some R') Em => inleft (exist _ (fds_dm nil A M (fds_up Δ R')) _)
       | exist _ None Em => inright _ } }
-  | Γ, o, ge_def_mod pv A M (gu_mk Δ (md_body sm Φ)), Ho => inright _
-  | Γ, Some p, ge_record pv pr R Φ, Ho with inspect (gc_loc Θ Ξ p) := {
+  | Γ, o, es_core (ge_def_mod pv A M (gu_mk Δ (md_body sm Φ))), Hos, Ho => inright _
+  | Γ, Some p, es_core (ge_record pv pr R Φ), Hos, Ho with gc_loc_cf F p := {
     | exist _ None El => inright _
-    | exist _ (Some (Tm, Φm)) El => inleft (exist _ (record_former_desc p R (ds_closed nil p Tm Φm nil)) _) }
-  | Γ, None, ge_record pv pr R Φ, Ho => inright _
+    | exist _ (Some (Tm, tm)) El =>
+        inleft (exist _ (fast_record_former_desc p R (fds_closed nil p Tm tm (proj2 El Tm tm eq_refl) nil)) _) }
+  | Γ, None, es_core (ge_record pv pr R Φ), Hos, Ho => inright _
+  (** A stored entry, at its path *)
+  | Γ, o, es_fast pe (fe_def b pv A oM) Hc, Hos, Ho => inleft (exist _ (fds_term A (if b then oM else None)) _)
+  | Γ, None, es_fast pe (fe_mod pv (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
+      inright (fun R => edenote_closed_none _ _ Γ pv Δ (dec_mod t) R)
+  | Γ, Some pq, es_fast pe (fe_mod pv (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
+      inleft (exist _ (fds_closed nil pq Δ t (canon_fe_mod_trie _ _ _ Hc) nil)
+                (edenote_fast_closed _ _ Γ pq pv Δ t (canon_fe_mod_trie _ _ _ Hc)))
+  | Γ, o, es_fast pe (fe_mod pv (fu_core (gu_mk Δ (md_body sm Φ)))) Hc, Hos, Ho => False_rect _ (canon_fe_core_body _ _ _ _ Hc)
+  | Γ, o, es_fast pe (fe_mod pv (fu_core (gu_mk Δ (md_alias E)))) Hc, Hos, Ho with mdenote_impl (Δ ++ Γ) E _ := {
+    | inright HN => inright _
+    | inleft (exist _ R HR) with fds_mod_s R := {
+      | exist _ (Some R') Em => inleft (exist _ (fds_up Δ R') _)
+      | exist _ None Em => inright _ } }
+  | Γ, o, es_fast pe (fe_ind pv p k D t) Hc, Hos, Ho with inspect (ind_member D k) := {
+    | exist _ None EMk => inright _
+    | exist _ (Some Mk) EMk with inspect (ind_mpath D k) := {
+      | exist _ None Ep => inright _
+      | exist _ (Some pm) Ep with gc_loc_cf F pm := {
+        | exist _ None El => inright _
+        | exist _ (Some (Tm, tm)) El =>
+            inleft (exist _ (fast_ind_former_desc p k D Mk (fds_closed nil pm Tm tm (proj2 El Tm tm eq_refl) nil)) _) } } }
+  | Γ, o, es_fast pe (fe_def_mod pv A M (fu_core (gu_mk Δ (md_alias E)))) Hc, Hos, Ho with mdenote_impl (Δ ++ Γ) E _ := {
+    | inright HN => inright _
+    | inleft (exist _ R HR) with fds_mod_s R := {
+      | exist _ (Some R') Em => inleft (exist _ (fds_dm nil A M (fds_up Δ R')) _)
+      | exist _ None Em => inright _ } }
+  | Γ, o, es_fast pe (fe_def_mod pv A M (fu_core (gu_mk Δ (md_body sm Φ)))) Hc, Hos, Ho =>
+      inright (fun R => edenote_dm_body _ _ Γ o pv A M Δ sm Φ R)
+  | Γ, o, es_fast pe (fe_def_mod pv A M (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
+      inright (fun R => edenote_dm_body _ _ Γ o pv A M Δ sm_closed (dec_mod t) R)
+  | Γ, Some p, es_fast pe (fe_record pv pr R t) Hc, Hos, Ho with gc_loc_cf F p := {
+    | exist _ None El => inright _
+    | exist _ (Some (Tm, tm)) El =>
+        inleft (exist _ (fast_record_former_desc p R (fds_closed nil p Tm tm (proj2 El Tm tm eq_refl) nil)) _) }
+  | Γ, None, es_fast pe (fe_record pv pr R t) Hc, Hos, Ho => inright _
 
   with body_xp_impl Γ Φ (Ho : bx_order Θ Ξ Γ Φ) :
       { Φx | body_xp Θ Ξ Γ Φ Φx } + { forall Φx, ~ body_xp Θ Ξ Γ Φ Φx } by struct Ho :=
@@ -408,7 +564,7 @@ Section DenoteImpl.
     | inright HN => inright _
     | inleft (exist _ Φx Hx) with mdenote_impl (body_ctx Φx ++ Γ) H _ := {
       | inright HN => inright _
-      | inleft (exist _ R HR) with inspect (ds_mod R) := {
+      | inleft (exist _ R HR) with fds_mod_s R := {
         | exist _ None Em => inright _
         | exist _ (Some Rm) Em with items_gen_impl (body_ctx Φx ++ Γ) H its _ := {
           | inright HN => inright _
@@ -424,24 +580,25 @@ Section DenoteImpl.
     | inright HN => inright _ }
   | Γ, H, (Some n, d, pv) :: its, Ho with mdenote_impl Γ (me_mem H n) _ := {
     | inright HN => inright _
-    | inleft (exist _ (ds_term A om) HR) with items_gen_impl Γ H its _ := {
+    | inleft (exist _ (fds_term A om) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_def d pv A (a_mem H n) :: gs) _)
       | inright HN => inright _ }
-    | inleft (exist _ (ds_open Δ Φ Φx) HR) with items_gen_impl Γ H its _ := {
+    | inleft (exist _ (fds_open Δ Φ Φx) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
       | inright HN => inright _ }
-    | inleft (exist _ (ds_closed Θ' pc T Φ Ns) HR) with items_gen_impl Γ H its _ := {
+    | inleft (exist _ (fds_closed Θ' pc T t Ht Ns) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
       | inright HN => inright _ }
     (** A member with a term part and a module part: a definition with a
         module part, globally and locally alike *)
-    | inleft (exist _ R HR) with inspect (ds_ty R) := {
+    | inleft (exist _ R HR) with fds_ty_s R := {
       | exist _ None Et => inright _
-      | exist _ (Some A) Et with inspect (ds_mod R) := {
+      | exist _ (Some A) Et with fds_mod_s R := {
         | exist _ None Em => inright _
         | exist _ (Some Rm) Em with items_gen_impl Γ H its _ := {
           | inleft (exist _ gs Hgs) => inleft (exist _ (ig_def_mod d pv A (a_mem H n) (me_mem H n) :: gs) _)
           | inright HN => inright _ } } } }.
+  Solve All Obligations with impl_obl_tac.
 End DenoteImpl.
 
 (** ** What Denotes Has an Order *)

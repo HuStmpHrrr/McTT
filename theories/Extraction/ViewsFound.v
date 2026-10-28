@@ -48,15 +48,16 @@ Proof.
 Qed.
 
 (** The data of a view, or why it has none: its siblings first, then its
-    constructors, then its parameters. *)
-Definition view_data_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) (x : view_key) :
-    ({a | view_data_ok Θ Ξ R x a} + {e : view_why | forall a, ~ view_data_ok Θ Ξ R x a})%type.
+    constructors, then its parameters, looked up at the fast context
+    [F]. *)
+Definition view_data_dec (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (R : raw_decl) (x : view_key) :
+    ({a | view_data_ok (fc_deps F) (fc_stack F) R x a} + {e : view_why | forall a, ~ view_data_ok (fc_deps F) (fc_stack F) R x a})%type.
 Proof.
-  destruct (view_sibs_dec Θ Ξ HΞ R x) as [[ss Hs] | [e He]];
+  destruct (view_sibs_dec F HΞ R x) as [[ss Hs] | [e He]];
     [| right; exists e; intros a Ha; exact (He _ (data_ok_sibs _ _ _ _ _ Ha)) ].
-  destruct (view_cls_dec Θ Ξ HΞ R x) as [[cs Hc] | [e He]];
+  destruct (view_cls_dec F HΞ R x) as [[cs Hc] | [e He]];
     [| right; exists e; intros a Ha; exact (He _ (data_ok_cons _ _ _ _ _ Ha)) ].
-  destruct (view_nps_dec Θ Ξ HΞ R x) as [[Nv Hn] | [e He]];
+  destruct (view_nps_dec F HΞ R x) as [[Nv Hn] | [e He]];
     [| right; exists e; intros a Ha; exact (He _ (data_ok_nparams _ _ _ _ _ Ha)) ].
   left; exists (mk_view_data ss cs Nv); constructor; assumption.
 Defined.
@@ -64,7 +65,13 @@ Defined.
 (** ** The Clusters *)
 
 Section Clusters.
-  Variables (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl).
+  (** The fast context the views' data are looked up in; the judgments
+      are at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
+  Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
+  Variable R : raw_decl.
 
   (** The views whose data the PER model reads: typed views whose
       arguments are their own normal forms, over the declaration's
@@ -105,7 +112,7 @@ Section Clusters.
       exists L, cluster_of view_data (view_data_ok Θ Ξ R) data_sibs data_meets view_good (view_lt Θ Ξ (rd_uctx Ξ R)) x L.
   Proof.
     intros x Hx.
-    destruct (view_data_dec Θ Ξ HΞ R x) as [[a Ha] | [e Hn]].
+    destruct (view_data_dec F HΞ R x) as [[a Ha] | [e Hn]].
     2:{ (** no data: the view alone *)
         exists (x :: nil); constructor.
         - left; reflexivity.
@@ -204,7 +211,7 @@ Section Clusters.
       right; intros ay Hay.
       rewrite (view_sibs_same _ _ _ _ _ _ _ _ _ (data_ok_sibs _ _ _ _ _ Hay) Hs).
       intros w Hw; apply List.in_app_or in Hw as [Hw | [<- | []]]; apply List.in_or_app; left; assumption.
-    - destruct (check_ctx (fun Θ0 Ξ0 => fctx_at Θ0 Ξ0 None) Θ Ξ HΞ (rd_uctx Ξ R)) as [HΓu | HΓu].
+    - destruct (check_ctx F HΞ (rd_uctx Ξ R)) as [HΓu | HΓu].
       + (** a view in a well-formed context: good *)
         left; exact (@sib_view_inv (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HM Hh Hlv Hnv).
       + (** a view in an ill-formed one: siblings of the view *)
@@ -265,7 +272,7 @@ Section Clusters.
   Proof.
     intros csD.
     exact (reach_finite_of_clusters view_data (view_data_ok Θ Ξ R) data_sibs data_meets (view_data_functional Θ Ξ R) view_why
-             (view_data_dec Θ Ξ HΞ R) _ view_good (view_lt Θ Ξ (rd_uctx Ξ R)) views_lt_acc views_cluster views_meets_good
+             (view_data_dec F HΞ R) _ view_good (view_lt Θ Ξ (rd_uctx Ξ R)) views_lt_acc views_cluster views_meets_good
              views_sibs_good).
   Qed.
 
@@ -274,7 +281,7 @@ Section Clusters.
   Definition views_search_run (csD : list (list (string * list rcarg))) :
       result view_data (view_data_ok Θ Ξ R) data_sibs data_meets view_why nil (List.concat (List.map rcons_views csD)) :=
     views_search_from view_data (view_data_ok Θ Ξ R) data_sibs data_meets (view_data_functional Θ Ξ R) view_why
-      (view_data_dec Θ Ξ HΞ R) _ (views_reach_finite csD).
+      (view_data_dec F HΞ R) _ (views_reach_finite csD).
 End Clusters.
 
 (** ** The Views Found, as the Checker Asks *)
@@ -312,21 +319,21 @@ Defined.
 
 (** The views of a group declaration, found: the views of the search, or
     the first view it meets that has no data, with why. *)
-Definition views_search (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) (csD : list (list (string * list rcarg))) :
-    Command.rres (Command.views_found Θ Ξ R csD) :=
-  match views_search_run Θ Ξ HΞ R csD with
+Definition views_search (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (R : raw_decl) (csD : list (list (string * list rcarg))) :
+    Command.rres (Command.views_found (fc_deps F) (fc_stack F) R csD) :=
+  match views_search_run F HΞ R csD with
   | inl (exist _ (Vf, Af) (conj Hd (conj HF Hb))) =>
       Command.rok (existT _ Vf (existT _ (List.map data_sibs Af) (existT _ (List.map data_cons Af)
-        (exist _ (List.map data_nparams Af) (views_found_ok Θ Ξ R csD Vf Af Hd HF Hb)))))
+        (exist _ (List.map data_nparams Af) (views_found_ok (fc_deps F) (fc_stack F) R csD Vf Af Hd HF Hb)))))
   | inr (exist _ (x, e) _) => Command.rerr (Command.run_error_view (rd_first_name R) x e)
   end.
 
 (** The search finds the views whenever there are some. *)
-Theorem views_search_complete : forall Θ Ξ HΞ R csD Vs Ss csV Nvs,
-    Command.views_ok Θ Ξ R csD Vs Ss csV Nvs -> exists v, views_search Θ Ξ HΞ R csD = Command.rok v.
+Theorem views_search_complete : forall F HΞ R csD Vs Ss csV Nvs,
+    Command.views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, views_search F HΞ R csD = Command.rok v.
 Proof.
   intros * [Hs Hc Hn Hb]; unfold views_search.
-  destruct (views_search_run Θ Ξ HΞ R csD) as [[[Vf Af] (Hd & HF & Hbf)] | [[x e] Hf]]; [ eexists; reflexivity |].
+  destruct (views_search_run F HΞ R csD) as [[[Vf Af] (Hd & HF & Hbf)] | [[x e] Hf]]; [ eexists; reflexivity |].
   exfalso; apply (Hf (sibs_tbl Vs Ss) (meets_tbl Vs csV) Vs Hb).
   - intros y a Hy Ha.
     destruct (view_key_index_in_some _ _ Hy) as [v Hv]; unfold sibs_tbl, meets_tbl, data_meets; rewrite Hv; split.

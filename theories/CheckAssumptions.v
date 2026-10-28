@@ -49,8 +49,10 @@ Print Assumptions nbe_wk_fresh_sem.
 Print Assumptions exp_eq_strengthen_sem.
 Print Assumptions prog_impl_sound.
 Print Assumptions prog_impl_complete.
+Print Assumptions prog_impl_rep.
 Print Assumptions main_sound.
 Print Assumptions main_complete.
+Print Assumptions main_rep.
 Print Assumptions elaborate_core_iff.
 (* Sorted levels: the general statements and their corollaries. *)
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ.
@@ -90,6 +92,13 @@ Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines.
 Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines.
 Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines.
 Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_at.
 Print Assumptions Mctt.Extraction.Simulation.feval_sim.
 Print Assumptions Mctt.Extraction.Simulation.fread_sim.
 Print Assumptions Mctt.Extraction.Simulation.fread_typ_sim.

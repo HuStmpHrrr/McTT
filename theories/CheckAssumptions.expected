@@ -4,3 +4,4 @@
 # Parser.loc is the parser's abstract type of source positions, instantiated by the driver.
 Mctt.Entrypoint.main_sound: Mctt.Frontend.Parser.loc
 Mctt.Entrypoint.main_complete: Mctt.Frontend.Parser.loc
+Mctt.Entrypoint.main_rep: Mctt.Frontend.Parser.loc

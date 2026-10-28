@@ -12,7 +12,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Members.
 From Mctt.Core.Syntactic Require Import Command.
 From Mctt.Core.Syntactic.System.Global Require Import Modules.
-From Mctt.Extraction Require Import MemberType.
+From Mctt.Extraction Require Import Lookup FastDesc MemberType.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
@@ -54,24 +54,42 @@ Fixpoint xmap {A B} (f : A -> xres B) (l : list A) : xres (list B) :=
 (** ** Generation *)
 
 Section Gen.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  (** The fast context the denotations are computed in; the judgments are
+      at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
 
-  (** What a module expression denotes, when it has an order. *)
-  Definition denote_of (Γ : ctx) (H : modexp) (Ho : dn_order Θ Ξ Γ H) : option mdesc :=
-    match mdenote_impl Θ Ξ Hg Γ H Ho with
+  (** What a module expression denotes, when it has an order: a fast
+      description, standing for the Core one *)
+  Definition denote_of (Γ : ctx) (H : modexp) (Ho : dn_order Θ Ξ Γ H) : option fmdesc :=
+    match mdenote_impl F Hg Γ H Ho with
     | inleft (exist _ R _) => Some R
     | inright _ => None
     end.
 
-  Lemma denote_of_spec : forall Γ H Ho R, denote_of Γ H Ho = Some R <-> mdenote Θ Ξ Γ H R.
+  Lemma denote_of_spec : forall Γ H Ho R, option_map dec_desc (denote_of Γ H Ho) = Some R <-> mdenote Θ Ξ Γ H R.
   Proof.
     intros *; unfold denote_of.
-    destruct (mdenote_impl _ _ _ _ _ _) as [[R' HR'] | HN]; split; intros HR.
+    destruct (mdenote_impl _ _ _ _ _) as [[R' HR'] | HN]; cbn [option_map]; split; intros HR.
     - injection HR as <-; exact HR'.
     - f_equal; exact (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR' _ HR).
     - discriminate.
     - exfalso; exact (HN _ HR).
+  Qed.
+
+  (** A fast description found stands for what the expression denotes. *)
+  Lemma denote_of_sound : forall Γ H Ho R, denote_of Γ H Ho = Some R -> mdenote Θ Ξ Γ H (dec_desc R).
+  Proof. intros * E; apply (proj1 (denote_of_spec Γ H Ho _)); rewrite E; reflexivity. Qed.
+
+  (** What an expression denotes is found, as a fast description standing
+      for it. *)
+  Lemma denote_of_complete : forall Γ H Ho R, mdenote Θ Ξ Γ H R ->
+      exists R', denote_of Γ H Ho = Some R' /\ dec_desc R' = R.
+  Proof.
+    intros * Hm; apply (proj2 (denote_of_spec Γ H Ho R)) in Hm.
+    destruct (denote_of Γ H Ho) as [R' |]; cbn in Hm; [| discriminate ]; injection Hm as <-; eauto.
   Qed.
 
   Section Target.
@@ -90,8 +108,8 @@ Section Gen.
 
     (** The definition with a module part an item names: a member with a
         term part and a module part ([items_gen_dm]), of the term part's type. *)
-    Definition dm_gen (d : string) (pv : bool) (n : string) (R : mdesc) : xres igen :=
-      match ds_ty R, ds_mod R with
+    Definition dm_gen (d : string) (pv : bool) (n : string) (R : fmdesc) : xres igen :=
+      match fds_ty R, fds_mod R with
       | Some A, Some _ => xok (ig_def_mod d pv A (a_mem H n) (me_mem H n))
       | _, _ => xfail (xe_member H n)
       end.
@@ -105,9 +123,9 @@ Section Gen.
       | (None, d, pv) => xok (ig_alias d pv H)
       | (Some n, d, pv) =>
           match denote_of Γ (me_mem H n) (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) with
-          | Some (ds_term A _) => xok (ig_def d pv A (a_mem H n))
+          | Some (fds_term A _) => xok (ig_def d pv A (a_mem H n))
           | Some R =>
-              if ds_is_modb R then xok (ig_alias d pv (me_mem H n))
+              if fds_is_modb R then xok (ig_alias d pv (me_mem H n))
               else dm_gen d pv n R
           | None => xfail (xe_member H n)
           end
@@ -117,7 +135,7 @@ Section Gen.
         no member is both used and exported, and the names declared are
         distinct; then each item's declaration, all in [Γ]. *)
     Definition import_gen (its : list iitem) : xres (list igen) :=
-      match option_map ds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
+      match option_map fds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
       | Some (Some _) =>
           let+ gs := xmap item_gen its in
           match both_dup its with
@@ -138,15 +156,16 @@ Section Gen.
     Proof.
       induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
-      - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_spec in E.
-        destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
+      - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_sound in E.
+        destruct R as [A om | Δ Φ Φx | Θ' ? T t Ht Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
         1-3: destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
+          cbn [dec_desc] in E;
           first [ eapply items_gen_def; [ exact E | apply IH; reflexivity ]
                 | eapply items_gen_mod; [ exact E | exact I | apply IH; reflexivity ] ].
-        unfold dm_gen in Hx; destruct (ds_ty _) as [A0 |] eqn:Et; [| discriminate ];
-          destruct (ds_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
+        unfold dm_gen in Hx; destruct (fds_ty _) as [A0 |] eqn:Et; [| discriminate ];
+          destruct (fds_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
         destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
-        eapply items_gen_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
+        eapply items_gen_dm; [ exact E | rewrite fds_ty_dec; exact Et | rewrite fds_mod_dec, Em; reflexivity | apply IH; reflexivity ].
       - destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
         injection Hx as <-; constructor; apply IH; reflexivity.
     Qed.
@@ -156,13 +175,19 @@ Section Gen.
     Proof.
       induction its as [| [[[n |] d] pv] its IH]; intros gs Hi; inversion Hi; subst; cbn.
       - reflexivity.
-      - rewrite (proj2 (denote_of_spec _ _ _ _) ltac:(eassumption)), (IH _ ltac:(eassumption)); reflexivity.
+      - match goal with Hm : mdenote _ _ _ _ _ |- _ =>
+          destruct (denote_of_complete _ _ (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & ER) end.
+        destruct R'; cbn in ER; try discriminate; injection ER as <- <-; rewrite (IH _ ltac:(eassumption)); reflexivity.
       - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
-          rewrite (proj2 (denote_of_spec _ _ _ _) Hm), (IH _ ltac:(eassumption));
-          destruct R; cbn in Hk; try contradiction; reflexivity end.
+          destruct (denote_of_complete _ _ (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
+          rewrite (IH _ ltac:(eassumption));
+          destruct R'; cbn in Hk; try contradiction; reflexivity end.
       - match goal with Hm : mdenote _ _ _ _ ?R, Ht : ds_ty ?R = Some _, Hd : ds_mod ?R = Some _ |- _ =>
-          rewrite (proj2 (denote_of_spec _ _ _ _) Hm); destruct R; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
-          cbn [ds_is_modb]; unfold dm_gen; rewrite Ht, Hd, (IH _ ltac:(eassumption)); reflexivity end.
+          destruct (denote_of_complete _ _ (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
+          rewrite fds_ty_dec in Ht; rewrite fds_mod_dec in Hd;
+          destruct R'; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
+          cbn [fds_is_modb]; unfold dm_gen; rewrite Ht;
+          destruct (fds_mod _); [| discriminate ]; rewrite (IH _ ltac:(eassumption)); reflexivity end.
       - rewrite (IH _ ltac:(eassumption)); reflexivity.
     Qed.
 
@@ -176,18 +201,19 @@ Section Gen.
     Proof.
       intros; unfold import_gen.
       destruct (denote_of Γ H _) as [R |] eqn:E; cbn [option_map].
-      - apply denote_of_spec in E.
-        destruct (ds_mod R) as [Rm |] eqn:Em.
+      - apply denote_of_sound in E.
+        destruct (fds_mod R) as [Rm |] eqn:Em.
         + destruct (xmap item_gen its) as [gs' | e] eqn:Er; cbn.
           * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
             destruct (name_dup (map iitem_name its)) eqn:En; [ split; [ discriminate | intros [_ _ _ _ _ [_ Hn]]; congruence ] |].
-            split; [ intros [= <-]; eapply mk_open_gens; [ exact E | exact Em | apply xmap_item_gen_spec; exact Er | split; assumption ] |].
+            split; [ intros [= <-]; eapply mk_open_gens;
+                     [ exact E | rewrite fds_mod_dec, Em; reflexivity | apply xmap_item_gen_spec; exact Er | split; assumption ] |].
             intros [_ _ _ _ Hi _]; apply xmap_item_gen_spec in Hi; congruence.
           * split; [ discriminate |]; intros [_ _ _ _ Hi _]; apply xmap_item_gen_spec in Hi; congruence.
         + split; [ discriminate |]; intros [R' Rm' HR HRm _ _].
-          rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E) in HRm; congruence.
+          rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E), fds_mod_dec, Em in HRm; discriminate.
       - split; [ discriminate |]; intros [R' Rm' HR _ _ _].
-        rewrite (proj2 (denote_of_spec _ _ _ _) HR) in E; discriminate.
+        destruct (denote_of_complete _ _ (dn_order_of_wf _ _ Hg _ _ _ HH) _ HR) as (R'' & E' & _); congruence.
     Qed.
   End Target.
 End Gen.
@@ -240,7 +266,10 @@ Fixpoint body_skel (Φ : gmod) : skel :=
 Definition frame_skel (Ξ : gstack) : skel := map (fun _ => None) (gs_tele Ξ).
 
 Section OpenError.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  (** The fast context the opens are generated in *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
   (** The checker of module expressions: what an open generates is computed
       only for a target it accepts. *)
@@ -373,7 +402,7 @@ Section OpenError.
         let+ H' := oe_modexp (body_skel Φ' ++ S) H in
         match mchk (skel_ctx (body_skel Φ' ++ S)) H' with
         | Some HH =>
-            let+ gs := import_gen Θ Ξ Hg (skel_ctx (body_skel Φ' ++ S)) H' H' HH its in
+            let+ gs := import_gen F Hg (skel_ctx (body_skel Φ' ++ S)) H' H' HH its in
             xok (gens_append Φ' 0 gs)
         | None => xfail (xe_target H')
         end

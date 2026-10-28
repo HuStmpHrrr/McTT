@@ -37,6 +37,9 @@ module E = McttExtracted.ElabSpec
 module El = McttExtracted.Elaborator
 module Pr = McttExtracted.Privacy0
 module Ep = McttExtracted.Entrypoint
+module FG = McttExtracted.FastGlobal
+module Lk = McttExtracted.Lookup
+module LT = McttExtracted.LookupTwins
 
 (* ------------------------------------------------------------------ *)
 (* Tokens and comments *)
@@ -773,7 +776,7 @@ type lib = {
   root : string;
   units : unit_info list;                       (* by [compare_unit_path] *)
   failed : (string list * string) list;         (* files that do not line up *)
-  thetas : (string list, S.gdeps) Hashtbl.t;    (* each checked unit's global context *)
+  thetas : (string list, McttExtracted.FastContext.coq_FCtx) Hashtbl.t;  (* each checked unit's global context, as the checker's fast context *)
   outputs : (string list, string list) Hashtbl.t;  (* each checked unit's evals, as [mctt] prints them *)
   nats : (string list, S.qname) Hashtbl.t;      (* the type each checked unit has bound as [ℕ] *)
   items : (string list * string list, link) Hashtbl.t;
@@ -816,7 +819,7 @@ let record_value th (h : S.modexp) : (S.qname * S.exp list) option =
   | _, [] -> None
   | b, args ->
       match path_qname b [] with
-      | Some p when McttExtracted.Members.record_lookup th [] p <> None -> Some (p, args)
+      | Some p when Lk.fc_record th p <> None -> Some (p, args)
       | _ -> None
 
 (* The selections through record values of filed terms, in the order the
@@ -884,6 +887,23 @@ and rc_gentry th = function
   | S.Coq_ge_record (_, _, d, _) -> rc_record th 0 d
   | S.Coq_ge_ind (_, _, _, d, _) -> rc_ind th 0 d
 
+(* The same on the units and entries a checked unit files, fast: a body's
+   entries oldest first, as [rc_gmod] visits a Core body. *)
+and rc_funit th (u : FG.funit) =
+  match u with
+  | FG.Coq_fu_mk (d, FG.Coq_fmd_body t) -> rc_ctx th d @ rc_ftrie th t
+  | FG.Coq_fu_core gu -> rc_unit th gu
+
+and rc_ftrie th (t : FG.ftrie) =
+  List.concat_map (fun x -> match FG.ft_find t x with Some e -> rc_fentry th e | None -> []) (List.rev (match t with FG.Coq_ft_mk (_, xs) -> xs))
+
+and rc_fentry th = function
+  | FG.Coq_fe_def (_, _, a, om) -> rc_exp th a @ rc_opt th om
+  | FG.Coq_fe_mod (_, u) -> rc_funit th u
+  | FG.Coq_fe_def_mod (_, a, m, u) -> rc_exp th a @ rc_exp th m @ rc_funit th u
+  | FG.Coq_fe_record (_, _, d, _) -> rc_record th 0 d
+  | FG.Coq_fe_ind (_, _, _, d, _) -> rc_ind th 0 d
+
 (* A context without its [k] outermost entries, the last ones. *)
 and outer_drop k (d : S.centry list) = List.filteri (fun i _ -> i < List.length d - k) d
 
@@ -907,25 +927,17 @@ and rc_ind th k (d : (S.exp, S.centry) S.ind_decl_g) =
           List.concat_map (function S.Coq_ca_arg a -> rc_exp th a | S.Coq_ca_rec r -> pt r) args) m.S.im_cons)
       d.S.ind_members)
 
-(* The entry [x] of a body, the last if several. *)
-let rec gmod_entry (g : S.gmod) (x : string) : S.gentry option =
-  match g with
-  | S.Coq_gm_nil -> None
-  | S.Coq_gm_ext (g', y, e) -> if y = x then Some e else gmod_entry g' x
-  | S.Coq_gm_open (g', _, _) -> gmod_entry g' x
+(* The entry [x] of the frame at the member chain [ch] of a unit, as filed,
+   fast: one lookup per component ([ft_entry]). *)
+let entry_at (gu : FG.funit) (ch : string list) (x : string) : FG.fentry option =
+  FG.ft_entry (FG.fu_body gu) (ch @ [ x ])
 
-let unit_body (S.Coq_gu_mk (_, md)) = match md with S.Coq_md_body (_, g) -> Some g | S.Coq_md_alias _ -> None
-
-(* The entry [x] of the frame at the member chain [ch] of a unit. *)
-let entry_at (gu : S.gunit) (ch : string list) (x : string) : S.gentry option =
-  let sub = function
-    | S.Coq_ge_mod (_, u) | S.Coq_ge_def_mod (_, _, _, u) -> unit_body u
-    | S.Coq_ge_record (_, _, _, g) | S.Coq_ge_ind (_, _, _, _, g) -> Some g
-    | S.Coq_ge_def _ -> None in
-  let rec go g = function
-    | [] -> gmod_entry g x
-    | y :: ch' -> Option.bind (Option.bind (gmod_entry g y) sub) (fun g' -> go g' ch') in
-  Option.bind (unit_body gu) (fun g -> go g ch)
+(* A unit's parameters, and the module it aliases, if it is an alias. *)
+let funit_alias (u : FG.funit) : S.centry list * S.modexp option =
+  match u with
+  | FG.Coq_fu_mk (d, _) -> (d, None)
+  | FG.Coq_fu_core (S.Coq_gu_mk (d, S.Coq_md_alias h)) -> (d, Some h)
+  | FG.Coq_fu_core (S.Coq_gu_mk (d, S.Coq_md_body _)) -> (d, None)
 
 (* A definition's body without the binders of its [n] parameters, whose
    types the walk visits once, in the definition's type. *)
@@ -942,26 +954,27 @@ let rec skip_pis n (e : S.exp) = match n, e with
   | _, _ -> e
 
 (* The selections through record values of what a command declares. *)
-let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list) (l : cmd_loc) =
+let record_cands th (gu : FG.funit) (log : McttExtracted.Command1.eval_entry list) (l : cmd_loc) =
   let def k n = function
-    | Some (S.Coq_ge_def (_, _, a, om)) -> rc_exp th (skip_pis k a) @ rc_opt th (Option.map (strip_fns (k + n)) om)
-    | Some (S.Coq_ge_def_mod (_, a, m, u)) ->
-        rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m) @ rc_unit th u
+    | Some (FG.Coq_fe_def (_, _, a, om)) -> rc_exp th (skip_pis k a) @ rc_opt th (Option.map (strip_fns (k + n)) om)
+    | Some (FG.Coq_fe_def_mod (_, a, m, u)) ->
+        rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m) @ rc_funit th u
     | _ -> [] in
   match l with
   | L_def (ch, x, k, n) -> def k n (entry_at gu ch x)
   | L_mod (ch, x) ->
       (match entry_at gu ch x with
-       | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (d, md))) ->
-           rc_ctx th d @ (match md with S.Coq_md_alias h -> rc_mod th h | S.Coq_md_body _ -> [])
+       | Some (FG.Coq_fe_mod (_, u)) ->
+           let d, oh = funit_alias u in
+           rc_ctx th d @ (match oh with Some h -> rc_mod th h | None -> [])
        | _ -> [])
   | L_record (ch, x, k) ->
-      (match entry_at gu ch x with Some (S.Coq_ge_record (_, _, d, _)) -> rc_record th k d | _ -> [])
+      (match entry_at gu ch x with Some (FG.Coq_fe_record (_, _, d, _)) -> rc_record th k d | _ -> [])
   | L_ind (ch, x, k) ->
-      (match entry_at gu ch x with Some (S.Coq_ge_ind (_, _, _, d, _)) -> rc_ind th k d | _ -> [])
+      (match entry_at gu ch x with Some (FG.Coq_fe_ind (_, _, _, d, _)) -> rc_ind th k d | _ -> [])
   | L_alias (ch, x, k, n) ->
       (match entry_at gu ch x with
-       | Some (S.Coq_ge_def_mod (_, a, m, _)) -> rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m)
+       | Some (FG.Coq_fe_def_mod (_, a, m, _)) -> rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m)
        | _ -> [])
   (* An [as] alias is filed as an alias of the module opened, a [use]d
      member as the member of it, each over the frames' parameters. *)
@@ -970,8 +983,8 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
   | L_open (ch, k, ds) ->
       List.concat_map (fun d ->
           match entry_at gu ch d with
-          | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (_, S.Coq_md_alias h))) -> rc_mod th h
-          | Some (S.Coq_ge_def (_, _, _, Some m)) -> rc_exp th (strip_fns k m)
+          | Some (FG.Coq_fe_mod (_, u)) -> (match funit_alias u with (_, Some h) -> rc_mod th h | _ -> [])
+          | Some (FG.Coq_fe_def (_, _, _, Some m)) -> rc_exp th (strip_fns k m)
           | _ -> []) ds
   (* Each function is filed as [λ Δ ys z. a_elim … Bks z] at the type
      [Π Δ ys z. A], with the blocks [Bks] of all the functions: the common
@@ -980,7 +993,7 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
      clauses off the block of the first function's eliminator whose
      branches are of its clauses' constructors. *)
   | L_mdef (ch, k, n, gs) ->
-      let ty g = match entry_at gu ch g with Some (S.Coq_ge_def (_, _, a, _)) -> Some a | _ -> None in
+      let ty g = match entry_at gu ch g with Some (FG.Coq_fe_def (_, _, a, _)) -> Some a | _ -> None in
       let rec doms k e = match k, e with
         | 0, _ -> ([], e)
         | _, S.Coq_a_pi (a, b) -> let ds, r = doms (k - 1) b in (a :: ds, r)
@@ -989,7 +1002,7 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
        | [] -> []
        | (g1, k1, _) :: _ ->
            let bks = match entry_at gu ch g1 with
-             | Some (S.Coq_ge_def (_, _, _, Some m)) ->
+             | Some (FG.Coq_fe_def (_, _, _, Some m)) ->
                  (match strip_fns (k + n + k1) m with S.Coq_a_elim (_, _, _, bks, _) -> bks | _ -> [])
              | _ -> [] in
            (match ty g1 with
@@ -1005,7 +1018,7 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
        | Some e -> rc_exp th e.McttExtracted.Command1.eval_entry_exp
                    @ (if annotated then rc_exp th e.McttExtracted.Command1.eval_entry_typ else [])
        | None -> [])
-  | L_params -> let (S.Coq_gu_mk (d, _)) = gu in rc_ctx th d
+  | L_params -> rc_ctx th (FG.fu_params gu)
   | L_none -> []
 
 (* The links of the selections through record values of a checked unit,
@@ -1017,7 +1030,7 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
    agree on: every selection of the core between them of its name is of
    that record.  Otherwise the selection does not link, and the unit has a
    note saying why. *)
-let record_selections (u : unit_info) th (gu : S.gunit) log : unit =
+let record_selections (u : unit_info) th (gu : FG.funit) log : unit =
   List.iter (fun cr ->
       if cr.cr_sels <> [] then begin
         let cs = Array.of_list (record_cands th gu log cr.cr_loc) in
@@ -1064,12 +1077,20 @@ let record_selections (u : unit_info) th (gu : S.gunit) log : unit =
    those of every point of the unit at which [ℕ] occurs: a run only gains
    bindings and never rebinds one, and a unit using [ℕ] where nothing is
    bound is rejected. *)
+(* The checker's fast context at the end of the run of the unit [path]:
+   every unit filed, the unit [gu] itself included, all seen, and no frame
+   open. *)
+let unit_fctx (path : string list) (bt : S.qname option) (s : FG.funits) (gu : FG.funit) : McttExtracted.FastContext.coq_FCtx =
+  let s0 = FG.fus_file path gu s in
+  let s' = FG.fus_see s0.FG.fus_order (FG.fus_with_vis s0 FG.PM.empty) in
+  Lk.fctx_at (McttExtracted.FastState.cmd_view s' s'.FG.fus_order) [] bt
+
 let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs nats =
   List.iter (fun u ->
       let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
       match r, PrettyPrinter.eval_outputs r with
-      | Ep.AllGood (_, bt, th, gu, log), Some out ->
-          let th = (u.u_path, gu) :: th in
+      | Ep.AllGood (_, bt, s, gu, log), Some out ->
+          let th = unit_fctx u.u_path bt s gu in
           Hashtbl.replace thetas u.u_path th;
           record_selections u th gu log;
           Hashtbl.replace outputs u.u_path out;
@@ -1092,11 +1113,11 @@ let rec_view_anchors (us : unit_info list) thetas =
               | [] -> ()
               | m0 :: _ ->
                   let p = { S.q_unit = u.u_path; S.q_chain = r.r_group @ [ m0 ] } in
-                  match McttExtracted.Members.ind_lookup th [] p with
+                  match Lk.fc_ind th p with
                   | None -> ()
                   | Some d ->
                       let views = List.filteri (fun i _ -> i >= List.length r.r_members)
-                          (McttExtracted.Command0.grec_names th [] d) in
+                          (LT.grec_names_f th d) in
                       let o = u.u_occ.(r.r_name) in
                       o.extra <- o.extra @ List.map (fun x -> (anchor_of (r.r_chain @ [ "Rec" ]) x, Def)) views)
             u.u_recs) us

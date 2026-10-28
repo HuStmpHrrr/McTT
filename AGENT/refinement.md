@@ -6,8 +6,7 @@ its original proofs.  Every refined function has the same specification
 (dependent type) as its reference, so `main_sound`, `main_complete` and
 `prog_impl_*` hold for the extracted code with unchanged statements and
 proofs; `Reference/Refinement.v` states the input–output equalities at
-the default lookup data (`fctx_none`), and `Extraction/Refines.v` at any
-`FCtx` (see below).
+every fast context `F` (see below).
 
 | Extracted | Reference | Refinement |
 | --- | --- | --- |
@@ -101,62 +100,101 @@ determinism of fast readback the equality.  The checker's environment
 `tenv G` is `fenv`: a fast environment related to the initial environment of
 `G` entry by entry.
 
-## What a command looks up once (`Extraction/Lookup.v`)
+## What the extracted code looks up in (`Extraction/FastContext.v`, `Lookup.v`)
 
-The implementations take an instance of a class, the data a command
-computes once for all the checks it runs:
+The extracted code runs on fast data only.  Neither a Core global context
+`Θ ⍮ Ξ` nor any `gdeps` or `gstack` is built or read at run time:
 
-```coq
-Class FCtx (Θ : gdeps) (Ξ : gstack) : Set := mk_fctx
-  { fc_seed : lk_cache Θ Ξ
-  ; fc_units : path -> option gunit
-  ; fc_units_ok : forall fp, fc_units fp = gds_lookup Θ fp }.
-```
+- the filed units are one map from the whole path of a unit to the unit,
+  with the filing order (`funits`, `Extraction/FastGlobal.v`);
+- next to it, in `funits`, the units the unit being run sees: a second map
+  of the same kind (`fus_vis`), whose invariant `vis_rep s D` says it holds
+  exactly the filed units at the imported paths `D`.  It grows by one add
+  per path that becomes imported (`fus_see`, at a load); while an imported
+  unit runs it is set aside and that run starts from an empty one
+  (`fus_with_vis`, `unit_pre_f`); it is never rebuilt per command.  What a
+  command sees (`fview`: the units and the list `D`) is built in O(1)
+  (`cmd_view`), and a unit lookup is one search in `fus_vis` (`fv_find`);
+- a unit's body, and the body of every open frame, is a trie: a balanced
+  map from a member's name to its entry, with the order index of the names
+  (`ftrie`, `fentry`, `funit`; `fframe`, `fstack`).
 
-- `fc_seed`: a declaration the evaluator and readback start from, as if
-  they had looked it up already (`lk_cache Θ Ξ` is
-  `option {x : qname * ind_decl | ind_lookup Θ Ξ (fst x) = Some (snd x)}`).
-- `fc_units`: the filed units by path, equal to `gds_lookup Θ`.
-
-Every lookup of a global name is defined in `Core/Syntactic/Members.v` at a
-function `uf : path -> option gunit` (`gc_resolve_u`, `gc_module_u`,
-`ind_lookup_u`, `gc_entry_u`), and
-the core's lookup is that function at `gds_lookup Θ`, e.g.
-`gc_resolve Θ Ξ p := gc_resolve_u (gds_lookup Θ) Ξ p`.  At any `uf` that
-agrees with `gds_lookup Θ` the lookups agree (`gc_resolve_u_ok` and the
-like).  The implementations call them at `fc_units F` (`gc_entry_f`,
-`ind_lookup_f`, …, each returning `{ o | gc_entry Θ Ξ p = o }`), so their
-specifications name only the core's lookups.
-
-Two instances:
-
-- `fctx_none Θ Ξ`: no seed, `gds_lookup Θ`.  It is the default instance
-  (priority 100), so the reference checker and the statements of
-  `Reference/Refinement.v` get it without naming it.  The extracted
-  command checker uses it only on its error paths (the blame searches).
-- `fctx_at Θ Ξ op`: the trie of `Θ` and, as seed, the declaration at `op`
-  looked up through it.  A command builds `fctx_cmd B Θ Ξ := fctx_at Θ Ξ
-  (builtins_nat B)` (`Extraction/Command.v`) for each check it runs: the
-  eliminator of the type bound as the natural numbers then looks nothing
-  up.
-
-**The trie of the filed units.**  `ptrie` is a trie keyed by the components
-of a path:
+The searches are written directly over the trees, one comparison per node
+(`sfind` for member names, `pfind` for paths), with `_ok` lemmas equating
+them with `SRaw.find` / `PM.find`.  Both unit maps are keyed by the reversed
+path (`path_key`, through `pk_find` / `pk_add`).  Names and paths are compared
+by `String.compare`, which the directive of `Entrypoint.v` extracts to the
+native comparison; `String.eqb` and `string_dec` extract to OCaml's generic
+`(=)`, so hot equalities (`names_eqb`, `qname_eqb`, `qname_dec`) go through
+`String.compare` too.
 
 ```coq
-Inductive ptrie : Set := pnode : option gunit -> pkids -> ptrie
-with pkids : Set :=
-| pkids_nil : pkids
-| pkids_cons : string -> ptrie -> pkids -> pkids.
+Record FCtx : Type := mk_fctx
+  { fc_view : fview                 (* the units the unit being run sees *)
+  ; fc_frames : fstack              (* the open frames *)
+  ; fc_ok : fctx_ok fc_view fc_frames   (* a Prop: they translate a canonical Core context *)
+  ; fc_seed_found : lk_cache (view_deps fc_view) (dec_stack fc_frames) }.
 ```
 
-`pt_find t fp` compares one component per level with the components
-present at that level (strings are compared for equality only, which is
-native once extracted), instead of comparing `fp` with every filed path.
-`pt_of Θ` adds the entries of `Θ` oldest first, so that the newest entry of
-a path decides, as in `gds_lookup`; `pt_of_find : pt_find (pt_of Θ) fp =
-gds_lookup Θ fp`.  Members inside a unit are still scanned: the profile of
-`lib/Binary.mctt` puts them under 2%.
+The Core context a fast context stands for, `fc_gctx F` (`fc_deps F`,
+`fc_stack F`), is the decoding of its data (`dec_units`, `dec_stack`,
+`view_deps`).  It is in types and proofs only: the decoding sits behind the
+sealed module of `Extraction/Decoding.v` (`FcDecoding`, `fc_gctx_eq`
+implemented by a proof), in a file of its own so that extraction does not
+need it.  Every lookup has a fast twin with the lemma that, on a
+translation, it finds the translation of what the Core lookup of the
+decoding finds (`fc_entry_ok`, `fc_ind_ok`, `gc_entry_f`, …), and every Core
+function of the checker that reads the global context has a twin over `F`
+(`Extraction/LookupTwins.v`, `FastState.v`, with `_ok` or `_dec` lemmas).
+Core is unchanged.
+
+**The run's state** (`Extraction/Command.v`).  The interpreter keeps the
+state fast (`cstate`: the filed units, the closures, the paths imported,
+the builtin bindings, the frames; `ustate` for a unit's result); the
+invariants and the `post_*` are about its Core reading (`cs_read`,
+`us_read`).  A step takes `pre ch s K D fs`: the invariant of the reading,
+`units_rep s (dec_units s)`, `vis_rep s D` and `fs = fs_of (dec_stack fs)`.
+Its checks run at `fctx_cmd B s D fs Hok`, the fast context of the command,
+where `Hok : fctx_ok (cmd_view s D) fs` comes from `pre_fctx_ok`: the
+reading is canonical because the invariant makes it well formed
+(`canon_of_wf`).  A result carries `fast_res P r`: `P (cs_read r)` with the
+same three refinements.  How the refinement is kept:
+
+- the units seen: a step that keeps `D` keeps them (`state_res`,
+  `same_res`); a load that hits a filed unit sees it and its closure
+  (`see_res`); a fresh load files the unit and sees it and its closure on
+  top of the units seen before, which stay valid because the run only adds
+  units (`load_units`, `load_vis`, from `ext_sub` of the unit's post);
+
+- a frame opened is empty (`push_frames`, `pre_cons`);
+- an entry added is the translation of a canonical Core entry
+  (`add_res`, `dec_stack_add`);
+- a frame closed is the translation of its own reading (`frame_body_tr`,
+  `close_res`, `mod_res`, `record_res`);
+- a unit filed is the translation of a canonical unit (`load_res`,
+  `dec_units_file`, `units_rep_file`); a unit's run returns its unit fast,
+  `usf_unit r = tr_unit (dec_unit (usf_unit r))` (`ures`, `unit_res`).
+
+The main theorems read the fast results in Core: `prog_impl_sound`,
+`prog_impl_complete`, `main_sound`, `main_complete` at `dec_units s` and
+`dec_unit u`; `prog_impl_rep` and `main_rep` state that `s` and `u` are the
+translations of their readings.
+
+**The scan.**  No decoding and no Core global context may reach the
+extracted OCaml.  After `make -f CoqMakefile.mk post-all`:
+
+```sh
+cd driver/extracted
+grep -nw 'dec_units\|dec_stack\|view_deps\|gds_restrict\|dec_mod\|dec_entry\|dec_unit\|dec_frame\|gds_lookup\|gdeps\|gstack\|fc_gctx\|FcDecoding\|coq_GCtx\|gc_deps\|gc_stack' *.ml *.mli
+```
+
+must print nothing: not even the types `gdeps`, `gstack` or `GCtx` are
+extracted any more.  A hit is a computational use of the Core context: a Core
+function with a `Θ` or `Ξ` argument that is not `Prop` (an implicit
+`{Θ Ξ}` is extracted, and OCaml evaluates it even when the function ignores
+it), or a `{GC : GCtx}` instance.  The fix is a twin over `F`, or the
+indices taken from `F` (`{F : FCtx}`, as `blame_error` and
+`level_blame_app` do).
 
 ## Fast paths of the evaluator and readback (`Extraction/Evaluation.v`, `Readback.v`)
 
@@ -218,19 +256,35 @@ of `Ψ`, rather than computing the environment of `Ψ ++ G` from scratch
 (`tenv_of`).  The contexts of `lib/` are small at eliminators, so the
 timings do not move beyond noise; the work no longer grows with `G`.
 
-## The equalities at any lookup data (`Extraction/Refines.v`)
+## The equalities at every fast context (`Reference/Refinement.v`)
 
-`Reference/Refinement.v` states the input–output equalities at
-`fctx_none`, which instance resolution picks there.  `Extraction/Refines.v`
-states the same equalities, with the same proofs, in a section with
-`{GC : GCtx} {F : FCtx gc_deps gc_stack}`, so at any `FCtx`, in particular
-the one a command builds (`fctx_at`): `type_check_in_refines_f`,
-`type_infer_in_refines_f`, `ext_check_refines_f`, `unit_check_refines_f`,
-`modexp_check_refines_f` (the checkers decide the same judgments and infer
-the same types), `nbe_ty_env_impl_refines_f`, `nbe_ty_impl_refines_f`,
-`nbe_impl_refines_f`, `read_typ_impl_refines_f`, `read_nf_impl_refines_f`
-(the same normal forms), `eval_exp_impl_refines_f`,
-`initial_env_impl_refines_f` (related values).
+The extracted code takes a fast context `F : FCtx` (`Extraction/Lookup.v`)
+and no Core global context: the Core context `fc_gctx F` it stands for
+(`fc_deps F`, `fc_stack F`) is the decoding of the fast data, in types and
+proofs only.  So the refinement theorems are stated over `F`:
+`type_check_in_refines`, `type_infer_in_refines`, `ext_check_refines`,
+`unit_check_refines`, `modexp_check_refines` (the checkers decide the same
+judgments and infer the same types; `Reference/TypeCheck.v` runs on `F` too,
+as it shares the eliminator, record and normalization code of `Extraction`),
+`nbe_ty_env_impl_refines`, `nbe_ty_impl_refines`, `nbe_impl_refines`,
+`read_typ_impl_refines`, `read_nf_impl_refines` (the same normal forms),
+`eval_exp_impl_refines`, `initial_env_impl_refines` (related values).  The
+reference evaluation, readback and normalization stay on Core `Θ ⍮ Ξ`;
+the seven theorems about them also have `_at` corollaries, whose
+reference side is at any `Θ ⍮ Ξ` and whose extracted side is at its
+translation `fctx_of Θ Ξ HcΘ HcΞ`.  Their only premise is canonicity
+(`canon_deps Θ`, `canon_stack Ξ`: closed bodies without opens, fresh
+names), which every well-formed context has (`canon_of_wf`).  It cannot be
+dropped: a non-canonical context has no fast context to run the extracted
+code on.  It is weaker than `⊢ᵍ Θ ⍮ Ξ`, which the corollaries therefore do
+not take.  The checker theorems need no corollary: their arguments
+(`⊢ G`, `G ⊢ A : Typeω@i`) give `⊢ᵍ` already.
+
+The decoding `fc_gctx` sits behind a sealed module (`FcDecoding`, with
+`fc_gctx_eq` implemented by a proof), so that no tactic reduces it into
+the decoding functions: `firstorder` does so through any transparent
+definition whatever its `Opaque` status, and took two minutes per
+obligation of `Extraction/TypeCheck.v` before the sealing.
 
 ## Timings
 

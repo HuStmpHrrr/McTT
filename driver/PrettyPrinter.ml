@@ -413,18 +413,33 @@ let current_bt : McttExtracted.Builtin.builtins ref = ref McttExtracted.Builtin.
    stands for, the type as [ℕ], and a constructor by its own name. *)
 let nat_bind : (qname * string * string) option ref = ref None
 
-let set_nat_bind (deps : gdeps) (xi : gstack) : unit =
+module FG = McttExtracted.FastGlobal
+module Lk = McttExtracted.Lookup
+module LT = McttExtracted.LookupTwins
+
+(* Nothing seen: no unit, no frame. *)
+let empty_view : FG.fview = McttExtracted.FastState.cmd_view FG.funits_empty []
+
+(* The state the printed terms live in, where it is known: that of the eval
+   printed, as the checker keeps it, fast: the units it sees and the open
+   frames.  [current_fc] is the checker's fast context at that state, which
+   every lookup of the printer goes through ([Extraction.Lookup]). *)
+let current_state : (FG.fview * FG.fstack) ref = ref (empty_view, [])
+let current_fc : McttExtracted.FastContext.coq_FCtx ref = ref (Lk.fctx_at empty_view [] None)
+
+(* The state set: the units seen [v] and the frames [fs]. *)
+let set_state (v : FG.fview) (fs : FG.fstack) : unit =
+  current_state := (v, fs);
+  current_fc := Lk.fctx_at v fs !current_bt
+
+let set_nat_bind () : unit =
   nat_bind :=
-    (match McttExtracted.Builtin.nat_view deps xi !current_bt with
+    (match LT.nat_view_f !current_fc !current_bt with
      | Some ((p, z), s) -> Some (p, z, s)
      | None -> None)
 
 let is_bound_nat (p : qname) : bool =
   match !nat_bind with Some (q, _, _) -> p = q | None -> false
-
-(* The state the printed terms live in, where it is known: that of the eval
-   printed. *)
-let current_state : (gdeps * gstack) ref = ref ([], [])
 
 (* The program of a failed run, whose module declarations name the
    parameters of the frames of [current_state] declared in it. *)
@@ -457,7 +472,8 @@ let generated_name (y : string) : bool =
 let frame_param_names () : string option list =
   let _, xi = !current_state in
   List.concat_map
-    (fun (((q : qname), _), Coq_gu_mk (delta, _)) ->
+    (fun (fr : FG.fframe) ->
+      let q = fr.FG.ff_path and delta = fr.FG.ff_params in
       let n = List.length delta in
       let ps = match !current_prog with
         | Some (_, ((path, top), cs)) when q.q_unit = path ->
@@ -482,10 +498,11 @@ let frame_member (nloc : int) ((fp, ms) : string list * string list) (args : exp
   let _, xi = !current_state in
   let rec find inner = function
     | [] -> None
-    | (((q : qname), _), u) :: xi' ->
+    | (fr : FG.fframe) :: xi' ->
+       let q = fr.FG.ff_path in
        if q.q_unit = fp && q.q_chain = ms then
-         Some (inner, List.length (McttExtracted.Syntax.gs_tele xi))
-       else find (inner + List.length (McttExtracted.Syntax.gu_params u)) xi'
+         Some (inner, List.length (FG.fs_tele xi))
+       else find (inner + List.length fr.FG.ff_params) xi'
   in
   match find 0 xi with
   | None -> None
@@ -516,9 +533,8 @@ let path_of_term : exp -> qname option =
    definition with a module part whose term is a path naming it. *)
 let rec names_bound_nat (q : qname) : bool =
   is_bound_nat q ||
-  (let deps, xi = !current_state in
-   match McttExtracted.Members.gc_entry deps xi q with
-   | Some (Coq_ge_def_mod (_, _, m, _)) ->
+  (match Lk.gc_entry_f !current_fc q with
+   | Some (FG.Coq_fe_def_mod (_, _, m, _)) ->
       (match path_of_term m with Some p -> p <> q && names_bound_nat p | None -> false)
    | _ -> false)
 
@@ -537,8 +553,7 @@ let con_of : exp -> (qname * string) option =
        (match chain h with
         | None -> None
         | Some (fp, ms) ->
-           let deps, xi = !current_state in
-           (match McttExtracted.Members.gc_resolve deps xi { q_unit = fp; q_chain = ms @ [ c ] } with
+           (match Lk.gc_resolve_f !current_fc { q_unit = fp; q_chain = ms @ [ c ] } with
             (* A definition naming a constructor, as an [open] declares one,
                not one whose body is a value. *)
             | Some (Coq_ge_def (_, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
@@ -566,38 +581,20 @@ let rec nat_of_chain : exp -> int option = function
    they are known: those of the state of the eval or the error printed. *)
 let ind_decls : (exp, centry) ind_decl_g list ref = ref []
 
-(* Every declaration of an inductive type in a body, the bodies of its
-   modules included. *)
-let rec gmod_decls : gmod -> (exp, centry) ind_decl_g list = function
-  | Coq_gm_nil -> []
-  | Coq_gm_open (phi, _, _) -> gmod_decls phi
-  | Coq_gm_ext (phi, _, e) ->
-     let here =
-       match e with
-       | Coq_ge_ind (_, _, _, d, phi') -> d :: gmod_decls phi'
-       | Coq_ge_mod (_, Coq_gu_mk (_, Coq_md_body (_, phi'))) -> gmod_decls phi'
-       | _ -> []
-     in
-     here @ gmod_decls phi
-
-let unit_decls (Coq_gu_mk (_, md) : gunit) =
-  match md with Coq_md_body (_, phi) -> gmod_decls phi | Coq_md_alias _ -> []
-
-let set_ind_decls (deps : gdeps) (xi : gstack) : unit =
-  ind_decls := List.concat_map (fun (_, u) -> unit_decls u) deps @ List.concat_map (fun (_, u) -> unit_decls u) xi
+(* Every declaration of an inductive type the state sees, in its units and
+   its frames, their modules included ([fc_all_inds]). *)
+let set_ind_decls () : unit = ind_decls := LT.fc_all_inds !current_fc
 
 (* The member [m] of the group at [p], where the state printed has it. *)
 let group_member (p : qname) (m : int) : (exp, centry) imember_g option =
-  let deps, xi = !current_state in
-  match McttExtracted.Members.ind_lookup deps xi p with
+  match Lk.fc_ind !current_fc p with
   | Some d -> McttExtracted.Syntax.ind_member d m
   | None -> None
 
 (* The path of the module of the declared member [k] of the group at [p]:
    the group's own for its first member. *)
 let member_path (p : qname) (k : int) : qname =
-  let deps, xi = !current_state in
-  match McttExtracted.Members.ind_lookup deps xi p with
+  match Lk.fc_ind !current_fc p with
   | Some d -> (match McttExtracted.Members.ind_mpath d k with Some pm -> pm | None -> p)
   | None -> p
 
@@ -608,8 +605,7 @@ let member_path (p : qname) (k : int) : qname =
 let unview (e : exp) : exp option =
   match McttExtracted.Group.app_head e with
   | (Coq_a_ind (p, j) | Coq_a_con (p, j, _)) as h ->
-     let deps, xi = !current_state in
-     (match McttExtracted.Members.ind_lookup deps xi p with
+     (match Lk.fc_ind !current_fc p with
       | Some d ->
          (match McttExtracted.Syntax.ind_member d j with
           | Some mj ->
@@ -640,8 +636,7 @@ let record_value_of (h : modexp) : exp option =
   | head, (_ :: _ as args) ->
      (match chain head with
       | Some (fp, ms) ->
-         let deps, xi = !current_state in
-         (match McttExtracted.Members.record_lookup deps xi { q_unit = fp; q_chain = ms } with
+         (match Lk.fc_record !current_fc { q_unit = fp; q_chain = ms } with
           | Some r when List.length args = List.length r.record_params + 1 -> Some (List.nth args (List.length args - 1))
           | _ -> None)
       | None -> None)
@@ -675,8 +670,7 @@ let block_members (oq : qname option) (bks : exp eblock_g list) (j : int)
        | Some (Coq_eb_mk (_, _, _, bs)) -> List.map (fun ((c, _), _) -> c) bs
        | None -> [] in
      let fits (mk : (exp, centry) imember_g) = List.map fst mk.im_cons = names in
-     let deps, xi = !current_state in
-     (match McttExtracted.Members.ind_lookup deps xi p with
+     (match Lk.fc_ind !current_fc p with
       | None -> []
       | Some d ->
          (match McttExtracted.Syntax.ind_member d j with
@@ -1029,7 +1023,7 @@ let rec declared_cmds (cs : Cst.cmd list) (ch : string list) : Cst.cmd list opti
 let def_param_names (x : string) : string list =
   let _, xi = !current_state in
   let cmds = match xi, !current_prog with
-    | (((q : qname), _), _) :: _, Some (_, ((path, _), cs)) when q.q_unit = path -> declared_cmds cs q.q_chain
+    | (fr : FG.fframe) :: _, Some (_, ((path, _), cs)) when fr.FG.ff_path.q_unit = path -> declared_cmds cs fr.FG.ff_path.q_chain
     | _ -> None in
   let rec common ty body =
     match ty, body with
@@ -1072,7 +1066,7 @@ let rec find_ind_decl (cs : Cst.cmd list) (x : string) =
 let ind_arg_names (x : string) (c : string) (y : string) : string option list =
   let _, xi = !current_state in
   let cmds = match xi, !current_prog with
-    | (((q : qname), _), _) :: _, Some (_, ((path, _), cs)) when q.q_unit = path -> declared_cmds cs q.q_chain
+    | (fr : FG.fframe) :: _, Some (_, ((path, _), cs)) when fr.FG.ff_path.q_unit = path -> declared_cmds cs fr.FG.ff_path.q_chain
     | _ -> None in
   let rec pi_names t = match t with Cst.Coq_pi (z, _, t') -> z :: pi_names t' | _ -> [] in
   let rec before = function [] -> [] | (z, _) :: rest -> if z = y then [] else z :: before rest in
@@ -1098,9 +1092,9 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (************************************************************)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
-  set_ind_decls r.eval_entry_deps r.eval_entry_stack;
-  set_nat_bind r.eval_entry_deps r.eval_entry_stack;
-  current_state := (r.eval_entry_deps, r.eval_entry_stack);
+  set_state r.eval_entry_view r.eval_entry_frames;
+  set_ind_decls ();
+  set_nat_bind ();
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.eval_entry_exp
     format_nf r.eval_entry_nf format_exp r.eval_entry_typ
 
@@ -1218,8 +1212,7 @@ let member_label (delta : centry list) (p : qname) (us : exp list) (k : int) (mk
    arguments and its induction hypotheses, the bodies left out. *)
 let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j, scr) : unit =
   let open Format in
-  let deps, xi = !current_state in
-  let od = McttExtracted.Members.ind_lookup deps xi p in
+  let od = Lk.fc_ind !current_fc p in
   let ms = match od with
     | Some d -> McttExtracted.Inductives.ind_bmembers d
     | None -> [] in
@@ -1255,10 +1248,10 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
   match e with
   (* The natural numbers bound where the error occurred: the innermost
      state's. *)
-  | Coq_run_error_nat (deps, xi, nv, e') ->
+  | Coq_run_error_nat (v, xi, nv, e') ->
      nat_bind := Option.map (fun ((p, z), s) -> (p, z, s)) nv;
-     current_state := (deps, xi);
-     set_ind_decls deps xi;
+     set_state v xi;
+     set_ind_decls ();
      format_run_error f e'
   | _ ->
   (* The stack of the failing command, where the error has it; the units
@@ -1270,8 +1263,8 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
    | Coq_run_error_elim_no_group (xi, _, _) | Coq_run_error_elim_ambiguous (xi, _, _, _)
    | Coq_run_error_access_no_type (xi, _, _, _, _) | Coq_run_error_access_not_record (xi, _, _, _, _, _)
    | Coq_run_error_record_field (xi, _, _, _, _, _, _) ->
-      set_ind_decls (fst !current_state) xi;
-      current_state := (fst !current_state, xi)
+      set_state (fst !current_state) xi;
+      set_ind_decls ()
    | _ -> ());
   format_run_error_in f e
 
@@ -1389,8 +1382,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
   | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
-     let deps, xi = !current_state in
-     let ms = match McttExtracted.Members.ind_lookup deps xi p with
+     let ms = match Lk.fc_ind !current_fc p with
        | Some d -> McttExtracted.Inductives.ind_bmembers d
        | None -> [] in
      let labels = List.mapi (fun k mk -> member_label delta p us k mk) ms in
@@ -1499,7 +1491,7 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
   | RunFailure (((_, ((path, _), _)) as prg), e) ->
      current_unit := path;
      current_prog := Some prg;
-     current_state := ([], []);
+     set_state empty_view [];
      nat_bind := None;
      format_run_error f e
   | ElaborationFailure (_, msg) -> fprintf f "@[<hov 2>Error: %s@]" msg

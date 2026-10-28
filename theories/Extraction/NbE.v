@@ -175,28 +175,29 @@ Ltac fnbe_obl :=
     end.
 
 Section InitialEnvImpl.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations initial_env_impl G (H : initial_env_order Θ Ξ G) : fenv Θ Ξ G by struct H :=
   | nil, H => exist _ nil _
   | cons (ce_ass A) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
+      let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
       exist _ (p ↦ ⇑! a (List.length G)) _
   | cons (ce_def A M) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
+      let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
       exist _ (p ↦ m) _
   | cons (ce_mod U) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (h, Hh) := Evaluation.feval_modexp_impl Θ Ξ (me_lit U) p _ in
+      let (h, Hh) := Evaluation.feval_modexp_impl F (me_lit U) p _ in
       exist _ (p ↦ᵐ h) _
   | cons (ce_dm A M U) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
-      let (h, Hh) := Evaluation.feval_modexp_impl Θ Ξ (me_lit U) p _ in
+      let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
+      let (h, Hh) := Evaluation.feval_modexp_impl F (me_lit U) p _ in
       exist _ (p ↦ᵈ m ‖ h) _.
   Next Obligation. (* nil *) exists nil; split; [ constructor | apply env_agree_nil ]. Qed.
   Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
@@ -271,15 +272,16 @@ Section InitialEnvImpl.
 End InitialEnvImpl.
 
 Section NbETyEnvDef.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations nbe_ty_env_impl G (P : fenv Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
     { w | nbe_ty Θ Ξ G A w } :=
   | G, exist _ p Hp, A, H =>
-      let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
-      let (w, Hw) := Readback.fread_typ_impl Θ Ξ (List.length G) a _ in
+      let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
+      let (w, Hw) := Readback.fread_typ_impl F (List.length G) a _ in
       exist _ w _.
   Next Obligation. (* the order of the type's fast evaluation *)
     fnbe_obl.
@@ -309,20 +311,22 @@ Section NbETyEnvDef.
 End NbETyEnvDef.
 
 (** From scratch, at the initial environment of the context. *)
-Definition nbe_ty_impl Θ Ξ {F : FCtx Θ Ξ} G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } :=
-  nbe_ty_env_impl Θ Ξ G (initial_env_impl Θ Ξ G (match H with nbe_ty_order_run _ _ _ _ HG _ _ => HG end)) A H.
+Definition nbe_ty_impl (F : FCtx) G A (H : nbe_ty_order (fc_deps F) (fc_stack F) G A) :
+    { w | nbe_ty (fc_deps F) (fc_stack F) G A w } :=
+  nbe_ty_env_impl F G (initial_env_impl F G (match H with nbe_ty_order_run _ _ _ _ HG _ _ => HG end)) A H.
 
 Section NbEDef.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations nbe_impl G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
-  | G, M, A, H with initial_env_impl Θ Ξ G _ => {
+  | G, M, A, H with initial_env_impl F G _ => {
     | exist _ p Hp =>
-        let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
-        let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
-        let (w, Hw) := Readback.fread_nf_impl Θ Ξ (List.length G) ⇓ a m _ in
+        let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
+        let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
+        let (w, Hw) := Readback.fread_nf_impl F (List.length G) ⇓ a m _ in
         exist _ w _ }.
   Next Obligation. (* initial_env_order G *) destruct H; assumption. Defined.
   Next Obligation. (* the order of the type's fast evaluation *)
@@ -368,17 +372,18 @@ End NbEDef.
 
 (** At an environment computed once for the context, as [nbe_ty_env_impl]. *)
 Section NbEEnvDef.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   (** The normal form of a term at a type, from an environment related to
       the context's initial one. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations nbe_env_impl G (P : fenv Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
   | G, exist _ p Hp, M, A, H =>
-      let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
-      let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
-      let (w, Hw) := Readback.fread_nf_impl Θ Ξ (List.length G) ⇓ a m _ in
+      let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
+      let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
+      let (w, Hw) := Readback.fread_nf_impl F (List.length G) ⇓ a m _ in
       exist _ w _.
   Next Obligation. (* the order of the type's fast evaluation *)
     fnbe_obl.

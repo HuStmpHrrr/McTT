@@ -180,25 +180,102 @@ Section Bridge.
 
 End Bridge.
 
-#[local]
-Hint Resolve alg_type_infer_large_typ_sound' alg_type_infer_univ_sound' alg_type_check_sound'
-  alg_type_check_complete' not_wf_typ_of_no_infer not_wf_typ_of_infer_not_typ : mctt.
+(** The same at the global context found by instance resolution, which is
+    how the checks below, at the Core context of a fast context
+    ([fc_gctx F]), read them. *)
+Section BridgeInstance.
+  Context {GC : GCtx}.
 
-(** ** Types and Terms at an Explicit Global Context *)
+  (** [alg_type_infer_univ_sound'] *)
+  Lemma alg_type_infer_univ_sound_gc : forall Γ UA u A,
+      Γ ⊢a A ⟹ UA -> is_univ_nf UA u -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@(unf_large u).
+  Proof.
+    intros * H Hu HΓ.
+    assert (gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : unf_tm u)
+      by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu); exact (alg_type_infer_sound H HΓ)).
+    exact (wf_exp_unf_large ltac:(eassumption)).
+  Qed.
+
+  (** [alg_type_check_complete'] *)
+  Lemma alg_type_check_complete_gc : forall Γ A M, gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : A -> Γ ⊢a M ⟸ A.
+  Proof. intros; eapply alg_type_check_complete; [ apply user_exp_all | eassumption ]. Qed.
+
+  (** [alg_type_infer_large_typ_complete'] *)
+  Lemma alg_type_infer_large_typ_complete_gc : forall Γ i A,
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i -> exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u.
+  Proof.
+    intros * H.
+    assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i)) as [UA [u [? []]]]
+      by (eapply alg_type_infer_large_typ_complete; [ apply user_exp_all | eassumption ]).
+    eauto.
+  Qed.
+
+  (** [not_wf_typ_of_no_infer] *)
+  Lemma not_wf_typ_of_no_infer_gc : forall Γ A,
+      (forall B : nf, ~ Γ ⊢a A ⟹ B) -> forall i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i.
+  Proof.
+    intros * Hno * H.
+    destruct (alg_type_infer_large_typ_complete_gc _ _ _ H) as [UA [u [HA _]]].
+    exact (Hno _ HA).
+  Qed.
+
+  (** [not_wf_typ_of_infer_not_typ] *)
+  Lemma not_wf_typ_of_infer_not_typ_gc : forall Γ A (B : nf),
+      Γ ⊢a A ⟹ B -> (forall u, ~ is_univ_nf B u) -> forall i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i.
+  Proof.
+    intros * HB Hne * H.
+    destruct (alg_type_infer_large_typ_complete_gc _ _ _ H) as [UA [u [HA Hu]]].
+    assert (B = UA)
+      by (eapply functional_alg_type_infer; [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx H)) | eassumption .. ]).
+    subst; exact (Hne _ Hu).
+  Qed.
+End BridgeInstance.
+
+(** A blamed level, in [Γ]: a context [Δ] extending [Γ], innermost entry
+    first, and a [t] of no type of levels in [Δ ++ Γ]. *)
+Definition level_blame Θ Ξ Γ : Set :=
+  { p : ctx * exp | forall n, ~ Θ ⍮ Ξ ⍮ (fst p ++ Γ) ⊢ snd p : Level@n }.
+
+(** Reassociating the context of a blamed level *)
+Lemma level_blame_app_ok : forall Θ Ξ Γ Δ Δ' t,
+    (forall n, ~ Θ ⍮ Ξ ⍮ (Δ' ++ (Δ ++ Γ)) ⊢ t : Level@n) ->
+    forall n, ~ Θ ⍮ Ξ ⍮ ((Δ' ++ Δ) ++ Γ) ⊢ t : Level@n.
+Proof. intros *; rewrite <- app_assoc; exact (fun H => H). Qed.
+
+(** A level blamed in an extension [Δ ++ Γ] is blamed in [Γ].  The global
+    context is that of a fast context [F], which is all the function is
+    passed of it. *)
+Definition level_blame_app {F : FCtx} {Γ} Δ (b : level_blame (fc_deps F) (fc_stack F) (Δ ++ Γ)) :
+    level_blame (fc_deps F) (fc_stack F) Γ :=
+  match b with
+  | exist _ (Δ', t) Ht => exist _ (Δ' ++ Δ, t) (level_blame_app_ok _ _ _ _ _ _ Ht)
+  end.
+
+(** The type of a well-typed term is a type. *)
+Lemma not_exp_of_not_typ : forall Θ Ξ Γ A M,
+    (forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
+Proof.
+  intros * HA HM; gen_presups; eapply HA; eassumption.
+Qed.
+
+(** ** Types and Terms at the Core Context of a Fast Context *)
 
 Section check_exp.
-  (** The data each check looks names up in, for its global context
-      ([Extraction.Lookup]). *)
-  Variable FF : forall Θ Ξ, FCtx Θ Ξ.
-
+  (** The fast context each check looks names up in ([Extraction.Lookup]);
+      the judgments decided are at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   (** "Is [A] a type?", decided as in the Π case of [type_check]: infer a type
       for [A], then require it to be a universe. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_typ Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
+  Equations check_typ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
     { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } :=
-  | Θ, Ξ, Γ, HΓ, A =>
-      let*o (exist _ UA _) := @type_infer (gc_mk Θ Ξ) (FF Θ Ξ) Γ _ A _ while _ in
+  | Γ, HΓ, A =>
+      let*o (exist _ UA _) := type_infer F Γ _ A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
       pureo (exist _ (unf_large u) _)
   .
@@ -208,17 +285,17 @@ Section check_exp.
     apply user_exp_to_type_infer_order, user_exp_all.
   Defined.
   Obligation 3. (* nothing is inferred for [A] *)
-    eapply not_wf_typ_of_no_infer; eassumption.
+    eapply not_wf_typ_of_no_infer_gc; eassumption.
   Qed.
   Obligation 4. (* what is inferred for [A] is not a universe *)
     match goal with
     | Ha : _ ⊢a _ ⟹ ?UA, Hn : forall u, ~ is_univ_nf ?UA u |- False =>
-        eapply not_wf_typ_of_infer_not_typ; [ exact Ha | exact Hn | eassumption ]
+        eapply not_wf_typ_of_infer_not_typ_gc; [ exact Ha | exact Hn | eassumption ]
     end.
   Qed.
   (** The inferred universe gives the typing at its own large level. *)
   Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(unf_large u) *)
-    eapply alg_type_infer_univ_sound'; eassumption.
+    eapply alg_type_infer_univ_sound_gc; eassumption.
   Qed.
 
   (** ** Blaming the Level of a Universe
@@ -232,36 +309,34 @@ Section check_exp.
   (** The two ways "is [t] a level?" can fail, as for [check_typ]: nothing
       is inferred for [t], or what is inferred is no type of levels.  Each
       contradicts completeness, through [alg_type_check_level_infer]. *)
-  Lemma not_level_of_no_infer : forall Θ Ξ Γ t,
+  Lemma not_level_of_no_infer : forall Γ t,
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      (forall B : nf, ~ @alg_type_infer (gc_mk Θ Ξ) Γ B t) ->
+      (forall B : nf, ~ Γ ⊢a t ⟹ B) ->
       forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n.
   Proof.
     intros * HΓ Hno n H.
-    destruct (alg_type_check_level_infer (GC := gc_mk Θ Ξ) HΓ (alg_type_check_complete' _ _ _ _ _ H))
-      as [m [Hm _]].
+    destruct (alg_type_check_level_infer HΓ (alg_type_check_complete_gc _ _ _ H)) as [m [Hm _]].
     exact (Hno _ Hm).
   Qed.
 
-  Lemma not_level_of_infer_not_level : forall Θ Ξ Γ t (B : nf),
+  Lemma not_level_of_infer_not_level : forall Γ t (B : nf),
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      @alg_type_infer (gc_mk Θ Ξ) Γ B t ->
+      Γ ⊢a t ⟹ B ->
       (forall k, B <> Levelⁿ@k) ->
       forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n.
   Proof.
     intros * HΓ HB Hne n H.
-    destruct (alg_type_check_level_infer (GC := gc_mk Θ Ξ) HΓ (alg_type_check_complete' _ _ _ _ _ H))
-      as [m [Hm _]].
-    exact (Hne m (functional_alg_type_infer (GC := gc_mk Θ Ξ) (ctx_wf_gctx _ _ _ HΓ) HB Hm)).
+    destruct (alg_type_check_level_infer HΓ (alg_type_check_complete_gc _ _ _ H)) as [m [Hm _]].
+    exact (Hne m (functional_alg_type_infer (ctx_wf_gctx _ _ _ HΓ) HB Hm)).
   Qed.
 
   (** "Is [t] a level?", decided as the premise of [alg_type_infer_suniv]: infer a type
       for [t], then require it to be a type of levels. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_level Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) t :
+  Equations check_level Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) t :
     { n | Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } + { forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } :=
-  | Θ, Ξ, Γ, HΓ, t =>
-      let*o (exist _ B _) := @type_infer (gc_mk Θ Ξ) (FF Θ Ξ) Γ _ t _ while _ in
+  | Γ, HΓ, t =>
+      let*o (exist _ B _) := type_infer F Γ _ t _ while _ in
       let*o (exist _ n _) := get_level_sort_nf B while _ in
       pureo (exist _ n _)
   .
@@ -280,45 +355,29 @@ Section check_exp.
   Qed.
   Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n *)
     subst; match goal with
-    | Ha : _ ⊢a _ ⟹ Levelⁿ@_ |- _ => exact (alg_type_infer_sound' _ _ _ _ _ Ha HΓ)
+    | Ha : _ ⊢a _ ⟹ Levelⁿ@_ |- _ => exact (alg_type_infer_sound Ha HΓ)
     end.
   Qed.
-
-  (** A blamed level, in [Γ]: a context [Δ] extending [Γ], innermost entry
-      first, and a [t] of no type of levels in [Δ ++ Γ]. *)
-  Definition level_blame Θ Ξ Γ : Set :=
-    { p : ctx * exp | forall n, ~ Θ ⍮ Ξ ⍮ (fst p ++ Γ) ⊢ snd p : Level@n }.
-
-  Lemma level_blame_app_ok : forall Θ Ξ Γ Δ Δ' t,
-      (forall n, ~ Θ ⍮ Ξ ⍮ (Δ' ++ (Δ ++ Γ)) ⊢ t : Level@n) ->
-      forall n, ~ Θ ⍮ Ξ ⍮ ((Δ' ++ Δ) ++ Γ) ⊢ t : Level@n.
-  Proof. intros *; rewrite <- app_assoc; exact (fun H => H). Qed.
-
-  (** A level blamed in an extension [Δ ++ Γ] is blamed in [Γ]. *)
-  Definition level_blame_app {Θ Ξ Γ} Δ (b : level_blame Θ Ξ (Δ ++ Γ)) : level_blame Θ Ξ Γ :=
-    match b with
-    | exist _ (Δ', t) Ht => exist _ (Δ' ++ Δ, t) (level_blame_app_ok _ _ _ _ _ _ Ht)
-    end.
 
   (** The search: a universe whose level fails [check_level], at the
       universe itself, or in either part of a [Π], the codomain once the
       domain is a type.  Elsewhere, and below a universe whose level is a
       level, it finds nothing. *)
-  Fixpoint find_level_blame Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) (A : exp) {struct A} : option (level_blame Θ Ξ Γ) :=
+  Fixpoint find_level_blame Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) (A : exp) {struct A} : option (level_blame Θ Ξ Γ) :=
     match A with
     | a_univ t =>
-        match check_level Θ Ξ Γ HΓ t with
+        match check_level Γ HΓ t with
         | inleft _ => None
         | inright Ht => Some (exist _ (nil, t) Ht)
         end
     | a_pi A' B =>
-        match find_level_blame Θ Ξ Γ HΓ A' with
+        match find_level_blame Γ HΓ A' with
         | Some b => Some b
         | None =>
-            match check_typ Θ Ξ Γ HΓ A' with
+            match check_typ Γ HΓ A' with
             | inleft (exist _ i HA) =>
                 option_map (level_blame_app (ce_ass A' :: nil))
-                  (find_level_blame Θ Ξ (Γ ▹ A') (wf_ctx_extend _ _ _ _ _ HA) B)
+                  (find_level_blame (Γ ▹ A') (wf_ctx_extend _ _ _ _ _ HA) B)
             | inright _ => None
             end
         end
@@ -329,80 +388,73 @@ Section check_exp.
       assumption that is no type, searched by [find_level_blame].  The
       result is the blame, if any, or that [Δ ++ Γ] is well formed.  A
       definition or a module slot is not searched. *)
-  Fixpoint find_tele_blame Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) (Δ : ctx) {struct Δ} :
+  Fixpoint find_tele_blame Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) (Δ : ctx) {struct Δ} :
       option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ ++ Γ) } :=
     match Δ as Δ0 return option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ0 ++ Γ) } with
     | nil => inright HΓ
     | ce_ass A :: Δ' =>
-        match find_tele_blame Θ Ξ Γ HΓ Δ' with
+        match find_tele_blame Γ HΓ Δ' with
         | inleft b => inleft b
         | inright HΔ' =>
-            match check_typ Θ Ξ (Δ' ++ Γ) HΔ' A with
+            match check_typ (Δ' ++ Γ) HΔ' A with
             | inleft (exist _ i HA) => inright (wf_ctx_extend _ _ _ _ _ HA)
-            | inright _ => inleft (option_map (level_blame_app Δ') (find_level_blame Θ Ξ (Δ' ++ Γ) HΔ' A))
+            | inright _ => inleft (option_map (level_blame_app Δ') (find_level_blame (Δ' ++ Γ) HΔ' A))
             end
         end
     | _ :: Δ' =>
-        match find_tele_blame Θ Ξ Γ HΓ Δ' with
+        match find_tele_blame Γ HΓ Δ' with
         | inleft b => inleft b
         | inright _ => inleft None
         end
     end.
 
-  (** The type of a well-typed term is a type. *)
-  Lemma not_exp_of_not_typ : forall Θ Ξ Γ A M,
-      (forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
-  Proof.
-    intros * HA HM; gen_presups; eapply HA; eassumption.
-  Qed.
-
   (** "Is [M] of type [A]?", for [A] known to be a type: [check_exp] once
       [check_typ] has succeeded, so that a caller can tell the two failures
       apart without inferring [A] twice. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_exp_typed Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) M :
+  Equations check_exp_typed Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) M :
     { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
-  | Θ, Ξ, Γ, HΓ, A, HA, M =>
-      let*b _ := @type_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ A HA M _ while _ in
+  | Γ, HΓ, A, HA, M =>
+      let*b _ := type_check F Γ A HA M _ while _ in
       pureb _
   .
   Obligation 1. (* type_check_order M *)
     apply type_check_order_ti, user_exp_to_type_infer_order, user_exp_all.
   Defined.
   Obligation 2. (* the algorithmic check fails *)
-    eapply H, alg_type_check_complete'; eassumption.
+    eapply H, alg_type_check_complete_gc; eassumption.
   Qed.
   Obligation 3. (* Θ ⍮ Ξ ⍮ Γ ⊢ M : A *)
-    eapply alg_type_check_sound'; eassumption.
+    eapply alg_type_check_sound; eassumption.
   Qed.
 
-  Definition check_exp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
+  Definition check_exp Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
       { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
-    match check_typ Θ Ξ Γ HΓ A with
-    | inleft (exist _ i HA) => check_exp_typed Θ Ξ Γ HΓ A (ex_intro _ i HA) M
+    match check_typ Γ HΓ A with
+    | inleft (exist _ i HA) => check_exp_typed Γ HΓ A (ex_intro _ i HA) M
     | inright HA => right (not_exp_of_not_typ _ _ _ _ _ HA)
     end.
 
   (** A unit and a module expression, through their algorithmic checks. *)
-  Definition check_unit Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :
+  Definition check_unit Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :
       { Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } :=
-    match @unit_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ HΓ U (unit_order_all U) with
-    | left H => left (alg_unit_sound' _ _ _ _ H HΓ)
-    | right H => right (fun H' => H (alg_unit_complete' _ _ _ _ H'))
+    match unit_check F Γ HΓ U (unit_order_all U) with
+    | left H => left (alg_unit_sound H HΓ)
+    | right H => right (fun H' => H (alg_unit_complete H'))
     end.
 
-  Definition check_ext Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) Ψ :
+  Definition check_ext Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) Ψ :
       { Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } :=
-    match @ext_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ HΓ Ψ (ext_order_all Ψ) with
-    | left H => left (alg_ext_sound' _ _ _ _ H HΓ)
-    | right H => right (fun H' => H (alg_ext_complete' _ _ _ _ H'))
+    match ext_check F Γ HΓ Ψ (ext_order_all Ψ) with
+    | left H => left (alg_ext_sound H HΓ)
+    | right H => right (fun H' => H (alg_ext_complete H'))
     end.
 
-  Definition check_modexp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) E :
+  Definition check_modexp Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) E :
       { Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } :=
-    match @modexp_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ HΓ E (modexp_order_all E) with
-    | left H => left (alg_modexp_sound' _ _ _ _ H HΓ)
-    | right H => right (fun H' => H (alg_modexp_complete' _ _ _ _ H'))
+    match modexp_check F Γ HΓ E (modexp_order_all E) with
+    | left H => left (alg_modexp_sound H HΓ)
+    | right H => right (fun H' => H (alg_modexp_complete H'))
     end.
 
 End check_exp.
@@ -416,31 +468,32 @@ End check_exp.
     of the last two. *)
 
 Section check_ctx.
-  (** The data each check looks names up in, for its global context
-      ([Extraction.Lookup]). *)
-  Variable FF : forall Θ Ξ, FCtx Θ Ξ.
-
+  (** The fast context each check looks names up in ([Extraction.Lookup]);
+      the judgments decided are at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_ctx Θ Ξ (HΞ : ⊢ᵍ Θ ⍮ Ξ) Γ :
+  Equations check_ctx (HΞ : ⊢ᵍ Θ ⍮ Ξ) Γ :
     { ⊢ Θ ⍮ Ξ ⍮ Γ } + { ~ ⊢ Θ ⍮ Ξ ⍮ Γ } :=
-  | Θ, Ξ, HΞ, ⋅ => pureb _
-  | Θ, Ξ, HΞ, Γ ▹ A =>
-      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*o->b (exist _ i _) := check_typ FF Θ Ξ Γ HΓ A while _ in
+  | HΞ, ⋅ => pureb _
+  | HΞ, Γ ▹ A =>
+      let*b HΓ := check_ctx HΞ Γ while _ in
+      let*o->b (exist _ i _) := check_typ F Γ HΓ A while _ in
       pureb _
-  | Θ, Ξ, HΞ, Γ ▸ A ≔ M =>
-      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*b _ := check_exp FF Θ Ξ Γ HΓ A M while _ in
+  | HΞ, Γ ▸ A ≔ M =>
+      let*b HΓ := check_ctx HΞ Γ while _ in
+      let*b _ := check_exp F Γ HΓ A M while _ in
       pureb _
-  | Θ, Ξ, HΞ, Γ ▹ₘ U =>
-      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*b _ := check_unit FF Θ Ξ Γ HΓ U while _ in
+  | HΞ, Γ ▹ₘ U =>
+      let*b HΓ := check_ctx HΞ Γ while _ in
+      let*b _ := check_unit F Γ HΓ U while _ in
       pureb _
-  | Θ, Ξ, HΞ, Γ ▸ₘ A ≔ M ‖ U =>
-      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*b _ := check_exp FF Θ Ξ Γ HΓ A M while _ in
-      let*b _ := check_unit FF Θ Ξ Γ HΓ U while _ in
+  | HΞ, Γ ▸ₘ A ≔ M ‖ U =>
+      let*b HΓ := check_ctx HΞ Γ while _ in
+      let*b _ := check_exp F Γ HΓ A M while _ in
+      let*b _ := check_unit F Γ HΓ U while _ in
       pureb _
   .
   (** The empty context is well formed by the global context's. *)

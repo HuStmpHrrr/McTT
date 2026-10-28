@@ -22,7 +22,11 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
     environment, the obligation tactics) are in [Extraction.TypeCheckBase]. *)
 
 Section Fixed_GCtx.
-Context {GC : GCtx}.
+(** The reference checker runs on a fast context, as the extracted one:
+    it shares the eliminator, record and normalization code of
+    [Extraction], which runs on one ([Reference.Refinement]). *)
+Variable F : FCtx.
+#[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
 
 Section type_check.
   #[local]
@@ -33,7 +37,7 @@ Section type_check.
   Equations type_check_in G A (HA : (exists i, G ⊢ A : Typeω@i)) (P : tenv G) M (H : type_check_order M) : { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } by struct H :=
   | G, A, HA, P, M, H =>
       let*o->b (exist _ B _) := type_infer_in G _ P M _ while _ in
-      let*b _ := subtyping_env_impl G P (B : nf) A _ while _ in
+      let*b _ := subtyping_env_impl F G P (B : nf) A _ while _ in
       pureb _
   with type_infer_in G (HG : ⊢ G) (P : tenv G) M (H : type_infer_order M) : { A : nf | G ⊢a M ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
   | G, HG, P, M, H with M => {
@@ -42,7 +46,7 @@ Section type_check.
     | Type⟨M'⟩ =>
         let*o (exist _ LM _) := type_infer_in G _ P M' _ while _ in
         let*o (exist _ k _) := get_level_sort_nf LM while _ in
-        let (W, _) := nbe_ty_env_impl gc_deps gc_stack G P Type⟨succl M'⟩ _ in
+        let (W, _) := nbe_ty_env_impl F G P Type⟨succl M'⟩ _ in
         pureo (exist _ W _)
     | Level@k =>
         pureo (exist _ Typeⁿ@0 _)
@@ -67,33 +71,33 @@ Section type_check.
     | efq M' return A' =>
         let*b->o _ := type_check_in G ⊥ _ P M' _ while _ in
         let HGF : ⊢ G ▹ ⊥ := _ in
-        let*o (exist _ UA' _) := type_infer_in (G ▹ ⊥) HGF (tenv_ass G P ⊥ HGF) A' _ while _ in
+        let*o (exist _ UA' _) := type_infer_in (G ▹ ⊥) HGF (tenv_ass F G P ⊥ HGF) A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
-        let (A'', _) := nbe_ty_env_impl gc_deps gc_stack G P A'[Id,,M'] _ in
+        let (A'', _) := nbe_ty_env_impl F G P A'[Id,,M'] _ in
         pureo (exist _ A'' _)
     | Π B C =>
         let*o (exist _ UB _) := type_infer_in G _ P B _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UB while _ in
         let HGB : ⊢ G ▹ B := _ in
-        let*o (exist _ UC _) := type_infer_in (G ▹ B) HGB (tenv_ass G P B HGB) C _ while _ in
-        let (UC', _) := nbe_ty_env_impl gc_deps gc_stack (G ▹ B) (tenv_ass G P B HGB) UC _ in
+        let*o (exist _ UC _) := type_infer_in (G ▹ B) HGB (tenv_ass F G P B HGB) C _ while _ in
+        let (UC', _) := nbe_ty_env_impl F (G ▹ B) (tenv_ass F G P B HGB) UC _ in
         let*o (exist _ v _) :=  univ_nf_idx_dec UC' while _ in
-        let (W, _) := nbe_ty_env_impl gc_deps gc_stack G P (unf_pi_tm u v) _ in
+        let (W, _) := nbe_ty_env_impl F G P (unf_pi_tm u v) _ in
         pureo (exist _ W _)
     (** The forms of inductive types ([Extraction.IndCheck]); the
         eliminator's recursive calls are passed on. *)
-    | a_ind r k => ind_infer G HG P r k
-    | a_con r k c => con_infer G HG P r k c
+    | a_ind r k => ind_infer F G HG P r k
+    | a_con r k c => con_infer F G HG P r k c
     (** The forms of record types ([Extraction.RecordCheck]). *)
-    | a_record r => record_infer G HG P r
+    | a_record r => record_infer F G HG P r
     | a_tuple T' fs =>
-        tuple_infer G HG P T' fs (type_infer_in G HG P T' ltac:(ob_ord_record))
+        tuple_infer F G HG P T' fs (type_infer_in G HG P T' ltac:(ob_ord_record))
           (fun fm Hfm A'' HA'' => type_check_in G A'' HA'' P (snd fm) ltac:(ob_ord_record))
-    | a_proj f M' => proj_infer G HG P f M' (type_infer_in G HG P M' ltac:(ob_ord_record))
+    | a_proj f M' => proj_infer F G HG P f M' (type_infer_in G HG P M' ltac:(ob_ord_record))
     | a_nlit n => inright (fun A HA => alg_nlit_no_infer G n A HA)
     | a_ntok => inright (fun A HA => alg_ntok_no_infer G A HA)
     | a_elim oq Us m Bks M' =>
-        elim_infer G HG P oq Us m Bks M'
+        elim_infer F G HG P oq Us m Bks M'
           (type_infer_in G HG P M' ltac:(ob_ord_elim))
           (fun U HU G' A'' HA'' P' => type_check_in G' A'' HA'' P' U ltac:(ob_ord_elim))
           (fun b Z Hb HZ G' HG' P' => type_infer_in G' HG' P' Z ltac:(ob_ord_elim))
@@ -103,47 +107,47 @@ Section type_check.
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
         let HGA : ⊢ G ▹ A' := _ in
-        let*o (exist _ B' _) := type_infer_in (G ▹ A') HGA (tenv_ass G P A' HGA) M' _ while _ in
-        let (A'', _) := nbe_ty_env_impl gc_deps gc_stack G P A' _ in
+        let*o (exist _ B' _) := type_infer_in (G ▹ A') HGA (tenv_ass F G P A' HGA) M' _ while _ in
+        let (A'', _) := nbe_ty_env_impl F G P A' _ in
         pureo (exist _ (Πⁿ A'' B') _)
     | M' $ N' =>
         let*o (exist _ C _) := type_infer_in G _ P M' _ while _ in
         let*o (existT _ A (exist _ B _)) := get_subterms_of_pi_nf C while _ in
         let*b->o _ := type_check_in G (A : nf) _ P N' _ while _ in
-        let (B', _) := nbe_ty_env_impl gc_deps gc_stack G P (B : nf)[Id,,N'] _ in
+        let (B', _) := nbe_ty_env_impl F G P (B : nf)[Id,,N'] _ in
         pureo (exist _ B' _)
     | ℓ A' ≔ M' in B' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
         let*b->o _ := type_check_in G A' _ P M' _ while _ in
         let HGD : ⊢ G ▸ A' ≔ M' := _ in
-        let*o (exist _ C _) := type_infer_in (G ▸ A' ≔ M') HGD (tenv_def G P A' M' HGD) B' _ while _ in
-        let (D, _) := nbe_ty_env_impl gc_deps gc_stack G P (C : nf)[Id,,M'] _ in
+        let*o (exist _ C _) := type_infer_in (G ▸ A' ≔ M') HGD (tenv_def F G P A' M' HGD) B' _ while _ in
+        let (D, _) := nbe_ty_env_impl F G P (C : nf)[Id,,M'] _ in
         pureo (exist _ D _)
     (** Without an annotation, the definiens's type is inferred. *)
     | ℓ ≔ M' in B' =>
         let*o (exist _ A _) := type_infer_in G _ P M' _ while _ in
         let HGD : ⊢ G ▸ (A : nf) ≔ M' := _ in
-        let*o (exist _ C _) := type_infer_in (G ▸ (A : nf) ≔ M') HGD (tenv_def G P (A : nf) M' HGD) B' _ while _ in
-        let (D, _) := nbe_ty_env_impl gc_deps gc_stack G P (C : nf)[Id,,M'] _ in
+        let*o (exist _ C _) := type_infer_in (G ▸ (A : nf) ≔ M') HGD (tenv_def F G P (A : nf) M' HGD) B' _ while _ in
+        let (D, _) := nbe_ty_env_impl F G P (C : nf)[Id,,M'] _ in
         pureo (exist _ D _)
     | ℓₘ U in B' =>
         let*b->o _ := unit_check G HG U _ while _ in
         let HGU : ⊢ G ▹ₘ U := _ in
-        let*o (exist _ C _) := type_infer_in (G ▹ₘ U) HGU (tenv_mod G P U HGU) B' _ while _ in
-        let (D, _) := nbe_ty_env_impl gc_deps gc_stack G P (C : nf)[Id ,,ₘ me_lit U] _ in
+        let*o (exist _ C _) := type_infer_in (G ▹ₘ U) HGU (tenv_mod F G P U HGU) B' _ while _ in
+        let (D, _) := nbe_ty_env_impl F G P (C : nf)[Id ,,ₘ me_lit U] _ in
         pureo (exist _ D _)
     (** A member infers the normal form of the type that the description of
         its module reads. *)
     | a_mem M' x =>
         let*b->o HM := modexp_check G HG M' _ while _ in
-        let*o (exist _ R _) := mem_denote_dec _ G M' x _ while _ in
+        let*o (exist _ R _) := mem_denote_dec F _ G M' x _ while _ in
         let*o (exist _ A _) := ds_ty_dec R while _ in
-        let (B, _) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
+        let (B, _) := nbe_ty_env_impl F G P A _ in
         pureo (exist _ B _)
     | #x =>
-        let*o (exist _ A _) := lookup G _ x while _ in
-        let (A', _) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
+        let*o (exist _ A _) := lookup F G _ x while _ in
+        let (A', _) := nbe_ty_env_impl F G P A _ in
         pureo (exist _ A' _)
     }
   with ext_check G (HG : ⊢ G) Ψ (H : ext_order Ψ) : { G ⊢aˣ Ψ } + { ~ G ⊢aˣ Ψ } by struct H :=
@@ -151,13 +155,13 @@ Section type_check.
   | G, HG, ce_ass A :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
       let HΨ : ⊢ Ψ ++ G := _ in
-      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ (tenv_of (Ψ ++ G) HΨ) A _ while _ in
+      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ (tenv_of F (Ψ ++ G) HΨ) A _ while _ in
       let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
       pureb _
   | G, HG, ce_def A M :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
       let HΨ : ⊢ Ψ ++ G := _ in
-      let PΨ := tenv_of (Ψ ++ G) HΨ in
+      let PΨ := tenv_of F (Ψ ++ G) HΨ in
       let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
       let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
       let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
@@ -170,7 +174,7 @@ Section type_check.
   | G, HG, ce_dm A M U :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
       let HΨ : ⊢ Ψ ++ G := _ in
-      let PΨ := tenv_of (Ψ ++ G) HΨ in
+      let PΨ := tenv_of F (Ψ ++ G) HΨ in
       let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
       let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
       let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
@@ -193,7 +197,7 @@ Section type_check.
       pureb _
   with modexp_check G (HG : ⊢ G) M (H : modexp_order M) : { G ⊢aᵐ M } + { ~ G ⊢aᵐ M } by struct H :=
   | G, HG, me_unit fp, H =>
-      let*o->b (exist _ R _) := path_denote_dec _ G fp while _ in
+      let*o->b (exist _ R _) := path_denote_dec F _ G fp while _ in
       let*o->b (exist _ T _) := ds_mtele_dec R while _ in
       pureb _
   | G, HG, me_var x, H with inspect (ctx_find_mod G x) := {
@@ -204,15 +208,15 @@ Section type_check.
       pureb _
   | G, HG, me_mem M y, H =>
       let*b HM := modexp_check G HG M _ while _ in
-      let*o->b (exist _ R _) := mem_denote_dec _ G M y _ while _ in
+      let*o->b (exist _ R _) := mem_denote_dec F _ G M y _ while _ in
       let*o->b (exist _ T _) := ds_mtele_dec R while _ in
       pureb _
   | G, HG, me_app M N, H =>
       let*b HM := modexp_check G HG M _ while _ in
-      let*o->b (exist _ R _) := mdenote_dec _ G M _ while _ in
+      let*o->b (exist _ R _) := mdenote_dec F _ G M _ while _ in
       let*o->b (exist _ T _) := ds_mtele_dec R while _ in
       let*o->b (existT _ B (exist _ T1 _)) := tele_view_dec T while _ in
-      let*b _ := type_check_in G B _ (tenv_of G HG) N _ while _ in
+      let*b _ := type_check_in G B _ (tenv_of F G HG) N _ while _ in
       pureb _
   (** A body, entry by entry, as the entries its opens generate: each in the
       context of the expanded body before it. *)
@@ -222,9 +226,9 @@ Section type_check.
   | G, HG, gm_ext Φ x (ge_def b pv A (Some M)), H =>
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
       let HGx : ⊢ body_ctx Φx ++ G := _ in
-      let*o (exist _ UA _) := type_infer_in (body_ctx Φx ++ G) HGx (tenv_of _ HGx) A _ while _ in
+      let*o (exist _ UA _) := type_infer_in (body_ctx Φx ++ G) HGx (tenv_of F _ HGx) A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
-      let*b->o _ := type_check_in (body_ctx Φx ++ G) A _ (tenv_of _ HGx) M _ while _ in
+      let*b->o _ := type_check_in (body_ctx Φx ++ G) A _ (tenv_of F _ HGx) M _ while _ in
       pureo (exist _ (gm_ext Φx x (ge_def b pv A (Some M))) _)
   | G, HG, gm_ext Φ x (ge_mod pm U), H =>
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
@@ -235,18 +239,18 @@ Section type_check.
   | G, HG, gm_ext Φ x (ge_def_mod pv A M U), H =>
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
       let HGx : ⊢ body_ctx Φx ++ G := _ in
-      let*o (exist _ UA _) := type_infer_in (body_ctx Φx ++ G) HGx (tenv_of _ HGx) A _ while _ in
+      let*o (exist _ UA _) := type_infer_in (body_ctx Φx ++ G) HGx (tenv_of F _ HGx) A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
-      let*b->o _ := type_check_in (body_ctx Φx ++ G) A _ (tenv_of _ HGx) M _ while _ in
+      let*b->o _ := type_check_in (body_ctx Φx ++ G) A _ (tenv_of F _ HGx) M _ while _ in
       let*b->o _ := unit_check (body_ctx Φx ++ G) HGx U _ while _ in
       pureo (exist _ (gm_ext Φx x (ge_def_mod pv A M U)) _)
   | G, HG, gm_ext Φ x E, H => inright _
   | G, HG, gm_open Φ M its, H =>
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
       let*b->o HM := modexp_check (body_ctx Φx ++ G) _ M _ while _ in
-      let*o (exist _ R _) := mdenote_dec _ (body_ctx Φx ++ G) M _ while _ in
+      let*o (exist _ R _) := mdenote_dec F _ (body_ctx Φx ++ G) M _ while _ in
       let*o (exist _ Rm _) := ds_mod_dec R while _ in
-      let*o (exist _ gs _) := items_gen_dec _ (body_ctx Φx ++ G) M its _ while _ in
+      let*o (exist _ gs _) := items_gen_dec F _ (body_ctx Φx ++ G) M its _ while _ in
       let*b->o _ := items_ok_dec its while _ in
       pureo (exist _ (gens_append Φx 0 gs) _)
   .

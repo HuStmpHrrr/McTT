@@ -35,7 +35,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Builtin.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths DescTyping Presup.
-From Mctt.Extraction Require Import MemberType.
+From Mctt.Extraction Require Import Lookup FastDesc MemberType.
 Import Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -1095,20 +1095,26 @@ Section Order.
   Corollary dn_order_all : forall Γ H, dn_order Θ Ξ Γ H.
   Proof. intros; apply (proj1 (order_bounded (S (modexp_size (ctx_sizes Γ) H)))); lia. Qed.
 
-  (** So [mdenote] is decided on every module expression, typed or not. *)
-  Definition mdenote_dec (Γ : ctx) (H : modexp) :
-      { R | mdenote Θ Ξ Γ H R } + { forall R, ~ mdenote Θ Ξ Γ H R } :=
-    mdenote_impl Θ Ξ Hg Γ H (dn_order_all Γ H).
-
   (** Every body, in every context, has the termination order of
       [body_xp_impl]. *)
   Corollary bx_order_all : forall Γ Φ, bx_order Θ Ξ Γ Φ.
   Proof.
     intros; apply (proj1 (proj2 (proj2 (proj2 (order_bounded (S (fst (body_size (ctx_sizes Γ) Φ)))))))); lia.
   Qed.
+End Order.
+
+(** The decisions, through a fast context *)
+Section OrderFast.
+  Variable F : FCtx.
+  Hypothesis Hg : ⊢ᵍ fc_deps F ⍮ fc_stack F.
+
+  (** So [mdenote] is decided on every module expression, typed or not. *)
+  Definition mdenote_dec (Γ : ctx) (H : modexp) :
+      { R : fmdesc | mdenote (fc_deps F) (fc_stack F) Γ H (dec_desc R) } + { forall R, ~ mdenote (fc_deps F) (fc_stack F) Γ H R } :=
+    mdenote_impl F Hg Γ H (dn_order_all _ _ Hg Γ H).
 
   (** So a body's expansion is decided on every body, typed or not. *)
   Definition body_xp_dec (Γ : ctx) (Φ : gmod) :
-      { Φx | body_xp Θ Ξ Γ Φ Φx } + { forall Φx, ~ body_xp Θ Ξ Γ Φ Φx } :=
-    body_xp_impl Θ Ξ Hg Γ Φ (bx_order_all Γ Φ).
-End Order.
+      { Φx | body_xp (fc_deps F) (fc_stack F) Γ Φ Φx } + { forall Φx, ~ body_xp (fc_deps F) (fc_stack F) Γ Φ Φx } :=
+    body_xp_impl F Hg Γ Φ (bx_order_all _ _ Hg Γ Φ).
+End OrderFast.

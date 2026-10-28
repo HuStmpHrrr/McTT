@@ -19,7 +19,8 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
     pass them on. *)
 
 Section Fixed_GCtx.
-Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
+Variable F : FCtx.
+#[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
 
 (** Whether a normal form is a record type at parameters. *)
 #[derive(equations=no,eliminator=no)]
@@ -55,8 +56,8 @@ Qed.
 Definition record_infer G (HG : ⊢ G) (P : tenv G) p :
   { A : nf | infer_post G (a_record p) A } + { forall A, ~ G ⊢a a_record p ⟹ A }.
 Proof.
-  destruct (record_lookup gc_deps gc_stack p) as [R |] eqn:Hl; [| right; intros A H; inversion H; congruence ].
-  refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P (record_ty R) (record_ty_order G p R HG Hl) in
+  destruct (record_lookup_f F p) as [[R |] Hl]; [| right; intros A H; inversion H; congruence ].
+  refine (let (W, HW) := nbe_ty_env_impl F G P (record_ty R) (record_ty_order G p R HG Hl) in
           inleft (exist _ W (record_ty_post G p R W HG Hl HW))).
 Defined.
 
@@ -95,7 +96,7 @@ Proof.
     [| right; intros W H; inversion H; subst;
        match goal with H' : G ⊢a M ⟹ _ |- _ => pose proof (functional_alg_type_infer Hg HM H') as E end;
        exact (Hne _ _ E) ].
-  destruct (record_lookup gc_deps gc_stack p) as [R |] eqn:Hl;
+  destruct (record_lookup_f F p) as [[R |] Hl];
     [| right; intros W H; inversion H; subst;
        match goal with H' : G ⊢a M ⟹ _ |- _ => pose proof (functional_alg_type_infer Hg HM H') as E end;
        injection E as <- <-; congruence ].
@@ -111,7 +112,7 @@ Proof.
     [| right; intros W H; inversion H; subst;
        match goal with H' : G ⊢a M ⟹ _ |- _ => pose proof (functional_alg_type_infer Hg HM H') as E end;
        injection E as <- <-; unify_lookups; congruence ].
-  refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)]
+  refine (let (W, HW) := nbe_ty_env_impl F G P U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)]
                            (proj_order G M p Rs R f k U HG HM Hl Hfk) in
           inleft (exist _ W (proj_post G M p Rs R f k U W HG HM Hl Hfi Hfk HW))).
 Defined.
@@ -201,11 +202,11 @@ Proof.
   assert (HTs : G ⊢ T : UT) by exact (alg_type_infer_sound HTi HG).
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HTs.
   pose proof (wf_exp_unf_large HTs) as HTl.
-  destruct (nbe_ty_env_impl gc_deps gc_stack G P T (nbe_order_of_typ _ _ _ HTl)) as [W HW].
+  destruct (nbe_ty_env_impl F G P T (nbe_order_of_typ _ _ _ HTl)) as [W HW].
   destruct (get_record_nf W) as [(p & Rs & ->) | Hne];
     [| right; intros A H; inversion H; subst;
        match goal with Hn' : nbe_ty _ _ G T _ |- _ => exact (Hne _ _ (functional_nbe_ty _ _ _ _ HW Hn')) end ].
-  destruct (record_lookup gc_deps gc_stack p) as [R |] eqn:Hl;
+  destruct (record_lookup_f F p) as [[R |] Hl];
     [| right; intros A H; inversion H; subst;
        match goal with Hn' : nbe_ty _ _ G T _ |- _ => pose proof (functional_nbe_ty _ _ _ _ HW Hn') as E end;
        injection E as <- <-; congruence ].

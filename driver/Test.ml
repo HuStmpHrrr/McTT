@@ -3504,9 +3504,9 @@ let%expect_test "mctt-doc: a selection the members of two records could be does 
   write_file (Filename.concat dir "U.mctt") filed;
   (match McttExtracted.Entrypoint.main (Main.load_path_in [ dir ]) Main.read_unit Main.parser_log_fuel
            (Doc.buf_of (Doc.lex filed) 0) with
-   | McttExtracted.Entrypoint.AllGood (_, _, th, gu, log) ->
+   | McttExtracted.Entrypoint.AllGood (_, bt, s, gu, log) ->
        let u = Doc.walk [ "U" ] walked (Hashtbl.create 1) in
-       Doc.record_selections u (([ "U" ], gu) :: th) gu log;
+       Doc.record_selections u (Doc.unit_fctx [ "U" ] bt s gu) gu log;
        List.iter print_endline u.Doc.u_notes;
        Array.iteri (fun i o -> match u.Doc.u_toks.(u.Doc.u_vars.(i)).Doc.t with
            | McttExtracted.Parser.VAR ((p, _), "a") when o.Doc.anchor = None ->

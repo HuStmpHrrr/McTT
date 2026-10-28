@@ -62,18 +62,22 @@ Defined.
 (** ** The Declaration *)
 
 Section RecordDecide.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  (** The fast context the decisions look names up in; the judgments are
+      at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
 
   (** "Is [U] a universe in [Γ]?": a large universe in a well-formed
       context, or a small one at a level. *)
   Definition is_univ_dec (Γ : ctx) (U : typ) : {Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U}.
   Proof.
-    destruct (check_ctx fctx_none Θ Ξ HΞ Γ) as [HΓ | HnΓ]; [| right; intros H; exact (HnΓ (presup_is_univ_ctx H)) ].
+    destruct (check_ctx F HΞ Γ) as [HΓ | HnΓ]; [| right; intros H; exact (HnΓ (presup_is_univ_ctx H)) ].
     destruct U as [i | L | | | | | | | | | | | | | | | | | | | | | |];
       try solve [ right; intros H; inversion H ].
     - left; constructor; exact HΓ.
-    - destruct (check_level fctx_none Θ Ξ Γ HΓ L) as [[n Hn] | Hn];
+    - destruct (check_level F Γ HΓ L) as [[n Hn] | Hn];
         [ left; econstructor; exact Hn | right; intros H; inversion H; subst; eapply Hn; eassumption ].
   Defined.
 
@@ -87,7 +91,7 @@ Section RecordDecide.
   Proof.
     destruct (forall_nth_search
                 (fun k (fT : (string * typ)%type) => Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ snd fT : (record_sort R)[wk_shiftn k]ʷ)
-                (fun k fT => check_exp_at Θ Ξ HΞ (record_fctx R k ++ record_params R) ((record_sort R)[wk_shiftn k]ʷ) (snd fT))
+                (fun k fT => check_exp_at F HΞ (record_fctx R k ++ record_params R) ((record_sort R)[wk_shiftn k]ʷ) (snd fT))
                 (record_fields R)) as [H | H].
     - left; intros k f T Hk; exact (H _ _ Hk).
     - right; exact H.

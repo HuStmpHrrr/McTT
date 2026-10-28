@@ -9,7 +9,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Extraction Require Import FastEval Simulation NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Extraction Require Import FastEval Simulation NbE PseudoMonadic Subtyping FastDesc MemberType.
 From Mctt.Extraction Require Import Evaluation.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
@@ -22,39 +22,7 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
     here, outside any section, rather than locally to one checker. *)
 
 Section Fixed_GCtx.
-Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
-
-Section lookup.
-  #[local]
-  Ltac impl_obl_tac1 :=
-    match goal with
-    | |- ~ _ => intro
-    | H: ⊢ _ :: _ |- _ => inversion_clear H
-    | H: ⋅ ∋ #_ : _ |- _ => inversion_clear H
-    | H: _ :: _ ∋ #(S _) : _ |- _ => inversion_clear H
-    | H: ce_mod _ :: _ ∋ #0 : _ |- _ => inversion H
-    end.
-
-  #[local]
-  Ltac impl_obl_tac :=
-    intros;
-    repeat impl_obl_tac1;
-    intuition (mauto 4).
-
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations lookup G (HG : ⊢ G) x : { A | G ∋ #x : A } + { forall A, ~ G ∋ #x : A } :=
-  | cons e G, HG, x with x => {
-    | 0 with e => {
-      | ce_ass A => pureo (exist _ A[↑]ʷ _)
-      | ce_def A M => pureo (exist _ A[↑]ʷ _)
-      | ce_mod _ => inright _
-      | ce_dm A M U => pureo (exist _ A[↑]ʷ _) }
-    | S x' =>
-        let*o (exist _ B _) := lookup G _ x' while _ in
-        pureo (exist _ B[↑]ʷ _)
-    }
-  | ⋅, HG, x => inright _.
-End lookup.
+Context {GC : GCtx}.
 
 Section type_check.
   (** Whether a normal form is a universe, and at which index: the side
@@ -132,55 +100,31 @@ Section type_check.
       destruct (list_eq_dec iitem_eq_dec its its') as [H2 | H2]; [ left; auto | right; intuition ].
   Defined.
 
-  (** ** Deciding What Module Expressions Denote
-
-      What a module expression denotes is computed by [mdenote_impl], at
-      the order a well-formed module expression, or a selection from one,
-      has ([dn_order_of_wf], [dn_order_mem_of_wf]); a path has one
-      outright.  The checker reads off the description what the rules ask
-      for: a member's type ([ds_ty]), a module's telescope ([ds_mtele]) and
-      module part ([ds_mod]). *)
-
-  Definition mdenote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-      { R | mdenote gc_deps gc_stack Γ H R } + { forall R, ~ mdenote gc_deps gc_stack Γ H R } :=
-    mdenote_impl gc_deps gc_stack Hg Γ H (dn_order_of_wf _ _ Hg _ _ _ HH).
-
-  Definition mem_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H y (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-      { R | mdenote gc_deps gc_stack Γ (me_mem H y) R } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_mem H y) R } :=
-    mdenote_impl gc_deps gc_stack Hg Γ (me_mem H y) (dn_order_mem_of_wf _ _ Hg _ _ _ y HH).
-
-  Definition path_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ fp :
-      { R | mdenote gc_deps gc_stack Γ (me_unit fp) R } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_unit fp) R } :=
-    mdenote_impl gc_deps gc_stack Hg Γ (me_unit fp) (dn_order_path _ _ Γ fp).
-
-  (** What a local open of a module generates. *)
-  Definition items_gen_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H its (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-      { gs | items_gen gc_deps gc_stack Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack Γ H its gs } :=
-    items_gen_impl gc_deps gc_stack Hg Γ H its (ig_order_of_wf _ _ Hg _ _ _ its HH).
-
-  Equations ds_ty_dec (R : mdesc) : { A | ds_ty R = Some A } + { ds_ty R = None } :=
-  ds_ty_dec R with inspect (ds_ty R) := {
-    | exist _ (Some A) E => inleft (exist _ A E)
-    | exist _ None E => inright E }.
-
-  Equations ds_mtele_dec (R : mdesc) : { T | ds_mtele R = Some T } + { ds_mtele R = None } :=
-  ds_mtele_dec R with inspect (ds_mtele R) := {
-    | exist _ (Some T) E => inleft (exist _ T E)
-    | exist _ None E => inright E }.
-
-  Equations ds_mod_dec (R : mdesc) : { Rm | ds_mod R = Some Rm } + { ds_mod R = None } :=
-  ds_mod_dec R with inspect (ds_mod R) := {
-    | exist _ (Some Rm) E => inleft (exist _ Rm E)
-    | exist _ None E => inright E }.
-
   (** The outermost parameter of an arity, if any. *)
   Equations tele_view_dec (T : ctx) : { B : typ & { T1 : ctx | tele_view T = Some (B, T1) } } + { tele_view T = None } :=
   tele_view_dec T with inspect (tele_view T) := {
     | exist _ (Some (B, T1)) E => inleft (existT _ B (exist _ T1 E))
     | exist _ None E => inright E }.
 
-  Extraction Inline mdenote_dec mem_denote_dec path_denote_dec items_gen_dec ds_ty_dec ds_mtele_dec ds_mod_dec
-    tele_view_dec.
+  (** What a description gives the rules: a member's type ([ds_ty]), a
+      module's telescope ([ds_mtele]) and module part ([ds_mod]), read off
+      the fast description of [MemberType.mdenote_impl]. *)
+  Equations ds_ty_dec (R : fmdesc) : { A | ds_ty (dec_desc R) = Some A } + { ds_ty (dec_desc R) = None } :=
+  ds_ty_dec R with fds_ty_s R := {
+    | exist _ (Some A) E => inleft (exist _ A E)
+    | exist _ None E => inright E }.
+
+  Equations ds_mtele_dec (R : fmdesc) : { T | ds_mtele (dec_desc R) = Some T } + { ds_mtele (dec_desc R) = None } :=
+  ds_mtele_dec R with inspect (fds_mtele R) := {
+    | exist _ (Some T) E => inleft (exist _ T (eq_trans (fds_mtele_dec R) E))
+    | exist _ None E => inright (eq_trans (fds_mtele_dec R) E) }.
+
+  Equations ds_mod_dec (R : fmdesc) : { Rm : fmdesc | ds_mod (dec_desc R) = Some (dec_desc Rm) } + { ds_mod (dec_desc R) = None } :=
+  ds_mod_dec R with fds_mod_s R := {
+    | exist _ (Some Rm) E => inleft (exist _ Rm E)
+    | exist _ None E => inright E }.
+
+  Extraction Inline ds_ty_dec ds_mtele_dec ds_mod_dec tele_view_dec.
 
   (** ** Facts the Obligations Use *)
 
@@ -351,48 +295,6 @@ Section type_check.
 
   Lemma tenv_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
   Proof. intros * [? HX]; gen_presups; assumption. Qed.
-
-  (** The initial environment of a context, from scratch. *)
-  Definition tenv_of G (HG : ⊢ G) : tenv G :=
-    initial_env_impl gc_deps gc_stack G (tenv_order_of_wf G HG).
-
-  (** The initial environment of an extended context, from that of the
-      context: one entry more, by its rule of [initial_env]. *)
-  Definition tenv_ass G (P : tenv G) A (HGA : ⊢ G ▹ A) : tenv (G ▹ A) :=
-    let (p, Hp) := P in
-    let (a, Ha) := feval_exp_impl gc_deps gc_stack A p (tenv_eval_order_ass G A p HGA Hp) in
-    exist _ (p ↦ ⇑! a (List.length G)) (tenv_ass_sim _ _ _ _ HGA Hp Ha).
-
-  (** The same for a definition entry: its body's value. *)
-  Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
-    let (p, Hp) := P in
-    let (m, Hm) := feval_exp_impl gc_deps gc_stack M p (tenv_eval_order_def G A M p HGA Hp) in
-    exist _ (p ↦ m) (tenv_def_sim _ _ _ _ _ HGA Hp Hm).
-
-  (** The same for a module slot: the closure of its unit. *)
-  Definition tenv_mod G (P : tenv G) U (HGU : ⊢ G ▹ₘ U) : tenv (G ▹ₘ U) :=
-    let (p, Hp) := P in
-    let (h, Hh) := feval_modexp_impl gc_deps gc_stack (me_lit U) p (tenv_eval_order_mod G U p HGU Hp) in
-    exist _ (p ↦ᵐ h) (tenv_mod_sim _ _ _ _ HGU Hp Hh).
-
-  (** The same for a definition with a module part: the value of its term
-      part's body and the closure of its unit, side by side. *)
-  Definition tenv_dm G (P : tenv G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : tenv (G ▸ₘ A ≔ M ‖ U) :=
-    let (p, Hp) := P in
-    let (m, Hm) := feval_exp_impl gc_deps gc_stack M p (tenv_eval_order_dm_tm G A M U p HG Hp) in
-    let (h, Hh) := feval_modexp_impl gc_deps gc_stack (me_lit U) p (tenv_eval_order_dm_unit G A M U p HG Hp) in
-    exist _ (p ↦ᵈ m ‖ h) (tenv_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
-
-  (** The initial environment of an extension [Ψ ++ G], from that of [G]:
-      one entry more per entry of [Ψ], rather than all of [G]'s again. *)
-  Fixpoint tenv_ext G (P : tenv G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> tenv (Ψ ++ G) :=
-    match Ψ as Ψ0 return ⊢ Ψ0 ++ G -> tenv (Ψ0 ++ G) with
-    | nil => fun _ => P
-    | ce_ass A :: Ψ' => fun H => tenv_ass (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A H
-    | ce_def A M :: Ψ' => fun H => tenv_def (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M H
-    | ce_mod U :: Ψ' => fun H => tenv_mod (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) U H
-    | ce_dm A M U :: Ψ' => fun H => tenv_dm (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M U H
-    end.
 
   Inductive type_check_order : exp -> Prop :=
   | type_check_order_ti : forall {A}, type_infer_order A -> type_check_order A
@@ -597,6 +499,118 @@ Section type_check.
 
 End type_check.
 End Fixed_GCtx.
+
+(** ** The Computations, Through a Fast Context
+
+    The checker's helpers that run: they take the fast context [F], and
+    the judgments are those of the global context it stands for
+    ([fc_gctx F]). *)
+Section Fast.
+Variable F : FCtx.
+#[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+
+Section lookup.
+  #[local]
+  Ltac impl_obl_tac1 :=
+    match goal with
+    | |- ~ _ => intro
+    | H: ⊢ _ :: _ |- _ => inversion_clear H
+    | H: ⋅ ∋ #_ : _ |- _ => inversion_clear H
+    | H: _ :: _ ∋ #(S _) : _ |- _ => inversion_clear H
+    | H: ce_mod _ :: _ ∋ #0 : _ |- _ => inversion H
+    end.
+
+  #[local]
+  Ltac impl_obl_tac :=
+    intros;
+    repeat impl_obl_tac1;
+    intuition (mauto 4).
+
+  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  Equations lookup G (HG : ⊢ G) x : { A | G ∋ #x : A } + { forall A, ~ G ∋ #x : A } :=
+  | cons e G, HG, x with x => {
+    | 0 with e => {
+      | ce_ass A => pureo (exist _ A[↑]ʷ _)
+      | ce_def A M => pureo (exist _ A[↑]ʷ _)
+      | ce_mod _ => inright _
+      | ce_dm A M U => pureo (exist _ A[↑]ʷ _) }
+    | S x' =>
+        let*o (exist _ B _) := lookup G _ x' while _ in
+        pureo (exist _ B[↑]ʷ _)
+    }
+  | ⋅, HG, x => inright _.
+End lookup.
+
+(** *** Deciding What Module Expressions Denote
+
+    What a module expression denotes is computed by [mdenote_impl], at
+    the order a well-formed module expression, or a selection from one,
+    has ([dn_order_of_wf], [dn_order_mem_of_wf]); a path has one
+    outright. *)
+
+Definition mdenote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
+    { R : fmdesc | mdenote gc_deps gc_stack Γ H (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ H R } :=
+  mdenote_impl F Hg Γ H (dn_order_of_wf _ _ Hg _ _ _ HH).
+
+Definition mem_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H y (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
+    { R : fmdesc | mdenote gc_deps gc_stack Γ (me_mem H y) (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_mem H y) R } :=
+  mdenote_impl F Hg Γ (me_mem H y) (dn_order_mem_of_wf _ _ Hg _ _ _ y HH).
+
+Definition path_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ fp :
+    { R : fmdesc | mdenote gc_deps gc_stack Γ (me_unit fp) (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_unit fp) R } :=
+  mdenote_impl F Hg Γ (me_unit fp) (dn_order_path _ _ Γ fp).
+
+(** What a local open of a module generates. *)
+Definition items_gen_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H its (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
+    { gs | items_gen gc_deps gc_stack Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack Γ H its gs } :=
+  items_gen_impl F Hg Γ H its (ig_order_of_wf _ _ Hg _ _ _ its HH).
+
+Extraction Inline mdenote_dec mem_denote_dec path_denote_dec items_gen_dec.
+
+(** *** The Initial Environment, Computed *)
+
+(** The initial environment of a context, from scratch. *)
+Definition tenv_of G (HG : ⊢ G) : tenv G :=
+  initial_env_impl F G (tenv_order_of_wf G HG).
+
+(** The initial environment of an extended context, from that of the
+    context: one entry more, by its rule of [initial_env]. *)
+Definition tenv_ass G (P : tenv G) A (HGA : ⊢ G ▹ A) : tenv (G ▹ A) :=
+  let (p, Hp) := P in
+  let (a, Ha) := feval_exp_impl F A p (tenv_eval_order_ass G A p HGA Hp) in
+  exist _ (p ↦ ⇑! a (List.length G)) (tenv_ass_sim _ _ _ _ HGA Hp Ha).
+
+(** The same for a definition entry: its body's value. *)
+Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
+  let (p, Hp) := P in
+  let (m, Hm) := feval_exp_impl F M p (tenv_eval_order_def G A M p HGA Hp) in
+  exist _ (p ↦ m) (tenv_def_sim _ _ _ _ _ HGA Hp Hm).
+
+(** The same for a module slot: the closure of its unit. *)
+Definition tenv_mod G (P : tenv G) U (HGU : ⊢ G ▹ₘ U) : tenv (G ▹ₘ U) :=
+  let (p, Hp) := P in
+  let (h, Hh) := feval_modexp_impl F (me_lit U) p (tenv_eval_order_mod G U p HGU Hp) in
+  exist _ (p ↦ᵐ h) (tenv_mod_sim _ _ _ _ HGU Hp Hh).
+
+(** The same for a definition with a module part: the value of its term
+    part's body and the closure of its unit, side by side. *)
+Definition tenv_dm G (P : tenv G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : tenv (G ▸ₘ A ≔ M ‖ U) :=
+  let (p, Hp) := P in
+  let (m, Hm) := feval_exp_impl F M p (tenv_eval_order_dm_tm G A M U p HG Hp) in
+  let (h, Hh) := feval_modexp_impl F (me_lit U) p (tenv_eval_order_dm_unit G A M U p HG Hp) in
+  exist _ (p ↦ᵈ m ‖ h) (tenv_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
+
+(** The initial environment of an extension [Ψ ++ G], from that of [G]:
+    one entry more per entry of [Ψ], rather than all of [G]'s again. *)
+Fixpoint tenv_ext G (P : tenv G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> tenv (Ψ ++ G) :=
+  match Ψ as Ψ0 return ⊢ Ψ0 ++ G -> tenv (Ψ0 ++ G) with
+  | nil => fun _ => P
+  | ce_ass A :: Ψ' => fun H => tenv_ass (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A H
+  | ce_def A M :: Ψ' => fun H => tenv_def (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M H
+  | ce_mod U :: Ψ' => fun H => tenv_mod (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) U H
+  | ce_dm A M U :: Ψ' => fun H => tenv_dm (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M U H
+  end.
+End Fast.
 
 Ltac clear_defs :=
   repeat lazymatch goal with
@@ -902,7 +916,9 @@ Ltac ob_neg :=
   simpl_let_guards;
   destruct_conjs;
   functional_alg_type_infer_rewrite_clear;
-  first [ contradiction | solve [ eauto 2 ] | congruence | solve [ firstorder ] ].
+  first [ contradiction
+        | solve [ match goal with HN : forall _, ~ _ |- _ => eapply HN; eassumption end ]
+        | solve [ eauto 2 ] | congruence | solve [ firstorder ] ].
 
 (** A failure branch of a member: the member's inference is inverted, and
     each rule it could come from contradicts the branch's premises. *)

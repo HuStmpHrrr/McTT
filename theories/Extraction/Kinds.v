@@ -266,8 +266,22 @@ Proof.
   left; right; right; eauto.
 Defined.
 
+(** The same, through the lookups of a fast context *)
+Definition dm_path_fdec (F : FCtx) (p : qname) : {dm_path (fc_deps F) (fc_stack F) p} + {~ dm_path (fc_deps F) (fc_stack F) p}.
+Proof.
+  destruct (fc_mlookup F p) as [r |] eqn:Ei; [ left; left; exists r; rewrite fc_mlookup_ok; exact Ei |].
+  destruct (fc_record F p) as [R |] eqn:Er; [ left; right; left; exists R; rewrite fc_record_ok; exact Er |].
+  destruct (fc_entry F p) as [[| | | pv A M u |] |] eqn:Ee;
+    try (right; intros [(r0 & H) | [(R0 & H) | (pv0 & A0 & M0 & U0 & H)]];
+         rewrite ?fc_mlookup_ok, ?fc_record_ok, ?fc_entry_ok, ?Ei, ?Er, ?Ee in H; cbn in H; congruence).
+  left; right; right; exists pv, A, M, (dec_unit u); rewrite fc_entry_ok, Ee; reflexivity.
+Defined.
+
+(** The kinds, computed through the fast context [F] *)
 Section KindImpl.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
 
   #[local]
   Ltac kd_inv :=
@@ -371,7 +385,7 @@ Section KindImpl.
 
   #[local]
   Ltac kd_obl :=
-    intros; cbv beta in *; repeat kd_inv;
+    intros; cbv beta in *; cbn [option_map dec_loc fst snd] in *; repeat kd_inv;
     first [ solve [ kd_finish ] | solve [ kd_split; kd_finish ] | kd_finish ].
 
   #[local]
@@ -389,22 +403,22 @@ Section KindImpl.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations dkind_impl h ch (H : dkind_order Θ Ξ h ch) : { k | dkind Θ Ξ h ch k } by struct H :=
-  | dm_global pq args, nil, H with inspect (gc_frame Ξ pq) := {
-    | exist _ (Some TΦ) F => exist _ mk_mod _
-    | exist _ None F with inspect (gc_module Θ Ξ pq) := {
+  | dm_global pq args, nil, H with gc_frame_f F pq := {
+    | exist _ (Some TΦ) Ef => exist _ mk_mod _
+    | exist _ None Ef with gc_module_f F pq := {
       | exist _ (Some (mr_body T oD)) E => exist _ mk_mod _
-      | exist _ _ E with inspect (gc_resolve Θ Ξ pq) := {
+      | exist _ _ E with gc_resolve_f F pq := {
         | exist _ (Some (ge_def b pv A B)) E2 => exist _ mk_term _
         | exist _ _ E2 => False_rect _ _ } } }
-  | dm_global pq args, y :: ch, H with dm_path_dec Θ Ξ (qname_app pq (y :: nil)), ch := {
-    | left Hd, nil with inspect (gc_module Θ Ξ (qname_app pq (y :: nil))) := {
+  | dm_global pq args, y :: ch, H with dm_path_fdec F (qname_app pq (y :: nil)), ch := {
+    | left Hd, nil with gc_module_f F (qname_app pq (y :: nil)) := {
       (** a definition with a module part stored as an alias: [dm_of] its
           alias's kind *)
       | exist _ (Some (mr_alias U)) E =>
           let (k, Hk) := ukind_impl nil U nil _ in
           exist _ (dm_of k) _
       | exist _ _ E => exist _ mk_dm _ }
-    | _, ch' with inspect (gc_module Θ Ξ (qname_app pq (y :: nil))) := {
+    | _, ch' with gc_module_f F (qname_app pq (y :: nil)) := {
       | exist _ (Some (mr_alias U)) E =>
           let (k, Hk) := ukind_impl nil U ch' _ in
           exist _ k _

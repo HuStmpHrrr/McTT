@@ -71,8 +71,11 @@ Ltac unify_lookups :=
         assert_fails (constr_eq a b); rewrite H1 in H2; injection H2; clear H2; intros; subst
     end.
 
+(** The checker's rules of inductive types, through the fast context [F];
+    the judgments are those of the global context it stands for. *)
 Section Fixed_GCtx.
-Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
+Variable F : FCtx.
+#[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
 
 (** Whether a normal form is an instance of the type former of a member. *)
 #[derive(equations=no,eliminator=no)]
@@ -126,10 +129,10 @@ Definition ind_infer G (HG : ⊢ G) (P : tenv G) p k :
   { A : nf | G ⊢a a_ind p k ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) }
   + { forall A, ~ G ⊢a a_ind p k ⟹ A }.
 Proof.
-  destruct (ind_lookup_f gc_deps gc_stack p) as [[D |] Hl]; [| right; intros A H; inversion H; congruence ].
+  destruct (ind_lookup_f F p) as [[D |] Hl]; [| right; intros A H; inversion H; congruence ].
   destruct (ind_member D k) as [Mk |] eqn:Hk; [| right; intros A H; inversion H; subst; unify_lookups; congruence ].
   destruct (Compare_dec.lt_dec k (ind_ndecl D)) as [Hlt | Hlt]; [| right; intros A H; inversion H; subst; unify_lookups; contradiction ].
-  refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P (ind_ty D Mk) (ind_ty_order G p D k Mk HG Hl Hk) in
+  refine (let (W, HW) := nbe_ty_env_impl F G P (ind_ty D Mk) (ind_ty_order G p D k Mk HG Hl Hk) in
           inleft (exist _ W (ind_ty_post G p D k Mk W HG Hl Hk Hlt HW))).
 Defined.
 
@@ -138,10 +141,10 @@ Definition con_infer G (HG : ⊢ G) (P : tenv G) p k c :
   { A : nf | G ⊢a a_con p k c ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) }
   + { forall A, ~ G ⊢a a_con p k c ⟹ A }.
 Proof.
-  destruct (ind_lookup_f gc_deps gc_stack p) as [[D |] Hl]; [| right; intros A H; inversion H; congruence ].
+  destruct (ind_lookup_f F p) as [[D |] Hl]; [| right; intros A H; inversion H; congruence ].
   destruct (ind_member D k) as [Mk |] eqn:Hk; [| right; intros A H; inversion H; subst; unify_lookups; congruence ].
   destruct (ind_con Mk c) as [gs |] eqn:Hcon; [| right; intros A H; inversion H; subst; unify_lookups; congruence ].
-  refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P (con_ty p D k Mk gs) (con_ty_order G p D k Mk c gs HG Hl Hk Hcon) in
+  refine (let (W, HW) := nbe_ty_env_impl F G P (con_ty p D k Mk gs) (con_ty_order G p D k Mk c gs HG Hl Hk Hcon) in
           inleft (exist _ W (con_ty_post G p D k Mk c gs W HG Hl Hk Hcon HW))).
 Defined.
 
@@ -338,8 +341,8 @@ Proof.
     pose proof (HMs _ _ _ HN HT) as HNt.
     pose proof (proj1 (agree_prefix_eq Δ G Ms Rs j Hass HΔ HG HMl HRl HMs HRs
                          (fun j' N' R' T' Hj' => Hpre j' Hj' N' R' T') j R T (le_n j) HR HT)) as HRt.
-    destruct (nbe_env_impl gc_deps gc_stack G P N T (typed_nbe_order_f _ _ _ HNt)) as [W1 HW1].
-    destruct (nbe_env_impl gc_deps gc_stack G P R T (typed_nbe_order_f _ _ _ HRt)) as [W2 HW2].
+    destruct (nbe_env_impl F G P N T (typed_nbe_order_f _ _ _ HNt)) as [W1 HW1].
+    destruct (nbe_env_impl F G P R T (typed_nbe_order_f _ _ _ HRt)) as [W2 HW2].
     destruct (nf_eq_dec W1 W2) as [<- | Hne].
     - left; intros ? ? ? [= <-] [= <-] [= <-]; exists W1; split; assumption.
     - right; intros HQ; destruct (HQ _ _ _ eq_refl eq_refl eq_refl) as (W & HW1' & HW2').
@@ -416,7 +419,7 @@ Section Blocks.
     assert (lZ : { l | forall Z, eb_ann b = Some Z -> tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G ⊢a Z ⟸ Typeω@l }
                  + { forall l, ~ forall Z, eb_ann b = Some Z -> tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G ⊢a Z ⟸ Typeω@l }).
     { destruct (eb_ann b) as [Z |] eqn:HZ; [| left; exists 0; intros; discriminate ].
-      destruct (infZ b Z (List.nth_error_In _ _ Hb) HZ _ HΨ (tenv_ext G P _ HΨ)) as [[UA (HZi & _)] | HnZ].
+      destruct (infZ b Z (List.nth_error_In _ _ Hb) HZ _ HΨ (tenv_ext F G P _ HΨ)) as [[UA (HZi & _)] | HnZ].
       - destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu].
         + left; exists (unf_large u); intros ? [= <-]; exact (check_typ_of_infer _ _ _ _ HΨ HZi Hu).
         + right; intros l H.
@@ -428,7 +431,7 @@ Section Blocks.
     destruct lZ as [[lZ HlZ] | HnZ]; [| right; intros l [HZ _]; apply (HnZ l); intros Z HZ'; exact (HZ _ _ _ Hj Hb HZ') ].
     (** The motive. *)
     pose proof (HC _ _ Hj) as HCj.
-    destruct (infA b (List.nth_error_In _ _ Hb) _ HCj (tenv_ext G P _ HCj)) as [[UA (HAi & _)] | HnA].
+    destruct (infA b (List.nth_error_In _ _ Hb) _ HCj (tenv_ext F G P _ HCj)) as [[UA (HAi & _)] | HnA].
     - destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu].
       + left; exists (Nat.max lZ (unf_large u)); split.
         * intros Mj' b' Z Hj' Hb' HZ; rewrite Hj in Hj'; rewrite Hb in Hb'; injection Hj' as <-; injection Hb' as <-.
@@ -463,8 +466,8 @@ Section Blocks.
       destruct (eb_ann b) as [Z |] eqn:HZ; [| left; intros; congruence ].
       destruct (ann_ctx_wf _ _ Hj) as [HΨ _].
       pose proof (check_typ_sound _ _ _ HΨ (proj1 (HL j Hjl) _ _ _ Hj Hb HZ)) as HZt.
-      destruct (nbe_ty_env_impl gc_deps gc_stack _ (tenv_ext G P _ HΨ) Z (nbe_order_of_typ _ _ _ HZt)) as [W1 HW1].
-      destruct (nbe_ty_env_impl gc_deps gc_stack _ (tenv_ext G P _ HΨ) _ (ann_mty_order _ _ Hj)) as [W2 HW2].
+      destruct (nbe_ty_env_impl F _ (tenv_ext F G P _ HΨ) Z (nbe_order_of_typ _ _ _ HZt)) as [W1 HW1].
+      destruct (nbe_ty_env_impl F _ (tenv_ext F G P _ HΨ) _ (ann_mty_order _ _ Hj)) as [W2 HW2].
       destruct (nf_eq_dec W1 W2) as [<- | Hne].
       - left; intros Mj' b' Z' Hj' Hb' HZ'; injection Hj' as <-; injection Hb' as <-.
         rewrite HZ in HZ'; injection HZ' as <-; exists W1; split; assumption.
@@ -540,12 +543,12 @@ Proof.
     [| right; intros T' H; inversion H; subst;
        match goal with H1 : G ⊢a M ⟹ nf_indty _ _ _ |- _ => pose proof (functional_alg_type_infer Hg H1 HMi) as Heq end;
        symmetry in Heq; eapply HnI; exact Heq ].
-  destruct (ind_lookup_f gc_deps gc_stack pc) as [[Dq |] Hlq]; [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
+  destruct (ind_lookup_f F pc) as [[Dq |] Hlq]; [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
   destruct (ind_member Dq k) as [Mk |] eqn:Hk; [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
   destruct (Nat.eq_dec (List.length (List.map nf_to_exp Rs)) (im_np Dq Mk)) as [HRl | HRl];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   (** The group eliminated and its member. *)
-  destruct (ind_lookup_f gc_deps gc_stack (elim_target oq pc)) as [[D |] Hl];
+  destruct (ind_lookup_f F (elim_target oq pc)) as [[D |] Hl];
     [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
   assert (Hgrp : { elim_grp D oq (elim_target oq pc) m } + { ~ elim_grp D oq (elim_target oq pc) m }).
   { destruct oq as [q0 |]; [ left; left; reflexivity |].
@@ -641,7 +644,7 @@ Proof.
                 (eb_brs b)) as [Ha | Ha].
     - intros br Hin; destruct (ind_con Mj (fst (fst br))) as [gs |] eqn:Hcon; [| left; intros ? [=] ].
       pose proof (Hbt _ _ _ _ _ Hj Hb0 Hcon) as HT.
-      destruct (chkB b br (List.nth_error_In _ _ Hb0) Hin _ _ HT (tenv_ext G P _ (tenv_ctx_of_typ _ _ HT))) as [E | E];
+      destruct (chkB b br (List.nth_error_In _ _ Hb0) Hin _ _ HT (tenv_ext F G P _ (tenv_ctx_of_typ _ _ HT))) as [E | E];
         [ left; intros ? [= <-]; exact E | right; intros H; exact (E (H gs eq_refl)) ].
     - left; intros c gs n B Hcon Hin; exact (Ha _ Hin gs Hcon).
     - right; intros H; apply Ha; intros [[c n] B] Hin gs Hcon; exact (H _ _ _ _ Hcon Hin). }
@@ -664,7 +667,7 @@ Proof.
   assert (Hord : nbe_ty_order gc_deps gc_stack G
                    (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)])
     by (destruct (presup_exp_typ Hel) as [jT HTe]; exact (nbe_order_of_typ _ _ _ HTe)).
-  refine (let (T', HT') := nbe_ty_env_impl gc_deps gc_stack G P _ Hord in inleft (exist _ T' _)).
+  refine (let (T', HT') := nbe_ty_env_impl F G P _ Hord in inleft (exist _ T' _)).
   split; [| destruct (presup_exp_typ Hel) as [jT HTe]; eapply level_of_nbe; eassumption ].
   eapply alg_type_infer_elim_of_ok; [| exact HMi ].
   econstructor; try eassumption.

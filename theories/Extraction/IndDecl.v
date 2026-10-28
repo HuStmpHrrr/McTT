@@ -8,7 +8,7 @@ From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core Require Import Soundness Completeness.
 From Mctt.Core.Semantic Require Import GlobalExt.
 From Mctt.Algorithmic Require Import Typing.
-From Mctt.Extraction Require Import Lookup PseudoMonadic NbE Subtyping TypeCheckBase IndCheck TypeCheck GlobalCheck.
+From Mctt.Extraction Require Import Lookup LookupTwins PseudoMonadic NbE Subtyping TypeCheckBase IndCheck TypeCheck GlobalCheck.
 Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding a Declaration
@@ -849,13 +849,18 @@ Defined.
 (** ** Deciding the Judgments a Group Asks For *)
 
 Section Judgments.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  (** The fast context the decisions look names up in; the judgments are
+      at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
 
   (** A term of a type in a context, which is checked first. *)
   Definition check_exp_at (Γ : ctx) (A M : exp) : {Θ ⍮ Ξ ⍮ Γ ⊢ M : A} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A} :=
-    match check_ctx fctx_none Θ Ξ HΞ Γ with
-    | left HΓ => check_exp fctx_none Θ Ξ Γ HΓ A M
+    match check_ctx F HΞ Γ with
+    | left HΓ => check_exp F Γ HΓ A M
     | right HnΓ => right (fun H => HnΓ (presup_exp_ctx H))
     end.
 
@@ -863,7 +868,7 @@ Section Judgments.
   Proof. intros * H; destruct (soundness H) as (W & HW & _); exact (nbe_order_sound _ _ _ _ _ _ HW). Qed.
 
   Lemma typ_nbe_ty_order : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> nbe_ty_order Θ Ξ Γ A.
-  Proof. intros * HA; destruct (@soundness_ty (gc_mk Θ Ξ) _ _ _ HA) as [W [HW _]]; exact (nbe_ty_order_sound _ _ _ _ _ HW). Qed.
+  Proof. intros * HA; destruct (@soundness_ty (fc_gctx F) _ _ _ HA) as [W [HW _]]; exact (nbe_ty_order_sound _ _ _ _ _ HW). Qed.
 
   (** The least large universe a type is in: that of the universe it
       infers. *)
@@ -871,14 +876,14 @@ Section Judgments.
     { l | Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@l /\ forall j, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@j -> l <= j }
     + { forall j, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@j }.
   Proof.
-    destruct (check_ctx fctx_none Θ Ξ HΞ Γ) as [HΓ | HnΓ]; [| right; intros j H; exact (HnΓ (presup_exp_ctx H)) ].
-    destruct (@type_infer (gc_mk Θ Ξ) (fctx_none Θ Ξ) Γ HΓ A ltac:(apply user_exp_to_type_infer_order, user_exp_all))
-      as [[UA (HAi & _ & _)] | HnA]; [| right; exact (not_wf_typ_of_no_infer _ _ _ _ HnA) ].
-    destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu]; [| right; exact (not_wf_typ_of_infer_not_typ _ _ _ _ _ HAi Hnu) ].
-    left; exists (unf_large u); split; [ exact (alg_type_infer_univ_sound' _ _ _ _ _ _ HAi Hu HΓ) |].
+    destruct (check_ctx F HΞ Γ) as [HΓ | HnΓ]; [| right; intros j H; exact (HnΓ (presup_exp_ctx H)) ].
+    destruct (type_infer F Γ HΓ A ltac:(apply user_exp_to_type_infer_order, user_exp_all))
+      as [[UA (HAi & _ & _)] | HnA]; [| right; exact (not_wf_typ_of_no_infer_gc _ _ HnA) ].
+    destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu]; [| right; exact (not_wf_typ_of_infer_not_typ_gc _ _ _ HAi Hnu) ].
+    left; exists (unf_large u); split; [ exact (alg_type_infer_univ_sound_gc _ _ _ _ HAi Hu HΓ) |].
     intros j Hj.
-    destruct (@alg_type_infer_large_typ_complete (gc_mk Θ Ξ) Γ j A (user_exp_all _) Hj) as (UA' & u' & HAi' & Hu' & Hle).
-    pose proof (@functional_alg_type_infer (gc_mk Θ Ξ) _ _ _ _ HΞ HAi HAi') as <-.
+    destruct (@alg_type_infer_large_typ_complete (fc_gctx F) Γ j A (user_exp_all _) Hj) as (UA' & u' & HAi' & Hu' & Hle).
+    pose proof (@functional_alg_type_infer (fc_gctx F) _ _ _ _ HΞ HAi HAi') as <-.
     pose proof (is_univ_nf_functional _ _ _ Hu Hu') as <-.
     destruct u; cbn in Hle |- *; lia.
   Defined.
@@ -894,8 +899,8 @@ Section Judgments.
   Proof.
     destruct (check_exp_at Γ A M) as [HM | HnM]; [| right; intros H; apply HnM; gen_presups; assumption ].
     destruct (check_exp_at Γ A N) as [HN | HnN]; [| right; intros H; apply HnN; gen_presups; assumption ].
-    destruct (@nbe_impl Θ Ξ (fctx_none Θ Ξ) Γ M A (typed_nbe_order' _ _ _ HM)) as [W1 HW1].
-    destruct (@nbe_impl Θ Ξ (fctx_none Θ Ξ) Γ N A (typed_nbe_order' _ _ _ HN)) as [W2 HW2].
+    destruct (nbe_impl F Γ M A (typed_nbe_order' _ _ _ HM)) as [W1 HW1].
+    destruct (nbe_impl F Γ N A (typed_nbe_order' _ _ _ HN)) as [W2 HW2].
     destruct (nf_eq_dec W1 W2) as [<- | Hne]; [ left; exact (eq_of_nbe _ _ _ _ _ HM HN HW1 HW2) | right; intros H ].
     destruct (completeness H) as (W & HMW & HNW).
     apply Hne; rewrite (functional_nbe _ _ _ _ _ HW1 HMW), (functional_nbe _ _ _ _ _ HW2 HNW); reflexivity.
@@ -908,8 +913,8 @@ Section Judgments.
     intros * H HA HA'.
     destruct (completeness H) as (W & HAW & HA'W).
     apply nbe_type_to_nbe_ty in HAW, HA'W.
-    etransitivity; [ exact (@soundness_ty' (gc_mk Θ Ξ) _ _ _ _ HA HAW)
-                   | symmetry; exact (@soundness_ty' (gc_mk Θ Ξ) _ _ _ _ HA' HA'W) ].
+    etransitivity; [ exact (@soundness_ty' (fc_gctx F) _ _ _ _ HA HAW)
+                   | symmetry; exact (@soundness_ty' (fc_gctx F) _ _ _ _ HA' HA'W) ].
   Qed.
 
   (** Some universe two types are equal at: the least both are in. *)
@@ -932,7 +937,7 @@ Section Judgments.
   Proof.
     intros Ψ' Hass; destruct Ψ as [| e Ψ0].
     - destruct Ψ' as [| e' Ψ0']; [| right; intros H; inversion H ].
-      destruct (check_ctx fctx_none Θ Ξ HΞ Γ) as [HΓ | HnΓ]; [ left; constructor; exact HΓ | right; intros H ].
+      destruct (check_ctx F HΞ Γ) as [HΓ | HnΓ]; [ left; constructor; exact HΓ | right; intros H ].
       apply HnΓ; exact (presup_ext_eq_ctx H).
     - pose proof (List.Forall_inv_tail Hass) as Hass'.
       destruct e as [A | A M | U | A M U]; [| exfalso; destruct (List.Forall_inv Hass) as [? [=]] .. ].
@@ -962,11 +967,11 @@ Section Judgments.
       [| right; intros H; destruct (presup_subtyp_left H) as [i Hi]; exact (HnA _ Hi) ].
     destruct (typ_least_dec Γ B) as [[lB [HB _]] | HnB];
       [| right; intros H; destruct (presup_subtyp_right H) as [i Hi]; exact (HnB _ Hi) ].
-    destruct (@subtyping_impl (gc_mk Θ Ξ) (fctx_none Θ Ξ) Γ A B
-                (@subtyping_order_run (gc_mk Θ Ξ) Γ A B (typ_nbe_ty_order _ _ _ HA) (typ_nbe_ty_order _ _ _ HB))) as [Hs | Hns].
-    - left; apply (@alg_subtyping_sound (gc_mk Θ Ξ) _ _ _ (Nat.max lA lB) Hs);
+    destruct (subtyping_impl F Γ A B
+                (@subtyping_order_run (fc_gctx F) Γ A B (typ_nbe_ty_order _ _ _ HA) (typ_nbe_ty_order _ _ _ HB))) as [Hs | Hns].
+    - left; apply (@alg_subtyping_sound (fc_gctx F) _ _ _ (Nat.max lA lB) Hs);
         [ apply (lift_exp_ge _ _ _ _ lA); [ lia | exact HA ] | apply (lift_exp_ge _ _ _ _ lB); [ lia | exact HB ] ].
-    - right; intros H; exact (Hns (@alg_subtyping_complete (gc_mk Θ Ξ) _ _ _ H)).
+    - right; intros H; exact (Hns (@alg_subtyping_complete (fc_gctx F) _ _ _ H)).
   Defined.
 End Judgments.
 
@@ -987,27 +992,62 @@ Ltac unify_found :=
     differing. *)
 Ltac vacuous := left; intros; unify_found; congruence.
 
+(** ** Rewriting What a Decision Decides
+
+    A decision of [P'] or [Q'] decides [P] or [Q] when they are the same
+    propositions.  [rewrite_dec H] rewrites with [H] in the propositions a
+    [sumbool] or [sumor] goal decides, the decision term untouched: a
+    [rewrite] in the goal itself would build a computational [eq_rect]
+    whose arguments name the sides of [H], which extraction then needs,
+    even though it erases them; on a Core lookup of a fast context's
+    decoding, that would pull the decoding into the extracted code
+    ([Extraction.Decoding]). *)
+Definition sumbool_iff {P Q P' Q' : Prop} (HP : P <-> P') (HQ : Q <-> Q') (d : {P'} + {Q'}) : {P} + {Q} :=
+  match d with
+  | left hp => left (proj2 HP hp)
+  | right hq => right (proj2 HQ hq)
+  end.
+
+(** The same for a [sumor]: the witness kept, both Props rewritten by
+    equivalences *)
+Definition sumor_iff {A : Type} {P P' : A -> Prop} {Q Q' : Prop} (HP : forall a, P a <-> P' a) (HQ : Q <-> Q')
+    (d : {a | P' a} + {Q'}) : {a | P a} + {Q} :=
+  match d with
+  | inleft (exist _ a hp) => inleft (exist _ a (proj2 (HP a) hp))
+  | inright hq => inright (proj2 HQ hq)
+  end.
+
+Ltac rewrite_dec H :=
+  first [ refine (sumbool_iff _ _ _); [ rewrite ?H; apply iff_refl | rewrite ?H; apply iff_refl | cbv beta ]
+        | refine (sumor_iff _ _ _); [ intros; rewrite ?H; apply iff_refl | rewrite ?H; apply iff_refl | cbv beta ] ].
+
 (** ** The Premises of the First Member, Decided
 
     [ind_nil_at], premise by premise.  The premises are named here, each
     the statement of [ind_nil_at]'s, and decided one at a time. *)
 
 Section NilDecide.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  (** The fast context the decisions look names up in *)
+  Variable F : FCtx.
+  #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
   Variables (mp : qname) (D : ind_decl) (IsS : nat -> list exp).
 
   (** The uniform parameters end in the frames'. *)
   Definition uparams_suffix_dec : {Δ | ind_uparams D = Δ ++ gs_tele Ξ} + {forall Δ, ind_uparams D <> Δ ++ gs_tele Ξ}.
   Proof.
-    destruct (Compare_dec.le_dec (List.length (gs_tele Ξ)) (List.length (ind_uparams D))) as [Hle | Hle];
-      [| right; intros Δ HΔ; apply Hle; rewrite HΔ, List.length_app; lia ].
-    destruct (list_eq_dec centry_eq_dec (List.skipn (List.length (ind_uparams D) - List.length (gs_tele Ξ)) (ind_uparams D))
-                (gs_tele Ξ)) as [E | E].
-    - left; exists (List.firstn (List.length (ind_uparams D) - List.length (gs_tele Ξ)) (ind_uparams D)).
-      rewrite <- E at 2; symmetry; apply List.firstn_skipn.
-    - right; intros Δ HΔ; apply E; rewrite HΔ, List.length_app, Nat.add_sub, List.skipn_app, List.skipn_all, Nat.sub_diag.
+    (* the frames' telescope, computed fast; read in Core in the proofs
+       only, so that no computational term mentions the decoding *)
+    destruct (Compare_dec.le_dec (List.length (fc_tele F)) (List.length (ind_uparams D))) as [Hle | Hle];
+      [| right; rewrite (fc_tele_ok F); intros Δ HΔ; apply Hle; rewrite HΔ, List.length_app; lia ].
+    destruct (list_eq_dec centry_eq_dec (List.skipn (List.length (ind_uparams D) - List.length (fc_tele F)) (ind_uparams D))
+                (fc_tele F)) as [E | E].
+    - left; exists (List.firstn (List.length (ind_uparams D) - List.length (fc_tele F)) (ind_uparams D)).
+      rewrite (fc_tele_ok F); rewrite <- E at 2; symmetry; apply List.firstn_skipn.
+    - right; rewrite (fc_tele_ok F); intros Δ HΔ; apply E;
+        rewrite HΔ, List.length_app, Nat.add_sub, List.skipn_app, List.skipn_all, Nat.sub_diag.
       reflexivity.
   Defined.
 
@@ -1055,7 +1095,7 @@ Section NilDecide.
     destruct (members_dec D (fun _ Mk => forall Δ1 e Δ2, im_nparams Mk = Δ1 ++ e :: Δ2 -> forall T, e = ce_ass T ->
                 Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ)) as [H | H].
     - intros k Mk _; apply forall_split_dec; intros Δ1 [T | T M | U | T M U] Δ2 _; [| left; intros ? [=] .. ].
-      destruct (check_exp_at Θ Ξ HΞ (Δ2 ++ ind_uparams D) (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ T) as [HT | HT];
+      destruct (check_exp_at F HΞ (Δ2 ++ ind_uparams D) (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ T) as [HT | HT];
         [ left; intros ? [= <-]; exact HT | right; intros H; exact (HT (H T eq_refl)) ].
     - left; intros k Mk Δ1 T Δ2 Hk E; exact (H k Mk Hk Δ1 _ Δ2 E T eq_refl).
     - right; intros H'; apply H; intros k Mk Hk Δ1 e Δ2 E T ->; exact (H' k Mk Δ1 T Δ2 Hk E).
@@ -1073,7 +1113,7 @@ Section NilDecide.
                 Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
                   ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ)) as [H | H].
     - intros k Mk _; apply forall_in_dec; intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [| left; intros ? [=] ].
-      destruct (check_exp_at Θ Ξ HΞ (cargs_strat gs1 ++ im_params D Mk)
+      destruct (check_exp_at F HΞ (cargs_strat gs1 ++ im_params D Mk)
                   (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ A) as [HA | HA];
         [ left; intros ? [= <-]; exact HA | right; intros H; exact (HA (H A eq_refl)) ].
     - left; intros k Mk c gs gs1 A gs2 Hk Hin E; exact (H k Mk Hk (c, gs) Hin gs1 _ gs2 E A eq_refl).
@@ -1101,7 +1141,7 @@ Section NilDecide.
                      ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ))
         as [HB | HB].
       + intros Bs1 B Bs2 _.
-        exact (check_exp_at Θ Ξ HΞ (doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk)
+        exact (check_exp_at F HΞ (doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk)
                  (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ B).
       + left; intros ? [= <-]; exact HB.
       + right; intros H; exact (HB (H t eq_refl)).
@@ -1160,7 +1200,7 @@ Section NilDecide.
     - intros k Mk _; apply forall_in_dec; intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [ left; intros ? [=] |].
       destruct (ind_member D (ptyp_mem t)) as [Mj |] eqn:Hj; [| left; intros ? [= <-] Mj' Hj'; rewrite Hj in Hj'; discriminate ].
       destruct (forall_nth2_dec (fun P T => Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk ⊢ P : T)
-                  (fun P T => check_exp_at Θ Ξ HΞ (ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk) T P) (ptyp_ps t)
+                  (fun P T => check_exp_at F HΞ (ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk) T P) (ptyp_ps t)
                   (tele_insts (im_nparams Mj)
                      (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn Mk))) (ptyp_ps t)))
         as [HP | HP].
@@ -1201,7 +1241,7 @@ Section NilDecide.
     Local Ltac views_exist_rej :=
       let H := fresh "H" in
       right; intros H; destruct H as (? & ? & ? & ? & ? & ? & ? & ? & ? & ?); unify_found; first [ contradiction | congruence ].
-    destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| views_exist_rej ].
+    destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| views_exist_rej ].
     destruct (ind_member D' k') as [Mk' |] eqn:Hk'; [| views_exist_rej ].
     destruct (Compare_dec.lt_dec k' (ind_ndecl D')) as [Hlt | Hlt]; [| views_exist_rej ].
     destruct (Nat.eq_dec (List.length Is) (ind_nu D')) as [HIs | HIs]; [| views_exist_rej ].
@@ -1238,8 +1278,8 @@ Section NilDecide.
                 forall j I T, nth_error (IsS k) j = Some I -> nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T)) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
-      destruct (forall_nth2_dec (fun I T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) (fun I T => check_exp_at Θ Ξ HΞ (grp_sctx D) T I)
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
+      destruct (forall_nth2_dec (fun I T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) (fun I T => check_exp_at F HΞ (grp_sctx D) T I)
                   (IsS k) (tele_insts (ind_uparams D') Id (IsS k))) as [HI | HI];
         [ left; intros ? [= <-]; exact HI | right; intros H; exact (HI (H _ eq_refl)) ].
     - dec_left H.
@@ -1263,7 +1303,7 @@ Section NilDecide.
                 forall v, nth_error vm i' = Some v ->
                 exists Mv vm', ind_member D v = Some Mv /\ im_head Mv = mh_view qc i' Is vm')) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
       destruct (members_dec D' (fun i' Mi' => forall pm', im_head Mi' = mh_decl pm' -> forall v, nth_error vm i' = Some v ->
                   exists Mv vm', ind_member D v = Some Mv /\ im_head Mv = mh_view qc i' Is vm')) as [HM | HM].
       + intros i' Mi' _.
@@ -1310,7 +1350,7 @@ Section NilDecide.
                 exists Mv X vm', ind_member D v = Some Mv /\ im_head Mv = mh_view q'' k'' X vm' /\
                   List.length X = List.length Is'')) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
       destruct (members_dec D' (fun i' Mi' => forall q'' k'' Is'' vm'', im_head Mi' = mh_view q'' k'' Is'' vm'' ->
                   forall v, nth_error vm i' = Some v ->
                   exists Mv X vm', ind_member D v = Some Mv /\ im_head Mv = mh_view q'' k'' X vm' /\
@@ -1376,7 +1416,7 @@ Section NilDecide.
                 nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
       destruct (members_dec D' (fun i' Mi' => forall q'' k'' Is'' vm'', im_head Mi' = mh_view q'' k'' Is'' vm'' ->
                   forall D'', ind_lookup Θ Ξ q'' = Some D'' -> forall v, nth_error vm i' = Some v ->
                   forall Mv, ind_member D v = Some Mv -> forall X vm', im_head Mv = mh_view q'' k'' X vm' ->
@@ -1386,14 +1426,14 @@ Section NilDecide.
                   Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [HM | HM].
       + intros i' Mi' _.
         destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [ vacuous | | vacuous ].
-        destruct (ind_lookup Θ Ξ q2) as [D2 |] eqn:Hl2; [| vacuous ].
+        destruct (ind_lookup_f F q2) as [[D2 |] Hl2]; rewrite_dec Hl2; [| vacuous ].
         destruct (List.nth_error vm i') as [v |] eqn:Hv; [| vacuous ].
         destruct (ind_member D v) as [Mv |] eqn:Hmv; [| vacuous ].
         destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv; [ vacuous | | vacuous ].
         destruct (qname_eq_dec qv q2) as [-> | Hq]; [| vacuous ].
         destruct (Nat.eq_dec kv k2) as [-> | Hk2]; [| vacuous ].
         destruct (forall_nth3_dec (fun C C' T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])
-                    (fun C C' T => eq_at_dec Θ Ξ HΞ (grp_sctx D) T[sb_of_list Id (IsS k)] C C')
+                    (fun C C' T => eq_at_dec F HΞ (grp_sctx D) T[sb_of_list Id (IsS k)] C C')
                     (IsS v) (List.map (fun I => I[sb_of_list Id (IsS k)]) Is2) (tele_insts (ind_uparams D2) Id Is2))
           as [HC | HC].
         * left; intros ? ? ? ? [= <- <- <- <-] D2' Hl2' v' Hv' Mv' Hmv' X vm' Hhv'; unify_found; intros; eapply HC; eassumption.
@@ -1422,14 +1462,14 @@ Section NilDecide.
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))))
       as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
       destruct (members_dec D' (fun i' Mi' => forall v, nth_error vm i' = Some v -> forall Mv, ind_member D v = Some Mv ->
                   Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0)
                     ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k)))) as [HM | HM].
       + intros i' Mi' _.
         destruct (List.nth_error vm i') as [v |] eqn:Hv; [| left; intros ? [=] ].
         destruct (ind_member D v) as [Mv |] eqn:Hmv; [| vacuous ].
-        destruct (ext_eq_dec Θ Ξ HΞ (grp_sctx D) (tele_wk (im_nparams Mv) (self_wk D 0))
+        destruct (ext_eq_dec F HΞ (grp_sctx D) (tele_wk (im_nparams Mv) (self_wk D 0))
                     (tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))) (tele_ass_wk _ _ (HPass _ _ Hmv))) as [HE | HE];
           [ left; intros; unify_found; exact HE | right; intros H; exact (HE (H _ eq_refl _ Hmv)) ].
       + left; intros ? [= <-]; exact HM.
@@ -1459,7 +1499,7 @@ Section NilDecide.
                   ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs))
       as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
       destruct (members_dec D' (fun i' Mi' => forall v, nth_error vm i' = Some v -> forall Mv, ind_member D v = Some Mv ->
                   forall c gs' gs, ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
                   Θ ⍮ Ξ ⍮ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
@@ -1472,7 +1512,7 @@ Section NilDecide.
                     ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs))
           as [HC | HC].
         * intros c gs' gs _ _.
-          exact (ext_eq_dec Θ Ξ HΞ _ _ _ (tele_ass_sub _ _ (cargs_ctx_aux_ass _ _ _ _ _))).
+          exact (ext_eq_dec F HΞ _ _ _ (tele_ass_sub _ _ (cargs_ctx_aux_ass _ _ _ _ _))).
         * left; intros; unify_found; eapply HC; eauto.
         * right; intros H; exact (HC (H _ eq_refl _ Hmv)).
       + left; intros ? [= <-]; exact HM.
@@ -1508,7 +1548,7 @@ Section NilDecide.
                 forall gs1' t' gs2' gs1 t gs2, gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
                 List.length gs1' = List.length gs1 -> Q k qc D' Mi' Mv gs1' t' gs1 t)) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| vacuous ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| vacuous ].
       destruct (members_dec D' (fun i' Mi' => forall v, nth_error vm i' = Some v -> forall Mv, ind_member D v = Some Mv ->
                   forall c gs' gs, ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
                   forall gs1' t' gs2' gs1 t gs2, gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -1555,7 +1595,7 @@ Section NilDecide.
                 List.length gs1' = List.length gs1 -> Q k qc D' Mi' Mv gs1' t' gs1 t l)) as [[l H] | H].
     - intros ? ? ? ? ? ? ? ? Hle HQ; intros; eapply Hmono; [ exact Hle | eapply HQ; eassumption ].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; exists 0; intros; unify_found; congruence ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; exists 0; intros; unify_found; congruence ].
       destruct (members_bound_dec D' (fun i' Mi' l => forall v, nth_error vm i' = Some v -> forall Mv, ind_member D v = Some Mv ->
                   forall c gs' gs, ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
                   forall gs1' t' gs2' gs1 t gs2, gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -1619,7 +1659,7 @@ Section NilDecide.
                     ⊢ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
                     ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i)
                   (fun d l l' Hle HQ => lift_exp_eq_ge _ _ _ _ _ _ _ Hle HQ) (List.seq 0 (ptyp_depth t))) as [[i HD] | HD].
-      + intros d _; exact (typ_eq_least_dec Θ Ξ HΞ _ _ _).
+      + intros d _; exact (typ_eq_least_dec F HΞ _ _ _).
       + left; exists i; intros d Hd; apply HD, List.in_seq; lia.
       + right; intros l Hl; apply (HD l); intros d Hd; apply List.in_seq in Hd; apply Hl; lia.
     - left; exists i; intros; eapply H; eauto.
@@ -1672,7 +1712,7 @@ Section NilDecide.
                                          ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
                      ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
                      : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ)
-                  (fun P' P T => check_exp_at Θ Ξ HΞ _ _ _)
+                  (fun P' P T => check_exp_at F HΞ _ _ _)
                   (ptyp_ps_at (cargs_pat gs1') t') (ptyp_ps_at (cargs_pat gs1) t)
                   (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                      (ptyp_ps_at (cargs_pat gs1) t))) as [HP | HP].
@@ -1730,7 +1770,7 @@ Section NilDecide.
                      ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
                      ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
                      : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ)
-                  (fun P' P T => eq_at_dec Θ Ξ HΞ _ _ _ _)
+                  (fun P' P T => eq_at_dec F HΞ _ _ _ _)
                   (ptyp_ps_at (cargs_pat gs1') t') (ptyp_ps_at (cargs_pat gs1) t)
                   (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                      (ptyp_ps_at (cargs_pat gs1) t))) as [HP | HP].
@@ -1753,8 +1793,8 @@ Section NilDecide.
     destruct (views_dec D (fun k Mk qc k' Is vm => forall D', ind_lookup Θ Ξ qc = Some D' ->
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ)) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| left; intros ? [=] ].
-      destruct (sub_dec Θ Ξ HΞ (grp_sctx D) (ind_sort D')[sb_of_list Id (IsS k)] (ind_sort D)[self_wk D 0]ʷ) as [HS | HS];
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| left; intros ? [=] ].
+      destruct (sub_dec F HΞ (grp_sctx D) (ind_sort D')[sb_of_list Id (IsS k)] (ind_sort D)[self_wk D 0]ʷ) as [HS | HS];
         [ left; intros ? [= <-]; exact HS | right; intros H; exact (HS (H _ eq_refl)) ].
     - dec_left H.
     - dec_right H.
@@ -1768,7 +1808,7 @@ Section NilDecide.
        exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm}.
   Proof.
     apply views_dec; intros k Mk qc k' Is vm _ _.
-    destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| right; intros (D' & HD' & _); discriminate ].
+    destruct (ind_lookup_f F qc) as [[D' |] Hl]; rewrite_dec Hl; [| right; intros (D' & HD' & _); discriminate ].
     destruct (vwrap_check D D' vm) eqn:Hc.
     - left; exists D'; split; [ reflexivity | exact (vwrap_check_sound _ _ _ Hc) ].
     - right; intros (D'' & [= <-] & Hw); rewrite (vwrap_check_complete _ _ _ Hw) in Hc; discriminate.
@@ -1783,7 +1823,7 @@ Section NilDecide.
   Definition rview_record_facts_dec (qr : qname) (Is : list exp) (fl : list string) :
     {exists R, rview_record_facts Θ Ξ R qr Is fl} + {~ exists R, rview_record_facts Θ Ξ R qr Is fl}.
   Proof.
-    destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl];
+    destruct (record_lookup_f F qr) as [[R |] Hl];
       [| right; intros (R & HR); rewrite (rview_record_lookup _ _ _ _ _ _ HR) in Hl; discriminate ].
     Local Ltac rview_facts_rej Hl :=
       let R' := fresh "R'" in let HL := fresh "HL" in
@@ -1879,8 +1919,8 @@ Section NilDecide.
                 forall j I T, nth_error (IsS k) j = Some I -> nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T)) as [H | H].
     - intros k Mk qr Is fl _ _.
-      destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
-      destruct (forall_nth2_dec (fun I T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) (fun I T => check_exp_at Θ Ξ HΞ (grp_sctx D) T I)
+      destruct (record_lookup_f F qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (forall_nth2_dec (fun I T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) (fun I T => check_exp_at F HΞ (grp_sctx D) T I)
                   (IsS k) (tele_insts (record_params R) Id (IsS k))) as [HI | HI];
         [ left; intros R' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HI | right; intros H; exact (HI (H _ Hl)) ].
     - dec_left H.
@@ -1904,9 +1944,9 @@ Section NilDecide.
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
                                       ≈ scargs_ctx D IsS Mk gs)) as [H | H].
     - intros k Mk qr Is fl _ _.
-      destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (record_lookup_f F qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
       destruct (im_cons Mk) as [| [c gs] [| cg rest]] eqn:Ec; [ left; intros ? ? ? ? [=] | | left; intros ? ? ? ? [=] ].
-      destruct (ext_eq_dec Θ Ξ HΞ (grp_sctx D) (tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k)))
+      destruct (ext_eq_dec F HΞ (grp_sctx D) (tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k)))
                   (scargs_ctx D IsS Mk gs)
                   (tele_ass_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
                                 ltac:(unfold record_fctx, tele_ass;
@@ -1931,8 +1971,8 @@ Section NilDecide.
     destruct (rviews_dec D (fun k Mk qr Is fl => forall R, record_lookup Θ Ξ qr = Some R ->
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ)) as [H | H].
     - intros k Mk qr Is fl _ _.
-      destruct (record_lookup_f Θ Ξ qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
-      destruct (sub_dec Θ Ξ HΞ (grp_sctx D) (record_sort R)[sb_of_list Id (IsS k)] (ind_sort D)[self_wk D 0]ʷ) as [HS | HS];
+      destruct (record_lookup_f F qr) as [[R |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (sub_dec F HΞ (grp_sctx D) (record_sort R)[sb_of_list Id (IsS k)] (ind_sort D)[self_wk D 0]ʷ) as [HS | HS];
         [ left; intros R' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HS | right; intros H; exact (HS (H _ Hl)) ].
     - dec_left H.
     - dec_right H.
@@ -1946,7 +1986,7 @@ Section NilDecide.
        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ}.
   Proof.
     apply rviews_dec; intros k Mk qr Is fl _ _.
-    exact (check_exp_at Θ Ξ HΞ (grp_sctx D) (ind_sort D)[self_wk D 0]ʷ (apps_exp (a_record qr) (IsS k))).
+    exact (check_exp_at F HΞ (grp_sctx D) (ind_sort D)[self_wk D 0]ʷ (apps_exp (a_record qr) (IsS k))).
   Defined.
 
   (** A view takes its container's record views to record views of the
@@ -1967,7 +2007,7 @@ Section NilDecide.
                 exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\
                   List.length X = List.length Is'')) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| left; intros ? Hl'; congruence ].
       destruct (members_dec D' (fun i' Mi' => forall q'' Is'' fl'', im_head Mi' = mh_record q'' Is'' fl'' ->
                   forall v, nth_error vm i' = Some v ->
                   exists Mv X, ind_member D v = Some Mv /\ im_head Mv = mh_record q'' X fl'' /\
@@ -1985,7 +2025,7 @@ Section NilDecide.
         destruct (list_eq_dec string_dec flv fl2) as [-> | Hf]; [| rview_maps_rej ].
         destruct (Nat.eq_dec (List.length Iv) (List.length Is2)) as [HL | HL]; [| rview_maps_rej ].
         left; intros ? ? ? [= <- <- <-] ? [= <-]; exists Mv, Iv; repeat split; assumption.
-      + left; intros D'' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HM.
+      + left; intros D'' Hl'; rewrite ?Hl in Hl'; injection Hl' as <-; exact HM.
       + right; intros H'; apply HM; exact (H' D' Hl).
     - dec_left H.
     - dec_right H.
@@ -2022,7 +2062,7 @@ Section NilDecide.
                 nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
                 Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [H | H].
     - intros k Mk qc k' Is vm _ _.
-      destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| left; intros ? Hl'; congruence ].
+      destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| left; intros ? Hl'; congruence ].
       destruct (members_dec D' (fun i' Mi' => forall q'' Is'' fl'', im_head Mi' = mh_record q'' Is'' fl'' ->
                   forall R'', record_lookup Θ Ξ q'' = Some R'' -> forall v, nth_error vm i' = Some v ->
                   forall Mv, ind_member D v = Some Mv -> forall X fl, im_head Mv = mh_record q'' X fl ->
@@ -2032,18 +2072,18 @@ Section NilDecide.
                   Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])) as [HM | HM].
       + intros i' Mi' _.
         destruct (im_head Mi') as [pm' | q2 k2 Is2 vm2 | q2 Is2 fl2] eqn:Hh'; [ vacuous | vacuous |].
-        destruct (record_lookup_f Θ Ξ q2) as [[R2 |] Hl2]; [| vacuous ].
+        destruct (record_lookup_f F q2) as [[R2 |] Hl2]; [| vacuous ].
         destruct (List.nth_error vm i') as [v |] eqn:Hv; [| vacuous ].
         destruct (ind_member D v) as [Mv |] eqn:Hmv; [| vacuous ].
         destruct (im_head Mv) as [pmv | qv kv Iv vmv | qv Iv flv] eqn:Hhv; [ vacuous | vacuous |].
         destruct (qname_eq_dec qv q2) as [-> | Hq]; [| vacuous ].
         destruct (forall_nth3_dec (fun C C' T => Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)])
-                    (fun C C' T => eq_at_dec Θ Ξ HΞ (grp_sctx D) T[sb_of_list Id (IsS k)] C C')
+                    (fun C C' T => eq_at_dec F HΞ (grp_sctx D) T[sb_of_list Id (IsS k)] C C')
                     (IsS v) (List.map (fun I => I[sb_of_list Id (IsS k)]) Is2) (tele_insts (record_params R2) Id Is2))
           as [HC | HC].
         * left; intros ? ? ? [= <- <- <-] R2' Hl2' v' Hv' Mv' Hmv' X fl Hhv'; unify_found; intros; eapply HC; eassumption.
         * right; intros H; exact (HC (H _ _ _ eq_refl _ Hl2 _ eq_refl _ Hmv _ _ Hhv)).
-      + left; intros D'' Hl'; rewrite Hl in Hl'; injection Hl' as <-; exact HM.
+      + left; intros D'' Hl'; rewrite ?Hl in Hl'; injection Hl' as <-; exact HM.
       + right; intros H'; apply HM; exact (H' D' Hl).
     - dec_left H.
     - dec_right H.
@@ -2064,13 +2104,14 @@ Section NilDecide.
     destruct uparams_suffix_dec as [[Δ HΔ] | HnΔ]; [| nil_rej ].
     destruct (tele_ass_dec (ind_uparams D)) as [Hass | Hass]; [| nil_rej ].
     destruct (decl_mvc_dec D) as [Hmvc | Hmvc]; [| nil_rej ].
-    destruct (Compare_dec.le_dec (List.length (gs_tele Ξ)) (ind_nu D)) as [Hle | Hle]; [| nil_rej ].
-    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_uparams D)) as [HU | HU]; [| nil_rej ].
+    destruct (Compare_dec.le_dec (List.length (fc_tele F)) (ind_nu D)) as [Hle | Hle];
+      rewrite <- (fc_tele_ok F) in Hle; [| nil_rej ].
+    destruct (check_ctx F HΞ (ind_uparams D)) as [HU | HU]; [| nil_rej ].
     destruct order_ok_dec as [Hord | Hord]; [| nil_rej ].
     destruct first_member_dec as [[M0 [HM0 Hh0]] | HnM0]; [| nil_rej ].
     destruct (ind_sort_univ_dec (ind_sort D)) as [HSu | HSu]; [| nil_rej ].
-    destruct (typ_least_dec Θ Ξ HΞ (ind_uparams D) (ind_sort D)) as [[lS [HS _]] | HnS]; [| nil_rej ].
-    destruct (check_level fctx_none Θ Ξ (ind_uparams D) HU (ind_sort_lvl (ind_sort D))) as [[n Hn] | Hnn]; [| nil_rej ].
+    destruct (typ_least_dec F HΞ (ind_uparams D) (ind_sort D)) as [[lS [HS _]] | HnS]; [| nil_rej ].
+    destruct (check_level F (ind_uparams D) HU (ind_sort_lvl (ind_sort D))) as [[n Hn] | Hnn]; [| nil_rej ].
     destruct nparams_ass_dec as [HPass | HPass]; [| nil_rej ].
     destruct members_nodup_dec as [Hnd | Hnd]; [| nil_rej ].
     destruct nparams_sort_dec as [HNs | HNs]; [| nil_rej ].
@@ -2098,11 +2139,11 @@ Section NilDecide.
     destruct rview_typed_dec as [HRt | HRt]; [| nil_rej ].
     destruct rview_maps_dec as [HRm | HRm]; [| nil_rej ].
     destruct rview_instance_eq_dec as [HRie | HRie]; [| nil_rej ].
-    destruct (rank_check Θ Ξ D) eqn:Hrk;
+    destruct (rank_check_f F D) eqn:Hrk; rewrite rank_check_f_ok in Hrk;
       [| right; intros Hn0; destruct Hn0;
          rewrite (rank_check_complete _ _ _ (decls_of_ctx _ _ _ HU) ltac:(eassumption)) in Hrk; discriminate ].
     destruct vwrap_dec as [HVw | HVw]; [| nil_rej ].
-    destruct (view_maps_check Θ Ξ D) eqn:Hvm;
+    destruct (view_maps_check_f F D) eqn:Hvm; rewrite view_maps_check_f_ok in Hvm;
       [| right; intros Hn0; destruct Hn0; rewrite (view_maps_check_complete _ _ _ ltac:(eassumption)) in Hvm; discriminate ].
     left; apply (mk_ind_nil_at Θ Ξ mp D IsS Δ M0 (Nat.max lS lD) n); try assumption.
     - apply (lift_exp_ge _ _ _ _ lS); [ lia | exact HS ].
@@ -2225,30 +2266,61 @@ Fixpoint sh_reason (np n : nat) (pat : list bool) (d : nat) (T : exp) : cls_why 
 Definition cls_reason (np n : nat) (pat : list bool) (T : exp) : cls_why :=
   if selfs_free np n pat 0 T then cls_why_code 0 else sh_reason np n pat 0 T.
 
+(** The classification reads the filed groups through [grp_info] alone. *)
+Lemma cls_sh_ext : forall (g1 g2 : qname -> nat -> option nat) recs nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
+    forall T d, cls_sh g1 recs nu np n pat d T = cls_sh g2 recs nu np n pat d T.
+Proof.
+  intros * Hg T; induction T; intros d; cbn [cls_sh]; try reflexivity;
+    try (destruct (app_head _) eqn:?; try reflexivity; unfold cls_nest; rewrite Hg; reflexivity).
+  destruct (img_pat _ _); [ rewrite IHT2; reflexivity | reflexivity ].
+Qed.
+
+(** The same for an argument *)
+Lemma cls_arg_ext : forall (g1 g2 : qname -> nat -> option nat) recs nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
+    forall T, cls_arg g1 recs nu np n pat T = cls_arg g2 recs nu np n pat T.
+Proof. intros * Hg T; unfold cls_arg; rewrite (cls_sh_ext g1 g2 _ _ _ _ _ Hg); reflexivity. Qed.
+
 Section Classify.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Context {F : FCtx Θ Ξ}.
+  (** The fast context the classification looks names up in *)
+  Variable F : FCtx.
+  #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
+
+  (** [rd_uctx], the frames' telescope fast *)
+  Definition rd_uctx_f (R : raw_decl) : ctx :=
+    tele_wk (raw_decl_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ fc_tele F.
+
+  Lemma rd_uctx_f_ok : forall R, rd_uctx_f R = rd_uctx Ξ R.
+  Proof. intros; unfold rd_uctx_f, rd_uctx; rewrite (fc_tele_ok F); reflexivity. Qed.
+
+  (** [rm_pctx], the frames' telescope fast *)
+  Definition rm_pctx_f (R : raw_decl) (Mr : raw_member) : ctx :=
+    tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ fc_tele F.
+
+  Lemma rm_pctx_f_ok : forall R Mr, rm_pctx_f R Mr = rm_pctx Ξ R Mr.
+  Proof. intros; unfold rm_pctx_f, rm_pctx; rewrite (fc_tele_ok F); reflexivity. Qed.
 
   (** The number of parameters of the record at [qr], if it is one, read
       through the filed units ([rec_info]). *)
   Definition rec_info_f (qr : qname) : option nat :=
-    option_map (fun R => List.length (record_params R)) (proj1_sig (record_lookup_f Θ Ξ qr)).
+    option_map (fun R => List.length (record_params R)) (proj1_sig (record_lookup_f F qr)).
 
   Lemma rec_info_f_ok : forall qr, rec_info_f qr = rec_info Θ Ξ qr.
-  Proof. intros qr; unfold rec_info_f, rec_info; destruct (record_lookup_f Θ Ξ qr) as [o E]; cbn; rewrite E; reflexivity. Qed.
+  Proof. intros qr; unfold rec_info_f, rec_info; destruct (record_lookup_f F qr) as [o E]; cbn; rewrite E; reflexivity. Qed.
 
   (** An argument as written, or, failing that, as its normal form. *)
   Definition cls_arg_in_dec (Γ : ctx) (nu np n : nat) (pat : list bool) (T : exp) :
     ({g | cls_arg_in Θ Ξ Γ nu np n pat T g} + {r : cls_why | forall g, ~ cls_arg_in Θ Ξ Γ nu np n pat T g})%type.
   Proof.
     destruct (cls_arg grp_none rec_none nu np n pat T) as [g |] eqn:Hs; [ left; exists g; apply cls_in_syn; exact Hs |].
-    destruct (typ_least_dec Θ Ξ HΞ Γ T) as [[i [HT _]] | HnT].
+    destruct (typ_least_dec F HΞ Γ T) as [[i [HT _]] | HnT].
     2:{ right; exists (cls_reason np n pat T); intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst;
         [ congruence | exact (HnT _ HT) ]. }
-    destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) Γ T (typ_nbe_ty_order Θ Ξ _ _ _ HT)) as [W HW].
-    destruct (cls_arg (grp_info Θ Ξ) rec_info_f nu np n pat (nf_to_exp W)) as [g |] eqn:Hn;
-      rewrite (cls_arg_rec_ext _ _ _ rec_info_f_ok) in Hn.
+    destruct (nbe_ty_impl F Γ T (typ_nbe_ty_order F _ _ _ HT)) as [W HW].
+    destruct (cls_arg (grp_info_f F) rec_info_f nu np n pat (nf_to_exp W)) as [g |] eqn:Hn;
+      rewrite (cls_arg_rec_ext _ _ _ rec_info_f_ok), (cls_arg_ext _ _ _ _ _ _ _ (grp_info_f_ok F)) in Hn.
     - left; exists g; eapply cls_in_nf; eassumption.
     - right; exists (self_arg_in Γ (cls_reason np n pat (nf_to_exp W))).
       intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' Hg']; subst; [ congruence |].
@@ -2292,8 +2364,13 @@ Section Classify.
 
   (** The constructors of a declared member. *)
   Definition rm_cls_dec (R : raw_decl) (Mr : raw_member) :
-    ({cs | rm_cls Θ Ξ R Mr cs} + {e : (string * string * cls_why) | forall cs, ~ rm_cls Θ Ξ R Mr cs})%type :=
-    cls_cons_in_dec (rm_pctx Ξ R Mr) (rd_nu R) (List.length (raw_member_nparams Mr) + rd_nu R) (rd_n R) (raw_member_cons Mr).
+    ({cs | rm_cls Θ Ξ R Mr cs} + {e : (string * string * cls_why) | forall cs, ~ rm_cls Θ Ξ R Mr cs})%type.
+  Proof.
+    (* decided at the fast context; read in Core in the proofs only *)
+    destruct (cls_cons_in_dec (rm_pctx_f R Mr) (rd_nu R) (List.length (raw_member_nparams Mr) + rd_nu R) (rd_n R)
+                (raw_member_cons Mr)) as [[cs Hcs] | [e He]];
+      [ left; exists cs | right; exists e ]; unfold rm_cls; rewrite <- rm_pctx_f_ok; [ exact Hcs | exact He ].
+  Defined.
 
   (** The declared members' constructors, member by member; a rejection
       names the member too. *)
@@ -2330,18 +2407,18 @@ Section Classify.
     ({cs | view_cls Θ Ξ R x cs} + {e : view_why | forall cs, ~ view_cls Θ Ξ R x cs})%type.
   Proof.
     destruct x as [qc k Cs | qr Is].
-    2:{ destruct (record_lookup_f Θ Ξ qr) as [[Rr |] Hl];
+    2:{ destruct (record_lookup_f F qr) as [[Rr |] Hl];
           [| right; exists view_why_container; intros cs H; inversion H; congruence ].
-        destruct (cls_cons_in_dec (rd_uctx Ξ R) (rd_nu R) (rd_nu R) (rd_n R)
+        destruct (cls_cons_in_dec (rd_uctx_f R) (rd_nu R) (rd_nu R) (rd_n R)
                     ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id Is)))
-                       :: nil)) as [[cs Hcs] | [[[c y] r] He]].
+                       :: nil)) as [[cs Hcs] | [[[c y] r] He]]; rewrite (rd_uctx_f_ok R) in *.
         - left; exists cs; econstructor; eassumption.
         - right; exists (view_why_cls c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption. }
-    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros cs H; inversion H; congruence ].
+    destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| right; exists view_why_container; intros cs H; inversion H; congruence ].
     destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros cs H; inversion H; subst; unify_found; congruence ].
-    destruct (cls_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ rd_uctx Ξ R) (rd_nu R) (im_nn Mk' + rd_nu R) (rd_n R)
+    destruct (cls_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ rd_uctx_f R) (rd_nu R) (im_nn Mk' + rd_nu R) (rd_n R)
                 (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id Cs)))))
-                   (im_cons Mk'))) as [[cs Hcs] | [[[c y] r] He]].
+                   (im_cons Mk'))) as [[cs Hcs] | [[[c y] r] He]]; rewrite (rd_uctx_f_ok R) in *.
     - left; exists cs; econstructor; eassumption.
     - right; exists (view_why_cls c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption.
   Defined.
@@ -2353,9 +2430,9 @@ Section Classify.
     destruct Δ as [| [A | A M | U | A M U] Δ0].
     - left; exists nil; constructor.
     - destruct (nbe_tele_dec Γ Δ0) as [[Δ0' H0] | H0]; [| right; intros Δ' H; inversion H; subst; eapply H0; eassumption ].
-      destruct (typ_least_dec Θ Ξ HΞ (Δ0 ++ Γ) A) as [[i [HA _]] | HnA];
+      destruct (typ_least_dec F HΞ (Δ0 ++ Γ) A) as [[i [HA _]] | HnA];
         [| right; intros Δ' H; inversion H as [| ? ? ? ? [i HA] _ _]; subst; exact (HnA _ HA) ].
-      destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) (Δ0 ++ Γ) A (typ_nbe_ty_order Θ Ξ _ _ _ HA)) as [W HW].
+      destruct (nbe_ty_impl F (Δ0 ++ Γ) A (typ_nbe_ty_order F _ _ _ HA)) as [W HW].
       left; exists (ce_ass (nf_to_exp W) :: Δ0'); constructor; [ exists i; exact HA | exact HW | exact H0 ].
     - right; intros Δ' H; inversion H.
     - right; intros Δ' H; inversion H.
@@ -2367,9 +2444,10 @@ Section Classify.
     ({Nv | view_nps Θ Ξ R x Nv} + {e : view_why | forall Nv, ~ view_nps Θ Ξ R x Nv})%type.
   Proof.
     destruct x as [qc k Cs | qr Is]; [| left; exists nil; constructor ].
-    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros Nv H; inversion H; congruence ].
+    destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| right; exists view_why_container; intros Nv H; inversion H; congruence ].
     destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros Nv H; inversion H; subst; unify_found; congruence ].
-    destruct (nbe_tele_dec (rd_uctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs))) as [[Ws HWs] | HnWs].
+    destruct (nbe_tele_dec (rd_uctx_f R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs))) as [[Ws HWs] | HnWs];
+      rewrite (rd_uctx_f_ok R) in *.
     2:{ right; exists view_why_untyped; intros Nv H; inversion H; subst; unify_found; eapply HnWs; eassumption. }
     destruct (img_tele (List.repeat false (rd_nu R) ++ List.repeat true (rd_n R)) Ws) as [Nv |] eqn:Hi.
     - left; exists Nv; econstructor; eassumption.
@@ -2385,8 +2463,8 @@ Section Classify.
     destruct Ms as [| M Ms'], As as [| A As']; try (right; intros Ws H; inversion H; fail).
     - left; exists nil; constructor.
     - destruct (nbes_dec Γ Ms' As') as [[Ws' HWs'] | HnWs']; [| right; intros Ws H; inversion H; subst; eapply HnWs'; eassumption ].
-      destruct (check_exp_at Θ Ξ HΞ Γ A M) as [HM | HnM]; [| right; intros Ws H; inversion H; subst; contradiction ].
-      destruct (@nbe_impl Θ Ξ (fctx_none Θ Ξ) Γ M A (typed_nbe_order' Θ Ξ _ _ _ HM)) as [W HW].
+      destruct (check_exp_at F HΞ Γ A M) as [HM | HnM]; [| right; intros Ws H; inversion H; subst; contradiction ].
+      destruct (nbe_impl F Γ M A (typed_nbe_order' F _ _ _ HM)) as [W HW].
       left; exists (W :: Ws'); constructor; assumption.
   Defined.
 
@@ -2400,7 +2478,7 @@ Section Classify.
         [| right; intros ss H; inversion H; subst; eapply Hnss; eassumption ].
       destruct (im_head M) as [pm | qv kv Iv vmv | qr Ir flr] eqn:Hh;
         [ left; exists (vk_ind qc i Cs :: ss); eapply sibs_from_decl; eassumption | |].
-      + destruct (ind_lookup_f Θ Ξ qv) as [[Dv |] Hlv];
+      + destruct (ind_lookup_f F qv) as [[Dv |] Hlv];
           [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
         destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
                     (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv))) as [[Ws HWs] | HnWs].
@@ -2408,7 +2486,7 @@ Section Classify.
         * right; intros ss' H; inversion H; subst; unify_found; try congruence.
           match goal with Hh' : im_head M = mh_view _ _ _ _ |- _ => rewrite Hh in Hh'; injection Hh'; intros; subst end.
           unify_found; eapply HnWs; eassumption.
-      + destruct (record_lookup_f Θ Ξ qr) as [[Rr |] Hlr];
+      + destruct (record_lookup_f F qr) as [[Rr |] Hlr];
           [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
         destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Ir)
                     (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (record_params Rr) sb_id Ir))) as [[Ws HWs] | HnWs].
@@ -2423,8 +2501,8 @@ Section Classify.
     ({ss | view_sibs Θ Ξ R x ss} + {e : view_why | forall ss, ~ view_sibs Θ Ξ R x ss})%type.
   Proof.
     destruct x as [qc k Cs | qr Is]; [| left; exists (vk_record qr Is :: nil); constructor ].
-    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists view_why_container; intros ss H; inversion H; congruence ].
-    destruct (sibs_from_dec (rd_uctx Ξ R) qc Cs 0 (ind_members D')) as [[ss Hss] | Hnss].
+    destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| right; exists view_why_container; intros ss H; inversion H; congruence ].
+    destruct (sibs_from_dec (rd_uctx_f R) qc Cs 0 (ind_members D')) as [[ss Hss] | Hnss]; rewrite (rd_uctx_f_ok R) in *.
     - left; exists ss; econstructor; eassumption.
     - right; exists view_why_untyped; intros ss H; inversion H; subst; unify_found; eapply Hnss; eassumption.
   Defined.
@@ -2520,18 +2598,6 @@ Section Equiv.
     intros * []; econstructor; eauto.
   Qed.
 
-  (** The classification reads the filed groups through [grp_info] alone. *)
-  Lemma cls_sh_ext : forall (g1 g2 : qname -> nat -> option nat) recs nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
-      forall T d, cls_sh g1 recs nu np n pat d T = cls_sh g2 recs nu np n pat d T.
-  Proof.
-    intros * Hg T; induction T; intros d; cbn [cls_sh]; try reflexivity;
-      try (destruct (app_head _) eqn:?; try reflexivity; unfold cls_nest; rewrite Hg; reflexivity).
-    destruct (img_pat _ _); [ rewrite IHT2; reflexivity | reflexivity ].
-  Qed.
-
-  Lemma cls_arg_ext : forall (g1 g2 : qname -> nat -> option nat) recs nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
-      forall T, cls_arg g1 recs nu np n pat T = cls_arg g2 recs nu np n pat T.
-  Proof. intros * Hg T; unfold cls_arg; rewrite (cls_sh_ext g1 g2 _ _ _ _ _ Hg); reflexivity. Qed.
 
   Lemma equiv_typ : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ' ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
   Proof. intros; eapply equiv_exp; eassumption. Qed.
