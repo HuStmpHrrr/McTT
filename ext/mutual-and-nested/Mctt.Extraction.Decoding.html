@@ -1,0 +1,114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Extraction.Decoding</h1>
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#"><span class="id" title="library">Members</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Command.html#"><span class="id" title="library">Command</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Extraction</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Extraction.FastContext.html#"><span class="id" title="library">FastContext</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab1260"></a><h1 class="section">The Core Context of a Fast Context</h1>
+
+
+<div class="paragraph"> </div>
+
+    The Core global context a fast context stands for, behind a sealed
+    module: it is the decoding of the fast data (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Decoding.html#FcDecoding.fc_gctx_eq"><span class="id" title="lemma">fc_gctx_eq</span></a></span>), but no
+    tactic can reduce it into the decoding functions.  <span class="inlinecode"><span class="id" title="tactic">firstorder</span></span>
+    reduces through any transparent definition whatever its <span class="inlinecode"><span class="id" title="keyword">Opaque</span></span>
+    status, and through the type of a <span class="inlinecode"><span class="id" title="keyword">Qed</span></span> constant, and took about ten
+    seconds per call on a goal mentioning the decoding, two minutes in the
+    obligations of <span class="inlinecode"><span class="id" title="library">TypeCheck</span></span>.  The field <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Decoding.html#FcDecoding.fc_gctx_eq"><span class="id" title="lemma">fc_gctx_eq</span></a></span> of the signature is
+    implemented by a proof (<span class="inlinecode"><span class="id" title="var">FcDecoding.fc_gctx_eq</span></span>): it is no axiom, and
+    the theorems using it stay closed under the global context.
+
+<div class="paragraph"> </div>
+
+    The module has a file of its own so that no extracted code has it:
+    the extracted functions take the fast data and read no Core context,
+    so extraction needs nothing of this file, and the decoding functions
+    of <span class="inlinecode"><span class="id" title="library">Extraction.FastGlobal</span></span> are not extracted either. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Module</span> <span class="id" title="keyword">Type</span> <a id="FcDecodingSig" class="idref" href="#FcDecodingSig"><span class="id" title="module">FcDecodingSig</span></a>.<br/>
+</div>
+
+<div class="doc">
+The Core global context a fast context stands for 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Parameter</span> <a id="FcDecodingSig.fc_gctx" class="idref" href="#FcDecodingSig.fc_gctx"><span class="id" title="axiom">fc_gctx</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#FCtx"><span class="id" title="record">FCtx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GCtx"><span class="id" title="class">GCtx</span></a>.<br/>
+</div>
+
+<div class="doc">
+It is the decoding of the fast data. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Parameter</span> <a id="FcDecodingSig.fc_gctx_eq" class="idref" href="#FcDecodingSig.fc_gctx_eq"><span class="id" title="axiom">fc_gctx_eq</span></a> : <span class="id" title="keyword">forall</span> <a id="F:3" class="idref" href="#F:3"><span class="id" title="binder">F</span></a>, <a class="idref" href="Mctt.Extraction.Decoding.html#FcDecodingSig.fc_gctx"><span class="id" title="axiom">fc_gctx</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:3"><span class="id" title="variable">F</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_mk"><span class="id" title="constructor">gc_mk</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> (<a class="idref" href="Mctt.Extraction.FastContext.html#fc_view"><span class="id" title="projection">fc_view</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:3"><span class="id" title="variable">F</span></a>)) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> (<a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames"><span class="id" title="projection">fc_frames</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:3"><span class="id" title="variable">F</span></a>)).<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Extraction.Decoding.html#FcDecodingSig"><span class="id" title="module">FcDecodingSig</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The implementation of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Decoding.html#FcDecodingSig"><span class="id" title="module">FcDecodingSig</span></a></span>: the decoding itself 
+</div>
+<div class="code">
+<span class="id" title="keyword">Module</span> <a id="FcDecoding" class="idref" href="#FcDecoding"><span class="id" title="module">FcDecoding</span></a> : <a class="idref" href="Mctt.Extraction.Decoding.html#FcDecodingSig"><span class="id" title="module">FcDecodingSig</span></a>.<br/>
+</div>
+
+<div class="doc">
+The decoding of the fast data 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="FcDecoding.fc_gctx" class="idref" href="#FcDecoding.fc_gctx"><span class="id" title="definition">fc_gctx</span></a> (<a id="F:6" class="idref" href="#F:6"><span class="id" title="binder">F</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#FCtx"><span class="id" title="record">FCtx</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GCtx"><span class="id" title="class">GCtx</span></a> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_mk"><span class="id" title="constructor">gc_mk</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> (<a class="idref" href="Mctt.Extraction.FastContext.html#fc_view"><span class="id" title="projection">fc_view</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:6"><span class="id" title="variable">F</span></a>)) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> (<a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames"><span class="id" title="projection">fc_frames</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:6"><span class="id" title="variable">F</span></a>)).<br/>
+</div>
+
+<div class="doc">
+By definition 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="FcDecoding.fc_gctx_eq" class="idref" href="#FcDecoding.fc_gctx_eq"><span class="id" title="lemma">fc_gctx_eq</span></a> : <span class="id" title="keyword">forall</span> <a id="F:7" class="idref" href="#F:7"><span class="id" title="binder">F</span></a>, <a class="idref" href="Mctt.Extraction.Decoding.html#FcDecoding.fc_gctx"><span class="id" title="definition">fc_gctx</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:7"><span class="id" title="variable">F</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_mk"><span class="id" title="constructor">gc_mk</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> (<a class="idref" href="Mctt.Extraction.FastContext.html#fc_view"><span class="id" title="projection">fc_view</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:7"><span class="id" title="variable">F</span></a>)) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> (<a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames"><span class="id" title="projection">fc_frames</span></a> <a class="idref" href="Mctt.Extraction.Decoding.html#F:7"><span class="id" title="variable">F</span></a>)).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="keyword">Qed</span>.<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Extraction.Decoding.html#FcDecoding"><span class="id" title="module">FcDecoding</span></a>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

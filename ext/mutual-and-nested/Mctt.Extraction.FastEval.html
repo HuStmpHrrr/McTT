@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1243"></a><h1 class="section">The Evaluation the Extracted Checker Runs</h1>
+<a id="lab1277"></a><h1 class="section">The Evaluation the Extracted Checker Runs</h1>
 
 
 <div class="paragraph"> </div>
@@ -78,7 +78,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1244"></a><h2 class="section">Deciding Freshness</h2>
+<a id="lab1278"></a><h2 class="section">Deciding Freshness</h2>
 
 <div class="paragraph"> </div>
 
@@ -349,7 +349,7 @@ A skipped argument's results are each unread.
 </div>
 
 <div class="doc">
-<a id="lab1245"></a><h2 class="section">The Relations</h2>
+<a id="lab1279"></a><h2 class="section">The Relations</h2>
 
 </div>
 <div class="code">
@@ -761,7 +761,7 @@ On a neutral: a stuck eliminator, at the motive's instance
 The recursive results of the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> of a constructor, for the
     branch <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> (<span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>): those of a recursive argument, one per leaf
     path of its shape, are computed only when <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> reads one of them.  The
-    results of the recursive argument at the head of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ca_rec"><span class="id" title="constructor">ca_rec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> are
+    results of the recursive argument at the head of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ca_rec"><span class="id" title="constructor">ca_rec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> are
     the variables <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_nrec"><span class="id" title="definition">cargs_nrec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> on of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>, since the results of the
     recursive arguments after it come after it in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>'s environment.
     <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> computes them all. 
@@ -813,7 +813,7 @@ It reads none: each entry is <span class="inlinecode">𝕌ω@0</span>, which not
 </div>
 
 <div class="doc">
-The recursive results of an argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, one per leaf
+The recursive results of an argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, one per leaf
     path, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Evaluation</span></span>. 
 </div>
 <div class="code">
@@ -920,7 +920,7 @@ A view: the container's member, at the view's arguments at <span class="inlineco
 </div>
 
 <div class="doc">
-The type of an argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Evaluation</span></span>. 
+The type of an argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Evaluation</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">with</span> <a id="feval_shty" class="idref" href="#feval_shty"><span class="id" title="definition, inductive"><span id="feval_shty_ind" class="id"><span id="feval_shty_sind" class="id">feval_shty</span></span></span></a> (<span class="id" title="var">Θ</span> : <span class="id" title="var">gdeps</span>) (<span class="id" title="var">Ξ</span> : <span class="id" title="var">gstack</span>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ptyp"><span class="id" title="abbreviation">ptyp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span> :=<br/>
@@ -959,7 +959,7 @@ At a domain: a <span class="inlinecode"><span class="id" title="var">Π</span></
 </div>
 
 <div class="doc">
-The types of the recursive results of an argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, one
+The types of the recursive results of an argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, one
     per leaf path, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Evaluation</span></span>. 
 </div>
 <div class="code">
@@ -1686,7 +1686,7 @@ A definition with a module part adds its term's value and its unit's
 </div>
 
 <div class="doc">
-<a id="lab1246"></a><h2 class="section">Determinism</h2>
+<a id="lab1280"></a><h2 class="section">Determinism</h2>
 
 </div>
 <div class="code">
@@ -1980,7 +1980,7 @@ There is no <span class="inlinecode"><span class="id" title="var">feval_sub</spa
 </div>
 
 <div class="doc">
-<a id="lab1247"></a><h2 class="section">Readback</h2>
+<a id="lab1281"></a><h2 class="section">Readback</h2>
 
 </div>
 <div class="code">
@@ -2082,7 +2082,7 @@ The recursive results of a branch <span class="inlinecode"><a class="idref" href
     variables, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Readback</span></span>: the types of an argument's
     results the branch reads none of are not computed, and each of its
     variables gets <span class="inlinecode">𝕌ω@0</span>.  The results of the argument heading
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ca_rec"><span class="id" title="constructor">ca_rec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> the kinds the branch's group has, are the
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ca_rec"><span class="id" title="constructor">ca_rec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> the kinds the branch's group has, are the
     variables <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_nrec"><span class="id" title="definition">cargs_nrec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> on of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastEval.html#ihs_skipb"><span class="id" title="definition">ihs_skipb</span></a></span>). 
 </div>
 <div class="code">
@@ -2694,7 +2694,7 @@ A recursive argument, along its shape
 </div>
 
 <div class="doc">
-A recursive argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Readback</span></span>. 
+A recursive argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, as in <span class="inlinecode"><span class="id" title="library">Core.Semantic.Readback</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">with</span> <a id="fread_shape" class="idref" href="#fread_shape"><span class="id" title="definition, inductive"><span id="fread_shape_ind" class="id"><span id="fread_shape_sind" class="id">fread_shape</span></span></span></a> (<span class="id" title="var">Θ</span> : <span class="id" title="var">gdeps</span>) (<span class="id" title="var">Ξ</span> : <span class="id" title="var">gstack</span>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ptyp"><span class="id" title="abbreviation">ptyp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf"><span class="id" title="inductive">nf</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span> :=<br/>

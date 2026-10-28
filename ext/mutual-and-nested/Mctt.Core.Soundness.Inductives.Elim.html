@@ -1583,7 +1583,7 @@ The context of the components of a recursive argument's shape: the
 <div class="doc">
 Where a recursive argument sits: at the constructor <span class="inlinecode"><span class="id" title="var">c0</span></span> of the
       member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, after the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.gs1"><span class="id" title="variable">gs1</span></a></span>, of shape <span class="inlinecode"><span class="id" title="var">t0</span></span>, past <span class="inlinecode"><span class="id" title="var">d</span></span> of its
-      domains, the values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.pre"><span class="id" title="variable">pre</span></a></span> of its components related to themselves,
+      domains, the values <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#pre"><span class="id" title="record">pre</span></a></span> of its components related to themselves,
       eliminated at a substitution <span class="inlinecode">σ'</span> glued to <span class="inlinecode">ρ</span>. 
 </div>
 <div class="code">
@@ -1630,7 +1630,7 @@ So are the non-recursive arguments before
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span> is the rest of <span class="inlinecode"><span class="id" title="var">t0</span></span> past <span class="inlinecode"><span class="id" title="var">d</span></span> domains 
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> is the rest of <span class="inlinecode"><span class="id" title="var">t0</span></span> past <span class="inlinecode"><span class="id" title="var">d</span></span> domains 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="arg_ctx_skip" class="idref" href="#arg_ctx_skip"><span class="id" title="projection">arg_ctx_skip</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ptyp_skip"><span class="id" title="definition">ptyp_skip</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#d:800"><span class="id" title="variable">d</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#t0:797"><span class="id" title="variable">t0</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#t:803"><span class="id" title="variable">t</span></a><br/>
@@ -1674,8 +1674,8 @@ It sends <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndChec
 </div>
 
 <div class="doc">
-The motive at a recursive argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, its components
-      at <span class="inlinecode">σ<span class="id" title="var">s</span></span>, the values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.pre"><span class="id" title="variable">pre</span></a></span> of them, in the context <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#elim_arg_context"><span class="id" title="record">elim_arg_context</span></a></span>
+The motive at a recursive argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, its components
+      at <span class="inlinecode">σ<span class="id" title="var">s</span></span>, the values <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#pre"><span class="id" title="record">pre</span></a></span> of them, in the context <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#elim_arg_context"><span class="id" title="record">elim_arg_context</span></a></span>
       gives: its recursive result along each leaf path whose end member
       satisfies <span class="inlinecode"><span class="id" title="var">ok</span></span> is glued at the type of the result there, and so at
       equal substitutions and arguments.  The elimination of an element
@@ -3791,7 +3791,7 @@ The domains of the shape of a recursive argument after <span class="inlinecode">
 <div class="doc">
 The domains of the shapes of a constructor's arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> after
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.gs1"><span class="id" title="variable">gs1</span></a></span>, at non-uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.RecordRealize.ns"><span class="id" title="variable">ns</span></a></span> and non-recursive arguments
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.pre"><span class="id" title="variable">pre</span></a></span> before, all related to themselves: defined at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.IndRealize.ups"><span class="id" title="variable">ups</span></a></span>
+      <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#pre"><span class="id" title="record">pre</span></a></span> before, all related to themselves: defined at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.IndRealize.ups"><span class="id" title="variable">ups</span></a></span>
       (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_shape_doms"><span class="id" title="projection">adm_shape_doms</span></a></span>). 
 </div>
 <div class="code">
@@ -4253,7 +4253,7 @@ The result at the entry, an element of it.
 
 <div class="doc">
 The type of the recursive result along a leaf path of a neutral
-      recursive argument, after <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.pre"><span class="id" title="variable">pre</span></a></span>, against its type as readback reads
+      recursive argument, after <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#pre"><span class="id" title="record">pre</span></a></span>, against its type as readback reads
       it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_ihty"><span class="id" title="inductive">eval_ihty</span></a></span>): related at the level of the former. 
 </div>
 <div class="code">
