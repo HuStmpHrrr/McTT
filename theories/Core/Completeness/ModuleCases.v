@@ -429,7 +429,7 @@ Lemma rel_unit_under_ctx_body_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx
 Proof.
   intros * He Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' HA HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd.
   pose proof (valid_emb_emb _ _ _ _ He) as Hemb.
-  pose proof (em_res _ _ _ _ Hemb) as Hsub; pose proof (em_wf _ _ _ _ Hemb) as Hgw.
+  pose proof (gctx_embedding_resolution _ _ _ _ Hemb) as Hsub; pose proof (gctx_embedding_wf _ _ _ _ Hemb) as Hgw.
   change (⊢ᵍ @gc_deps (gc_mk Θ2 Ξ2) ⍮ @gc_stack (gc_mk Θ2 Ξ2)) in Hgw.
   change (gc_sub Θ Ξ (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2))) in Hsub.
   apply (@rel_unit_under_ctx_body (gc_mk Θ2 Ξ2) Hgw _ _ (valid_emb_wf _ _ _ _ He) Hsub (valid_emb_filed _ _ _ _ He)

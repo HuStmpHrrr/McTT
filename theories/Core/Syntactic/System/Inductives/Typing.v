@@ -22,7 +22,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 (** ** The Groups in Scope *)
 
 Lemma decls_of_ctx : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> decls_typed Θ Ξ.
-Proof. intros * HΓ pq D Hl; exact (gv_decls _ _ _ _ _ _ (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl). Qed.
+Proof. intros * HΓ pq D Hl; exact (globals_valid_decls _ _ _ _ _ _ (gctx_resolved_globals_typed _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl). Qed.
 
 Lemma decl_of_lookup : forall Θ Ξ Γ p D,
     ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D -> decl_typed Θ Ξ D /\ decl_closed D.

@@ -90,7 +90,7 @@ Ltac glu_intro :=
   try match goal with |- glu_is_univ_at _ _ _ _ => constructor end.
 
 (** The syntactic judgments of the source, moved along the sound embedding
-    to its target ([emb_preserves_wf]). *)
+    to its target ([gctx_embedding_preserves_wf]). *)
 Ltac glu_emb_wf :=
   match goal with Hμ : glu_emb _ _ _ _ |- _ =>
     let Hem := fresh "Hem" in
@@ -98,4 +98,4 @@ Ltac glu_emb_wf :=
     let Hwc := fresh "Hwc" in let Hwe := fresh "Hwe" in let Hweq := fresh "Hweq" in
     let Hwst := fresh "Hwst" in let Hwx := fresh "Hwx" in let Hwu := fresh "Hwu" in
     let Hwm := fresh "Hwm" in
-    destruct (emb_preserves_wf _ _ _ _ Hem) as (Hwc & Hwe & Hweq & Hwst & Hwx & Hwu & Hwm) end.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (Hwc & Hwe & Hweq & Hwst & Hwx & Hwu & Hwm) end.

@@ -50,7 +50,7 @@ Proof.
   pose proof (valid_emb_wf _ _ _ _ He) as Hg.
   pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
   constructor.
-  - exact (record_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (valid_emb_emb _ _ _ _ He)) Hl).
+  - exact (record_lookup_gc_sub _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ (valid_emb_emb _ _ _ _ He)) Hl).
   - exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
   - exact (typed_params_ass _ _ _ Ht).
   - exact (typed_nodup _ _ _ Ht).

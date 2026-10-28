@@ -99,79 +99,79 @@ Proof. induction 1; cbn; lia. Qed.
     Their orders, and the functions that compute them. *)
 
 (** The variables of a telescope *)
-Inductive ffresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> Prop :=
+Inductive fast_fresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> Prop :=
 (** No entry *)
-| ffresh_tele_order_nil :
-  `( ffresh_tele_order Θ Ξ ρ nil s )
+| fast_fresh_tele_order_nil :
+  `( fast_fresh_tele_order Θ Ξ ρ nil s )
 (** The first entry's type, then the rest under its variable *)
-| ffresh_tele_order_cons :
+| fast_fresh_tele_order_cons :
   `( feval_exp_order Θ Ξ A ρ ->
-     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_tele_order Θ Ξ (ρ ↦ ⇑! a s) T (S s)) ->
-     ffresh_tele_order Θ Ξ ρ (ce_ass A :: T) s ).
+     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_fresh_tele_order Θ Ξ (ρ ↦ ⇑! a s) T (S s)) ->
+     fast_fresh_tele_order Θ Ξ ρ (ce_ass A :: T) s ).
 
 (** The variables of the arguments of a constructor *)
-Inductive ffresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
+Inductive fast_fresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> Prop :=
 (** No argument *)
-| ffresh_cargs_order_nil :
-  `( ffresh_cargs_order Θ Ξ p ups ρ nil s )
+| fast_fresh_cargs_order_nil :
+  `( fast_fresh_cargs_order Θ Ξ p ups ρ nil s )
 (** A non-recursive argument's type, then the rest *)
-| ffresh_cargs_order_arg :
+| fast_fresh_cargs_order_arg :
   `( feval_exp_order Θ Ξ A ρ ->
-     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
-     ffresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
+     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_fresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
+     fast_fresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
 (** A recursive argument's type, then the rest *)
-| ffresh_cargs_order_rec_case :
+| fast_fresh_cargs_order_rec_case :
   `( feval_shty_order Θ Ξ p ups ρ t ->
-     ffresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
-     ffresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
+     fast_fresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
+     fast_fresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
 
 (** The variables of the recursive results of a branch [B], of the group
     read [Dc] *)
-Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : qname) (ups : list domain)
+Inductive fast_fresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : qname) (ups : list domain)
   (Dc : ind_decl) (B : exp) : env -> list carg -> list carg -> list domain -> nat -> Prop :=
 (** No argument *)
-| ffresh_ihs_order_nil :
-  `( ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa nil nil nil s )
+| fast_fresh_ihs_order_nil :
+  `( fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa nil nil nil s )
 (** A non-recursive argument, entering the environment *)
-| ffresh_ihs_order_arg :
-  `( ffresh_ihs_order Θ Ξ ρ As p ups Dc B (ρa ↦ v) gs' gs vs s ->
-     ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) s )
+| fast_fresh_ihs_order_arg :
+  `( fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B (ρa ↦ v) gs' gs vs s ->
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) s )
 (** Recursive in both, one result read: the types of its results, one per
     leaf path, then the rest after the variables at the paths of the
     container's *)
-| ffresh_ihs_order_rec_case :
+| fast_fresh_ihs_order_rec_case :
   `( ind_lookup Θ Ξ p = Some D ->
      ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = false ->
      feval_ihty_order Θ Ξ p ups ρ As ρa t v ->
      (forall as', ⟦ihtyᶠ v of t at p ups under ρ As ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
         List.length as' = List.length (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))) ->
      (forall as', ⟦ihtyᶠ v of t at p ups under ρ As ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
-        ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs
+        fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs
           (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s) + s)) ->
-     ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
 (** Recursive in both, no result read: the rest after the variables *)
-| ffresh_ihs_order_skip :
+| fast_fresh_ihs_order_skip :
   `( ind_lookup Θ Ξ p = Some D ->
      ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = true ->
-     ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs
        (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
                        (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s) + s) ->
-     ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
 (** Nested through: the rest *)
-| ffresh_ihs_order_nest :
-  `( ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s ->
-     ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
+| fast_fresh_ihs_order_nest :
+  `( fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s ->
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
 
 (** The recursive results a branch is read under, wrapped *)
-Inductive fwrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock)
+Inductive fast_wrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock)
   (Dc : ind_decl) : list carg -> list carg -> list domain -> list domain -> Prop :=
 (** No argument *)
-| fwrap_ihs_order_nil :
-  `( fwrap_ihs_order Θ Ξ ρ p ups Bks Dc nil nil nil nil )
+| fast_wrap_ihs_order_nil :
+  `( fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc nil nil nil nil )
 (** Recursive in both: the eliminator's results at the argument, along
     its paths, then the rest *)
-| fwrap_ihs_order_rec_case :
+| fast_wrap_ihs_order_rec_case :
   `( ind_lookup Θ Ξ p = Some D ->
      feval_ih_order Θ Ξ ρ p ups Bks t v ->
      (forall rs, ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
@@ -179,54 +179,54 @@ Inductive fwrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups
         List.length (List.filter (fun b => b) (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)))
           <= List.length ihs) ->
      (forall rs, ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-        fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs
+        fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs
           (snd (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs))) ->
-     fwrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
+     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
 (** Nested through: the eliminator at the argument, then the rest *)
-| fwrap_ihs_order_nest :
+| fast_wrap_ihs_order_nest :
   `( feval_ih_order Θ Ξ ρ p ups Bks t v ->
-     fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs ->
-     fwrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
+     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs ->
+     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
 (** Non-recursive: the rest *)
-| fwrap_ihs_order_arg :
-  `( fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs ->
-     fwrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) ihs ).
+| fast_wrap_ihs_order_arg :
+  `( fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs ->
+     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) ihs ).
 
 #[local]
-Hint Constructors ffresh_tele_order ffresh_cargs_order ffresh_ihs_order fwrap_ihs_order : mctt.
+Hint Constructors fast_fresh_tele_order fast_fresh_cargs_order fast_fresh_ihs_order fast_wrap_ihs_order : mctt.
 
-Lemma ffresh_tele_order_sound : forall Θ Ξ ρ T s vs, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> ffresh_tele_order Θ Ξ ρ T s.
+Lemma fast_fresh_tele_order_sound : forall Θ Ξ ρ T s vs, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> fast_fresh_tele_order Θ Ξ ρ T s.
 Proof. induction 1; econstructor; intros; functional_feval_rewrite_clear; mauto. Qed.
 
-Lemma ffresh_cargs_order_sound : forall Θ Ξ p ups ρ gs s vs,
-    Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> ffresh_cargs_order Θ Ξ p ups ρ gs s.
+Lemma fast_fresh_cargs_order_sound : forall Θ Ξ p ups ρ gs s vs,
+    Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> fast_fresh_cargs_order Θ Ξ p ups ρ gs s.
 Proof. induction 1; econstructor; intros; functional_feval_rewrite_clear; mauto. Qed.
 
-Lemma ffresh_ihs_order_sound : forall Θ Ξ ρ As p ups Dc B ρa gs' gs vs s ihs,
+Lemma fast_fresh_ihs_order_sound : forall Θ Ξ ρ As p ups Dc B ρa gs' gs vs s ihs,
     Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
-    ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s.
+    fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s.
 Proof.
   induction 1; try solve [ econstructor; eassumption ].
-  - eapply ffresh_ihs_order_rec_case; try eassumption; [ mauto | |];
+  - eapply fast_fresh_ihs_order_rec_case; try eassumption; [ mauto | |];
       intros; functional_feval_rewrite_clear.
     + exact (fresh_leaf_vars_types_length _ _ _ _ H2).
     + rewrite <- (fresh_leaf_vars_f _ _ _ _ H2); assumption.
-  - eapply ffresh_ihs_order_skip; try eassumption.
+  - eapply fast_fresh_ihs_order_skip; try eassumption.
     rewrite <- (fresh_leaf_vars_f _ _ _ _ H1); assumption.
 Qed.
 
-Lemma fwrap_ihs_order_sound : forall Θ Ξ ρ p ups Bks Dc gs' gs vs ihs r,
-    ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r -> fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs.
+Lemma fast_wrap_ihs_order_sound : forall Θ Ξ ρ p ups Bks Dc gs' gs vs ihs r,
+    ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r -> fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs.
 Proof.
   induction 1; try solve [ econstructor; try eassumption; mauto ].
-  eapply fwrap_ihs_order_rec_case; try eassumption; [ mauto | |];
+  eapply fast_wrap_ihs_order_rec_case; try eassumption; [ mauto | |];
     intros; functional_feval_rewrite_clear.
   - exact (wrap_leaf_vals_lengths _ _ _ _ _ H1).
   - rewrite (wrap_leaf_vals_f _ _ _ _ _ H1); assumption.
 Qed.
 
 #[export]
-Hint Resolve ffresh_tele_order_sound ffresh_cargs_order_sound ffresh_ihs_order_sound fwrap_ihs_order_sound : mctt.
+Hint Resolve fast_fresh_tele_order_sound fast_fresh_cargs_order_sound fast_fresh_ihs_order_sound fast_wrap_ihs_order_sound : mctt.
 
 Section FreshImpl.
   Variable F : FCtx.
@@ -237,14 +237,14 @@ Section FreshImpl.
   Ltac fr_obl :=
     intros; cbv beta in *;
     repeat match goal with
-      | H : ffresh_tele_order _ _ _ _ _ |- _ => progressive_invert H
-      | H : ffresh_cargs_order _ _ _ _ _ _ _ |- _ => progressive_invert H
-      | H : ffresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
-      | H : fwrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+      | H : fast_fresh_tele_order _ _ _ _ _ |- _ => progressive_invert H
+      | H : fast_fresh_cargs_order _ _ _ _ _ _ _ |- _ => progressive_invert H
+      | H : fast_fresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+      | H : fast_wrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
       end;
     (** An argument recursive in both: computed or skipped, as the branch
         reads it *)
-    try match goal with H : ffresh_ihs_order _ _ _ _ _ _ _ _ _ (ca_rec _ :: _) (ca_rec _ :: _) _ _ |- _ =>
+    try match goal with H : fast_fresh_ihs_order _ _ _ _ _ _ _ _ _ (ca_rec _ :: _) (ca_rec _ :: _) _ _ |- _ =>
           inversion H; subst; clear H end;
     cbn [ihs_skipb] in *;
     (** The lookups the order records are the ones computed. *)
@@ -256,48 +256,48 @@ Section FreshImpl.
       | H1 : ?x = true, H2 : ?x = false |- _ => rewrite H1 in H2; discriminate H2
       end;
     first [ eassumption | solve [ eauto 2 ]
-          | solve [ eapply ffresh_ihs_skip; [ eassumption | eassumption
+          | solve [ eapply fast_fresh_ihs_skip; [ eassumption | eassumption
                                             | apply leaf_vars_f_sound; rewrite List.repeat_length, List.length_map; reflexivity
                                             | eassumption ] ]
           (** The leaf paths' computations, at the lengths the order
               records *)
-          | solve [ eapply ffresh_ihs_rec; [ eassumption | eassumption | eassumption
+          | solve [ eapply fast_fresh_ihs_rec; [ eassumption | eassumption | eassumption
                                            | apply leaf_vars_f_sound; eauto | eassumption ] ]
-          | solve [ eapply fwrap_ihs_eval_rec; [ eassumption | eassumption | | eassumption ];
+          | solve [ eapply fast_wrap_ihs_eval_rec; [ eassumption | eassumption | | eassumption ];
                     match goal with H : forall rs, _ -> _ /\ _, Hr : feval_ih _ _ _ _ _ _ _ _ ?rs |- _ =>
                       destruct (H _ Hr); apply leaf_wrap_f_sound; assumption end ]
           | econstructor; eassumption ].
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations ffresh_tele_impl ρ T s (H : ffresh_tele_order Θ Ξ ρ T s) : { vs | Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs } by struct H :=
+  Equations fast_fresh_tele_impl ρ T s (H : fast_fresh_tele_order Θ Ξ ρ T s) : { vs | Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs } by struct H :=
   | ρ, nil, s, H => exist _ nil _
   | ρ, ce_ass A :: T, s, H =>
       let (a, Ha) := feval_exp_impl F A ρ _ in
-      let (vs, Hvs) := ffresh_tele_impl (ρ ↦ ⇑! a s) T (S s) _ in
+      let (vs, Hvs) := fast_fresh_tele_impl (ρ ↦ ⇑! a s) T (S s) _ in
       exist _ (⇑! a s :: vs) _
   | ρ, _, s, H => False_rect _ _.
   Solve All Obligations with fr_obl.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations ffresh_cargs_impl p ups ρ gs s (H : ffresh_cargs_order Θ Ξ p ups ρ gs s) :
+  Equations fast_fresh_cargs_impl p ups ρ gs s (H : fast_fresh_cargs_order Θ Ξ p ups ρ gs s) :
     { vs | Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs } by struct H :=
   | p, ups, ρ, nil, s, H => exist _ nil _
   | p, ups, ρ, ca_arg A :: gs, s, H =>
       let (a, Ha) := feval_exp_impl F A ρ _ in
-      let (vs, Hvs) := ffresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
+      let (vs, Hvs) := fast_fresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
       exist _ (⇑! a s :: vs) _
   | p, ups, ρ, ca_rec t :: gs, s, H =>
       let (a, Ha) := feval_shty_impl F p ups ρ t _ in
-      let (vs, Hvs) := ffresh_cargs_impl p ups ρ gs (S s) _ in
+      let (vs, Hvs) := fast_fresh_cargs_impl p ups ρ gs (S s) _ in
       exist _ (⇑! a s :: vs) _.
   Solve All Obligations with fr_obl.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations ffresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs s (H : ffresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s) :
+  Equations fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs s (H : fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s) :
     { ihs | Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs } by struct H :=
   | ρ, As, p, ups, Dc, B, ρa, nil, nil, nil, s, H => exist _ nil _
   | ρ, As, p, ups, Dc, B, ρa, ca_arg _ :: gs', ca_arg _ :: gs, v :: vs, s, H =>
-      let (ihs, Hihs) := ffresh_ihs_impl ρ As p ups Dc B (ρa ↦ v) gs' gs vs s _ in
+      let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B (ρa ↦ v) gs' gs vs s _ in
       exist _ ihs _
   | ρ, As, p, ups, Dc, B, ρa, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, s, H with cache_lookup F (fc_seed F) p := {
     | exist _ (Some D) Ed
@@ -305,40 +305,40 @@ Section FreshImpl.
       (** The branch reads none of the argument's results: their types are
           not computed. *)
       | exist _ true E =>
-          let (ihs, Hihs) := ffresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
+          let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
                                (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
                                                (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s) + s) _ in
           exist _ (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
                      (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s ++ ihs) _
       | exist _ false E =>
           let (as', Has) := feval_ihty_impl F p ups ρ As ρa t v _ in
-          let (ihs, Hihs) := ffresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
+          let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
                                (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s) + s) _ in
           exist _ (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s ++ ihs) _ }
     | exist _ None Ed => False_rect _ _ }
   | ρ, As, p, ups, Dc, B, ρa, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, s, H =>
-      let (ihs, Hihs) := ffresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs s _ in
+      let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs s _ in
       exist _ ihs _
   | ρ, As, p, ups, Dc, B, ρa, _, _, _, s, H => False_rect _ _.
   Solve All Obligations with fr_obl.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs (H : fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs) :
+  Equations fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs (H : fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs) :
     { r | ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r } by struct H :=
   | ρ, p, ups, Bks, Dc, nil, nil, nil, nil, H => exist _ nil _
   | ρ, p, ups, Bks, Dc, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, ihs, H with cache_lookup F (fc_seed F) p := {
     | exist _ (Some D) Ed =>
         let (rs, Hrs) := feval_ih_impl F ρ p ups Bks t v (fc_seed F) _ in
-        let (r, Hr) := fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs
+        let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs
                          (snd (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs)) _ in
         exist _ (fst (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs) ++ r) _
     | exist _ None Ed => False_rect _ _ }
   | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, ihs, H =>
       let (rs, Hrs) := feval_ih_impl F ρ p ups Bks t v (fc_seed F) _ in
-      let (r, Hr) := fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs _ in
+      let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs _ in
       exist _ (rs ++ r) _
   | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_arg _ :: gs, _ :: vs, ihs, H =>
-      let (r, Hr) := fwrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs _ in
+      let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs _ in
       exist _ r _
   | ρ, p, ups, Bks, Dc, _, _, _, _, H => False_rect _ _.
   Solve All Obligations with fr_obl.
@@ -577,7 +577,7 @@ with fread_blocks_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list
      List.nth_error Bks (elim_src sel i) = Some b ->
      Nat.eqb (eb_nm b) (S (im_nn Mi)) = true ->
      feval_mref_order Θ Ξ p ups (elim_src sel i) ->
-     ffresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
+     fast_fresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
      (forall pk k pre ns, ⟦mrefᶠ elim_src sel i of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pk, k, pre) ->
         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
         feval_exp_order Θ Ξ (eb_motive b) (env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil))) ->
@@ -604,19 +604,19 @@ with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list do
      ind_lookup Θ Ξ p = Some D ->
      cargs_nin D Dc gs' gs = cargs_nrec Dc gs' ->
      cargs_plen D gs ->
-     ffresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
+     fast_fresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
      (forall ns,
          Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-         ffresh_cargs_order Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi)) ->
+         fast_fresh_cargs_order Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi)) ->
      (forall ns vs,
          Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
          Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
-         ffresh_ihs_order Θ Ξ ρ (blocks_motives Bks) p ups Dc B (env_args nil (ups ++ ns)) gs' gs vs (s + im_nn Mi + List.length gs')) ->
+         fast_fresh_ihs_order Θ Ξ ρ (blocks_motives Bks) p ups Dc B (env_args nil (ups ++ ns)) gs' gs vs (s + im_nn Mi + List.length gs')) ->
      (forall ns vs ihs,
          Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
          Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
          Fihsᶠ vs at gs' gs of Dc under ρ (blocks_motives Bks) at p ups for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi + List.length gs') ↘ ihs ->
-         fwrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs) ->
+         fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs) ->
      (forall ns vs ihs wihs,
          Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
          Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
@@ -667,7 +667,7 @@ Proof.
           replace n with (List.length vs - List.length gs) in * by lia end;
     first [ solve [ eapply fread_nf_order_ind_neut; eassumption ] |
     (econstructor; try eassumption; try lia; try (apply Nat.eqb_eq; first [ assumption | subst; reflexivity ]);
-     intros; functional_feval_rewrite_clear; functional_ffresh_rewrite_clear;
+     intros; functional_feval_rewrite_clear; functional_fast_fresh_rewrite_clear;
      functional_feval_rewrite_clear; subst; mauto) ].
 Qed.
 
@@ -945,7 +945,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     | exist _ (Some Mv) Em with inspect (List.nth_error Bks (elim_src sel i)) := {
       | exist _ (Some b) Eb with feval_mref_impl F p ups (elim_src sel i) _ := {
         | exist _ (pk, k, pre) Hm =>
-            let (ns, Hns) := ffresh_tele_impl F (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
+            let (ns, Hns) := fast_fresh_tele_impl F (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
             let (a, Ha) := feval_exp_impl F (eb_motive b)
                              (env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil)) _ in
             let (A', HA') := fread_typ_impl_c (S (s + im_nn Mi)) a ck _ in
@@ -962,11 +962,11 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ρ, p, ups, Bks, Dc, Mv, A, Mi, r, nil, nil, ck, H => exist _ nil _
 | s, ρ, p, ups, Bks, Dc, Mv, A, Mi, (pk, k, pre), (c, gs') :: cs, (_, _, B) :: Bs, ck, H with inspect (ind_con Mv c) := {
   | exist _ (Some gs) Ec =>
-      let (ns, Hns) := ffresh_tele_impl F (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
-      let (vs, Hvs) := ffresh_cargs_impl F p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi) _ in
-      let (ihs, Hihs) := ffresh_ihs_impl F ρ (blocks_motives Bks) p ups Dc B (env_args nil (ups ++ ns)) gs' gs vs
+      let (ns, Hns) := fast_fresh_tele_impl F (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
+      let (vs, Hvs) := fast_fresh_cargs_impl F p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi) _ in
+      let (ihs, Hihs) := fast_fresh_ihs_impl F ρ (blocks_motives Bks) p ups Dc B (env_args nil (ups ++ ns)) gs' gs vs
                            (s + im_nn Mi + List.length gs') _ in
-      let (wihs, Hw) := fwrap_ihs_impl F ρ p ups Bks Dc gs' gs vs ihs _ in
+      let (wihs, Hw) := fast_wrap_ihs_impl F ρ p ups Bks Dc gs' gs vs ihs _ in
       let (b, Hb) := feval_exp_impl F B (env_args ρ (ns ++ vs ++ wihs)) _ in
       let (t, Ht) := feval_exp_impl F A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil)) _ in
       let (B', HB') := fread_nf_impl_c (s + (im_nn Mi + List.length gs' + cargs_nrec Dc gs')) ⇓ t b ck _ in
@@ -1073,10 +1073,10 @@ Ltac rb_obl_auto :=
   | |- fread_shape_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_blocks_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- ffresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- ffresh_cargs_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- ffresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fwrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fast_fresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fast_fresh_cargs_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fast_fresh_ihs_order _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fast_wrap_ihs_order _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_projs_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_exp_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_exps_order _ _ _ _ => first [ rb_ord | rb_run ]

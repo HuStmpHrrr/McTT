@@ -8,8 +8,8 @@ Parameter loc : Type.
 
 (** Fold a reversed parameter telescope into a binder chain.  [params]
     accumulates left-recursively, so [fold_left] restores declaration order. *)
-Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
-                       (ps : list (string * Cst.obj)) (body : Cst.obj) : Cst.obj :=
+Definition fold_params (b : string -> Cst.expression -> Cst.expression -> Cst.expression)
+                       (ps : list (string * Cst.expression)) (body : Cst.expression) : Cst.expression :=
   List.fold_left (fun acc p => b (fst p) (snd p) acc) ps body.
 
 (** A dotted path as a list, in order. *)
@@ -34,9 +34,9 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" PLUS "+" STAR "*" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
-%type <Cst.obj> obj app_obj atomic_obj
-%type <string * Cst.obj> param
-%type <list (string * Cst.obj)> params params_opt
+%type <Cst.expression> expression app_expression atomic_expression
+%type <string * Cst.expression> param
+%type <list (string * Cst.expression)> params params_opt
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
@@ -45,30 +45,30 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <list string> fpath ipath upath mpath_opt
 %type <string * string> item
 %type <list (string * string)> items
-%type <list Cst.obj> iargs
+%type <list Cst.expression> iargs
 %type <(list string * list string)%type> qpath
 %type <option string> as_opt
 %type <list iitem> ilists ilist
 %type <list Cst.cmd> cmd lead_cmd import_cmd open_cmd
-%type <(list (string * Cst.obj) * Cst.mdef)%type> mdecl
+%type <(list (string * Cst.expression) * Cst.mdef)%type> mdecl
 %type <Cst.mdef> mdef
 %type <list Cst.cmd> cmds leads
-%type <list (string * list (string * Cst.obj))> ctors
+%type <list (string * list (string * Cst.expression))> ctors
 %type <list string> vars vars_opt ihs_opt
-%type <list (string * list string * Cst.obj)> brs
-%type <string * Cst.obj * list (string * list (string * Cst.obj))> imember
-%type <list (string * Cst.obj * list (string * list (string * Cst.obj)))> imembers
-%type <string * option Cst.obj> ebinder
-%type <list (string * option Cst.obj)> ebinders
+%type <list (string * list string * Cst.expression)> brs
+%type <string * Cst.expression * list (string * list (string * Cst.expression))> imember
+%type <list (string * Cst.expression * list (string * list (string * Cst.expression)))> imembers
+%type <string * option Cst.expression> ebinder
+%type <list (string * option Cst.expression)> ebinders
 %type <bool> block_kw
-%type <bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj)> eblock
-%type <list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj))> eblocks
-%type <string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj)> mfun
-%type <list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj))> mfuns
-%type <list (string * Cst.obj)> rfields rfields1 tfields tfields1
+%type <bool * list (string * option Cst.expression) * Cst.expression * list (string * list string * Cst.expression)> eblock
+%type <list (bool * list (string * option Cst.expression) * Cst.expression * list (string * list string * Cst.expression))> eblocks
+%type <string * list (string * Cst.expression) * Cst.expression * list (string * list string * Cst.expression)> mfun
+%type <list (string * list (string * Cst.expression) * Cst.expression * list (string * list string * Cst.expression))> mfuns
+%type <list (string * Cst.expression)> rfields rfields1 tfields tfields1
 %type <list Cst.cmd> rwith
 
-%on_error_reduce obj params params_opt app_obj atomic_obj cmds leads mods path fpath
+%on_error_reduce expression params params_opt app_expression atomic_expression cmds leads mods path fpath
 
 %%
 
@@ -100,25 +100,25 @@ let cmd :=
   | PRIVATE; MODULE; p = path; md = mdecl; { [Cst.c_mod_dotted true (fst p) (snd p) (fst md) (snd md)] }
   (* [def] and its shorthands share one production, so they take the same
      parameters, type and body; the keyword decides which modifiers it takes. *)
-  | m = mods; k = dkw; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
+  | m = mods; k = dkw; x = VAR; ps = params_opt; ":"; a = expression; ":="; b = expression; END;
       { [Cst.def_cmd k m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b)] }
   (* An axiom has [def]'s parameters and type, and no body. *)
-  | m = mods; AXIOM; x = VAR; ps = params_opt; ":"; a = obj;
+  | m = mods; AXIOM; x = VAR; ps = params_opt; ":"; a = expression;
       { [Cst.axiom_cmd m (snd x) (fold_params Cst.pi ps a)] }
   | ~ = import_cmd; <>
   | ~ = open_cmd; <>
-  | EVAL; ~ = obj; { [Cst.c_eval obj None] }
-  | EVAL; e = obj; ":"; t = obj; { [Cst.c_eval e (Some t)] }
+  | EVAL; ~ = expression; { [Cst.c_eval expression None] }
+  | EVAL; e = expression; ":"; t = expression; { [Cst.c_eval e (Some t)] }
   (* [inductive x (ps) : forall (n : A) -> S where | c (args) … with y : U
      where … end]: the group's uniform parameters, then its members, each
      with its type, which binds its non-uniform parameters. *)
-  | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END;
+  | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END;
       { [Cst.c_ind false false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
-  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END;
+  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END;
       { [Cst.c_ind true false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
   (* [mutual T (ps) where inductive x : S where … with y : U where … end
      end]: the group in the module [T], its members [T.x], [T.y]. *)
-  | m = mods; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END; END;
+  | m = mods; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END; END;
       { [Cst.mutual_cmd m (snd g) (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
   (* [mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B … with g … end]: the
      common parameters, then the functions, with the modifiers of a
@@ -128,36 +128,36 @@ let cmd :=
       { [Cst.mdef_cmd k m (List.rev ps) (List.rev fs)] }
   (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
      at the arguments [Ms], under the parameters. *)
-  | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = obj;
+  | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = expression;
       { [Cst.c_ind_alias false (snd x) (List.rev ps) e] }
-  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":="; e = obj;
+  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":="; e = expression;
       { [Cst.c_ind_alias true (snd x) (List.rev ps) e] }
   (* [builtin natural := X]: the inductive type [X] is the natural numbers. *)
-  | BUILTIN; k = VAR; ":="; x = atomic_obj; { [Cst.c_builtin (snd k) x] }
+  | BUILTIN; k = VAR; ":="; x = atomic_expression; { [Cst.c_builtin (snd k) x] }
   (* [record x (ps) : S where f : A ; … with cs end]: a record type, its
      parameters, its sort, its fields in order, and its with-area, the
      commands of its module after the fields. One [end] closes the record,
      with or without a with-area. *)
-  | RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith;
+  | RECORD; x = VAR; ps = params_opt; ":"; t = expression; WHERE; fs = rfields; cs = rwith;
       { [Cst.c_record false (snd x) (List.rev ps) t (List.rev fs) cs] }
-  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith;
+  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = expression; WHERE; fs = rfields; cs = rwith;
       { [Cst.c_record true (snd x) (List.rev ps) t (List.rev fs) cs] }
   (* [record x (ps) := X Ms]: a record alias, the record type [X] at the
      arguments [Ms], under the parameters. *)
-  | RECORD; x = VAR; ps = params_opt; ":="; e = obj;
+  | RECORD; x = VAR; ps = params_opt; ":="; e = expression;
       { [Cst.c_record_alias false (snd x) (List.rev ps) e] }
-  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":="; e = obj;
+  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":="; e = expression;
       { [Cst.c_record_alias true (snd x) (List.rev ps) e] }
 
 (* Reversed list of the fields of a record type, possibly empty, separated
    by [;]: [f : A] *)
 let rfields :=
-  | { @nil (string * Cst.obj) }
+  | { @nil (string * Cst.expression) }
   | ~ = rfields1; <>
 
 let rfields1 :=
-  | f = VAR; ":"; a = obj; { [(snd f, a)] }
-  | ~ = rfields1; ";"; f = VAR; ":"; a = obj; { (snd f, a) :: rfields1 }
+  | f = VAR; ":"; a = expression; { [(snd f, a)] }
+  | ~ = rfields1; ";"; f = VAR; ":"; a = expression; { (snd f, a) :: rfields1 }
 
 (* The end of a record type, with its with-area in order: [with cs end], or
    just [end] for an empty with-area. The one [end] closes the with-area and
@@ -169,30 +169,30 @@ let rwith :=
 (* Reversed list of the fields of a record value, possibly empty, separated
    by [;]: [f := M] *)
 let tfields :=
-  | { @nil (string * Cst.obj) }
+  | { @nil (string * Cst.expression) }
   | ~ = tfields1; <>
 
 let tfields1 :=
-  | f = VAR; ":="; m = obj; { [(snd f, m)] }
-  | ~ = tfields1; ";"; f = VAR; ":="; m = obj; { (snd f, m) :: tfields1 }
+  | f = VAR; ":="; m = expression; { [(snd f, m)] }
+  | ~ = tfields1; ";"; f = VAR; ":="; m = expression; { (snd f, m) :: tfields1 }
 
 (* Reversed list of constructors, possibly empty: [| c (x : A) …] *)
 let ctors :=
-  | { @nil (string * list (string * Cst.obj)) }
+  | { @nil (string * list (string * Cst.expression)) }
   | ~ = ctors; "|"; x = VAR; ps = params_opt; { (snd x, List.rev ps) :: ctors }
 
 (* A member after the first: [with y : U where | c (args) …] *)
 let imember :=
-  | WITH; x = VAR; ":"; t = obj; WHERE; cs = ctors; { (snd x, t, List.rev cs) }
+  | WITH; x = VAR; ":"; t = expression; WHERE; cs = ctors; { (snd x, t, List.rev cs) }
 
 (* Reversed list of the members after the first, possibly empty *)
 let imembers :=
-  | { @nil (string * Cst.obj * list (string * list (string * Cst.obj))) }
+  | { @nil (string * Cst.expression * list (string * list (string * Cst.expression))) }
   | ~ = imembers; ~ = imember; { imember :: imembers }
 
 (* A function of a [mutual def]: [f (ys) (z : Z) : A := | c xs ⇒ B …] *)
 let mfun :=
-  | f = VAR; ps = params; ":"; a = obj; ":="; bs = brs; { (snd f, List.rev ps, a, List.rev bs) }
+  | f = VAR; ps = params; ":"; a = expression; ":="; bs = brs; { (snd f, List.rev ps, a, List.rev bs) }
 
 (* Reversed nonempty list of the functions, separated by [with] *)
 let mfuns :=
@@ -206,7 +206,7 @@ let mdecl :=
 
 let mdef :=
   | WHERE; cs = cmds; END; { Cst.md_where (List.rev cs) }
-  | ":="; ~ = obj; { Cst.md_alias obj }
+  | ":="; ~ = expression; { Cst.md_alias expression }
 
 (* The definition keywords.  At command level, [let] is one of them. *)
 let dkw :=
@@ -233,8 +233,8 @@ let open_cmd :=
 
 (* Reversed list of the arguments of an import or open, possibly empty *)
 let iargs :=
-  | { @nil Cst.obj }
-  | ~ = iargs; ~ = atomic_obj; { atomic_obj :: iargs }
+  | { @nil Cst.expression }
+  | ~ = iargs; ~ = atomic_expression; { atomic_expression :: iargs }
 
 let mods :=
   | { Cst.md_pub }
@@ -297,19 +297,19 @@ let qpath :=
   | ~ = path; { (@nil string, path_list path) }
   | ~ = upath; ~ = mpath_opt; { (upath, mpath_opt) }
 
-let obj :=
+let expression :=
   (* The two binders are separate productions, so that an error after
      either one is reported in a state of its own, naming it. *)
-  | PI; ~ = params; "->"; ~ = obj; { fold_params Cst.pi params obj }
-  | LAMBDA; ~ = params; "->"; ~ = obj; { fold_params Cst.fn params obj }
-  | ~ = app_obj; <>
+  | PI; ~ = params; "->"; ~ = expression; { fold_params Cst.pi params expression }
+  | LAMBDA; ~ = params; "->"; ~ = expression; { fold_params Cst.fn params expression }
+  | ~ = app_expression; <>
 
   (* The level operations take atomic arguments, so that [maxl u v] is their
      join and not [maxl (u v)]. *)
-  | SUCCL; m = atomic_obj; { Cst.succl m }
-  | MAXL; m = atomic_obj; n = atomic_obj; { Cst.maxl m n }
+  | SUCCL; m = atomic_expression; { Cst.succl m }
+  | MAXL; m = atomic_expression; n = atomic_expression; { Cst.maxl m n }
 
-  | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
+  | EXFALSO; escr = expression; RETURN; mx = VAR; "."; em = expression;
     { Cst.exfalso escr (snd mx) em }
 
   (* [elim M at ys (z : Z) -> A | c xs, hs ⇒ B … with … end]: one block
@@ -318,31 +318,31 @@ let obj :=
      scrutinee, then its motive; a branch, the non-uniform parameters and
      the constructor's arguments, then after a comma its induction
      hypotheses. *)
-  | ELIM; escr = obj; bks = eblocks; END;
+  | ELIM; escr = expression; bks = eblocks; END;
     { Cst.elim escr (List.rev bks) }
 
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
-  | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
+  | LET; ds = let_defns; IN; body = expression; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
 
   (* [record T where f := M ; … end]: a value of the record type [T], its
      fields in order.  Not atomic, as a command may follow an object with
      no separator: an argument or a selection takes it in parentheses. *)
-  | RECORD; t = app_obj; WHERE; fs = tfields; END; { Cst.tuple t (List.rev fs) }
+  | RECORD; t = app_expression; WHERE; fs = tfields; END; { Cst.tuple t (List.rev fs) }
 
 
-let app_obj :=
-  | ~ = app_obj; ~ = atomic_obj; { Cst.app app_obj atomic_obj }
-  | ~ = atomic_obj; <>
+let app_expression :=
+  | ~ = app_expression; ~ = atomic_expression; { Cst.app app_expression atomic_expression }
+  | ~ = atomic_expression; <>
 
-let atomic_obj :=
+let atomic_expression :=
   (* A universe is written [Type@] its level: any level term in braces, or
      one of the short forms, a numeral [n] or [<n>l] for the finite level
      [n], [ω] (also spelled [omega]) for [ω], and [<n>L] for [ω+n].  Only
      the braced form admits an ordinal literal with [+] or [*]. *)
   | TYPE; "@"; n = INT; { Cst.suniv (Cst.llit (0, snd n)) }
   | TYPE; "@"; n = LLIT; { Cst.suniv (Cst.llit (0, snd n)) }
-  | TYPE; "@"; "{"; m = obj; "}"; { Cst.suniv m }
+  | TYPE; "@"; "{"; m = expression; "}"; { Cst.suniv m }
   | TYPE; "@"; n = LLITL; { Cst.suniv (Cst.llit (1, snd n)) }
   | TYPE; "@"; OMEGA; { Cst.suniv (Cst.llit (1, 0)) }
   (* The large universes, above every small one: [Type@{ω^2}] and
@@ -382,9 +382,9 @@ let atomic_obj :=
 
   (* Dot access binds tighter than application, so [X::Y.Z.foo] is one name
      and module arguments are parenthesised, as in [(X::Y.Z a b).foo]. *)
-  | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
+  | ~ = atomic_expression; "."; x = VAR; { Cst.proj atomic_expression (snd x) }
 
-  | "("; ~ = obj; ")"; <>
+  | "("; ~ = expression; ")"; <>
 
 (* Reversed nonempty list of names *)
 let vars :=
@@ -403,7 +403,7 @@ let ihs_opt :=
 (* A binder of a block: a name, or a name and its type *)
 let ebinder :=
   | x = VAR; { (snd x, None) }
-  | "("; x = VAR; ":"; ~ = obj; ")"; { (snd x, Some obj) }
+  | "("; x = VAR; ":"; ~ = expression; ")"; { (snd x, Some expression) }
 
 (* Reversed nonempty list of the binders of a block *)
 let ebinders :=
@@ -417,7 +417,7 @@ let block_kw :=
 
 (* A block of an eliminator: [at ys (z : Z) -> A | c xs ⇒ B …] *)
 let eblock :=
-  | k = block_kw; xs = ebinders; "->"; a = obj; bs = brs; { (k, List.rev xs, a, List.rev bs) }
+  | k = block_kw; xs = ebinders; "->"; a = expression; bs = brs; { (k, List.rev xs, a, List.rev bs) }
 
 (* Reversed nonempty list of the blocks of an eliminator *)
 let eblocks :=
@@ -426,8 +426,8 @@ let eblocks :=
 
 (* Reversed list of the branches of an eliminator, possibly empty *)
 let brs :=
-  | { @nil (string * list string * Cst.obj) }
-  | ~ = brs; "|"; c = VAR; ys = vars_opt; zs = ihs_opt; "=>"; b = obj;
+  | { @nil (string * list string * Cst.expression) }
+  | ~ = brs; "|"; c = VAR; ys = vars_opt; zs = ihs_opt; "=>"; b = expression;
       { (snd c, List.rev ys ++ zs, b) :: brs }
 
 (* Reversed nonempty list of parameters *)
@@ -436,12 +436,12 @@ let params :=
   | ~ = param; { [param] }
 
 let params_opt :=
-  | { @nil (string * Cst.obj) }
+  | { @nil (string * Cst.expression) }
   | ~ = params; <>
 
 (* (x : A) *)
 let param :=
-  | "("; x = VAR; ":"; ~ = obj; ")"; { (snd x, obj) }
+  | "("; x = VAR; ":"; ~ = expression; ")"; { (snd x, expression) }
 
 (* Reversed nonempty list of [;]-separated bindings *)
 let let_defns :=
@@ -451,8 +451,8 @@ let let_defns :=
 (* [x : A := a] or [x := a], or a local module [module X (ps) where … end] or
    [module X (ps) := E] *)
 let let_defn :=
-  | x = VAR; ":"; a = obj; ":="; b = obj; { Cst.d_def (snd x) (Some a) b }
-  | x = VAR; ":="; b = obj; { Cst.d_def (snd x) None b }
+  | x = VAR; ":"; a = expression; ":="; b = expression; { Cst.d_def (snd x) (Some a) b }
+  | x = VAR; ":="; b = expression; { Cst.d_def (snd x) None b }
   | MODULE; x = VAR; md = mdecl; { Cst.d_mod (snd x) (fst md) (snd md) }
 %%
 

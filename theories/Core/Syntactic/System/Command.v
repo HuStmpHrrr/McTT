@@ -1844,7 +1844,7 @@ Lemma deps_grow : forall Θ Θ' Ξ,
     (forall Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ' ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U') /\
     (forall Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ' ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H').
 Proof.
-  intros * Hs Hb; apply emb_preserves_wf; constructor;
+  intros * Hs Hb; apply gctx_embedding_preserves_wf; constructor;
     [ eapply ctx_wf_gctx; exact Hb | apply gc_sub_deps; exact Hs ].
 Qed.
 
@@ -2341,7 +2341,7 @@ Proof.
   destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
   cbn [gs_path gs_add gu_params gu_mod gs_fresh] in Hfr |- *.
   apply (gc_sub_nested _ _ _ pv); [ apply gc_sub_grow; exact Hfr | | exact HK ].
-  exact (Ctb_frame Θ mq Kq P Ψ x _ Ξ0 _ _ (gc_sub_refl _ _)).
+  exact (contributions_found_frame Θ mq Kq P Ψ x _ Ξ0 _ _ (gc_sub_refl _ _)).
 Qed.
 
 Lemma ind_lookup_close : forall Θ Ξ x pv K Δ Φ p D,

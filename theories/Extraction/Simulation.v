@@ -385,9 +385,9 @@ Lemma agree_elim_blocks : forall oq Us j Bks M ρ ρ',
 Proof.
   intros * H b Hb; split.
   - intros x Hx; apply H; intros Hf; apply Hx.
-    pose proof (ofresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [Hm _]; exact Hm.
+    pose proof (optional_exp_fresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [Hm _]; exact Hm.
   - intros c n B Hin x Hx; apply H; intros Hf; apply Hx.
-    pose proof (ofresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [_ Hbr]; exact (Hbr _ _ _ Hin).
+    pose proof (optional_exp_fresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [_ Hbr]; exact (Hbr _ _ _ Hin).
 Qed.
 
 (** The group an eliminator eliminates by is read off related values
@@ -512,7 +512,7 @@ Ltac sim_inv :=
 
 (** A related entry: a related value, or the closure of a unit over
     environments that agree where the unit may read. *)
-Ltac ent_tac :=
+Ltac related_entry_tac :=
   first [ constructor; eassumption
         | constructor; solve [ eauto with mctt ]
         | apply desim_mod; apply dmsim_local;
@@ -534,7 +534,7 @@ Ltac agree_tac :=
           end;
           match goal with |- env_agree _ (_ :: ?ρ) _ =>
             match goal with Hρ : env_agree _ ?ρ _ |- _ =>
-              eapply env_agree_cons; [ exact Hρ | ent_tac | nf_sub ] end end
+              eapply env_agree_cons; [ exact Hρ | related_entry_tac | nf_sub ] end end
         | match goal with |- env_agree _ nil _ => apply env_agree_nil end
         | match goal with |- env_agree _ (env_args ?ρ ?args) _ =>
             match goal with Hρ : env_agree _ ?ρ _, Ha : dsim_list args _ |- _ =>
@@ -1251,7 +1251,7 @@ Section Eval.
           destruct (IH (ρ' ↦ n')) as (h' & Hh' & Hs);
             [ let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
               intros [| y] Hy; cbn;
-                [ constructor; exact Hn | apply Hρ; intros Hf; apply Hy; exact (oufresh_snoc (Some y) _ _ _ Hf) ]
+                [ constructor; exact Hn | apply Hρ; intros Hf; apply Hy; exact (optional_gunit_fresh_snoc (Some y) _ _ _ Hf) ]
             |];
           exists h'; split; [ econstructor; exact Hh' | exact Hs ]
       end ].
@@ -1392,7 +1392,7 @@ Section Read.
 
   (** The fresh variables of the telescopes of a declaration, from
       environments related everywhere. *)
-  Lemma ffresh_tele_sim : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns ->
+  Lemma fast_fresh_tele_sim : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns ->
       forall ρ', env_agree (fun _ => True) ρ ρ' ->
       exists ns', Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ ns' /\ dsim_list ns ns'.
   Proof.
@@ -1452,7 +1452,7 @@ Section Read.
     exact (Hp _ _ _ H).
   Qed.
 
-  Lemma ffresh_cargs_sim : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
+  Lemma fast_fresh_cargs_sim : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
       forall ups' ρ', dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' ->
       exists vs', Fcargsᶠ gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ vs' /\ dsim_list vs vs'.
   Proof.
@@ -1536,7 +1536,7 @@ Section Read.
       related where [B] reads them.  The results of an argument the branch
       reads none of are variables of type [𝕌ω@0] in the fast readback,
       along the paths of the container's. *)
-  Lemma ffresh_wrap_sim : forall ρ As p ups Dc ρa gs' gs vs s ihs,
+  Lemma fast_fresh_wrap_sim : forall ρ As p ups Dc ρa gs' gs vs s ihs,
       Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
       forall Bks wihs, ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
       forall D B ρ' ρa' ups' vs', ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
@@ -1578,8 +1578,8 @@ Section Read.
         destruct (wrap_leaf_vals_exists _ rs' ihs1' ltac:(rewrite <- (dsim_list_length _ _ Hrs), Hlr, Hlb; reflexivity)
                     (fresh_leaf_vars_length _ _ _ _ Hfl')) as (out' & Hout).
         exists (ihs1' ++ ihs'0), (out' ++ wihs'); repeat split.
-        * eapply ffresh_ihs_skip; [ exact HD' | exact Hsk | exact Hfl' | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl'), <- Hl1; assumption ].
-        * eapply fwrap_ihs_eval_rec; [ exact HD' | eassumption | apply wrap_leaf_vals_extend; exact Hout | assumption ].
+        * eapply fast_fresh_ihs_skip; [ exact HD' | exact Hsk | exact Hfl' | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl'), <- Hl1; assumption ].
+        * eapply fast_wrap_ihs_eval_rec; [ exact HD' | eassumption | apply wrap_leaf_vals_extend; exact Hout | assumption ].
         * destruct (ihs_skipb_sound _ _ _ Hsk) as (B0 & EB & HBf); injection EB as <-.
           apply dsim_list_at_skip.
           -- rewrite (wrap_leaf_vals_length _ _ _ _ _ Hwl1), (wrap_leaf_vals_length _ _ _ _ _ Hout); reflexivity.
@@ -1595,8 +1595,8 @@ Section Read.
         destruct (wrap_leaf_vals_exists _ rs' ihs1' ltac:(rewrite <- (dsim_list_length _ _ Hrs), Hlr, Hlb; reflexivity)
                     (fresh_leaf_vars_length _ _ _ _ Hfl')) as (out' & Hout).
         exists (ihs1' ++ ihs'0), (out' ++ wihs'); repeat split.
-        * eapply ffresh_ihs_rec; [ exact HD' | exact Hsk | eassumption | exact Hfl' | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl'), <- Hl1; assumption ].
-        * eapply fwrap_ihs_eval_rec; [ exact HD' | eassumption | apply wrap_leaf_vals_extend; exact Hout | assumption ].
+        * eapply fast_fresh_ihs_rec; [ exact HD' | exact Hsk | eassumption | exact Hfl' | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl'), <- Hl1; assumption ].
+        * eapply fast_wrap_ihs_eval_rec; [ exact HD' | eassumption | apply wrap_leaf_vals_extend; exact Hout | assumption ].
         * apply dsim_list_at_app; [| exact Hsi ].
           eapply wrap_leaf_vals_sim; [ exact Hwl1 | exact Hout | exact Hrs |].
           rewrite !List.firstn_all2 by (first [ rewrite Hl1 | rewrite (fresh_leaf_vars_length _ _ _ _ Hfl') ]; lia).
@@ -1844,7 +1844,7 @@ Section Read.
           pose proof (fresh_tele_length _ _ _ _ f) as Hln; rewrite length_rev in Hln;
           change (List.length (im_nparams Mv)) with (im_nn Mv) in Hln;
           destruct (feval_mref_sim _ _ _ _ em ups' Hu) as (pre' & Hem & Hpre); cbn [fst snd] in Hem, Hpre;
-          destruct (ffresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
+          destruct (fast_fresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
             [ apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] |];
           destruct (feval_exp_sim _ _ _ e2 (env_args ρ' (ns' ++ ⇑! (d_ind pk k (pre' ++ ns')) (s + im_nn Mi) :: nil)))
             as (a' & ? & Hsa);
@@ -1887,11 +1887,11 @@ Section Read.
           pose proof (fresh_tele_length _ _ _ _ f) as Hl1; rewrite length_rev in Hl1;
           change (List.length (im_nparams Mv)) with (im_nn Mv) in Hl1;
           pose proof (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ _ _ HD0 Hco fw) as [Hl2 Hl3];
-          destruct (ffresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
+          destruct (fast_fresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
             [ apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] |];
-          destruct (ffresh_cargs_sim _ _ _ _ _ _ f0 ups' (env_args nil (ups' ++ ns'))) as (vs' & ? & Hsv);
+          destruct (fast_fresh_cargs_sim _ _ _ _ _ _ f0 ups' (env_args nil (ups' ++ ns'))) as (vs' & ? & Hsv);
             [ exact Hu | apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ] |];
-          destruct (ffresh_wrap_sim _ _ _ _ _ _ _ _ _ _ _ f2 _ _ fw _ B ρ' (env_args nil (ups' ++ ns')) ups' vs' HD0 Hco
+          destruct (fast_fresh_wrap_sim _ _ _ _ _ _ _ _ _ _ _ f2 _ _ fw _ B ρ' (env_args nil (ups' ++ ns')) ups' vs' HD0 Hco
                       (cargs_ends_agree _ _ _ _ _ _ HD0 Har Hnm HBk Hpl)
                       ltac:(apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ])
                       HBk Hu Hsv) as (ihs' & wihs' & ? & ? & Hsi);

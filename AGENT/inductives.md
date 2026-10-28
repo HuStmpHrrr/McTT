@@ -394,7 +394,7 @@ need typing:
   the branch's binders (`n = im_nn + |gs| + cargs_nrec D gs`). The
   evaluation lemmas of `Rename`, `Avoid` and `IndElim` use it, as do
   `wrap_ihs_eval_length` and the fast evaluator's skip of unread results
-  (`ihs_skipb`, `Simulation.ffresh_wrap_sim`). Discharged by
+  (`ihs_skipb`, `Simulation.fast_fresh_wrap_sim`). Discharged by
   `leaves_coherent_of_order (rview_struct_order …)`.
 - **`cargs_nin D Dc gs' gs = cargs_nrec Dc gs'` on `read_brs_cons`.** The
   fresh variables for the paths of the group read `Dc` are exactly as

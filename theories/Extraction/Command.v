@@ -2955,7 +2955,7 @@ Section Impl.
       parameters is named as such. *)
   Definition alias_wf_error (x : string) (F : FCtx) (Hg : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Γ : ctx) (E : modexp)
       (Hh : fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ᵐ fst (me_unapps E) ≈ fst (me_unapps E)) : run_error :=
-    match mdenote_impl F Hg Γ (fst (me_unapps E)) (dn_order_of_wf _ _ Hg _ _ _ Hh) with
+    match mdenote_impl F Hg Γ (fst (me_unapps E)) (mdenote_order_of_wf _ _ Hg _ _ _ Hh) with
     | inleft (exist _ (fds_dm Θ0 _ M _) _) =>
         (* a type former: its term part is the group's constant applied to
            the arguments given so far *)

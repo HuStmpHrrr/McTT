@@ -51,25 +51,25 @@ Section Grow.
   Context {GC : GCtx}.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
-  Hypothesis He : Emb Θ1 Ξ1 Θ2 Ξ2.
+  Hypothesis He : gctx_embedding Θ1 Ξ1 Θ2 Ξ2.
 
   Lemma valid_unit_grow_all :
     (forall Γ K, valid_unit Θ1 Ξ1 Γ K -> valid_unit Θ2 Ξ2 Γ K) /\ (forall Γ H, valid_modexp Θ1 Ξ1 Γ H -> valid_modexp Θ2 Ξ2 Γ H).
   Proof.
     pose proof He as [Hg2 Hs].
-    destruct (emb_preserves_wf _ _ _ _ He) as (_ & _ & _ & _ & _ & _ & Hwm).
+    destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & _ & _ & _ & _ & _ & Hwm).
     apply valid_unit_modexp_ind.
     - intros Γ p T Φ Ns Hw Hgl HΓ Hsa.
       destruct (gc_loc_grow _ _ _ _ Hg2 Hs _ _ _ Hgl) as (Φ2 & Hgl2 & _).
       exact (valid_unit_filed _ _ _ _ _ _ _ (Hwm _ _ _ Hw) Hgl2 HΓ Hsa).
     - intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC _ IHsl Hsh Hshx HU Hopv _ IHops.
-      exact (valid_unit_body _ _ _ _ _ _ (Hwm _ _ _ Hw) (emb_body_xp _ _ _ _ Hg1 He _ _ _ Hx) HΔ HΓ HC IHsl Hsh Hshx HU Hopv IHops).
+      exact (valid_unit_body _ _ _ _ _ _ (Hwm _ _ _ Hw) (gctx_embedding_body_xp _ _ _ _ Hg1 He _ _ _ Hx) HΔ HΓ HC IHsl Hsh Hshx HU Hopv IHops).
     - intros Γ Δ E Hw HΔ HΓ HΔΓ HU HE _ IHE.
       exact (valid_unit_alias _ _ _ _ _ (Hwm _ _ _ Hw) HΔ HΓ HΔΓ HU HE IHE).
     - intros Γ H R Rm K RK Hw HmH HmodH HHK _ IHK HmK HmodK.
-      destruct (emb_mdenote _ _ _ _ Hg1 He _ _ _ HmH) as (R2 & HmH2 & Hd).
+      destruct (gctx_embedding_mdenote _ _ _ _ Hg1 He _ _ _ HmH) as (R2 & HmH2 & Hd).
       destruct (dsg_mod _ _ _ _ _ _ _ Hd HmodH) as (Rm2 & HmodH2 & Hdm).
-      destruct (emb_mdenote _ _ _ _ Hg1 He _ _ _ HmK) as (RK2 & HmK2 & HdK).
+      destruct (gctx_embedding_mdenote _ _ _ _ Hg1 He _ _ _ HmK) as (RK2 & HmK2 & HdK).
       destruct (dsg_mod _ _ _ _ _ _ _ HdK HmodK) as (Rm2' & HmodK2 & Hdm').
       pose proof (dsg_functional _ _ _ _ _ _ _ Hdm Hdm') as <-.
       exact (valid_modexp_intro _ _ _ _ _ _ _ _ (Hwm _ _ _ Hw) HmH2 HmodH2 HHK IHK HmK2 HmodK2).
@@ -269,11 +269,11 @@ Proof. intros * H; unfold gc_loc; destruct (gc_frame Ξ p); eauto. Qed.
 
 (** The group tables of a group of a well-formed source, read at a target
     it embeds into. *)
-Lemma grp_tele_ass_of_emb : forall Θ Ξ Θ2 Ξ2 p G, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some G ->
+Lemma grp_tele_ass_of_emb : forall Θ Ξ Θ2 Ξ2 p G, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some G ->
     @grp_tele_ass (gc_mk Θ2 Ξ2) G.
 Proof.
   intros * Hg He Hlq.
-  pose proof (em_res _ _ _ _ He) as Hs.
+  pose proof (gctx_embedding_resolution _ _ _ _ He) as Hs.
   destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
   apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G (decl_typed_emb _ _ _ _ _ He Hdt)).
   intros * HM Hh Hq2.
@@ -286,17 +286,17 @@ Qed.
 Section FiledOk.
   Variables (Θm : gdeps) (Ξm : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.
-  Hypothesis He : Emb Θm Ξm Θ2 Ξ2.
+  Hypothesis He : gctx_embedding Θm Ξm Θ2 Ξ2.
   Hypothesis HΘ : gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θm Ξm Θ2 Ξ2 Θm.
   Hypothesis HΞ : gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θm Ξm Θ2 Ξ2 Ξm.
 
   #[local] Instance GC2 : GCtx := gc_mk Θ2 Ξ2.
 
   Lemma fo_wf : ⊢ᵍ Θ2 ⍮ Ξ2.
-  Proof. exact (em_wf _ _ _ _ He). Qed.
+  Proof. exact (gctx_embedding_wf _ _ _ _ He). Qed.
 
   Lemma fo_sub : gc_sub Θm Ξm Θ2 Ξ2.
-  Proof. exact (em_res _ _ _ _ He). Qed.
+  Proof. exact (gctx_embedding_resolution _ _ _ _ He). Qed.
 
   Lemma good_loc : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
       valid_mod_tele Θ2 Ξ2 T /\ gm_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θm Ξm Θ2 Ξ2 T Φ.
@@ -748,16 +748,16 @@ End FiledOk.
 
 (** What a global context files and has open is worth at a target, read
     from it, when each entry is. *)
-Theorem valid_filed_mods_of_valid : forall Θm Ξm Θ2 Ξ2, ⊢ᵍ Θm ⍮ Ξm -> Emb Θm Ξm Θ2 Ξ2 ->
+Theorem valid_filed_mods_of_valid : forall Θm Ξm Θ2 Ξ2, ⊢ᵍ Θm ⍮ Ξm -> gctx_embedding Θm Ξm Θ2 Ξ2 ->
     gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θm Ξm Θ2 Ξ2 Θm -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θm Ξm Θ2 Ξ2 Ξm ->
     @valid_filed_mods (gc_mk Θ2 Ξ2) Θm Ξm.
 Proof.
   intros * Hgm He HΘ HΞ p T Φ Hl.
   destruct (good_loc _ _ _ _ HΘ HΞ _ _ _ Hl) as [[HT HTa] _].
-  destruct (gc_loc_grow _ _ _ _ (em_wf _ _ _ _ He) (em_res _ _ _ _ He) _ _ _ Hl) as (Φ2 & Hl2 & _).
+  destruct (gc_loc_grow _ _ _ _ (gctx_embedding_wf _ _ _ _ He) (gctx_embedding_resolution _ _ _ _ He) _ _ _ Hl) as (Φ2 & Hl2 & _).
   pose proof (loc_closed _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as [HTs _].
   constructor;
-    [ eauto | intros ρ; exact (gc_loc_path _ _ (em_wf _ _ _ _ He) _ _ ρ Hl2) | exact HT | exact HTa | exact HTs
+    [ eauto | intros ρ; exact (gc_loc_path _ _ (gctx_embedding_wf _ _ _ _ He) _ _ ρ Hl2) | exact HT | exact HTa | exact HTs
     | intros; eapply fo_kind; eassumption | intros; eapply fo_sub_kind; eassumption
     | intros; eapply fo_term; eassumption | intros; eapply fo_ind_frame; eassumption
     | intros; eapply fo_record_frame; eassumption | intros; eapply fo_alias; eassumption ].
@@ -765,7 +765,7 @@ Qed.
 
 (** A sound embedding, from the validity at the target of what the source
     files and has open, read from the source. *)
-Theorem valid_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+Theorem valid_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> valid_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; constructor; [ exact He | exact Hg | exact (valid_filed_mods_of_valid _ _ _ _ Hg He HΘ HΞ) | |].
@@ -773,15 +773,15 @@ Proof.
   - intros p R Hl; exact (good_record _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
 Qed.
 
-Corollary valid_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+Corollary valid_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     valid_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
-  exact (valid_emb_of _ _ _ _ Hg (Embx_emb _ _ _ _ He) HΘ HΞ).
+  exact (valid_emb_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
 Qed.
 
 Lemma gs_valid_tele : forall Θs Ξs Θ2 Ξ2 Ξ, gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> tele_ass (gs_tele Ξ).
 Proof. intros * HΞ; destruct Ξ as [| [[mp K] U] Ξ]; [ constructor | exact (proj2 (proj1 HΞ)) ]. Qed.
 
-Lemma good_tele : forall Θ Ξ Θ2 Ξ2, GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
+Lemma good_tele : forall Θ Ξ Θ2 Ξ2, bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
 Proof. intros * HG He; exact (gs_valid_tele _ _ _ _ _ (proj2 (HG _ _ He _ _ (gc_sub_refl _ _)))). Qed.

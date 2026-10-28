@@ -2,7 +2,7 @@
 
 | File | What |
 | --- | --- |
-| `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> cunit -> Prop`: the scope (`ent`, `bound`), objects (`sel`, `selm`, `sparams`, `sunit`, `sdef`, `sbody`), opens (`item_ents`, `item_mems`, `open_ents`, `itarget`), commands (`scmd`, `scmds`), the leading scope (`slead`). |
+| `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> cunit -> Prop`: the scope (`scope_entry`, `bound`), objects (`sel`, `selm`, `sparams`, `sunit`, `sdef`, `sbody`), opens (`item_scope_entries`, `item_mems`, `open_scope_entries`, `itarget`), commands (`scmd`, `scmds`), the leading scope (`slead`). |
 | `theories/Frontend/Elaborator.v` | `elaborate_core`, on the spec's own scope of entries. |
 | `theories/Frontend/ElabCorrect.v` | `elaborate_core_iff`, soundness, completeness, functionality, failure characterization. |
 | `theories/Frontend/ElabExamples.v` | Hand-written `Cst.prog`s with their core units: the running example, pre-application, every module form (`module … where`, `module x (ps) := E`, `module A.B`, `let module` with a body or an alias, opens in a local body and the rejection of an unloaded unit there, the rejection of imports and evals in a local body, private entries of a local body), the definition keywords and each modifier rejection, opens with arguments, `use … as`, `export` and lists in any order, a repeated import, leading imports and opens (the parameter-type scope, and the frame), and every rejection of the one-binding rule, with its message. |
@@ -21,14 +21,14 @@ Corollary elaborate_core_fails : (exists e, elaborate_core prg = eerr e) <-> for
 It resolves names and nothing else; it never looks inside a module.  The
 design and its history are in [`elab-simplify.md`](elab-simplify.md).
 
-* Everything in scope is one list of entries `ent`, innermost first: core
-  binders (`en_var`: λ, Π, `let`, `let module`, parameters, local-body
-  entries), members of open frames (`en_mem`, by qualified name) and
-  imported units (`en_unit`), and, for the unit's parameter types only, the
-  names of its leading opens (`en_open`).  An open's declarations are
-  ordinary entries: `en_mem` in a frame, `en_var` in a local body.  A name denotes
+* Everything in scope is one list of entries `scope_entry`, innermost first: core
+  binders (`scope_entry_var`: λ, Π, `let`, `let module`, parameters, local-body
+  entries), members of open frames (`scope_entry_mem`, by qualified name) and
+  imported units (`scope_entry_unit`), and, for the unit's parameter types only, the
+  names of its leading opens (`scope_entry_open`).  An open's declarations are
+  ordinary entries: `scope_entry_mem` in a frame, `scope_entry_var` in a local body.  A name denotes
   its innermost entry (`bound`), with `k` binders inside the entry.  A member's
-  entry `en_mem x q n` records the `n` binders outside it, `binders S` of the
+  entry `scope_entry_mem x q n` records the `n` binders outside it, `binders S` of the
   scope it is declared in: exactly the parameters it is generalized over.  A
   use is pre-applied to `vars_desc k n`.  A scope only grows at its front, so
   the count stays right (`mems_counted`, `scmd_mems_counted`,
@@ -54,20 +54,20 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   `import X::Y ip args as W items` is `import X::Y` then `open X::Y ip args
   as W items`; a bare `import X::Y` only loads.
 * `import X::Y` (`Cst.c_import fq`) emits `cc_load fq` and puts the unit in
-  scope (`en_unit fq`); it declares nothing, and a repeated one is the core's
+  scope (`scope_entry_unit fq`); it declares nothing, and a repeated one is the core's
   no-op.  `open fq.ip args items` (`Cst.c_open`) has the target `itarget fq
   ip args`, read by `selm` like an alias body, so a unit it names must be
   imported (`the unit is not imported`); it loads nothing.
 * In a frame, an open emits `cc_open E items`; the core checks the target
   and the items and runs the definitions and aliases they generate.  Each
-  item's name is bound as a member of the frame (`en_mem d (q_abs fp (ch ++
+  item's name is bound as a member of the frame (`scope_entry_mem d (q_abs fp (ch ++
   [d])) n`) and may not be a parameter's of the frame (`d is already
   declared`); a name the open declares twice, or one the frame has declared,
   or a member both used and exported, is the core's to reject (`n is already
   declared`, `c is used and exported`).
 * In a local body, an open emits the pre-form `gm_open Φ E items`, which
   the core expands into ordinary entries, and binds one core binder per item
-  (`item_ents`).  Local bodies have no `import`s (`import is not allowed in a
+  (`item_scope_entries`).  Local bodies have no `import`s (`import is not allowed in a
   local module; use open`) and no `eval`s (`eval is not allowed in a local
   module`); their entries may be `private`, which the core's privacy check
   enforces.
@@ -107,24 +107,24 @@ lookup is first-match, the rule is a premise only, not an invariant.
 They are read twice (`slead`, then `scmds`):
 
 ```coq
-Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
+Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list ccmd -> Prop :=
 | slead_nil : forall L, slead L nil L nil
 | slead_import : forall L fq cs L' lds,
-    slead (en_unit fq :: L) cs L' lds ->
+    slead (scope_entry_unit fq :: L) cs L' lds ->
     slead L (Cst.c_import fq :: cs) L' (cc_load fq :: lds)
 | slead_open : forall L fq ip args its o E cs L' lds,
     itarget fq ip args = Some o -> selm L o E ->
-    slead (open_ents E its ++ L) cs L' lds ->
+    slead (open_scope_entries E its ++ L) cs L' lds ->
     slead L (Cst.c_open fq ip args its :: cs) L' lds.
 
 | elab_spec_intro : forall leads fp ps cs L lds tys ccs,
     slead nil leads L lds -> NoDup (map fst ps) -> sparams L ps tys ->
-    scmds fp nil (map fst ps) (pents ps ++ L) (leads ++ cs) ccs ->
+    scmds fp nil (map fst ps) (param_scope_entries ps ++ L) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).
 ```
 
 * **Before the header** (`slead`), in no binder: their units are in scope,
-  and each name an open declares is an entry `en_open d E oc` (`open_ents`),
+  and each name an open declares is an entry `scope_entry_open d E oc` (`open_scope_entries`),
   denoting the member `oc` of the module `E` (`a_mem E c` / `me_mem E c`),
   or `E` itself for an `as` alias.  This is the scope `L` of the unit's
   parameter types; their loads `lds` run before the unit.  `E` is closed,
@@ -134,7 +134,7 @@ Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
   unit's own frame: the import loads again (a no-op), the open declares
   members of the unit (`cc_open`), applied to its parameters, not named as
   them (the elaborator) nor as each other (the core).  The body's scope outside the frame is `L`,
-  whose `en_open` entries are always shadowed by those members.
+  whose `scope_entry_open` entries are always shadowed by those members.
 * So a leading open's arguments may not name the parameters (`unbound name
   n`): they precede the header.
 * A leading open (or long-form import) may `use` and `as`, but not
@@ -190,7 +190,7 @@ Main.M.id $ #3`.  In `j`, `M` is closed, so `M` in module position is
 One `iff` per function: `lookup_iff`, `ihead_iff` (the head of an open
 target), `args_iff`/`target_iff` (open targets, computed without building
 the object, so that the elaborator's local bodies stay structural),
-`objects_iff` (by `Cst.cst_ind`), `commands_iff` (by `Cst.cst_ind`, motive `md = md_where body
+`expressions_iff` (by `Cst.cst_ind`), `commands_iff` (by `Cst.cst_ind`, motive `md = md_where body
 -> Pcmds body`; `Pcmd`/`Pcmds` assume the carried count is `binders S`, and
 `scmd_binders` says a command keeps it), `lead_iff`, `elaborate_core_iff`.  `Cst.cst_ind` is the
 generated mutual principle (`Scheme … Combined Scheme`): with `All` schemes

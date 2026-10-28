@@ -692,7 +692,7 @@ End Filed.
 (** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, and what it
     files and has open is valid there, its declarations too. *)
 Record valid_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { valid_emb_emb : Emb Θ1 Ξ1 Θ2 Ξ2
+  { valid_emb_emb : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
   ; valid_emb_wf : ⊢ᵍ Θ1 ⍮ Ξ1
   ; valid_emb_filed : @valid_filed_mods (gc_mk Θ2 Ξ2) Θ1 Ξ1
   ; valid_emb_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @valid_ind_decl (gc_mk Θ2 Ξ2) D

@@ -80,48 +80,48 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
     and the fields are nested through lists of pairs, all of which have
     [All] schemes registered ([Core.Base]): the mutual principle [cst_ind]
     below is generated. *)
-Inductive obj : Set :=
+Inductive expression : Set :=
 (** [Typeω@i], a large universe, the universe [ω²+i], written
     [Type@{ω^2}] for [i = 0] and [Type@{ω^2+i}]; [ω^2] is not a level. *)
-| typ : nat -> obj
+| typ : nat -> expression
 (** [Type@{M}], the small universe at the level [M] *)
-| suniv : obj -> obj
+| suniv : expression -> expression
 (** [Level@n], the type of the levels below [ω·(n+1)]; [Level] is [Level@0] *)
-| level : nat -> obj
+| level : nat -> expression
 (** A level literal [ω·a + b], written [<b>l] when [a] is [0] and also
     [<b>L] when [a] is [1] *)
-| llit : o2 -> obj
+| llit : o2 -> expression
 (** [succl M] *)
-| succl : obj -> obj
+| succl : expression -> expression
 (** [maxl M N] *)
-| maxl : obj -> obj -> obj
+| maxl : expression -> expression -> expression
 (** [Nat] or [ℕ]: the type bound by [builtin natural] *)
-| nat : obj
+| nat : expression
 (** A numeral, of the type bound by [builtin natural] *)
-| num : nat -> obj
+| num : nat -> expression
 (** [True] *)
-| true_ty : obj
+| true_ty : expression
 (** [true] *)
-| true_tm : obj
+| true_tm : expression
 (** [False] *)
-| false_ty : obj
+| false_ty : expression
 (** [exfalso M return x . A] *)
-| exfalso : obj -> string -> obj -> obj
+| exfalso : expression -> string -> expression -> expression
 (** [forall (x : A) -> B] *)
-| pi : string -> obj -> obj -> obj
+| pi : string -> expression -> expression -> expression
 (** [fun (x : A) -> M] *)
-| fn : string -> obj -> obj -> obj
+| fn : string -> expression -> expression -> expression
 (** [M N]: a function or a module applied *)
-| app : obj -> obj -> obj
+| app : expression -> expression -> expression
 (** A name: a local variable, a module, or a member in scope *)
-| var : string -> obj
+| var : string -> expression
 (** A [::] path, hence at least two segments after a [var]; a unit of one
     segment is written as a [var] *)
-| glob : list string -> obj
+| glob : list string -> expression
 (** [M.x]: a member of a module *)
-| proj : obj -> string -> obj
+| proj : expression -> string -> expression
 (** [let d in M end], one declaration at a time *)
-| letb : decl -> obj -> obj
+| letb : decl -> expression -> expression
 (** [elim M at xs (z : Z) -> A | c ys ⇒ B … with … end]: the eliminator
     of a group of inductive types, one block per member in member order,
     the one marked [at] ([true]) the scrutinee's.  A block's binders, the
@@ -129,34 +129,34 @@ Inductive obj : Set :=
     its type if written; its motive under them; its branches, each binding
     the non-uniform parameters, the constructor's arguments and the
     induction hypotheses, in that order *)
-| elim : obj -> list (bool * list (string * option obj) * obj * list (string * list string * obj)) -> obj
+| elim : expression -> list (bool * list (string * option expression) * expression * list (string * list string * expression)) -> expression
 (** [record T where f := M ; … end]: a value of the record type [T], its
     fields in order, each its name and its value *)
-| tuple : obj -> list (string * obj) -> obj
+| tuple : expression -> list (string * expression) -> expression
 
 with decl : Set :=
 (** [x : A := M], or [x := M] without the type.  A local definition is
     always transparent and has no modifiers. *)
-| d_def : string -> option obj -> obj -> decl
+| d_def : string -> option expression -> expression -> decl
 (** [module X (ps) md] *)
-| d_mod : string -> list (string * obj) -> mdef -> decl
+| d_mod : string -> list (string * expression) -> mdef -> decl
 
 with mdef : Set :=
 (** [where cs end] *)
 | md_where : list cmd -> mdef
 (** [:= E] *)
-| md_alias : obj -> mdef
+| md_alias : expression -> mdef
 
 (** A module declaration carries its name, its parameter telescope and its
     definition; a unit's own name is declared by [prog] below, not here.  A
     dotted declaration [module A.B] is parsed as nested ones ([c_mod_dotted]). *)
 with cmd : Set :=
 (** [private module x (ps) md], private when the flag is set *)
-| c_mod : bool -> string -> list (string * obj) -> mdef -> cmd
+| c_mod : bool -> string -> list (string * expression) -> mdef -> cmd
 (** [private abstract def x : A := M end], with its modifiers *)
-| c_def : mods -> string -> obj -> obj -> cmd
+| c_def : mods -> string -> expression -> expression -> cmd
 (** [axiom x : A], a definition with no body; it takes no modifiers. *)
-| c_axiom : string -> obj -> cmd
+| c_axiom : string -> expression -> cmd
 (** [import X::Y] loads the unit [X::Y], so that it may be named.  It
     declares nothing. *)
 | c_import : list string -> cmd
@@ -166,14 +166,14 @@ with cmd : Set :=
     use (x)] is [c_open nil ["A"; "B"] nil [(Some "x", "x", true)]], and
     [open X::Y Nat export (f as g)] is [c_open ["X"; "Y"] nil [nat] [(Some
     "f", "g", false)]].  [as W] is the item [(None, "W", true)] ([open_cmds]). *)
-| c_open : list string -> list string -> list obj -> list iitem -> cmd
+| c_open : list string -> list string -> list expression -> list iitem -> cmd
 (** A command the parser rejects, with the reason, which elaboration
     reports: a definition keyword with a modifier it already implies
     ([def_cmd]). *)
 | c_error : string -> cmd
 (** [eval M] normalizes [M] and prints the result; [eval M : A] additionally
     checks [M] against [A] rather than inferring its type. *)
-| c_eval : obj -> option obj -> cmd
+| c_eval : expression -> option expression -> cmd
 (** [private inductive x (ps) : T where | c (args) … with y : U where …
     end]: the group's uniform parameters [ps], shared, and its members, in
     order: each its name, its type, which binds its non-uniform parameters
@@ -181,47 +181,47 @@ with cmd : Set :=
     their arguments.  The members' names are in scope in every argument.
     The second flag says whether the group files its recursor module
     [Rec], as one declared by [mutual T where] does. *)
-| c_ind : bool -> bool -> list (string * obj) -> list (string * obj * list (string * list (string * obj))) -> cmd
+| c_ind : bool -> bool -> list (string * expression) -> list (string * expression * list (string * list (string * expression))) -> cmd
 (** [private abstract mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B …
     with g … end], with its modifiers: the common parameters [Δ], and the
     functions, each its name, its parameters (the non-uniform ones, then
     the scrutinee, last), its result type and its clauses. *)
-| c_mdef : mods -> list (string * obj) -> list (string * list (string * obj) * obj * list (string * list string * obj)) -> cmd
+| c_mdef : mods -> list (string * expression) -> list (string * list (string * expression) * expression * list (string * list string * expression)) -> cmd
 (** [builtin k := X]: binds the inductive type [X] as the builtin [k];
     [natural] is the one kind. *)
-| c_builtin : string -> obj -> cmd
+| c_builtin : string -> expression -> cmd
 (** [private inductive x (ps) := X Ms]: an inductive alias, the inductive
     type [X] at the arguments [Ms], under the parameters [ps]. *)
-| c_ind_alias : bool -> string -> list (string * obj) -> obj -> cmd
+| c_ind_alias : bool -> string -> list (string * expression) -> expression -> cmd
 (** [private record x (ps) := X Ms]: a record alias, the record type [X]
     at the arguments [Ms], under the parameters [ps]. *)
-| c_record_alias : bool -> string -> list (string * obj) -> obj -> cmd
+| c_record_alias : bool -> string -> list (string * expression) -> expression -> cmd
 (** [private record x (ps) : S where f : A ; … with cs end]: a record type,
     private when the flag is set: its parameters [ps], its sort [S], its
     fields in order, each its name and its type over the fields before it,
     and its with-area [cs], the commands of its module after the fields
     (none without [with]). *)
-| c_record : bool -> string -> list (string * obj) -> obj -> list (string * obj) -> list cmd -> cmd.
+| c_record : bool -> string -> list (string * expression) -> expression -> list (string * expression) -> list cmd -> cmd.
 
 (** The mutual induction principle of the family, generated: a list, a
     pair and an option carry [list_all], [prod_all] and [option_all] of the
     motives ([Core.Base]). *)
-Scheme obj_mut_ind := Induction for obj Sort Prop
+Scheme expression_mut_ind := Induction for expression Sort Prop
 with decl_mut_ind := Induction for decl Sort Prop
 with mdef_mut_ind := Induction for mdef Sort Prop
 with cmd_mut_ind := Induction for cmd Sort Prop.
-Combined Scheme cst_ind from obj_mut_ind, decl_mut_ind, mdef_mut_ind, cmd_mut_ind.
+Combined Scheme cst_ind from expression_mut_ind, decl_mut_ind, mdef_mut_ind, cmd_mut_ind.
 
 (** [module A₁.….Aₙ.B (ps) md] is [module A₁ where … module Aₙ where module
     B (ps) md end … end]: each [Aᵢ] has no parameters and the one member
     [Aᵢ₊₁].  The grammar gives the path reversed, [B] first.  Only [B], the
     module declared, carries the privacy [pv]; the [Aᵢ] are public. *)
-Definition c_mod_dotted (pv : bool) (x : string) (rev_pre : list string) (ps : list (string * obj)) (md : mdef) : cmd :=
+Definition c_mod_dotted (pv : bool) (x : string) (rev_pre : list string) (ps : list (string * expression)) (md : mdef) : cmd :=
   List.fold_left (fun c y => c_mod false y nil (md_where (c :: nil))) rev_pre (c_mod pv x ps md).
 
 (** [k x : A := M end] with the modifiers [m]: the definition, or the
     rejection of [m]. *)
-Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : obj) : cmd :=
+Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : expression) : cmd :=
   match dkw_mods k m with
   | inl m' => c_def m' x A M
   | inr e => c_error e
@@ -230,8 +230,8 @@ Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : obj) : cmd :=
 (** [mutual k (Δ) f … with g … end] with the modifiers [m], [k] a
     definition keyword: the mutual definition with the modifiers [k] gives
     it, as [def_cmd] gives a single definition, or the rejection of [m]. *)
-Definition mdef_cmd (k : dkw) (m : mods) (ps : list (string * obj))
-    (fs : list (string * list (string * obj) * obj * list (string * list string * obj))) : cmd :=
+Definition mdef_cmd (k : dkw) (m : mods) (ps : list (string * expression))
+    (fs : list (string * list (string * expression) * expression * list (string * list string * expression))) : cmd :=
   match dkw_mods k m with
   | inl m' => c_mdef m' ps fs
   | inr e => c_error e
@@ -239,20 +239,20 @@ Definition mdef_cmd (k : dkw) (m : mods) (ps : list (string * obj))
 
 (** [axiom x : A] with the modifiers [m]: the axiom, or the rejection of
     [m]. *)
-Definition axiom_cmd (m : mods) (x : string) (A : obj) : cmd :=
+Definition axiom_cmd (m : mods) (x : string) (A : expression) : cmd :=
   if orb (md_private m) (md_abstract m) then c_error "axiom takes no modifiers" else c_axiom x A.
 
 (** [mutual T (ps) where inductive … end end] with the modifiers [m]: the
     module [T], private with [m], holding the group and its recursor module
     [T.Rec], or the rejection of [abstract]. *)
-Definition mutual_cmd (m : mods) (g : string) (ps : list (string * obj))
-    (ms : list (string * obj * list (string * list (string * obj)))) : cmd :=
+Definition mutual_cmd (m : mods) (g : string) (ps : list (string * expression))
+    (ms : list (string * expression * list (string * list (string * expression)))) : cmd :=
   if md_abstract m then c_error "a group of inductive types takes no abstract"
   else c_mod (md_private m) g nil (md_where (c_ind false true ps ms :: nil)).
 
 (** [open E as W its] is [open E as W] then [open W its]: the items refer
     to the alias, and an open declares either the module or its members. *)
-Definition open_cmds (fq ip : list string) (args : list obj) (oW : option string) (its : list iitem)
+Definition open_cmds (fq ip : list string) (args : list expression) (oW : option string) (its : list iitem)
   : list cmd :=
   match oW with
   | None => c_open fq ip args its :: nil
@@ -266,7 +266,7 @@ Definition open_cmds (fq ip : list string) (args : list obj) (oW : option string
 
 (** [import X::Y ip args as W its] is [import X::Y] then [open X::Y ip
     args as W its]; a bare [import X::Y] only loads. *)
-Definition import_cmds (fq ip : list string) (args : list obj) (oW : option string) (its : list iitem)
+Definition import_cmds (fq ip : list string) (args : list expression) (oW : option string) (its : list iitem)
   : list cmd :=
   c_import fq ::
     match ip, args, oW, its with
@@ -289,7 +289,7 @@ Definition lead_cmds (cs : list cmd) : list cmd :=
     names the unit, so its path is a [::] one, and carries the unit's
     parameters.  Only imports and opens may precede it, so no definition is
     ever made outside a module; the grammar admits nothing else there. *)
-Definition prog : Set := (list cmd * (list string * list (string * obj) * list cmd))%type.
+Definition prog : Set := (list cmd * (list string * list (string * expression) * list cmd))%type.
 
 End Cst.
 
@@ -2236,7 +2236,7 @@ End Wk_Notations.
     A member of a parameterized module is checked in the telescope of
     parameters it lives under, and stored generalized over it by these two
     folds.  They are the [exp]-level counterparts of the
-    elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
+    elaborator's [tele_pi]/[tele_fn], which work on [Cst.expression] and so cannot
     appear in a judgment.
 
     A [ctx] is innermost-first, so the head of [Δ] is the parameter bound last

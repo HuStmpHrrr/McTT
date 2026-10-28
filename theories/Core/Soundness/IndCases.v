@@ -83,7 +83,7 @@ Lemma glu_con :
 Proof.
   intros * HΓ HΓg Hl HM Hcon HΨ HΨg Hsh HT Θ2 Ξ2 Hμ.
   pose proof (glu_emb_emb _ _ _ _ Hμ) as Hem.
-  destruct (emb_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _).
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg0.
   pose proof (valid_groups_of_glu_emb _ _ _ _ Hg0 Hem) as HVP.
   pose proof (glu_emb_ind_field _ _ _ _ Hμ) as HGall.

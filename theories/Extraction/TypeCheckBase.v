@@ -545,25 +545,25 @@ End lookup.
 
     What a module expression denotes is computed by [mdenote_impl], at
     the order a well-formed module expression, or a selection from one,
-    has ([dn_order_of_wf], [dn_order_mem_of_wf]); a path has one
+    has ([mdenote_order_of_wf], [mdenote_order_mem_of_wf]); a path has one
     outright. *)
 
 Definition mdenote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
     { R : fmdesc | mdenote gc_deps gc_stack Γ H (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ H R } :=
-  mdenote_impl F Hg Γ H (dn_order_of_wf _ _ Hg _ _ _ HH).
+  mdenote_impl F Hg Γ H (mdenote_order_of_wf _ _ Hg _ _ _ HH).
 
 Definition mem_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H y (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
     { R : fmdesc | mdenote gc_deps gc_stack Γ (me_mem H y) (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_mem H y) R } :=
-  mdenote_impl F Hg Γ (me_mem H y) (dn_order_mem_of_wf _ _ Hg _ _ _ y HH).
+  mdenote_impl F Hg Γ (me_mem H y) (mdenote_order_mem_of_wf _ _ Hg _ _ _ y HH).
 
 Definition path_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ fp :
     { R : fmdesc | mdenote gc_deps gc_stack Γ (me_unit fp) (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_unit fp) R } :=
-  mdenote_impl F Hg Γ (me_unit fp) (dn_order_path _ _ Γ fp).
+  mdenote_impl F Hg Γ (me_unit fp) (mdenote_order_path _ _ Γ fp).
 
 (** What a local open of a module generates. *)
 Definition items_gen_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H its (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
     { gs | items_gen gc_deps gc_stack Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack Γ H its gs } :=
-  items_gen_impl F Hg Γ H its (ig_order_of_wf _ _ Hg _ _ _ its HH).
+  items_gen_impl F Hg Γ H its (items_gen_order_of_wf _ _ Hg _ _ _ its HH).
 
 Extraction Inline mdenote_dec mem_denote_dec path_denote_dec items_gen_dec.
 

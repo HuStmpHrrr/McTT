@@ -33,31 +33,31 @@ Create HintDb avoid.
 
 (** ** Freshness at an Optional Position *)
 
-Definition oshift (j : nat) (K : option nat) : option nat := option_map (Nat.add j) K.
+Definition optional_shift (j : nat) (K : option nat) : option nat := option_map (Nat.add j) K.
 
-Lemma oshift_oshift : forall i j K, oshift i (oshift j K) = oshift (i + j) K.
+Lemma optional_shift_optional_shift : forall i j K, optional_shift i (optional_shift j K) = optional_shift (i + j) K.
 Proof. intros i j []; cbn; [ f_equal; lia | reflexivity ]. Qed.
 
-Lemma oshift_zero : forall K, oshift 0 K = K.
+Lemma optional_shift_zero : forall K, optional_shift 0 K = K.
 Proof. intros []; reflexivity. Qed.
 
-Definition ofresh (K : option nat) (M : exp) : Prop :=
+Definition optional_exp_fresh (K : option nat) (M : exp) : Prop :=
   match K with None => True | Some k => exp_fresh k M end.
-Definition omfresh (K : option nat) (H : modexp) : Prop :=
+Definition optional_modexp_fresh (K : option nat) (H : modexp) : Prop :=
   match K with None => True | Some k => modexp_fresh k H end.
-Definition oufresh (K : option nat) (U : gunit) : Prop :=
+Definition optional_gunit_fresh (K : option nat) (U : gunit) : Prop :=
   match K with None => True | Some k => gunit_fresh k U end.
-Definition ogfresh (K : option nat) (Φ : gmod) : Prop :=
+Definition optional_gmod_fresh (K : option nat) (Φ : gmod) : Prop :=
   match K with None => True | Some k => gmod_fresh k Φ end.
 
 (** The components of a shape, each under the domains before it. *)
-Fixpoint ptfresh (K : option nat) (t : ptyp) : Prop :=
+Fixpoint optional_ptyp_fresh (K : option nat) (t : ptyp) : Prop :=
   match t with
-  | pt_pi B t => ofresh K B /\ ptfresh (oshift 1 K) t
-  | pt_self _ Ps => Forall (ofresh K) Ps
+  | pt_pi B t => optional_exp_fresh K B /\ optional_ptyp_fresh (optional_shift 1 K) t
+  | pt_self _ Ps => Forall (optional_exp_fresh K) Ps
   end.
 
-Lemma ptfresh_none : forall t, ptfresh None t.
+Lemma optional_ptyp_fresh_none : forall t, optional_ptyp_fresh None t.
 Proof.
   induction t as [? Ps | B t IH]; cbn; [ apply Forall_forall; intros; exact I | split; [ exact I | exact IH ] ].
 Qed.
@@ -65,11 +65,11 @@ Qed.
 (** The blocks of an eliminator: each motive fresh under the binders it
     has, and so is each branch under its own.  (The annotations are never
     evaluated.) *)
-Definition blocks_ofresh (K : option nat) (Bks : list eblock) : Prop :=
-  forall b, In b Bks -> ofresh (oshift (eb_nm b) K) (eb_motive b) /\
-    (forall c n B, In (c, n, B) (eb_brs b) -> ofresh (oshift n K) B).
+Definition blocks_optional_exp_fresh (K : option nat) (Bks : list eblock) : Prop :=
+  forall b, In b Bks -> optional_exp_fresh (optional_shift (eb_nm b) K) (eb_motive b) /\
+    (forall c n B, In (c, n, B) (eb_brs b) -> optional_exp_fresh (optional_shift n K) B).
 
-Lemma blocks_ofresh_none : forall Bks, blocks_ofresh None Bks.
+Lemma blocks_optional_exp_fresh_none : forall Bks, blocks_optional_exp_fresh None Bks.
 Proof. intros Bks b _; split; [ exact I | intros; exact I ]. Qed.
 
 (** ** The Invariant
@@ -91,7 +91,7 @@ Inductive ends_fresh (p : qname) (Km : option nat) (As : list exp) : ptyp -> Pro
 (** At a member with a block: its motive, under the end's parameters and
     the argument *)
 | ends_fresh_self : forall D j Mj Ps, ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    ofresh (oshift (S (List.length Ps)) Km) (List.nth j As a_True) -> ends_fresh p Km As (pt_self j Ps)
+    optional_exp_fresh (optional_shift (S (List.length Ps)) Km) (List.nth j As a_True) -> ends_fresh p Km As (pt_self j Ps)
 (** At a record view: every recursive field's shape, of its one
     constructor *)
 | ends_fresh_rview : forall D j Mj qr Is fl Ps, ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj ->
@@ -113,7 +113,7 @@ Section Avoid.
   | dav_pi : forall a (ρ : env) B K,
       dav a ->
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      ofresh (oshift 1 K) B ->
+      optional_exp_fresh (optional_shift 1 K) B ->
       dav (Πᵈ a ρ B)
   (** A large universe *)
   | dav_univ : forall i, dav 𝕌ω@i
@@ -132,7 +132,7 @@ Section Avoid.
   (** A λ: its closure avoids but at [K], where the body is fresh *)
   | dav_fn : forall (ρ : env) M K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      ofresh (oshift 1 K) M ->
+      optional_exp_fresh (optional_shift 1 K) M ->
       dav (λᵈ ρ M)
   (** A neutral at an avoiding type *)
   | dav_neut : forall a m, dav a -> dav_ne m -> dav (⇑ a m)
@@ -146,7 +146,7 @@ Section Avoid.
       as [dav_elim], and the argument. *)
   | dav_ihfn : forall (ρ : env) Bks p ups t i f K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      blocks_ofresh K Bks ->
+      blocks_optional_exp_fresh K Bks ->
       (forall a, In a ups -> dav a) ->
       dav f ->
       dav (d_ihfn ρ Bks p ups t i f)
@@ -156,7 +156,7 @@ Section Avoid.
   | dav_shfam : forall p ups (ρ : env) t K,
       (forall a, In a ups -> dav a) ->
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      ptfresh (oshift 1 K) t ->
+      optional_ptyp_fresh (optional_shift 1 K) t ->
       dav (d_shfam p ups ρ t)
   (** The family of a recursive result at a function shape: the motives
       fresh at the rest's ends ([ends_fresh]), the group's uniform
@@ -167,7 +167,7 @@ Section Avoid.
       ends_fresh p Km As t ->
       (forall a, In a ups -> dav a) ->
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      ptfresh (oshift 1 K) t ->
+      optional_ptyp_fresh (optional_shift 1 K) t ->
       dav f ->
       dav (d_ihfam ρm As p ups ρ t i f)
   (** A record type former at avoiding arguments *)
@@ -183,7 +183,7 @@ Section Avoid.
       avoiding *)
   | dav_exfalso : forall (ρ : env) A m K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      ofresh (oshift 1 K) A ->
+      optional_exp_fresh (optional_shift 1 K) A ->
       dav_ne m ->
       dav_ne (efqᵈ m under ρ return A)
   (** A global *)
@@ -192,7 +192,7 @@ Section Avoid.
       is each branch under its own. *)
   | dav_elim : forall (ρ : env) Bks p ups j args m K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      blocks_ofresh K Bks ->
+      blocks_optional_exp_fresh K Bks ->
       (forall a, In a ups -> dav a) ->
       (forall a, In a args -> dav a) ->
       dav_ne m ->
@@ -205,7 +205,7 @@ Section Avoid.
   | dmav_global : forall p args, (forall a, In a args -> dav a) -> dmav (dm_global p args)
   | dmav_local : forall Δ D (ρ : env) K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      oufresh K (gu_mk Δ D) ->
+      optional_gunit_fresh K (gu_mk Δ D) ->
       dmav (dm_local Δ D ρ)
   | dmav_member : forall h ch, dmav h -> dmav (dm_member h ch)
   with dav_la : list (nat * nat * domain_ne) -> Prop :=
@@ -266,7 +266,7 @@ Section Env.
   Lemma env_av_nil : forall K, env_av v b K nil.
   Proof. intros K x _; induction x; cbn; [ repeat constructor | assumption ]. Qed.
 
-  Lemma env_av_cons : forall K e ρ, env_av v b K ρ -> deav v b e -> env_av v b (oshift 1 K) (e :: ρ).
+  Lemma env_av_cons : forall K e ρ, env_av v b K ρ -> deav v b e -> env_av v b (optional_shift 1 K) (e :: ρ).
   Proof.
     intros * Hρ He [| x] Hx; cbn; [ exact He |].
     apply Hρ; intros ->; apply Hx; reflexivity.
@@ -281,22 +281,22 @@ Section Env.
 
   Lemma env_av_args : forall args K ρ,
       env_av v b K ρ -> (forall a, In a args -> dav v b a) ->
-      env_av v b (oshift (List.length args) K) (env_args ρ args).
+      env_av v b (optional_shift (List.length args) K) (env_args ρ args).
   Proof.
-    induction args as [| a args IH]; intros * Hρ Ha; cbn; [ rewrite oshift_zero; exact Hρ |].
+    induction args as [| a args IH]; intros * Hρ Ha; cbn; [ rewrite optional_shift_zero; exact Hρ |].
     replace (S (List.length args)) with (List.length args + 1) by lia.
-    rewrite <- oshift_oshift.
+    rewrite <- optional_shift_optional_shift.
     apply IH; [ apply env_av_cons; [ exact Hρ | constructor; apply Ha; left; reflexivity ]
               | intros; apply Ha; right; assumption ].
   Qed.
 
   (** An environment that avoids [v] everywhere, extended. *)
   Lemma env_av_cons_none : forall ρ d, env_av v b None ρ -> dav v b d -> env_av v b None (ρ ↦ d).
-  Proof. intros; change (@None nat) with (oshift 1 None); apply env_av_cons; [ assumption | constructor; assumption ]. Qed.
+  Proof. intros; change (@None nat) with (optional_shift 1 None); apply env_av_cons; [ assumption | constructor; assumption ]. Qed.
 
   Lemma env_av_args_none : forall args ρ,
       env_av v b None ρ -> (forall a, In a args -> dav v b a) -> env_av v b None (env_args ρ args).
-  Proof. intros; change (@None nat) with (oshift (List.length args) None); apply env_av_args; assumption. Qed.
+  Proof. intros; change (@None nat) with (optional_shift (List.length args) None); apply env_av_args; assumption. Qed.
 
   Lemma env_av_var : forall K ρ x, env_av v b K ρ -> K <> Some x -> dav v b (ρ x).
   Proof.
@@ -362,8 +362,8 @@ Proof.
     cbn in Hf; destruct Hf; eapply IH; eassumption.
 Qed.
 
-Lemma ofresh_prefix_upto : forall Φ x Φ0 K,
-    gm_prefix_upto Φ x = Some Φ0 -> ogfresh K Φ -> ogfresh K Φ0.
+Lemma optional_exp_fresh_prefix_upto : forall Φ x Φ0 K,
+    gm_prefix_upto Φ x = Some Φ0 -> optional_gmod_fresh K Φ -> optional_gmod_fresh K Φ0.
 Proof. intros * Hp; destruct K; cbn; [ eapply prefix_upto_fresh; eassumption | auto ]. Qed.
 
 (** The open that declares a name, and the entries it generates. *)
@@ -376,14 +376,14 @@ Proof.
     cbn in Hf; destruct Hf; eapply IH; eassumption.
 Qed.
 
-Lemma ofresh_item_upto : forall Φ x Φ0 H its1 it K,
-    gm_item_upto Φ x = Some (Φ0, H, its1, it) -> ogfresh K Φ -> ogfresh K (gm_open Φ0 H its1).
+Lemma optional_exp_fresh_item_upto : forall Φ x Φ0 H its1 it K,
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) -> optional_gmod_fresh K Φ -> optional_gmod_fresh K (gm_open Φ0 H its1).
 Proof. intros * Hp; destruct K; cbn; [ eapply item_upto_fresh; eassumption | auto ]. Qed.
 
-Lemma ogfresh_open_prefix : forall K Φ H its, ogfresh K (gm_open Φ H its) -> ogfresh K Φ.
+Lemma optional_gmod_fresh_open_prefix : forall K Φ H its, optional_gmod_fresh K (gm_open Φ H its) -> optional_gmod_fresh K Φ.
 Proof. intros [] *; cbn; tauto. Qed.
 
-Lemma ogfresh_open_target : forall K Φ H its, ogfresh K (gm_open Φ H its) -> omfresh (oshift (gm_binders Φ) K) H.
+Lemma optional_gmod_fresh_open_target : forall K Φ H its, optional_gmod_fresh K (gm_open Φ H its) -> optional_modexp_fresh (optional_shift (gm_binders Φ) K) H.
 Proof. intros [] *; cbn; [ intros [_ HH]; exact HH | auto ]. Qed.
 
 Lemma gens_append_fresh : forall gs Φ k,
@@ -401,8 +401,8 @@ Lemma kgens_entries_fresh : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs ->
     forall k, modexp_fresh k H -> List.Forall (fun g => gentry_fresh k (snd (ig_entry g))) gs.
 Proof. induction 1; intros k Hk; constructor; cbn; auto. Qed.
 
-Lemma ogfresh_gens : forall Θ Ξ ρ H its gs K,
-    kgens Θ Ξ ρ H its gs -> omfresh K H -> ogfresh K (gens_append gm_nil 0 gs).
+Lemma optional_gmod_fresh_gens : forall Θ Ξ ρ H its gs K,
+    kgens Θ Ξ ρ H its gs -> optional_modexp_fresh K H -> optional_gmod_fresh K (gens_append gm_nil 0 gs).
 Proof.
   intros * Hg; destruct K as [k |]; cbn; [| auto ]; intros Hk.
   exact (gens_append_fresh gs gm_nil k I (kgens_entries_fresh _ _ _ _ _ _ Hg _ Hk)).
@@ -435,11 +435,11 @@ Proof.
     rewrite Hn; exact (kgens_entries_fresh _ _ _ _ _ _ Hg _ HH).
 Qed.
 
-Lemma kbody_ogfresh : forall Θ Ξ ρ Φ Φx K, kbody Θ Ξ ρ Φ Φx -> ogfresh K Φ -> ogfresh K Φx.
+Lemma kbody_optional_gmod_fresh : forall Θ Ξ ρ Φ Φx K, kbody Θ Ξ ρ Φ Φx -> optional_gmod_fresh K Φ -> optional_gmod_fresh K Φx.
 Proof. intros * Hb; destruct K as [k |]; cbn; [ intros Hf; exact (proj1 (kbody_fresh _ _ _ _ _ Hb _ Hf)) | auto ]. Qed.
 
 (** A unit lacking one parameter fewer, the parameter now a variable. *)
-Lemma oufresh_snoc : forall K Δ e D, oufresh K (gu_mk (Δ ++ e :: nil) D) -> oufresh (oshift 1 K) (gu_mk Δ D).
+Lemma optional_gunit_fresh_snoc : forall K Δ e D, optional_gunit_fresh K (gu_mk (Δ ++ e :: nil) D) -> optional_gunit_fresh (optional_shift 1 K) (gu_mk Δ D).
 Proof.
   intros [k |] * H; cbn in H |- *; [| exact I ].
   destruct H as [HΔ HD]; split.
@@ -455,141 +455,141 @@ Qed.
 Section OFresh.
   Variable K : option nat.
 
-  Lemma ofresh_univ : forall M, ofresh K Type⟨M⟩ -> ofresh K M.
+  Lemma optional_exp_fresh_univ : forall M, optional_exp_fresh K Type⟨M⟩ -> optional_exp_fresh K M.
   Proof. destruct K; cbn; auto. Qed.
-  Lemma ofresh_succl : forall M, ofresh K (succl M) -> ofresh K M.
+  Lemma optional_exp_fresh_succl : forall M, optional_exp_fresh K (succl M) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; auto. Qed.
-  Lemma ofresh_maxl_l : forall M N, ofresh K (maxl M N) -> ofresh K M.
+  Lemma optional_exp_fresh_maxl_l : forall M N, optional_exp_fresh K (maxl M N) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_maxl_r : forall M N, ofresh K (maxl M N) -> ofresh K N.
+  Lemma optional_exp_fresh_maxl_r : forall M N, optional_exp_fresh K (maxl M N) -> optional_exp_fresh K N.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_exfalso_A : forall A M, ofresh K (efq M return A) -> ofresh (oshift 1 K) A.
+  Lemma optional_exp_fresh_exfalso_A : forall A M, optional_exp_fresh K (efq M return A) -> optional_exp_fresh (optional_shift 1 K) A.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_exfalso_M : forall A M, ofresh K (efq M return A) -> ofresh K M.
+  Lemma optional_exp_fresh_exfalso_M : forall A M, optional_exp_fresh K (efq M return A) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_pi_A : forall A B, ofresh K (Π A B) -> ofresh K A.
+  Lemma optional_exp_fresh_pi_A : forall A B, optional_exp_fresh K (Π A B) -> optional_exp_fresh K A.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_pi_B : forall A B, ofresh K (Π A B) -> ofresh (oshift 1 K) B.
+  Lemma optional_exp_fresh_pi_B : forall A B, optional_exp_fresh K (Π A B) -> optional_exp_fresh (optional_shift 1 K) B.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_fn_M : forall A M, ofresh K (λ A M) -> ofresh (oshift 1 K) M.
+  Lemma optional_exp_fresh_fn_M : forall A M, optional_exp_fresh K (λ A M) -> optional_exp_fresh (optional_shift 1 K) M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_app_l : forall M N, ofresh K (M $ N) -> ofresh K M.
+  Lemma optional_exp_fresh_app_l : forall M N, optional_exp_fresh K (M $ N) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_app_r : forall M N, ofresh K (M $ N) -> ofresh K N.
+  Lemma optional_exp_fresh_app_r : forall M N, optional_exp_fresh K (M $ N) -> optional_exp_fresh K N.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_let_M : forall oA M B, ofresh K (a_let (b_def oA M) B) -> ofresh K M.
+  Lemma optional_exp_fresh_let_M : forall oA M B, optional_exp_fresh K (a_let (b_def oA M) B) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_let_B : forall bd B, ofresh K (a_let bd B) -> ofresh (oshift 1 K) B.
+  Lemma optional_exp_fresh_let_B : forall bd B, optional_exp_fresh K (a_let bd B) -> optional_exp_fresh (optional_shift 1 K) B.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_letmod_U : forall U B, ofresh K (a_let (b_mod U) B) -> oufresh K U.
+  Lemma optional_exp_fresh_letmod_U : forall U B, optional_exp_fresh K (a_let (b_mod U) B) -> optional_gunit_fresh K U.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_mem : forall H x, ofresh K (a_mem H x) -> omfresh K H.
+  Lemma optional_exp_fresh_mem : forall H x, optional_exp_fresh K (a_mem H x) -> optional_modexp_fresh K H.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_elim_blocks : forall oq oUs j Bks M, ofresh K (a_elim oq oUs j Bks M) -> blocks_ofresh K Bks.
+  Lemma optional_exp_fresh_elim_blocks : forall oq oUs j Bks M, optional_exp_fresh K (a_elim oq oUs j Bks M) -> blocks_optional_exp_fresh K Bks.
   Proof.
-    destruct K as [k |]; cbn; [| intros; apply blocks_ofresh_none ].
+    destruct K as [k |]; cbn; [| intros; apply blocks_optional_exp_fresh_none ].
     intros oq oUs j Bks M H; apply (proj1 (exp_fresh_elim _ oq oUs j Bks M)) in H as [_ [H _]]; unfold blocks_fresh in H.
     induction Bks as [| [nm oZ A Bs] Bks IH]; intros b Hb; [ destruct Hb |].
     cbn [all_blocks] in H; destruct H as [(_ & HA & HBs) HBks].
     destruct Hb as [<- | Hb]; [| exact (IH HBks _ Hb) ].
-    cbn [eb_nm eb_motive eb_brs oshift option_map ofresh]; split; [ exact HA |].
+    cbn [eb_nm eb_motive eb_brs optional_shift option_map optional_exp_fresh]; split; [ exact HA |].
     intros c n B Hin; apply all_brs_Forall in HBs; exact (proj1 (Forall_forall _ _) HBs _ Hin).
   Qed.
-  Lemma ofresh_elim_M : forall oq oUs j Bks M, ofresh K (a_elim oq oUs j Bks M) -> ofresh K M.
+  Lemma optional_exp_fresh_elim_M : forall oq oUs j Bks M, optional_exp_fresh K (a_elim oq oUs j Bks M) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; [ intros oq oUs j Bks M H; apply (proj1 (exp_fresh_elim _ oq oUs j Bks M)) in H; tauto | auto ]. Qed.
-  Lemma ofresh_elim_ups : forall oq Us j Bks M, ofresh K (a_elim oq Us j Bks M) -> forall U, In U Us -> ofresh K U.
+  Lemma optional_exp_fresh_elim_ups : forall oq Us j Bks M, optional_exp_fresh K (a_elim oq Us j Bks M) -> forall U, In U Us -> optional_exp_fresh K U.
   Proof.
     destruct K; cbn; [| auto ].
     intros oq Us j Bks M H; apply (proj1 (exp_fresh_elim _ oq Us j Bks M)) in H as [H _].
     apply all_list_Forall in H; exact (proj1 (Forall_forall _ _) H).
   Qed.
-  Lemma ofresh_var : forall x, ofresh K #x -> K <> Some x.
+  Lemma optional_exp_fresh_var : forall x, optional_exp_fresh K #x -> K <> Some x.
   Proof. destruct K; cbn; congruence. Qed.
-  Lemma ofresh_tuple_fields : forall T fs, ofresh K (a_tuple T fs) -> Forall (ofresh K) (List.map snd fs).
+  Lemma optional_exp_fresh_tuple_fields : forall T fs, optional_exp_fresh K (a_tuple T fs) -> Forall (optional_exp_fresh K) (List.map snd fs).
   Proof.
     destruct K as [k |]; cbn; [| intros; apply Forall_forall; intros; exact I ].
     intros T fs [_ H]; induction fs as [| [f M] fs IH]; cbn in H |- *; constructor; tauto.
   Qed.
-  Lemma ofresh_proj : forall f M, ofresh K (a_proj f M) -> ofresh K M.
+  Lemma optional_exp_fresh_proj : forall f M, optional_exp_fresh K (a_proj f M) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; auto. Qed.
 
-  Lemma omfresh_var : forall x, omfresh K (me_var x) -> K <> Some x.
+  Lemma optional_modexp_fresh_var : forall x, optional_modexp_fresh K (me_var x) -> K <> Some x.
   Proof. destruct K; cbn; congruence. Qed.
-  Lemma omfresh_lit : forall U, omfresh K (me_lit U) -> oufresh K U.
+  Lemma optional_modexp_fresh_lit : forall U, optional_modexp_fresh K (me_lit U) -> optional_gunit_fresh K U.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma omfresh_mem : forall H y, omfresh K (me_mem H y) -> omfresh K H.
+  Lemma optional_modexp_fresh_mem : forall H y, optional_modexp_fresh K (me_mem H y) -> optional_modexp_fresh K H.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma omfresh_app_l : forall H N, omfresh K (me_app H N) -> omfresh K H.
+  Lemma optional_modexp_fresh_app_l : forall H N, optional_modexp_fresh K (me_app H N) -> optional_modexp_fresh K H.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma omfresh_app_r : forall H N, omfresh K (me_app H N) -> ofresh K N.
+  Lemma optional_modexp_fresh_app_r : forall H N, optional_modexp_fresh K (me_app H N) -> optional_exp_fresh K N.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma omfresh_spine : forall H R args pre,
-      modexp_spine H = (R, args, pre) -> omfresh K H -> omfresh K R /\ Forall (ofresh K) args.
+  Lemma optional_modexp_fresh_spine : forall H R args pre,
+      modexp_spine H = (R, args, pre) -> optional_modexp_fresh K H -> optional_modexp_fresh K R /\ Forall (optional_exp_fresh K) args.
   Proof.
     destruct K as [k |]; cbn; intros * Hs Hf.
     - destruct (modexp_spine_fresh _ _ _ _ _ Hs Hf); split; assumption.
     - split; [ exact I | apply Forall_forall; intros; exact I ].
   Qed.
 
-  Lemma oufresh_body : forall Δ sm Φ, oufresh K (gu_mk Δ (md_body sm Φ)) -> ogfresh (oshift (List.length Δ) K) Φ.
+  Lemma optional_gunit_fresh_body : forall Δ sm Φ, optional_gunit_fresh K (gu_mk Δ (md_body sm Φ)) -> optional_gmod_fresh (optional_shift (List.length Δ) K) Φ.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma oufresh_alias : forall Δ E, oufresh K (gu_mk Δ (md_alias E)) -> omfresh (oshift (List.length Δ) K) E.
+  Lemma optional_gunit_fresh_alias : forall Δ E, optional_gunit_fresh K (gu_mk Δ (md_alias E)) -> optional_modexp_fresh (optional_shift (List.length Δ) K) E.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_def_prefix : forall Φ y b pv A M,
-      ogfresh K (gm_ext Φ y (ge_def b pv A (Some M))) -> ogfresh K Φ.
+  Lemma optional_gmod_fresh_def_prefix : forall Φ y b pv A M,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def b pv A (Some M))) -> optional_gmod_fresh K Φ.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_def_body : forall Φ y b pv A M,
-      ogfresh K (gm_ext Φ y (ge_def b pv A (Some M))) -> ofresh (oshift (gm_binders Φ) K) M.
+  Lemma optional_gmod_fresh_def_body : forall Φ y b pv A M,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def b pv A (Some M))) -> optional_exp_fresh (optional_shift (gm_binders Φ) K) M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_mod_prefix : forall Φ y pm U,
-      ogfresh K (gm_ext Φ y (ge_mod pm U)) -> ogfresh K Φ.
+  Lemma optional_gmod_fresh_mod_prefix : forall Φ y pm U,
+      optional_gmod_fresh K (gm_ext Φ y (ge_mod pm U)) -> optional_gmod_fresh K Φ.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_mod_unit : forall Φ y pm U,
-      ogfresh K (gm_ext Φ y (ge_mod pm U)) -> oufresh (oshift (gm_binders Φ) K) U.
+  Lemma optional_gmod_fresh_mod_unit : forall Φ y pm U,
+      optional_gmod_fresh K (gm_ext Φ y (ge_mod pm U)) -> optional_gunit_fresh (optional_shift (gm_binders Φ) K) U.
   Proof. destruct K; cbn; tauto. Qed.
   (** The term part of an entry ([entry_tm]) and its module part
       ([entry_unit]), under the entries before it. *)
-  Lemma ogfresh_ext_prefix : forall Φ y E, ogfresh K (gm_ext Φ y E) -> ogfresh K Φ.
+  Lemma optional_gmod_fresh_ext_prefix : forall Φ y E, optional_gmod_fresh K (gm_ext Φ y E) -> optional_gmod_fresh K Φ.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_tm_body : forall Φ y E A M, entry_tm E = Some (A, M) ->
-      ogfresh K (gm_ext Φ y E) -> ofresh (oshift (gm_binders Φ) K) M.
+  Lemma optional_gmod_fresh_tm_body : forall Φ y E A M, entry_tm E = Some (A, M) ->
+      optional_gmod_fresh K (gm_ext Φ y E) -> optional_exp_fresh (optional_shift (gm_binders Φ) K) M.
   Proof.
     destruct K; cbn; [| tauto ].
     intros Φ y E A M HE Hf; destruct E as [? ? ? [] | | | |]; cbn in HE, Hf; try discriminate; injection HE as <- <-; tauto.
   Qed.
-  Lemma ogfresh_unit_unit : forall Φ y E U, entry_unit E = Some U ->
-      ogfresh K (gm_ext Φ y E) -> oufresh (oshift (gm_binders Φ) K) U.
+  Lemma optional_gmod_fresh_unit_unit : forall Φ y E U, entry_unit E = Some U ->
+      optional_gmod_fresh K (gm_ext Φ y E) -> optional_gunit_fresh (optional_shift (gm_binders Φ) K) U.
   Proof.
     destruct K; cbn; [| tauto ].
     intros Φ y E U HE Hf; destruct E as [| | | |]; cbn in HE, Hf; try discriminate; injection HE as <-; tauto.
   Qed.
-  Lemma ogfresh_dm_prefix : forall Φ y pv A M U,
-      ogfresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> ogfresh K Φ.
+  Lemma optional_gmod_fresh_dm_prefix : forall Φ y pv A M U,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> optional_gmod_fresh K Φ.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_dm_body : forall Φ y pv A M U,
-      ogfresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> ofresh (oshift (gm_binders Φ) K) M.
+  Lemma optional_gmod_fresh_dm_body : forall Φ y pv A M U,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> optional_exp_fresh (optional_shift (gm_binders Φ) K) M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ogfresh_dm_unit : forall Φ y pv A M U,
-      ogfresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> oufresh (oshift (gm_binders Φ) K) U.
+  Lemma optional_gmod_fresh_dm_unit : forall Φ y pv A M U,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> optional_gunit_fresh (optional_shift (gm_binders Φ) K) U.
   Proof. destruct K; cbn; tauto. Qed.
 End OFresh.
 
-#[local] Hint Resolve ofresh_univ ofresh_succl ofresh_maxl_l ofresh_maxl_r
-  ofresh_exfalso_A ofresh_exfalso_M
-  ofresh_pi_A ofresh_pi_B ofresh_fn_M ofresh_app_l ofresh_app_r ofresh_let_M ofresh_let_B
-  ofresh_letmod_U ofresh_mem ofresh_var ofresh_tuple_fields ofresh_proj omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
-  oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit
-  ogfresh_dm_prefix ogfresh_dm_body ogfresh_dm_unit
+#[local] Hint Resolve optional_exp_fresh_univ optional_exp_fresh_succl optional_exp_fresh_maxl_l optional_exp_fresh_maxl_r
+  optional_exp_fresh_exfalso_A optional_exp_fresh_exfalso_M
+  optional_exp_fresh_pi_A optional_exp_fresh_pi_B optional_exp_fresh_fn_M optional_exp_fresh_app_l optional_exp_fresh_app_r optional_exp_fresh_let_M optional_exp_fresh_let_B
+  optional_exp_fresh_letmod_U optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_exp_fresh_proj optional_modexp_fresh_var optional_modexp_fresh_lit optional_modexp_fresh_mem optional_modexp_fresh_app_l optional_modexp_fresh_app_r
+  optional_gunit_fresh_body optional_gunit_fresh_alias optional_gmod_fresh_def_prefix optional_gmod_fresh_def_body optional_gmod_fresh_mod_prefix optional_gmod_fresh_mod_unit
+  optional_gmod_fresh_dm_prefix optional_gmod_fresh_dm_body optional_gmod_fresh_dm_unit
   : avoid.
 (** Freshness does not read the group or the member of an eliminator, so
     they are taken from the hypothesis rather than left to unification. *)
-#[local] Hint Extern 1 (ofresh _ _) =>
+#[local] Hint Extern 1 (optional_exp_fresh _ _) =>
   match goal with
-  | H : ofresh ?K (a_elim ?oq ?o ?j ?Bks ?M) |- ofresh ?K ?M => exact (ofresh_elim_M K oq o j Bks M H)
+  | H : optional_exp_fresh ?K (a_elim ?oq ?o ?j ?Bks ?M) |- optional_exp_fresh ?K ?M => exact (optional_exp_fresh_elim_M K oq o j Bks M H)
   end : avoid.
-#[local] Hint Extern 1 (blocks_ofresh _ _) =>
+#[local] Hint Extern 1 (blocks_optional_exp_fresh _ _) =>
   match goal with
-  | H : ofresh ?K (a_elim ?oq ?o ?j ?Bks ?M) |- blocks_ofresh ?K ?Bks => exact (ofresh_elim_blocks K oq o j Bks M H)
+  | H : optional_exp_fresh ?K (a_elim ?oq ?o ?j ?Bks ?M) |- blocks_optional_exp_fresh ?K ?Bks => exact (optional_exp_fresh_elim_blocks K oq o j Bks M H)
   end : avoid.
 
 (** ** Evaluation Builds No Variable *)
@@ -600,10 +600,10 @@ Section Eval.
   #[local] Hint Resolve env_av_nil env_av_cons env_av_var env_av_mod dav_args_snoc env_av_args
     dmav_global_nil : mctt.
   (** The uniform parameters an eliminator carries are fresh where it is. *)
-  #[local] Hint Extern 1 (Forall (ofresh _) _) =>
+  #[local] Hint Extern 1 (Forall (optional_exp_fresh _) _) =>
     match goal with
-    | H : ofresh ?K (a_elim ?oq ?Us ?j ?Bks ?M) |- Forall (ofresh ?K) ?Us =>
-        apply Forall_forall; exact (ofresh_elim_ups K oq Us j Bks M H)
+    | H : optional_exp_fresh ?K (a_elim ?oq ?Us ?j ?Bks ?M) |- Forall (optional_exp_fresh ?K) ?Us =>
+        apply Forall_forall; exact (optional_exp_fresh_elim_ups K oq Us j Bks M H)
     end : avoid.
   #[local] Hint Extern 1 (ups_av _ _ _) => unfold ups_av : avoid.
   #[local] Hint Extern 1 (dav _ _ (dlvl_lit _)) => repeat constructor : mctt.
@@ -629,27 +629,27 @@ Section Eval.
         assert (H1 : forall a, a = x -> P) by (intros a Ha; apply H; left; symmetry; exact Ha);
         assert (H2 : forall a, In a l -> P) by (intros a Ha; apply H; right; exact Ha);
         specialize (H1 x eq_refl); clear H
-    | Hs : modexp_spine ?H = _, Hf : ofresh ?K (a_mem ?H _) |- _ =>
-        apply ofresh_mem in Hf; destruct (omfresh_spine _ _ _ _ _ Hs Hf); clear Hs
+    | Hs : modexp_spine ?H = _, Hf : optional_exp_fresh ?K (a_mem ?H _) |- _ =>
+        apply optional_exp_fresh_mem in Hf; destruct (optional_modexp_fresh_spine _ _ _ _ _ Hs Hf); clear Hs
     | IH : forall K0, env_av ?v ?b K0 nil -> _ |- _ => specialize (IH None (env_av_nil _ _ None) I)
     | IH : forall K0, env_av ?v ?b K0 ?ρ -> _, Hρ : env_av ?v ?b ?K ?ρ |- _ => specialize (IH K Hρ)
     | IH : forall K0, env_av ?v ?b K0 (extend_env (extend_env ?ρ ?d1) ?d2) -> _, Hρ : env_av ?v ?b ?K ?ρ |- _ =>
         let E1 := fresh "E" in let E2 := fresh "E" in
         assert (E1 : deav v b (de_term d1)) by deav_of d1;
         assert (E2 : deav v b (de_term d2)) by deav_of d2;
-        specialize (IH (oshift 1 (oshift 1 K)) (env_av_cons _ _ _ _ _ (env_av_cons _ _ _ _ _ Hρ E1) E2));
-        rewrite oshift_oshift in IH; cbn [Nat.add] in IH
+        specialize (IH (optional_shift 1 (optional_shift 1 K)) (env_av_cons _ _ _ _ _ (env_av_cons _ _ _ _ _ Hρ E1) E2));
+        rewrite optional_shift_optional_shift in IH; cbn [Nat.add] in IH
     | IH : forall K0, env_av ?v ?b K0 (extend_env ?ρ ?d) -> _, Hρ : env_av ?v ?b ?K ?ρ |- _ =>
         let E1 := fresh "E" in
         assert (E1 : deav v b (de_term d)) by deav_of d;
-        specialize (IH (oshift 1 K) (env_av_cons _ _ _ _ _ Hρ E1))
+        specialize (IH (optional_shift 1 K) (env_av_cons _ _ _ _ _ Hρ E1))
     | IH : forall K0, env_av ?v ?b K0 (extend_env_mod ?ρ ?h) -> _, Hρ : env_av ?v ?b ?K ?ρ |- _ =>
         let E1 := fresh "E" in
         assert (E1 : deav v b (de_mod h)) by deav_of h;
-        specialize (IH (oshift 1 K) (env_av_cons _ _ _ _ _ Hρ E1))
+        specialize (IH (optional_shift 1 K) (env_av_cons _ _ _ _ _ Hρ E1))
     | IH : forall K0, env_av ?v ?b K0 (env_args ?ρ ?args) -> _, Hρ : env_av ?v ?b ?K ?ρ,
       Ha : forall a, In a ?args -> dav ?v ?b a |- _ =>
-        specialize (IH (oshift (List.length args) K) (env_av_args _ _ _ _ _ Hρ Ha));
+        specialize (IH (optional_shift (List.length args) K) (env_av_args _ _ _ _ _ Hρ Ha));
         repeat match goal with Hl : List.length args = List.length ?D |- _ => rewrite Hl in IH end
     | IH : ?P -> ?Q |- _ =>
         let HP := fresh "HP" in assert (HP : P) by (solve [ eassumption | eauto 3 with mctt avoid ]); specialize (IH HP)
@@ -659,7 +659,7 @@ Section Eval.
       field's type, evaluated in the parameters and the projections before
       it, which avoid. *)
   Ltac nflds_head_av :=
-    match goal with IHT : forall K0, env_av _ _ K0 (env_args nil (?ns ++ ?pre)) -> ofresh K0 _ -> dav _ _ ?t |- _ =>
+    match goal with IHT : forall K0, env_av _ _ K0 (env_args nil (?ns ++ ?pre)) -> optional_exp_fresh K0 _ -> dav _ _ ?t |- _ =>
       constructor;
         [ apply (IHT None);
             [ apply env_av_args_none; [ apply env_av_nil | intros x Hx; apply List.in_app_or in Hx as [Hx | Hx]; auto ]
@@ -668,14 +668,14 @@ Section Eval.
     end.
 
   Lemma eval_av :
-    (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall K, env_av v b K ρ -> ofresh K M -> dav v b m) /\
+    (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall K, env_av v b K ρ -> optional_exp_fresh K M -> dav v b m) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dav v b m -> dav v b n -> dav v b r) /\
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms ->
-       forall K, env_av v b K ρ -> Forall (ofresh K) Ms -> forall a, In a ms -> dav v b a) /\
+       forall K, env_av v b K ρ -> Forall (optional_exp_fresh K) Ms -> forall a, In a ms -> dav v b a) /\
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r ->
        dav v b m -> (forall a, In a args -> dav v b a) -> dav v b r) /\
-    (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall K, env_av v b K ρ -> omfresh K H -> dmav v b h) /\
-    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall K, env_av v b K ρ -> oufresh K (gu_mk Δ D) -> dmav v b h) /\
+    (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall K, env_av v b K ρ -> optional_modexp_fresh K H -> dmav v b h) /\
+    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall K, env_av v b K ρ -> optional_gunit_fresh K (gu_mk Δ D) -> dmav v b h) /\
     (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> dmav v b h -> dav v b n -> dmav v b r) /\
     (forall h ns r, $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r -> dmav v b h -> (forall a, In a ns -> dav v b a) -> dmav v b r) /\
     (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmav v b h -> dav v b r) /\
@@ -683,21 +683,21 @@ Section Eval.
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmav v b h -> dav v b r) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmav v b h -> dmav v b r) /\
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
-       forall K, env_av v b K ρ -> ogfresh K Φ -> env_av v b (oshift (gm_binders Φ) K) ρ') /\
+       forall K, env_av v b K ρ -> optional_gmod_fresh K Φ -> env_av v b (optional_shift (gm_binders Φ) K) ρ') /\
     (forall ρ p ups Bks j m r, ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-       forall K, env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups -> dav v b m -> dav v b r) /\
+       forall K, env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups -> dav v b m -> dav v b r) /\
     (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-       forall K, env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups ->
+       forall K, env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups ->
             (forall a, In a vs -> dav v b a) -> forall a, In a ihs -> dav v b a) /\
     (forall ρ p ups Bks t m rs, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-       forall K, env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups -> dav v b m -> forall a, In a rs -> dav v b a) /\
+       forall K, env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups -> dav v b m -> forall a, In a rs -> dav v b a) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r ->
        (forall u, In u ups -> dav v b u) -> forall a, In a (snd r) -> dav v b a) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-       forall K, env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a) /\
+       forall K, env_av v b K ρ -> optional_ptyp_fresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a) /\
     (forall p ups ρm As ρ t m as', ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
        forall Km, env_av v b Km ρm -> ends_fresh p Km As t -> ups_av v b ups ->
-       forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> forall a, In a as' -> dav v b a) /\
+       forall K, env_av v b K ρ -> optional_ptyp_fresh K t -> dav v b m -> forall a, In a as' -> dav v b a) /\
     (forall f m r, eval_proj Θ Ξ f m r -> dav v b m -> dav v b r) /\
     (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs ->
        (forall a, In a ns -> dav v b a) -> dav_ne v b m -> (forall a, In a pre -> dav v b a) ->
@@ -708,31 +708,31 @@ Section Eval.
        ups_av v b ups -> env_av v b None ρ -> (forall a, In a vs -> dav v b a) -> forall a, In a as' -> dav v b a).
   Proof.
     apply (eval_mut_ind Θ Ξ
-             (fun M ρ m _ => forall K, env_av v b K ρ -> ofresh K M -> dav v b m)
+             (fun M ρ m _ => forall K, env_av v b K ρ -> optional_exp_fresh K M -> dav v b m)
              (fun m n r _ => dav v b m -> dav v b n -> dav v b r)
-             (fun Ms ρ ms _ => forall K, env_av v b K ρ -> Forall (ofresh K) Ms ->
+             (fun Ms ρ ms _ => forall K, env_av v b K ρ -> Forall (optional_exp_fresh K) Ms ->
                                 forall a, In a ms -> dav v b a)
              (fun m args r _ => dav v b m -> (forall a, In a args -> dav v b a) -> dav v b r)
-             (fun H ρ h _ => forall K, env_av v b K ρ -> omfresh K H -> dmav v b h)
-             (fun Δ D ρ h _ => forall K, env_av v b K ρ -> oufresh K (gu_mk Δ D) -> dmav v b h)
+             (fun H ρ h _ => forall K, env_av v b K ρ -> optional_modexp_fresh K H -> dmav v b h)
+             (fun Δ D ρ h _ => forall K, env_av v b K ρ -> optional_gunit_fresh K (gu_mk Δ D) -> dmav v b h)
              (fun h n r _ => dmav v b h -> dav v b n -> dmav v b r)
              (fun h ns r _ => dmav v b h -> (forall a, In a ns -> dav v b a) -> dmav v b r)
              (fun h x r _ => dmav v b h -> dav v b r)
              (fun h y r _ => dmav v b h -> dmav v b r)
              (fun h ch r _ => dmav v b h -> dav v b r)
              (fun h ch r _ => dmav v b h -> dmav v b r)
-             (fun ρ Φ ρ' _ => forall K, env_av v b K ρ -> ogfresh K Φ ->
-                               env_av v b (oshift (gm_binders Φ) K) ρ')
-             (fun ρ p ups Bks j m r _ => forall K, env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups ->
+             (fun ρ Φ ρ' _ => forall K, env_av v b K ρ -> optional_gmod_fresh K Φ ->
+                               env_av v b (optional_shift (gm_binders Φ) K) ρ')
+             (fun ρ p ups Bks j m r _ => forall K, env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups ->
                                          dav v b m -> dav v b r)
-             (fun ρ p ups Bks gs vs ihs _ => forall K, env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups ->
+             (fun ρ p ups Bks gs vs ihs _ => forall K, env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups ->
                                        (forall a, In a vs -> dav v b a) -> forall a, In a ihs -> dav v b a)
-             (fun ρ p ups Bks t m rs _ => forall K, env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups ->
+             (fun ρ p ups Bks t m rs _ => forall K, env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups ->
                                           dav v b m -> forall a, In a rs -> dav v b a)
              (fun p ups j r _ => (forall u, In u ups -> dav v b u) -> forall a, In a (snd r) -> dav v b a)
-             (fun p ups ρ t a _ => forall K, env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a)
+             (fun p ups ρ t a _ => forall K, env_av v b K ρ -> optional_ptyp_fresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a)
              (fun p ups ρm As ρ t m as' _ => forall Km, env_av v b Km ρm -> ends_fresh p Km As t -> ups_av v b ups ->
-                                    forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> forall a, In a as' -> dav v b a)
+                                    forall K, env_av v b K ρ -> optional_ptyp_fresh K t -> dav v b m -> forall a, In a as' -> dav v b a)
              (fun f m r _ => dav v b m -> dav v b r)
              (fun ns m fl pre rs _ => (forall a, In a ns -> dav v b a) -> dav_ne v b m ->
                                      (forall a, In a pre -> dav v b a) -> forall a, In a rs -> dav v b a)
@@ -741,7 +741,7 @@ Section Eval.
                                     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh p Km As t) ->
                                     ups_av v b ups -> env_av v b None ρ -> (forall a, In a vs -> dav v b a) ->
                                     forall a, In a as' -> dav v b a));
-      intros; cbn [ptfresh ptyp_ps ptyp_mem snd] in *.
+      intros; cbn [optional_ptyp_fresh ptyp_ps ptyp_mem snd] in *.
     all: repeat match goal with
            | H : dav _ _ (_ _) |- _ => inversion_clear H
            | H : dmav _ _ (_ _ _) |- _ => inversion_clear H
@@ -750,7 +750,7 @@ Section Eval.
     all: av_fwd.
     (** The uniform arguments of a view, evaluated at the group's. *)
     all: try solve [ match goal with
-      | IH : forall K0, env_av _ _ K0 (env_args nil ?ups) -> Forall (ofresh K0) ?Is -> forall a, In a ?cups -> dav _ _ a,
+      | IH : forall K0, env_av _ _ K0 (env_args nil ?ups) -> Forall (optional_exp_fresh K0) ?Is -> forall a, In a ?cups -> dav _ _ a,
         Hu : forall u, In u ?ups -> dav _ _ u, Ha : In ?d0 ?cups |- dav _ _ ?d0 =>
           apply (IH None); [ apply env_av_args_none; [ apply env_av_nil | exact Hu ] | apply Forall_forall; intros; exact I | exact Ha ]
       end ].
@@ -760,8 +760,8 @@ Section Eval.
     all: try solve [ lazymatch goal with |- dav _ _ (d_ind _ _ _) => idtac | |- dav _ _ (d_con _ _ _ _) => idtac end;
                      constructor; all_in_with assumption ].
     all: try solve [ match goal with
-      | Hf : ofresh ?K (a_elim _ _ _ _ _), IH : _ -> _ -> _ -> dav _ _ ?r |- dav _ _ ?r =>
-          apply IH; [ eapply ofresh_elim_blocks; exact Hf | solve [ eauto 3 with mctt avoid ] | assumption ]
+      | Hf : optional_exp_fresh ?K (a_elim _ _ _ _ _), IH : _ -> _ -> _ -> dav _ _ ?r |- dav _ _ ?r =>
+          apply IH; [ eapply optional_exp_fresh_elim_blocks; exact Hf | solve [ eauto 3 with mctt avoid ] | assumption ]
       end ].
     all: try solve [ match goal with
       | e : brs_lookup (eb_brs ?bk) ?c = Some (?n, ?B), Hb : List.nth_error ?Bks _ = Some ?bk,
@@ -769,26 +769,26 @@ Section Eval.
         Hn : ?n = _, HD : ind_lookup _ _ ?p = Some ?D, Hco : leaves_coherent ?D,
         Hih : eval_ihs _ _ _ ?p _ _ ?gs _ ?ihs,
         IHi : (forall x1, In x1 (skipn _ _) -> dav _ _ x1) -> forall x2, In x2 ?ihs -> dav _ _ x2,
-        HBk : blocks_ofresh ?K ?Bks,
+        HBk : blocks_optional_exp_fresh ?K ?Bks,
         Hρ : env_av _ _ ?K ?ρ,
-        IHB : forall K0, env_av _ _ K0 (env_args ?ρ ?L) -> ofresh K0 ?B -> dav _ _ ?r |- dav _ _ ?r =>
+        IHB : forall K0, env_av _ _ K0 (env_args ?ρ ?L) -> optional_exp_fresh K0 ?B -> dav _ _ ?r |- dav _ _ ?r =>
           (* as many recursive results as the branch binds: the group's
              table is coherent, the gate of [eval_elim_con] *)
           let Hi := fresh "Hi" in
           pose proof (IHi ltac:(all_in_with assumption)) as Hi;
           destruct (eval_ihs_length _ _ _ _ _ _ _ _ HD Hco Hih) as [_ Hni];
-          apply (IHB (oshift (List.length L) K));
+          apply (IHB (optional_shift (List.length L) K));
             [ apply env_av_args; [ exact Hρ | all_in_with assumption ]
             | rewrite (ind_branch_args_length _ _ _ _ _ Hl), Hni, <- Hn;
               exact (proj2 (HBk _ (List.nth_error_In _ _ Hb)) _ _ _ (brs_lookup_in _ _ _ _ e)) ]
       end ].
     all: try solve [ match goal with
       | Hl : List.length ?as' = im_np ?Dq ?Mk, Hn : eb_nm ?bk = S (im_nn ?Mk), Hb : List.nth_error ?Bks _ = Some ?bk,
-        HBk : blocks_ofresh ?K ?Bks, Hρ : env_av _ _ ?K ?ρ,
-        IHA : forall K0, env_av _ _ K0 (env_args ?ρ ?L) -> ofresh K0 (eb_motive ?bk) -> dav _ _ ?a
+        HBk : blocks_optional_exp_fresh ?K ?Bks, Hρ : env_av _ _ ?K ?ρ,
+        IHA : forall K0, env_av _ _ K0 (env_args ?ρ ?L) -> optional_exp_fresh K0 (eb_motive ?bk) -> dav _ _ ?a
         |- dav _ _ (⇑ ?a (d_elim _ _ _ _ _ _ _)) =>
           constructor;
-            [ apply (IHA (oshift (List.length L) K));
+            [ apply (IHA (optional_shift (List.length L) K));
                 [ apply env_av_args; [ exact Hρ | all_in_with ltac:(constructor; [ constructor; assumption | assumption ]) ]
                 | rewrite (ind_motive_args_length _ _ _ _ Hl), <- Hn; exact (proj1 (HBk _ (List.nth_error_In _ _ Hb))) ]
             | eapply dav_elim; eassumption ]
@@ -810,7 +810,7 @@ Section Eval.
         at the view's arguments, closed terms evaluated in an environment of
         the values given. *)
     all: try solve [ apply dav_con;
-      match goal with H : forall K0, env_av _ _ K0 (env_args nil _) -> Forall (ofresh K0) _ -> forall a, In a _ -> dav _ _ a |- _ =>
+      match goal with H : forall K0, env_av _ _ K0 (env_args nil _) -> Forall (optional_exp_fresh K0) _ -> forall a, In a _ -> dav _ _ a |- _ =>
         apply (H None);
           [ apply env_av_args_none; [ apply env_av_nil | first [ intros ? [] | apply dav_args_snoc; assumption ] ]
           | apply List.Forall_forall; intros; exact I ] end ].
@@ -872,7 +872,7 @@ Section Eval.
         instance, closed terms evaluated at the uniform parameters. *)
     all: try solve [ lazymatch goal with |- dav _ _ (d_record _ _) => apply dav_record; intros ? Ha end;
       match goal with
-      | IH : forall K0, env_av _ _ K0 (env_args nil ?ups) -> Forall (ofresh K0) ?Is -> forall a, In a ?cups -> dav _ _ a,
+      | IH : forall K0, env_av _ _ K0 (env_args nil ?ups) -> Forall (optional_exp_fresh K0) ?Is -> forall a, In a ?cups -> dav _ _ a,
         Hu : forall u, In u ?ups -> dav _ _ u, Ha : In ?d0 ?cups |- dav _ _ ?d0 =>
           apply (IH None); [ apply env_av_args_none; [ apply env_av_nil | exact Hu ] | apply Forall_forall; intros; exact I | exact Ha ]
       end ].
@@ -892,7 +892,7 @@ Section Eval.
         Hv : forall y1, In y1 (?v0 :: ?vs) -> dav _ _ y1 |- dav _ _ ?d0 =>
           destruct (List.in_app_or _ _ _ Ha) as [Hin1 | Hin1];
           [ match goal with IH : ends_fresh _ _ _ t -> _ |- _ =>
-              exact (IH (Hf nil t gs eq_refl) ltac:(assumption) None ltac:(assumption) (ptfresh_none t) (all_in_head _ _ _ Hv) _ Hin1) end
+              exact (IH (Hf nil t gs eq_refl) ltac:(assumption) None ltac:(assumption) (optional_ptyp_fresh_none t) (all_in_head _ _ _ Hv) _ Hin1) end
           | match goal with IH : _ -> _ -> _ -> _ -> forall y2, In y2 l2 -> _ |- _ =>
               eapply IH; [ | assumption | assumption | exact (all_in_tail _ _ _ Hv) | exact Hin1 ];
               let gs1 := fresh "gs" in let t0 := fresh "t" in let gs2 := fresh "gs" in let E := fresh "E" in
@@ -916,11 +916,11 @@ Section Eval.
         [ match goal with H : im_is_rview ?M = false, H' : im_head ?M = mh_record _ _ _ |- _ =>
             unfold im_is_rview in H; rewrite H' in H; discriminate end
         | match goal with
-          | e : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs, IH : forall K0, env_av _ _ K0 (env_args ?ρm (?bs ++ ?v0 :: nil)) -> ofresh K0 ?A -> _,
-            Hm : env_av _ _ ?Km ?ρm, HA : ofresh (oshift (S (List.length ?Ps)) ?Km) ?A |- _ =>
+          | e : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs, IH : forall K0, env_av _ _ K0 (env_args ?ρm (?bs ++ ?v0 :: nil)) -> optional_exp_fresh K0 ?A -> _,
+            Hm : env_av _ _ ?Km ?ρm, HA : optional_exp_fresh (optional_shift (S (List.length ?Ps)) ?Km) ?A |- _ =>
               let Hlb := fresh "Hlb" in
               assert (Hlb : List.length bs = List.length Ps) by (clear - e; induction e; cbn; congruence);
-              apply (IH (oshift (List.length (bs ++ v0 :: nil)) Km));
+              apply (IH (optional_shift (List.length (bs ++ v0 :: nil)) Km));
                 [ apply env_av_args; [ exact Hm | apply dav_args_snoc; assumption ]
                 | rewrite List.length_app, Hlb; cbn [List.length]; replace (List.length Ps + 1) with (S (List.length Ps)) by lia;
                   exact HA ]
@@ -949,46 +949,46 @@ Section Eval.
       match goal with Hn : dav _ _ (⇑ _ _) |- _ => inversion Hn; subst end.
       eapply dav_exfalso with (K := K); eassumption.
     - (* an alias lacking no parameter: its target *)
-      match goal with IH : omfresh ?K ?E -> _, Hu : oufresh ?K (gu_mk nil (md_alias ?E)) |- _ =>
-        apply IH; pose proof (oufresh_alias _ _ _ Hu) as Hx; cbn [List.length] in Hx; rewrite oshift_zero in Hx; exact Hx end.
+      match goal with IH : optional_modexp_fresh ?K ?E -> _, Hu : optional_gunit_fresh ?K (gu_mk nil (md_alias ?E)) |- _ =>
+        apply IH; pose proof (optional_gunit_fresh_alias _ _ _ Hu) as Hx; cbn [List.length] in Hx; rewrite optional_shift_zero in Hx; exact Hx end.
     - (* a closure given its outermost parameter *)
-      match goal with IH : oufresh (oshift 1 ?K) _ -> _, Hu : oufresh ?K (gu_mk (_ ++ _) _) |- _ =>
-        exact (IH (oufresh_snoc _ _ _ _ Hu)) end.
+      match goal with IH : optional_gunit_fresh (optional_shift 1 ?K) _ -> _, Hu : optional_gunit_fresh ?K (gu_mk (_ ++ _) _) |- _ =>
+        exact (IH (optional_gunit_fresh_snoc _ _ _ _ Hu)) end.
     - (* the module of an inductive type, a member of a global module: the
          type former, applied to the module's arguments *)
       match goal with IH : dav _ _ (d_ind _ _ _) -> _ -> _, Ha : forall a, In a _ -> dav _ _ a |- _ =>
         apply IH; [ constructor; intros ? [] | exact Ha ] end.
     - (* a term part of a saturated body, in its expansion *)
       match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_tm _ = Some _,
-                      Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
-                      IHb : ogfresh ?K _ -> _, IHM : forall K0, _ -> ofresh K0 _ -> _ |- _ =>
-        pose proof (oufresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite oshift_zero in HΦ;
-        pose proof (ofresh_prefix_upto _ _ _ _ Hp (kbody_ogfresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
-        exact (IHM _ (IHb (ogfresh_ext_prefix _ _ _ _ HΦ')) (ogfresh_tm_body _ _ _ _ _ _ HE HΦ')) end.
+                      Hu : optional_gunit_fresh ?K (gu_mk nil (md_body _ ?Φ)),
+                      IHb : optional_gmod_fresh ?K _ -> _, IHM : forall K0, _ -> optional_exp_fresh K0 _ -> _ |- _ =>
+        pose proof (optional_gunit_fresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite optional_shift_zero in HΦ;
+        pose proof (optional_exp_fresh_prefix_upto _ _ _ _ Hp (kbody_optional_gmod_fresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
+        exact (IHM _ (IHb (optional_gmod_fresh_ext_prefix _ _ _ _ HΦ')) (optional_gmod_fresh_tm_body _ _ _ _ _ _ HE HΦ')) end.
     - (* a module part of a saturated body, in its expansion *)
       match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_unit _ = Some _,
-                      Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
-                      IHb : ogfresh ?K _ -> _, IHM : forall K0, _ -> oufresh K0 _ -> _ |- _ =>
-        pose proof (oufresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite oshift_zero in HΦ;
-        pose proof (ofresh_prefix_upto _ _ _ _ Hp (kbody_ogfresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
-        exact (IHM _ (IHb (ogfresh_ext_prefix _ _ _ _ HΦ')) (ogfresh_unit_unit _ _ _ _ _ HE HΦ')) end.
+                      Hu : optional_gunit_fresh ?K (gu_mk nil (md_body _ ?Φ)),
+                      IHb : optional_gmod_fresh ?K _ -> _, IHM : forall K0, _ -> optional_gunit_fresh K0 _ -> _ |- _ =>
+        pose proof (optional_gunit_fresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite optional_shift_zero in HΦ;
+        pose proof (optional_exp_fresh_prefix_upto _ _ _ _ Hp (kbody_optional_gmod_fresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
+        exact (IHM _ (IHb (optional_gmod_fresh_ext_prefix _ _ _ _ HΦ')) (optional_gmod_fresh_unit_unit _ _ _ _ _ HE HΦ')) end.
     - (* the empty body *)
-      cbn [gm_binders]; rewrite oshift_zero; assumption.
+      cbn [gm_binders]; rewrite optional_shift_zero; assumption.
     - (* a definition entry *)
-      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
+      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- optional_shift_optional_shift.
       apply env_av_cons; [ assumption | constructor; assumption ].
     - (* a submodule entry *)
-      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
+      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- optional_shift_optional_shift.
       apply env_av_cons; [ assumption | constructor; assumption ].
     - (* a definition with a module part entry *)
-      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
+      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- optional_shift_optional_shift.
       apply env_av_cons; [ assumption | constructor; assumption ].
   Qed.
 End Eval.
 
 (** A closure, evaluated at one or two more entries. *)
 Lemma eval_clo_av : forall v b K (ρ : env) B c d,
-    env_av v b K ρ -> ofresh (oshift 1 K) B -> dav v b c ->
+    env_av v b K ρ -> optional_exp_fresh (optional_shift 1 K) B -> dav v b c ->
     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ↘ d -> dav v b d.
 Proof.
   intros * Hρ HB Hc Hd.
@@ -996,20 +996,20 @@ Proof.
 Qed.
 
 Lemma eval_clo2_av : forall v b K (ρ : env) B c1 c2 d,
-    env_av v b K ρ -> ofresh (oshift 2 K) B -> dav v b c1 -> dav v b c2 ->
+    env_av v b K ρ -> optional_exp_fresh (optional_shift 2 K) B -> dav v b c1 -> dav v b c2 ->
     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c1 ↦ c2 ↘ d -> dav v b d.
 Proof.
   intros * Hρ HB Hc1 Hc2 Hd.
-  eapply (proj1 (eval_av v b) _ _ _ Hd (oshift 1 (oshift 1 K))).
+  eapply (proj1 (eval_av v b) _ _ _ Hd (optional_shift 1 (optional_shift 1 K))).
   - apply env_av_cons; [ apply env_av_cons; [ exact Hρ | constructor; exact Hc1 ] | constructor; exact Hc2 ].
-  - rewrite oshift_oshift; exact HB.
+  - rewrite optional_shift_optional_shift; exact HB.
 Qed.
 
 Lemma app_av : forall v b m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dav v b m -> dav v b n -> dav v b r.
 Proof. intros * H; exact (proj1 (proj2 (eval_av v b)) _ _ _ H). Qed.
 
 Lemma shty_av : forall v b p ups ρ t a K, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-    env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a.
+    env_av v b K ρ -> optional_ptyp_fresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a.
 Proof.
   intros * H; destruct (eval_av v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
   exact (Hs _ _ _ _ _ H K).
@@ -1018,7 +1018,7 @@ Qed.
 (** The types of the recursive results along the leaf paths of a shape. *)
 Lemma ihty_av : forall v b p ups ρm As ρ t m as' Km K, ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
     env_av v b Km ρm -> ends_fresh p Km As t -> ups_av v b ups ->
-    env_av v b K ρ -> ptfresh K t -> dav v b m -> forall a, In a as' -> dav v b a.
+    env_av v b K ρ -> optional_ptyp_fresh K t -> dav v b m -> forall a, In a as' -> dav v b a.
 Proof.
   intros * H; destruct (eval_av v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
   intros; eapply Hy; eassumption.
@@ -1032,7 +1032,7 @@ Qed.
 
 (** The recursive results along the leaf paths of a shape. *)
 Lemma ih_av : forall v b ρ p ups Bks t m rs K, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-    env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups -> dav v b m -> forall a, In a rs -> dav v b a.
+    env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups -> dav v b m -> forall a, In a rs -> dav v b a.
 Proof.
   intros * H; destruct (eval_av v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hi & _).
   intros; eapply Hi; eassumption.
@@ -1071,7 +1071,7 @@ Qed.
     paths nested through. *)
 Lemma wrap_ihs_eval_av : forall v b ρ p ups Bks Dc gs' gs vs ihs r K,
     ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-    env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups ->
+    env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups ->
     (forall a, In a vs -> dav v b a) -> (forall a, In a ihs -> dav v b a) -> forall a, In a r -> dav v b a.
 Proof.
   induction 1; intros Hρ HB Ho Hv Hi; [ apply all_in_nil | | |].
@@ -1144,7 +1144,7 @@ Qed.
     member's motive binds ([rview_leaf_arity], [blocks_nm_at]), down the
     record views' fields by their order. *)
 Lemma ends_fresh_of_blocks : forall p D Bks K, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-    blocks_nm_at D None Bks -> blocks_ofresh K Bks ->
+    blocks_nm_at D None Bks -> blocks_optional_exp_fresh K Bks ->
     forall t, (exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj) ->
       ends_fresh p K (blocks_motives Bks) t.
 Proof.
@@ -1174,7 +1174,7 @@ Qed.
 
 (** And so of every recursive argument of a constructor of [D]. *)
 Lemma cargs_ends_fresh : forall p D Bks K gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-    blocks_nm_at D None Bks -> blocks_ofresh K Bks -> cargs_plen D gs ->
+    blocks_nm_at D None Bks -> blocks_optional_exp_fresh K Bks -> cargs_plen D gs ->
     forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh p K (blocks_motives Bks) t.
 Proof. intros * HD Har Hnm HB Hpl gs1 t gs2 E; exact (ends_fresh_of_blocks _ _ _ _ HD Har Hnm HB t (Hpl gs1 t gs2 E)). Qed.
 
@@ -1235,7 +1235,7 @@ Section Read.
     apply all_in_cons.
     - eapply dav_mono'; [| apply (dav_fresh_var b0); assumption ]; lia.
     - apply (IHfresh_tele (S s)); [ lia | lia |].
-      change (@None nat) with (oshift 1 None).
+      change (@None nat) with (optional_shift 1 None).
       apply env_av_cons; [ eapply env_av_mono; [| exact Hρ ]; lia | constructor; apply (dav_fresh_var b0); assumption ].
   Qed.
 
@@ -1249,9 +1249,9 @@ Section Read.
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
       apply all_in_cons; [ eapply dav_mono'; [| apply (dav_fresh_var b0); assumption ]; lia |].
       apply (IHfresh_cargs (S s)); [ lia | lia | | intros; eapply dav_mono'; [| apply Hu; eassumption ]; lia ].
-      change (@None nat) with (oshift 1 None).
+      change (@None nat) with (optional_shift 1 None).
       apply env_av_cons; [ eapply env_av_mono; [| exact Hρ ]; lia | constructor; apply (dav_fresh_var b0); assumption ].
-    - assert (Ha : dav v b0 a) by (eapply shty_av; [ eassumption | exact Hρ | apply ptfresh_none | exact Hu ]).
+    - assert (Ha : dav v b0 a) by (eapply shty_av; [ eassumption | exact Hρ | apply optional_ptyp_fresh_none | exact Hu ]).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
       apply all_in_cons; [ eapply dav_mono'; [| apply (dav_fresh_var b0); assumption ]; lia |].
       apply (IHfresh_cargs b0); [ lia | lia | exact Hρ | exact Hu ].
@@ -1289,7 +1289,7 @@ Section Read.
       + intros gs1 t gs2 E; apply (Hl (ca_arg T :: gs1) t gs2); rewrite E; reflexivity.
       + exact (all_in_tail _ _ _ Hvs).
     - assert (Has : forall a, In a as' -> dav v b0 a)
-        by (eapply ihty_av; [ eassumption | exact Hρ | exact (Hl nil t gs eq_refl) | exact Hu | exact Hρa | apply ptfresh_none
+        by (eapply ihty_av; [ eassumption | exact Hρ | exact (Hl nil t gs eq_refl) | exact Hu | exact Hρa | apply optional_ptyp_fresh_none
                             | exact (all_in_head _ _ _ Hvs) ]).
       match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => pose proof (fresh_leaf_vars_av _ _ _ _ Hf b0 Hv Hb Has) as H1v end.
       rewrite List.length_app; apply all_in_app.
@@ -1308,7 +1308,7 @@ Section Read.
   Lemma motive_av : forall ρ K A X pre hd k Mi s ns a b,
       Ftele List.rev (im_nparams Mi) in Θ ⍮ Ξ ⍮ env_args nil X ⍮ s ↘ ns ->
       ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind hd k (pre ++ ns)) (s + im_nn Mi) :: nil) ↘ a ->
-      v < s -> b <= s -> env_av v b K ρ -> ofresh (oshift (S (im_nn Mi)) K) A ->
+      v < s -> b <= s -> env_av v b K ρ -> optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A ->
       (forall x, In x X -> dav v b x) -> (forall x, In x pre -> dav v b x) ->
       dav v (S (s + im_nn Mi)) a.
   Proof.
@@ -1341,8 +1341,8 @@ Section Read.
       n0 = (im_nn Mi + List.length gs' + cargs_nrec D gs)%nat -> im_nn Mv = im_nn Mi ->
       cargs_nin D Dc gs' gs = cargs_nrec Dc gs' ->
       cargs_plen D gs -> blocks_nm_at D None Bks -> rview_leaf_arity D ->
-      v < s -> b <= s -> env_av v b K ρ -> blocks_ofresh K Bks -> ups_av v b ups ->
-      ofresh (oshift (S (im_nn Mi)) K) A -> ofresh (oshift n0 K) B ->
+      v < s -> b <= s -> env_av v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_av v b ups ->
+      optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A -> optional_exp_fresh (optional_shift n0 K) B ->
       (forall x, In x pre -> dav v b x) ->
       dav v (s + (im_nn Mi + List.length gs' + cargs_nrec Dc gs')) t /\
       dav v (s + (im_nn Mi + List.length gs' + cargs_nrec Dc gs')) bv.
@@ -1409,14 +1409,14 @@ Section Read.
        forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a ups -> dav v b a) ->
        dav v b x -> nf_fresh (s - v - 1) X) /\
     (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-       forall b K D, v < s -> b <= s -> env_av v b K ρ -> blocks_ofresh K Bks ->
+       forall b K D, v < s -> b <= s -> env_av v b K ρ -> blocks_optional_exp_fresh K Bks ->
        ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D ->
        (forall a, In a ups -> dav v b a) -> all_list (normal_block_forall (fun n => nf_fresh (n + (s - v - 1)))) NBks) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-       forall b K D, v < s -> b <= s -> env_av v b K ρ -> blocks_ofresh K Bks ->
+       forall b K D, v < s -> b <= s -> env_av v b K ρ -> blocks_optional_exp_fresh K Bks ->
        ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
-       ofresh (oshift (S (im_nn Mi)) K) A ->
-       (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
+       optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A ->
+       (forall c n B, In (c, n, B) Bs -> optional_exp_fresh (optional_shift n K) B) ->
        (forall a, In a ups -> dav v b a) -> (forall a, In a (snd r) -> dav v b a) -> all_list (fun br => nf_fresh (branch_arity br + (s - v - 1)) (branch_body br)) Bs') /\
     (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
        forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> all_list (nf_fresh (s - v - 1)) Fs).
@@ -1434,17 +1434,17 @@ Section Read.
              (fun s p ups ρ t x X _ => forall b, v < s -> b <= s -> env_av v b None ρ ->
                                      (forall a, In a ups -> dav v b a) -> dav v b x -> nf_fresh (s - v - 1) X)
              (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall b K D, v < s -> b <= s -> env_av v b K ρ ->
-                                                      blocks_ofresh K Bks ->
+                                                      blocks_optional_exp_fresh K Bks ->
                                                       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
                                                       rview_leaf_arity D ->
                                                       (forall a, In a ups -> dav v b a) -> all_list (normal_block_forall (fun n => nf_fresh (n + (s - v - 1)))) NBks)
              (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall b K D, v < s -> b <= s -> env_av v b K ρ ->
-                                                            blocks_ofresh K Bks ->
+                                                            blocks_optional_exp_fresh K Bks ->
                                                             ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
                                                             rview_leaf_arity D ->
                                                             im_nn Mv = im_nn Mi ->
-                                                            ofresh (oshift (S (im_nn Mi)) K) A ->
-                                                            (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
+                                                            optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A ->
+                                                            (forall c n B, In (c, n, B) Bs -> optional_exp_fresh (optional_shift n K) B) ->
                                                             (forall a, In a ups -> dav v b a) ->
                                                             (forall a, In a (snd r) -> dav v b a) -> all_list (fun br => nf_fresh (branch_arity br + (s - v - 1)) (branch_body br)) Bs')
              (fun s ρ fl d Fs _ => forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> all_list (nf_fresh (s - v - 1)) Fs));
@@ -1584,11 +1584,11 @@ Section Read.
           apply (IH b); [ lia | lia | apply env_av_nil | exact (mref_av _ _ _ _ _ _ em Hu) ]
       end ].
     all: try solve [ match goal with
-      | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_ofresh K0 ?Bks ->
+      | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_optional_exp_fresh K0 ?Bks ->
                ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> rview_leaf_arity D0 ->
                (forall a, In a ?ups -> _) -> all_list _ ?W,
         Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
-        Hb : ?b <= ?s, Hρ : forall x, ?K <> Some x -> deav v ?b (env_entry ?ρ x), HBk : blocks_ofresh ?K ?Bks,
+        Hb : ?b <= ?s, Hρ : forall x, ?K <> Some x -> deav v ?b (env_entry ?ρ x), HBk : blocks_optional_exp_fresh ?K ?Bks,
         Hu : forall a, In a ?ups -> dav v ?b a |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Har | exact Hu ]
       end ].
@@ -1603,7 +1603,7 @@ Section Read.
         em : eval_mref _ _ _ ?X _ (_, _, ?pre),
         e2 : ⟦ eb_motive ?bk ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ _) ↘ ?a,
         IH : forall b0, _ -> _ -> dav v b0 ?a -> nf_fresh _ ?A',
-        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_ofresh ?K ?Bks,
+        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
         HX : forall x, In x ?X -> dav v ?b x |- nf_fresh (S (im_nn ?Mi) + _) ?A' =>
           let Hnn := fresh "Hnn" in
           assert (Hnn : im_nn Mv = im_nn Mi) by (pose proof (Hnm _ _ _ HMv Hnth) as Hx; cbn [elim_src] in Hx; congruence);
@@ -1615,13 +1615,13 @@ Section Read.
                             | exact (mref_av _ _ _ _ _ _ em HX) ]
       end ].
     all: try solve [ match goal with
-      | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_ofresh K0 ?Bks ->
+      | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_optional_exp_fresh K0 ?Bks ->
                ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> rview_leaf_arity D0 -> im_nn ?Mv = im_nn ?Mi ->
                _ -> _ -> _ -> _ -> all_list _ ?W,
         Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi), HMv : ind_member ?D ?ix = Some ?Mv,
         em : eval_mref _ _ _ ?X _ (_, _, ?pre),
         Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
-        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_ofresh ?K ?Bks,
+        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
         HX : forall x, In x ?X -> dav v ?b x |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Har
                             | pose proof (Hnm _ _ _ HMv Hnth) as Hx; cbn [elim_src] in Hx; congruence
@@ -1630,11 +1630,11 @@ Section Read.
                             | exact (mref_av _ _ _ _ _ _ em HX) ]
       end ].
     all: try solve [ match goal with
-      | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_ofresh K0 ?Bks ->
+      | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_optional_exp_fresh K0 ?Bks ->
                ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> rview_leaf_arity D0 ->
                (forall a, In a ?X -> _) -> all_list _ ?W,
         Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
-        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_ofresh ?K ?Bks,
+        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
         HX : forall x, In x ?X -> dav v ?b x |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Har | exact HX ]
       end ].
@@ -1651,9 +1651,9 @@ Section Read.
         Hn0 : ?n0 = _, Hn : ?n = _, Hnn : im_nn _ = im_nn ?Mi, Hcnt : cargs_nin ?D0 _ ?gs' ?gs = _,
         Hpl : cargs_plen ?D0 ?gs, Hnm : blocks_nm_at ?D0 None ?Bks, Har : rview_leaf_arity ?D0,
         IH : forall b0, _ -> _ -> dav_nf v b0 (⇓ ?t ?bv) -> nf_fresh _ ?B',
-        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_ofresh ?K ?Bks,
-        HA : ofresh (oshift (S (im_nn ?Mi)) ?K) ?A,
-        HB : forall c0 n0 B0, In (c0, n0, B0) (_ :: _) -> ofresh (oshift n0 ?K) B0,
+        Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
+        HA : optional_exp_fresh (optional_shift (S (im_nn ?Mi)) ?K) ?A,
+        HB : forall c0 n0 B0, In (c0, n0, B0) (_ :: _) -> optional_exp_fresh (optional_shift n0 ?K) B0,
         HX : forall x, In x ?X -> dav v ?b x, Hp : forall x, In x ?pre -> dav v ?b x |- nf_fresh (?n + _) ?B' =>
           let Hbr := fresh "Hbr" in
           pose proof (branch_av _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ b f f0 f2 fw e0 e1 HD0 Hn0 Hnn Hcnt Hpl Hnm
@@ -1720,18 +1720,18 @@ Lemma initial_env_av : forall Θ Ξ Γ ρ,
 Proof.
   intros Θ Ξ; induction 1; intros v' b' Hv Hb; cbn [List.length] in *.
   - apply env_av_nil.
-  - change None with (oshift 1 None).
+  - change None with (optional_shift 1 None).
     apply env_av_cons; [ apply IHinitial_env; lia |].
     constructor; constructor;
       [ eapply (proj1 (eval_av Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ]
       | constructor; lia ].
-  - change None with (oshift 1 None).
+  - change None with (optional_shift 1 None).
     apply env_av_cons; [ apply IHinitial_env; lia |].
     constructor; eapply (proj1 (eval_av Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ].
-  - change None with (oshift 1 None).
+  - change None with (optional_shift 1 None).
     apply env_av_cons; [ apply IHinitial_env; lia |].
     constructor; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (eval_av Θ Ξ v' b')))))); [ eassumption | apply IHinitial_env; lia | exact I ].
-  - change None with (oshift 1 None).
+  - change None with (optional_shift 1 None).
     apply env_av_cons; [ apply IHinitial_env; lia |].
     constructor;
       [ eapply (proj1 (eval_av Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ]

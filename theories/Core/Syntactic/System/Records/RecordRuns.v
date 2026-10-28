@@ -111,7 +111,7 @@ Section RecordRuns.
     assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record mp R Δ ((mq, Kq, Uq) :: Ξ0))
       by (apply wf_gstack_cons; [ exact Hg | eapply wf_gmod_record_nil; [ exact Htel | exact HΔ | exact HE | reflexivity ]
                                 | exact Hff ]).
-    assert (HEm : Emb Θ ((mq, Kq, Uq) :: Ξ0) Θ (gs_push_record mp R Δ ((mq, Kq, Uq) :: Ξ0)))
+    assert (HEm : gctx_embedding Θ ((mq, Kq, Uq) :: Ξ0) Θ (gs_push_record mp R Δ ((mq, Kq, Uq) :: Ξ0)))
       by (constructor; [ exact Hpush | apply gc_sub_push; exact Hff ]).
     destruct (gen_defs_run load_path read to_core ch B Rb Θ mp (fk_record R) (ce_ass (record_self mp R) :: Δ)
                 ((mq, Kq, Uq) :: Ξ0) true false (record_fields_defs R 0 (record_fields R)) ⋄ Hpush)

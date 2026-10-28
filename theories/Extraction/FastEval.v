@@ -7,7 +7,7 @@
     that is, when its variable is not fresh in the branch ([exp_freshb]);
     an unused entry is [𝕌ω@0] ([feval_ihs_skip]).  Readback of a stuck
     eliminator's branch gives such a recursive result the type [𝕌ω@0]
-    ([ffresh_ihs_skip]).
+    ([fast_fresh_ihs_skip]).
 
     The decision is syntactic and builds nothing.  Readback is copied
     because it evaluates closures.
@@ -1237,34 +1237,34 @@ Generalizable All Variables.
 
 (** The fresh variables of the telescopes of a group of inductive types,
     as in [Core.Semantic.Readback]. *)
-Inductive ffresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
+Inductive fast_fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
 (** No entry, no variable *)
-| ffresh_tele_nil :
+| fast_fresh_tele_nil :
   `( Fteleᶠ nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** A variable of the first entry's type, then the rest under it *)
-| ffresh_tele_cons :
+| fast_fresh_tele_cons :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
      Fteleᶠ ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
-where "'Fteleᶠ' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (ffresh_tele Θ Ξ ρ T s vs) : type_scope.
+where "'Fteleᶠ' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fast_fresh_tele Θ Ξ ρ T s vs) : type_scope.
 
 (** The arguments of a constructor, as in [Core.Semantic.Readback]. *)
-Inductive ffresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
+Inductive fast_fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> list domain -> Prop :=
 (** No argument *)
-| ffresh_cargs_nil :
+| fast_fresh_cargs_nil :
   `( Fcargsᶠ nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** A non-recursive argument, of its declared type *)
-| ffresh_cargs_arg :
+| fast_fresh_cargs_arg :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
      Fcargsᶠ ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
 (** A recursive argument, of the type of its shape *)
-| ffresh_cargs_rec :
+| fast_fresh_cargs_rec :
   `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ S s ↘ vs ->
      Fcargsᶠ ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
-where "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (ffresh_cargs Θ Ξ p ups ρ gs s vs) : type_scope.
+where "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fast_fresh_cargs Θ Ξ p ups ρ gs s vs) : type_scope.
 
 (** The recursive results of a branch [B] of a stuck eliminator, as fresh
     variables, as in [Core.Semantic.Readback]: the types of an argument's
@@ -1272,19 +1272,19 @@ where "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (f
     variables gets [𝕌ω@0].  The results of the argument heading
     [ca_rec t :: gs], [gs] the kinds the branch's group has, are the
     variables [cargs_nrec D gs] on of [B] ([ihs_skipb]). *)
-Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : qname) (ups : list domain) (Dc : ind_decl) (B : exp) :
+Inductive fast_fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : qname) (ups : list domain) (Dc : ind_decl) (B : exp) :
   env -> list carg -> list carg -> list domain -> nat -> list domain -> Prop :=
 (** No argument, no result *)
-| ffresh_ihs_nil :
+| fast_fresh_ihs_nil :
   `( Fihsᶠ nil at nil nil of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ nil )
 (** A non-recursive argument: none, the argument entering [ρa] *)
-| ffresh_ihs_arg :
+| fast_fresh_ihs_arg :
   `( Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ↦ v ⍮ s ↘ ihs ->
      Fihsᶠ v :: vs at (ca_arg T' :: gs') (ca_arg T :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 (** An argument recursive in both, one of whose results the branch reads:
     a fresh variable at each recursive result's type along the paths of
     the container's *)
-| ffresh_ihs_rec :
+| fast_fresh_ihs_rec :
   `( ind_lookup Θ Ξ p = Some D ->
      ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = false ->
      ⟦ihtyᶠ v of t at p ups under ρ As ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
@@ -1293,7 +1293,7 @@ Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : 
      Fihsᶠ v :: vs at (ca_rec t' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ++ ihs )
 (** One the branch reads none of the results of: each variable at
     [𝕌ω@0] *)
-| ffresh_ihs_skip :
+| fast_fresh_ihs_skip :
   `( ind_lookup Θ Ξ p = Some D ->
      ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = true ->
      fresh_leaf_vars (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
@@ -1301,22 +1301,22 @@ Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : 
      Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ (List.length ihs1 + s) ↘ ihs ->
      Fihsᶠ v :: vs at (ca_rec t' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ++ ihs )
 (** An argument recursive in [gs] only (nested through): no variable *)
-| ffresh_ihs_nest :
+| fast_fresh_ihs_nest :
   `( Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
      Fihsᶠ v :: vs at (ca_arg T' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 where "'Fihsᶠ' vs 'at' gs' gs 'of' Dc 'under' ρm As 'at' p ups 'for' B 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" :=
-  (ffresh_ihs Θ Ξ ρm As p ups Dc B ρ gs' gs vs s ihs) : type_scope.
+  (fast_fresh_ihs Θ Ξ ρm As p ups Dc B ρ gs' gs vs s ihs) : type_scope.
 
 (** The recursive results a branch of a block is read under, as in
     [Core.Semantic.Readback]. *)
-Inductive fwrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) (Dc : ind_decl) :
+Inductive fast_wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) (Dc : ind_decl) :
   list carg -> list carg -> list domain -> list domain -> list domain -> Prop :=
 (** No argument, no result *)
-| fwrap_ihs_eval_nil :
+| fast_wrap_ihs_eval_nil :
   `( ⟦wihsᶠ nil of nil nil of Dc with nil under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
 (** Recursive in both: along each path, the next of [ihs] at a path of
     the container's, the eliminator at one nested through *)
-| fwrap_ihs_eval_rec :
+| fast_wrap_ihs_eval_rec :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
      wrap_leaf_vals (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs ihs' r1 ->
@@ -1324,19 +1324,19 @@ Inductive fwrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups 
      ⟦wihsᶠ v :: vs of (ca_rec t' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ++ r )
 (** Recursive for the branch's group only: the eliminator at the
     argument, along each path *)
-| fwrap_ihs_eval_nest :
+| fast_wrap_ihs_eval_nest :
   `( ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
      ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦wihsᶠ v :: vs of (ca_arg T' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ++ r )
 (** Non-recursive: no result *)
-| fwrap_ihs_eval_arg :
+| fast_wrap_ihs_eval_arg :
   `( ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦wihsᶠ v :: vs of (ca_arg T' :: gs') (ca_arg T :: gs) of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦wihsᶠ' vs 'of' gs' gs 'of' Dc 'with' ihs 'under' p ups Bks '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" :=
-  (fwrap_ihs_eval Θ Ξ ρ p ups Bks Dc gs' gs vs ihs r) : type_scope.
+  (fast_wrap_ihs_eval Θ Ξ ρ p ups Bks Dc gs' gs vs ihs r) : type_scope.
 
 #[export]
-Hint Constructors ffresh_tele ffresh_cargs ffresh_ihs fwrap_ihs_eval : mctt.
+Hint Constructors fast_fresh_tele fast_fresh_cargs fast_fresh_ihs fast_wrap_ihs_eval : mctt.
 
 (** Readback of values into normal and neutral forms in a context with [s]
     variables, as in [Core.Semantic.Readback]. *)
@@ -1617,7 +1617,7 @@ with fread_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domai
 where "'Rblksᶠ' i Ms 'of' Dc 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (fread_blocks Θ Ξ s ρ p ups Bks Dc sel i Ms NBks) : type_scope
 (** The branches of a block, as in [Core.Semantic.Readback]; the results
     of an argument the branch reads none of get the type [𝕌ω@0]
-    ([ffresh_ihs_skip]). *)
+    ([fast_fresh_ihs_skip]). *)
 with fread_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock -> ind_decl ->
                                     imember -> exp -> imember -> (qname * nat * list domain) ->
                                     list (string * list carg) -> list (string * nat * exp) -> list normal_branch -> Prop :=
@@ -1674,21 +1674,21 @@ Combined Scheme fread_mut_ind from
 #[export]
 Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_fields fread_cargs fread_shape fread_blocks fread_brs : mctt.
 
-  Lemma functional_ffresh_tele : forall {Θ Ξ} ρ T s vs1, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
+  Lemma functional_fast_fresh_tele : forall {Θ Ξ} ρ T s vs1, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
       forall vs2, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; [ reflexivity |].
     functional_feval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_ffresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
+  Lemma functional_fast_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
       forall vs2, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; [ auto | |];
       functional_feval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_ffresh_ihs : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs1,
+  Lemma functional_fast_fresh_ihs : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs1,
       Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
       forall ihs2, Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
   Proof.
@@ -1703,7 +1703,7 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_fields fre
     all: f_equal; auto.
   Qed.
 
-  Lemma functional_fwrap_ihs_eval : forall {Θ Ξ} ρ p ups Bks Dc gs' gs vs ihs r1,
+  Lemma functional_fast_wrap_ihs_eval : forall {Θ Ξ} ρ p ups Bks Dc gs' gs vs ihs r1,
       ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
       forall r2, ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof.
@@ -1718,16 +1718,16 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_fields fre
     all: f_equal; auto.
   Qed.
 
-  Ltac functional_ffresh_rewrite_clear :=
+  Ltac functional_fast_fresh_rewrite_clear :=
     repeat match goal with
-      | H1 : ffresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : ffresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
-          pose proof (functional_ffresh_tele _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : ffresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : ffresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
-          pose proof (functional_ffresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : ffresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?B ?ρa ?gs' ?gs ?vs ?s ?i1, H2 : ffresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?B ?ρa ?gs' ?gs ?vs ?s ?i2 |- _ =>
-          pose proof (functional_ffresh_ihs _ _ _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fwrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r1, H2 : fwrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r2 |- _ =>
-          pose proof (functional_fwrap_ihs_eval _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fast_fresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : fast_fresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
+          pose proof (functional_fast_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fast_fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fast_fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
+          pose proof (functional_fast_fresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fast_fresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?B ?ρa ?gs' ?gs ?vs ?s ?i1, H2 : fast_fresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?B ?ρa ?gs' ?gs ?vs ?s ?i2 |- _ =>
+          pose proof (functional_fast_fresh_ihs _ _ _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fast_wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r1, H2 : fast_wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r2 |- _ =>
+          pose proof (functional_fast_wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : feval_projs ?T ?X ?fl ?v ?w1, H2 : feval_projs ?T ?X ?fl ?v ?w2 |- _ =>
           pose proof (functional_feval_projs _ _ _ _ H1 H2); subst; clear H2
       | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
@@ -1789,7 +1789,7 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_fields fre
       (forall s ρ fl v Fs1, Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2).
   Proof.
     intros Θ Ξ; apply fread_mut_ind; intros; progressive_inversion; functional_feval_rewrite_clear;
-      functional_ffresh_rewrite_clear; functional_feval_rewrite_clear;
+      functional_fast_fresh_rewrite_clear; functional_feval_rewrite_clear;
       (** The two rules of a type former exclude each other. *)
       try contradiction.
     all: try solve [ apply nf_univ_of_cong; eauto | f_equal; solve [eauto] | repeat f_equal; solve [eauto] ].
@@ -1800,7 +1800,7 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_fields fre
          | H : fread_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
          | H : fread_ne _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
          end;
-      functional_ffresh_rewrite_clear; functional_feval_rewrite_clear; try congruence;
+      functional_fast_fresh_rewrite_clear; functional_feval_rewrite_clear; try congruence;
       repeat match goal with
         | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
             assert_fails (constr_eq a b); assert (a = b) by lia; subst b
@@ -1859,22 +1859,22 @@ Ltac functional_fread_rewrite_clear := repeat functional_fread_rewrite_clear1.
 
 (** One fresh variable per member of a telescope, per argument, and per
     recursive argument of the eliminated group. *)
-Lemma ffresh_tele_length : forall {Θ Ξ} ρ T s vs,
+Lemma fast_fresh_tele_length : forall {Θ Ξ} ρ T s vs,
     Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma ffresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
+Lemma fast_fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma ffresh_ihs_length : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs D, ind_lookup Θ Ξ p = Some D ->
+Lemma fast_fresh_ihs_length : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs D, ind_lookup Θ Ξ p = Some D ->
     Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nin D Dc gs' gs.
 Proof.
   intros * HD H; induction H; cbn; try congruence.
   all: match goal with H1 : ind_lookup _ _ _ = Some _, H2 : ind_lookup _ _ _ = Some _ |- _ =>
          rewrite H1 in H2; injection H2 as <- end.
   all: match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => rewrite List.length_app, (fresh_leaf_vars_length _ _ _ _ Hf) end.
-  all: rewrite IHffresh_ihs by assumption.
+  all: rewrite IHfast_fresh_ihs by assumption.
   all: unfold leaves_in_count; f_equal.
   all: clear; induction (shape_leaves (rv_leaves D) 0 t); cbn; [ reflexivity |].
   all: destruct (leaf_in Dc t' a); cbn; congruence.

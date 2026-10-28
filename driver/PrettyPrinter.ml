@@ -57,31 +57,31 @@ let pp_text_u (f : Format.formatter) (s : string) : unit =
     (String.split_on_char '\n' s)
 
 (************************************************************)
-(* Formatting Cst.obj *)
+(* Formatting Cst.expression *)
 (************************************************************)
-let rec get_nat_of_obj : Cst.obj -> int option = function
+let rec get_nat_of_expression : Cst.expression -> int option = function
   | Cst.Coq_num n -> Some n
   | _ -> None
 
-let rec get_fn_params_of_obj : Cst.obj -> (string * Cst.obj) list * Cst.obj =
+let rec get_fn_params_of_expression : Cst.expression -> (string * Cst.expression) list * Cst.expression =
   function
   | Cst.Coq_fn (px, ep, ebody) ->
-     let params, ebody' = get_fn_params_of_obj ebody in
+     let params, ebody' = get_fn_params_of_expression ebody in
      ((px, ep) :: params, ebody')
   | ebody -> ([], ebody)
 
-let rec get_pi_params_of_obj : Cst.obj -> (string * Cst.obj) list * Cst.obj =
+let rec get_pi_params_of_expression : Cst.expression -> (string * Cst.expression) list * Cst.expression =
   function
   | Cst.Coq_pi (px, ep, eret) ->
-     let params, eret' = get_pi_params_of_obj eret in
+     let params, eret' = get_pi_params_of_expression eret in
      ((px, ep) :: params, eret')
   | eret -> ([], eret)
 
 (* A run of nested [letb]s prints as one [let] with several bindings, which is
    how it was written. *)
-let rec get_letb_decls_of_obj : Cst.obj -> Cst.decl list * Cst.obj = function
+let rec get_letb_decls_of_expression : Cst.expression -> Cst.decl list * Cst.expression = function
   | Cst.Coq_letb (d, ebody) ->
-     let decls, ebody' = get_letb_decls_of_obj ebody in
+     let decls, ebody' = get_letb_decls_of_expression ebody in
      (d :: decls, ebody')
   | ebody -> ([], ebody)
 
@@ -119,7 +119,7 @@ let string_of_qpath (fp : string list) (ip : string list) : string =
 
 let pp_upath (f : Format.formatter) (fp : string list) : unit = pp_u f (string_of_upath fp)
 
-let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
+let rec format_expression_prec (p : int) (f : Format.formatter) : Cst.expression -> unit =
   let open Format in
   function
   (* A universe prints at its shortest spelling: at a finite literal level
@@ -131,7 +131,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_suniv (Cst.Coq_llit (0, n)) -> fprintf f "Type@@%d" n
   | Cst.Coq_suniv (Cst.Coq_llit (1, 0)) -> fprintf f "Type@@@<1>%s" s_omega
   | Cst.Coq_suniv (Cst.Coq_llit (1, n)) -> fprintf f "Type@@%dL" n
-  | Cst.Coq_suniv e -> fprintf f "@[<hov 2>Type@@{%a}@]" (format_obj_prec 0) e
+  | Cst.Coq_suniv e -> fprintf f "@[<hov 2>Type@@{%a}@]" (format_expression_prec 0) e
   | Cst.Coq_level 0 -> fprintf f "Level"
   | Cst.Coq_level n -> fprintf f "Level@@%d" n
   (* A level literal: [<n>l] when finite, else [ω·a+b] with [·a] dropped at
@@ -143,13 +143,13 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      if a <> 1 then fprintf f "@<1>%s%d" s_cdot a;
      if b <> 0 then fprintf f "+%d" b
   | Cst.Coq_succl e ->
-     let impl f () = fprintf f "succl@ %a" (format_obj_prec 2) e in
+     let impl f () = fprintf f "succl@ %a" (format_expression_prec 2) e in
      pp_open_hovbox f 2;
      pp_print_paren_if (p >= 2) impl f ();
      pp_close_box f ()
   | Cst.Coq_maxl (e1, e2) ->
      let impl f () =
-       fprintf f "maxl@ %a@ %a" (format_obj_prec 2) e1 (format_obj_prec 2) e2
+       fprintf f "maxl@ %a@ %a" (format_expression_prec 2) e1 (format_expression_prec 2) e2
      in
      pp_open_hovbox f 2;
      pp_print_paren_if (p >= 2) impl f ();
@@ -160,19 +160,19 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      let binder f (x, oa) =
        match oa with
        | None -> pp_print_string f x
-       | Some a -> fprintf f "(%s :@ %a)" x format_obj a
+       | Some a -> fprintf f "(%s :@ %a)" x format_expression a
      in
      let impl f () =
-       fprintf f "@[<hv 0>@[<hov 2>elim %a@]" format_obj escr;
+       fprintf f "@[<hv 0>@[<hov 2>elim %a@]" format_expression escr;
        List.iter
          (fun (((at, xs), em), bs) ->
            fprintf f "@ @[<hov 2>%s %a@ @<1>%s@ %a@]" (if at then "at" else "with")
-             (pp_print_list ~pp_sep:pp_print_space binder) xs s_arrow format_obj em;
+             (pp_print_list ~pp_sep:pp_print_space binder) xs s_arrow format_expression em;
            List.iter
              (fun ((c, ys), eb) ->
                fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
                  (String.concat "" (List.map (fun y -> if y = "," then "," else " " ^ y) ys))
-                 s_darrow format_obj eb)
+                 s_darrow format_expression eb)
              bs)
          bks;
        fprintf f "@ end@]"
@@ -181,9 +181,9 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   (* [record T where f := M; … end]: an object, not an atom, so it takes
      parentheses as an argument or before a selection. *)
   | Cst.Coq_tuple (et, fs) ->
-     let field f (y, em) = fprintf f "@[<hov 2>%s @<1>%s@ %a@]" y s_eq format_obj em in
+     let field f (y, em) = fprintf f "@[<hov 2>%s @<1>%s@ %a@]" y s_eq format_expression em in
      let impl f () =
-       fprintf f "@[<hv 2>@[<hov 2>record %a@ where@]" (format_obj_prec 1) et;
+       fprintf f "@[<hv 2>@[<hov 2>record %a@ where@]" (format_expression_prec 1) et;
        if fs <> [] then
          fprintf f "@ %a" (pp_print_list ~pp_sep:(fun f () -> fprintf f ";@ ") field) fs;
        fprintf f "@;<1 -2>end@]"
@@ -194,49 +194,49 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_false_ty -> pp_sym f s_false_ty
   | Cst.Coq_exfalso (escr, mx, em) ->
      let impl f () =
-       fprintf f "@[<hov 2>exfalso %a@ return %s .@ %a@]" format_obj escr mx
-         format_obj em
+       fprintf f "@[<hov 2>exfalso %a@ return %s .@ %a@]" format_expression escr mx
+         format_expression em
      in
      pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_app (ef, ea) ->
      let impl f () =
-       fprintf f "%a@ %a" (format_obj_prec 1) ef (format_obj_prec 2) ea
+       fprintf f "%a@ %a" (format_expression_prec 1) ef (format_expression_prec 2) ea
      in
      pp_open_hvbox f 2;
      pp_print_paren_if (p >= 2) impl f ();
      pp_close_box f ()
   | Cst.Coq_fn (px, ep, ebody) ->
-     let params, ebody' = get_fn_params_of_obj ebody in
+     let params, ebody' = get_fn_params_of_expression ebody in
      let impl f () =
        pp_sym f s_lambda; pp_print_char f ' ';
        pp_open_tbox f ();
        pp_set_tab f ();
-       pp_print_list ~pp_sep:pp_print_tab format_obj_param f ((px, ep) :: params);
+       pp_print_list ~pp_sep:pp_print_tab format_expression_param f ((px, ep) :: params);
        pp_close_tbox f ();
        begin
          if List.compare_length_with params 0 = 0
          then pp_print_space f ()
          else pp_force_newline f ()
        end;
-       fprintf f "@<1>%s @[<hov 2>%a@]" s_arrow format_obj ebody'
+       fprintf f "@<1>%s @[<hov 2>%a@]" s_arrow format_expression ebody'
      in
      pp_open_hvbox f 2;
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
   | Cst.Coq_pi (px, ep, eret) ->
-     let params, eret' = get_pi_params_of_obj eret in
+     let params, eret' = get_pi_params_of_expression eret in
      let impl f () =
        pp_sym f s_pi; pp_print_char f ' ';
        pp_open_tbox f ();
        pp_set_tab f ();
-       pp_print_list ~pp_sep:pp_print_tab format_obj_param f ((px, ep) :: params);
+       pp_print_list ~pp_sep:pp_print_tab format_expression_param f ((px, ep) :: params);
        pp_close_tbox f ();
        begin
          if List.compare_length_with params 0 = 0
          then pp_print_space f ()
          else pp_force_newline f ()
        end;
-       fprintf f "@<1>%s @[<hov 2>%a@]" s_arrow format_obj eret'
+       fprintf f "@<1>%s @[<hov 2>%a@]" s_arrow format_expression eret'
      in
      pp_open_hvbox f 2;
      pp_print_paren_if (p >= 1) impl f ();
@@ -245,13 +245,13 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_glob path -> pp_upath f path
   (* Dot binds tighter than application, so the target prints at the precedence
      of an application argument. *)
-  | Cst.Coq_proj (e, x) -> fprintf f "%a.%s" (format_obj_prec 2) e x
+  | Cst.Coq_proj (e, x) -> fprintf f "%a.%s" (format_expression_prec 2) e x
   | Cst.Coq_letb _ as e ->
-     let decls, ebody = get_letb_decls_of_obj e in
+     let decls, ebody = get_letb_decls_of_expression e in
      let impl f () =
        fprintf f "let @[<hv 0>%a@]@ in @[<hov 2>%a@]@ end"
          (pp_print_list ~pp_sep:(fun f () -> fprintf f ";@ ") format_decl) decls
-         format_obj ebody
+         format_expression ebody
      in
      pp_open_hvbox f 0;
      pp_print_paren_if (p >= 1) impl f ();
@@ -261,9 +261,9 @@ and format_decl (f : Format.formatter) : Cst.decl -> unit =
   let open Format in
   function
   | Cst.Coq_d_def (x, Some ea, eb) ->
-     fprintf f "@[<hov 2>%s : %a @<1>%s@ %a@]" x format_obj ea s_eq format_obj eb
+     fprintf f "@[<hov 2>%s : %a @<1>%s@ %a@]" x format_expression ea s_eq format_expression eb
   | Cst.Coq_d_def (x, None, eb) ->
-     fprintf f "@[<hov 2>%s @<1>%s@ %a@]" x s_eq format_obj eb
+     fprintf f "@[<hov 2>%s @<1>%s@ %a@]" x s_eq format_expression eb
   | Cst.Coq_d_mod (x, params, md) -> format_module f x params md
 
 (* [module x (ps) where … end] or [module x (ps) := E]. *)
@@ -273,15 +273,15 @@ and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : u
   | Cst.Coq_md_where cs ->
      pp_open_vbox f 2;
      fprintf f "module %s" x;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) params;
      pp_print_string f " where";
      List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
      fprintf f "@;<1 -2>end";
      pp_close_box f ()
   | Cst.Coq_md_alias e ->
      fprintf f "@[<hov 2>module %s" x;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
-     fprintf f " @<1>%s@ %a@]" s_eq format_obj e
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) params;
+     fprintf f " @<1>%s@ %a@]" s_eq format_expression e
 
 (* [inductive x (ps) : T where | c … with y : U where … end]: a group,
    its uniform parameters after its first member's name. *)
@@ -292,13 +292,13 @@ and format_group priv ps (f : Format.formatter) ms : unit =
     (fun i ((x, t), cs) ->
       if i = 0 then begin
         fprintf f " %s" x;
-        List.iter (fun p -> fprintf f " %a" format_obj_param p) ps
+        List.iter (fun p -> fprintf f " %a" format_expression_param p) ps
       end else fprintf f "@;<1 -2>with %s" x;
-      fprintf f " : %a where" format_obj t;
+      fprintf f " : %a where" format_expression t;
       List.iter
         (fun (c, args) ->
           fprintf f "@ | %s" c;
-          List.iter (fun p -> fprintf f " %a" format_obj_param p) args)
+          List.iter (fun p -> fprintf f " %a" format_expression_param p) args)
         cs)
     ms;
   fprintf f "@;<1 -2>end";
@@ -311,59 +311,59 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      recursor module, in the module [T]. *)
   | Cst.Coq_c_mod (priv, g, [], Cst.Coq_md_where [ Cst.Coq_c_ind (false, true, ps, ms) ]) ->
      fprintf f "@[<v 2>%smutual %s" (if priv then "private " else "") g;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) ps;
      fprintf f " where@ %a@;<1 -2>end@]" (format_group false []) ms
   | Cst.Coq_c_mod (priv, x, params, md) ->
      if priv then Format.pp_print_string f "private ";
      format_module f x params md
   | Cst.Coq_c_def (m, x, ea, eb) ->
      fprintf f "@[<v 2>%adef %s : %a @<1>%s@ %a@;<1 -2>end" format_mods m x
-       format_obj ea s_eq format_obj eb;
+       format_expression ea s_eq format_expression eb;
      pp_close_box f ()
   | Cst.Coq_c_axiom (x, ea) ->
-     fprintf f "@[<hov 2>axiom %s :@ %a@]" x format_obj ea
+     fprintf f "@[<hov 2>axiom %s :@ %a@]" x format_expression ea
   | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %a@]" pp_upath fp
   | Cst.Coq_c_open (fp, ip, args, its) ->
      fprintf f "@[<hov 2>open %a" pp_u (string_of_qpath fp ip);
-     List.iter (fun a -> fprintf f "@ %a" (format_obj_prec 2) a) args;
+     List.iter (fun a -> fprintf f "@ %a" (format_expression_prec 2) a) args;
      fprintf f "%a@]" format_items its
   | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
   | Cst.Coq_c_ind (priv, _, ps, ms) -> format_group priv ps f ms
   | Cst.Coq_c_mdef (m, ps, fs) ->
      fprintf f "@[<v 2>%amutual def" format_mods m;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) ps;
      List.iteri
        (fun i (((g, gps), ea), bs) ->
          if i > 0 then fprintf f "@;<1 -2>with";
          fprintf f " %s" g;
-         List.iter (fun p -> fprintf f " %a" format_obj_param p) gps;
-         fprintf f " : %a @<1>%s" format_obj ea s_eq;
+         List.iter (fun p -> fprintf f " %a" format_expression_param p) gps;
+         fprintf f " : %a @<1>%s" format_expression ea s_eq;
          List.iter
            (fun ((c, ys), eb) ->
              fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
                (String.concat "" (List.map (fun y -> " " ^ y) ys))
-               s_darrow format_obj eb)
+               s_darrow format_expression eb)
            bs)
        fs;
      fprintf f "@;<1 -2>end";
      pp_close_box f ()
-  | Cst.Coq_c_builtin (k, x) -> fprintf f "@[<hov 2>builtin %s @<1>%s@ %a@]" k s_eq format_obj x
+  | Cst.Coq_c_builtin (k, x) -> fprintf f "@[<hov 2>builtin %s @<1>%s@ %a@]" k s_eq format_expression x
   | Cst.Coq_c_ind_alias (priv, x, ps, e) ->
      fprintf f "@[<hov 2>%sinductive %s" (if priv then "private " else "") x;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
-     fprintf f " @<1>%s@ %a@]" s_eq format_obj e
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) ps;
+     fprintf f " @<1>%s@ %a@]" s_eq format_expression e
   | Cst.Coq_c_record_alias (priv, x, ps, e) ->
      fprintf f "@[<hov 2>%srecord %s" (if priv then "private " else "") x;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
-     fprintf f " @<1>%s@ %a@]" s_eq format_obj e
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) ps;
+     fprintf f " @<1>%s@ %a@]" s_eq format_expression e
   (* [record x (ps) : S where f : A; … with cs end]: the fields, then the
      with-area, if any; one [end] closes both. *)
   | Cst.Coq_c_record (priv, x, ps, es, fs, cs) ->
      fprintf f "@[<v 2>%srecord %s" (if priv then "private " else "") x;
-     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
-     fprintf f " : %a where" format_obj es;
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) ps;
+     fprintf f " : %a where" format_expression es;
      List.iteri
-       (fun i (y, ea) -> fprintf f "%s@ @[<hov 2>%s :@ %a@]" (if i > 0 then ";" else "") y format_obj ea)
+       (fun i (y, ea) -> fprintf f "%s@ @[<hov 2>%s :@ %a@]" (if i > 0 then ";" else "") y format_expression ea)
        fs;
      if cs <> [] then begin
        fprintf f "@ @[<v 2>with";
@@ -373,13 +373,13 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@;<1 -2>end@]"
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
-     | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
+     | None -> fprintf f "@[<hov 2>eval %a@]" format_expression e
      | Some t ->
-        fprintf f "@[<hov 2>eval %a@ : %a@]" format_obj e format_obj t
+        fprintf f "@[<hov 2>eval %a@ : %a@]" format_expression e format_expression t
    end
 
-and format_obj_param f (px, ep) = Format.fprintf f "(%s : %a)" px format_obj ep
-and format_obj f = format_obj_prec 0 f
+and format_expression_param f (px, ep) = Format.fprintf f "(%s : %a)" px format_expression ep
+and format_expression f = format_expression_prec 0 f
 
 (************************************************************)
 (* Formatting Cst.cmd and Cst.prog *)
@@ -391,7 +391,7 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
   pp_open_vbox f 2;
   (* The unit's own name is a [›] path *)
   fprintf f "module %a" pp_upath path;
-  List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
+  List.iter (fun p -> fprintf f " %a" format_expression_param p) params;
   pp_print_string f " where";
   List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
   fprintf f "@;<1 -2>end";
@@ -447,7 +447,7 @@ let current_prog : Cst.prog option ref = ref None
 
 (* The parameters of the module at the member chain [ch] of the commands
    [cs], as declared. *)
-let rec declared_params (cs : Cst.cmd list) (ch : string list) : (string * Cst.obj) list option =
+let rec declared_params (cs : Cst.cmd list) (ch : string list) : (string * Cst.expression) list option =
   match ch with
   | [] -> None
   | x :: ch' ->
@@ -722,7 +722,7 @@ let mark_ihs (k : int) (ys : string list) : string list =
   if k = 0 then ys
   else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
 
-let exp_to_obj =
+let exp_to_expression =
   let new_var, reset_var_suffix =
     let suffix = ref 0 in
     ( (fun () ->
@@ -744,11 +744,11 @@ let exp_to_obj =
         "A" ^ string_of_int !suffix),
       fun () -> suffix := 0 )
   in
-  let rec impl (ctx : string list) (e : exp) : Cst.obj =
+  let rec impl (ctx : string list) (e : exp) : Cst.expression =
     match unview e with
     | Some e' -> impl ctx e'
     | None -> impl_seen ctx e
-  and impl_seen (ctx : string list) : exp -> Cst.obj = function
+  and impl_seen (ctx : string list) : exp -> Cst.expression = function
     | (Coq_a_con _ | Coq_a_mem _ | Coq_a_app (Coq_a_con _, _) | Coq_a_app (Coq_a_mem _, _)) as e when nat_of_chain e <> None ->
        Cst.Coq_num (Option.get (nat_of_chain e))
     (* A member of a frame, applied to the frames' parameters as written. *)
@@ -771,7 +771,7 @@ let exp_to_obj =
     | Coq_a_univ e -> Cst.Coq_suniv (impl ctx e)
     (* A variable past the local binders is a parameter of an open module,
        which has no name here: it prints as [$k], counting outwards. *)
-    | Coq_a_var x -> var_to_obj ctx x
+    | Coq_a_var x -> var_to_expression ctx x
     | Coq_a_fn (ep, ebody) ->
        let px = match ep with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
@@ -810,7 +810,7 @@ let exp_to_obj =
     | Coq_a_mem (h, x) when record_value_of h <> None -> Cst.Coq_proj (impl ctx (Option.get (record_value_of h)), x)
     | Coq_a_mem (h, x) ->
        (match chain_of h with
-        | Some (fp, ms) -> path_to_obj fp (ms @ [x])
+        | Some (fp, ms) -> path_to_expression fp (ms @ [x])
         | None -> Cst.Coq_proj (impl_mod ctx h, x))
     (* The type bound as the natural numbers is [ℕ], and its constructors
        are named by their own names. *)
@@ -818,13 +818,13 @@ let exp_to_obj =
     | Coq_a_con (p, 0, c) when is_bound_nat p -> Cst.Coq_var c
     (* An inductive type is named by its member's path, which is its
        module's; a constructor is a member of that module. *)
-    | Coq_a_ind (p, k) -> let q = member_path p k in path_to_obj q.q_unit q.q_chain
+    | Coq_a_ind (p, k) -> let q = member_path p k in path_to_expression q.q_unit q.q_chain
     (* A record type is named by its path; a field is selected as a member
        is; a tuple is a record value, at its type. *)
-    | Coq_a_record p -> path_to_obj p.q_unit p.q_chain
+    | Coq_a_record p -> path_to_expression p.q_unit p.q_chain
     | Coq_a_proj (f, e) -> Cst.Coq_proj (impl ctx e, f)
     | Coq_a_tuple (t, fs) -> Cst.Coq_tuple (impl ctx t, List.map (fun (y, e) -> (y, impl ctx e)) fs)
-    | Coq_a_con (p, k, c) -> let q = member_path p k in path_to_obj q.q_unit (q.q_chain @ [c])
+    | Coq_a_con (p, k, c) -> let q = member_path p k in path_to_expression q.q_unit (q.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
     | Coq_a_elim (oq, _, m, bks, escr) ->
@@ -857,7 +857,7 @@ let exp_to_obj =
   (* A use of a member of a frame from inside it ([frame_member]): its name,
      and the arguments past the frames' parameters, not yet printed (the
      guards that ask for it print nothing, so binders are named once). *)
-  and frame_use (ctx : string list) (e : exp) : (Cst.obj * exp list) option =
+  and frame_use (ctx : string list) (e : exp) : (Cst.expression * exp list) option =
     match McttExtracted.Group.app_head e with
     | Coq_a_mem (h, x) ->
        (match chain_of h with
@@ -871,7 +871,7 @@ let exp_to_obj =
     | _ -> None
   (* The same for a module: a submodule of a frame applied to the frames'
      parameters, then to the arguments returned. *)
-  and frame_mod_use (ctx : string list) (m : modexp) : (Cst.obj * exp list) option =
+  and frame_mod_use (ctx : string list) (m : modexp) : (Cst.expression * exp list) option =
     let rec spine m args = match m with
       | Coq_me_app (h, e) -> spine h (e :: args)
       | _ -> (m, args) in
@@ -885,7 +885,7 @@ let exp_to_obj =
         | None -> None)
     | _ -> None
   (* A head applied to arguments, printed. *)
-  and apply_rest (ctx : string list) ((head, rest) : Cst.obj * exp list) : Cst.obj =
+  and apply_rest (ctx : string list) ((head, rest) : Cst.expression * exp list) : Cst.expression =
     List.fold_left (fun f a -> Cst.Coq_app (f, impl ctx a)) head rest
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
@@ -897,7 +897,7 @@ let exp_to_obj =
      member chain is what was written, its first member an ordinary name;
      into another unit, the unit is a [glob] head.  Either way the remaining
      members are a chain of [proj]s over the head. *)
-  and path_to_obj (fp : string list) (ms : string list) : Cst.obj =
+  and path_to_expression (fp : string list) (ms : string list) : Cst.expression =
     let head, ip =
       if fp = !current_unit then
         (match ms with
@@ -907,7 +907,7 @@ let exp_to_obj =
       else (Cst.Coq_glob fp, ms)
     in
     List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
-  and var_to_obj (ctx : string list) (x : int) : Cst.obj =
+  and var_to_expression (ctx : string list) (x : int) : Cst.expression =
     match List.nth_opt ctx x with
     | Some y -> Cst.Coq_var y
     | None ->
@@ -915,12 +915,12 @@ let exp_to_obj =
        (match List.nth_opt (frame_param_names ()) k with
         | Some (Some y) -> Cst.Coq_var y
         | _ -> Cst.Coq_var ("$" ^ string_of_int k))
-  and impl_mod (ctx : string list) : modexp -> Cst.obj = function
-    | Coq_me_unit fp -> path_to_obj fp []
-    | Coq_me_var x -> var_to_obj ctx x
+  and impl_mod (ctx : string list) : modexp -> Cst.expression = function
+    | Coq_me_unit fp -> path_to_expression fp []
+    | Coq_me_var x -> var_to_expression ctx x
     | Coq_me_mem (h, y) ->
        (match chain_of h with
-        | Some (fp, ms) -> path_to_obj fp (ms @ [y])
+        | Some (fp, ms) -> path_to_expression fp (ms @ [y])
         | None -> Cst.Coq_proj (impl_mod ctx h, y))
     | Coq_me_app _ as m when frame_mod_use ctx m <> None -> apply_rest ctx (Option.get (frame_mod_use ctx m))
     | Coq_me_app (h, e) -> Cst.Coq_app (impl_mod ctx h, impl ctx e)
@@ -931,7 +931,7 @@ let exp_to_obj =
        let params, md = impl_unit ctx u in
        Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), Cst.Coq_var px)
   and impl_unit (ctx : string list) (Coq_gu_mk (delta, md) : gunit)
-      : (string * Cst.obj) list * Cst.mdef =
+      : (string * Cst.expression) list * Cst.mdef =
     (* The parameter context lists the innermost parameter first. *)
     let ctx', params =
       List.fold_left
@@ -974,7 +974,7 @@ let exp_to_obj =
        let cs, ctx' = impl_body ctx phi in
        (* The target is a module expression, printed in place of a path;
           each item binds its name. *)
-       let target = Format.asprintf "%a" format_obj (impl_mod ctx' h) in
+       let target = Format.asprintf "%a" format_expression (impl_mod ctx' h) in
        let names = List.map (fun ((_, d), _) -> d) its in
        (cs @ [Cst.Coq_c_open ([], [target], [], its)], List.rev_append names ctx')
   in
@@ -1001,9 +1001,9 @@ let exp_to_obj =
     let ctx = names_of names delta in
     impl ctx exp
 
-let format_exp f exp = format_obj f (exp_to_obj exp)
+let format_exp f exp = format_expression f (exp_to_expression exp)
 
-let format_exp_in delta f exp = format_obj f (exp_to_obj ~delta exp)
+let format_exp_in delta f exp = format_expression f (exp_to_expression ~delta exp)
 
 (* The commands of the module at the member chain [ch] of the commands
    [cs], as declared. *)
@@ -1046,7 +1046,7 @@ let given_names (ox : string option) (delta : centry list) : string option list 
      let ps = def_param_names x and n = List.length delta in
      List.init n (fun i -> List.nth_opt ps (n - 1 - i))
 
-let format_exp_named ox delta f exp = format_obj f (exp_to_obj ~delta ~names:(given_names ox delta) exp)
+let format_exp_named ox delta f exp = format_expression f (exp_to_expression ~delta ~names:(given_names ox delta) exp)
 
 (* The group of inductive types the type [x] is declared in, among the
    commands [cs], as declared: its uniform parameters and its members. *)
@@ -1123,7 +1123,7 @@ let decl_names (pm : qname) : (string list * (string * string list) list) option
              List.find_map
                (fun ((y, t), cons) ->
                  if y = x then
-                   Some (List.map fst (fst (get_pi_params_of_obj t)), List.map (fun (c, args) -> (c, List.map fst args)) cons)
+                   Some (List.map fst (fst (get_pi_params_of_expression t)), List.map (fun (c, args) -> (c, List.map fst args)) cons)
                  else None)
                ms
           | _ -> None)
@@ -1217,14 +1217,14 @@ let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j,
     | Some d -> McttExtracted.Inductives.ind_bmembers d
     | None -> [] in
   let j = if j < List.length ms then j else 0 in
-  let str obj = asprintf "%a" format_obj obj in
+  let str obj = asprintf "%a" format_expression obj in
   pp_open_vbox f 0;
-  fprintf f "elim %s" (str (exp_to_obj ~delta scr));
+  fprintf f "elim %s" (str (exp_to_expression ~delta scr));
   List.iteri
     (fun k mk ->
       let ps, cons = member_names p k mk in
       let ty = List.fold_left (fun t y -> Cst.Coq_app (t, Cst.Coq_var y))
-                 (exp_to_obj ~delta (McttExtracted.Syntax.apps_exp (Coq_a_ind (p, k)) us)) ps in
+                 (exp_to_expression ~delta (McttExtracted.Syntax.apps_exp (Coq_a_ind (p, k)) us)) ps in
       let binders = String.concat "" (List.map (fun y -> y ^ " ") ps) ^ "(z : " ^ str ty ^ ")" in
       if k > 0 then pp_print_cut f () else pp_print_string f " ";
       pp_u f (Printf.sprintf "%s %s %s \u{2026}" (if k = j then "at" else "with") binders s_arrow);
@@ -1288,7 +1288,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      reach it; a numeral there is a natural number, not the level. *)
   | Coq_run_error_level (_, delta, t) ->
      let hint f () =
-       match get_nat_of_obj (exp_to_obj ~delta t) with
+       match get_nat_of_expression (exp_to_expression ~delta t) with
        | Some n -> fprintf f ";@ write %dl for the level %d" n n
        | None -> () in
      fprintf f "@[<hov 2>Error:@ %a@ is not of type Level@@n for any n@ (the level of@ %a)%a@]"
@@ -1353,7 +1353,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_run_error_self_arg (s, x, c, y, k, delta, h) ->
      let names = List.init k (fun _ -> None) @ ind_arg_names x c y in
      fprintf f "@[<hov 2>Error: %s appears as an argument of %a in the type of %s@]"
-       s (fun f e -> format_obj f (exp_to_obj ~delta ~names e)) h y
+       s (fun f e -> format_expression f (exp_to_expression ~delta ~names e)) h y
   | Coq_run_error_mdef_count (n, m) ->
      fprintf f "@[<hov 2>Error: a mutual definition has one function per member of its group:@ the group has %d %s,@ the definition %d %s@]"
        n (if n = 1 then "member" else "members") m (if m = 1 then "function" else "functions")

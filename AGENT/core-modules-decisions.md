@@ -82,7 +82,7 @@ is still the reference for syntax and typing. Its semantics (§3–§4) is
   (Q4 = b), via `wf_mod_args`.
 - **One grammar for local and global module bodies.** The same nonterminal and
   `Cst` constructor serve both (`mdecl ::= params_opt mdef`,
-  `mdef ::= WHERE cmds END | ":=" obj`) (Q5 = b).
+  `mdef ::= WHERE cmds END | ":=" expression`) (Q5 = b).
 - **`let module X := 3` is rejected** (Q6 = a). It is now syntactically
   impossible, since `3` is not a `modexp`.
 
@@ -360,7 +360,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   `Γ ▸ A' ≔ M`, `A'` the inferred type, by refinement
   (`wf_sub_id_extend_def`), which is no subderivation but has fewer
   unannotated `let`s.
-- Frontend: `Cst.d_def : string -> option obj -> obj -> decl`; the parser
+- Frontend: `Cst.d_def : string -> option expression -> expression -> decl`; the parser
   accepts `x := a` in a `let`; the elaborator passes the option through
   (`sel_let_infer`).  `def` keeps its required type.
 

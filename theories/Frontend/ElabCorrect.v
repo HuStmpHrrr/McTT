@@ -56,13 +56,13 @@ Proof.
   - intros Hin; exists x; split; [ assumption | apply String.eqb_refl ].
 Qed.
 
-Lemma binds_b_iff : forall x e, binds_b x e = true <-> ent_name e = Some x.
+Lemma binds_b_iff : forall x e, binds_b x e = true <-> scope_entry_name e = Some x.
 Proof.
   intros x []; cbn; rewrite ?String.eqb_eq; split; congruence.
 Qed.
 
 Lemma names_cons : forall e S,
-    names (e :: S) = match ent_name e with Some x => x :: nil | None => nil end ++ names S.
+    names (e :: S) = match scope_entry_name e with Some x => x :: nil | None => nil end ++ names S.
 Proof. reflexivity. Qed.
 
 Lemma names_app : forall S1 S2, names (S1 ++ S2) = names S1 ++ names S2.
@@ -81,7 +81,7 @@ Proof.
       intros [=<- <-]. apply IH in El as [S1 S2 -> Hx Hn ->].
       apply (mk_bound _ _ _ _ (e0 :: S1) S2); cbn; try reflexivity; try assumption.
       change (flat_map _ S1) with (names S1). intros Hin. apply in_app_or in Hin as [Hin | Hin]; [| contradiction ].
-      destruct (ent_name e0) as [y |] eqn:Ey; [| contradiction ].
+      destruct (scope_entry_name e0) as [y |] eqn:Ey; [| contradiction ].
       destruct Hin as [-> | []]. apply (proj2 (binds_b_iff _ _)) in Ey. congruence.
     + intros [[| e1 S1] S2 Heq Hx Hn ->]; cbn in Heq.
       * injection Heq as <- <-. apply (proj2 (binds_b_iff _ _)) in Hx. congruence.
@@ -102,8 +102,8 @@ Proof.
   rewrite names_cons, in_app_iff.
   destruct (binds_b x e) eqn:E.
   - apply binds_b_iff in E; rewrite E. split; [ discriminate | intros H; exfalso; apply H; left; left; reflexivity ].
-  - assert (Hn : ~ In x (match ent_name e with Some y => y :: nil | None => nil end)).
-    { destruct (ent_name e) eqn:Ey; cbn; [| tauto ]. intros [<- | []]. apply (proj2 (binds_b_iff _ _)) in Ey. congruence. }
+  - assert (Hn : ~ In x (match scope_entry_name e with Some y => y :: nil | None => nil end)).
+    { destruct (scope_entry_name e) eqn:Ey; cbn; [| tauto ]. intros [<- | []]. apply (proj2 (binds_b_iff _ _)) in Ey. congruence. }
     case_eq (lookup x S); [ intros [k e'] El | intros El ]; cbn; split; intros H; try discriminate.
     + exfalso; apply H; right. eapply bound_in, lookup_iff, El.
     + intros [? | Hin]; [ contradiction | apply IH in El; contradiction ].
@@ -147,7 +147,7 @@ Proof.
   destruct (first_dup (map fst ps)); split; congruence.
 Qed.
 
-Lemma unit_in_b_iff : forall fq S, unit_in_b fq S = true <-> In (en_unit fq) S.
+Lemma unit_in_b_iff : forall fq S, unit_in_b fq S = true <-> In (scope_entry_unit fq) S.
 Proof.
   intros; unfold unit_in_b; rewrite existsb_exists; split.
   - intros ([] & Hin & Hb); try discriminate. apply path_beq_true in Hb; subst; assumption.
@@ -199,7 +199,7 @@ Proof.
     intros [= <-]; apply selm_unit1; [ apply lookup_none; exact El | apply unit_in_b_iff; exact Eu ].
   - intros Hs; inversion Hs; subst.
     + match goal with Hb : bound _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
-    + unfold unit_mod; match goal with Hu : In (en_unit _) S |- _ => apply unit_in_b_iff in Hu; rewrite Hu end; reflexivity.
+    + unfold unit_mod; match goal with Hu : In (scope_entry_unit _) S |- _ => apply unit_in_b_iff in Hu; rewrite Hu end; reflexivity.
 Qed.
 
 Lemma ihead_iff : forall S fq ip H,
@@ -222,21 +222,21 @@ Qed.
 (** ** Objects *)
 
 (** The loop of [elab_mdef], stated on its own. *)
-Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
+Fixpoint elab_body (S : list scope_entry) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   match cs with
   | nil => eok Φ
   | Cst.c_def m x oA oM :: cs' =>
       let* A := elab S oA in
       let* M := elab S oM in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
+      elab_body (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
   | Cst.c_mod pv x ps md' :: cs' =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
-      let* D := elab_mdef (pents ps ++ S) md' in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
+      let* D := elab_mdef (param_scope_entries ps ++ S) md' in
+      elab_body (scope_entry_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
   | Cst.c_open fq ip args its :: cs' =>
       let* E := elab_target_with elab S fq ip args in
-      elab_body (item_ents its ++ S) (gm_open Φ E its) cs'
+      elab_body (item_scope_entries its ++ S) (gm_open Φ E its) cs'
   | Cst.c_axiom _ _ :: _ => eerr "axioms are not allowed in a local module"
   | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
   | Cst.c_error e :: _ => eerr e
@@ -252,8 +252,8 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
 Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S gm_nil cs in eok (md_body sm_open Φ).
 Proof. reflexivity. Qed.
 
-Definition Pterm (o : Cst.obj) : Prop := forall S M, elab S o = eok M <-> sel S o M.
-Definition Pmod (o : Cst.obj) : Prop := forall S H, elab_mod S o = eok H <-> selm S o H.
+Definition Pterm (o : Cst.expression) : Prop := forall S M, elab S o = eok M <-> sel S o M.
+Definition Pmod (o : Cst.expression) : Prop := forall S H, elab_mod S o = eok H <-> selm S o H.
 Definition Pmdef (md : Cst.mdef) : Prop := forall S D, elab_mdef S md = eok D <-> sdef S md D.
 Definition Pbody (cs : list Cst.cmd) : Prop := forall S Φ Φ', elab_body S Φ cs = eok Φ' <-> sbody S Φ cs Φ'.
 Definition Pbcmd (c : Cst.cmd) : Prop := forall cs, Pbody cs -> Pbody (c :: cs).
@@ -390,7 +390,7 @@ Proof.
       rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
 Qed.
 
-Lemma Pterm_params : forall ps : list (string * Cst.obj),
+Lemma Pterm_params : forall ps : list (string * Cst.expression),
     Forall (fun p => Pterm (snd p) /\ Pmod (snd p)) ps -> Forall (fun p => Pterm (snd p)) ps.
 Proof. intros ps; apply Forall_impl; intros ? []; assumption. Qed.
 
@@ -399,7 +399,7 @@ Lemma sunit_iff : forall S ps md U,
     Forall (fun p => Pterm (snd p)) ps -> Pmdef md ->
     (let* _ := check_params ps in
      let* tys := elab_params_with elab S ps in
-     let* D := elab_mdef (pents ps ++ S) md in
+     let* D := elab_mdef (param_scope_entries ps ++ S) md in
      eok (gu_mk (ptele tys) D)) = eok U <-> sunit S ps md U.
 Proof.
   intros * Hps Hmd. pose proof (params_iff _ Hps) as IHps. unfold Pmdef in Hmd. iff_case.
@@ -407,11 +407,11 @@ Qed.
 
 (** The hypothesis [Cst.cst_ind] gives about the blocks of an eliminator,
     in the form [blocks_iff] takes. *)
-Lemma blocks_all_Forall : forall (P : Cst.obj -> Prop)
-    (bks : list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj))),
+Lemma blocks_all_Forall : forall (P : Cst.expression -> Prop)
+    (bks : list (bool * list (string * option Cst.expression) * Cst.expression * list (string * list string * Cst.expression))),
     list_all _ (prod_all _ (prod_all _ (prod_all bool (fun _ => unit) _
-                  (list_all _ (prod_all string (fun _ => unit) (option Cst.obj) (option_all Cst.obj P))))
-                  Cst.obj P) _ (list_all _ (prod_all (string * list string)%type (fun _ => unit) Cst.obj P))) bks ->
+                  (list_all _ (prod_all string (fun _ => unit) (option Cst.expression) (option_all Cst.expression P))))
+                  Cst.expression P) _ (list_all _ (prod_all (string * list string)%type (fun _ => unit) Cst.expression P))) bks ->
     Forall (fun bk => Forall (fun x => match snd x with Some A => P A | None => True end) (snd (fst (fst bk))) /\
                       P (snd (fst bk)) /\ Forall (fun b => P (snd b)) (snd bk)) bks.
 Proof.
@@ -422,7 +422,7 @@ Proof.
   intros x Hx; destruct Hx as [y _ o Ho]; exact (option_all_match _ _ _ Ho).
 Qed.
 
-Lemma objects_iff :
+Lemma expressions_iff :
   (forall o, Pterm o /\ Pmod o) /\
   (forall d, forall ob, Pterm ob -> forall S M,
       elab S (Cst.letb d ob) = eok M <-> sel S (Cst.letb d ob) M) /\
@@ -449,7 +449,7 @@ Proof.
     + inversion H; subst. rewrite (proj2 (unit_in_b_iff _ _)) by assumption. reflexivity.
   - (* proj: a member of a path's module, or of a term's, let-bound *)
     intros o [IHt IHm] x; split; intros S M; cbn [elab elab_mod].
-    + destruct (obj_path o) eqn:Ep; split; intros Hg.
+    + destruct (expression_path o) eqn:Ep; split; intros Hg.
       * apply ebind_eok in Hg as (H & HH & Hg); inv_eok; constructor; [ exact Ep | apply IHm; exact HH ].
       * inversion Hg; subst; [ rewrite (proj2 (IHm _ _)) by eassumption; reflexivity | congruence ].
       * apply ebind_eok in Hg as (M' & HM & Hg); inv_eok; apply sel_proj_let; [ exact Ep | apply IHt; exact HM ].
@@ -550,10 +550,10 @@ Proof.
 Qed.
 
 Lemma elab_iff : forall S o M, elab S o = eok M <-> sel S o M.
-Proof. intros; apply (proj1 (proj1 objects_iff o)). Qed.
+Proof. intros; apply (proj1 (proj1 expressions_iff o)). Qed.
 
 Lemma elab_mod_iff : forall S o H, elab_mod S o = eok H <-> selm S o H.
-Proof. intros; apply (proj2 (proj1 objects_iff o)). Qed.
+Proof. intros; apply (proj2 (proj1 expressions_iff o)). Qed.
 
 Lemma elab_params_iff : forall S ps tys, elab_params S ps = eok tys <-> sparams S ps tys.
 Proof.
@@ -663,17 +663,17 @@ Qed.
 Lemma binders_app : forall S1 S2, binders (S1 ++ S2) = binders S1 + binders S2.
 Proof.
   intros S1 S2; induction S1 as [| e S1 IH]; [ reflexivity |].
-  change (binders ((e :: S1) ++ S2)) with (ent_binders e + binders (S1 ++ S2)).
-  change (binders (e :: S1)) with (ent_binders e + binders S1).
+  change (binders ((e :: S1) ++ S2)) with (scope_entry_binders e + binders (S1 ++ S2)).
+  change (binders (e :: S1)) with (scope_entry_binders e + binders S1).
   rewrite IH; lia.
 Qed.
 
 (** A member's entry is no binder. *)
-Lemma binders_mem : forall x p m S, binders (en_mem x p m :: S) = binders S.
+Lemma binders_mem : forall x p m S, binders (scope_entry_mem x p m :: S) = binders S.
 Proof. reflexivity. Qed.
 
 (** Entries made one per item, each no binder, are no binders together. *)
-Lemma binders_mems : forall {A} (f : A -> ent) xs, (forall x, ent_binders (f x) = 0) -> binders (rev (map f xs)) = 0.
+Lemma binders_mems : forall {A} (f : A -> scope_entry) xs, (forall x, scope_entry_binders (f x) = 0) -> binders (rev (map f xs)) = 0.
 Proof.
   intros A f xs Hf; induction xs as [| x xs IH]; cbn [map rev]; [ reflexivity |].
   rewrite binders_app, IH; cbn; rewrite Hf; reflexivity.
@@ -689,9 +689,9 @@ Proof. intros; apply binders_mems; reflexivity. Qed.
 
 (** A record's frame binds its value and its parameters; its fields are
     members. *)
-Lemma binders_record_ents : forall fp ch n x ps fs,
-    binders (record_ents fp ch n x ps fs) = binders (en_self :: pents ps).
-Proof. intros; unfold record_ents; rewrite binders_app, binders_filed_mems; reflexivity. Qed.
+Lemma binders_record_scope_entries : forall fp ch n x ps fs,
+    binders (record_scope_entries fp ch n x ps fs) = binders (scope_entry_self :: param_scope_entries ps).
+Proof. intros; unfold record_scope_entries; rewrite binders_app, binders_filed_mems; reflexivity. Qed.
 
 (** ** Commands
 
@@ -699,9 +699,9 @@ Proof. intros; unfold record_ents; rewrite binders_app, binders_filed_mems; refl
     everything outside the frame, onto whose front its declarations are
     pushed.  Every object a command reads is thus read in the same list as
     when the frame's entries and the outer scope were kept apart and
-    concatenated for each read: a module body in [pents ps ++ S], a
-    record's with-area in [record_ents … ++ en_mem x … :: S], the unit's
-    frame in [pents ps ++ L]. *)
+    concatenated for each read: a module body in [param_scope_entries ps ++ S], a
+    record's with-area in [record_scope_entries … ++ scope_entry_mem x … :: S], the unit's
+    frame in [param_scope_entries ps ++ L]. *)
 
 Section Commands.
   Variable fp : path.
@@ -735,7 +735,7 @@ Section Commands.
   Qed.
 
   (** The count the elaborator passes to a nested frame is its scope's. *)
-  Ltac binders_eq := rewrite ?binders_app, ?binders_mem, ?binders_record_ents; reflexivity.
+  Ltac binders_eq := rewrite ?binders_app, ?binders_mem, ?binders_record_scope_entries; reflexivity.
 
   Ltac cmd_spec :=
     repeat match goal with
@@ -754,7 +754,7 @@ Section Commands.
       | H : selm _ _ _ |- _ => apply elab_mod_iff in H
       | H : sparams _ _ _ |- _ => apply elab_params_iff in H
       | H : scmds fp _ _ ?S ?cs _, IH : Pcmds ?cs |- _ =>
-          apply (proj2 (IH _ _ _ _ _ eq_refl)) in H; rewrite ?binders_app, ?binders_mem, ?binders_record_ents in H
+          apply (proj2 (IH _ _ _ _ _ eq_refl)) in H; rewrite ?binders_app, ?binders_mem, ?binders_record_scope_entries in H
       | H : NoDup (map fst ?ps) |- _ => apply (check_params_ok ps tt) in H
       | H : fresh ?x ?F |- _ => apply (check_fresh_ok x F tt) in H
       end;
@@ -765,7 +765,7 @@ Section Commands.
 
   Lemma commands_iff : forall c, Pcmd c.
   Proof.
-    apply (fun H : (forall o : Cst.obj, True) /\ (forall d : Cst.decl, True) /\
+    apply (fun H : (forall o : Cst.expression, True) /\ (forall d : Cst.decl, True) /\
                    (forall md, forall body, md = Cst.md_where body -> Pcmds body) /\ (forall c, Pcmd c) =>
              proj2 (proj2 (proj2 H))).
     apply Cst.cst_ind; try easy.
@@ -840,7 +840,7 @@ Section Commands.
         rewrite (proj2 (check_no_field_ok _ _ _ tt)) by assumption; cbn [ebind].
         change (elab_cmds_with (elab_cmd fp)) with (elab_cmds fp).
         match goal with Hb : scmds fp _ _ _ cs _ |- _ => apply (proj2 (Hcs _ _ _ _ _ eq_refl)) in Hb;
-          rewrite binders_app, binders_mem, binders_record_ents in Hb; rewrite Hb end.
+          rewrite binders_app, binders_mem, binders_record_scope_entries in Hb; rewrite Hb end.
         reflexivity.
   Qed.
 
@@ -852,19 +852,19 @@ End Commands.
 (** ** Member Counts
 
     A member's entry records the binders outside it when it is declared
-    ([en_mem]).  The count stays right: a scope only grows at its front, so
+    ([scope_entry_mem]).  The count stays right: a scope only grows at its front, so
     in every scope a command reads, each member's count is the number of
     binders outside its entry, which is what [vars_desc] needs. *)
 
 (** In [S], each member's count is the binders outside its entry. *)
-Definition mems_counted (S : list ent) : Prop :=
-  forall S1 x p m S2, S = S1 ++ en_mem x p m :: S2 -> m = binders S2.
+Definition mems_counted (S : list scope_entry) : Prop :=
+  forall S1 x p m S2, S = S1 ++ scope_entry_mem x p m :: S2 -> m = binders S2.
 
 (** Entries pushed on a counted scope [S] keep it counted when they are no
     binders and each member among them counts [binders S]. *)
 Lemma counted_app : forall L S,
     mems_counted S ->
-    Forall (fun e => ent_binders e = 0 /\ forall x p m, e = en_mem x p m -> m = binders S) L ->
+    Forall (fun e => scope_entry_binders e = 0 /\ forall x p m, e = scope_entry_mem x p m -> m = binders S) L ->
     mems_counted (L ++ S).
 Proof.
   intros L S HS HL S1 x p m S2 Heq.
@@ -876,13 +876,13 @@ Proof.
       rewrite binders_app, (Hm x p m eq_refl).
       assert (H0 : binders l = 0).
       { clear - Hl'; induction Hl' as [| e l [He _] _ IH]; [ reflexivity |].
-        change (binders (e :: l)) with (ent_binders e + binders l); rewrite He, IH; reflexivity. }
+        change (binders (e :: l)) with (scope_entry_binders e + binders l); rewrite He, IH; reflexivity. }
       rewrite H0; reflexivity.
   - exact (HS l x p m S2 Hl).
 Qed.
 
 (** A scope with no member is counted. *)
-Lemma counted_no_mem : forall S, (forall x p m, ~ In (en_mem x p m) S) -> mems_counted S.
+Lemma counted_no_mem : forall S, (forall x p m, ~ In (scope_entry_mem x p m) S) -> mems_counted S.
 Proof.
   intros S Hn S1 x p m S2 ->; exfalso; apply (Hn x p m), in_or_app; right; left; reflexivity.
 Qed.
@@ -890,7 +890,7 @@ Qed.
 (** Entries that are no members, binders or not, pushed on a counted
     scope keep it counted: a member's count is about what lies outside
     it. *)
-Lemma counted_push : forall L S, mems_counted S -> (forall x p m, ~ In (en_mem x p m) L) -> mems_counted (L ++ S).
+Lemma counted_push : forall L S, mems_counted S -> (forall x p m, ~ In (scope_entry_mem x p m) L) -> mems_counted (L ++ S).
 Proof.
   intros L S HS Hn S1 x p m S2 Heq.
   apply app_eq_app in Heq as (l & [[-> Hl] | [-> Hl]]).
@@ -903,8 +903,8 @@ Qed.
 (** The new entries of a command, as [counted_app] needs them *)
 Lemma mems_fresh : forall {A} (f : A -> string) (g : A -> qname) n S xs,
     n = binders S ->
-    Forall (fun e => ent_binders e = 0 /\ forall x p m, e = en_mem x p m -> m = binders S)
-      (rev (map (fun a => en_mem (f a) (g a) n) xs)).
+    Forall (fun e => scope_entry_binders e = 0 /\ forall x p m, e = scope_entry_mem x p m -> m = binders S)
+      (rev (map (fun a => scope_entry_mem (f a) (g a) n) xs)).
 Proof.
   intros A f g n S xs ->; apply Forall_rev, Forall_map, Forall_forall; intros a _.
   split; [ reflexivity | intros x p m [=]; congruence ].
@@ -919,9 +919,9 @@ Section Counts.
   Proof.
     intros * H HS; destruct H; try exact HS.
     all: first
-      [ change (en_mem ?y ?qy ?n :: S) with ((en_mem y qy n :: nil) ++ S);
+      [ change (scope_entry_mem ?y ?qy ?n :: S) with ((scope_entry_mem y qy n :: nil) ++ S);
         apply counted_app; [ exact HS | constructor; [ split; [ reflexivity | intros ? ? ? [=]; congruence ] | constructor ] ]
-      | change (en_unit ?fq :: S) with ((en_unit fq :: nil) ++ S);
+      | change (scope_entry_unit ?fq :: S) with ((scope_entry_unit fq :: nil) ++ S);
         apply counted_app; [ exact HS | constructor; [ split; [ reflexivity | intros ? ? ? [=] ] | constructor ] ]
       | apply counted_app; [ exact HS | apply mems_fresh; reflexivity ] ].
   Qed.
@@ -939,10 +939,10 @@ Section Counts.
 
   (** A nested module's scope is counted when its enclosing one is: its
       parameters are no members. *)
-  Lemma mod_scope_counted : forall ps S, mems_counted S -> mems_counted (pents ps ++ S).
+  Lemma mod_scope_counted : forall ps S, mems_counted S -> mems_counted (param_scope_entries ps ++ S).
   Proof.
     intros ps S HS; apply counted_push; [ exact HS |].
-    intros x p m Hin; unfold pents in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
+    intros x p m Hin; unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
   Qed.
 
   (** So is a record's with-area's scope: its value and parameters are no
@@ -950,44 +950,44 @@ Section Counts.
       them. *)
   Lemma record_scope_counted : forall ch n x ps fs S,
       n = binders S -> mems_counted S ->
-      mems_counted (record_ents fp ch n x ps fs ++ en_mem x (q_abs fp (ch ++ x :: nil)) n :: S).
+      mems_counted (record_scope_entries fp ch n x ps fs ++ scope_entry_mem x (q_abs fp (ch ++ x :: nil)) n :: S).
   Proof.
-    intros * -> HS. unfold record_ents. rewrite <- app_assoc.
+    intros * -> HS. unfold record_scope_entries. rewrite <- app_assoc.
     apply counted_app.
-    - change (en_self :: pents ps ++ en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-        with ((en_self :: pents ps) ++ (en_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: nil) ++ S).
+    - change (scope_entry_self :: param_scope_entries ps ++ scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
+        with ((scope_entry_self :: param_scope_entries ps) ++ (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: nil) ++ S).
       apply counted_push; [ apply (counted_app (_ :: nil) S); [ exact HS | constructor; [ split; [ reflexivity | intros ? ? ? [=]; congruence ] | constructor ] ] |].
-      intros y p m [Hin | Hin]; [ discriminate |]; unfold pents in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
-    - unfold filed_mems; apply mems_fresh. rewrite (binders_app (en_self :: pents ps)), binders_mem. reflexivity.
+      intros y p m [Hin | Hin]; [ discriminate |]; unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
+    - unfold filed_mems; apply mems_fresh. rewrite (binders_app (scope_entry_self :: param_scope_entries ps)), binders_mem. reflexivity.
   Qed.
 End Counts.
 
 (** A member a name denotes, in a counted scope, is generalized over
     exactly the binders outside its entry. *)
 Corollary bound_mem_counted : forall S x k y p m,
-    mems_counted S -> bound S x k (en_mem y p m) ->
-    exists S1 S2, S = S1 ++ en_mem y p m :: S2 /\ k = binders S1 /\ m = binders S2.
+    mems_counted S -> bound S x k (scope_entry_mem y p m) ->
+    exists S1 S2, S = S1 ++ scope_entry_mem y p m :: S2 /\ k = binders S1 /\ m = binders S2.
 Proof.
   intros * HS [S1 S2 Heq _ _ Hk]; exists S1, S2; split; [ exact Heq | split; [ exact Hk | exact (HS _ _ _ _ _ Heq) ] ].
 Qed.
 
 (** The leading scope has no member, so a unit's frame starts counted. *)
 Lemma slead_no_mem : forall L cs L' lds,
-    slead L cs L' lds -> (forall x p m, ~ In (en_mem x p m) L) -> forall x p m, ~ In (en_mem x p m) L'.
+    slead L cs L' lds -> (forall x p m, ~ In (scope_entry_mem x p m) L) -> forall x p m, ~ In (scope_entry_mem x p m) L'.
 Proof.
   induction 1 as [| L fq cs L' lds _ IH | L fq ip args its o E cs L' lds _ _ _ IH]; intros Hn; [ exact Hn | |].
   - apply IH; intros x p m [[=] | Hin]; exact (Hn x p m Hin).
   - apply IH; intros x p m Hin; apply in_app_or in Hin as [Hin | Hin]; [| exact (Hn x p m Hin) ].
-    unfold open_ents in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
+    unfold open_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
 Qed.
 
 (** The scope a unit's frame starts in, its parameters over the leading
     scope ([elab_spec_intro]), is counted. *)
 Lemma elab_spec_frame_counted : forall leads ps L lds,
-    slead nil leads L lds -> mems_counted (pents ps ++ L).
+    slead nil leads L lds -> mems_counted (param_scope_entries ps ++ L).
 Proof.
   intros * Hl; apply counted_no_mem; intros x p m Hin; apply in_app_or in Hin as [Hin | Hin].
-  - unfold pents in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
+  - unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
   - exact (slead_no_mem _ _ _ _ Hl (fun _ _ _ H => H) x p m Hin).
 Qed.
 

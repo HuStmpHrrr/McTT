@@ -2,12 +2,12 @@
 
     [MemberType.mdenote_impl] decides what a module expression [H]
     denotes in a context [Γ], by recursion on a termination order
-    [dn_order Θ Ξ Γ H].  Typing gives that order ([dn_order_of_wf]), but
+    [mdenote_order Θ Ξ Γ H].  Typing gives that order ([mdenote_order_of_wf]), but
     the typed fill ([Core.TypedElab]) reads module expressions before
     the command they are in is checked, in contexts not known to be well
     formed.  This file proves that, in a well-formed global context,
     *every* module expression has the order, in *every* context
-    ([dn_order_all]), with no condition on the context and no typing, so
+    ([mdenote_order_all]), with no condition on the context and no typing, so
     that [mdenote_dec] and [body_xp_dec] decide on every input.
 
     The measure.  What [mdenote] produces at an open module is a
@@ -736,14 +736,14 @@ Section Typed.
   Qed.
 
   (** So a typed instance has an order. *)
-  Lemma typed_instance_order : forall Γ U, typed_instance Γ U -> un_order Θ Ξ Γ U.
+  Lemma typed_instance_order : forall Γ U, typed_instance Γ U -> udenote_order Θ Ξ Γ U.
   Proof.
     intros * [Γt Ut τ HU Hτ ->]; destruct (typed_instance_denote _ _ _ _ HU Hτ) as (Rt & _ & Hd).
     exact (proj1 (proj2 (order_of_denote _ _ Hg)) _ _ _ _ Hd).
   Qed.
 
   Lemma typed_open_entry_order : forall Γ Δ Φw Φx y Γy E rd,
-      typed_open Γ (ds_open Δ Φw Φx) -> ds_entry (ds_open Δ Φw Φx) y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E.
+      typed_open Γ (ds_open Δ Φw Φx) -> ds_entry (ds_open Δ Φw Φx) y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     intros * HT He; cbn in He.
     destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
@@ -843,7 +843,7 @@ Section Stored.
 
   (** An entry of a stored module has an order in any context. *)
   Lemma stored_entry_order : forall p T Φ y Φ0 E0 Γ,
-      loc Θ Ξ p T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E0) -> en_order Θ Ξ Γ (ge_read T E0).
+      loc Θ Ξ p T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E0) -> edenote_order Θ Ξ Γ (ge_read T E0).
   Proof.
     intros * Hloc Hp.
     pose proof (loc_closed _ _ Hg _ _ _ Hloc) as [_ HcΦ].
@@ -851,7 +851,7 @@ Section Stored.
     destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | pvd Ad Md [Δ [sm Φy | E']] | ? ? ?]; cbn [ge_read];
       try solve [ constructor ].
     - destruct HcE as (-> & _ & HcΦy); cbn [ge_read].
-      constructor; constructor; apply bx_order_noopen, (body_closed_noopen _ _ HcΦy).
+      constructor; constructor; apply body_xp_order_noopen, (body_closed_noopen _ _ HcΦy).
     - destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp eq_refl) as (R0 & _ & HR).
       constructor; constructor; exact (proj1 (order_of_denote _ _ Hg) _ _ _ (HR Γ)).
     - (* a definition with a module part: its module part's target *)
@@ -1012,10 +1012,10 @@ Section Order.
   (** The order at the entries of what a module expression denotes, given
       the order at the smaller entries. *)
   Lemma entries_order_bounded : forall n Γ H,
-      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> en_order Θ Ξ Γ E) ->
+      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> edenote_order Θ Ξ Γ E) ->
       modexp_size (ctx_sizes Γ) H < n ->
       forall y R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> ds_mod R0 = Some R0m ->
-        ds_entry R0m y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E.
+        ds_entry R0m y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     intros * IHe Hn * Hm Hmod He.
     destruct R0m as [A om | Δ Φw Φx | Θ' p T Φ Ns | ]; try (cbn in He; discriminate).
@@ -1043,61 +1043,61 @@ Section Order.
 
   (** The order of everything of size below [n]. *)
   Theorem order_bounded : forall n,
-      (forall Γ H, modexp_size (ctx_sizes Γ) H < n -> dn_order Θ Ξ Γ H) /\
-      (forall Γ U, unit_size (ctx_sizes Γ) U < n -> un_order Θ Ξ Γ U) /\
-      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> en_order Θ Ξ Γ E) /\
-      (forall Γ Φ, fst (body_size (ctx_sizes Γ) Φ) < n -> bx_order Θ Ξ Γ Φ) /\
-      (forall Γ H its, S (S (modexp_size (ctx_sizes Γ) H)) < n -> ig_order Θ Ξ Γ H its).
+      (forall Γ H, modexp_size (ctx_sizes Γ) H < n -> mdenote_order Θ Ξ Γ H) /\
+      (forall Γ U, unit_size (ctx_sizes Γ) U < n -> udenote_order Θ Ξ Γ U) /\
+      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> edenote_order Θ Ξ Γ E) /\
+      (forall Γ Φ, fst (body_size (ctx_sizes Γ) Φ) < n -> body_xp_order Θ Ξ Γ Φ) /\
+      (forall Γ H its, S (S (modexp_size (ctx_sizes Γ) H)) < n -> items_gen_order Θ Ξ Γ H its).
   Proof.
     induction n as [| n IH]; [ repeat split; intros; lia |].
     destruct IH as (IHd & IHu & IHe & IHb & IHi).
     split; [| split; [| split; [| split ] ] ].
     - (* module expressions *)
       intros Γ [fp | x | H y | H N | U] Hn; cbn [modexp_size] in Hn.
-      + apply dn_order_path.
-      + apply dn_order_var; intros U Hf; apply IHu.
+      + apply mdenote_order_path.
+      + apply mdenote_order_var; intros U Hf; apply IHu.
         pose proof (ctx_find_mod_size _ _ _ Hf); lia.
-      + destruct (gc_unit Θ Ξ (me_mem H y)) as [[T Φ] |] eqn:Eu; [ eapply dn_order_unit; exact Eu |].
-        apply dn_order_mem_case; [ apply IHd; lia |].
+      + destruct (gc_unit Θ Ξ (me_mem H y)) as [[T Φ] |] eqn:Eu; [ eapply mdenote_order_unit; exact Eu |].
+        apply mdenote_order_mem_case; [ apply IHd; lia |].
         intros; eapply entries_order_bounded; [ exact IHe | | eassumption .. ]; lia.
-      + apply dn_order_app, IHd; lia.
-      + apply dn_order_lit, IHu; lia.
+      + apply mdenote_order_app, IHd; lia.
+      + apply mdenote_order_lit, IHu; lia.
     - (* units *)
       intros Γ [Δ [sm Φ | E]] Hn; rewrite unit_size_mk in Hn; cbn [moddef_size] in Hn; rewrite <- ctx_sizes_app in Hn.
-      + apply un_order_body, IHb; lia.
-      + apply un_order_alias, IHd; lia.
+      + apply udenote_order_body, IHb; lia.
+      + apply udenote_order_alias, IHd; lia.
     - (* entries *)
       intros Γ [b pv A oM | pv U | pv p k D Φ | pv Ad Md [Δd [sm Φd | Ed]] | pv R Φ] Hn; cbn [gentry_size] in Hn;
-        [ constructor | constructor; apply IHu; lia | constructor | apply en_order_def_mod_body | | constructor ].
+        [ constructor | constructor; apply IHu; lia | constructor | apply edenote_order_def_mod_body | | constructor ].
       (* a definition with a module part: its alias's target *)
       rewrite unit_size_mk in Hn; cbn [moddef_size] in Hn; rewrite <- ctx_sizes_app in Hn.
-      apply en_order_def_mod, IHd; lia.
+      apply edenote_order_def_mod, IHd; lia.
     - (* bodies *)
-      intros Γ [| Φ x E | Φ H its] Hn; cbn [body_size fst] in Hn; [ apply bx_order_nil | apply bx_order_ext, IHb; lia |].
+      intros Γ [| Φ x E | Φ H its] Hn; cbn [body_size fst] in Hn; [ apply body_xp_order_nil | apply body_xp_order_ext, IHb; lia |].
       assert (Hx : forall Φx, body_xp Θ Ξ Γ Φ Φx ->
                  modexp_size (ctx_sizes (body_ctx Φx ++ Γ)) H
                  <= modexp_size (snd (body_size (ctx_sizes Γ) Φ) ++ ctx_sizes Γ) H).
       { intros Φx Hbx; rewrite ctx_sizes_app, (body_size_noopen_ctx _ _ (body_xp_result_noopen _ _ _ _ _ Hbx)).
         destruct (body_xp_size _ _ _ _ _ Hbx (ctx_sizes Γ)) as [_ H2].
         apply modexp_size_mono, sizes_le_app; [ exact H2 | apply sizes_le_refl ]. }
-      apply bx_order_open; [ apply IHb; nia | intros Φx Hbx; apply IHd | intros Φx Hbx; apply IHi ];
+      apply body_xp_order_open; [ apply IHb; nia | intros Φx Hbx; apply IHd | intros Φx Hbx; apply IHi ];
         pose proof (Hx _ Hbx); nia.
     - (* items *)
       intros Γ H its Hn; induction its as [| [[[m |] d] pv] its IHits].
-      + apply ig_order_nil.
-      + apply ig_order_name; [ apply IHd; cbn [modexp_size]; lia | exact IHits ].
-      + apply ig_order_self; exact IHits.
+      + apply items_gen_order_nil.
+      + apply items_gen_order_name; [ apply IHd; cbn [modexp_size]; lia | exact IHits ].
+      + apply items_gen_order_self; exact IHits.
   Qed.
 
   (** Every module expression, in every context, has the termination
       order of [mdenote_impl], given a well-formed global context: no
       condition on the context and no typing. *)
-  Corollary dn_order_all : forall Γ H, dn_order Θ Ξ Γ H.
+  Corollary mdenote_order_all : forall Γ H, mdenote_order Θ Ξ Γ H.
   Proof. intros; apply (proj1 (order_bounded (S (modexp_size (ctx_sizes Γ) H)))); lia. Qed.
 
   (** Every body, in every context, has the termination order of
       [body_xp_impl]. *)
-  Corollary bx_order_all : forall Γ Φ, bx_order Θ Ξ Γ Φ.
+  Corollary body_xp_order_all : forall Γ Φ, body_xp_order Θ Ξ Γ Φ.
   Proof.
     intros; apply (proj1 (proj2 (proj2 (proj2 (order_bounded (S (fst (body_size (ctx_sizes Γ) Φ)))))))); lia.
   Qed.
@@ -1111,10 +1111,10 @@ Section OrderFast.
   (** So [mdenote] is decided on every module expression, typed or not. *)
   Definition mdenote_dec (Γ : ctx) (H : modexp) :
       { R : fmdesc | mdenote (fc_deps F) (fc_stack F) Γ H (dec_desc R) } + { forall R, ~ mdenote (fc_deps F) (fc_stack F) Γ H R } :=
-    mdenote_impl F Hg Γ H (dn_order_all _ _ Hg Γ H).
+    mdenote_impl F Hg Γ H (mdenote_order_all _ _ Hg Γ H).
 
   (** So a body's expansion is decided on every body, typed or not. *)
   Definition body_xp_dec (Γ : ctx) (Φ : gmod) :
       { Φx | body_xp (fc_deps F) (fc_stack F) Γ Φ Φx } + { forall Φx, ~ body_xp (fc_deps F) (fc_stack F) Γ Φ Φx } :=
-    body_xp_impl F Hg Γ Φ (bx_order_all _ _ Hg Γ Φ).
+    body_xp_impl F Hg Γ Φ (body_xp_order_all _ _ Hg Γ Φ).
 End OrderFast.

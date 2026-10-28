@@ -44,40 +44,40 @@ Definition unit_not_imported_msg (fq : list string) : string :=
 
 Definition mem_b (x : string) (xs : list string) : bool := List.existsb (String.eqb x) xs.
 
-Definition binds_b (x : string) (e : ent) : bool :=
-  match ent_name e with
+Definition binds_b (x : string) (e : scope_entry) : bool :=
+  match scope_entry_name e with
   | Some y => String.eqb x y
   | None => false
   end.
 
 (** The innermost entry binding [x], with the binders inside it.  The walk
     stops there: nothing outside the entry is read. *)
-Fixpoint lookup (x : string) (S : list ent) : option (nat * ent) :=
+Fixpoint lookup (x : string) (S : list scope_entry) : option (nat * scope_entry) :=
   match S with
   | nil => None
   | e :: S' =>
       if binds_b x e then Some (0, e)
-      else option_map (fun '(k, e') => (ent_binders e + k, e')) (lookup x S')
+      else option_map (fun '(k, e') => (scope_entry_binders e + k, e')) (lookup x S')
   end.
 
 (** What an entry, under [k] binders, denotes as a term ([den_term]) *)
-Definition den_to_term (k : nat) (e : ent) : eres exp :=
+Definition den_to_term (k : nat) (e : scope_entry) : eres exp :=
   match e with
-  | en_var _ | en_tvar _ => eok #k
-  | en_mem _ p m => eok (apps (qname_term p) (vars_desc k m))
-  | en_unit _ => eerr "a unit is not a term"
-  | en_open _ E (Some c) => eok (a_mem E c)
-  | en_open _ _ None => eerr "a module is not a term"
+  | scope_entry_var _ | scope_entry_tvar _ => eok #k
+  | scope_entry_mem _ p m => eok (apps (qname_term p) (vars_desc k m))
+  | scope_entry_unit _ => eerr "a unit is not a term"
+  | scope_entry_open _ E (Some c) => eok (a_mem E c)
+  | scope_entry_open _ _ None => eerr "a module is not a term"
   end.
 
 (** What an entry, under [k] binders, denotes as a module ([den_mod]) *)
-Definition den_to_mod (k : nat) (e : ent) : eres modexp :=
+Definition den_to_mod (k : nat) (e : scope_entry) : eres modexp :=
   match e with
-  | en_var _ => eok (me_var k)
-  | en_tvar _ => eok (me_var k)
-  | en_mem _ p m => eok (mapps (qname_mod p) (vars_desc k m))
-  | en_unit _ => eerr "not a module"
-  | en_open _ E oc => eok (open_mod E oc)
+  | scope_entry_var _ => eok (me_var k)
+  | scope_entry_tvar _ => eok (me_var k)
+  | scope_entry_mem _ p m => eok (mapps (qname_mod p) (vars_desc k m))
+  | scope_entry_unit _ => eerr "not a module"
+  | scope_entry_open _ E oc => eok (open_mod E oc)
   end.
 
 (** A declared name is not one of the frame's parameters [P] ([fresh]). *)
@@ -100,18 +100,18 @@ Fixpoint first_dup (xs : list string) : option string :=
   | x :: xs' => if mem_b x xs' then Some x else first_dup xs'
   end.
 
-Definition check_params (ps : list (string * Cst.obj)) : eres unit :=
+Definition check_params (ps : list (string * Cst.expression)) : eres unit :=
   match first_dup (List.map fst ps) with
   | None => eok tt
   | Some x => eerr ("duplicate parameter " ++ x)
   end.
 
-Definition unit_in_b (fq : path) (S : list ent) : bool :=
-  List.existsb (fun e => match e with en_unit fq' => path_beq fq fq' | _ => false end) S.
+Definition unit_in_b (fq : path) (S : list scope_entry) : bool :=
+  List.existsb (fun e => match e with scope_entry_unit fq' => path_beq fq fq' | _ => false end) S.
 
 (** A name no binding in scope has, as a module: the imported unit of
     that one-segment path. *)
-Definition unit_mod (x : string) (S : list ent) : eres modexp :=
+Definition unit_mod (x : string) (S : list scope_entry) : eres modexp :=
   if unit_in_b (x :: nil) S then eok (me_unit (x :: nil)) else eerr ("unbound name " ++ x).
 
 (** ** Open Targets
@@ -120,7 +120,7 @@ Definition unit_mod (x : string) (S : list ent) : eres modexp :=
     object, so that a local body may use it: the head of the target, then
     its arguments by [f]. *)
 
-Definition elab_ihead (S : list ent) (fq ip : list string) : eres modexp :=
+Definition elab_ihead (S : list scope_entry) (fq ip : list string) : eres modexp :=
   match fq, ip with
   | nil, x :: ip' =>
       let* H := match lookup x S with
@@ -134,8 +134,8 @@ Definition elab_ihead (S : list ent) (fq ip : list string) : eres modexp :=
       eok (fold_left me_mem ip (me_unit fq))
   end.
 
-Definition elab_args_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
-  fix go (os : list Cst.obj) : eres (list exp) :=
+Definition elab_args_with (f : list scope_entry -> Cst.expression -> eres exp) (S : list scope_entry) :=
+  fix go (os : list Cst.expression) : eres (list exp) :=
     match os with
     | nil => eok nil
     | o :: os' =>
@@ -144,30 +144,30 @@ Definition elab_args_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :
         eok (N :: Ns)
     end.
 
-Definition elab_target_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) (fq ip : list string)
-  (args : list Cst.obj) : eres modexp :=
+Definition elab_target_with (f : list scope_entry -> Cst.expression -> eres exp) (S : list scope_entry) (fq ip : list string)
+  (args : list Cst.expression) : eres modexp :=
   let* H := elab_ihead S fq ip in
   let* Ns := elab_args_with f S args in
   eok (mapps H Ns).
 
 (** ** Objects *)
 
-Definition elab_params_with (f : list ent -> Cst.obj -> eres exp) :=
-  fix go (S : list ent) (ps : list (string * Cst.obj)) : eres (list (string * typ)) :=
+Definition elab_params_with (f : list scope_entry -> Cst.expression -> eres exp) :=
+  fix go (S : list scope_entry) (ps : list (string * Cst.expression)) : eres (list (string * typ)) :=
     match ps with
     | nil => eok nil
     | (x, oA) :: ps' =>
         let* A := f S oA in
-        let* tys := go (en_tvar x :: S) ps' in
+        let* tys := go (scope_entry_tvar x :: S) ps' in
         eok ((x, A) :: tys)
     end.
 
-Definition elab_brs_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
-  fix go (bs : list (string * list string * Cst.obj)) : eres (list (string * nat * exp)) :=
+Definition elab_brs_with (f : list scope_entry -> Cst.expression -> eres exp) (S : list scope_entry) :=
+  fix go (bs : list (string * list string * Cst.expression)) : eres (list (string * nat * exp)) :=
     match bs with
     | nil => eok nil
     | (c, ys, oB) :: bs' =>
-        let* B := f (vents ys ++ S)%list oB in
+        let* B := f (variable_scope_entries ys ++ S)%list oB in
         let* Bs := go bs' in
         eok ((c, List.length ys, B) :: Bs)
     end.
@@ -181,24 +181,24 @@ Definition elim_at_msg : string := "exactly one block of an eliminator is marked
 
 (** The type written on the last binder of a block ([sbinders]), under the
     binders [pre] before it; a type on any other binder is rejected. *)
-Definition elab_binders_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
-  fix go (pre : list string) (xs : list (string * option Cst.obj)) : eres (option exp) :=
+Definition elab_binders_with (f : list scope_entry -> Cst.expression -> eres exp) (S : list scope_entry) :=
+  fix go (pre : list string) (xs : list (string * option Cst.expression)) : eres (option exp) :=
     match xs with
     | nil => eok None
     | (_, None) :: nil => eok None
-    | (_, Some o) :: nil => let* Z := f (vents pre ++ S)%list o in eok (Some Z)
+    | (_, Some o) :: nil => let* Z := f (variable_scope_entries pre ++ S)%list o in eok (Some Z)
     | (_, Some _) :: _ :: _ => eerr blk_ann_msg
     | (x, None) :: ((_ :: _) as xs') => go (pre ++ x :: nil)%list xs'
     end.
 
-Definition elab_blocks_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
-  fix go (bks : list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj)))
+Definition elab_blocks_with (f : list scope_entry -> Cst.expression -> eres exp) (S : list scope_entry) :=
+  fix go (bks : list (bool * list (string * option Cst.expression) * Cst.expression * list (string * list string * Cst.expression)))
       : eres (list eblock) :=
     match bks with
     | nil => eok nil
     | (k, xs, oA, bs) :: bks' =>
         let* oZ := elab_binders_with f S nil xs in
-        let* A := f (vents (List.map fst xs) ++ S)%list oA in
+        let* A := f (variable_scope_entries (List.map fst xs) ++ S)%list oA in
         let* Bs := elab_brs_with f S bs in
         let* Bks := go bks' in
         eok (eb_mk (List.length xs) oZ A Bs :: Bks)
@@ -206,7 +206,7 @@ Definition elab_blocks_with (f : list ent -> Cst.obj -> eres exp) (S : list ent)
 
 (** A module path as written, for messages: a name, a unit, or a member of
     one. *)
-Fixpoint path_text (o : Cst.obj) : option string :=
+Fixpoint path_text (o : Cst.expression) : option string :=
   match o with
   | Cst.var x => Some x
   | Cst.glob fq => Some (String.concat "›" fq)
@@ -218,7 +218,7 @@ Fixpoint path_text (o : Cst.obj) : option string :=
     being "an inductive alias" or "a record alias": at no parameter and a
     member path [P.n], the open that names the type there instead; else
     the general form of that open. *)
-Definition local_alias_error (what x : string) (ps : list (string * Cst.obj)) (oE : Cst.obj) : string :=
+Definition local_alias_error (what x : string) (ps : list (string * Cst.expression)) (oE : Cst.expression) : string :=
   let general := what ++ " is not allowed in a local module; open the type by name, `open M use (T as "
                    ++ x ++ ")`, instead" in
   match ps, oE with
@@ -232,8 +232,8 @@ Definition local_alias_error (what x : string) (ps : list (string * Cst.obj)) (o
   end.
 
 (** The fields of a record value, each its name and its value. *)
-Definition elab_tfields_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
-  fix go (fs : list (string * Cst.obj)) : eres (list (string * exp)) :=
+Definition elab_tfields_with (f : list scope_entry -> Cst.expression -> eres exp) (S : list scope_entry) :=
+  fix go (fs : list (string * Cst.expression)) : eres (list (string * exp)) :=
     match fs with
     | nil => eok nil
     | (y, oM) :: fs' =>
@@ -242,7 +242,7 @@ Definition elab_tfields_with (f : list ent -> Cst.obj -> eres exp) (S : list ent
         eok ((y, M) :: Ms)
     end.
 
-Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
+Fixpoint elab (S : list scope_entry) (o : Cst.expression) {struct o} : eres exp :=
   match o with
   | Cst.typ n => eok (Typeω@n)
   | Cst.suniv o =>
@@ -264,15 +264,15 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   | Cst.false_ty => eok ⊥
   | Cst.exfalso om mx oA =>
       let* M := elab S om in
-      let* A := elab (en_tvar mx :: S) oA in
+      let* A := elab (scope_entry_tvar mx :: S) oA in
       eok (efq M return A)
   | Cst.pi x oA oB =>
       let* A := elab S oA in
-      let* B := elab (en_tvar x :: S) oB in
+      let* B := elab (scope_entry_tvar x :: S) oB in
       eok (Π A B)
   | Cst.fn x oA oM =>
       let* A := elab S oA in
-      let* M := elab (en_tvar x :: S) oM in
+      let* M := elab (scope_entry_tvar x :: S) oM in
       eok (λ A M)
   | Cst.app o1 o2 =>
       let* M := elab S o1 in
@@ -285,7 +285,7 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       end
   | Cst.glob _ => eerr "a unit is not a term"
   | Cst.proj o x =>
-      if obj_path o then
+      if expression_path o then
         let* H := elab_mod S o in
         eok (a_mem H x)
       else
@@ -294,17 +294,17 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   | Cst.letb (Cst.d_def x (Some oA) oM) ob =>
       let* A := elab S oA in
       let* M := elab S oM in
-      let* B := elab (en_tvar x :: S) ob in
+      let* B := elab (scope_entry_tvar x :: S) ob in
       eok (ℓ A ≔ M in B)
   | Cst.letb (Cst.d_def x None oM) ob =>
       let* M := elab S oM in
-      let* B := elab (en_tvar x :: S) ob in
+      let* B := elab (scope_entry_tvar x :: S) ob in
       eok (ℓ ≔ M in B)
   | Cst.letb (Cst.d_mod x ps md) ob =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
-      let* D := elab_mdef (pents ps ++ S) md in
-      let* B := elab (en_var x :: S) ob in
+      let* D := elab_mdef (param_scope_entries ps ++ S) md in
+      let* B := elab (scope_entry_var x :: S) ob in
       eok (ℓₘ (gu_mk (ptele tys) D) in B)
   | Cst.elim om bks =>
       let* M := elab S om in
@@ -319,7 +319,7 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       eok (a_tuple T Ms)
   end
 
-with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
+with elab_mod (S : list scope_entry) (o : Cst.expression) {struct o} : eres modexp :=
   match o with
   | Cst.var x =>
       match lookup x S with
@@ -339,28 +339,28 @@ with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
   | _ => eerr "not a module"
   end
 
-with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
+with elab_mdef (S : list scope_entry) (md : Cst.mdef) {struct md} : eres moddef :=
   match md with
   | Cst.md_alias oE =>
       let* E := elab_mod S oE in
       eok (md_alias E)
   | Cst.md_where cs =>
       let* Φ :=
-        (fix go (S : list ent) (Φ : gmod) (cs : list Cst.cmd) {struct cs} : eres gmod :=
+        (fix go (S : list scope_entry) (Φ : gmod) (cs : list Cst.cmd) {struct cs} : eres gmod :=
            match cs with
            | nil => eok Φ
            | Cst.c_def m x oA oM :: cs' =>
                let* A := elab S oA in
                let* M := elab S oM in
-               go (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
+               go (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
            | Cst.c_mod pv x ps md' :: cs' =>
                let* _ := check_params ps in
                let* tys := elab_params_with elab S ps in
-               let* D := elab_mdef (pents ps ++ S) md' in
-               go (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
+               let* D := elab_mdef (param_scope_entries ps ++ S) md' in
+               go (scope_entry_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
            | Cst.c_open fq ip args its :: cs' =>
                let* E := elab_target_with elab S fq ip args in
-               go (item_ents its ++ S)%list (gm_open Φ E its) cs'
+               go (item_scope_entries its ++ S)%list (gm_open Φ E its) cs'
            | Cst.c_axiom _ _ :: _ => eerr "axioms are not allowed in a local module"
            | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
            | Cst.c_error e :: _ => eerr e
@@ -379,16 +379,16 @@ Definition elab_params := elab_params_with elab.
 
 (** The arguments of a constructor, each binding its name for the ones
     after it; the declared type is a variable in scope. *)
-Fixpoint elab_rargs (S : list ent) (args : list (string * Cst.obj)) : eres (list (string * exp)) :=
+Fixpoint elab_rargs (S : list scope_entry) (args : list (string * Cst.expression)) : eres (list (string * exp)) :=
   match args with
   | nil => eok nil
   | (y, oA) :: args' =>
       let* A := elab S oA in
-      let* args'' := elab_rargs (en_tvar y :: S) args' in
+      let* args'' := elab_rargs (scope_entry_tvar y :: S) args' in
       eok ((y, A) :: args'')
   end.
 
-Fixpoint elab_rcons (S : list ent) (cs : list (string * list (string * Cst.obj)))
+Fixpoint elab_rcons (S : list scope_entry) (cs : list (string * list (string * Cst.expression)))
   : eres (list (string * list (string * exp))) :=
   match cs with
   | nil => eok nil
@@ -400,24 +400,24 @@ Fixpoint elab_rcons (S : list ent) (cs : list (string * list (string * Cst.obj))
 
 (** The members of a group, under its uniform parameters [ups], the
     members' names [xs] in scope in the arguments ([smembers]). *)
-Fixpoint elab_members (S : list ent) (ups : list (string * Cst.obj)) (xs : list string)
-    (ms : list (string * Cst.obj * list (string * list (string * Cst.obj)))) : eres (list raw_member) :=
+Fixpoint elab_members (S : list scope_entry) (ups : list (string * Cst.expression)) (xs : list string)
+    (ms : list (string * Cst.expression * list (string * list (string * Cst.expression)))) : eres (list raw_member) :=
   match ms with
   | nil => eok nil
   | (x, oT, cs) :: ms' =>
       let '(nps, oS) := split_pis oT in
       let* _ := check_params (ups ++ nps)%list in
-      let* ntys := elab_params (pents ups ++ S)%list nps in
-      let* A := elab (pents ups ++ S)%list oS in
-      let* cs' := elab_rcons (pents (ups ++ nps) ++ vents xs ++ S)%list cs in
+      let* ntys := elab_params (param_scope_entries ups ++ S)%list nps in
+      let* A := elab (param_scope_entries ups ++ S)%list oS in
+      let* cs' := elab_rcons (param_scope_entries (ups ++ nps) ++ variable_scope_entries xs ++ S)%list cs in
       let* rms := elab_members S ups xs ms' in
       eok (mk_rmem x (ptele ntys) A cs' :: rms)
   end.
 
 (** The functions of a mutual definition ([sfuns]): each its parameters,
     the last its scrutinee. *)
-Fixpoint elab_funs (S : list ent)
-    (fs : list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj))) :
+Fixpoint elab_funs (S : list scope_entry)
+    (fs : list (string * list (string * Cst.expression) * Cst.expression * list (string * list string * Cst.expression))) :
     eres (list raw_fun) :=
   match fs with
   | nil => eok nil
@@ -428,8 +428,8 @@ Fixpoint elab_funs (S : list ent)
           let ys := List.rev rys in
           let* _ := check_params ps in
           let* ytys := elab_params S ys in
-          let* Z := elab (pents ys ++ S)%list oZ in
-          let* A := elab (en_tvar z :: pents ys ++ S)%list oA in
+          let* Z := elab (param_scope_entries ys ++ S)%list oZ in
+          let* A := elab (scope_entry_tvar z :: param_scope_entries ys ++ S)%list oA in
           let* Bs := elab_brs_with elab S bs in
           let* rfs := elab_funs S fs' in
           eok (mk_rfun f (ptele ytys) Z A Bs :: rfs)
@@ -461,9 +461,9 @@ Definition check_no_field (x : string) (fs : list string) (cs : list Cst.cmd) : 
     of the scope, so no command copies it.  [nb] is the number of binders
     of the scope, [binders S], which a member's entry records; a frame's
     members add none, so [nb] is the frame's, and is never recounted. *)
-Definition elab_cmds_with (f : list string -> list string -> nat -> list ent -> Cst.cmd -> eres (list ent * list ccmd)%type)
+Definition elab_cmds_with (f : list string -> list string -> nat -> list scope_entry -> Cst.cmd -> eres (list scope_entry * list ccmd)%type)
   (ch : list string) (P : list string) (nb : nat) :=
-  fix go (S : list ent) (cs : list Cst.cmd) : eres (list ccmd) :=
+  fix go (S : list scope_entry) (cs : list Cst.cmd) : eres (list ccmd) :=
     match cs with
     | nil => eok nil
     | c :: cs' =>
@@ -472,32 +472,32 @@ Definition elab_cmds_with (f : list string -> list string -> nat -> list ent -> 
         eok (snd r ++ ccs)%list
     end.
 
-Fixpoint elab_cmd (fp : path) (ch : list string) (P : list string) (nb : nat) (S : list ent) (c : Cst.cmd) {struct c}
-  : eres (list ent * list ccmd)%type :=
+Fixpoint elab_cmd (fp : path) (ch : list string) (P : list string) (nb : nat) (S : list scope_entry) (c : Cst.cmd) {struct c}
+  : eres (list scope_entry * list ccmd)%type :=
   match c with
   | Cst.c_def m x oA oM =>
       let* _ := check_fresh x P in
       let* A := elab S oA in
       let* M := elab S oM in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
   (** An axiom is opaque: it has no body to unfold. *)
   | Cst.c_axiom x oA =>
       let* _ := check_fresh x P in
       let* A := elab S oA in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_def x false false A None :: nil)
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_def x false false A None :: nil)
   | Cst.c_mod pv x ps (Cst.md_where body) =>
       let* _ := check_fresh x P in
       let* _ := check_params ps in
       let* tys := elab_params S ps in
-      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (map fst ps) (binders (pents ps) + nb) (pents ps ++ S) body in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_mod x pv (ptele tys) bcs :: nil)
+      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (map fst ps) (binders (param_scope_entries ps) + nb) (param_scope_entries ps ++ S) body in
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_mod x pv (ptele tys) bcs :: nil)
   | Cst.c_mod pv x ps (Cst.md_alias oE) =>
       let* _ := check_fresh x P in
       let* _ := check_params ps in
       let* tys := elab_params S ps in
-      let* E := elab_mod (pents ps ++ S) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_alias x pv (ptele tys) E :: nil)
-  | Cst.c_import fq => eok (en_unit fq :: S, cc_load fq :: nil)
+      let* E := elab_mod (param_scope_entries ps ++ S) oE in
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_alias x pv (ptele tys) E :: nil)
+  | Cst.c_import fq => eok (scope_entry_unit fq :: S, cc_load fq :: nil)
   | Cst.c_open fq ip args its =>
       let* E := elab_target_with elab S fq ip args in
       let* _ := check_fresh_all (map iitem_name its) P in
@@ -521,7 +521,7 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (P : list string) (nb : nat) (S
       let* _ := check_distinct "a mutual definition" (fun_names fs) in
       let* _ := check_fresh_all (fun_names fs) P in
       let* tys := elab_params S ps in
-      let* rfs := elab_funs (pents ps ++ S) fs in
+      let* rfs := elab_funs (param_scope_entries ps ++ S) fs in
       eok (filed_mems fp ch nb (fun_names fs) ++ S,
            cc_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)%list
   (** The type is a module, as written; the command declares nothing. *)
@@ -534,15 +534,15 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (P : list string) (nb : nat) (S
       let* _ := check_fresh x P in
       let* _ := check_params ps in
       let* tys := elab_params S ps in
-      let* E := elab_mod (pents ps ++ S) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_ind_alias x pv (ptele tys) E :: nil)
+      let* E := elab_mod (param_scope_entries ps ++ S) oE in
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_ind_alias x pv (ptele tys) E :: nil)
   (** A record alias, as an inductive alias is. *)
   | Cst.c_record_alias pv x ps oE =>
       let* _ := check_fresh x P in
       let* _ := check_params ps in
       let* tys := elab_params S ps in
-      let* E := elab_mod (pents ps ++ S) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_record_alias x pv (ptele tys) E :: nil)
+      let* E := elab_mod (param_scope_entries ps ++ S) oE in
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_record_alias x pv (ptele tys) E :: nil)
   (** The parameters, the sort and the fields' types are read as an
       inductive type's are; the with-area in the record's frame, the record
       in scope outside it. *)
@@ -550,27 +550,27 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (P : list string) (nb : nat) (S
       let* _ := check_fresh x P in
       let* _ := check_params ps in
       let* tys := elab_params S ps in
-      let* Srt := elab (pents ps ++ S) oS in
-      let* fs' := elab_rargs (pents ps ++ S) fs in
+      let* Srt := elab (param_scope_entries ps ++ S) oS in
+      let* fs' := elab_rargs (param_scope_entries ps ++ S) fs in
       let* _ := check_no_field x (map fst fs) cs in
-      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (map fst ps) (binders (en_self :: pents ps) + nb)
-                    (record_ents fp ch nb x ps fs ++ en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S) cs in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_record x pv (ptele tys) Srt fs' bcs :: nil)
+      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (map fst ps) (binders (scope_entry_self :: param_scope_entries ps) + nb)
+                    (record_scope_entries fp ch nb x ps fs ++ scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S) cs in
+      eok (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) nb :: S, cc_record x pv (ptele tys) Srt fs' bcs :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).
 
 (** The leading imports and opens, before the unit's header: the scope of
     its parameter types, and their loads. *)
-Fixpoint elab_lead (L : list ent) (cs : list Cst.cmd) : eres (list ent * list ccmd)%type :=
+Fixpoint elab_lead (L : list scope_entry) (cs : list Cst.cmd) : eres (list scope_entry * list ccmd)%type :=
   match cs with
   | nil => eok (L, nil)
   | Cst.c_import fq :: cs' =>
-      let* r := elab_lead (en_unit fq :: L) cs' in
+      let* r := elab_lead (scope_entry_unit fq :: L) cs' in
       eok (fst r, cc_load fq :: snd r)
   | Cst.c_open fq ip args its :: cs' =>
       let* E := elab_target_with elab L fq ip args in
-      elab_lead (open_ents E its ++ L)%list cs'
+      elab_lead (open_scope_entries E its ++ L)%list cs'
   | Cst.c_error e :: _ => eerr e
   | _ :: _ => eerr "outside of any module"
   end.
@@ -586,7 +586,7 @@ Definition elaborate_core (prg : Cst.prog) : eres cunit :=
   let '(L, lds) := r in
   let* _ := check_params ps in
   let* tys := elab_params L ps in
-  let* ccs := elab_cmds fp nil (map fst ps) (binders (pents ps ++ L)) (pents ps ++ L) (leads ++ cs) in
+  let* ccs := elab_cmds fp nil (map fst ps) (binders (param_scope_entries ps ++ L)) (param_scope_entries ps ++ L) (leads ++ cs) in
   eok (lds, ptele tys, ccs).
 
 Definition to_core (prg : Cst.prog) : option cunit :=

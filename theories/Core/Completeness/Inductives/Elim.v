@@ -5297,7 +5297,7 @@ Lemma decl_of_glookup : forall Θ Ξ p D,
     ⊢ᵍ Θ ⍮ Ξ -> ind_lookup Θ Ξ p = Some D -> decl_typed Θ Ξ D /\ decl_closed D.
 Proof.
   intros * Hg Hl; split.
-  - exact (gv_decls _ _ _ _ _ _ (gctx_rwf _ _ Hg) _ _ Hl).
+  - exact (globals_valid_decls _ _ _ _ _ _ (gctx_resolved_globals_typed _ _ Hg) _ _ Hl).
   - exact (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
 Qed.
 
@@ -5306,7 +5306,7 @@ Lemma valid_groups_of_emb : forall Θ Ξ Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 ->
 Proof.
   intros * He.
   pose proof (valid_emb_wf _ _ _ _ He) as Hg.
-  pose proof (em_res _ _ _ _ (valid_emb_emb _ _ _ _ He)) as Hs.
+  pose proof (gctx_embedding_resolution _ _ _ _ (valid_emb_emb _ _ _ _ He)) as Hs.
   constructor.
   - intros qn G Hlq.
     destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt Hc].

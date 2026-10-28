@@ -202,7 +202,7 @@ actually needs, closedness:
 
 | Theorem | Statement |
 | --- | --- |
-| `elab_res_wf` | `elab_res` at depth `d` returns a term closed at `d`, or a module whose scope and pending arguments are well formed at `d` (mutual induction over `Cst.obj`/`Cst.decl`) |
+| `elab_res_wf` | `elab_res` at depth `d` returns a term closed at `d`, or a module whose scope and pending arguments are well formed at `d` (mutual induction over `Cst.expression`/`Cst.decl`) |
 | `elab_closed` | `sc_wf d s → elab s d o = Some M → closed_at M d` |
 | `elab_cmds_wf` | `elab_cmds` preserves `u_wf` and never lowers `u_depth` |
 | `elaborate_prog_wf` | every obligation of a successfully elaborated unit is closed: `elaborate_prog prg = Some es → List.Forall eval_wf es` |
@@ -290,7 +290,7 @@ unchanged.
     `wf_mut_ind_all` over all of them.
 
     **Presupposition** is the mutual theorem `presup_global`
-    (`System/Global/Presup.v`): term judgments give `rwf Θ Ξ` (every resolved
+    (`System/Global/Presup.v`): term judgments give `resolved_globals_typed Θ Ξ` (every resolved
     global's `ctx_pi Δ A` is a type at `⋅`, its body typed there), modules and
     units give `ins_typed` (each member, generalized, typed in the frame it
     was *inserted* into: `gm_ins`/`gm_prefix`, `GlobalCtx.v`). A definition

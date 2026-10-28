@@ -50,7 +50,7 @@ skipped alike.
 
 The readback of a stuck eliminator's branch (`fread_brs`) gives a
 recursive result the branch does not read (`exp_freshb (cargs_nrec gs) B`)
-the type `𝕌ω@0` instead of evaluating the motive at it (`ffresh_ihs_skip`);
+the type `𝕌ω@0` instead of evaluating the motive at it (`fast_fresh_ihs_skip`);
 `fread_sim` relates the recursive results only where the branch reads them
 (`dsim_list_at`, `env_agree_binders_at`), as for evaluation.
 

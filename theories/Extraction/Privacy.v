@@ -304,10 +304,10 @@ Qed.
 Section Below.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
-  Hypothesis He : Embx Θ1 Ξ1 Θ2 Ξ2.
+  Hypothesis He : gctx_embedding_with_bodies Θ1 Ξ1 Θ2 Ξ2.
 
-  Let Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2 := emx_wf _ _ _ _ He.
-  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He).
+  Let Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2 := gctx_embedding_with_bodies_wf _ _ _ _ He.
+  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He).
 
   (** A member is an open frame of the smaller context, or neither a unit
       nor the open frame of a member's module or of a record type's module
@@ -560,10 +560,10 @@ Definition aliases_sited (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstac
 Section Sited.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
-  Hypothesis He : Embx Θ1 Ξ1 Θ2 Ξ2.
+  Hypothesis He : gctx_embedding_with_bodies Θ1 Ξ1 Θ2 Ξ2.
   Hypothesis Ha : aliases_sited Θ1 Ξ1 Θ2 Ξ2.
 
-  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He).
+  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He).
 
   (** What denotes in the smaller context has an order in the bigger one. *)
   Lemma site_order_of_mdenote : forall H Γ R, mdenote Θ1 Ξ1 Γ H R -> site_order Θ2 Ξ2 H.
@@ -632,7 +632,7 @@ Qed.
 
 Lemma sited_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV sited_Vs sited_F sited_VD sited_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    bodies_valid_along_embeddings sited_Vs sited_F sited_VD sited_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     sited_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * _ _ HE HG He _; cbn [sited_V].
@@ -649,7 +649,7 @@ Proof.
                 ltac:(intros; exact I) ltac:(intros; exact I)
                 sited_V_alias ltac:(intros; exact I) ltac:(intros; split; exact I)
                 ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg) as HG.
-  destruct (HG _ _ (Embx_refl _ _ Hg) _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
+  destruct (HG _ _ (gctx_embedding_with_bodies_refl _ _ Hg) _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
   exact (good_sited _ _ _ _ _ _ HΘ HΞ).
 Qed.
 

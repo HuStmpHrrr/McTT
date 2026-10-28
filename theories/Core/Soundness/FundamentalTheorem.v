@@ -111,7 +111,7 @@ Proof. intros * Hμ HM; exact (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM 
 (** ** Each entry is valid where it is checked *)
 
 Lemma glu_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
     forall Θs Ξs, glu_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
@@ -123,7 +123,7 @@ Proof.
 Qed.
 
 Lemma glu_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He _.
@@ -134,26 +134,26 @@ Qed.
 
 Lemma glu_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof. intros; exact I. Qed.
 
 Lemma glu_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof. intros; exact I. Qed.
 
 (** A declaration typed at the source glues at the target: its judgments,
     glued. *)
 Lemma glu_entry_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    decl_typed Θ Ξ D -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_ind_decl_entry Θ2 Ξ2 D /\ glu_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
   destruct (decl_typed_uparams _ _ _ Hdt) as [HUw _].
   pose proof (ctx_wf_gctx _ _ _ HUw) as Hg.
   pose proof (glu_emb_good _ _ _ _ Hg HG He) as Hμ.
-  pose proof (em_res _ _ _ _ (Embx_emb _ _ _ _ He)) as Hs.
+  pose proof (gctx_embedding_resolution _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as Hs.
   destruct soundness_fundamental as (Kc & Ke & _).
   destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n Hn].
   constructor.
@@ -232,7 +232,7 @@ Qed.
     The identity is a sound embedding. *)
 Theorem glu_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_emb Θ Ξ Θ Ξ.
 Proof.
-  intros * Hg; apply glu_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
+  intros * Hg; apply glu_emb_good; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
   exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
 Qed.
 

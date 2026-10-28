@@ -9,7 +9,7 @@
     Every entry is closed and every path absolute, so a global context only
     ever grows by embedding: everything that resolves keeps resolving to the
     same entry ([gc_sub]), and a judgment moves along an embedding unchanged
-    ([emb_preserves_wf]).  The induction over the global judgments is stated
+    ([gctx_embedding_preserves_wf]).  The induction over the global judgments is stated
     once, for an arbitrary notion [V] of a valid entry ([global_induction]):
     each entry is valid in every context its insertion context embeds into.
     Presupposition is its instance at syntactic typing; the two semantic models
@@ -25,39 +25,39 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 (** ** Embeddings
 
-    [Emb Θ1 Ξ1 Θ2 Ξ2]: the target is well formed and everything that resolves
+    [gctx_embedding Θ1 Ξ1 Θ2 Ξ2]: the target is well formed and everything that resolves
     at the source resolves, to the same entry, at the target. *)
 
-Record Emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { em_wf : ⊢ᵍ Θ2 ⍮ Ξ2
-  ; em_res : gc_sub Θ1 Ξ1 Θ2 Ξ2 }.
+Record gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  { gctx_embedding_wf : ⊢ᵍ Θ2 ⍮ Ξ2
+  ; gctx_embedding_resolution : gc_sub Θ1 Ξ1 Θ2 Ξ2 }.
 
-Lemma Emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ Ξ.
+Lemma gctx_embedding_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ Ξ.
 Proof. intros; constructor; [ assumption | apply gc_sub_refl ]. Qed.
 
 (** An embedding preceded by a growth of resolution. *)
-Lemma Emb_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2,
-    gc_sub Θ1 Ξ1 Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> Emb Θ1 Ξ1 Θ2 Ξ2.
+Lemma gctx_embedding_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2,
+    gc_sub Θ1 Ξ1 Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> gctx_embedding Θ1 Ξ1 Θ2 Ξ2.
 Proof. intros * H [Hg He]; constructor; [ assumption | eapply gc_sub_trans; eassumption ]. Qed.
 
 (** What a module expression denotes grows along an embedding. *)
-Lemma emb_mdenote : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> Emb Θ1 Ξ1 Θ2 Ξ2 ->
+Lemma gctx_embedding_mdenote : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
     forall Γ H R, mdenote Θ1 Ξ1 Γ H R -> exists R2, mdenote Θ2 Ξ2 Γ H R2 /\ dsg Θ1 Ξ1 Θ2 Ξ2 R R2.
 Proof. intros * Hg1 [Hg2 Hs]; exact (proj1 (mdenote_grow_all _ _ _ _ Hg1 Hg2 Hs)). Qed.
 
-Lemma emb_body_xp : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> Emb Θ1 Ξ1 Θ2 Ξ2 ->
+Lemma gctx_embedding_body_xp : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
     forall Γ Φ Φx, body_xp Θ1 Ξ1 Γ Φ Φx -> body_xp Θ2 Ξ2 Γ Φ Φx.
 Proof. intros * Hg1 [Hg2 Hs]; exact (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ Hg1 Hg2 Hs))))). Qed.
 
 (** Every mention of what a module expression denotes, moved along an
     embedding: its term part and its module telescope stay. *)
-Ltac emb_mdenote Hg1 He :=
+Ltac gctx_embedding_mdenote Hg1 He :=
   repeat match goal with
   | Hm : mdenote _ _ ?G ?H0 ?R |- _ =>
       let R2 := fresh "R2" in
       let Hm2 := fresh "Hm2" in
       let Hd := fresh "Hd" in
-      destruct (emb_mdenote _ _ _ _ Hg1 He _ _ _ Hm) as (R2 & Hm2 & Hd); clear Hm;
+      destruct (gctx_embedding_mdenote _ _ _ _ Hg1 He _ _ _ Hm) as (R2 & Hm2 & Hd); clear Hm;
       repeat match goal with
       | Ht : ds_ty R = Some _ |- _ => pose proof (dsg_ty _ _ _ _ _ _ _ Hd Ht); clear Ht
       | Ht : ds_mtele R = Some _ |- _ => pose proof (dsg_mtele _ _ _ _ _ _ _ Hd Ht); clear Ht
@@ -76,8 +76,8 @@ Ltac emb_mdenote Hg1 He :=
   end.
 
 (** A judgment moves along an embedding unchanged. *)
-Theorem emb_preserves_wf : forall Θ1 Ξ1 Θ2 Ξ2,
-    Emb Θ1 Ξ1 Θ2 Ξ2 ->
+Theorem gctx_embedding_preserves_wf : forall Θ1 Ξ1 Θ2 Ξ2,
+    gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
     (forall Γ, ⊢ Θ1 ⍮ Ξ1 ⍮ Γ -> ⊢ Θ2 ⍮ Ξ2 ⍮ Γ) /\
     (forall Γ A M, Θ1 ⍮ Ξ1 ⍮ Γ ⊢ M : A -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ M : A) /\
     (forall Γ A M M', Θ1 ⍮ Ξ1 ⍮ Γ ⊢ M ≈ M' : A -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ M ≈ M' : A) /\
@@ -103,16 +103,16 @@ Proof.
       | Hm : mdenote ?T1 ?X1 _ _ _ |- _ =>
           assert (Hg1 : ⊢ᵍ T1 ⍮ X1)
             by (eapply ctx_wf_gctx; first [ eassumption | eapply presup_modexp_eq_ctx | eapply presup_ext_eq_ctx | eapply presup_unit_eq_ctx ]; eassumption);
-          emb_mdenote Hg1 He
+          gctx_embedding_mdenote Hg1 He
       | Hx : body_xp ?T1 ?X1 _ _ _ |- _ =>
           assert (Hg1 : ⊢ᵍ T1 ⍮ X1)
             by (eapply ctx_wf_gctx; first [ eapply presup_ext_eq_ctx | eapply presup_unit_eq_ctx ]; eassumption)
       end.
     all: repeat match goal with Hx : body_xp ?T1 ?X1 _ _ _, Hg1 : ⊢ᵍ ?T1 ⍮ ?X1 |- _ =>
-                  pose proof (emb_body_xp _ _ _ _ Hg1 He _ _ _ Hx); clear Hx end.
+                  pose proof (gctx_embedding_body_xp _ _ _ _ Hg1 He _ _ _ Hx); clear Hx end.
     all: try solve [
       match goal with Hu : gc_unit ?T1 ?X1 (me_unit ?fp) = Some ?TΦ, HΓ : ⊢ ?T1 ⍮ ?X1 ⍮ ?G |- _ =>
-        destruct TΦ; destruct (emb_mdenote _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) He G _ _ (mdenote_unit _ _ G (me_unit fp) _ _ _ eq_refl Hu)) as (R2 & Hm2 & _);
+        destruct TΦ; destruct (gctx_embedding_mdenote _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) He G _ _ (mdenote_unit _ _ G (me_unit fp) _ _ _ eq_refl Hu)) as (R2 & Hm2 & _);
         inversion Hm2; subst; [ eapply wf_me_unit; [ eauto | eassumption ] | |];
         (* a unit is the module of no member and of no record type *)
         exfalso;
@@ -301,27 +301,27 @@ Proof.
   destruct z; discriminate.
 Qed.
 
-(** [Ctb Θ2 Ξ2 T mp E]: the target [Θ2 ⍮ Ξ2] has, at the path [mp], what
+(** [contributions_found Θ2 Ξ2 T mp E]: the target [Θ2 ⍮ Ξ2] has, at the path [mp], what
     the entry [E], checked over the telescope [T], contributes: its
     definitions, its module and its submodules, its body and its sub-bodies,
     these perhaps grown. *)
-Record Ctb (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (mp : qname) (E : gentry) : Prop := mk_Ctb
-  { ctb_entries : forall (ip : list String.string) E0, ge_entries E ip = Some E0 ->
+Record contributions_found (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (mp : qname) (E : gentry) : Prop := mk_contributions_found
+  { contributions_found_entries : forall (ip : list String.string) E0, ge_entries E ip = Some E0 ->
       gc_resolve Θ2 Ξ2 (qname_app mp ip) = Some E0
-  ; ctb_module : forall r, ge_module T E = Some r -> gc_module Θ2 Ξ2 mp = Some r
-  ; ctb_submodule : forall x (ip : list String.string) r, ge_submodule T E x ip = Some r ->
+  ; contributions_found_module : forall r, ge_module T E = Some r -> gc_module Θ2 Ξ2 mp = Some r
+  ; contributions_found_submodule : forall x (ip : list String.string) r, ge_submodule T E x ip = Some r ->
       gc_module Θ2 Ξ2 (qname_app mp (x :: ip)) = Some r
-  ; ctb_selfbody : forall T' Φ, ge_selfbody T E = Some (T', Φ) ->
+  ; contributions_found_selfbody : forall T' Φ, ge_selfbody T E = Some (T', Φ) ->
       exists Φ', gc_body Θ2 Ξ2 mp = Some (T', Φ') /\ gm_grows Φ Φ'
-  ; ctb_subbody : forall x (ip : list String.string) T' Φ, ge_subbody T E x ip = Some (T', Φ) ->
+  ; contributions_found_subbody : forall x (ip : list String.string) T' Φ, ge_subbody T E x ip = Some (T', Φ) ->
       exists Φ', gc_body Θ2 Ξ2 (qname_app mp (x :: ip)) = Some (T', Φ') /\ gm_grows Φ Φ'
-  ; ctb_subentry : forall (ip : list String.string) E0, ge_subentry E ip = Some E0 ->
+  ; contributions_found_subentry : forall (ip : list String.string) E0, ge_subentry E ip = Some E0 ->
       exists E0', gc_entry Θ2 Ξ2 (qname_app mp ip) = Some E0' /\ entry_grows E0 E0' }.
 
 (** What a frame extended by an entry contributes, at an embedding of it. *)
-Lemma Ctb_frame : forall Θ mp K Δ Φ x E Ξ Θ2 Ξ2,
+Lemma contributions_found_frame : forall Θ mp K Δ Φ x E Ξ Θ2 Ξ2,
     gc_sub Θ ((mp, K, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ) Θ2 Ξ2 ->
-    Ctb Θ2 Ξ2 (Δ ++ gs_tele Ξ) (qname_in mp x) E.
+    contributions_found Θ2 Ξ2 (Δ ++ gs_tele Ξ) (qname_in mp x) E.
 Proof.
   intros * Hs; repeat split.
   - intros ip0 E1 HE1; rewrite qname_app_in; apply (gc_sub_resolve _ _ _ _ _ _ Hs).
@@ -392,10 +392,10 @@ Proof.
 Qed.
 
 (** Where a record entry is contributed, its record type is found. *)
-Lemma Ctb_record_lookup : forall Θ2 Ξ2 T mp pv pr R Φ,
-    Ctb Θ2 Ξ2 T mp (ge_record pv pr R Φ) -> record_lookup Θ2 Ξ2 mp = Some R.
+Lemma contributions_found_record_lookup : forall Θ2 Ξ2 T mp pv pr R Φ,
+    contributions_found Θ2 Ξ2 T mp (ge_record pv pr R Φ) -> record_lookup Θ2 Ξ2 mp = Some R.
 Proof.
-  intros * Hc; destruct (ctb_subentry _ _ _ _ _ Hc nil _ eq_refl) as (E' & HE & Hg); rewrite qname_app_nil in HE.
+  intros * Hc; destruct (contributions_found_subentry _ _ _ _ _ Hc nil _ eq_refl) as (E' & HE & Hg); rewrite qname_app_nil in HE.
   destruct E' as [| ? [? [? ?| ?]] | | | pv' pr' R' Φ']; cbn in Hg; try discriminate; try contradiction.
   destruct Hg as (_ & _ & <-); exact (gc_entry_record _ _ _ _ _ _ _ HE).
 Qed.
@@ -419,7 +419,7 @@ Qed.
     says. *)
 Lemma gc_sub_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
     gc_sub Θ Ξ Θ2 Ξ2 ->
-    Ctb Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
+    contributions_found Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
     kind_tele mp K Δ' (gs_tele Ξ) ->
     gc_sub Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof.
@@ -459,19 +459,19 @@ Proof.
     destruct K as [| pq k D | R']; cbn in Hr |- *; [ discriminate | discriminate | exact Hr ].
 Qed.
 
-Lemma Emb_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
-    Emb Θ Ξ Θ2 Ξ2 ->
-    Ctb Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
+Lemma gctx_embedding_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
+    gctx_embedding Θ Ξ Θ2 Ξ2 ->
+    contributions_found Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
     kind_tele mp K Δ' (gs_tele Ξ) ->
-    Emb Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
+    gctx_embedding Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof. intros * [Hg Hs] Hc HK; constructor; [ exact Hg | exact (gc_sub_nested _ _ _ _ _ _ _ _ _ Hs Hc HK) ]. Qed.
 
 (** Declaring an entry in the innermost frame embeds into any context that
     has what the entry contributes, where the frame says. *)
-Lemma Emb_entry : forall Θ mq K Δ Φ0 Ξ y E Θ2 Ξ2,
-    Emb Θ ((mq, K, gu_body Δ Φ0) :: Ξ) Θ2 Ξ2 ->
-    Ctb Θ2 Ξ2 (Δ ++ gs_tele Ξ) (qname_in mq y) E ->
-    Emb Θ ((mq, K, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ) Θ2 Ξ2.
+Lemma gctx_embedding_entry : forall Θ mq K Δ Φ0 Ξ y E Θ2 Ξ2,
+    gctx_embedding Θ ((mq, K, gu_body Δ Φ0) :: Ξ) Θ2 Ξ2 ->
+    contributions_found Θ2 Ξ2 (Δ ++ gs_tele Ξ) (qname_in mq y) E ->
+    gctx_embedding Θ ((mq, K, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ) Θ2 Ξ2.
 Proof.
   intros * [Hg Hs] [Hin Hm0 Hmod Hb0 Hbod Hen]; constructor; [ assumption | constructor ].
   - intros p E0 Hr; unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr.
@@ -772,12 +772,12 @@ Proof.
   rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl) in Hl2; injection Hl2 as <-; exact Hl.
 Qed.
 
-Lemma decl_typed_emb : forall Θ Ξ Θ2 Ξ2 D, Emb Θ Ξ Θ2 Ξ2 -> decl_typed Θ Ξ D -> decl_typed Θ2 Ξ2 D.
+Lemma decl_typed_emb : forall Θ Ξ Θ2 Ξ2 D, gctx_embedding Θ Ξ Θ2 Ξ2 -> decl_typed Θ Ξ D -> decl_typed Θ2 Ξ2 D.
 Proof.
-  intros * He HD; pose proof (em_res _ _ _ _ He) as Hs.
+  intros * He HD; pose proof (gctx_embedding_resolution _ _ _ _ He) as Hs.
   pose proof (decl_typed_container _ _ _ _ _ Hs HD) as Hcont.
   pose proof (rview_record_gc_sub _ _ _ _ _ Hs (decl_typed_rstruct _ _ _ HD)) as Hrcont.
-  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & Hq & Hst & Hx & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Ht & Hq & Hst & Hx & _).
   destruct HD as [Ha Hmv HU Ho Hsu [i Hi] [n Hn] Hna Hnd HN HA HB Hpl HP Hv Hrk Hvw Hvc Hvd Hvv Hrs Hvr [IsS Hself]].
   constructor; try assumption.
   - exact (Hc _ HU).
@@ -2417,10 +2417,10 @@ Record record_typed (Θ : gdeps) (Ξ : gstack) (R : record_decl) : Prop := mk_re
       Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ }.
 
 (** A typed record stays typed along an embedding. *)
-Lemma record_typed_emb : forall Θ Ξ Θ2 Ξ2 R, Emb Θ Ξ Θ2 Ξ2 -> record_typed Θ Ξ R -> record_typed Θ2 Ξ2 R.
+Lemma record_typed_emb : forall Θ Ξ Θ2 Ξ2 R, gctx_embedding Θ Ξ Θ2 Ξ2 -> record_typed Θ Ξ R -> record_typed Θ2 Ξ2 R.
 Proof.
   intros * He [Ha Hmv Hs Hnd Hf].
-  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & _ & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & _ & _).
   constructor; [ exact Ha | exact Hmv | | exact Hnd | intros; apply Ht; eapply Hf; eassumption ].
   (* the sort: a universe moves along the embedding *)
   inversion Hs; subst; [ constructor; apply Hc; assumption | econstructor; apply Ht; eassumption ].
@@ -2536,8 +2536,8 @@ Proof.
   destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hs0 & HU & Hff).
   pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ.
   assert (HP : ⊢ Θ ⍮ Ξ ⍮ frame_params K (gu_params U) ++ gs_tele Ξ) by exact (wf_gmod_ctx _ _ _ _ _ _ HΦ).
-  assert (He : Emb Θ Ξ Θ ((mp, K, U) :: Ξ)) by (constructor; [ exact Hg | apply gc_sub_push; exact Hff ]).
-  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & _).
+  assert (He : gctx_embedding Θ Ξ Θ ((mp, K, U) :: Ξ)) by (constructor; [ exact Hg | apply gc_sub_push; exact Hff ]).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & _).
   destruct K as [| pq k D | R]; cbn [frame_params gs_tele] in HP |- *; [ exact (Hc _ HP) | exact (Hc _ HP) |].
   destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ _ eq_refl) as (Δr & HΔ & HPR & _).
   rewrite HΔ; cbn [List.app]; rewrite <- HPR.
@@ -2566,19 +2566,19 @@ Section Induction.
       transparent definition it is. *)
   Definition dm_def (pv : bool) (A M : exp) : gentry := ge_def true pv A (Some M).
 
-  (** [GV Θ1 Ξ1 Θ2 Ξ2]: everything resolving at [Θ1 ⍮ Ξ1] is valid at
+  (** [globals_valid Θ1 Ξ1 Θ2 Ξ2]: everything resolving at [Θ1 ⍮ Ξ1] is valid at
       [Θ2 ⍮ Ξ2]. *)
-  Record GV (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop := mk_GV
+  Record globals_valid (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop := mk_globals_valid
     { (** Every resolving entry *)
-      gv_entries : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> V Θ2 Ξ2 E
+      globals_valid_entries : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> V Θ2 Ξ2 E
       (** Every filed group *)
-    ; gv_decls : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> VD Θ2 Ξ2 D
+    ; globals_valid_decls : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> VD Θ2 Ξ2 D
       (** Every definition with a module part, as its term part *)
-    ; gv_def_mods : forall p pv A M U, gc_entry Θ1 Ξ1 p = Some (ge_def_mod pv A M U) -> V Θ2 Ξ2 (dm_def pv A M) }.
+    ; globals_valid_def_mods : forall p pv A M U, gc_entry Θ1 Ξ1 p = Some (ge_def_mod pv A M U) -> V Θ2 Ξ2 (dm_def pv A M) }.
 
   (** Everything resolving at [Θ ⍮ Ξ] is valid wherever [Θ ⍮ Ξ] embeds. *)
-  Definition Good (Θ : gdeps) (Ξ : gstack) : Prop :=
-    forall Θ2 Ξ2, Emb Θ Ξ Θ2 Ξ2 -> GV Θ Ξ Θ2 Ξ2.
+  Definition globals_valid_along_embeddings (Θ : gdeps) (Ξ : gstack) : Prop :=
+    forall Θ2 Ξ2, gctx_embedding Θ Ξ Θ2 Ξ2 -> globals_valid Θ Ξ Θ2 Ξ2.
 
   (** How a definition and an axiom are made valid: from their derivation at
       the insertion context, given that its globals are valid.  A definition
@@ -2586,14 +2586,14 @@ Section Induction.
       uniform parameters of the inductive type whose module it is a member
       of. *)
   Hypothesis Hdef : forall Θ Ξ T A M b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ T ⊢ M : A -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+      Θ ⍮ Ξ ⍮ T ⊢ M : A -> globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
   Hypothesis Hax : forall Θ Ξ A i b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
   (** And a declaration of an inductive type. *)
   Hypothesis Hind : forall Θ Ξ D Θ2 Ξ2,
-      decl_typed Θ Ξ D -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D.
+      decl_typed Θ Ξ D -> globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D.
 
   (** What an entry contributes is valid wherever the context it is checked
       in embeds and the entry's contributions are found. *)
@@ -2618,9 +2618,9 @@ Section Induction.
   (** What an entry declares is valid wherever the context it is checked in
       embeds, and what it contributes is valid where its contributions are
       found too. *)
-  Definition GoodE (Θ : gdeps) (Ξ : gstack) (mp : qname) (E : gentry) : Prop :=
-    forall Θ2 Ξ2, Emb Θ Ξ Θ2 Ξ2 ->
-      entry_decl Θ2 Ξ2 E /\ (Ctb Θ2 Ξ2 (gs_tele Ξ) mp E -> entry_good Θ2 Ξ2 (gs_tele Ξ) E).
+  Definition entry_valid_along_embeddings (Θ : gdeps) (Ξ : gstack) (mp : qname) (E : gentry) : Prop :=
+    forall Θ2 Ξ2, gctx_embedding Θ Ξ Θ2 Ξ2 ->
+      entry_decl Θ2 Ξ2 E /\ (contributions_found Θ2 Ξ2 (gs_tele Ξ) mp E -> entry_good Θ2 Ξ2 (gs_tele Ξ) E).
 
   (** What a body checked over [T] contributes is valid at [Θ2 ⍮ Ξ2]. *)
   Record body_good (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (Φ : gmod) : Prop := mk_body_good
@@ -2639,22 +2639,22 @@ Section Induction.
   (** The group a module's kind names is valid wherever the context the
       module is checked in embeds, and what its body contributes is valid
       wherever its frame embeds too. *)
-  Definition GoodM (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (Δ : ctx) (Φ : gmod) : Prop :=
-    forall Θ2 Ξ2, Emb Θ Ξ Θ2 Ξ2 ->
-      kind_decl Θ2 Ξ2 K /\ (Emb Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2 -> body_good Θ2 Ξ2 (Δ ++ gs_tele Ξ) Φ).
+  Definition module_valid_along_embeddings (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (Δ : ctx) (Φ : gmod) : Prop :=
+    forall Θ2 Ξ2, gctx_embedding Θ Ξ Θ2 Ξ2 ->
+      kind_decl Θ2 Ξ2 K /\ (gctx_embedding Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2 -> body_good Θ2 Ξ2 (Δ ++ gs_tele Ξ) Φ).
 
   Theorem global_induction_all :
-    (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Good Θ Ξ) /\
-    (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Good Θ Ξ) /\
-    (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> GoodE Θ Ξ mp E) /\
-    (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> GoodM Θ Ξ mp K Δ Φ) /\
-    (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> Good Θ Ξ).
+    (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> globals_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> entry_valid_along_embeddings Θ Ξ mp E) /\
+    (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> module_valid_along_embeddings Θ Ξ mp K Δ Φ) /\
+    (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> globals_valid_along_embeddings Θ Ξ).
   Proof.
     apply wf_mut_ind_all; intros; try assumption.
     - (* a definition or an axiom *)
@@ -2666,7 +2666,7 @@ Section Induction.
     - (* a nested module *)
       intros Θ2 Ξ2 He; split; [ intros ? ? ? ? Heq; discriminate Heq |]; intros Hc.
       destruct (H0 _ _ He) as [_ HM].
-      destruct (HM (Emb_nested _ _ _ pv fk_module _ _ _ _ He Hc I)) as [HE HU HA].
+      destruct (HM (gctx_embedding_nested _ _ _ pv fk_module _ _ _ _ He Hc I)) as [HE HU HA].
       constructor; [ exact HE | intros ? ? Hx; discriminate | exact HU |].
       intros [| z ip] ? ? ? ? Hx; [ discriminate | exact (HA _ _ _ _ _ Hx) ].
     - (* an alias: it contributes no entry and no declaration *)
@@ -2688,10 +2688,10 @@ Section Induction.
       intros T pq0 D0 Hx; cbn [ge_module] in Hx; injection Hx as _ _ Hk0 _; lia.
     - (* a declared member with the body of its module, checked in the
          member's open frame *)
-      match goal with IH : GoodM _ _ _ _ _ _ |- _ => rename IH into IHM end.
+      match goal with IH : module_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHM end.
       intros Θ2 Ξ2 He; destruct (IHM _ _ He) as [HK HB].
       split; [ intros ? ? ? ? Heq; injection Heq as _ <- -> <- _; exact (HK _ _ eq_refl) | intros Hc ].
-      destruct (HB (Emb_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ He Hc ltac:(match goal with Hu : ind_uparams D = _ |- _ => exact Hu end))) as [HΦE HΦU HΦA].
+      destruct (HB (gctx_embedding_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ He Hc ltac:(match goal with Hu : ind_uparams D = _ |- _ => exact Hu end))) as [HΦE HΦU HΦA].
       constructor.
       + intros ip E0 HE; exact (HΦE _ _ HE).
       + intros T pq0 D0 Hx; cbn [ge_module] in Hx; injection Hx as _ <- -> <-; exact (HK _ _ eq_refl).
@@ -2704,18 +2704,18 @@ Section Induction.
                    | intros ? ? ? ? ? Hx; cbn in Hx; discriminate |].
       intros [| ? ?] ? ? ? ? Hx; [| discriminate ]; cbn in Hx; injection Hx as <- <- <- <-.
       unfold dm_def; eapply Hdef; [ eassumption | | exact He ].
-      match goal with H : Good _ _ |- _ => exact H end.
+      match goal with H : globals_valid_along_embeddings _ _ |- _ => exact H end.
     - (* a record: it contributes no entry and no declaration *)
       intros ? ? _; split; [ intros ? ? ? ? Heq; discriminate Heq |]; intros _; constructor;
         [ intros [| ? ?] ? Hx; cbn in Hx; discriminate | intros ? ? ? Hx; cbn in Hx; discriminate
         | intros ? ? ? ? ? Hx; cbn in Hx; discriminate | intros [| ? ?] ? ? ? ? Hx; cbn in Hx; discriminate ].
     - (* a record with the body of its module, checked in the record's open
          frame: it declares no group *)
-      match goal with IH : GoodM _ _ _ _ _ _ |- _ => rename IH into IHM end.
+      match goal with IH : module_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHM end.
       match goal with Hu : record_params R = _ |- _ => rename Hu into HRu end.
       intros Θ2 Ξ2 He; destruct (IHM _ _ He) as [_ HB].
       split; [ intros ? ? ? ? Heq; discriminate Heq | intros Hc ].
-      destruct (HB (Emb_nested _ _ _ pv (fk_record R) _ _ _ _ He Hc (ex_intro _ _ (conj eq_refl HRu)))) as [HΦE HΦU HΦA].
+      destruct (HB (gctx_embedding_nested _ _ _ pv (fk_record R) _ _ _ _ He Hc (ex_intro _ _ (conj eq_refl HRu)))) as [HΦE HΦU HΦA].
       constructor.
       + intros ip E0 HE; exact (HΦE _ _ HE).
       + intros T pq0 D0 Hx; cbn [ge_module] in Hx; discriminate.
@@ -2727,7 +2727,7 @@ Section Induction.
       constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? ? ? Hx; discriminate |].
       intros ? ? ? ? ? Hx; cbn in Hx; discriminate.
     - (* the module of a member, before its members: the member's group *)
-      match goal with IH : GoodE _ _ _ _ |- _ => rename IH into IHE end.
+      match goal with IH : entry_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       intros Θ2 Ξ2 He; split.
       + intros pq0 D0 Heq; injection Heq as -> -> ->.
         exact (proj1 (IHE _ _ He) _ _ _ _ eq_refl).
@@ -2739,13 +2739,13 @@ Section Induction.
       + intros _; constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? ? ? Hx; discriminate |].
         intros ? ? ? ? ? Hx; cbn in Hx; discriminate.
     - (* extending a module *)
-      match goal with IH : GoodM _ _ _ _ _ _ |- _ => rename IH into IHΦ end.
-      match goal with IH : GoodE _ _ _ _ |- _ => rename IH into IHE end.
+      match goal with IH : module_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHΦ end.
+      match goal with IH : entry_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       intros Θ2 Ξ2 He0; destruct (IHΦ _ _ He0) as [HK HB]; split; [ exact HK | intros He ].
-      assert (He' : Emb Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2)
-        by (eapply Emb_pre; [ apply gc_sub_grow; eassumption | exact He ]).
+      assert (He' : gctx_embedding Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2)
+        by (eapply gctx_embedding_pre; [ apply gc_sub_grow; eassumption | exact He ]).
       destruct (HB He') as [HΦE HΦU HΦA].
-      destruct (proj2 (IHE _ _ He') (Ctb_frame _ _ _ _ _ _ _ _ _ _ (em_res _ _ _ _ He))) as [HEE HEM HEU HEA].
+      destruct (proj2 (IHE _ _ He') (contributions_found_frame _ _ _ _ _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ He))) as [HEE HEM HEU HEA].
       constructor.
       + intros ip E0 Hr; destruct (gm_resolve_ext_inv _ _ _ _ _ Hr) as [(ip' & -> & HE) | HΦ']; eauto.
       + intros z ip T pq0 D Hr.
@@ -2760,14 +2760,14 @@ Section Induction.
       rename H into Hg, H0 into IHU.
       intros Θ2 Ξ2 He.
       destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (_ & _ & [Hn _]).
-      destruct (IHU _ _ (Emb_pre _ _ _ _ _ _ (gc_sub_file _ _ U Hn) He)) as [HR HI HA].
+      destruct (IHU _ _ (gctx_embedding_pre _ _ _ _ _ _ (gc_sub_file _ _ U Hn) He)) as [HR HI HA].
       constructor; [ intros p E Hr; rewrite gc_resolve_file in Hr; eauto | |].
       + intros p D Hr; rewrite ind_lookup_file in Hr; eauto.
       + intros p ? ? ? ? Hr; rewrite gc_entry_file in Hr; eauto.
     - (* a frame *)
       rename H0 into IHΞ, H2 into IHU.
       intros Θ2 Ξ2 He.
-      assert (HeΞ : Emb Θ Ξ Θ2 Ξ2) by (eapply Emb_pre; [ apply gc_sub_push; eassumption | exact He ]).
+      assert (HeΞ : gctx_embedding Θ Ξ Θ2 Ξ2) by (eapply gctx_embedding_pre; [ apply gc_sub_push; eassumption | exact He ]).
       destruct (IHU _ _ HeΞ) as [HK HB]; destruct (HB He) as [HUE HUU HUA].
       destruct (IHΞ _ _ HeΞ) as [HR HI HA].
       constructor.
@@ -2781,10 +2781,10 @@ Section Induction.
       + intros p ? ? ? ? Hr; destruct (gc_entry_frame _ _ _ _ _ _ _ Hr) as [(ip & -> & Hm) | Hr']; eauto.
   Qed.
 
-  Corollary global_induction : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> GV Θ Ξ Θ Ξ.
+  Corollary global_induction : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> globals_valid Θ Ξ Θ Ξ.
   Proof.
     intros * Hg; destruct global_induction_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H).
-    exact (H _ _ Hg _ _ (Emb_refl _ _ Hg)).
+    exact (H _ _ Hg _ _ (gctx_embedding_refl _ _ Hg)).
   Qed.
 End Induction.
 
@@ -2803,46 +2803,46 @@ End Induction.
     checked, so each member is valid wherever the context it is checked in
     is ([Hdef] below). *)
 
-Record Embx (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { emx_wf : ⊢ᵍ Θ2 ⍮ Ξ2
-  ; emx_res : gc_subx Θ1 Ξ1 Θ2 Ξ2 }.
+Record gctx_embedding_with_bodies (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  { gctx_embedding_with_bodies_wf : ⊢ᵍ Θ2 ⍮ Ξ2
+  ; gctx_embedding_with_bodies_resolution : gc_subx Θ1 Ξ1 Θ2 Ξ2 }.
 
-Lemma Embx_emb : forall Θ1 Ξ1 Θ2 Ξ2, Embx Θ1 Ξ1 Θ2 Ξ2 -> Emb Θ1 Ξ1 Θ2 Ξ2.
+Lemma gctx_embedding_with_bodies_embedding : forall Θ1 Ξ1 Θ2 Ξ2, gctx_embedding_with_bodies Θ1 Ξ1 Θ2 Ξ2 -> gctx_embedding Θ1 Ξ1 Θ2 Ξ2.
 Proof. intros * [Hg Hs]; constructor; [ exact Hg | exact (gc_subx_sub _ _ _ _ Hs) ]. Qed.
 
-Lemma Embx_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> Embx Θ Ξ Θ Ξ.
+Lemma gctx_embedding_with_bodies_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ Ξ.
 Proof. intros; constructor; [ assumption | apply gc_subx_refl ]. Qed.
 
-Lemma Embx_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2,
-    gc_subx Θ1 Ξ1 Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> Embx Θ1 Ξ1 Θ2 Ξ2.
+Lemma gctx_embedding_with_bodies_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2,
+    gc_subx Θ1 Ξ1 Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gctx_embedding_with_bodies Θ1 Ξ1 Θ2 Ξ2.
 Proof. intros * H [Hg He]; constructor; [ assumption | eapply gc_subx_trans; eassumption ]. Qed.
 
 (** What an entry contributes, its sub-bodies as they are. *)
-Definition Ctbx (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (mp : qname) (E : gentry) : Prop :=
-  Ctb Θ2 Ξ2 T mp E /\
+Definition contributions_found_with_bodies (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (mp : qname) (E : gentry) : Prop :=
+  contributions_found Θ2 Ξ2 T mp E /\
   (forall x (ip : list String.string) r, ge_subbody T E x ip = Some r ->
      gc_body Θ2 Ξ2 (qname_app mp (x :: ip)) = Some r).
 
-Lemma Ctbx_frame : forall Θ mp K Δ Φ x E Ξ Θ2 Ξ2,
+Lemma contributions_found_with_bodies_frame : forall Θ mp K Δ Φ x E Ξ Θ2 Ξ2,
     gc_subx Θ ((mp, K, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ) Θ2 Ξ2 ->
-    Ctbx Θ2 Ξ2 (Δ ++ gs_tele Ξ) (qname_in mp x) E.
+    contributions_found_with_bodies Θ2 Ξ2 (Δ ++ gs_tele Ξ) (qname_in mp x) E.
 Proof.
-  intros * Hs; split; [ exact (Ctb_frame _ _ _ _ _ _ _ _ _ _ (gc_subx_sub _ _ _ _ Hs)) |].
+  intros * Hs; split; [ exact (contributions_found_frame _ _ _ _ _ _ _ _ _ _ (gc_subx_sub _ _ _ _ Hs)) |].
   intros z ip0 r Hr0; rewrite qname_app_in; apply (gc_subx_body _ _ _ _ _ _ Hs).
   rewrite gc_body_frame_here; cbn [gu_mod gu_params]; apply gm_subbody_ext_here; exact Hr0.
 Qed.
 
-Lemma Embx_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
-    Embx Θ Ξ Θ2 Ξ2 ->
-    Ctbx Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
+Lemma gctx_embedding_with_bodies_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
+    gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
+    contributions_found_with_bodies Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
     kind_tele mp K Δ' (gs_tele Ξ) ->
-    Embx Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
+    gctx_embedding_with_bodies Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof.
-  intros * He [Hc Hbod] HK; constructor; [ exact (emx_wf _ _ _ _ He) | split ].
-  - exact (em_res _ _ _ _ (Emb_nested _ _ _ _ _ _ _ _ _ (Embx_emb _ _ _ _ He) Hc HK)).
+  intros * He [Hc Hbod] HK; constructor; [ exact (gctx_embedding_with_bodies_wf _ _ _ _ He) | split ].
+  - exact (gctx_embedding_resolution _ _ _ _ (gctx_embedding_nested _ _ _ _ _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) Hc HK)).
   - intros p r Hr; destruct (gc_body_frame _ _ _ _ _ _ _ Hr) as [(x & ip & -> & Hm) | Hr'].
     + apply Hbod; rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (frame_entry_reads pv _ _ _ Φ' _ HK)))))); exact Hm.
-    + exact (gc_subx_body _ _ _ _ _ _ (emx_res _ _ _ _ He) Hr').
+    + exact (gc_subx_body _ _ _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He) Hr').
 Qed.
 
 Section ModInduction.
@@ -2917,8 +2917,8 @@ Section ModInduction.
 
   (** Everything filed or open at [Θ ⍮ Ξ] is valid wherever [Θ ⍮ Ξ] embeds,
       read from any context that has what [Θ ⍮ Ξ] has. *)
-  Definition GoodV (Θ : gdeps) (Ξ : gstack) : Prop :=
-    forall Θ2 Ξ2, Embx Θ Ξ Θ2 Ξ2 -> forall Θs Ξs, gc_sub Θ Ξ Θs Ξs -> gds_valid Θs Ξs Θ2 Ξ2 Θ /\ gs_valid Θs Ξs Θ2 Ξ2 Ξ.
+  Definition bodies_valid_along_embeddings (Θ : gdeps) (Ξ : gstack) : Prop :=
+    forall Θ2 Ξ2, gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> forall Θs Ξs, gc_sub Θ Ξ Θs Ξs -> gds_valid Θs Ξs Θ2 Ξ2 Θ /\ gs_valid Θs Ξs Θ2 Ξ2 Ξ.
 
   (** A definition is checked in a closed telescope [T]: the frames'
       parameters, or the uniform parameters of the inductive type whose
@@ -2926,86 +2926,86 @@ Section ModInduction.
       checked in files and has open is valid, read from there, along any
       growth; it is so read from anywhere. *)
   Hypothesis Hdef : forall Θ Ξ T A M b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> gds_valid Θ Ξ Θ2 Ξ2 Θ -> gs_valid Θ Ξ Θ2 Ξ2 Ξ ->
+      Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> gds_valid Θ Ξ Θ2 Ξ2 Θ -> gs_valid Θ Ξ Θ2 Ξ2 Ξ ->
       forall Θs Ξs, V Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
   (** The other entries are valid read from any context that has what the
       context they are checked in has. *)
   Hypothesis Hax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
   Hypothesis Halias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
       tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-      GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+      bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
   Hypothesis Hnil : forall Θ Ξ Δ Θ2 Ξ2,
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
       F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
   (** A declaration, and the telescope of its uniform parameters, which its
       module's members are checked in. *)
   Hypothesis Hind : forall Θ Ξ D Θ2 Ξ2,
-      decl_typed Θ Ξ D -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D).
+      decl_typed Θ Ξ D -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D).
   (** A record's declaration, at any target its context embeds into. *)
   Hypothesis Hrecord : forall Θ Ξ R Θ2 Ξ2,
-      record_typed Θ Ξ R -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> VR Θ2 Ξ2 R.
+      record_typed Θ Ξ R -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VR Θ2 Ξ2 R.
   (** A record's module telescope, at any target its context embeds into
       where the record is found: its parameters, then a value of it, which
       is typed only there. *)
   Hypothesis Hrecord_tele : forall Θ Ξ p R Θ2 Ξ2,
-      record_typed Θ Ξ R -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+      record_typed Θ Ξ R -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
       F Θ2 Ξ2 (record_params R) -> F Θ2 Ξ2 (record_mod_tele p R).
 
   (** An entry, and the context it is checked in: valid read from any
       context that has it and what the context it is checked in has. *)
-  Definition GoodEV (Θ : gdeps) (Ξ : gstack) (mp : qname) (E : gentry) : Prop :=
-    GoodV Θ Ξ /\
-    (forall Θ2 Ξ2, Embx Θ Ξ Θ2 Ξ2 -> forall pv pq D Φ, E = ge_ind pv pq 0 D Φ -> VD Θ2 Ξ2 D) /\
-    forall Θ2 Ξ2, Embx Θ Ξ Θ2 Ξ2 -> Ctbx Θ2 Ξ2 (gs_tele Ξ) mp E ->
-      forall Θs Ξs, gc_sub Θ Ξ Θs Ξs -> Ctb Θs Ξs (gs_tele Ξ) mp E -> ge_valid Θs Ξs Θ2 Ξ2 (gs_tele Ξ) E.
+  Definition entry_bodies_valid_along_embeddings (Θ : gdeps) (Ξ : gstack) (mp : qname) (E : gentry) : Prop :=
+    bodies_valid_along_embeddings Θ Ξ /\
+    (forall Θ2 Ξ2, gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> forall pv pq D Φ, E = ge_ind pv pq 0 D Φ -> VD Θ2 Ξ2 D) /\
+    forall Θ2 Ξ2, gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> contributions_found_with_bodies Θ2 Ξ2 (gs_tele Ξ) mp E ->
+      forall Θs Ξs, gc_sub Θ Ξ Θs Ξs -> contributions_found Θs Ξs (gs_tele Ξ) mp E -> ge_valid Θs Ξs Θ2 Ξ2 (gs_tele Ξ) E.
 
   (** A module, and the context it is checked in: the group its kind names
       is valid wherever the context embeds, and its body is valid read from
       any context that has its frame. *)
-  Definition GoodMV (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (Δ : ctx) (Φ : gmod) : Prop :=
-    GoodV Θ Ξ /\
-    (forall Θ2 Ξ2, Embx Θ Ξ Θ2 Ξ2 -> kind_valid Θ2 Ξ2 K) /\
-    forall Θ2 Ξ2, Embx Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2 -> Embx Θ Ξ Θ2 Ξ2 ->
+  Definition module_bodies_valid_along_embeddings (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (Δ : ctx) (Φ : gmod) : Prop :=
+    bodies_valid_along_embeddings Θ Ξ /\
+    (forall Θ2 Ξ2, gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> kind_valid Θ2 Ξ2 K) /\
+    forall Θ2 Ξ2, gctx_embedding_with_bodies Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2 -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
       F Θ2 Ξ2 (Δ ++ gs_tele Ξ) /\
       forall Θs Ξs, gc_sub Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θs Ξs -> gm_valid Θs Ξs Θ2 Ξ2 (Δ ++ gs_tele Ξ) Φ.
 
   Theorem global_valid_all :
-    (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> GoodV Θ Ξ) /\
-    (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> GoodV Θ Ξ) /\
-    (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> GoodEV Θ Ξ mp E) /\
-    (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> GoodMV Θ Ξ mp K Δ Φ) /\
-    (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> GoodV Θ Ξ).
+    (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> bodies_valid_along_embeddings Θ Ξ) /\
+    (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> entry_bodies_valid_along_embeddings Θ Ξ mp E) /\
+    (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> module_bodies_valid_along_embeddings Θ Ξ mp K Δ Φ) /\
+    (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings Θ Ξ).
   Proof.
     apply wf_mut_ind_all; intros; try assumption.
     - (* a definition or an axiom *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn.
       match goal with
-      | HM : forall M, ?o = Some M -> _ ⍮ _ ⍮ _ ⊢ M : _, IHM : forall M, ?o = Some M -> GoodV _ _ |- _ =>
+      | HM : forall M, ?o = Some M -> _ ⍮ _ ⍮ _ ⊢ M : _, IHM : forall M, ?o = Some M -> bodies_valid_along_embeddings _ _ |- _ =>
           destruct o as [M0 |]; cbn;
           [ destruct (IHM M0 eq_refl _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ];
-            eapply Hdef; [ exact (HM M0 eq_refl) | exact (IHM M0 eq_refl) | exact (Embx_emb _ _ _ _ He) | exact HΘ | exact HΞ ]
+            eapply Hdef; [ exact (HM M0 eq_refl) | exact (IHM M0 eq_refl) | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ]
           | eapply Hax; eassumption ]
       end.
     - (* a body module: valid as its frame, pushed, is *)
       destruct H0 as [HG [_ HM]]; split; [ exact HG |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He Hc Θs Ξs Hs Hcs; cbn.
-      destruct (HM _ _ (Embx_nested _ _ _ pv fk_module _ _ _ _ He Hc I) He) as [HF HΦ].
+      destruct (HM _ _ (gctx_embedding_with_bodies_nested _ _ _ pv fk_module _ _ _ _ He Hc I) He) as [HF HΦ].
       split; [ exact HF | apply HΦ; exact (gc_sub_nested _ _ _ pv fk_module _ _ _ _ Hs Hcs I) ].
     - split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn; eapply Halias; eassumption.
     - (* a group, at its first member, with no member in its module *)
       split; [ assumption |].
-      assert (HDF : forall Θ2 Ξ2, Embx Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D))
+      assert (HDF : forall Θ2 Ξ2, gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D))
         by (intros Θ2 Ξ2 He; eapply Hind; [ build_decl_typed | eassumption | exact He ]).
       split; [ intros Θ2 Ξ2 He ? ? ? ? Heq; injection Heq as _ _ <- _; exact (proj1 (HDF _ _ He)) |].
       intros Θ2 Ξ2 He _ Θs Ξs _ _; cbn.
@@ -3018,40 +3018,40 @@ Section ModInduction.
       split; [ intros; lia | split; [| exact I ] ].
       match goal with
       | HU : ind_uparams ?D = ?Δu ++ gs_tele ?Ξ', Ha : tele_ass (ind_uparams ?D), HC : ⊢ _ ⍮ _ ⍮ ind_uparams ?D,
-        HG : GoodV _ _ |- F _ _ (ind_uparams ?D) =>
+        HG : bodies_valid_along_embeddings _ _ |- F _ _ (ind_uparams ?D) =>
           rewrite HU in Ha, HC |- *; eapply Hnil; [ exact (proj1 (proj1 (List.Forall_app _ _ _) Ha)) | exact HC | exact HG | exact He ]
       end.
     - (* a declared member with the body of its module, checked in the
          member's open frame *)
-      match goal with IH : GoodMV _ _ _ _ _ _ |- _ => rename IH into IHM end.
+      match goal with IH : module_bodies_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHM end.
       match goal with Hu : ind_uparams D = _ |- _ => rename Hu into HU end.
       destruct IHM as [HG [HK IHM]]; split; [ exact HG |].
       split; [ intros Θ2 Ξ2 He ? ? ? ? Heq; injection Heq as _ <- -> <- _; exact (proj1 (HK _ _ He) _ _ eq_refl) |].
       intros Θ2 Ξ2 He Hc Θs Ξs Hs Hcs; cbn.
-      destruct (IHM _ _ (Embx_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ He Hc HU) He) as [HF HΦ].
+      destruct (IHM _ _ (gctx_embedding_with_bodies_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ He Hc HU) He) as [HF HΦ].
       rewrite HU; split; [ intros ->; exact (proj1 (HK _ _ He) _ _ eq_refl) | split; [ exact HF |] ].
       apply HΦ; exact (gc_sub_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ Hs Hcs HU).
     - (* a definition with a module part: valid as its module part, an
          alias, and as its term part, a transparent definition *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn; split; [ eapply Halias; eassumption |].
-      match goal with HG : GoodV _ _ |- _ => destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ] end.
-      eapply Hdef; [ eassumption | eassumption | exact (Embx_emb _ _ _ _ He) | exact HΘ | exact HΞ ].
+      match goal with HG : bodies_valid_along_embeddings _ _ |- _ => destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ] end.
+      eapply Hdef; [ eassumption | eassumption | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ].
     - (* a record, before the members of its module: valid as its
          declaration, over its parameters and a value *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He [Hct _] Θs Ξs Hs _; cbn.
       split; [ eapply Hrecord; [ constructor; eassumption | eassumption | exact He ] | split; [| exact I ] ].
-      eapply Hrecord_tele; [ constructor; eassumption | eassumption | exact He | exact (Ctb_record_lookup _ _ _ _ _ _ _ _ Hct) |].
+      eapply Hrecord_tele; [ constructor; eassumption | eassumption | exact He | exact (contributions_found_record_lookup _ _ _ _ _ _ _ _ Hct) |].
       match goal with
       | HU : record_params ?R = ?Δu ++ gs_tele ?Ξ', Ha : tele_ass (record_params ?R),
-        HS : _ ⍮ _ ⍮ record_params ?R ⊢ᵤ _, HG : GoodV _ _ |- F _ _ (record_params ?R) =>
+        HS : _ ⍮ _ ⍮ record_params ?R ⊢ᵤ _, HG : bodies_valid_along_embeddings _ _ |- F _ _ (record_params ?R) =>
           pose proof (presup_is_univ_ctx HS) as HC;
           rewrite HU in Ha, HC |- *; eapply Hnil; [ exact (proj1 (proj1 (List.Forall_app _ _ _) Ha)) | exact HC | exact HG | exact He ]
       end.
     - (* a record with the body of its module, checked in the record's open
          frame *)
-      match goal with IH : GoodMV _ _ _ _ _ _ |- _ => rename IH into IHM end.
+      match goal with IH : module_bodies_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHM end.
       match goal with Hu : record_params R = _ |- _ => rename Hu into HU end.
       match goal with Hm : _ ⍮ _ ⍮ _ ⍮ fk_record R ⍮ _ ⊢ᵍᵐ _ |- _ => pose proof (wf_gmod_record_typed _ _ _ _ _ _ Hm _ eq_refl) as HRt end.
       destruct IHM as [HG [HK IHM]]; split; [ exact HG |].
@@ -3059,21 +3059,21 @@ Section ModInduction.
       intros Θ2 Ξ2 He Hc Θs Ξs Hs Hcs; cbn.
       assert (HKt : kind_tele mp (fk_record R) (ce_ass (record_self mp R) :: Δ) (gs_tele Ξ))
         by (exists Δ; split; [ reflexivity | exact HU ]).
-      destruct (IHM _ _ (Embx_nested _ _ _ pv (fk_record R) _ _ _ _ He Hc HKt) He) as [HF HΦ].
+      destruct (IHM _ _ (gctx_embedding_with_bodies_nested _ _ _ pv (fk_record R) _ _ _ _ He Hc HKt) He) as [HF HΦ].
       split; [ exact (proj2 (HK _ _ He) _ eq_refl) |].
       unfold record_mod_tele; rewrite HU; split; [ exact HF |].
       apply HΦ; exact (gc_sub_nested _ _ _ pv (fk_record R) _ _ _ _ Hs Hcs HKt).
     - split; [ assumption |]; split; [ intros ? ? _; split; [ intros ? ? Heq | intros ? Heq ]; discriminate Heq |].
       intros Θ2 Ξ2 _ He; split; [ eapply Hnil; eassumption | intros; exact I ].
     - (* the module of a member, before its members: the member's group *)
-      match goal with IH : GoodEV _ _ _ _ |- _ => rename IH into IHE end.
+      match goal with IH : entry_bodies_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       split; [ exact (proj1 IHE) |]; split.
       + intros Θ2 Ξ2 He; split; [| intros ? Heq; discriminate Heq ].
         intros pq0 D0 Heq; injection Heq as -> -> ->; exact (proj1 (proj2 IHE) _ _ He _ _ _ _ eq_refl).
       + intros Θ2 Ξ2 _ He; split; [ eapply Hnil; eassumption | intros; exact I ].
     - (* the module of a record, before its members: the record's
          declaration *)
-      match goal with IH : GoodEV _ _ _ _ |- _ => rename IH into IHE end.
+      match goal with IH : entry_bodies_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       split; [ exact (proj1 IHE) |]; split.
       + intros Θ2 Ξ2 He; split; [ intros ? ? Heq; discriminate Heq |].
         intros R0 Heq; injection Heq as <-.
@@ -3085,42 +3085,42 @@ Section ModInduction.
         match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ _ _, HU : record_params _ = _ ++ _ |- _ =>
           pose proof (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) as HRt; cbn [List.app]; rewrite <- HU end.
         eapply Hrecord_tele; [ exact HRt | exact (proj1 IHE) | exact He | |].
-        * apply (gc_sub_frame_record _ _ _ _ _ _ (gc_subx_sub _ _ _ _ (emx_res _ _ _ _ Hp))).
+        * apply (gc_sub_frame_record _ _ _ _ _ _ (gc_subx_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ Hp))).
           rewrite gs_find_record_own; reflexivity.
         * match goal with HU : record_params _ = _ ++ _ |- _ => rewrite HU end.
           match goal with Ha : tele_ass ?Δ, HC : ⊢ _ ⍮ _ ⍮ ?Δ ++ _ |- _ => exact (Hnil _ _ _ _ _ Ha HC (proj1 IHE) He) end.
-    - match goal with IH : GoodMV _ _ _ _ _ _ |- _ => rename IH into IHΦ end.
-      match goal with IH : GoodEV _ _ _ _ |- _ => rename IH into IHE end.
+    - match goal with IH : module_bodies_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHΦ end.
+      match goal with IH : entry_bodies_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       destruct IHΦ as [HG [HK IHΦ]]; split; [ exact HG |]; split; [ exact HK |].
       intros Θ2 Ξ2 He Hout.
-      assert (He' : Embx Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2)
-        by (eapply Embx_pre; [ apply gc_subx_grow; eassumption | exact He ]).
+      assert (He' : gctx_embedding_with_bodies Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ2 Ξ2)
+        by (eapply gctx_embedding_with_bodies_pre; [ apply gc_subx_grow; eassumption | exact He ]).
       destruct (IHΦ _ _ He' Hout) as [HF HΦ].
       split; [ exact HF |]; intros Θs Ξs Hs.
       apply gm_valid_ext; split; [ apply HΦ; eapply gc_sub_trans; [ apply gc_sub_grow; eassumption | exact Hs ] |].
-      apply (proj2 (proj2 IHE) _ _ He' (Ctbx_frame _ _ _ _ _ _ _ _ _ _ (emx_res _ _ _ _ He))).
+      apply (proj2 (proj2 IHE) _ _ He' (contributions_found_with_bodies_frame _ _ _ _ _ _ _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He))).
       + eapply gc_sub_trans; [ apply gc_sub_grow; eassumption | exact Hs ].
-      + exact (Ctb_frame _ _ _ _ _ _ _ _ _ _ Hs).
+      + exact (contributions_found_frame _ _ _ _ _ _ _ _ _ _ Hs).
     - intros Θ2 Ξ2 _ Θs Ξs _; split; [ intros fp U Hl; discriminate | exact I ].
     - (* a filed unit: valid as its closed frame was *)
       rename H into Hg, H0 into IHU.
-      match goal with |- GoodV ((?f, _) :: _) nil => rename f into fp0 end.
+      match goal with |- bodies_valid_along_embeddings ((?f, _) :: _) nil => rename f into fp0 end.
       intros Θ2 Ξ2 He Θs Ξs Hs; split; [| exact I ].
       destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (_ & _ & [Hn _]).
-      destruct (IHU Θ2 Ξ2 ltac:(eapply Embx_pre; [ apply gc_subx_file; exact Hn | exact He ])
+      destruct (IHU Θ2 Ξ2 ltac:(eapply gctx_embedding_with_bodies_pre; [ apply gc_subx_file; exact Hn | exact He ])
                   Θs Ξs ltac:(eapply gc_sub_trans; [ apply gc_sub_file; exact Hn | exact Hs ])) as [HΘ HΞ].
       intros fq W Hl; cbn in Hl; destruct (path_beq fq fp0);
         [ injection Hl as <-; cbn [gs_valid gs_tele] in HΞ; rewrite app_nil_r in HΞ; tauto | exact (HΘ _ _ Hl) ].
     - rename H0 into IHΞ, H2 into IHU.
       intros Θ2 Ξ2 He Θs Ξs Hs.
-      assert (He0 : Embx Θ Ξ Θ2 Ξ2) by (eapply Embx_pre; [ apply gc_subx_push; eassumption | exact He ]).
+      assert (He0 : gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2) by (eapply gctx_embedding_with_bodies_pre; [ apply gc_subx_push; eassumption | exact He ]).
       destruct (IHΞ _ _ He0 Θs Ξs ltac:(eapply gc_sub_trans; [ apply gc_sub_push; eassumption | exact Hs ])) as [HΘ HΞ].
       split; [ exact HΘ |].
       destruct (proj2 (proj2 IHU) _ _ He He0) as [HF HΦ]; cbn [gs_valid].
       split; [ exact HF | split; [ apply HΦ; exact Hs | split; [ exact (proj1 (proj2 IHU) _ _ He0) | exact HΞ ] ] ].
   Qed.
 
-  Corollary global_valid : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> GoodV Θ Ξ.
+  Corollary global_valid : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings Θ Ξ.
   Proof. intros; apply global_valid_all; assumption. Qed.
 
   (** *** Reading validity back *)
@@ -4285,20 +4285,20 @@ Qed.
 
 (** ** Typed Descriptions Grow with the Global Context *)
 
-Lemma args_ok_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ T Ns, Emb Θ1 Ξ1 Θ2 Ξ2 -> args_ok Θ1 Ξ1 Γ T Ns -> args_ok Θ2 Ξ2 Γ T Ns.
+Lemma args_ok_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ T Ns, gctx_embedding Θ1 Ξ1 Θ2 Ξ2 -> args_ok Θ1 Ξ1 Γ T Ns -> args_ok Θ2 Ξ2 Γ T Ns.
 Proof.
   intros * He [T1 T2 HT Hl Ha Hs HT2 HN].
-  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Ht & _).
   exists T1 T2; [ exact HT | exact Hl | exact Ha | exact Hs | exact (Hc _ HT2) | intros; apply Ht; eauto ].
 Qed.
 
 (** What a description grows into, read at a bigger global context, is
     typed there. *)
-Lemma desc_ok_grow : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> Emb Θ1 Ξ1 Θ2 Ξ2 ->
+Lemma desc_ok_grow : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
     forall Γ R1, desc_ok Θ1 Ξ1 Γ R1 -> forall R2, dsg Θ1 Ξ1 Θ2 Ξ2 R1 R2 -> desc_ok Θ2 Ξ2 Γ R2.
 Proof.
-  intros * Hg1 He; pose proof (em_wf _ _ _ _ He) as Hg2; pose proof (em_res _ _ _ _ He) as Hs.
-  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & Hu & _).
+  intros * Hg1 He; pose proof (gctx_embedding_wf _ _ _ _ He) as Hg2; pose proof (gctx_embedding_resolution _ _ _ _ He) as Hs.
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & Hu & _).
   induction 1 as [Γ A om HA HM
                  | Γ Δ Φw Φ HΦ Hn Hent IH HaΔ Hsh Hnd HUw
                  | Γ Θ' T Φ Ns Θ0 Ξ0 p Hg0 Hs0 Hloc Ha Hsc HT HΘ' Hargs HaΘ
@@ -4418,55 +4418,55 @@ Proof.
   split; assumption.
 Qed.
 
-Lemma syn_valid_here : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> valid_syn Θ Ξ.
-Proof. intros * Hg HG; exact (HG _ _ (Embx_refl _ _ Hg) _ _ (gc_sub_refl _ _)). Qed.
+Lemma syn_valid_here : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> valid_syn Θ Ξ.
+Proof. intros * Hg HG; exact (HG _ _ (gctx_embedding_with_bodies_refl _ _ Hg) _ _ (gc_sub_refl _ _)). Qed.
 
-Lemma syn_tele_ass : forall Θ Ξ Θ2 Ξ2, GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
+Lemma syn_tele_ass : forall Θ Ξ Θ2 Ξ2, bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
 Proof.
   intros * HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [_ HΞ].
   destruct Ξ as [| [[mp K] U] Ξ]; [ constructor | exact (proj1 (proj1 HΞ)) ].
 Qed.
 
 Lemma syn_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ2 Ξ2 Θ -> gs_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ2 Ξ2 Ξ ->
     forall (Θs : gdeps) (Ξs : gstack), syn_V Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM HG He _ _ Θs Ξs.
   pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) as Hg.
   destruct (presup_exp_typ_v HM (syn_valid_here _ _ Hg HG)) as [i HA].
-  destruct (emb_preserves_wf _ _ _ _ He) as (_ & Ht & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
   exists A; split; [ reflexivity |]; split; [ exists i; apply Ht, HA |].
   intros ? [= <-]; exists M; split; [ reflexivity | apply Ht, HM ].
 Qed.
 
 Lemma syn_ax : forall Θ Ξ A i b pv Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
-  intros * HA _ He _; destruct (emb_preserves_wf _ _ _ _ (Embx_emb _ _ _ _ He)) as (_ & Ht & _).
+  intros * HA _ He _; destruct (gctx_embedding_preserves_wf _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as (_ & Ht & _).
   exists A; split; [ reflexivity |]; split; [ exists i; apply Ht, HA | discriminate ].
 Qed.
 
 (** An alias: what its target denotes, wherever it is read, is typed. *)
 Lemma syn_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * HaΔ Hx HE HG He _; cbn [syn_V].
-  pose proof (Embx_emb _ _ _ _ He) as He'.
-  pose proof (em_wf _ _ _ _ He') as Hg2.
+  pose proof (gctx_embedding_with_bodies_embedding _ _ _ _ He) as He'.
+  pose proof (gctx_embedding_wf _ _ _ _ He') as Hg2.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
   pose proof (syn_valid_here _ _ Hg HG) as Hv.
-  destruct (emb_preserves_wf _ _ _ _ He') as (Hc & _ & _ & _ & _ & _ & Hme).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He') as (Hc & _ & _ & _ & _ & _ & Hme).
   pose proof (ext_eq_ctx_left _ _ _ _ _ Hx) as HΔ.
   split; [ exact (Hme _ _ _ HE) |].
   split; [ exact (Hc _ HΔ) |].
   intros Γ HΓ.
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 desc_typed)))))) _ _ _ _ _ HE Hv) as (_ & HR & _).
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HE) as (_ & (R1 & R1m & HR1 & HR1m) & _).
-  destruct (proj1 (mdenote_grow_all _ _ _ _ Hg Hg2 (em_res _ _ _ _ He')) _ _ _ HR1) as (R2 & HR2 & Hd).
+  destruct (proj1 (mdenote_grow_all _ _ _ _ Hg Hg2 (gctx_embedding_resolution _ _ _ _ He')) _ _ _ HR1) as (R2 & HR2 & Hd).
   pose proof (desc_ok_grow _ _ _ _ Hg He' _ _ (HR _ HR1) _ Hd) as Hok2.
   destruct (dsg_mod _ _ _ _ _ _ _ Hd HR1m) as (R2m & HR2m & _).
   pose proof (Hme _ _ _ HE) as HE2.
@@ -4481,37 +4481,37 @@ Proof.
 Qed.
 
 Lemma syn_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     syn_F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
   split; [ apply List.Forall_app; split; [ exact HΔ | exact (syn_tele_ass _ _ _ _ HG He) ] |].
-  exact (proj1 (emb_preserves_wf _ _ _ _ (Embx_emb _ _ _ _ He)) _ HC).
+  exact (proj1 (gctx_embedding_preserves_wf _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) _ HC).
 Qed.
 
 Lemma syn_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    decl_typed Θ Ξ D -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     syn_VD Θ2 Ξ2 D /\ syn_F Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * HD _ He.
-  pose proof (decl_typed_emb _ _ _ _ _ (Embx_emb _ _ _ _ He) HD) as HD2.
+  pose proof (decl_typed_emb _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) HD) as HD2.
   destruct (decl_typed_uparams _ _ _ HD2) as [HU HaU].
   split; [ exact HD2 | split; assumption ].
 Qed.
 
 (** A record: its declaration, typed where it is checked, moved along. *)
 Lemma syn_record : forall Θ Ξ R Θ2 Ξ2,
-    record_typed Θ Ξ R -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> syn_VR Θ2 Ξ2 R.
-Proof. intros * HR _ He; exact (record_typed_emb _ _ _ _ _ (Embx_emb _ _ _ _ He) HR). Qed.
+    record_typed Θ Ξ R -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> syn_VR Θ2 Ξ2 R.
+Proof. intros * HR _ He; exact (record_typed_emb _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) HR). Qed.
 
 (** A record's module telescope, where the record is found: the value's
     type is typed there. *)
 Lemma syn_record_tele : forall Θ Ξ p R Θ2 Ξ2,
-    record_typed Θ Ξ R -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+    record_typed Θ Ξ R -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
     syn_F Θ2 Ξ2 (record_params R) -> syn_F Θ2 Ξ2 (record_mod_tele p R).
 Proof.
   intros * HR _ He Hl [Ha _]; split; [ constructor; [ eexists; reflexivity | exact Ha ] |].
-  exact (record_mod_tele_wf _ _ _ _ (record_typed_emb _ _ _ _ _ (Embx_emb _ _ _ _ He) HR) Hl).
+  exact (record_mod_tele_wf _ _ _ _ (record_typed_emb _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) HR) Hl).
 Qed.
 
 (** Everything stored in a well-formed global context is valid there. *)
@@ -4604,7 +4604,7 @@ Definition entry_typed (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_mod _ _ | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => True
   end.
 
-Definition rwf (Θ : gdeps) (Ξ : gstack) : Prop := GV entry_typed decl_typed Θ Ξ Θ Ξ.
+Definition resolved_globals_typed (Θ : gdeps) (Ξ : gstack) : Prop := globals_valid entry_typed decl_typed Θ Ξ Θ Ξ.
 
 Theorem presup_exp_typ : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -4614,50 +4614,50 @@ Proof.
 Qed.
 
 Lemma entry_typed_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> Good entry_typed decl_typed Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     entry_typed Θ2 Ξ2 (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM HG He.
   destruct (presup_exp_typ HM) as [i HA].
-  destruct (emb_preserves_wf _ _ _ _ He) as (_ & Ht & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
   destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
   split; [ exists j; apply Ht, HT | intros ? [= <-]; apply Ht; eapply ctx_fn_wf0; eassumption ].
 Qed.
 
 Lemma entry_typed_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Good entry_typed decl_typed Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     entry_typed Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He.
-  destruct (emb_preserves_wf _ _ _ _ He) as (_ & Ht & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
   destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
   split; [ exists j; apply Ht, HT | discriminate ].
 Qed.
 
 Lemma entry_typed_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> Good entry_typed decl_typed Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> decl_typed Θ2 Ξ2 D.
+    decl_typed Θ Ξ D -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> decl_typed Θ2 Ξ2 D.
 Proof. intros * HD _ He; eapply decl_typed_emb; eassumption. Qed.
 
 (** ** The Mutual Theorem *)
 
 Theorem presup_global :
-  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Good entry_typed decl_typed Θ Ξ) /\
-  (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> GoodE entry_typed decl_typed Θ Ξ mp E) /\
-  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> GoodM entry_typed decl_typed Θ Ξ mp K Δ Φ) /\
-  (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> Good entry_typed decl_typed Θ Ξ).
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ) /\
+  (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> entry_valid_along_embeddings entry_typed decl_typed Θ Ξ mp E) /\
+  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> module_valid_along_embeddings entry_typed decl_typed Θ Ξ mp K Δ Φ) /\
+  (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ).
 Proof.
   destruct (global_induction_all entry_typed decl_typed entry_typed_def entry_typed_ax entry_typed_ind)
     as (H1 & H2 & H3 & H4 & _ & H5 & H6 & H7 & H8 & H9 & H10).
   exact (conj H1 (conj H2 (conj H3 (conj H4 (conj H5 (conj H6 (conj H7 (conj H8 (conj H9 H10))))))))).
 Qed.
 
-Corollary gctx_rwf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> rwf Θ Ξ.
+Corollary gctx_resolved_globals_typed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> resolved_globals_typed Θ Ξ.
 Proof. exact (global_induction entry_typed decl_typed entry_typed_def entry_typed_ax entry_typed_ind). Qed.
 
 (** What a use of a global needs: its type and body, in any well-formed
@@ -4667,7 +4667,7 @@ Corollary wf_glob_typ : forall Θ Ξ Γ p b pv A B,
     gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
     exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
-  intros * HΓ Hl; destruct (gv_entries _ _ _ _ _ _ (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl) as [[i HA] _].
+  intros * HΓ Hl; destruct (globals_valid_entries _ _ _ _ _ _ (gctx_resolved_globals_typed _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl) as [[i HA] _].
   exists i; eapply closed_weaken_exp;
     [ assumption | exact HA | eapply wf_gc_resolve_type_closed; eassumption | exact I ].
 Qed.
@@ -4677,7 +4677,7 @@ Corollary wf_glob_body : forall Θ Ξ Γ p b pv A M,
     gc_resolve Θ Ξ p = Some (ge_def b pv A (Some M)) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
 Proof.
-  intros * HΓ Hl; destruct (gv_entries _ _ _ _ _ _ (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl) as [_ HM].
+  intros * HΓ Hl; destruct (globals_valid_entries _ _ _ _ _ _ (gctx_resolved_globals_typed _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl) as [_ HM].
   eapply closed_weaken_exp;
     [ assumption | apply HM; reflexivity
     | eapply wf_gc_resolve_body_closed; eassumption
@@ -4693,7 +4693,7 @@ Corollary wf_def_mod_typ : forall Θ Ξ Γ p pv A M U,
     (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
 Proof.
   intros * HΓ He.
-  destruct (gv_def_mods _ _ _ _ _ _ (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ _ _ _ He) as [[i HA] HM].
+  destruct (globals_valid_def_mods _ _ _ _ _ _ (gctx_resolved_globals_typed _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ _ _ _ He) as [[i HA] HM].
   destruct (wf_def_mod_closed _ _ _ _ _ _ _ _ HΓ He) as [HsA HsM].
   split.
   - exists i; eapply closed_weaken_exp; [ assumption | exact HA | exact HsA | exact I ].

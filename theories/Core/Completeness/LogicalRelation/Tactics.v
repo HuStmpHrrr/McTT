@@ -106,7 +106,7 @@ Ltac sem_intro0 :=
     let Hsub := fresh "Hsub" in let Hgw := fresh "Hgw" in
     pose proof (valid_emb_emb _ _ _ _ He) as Hemb; pose proof (valid_emb_wf _ _ _ _ He) as Hgm;
     pose proof (valid_emb_filed _ _ _ _ He) as Hgf;
-    pose proof (em_res _ _ _ _ Hemb) as Hsub; pose proof (em_wf _ _ _ _ Hemb) as Hgw;
+    pose proof (gctx_embedding_resolution _ _ _ _ Hemb) as Hsub; pose proof (gctx_embedding_wf _ _ _ _ Hemb) as Hgw;
     change (⊢ᵍ @gc_deps (gc_mk T2 X2) ⍮ @gc_stack (gc_mk T2 X2)) in Hgw;
     change (gc_sub T1 X1 (@gc_deps (gc_mk T2 X2)) (@gc_stack (gc_mk T2 X2))) in Hsub;
     (** The target, named, is the global context the relations are read at. *)

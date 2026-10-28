@@ -1509,7 +1509,7 @@ End Fixed_GCtx.
     declarations glue there, and so does a member of one of its stored
     bodies that is an axiom or an abstract definition, at its stored type. *)
 Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { glu_emb_emb : Emb Θ1 Ξ1 Θ2 Ξ2
+  { glu_emb_emb : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
   ; glu_emb_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
   ; glu_emb_glob : forall p T Φ x Φ0 b pv A oM Γ,
       loc Θ1 Ξ1 p T Φ ->

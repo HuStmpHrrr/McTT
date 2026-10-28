@@ -60,7 +60,7 @@ Hint Resolve glu_rel_ctx_extend glu_rel_ctx_extend_def : mctt.
 Lemma glu_ctx_empty :
   `( ⊢ᵍ Θ ⍮ Ξ ->
      ⊩ Θ ⍮ Ξ ⍮ ⋅ ).
-Proof. glu_intro; eapply glu_rel_ctx_empty; eapply em_wf, glu_emb_emb; eassumption. Qed.
+Proof. glu_intro; eapply glu_rel_ctx_empty; eapply gctx_embedding_wf, glu_emb_emb; eassumption. Qed.
 
 Lemma glu_ctx_extend :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->

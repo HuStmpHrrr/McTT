@@ -137,7 +137,7 @@ Qed.
 (** ** Each entry is valid where it is checked *)
 
 Lemma valid_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
     forall Θs Ξs, valid_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
@@ -149,7 +149,7 @@ Proof.
 Qed.
 
 Lemma valid_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He _.
@@ -160,7 +160,7 @@ Qed.
 
 Lemma valid_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * HΔ _ HE HG He Hs HgS; cbn.
@@ -173,11 +173,11 @@ Proof.
     by (apply wf_unit_eq_alias; [ exact (ext_of_ctx _ _ _ _ HC) | exact Ht | exact Ht | exact HE' | exact HE' ]).
   destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & Ku & _).
   destruct (Ku _ _ _ _ _ HU _ _ Hμ) as [_ _ HK _].
-  exact (valid_unit_grow _ _ _ _ Hg {| em_wf := HgS; em_res := Hs |} _ _ HK).
+  exact (valid_unit_grow _ _ _ _ Hg {| gctx_embedding_wf := HgS; gctx_embedding_resolution := Hs |} _ _ HK).
 Qed.
 
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
@@ -199,7 +199,7 @@ Lemma valid_ind_decl_of_typed : forall Θ Ξ D Θ2 Ξ2, decl_typed Θ Ξ D -> va
 Proof.
   intros * Hdt Hμ.
   pose proof (decl_typed_sort_univ _ _ _ Hdt) as Hsu.
-  pose proof (em_res _ _ _ _ (valid_emb_emb _ _ _ _ Hμ)) as Hs.
+  pose proof (gctx_embedding_resolution _ _ _ _ (valid_emb_emb _ _ _ _ Hμ)) as Hs.
   pose proof (valid_emb_wf _ _ _ _ Hμ) as Hg.
   assert (Harg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
              List.nth_error (cargs_nonrec gs) j = Some A ->
@@ -332,7 +332,7 @@ Proof.
 Qed.
 
 Lemma valid_entry_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> valid_ind_decl_entry Θ2 Ξ2 D /\ valid_mod_tele Θ2 Ξ2 (ind_uparams D).
+    decl_typed Θ Ξ D -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> valid_ind_decl_entry Θ2 Ξ2 D /\ valid_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He.
   destruct (decl_typed_uparams _ _ _ Hdt) as [HUw HUa].
@@ -362,8 +362,8 @@ Proof.
 Qed.
 
 Lemma valid_entry_record : forall Θ Ξ R Θ2 Ξ2,
-    record_typed Θ Ξ R -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
-    Embx Θ Ξ Θ2 Ξ2 -> valid_record_decl_entry Θ2 Ξ2 R.
+    record_typed Θ Ξ R -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
+    gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> valid_record_decl_entry Θ2 Ξ2 R.
 Proof.
   intros * Ht HG He.
   pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
@@ -374,14 +374,14 @@ Qed.
     its parameters, valid there, and a value of it, of the type former at
     the parameters as variables, a type of the sort. *)
 Lemma valid_mod_tele_record : forall Θ Ξ p R Θ2 Ξ2,
-    record_typed Θ Ξ R -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
-    Embx Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+    record_typed Θ Ξ R -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
+    gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
     valid_mod_tele Θ2 Ξ2 (record_params R) -> valid_mod_tele Θ2 Ξ2 (record_mod_tele p R).
 Proof.
   intros * Ht HG He Hl [HP Ha].
   pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
   pose proof (valid_record_decl_of_typed _ _ _ _ _ Ht Hμ) as [HPv [i HSv] HFv HTv].
-  assert (Hc : record_closed R) by exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ (emx_wf _ _ _ _ He)) Hl).
+  assert (Hc : record_closed R) by exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ (gctx_embedding_with_bodies_wf _ _ _ _ He)) Hl).
   pose proof (@Records.Model.valid_exp_under_ctx_record (gc_mk Θ2 Ξ2) p R Hl Hc Ha (typed_nodup _ _ _ Ht)
                 (record_typed_sort_univ _ _ _ Ht) HFv (ex_intro _ i HSv) HTv) as HF0.
   pose proof (@valid_apps_vars (gc_mk Θ2 Ξ2) _ (record_params R) ⋅ (record_sort R) i (a_record p) eq_refl Ha
@@ -398,7 +398,7 @@ Qed.
 
 Theorem valid_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_emb Θ Ξ Θ Ξ.
 Proof.
-  intros * Hg; apply valid_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
+  intros * Hg; apply valid_emb_good; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
   exact (global_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry valid_entry_def valid_entry_ax valid_entry_alias valid_mod_tele_nil valid_entry_ind
            valid_entry_record valid_mod_tele_record _ _ Hg).
 Qed.

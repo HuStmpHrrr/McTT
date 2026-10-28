@@ -40,7 +40,7 @@ Lemma glu_rel_exp_of_eq_of_emb : forall Θ Ξ Θ2 Ξ2 Γ M N A,
     glu_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ N : A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ N A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
 Proof.
   intros * He Heq Hg.
-  destruct (emb_preserves_wf _ _ _ _ (glu_emb_emb _ _ _ _ He)) as (_ & _ & Hwq & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ (glu_emb_emb _ _ _ _ He)) as (_ & _ & Hwq & _).
   eapply (@glu_rel_exp_of_eq (gc_mk Θ2 Ξ2)); [ exact Hg | exact (Hwq _ _ _ _ Heq) ].
 Qed.
 

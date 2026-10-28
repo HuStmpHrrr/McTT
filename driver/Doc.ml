@@ -120,10 +120,10 @@ type mden =
 
 (* A core binder in scope: what a use links to (its binding occurrence, or
    for an open's item the member it names) and, for a local module, what it
-   denotes.  [vs] lists one per binder entry ([en_var], [en_tvar]) of [sc], in order. *)
+   denotes.  [vs] lists one per binder entry ([scope_entry_var], [scope_entry_tvar]) of [sc], in order. *)
 type vb = { v_link : link; v_mod : mden }
 
-type env = { sc : E.ent list; vs : vb list }
+type env = { sc : E.scope_entry list; vs : vb list }
 
 (* An entry of a unit's contents: a declaration of the unit's body, at any
    depth of its modules, with the anchor its name declares.  [te_depth] is
@@ -131,7 +131,7 @@ type env = { sc : E.ent list; vs : vb list }
    keyword shown in front of it. *)
 type toc_entry = { te_depth : int; te_name : string; te_anchor : string; te_kw : string; te_kind : kind }
 
-let push x v env = { sc = E.Coq_en_var x :: env.sc; vs = v :: env.vs }
+let push x v env = { sc = E.Coq_scope_entry_var x :: env.sc; vs = v :: env.vs }
 
 (* A member selected from something that may be a term, [h.y] with [h]
    not a local module: the VAR of [y], [y], and the link the walk gives
@@ -194,7 +194,7 @@ type st = {
   items : (string list * string list, link) Hashtbl.t;  (* open items, see [items] below *)
   mutable toc : toc_entry list;  (* the unit's declarations at every depth, last first *)
   mutable notes : string list;
-  mutable evals : (C.obj * C.obj option) list;  (* the evals walked, last first *)
+  mutable evals : (C.expression * C.expression option) list;  (* the evals walked, last first *)
   mutable recs : rec_site list;  (* the groups walked, last first *)
   mutable sels : sel list;       (* the current command's selections, last first *)
   mutable cmd_recs : cmd_rec list;  (* the commands walked, last first *)
@@ -262,12 +262,12 @@ let continues st =
 (* ------------------------------------------------------------------ *)
 (* Names *)
 
-let lookup env x : (E.ent * vb option) option =
+let lookup env x : (E.scope_entry * vb option) option =
   match El.lookup x env.sc with
   | None -> None
   | Some (k, e) ->
       (match e with
-       | E.Coq_en_var _ | E.Coq_en_tvar _ ->
+       | E.Coq_scope_entry_var _ | E.Coq_scope_entry_tvar _ ->
            if E.binders env.sc <> List.length env.vs then
              raise (Misaligned "scope out of step with its binders");
            Some (e, Some (List.nth env.vs k))
@@ -285,9 +285,9 @@ let head st env i x : mden =
       refer st i (Site { s_unit = [ x ]; s_anchor = "" }); MGlobal (S.Coq_me_unit [ x ], [])
   | None -> MNone
   | Some (_, Some v) -> refer st i v.v_link; v.v_mod
-  | Some (E.Coq_en_mem (_, p, _), _) ->
+  | Some (E.Coq_scope_entry_mem (_, p, _), _) ->
       refer st i (Member (st.unit, S.Coq_me_unit p.S.q_unit, p.S.q_chain)); qname_mden p
-  | Some (E.Coq_en_open (d, h, oc), _) ->
+  | Some (E.Coq_scope_entry_open (d, h, oc), _) ->
       (match oc with
        | Some c -> refer st i (Member (st.unit, h, [ c ]))
        | None -> refer st i (Site { s_unit = st.unit; s_anchor = d }));
@@ -321,7 +321,7 @@ let unit_path st fq =
 (* ------------------------------------------------------------------ *)
 (* Objects: the binders of [Elaborator.elab], clause by clause. *)
 
-let rec term st env (o : C.obj) : unit =
+let rec term st env (o : C.expression) : unit =
   match o with
   | C.Coq_typ _ | C.Coq_level _ | C.Coq_llit _
   | C.Coq_nat | C.Coq_num _ | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
@@ -360,7 +360,7 @@ let rec term st env (o : C.obj) : unit =
       List.iter (fun (y, m) -> st.occ.(next st y).bare <- true; term st env m) fs
 
 (* Module position: [Elaborator.elab_mod]. *)
-and modv st env (o : C.obj) : mden =
+and modv st env (o : C.expression) : mden =
   match o with
   | C.Coq_var x -> head st env (next st x) x
   | C.Coq_glob fq -> unit_path st fq; MGlobal (S.Coq_me_unit fq, [])
@@ -397,8 +397,8 @@ and target st env fq ip args : mden =
     | [], x :: ip' when cont ->
         (match lookup env x with
          | Some (_, Some v) -> (v.v_mod, ip')
-         | Some (E.Coq_en_mem (_, p, _), _) -> (qname_mden p, ip')
-         | Some (E.Coq_en_open (_, h, oc), _) -> (MGlobal (h, opt_list oc), ip')
+         | Some (E.Coq_scope_entry_mem (_, p, _), _) -> (qname_mden p, ip')
+         | Some (E.Coq_scope_entry_open (_, h, oc), _) -> (MGlobal (h, opt_list oc), ip')
          | None when El.unit_in_b [ x ] env.sc -> (MGlobal (S.Coq_me_unit [ x ], []), ip')
          | _ -> (MNone, ip'))
     | [], x :: ip' -> (head st env (next st x) x, ip')
@@ -472,7 +472,7 @@ let def_kw st i =
    frame's entries, then everything outside it); [sv] are the binders of
    [s].  The scope after it is [elab_cmd]'s; a command adds no binder.  Each
    declaration of the body is an entry of the unit's contents. *)
-let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.ent list =
+let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.scope_entry list =
   let env = { sc = s; vs = sv } in
   (* The selections of an enclosing command, set aside while this one's
      are gathered. *)
@@ -561,7 +561,7 @@ let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.ent list =
         | C.Coq_md_where body ->
             let k = st.frame_ps in
             st.frame_ps <- k + List.length ps;
-            ignore (cmds st fp (ch @ [ x ]) (List.map fst ps) (E.pents ps @ s, List.rev vbs @ sv) body);
+            ignore (cmds st fp (ch @ [ x ]) (List.map fst ps) (E.param_scope_entries ps @ s, List.rev vbs @ sv) body);
             st.frame_ps <- k
         | C.Coq_md_alias e -> ignore (modv st env' e));
        L_mod (ch, x)
@@ -595,7 +595,7 @@ let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.ent list =
    (* A record type: its name, a type and a module, its parameters, its
       sort, then its fields, members of its module, each type seeing the
       fields before it, then its with-area, in the record's frame
-      ([ElabSpec.record_ents]), the record in scope outside it. *)
+      ([ElabSpec.record_scope_entries]), the record in scope outside it. *)
    | C.Coq_c_record (_, x, ps, srt, fs, cs) ->
        ignore (decl (Some "record") x Mod);
        let env', vbs = params st env ps in
@@ -614,7 +614,7 @@ let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.ent list =
        st.frame_ps <- k + List.length ps + 1;
        let nb = List.length sv in
        ignore (cmds st fp (ch @ [ x ]) (List.map fst ps)
-                 (E.record_ents fp ch nb x ps fs @ E.Coq_en_mem (x, p, nb) :: s, self :: List.rev vbs @ sv) cs);
+                 (E.record_scope_entries fp ch nb x ps fs @ E.Coq_scope_entry_mem (x, p, nb) :: s, self :: List.rev vbs @ sv) cs);
        st.frame_ps <- k;
        L_record (ch, x, k)
    (* A builtin binding: its kind, which declares nothing and links where
@@ -658,7 +658,7 @@ and cmds st fp ch pn (s, sv) cs =
 
 (* A leading import or open: read in the scope [l] of the parameter types,
    which [elab_lead] extends. *)
-let lead st fp (l : E.ent list) (c : C.cmd) : E.ent list =
+let lead st fp (l : E.scope_entry list) (c : C.cmd) : E.scope_entry list =
   ignore (cmd st fp [] [] (l, []) c);
   match El.elab_lead l [ c ] with
   | El.Coq_eok (l', _) -> l'
@@ -690,7 +690,7 @@ let read_file p = In_channel.with_open_bin p In_channel.input_all
    first such token for which the tokens from EVAL on parse, as the body of
    a module, to exactly the walked eval is its end: the span is read off the
    parser, never guessed. *)
-let eval_spans (toks : tok array) (evals : (C.obj * C.obj option) list) : (int * int) list =
+let eval_spans (toks : tok array) (evals : (C.expression * C.expression option) list) : (int * int) list =
   let dummy = (Lexing.dummy_pos, Lexing.dummy_pos) in
   let follows = function
     | P.MODULE _ | P.PRIVATE _ | P.ABSTRACT _ | P.DEF _ | P.THEOREM _ | P.LEMMA _ | P.FACT _
@@ -739,7 +739,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
   st.sels <- [];
   (* The leading commands again, as the frame's first commands. *)
   let pn = List.map fst ps and sv = List.rev vbs in
-  let s = List.fold_left (fun s c -> next_frame st fp [] pn (s, sv) c) (E.pents ps @ l) leads in
+  let s = List.fold_left (fun s c -> next_frame st fp [] pn (s, sv) c) (E.param_scope_entries ps @ l) leads in
   ignore (cmds st fp [] pn (s, sv) cs);
   if st.cur <> Array.length vars then
     raise (Misaligned (Printf.sprintf "%d of %d names paired" st.cur (Array.length vars)));

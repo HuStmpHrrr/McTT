@@ -5321,12 +5321,12 @@ End Fixed_GCtx.
     a sound embedding: as along a semantic embedding
     ([valid_groups_of_emb]), each read at the target, valid there since
     the target is well formed. *)
-Lemma valid_groups_of_glu_emb : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+Lemma valid_groups_of_glu_emb : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     @valid_groups (gc_mk Θ2 Ξ2) (fun qn G => ind_lookup Θ Ξ qn = Some G).
 Proof.
   intros * Hg He.
-  pose proof (em_res _ _ _ _ He) as Hs.
-  pose proof (valid_emb_refl _ _ (em_wf _ _ _ _ He)) as He2.
+  pose proof (gctx_embedding_resolution _ _ _ _ He) as Hs.
+  pose proof (valid_emb_refl _ _ (gctx_embedding_wf _ _ _ _ He)) as He2.
   constructor.
   - intros qn G Hlq.
     destruct (Completeness.Inductives.Elim.decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt Hc].

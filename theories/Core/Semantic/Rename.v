@@ -394,7 +394,7 @@ Section Bound.
   (** A closure under [n] binders whose environment avoids the excluded
       level at every position its body reads, as the invariant states it. *)
   Definition dbd_eclo (b : nat) (ρ : env) (B : exp) (n : nat) : Prop :=
-    forall v, b <= v -> exists K, env_av Θ Ξ v b K ρ /\ ofresh (oshift n K) B.
+    forall v, b <= v -> exists K, env_av Θ Ξ v b K ρ /\ optional_exp_fresh (optional_shift n K) B.
 
   Lemma dbd_eclo_clon : forall b ρ B n, dbd_eclo b ρ B n -> dbd_clon b ρ B n.
   Proof.
@@ -449,7 +449,7 @@ Section Bound.
   (** The blocks of an eliminator, closures in an environment that avoids
       the excluded level at every position they read. *)
   Definition dbd_blocks (b : nat) (ρ : env) (Bks : list eblock) : Prop :=
-    forall v, b <= v -> exists K, env_av Θ Ξ v b K ρ /\ blocks_ofresh K Bks.
+    forall v, b <= v -> exists K, env_av Θ Ξ v b K ρ /\ blocks_optional_exp_fresh K Bks.
 
   Lemma dbd_blocks_motive : forall b ρ Bks bk, dbd_blocks b ρ Bks -> In bk Bks -> dbd_eclo b ρ (eb_motive bk) (eb_nm bk).
   Proof.
@@ -510,7 +510,7 @@ Section Bound.
   Lemma shty_dbd : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
       env_dbd b ρ -> (forall u, In u ups -> dbd b u) -> dbd b a.
   Proof.
-    intros * H Hρ Hu v Hv; eapply shty_av; [ exact H | apply Hρ, Hv | apply ptfresh_none | intros; apply Hu; assumption ].
+    intros * H Hρ Hu v Hv; eapply shty_av; [ exact H | apply Hρ, Hv | apply optional_ptyp_fresh_none | intros; apply Hu; assumption ].
   Qed.
 
   Lemma fresh_cargs_dbd : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
@@ -566,7 +566,7 @@ Section Bound.
     - assert (Has : forall a, In a as' -> dbd s a).
       { intros a Ha w Hw; destruct (Hl w ltac:(lia)) as (K & HK & HK').
         eapply ihty_av; [ eassumption | eapply env_av_mono; [| exact HK ]; lia | exact (HK' nil t gs eq_refl)
-                        | exact (ups_dbd_av _ _ Hu _ Hw) | exact (Hρa w Hw) | apply ptfresh_none
+                        | exact (ups_dbd_av _ _ Hu _ Hw) | exact (Hρa w Hw) | apply optional_ptyp_fresh_none
                         | exact (all_in_head _ _ _ Hvs w Hw) | exact Ha ]. }
       match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => pose proof (fresh_leaf_vars_dbd _ _ _ _ Hf Has) as Hfl end.
       rewrite List.length_app; apply all_in_app.

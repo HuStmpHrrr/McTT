@@ -89,7 +89,7 @@ Lemma glu_elim :
 Proof.
   intros * Hl Hgr HMm Hbm HLb HPl HPt HPg HMt HMg -> Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg Θ2 Ξ2 Hμ.
   pose proof (glu_emb_emb _ _ _ _ Hμ) as Hem.
-  destruct (emb_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _ & _ & Hwx & _ & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _ & _ & Hwx & _ & _).
   pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HMt)) as Hg.
   pose proof (valid_groups_of_glu_emb _ _ _ _ Hg Hem) as HVP.
   eapply (@glu_rel_exp_elim (gc_mk Θ2 Ξ2) _ p D HVP (glu_emb_ind_field _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks Ps M i

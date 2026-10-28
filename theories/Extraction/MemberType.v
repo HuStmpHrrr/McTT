@@ -3,13 +3,13 @@
     [mdenote_impl] decides [mdenote], together with what units and entries
     denote ([udenote], [edenote]), the expansion of bodies ([body_xp]) and
     what an open generates ([items_gen]), by recursion on a termination
-    order ([dn_order]) that mirrors their recursion: a slot is read through
+    order ([mdenote_order]) that mirrors their recursion: a slot is read through
     the unit the context gives it, a selection through the entry the
     description of its module gives, and an open through its target in the
     context of the expanded body before it.  Wherever a lookup succeeds, the
     order asks for an order of what it found, so every module expression
-    that denotes has an order ([dn_order_of_mdenote]); so does a selection
-    from a well-formed module expression ([dn_order_mem_of_wf]), since the
+    that denotes has an order ([mdenote_order_of_mdenote]); so does a selection
+    from a well-formed module expression ([mdenote_order_mem_of_wf]), since the
     entries of the description of a well-formed module expression denote. *)
 
 From Stdlib Require Import Lia List PeanoNat String.
@@ -27,81 +27,81 @@ Import Syntax_Notations GlobalCtx_Notations.
 
 (** ** The Termination Order *)
 
-Inductive dn_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> Prop :=
-| dn_order_unit : forall Γ H TΦ,
+Inductive mdenote_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> Prop :=
+| mdenote_order_unit : forall Γ H TΦ,
     gc_unit Θ Ξ H = Some TΦ ->
-    dn_order Θ Ξ Γ H
+    mdenote_order Θ Ξ Γ H
 (** The open frame of a member's module, named by its path *)
-| dn_order_ind_frame : forall Γ H p r,
+| mdenote_order_ind_frame : forall Γ H p r,
     mod_qname H = Some p -> gs_find_ind Ξ p = Some r ->
-    dn_order Θ Ξ Γ H
+    mdenote_order Θ Ξ Γ H
 (** The open frame of a record type's module, named by its path *)
-| dn_order_record_frame : forall Γ H p R,
+| mdenote_order_record_frame : forall Γ H p R,
     mod_qname H = Some p -> gs_find_record Ξ p = Some R ->
-    dn_order Θ Ξ Γ H
-| dn_order_path : forall Γ fp,
-    dn_order Θ Ξ Γ (me_unit fp)
-| dn_order_var : forall Γ x,
-    (forall U, ctx_find_mod Γ x = Some U -> un_order Θ Ξ Γ U) ->
-    dn_order Θ Ξ Γ (me_var x)
-| dn_order_lit : forall Γ U,
-    un_order Θ Ξ Γ U ->
-    dn_order Θ Ξ Γ (me_lit U)
-| dn_order_app : forall Γ H N,
-    dn_order Θ Ξ Γ H ->
-    dn_order Θ Ξ Γ (me_app H N)
-| dn_order_mem_case : forall Γ H y,
-    dn_order Θ Ξ Γ H ->
+    mdenote_order Θ Ξ Γ H
+| mdenote_order_path : forall Γ fp,
+    mdenote_order Θ Ξ Γ (me_unit fp)
+| mdenote_order_var : forall Γ x,
+    (forall U, ctx_find_mod Γ x = Some U -> udenote_order Θ Ξ Γ U) ->
+    mdenote_order Θ Ξ Γ (me_var x)
+| mdenote_order_lit : forall Γ U,
+    udenote_order Θ Ξ Γ U ->
+    mdenote_order Θ Ξ Γ (me_lit U)
+| mdenote_order_app : forall Γ H N,
+    mdenote_order Θ Ξ Γ H ->
+    mdenote_order Θ Ξ Γ (me_app H N)
+| mdenote_order_mem_case : forall Γ H y,
+    mdenote_order Θ Ξ Γ H ->
     (forall R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> ds_mod R0 = Some R0m ->
-       ds_entry R0m y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E) ->
-    dn_order Θ Ξ Γ (me_mem H y)
-with un_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> Prop :=
-| un_order_body : forall Γ Δ sm Φ,
-    bx_order Θ Ξ (Δ ++ Γ) Φ ->
-    un_order Θ Ξ Γ (gu_mk Δ (md_body sm Φ))
-| un_order_alias : forall Γ Δ E,
-    dn_order Θ Ξ (Δ ++ Γ) E ->
-    un_order Θ Ξ Γ (gu_mk Δ (md_alias E))
-with en_order (Θ : gdeps) (Ξ : gstack) : ctx -> gentry -> Prop :=
-| en_order_def : forall Γ b pv A oM, en_order Θ Ξ Γ (ge_def b pv A oM)
-| en_order_mod : forall Γ pv U,
-    un_order Θ Ξ Γ U ->
-    en_order Θ Ξ Γ (ge_mod pv U)
-| en_order_ind_case : forall Γ pv p k D Φ, en_order Θ Ξ Γ (ge_ind pv p k D Φ)
+       ds_entry R0m y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E) ->
+    mdenote_order Θ Ξ Γ (me_mem H y)
+with udenote_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> Prop :=
+| udenote_order_body : forall Γ Δ sm Φ,
+    body_xp_order Θ Ξ (Δ ++ Γ) Φ ->
+    udenote_order Θ Ξ Γ (gu_mk Δ (md_body sm Φ))
+| udenote_order_alias : forall Γ Δ E,
+    mdenote_order Θ Ξ (Δ ++ Γ) E ->
+    udenote_order Θ Ξ Γ (gu_mk Δ (md_alias E))
+with edenote_order (Θ : gdeps) (Ξ : gstack) : ctx -> gentry -> Prop :=
+| edenote_order_def : forall Γ b pv A oM, edenote_order Θ Ξ Γ (ge_def b pv A oM)
+| edenote_order_mod : forall Γ pv U,
+    udenote_order Θ Ξ Γ U ->
+    edenote_order Θ Ξ Γ (ge_mod pv U)
+| edenote_order_ind_case : forall Γ pv p k D Φ, edenote_order Θ Ξ Γ (ge_ind pv p k D Φ)
 (** A definition with a module part: its module part's target, under its
     parameters *)
-| en_order_def_mod : forall Γ pv A M Δ E,
-    dn_order Θ Ξ (Δ ++ Γ) E ->
-    en_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_alias E)))
+| edenote_order_def_mod : forall Γ pv A M Δ E,
+    mdenote_order Θ Ξ (Δ ++ Γ) E ->
+    edenote_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_alias E)))
 (** One whose module part is a body denotes nothing *)
-| en_order_def_mod_body : forall Γ pv A M Δ sm Φ, en_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_body sm Φ)))
+| edenote_order_def_mod_body : forall Γ pv A M Δ sm Φ, edenote_order Θ Ξ Γ (ge_def_mod pv A M (gu_mk Δ (md_body sm Φ)))
 (** A record entry: its type former, where it is stored *)
-| en_order_record : forall Γ pv pr R Φ, en_order Θ Ξ Γ (ge_record pv pr R Φ)
-with bx_order (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> Prop :=
-| bx_order_nil : forall Γ, bx_order Θ Ξ Γ gm_nil
-| bx_order_ext : forall Γ Φ x E,
-    bx_order Θ Ξ Γ Φ ->
-    bx_order Θ Ξ Γ (gm_ext Φ x E)
-| bx_order_open : forall Γ Φ H its,
-    bx_order Θ Ξ Γ Φ ->
-    (forall Φx, body_xp Θ Ξ Γ Φ Φx -> dn_order Θ Ξ (body_ctx Φx ++ Γ) H) ->
-    (forall Φx, body_xp Θ Ξ Γ Φ Φx -> ig_order Θ Ξ (body_ctx Φx ++ Γ) H its) ->
-    bx_order Θ Ξ Γ (gm_open Φ H its)
-with ig_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> Prop :=
-| ig_order_nil : forall Γ H, ig_order Θ Ξ Γ H nil
-| ig_order_self : forall Γ H d pv its,
-    ig_order Θ Ξ Γ H its ->
-    ig_order Θ Ξ Γ H ((None, d, pv) :: its)
-| ig_order_name : forall Γ H n d pv its,
-    dn_order Θ Ξ Γ (me_mem H n) ->
-    ig_order Θ Ξ Γ H its ->
-    ig_order Θ Ξ Γ H ((Some n, d, pv) :: its).
+| edenote_order_record : forall Γ pv pr R Φ, edenote_order Θ Ξ Γ (ge_record pv pr R Φ)
+with body_xp_order (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> Prop :=
+| body_xp_order_nil : forall Γ, body_xp_order Θ Ξ Γ gm_nil
+| body_xp_order_ext : forall Γ Φ x E,
+    body_xp_order Θ Ξ Γ Φ ->
+    body_xp_order Θ Ξ Γ (gm_ext Φ x E)
+| body_xp_order_open : forall Γ Φ H its,
+    body_xp_order Θ Ξ Γ Φ ->
+    (forall Φx, body_xp Θ Ξ Γ Φ Φx -> mdenote_order Θ Ξ (body_ctx Φx ++ Γ) H) ->
+    (forall Φx, body_xp Θ Ξ Γ Φ Φx -> items_gen_order Θ Ξ (body_ctx Φx ++ Γ) H its) ->
+    body_xp_order Θ Ξ Γ (gm_open Φ H its)
+with items_gen_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> Prop :=
+| items_gen_order_nil : forall Γ H, items_gen_order Θ Ξ Γ H nil
+| items_gen_order_self : forall Γ H d pv its,
+    items_gen_order Θ Ξ Γ H its ->
+    items_gen_order Θ Ξ Γ H ((None, d, pv) :: its)
+| items_gen_order_name : forall Γ H n d pv its,
+    mdenote_order Θ Ξ Γ (me_mem H n) ->
+    items_gen_order Θ Ξ Γ H its ->
+    items_gen_order Θ Ξ Γ H ((Some n, d, pv) :: its).
 
-Scheme dn_order_mut_ind := Induction for dn_order Sort Prop
-with un_order_mut_ind := Induction for un_order Sort Prop
-with en_order_mut_ind := Induction for en_order Sort Prop
-with bx_order_mut_ind := Induction for bx_order Sort Prop
-with ig_order_mut_ind := Induction for ig_order Sort Prop.
+Scheme mdenote_order_mut_ind := Induction for mdenote_order Sort Prop
+with udenote_order_mut_ind := Induction for udenote_order Sort Prop
+with edenote_order_mut_ind := Induction for edenote_order Sort Prop
+with body_xp_order_mut_ind := Induction for body_xp_order Sort Prop
+with items_gen_order_mut_ind := Induction for items_gen_order Sort Prop.
 
 (** ** The Decision Procedure *)
 
@@ -403,12 +403,12 @@ Section DenoteImpl.
     repeat match goal with H : _ = _ /\ _ |- _ => destruct H end;
     repeat match goal with H : ?o = None |- _ => is_var o; subst o end;
     repeat match goal with
-      | H : dn_order _ _ _ _ |- _ => progressive_invert H
-      | H : un_order _ _ _ _ |- _ => progressive_invert H
-      | H : en_order _ _ _ _ |- _ => progressive_invert H
-      | H : bx_order _ _ _ _ |- _ => progressive_invert H
-      | H : ig_order _ _ _ _ _ |- _ => progressive_invert H
-      | Ho : dn_order _ _ _ (me_mem _ _), Eu : gc_unit _ _ (me_mem _ _) = None, Ek : frame_ind_of _ (me_mem _ _) = None,
+      | H : mdenote_order _ _ _ _ |- _ => progressive_invert H
+      | H : udenote_order _ _ _ _ |- _ => progressive_invert H
+      | H : edenote_order _ _ _ _ |- _ => progressive_invert H
+      | H : body_xp_order _ _ _ _ |- _ => progressive_invert H
+      | H : items_gen_order _ _ _ _ _ |- _ => progressive_invert H
+      | Ho : mdenote_order _ _ _ (me_mem _ _), Eu : gc_unit _ _ (me_mem _ _) = None, Ek : frame_ind_of _ (me_mem _ _) = None,
         Erf : frame_record_of _ (me_mem _ _) = None |- _ =>
           inversion Ho; subst; clear Ho;
             [ congruence | exfalso; eapply frame_ind_of_none; eassumption | exfalso; eapply frame_record_of_none; eassumption |]
@@ -425,7 +425,7 @@ Section DenoteImpl.
     end.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations mdenote_impl Γ H (Ho : dn_order Θ Ξ Γ H) :
+  Equations mdenote_impl Γ H (Ho : mdenote_order Θ Ξ Γ H) :
       { R : fmdesc | mdenote Θ Ξ Γ H (dec_desc R) } + { forall R, ~ mdenote Θ Ξ Γ H R } by struct Ho :=
   | Γ, me_unit fp, Ho with gc_unit_cf F (me_unit fp) := {
     | exist _ (Some (T, t)) Eu => inleft (exist _ (fds_closed nil (q_abs fp nil) T t (proj2 Eu T t eq_refl) nil) _)
@@ -478,7 +478,7 @@ Section DenoteImpl.
                   | exist _ (Some R') Er => inleft (exist _ R' (mdenote_mem_dec _ _ _ _ _ _ _ _ _ _ _ _ HR0 Em (proj1 Ee) HR Er)) } } } } } } } }
 
   (** A Core unit, read at no path: a local module *)
-  with udenote_impl Γ U (Ho : un_order Θ Ξ Γ U) :
+  with udenote_impl Γ U (Ho : udenote_order Θ Ξ Γ U) :
       { R : fmdesc | udenote Θ Ξ Γ None U (dec_desc R) } + { forall R, ~ udenote Θ Ξ Γ None U R } by struct Ho :=
   | Γ, gu_mk Δ (md_body sm_open Φ), Ho with body_xp_impl (Δ ++ Γ) Φ _ := {
     | inleft (exist _ Φx Hx) => inleft (exist _ (fds_open Δ Φ Φx) _)
@@ -491,7 +491,7 @@ Section DenoteImpl.
       | exist _ None Em => inright _ } }
 
   (** An entry, read at [o] *)
-  with edenote_impl Γ o s (Hos : esrc_ok o s) (Ho : en_order Θ Ξ Γ (dec_esrc s)) :
+  with edenote_impl Γ o s (Hos : esrc_ok o s) (Ho : edenote_order Θ Ξ Γ (dec_esrc s)) :
       { R : fmdesc | edenote Θ Ξ Γ o (dec_esrc s) (dec_desc R) } + { forall R, ~ edenote Θ Ξ Γ o (dec_esrc s) R }
       by struct Ho :=
   (** A local entry, at no path *)
@@ -554,7 +554,7 @@ Section DenoteImpl.
         inleft (exist _ (fast_record_former_desc p R (fds_closed nil p Tm tm (proj2 El Tm tm eq_refl) nil)) _) }
   | Γ, None, es_fast pe (fe_record pv pr R t) Hc, Hos, Ho => inright _
 
-  with body_xp_impl Γ Φ (Ho : bx_order Θ Ξ Γ Φ) :
+  with body_xp_impl Γ Φ (Ho : body_xp_order Θ Ξ Γ Φ) :
       { Φx | body_xp Θ Ξ Γ Φ Φx } + { forall Φx, ~ body_xp Θ Ξ Γ Φ Φx } by struct Ho :=
   | Γ, gm_nil, Ho => inleft (exist _ gm_nil _)
   | Γ, gm_ext Φ x E, Ho with body_xp_impl Γ Φ _ := {
@@ -572,7 +572,7 @@ Section DenoteImpl.
             | left Hok => inleft (exist _ (gens_append Φx 0 gs) _)
             | right Hn => inright _ } } } } }
 
-  with items_gen_impl Γ H its (Ho : ig_order Θ Ξ Γ H its) :
+  with items_gen_impl Γ H its (Ho : items_gen_order Θ Ξ Γ H its) :
       { gs | items_gen Θ Ξ Γ H its gs } + { forall gs, ~ items_gen Θ Ξ Γ H its gs } by struct Ho :=
   | Γ, H, nil, Ho => inleft (exist _ nil _)
   | Γ, H, (None, d, pv) :: its, Ho with items_gen_impl Γ H its _ := {
@@ -608,35 +608,35 @@ Section Orders.
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
 
   Theorem order_of_denote :
-    (forall Γ H R, mdenote Θ Ξ Γ H R -> dn_order Θ Ξ Γ H) /\
-    (forall Γ o U R, udenote Θ Ξ Γ o U R -> un_order Θ Ξ Γ U) /\
-    (forall Γ o E R, edenote Θ Ξ Γ o E R -> en_order Θ Ξ Γ E) /\
-    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> bx_order Θ Ξ Γ Φ) /\
-    (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> ig_order Θ Ξ Γ H its).
+    (forall Γ H R, mdenote Θ Ξ Γ H R -> mdenote_order Θ Ξ Γ H) /\
+    (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote_order Θ Ξ Γ U) /\
+    (forall Γ o E R, edenote Θ Ξ Γ o E R -> edenote_order Θ Ξ Γ E) /\
+    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_xp_order Θ Ξ Γ Φ) /\
+    (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> items_gen_order Θ Ξ Γ H its).
   Proof.
     pose proof (mdenote_functional_all _ _ Hg) as (Fm & Fu & Fe & Fb & Fi).
     apply mdenote_all_ind; intros.
-    - eapply dn_order_unit; eassumption.
-    - eapply dn_order_ind_frame; eassumption.
-    - apply dn_order_var; intros U' Hf.
+    - eapply mdenote_order_unit; eassumption.
+    - eapply mdenote_order_ind_frame; eassumption.
+    - apply mdenote_order_var; intros U' Hf.
       match goal with Hl : _ ∋ # _ ≔ₘ _ |- _ => rewrite (ctx_find_mod_complete _ _ _ Hl) in Hf end.
       injection Hf as <-; assumption.
     - constructor; assumption.
     - constructor; assumption.
-    - apply dn_order_mem_case; [ assumption |].
+    - apply mdenote_order_mem_case; [ assumption |].
       intros R1 R1m Γy' E' rd' Hm1 Hd1 He1.
       match goal with Hm0 : mdenote _ _ _ H _ |- _ => rewrite <- (Fm _ _ _ Hm0 _ Hm1) in Hd1 end.
       match goal with Hd0 : ds_mod _ = Some _ |- _ => rewrite Hd0 in Hd1; injection Hd1 as <- end.
       match goal with He0 : ds_entry _ _ = Some _ |- _ => rewrite He0 in He1; injection He1 as <- <- <- end.
       assumption.
-    - eapply dn_order_record_frame; eassumption.
+    - eapply mdenote_order_record_frame; eassumption.
     - constructor; assumption.
     - constructor; assumption.
     - constructor.
     - constructor; assumption.
     - constructor.
     - (* a definition with a module part: its module part's target *)
-      match goal with Hu : un_order _ _ _ (gu_mk _ (md_alias _)) |- _ => inversion Hu; subst end.
+      match goal with Hu : udenote_order _ _ _ (gu_mk _ (md_alias _)) |- _ => inversion Hu; subst end.
       constructor; assumption.
     - constructor.
     - constructor.
@@ -651,7 +651,7 @@ Section Orders.
     - constructor; assumption.
   Qed.
 
-  Lemma bx_order_noopen : forall Γ Φ, gm_noopen Φ -> bx_order Θ Ξ Γ Φ.
+  Lemma body_xp_order_noopen : forall Γ Φ, gm_noopen Φ -> body_xp_order Θ Ξ Γ Φ.
   Proof.
     intros Γ; induction Φ as [| Φ IH x E | Φ IH H its]; intros Hn; cbn in Hn; [ constructor | constructor; auto | contradiction ].
   Qed.
@@ -659,8 +659,8 @@ Section Orders.
   (** The entries of a typed module description denote, hence have an
       order: those of an open one are slots of its well-formed extended
       context, and those of a closed one are stored, so valid. *)
-  Lemma en_order_entry : forall Γ Rm y Γy E rd,
-      desc_ok Θ Ξ Γ Rm -> ds_entry Rm y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E.
+  Lemma edenote_order_entry : forall Γ Rm y Γy E rd,
+      desc_ok Θ Ξ Γ Rm -> ds_entry Rm y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
     intros * Hok He; destruct Rm as [A om | Δ Φw Φ | Θ' pc T Φ Ns | ]; cbn in He; try discriminate.
@@ -691,7 +691,7 @@ Section Orders.
         try solve [ constructor ].
       + (* a closed submodule: its body has no open *)
         destruct HcE as (-> & HsΔ & HcΦy); cbn [ge_read].
-        constructor; constructor; apply bx_order_noopen, (body_closed_noopen _ _ HcΦy).
+        constructor; constructor; apply body_xp_order_noopen, (body_closed_noopen _ _ HcΦy).
       + (* an alias: valid, so its target denotes *)
         assert (Hloc' : exists Φ', loc Θ Ξ pc T Φ').
         { destruct Hloc as [Hf | Hb].
@@ -734,32 +734,32 @@ Section Orders.
   Qed.
 
   (** A selection from a module expression whose descriptions are typed. *)
-  Lemma dn_order_mem : forall Γ H y, dn_order Θ Ξ Γ H ->
-      (forall R0, mdenote Θ Ξ Γ H R0 -> desc_ok Θ Ξ Γ R0) -> dn_order Θ Ξ Γ (me_mem H y).
+  Lemma mdenote_order_mem : forall Γ H y, mdenote_order Θ Ξ Γ H ->
+      (forall R0, mdenote Θ Ξ Γ H R0 -> desc_ok Θ Ξ Γ R0) -> mdenote_order Θ Ξ Γ (me_mem H y).
   Proof.
-    intros * Ho Hok; apply dn_order_mem_case; [ exact Ho |].
-    intros * Hm Hd He; eapply en_order_entry; [| exact He ].
+    intros * Ho Hok; apply mdenote_order_mem_case; [ exact Ho |].
+    intros * Hm Hd He; eapply edenote_order_entry; [| exact He ].
     exact (desc_ok_mod _ _ Hg _ _ _ (Hok _ Hm) Hd).
   Qed.
 
-  Corollary dn_order_of_wf : forall Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> dn_order Θ Ξ Γ H.
+  Corollary mdenote_order_of_wf : forall Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote_order Θ Ξ Γ H.
   Proof.
     intros * HH.
     destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HH) as (_ & (R & _ & HR & _) & _).
     exact (proj1 order_of_denote _ _ _ HR).
   Qed.
 
-  Corollary dn_order_mem_of_wf : forall Γ H H' y, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> dn_order Θ Ξ Γ (me_mem H y).
+  Corollary mdenote_order_mem_of_wf : forall Γ H H' y, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote_order Θ Ξ Γ (me_mem H y).
   Proof.
-    intros * HH; apply dn_order_mem; [ exact (dn_order_of_wf _ _ _ HH) |].
+    intros * HH; apply mdenote_order_mem; [ exact (mdenote_order_of_wf _ _ _ HH) |].
     destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 desc_typed)))))) _ _ _ _ _ HH (gctx_valid_syn _ _ Hg)) as (_ & Hok & _).
     exact Hok.
   Qed.
 
   (** What an open of a well-formed module expression generates has an order. *)
-  Corollary ig_order_of_wf : forall Γ H H' its, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> ig_order Θ Ξ Γ H its.
+  Corollary items_gen_order_of_wf : forall Γ H H' its, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> items_gen_order Θ Ξ Γ H its.
   Proof.
     intros * HH; induction its as [| [[[n |] d] pv] its IH]; constructor; auto.
-    eapply dn_order_mem_of_wf; exact HH.
+    eapply mdenote_order_mem_of_wf; exact HH.
   Qed.
 End Orders.

@@ -79,10 +79,10 @@ Proof. elab_ok. Qed.
     records the one binder ([A]) outside it, so it is [U.a] applied to
     [#1]. *)
 Example a_preapplied :
-  sel (en_var "B" :: en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1 :: en_var "A" :: nil) (var "a") (U_a $ #1).
+  sel (scope_entry_var "B" :: scope_entry_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1 :: scope_entry_var "A" :: nil) (var "a") (U_a $ #1).
 Proof.
-  apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1)); [| apply den_term_mem ].
-  apply (mk_bound _ _ _ _ (en_var "B" :: nil) (en_var "A" :: nil)); cbn; try reflexivity.
+  apply (sel_var _ _ 1 (scope_entry_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) 1)); [| apply den_term_mem ].
+  apply (mk_bound _ _ _ _ (scope_entry_var "B" :: nil) (scope_entry_var "A" :: nil)); cbn; try reflexivity.
   intros [H | []]; discriminate.
 Qed.
 
@@ -313,7 +313,7 @@ Proof. vm_compute; reflexivity. Qed.
     [(g 3).fst], [g] a term binder, is [(g 3).fst] as a member of a module
     expression. *)
 Example proj_of_path :
-  elab (en_tvar "g" :: nil) (proj (app (var "g") (num 3)) "fst") = eok (a_mem (me_app (me_var 0) (a_nlit 3)) "fst").
+  elab (scope_entry_tvar "g" :: nil) (proj (app (var "g") (num 3)) "fst") = eok (a_mem (me_app (me_var 0) (a_nlit 3)) "fst").
 Proof. vm_compute; reflexivity. Qed.
 
 (** [private lemma], [fact], [remark], [let], [abstract given]: *)
@@ -688,11 +688,11 @@ Proof. vm_compute; reflexivity. Qed.
 (** A unit of one segment is named like a module in scope; a binding of the
     same name shadows it. *)
 Example one_segment_unit :
-  elab_mod (en_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eok (me_mem (me_unit ("X" :: nil)) "f").
+  elab_mod (scope_entry_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eok (me_mem (me_unit ("X" :: nil)) "f").
 Proof. vm_compute; reflexivity. Qed.
 
 Example one_segment_unit_shadowed :
-  elab_mod (en_tvar "X" :: en_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eok (me_mem (me_var 0) "f").
+  elab_mod (scope_entry_tvar "X" :: scope_entry_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eok (me_mem (me_var 0) "f").
 Proof. vm_compute; reflexivity. Qed.
 
 (** A local body has no [import]s: it opens what is loaded already. *)
@@ -1093,7 +1093,7 @@ end
     the scrutinee, typed; the branch for [cons] its two arguments and its
     hypothesis: [r] is [#0].  The group and its uniform parameters are the
     core's to fill from the scrutinee's type. *)
-Definition list_member : (string * Cst.obj * list (string * list (string * Cst.obj)))%type :=
+Definition list_member : (string * Cst.expression * list (string * list (string * Cst.expression)))%type :=
   ("List", typ 0, ("nil", nil) :: ("cons", ("x", var "A") :: ("xs", app (var "List") (var "A")) :: nil) :: nil).
 
 Definition list_decl : Cst.cmd := c_ind false false (("A", typ 0) :: nil) (list_member :: nil).

@@ -464,12 +464,12 @@ Record filed_con_ty (Θ : gdeps) (Ξ : gstack) (p : qname) (j : nat) (c : string
 
 (** A filed constructor stays filed, at its type, along an embedding. *)
 Lemma filed_con_ty_emb : forall Θ Ξ Θ2 Ξ2 p j c U,
-    Emb Θ Ξ Θ2 Ξ2 -> filed_con_ty Θ Ξ p j c U -> filed_con_ty Θ2 Ξ2 p j c U.
+    gctx_embedding Θ Ξ Θ2 Ξ2 -> filed_con_ty Θ Ξ p j c U -> filed_con_ty Θ2 Ξ2 p j c U.
 Proof.
   intros * He [D M gs Hl Hm Hc (i & Hty)].
   apply (mk_filed_con_ty _ _ _ _ _ _ D M gs);
-    [ exact (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ He) Hl) | exact Hm | exact Hc
-    | exists i; exact (proj1 (proj2 (proj2 (emb_preserves_wf _ _ _ _ He))) _ _ _ _ Hty) ].
+    [ exact (ind_lookup_gc_sub _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ He) Hl) | exact Hm | exact Hc
+    | exists i; exact (proj1 (proj2 (proj2 (gctx_embedding_preserves_wf _ _ _ _ He))) _ _ _ _ Hty) ].
 Qed.
 
 (** ** The Constructor Types of a Run
@@ -502,13 +502,13 @@ Section ConTypes.
   (** The stack the declared members end on: well formed, the stack before
       embedded in it, the group found at its first member's path *)
   Hypothesis Hfwf : ⊢ᵍ Θ ⍮ Ξf.
-  Hypothesis Hfemb : Emb Θ Ξ Θ Ξf.
+  Hypothesis Hfemb : gctx_embedding Θ Ξ Θ Ξf.
   Hypothesis Hflk : ind_lookup Θ Ξf p = Some D.
 
   Lemma filed_wf : ⊢ᵍ Θ ⍮ Ξf.
   Proof. exact Hfwf. Qed.
 
-  Lemma filed_emb : Emb Θ Ξ Θ Ξf.
+  Lemma filed_emb : gctx_embedding Θ Ξ Θ Ξf.
   Proof. exact Hfemb. Qed.
 
   Lemma filed_lookup : ind_lookup Θ Ξf p = Some D.
@@ -803,7 +803,7 @@ Section ConTypes.
                                  ⊢ T[τ] ≈ T'[τ] : Typeω@i2).
       { destruct HTT as [-> | [i2 HTe]]; [ exists i1; apply wf_exp_eq_refl; exact HT'L |].
         exists i2.
-        pose proof (proj1 (proj2 (proj2 (emb_preserves_wf _ _ _ _ filed_emb))) _ _ _ _ HTe) as HTe'.
+        pose proof (proj1 (proj2 (proj2 (gctx_embedding_preserves_wf _ _ _ _ filed_emb))) _ _ _ _ HTe) as HTe'.
         pose proof (presup_exp_eq_ctx HTe') as Hraw.
         assert (Hb : ⊢ Θ ⍮ Ξf ⍮ rm_pctx Ξ R Mr) by exact (ctx_app_wf_tail _ _ _ _ Hraw).
         assert (HP : ⊢ Θ ⍮ Ξf ⍮ raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ)

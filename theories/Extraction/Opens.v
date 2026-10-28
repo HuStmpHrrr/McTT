@@ -63,15 +63,15 @@ Section Gen.
 
   (** What a module expression denotes, when it has an order: a fast
       description, standing for the Core one *)
-  Definition denote_of (Γ : ctx) (H : modexp) (Ho : dn_order Θ Ξ Γ H) : option fmdesc :=
+  Definition mdenote_with_order (Γ : ctx) (H : modexp) (Ho : mdenote_order Θ Ξ Γ H) : option fmdesc :=
     match mdenote_impl F Hg Γ H Ho with
     | inleft (exist _ R _) => Some R
     | inright _ => None
     end.
 
-  Lemma denote_of_spec : forall Γ H Ho R, option_map dec_desc (denote_of Γ H Ho) = Some R <-> mdenote Θ Ξ Γ H R.
+  Lemma mdenote_with_order_spec : forall Γ H Ho R, option_map dec_desc (mdenote_with_order Γ H Ho) = Some R <-> mdenote Θ Ξ Γ H R.
   Proof.
-    intros *; unfold denote_of.
+    intros *; unfold mdenote_with_order.
     destruct (mdenote_impl _ _ _ _ _) as [[R' HR'] | HN]; cbn [option_map]; split; intros HR.
     - injection HR as <-; exact HR'.
     - f_equal; exact (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR' _ HR).
@@ -80,16 +80,16 @@ Section Gen.
   Qed.
 
   (** A fast description found stands for what the expression denotes. *)
-  Lemma denote_of_sound : forall Γ H Ho R, denote_of Γ H Ho = Some R -> mdenote Θ Ξ Γ H (dec_desc R).
-  Proof. intros * E; apply (proj1 (denote_of_spec Γ H Ho _)); rewrite E; reflexivity. Qed.
+  Lemma mdenote_with_order_sound : forall Γ H Ho R, mdenote_with_order Γ H Ho = Some R -> mdenote Θ Ξ Γ H (dec_desc R).
+  Proof. intros * E; apply (proj1 (mdenote_with_order_spec Γ H Ho _)); rewrite E; reflexivity. Qed.
 
   (** What an expression denotes is found, as a fast description standing
       for it. *)
-  Lemma denote_of_complete : forall Γ H Ho R, mdenote Θ Ξ Γ H R ->
-      exists R', denote_of Γ H Ho = Some R' /\ dec_desc R' = R.
+  Lemma mdenote_with_order_complete : forall Γ H Ho R, mdenote Θ Ξ Γ H R ->
+      exists R', mdenote_with_order Γ H Ho = Some R' /\ dec_desc R' = R.
   Proof.
-    intros * Hm; apply (proj2 (denote_of_spec Γ H Ho R)) in Hm.
-    destruct (denote_of Γ H Ho) as [R' |]; cbn in Hm; [| discriminate ]; injection Hm as <-; eauto.
+    intros * Hm; apply (proj2 (mdenote_with_order_spec Γ H Ho R)) in Hm.
+    destruct (mdenote_with_order Γ H Ho) as [R' |]; cbn in Hm; [| discriminate ]; injection Hm as <-; eauto.
   Qed.
 
   Section Target.
@@ -122,7 +122,7 @@ Section Gen.
       match it with
       | (None, d, pv) => xok (ig_alias d pv H)
       | (Some n, d, pv) =>
-          match denote_of Γ (me_mem H n) (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) with
+          match mdenote_with_order Γ (me_mem H n) (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) with
           | Some (fds_term A _) => xok (ig_def d pv A (a_mem H n))
           | Some R =>
               if fds_is_modb R then xok (ig_alias d pv (me_mem H n))
@@ -135,7 +135,7 @@ Section Gen.
         no member is both used and exported, and the names declared are
         distinct; then each item's declaration, all in [Γ]. *)
     Definition import_gen (its : list iitem) : xres (list igen) :=
-      match option_map fds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
+      match option_map fds_mod (mdenote_with_order Γ H (mdenote_order_of_wf _ _ Hg _ _ _ HH)) with
       | Some (Some _) =>
           let+ gs := xmap item_gen its in
           match both_dup its with
@@ -156,7 +156,7 @@ Section Gen.
     Proof.
       induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
-      - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_sound in E.
+      - destruct (mdenote_with_order Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply mdenote_with_order_sound in E.
         destruct R as [A om | Δ Φ Φx | Θ' ? T t Ht Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
         1-3: destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
           cbn [dec_desc] in E;
@@ -176,14 +176,14 @@ Section Gen.
       induction its as [| [[[n |] d] pv] its IH]; intros gs Hi; inversion Hi; subst; cbn.
       - reflexivity.
       - match goal with Hm : mdenote _ _ _ _ _ |- _ =>
-          destruct (denote_of_complete _ _ (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & ER) end.
+          destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & ER) end.
         destruct R'; cbn in ER; try discriminate; injection ER as <- <-; rewrite (IH _ ltac:(eassumption)); reflexivity.
       - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
-          destruct (denote_of_complete _ _ (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
+          destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
           rewrite (IH _ ltac:(eassumption));
           destruct R'; cbn in Hk; try contradiction; reflexivity end.
       - match goal with Hm : mdenote _ _ _ _ ?R, Ht : ds_ty ?R = Some _, Hd : ds_mod ?R = Some _ |- _ =>
-          destruct (denote_of_complete _ _ (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
+          destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
           rewrite fds_ty_dec in Ht; rewrite fds_mod_dec in Hd;
           destruct R'; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
           cbn [fds_is_modb]; unfold dm_gen; rewrite Ht;
@@ -200,8 +200,8 @@ Section Gen.
         import_gen its = xok gs <-> open_gens Θ Ξ Γ H its gs.
     Proof.
       intros; unfold import_gen.
-      destruct (denote_of Γ H _) as [R |] eqn:E; cbn [option_map].
-      - apply denote_of_sound in E.
+      destruct (mdenote_with_order Γ H _) as [R |] eqn:E; cbn [option_map].
+      - apply mdenote_with_order_sound in E.
         destruct (fds_mod R) as [Rm |] eqn:Em.
         + destruct (xmap item_gen its) as [gs' | e] eqn:Er; cbn.
           * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
@@ -213,7 +213,7 @@ Section Gen.
         + split; [ discriminate |]; intros [R' Rm' HR HRm _ _].
           rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E), fds_mod_dec, Em in HRm; discriminate.
       - split; [ discriminate |]; intros [R' Rm' HR _ _ _].
-        destruct (denote_of_complete _ _ (dn_order_of_wf _ _ Hg _ _ _ HH) _ HR) as (R'' & E' & _); congruence.
+        destruct (mdenote_with_order_complete _ _ (mdenote_order_of_wf _ _ Hg _ _ _ HH) _ HR) as (R'' & E' & _); congruence.
     Qed.
   End Target.
 End Gen.

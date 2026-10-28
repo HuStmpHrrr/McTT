@@ -163,7 +163,7 @@ Qed.
 
 (** A sound embedding, from the validity at the target of what the source
     files and has open. *)
-Theorem glu_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+Theorem glu_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
@@ -183,9 +183,9 @@ Proof.
   exact (glob_glu _ _ Hg2 _ _ _ _ _ _ _ _ _ _ Hl2 Hp2 Hn HA).
 Qed.
 
-Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
-  exact (glu_emb_of _ _ _ _ Hg (Embx_emb _ _ _ _ He) HΘ HΞ).
+  exact (glu_emb_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
 Qed.
