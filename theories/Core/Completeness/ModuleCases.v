@@ -396,8 +396,8 @@ Ltac close_modexp_left lem :=
 
 (** A body unit at the target of a sound embedding, from the semantic
     premises of its rule. *)
-Lemma rel_unit_under_ctx_body_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx Φx' (lv : String.string -> nat),
-    valid_emb Θ Ξ Θ2 Ξ2 ->
+Lemma rel_unit_under_ctx_body_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx Φx' (lv : String.string -> nat),
+    valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' ->
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Δ Δ' -> @rel_ctx_wf (gc_mk Θ2 Ξ2) Γ ->
@@ -428,11 +428,11 @@ Lemma rel_unit_under_ctx_body_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx
     @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit (gu_open Δ Φ)) /\ @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit (gu_open Δ' Φ')).
 Proof.
   intros * He Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' HA HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd.
-  pose proof (valid_emb_emb _ _ _ _ He) as Hemb.
+  pose proof (valid_gctx_embedding_embedding _ _ _ _ He) as Hemb.
   pose proof (gctx_embedding_resolution _ _ _ _ Hemb) as Hsub; pose proof (gctx_embedding_wf _ _ _ _ Hemb) as Hgw.
   change (⊢ᵍ @gc_deps (gc_mk Θ2 Ξ2) ⍮ @gc_stack (gc_mk Θ2 Ξ2)) in Hgw.
   change (gc_sub Θ Ξ (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2))) in Hsub.
-  apply (@rel_unit_under_ctx_body (gc_mk Θ2 Ξ2) Hgw _ _ (valid_emb_wf _ _ _ _ He) Hsub (valid_emb_filed _ _ _ _ He)
+  apply (@rel_unit_under_ctx_body (gc_mk Θ2 Ξ2) Hgw _ _ (valid_gctx_embedding_wf _ _ _ _ He) Hsub (valid_gctx_embedding_filed _ _ _ _ He)
            _ _ _ _ _ _ _ Hu Hx Hx' HΔ HΓ (rel_ext_under_ctx_left _ _ _ HC) HokC (rel_ext_under_ctx_left _ _ _ HC') HokC'); try assumption.
   - intros * Hp HE Hp' HE' Hf Hf'; split; [ eexists; exact (sem_exp_eq_at_rel (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)) |].
     exact (sem_exp_eq_at_rel (HM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)).
@@ -483,7 +483,7 @@ Proof.
   destruct (HΔ _ _ He) as [HKctx HΔr _ _].
   destruct (HC _ _ He) as [_ HCr HKC _].
   destruct (HC' _ _ He) as [_ HCr' HKC' _].
-  destruct (rel_unit_under_ctx_body_of_emb _ _ _ _ _ _ _ _ _ _ _ _ He Hu Hx Hx' HΔr (valid_ctx_rel_ctx_wf HKctx)
+  destruct (rel_unit_under_ctx_body_of_embedding _ _ _ _ _ _ _ _ _ _ _ _ He Hu Hx Hx' HΔr (valid_ctx_rel_ctx_wf HKctx)
               HCr (proj2 (proj1 (valid_ctx_iff _ _ _) HKC)) HCr' (proj2 (proj1 (valid_ctx_iff _ _ _) HKC'))
               HA HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd) as (HR & HV & HV').
   constructor; assumption.

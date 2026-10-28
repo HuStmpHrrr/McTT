@@ -141,7 +141,7 @@ end
   rest of its type, is well formed (`shape_rest_wf'` derives it;
   `wf_con_of_lookup` is the rule without it, a `mctt` hint).  The Kripke
   fundamental theorem needs the rest's types valid at the target
-  (`rel_exp_under_ctx_con_of_emb`, `glu_rel_exp_con_of_emb`), and no
+  (`rel_exp_under_ctx_con_of_embedding`, `glu_rel_exp_con_of_embedding`), and no
   inversion on a `Π` gives them.
 * The classification: `cls_sh nu np gs1 d T t` (a shape under `d`
   domains), `cls_rec` files it.  `cls_wkd d np gs1 = wk_pat (repeat false d
@@ -155,7 +155,7 @@ end
 
 ## Classification in the command (A0.4)
 
-The elaborator binds the declared name and nothing more: `cc_ind x pv R`
+The elaborator binds the declared name and nothing more: `core_cmd_inductive x pv R`
 carries the declaration as written (`raw_decl`), whose constructors'
 argument types see every earlier argument as a binder, then the
 declaration's own parameters, then `Self : Π Δ. S`, bound outside them (but
@@ -235,7 +235,7 @@ step to be proved never to fail at the user's type, beyond
 | PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
-| commands: `cc_ind`, `run_cmd_ind_case`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `raw_decl_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
+| commands: `core_cmd_inductive`, `run_cmd_ind_case`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `raw_decl_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
 | the checker's group step (`members_step`, `ind_step`) | `Extraction/Command.v` |
 
 ## The entry: `ge_ind pv D Φ`
@@ -319,8 +319,8 @@ The checker names that case (`mod_blame`, `run_error_mod_term`).
 
 ## Inductive aliases
 
-`[private] inductive L (Δ) := E` (`cc_ind_alias`, `run_cmd_ind_alias`) and
-`[private] record L (Δ) := E` (`cc_record_alias`, `run_cmd_record_alias`) file
+`[private] inductive L (Δ) := E` (`core_cmd_inductive_alias`, `run_cmd_ind_alias`) and
+`[private] record L (Δ) := E` (`core_cmd_record_alias`, `run_cmd_record_alias`) file
 a definition with a module part (`ge_def_mod pv A M U`, built by
 `dm_entry`, `Core/Syntactic/System/Command.v`).  `E`, a well-formed module
 expression in `Δ ++ gs_tele Ξ`, is read as a term (`modexp_as_term`), its
@@ -342,7 +342,7 @@ the alias of `E` over `Δ` and the frames' parameters.  The checker
   and `L.rec` the type's recursor.
 * `open … use (X)` declares a definition with a module part where `X` is
   an inductive type, a record type or such a definition (`items_gen`,
-  `items_gen_dm`, `ig_def_mod`); `open E as W` is always a plain module alias.
+  `items_gen_dm`, `generated_item_def_mod`); `open E as W` is always a plain module alias.
 * `builtin natural := X` reads `X` as a term, through its normal form
   (`run_cmd_builtin`), so through any alias.
 
@@ -382,9 +382,9 @@ need typing:
   motive binds (`rview_leaf_plen`), and fields end only in record views
   earlier in the group (`rview_leaf_order`). The readback of a stuck
   eliminator needs it to bound, rename and relate the motives along each
-  path: `Rename.read_rn` (`ihs_motives_dbd`), `Avoid.read_av`
+  path: `Rename.read_rn` (`ihs_motives_dbd`), `Avoid.read_avoids`
   (`ends_fresh_of_blocks`, `cargs_ends_fresh`) and
-  `Extraction.Simulation.fread_sim` (`ends_agree_of_blocks`,
+  `Extraction.Simulation.fast_read_sim` (`ends_agree_of_blocks`,
   `cargs_ends_agree`). It is also the source of the next gate's
   `leaves_coherent` in readback (`leaves_coherent_of_order
   (rview_leaf_order …)`). Discharged by `grp_tele_ass_leaf_arity`.
@@ -399,14 +399,14 @@ need typing:
 - **`cargs_nin D Dc gs' gs = cargs_nrec Dc gs'` on `read_brs_cons`.** The
   fresh variables for the paths of the group read `Dc` are exactly as
   many as the branch read binds. This keeps them below the length the
-  branch is read at (`s + n`), which `read_av` and `read_rn` need. It is
+  branch is read at (`s + n`), which `read_avoids` and `read_rn` need. It is
   the twin of `eval_elim_con`'s count. Discharged by
   `ViewCount.cargs_nin_view` (and the `branch_read_pair_count_*` fields of
   `ReadPairs`).
 
 In the Extraction and Reference implementations the gates are premises of
-the termination orders (`feval_elim_order_con`, `fread_ne_order_elim`,
-`fread_brs_order_cons` and the Reference twins). They are Prop domain
+the termination orders (`fast_eval_elim_order_con`, `fast_read_ne_order_elim`,
+`fast_read_brs_order_cons` and the Reference twins). They are Prop domain
 conditions, not checks the evaluator runs.
 
 ### Record views: classification, filing and the search
@@ -555,7 +555,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   in and files it in the map (`bm_merge Rb ((fp, BU) :: RbU)`);
   `run_cmd_load_filed` merges the record the map keeps (`bm_lookup Rb fp`).
   `prog_sem prg B Θ U` hides the map.
-* **`run_cmd_builtin`.**  `cc_builtin k H` with `k = natural`: `H` names, by
+* **`run_cmd_builtin`.**  `core_cmd_builtin k H` with `k = natural`: `H` names, by
   `ind_target`, an inductive type `p` or an inductive alias of one with no
   parameter and no argument; `p`'s declaration has `nat_shape` (no
   parameter; one constructor without arguments and one with the single
@@ -657,8 +657,8 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
    `ind_glu_exp_pred` asks `ind_glu_elem` at every equal instance of the
    parameters (eq-closed).
 6. The eliminator's case along an embedding
-   (`valid_exp_under_ctx_elim_of_emb` in `Completeness/Inductives/Elim.v`,
-   `glu_rel_exp_elim_of_emb` in `Soundness/Inductives/Elim.v`) takes the
+   (`valid_exp_under_ctx_elim_of_embedding` in `Completeness/Inductives/Elim.v`,
+   `glu_rel_exp_elim_of_embedding` in `Soundness/Inductives/Elim.v`) takes the
    `⊢ˣ` premises of `wf_elim` too.
 7. `alg_type_infer_elim` has the premise `length (List.map nf_to_exp Rs) = ind_np D`; the
    checker decides it.

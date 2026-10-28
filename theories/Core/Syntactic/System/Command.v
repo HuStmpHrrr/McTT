@@ -1,10 +1,10 @@
 (** * The Static Semantics of Commands
 
     A command moves the global state: the filed units [Θ] and the stack [Ξ] of
-    open frames.  [cc_load] loads the unit it names, if it is not filed yet,
+    open frames.  [core_cmd_load] loads the unit it names, if it is not filed yet,
     by running that unit's own commands from nothing, and merges the units
     that run filed into [Θ]; the chain of units whose loading is in progress
-    is what rules a cycle out.  [cc_open] declares the names its items
+    is what rules a cycle out.  [core_cmd_open] declares the names its items
     generate ([items_gen], the relation the local opens of bodies share) as
     definitions, aliases and inductive aliases of the frame.  A command runs
     filled ([TypedElab]): its literals, eliminators and accesses through
@@ -119,19 +119,19 @@ Definition record_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf
 
 (** [gens_run Θ Ξ gs Ξ']: declaring the generated items [gs] in order in
     the frame [Ξ] gives [Ξ']. *)
-Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
+Inductive gens_run (Θ : gdeps) : gstack -> list generated_item -> gstack -> Prop :=
 (** No item leaves the frame as it is *)
 | gens_run_nil : forall Ξ, gens_run Θ Ξ nil Ξ
 (** A generated definition, checked at its type as [run_cmd_def] does *)
 | gens_run_def : forall Ξ d pv A M gs Ξ',
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (gs_def true pv Ξ A M) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_def d pv A M :: gs) Ξ'
+    gens_run Θ Ξ (generated_item_def d pv A M :: gs) Ξ'
 (** A generated module alias, its target checked as [run_cmd_alias] does *)
 | gens_run_alias : forall Ξ d pv E gs Ξ',
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'
+    gens_run Θ Ξ (generated_item_alias d pv E :: gs) Ξ'
 (** A generated definition with a module part: its term [M] at the type
     inferred for it, [W], and its module the alias of [E].  The typing of
     [M] at [W] follows from its inference ([alg_type_infer_sound]); it is a
@@ -144,7 +144,7 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_def_mod d pv A M E :: gs) Ξ'.
+    gens_run Θ Ξ (generated_item_def_mod d pv A M E :: gs) Ξ'.
 
 (** ** Groups of Inductive Declarations
 
@@ -401,16 +401,16 @@ Definition grec_names (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : list string :=
     [pq], its names read at [Θ ⍮ Ξ], with [Δu] the uniform parameters its
     own parameters end in: the group's own ones in the frame the members
     are filed in, none in the module of a member, whose frame binds
-    them.  The module and its definitions are generated ([cc_gen]). *)
-Definition grec_mod_cmd (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Δu : ctx) : ccmd :=
-  cc_gen (cc_mod "Rec" false (grec_tele pq D Δu)
-    (List.map (fun jx => let '(j, Mj, x) := jx in cc_gen (cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
+    them.  The module and its definitions are generated ([core_cmd_gen]). *)
+Definition grec_mod_cmd (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Δu : ctx) : core_cmd :=
+  core_cmd_gen (core_cmd_mod "Rec" false (grec_tele pq D Δu)
+    (List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_gen (core_cmd_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
        (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names Θ Ξ D)))).
 
 (** The commands that file the recursor module of the group [D] at [pq],
     declared as [R], after its members, at the stack [Ξ] they are filed
     in: none unless [R] asks for it. *)
-Definition rec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) : list ccmd :=
+Definition rec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) : list core_cmd :=
   if raw_decl_rec_field R then grec_mod_cmd Θ Ξ pq D (raw_decl_uparams R) :: nil else nil.
 
 (** ** The Module of a Declared Member
@@ -427,19 +427,19 @@ Definition rec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : 
 
 (** The definition of the constructor [c] of arguments [gs]: its type over
     the member's non-uniform parameters and its arguments, its term the
-    constructor at the module's parameters; generated ([cc_gen]). *)
-Definition ind_con_cmd (pq : qname) (D : ind_decl) (k : nat) (M : imember) (cg : (string * list carg)%type) : ccmd :=
-  cc_gen (cc_def (fst cg) true false
+    constructor at the module's parameters; generated ([core_cmd_gen]). *)
+Definition ind_con_cmd (pq : qname) (D : ind_decl) (k : nat) (M : imember) (cg : (string * list carg)%type) : core_cmd :=
+  core_cmd_gen (core_cmd_def (fst cg) true false
     (ctx_pi (im_nparams M) (ctx_pi (cargs_ctx pq D M (snd cg)) (apps (a_ind pq k) (ind_pvars D M (List.length (snd cg))))))
     (Some (apps (a_con pq k (fst cg)) (vars_from 0 (ind_nu D))))).
 
 (** The recursor [rec], when the group has one; generated. *)
-Definition ind_rec_cmds (pq : qname) (D : ind_decl) (M : imember) : list ccmd :=
-  if ind_has_rec D then cc_gen (cc_def "rec" true false (rec_ty pq D M) (Some (rec_fn pq D M))) :: nil else nil.
+Definition ind_rec_cmds (pq : qname) (D : ind_decl) (M : imember) : list core_cmd :=
+  if ind_has_rec D then core_cmd_gen (core_cmd_def "rec" true false (rec_ty pq D M) (Some (rec_fn pq D M))) :: nil else nil.
 
 (** The recursor module [Rec], in the first declared member's module of a
     group not declared by [mutual T where]. *)
-Definition ind_grec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list ccmd :=
+Definition ind_grec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list core_cmd :=
   if Nat.eqb k 0 && negb (raw_decl_rec_field R) then grec_mod_cmd Θ Ξ pq D nil :: nil else nil.
 
 (** The commands of the module of the declared member [k], [M]: its
@@ -448,7 +448,7 @@ Definition ind_grec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) 
     commands run in: the member's frame, through which the group is
     found. *)
 Definition ind_mod_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) (M : imember) :
-    list ccmd :=
+    list core_cmd :=
   List.map (ind_con_cmd pq D k M) (im_cons M) ++ ind_rec_cmds pq D M ++ ind_grec_cmds Θ Ξ R pq D k.
 
 (** The names a group declared as [R] at the stack [Ξ], filed as [D],
@@ -1143,22 +1143,22 @@ Definition record_field_ty (R : record_decl) (k : nat) (T : typ) : typ :=
 
 (** The field definitions of the fields [fs] of [R] from the field [k] on:
     each the field's projection of the module's value, at its type. *)
-Fixpoint record_fields_cmds (R : record_decl) (k : nat) (fs : list (string * typ)) : list ccmd :=
+Fixpoint record_fields_cmds (R : record_decl) (k : nat) (fs : list (string * typ)) : list core_cmd :=
   match fs with
   | nil => nil
   | (f, T) :: fs' =>
-      cc_gen (cc_def f true false (record_field_ty R k T) (Some (a_proj f (a_var 0)))) :: record_fields_cmds R (S k) fs'
+      core_cmd_gen (core_cmd_def f true false (record_field_ty R k T) (Some (a_proj f (a_var 0)))) :: record_fields_cmds R (S k) fs'
   end.
 
 (** The field definitions of the record [R], the first entries of its
     module. *)
-Definition record_field_cmds (R : record_decl) : list ccmd := record_fields_cmds R 0 (record_fields R).
+Definition record_field_cmds (R : record_decl) : list core_cmd := record_fields_cmds R 0 (record_fields R).
 
 (** The name a command declares in the frame it runs in, if any. *)
-Definition cmd_decl_name (c : ccmd) : option string :=
+Definition cmd_decl_name (c : core_cmd) : option string :=
   match c with
-  | cc_def x _ _ _ _ | cc_mod x _ _ _ | cc_alias x _ _ _ | cc_ind_alias x _ _ _ | cc_record_alias x _ _ _
-  | cc_record x _ _ _ _ _ => Some x
+  | core_cmd_def x _ _ _ _ | core_cmd_mod x _ _ _ | core_cmd_alias x _ _ _ | core_cmd_inductive_alias x _ _ _ | core_cmd_record_alias x _ _ _
+  | core_cmd_record x _ _ _ _ _ => Some x
   | _ => None
   end.
 
@@ -1194,17 +1194,17 @@ Section Semantics.
       those of the unit importing it. *)
 
   (** Running one command; mutually, a list of them and a unit. *)
-  Inductive run_cmd : list path -> builtins -> bmap -> gdeps -> gstack -> ccmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
+  Inductive run_cmd : list path -> builtins -> bmap -> gdeps -> gstack -> core_cmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
   (** A definition: its body is checked at its type. *)
   | run_cmd_def : forall ch B Rb Θ Ξ x b pv A M,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_def x b pv A (Some M) ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_def x b pv A (Some M) ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ⍮ B ⍮ Rb
   (** An axiom: only its type is checked. *)
   | run_cmd_axiom : forall ch B Rb Θ Ξ x b pv A i,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_def x b pv A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_def x b pv A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ ⍮ B ⍮ Rb
   (** The body ends on the frame it opened, the stack below as it was; that
       frame becomes the member [x] of the one below, as it is. *)
   | run_cmd_mod : forall ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp K U,
@@ -1212,21 +1212,21 @@ Section Semantics.
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       gs_fresh x Ξ ->
       Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⍮ B ⍮ Rb ⊢[ch] cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mod x pv Δ cs ⇝ Θ' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_mod x pv Δ cs ⇝ Θ' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
   (** An alias is filed with the frames' parameters it is declared under. *)
   | run_cmd_alias : forall ch B Rb Θ Ξ x pv Δ E,
       tele_ass Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_alias x pv Δ E ⇝ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_alias x pv Δ E ⇝ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ ⍮ B ⍮ Rb
   (** A unit filed already, by an earlier load: shared, not reloaded; the
       record it ended with is merged in. *)
   | run_cmd_load_filed : forall ch B Rb B' Θ Ξ fp U BU,
       gds_lookup Θ fp = Some U ->
       bm_lookup Rb fp = Some BU ->
       bt_merge B BU = Some B' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_load fp ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_load fp ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
   (** Not filed: load it, run it from nothing with itself added to the chain,
       file it on top of what it filed, and merge that in.  A unit already in the
       chain is still being loaded, so loading it is a cycle, and no rule
@@ -1241,14 +1241,14 @@ Section Semantics.
       to_core prg = Some u ->
       run_unit (fp :: ch) u BU RbU ΘU U ->
       bt_merge B BU = Some B' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU)
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU)
   (** An open checks that its target is a module, and declares the
       definitions and aliases its items generate in this frame. *)
   | run_cmd_open : forall ch B Rb Θ Ξ E its gs Ξ',
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
       open_gens Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A group as written, its members of one sort: the arguments of the
       declared members classified ([rm_cls]); the views, found from the
       instances met ([views_dfs]), each with its siblings, its
@@ -1272,7 +1272,7 @@ Section Semantics.
       gen_names_free Ξ R D ->
       run_ind_members ch B Rb Θ Ξ pv R (ind_qname Ξ (raw_member_name Mr0)) D 0 (List.map raw_member_name (raw_decl_members R)) B' Rb' Θ' Ξ' ->
       Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ⊢[ch] rec_cmds Θ' Ξ' R (ind_qname Ξ (raw_member_name Mr0)) D ⇝* Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb'' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb''
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_inductive pv R ⇝ Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb''
   (** A mutual definition: the group, its uniform parameters and each
       function's member ([mdef_group]), and the definitions filed in order,
       each checked as a definition is. *)
@@ -1281,7 +1281,7 @@ Section Semantics.
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms ->
       mdefs_run Θ b pv (mdef_defs pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** [builtin natural := X]: [X], read as a term, is in normal form the
       type former of the first member of a group, at no argument, with the
       shape of the natural numbers, in [Type@0]; its binding is merged in
@@ -1300,7 +1300,7 @@ Section Semantics.
       nat_shape D = Some (z, s) ->
       ind_sort D = nat_sort ->
       bt_bind_nat B p = Some B' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_builtin nat_kind H ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_builtin nat_kind H ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
   (** [inductive x Δ := H]: both parts alias [H] as written.  Read as a
       term, [H] has the inferred type [W] over [Δ] and the frames'
       parameters, and is a type former of an inductive type
@@ -1319,7 +1319,7 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
       ind_former Θ Ξ (Δ ++ gs_tele Ξ) M W ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind_alias x pv Δ H ⇝
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_inductive_alias x pv Δ H ⇝
         Θ ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M H) Ξ ⍮ B ⍮ Rb
   (** [record x Δ := H]: as [inductive x Δ := H], [H] being a type former
       of a record type, given any prefix of its parameters
@@ -1333,7 +1333,7 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
       record_former Θ Ξ (Δ ++ gs_tele Ξ) M W ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_record_alias x pv Δ H ⇝
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_record_alias x pv Δ H ⇝
         Θ ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M H) Ξ ⍮ B ⍮ Rb
   (** A record: checked with an empty module where it is filed
       ([wf_gentry_record]); its module's frame is opened over the record's
@@ -1347,22 +1347,22 @@ Section Semantics.
       Θ ⍮ gs_push_record (ind_qname Ξ x) (record_at Ξ Δ Srt fs) Δ Ξ ⍮ B ⍮ Rb ⊢[ch]
         record_field_cmds (record_at Ξ Δ Srt fs) ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
       Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch] cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_record x pv Δ Srt fs cs ⇝
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_record x pv Δ Srt fs cs ⇝
         Θ' ⍮ gs_add x (ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | run_cmd_eval_check : forall ch B Rb Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_eval M (Some A) ⇝ Θ ⍮ Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_eval M (Some A) ⇝ Θ ⍮ Ξ ⍮ B ⍮ Rb
   (** An [eval] with no type given: it must have some type. *)
   | run_cmd_eval_infer : forall ch B Rb Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_eval M None ⇝ Θ ⍮ Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_eval M None ⇝ Θ ⍮ Ξ ⍮ B ⍮ Rb
   (** A generated definition runs as a definition does; it makes no
       reference of its own ([cmd_refs]), so its privacy is not checked. *)
   | run_cmd_gen_def : forall ch B Rb Θ Ξ x b pv A M,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_gen (cc_def x b pv A (Some M)) ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_gen (core_cmd_def x b pv A (Some M)) ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ⍮ B ⍮ Rb
   (** A generated module runs as a module does; nor is its privacy
       checked. *)
   | run_cmd_gen_mod : forall ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp K U,
@@ -1370,10 +1370,10 @@ Section Semantics.
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       gs_fresh x Ξ ->
       Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⍮ B ⍮ Rb ⊢[ch] cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_gen (cc_mod x pv Δ cs) ⇝ Θ' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_gen (core_cmd_mod x pv Δ cs) ⇝ Θ' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
   where "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'" := (run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ')
 
-  with run_cmds : list path -> builtins -> bmap -> gdeps -> gstack -> list ccmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
+  with run_cmds : list path -> builtins -> bmap -> gdeps -> gstack -> list core_cmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
   | run_cmds_nil : forall ch B Rb Θ Ξ, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] nil ⇝* Θ ⍮ Ξ ⍮ B ⍮ Rb
   (** Each command is checked for privacy as written, then filled
       ([fill_cmd]: its literals from the builtin bindings, its
@@ -1451,7 +1451,7 @@ Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ cs ⇝* Θ' �
 Lemma load_acyclic : forall load_path read to_core ch B Rb Θ Ξ fp B' Rb' Θ' Ξ',
     In fp ch ->
     gds_lookup Θ fp = None ->
-    ~ Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
+    ~ Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_load fp ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
 Proof.
   intros * Hin Hnone Hr; inversion Hr; subst; [ congruence | contradiction ].
 Qed.
@@ -2703,13 +2703,13 @@ Section WellFormed.
       ends with. *)
 
   (** A generated definition or axiom. *)
-  Definition cmd_is_def (c : ccmd) : Prop := match c with cc_gen (cc_def _ _ _ _ _) => True | _ => False end.
+  Definition cmd_is_def (c : core_cmd) : Prop := match c with core_cmd_gen (core_cmd_def _ _ _ _ _) => True | _ => False end.
 
   (** A generated command: a definition, or a module of definitions. *)
-  Definition cmd_is_gen (c : ccmd) : Prop :=
+  Definition cmd_is_gen (c : core_cmd) : Prop :=
     match c with
-    | cc_gen (cc_def _ _ _ _ _) => True
-    | cc_gen (cc_mod _ _ _ cs) => Forall cmd_is_def cs
+    | core_cmd_gen (core_cmd_def _ _ _ _ _) => True
+    | core_cmd_gen (core_cmd_mod _ _ _ cs) => Forall cmd_is_def cs
     | _ => False
     end.
 
@@ -2737,22 +2737,22 @@ Section WellFormed.
 
   (** A run of a generated command is a run of the command it wraps. *)
   Lemma run_gen_inv : forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ',
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_gen c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
   Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
 
   (** A command that may be generated: a definition with a body, or a
       module. *)
-  Definition cmd_genable (c : ccmd) : Prop :=
+  Definition cmd_genable (c : core_cmd) : Prop :=
     match c with
-    | cc_def _ _ _ _ (Some _) | cc_mod _ _ _ _ => True
+    | core_cmd_def _ _ _ _ (Some _) | core_cmd_mod _ _ _ _ => True
     | _ => False
     end.
 
   (** Such a command, generated, runs as it does. *)
   Lemma run_to_gen : forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', cmd_genable c ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_gen c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
   Proof.
     intros * Hg H; destruct c as [x b pv A [M |] | | | | | | | | | | | |]; try contradiction;
       inversion H; subst; econstructor; eassumption.
@@ -2937,7 +2937,7 @@ Section WellFormed.
 
   Corollary load_coherent : forall ch B Rb B' Rb' Θ Ξ fp Θ',
       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ Θ' ⍮ Ξ ⍮ B' ⍮ Rb' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_load fp ⇝ Θ' ⍮ Ξ ⍮ B' ⍮ Rb' ->
       ⊢ᵍ Θ' ⍮ nil /\ gds_lookup Θ' fp <> None.
   Proof.
     intros * HΞ Hc Hst Hr; destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr HΞ Hc Hst) as (H' & _ & _).
@@ -3006,7 +3006,7 @@ Section WellFormed.
          was read before *)
       intros ch B Rb B' Θ Ξ fp src prg u BU RbU ΘU U Hn Hnin Hl Hrd Hpp Ht Hu IH Hm HΞ Hc Hst Hb HR.
       cbn [hd] in IH; destruct IH as [HbU HRU].
-      assert (Hrun : Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU))
+      assert (Hrun : Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU))
         by (eapply run_cmd_load; eassumption).
       destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hrun HΞ Hc Hst) as (HΞ' & _ & Hsub & _).
       pose proof (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.

@@ -822,7 +822,7 @@ Qed.
 Lemma gens_append_scoped_prefix : forall gs Φ k n, gmod_scoped n (gens_append Φ k gs) -> gmod_scoped n Φ.
 Proof.
   induction gs as [| g gs IH]; intros * H; cbn in H; [ assumption |].
-  destruct (ig_entry g); apply IH in H; destruct H; assumption.
+  destruct (generated_item_entry g); apply IH in H; destruct H; assumption.
 Qed.
 
 (** A body is scoped when its expansion is and the target of each of its
@@ -861,13 +861,13 @@ Proof.
 Qed.
 
 (** The names of a body, read through its opens, are its own. *)
-Lemma gens_append_names : forall gs Φ k, gm_names (gens_append Φ k gs) = rev (map ig_name gs) ++ gm_names Φ.
+Lemma gens_append_names : forall gs Φ k, gm_names (gens_append Φ k gs) = rev (map generated_item_name gs) ++ gm_names Φ.
 Proof.
   induction gs as [| g gs IH]; intros; [ reflexivity |].
-  destruct g; cbn [gens_append ig_entry]; rewrite IH; cbn; rewrite <- List.app_assoc; reflexivity.
+  destruct g; cbn [gens_append generated_item_entry]; rewrite IH; cbn; rewrite <- List.app_assoc; reflexivity.
 Qed.
 
-Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> map ig_name gs = map iitem_name its.
+Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> map generated_item_name gs = map iitem_name its.
 Proof. induction 1; cbn; f_equal; assumption. Qed.
 
 Lemma body_xp_names : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_names Φx = gm_names Φ.
@@ -880,7 +880,7 @@ Qed.
 Lemma body_shape_gens_l : forall gs Φ k, body_shape (gens_append Φ k gs) (gens_append Φ k gs) -> body_shape Φ Φ.
 Proof.
   induction gs as [| g gs IH]; intros * Hs; [ exact Hs |].
-  destruct g; cbn [gens_append ig_entry] in Hs; apply IH in Hs; exact (proj1 Hs).
+  destruct g; cbn [gens_append generated_item_entry] in Hs; apply IH in Hs; exact (proj1 Hs).
 Qed.
 
 Lemma body_shape_of_xp : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_shape Φx Φx -> body_shape Φ Φ.

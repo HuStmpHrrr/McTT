@@ -422,43 +422,43 @@ Section Fill.
   (** [fill_cmd c c']: the command [c] is filled to [c'], its terms read in
       the frames' telescope.  One rule per kind of command; a module's
       nested commands, and a record's with-area, are filled when they
-      run, and a generated command is filled to itself ([cc_gen]). *)
-  Inductive fill_cmd : ccmd -> ccmd -> Prop :=
+      run, and a generated command is filled to itself ([core_cmd_gen]). *)
+  Inductive fill_cmd : core_cmd -> core_cmd -> Prop :=
   (** A definition: its type and its body *)
   | fill_cmd_def : forall x b pv A A' oM oM',
       fill_exp (gs_tele Ξ) A A' -> fill_oexp (gs_tele Ξ) oM oM' ->
-      fill_cmd (cc_def x b pv A oM) (cc_def x b pv A' oM')
+      fill_cmd (core_cmd_def x b pv A oM) (core_cmd_def x b pv A' oM')
   (** A module: its telescope; its commands are filled when they run *)
   | fill_cmd_mod : forall x pv Δ Δ' cs,
-      fill_tele (gs_tele Ξ) Δ Δ' -> fill_cmd (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs)
+      fill_tele (gs_tele Ξ) Δ Δ' -> fill_cmd (core_cmd_mod x pv Δ cs) (core_cmd_mod x pv Δ' cs)
   (** A module alias: its telescope, then its target, which may be a
       record value *)
   | fill_cmd_alias : forall x pv Δ Δ' E E' op,
       fill_tele (gs_tele Ξ) Δ Δ' -> fill_mod (Δ' ++ gs_tele Ξ) E E' op ->
-      fill_cmd (cc_alias x pv Δ E) (cc_alias x pv Δ' E')
+      fill_cmd (core_cmd_alias x pv Δ E) (core_cmd_alias x pv Δ' E')
   (** An inductive alias: its telescope, then its target, a module *)
   | fill_cmd_ind_alias : forall x pv Δ Δ' E E',
       fill_tele (gs_tele Ξ) Δ Δ' -> fill_mod (Δ' ++ gs_tele Ξ) E E' None ->
-      fill_cmd (cc_ind_alias x pv Δ E) (cc_ind_alias x pv Δ' E')
+      fill_cmd (core_cmd_inductive_alias x pv Δ E) (core_cmd_inductive_alias x pv Δ' E')
   (** A record alias: its telescope, then its target, a module *)
   | fill_cmd_record_alias : forall x pv Δ Δ' E E',
       fill_tele (gs_tele Ξ) Δ Δ' -> fill_mod (Δ' ++ gs_tele Ξ) E E' None ->
-      fill_cmd (cc_record_alias x pv Δ E) (cc_record_alias x pv Δ' E')
+      fill_cmd (core_cmd_record_alias x pv Δ E) (core_cmd_record_alias x pv Δ' E')
   (** A load: itself *)
-  | fill_cmd_load : forall fp, fill_cmd (cc_load fp) (cc_load fp)
+  | fill_cmd_load : forall fp, fill_cmd (core_cmd_load fp) (core_cmd_load fp)
   (** An open: its target, which may be a record value, whose members its
       items name accessible *)
   | fill_cmd_open : forall E E' op its,
       fill_mod (gs_tele Ξ) E E' op -> Forall (sel_ok op) (items_members its) ->
-      fill_cmd (cc_open E its) (cc_open E' its)
+      fill_cmd (core_cmd_open E its) (core_cmd_open E' its)
   (** A builtin binding: its type, a module *)
   | fill_cmd_builtin : forall k E E',
-      fill_mod (gs_tele Ξ) E E' None -> fill_cmd (cc_builtin k E) (cc_builtin k E')
+      fill_mod (gs_tele Ξ) E E' None -> fill_cmd (core_cmd_builtin k E) (core_cmd_builtin k E')
   (** An evaluation: its term and its type *)
   | fill_cmd_eval : forall M M' oA oA',
-      fill_exp (gs_tele Ξ) M M' -> fill_oexp (gs_tele Ξ) oA oA' -> fill_cmd (cc_eval M oA) (cc_eval M' oA')
+      fill_exp (gs_tele Ξ) M M' -> fill_oexp (gs_tele Ξ) oA oA' -> fill_cmd (core_cmd_eval M oA) (core_cmd_eval M' oA')
   (** A group: each part in the context the classification reads it in *)
-  | fill_cmd_ind_decl : forall pv R R', fill_raw_decl R R' -> fill_cmd (cc_ind pv R) (cc_ind pv R')
+  | fill_cmd_ind_decl : forall pv R R', fill_raw_decl R R' -> fill_cmd (core_cmd_inductive pv R) (core_cmd_inductive pv R')
   (** A mutual definition: its telescope; its functions' parameters and
       scrutinees, from which the group is read as [run_cmd_mdef] reads it; then
       their results and clauses, at the group, at the motives of the
@@ -471,16 +471,16 @@ Section Fill.
                               (blocks_motives (mdef_blocks 0 (ind_nblk D) (f0' :: fs') ms))
                               (fst fm) (snd fm) f')
         (List.combine (fh0 :: fsh) ms) (f0' :: fs') ->
-      fill_cmd (cc_mdef b pv Δ (f0 :: fs)) (cc_mdef b pv Δ' (f0' :: fs'))
+      fill_cmd (core_cmd_mdef b pv Δ (f0 :: fs)) (core_cmd_mdef b pv Δ' (f0' :: fs'))
   (** A record declaration: its parameters, its sort over them, its
       fields over them and the fields before; its with-area is filled
       when it runs *)
   | fill_cmd_record : forall x pv Δ Δ' Srt Srt' fs fs' cs,
       fill_tele (gs_tele Ξ) Δ Δ' -> fill_exp (Δ' ++ gs_tele Ξ) Srt Srt' ->
       fill_fields (Δ' ++ gs_tele Ξ) fs fs' ->
-      fill_cmd (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs)
+      fill_cmd (core_cmd_record x pv Δ Srt fs cs) (core_cmd_record x pv Δ' Srt' fs' cs)
   (** A generated command: itself *)
-  | fill_cmd_gen : forall c, fill_cmd (cc_gen c) (cc_gen c).
+  | fill_cmd_gen : forall c, fill_cmd (core_cmd_gen c) (core_cmd_gen c).
 
   (** A unit's parameter telescope, over the frames', filled entry by
       entry. *)

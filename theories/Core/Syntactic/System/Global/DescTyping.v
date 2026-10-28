@@ -689,7 +689,7 @@ Qed.
 Lemma gens_append_noopen : forall gs Φ k, gm_noopen Φ -> gm_noopen (gens_append Φ k gs).
 Proof.
   induction gs as [| g gs IH]; intros * Hn; cbn; [ exact Hn |].
-  destruct (ig_entry g); apply IH; exact Hn.
+  destruct (generated_item_entry g); apply IH; exact Hn.
 Qed.
 
 Lemma body_xp_result_noopen : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_noopen Φx.

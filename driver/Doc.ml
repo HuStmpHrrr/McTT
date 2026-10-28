@@ -650,8 +650,8 @@ let rec cmd st fp ch pn (s, sv) (c : C.cmd) : E.scope_entry list =
 (* The scope after [c], [elab_cmd]'s; [sv] counts the scope's binders. *)
 and next_frame st fp ch pn (s, sv) c =
   match El.elab_cmd fp ch pn (List.length sv) s c with
-  | El.Coq_eok (s', _) -> s'
-  | El.Coq_eerr e -> st.notes <- ("elaboration: " ^ e) :: st.notes; s
+  | El.Coq_elab_success (s', _) -> s'
+  | El.Coq_elab_failure e -> st.notes <- ("elaboration: " ^ e) :: st.notes; s
 
 and cmds st fp ch pn (s, sv) cs =
   List.fold_left (fun s c -> cmd st fp ch pn (s, sv) c) s cs
@@ -661,8 +661,8 @@ and cmds st fp ch pn (s, sv) cs =
 let lead st fp (l : E.scope_entry list) (c : C.cmd) : E.scope_entry list =
   ignore (cmd st fp [] [] (l, []) c);
   match El.elab_lead l [ c ] with
-  | El.Coq_eok (l', _) -> l'
-  | El.Coq_eerr e -> st.notes <- ("elaboration: " ^ e) :: st.notes; l
+  | El.Coq_elab_success (l', _) -> l'
+  | El.Coq_elab_failure e -> st.notes <- ("elaboration: " ^ e) :: st.notes; l
 
 (* ------------------------------------------------------------------ *)
 (* Units *)

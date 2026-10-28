@@ -3,7 +3,7 @@
     The gluing rules of the eliminator and of its congruence and view
     rules.  An elimination is glued at the target of a sound embedding,
     where the groups of the source are valid groups
-    ([valid_groups_of_glu_emb], [Inductives/Elim.v]). *)
+    ([valid_groups_of_glu_gctx_embedding], [Inductives/Elim.v]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
@@ -88,11 +88,11 @@ Lemma glu_elim :
      Θ ⍮ Ξ ⍮ Γ ⊩ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ).
 Proof.
   intros * Hl Hgr HMm Hbm HLb HPl HPt HPg HMt HMg -> Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg Θ2 Ξ2 Hμ.
-  pose proof (glu_emb_emb _ _ _ _ Hμ) as Hem.
+  pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
   destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _ & _ & Hwx & _ & _).
   pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HMt)) as Hg.
-  pose proof (valid_groups_of_glu_emb _ _ _ _ Hg Hem) as HVP.
-  eapply (@glu_rel_exp_elim (gc_mk Θ2 Ξ2) _ p D HVP (glu_emb_ind_field _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks Ps M i
+  pose proof (valid_groups_of_glu_gctx_embedding _ _ _ _ Hg Hem) as HVP.
+  eapply (@glu_rel_exp_elim (gc_mk Θ2 Ξ2) _ p D HVP (glu_gctx_embedding_ind_field _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks Ps M i
             Hgr HMm Hbm HLb HPl); intros.
   all: first
     [ eapply Hwe; eauto

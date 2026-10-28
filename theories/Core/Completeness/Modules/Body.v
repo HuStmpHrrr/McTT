@@ -50,7 +50,7 @@ Lemma eval_gens_split : forall gs Φ k ρ ρ2,
 Proof.
   induction gs as [| g gs IH]; intros; cbn [gens_append].
   - split; [ intros He; exists ρ2; split; [ exact He | constructor ] | intros (ρ1 & H1 & H2); inversion H2; subst; exact H1 ].
-  - destruct (ig_entry g) as [d E]; rewrite IH.
+  - destruct (generated_item_entry g) as [d E]; rewrite IH.
     split.
     + intros (ρ1' & H1 & H2); apply eval_entry_reloc in H1 as (ρ1 & H1a & H1b).
       exists ρ1; split; [ exact H1a |]; apply IH; exists ρ1'; split; assumption.
@@ -496,14 +496,14 @@ Qed.
 Lemma kgens_transfer : forall ρl ρr H τ its gs,
     kgens gc_deps gc_stack ρr H its gs ->
     (forall n k, skind gc_deps gc_stack ρr H (n :: nil) k -> skind gc_deps gc_stack ρl H[τ]ᵐ (n :: nil) k) ->
-    kgens gc_deps gc_stack ρl H[τ]ᵐ its (List.map (fun g => igen_sub g τ) gs).
-Proof. intros * Hg Hs; induction Hg; cbn [List.map igen_sub exp_sub modexp_sub]; constructor; auto. Qed.
+    kgens gc_deps gc_stack ρl H[τ]ᵐ its (List.map (fun g => generated_item_sub g τ) gs).
+Proof. intros * Hg Hs; induction Hg; cbn [List.map generated_item_sub exp_sub modexp_sub]; constructor; auto. Qed.
 
 Lemma body_shape_gens_any : forall gs Φ Φ' k, body_shape (gens_append Φ k gs) (gens_append Φ k gs) ->
     body_shape Φ' Φ' -> body_shape (gens_append Φ' k gs) (gens_append Φ' k gs).
 Proof.
   induction gs as [| g gs IH]; intros * Hs Hs'; cbn [gens_append] in *; [ exact Hs' |].
-  destruct (ig_entry g) as [d E]; eapply IH; [ exact Hs |].
+  destruct (generated_item_entry g) as [d E]; eapply IH; [ exact Hs |].
   pose proof (body_shape_gens_l _ _ _ Hs) as Hs0; cbn in Hs0 |- *; tauto.
 Qed.
 
@@ -615,7 +615,7 @@ Proof.
     assert (Hq : sb_eq (sb_qn (gm_binders Φ) (sb_qn (List.length Ψ) σ)) τ1)
       by (subst τ1; rewrite sb_qn_add, length_app, length_body_ctx, (body_xp_binders _ _ _ _ _ Hx0); reflexivity).
     cbn [gmod_sub]; rewrite (modexp_sub_sb_eq H _ _ Hq).
-    set (gse := List.map ig_erase gs).
+    set (gse := List.map generated_item_erase gs).
     destruct (sub_walk_right _ _ _ _ _ _ Hi1) as (Rr1 & HRr1 & Hρr1).
     destruct (body_eq_upto_types_kenv_exists _ _ Hkx ρr) as (σr1 & Hσr1).
     destruct (kind_eval_benv _ _ _ _ _ Hb1' _ (kshape_refl _ _ ρr)) as (σ' & Hk' & Hs').
@@ -624,14 +624,14 @@ Proof.
     rewrite <- app_assoc in HRr1, Hko.
     pose proof (items_kgens _ _ _ _ _ _ Hgs Hko _ _ _ HRr1 Hρr1 Hs') as Hkgr.
     destruct (kind_eval_benv _ _ _ _ _ Hb1 _ (kshape_refl _ _ ρl)) as (σl1 & Hσl1 & Hsl).
-    assert (Hkgl : kgens gc_deps gc_stack σl1 H[τ1]ᵐ its (List.map (fun g => igen_sub g τ1) gse)).
+    assert (Hkgl : kgens gc_deps gc_stack σl1 H[τ1]ᵐ its (List.map (fun g => generated_item_sub g τ1) gse)).
     { apply (kgens_transfer σl1 σr1); [ exact Hkgr |].
       intros n k Hk.
       apply (skind_id _ _ _ _ (proj1 Hsl)), (kind_eval_modexp _ _ _ _ _ Hhl), (per_dmod_kequiv _ _ Hhh),
             (kind_eval_modexp _ _ _ _ _ Hhr), (skind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs'))); exact Hk. }
-    set (gsl := List.map (fun g => igen_sub g τ1) gse) in *.
-    assert (Eg : forall g, igen_sub g (sb_qn (gm_binders Φr) (sb_qn (List.length Ψ) σ)) = igen_sub g τ1).
-    { rewrite Hbr; intros [d pv A0 M0 | d pv E0 | d pv A0 M0 E0]; cbn [igen_sub]; try reflexivity.
+    set (gsl := List.map (fun g => generated_item_sub g τ1) gse) in *.
+    assert (Eg : forall g, generated_item_sub g (sb_qn (gm_binders Φr) (sb_qn (List.length Ψ) σ)) = generated_item_sub g τ1).
+    { rewrite Hbr; intros [d pv A0 M0 | d pv E0 | d pv A0 M0 E0]; cbn [generated_item_sub]; try reflexivity.
       - rewrite (exp_sub_sb_eq A0 _ _ Hq), (exp_sub_sb_eq M0 _ _ Hq); reflexivity.
       - rewrite (modexp_sub_sb_eq E0 _ _ Hq); reflexivity.
       - rewrite (exp_sub_sb_eq A0 _ _ Hq), (exp_sub_sb_eq M0 _ _ Hq), (modexp_sub_sb_eq E0 _ _ Hq); reflexivity. }
@@ -926,7 +926,7 @@ Lemma prefix_gens_keep : forall gs Φ k y P, List.NoDup (gm_names (gens_append �
 Proof.
   intros * Hn Hp; rewrite gens_append_names in Hn.
   rewrite gens_prefix_none; [ exact Hp |].
-  destruct (existsb (String.eqb y) (map ig_name gs)) eqn:E; [| reflexivity ].
+  destruct (existsb (String.eqb y) (map generated_item_name gs)) eqn:E; [| reflexivity ].
   exfalso; apply existsb_exists in E as (z & Hz & Hyz); apply String.eqb_eq in Hyz; subst z.
   pose proof (prefix_in_names _ _ _ Hp) as Hy.
   destruct (in_split _ _ Hy) as (l1 & l2 & El); rewrite El, app_assoc in Hn.
@@ -1172,9 +1172,9 @@ Proof.
     destruct (kind_eval_benv _ _ _ _ _ Hb1k' _ (kshape_refl _ _ ρa')) as (σ1' & Hσ1' & Hs1').
     pose proof (items_kgens _ _ _ _ _ _ Hgs Hko _ _ _ HR0 H11 Hs1) as Hkg.
     pose proof (items_kgens _ _ _ _ _ _ Hgs' Hko' _ _ _ HR0' H11' Hs1') as Hkg'.
-    assert (Hko1 : kbody gc_deps gc_stack ρa (gm_open Φ H its) (gens_append Φk 0 (List.map ig_erase gs)))
+    assert (Hko1 : kbody gc_deps gc_stack ρa (gm_open Φ H its) (gens_append Φk 0 (List.map generated_item_erase gs)))
       by (econstructor; [ exact Hk | exact Hσ1 | exact Hkg ]).
-    assert (Hko1' : kbody gc_deps gc_stack ρa' (gm_open Φ' H' its) (gens_append Φk' 0 (List.map ig_erase gs')))
+    assert (Hko1' : kbody gc_deps gc_stack ρa' (gm_open Φ' H' its) (gens_append Φk' 0 (List.map generated_item_erase gs')))
       by (econstructor; [ exact Hk' | exact Hσ1' | exact Hkg' ]).
     pose proof (body_eq_upto_types_gens gs _ _ 0 Hkx) as Hkxo; pose proof (body_eq_upto_types_gens gs' _ _ 0 Hkx') as Hkxo'.
     (* the whole blocks evaluate *)
@@ -1184,7 +1184,7 @@ Proof.
     destruct (benv_exists _ _ Hnf (proj1 (body_shape_fill _ _ Hnf Hsx)) HCf _ _ HRC HRf _ Hρρ) as (ρo & Hbo & _).
     destruct (benv_exists _ _ Hnf' (proj1 (body_shape_fill _ _ Hnf' Hsx')) HCf' _ _ HRC' HRf' _ Hρ') as (ρo' & Hbo' & _).
     apply (body_eq_upto_types_benv _ _ Hkxo) in Hbo; apply (body_eq_upto_types_benv _ _ Hkxo') in Hbo'.
-    split; [| exists (gens_append Φk 0 (List.map ig_erase gs)), (gens_append Φk' 0 (List.map ig_erase gs'));
+    split; [| exists (gens_append Φk 0 (List.map generated_item_erase gs)), (gens_append Φk' 0 (List.map generated_item_erase gs'));
               repeat split; assumption ].
     eapply per_body_open; [ exact Hb | exact Hk | exact Hk' | exact Hb1k | exact Hb1k' | exact Hh | exact Hh' | exact Hhh
                           | exact Hko1 | exact Hko1' | exact Hbo | exact Hbo' | | | | ].

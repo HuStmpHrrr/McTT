@@ -802,7 +802,7 @@ Proof.
     pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl _ _) Hent) as HeΘ.
     destruct (gc_entry_ind _ _ _ _ _ _ _ _ HeΘ) as [_ Hml].
     pose proof (ind_mlookup_group _ _ Hg _ _ _ _ Hml) as Hl0.
-    pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ _ (proj1 Hv) (proj2 Hv) Hl0) as HD; cbn [syn_VD] in HD.
+    pose proof (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ (proj1 Hv) (proj2 Hv) Hl0) as HD; cbn [syn_VD] in HD.
     pose proof (decl_closed_ass _ (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl0)) as HaU.
     assert (HargsU : args_ok Θ Ξ Γ (ind_uparams D) Ns) by (rewrite HΔ0; apply args_ok_ext; exact Hargs).
     unfold ind_former_desc in Hats; cbn [ds_ats_read] in Hats.

@@ -1217,7 +1217,7 @@ let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j,
     | Some d -> McttExtracted.Inductives.ind_bmembers d
     | None -> [] in
   let j = if j < List.length ms then j else 0 in
-  let str obj = asprintf "%a" format_expression obj in
+  let str e = asprintf "%a" format_expression e in
   pp_open_vbox f 0;
   fprintf f "elim %s" (str (exp_to_expression ~delta scr));
   List.iteri
@@ -1427,8 +1427,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_run_error_import e ->
      let open McttExtracted.Opens in
      (match e with
-      | Coq_xe_target _ -> fprintf f "@[<hov 2>Error: ill-formed open@]"
-      | Coq_xe_member (h, n) ->
+      | Coq_open_failure_reason_target _ -> fprintf f "@[<hov 2>Error: ill-formed open@]"
+      | Coq_open_failure_reason_member (h, n) ->
          (* A chain from a unit is printed as a privacy error names it. *)
          let rec chain = function
            | Coq_me_unit fp -> Some (fp, [])
@@ -1437,8 +1437,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
          (match chain h with
           | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
-      | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
-      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
+      | Coq_open_failure_reason_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
+      | Coq_open_failure_reason_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
   | Coq_run_error_branch_arity (c, n, k, a, r) ->
      let count n one many = Printf.sprintf "%d %s" n (if n = 1 then one else many) in
      let parts =

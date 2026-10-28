@@ -3,7 +3,7 @@
     The semantic rule of [ι]: the eliminator at a constructor of a member
     is the constructor's branch at the arguments and the recursive
     results.  It holds because the group is valid at the target of a sound
-    embedding ([valid_groups_of_emb]), where the two sides are related
+    embedding ([valid_groups_of_embedding]), where the two sides are related
     ([Inductives/Iota.v]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
@@ -82,8 +82,8 @@ Lemma sem_exp_eq_elim_iota :
                             (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] ).
 Proof.
   intros * HΓ Hl Hgr HMm Hbm Hcon HLb HPl HPs HAl HAs -> Hnm _ HA HMx HBn HBc Har HB Hlk; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
-  refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks c gs Ps As i
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
+  refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_embedding _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks c gs Ps As i
             ltac:(assumption) Hgr HMm Hbm Hcon HPl _ HAl _ HLb Hnm _ _ HBn _ Har _ n B Hlk).
   - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
   - intros * HN HT; exact (sem_exp_eq_at_rel (HAs _ _ _ HN HT _ _ Hμ)).

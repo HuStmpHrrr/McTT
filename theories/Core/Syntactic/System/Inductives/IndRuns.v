@@ -256,9 +256,9 @@ Section IndRuns.
   (** A generated command run, then the rest: it is taken as generated,
       with no reference to check. *)
   Lemma run_gen_cons : forall ch B Rb Θ Ξ c cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_gen c ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
       Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c :: cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2.
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_gen c :: cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2.
   Proof.
     intros * H1 H2; eapply run_cmds_cons; [ constructor | apply fill_cmd_gen | exact H1 | exact H2 ].
   Qed.
@@ -282,7 +282,7 @@ Section IndRuns.
          Forall (fun d => Θ ⍮ (mp, K, gu_body Δ Φ') :: Ξ0 ⍮ Δ ++ gs_tele Ξ0 ⊢ snd (snd d) : fst (snd d)) ds) ->
       exists Φ',
         Θ ⍮ (mp, K, gu_body Δ Φ) :: Ξ0 ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩
-          List.map (fun d => cc_gen (cc_def (fst d) b pv (fst (snd d)) (Some (snd (snd d))))) ds ⇝*
+          List.map (fun d => core_cmd_gen (core_cmd_def (fst d) b pv (fst (snd d)) (Some (snd (snd d))))) ds ⇝*
           Θ ⍮ (mp, K, gu_body Δ Φ') :: Ξ0 ⍮ B ⍮ Rb /\
         ⊢ᵍ Θ ⍮ (mp, K, gu_body Δ Φ') :: Ξ0 /\
         gc_sub Θ ((mp, K, gu_body Δ Φ) :: Ξ0) Θ ((mp, K, gu_body Δ Φ') :: Ξ0) /\
@@ -354,9 +354,9 @@ Section IndRuns.
       cbn; exists "Rec"%string; split; [ reflexivity | exact Hfr ]. }
     set (ds := List.map (fun jx => let '(j, Mj, x) := jx in (x, (grec_fn_ty pq D j Mj, grec_fn pq D j Mj)))
                  (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names Θ0 Ξ0 D))).
-    assert (Hcmds : List.map (fun jx => let '(j, Mj, x) := jx in cc_gen (cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
+    assert (Hcmds : List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_gen (core_cmd_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
                       (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names Θ0 Ξ0 D))
-                    = List.map (fun d => cc_gen (cc_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) ds).
+                    = List.map (fun d => core_cmd_gen (core_cmd_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) ds).
     { unfold ds; rewrite List.map_map; apply List.map_ext; intros [[j Mj] x]; reflexivity. }
     assert (Hnames : List.map fst ds = grec_names Θ0 Ξ0 D).
     { unfold ds; rewrite List.map_map.
@@ -462,7 +462,7 @@ Section IndRuns.
     exists U; unfold ind_mod_cmds, gs_push_ind.
     eapply run_cmds_app; [| eapply run_cmds_app; [ exact Hr2 | exact Hr3 ] ].
     replace (List.map (ind_con_cmd pq D k M) (im_cons M))
-      with (List.map (fun d => cc_gen (cc_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) ds1)
+      with (List.map (fun d => core_cmd_gen (core_cmd_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) ds1)
       by (unfold ds1; rewrite List.map_map; apply List.map_ext; intros [c gs]; reflexivity).
     exact Hr1.
   Qed.
@@ -522,7 +522,7 @@ Section IndRuns.
       ind_nil_at Θ Ξ (ind_qname Ξ (raw_member_name Mr0)) D (grp_self_insts (ind_qname Ξ (raw_member_name Mr0)) D) ->
       gen_names_free Ξ R D ->
       List.NoDup (List.map raw_member_name (raw_decl_members R)) -> Forall (fun Mr => gs_fresh (raw_member_name Mr) Ξ) (raw_decl_members R) ->
-      exists Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb.
+      exists Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_inductive pv R ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb.
   Proof.
     intros * Hg HR Hs Hcls Hsibs Hvcls Hnps Hbfs Hfil Hnil Hgn Hnd Hfr.
     set (pq := ind_qname Ξ (raw_member_name Mr0)).

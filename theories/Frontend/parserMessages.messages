@@ -430,10 +430,10 @@ prog: MODULE VAR WHERE TRUE
 ##
 ## Ends in an error in state: 231.
 ##
-## cmd -> mods . dkw VAR params_opt COLON expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods . definition_keyword VAR params_opt COLON expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> mods . AXIOM VAR params_opt COLON expression [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> mods . MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON expression WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
-## cmd -> mods . MUTUAL dkw params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods . MUTUAL definition_keyword params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## mods
@@ -493,10 +493,10 @@ prog: MODULE VAR WHERE DEF TRUE
 ##
 ## Ends in an error in state: 270.
 ##
-## cmd -> mods dkw . VAR params_opt COLON expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods definition_keyword . VAR params_opt COLON expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods dkw
+## mods definition_keyword
 ##
 
 Expected a name for the definition.
@@ -505,10 +505,10 @@ prog: MODULE VAR WHERE DEF VAR TRUE
 ##
 ## Ends in an error in state: 272.
 ##
-## cmd -> mods dkw VAR params_opt . COLON expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods definition_keyword VAR params_opt . COLON expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods dkw VAR params_opt
+## mods definition_keyword VAR params_opt
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
@@ -523,10 +523,10 @@ prog: MODULE VAR WHERE DEF VAR COLON WHERE
 ##
 ## Ends in an error in state: 273.
 ##
-## cmd -> mods dkw VAR params_opt COLON . expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods definition_keyword VAR params_opt COLON . expression EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods dkw VAR params_opt COLON
+## mods definition_keyword VAR params_opt COLON
 ##
 
 Expected the type of the definition.
@@ -535,10 +535,10 @@ prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY WHERE
 ##
 ## Ends in an error in state: 274.
 ##
-## cmd -> mods dkw VAR params_opt COLON expression . EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods definition_keyword VAR params_opt COLON expression . EQ expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods dkw VAR params_opt COLON expression
+## mods definition_keyword VAR params_opt COLON expression
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
@@ -554,10 +554,10 @@ prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ WHERE
 ##
 ## Ends in an error in state: 275.
 ##
-## cmd -> mods dkw VAR params_opt COLON expression EQ . expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods definition_keyword VAR params_opt COLON expression EQ . expression END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods dkw VAR params_opt COLON expression EQ
+## mods definition_keyword VAR params_opt COLON expression EQ
 ##
 
 Expected the body of the definition.
@@ -566,10 +566,10 @@ prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ FALSE_TY WHERE
 ##
 ## Ends in an error in state: 276.
 ##
-## cmd -> mods dkw VAR params_opt COLON expression EQ expression . END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods definition_keyword VAR params_opt COLON expression EQ expression . END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods dkw VAR params_opt COLON expression EQ expression
+## mods definition_keyword VAR params_opt COLON expression EQ expression
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
@@ -1772,7 +1772,7 @@ prog: MODULE VAR WHERE MUTUAL WITH
 ## Ends in an error in state: 234.
 ##
 ## cmd -> mods MUTUAL . VAR params_opt WHERE INDUCTIVE VAR COLON expression WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
-## cmd -> mods MUTUAL . dkw params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods MUTUAL . definition_keyword params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## mods MUTUAL
@@ -1894,10 +1894,10 @@ prog: MODULE VAR WHERE MUTUAL DEF WITH
 ##
 ## Ends in an error in state: 253.
 ##
-## cmd -> mods MUTUAL dkw params_opt . mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods MUTUAL definition_keyword params_opt . mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods MUTUAL dkw params_opt
+## mods MUTUAL definition_keyword params_opt
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an

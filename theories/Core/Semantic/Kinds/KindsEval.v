@@ -211,7 +211,7 @@ Section KindsEval.
   Lemma kenv_gens : forall gs Φ k ρ ρ1, kenv Θ Ξ ρ Φ ρ1 -> kenv Θ Ξ ρ (gens_append Φ k gs) (kgens_env ρ1 k gs).
   Proof.
     induction gs as [| g gs IH]; intros * Hk; cbn [gens_append kgens_env]; [ exact Hk |].
-    destruct (ig_entry g) as [d E] eqn:Eg.
+    destruct (generated_item_entry g) as [d E] eqn:Eg.
     replace (kentry ρ1 k g) with (kbentry ρ1 (gentry_wk E (wk_shiftn k))) by (destruct g; cbn in Eg; injection Eg as <- <-; reflexivity).
     apply IH; constructor; exact Hk.
   Qed.
@@ -238,13 +238,13 @@ Section KindsEval.
       eexists; econstructor; eassumption.
   Qed.
 
-  Lemma ukind_gens_other : forall gs Φ k ρ sm y ch kk, existsb (String.eqb y) (map ig_name gs) = false ->
+  Lemma ukind_gens_other : forall gs Φ k ρ sm y ch kk, existsb (String.eqb y) (map generated_item_name gs) = false ->
       ukind Θ Ξ ρ (gu_mk nil (md_body sm (gens_append Φ k gs))) (y :: ch) kk <->
       ukind Θ Ξ ρ (gu_mk nil (md_body sm Φ)) (y :: ch) kk.
   Proof.
     induction gs as [| g gs IH]; intros * Hn; cbn [gens_append]; [ reflexivity |].
     cbn [map existsb] in Hn; apply Bool.orb_false_iff in Hn as [Hy Hn].
-    unfold ig_name in Hy; destruct (ig_entry g) as [d E] eqn:Eg; cbn [fst] in Hy.
+    unfold generated_item_name in Hy; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst] in Hy.
     rewrite IH by exact Hn; apply ukind_body_ext_other.
     intros ->; rewrite String.eqb_refl in Hy; discriminate.
   Qed.
@@ -370,7 +370,7 @@ Section KindsEval.
         pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ)))) as Fs.
         pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ))))) as Fk.
         inversion Hg1 as [| ? ? d pv ? ? Hn | ? ? n d pv ? ? Hs Hn | ? ? n d pv ? ? Hs Hn | ? ? n d pv ? ? Hs Hn]; subst;
-          inversion Hn; subst; cbn [ig_entry snd gentry_wk] in Hpg |- *.
+          inversion Hn; subst; cbn [generated_item_entry snd gentry_wk] in Hpg |- *.
         * (* the open's target itself *)
           rewrite gunit_wk_mk; cbn [tele_wk List.length moddef_wk].
           split; [ intros Hu; right; left; do 3 eexists; split; [ reflexivity | split; [ exact Hkx | apply Hsh, Hu ] ] |].

@@ -40,19 +40,19 @@ application and calls `type_infer_in` otherwise, both structurally.
 ## The skipped recursive result (`Extraction/FastEval.v`, `Simulation.v`)
 
 `FastEval.v` copies the evaluation and readback relations of
-`Core/Semantic` with one rule split in two, `feval_ihs_rec` and
-`feval_ihs_skip`: the recursive results of a constructor's arguments are
+`Core/Semantic` with one rule split in two, `fast_eval_ihs_rec` and
+`fast_eval_ihs_skip`: the recursive results of a constructor's arguments are
 computed for the branch `B` (`⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ`), and
 the result of the recursive argument heading `ca_rec t :: gs`, the variable
 `cargs_nrec gs` of `B`, is computed only when `B` reads it; otherwise the
 entry is `𝕌ω@0`.  A function-shaped result is a closure (`d_ihfn`),
 skipped alike.
 
-The readback of a stuck eliminator's branch (`fread_brs`) gives a
+The readback of a stuck eliminator's branch (`fast_read_brs`) gives a
 recursive result the branch does not read (`exp_freshb (cargs_nrec gs) B`)
 the type `𝕌ω@0` instead of evaluating the motive at it (`fast_fresh_ihs_skip`);
-`fread_sim` relates the recursive results only where the branch reads them
-(`dsim_list_at`, `env_agree_binders_at`), as for evaluation.
+`fast_read_sim` relates the recursive results only where the branch reads them
+(`domain_list_simulation_at`, `env_agree_binders_at`), as for evaluation.
 
 Evaluation selects a member of a global module by one lookup of its entry
 (`gc_entry`, `Extraction/Evaluation.v`): a definition (`gc_entry_def`) or the
@@ -66,7 +66,7 @@ completeness.
 
 Readback has one rule more: a type former without arguments reads back as
 `nf_indty p nil` without looking its declaration up
-(`fread_typ_indty_nil`; the general rule asks `as' <> nil`).
+(`fast_read_typ_indty_nil`; the general rule asks `as' <> nil`).
 
 The implementations keep a declaration they looked up (`lk_cache`,
 `cache_lookup`, `Extraction/Lookup.v`): the eliminator passes the one of
@@ -80,22 +80,22 @@ taken apart character by character by `decide equality`.  Notations carry `ᶠ` 
 The orders and implementations of `Extraction/Evaluation.v` and
 `Readback.v` are those of `Reference/` over the copied relations.
 
-`Simulation.v` relates the two.  `dsim a a'` (reference `a`, fast `a'`) is
+`Simulation.v` relates the two.  `domain_simulation a a'` (reference `a`, fast `a'`) is
 equality up to the entries of closures' environments at which the body is
 fresh; `env_agree P ρ ρ'` is agreement at the entries `P` selects.
 
-- `feval_sim`: from environments that agree where the term may read
+- `fast_eval_sim`: from environments that agree where the term may read
   (`fun x => ~ exp_fresh x M`), the fast evaluation terminates whenever the
   reference one does, at a related value.  A body's environment agrees on
   the entries it adds and, above them, where its input did (`above`).
   The recursive results are related only at the entries the branch reads
-  (`dsim_list_at (fun x => ~ exp_fresh x B)`: the head of `a :: l` sits at
+  (`domain_list_simulation_at (fun x => ~ exp_fresh x B)`: the head of `a :: l` sits at
   entry `List.length l`), and the branch's environment agrees where the
   branch reads (`env_agree_binders_at`).
-- `fread_sim`: readback of related values gives the same normal form.
+- `fast_read_sim`: readback of related values gives the same normal form.
 
 So the fast normalizers meet `nbe`/`nbe_ty` (`Extraction/NbE.v`): the order
-gives the reference derivation, `feval_sim`/`fread_sim` the fast one, and
+gives the reference derivation, `fast_eval_sim`/`fast_read_sim` the fast one, and
 determinism of fast readback the equality.  The checker's environment
 `tenv G` is `fenv`: a fast environment related to the initial environment of
 `G` entry by entry.
@@ -230,8 +230,8 @@ the non-uniform parameters, the arguments and the recursive results
 and appending the value list (`elim_env_eq`, by `env_args_app`).
 
 **Recursive argument types without indices.**  For an argument at the type
-itself without indices (`pt_self k nil`), `feval_shty_fast` gives its type
-as the type former at the uniform parameters, and `feval_ihty_fast` the type
+itself without indices (`pt_self k nil`), `fast_eval_shty_fast` gives its type
+as the type former at the uniform parameters, and `fast_eval_ihty_fast` the type
 of its recursive result as the motive at the argument, without evaluating
 an empty list of indices; readback uses both.
 
@@ -242,8 +242,8 @@ application spine is a value: the codomain closure `Πᵈ a ρ b` at the
 argument's value.  `app_cod G P N ρ b` evaluates `b` at `ρ ↦ 𝕌ω@0`,
 without evaluating the argument `N`, when `b` does not read its variable
 (`exp_freshb 0 b = true`), and at `ρ ↦ n`, `n` the value of `N`, otherwise
-(`app_cod_val`).  `typ_val` is up to `dsim`, which relates closures only
-where their bodies read (`feval_clo_unread`, `Simulation.v`), so the value
+(`app_cod_val`).  `typ_val` is up to `domain_simulation`, which relates closures only
+where their bodies read (`fast_eval_clo_unread`, `Simulation.v`), so the value
 still stands for the normal form (`typ_val_app_cod_step`).  A numeral, a
 chain of `n` constructors typed by the spine rule, is typed in time linear
 in `n`: `eval succ 3200` takes 15 ms, 141 ms before.

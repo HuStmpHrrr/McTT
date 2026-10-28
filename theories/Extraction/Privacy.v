@@ -621,13 +621,13 @@ Definition sited_VR (Θ2 : gdeps) (Ξ2 : gstack) (R : record_decl) : Prop := Tru
 (** Being sited does not depend on where it is read from. *)
 Abbreviation sited_Vs := (fun (_ : gdeps) (_ : gstack) => sited_V).
 
-Lemma good_sited : forall Θ Ξ Θs Ξs Θ2 Ξ2,
+Lemma aliases_sited_of_valid : forall Θ Ξ Θs Ξs Θ2 Ξ2,
     gds_valid sited_Vs sited_F sited_VD sited_VR Θs Ξs Θ2 Ξ2 Θ -> gs_valid sited_Vs sited_F sited_VD sited_VR Θs Ξs Θ2 Ξ2 Ξ ->
     aliases_sited Θ Ξ Θ2 Ξ2.
 Proof.
   intros * HΘ HΞ p E E' HE Hal.
   destruct (gc_entry_alias_module _ _ _ _ _ HE Hal) as (Δ & Hm).
-  destruct (good_alias _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pv & HV); exact HV.
+  destruct (gc_module_alias_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pv & HV); exact HV.
 Qed.
 
 Lemma sited_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
@@ -639,7 +639,7 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
   destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HE) as (_ & (R & _ & HR & _) & _).
-  exact (site_order_of_mdenote _ _ _ _ Hg He (good_sited _ _ _ _ _ _ HΘ HΞ) _ _ _ HR).
+  exact (site_order_of_mdenote _ _ _ _ Hg He (aliases_sited_of_valid _ _ _ _ _ _ HΘ HΞ) _ _ _ HR).
 Qed.
 
 Theorem gctx_aliases_sited : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> aliases_sited Θ Ξ Θ Ξ.
@@ -650,7 +650,7 @@ Proof.
                 sited_V_alias ltac:(intros; exact I) ltac:(intros; split; exact I)
                 ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg) as HG.
   destruct (HG _ _ (gctx_embedding_with_bodies_refl _ _ Hg) _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
-  exact (good_sited _ _ _ _ _ _ HΘ HΞ).
+  exact (aliases_sited_of_valid _ _ _ _ _ _ HΘ HΞ).
 Qed.
 
 Theorem site_order_total : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H, site_order Θ Ξ H.

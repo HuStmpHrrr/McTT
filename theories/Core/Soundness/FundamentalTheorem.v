@@ -9,7 +9,7 @@
 
     The theorem then gives the rest.  Each entry of a global context is
     valid where it is checked, so a well-formed global context embeds
-    soundly into itself ([glu_emb_refl]), from what [Global/Embedding.v] makes of
+    soundly into itself ([glu_gctx_embedding_refl]), from what [Global/Embedding.v] makes of
     valid entries.  At that embedding the gluing judgments are the gluing
     relations at the global context, as the corollaries below state them for
     contexts and terms.  There is no part for substitutions, since the
@@ -102,8 +102,8 @@ Proof.
 Qed.
 
 (** A closed typed term, glued along a sound embedding. *)
-Lemma glu_rel_exp_of_emb : forall Θ1 Ξ1 Θ2 Ξ2 A M,
-    glu_emb Θ1 Ξ1 Θ2 Ξ2 ->
+Lemma glu_rel_exp_of_embedding : forall Θ1 Ξ1 Θ2 Ξ2 A M,
+    glu_gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
     Θ1 ⍮ Ξ1 ⍮ ⋅ ⊢ M : A ->
     @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A.
 Proof. intros * Hμ HM; exact (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM _ _ Hμ). Qed.
@@ -116,10 +116,10 @@ Lemma glu_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
     forall Θs Ξs, glu_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM _ He HΘ HΞ Θs Ξs.
-  pose proof (glu_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
+  pose proof (glu_gctx_embedding_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
   destruct (presup_exp_typ HM) as [i HA].
   destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  exists j; exact (glu_rel_exp_of_emb _ _ _ _ _ _ Hμ HT).
+  exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT).
 Qed.
 
 Lemma glu_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
@@ -127,9 +127,9 @@ Lemma glu_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He _.
-  pose proof (glu_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
+  pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
   destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  exists j; exact (glu_rel_exp_of_emb _ _ _ _ _ _ Hμ HT).
+  exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT).
 Qed.
 
 Lemma glu_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
@@ -152,7 +152,7 @@ Proof.
   intros * Hdt HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
   destruct (decl_typed_uparams _ _ _ Hdt) as [HUw _].
   pose proof (ctx_wf_gctx _ _ _ HUw) as Hg.
-  pose proof (glu_emb_good _ _ _ _ Hg HG He) as Hμ.
+  pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
   pose proof (gctx_embedding_resolution _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as Hs.
   destruct soundness_fundamental as (Kc & Ke & _).
   destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n Hn].
@@ -230,9 +230,9 @@ Qed.
 (** ** Every well-formed global context glues
 
     The identity is a sound embedding. *)
-Theorem glu_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_emb Θ Ξ Θ Ξ.
+Theorem glu_gctx_embedding_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_embedding Θ Ξ Θ Ξ.
 Proof.
-  intros * Hg; apply glu_emb_good; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
+  intros * Hg; apply glu_gctx_embedding_of_bodies_valid; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
   exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
 Qed.
 
@@ -242,19 +242,19 @@ Section soundness_fundamental.
   Context {GC : GCtx}.
 
   (** The identity is sound at a well-formed global context. *)
-  Lemma glu_emb_refl_gc : ⊢ᵍ gc_deps ⍮ gc_stack -> glu_emb gc_deps gc_stack gc_deps gc_stack.
-  Proof. exact (glu_emb_refl _ _). Qed.
+  Lemma glu_gctx_embedding_refl_gc : ⊢ᵍ gc_deps ⍮ gc_stack -> glu_gctx_embedding gc_deps gc_stack gc_deps gc_stack.
+  Proof. exact (glu_gctx_embedding_refl _ _). Qed.
 
   Corollary soundness_fundamental_ctx : forall Γ, ⊢ Γ -> ⊩ Γ.
   Proof.
     intros * H; destruct soundness_fundamental as (Kc & _).
-    pose proof (Kc _ _ _ H _ _ (glu_emb_refl_gc (ctx_wf_gctx _ _ _ H))) as H'; destruct GC; exact H'.
+    pose proof (Kc _ _ _ H _ _ (glu_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ H))) as H'; destruct GC; exact H'.
   Qed.
 
   Corollary soundness_fundamental_exp : forall Γ M A, Γ ⊢ M : A -> Γ ⊩ M : A.
   Proof.
     intros * H; destruct soundness_fundamental as (_ & Ke & _).
-    pose proof (Ke _ _ _ _ _ H _ _ (glu_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H'; destruct GC; exact H'.
+    pose proof (Ke _ _ _ _ _ H _ _ (glu_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H'; destruct GC; exact H'.
   Qed.
 End soundness_fundamental.
 

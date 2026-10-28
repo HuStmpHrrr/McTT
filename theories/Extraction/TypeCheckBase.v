@@ -188,18 +188,18 @@ Section type_check.
 
   Lemma tenv_eval_order_ass : forall G A p', ⊢ G ▹ A ->
       (exists p, initial_env gc_deps gc_stack G p /\ env_agree gc_deps gc_stack (fun _ => True) p p') ->
-      feval_exp_order gc_deps gc_stack A p'.
+      fast_eval_exp_order gc_deps gc_stack A p'.
   Proof.
     intros * HGA (p & Hp & Hag); destruct (tenv_ref_ass _ _ _ HGA Hp) as [a Ha].
-    eapply (feval_of_ref _ _ _ _ _ _ Ha), agree_all, Hag.
+    eapply (fast_eval_of_ref _ _ _ _ _ _ Ha), agree_all, Hag.
   Qed.
 
   Lemma tenv_eval_order_def : forall G A M p', ⊢ G ▸ A ≔ M ->
       (exists p, initial_env gc_deps gc_stack G p /\ env_agree gc_deps gc_stack (fun _ => True) p p') ->
-      feval_exp_order gc_deps gc_stack M p'.
+      fast_eval_exp_order gc_deps gc_stack M p'.
   Proof.
     intros * HGA (p & Hp & Hag); destruct (tenv_ref_def _ _ _ _ HGA Hp) as [m Hm].
-    eapply (feval_of_ref _ _ _ _ _ _ Hm), agree_all, Hag.
+    eapply (fast_eval_of_ref _ _ _ _ _ _ Hm), agree_all, Hag.
   Qed.
 
   Lemma tenv_ass_sim : forall G A p' a', ⊢ G ▹ A ->
@@ -208,7 +208,7 @@ Section type_check.
       exists p, initial_env gc_deps gc_stack (G ▹ A) p /\ env_agree gc_deps gc_stack (fun _ => True) p (p' ↦ ⇑! a' (List.length G)).
   Proof.
     intros * HGA (p & Hp & Hag) Ha'; destruct (tenv_ref_ass _ _ _ HGA Hp) as [a Ha].
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag)) _ Ha').
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag)) _ Ha').
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ exact Hag | repeat constructor; assumption | intros; exact I ].
   Qed.
@@ -219,7 +219,7 @@ Section type_check.
       exists p, initial_env gc_deps gc_stack (G ▸ A ≔ M) p /\ env_agree gc_deps gc_stack (fun _ => True) p (p' ↦ m').
   Proof.
     intros * HGA (p & Hp & Hag) Hm'; destruct (tenv_ref_def _ _ _ _ HGA Hp) as [m Hm].
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm (agree_all _ _ _ _ _ Hag)) _ Hm').
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm (agree_all _ _ _ _ _ Hag)) _ Hm').
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
   Qed.
@@ -236,10 +236,10 @@ Section type_check.
 
   Lemma tenv_eval_order_mod : forall G U p', ⊢ G ▹ₘ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ env_agree gc_deps gc_stack (fun _ => True) p p') ->
-      feval_modexp_order gc_deps gc_stack (me_lit U) p'.
+      fast_eval_modexp_order gc_deps gc_stack (me_lit U) p'.
   Proof.
     intros * HGU (p & Hp & Hag); destruct (tenv_ref_mod _ _ _ HGU Hp) as [h Hh].
-    eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh), agree_all, Hag.
+    eapply (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh), agree_all, Hag.
   Qed.
 
   Lemma tenv_mod_sim : forall G U p' h', ⊢ G ▹ₘ U ->
@@ -248,7 +248,7 @@ Section type_check.
       exists p, initial_env gc_deps gc_stack (G ▹ₘ U) p /\ env_agree gc_deps gc_stack (fun _ => True) p (p' ↦ᵐ h').
   Proof.
     intros * HGU (p & Hp & Hag) Hh'; destruct (tenv_ref_mod _ _ _ HGU Hp) as [h Hh].
-    pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh (agree_all _ _ _ _ _ Hag)) _ Hh').
+    pose proof (proj2 (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh (agree_all _ _ _ _ _ Hag)) _ Hh').
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
   Qed.
@@ -266,18 +266,18 @@ Section type_check.
 
   Lemma tenv_eval_order_dm_tm : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ env_agree gc_deps gc_stack (fun _ => True) p p') ->
-      feval_exp_order gc_deps gc_stack M p'.
+      fast_eval_exp_order gc_deps gc_stack M p'.
   Proof.
     intros * HG (p & Hp & Hag); destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & _).
-    eapply (feval_of_ref _ _ _ _ _ _ Hm), agree_all, Hag.
+    eapply (fast_eval_of_ref _ _ _ _ _ _ Hm), agree_all, Hag.
   Qed.
 
   Lemma tenv_eval_order_dm_unit : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ env_agree gc_deps gc_stack (fun _ => True) p p') ->
-      feval_modexp_order gc_deps gc_stack (me_lit U) p'.
+      fast_eval_modexp_order gc_deps gc_stack (me_lit U) p'.
   Proof.
     intros * HG (p & Hp & Hag); destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & _ & Hh).
-    eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh), agree_all, Hag.
+    eapply (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh), agree_all, Hag.
   Qed.
 
   Lemma tenv_dm_sim : forall G A M U p' m' h', ⊢ G ▸ₘ A ≔ M ‖ U ->
@@ -287,8 +287,8 @@ Section type_check.
       exists p, initial_env gc_deps gc_stack (G ▸ₘ A ≔ M ‖ U) p /\ env_agree gc_deps gc_stack (fun _ => True) p (p' ↦ᵈ m' ‖ h').
   Proof.
     intros * HG (p & Hp & Hag) Hm' Hh'; destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & Hh).
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm (agree_all _ _ _ _ _ Hag)) _ Hm').
-    pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh (agree_all _ _ _ _ _ Hag)) _ Hh').
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm (agree_all _ _ _ _ _ Hag)) _ Hm').
+    pose proof (proj2 (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh (agree_all _ _ _ _ _ Hag)) _ Hh').
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
   Qed.
@@ -577,27 +577,27 @@ Definition tenv_of G (HG : ⊢ G) : tenv G :=
     context: one entry more, by its rule of [initial_env]. *)
 Definition tenv_ass G (P : tenv G) A (HGA : ⊢ G ▹ A) : tenv (G ▹ A) :=
   let (p, Hp) := P in
-  let (a, Ha) := feval_exp_impl F A p (tenv_eval_order_ass G A p HGA Hp) in
+  let (a, Ha) := fast_eval_exp_impl F A p (tenv_eval_order_ass G A p HGA Hp) in
   exist _ (p ↦ ⇑! a (List.length G)) (tenv_ass_sim _ _ _ _ HGA Hp Ha).
 
 (** The same for a definition entry: its body's value. *)
 Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
   let (p, Hp) := P in
-  let (m, Hm) := feval_exp_impl F M p (tenv_eval_order_def G A M p HGA Hp) in
+  let (m, Hm) := fast_eval_exp_impl F M p (tenv_eval_order_def G A M p HGA Hp) in
   exist _ (p ↦ m) (tenv_def_sim _ _ _ _ _ HGA Hp Hm).
 
 (** The same for a module slot: the closure of its unit. *)
 Definition tenv_mod G (P : tenv G) U (HGU : ⊢ G ▹ₘ U) : tenv (G ▹ₘ U) :=
   let (p, Hp) := P in
-  let (h, Hh) := feval_modexp_impl F (me_lit U) p (tenv_eval_order_mod G U p HGU Hp) in
+  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (tenv_eval_order_mod G U p HGU Hp) in
   exist _ (p ↦ᵐ h) (tenv_mod_sim _ _ _ _ HGU Hp Hh).
 
 (** The same for a definition with a module part: the value of its term
     part's body and the closure of its unit, side by side. *)
 Definition tenv_dm G (P : tenv G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : tenv (G ▸ₘ A ≔ M ‖ U) :=
   let (p, Hp) := P in
-  let (m, Hm) := feval_exp_impl F M p (tenv_eval_order_dm_tm G A M U p HG Hp) in
-  let (h, Hh) := feval_modexp_impl F (me_lit U) p (tenv_eval_order_dm_unit G A M U p HG Hp) in
+  let (m, Hm) := fast_eval_exp_impl F M p (tenv_eval_order_dm_tm G A M U p HG Hp) in
+  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (tenv_eval_order_dm_unit G A M U p HG Hp) in
   exist _ (p ↦ᵈ m ‖ h) (tenv_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
 
 (** The initial environment of an extension [Ψ ++ G], from that of [G]:

@@ -152,31 +152,31 @@ Definition open_mod (E : modexp) (oc : option string) : modexp :=
 
 (** As a term.  A module alias is not one.  A leading open's entry needs
     no weakening: its module is closed. *)
-Inductive den_term (k : nat) : scope_entry -> exp -> Prop :=
+Inductive entry_denotes_term (k : nat) : scope_entry -> exp -> Prop :=
 (** A binder that may hold a module: the variable *)
-| den_term_var : forall x, den_term k (scope_entry_var x) #k
+| entry_denotes_term_var : forall x, entry_denotes_term k (scope_entry_var x) #k
 (** A term binder: the variable *)
-| den_term_tvar : forall x, den_term k (scope_entry_tvar x) #k
+| entry_denotes_term_tvar : forall x, entry_denotes_term k (scope_entry_tvar x) #k
 (** A member: its qualified name applied to the parameters outside it *)
-| den_term_mem : forall x p m, den_term k (scope_entry_mem x p m) (apps (qname_term p) (vars_desc k m))
+| entry_denotes_term_mem : forall x p m, entry_denotes_term k (scope_entry_mem x p m) (apps (qname_term p) (vars_desc k m))
 (** A leading open's name of a member: that member of the module *)
-| den_term_open : forall x E c, den_term k (scope_entry_open x E (Some c)) (a_mem E c).
+| entry_denotes_term_open : forall x E c, entry_denotes_term k (scope_entry_open x E (Some c)) (a_mem E c).
 
 (** As a module expression.  A variable that may hold a module is a module
     slot, which the core rejects if it holds a term; a term binder is the
     binder too: the core fills it, a term of a record type standing for
     the record's module at the term ([fill_mod_term]), and rejects any
     other. *)
-Inductive den_mod (k : nat) : scope_entry -> modexp -> Prop :=
+Inductive entry_denotes_mod (k : nat) : scope_entry -> modexp -> Prop :=
 (** A binder that may hold a module: the module slot *)
-| dm_var : forall x, den_mod k (scope_entry_var x) (me_var k)
+| entry_denotes_mod_var : forall x, entry_denotes_mod k (scope_entry_var x) (me_var k)
 (** A term binder: the binder, which the core fills when the term is of a
     record type *)
-| dm_tvar : forall x, den_mod k (scope_entry_tvar x) (me_var k)
+| entry_denotes_mod_tvar : forall x, entry_denotes_mod k (scope_entry_tvar x) (me_var k)
 (** A member: its qualified name applied to the parameters outside it *)
-| dm_mem : forall x p m, den_mod k (scope_entry_mem x p m) (mapps (qname_mod p) (vars_desc k m))
+| entry_denotes_mod_mem : forall x p m, entry_denotes_mod k (scope_entry_mem x p m) (mapps (qname_mod p) (vars_desc k m))
 (** A leading open's name: what it names in the module *)
-| dm_open : forall x E oc, den_mod k (scope_entry_open x E oc) (open_mod E oc).
+| entry_denotes_mod_open : forall x E oc, entry_denotes_mod k (scope_entry_open x E oc) (open_mod E oc).
 
 (** ** What an Open Declares
 
@@ -274,7 +274,7 @@ Inductive sel : list scope_entry -> Cst.expression -> exp -> Prop :=
 | sel_app : forall S o1 o2 M N,
     sel S o1 M -> sel S o2 N -> sel S (Cst.app o1 o2) (M $ N)
 | sel_var : forall S x k e M,
-    bound S x k e -> den_term k e M -> sel S (Cst.var x) M
+    bound S x k e -> entry_denotes_term k e M -> sel S (Cst.var x) M
 (** A projection selects a member of the module its head denotes, a
     name, a member of one, or one applied ([expression_path]). *)
 | sel_proj : forall S o x H,
@@ -310,7 +310,7 @@ Inductive sel : list scope_entry -> Cst.expression -> exp -> Prop :=
 
 with selm : list scope_entry -> Cst.expression -> modexp -> Prop :=
 | selm_var : forall S x k e H,
-    bound S x k e -> den_mod k e H -> selm S (Cst.var x) H
+    bound S x k e -> entry_denotes_mod k e H -> selm S (Cst.var x) H
 | selm_glob : forall S fq,
     In (scope_entry_unit fq) S -> selm S (Cst.glob fq) (me_unit fq)
 (** A name no binding in scope has is the imported unit of that one-segment
@@ -519,20 +519,20 @@ Definition cmd_decls (c : Cst.cmd) : list string :=
     core commands [c'].  [scmds] runs the commands of a body in order.  A
     definition keyword with a modifier it implies ([Cst.c_error]) has no
     rule. *)
-Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> Cst.cmd -> list scope_entry -> list ccmd -> Prop :=
+Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> Cst.cmd -> list scope_entry -> list core_cmd -> Prop :=
 (** A definition: its type and its body, read in the scope. *)
 | sc_def : forall ch P S m x oA oM A M,
     fresh x P ->
     sel S oA A ->
     sel S oM M ->
     scmd fp ch P S (Cst.c_def m x oA oM) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
+      (core_cmd_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
 (** An axiom is opaque, and has no body. *)
 | sc_axiom : forall ch P S x oA A,
     fresh x P ->
     sel S oA A ->
     scmd fp ch P S (Cst.c_axiom x oA) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_def x false false A None :: nil)
+      (core_cmd_def x false false A None :: nil)
 (** The parameters of [module x (ps) where body end] are read in the
     scope, its body in a new frame inside, whose parameters are [ps]. *)
 | sc_mod : forall ch P S pv x ps body tys bcs,
@@ -541,7 +541,7 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     sparams S ps tys ->
     scmds fp (ch ++ x :: nil) (map fst ps) (param_scope_entries ps ++ S) body bcs ->
     scmd fp ch P S (Cst.c_mod pv x ps (Cst.md_where body)) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_mod x pv (ptele tys) bcs :: nil)
+      (core_cmd_mod x pv (ptele tys) bcs :: nil)
 (** [module x (ps) := E]: [E] is read under the parameters. *)
 | sc_alias : forall ch P S pv x ps oE tys E,
     fresh x P ->
@@ -549,10 +549,10 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     sparams S ps tys ->
     selm (param_scope_entries ps ++ S) oE E ->
     scmd fp ch P S (Cst.c_mod pv x ps (Cst.md_alias oE)) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_alias x pv (ptele tys) E :: nil)
+      (core_cmd_alias x pv (ptele tys) E :: nil)
 (** [import X::Y] loads the unit, which may be named from then on. *)
 | sc_import : forall ch P S fq,
-    scmd fp ch P S (Cst.c_import fq) (scope_entry_unit fq :: S) (cc_load fq :: nil)
+    scmd fp ch P S (Cst.c_import fq) (scope_entry_unit fq :: S) (core_cmd_load fq :: nil)
 (** An open loads nothing, so a unit it names must be nameable already.
     No name it declares is a parameter's; whether it declares one twice,
     or one the frame has declared, is the core's to check. *)
@@ -560,16 +560,16 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     itarget fq ip args = Some o ->
     selm S o E ->
     Forall (fun d => fresh d P) (map iitem_name its) ->
-    scmd fp ch P S (Cst.c_open fq ip args its) (item_mems fp ch (binders S) its ++ S) (cc_open E its :: nil)
+    scmd fp ch P S (Cst.c_open fq ip args its) (item_mems fp ch (binders S) its ++ S) (core_cmd_open E its :: nil)
 (** An evaluation, read in the scope; it declares nothing. *)
 | sc_eval : forall ch P S oM M,
     sel S oM M ->
-    scmd fp ch P S (Cst.c_eval oM None) S (cc_eval M None :: nil)
+    scmd fp ch P S (Cst.c_eval oM None) S (core_cmd_eval M None :: nil)
 (** An evaluation at a type written out *)
 | sc_eval_typ : forall ch P S oM oA M A,
     sel S oM M ->
     sel S oA A ->
-    scmd fp ch P S (Cst.c_eval oM (Some oA)) S (cc_eval M (Some A) :: nil)
+    scmd fp ch P S (Cst.c_eval oM (Some oA)) S (core_cmd_eval M (Some A) :: nil)
 (** [inductive x (ups) : T where cs with y : U where … end]: the uniform
     parameters are read in the scope, each member's non-uniform ones and
     sort under them, the constructors' arguments under all, with the
@@ -582,7 +582,7 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     sparams S ups tys ->
     smembers S ups (member_names ms) ms rms ->
     scmd fp ch P S (Cst.c_ind pv wr ups ms) (filed_mems fp ch (binders S) (member_names ms) ++ S)
-      (cc_ind pv (mk_raw (ptele tys) rms wr) :: nil)
+      (core_cmd_inductive pv (mk_raw (ptele tys) rms wr) :: nil)
 (** [mutual def (ps) f … with g … end]: the common parameters are read in
     the scope, the functions under them.  It declares each function. *)
 | sc_mdef : forall ch P S m ps fs tys rfs,
@@ -592,7 +592,7 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     sparams S ps tys ->
     sfuns (param_scope_entries ps ++ S) fs rfs ->
     scmd fp ch P S (Cst.c_mdef m ps fs) (filed_mems fp ch (binders S) (fun_names fs) ++ S)
-      (cc_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)
+      (core_cmd_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)
 (** [inductive x (ps) := E]: [E] is read under the parameters, as an
     alias's target is; whether it names an inductive type, and its
     arguments the type's, is the core's to check. *)
@@ -602,7 +602,7 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     sparams S ps tys ->
     selm (param_scope_entries ps ++ S) oE E ->
     scmd fp ch P S (Cst.c_ind_alias pv x ps oE) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_ind_alias x pv (ptele tys) E :: nil)
+      (core_cmd_inductive_alias x pv (ptele tys) E :: nil)
 (** [record x (ps) := E]: as an inductive alias; whether [E] names a record
     type is the core's to check. *)
 | sc_record_alias : forall ch P S pv x ps oE tys E,
@@ -611,12 +611,12 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     sparams S ps tys ->
     selm (param_scope_entries ps ++ S) oE E ->
     scmd fp ch P S (Cst.c_record_alias pv x ps oE) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_record_alias x pv (ptele tys) E :: nil)
+      (core_cmd_record_alias x pv (ptele tys) E :: nil)
 (** [builtin k := X]: [X] is a module, as written; whether it is an
     inductive type of the right shape is the core's to check. *)
 | sc_builtin : forall ch P S k oX H,
     selm S oX H ->
-    scmd fp ch P S (Cst.c_builtin k oX) S (cc_builtin k H :: nil)
+    scmd fp ch P S (Cst.c_builtin k oX) S (core_cmd_builtin k H :: nil)
 (** [record x (ps) : S where f : A ; … with cs end]: the parameters are
     read in the scope, the sort under them, each field's type under them
     and the fields before it.  The with-area is read in the record's frame
@@ -633,9 +633,9 @@ Inductive scmd (fp : path) : list string -> list string -> list scope_entry -> C
     scmds fp (ch ++ x :: nil) (map fst ps)
       (record_scope_entries fp ch (binders S) x ps fs ++ scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S) cs bcs ->
     scmd fp ch P S (Cst.c_record pv x ps oS fs cs) (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-      (cc_record x pv (ptele tys) Srt fs' bcs :: nil)
+      (core_cmd_record x pv (ptele tys) Srt fs' bcs :: nil)
 
-with scmds (fp : path) : list string -> list string -> list scope_entry -> list Cst.cmd -> list ccmd -> Prop :=
+with scmds (fp : path) : list string -> list string -> list scope_entry -> list Cst.cmd -> list core_cmd -> Prop :=
 (** No command *)
 | scmds_nil : forall ch P S, scmds fp ch P S nil nil
 (** The first command, then the rest in the scope it leaves *)
@@ -657,11 +657,11 @@ with scmds (fp : path) : list string -> list string -> list scope_entry -> list 
       [param_scope_entries ps ++ L].
 
     The unit's member chain is [nil]. *)
-Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list ccmd -> Prop :=
+Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list core_cmd -> Prop :=
 | slead_nil : forall L, slead L nil L nil
 | slead_import : forall L fq cs L' lds,
     slead (scope_entry_unit fq :: L) cs L' lds ->
-    slead L (Cst.c_import fq :: cs) L' (cc_load fq :: lds)
+    slead L (Cst.c_import fq :: cs) L' (core_cmd_load fq :: lds)
 | slead_open : forall L fq ip args its o E cs L' lds,
     itarget fq ip args = Some o ->
     selm L o E ->
@@ -678,7 +678,7 @@ Inductive elab_spec : Cst.prog -> cunit -> Prop :=
 
 (** ** Elaborated Commands Are Written
 
-    No rule emits a generated command ([cc_gen]): the privacy check the
+    No rule emits a generated command ([core_cmd_gen]): the privacy check the
     core skips for those is never skipped for what the user writes. *)
 
 Scheme scmd_mind := Minimality for scmd Sort Prop

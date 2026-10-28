@@ -320,17 +320,17 @@ Defined.
 (** The views of a group declaration, found: the views of the search, or
     the first view it meets that has no data, with why. *)
 Definition views_search (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (R : raw_decl) (csD : list (list (string * list rcarg))) :
-    Command.rres (Command.views_found (fc_deps F) (fc_stack F) R csD) :=
+    Command.run_result (Command.views_found (fc_deps F) (fc_stack F) R csD) :=
   match views_search_run F HΞ R csD with
   | inl (exist _ (Vf, Af) (conj Hd (conj HF Hb))) =>
-      Command.rok (existT _ Vf (existT _ (List.map data_sibs Af) (existT _ (List.map data_cons Af)
+      Command.run_success (existT _ Vf (existT _ (List.map data_sibs Af) (existT _ (List.map data_cons Af)
         (exist _ (List.map data_nparams Af) (views_found_ok (fc_deps F) (fc_stack F) R csD Vf Af Hd HF Hb)))))
-  | inr (exist _ (x, e) _) => Command.rerr (Command.run_error_view (rd_first_name R) x e)
+  | inr (exist _ (x, e) _) => Command.run_failure (Command.run_error_view (rd_first_name R) x e)
   end.
 
 (** The search finds the views whenever there are some. *)
 Theorem views_search_complete : forall F HΞ R csD Vs Ss csV Nvs,
-    Command.views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, views_search F HΞ R csD = Command.rok v.
+    Command.views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, views_search F HΞ R csD = Command.run_success v.
 Proof.
   intros * [Hs Hc Hn Hb]; unfold views_search.
   destruct (views_search_run F HΞ R csD) as [[[Vf Af] (Hd & HF & Hbf)] | [[x e] Hf]]; [ eexists; reflexivity |].

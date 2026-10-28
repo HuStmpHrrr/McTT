@@ -101,17 +101,17 @@ Ltac sem_intro0 :=
       not the one the relations are read at. *)
   repeat match goal with G : GCtx |- _ => clear G end;
   unfold sem_ctx, sem_exp, sem_exp_eq, sem_subtyp, sem_is_univ, sem_ext_eq, sem_unit_eq, sem_modexp_eq in *; intros;
-  match goal with He : valid_emb ?T1 ?X1 ?T2 ?X2 |- _ =>
+  match goal with He : valid_gctx_embedding ?T1 ?X1 ?T2 ?X2 |- _ =>
     let Hemb := fresh "Hemb" in let Hgm := fresh "Hgm" in let Hgf := fresh "Hgf" in
     let Hsub := fresh "Hsub" in let Hgw := fresh "Hgw" in
-    pose proof (valid_emb_emb _ _ _ _ He) as Hemb; pose proof (valid_emb_wf _ _ _ _ He) as Hgm;
-    pose proof (valid_emb_filed _ _ _ _ He) as Hgf;
+    pose proof (valid_gctx_embedding_embedding _ _ _ _ He) as Hemb; pose proof (valid_gctx_embedding_wf _ _ _ _ He) as Hgm;
+    pose proof (valid_gctx_embedding_filed _ _ _ _ He) as Hgf;
     pose proof (gctx_embedding_resolution _ _ _ _ Hemb) as Hsub; pose proof (gctx_embedding_wf _ _ _ _ Hemb) as Hgw;
     change (⊢ᵍ @gc_deps (gc_mk T2 X2) ⍮ @gc_stack (gc_mk T2 X2)) in Hgw;
     change (gc_sub T1 X1 (@gc_deps (gc_mk T2 X2)) (@gc_stack (gc_mk T2 X2))) in Hsub;
     (** The target, named, is the global context the relations are read at. *)
     let GC := fresh "GC" in set (GC := gc_mk T2 X2) in * end;
-  repeat match goal with IH : forall _ _, valid_emb _ _ _ _ -> _, He : valid_emb _ _ _ _ |- _ =>
+  repeat match goal with IH : forall _ _, valid_gctx_embedding _ _ _ _ -> _, He : valid_gctx_embedding _ _ _ _ |- _ =>
     specialize (IH _ _ He) end;
   sem_destruct; destruct_conjs; add_rel_ctx_wf.
 

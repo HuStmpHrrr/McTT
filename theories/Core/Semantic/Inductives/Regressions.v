@@ -589,7 +589,7 @@ Definition self_param_decl (pC : qname) (x : string) (ST : exp) : raw_decl :=
 Theorem run_cmd_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb' Θ' Ξ' pC DC MC iU x ST,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
     im_nparams MC = ce_ass (a_var 0) :: nil ->
-    ~ (Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨lp ⍮ rd ⍮ tc⟩ cc_ind pv (self_param_decl pC x ST) ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb').
+    ~ (Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨lp ⍮ rd ⍮ tc⟩ core_cmd_inductive pv (self_param_decl pC x ST) ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb').
 Proof.
   intros * Hl Hu Hk Hnp Hr.
   inversion Hr; subst.

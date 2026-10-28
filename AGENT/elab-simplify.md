@@ -44,7 +44,7 @@ Two facts make this enough:
   `"unbalanced modules"` and `"no module to close"` disappear.
 
 The spec (`ElabSpec.v`) is a homomorphism on every constructor except the two
-name rules (`sel_var`, `selm_var`: `bound` + `den_term`/`den_mod`) and
+name rules (`sel_var`, `selm_var`: `bound` + `entry_denotes_term`/`entry_denotes_mod`) and
 `selm_glob` (`In (en_unit fq) S`). Commands are `scmd fp ch O F c F' c'` and
 `scmds` (one mutual pair), leading imports `simports`, the unit `elab_spec`.
 No invariant: freshness is a premise `fresh x F := ~ In x (names F)`, not a
@@ -95,7 +95,7 @@ before; they were kept verbatim apart from the `c_mod` constructor.
 ## 4. Examples (surface, today's core, prototype's core)
 
 `⟨T.M⟩` is `me_path (p_abs ["T"] ["M"])`, `T.M.b` is `a_glob (p_abs ["T"]
-["M"; "b"])`, flags of `cc_def` are omitted.
+["M"; "b"])`, flags of `core_cmd_def` are omitted.
 
 **Pre-application inside `module U (A)`.**
 ```
@@ -110,11 +110,11 @@ end
 ```
 Today and prototype (identical):
 ```
-cc_def a Type@0 #0 ;
-cc_mod M (⋅ ▹ Type@0)
-  [ cc_def b Type@0 #0 ; cc_eval (U.a $ #1) ; cc_eval (U.M.b $ #1 $ #0) ;
-    cc_eval (λ ℕ (U.M.b $ #2 $ #1)) ] ;
-cc_eval (a_mem (me_app ⟨U.M⟩ #0) b $ ℕ)
+core_cmd_def a Type@0 #0 ;
+core_cmd_mod M (⋅ ▹ Type@0)
+  [ core_cmd_def b Type@0 #0 ; core_cmd_eval (U.a $ #1) ; core_cmd_eval (U.M.b $ #1 $ #0) ;
+    core_cmd_eval (λ ℕ (U.M.b $ #2 $ #1)) ] ;
+core_cmd_eval (a_mem (me_app ⟨U.M⟩ #0) b $ ℕ)
 ```
 Prototype derivation of `eval a`: the scope is `B, a ↦ U.a, A`; `a` has one
 binder inside (`B`) and one outside (`A`), so `U.a $ vars_desc 1 1 = U.a $ #1`
@@ -135,21 +135,21 @@ end
 ```
 Today and prototype (identical):
 ```
-leading: cc_import (Some L::X) ⟨L::X⟩ [] ; cc_import (Some L::X) ⟨L::X⟩ [n]
-cc_mod M (⋅ ▹ Type@0)
-  [ cc_mod K ⋅ [cc_def k ℕ zero] ;
-    cc_import None (me_app ⟨T.M.K⟩ #0) [] ;
-    cc_import None (me_app ⟨T.M.K⟩ #0) [k] ;
-    cc_eval (λ ℕ (a_mem ⟨L::X⟩ f $ a_mem (me_app ⟨T.M.K⟩ #1) k
+leading: core_cmd_import (Some L::X) ⟨L::X⟩ [] ; core_cmd_import (Some L::X) ⟨L::X⟩ [n]
+core_cmd_mod M (⋅ ▹ Type@0)
+  [ core_cmd_mod K ⋅ [core_cmd_def k ℕ zero] ;
+    core_cmd_import None (me_app ⟨T.M.K⟩ #0) [] ;
+    core_cmd_import None (me_app ⟨T.M.K⟩ #0) [k] ;
+    core_cmd_eval (λ ℕ (a_mem ⟨L::X⟩ f $ a_mem (me_app ⟨T.M.K⟩ #1) k
                    $ (a_mem ⟨L::X⟩ n $ a_mem (me_app ⟨T.M.K⟩ #1) k))) ]
 ```
 `Z` and `k` are `en_as`/`en_use` entries holding `me_app ⟨T.M.K⟩ #0`; under
 the `λ` they are weakened by one (`#1`). With options O2/O3 the outputs
 would be (not implemented):
 ```
-cc_import None (me_app ⟨T.M.K⟩ #0) [] ; cc_alias Z (private) ⋅ (me_app ⟨T.M.K⟩ #0) ;
-cc_import None (me_app ⟨T.M.K⟩ #0) [k] ; cc_use (me_app ⟨T.M.K⟩ #0) k ;
-cc_eval (λ ℕ (… a_mem (me_app ⟨T.M.Z⟩ #1) k … (T.M.k $ #1)))
+core_cmd_import None (me_app ⟨T.M.K⟩ #0) [] ; core_cmd_alias Z (private) ⋅ (me_app ⟨T.M.K⟩ #0) ;
+core_cmd_import None (me_app ⟨T.M.K⟩ #0) [k] ; core_cmd_use (me_app ⟨T.M.K⟩ #0) k ;
+core_cmd_eval (λ ℕ (… a_mem (me_app ⟨T.M.Z⟩ #1) k … (T.M.k $ #1)))
 ```
 i.e. `Z` and `k` become ordinary members (`en_mem`), pre-applied like any
 other.
@@ -163,8 +163,8 @@ Today: the elaborator opens `A`, then `B`. Prototype: the parser produces
 `c_mod "A" nil (md_where [c_mod "B" [(X, Type@0)] …])`; the core output is
 identical:
 ```
-cc_mod A ⋅ [cc_mod B (⋅ ▹ Type@0) [cc_def y Type@0 #0]] ;
-cc_eval (a_mem (me_mem ⟨T.A⟩ B) y $ ℕ)
+core_cmd_mod A ⋅ [core_cmd_mod B (⋅ ▹ Type@0) [core_cmd_def y Type@0 #0]] ;
+core_cmd_eval (a_mem (me_mem ⟨T.A⟩ B) y $ ℕ)
 ```
 
 **A local module.**
@@ -177,7 +177,7 @@ eval let module L (A : Type@0) where
 ```
 Today and prototype (identical):
 ```
-cc_eval (ℓₘ (gu_mk (⋅ ▹ Type@0) (md_body
+core_cmd_eval (ℓₘ (gu_mk (⋅ ▹ Type@0) (md_body
            (Φ ⊳ x ↦ ge_def (Π #0 #1) (λ #0 #0)
               ⊳ N ↦ ge_mod (gu_mk ⋅ (md_body (⋅ ⊳ y ↦ ge_def ℕ zero)))
               ⊳ z ↦ ge_def ℕ (a_mem (me_var 0) y))))
@@ -193,7 +193,7 @@ module T where def x : Nat := 0 end def x : Nat := 0 end end
 ```
 Today and prototype: elaboration error `x is already declared`. With option
 O4a (drop the member–member check from the elaborator) the elaborator would
-emit both `cc_def`s and the core would reject with `duplicate name x`
+emit both `core_cmd_def`s and the core would reject with `duplicate name x`
 (`run_cmd_def` needs `gs_fresh`).  *Since `wip/elab-perf` (2026-10-28) this
 is what happens (O4a is implemented), and the core's message is `x is
 already declared`; see the naming rule in [`elab-spec.md`](elab-spec.md).*
@@ -210,7 +210,7 @@ Line estimates are for the current core; the core is being refactored on
   completeness, extraction and the printer: about 100 references in 15 core
   files. Pure deletion, est. −200 to −400 core lines, no new proof. **Recommended**, after `wip/lm-refactor` lands.
 * **O2. `import E as y` as a core alias member.** The frame case is free today:
-  `cc_alias y ⋅ E` exists. It needs (a) a privacy flag on aliases, so that `y`
+  `core_cmd_alias y ⋅ E` exists. It needs (a) a privacy flag on aliases, so that `y`
   is not exported (privacy is being built elsewhere), and (b) a frame for the
   *leading* imports, which today run on the empty stack and are visible in the
   unit's parameter types. (b) has no cheap form: a gunit's parameters precede
@@ -221,11 +221,11 @@ Line estimates are for the current core; the core is being refactored on
   worth it.**
 * **O3. `import E use (n)` as a core member.**
   ```coq
-  | cc_use : modexp -> string -> ccmd
+  | core_cmd_use : modexp -> string -> core_cmd
   | rc_use_def : …, member_type Θ Ξ (gs_tele Ξ) E (n :: nil) mk_term A ->
-      Θ ⍮ Ξ ⊢[ch] cc_use E n ⇝ Θ ⍮ gs_add n (gs_def true true Ξ A (a_mem E n)) Ξ
+      Θ ⍮ Ξ ⊢[ch] core_cmd_use E n ⇝ Θ ⍮ gs_add n (gs_def true true Ξ A (a_mem E n)) Ξ
   | rc_use_mod : …, (* n is a submodule of E *) ->
-      Θ ⍮ Ξ ⊢[ch] cc_use E n ⇝ Θ ⍮ gs_add n (ge_mod (gu_mk (gs_tele Ξ) (md_alias (me_mem E n)))) Ξ
+      Θ ⍮ Ξ ⊢[ch] core_cmd_use E n ⇝ Θ ⍮ gs_add n (ge_mod (gu_mk (gs_tele Ξ) (md_alias (me_mem E n)))) Ξ
   ```
   `run_functional` needs `member_type` functional; the checker needs to infer
   the type and to decide term vs submodule; and leading imports have the same
@@ -236,7 +236,7 @@ Line estimates are for the current core; the core is being refactored on
   check is redundant there; dropping it splits one language rule over two
   layers and changes the message (`duplicate name x`). (b) Parameter vs
   member and duplicate parameters cannot move: core contexts are nameless.
-  Giving `cc_mod`/`cc_alias`/`cunit` parameter names and the stack a name list
+  Giving `core_cmd_mod`/`core_cmd_alias`/`cunit` parameter names and the stack a name list
   touches `gstack`, i.e. all of typing. **Keep the check in the elaborator**:
   without the invariant it is one premise per declaring rule.  *Historical:
   since `wip/elab-perf` (2026-10-28), (a) is done (the core's message is
@@ -256,7 +256,7 @@ Line estimates are for the current core; the core is being refactored on
   The prototype's gain from it would be small (`vars_desc k n` is one line).
   **Not recommended.**
 * **O7. `a_glob` → `a_mem` chains** (being built elsewhere). In the
-  prototype it is a change of two lines, `den_term`/`den_mod` of `en_mem`,
+  prototype it is a change of two lines, `entry_denotes_term`/`entry_denotes_mod` of `en_mem`,
   e.g. `apps (a_mem (me_path (p_abs fp ch)) x) (vars_desc k n)`, once the core
   types `me_path` of an open frame.
 

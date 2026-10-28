@@ -40,7 +40,7 @@ Definition path_list (p : string * list string) : list string := List.rev' (fst 
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
-%type <Cst.dkw> dkw
+%type <Cst.definition_keyword> definition_keyword
 %type <(string * list string)%type> path
 %type <list string> fpath ipath upath mpath_opt
 %type <string * string> item
@@ -100,7 +100,7 @@ let cmd :=
   | PRIVATE; MODULE; p = path; md = mdecl; { [Cst.c_mod_dotted true (fst p) (snd p) (fst md) (snd md)] }
   (* [def] and its shorthands share one production, so they take the same
      parameters, type and body; the keyword decides which modifiers it takes. *)
-  | m = mods; k = dkw; x = VAR; ps = params_opt; ":"; a = expression; ":="; b = expression; END;
+  | m = mods; k = definition_keyword; x = VAR; ps = params_opt; ":"; a = expression; ":="; b = expression; END;
       { [Cst.def_cmd k m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b)] }
   (* An axiom has [def]'s parameters and type, and no body. *)
   | m = mods; AXIOM; x = VAR; ps = params_opt; ":"; a = expression;
@@ -124,7 +124,7 @@ let cmd :=
      common parameters, then the functions, with the modifiers of a
      definition.  Any definition keyword may follow [mutual], and decides
      which modifiers it takes, as for a single definition. *)
-  | m = mods; MUTUAL; k = dkw; ps = params_opt; fs = mfuns; END;
+  | m = mods; MUTUAL; k = definition_keyword; ps = params_opt; fs = mfuns; END;
       { [Cst.mdef_cmd k m (List.rev' ps) (List.rev' fs)] }
   (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
      at the arguments [Ms], under the parameters. *)
@@ -209,14 +209,14 @@ let mdef :=
   | ":="; ~ = expression; { Cst.md_alias expression }
 
 (* The definition keywords.  At command level, [let] is one of them. *)
-let dkw :=
-  | DEF; { Cst.dk_def }
-  | THEOREM; { Cst.dk_theorem }
-  | LEMMA; { Cst.dk_lemma }
-  | FACT; { Cst.dk_fact }
-  | REMARK; { Cst.dk_remark }
-  | LET; { Cst.dk_let }
-  | GIVEN; { Cst.dk_given }
+let definition_keyword :=
+  | DEF; { Cst.definition_keyword_def }
+  | THEOREM; { Cst.definition_keyword_theorem }
+  | LEMMA; { Cst.definition_keyword_lemma }
+  | FACT; { Cst.definition_keyword_fact }
+  | REMARK; { Cst.definition_keyword_remark }
+  | LET; { Cst.definition_keyword_let }
+  | GIVEN; { Cst.definition_keyword_given }
 
 (* [import X::Y] loads a unit.  Anything after the unit's path makes it the
    long form, [import X::Y] then [open X::Y.ip a1 .. ak as W items]. *)

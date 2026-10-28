@@ -51,7 +51,7 @@ Lemma record_model_at : forall p R, ⊢ᵍ gc_deps ⍮ gc_stack -> record_lookup
     record_model p R.
 Proof.
   intros * Hg Hl.
-  pose proof (record_model_of_emb _ _ _ _ _ _ (valid_emb_refl _ _ Hg) Hl) as H.
+  pose proof (record_model_of_embedding _ _ _ _ _ _ (valid_gctx_embedding_refl _ _ Hg) Hl) as H.
   destruct GC; exact H.
 Qed.
 

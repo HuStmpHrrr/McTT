@@ -31,27 +31,27 @@ Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
     [private]; [fact] and [remark] are [abstract private def] and take
     none; [let] and [given] are [private def] and take [abstract].  A
     modifier the keyword already implies is rejected. *)
-Inductive dkw : Set :=
-| dk_def | dk_theorem | dk_lemma | dk_fact | dk_remark | dk_let | dk_given.
+Inductive definition_keyword : Set :=
+| definition_keyword_def | definition_keyword_theorem | definition_keyword_lemma | definition_keyword_fact | definition_keyword_remark | definition_keyword_let | definition_keyword_given.
 
-Definition dkw_name (k : dkw) : string :=
+Definition definition_keyword_name (k : definition_keyword) : string :=
   match k with
-  | dk_def => "def" | dk_theorem => "theorem" | dk_lemma => "lemma"
-  | dk_fact => "fact" | dk_remark => "remark" | dk_let => "let" | dk_given => "given"
+  | definition_keyword_def => "def" | definition_keyword_theorem => "theorem" | definition_keyword_lemma => "lemma"
+  | definition_keyword_fact => "fact" | definition_keyword_remark => "remark" | definition_keyword_let => "let" | definition_keyword_given => "given"
   end.
 
 (** The modifiers of [m k], or why [k] rejects [m]. *)
-Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
+Definition definition_keyword_mods (k : definition_keyword) (m : mods) : (mods + string)%type :=
   match k with
-  | dk_def => inl m
-  | dk_theorem | dk_lemma =>
-      if md_abstract m then inr (dkw_name k ++ " is already abstract")%string
+  | definition_keyword_def => inl m
+  | definition_keyword_theorem | definition_keyword_lemma =>
+      if md_abstract m then inr (definition_keyword_name k ++ " is already abstract")%string
       else inl {| md_private := md_private m; md_abstract := true |}
-  | dk_fact | dk_remark =>
-      if orb (md_private m) (md_abstract m) then inr (dkw_name k ++ " takes no modifiers")%string
+  | definition_keyword_fact | definition_keyword_remark =>
+      if orb (md_private m) (md_abstract m) then inr (definition_keyword_name k ++ " takes no modifiers")%string
       else inl md_priv_abs
-  | dk_let | dk_given =>
-      if md_private m then inr (dkw_name k ++ " is already private")%string
+  | definition_keyword_let | definition_keyword_given =>
+      if md_private m then inr (definition_keyword_name k ++ " is already private")%string
       else inl {| md_private := true; md_abstract := md_abstract m |}
   end.
 
@@ -221,8 +221,8 @@ Definition c_mod_dotted (pv : bool) (x : string) (rev_pre : list string) (ps : l
 
 (** [k x : A := M end] with the modifiers [m]: the definition, or the
     rejection of [m]. *)
-Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : expression) : cmd :=
-  match dkw_mods k m with
+Definition def_cmd (k : definition_keyword) (m : mods) (x : string) (A M : expression) : cmd :=
+  match definition_keyword_mods k m with
   | inl m' => c_def m' x A M
   | inr e => c_error e
   end.
@@ -230,9 +230,9 @@ Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : expression) : cmd :=
 (** [mutual k (Δ) f … with g … end] with the modifiers [m], [k] a
     definition keyword: the mutual definition with the modifiers [k] gives
     it, as [def_cmd] gives a single definition, or the rejection of [m]. *)
-Definition mdef_cmd (k : dkw) (m : mods) (ps : list (string * expression))
+Definition mdef_cmd (k : definition_keyword) (m : mods) (ps : list (string * expression))
     (fs : list (string * list (string * expression) * expression * list (string * list string * expression))) : cmd :=
-  match dkw_mods k m with
+  match definition_keyword_mods k m with
   | inl m' => c_mdef m' ps fs
   | inr e => c_error e
   end.

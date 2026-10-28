@@ -104,15 +104,15 @@ The induction on normal-form syntax never looks at the detours.
 **Completeness** of the small case needs the codomain's universe level to be
 fresh. NbE invents no variables: `nbe_wk_fresh` and `nbe_ty_wk_fresh` in
 `Core/Semantic/Avoid.v` give `nf_fresh 0` of the normal form of a weakened
-term. The proof is an invariant on values, `dav v b`:
+term. The proof is an invariant on values, `domain_avoids v b`:
 
 - the value mentions no de Bruijn level `v`, and only levels below `b`;
 - a closure may carry one bad environment position `K`, provided its body is
   fresh at the shifted `K`.
 
 The invariant is needed because the initial environment of `Γ ▹ A` holds the
-excluded variable itself. Evaluation preserves the invariant (`eval_av`), and
-readback turns it into freshness (`read_av`).
+excluded variable itself. Evaluation preserves the invariant (`eval_avoids`), and
+readback turns it into freshness (`read_avoids`).
 
 The completeness argument for the small case (`alg_pi_small_complete`) then
 runs in five steps:
@@ -160,7 +160,7 @@ files:
 | file | lines | what |
 | --- | --- | --- |
 | `Core/Syntactic/NfRename.v` | 243 | `nf_wk φ` (the renaming of normal forms); `ne_cmp_wk`; `lvl_canon_wk`; freshness and injectivity of `nf_wk` |
-| `Core/Semantic/Rename.v` | 522 | `drn f` (a renaming of levels on values); `eval_rn`, `read_rn`, `read_shift` |
+| `Core/Semantic/Rename.v` | 522 | `domain_rename f` (a renaming of levels on values); `eval_rn`, `read_rn`, `read_shift` |
 | `Core/Consequences/NormalFormWeakening.v` | 137 | `nbe_wk`, `nbe_wk_fresh_sem`, `exp_eq_strengthen_sem` |
 
 **The theorem.** For a term `M` of `Γ`, the normal form of `M[↑]ʷ` in
@@ -186,7 +186,7 @@ and readback at `s + 1` to the fresh level `s + 1`. So `read_rn` is stated
 for a renaming `f` of levels:
 
 ```
-rn_ok f s s' φ -> dbd_nf s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W
+rn_ok f s s' φ -> dbd_nf s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W
 ```
 
 - `rn_ok f s s' φ` says that `φ` sends the index of `x` at `s` to the index
@@ -194,7 +194,7 @@ rn_ok f s s' φ -> dbd_nf s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf drn_nf f 
   `s' - s`, so the fresh levels of the two readbacks correspond. It is
   preserved by `wk_q`.
 - `dbd s m` says that `m` mentions only levels below `s`. It is
-  `Avoid.dav v s` at every `v ≥ s`. That invariant already handles closures
+  `Avoid.domain_avoids v s` at every `v ≥ s`. That invariant already handles closures
   whose environment holds the new variable.
 - **Evaluation is equivariant under every `f`** (`eval_rn`). It never looks
   at a level, it only carries them.

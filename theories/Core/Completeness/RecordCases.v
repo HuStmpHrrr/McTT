@@ -3,8 +3,8 @@
     The semantic rules of the record type former, of tuples and of
     projections, of their congruences, of field-β and of η.  Each holds
     because the record is valid at the target of a sound embedding
-    ([record_model_of_emb]): its declaration is typed where it is looked
-    up, and valid at the target ([valid_emb_record]); [Records/Model.v] then
+    ([record_model_of_embedding]): its declaration is typed where it is looked
+    up, and valid at the target ([valid_gctx_embedding_record]); [Records/Model.v] then
     gives the rule. *)
 
 From Stdlib Require Import Lia List PeanoNat.
@@ -43,28 +43,28 @@ Record record_model {GC : GCtx} (p : qname) (R : record_decl) : Prop := mk_recor
   ; model_valid : valid_record_decl R }.
 
 (** A record of [Θ ⍮ Ξ] is one of the target of a sound embedding of it. *)
-Lemma record_model_of_emb : forall Θ Ξ Θ2 Ξ2 p R, valid_emb Θ Ξ Θ2 Ξ2 -> record_lookup Θ Ξ p = Some R ->
+Lemma record_model_of_embedding : forall Θ Ξ Θ2 Ξ2 p R, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> record_lookup Θ Ξ p = Some R ->
     @record_model (gc_mk Θ2 Ξ2) p R.
 Proof.
   intros * He Hl.
-  pose proof (valid_emb_wf _ _ _ _ He) as Hg.
+  pose proof (valid_gctx_embedding_wf _ _ _ _ He) as Hg.
   pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
   constructor.
-  - exact (record_lookup_gc_sub _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ (valid_emb_emb _ _ _ _ He)) Hl).
+  - exact (record_lookup_gc_sub _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ He)) Hl).
   - exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
   - exact (typed_params_ass _ _ _ Ht).
   - exact (typed_nodup _ _ _ Ht).
   - exact (record_typed_sort_univ _ _ _ Ht).
-  - exact (valid_emb_record _ _ _ _ He _ _ Hl).
+  - exact (valid_gctx_embedding_record _ _ _ _ He _ _ Hl).
 Qed.
 
 (** Put what the model asks of the record [R] at [p] in the context. *)
 Ltac record_model_intro Hl :=
-  match goal with He : valid_emb _ _ _ _ |- _ =>
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
     let Hl2 := fresh "Hl2" in let Hc := fresh "Hc" in let Hass := fresh "Hass" in let Hnd := fresh "Hnd" in
     let Hsu := fresh "Hsu" in let HPv := fresh "HPv" in let HSv := fresh "HSv" in let HFv := fresh "HFv" in
     let HTv := fresh "HTv" in
-    destruct (record_model_of_emb _ _ _ _ _ _ He Hl) as [Hl2 Hc Hass Hnd Hsu [HPv HSv HFv HTv]]
+    destruct (record_model_of_embedding _ _ _ _ _ _ He Hl) as [Hl2 Hc Hass Hnd Hsu [HPv HSv HFv HTv]]
   end.
 
 (** ** The Rules *)
@@ -98,7 +98,7 @@ Lemma sem_tuple :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T fs : T ).
 Proof.
   intros * HT Hl Hn HNs Hnames HMs; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply valid_exp_under_ctx_tuple; try eassumption.
   - intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
@@ -115,7 +115,7 @@ Lemma sem_proj :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)] ).
 Proof.
   intros * HM Hl Hn HNs Hk; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply valid_exp_under_ctx_proj; try eassumption.
   intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
@@ -137,7 +137,7 @@ Lemma sem_exp_eq_tuple_cong :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T fs ≈ a_tuple T' fs' : T ).
 Proof.
   intros * Ht HT Hl Hn HNs Hnames Hnames' HMs Ht'; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_tuple_cong; try eassumption.
   - intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).
@@ -154,7 +154,7 @@ Lemma sem_exp_eq_proj_cong :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f M ≈ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)] ).
 Proof.
   intros * HMM Hl Hn HNs Hk; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_proj_cong; try eassumption.
   intros * HN HA; exact (sem_exp_eq_at_rel (HNs _ _ _ HN HA _ _ Hμ)).

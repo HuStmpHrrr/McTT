@@ -55,11 +55,11 @@ Section Main.
     match Parser.prog log_fuel buf with
     | Parsed_pr prg _ =>
         match elaborate_core prg with
-        | eerr msg => ElaborationFailure prg msg
-        | eok u0 =>
+        | elab_failure msg => ElaborationFailure prg msg
+        | elab_success u0 =>
             match unit_run load_path read to_core ViewsFound.views_search prg u0 (Hwf _) with
-            | rok (B, s, u, log) => AllGood prg B s u log
-            | rerr e => RunFailure prg e
+            | run_success (B, s, u, log) => AllGood prg B s u log
+            | run_failure e => RunFailure prg e
             end
         end
     | Fail_pr_full s t => ParserFailure s t
@@ -67,7 +67,7 @@ Section Main.
     end.
 
   (** Running the unit the program elaborates to is running the program. *)
-  Lemma main_unit_run : forall prg u, elaborate_core prg = eok u ->
+  Lemma main_unit_run : forall prg u, elaborate_core prg = elab_success u ->
       unit_run load_path read to_core ViewsFound.views_search prg u (Hwf _) =
       prog_impl load_path read to_core ViewsFound.views_search prg (Hwf _).
   Proof.
@@ -121,7 +121,7 @@ Section Main.
   Theorem main_complete : forall log_fuel buf prg buf' B ΘR U,
       Parser.prog log_fuel buf = Parsed_pr prg buf' ->
       prog_sem load_path read to_core prg B ΘR U ->
-      (forall msg, elaborate_core prg <> eerr msg) ->
+      (forall msg, elaborate_core prg <> elab_failure msg) ->
       exists s u log, main log_fuel buf = AllGood prg B s u log /\ dec_unit u = U /\ gds_equiv ΘR (dec_units s).
   Proof.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.

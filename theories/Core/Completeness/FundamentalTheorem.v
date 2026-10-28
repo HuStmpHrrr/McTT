@@ -8,7 +8,7 @@
 
     The theorem then gives the rest.  Each entry of a global context is
     valid where it is checked, so a well-formed global context embeds
-    soundly into itself ([valid_emb_refl]), from what [Global/Embedding.v] makes of
+    soundly into itself ([valid_gctx_embedding_refl]), from what [Global/Embedding.v] makes of
     valid entries.  At that embedding the theorem states each judgment of
     one global context by its relation there ([completeness_fundamental_ctx]
     and the corollaries after it). *)
@@ -100,34 +100,34 @@ Proof.
 Qed.
 
 (** Judgments read along a sound embedding. *)
-Lemma valid_exp_under_ctx_of_emb : forall Θ Ξ Θ2 Ξ2 Γ A M, valid_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+Lemma valid_exp_under_ctx_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ A M, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M.
 Proof.
   intros * Hμ HM; destruct completeness_fundamental as (_ & Ke & _).
   exact (sem_exp_eq_at_rel (Ke _ _ _ _ _ HM _ _ Hμ)).
 Qed.
 
-Lemma rel_ctx_wf_of_emb : forall Θ Ξ Θ2 Ξ2 Γ, valid_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> @rel_ctx_wf (gc_mk Θ2 Ξ2) Γ.
+Lemma rel_ctx_wf_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> @rel_ctx_wf (gc_mk Θ2 Ξ2) Γ.
 Proof.
   intros * Hμ HΓ; destruct completeness_fundamental as (Kc & _).
   exact (valid_ctx_rel_ctx_wf (Kc _ _ _ HΓ _ _ Hμ)).
 Qed.
 
-Lemma rel_exp_eq_of_emb : forall Θ Ξ Θ2 Ξ2 Γ A M M', valid_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+Lemma rel_exp_eq_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ A M M', valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
 Proof.
   intros * Hμ HM; destruct completeness_fundamental as (_ & _ & Kq & _).
   exact (sem_exp_eq_at_rel (Kq _ _ _ _ _ _ HM _ _ Hμ)).
 Qed.
 
-Lemma rel_ext_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Ψ Ψ', valid_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+Lemma rel_ext_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Ψ Ψ', valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ'.
 Proof.
   intros * Hμ HΨ; destruct completeness_fundamental as (_ & _ & _ & _ & _ & Kx & _).
   exact (sem_ext_eq_at_rel (Kx _ _ _ _ _ HΨ _ _ Hμ)).
 Qed.
 
-Lemma rel_subtyp_of_emb : forall Θ Ξ Θ2 Ξ2 Γ A A', valid_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
+Lemma rel_subtyp_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ A A', valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     @rel_subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
 Proof.
   intros * Hμ HA; destruct completeness_fundamental as (_ & _ & _ & Ks & _).
@@ -142,10 +142,10 @@ Lemma valid_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
     forall Θs Ξs, valid_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM _ He HΘ HΞ Θs Ξs.
-  pose proof (valid_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
+  pose proof (valid_gctx_embedding_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
   destruct (presup_exp_typ HM) as [i HA].
   exists A, i, (Some M); split; [ reflexivity |]; split; [ reflexivity |].
-  split; [ exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HA) | intros ? [= <-]; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HM) ].
+  split; [ exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HA) | intros ? [= <-]; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HM) ].
 Qed.
 
 Lemma valid_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
@@ -153,9 +153,9 @@ Lemma valid_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He _.
-  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
+  pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
   exists A, i, None; split; [ reflexivity |]; split; [ reflexivity |].
-  split; [ exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HA) | discriminate ].
+  split; [ exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HA) | discriminate ].
 Qed.
 
 Lemma valid_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
@@ -165,8 +165,8 @@ Lemma valid_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
 Proof.
   intros * HΔ _ HE HG He Hs HgS; cbn.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
-  pose proof (valid_emb_good _ _ _ _ Hg HG He) as Hμ.
-  assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (good_tele _ _ _ _ HG He) ]).
+  pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
+  assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_ass_of_bodies_valid _ _ _ _ HG He) ]).
   assert (HE' : Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅ ⊢ᵐ E ≈ E) by (rewrite app_nil_r; exact HE).
   assert (HC : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅) by (rewrite app_nil_r; exact (presup_modexp_eq_ctx HE)).
   assert (HU : Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ gu_mk (Δ ++ gs_tele Ξ) (md_alias E) ≈ gu_mk (Δ ++ gs_tele Ξ) (md_alias E))
@@ -181,9 +181,9 @@ Lemma valid_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
-  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HC) HG He) as Hμ.
-  split; [ exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ HC) |].
-  apply List.Forall_app; split; [ exact HΔ | exact (good_tele _ _ _ _ HG He) ].
+  pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ HC) HG He) as Hμ.
+  split; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HC) |].
+  apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_ass_of_bodies_valid _ _ _ _ HG He) ].
 Qed.
 
 (** A type at a sort is a type. *)
@@ -195,12 +195,12 @@ Qed.
 (** A declaration typed at the source is valid at the target: its
     judgments, read in the PER model, member by member, and its views with
     the members as variables ([views_self_typed], read semantically). *)
-Lemma valid_ind_decl_of_typed : forall Θ Ξ D Θ2 Ξ2, decl_typed Θ Ξ D -> valid_emb Θ Ξ Θ2 Ξ2 -> @valid_ind_decl (gc_mk Θ2 Ξ2) D.
+Lemma valid_ind_decl_of_typed : forall Θ Ξ D Θ2 Ξ2, decl_typed Θ Ξ D -> valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> @valid_ind_decl (gc_mk Θ2 Ξ2) D.
 Proof.
   intros * Hdt Hμ.
   pose proof (decl_typed_sort_univ _ _ _ Hdt) as Hsu.
-  pose proof (gctx_embedding_resolution _ _ _ _ (valid_emb_emb _ _ _ _ Hμ)) as Hs.
-  pose proof (valid_emb_wf _ _ _ _ Hμ) as Hg.
+  pose proof (gctx_embedding_resolution _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ Hμ)) as Hs.
+  pose proof (valid_gctx_embedding_wf _ _ _ _ Hμ) as Hg.
   assert (Harg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
              List.nth_error (cargs_nonrec gs) j = Some A ->
              @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (nonrec_args_prefix gs j ++ im_params D Mk) ((ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ) A A /\
@@ -210,13 +210,13 @@ Proof.
     pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     assert (Hls : List.length (cargs_strat gs1) = j) by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
     rewrite Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
-    pose proof (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HT) as H.
+    pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   assert (Hstrat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
              @rel_ctx_wf (gc_mk Θ2 Ξ2) (nonrec_args_prefix gs j ++ im_params D Mk)).
   { intros k Mk c gs j HMk Hcon; induction j as [| j IH]; intros Hj.
     + unfold nonrec_args_prefix; cbn [List.firstn List.rev List.app].
-      exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
+      exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
     + destruct (nth_error_lt_some' (cargs_nonrec gs) j ltac:(lia)) as [A HA0].
       assert (Hst : nonrec_args_prefix gs (S j) = ce_ass A :: nonrec_args_prefix gs j).
       { unfold nonrec_args_prefix; rewrite (firstn_S_snoc _ _ (ce_ass A)) by (rewrite List.nth_error_map, HA0; reflexivity).
@@ -241,20 +241,20 @@ Proof.
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
       by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hk, Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
-    pose proof (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HT) as H.
+    pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
-  - destruct (decl_typed_uparams _ _ _ Hdt) as [HU _]; exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ HU).
-  - destruct (decl_typed_sort _ _ _ Hdt) as [i HS]; exists i; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HS).
-  - destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n HS]; exists n; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HS).
-  - intros * HMk; exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
+  - destruct (decl_typed_uparams _ _ _ Hdt) as [HU _]; exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HU).
+  - destruct (decl_typed_sort _ _ _ Hdt) as [i HS]; exists i; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HS).
+  - destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n HS]; exists n; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HS).
+  - intros * HMk; exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
   - intros * HMk; destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; exists j.
-    exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ Hj).
+    exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ Hj).
   - intros * HMk HA0.
     destruct (nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
     assert (Hk : j < im_nn Mk) by (unfold im_nn; rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
     pose proof (decl_typed_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT; rewrite length_nparams_prefix in HT by lia.
-    pose proof (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HT) as H.
+    pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ].
   - exact Hstrat.
   - exact Harg.
@@ -265,7 +265,7 @@ Proof.
     rewrite Hls in HT.
     pose proof (decl_typed_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
     rewrite (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
-    exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ H).
+    exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
   - exact Hdom.
   - intros * HMk Hcon; exact (decl_typed_plen _ _ _ Hdt _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon)).
   - intros k Mk c gs gs1 t gs2 j HMk Hcon Heq; induction j as [| j IH]; intros Hj.
@@ -286,48 +286,48 @@ Proof.
     constructor.
     + exact (views_self_typed_link _ _ _ _ HV).
     + intros * HMk Hh Hq HI HT.
-      apply (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ).
+      apply (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_is _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HI | exact HT ].
     + intros * HMk Hh Hq HMi' Hh' Hq'' Hv HMv HhMv HC HC' HT.
       pose proof (Hcont _ _ _ _ _ _ _ HMk Hh Hq) as HqS.
-      apply (rel_exp_eq_of_emb _ _ _ _ _ _ _ _ Hμ).
+      apply (rel_exp_eq_of_embedding _ _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_view_is _ _ _ _ HV);
         [ exact HMk | exact Hh | exact HqS | exact HMi' | exact Hh' | exact (Hcont2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh HqS HMi' Hh' Hq'')
         | exact Hv | exact HMv | exact HhMv | exact HC | exact HC' | exact HT ].
     + intros * HMk Hh Hq HMi' Hv HMv.
-      apply (rel_ext_of_emb _ _ _ _ _ _ _ Hμ).
+      apply (rel_ext_of_embedding _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_nparams _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv ].
     + intros * HMk Hh Hq HMi' Hv HMv Hc' Hc0.
-      apply (rel_ext_of_emb _ _ _ _ _ _ _ Hμ).
+      apply (rel_ext_of_embedding _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_args _ _ _ _ HV);
         [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv | exact Hc' | exact Hc0 ].
     + intros * HMk Hh Hq HMi' Hv HMv Hc' Hc0 Heq' Heq Hl1 Hd.
       edestruct (views_self_typed_doms _ _ _ _ HV) as [i Hi];
         [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv | exact Hc' | exact Hc0
         | exact Heq' | exact Heq | exact Hl1 | exact Hd |].
-      exists i; exact (rel_exp_eq_of_emb _ _ _ _ _ _ _ _ Hμ Hi).
+      exists i; exact (rel_exp_eq_of_embedding _ _ _ _ _ _ _ _ Hμ Hi).
     + intros * HMk Hh Hq HMi' Hv HMv Hc' Hc0 Heq' Heq Hl1 HMj HP' HP HT.
-      apply (rel_exp_eq_of_emb _ _ _ _ _ _ _ _ Hμ).
+      apply (rel_exp_eq_of_embedding _ _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_ps _ _ _ _ HV);
         [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) | exact HMi' | exact Hv | exact HMv | exact Hc' | exact Hc0
         | exact Heq' | exact Heq | exact Hl1 | exact HMj | exact HP' | exact HP | exact HT ].
     + intros * HMk Hh Hq.
-      apply (rel_subtyp_of_emb _ _ _ _ _ _ _ Hμ).
+      apply (rel_subtyp_of_embedding _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_sort _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) ].
     + exact (views_self_typed_rlink _ _ _ _ HV).
     + intros * HMk Hh HlR HI HT.
       destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
       pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
       cbn in HlR; rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR') in HlR; injection HlR as <-.
-      apply (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ).
+      apply (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ).
       exact (views_self_typed_ris _ _ _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR' HI HT).
     + intros * HMk Hh HlR Hcs.
       destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
       pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
       cbn in HlR; rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR') in HlR; injection HlR as <-.
-      apply (rel_ext_of_emb _ _ _ _ _ _ _ Hμ).
+      apply (rel_ext_of_embedding _ _ _ _ _ _ _ Hμ).
       exact (views_self_typed_rfields _ _ _ _ HV _ _ _ _ _ _ _ _ HMk Hh HlR' Hcs).
-    + intros * HMk Hh; apply (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ).
+    + intros * HMk Hh; apply (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ).
       exact (views_self_typed_rtype _ _ _ _ HV _ _ _ _ _ HMk Hh).
 Qed.
 
@@ -336,29 +336,29 @@ Lemma valid_entry_ind : forall Θ Ξ D Θ2 Ξ2,
 Proof.
   intros * Hdt HG He.
   destruct (decl_typed_uparams _ _ _ Hdt) as [HUw HUa].
-  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HUw) HG He) as Hμ.
+  pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ HUw) HG He) as Hμ.
   split; [ split; [ exact (valid_ind_decl_of_typed _ _ _ _ _ Hdt Hμ) |] |].
   - intros k Mk Δ1 Δ2 HMk Hpar.
     assert (Hass : tele_ass (im_params D Mk))
       by (apply List.Forall_app; split; [ exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HMk) | exact HUa ]).
     destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; unfold ind_ty in Hj.
     pose proof (proj1 (ctx_pi_split_typed _ _ _ _ Hass Hj) _ _ Hpar) as H; rewrite app_nil_r in H.
-    exists j; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ H).
-  - split; [ exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ HUw) | exact HUa ].
+    exists j; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
+  - split; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HUw) | exact HUa ].
 Qed.
 
 (** A record declaration typed at the source is valid at the target: its
     judgments, read in the PER model. *)
-Lemma valid_record_decl_of_typed : forall Θ Ξ R Θ2 Ξ2, record_typed Θ Ξ R -> valid_emb Θ Ξ Θ2 Ξ2 ->
+Lemma valid_record_decl_of_typed : forall Θ Ξ R Θ2 Ξ2, record_typed Θ Ξ R -> valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
     @valid_record_decl (gc_mk Θ2 Ξ2) R.
 Proof.
   intros * Ht Hμ.
   pose proof (typed_sort _ _ _ Ht) as HS.
   constructor.
-  - exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (presup_is_univ_ctx HS)).
-  - destruct (wf_is_univ_typ HS) as [i Hi]; exists i; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ Hi).
-  - exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (record_typed_fctx_wf _ _ _ Ht _ (le_n _))).
-  - intros * Hk; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ (typed_fields _ _ _ Ht _ _ _ Hk)).
+  - exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ (presup_is_univ_ctx HS)).
+  - destruct (wf_is_univ_typ HS) as [i Hi]; exists i; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ Hi).
+  - exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ (record_typed_fctx_wf _ _ _ Ht _ (le_n _))).
+  - intros * Hk; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ (typed_fields _ _ _ Ht _ _ _ Hk)).
 Qed.
 
 Lemma valid_entry_record : forall Θ Ξ R Θ2 Ξ2,
@@ -366,7 +366,7 @@ Lemma valid_entry_record : forall Θ Ξ R Θ2 Ξ2,
     gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> valid_record_decl_entry Θ2 Ξ2 R.
 Proof.
   intros * Ht HG He.
-  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
+  pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
   exact (valid_record_decl_of_typed _ _ _ _ _ Ht Hμ).
 Qed.
 
@@ -379,7 +379,7 @@ Lemma valid_mod_tele_record : forall Θ Ξ p R Θ2 Ξ2,
     valid_mod_tele Θ2 Ξ2 (record_params R) -> valid_mod_tele Θ2 Ξ2 (record_mod_tele p R).
 Proof.
   intros * Ht HG He Hl [HP Ha].
-  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
+  pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
   pose proof (valid_record_decl_of_typed _ _ _ _ _ Ht Hμ) as [HPv [i HSv] HFv HTv].
   assert (Hc : record_closed R) by exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ (gctx_embedding_with_bodies_wf _ _ _ _ He)) Hl).
   pose proof (@Records.Model.valid_exp_under_ctx_record (gc_mk Θ2 Ξ2) p R Hl Hc Ha (typed_nodup _ _ _ Ht)
@@ -396,9 +396,9 @@ Qed.
 
 (** ** Every well-formed global context embeds soundly into itself *)
 
-Theorem valid_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_emb Θ Ξ Θ Ξ.
+Theorem valid_gctx_embedding_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_gctx_embedding Θ Ξ Θ Ξ.
 Proof.
-  intros * Hg; apply valid_emb_good; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
+  intros * Hg; apply valid_gctx_embedding_of_bodies_valid; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
   exact (global_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry valid_entry_def valid_entry_ax valid_entry_alias valid_mod_tele_nil valid_entry_ind
            valid_entry_record valid_mod_tele_record _ _ Hg).
 Qed.
@@ -421,33 +421,33 @@ Section FundamentalTheorem.
   Context {GC : GCtx}.
 
   (** The identity is sound at a well-formed global context. *)
-  Lemma valid_emb_refl_gc : ⊢ᵍ gc_deps ⍮ gc_stack -> valid_emb gc_deps gc_stack gc_deps gc_stack.
-  Proof. exact (valid_emb_refl _ _). Qed.
+  Lemma valid_gctx_embedding_refl_gc : ⊢ᵍ gc_deps ⍮ gc_stack -> valid_gctx_embedding gc_deps gc_stack gc_deps gc_stack.
+  Proof. exact (valid_gctx_embedding_refl _ _). Qed.
 
   Corollary completeness_fundamental_ctx : forall Γ, ⊢ Γ -> ⊨ Γ.
   Proof.
-    intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ H)) as Hid.
+    intros * H; pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ H)) as Hid.
     destruct completeness_fundamental as (Kc & _).
     pose proof (valid_ctx_rel_ctx_wf (Kc _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   Corollary completeness_fundamental_exp : forall Γ M A, Γ ⊢ M : A -> Γ ⊨ M : A.
   Proof.
-    intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid.
+    intros * H; pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid.
     destruct completeness_fundamental as (_ & Ke & _).
     pose proof (sem_exp_eq_at_rel (Ke _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   Corollary completeness_fundamental_exp_eq : forall Γ M M' A, Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A.
   Proof.
-    intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid.
+    intros * H; pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid.
     destruct completeness_fundamental as (_ & _ & Kq & _).
     pose proof (sem_exp_eq_at_rel (Kq _ _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   Corollary completeness_fundamental_subtyp : forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A'.
   Proof.
-    intros * H; pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid.
+    intros * H; pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid.
     destruct completeness_fundamental as (_ & _ & _ & Ks & _).
     pose proof (sem_subtyp_at_rel (Ks _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
@@ -460,9 +460,9 @@ Section FundamentalTheorem.
   Proof.
     destruct completeness_fundamental as (_ & _ & _ & _ & _ & Kx & Ku & Km).
     split; [| split ]; intros * HJ;
-      [ pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HJ))) as Hid
-      | pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HJ))) as Hid
-      | pose proof (valid_emb_refl_gc (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
+      [ pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HJ))) as Hid
+      | pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HJ))) as Hid
+      | pose proof (valid_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
       [ pose proof (sem_ext_eq_at_rel (Kx _ _ _ _ _ HJ _ _ Hid)) as HR
       | pose proof (sem_unit_eq_at_rel (Ku _ _ _ _ _ HJ _ _ Hid)) as HR
       | pose proof (sem_modexp_eq_at_rel (Km _ _ _ _ _ HJ _ _ Hid)) as HR ];

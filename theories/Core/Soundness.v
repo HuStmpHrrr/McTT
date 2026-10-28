@@ -52,7 +52,7 @@ Theorem soundness : forall {Θ Ξ Γ M A},
     exists W, nbe Θ Ξ Γ M A W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
 Proof.
   intros * H.
-  pose proof (proj1 (proj2 soundness_fundamental) _ _ _ _ _ H _ _ (glu_emb_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as HG.
+  pose proof (proj1 (proj2 soundness_fundamental) _ _ _ _ _ H _ _ (glu_gctx_embedding_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as HG.
   exact (@soundness_of_glu (gc_mk Θ Ξ) _ _ _ H HG).
 Qed.
 

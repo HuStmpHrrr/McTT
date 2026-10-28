@@ -99,14 +99,14 @@ Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines_at.
 Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at.
 Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at.
 Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_at.
-Print Assumptions Mctt.Extraction.Simulation.feval_sim.
-Print Assumptions Mctt.Extraction.Simulation.fread_sim.
-Print Assumptions Mctt.Extraction.Simulation.fread_typ_sim.
-Print Assumptions Mctt.Extraction.Simulation.fread_nf_sim.
-Print Assumptions Mctt.Extraction.Simulation.feval_exp_sim.
-Print Assumptions Mctt.Extraction.Simulation.feval_app_sim.
-Print Assumptions Mctt.Extraction.Simulation.feval_clo_sim.
-Print Assumptions Mctt.Extraction.Simulation.feval_clo2_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_eval_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_read_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_read_typ_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_read_nf_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_eval_exp_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_eval_app_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_eval_clo_sim.
+Print Assumptions Mctt.Extraction.Simulation.fast_eval_clo2_sim.
 (* Inductive types: canonical forms, and the generated eliminators. *)
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_pi.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind.

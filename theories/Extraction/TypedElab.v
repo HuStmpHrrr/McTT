@@ -212,23 +212,23 @@ Qed.
     declaration its telescope's, sort's and fields'.  At any context. *)
 
 Lemma fill_cmd_mod_params : forall Θ Ξ B x pv Δ Δ' cs,
-    fill_params Θ Ξ B Δ Δ' -> fill_cmd Θ Ξ B (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs).
+    fill_params Θ Ξ B Δ Δ' -> fill_cmd Θ Ξ B (core_cmd_mod x pv Δ cs) (core_cmd_mod x pv Δ' cs).
 Proof. intros * Ht; apply fill_cmd_mod; exact Ht. Qed.
 
 Lemma fill_cmd_mod_inv : forall Θ Ξ B x pv Δ cs c',
-    fill_cmd Θ Ξ B (cc_mod x pv Δ cs) c' -> exists Δ', c' = cc_mod x pv Δ' cs /\ fill_params Θ Ξ B Δ Δ'.
+    fill_cmd Θ Ξ B (core_cmd_mod x pv Δ cs) c' -> exists Δ', c' = core_cmd_mod x pv Δ' cs /\ fill_params Θ Ξ B Δ Δ'.
 Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
 
 (** What fills to a module is a module with the same name and body, its
     parameters filled. *)
 Lemma fill_cmd_to_mod : forall Θ Ξ B c x pv Δ' cs,
-    fill_cmd Θ Ξ B c (cc_mod x pv Δ' cs) -> exists Δ, c = cc_mod x pv Δ cs /\ fill_params Θ Ξ B Δ Δ'.
+    fill_cmd Θ Ξ B c (core_cmd_mod x pv Δ' cs) -> exists Δ, c = core_cmd_mod x pv Δ cs /\ fill_params Θ Ξ B Δ Δ'.
 Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
 
 (** What fills to a record declaration is one with the same name and
     with-area. *)
 Lemma fill_cmd_to_record : forall Θ Ξ B c x pv Δ' Srt' fs' cs,
-    fill_cmd Θ Ξ B c (cc_record x pv Δ' Srt' fs' cs) -> exists Δ Srt fs, c = cc_record x pv Δ Srt fs cs.
+    fill_cmd Θ Ξ B c (core_cmd_record x pv Δ' Srt' fs' cs) -> exists Δ Srt fs, c = core_cmd_record x pv Δ Srt fs cs.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 Section Decide.
@@ -816,61 +816,61 @@ Section Decide.
     fill_ok (mk_raw ups' ms' (raw_decl_rec_field R)).
 
   (** A command filled, part by part. *)
-  Definition fill_cmd_at (Γt : ctx) (c : ccmd) : fill_result ccmd :=
+  Definition fill_cmd_at (Γt : ctx) (c : core_cmd) : fill_result core_cmd :=
     match c with
-    | cc_def x b pv A oM =>
+    | core_cmd_def x b pv A oM =>
         let%a A' := fill_exp_fn Γt A in
         let%a oM' := fill_oexp_fn Γt oM in
-        fill_ok (cc_def x b pv A' oM')
-    | cc_mod x pv Δ cs => let%a Δ' := fill_tele_fn Γt Δ in fill_ok (cc_mod x pv Δ' cs)
-    | cc_alias x pv Δ E =>
+        fill_ok (core_cmd_def x b pv A' oM')
+    | core_cmd_mod x pv Δ cs => let%a Δ' := fill_tele_fn Γt Δ in fill_ok (core_cmd_mod x pv Δ' cs)
+    | core_cmd_alias x pv Δ E =>
         let%a Δ' := fill_tele_fn Γt Δ in
         let%a r := fill_mod_fn (Δ' ++ Γt) "" E in
-        fill_ok (cc_alias x pv Δ' (fst r))
-    | cc_ind_alias x pv Δ E =>
+        fill_ok (core_cmd_alias x pv Δ' (fst r))
+    | core_cmd_inductive_alias x pv Δ E =>
         let%a Δ' := fill_tele_fn Γt Δ in
         let%a r := fill_mod_fn (Δ' ++ Γt) "" E in
         match snd r with
-        | None => fill_ok (cc_ind_alias x pv Δ' (fst r))
+        | None => fill_ok (core_cmd_inductive_alias x pv Δ' (fst r))
         | Some _ => fill_error (fill_failure_message ("the inductive alias " ++ x ++ " names a record value, not an inductive type"))
         end
-    | cc_record_alias x pv Δ E =>
+    | core_cmd_record_alias x pv Δ E =>
         let%a Δ' := fill_tele_fn Γt Δ in
         let%a r := fill_mod_fn (Δ' ++ Γt) "" E in
         match snd r with
-        | None => fill_ok (cc_record_alias x pv Δ' (fst r))
+        | None => fill_ok (core_cmd_record_alias x pv Δ' (fst r))
         | Some _ => fill_error (fill_failure_message ("the record alias " ++ x ++ " names a record value, not a record type"))
         end
-    | cc_open E its =>
+    | core_cmd_open E its =>
         let%a r := fill_mod_fn Γt "" E in
         let%a _ := sels_check (snd r) (items_members its) in
-        fill_ok (cc_open (fst r) its)
-    | cc_builtin k E =>
+        fill_ok (core_cmd_open (fst r) its)
+    | core_cmd_builtin k E =>
         let%a r := fill_mod_fn Γt "" E in
         match snd r with
-        | None => fill_ok (cc_builtin k (fst r))
+        | None => fill_ok (core_cmd_builtin k (fst r))
         | Some _ => fill_error (fill_failure_message "a builtin binding names a record value, not an inductive type")
         end
-    | cc_eval M oA =>
+    | core_cmd_eval M oA =>
         let%a M' := fill_exp_fn Γt M in
         let%a oA' := fill_oexp_fn Γt oA in
-        fill_ok (cc_eval M' oA')
-    | cc_record x pv Δ Srt fs cs =>
+        fill_ok (core_cmd_eval M' oA')
+    | core_cmd_record x pv Δ Srt fs cs =>
         let%a Δ' := fill_tele_fn Γt Δ in
         let%a Srt' := fill_exp_fn (Δ' ++ Γt) Srt in
         let%a fs' := fill_fields_fn (Δ' ++ Γt) fs in
-        fill_ok (cc_record x pv Δ' Srt' fs' cs)
-    | cc_mdef b pv Δ fs =>
+        fill_ok (core_cmd_record x pv Δ' Srt' fs' cs)
+    | core_cmd_mdef b pv Δ fs =>
         let%a Δ' := fill_tele_fn Γt Δ in
         let%a hs := fill_rfun_heads_fn (Δ' ++ Γt) fs in
         let%a fs' := fill_rfun_bodies_fn (Δ' ++ Γt) Δ' hs in
-        fill_ok (cc_mdef b pv Δ' fs')
-    | cc_ind pv R => let%a R' := fill_raw_decl_at Γt R in fill_ok (cc_ind pv R')
-    | cc_load _ | cc_gen _ => fill_ok c
+        fill_ok (core_cmd_mdef b pv Δ' fs')
+    | core_cmd_inductive pv R => let%a R' := fill_raw_decl_at Γt R in fill_ok (core_cmd_inductive pv R')
+    | core_cmd_load _ | core_cmd_gen _ => fill_ok c
     end.
 
   (** A command filled, over the fast telescope of the frames *)
-  Definition fill_cmd_fn (c : ccmd) : fill_result ccmd := fill_cmd_at (fc_tele F) c.
+  Definition fill_cmd_fn (c : core_cmd) : fill_result core_cmd := fill_cmd_at (fc_tele F) c.
 
   (** It is the fill over the Core telescope. *)
   Lemma fill_cmd_fn_core : forall c, fill_cmd_fn c = fill_cmd_at (gs_tele Ξ) c.
@@ -1595,31 +1595,31 @@ Section Decide.
   Qed.
 
   (** A record declaration's telescope, sort and fields filled. *)
-  Definition fill_record_fn (x : string) (pv : bool) (Δ : ctx) (Srt : typ) (fs : list (string * typ)) (cs : list ccmd) :
+  Definition fill_record_fn (x : string) (pv : bool) (Δ : ctx) (Srt : typ) (fs : list (string * typ)) (cs : list core_cmd) :
       fill_result (ctx * typ * list (string * typ))%type :=
-    match fill_cmd_fn (cc_record x pv Δ Srt fs cs) with
-    | fill_ok (cc_record _ _ Δ' Srt' fs' _) => fill_ok (Δ', Srt', fs')
+    match fill_cmd_fn (core_cmd_record x pv Δ Srt fs cs) with
+    | fill_ok (core_cmd_record _ _ Δ' Srt' fs' _) => fill_ok (Δ', Srt', fs')
     | fill_ok _ => fill_error (fill_failure_message "internal error: a record declaration filled to no record declaration")
     | fill_error e => fill_error e
     end.
 
   Lemma fill_cmd_record_inv : forall x pv Δ Srt fs cs c',
-      fill_cmd Θ Ξ B (cc_record x pv Δ Srt fs cs) c' -> exists Δ' Srt' fs', c' = cc_record x pv Δ' Srt' fs' cs.
+      fill_cmd Θ Ξ B (core_cmd_record x pv Δ Srt fs cs) c' -> exists Δ' Srt' fs', c' = core_cmd_record x pv Δ' Srt' fs' cs.
   Proof. intros * H; inversion H; subst; eauto. Qed.
 
   Lemma fill_record_fn_sound : forall x pv Δ Srt fs cs Δ' Srt' fs',
       fill_record_fn x pv Δ Srt fs cs = fill_ok (Δ', Srt', fs') ->
-      fill_cmd Θ Ξ B (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs).
+      fill_cmd Θ Ξ B (core_cmd_record x pv Δ Srt fs cs) (core_cmd_record x pv Δ' Srt' fs' cs).
   Proof.
     intros * E; unfold fill_record_fn in E.
-    destruct (fill_cmd_fn (cc_record x pv Δ Srt fs cs)) as [c' | e] eqn:Ef; [| discriminate ].
+    destruct (fill_cmd_fn (core_cmd_record x pv Δ Srt fs cs)) as [c' | e] eqn:Ef; [| discriminate ].
     pose proof (fill_cmd_fn_sound _ _ Ef) as Hf.
     destruct (fill_cmd_record_inv _ _ _ _ _ _ _ Hf) as (Δ0 & S0 & fs0 & ->).
     injection E as -> -> ->; exact Hf.
   Qed.
 
   Lemma fill_record_fn_complete : forall x pv Δ Srt fs cs Δ' Srt' fs',
-      fill_cmd Θ Ξ B (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs) ->
+      fill_cmd Θ Ξ B (core_cmd_record x pv Δ Srt fs cs) (core_cmd_record x pv Δ' Srt' fs' cs) ->
       fill_record_fn x pv Δ Srt fs cs = fill_ok (Δ', Srt', fs').
   Proof. intros * H; unfold fill_record_fn; rewrite (fill_cmd_fn_complete _ _ H); reflexivity. Qed.
 End Decide.

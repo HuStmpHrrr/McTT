@@ -2433,50 +2433,50 @@ Qed.
     type. *)
 
 (** What an item declares, read in the context of the open. *)
-Inductive igen : Set :=
-(** [ig_def d pv A M]: the definition [d] of type [A] equal to [M] *)
-| ig_def : string -> bool -> typ -> exp -> igen
-(** [ig_alias d pv E]: the alias [d] of [E] *)
-| ig_alias : string -> bool -> modexp -> igen
-(** [ig_def_mod d pv A M E]: the definition [d] of type [A] equal to [M],
+Inductive generated_item : Set :=
+(** [generated_item_def d pv A M]: the definition [d] of type [A] equal to [M] *)
+| generated_item_def : string -> bool -> typ -> exp -> generated_item
+(** [generated_item_alias d pv E]: the alias [d] of [E] *)
+| generated_item_alias : string -> bool -> modexp -> generated_item
+(** [generated_item_def_mod d pv A M E]: the definition [d] of type [A] equal to [M],
     with the module part the alias of [E].  A global open files it at its
     inferred type ([gens_run_def_mod]) *)
-| ig_def_mod : string -> bool -> typ -> exp -> modexp -> igen.
+| generated_item_def_mod : string -> bool -> typ -> exp -> modexp -> generated_item.
 
 (** A generated item as a body entry. *)
-Definition ig_entry (g : igen) : (string * gentry)%type :=
+Definition generated_item_entry (g : generated_item) : (string * gentry)%type :=
   match g with
-  | ig_def d pv A M => (d, ge_def true pv A (Some M))
-  | ig_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
-  | ig_def_mod d pv A M E => (d, ge_def_mod pv A M (gu_mk nil (md_alias E)))
+  | generated_item_def d pv A M => (d, ge_def true pv A (Some M))
+  | generated_item_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
+  | generated_item_def_mod d pv A M E => (d, ge_def_mod pv A M (gu_mk nil (md_alias E)))
   end.
 
-Definition ig_name (g : igen) : string := fst (ig_entry g).
+Definition generated_item_name (g : generated_item) : string := fst (generated_item_entry g).
 
 (** A generated item under a weakening and a substitution, as its entry
-    is ([ig_entry_wk], [ig_entry_sub]). *)
-Definition igen_wk (g : igen) (φ : wk) : igen :=
+    is ([generated_item_entry_wk], [generated_item_entry_sub]). *)
+Definition generated_item_wk (g : generated_item) (φ : wk) : generated_item :=
   match g with
-  | ig_def d pv A M => ig_def d pv A[φ]ʷ M[φ]ʷ
-  | ig_alias d pv E => ig_alias d pv (modexp_wk E φ)
-  | ig_def_mod d pv A M E => ig_def_mod d pv A[φ]ʷ M[φ]ʷ (modexp_wk E φ)
+  | generated_item_def d pv A M => generated_item_def d pv A[φ]ʷ M[φ]ʷ
+  | generated_item_alias d pv E => generated_item_alias d pv (modexp_wk E φ)
+  | generated_item_def_mod d pv A M E => generated_item_def_mod d pv A[φ]ʷ M[φ]ʷ (modexp_wk E φ)
   end.
 
-(** The substitution counterpart of [igen_wk]. *)
-Definition igen_sub (g : igen) (σ : sub) : igen :=
+(** The substitution counterpart of [generated_item_wk]. *)
+Definition generated_item_sub (g : generated_item) (σ : sub) : generated_item :=
   match g with
-  | ig_def d pv A M => ig_def d pv A[σ] M[σ]
-  | ig_alias d pv E => ig_alias d pv E[σ]ᵐ
-  | ig_def_mod d pv A M E => ig_def_mod d pv A[σ] M[σ] E[σ]ᵐ
+  | generated_item_def d pv A M => generated_item_def d pv A[σ] M[σ]
+  | generated_item_alias d pv E => generated_item_alias d pv E[σ]ᵐ
+  | generated_item_def_mod d pv A M E => generated_item_def_mod d pv A[σ] M[σ] E[σ]ᵐ
   end.
 
 (** The generated entries appended to [Φ], in order.  All are read in the
     context of the open, so the [k]-th is weakened by the [k] before it. *)
-Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list igen) : gmod :=
+Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list generated_item) : gmod :=
   match gs with
   | nil => Φ
   | g :: gs' =>
-      let '(d, E) := ig_entry g in
+      let '(d, E) := generated_item_entry g in
       gens_append (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k) gs'
   end.
 
@@ -2663,25 +2663,25 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
     both a term part and a module part a definition with a module part; an
     item naming no member, the alias of [H] itself, whatever [H] is.  A
     global open and a local one generate alike. *)
-with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list igen -> Prop :=
+with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list generated_item -> Prop :=
 (** No item generates nothing *)
 | items_gen_nil : forall Γ H, items_gen Θ Ξ Γ H nil nil
 (** An item naming no member ([open E as y]): the alias of [H] itself,
     whatever [H] is *)
 | items_gen_self : forall Γ H d pv its gs,
     items_gen Θ Ξ Γ H its gs ->
-    items_gen Θ Ξ Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
+    items_gen Θ Ξ Γ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
 (** An item naming a term: a definition of its type, by selection *)
 | items_gen_def : forall Γ H n d pv A om its gs,
     mdenote Θ Ξ Γ (me_mem H n) (ds_term A om) ->
     items_gen Θ Ξ Γ H its gs ->
-    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_def d pv A (a_mem H n) :: gs)
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_def d pv A (a_mem H n) :: gs)
 (** An item naming a module: an alias of the selection *)
 | items_gen_mod : forall Γ H n d pv R its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
     ds_is_mod R ->
     items_gen Θ Ξ Γ H its gs ->
-    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_alias d pv (me_mem H n) :: gs)
 (** An item naming a member with both a term part and a module part (a
     type former, or a definition with a module part): a definition with a
     module part of the term part's type, the selection as its term and the
@@ -2691,7 +2691,7 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list 
     ds_ty R = Some A ->
     ds_mod R = Some Rm ->
     items_gen Θ Ξ Γ H its gs ->
-    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_def_mod d pv A (a_mem H n) (me_mem H n) :: gs).
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv A (a_mem H n) (me_mem H n) :: gs).
 
 Scheme mdenote_mut_ind := Induction for mdenote Sort Prop
 with udenote_mut_ind := Induction for udenote Sort Prop
@@ -2708,7 +2708,7 @@ Hint Constructors mdenote udenote edenote body_xp items_gen : mctt.
     [H] is a module, and [gs] is what the items declare.  (Its witnesses
     are informative, so they have no projections.) *)
 #[warnings="-cannot-define-projection"]
-Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
+Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list generated_item) : Prop :=
   mk_open_gens
   { open_gens_desc : mdesc
   ; open_gens_mod : mdesc
@@ -2781,7 +2781,7 @@ Fixpoint gm_nopens (Φ : gmod) : nat :=
 Lemma items_gen_length : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.length gs = List.length its.
 Proof. induction 1; cbn; auto. Qed.
 
-Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.map ig_name gs = List.map iitem_name its.
+Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.map generated_item_name gs = List.map iitem_name its.
 Proof. induction 1; cbn; f_equal; auto. Qed.
 
 (** The context an open's entries make, over the body before it. *)
@@ -2789,7 +2789,7 @@ Lemma gens_body_ctx_base : forall gs Φ k,
     body_ctx (gens_append Φ k gs) = body_ctx (gens_append gm_nil k gs) ++ body_ctx Φ.
 Proof.
   induction gs as [| g gs IH]; intros; cbn [gens_append]; [ reflexivity |].
-  destruct (ig_entry g) as [d E].
+  destruct (generated_item_entry g) as [d E].
   rewrite IH, (IH (gm_ext gm_nil d _)), <- List.app_assoc.
   destruct E as [? ? ? [] | | | |]; reflexivity.
 Qed.
@@ -2797,7 +2797,7 @@ Qed.
 Lemma gens_append_binders : forall gs Φ k, gm_binders (gens_append Φ k gs) = List.length gs + gm_binders Φ.
 Proof.
   induction gs as [| g gs IH]; intros; cbn; [ reflexivity |].
-  destruct (ig_entry g) eqn:E; rewrite IH; cbn; lia.
+  destruct (generated_item_entry g) eqn:E; rewrite IH; cbn; lia.
 Qed.
 
 Lemma gm_dropn_add : forall a b Φ, gm_dropn (a + b) Φ = gm_dropn b (gm_dropn a Φ).
@@ -2808,7 +2808,7 @@ Qed.
 Lemma gm_dropn_gens_append : forall gs Φ k, gm_dropn (List.length gs) (gens_append Φ k gs) = Φ.
 Proof.
   induction gs as [| g gs IH]; intros; cbn [gens_append List.length]; [ destruct Φ; reflexivity |].
-  destruct (ig_entry g) eqn:E.
+  destruct (generated_item_entry g) eqn:E.
   replace (S (List.length gs)) with (List.length gs + 1) by lia; rewrite gm_dropn_add, IH; reflexivity.
 Qed.
 
@@ -2819,7 +2819,7 @@ Proof.
 Qed.
 
 Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
-Proof. induction gs as [| g gs IH]; intros; cbn; [ reflexivity |]; destruct (ig_entry g); rewrite IH; reflexivity. Qed.
+Proof. induction gs as [| g gs IH]; intros; cbn; [ reflexivity |]; destruct (generated_item_entry g); rewrite IH; reflexivity. Qed.
 
 (** An expansion has no open. *)
 Lemma body_xp_nopens : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_nopens Φx = 0.

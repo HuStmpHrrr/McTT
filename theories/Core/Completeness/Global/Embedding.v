@@ -5,7 +5,7 @@
     embedding that the validity of every entry gives: what the source files
     and has open is valid at the target, read from the source
     ([valid_filed_mods_of_valid]), and so are its declarations
-    ([valid_emb_of], [valid_emb_good]).  A unit valid read at a global
+    ([valid_gctx_embedding_of], [valid_gctx_embedding_of_bodies_valid]).  A unit valid read at a global
     context stays valid read at a bigger one ([valid_unit_grow_all]).
     Nothing here uses the fundamental theorem; that each entry is valid
     where it is checked, and so that a well-formed global context embeds
@@ -68,10 +68,10 @@ Section Grow.
       exact (valid_unit_alias _ _ _ _ _ (Hwm _ _ _ Hw) HΔ HΓ HΔΓ HU HE IHE).
     - intros Γ H R Rm K RK Hw HmH HmodH HHK _ IHK HmK HmodK.
       destruct (gctx_embedding_mdenote _ _ _ _ Hg1 He _ _ _ HmH) as (R2 & HmH2 & Hd).
-      destruct (dsg_mod _ _ _ _ _ _ _ Hd HmodH) as (Rm2 & HmodH2 & Hdm).
+      destruct (mdesc_grows_mod _ _ _ _ _ _ _ Hd HmodH) as (Rm2 & HmodH2 & Hdm).
       destruct (gctx_embedding_mdenote _ _ _ _ Hg1 He _ _ _ HmK) as (RK2 & HmK2 & HdK).
-      destruct (dsg_mod _ _ _ _ _ _ _ HdK HmodK) as (Rm2' & HmodK2 & Hdm').
-      pose proof (dsg_functional _ _ _ _ _ _ _ Hdm Hdm') as <-.
+      destruct (mdesc_grows_mod _ _ _ _ _ _ _ HdK HmodK) as (Rm2' & HmodK2 & Hdm').
+      pose proof (mdesc_grows_functional _ _ _ _ _ _ _ Hdm Hdm') as <-.
       exact (valid_modexp_intro _ _ _ _ _ _ _ _ (Hwm _ _ _ Hw) HmH2 HmodH2 HHK IHK HmK2 HmodK2).
   Qed.
 
@@ -269,18 +269,18 @@ Proof. intros * H; unfold gc_loc; destruct (gc_frame Ξ p); eauto. Qed.
 
 (** The group tables of a group of a well-formed source, read at a target
     it embeds into. *)
-Lemma grp_tele_ass_of_emb : forall Θ Ξ Θ2 Ξ2 p G, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some G ->
+Lemma grp_tele_ass_of_embedding : forall Θ Ξ Θ2 Ξ2 p G, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some G ->
     @grp_tele_ass (gc_mk Θ2 Ξ2) G.
 Proof.
   intros * Hg He Hlq.
   pose proof (gctx_embedding_resolution _ _ _ _ He) as Hs.
   destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
-  apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G (decl_typed_emb _ _ _ _ _ He Hdt)).
+  apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G (gctx_embedding_preserves_decl_typed _ _ _ _ _ He Hdt)).
   intros * HM Hh Hq2.
   destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
   cbn in Hq2; rewrite Hq' in Hq2; injection Hq2 as <-.
-  exact (decl_typed_emb _ _ _ _ _ He (proj1 (decl_of_glookup _ _ _ _ Hg Hq))).
+  exact (gctx_embedding_preserves_decl_typed _ _ _ _ _ He (proj1 (decl_of_glookup _ _ _ _ Hg Hq))).
 Qed.
 
 Section FiledOk.
@@ -298,14 +298,14 @@ Section FiledOk.
   Lemma fo_sub : gc_sub Θm Ξm Θ2 Ξ2.
   Proof. exact (gctx_embedding_resolution _ _ _ _ He). Qed.
 
-  Lemma good_loc : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma gc_loc_valid : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
       valid_mod_tele Θ2 Ξ2 T /\ gm_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θm Ξm Θ2 Ξ2 T Φ.
   Proof.
     intros * Hl; unfold gc_loc in Hl; destruct (gc_frame Ξm p) as [r |] eqn:Hf.
     - injection Hl as ->; unfold gc_frame in Hf.
       destruct (gs_find_tele Ξm p) as [[[[Δ [[|] Φ0 | E]] [| ? ?]] T0] |] eqn:Ef; try discriminate.
       injection Hf as <- <-; exact (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef).
-    - exact (good_body _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
+    - exact (gc_body_valid _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
   Qed.
 
   (** An entry of a stored body, read at both global contexts. *)
@@ -349,7 +349,7 @@ Section FiledOk.
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_alias_unit E = Some Ua -> valid_unit Θm Ξm ⋅ (me_lit Ua).
   Proof.
     intros * Hl Hp HUa.
-    destruct (good_loc _ _ _ Hl) as [_ Hv].
+    destruct (gc_loc_valid _ _ _ Hl) as [_ Hv].
     pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hp) as HE.
     destruct E as [b pv A B | pv [Ta [sm Φ1 | Ea]] | pv pq k D Φ1 | pv Ad Md [Ta [smd Φd | Ea]] | pv Rr Φr];
       cbn in HUa; try discriminate; injection HUa as <-; cbn in HE.
@@ -506,14 +506,14 @@ Section FiledOk.
       valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
   Proof.
     intros * Hl Hindm Hsp HMk HU Hres2 Hind2.
-    destruct (good_loc _ _ _ Hl) as [[HT HTa] _].
+    destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] _].
     pose proof (ind_mlookup_group _ _ Hgm _ _ _ _ Hindm) as HlD.
     pose proof (ind_lookup_gc_sub _ _ _ _ _ _ fo_sub HlD) as HlD2.
-    destruct (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ HlD) as [HD HDs].
+    destruct (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ HlD) as [HD HDs].
     destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ Hgm) HlD) as [Hdt Hc].
     pose proof (decl_typed_sort_univ _ _ _ Hdt) as Hsu.
     destruct (member_lt_decl _ _ _ _ _ Hdt HMk (ind_selfpath_decl_field _ _ _ _ Hsp)) as [pm Hh].
-    pose proof (grp_tele_ass_of_emb _ _ _ _ _ _ Hgm He HlD) as Hass.
+    pose proof (grp_tele_ass_of_embedding _ _ _ _ _ _ Hgm He HlD) as Hass.
     set (Δp := im_nparams Mk ++ Δu).
     assert (Hpar : im_params D Mk = Δp ++ T) by (subst Δp; rewrite <- app_assoc, <- HU; reflexivity).
     set (S' := (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ).
@@ -566,10 +566,10 @@ Section FiledOk.
       valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
     intros * Hl Hrl HP.
-    destruct (good_loc _ _ _ Hl) as [[HT HTa] _].
+    destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] _].
     pose proof (record_lookup_gc_sub _ _ _ _ _ _ fo_sub Hrl) as Hrl2.
     pose proof (record_lookup_resolve _ _ _ _ Hrl2) as Hres2.
-    destruct (good_record _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hrl) as [HPv HSv HFv HTv].
+    destruct (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hrl) as [HPv HSv HFv HTv].
     pose proof (record_lookup_typed _ _ Hgm (gctx_valid_syn _ _ Hgm) _ _ Hrl) as Hty.
     pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ fo_wf) Hrl2) as Hc.
     pose proof (record_typed_sort_univ _ _ _ Hty) as Hsu.
@@ -623,7 +623,7 @@ Section FiledOk.
       valid_filed_term p T x R0.
   Proof.
     intros * Hl Hp HR0.
-    destruct (good_loc _ _ _ Hl) as [[HT HTa] Hv].
+    destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] Hv].
     pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hp) as HV.
     destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & HeE & Hent).
     destruct E as [b pv A oM | pv U | pv pq k D ΦD | pv Ad Md U | pv pr Rr ΦR]; cbn in HR0; try discriminate;
@@ -753,7 +753,7 @@ Theorem valid_filed_mods_of_valid : forall Θm Ξm Θ2 Ξ2, ⊢ᵍ Θm ⍮ Ξm -
     @valid_filed_mods (gc_mk Θ2 Ξ2) Θm Ξm.
 Proof.
   intros * Hgm He HΘ HΞ p T Φ Hl.
-  destruct (good_loc _ _ _ _ HΘ HΞ _ _ _ Hl) as [[HT HTa] _].
+  destruct (gc_loc_valid _ _ _ _ HΘ HΞ _ _ _ Hl) as [[HT HTa] _].
   destruct (gc_loc_grow _ _ _ _ (gctx_embedding_wf _ _ _ _ He) (gctx_embedding_resolution _ _ _ _ He) _ _ _ Hl) as (Φ2 & Hl2 & _).
   pose proof (loc_closed _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as [HTs _].
   constructor;
@@ -765,23 +765,23 @@ Qed.
 
 (** A sound embedding, from the validity at the target of what the source
     files and has open, read from the source. *)
-Theorem valid_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
-    gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> valid_emb Θ Ξ Θ2 Ξ2.
+Theorem valid_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
+    gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> valid_gctx_embedding Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; constructor; [ exact He | exact Hg | exact (valid_filed_mods_of_valid _ _ _ _ Hg He HΘ HΞ) | |].
-  - intros p D Hl; exact (proj1 (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
-  - intros p R Hl; exact (good_record _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
+  - intros p D Hl; exact (proj1 (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
+  - intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
 Qed.
 
-Corollary valid_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
-    valid_emb Θ Ξ Θ2 Ξ2.
+Corollary valid_gctx_embedding_of_bodies_valid : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
+    valid_gctx_embedding Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
-  exact (valid_emb_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
+  exact (valid_gctx_embedding_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
 Qed.
 
 Lemma gs_valid_tele : forall Θs Ξs Θ2 Ξ2 Ξ, gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> tele_ass (gs_tele Ξ).
 Proof. intros * HΞ; destruct Ξ as [| [[mp K] U] Ξ]; [ constructor | exact (proj2 (proj1 HΞ)) ]. Qed.
 
-Lemma good_tele : forall Θ Ξ Θ2 Ξ2, bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
+Lemma gs_tele_ass_of_bodies_valid : forall Θ Ξ Θ2 Ξ2, bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
 Proof. intros * HG He; exact (gs_valid_tele _ _ _ _ _ (proj2 (HG _ _ He _ _ (gc_sub_refl _ _)))). Qed.

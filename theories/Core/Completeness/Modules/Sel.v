@@ -630,7 +630,7 @@ Proof.
       clear Hg Hg0.
       inversion Hg1 as [| ? ? d pv0 ? ? Hg2 | ? ? n d pv0 A_n om ? ? HmH Hg2 | ? ? n d pv0 Rn ? ? HmH HRn Hg2
                         | ? ? n d pv0 Rn A_n Rnm ? ? HmH HRty HRmd Hg2 ]; subst;
-        cbn [ig_entry snd gentry_wk ig_name fst entry_unit] in HEu, Eu, Hpx |- *;
+        cbn [generated_item_entry snd gentry_wk generated_item_name fst entry_unit] in HEu, Eu, Hpx |- *;
         try discriminate; injection HEu as <- <-.
       * (* the target itself *)
         exists ρ', hj; split; [ exact Hb' |]; split; [ apply eval_close_alias0; exact Hhj |].
@@ -638,7 +638,7 @@ Proof.
         destruct (Hrel _ _ _ Hbh Hkh)
           as (H' & σh1 & Φxh & ρh1 & hh & gsh0 & gh & Rgh & ρq & hhj & -> & Hph & Hlg & Hkg1 & Hbh1 & Hkhe & Hhh & Hht & Hbq & Hhhj & Hhjh).
         inversion Hkg1 as [| ? ? ? ? ? ? Hk2 | | |]; subst.
-        rewrite gens_append_snoc in Hph; cbn [ig_entry ig_name snd gentry_wk] in Hph.
+        rewrite gens_append_snoc in Hph; cbn [generated_item_entry generated_item_name snd gentry_wk] in Hph.
         eexists (gens_append Φxh 0 gsh0), _, nil, (md_alias (modexp_wk H' (wk_shiftn (List.length gsh0)))), ρq, hhj.
         split; [ exact Hph |]; split; [ reflexivity |]; split; [ exact Hbq |]; split; [ apply eval_close_alias0; exact Hhhj |].
         eapply per_dmod_trans; [ exact Hhjh |]; eapply per_dmod_trans; [ exact Hht | apply per_dmod_sym; exact Hhjt ].
@@ -655,7 +655,7 @@ Proof.
         assert (Hsk : skind gc_deps gc_stack σ1 H (n :: nil) mk_mod).
         { subst Ek.
           inversion Hkgk as [| ? ? ? ? ? ? Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst;
-            cbn [ig_entry snd gentry_wk] in HEx;
+            cbn [generated_item_entry snd gentry_wk] in HEx;
             destruct HEx as [HEx | [(? & ? & ? & ? & ? & HEx & HEx') | [? ? ? ? ? HEx HEx']]]; try discriminate; exact Hsk. }
         assert (Hkt : dkind gc_deps gc_stack t (n :: nil) mk_mod)
           by exact (open_kind _ _ _ _ _ _ _ _ (proj2 (body_eq_upto_types_benv _ _ Hkx0 _ _) Hbo) Hke Ht Hsk).
@@ -669,7 +669,7 @@ Proof.
           assert (Hkm' : dkind gc_deps gc_stack hh (n :: nil) mk_mod) by (apply Hkq; exact Hkt);
           pose proof (proj1 (@functional_kind gc_deps gc_stack) _ _ _ Hkm _ Hkm') as Hc; discriminate.
         destruct (Hsel _ (per_dmod_trans _ _ _ Hhjh Hht)) as (r1 & Hr1 & Hr1v).
-        rewrite gens_append_snoc in Hph; cbn [ig_entry ig_name snd gentry_wk] in Hph.
+        rewrite gens_append_snoc in Hph; cbn [generated_item_entry generated_item_name snd gentry_wk] in Hph.
         eexists (gens_append Φxh 0 gsh0), _, nil, _, ρq, r1.
         split; [ exact Hph |]; split; [ reflexivity |]; split; [ exact Hbq |].
         split; [ apply eval_close_alias0; econstructor; [ exact Hhhj | exact Hr1 ] |].
@@ -687,7 +687,7 @@ Proof.
         assert (Hsk : skind gc_deps gc_stack σ1 H (n :: nil) mk_dm).
         { subst Ek.
           inversion Hkgk as [| ? ? ? ? ? ? Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst;
-            cbn [ig_entry snd gentry_wk] in HEx;
+            cbn [generated_item_entry snd gentry_wk] in HEx;
             destruct HEx as [HEx | [(? & ? & ? & ? & ? & HEx & HEx') | [? ? ? ? ? HEx HEx']]]; try discriminate; exact Hsk. }
         assert (Hkt : dkind gc_deps gc_stack t (n :: nil) mk_dm)
           by exact (open_kind _ _ _ _ _ _ _ _ (proj2 (body_eq_upto_types_benv _ _ Hkx0 _ _) Hbo) Hke Ht Hsk).
@@ -701,7 +701,7 @@ Proof.
           assert (Hkm' : dkind gc_deps gc_stack hh (n :: nil) mk_dm) by (apply Hkq; exact Hkt);
           pose proof (proj1 (@functional_kind gc_deps gc_stack) _ _ _ Hkm _ Hkm') as Hc; discriminate.
         destruct (Hsel _ (per_dmod_trans _ _ _ Hhjh Hht)) as (r1 & Hr1 & Hr1v).
-        rewrite gens_append_snoc in Hph; cbn [ig_entry ig_name snd gentry_wk] in Hph.
+        rewrite gens_append_snoc in Hph; cbn [generated_item_entry generated_item_name snd gentry_wk] in Hph.
         eexists (gens_append Φxh 0 gsh0), _, nil, _, ρq, r1.
         split; [ exact Hph |]; split; [ reflexivity |]; split; [ exact Hbq |].
         split; [ apply eval_close_alias0; econstructor; [ exact Hhhj | exact Hr1 ] |].

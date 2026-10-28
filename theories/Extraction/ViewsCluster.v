@@ -744,7 +744,7 @@ Section Fixed_GCtx.
       valid_group p D /\ containers_valid D.
   Proof.
     intros p D Hg Hl; destruct GC as [Θ Ξ]; cbn in *.
-    pose proof (valid_groups_of_emb _ _ _ _ (valid_emb_refl _ _ Hg)) as HV.
+    pose proof (valid_groups_of_embedding _ _ _ _ (valid_gctx_embedding_refl _ _ Hg)) as HV.
     split; [ exact (valid_groups_valid _ HV _ _ Hl) | exact (containers_valid_of_groups _ HV _ _ Hl) ].
   Qed.
 
@@ -753,7 +753,7 @@ Section Fixed_GCtx.
       valid_rview_record qr R.
   Proof.
     intros qr R Hg Hl; destruct GC as [Θ Ξ]; cbn in *.
-    exact (@mk_valid_rview_record (gc_mk Θ Ξ) _ _ Hl (valid_emb_record _ _ _ _ (valid_emb_refl _ _ Hg) _ _ Hl)
+    exact (@mk_valid_rview_record (gc_mk Θ Ξ) _ _ Hl (valid_gctx_embedding_record _ _ _ _ (valid_gctx_embedding_refl _ _ Hg) _ _ Hl)
              (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hl) (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl)).
   Qed.
 

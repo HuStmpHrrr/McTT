@@ -151,7 +151,7 @@ Section type_check.
   Hint Constructors type_check_order type_infer_order app_order ext_order unit_order modexp_order : mctt.
 
   (** The type of a term as a value at the environment [P]: a value related
-      ([dsim]) to one that stands for the normal form [T] at the initial
+      ([domain_simulation]) to one that stands for the normal form [T] at the initial
       environment. *)
   #[warnings="-cannot-define-projection"]
   Record typ_val G (P : tenv G) (v : domain) (T : nf) : Prop := mk_typ_val
@@ -164,14 +164,14 @@ Section type_check.
     ; typ_val_typ : G ⊢ T : Typeω@typ_val_lvl
     ; typ_val_eval : ⟦ T ⟧ typ_val_env ↘ typ_val_sem
     ; typ_val_per : Dom typ_val_rel ≈ typ_val_sem ∈ per_univ typ_val_lvl
-    ; typ_val_sim : dsim gc_deps gc_stack typ_val_rel v }.
+    ; typ_val_sim : domain_simulation gc_deps gc_stack typ_val_rel v }.
 
   (** A type as a value reads back to the type it stands for. *)
   Lemma typ_val_rtyp : forall G P M v T,
       ⊢ G -> G ⊢a M ⟹ T -> typ_val G P v T -> Rtypᶠ v in gc_deps ⍮ gc_stack ⍮ (List.length G) ↘ T.
   Proof.
     intros * HG HM [i p a v0 Hp _ HT Ha Hv0 Hs].
-    eapply fread_typ_sim; [| exact Hs ].
+    eapply fast_read_typ_sim; [| exact Hs ].
     eapply typ_val_read; [ eassumption | eapply alg_type_infer_self; eassumption | eassumption | eassumption ].
   Qed.
 
@@ -191,20 +191,20 @@ Section type_check.
       evaluate. *)
   Lemma typ_val_app_order : forall G P M N A B a ρ b,
       ⊢ G -> G ⊢a M ⟹ Πⁿ A B -> typ_val G P (Πᵈ a ρ b) (Πⁿ A B) -> G ⊢a N ⟸ A ->
-      feval_exp_order gc_deps gc_stack N (proj1_sig P) /\
-      forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n').
+      fast_eval_exp_order gc_deps gc_stack N (proj1_sig P) /\
+      forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> fast_eval_exp_order gc_deps gc_stack b (ρ ↦ n').
   Proof.
     intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HT Ha1 Hv0 Hs] HN; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
-    destruct (feval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ _ _ Hag)) as [HoN HsN].
+    destruct (fast_eval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ _ _ Hag)) as [HoN HsN].
     split; [ exact HoN |].
     intros n' Hn'.
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HT Ha1 Hv0 HN' Hn) as (v1 & c & Hv1 & _).
-    destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 (HsN _ Hn') Hv1) as (v1' & Hv1' & _).
-    eapply feval_exp_order_sound; exact Hv1'.
+    destruct (fast_eval_clo_sim _ _ _ _ _ _ _ _ Hρ0 (HsN _ Hn') Hv1) as (v1' & Hv1' & _).
+    eapply fast_eval_exp_order_sound; exact Hv1'.
   Qed.
 
   (** The value of the type of an application: [alg_type_infer_app]'s type stands for
@@ -218,11 +218,11 @@ Section type_check.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ _ _ Hag)) _ Hn') as HsN.
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ _ _ Hag)) _ Hn') as HsN.
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
-    destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
-    rewrite (functional_feval_exp _ _ _ _ Hv' Hv1') in *.
+    destruct (fast_eval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
+    rewrite (functional_fast_eval_exp _ _ _ _ Hv' Hv1') in *.
     assert (HBN : G ⊢ B[Id,,N] : Typeω@i) by mauto 3.
     destruct (soundness_ty HBN) as (W & HW & HeqW).
     destruct (typ_val_conv _ _ _ _ _ _ _ Hp HeqW Hc Hv1c) as (c' & Hc' & Hvc').
@@ -236,9 +236,9 @@ Section type_check.
       entry is then [𝕌ω@0], which nothing reads.  A numeral, a chain of
       [succ]s, is thus typed in linear time. *)
   Record app_cod_order G (P : tenv G) N ρ b : Prop := mk_app_cod_order
-    { app_cod_order_arg : feval_exp_order gc_deps gc_stack N (proj1_sig P)
-    ; app_cod_order_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n')
-    ; app_cod_order_unread : exp_freshb 0 b = true -> feval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0) }.
+    { app_cod_order_arg : fast_eval_exp_order gc_deps gc_stack N (proj1_sig P)
+    ; app_cod_order_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> fast_eval_exp_order gc_deps gc_stack b (ρ ↦ n')
+    ; app_cod_order_unread : exp_freshb 0 b = true -> fast_eval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0) }.
 
   Definition app_cod_val G (P : tenv G) N ρ b v : Prop :=
     (exp_freshb 0 b = true /\ ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ 𝕌ω@0) ↘ v) \/
@@ -248,11 +248,11 @@ Section type_check.
   Equations app_cod G (P : tenv G) N ρ b (H : app_cod_order G P N ρ b) : { v | app_cod_val G P N ρ b v } :=
   | G, P, N, ρ, b, H with inspect (exp_freshb 0 b) := {
     | exist _ true E =>
-        let (v, Hv) := feval_exp_impl F b (ρ ↦ 𝕌ω@0) (app_cod_order_unread _ _ _ _ _ H E) in
+        let (v, Hv) := fast_eval_exp_impl F b (ρ ↦ 𝕌ω@0) (app_cod_order_unread _ _ _ _ _ H E) in
         exist _ v (or_introl (conj E Hv))
     | exist _ false E =>
-        let (n, Hn) := feval_exp_impl F N (proj1_sig P) (app_cod_order_arg _ _ _ _ _ H) in
-        let (v, Hv) := feval_exp_impl F b (ρ ↦ n) (app_cod_order_cod _ _ _ _ _ H n Hn) in
+        let (n, Hn) := fast_eval_exp_impl F N (proj1_sig P) (app_cod_order_arg _ _ _ _ _ H) in
+        let (v, Hv) := fast_eval_exp_impl F b (ρ ↦ n) (app_cod_order_cod _ _ _ _ _ H n Hn) in
         exist _ v (or_intror (ex_intro _ n (conj Hn Hv))) }.
 
   Lemma typ_val_app_cod_order : forall G P M N A B a ρ b,
@@ -269,8 +269,8 @@ Section type_check.
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HT Ha1 Hv0 HN' Hn) as (v1 & c & Hv1 & _).
-    destruct (feval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & _).
-    eapply feval_exp_order_sound; exact Hv1'.
+    destruct (fast_eval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & _).
+    eapply fast_eval_exp_order_sound; exact Hv1'.
   Qed.
 
   Lemma typ_val_app_cod_step : forall G P M N A B a ρ b v,
@@ -286,8 +286,8 @@ Section type_check.
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
     inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
-    destruct (feval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & Hs1).
-    rewrite (functional_feval_exp _ _ _ _ Hv' Hv1') in *.
+    destruct (fast_eval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & Hs1).
+    rewrite (functional_fast_eval_exp _ _ _ _ Hv' Hv1') in *.
     assert (HBN : G ⊢ B[Id,,N] : Typeω@i) by mauto 3.
     destruct (soundness_ty HBN) as (W & HW & HeqW).
     destruct (typ_val_conv _ _ _ _ _ _ _ Hp HeqW Hc Hv1c) as (c' & Hc' & Hvc').
@@ -302,17 +302,17 @@ Section type_check.
   Proof.
     intros G [p' (p & Hp & Hag)] * HT Hv; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & Haa).
-    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag)) _ Hv).
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag)) _ Hv).
     apply (mk_typ_val _ _ _ _ i p a a); assumption.
   Qed.
 
   (** The type of a term as a value evaluates. *)
   Lemma typ_val_eval_order : forall G (P : tenv G) (T : nf) (i : nat),
-      G ⊢ T : Typeω@i -> feval_exp_order gc_deps gc_stack T (proj1_sig P).
+      G ⊢ T : Typeω@i -> fast_eval_exp_order gc_deps gc_stack T (proj1_sig P).
   Proof.
     intros G [p' (p & Hp & Hag)] * HT; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & _).
-    exact (proj1 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag))).
+    exact (proj1 (fast_eval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ _ _ Hag))).
   Qed.
 
   (** Whether a term is an application, and a value a [Π]. *)
@@ -346,7 +346,7 @@ Section type_check.
         let A0 := fresh "A0" in let B0 := fresh "B0" in let i := fresh "i" in
         destruct (typ_val_pi_parts _ _ _ _ _ _ _ HG HM Hv) as (A0 & B0 & i & -> & ? & ?)
     end;
-    functional_fread_rewrite_clear.
+    functional_fast_read_rewrite_clear.
 
   (** The failure of the side condition of [type_check_in]: the inferred
       type is its own normal form, so the judgment would compare the same
@@ -457,7 +457,7 @@ Section type_check.
         pureo (exist _ (Πⁿ A'' B') _)
     | M' $ N' =>
         let*o (exist _ v _) := type_infer_app_in G HG P M' N' _ while _ in
-        let (W, _) := fread_typ_impl F (List.length G) v _ in
+        let (W, _) := fast_read_typ_impl F (List.length G) v _ in
         pureo (exist _ W _)
     | ℓ A' ≔ M' in B' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
@@ -567,7 +567,7 @@ Section type_check.
   | G, HG, P, M, N, H =>
       let*o (exist _ v _) := type_infer_val_in G HG P M _ while _ in
       let*o (existT _ a (existT _ ρ' (exist _ b _))) := get_pi_val v while _ in
-      let (A, _) := fread_typ_impl F (List.length G) a _ in
+      let (A, _) := fast_read_typ_impl F (List.length G) a _ in
       let*b->o _ := type_check_in G (A : nf) _ P N _ while _ in
       let (v', _) := app_cod G P N ρ' b _ in
       pureo (exist _ v' _)
@@ -581,7 +581,7 @@ Section type_check.
         pureo (exist _ v _)
     | inright _ =>
         let*o (exist _ T _) := type_infer_in G HG P M _ while _ in
-        let (v, _) := feval_exp_impl F T (proj1_sig P) _ in
+        let (v, _) := fast_eval_exp_impl F T (proj1_sig P) _ in
         pureo (exist _ v _) }
   (** A body, entry by entry, as the entries its opens generate: each in the
       context of the expanded body before it. *)
@@ -773,13 +773,13 @@ Section type_check.
   Obligation 63. (* False *) ob_neg_direct. Qed.
   Obligation 64. (* read_typ_order gc_deps gc_stack (List.length G) v *)
     clear_defs; destruct_conjs.
-    eapply fread_typ_order_sound, typ_val_rtyp; eassumption.
+    eapply fast_read_typ_order_sound, typ_val_rtyp; eassumption.
   Qed.
   Obligation 65. (* G ⊢a M' $ N' ⟹ W, and [W] is a type *)
     clear_defs; destruct_conjs.
     match goal with Hi : G ⊢a _ ⟹ ?T, Hv : typ_val G P ?v ?T |- _ =>
       pose proof (typ_val_rtyp _ _ _ _ _ HG Hi Hv); destruct Hv as [? ? ? ? ? ? ? ? ? ?] end.
-    functional_fread_rewrite_clear.
+    functional_fast_read_rewrite_clear.
     split; [ assumption | eapply infer_post_of_typ; eassumption ].
   Qed.
   Obligation 66. Qed.
@@ -983,7 +983,7 @@ Section type_check.
     firstorder congruence.
   Qed.
   Obligation 188. (* read_typ_order gc_deps gc_stack (List.length G) a *)
-    ob_pi_parts; eapply fread_typ_order_sound; eassumption.
+    ob_pi_parts; eapply fast_read_typ_order_sound; eassumption.
   Qed.
   Obligation 189. (* exists i, G ⊢ A : Typeω@i *)
     ob_pi_parts.
@@ -1008,7 +1008,7 @@ Section type_check.
   Obligation 196. (* exists T, G ⊢a M1 $ N1 ⟹ T /\ typ_val G P v T *) clear_defs; destruct_conjs; subst; eexists; split; eassumption. Qed.
   Obligation 197. (* type_infer_order M *) ob_ord. Defined.
   Obligation 198. (* False *) ob_neg_direct. Qed.
-  Obligation 199. (* feval_exp_order gc_deps gc_stack T (proj1_sig P) *)
+  Obligation 199. (* fast_eval_exp_order gc_deps gc_stack T (proj1_sig P) *)
     clear_defs; destruct_conjs; eapply typ_val_eval_order; eassumption.
   Qed.
   Obligation 200. (* exists T0, G ⊢a M ⟹ T0 /\ typ_val G P v T0 *)

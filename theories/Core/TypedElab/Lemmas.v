@@ -260,9 +260,9 @@ End Functional.
 
 (** Whether a command has terms of its own to fill: all but a load and a
     generated command, whose fill is itself. *)
-Definition cmd_terms (c : ccmd) : bool :=
+Definition cmd_terms (c : core_cmd) : bool :=
   match c with
-  | cc_load _ | cc_gen _ => false
+  | core_cmd_load _ | core_cmd_gen _ => false
   | _ => true
   end.
 
@@ -275,5 +275,5 @@ Lemma fill_cmd_no_terms : forall Θ Ξ B c c', cmd_terms c = false -> fill_cmd �
 Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; reflexivity. Qed.
 
 (** A generated command is filled to itself. *)
-Lemma fill_cmd_generated : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> forall c0, c = cc_gen c0 -> c' = c.
+Lemma fill_cmd_generated : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> forall c0, c = core_cmd_gen c0 -> c' = c.
 Proof. intros * H; destruct H; intros ? Eg; try discriminate; reflexivity. Qed.

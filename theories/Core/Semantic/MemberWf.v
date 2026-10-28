@@ -125,7 +125,7 @@ Lemma gens_ext_wf_gen : forall Γ1 H its gs, items_gen gc_deps gc_stack Γ1 H it
 Proof.
   induction 1 as [| Γ1 H d pv its gs _ IH | Γ1 H n d pv A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
                  | Γ1 H n d pv R A Rm its gs Hm Hty Hmd _ IH ];
-    intros Γ0 Ψ -> HH Φg HX; cbn [gens_append ig_entry]; try exact HX.
+    intros Γ0 Ψ -> HH Φg HX; cbn [gens_append generated_item_entry]; try exact HX.
   all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
   all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.
   - (* the module itself *)

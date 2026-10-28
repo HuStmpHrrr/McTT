@@ -72,7 +72,7 @@ Lemma glu_exp_subtyp :
      Θ ⍮ Ξ ⍮ Γ ⊩ A' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A' ).
-Proof. glu_intro; glu_emb_wf; eapply glu_rel_exp_subtyp; [ eassumption | eassumption | apply Hwst; eassumption ]. Qed.
+Proof. glu_intro; glu_gctx_embedding_wf; eapply glu_rel_exp_subtyp; [ eassumption | eassumption | apply Hwst; eassumption ]. Qed.
 
 Lemma glu_exp_eq_subtyp :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->

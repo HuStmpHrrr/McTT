@@ -348,24 +348,24 @@ Qed.
 (** Where an entry of a description comes from: a local body, as Core's
     entry, read at no path; or a closed body stored at [p], as a canonical
     fast entry. *)
-Inductive esrc : Type :=
+Inductive entry_source : Type :=
 (** An entry of a local body *)
-| es_core : gentry -> esrc
+| entry_source_core : gentry -> entry_source
 (** The entry stored at the path, fast *)
-| es_fast : qname -> forall e : fentry, canon_fentry e -> esrc.
+| entry_source_fast : qname -> forall e : fentry, canon_fentry e -> entry_source.
 
 (** The Core entry, for types only *)
-Definition dec_esrc (s : esrc) : gentry :=
+Definition dec_entry_source (s : entry_source) : gentry :=
   match s with
-  | es_core E => E
-  | es_fast _ e _ => dec_entry e
+  | entry_source_core E => E
+  | entry_source_fast _ e _ => dec_entry e
   end.
 
 (** The path the entry is read at *)
-Definition esrc_path (s : esrc) : option qname :=
+Definition entry_source_path (s : entry_source) : option qname :=
   match s with
-  | es_core _ => None
-  | es_fast p _ _ => Some p
+  | entry_source_core _ => None
+  | entry_source_fast p _ _ => Some p
   end.
 
 (** In a canonical body, the prefix up to a name ends with its newest
@@ -383,21 +383,21 @@ Proof.
 Qed.
 
 (** [ds_entry]'s twin: a closed body is read by one lookup *)
-Definition fds_entry (R : fmdesc) (y : string) : option (ctx * esrc * reader) :=
+Definition fds_entry (R : fmdesc) (y : string) : option (ctx * entry_source * reader) :=
   match R with
   | fds_open Δ _ Φx =>
       match gm_prefix_upto Φx y with
       | Some (gm_ext Φ' _ E) =>
           match E with
           | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
-          | _ => Some (body_ctx Φ' ++ Δ, es_core E, reader_open Δ Φ')
+          | _ => Some (body_ctx Φ' ++ Δ, entry_source_core E, reader_open Δ Φ')
           end
       | _ => None
       end
   | fds_closed Θ p T t Ht Ns =>
       match inspect (ft_find t y) with
       | exist _ (Some e) Ee =>
-          Some (nil, es_fast (qname_in p y) (fe_read T e) (canon_fe_read T e (canon_trie_find t y e Ht Ee)),
+          Some (nil, entry_source_fast (qname_in p y) (fe_read T e) (canon_fe_read T e (canon_trie_find t y e Ht Ee)),
                 reader_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns))
       | exist _ None _ => None
       end
@@ -407,7 +407,7 @@ Definition fds_entry (R : fmdesc) (y : string) : option (ctx * esrc * reader) :=
 (** It finds the decoding of what [ds_entry] finds, read at the path
     [ds_epath] gives. *)
 Lemma fds_entry_dec : forall R y,
-    ds_entry (dec_desc R) y = option_map (fun r => (fst (fst r), dec_esrc (snd (fst r)), snd r)) (fds_entry R y).
+    ds_entry (dec_desc R) y = option_map (fun r => (fst (fst r), dec_entry_source (snd (fst r)), snd r)) (fds_entry R y).
 Proof.
   intros [| Δ Φ Φx | Θ p T t Ht Ns |] y; cbn [fds_entry ds_entry dec_desc]; try reflexivity.
   - destruct (gm_prefix_upto Φx y) as [[| Φ' x E | ? ? ?] |]; try reflexivity.
@@ -416,7 +416,7 @@ Proof.
     pose proof (prefix_newest Φ0 y Hc) as Hp.
     pose proof (tr_mod_find Φ0 y) as Hf; rewrite <- Ht0 in Hf.
     rewrite Ht0 at 1; rewrite dec_tr_mod by exact Hc.
-    destruct (inspect (ft_find t y)) as [[e |] Ee]; cbn [option_map fst snd dec_esrc].
+    destruct (inspect (ft_find t y)) as [[e |] Ee]; cbn [option_map fst snd dec_entry_source].
     + rewrite Ee in Hf; destruct (gm_newest Φ0 y) as [E |] eqn:En; [| discriminate ]; injection Hf as Hf.
       destruct (gm_prefix_upto Φ0 y) as [[| Φ' x E' | ? ? ?] |]; try contradiction; [| congruence ].
       destruct Hp as [-> HE]; injection HE as <-.
@@ -438,7 +438,7 @@ Lemma fds_epath_dec : forall R y, ds_epath (dec_desc R) y = fds_epath R y.
 Proof. intros []; reflexivity. Qed.
 
 (** An entry found is read at the path of the description's entries. *)
-Lemma fds_entry_path : forall R y Γy s rd, fds_entry R y = Some (Γy, s, rd) -> esrc_path s = fds_epath R y.
+Lemma fds_entry_path : forall R y Γy s rd, fds_entry R y = Some (Γy, s, rd) -> entry_source_path s = fds_epath R y.
 Proof.
   intros [| Δ Φ Φx | Θ p T t Ht Ns |] y * He; cbn [fds_entry] in He; try discriminate.
   - destruct (gm_prefix_upto Φx y) as [[| Φ' x E | ? ? ?] |]; try discriminate.

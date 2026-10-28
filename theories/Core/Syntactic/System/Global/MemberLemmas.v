@@ -140,10 +140,10 @@ Qed.
 
 (** *** Generated Entries under the Operations *)
 
-Lemma ig_entry_wk : forall g φ, ig_entry (igen_wk g φ) = (fst (ig_entry g), gentry_wk (snd (ig_entry g)) φ).
+Lemma generated_item_entry_wk : forall g φ, generated_item_entry (generated_item_wk g φ) = (fst (generated_item_entry g), gentry_wk (snd (generated_item_entry g)) φ).
 Proof. destruct g; reflexivity. Qed.
 
-Lemma ig_entry_sub : forall g σ, ig_entry (igen_sub g σ) = (fst (ig_entry g), gentry_sub (snd (ig_entry g)) σ).
+Lemma generated_item_entry_sub : forall g σ, generated_item_entry (generated_item_sub g σ) = (fst (generated_item_entry g), gentry_sub (snd (generated_item_entry g)) σ).
 Proof. destruct g; reflexivity. Qed.
 
 Lemma wk_qn_shiftn_comm : forall k r φ, wk_eq (wk_shiftn k ⊙ wk_qn (r + k) φ) (wk_qn r φ ⊙ wk_shiftn k).
@@ -158,10 +158,10 @@ Qed.
     the body they extend: each is moved under the entries before it. *)
 Lemma gens_append_wk : forall gs Φ k φ, k <= gm_binders Φ ->
     gmod_wk (gens_append Φ k gs) φ =
-    gens_append (gmod_wk Φ φ) k (List.map (fun g => igen_wk g (wk_qn (gm_binders Φ - k) φ)) gs).
+    gens_append (gmod_wk Φ φ) k (List.map (fun g => generated_item_wk g (wk_qn (gm_binders Φ - k) φ)) gs).
 Proof.
   induction gs as [| g gs IH]; intros * Hk; cbn [gens_append List.map]; [ reflexivity |].
-  rewrite ig_entry_wk; destruct (ig_entry g) as [d E] eqn:Eg; cbn [fst snd].
+  rewrite generated_item_entry_wk; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst snd].
   rewrite IH by (cbn; lia); cbn [gmod_wk gm_binders].
   replace (S (gm_binders Φ) - S k) with (gm_binders Φ - k) by lia.
   do 2 f_equal; rewrite !gentry_wk_wk; apply gentry_wk_wk_eq.
@@ -170,10 +170,10 @@ Qed.
 
 Lemma gens_append_sub : forall gs Φ k σ, k <= gm_binders Φ ->
     gmod_sub (gens_append Φ k gs) σ =
-    gens_append (gmod_sub Φ σ) k (List.map (fun g => igen_sub g (sb_qn (gm_binders Φ - k) σ)) gs).
+    gens_append (gmod_sub Φ σ) k (List.map (fun g => generated_item_sub g (sb_qn (gm_binders Φ - k) σ)) gs).
 Proof.
   induction gs as [| g gs IH]; intros * Hk; cbn [gens_append List.map]; [ reflexivity |].
-  rewrite ig_entry_sub; destruct (ig_entry g) as [d E] eqn:Eg; cbn [fst snd].
+  rewrite generated_item_entry_sub; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst snd].
   rewrite IH by (cbn; lia); cbn [gmod_sub gm_binders].
   replace (S (gm_binders Φ) - S k) with (gm_binders Φ - k) by lia.
   do 2 f_equal; apply gentry_wk_sub_comm_ext; intros x.
@@ -386,12 +386,12 @@ Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk)))))
 (** The entries an open generates, each scoped in the context of the open,
     extend a scoped body. *)
 Lemma gens_append_scoped : forall gs Φ k n, gmod_scoped n Φ -> k <= gm_binders Φ ->
-    List.Forall (fun g => gentry_scoped (gm_binders Φ - k + n) (snd (ig_entry g))) gs ->
+    List.Forall (fun g => gentry_scoped (gm_binders Φ - k + n) (snd (generated_item_entry g))) gs ->
     gmod_scoped n (gens_append Φ k gs).
 Proof.
   induction gs as [| g gs IH]; intros * HΦ Hk Hg; cbn [gens_append]; [ assumption |].
   inversion Hg as [| ? ? Hg1 Hgs]; subst.
-  destruct (ig_entry g) as [d E] eqn:Eg; cbn [snd] in Hg1.
+  destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [snd] in Hg1.
   apply IH; [ cbn; split; [ assumption | eapply gentry_scoped_wk; [ exact Hg1 | cbn; lia ] ] | cbn; lia |].
   cbn [gm_binders]; replace (S (gm_binders Φ) - S k) with (gm_binders Φ - k) by lia; exact Hgs.
 Qed.
@@ -1249,7 +1249,7 @@ Lemma mdenote_scoped_all : forall Θ Ξ, gctx_closed Θ Ξ ->
     (forall Γ o E R, edenote Θ Ξ Γ o E R -> forall m, slots_ok m Γ -> entry_sc m E -> ds_scoped m R) /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall m, slots_ok m Γ -> gmod_scoped m Φ -> gmod_scoped m Φx) /\
     (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> forall m, slots_ok m Γ -> modexp_scoped m H ->
-       List.Forall (fun g => gentry_scoped m (snd (ig_entry g))) gs).
+       List.Forall (fun g => gentry_scoped m (snd (generated_item_entry g))) gs).
 Proof.
   intros Θ Ξ Hc; apply mdenote_all_ind; intros; cbn in *.
   - (* a unit *) split; [ exact I | split; [ eapply gctx_closed_unit; eassumption | constructor ] ].
@@ -2570,7 +2570,7 @@ Lemma mdenote_sub_lt_all : forall Θ Ξ, gctx_closed Θ Ξ ->
        forall Γ σ, sub_mod_compat_lt m σ Γ Δ -> body_xp Θ Ξ Γ (gmod_sub Φ σ) (gmod_sub Φx σ)) /\
     (forall Δ H its gs, items_gen Θ Ξ Δ H its gs -> forall m, slots_ok m Δ -> modexp_scoped m H ->
        forall Γ σ, sub_mod_compat_lt m σ Γ Δ ->
-       items_gen Θ Ξ Γ H[σ]ᵐ its (List.map (fun g => igen_sub g σ) gs)).
+       items_gen Θ Ξ Γ H[σ]ᵐ its (List.map (fun g => generated_item_sub g σ) gs)).
 Proof.
   intros Θ Ξ Hc; pose proof (mdenote_scoped_all _ _ Hc) as (Hsm & Hsu & Hse & Hsb & _).
   apply mdenote_all_ind.
@@ -2693,13 +2693,13 @@ Proof.
   - intros Γ H d pv its gs ig IHig m HS HH Γ' σ Hσ; cbn.
     eapply items_gen_self; eapply IHig; eassumption.
   - intros Γ H n d pv A om its gs dm IHdm ig IHig m HS HH Γ' σ Hσ.
-    cbn [List.map igen_sub]; eapply items_gen_def; [| eapply IHig; eassumption ].
+    cbn [List.map generated_item_sub]; eapply items_gen_def; [| eapply IHig; eassumption ].
     exact (IHdm m HS HH Γ' σ Hσ).
   - intros Γ H n d pv R its gs dm IHdm Hmod ig IHig m HS HH Γ' σ Hσ.
-    cbn [List.map igen_sub]; eapply items_gen_mod; [ exact (IHdm m HS HH Γ' σ Hσ) | | eapply IHig; eassumption ].
+    cbn [List.map generated_item_sub]; eapply items_gen_mod; [ exact (IHdm m HS HH Γ' σ Hσ) | | eapply IHig; eassumption ].
     destruct R; cbn in *; tauto.
   - intros Γ H n d pv R A Rm its gs dm IHdm Ht Hmod ig IHig m HS HH Γ' σ Hσ.
-    cbn [List.map igen_sub]; eapply items_gen_dm;
+    cbn [List.map generated_item_sub]; eapply items_gen_dm;
       [ exact (IHdm m HS HH Γ' σ Hσ) | apply ds_ty_sub; exact Ht | apply ds_mod_sub; exact Hmod | eapply IHig; eassumption ].
 Qed.
 
@@ -2715,7 +2715,7 @@ Lemma mdenote_sub_all : forall Θ Ξ, gctx_closed Θ Ξ ->
        forall Γ σ, sub_mod_compat σ Γ Δ -> body_xp Θ Ξ Γ (gmod_sub Φ σ) (gmod_sub Φx σ)) /\
     (forall Δ H its gs, items_gen Θ Ξ Δ H its gs -> forall m, slots_ok m Δ -> modexp_scoped m H ->
        forall Γ σ, sub_mod_compat σ Γ Δ ->
-       items_gen Θ Ξ Γ H[σ]ᵐ its (List.map (fun g => igen_sub g σ) gs)).
+       items_gen Θ Ξ Γ H[σ]ᵐ its (List.map (fun g => generated_item_sub g σ) gs)).
 Proof.
   intros Θ Ξ Hc; destruct (mdenote_sub_lt_all _ _ Hc) as (Hm & Hu & He & Hb & Hi).
   repeat split; intros; [ eapply Hm | eapply Hu | eapply He | eapply Hb | eapply Hi ];
@@ -2882,7 +2882,7 @@ Qed.
 Lemma gens_append_body_ctx : forall gs Φ k, exists Ψ, body_ctx (gens_append Φ k gs) = Ψ ++ body_ctx Φ.
 Proof.
   induction gs as [| g gs IH]; intros; cbn [gens_append]; [ exists nil; reflexivity |].
-  destruct (ig_entry g) as [d E]; destruct (IH (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k)) as [Ψ HΨ].
+  destruct (generated_item_entry g) as [d E]; destruct (IH (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k)) as [Ψ HΨ].
   rewrite HΨ; cbn [body_ctx].
   destruct (gentry_wk E (wk_shiftn k)) as [? ? ? [] | | | | ]; eexists (Ψ ++ _ :: nil); rewrite <- List.app_assoc; reflexivity.
 Qed.

@@ -128,28 +128,28 @@ Section Orders.
 
   (** The fast evaluation terminates where the reference one does, from an
       environment that agrees where the term may read, at a related value. *)
-  Lemma feval_of_ref : forall M p p' a,
+  Lemma fast_eval_of_ref : forall M p p' a,
       ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> env_agree Θ Ξ (fun x => ~ exp_fresh x M) p p' ->
-      Evaluation.feval_exp_order Θ Ξ M p' /\ forall a', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p' ↘ a' -> dsim Θ Ξ a a'.
+      Evaluation.fast_eval_exp_order Θ Ξ M p' /\ forall a', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p' ↘ a' -> domain_simulation Θ Ξ a a'.
   Proof.
     intros * Ha Hp.
-    destruct (feval_exp_sim Θ Ξ _ _ _ Ha _ Hp) as (a'' & Ha'' & Hs).
-    split; [ eapply Evaluation.feval_exp_order_sound; eassumption |].
-    intros a' Ha'; rewrite <- (functional_feval_exp _ _ _ _ Ha'' Ha'); exact Hs.
+    destruct (fast_eval_exp_sim Θ Ξ _ _ _ Ha _ Hp) as (a'' & Ha'' & Hs).
+    split; [ eapply Evaluation.fast_eval_exp_order_sound; eassumption |].
+    intros a' Ha'; rewrite <- (functional_fast_eval_exp _ _ _ _ Ha'' Ha'); exact Hs.
   Qed.
 
   Lemma eval_of_order : forall M p, eval_exp_order Θ Ξ M p -> exists a, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a.
   Proof. intros * H; destruct (eval_exp_impl Θ Ξ M p H) as [a Ha]; eauto. Qed.
 
   (** Likewise for a module expression. *)
-  Lemma feval_modexp_of_ref : forall H p p' h,
+  Lemma fast_eval_modexp_of_ref : forall H p p' h,
       ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> env_agree Θ Ξ (fun x => ~ modexp_fresh x H) p p' ->
-      Evaluation.feval_modexp_order Θ Ξ H p' /\ forall h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p' ↘ h' -> dmsim Θ Ξ h h'.
+      Evaluation.fast_eval_modexp_order Θ Ξ H p' /\ forall h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p' ↘ h' -> dmod_simulation Θ Ξ h h'.
   Proof.
     intros * Hh Hp.
-    destruct (feval_modexp_sim Θ Ξ _ _ _ Hh _ Hp) as (h'' & Hh'' & Hs).
-    split; [ eapply Evaluation.feval_modexp_order_sound; eassumption |].
-    intros h' Hh'; rewrite <- (functional_feval_modexp _ _ _ _ Hh'' Hh'); exact Hs.
+    destruct (fast_eval_modexp_sim Θ Ξ _ _ _ Hh _ Hp) as (h'' & Hh'' & Hs).
+    split; [ eapply Evaluation.fast_eval_modexp_order_sound; eassumption |].
+    intros h' Hh'; rewrite <- (functional_fast_eval_modexp _ _ _ _ Hh'' Hh'); exact Hs.
   Qed.
 
   Lemma eval_modexp_of_order : forall H p, eval_modexp_order Θ Ξ H p -> exists h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h.
@@ -184,20 +184,20 @@ Section InitialEnvImpl.
   | nil, H => exist _ nil _
   | cons (ce_ass A) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
+      let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ in
       exist _ (p ↦ ⇑! a (List.length G)) _
   | cons (ce_def A M) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
+      let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ in
       exist _ (p ↦ m) _
   | cons (ce_mod U) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (h, Hh) := Evaluation.feval_modexp_impl F (me_lit U) p _ in
+      let (h, Hh) := Evaluation.fast_eval_modexp_impl F (me_lit U) p _ in
       exist _ (p ↦ᵐ h) _
   | cons (ce_dm A M U) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
-      let (h, Hh) := Evaluation.feval_modexp_impl F (me_lit U) p _ in
+      let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ in
+      let (h, Hh) := Evaluation.fast_eval_modexp_impl F (me_lit U) p _ in
       exist _ (p ↦ᵈ m ‖ h) _.
   Next Obligation. (* nil *) exists nil; split; [ constructor | apply env_agree_nil ]. Qed.
   Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
@@ -205,13 +205,13 @@ Section InitialEnvImpl.
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
-      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the extended environment *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha) end.
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha) end.
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ eassumption | repeat constructor; assumption | intros; exact I ].
   Qed.
@@ -220,13 +220,13 @@ Section InitialEnvImpl.
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
-      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the extended environment *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Hm) end.
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Hm) end.
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ eassumption | constructor; assumption | intros; exact I ].
   Qed.
@@ -235,13 +235,13 @@ Section InitialEnvImpl.
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h Hh];
-      eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh); apply agree_all; assumption end.
+      eapply (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the extended environment *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h0 Hh0];
-      pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.
+      pose proof (proj2 (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ eassumption | constructor; assumption | intros; exact I ].
   Qed.
@@ -250,22 +250,22 @@ Section InitialEnvImpl.
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
-      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the order of the unit's fast evaluation *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h Hh];
-      eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh); apply agree_all; assumption end.
+      eapply (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the extended environment *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Hm) end.
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Hm) end.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h0 Hh0];
-      pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.
+      pose proof (proj2 (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.
     eexists; split; [ econstructor; eassumption |].
     eapply env_agree_cons; [ eassumption | constructor; assumption | intros; exact I ].
   Qed.
@@ -280,32 +280,32 @@ Section NbETyEnvDef.
   Equations nbe_ty_env_impl G (P : fenv Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
     { w | nbe_ty Θ Ξ G A w } :=
   | G, exist _ p Hp, A, H =>
-      let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
-      let (w, Hw) := Readback.fread_typ_impl F (List.length G) a _ in
+      let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ in
+      let (w, Hw) := Readback.fast_read_typ_impl F (List.length G) a _ in
       exist _ w _.
   Next Obligation. (* the order of the type's fast evaluation *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
-      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the order of its fast readback *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0,
                     Hrd : forall p a, initial_env _ _ _ p -> _ -> read_typ_order _ _ _ a |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
       destruct (read_typ_of_order _ _ _ _ (Hrd _ _ Hi Ha0)) as [W HW] end.
-    eapply Readback.fread_typ_order_sound, fread_typ_sim; eassumption.
+    eapply Readback.fast_read_typ_order_sound, fast_read_typ_sim; eassumption.
   Qed.
   Next Obligation. (* the normal form *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0,
                     Hrd : forall p a, initial_env _ _ _ p -> _ -> read_typ_order _ _ _ a |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
       destruct (read_typ_of_order _ _ _ _ (Hrd _ _ Hi Ha0)) as [W HW] end.
-    assert (w = W) as -> by (eapply functional_fread_typ; [ eassumption | eapply fread_typ_sim; eassumption ]).
+    assert (w = W) as -> by (eapply functional_fast_read_typ; [ eassumption | eapply fast_read_typ_sim; eassumption ]).
     econstructor; eassumption.
   Qed.
 End NbETyEnvDef.
@@ -324,22 +324,22 @@ Section NbEDef.
   Equations nbe_impl G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
   | G, M, A, H with initial_env_impl F G _ => {
     | exist _ p Hp =>
-        let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
-        let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
-        let (w, Hw) := Readback.fread_nf_impl F (List.length G) ⇓ a m _ in
+        let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ in
+        let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ in
+        let (w, Hw) := Readback.fast_read_nf_impl F (List.length G) ⇓ a m _ in
         exist _ w _ }.
   Next Obligation. (* initial_env_order G *) destruct H; assumption. Defined.
   Next Obligation. (* the order of the type's fast evaluation *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
-      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the order of the term's fast evaluation *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [m Hm];
-      eapply (feval_of_ref _ _ _ _ _ _ Hm); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Hm); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the order of its fast readback *)
     fnbe_obl.
@@ -349,10 +349,10 @@ Section NbEDef.
                     Hrd : forall p a m, initial_env _ _ _ p -> _ -> _ -> read_nf_order _ _ _ _ |- _ =>
       destruct (eval_of_order _ _ _ _ (HordA _ Hi)) as [a0 Ha0];
       destruct (eval_of_order _ _ _ _ (HordM _ Hi)) as [m0 Hm0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
       destruct (read_nf_of_order _ _ _ _ (Hrd _ _ _ Hi Ha0 Hm0)) as [W HW] end.
-    eapply Readback.fread_nf_order_sound, fread_nf_sim; [ eassumption | constructor; assumption ].
+    eapply Readback.fast_read_nf_order_sound, fast_read_nf_sim; [ eassumption | constructor; assumption ].
   Qed.
   Next Obligation. (* the normal form *)
     fnbe_obl.
@@ -362,10 +362,10 @@ Section NbEDef.
                     Hrd : forall p a m, initial_env _ _ _ p -> _ -> _ -> read_nf_order _ _ _ _ |- _ =>
       destruct (eval_of_order _ _ _ _ (HordA _ Hi)) as [a0 Ha0];
       destruct (eval_of_order _ _ _ _ (HordM _ Hi)) as [m0 Hm0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
       destruct (read_nf_of_order _ _ _ _ (Hrd _ _ _ Hi Ha0 Hm0)) as [W HW] end.
-    assert (w = W) as -> by (eapply functional_fread_nf; [ eassumption | eapply fread_nf_sim; [ eassumption | constructor; assumption ] ]).
+    assert (w = W) as -> by (eapply functional_fast_read_nf; [ eassumption | eapply fast_read_nf_sim; [ eassumption | constructor; assumption ] ]).
     econstructor; eassumption.
   Qed.
 End NbEDef.
@@ -381,21 +381,21 @@ Section NbEEnvDef.
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations nbe_env_impl G (P : fenv Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
   | G, exist _ p Hp, M, A, H =>
-      let (a, Ha) := Evaluation.feval_exp_impl F A p _ in
-      let (m, Hm) := Evaluation.feval_exp_impl F M p _ in
-      let (w, Hw) := Readback.fread_nf_impl F (List.length G) ⇓ a m _ in
+      let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ in
+      let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ in
+      let (w, Hw) := Readback.fast_read_nf_impl F (List.length G) ⇓ a m _ in
       exist _ w _.
   Next Obligation. (* the order of the type's fast evaluation *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ A p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
-      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the order of the term's fast evaluation *)
     fnbe_obl.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [m Hm];
-      eapply (feval_of_ref _ _ _ _ _ _ Hm); apply agree_all; assumption end.
+      eapply (fast_eval_of_ref _ _ _ _ _ _ Hm); apply agree_all; assumption end.
   Defined.
   Next Obligation. (* the order of its fast readback *)
     fnbe_obl.
@@ -405,10 +405,10 @@ Section NbEEnvDef.
                     Hrd : forall p a m, initial_env _ _ _ p -> _ -> _ -> read_nf_order _ _ _ _ |- _ =>
       destruct (eval_of_order _ _ _ _ (HordA _ Hi)) as [a0 Ha0];
       destruct (eval_of_order _ _ _ _ (HordM _ Hi)) as [m0 Hm0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
       destruct (read_nf_of_order _ _ _ _ (Hrd _ _ _ Hi Ha0 Hm0)) as [W HW] end.
-    eapply Readback.fread_nf_order_sound, fread_nf_sim; [ eassumption | constructor; assumption ].
+    eapply Readback.fast_read_nf_order_sound, fast_read_nf_sim; [ eassumption | constructor; assumption ].
   Qed.
   Next Obligation. (* the normal form *)
     fnbe_obl.
@@ -418,10 +418,10 @@ Section NbEEnvDef.
                     Hrd : forall p a m, initial_env _ _ _ p -> _ -> _ -> read_nf_order _ _ _ _ |- _ =>
       destruct (eval_of_order _ _ _ _ (HordA _ Hi)) as [a0 Ha0];
       destruct (eval_of_order _ _ _ _ (HordM _ Hi)) as [m0 Hm0];
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
-      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Ha);
+      pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm0 ltac:(apply agree_all; eassumption)) _ Hm);
       destruct (read_nf_of_order _ _ _ _ (Hrd _ _ _ Hi Ha0 Hm0)) as [W HW] end.
-    assert (w = W) as -> by (eapply functional_fread_nf; [ eassumption | eapply fread_nf_sim; [ eassumption | constructor; assumption ] ]).
+    assert (w = W) as -> by (eapply functional_fast_read_nf; [ eassumption | eapply fast_read_nf_sim; [ eassumption | constructor; assumption ] ]).
     econstructor; eassumption.
   Qed.
 End NbEEnvDef.

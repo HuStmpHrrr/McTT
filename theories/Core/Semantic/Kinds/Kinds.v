@@ -229,15 +229,15 @@ Section Kinds.
     forall φ ρ ρ', kren φ ρ ρ' -> forall ch k, skind Θ Ξ ρ (modexp_wk H φ) ch k <-> skind Θ Ξ ρ' H ch k.
 
   Lemma kgens_ren_fwd : forall H, kren_mod H -> forall φ ρ ρ', kren φ ρ ρ' ->
-      forall its gs, kgens Θ Ξ ρ' H its gs -> kgens Θ Ξ ρ (modexp_wk H φ) its (List.map (fun g => igen_wk g φ) gs).
+      forall its gs, kgens Θ Ξ ρ' H its gs -> kgens Θ Ξ ρ (modexp_wk H φ) its (List.map (fun g => generated_item_wk g φ) gs).
   Proof.
-    intros H HH φ ρ ρ' Hφ; induction 1; cbn [List.map igen_wk exp_wk modexp_wk]; constructor; auto;
+    intros H HH φ ρ ρ' Hφ; induction 1; cbn [List.map generated_item_wk exp_wk modexp_wk]; constructor; auto;
       apply (HH _ _ _ Hφ); assumption.
   Qed.
 
   Lemma kgens_ren_bwd : forall H, kren_mod H -> forall φ ρ ρ', kren φ ρ ρ' ->
       forall its gs0, kgens Θ Ξ ρ (modexp_wk H φ) its gs0 ->
-      exists gs, kgens Θ Ξ ρ' H its gs /\ gs0 = List.map (fun g => igen_wk g φ) gs.
+      exists gs, kgens Θ Ξ ρ' H its gs /\ gs0 = List.map (fun g => generated_item_wk g φ) gs.
   Proof.
     intros H HH φ ρ ρ' Hφ its; induction its as [| [[[n |] d] pv] its IH]; intros gs0 Hg; inversion Hg; subst.
     - exists nil; split; [ constructor | reflexivity ].
@@ -252,7 +252,7 @@ Section Kinds.
   Qed.
 
   Lemma kgens_alias_target : forall ρ H its gs, kgens Θ Ξ ρ H its gs ->
-      forall d pv E, In (ig_alias d pv E) gs -> E = H \/ exists n, E = me_mem H n.
+      forall d pv E, In (generated_item_alias d pv E) gs -> E = H \/ exists n, E = me_mem H n.
   Proof.
     induction 1; intros * Hin; cbn in Hin; try contradiction;
       destruct Hin as [Heq | Hin]; try discriminate; eauto.
@@ -263,7 +263,7 @@ Section Kinds.
   (** A generated definition with a module part is of a member of the
       target. *)
   Lemma kgens_dm_target : forall ρ H its gs, kgens Θ Ξ ρ H its gs ->
-      forall d pv A M E, In (ig_def_mod d pv A M E) gs -> exists n, E = me_mem H n.
+      forall d pv A M E, In (generated_item_def_mod d pv A M E) gs -> exists n, E = me_mem H n.
   Proof.
     induction 1; intros * Hin; cbn in Hin; try contradiction;
       destruct Hin as [Heq | Hin]; try discriminate; eauto.
@@ -274,8 +274,8 @@ Section Kinds.
       module part. *)
   Lemma kgens_shape : forall ρ H its gs, kgens Θ Ξ ρ H its gs ->
       forall g, In g gs ->
-      (exists d pv A M, g = ig_def d pv A M) \/ (exists d pv E, g = ig_alias d pv E) \/
-      (exists d pv A M E, g = ig_def_mod d pv A M E).
+      (exists d pv A M, g = generated_item_def d pv A M) \/ (exists d pv E, g = generated_item_alias d pv E) \/
+      (exists d pv A M E, g = generated_item_def_mod d pv A M E).
   Proof.
     induction 1; intros g Hin; cbn in Hin; try contradiction; destruct Hin as [<- | Hin]; auto;
       first [ left; do 4 eexists; reflexivity | right; left; do 3 eexists; reflexivity
@@ -305,7 +305,7 @@ Section Kinds.
       kren (wk_qn (List.length A) φ) (A ++ ρ1) (B ++ ρ1') ->
       (forall g, In g gs1 -> In g gs) ->
       kren (wk_qn (List.length A + List.length gs1) φ)
-        (kgens_env (A ++ ρ1) (List.length A) (List.map (fun g => igen_wk g φ) gs1))
+        (kgens_env (A ++ ρ1) (List.length A) (List.map (fun g => generated_item_wk g φ) gs1))
         (kgens_env (B ++ ρ1') (List.length A) gs1).
   Proof.
     intros H HH φ ρ1 ρ1' its gs Hφ Hg gs1; induction gs1 as [| g gs1 IH]; intros A B Hl HAB Hin;
@@ -313,7 +313,7 @@ Section Kinds.
     rewrite Nat.add_succ_r.
     destruct (kgens_shape _ _ _ _ Hg g (Hin g (or_introl eq_refl)))
       as [(d & pv & A0 & M & ->) | [(d & pv & E & ->) | (d & pv & A0 & M & E & ->)]];
-      cbn [kentry igen_wk].
+      cbn [kentry generated_item_wk].
     - specialize (IH (de_term d_true :: A) (de_term d_true :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [wk_qn]; apply kren_q_term; exact HAB | intros; apply Hin; right; assumption ].
     - set (h := dm_local nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A)))) (A ++ ρ1)).
@@ -360,7 +360,7 @@ Section Kinds.
       sides of a renaming. *)
   Lemma kgens_env_ren0 : forall H, kren_mod H -> forall φ ρ1 ρ1' its gs,
       kren φ ρ1 ρ1' -> kgens Θ Ξ ρ1' H its gs ->
-      kren (wk_qn (List.length gs) φ) (kgens_env ρ1 0 (List.map (fun g => igen_wk g φ) gs)) (kgens_env ρ1' 0 gs).
+      kren (wk_qn (List.length gs) φ) (kgens_env ρ1 0 (List.map (fun g => generated_item_wk g φ) gs)) (kgens_env ρ1' 0 gs).
   Proof.
     intros * HH * Hφ Hg.
     exact (kgens_env_ren H HH φ ρ1 ρ1' its gs Hφ Hg gs nil nil eq_refl Hφ (fun g Hin => Hin)).
@@ -569,15 +569,15 @@ Section Kinds.
     end.
 
   Lemma kgens_sub_fwd : forall H, ksub_mod H -> forall σ ρ ρ', ksub σ ρ ρ' ->
-      forall its gs, kgens Θ Ξ ρ' H its gs -> kgens Θ Ξ ρ H[σ]ᵐ its (List.map (fun g => igen_sub g σ) gs).
+      forall its gs, kgens Θ Ξ ρ' H its gs -> kgens Θ Ξ ρ H[σ]ᵐ its (List.map (fun g => generated_item_sub g σ) gs).
   Proof.
-    intros H HH σ ρ ρ' Hσ; induction 1; cbn [List.map igen_sub exp_sub modexp_sub]; constructor; auto;
+    intros H HH σ ρ ρ' Hσ; induction 1; cbn [List.map generated_item_sub exp_sub modexp_sub]; constructor; auto;
       apply (HH _ _ _ Hσ); assumption.
   Qed.
 
   Lemma kgens_sub_bwd : forall H, ksub_mod H -> forall σ ρ ρ', ksub σ ρ ρ' ->
       forall its gs0, kgens Θ Ξ ρ H[σ]ᵐ its gs0 ->
-      exists gs, kgens Θ Ξ ρ' H its gs /\ gs0 = List.map (fun g => igen_sub g σ) gs.
+      exists gs, kgens Θ Ξ ρ' H its gs /\ gs0 = List.map (fun g => generated_item_sub g σ) gs.
   Proof.
     intros H HH σ ρ ρ' Hσ its; induction its as [| [[[n |] d] pv] its IH]; intros gs0 Hg; inversion Hg; subst.
     - exists nil; split; [ constructor | reflexivity ].
@@ -610,7 +610,7 @@ Section Kinds.
       ksub (sb_qn (List.length A) σ) (A ++ ρ1) (B ++ ρ1') ->
       (forall g, In g gs1 -> In g gs) ->
       ksub (sb_qn (List.length A + List.length gs1) σ)
-        (kgens_env (A ++ ρ1) (List.length A) (List.map (fun g => igen_sub g σ) gs1))
+        (kgens_env (A ++ ρ1) (List.length A) (List.map (fun g => generated_item_sub g σ) gs1))
         (kgens_env (B ++ ρ1') (List.length A) gs1).
   Proof.
     intros H HH σ ρ1 ρ1' its gs Hσ Hg gs1; induction gs1 as [| g gs1 IH]; intros A B Hl HAB Hin;
@@ -618,7 +618,7 @@ Section Kinds.
     rewrite Nat.add_succ_r.
     destruct (kgens_shape _ _ _ _ Hg g (Hin g (or_introl eq_refl)))
       as [(d & pv & A0 & M & ->) | [(d & pv & E & ->) | (d & pv & A0 & M & E & ->)]];
-      cbn [kentry igen_sub].
+      cbn [kentry generated_item_sub].
     - specialize (IH (de_term d_true :: A) (de_term d_true :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [sb_qn]; apply ksub_q_term; exact HAB | intros; apply Hin; right; assumption ].
     - set (h := dm_local nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A)))) (A ++ ρ1)).
@@ -637,7 +637,7 @@ Section Kinds.
 
   Lemma kgens_env_sub0 : forall H, ksub_mod H -> forall σ ρ1 ρ1' its gs,
       ksub σ ρ1 ρ1' -> kgens Θ Ξ ρ1' H its gs ->
-      ksub (sb_qn (List.length gs) σ) (kgens_env ρ1 0 (List.map (fun g => igen_sub g σ) gs)) (kgens_env ρ1' 0 gs).
+      ksub (sb_qn (List.length gs) σ) (kgens_env ρ1 0 (List.map (fun g => generated_item_sub g σ) gs)) (kgens_env ρ1' 0 gs).
   Proof.
     intros * HH * Hσ Hg.
     exact (kgens_env_sub H HH σ ρ1 ρ1' its gs Hσ Hg gs nil nil eq_refl Hσ (fun g Hin => Hin)).

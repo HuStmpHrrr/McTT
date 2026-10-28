@@ -508,17 +508,17 @@ Section KindImpl.
   | p, E, nil, H => exist _ nil _
   | p, E, (None, d, pv) :: its, H =>
       let (gs, Hgs) := kgens_impl p E its _ in
-      exist _ (ig_alias d pv E :: gs) _
+      exist _ (generated_item_alias d pv E :: gs) _
   | p, E, (Some n, d, pv) :: its, H with skind_impl p E (n :: nil) _ := {
     | exist _ mk_term Hk =>
         let (gs, Hgs) := kgens_impl p E its _ in
-        exist _ (ig_def d pv a_True (a_mem E n) :: gs) _
+        exist _ (generated_item_def d pv a_True (a_mem E n) :: gs) _
     | exist _ mk_mod Hk =>
         let (gs, Hgs) := kgens_impl p E its _ in
-        exist _ (ig_alias d pv (me_mem E n) :: gs) _
+        exist _ (generated_item_alias d pv (me_mem E n) :: gs) _
     | exist _ mk_dm Hk =>
         let (gs, Hgs) := kgens_impl p E its _ in
-        exist _ (ig_def_mod d pv a_True (a_mem E n) (me_mem E n) :: gs) _ }.
+        exist _ (generated_item_def_mod d pv a_True (a_mem E n) (me_mem E n) :: gs) _ }.
 
   Solve All Obligations with kd_obl_auto.
 

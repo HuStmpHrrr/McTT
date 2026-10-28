@@ -2,7 +2,7 @@
 
     The semantic rules of the eliminator and of its congruence.  Each holds
     because the group is valid at the target of a sound embedding
-    ([valid_groups_of_emb]), where the elimination is valid
+    ([valid_groups_of_embedding]), where the elimination is valid
     ([Inductives/Elim.v]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
@@ -69,8 +69,8 @@ Lemma sem_elim :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ).
 Proof.
   intros * Hl Hgr HMm Hbm HLb HPl HPs HM -> Hnm _ HA HMx HBn HBc Har HB; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
-  refine (rel_exp_under_ctx_elim_cong _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq oq m Mm bm Bks Bks Ps Ps M M i
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
+  refine (rel_exp_under_ctx_elim_cong _ _ _ (valid_groups_of_embedding _ _ _ _ Hμ) Hl Γ oq oq m Mm bm Bks Bks Ps Ps M M i
             ltac:(assumption) Hgr Hgr HMm Hbm HLb HLb HPl _ HPl _ ltac:(eassumption) Hnm Hnm _ _ HBn
             (fun _ _ _ H1 H2 => ltac:(rewrite H1 in H2; injection H2 as <-; reflexivity)) _ Har _).
   - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
@@ -133,8 +133,8 @@ Lemma sem_exp_eq_elim_cong :
 Proof.
   intros * Hl Hgr Hgr' HMm Hbm HLb HLb' HPl HPs HPl' HPP HMM -> -> Hnm Hnm' _ _ _ HAA HMx HBn HBf HBc Har HBB;
     sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
-  refine (rel_exp_under_ctx_elim_cong _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq oq' m Mm bm Bks Bks' Ps Ps' M M' i
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
+  refine (rel_exp_under_ctx_elim_cong _ _ _ (valid_groups_of_embedding _ _ _ _ Hμ) Hl Γ oq oq' m Mm bm Bks Bks' Ps Ps' M M' i
             ltac:(assumption) Hgr Hgr' HMm Hbm HLb HLb' HPl _ HPl' _ ltac:(eassumption) Hnm Hnm' _ _ HBn HBf _ Har _).
   - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
   - intros * HP HP' HT; exact (sem_exp_eq_at_rel (HPP _ _ _ _ HP HP' HT _ _ Hμ)).
@@ -185,8 +185,8 @@ Lemma sem_exp_eq_elim_view :
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ).
 Proof.
   intros * Hl Hgr HMm Hh Hq _ Hbm HLb HPl HPs HM -> Hnm _ HA HMx HBn HBc Har HB; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
-  pose proof (valid_groups_of_emb _ _ _ _ Hμ) as HVP.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
+  pose proof (valid_groups_of_embedding _ _ _ _ Hμ) as HVP.
   pose proof (valid_group_lookup _ _ (valid_groups_valid _ HVP qc D' Hq)) as Hq'.
   refine (rel_exp_under_ctx_elim_view _ _ _ HVP Hl Γ oq m Mm qc k' Is vm D' bm Bks Ps M i
             ltac:(assumption) Hgr HMm Hh Hq' Hbm HLb HPl _ ltac:(eassumption) Hnm _ _ HBn _ Har _).

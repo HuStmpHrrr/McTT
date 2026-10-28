@@ -1,7 +1,7 @@
 (** * The Global Rules in the Gluing Model, at the Target
 
     The soundness counterpart of [Core/Completeness/ModuleCases.v]: the
-    members, at the target of a sound embedding ([glu_emb]), where the
+    members, at the target of a sound embedding ([glu_gctx_embedding]), where the
     members of the stored bodies that have no δ-reduct, the axioms and
     abstract definitions read bare, glue as neutrals.  Module values are
     not glued: a member with a δ-reduct glues as the reduct, which
@@ -36,11 +36,11 @@ Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 (** ** 1. Equations, at the target *)
 
 (** A term equal to one that glues glues, the equation moved to the target. *)
-Lemma glu_rel_exp_of_eq_of_emb : forall Θ Ξ Θ2 Ξ2 Γ M N A,
-    glu_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ N : A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ N A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
+Lemma glu_rel_exp_of_eq_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ M N A,
+    glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ N : A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ N A -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
 Proof.
   intros * He Heq Hg.
-  destruct (gctx_embedding_preserves_wf _ _ _ _ (glu_emb_emb _ _ _ _ He)) as (_ & _ & Hwq & _).
+  destruct (gctx_embedding_preserves_wf _ _ _ _ (glu_gctx_embedding_embedding _ _ _ _ He)) as (_ & _ & Hwq & _).
   eapply (@glu_rel_exp_of_eq (gc_mk Θ2 Ξ2)); [ exact Hg | exact (Hwq _ _ _ _ Heq) ].
 Qed.
 
@@ -119,20 +119,20 @@ Qed.
 
 (** A member glues: as its δ-reduct, which glues by the premise of [wf_mem];
     without one, as the filed member it is equal to. *)
-Lemma glu_rel_exp_mem_of_emb : forall Θ Ξ Θ2 Ξ2 Γ H x R A,
-    glu_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
-    (forall M, ds_red R = Some M -> forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 -> @glu_rel_exp (gc_mk Θ0 Ξ0) Γ M A) ->
+Lemma glu_rel_exp_mem_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ H x R A,
+    glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
+    (forall M, ds_red R = Some M -> forall Θ0 Ξ0, glu_gctx_embedding Θ Ξ Θ0 Ξ0 -> @glu_rel_exp (gc_mk Θ0 Ξ0) Γ M A) ->
     @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
     @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem H x) A.
 Proof.
   intros * He HH Hm Ht HM HΓ.
   destruct (ds_red R) as [M |] eqn:Hr.
-  - eapply glu_rel_exp_of_eq_of_emb; [ exact He | eapply wf_exp_eq_mem_delta; eassumption | exact (HM _ eq_refl _ _ He) ].
+  - eapply glu_rel_exp_of_eq_of_embedding; [ exact He | eapply wf_exp_eq_mem_delta; eassumption | exact (HM _ eq_refl _ _ He) ].
   - pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     destruct (mem_no_red _ _ _ _ _ _ _ Hm Ht Hr) as (R0 & p & T & Φ & Φ0 & b & pv & oM & Hm0 & Hmd & Hp & Hn).
     pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm0) Hmd) as Hl; cbn in Hl.
-    eapply glu_rel_exp_of_eq_of_emb; [ exact He | eapply mem_alias_filed; eassumption |].
-    eapply glu_emb_glob; eassumption.
+    eapply glu_rel_exp_of_eq_of_embedding; [ exact He | eapply mem_alias_filed; eassumption |].
+    eapply glu_gctx_embedding_glob; eassumption.
 Qed.
 
 (** ** 3. The rules
@@ -152,7 +152,7 @@ Lemma glu_mem :
      ds_ty R = Some A ->
      (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊩ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_mem H x : A ).
-Proof. glu_intro; eapply glu_rel_exp_mem_of_emb; eassumption. Qed.
+Proof. glu_intro; eapply glu_rel_exp_mem_of_embedding; eassumption. Qed.
 
 Lemma glu_exp_eq_mem_cong :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->

@@ -121,7 +121,7 @@ every keyword: `⟦ihᶠ … ⟧ᶠ`, `⟦shtyᶠ … ⟧ᶠ`, `⟦ihtyᶠ … �
 `Rbrsᶠ`, `Fteleᶠ`, `Fcargsᶠ`, and `Fihsᶠ vs at gs under ρm A for B in …`,
 whose branch `B` is the one of `⟦ihsᶠ … for B ⟧ᶠ`.  The domain predicates of
 the reference and extracted implementations (`eval_exp_order`,
-`fread_nf_order`, …) have no notation.
+`fast_read_nf_order`, …) have no notation.
 
 Running a command is `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'` (and
 `cs ⇝* …` for several) inside `Section Semantics` of

@@ -361,7 +361,7 @@ interfaces — is future work, and none of it is forced by the present design.
 
 ## The driver pipeline (supersedes the elaboration description above)
 
-* `Frontend/Elaborator.v`: `elaborate_core : Cst.prog -> eres cunit` is lexical
+* `Frontend/Elaborator.v`: `elaborate_core : Cst.prog -> elab_result cunit` is lexical
   and reads no filed unit. A path into an imported unit stays unresolved
   (`mr_opaque`) and is checked by typing. Privacy of imported members is not
   checked (REVISIT).

@@ -379,10 +379,10 @@ Fixpoint body_eq_upto_types (Φk Φx : gmod) : Prop :=
   end.
 
 Lemma body_eq_upto_types_gens : forall gs Φk Φx k, body_eq_upto_types Φk Φx ->
-    body_eq_upto_types (gens_append Φk k (List.map ig_erase gs)) (gens_append Φx k gs).
+    body_eq_upto_types (gens_append Φk k (List.map generated_item_erase gs)) (gens_append Φx k gs).
 Proof.
   induction gs as [| g gs IH]; intros * Hk; cbn [gens_append List.map]; [ exact Hk |].
-  destruct g; cbn [ig_erase ig_entry gentry_wk]; apply IH; cbn [body_eq_upto_types]; (split; [ exact Hk | split; [ reflexivity |] ]);
+  destruct g; cbn [generated_item_erase generated_item_entry gentry_wk]; apply IH; cbn [body_eq_upto_types]; (split; [ exact Hk | split; [ reflexivity |] ]);
     first [ left; reflexivity | right; left; do 5 eexists; split; reflexivity
           | right; right; eapply mk_def_mod_eq_upto_type; reflexivity ].
 Qed.
@@ -522,10 +522,10 @@ Qed.
 
 Lemma items_kgens : forall Γ H its gs, items_gen Θm Ξm Γ H its gs -> kinds_ok Γ H ->
     forall RΓ ρ σ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> kshape gc_deps gc_stack ρ σ ->
-    kgens gc_deps gc_stack σ H its (List.map ig_erase gs).
+    kgens gc_deps gc_stack σ H its (List.map generated_item_erase gs).
 Proof.
   intros * Hg Hk RΓ ρ σ HΓ Hρ Hs.
-  induction Hg; cbn [List.map ig_erase].
+  induction Hg; cbn [List.map generated_item_erase].
   - constructor.
   - constructor; auto.
   - constructor; [| auto ].
@@ -572,7 +572,7 @@ Proof.
     apply (body_eq_upto_types_kenv _ _ Hk) in Hσ1.
     pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk') as <-.
     apply (body_eq_upto_types_kenv _ _ Hk) in Hσ1.
-    exists (gens_append Φk 0 (List.map ig_erase gs)); split; [| exact (body_eq_upto_types_gens _ _ _ _ Hk) ].
+    exists (gens_append Φk 0 (List.map generated_item_erase gs)); split; [| exact (body_eq_upto_types_gens _ _ _ _ Hk) ].
     econstructor; [ exact Hb | exact Hσ1 |].
     exact (items_kgens _ _ _ _ Hg (Ho 0 _ _ eq_refl) _ _ _ HR1 Hρ1 Hs').
 Qed.

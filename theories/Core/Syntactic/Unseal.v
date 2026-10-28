@@ -1095,33 +1095,33 @@ Qed.
 
 (** ** Running Commands Without Axioms
 
-    A command declares an axiom only as [cc_def] with no body.  A run of
+    A command declares an axiom only as [core_cmd_def] with no body.  A run of
     commands that declare none, loading units that declare none, files no
     axiom, so every global context it reaches has none: the consistency and
     canonicity theorems at [gc_no_axioms] hold of every such program. *)
 
 (** No axiom, at any depth of nesting. *)
-Fixpoint cmd_no_axioms (c : ccmd) : Prop :=
+Fixpoint cmd_no_axioms (c : core_cmd) : Prop :=
   match c with
-  | cc_def _ _ _ _ oM => oM <> None
-  | cc_mod _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
-  | cc_record _ _ _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
-  | cc_gen c0 => cmd_no_axioms c0
+  | core_cmd_def _ _ _ _ oM => oM <> None
+  | core_cmd_mod _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
+  | core_cmd_record _ _ _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
+  | core_cmd_gen c0 => cmd_no_axioms c0
   | _ => True
   end.
 
-Definition cmds_no_axioms (cs : list ccmd) : Prop := List.Forall cmd_no_axioms cs.
+Definition cmds_no_axioms (cs : list core_cmd) : Prop := List.Forall cmd_no_axioms cs.
 
 Definition unit_no_axioms (u : cunit) : Prop :=
   let '(imps, _, cs) := u in cmds_no_axioms imps /\ cmds_no_axioms cs.
 
-Lemma cmd_no_axioms_mod : forall x pv Δ cs, cmd_no_axioms (cc_mod x pv Δ cs) <-> cmds_no_axioms cs.
+Lemma cmd_no_axioms_mod : forall x pv Δ cs, cmd_no_axioms (core_cmd_mod x pv Δ cs) <-> cmds_no_axioms cs.
 Proof.
   intros; cbn; unfold cmds_no_axioms; induction cs as [| c cs IH]; cbn;
     [ split; constructor | rewrite List.Forall_cons_iff, IH; reflexivity ].
 Qed.
 
-Lemma cmd_no_axioms_record : forall x pv Δ Srt fs cs, cmd_no_axioms (cc_record x pv Δ Srt fs cs) <-> cmds_no_axioms cs.
+Lemma cmd_no_axioms_record : forall x pv Δ Srt fs cs, cmd_no_axioms (core_cmd_record x pv Δ Srt fs cs) <-> cmds_no_axioms cs.
 Proof.
   intros; cbn; unfold cmds_no_axioms; induction cs as [| c cs IH]; cbn;
     [ split; constructor | rewrite List.Forall_cons_iff, IH; reflexivity ].
@@ -1199,7 +1199,7 @@ Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, cmds_no_axioms (rec_cmds Θ Ξ R
 Proof.
   intros; unfold rec_cmds; destruct (raw_decl_rec_field R); [| constructor ].
   constructor; [| constructor ].
-  unfold grec_mod_cmd; change (cmd_no_axioms (cc_gen ?c0)) with (cmd_no_axioms c0);
+  unfold grec_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
   apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
 Qed.
@@ -1214,7 +1214,7 @@ Proof.
   - destruct (ind_has_rec D); [ constructor; [ cbn; discriminate | constructor ] | constructor ].
   - destruct (Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool; [| constructor ].
     constructor; [| constructor ].
-    unfold grec_mod_cmd; change (cmd_no_axioms (cc_gen ?c0)) with (cmd_no_axioms c0);
+    unfold grec_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
     apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
 Qed.
@@ -1278,7 +1278,7 @@ Section Run.
     (* a generated definition has a body *)
     - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
     (* a generated module: as a module *)
-    - change (cmd_no_axioms (cc_gen ?c)) with (cmd_no_axioms c) in *.
+    - change (cmd_no_axioms (core_cmd_gen ?c)) with (cmd_no_axioms c) in *.
       rewrite cmd_no_axioms_mod in *; destruct_all.
       match goal with IH : cmds_no_axioms _ -> _ |- _ =>
         destruct (IH ltac:(assumption) ltac:(split; auto with mctt)) as [HΘ HΞ] end.

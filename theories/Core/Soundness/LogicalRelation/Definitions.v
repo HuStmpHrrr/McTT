@@ -1508,10 +1508,10 @@ End Fixed_GCtx.
 (** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, its
     declarations glue there, and so does a member of one of its stored
     bodies that is an axiom or an abstract definition, at its stored type. *)
-Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { glu_emb_emb : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
-  ; glu_emb_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
-  ; glu_emb_glob : forall p T Φ x Φ0 b pv A oM Γ,
+Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  { glu_gctx_embedding_embedding : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
+  ; glu_gctx_embedding_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
+  ; glu_gctx_embedding_glob : forall p T Φ x Φ0 b pv A oM Γ,
       loc Θ1 Ξ1 p T Φ ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv A oM)) ->
       (if b then oM else None) = None ->
@@ -1523,7 +1523,7 @@ Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
 
     A gluing judgment is stated at a global context [Θ ⍮ Ξ] and holds at
     every global context [Θ2 ⍮ Ξ2] that [Θ ⍮ Ξ] embeds into soundly
-    ([glu_emb]), as the gluing relation read there.  The model is unary, so
+    ([glu_gctx_embedding]), as the gluing relation read there.  The model is unary, so
     there are three judgments: a context glues, a term glues at its type,
     and a universe is one.  Of the other judgments (equality, subtyping,
     extensions, units and module expressions), soundness states that their
@@ -1540,13 +1540,13 @@ Arguments glu_is_univ_at_ctx {Θ2 Ξ2 Γ U}.
 Arguments glu_is_univ_at_univ {Θ2 Ξ2 Γ U}.
 
 Definition glu_ctx Θ Ξ Γ : Prop :=
-  forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ.
 
 Definition glu_exp Θ Ξ Γ A M : Prop :=
-  forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
 
 Definition glu_is_univ Θ Ξ Γ U : Prop :=
-  forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> glu_is_univ_at Θ2 Ξ2 Γ U.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> glu_is_univ_at Θ2 Ξ2 Γ U.
 
 Notation "⊩ Θ ⍮ Ξ ⍮ Γ" := (glu_ctx Θ Ξ Γ)
   (at level 70, Θ at next level, Ξ at level 69, Γ at level 69) : type_scope.

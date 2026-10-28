@@ -162,7 +162,7 @@ Lemma glu_ctx_extend_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
-Proof. glu_intro; glu_emb_wf; eapply (@glu_rel_ctx_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption ]. Qed.
+Proof. glu_intro; glu_gctx_embedding_wf; eapply (@glu_rel_ctx_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption ]. Qed.
 
 (** A definition with a module part glues when its term part does and its
     unit is well formed. *)
@@ -172,7 +172,7 @@ Lemma glu_ctx_extend_dm :
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ).
 Proof.
-  glu_intro; glu_emb_wf.
+  glu_intro; glu_gctx_embedding_wf.
   eapply (@glu_rel_ctx_extend_dm (gc_mk _ _)); [ eapply presup_ctx_glu_rel_exp; eassumption | eassumption | eassumption | apply Hwu; eassumption ].
 Qed.
 
@@ -183,7 +183,7 @@ Lemma glu_let_mod :
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊩ ℓₘ U in B : C[Id ,,ₘ me_lit U] ).
 Proof.
-  glu_intro; glu_emb_wf.
+  glu_intro; glu_gctx_embedding_wf.
   eapply (@glu_rel_exp_let_mod (gc_mk _ _)); [ apply Hwu; eassumption | apply Hwe; eassumption | eassumption ].
 Qed.
 

@@ -3,7 +3,7 @@
     The soundness counterpart of [Core/Completeness/Global/Embedding.v]: what an
     entry of a global context is worth at a target ([glu_entry],
     [glu_mod_tele], [glu_ind_decl_entry]), and the sound embedding that the
-    validity of every entry gives ([glu_emb_of], [glu_emb_good]).  The
+    validity of every entry gives ([glu_gctx_embedding_of], [glu_gctx_embedding_of_bodies_valid]).  The
     validity of an entry is that the type of a definition glues; a stored
     axiom or abstract definition then glues as the neutral of its path.
     Nothing here uses the fundamental theorem; that each entry is valid
@@ -158,16 +158,16 @@ Proof.
   - unfold gc_frame in Hl.
     destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ1 | E]] [| ? ?]] T0] |] eqn:Ef; try discriminate.
     injection Hl as <- <-; exact (proj2 (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef)).
-  - exact (proj2 (good_body _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
+  - exact (proj2 (gc_body_valid _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
 Qed.
 
 (** A sound embedding, from the validity at the target of what the source
     files and has open. *)
-Theorem glu_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
-    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_emb Θ Ξ Θ2 Ξ2.
+Theorem glu_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_gctx_embedding Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
-  constructor; [ exact He | intros p D Hl; exact (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
+  constructor; [ exact He | intros p D Hl; exact (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
   intros * Hl Hp Hn HΓ.
   apply glu_rel_exp_nil_weaken; [ exact HΓ |].
   (* the type glues, by the entry's validity *)
@@ -183,9 +183,9 @@ Proof.
   exact (glob_glu _ _ Hg2 _ _ _ _ _ _ _ _ _ _ Hl2 Hp2 Hn HA).
 Qed.
 
-Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
-    glu_emb Θ Ξ Θ2 Ξ2.
+Corollary glu_gctx_embedding_of_bodies_valid : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
+    glu_gctx_embedding Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
-  exact (glu_emb_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
+  exact (glu_gctx_embedding_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
 Qed.

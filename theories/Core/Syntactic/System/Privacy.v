@@ -253,46 +253,46 @@ Definition item_refs (t : ptab) (its : list iitem) : list (ptab * string)%type :
 
 (** The privacy table of the module a module expression names, the
     tables of the module variables in scope being [S]. *)
-Fixpoint mtab (S : list ptab) (H : modexp) : ptab :=
+Fixpoint modexp_privacy_table (S : list ptab) (H : modexp) : ptab :=
   match H with
   | me_unit fp => pt_glob (me_unit fp)
   | me_var k => nth k S pt_none
-  | me_mem H y => tab_sel (mtab S H) y
-  | me_app H _ => mtab S H
-  | me_lit U => utab S U
+  | me_mem H y => tab_sel (modexp_privacy_table S H) y
+  | me_app H _ => modexp_privacy_table S H
+  | me_lit U => gunit_privacy_table S U
   end
-with utab (S : list ptab) (U : gunit) : ptab :=
+with gunit_privacy_table (S : list ptab) (U : gunit) : ptab :=
   match U with
-  | gu_mk Δ D => dtab (repeat pt_none (List.length Δ) ++ S) D
+  | gu_mk Δ D => moddef_privacy_table (repeat pt_none (List.length Δ) ++ S) D
   end
-with dtab (S : list ptab) (D : moddef) : ptab :=
+with moddef_privacy_table (S : list ptab) (D : moddef) : ptab :=
   match D with
-  | md_body sm Φ => pt_body nil (btab S Φ)
-  | md_alias E => mtab S E
+  | md_body sm Φ => pt_body nil (gmod_privacy_tables S Φ)
+  | md_alias E => modexp_privacy_table S E
   end
-with btab (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
+with gmod_privacy_tables (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
   match Φ with
   | gm_nil => nil
-  | gm_ext Φ x E => let es := btab S Φ in (x, ge_private E, etab (tab_scope es ++ S) E) :: es
+  | gm_ext Φ x E => let es := gmod_privacy_tables S Φ in (x, ge_private E, gentry_privacy_table (tab_scope es ++ S) E) :: es
   | gm_open Φ H its =>
-      let es := btab S Φ in
-      let t := mtab (tab_scope es ++ S) H in
+      let es := gmod_privacy_tables S Φ in
+      let t := modexp_privacy_table (tab_scope es ++ S) H in
       rev (map (fun it => (iitem_name it, iitem_private it, item_tab t it)) its) ++ es
   end
-with etab (S : list ptab) (E : gentry) : ptab :=
+with gentry_privacy_table (S : list ptab) (E : gentry) : ptab :=
   match E with
   | ge_def _ _ _ _ => pt_none
-  | ge_mod _ U => utab S U
-  | ge_ind _ _ _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
-  | ge_def_mod _ _ _ U => utab S U
-  | ge_record _ _ R Φ => pt_body nil (btab (repeat pt_none (Nat.succ (List.length (record_params R))) ++ S) Φ)
+  | ge_mod _ U => gunit_privacy_table S U
+  | ge_ind _ _ _ D Φ => pt_body nil (gmod_privacy_tables (repeat pt_none (ind_nu D) ++ S) Φ)
+  | ge_def_mod _ _ _ U => gunit_privacy_table S U
+  | ge_record _ _ R Φ => pt_body nil (gmod_privacy_tables (repeat pt_none (Nat.succ (List.length (record_params R))) ++ S) Φ)
   end.
 
 (** The table a local binding gives its index. *)
 Definition bnd_tab (S : list ptab) (b : bnd) : ptab :=
   match b with
   | b_def _ _ => pt_none
-  | b_mod U => utab S U
+  | b_mod U => gunit_privacy_table S U
   end.
 
 (** ** Member References *)
@@ -341,7 +341,7 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (pt_none :: S) M
   | a_app M N => exp_refs S M ++ exp_refs S N
   | a_let b B => bnd_refs S b ++ exp_refs (bnd_tab S b :: S) B
-  | a_mem H x => (mtab S H, x) :: modexp_refs S H
+  | a_mem H x => (modexp_privacy_table S H, x) :: modexp_refs S H
   | a_record _ => nil
   | a_tuple T fs =>
       exp_refs S T ++
@@ -355,7 +355,7 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
 with modexp_refs (S : list ptab) (H : modexp) : list (ptab * string)%type :=
   match H with
   | me_unit _ | me_var _ => nil
-  | me_mem H y => (mtab S H, y) :: modexp_refs S H
+  | me_mem H y => (modexp_privacy_table S H, y) :: modexp_refs S H
   | me_app H N => modexp_refs S H ++ exp_refs S N
   | me_lit U => gunit_refs S U
   end
@@ -381,10 +381,10 @@ with moddef_refs (S : list ptab) (D : moddef) : list (ptab * string)%type :=
 with gmod_refs (S : list ptab) (Φ : gmod) : list (ptab * string)%type :=
   match Φ with
   | gm_nil => nil
-  | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (tab_scope (btab S Φ) ++ S) E
+  | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (tab_scope (gmod_privacy_tables S Φ) ++ S) E
   | gm_open Φ H its =>
-      gmod_refs S Φ ++ modexp_refs (tab_scope (btab S Φ) ++ S) H ++
-        item_refs (mtab (tab_scope (btab S Φ) ++ S) H) its
+      gmod_refs S Φ ++ modexp_refs (tab_scope (gmod_privacy_tables S Φ) ++ S) H ++
+        item_refs (modexp_privacy_table (tab_scope (gmod_privacy_tables S Φ) ++ S) H) its
   end
 with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
@@ -447,24 +447,24 @@ Definition rfun_refs (np : nat) (f : raw_fun) : list (ptab * string)%type :=
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
     commands are checked when they run.  A generated command makes none:
-    it is not written ([cc_gen]). *)
-Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
+    it is not written ([core_cmd_gen]). *)
+Definition cmd_refs (c : core_cmd) : list (ptab * string)%type :=
   match c with
-  | cc_gen _ => nil
-  | cc_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
-  | cc_mod _ _ Δ _ => tele_refs nil Δ
-  | cc_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
-  | cc_load _ => nil
-  | cc_open E its => modexp_refs nil E ++ item_refs (mtab nil E) its
-  | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
-  | cc_ind _ D => decl_refs D
-  | cc_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (rfun_refs (List.length Δ)) fs
-  | cc_builtin _ H => modexp_refs nil H
-  | cc_ind_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
-  | cc_record_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
+  | core_cmd_gen _ => nil
+  | core_cmd_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
+  | core_cmd_mod _ _ Δ _ => tele_refs nil Δ
+  | core_cmd_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
+  | core_cmd_load _ => nil
+  | core_cmd_open E its => modexp_refs nil E ++ item_refs (modexp_privacy_table nil E) its
+  | core_cmd_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
+  | core_cmd_inductive _ D => decl_refs D
+  | core_cmd_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (rfun_refs (List.length Δ)) fs
+  | core_cmd_builtin _ H => modexp_refs nil H
+  | core_cmd_inductive_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
+  | core_cmd_record_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   (** A record's parameters, sort and fields, each field binding a variable
       for the ones after it; its with-area is checked when it runs *)
-  | cc_record _ _ Δ Srt fs _ =>
+  | core_cmd_record _ _ Δ Srt fs _ =>
       tele_refs nil Δ ++ exp_refs (repeat pt_none (List.length Δ)) Srt ++ rargs_refs (repeat pt_none (List.length Δ)) fs
   end.
 

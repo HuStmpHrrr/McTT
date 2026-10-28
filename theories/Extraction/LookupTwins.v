@@ -386,27 +386,27 @@ Section Twins.
   Proof. intros; unfold grec_names_f, grec_names; rewrite (map_ext _ _ grec_member_name_f_ok); reflexivity. Qed.
 
   (** [grec_mod_cmd] *)
-  Definition grec_mod_cmd_f (pq : qname) (D : ind_decl) (Δu : ctx) : ccmd :=
-    cc_gen (cc_mod "Rec" false (grec_tele pq D Δu)
-      (List.map (fun jx => let '(j, Mj, x) := jx in cc_gen (cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
+  Definition grec_mod_cmd_f (pq : qname) (D : ind_decl) (Δu : ctx) : core_cmd :=
+    core_cmd_gen (core_cmd_mod "Rec" false (grec_tele pq D Δu)
+      (List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_gen (core_cmd_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
          (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names_f D)))).
 
   Lemma grec_mod_cmd_f_ok : forall pq D Δu, grec_mod_cmd_f pq D Δu = grec_mod_cmd Θ Ξ pq D Δu.
   Proof. intros; unfold grec_mod_cmd_f, grec_mod_cmd; rewrite grec_names_f_ok; reflexivity. Qed.
 
   (** [rec_cmds] *)
-  Definition rec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) : list ccmd :=
+  Definition rec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) : list core_cmd :=
     if raw_decl_rec_field R then grec_mod_cmd_f pq D (raw_decl_uparams R) :: nil else nil.
 
   Lemma rec_cmds_f_ok : forall R pq D, rec_cmds_f R pq D = rec_cmds Θ Ξ R pq D.
   Proof. intros; unfold rec_cmds_f, rec_cmds; rewrite grec_mod_cmd_f_ok; reflexivity. Qed.
 
   (** [ind_grec_cmds] *)
-  Definition ind_grec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list ccmd :=
+  Definition ind_grec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list core_cmd :=
     if Nat.eqb k 0 && negb (raw_decl_rec_field R) then grec_mod_cmd_f pq D nil :: nil else nil.
 
   (** [ind_mod_cmds] *)
-  Definition ind_mod_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) (M : imember) : list ccmd :=
+  Definition ind_mod_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) (M : imember) : list core_cmd :=
     List.map (ind_con_cmd pq D k M) (im_cons M) ++ ind_rec_cmds pq D M ++ ind_grec_cmds_f R pq D k.
 
   Lemma ind_mod_cmds_f_ok : forall R pq D k M, ind_mod_cmds_f R pq D k M = ind_mod_cmds Θ Ξ R pq D k M.

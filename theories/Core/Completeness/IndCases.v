@@ -4,7 +4,7 @@
     constructors of a member of a group of inductive types, of their
     congruences, and of a view's constructor as its container's.  Each
     holds because the group is valid at the target of a sound embedding
-    ([valid_groups_of_emb]; [Inductives/Model.v], [Inductives/Con.v],
+    ([valid_groups_of_embedding]; [Inductives/Model.v], [Inductives/Con.v],
     [Inductives/ViewRules.v]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
@@ -46,7 +46,7 @@ Lemma sem_ind :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_ind p k : ind_ty D M ).
 Proof.
   intros * HΓ Hl HM Hlt; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ => pose proof (valid_groups_valid _ (valid_groups_of_emb _ _ _ _ He) p D Hl) as Hg end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ => pose proof (valid_groups_valid _ (valid_groups_of_embedding _ _ _ _ He) p D Hl) as Hg end.
   destruct (member_lt_decl _ _ _ _ _ (valid_group_typed _ _ Hg) HM Hlt) as [pm Hh].
   apply closed_weaken_valid; [ assumption |].
   exact (valid_exp_under_ctx_ind D (valid_group_valid _ _ Hg) (valid_group_closed _ _ Hg) (valid_group_sort _ _ Hg) p (valid_group_lookup _ _ Hg)
@@ -67,8 +67,8 @@ Lemma sem_con :
 Proof.
   intros * HΓ Hl HM Hcon _ _ HT; sem_intro; [ assumption |].
   apply closed_weaken_valid; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ =>
-    exact (valid_exp_under_ctx_con _ _ _ (valid_groups_of_emb _ _ _ _ He) Hl _ _ _ _ HM Hcon _ ltac:(eassumption)) end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
+    exact (valid_exp_under_ctx_con _ _ _ (valid_groups_of_embedding _ _ _ _ He) Hl _ _ _ _ HM Hcon _ ltac:(eassumption)) end.
 Qed.
 
 Lemma sem_exp_eq_ind_cong :
@@ -90,8 +90,8 @@ Lemma sem_exp_eq_con_cong :
 Proof.
   intros * HΓ Hl HM Hcon _ HT; sem_intro; [ assumption |].
   apply closed_weaken_valid; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ =>
-    exact (valid_exp_under_ctx_con _ _ _ (valid_groups_of_emb _ _ _ _ He) Hl _ _ _ _ HM Hcon _ ltac:(eassumption)) end.
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
+    exact (valid_exp_under_ctx_con _ _ _ (valid_groups_of_embedding _ _ _ _ He) Hl _ _ _ _ HM Hcon _ ltac:(eassumption)) end.
 Qed.
 
 Lemma sem_exp_eq_con_view :
@@ -104,8 +104,8 @@ Lemma sem_exp_eq_con_view :
      Θ ⍮ Ξ ⍮ Γ ⊨ apps_exp (a_con p j c) (Us ++ Ms) ≈ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A ).
 Proof.
   intros * Hl HMj Hh HUl HL HR; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ =>
-    exact (rel_exp_under_ctx_con_view _ _ _ (valid_groups_of_emb _ _ _ _ He) Hl _ _ _ _ _ _ _ _ _ _ _ HMj Hh HUl
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
+    exact (rel_exp_under_ctx_con_view _ _ _ (valid_groups_of_embedding _ _ _ _ He) Hl _ _ _ _ _ _ _ _ _ _ _ HMj Hh HUl
              ltac:(eassumption) ltac:(eassumption)) end.
 Qed.
 
@@ -120,7 +120,7 @@ Lemma sem_exp_eq_con_rview :
      Θ ⍮ Ξ ⍮ Γ ⊨ apps_exp (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ).
 Proof.
   intros * Hl HMj Hh HUl HMl HL HR; sem_intro; [ assumption |].
-  match goal with He : valid_emb _ _ _ _ |- _ =>
-    exact (rel_exp_under_ctx_con_rview _ _ _ (valid_groups_of_emb _ _ _ _ He) Hl _ _ _ _ _ _ _ _ _ _ HMj Hh HUl HMl
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
+    exact (rel_exp_under_ctx_con_rview _ _ _ (valid_groups_of_embedding _ _ _ _ He) Hl _ _ _ _ _ _ _ _ _ _ HMj Hh HUl HMl
              ltac:(eassumption) ltac:(eassumption)) end.
 Qed.

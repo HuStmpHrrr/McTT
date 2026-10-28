@@ -13,7 +13,7 @@
     3. What a global context [Θm ⍮ Ξm] files and has open is worth at [GC]
        ([valid_filed_mod], [valid_filed_mods]), and a declaration ([valid_ind_decl],
        [valid_record_decl]); a sound
-       embedding of [Θ1 ⍮ Ξ1] into [Θ2 ⍮ Ξ2] ([valid_emb]).
+       embedding of [Θ1 ⍮ Ξ1] into [Θ2 ⍮ Ξ2] ([valid_gctx_embedding]).
     4. The semantic judgments: a judgment of [Θ ⍮ Ξ] is the relation of the
        first two parts at every global context [Θ ⍮ Ξ] embeds into soundly.
 
@@ -691,12 +691,12 @@ End Filed.
 
 (** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, and what it
     files and has open is valid there, its declarations too. *)
-Record valid_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { valid_emb_emb : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
-  ; valid_emb_wf : ⊢ᵍ Θ1 ⍮ Ξ1
-  ; valid_emb_filed : @valid_filed_mods (gc_mk Θ2 Ξ2) Θ1 Ξ1
-  ; valid_emb_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @valid_ind_decl (gc_mk Θ2 Ξ2) D
-  ; valid_emb_record : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @valid_record_decl (gc_mk Θ2 Ξ2) R
+Record valid_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  { valid_gctx_embedding_embedding : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
+  ; valid_gctx_embedding_wf : ⊢ᵍ Θ1 ⍮ Ξ1
+  ; valid_gctx_embedding_filed : @valid_filed_mods (gc_mk Θ2 Ξ2) Θ1 Ξ1
+  ; valid_gctx_embedding_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @valid_ind_decl (gc_mk Θ2 Ξ2) D
+  ; valid_gctx_embedding_record : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @valid_record_decl (gc_mk Θ2 Ξ2) R
   }.
 
 (** ** 4. The Semantic Judgments
@@ -772,27 +772,27 @@ Arguments sem_modexp_eq_at_valid' {Θ Ξ Θ2 Ξ2 Γ H H'}.
 (** The judgments. *)
 
 Definition sem_ctx Θ Ξ Γ : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> @valid_ctx (gc_mk Θ2 Ξ2) Θ Ξ Γ.
 
 Definition sem_exp_eq Θ Ξ Γ A M M' : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> sem_exp_eq_at Θ Ξ Θ2 Ξ2 Γ A M M'.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> sem_exp_eq_at Θ Ξ Θ2 Ξ2 Γ A M M'.
 
 Definition sem_exp Θ Ξ Γ A M : Prop := sem_exp_eq Θ Ξ Γ A M M.
 
 Definition sem_subtyp Θ Ξ Γ A A' : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> sem_subtyp_at Θ Ξ Θ2 Ξ2 Γ A A'.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> sem_subtyp_at Θ Ξ Θ2 Ξ2 Γ A A'.
 
 Definition sem_is_univ Θ Ξ Γ U : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> sem_is_univ_at Θ Ξ Θ2 Ξ2 Γ U.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> sem_is_univ_at Θ Ξ Θ2 Ξ2 Γ U.
 
 Definition sem_ext_eq Θ Ξ Γ Ψ Ψ' : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> sem_ext_eq_at Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> sem_ext_eq_at Θ Ξ Θ2 Ξ2 Γ Ψ Ψ'.
 
 Definition sem_unit_eq Θ Ξ Γ U U' : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> sem_unit_eq_at Θ Ξ Θ2 Ξ2 Γ U U'.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> sem_unit_eq_at Θ Ξ Θ2 Ξ2 Γ U U'.
 
 Definition sem_modexp_eq Θ Ξ Γ H H' : Prop :=
-  forall Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 -> sem_modexp_eq_at Θ Ξ Θ2 Ξ2 Γ H H'.
+  forall Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> sem_modexp_eq_at Θ Ξ Θ2 Ξ2 Γ H H'.
 
 Notation "⊨ Θ ⍮ Ξ ⍮ Γ" := (sem_ctx Θ Ξ Γ)
   (at level 70, Θ at next level, Ξ at level 69, Γ at level 69) : type_scope.

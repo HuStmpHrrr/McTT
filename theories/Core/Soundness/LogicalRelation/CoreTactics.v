@@ -84,17 +84,17 @@ Ltac invert_glu_rel1 :=
     target by its two parts. *)
 Ltac glu_intro :=
   unfold glu_ctx, glu_exp, glu_is_univ in *; intros;
-  repeat match goal with IH : forall _ _, glu_emb _ _ _ _ -> _, Hμ : glu_emb _ _ _ _ |- _ =>
+  repeat match goal with IH : forall _ _, glu_gctx_embedding _ _ _ _ -> _, Hμ : glu_gctx_embedding _ _ _ _ |- _ =>
     specialize (IH _ _ Hμ) end;
   repeat match goal with H : glu_is_univ_at _ _ _ _ |- _ => destruct H end;
   try match goal with |- glu_is_univ_at _ _ _ _ => constructor end.
 
 (** The syntactic judgments of the source, moved along the sound embedding
     to its target ([gctx_embedding_preserves_wf]). *)
-Ltac glu_emb_wf :=
-  match goal with Hμ : glu_emb _ _ _ _ |- _ =>
+Ltac glu_gctx_embedding_wf :=
+  match goal with Hμ : glu_gctx_embedding _ _ _ _ |- _ =>
     let Hem := fresh "Hem" in
-    pose proof (glu_emb_emb _ _ _ _ Hμ) as Hem;
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem;
     let Hwc := fresh "Hwc" in let Hwe := fresh "Hwe" in let Hweq := fresh "Hweq" in
     let Hwst := fresh "Hwst" in let Hwx := fresh "Hwx" in let Hwu := fresh "Hwu" in
     let Hwm := fresh "Hwm" in

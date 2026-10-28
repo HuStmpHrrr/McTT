@@ -463,7 +463,7 @@ Record filed_con_ty (Θ : gdeps) (Ξ : gstack) (p : qname) (j : nat) (c : string
   ; filed_con_ty_ty : exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p filed_con_ty_decl j filed_con_ty_member filed_con_ty_args ≈ U : Typeω@i }.
 
 (** A filed constructor stays filed, at its type, along an embedding. *)
-Lemma filed_con_ty_emb : forall Θ Ξ Θ2 Ξ2 p j c U,
+Lemma gctx_embedding_preserves_filed_con_ty : forall Θ Ξ Θ2 Ξ2 p j c U,
     gctx_embedding Θ Ξ Θ2 Ξ2 -> filed_con_ty Θ Ξ p j c U -> filed_con_ty Θ2 Ξ2 p j c U.
 Proof.
   intros * He [D M gs Hl Hm Hc (i & Hty)].
@@ -508,7 +508,7 @@ Section ConTypes.
   Lemma filed_wf : ⊢ᵍ Θ ⍮ Ξf.
   Proof. exact Hfwf. Qed.
 
-  Lemma filed_emb : gctx_embedding Θ Ξ Θ Ξf.
+  Lemma filed_gctx_embedding : gctx_embedding Θ Ξ Θ Ξf.
   Proof. exact Hfemb. Qed.
 
   Lemma filed_lookup : ind_lookup Θ Ξf p = Some D.
@@ -803,7 +803,7 @@ Section ConTypes.
                                  ⊢ T[τ] ≈ T'[τ] : Typeω@i2).
       { destruct HTT as [-> | [i2 HTe]]; [ exists i1; apply wf_exp_eq_refl; exact HT'L |].
         exists i2.
-        pose proof (proj1 (proj2 (proj2 (gctx_embedding_preserves_wf _ _ _ _ filed_emb))) _ _ _ _ HTe) as HTe'.
+        pose proof (proj1 (proj2 (proj2 (gctx_embedding_preserves_wf _ _ _ _ filed_gctx_embedding))) _ _ _ _ HTe) as HTe'.
         pose proof (presup_exp_eq_ctx HTe') as Hraw.
         assert (Hb : ⊢ Θ ⍮ Ξf ⍮ rm_pctx Ξ R Mr) by exact (ctx_app_wf_tail _ _ _ _ Hraw).
         assert (HP : ⊢ Θ ⍮ Ξf ⍮ raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ)
@@ -915,7 +915,7 @@ End ConTypes.
     [Self]s the members' type formers at the frames' parameters, in the
     global context the run makes. *)
 Theorem run_cmd_ind_con_types : forall load_path read to_core ch B Rb Θ Ξ pv R B' Rb' Θ' Ξ' Mr0 Mrs,
-    Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> ⊢ᵍ Θ ⍮ Ξ ->
+    Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_inductive pv R ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> ⊢ᵍ Θ ⍮ Ξ ->
     raw_decl_members R = Mr0 :: Mrs ->
     forall j Mr c args, List.nth_error (raw_decl_members R) j = Some Mr -> In (c, args) (raw_member_cons Mr) ->
       filed_con_ty Θ' Ξ' (ind_qname Ξ (raw_member_name Mr0)) j c
@@ -947,7 +947,7 @@ Proof.
   match goal with
   | Hrec : run_cmds _ _ _ _ _ _ _ _ (rec_cmds _ _ _ _ _) _ _ _ _, Hwf1 : ⊢ᵍ Θ ⍮ ?Ξf |- _ =>
       destruct (rec_cmds_run_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrec Hwf1) as [-> -> -> Hwf Hsub];
-      apply (filed_con_ty_emb Θ Ξf); [ constructor; assumption |]
+      apply (gctx_embedding_preserves_filed_con_ty Θ Ξf); [ constructor; assumption |]
   end.
   eapply member_con_ty; try eassumption; constructor; assumption.
 Qed.

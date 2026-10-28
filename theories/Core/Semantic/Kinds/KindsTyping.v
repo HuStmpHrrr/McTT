@@ -4,7 +4,7 @@
     [skind]) are read in an environment whose module entries have the kinds
     of the units their context's slots hold ([kmatch]); the entries the
     kinds read off an open are those it generates, with the types left out
-    ([ig_erase], [kmatch_gens]). *)
+    ([generated_item_erase], [kmatch_gens]). *)
 
 From Stdlib Require Import Lia List PeanoNat String.
 Import ListNotations.
@@ -21,10 +21,10 @@ Import Domain_Notations Syntax_Notations Wk_Notations.
 (** ** Generated Entries *)
 
 (** A generated item without its type, as kinds read it ([kgens]). *)
-Definition ig_erase (g : igen) : igen :=
+Definition generated_item_erase (g : generated_item) : generated_item :=
   match g with
-  | ig_def d pv _ M => ig_def d pv a_True M
-  | ig_def_mod d pv _ M E => ig_def_mod d pv a_True M E
+  | generated_item_def d pv _ M => generated_item_def d pv a_True M
+  | generated_item_def_mod d pv _ M E => generated_item_def_mod d pv a_True M E
   | _ => g
   end.
 
@@ -32,14 +32,14 @@ Lemma gens_append_app : forall gs1 gs2 Φ k,
     gens_append Φ k (gs1 ++ gs2) = gens_append (gens_append Φ k gs1) (k + List.length gs1) gs2.
 Proof.
   induction gs1 as [| g gs1 IH]; intros; cbn [app gens_append List.length]; [ rewrite Nat.add_0_r; reflexivity |].
-  destruct (ig_entry g) as [d E]; rewrite IH, Nat.add_succ_r; reflexivity.
+  destruct (generated_item_entry g) as [d E]; rewrite IH, Nat.add_succ_r; reflexivity.
 Qed.
 
 Lemma gens_append_snoc : forall gs g Φ k,
     gens_append Φ k (gs ++ g :: nil) =
-    gm_ext (gens_append Φ k gs) (ig_name g) (gentry_wk (snd (ig_entry g)) (wk_shiftn (k + List.length gs))).
+    gm_ext (gens_append Φ k gs) (generated_item_name g) (gentry_wk (snd (generated_item_entry g)) (wk_shiftn (k + List.length gs))).
 Proof.
-  intros; rewrite gens_append_app; cbn [gens_append]; unfold ig_name; destruct (ig_entry g); reflexivity.
+  intros; rewrite gens_append_app; cbn [gens_append]; unfold generated_item_name; destruct (generated_item_entry g); reflexivity.
 Qed.
 
 Lemma items_upto_none_iff : forall x its, items_upto x its = None -> existsb (String.eqb x) (map iitem_name its) = false.
@@ -50,12 +50,12 @@ Proof.
 Qed.
 
 (** Past the names an open declares, the generated entries are skipped. *)
-Lemma gens_prefix_none : forall gs Φ k y, existsb (String.eqb y) (map ig_name gs) = false ->
+Lemma gens_prefix_none : forall gs Φ k y, existsb (String.eqb y) (map generated_item_name gs) = false ->
     gm_prefix_upto (gens_append Φ k gs) y = gm_prefix_upto Φ y.
 Proof.
   induction gs as [| g gs IH]; intros * Hn; cbn [gens_append]; [ reflexivity |].
   cbn [map existsb] in Hn; apply Bool.orb_false_iff in Hn as [Hy Hn].
-  unfold ig_name in Hy; destruct (ig_entry g) as [d E] eqn:Eg; cbn [fst] in Hy.
+  unfold generated_item_name in Hy; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst] in Hy.
   rewrite IH by exact Hn; cbn [gm_prefix_upto]; rewrite Hy; reflexivity.
 Qed.
 
@@ -79,12 +79,12 @@ Proof.
   all: eexists nil, nil, _; split; [ reflexivity |]; split; [ constructor |].
   all: split; [ solve [ econstructor; eauto using items_gen_nil ] |].
   all: split; [ eexists _, _; split; reflexivity |].
-  all: intros Φ kk; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
+  all: intros Φ kk; cbn [gens_append app generated_item_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
 Qed.
 
 (** The same for the items kinds read. *)
-Lemma kgens_names : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs -> List.map ig_name gs = List.map iitem_name its.
+Lemma kgens_names : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs -> List.map generated_item_name gs = List.map iitem_name its.
 Proof. induction 1; cbn; f_equal; auto. Qed.
 
 Lemma kgens_prefix_some : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs ->
@@ -98,11 +98,11 @@ Proof.
             destruct (IHHg _ _ _ Eu) as (gs0 & g0 & Hg1 & Hp);
             match goal with |- exists _ _, _ /\ forall _ _, gm_prefix_upto (gens_append _ _ (?g :: _)) _ = _ =>
               exists (g :: gs0), g0 end; split; [ exact Hg1 |];
-            intros Φ k; cbn [gens_append app ig_entry]; apply Hp).
+            intros Φ k; cbn [gens_append app generated_item_entry]; apply Hp).
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (kgens_names _ _ _ _ _ _ Hg) in Hn.
   all: eexists nil, _; split; [ solve [ econstructor; eauto using kgens_nil ] |].
-  all: intros Φ k; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
+  all: intros Φ k; cbn [gens_append app generated_item_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
 Qed.
 
@@ -240,15 +240,15 @@ Section Match.
   Qed.
 
   Lemma kentry_erase : forall ρ k g,
-      kentry ρ k (ig_erase g) = kbentry ρ (gentry_wk (snd (ig_entry g)) (wk_shiftn k)).
+      kentry ρ k (generated_item_erase g) = kbentry ρ (gentry_wk (snd (generated_item_entry g)) (wk_shiftn k)).
   Proof. intros ρ k []; reflexivity. Qed.
 
   Lemma kmatch_gens : forall gs Φ k Γ ρ1, kmatch (body_ctx Φ ++ Γ) ρ1 ->
-      kmatch (body_ctx (gens_append Φ k gs) ++ Γ) (kgens_env ρ1 k (map ig_erase gs)).
+      kmatch (body_ctx (gens_append Φ k gs) ++ Γ) (kgens_env ρ1 k (map generated_item_erase gs)).
   Proof.
     induction gs as [| g gs IH]; intros * H; cbn [gens_append map kgens_env]; [ exact H |].
     rewrite kentry_erase.
-    destruct (ig_entry g) as [d E] eqn:Eg; cbn [snd].
+    destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [snd].
     apply IH, kmatch_ext, H.
   Qed.
 

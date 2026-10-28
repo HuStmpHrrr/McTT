@@ -37,7 +37,7 @@ Lemma body_eq_upto_types_gens_inv : forall gs1 gs2 Φk Φx k, List.length gs1 = 
     body_eq_upto_types (gens_append Φk k gs1) (gens_append Φx k gs2) -> body_eq_upto_types Φk Φx.
 Proof.
   induction gs1 as [| g1 gs1 IH]; intros [| g2 gs2] * Hl Hk; cbn in Hl; try lia; [ exact Hk |].
-  cbn [gens_append] in Hk; destruct (ig_entry g1) as [d1 E1], (ig_entry g2) as [d2 E2].
+  cbn [gens_append] in Hk; destruct (generated_item_entry g1) as [d1 E1], (generated_item_entry g2) as [d2 E2].
   exact (proj1 (IH gs2 _ _ _ ltac:(lia) Hk)).
 Qed.
 
@@ -52,11 +52,11 @@ Proof.
             destruct (IHHg _ _ _ Eu) as (gs0 & g0 & Rg & -> & Hl & Hg1 & Hp);
             match goal with |- exists _ _ _, ?g :: _ = _ /\ _ => exists (g :: gs0), g0, Rg end;
             split; [ reflexivity |]; split; [ cbn; lia |]; split; [ exact Hg1 |];
-            intros Φ k; cbn [gens_append app ig_entry]; apply Hp).
+            intros Φ k; cbn [gens_append app generated_item_entry]; apply Hp).
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (kgens_names _ _ _ _ _ _ Hg) in Hn.
   all: eexists nil, _, _; split; [ reflexivity |]; split; [ reflexivity |]; split; [ solve [ econstructor; eauto using kgens_nil ] |].
-  all: intros Φ k; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
+  all: intros Φ k; cbn [gens_append app generated_item_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
 Qed.
 
@@ -214,9 +214,9 @@ Proof.
       pose proof (items_gen_length _ _ _ _ _ _ Hg0) as Hl0.
       inversion Hg1 as [| ? ? d pv0 ? ? Hg2 | ? ? n d pv0 A_n om ? ? HmH Hg2 | ? ? n d pv0 Rn ? ? HmH HRn Hg2
                         | ? ? n d pv0 Rn A_n Rnm ? ? HmH HRty HRmd Hg2 ]; subst;
-        cbn [ig_entry snd gentry_wk entry_tm] in HEt; try discriminate; injection HEt as <- <-.
+        cbn [generated_item_entry snd gentry_wk entry_tm] in HEt; try discriminate; injection HEt as <- <-.
       2: { (* a member with a term part and a module part: its term part *)
-      cbn [ig_name ig_entry fst] in Eu, Hpx |- *.
+      cbn [generated_item_name generated_item_entry fst] in Eu, Hpx |- *.
       destruct (Ho 0 _ _ eq_refl) as [HH HS].
       destruct (rel_ctx_wf_per_ctx_env HC0) as [Ro HRo].
       destruct (benv_exists _ _ Hn (proj1 (body_shape_fill _ _ Hn Hsx0)) HC0 _ _ HRD HRo _ Hρ) as (ρo & Hbo & Hρo).
@@ -224,10 +224,10 @@ Proof.
       destruct (HSn _ HRo _ Hρo) as [t an i_n RAn Ht Han HRAn Hmt _].
       assert (HnP : gm_nopens (gens_append Φx 0 gs0) = 0) by (rewrite gens_append_nopens; exact Hn).
       assert (HshP : body_shape (gens_append Φx 0 gs0) (gens_append Φx 0 gs0)).
-      { apply (body_shape_gens_l (ig_def_mod d pv0 A_n (a_mem H n) (me_mem H n) :: Rg) _ (0 + List.length gs0)).
+      { apply (body_shape_gens_l (generated_item_def_mod d pv0 A_n (a_mem H n) (me_mem H n) :: Rg) _ (0 + List.length gs0)).
         rewrite <- gens_append_app; exact Hsx. }
       assert (HCP : ⊨ body_ctx (gens_append Φx 0 gs0) ++ Γ).
-      { destruct (body_ctx_gens_firstn (gs0 ++ ig_def_mod d pv0 A_n (a_mem H n) (me_mem H n) :: Rg) Φx 0 (List.length gs0))
+      { destruct (body_ctx_gens_firstn (gs0 ++ generated_item_def_mod d pv0 A_n (a_mem H n) (me_mem H n) :: Rg) Φx 0 (List.length gs0))
           as (X & HX).
         rewrite firstn_app, Nat.sub_diag, firstn_all in HX; cbn [firstn] in HX; rewrite app_nil_r in HX.
         rewrite HX, <- app_assoc in HC'; exact (rel_ctx_wf_app_r _ _ HC'). }
@@ -272,7 +272,7 @@ Proof.
       { destruct (body_eq_upto_types_prefix _ _ Hkx d _ _ ltac:(rewrite Hpx, gens_append_snoc; reflexivity)) as (Φk' & Ek & Hpk' & _ & HE).
         rewrite Hpk, gens_append_snoc in Hpk'; injection Hpk' as _ _ HEk.
         inversion Hkgk as [| ? ? ? ? ? ? Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst;
-          cbn [ig_entry snd gentry_wk] in HE;
+          cbn [generated_item_entry snd gentry_wk] in HE;
           destruct HE as [HE | [(? & ? & ? & ? & ? & HE & HE') | [? ? ? ? ? HE HE']]]; try discriminate; exact Hsk. }
       assert (Hkt : dkind gc_deps gc_stack h (n :: nil) mk_dm).
       { apply (per_dmod_kequiv _ _ H11).
@@ -286,12 +286,12 @@ Proof.
       assert (Hbq' : ⟦ gens_append Φx0 0 gsh0 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρq) by (apply eval_gens_split; exists ρ1; split; assumption).
       assert (Hj : List.length gsh0 < List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits)) by (rewrite !length_app; cbn; lia).
       assert (Hdq : ⟦ gm_dropn (List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits) - List.length gsh0)
-                       (gens_append Φx0 0 (gsh0 ++ ig_def_mod d pv0 a_True (a_mem H0 n) (me_mem H0 n) :: Rgh)) ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρq).
-      { assert (Hlh2 : List.length (gsh0 ++ ig_def_mod d pv0 a_True (a_mem H0 n) (me_mem H0 n) :: Rgh)
+                       (gens_append Φx0 0 (gsh0 ++ generated_item_def_mod d pv0 a_True (a_mem H0 n) (me_mem H0 n) :: Rgh)) ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρq).
+      { assert (Hlh2 : List.length (gsh0 ++ generated_item_def_mod d pv0 a_True (a_mem H0 n) (me_mem H0 n) :: Rgh)
                          = List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits))
           by (pose proof (f_equal (@List.length _) (kgens_names _ _ _ _ _ _ Hkhg)) as E; rewrite !length_map in E; exact E).
         rewrite gm_dropn_gens by lia.
-        replace (List.length (gsh0 ++ ig_def_mod d pv0 a_True (a_mem H0 n) (me_mem H0 n) :: Rgh) - _) with (List.length gsh0) by lia.
+        replace (List.length (gsh0 ++ generated_item_def_mod d pv0 a_True (a_mem H0 n) (me_mem H0 n) :: Rgh) - _) with (List.length gsh0) by lia.
         rewrite firstn_app, Nat.sub_diag, firstn_all; cbn [firstn]; rewrite app_nil_r; exact Hbq'. }
       destruct (H16 _ _ Hj Hdq) as (hhj & Hhhj).
       pose proof (H21 _ _ _ Hj Hdq Hhhj) as Hhth.
@@ -299,9 +299,9 @@ Proof.
       pose proof (functional_eval_sel _ _ _ _ Hr0' Hr0) as ->.
       rewrite Hph, gens_append_snoc.
       do 6 eexists; split; [ reflexivity |]; split; [ reflexivity |].
-      split; [ exact Hbq' |]; split; [ cbn [ig_entry snd gentry_wk exp_wk Nat.add]; eapply eval_mem_of_sel; [ exact Hhhj | exact Hrh ] |].
+      split; [ exact Hbq' |]; split; [ cbn [generated_item_entry snd gentry_wk exp_wk Nat.add]; eapply eval_mem_of_sel; [ exact Hhhj | exact Hrh ] |].
       apply Ew; etransitivity; [ exact Hrr' | symmetry; exact Hrr0 ]. }
-      cbn [ig_name ig_entry fst] in Eu, Hpx |- *.
+      cbn [generated_item_name generated_item_entry fst] in Eu, Hpx |- *.
       (* the target and its members, before the open's entries *)
       destruct (Ho 0 _ _ eq_refl) as [HH HS].
       destruct (rel_ctx_wf_per_ctx_env HC0) as [Ro HRo].
@@ -311,10 +311,10 @@ Proof.
       (* the environment after the first [j] entries *)
       assert (HnP : gm_nopens (gens_append Φx 0 gs0) = 0) by (rewrite gens_append_nopens; exact Hn).
       assert (HshP : body_shape (gens_append Φx 0 gs0) (gens_append Φx 0 gs0)).
-      { apply (body_shape_gens_l (ig_def d pv0 A_n (a_mem H n) :: Rg) _ (0 + List.length gs0)).
+      { apply (body_shape_gens_l (generated_item_def d pv0 A_n (a_mem H n) :: Rg) _ (0 + List.length gs0)).
         rewrite <- gens_append_app; exact Hsx. }
       assert (HCP : ⊨ body_ctx (gens_append Φx 0 gs0) ++ Γ).
-      { destruct (body_ctx_gens_firstn (gs0 ++ ig_def d pv0 A_n (a_mem H n) :: Rg) Φx 0 (List.length gs0)) as (X & HX).
+      { destruct (body_ctx_gens_firstn (gs0 ++ generated_item_def d pv0 A_n (a_mem H n) :: Rg) Φx 0 (List.length gs0)) as (X & HX).
         rewrite firstn_app, Nat.sub_diag, firstn_all in HX; cbn [firstn] in HX; rewrite app_nil_r in HX.
         rewrite HX, <- app_assoc in HC'; exact (rel_ctx_wf_app_r _ _ HC'). }
       destruct (rel_ctx_wf_per_ctx_env HCP) as [RP HRP].
@@ -360,7 +360,7 @@ Proof.
       { destruct (body_eq_upto_types_prefix _ _ Hkx d _ _ ltac:(rewrite Hpx, gens_append_snoc; reflexivity)) as (Φk' & Ek & Hpk' & _ & HE).
         rewrite Hpk, gens_append_snoc in Hpk'; injection Hpk' as _ _ HEk.
         inversion Hkgk as [| ? ? ? ? ? ? Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst;
-          cbn [ig_entry snd gentry_wk] in HE;
+          cbn [generated_item_entry snd gentry_wk] in HE;
           destruct HE as [HE | [(? & ? & ? & ? & ? & HE & HE') | [? ? ? ? ? HE HE']]]; try discriminate; exact Hsk. }
       assert (Hkt : dkind gc_deps gc_stack h (n :: nil) mk_term).
       { apply (per_dmod_kequiv _ _ H11).
@@ -375,11 +375,11 @@ Proof.
       assert (Hbq' : ⟦ gens_append Φx0 0 gsh0 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρq) by (apply eval_gens_split; exists ρ1; split; assumption).
       assert (Hj : List.length gsh0 < List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits)) by (rewrite !length_app; cbn; lia).
       assert (Hdq : ⟦ gm_dropn (List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits) - List.length gsh0)
-                       (gens_append Φx0 0 (gsh0 ++ ig_def d pv0 a_True (a_mem H0 n) :: Rgh)) ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρq).
-      { assert (Hlh2 : List.length (gsh0 ++ ig_def d pv0 a_True (a_mem H0 n) :: Rgh) = List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits))
+                       (gens_append Φx0 0 (gsh0 ++ generated_item_def d pv0 a_True (a_mem H0 n) :: Rgh)) ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρq).
+      { assert (Hlh2 : List.length (gsh0 ++ generated_item_def d pv0 a_True (a_mem H0 n) :: Rgh) = List.length ((its0 ++ (Some n, d, pv0) :: nil) ++ Rits))
           by (pose proof (f_equal (@List.length _) (kgens_names _ _ _ _ _ _ Hkhg)) as E; rewrite !length_map in E; exact E).
         rewrite gm_dropn_gens by lia.
-        replace (List.length (gsh0 ++ ig_def d pv0 a_True (a_mem H0 n) :: Rgh) - _) with (List.length gsh0) by lia.
+        replace (List.length (gsh0 ++ generated_item_def d pv0 a_True (a_mem H0 n) :: Rgh) - _) with (List.length gsh0) by lia.
         rewrite firstn_app, Nat.sub_diag, firstn_all; cbn [firstn]; rewrite app_nil_r; exact Hbq'. }
       destruct (H16 _ _ Hj Hdq) as (hhj & Hhhj).
       pose proof (H21 _ _ _ Hj Hdq Hhhj) as Hhth.
@@ -387,7 +387,7 @@ Proof.
       pose proof (functional_eval_sel _ _ _ _ Hr0' Hr0) as ->.
       rewrite Hph, gens_append_snoc.
       do 6 eexists; split; [ reflexivity |]; split; [ reflexivity |].
-      split; [ exact Hbq' |]; split; [ cbn [ig_entry snd gentry_wk exp_wk Nat.add]; eapply eval_mem_of_sel; [ exact Hhhj | exact Hrh ] |].
+      split; [ exact Hbq' |]; split; [ cbn [generated_item_entry snd gentry_wk exp_wk Nat.add]; eapply eval_mem_of_sel; [ exact Hhhj | exact Hrh ] |].
       apply Ew; etransitivity; [ exact Hrr' | symmetry; exact Hrr0 ].
     + (* an entry before the open *)
       rewrite (gens_prefix_none_items _ _ _ _ _ _ _ _ _ Hg Eu) in Hp.

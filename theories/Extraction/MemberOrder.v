@@ -516,7 +516,7 @@ Qed.
     [gs], each of size at most [c] read under [B]: [Φ]'s slot sizes are
     [new ++ B], with [k] new ones. *)
 #[warnings="-cannot-define-projection"]
-Record gens_sizes (ρ : list nat) (Φ : gmod) (k : nat) (gs : list igen) (B new : list nat) (c : nat) : Prop :=
+Record gens_sizes (ρ : list nat) (Φ : gmod) (k : nat) (gs : list generated_item) (B new : list nat) (c : nat) : Prop :=
   mk_gens_sizes
   { (** The body grows by at most [S c] per generated entry *)
     gens_total : fst (body_size ρ (gens_append Φ k gs)) <= fst (body_size ρ Φ) + List.length gs * S c
@@ -536,7 +536,7 @@ Section Expansion.
       target's and two more. *)
   Lemma items_gen_shape : forall Γ H its gs, items_gen Θ Ξ Γ H its gs ->
       List.length gs = List.length its /\
-      Forall (fun x => forall ρ, gentry_size ρ (snd (ig_entry x)) <= S (S (modexp_size ρ H))) gs.
+      Forall (fun x => forall ρ, gentry_size ρ (snd (generated_item_entry x)) <= S (S (modexp_size ρ H))) gs.
   Proof.
     induction 1; [ split; [ reflexivity | constructor ] | ..].
     all: match goal with IH : _ /\ _ |- _ => destruct IH as [IHl IHf] end;
@@ -548,13 +548,13 @@ Section Expansion.
 
   Lemma gens_append_sizes : forall gs Φ k B ρ new c,
       snd (body_size ρ Φ) = new ++ B -> List.length new = k ->
-      Forall (fun g => gentry_size (B ++ ρ) (snd (ig_entry g)) <= c) gs ->
+      Forall (fun g => gentry_size (B ++ ρ) (snd (generated_item_entry g)) <= c) gs ->
       gens_sizes ρ Φ k gs B new c.
   Proof.
     induction gs as [| g gs IH]; intros * Hs Hk Hgs; cbn [gens_append].
     - apply (mk_gens_sizes ρ Φ k nil B new c ltac:(cbn; lia) nil); cbn; auto.
     - inversion Hgs as [| ? ? Hg Hgs']; subst.
-      destruct (ig_entry g) as [d E] eqn:Eg; cbn [snd] in Hg.
+      destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [snd] in Hg.
       set (s := gentry_size (snd (body_size ρ Φ) ++ ρ) (gentry_wk E (wk_shiftn (List.length new)))).
       assert (Hsc : s <= c).
       { unfold s; rewrite Hs, <- app_assoc; etransitivity; [| exact Hg ].
@@ -581,7 +581,7 @@ Section Expansion.
     - destruct (IH ρ) as [IH1 IH2].
       destruct (items_gen_shape _ _ _ _ Hig) as [Hl Hf].
       set (c := S (S (modexp_size (snd (body_size ρ Φx) ++ ρ) H))).
-      assert (Hgs : Forall (fun g => gentry_size (snd (body_size ρ Φx) ++ ρ) (snd (ig_entry g)) <= c) gs)
+      assert (Hgs : Forall (fun g => gentry_size (snd (body_size ρ Φx) ++ ρ) (snd (generated_item_entry g)) <= c) gs)
         by (eapply Forall_impl; [| exact Hf ]; intros g Hg; apply Hg).
       destruct (gens_append_sizes gs Φx 0 (snd (body_size ρ Φx)) ρ nil c eq_refl eq_refl Hgs) as [G1 new' G2 G3 G4].
       pose proof (modexp_size_mono H _ _ (sizes_le_app _ _ ρ ρ IH2 (sizes_le_refl ρ))) as Hmo.

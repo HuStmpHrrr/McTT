@@ -70,7 +70,7 @@ Theorem completeness : forall {Θ Ξ Γ M M' A},
 Proof.
   intros * H.
   pose proof (proj1 (proj2 (proj2 completeness_fundamental)) _ _ _ _ _ _ H) as HK.
-  pose proof (sem_exp_eq_at_rel (HK _ _ (valid_emb_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))))) as Hrel.
+  pose proof (sem_exp_eq_at_rel (HK _ _ (valid_gctx_embedding_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))))) as Hrel.
   destruct (@rel_exp_under_ctx_at_initial_env (gc_mk Θ Ξ) _ _ _ _ Hrel)
     as [ρ [i [elem_rel [a [m [m' [Hρ [Ha [Hm [Hm' [Htyp Hrel']]]]]]]]]]].
   destruct (per_elem_then_per_top Htyp Hrel' (length Γ)) as [W [HW HW']].

@@ -34,7 +34,7 @@ Fixpoint record_fields_defs (R : record_decl) (k : nat) (fs : list (string * typ
 
 Lemma record_fields_cmds_defs : forall R fs k,
     record_fields_cmds R k fs =
-      List.map (fun d => cc_gen (cc_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) (record_fields_defs R k fs).
+      List.map (fun d => core_cmd_gen (core_cmd_def (fst d) true false (fst (snd d)) (Some (snd (snd d))))) (record_fields_defs R k fs).
 Proof. intros R; induction fs as [| [f T] fs IH]; intros k; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 Lemma record_fields_defs_names : forall R fs k, List.map fst (record_fields_defs R k fs) = List.map fst fs.
@@ -99,7 +99,7 @@ Section RecordRuns.
           record_field_cmds (record_at Ξ Δ Srt fs) ⇝* Θ ⍮ Ξf ⍮ B ⍮ Rb /\
         forall cs B' Rb' Θ' mp K U,
           Θ ⍮ Ξf ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
-          Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_record x pv Δ Srt fs cs ⇝
+          Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_record x pv Δ Srt fs cs ⇝
             Θ' ⍮ gs_add x (ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) (gu_mod U)) Ξ ⍮ B' ⍮ Rb'.
   Proof.
     intros * Hg Hfr HE.
@@ -123,7 +123,7 @@ Section RecordRuns.
       assert (Hl2 : record_lookup Θ ((mp, fk_record R, gu_body (ce_ass (record_self mp R) :: Δ) Φ2) :: (mq, Kq, Uq) :: Ξ0) mp = Some R)
         by (unfold record_lookup; rewrite gs_find_record_own; reflexivity).
       assert (HRt2 : record_typed Θ ((mp, fk_record R, gu_body (ce_ass (record_self mp R) :: Δ) Φ2) :: (mq, Kq, Uq) :: Ξ0) R).
-      { refine (record_typed_emb _ _ _ _ _ _ HRt).
+      { refine (gctx_embedding_preserves_record_typed _ _ _ _ _ _ HRt).
         constructor; [ exact Hg2 | eapply gc_sub_trans; [ apply gc_sub_push; exact Hff | exact Hs2 ] ]. }
       pose proof (record_field_def_typed _ _ _ _ _ _ _ HRt2 Hl2 Hj) as Ht.
       unfold record_mod_tele in Ht; cbn [List.app]; cbn [Nat.add].

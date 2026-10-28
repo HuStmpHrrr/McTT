@@ -8,7 +8,7 @@ From Stdlib Require List.
     module loads first, so that no [Hint ... : mctt] creates it implicitly. *)
 Create HintDb mctt discriminated.
 
-(** [Syntax.cmd], [Command.ccmd] and [Domain.domain] nest through [list]; with
+(** [Syntax.cmd], [Command.core_cmd] and [Domain.domain] nest through [list]; with
     this scheme registered, their generated induction principles carry the
     induction hypothesis for the list elements (as [list_all]). *)
 Scheme All for list.

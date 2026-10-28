@@ -10,10 +10,10 @@
 ## Theorems (all closed under the global context)
 
 ```coq
-Theorem elaborate_core_iff : forall prg u, elaborate_core prg = eok u <-> elab_spec prg u.
+Theorem elaborate_core_iff : forall prg u, elaborate_core prg = elab_success u <-> elab_spec prg u.
 Corollary elaborate_core_sound / elaborate_core_complete    (* the two halves *)
 Corollary elab_spec_functional : elab_spec prg u1 -> elab_spec prg u2 -> u1 = u2.
-Corollary elaborate_core_fails : (exists e, elaborate_core prg = eerr e) <-> forall u, ~ elab_spec prg u.
+Corollary elaborate_core_fails : (exists e, elaborate_core prg = elab_failure e) <-> forall u, ~ elab_spec prg u.
 ```
 
 ## What the elaborator does, and does not, do
@@ -53,12 +53,12 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   then `open W items`, so the items refer to the alias; the long form
   `import X::Y ip args as W items` is `import X::Y` then `open X::Y ip args
   as W items`; a bare `import X::Y` only loads.
-* `import X::Y` (`Cst.c_import fq`) emits `cc_load fq` and puts the unit in
+* `import X::Y` (`Cst.c_import fq`) emits `core_cmd_load fq` and puts the unit in
   scope (`scope_entry_unit fq`); it declares nothing, and a repeated one is the core's
   no-op.  `open fq.ip args items` (`Cst.c_open`) has the target `itarget fq
   ip args`, read by `selm` like an alias body, so a unit it names must be
   imported (`the unit is not imported`); it loads nothing.
-* In a frame, an open emits `cc_open E items`; the core checks the target
+* In a frame, an open emits `core_cmd_open E items`; the core checks the target
   and the items and runs the definitions and aliases they generate.  Each
   item's name is bound as a member of the frame (`scope_entry_mem d (q_abs fp (ch ++
   [d])) n`) and may not be a parameter's of the frame (`d is already
@@ -72,7 +72,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   module`); their entries may be `private`, which the core's privacy check
   enforces.
 * The definition keywords are `def` with the modifiers they imply
-  (`Cst.dkw_mods`): `theorem`/`lemma` = `abstract def`, `fact`/`remark` =
+  (`Cst.definition_keyword_mods`): `theorem`/`lemma` = `abstract def`, `fact`/`remark` =
   `abstract private def`, `let`/`given` = `private def`.  The parser builds
   the `c_def` with the resulting modifiers, or, for a modifier the keyword
   already implies, `Cst.c_error msg` (`theorem is already abstract`, `fact
@@ -107,11 +107,11 @@ lookup is first-match, the rule is a premise only, not an invariant.
 They are read twice (`slead`, then `scmds`):
 
 ```coq
-Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list ccmd -> Prop :=
+Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list core_cmd -> Prop :=
 | slead_nil : forall L, slead L nil L nil
 | slead_import : forall L fq cs L' lds,
     slead (scope_entry_unit fq :: L) cs L' lds ->
-    slead L (Cst.c_import fq :: cs) L' (cc_load fq :: lds)
+    slead L (Cst.c_import fq :: cs) L' (core_cmd_load fq :: lds)
 | slead_open : forall L fq ip args its o E cs L' lds,
     itarget fq ip args = Some o -> selm L o E ->
     slead (open_scope_entries E its ++ L) cs L' lds ->
@@ -132,7 +132,7 @@ Inductive slead : list scope_entry -> list Cst.cmd -> list scope_entry -> list c
   elaborator does more than resolve a name to a binder or a member.
 * **In the frame**, after the parameters, they are ordinary commands of the
   unit's own frame: the import loads again (a no-op), the open declares
-  members of the unit (`cc_open`), applied to its parameters, not named as
+  members of the unit (`core_cmd_open`), applied to its parameters, not named as
   them (the elaborator) nor as each other (the core).  The body's scope outside the frame is `L`,
   whose `scope_entry_open` entries are always shadowed by those members.
 * So a leading open's arguments may not name the parameters (`unbound name
@@ -147,9 +147,9 @@ import Prelude::Arith::Equality
 open Prelude::Arith::Equality use (Eq)
 module ScratchP (p : Eq 1 1) where def q : Eq 1 1 := p end end
 ```
-elaborates to the loads `[cc_load Equality]`, the parameters `⋅ ▹ (a_mem
-⟨Equality⟩ Eq $ 1 $ 1)`, and the body `cc_load Equality ; cc_open ⟨Equality⟩
-[(Some Eq, Eq, true)] ; cc_def q … (ScratchP.Eq $ #0 $ 1 $ 1) #0`
+elaborates to the loads `[core_cmd_load Equality]`, the parameters `⋅ ▹ (a_mem
+⟨Equality⟩ Eq $ 1 $ 1)`, and the body `core_cmd_load Equality ; core_cmd_open ⟨Equality⟩
+[(Some Eq, Eq, true)] ; core_cmd_def q … (ScratchP.Eq $ #0 $ 1 $ 1) #0`
 (`ElabExamples.leading_scope`).
 
 ## Running example
@@ -158,7 +158,7 @@ elaborates to the loads `[cc_load Equality]`, the parameters `⋅ ▹ (a_mem
 of selections from its unit: `Main.M.id` stands for `qname_term (q_abs
 ["Main"] ["M"; "id"])`, that is `a_mem (me_mem (me_unit ["Main"]) "M") "id"`,
 `⟨Main.M⟩` for `qname_mod (q_abs ["Main"] ["M"])`, that is `me_mem (me_unit
-["Main"]) "M"`, and the flags of `cc_def` are omitted.
+["Main"]) "M"`, and the flags of `core_cmd_def` are omitted.
 
 ```
 module Main where
@@ -173,11 +173,11 @@ end
 ```
 
 ```
-cc_mod "M" (⋅ ▹ Type@0)
-  [ cc_def "id" (Π #0 #1) (λ #0 #0);
-    cc_mod "N" (⋅ ▹ Type@0)
-      [ cc_def "k" (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main.M.id $ #3 $ #1))) ] ];
-cc_def "j" (Π ℕ ℕ) (a_mem ⟨Main.M⟩ "id" $ ℕ)
+core_cmd_mod "M" (⋅ ▹ Type@0)
+  [ core_cmd_def "id" (Π #0 #1) (λ #0 #0);
+    core_cmd_mod "N" (⋅ ▹ Type@0)
+      [ core_cmd_def "k" (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main.M.id $ #3 $ #1))) ] ];
+core_cmd_def "j" (Π ℕ ℕ) (a_mem ⟨Main.M⟩ "id" $ ℕ)
 ```
 
 In the body of `k` the scope is `y, x, B, id ↦ Main.M.id, A`.  `id` has three

@@ -57,11 +57,11 @@ Lemma glu_ind :
      Θ ⍮ Ξ ⍮ Γ ⊩ a_ind p k : ind_ty D M ).
 Proof.
   intros * HΓ HΓg Hl HM Hlt Θ2 Ξ2 Hμ.
-  pose proof (valid_groups_of_glu_emb _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) (glu_emb_emb _ _ _ _ Hμ)) as HVP.
+  pose proof (valid_groups_of_glu_gctx_embedding _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) (glu_gctx_embedding_embedding _ _ _ _ Hμ)) as HVP.
   pose proof (valid_groups_valid _ HVP p D Hl) as Hg.
   destruct (member_lt_decl _ _ _ _ _ (valid_group_typed _ _ Hg) HM Hlt) as [pm Hh].
   apply glu_rel_exp_nil_weaken; [ exact (HΓg _ _ Hμ) |].
-  exact (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) (glu_emb_ind_field _ _ _ _ Hμ _ _ Hl) (valid_group_closed _ _ Hg) (valid_group_typed _ _ Hg)
+  exact (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) (glu_gctx_embedding_ind_field _ _ _ _ Hμ _ _ Hl) (valid_group_closed _ _ Hg) (valid_group_typed _ _ Hg)
            (valid_group_sort _ _ Hg) (valid_group_ass _ _ Hg) k M pm HM Hh).
 Qed.
 
@@ -82,11 +82,11 @@ Lemma glu_con :
      Θ ⍮ Ξ ⍮ Γ ⊩ a_con p k c : con_ty p D k M gs ).
 Proof.
   intros * HΓ HΓg Hl HM Hcon HΨ HΨg Hsh HT Θ2 Ξ2 Hμ.
-  pose proof (glu_emb_emb _ _ _ _ Hμ) as Hem.
+  pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
   destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _).
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg0.
-  pose proof (valid_groups_of_glu_emb _ _ _ _ Hg0 Hem) as HVP.
-  pose proof (glu_emb_ind_field _ _ _ _ Hμ) as HGall.
+  pose proof (valid_groups_of_glu_gctx_embedding _ _ _ _ Hg0 Hem) as HVP.
+  pose proof (glu_gctx_embedding_ind_field _ _ _ _ Hμ) as HGall.
   pose proof (fun qn G H => glu_views_ok_all _ qn G HVP H (HGall _ _ H)) as Hviewsall.
   assert (Hc0 : Θ ⍮ Ξ ⍮ ⋅ ⊢ a_con p k c : con_ty p D k M gs)
     by (eapply wf_con; [ constructor; exact Hg0 | eassumption .. ]).

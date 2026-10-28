@@ -288,7 +288,7 @@ let module M (A : Type@0) where def x : Nat := zero end
   whichever alias the reference went through.
 - **Private modules** (`private module X …`, also for aliases).  The flag is
   data on the entry, `ge_mod : bool -> gunit -> gentry`, and on the commands
-  `cc_mod`/`cc_alias`; typing ignores it, `body_shape` compares it, and the
+  `core_cmd_mod`/`core_cmd_alias`; typing ignores it, `body_shape` compares it, and the
   command check enforces it: `gc_entry` reads the entry a path names, and
   `mdecl` declares a submodule as it does a definition (`mdl_entry`, with
   `ge_private`).  `me_mem H y` is a reference `(H, y)` like `a_mem H x`.
@@ -312,7 +312,7 @@ let module M (A : Type@0) where def x : Nat := zero end
   L.s end` gives `Error: s is private`.  The message names the member from
   the local module, which has no name in the core.
 - A local `use (n; n)` naming a member twice is rejected by the core
-  (`xe_fresh`, `n is already declared`) since §10.7.
+  (`open_failure_reason_fresh`, `n is already declared`) since §10.7.
 
 ### 10.4 Module arities are telescopes
 - `member_type … ch R` with `R : mres := mr_term typ | mr_mod ctx`.  A module's
@@ -365,14 +365,14 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   (`sel_let_infer`).  `def` keeps its required type.
 
 ### 10.7 Imports generate definitions
-- `import E items` is the command `cc_import E items` (`iitem := option
+- `import E items` is the command `core_cmd_import E items` (`iitem := option
   string * string * bool`: member or the module itself, declared name,
   private).  `import_gen mt Γ E items` (`Core/Syntactic/Imports.v`) checks
   `E` is a module and each item a member, rejects a member both used and
-  exported (`xe_both`) and a name declared twice (`xe_fresh`), and gives a
+  exported (`open_failure_reason_both`) and a name declared twice (`open_failure_reason_fresh`), and gives a
   definition `d : A := E.n` (`A` its member type) or an alias per item.
   `rc_import` declares them with the premises of `run_cmd_def`/`run_cmd_alias`, so their freshness
-  is the ordinary one.  Loading is its own command, `cc_load`.
+  is the ordinary one.  Loading is its own command, `core_cmd_load`.
 - `mt : mt_oracle` stands for the member types; `mt_spec Θ Ξ mt` ties it to
   `member_type`, and any two such oracles agree (`mt_spec_ext`), so
   expansion is unique (`cmd_xp_ok_functional`).  The checker uses `mt_of`
@@ -393,7 +393,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   its generated entries by `gens_run` (outside the mutual block, the
   premises of `run_cmd_def`/`run_cmd_alias` without privacy), so a generated type is
   never checked.  An import's refs are its target and each member it names;
-  in a local body, `btab` gives each item the table of what it names.
+  in a local body, `gmod_privacy_tables` gives each item the table of what it names.
 - Typing is untouched: no rule mentions an import.  A generated definition
   `d := E.n` is checked by `gens_run_def`'s premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_mem E n : A`
   through the ordinary member rules, a generated local entry by
@@ -405,10 +405,10 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   aliases); the qualified name `Prelude::Arith::Equality.Eq` still works.
 
 ### 10.8 Import loads, open declares; definition keywords
-- `import X::Y` only loads (`cc_load`; a repeated one is `run_cmd_load_filed`, a
+- `import X::Y` only loads (`core_cmd_load`; a repeated one is `run_cmd_load_filed`, a
   no-op).  It names a unit: `import M` for a module in scope is a syntax
   error.  Declaring is `open E [as W] (use (…) | export (…))*`: the core
-  command `cc_import` is renamed `cc_open` (`run_cmd_open`, `gm_open` for the
+  command `core_cmd_import` is renamed `core_cmd_open` (`run_cmd_open`, `gm_open` for the
   local pre-form), otherwise unchanged (`import_gen`, `gens_run`).
 - The parser splits the compound forms (`Cst.open_cmds`,
   `Cst.import_cmds`): `open E as W items` is `open E as W` then `open W
@@ -467,8 +467,8 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   no modifiers: `private`/`abstract axiom` is `Error: axiom takes no
   modifiers`.  Before the header it is a parse error; in a local body,
   `Error: axioms are not allowed in a local module` (elaborator).
-- Core: `cc_def : string -> bool -> bool -> typ -> option exp -> ccmd`.
-  `run_cmd_def` runs `cc_def … (Some M)`; `run_cmd_axiom` runs `cc_def … None`
+- Core: `core_cmd_def : string -> bool -> bool -> typ -> option exp -> core_cmd`.
+  `run_cmd_def` runs `core_cmd_def … (Some M)`; `run_cmd_axiom` runs `core_cmd_def … None`
   with premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i` and files
   `gs_axiom b pv Ξ A = ge_def b pv (ctx_pi (gs_tele Ξ) A) None`, as
   `wf_gentry_axiom`.  The elaborator emits `b = false` (opaque); readback

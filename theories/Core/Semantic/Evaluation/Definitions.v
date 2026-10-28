@@ -87,14 +87,14 @@ Definition kbentry (ρ : env) (E : gentry) : dentry :=
     [k]-th under the [k] before it: an alias, the closure of its unit; a
     definition with a module part, a placeholder and the closure of its
     module part's unit; a definition, a placeholder. *)
-Definition kentry (ρ : env) (k : nat) (g : igen) : dentry :=
+Definition kentry (ρ : env) (k : nat) (g : generated_item) : dentry :=
   match g with
-  | ig_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | ig_def_mod _ _ _ _ E => de_dm d_true (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | generated_item_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | generated_item_def_mod _ _ _ _ E => de_dm d_true (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
   | _ => de_term d_true
   end.
 
-Fixpoint kgens_env (ρ : env) (k : nat) (gs : list igen) : env :=
+Fixpoint kgens_env (ρ : env) (k : nat) (gs : list generated_item) : env :=
   match gs with
   | nil => ρ
   | g :: gs' => kgens_env (kentry ρ k g :: ρ) (S k) gs'
@@ -307,30 +307,30 @@ with kbody (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
     kbody Θ Ξ ρ (gm_open Φ H its) (gens_append Φx 0 gs)
 (** What the items of an open of [H] generate, by the kinds of the members
     they name, in [ρ]; a generated definition carries no type. *)
-with kgens (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list igen -> Prop :=
+with kgens (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list generated_item -> Prop :=
 (** No items generate nothing *)
 | kgens_nil : forall ρ H, kgens Θ Ξ ρ H nil nil
 (** An item naming the target itself: an alias of the target *)
 | kgens_self : forall ρ H d pv its gs,
     kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
+    kgens Θ Ξ ρ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
 (** An item naming a term member: a definition of the member *)
 | kgens_def : forall ρ H n d pv its gs,
     skind Θ Ξ ρ H (n :: nil) mk_term ->
     kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (ig_def d pv a_True (a_mem H n) :: gs)
+    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv a_True (a_mem H n) :: gs)
 (** An item naming a module member: an alias of the member *)
 | kgens_mod : forall ρ H n d pv its gs,
     skind Θ Ξ ρ H (n :: nil) mk_mod ->
     kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
+    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_alias d pv (me_mem H n) :: gs)
 (** An item naming a member with a term part and a module part: a
     definition with a module part, the member as its term part and as the
     target of its module part *)
 | kgens_dm : forall ρ H n d pv its gs,
     skind Θ Ξ ρ H (n :: nil) mk_dm ->
     kgens Θ Ξ ρ H its gs ->
-    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (ig_def_mod d pv a_True (a_mem H n) (me_mem H n) :: gs).
+    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv a_True (a_mem H n) (me_mem H n) :: gs).
 
 Scheme dkind_mut_ind := Induction for dkind Sort Prop
 with ukind_mut_ind := Induction for ukind Sort Prop

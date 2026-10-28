@@ -5301,32 +5301,32 @@ Proof.
   - exact (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
 Qed.
 
-Lemma valid_groups_of_emb : forall Θ Ξ Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 ->
+Lemma valid_groups_of_embedding : forall Θ Ξ Θ2 Ξ2, valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
     @valid_groups (gc_mk Θ2 Ξ2) (fun qn G => ind_lookup Θ Ξ qn = Some G).
 Proof.
   intros * He.
-  pose proof (valid_emb_wf _ _ _ _ He) as Hg.
-  pose proof (gctx_embedding_resolution _ _ _ _ (valid_emb_emb _ _ _ _ He)) as Hs.
+  pose proof (valid_gctx_embedding_wf _ _ _ _ He) as Hg.
+  pose proof (gctx_embedding_resolution _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ He)) as Hs.
   constructor.
   - intros qn G Hlq.
     destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt Hc].
-    pose proof (decl_typed_emb _ _ _ _ _ (valid_emb_emb _ _ _ _ He) Hdt) as Hdt2.
+    pose proof (gctx_embedding_preserves_decl_typed _ _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ He) Hdt) as Hdt2.
     pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hlq) as Hl2.
-    constructor; [ exact Hl2 | exact (valid_emb_ind_field _ _ _ _ He _ _ Hlq) | exact Hc | exact (decl_typed_sort_univ _ _ _ Hdt) | |
+    constructor; [ exact Hl2 | exact (valid_gctx_embedding_ind_field _ _ _ _ He _ _ Hlq) | exact Hc | exact (decl_typed_sort_univ _ _ _ Hdt) | |
                  exact Hdt2 | exact (ind_lookup_mpath _ _ _ _ Hg Hlq) | ].
     2: { intros * HM Hh.
          destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HM Hh) as [R HR].
          pose proof (rview_record_lookup _ _ _ _ _ _ HR) as HlR.
          exists R; constructor;
-           [ exact (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR) | exact (valid_emb_record _ _ _ _ He _ _ HlR)
+           [ exact (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR) | exact (valid_gctx_embedding_record _ _ _ _ He _ _ HlR)
            | exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) HlR)
-           | exact (record_typed_emb _ _ _ _ _ (valid_emb_emb _ _ _ _ He) (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ HlR)) ]. }
+           | exact (gctx_embedding_preserves_record_typed _ _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ He) (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ HlR)) ]. }
     apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G Hdt2).
     intros * HM Hh Hq2.
     destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
     pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
     cbn in Hq2; rewrite Hq' in Hq2; injection Hq2 as <-.
-    exact (decl_typed_emb _ _ _ _ _ (valid_emb_emb _ _ _ _ He) (proj1 (decl_of_glookup _ _ _ _ Hg Hq))).
+    exact (gctx_embedding_preserves_decl_typed _ _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ He) (proj1 (decl_of_glookup _ _ _ _ Hg Hq))).
   - intros * Hlq HM Hh Hq2; cbn in Hq2 |- *.
     destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
     destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
