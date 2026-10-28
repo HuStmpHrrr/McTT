@@ -13,7 +13,7 @@ Definition fold_params (b : string -> Cst.expression -> Cst.expression -> Cst.ex
   List.fold_left (fun acc p => b (fst p) (snd p) acc) ps body.
 
 (** A dotted path as a list, in order. *)
-Definition path_list (p : string * list string) : list string := List.rev (fst p :: snd p).
+Definition path_list (p : string * list string) : list string := List.rev' (fst p :: snd p).
 
 %}
 
@@ -76,7 +76,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
    definitions cannot appear at the top level. *)
 let prog :=
   is = leads; MODULE; p = fpath; ps = params_opt; WHERE; cs = cmds; END; EOF;
-    { (List.rev is, (List.rev p, List.rev ps, List.rev cs)) }
+    { (List.rev' is, (List.rev' p, List.rev' ps, List.rev' cs)) }
 
 (* Reversed list of leading imports and opens, possibly empty *)
 let leads :=
@@ -113,25 +113,25 @@ let cmd :=
      where … end]: the group's uniform parameters, then its members, each
      with its type, which binds its non-uniform parameters. *)
   | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END;
-      { [Cst.c_ind false false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+      { [Cst.c_ind false false (List.rev' ps) ((snd x, t, List.rev' cs) :: List.rev' ms)] }
   | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END;
-      { [Cst.c_ind true false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+      { [Cst.c_ind true false (List.rev' ps) ((snd x, t, List.rev' cs) :: List.rev' ms)] }
   (* [mutual T (ps) where inductive x : S where … with y : U where … end
      end]: the group in the module [T], its members [T.x], [T.y]. *)
   | m = mods; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END; END;
-      { [Cst.mutual_cmd m (snd g) (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+      { [Cst.mutual_cmd m (snd g) (List.rev' ps) ((snd x, t, List.rev' cs) :: List.rev' ms)] }
   (* [mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B … with g … end]: the
      common parameters, then the functions, with the modifiers of a
      definition.  Any definition keyword may follow [mutual], and decides
      which modifiers it takes, as for a single definition. *)
   | m = mods; MUTUAL; k = dkw; ps = params_opt; fs = mfuns; END;
-      { [Cst.mdef_cmd k m (List.rev ps) (List.rev fs)] }
+      { [Cst.mdef_cmd k m (List.rev' ps) (List.rev' fs)] }
   (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
      at the arguments [Ms], under the parameters. *)
   | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = expression;
-      { [Cst.c_ind_alias false (snd x) (List.rev ps) e] }
+      { [Cst.c_ind_alias false (snd x) (List.rev' ps) e] }
   | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":="; e = expression;
-      { [Cst.c_ind_alias true (snd x) (List.rev ps) e] }
+      { [Cst.c_ind_alias true (snd x) (List.rev' ps) e] }
   (* [builtin natural := X]: the inductive type [X] is the natural numbers. *)
   | BUILTIN; k = VAR; ":="; x = atomic_expression; { [Cst.c_builtin (snd k) x] }
   (* [record x (ps) : S where f : A ; … with cs end]: a record type, its
@@ -139,15 +139,15 @@ let cmd :=
      commands of its module after the fields. One [end] closes the record,
      with or without a with-area. *)
   | RECORD; x = VAR; ps = params_opt; ":"; t = expression; WHERE; fs = rfields; cs = rwith;
-      { [Cst.c_record false (snd x) (List.rev ps) t (List.rev fs) cs] }
+      { [Cst.c_record false (snd x) (List.rev' ps) t (List.rev' fs) cs] }
   | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = expression; WHERE; fs = rfields; cs = rwith;
-      { [Cst.c_record true (snd x) (List.rev ps) t (List.rev fs) cs] }
+      { [Cst.c_record true (snd x) (List.rev' ps) t (List.rev' fs) cs] }
   (* [record x (ps) := X Ms]: a record alias, the record type [X] at the
      arguments [Ms], under the parameters. *)
   | RECORD; x = VAR; ps = params_opt; ":="; e = expression;
-      { [Cst.c_record_alias false (snd x) (List.rev ps) e] }
+      { [Cst.c_record_alias false (snd x) (List.rev' ps) e] }
   | PRIVATE; RECORD; x = VAR; ps = params_opt; ":="; e = expression;
-      { [Cst.c_record_alias true (snd x) (List.rev ps) e] }
+      { [Cst.c_record_alias true (snd x) (List.rev' ps) e] }
 
 (* Reversed list of the fields of a record type, possibly empty, separated
    by [;]: [f : A] *)
@@ -164,7 +164,7 @@ let rfields1 :=
    the record together. *)
 let rwith :=
   | END; { @nil Cst.cmd }
-  | WITH; cs = cmds; END; { List.rev cs }
+  | WITH; cs = cmds; END; { List.rev' cs }
 
 (* Reversed list of the fields of a record value, possibly empty, separated
    by [;]: [f := M] *)
@@ -179,11 +179,11 @@ let tfields1 :=
 (* Reversed list of constructors, possibly empty: [| c (x : A) …] *)
 let ctors :=
   | { @nil (string * list (string * Cst.expression)) }
-  | ~ = ctors; "|"; x = VAR; ps = params_opt; { (snd x, List.rev ps) :: ctors }
+  | ~ = ctors; "|"; x = VAR; ps = params_opt; { (snd x, List.rev' ps) :: ctors }
 
 (* A member after the first: [with y : U where | c (args) …] *)
 let imember :=
-  | WITH; x = VAR; ":"; t = expression; WHERE; cs = ctors; { (snd x, t, List.rev cs) }
+  | WITH; x = VAR; ":"; t = expression; WHERE; cs = ctors; { (snd x, t, List.rev' cs) }
 
 (* Reversed list of the members after the first, possibly empty *)
 let imembers :=
@@ -192,7 +192,7 @@ let imembers :=
 
 (* A function of a [mutual def]: [f (ys) (z : Z) : A := | c xs ⇒ B …] *)
 let mfun :=
-  | f = VAR; ps = params; ":"; a = expression; ":="; bs = brs; { (snd f, List.rev ps, a, List.rev bs) }
+  | f = VAR; ps = params; ":"; a = expression; ":="; bs = brs; { (snd f, List.rev' ps, a, List.rev' bs) }
 
 (* Reversed nonempty list of the functions, separated by [with] *)
 let mfuns :=
@@ -202,10 +202,10 @@ let mfuns :=
 (* A module declaration, at the top level or in a [let]: its parameters, and
    a body or an alias. *)
 let mdecl :=
-  | ps = params_opt; d = mdef; { (List.rev ps, d) }
+  | ps = params_opt; d = mdef; { (List.rev' ps, d) }
 
 let mdef :=
-  | WHERE; cs = cmds; END; { Cst.md_where (List.rev cs) }
+  | WHERE; cs = cmds; END; { Cst.md_where (List.rev' cs) }
   | ":="; ~ = expression; { Cst.md_alias expression }
 
 (* The definition keywords.  At command level, [let] is one of them. *)
@@ -222,14 +222,14 @@ let dkw :=
    long form, [import X::Y] then [open X::Y.ip a1 .. ak as W items]. *)
 let import_cmd :=
   | IMPORT; u = ipath; m = mpath_opt; xs = iargs; w = as_opt; ls = ilists;
-      { Cst.import_cmds u m (List.rev xs) w (List.rev ls) }
+      { Cst.import_cmds u m (List.rev' xs) w (List.rev' ls) }
 
 (* [open E as W items]: a module in scope or of an imported unit, applied to
    atomic arguments, then an alias and any number of item lists, all
    optional. *)
 let open_cmd :=
   | OPEN; q = qpath; xs = iargs; w = as_opt; ls = ilists;
-      { Cst.open_cmds (fst q) (snd q) (List.rev xs) w (List.rev ls) }
+      { Cst.open_cmds (fst q) (snd q) (List.rev' xs) w (List.rev' ls) }
 
 (* Reversed list of the arguments of an import or open, possibly empty *)
 let iargs :=
@@ -280,12 +280,12 @@ let fpath :=
 
 (* The unit an [import] names, in order: a path of one segment or more *)
 let ipath :=
-  | ~ = fpath; { List.rev fpath }
+  | ~ = fpath; { List.rev' fpath }
 
 (* A unit named where a name in scope may stand, in order: two segments or
    more, a one-segment unit being read as a name ([Elaborator]) *)
 let upath :=
-  | ~ = fpath; "::"; x = VAR; { List.rev (snd x :: fpath) }
+  | ~ = fpath; "::"; x = VAR; { List.rev' (snd x :: fpath) }
 
 (* The member path after it, possibly empty, in order *)
 let mpath_opt :=
@@ -319,7 +319,7 @@ let expression :=
      the constructor's arguments, then after a comma its induction
      hypotheses. *)
   | ELIM; escr = expression; bks = eblocks; END;
-    { Cst.elim escr (List.rev bks) }
+    { Cst.elim escr (List.rev' bks) }
 
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
@@ -328,7 +328,7 @@ let expression :=
   (* [record T where f := M ; … end]: a value of the record type [T], its
      fields in order.  Not atomic, as a command may follow an object with
      no separator: an argument or a selection takes it in parentheses. *)
-  | RECORD; t = app_expression; WHERE; fs = tfields; END; { Cst.tuple t (List.rev fs) }
+  | RECORD; t = app_expression; WHERE; fs = tfields; END; { Cst.tuple t (List.rev' fs) }
 
 
 let app_expression :=
@@ -378,7 +378,7 @@ let atomic_expression :=
 
   (* A unit, named by its [::] path.  Only the [.] level can be selected from,
      so the [::] segments are all consumed here. *)
-  | ~ = fpath; "::"; x = VAR; { Cst.glob (List.rev (snd x :: fpath)) }
+  | ~ = fpath; "::"; x = VAR; { Cst.glob (List.rev' (snd x :: fpath)) }
 
   (* Dot access binds tighter than application, so [X::Y.Z.foo] is one name
      and module arguments are parenthesised, as in [(X::Y.Z a b).foo]. *)
@@ -398,7 +398,7 @@ let vars_opt :=
 (* The induction hypotheses of a branch, in order *)
 let ihs_opt :=
   | { @nil string }
-  | ","; ~ = vars; { List.rev vars }
+  | ","; ~ = vars; { List.rev' vars }
 
 (* A binder of a block: a name, or a name and its type *)
 let ebinder :=
@@ -417,7 +417,7 @@ let block_kw :=
 
 (* A block of an eliminator: [at ys (z : Z) -> A | c xs ⇒ B …] *)
 let eblock :=
-  | k = block_kw; xs = ebinders; "->"; a = expression; bs = brs; { (k, List.rev xs, a, List.rev bs) }
+  | k = block_kw; xs = ebinders; "->"; a = expression; bs = brs; { (k, List.rev' xs, a, List.rev' bs) }
 
 (* Reversed nonempty list of the blocks of an eliminator *)
 let eblocks :=
@@ -428,7 +428,7 @@ let eblocks :=
 let brs :=
   | { @nil (string * list string * Cst.expression) }
   | ~ = brs; "|"; c = VAR; ys = vars_opt; zs = ihs_opt; "=>"; b = expression;
-      { (snd c, List.rev ys ++ zs, b) :: brs }
+      { (snd c, List.rev' ys ++ zs, b) :: brs }
 
 (* Reversed nonempty list of parameters *)
 let params :=
