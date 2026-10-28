@@ -72,6 +72,10 @@ brief says so explicitly.
   - kill any leftover compile processes you started;
   - report the diagnosis.
   Never leave a long build running in the background and carry on.
+- **Never `rewrite !` (or `autorewrite`) with an evar in the goal.** It loops
+  forever and eats memory: two agents hit this on 2026-10-26, once each in
+  Realizability and in Elim. Build the witness first, e.g. by `match goal`,
+  then rewrite. Run single-file compiles under a timeout guard.
 
 ## Invariants of the development
 

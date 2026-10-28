@@ -16,7 +16,7 @@ Touch the core only as far as your change forces, and list those edits.
 
 **Standing rules for the front end:**
 - **The elaborator only resolves names.** It turns names into de Bruijn indices, decides term vs module position, and pre-applies members of enclosing modules. Everything else (member existence, types, privacy, import checks, freshness where possible) belongs to the core. Never move work into the elaborator; look for work to move out.
-- **Correctness:** `elaborate_core_iff : elaborate_core prg = eok u <-> elab_spec prg u` must stay proved with no admits and no axioms. The spec stays declarative, and the elaborator and the spec share their data structures (no translation functions).
+- **Correctness:** `elaborate_core_iff : elaborate_core prg = elab_success u <-> elab_spec prg u` must stay proved with no admits and no axioms. The spec stays declarative, and the elaborator and the spec share their data structures (no translation functions).
 - **Grammar changes:**
   - regenerate `parserMessages.messages` (the build's `check_parserMessages` must pass);
   - give every new error state a clear message;
