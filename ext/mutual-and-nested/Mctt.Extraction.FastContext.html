@@ -36,13 +36,13 @@
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#"><span class="id" title="library">Members</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Command.html#"><span class="id" title="library">Command</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Extraction</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Extraction.FastGlobal.html#"><span class="id" title="library">FastGlobal</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Extraction</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Extraction.FastGlobal.html#"><span class="id" title="library">FastGlobal</span></a> <a class="idref" href="Mctt.Extraction.FastValues.html#"><span class="id" title="library">FastValues</span></a>.<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-<a id="lab1257"></a><h1 class="section">The Fast Context</h1>
+<a id="lab1267"></a><h1 class="section">The Fast Context</h1>
 
 
 <div class="paragraph"> </div>
@@ -118,7 +118,7 @@ Equality of qualified names decided by <span class="inlinecode"><a class="idref"
 </div>
 
 <div class="doc">
-<a id="lab1258"></a><h2 class="section">The Declarations Kept</h2>
+<a id="lab1268"></a><h2 class="section">The Declarations Kept</h2>
 
 </div>
 <div class="code">
@@ -144,7 +144,7 @@ A declaration looked up already: the eliminator keeps the one of the
 </div>
 
 <div class="doc">
-<a id="lab1259"></a><h2 class="section">The Fast Context</h2>
+<a id="lab1269"></a><h2 class="section">The Fast Context</h2>
 
 
 <div class="paragraph"> </div>
@@ -197,10 +197,10 @@ the frames are canonical
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-the units are those of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastContext.html#fo_deps"><span class="id" title="projection">fo_deps</span></a></span> 
+the units, their stored values dropped, are those of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastContext.html#fo_deps"><span class="id" title="projection">fo_deps</span></a></span> 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="fo_units" class="idref" href="#fo_units"><span class="id" title="projection">fo_units</span></a> : <a class="idref" href="Mctt.Extraction.FastGlobal.html#units_rep"><span class="id" title="record">units_rep</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#fv_units"><span class="id" title="projection">fv_units</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#v:26"><span class="id" title="variable">v</span></a>) <a class="idref" href="Mctt.Extraction.FastContext.html#fo_deps:29"><span class="id" title="method">fo_deps</span></a><br/>
+&nbsp;&nbsp;; <a id="fo_units" class="idref" href="#fo_units"><span class="id" title="projection">fo_units</span></a> : <a class="idref" href="Mctt.Extraction.FastGlobal.html#units_rep"><span class="id" title="record">units_rep</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#funits_drop"><span class="id" title="definition">funits_drop</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#fv_units"><span class="id" title="projection">fv_units</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#v:26"><span class="id" title="variable">v</span></a>)) <a class="idref" href="Mctt.Extraction.FastContext.html#fo_deps:29"><span class="id" title="method">fo_deps</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
@@ -211,10 +211,24 @@ the units seen are those filed at the imported paths
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-the frames are those of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastContext.html#fo_stack"><span class="id" title="projection">fo_stack</span></a></span> 
+the frames, their stored values dropped, are those of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastContext.html#fo_stack"><span class="id" title="projection">fo_stack</span></a></span> 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="fo_frames" class="idref" href="#fo_frames"><span class="id" title="projection">fo_frames</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#fs:27"><span class="id" title="variable">fs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Extraction.FastGlobal.html#fs_of"><span class="id" title="definition">fs_of</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fo_stack:30"><span class="id" title="method">fo_stack</span></a> }.<br/>
+&nbsp;&nbsp;; <a id="fo_frames" class="idref" href="#fo_frames"><span class="id" title="projection">fo_frames</span></a> : <a class="idref" href="Mctt.Extraction.FastGlobal.html#fstack_drop"><span class="id" title="definition">fstack_drop</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fs:27"><span class="id" title="variable">fs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Extraction.FastGlobal.html#fs_of"><span class="id" title="definition">fs_of</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fo_stack:30"><span class="id" title="method">fo_stack</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+the values stored in the units seen are right in the decoding 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="fo_unit_values" class="idref" href="#fo_unit_values"><span class="id" title="projection">fo_unit_values</span></a> : <span class="id" title="keyword">forall</span> <a id="fp:36" class="idref" href="#fp:36"><span class="id" title="binder">fp</span></a> <a id="u:37" class="idref" href="#u:37"><span class="id" title="binder">u</span></a>, <a class="idref" href="Mctt.Extraction.FastGlobal.html#fv_find"><span class="id" title="definition">fv_find</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#v:26"><span class="id" title="variable">v</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fp:36"><span class="id" title="variable">fp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#u:37"><span class="id" title="variable">u</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Extraction.FastValues.html#funit_values_ok"><span class="id" title="definition">funit_values_ok</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#v:26"><span class="id" title="variable">v</span></a>) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fs:27"><span class="id" title="variable">fs</span></a>) <a class="idref" href="Mctt.Extraction.FastContext.html#u:37"><span class="id" title="variable">u</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+the values stored in the frames are right in the decoding 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="fo_frame_values" class="idref" href="#fo_frame_values"><span class="id" title="projection">fo_frame_values</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Lists.ListDef.html#Forall"><span class="id" title="inductive">Forall</span></a> (<span class="id" title="keyword">fun</span> <a id="f:39" class="idref" href="#f:39"><span class="id" title="binder">f</span></a> =&gt; <a class="idref" href="Mctt.Extraction.FastValues.html#ftrie_values_ok"><span class="id" title="definition">ftrie_values_ok</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#v:26"><span class="id" title="variable">v</span></a>) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fs:27"><span class="id" title="variable">fs</span></a>) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#ff_body"><span class="id" title="projection">ff_body</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#f:39"><span class="id" title="variable">f</span></a>)) <a class="idref" href="Mctt.Extraction.FastContext.html#fs:27"><span class="id" title="variable">fs</span></a> }.<br/>
 
 <br/>
 </div>
@@ -246,7 +260,7 @@ the open frames
 they translate a Core context 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="fc_ok" class="idref" href="#fc_ok"><span class="id" title="projection">fc_ok</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#fctx_ok"><span class="id" title="record">fctx_ok</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_view:37"><span class="id" title="method">fc_view</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames:38"><span class="id" title="method">fc_frames</span></a><br/>
+&nbsp;&nbsp;; <a id="fc_ok" class="idref" href="#fc_ok"><span class="id" title="projection">fc_ok</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#fctx_ok"><span class="id" title="record">fctx_ok</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_view:42"><span class="id" title="method">fc_view</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames:43"><span class="id" title="method">fc_frames</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
@@ -254,7 +268,7 @@ a declaration the evaluator and readback start from, as if they
         had looked it up already 
 </div>
 <div class="code">
-&nbsp;&nbsp;; <a id="fc_seed_found" class="idref" href="#fc_seed_found"><span class="id" title="projection">fc_seed_found</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#lk_cache"><span class="id" title="definition">lk_cache</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_view:37"><span class="id" title="method">fc_view</span></a>) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames:38"><span class="id" title="method">fc_frames</span></a>) }.<br/>
+&nbsp;&nbsp;; <a id="fc_seed_found" class="idref" href="#fc_seed_found"><span class="id" title="projection">fc_seed_found</span></a> : <a class="idref" href="Mctt.Extraction.FastContext.html#lk_cache"><span class="id" title="definition">lk_cache</span></a> (<a class="idref" href="Mctt.Extraction.FastGlobal.html#view_deps"><span class="id" title="definition">view_deps</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_view:42"><span class="id" title="method">fc_view</span></a>) (<a class="idref" href="Mctt.Extraction.FastGlobal.html#dec_stack"><span class="id" title="definition">dec_stack</span></a> <a class="idref" href="Mctt.Extraction.FastContext.html#fc_frames:43"><span class="id" title="method">fc_frames</span></a>) }.<br/>
 </div>
 </div>
 <div id="footer">
