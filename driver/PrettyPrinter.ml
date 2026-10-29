@@ -534,7 +534,7 @@ let path_of_term : exp -> qname option =
 let rec names_bound_nat (q : qname) : bool =
   is_bound_nat q ||
   (match Lk.gc_entry_f !current_fc q with
-   | Some (FG.Coq_fe_def_mod (_, _, m, _)) ->
+   | Some (FG.Coq_fe_def_mod (_, _, m, _, _)) ->
       (match path_of_term m with Some p -> p <> q && names_bound_nat p | None -> false)
    | _ -> false)
 

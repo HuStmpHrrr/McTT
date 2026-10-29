@@ -30,7 +30,7 @@ Proof. intros []; reflexivity. Qed.
 Definition fe_alias (e : fentry) : option modexp :=
   match e with
   | fe_mod _ (fu_core (gu_mk _ (md_alias E'))) => Some E'
-  | fe_def_mod _ _ _ (fu_core (gu_mk _ (md_alias E'))) => Some E'
+  | fe_def_mod _ _ _ (fu_core (gu_mk _ (md_alias E'))) _ => Some E'
   | _ => None
   end.
 

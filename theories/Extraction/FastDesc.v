@@ -22,18 +22,24 @@ Import ListNotations Syntax_Notations.
 
 (** ** Canonical Tries and Entries *)
 
-(** A trie that translates a canonical body *)
-Definition canon_trie (t : ftrie) : Prop := exists Φ, t = tr_mod Φ /\ canon_mod Φ.
+(** A trie that translates a canonical body, once its stored values are
+    dropped *)
+Definition canon_trie (t : ftrie) : Prop := exists Φ, ftrie_drop t = tr_mod Φ /\ canon_mod Φ.
 
-(** An entry that translates a canonical entry *)
-Definition canon_fentry (e : fentry) : Prop := exists E, e = tr_entry E /\ canon_entry E.
+(** An entry that translates a canonical entry, once its stored values are
+    dropped *)
+Definition canon_fentry (e : fentry) : Prop := exists E, fentry_drop e = tr_entry E /\ canon_entry E.
+
+(** A canonical trie decodes to the body it translates. *)
+Lemma canon_trie_dec : forall t Φ, ftrie_drop t = tr_mod Φ -> canon_mod Φ -> dec_mod t = Φ.
+Proof. intros * Ht Hc; rewrite <- dec_mod_drop, Ht; apply dec_tr_mod, Hc. Qed.
 
 (** An entry found in a canonical trie is canonical. *)
 Lemma canon_trie_find : forall t y e, canon_trie t -> ft_find t y = Some e -> canon_fentry e.
 Proof.
-  intros t y e (Φ & -> & Hc) Hf; rewrite tr_mod_find in Hf.
-  destruct (gm_newest Φ y) as [E |] eqn:En; [| discriminate ]; injection Hf as <-.
-  exists E; split; [ reflexivity | exact (canon_newest _ _ _ Hc En) ].
+  intros t y e (Φ & Ht & Hc) Hf; pose proof (ft_find_drop t y) as Hd; rewrite Ht, tr_mod_find, Hf in Hd.
+  destruct (gm_newest Φ y) as [E |] eqn:En; [| discriminate ]; injection Hd as Hd.
+  exists E; split; [ symmetry; exact Hd | exact (canon_newest _ _ _ Hc En) ].
 Qed.
 
 (** A stored closed entry read in a closed body of telescope [T], [ge_read]'s
@@ -44,10 +50,14 @@ Definition fe_read (T : ctx) (e : fentry) : fentry :=
   | _ => e
   end.
 
+(** Reading commutes with dropping the stored values. *)
+Lemma fe_read_drop : forall T e, fentry_drop (fe_read T e) = fe_read T (fentry_drop e).
+Proof. intros T [| ? [? [?] | ?] | | | ]; reflexivity. Qed.
+
 (** Reading keeps an entry canonical. *)
 Lemma canon_fe_read : forall T e, canon_fentry e -> canon_fentry (fe_read T e).
 Proof.
-  intros T e (E & -> & Hc).
+  intros T e (E & HE & Hc); unfold canon_fentry; rewrite fe_read_drop, HE.
   destruct E as [| pv [Δ [[|] Φ | H]] | | |]; cbn in Hc; try contradiction;
     first [ exists (ge_read T (ge_mod pv (gu_mk Δ (md_body sm_closed Φ)))); split; [ reflexivity | exact Hc ]
           | eexists; split; [ reflexivity | exact Hc ] ].
@@ -56,7 +66,8 @@ Qed.
 (** Reading commutes with decoding on a canonical entry. *)
 Lemma fe_read_dec : forall T e, canon_fentry e -> dec_entry (fe_read T e) = ge_read T (dec_entry e).
 Proof.
-  intros T e (E & -> & Hc); rewrite dec_tr_entry by exact Hc.
+  intros T e (E & HE & Hc).
+  rewrite <- (dec_entry_drop (fe_read T e)), fe_read_drop, <- (dec_entry_drop e), HE, dec_tr_entry by exact Hc.
   destruct E as [| pv [Δ [[|] Φ | H]] | | |]; cbn in Hc |- *; try contradiction; try reflexivity;
     rewrite ?dec_tr_mod, ?dec_tr_unit by exact Hc; reflexivity.
 Qed.
@@ -414,14 +425,14 @@ Proof.
     destruct E as [[|] ? ? [|] | | | |]; reflexivity.
   - pose proof Ht as (Φ0 & Ht0 & Hc).
     pose proof (prefix_newest Φ0 y Hc) as Hp.
-    pose proof (tr_mod_find Φ0 y) as Hf; rewrite <- Ht0 in Hf.
-    rewrite Ht0 at 1; rewrite dec_tr_mod by exact Hc.
+    pose proof (tr_mod_find Φ0 y) as Hf; rewrite <- Ht0, ft_find_drop in Hf.
+    rewrite (canon_trie_dec _ _ Ht0 Hc).
     destruct (inspect (ft_find t y)) as [[e |] Ee]; cbn [option_map fst snd dec_entry_source].
     + rewrite Ee in Hf; destruct (gm_newest Φ0 y) as [E |] eqn:En; [| discriminate ]; injection Hf as Hf.
       destruct (gm_prefix_upto Φ0 y) as [[| Φ' x E' | ? ? ?] |]; try contradiction; [| congruence ].
       destruct Hp as [-> HE]; injection HE as <-.
       rewrite fe_read_dec by (exists E; split; [ exact Hf | exact (canon_newest _ _ _ Hc En) ]).
-      rewrite Hf, dec_tr_entry by exact (canon_newest _ _ _ Hc En); reflexivity.
+      rewrite <- (dec_entry_drop e), Hf, dec_tr_entry by exact (canon_newest _ _ _ Hc En); reflexivity.
     + rewrite Ee in Hf; destruct (gm_newest Φ0 y) eqn:En; [ discriminate |].
       destruct (gm_prefix_upto Φ0 y) as [[| Φ' x E' | ? ? ?] |]; try contradiction; [| reflexivity ].
       destruct Hp as [-> Hn]; congruence.
@@ -482,32 +493,39 @@ Section Located.
 
   #[local] Ltac canon_open :=
     destruct (fc_ok F) as [Θ Ξ HcΘ HcΞ Hu Hv Hf];
-    unfold fc_unit_at in *; rewrite ?Hf in *;
-    pose proof (fun fp => fv_find_ok (fc_view F) Θ fp Hu Hv) as Huf;
+    unfold fc_unit_at in *;
+    pose proof (fun fp => fv_find_ok (fview_drop (fc_view F)) Θ fp Hu (vis_rep_drop _ _ Hv)) as Huf;
+    cbn [fview_drop fv_dom] in Huf;
     pose proof (canon_restrict (fv_dom (fc_view F)) Θ HcΘ) as HcR.
 
   (** Where a module is stored: its trie is canonical. *)
   Lemma fc_loc_canon : forall p T t, fc_loc F p = Some (T, t) -> canon_trie t.
   Proof.
-    intros * Hl; unfold fc_loc in Hl; canon_open; rewrite (fgc_loc_ok _ _ Huf HcR _ _ HcΞ) in Hl.
-    destruct (gc_loc _ _ p) as [[T0 Φ] |] eqn:E; [| discriminate ]; injection Hl as _ <-.
-    exists Φ; split; [ reflexivity | exact (canon_gc_loc _ _ HcR HcΞ _ _ _ E) ].
+    intros * Hl; unfold fc_loc in Hl; canon_open.
+    pose proof (fgc_loc_drop (fun fp => fv_find (fc_view F) fp) _ (fv_find_drop (fc_view F)) (fc_frames F) p) as Hd.
+    rewrite Hl, Hf, (fgc_loc_ok _ _ Huf HcR _ _ HcΞ) in Hd.
+    destruct (gc_loc _ _ p) as [[T0 Φ] |] eqn:E; [| discriminate ]; injection Hd as _ Hd.
+    exists Φ; split; [ symmetry; exact Hd | exact (canon_gc_loc _ _ HcR HcΞ _ _ _ E) ].
   Qed.
 
   (** A stored unit: its trie is canonical. *)
   Lemma fc_unit_canon : forall H T t, fc_unit F H = Some (T, t) -> canon_trie t.
   Proof.
-    intros * Hl; unfold fc_unit in Hl; canon_open; rewrite (fgc_unit_ok _ _ Huf _ _ HcΞ) in Hl.
-    destruct (gc_unit _ _ H) as [[T0 Φ] |] eqn:E; [| discriminate ]; injection Hl as _ <-.
-    exists Φ; split; [ reflexivity | exact (canon_gc_unit _ _ HcR HcΞ _ _ _ E) ].
+    intros * Hl; unfold fc_unit in Hl; canon_open.
+    pose proof (fgc_unit_drop (fun fp => fv_find (fc_view F) fp) _ (fv_find_drop (fc_view F)) (fc_frames F) H) as Hd.
+    rewrite Hl, Hf, (fgc_unit_ok _ _ Huf _ _ HcΞ) in Hd.
+    destruct (gc_unit _ _ H) as [[T0 Φ] |] eqn:E; [| discriminate ]; injection Hd as _ Hd.
+    exists Φ; split; [ symmetry; exact Hd | exact (canon_gc_unit _ _ HcR HcΞ _ _ _ E) ].
   Qed.
 
   (** An entry: canonical *)
   Lemma fc_entry_canon : forall p e, fc_entry F p = Some e -> canon_fentry e.
   Proof.
-    intros * He; unfold fc_entry in He; canon_open; rewrite (fgc_entry_ok _ _ Huf HcR _ _ HcΞ) in He.
-    destruct (gc_entry _ _ p) as [E |] eqn:E0; [| discriminate ]; injection He as <-.
-    exists E; split; [ reflexivity | exact (canon_gc_entry _ _ HcR HcΞ _ _ E0) ].
+    intros * He; unfold fc_entry in He; canon_open.
+    pose proof (fgc_entry_drop (fun fp => fv_find (fc_view F) fp) _ (fv_find_drop (fc_view F)) (fc_frames F) p) as Hd.
+    rewrite He, Hf, (fgc_entry_ok _ _ Huf HcR _ _ HcΞ) in Hd.
+    destruct (gc_entry _ _ p) as [E |] eqn:E0; [| discriminate ]; injection Hd as Hd.
+    exists E; split; [ symmetry; exact Hd | exact (canon_gc_entry _ _ HcR HcΞ _ _ E0) ].
   Qed.
 
   (** [gc_loc], with the canonicity of the trie found *)

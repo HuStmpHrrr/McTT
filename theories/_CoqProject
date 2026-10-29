@@ -211,6 +211,8 @@
 ./Extraction/FastEval.v
 ./Extraction/FastDomain.v
 ./Extraction/Simulation.v
+./Extraction/FastEvalGrowth.v
+./Extraction/FastValues.v
 ./Extraction/GlobalCheck.v
 ./Extraction/IndDecl.v
 ./Extraction/RecordDecl.v

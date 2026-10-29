@@ -838,6 +838,17 @@ Qed.
 #[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdlvl_suc fdlvl_max
   fdlvl_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
 
+(** A value a definition stores, right: its body's fast evaluation in the
+    empty environment, and right itself *)
+Lemma stored_def_value : forall Θ Ξ b pv A M v, fentry_values_ok Θ Ξ (fe_def b pv A (Some M) (Some v)) ->
+    ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ fenv_erase nil ↘ fdomain_erase v /\ fdomain_ok Θ Ξ v.
+Proof. intros * [He Hv]; split; assumption. Qed.
+
+(** Alike, of a definition with a module part, for its term *)
+Lemma stored_dm_value : forall Θ Ξ pv A M u v, fentry_values_ok Θ Ξ (fe_def_mod pv A M u (Some v)) ->
+    ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ fenv_erase nil ↘ fdomain_erase v /\ fdomain_ok Θ Ξ v.
+Proof. intros * [[He Hv] _]; split; assumption. Qed.
+
 Section EvalImpl.
   Variable F : FCtx.
   #[local] Abbreviation Θ := (fc_deps F).
@@ -1566,40 +1577,50 @@ Section EvalImpl.
 
   with fast_eval_sel_impl (h : fdmod) x (Hh : fdmod_ok Θ Ξ h) (H : fast_eval_sel_order Θ Ξ (fdmod_erase h) x) :
       { r | fdmod_erase h ·ₜᶠ x Θ ⍮ Ξ ↘ fdomain_erase r /\ fdomain_ok Θ Ξ r } by struct H :=
-  | fdm_global pq args, x, Hh, H with gc_entry_f F (qname_app pq (x :: nil)) := {
-    | exist _ (Some (fe_def true pv A (Some M))) E =>
+  | fdm_global pq args, x, Hh, H with gc_entry_vf F (qname_app pq (x :: nil)) := {
+    (** A transparent definition's stored value, applied *)
+    | exist _ (Some (fe_def true pv A (Some M) (Some v))) (conj E Ev) =>
+        let Hf := stored_def_value _ _ _ _ _ _ _ (Ev _ eq_refl) in
+        let (r, Hr) := fast_eval_apps_impl v args _ _ _ in
+        exist _ r _
+    | exist _ (Some (fe_def true pv A (Some M) None)) (conj E Ev) =>
         let (f, Hf) := fast_eval_exp_impl M nil _ _ in
         let (r, Hr) := fast_eval_apps_impl f args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_def true _ A None)) E =>
+    | exist _ (Some (fe_def true _ A None _)) (conj E Ev) =>
         let (a, Ha) := fast_eval_exp_impl A nil _ _ in
         let (r, Hr) := fast_eval_apps_impl (fd_neut a (fd_glob (qname_app pq (x :: nil)))) args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_def false _ A B)) E =>
+    | exist _ (Some (fe_def false _ A B _)) (conj E Ev) =>
         let (a, Ha) := fast_eval_exp_impl A nil _ _ in
         let (r, Hr) := fast_eval_apps_impl (fd_neut a (fd_glob (qname_app pq (x :: nil)))) args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_mod _ _)) E with ind_mlookup_f F (qname_app pq (x :: nil)) := {
+    | exist _ (Some (fe_mod _ _)) (conj E Ev) with ind_mlookup_f F (qname_app pq (x :: nil)) := {
       | exist _ (Some (pg, k, D)) El =>
           let (r, Hr) := fast_eval_apps_impl (fd_ind pg None k nil) args _ _ _ in
           exist _ r _
       | exist _ None El => False_rect _ _ }
-    | exist _ (Some (fe_ind _ pg k D _)) E =>
+    | exist _ (Some (fe_ind _ pg k D _)) (conj E Ev) =>
         let (r, Hr) := fast_eval_apps_impl (fd_ind pg None k nil) args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_def_mod _ _ M _)) E =>
+    (** A definition with a module part's stored value, applied *)
+    | exist _ (Some (fe_def_mod pv A M u (Some v))) (conj E Ev) =>
+        let Hf := stored_dm_value _ _ _ _ _ _ _ (Ev _ eq_refl) in
+        let (r, Hr) := fast_eval_apps_impl v args _ _ _ in
+        exist _ r _
+    | exist _ (Some (fe_def_mod _ _ M _ None)) (conj E Ev) =>
         let (f, Hf) := fast_eval_exp_impl M nil _ _ in
         let (r, Hr) := fast_eval_apps_impl f args _ _ _ in
         exist _ r _
     (** A stored record type: its type former *)
-    | exist _ (Some (fe_record _ _ _ _)) E with record_lookup_f F (qname_app pq (x :: nil)) := {
+    | exist _ (Some (fe_record _ _ _ _)) (conj E Ev) with record_lookup_f F (qname_app pq (x :: nil)) := {
       | exist _ (Some R) Er =>
           let (r, Hr) := fast_eval_apps_impl (fd_record (qname_app pq (x :: nil)) nil) args _ _ _ in
           exist _ r _
       | exist _ None Er => False_rect _ _ }
     (** The open frame of a member's module or of a record type's module:
         its type former *)
-    | exist _ None E with ind_mlookup_f F (qname_app pq (x :: nil)) := {
+    | exist _ None (conj E Ev) with ind_mlookup_f F (qname_app pq (x :: nil)) := {
       | exist _ (Some (pg, k, D)) El =>
           let (r, Hr) := fast_eval_apps_impl (fd_ind pg None k nil) args _ _ _ in
           exist _ r _

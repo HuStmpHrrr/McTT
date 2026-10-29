@@ -39,13 +39,25 @@ Definition fc_seed (F : FCtx) : lk_cache (fc_deps F) (fc_stack F) :=
   end.
 
 (** The decoded units are the view of the Core units [fc_ok] names. *)
-Lemma fc_deps_eq : forall F Θ, units_rep (fv_units (fc_view F)) Θ -> canon_deps Θ ->
+Lemma fc_deps_eq : forall F Θ, units_rep (funits_drop (fv_units (fc_view F))) Θ -> canon_deps Θ ->
     fc_deps F = gds_restrict (fv_dom (fc_view F)) Θ.
-Proof. intros * Hu Hc; rewrite fc_deps_view; unfold view_deps; rewrite (dec_units_ok _ _ Hc Hu); reflexivity. Qed.
+Proof.
+  intros * Hu Hc; rewrite fc_deps_view; unfold view_deps; rewrite <- dec_units_drop, (dec_units_ok _ _ Hc Hu); reflexivity.
+Qed.
 
 (** The decoded stack is the Core stack [fc_ok] names. *)
-Lemma fc_stack_eq : forall F Ξ, fc_frames F = fs_of Ξ -> canon_stack Ξ -> fc_stack F = Ξ.
-Proof. intros * Hf Hc; rewrite fc_stack_frames, Hf; apply dec_stack_ok, Hc. Qed.
+Lemma fc_stack_eq : forall F Ξ, fstack_drop (fc_frames F) = fs_of Ξ -> canon_stack Ξ -> fc_stack F = Ξ.
+Proof. intros * Hf Hc; rewrite fc_stack_frames, <- dec_stack_drop, Hf; apply dec_stack_ok, Hc. Qed.
+
+(** Decoding a lookup's result forgets the values dropped. *)
+Lemma option_map_dec_entry_drop : forall o, option_map dec_entry (option_map fentry_drop o) = option_map dec_entry o.
+Proof. intros [e |]; cbn; [ rewrite dec_entry_drop |]; reflexivity. Qed.
+
+Lemma option_map_dec_loc_drop : forall o, option_map dec_loc (option_map loc_drop o) = option_map dec_loc o.
+Proof. intros [r |]; cbn; [ rewrite dec_loc_drop |]; reflexivity. Qed.
+
+Lemma option_map_dec_unit_drop : forall o, option_map dec_unit (option_map funit_drop o) = option_map dec_unit o.
+Proof. intros [u |]; cbn; [ rewrite dec_unit_drop |]; reflexivity. Qed.
 
 (** ** The Lookups of a Fast Context *)
 
@@ -96,71 +108,101 @@ Section Lookups.
       destruct (fc_ok F) as [Θ Ξ HcΘ HcΞ Hu Hv Hf];
       unfold fc_unit_at in *;
       rewrite ?(fc_deps_eq F Θ Hu HcΘ), ?(fc_stack_eq F Ξ Hf HcΞ);
-      try rewrite Hf;
-      pose proof (fun fp => fv_find_ok (fc_view F) Θ fp Hu Hv) as Huf;
+      pose proof (fun fp => fv_find_ok (fview_drop (fc_view F)) Θ fp Hu (vis_rep_drop _ _ Hv)) as Huf;
+      cbn [fview_drop fv_dom] in Huf;
       pose proof (canon_restrict (fv_dom (fc_view F)) Θ HcΘ) as HcR.
 
+    (** The fast data, its values dropped *)
+    #[local] Abbreviation drop_units := (fv_find_drop (fc_view F)).
+
     Lemma fc_unit_at_ok : forall fp, gds_lookup (fc_deps F) fp = option_map dec_unit (fc_unit_at fp).
-    Proof. intros; destruct (fc_ok F) as [Θ Ξ _ _ Hu Hv Hf]; rewrite fc_deps_view; apply (view_deps_lookup _ _ _ Hu Hv). Qed.
+    Proof.
+      intros; destruct (fc_ok F) as [Θ Ξ _ _ Hu Hv Hf]; rewrite fc_deps_view, <- view_deps_drop.
+      unfold fc_unit_at; rewrite <- option_map_dec_unit_drop, <- fv_find_drop.
+      exact (view_deps_lookup (fview_drop (fc_view F)) _ _ Hu (vis_rep_drop _ _ Hv)).
+    Qed.
 
     Lemma fc_entry_ok : forall p, gc_entry (fc_deps F) (fc_stack F) p = option_map dec_entry (fc_entry p).
     Proof.
-      intros; unfold fc_entry; fc_open; rewrite (fgc_entry_ok _ _ Huf HcR _ _ HcΞ).
+      intros; unfold fc_entry; fc_open.
+      rewrite <- option_map_dec_entry_drop, <- (fgc_entry_drop _ _ drop_units), Hf, (fgc_entry_ok _ _ Huf HcR _ _ HcΞ).
       destruct (gc_entry _ _ p) eqn:E; cbn [option_map]; [| reflexivity ].
       rewrite dec_tr_entry by exact (canon_gc_entry _ _ HcR HcΞ _ _ E); reflexivity.
     Qed.
 
     Lemma fc_resolve_ok : forall p, gc_resolve (fc_deps F) (fc_stack F) p = fc_resolve p.
-    Proof. intros; unfold fc_resolve; fc_open; rewrite (fgc_resolve_ok _ _ Huf HcR _ _ HcΞ); reflexivity. Qed.
+    Proof.
+      intros; unfold fc_resolve; fc_open.
+      rewrite <- (fgc_resolve_drop _ _ drop_units), Hf, (fgc_resolve_ok _ _ Huf HcR _ _ HcΞ); reflexivity.
+    Qed.
 
     Lemma fc_module_ok : forall p, gc_module (fc_deps F) (fc_stack F) p = fc_module p.
-    Proof. intros; unfold fc_module; fc_open; rewrite (fgc_module_ok _ _ Huf HcR _ _ HcΞ); reflexivity. Qed.
+    Proof.
+      intros; unfold fc_module; fc_open.
+      rewrite <- (fgc_module_drop _ _ drop_units), Hf, (fgc_module_ok _ _ Huf HcR _ _ HcΞ); reflexivity.
+    Qed.
 
     Lemma fc_body_ok : forall p, gc_body (fc_deps F) (fc_stack F) p = option_map dec_loc (fc_body p).
     Proof.
-      intros; unfold fc_body; fc_open; rewrite (fgc_body_ok _ _ Huf HcR _ _ HcΞ).
+      intros; unfold fc_body; fc_open.
+      rewrite <- option_map_dec_loc_drop, <- (fgc_body_drop _ _ drop_units), Hf, (fgc_body_ok _ _ Huf HcR _ _ HcΞ).
       destruct (gc_body _ _ p) as [[T Φ] |] eqn:E; cbn [option_map]; [| reflexivity ].
       rewrite dec_tr_loc by exact (canon_gc_body _ _ HcR HcΞ _ _ _ E); reflexivity.
     Qed.
 
     Lemma fc_frame_ok : forall p, gc_frame (fc_stack F) p = option_map dec_loc (fc_frame p).
     Proof.
-      intros; unfold fc_frame; fc_open; rewrite (fgc_frame_ok _ _ (canon_stack_closed _ HcΞ)).
+      intros; unfold fc_frame; fc_open.
+      rewrite <- option_map_dec_loc_drop, <- fgc_frame_drop, Hf, (fgc_frame_ok _ _ (canon_stack_closed _ HcΞ)).
       destruct (gc_frame _ p) as [[T Φ] |] eqn:E; cbn [option_map]; [| reflexivity ].
       rewrite dec_tr_loc by exact (canon_gc_frame _ HcΞ _ _ _ E); reflexivity.
     Qed.
 
     Lemma fc_loc_ok : forall p, gc_loc (fc_deps F) (fc_stack F) p = option_map dec_loc (fc_loc p).
     Proof.
-      intros; unfold fc_loc; fc_open; rewrite (fgc_loc_ok _ _ Huf HcR _ _ HcΞ).
+      intros; unfold fc_loc; fc_open.
+      rewrite <- option_map_dec_loc_drop, <- (fgc_loc_drop _ _ drop_units), Hf, (fgc_loc_ok _ _ Huf HcR _ _ HcΞ).
       destruct (gc_loc _ _ p) as [[T Φ] |] eqn:E; cbn [option_map]; [| reflexivity ].
       rewrite dec_tr_loc by exact (canon_gc_loc _ _ HcR HcΞ _ _ _ E); reflexivity.
     Qed.
 
     Lemma fc_mlookup_ok : forall p, ind_mlookup (fc_deps F) (fc_stack F) p = fc_mlookup p.
-    Proof. intros; unfold fc_mlookup; fc_open; rewrite (fgc_mlookup_ok _ _ Huf HcR _ _ HcΞ); reflexivity. Qed.
+    Proof.
+      intros; unfold fc_mlookup; fc_open.
+      rewrite <- (fgc_mlookup_drop _ _ drop_units), Hf, (fgc_mlookup_ok _ _ Huf HcR _ _ HcΞ); reflexivity.
+    Qed.
 
     Lemma fc_ind_ok : forall p, ind_lookup (fc_deps F) (fc_stack F) p = fc_ind p.
-    Proof. intros; unfold fc_ind; fc_open; rewrite (fgc_ind_ok _ _ Huf HcR _ _ HcΞ); reflexivity. Qed.
+    Proof.
+      intros; unfold fc_ind; fc_open.
+      rewrite <- (fgc_ind_drop _ _ drop_units), Hf, (fgc_ind_ok _ _ Huf HcR _ _ HcΞ); reflexivity.
+    Qed.
 
     Lemma fc_term_ok : forall p, gc_term (fc_deps F) (fc_stack F) p = fc_term p.
-    Proof. intros; unfold fc_term; fc_open; rewrite (fgc_term_ok _ _ Huf HcR _ _ HcΞ); reflexivity. Qed.
+    Proof.
+      intros; unfold fc_term; fc_open.
+      rewrite <- (fgc_term_drop _ _ drop_units), Hf, (fgc_term_ok _ _ Huf HcR _ _ HcΞ); reflexivity.
+    Qed.
 
     Lemma fc_record_ok : forall p, record_lookup (fc_deps F) (fc_stack F) p = fc_record p.
-    Proof. intros; unfold fc_record; fc_open; rewrite (fgc_record_ok _ _ Huf HcR _ _ HcΞ); reflexivity. Qed.
+    Proof.
+      intros; unfold fc_record; fc_open.
+      rewrite <- (fgc_record_drop _ _ drop_units), Hf, (fgc_record_ok _ _ Huf HcR _ _ HcΞ); reflexivity.
+    Qed.
 
     Lemma fc_unit_ok : forall H, gc_unit (fc_deps F) (fc_stack F) H = option_map dec_loc (fc_unit H).
     Proof.
-      intros; unfold fc_unit; fc_open; rewrite (fgc_unit_ok _ _ Huf _ _ HcΞ).
+      intros; unfold fc_unit; fc_open.
+      rewrite <- option_map_dec_loc_drop, <- (fgc_unit_drop _ _ drop_units), Hf, (fgc_unit_ok _ _ Huf _ _ HcΞ).
       destruct (gc_unit _ _ H) as [[T Φ] |] eqn:E; cbn [option_map]; [| reflexivity ].
       rewrite dec_tr_loc by exact (canon_gc_unit _ _ HcR HcΞ _ _ _ E); reflexivity.
     Qed.
 
     Lemma fc_find_ind_ok : forall p, gs_find_ind (fc_stack F) p = fc_find_ind p.
-    Proof. intros; unfold fc_find_ind; fc_open; rewrite fs_find_ind_of; reflexivity. Qed.
+    Proof. intros; unfold fc_find_ind; fc_open; rewrite <- fs_find_ind_drop, Hf, fs_find_ind_of; reflexivity. Qed.
 
     Lemma fc_find_record_ok : forall p, gs_find_record (fc_stack F) p = fc_find_record p.
-    Proof. intros; unfold fc_find_record; fc_open; rewrite fs_find_record_of; reflexivity. Qed.
+    Proof. intros; unfold fc_find_record; fc_open; rewrite <- fs_find_record_drop, Hf, fs_find_record_of; reflexivity. Qed.
 
     Lemma fc_tele_ok : gs_tele (fc_stack F) = fc_tele.
     Proof. rewrite fc_stack_frames; apply fs_tele_dec. Qed.
@@ -169,10 +211,22 @@ Section Lookups.
     Proof. rewrite fc_stack_frames; apply fs_path_dec. Qed.
   End Ok.
 
+  (** The values an entry found stores are right. *)
+  Lemma fc_entry_values : forall p e, fc_entry p = Some e -> fentry_values_ok (fc_deps F) (fc_stack F) e.
+  Proof.
+    intros p e He; rewrite fc_deps_view, fc_stack_frames.
+    exact (fgc_entry_values _ _ _ _ _ _ (fo_unit_values _ _ (fc_ok F)) (fo_frame_values _ _ (fc_ok F)) He).
+  Qed.
+
   (** The lookups with their equations, as the implementations call
       them *)
   Definition gc_entry_f p : { o | gc_entry (fc_deps F) (fc_stack F) p = option_map dec_entry o } :=
     exist _ (fc_entry p) (fc_entry_ok p).
+  (** Alike, with the values the entry stores right *)
+  Definition gc_entry_vf p :
+      { o | gc_entry (fc_deps F) (fc_stack F) p = option_map dec_entry o /\
+            forall e, o = Some e -> fentry_values_ok (fc_deps F) (fc_stack F) e } :=
+    exist _ (fc_entry p) (conj (fc_entry_ok p) (fc_entry_values p)).
   Definition gc_resolve_f p : { o | gc_resolve (fc_deps F) (fc_stack F) p = o } :=
     exist _ (fc_resolve p) (fc_resolve_ok p).
   Definition gc_module_f p : { o | gc_module (fc_deps F) (fc_stack F) p = o } :=
@@ -266,11 +320,20 @@ Proof. intros; apply units_rep_see, units_rep_with_vis, tr_units_rep. Qed.
 Lemma tr_units_all_vis : forall Θ, vis_rep (tr_units_all Θ) (map fst Θ).
 Proof. intros; exact (vis_rep_see (map fst Θ) _ nil (vis_rep_nil _)). Qed.
 
+(** The units the translation sees store no value. *)
+Lemma tr_units_all_values : forall Θ Θ' Ξ fp u, pk_find fp (fus_vis (tr_units_all Θ)) = Some u -> funit_values_ok Θ' Ξ u.
+Proof.
+  intros * Hu; destruct (fus_see_vis _ _ _ _ Hu) as [Hf | Hf]; [| cbn in Hf; unfold pk_find in Hf; cbn in Hf; discriminate ].
+  change (fus_find (tr_units Θ) fp = Some u) in Hf; rewrite (ur_find _ _ (tr_units_rep Θ)) in Hf.
+  destruct (gds_lookup Θ fp); cbn in Hf; [ injection Hf as <-; apply tr_unit_values | discriminate ].
+Qed.
+
 (** The fast context of [Θ ⍮ Ξ], seeing all of [Θ] *)
 Definition fctx_of (Θ : gdeps) (Ξ : gstack) (HcΘ : canon_deps Θ) (HcΞ : canon_stack Ξ) : FCtx :=
   mk_fctx (mk_fview (tr_units_all Θ) (map fst Θ)) (fs_of Ξ)
     (mk_fctx_ok (mk_fview (tr_units_all Θ) (map fst Θ)) (fs_of Ξ) Θ Ξ HcΘ HcΞ
-       (tr_units_all_rep Θ) (tr_units_all_vis Θ) eq_refl) None.
+       (units_rep_drop_of_rep _ _ (tr_units_all_rep Θ)) (tr_units_all_vis Θ) (fs_of_drop Ξ)
+       (fun fp u => tr_units_all_values Θ _ _ fp u) (fs_of_values_all _ _ Ξ)) None.
 
 (** Restricting to paths that include all filed ones changes nothing. *)
 Lemma gds_restrict_all : forall L Θ, (forall x, In x (map fst Θ) -> In x L) -> gds_restrict L Θ = Θ.

@@ -238,7 +238,7 @@ Qed.
 Lemma canon_fe_mod_trie : forall pv Δ t, canon_fentry (fe_mod pv (fu_mk Δ (fmd_body t))) -> canon_trie t.
 Proof.
   intros * (E & HE & Hc); destruct E as [| pv' [Δ' [[|] Φ' | E']] | | |]; cbn in HE, Hc; try discriminate; try contradiction.
-  injection HE as _ _ ->; exists Φ'; split; [ reflexivity | exact Hc ].
+  injection HE as _ _ Ht; exists Φ'; split; [ exact Ht | exact Hc ].
 Qed.
 
 (** A canonical body expands to itself. *)
@@ -252,7 +252,7 @@ Qed.
 Lemma edenote_fast_closed : forall Θ Ξ Γ pq pv Δ t, canon_trie t ->
     edenote Θ Ξ Γ (Some pq) (ge_mod pv (gu_mk Δ (md_body sm_closed (dec_mod t)))) (mdesc_closed nil pq Δ (dec_mod t) nil).
 Proof.
-  intros * (Φ & -> & Hc); rewrite dec_tr_mod by exact Hc.
+  intros * (Φ & Ht & Hc); rewrite (canon_trie_dec _ _ Ht Hc).
   constructor; econstructor; [ apply body_xp_canon, Hc | reflexivity ].
 Qed.
 
@@ -519,7 +519,7 @@ Section DenoteImpl.
         inleft (exist _ (fast_record_former_desc p R (fmdesc_closed nil p Tm tm (proj2 El Tm tm eq_refl) nil)) _) }
   | Γ, None, entry_source_core (ge_record pv pr R Φ), Hos, Ho => inright _
   (** A stored entry, at its path *)
-  | Γ, o, entry_source_fast pe (fe_def b pv A oM) Hc, Hos, Ho => inleft (exist _ (fmdesc_term A (if b then oM else None)) _)
+  | Γ, o, entry_source_fast pe (fe_def b pv A oM _) Hc, Hos, Ho => inleft (exist _ (fmdesc_term A (if b then oM else None)) _)
   | Γ, None, entry_source_fast pe (fe_mod pv (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
       inright (fun R => edenote_closed_none _ _ Γ pv Δ (dec_mod t) R)
   | Γ, Some pq, entry_source_fast pe (fe_mod pv (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
@@ -539,14 +539,14 @@ Section DenoteImpl.
         | exist _ None El => inright _
         | exist _ (Some (Tm, tm)) El =>
             inleft (exist _ (fast_ind_former_desc p k D Mk (fmdesc_closed nil pm Tm tm (proj2 El Tm tm eq_refl) nil)) _) } } }
-  | Γ, o, entry_source_fast pe (fe_def_mod pv A M (fu_core (gu_mk Δ (md_alias E)))) Hc, Hos, Ho with mdenote_impl (Δ ++ Γ) E _ := {
+  | Γ, o, entry_source_fast pe (fe_def_mod pv A M (fu_core (gu_mk Δ (md_alias E))) _) Hc, Hos, Ho with mdenote_impl (Δ ++ Γ) E _ := {
     | inright HN => inright _
     | inleft (exist _ R HR) with fmdesc_mod_s R := {
       | exist _ (Some R') Em => inleft (exist _ (fmdesc_dm nil A M (fmdesc_up Δ R')) _)
       | exist _ None Em => inright _ } }
-  | Γ, o, entry_source_fast pe (fe_def_mod pv A M (fu_core (gu_mk Δ (md_body sm Φ)))) Hc, Hos, Ho =>
+  | Γ, o, entry_source_fast pe (fe_def_mod pv A M (fu_core (gu_mk Δ (md_body sm Φ))) _) Hc, Hos, Ho =>
       inright (fun R => edenote_dm_body _ _ Γ o pv A M Δ sm Φ R)
-  | Γ, o, entry_source_fast pe (fe_def_mod pv A M (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
+  | Γ, o, entry_source_fast pe (fe_def_mod pv A M (fu_mk Δ (fmd_body t)) _) Hc, Hos, Ho =>
       inright (fun R => edenote_dm_body _ _ Γ o pv A M Δ sm_closed (dec_mod t) R)
   | Γ, Some p, entry_source_fast pe (fe_record pv pr R t) Hc, Hos, Ho with gc_loc_cf F p := {
     | exist _ None El => inright _

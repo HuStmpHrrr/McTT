@@ -228,6 +228,41 @@ constructor, a selection); its consumer looks it up.
   implementations, so that Equations does not unfold them in obligations
   (`Opaque` has no `export` form).
 
+## Stored values (`Extraction/FastValues.v`, `Command.v`)
+
+A transparent definition a command adds is filed with the value its
+body, closed over the frames' parameters, has in the empty environment:
+`fe_def b pv A oM ov` and `fe_def_mod pv A M u ov` carry
+`ov : option fdomain`.  A selection of a global definition applies the
+stored value instead of evaluating the body (`fast_eval_sel_impl`, through
+`gc_entry_vf`).  `None` is a translation (`tr_entry`), an axiom or an
+opaque definition; on all of `lib/` no selection meets a transparent
+definition without its value.
+
+- The value is computed once at the add site (`closed_value`, from the
+  typing: `closed_eval_order` via `soundness` and `fast_eval_of_ref`):
+  `def_fentry` / `dm_fentry`, used by a definition, a generated definition
+  or definition with a module part, an inductive or record alias, and the
+  definitions of a mutual definition.
+- `value_ok Θ Ξ M v`: `⟦M⟧ᶠ Θ⍮Ξ⍮nil ↘ fdomain_erase v` and `fdomain_ok`;
+  `stored_value_ok`, and the mutual `funit/ftrie/fentry_values_ok` for every
+  value stored, nested ones included.  They grow along `gc_sub`
+  (`FastEvalGrowth.v`).
+- The fast context: `fo_unit_values` / `fo_frame_values` (`fctx_ok`), right
+  in the current context, give `fc_entry_values`.
+- The command state: each frame's values are right in the context of that
+  frame and the ones below it (`frames_values_ok`), each filed or seen unit's
+  in its home, the unit and its closure with no frame open
+  (`unit_values_home`, `units_values_ok`).  `pre_fctx_ok` reads the
+  current-context form off them with the stack's well-formedness
+  (`frames_values_current`, `units_values_view`).  Closing a frame uses
+  `gc_sub_close`, filing a unit `gc_sub_file`, both with the frame's shape
+  from the Core run (`cmds_growth`, `closed_frame_ok`).
+- Decoding forgets the values (`dec_entry_drop` and the like); the
+  equations "fast data = translation" hold modulo `fentry_drop` /
+  `funit_drop` / `fstack_drop` / `funits_drop`.  `unit_run` drops them once,
+  at the end of the program, so `prog_impl_rep` keeps its statement.
+
 ## Fast paths of the evaluator and readback (`Extraction/Evaluation.v`, `Readback.v`)
 
 The relations are those of `FastEval.v`; only the implementations take the

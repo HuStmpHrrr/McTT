@@ -3,7 +3,7 @@ From Stdlib Require Import List String RelationClasses.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Export FastGlobal.
+From Mctt.Extraction Require Export FastGlobal FastValues.
 
 (** * The Fast Context
 
@@ -87,12 +87,16 @@ Record fctx_ok (v : fview) (fs : fstack) : Prop := mk_fctx_ok
   ; fo_canon_deps : canon_deps fo_deps
     (** the frames are canonical *)
   ; fo_canon_stack : canon_stack fo_stack
-    (** the units are those of [fo_deps] *)
-  ; fo_units : units_rep (fv_units v) fo_deps
+    (** the units, their stored values dropped, are those of [fo_deps] *)
+  ; fo_units : units_rep (funits_drop (fv_units v)) fo_deps
     (** the units seen are those filed at the imported paths *)
   ; fo_vis : vis_rep (fv_units v) (fv_dom v)
-    (** the frames are those of [fo_stack] *)
-  ; fo_frames : fs = fs_of fo_stack }.
+    (** the frames, their stored values dropped, are those of [fo_stack] *)
+  ; fo_frames : fstack_drop fs = fs_of fo_stack
+    (** the values stored in the units seen are right in the decoding *)
+  ; fo_unit_values : forall fp u, fv_find v fp = Some u -> funit_values_ok (view_deps v) (dec_stack fs) u
+    (** the values stored in the frames are right in the decoding *)
+  ; fo_frame_values : Forall (fun f => ftrie_values_ok (view_deps v) (dec_stack fs) (ff_body f)) fs }.
 
 (** A fast context: the units seen, the open frames, the proof that they
     translate a canonical Core context, and a declaration looked up

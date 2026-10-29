@@ -77,73 +77,68 @@ Qed.
 
 (** The frames of a fast context are those of the Core stack they decode
     to, which is canonical. *)
-Lemma fctx_ok_frames : forall v fs, fctx_ok v fs -> fs = fs_of (dec_stack fs) /\ canon_stack (dec_stack fs).
+Lemma fctx_ok_frames : forall v fs, fctx_ok v fs -> fstack_drop fs = fs_of (dec_stack fs) /\ canon_stack (dec_stack fs).
 Proof.
-  intros v fs [Θ Ξ _ HcΞ _ _ ->]; rewrite dec_stack_ok by exact HcΞ; split; [ reflexivity | exact HcΞ ].
+  intros v fs [Θ Ξ _ HcΞ _ _ Hf].
+  assert (E : dec_stack fs = Ξ) by (rewrite <- dec_stack_drop, Hf; apply dec_stack_ok, HcΞ).
+  rewrite E; split; [ exact Hf | exact HcΞ ].
 Qed.
 
 (** Whether [x] is fresh in the innermost frame, decided fast *)
-Definition fs_fresh_sum (x : string) (fs : fstack) (Hr : fs = fs_of (dec_stack fs)) (Hc : canon_stack (dec_stack fs)) :
+Definition fs_fresh_sum (x : string) (fs : fstack) (Hr : fstack_drop fs = fs_of (dec_stack fs)) (Hc : canon_stack (dec_stack fs)) :
     {gs_fresh x (dec_stack fs)} + {~ gs_fresh x (dec_stack fs)}.
 Proof.
   destruct (fs_fresh_dec x fs) eqn:E; [ left | right ].
-  - abstract (rewrite Hr in E; exact (proj1 (fs_fresh_dec_of _ _ Hc) E)).
-  - abstract (intros H; apply (fs_fresh_dec_of _ _ Hc) in H; rewrite <- Hr in H; congruence).
+  - abstract (rewrite <- fs_fresh_dec_drop, Hr in E; exact (proj1 (fs_fresh_dec_of _ _ Hc) E)).
+  - abstract (intros H; apply (fs_fresh_dec_of _ _ Hc) in H; rewrite <- Hr, fs_fresh_dec_drop in H; congruence).
 Defined.
 
-(** Adding a canonical entry to the innermost frame *)
-Lemma dec_stack_add : forall fs x E, fs = fs_of (dec_stack fs) -> canon_stack (gs_add x E (dec_stack fs)) ->
-    dec_stack (fs_add x (tr_entry E) fs) = gs_add x E (dec_stack fs).
+(** Adding an entry that stands for a canonical one to the innermost
+    frame: the frames, their values dropped, are those of the stack with
+    the entry added. *)
+Lemma fs_add_drop_of : forall fs x e E, fstack_drop fs = fs_of (dec_stack fs) -> fentry_drop e = tr_entry E ->
+    fstack_drop (fs_add x e fs) = fs_of (gs_add x E (dec_stack fs)).
+Proof. intros fs x e E Hr He; rewrite fs_add_drop, Hr, He; apply fs_add_of. Qed.
+
+Lemma dec_stack_add : forall fs x e E, fstack_drop fs = fs_of (dec_stack fs) -> fentry_drop e = tr_entry E ->
+    canon_stack (gs_add x E (dec_stack fs)) -> dec_stack (fs_add x e fs) = gs_add x E (dec_stack fs).
 Proof.
-  intros fs x E Hr Hc.
-  assert (Ea : fs_add x (tr_entry E) fs = fs_of (gs_add x E (dec_stack fs))) by (rewrite Hr at 1; apply fs_add_of).
-  rewrite Ea; apply dec_stack_ok, Hc.
+  intros fs x e E Hr He Hc.
+  rewrite <- dec_stack_drop, (fs_add_drop_of _ _ _ _ Hr He); apply dec_stack_ok, Hc.
 Qed.
 
-Lemma fctx_ok_add : forall v fs x E, fctx_ok v fs -> canon_stack (gs_add x E (dec_stack fs)) ->
-    fctx_ok v (fs_add x (tr_entry E) fs).
+(** Adding an entry whose values are right keeps the values of the frames
+    right. *)
+Lemma fs_add_values : forall Θ Ξ fs x e, Forall (fun f => ftrie_values_ok Θ Ξ (ff_body f)) fs -> fentry_values_ok Θ Ξ e ->
+    Forall (fun f => ftrie_values_ok Θ Ξ (ff_body f)) (fs_add x e fs).
 Proof.
-  intros v fs x E Hok Hc; destruct (fctx_ok_frames _ _ Hok) as [Hr _].
-  destruct Hok as [Θ Ξ HcΘ HcΞ Hu Hv Hf].
-  apply (mk_fctx_ok _ _ Θ (gs_add x E (dec_stack fs)) HcΘ Hc Hu Hv).
-  rewrite Hr at 1; apply fs_add_of.
+  intros Θ Ξ [| f fs] x e Hfs He; [ constructor |]; inversion Hfs as [| ? ? Hf Hfs']; subst.
+  constructor; [ exact (ft_ext_values _ _ _ _ _ Hf He) | exact Hfs' ].
 Qed.
 
-(** An empty body is canonical. *)
-Lemma canon_frame_empty : forall Δ, canon_frame (gu_body Δ gm_nil).
-Proof. intros; exact I. Qed.
-
-(** Opening a frame keeps a fast context a translation. *)
-Lemma fctx_ok_cons : forall v fs f, fctx_ok v fs -> canon_frame (snd (dec_frame f)) -> f = tr_frame (dec_frame f) ->
-    fctx_ok v (f :: fs).
+(** An entry added keeps a fast context a translation, when its values are
+    right where it is added and the context grows by it. *)
+Lemma fctx_ok_add : forall v fs x e E, fctx_ok v fs -> fentry_drop e = tr_entry E -> canon_stack (gs_add x E (dec_stack fs)) ->
+    gc_sub (view_deps v) (dec_stack fs) (view_deps v) (gs_add x E (dec_stack fs)) ->
+    fentry_values_ok (view_deps v) (gs_add x E (dec_stack fs)) e ->
+    fctx_ok v (fs_add x e fs).
 Proof.
-  intros v fs f Hok Hc Hf; destruct (fctx_ok_frames _ _ Hok) as [Hr HcΞ].
-  destruct Hok as [Θ Ξ HcΘ _ Hu Hv _].
-  apply (mk_fctx_ok _ _ Θ (dec_frame f :: dec_stack fs) HcΘ); [ constructor; assumption | exact Hu | exact Hv |].
-  change (f :: fs = tr_frame (dec_frame f) :: fs_of (dec_stack fs)); rewrite <- Hf, <- Hr; reflexivity.
+  intros v fs x e E Hok He Hc Hs Hev; destruct (fctx_ok_frames _ _ Hok) as [Hr _].
+  pose proof (dec_stack_add _ _ _ _ Hr He Hc) as Ed.
+  destruct Hok as [Θ Ξ HcΘ HcΞ Hu Hv Hf Huv Hfv].
+  apply (mk_fctx_ok _ _ Θ (gs_add x E (dec_stack fs)) HcΘ Hc Hu Hv); rewrite ?Ed.
+  - exact (fs_add_drop_of _ _ _ _ Hr He).
+  - intros fp u Hfp; exact (funit_values_grow _ _ _ _ Hs _ (Huv _ _ Hfp)).
+  - apply fs_add_values; [| exact Hev ].
+    refine (Forall_impl _ _ Hfv); intros f Hf'; exact (ftrie_values_grow _ _ _ _ Hs _ Hf').
 Qed.
 
-Lemma fctx_ok_push : forall v fs mp Δ, fctx_ok v fs -> fctx_ok v (fs_push mp Δ fs).
-Proof. intros; apply fctx_ok_cons; [ assumption | exact I | reflexivity ]. Qed.
-
-Lemma fctx_ok_push_ind : forall v fs mp pq k D Δ, fctx_ok v fs -> fctx_ok v (fs_push_ind mp pq k D Δ fs).
-Proof. intros; apply fctx_ok_cons; [ assumption | exact I | reflexivity ]. Qed.
-
-Lemma fctx_ok_push_record : forall v fs mp R Δ, fctx_ok v fs -> fctx_ok v (fs_push_record mp R Δ fs).
-Proof. intros; apply fctx_ok_cons; [ assumption | exact I | reflexivity ]. Qed.
-
-(** Closing the innermost frame *)
-Lemma fctx_ok_tail : forall v f fs, fctx_ok v (f :: fs) -> fctx_ok v fs.
+(** Filing a unit that stands for a canonical one, read in Core *)
+Lemma dec_units_file : forall s fp u U, units_rep (funits_drop s) (dec_units s) -> funit_drop u = tr_unit U ->
+    canon_deps ((fp, U) :: dec_units s) -> dec_units (fus_file fp u s) = (fp, U) :: dec_units s.
 Proof.
-  intros v f fs [Θ Ξ HcΘ HcΞ Hu Hv Hf].
-  destruct Ξ as [| e Ξ]; [ discriminate |]; injection Hf as _ Hf.
-  inversion HcΞ; subst; exact (mk_fctx_ok _ _ Θ Ξ HcΘ ltac:(assumption) Hu Hv eq_refl).
+  intros s fp u U Hr Hu Hc; rewrite <- dec_units_drop; exact (dec_units_ok _ _ Hc (units_rep_drop_file _ _ _ _ _ Hr Hu)).
 Qed.
-
-(** Filing a canonical unit, read in Core *)
-Lemma dec_units_file : forall s fp U, units_rep s (dec_units s) -> canon_deps ((fp, U) :: dec_units s) ->
-    dec_units (fus_file fp (tr_unit U) s) = (fp, U) :: dec_units s.
-Proof. intros s fp U Hr Hc; exact (dec_units_ok _ _ Hc (units_rep_file _ _ _ _ Hr)). Qed.
 
 (** ** The Units a Command Sees *)
 
