@@ -504,12 +504,13 @@ Section Filed.
   Context {GC : GCtx}.
   Variables (Θm : gdeps) (Ξm : gstack).
 
-(** The kind of an entry: a definition is a term, a module a module, and
-    an entry with a term part and a module part (an inductive type, a
-    definition with a module part, a record type) is both ([member_kind_dm]). *)
+(** The kind of an entry: a definition is a term of the sort it is tagged
+    with, a module a module, and an entry with a term part and a module
+    part (an inductive type, a definition with a module part, a record
+    type) is both ([member_kind_dm]). *)
 Definition entry_kind (E : gentry) : member_kind :=
   match E with
-  | ge_def _ _ _ _ _ => member_kind_term
+  | ge_def _ _ r _ _ => member_kind_term r
   | ge_mod _ _ => member_kind_mod
   | _ => member_kind_dm
   end.

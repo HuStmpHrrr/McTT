@@ -1877,6 +1877,25 @@ Proof.
   - right; exact (rel_elem_trans HT HT' HM HM').
 Qed.
 
+(** The same for two terms related unless the sort of their types is
+    [propositional], the sort their definitions are tagged with. *)
+Lemma rel_elem_tag_sym : forall {i A ρ A' ρ' R M M' r},
+    rel_typ i A ρ A' ρ' R ->
+    r = propositional \/ rel_elem M ρ M' ρ' R ->
+    r = propositional \/ rel_elem M' ρ' M ρ R.
+Proof. intros * HT [Hp | HM]; [ left; exact Hp | right; exact (rel_elem_sym HT HM) ]. Qed.
+
+Lemma rel_elem_tag_trans : forall {i j A1 ρ1 A2 ρ2 A3 ρ3 R R' M1 M2 M3 r},
+    rel_typ i A1 ρ1 A2 ρ2 R ->
+    rel_typ j A2 ρ2 A3 ρ3 R' ->
+    r = propositional \/ rel_elem M1 ρ1 M2 ρ2 R ->
+    r = propositional \/ rel_elem M2 ρ2 M3 ρ3 R' ->
+    r = propositional \/ rel_elem M1 ρ1 M3 ρ3 R.
+Proof.
+  intros * HT HT' [Hp | HM] [Hp' | HM']; try (left; assumption).
+  right; exact (rel_elem_trans HT HT' HM HM').
+Qed.
+
 End Fixed_GCtx.
 
 #[export]
@@ -1952,7 +1971,7 @@ Lemma per_dmod_sym_all :
 Proof.
   apply per_dmod_mut_ind_all; intros;
     try match goal with Hr : rel_typ _ _ _ _ _ _ |- _ => destruct (rel_typ_sym Hr) as [? Hs] end;
-    try solve [ econstructor; eauto using rel_elem_sym, rel_elem_at_sym ].
+    try solve [ econstructor; eauto using rel_elem_sym, rel_elem_at_sym, rel_elem_tag_sym, rel_typ_sort_right ].
   - assert (Hl : length args = length args') by (eapply per_gargs_len_eq; eassumption).
     econstructor; [ eassumption | congruence | assumption ].
   - (* a missing parameter *)
@@ -2030,7 +2049,7 @@ Proof.
     solve_mid_body.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
-    econstructor; eauto using rel_elem_at_trans.
+    econstructor; eauto using rel_elem_tag_trans.
   - (* a module: the middle closure is one value *)
     match goal with H : per_body _ (gm_ext _ _ _) _ _ |- _ => inversion H; subst; clear H end.
     solve_mid_body.

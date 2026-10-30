@@ -1846,8 +1846,8 @@ Proof. reflexivity. Qed.
 
 (** The sort of a member, as evaluation reads it. *)
 Inductive member_kind : Set :=
-(** A definition *)
-| member_kind_term
+(** A definition, tagged with its sort: a relevant one, or a proof *)
+| member_kind_term : relevance -> member_kind
 (** A module *)
 | member_kind_mod
 (** A member with a term part and a module part: an inductive type, a

@@ -147,24 +147,35 @@ Qed.
 
 (** ** Generalizing over a Telescope *)
 
-Lemma valid_exp_under_ctx_ctx_pi : forall Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
-    exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
+(** A type of a universe, or a proposition, generalized over a context: a
+    [Π] into a type of a universe, or a [∀] into a proposition. *)
+Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : relevance_sort r Typeω@i ->
+    exists j, D ⊨ ctx_pi_at r Ψ X : relevance_sort r Typeω@j.
 Proof.
   induction Ψ as [| e Ψ IH]; intros * HΨ HX; cbn in *; [ eauto |].
   destruct e as [B | B M | U | B M U].
   - destruct (rel_ctx_wf_ass_type HΨ) as [k HB].
     eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    apply (rel_exp_under_ctx_pi_cong (i := max i k));
-      [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
+    destruct r; cbn [relevance_sort] in *.
+    + apply (rel_exp_under_ctx_pi_cong (i := max i k));
+        [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
+    + exact (rel_exp_under_ctx_all (HB k (le_n k)) (HB k (le_n k)) HX).
   - destruct (rel_ctx_wf_def_inv HΨ) as [(Srt & HS & HB) HM].
     eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    pose proof (valid_exp_under_ctx_let (oA := Some B) HS HB HM HX (or_intror eq_refl)) as H; cbn in H; exact H.
+    pose proof (valid_exp_under_ctx_let (oA := Some B) HS HB HM HX (or_intror eq_refl)) as H.
+    rewrite (type_sort_sub _ _ (type_sort_relevance r _ (type_sort_universe i))) in H; exact H.
   - pose proof (rel_ctx_wf_mod_inv HΨ) as HU.
     eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    pose proof (valid_exp_under_ctx_let_mod HU HX) as H; cbn in H; exact H.
+    pose proof (valid_exp_under_ctx_let_mod HU HX) as H.
+    rewrite (type_sort_sub _ _ (type_sort_relevance r _ (type_sort_universe i))) in H; exact H.
   - eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    pose proof (rel_exp_under_ctx_dm_inst HΨ HX) as H; cbn in H; exact H.
+    pose proof (rel_exp_under_ctx_dm_inst HΨ HX) as H.
+    rewrite (type_sort_sub _ _ (type_sort_relevance r _ (type_sort_universe i))) in H; exact H.
 Qed.
+
+Corollary valid_exp_under_ctx_ctx_pi : forall Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
+    exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
+Proof. intros * HΨ HX; exact (valid_exp_under_ctx_ctx_pi_at relevant _ _ _ _ HΨ HX). Qed.
 
 (** ** Telescopes of Parameters *)
 

@@ -186,10 +186,10 @@ Inductive dmod_member_kind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> m
     module part; a chain through an alias is read in the alias past it.
     At the empty chain a module value, whatever member it is the module
     part of, is a module. *)
-(** The path names a definition: a term *)
+(** The path names a definition: a term of its sort *)
 | dmod_member_kind_global_here_def : forall p args b pv ra A B,
     gc_resolve Θ Ξ p = Some (ge_def b pv ra A B) ->
-    dmod_member_kind Θ Ξ (dm_global p args) nil member_kind_term
+    dmod_member_kind Θ Ξ (dm_global p args) nil (member_kind_term ra)
 (** The path names a body module or an open frame: a module *)
 | dmod_member_kind_global_here_mod : forall p args,
     (exists T oD, gc_module Θ Ξ p = Some (mr_body T oD)) \/ (exists TΦ, gc_frame Ξ p = Some TΦ) ->
@@ -244,10 +244,10 @@ Inductive dmod_member_kind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> m
 with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> member_kind -> Prop :=
 (** A body itself, at the empty chain: a module *)
 | gunit_member_kind_self : forall ρ Δ sm Φ, gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) nil member_kind_mod
-(** A definition of the body: a term *)
+(** A definition of the body: a term of its sort *)
 | gunit_member_kind_def : forall ρ Δ sm Φ Φ' x b pv ra A B,
     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv ra A B)) ->
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) member_kind_term
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) (member_kind_term ra)
 (** A submodule of the body: the rest of the chain read in its unit, in the
     environment of the entries before it *)
 | gunit_member_kind_mod : forall ρ Δ sm Φ Φ' y pm Uy ρ1 ch k,
@@ -278,12 +278,12 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
     open's target, as the open generates it ([kinds_items_gen]): a definition of a term
     member, an alias of a module member or of the target itself, and a
     definition with a module part of a member with both parts. *)
-(** The item names a term member of the target: a term *)
-| gunit_member_kind_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x,
+(** The item names a term member of the target: a term of its sort *)
+| gunit_member_kind_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x r,
     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
     kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
-    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_term ->
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) member_kind_term
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) (member_kind_term r) ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) (member_kind_term r)
 (** The item names a module member of the target: the chain is read in
     that member *)
 | gunit_member_kind_item_mod : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
@@ -381,11 +381,14 @@ with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_i
 | kinds_items_gen_self : forall ρ H d pv its gs,
     kinds_items_gen Θ Ξ ρ H its gs ->
     kinds_items_gen Θ Ξ ρ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
-(** An item naming a term member: a definition of the member *)
-| kinds_items_gen_def : forall ρ H n d pv its gs,
-    modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_term ->
+(** An item naming a term member: a definition of the member, of its
+    sort.  Kinds do not read types, so its type is a placeholder; a body
+    is read by the sorts its definitions are tagged with
+    ([eval_body_env]). *)
+| kinds_items_gen_def : forall ρ H n d pv r its gs,
+    modexp_member_kind Θ Ξ ρ H (n :: nil) (member_kind_term r) ->
     kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv propositional a_True (a_mem H n) :: gs)
+    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv r a_True (a_mem H n) :: gs)
 (** An item naming a module member: an alias of the member *)
 | kinds_items_gen_mod : forall ρ H n d pv its gs,
     modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_mod ->
@@ -1222,19 +1225,19 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** The empty body adds nothing. *)
 | eval_body_env_nil :
   `( ⟦ gm_nil ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ )
-(** A definition of a relevant type adds its value. *)
+(** A definition tagged relevant adds its value.  A body is read by the
+    sorts its definitions are tagged with, as selection reads it
+    ([eval_sel_body]): typing makes a definition's tag the sort of its
+    type, and a definition an open generates is tagged with the sort of
+    the member it names, where its type is not known ([kinds_items_gen]). *)
 | eval_body_env_def :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a ->
-     domain_relevance a = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     ⟦ gm_ext Φ y (ge_def b pv ra A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m )
-(** A definition of a proposition, a proof, adds [⋆ᵈ], unevaluated. *)
+     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m )
+(** A definition tagged a proposition, a proof, adds [⋆ᵈ], unevaluated. *)
 | eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a ->
-     domain_relevance a = propositional ->
-     ⟦ gm_ext Φ y (ge_def b pv ra A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ )
+     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ )
 (** A submodule adds its unit's closure. *)
 | eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->

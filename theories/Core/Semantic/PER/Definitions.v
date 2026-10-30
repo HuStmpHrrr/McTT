@@ -1498,7 +1498,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** Two empty bodies. *)
 | per_body_nil :
   `{ per_body ρ gm_nil ρ' gm_nil }
-(** A definition each, with related types and values. *)
+(** A definition each, with related types, each of the sort its
+    definition is tagged with, and, at relevant types, related values. *)
 | per_body_def :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
@@ -1507,8 +1508,10 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
        ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
        ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
-       rel_typ_propositional A ρ1 \/ rel_elem M ρ1 M' ρ1' R ->
-       per_body ρ (gm_ext Φ y (ge_def b pv r A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' r' A' (Some M'))) }
+       rel_typ_sort A ρ1 r ->
+       rel_typ_sort A' ρ1' r ->
+       r = propositional \/ rel_elem M ρ1 M' ρ1' R ->
+       per_body ρ (gm_ext Φ y (ge_def b pv r A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' r A' (Some M'))) }
 (** A submodule each, with related closures. *)
 | per_body_mod :
   `{ per_body ρ Φ ρ' Φ' ->
