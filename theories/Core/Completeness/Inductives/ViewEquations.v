@@ -82,7 +82,7 @@ Section TeleLink.
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HρS : RΓ ρS ρS).
   Variables (Bg Bc : ctx) (σg σc : sub) (Eg Ec : env).
   Hypotheses (Hσg : Γ ⊨ˢ σg ≈ σg : Bg) (Hσc : Γ ⊨ˢ σc ≈ σc : Bc).
-  Hypotheses (HEg : ⟦ σg ⟧s ρS ↘ Eg) (HEc : ⟦ σc ⟧s ρS ↘ Ec).
+  Hypotheses (HEg : ⟦ σg : Bg ⟧s ρS ↘ Eg) (HEc : ⟦ σc : Bc ⟧s ρS ↘ Ec).
   Variables (tg tc : list centry).
   Hypotheses (Hag : tele_ass tg) (Hac : tele_ass tc) (Hlen : List.length tg = List.length tc).
   Hypotheses (HWg : ⊨ List.rev tg ++ Bg) (HWc : ⊨ List.rev tc ++ Bc).

@@ -701,4 +701,11 @@ Proof.
   intros * [i | ] H; [ exists i; exact (rel_type_of_typ H) | exists 0; exact (rel_type_of_prop 0 H) ].
 Qed.
 
+(** The same, at one index for all the types of the sort. *)
+Lemma rel_type_of_sort_at : forall {S}, type_sort S ->
+    exists i, forall Γ A A', Γ ⊨ A ≈ A' : S -> Γ ⊨ᵗ A ≈ A' at i.
+Proof.
+  intros * [i | ]; [ exists i; intros; apply rel_type_of_typ; assumption | exists 0; intros; apply rel_type_of_prop; assumption ].
+Qed.
+
 End Fixed_GCtx.

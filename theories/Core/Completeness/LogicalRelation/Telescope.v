@@ -556,19 +556,28 @@ Proof.
   exists RS, RΔ, Y; repeat split; assumption.
 Qed.
 
-Lemma outer_typ_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
-    Δ ++ Γ ⊨ A ≈ A' : Typeω@i ->
+Lemma outer_type_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
+    Δ ++ Γ ⊨ᵗ A ≈ A at i ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     exists a b, ⟦ A[sb_qn (List.length Δ) σ] ⟧ env_args ρ xs ↘ a /\ ⟦ A ⟧ env_args ρσ xs ↘ b /\ Dom a ≈ b ∈ per_univ i.
 Proof.
   intros * HΔa HΔ HA HΓ' Hσ Hρ Hev xs Hg Hl.
   destruct (outer_base _ _ _ _ _ _ _ HΔa HΔ HΓ' Hσ Hρ Hev _ Hg Hl) as (RS & RΔ & Y & HRS & HE & HRΔ & Hqev & HYE & Hq).
-  pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
-  destruct (typ_inst_link _ _ _ _ _ _ _ _ _ (rel_type_of_typ HAl) HRS Hq HE Hqev) as (a & b0 & Ea & Eb0 & Hab).
-  destruct (rel_exp_of_typ_inversion_simple_at HRΔ HAl _ _ HYE) as (b1 & b & Eb1 & Eb & Hbb).
+  destruct (typ_inst_link _ _ _ _ _ _ _ _ _ HA HRS Hq HE Hqev) as (a & b0 & Ea & Eb0 & Hab).
+  destruct (rel_type_inversion_simple_at HRΔ HA _ _ HYE) as (b1 & b & Eb1 & Eb & Hbb).
   assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption).
   exists a, b; split; [ exact Ea | split; [ exact Eb | etransitivity; [ exact Hab | exact Hbb ] ] ].
+Qed.
+
+(** The same for a type of a universe. *)
+Lemma outer_typ_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
+    Δ ++ Γ ⊨ A ≈ A' : Typeω@i ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+    forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
+    exists a b, ⟦ A[sb_qn (List.length Δ) σ] ⟧ env_args ρ xs ↘ a /\ ⟦ A ⟧ env_args ρσ xs ↘ b /\ Dom a ≈ b ∈ per_univ i.
+Proof.
+  intros * HΔa HΔ HA; exact (outer_type_link _ _ _ _ _ _ _ _ _ HΔa HΔ (rel_type_of_typ (rel_exp_under_ctx_refl_left HA))).
 Qed.
 
 Lemma outer_exp_link : forall Δ Γ Γ' RΓ' σ ρ ρσ T M M', tele_ass Δ -> ⊨ Δ ++ Γ ->

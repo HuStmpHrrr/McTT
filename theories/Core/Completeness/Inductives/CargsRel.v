@@ -165,12 +165,12 @@ Section ConArgs.
     intros * Heq x x' Hx Hx'.
     destruct (con_args_split _ _ Heq) as [_ H2].
     rewrite (skipn_nth_cons' _ _ _ Hx), (skipn_nth_cons' _ _ _ Hx') in H2.
-    destruct g as [A | t]; cbn [cargs_ctx_aux List.app] in H2 |- *; rewrite List.rev_app_distr in H2; cbn [List.rev List.app] in H2 |- *;
+    destruct g as [r A | t]; cbn [cargs_ctx_aux List.app] in H2 |- *; rewrite List.rev_app_distr in H2; cbn [List.rev List.app] in H2 |- *;
       inversion H2 as [| i T ? ? ? ? ? ? ? R HT Hxx]; subst;
       (econstructor; [ exact HT | exact Hxx | constructor ]).
   Qed.
 
-  Lemma con_arg_step : forall gs1 A gs2, gs = gs1 ++ ca_arg A :: gs2 -> forall x x',
+  Lemma con_arg_step : forall gs1 r A gs2, gs = gs1 ++ ca_arg r A :: gs2 -> forall x x',
       List.nth_error as1 (List.length gs1) = Some x -> List.nth_error as1' (List.length gs1) = Some x' ->
       canon_args_rel D ups k ns c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1)) x x' /\
       canon_args_rel D ups k ns c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1)) x x.
@@ -183,15 +183,12 @@ Section ConArgs.
     inversion He as [| i T ? ? ? ? ? ? ? Rk [t t' Et Et' HRk] Hxx]; clear He.
     assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
       by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-    destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ HM Hcon HA) as (_ & jA & HAv).
+    pose proof (nonrec_relevance_at gs1 gs2 r A) as Hr; rewrite <- Heq in Hr.
+    destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HM Hcon HA Hr) as (_ & jA & HAv).
     rewrite Heq, <- nonrec_args_prefix_cargs_strat in HAv.
-    destruct (rel_exp_under_ctx_wk_simple (cargs_wk D p k Mk c gs HD HM Hcon HΨ _ _ Heq) HAv) as (RΓ & HΓ & i0 & Hwk).
+    destruct (rel_type_inversion_wk (cargs_wk D p k Mk c gs HD HM Hcon HΨ _ _ Heq) (rel_type_of_relevance HAv)) as (RΓ & HΓ & Hwk).
     pose proof (con_prefix_env _ _ Heq _ HΓ) as HE1.
-    destruct (Hwk _ _ HE1) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
-    assert (Hy : y = d_univ jA) by (cbn in Ey; inversion Ey; reflexivity).
-    rewrite Hy in HRy; clear Hy Ey Ey'.
-    destruct (per_univ_elem_univ _ _ _ _ HRy (or_introl (ex_intro _ _ eq_refl))) as [_ ERy].
-    apply ERy in Hmm; destruct Hmm as [Rm HRm].
+    destruct (Hwk _ _ HE1) as (m & m' & Em & Em' & [Rm HRm]).
     assert (m = t) as -> by (eapply functional_eval_exp; eassumption).
     rewrite env_args_app, eval_wk_pat_args, <- env_args_app in Em' by exact Hlk.
     assert (ERk : Rk <~> Rm) by (eapply per_univ_elem_right_irrel; [ exact HRk | exact HRm ]).
@@ -261,9 +258,9 @@ Section ConArgs.
     rewrite (firstn_S_snoc _ _ _ Hg0), (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx').
     rewrite !nonrec_arg_vals_app by (rewrite !List.length_firstn; lia).
     rewrite cargs_nonrec_app.
-    destruct g as [A | t]; cbn [nonrec_arg_vals cargs_nonrec].
+    destruct g as [r A | t]; cbn [nonrec_arg_vals cargs_nonrec].
     - rewrite <- Hlf in Hx, Hx'.
-      destruct (con_arg_step _ _ _ Heq x x' Hx Hx') as [Hr Hrd].
+      destruct (con_arg_step _ _ _ _ Heq x x' Hx Hx') as [Hr Hrd].
       rewrite Hlf in Hr, Hrd.
       rewrite List.length_app, Nat.add_1_r.
       split; apply tele_prefix_rel_snoc; assumption.
@@ -288,7 +285,7 @@ Section ConArgs.
       pose proof (IH _ Heq') as IHg.
       rewrite List.length_app in IHg; cbn [List.length] in IHg; rewrite Nat.add_1_r in IHg.
       rewrite (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx'), !nonrec_arg_vals_app in IHg by (rewrite List.length_firstn; lia).
-      destruct g as [A | t]; cbn [nonrec_arg_vals] in IHg.
+      destruct g as [r A | t]; cbn [nonrec_arg_vals] in IHg.
       + constructor.
         rewrite <- !List.app_assoc; exact IHg.
       + assert (Hpre : List.firstn (List.length gs1) gs = gs1)
@@ -452,14 +449,15 @@ Section ConCanon.
     assert (Hpk : tele_prefix_rel (ar k X c) K (nonrec_arg_vals gs1 fa) (nonrec_arg_vals gs1 fa))
       by exact (args_rel_pre_refl_l p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mk HMk X c gs Haa Hcon K _ _ HKl Hpk0).
     pose proof Har as Har0; rewrite tele_rel_iff in Har0; destruct Har0 as (_ & _ & Harr).
-    destruct g as [A | t]; cbn [cargs_ctx_aux List.app List.rev] in HC1 |- *.
-    - destruct (rel_ctx_wf_ass_inv HC1) as [j HT].
-      destruct (rel_exp_of_typ_inversion_simple_at HR0 HT _ _ HE) as (t & t' & Et & Et' & [R HR]).
+    destruct g as [rA A | t]; cbn [cargs_ctx_aux List.app List.rev] in HC1 |- *.
+    - destruct (rel_ctx_wf_ass_inv HC1) as (Srt & HSrt & HT0).
+      destruct (rel_type_of_sort HSrt HT0) as [j HT].
+      destruct (rel_type_inversion_simple_at HR0 HT _ _ HE) as (t & t' & Et & Et' & [R HR]).
       pose proof Et as Et0; rewrite env_args_app in Et, Et'.
       destruct (per_univ_elem_to_nat _ _ _ _ HR) as [m0 Hm0].
       apply (per_gargs_snoc _ _ _ _ _ _ _ _ m0 R); [ rewrite List.length_rev, length_cargs_ctx; lia | exact IHk
                                                    | exact (mk_rel_mod_eval _ _ Et Et' Hm0) |].
-      destruct (valid_group_arg_head p D Hg Hcv k Mk c gs gs1 A _ u0 X fa HMk Hcon Heq u0_len Lna (eq_trans Lfa (eq_sym Lk)) Hgd)
+      destruct (valid_group_arg_head p D Hg Hcv k Mk c gs gs1 rA A _ u0 X fa HMk Hcon Heq u0_len Lna (eq_trans Lfa (eq_sym Lk)) Hgd)
         as (iA0 & Rh & a & Ea & Haa' & ERh).
       rewrite <- List.app_assoc in Et0.
       assert (a = t) as -> by (eapply functional_eval_exp; eassumption).
@@ -474,8 +472,9 @@ Section ConCanon.
         rewrite !length_nonrec_arg_vals by lia; fold K; rewrite Nat.sub_diag; split; reflexivity. }
       pose proof (Harr K x x' (proj1 HxK) (proj2 HxK)) as Hr; rewrite (Hnv vs Hlv) in Hr; fold fa in Hr.
       exact Hr.
-    - destruct (rel_ctx_wf_ass_inv HC1) as [j HT].
-      destruct (rel_exp_of_typ_inversion_simple_at HR0 HT _ _ HE) as (a & a' & Ea & Ea' & [R HR]).
+    - destruct (rel_ctx_wf_ass_inv HC1) as (Srt & HSrt & HT0).
+      destruct (rel_type_of_sort HSrt HT0) as [j HT].
+      destruct (rel_type_inversion_simple_at HR0 HT _ _ HE) as (a & a' & Ea & Ea' & [R HR]).
       pose proof Ea as Ea0; rewrite env_args_app in Ea, Ea'.
       destruct (per_univ_elem_to_nat _ _ _ _ HR) as [m0 Hm0].
       apply (per_gargs_snoc _ _ _ _ _ _ _ _ m0 R); [ rewrite List.length_rev, length_cargs_ctx; lia | exact IHk
