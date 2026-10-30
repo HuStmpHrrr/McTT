@@ -74,6 +74,7 @@ Section GlobalExt.
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
+      unfold module_saturated in *;
       rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?dm_path_ext in *.
     (** A step through a definition: its five components, past [eauto]'s
         depth. *)
@@ -143,6 +144,7 @@ Section GlobalExt.
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
+      unfold module_saturated in *;
       rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec, ?gc_term_ext,
         ?arg_relevance_ext in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].

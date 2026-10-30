@@ -427,7 +427,9 @@ Section Kinds.
         assert (Ex : String.eqb x x = true) by apply String.eqb_refl.
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_wk] in *; rewrite ?Ex in *;
           try discriminate.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 r0 A0 B0 | | | |]; cbn in *; try congruence;
+            match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def _ _ _ _ _)) |- _ => injection Hp; intros; subst end;
+            eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn [gentry_wk] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kinds_env _ _ _ (gmod_wk Φ φ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
@@ -443,7 +445,9 @@ Section Kinds.
           match goal with Hk1 : kinds_env _ _ _ (gmod_wk Φ φ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
           eapply gunit_member_kind_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 r0 A0 B0 | | | |]; cbn in *; try congruence;
+            match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def _ _ _ _ _)) |- _ => injection Hp; intros; subst end;
+            eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kinds_env _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
@@ -704,7 +708,9 @@ Section Kinds.
         assert (Ex : String.eqb x x = true) by apply String.eqb_refl.
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_sub] in *; rewrite ?Ex in *;
           try discriminate.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 r0 A0 B0 | | | |]; cbn in *; try congruence;
+            match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def _ _ _ _ _)) |- _ => injection Hp; intros; subst end;
+            eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn [gentry_sub] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kinds_env _ _ _ (gmod_sub Φ σ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
@@ -720,7 +726,9 @@ Section Kinds.
           match goal with Hk1 : kinds_env _ _ _ (gmod_sub Φ σ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
           eapply gunit_member_kind_dm_step; [ cbn; rewrite Ex; reflexivity | assumption | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
-        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [b0 pv0 r0 A0 B0 | | | |]; cbn in *; try congruence;
+            match goal with Hp : Some _ = Some (gm_ext _ _ (ge_def _ _ _ _ _)) |- _ => injection Hp; intros; subst end;
+            eapply gunit_member_kind_def; cbn; rewrite Ex; reflexivity.
         * destruct E as [| pm0 U0 | | |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kinds_env _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.

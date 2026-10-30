@@ -388,7 +388,7 @@ with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_i
 | kinds_items_gen_def : forall ρ H n d pv r its gs,
     modexp_member_kind Θ Ξ ρ H (n :: nil) (member_kind_term r) ->
     kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv r a_True (a_mem H n) :: gs)
+    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv r a_placeholder_type (a_mem H n) :: gs)
 (** An item naming a module member: an alias of the member *)
 | kinds_items_gen_mod : forall ρ H n d pv its gs,
     modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_mod ->
@@ -400,7 +400,7 @@ with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_i
 | kinds_items_gen_dm : forall ρ H n d pv its gs,
     modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_dm ->
     kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv a_True (a_mem H n) (me_mem H n) :: gs).
+    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv a_placeholder_type (a_mem H n) (me_mem H n) :: gs).
 
 Scheme dmod_member_kind_mut_ind := Induction for dmod_member_kind Sort Prop
 with gunit_member_kind_mut_ind := Induction for gunit_member_kind Sort Prop

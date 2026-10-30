@@ -328,12 +328,19 @@ Section Eval.
     all: try solve [ eapply eval_exp_app_proof; [ eassumption | rewrite arg_relevance_rn; eassumption | eassumption ] ].
     all: try solve [ eapply eval_exp_let_ann; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption | eassumption ] ].
     all: try solve [ eapply eval_exp_let_proof; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
-    all: try solve [ eapply eval_body_env_def; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
-    all: try solve [ eapply eval_body_env_def_proof; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption ] ].
+    all: try solve [ eapply eval_body_env_def; eassumption ].
+    all: try solve [ eapply eval_body_env_def_proof; eassumption ].
     all: try solve [ rewrite <- combine_map_r; eapply eval_exp_tuple; eassumption ].
     all: try solve [ match goal with H0 : eval_neutral_fields _ _ _ _ _ (_ ++ domain_rename _ (relevant_value _ _) :: nil) _ |- _ =>
                        rewrite relevant_value_rn in H0; cbn [domain_rename domain_ne_rename] in *;
                        eapply eval_neutral_fields_cons; [ eassumption | exact H0 ] end ].
+    (* a member of a saturated global module: saturation counts arguments,
+       which the renaming keeps *)
+    all: try (match goal with Hs : module_saturated ?Θ ?Ξ ?p ?args |- context [ dm_global ?p (map ?g ?args) ] =>
+                assert (module_saturated Θ Ξ p (map g args)) by (intros ? ? Hl; rewrite List.length_map; exact (Hs _ _ Hl)) end;
+              first [ eapply eval_sel_global; eassumption | eapply eval_sel_global_neut; eassumption
+                    | eapply eval_sel_global_proof; eassumption | eapply eval_sel_global_ind; eassumption
+                    | eapply eval_sel_global_record; eassumption ]).
     - (* a variable *) rewrite <- env_var_rn; apply eval_exp_var.
     - (* a module slot *) rewrite <- env_mod_rn; apply eval_me_var.
   Qed.

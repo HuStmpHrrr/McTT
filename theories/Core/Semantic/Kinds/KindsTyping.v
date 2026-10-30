@@ -20,12 +20,13 @@ Import Domain_Notations Syntax_Notations Wk_Notations.
 
 (** ** Generated Entries *)
 
-(** A generated item without its type and its tag, as kinds read it
-    ([kinds_items_gen]). *)
+(** A generated item without its type, as kinds read it
+    ([kinds_items_gen]): its sort tag is kept, its type is the
+    placeholder. *)
 Definition generated_item_erase (g : generated_item) : generated_item :=
   match g with
-  | generated_item_def d pv _ _ M => generated_item_def d pv propositional a_True M
-  | generated_item_def_mod d pv _ M E => generated_item_def_mod d pv a_True M E
+  | generated_item_def d pv r _ M => generated_item_def d pv r a_placeholder_type M
+  | generated_item_def_mod d pv _ M E => generated_item_def_mod d pv a_placeholder_type M E
   | _ => g
   end.
 

@@ -60,6 +60,7 @@ Section Fixed_GCtx.
         [| rewrite (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (gunit_member_kind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
+        match goal with Hp : Some _ = Some _ |- _ => injection Hp; intros; subst end;
         eapply gunit_member_kind_def; cbn [gm_prefix_upto]; rewrite Ex; reflexivity.
     - (* a submodule each: their closures have the same kinds *)
       destruct (String.eqb_spec y0 y) as [-> | Hne];
@@ -107,7 +108,11 @@ Section Fixed_GCtx.
       assert (Hi : gm_item_upto (gm_open Φ H its) y = Some (Φ, H, its1, it)) by (cbn; rewrite Ey; reflexivity).
       assert (Hi' : gm_item_upto (gm_open Φ' H' its) y = Some (Φ', H', its1, it)) by (cbn; rewrite Ey; reflexivity).
       rewrite (gunit_member_kind_body_item _ _ _ _ _ _ _ _ _ _ _ _ _ Hi Hk), (gunit_member_kind_body_item _ _ _ _ _ _ _ _ _ _ _ _ _ Hi' Hk').
-      destruct it as [[[n |] d] pv]; rewrite ?HH; reflexivity.
+      destruct it as [[[n |] d] pv]; [| apply HH ].
+      split; (intros [(r & -> & -> & Hm) | [(Hm & Hm') | (Hm & Hm')]];
+        [ left; exists r; repeat split; apply HH; exact Hm
+        | right; left; split; apply HH; assumption
+        | right; right; split; apply HH; assumption ]).
   Qed.
 
   Corollary per_dmod_kinds_equiv : forall h h', per_dmod h h' -> kinds_equiv gc_deps gc_stack h h'.
