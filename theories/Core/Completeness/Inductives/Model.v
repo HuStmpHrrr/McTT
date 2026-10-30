@@ -185,6 +185,26 @@ Proof.
   exact Hr.
 Qed.
 
+(** The same for a closed telescope of entries of given sorts: the values
+    of an entry are of its sort. *)
+Lemma closed_sorted_dom : forall C (rf : nat -> relevance), ⊨ C ->
+    (forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ⊨ T : relevance_sort (rf (List.length Δ2)) Typeω@i) ->
+    forall ρ ρ' ts1 A ts2 ys ys' b, List.rev C = ts1 ++ ce_ass A :: ts2 -> per_gargs ts1 ρ ρ' ys ys' ->
+      List.length ys = List.length ts1 -> ⟦ A ⟧ env_args ρ ys ↘ b -> domain_relevance b = rf (List.length ts1).
+Proof.
+  intros * HC Hrel * Heq Hg Hl Eb.
+  assert (HCe : C = List.rev ts2 ++ ce_ass A :: List.rev ts1)
+    by (rewrite <- (List.rev_involutive C), Heq, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
+  destruct (Hrel _ _ _ HCe) as [i HA]; rewrite List.length_rev in HA.
+  assert (HC1 : ⊨ List.rev ts1) by (rewrite HCe in HC; exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC))).
+  destruct (rel_ctx_wf_per_ctx_env HC1) as [R HR].
+  assert (Hρ : R (env_args ρ ys) (env_args ρ' ys'))
+    by (apply (gargs_env_rel _ _ _ _ _ _ HR HC1); [ rewrite List.length_rev; exact Hl | rewrite List.rev_involutive; exact Hg ]).
+  destruct (rel_exp_of_relevance_sort_at HR HA _ _ Hρ) as (b0 & Eb0 & Hr).
+  assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
+  exact Hr.
+Qed.
+
 (** A telescope of types of universes over [Γ] has no propositional
     entry at an environment its context PER relates. *)
 Lemma relevant_entries_not_propositional : forall Δ Γ R, tele_ass Δ ->

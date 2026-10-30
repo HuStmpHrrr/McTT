@@ -2181,7 +2181,8 @@ Lemma cargs_correspond_rec_depth : forall vm gs1' t' gs2' gs1 t gs2,
 Proof.
   intros vm gs1'; induction gs1' as [| g' gs1' IH]; intros * Hc Hl; destruct gs1 as [| g gs1]; cbn in Hl; try lia.
   - cbn in Hc; tauto.
-  - cbn [List.app] in Hc; destruct g', g; cbn in Hc; try contradiction; try (destruct Hc as (_ & _ & Hc));
+  - cbn [List.app] in Hc; destruct g', g; cbn in Hc; try contradiction;
+      first [ destruct Hc as (_ & _ & Hc) | destruct Hc as (_ & Hc) ];
       exact (IH _ _ _ _ _ Hc ltac:(lia)).
 Qed.
 

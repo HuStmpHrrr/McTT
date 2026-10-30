@@ -1759,8 +1759,8 @@ Lemma length_wrap_ihs : forall D' D vm gs' gs ihs r' nr',
     cargs_correspond vm gs' gs -> List.length ihs = cargs_nrec D gs -> List.length (wrap_ihs D' D gs' gs ihs r' nr') = cargs_nrec D gs.
 Proof.
   intros D' D vm; induction gs' as [| [] gs' IH]; intros [| [] gs] * H Hl; cbn in *; try contradiction; try reflexivity.
-  - apply IH; assumption.
-  - rewrite List.length_app, List.length_firstn, IH; [ lia | exact H | rewrite List.length_skipn; lia ].
+  - apply IH; tauto.
+  - rewrite List.length_app, List.length_firstn, IH; [ lia | tauto | rewrite List.length_skipn; lia ].
   - rewrite List.length_app, length_wrap_leaves, List.length_firstn, IH; [ lia | tauto | rewrite List.length_skipn; lia ].
 Qed.
 
@@ -1777,8 +1777,8 @@ Lemma wrap_ihs_scoped : forall D' D vm gs' gs ihs r' nr' N,
     List.Forall (exp_scoped N) ihs -> List.Forall (exp_scoped N) (wrap_ihs D' D gs' gs ihs r' nr').
 Proof.
   intros D' D vm; induction gs' as [| [] gs' IH]; intros [| [] gs] * H HN Hg Hihs; cbn in *; try contradiction; try solve [ constructor ].
-  - apply IH; [ exact H | lia | lia | exact Hihs ].
-  - apply List.Forall_app; split; [ apply Forall_firstn'; exact Hihs | apply IH; [ exact H | lia | lia | apply Forall_skipn'; exact Hihs ] ].
+  - apply IH; [ tauto | lia | lia | exact Hihs ].
+  - apply List.Forall_app; split; [ apply Forall_firstn'; exact Hihs | apply IH; [ tauto | lia | lia | apply Forall_skipn'; exact Hihs ] ].
   - apply List.Forall_app; split.
     + apply wrap_leaves_scoped; [ lia | lia | apply Forall_firstn'; exact Hihs ].
     + apply IH; [ tauto | lia | lia | apply Forall_skipn'; exact Hihs ].

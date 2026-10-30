@@ -988,7 +988,9 @@ Section LeafConv.
           assert (Hndv : List.NoDup (List.map fst (fsc1 ++ (f, gc) :: fsc))).
           { rewrite <- Ec, map_fst_combine_len by (rewrite Hlenj'; reflexivity); exact Hndf. }
           pose proof (find_name_split _ _ _ _ Hndv) as Hfind; rewrite <- Ec in Hfind.
-          destruct gv as [rA A | t1], gc as [rA' A' | t1']; cbn [List.map snd cargs_correspond] in Hcr; try contradiction.
+          destruct gv as [rA A | t1], gc as [rA' A' | t1']; cbn [List.map snd cargs_correspond] in Hcr; try contradiction;
+            (** the sorts of non-recursive arguments of the container agree *)
+            try (match type of Hcr with _ = _ /\ cargs_correspond _ _ _ => destruct Hcr as [_ Hcr] end).
           - (* non-recursive in both *)
             cbn [fields_leaves].
             rewrite <- (fields_args_snoc_arg fsv1 f rA A), <- (fields_args_snoc_arg fsc1 f rA' A').
@@ -2067,7 +2069,8 @@ Section ViewBlocks.
         try contradiction.
       - cbn [wrap_ihs ihs_ctx_aux List.app]; rewrite List.app_nil_r; exact Hδ.
       - destruct g'; contradiction.
-      - destruct g' as [rA' A' | t'], g as [rA A | t]; cbn in Hc; try contradiction.
+      - destruct g' as [rA' A' | t'], g as [rA A | t]; cbn in Hc; try contradiction;
+          try (match type of Hc with _ = _ /\ cargs_correspond _ _ _ => destruct Hc as [_ Hc] end).
         + (* both non-recursive *)
           rewrite (view_blocks_branch_avar _ _ _ Heq); cbn [wrap_ihs elim_ihs ihs_ctx_aux].
           rewrite <- (view_blocks_branch_cargs_sub_arg _ _ _ _ Heq).

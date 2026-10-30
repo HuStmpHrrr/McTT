@@ -670,6 +670,19 @@ Proof.
   eapply rel_chain_mono; [| exact Hc ]; intros ? ? Hp; eexists; exact (per_univ_elem_of_prop _ _ _ Hp).
 Qed.
 
+(** A type of a universe, or a proposition, as its tag says, is of the
+    tag's sort at every environment of the context. *)
+Corollary rel_exp_of_relevance_sort_at : forall {Γ A A' r} {i : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A' : relevance_sort r Typeω@i ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ r.
+Proof.
+  intros * HΓ H ρ ρ' Hρ; destruct r; cbn [relevance_sort] in H.
+  - exact (rel_exp_of_typ_relevant_at HΓ H _ _ Hρ).
+  - destruct (rel_exp_of_prop_inversion_simple_at HΓ H _ _ Hρ) as (a & a' & Ea & _ & Hp).
+    exists a; split; [ exact Ea | exact (per_prop_left _ _ Hp) ].
+Qed.
+
 (** So a type of a universe, or a proposition, as its tag says, is a type
     of the universe. *)
 Corollary rel_type_of_relevance : forall {Γ A A' r} {i : nat},

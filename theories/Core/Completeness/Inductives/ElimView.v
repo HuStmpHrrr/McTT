@@ -194,7 +194,7 @@ Proof.
   injection Hn as <- Hn; cbn [List.map cargs_correspond] in Hc |- *.
   destruct (String.eqb f0 f) eqn:E.
   - injection Hf as -> ->.
-    destruct g0 as [A | t]; cbn in Hc; [ contradiction |].
+    destruct g0 as [rA A | t]; cbn in Hc; [ contradiction |].
     destruct Hc as (Hmt & Hdp & _); exists t; split; [ cbn; rewrite E; reflexivity | exact (shape_correspond_of _ _ _ Hmt Hdp) ].
   - cbn; rewrite E; apply (IH fs f f1 t' Hn); [| exact Hf ].
     destruct g0', g0; cbn in Hc; try contradiction; tauto.
@@ -268,7 +268,8 @@ Section ViewCount.
           assert (L1 : List.length (fs1 ++ (f, g) :: nil) = List.length (fs1' ++ (f, g') :: nil)) by (rewrite !List.length_app; cbn; lia).
           assert (Hfind : List.find (fun fg => String.eqb (fst fg) f) (List.combine fl gsr') = Some (f, g')).
           { rewrite E'; apply find_name_split; rewrite <- E', combine_fst_eq by exact (eq_sym Hlen'); exact Hnd. }
-          destruct g as [A | t], g' as [A' | t']; cbn [cargs_correspond] in Hco; try contradiction.
+          destruct g as [rA A | t], g' as [rA' A' | t']; cbn [cargs_correspond snd] in Hco; try contradiction;
+            try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
           - cbn [fields_leaves]; exact (IHf _ _ _ _ _ E1 E1' L1 Hco).
           - (** Nested through by the group: none of its paths is the
                 container's. *)
@@ -2281,13 +2282,16 @@ Section CrossElim.
       destruct (IH gs' Hcorr) as [w ihs Ew Ei Hcr].
       exact (cross_member_rview _ _ _ _ _ _ _ _ Mi' Mk qr Is' Is0 fl rview_con gs' rview_con gs vs vs' w ihs
                HMi' Hh' Hcs' HM Hhr Hcs Hp Hp' Ew Ei Hcr).
-    - intros k0 u u' pre pre' [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
+    - intros k0 u u' pre pre' [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
+      try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
       exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ nil nil ltac:(constructor) ltac:(constructor) ltac:(constructor)).
-    - intros * Hia IH [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
+    - intros * Hia IH [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
+      try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
       destruct (IH gs' Hco) as [w ihs Ew Ei Hcr].
       exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ w ihs ltac:(constructor; exact Ew) ltac:(constructor; exact Ei)
                ltac:(constructor; exact Hcr)).
-    - intros * Hsh IHsh Hia IHia [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
+    - intros * Hsh IHsh Hia IHia [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
+      try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
       + (** Nested through: the group's own results. *)
         destruct (IHia gs' Hco) as [w ihs Ew Ei Hcr].
         destruct (proj1 (proj2 (proj2 self_elim_all)) _ _ _ _ _ _ _ _ Hsh) as (rs0 & rs & _ & Eh & _).

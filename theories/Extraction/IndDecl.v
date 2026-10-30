@@ -404,8 +404,10 @@ Proof. intros * H; destruct (in_combine_seq_nth l 0 k M H) as [_ Hk]; rewrite Na
 
 Lemma cargs_correspondb_complete : forall vm gs' gs, cargs_correspond vm gs' gs -> cargs_correspondb vm gs' gs = true.
 Proof.
-  induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try contradiction; auto.
-  destruct H as (Hj & Hd & H); rewrite Hj, Nat.eqb_refl, Hd, Nat.eqb_refl; cbn; auto.
+  induction gs' as [| [r' A' | t'] gs' IH]; intros [| [r A | t] gs] H; cbn in H |- *; try contradiction; auto.
+  - destruct H as [-> H]; destruct (relevance_eq_dec r r) as [_ | Hne]; [ cbn; auto | contradiction ].
+  - destruct H as [-> H]; destruct (relevance_eq_dec relevant relevant) as [_ | Hne]; [ cbn; auto | contradiction ].
+  - destruct H as (Hj & Hd & H); rewrite Hj, Nat.eqb_refl, Hd, Nat.eqb_refl; cbn; auto.
 Qed.
 
 (** A view's members that are the container's members pass the check. *)

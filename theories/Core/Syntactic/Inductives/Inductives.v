@@ -859,14 +859,19 @@ Definition ptyp_ps_at (pat : list bool) (t : ptyp) : list exp :=
     container's at its arguments, as this group sees them: an argument
     recursive in the container is recursive in the view, at the view's
     member [vm] gives for the container's member, through as many domains;
-    an argument the container takes as non-recursive may be either. *)
+    an argument the container takes as non-recursive may be either.  The
+    sorts agree: a non-recursive argument in both has the same sort in
+    both, and one recursive in the view is relevant in the container (the
+    types are equal, so their sorts are; the constructor's value at the
+    view is the container's, which takes its arguments at the container's
+    sorts). *)
 Fixpoint cargs_correspond (vm : list nat) (gs' gs : list carg) : Prop :=
   match gs', gs with
   | nil, nil => True
   | ca_rec t' :: gs1', ca_rec t :: gs1 =>
       List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) /\ ptyp_depth t' = ptyp_depth t /\ cargs_correspond vm gs1' gs1
-  | ca_arg _ _ :: gs1', ca_arg _ _ :: gs1 => cargs_correspond vm gs1' gs1
-  | ca_arg _ _ :: gs1', ca_rec _ :: gs1 => cargs_correspond vm gs1' gs1
+  | ca_arg r' _ :: gs1', ca_arg r _ :: gs1 => r' = r /\ cargs_correspond vm gs1' gs1
+  | ca_arg r' _ :: gs1', ca_rec _ :: gs1 => r' = relevant /\ cargs_correspond vm gs1' gs1
   | _, _ => False
   end.
 

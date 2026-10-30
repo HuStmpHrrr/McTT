@@ -101,8 +101,9 @@ Proof.
   exists i; eexists; exact W.
 Qed.
 
-Lemma fresh_cargs_arg_inv : forall pq U A gs ρ s vs, Fcargs ca_arg A :: gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
-    exists a vs', vs = ⇑! a s :: vs' /\ ⟦ A ⟧ ρ ↘ a /\ Fcargs gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs'.
+Lemma fresh_cargs_arg_inv : forall pq U r A gs ρ s vs, Fcargs ca_arg r A :: gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
+    exists a vs', vs = relevant_value a (⇑! a s) :: vs' /\ ⟦ A ⟧ ρ ↘ a /\
+      Fcargs gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ↦ relevant_value a (⇑! a s) ⍮ S s ↘ vs'.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 Lemma fresh_cargs_rec_inv : forall pq U t gs ρ s vs, Fcargs ca_rec t :: gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
@@ -220,13 +221,13 @@ Inductive cross_tops (qc : qname) (D' : ind_decl) (ub u0 : list domain) (dr : na
 (** No argument *)
 | cross_tops_nil : forall pre preQ pre', cross_tops qc D' ub u0 dr kQ k pre preQ pre' nil nil nil nil
 (** Non-recursive in both: the arguments join the prefixes *)
-| cross_tops_arg : forall pre preQ pre' A' A gsA gsB vA vB vsA vsB,
+| cross_tops_arg : forall pre preQ pre' rA' A' rA A gsA gsB vA vB vsA vsB,
     cross_tops qc D' ub u0 dr kQ k (pre ++ vA :: nil) (preQ ++ vA :: nil) (pre' ++ vB :: nil) gsA gsB vsA vsB ->
-    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg A' :: gsA) (ca_arg A :: gsB) (vA :: vsA) (vB :: vsB)
+    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg rA' A' :: gsA) (ca_arg rA A :: gsB) (vA :: vsA) (vB :: vsB)
 (** Nested through: the container's argument joins its own prefix *)
-| cross_tops_nest : forall pre preQ pre' A' t gsA gsB vA vB vsA vsB,
+| cross_tops_nest : forall pre preQ pre' rA' A' t gsA gsB vA vB vsA vsB,
     cross_tops qc D' ub u0 dr kQ k pre (preQ ++ vA :: nil) pre' gsA gsB vsA vsB ->
-    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB)
+    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg rA' A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB)
 (** Recursive in both: neutrals, the container's at its own relation, the
     domains read alike *)
 | cross_tops_rec : forall pre preQ pre' t' t gsA gsB vA vB vsA vsB,
@@ -237,20 +238,20 @@ Inductive cross_tops (qc : qname) (D' : ind_decl) (ub u0 : list domain) (dr : na
     cross_tops qc D' ub u0 dr kQ k pre preQ pre' gsA gsB vsA vsB ->
     cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_rec t' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB).
 
-Lemma cross_tops_arg_inv : forall qc D' ub u0 dr kQ k pre preQ pre' A' A gsA gsB vA vB vsA vsB,
-    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg A' :: gsA) (ca_arg A :: gsB) (vA :: vsA) (vB :: vsB) ->
+Lemma cross_tops_arg_inv : forall qc D' ub u0 dr kQ k pre preQ pre' rA' A' rA A gsA gsB vA vB vsA vsB,
+    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg rA' A' :: gsA) (ca_arg rA A :: gsB) (vA :: vsA) (vB :: vsB) ->
     cross_tops qc D' ub u0 dr kQ k (pre ++ vA :: nil) (preQ ++ vA :: nil) (pre' ++ vB :: nil) gsA gsB vsA vsB.
 Proof. intros * H; inversion H; subst; assumption. Qed.
 
-Lemma cross_tops_nest_inv : forall qc D' ub u0 dr kQ k pre preQ pre' A' t gsA gsB vA vB vsA vsB,
-    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB) ->
+Lemma cross_tops_nest_inv : forall qc D' ub u0 dr kQ k pre preQ pre' rA' A' t gsA gsB vA vB vsA vsB,
+    cross_tops qc D' ub u0 dr kQ k pre preQ pre' (ca_arg rA' A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB) ->
     cross_tops qc D' ub u0 dr kQ k pre (preQ ++ vA :: nil) pre' gsA gsB vsA vsB.
 Proof. intros * H; inversion H; subst; assumption. Qed.
 
 
 
-Lemma con_args_arg_inv : forall p D okr nr ar dr k u u' pre pre' A gs v v' vs vs',
-    con_args_rel p D okr nr ar dr k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') ->
+Lemma con_args_arg_inv : forall p D okr nr ar dr k u u' pre pre' rA A gs v v' vs vs',
+    con_args_rel p D okr nr ar dr k u u' pre pre' (ca_arg rA A :: gs) (v :: vs) (v' :: vs') ->
     con_args_rel p D okr nr ar dr k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs'.
 Proof. intros * H; inversion H; subst; assumption. Qed.
 
@@ -1061,13 +1062,14 @@ Section CrossFresh.
                         ltac:(rewrite List.app_nil_r; exact EgB) HGG) as ERG.
           rewrite List.app_nil_r in ERG; cbn [ptyp_skip] in ERG.
           exists aB, iG, RGG, gB0; split; [ exact EaB | split; [ exact EgB | split; [ exact HGG | split; [ exists iG, RB; exact HgaB | exact ERG ] ] ] ]. }
-        destruct gA as [A' | t'], gB as [A | t]; cbn [cargs_correspond] in Hco; try contradiction.
+        destruct gA as [rA' A' | t'], gB as [rA A | t]; cbn [cargs_correspond] in Hco; try contradiction;
+          try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [Hrr Hco] end).
         + (** Non-recursive in both. *)
-          destruct (valid_group_arg_types qc D' HgQ HcvQ i' Mi' c gsA gA1 A' gA2 ub nsA vA1 HMi' HconA HeA Hlb ltac:(lia) LA K1A)
+          destruct (valid_group_arg_types qc D' HgQ HcvQ i' Mi' c gsA gA1 rA' A' gA2 ub nsA vA1 HMi' HconA HeA Hlb ltac:(lia) LA K1A)
             as (iA & RA & cA & aA & EcA & EaA & HcaA).
-          destruct (valid_group_arg_types p D Hg Hcv v Mv c gsB gB1 A gB2 u0 nsB vB1 HMv HconB HeB Hu LnB LB K3)
+          destruct (valid_group_arg_types p D Hg Hcv v Mv c gsB gB1 rA A gB2 u0 nsB vB1 HMv HconB HeB Hu LnB LB K3)
             as (iB & RB & gB0 & aB & EgB & EaB & HgaB).
-          destruct (cross_position gA1 (ca_arg A') gA2 gB1 (ca_arg A) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
+          destruct (cross_position gA1 (ca_arg rA' A') gA2 gB1 (ca_arg rA A) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iA, RA, cA; split; [ exact EcA | exact HcaA ])
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
             as [K1' K2' K3' Hrel [ix [Rx Hx]]].
@@ -1076,7 +1078,7 @@ Section CrossFresh.
             by (rewrite HeB, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
           assert (HnthA : List.nth_error (cargs_nonrec gsA) (List.length (cargs_nonrec gA1)) = Some A')
             by (rewrite HeA, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-          destruct (valid_group_arg_head p D Hg Hcv v Mv c gsB gB1 A gB2 u0 nsB vB1 HMv HconB HeB Hu LnB LB K3)
+          destruct (valid_group_arg_head p D Hg Hcv v Mv c gsB gB1 rA A gB2 u0 nsB vB1 HMv HconB HeB Hu LnB LB K3)
             as (i2 & R2 & a2 & Ea2 & HR2 & E2).
           assert (a2 = gB0) as -> by (eapply functional_eval_exp; eassumption).
           pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ Hx) Hx) as Hbb.
@@ -1090,7 +1092,7 @@ Section CrossFresh.
           assert (HaaA : canon_args_rel D' ub i' nsA c (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1) (⇑! aA s) (⇑! aA s)).
           { unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMi' HconA HnthA).
             apply (per_head_left EaA EaA Haa); exact (fresh_var_rel _ _ _ _ s Haa). }
-          destruct (IH gB2 (gA1 ++ ca_arg A' :: nil) (gB1 ++ ca_arg A :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
+          destruct (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_arg rA A :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
                       HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                       K1' K2' K3') with (s := S s) as [vA2' vB2' FA' FB' IHc IHf IHt].
           * rewrite cargs_nonrec_app, !nonrec_arg_vals_app by lia; cbn [cargs_nonrec nonrec_arg_vals List.app].
@@ -1123,10 +1125,10 @@ Section CrossFresh.
                rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), (nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHt;
                  cbn [nonrec_arg_vals] in IHt; rewrite <- !List.app_assoc; exact IHt.
         + (** Non-recursive in the container, recursive in the group. *)
-          destruct (valid_group_arg_types qc D' HgQ HcvQ i' Mi' c gsA gA1 A' gA2 ub nsA vA1 HMi' HconA HeA Hlb ltac:(lia) LA K1A)
+          destruct (valid_group_arg_types qc D' HgQ HcvQ i' Mi' c gsA gA1 rA' A' gA2 ub nsA vA1 HMi' HconA HeA Hlb ltac:(lia) LA K1A)
             as (iA & RA & cA & aA & EcA & EaA & HcaA).
           destruct (Hglink t eq_refl) as (aB & iG & RGG & gB0 & EaB & EgB & HGG & (iB & RB & HgaB) & ERG).
-          destruct (cross_position gA1 (ca_arg A') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
+          destruct (cross_position gA1 (ca_arg rA' A') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iA, RA, cA; split; [ exact EcA | exact HcaA ])
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
             as [K1' K2' K3' Hrel [ix [Rx Hx]]].
@@ -1140,7 +1142,7 @@ Section CrossFresh.
           assert (HaaA : canon_args_rel D' ub i' nsA c (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1) (⇑! aA s) (⇑! aA s)).
           { unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMi' HconA HnthA).
             apply (per_head_left EaA EaA Haa); exact (fresh_var_rel _ _ _ _ s Haa). }
-          destruct (IH gB2 (gA1 ++ ca_arg A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
+          destruct (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
                       HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                       K1' K2' K3') with (s := S s) as [vA2' vB2' FA' FB' IHc IHf IHt].
           * rewrite cargs_nonrec_app, (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB).
@@ -1350,7 +1352,8 @@ Section CrossFresh.
                         ltac:(rewrite List.app_nil_r; exact EgB) HGG) as ERG.
           rewrite List.app_nil_r in ERG; cbn [ptyp_skip] in ERG.
           exists aB, iG, RGG, gB0; split; [ exact EaB | split; [ exact EgB | split; [ exact HGG | split; [ exists iG, RB; exact HgaB | exact ERG ] ] ] ]. }
-        destruct gA as [A' | t'], gB as [A | t]; cbn [cargs_correspond] in Hco; try contradiction.
+        destruct gA as [rA' A' | t'], gB as [rA A | t]; cbn [cargs_correspond] in Hco; try contradiction;
+          try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [Hrr Hco] end).
         + (** Non-recursive in both. *)
           destruct xsA as [| x xsA], xsB as [| x' xsB]; try (inversion Hga; fail).
           pose proof (con_args_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hga) as Hga0.
@@ -1360,7 +1363,7 @@ Section CrossFresh.
           apply List.Forall_cons_iff in HnA as [HnA0 HnA1]; apply List.Forall_cons_iff in HnB as [HnB0 HnB1].
           assert (HnthB : List.nth_error (cargs_nonrec gsB) (List.length (cargs_nonrec gB1)) = Some A)
             by (rewrite HeB, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-          destruct (valid_group_arg_head p D Hg Hcv v Mv c gsB gB1 A gB2 u0 nsB vB1 HMv HconB HeB Hu LnB LB K3)
+          destruct (valid_group_arg_head p D Hg Hcv v Mv c gsB gB1 rA A gB2 u0 nsB vB1 HMv HconB HeB Hu LnB LB K3)
             as (i2 & R2 & a2 & Ea2 & HR2 & E2).
           assert (HarB : ar v nsB c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) x x')
             by (apply (CaI v Mv nsA nsB c gsB _ A _ _ HMv Hns HconB HnthB K4); exact HarA).
@@ -1368,11 +1371,11 @@ Section CrossFresh.
           assert (HP2 : PER R2) by (eapply per_elem_PER; exact HR2).
           assert (Hx'x' : R2 x' x') by (etransitivity; [ symmetry; exact Hxx | exact Hxx ]).
           assert (HbbB : ar v nsB c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) x' x') by (apply E2; exact Hx'x').
-          destruct (cross_position_vals gA1 (ca_arg A') gA2 gB1 (ca_arg A) gB2 vA1 vB1 _ _ x x' HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
+          destruct (cross_position_vals gA1 (ca_arg rA' A') gA2 gB1 (ca_arg rA A) gB2 vA1 vB1 _ _ x x' HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists i2, R2, a2; split; [ exact Ea2 | split; [ exact HR2 | exact Hxx ] ]))
             as [K1' K2' K3' _].
           apply cross_tops_arg.
-          pose proof (IH gB2 (gA1 ++ ca_arg A' :: nil) (gB1 ++ ca_arg A :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
+          pose proof (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_arg rA A :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
                         HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)) as IH'.
           rewrite !cargs_nonrec_app, !nonrec_arg_vals_app in IH' by lia.
           cbn [cargs_nonrec nonrec_arg_vals List.app List.length] in IH'.
@@ -1391,11 +1394,11 @@ Section CrossFresh.
           destruct (Hglink t eq_refl) as (aB & iG & RGG & gB0 & EaB & EgB & HGG & _ & ERG).
           pose proof (cross_rec_move_back gB1 t gB2 vA1 vB1 x x' HeB K4 K6 Hrr) as Hrr'.
           assert (Hxx : RGG x x') by (apply ERG; exact Hrr').
-          destruct (cross_position_vals gA1 (ca_arg A') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ x x' HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
+          destruct (cross_position_vals gA1 (ca_arg rA' A') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ x x' HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iG, RGG, gB0; split; [ exact EgB | split; [ exact HGG | exact Hxx ] ]))
             as [K1' K2' K3' _].
           apply cross_tops_nest.
-          pose proof (IH gB2 (gA1 ++ ca_arg A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
+          pose proof (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
                         HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)) as IH'.
           rewrite !cargs_nonrec_app, !nonrec_arg_vals_app in IH' by lia.
           cbn [cargs_nonrec nonrec_arg_vals List.app List.length] in IH'.

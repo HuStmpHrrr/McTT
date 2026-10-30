@@ -3638,7 +3638,7 @@ Proof.
     eapply in_concat_map; [ exact Hcs | cbn [snd]; apply in_cargs_rec_mems ].
 Qed.
 
-(** The members a view's [vm] lists, checked. *)
+(** The members a view's [vm] lists, and the arguments' sorts, checked. *)
 Fixpoint cargs_correspondb (vm : list nat) (gs' gs : list carg) : bool :=
   match gs', gs with
   | nil, nil => true
@@ -3647,17 +3647,23 @@ Fixpoint cargs_correspondb (vm : list nat) (gs' gs : list carg) : bool :=
       | Some j => Nat.eqb j (ptyp_mem t) && Nat.eqb (ptyp_depth t') (ptyp_depth t) && cargs_correspondb vm gs1' gs1
       | None => false
       end
-  | ca_arg _ :: gs1', ca_arg _ :: gs1 => cargs_correspondb vm gs1' gs1
-  | ca_arg _ :: gs1', ca_rec _ :: gs1 => cargs_correspondb vm gs1' gs1
+  | ca_arg r' _ :: gs1', ca_arg r _ :: gs1 =>
+      (if relevance_eq_dec r' r then true else false) && cargs_correspondb vm gs1' gs1
+  | ca_arg r' _ :: gs1', ca_rec _ :: gs1 =>
+      (if relevance_eq_dec r' relevant then true else false) && cargs_correspondb vm gs1' gs1
   | _, _ => false
   end.
 
 Lemma cargs_correspondb_sound : forall vm gs' gs, cargs_correspondb vm gs' gs = true -> cargs_correspond vm gs' gs.
 Proof.
-  induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try discriminate; auto.
-  destruct (List.nth_error vm (ptyp_mem t')) as [j |] eqn:Hj; [| discriminate ].
-  apply andb_true_iff in H as [H H3]; apply andb_true_iff in H as [H1 H2].
-  apply Nat.eqb_eq in H1, H2; subst; auto.
+  induction gs' as [| [r' A' | t'] gs' IH]; intros [| [r A | t] gs] H; cbn in H |- *; try discriminate; auto.
+  - apply andb_true_iff in H as [H1 H2].
+    destruct (relevance_eq_dec r' r) as [-> |]; [ auto | discriminate ].
+  - apply andb_true_iff in H as [H1 H2].
+    destruct (relevance_eq_dec r' relevant) as [-> |]; [ auto | discriminate ].
+  - destruct (List.nth_error vm (ptyp_mem t')) as [j |] eqn:Hj; [| discriminate ].
+    apply andb_true_iff in H as [H H3]; apply andb_true_iff in H as [H1 H2].
+    apply Nat.eqb_eq in H1, H2; subst; auto.
 Qed.
 
 (** The check of [view_wrap_ok D D' vm]: [vm] has one entry per member of the

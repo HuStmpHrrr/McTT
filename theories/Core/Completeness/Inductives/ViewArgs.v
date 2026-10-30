@@ -48,8 +48,8 @@ Proof.
   intros vm; induction gs1' as [| g' gs1' IH]; intros gs2' gs1 gs2 H Hl; destruct gs1 as [| g gs1]; cbn in Hl; try discriminate;
     [ split; [ exact I | exact H ] |].
   destruct g' as [rA' A' | t'], g as [rA A | t]; cbn in H |- *; try contradiction.
-  - exact (IH _ _ _ H ltac:(lia)).
-  - exact (IH _ _ _ H ltac:(lia)).
+  - destruct H as [Hr H]; destruct (IH _ _ _ H ltac:(lia)) as [H1 H2]; exact (conj (conj Hr H1) H2).
+  - destruct H as [Hr H]; destruct (IH _ _ _ H ltac:(lia)) as [H1 H2]; exact (conj (conj Hr H1) H2).
   - destruct H as (Hm & Hd & H); destruct (IH _ _ _ H ltac:(lia)) as [H1 H2].
     split; [ exact (conj Hm (conj Hd H1)) | exact H2 ].
 Qed.

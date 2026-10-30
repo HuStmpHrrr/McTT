@@ -226,7 +226,8 @@ Section ViewCount.
           assert (L1 : List.length (fs1 ++ (f, g) :: nil) = List.length (fs1' ++ (f, g') :: nil)) by (rewrite !List.length_app; cbn; lia).
           assert (Hfind : List.find (fun fg => String.eqb (fst fg) f) (List.combine fl gsr') = Some (f, g')).
           { rewrite E'; apply find_name_split; rewrite <- E', combine_fst_eq by exact (eq_sym Hlen'); exact Hnd. }
-          destruct g as [rA A | t], g' as [rA' A' | t']; cbn [cargs_correspond] in Hco; try contradiction.
+          destruct g as [rA A | t], g' as [rA' A' | t']; cbn [cargs_correspond snd] in Hco; try contradiction;
+            try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
           - cbn [fields_leaves]; exact (IHf _ _ _ _ _ E1 E1' L1 Hco).
           - (** Nested through by the group: none of its paths is the
                 container's. *)
@@ -268,7 +269,7 @@ Section ViewCount.
   Lemma cargs_container_count_view : forall gs' gs, cargs_correspond vm gs' gs -> cargs_container_count D D' gs' gs = cargs_nrec D' gs'.
   Proof.
     induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] Hco; cbn [cargs_correspond] in Hco; try contradiction;
-      cbn [cargs_container_count cargs_nrec]; try reflexivity; try exact (IH _ Hco).
+      cbn [cargs_container_count cargs_nrec]; try reflexivity; try exact (IH _ (proj2 Hco)).
     destruct Hco as (Hmt & Hdp & Hco).
     rewrite IH by exact Hco; f_equal.
     apply (leaves_in_count_view (S (ptyp_mem t))); [ intros; lia | exact (shape_correspond_of _ _ _ Hmt Hdp) ].
