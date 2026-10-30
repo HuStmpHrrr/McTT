@@ -521,6 +521,59 @@ Proof.
   rewrite Hl, <- Hlms, env_entry_args_app; reflexivity.
 Qed.
 
+(** The entry [x] of an environment of arguments [zs], below their count:
+    the argument [|zs| - 1 - x]. *)
+Lemma env_entry_args_rev_nth : forall ρ zs j z, List.nth_error zs j = Some z ->
+    env_entry (env_args ρ zs) (List.length zs - 1 - j) = de_term z.
+Proof.
+  intros * Hz.
+  assert (Hj : j < List.length zs) by (apply List.nth_error_Some; congruence).
+  rewrite env_args_rev, env_entry_nth, List.app_nth1 by (rewrite List.length_rev, List.length_map; lia).
+  rewrite List.rev_nth by (rewrite List.length_map; lia).
+  rewrite List.length_map; replace (List.length zs - S (List.length zs - 1 - j)) with j by lia.
+  erewrite List.nth_error_nth; [ reflexivity | rewrite List.nth_error_map, Hz; reflexivity ].
+Qed.
+
+#[local] Transparent eval_sub.
+(** A substitution extended by terms, at a context extended by entries
+    [ts], to the environment extended by values [ms]: at each new entry
+    the proof [⋆ᵈ] where it is a proposition, the term's value elsewhere. *)
+Lemma eval_sb_of_list_pointwise : forall Ms ts σ Δ ρ ρσ ms,
+    ⟦ σ : Δ ⟧s ρ ↘ ρσ -> List.length ts = List.length Ms -> List.length ms = List.length Ms ->
+    (forall j M m, List.nth_error Ms j = Some M -> List.nth_error ms j = Some m ->
+       (entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_args ρσ ms) (List.length Ms - 1 - j) -> m = ⋆ᵈ) /\
+       (~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_args ρσ ms) (List.length Ms - 1 - j) ->
+          ⟦ M ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ m)) ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_args ρσ ms.
+Proof.
+  intros * Hσ Hl Hlm Hv x Hx; rewrite List.length_app, List.length_rev in Hx.
+  destruct (Nat.lt_ge_cases x (List.length Ms)) as [Hlt | Hge].
+  - set (j := List.length Ms - 1 - x).
+    destruct (nth_error_lt_some' Ms j ltac:(unfold j; lia)) as [M HM].
+    destruct (nth_error_lt_some' ms j ltac:(unfold j; lia)) as [m Hm].
+    assert (Ex : List.length Ms - 1 - j = x) by (unfold j; lia).
+    pose proof (Hv _ _ _ HM Hm) as [Hp Hn]; rewrite Ex in Hp, Hn.
+    assert (Ee : env_entry (env_args ρσ ms) x = de_term m)
+      by (rewrite <- Ex, <- Hlm; exact (env_entry_args_rev_nth _ _ _ _ Hm)).
+    rewrite (sb_of_list_nth _ _ _ a_placeholder Hlt), Ee.
+    replace (List.nth (List.length Ms - 1 - x) Ms a_placeholder) with M by (symmetry; apply List.nth_error_nth; exact HM).
+    split; [ intros Hpx; rewrite (Hp Hpx); reflexivity | intros Hnx; exists m; split; [ reflexivity | exact (Hn Hnx) ] ].
+  - destruct (Nat.le_exists_sub _ _ Hge) as (y & -> & _); rewrite Nat.add_comm.
+    pose proof (Hσ y ltac:(lia)) as [Hp Hn].
+    assert (Hs : List.skipn (List.length (List.rev ts)) (env_args ρσ ms) = ρσ)
+      by (rewrite List.length_rev, Hl, <- Hlm; apply skipn_env_args).
+    assert (Ee : env_entry (env_args ρσ ms) (List.length Ms + y) = env_entry ρσ y)
+      by (rewrite <- Hlm; apply env_entry_args_app).
+    rewrite sb_of_list_ge, Ee; split.
+    + intros Hpx; apply Hp.
+      replace (List.length Ms + y) with (List.length (List.rev ts) + y) in Hpx by (rewrite List.length_rev; lia).
+      pose proof (entry_propositional_shiftn _ _ _ _ Hpx) as Hpx'; rewrite Hs in Hpx'; exact Hpx'.
+    + intros Hnx; apply Hn; intros Hp'; apply Hnx.
+      replace (List.length Ms + y) with (List.length (List.rev ts) + y) by (rewrite List.length_rev; lia).
+      apply entry_propositional_shiftn_intro; rewrite Hs; exact Hp'.
+Qed.
+#[local] Opaque eval_sub.
+
 Lemma eval_vars_from_args : forall xs E ys,
     ⟦ vars_from (List.length ys) (List.length xs) ⟧* gc_deps ⍮ gc_stack ⍮ env_args E (xs ++ ys) ↘ xs.
 Proof.

@@ -233,6 +233,74 @@ Proof.
   exact (closed_app_valid _ _ _ _ _ Ha2 HC2 HΓ (Hl _ _ _ E)).
 Qed.
 
+(** A propositional entry of a closed telescope [C], extended by [Γ], at
+    arguments of [C] over any base, is one of [C] at the arguments over any
+    other base: the entries of [C] read only the arguments. *)
+Lemma entry_propositional_args_base : forall C Γ E E0 zs x, List.length zs = List.length C -> x < List.length C ->
+    entry_propositional gc_deps gc_stack (C ++ Γ) (env_args E zs) x ->
+    entry_propositional gc_deps gc_stack C (env_args E0 zs) x.
+Proof.
+  intros * Hl Hx [T HT E' HE a Ea Hp].
+  econstructor; [ | | exact Ea | exact Hp ].
+  - unfold ctx_entry_type in *; rewrite List.nth_error_app1 in HT by exact Hx; exact HT.
+  - intros y Hy; rewrite List.length_skipn in Hy.
+    rewrite (HE y) by (rewrite List.length_skipn, List.length_app; lia).
+    rewrite !env_entry_skipn; apply env_entry_args_lt; lia.
+Qed.
+
+(** The entry types of a valid telescope of assumptions are valid types
+    over the entries outside them. *)
+Lemma rel_ctx_wf_entry_type : forall C x T, ⊨ C -> tele_ass C -> ctx_entry_type C x = Some T ->
+    exists i, List.skipn (S x) C ⊨ᵗ T ≈ T at i.
+Proof.
+  intros * HC Ha HT.
+  unfold ctx_entry_type in HT; destruct (List.nth_error C x) as [e |] eqn:He; [| discriminate ].
+  assert (Hea : exists A, e = ce_ass A)
+    by (unfold tele_ass in Ha; rewrite List.Forall_forall in Ha; apply Ha; eapply List.nth_error_In; exact He).
+  destruct Hea as [A ->]; injection HT as <-.
+  destruct (List.nth_error_split _ _ He) as (l1 & l2 & HΔ & Hl1).
+  assert (Hsk : List.skipn (S x) C = l2)
+    by (rewrite HΔ, <- Hl1; change (l1 ++ ce_ass A :: l2) with (l1 ++ (ce_ass A :: nil) ++ l2);
+        rewrite List.app_assoc, List.skipn_app, List.skipn_all2 by (rewrite List.length_app; cbn; lia);
+        rewrite List.length_app; cbn; rewrite Nat.add_1_r, Nat.sub_diag; reflexivity).
+  rewrite Hsk; rewrite HΔ in HC.
+  exact (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)).
+Qed.
+
+(** At an environment of arguments of a closed valid telescope [C] its
+    context PER relates, extended by [Γ], an entry of [C] is a proposition
+    exactly when its type's value there is. *)
+Lemma entry_propositional_closed_iff : forall C Γ RC E zs x T u, ⊨ C -> tele_ass C ->
+    EF C ≈ C ∈ per_ctx_env ↘ RC -> List.length zs = List.length C ->
+    RC (env_args E zs) (env_args E zs) -> x < List.length C -> ctx_entry_type C x = Some T ->
+    ⟦ T ⟧ List.skipn (S x) (env_args E zs) ↘ u ->
+    (entry_propositional gc_deps gc_stack (C ++ Γ) (env_args E zs) x <-> domain_relevance u = propositional).
+Proof.
+  intros * HC Ha HRC Hl HE Hx HT Eu.
+  destruct (rel_ctx_wf_entry_type _ _ _ HC Ha HT) as [i HTv].
+  (** The tail past the entry, and its context PER. *)
+  pose proof (rel_type_inversion HTv) as [RT [HRT _]].
+  assert (Hsplit : C = List.firstn (S x) C ++ List.skipn (S x) C) by (symmetry; apply List.firstn_skipn).
+  assert (HRC' : EF List.firstn (S x) C ++ List.skipn (S x) C ≈ List.firstn (S x) C ++ List.skipn (S x) C ∈ per_ctx_env ↘ RC)
+    by (rewrite <- Hsplit; exact HRC).
+  destruct (rel_wk_shiftn _ _ _ _ HRC' HRT) as [_ Hwk].
+  pose proof (Hwk _ _ HE) as Ht; rewrite !eval_wk_shiftn in Ht.
+  rewrite List.length_firstn, Nat.min_l in Ht by lia.
+  split.
+  - intros [T' HT' E' HE' a Ea Hp].
+    unfold ctx_entry_type in HT, HT'; rewrite List.nth_error_app1 in HT' by exact Hx; rewrite HT in HT'; injection HT' as <-.
+    assert (HE'' : RT E' (List.skipn (S x) (env_args E zs))).
+    { eapply (per_ctx_env_resp_agree HRT); [ | reflexivity | exact Ht ].
+      intros y Hy; symmetry; apply HE'; rewrite !List.length_skipn, List.length_app in *; lia. }
+    destruct (rel_type_inversion_simple_at HRT HTv _ _ HE'') as (a0 & u0 & Ea0 & Eu0 & [Ru HRu]).
+    assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (u0 = u) as -> by (eapply functional_eval_exp; eassumption).
+    pose proof (per_univ_elem_relevance _ _ _ _ HRu); congruence.
+  - intros Hp.
+    eapply mk_entry_propositional with (entry_propositional_env := List.skipn (S x) (env_args E zs));
+      [ unfold ctx_entry_type in *; rewrite List.nth_error_app1 by exact Hx; exact HT | intros y _; reflexivity | exact Eu | exact Hp ].
+Qed.
+
 (** Related arguments at a closed telescope hold the proof at its
     propositions. *)
 Corollary gargs_env_proofs : forall Ctx zs zs' ρ ρ', ⊨ Ctx ->
@@ -242,6 +310,19 @@ Proof.
   intros * HC Hl Hg.
   destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
   exact (proj1 (per_ctx_env_proofs _ _ _ HR _ _ (gargs_env_rel _ _ _ _ _ _ HR HC Hl Hg))).
+Qed.
+
+(** Related arguments of a closed telescope [C] over related environments
+    of [Γ] are related environments of [C ++ Γ]. *)
+Lemma closed_args_rel_over : forall C Γ RΓ RCΓ E E' zs zs', tele_ass C -> ⊨ C -> ⊨ Γ ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF C ++ Γ ≈ C ++ Γ ∈ per_ctx_env ↘ RCΓ -> RΓ E E' ->
+    List.length zs = List.length C -> per_gargs (List.rev C) nil nil zs zs' -> RCΓ (env_args E zs) (env_args E' zs').
+Proof.
+  intros * Ha HC HΓ HRΓ HRCΓ HE Hl Hg.
+  assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
+  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' (List.Forall_rev Ha) nil nil E E' zs zs' I I I Hg) as Hg'.
+  destruct (closed_app_sem _ _ Ha HC HΓ) as [HCΓ _].
+  exact (gargs_env_rel_gen _ _ _ _ _ _ _ _ HRΓ HRCΓ HCΓ HE Hl Hg').
 Qed.
 
 (** Arguments related at a telescope are related by the canonical
