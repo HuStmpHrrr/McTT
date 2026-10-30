@@ -327,19 +327,21 @@ Qed.
 
 (** ** Instances of a Closed Type
 
-    A type [X] of a closed context [Pre ++ C0], instantiated past [Pre] by a
-    substitution [τ] of [C0], is related at an environment of the instance of
-    [Pre] to [X] at any environment related to the values there. *)
-Lemma closed_typ_inst : forall Pre C0 Γ X (j : nat) τ RΓ RK RS B zs Bτ F,
+    A type [X] of some sort of a closed context [Pre ++ C0], instantiated
+    past [Pre] by a substitution [τ] of [C0], is related at an environment
+    of the instance of [Pre] to [X] at any environment related to the
+    values there. *)
+Lemma closed_typ_inst : forall Pre C0 Γ X S τ RΓ RK RS B zs Bτ F,
     tele_ass (Pre ++ C0) -> ⊨ Pre ++ C0 -> tele_ass C0 -> ⊨ C0 -> ⊨ Γ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Pre ++ C0 ≈ Pre ++ C0 ∈ per_ctx_env ↘ RK ->
     EF tele_sub Pre τ ++ Γ ≈ tele_sub Pre τ ++ Γ ∈ per_ctx_env ↘ RS ->
-    Pre ++ C0 ⊨ X : Typeω@j -> Γ ⊨ˢ τ ≈ τ : C0 ++ Γ ->
+    type_sort S -> Pre ++ C0 ⊨ X : S -> Γ ⊨ˢ τ ≈ τ : C0 ++ Γ ->
     RS (env_args B zs) (env_args B zs) -> List.length zs = List.length Pre ->
     ⟦ τ : C0 ++ Γ ⟧s B ↘ Bτ -> RK (env_args Bτ zs) F ->
-    exists a b, ⟦ X[sb_qn (List.length Pre) τ] ⟧ env_args B zs ↘ a /\ ⟦ X ⟧ F ↘ b /\ Dom a ≈ b ∈ per_univ j.
+    exists (j : nat) a b, ⟦ X[sb_qn (List.length Pre) τ] ⟧ env_args B zs ↘ a /\ ⟦ X ⟧ F ↘ b /\ Dom a ≈ b ∈ per_univ j.
 Proof.
-  intros * HKa HK HC0a HC0 HΓ HRΓ HRK HRS HX Hτ HE Hl Hev HF.
+  intros * HKa HK HC0a HC0 HΓ HRΓ HRK HRS HS HX Hτ HE Hl Hev HF.
+  destruct (rel_type_of_sort_at HS) as [j Hj]; exists j.
   destruct (closed_app_sem _ _ HKa HK HΓ) as [HKΓ HresK].
   destruct (closed_app_sem _ _ HC0a HC0 HΓ) as [HC0Γ Hres0].
   destruct (rel_ctx_wf_per_ctx_env HC0Γ) as [R0Γ HR0Γ].
@@ -352,7 +354,7 @@ Proof.
               ltac:(rewrite length_tele_sub; exact Hl) Hev) as (Y & HY & HYτ).
   rewrite length_tele_sub in HY.
   pose proof (rel_sub_qn Pre (C0 ++ Γ) Γ τ τ HPa ltac:(rewrite List.app_assoc; exact HKΓ) Hτ) as Hq.
-  assert (HXΓ : Pre ++ C0 ++ Γ ⊨ X : Typeω@j) by (rewrite List.app_assoc; exact (closed_app_valid _ _ _ _ _ HKa HK HΓ HX)).
+  assert (HXΓ : Pre ++ C0 ++ Γ ⊨ X : S) by (rewrite List.app_assoc; exact (closed_app_valid _ _ _ _ _ HKa HK HΓ HX)).
   (** The value at the instance's tail, against the given one. *)
   assert (HYτ0 : R0 Y Bτ) by (exact (Hres0 _ _ HR0 HR0Γ _ _ HYτ)).
   assert (HPre : ⊨ List.rev (List.rev Pre) ++ C0) by (rewrite List.rev_involutive; exact HK).
@@ -372,10 +374,10 @@ Proof.
     apply (proj1 (per_ctx_env_proofs _ _ _ HRK _ _ HYB)).
     exact (ctx_props_incl_app RK (Pre ++ C0) Γ _ _ HYB x ltac:(rewrite List.length_app; lia) Hp). }
   pose proof (eval_sub_qn_args _ _ _ _ _ _ Hl HY Hpf) as Hqev.
-  destruct (typ_inst_link _ _ _ _ _ _ _ _ _ (rel_type_of_typ HXΓ) HRS (rel_sub_under_ctx_refl_left Hq) HE Hqev)
+  destruct (typ_inst_link _ _ _ _ _ _ _ _ _ (Hj _ _ _ HXΓ) HRS (rel_sub_under_ctx_refl_left Hq) HE Hqev)
     as (a & b0 & Ea & Eb0 & Hab).
   assert (HYF : RK (env_args Y zs) F) by (etransitivity; [ exact HYB | exact HF ]).
-  destruct (rel_exp_of_typ_inversion_simple_at HRK HX _ _ HYF) as (b1 & b & Eb1 & Eb & Hbb).
+  destruct (rel_type_inversion_simple_at HRK (Hj _ _ _ HX) _ _ HYF) as (b1 & b & Eb1 & Eb & Hbb).
   assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption).
   exists a, b; split; [ exact Ea | split; [ exact Eb | etransitivity; [ exact Hab | exact Hbb ] ] ].
 Qed.

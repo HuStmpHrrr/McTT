@@ -205,21 +205,21 @@ Proof.
   exact Hr.
 Qed.
 
-(** A telescope of types of universes over [Γ] has no propositional
-    entry at an environment its context PER relates. *)
-Lemma relevant_entries_not_propositional : forall Δ Γ R, tele_ass Δ ->
-    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
+(** An entry of a telescope over [Γ] that is a type of a universe is no
+    proposition at an environment the context PER relates. *)
+Lemma relevant_entry_not_propositional : forall Δ Γ R x, tele_ass Δ -> x < List.length Δ ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> List.length Δ1 = x -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
     EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
-    forall ρ ρ', R ρ ρ' -> forall x, x < List.length Δ -> ~ entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
+    forall ρ ρ', R ρ ρ' -> ~ entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
 Proof.
-  intros * Ha Hrel HR ρ ρ' Hρ x Hx [T HT E HE a Ea Hp].
+  intros * Ha Hx Hrel HR ρ ρ' Hρ [T HT E HE a Ea Hp].
   destruct (nth_error_lt_some' Δ x Hx) as [e He].
   assert (Hea : exists A, e = ce_ass A)
     by (unfold tele_ass in Ha; rewrite List.Forall_forall in Ha; apply Ha; eapply List.nth_error_In; exact He).
   destruct Hea as [A ->].
   unfold ctx_entry_type in HT; rewrite List.nth_error_app1, He in HT by exact Hx; injection HT as ->.
   destruct (List.nth_error_split _ _ He) as (l1 & l2 & HΔ & Hl1).
-  destruct (Hrel _ _ _ HΔ) as [i HA].
+  destruct (Hrel _ _ _ HΔ Hl1) as [i HA].
   pose proof HA as [RT HRT _ _].
   assert (HRe : EF (l1 ++ ce_ass T :: nil) ++ (l2 ++ Γ) ≈ (l1 ++ ce_ass T :: nil) ++ (l2 ++ Γ) ∈ per_ctx_env ↘ R)
     by (rewrite HΔ in HR; rewrite <- !List.app_assoc in *; cbn [List.app] in *; exact HR).
@@ -239,6 +239,43 @@ Proof.
   congruence.
 Qed.
 
+(** An entry of a telescope over [Γ] that is a proposition is one at an
+    environment the context PER relates. *)
+Lemma prop_entry_propositional : forall Δ Γ R x, tele_ass Δ -> x < List.length Δ ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> List.length Δ1 = x -> Δ2 ++ Γ ⊨ T : Propₘ) ->
+    EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
+Proof.
+  intros * Ha Hx Hrel HR ρ ρ' Hρ.
+  destruct (nth_error_lt_some' Δ x Hx) as [e He].
+  assert (Hea : exists A, e = ce_ass A)
+    by (unfold tele_ass in Ha; rewrite List.Forall_forall in Ha; apply Ha; eapply List.nth_error_In; exact He).
+  destruct Hea as [A ->].
+  destruct (List.nth_error_split _ _ He) as (l1 & l2 & HΔ & Hl1).
+  pose proof (Hrel _ _ _ HΔ Hl1) as HA.
+  pose proof HA as [RT HRT _ _].
+  assert (HRe : EF (l1 ++ ce_ass A :: nil) ++ (l2 ++ Γ) ≈ (l1 ++ ce_ass A :: nil) ++ (l2 ++ Γ) ∈ per_ctx_env ↘ R)
+    by (rewrite HΔ in HR; rewrite <- !List.app_assoc in *; cbn [List.app] in *; exact HR).
+  destruct (rel_wk_shiftn _ _ _ _ HRe HRT) as [_ Hwk].
+  pose proof (Hwk _ _ Hρ) as Ht; rewrite !eval_wk_shiftn in Ht.
+  assert (Hlx : List.length (l1 ++ ce_ass A :: nil) = S x) by (rewrite List.length_app; cbn; lia).
+  rewrite Hlx in Ht.
+  destruct (rel_exp_of_prop_inversion_simple_at HRT HA _ _ Ht) as (a & a' & Ea & Ea' & Hpp).
+  apply (mk_entry_propositional _ _ _ _ _ A ltac:(unfold ctx_entry_type; rewrite List.nth_error_app1, He by exact Hx; reflexivity)
+           (List.skipn (S x) ρ) ltac:(reflexivity) a Ea (per_prop_left _ _ Hpp)).
+Qed.
+
+(** A telescope of types of universes over [Γ] has no propositional
+    entry at an environment its context PER relates. *)
+Corollary relevant_entries_not_propositional : forall Δ Γ R, tele_ass Δ ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
+    EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> forall x, x < List.length Δ -> ~ entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
+Proof.
+  intros * Ha Hrel HR ρ ρ' Hρ x Hx.
+  exact (relevant_entry_not_propositional Δ Γ R x Ha Hx (fun Δ1 T Δ2 E _ => Hrel Δ1 T Δ2 E) HR ρ ρ' Hρ).
+Qed.
+
 (** The relevant parameters of a closed telescope stay relevant over any
     valid context. *)
 Lemma closed_relevant_over : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ ->
@@ -251,6 +288,196 @@ Proof.
     by (rewrite E in Ha; unfold tele_ass in Ha; apply List.Forall_app in Ha as [_ Ha]; inversion Ha; assumption).
   assert (HC2 : ⊨ Δ2) by (rewrite E in HC; exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC))).
   exact (closed_app_valid _ _ _ _ _ Ha2 HC2 HΓ (Hl _ _ _ E)).
+Qed.
+
+(** The values of an instance [Ms] of a telescope [C] of relevant entries
+    over [Γ], at two environments of [Γ]: related at [C ++ Γ] after the
+    environments, and the instance's values. *)
+#[warnings="-cannot-define-projection"]
+Record instance_values (C Γ : ctx) (Ms : list exp) (RCΓ : relation env) (B1 B2 : env) : Prop := mk_instance_values
+  { (** The terms' values at the left environment *)
+    iv_left : list domain
+    (** and at the right one *)
+  ; iv_right : list domain
+    (** They are the terms' values *)
+  ; iv_eval_left : ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ B1 ↘ iv_left
+  ; iv_eval_right : ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ B2 ↘ iv_right
+    (** related at the telescope after the environments *)
+  ; iv_rel : RCΓ (env_args B1 iv_left) (env_args B2 iv_right)
+    (** and the instance's values, on each side *)
+  ; iv_sub_left : ⟦ sb_of_list Id Ms : C ++ Γ ⟧s B1 ↘ env_args B1 iv_left
+  ; iv_sub_right : ⟦ sb_of_list Id Ms : C ++ Γ ⟧s B2 ↘ env_args B2 iv_right }.
+
+(** A semantic substitution of the instance gives its values: no entry of
+    [C] is a proposition at the substitution's values, so these are the
+    terms' values. *)
+Lemma instance_values_of_sub : forall C Γ Ms RΓ RCΓ, tele_ass C ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF C ++ Γ ≈ C ++ Γ ∈ per_ctx_env ↘ RCΓ ->
+    (forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
+    Γ ⊨ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms : C ++ Γ -> List.length Ms = List.length C ->
+    forall B1 B2, RΓ B1 B2 -> instance_values C Γ Ms RCΓ B1 B2.
+Proof.
+  intros * Ha HRΓ HRCΓ0 Hrel' Hσ Hl B1 B2 HB.
+  destruct (rel_sub_under_ctx_simple Hσ) as (RΓ' & HRΓ' & RCΓ' & HRCΓ & Hs).
+  assert (E : RΓ <~> RΓ') by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (EC : RCΓ' <~> RCΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hs _ _ (proj1 (E _ _) HB)) as (ρσ & ρ'σ' & Ev1 & Ev2 & Hρσ).
+  assert (HPC : PER RCΓ') by (eapply per_env_PER; exact HRCΓ).
+  pose proof (relevant_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ _ _ Hρσ) as Hnp1.
+  pose proof (relevant_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ ρ'σ' ρσ ltac:(symmetry; exact Hρσ)) as Hnp2.
+  pose proof (per_ctx_env_proofs _ _ _ HRΓ _ _ HB) as [Hp1 Hp2].
+  assert (HlC : List.length (List.rev C) = List.length Ms) by (rewrite List.length_rev; lia).
+  assert (Hnp1' : forall x, x < List.length (List.rev C) ->
+                    ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ) ρσ x)
+    by (intros x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx; exact (Hnp1 x Hx)).
+  assert (Hnp2' : forall x, x < List.length (List.rev C) ->
+                    ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ) ρ'σ' x)
+    by (intros x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx; exact (Hnp2 x Hx)).
+  rewrite <- (List.rev_involutive C) in Ev1, Ev2.
+  destruct (eval_sb_of_list_inv Ms (List.rev C) Id Γ B1 ρσ B1 HlC Ev1 Hnp1' (eval_sub_id _ _ Hp1)) as (u1 & Eu1 & Hag1).
+  destruct (eval_sb_of_list_inv Ms (List.rev C) Id Γ B2 ρ'σ' B2 HlC Ev2 Hnp2' (eval_sub_id _ _ Hp2)) as (u2 & Eu2 & Hag2).
+  rewrite List.length_rev in Hag1, Hag2.
+  assert (H12 : RCΓ' (env_args B1 u1) (env_args B2 u2))
+    by (eapply (per_ctx_env_resp_agree HRCΓ); [ rewrite List.length_app; exact Hag1 | rewrite List.length_app; exact Hag2 | exact Hρσ ]).
+  (** The instance's values at the terms' values: no entry of [C] is a
+      proposition there, as at the values the substitution has. *)
+  assert (Hsub : forall B u ρ0, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ B ↘ u -> env_proofs gc_deps gc_stack Γ B ->
+             env_agree_upto (List.length C + List.length Γ) ρ0 (env_args B u) ->
+             (forall x, x < List.length C -> ~ entry_propositional gc_deps gc_stack (C ++ Γ) ρ0 x) ->
+             ⟦ sb_of_list Id Ms : C ++ Γ ⟧s B ↘ env_args B u).
+  { intros B u ρ0 Eu Hp Hag Hnp.
+    rewrite <- (List.rev_involutive C).
+    apply eval_sb_of_list; [ exact (eval_sub_id _ _ Hp) | exact Eu | exact HlC |].
+    intros x Hx Hpx; exfalso; rewrite List.length_rev in Hx; rewrite List.rev_involutive in Hpx.
+    apply (Hnp x Hx).
+    apply (entry_propositional_resp_agree _ (env_args B u)); [| exact Hpx ].
+    rewrite List.length_app; intros y Hy; symmetry; exact (Hag y Hy). }
+  exists u1 u2; [ exact Eu1 | exact Eu2 | exact (proj1 (EC _ _) H12)
+                | exact (Hsub _ _ _ Eu1 Hp1 Hag1 Hnp1) | exact (Hsub _ _ _ Eu2 Hp2 Hag2 Hnp2) ].
+Qed.
+
+(** A substitution's value is one up to agreement on the target's
+    entries: those are all it reads. *)
+Lemma eval_sub_resp_agree : forall Δ σ ρ e1 e2, env_agree_upto (List.length Δ) e1 e2 ->
+    ⟦ σ : Δ ⟧s ρ ↘ e1 -> ⟦ σ : Δ ⟧s ρ ↘ e2.
+Proof.
+  #[local] Transparent eval_sub.
+  intros * Hag H; unfold eval_sub in H |- *; intros x Hx; destruct (H x Hx) as [Hp Hn]; split.
+  - intros Hp2; rewrite <- (Hag x Hx); apply Hp.
+    apply (entry_propositional_resp_agree _ e2); [ intros y Hy; symmetry; exact (Hag y Hy) | exact Hp2 ].
+  - intros Hn2; rewrite <- (Hag x Hx); apply Hn; intros Hp1; apply Hn2.
+    apply (entry_propositional_resp_agree _ e1); [ exact Hag | exact Hp1 ].
+Qed.
+
+(** A substitution extended by terms [Ms] whose entries are sorted by
+    [rf]: those of a relevant sort no proposition at the value [E], those
+    of the propositional one propositions there whose terms' values are
+    the proof.  [E] then holds the terms' values over its tail. *)
+Lemma eval_sb_of_list_sorted_agree : forall Ms ts σ Δ ρ E ms (rf : nat -> relevance), List.length ts = List.length Ms ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms ->
+    (forall x, x < List.length ts -> rf x = relevant -> ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
+    (forall x, x < List.length ts -> rf x = propositional ->
+       entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x /\
+       List.nth (List.length ms - 1 - x) ms d_placeholder = ⋆ᵈ) ->
+    env_agree_upto (List.length ts + List.length Δ) E (env_args (List.skipn (List.length ts) E) ms).
+Proof.
+  #[local] Transparent eval_sub.
+  intros * Hl H Hms Hr Hp x Hx.
+  pose proof (eval_exps_length _ _ _ Hms) as Lms.
+  destruct (Nat.lt_ge_cases x (List.length ts)) as [Hlt | Hge].
+  - assert (Hx' : x < List.length (List.rev ts ++ Δ)) by (rewrite List.length_app, List.length_rev; lia).
+    destruct (H x Hx') as [HP HN].
+    assert (Hk : List.length ms - 1 - x < List.length ms) by lia.
+    pose proof (env_entry_args_rev_nth (List.skipn (List.length ts) E) ms (List.length ms - 1 - x) _
+                  (List.nth_error_nth' ms d_placeholder Hk)) as Ee.
+    replace (List.length ms - 1 - (List.length ms - 1 - x)) with x in Ee by lia.
+    rewrite Ee.
+    destruct (rf x) eqn:Erf.
+    + pose proof (HN (Hr x Hlt Erf)) as Hm.
+      rewrite (sb_of_list_nth _ _ _ (a_var 0)) in Hm by lia.
+      destruct Hm as (m & Hme & Hm); rewrite Hme; f_equal.
+      assert (HkM : List.length Ms - 1 - x < List.length Ms) by lia.
+      destruct (eval_exps_nth _ _ _ _ _ Hms (List.nth_error_nth' Ms (a_var 0) HkM)) as (v & Hv & Ev).
+      rewrite <- Lms in Hv; rewrite (List.nth_error_nth _ _ d_placeholder Hv).
+      eapply functional_eval_exp; eassumption.
+    + destruct (Hp x Hlt Erf) as [Hpx Hst]; rewrite (HP Hpx), Hst; reflexivity.
+  - destruct (Nat.le_exists_sub _ _ Hge) as (y & -> & _); rewrite Nat.add_comm.
+    rewrite Hl, <- Lms, env_entry_args_app, env_entry_skipn, Lms, <- Hl; reflexivity.
+Qed.
+
+(** The same over any base substitution [σ], at one environment of the
+    substitution's context [Ψ]: the instance's value is [σ]'s, extended by
+    the terms' values. *)
+Lemma sb_of_list_values_of_sub : forall C Γ Ψ σ Ms RΨ RCΓ ρ σρ, tele_ass C ->
+    EF Ψ ≈ Ψ ∈ per_ctx_env ↘ RΨ -> EF C ++ Γ ≈ C ++ Γ ∈ per_ctx_env ↘ RCΓ ->
+    (forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
+    Ψ ⊨ˢ sb_of_list σ Ms ≈ sb_of_list σ Ms : C ++ Γ -> List.length Ms = List.length C ->
+    RΨ ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ σρ ->
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ sb_of_list σ Ms : C ++ Γ ⟧s ρ ↘ env_args σρ ms /\
+      RCΓ (env_args σρ ms) (env_args σρ ms).
+Proof.
+  intros * Ha HRΨ HRCΓ0 Hrel' Hσ Hl Hρ Hev.
+  destruct (rel_sub_under_ctx_simple Hσ) as (RΨ' & HRΨ' & RCΓ' & HRCΓ & Hs).
+  assert (E : RΨ <~> RΨ') by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (EC : RCΓ' <~> RCΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hs _ _ (proj1 (E _ _) Hρ)) as (ρτ & ρτ' & Ev1 & _ & Hρτ).
+  assert (HPC : PER RCΓ') by (eapply per_env_PER; exact HRCΓ).
+  assert (Hρτρτ : RCΓ' ρτ ρτ) by (etransitivity; [ exact Hρτ | symmetry; exact Hρτ ]).
+  pose proof (relevant_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ _ _ Hρτρτ) as Hnp.
+  assert (HlC : List.length (List.rev C) = List.length Ms) by (rewrite List.length_rev; lia).
+  assert (Hnp' : forall x, x < List.length (List.rev C) ->
+                   ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ) ρτ x)
+    by (intros x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx; exact (Hnp x Hx)).
+  rewrite <- (List.rev_involutive C) in Ev1.
+  destruct (eval_sb_of_list_inv Ms (List.rev C) σ Γ ρ ρτ σρ HlC Ev1 Hnp' Hev) as (ms & Ems & Hag).
+  rewrite List.length_rev in Hag.
+  assert (Hrel : RCΓ' (env_args σρ ms) (env_args σρ ms))
+    by (eapply (per_ctx_env_resp_agree HRCΓ); [ rewrite List.length_app; exact Hag | rewrite List.length_app; exact Hag | exact Hρτρτ ]).
+  exists ms; split; [ exact Ems | split; [| exact (proj1 (EC _ _) Hrel) ] ].
+  rewrite <- (List.rev_involutive C).
+  apply eval_sb_of_list; [ exact Hev | exact Ems | exact HlC |].
+  intros x Hx Hpx; exfalso; rewrite List.length_rev in Hx; rewrite List.rev_involutive in Hpx.
+  apply (Hnp x Hx).
+  apply (entry_propositional_resp_agree _ (env_args σρ ms)); [| exact Hpx ].
+  rewrite List.length_app; intros y Hy; symmetry; exact (Hag y Hy).
+Qed.
+
+(** The values of an instance [Ms] of a closed telescope [C] of relevant
+    entries, over [Γ], at two environments of [Γ]: related at [C], and the
+    instance's values. *)
+#[warnings="-cannot-define-projection"]
+Record closed_instance_values (C Γ : ctx) (Ms : list exp) (RC : relation env) (B1 B2 : env) : Prop := mk_closed_instance_values
+  { (** The terms' values at the left environment *)
+    civ_left : list domain
+    (** and at the right one *)
+  ; civ_right : list domain
+    (** They are the terms' values *)
+  ; civ_eval_left : ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ B1 ↘ civ_left
+  ; civ_eval_right : ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ B2 ↘ civ_right
+    (** related at the telescope *)
+  ; civ_rel : RC (env_args nil civ_left) (env_args nil civ_right)
+    (** and the instance's values, on each side *)
+  ; civ_sub_left : ⟦ sb_of_list Id Ms : C ++ Γ ⟧s B1 ↘ env_args B1 civ_left
+  ; civ_sub_right : ⟦ sb_of_list Id Ms : C ++ Γ ⟧s B2 ↘ env_args B2 civ_right }.
+
+(** A semantic substitution of the instance gives its values: no entry of
+    [C] is a proposition at the substitution's values, so these are the
+    terms' values, related at [C]. *)
+Lemma closed_instance_values_of_sub : forall C Γ Ms RΓ RC, tele_ass C -> ⊨ C -> ⊨ Γ ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF C ≈ C ∈ per_ctx_env ↘ RC ->
+    (exists l, forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l) ->
+    Γ ⊨ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms : C ++ Γ -> List.length Ms = List.length C ->
+    forall B1 B2, RΓ B1 B2 -> closed_instance_values C Γ Ms RC B1 B2.
+Proof.
+  intros * Ha HC HΓ HRΓ HRC Hrel Hσ Hl B1 B2 HB.
+  destruct (closed_app_sem _ _ Ha HC HΓ) as [HCΓ Hres].
+  destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
+  destruct (instance_values_of_sub C Γ Ms RΓ RCΓ Ha HRΓ HRCΓ (closed_relevant_over C Γ Ha HC HΓ Hrel) Hσ Hl B1 B2 HB)
+    as [u1 u2 Eu1 Eu2 H12 Es1 Es2].
+  pose proof (Hres _ _ HRC HRCΓ _ _ H12) as H12'.
+  pose proof (eval_exps_length _ _ _ Eu1) as L1; pose proof (eval_exps_length _ _ _ Eu2) as L2.
+  exists u1 u2; [ exact Eu1 | exact Eu2 | | exact Es1 | exact Es2 ].
+  eapply closed_env_base; [ exact Ha | exact HC | exact HRC | rewrite L1; exact Hl | rewrite L2; exact Hl | exact H12' ].
 Qed.
 
 (** A propositional entry of a closed telescope [C], extended by [Γ], at

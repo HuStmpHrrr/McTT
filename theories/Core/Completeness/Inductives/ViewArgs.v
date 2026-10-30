@@ -57,7 +57,7 @@ Qed.
 (** The instance of a container's uniform parameters at the group's: the
     container's uniform parameters are relevant, so the instance's value
     is its terms' values. *)
-Lemma eval_container_uparams_inst : forall D Dq Is ups cups, valid_ind_decl D -> valid_ind_decl Dq -> tele_ass (ind_uparams Dq) ->
+Lemma eval_container_uparams_instance : forall D Dq Is ups cups, valid_ind_decl D -> valid_ind_decl Dq -> tele_ass (ind_uparams Dq) ->
     per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
     per_gargs (List.rev (ind_uparams Dq)) nil nil cups cups -> List.length cups = List.length (ind_uparams Dq) ->
@@ -737,7 +737,7 @@ Section ViewArgs.
       exact (valid_group_views_view_nparams p D Hg Hcv _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' Hv HMv). }
     assert (Hlen : List.length tg = List.length tc) by (unfold tg, tc; rewrite !List.length_rev, !length_im_nparams; exact Hnn).
     destruct (gsub_props (valid_group_views_view_args_gsub p D Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq)) as [Hτ _].
-    pose proof (eval_container_uparams_inst D Dq Is ups cups HD HDQ (decl_closed_ass _ HcQ) Hgu Hu Ecups
+    pose proof (eval_container_uparams_instance D Dq Is ups cups HD HDQ (decl_closed_ass _ HcQ) Hgu Hu Ecups
                   view_container_uparams_rel Hlc) as Eτ.
     destruct (nth_error_lt_some' tc j ltac:(unfold tc in *; rewrite List.length_rev, length_im_nparams; lia)) as [eC HeC].
     destruct (proj1 (List.Forall_forall _ _) Hac eC (List.nth_error_In _ _ HeC)) as [C ->].

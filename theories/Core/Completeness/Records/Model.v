@@ -1378,6 +1378,38 @@ Section RecordModel.
     apply EH, HEX; refine (mk_record_rel _ _ _ _ P P' HP (tuple_projs _ P' (record_eta_fields_names R M) ltac:(lia)) Hrel).
   Qed.
 
+  (** The projection of an element of the record type at a propositional
+      field is the proof [⋆ᵈ]. *)
+  Lemma rel_exp_record_proj_proof : forall Γ M Ns RΓ ρ ρ', EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+      Γ ⊨ M : apps_exp (a_record p) Ns -> List.length Ns = List.length (record_params R) -> RΓ ρ ρ' ->
+      forall m k f U v, ⟦ M ⟧ ρ ↘ m -> List.nth_error (record_fields R) k = Some (f, U) ->
+      record_field_rel R k = propositional -> eval_proj gc_deps gc_stack f m v -> v = ⋆ᵈ.
+  Proof.
+    intros * HRΓ HM Hn Hρ * Em Hk Hr Hv.
+    destruct (presup_rel_exp_under_ctx HM) as [iT HT0].
+    destruct (rel_type_inversion_simple_at HRΓ HT0 _ _ Hρ) as (a & a' & Ea & Ea' & [X HX]).
+    destruct (eval_record_apps_inv _ _ _ Ea Hn) as (ns & _ & ->).
+    destruct (eval_record_apps_inv _ _ _ Ea' Hn) as (ns' & _ & ->).
+    pose proof (per_univ_elem_record_facts _ _ _ _ _ _ Hl HX) as [_ Hln _ _ HfP HfI HfE HfS HEX].
+    pose proof (per_head_iff Ea Ea' HX) as EH.
+    destruct (rel_exp_under_ctx_simple_at HRΓ HM _ _ Hρ) as [(a0 & Ea0 & Hp) | (m0 & m' & Em0 & Em' & Hmm)].
+    { assert (a0 = d_record p ns) as -> by (eapply functional_eval_exp; eassumption); discriminate. }
+    assert (m0 = m) as -> by (eapply functional_eval_exp; eassumption).
+    apply EH, HEX in Hmm; destruct Hmm as [P P' HP HP' Hrel].
+    assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
+    pose proof (List.Forall2_length HP) as HlP; pose proof (List.Forall2_length HP') as HlP'.
+    destruct (nth_error_lt_some' P k ltac:(lia)) as [v0 Hv0].
+    destruct (nth_error_lt_some' P' k ltac:(lia)) as [v' Hv'].
+    pose proof (Forall2_nth_both _ _ _ _ _ _ HP Hk Hv0) as Ev0; cbn [fst] in Ev0.
+    assert (v0 = v) as -> by (eapply functional_eval_proj; eassumption).
+    pose proof Hrel as H; rewrite tele_rel_iff in H; destruct H as (_ & _ & H); pose proof (H _ _ _ Hv0 Hv') as Hcv.
+    pose proof (tele_prefix_rel_of_full _ _ _ _ k Hrel ltac:(lia)) as Hpre.
+    destruct (HfS _ _ _ _ _ Hk Hpre) as (u & Eu & Hu); rewrite Hr in Hu.
+    destruct (HfE _ _ _ _ _ Hk Hpre) as [u0 u0' Eu0 Eu0' HRu].
+    assert (u0 = u) as -> by (eapply functional_eval_exp; eassumption).
+    exact (proj1 (proj1 (per_univ_elem_propositional _ _ _ _ HRu Hu _ _) Hcv)).
+  Qed.
+
   (** Tuples of equal fields are equal. *)
   Lemma rel_exp_under_ctx_tuple_cong : forall Γ T T' Ns (fs fs' : list (String.string * exp)) (i : nat), ⊨ Γ ->
       Γ ⊨ a_tuple T fs : T -> Γ ⊨ T ≈ T' : Typeω@i -> Γ ⊨ T ≈ apps_exp (a_record p) Ns : Typeω@i ->

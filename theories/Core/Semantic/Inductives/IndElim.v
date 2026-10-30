@@ -737,12 +737,14 @@ Section Fixed_GCtx.
     (** At the end, nothing *)
     | shape_doms_ok_self : forall pre pre' j Ps, shape_doms_ok X Y k pre pre' (pt_self j Ps)
     (** At a domain: defined on each side, related arguments read back
-        alike, and the rest after them *)
+        alike, and the rest after them; the domain's two values are
+        relevant types, as a shape's domain, a type of a universe, is *)
     | shape_doms_ok_pi : forall pre pre' B t b b',
         ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (X ++ pre) ↘ b ->
         ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (Y ++ pre') ↘ b' ->
         (forall c c', dr k pre B c c' -> Dom ⇓ b c ≈ ⇓ b' c' ∈ per_top) ->
         (forall c c', dr k pre B c c' -> shape_doms_ok X Y k (pre ++ c :: nil) (pre' ++ c' :: nil) t) ->
+        domain_relevance b = relevant -> domain_relevance b' = relevant ->
         shape_doms_ok X Y k pre pre' (pt_pi B t).
 
     (** The domains of a shape of an argument at two bases, after prefixes
@@ -775,8 +777,8 @@ Section Fixed_GCtx.
       induction n as [| n IH]; intros k ysu ys1 ys2 Hkn Hy1 Hy2.
       - rewrite Nat.add_0_r in Hkn; subst k; rewrite ptyp_skip_end; constructor.
       - destruct (ptyp_skip_lt k t0 ltac:(lia)) as (B & HB & Hs); rewrite Hs.
-        destruct (HD1 _ _ _ _ HB Hy1) as [bu b1 Ebu Eb1 Htop1 _ _].
-        destruct (HD2 _ _ _ _ HB Hy2) as [bu' b2 Ebu' Eb2 Htop2 _ _].
+        destruct (HD1 _ _ _ _ HB Hy1) as [bu b1 Ebu Eb1 Htop1 _ Hb1r].
+        destruct (HD2 _ _ _ _ HB Hy2) as [bu' b2 Ebu' Eb2 Htop2 _ Hb2r].
         pose proof (functional_eval_exp _ _ _ _ Ebu Ebu') as <-.
         pose proof (doms_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm HM nsu c _ gs1 t0 gs2 wsu Huu Hc eq_refl
                       Hwuu k ysu ys1 ltac:(lia) Hy1) as Hyuu.
@@ -786,7 +788,7 @@ Section Fixed_GCtx.
                    dr m (nsu ++ wsu ++ ysu) B c0 c0' /\ dr m (nsu ++ wsu ++ ysu) B c0 c0).
         { intros c0 c0' Hcc; apply (proj2 (HI1 _ _)) in Hcc; split; [ exact Hcc |].
           etransitivity; [ exact Hcc | symmetry; exact Hcc ]. }
-        econstructor; [ exact Eb1 | exact Eb2 | |].
+        econstructor; [ exact Eb1 | exact Eb2 | | | exact Hb1r | exact Hb2r ].
         + intros c0 c0' Hcc; destruct (Hcc0 _ _ Hcc) as [Hu Huu0].
           exact (per_top_trans' _ _ _ (per_top_sym' _ _ (Htop1 _ _ Huu0)) (Htop2 _ _ Hu)).
         + intros c0 c0' Hcc; destruct (Hcc0 _ _ Hcc) as [Hu Huu0].
@@ -953,9 +955,13 @@ Section Fixed_GCtx.
           ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> ⟦projs fl of v' ⟧ gc_deps ⍮ gc_stack ↘ ws' ->
           rec_results_rel j u u' nil nil gs ws ws' rs rs' ->
           rec_result_rel k u u' pre pre' (pt_self j Ps) v v' rs rs'
-      (** At a domain: pointwise at related arguments *)
+      (** At a domain: pointwise at related arguments, the results taking
+          relevant arguments, as the elements of a [Π] over the domain, a
+          type of a universe, do *)
       | rec_result_pi : forall pre pre' B t v v' rs rs',
           (forall c c', dr k pre B c c' -> rec_result_app_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t v c v' c' rs rs') ->
+          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs ->
+          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs' ->
           rec_result_rel k u u' pre pre' (pt_pi B t) v v' rs rs'
       with rec_result_app_rel (k : nat) (u u' : list domain) :
           list domain -> list domain -> ptyp -> domain -> domain -> domain -> domain -> list domain -> list domain -> Prop :=
@@ -1204,6 +1210,27 @@ Section Fixed_GCtx.
         ; ihs_pair_rel : forall out out', leaf_results bs ihs_pair_tya ihs_pair_tyb ihs_pair_resa ihs_pair_resb out out' ->
             R out out' }.
 
+      (** The results of a function shape along its paths at relevant
+          domains take relevant arguments: a fresh neutral of a [Π] over
+          the domain, or the eliminator's result function. *)
+      Lemma leaf_results_pi_relevant : forall (l : list nat) bs out out' b b' f f' ρ ρ' t,
+          leaf_results bs
+            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ t i f) fam_cod) l)
+            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' t i f') fam_cod) l)
+            (List.map (fun i => d_ihfn ρa Bksa p ua t i f) l) (List.map (fun i => d_ihfn ρb Bksb p ub t i f') l) out out' ->
+          domain_relevance b = relevant -> domain_relevance b' = relevant ->
+          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) out /\
+          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) out'.
+      Proof.
+        induction l as [| x l IH]; intros * H Hb Hb'; cbn [List.map] in H.
+        - inversion H; subst; split; constructor.
+        - inversion H as [| bs0 ? ? ? ? ? ? ? ? e e' o o' He H0 | bs0 ? ? ? ? ? ? ? ? o o' H0]; subst;
+            destruct (IH _ _ _ _ _ _ _ _ _ _ H0 Hb Hb') as [F1 F2]; (split; constructor; [| exact F1 | | exact F2 ]);
+            try reflexivity.
+          + cbn [relevant_value domain_relevance arg_relevance]; exact Hb.
+          + cbn [relevant_value domain_relevance arg_relevance]; exact Hb'.
+      Qed.
+
       (** The results of a function shape along its paths, applied to
           related arguments: from the same source as before, those of the
           rest at the function's values there. *)
@@ -1364,7 +1391,7 @@ Section Fixed_GCtx.
             intros out out' Ho; eapply rec_result_rview; [ exact HM | exact Hh | exact Hcs | exact Ew | exact Ew' | exact (Hr _ _ Ho) ].
         - (** A domain: at related arguments. *)
           intros k pre B u u' pre' t f f' Hr IH _ _ -> -> Hf Hf' Hd bs Hbs.
-          inversion Hd as [| ? ? ? ? b b' Eb Eb' Htop Hrest]; subst.
+          inversion Hd as [| ? ? ? ? b b' Eb Eb' Htop Hrest Hdr Hdr']; subst.
           rewrite shape_mems_pi in Hbs.
           pose proof (leaf_flags_ok_length _ _ _ Hbs) as Lbs; rewrite length_shape_mems in Lbs.
           set (N := List.length (shape_leaves (rview_leaves D) 0 t)) in *.
@@ -1379,7 +1406,10 @@ Section Fixed_GCtx.
             | eapply eval_ih_pi; exact Hl | eapply eval_ih_pi; exact Hl
             | rewrite List.length_map, List.length_seq; lia | rewrite List.length_map, List.length_seq; lia
             | rewrite List.length_map, List.length_seq; lia | rewrite List.length_map, List.length_seq; lia |].
-          intros out out' Ho; constructor; intros c c' Hcc.
+          intros out out' Ho.
+          destruct (leaf_results_pi_relevant _ _ _ _ _ _ _ _ _ _ _ Ho Hdr Hdr') as [Fo Fo'].
+          constructor; [| exact Fo | exact Fo' ].
+          intros c c' Hcc.
           pose proof (Hr c c' Hcc) as Ha; inversion Ha as [? ? fc ? ? fc' ? ? ? ? ? ? Ef Ef' Hfc]; subst.
           destruct (IH c c' Hcc fc fc' Ef Ef' eq_refl eq_refl Hf Hf' (Hrest c c' Hcc) bs Hbs)
             as [tyc tyc' rc rc' Tc Tc' Rc Rc' Lc1 Lc2 Lc3 Lc4 Hrc].
@@ -2095,7 +2125,10 @@ Section Fixed_GCtx.
             exists (List.map (fun i => d_ihfn ρa Bksa p ua t i f) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))),
                    (List.map (fun i => d_ihfn ρb Bksb p ub t i f') (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))) end.
           split; [ eapply eval_ih_pi; exact Hl | split; [ eapply eval_ih_pi; exact Hl |] ].
-          constructor; intros c c' Hcc.
+          constructor;
+            [| apply List.Forall_forall; intros r0 Hr0; apply List.in_map_iff in Hr0 as (i0 & <- & _); reflexivity
+             | apply List.Forall_forall; intros r0 Hr0; apply List.in_map_iff in Hr0 as (i0 & <- & _); reflexivity ].
+          intros c c' Hcc.
           destruct (IH c c' Hcc) as (fc & fc' & rcs & rcs' & Ef & Ef' & Er & Er' & Hrr).
           pose proof (proj1 (proj2 (eval_ih_length_all (Θ := gc_deps) (Ξ := gc_stack))) _ _ _ _ _ _ _ Er _ Hl Hlc) as Lr.
           pose proof (proj1 (proj2 (eval_ih_length_all (Θ := gc_deps) (Ξ := gc_stack))) _ _ _ _ _ _ _ Er' _ Hl Hlc) as Lr'.
