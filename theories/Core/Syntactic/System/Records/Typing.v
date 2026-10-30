@@ -757,18 +757,25 @@ Qed.
     destruct (record_field_typ_cong _ _ _ _ _ _ _ (Ns ++ record_pre R k (a_tuple T fs)) (Ns ++ List.firstn k (List.map snd fs))
                 Hc Hass HF HΓ Hfk ltac:(rewrite List.length_app, length_record_pre by lia; lia)
                 ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) Hpre) as (S0 & HS0 & HUU).
-    split.
+    assert (HUs : Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))]
+        ≈ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : relevance_sort (record_field_rel R k) (record_sort R)[sb_of_list Id Ns]).
     { eapply record_field_sort_cong; [ exact Hc | exact Hass | exact HFs | exact HΓ | exact Hfk | exact Hn
                                      | apply length_record_pre; lia
                                      | rewrite List.length_app, List.length_firstn, List.length_map; lia | exact Hpre ]. }
+    split; [ exact HUs |].
     assert (Ht' : Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : apps_exp (a_record p) Ns) by (eapply wf_conv'; [ exact Ht | exact HT ]).
     pose proof (presup_exp_eq_left HUU) as HUl.
     assert (Hp : Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))])
       by (eapply wf_proj; [ exact Ht' | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl | exact HS0 ]).
     assert (HM : Θ ⍮ Ξ ⍮ Γ ⊢ M : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))])
       by (eapply wf_conv_sort; [ exact (HMs _ _ _ _ Hk Hfk) | exact HUl | exact HS0 | symmetry; exact HUU ]).
-    eapply wf_exp_eq_field_beta; [ exact Ht | | exact Hp | exact HM ].
-    apply (field_lookup_nth _ k); [ rewrite Hfs; exact Hnd | exact Hk ].
+    assert (Hnd' : List.NoDup (List.map fst fs)) by (rewrite Hfs; exact Hnd).
+    (** A relevant field by field-β; a propositional one by irrelevance. *)
+    destruct (record_field_rel R k) eqn:Er.
+    - eapply wf_exp_eq_field_beta; [ exact Ht | exact HT | exact Hl | | exact Er | | exact Hp | exact HM ].
+      + exact (field_index_nth_nodup _ _ _ _ Hnd' Hk).
+      + exact (field_lookup_nth _ k _ _ Hnd' Hk).
+    - apply wf_exp_eq_irrelevant; [ exact (presup_exp_eq_left HUs) | exact Hp | exact HM ].
   Qed.
 
   (** The parameters and the projections of a tuple before the field [k]

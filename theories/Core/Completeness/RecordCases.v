@@ -63,8 +63,8 @@ Ltac record_model_intro Hl :=
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
     let Hl2 := fresh "Hl2" in let Hc := fresh "Hc" in let Hass := fresh "Hass" in let Hnd := fresh "Hnd" in
     let Hsu := fresh "Hsu" in let HPv := fresh "HPv" in let HSv := fresh "HSv" in let HFv := fresh "HFv" in
-    let HTv := fresh "HTv" in
-    destruct (record_model_of_embedding _ _ _ _ _ _ He Hl) as [Hl2 Hc Hass Hnd Hsu [HPv HSv HFv HTv]]
+    let HTv := fresh "HTv" in let HPr := fresh "HPr" in
+    destruct (record_model_of_embedding _ _ _ _ _ _ He Hl) as [Hl2 Hc Hass Hnd Hsu [HPv HPr HSv HFv HTv]]
   end.
 
 (** ** The Rules *)
@@ -123,6 +123,7 @@ Qed.
 
 Lemma sem_exp_eq_tuple_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T fs : T ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ T ≈ T' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊨ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
      record_lookup Θ Ξ p = Some R ->
      List.length Ns = List.length (record_params R) ->
@@ -136,7 +137,7 @@ Lemma sem_exp_eq_tuple_cong :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T' fs' : T ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T fs ≈ a_tuple T' fs' : T ).
 Proof.
-  intros * Ht HT Hl Hn HNs Hnames Hnames' HMs Ht'; sem_intro; [ assumption |].
+  intros * Ht HTT HT Hl Hn HNs Hnames Hnames' HMs Ht'; sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_tuple_cong; try eassumption.
@@ -161,12 +162,17 @@ Proof.
 Qed.
 
 Lemma sem_exp_eq_field_beta :
-  `( field_lookup fs f = Some M ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
+     record_lookup Θ Ξ p = Some R ->
+     field_index fs f = Some k ->
+     record_field_rel R k = relevant ->
+     field_lookup fs f = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f (a_tuple T fs) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f (a_tuple T fs) ≈ M : A ).
 Proof.
-  intros * Hf Hp HM; sem_intro; [ assumption |].
+  intros * HT Hl Hk Hr Hf Hp HM; sem_intro; [ assumption |].
+  record_model_intro Hl.
   eapply rel_exp_under_ctx_field_beta; eassumption.
 Qed.
 

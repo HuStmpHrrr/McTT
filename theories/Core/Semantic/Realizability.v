@@ -451,19 +451,6 @@ Lemma eval_neutral_fields_length : forall ns m fl pre rs, eval_neutral_fields gc
     List.length rs = List.length fl.
 Proof. induction 1; cbn; congruence. Qed.
 
-(** Distinct names: the first field of a name is the one at its
-    position. *)
-Lemma field_index_nth_nodup : forall {A : Type} (fs : list (String.string * A)) k f T,
-    List.NoDup (List.map fst fs) -> List.nth_error fs k = Some (f, T) -> field_index fs f = Some k.
-Proof.
-  induction fs as [| [g U] fs IH]; intros [| k] * Hnd Hk; cbn in Hk |- *; try discriminate.
-  - injection Hk as -> ->; rewrite String.eqb_refl; reflexivity.
-  - inversion Hnd as [| ? ? Hg Hnd']; subst.
-    destruct (String.eqb_spec f g) as [-> | _].
-    + exfalso; apply Hg; change g with (fst (g, T)); apply List.in_map; eapply List.nth_error_In; exact Hk.
-    + rewrite (IH _ _ _ Hnd' Hk); reflexivity.
-Qed.
-
 Lemma Forall2_of_nth : forall {X Y} (P : X -> Y -> Prop) l1 l2, List.length l1 = List.length l2 ->
     (forall k x y, List.nth_error l1 k = Some x -> List.nth_error l2 k = Some y -> P x y) -> List.Forall2 P l1 l2.
 Proof.

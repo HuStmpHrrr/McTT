@@ -1037,9 +1037,17 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** Field-β: the field of a record element is its first field so named.
     Both sides are premised to be of the type: the field's type at the
     element's projections and at its fields are equal only by the field-β
-    of the fields before it. *)
+    of the fields before it.  The field is relevant: a tuple's value stores
+    the proof [⋆ᵈ] at a propositional field, which is equal to the field
+    only at a proposition; there the two sides are equal by
+    [wf_exp_eq_irrelevant] (see [tuple_proj_eq]).  The record type and the
+    field's position name its sort. *)
 | wf_exp_eq_field_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
+     record_lookup Θ Ξ p = Some R ->
+     field_index fs f = Some k ->
+     record_field_rel R k = relevant ->
      field_lookup fs f = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->

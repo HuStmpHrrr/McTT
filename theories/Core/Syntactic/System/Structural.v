@@ -1490,17 +1490,24 @@ Section RecordMove.
     - exact (IH2 _ _ HR).
   Qed.
 
-  Lemma move_field_beta_case : forall T fs f M A Γ Δ σ,
+  Lemma move_field_beta_case : forall T fs f M A p Ns Rd i k Γ Δ σ,
       (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_tuple T fs)[σ0] : T[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] ≈ (apps_exp (a_record p) Ns)[σ0] : Typeω@i[σ0]) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      field_index fs f = Some k ->
+      record_field_rel Rd k = relevant ->
       field_lookup fs f = Some M ->
       (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_proj f (a_tuple T fs))[σ0] : A[σ0]) ->
       (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : A[σ0]) ->
       R Δ σ Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_proj f (a_tuple T fs))[σ] ≈ M[σ] : A[σ].
   Proof.
-    intros * IH1 Hk IH2 IH3 HR.
-    eapply wf_exp_eq_field_beta; [ exact (IH1 _ _ HR) | | exact (IH2 _ _ HR) | exact (IH3 _ _ HR) ].
-    cbn [exp_sub]; rewrite (field_lookup_map (fun N => N[σ])), Hk; reflexivity.
+    intros * IH1 IHT Hl Hi Hr Hk IH2 IH3 HR.
+    eapply wf_exp_eq_field_beta with (Ns := List.map (fun N => N[σ]) Ns);
+      [ exact (IH1 _ _ HR) | | exact Hl | | exact Hr | | exact (IH2 _ _ HR) | exact (IH3 _ _ HR) ].
+    - pose proof (IHT _ _ HR) as H; rewrite apps_exp_sub in H; exact H.
+    - cbn [exp_sub]; rewrite <- Hi; apply field_index_names; rewrite List.map_map; reflexivity.
+    - cbn [exp_sub]; rewrite (field_lookup_map (fun N => N[σ])), Hk; reflexivity.
   Qed.
 
   Lemma move_record_eta_case : forall M p Ns Rd Γ Δ σ,

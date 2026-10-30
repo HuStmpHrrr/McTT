@@ -111,6 +111,47 @@ Proof.
   destruct (String.eqb f h); [ reflexivity | apply IH ].
 Qed.
 
+(** Distinct names: the first field of a name is the one at its
+    position. *)
+Lemma field_index_nth_nodup : forall {A : Type} (fs : list (string * A)) k f T,
+    List.NoDup (List.map fst fs) -> List.nth_error fs k = Some (f, T) -> field_index fs f = Some k.
+Proof.
+  induction fs as [| [g U] fs IH]; intros [| k] * Hnd Hk; cbn in Hk |- *; try discriminate.
+  - injection Hk as -> ->; rewrite String.eqb_refl; reflexivity.
+  - inversion Hnd as [| ? ? Hg Hnd']; subst.
+    destruct (String.eqb_spec f g) as [-> | _].
+    + exfalso; apply Hg; change g with (fst (g, T)); apply List.in_map; eapply List.nth_error_In; exact Hk.
+    + rewrite (IH _ _ _ Hnd' Hk); reflexivity.
+Qed.
+
+(** The position of the first field so named depends only on the names. *)
+Lemma field_index_names : forall {A B : Type} (l1 : list (string * A)) (l2 : list (string * B)) f,
+    List.map fst l1 = List.map fst l2 -> field_index l1 f = field_index l2 f.
+Proof.
+  induction l1 as [| [g v] l1 IH]; intros [| [h w] l2] f Heq; cbn in Heq |- *; try discriminate; [ reflexivity |].
+  injection Heq as <- Heq; destruct (String.eqb f g); [ reflexivity | rewrite (IH _ _ Heq); reflexivity ].
+Qed.
+
+(** The first field so named is at its position. *)
+Lemma field_index_lookup : forall {A : Type} (fs : list (string * A)) f k v,
+    field_index fs f = Some k -> field_lookup fs f = Some v -> List.nth_error fs k = Some (f, v).
+Proof.
+  induction fs as [| [g w] fs IH]; intros * Hk Hv; cbn in Hk, Hv; [ discriminate |].
+  destruct (String.eqb_spec f g) as [-> | _].
+  - injection Hk as <-; injection Hv as <-; reflexivity.
+  - destruct (field_index fs f) as [k0 |] eqn:E; cbn in Hk; [| discriminate ].
+    injection Hk as <-; exact (IH _ _ _ E Hv).
+Qed.
+
+(** A field so named has a first position. *)
+Lemma field_lookup_index : forall {A : Type} (fs : list (string * A)) f v,
+    field_lookup fs f = Some v -> exists k, field_index fs f = Some k.
+Proof.
+  induction fs as [| [g w] fs IH]; intros * Hv; cbn in Hv |- *; [ discriminate |].
+  destruct (String.eqb f g); [ eauto |].
+  destruct (IH _ _ Hv) as [k ->]; cbn; eauto.
+Qed.
+
 (** The names and values of a list of named terms, combined back. *)
 Lemma combine_names_values : forall {A : Type} (fs : list (string * A)),
     List.combine (List.map fst fs) (List.map snd fs) = fs.

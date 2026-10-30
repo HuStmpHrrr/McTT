@@ -47,6 +47,8 @@ Section Fixed_GCtx.
       forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
         exists a a', ⟦ T ⟧ env_args nil (ns ++ vs) ↘ a /\ ⟦ T ⟧ env_args nil (u2 ++ vs') ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
     Hypothesis (Hf : fields_related ns').
+    (** The fields' types are of their sorts along related prefixes. *)
+    Hypothesis (HfS : fields_sorts R ns fr).
 
     (** The evidence at a field, at the head PER. *)
     Lemma canon_fields_evals : fields_evals (per_univ_elem u) R ns ns' fr.
@@ -92,7 +94,7 @@ Section Fixed_GCtx.
     Proof.
       basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hnd | exact Hn | exact Hn' | exact Hps | exact canon_fields_per | exact canon_fields_evals
-        | exact canon_fields_invariant | reflexivity ].
+        | exact HfS | exact canon_fields_invariant | reflexivity ].
     Qed.
   End Canon.
 
@@ -217,6 +219,8 @@ Section Fixed_GCtx.
     ; record_canon_facts_inv : fields_inv R (canon_fields_rel R ns)
       (** The fields' types at related prefixes are related, at them *)
     ; record_canon_facts_evals : fields_evals (per_univ_elem i) R ns ns' (canon_fields_rel R ns)
+      (** and of their fields' sorts *)
+    ; record_canon_facts_sorts : fields_sorts R ns (canon_fields_rel R ns)
       (** The element relation is the canonical record relation *)
     ; record_canon_facts_elem : elem_rel <~> record_rel R (canon_fields_rel R ns) }.
 
@@ -245,6 +249,14 @@ Section Fixed_GCtx.
     assert (Hrel : fields_related i R ns ns').
     { intros k f T vs vs' Hk Hp; destruct (HcE _ _ _ _ _ Hk Hp) as [a a' Ea Ea' Hper].
       exists a, a'; split; [ exact Ea | split; [ exact Ea' | eexists; exact Hper ] ]. }
+    (** The sorts, along the canonical relations' prefixes: the clause's. *)
+    assert (HcS : fields_sorts R ns (canon_fields_rel R ns)).
+    { match goal with
+      | HfE : fields_evals _ R ns ns' ?fr, HfS : fields_sorts R ns ?fr |- _ =>
+          intros k f T vs vs' Hk Hp;
+          assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence);
+          exact (HfS _ _ _ _ _ Hk (proj1 (record_canon_prefix_iff_clause i _ R ns ns' fr (fun _ _ _ H => H) HfE k vs vs' ltac:(lia)) Hp))
+      end. }
     apply mk_record_canon_facts; try assumption;
       [ exact (canon_fields_per _ _ _ _ Hrel) | apply (canon_fields_invariant i R ns ns'); assumption ].
   Qed.

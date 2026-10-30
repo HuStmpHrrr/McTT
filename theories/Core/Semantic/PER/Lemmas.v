@@ -621,8 +621,11 @@ Proof.
                     tele_prefix_rel fr0 k pa pb2 -> (fr k pa <~> fr0 k pa)).
     { intros k pa pb1 pb2 Hk Hp1 Hp2.
       destruct (nth_error_lt_some' _ _ Hk) as [[f T] HT].
-      destruct (H5 _ _ _ _ _ HT Hp1) as [a1 a1' E1 E1' [Hper Hmot]].
-      destruct (H14 _ _ _ _ _ HT Hp2) as [a2 a2' E2 E2' Hper2].
+      match goal with
+      | Hf1 : fields_evals _ R _ _ fr, Hf2 : fields_evals _ R _ _ fr0 |- _ =>
+          destruct (Hf1 _ _ _ _ _ HT Hp1) as [a1 a1' E1 E1' [Hper Hmot]];
+          destruct (Hf2 _ _ _ _ _ HT Hp2) as [a2 a2' E2 E2' Hper2]
+      end.
       functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
     intros v v'; split; apply record_rel_change; intros;
       [ eapply Hfr; eassumption | symmetry; eapply Hfr; eassumption ]. }
@@ -889,16 +892,24 @@ Proof.
   - (** A record type: the same field relations serve the swapped type, by
         their invariance along related prefixes and the symmetry of the
         field types; the elements are swapped by [record_rel_sym]. *)
-    rename H into Hl, H0 into Hnd, H1 into Hn, H2 into Hn', H3 into Hps, H4 into HfP, H5 into Hf, H6 into HfI, H7 into HE.
+    rename H into Hl, H0 into Hnd, H1 into Hn, H2 into Hn', H3 into Hps, H4 into HfP, H5 into Hf, H6 into HfS, H7 into HfI,
+      H8 into HE.
     split.
     + basic_per_univ_elem_econstructor;
-        [ exact Hl | exact Hnd | exact Hn' | exact Hn | exact (per_top_ps_sym _ _ _ Hps) | exact HfP | | exact HfI | exact HE ].
-      intros k f T vs vs' Hk Hp.
-      assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
-      pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
-      destruct (Hf _ _ _ _ _ Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
-      econstructor; [ exact Ea' | exact Ea |].
-      eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HfI _ _ _ _ _ Hk Hp).
+        [ exact Hl | exact Hnd | exact Hn' | exact Hn | exact (per_top_ps_sym _ _ _ Hps) | exact HfP | | | exact HfI | exact HE ].
+      * intros k f T vs vs' Hk Hp.
+        assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
+        pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
+        destruct (Hf _ _ _ _ _ Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
+        econstructor; [ exact Ea' | exact Ea |].
+        eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HfI _ _ _ _ _ Hk Hp).
+      * (** The sorts at the right parameters: those at the left ones, along
+            the swapped prefixes. *)
+        intros k f T vs vs' Hk Hp.
+        assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
+        pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
+        eapply rel_mod_eval_sort; [ | exact (Hf _ _ _ _ _ Hk Hp') | exact (HfS _ _ _ _ _ Hk Hp') ].
+        intros ? ? ? [Hx _]; exact (per_univ_elem_relevance _ _ _ _ Hx).
     + intros m m' Hm; apply HE in Hm; apply HE; exact (record_rel_sym R fr HfP HfI _ _ Hm).
 Qed.
 
@@ -1253,7 +1264,7 @@ Proof.
       assert_fails constr_eq R1 R2; assert (R2 = R1) as -> by congruence end.
     match goal with
     | Hf2 : fields_evals (per_univ_elem ?j) ?R ?ns' ?ns'' ?fr0, Hf1 : fields_evals _ ?R ?ns ?ns' ?fr,
-      HfP : fields_per ?R ?fr, HfP2 : fields_per ?R ?fr0, HfI : fields_inv ?R ?fr,
+      HfP : fields_per ?R ?fr, HfP2 : fields_per ?R ?fr0, HfI : fields_inv ?R ?fr, HfS : fields_sorts ?R ?ns ?fr,
       Hps : per_top_ps _ ?ns ?ns', Hps2 : per_top_ps _ ?ns' ?ns'',
       Hl : record_lookup _ _ _ = Some ?R, Hnd : List.NoDup _,
       Hn : List.length ?ns = _, Hn2 : List.length ?ns'' = _,
@@ -1267,7 +1278,8 @@ Proof.
           functional_eval_rewrite_clear;
           eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ] |];
         basic_per_univ_elem_econstructor;
-          [ exact Hl | exact Hnd | exact Hn | exact Hn2 | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HfP | | exact HfI | exact HE ];
+          [ exact Hl | exact Hnd | exact Hn | exact Hn2 | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HfP | | exact HfS
+          | exact HfI | exact HE ];
         intros k f T vs vs'' Hk Hp;
         assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence);
         assert (Hp2 : tele_prefix_rel fr0 k vs'' vs'')

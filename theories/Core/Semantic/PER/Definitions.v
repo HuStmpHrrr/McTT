@@ -806,6 +806,13 @@ Definition fields_evals (Rel : relation domain -> domain -> domain -> Prop) (R :
   forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
     rel_mod_eval Rel T (env_args nil (ns ++ vs)) T (env_args nil (ns' ++ vs')) (fr k vs).
 
+(** Each field's type, at the left parameters and a related prefix, is of
+    the sort the field's tag says: the relation of a propositional field
+    relates only proofs. *)
+Definition fields_sorts (R : record_decl) (ns : list domain) (fr : nat -> list domain -> relation domain) : Prop :=
+  forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
+    rel_typ_sort T (env_args nil (ns ++ vs)) (record_field_rel R k).
+
 (** The projections [vs] of the value [v] at the fields of [R], in order. *)
 Definition record_projs (R : record_decl) (v : domain) (vs : list domain) : Prop :=
   List.Forall2 (fun fT r => eval_proj gc_deps gc_stack (fst fT) v r) (record_fields R) vs.
@@ -932,8 +939,8 @@ Section Per_univ_elem_core_def.
           DF ⇑ a b ≈ ⇑ a' b' ∈ per_univ_elem_core ↘ elem_rel }
   (** A record type at its parameters.  The parameters read back equally;
       the field names are distinct; the fields' types, at the two sides'
-      parameters and related prefixes, are related; the elements are related
-      field by field ([record_rel]). *)
+      parameters and related prefixes, are related, and of their fields'
+      sorts; the elements are related field by field ([record_rel]). *)
   | per_univ_elem_core_record :
     `{ forall (fr : nat -> list domain -> relation domain) (elem_rel : relation domain),
          record_lookup gc_deps gc_stack p = Some R ->
@@ -943,6 +950,7 @@ Section Per_univ_elem_core_def.
          per_top_ps (List.rev (record_params R)) ns ns' ->
          fields_per R fr ->
          fields_evals per_univ_elem_core R ns ns' fr ->
+         fields_sorts R ns fr ->
          fields_inv R fr ->
          (elem_rel <~> record_rel R fr) ->
          DF d_record p ns ≈ d_record p ns' ∈ per_univ_elem_core ↘ elem_rel }
@@ -1032,6 +1040,7 @@ Section Per_univ_elem_core_def.
           per_top_ps (List.rev (record_params R)) ns ns' ->
           fields_per R fr ->
           fields_evals (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y) R ns ns' fr ->
+          fields_sorts R ns fr ->
           fields_inv R fr ->
           (elem_rel <~> record_rel R fr) ->
           motive elem_rel (d_record p ns) (d_record p ns')).
@@ -1070,13 +1079,13 @@ Section Per_univ_elem_core_def.
                mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
            end)
         HdI Hcl Hcd Hns HE;
-  | R, a, b, (per_univ_elem_core_record fr _ Hl Hnd Hn Hn' Hps HfP Hf HfI HE) =>
+  | R, a, b, (per_univ_elem_core_record fr _ Hl Hnd Hn Hn' Hps HfP Hf HfS HfI HE) =>
       case_Rec fr Hl Hnd Hn Hn' Hps HfP
         (fun k f T vs vs' Hk Hpre => match Hf k f T vs vs' Hk Hpre with
                                    | mk_rel_mod_eval b b' evb evb' Rel =>
                                        mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
                                    end)
-        HfI HE.
+        HfS HfI HE.
 
 End Per_univ_elem_core_def.
 
@@ -1308,6 +1317,7 @@ Section Per_univ_elem_ind_def.
           per_top_ps (List.rev (record_params R)) ns ns' ->
           fields_per R fr ->
           fields_evals (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y) R ns ns' fr ->
+          fields_sorts R ns fr ->
           fields_inv R fr ->
           (elem_rel <~> record_rel R fr) ->
           motive i elem_rel (d_record p ns) (d_record p ns')).
@@ -1895,7 +1905,7 @@ Ltac per_univ_elem_induction_core HH ih :=
           sort of its type of levels; the proposition case has the two
           propositions and their relation. *)
       [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 6 intro | do 3 intro | do 11 intro; ih; do 4 intro
-      | do 10 intro | do 34 intro | do 16 intro ]; cbv beta
+      | do 10 intro | do 34 intro | do 17 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

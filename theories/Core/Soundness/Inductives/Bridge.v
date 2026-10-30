@@ -2018,7 +2018,7 @@ Proof.
   match goal with H : forall k f T vs b, _ -> _ -> _ -> glu_univ_elem _ _ _ _ |- _ => rename H into HgF end.
   match goal with H : forall k f T vs, _ -> _ -> exists b, _ |- _ => rename H into HeF end.
   destruct HN as [HNt Hm Ns0 HNs0 ws Hws Hk].
-  destruct (per_univ_elem_record_facts _ _ _ _ _ _ HlR Hper) as [_ _ _ Htop _ _ _ HE].
+  destruct (per_univ_elem_record_facts _ _ _ _ _ _ HlR Hper) as [_ _ _ Htop _ _ _ _ HE].
   pose proof (proj1 (HE _ _) Hm) as HrelM.
   pose proof (record_projs_length _ _ _ Hws) as Lw.
   assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).

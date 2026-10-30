@@ -180,7 +180,7 @@ Section RecordAt.
     match goal with HgF : forall k f T vs b, _ -> _ -> _ -> glu_univ_elem _ _ _ _ |- _ => rename HgF into HgF0 end.
     match goal with HEl : _ <∙> record_glu_exp_pred _ _ _ _ _ _ _ |- _ => apply HEl in HMg end.
     destruct HMg as [HMs Hm Ns0 HNs0 vs Hvs Hk].
-    destruct (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hper) as [_ _ _ Htop _ _ _ HE].
+    destruct (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hper) as [_ _ _ Htop _ _ _ _ HE].
     pose proof (proj1 (HE _ _) Hm) as HrelM.
     pose proof (List.Forall2_length Hvs) as Hlv.
     destruct (nth_error_lt_some' vs k ltac:(lia)) as [r Hr].
@@ -289,7 +289,7 @@ Section RecordAt.
     match goal with HeT : forall k f T vs, _ -> _ -> exists b, _ |- _ => rename HeT into HeT0 end.
     match goal with HP : _ <∙> record_glu_typ_pred _ _ _ _ _ _ |- _ => rename HP into HPP end.
     match goal with HEl : _ <∙> record_glu_exp_pred _ _ _ _ _ _ _ |- _ => apply HEl end.
-    destruct (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hper) as [_ _ _ Htop _ _ _ HE].
+    destruct (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hper) as [_ _ _ Htop _ _ _ _ HE].
     assert (Hm : elem_rel (d_tuple (List.combine (List.map fst fs) ms)) (d_tuple (List.combine (List.map fst fs) ms))).
     { destruct Ha12 as [R12 HR12].
       pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR12 HRb) as E1.
@@ -510,7 +510,7 @@ Section RecordAt.
     match goal with H : forall k f T vs, _ -> _ -> exists b, _ |- _ => rename H into HeT0 end.
     match goal with H : _ <∙> record_glu_typ_pred _ _ _ _ _ _ |- _ => rename H into HPP end.
     match goal with HEl : _ <∙> record_glu_exp_pred _ _ _ _ _ _ _ |- _ => apply HEl end.
-    destruct (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hper) as [_ _ _ Htop _ _ _ HE].
+    destruct (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hper) as [_ _ _ Htop _ _ _ _ HE].
     pose proof (record_projs_length _ _ _ Hvs) as Lw.
     (** The type, at the given parameters. *)
     destruct (proj1 (HPP _ _) HW) as [Ns0 HNs0].
