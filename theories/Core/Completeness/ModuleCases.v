@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths
 From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  SubtypingCases TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases.
+  SubtypingCases PropCases UniverseCases VariableCases LogicalRelation UnitCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Con.

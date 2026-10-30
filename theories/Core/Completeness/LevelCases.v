@@ -62,8 +62,8 @@ Proof.
   intros * HΓ.
   eexists_rel_exp_of_typ.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hn : Dom Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ i)
-    by (eexists; apply per_univ_elem_level).
+  assert (Hn : per_relevant (per_univ i) Levelᵈ@n Levelᵈ@n)
+    by (constructor; [ eexists; apply per_univ_elem_level | reflexivity | reflexivity ]).
   econstructor; try apply eval_exp_level.
   apply rel_chain_4; assumption.
 Qed.
@@ -90,8 +90,8 @@ Proof.
   apply rel_exp_of_univ.
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hn : Dom Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ u)
-    by (eexists; apply per_univ_elem_level).
+  assert (Hn : per_relevant (per_univ u) Levelᵈ@n Levelᵈ@n)
+    by (constructor; [ eexists; apply per_univ_elem_level | reflexivity | reflexivity ]).
   econstructor; try apply eval_exp_level.
   apply rel_chain_4; assumption.
 Qed.
@@ -128,14 +128,16 @@ Lemma rel_exp_of_level_inversion : forall {Γ M M'},
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
         rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' (per_lvl_at n).
 Proof.
   intros * [env_relΓ HΓ i HM].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HM _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
+  assert (Hr : rel_typ_sort Level@n ρσ relevant) by (eexists; split; [ apply eval_exp_level | reflexivity ]).
+  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
   destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
   simpl in Hchain; destruct Hchain as [? [? ?]].
   invert_rel_typ_body.
@@ -148,8 +150,8 @@ Lemma rel_exp_of_level : forall {Γ M M'},
         Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
-          ⟦ σ ⟧s ρ ↘ ρσ ->
-          ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+          ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+          ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
           rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' (per_lvl_at n)) ->
     Γ ⊨ M ≈ M' : Level@n.
 Proof.
@@ -157,7 +159,7 @@ Proof.
   eexists_rel_exp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists (per_lvl_at n).
-  split; [| eapply H; eassumption].
+  split; [| right; eapply H; eassumption].
   pose proof (per_univ_elem_level (n := n) 0) as Hn.
   econstructor; try apply eval_exp_level.
   apply rel_chain_4; assumption.
@@ -512,10 +514,10 @@ Lemma rel_exp_of_suniv_tm : forall {Γ T A A'},
         Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
-          ⟦ σ ⟧s ρ ↘ ρσ ->
-          ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+          ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+          ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
           forall t, ⟦ T ⟧ ρσ ↘ t ->
-          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (domain_level_real t)))) ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ (us (domain_level_real t))))) ->
     Γ ⊨ A ≈ A' : Type⟨T⟩.
 Proof.
   intros * HT [env_relΓ [HΓ H]].
@@ -530,8 +532,8 @@ Proof.
   pose proof (per_lvl_real _ _ H12) as E12.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
-  exists (per_univ (us (domain_level_real t2))).
-  split; [| eapply H; eassumption ].
+  exists (per_relevant (per_univ (us (domain_level_real t2)))).
+  split; [| right; eapply H; eassumption ].
   apply (mk_rel_exp 𝕌@t1 𝕌@t2 𝕌@t3 𝕌@t4);
     try (apply eval_exp_univ; eassumption).
   apply rel_chain_4; apply per_univ_elem_core_suniv';
@@ -549,14 +551,18 @@ Lemma rel_exp_of_suniv_tm_inversion : forall {Γ T A A'},
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (domain_level_real t))).
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ (us (domain_level_real t)))).
 Proof.
   intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
+  assert (Hr : rel_typ_sort Type⟨T⟩ ρσ relevant).
+  { pose proof Htyp as [u1 u2 u3 u4 _ Hu2 _ _ _]; exists u2; split; [ exact Hu2 |].
+    cbn [exp_sub] in Hu2; inversion Hu2; subst; reflexivity. }
+  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
   destruct Htyp as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Hchain].
   cbn [exp_sub] in *.
   inversion Hu1; inversion Hu2; inversion Hu3; inversion Hu4; subst.
@@ -570,7 +576,7 @@ Proof.
   eapply rel_chain_mono; [| exact Hc ].
   intros x y Hxy.
   match goal with
-  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_univ (us (domain_level_real ?b)) _ _ =>
+  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_relevant (per_univ (us (domain_level_real ?b))) _ _ =>
       rewrite <- (per_lvl_real _ _ Hl); apply Heq in Hxy; exact Hxy
   end.
 Qed.
@@ -587,12 +593,13 @@ Proof.
   destruct H as [env_relΓ [HΓ HA]].
   eexists; eexists; [eassumption |].
   intros ρ ρ' Hρ.
-  destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (eval_sub_id_rel HΓ Hρ) as [Hi Hi'].
+  destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hi Hi')
     as [t [Ht [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hchain]]].
   rewrite exp_sub_id in HaσI, Ha'σ'I.
   exists a, a', t.
   repeat split; try eassumption.
-  pairwise.
+  apply per_relevant_univ_rel; pairwise.
 Qed.
 
 (** A type of a small universe is a type of every large one. *)
@@ -607,7 +614,8 @@ Proof.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [t [_ [? ? ? ? ? ? ? ? Hchain]]].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption ].
-  intros ? ? Hx; eapply (per_univ_cumu_universe_index (u := us _)); [| exact Hx ]; exact I.
+  intros ? ? [Hx Hl Hr]; constructor; [| exact Hl | exact Hr ].
+  eapply (per_univ_cumu_universe_index (u := us _)); [| exact Hx ]; exact I.
 Qed.
 
 (** [Type⟨M⟩] is a type of [Type⟨succl M⟩]: its four values are small
@@ -637,7 +645,7 @@ Proof.
   pose proof (per_lvl_real _ _ H34) as E34.
   rewrite domain_level_real_suc.
   apply (mk_rel_exp 𝕌@m1 𝕌@m2 𝕌@m3 𝕌@m4); try (apply eval_exp_univ; eassumption).
-  apply rel_chain_4; eexists; apply per_univ_elem_core_suniv';
+  apply rel_chain_4; (constructor; [| reflexivity | reflexivity ]); eexists; apply per_univ_elem_core_suniv';
     first [ eassumption | cbn; ordinal_solve | reflexivity ].
 Qed.
 

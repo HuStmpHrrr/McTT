@@ -25,7 +25,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  SubtypingCases TrueFalseCases UniverseCases VariableCases UnitCases.
+  SubtypingCases PropCases UniverseCases VariableCases UnitCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Model Con.

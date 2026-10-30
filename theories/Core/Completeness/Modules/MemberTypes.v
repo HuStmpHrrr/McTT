@@ -16,7 +16,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Completeness Require Import LogicalRelation ContextCases FunctionCases UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import SubtypingCases VariableCases LetCases TrueFalseCases UnitCases.
+From Mctt.Core.Completeness Require Import SubtypingCases VariableCases LetCases PropCases UnitCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.

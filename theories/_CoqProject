@@ -26,7 +26,7 @@
 ./Core/Completeness/LogicalRelation/Tactics.v
 ./Core/Completeness/LogicalRelation/Substitution.v
 ./Core/Completeness/SubtypingCases.v
-./Core/Completeness/TrueFalseCases.v
+./Core/Completeness/PropCases.v
 ./Core/Completeness/UnitCases.v
 ./Core/Completeness/LogicalRelation/Instance.v
 ./Core/Completeness/Modules/ModuleVal.v
