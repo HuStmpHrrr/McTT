@@ -182,6 +182,9 @@ Import Domain_Notations.
             assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
         | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
             exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
+        | H1 : module_saturated Θ Ξ ?p ?args, H2 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ),
+          H3 : List.length ?args < List.length ?T |- _ =>
+            exfalso; specialize (H1 _ _ H2); lia
         | H : _ ++ ce_ass _ :: nil = _ ++ ce_ass _ :: nil |- _ =>
             apply List.app_inj_tail in H as [? [= ?]]; subst
         | H : 0 < List.length (_ ++ _ :: nil) -> False |- _ =>

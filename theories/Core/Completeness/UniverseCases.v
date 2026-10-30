@@ -670,6 +670,21 @@ Proof.
   eapply rel_chain_mono; [| exact Hc ]; intros ? ? Hp; eexists; exact (per_univ_elem_of_prop _ _ _ Hp).
 Qed.
 
+(** A type of an index is a type of every larger one. *)
+Lemma rel_type_cumu_ge : forall {Γ A A'} {i j : nat},
+    i <= j ->
+    Γ ⊨ᵗ A ≈ A' at i ->
+    Γ ⊨ᵗ A ≈ A' at j.
+Proof.
+  intros * Hij [env_relΓ HΓ HA].
+  econstructor; [ exact HΓ |].
+  intros * HΓ' * Hσ * Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [? ? ? ? ? ? ? ? Hc].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| exact Hc ]; intros ? ? [R HR]; exists R.
+  eapply per_univ_elem_cumu_ge; [ exact Hij | exact HR ].
+Qed.
+
 (** A type of either sort is a type of an index. *)
 Lemma rel_type_of_sort : forall {Γ A A' S},
     type_sort S ->

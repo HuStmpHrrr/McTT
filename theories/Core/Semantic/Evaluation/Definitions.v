@@ -80,6 +80,13 @@ Definition con_arg_relevance (Mk : imember) (c : string) (n : nat) : relevance :
   | None => relevant
   end.
 
+(** The global module at [p], given [args], lacks no parameter of its
+    telescope.  A term member is selected from a saturated global module
+    only; one lacking a parameter gives a member closure, as a local
+    closure lacking one does. *)
+Definition module_saturated (Θ : gdeps) (Ξ : gstack) (p : qname) (args : list domain) : Prop :=
+  forall T Φ, gc_loc Θ Ξ p = Some (T, Φ) -> List.length T <= List.length args.
+
 (** The sort of the next argument a function value takes: the sort of a
     function's own domain or of a neutral's [Π] domain, and the stored
     sort of a constructor's next argument.  Every other function value
@@ -589,12 +596,15 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ ℓₘ (gu_mk Δ D) in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A member is read off the root of its module expression, then applied to
     the module's arguments: arguments commute with selection.  Without
-    arguments this is selection from the module's value. *)
+    arguments this is selection from the module's value.  The parameters
+    of a module are relevant, so its arguments are all evaluated, as
+    [eval_me_app] evaluates them. *)
 | eval_exp_mem :
   `( modexp_spine H = (R, args, pre) ->
      ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f ->
-     eval_app_args Θ Ξ f args ρ r ->
+     ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns ->
+     $*| f & ns | Θ ⍮ Ξ ↘ r ->
      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A record's type former is a value, with no argument yet. *)
 | eval_exp_record :
@@ -851,11 +861,9 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 | eval_app_fn :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ m ->
      $| λᵈ a ρ M & n | Θ ⍮ Ξ ↘ m )
-(** The proof [⋆ᵈ] applied is a proof: [⋆ᵈ].  A proof member selected
-    at a module's arguments is [⋆ᵈ] ([eval_sel_global_proof]), as it is
-    with none, then applied to them; those arguments are values of the
-    module's parameters, which are relevant.  [arg_relevance ⋆ᵈ] is
-    [relevant], but no term application reaches this rule with an
+(** The proof [⋆ᵈ] applied is a proof: [⋆ᵈ].  A proof member of a
+    saturated module is [⋆ᵈ] ([eval_sel_global_proof]).  [arg_relevance ⋆ᵈ]
+    is [relevant], but no term application reaches this rule with an
     argument to evaluate: an application whose function is a proof is at
     a [∀], hence itself a proof, which relevance-directed evaluation never
     evaluates. *)
@@ -1073,37 +1081,48 @@ where "'$ᵐ*|' h '&' ns '|' Θ '⍮' Ξ '↘' r" := (eval_appms Θ Ξ h ns r)
 (** Selecting a term member.  A member of a global module is stored closed,
     over the module's parameters: δ evaluates a transparent one's body in the
     empty environment, and an opaque one or an axiom is a neutral at its
-    (closed) type.  Either is then applied to the module's arguments. *)
+    (closed) type.  Either is then applied to the module's arguments, once
+    the module lacks none ([module_saturated]). *)
 with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
-(** A term part of a global module, a transparent definition's body or a
-    definition with a module part's term ([gc_term]): it, applied to the
-    module's arguments. *)
+(** A term part of a saturated global module, a transparent definition's
+    body or a definition with a module part's term ([gc_term]): it, applied
+    to the module's arguments. *)
 | eval_sel_global :
-  `( gc_term Θ Ξ (qname_app p (x :: nil)) = Some M ->
+  `( module_saturated Θ Ξ p args ->
+     gc_term Θ Ξ (qname_app p (x :: nil)) = Some M ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A relevant opaque definition or axiom of a global module: a neutral,
-    applied to the module's arguments. *)
+(** A relevant opaque definition or axiom of a saturated global module: a
+    neutral, applied to the module's arguments. *)
 | eval_sel_global_neut :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv relevant A B) ->
+  `( module_saturated Θ Ξ p args ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv relevant A B) ->
      b = false \/ B = None ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A definition of a global module tagged a proposition, transparent or
-    not: the proof [⋆ᵈ], at any arguments.  Neither its body nor its type
-    is evaluated. *)
+(** A definition of a saturated global module tagged a proposition,
+    transparent or not: the proof [⋆ᵈ].  Neither its body nor its type is
+    evaluated. *)
 | eval_sel_global_proof :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
+  `( module_saturated Θ Ξ p args ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ )
-(** The module of a member of a group of inductive types, as a term: the
-    member's type former, applied to the module's arguments. *)
+(** The module of a member of a group of inductive types, as a term, in a
+    saturated global module: the member's type former, applied to the
+    module's arguments. *)
 | eval_sel_global_ind :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+  `( module_saturated Θ Ξ p args ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
      ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
      $*| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** A member of a global module lacking a parameter is a member closure. *)
+| eval_sel_global_unsat :
+  `( gc_loc Θ Ξ p = Some (T, Φ) ->
+     List.length args < List.length T ->
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_global p args) (x :: nil) )
 (** A member of a closure lacking a parameter is a member closure. *)
 | eval_sel_unsat :
   `( 0 < List.length Δ ->
@@ -1131,10 +1150,12 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
-(** A record type of a global module, stored or with its module's frame
-    open, as a term: its type former, applied to the module's arguments. *)
+(** A record type of a saturated global module, stored or with its
+    module's frame open, as a term: its type former, applied to the
+    module's arguments. *)
 | eval_sel_global_record :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+  `( module_saturated Θ Ξ p args ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
      record_lookup Θ Ξ (qname_app p (x :: nil)) = Some R ->
      $*| d_record (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )

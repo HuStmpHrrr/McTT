@@ -116,25 +116,89 @@ Section Members.
     match goal with Ha : eval_app _ _ _ _ _ |- _ => inversion Ha; subst end; auto.
   Qed.
 
+  (** The value of the term member [x] of the global module at [p], stored
+      closed over the module's parameters, before any argument: the cases
+      of selection from a saturated global module, without the arguments. *)
+  Inductive global_member_value (p : qname) (x : String.string) : domain -> Prop :=
+  (** A term part ([gc_term]): its value in the empty environment *)
+  | global_member_value_term : forall M f,
+      gc_term Θ Ξ (qname_app p (x :: nil)) = Some M ->
+      ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
+      global_member_value p x f
+  (** A relevant opaque definition or axiom: a neutral at its closed type *)
+  | global_member_value_neut : forall b pv A B a,
+      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv relevant A B) ->
+      b = false \/ B = None ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
+      global_member_value p x (⇑ a (d_glob (qname_app p (x :: nil))))
+  (** A definition tagged a proposition: the proof *)
+  | global_member_value_proof : forall b pv A B,
+      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
+      global_member_value p x ⋆ᵈ
+  (** The module of a member of a group of inductive types: its type former *)
+  | global_member_value_indty : forall pq k D,
+      gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+      ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
+      global_member_value p x (d_ind pq k nil)
+  (** A record type: its type former *)
+  | global_member_value_record : forall R,
+      gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+      record_lookup Θ Ξ (qname_app p (x :: nil)) = Some R ->
+      global_member_value p x (d_record (qname_app p (x :: nil)) nil).
+
+  (** A member of a saturated global module is its stored value applied to
+      the module's arguments. *)
   Lemma eval_sel_global_apps : forall p x f args r,
-      dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f -> $*| f & args | Θ ⍮ Ξ ↘ r -> dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r.
+      module_saturated Θ Ξ p args ->
+      global_member_value p x f -> $*| f & args | Θ ⍮ Ξ ↘ r -> dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r.
   Proof.
-    intros * Hf Ha; inversion Hf; subst;
-      match goal with Hn : eval_apps _ _ _ nil _ |- _ => inversion Hn; subst | _ => idtac end;
+    intros * Hs Hf Ha; inversion Hf; subst;
       first [ eapply eval_sel_global; eassumption | eapply eval_sel_global_neut; eassumption
             | eapply eval_sel_global_ind; eassumption | eapply eval_sel_global_record; eassumption
             | rewrite (eval_apps_proof_inv _ _ Ha); eapply eval_sel_global_proof; eassumption ].
   Qed.
 
   Lemma eval_sel_global_inv : forall p x args r,
+      module_saturated Θ Ξ p args ->
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r ->
-      exists f, dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
+      exists f, global_member_value p x f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
   Proof.
-    intros * H; inversion H; subst; eexists; split; try eassumption;
-      first [ eapply eval_sel_global; eauto; constructor | eapply eval_sel_global_neut; eauto; constructor
-            | eapply eval_sel_global_ind; eauto; constructor | eapply eval_sel_global_record; eauto; constructor
-            | eapply eval_sel_global_proof; eassumption | apply eval_apps_proof ].
+    intros * Hs H; inversion H; subst;
+      [ eexists; split; [ eapply global_member_value_term | ]; eassumption
+      | eexists; split; [ eapply global_member_value_neut | ]; eassumption
+      | eexists; split; [ eapply global_member_value_proof; eassumption | apply eval_apps_proof ]
+      | eexists; split; [ eapply global_member_value_indty |]; eassumption
+      | exfalso; match goal with Hl : gc_loc _ _ _ = Some _ |- _ => specialize (Hs _ _ Hl) end; lia
+      | eexists; split; [ eapply global_member_value_record | ]; eassumption ].
   Qed.
+
+  (** A member of a global module lacking a parameter is its member
+      closure. *)
+  Lemma eval_sel_global_unsat_inv : forall p T Φ x args r,
+      gc_loc Θ Ξ p = Some (T, Φ) -> List.length args < List.length T ->
+      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r -> r = d_member (dm_global p args) (x :: nil).
+  Proof.
+    intros * Hl Hlt H; inversion H; subst; try reflexivity;
+      match goal with Hs : module_saturated _ _ _ _ |- _ => specialize (Hs _ _ Hl) end; lia.
+  Qed.
+
+  (** Whether a global module at [args] is saturated is decided by its
+      telescope. *)
+  Lemma module_saturated_dec : forall p args,
+      module_saturated Θ Ξ p args \/
+      exists T Φ, gc_loc Θ Ξ p = Some (T, Φ) /\ List.length args < List.length T.
+  Proof.
+    intros p args; destruct (gc_loc Θ Ξ p) as [[T Φ] |] eqn:E.
+    - destruct (PeanoNat.Nat.le_gt_cases (List.length T) (List.length args)) as [Hle | Hlt].
+      + left; intros T' Φ' E'; rewrite E in E'; injection E' as <- <-; exact Hle.
+      + right; exists T, Φ; split; [ reflexivity | exact Hlt ].
+    - left; intros T' Φ' E'; rewrite E in E'; discriminate.
+  Qed.
+
+  (** A saturated global module stays saturated given more arguments. *)
+  Lemma module_saturated_app : forall p args args',
+      module_saturated Θ Ξ p args -> module_saturated Θ Ξ p (args ++ args').
+  Proof. intros * Hs T Φ Hl; specialize (Hs _ _ Hl); rewrite List.length_app; lia. Qed.
 
   (** A chain of submodules of a global module, each a body module, an open
       frame or the module of an inductive type, is the global module at the
@@ -288,22 +352,21 @@ Section Members.
   Qed.
 
   (** A member of a module expression is its root's member, applied to the
-      expression's arguments: [H.x] and [apps (member_ref R (pre ++ x)) args]
-      evaluate alike, whatever the spine. *)
+      values of the expression's arguments, whatever the spine. *)
   Lemma eval_member_ref : forall ch H ρ r,
       ch <> nil ->
       ⟦ member_ref H ch ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
       (let '(R, args, pre) := modexp_spine H in
-       exists h f, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ ch) Θ ⍮ Ξ ↘ f /\
-                 eval_app_args Θ Ξ f args ρ r).
+       exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ ch) Θ ⍮ Ξ ↘ f /\
+                 ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r).
   Proof.
     induction ch as [| x ch IH]; intros * Hch; [ contradiction |].
     destruct ch as [| y ch].
     - cbn [member_ref]; destruct (modexp_spine H) as [[R args] pre] eqn:E; split.
       + intros Hm; inversion Hm; subst.
         match goal with Hs : modexp_spine H = _ |- _ => rewrite E in Hs; injection Hs as <- <- <- end.
-        do 2 eexists; repeat split; eassumption.
-      + intros (h & f & ? & ? & ?); econstructor; eassumption.
+        do 3 eexists; repeat split; eassumption.
+      + intros (h & f & ns & ? & ? & ? & ?); econstructor; eassumption.
     - change (member_ref H (x :: y :: ch)) with (member_ref (me_mem H x) (y :: ch)).
       rewrite (IH _ _ _ ltac:(discriminate)); cbn [modexp_spine].
       destruct (modexp_spine H) as [[R args] pre].
@@ -320,32 +383,46 @@ Section Members.
   Lemma eval_mem_spine : forall H x R args pre ρ r,
       modexp_spine H = (R, args, pre) ->
       ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
-      exists h f, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ [x]) Θ ⍮ Ξ ↘ f /\
-                eval_app_args Θ Ξ f args ρ r.
+      exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ [x]) Θ ⍮ Ξ ↘ f /\
+                ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros * Hs; split.
     - intros Hm; inversion Hm; subst.
       match goal with Hs' : modexp_spine H = _ |- _ => rewrite Hs in Hs'; injection Hs' as <- <- <- end.
-      do 2 eexists; repeat split; eassumption.
-    - intros (h & f & ? & ? & ?); econstructor; eassumption.
+      do 3 eexists; repeat split; eassumption.
+    - intros (h & f & ns & ? & ? & ? & ?); econstructor; eassumption.
   Qed.
 
-  Lemma eval_mem_apps : forall H x R args pre ρ r,
+  (** [H.x] and [apps (member_ref R (pre ++ x)) args] evaluate alike where
+      the member's value, and every value it is applied to the arguments
+      along the way, takes relevant arguments ([P]): the arguments of a
+      module are evaluated, those of an application only at a relevant
+      argument. *)
+  Lemma eval_mem_apps : forall (P : domain -> Prop),
+      (forall f, P f -> arg_relevance Θ Ξ f = relevant) ->
+      (forall f n g, P f -> $| f & n | Θ ⍮ Ξ ↘ g -> P g) ->
+      forall H x R args pre ρ r,
       modexp_spine H = (R, args, pre) ->
+      (forall f, ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f -> P f) ->
       ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <-> ⟦ apps (member_ref R (pre ++ [x])) args ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r.
   Proof.
-    intros * Hs.
+    intros P HP HPa * Hs HPf.
     pose proof (modexp_spine_root_spine _ _ _ _ Hs) as HR.
     rewrite (eval_mem_spine _ _ _ _ _ _ _ Hs), eval_apps_exp.
     assert (Href : forall f, ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f <->
                         exists h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ [x]) Θ ⍮ Ξ ↘ f).
     { intros f; rewrite eval_member_ref by (destruct pre; discriminate).
       rewrite HR; cbn [app]; split.
-      - intros (h & f' & ? & ? & Ha); inversion Ha; subst; eauto.
-      - intros (h & ? & ?); exists h, f; repeat split; [ assumption | assumption | constructor ]. }
+      - intros (h & f' & ns & ? & ? & Hns & Ha); inversion Hns; subst; inversion Ha; subst; eauto.
+      - intros (h & ? & ?); exists h, f, nil; repeat split; [ assumption | assumption | constructor | constructor ]. }
     split.
-    - intros (h & f & ? & ? & ?); exists f; repeat split; [ apply Href; eauto | assumption ].
-    - intros (f & Hf & ?); apply Href in Hf as (h & ? & ?); exists h, f; repeat split; assumption.
+    - intros (h & f & ns & ? & ? & ? & ?).
+      assert (Hf : ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f) by (apply Href; eauto).
+      exists f; split; [ exact Hf |].
+      apply (eval_app_args_relevant_iff P HP HPa _ _ _ _ (HPf _ Hf)); eauto.
+    - intros (f & Hf & Ha).
+      apply (eval_app_args_relevant_iff P HP HPa _ _ _ _ (HPf _ Hf)) in Ha as (ns & ? & ?).
+      apply Href in Hf as (h & ? & ?); exists h, f, ns; repeat split; assumption.
   Qed.
 
   (** Without arguments, a member is selection from the module's value. *)
@@ -361,13 +438,13 @@ Section Members.
       destruct (modexp_spine H) as [[R' a'] p'] eqn:E; injection Hs as <- <- <-; eauto. }
     subst args.
     rewrite (eval_mem_spine _ _ _ _ _ _ _ Hs); split.
-    - intros (hr & f & Hr & Hc & Ha); inversion Ha; subst.
+    - intros (hr & f & ns & Hr & Hc & Hns & Ha); inversion Hns; subst; inversion Ha; subst.
       assert (Hx1 : [x] <> nil) by discriminate.
       apply (eval_selc_app _ _ _ _ Hx1) in Hc as (h & Hh & Hx).
       exists h; split; [ apply (eval_modexp_noargs _ _ Hn _ _ Hs); eauto | inversion Hx; subst; [ assumption | match goal with H0 : eval_selc _ _ _ nil _ |- _ => inversion H0 end ] ].
     - intros (h & Hh & Hx).
       apply (eval_modexp_noargs _ _ Hn _ _ Hs) in Hh as (hr & Hr & Hc).
-      exists hr, r; repeat split; [ assumption | | constructor ].
+      exists hr, r, nil; repeat split; [ assumption | | constructor | constructor ].
       apply eval_selc_app; [ discriminate |]; exists h; split; [ assumption | constructor; assumption ].
   Qed.
 End Members.
@@ -393,29 +470,4 @@ Proof.
   - destruct (modexp_spine H) as [[R0 a0] p0] eqn:E; injection Hs as <- <- <-.
     cbn [modexp_sub modexp_spine]; rewrite (IH _ _ _ _ eq_refl).
     destruct (modexp_spine R0[σ]ᵐ) as [[R' a'] p']; rewrite map_app, app_assoc; reflexivity.
-Qed.
-
-(** [H.x] and [apps (member_ref R (pre ++ x)) args] evaluate alike under any
-    substitution. *)
-Lemma eval_mem_apps_sub : forall {Θ Ξ} H x R args pre σ ρ r,
-    modexp_spine H = (R, args, pre) ->
-    ⟦ (a_mem H x)[σ] ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <-> ⟦ (apps (member_ref R (pre ++ [x])) args)[σ] ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r.
-Proof.
-  intros * Hs.
-  pose proof (modexp_spine_sub_gen _ _ _ _ σ Hs) as Hsσ.
-  rewrite apps_sub, member_ref_sub.
-  cbn [exp_sub].
-  destruct (modexp_spine R[σ]ᵐ) as [[R' a'] p'] eqn:ER.
-  rewrite (eval_mem_spine _ _ _ _ _ _ _ _ _ Hsσ), eval_apps_exp.
-  split.
-  - intros (h & f & Hh & Hc & Ha).
-    apply eval_app_args_app in Ha as (g & Hg & Ha).
-    exists g; split; [| assumption ].
-    apply eval_member_ref; [ destruct pre; discriminate |]; rewrite ER.
-    exists h, f; repeat split; [ assumption | rewrite app_assoc; assumption | assumption ].
-  - intros (g & Hg & Ha).
-    apply eval_member_ref in Hg; [| destruct pre; discriminate ]; rewrite ER in Hg.
-    destruct Hg as (h & f & Hh & Hc & Hg).
-    exists h, f; repeat split; [ assumption | rewrite <- app_assoc; assumption |].
-    apply eval_app_args_app; eauto.
 Qed.
