@@ -43,6 +43,7 @@ Proof. intros * []; assumption. Qed.
 (** A sort is closed: weakening leaves it unchanged. *)
 Lemma type_sort_wk : forall {S} φ, type_sort S -> S[φ]ʷ = S.
 Proof. intros * []; reflexivity. Qed.
+
 (** The same for a chain. *)
 Corollary rel_chain_relevant_univ : forall {u l},
     rel_chain (per_relevant (per_univ u)) l -> rel_chain (per_univ u) l.

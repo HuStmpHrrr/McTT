@@ -449,6 +449,78 @@ Proof.
   rewrite List.length_rev, List.length_map; f_equal; lia.
 Qed.
 
+(** ** Environments of Arguments, Inverted *)
+
+(** Evaluated terms are as many as the terms. *)
+Lemma eval_exps_count : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
+Proof. induction 1; cbn; congruence. Qed.
+
+#[local] Transparent eval_sub.
+(** A substitution extended by terms, evaluated at a context extended by
+    entries [ts]: past them, the value of the substitution. *)
+Lemma eval_sb_of_list_tail : forall Ms ts σ Δ ρ E, List.length ts = List.length Ms ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E -> ⟦ σ : Δ ⟧s ρ ↘ List.skipn (List.length ts) E.
+Proof.
+  intros * Hl H y Hy.
+  assert (Hy' : List.length ts + y < List.length (List.rev ts ++ Δ)) by (rewrite List.length_app, List.length_rev; lia).
+  destruct (H _ Hy') as [Hp Hn].
+  assert (Hσy : sb_of_list σ Ms (List.length ts + y) = σ y) by (rewrite Hl; apply sb_of_list_ge).
+  rewrite Hσy in Hn; rewrite env_entry_skipn; split.
+  - intros Hpy; apply Hp.
+    rewrite <- (List.length_rev ts); apply entry_propositional_shiftn_intro; rewrite List.length_rev; exact Hpy.
+  - intros Hny; apply Hn; intros Hpx; apply Hny.
+    pose proof (entry_propositional_shiftn (List.rev ts) Δ E y) as Hs; rewrite List.length_rev in Hs; exact (Hs Hpx).
+Qed.
+
+(** And at the new entries, none a proposition there: the terms' values. *)
+Lemma eval_sb_of_list_vals : forall Ms ts σ Δ ρ E, List.length ts = List.length Ms ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E ->
+    (forall x, x < List.length ts -> ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ forall X, env_agree_upto (List.length ts) E (env_args X ms).
+Proof.
+  induction Ms as [| M Ms IH]; intros [| e ts] * Hl H Hn; cbn [List.length] in Hl; try discriminate.
+  - exists nil; split; [ constructor | intros X x Hx; cbn in Hx; lia ].
+  - assert (Hl' : List.length ts = List.length Ms) by lia.
+    cbn [sb_of_list List.rev] in H, Hn; rewrite <- List.app_assoc in H, Hn; cbn [List.app] in H, Hn.
+    destruct (IH ts _ (e :: Δ) _ _ Hl' H ltac:(intros x Hx; apply Hn; cbn [List.length]; lia)) as (ms & Hms & Hag).
+    (** The head term, at the entry past the later ones. *)
+    assert (Hx : List.length ts < List.length (List.rev ts ++ e :: Δ))
+      by (rewrite List.length_app, List.length_rev; cbn [List.length]; lia).
+    destruct (H _ Hx) as [_ Hev].
+    assert (Hσx : sb_of_list (σ ,, M) Ms (List.length ts) = se_exp M)
+      by (rewrite Hl', <- (Nat.add_0_r (List.length Ms)), sb_of_list_ge; reflexivity).
+    pose proof (Hev (Hn (List.length ts) ltac:(cbn [List.length]; lia))) as Hm; rewrite Hσx in Hm.
+    destruct Hm as (m & Hme & Hm).
+    pose proof (eval_exps_count _ _ _ Hms) as Hlms.
+    exists (m :: ms); split; [ econstructor; eassumption |].
+    intros X x Hx'; cbn [List.length] in Hx'.
+    change (env_args X (m :: ms)) with (env_args (X ↦ m) ms).
+    destruct (Nat.lt_ge_cases x (List.length ts)) as [Hlt | Hge]; [ exact (Hag (X ↦ m) x Hlt) |].
+    assert (x = List.length ts) as -> by lia.
+    rewrite Hme, Hl', <- Hlms, <- (Nat.add_0_r (List.length ms)), env_entry_args_app; reflexivity.
+Qed.
+#[local] Opaque eval_sub.
+
+(** Both together: the environment agrees with the terms' values over the
+    value of the substitution, on the whole context. *)
+Lemma eval_sb_of_list_inv : forall Ms ts σ Δ ρ E E0, List.length ts = List.length Ms ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E ->
+    (forall x, x < List.length ts -> ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
+    ⟦ σ : Δ ⟧s ρ ↘ E0 ->
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\
+      env_agree_upto (List.length ts + List.length Δ) E (env_args E0 ms).
+Proof.
+  intros * Hl H Hn H0.
+  destruct (eval_sb_of_list_vals _ _ _ _ _ _ Hl H Hn) as (ms & Hms & Hag).
+  pose proof (eval_exps_count _ _ _ Hms) as Hlms.
+  pose proof (functional_eval_sub _ _ _ _ _ (eval_sb_of_list_tail _ _ _ _ _ _ Hl H) H0) as Ht.
+  exists ms; split; [ exact Hms |].
+  intros x Hx; destruct (Nat.lt_ge_cases x (List.length ts)) as [Hlt | Hge]; [ exact (Hag E0 x Hlt) |].
+  destruct (Nat.le_exists_sub _ _ Hge) as (y & -> & _); rewrite Nat.add_comm.
+  rewrite <- env_entry_skipn, (Ht y ltac:(lia)).
+  rewrite Hl, <- Hlms, env_entry_args_app; reflexivity.
+Qed.
+
 Lemma eval_vars_from_args : forall xs E ys,
     ⟦ vars_from (List.length ys) (List.length xs) ⟧* gc_deps ⍮ gc_stack ⍮ env_args E (xs ++ ys) ↘ xs.
 Proof.

@@ -713,7 +713,11 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 { (** The uniform parameters are a valid context *)
   valid_ind_decl_uparams : ⊨ ind_uparams D
 (** Each uniform parameter is a type of a universe, under those outside
-    it: parameters are relevant ([params_relevant], read semantically) *)
+    it: parameters are relevant ([params_relevant], read semantically).
+    The type former and the constructors take their parameters as relevant
+    arguments ([arg_relevance] of [d_ind], and of [d_con] before its
+    arguments), so their values are relevant only when the parameters'
+    types are *)
 ; valid_ind_decl_uparams_relevant : exists l, forall Δ1 T Δ2, ind_uparams D = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l
 (** The sort is a valid type over them *)
 ; valid_ind_decl_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
@@ -775,6 +779,9 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 Record valid_record_decl (R : record_decl) : Prop := mk_valid_record_decl
 { (** The parameters are a valid context *)
   params_valid : ⊨ record_params R
+(** Each parameter is a type of a universe, under those outside it: the
+    record type former takes its parameters as relevant arguments *)
+; params_relevant_valid : exists l, forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l
 (** The sort is a valid type over them *)
 ; sort_valid : exists i : nat, record_params R ⊨ record_sort R : Typeω@i
 (** The fields, over the parameters, are a valid context *)

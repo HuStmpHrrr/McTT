@@ -185,6 +185,54 @@ Proof.
   exact Hr.
 Qed.
 
+(** A telescope of types of universes over [Γ] has no propositional
+    entry at an environment its context PER relates. *)
+Lemma relevant_entries_not_propositional : forall Δ Γ R, tele_ass Δ ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
+    EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> forall x, x < List.length Δ -> ~ entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
+Proof.
+  intros * Ha Hrel HR ρ ρ' Hρ x Hx [T HT E HE a Ea Hp].
+  destruct (nth_error_lt_some' Δ x Hx) as [e He].
+  assert (Hea : exists A, e = ce_ass A)
+    by (unfold tele_ass in Ha; rewrite List.Forall_forall in Ha; apply Ha; eapply List.nth_error_In; exact He).
+  destruct Hea as [A ->].
+  unfold ctx_entry_type in HT; rewrite List.nth_error_app1, He in HT by exact Hx; injection HT as ->.
+  destruct (List.nth_error_split _ _ He) as (l1 & l2 & HΔ & Hl1).
+  destruct (Hrel _ _ _ HΔ) as [i HA].
+  pose proof HA as [RT HRT _ _].
+  assert (HRe : EF (l1 ++ ce_ass T :: nil) ++ (l2 ++ Γ) ≈ (l1 ++ ce_ass T :: nil) ++ (l2 ++ Γ) ∈ per_ctx_env ↘ R)
+    by (rewrite HΔ in HR; rewrite <- !List.app_assoc in *; cbn [List.app] in *; exact HR).
+  destruct (rel_wk_shiftn _ _ _ _ HRe HRT) as [_ Hwk].
+  pose proof (Hwk _ _ Hρ) as Ht; rewrite !eval_wk_shiftn in Ht.
+  assert (Hlx : List.length (l1 ++ ce_ass T :: nil) = S x) by (rewrite List.length_app; cbn; lia).
+  rewrite Hlx in Ht.
+  assert (Hsk : List.skipn (S x) (Δ ++ Γ) = l2 ++ Γ).
+  { rewrite HΔ, <- List.app_assoc; cbn [List.app].
+    change (l1 ++ ce_ass T :: l2 ++ Γ) with (l1 ++ (ce_ass T :: nil) ++ l2 ++ Γ).
+    rewrite List.app_assoc, <- Hlx, List.skipn_app, List.skipn_all2 by lia.
+    rewrite Nat.sub_diag; reflexivity. }
+  rewrite Hsk in HE.
+  pose proof (per_ctx_env_resp_agree HRT _ _ _ _ (symmetry HE) (reflexivity _) Ht) as HE'.
+  destruct (rel_exp_of_typ_relevant_at HRT HA _ _ HE') as (b & Eb & Hr).
+  assert (b = a) as -> by (eapply functional_eval_exp; eassumption).
+  congruence.
+Qed.
+
+(** The relevant parameters of a closed telescope stay relevant over any
+    valid context. *)
+Lemma closed_relevant_over : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ ->
+    (exists l, forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l) ->
+    forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i.
+Proof.
+  intros * Ha HC HΓ [l Hl] * E.
+  exists l.
+  assert (Ha2 : tele_ass Δ2)
+    by (rewrite E in Ha; unfold tele_ass in Ha; apply List.Forall_app in Ha as [_ Ha]; inversion Ha; assumption).
+  assert (HC2 : ⊨ Δ2) by (rewrite E in HC; exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC))).
+  exact (closed_app_valid _ _ _ _ _ Ha2 HC2 HΓ (Hl _ _ _ E)).
+Qed.
+
 (** Related arguments at a closed telescope hold the proof at its
     propositions. *)
 Corollary gargs_env_proofs : forall Ctx zs zs' ρ ρ', ⊨ Ctx ->
