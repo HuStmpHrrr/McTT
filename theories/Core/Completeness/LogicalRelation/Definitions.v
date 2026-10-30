@@ -712,6 +712,9 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 { (** The uniform parameters are a valid context *)
   valid_ind_decl_uparams : ⊨ ind_uparams D
+(** Each uniform parameter is a type of a universe, under those outside
+    it: parameters are relevant ([params_relevant], read semantically) *)
+; valid_ind_decl_uparams_relevant : exists l, forall Δ1 T Δ2, ind_uparams D = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l
 (** The sort is a valid type over them *)
 ; valid_ind_decl_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
 (** The level of the sort, a level ([decl_typed_sort_lvl]): a small sort is below

@@ -261,21 +261,36 @@ Qed.
 (** ** Environments of Arguments *)
 
 (** A substitution extended by terms, at a context extended by entries
-    [ts] (outermost first) none of which is a proposition at the values
-    before it: the environment extended by the terms' values. *)
+    [ts] (outermost first): the environment extended by the terms' values,
+    when that environment holds the proof at every propositional entry of
+    [ts]. *)
 Lemma eval_sb_of_list : forall Ms ts σ Δ ρ ρσ ms,
     ⟦ σ : Δ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ts = List.length Ms ->
-    (forall k e, List.nth_error ts k = Some e ->
-       ~ head_propositional gc_deps gc_stack e (List.rev (List.firstn k ts) ++ Δ) (env_args ρσ (List.firstn k ms))) ->
+    (forall x, x < List.length ts ->
+       entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_args ρσ ms) x ->
+       env_entry (env_args ρσ ms) x = de_term ⋆ᵈ) ->
     ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_args ρσ ms.
 Proof.
-  induction Ms as [| M Ms IH]; intros [| e ts] * Hσ HMs Hl Hn; inversion HMs; subst; cbn [sb_of_list] in *;
-    try discriminate; [ exact Hσ |].
-  change (env_args ρσ (m :: ms0)) with (env_args (ρσ ↦ m) ms0).
-  cbn [List.rev]; rewrite <- List.app_assoc; cbn [List.app].
-  apply IH; [ apply eval_sub_extend; [ assumption | exact (Hn 0 e eq_refl) | assumption ] | assumption | cbn [List.length] in Hl; lia |].
-  intros k e' He'; pose proof (Hn (S k) e' He') as Hk.
-  cbn [List.firstn List.rev] in Hk; rewrite <- List.app_assoc in Hk; exact Hk.
+  assert (Hlen : forall Ns ρ0 ns, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ ns -> List.length ns = List.length Ns)
+    by (induction 1; cbn; congruence).
+  induction Ms as [| M Ms IH]; intros [| e ts] * Hσ HMs Hl Hp; pose proof (Hlen _ _ _ HMs) as HlM;
+    inversion HMs; subst; cbn [sb_of_list] in *; try discriminate; [ exact Hσ |].
+  change (env_args ρσ (m :: ms0)) with (env_args (ρσ ↦ m) ms0) in *.
+  cbn [List.rev List.length] in *; rewrite <- List.app_assoc in *; cbn [List.app] in *.
+  assert (Hl0 : List.length ms0 = List.length ts) by lia.
+  apply IH; [ | assumption | lia | intros x Hx Hpx; apply Hp; [ lia | exact Hpx ] ].
+  apply eval_sub_extend_any; [ exact Hσ | assumption |].
+  (** The head is the entry past the later ones. *)
+  intros Hh.
+  assert (Ee : env_entry (env_args (ρσ ↦ m) ms0) (List.length ts) = de_term m)
+    by (rewrite <- Hl0, <- (Nat.add_0_r (List.length ms0)), <- env_entry_skipn, skipn_env_args; reflexivity).
+  assert (Hpx : entry_propositional gc_deps gc_stack (List.rev ts ++ e :: Δ) (env_args (ρσ ↦ m) ms0) (List.length ts)).
+  { rewrite <- (List.length_rev ts), <- (Nat.add_0_r (List.length (List.rev ts))).
+    apply entry_propositional_shiftn_intro.
+    rewrite List.length_rev, <- Hl0, skipn_env_args.
+    exact (proj2 (entry_propositional_head _ _ _ _) Hh). }
+  pose proof (Hp (List.length ts) ltac:(lia) Hpx) as H0; rewrite Ee in H0.
+  injection H0 as ->; reflexivity.
 Qed.
 
 

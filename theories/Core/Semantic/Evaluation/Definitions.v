@@ -1517,6 +1517,22 @@ Proof.
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
+(** An extension by a term whose value is the proof [⋆ᵈ] whenever the
+    entry is a proposition: either way the term's value. *)
+Lemma eval_sub_extend_any : forall {Θ Ξ} e Δ σ ρ ρσ M m,
+    ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+    (head_propositional Θ Ξ e Δ ρσ -> m = ⋆ᵈ) ->
+    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
+Proof.
+  intros * H HM Hp [| x] Hx.
+  - split; [ intros Hx0; cbn; rewrite (Hp (proj1 (entry_propositional_head _ _ _ _) Hx0)); reflexivity
+           | intros _; exists m; split; [ reflexivity | assumption ] ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
+           | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+Qed.
+
 (** An extension by a module expression at a module slot. *)
 Lemma eval_sub_extend_mod : forall {Θ Ξ} U Δ σ ρ ρσ H h,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->

@@ -1335,6 +1335,31 @@ Proof.
     intros x; exact (Hc _ _ Hρσ' x).
 Qed.
 
+(** Type judgments likewise. *)
+Lemma rel_type_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A A'} {i : nat},
+    EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
+    EF Γ2 ≈ Γ2 ∈ per_ctx_env ↘ R2 ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
+    List.length Γ2 <= List.length Γ1 ->
+    ctx_props_incl R1 Γ1 Γ2 ->
+    Γ2 ⊨ᵗ A ≈ A' at i ->
+    Γ1 ⊨ᵗ A ≈ A' at i.
+Proof.
+  intros * HΓ1 HΓ2 HR Hl Hc [R2' HΓ2' HA].
+  refine (mk_rel_type_under_ctx _ _ _ _ R1 HΓ1 _).
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
+  assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
+  apply (HA _ _ HΓ').
+  - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact Hc | exact Hσ ].
+    auto.
+  - exact Hρ.
+  - apply (eval_sub_change_target Hev Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΓ2 _ _ (HR _ _ Hρσ))) |].
+    intros x; exact (Hc _ _ Hρσ x).
+  - apply (eval_sub_change_target Hev' Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΓ2 _ _ (HR _ _ Hρσ'))) |].
+    intros x; exact (Hc _ _ Hρσ' x).
+Qed.
+
 (** * Equality from Pointwise Relatedness
 
     Two valid terms of [T] are equal when their values at related environments
@@ -1377,6 +1402,29 @@ Proof.
   - econstructor; eassumption.
   - right; apply (mk_rel_exp v1 v2 w3 w4); try eassumption.
     apply rel_chain_4; [ pairwise | eassumption | apply E; pairwise ].
+Qed.
+
+(** Two valid types, of either sort, are equal when their values at related
+    environments are related. *)
+Lemma rel_type_under_ctx_of_simple : forall {Γ A A' env_relΓ} {i : nat},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ᵗ A ≈ A at i ->
+    Γ ⊨ᵗ A' ≈ A' at i ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
+        exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    Γ ⊨ᵗ A ≈ A' at i.
+Proof.
+  intros * HΓ [R1' HΓ1 HA] [R2' HΓ2 HA'] Hpt.
+  refine (mk_rel_type_under_ctx _ _ _ _ env_relΓ HΓ _).
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [v1 v2 v3 v4 Hv1 Hv2 Hv3 Hv4 Hc1].
+  destruct (HA' _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hc2].
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ) by (eapply rel_sub_under_ctx_at'; eassumption).
+  destruct (Hpt _ _ Hρσ) as (a & a' & Ha & Ha' & Haa).
+  functional_eval_rewrite_clear.
+  destruct Hc1 as (H12 & _); destruct Hc2 as (_ & _ & H34).
+  apply (mk_rel_exp v1 v2 w3 w4); try eassumption.
+  apply rel_chain_4; assumption.
 Qed.
 
 End Fixed_GCtx.

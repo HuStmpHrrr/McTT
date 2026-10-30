@@ -993,6 +993,48 @@ Proof.
   + etransitivity; [ symmetry; exact Hn34 |]; etransitivity; [ symmetry; exact Hy' | exact Hm34 ].
 Qed.
 
+(** Type judgments likewise, at either sort: the values of the type along
+    [τ ⨟ σ] and at the value of [τ] are bridged by the type itself at the
+    pair [sub_link] relates. *)
+Lemma rel_type_under_ctx_link : forall {Γ τ Δ A A'} {i : nat},
+    Γ ⊨ˢ τ ≈ τ : Δ -> sub_link Γ Δ τ -> Δ ⊨ᵗ A ≈ A' at i -> Γ ⊨ᵗ A[τ] ≈ A'[τ] at i.
+Proof.
+  intros * Hτj Hl HA.
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
+  assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
+  pose proof (rel_type_inversion HA) as [R0 [HΔ0 HAgen]].
+  pose proof (rel_type_inversion_simple_at HΔ HA) as HAs.
+  refine (mk_rel_type_under_ctx _ _ _ _ RΓ HΓ _).
+  intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (HP' : PER R') by (eapply per_env_PER; exact HΓ').
+  assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  assert (Hρ'ρ' : R' ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
+  assert (Hρσ : RΓ ρσ ρ'σ') by (exact (rel_sub_under_ctx_at' Hσ HΓ' HΓ _ _ _ _ Hρ Hev Hev')).
+  pose proof (rel_sub_compose_of_link Hτj Hl _ _ _ Hσ) as Hτσ.
+  destruct (Hl _ _ HΓ' _ _ Hσ _ HΔ _ _ Hρρ Hev) as [e1 [He1 L1]].
+  destruct (Hl _ _ HΓ' _ _ (rel_sub_under_ctx_sym Hσ) _ HΔ _ _ Hρ'ρ' Hev') as [e1' [He1' L1']].
+  pose proof (rel_sub_under_ctx_simple Hτj) as [RΓ3 [HΓ3 [RΔ3 [HΔ3 Hτs]]]].
+  assert (E3 : RΓ <~> RΓ3) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hτs _ _ (proj1 (E3 _ _) Hρσ)) as [e2 [e2' [He2 [He2' _]]]].
+  pose proof (L1 _ He2) as Hl1. pose proof (L1' _ He2') as Hl1'.
+  destruct (HAgen _ _ HΓ' _ _ Hτσ _ _ _ _ Hρ He1 He1') as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcc].
+  destruct (HAgen _ _ HΓ _ _ Hτj _ _ _ _ Hρσ He2 He2') as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdc].
+  (** The bridges: [A] from [e1] to [e2], and [A'] from [e2'] to [e1']. *)
+  assert (He22 : RΔ e2 e2) by (etransitivity; [ symmetry; exact Hl1 | exact Hl1 ]).
+  assert (He11' : RΔ e1' e1') by (etransitivity; [ exact Hl1' | symmetry; exact Hl1' ]).
+  destruct (HAs _ _ Hl1) as (x1 & x2 & Hx1 & Hx2 & Hx).
+  destruct (HAs _ _ He22) as (x3 & x4 & Hx3 & Hx4 & Hx').
+  destruct (HAs _ _ Hl1') as (y1 & y2 & Hy1 & Hy2 & Hy).
+  destruct (HAs _ _ He11') as (y3 & y4 & Hy3 & Hy4 & Hy').
+  functional_eval_rewrite_clear.
+  destruct Hcc as (Hc12 & _ & Hc34); destruct Hdc as (Hd12 & Hd23 & Hd34).
+  apply (mk_rel_exp c1 d1 d4 c4); try (rewrite exp_sub_sub; assumption); try assumption.
+  apply rel_chain_4.
+  - etransitivity; [ exact Hc12 |]; etransitivity; [ exact Hx |]; etransitivity; [ symmetry; exact Hx' | symmetry; exact Hd12 ].
+  - etransitivity; [ exact Hd12 |]; etransitivity; [ exact Hd23 | exact Hd34 ].
+  - etransitivity; [ symmetry; exact Hd34 |]; etransitivity; [ symmetry; exact Hy |]; etransitivity; [ exact Hy' | exact Hc34 ].
+Qed.
+
 (** Module expressions likewise, the module PER having no types to move. *)
 Lemma rel_modexp_under_ctx_link : forall {Γ τ Δ H H'},
     Γ ⊨ˢ τ ≈ τ : Δ -> sub_link Γ Δ τ -> Δ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H[τ]ᵐ ≈ H'[τ]ᵐ.
@@ -1141,6 +1183,13 @@ Lemma rel_exp_under_ctx_gsub : forall {Γ τ Δ T M M'},
     gsub Γ τ Δ -> Δ ⊨ M ≈ M' : T -> Γ ⊨ M[τ] ≈ M'[τ] : T[τ].
 Proof.
   intros * Hg HM; destruct (gsub_props Hg) as [Hτj Hl]; exact (rel_exp_under_ctx_link Hτj Hl HM).
+Qed.
+
+(** Type judgments likewise. *)
+Lemma rel_type_under_ctx_gsub : forall {Γ τ Δ A A'} {i : nat},
+    gsub Γ τ Δ -> Δ ⊨ᵗ A ≈ A' at i -> Γ ⊨ᵗ A[τ] ≈ A'[τ] at i.
+Proof.
+  intros * Hg HA; destruct (gsub_props Hg) as [Hτj Hl]; exact (rel_type_under_ctx_link Hτj Hl HA).
 Qed.
 
 (** Module expressions likewise, the module PER having no types to move. *)

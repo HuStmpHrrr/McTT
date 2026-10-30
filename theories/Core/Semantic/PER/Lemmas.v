@@ -3981,6 +3981,40 @@ Proof.
       pose proof (per_univ_elem_relevance _ _ _ _ R2); congruence.
 Qed.
 
+(** Two contexts a context PER relates have the same propositional
+    entries, read at related environments: the types at each entry are
+    related, so of one sort. *)
+Lemma per_ctx_env_props_cross : forall Γ Γ' R,
+    EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R ->
+      forall x, entry_propositional gc_deps gc_stack Γ ρ x -> entry_propositional gc_deps gc_stack Γ' ρ' x.
+Proof.
+  induction 1; intros ρ ρ' Hρ x Hx; apply_relation_equivalence.
+  (** At an entry with a type, the head is read off the type's relation
+      and the deeper entries off the tails'. *)
+  2-3,5: match goal with
+         | Hρ : per_ctx_env_cons_rel _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _]
+         | Hρ : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _]
+         | Hρ : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _ _ _]
+         end;
+         (destruct x as [| x];
+          [ destruct Hx as [T HT E HE a Ea Hp]; cbn in HT; injection HT as <-; rewrite skipn_one_drop in HE;
+            pose proof (per_ctx_env_resp_agree equiv_Γ_Γ' _ _ _ _ (symmetry HE) (reflexivity _) Ht) as HE';
+            match goal with
+            | HT0 : forall ρ ρ' (e : _), rel_typ _ _ ρ _ ρ' _ |- _ =>
+                destruct (rel_typ_propositional_right (HT0 _ _ HE') (ex_intro _ a (conj Ea Hp))) as (a' & Ea' & Hp')
+            end;
+            eapply mk_entry_propositional with (entry_propositional_env := ρ'↯);
+              [ reflexivity | intros y _; rewrite ?skipn_one_drop; reflexivity | exact Ea' | exact Hp' ]
+          | apply (proj2 (entry_propositional_succ _ _ _ _));
+            exact (IHper_ctx_env _ _ Ht x (proj1 (entry_propositional_succ _ _ _ _) Hx)) ]).
+  - destruct Hx as [T HT]; unfold ctx_entry_type in HT; destruct x; discriminate.
+  - destruct Hρ as [Ht _].
+    destruct x as [| x]; [ destruct Hx as [T HT]; discriminate HT |].
+    apply (proj2 (entry_propositional_succ _ _ _ _)).
+    exact (IHper_ctx_env _ _ Ht x (proj1 (entry_propositional_succ _ _ _ _) Hx)).
+Qed.
+
 End Fixed_GCtx.
 
 #[export]
