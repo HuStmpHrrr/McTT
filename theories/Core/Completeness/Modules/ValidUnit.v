@@ -552,7 +552,7 @@ Proof.
     intros Hsh HC Ho RC ρ σ HRC Hρ Hs.
   - exists gm_nil; split; [ constructor | exact I ].
   - cbn [body_shape] in Hsh.
-    destruct (IH (proj1 Hsh) ltac:(destruct E as [? ? ? [] | | | |]; exact (rel_ctx_wf_tail HC))
+    destruct (IH (proj1 Hsh) ltac:(destruct E as [? ? ? ? [] | | | |]; exact (rel_ctx_wf_tail HC))
                 ltac:(intros k Ψ H0 Hk; apply (Ho k); cbn [body_opens gm_dropn]; exact Hk) _ _ _ HRC Hρ Hs)
       as (Φk & Hb & Hk).
     exists (gm_ext Φk x E); split; [ constructor; exact Hb | split; [ exact Hk | split; [ reflexivity | left; reflexivity ] ] ].
@@ -682,7 +682,7 @@ Lemma mdesc_entry_up_inv : forall Δ R y Γy E rd, mdesc_entry (mdesc_up Δ R) y
     exists Γy' rd', mdesc_entry R y = Some (Γy', E, rd').
 Proof.
   intros * He; destruct R; cbn in He |- *; try discriminate.
-  - destruct (gm_prefix_upto _ y) as [[| ? ? [[|] ? ? [] | | | |] | ] |]; try discriminate;
+  - destruct (gm_prefix_upto _ y) as [[| ? ? [[|] ? ? ? [] | | | |] | ] |]; try discriminate;
       injection He as <- <- <-; eauto.
   - destruct (gm_prefix_upto _ y) as [[| ? ? E0 | ] |]; try discriminate; injection He as <- <- <-; eauto.
 Qed.
@@ -695,7 +695,7 @@ Proof.
   destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
   pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
   exists Φ', E0; split; [ reflexivity |].
-  destruct E0 as [[|] ? ? [] | | | |]; try discriminate; injection He as <- <- <-; repeat split.
+  destruct E0 as [[|] ? ? ? [] | | | |]; try discriminate; injection He as <- <- <-; repeat split.
 Qed.
 
 Lemma mdesc_entry_closed_inv : forall Θ p T Φ Ns y Γy E rd, mdesc_entry (mdesc_closed Θ p T Φ Ns) y = Some (Γy, E, rd) ->
@@ -714,7 +714,7 @@ Proof.
   induction Φ as [| Φ IH z E | Φ IH H its]; intros * Hn Hp; cbn in Hn, Hp; try discriminate.
   destruct (String.eqb y z); [ injection Hp as <-; exists nil; reflexivity |].
   destruct (IH _ _ Hn Hp) as (X & HX).
-  destruct E as [? ? ? [] | | | |]; cbn [body_ctx]; rewrite HX; eexists (_ :: X); reflexivity.
+  destruct E as [? ? ? ? [] | | | |]; cbn [body_ctx]; rewrite HX; eexists (_ :: X); reflexivity.
 Qed.
 
 Lemma prefix_shape : forall Φ x Φ' E, body_shape Φ Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->

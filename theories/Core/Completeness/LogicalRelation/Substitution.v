@@ -40,11 +40,11 @@ Section Fixed_GCtx.
 
 Lemma per_ctx_env_of_typ : forall {Δ A} {i : nat} {env_relΔ},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ (per_env_extend A A env_relΔ).
 Proof.
   intros * HΔ H.
-  pose proof (rel_exp_of_typ_inversion_simple H) as [env_relΔ' [HΔ' HA]].
+  pose proof (rel_type_inversion_simple H) as [env_relΔ' [HΔ' HA]].
   handle_per_ctx_env_irrel.
   eapply per_ctx_env_extend; eassumption.
 Qed.
@@ -64,11 +64,11 @@ Qed.
 Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     EF Γ ▹ A[σ] ≈ Γ ▹ A[σ] ∈ per_ctx_env ↘ (per_env_extend A[σ] A[σ] env_relΓ).
 Proof.
   intros * HΓ Hσj HA.
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   pose proof (rel_sub_under_ctx_simple (rel_sub_under_ctx_refl_left Hσj))
     as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 Hσrefl]]]].
   handle_per_ctx_env_irrel.
@@ -91,7 +91,7 @@ Qed.
 Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     forall ρ ρ' j a b R c c',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       ⟦ A[σ] ⟧ ρ ↘ a ->
@@ -100,7 +100,7 @@ Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ.
 Proof.
   intros * HΓ Hσj HA * Hρ Ha HR Hc.
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   pose proof (rel_sub_under_ctx_simple (rel_sub_under_ctx_refl_left Hσj))
     as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 Hσrefl]]]].
   handle_per_ctx_env_irrel.
@@ -131,7 +131,7 @@ Qed.
     typechecks. *)
 Lemma rel_exp_of_typ_extend_simple : forall {Γ A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ⊨ᵗ A ≈ A at i ->
     Γ ▹ A ⊨ B ≈ B' : Typeω@j ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ ->
@@ -152,22 +152,18 @@ Qed.
     head PERs at different arguments, which a bare [R] does not allow. *)
 Lemma rel_exp_under_ctx_extend_simple : forall {Γ A} {i : nat} {B M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ⊨ᵗ A ≈ A at i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ ->
+      rel_typ_propositional B ρ \/
       exists m m',
         ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\
           Dom m ≈ m' ∈ per_head B B ρ ρ'.
 Proof.
   intros * HΓ HA HM * Hρ.
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
-  pose proof (rel_exp_under_ctx_simple HM) as [env_relΓA [HΓA2 [j HMl]]].
-  handle_per_ctx_env_irrel.
-  destruct (HMl _ _ Hρ) as [b [b' [R [Hb [Hb' [HR [m [m' [Hm [Hm' Hmm']]]]]]]]]].
-  exists m, m'.
-  do 2 (split; [ eassumption |]).
-  eapply per_head_of; eassumption.
+  exact (rel_exp_under_ctx_simple_at HΓA HM _ _ Hρ).
 Qed.
 
 (** The [Wk] instance of the same, which is the only way a weakened term
@@ -185,8 +181,9 @@ Qed.
     wants depends on the shape of [B]. *)
 Lemma rel_exp_under_ctx_shift_at : forall {Γ A} {i : nat} {B M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ⊨ᵗ A ≈ A at i ->
     Γ ⊨ M ≈ M' : B ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort B ρ relevant) ->
     forall ρ ρ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A A env_relΓ ->
       exists j R b1 b2 b3 b4 w1 w2 w3 w4,
@@ -202,18 +199,18 @@ Lemma rel_exp_under_ctx_shift_at : forall {Γ A} {i : nat} {B M M' env_relΓ},
         ⟦ M'[↑]ʷ ⟧ ρ' ↦ c' ↘ w4 /\
         rel_chain R ([w1; w2; w3; w4]).
 Proof.
-  intros * HΓ HA HM * Hρ.
+  intros * HΓ HA HM HBr * Hρ.
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
-  pose proof (rel_sub_of_wk (rel_wk_under_ctx_intro HΓA HΓ (rel_wk_shift HΓ HΓA)))
-    as HWk.
+  pose proof (rel_sub_of_wk_rel HΓA HΓ (rel_wk_shift HΓ HΓA)) as HWk.
   destruct HM as [env_relΓ2 HΓ2 j HMgen].
+  assert (Hρt : Dom ρ ≈ ρ' ∈ env_relΓ) by (destruct Hρ as [Ht _ _ _]; exact Ht).
   (** [(ρ ↦ c)↯] is [ρ] up to conversion, so the two substituted environments
     that [rel_exp_under_ctx] asks to be named are the tails themselves.  This makes
     the inner pair of both chains a statement about [ρ] and [ρ'] rather than about
     environments reached through [σ]. *)
-  destruct (HMgen _ _ HΓA _ _ HWk _ _ _ _ Hρ
-                  (eval_sub_shift (ρ ↦ c)) (eval_sub_shift (ρ' ↦ c')))
-    as [R [Htyp Hexp]].
+  destruct (eval_sub_shift_rel HΓA Hρ) as [Hs Hs'].
+  destruct (HMgen _ _ HΓA _ _ HWk _ _ _ _ Hρ Hs Hs') as [R [Htyp Hexp]].
+  apply (rel_exp_or_prop_relevant Htyp (HBr _ _ Hρt)) in Hexp.
   destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct Hexp as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hwchain].
   rewrite exp_sub_of_shift in Hb1, Hb4, Hw1, Hw4.
@@ -234,23 +231,25 @@ Qed.
 
 Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A} {i : nat},
     Γ ⊨ʷ ψ : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     Γ ▹ A[ψ]ʷ ⊨ʷ (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
-  pose proof Hψj as [env_relΓ HΓ env_relΔ HΔ Hψ].
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof Hψj as [env_relΓ HΓ env_relΔ HΔ Hψ Hψp].
+  pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   handle_per_ctx_env_irrel.
-  (** The commutation obligation of [A] along [ι ψ].  It is used twice, to build
-    the context PER of [Γ ▹ A[ψ]ʷ] and to bridge the head PERs, so it is named, at
-    an environment pair the caller supplies. *)
+  pose proof (rel_wk_mono _ _ _ Hψ) as Hψm.
+  (** The commutation obligation of [A] along [ι ψ].  It is used three times,
+    to build the context PER of [Γ ▹ A[ψ]ʷ], to bridge the head PERs and to
+    carry a propositional head across, so it is named, at an environment
+    pair the caller supplies. *)
   assert (Hcom : forall ρ ρ',
              Dom ρ ≈ ρ' ∈ env_relΓ ->
              rel_exp A (ι ψ) ρ ⟪ψ⟫ ρ
                      A (ι ψ) ρ' ⟪ψ⟫ ρ' (per_univ i))
     by (intros ρ ρ' Hρ;
-        exact (HAgen _ _ HΓ _ _ (rel_sub_of_wk Hψj) _ _ _ _ Hρ
-                     (eval_sub_of_wk _ _) (eval_sub_of_wk _ _))).
+        destruct (eval_sub_of_wk_pair (Γ := Δ) Hψ ltac:(eassumption) Hρ) as [Hw Hw'];
+        exact (HAgen _ _ HΓ _ _ (rel_sub_of_wk Hψj) _ _ _ _ Hρ Hw Hw')).
   pose proof (per_ctx_env_of_typ HΔ' HA) as HΔA.
   assert (HΓA : EF Γ ▹ A[ψ]ʷ ≈ Γ ▹ A[ψ]ʷ ∈ per_ctx_env
                      ↘ (per_env_extend A[ψ]ʷ A[ψ]ʷ env_relΓ)).
@@ -262,18 +261,41 @@ Proof.
     repeat split; try eassumption.
     pairwise. }
   eexists_rel_wk.
-  (** Both projections of [⟪q ψ⟫ ρ] are conversions, so nothing is rewritten
-    below: [exact] sees through [⟪q ψ⟫ ρ] to [⟪ψ⟫ (ρ ↯)] and to [ρ 0]. *)
-  split; [ typeclasses eauto |].
-  intros ρ ρ' [Htail Hhead].
-  apply per_env_extend_intro; rewrite ?eval_wk_q_zero; rewrite ?eval_wk_q_tail by typeclasses eauto.
-  - exact (Hψ _ _ Htail).
-  - destruct (Hcom _ _ Htail) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
-    rewrite exp_sub_of_wk in Ha1, Ha4.
-    functionalize_per_univ_chain Hchain R.
-    eapply per_head_bridge;
-      [ exact Hhead | exact Ha1 | exact Ha4 | pairwise | exact Ha2 | exact Ha3
-      | pairwise_univ ].
+  - (** Both projections of [⟪q ψ⟫ ρ] are conversions, so nothing is rewritten
+      below: [exact] sees through [⟪q ψ⟫ ρ] to [⟪ψ⟫ (ρ ↯)] and to [ρ 0]. *)
+    split; [ typeclasses eauto |].
+    intros ρ ρ' [Htail Hhead Hl Hr].
+    apply per_env_extend_intro; rewrite ?eval_wk_q_zero; rewrite ?eval_wk_q_tail by typeclasses eauto.
+    + exact (Hψ _ _ Htail).
+    + destruct (Hcom _ _ Htail) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
+      rewrite exp_sub_of_wk in Ha1, Ha4.
+      functionalize_per_univ_chain Hchain R.
+      eapply per_head_bridge;
+        [ exact Hhead | exact Ha1 | exact Ha4 | pairwise | exact Ha2 | exact Ha3
+        | pairwise_univ ].
+    + rewrite eval_wk_q_zero_entry; exact Hl.
+    + rewrite eval_wk_q_zero_entry; exact Hr.
+  - (** The head: [A[ψ]ʷ] at a tail is a proposition exactly when [A] is at
+      its image, by the commutation obligation, at a tail pointwise equal
+      to the given one. *)
+    intros ρ ρ' [Htail _ _ _] [| x] Hx.
+    + destruct Hx as [T HT E HE v Ev Hv]; cbn in HT; injection HT as <-.
+      rewrite skipn_one_drop in HE.
+      assert (HE' : Dom E ≈ ρ'↯ ∈ env_relΓ)
+        by (eapply per_ctx_env_resp_env_eq; [ exact HΓ | symmetry; exact HE | reflexivity | exact Htail ]).
+      destruct (Hcom _ _ HE') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
+      rewrite exp_sub_of_wk in Ha1.
+      functional_eval_rewrite_clear.
+      assert (H12 : Dom v ≈ a2 ∈ per_univ i) by pairwise.
+      destruct H12 as [R12 H12].
+      pose proof (per_univ_elem_relevance _ _ _ _ H12) as Hr12.
+      econstructor; [ reflexivity | | exact Ha2 | congruence ].
+      intros y; rewrite skipn_one_drop, eval_wk_q_tail by typeclasses eauto.
+      rewrite !eval_wk_entry by assumption; apply HE.
+    + apply (proj1 (entry_propositional_succ _ _ _ _)) in Hx.
+      apply (proj2 (entry_propositional_succ _ _ _ _)).
+      rewrite eval_wk_q_tail by typeclasses eauto.
+      exact (Hψp _ _ Htail _ Hx).
 Qed.
 
 (** ** Extension is Semantic
@@ -299,46 +321,87 @@ Qed.
 
 Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A} {i : nat} {M M'},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     Γ ⊨ M ≈ M' : A[σ] ->
     Γ ⊨ˢ σ,,M ≈ σ',,M' : Δ ▹ A.
 Proof.
   intros * Hσj HA HM.
   pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ].
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof (rel_type_inversion_simple HA) as [env_relΔ'' [HΔ'' HAs]].
   destruct HM as [env_relΓ2 HΓ2 j HMgen].
   handle_per_ctx_env_irrel.
+  assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
-  pose proof (rel_wk_under_ctx_intro HΓ' HΓ Hφ) as Hφj.
-  (** Tails, and the heads that go with them. *)
+  (** Tails. *)
   destruct (Hσ _ _ HΓ' _ Hφ _ _ Hρ) as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htails].
-  destruct (HMgen _ _ HΓ' _ _ (rel_sub_of_wk Hφj) _ _ _ _ Hρ
-                  (eval_sub_of_wk _ _) (eval_sub_of_wk _ _)) as [Rt [Htyp Hexp]].
-  destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hheads].
-  rewrite exp_sub_of_wk in Hm1, Hm4.
-  apply (mk_rel_sub (t1 ↦ m1) (t2 ↦ m2) (t3 ↦ m3) (t4 ↦ m4));
-    [ apply eval_sub_wk_extend; eassumption
-    | apply eval_sub_extend; eassumption
-    | apply eval_sub_extend; eassumption
-    | apply eval_sub_wk_extend; eassumption
-    | ].
-  (** The two instantiations of [HA] that link [A]'s four values, and the term
-    judgment's type chain, which links them to [Rt].  Rewriting the outer types
-    with [A[σ][ι φ] = A[sb_wk σ φ]] makes the first instantiation's values the
-    same values, not merely equal ones. *)
-  pose proof (HAgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk Hσj Hφj) _ _ _ _ Hρ Ht1 Ht4) as Houter.
+  (** The two instantiations of [HA] that link [A]'s four values.  The term
+    judgment's type chain links them to its element PER. *)
+  pose proof (HAgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk_rel Hσj HΓ' HΓ Hφ) _ _ _ _ Hρ Ht1 Ht4) as Houter.
   pose proof (HAgen _ _ HΓ _ _ Hσj _ _ _ _ (Hφ _ _ Hρ) Ht2 Ht3) as Hinner.
-  destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
-  rewrite exp_sub_of_wk, exp_wk_sub in Hb1, Hb4.
   destruct Houter as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct Hinner as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
-  functional_eval_rewrite_clear.
-  destruct Hbchain as [? [? ?]].
-  destruct_per_univ_chain Hcchain.
-  destruct_per_univ_chain Hdchain.
-  solve_per_env_extend_chain.
+  (** Whether the head is a proposition is decided by [A]'s value at an
+    inner tail, and the four tails agree on it. *)
+  assert (Ht12 : Dom t1 ≈ t2 ∈ env_relΔ) by pairwise.
+  assert (Ht23 : Dom t2 ≈ t3 ∈ env_relΔ) by pairwise.
+  assert (Ht34 : Dom t3 ≈ t4 ∈ env_relΔ) by pairwise.
+  pose proof (head_propositional_pair (e := ce_ass A) HΔk eq_refl HAs Ht12) as I12.
+  pose proof (head_propositional_pair (e := ce_ass A) HΔk eq_refl HAs Ht23) as I23.
+  pose proof (head_propositional_pair (e := ce_ass A) HΔk eq_refl HAs Ht34) as I34.
+  pose proof (head_propositional_iff (e := ce_ass A) HΔk eq_refl HAs Ht23 Hd2) as I2.
+  assert (Hd12 : Dom d1 ≈ d2 ∈ per_univ i) by pairwise.
+  destruct Hd12 as [R12 Hd12]; pose proof (per_univ_elem_relevance _ _ _ _ Hd12) as Er12.
+  destruct (eval_sub_of_wk_pair Hφ HΓ Hρ) as [Hw Hw'].
+  destruct (HMgen _ _ HΓ' _ _ (rel_sub_of_wk_rel HΓ' HΓ Hφ) _ _ _ _ Hρ Hw Hw') as [Rt [Htyp Hexp]].
+  destruct (domain_relevance d2) eqn:Er2.
+  - (** A relevant head: the heads are the term's four values, related in
+      the head PER of [A] through the chains. *)
+    assert (Hn2 : ~ head_propositional gc_deps gc_stack (ce_ass A) t2) by (rewrite I2; discriminate).
+    assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass A) t1) by (rewrite I12; exact Hn2).
+    assert (Hn3 : ~ head_propositional gc_deps gc_stack (ce_ass A) t3) by (rewrite <- I23; exact Hn2).
+    assert (Hn4 : ~ head_propositional gc_deps gc_stack (ce_ass A) t4) by (rewrite <- I34; exact Hn3).
+    apply (rel_exp_or_prop_relevant Htyp (ex_intro _ d1 (conj Hd1 Er12))) in Hexp.
+    destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hheads].
+    rewrite exp_sub_of_wk in Hm1, Hm4.
+    apply (mk_rel_sub (t1 ↦ m1) (t2 ↦ m2) (t3 ↦ m3) (t4 ↦ m4));
+      [ apply eval_sub_wk_extend; eassumption
+      | apply eval_sub_extend; eassumption
+      | apply eval_sub_extend; eassumption
+      | apply eval_sub_wk_extend; eassumption
+      | ].
+    (** Rewriting the outer types with [A[σ][ι φ] = A[sb_wk σ φ]] makes the
+      type chain's values the same values, not merely equal ones. *)
+    destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
+    rewrite exp_sub_of_wk, exp_wk_sub in Hb1, Hb4.
+    functional_eval_rewrite_clear.
+    destruct Hbchain as [? [? ?]].
+    destruct_per_univ_chain Hcchain.
+    destruct_per_univ_chain Hdchain.
+    solve_per_env_extend_chain.
+  - (** A propositional head: the heads are proofs, which the head PER of
+      [A] relates at every link. *)
+    assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass A) t2) by (rewrite I2; reflexivity).
+    assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass A) t1) by (rewrite I12; exact Hp2).
+    assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass A) t3) by (rewrite <- I23; exact Hp2).
+    assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass A) t4) by (rewrite <- I34; exact Hp3).
+    apply (mk_rel_sub (t1 ↦ ⋆ᵈ) (t2 ↦ ⋆ᵈ) (t3 ↦ ⋆ᵈ) (t4 ↦ ⋆ᵈ));
+      [ apply eval_sub_wk_extend_proof; eassumption
+      | apply eval_sub_extend_proof; eassumption
+      | apply eval_sub_extend_proof; eassumption
+      | apply eval_sub_wk_extend_proof; eassumption
+      | ].
+    pose proof (proj1 (head_propositional_iff (e := ce_ass A) HΔk eq_refl HAs Ht12 Hc2) Hp1) as Ec2.
+    pose proof (proj1 (head_propositional_iff (e := ce_ass A) HΔk eq_refl HAs Ht34 Hd3) Hp3) as Ed3.
+    repeat
+      match goal with
+      | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
+      | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
+      end;
+      apply per_env_extend_intro';
+      first [ pairwise | eapply per_head_proof; eassumption ].
 Qed.
 
 (** ** Extension by a Precomposed Term
@@ -372,21 +435,67 @@ Proof.
   pose proof (presup_rel_exp_under_ctx HM) as [i HT].
   pose proof (per_ctx_env_of_typ HΔ HT) as HΔT.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMrefl.
+  pose proof (rel_type_inversion_simple HT) as [env_relΔ4 [HΔ4 HTs]].
   destruct HM as [env_relΔ2 HΔ2 j HMgen].
   destruct HMrefl as [env_relΔ3 HΔ3 j' HMrgen].
   handle_per_ctx_env_irrel.
+  assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
-  pose proof (rel_wk_under_ctx_intro HΓ' HΓ Hφ) as Hφj.
   (** Tails, and the inner pair among them, which is the environment pair the
       bridging instantiation runs at. *)
   destruct (Hσ _ _ HΓ' _ Hφ _ _ Hρ) as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htails].
   assert (Ht12 : Dom t1 ≈ t2 ∈ env_relΔ) by pairwise.
+  assert (Ht23 : Dom t2 ≈ t3 ∈ env_relΔ) by pairwise.
+  assert (Ht34 : Dom t3 ≈ t4 ∈ env_relΔ) by pairwise.
   (** The three instantiations: outer, inner, and the bridge. *)
-  destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk Hσj Hφj) _ _ _ _ Hρ Ht1 Ht4) as [R1 [Htyp1 Hexp1]].
+  destruct (eval_sub_id_rel HΔk Ht12) as [Hid1 Hid2].
+  destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk_rel Hσj HΓ' HΓ Hφ) _ _ _ _ Hρ Ht1 Ht4) as [R1 [Htyp1 Hexp1]].
   destruct (HMgen _ _ HΓ _ _ Hσj _ _ _ _ (Hφ _ _ Hρ) Ht2 Ht3) as [R2 [Htyp2 Hexp2]].
-  destruct (HMrgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Ht12
-                   (eval_sub_id _) (eval_sub_id _)) as [R3 [Htyp3 Hexp3]].
+  destruct (HMrgen _ _ HΔk _ _ (rel_sub_id (ex_intro _ _ HΔk)) _ _ _ _ Ht12 Hid1 Hid2) as [R3 [Htyp3 Hexp3]].
+  (** Whether the head is a proposition is decided by [T]'s value at an
+    inner tail, and the four tails agree on it. *)
+  pose proof (head_propositional_pair (e := ce_ass T) HΔk eq_refl HTs Ht12) as I12.
+  pose proof (head_propositional_pair (e := ce_ass T) HΔk eq_refl HTs Ht23) as I23.
+  pose proof (head_propositional_pair (e := ce_ass T) HΔk eq_refl HTs Ht34) as I34.
+  destruct (HTs _ _ Ht12) as (e1 & e2 & Ee1 & Ee2 & [R12 He12]).
+  pose proof (per_univ_elem_relevance _ _ _ _ He12) as Er12.
+  pose proof (head_propositional_iff (e := ce_ass T) HΔk eq_refl HTs Ht12 Ee1) as I1.
+  destruct (domain_relevance e1) eqn:Er1.
+  2:{
+    (** A propositional head: the heads are proofs, which the head PER of
+      [T] relates at every link. *)
+    assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass T) t1) by (rewrite I1; reflexivity).
+    assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass T) t2) by (rewrite <- I12; exact Hp1).
+    assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass T) t3) by (rewrite <- I23; exact Hp2).
+    assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass T) t4) by (rewrite <- I34; exact Hp3).
+    apply (mk_rel_sub (t1 ↦ ⋆ᵈ) (t2 ↦ ⋆ᵈ) (t3 ↦ ⋆ᵈ) (t4 ↦ ⋆ᵈ));
+      [ apply eval_sub_wk_extend_proof; eassumption
+      | apply eval_sub_extend_proof; eassumption
+      | apply eval_sub_extend_proof; eassumption
+      | apply eval_sub_wk_extend_proof; eassumption
+      | ].
+    destruct (HTs _ _ Ht34) as (e3 & e4 & Ee3 & Ee4 & _).
+    pose proof (proj1 (head_propositional_iff (e := ce_ass T) HΔk eq_refl HTs Ht23 Ee2) Hp2) as Ee2p.
+    pose proof (proj1 (head_propositional_iff (e := ce_ass T) HΔk eq_refl HTs Ht34 Ee3) Hp3) as Ee3p.
+    repeat
+      match goal with
+      | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
+      | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
+      end;
+      apply per_env_extend_intro';
+      first [ pairwise | eapply per_head_proof; eassumption ].
+  }
+  (** A relevant head: the three term instantiations give values. *)
+  assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass T) t1) by (rewrite I1; discriminate).
+  assert (Hn2 : ~ head_propositional gc_deps gc_stack (ce_ass T) t2) by (rewrite <- I12; exact Hn1).
+  assert (Hn3 : ~ head_propositional gc_deps gc_stack (ce_ass T) t3) by (rewrite <- I23; exact Hn2).
+  assert (Hn4 : ~ head_propositional gc_deps gc_stack (ce_ass T) t4) by (rewrite <- I34; exact Hn3).
+  assert (Hrel1 : rel_typ_sort T t1 relevant) by (exists e1; split; assumption).
+  assert (Hrel2 : rel_typ_sort T t2 relevant) by (exists e2; split; congruence).
+  apply (rel_exp_or_prop_relevant Htyp1 Hrel1) in Hexp1.
+  apply (rel_exp_or_prop_relevant Htyp2 Hrel2) in Hexp2.
+  apply (rel_exp_or_prop_relevant Htyp3 Hrel1) in Hexp3.
   destruct Hexp1 as [f1 f2 f3 f4 Hf1 Hf2 Hf3 Hf4 Hfchain].
   destruct Hexp2 as [g1 g2 g3 g4 Hg1 Hg2 Hg3 Hg4 Hgchain].
   destruct Hexp3 as [h1 h2 h3 h4 Hh1 Hh2 Hh3 Hh4 Hhchain].
@@ -457,12 +566,12 @@ Qed.
 
 Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     Γ ▹ A[σ] ⊨ˢ q σ ≈ q σ' : Δ ▹ A.
 Proof.
   intros * Hσj HA.
   pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ].
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   (** The simple form of the hypothesis, at [σ ≈ σ].  The first of the three type
     instantiations below runs at a pair of [σ]-evaluated environments, which this
     form supplies: two evaluations of [σ] at a related pair, rather than the four
@@ -471,13 +580,18 @@ Proof.
     as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 Hσrefl]]]].
   handle_per_ctx_env_irrel.
   rename HΓ2 into HΓ; rename HΔ2 into HΔ.
+  (** The simple form of [A]'s judgment, at [Δ]'s PER. *)
+  assert (HAs : forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ ->
+                  exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i).
+  { pose proof (rel_type_inversion_simple HA) as [env_relΔ5 [HΔ5 HAs]].
+    assert (E5 : env_relΔ <~> env_relΔ5) by (eapply per_ctx_env_right_irrel; eassumption).
+    intros ρ ρ' Hρ%E5; exact (HAs _ _ Hρ). }
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
   (** [Γ ▹ A[σ] ⊨ˢ σ[↑]ʷ : Δ] — the substitution [q σ] extends.  All four tails
       come from this one judgment. *)
   pose proof (rel_wk_shift HΓ HΓA) as Hshift.
-  pose proof (rel_wk_under_ctx_intro HΓA HΓ Hshift) as Hshiftj.
-  pose proof (rel_sub_under_ctx_wk Hσj Hshiftj) as Hσwkj.
+  pose proof (rel_sub_under_ctx_wk_rel Hσj HΓA HΓ Hshift) as Hσwkj.
   pose proof Hσwkj as [env_relΓA HΓA' env_relΔ3 HΔ3 Hσwk].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
@@ -485,7 +599,8 @@ Proof.
   (** The Kripke stage lands in [Γ ▹ A[σ]], so the pair [ρ ≈ ρ'] splits into a
       tail pair and a head pair — the [per_env_extend] the context PER just
       built. *)
-  destruct (Hψ _ _ Hρ) as [Htail Hhead].
+  destruct (Hψ _ _ Hρ) as [Htail Hhead Hle Hre].
+  rewrite (eval_wk_app_entry ψ), (eval_wk_app ψ) in Hle, Hre.
   destruct (Hσwk _ _ HΓ' _ Hψ _ _ Hρ) as [x1 y1 y4 x4 Hx1 Hy1 Hy4 Hx4 Htails].
   (** [σ] itself along [↑], which puts [⟦σ⟧((⟪ψ⟫ ρ)↯)] in the same PER as the
     tails: its leftmost value is again [⟦σ[↑]ʷ⟧(⟪ψ⟫ ρ)], so determinism of
@@ -504,9 +619,43 @@ Proof.
     as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct (HAgen _ _ HΓA' _ _ Hσwkj _ _ _ _ (Hψ _ _ Hρ) Hy1 Hy4)
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
-  destruct (HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12
-                  (eval_sub_id _) (eval_sub_id _)) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
+  destruct (eval_sub_id_rel HΔ3 Hy12) as [Hid1 Hid2].
+  destruct (HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12 Hid1 Hid2)
+    as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   rewrite exp_sub_id in Hd1, Hd4.
+  (** The heads are proofs when [A] is a proposition at the tails, which
+    the [c]-chain carries to [A[σ]] at the dropped environments, where
+    the environments of [Γ ▹ A[σ]] hold their proofs. *)
+  assert (HPERΔ : PER env_relΔ) by (eapply per_env_PER; eassumption).
+  assert (Hc12 : Dom c1 ≈ c2 ∈ per_univ i) by pairwise.
+  assert (Hc14 : Dom c1 ≈ c4 ∈ per_univ i) by pairwise.
+  destruct Hc12 as [? Hc12]; destruct Hc14 as [? Hc14].
+  pose proof (per_univ_elem_relevance _ _ _ _ Hc12) as Ec12.
+  pose proof (per_univ_elem_relevance _ _ _ _ Hc14) as Ec14.
+  pose proof (head_propositional_iff_right (e := ce_ass A) HΔ3 eq_refl HAs Hy12 Hc2) as Iy2.
+  destruct (per_ctx_env_proofs _ _ _ HΓA' _ _ (Hψ _ _ Hρ)) as [Hpl Hpr].
+  assert (Hsl : forall t, Dom t ≈ y2 ∈ env_relΔ ->
+                  head_propositional gc_deps gc_stack (ce_ass A) t -> env_entry (⟪ψ⟫ ρ) 0 = de_term ⋆ᵈ).
+  { intros t Ht Hp.
+    apply (head_propositional_pair (e := ce_ass A) HΔ3 eq_refl HAs Ht), Iy2 in Hp.
+    apply Hpl.
+    eapply mk_entry_propositional with (entry_propositional_env := (⟪ψ⟫ ρ)↯);
+      [ reflexivity | intros y; rewrite ?skipn_one_drop; reflexivity | exact Hc1 | congruence ]. }
+  assert (Hsr : forall t, Dom t ≈ y2 ∈ env_relΔ ->
+                  head_propositional gc_deps gc_stack (ce_ass A) t -> env_entry (⟪ψ⟫ ρ') 0 = de_term ⋆ᵈ).
+  { intros t Ht Hp.
+    apply (head_propositional_pair (e := ce_ass A) HΔ3 eq_refl HAs Ht), Iy2 in Hp.
+    apply Hpr.
+    eapply mk_entry_propositional with (entry_propositional_env := (⟪ψ⟫ ρ')↯);
+      [ reflexivity | intros y; rewrite ?skipn_one_drop; reflexivity | exact Hc4 | congruence ]. }
+  assert (Hq1 : head_propositional gc_deps gc_stack (ce_ass A) x1 -> env_entry ρ (ψ 0) = de_term ⋆ᵈ)
+    by (intros Hp; rewrite <- (eval_wk_app_entry ψ); exact (Hsl x1 ltac:(etransitivity; [| exact Hy12]; pairwise) Hp)).
+  assert (Hq2 : head_propositional gc_deps gc_stack (ce_ass A) y1 -> env_entry (⟪ψ⟫ ρ) 0 = de_term ⋆ᵈ)
+    by (exact (Hsl y1 Hy12)).
+  assert (Hq3 : head_propositional gc_deps gc_stack (ce_ass A) y4 -> env_entry (⟪ψ⟫ ρ') 0 = de_term ⋆ᵈ)
+    by (exact (Hsr y4 ltac:(etransitivity; [| exact Hy12]; pairwise))).
+  assert (Hq4 : head_propositional gc_deps gc_stack (ce_ass A) x4 -> env_entry ρ' (ψ 0) = de_term ⋆ᵈ)
+    by (intros Hp; rewrite <- (eval_wk_app_entry ψ); exact (Hsr x4 ltac:(etransitivity; [| exact Hy12]; pairwise) Hp)).
   (** Weak functionality names [A[σ]]'s element PER, so the [per_head] hypothesis
       is instantiated at it directly with no transport.  Both heads are the same
       two values on all four sides, so [rel_chain_4_of_2] is the whole head
@@ -527,6 +676,7 @@ Proof.
       are [⟦A⟧y1] and [⟦A⟧y2], which are [b2] and [c2], so the [b]- and
       [c]-chains meet.  [Hcchain] is already at one PER; saturating irrelevance
       once here rather than inside [solve_per_head] keeps the last step cheap. *)
+  rewrite Hle, Hre.
   functional_eval_rewrite_clear.
   destruct Hcchain as [? [? ?]].
   destruct_per_univ_chain Hbchain.
@@ -557,23 +707,23 @@ Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ env_
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
       exists s s',
-        ⟦ q σ ⟧s ρ ↦ c ↘ s ↦ c /\
-        ⟦ q σ' ⟧s ρ' ↦ c' ↘ s' ↦ c' /\
+        ⟦ q σ : Δ ▹ A ⟧s ρ ↦ c ↘ s ↦ c /\
+        ⟦ q σ' : Δ ▹ A ⟧s ρ' ↦ c' ↘ s' ↦ c' /\
         rel_chain env_relΔA
           ([s ↦ c; s ↦ c'; ρσ ↦ c; ρσ ↦ c';
            ρ'σ' ↦ c; ρ'σ' ↦ c'; s' ↦ c; s' ↦ c']).
 Proof.
   intros * HΓ HΔA Hσj HA * Hpair Hev Hev'.
-  pose proof Hpair as [Hρ Hhead].
+  pose proof Hpair as [Hρ Hhead _ _].
   pose proof Hσj as [env_relΓ2 HΓ2 env_relΔ HΔ Hσ].
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ2 [HΔ2 HAgen]].
-  pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΔ3 [HΔ3 HAsimple]].
+  pose proof (rel_type_inversion HA) as [env_relΔ2 [HΔ2 HAgen]].
+  pose proof (rel_type_inversion_simple HA) as [env_relΔ3 [HΔ3 HAsimple]].
   pose proof (rel_sub_under_ctx_simple (rel_sub_under_ctx_refl_left Hσj))
     as [env_relΓ3 [HΓ3 [env_relΔ4 [HΔ4 Hσrefl]]]].
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA'.
@@ -606,6 +756,25 @@ Proof.
   destruct (Hσrefl _ _ Hρ) as [w [w' [Hw [Hw' Hww']]]].
   destruct (HAgen _ _ HΓ3 _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ Hρ Hev Hw')
     as [e1 e2 e3 e4 He1 He2 He3 He4 Hechain].
+  (** The heads are proofs when [A] is a proposition at the tails, which
+    the [e]-chain carries to [A[σ]] at [ρ] and [ρ'], where the
+    environments of [Γ ▹ A[σ]] hold their proofs. *)
+  assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
+  pose proof (head_propositional_pair (e := ce_ass A) HΔk eq_refl HAsimple H1) as I1.
+  pose proof (head_propositional_pair (e := ce_ass A) HΔk eq_refl HAsimple H2) as I2.
+  pose proof (head_propositional_pair (e := ce_ass A) HΔk eq_refl HAsimple H3) as I3.
+  pose proof (head_propositional_iff (e := ce_ass A) HΔk eq_refl HAsimple H2 He2) as Ie2.
+  assert (Hr12 : Dom e1 ≈ e2 ∈ per_univ i) by pairwise.
+  assert (Hr24 : Dom e2 ≈ e4 ∈ per_univ i) by pairwise.
+  destruct Hr12 as [? Hr12]; destruct Hr24 as [? Hr24].
+  pose proof (per_univ_elem_relevance _ _ _ _ Hr12) as Er12.
+  pose proof (per_univ_elem_relevance _ _ _ _ Hr24) as Er24.
+  assert (Hql : head_propositional gc_deps gc_stack (ce_ass A) s -> env_entry (ρ ↦ c) 0 = de_term ⋆ᵈ).
+  { intros Hp; rewrite I1, Ie2 in Hp.
+    eapply per_ctx_env_head_proof_left; [ exact HΓA | reflexivity | exact Hpair | exact He1 | congruence ]. }
+  assert (Hqr : head_propositional gc_deps gc_stack (ce_ass A) s' -> env_entry (ρ' ↦ c') 0 = de_term ⋆ᵈ).
+  { intros Hp; rewrite <- I3, <- I2, Ie2 in Hp.
+    eapply per_ctx_env_head_proof_right; [ exact HΓA | reflexivity | exact Hpair | exact He4 | congruence ]. }
   functionalize_per_univ_chain Hechain R.
   assert (HPER : PER R) by solve_chain_PER.
   (** [per_head] is a [Definition], so [eapply] on it does not see a product; its
@@ -638,12 +807,12 @@ Qed.
 Lemma rel_exp_of_univ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     Δ ▹ A ⊨ B ≈ B' : universe_index_term j ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
       (exists b b',
           ⟦ B[q σ] ⟧ ρ ↦ c ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ↘ b' /\
           Dom b ≈ b' ∈ per_univ j) /\
@@ -667,6 +836,7 @@ Proof.
     as [s [s' [Hq [Hq' Hchain]]]].
   destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
+  apply rel_chain_relevant_univ in Hbchain.
   (** The four bridges, at four pairs the chain above relates. *)
   assert (P1 : Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA) by pairwise.
   assert (P2 : Dom ρσ ↦ c ≈ s ↦ c ∈ env_relΔA) by pairwise.
@@ -707,12 +877,12 @@ Qed.
 Corollary rel_exp_of_typ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B'} {j : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     Δ ▹ A ⊨ B ≈ B' : Typeω@j ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
       (exists b b',
           ⟦ B[q σ] ⟧ ρ ↦ c ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ↘ b' /\
           Dom b ≈ b' ∈ per_univ j) /\
@@ -754,12 +924,13 @@ mid —⟦B⟧(⟦σ⟧ρ ↦ c)— L1 —⟦B⟧(s ↦ c)— main —⟦B⟧(s'
 Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {M M' B env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ᵗ A ≈ A at i ->
     Δ ▹ A ⊨ M ≈ M' : B ->
+    (forall ρ ρ' R, EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R -> rel_typ_sort B ρ relevant) ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
       (exists m m',
           ⟦ M[q σ] ⟧ ρ ↦ c ↘ m /\ ⟦ M ⟧ ρσ ↦ c' ↘ m' /\
           Dom m ≈ m' ∈ per_head B B (ρσ ↦ c) (ρ'σ' ↦ c')) /\
@@ -770,7 +941,7 @@ Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {M M' B env_relΓ}
           ⟦ M' ⟧ ρ'σ' ↦ c ↘ m /\ ⟦ M'[q σ'] ⟧ ρ' ↦ c' ↘ m' /\
           Dom m ≈ m' ∈ per_head B B (ρσ ↦ c) (ρ'σ' ↦ c')).
 Proof.
-  intros * HΓ Hσj HA HM * Hpair Hev Hev'.
+  intros * HΓ Hσj HA HM HBrel * Hpair Hev Hev'.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
   pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
   pose proof HM as [env_relΔA HΔA k HMgen].
@@ -785,18 +956,26 @@ Proof.
   (** The main instantiation, along [q σ ≈ q σ']: its two outer values are the
       goal's, on both the type and the term side. *)
   destruct (HMgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq') as [Rm [Htyp Hexp]].
-  destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
-  destruct Hexp as [f1 f2 f3 f4 Hf1 Hf2 Hf3 Hf4 Hfchain].
   (** The four pairs the bridges are taken at, all related by the eight-value
-      chain of [rel_sub_under_ctx_q]. *)
+      chain of [rel_sub_under_ctx_q], and the main one. *)
+  assert (Pq : Dom s ↦ c ≈ s' ↦ c' ∈ env_relΔA) by pairwise.
   assert (Pm : Dom ρσ ↦ c ≈ ρ'σ' ↦ c' ∈ env_relΔA) by pairwise.
   assert (P1 : Dom s ↦ c ≈ ρσ ↦ c ∈ env_relΔA) by pairwise.
   assert (P2 : Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA) by pairwise.
   assert (P3 : Dom s' ↦ c' ≈ ρ'σ' ↦ c ∈ env_relΔA) by pairwise.
-  destruct (HMmid _ _ Pm) as [dL [dR [Rmid [HdL [HdR [Emid [g1 [g2 [Hg1 [Hg2 Hgrel]]]]]]]]]].
-  destruct (HMl _ _ P1) as [x1 [x2 [Rx [Hx1 [Hx2 [Ex [u1 [u2 [Hu1 [Hu2 Hurel]]]]]]]]]].
-  destruct (HMl _ _ P2) as [y1 [y2 [Ry [Hy1 [Hy2 [Ey [v1 [v2 [Hv1 [Hv2 Hvrel]]]]]]]]]].
-  destruct (HMr _ _ P3) as [z1 [z2 [Rz [Hz1 [Hz2 [Ez [w1 [w2 [Hw1 [Hw2 Hwrel]]]]]]]]]].
+  (** [B] is relevant at all of them, so every judgment reports values. *)
+  assert (HΔAk : EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA) by eassumption.
+  apply (rel_exp_or_prop_relevant Htyp (HBrel _ _ _ HΔAk Pq)) in Hexp.
+  destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
+  destruct Hexp as [f1 f2 f3 f4 Hf1 Hf2 Hf3 Hf4 Hfchain].
+  destruct (HMmid _ _ Pm) as [dL [dR [Rmid [HdL [HdR [Emid [Hpm | [g1 [g2 [Hg1 [Hg2 Hgrel]]]]]]]]]]];
+    [ exfalso; destruct (HBrel _ _ _ HΔAk Pm) as (? & ? & ?); functional_eval_rewrite_clear; congruence |].
+  destruct (HMl _ _ P1) as [x1 [x2 [Rx [Hx1 [Hx2 [Ex [Hpx | [u1 [u2 [Hu1 [Hu2 Hurel]]]]]]]]]]];
+    [ exfalso; destruct (HBrel _ _ _ HΔAk P1) as (? & ? & ?); functional_eval_rewrite_clear; congruence |].
+  destruct (HMl _ _ P2) as [y1 [y2 [Ry [Hy1 [Hy2 [Ey [Hpy | [v1 [v2 [Hv1 [Hv2 Hvrel]]]]]]]]]]];
+    [ exfalso; destruct (HBrel _ _ _ HΔAk P2) as (? & ? & ?); functional_eval_rewrite_clear; congruence |].
+  destruct (HMr _ _ P3) as [z1 [z2 [Rz [Hz1 [Hz2 [Ez [Hpz | [w1 [w2 [Hw1 [Hw2 Hwrel]]]]]]]]]]];
+    [ exfalso; destruct (HBrel _ _ _ HΔAk P3) as (? & ? & ?); functional_eval_rewrite_clear; congruence |].
   (** The values each bridge shares with the main chain or with the next bridge,
     named explicitly, since the merges depend on which of two names
     [functional_eval_rewrite_clear] keeps. *)
@@ -880,8 +1059,8 @@ Lemma rel_typ_of_instance : forall {Γ A} {i : nat} {B N},
       forall σ σ' ρ ρ' ρσ ρ'σ',
         Γ' ⊨ˢ σ ≈ σ' : Γ ->
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
         exists j RN a1 a2 a3 a4 n1 n2 n3 n4,
           ⟦ A[σ] ⟧ ρ ↘ a1 /\
           ⟦ A ⟧ ρσ ↘ a2 /\
@@ -914,6 +1093,12 @@ Proof.
       at. *)
   pose proof HN as [? ? j HNgen].
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN [HNtyp HNexp]].
+  (** [A] is a type of a universe, so the argument has values and the
+    extended environments are literal extensions by them. *)
+  pose proof (rel_exp_of_typ_relevant_at HΓ HA) as HArel.
+  apply (rel_exp_or_prop_relevant HNtyp (HArel _ _ Hρσ)) in HNexp.
+  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ Hρσ) as [Hnp2 Hnp3].
+  destruct (eval_sub_id_rel HΓ Hρσ) as [Hid2 Hid3].
   destruct HNtyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
   assert (Houter : DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN) by pairwise.
@@ -925,20 +1110,22 @@ Proof.
                ⟦ B ⟧ ρσ ↦ w ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ↘ b' /\
                  Dom b ≈ b' ∈ per_univ i).
   { intros w z Hwz.
-    eapply (rel_exp_of_typ_extend_simple HΓ HA HB).
+    eapply (rel_exp_of_typ_extend_simple HΓ (rel_type_of_typ HA) HB).
     apply per_env_extend_intro'; [ exact Hρσ |].
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | exact Hwz ]. }
   (** The two instantiations, their outer values rewritten into the goal's
       spelling. *)
   destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub Hσj HN) _ _ _ _ Hρ
-                  (eval_sub_extend _ _ _ _ _ Hev Hn1)
-                  (eval_sub_extend _ _ _ _ _ Hev' Hn4))
+                  ltac:(apply eval_sub_extend; eassumption)
+                  ltac:(apply eval_sub_extend; eassumption))
     as [t1 tA2 tA3 t4 Ht1 HtA2 HtA3 Ht4 HtAchain].
+  apply rel_chain_relevant_univ in HtAchain.
   rewrite <- exp_sub_extend_sub in Ht1, Ht4.
   destruct (HBgen _ _ HΓ _ _ HidN _ _ _ _ Hρσ
-                  (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn2)
-                  (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn3))
+                  ltac:(apply eval_sub_extend; eassumption)
+                  ltac:(apply eval_sub_extend; eassumption))
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
+  apply rel_chain_relevant_univ in HtBchain.
   (** The bridge, at the pair of arguments that crosses from the one
       instantiation to the other. *)
   assert (Hn1n3 : Dom n1 ≈ n3 ∈ RN) by pairwise.
@@ -978,8 +1165,9 @@ Qed.
     link of the chain above.  Relatedness suffices because
     [glu_univ_elem_resp_per_univ] transports a gluing predicate along
     [per_univ]. *)
-Lemma per_univ_of_instance : forall {Γ A} {i : nat} {B N env_relΓ},
+Lemma per_univ_of_instance : forall {Γ A} {i j : nat} {B N env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A : Typeω@j ->
     Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ N ≈ N : A ->
     forall ρ n,
@@ -989,14 +1177,17 @@ Lemma per_univ_of_instance : forall {Γ A} {i : nat} {B N env_relΓ},
         ⟦ B[Id,,N] ⟧ ρ ↘ a /\ ⟦ B ⟧ ρ ↦ n ↘ b /\
           Dom a ≈ a ∈ per_univ i /\ Dom a ≈ b ∈ per_univ i.
 Proof.
-  intros * HΓ HB HN * Hρ Hn.
+  intros * HΓ HA HB HN * Hρ Hn.
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN) as HidN.
   rewrite exp_sub_id in HidN.
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
+  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ Hρ) as [Hnp _].
+  destruct (eval_sub_id_rel HΓ Hρ) as [Hid _].
   destruct (HBgen _ _ HΓ _ _ HidN _ _ _ _ Hρ
-                  (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn)
-                  (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn))
+                  (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn)
+                  (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn))
     as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
+  apply rel_chain_relevant_univ in Hchain.
   destruct Hchain as [Ht12 _].
   exists t1, t2.
   do 2 (split; [ eassumption |]).

@@ -115,10 +115,10 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
   List.map (fun fm =>
               let f := fst fm in
               let k := S (List.length (raw_fun_nparams f)) in
-              (raw_fun_name f, ctx_pi Δ (ctx_pi (raw_fun_nparams f) (a_pi (raw_fun_scrut f) (raw_fun_res f))),
+              (raw_fun_name f, ctx_pi Δ (ctx_pi (raw_fun_nparams f) (a_pi relevant (raw_fun_scrut f) (raw_fun_res f))),
                ctx_fn Δ (ctx_fn (raw_fun_nparams f)
                            (a_fn (raw_fun_scrut f)
-                              (a_elim (Some pq) (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
+                              (a_elim relevant (Some pq) (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
                                  (mdef_blocks k (ind_nblk D) fs ms) (a_var 0))))))
     (List.combine fs ms).
 

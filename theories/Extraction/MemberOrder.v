@@ -700,7 +700,7 @@ Section Typed.
 
   Lemma typed_open_ats_read : forall Ns Γ R R', typed_open Γ R -> mdesc_ats_read R Ns = Some R' -> typed_open Γ R'.
   Proof.
-    intros * HT Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & B & M' & Rm' & -> & -> & _ & Ha')];
+    intros * HT Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & ? & B & M' & Rm' & -> & -> & _ & Ha')];
       [ exact (typed_open_ats _ _ _ _ HT Ha') | cbn in HT |- *; exact (typed_open_ats _ _ _ _ HT Ha') ].
   Qed.
 

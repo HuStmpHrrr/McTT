@@ -21,15 +21,18 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     outermost parameter. *)
 
 (** A unit of the context after [Δ], abstracted over [Δ]. *)
-Lemma unit_full_abs : forall Θ Ξ Γ Δ U, unit_full Θ Ξ (Δ ++ Γ) U -> tele_ass Δ -> unit_full Θ Ξ Γ (gunit_abs Δ U).
+Lemma unit_full_abs : forall Θ Ξ Γ Δ U l, unit_full Θ Ξ (Δ ++ Γ) U -> tele_ass Δ -> params_relevant Θ Ξ Γ Δ l ->
+    unit_full Θ Ξ Γ (gunit_abs Δ U).
 Proof.
-  intros * HU HaΔ; destruct U as [Δy [[] Φ | E]]; cbn in HU |- *; try contradiction.
-  - destruct HU as (Φx & lv & Hx & HC & Hd & Ho & Ha & Hs & Hsx & Hn).
-    exists Φx, lv; rewrite <- !app_assoc.
-    refine (conj Hx (conj HC (conj Hd (conj Ho (conj _ (conj Hs (conj Hsx Hn))))))).
-    apply List.Forall_app; split; assumption.
-  - destruct HU as (HΔ & Ha & HE); rewrite <- !app_assoc; repeat split; try assumption.
-    apply List.Forall_app; split; assumption.
+  intros * HU HaΔ HRΔ; destruct U as [Δy [[] Φ | E]]; cbn in HU |- *; try contradiction.
+  - destruct HU as [Φx es lp Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp].
+    apply (mk_unit_body_full _ _ _ _ _ Φx es (max lp l)); rewrite <- ?List.app_assoc; try assumption.
+    + apply List.Forall_app; split; assumption.
+    + exact (params_relevant_app _ _ _ _ _ _ _ Hp HRΔ).
+  - destruct HU as [lp HΔ Ha HE Hp].
+    apply (mk_unit_alias_full _ _ _ _ _ (max lp l)); rewrite <- ?List.app_assoc; try assumption.
+    + apply List.Forall_app; split; assumption.
+    + exact (params_relevant_app _ _ _ _ _ _ _ Hp HRΔ).
 Qed.
 
 Lemma unit_full_of_eq : forall Θ Ξ Γ U U',
@@ -48,9 +51,9 @@ Proof.
     match goal with Hx : _ ⍮ _ ⍮ _ ⊢ˣ body_ctx Φx ++ _ ≈ _, Hx' : _ ⍮ _ ⍮ _ ⊢ˣ body_ctx Φx' ++ _ ≈ _ |- _ =>
       pose proof (ext_eq_ctx_left _ _ _ _ _ Hx) as Hl; pose proof (ext_eq_ctx_left _ _ _ _ _ Hx') as Hr end.
     rewrite <- app_assoc in Hl, Hr.
-    split; do 2 eexists; (split; [ eassumption |]); (split; [ eassumption |]);
-      split; [| repeat split; try eassumption; try (rewrite <- Hnames; eassumption)
-             | | repeat split; try eassumption; try (rewrite <- Hnames; eassumption) ].
+    split; [ apply (mk_unit_body_full _ _ _ _ _ Φx entry_sort param_level)
+           | apply (mk_unit_body_full _ _ _ _ _ Φx' entry_sort param_level) ];
+      try eassumption; try (rewrite <- Hnames; eassumption).
     + intros y Φ0 E A M σ Hp HE Hf0.
       destruct (shape_prefix _ _ _ _ _ Hsx0 Hp) as (Φ0' & E' & Hp' & _ & HS).
       destruct (fill_prefix _ _ _ _ Hf' Hp') as (σ' & Hf0').
@@ -62,29 +65,43 @@ Proof.
       destruct (entry_shape_tm _ _ _ _ HS HE') as (A0 & M0 & HE).
       split; eauto.
   - pose proof (ext_eq_ctx_left _ _ _ _ _ H) as Hl; pose proof (ext_eq_ctx_right _ _ _ _ _ H) as Hr.
-    intuition eauto using wf_modexp_eq_refl_left.
+    split; [ apply (mk_unit_alias_full _ _ _ _ _ param_level) | apply (mk_unit_alias_full _ _ _ _ _ param_level) ];
+      eauto using wf_modexp_eq_refl_left.
   - (* an alias of a literal, and the literal over both telescopes *)
-    split; [ repeat split; [ exact (ext_eq_ctx_left _ _ _ _ _ H) | assumption | apply wf_me_lit; assumption ] |].
-    exact (unit_full_abs _ _ _ _ _ (proj1 IHwf_unit_eq) H0).
+    split; [ apply (mk_unit_alias_full _ _ _ _ _ param_level);
+             [ exact (ext_eq_ctx_left _ _ _ _ _ H) | assumption | apply wf_me_lit; assumption | assumption ] |].
+    exact (unit_full_abs _ _ _ _ _ _ (proj1 IHwf_unit_eq) H0 H2).
 Qed.
 
 Lemma unit_full_ctx : forall Θ Ξ Γ Δ D, unit_full Θ Ξ Γ (gu_mk Δ D) -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ tele_ass Δ.
 Proof.
   intros * HU; destruct D as [[] Φ | E]; cbn in HU; try contradiction.
-  - destruct HU as (Φx & lv & _ & HC & _ & _ & Ha & _); split; [ exact (ctx_app_wf_tail _ _ _ _ HC) | exact Ha ].
-  - destruct HU as (HΔ & Ha & _); split; assumption.
+  - destruct HU as [Φx es lp _ HC _ _ _ _ Ha _]; split; [ exact (ctx_app_wf_tail _ _ _ _ HC) | exact Ha ].
+  - destruct HU as [lp HΔ Ha _ _]; split; assumption.
+Qed.
+
+(** The parameters of a unit are relevant. *)
+Lemma unit_full_params : forall Θ Ξ Γ Δ D, unit_full Θ Ξ Γ (gu_mk Δ D) -> exists l, params_relevant Θ Ξ Γ Δ l.
+Proof.
+  intros * HU; destruct D as [[] Φ | E]; cbn in HU; try contradiction.
+  - destruct HU as [Φx es lp _ _ _ _ _ _ _ _ _ _ Hp]; exists lp; exact Hp.
+  - destruct HU as [lp _ _ _ Hp]; exists lp; exact Hp.
 Qed.
 
 (** A unit's innermost parameters [Δy], the others being in the context. *)
 Lemma unit_full_unabs : forall Θ Ξ Γ Δ Δy D, unit_full Θ Ξ Γ (gu_mk (Δy ++ Δ) D) -> unit_full Θ Ξ (Δ ++ Γ) (gu_mk Δy D).
 Proof.
   intros * HU; destruct D as [[] Φ | E]; cbn in HU |- *; try contradiction.
-  - destruct HU as (Φx & lv & Hx & HC & Hd & Ho & Ha & Hs & Hsx & Hn).
-    exists Φx, lv; rewrite <- !app_assoc in *.
-    refine (conj Hx (conj HC (conj Hd (conj Ho (conj _ (conj Hs (conj Hsx Hn))))))).
-    apply List.Forall_app in Ha; apply Ha.
-  - destruct HU as (HΔ & Ha & HE); rewrite <- !app_assoc in *; repeat split; try assumption.
-    apply List.Forall_app in Ha; apply Ha.
+  - destruct HU as [Φx es lp Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp].
+    rewrite <- !List.app_assoc in Hx, HC, Hd, Ho.
+    apply (mk_unit_body_full _ _ _ _ _ Φx es lp Hx HC Hes Htg Hd Ho); try assumption.
+    + apply List.Forall_app in Ha; apply Ha.
+    + exact (proj1 (params_relevant_app_inv _ _ _ _ _ _ Hp)).
+  - destruct HU as [lp HΔ Ha HE Hp].
+    rewrite <- !List.app_assoc in HΔ, HE.
+    apply (mk_unit_alias_full _ _ _ _ _ lp HΔ); try assumption.
+    + apply List.Forall_app in Ha; apply Ha.
+    + exact (proj1 (params_relevant_app_inv _ _ _ _ _ _ Hp)).
 Qed.
 
 (** A unit given its outermost parameter. *)
@@ -95,8 +112,8 @@ Proof.
   intros * HU HN.
   pose proof (unit_full_unabs _ _ _ _ _ _ HU) as HU1; cbn [List.app] in HU1.
   destruct (unit_full_ctx _ _ _ _ _ HU1) as [HC _].
-  destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HC)) as [_ [i HX]].
-  eapply sub_preserves_unit; [ exact (unit_eq_of_full _ _ _ _ HU1) | exact (wf_sub_single _ _ _ _ _ _ HX HN) ].
+  destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HC)) as [_ [i HSi HX]].
+  eapply sub_preserves_unit; [ exact (unit_eq_of_full _ _ _ _ HU1) | exact (wf_sub_single _ _ _ _ _ _ HX HSi HN) ].
 Qed.
 
 (** ** Descriptions of Well-formed Module Expressions *)
@@ -152,15 +169,15 @@ Proof.
   pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf.
   split; [| exact (proj1 (unit_full_of_eq _ _ _ _ _ (unit_full_beta _ _ _ _ _ _ _ Hf HN))) ].
   split; [ apply wf_me_lit; exact HU |].
-  pose proof (unit_full_unabs _ _ _ _ _ _ Hf) as Hf1; cbn [List.app] in Hf1.
-  destruct (unit_full_ctx _ _ _ _ _ Hf1) as [HC _].
-  destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HC)) as [_ [i HX]].
+  (* the parameter is relevant, as every parameter of a unit *)
+  destruct (unit_full_params _ _ _ _ _ Hf) as [i HRp].
+  pose proof (HRp Δ X nil eq_refl) as HX; cbn [List.app] in HX.
   destruct D as [[] Φ | E]; cbn in Hf; try contradiction.
-  - destruct Hf as (Φx & _ & Hx & _).
+  - destruct Hf as [Φx es lp Hx].
     exists (mdesc_open (Δ ++ ce_ass X :: nil) Φ Φx), (Δ ++ ce_ass X :: nil), X, Δ, i.
     split; [ apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ] |].
     split; [ reflexivity |]; split; [ apply tele_view_last |]; split; assumption.
-  - destruct Hf as (HΔ & _ & HE).
+  - destruct Hf as [lp HΔ _ HE _].
     destruct (me_denotes _ _ _ _ _ HE) as (R & Rm & HR & HRm).
     pose proof (desc_ok_mod _ _ (ctx_wf_gctx _ _ _ HΔ) _ _ _ (me_desc_ok _ _ _ _ _ _ HE HR) HRm) as Hok.
     pose proof (mdesc_mod_is_mod _ _ HRm) as Hmod.
@@ -174,15 +191,20 @@ Qed.
 (** ** The Unit a Typed Module Part Stands for Is Well Formed *)
 
 (** Arguments for a telescope, but the last. *)
-Lemma args_ok_init : forall Θ Ξ Γ T Ns N, args_ok Θ Ξ Γ T (Ns ++ N :: nil) ->
+Lemma args_ok_init : forall Θ Ξ Γ T Ns N l, args_ok Θ Ξ Γ T (Ns ++ N :: nil) -> params_relevant Θ Ξ nil T l ->
     args_ok Θ Ξ Γ T Ns /\ exists T1 C T2, T = T1 ++ ce_ass C :: T2 /\ length T2 = length Ns /\
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns : T2 ++ Γ /\ (exists i, Θ ⍮ Ξ ⍮ T2 ++ Γ ⊢ C : Typeω@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : C[sb_of_list Id Ns].
 Proof.
-  intros * [T1 T2 -> Hl Ha Hs HT2 HN].
+  intros * [T1 T2 -> Hl Ha Hs HT2 HN] HRT.
   destruct T2 as [| e T2']; [ rewrite length_app in Hl; cbn in Hl; lia |].
   inversion Ha as [| ? ? [C ->] Ha']; subst.
   assert (Hl' : length T2' = length Ns) by (rewrite length_app in Hl; cbn in Hl; lia).
-  cbn [List.app] in HT2; destruct (ctx_decomp HT2) as [HT2' [i HC]].
+  cbn [List.app] in HT2; destruct (ctx_decomp HT2) as [HT2' _].
+  (* the parameter, relevant in the closed telescope, read over [Γ] *)
+  pose proof (HRT T1 C T2' eq_refl) as HC0; rewrite List.app_nil_r in HC0.
+  assert (Hs2 : ctx_scoped 0 T2')
+    by (change (ce_ass C :: T2') with ((ce_ass C :: nil) ++ T2') in Hs; exact (proj2 (proj1 (ctx_scoped_app_iff _ _) Hs))).
+  pose proof (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HC0 HT2') as HC.
   assert (Hins : tele_insts (ce_ass C :: T2') Id (Ns ++ N :: nil) = tele_insts T2' Id Ns ++ C[sb_of_list Id Ns] :: nil).
   { change (ce_ass C :: T2') with ((ce_ass C :: nil) ++ T2').
     rewrite tele_insts_app by (first [ exact Ha' | symmetry; exact Hl' ]); reflexivity. }
@@ -195,7 +217,7 @@ Proof.
                                         | destruct Hs; assumption | exact HT2' | exact HNs ].
   - exists T1, C, T2'; split; [ reflexivity |]; split; [ exact Hl' |].
     split; [ exact (wf_sub_of_list_id _ _ _ _ _ Ha' HT2' (eq_sym Hl') HNs) |].
-    split; [ exists i; exact HC |].
+    split; [ exists l; exact HC |].
     apply (HN (length Ns)); [ rewrite nth_error_app2, Nat.sub_diag by lia; reflexivity |].
     assert (Hlt : length (tele_insts T2' Id Ns) = length Ns) by (rewrite length_tele_insts by exact Ha'; lia).
     rewrite nth_error_app2 by lia; rewrite Hlt, Nat.sub_diag; reflexivity.
@@ -232,9 +254,10 @@ Lemma filed_apps_wf : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> forall p T Φ, lo
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns /\ gen_m Θ Ξ Γ (me_apps (qname_mod p) Ns).
 Proof.
   intros Θ Ξ Γ HΓ p T Φ Hl Ha Hs HT; pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
+  destruct (loc_relevant _ _ _ _ _ (gctx_valid_syn _ _ Hg) Hl) as [lT HRT].
   induction Ns as [| N Ns IH] using List.rev_ind; intros Hargs.
   - split; [ exact (loc_modexp_wf _ _ _ HΓ _ _ _ Hl) | exact (qname_mod_gen _ _ _ HΓ _ _ _ Hl) ].
-  - destruct (args_ok_init _ _ _ _ _ _ Hargs) as (Hargs0 & T1 & C & T2 & HTe & Hl2 & Hσ & [i HC] & HN).
+  - destruct (args_ok_init _ _ _ _ _ _ _ Hargs HRT) as (Hargs0 & T1 & C & T2 & HTe & Hl2 & Hσ & [i HC] & HN).
     destruct (IH Hargs0) as [HW _].
     destruct (filed_denote _ _ Hg _ _ _ Γ Ns (gc_loc_of_loc _ _ Hg _ _ _ Hl)) as (R & Hm & Hmd).
     assert (Ht : mdesc_mod_tele R = Some (tele_sub (T1 ++ ce_ass C :: nil) (sb_of_list Id Ns) ++ nil)).
@@ -267,12 +290,12 @@ Proof.
     by (intros U HU; split; [ apply wf_me_lit, unit_eq_of_full; exact HU | exact HU ]).
   destruct Rm as [A om | Δ Φw Φ | [| e Θ'] p T Φ Ns | ]; cbn in Hm, Hc |- *; try contradiction.
   - (* the written body, its parameters abstracted *)
-    apply Hlit; inversion Hok as [| ? ? ? ? HΦ Hn Hent HaΔ Hsh Hnd HUw | |]; subst.
-    exact (unit_full_abs _ _ _ _ _ (proj1 (unit_full_of_eq _ _ _ _ _ HUw)) HaΔ).
-  - inversion Hok as [| | ? ? ? ? ? Θ1 Ξ1 ? Hg1 Hs1 Hl1 Ha HsT HT HΘ' Hargs HaΘ |]; subst.
+    apply Hlit; inversion Hok as [| ? ? ? ? lΔ HΦ Hn Hent HaΔ Hsh Hnd HUw HRΔ | |]; subst.
+    exact (unit_full_abs _ _ _ _ _ _ (proj1 (unit_full_of_eq _ _ _ _ _ HUw)) HaΔ HRΔ).
+  - inversion Hok as [| | ? ? ? ? ? Θ1 Ξ1 ? lΘ Hg1 Hs1 Hl1 Ha HsT HT HΘ' Hargs HaΘ HRΘ |]; subst.
     exact (filed_apps_wf _ _ _ HΓ _ _ _ Hc Ha HsT HT _ Hargs).
-  - inversion Hok as [| | ? ? ? ? ? Θ1 Ξ1 ? Hg1 Hs1 Hl1 Ha HsT HT HΘ' Hargs HaΘ |]; subst.
-    apply Hlit; cbn; split; [ exact HΘ' |]; split; [ exact HaΘ |].
+  - inversion Hok as [| | ? ? ? ? ? Θ1 Ξ1 ? lΘ Hg1 Hs1 Hl1 Ha HsT HT HΘ' Hargs HaΘ HRΘ |]; subst.
+    apply Hlit; cbn; apply (mk_unit_alias_full _ _ _ _ _ lΘ); [ exact HΘ' | exact HaΘ | | exact HRΘ ].
     exact (proj1 (filed_apps_wf _ _ _ HΘ' _ _ _ Hc Ha HsT HT _ Hargs)).
 Qed.
 
@@ -294,7 +317,7 @@ Proof.
     rewrite gunit_sub_mk in Hr; exact Hr.
   - split; [| exact (proj1 IHwf_modexp_eq) ].
     pose proof (presup_modexp_eq_ctx H0) as HΓ.
-    cbn; repeat split; [ exact HΓ | constructor | exact H0 ].
+    cbn; apply (mk_unit_alias_full _ _ _ _ _ 0); [ exact HΓ | constructor | exact H0 | apply params_relevant_nil ].
 Qed.
 
 (** ** Parts of Descriptions under Application *)
@@ -303,11 +326,11 @@ Qed.
 
 
 
-Lemma mdesc_ats_term : forall Ns A om R', mdesc_ats (mdesc_term A om) Ns = Some R' -> exists A' om', R' = mdesc_term A' om'.
+Lemma mdesc_ats_term : forall Ns r A om R', mdesc_ats (mdesc_term r A om) Ns = Some R' -> exists A' om', R' = mdesc_term r A' om'.
 Proof.
   induction Ns as [| N Ns IH]; intros * Ha; cbn in Ha; [ injection Ha as <-; eauto |].
   destruct (pi_view A) as [[X C] |]; [| discriminate ].
-  destruct om as [M |]; [ destruct (fn_view M) as [M' |]; [| discriminate ] |]; exact (IH _ _ _ Ha).
+  destruct om as [M |]; [ destruct (fn_view M) as [M' |]; [| discriminate ] |]; exact (IH _ _ _ _ Ha).
 Qed.
 
 (** The module part of "R at N" is the module part of [R] at [N]. *)
@@ -361,13 +384,14 @@ Qed.
 
 Lemma mdesc_reduct_up : forall Θ' R, mdesc_reduct (mdesc_up Θ' R) = option_map (ctx_fn Θ') (mdesc_reduct R).
 Proof.
-  intros; destruct R as [A [M |] | | | Θd A M Rm]; cbn; try reflexivity;
+  intros; destruct R as [r A [M |] | | | Θd A M Rm]; cbn; try reflexivity;
     rewrite ctx_fn_app; reflexivity.
 Qed.
 
-Lemma mdesc_type_up_inv : forall Δ R A, mdesc_type (mdesc_up Δ R) = Some A -> exists A0, mdesc_type R = Some A0 /\ A = ctx_pi Δ A0.
+Lemma mdesc_type_up_inv : forall Δ R A, mdesc_type (mdesc_up Δ R) = Some A ->
+    exists A0, mdesc_type R = Some A0 /\ A = ctx_pi_at (mdesc_relevance R) Δ A0.
 Proof.
-  intros * Ht; destruct R as [A0 om | | | Θd A0 M0 Rm]; cbn in *; try discriminate.
+  intros * Ht; destruct R as [r A0 om | | | Θd A0 M0 Rm]; cbn in *; try discriminate.
   - injection Ht as <-; eauto.
   - injection Ht as <-; rewrite ctx_pi_app; eauto.
 Qed.
@@ -376,22 +400,25 @@ Qed.
 
 (** A module expression denoting a description abstracted over [Δa], given
     arguments for the outermost parameters of [Δa], is well formed. *)
-Lemma wf_apps_up : forall Θ Ξ Ns Γ Δa R H,
+Lemma wf_apps_up : forall Θ Ξ Ns Γ Δa R H l,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H (mdesc_up Δa R) -> mdesc_is_mod R ->
     ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> tele_ass Δa -> length Ns <= length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
-    desc_ok Θ Ξ (Δa ++ Γ) R ->
+    desc_ok Θ Ξ (Δa ++ Γ) R -> params_relevant Θ Ξ Γ Δa l ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps H Ns ≈ me_apps H Ns.
 Proof.
-  intros Θ Ξ; induction Ns as [| N Ns IH]; intros * HH Hm Hmod HΔ Ha Hl HNs HR; [ exact HH |].
+  intros Θ Ξ; induction Ns as [| N Ns IH]; intros * HH Hm Hmod HΔ Ha Hl HNs HR HRΔ; [ exact HH |].
   pose proof (ctx_wf_gctx _ _ _ HΔ) as Hg.
   destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
   unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? [C ->] _]; subst.
   rewrite tele_insts_snoc in HNs.
   pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN; rewrite exp_sub_id in HN.
+  (* the argument's type is relevant, as every parameter of a module *)
+  destruct (params_relevant_app_inv _ _ _ _ _ _ HRΔ) as [HRΔ1 HRC].
+  pose proof (HRC nil C nil eq_refl) as HC; cbn [List.app] in HC, HRΔ1.
   rewrite <- List.app_assoc in HΔ, HR; cbn [List.app] in HΔ, HR.
-  destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [j HC]].
-  pose proof (wf_sub_single _ _ _ _ _ _ HC HN) as Hs1.
+  destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ _].
+  pose proof (wf_sub_single _ _ _ _ _ _ HC (type_sort_universe _) HN) as Hs1.
   assert (HΔN : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ) by (eapply ctx_sub_wf_gen; eassumption).
   assert (Hσ : Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ ⊢ˢ sb_qn (length Δ1) (Id,,N) : Δ1 ++ ce_ass C :: Γ)
     by (apply wf_sub_ext; assumption).
@@ -412,6 +439,7 @@ Proof.
     rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.
     exact (HNs (S k) N1 A HN1 HA).
   - exact (desc_ok_sub _ _ Hg _ _ HR _ _ Hσ).
+  - exact (params_relevant_sub _ _ _ _ _ _ _ HRΔ1 Hs1 HΔ HΔN).
 Qed.
 
 (** [β] for a well-formed literal, its two forms in one. *)
@@ -553,33 +581,34 @@ Lemma ats_up_red_eq : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Ns Γ Δa R M M0 
     ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> tele_ass Δa -> length Ns <= length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
     mdesc_type R = Some A0 -> mdesc_reduct R = Some M0 ->
-    (exists i, Θ ⍮ Ξ ⍮ Δa ++ Γ ⊢ A0 : Typeω@i) -> Θ ⍮ Ξ ⍮ Δa ++ Γ ⊢ M0 : A0 ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ ctx_fn Δa M0 : ctx_pi Δa A0 ->
+    (exists i, Θ ⍮ Ξ ⍮ Δa ++ Γ ⊢ A0 : relevance_sort (mdesc_relevance R) Typeω@i) -> Θ ⍮ Ξ ⍮ Δa ++ Γ ⊢ M0 : A0 ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ ctx_fn Δa M0 : ctx_pi_at (mdesc_relevance R) Δa A0 ->
     exists R' A' M', mdesc_ats (mdesc_up Δa R) Ns = Some R' /\ mdesc_type R' = Some A' /\ mdesc_reduct R' = Some M' /\
       Θ ⍮ Ξ ⍮ Γ ⊢ apps M Ns ≈ M' : A'.
 Proof.
   intros Θ Ξ Hg; pose proof (wf_gstack_closed _ _ Hg) as Hc.
   induction Ns as [| N Ns IH]; intros * HΔ Ha Hl HNs Ht Hr [i HA0] HM0 HM.
-  - exists (mdesc_up Δa R), (ctx_pi Δa A0), (ctx_fn Δa M0).
+  - exists (mdesc_up Δa R), (ctx_pi_at (mdesc_relevance R) Δa A0), (ctx_fn Δa M0).
     split; [ reflexivity |]; split; [ apply mdesc_type_up; exact Ht |]; split; [ rewrite mdesc_reduct_up, Hr; reflexivity | exact HM ].
   - destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
     unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? [C ->] _]; subst.
     rewrite tele_insts_snoc in HNs.
     pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN; rewrite exp_sub_id in HN.
     rewrite <- List.app_assoc in HΔ, HA0, HM0; cbn [List.app] in HΔ, HA0, HM0.
-    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [j HC]].
-    pose proof (wf_sub_single _ _ _ _ _ _ HC HN) as Hs1.
+    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [SC HSC HC]].
+    pose proof (wf_sub_single _ _ _ _ _ _ HC HSC HN) as Hs1.
     assert (HΔN : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ) by (eapply ctx_sub_wf_gen; eassumption).
     assert (Hσ : Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ ⊢ˢ sb_qn (length Δ1) (Id,,N) : Δ1 ++ ce_ass C :: Γ)
       by (apply wf_sub_ext; assumption).
-    destruct (ctx_pi_wf _ _ _ _ _ _ HΔ HA0) as [k HB].
-    pose proof (ctx_fn_wf _ _ _ _ _ _ _ HΔ HA0 HM0) as HF.
-    rewrite ctx_pi_app, ctx_fn_app in HM; cbn [ctx_pi ctx_fn] in HM.
-    assert (HMN : Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ (ctx_fn Δ1 M0)[Id,,N] : (ctx_pi Δ1 A0)[Id,,N]).
+    set (r := mdesc_relevance R) in *.
+    assert (HS : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+    destruct (ctx_pi_at_wf _ _ r _ _ _ _ HΔ HA0) as [k HB].
+    pose proof (ctx_fn_at_wf _ _ r _ _ _ _ _ HΔ HA0 HM0) as HF.
+    rewrite ctx_pi_app, ctx_fn_app in HM; cbn [ctx_pi_at ctx_fn] in HM.
+    assert (HMN : Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ (ctx_fn Δ1 M0)[Id,,N] : (ctx_pi_at r Δ1 A0)[Id,,N]).
     { eapply wf_exp_eq_trans.
-      - eapply wf_exp_eq_app_cong; [ eapply lift_exp_max_left; exact HC | eapply lift_exp_max_right; exact HB | exact HM
-                                   | apply wf_exp_eq_refl; exact HN ].
-      - eapply wf_exp_eq_pi_beta; [ eapply lift_exp_max_left; exact HC | eapply lift_exp_max_right; exact HB | exact HF | exact HN ]. }
+      - eapply wf_exp_eq_app_cong with (r := r); [ exact HC | exact HSC | exact HB | exact HM | apply wf_exp_eq_refl; exact HN ].
+      - eapply wf_exp_eq_pi_beta with (r := r); [ exact HC | exact HSC | exact HB | exact HF | exact HN ]. }
     rewrite ctx_pi_sub, ctx_fn_sub in HMN.
     cbn [mdesc_ats]; rewrite mdesc_at_up.
     apply (IH Γ (tele_sub Δ1 (Id,,N)) _ (M $ N) M0[sb_qn (length Δ1) (Id,,N)] A0[sb_qn (length Δ1) (Id,,N)]).
@@ -591,9 +620,9 @@ Proof.
       exact (HNs (S k0) N1 A HN1 HA).
     + apply mdesc_type_sub; exact Ht.
     + apply mdesc_reduct_sub; exact Hr.
-    + exists i; exact (sub_preserves_exp _ _ _ _ _ _ _ HA0 Hσ).
+    + rewrite mdesc_relevance_sub; exists i; exact (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS Hσ).
     + exact (sub_preserves_exp _ _ _ _ _ _ _ HM0 Hσ).
-    + exact HMN.
+    + rewrite mdesc_relevance_sub; exact HMN.
 Qed.
 
 (** Equal terms of a [Π] over a telescope, applied to the same arguments. *)
@@ -614,15 +643,14 @@ Proof.
     rewrite List.length_app in Hl; cbn in Hl.
     destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
     rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
-    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [k HA0]].
+    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [SA HSA HA0]].
     destruct (ctx_pi_wf _ _ _ _ _ _ HΔ HB) as [j HPi].
     assert (HM0 : Θ ⍮ Ξ ⍮ Γ ⊢ M0 : A0)
       by (rewrite <- (exp_sub_id A0); apply (HMs 0); [ reflexivity | rewrite tele_insts_snoc; reflexivity ]).
     assert (Happ : Θ ⍮ Ξ ⍮ Γ ⊢ M $ M0 ≈ M' $ M0 : (ctx_pi Δ B)[Id,,M0])
-      by (eapply wf_exp_eq_app_cong with (i := max k j);
-          [ eapply lift_exp_max_left; exact HA0 | eapply lift_exp_max_right; exact HPi | exact HM | apply wf_exp_eq_refl; exact HM0 ]).
+      by (eapply wf_exp_eq_app_cong with (r := relevant); [ exact HA0 | exact HSA | exact HPi | exact HM | apply wf_exp_eq_refl; exact HM0 ]).
     rewrite ctx_pi_sub in Happ.
-    pose proof (wf_sub_single _ _ _ _ _ _ HA0 HM0) as Hs.
+    pose proof (wf_sub_single _ _ _ _ _ _ HA0 HSA HM0) as Hs.
     assert (HΔ' : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ (Id,,M0) ++ Γ) by (eapply ctx_sub_wf; eassumption).
     pose proof (wf_sub_ext _ _ _ _ _ _ Hs HΔ' HΔ) as Hs'.
     cbn [apps_exp sb_of_list].
@@ -715,7 +743,7 @@ Proof.
   destruct (filed_denote _ _ Hg _ _ _ Γ Ns Hgl) as (R0' & Hm0' & Hmd').
   rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0 _ Hm0'), Hmd' in Hmd; injection Hmd as <-.
   pose proof (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ Hw Hm0') Hmd') as HokP.
-  inversion HokP as [| | ? ? ? ? ? Θ1 Ξ1 ? Hg1 Hs1 Hl1 HaT HsT HT HΘ' Hargs HaΘ |]; subst; cbn [List.app] in Hargs.
+  inversion HokP as [| | ? ? ? ? ? Θ1 Ξ1 ? lΘ Hg1 Hs1 Hl1 HaT HsT HT HΘ' Hargs HaΘ HRΘ |]; subst; cbn [List.app] in Hargs.
   cbn in He, Hed; destruct (gm_prefix_upto Φ x) as [[| Φ0 y E0 | ? ? ?] |] eqn:Hp; try discriminate.
   injection He as <- <- <-.
   destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <- <-] & Hent).
@@ -739,38 +767,39 @@ Proof.
               (exists i, Θ ⍮ Ξ ⍮ T ++ Γ ⊢ A0 : Typeω@i) -> Θ ⍮ Ξ ⍮ T ++ Γ ⊢ M0 : A0 -> G) end.
   { intros A0 M0 Rm -> HA0 HM.
     cbn [mdesc_ats_read] in Hats.
-    change (mdesc_term (ctx_pi T A0) (Some (ctx_fn T M0))) with (mdesc_up T (mdesc_term A0 (Some M0))) in Hats.
-    rewrite (mdesc_term_part_ats_up _ _ _ _ HaT (args_ok_length _ _ _ _ _ Hargs)) in Hats; cbn [mdesc_up option_map] in Hats.
-    destruct (mdesc_ats (mdesc_term (ctx_pi T A0) (Some (ctx_fn T M0))) Ns) as [[B [M1 |] | | |] |] eqn:HtA; try discriminate.
+    change (mdesc_term relevant (ctx_pi T A0) (Some (ctx_fn T M0))) with (mdesc_up T (mdesc_term relevant A0 (Some M0))) in Hats.
+    rewrite (mdesc_term_part_ats_up _ _ _ _ _ HaT (args_ok_length _ _ _ _ _ Hargs)) in Hats; cbn [mdesc_up option_map] in Hats.
+    destruct (mdesc_ats (mdesc_term relevant (ctx_pi T A0) (Some (ctx_fn T M0))) Ns) as [[? B [M1 |] | | |] |] eqn:HtA;
+      try discriminate.
     destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:HRm; [ injection Hats as <- | discriminate ].
     rewrite mdesc_named_fix in Hm, Ht by reflexivity.
     assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ ctx_fn T M0 : ctx_pi T A0)
       by (eapply wf_exp_eq_mem_delta; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
-    destruct (ats_up_red_eq _ _ Hg Ns Γ T (mdesc_term A0 (Some M0)) (a_mem (qname_mod p) y) M0 A0 HTΓ HaT
+    destruct (ats_up_red_eq _ _ Hg Ns Γ T (mdesc_term relevant A0 (Some M0)) (a_mem (qname_mod p) y) M0 A0 HTΓ HaT
                 (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs) eq_refl eq_refl HA0 HM Hδx)
       as (R' & A'' & M' & Hats' & Ht' & Hr' & Heq).
     cbn [mdesc_up option_map] in Hats'; rewrite HtA in Hats'; injection Hats' as <-.
     cbn [mdesc_up mdesc_type mdesc_reduct List.app ctx_pi ctx_fn] in Ht, Ht', Hr'; injection Ht as <-; injection Ht' as <-; injection Hr' as <-.
     eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
     apply wf_exp_eq_sym; exact Heq. }
-  destruct E0 as [b pv A' oM | pv [Δ [sm Φy | E'] ] | pv pq kq D ΦD | pv Ad Md Ud | pv pr Rr ΦR ].
-  - (* a definition *)
+  destruct E0 as [b pv ra A' oM | pv [Δ [sm Φy | E'] ] | pv pq kq D ΦD | pv Ad Md Ud | pv pr Rr ΦR ].
+  - (* a definition, of either tag *)
     cbn in HE0; destruct HE0 as (A0 & -> & [i HA0] & HM0).
     cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
-    assert (Hnone : forall Ns0 A1 R2, mdesc_ats (mdesc_term A1 None) Ns0 = Some R2 -> exists A2, R2 = mdesc_term A2 None).
+    assert (Hnone : forall Ns0 A1 R2, mdesc_ats (mdesc_term ra A1 None) Ns0 = Some R2 -> exists A2, R2 = mdesc_term ra A2 None).
     { induction Ns0 as [| N0 Ns0 IHN]; intros * Ha0; cbn in Ha0; [ injection Ha0 as <-; eauto |].
       destruct (pi_view A1) as [[? ?] |]; [ exact (IHN _ _ Ha0) | discriminate ]. }
     destruct b; [ destruct oM as [M |] |].
     + (* transparent: [δ] on both sides, then [β] *)
       destruct (HM0 M eq_refl) as (M0 & -> & HM).
-      assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ ctx_fn T M0 : ctx_pi T A0)
+      assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ ctx_fn T M0 : ctx_pi_at ra T A0)
         by (eapply wf_exp_eq_mem_delta; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
-      destruct (ats_up_red_eq _ _ Hg Ns Γ T (mdesc_term A0 (Some M0)) (a_mem (qname_mod p) y) M0 A0 HTΓ HaT
+      destruct (ats_up_red_eq _ _ Hg Ns Γ T (mdesc_term ra A0 (Some M0)) (a_mem (qname_mod p) y) M0 A0 HTΓ HaT
                   (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs) eq_refl eq_refl
                   (ex_intro _ i (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA0 HTΓ)) (closed_tele_weaken_exp _ _ _ _ _ _ HsT HM HTΓ) Hδx)
         as (R' & A'' & M' & Hats' & Ht' & Hr' & Heq).
       cbn [mdesc_up option_map] in Hats'; rewrite Hats in Hats'; injection Hats' as <-.
-      destruct (mdesc_ats_some_red _ _ _ _ Hats) as (A1 & M1 & ->).
+      destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A1 & M1 & ->).
       rewrite mdesc_named_fix in Hm, Ht by reflexivity.
       cbn in Ht, Ht', Hr'; injection Ht as <-; injection Ht' as <-; injection Hr' as <-.
       eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
@@ -858,24 +887,25 @@ Qed.
 (** A term read from a closed module part has a δ-reduct. *)
 Lemma mdesc_reduct_closed_read : forall Θ' M R1 A, mdesc_type (mdesc_up Θ' (mdesc_self M R1)) = Some A ->
     exists M', mdesc_reduct (mdesc_up Θ' (mdesc_self M R1)) = Some M'.
-Proof. intros * Ht; destruct R1 as [? [] | | |]; cbn in Ht |- *; try discriminate; eauto. Qed.
+Proof. intros * Ht; destruct R1 as [? ? [] | | |]; cbn in Ht |- *; try discriminate; eauto. Qed.
 
 
 
 
 
 (** Equal bodies over a telescope of assumptions, abstracted over it. *)
-Lemma ctx_fn_eq : forall Θ Ξ Δ Γ A M M' i, tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
-    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M ≈ ctx_fn Δ M' : ctx_pi Δ A.
+Lemma ctx_fn_eq : forall Θ Ξ r Δ Γ A M M' i, tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : relevance_sort r Typeω@i -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M ≈ ctx_fn Δ M' : ctx_pi_at r Δ A.
 Proof.
+  intros Θ Ξ r.
   induction Δ as [| [B | B N | U | B N U] Δ IH]; intros * Ha HΔ HA HM; cbn in *; [ assumption | | | |];
     inversion Ha as [| ? ? [? Heq] Ha']; subst; try discriminate.
   inversion HΔ; subst.
-  match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Typeω@?k |- _ =>
-    eapply IH with (i := max k i); [ exact Ha' | eauto using presup_exp_ctx | |];
-    [ eapply wf_pi_large; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
-    | eapply wf_exp_eq_fn_cong; [ exact HB | apply wf_exp_eq_refl; exact HB | exact HM ] ]
+  match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S |- _ =>
+    destruct (wf_pi_sort_at _ _ _ _ _ _ _ _ HB HS HA) as [k Hk];
+    eapply IH with (i := k); [ exact Ha' | eauto using presup_exp_ctx | exact Hk |];
+    eapply wf_exp_eq_fn_cong with (r := r); [ exact HB | exact HS | apply wf_exp_eq_refl; exact HB | exact HA | exact HM ]
   end.
 Qed.
 
@@ -887,7 +917,7 @@ Qed.
     or an argument, where the member is read as a name ([mdesc_named]); read
     bare, it goes by the module expressions ([mem_closed_part]). *)
 Lemma mdesc_type_named : forall Θ' Ns M R, mdesc_type (mdesc_named Θ' Ns M R) = mdesc_type R.
-Proof. intros; apply (mdesc_named_cases (fun R' => mdesc_type R' = mdesc_type R)); [ reflexivity | destruct R as [? [] | | |]; reflexivity ]. Qed.
+Proof. intros; apply (mdesc_named_cases (fun R' => mdesc_type R' = mdesc_type R)); [ reflexivity | destruct R as [? ? [] | | |]; reflexivity ]. Qed.
 
 (** An open frame, named by its path, is its module at no arguments and no
     outside parameters. *)
@@ -949,7 +979,7 @@ Proof.
   pose proof (gctx_valid_syn _ _ Hg) as Hv.
   pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg HmH) HmdH) as Hl; cbn in Hl.
   pose proof (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH HmH) HmdH) as HokP.
-  inversion HokP as [| | ? ? ? ? ? Θ1 Ξ1 ? Hg1 Hs1 Hl1 HaT HsT HT HΘ' Hargs HaΘ |]; subst.
+  inversion HokP as [| | ? ? ? ? ? Θ1 Ξ1 ? lΘ Hg1 Hs1 Hl1 HaT HsT HT HΘ' Hargs HaΘ HRΘ |]; subst.
   inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr
                   | ? ? ? ? ? ? Hq Hk];
     subst.
@@ -980,23 +1010,27 @@ Proof.
   destruct (mdesc_reduct_closed_read _ _ _ _ HA0) as (M' & HM').
   assert (HA0x : mdesc_type (mdesc_up nil (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1)) = Some A0).
   { rewrite <- HA0; apply (mdesc_named_cases (fun R' => mdesc_type (mdesc_up nil R') = mdesc_type (mdesc_up nil (mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1))));
-      [ destruct R1 as [? [] | | |] | ]; reflexivity. }
-  destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HW Hmx) HA0x) as [[i Hi] _].
+      [ destruct R1 as [? ? [] | | |] | ]; reflexivity. }
+  destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HW Hmx) HA0x) as [i Hi].
+  assert (Hrel : mdesc_relevance (mdesc_up nil (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1))
+                 = mdesc_relevance (mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1))
+    by (rewrite mdesc_relevance_up; unfold mdesc_named; destruct Ns; destruct R1 as [? ? [] | | |]; reflexivity).
+  rewrite Hrel in Hi.
   pose proof (mem_filed_apps _ _ _ _ _ _ _ _ _ _ (gc_loc_of_loc _ _ Hg _ _ _ Hl) HW Hmx HA0x) as Hfa.
   (* the member at the arguments is the filed member at them: by [δ] to
      the δ-reduct, which a term of none is read as *)
   assert (Heq : Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ M' ≈ apps (a_mem (qname_mod p) x) Ns : A0).
   { destruct (mdesc_reduct R1) as [M1 |] eqn:Er.
-    - assert (Hs : mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1 = R1) by (destruct R1 as [? [] | | |]; cbn in Er |- *; congruence).
+    - assert (Hs : mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1 = R1) by (destruct R1 as [? ? [] | | |]; cbn in Er |- *; congruence).
       rewrite Hs in HM'; cbn [mdesc_up] in HM'.
       assert (HMx : mdesc_reduct (mdesc_up nil (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1)) = Some M')
         by (rewrite mdesc_named_fix by exact Hs; cbn [mdesc_up]; exact HM').
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta; [ exact HW | exact Hmx | exact HA0x | exact HMx ] |].
       exact Hfa.
-    - destruct R1 as [? [] | | |]; cbn in Er, HA0, HM'; try discriminate; injection HM' as <-.
+    - destruct R1 as [? ? [] | | |]; cbn in Er, HA0, HM'; try discriminate; injection HM' as <-.
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact Hfa | exact Hfa ]. }
   apply (wf_exp_eq_trans _ _ _ _ _ (ctx_fn Θ' M')); [ eapply wf_exp_eq_mem_delta; [ exact HH | exact Hm | exact Ht | rewrite mdesc_reduct_up, HM'; reflexivity ] |].
-  exact (ctx_fn_eq _ _ _ _ _ _ _ _ HaΘ HΘ' Hi Heq).
+  rewrite mdesc_relevance_up; exact (ctx_fn_eq _ _ _ _ _ _ _ _ _ HaΘ HΘ' Hi Heq).
 Qed.
 
 
@@ -1115,7 +1149,7 @@ Proof.
     destruct Δ0 as [| e Δ0'].
     + (* no parameter left: the target *)
       cbn [tele_sub length] in Hβ, HmL.
-      pose proof (proj2 (modexp_gen _ _ _ _ _ Hβ)) as Hf'; cbn [gen_m unit_full] in Hf'; destruct Hf' as (_ & _ & HE').
+      pose proof (proj2 (modexp_gen _ _ _ _ _ Hβ)) as Hf'; cbn [gen_m unit_full] in Hf'; destruct Hf' as [lp _ _ HE' _].
       cbn [List.app] in HE'.
       apply mdenote_lit_inv in HmL; inversion HmL as [| ? ? ? ? R1 R2 HmE HmdE HeqR]; subst.
       rewrite mdesc_up_nil in HmdR' |- *.
@@ -1192,7 +1226,7 @@ Proof.
     split; [ apply wf_me_lit; exact HU |]; split; [ apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ] | exact Hmd ].
   - (* an alias: with no parameter its target, otherwise over the unit its target is equal to *)
     intros Γ o Δ E R R' Hm IH HR' -> HU Rm Hmd.
-    pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf; destruct Hf as (HΔ & Ha & HE).
+    pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf; destruct Hf as [lp HΔ Ha HE HRp].
     destruct (IH HE R' HR') as (K & RK & Hnf & HK & HmK & HmdK).
     pose proof (mdesc_mod_is_mod _ _ HR') as Him.
     destruct Δ as [| e Δ'].
@@ -1200,8 +1234,9 @@ Proof.
       exists K, RK; split; [ exact Hnf |]; split; [ eapply wf_me_trans; [ apply wf_me_beta_alias0; exact HE | exact HK ] |].
       split; assumption.
     + exists (me_lit (gu_mk (e :: Δ') (md_alias K))), (mdesc_up (e :: Δ') R'); split; [ apply unf_alias; [ discriminate | exact Hnf ] |].
-      split; [ apply wf_me_lit; eapply wf_unit_eq_alias;
-               [ apply ext_of_ctx; exact HΔ | exact Ha | exact Ha | exact HK | exact (wf_modexp_eq_refl_right HK) ] |].
+      split; [ apply wf_me_lit; eapply wf_unit_eq_alias with (param_level := lp);
+               [ apply ext_of_ctx; exact HΔ | exact Ha | exact Ha | exact HK | exact (wf_modexp_eq_refl_right HK)
+               | exact HRp | exact HRp ] |].
       split; [ apply mdenote_lit; eapply udenote_alias; [ exact HmK | exact HmdK ] | exact Hmd ].
 Qed.
 
@@ -1236,25 +1271,27 @@ Lemma flatten_unit_wf : forall Θ Ξ Γ Δ Δ' D,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ' ++ Δ) D ≈ gu_mk (Δ' ++ Δ) D.
 Proof.
   intros * HU; pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf.
-  destruct Hf as (HC & Ha & HE).
-  eapply wf_unit_eq_refl_right; apply wf_unit_eq_flatten; [ apply ext_of_ctx; exact HC | exact Ha | apply lit_unit_wf; exact HE ].
+  destruct Hf as [lp HC Ha HE HRp].
+  eapply wf_unit_eq_refl_right; eapply wf_unit_eq_flatten with (param_level := lp);
+    [ apply ext_of_ctx; exact HC | exact Ha | apply lit_unit_wf; exact HE | exact HRp ].
 Qed.
 
 (** An alias with parameters of the unit of a module part is the unit of
     the module part abstracted over the parameters. *)
-Lemma alias_unit_up : forall Θ Ξ Γ Δ Rm, Δ <> nil -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ -> tele_ass Δ -> mdesc_is_mod Rm ->
+Lemma alias_unit_up : forall Θ Ξ Γ Δ Rm l, Δ <> nil -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ -> tele_ass Δ ->
+    params_relevant Θ Ξ Γ Δ l -> mdesc_is_mod Rm ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ mdesc_unit Rm ≈ mdesc_unit Rm ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias (mdesc_unit Rm))) ≈ mdesc_unit (mdesc_up Δ Rm).
 Proof.
-  intros * Hne HΔ Ha Hm HR.
+  intros * Hne HΔ Ha HRp Hm HR.
   destruct Rm as [A om | Δ' Φ | [| e Θ'] p T Φ Ns | ]; cbn in Hm; try contradiction; cbn [mdesc_up mdesc_unit] in HR |- *.
   - (* a local body: flattened *)
-    apply wf_me_lit, wf_unit_eq_flatten; [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR ].
+    apply wf_me_lit; eapply wf_unit_eq_flatten with (param_level := l); [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR | exact HRp ].
   - (* a filed module at arguments: the alias is the unit *)
-    rewrite app_nil_l; destruct Δ as [| e Δ]; [ contradiction |]; apply wf_me_lit, wf_unit_eq_alias;
-      [ exact HΔ | exact Ha | exact Ha | exact HR | exact HR ].
+    rewrite app_nil_l; destruct Δ as [| e Δ]; [ contradiction |]; apply wf_me_lit; eapply wf_unit_eq_alias with (param_level := l);
+      [ exact HΔ | exact Ha | exact Ha | exact HR | exact HR | exact HRp | exact HRp ].
   - (* an alias of a filed module at arguments: flattened *)
-    apply wf_me_lit, wf_unit_eq_flatten; [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR ].
+    apply wf_me_lit; eapply wf_unit_eq_flatten with (param_level := l); [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR | exact HRp ].
 Qed.
 
 Lemma unit_nf_canon : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall K, unit_nf Θ Ξ K -> forall Γ RK Rm,
@@ -1268,15 +1305,17 @@ Proof.
     match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
     cbn in Hmd; injection Hmd as <-; cbn [mdesc_unit]; exact HK.
   - (* an alias with parameters: its target, then the alias of the target's unit *)
-    pose proof (proj1 (modexp_gen _ _ _ _ _ HK)) as Hf; cbn [gen_m unit_full] in Hf; destruct Hf as (HC & Ha & HEE).
+    pose proof (proj1 (modexp_gen _ _ _ _ _ HK)) as Hf; cbn [gen_m unit_full] in Hf; destruct Hf as [lp HC Ha HEE HRp].
     apply mdenote_lit_inv in Hm; inversion Hm as [| ? ? ? ? RE R'' HmE HmdE]; subst.
     pose proof (mdesc_mod_is_mod _ _ HmdE) as Him.
     rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Him)) in Hmd; injection Hmd as <-.
     pose proof (IH _ _ _ HEE HmE HmdE) as HEu.
     eapply wf_me_trans;
-      [ apply wf_me_lit, wf_unit_eq_alias;
-        [ apply ext_of_ctx; exact HC | exact Ha | exact Ha | exact HEu | exact (wf_modexp_eq_refl_right HEu) ] |].
-    apply alias_unit_up; [ exact HΔ | apply ext_of_ctx; exact HC | exact Ha | exact Him | exact (wf_modexp_eq_refl_right HEu) ].
+      [ apply wf_me_lit; eapply wf_unit_eq_alias with (param_level := lp);
+        [ apply ext_of_ctx; exact HC | exact Ha | exact Ha | exact HEu | exact (wf_modexp_eq_refl_right HEu)
+        | exact HRp | exact HRp ] |].
+    eapply alias_unit_up;
+      [ exact HΔ | apply ext_of_ctx; exact HC | exact Ha | exact HRp | exact Him | exact (wf_modexp_eq_refl_right HEu) ].
 Qed.
 
 (** Lookup is sound: a well-formed module expression is equal to the unit

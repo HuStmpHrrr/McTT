@@ -359,7 +359,7 @@ Proof.
         by (apply ctx_ext_refl; [ apply tele_ass_sub; exact (decl_closed_nparams_ass _ Hc _ _ Hj) | exact HΨ ]).
       eapply wf_ext_eq_ass; [ exact Hext | eapply lift_exp_max_left; exact HZi | exact HZH | eapply lift_exp_max_right; exact HH ].
     - intros j Mj Hj; apply ctx_ext_refl; [ exact (elim_mctx_ass _ _ _ _ _ Hc Hj) | exact (HUt' _ _ Hj) ].
-    - intros j Mj c gs Hj Hcon; apply ctx_ext_refl; [ exact (elim_bctx_ass _ _ _ _ _ _ _ Hc Hj) | eapply elim_bctx_wf; eassumption ].
+    - intros j Mj c gs Hj Hcon; apply ctx_ext_refl; [ exact (elim_bctx_ass _ _ _ _ _ _ _ _ Hc Hj) | eapply elim_bctx_wf; eassumption ].
     - intros j Mj b c gs n B Hj Hb0 Hcon Hin.
       pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hgw HDs Hl Hj (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0)
                     HΓ HUl HUt HUt' HAs Hcon) as Hbs.
@@ -1770,7 +1770,7 @@ Proof.
   - constructor.
   - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
     assert (HEt : ext_entries n Γ0 (body_ctx Φx ++ Δ)).
-    { destruct E as [? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
+    { destruct E as [? ? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
     specialize (IH eq_refl HEt ltac:(lia) Hs Ho).
     destruct E as [b pv A [M |] | pm U | ? ? ? | pv A M U | ? ? ?]; cbn in HsE; try contradiction.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.

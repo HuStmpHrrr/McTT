@@ -52,6 +52,11 @@ Section GlobalExt.
   Lemma gc_term_ext : forall p, gc_term Θ1 Ξ1 p = gc_term Θ2 Ξ2 p.
   Proof. intros; unfold gc_term; rewrite Hres, Hent; reflexivity. Qed.
 
+  (** The sort of a function's next argument is read off the groups'
+      declarations. *)
+  Lemma arg_relevance_ext : forall f, arg_relevance Θ1 Ξ1 f = arg_relevance Θ2 Ξ2 f.
+  Proof. intros []; cbn; rewrite ?Hind; reflexivity. Qed.
+
   (** A member with a term part and a module part is one by its lookups. *)
   Lemma dm_path_ext : forall p, dm_path Θ1 Ξ1 p <-> dm_path Θ2 Ξ2 p.
   Proof. intros; unfold dm_path; rewrite ind_mlookup_ext, Hrec, Hent; reflexivity. Qed.
@@ -69,8 +74,12 @@ Section GlobalExt.
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?dm_path_ext in *;
-      solve [ econstructor; eauto 6 ].
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?dm_path_ext in *.
+    (** A step through a definition: its five components, past [eauto]'s
+        depth. *)
+    all: try solve [ match goal with Hd : gc_resolve _ _ _ = Some (ge_def _ _ _ _ _) |- _ =>
+           eapply dmod_member_kind_global_step; [ right; do 5 eexists; exact Hd | eauto | eauto ] end ].
+    all: solve [ econstructor; eauto 6 ].
   Qed.
 
   Lemma eval_ext :
@@ -99,7 +108,9 @@ Section GlobalExt.
     (forall ns m fl pre rs, eval_nflds Θ1 Ξ1 ns m fl pre rs -> eval_nflds Θ2 Ξ2 ns m fl pre rs) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ1 ⍮ Ξ1 ↘ ws -> ⟦projs fl of v ⟧ Θ2 ⍮ Ξ2 ↘ ws) /\
     (forall p ups ρm As ρ gs vs a, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a ->
-       ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a).
+       ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
+    (forall rs Ms ρ vs, eval_fvals Θ1 Ξ1 rs Ms ρ vs -> eval_fvals Θ2 Ξ2 rs Ms ρ vs) /\
+    (forall f Ms ρ r, eval_app_args Θ1 Ξ1 f Ms ρ r -> eval_app_args Θ2 Ξ2 f Ms ρ r).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
@@ -124,13 +135,16 @@ Section GlobalExt.
              (fun f m r _ => eval_proj Θ2 Ξ2 f m r)
              (fun ns m fl pre rs _ => eval_nflds Θ2 Ξ2 ns m fl pre rs)
              (fun fl v ws _ => eval_projs Θ2 Ξ2 fl v ws)
-             (fun p ups ρm As ρ gs vs a _ => eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs a)).
+             (fun p ups ρm As ρ gs vs a _ => eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs a)
+             (fun rs Ms ρ vs _ => eval_fvals Θ2 Ξ2 rs Ms ρ vs)
+             (fun f Ms ρ r _ => eval_app_args Θ2 Ξ2 f Ms ρ r)).
     all: intros;
       repeat match goal with
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec, ?gc_term_ext in *.
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec, ?gc_term_ext,
+        ?arg_relevance_ext in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 
@@ -191,7 +205,11 @@ Section GlobalExt.
   Qed.
 
   Lemma initial_env_ext : forall Γ ρ, initial_env Θ1 Ξ1 Γ ρ -> initial_env Θ2 Ξ2 Γ ρ.
-  Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
+  Proof.
+    pose proof eval_ext; destruct_all; induction 1;
+      first [ solve [ eapply initial_env_cons_def; eauto ] | solve [ eapply initial_env_cons_def_proof; eauto ]
+            | econstructor; eauto ].
+  Qed.
 
   Lemma nbe_ty_ext : forall Γ A W, nbe_ty Θ1 Ξ1 Γ A W -> nbe_ty Θ2 Ξ2 Γ A W.
   Proof.

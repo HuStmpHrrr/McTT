@@ -1642,7 +1642,7 @@ Section ElimGlu.
       = leaf_ihty (blocks_motives (blocks_sub Bks (sb_wk σ' φ))) Id (q σs ⨟ sb_extend (ι φ) e) (a_app N[φ]ʷ (sentry_exp e)) l.
   Proof.
     intros * HMm HPl; rewrite leaf_ihty_sub; cbn [exp_sub]; rewrite exp_shift_extend_wk_e.
-    rewrite (leaf_ihty_sb_eq _ _ _ (ι φ ⨟ Id) _ _ _ (fun z => eq_refl) (fun z => eq_refl)).
+    rewrite (leaf_ihty_sb_eq _ _ _ _ (ι φ ⨟ Id) _ _ _ (fun z => eq_refl) (fun z => eq_refl)).
     apply leaf_ihty_base.
     rewrite HPl, !(blocks_motives_sub D Bks _ _ Mm Hnm HMm).
     symmetry; apply exp_sub_sub_ext, sb_qn_compose_ext; symmetry; apply sb_wk_compose.
@@ -2003,7 +2003,7 @@ Section ElimGlu.
     2:{ replace (0 + List.length gs + im_nn Mk) with (List.length (Ns' ++ As)) by (rewrite List.length_app; lia).
         symmetry; etransitivity; [ apply sb_qn_of_list | apply sb_of_list_cong, sb_compose_id_right ]. }
     rewrite <- tele_insts_tele_sub.
-    rewrite (ihs_ctx_aux_sub D (im_nn Mk) (blocks_motives Bks) (blocks_motives (blocks_sub Bks σ')) Us (List.length gs) σ' gs nil 0
+    rewrite (ihs_ctx_aux_sub _ D (im_nn Mk) (blocks_motives Bks) (blocks_motives (blocks_sub Bks σ')) Us (List.length gs) σ' gs nil 0
                Hc HUl eq_refl); [ reflexivity |].
     intros gs1 t gs2 Heq.
     pose proof (decl_closed_members _ Hc _ _ HMk) as HMc.

@@ -264,7 +264,7 @@ Fixpoint elab (S : list scope_entry) (o : Cst.expression) {struct o} : elab_resu
   | Cst.false_ty => elab_success ⊥
   | Cst.exfalso om mx oA =>
       let* M := elab S om in
-      let* A := elab (scope_entry_tvar mx :: S) oA in
+      let* A := elab S oA in
       elab_success (efq M return A)
   | Cst.pi x oA oB =>
       let* A := elab S oA in

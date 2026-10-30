@@ -26,7 +26,7 @@ Section Fixed_GCtx.
 Corollary member_wf : forall Γ H x R A,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ (me_mem H x) R ->
     mdesc_type R = Some A ->
-    (exists i, Γ ⊢ A : Typeω@i) /\ (forall M, mdesc_reduct R = Some M -> Γ ⊢ M : A) /\ Γ ⊢ a_mem H x : A.
+    Γ ⊢ᵗ A /\ (forall M, mdesc_reduct R = Some M -> Γ ⊢ M : A) /\ Γ ⊢ a_mem H x : A.
 Proof.
   intros * HH Hm Ht.
   pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv.
@@ -35,38 +35,39 @@ Proof.
 Qed.
 
 (** The next parameter of a closed telescope given typed arguments, at
-    them, is a type. *)
-Lemma args_ok_next : forall Γ T Ns C T1',
+    them, is a type of a universe, as a module's parameters are relevant. *)
+Lemma args_ok_next : forall Γ T Ns C T1' l,
     args_ok gc_deps gc_stack Γ T Ns -> tele_ass T -> ctx_scoped 0 T -> ⊢ T ->
+    params_relevant gc_deps gc_stack nil T l ->
     tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') ->
-    exists i, Γ ⊢ C[sb_of_list Id Ns] : Typeω@i.
+    Γ ⊢ C[sb_of_list Id Ns] : Typeω@l.
 Proof.
-  intros * [T1 T2 -> Hl Ha2 Hs2 HT2 HN] Ha Hs HT Hv.
+  intros * [T1 T2 -> Hl Ha2 Hs2 HT2 HN] Ha Hs HT HR Hv.
   replace (firstn (length (T1 ++ T2) - length Ns) (T1 ++ T2)) with T1 in Hv
     by (rewrite List.length_app, <- Hl, Nat.add_sub, List.firstn_app, Nat.sub_diag, List.firstn_O, List.app_nil_r, List.firstn_all; reflexivity).
   apply List.Forall_app in Ha as [Ha1 _].
   pose proof (tele_view_ass _ _ _ Ha1 Hv) as ->.
-  rewrite <- List.app_assoc in HT; cbn [List.app] in HT.
-  destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HT)) as [_ [i HC]].
+  pose proof (HR T1' C T2 ltac:(rewrite <- List.app_assoc; reflexivity)) as HC; rewrite List.app_nil_r in HC.
   pose proof (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HC HT2) as HC'.
   pose proof (wf_sub_of_list_id _ _ _ _ _ Ha2 HT2 (eq_sym Hl) HN) as Hσ.
-  exists i; pose proof (sub_preserves_typ _ _ _ _ _ _ _ HC' Hσ) as HB; cbn in HB; exact HB.
+  pose proof (sub_preserves_typ _ _ _ _ _ _ _ HC' Hσ) as HB; cbn in HB; exact HB.
 Qed.
 
 (** The outermost parameter a typed module description still takes is a
-    type. *)
+    type of a universe. *)
 Lemma desc_ok_tele_head : forall Γ Rm T B T1,
     desc_ok gc_deps gc_stack Γ Rm -> mdesc_tele Rm = Some T -> tele_view T = Some (B, T1) ->
     exists i, Γ ⊢ B : Typeω@i.
 Proof.
   intros * HR Ht Hv.
-  inversion HR as [Γ0 A om HA HM | Γ0 Δ Φw Φ HΦ Hn Hent HaΔ Hsh Hnd HUw | Γ0 Θ' T0 Φ Ns Θ0 Ξ0 p Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ |];
+  inversion HR as [Γ0 A om HA HM | Γ0 Δ Φw Φ lΔ HΦ Hn Hent HaΔ Hsh Hnd HUw HRΔ
+                  | Γ0 Θ' T0 Φ Ns Θ0 Ξ0 p lΘ Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ HRΘ |];
     subst; cbn in Ht; try discriminate.
   - (* an open module: its parameters *)
     injection Ht as <-.
     unfold tele_view in Hv; destruct (tele_open_split _ _ _ Hv) as (τ & Es).
-    pose proof (tele_split_wf gc_deps gc_stack (rev Δ) Γ) as Hsw; rewrite rev_involutive, Es in Hsw.
-    exact (proj1 (Hsw (ctx_app_wf_tail _ _ _ _ HΦ))).
+    destruct (tele_split_ass_eq _ _ _ _ HaΔ Es) as [EΔ _].
+    exists lΔ; exact (HRΔ _ _ nil EΔ).
   - (* a closed module: its outside parameters, then the rest of its telescope *)
     destruct (Nat.leb (length Ns) (length T0)); [| discriminate ]; injection Ht as <-.
     unfold tele_view in Hv; rewrite List.rev_app_distr in Hv.
@@ -75,18 +76,24 @@ Proof.
     destruct (tele_split (rev Θ')) as [[[B' Θ''] τ] | τ] eqn:Es.
     + destruct (tele_open_app_inl _ (rev (tele_sub (List.firstn (length T0 - length Ns) T0) (sb_of_list Id Ns))) _ _ _ Es)
         as (T' & Ho).
-      rewrite Ho in Hv; injection Hv as <- _; exact (proj1 Hsw).
+      rewrite Ho in Hv; injection Hv as <- _.
+      destruct (tele_split_ass_eq _ _ _ _ HaΘ Es) as [EΘ _].
+      exists lΘ; exact (HRΘ _ _ nil EΘ).
     + destruct (tele_open_app_inr _ _ _ _ _ Es Hv) as (B0 & T0' & Ho & ->).
       fold (tele_view (tele_sub (List.firstn (length T0 - length Ns) T0) (sb_of_list Id Ns))) in Ho.
       rewrite tele_view_sub in Ho.
       destruct (tele_view (List.firstn (length T0 - length Ns) T0)) as [[C T1'] |] eqn:HvC; cbn in Ho; [| discriminate ].
       injection Ho as <- _.
-      destruct (args_ok_next _ _ _ _ _ Hargs Ha0 Hs0 HT0 HvC) as [i HC].
-      exists i; pose proof (sub_preserves_typ _ _ _ _ _ _ _ HC Hsw) as HB; cbn in HB; exact HB.
+      (* the stored telescope is relevant where it is stored, so here *)
+      pose proof (ctx_wf_gctx _ _ _ HΘ') as Hg.
+      destruct (loc_relevant _ _ _ _ _ (gctx_valid_syn _ _ Hg0) Hloc) as [lT HRT].
+      pose proof (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg Hsub0) HRT) as HRT'.
+      exists lT; pose proof (sub_preserves_typ _ _ _ _ _ _ _ (args_ok_next _ _ _ _ _ _ Hargs Ha0 Hs0 HT0 HRT' HvC) Hsw) as HB.
+      cbn in HB; exact HB.
 Qed.
 
 (** The outermost parameter a well-formed module expression still takes is
-    a type. *)
+    a type of a universe. *)
 Corollary mtele_head_wf : forall Γ H R T B T1,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ H R ->
     mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
@@ -123,14 +130,16 @@ Lemma gens_ext_wf_gen : forall Γ1 H its gs, items_gen gc_deps gc_stack Γ1 H it
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ ≈
                                 body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ.
 Proof.
-  induction 1 as [| Γ1 H d pv its gs _ IH | Γ1 H n d pv A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
+  induction 1 as [| Γ1 H d pv its gs _ IH | Γ1 H n d pv ra A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
                  | Γ1 H n d pv R A Rm its gs Hm Hty Hmd _ IH ];
     intros Γ0 Ψ -> HH Φg HX; cbn [gens_append generated_item_entry]; try exact HX.
   all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
   all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.
   - (* the module itself *)
     assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias H) ≈ gu_mk nil (md_alias H))
-      by (apply wf_unit_eq_alias; [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HH | exact HH ]).
+      by (eapply wf_unit_eq_alias with (param_level := 0);
+          [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HH | exact HH
+          | exact (params_relevant_nil _ _ _ 0) | exact (params_relevant_nil _ _ _ 0) ]).
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     cbn [gentry_wk].
     change (S (length (body_ctx Φg)))
@@ -138,17 +147,17 @@ Proof.
     apply (IH Γ0 Ψ eq_refl HH).
     cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
   - (* a term member: a definition of it, at its type *)
-    destruct (member_wf _ _ _ _ _ HH Hm eq_refl) as ([i HA] & _ & HM).
-    pose proof (wk_preserves_typ _ _ _ _ _ _ _ HA Hw) as HA1.
+    destruct (member_wf _ _ _ _ _ HH Hm eq_refl) as ([Srt HS HA] & _ & HM).
+    pose proof (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hw) as HA1.
     pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
     cbn [gentry_wk option_map].
     change (S (length (body_ctx Φg)))
-      with (length (body_ctx (gm_ext Φg d (ge_def true pv A[wk_shiftn (length (body_ctx Φg))]ʷ
+      with (length (body_ctx (gm_ext Φg d (ge_def true pv ra A[wk_shiftn (length (body_ctx Φg))]ʷ
                                                (Some (a_mem H n)[wk_shiftn (length (body_ctx Φg))]ʷ))))).
     apply (IH Γ0 Ψ eq_refl HH).
     rewrite app_assoc in HA1, HM1; cbn [body_ctx app].
-    eapply wf_ext_eq_def; [ exact HX | exact HA1 | apply wf_exp_eq_refl; exact HA1 | exact HM1 | apply wf_exp_eq_refl; exact HM1
-                          | exact HA1 | exact HM1 ].
+    eapply wf_ext_eq_def; [ exact HX | exact HA1 | exact HS | apply wf_exp_eq_refl; exact HA1 | exact HM1
+                          | apply wf_exp_eq_refl; exact HM1 | exact HA1 | exact HM1 ].
   - (* a module member: an alias of it *)
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
@@ -157,7 +166,9 @@ Proof.
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
     assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias (me_mem H n)) ≈ gu_mk nil (md_alias (me_mem H n)))
-      by (apply wf_unit_eq_alias; [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HE | exact HE ]).
+      by (eapply wf_unit_eq_alias with (param_level := 0);
+          [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HE | exact HE
+          | exact (params_relevant_nil _ _ _ 0) | exact (params_relevant_nil _ _ _ 0) ]).
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     cbn [gentry_wk].
     change (S (length (body_ctx Φg)))
@@ -166,7 +177,7 @@ Proof.
     cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
   - (* a member with a term part and a module part: a definition with a
        module part, its term the selection, its module the alias of it *)
-    destruct (member_wf _ _ _ _ _ HH Hm Hty) as ([i HA] & _ & HM).
+    destruct (member_wf _ _ _ _ _ HH Hm Hty) as ([Srt HS HA] & _ & HM).
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
     pose proof (desc_ok_mod _ _ Hg _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hmd) as Hok.
@@ -175,8 +186,15 @@ Proof.
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
     assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias (me_mem H n)) ≈ gu_mk nil (md_alias (me_mem H n)))
-      by (apply wf_unit_eq_alias; [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HE | exact HE ]).
+      by (eapply wf_unit_eq_alias with (param_level := 0);
+          [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HE | exact HE
+          | exact (params_relevant_nil _ _ _ 0) | exact (params_relevant_nil _ _ _ 0) ]).
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
+    (* a member with a module part is relevant: its type is of a large universe *)
+    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty) as [iA HAi].
+    assert (Hr : mdesc_relevance R = relevant) by (destruct R; cbn in Hmd |- *; congruence).
+    rewrite Hr in HAi; cbn [relevance_sort] in HAi.
+    clear HA HS; rename HAi into HA.
     pose proof (wk_preserves_typ _ _ _ _ _ _ _ HA Hw) as HA1.
     pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
     cbn [gentry_wk].

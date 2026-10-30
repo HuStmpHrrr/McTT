@@ -51,11 +51,11 @@ Lemma sub_eq_preserves_subtyp : forall Θ Ξ Γ Δ A A' σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ'].
 Proof.
   intros * ? H; saturate_sub_eq.
-  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i) as [i ?] by mauto 2.
+  match goal with HA : _ ⍮ _ ⍮ Δ ⊢ A ⊆ A' |- _ => destruct (presup_subtyp_types HA) as [S HS _ HA'] end.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ]) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ'] : Typeω@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ≈ A'[σ'] : Typeω@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ⊆ A'[σ']) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ'] : S) by (eapply sub_preserves_sort; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ≈ A'[σ'] : S) by (eapply sub_eq_preserves_sort; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ⊆ A'[σ']) by (eapply wf_subtyp_refl; eassumption).
   etransitivity; eassumption.
 Qed.
 
@@ -75,7 +75,8 @@ Corollary exp_eq_sub_eq_head : forall Θ Ξ Γ Δ A B M M' σ i,
     Θ ⍮ Ξ ⍮ Γ ⊢ B[σ,,M] ≈ B[σ,,M'] : Typeω@i.
 Proof.
   intros.
-  assert (exists j, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@j) as [j ?] by mauto 3.
+  match goal with HB : _ ⍮ _ ⍮ Δ ▹ A ⊢ B : _ |- _ =>
+    destruct (proj2 (ctx_decomp (presup_exp_ctx HB))) as [SA HSA HA] end.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ : Δ) by mauto 2.

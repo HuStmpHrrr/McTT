@@ -2453,7 +2453,7 @@ Section WrappedBlocks.
       im_is_rview Mi' = false.
   Proof.
     intros * HMi' Hb; unfold VB, view_wrap in Hb.
-    destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ Hb) as (Mi'' & Hi & _).
+    destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ _ Hb) as (Mi'' & Hi & _).
     destruct (ind_bmembers_member _ _ _ Hi) as [HM Hlt].
     rewrite HMi' in HM; injection HM as <-.
     destruct (im_is_rview Mi') eqn:E; [| reflexivity ].

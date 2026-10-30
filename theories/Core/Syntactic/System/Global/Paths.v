@@ -136,7 +136,7 @@ Qed.
 Fixpoint gm_defs (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
-  | gm_ext Φ0 _ (ge_def _ _ _ _) => gm_defs Φ0
+  | gm_ext Φ0 _ (ge_def _ _ _ _ _) => gm_defs Φ0
   | _ => False
   end.
 
@@ -147,7 +147,8 @@ Proof.
 Qed.
 
 (** [gm_coh T Φ]: the body [Φ], filed over the telescope [T], is coherent
-    with it: every definition's type is closed over [T], every module's and
+    with it: every definition's type is closed over [T] by [Π]s at its
+    tag, every module's and
     alias's parameters extend [T], and every inductive member's uniform
     parameters extend [T], its module's body coherent with them.  A
     definition with a module part has a type and a term closed over [T],
@@ -157,7 +158,7 @@ Fixpoint gm_coh (T : ctx) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_open Φ0 _ _ => gm_coh T Φ0
-  | gm_ext Φ0 _ (ge_def _ _ A _) => gm_coh T Φ0 /\ exists A0, A = ctx_pi T A0
+  | gm_ext Φ0 _ (ge_def _ _ r A _) => gm_coh T Φ0 /\ exists A0, A = ctx_pi_at r T A0
   | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body sm Φ'))) => gm_coh T Φ0 /\ tele_ass Δ /\ gm_coh (Δ ++ T) Φ'
   | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_alias _))) => gm_coh T Φ0 /\ exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
   | gm_ext Φ0 _ (ge_ind _ _ _ D Φ') =>
@@ -181,7 +182,7 @@ Lemma gm_coh_subbody : forall Φ T x ip T' Φ',
     gm_coh T Φ -> gm_subbody T Φ x ip = Some (T', Φ') -> gm_coh T' Φ' /\ exists Δ, T' = Δ ++ T /\ tele_ass Δ.
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * Hc H; cbn in Hc, H; [ discriminate | | exact (IH _ _ _ _ _ _ Hc H) ].
-  destruct E as [b pv A B | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR];
+  destruct E as [b pv ra A B | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR];
     destruct (String.eqb x y); try discriminate; try (eapply IH; [ apply Hc | exact H ]).
   - destruct Hc as (Hc1 & HΔ & Hc2).
     destruct ip as [| w ip].
@@ -209,14 +210,14 @@ Lemma gm_coh_child : forall Φ T y r,
 Proof.
   induction Φ as [| Φ IH z E | Φ IH c]; intros * Hc H; cbn in Hc, H; [ discriminate | | eauto ].
   destruct (String.eqb y z).
-  - destruct E as [b pv A B | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR]; [ discriminate | | | | discriminate | | ].
+  - destruct E as [b pv ra A B | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR]; [ discriminate | | | | discriminate | | ].
     + injection H as <-; destruct Hc as (_ & HΔ & _); left; eauto.
     + injection H as <-; destruct Hc as (_ & Δ0 & -> & HΔ); right; do 2 eexists; split; [ reflexivity |]; cbn; eauto.
     + injection H as <-; destruct Hc as (_ & (Δ0 & -> & HΔ) & _); left; eauto.
     + injection H as <-; destruct Hc as (_ & _ & Δ0 & E0 & [= -> ->] & HΔ); right; do 2 eexists; split; [ reflexivity |]; cbn; eauto.
     + injection H as <-; destruct Hc as (_ & (Δ0 & HΔe & HΔ) & _); left.
       destruct (record_mod_tele_split pr Rr _ _ HΔe HΔ) as [HT HΔs]; rewrite HT; eauto.
-  - destruct E as [b pv A B | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR]; eapply IH; try eassumption; apply Hc.
+  - destruct E as [b pv ra A B | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR]; eapply IH; try eassumption; apply Hc.
 Qed.
 
 (** ** Coherence of Well-Formed Bodies *)
@@ -241,7 +242,7 @@ Qed.
 Lemma wf_gmod_coh :
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> forall Ξ' mp' K' Δ Φ, Ξ = (mp', K', gu_body Δ Φ) :: Ξ' ->
      match E with
-     | ge_def _ _ A _ => exists A0, A = ctx_pi (Δ ++ gs_tele Ξ') A0
+     | ge_def _ _ r A _ => exists A0, A = ctx_pi_at r (Δ ++ gs_tele Ξ') A0
      | ge_mod _ (gu_mk Δ1 (md_body sm Φ1)) => tele_ass Δ1 /\ gm_coh (Δ1 ++ Δ ++ gs_tele Ξ') Φ1
      | ge_mod _ (gu_mk Δ1 (md_alias _)) => exists Δ0, Δ1 = Δ0 ++ Δ ++ gs_tele Ξ' /\ tele_ass Δ0
      | ge_ind _ _ _ D Φ1 =>
@@ -284,7 +285,7 @@ Proof.
   - match goal with IH : tele_ass Δ /\ _ |- _ => destruct IH as [HΔ Hc] end.
     split; [ exact HΔ |].
     match goal with IHE : forall _ _ _ _ _, _ = _ -> _ |- _ => specialize (IHE _ _ _ _ _ eq_refl); cbn in IHE end.
-    destruct E as [b pv A B | ? [Δ1 [? Φ1 | E1]] | ? ? ? D1 Φ1 | ? Aa Ma [Δa [? Φa | Ea]] | ? Rr ΦR]; cbn; try split; auto; apply IHE.
+    destruct E as [b pv ra A B | ? [Δ1 [? Φ1 | E1]] | ? ? ? D1 Φ1 | ? Aa Ma [Δa [? Φa | Ea]] | ? Rr ΦR]; cbn; try split; auto; apply IHE.
 Qed.
 
 (** ** Bodies in a Global Context *)
@@ -654,12 +655,12 @@ Qed.
 
 (** ** A Name Is a Definition or a Module, Not Both *)
 
-Lemma gm_resolve_def_not_module : forall Φ T z b pv A B ip,
-    gm_resolve Φ (z :: nil) = Some (ge_def b pv A B) -> gm_submodule T Φ z ip = None.
+Lemma gm_resolve_def_not_module : forall Φ T z b pv r A B ip,
+    gm_resolve Φ (z :: nil) = Some (ge_def b pv r A B) -> gm_submodule T Φ z ip = None.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H |- *; [ reflexivity | | eauto ].
   destruct (String.eqb z y); [| eauto ].
-  destruct E as [? ? ? ? | U | ? ? ? ? ? | ? Aa Ma Ua | ? Rr ΦR]; [ reflexivity | discriminate | discriminate | discriminate | discriminate ].
+  destruct E as [? ? ? ? ? | U | ? ? ? ? ? | ? Aa Ma Ua | ? Rr ΦR]; [ reflexivity | discriminate | discriminate | discriminate | discriminate ].
 Qed.
 
 Lemma gm_submodule_alias_resolve : forall Φ T x ip U,
@@ -2257,7 +2258,7 @@ Qed.
 
 Lemma mdesc_closedb_at : forall R N R', mdesc_at R N = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
-  induction R as [A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 A M Rm IH]; intros N R' Ha; cbn in Ha.
+  induction R as [r A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 A M Rm IH]; intros N R' Ha; cbn in Ha.
   - destruct (pi_view A) as [[? ?] |]; [| discriminate ].
     destruct om as [M |]; [ destruct (fn_view M); [| discriminate ] |]; injection Ha as <-; reflexivity.
   - destruct (tele_split (rev Δ)) as [[[? ?] ?] | ?]; [ injection Ha as <-; reflexivity | discriminate ].
@@ -2270,7 +2271,7 @@ Lemma mdesc_closedb_sub : forall R σ, mdesc_closedb (mdesc_sub R σ) = mdesc_cl
 Proof. induction R; intros; cbn; auto. Qed.
 
 Lemma mdesc_closedb_self : forall M R, mdesc_closedb (mdesc_self M R) = mdesc_closedb R.
-Proof. intros M [? [] | | |]; reflexivity. Qed.
+Proof. intros M [? ? [] | | |]; reflexivity. Qed.
 
 Lemma mdesc_closedb_ats : forall Ns R R', mdesc_ats R Ns = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
@@ -2284,7 +2285,7 @@ Proof. intros Θ' R; induction R; cbn; auto. Qed.
 
 Lemma mdesc_closedb_ats_read : forall Ns R R', mdesc_ats_read R Ns = Some R' -> mdesc_closedb R' = mdesc_closedb R.
 Proof.
-  intros * Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & B & M' & Rm' & -> & -> & _ & E)];
+  intros * Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & ? & B & M' & Rm' & -> & -> & _ & E)];
     [ exact (mdesc_closedb_ats _ _ _ Ha') | exact (mdesc_closedb_ats _ _ _ E) ].
 Qed.
 
@@ -2335,9 +2336,9 @@ Section Grow.
   Lemma mdesc_grows_up_inv : forall Θd R R2, (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) (mdesc_up Θd R) R2 ->
       exists R', R2 = mdesc_up Θd R' /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R'.
   Proof.
-    intros Θd R; induction R as [A om | Δ Φ Φx | Θ' p T Φ Ns | Θ' A M Rm IH]; intros R2 Hd;
+    intros Θd R; induction R as [r A om | Δ Φ Φx | Θ' p T Φ Ns | Θ' A M Rm IH]; intros R2 Hd;
       cbn [mdesc_up] in Hd; inversion Hd; subst.
-    - exists (mdesc_term A om); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
+    - exists (mdesc_term r A om); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
     - exists (mdesc_open Δ Φ Φx); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
     - exists (mdesc_closed Θ' p T Φ Ns); split; [ reflexivity | apply mdesc_grows_same; rewrite <- (mdesc_closedb_up Θd); assumption ].
     - eexists (mdesc_closed Θ' p T _ Ns); split; [ reflexivity | apply mdesc_grows_closed; assumption ].
@@ -2455,7 +2456,7 @@ Section Grow.
     - exact (mdesc_grows_ats _ _ _ _ ltac:(apply mdesc_grows_closed; eassumption) Ha).
     - destruct Θd as [| e Θd]; [| exact (mdesc_grows_ats _ _ _ _ (mdesc_grows_dm _ _ _ _ _ _ _ _ _ Hd) Ha) ].
       cbn [mdesc_ats_read] in Ha |- *.
-      destruct (mdesc_term_part_ats (mdesc_term A (Some M)) Ns) as [[B [M' |] | | |] |]; try discriminate.
+      destruct (mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | |] |]; try discriminate.
       destruct (mdesc_ats R1 Ns) as [R1a |] eqn:Ea; [| discriminate ]; injection Ha as <-.
       destruct (mdesc_grows_ats _ _ _ _ Hd Ea) as (R2a & -> & Hda); eexists; split; [ reflexivity | apply mdesc_grows_dm; exact Hda ].
   Qed.
@@ -2567,7 +2568,7 @@ Section Grow.
         pose proof (gm_prefix_entry _ _ _ Hp) as (? & ? & [= -> <-] & _).
         destruct (loc_entry_grow _ _ _ _ _ _ _ H1 H2 Hp) as (Φ0' & E2 & Hp2 & Hgr).
         assert (HE : exists R2, edenote Θ2 Ξ2 (nil ++ Γ) (Some (qname_in p x)) (ge_read T E2) R2 /\ (mdesc_grows Θ1 Ξ1 Θ2 Ξ2) R R2).
-        { destruct E1 as [b pv A B | pv [Δ [sm Φy1 | E']] | pv pq k D ΦD | pv Aa Ma Ua | pv pr Rr ΦR]; cbn in Hgr.
+        { destruct E1 as [b pv ra A B | pv [Δ [sm Φy1 | E']] | pv pq k D ΦD | pv Aa Ma Ua | pv pr Rr ΦR]; cbn in Hgr.
           - subst E2; apply IHe; right; exact I.
           - destruct E2 as [| pv' [Δ' [sm' Φy2 | ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in Hgr; try discriminate; try contradiction.
             destruct Hgr as (<- & <- & <-).

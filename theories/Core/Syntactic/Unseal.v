@@ -523,7 +523,7 @@ Proof.
       cbn in He; destruct (gm_prefix_upto Φ y) as [[| Φ' x E1 | ? ? ?] |] eqn:Hp; try discriminate.
       destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
       assert (He1 : Γy = body_ctx Φ' ++ Δ /\ rd = reader_open Δ Φ' /\ E1 = E).
-      { destruct E1 as [[|] ? ? [] | | | | ]; try discriminate; injection He as <- <- <-; repeat split. }
+      { destruct E1 as [[|] ? ? ? [] | | | | ]; try discriminate; injection He as <- <- <-; repeat split. }
       destruct He1 as (-> & -> & HE1).
       assert (Hep : gentry_unseal_precondition Θ Ξ ((body_ctx Φ' ++ Δ) ++ Γ) None E).
       { intros pv U HEU; rewrite HE1 in Hp.
@@ -654,7 +654,7 @@ Proof.
     econstructor; [ apply IHx; intros k Ψ H' Hk; exact (Hpre (S k) _ _ Hk) | exact Hm' | exact Hmod' | exact (IHig HH) | exact Hok ].
   - intros; constructor.
   - intros Γ H d pv its gs Hig IHig HH; constructor; exact (IHig HH).
-  - intros Γ H n d pv A om its gs Hm IHm Hig IHig HH.
+  - intros Γ H n d pv ra A om its gs Hm IHm Hig IHig HH.
     destruct (IHm (or_intror (ex_intro _ H (ex_intro _ n (conj eq_refl HH))))) as (R' & Hm' & Hd).
     inversion Hd; subst; econstructor; [ exact Hm' | exact (IHig HH) ].
   - intros Γ H n d pv R its gs Hm IHm Hism Hig IHig HH.

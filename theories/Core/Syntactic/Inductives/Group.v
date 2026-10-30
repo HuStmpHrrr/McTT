@@ -38,8 +38,9 @@ Section GenericDec.
   (** Equality of constructor arguments is decidable. *)
   Definition carg_eq_dec_g (g g' : carg_g E) : {g = g'} + {g <> g'}.
   Proof.
-    destruct g as [A | t], g' as [A' | t']; try (right; discriminate).
-    - destruct (de A A') as [<- |]; [ left; reflexivity | right; congruence ].
+    destruct g as [r A | t], g' as [r' A' | t']; try (right; discriminate).
+    - destruct (relevance_eq_dec r r') as [<- |]; [| right; congruence ].
+      destruct (de A A') as [<- |]; [ left; reflexivity | right; congruence ].
     - destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
@@ -122,10 +123,11 @@ Section GenericDec.
   (** Equality of record declarations is decidable. *)
   Definition record_decl_eq_dec_g (R R' : record_decl_g E C) : {R = R'} + {R <> R'}.
   Proof.
-    destruct R as [Δ S fs], R' as [Δ' S' fs'].
+    destruct R as [Δ S fs rs], R' as [Δ' S' fs' rs'].
     destruct (list_eq_dec dc Δ Δ') as [<- |]; [| right; congruence ].
     destruct (de S S') as [<- |]; [| right; congruence ].
-    destruct (list_eq_dec named_eq_dec_g fs fs') as [<- |]; [ left; reflexivity | right; congruence ].
+    destruct (list_eq_dec named_eq_dec_g fs fs') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec relevance_eq_dec rs rs') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 End GenericDec.
 
@@ -180,7 +182,7 @@ Fixpoint unwk_pat (pat : list bool) : wk :=
 (** The pattern of the arguments [gs] of a constructor, innermost first:
     [true] at a recursive one. *)
 Definition cargs_pat (gs : list carg) : list bool :=
-  List.rev (List.map (fun g => match g with ca_rec _ => true | ca_arg _ => false end) gs).
+  List.rev (List.map (fun g => match g with ca_rec _ => true | ca_arg _ _ => false end) gs).
 
 (** The arguments of the constructor [c]. *)
 Fixpoint cons_lookup (cs : list (string * list carg)) (c : string) : option (list carg) :=
@@ -411,14 +413,25 @@ Inductive rptyp : Set :=
 
 (** An argument as classified, its views not yet numbered. *)
 Inductive rcarg : Set :=
-(** A non-recursive argument, of a [Self]-free type. *)
-| rcarg_arg : exp -> rcarg
+(** A non-recursive argument, of a [Self]-free type, of the sort the
+    relevance says. *)
+| rcarg_arg : relevance -> exp -> rcarg
 (** A recursive argument, of a shape. *)
 | rcarg_rec_case : rptyp -> rcarg.
 
 (** Whether a classified argument is recursive: its bit in the pattern of
     the arguments before the next one. *)
-Definition rcarg_bit (g : rcarg) : bool := match g with rcarg_rec_case _ => true | rcarg_arg _ => false end.
+Definition rcarg_bit (g : rcarg) : bool := match g with rcarg_rec_case _ => true | rcarg_arg _ _ => false end.
+
+(** A classified argument at the sort [r]: a non-recursive one takes it,
+    a recursive one is relevant and keeps its shape.  The syntactic
+    classification ([cls_arg]) cannot see sorts; the command tags the
+    non-recursive arguments by the sort their types infer to. *)
+Definition rcarg_tag (r : relevance) (g : rcarg) : rcarg :=
+  match g with rcarg_arg _ A => rcarg_arg r A | rcarg_rec_case t => rcarg_rec_case t end.
+
+Lemma rcarg_bit_tag : forall r g, rcarg_bit (rcarg_tag r g) = rcarg_bit g.
+Proof. intros r [] ; reflexivity. Qed.
 
 (** The views numbered: the view [v] is the member [n + v]. *)
 Fixpoint rptyp_num (n : nat) (Vs : list view_key) (t : rptyp) : option ptyp :=
@@ -431,7 +444,7 @@ Fixpoint rptyp_num (n : nat) (Vs : list view_key) (t : rptyp) : option ptyp :=
 (** A classified argument with its views numbered. *)
 Definition rcarg_num (n : nat) (Vs : list view_key) (g : rcarg) : option carg :=
   match g with
-  | rcarg_arg A => Some (ca_arg A)
+  | rcarg_arg r A => Some (ca_arg r A)
   | rcarg_rec_case t => option_map ca_rec (rptyp_num n Vs t)
   end.
 
@@ -493,7 +506,7 @@ Definition head_takes_selfs (lo n : nat) (h : exp) : bool :=
     crossed), if any. *)
 Fixpoint selfs_neutral_head (lo n : nat) (M : exp) {struct M} : option exp :=
   match M with
-  | a_pi A B =>
+  | a_pi _ A B =>
       match selfs_neutral_head lo n A with
       | Some h => Some h
       | None => selfs_neutral_head (S lo) n B
@@ -581,7 +594,7 @@ Section Classify.
       instance. *)
   Fixpoint cls_sh (d : nat) (T : exp) : option rptyp :=
     match T with
-    | a_pi B T' =>
+    | a_pi relevant B T' =>
         match img_pat (cls_pat d np n pat) B with
         | Some B0 => option_map (rptyp_pi B0) (cls_sh (S d) T')
         | None => None
@@ -599,7 +612,7 @@ Section Classify.
       it), or recursive of a shape. *)
   Definition cls_arg (T : exp) : option rcarg :=
     match img_pat (cls_pat 0 np n pat) T with
-    | Some A => Some (rcarg_arg A)
+    | Some A => Some (rcarg_arg relevant A)
     | None => option_map rcarg_rec_case (cls_sh 0 T)
     end.
 End Classify.
@@ -638,7 +651,7 @@ Fixpoint rptyp_view (t : rptyp) : list view_key :=
 (** The instance a classified argument meets, if it is a nested
     occurrence. *)
 Definition rcarg_view (g : rcarg) : list view_key :=
-  match g with rcarg_rec_case t => rptyp_view t | rcarg_arg _ => nil end.
+  match g with rcarg_rec_case t => rptyp_view t | rcarg_arg _ _ => nil end.
 
 (** The instances the constructors [cs] meet, constructors in order,
     arguments left to right. *)

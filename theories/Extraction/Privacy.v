@@ -97,7 +97,7 @@ Section SiteDesc.
     - destruct (mdesc_ats_read R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
       apply site_desc_up.
       assert (Hs1 : site_desc Θ Ξ pq R1).
-      { destruct (mdesc_ats_read_inv _ _ _ E) as [Ha | (A & M & Rm & B & M' & Rm' & -> & -> & _ & Ha)];
+      { destruct (mdesc_ats_read_inv _ _ _ E) as [Ha | (A & M & Rm & ? & B & M' & Rm' & -> & -> & _ & Ha)];
           [ exact (site_desc_ats _ _ _ _ Hs Ha) |].
         destruct Hs as [(? & ? & ? & ? & [=] & _) | (Θd & A1 & M1 & Rm1 & [= <- <- <- <-] & Hc)].
         right; do 4 eexists; split; [ reflexivity | exact (site_closed_ats _ _ _ _ Hc Ha) ]. }

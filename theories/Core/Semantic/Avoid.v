@@ -108,13 +108,13 @@ Section Avoid.
       [b] (see the file header); mutually, for neutrals, normal values,
       module values, level atoms and environment entries. *)
   Inductive domain_avoids : domain -> Prop :=
-  (** A [Π]: its domain avoids, and its closure avoids but at [K], where
-      the codomain is fresh *)
-  | domain_avoids_pi : forall a (ρ : env) B K,
+  (** A [Π] of either tag: its domain avoids, and its closure avoids but at
+      [K], where the codomain is fresh *)
+  | domain_avoids_pi : forall r a (ρ : env) B K,
       domain_avoids a ->
       (forall x, K <> Some x -> dentry_avoids (env_entry ρ x)) ->
       optional_exp_fresh (optional_shift 1 K) B ->
-      domain_avoids (Πᵈ a ρ B)
+      domain_avoids (d_pi r a ρ B)
   (** A large universe *)
   | domain_avoids_univ : forall i, domain_avoids 𝕌ω@i
   (** A small universe at an avoiding level *)
@@ -123,17 +123,31 @@ Section Avoid.
   | domain_avoids_level : forall n, domain_avoids (Levelᵈ@n)
   (** A level of avoiding atoms *)
   | domain_avoids_lvl : forall c xs, level_atoms_avoid xs -> domain_avoids (lvᵈ c xs)
-  (** The unit type *)
+  (** [Prop] *)
+  | domain_avoids_prop : domain_avoids Propᵈ
+  (** The true proposition *)
   | domain_avoids_True : domain_avoids ⊤ᵈ
-  (** The unit's element *)
+  (** The proof *)
   | domain_avoids_true : domain_avoids ⋆ᵈ
-  (** The empty type *)
+  (** The false proposition *)
   | domain_avoids_False : domain_avoids ⊥ᵈ
-  (** A λ: its closure avoids but at [K], where the body is fresh *)
-  | domain_avoids_fn : forall (ρ : env) M K,
+  (** A [Σₚ], as a [Π] *)
+  | domain_avoids_and : forall a (ρ : env) Q K,
+      domain_avoids a ->
+      (forall x, K <> Some x -> dentry_avoids (env_entry ρ x)) ->
+      optional_exp_fresh (optional_shift 1 K) Q ->
+      domain_avoids (Σₚᵈ a ρ Q)
+  (** The placeholder type *)
+  | domain_avoids_placeholder_type : domain_avoids d_placeholder_type
+  (** Its element *)
+  | domain_avoids_placeholder : domain_avoids d_placeholder
+  (** A λ: its domain avoids, and its closure avoids but at [K], where the
+      body is fresh *)
+  | domain_avoids_fn : forall a (ρ : env) M K,
+      domain_avoids a ->
       (forall x, K <> Some x -> dentry_avoids (env_entry ρ x)) ->
       optional_exp_fresh (optional_shift 1 K) M ->
-      domain_avoids (λᵈ ρ M)
+      domain_avoids (λᵈ a ρ M)
   (** A neutral at an avoiding type *)
   | domain_avoids_neut : forall a m, domain_avoids a -> domain_ne_avoids m -> domain_avoids (⇑ a m)
   (** A member of an avoiding module value *)
@@ -179,13 +193,8 @@ Section Avoid.
   | domain_avoids_var : forall x, x <> v -> x < b -> domain_ne_avoids (#ᵈ x)
   (** An application of an avoiding neutral to an avoiding normal value *)
   | domain_avoids_app : forall m n, domain_ne_avoids m -> domain_nf_avoids n -> domain_ne_avoids (m $ᵈ n)
-  (** A stuck [efq]: its motive fresh under its closure, its scrutinee
-      avoiding *)
-  | domain_avoids_exfalso : forall (ρ : env) A m K,
-      (forall x, K <> Some x -> dentry_avoids (env_entry ρ x)) ->
-      optional_exp_fresh (optional_shift 1 K) A ->
-      domain_ne_avoids m ->
-      domain_ne_avoids (efqᵈ m under ρ return A)
+  (** Ex falso at an avoiding type *)
+  | domain_avoids_absurd : forall c, domain_avoids c -> domain_ne_avoids (efqᵈ c)
   (** A global *)
   | domain_avoids_glob : forall p, domain_ne_avoids (d_glob p)
   (** A stuck eliminator: the motives are fresh under their binders, and so
@@ -331,7 +340,15 @@ Section Env.
   Lemma domain_avoids_args_snoc : forall (args : list domain) n,
       (forall a, In a args -> domain_avoids v b a) -> domain_avoids v b n -> forall a, In a (args ++ n :: nil) -> domain_avoids v b a.
   Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
+
+  (** A value or the proof in its place, by the sort of its type. *)
+  Lemma domain_avoids_relevant_value : forall a d, domain_avoids v b d -> domain_avoids v b (relevant_value a d).
+  Proof. intros * Hd; unfold relevant_value; destruct (domain_relevance a); [ exact Hd | constructor ]. Qed.
 End Env.
+
+(** [domain_avoids_relevant_value] is no hint: its conclusion matches a
+    goal about an unknown value, which [eauto] would then try at every
+    such goal.  The proofs apply it where the goal is a [relevant_value]. *)
 
 (** ** Freshness Through the Module Syntax *)
 
@@ -463,9 +480,19 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_maxl_r : forall M N, optional_exp_fresh K (maxl M N) -> optional_exp_fresh K N.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_exfalso_A : forall A M, optional_exp_fresh K (efq M return A) -> optional_exp_fresh (optional_shift 1 K) A.
+  Lemma optional_exp_fresh_absurd_type : forall C M, optional_exp_fresh K (efq M return C) -> optional_exp_fresh K C.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_exfalso_M : forall A M, optional_exp_fresh K (efq M return A) -> optional_exp_fresh K M.
+  Lemma optional_exp_fresh_absurd_proof : forall C M, optional_exp_fresh K (efq M return C) -> optional_exp_fresh K M.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_all_domain : forall A P, optional_exp_fresh K (∀ₚ A P) -> optional_exp_fresh K A.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_all_body : forall A P, optional_exp_fresh K (∀ₚ A P) -> optional_exp_fresh (optional_shift 1 K) P.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_and_left : forall P Q, optional_exp_fresh K (Σₚ P Q) -> optional_exp_fresh K P.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_and_right : forall P Q, optional_exp_fresh K (Σₚ P Q) -> optional_exp_fresh (optional_shift 1 K) Q.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_fn_A : forall A M, optional_exp_fresh K (λ A M) -> optional_exp_fresh K A.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_pi_A : forall A B, optional_exp_fresh K (Π A B) -> optional_exp_fresh K A.
   Proof. destruct K; cbn; tauto. Qed.
@@ -477,6 +504,10 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_app_r : forall M N, optional_exp_fresh K (M $ N) -> optional_exp_fresh K N.
   Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_let_A : forall A M B, optional_exp_fresh K (a_let (b_def (Some A) M) B) -> optional_exp_fresh K A.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_tuple_T : forall T fs, optional_exp_fresh K (a_tuple T fs) -> optional_exp_fresh K T.
+  Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_let_M : forall oA M B, optional_exp_fresh K (a_let (b_def oA M) B) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_let_B : forall bd B, optional_exp_fresh K (a_let bd B) -> optional_exp_fresh (optional_shift 1 K) B.
@@ -485,22 +516,22 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_mem : forall H x, optional_exp_fresh K (a_mem H x) -> optional_modexp_fresh K H.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_elim_blocks : forall oq oUs j Bks M, optional_exp_fresh K (a_elim oq oUs j Bks M) -> blocks_optional_exp_fresh K Bks.
+  Lemma optional_exp_fresh_elim_blocks : forall r oq oUs j Bks M, optional_exp_fresh K (a_elim r oq oUs j Bks M) -> blocks_optional_exp_fresh K Bks.
   Proof.
     destruct K as [k |]; cbn; [| intros; apply blocks_optional_exp_fresh_none ].
-    intros oq oUs j Bks M H; apply (proj1 (exp_fresh_elim _ oq oUs j Bks M)) in H as [_ [H _]]; unfold blocks_fresh in H.
+    intros r oq oUs j Bks M H; apply (proj1 (exp_fresh_elim _ r oq oUs j Bks M)) in H as [_ [H _]]; unfold blocks_fresh in H.
     induction Bks as [| [nm oZ A Bs] Bks IH]; intros b Hb; [ destruct Hb |].
     cbn [all_blocks] in H; destruct H as [(_ & HA & HBs) HBks].
     destruct Hb as [<- | Hb]; [| exact (IH HBks _ Hb) ].
     cbn [eb_nm eb_motive eb_brs optional_shift option_map optional_exp_fresh]; split; [ exact HA |].
     intros c n B Hin; apply all_brs_Forall in HBs; exact (proj1 (Forall_forall _ _) HBs _ Hin).
   Qed.
-  Lemma optional_exp_fresh_elim_M : forall oq oUs j Bks M, optional_exp_fresh K (a_elim oq oUs j Bks M) -> optional_exp_fresh K M.
-  Proof. destruct K; cbn; [ intros oq oUs j Bks M H; apply (proj1 (exp_fresh_elim _ oq oUs j Bks M)) in H; tauto | auto ]. Qed.
-  Lemma optional_exp_fresh_elim_ups : forall oq Us j Bks M, optional_exp_fresh K (a_elim oq Us j Bks M) -> forall U, In U Us -> optional_exp_fresh K U.
+  Lemma optional_exp_fresh_elim_M : forall r oq oUs j Bks M, optional_exp_fresh K (a_elim r oq oUs j Bks M) -> optional_exp_fresh K M.
+  Proof. destruct K; cbn; [ intros r oq oUs j Bks M H; apply (proj1 (exp_fresh_elim _ r oq oUs j Bks M)) in H; tauto | auto ]. Qed.
+  Lemma optional_exp_fresh_elim_ups : forall r oq Us j Bks M, optional_exp_fresh K (a_elim r oq Us j Bks M) -> forall U, In U Us -> optional_exp_fresh K U.
   Proof.
     destruct K; cbn; [| auto ].
-    intros oq Us j Bks M H; apply (proj1 (exp_fresh_elim _ oq Us j Bks M)) in H as [H _].
+    intros r oq Us j Bks M H; apply (proj1 (exp_fresh_elim _ r oq Us j Bks M)) in H as [H _].
     apply all_list_Forall in H; exact (proj1 (Forall_forall _ _) H).
   Qed.
   Lemma optional_exp_fresh_var : forall x, optional_exp_fresh K #x -> K <> Some x.
@@ -535,11 +566,11 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_gunit_fresh_alias : forall Δ E, optional_gunit_fresh K (gu_mk Δ (md_alias E)) -> optional_modexp_fresh (optional_shift (List.length Δ) K) E.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_gmod_fresh_def_prefix : forall Φ y b pv A M,
-      optional_gmod_fresh K (gm_ext Φ y (ge_def b pv A (Some M))) -> optional_gmod_fresh K Φ.
+  Lemma optional_gmod_fresh_def_prefix : forall Φ y b pv r A M,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def b pv r A (Some M))) -> optional_gmod_fresh K Φ.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_gmod_fresh_def_body : forall Φ y b pv A M,
-      optional_gmod_fresh K (gm_ext Φ y (ge_def b pv A (Some M))) -> optional_exp_fresh (optional_shift (gm_binders Φ) K) M.
+  Lemma optional_gmod_fresh_def_body : forall Φ y b pv r A M,
+      optional_gmod_fresh K (gm_ext Φ y (ge_def b pv r A (Some M))) -> optional_exp_fresh (optional_shift (gm_binders Φ) K) M.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_gmod_fresh_mod_prefix : forall Φ y pm U,
       optional_gmod_fresh K (gm_ext Φ y (ge_mod pm U)) -> optional_gmod_fresh K Φ.
@@ -555,7 +586,7 @@ Section OFresh.
       optional_gmod_fresh K (gm_ext Φ y E) -> optional_exp_fresh (optional_shift (gm_binders Φ) K) M.
   Proof.
     destruct K; cbn; [| tauto ].
-    intros Φ y E A M HE Hf; destruct E as [? ? ? [] | | | |]; cbn in HE, Hf; try discriminate; injection HE as <- <-; tauto.
+    intros Φ y E A M HE Hf; destruct E as [? ? ? ? [] | | | |]; cbn in HE, Hf; try discriminate; injection HE as <- <-; tauto.
   Qed.
   Lemma optional_gmod_fresh_unit_unit : forall Φ y E U, entry_unit E = Some U ->
       optional_gmod_fresh K (gm_ext Φ y E) -> optional_gunit_fresh (optional_shift (gm_binders Φ) K) U.
@@ -575,7 +606,8 @@ Section OFresh.
 End OFresh.
 
 #[local] Hint Resolve optional_exp_fresh_univ optional_exp_fresh_succl optional_exp_fresh_maxl_l optional_exp_fresh_maxl_r
-  optional_exp_fresh_exfalso_A optional_exp_fresh_exfalso_M
+  optional_exp_fresh_absurd_type optional_exp_fresh_absurd_proof optional_exp_fresh_all_domain optional_exp_fresh_all_body
+  optional_exp_fresh_and_left optional_exp_fresh_and_right optional_exp_fresh_fn_A optional_exp_fresh_let_A optional_exp_fresh_tuple_T
   optional_exp_fresh_pi_A optional_exp_fresh_pi_B optional_exp_fresh_fn_M optional_exp_fresh_app_l optional_exp_fresh_app_r optional_exp_fresh_let_M optional_exp_fresh_let_B
   optional_exp_fresh_letmod_U optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_exp_fresh_proj optional_modexp_fresh_var optional_modexp_fresh_lit optional_modexp_fresh_mem optional_modexp_fresh_app_l optional_modexp_fresh_app_r
   optional_gunit_fresh_body optional_gunit_fresh_alias optional_gmod_fresh_def_prefix optional_gmod_fresh_def_body optional_gmod_fresh_mod_prefix optional_gmod_fresh_mod_unit
@@ -585,11 +617,11 @@ End OFresh.
     they are taken from the hypothesis rather than left to unification. *)
 #[local] Hint Extern 1 (optional_exp_fresh _ _) =>
   match goal with
-  | H : optional_exp_fresh ?K (a_elim ?oq ?o ?j ?Bks ?M) |- optional_exp_fresh ?K ?M => exact (optional_exp_fresh_elim_M K oq o j Bks M H)
+  | H : optional_exp_fresh ?K (a_elim ?r ?oq ?o ?j ?Bks ?M) |- optional_exp_fresh ?K ?M => exact (optional_exp_fresh_elim_M K r oq o j Bks M H)
   end : avoid.
 #[local] Hint Extern 1 (blocks_optional_exp_fresh _ _) =>
   match goal with
-  | H : optional_exp_fresh ?K (a_elim ?oq ?o ?j ?Bks ?M) |- blocks_optional_exp_fresh ?K ?Bks => exact (optional_exp_fresh_elim_blocks K oq o j Bks M H)
+  | H : optional_exp_fresh ?K (a_elim ?r ?oq ?o ?j ?Bks ?M) |- blocks_optional_exp_fresh ?K ?Bks => exact (optional_exp_fresh_elim_blocks K r oq o j Bks M H)
   end : avoid.
 
 (** ** Evaluation Builds No Variable *)
@@ -602,8 +634,8 @@ Section Eval.
   (** The uniform parameters an eliminator carries are fresh where it is. *)
   #[local] Hint Extern 1 (Forall (optional_exp_fresh _) _) =>
     match goal with
-    | H : optional_exp_fresh ?K (a_elim ?oq ?Us ?j ?Bks ?M) |- Forall (optional_exp_fresh ?K) ?Us =>
-        apply Forall_forall; exact (optional_exp_fresh_elim_ups K oq Us j Bks M H)
+    | H : optional_exp_fresh ?K (a_elim ?r ?oq ?Us ?j ?Bks ?M) |- Forall (optional_exp_fresh ?K) ?Us =>
+        apply Forall_forall; exact (optional_exp_fresh_elim_ups K r oq Us j Bks M H)
     end : avoid.
   #[local] Hint Extern 1 (ups_avoids _ _ _) => unfold ups_avoids : avoid.
   #[local] Hint Extern 1 (domain_avoids _ _ (dlvl_lit _)) => repeat constructor : mctt.
@@ -705,7 +737,11 @@ Section Eval.
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> domain_avoids v b m -> forall a, In a ws -> domain_avoids v b a) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
        forall Km, env_avoids v b Km ρm -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh p Km As t) ->
-       ups_avoids v b ups -> env_avoids v b None ρ -> (forall a, In a vs -> domain_avoids v b a) -> forall a, In a as' -> domain_avoids v b a).
+       ups_avoids v b ups -> env_avoids v b None ρ -> (forall a, In a vs -> domain_avoids v b a) -> forall a, In a as' -> domain_avoids v b a) /\
+    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs ->
+       forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> forall a, In a vs -> domain_avoids v b a) /\
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r ->
+       forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> domain_avoids v b f -> domain_avoids v b r).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => forall K, env_avoids v b K ρ -> optional_exp_fresh K M -> domain_avoids v b m)
@@ -740,7 +776,11 @@ Section Eval.
              (fun p ups ρm As ρ gs vs as' _ => forall Km, env_avoids v b Km ρm ->
                                     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh p Km As t) ->
                                     ups_avoids v b ups -> env_avoids v b None ρ -> (forall a, In a vs -> domain_avoids v b a) ->
-                                    forall a, In a as' -> domain_avoids v b a));
+                                    forall a, In a as' -> domain_avoids v b a)
+             (fun rs Ms ρ vs _ => forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms ->
+                                   forall a, In a vs -> domain_avoids v b a)
+             (fun f Ms ρ r _ => forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms ->
+                                 domain_avoids v b f -> domain_avoids v b r));
       intros; cbn [optional_ptyp_fresh ptyp_ps ptyp_mem snd] in *.
     all: repeat match goal with
            | H : domain_avoids _ _ (_ _) |- _ => inversion_clear H
@@ -748,6 +788,9 @@ Section Eval.
            | H : dmod_avoids _ _ (_ _ _ _) |- _ => inversion_clear H
            end.
     all: av_fwd.
+    (** A neutral evaluation builds: the proof [⋆ᵈ] at a proposition, else
+        the neutral ([eval_app_neut], [eval_elim_neut], [eval_exp_absurd]). *)
+    all: try match goal with |- domain_avoids _ _ (relevant_value _ _) => apply domain_avoids_relevant_value end.
     (** The uniform arguments of a view, evaluated at the group's. *)
     all: try solve [ match goal with
       | IH : forall K0, env_avoids _ _ K0 (env_args nil ?ups) -> Forall (optional_exp_fresh K0) ?Is -> forall a, In a ?cups -> domain_avoids _ _ a,
@@ -760,7 +803,7 @@ Section Eval.
     all: try solve [ lazymatch goal with |- domain_avoids _ _ (d_ind _ _ _) => idtac | |- domain_avoids _ _ (d_con _ _ _ _) => idtac end;
                      constructor; all_in_with assumption ].
     all: try solve [ match goal with
-      | Hf : optional_exp_fresh ?K (a_elim _ _ _ _ _), IH : _ -> _ -> _ -> domain_avoids _ _ ?r |- domain_avoids _ _ ?r =>
+      | Hf : optional_exp_fresh ?K (a_elim _ _ _ _ _ _), IH : _ -> _ -> _ -> domain_avoids _ _ ?r |- domain_avoids _ _ ?r =>
           apply IH; [ eapply optional_exp_fresh_elim_blocks; exact Hf | solve [ eauto 3 with mctt avoid ] | assumption ]
       end ].
     all: try solve [ match goal with
@@ -799,7 +842,6 @@ Section Eval.
         Hv : forall x3, In x3 (_ :: ?vs) -> domain_avoids _ _ x3, Ha : In ?d ?ihs |- domain_avoids _ _ ?d =>
           exact (IH (all_in_tail _ _ _ Hv) _ Ha)
       end ].
-    all: try solve [ eauto 4 with mctt avoid ].
     (** The types of a function shape's argument and recursive result: a
         [Π] over the family, in an environment that holds only the family. *)
     all: try solve [ lazymatch goal with |- domain_avoids _ _ (Πᵈ _ (_ ↦ d_shfam _ _ _ _) _) => idtac end;
@@ -839,7 +881,7 @@ Section Eval.
                        apply IH; [ apply domain_avoids_record; intros ? [] | exact Ha ] end ].
     all: try solve [ match goal with
       | IH : (forall y, In y (?pre ++ ?x :: nil) -> domain_avoids _ _ y) -> forall z, In z ?rs -> domain_avoids _ _ z, Hin : In ?d ?rs |- domain_avoids _ _ ?d =>
-          eapply IH; [ apply domain_avoids_args_snoc; [ assumption | nflds_head_avoids ] | exact Hin ]
+          eapply IH; [ apply domain_avoids_args_snoc; [ assumption | apply domain_avoids_relevant_value; nflds_head_avoids ] | exact Hin ]
       end ].
     (** The recursive results along leaf paths, and their types, are
         lists: the [i]-th of a function shape's, a member of one. *)
@@ -882,9 +924,9 @@ Section Eval.
     all: try solve [ match goal with
       | IH : (forall gs1 t gs2, ?gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh ?p ?Km ?As t) -> ups_avoids _ _ ?ups -> env_avoids _ _ None (?ρ ↦ ?v0) ->
              (forall y1, In y1 ?vs -> domain_avoids _ _ y1) -> forall y2, In y2 ?rs -> domain_avoids _ _ y2,
-        Hf : forall gs1 t gs2, ca_arg ?T :: ?gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh ?p ?Km ?As t,
+        Hf : forall gs1 t gs2, ca_arg ?r ?T :: ?gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh ?p ?Km ?As t,
         Hu : ups_avoids _ _ ?ups, Hρ : env_avoids _ _ None ?ρ, Hv : forall y3, In y3 (?v0 :: ?vs) -> domain_avoids _ _ y3, Ha : In ?d0 ?rs |- domain_avoids _ _ ?d0 =>
-          apply (IH ltac:(intros gs1 t gs2 E; apply (Hf (ca_arg T :: gs1) t gs2); rewrite E; reflexivity) Hu
+          apply (IH ltac:(intros gs1 t gs2 E; apply (Hf (ca_arg r T :: gs1) t gs2); rewrite E; reflexivity) Hu
                       (env_avoids_cons_none _ _ _ _ Hρ (all_in_head _ _ _ Hv)) (all_in_tail _ _ _ Hv) _ Ha)
       end ].
     all: try solve [ match goal with
@@ -941,13 +983,13 @@ Section Eval.
       match goal with HE : ends_fresh _ _ _ (pt_pi _ _) |- _ => inversion HE; subst end;
       eapply domain_avoids_pi with (K := None); [ eauto | | exact I ];
       apply env_avoids_cons_none; [ apply env_avoids_nil | eapply domain_avoids_ihfam; eassumption ] ].
+    (** The rest by the rules and the hypotheses.  This comes after the
+        targeted cases above, so that the goals they close do not go
+        through the search first. *)
+    all: try solve [ eauto 4 with mctt avoid ].
     (** What is left: the closures the rules build, and the module bodies,
         whose freshness is at the position their parameters and entries
         shift it to. *)
-    - (* [efq] on a neutral *)
-      apply domain_avoids_neut; [ assumption |].
-      match goal with Hn : domain_avoids _ _ (⇑ _ _) |- _ => inversion Hn; subst end.
-      eapply domain_avoids_exfalso with (K := K); eassumption.
     - (* an alias lacking no parameter: its target *)
       match goal with IH : optional_modexp_fresh ?K ?E -> _, Hu : optional_gunit_fresh ?K (gu_mk nil (md_alias ?E)) |- _ =>
         apply IH; pose proof (optional_gunit_fresh_alias _ _ _ Hu) as Hx; cbn [List.length] in Hx; rewrite optional_shift_zero in Hx; exact Hx end.
@@ -977,6 +1019,9 @@ Section Eval.
     - (* a definition entry *)
       cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- optional_shift_optional_shift.
       apply env_avoids_cons; [ assumption | constructor; assumption ].
+    - (* a proof entry: the proof *)
+      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- optional_shift_optional_shift.
+      apply env_avoids_cons; [ assumption | constructor; constructor ].
     - (* a submodule entry *)
       cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- optional_shift_optional_shift.
       apply env_avoids_cons; [ assumption | constructor; assumption ].
@@ -1132,10 +1177,10 @@ Qed.
 Lemma plen_forall : forall D (gs : list carg), cargs_plen D gs ->
     Forall (fun g => match g with
                      | ca_rec t => exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj
-                     | ca_arg _ => True end) gs.
+                     | ca_arg _ _ => True end) gs.
 Proof.
   unfold cargs_plen; intros D; induction gs as [| g gs IH]; intros H; constructor.
-  - destruct g as [A | t]; [ exact I | exact (H nil t gs eq_refl) ].
+  - destruct g as [r A | t]; [ exact I | exact (H nil t gs eq_refl) ].
   - apply IH; intros gs1 t gs2 E; apply (H (g :: gs1) t gs2); rewrite E; reflexivity.
 Qed.
 
@@ -1199,11 +1244,19 @@ Section Read.
     intros * Hv Hb Ha; constructor; [ eapply (proj1 (domain_avoids_mono v b)); [ exact Ha | lia ] | constructor; lia ].
   Qed.
 
+  (** The same, or the proof in its place at a proposition: the fresh
+      variable of a telescope's entry. *)
+  Lemma domain_avoids_fresh_relevant_variable : forall b s a, v < s -> b <= s -> domain_avoids v b a ->
+      domain_avoids v (S s) (relevant_value a (⇑! a s)).
+  Proof. intros * Hv Hb Ha; apply domain_avoids_relevant_value, (domain_avoids_fresh_var b); assumption. Qed.
+
   (** The invariant of a value built during readback: by its constructor, by
       monotonicity, or by the evaluation it came from. *)
   Ltac domain_avoids_tac v :=
     first [ eassumption
           | solve [ constructor ]
+          | match goal with |- domain_avoids v _ (relevant_value _ _) =>
+              apply domain_avoids_relevant_value; domain_avoids_tac v end
           | match goal with H : domain_avoids v ?b0 ?d |- domain_avoids v ?n ?d => eapply (domain_avoids_mono' v b0 n d); [ lia | exact H ] end
           | match goal with |- domain_avoids v _ (d_neut _ (d_var _)) => constructor; [ domain_avoids_tac v | constructor; lia ] end
           | match goal with
@@ -1233,10 +1286,10 @@ Section Read.
     assert (Ha : domain_avoids v b0 a) by (eapply (proj1 (eval_avoids v b0)); [ eassumption | exact Hρ | exact I ]).
     cbn [List.length]; replace (s + S (List.length T)) with (S s + List.length T) by lia.
     apply all_in_cons.
-    - eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_var b0); assumption ]; lia.
+    - eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_relevant_variable b0); assumption ]; lia.
     - apply (IHfresh_tele (S s)); [ lia | lia |].
       change (@None nat) with (optional_shift 1 None).
-      apply env_avoids_cons; [ eapply env_avoids_mono; [| exact Hρ ]; lia | constructor; apply (domain_avoids_fresh_var b0); assumption ].
+      apply env_avoids_cons; [ eapply env_avoids_mono; [| exact Hρ ]; lia | constructor; apply (domain_avoids_fresh_relevant_variable b0); assumption ].
   Qed.
 
   Lemma fresh_cargs_avoids : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
@@ -1247,10 +1300,10 @@ Section Read.
     - apply all_in_nil.
     - assert (Ha : domain_avoids v b0 a) by (eapply (proj1 (eval_avoids v b0)); [ eassumption | exact Hρ | exact I ]).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
-      apply all_in_cons; [ eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_var b0); assumption ]; lia |].
+      apply all_in_cons; [ eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_relevant_variable b0); assumption ]; lia |].
       apply (IHfresh_cargs (S s)); [ lia | lia | | intros; eapply domain_avoids_mono'; [| apply Hu; eassumption ]; lia ].
       change (@None nat) with (optional_shift 1 None).
-      apply env_avoids_cons; [ eapply env_avoids_mono; [| exact Hρ ]; lia | constructor; apply (domain_avoids_fresh_var b0); assumption ].
+      apply env_avoids_cons; [ eapply env_avoids_mono; [| exact Hρ ]; lia | constructor; apply (domain_avoids_fresh_relevant_variable b0); assumption ].
     - assert (Ha : domain_avoids v b0 a) by (eapply shty_avoids; [ eassumption | exact Hρ | apply optional_ptyp_fresh_none | exact Hu ]).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
       apply all_in_cons; [ eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_var b0); assumption ]; lia |].
@@ -1266,7 +1319,7 @@ Section Read.
     induction 1; intros b0 Hv Hb Ha; [ apply all_in_nil | | ].
     - cbn [List.length]; replace (s + S (List.length vs)) with (S s + List.length vs) by lia.
       apply all_in_cons.
-      + eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_var b0); [ assumption | assumption | apply Ha; left; reflexivity ] ]; lia.
+      + eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_relevant_variable b0); [ assumption | assumption | apply Ha; left; reflexivity ] ]; lia.
       + apply (IHfresh_leaf_vars b0); [ lia | lia | all_in_with assumption ].
     - apply (IHfresh_leaf_vars b0); [ lia | lia | all_in_with assumption ].
   Qed.
@@ -1286,7 +1339,7 @@ Section Read.
     - apply all_in_nil.
     - apply (IHfresh_ihs b0 K); try assumption.
       + apply env_avoids_cons_none; [ exact Hρa | exact (all_in_head _ _ _ Hvs) ].
-      + intros gs1 t gs2 E; apply (Hl (ca_arg T :: gs1) t gs2); rewrite E; reflexivity.
+      + intros gs1 t gs2 E; eapply (Hl (ca_arg _ _ :: gs1) t gs2); rewrite E; reflexivity.
       + exact (all_in_tail _ _ _ Hvs).
     - assert (Has : forall a, In a as' -> domain_avoids v b0 a)
         by (eapply ihty_avoids; [ eassumption | exact Hρ | exact (Hl nil t gs eq_refl) | exact Hu | exact Hρa | apply optional_ptyp_fresh_none
@@ -1457,12 +1510,13 @@ Section Read.
       | H : domain_avoids _ _ (d_neut _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_lvl _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_suniv _) |- _ => inversion_clear H
-      | H : domain_avoids _ _ (d_pi _ _ _) |- _ => inversion_clear H
+      | H : domain_avoids _ _ (d_pi _ _ _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_ind _ _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_con _ _ _ _) |- _ => inversion_clear H
       | H : domain_ne_avoids _ _ (d_app _ _) |- _ => inversion_clear H
       | H : domain_ne_avoids _ _ (d_var _) |- _ => inversion_clear H
-      | H : domain_ne_avoids _ _ (d_exfalso _ _ _) |- _ => inversion_clear H
+      | H : domain_avoids _ _ (d_and _ _ _) |- _ => inversion_clear H
+      | H : domain_ne_avoids _ _ (d_absurd _) |- _ => inversion_clear H
       | H : domain_ne_avoids _ _ (d_elim _ _ _ _ _ _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_record _ _) |- _ => inversion_clear H
       | H : domain_ne_avoids _ _ (d_proj _ _) |- _ => inversion_clear H
@@ -1546,26 +1600,26 @@ Section Read.
       end ].
     (** A function shape: under a fresh variable of its domain. *)
     all: try solve [ match goal with
-      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b0, ea : $| ?x0 & ⇑! ?b0 ?s | _ ⍮ _ ↘ ?r,
+      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b0, ea : $| ?x0 & relevant_value ?b0 (⇑! ?b0 ?s) | _ ⍮ _ ↘ ?r,
         Hρ : env_avoids v ?b None ?ρ, Hb : ?b <= ?s,
         Hu : forall x, In x ?ups -> domain_avoids v ?b x, Hx : domain_avoids v ?b ?x0,
         IHA : forall b1, v < ?s -> b1 <= ?s -> domain_avoids v b1 ?b0 -> nf_fresh _ ?A |- nf_fresh _ ?A =>
           apply (IHA b); [ lia | lia | eapply (proj1 (eval_avoids v b)); [ exact e | exact Hρ | exact I ] ]
       end ].
     all: try solve [ match goal with
-      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b0, ea : $| ?x0 & ⇑! ?b0 ?s | _ ⍮ _ ↘ ?r,
+      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b0, ea : $| ?x0 & relevant_value ?b0 (⇑! ?b0 ?s) | _ ⍮ _ ↘ ?r,
         Hρ : env_avoids v ?b None ?ρ, Hb : ?b <= ?s,
         Hu : forall x, In x ?ups -> domain_avoids v ?b x, Hx : domain_avoids v ?b ?x0,
-        IHV : forall b1, v < S ?s -> b1 <= S ?s -> env_avoids v b1 None (?ρ ↦ ⇑! ?b0 ?s) -> (forall a, In a ?ups -> _) ->
-              domain_avoids v b1 ?r -> nf_fresh _ ?V |- nf_fresh _ ?V =>
+        IHV : forall b1, v < S ?s -> b1 <= S ?s -> env_avoids v b1 None (?ρ ↦ relevant_value ?b0 (⇑! ?b0 ?s)) ->
+              (forall a, In a ?ups -> _) -> domain_avoids v b1 ?r -> nf_fresh _ ?V |- nf_fresh _ ?V =>
           let Hb0 := fresh "Hb0" in
           assert (Hb0 : domain_avoids v b b0) by (eapply (proj1 (eval_avoids v b)); [ exact e | exact Hρ | exact I ]);
           try replace (S (s - v - 1)) with (S s - v - 1) by lia;
           apply (IHV (S s));
             [ lia | lia
-            | apply env_avoids_cons_none; [ eapply env_avoids_mono; [| exact Hρ ]; lia | eapply domain_avoids_fresh_var; eassumption ]
+            | apply env_avoids_cons_none; [ eapply env_avoids_mono; [| exact Hρ ]; lia | eapply domain_avoids_fresh_relevant_variable; eassumption ]
             | intros; eapply domain_avoids_mono'; [| apply Hu; eassumption ]; lia
-            | eapply app_avoids; [ exact ea | eapply domain_avoids_mono'; [| exact Hx ]; lia | eapply domain_avoids_fresh_var; eassumption ] ]
+            | eapply app_avoids; [ exact ea | eapply domain_avoids_mono'; [| exact Hx ]; lia | eapply domain_avoids_fresh_relevant_variable; eassumption ] ]
       end ].
     all: try solve [ match goal with
       | Hρ : env_avoids v ?b None ?ρ, Hb : ?b <= ?s,
@@ -1720,14 +1774,19 @@ Lemma initial_env_avoids : forall Θ Ξ Γ ρ,
 Proof.
   intros Θ Ξ; induction 1; intros v' b' Hv Hb; cbn [List.length] in *.
   - apply env_avoids_nil.
-  - change None with (optional_shift 1 None).
+  - (* an assumption: a variable, or the proof at a proposition *)
+    change None with (optional_shift 1 None).
     apply env_avoids_cons; [ apply IHinitial_env; lia |].
-    constructor; constructor;
+    unfold relevant_value; destruct (domain_relevance a); constructor; constructor;
       [ eapply (proj1 (eval_avoids Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ]
       | constructor; lia ].
   - change None with (optional_shift 1 None).
     apply env_avoids_cons; [ apply IHinitial_env; lia |].
     constructor; eapply (proj1 (eval_avoids Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ].
+  - (* a definition of a proposition: the proof *)
+    change None with (optional_shift 1 None).
+    apply env_avoids_cons; [ apply IHinitial_env; lia |].
+    constructor; constructor.
   - change None with (optional_shift 1 None).
     apply env_avoids_cons; [ apply IHinitial_env; lia |].
     constructor; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (eval_avoids Θ Ξ v' b')))))); [ eassumption | apply IHinitial_env; lia | exact I ].

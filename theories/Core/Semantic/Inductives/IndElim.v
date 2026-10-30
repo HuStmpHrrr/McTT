@@ -103,8 +103,9 @@ Section Fixed_GCtx.
   Lemma fam_cod_shfam_inv : forall p ups ρ t x a,
       ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ t ↦ x ↘ a -> ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ↘ a.
   Proof.
-    intros * H; unfold fam_cod in H; inversion H; subst.
-    match goal with H1 : ⟦ #1 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H1; subst end.
+    intros * H; unfold fam_cod in H; inversion H; subst;
+      match goal with H1 : ⟦ #1 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H1; subst end;
+      [| match goal with Hr : arg_relevance _ _ _ = propositional |- _ => cbn in Hr; discriminate Hr end ].
     match goal with H0 : ⟦ #0 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H0; subst end.
     match goal with Ha : $| _ & _ | _ ⍮ _ ↘ _ |- _ => cbn in Ha; inversion Ha; subst; assumption end.
   Qed.
@@ -126,7 +127,7 @@ Section Fixed_GCtx.
 
   Lemma cargs_corr_length : forall vm gs' gs, cargs_corr vm gs' gs -> List.length gs' = List.length gs.
   Proof.
-    induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try contradiction; try reflexivity.
+    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction; try reflexivity.
     - f_equal; exact (IH _ H).
     - f_equal; exact (IH _ H).
     - f_equal; exact (IH _ (proj2 (proj2 H))).
@@ -150,24 +151,24 @@ Section Fixed_GCtx.
   Fixpoint cargs_kinds (gs' gs : list carg) : Prop :=
     match gs', gs with
     | nil, nil => True
-    | ca_arg _ :: gs1', ca_arg _ :: gs1 => cargs_kinds gs1' gs1
+    | ca_arg _ _ :: gs1', ca_arg _ _ :: gs1 => cargs_kinds gs1' gs1
     | ca_rec _ :: gs1', ca_rec _ :: gs1 => cargs_kinds gs1' gs1
-    | ca_arg _ :: gs1', ca_rec _ :: gs1 => cargs_kinds gs1' gs1
+    | ca_arg _ _ :: gs1', ca_rec _ :: gs1 => cargs_kinds gs1' gs1
     | _, _ => False
     end.
 
   Lemma cargs_kinds_refl : forall gs, cargs_kinds gs gs.
-  Proof. induction gs as [| [A | t] gs IH]; cbn; auto. Qed.
+  Proof. induction gs as [| [rA A | t] gs IH]; cbn; auto. Qed.
 
   Lemma cargs_kinds_of_corr : forall vm gs' gs, cargs_corr vm gs' gs -> cargs_kinds gs' gs.
   Proof.
-    induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try contradiction; auto.
+    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction; auto.
     exact (IH _ (proj2 (proj2 H))).
   Qed.
 
   Lemma cargs_kinds_length : forall gs' gs, cargs_kinds gs' gs -> List.length gs' = List.length gs.
   Proof.
-    induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try contradiction; auto.
+    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction; auto.
   Qed.
 
   (** ** The Members the Leaf Paths End In *)
@@ -179,7 +180,7 @@ Section Fixed_GCtx.
   Fixpoint cargs_mems (D : ind_decl) (gs : list carg) : list nat :=
     match gs with
     | nil => nil
-    | ca_arg _ :: gs' => cargs_mems D gs'
+    | ca_arg _ _ :: gs' => cargs_mems D gs'
     | ca_rec t :: gs' => shape_mems D t ++ cargs_mems D gs'
     end.
 
@@ -205,7 +206,7 @@ Section Fixed_GCtx.
   Lemma fields_mems : forall D fl gs ns, List.length fl = List.length gs ->
       List.map leaf_mem (fields_leaves (rv_leaves D) ns (List.combine fl gs)) = cargs_mems D gs.
   Proof.
-    intros D; induction fl as [| f fl IH]; intros [| [A | t] gs] ns Hl; cbn in Hl |- *; try discriminate; [ reflexivity | |].
+    intros D; induction fl as [| f fl IH]; intros [| [rA A | t] gs] ns Hl; cbn in Hl |- *; try discriminate; [ reflexivity | |].
     - apply IH; lia.
     - rewrite List.map_app, List.map_map; cbn [leaf_mem]; rewrite IH by lia; f_equal.
       unfold shape_mems; apply map_leaf_mem_shape.
@@ -253,10 +254,11 @@ Section Fixed_GCtx.
       list domain -> list domain -> Prop :=
   (** No path *)
   | leaf_results_nil : leaf_results nil nil nil nil nil nil nil
-  (** A fresh neutral on each side *)
+  (** A fresh neutral on each side, the proof [⋆ᵈ] at a proposition *)
   | leaf_results_fresh : forall bs a a' as1 as2 r r' rs1 rs2 e e' out out', Dom e ≈ e' ∈ per_bot ->
       leaf_results bs as1 as2 rs1 rs2 out out' ->
-      leaf_results (true :: bs) (a :: as1) (a' :: as2) (r :: rs1) (r' :: rs2) (⇑ a e :: out) (⇑ a' e' :: out')
+      leaf_results (true :: bs) (a :: as1) (a' :: as2) (r :: rs1) (r' :: rs2)
+        (relevant_value a (⇑ a e) :: out) (relevant_value a' (⇑ a' e') :: out')
   (** The eliminator's result on each side *)
   | leaf_results_nest : forall bs a a' as1 as2 r r' rs1 rs2 out out',
       leaf_results bs as1 as2 rs1 rs2 out out' ->
@@ -275,7 +277,7 @@ Section Fixed_GCtx.
     - destruct A1 as [| a A1], A1' as [| a' A1'], R1 as [| r R1], R1' as [| r' R1']; cbn in L1, L2, L3, L4; try discriminate.
       inversion H as [| ? ? ? ? ? ? ? ? ? e e' o o' He H0 | ? ? ? ? ? ? ? ? ? o o' H0]; subst;
         destruct (IH _ _ _ _ _ _ _ _ _ _ _ H0 ltac:(lia) ltac:(lia) ltac:(lia) ltac:(lia)) as (o1 & o2 & o1' & o2' & -> & -> & H1 & H2).
-      + exists (⇑ a e :: o1), o2, (⇑ a' e' :: o1'), o2'; split; [ reflexivity | split; [ reflexivity | split; [ constructor; assumption | exact H2 ] ] ].
+      + exists (relevant_value a (⇑ a e) :: o1), o2, (relevant_value a' (⇑ a' e') :: o1'), o2'; split; [ reflexivity | split; [ reflexivity | split; [ constructor; assumption | exact H2 ] ] ].
       + exists (r :: o1), o2, (r' :: o1'), o2'; split; [ reflexivity | split; [ reflexivity | split; [ constructor; assumption | exact H2 ] ] ].
   Qed.
 
@@ -297,16 +299,30 @@ Section Fixed_GCtx.
   (** A neutral. *)
   Definition is_neut (v : domain) : Prop := exists a e, v = ⇑ a e.
 
-  Lemma is_neut_app : forall f c r, $| f & c | gc_deps ⍮ gc_stack ↘ r -> is_neut f -> is_neut r.
-  Proof. intros * E (a & e & ->); inversion E; subst; eexists _, _; reflexivity. Qed.
+  (** A neutral, or the proof [⋆ᵈ]: what evaluation builds at a neutral,
+      the proof at a proposition ([relevant_value]). *)
+  Definition is_neut_or_proof (v : domain) : Prop := is_neut v \/ v = ⋆ᵈ.
 
-  Lemma is_neut_nflds : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs -> List.Forall is_neut rs.
-  Proof. induction 1; constructor; [ eexists _, _; reflexivity | assumption ]. Qed.
+  Lemma relevant_value_neut : forall a e, is_neut_or_proof (relevant_value a (⇑ a e)).
+  Proof.
+    intros; unfold relevant_value; destruct (domain_relevance a); [ left; eexists _, _; reflexivity | right; reflexivity ].
+  Qed.
 
-  Lemma is_neut_projs : forall fl v ws, ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> is_neut v -> List.Forall is_neut ws.
+  Lemma is_neut_or_proof_app : forall f c r, $| f & c | gc_deps ⍮ gc_stack ↘ r -> is_neut_or_proof f -> is_neut_or_proof r.
+  Proof.
+    intros * E [(a & e & ->) | ->]; inversion E; subst; [ apply relevant_value_neut | right; reflexivity ].
+  Qed.
+
+  Lemma is_neut_nflds : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs -> List.Forall is_neut_or_proof rs.
+  Proof.
+    induction 1; constructor; [ apply relevant_value_neut | assumption ].
+  Qed.
+
+  Lemma is_neut_projs : forall fl v ws, ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> is_neut_or_proof v ->
+      List.Forall is_neut_or_proof ws.
   Proof.
     induction 1 as [| f v w fl ws Ep Eps IH]; intros Hv; constructor; [| exact (IH Hv) ].
-    destruct Hv as (a & e & ->); inversion Ep; subst.
+    destruct Hv as [(a & e & ->) | ->]; inversion Ep; subst.
     match goal with Hn : eval_nflds _ _ _ _ _ _ ?rs, Hk : List.nth_error ?rs _ = Some w |- _ =>
       exact (proj1 (List.Forall_forall _ _) (is_neut_nflds _ _ _ _ _ Hn) _ (List.nth_error_In _ _ Hk)) end.
   Qed.
@@ -347,7 +363,8 @@ Section Fixed_GCtx.
     - destruct b.
       + destruct (IH as1 as2 rs1 rs2 (S s) ltac:(lia) ltac:(lia) ltac:(lia) ltac:(lia))
           as (ihs1 & ihs2 & out & out' & F1 & F2 & Li & W1 & W2 & Hr).
-        exists (⇑! a s :: ihs1), (⇑! a' s :: ihs2), (⇑! a s :: out), (⇑! a' s :: out').
+        exists (relevant_value a (⇑! a s) :: ihs1), (relevant_value a' (⇑! a' s) :: ihs2),
+          (relevant_value a (⇑! a s) :: out), (relevant_value a' (⇑! a' s) :: out').
         split; [ constructor; exact F1 | split; [ constructor; exact F2 | split; [ cbn; congruence | split; [| split ] ] ] ].
         * intros X; cbn; constructor; apply W1.
         * intros Y; cbn; constructor; apply W2.
@@ -406,8 +423,8 @@ Section Fixed_GCtx.
       intros * HM Hc.
       pose proof (grp_tele_ass_plen _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc)) as Hpl.
       enough (H : forall gs2 gs1, gs = gs1 ++ gs2 -> cargs_nest_ok D D rk r gs2 gs2) by exact (H gs nil eq_refl).
-      induction gs2 as [| [A | t] gs2 IH]; intros gs1 Heq; cbn; [ exact I | |].
-      - apply (IH (gs1 ++ ca_arg A :: nil)); rewrite Heq, <- List.app_assoc; reflexivity.
+      induction gs2 as [| [rA A | t] gs2 IH]; intros gs1 Heq; cbn; [ exact I | |].
+      - apply (IH (gs1 ++ ca_arg rA A :: nil)); rewrite Heq, <- List.app_assoc; reflexivity.
       - split; [| apply (IH (gs1 ++ ca_rec t :: nil)); rewrite Heq, <- List.app_assoc; reflexivity ].
         intros l Hin Hn; exfalso.
         destruct (Hpl gs1 t gs2 Heq) as (M & HM' & _).
@@ -699,6 +716,8 @@ Section Fixed_GCtx.
           change (ptyp_skip (S k) t0) with (ptyp_skip (S k) t0) in E2 |- *.
           econstructor; [ eapply eval_app_neut, eval_fam_cod_shfam; rewrite <- env_args_snoc3; exact Ea1'
                         | eapply eval_app_neut, eval_fam_cod_shfam; rewrite <- env_args_snoc3; exact Ea2' |].
+          rewrite (relevant_value_relevant _ _ (eval_shty_relevant _ _ _ _ _ Ea1')),
+            (relevant_value_relevant _ _ (eval_shty_relevant _ _ _ _ _ Ea2')).
           replace ((ns1 ++ ws1 ++ ys1) ++ c0 :: nil) with (ns1 ++ ws1 ++ (ys1 ++ c0 :: nil)) by (rewrite <- !List.app_assoc; reflexivity).
           replace ((ns2 ++ ws2 ++ ys2) ++ c0' :: nil) with (ns2 ++ ws2 ++ (ys2 ++ c0' :: nil)) by (rewrite <- !List.app_assoc; reflexivity).
           apply (IH (S k) _ _ _ _ _ _ _ ltac:(lia) Hy1' Hy2'); [ exact Ea1' | exact Ea2' |].
@@ -786,9 +805,9 @@ Section Fixed_GCtx.
     (** No argument *)
     | cargs_doms_ok_nil : forall pre pre', cargs_doms_ok X Y k pre pre' nil nil nil
     (** A non-recursive argument joins the prefixes *)
-    | cargs_doms_ok_arg : forall pre pre' A gs v v' vs vs',
+    | cargs_doms_ok_arg : forall pre pre' rA A gs v v' vs vs',
         cargs_doms_ok X Y k (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
-        cargs_doms_ok X Y k pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs')
+        cargs_doms_ok X Y k pre pre' (ca_arg rA A :: gs) (v :: vs) (v' :: vs')
     (** A recursive argument's shape *)
     | cargs_doms_ok_rec : forall pre pre' t gs v v' vs vs',
         shape_doms_ok X Y k pre pre' t -> cargs_doms_ok X Y k pre pre' gs vs vs' ->
@@ -808,10 +827,10 @@ Section Fixed_GCtx.
       pose proof (ind_con_single _ _ _ Hcs) as Hc.
       pose proof (rview_struct_nparams _ _ _ Hrs _ _ _ _ _ HM Hh) as Hnp.
       assert (Hnil : tele_rel (nr k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; [ reflexivity | exact I ]).
-      induction gs2 as [| [A | t] gs2 IH]; intros gs1 pre pre' [| v vs] [| v' vs'] Heq L1 L2 Hp Hr; cbn in L1, L2;
+      induction gs2 as [| [rA A | t] gs2 IH]; intros gs1 pre pre' [| v vs] [| v' vs'] Heq L1 L2 Hp Hr; cbn in L1, L2;
         try discriminate; [ constructor | |].
       - cbn [nonrec_arg_vals tele_rel_from] in Hr; destruct Hr as [Hv Hr].
-        apply cargs_doms_ok_arg; apply (IH (gs1 ++ ca_arg A :: nil)); [ rewrite Heq, <- List.app_assoc; reflexivity | lia | lia | |];
+        apply cargs_doms_ok_arg; apply (IH (gs1 ++ ca_arg rA A :: nil)); [ rewrite Heq, <- List.app_assoc; reflexivity | lia | lia | |];
           rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_1_r;
           [ apply tele_prefix_rel_snoc; [ exact Hp | exact Hv ] | exact Hr ].
       - cbn [nonrec_arg_vals] in Hr.
@@ -955,9 +974,9 @@ Section Fixed_GCtx.
       (** No argument *)
       | rec_results_nil : forall pre pre', rec_results_rel k u u' pre pre' nil nil nil nil nil
       (** A non-recursive argument joins the prefixes *)
-      | rec_results_arg : forall pre pre' A gs v v' vs vs' ihs ihs',
+      | rec_results_arg : forall pre pre' rA A gs v v' vs vs' ihs ihs',
           rec_results_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ihs ihs' ->
-          rec_results_rel k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') ihs ihs'
+          rec_results_rel k u u' pre pre' (ca_arg rA A :: gs) (v :: vs) (v' :: vs') ihs ihs'
       (** A recursive argument's results, one per leaf path, are related *)
       | rec_results_rec : forall pre pre' t gs v v' vs vs' rs rs' ihs ihs',
           List.length rs = List.length (shape_leaves (rv_leaves D) 0 t) ->
@@ -1067,7 +1086,7 @@ Section Fixed_GCtx.
         destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb'].
         pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm Hs1 Hs2) as Hm1.
         destruct (Hmot _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb' Hm1) as (a & a' & Ea & Ea' & HR).
-        exists (⇑ a (d_elim ρa Bksa p ua j as1 e)), (⇑ a' (d_elim ρb Bksb p ub j as2 e'));
+        exists (relevant_value a (⇑ a (d_elim ρa Bksa p ua j as1 e))), (relevant_value a' (⇑ a' (d_elim ρb Bksb p ub j as2 e')));
           split; [| split ].
         - eapply eval_elim_neut; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | | exact Ha
                                  | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity | rewrite Hnu; exact Ea ].
@@ -1094,7 +1113,7 @@ Section Fixed_GCtx.
         destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb'].
         pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm Hs1 Hs2) as Hm1.
         destruct (Hmot _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb' Hm1) as (a & a' & Ea & Ea' & HR).
-        exists (⇑ a (d_elim ρa Bksa p ua j as1 e)), (⇑ a' (d_elim ρb Bksb p ub j as2 e')); split.
+        exists (relevant_value a (⇑ a (d_elim ρa Bksa p ua j as1 e))), (relevant_value a' (⇑ a' (d_elim ρb Bksb p ub j as2 e'))); split.
         - eapply eval_elim_neut; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | | exact Ha
                                  | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity | rewrite Hnu; exact Ea ].
           rewrite L1; unfold im_np; lia.
@@ -1210,7 +1229,9 @@ Section Fixed_GCtx.
           inversion H as [| bs0 ? ? ? ? ? ? ? ? e e' o o' He H0 | bs0 ? ? ? ? ? ? ? ? o o' H0]; subst;
             destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 Ef Ef' Tc Tc' Rc Rc'
                         ltac:(intros i0 Hi0; apply Hi; right; exact Hi0) Htop) as (oc & oc' & F1 & F2 & Hr).
-          + exists (⇑ (List.nth x tc d_True) (e $ᵈ ⇓ b c) :: oc), (⇑ (List.nth x tc' d_True) (e' $ᵈ ⇓ b' c') :: oc').
+          + exists (relevant_value (List.nth x tc d_True) (⇑ (List.nth x tc d_True) (e $ᵈ ⇓ b c)) :: oc),
+              (relevant_value (List.nth x tc' d_True) (⇑ (List.nth x tc' d_True) (e' $ᵈ ⇓ b' c')) :: oc').
+            cbn [relevant_value domain_relevance].
             split; [| split ]; [ constructor; [| exact F1 ] | constructor; [| exact F2 ] | constructor; [| exact Hr ] ].
             * apply eval_app_neut; eapply eval_fam_cod_ihfam; [ exact Ef | exact Tc | apply List.nth_error_nth'; exact L1 ].
             * apply eval_app_neut; eapply eval_fam_cod_ihfam; [ exact Ef' | exact Tc' | apply List.nth_error_nth'; exact L2 ].
@@ -1234,24 +1255,24 @@ Section Fixed_GCtx.
           applications to related arguments. *)
       Lemma ih_leaves_all :
         (forall k u u' ns ns' v v', grp_rel p D ups nr ar dr k u u' ns ns' v v' ->
-           u = ua -> u' = ub -> is_neut v -> is_neut v' ->
+           u = ua -> u' = ub -> is_neut_or_proof v -> is_neut_or_proof v' ->
            forall Mk qr Is fl c gs ws ws', ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
            im_cons Mk = (c, gs) :: nil ->
            ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> ⟦projs fl of v' ⟧ gc_deps ⍮ gc_stack ↘ ws' ->
            forall bs, leaf_flags_ok elim_bot bs (cargs_mems D gs) ->
            ihs_pair gs ws ws' (env_args nil ua) (env_args nil ub) bs (rec_results_rel k ua ub nil nil gs ws ws')) /\
         (forall k u u' pre pre' gs vs vs', con_args_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' gs vs vs' ->
-           u = ua -> u' = ub -> List.Forall is_neut vs -> List.Forall is_neut vs' -> cargs_doms_ok ua ub k pre pre' gs vs vs' ->
+           u = ua -> u' = ub -> List.Forall is_neut_or_proof vs -> List.Forall is_neut_or_proof vs' -> cargs_doms_ok ua ub k pre pre' gs vs vs' ->
            forall bs, leaf_flags_ok elim_bot bs (cargs_mems D gs) ->
            ihs_pair gs vs vs' (env_args nil (ua ++ pre)) (env_args nil (ub ++ pre')) bs
              (rec_results_rel k ua ub pre pre' gs vs vs')) /\
         (forall k u u' pre pre' t v v', rec_arg_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t v v' ->
-           u = ua -> u' = ub -> is_neut v -> is_neut v' -> shape_doms_ok ua ub k pre pre' t ->
+           u = ua -> u' = ub -> is_neut_or_proof v -> is_neut_or_proof v' -> shape_doms_ok ua ub k pre pre' t ->
            forall bs, leaf_flags_ok elim_bot bs (shape_mems D t) ->
            ih_pair t v v' (env_args nil (ua ++ pre)) (env_args nil (ub ++ pre')) bs (rec_result_rel k ua ub pre pre' t v v')) /\
         (forall k u u' pre pre' t f c f' c', rec_arg_app_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t f c f' c' ->
            forall fc fc', $| f & c | gc_deps ⍮ gc_stack ↘ fc -> $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' ->
-           u = ua -> u' = ub -> is_neut f -> is_neut f' -> shape_doms_ok ua ub k pre pre' t ->
+           u = ua -> u' = ub -> is_neut_or_proof f -> is_neut_or_proof f' -> shape_doms_ok ua ub k pre pre' t ->
            forall bs, leaf_flags_ok elim_bot bs (shape_mems D t) ->
            ih_pair t fc fc' (env_args nil (ua ++ pre)) (env_args nil (ub ++ pre')) bs (rec_result_rel k ua ub pre pre' t fc fc')).
       Proof.
@@ -1280,7 +1301,7 @@ Section Fixed_GCtx.
           refine (mk_ihs_pair _ _ _ _ _ _ _ nil nil nil nil _ _ _ _ _ _ _ _ _); try reflexivity; try constructor.
           intros out out' Ho; inversion Ho; subst; constructor.
         - (** A non-recursive argument joins the prefixes. *)
-          intros k u u' pre v pre' v' gs vs vs' A Hc IH -> -> Hv Hv' Hd bs Hbs.
+          intros k u u' pre v pre' v' gs vs vs' rA A Hc IH -> -> Hv Hv' Hd bs Hbs.
           inversion Hv; inversion Hv'; inversion Hd; subst.
           destruct (IH eq_refl eq_refl ltac:(assumption) ltac:(assumption) ltac:(assumption) bs Hbs)
             as [tya tyb resa resb Ta Tb Ra Rb La Lb Lc Ld Hr].
@@ -1309,7 +1330,7 @@ Section Fixed_GCtx.
           inversion Hi0 as [? Mj ? ? ? ? c gs ? ? vs vs' ? ? HM Hrv Href Hn Hc L1 L2 Hs1 Hs2 Ha Hca
                            | ? Mj hd k' ? ? as1 as2 e e' ? ? HM Hrv Href Hn L1 L2 Hs1 Hs2 He
                            | ? Mj qr Is fl c gs ? ws ? ws' ? ? HM Hh Hnp Hcs Ew Ew' Hn Hca]; subst.
-          + exfalso; destruct Hv as (? & ? & Hv); discriminate Hv.
+          + exfalso; destruct Hv as [(? & ? & Hv) | Hv]; discriminate Hv.
           + (** A member with a block: the motive, or the eliminator. *)
             rewrite (shape_mems_self _ _ _ _ HM Hrv) in Hbs.
             inversion Hbs as [| ? ? ? Hb0 | ? ? ? Hbot Hb0]; subst; inversion Hb0; subst;
@@ -1378,7 +1399,7 @@ Section Fixed_GCtx.
         - (** An application: the rest at the function's values. *)
           intros f c r f' c' r' k u u' pre pre' t Ef Ef' Hr IH fc fc' Ec Ec' -> -> Hf Hf' Hd bs Hbs.
           pose proof (functional_eval_app _ _ _ _ Ef Ec) as <-; pose proof (functional_eval_app _ _ _ _ Ef' Ec') as <-.
-          exact (IH eq_refl eq_refl (is_neut_app _ _ _ Ef Hf) (is_neut_app _ _ _ Ef' Hf') Hd bs Hbs).
+          exact (IH eq_refl eq_refl (is_neut_or_proof_app _ _ _ Ef Hf) (is_neut_or_proof_app _ _ _ Ef' Hf') Hd bs Hbs).
       Qed.
 
       (** *** Reading the Blocks of a Stuck Eliminator
@@ -1641,14 +1662,15 @@ Section Fixed_GCtx.
         - rewrite Heq, List.app_nil_r.
           refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ nil nil nil nil nil nil wsu _ _ _ _ _ _ _ _ _ _);
             cbn [nonrec_arg_vals]; rewrite ?List.app_nil_r; first [ exact Hw1 | exact Hw2 | constructor ].
-        - destruct g' as [A' | t']; destruct g as [A | t]; cbn in Hk; try contradiction.
+        - destruct g' as [rA' A' | t']; destruct g as [rA A | t]; cbn in Hk; try contradiction.
           + (** Non-recursive in both. *)
-            inversion C1 as [| k0 ws0 ws0' s0 A0 gs0 a0 a1 E0 E1 R1 C1' |]; subst.
-            inversion C2 as [| k0 ws0 ws0' s0 A0 gs0 a0' a2 E0' E2 R2 C2' |]; subst.
+            inversion C1 as [| k0 ws0 ws0' s0 r0 A0 gs0 a0 a1 E0 E1 R1 C1' |]; subst.
+            inversion C2 as [| k0 ws0 ws0' s0 r0 A0 gs0 a0' a2 E0' E2 R2 C2' |]; subst.
             pose proof (functional_eval_exp _ _ _ _ E0 E0') as <-.
-            assert (Hk1 : List.length (cargs_nonrec (gs1 ++ ca_arg A :: nil)) = S (List.length (cargs_nonrec gs1)))
+            assert (Hk1 : List.length (cargs_nonrec (gs1 ++ ca_arg rA A :: nil)) = S (List.length (cargs_nonrec gs1)))
               by (rewrite cargs_nonrec_app, List.length_app; cbn; lia).
-            destruct (IH gs (gs1 ++ ca_arg A :: nil) (wsu ++ ⇑! a0 s :: nil) (wsa ++ ⇑! a1 s :: nil) (wsb ++ ⇑! a2 s :: nil) (S s) s2)
+            destruct (IH gs (gs1 ++ ca_arg rA A :: nil) (wsu ++ relevant_value a0 (⇑! a0 s) :: nil)
+                        (wsa ++ relevant_value a1 (⇑! a1 s) :: nil) (wsb ++ relevant_value a2 (⇑! a2 s) :: nil) (S s) s2)
               as [vsa vsb ihsa ihsb wa wb wfu F1 F2 I1 I2 W1 W2 P1 P2 Hia Hir].
             { rewrite <- List.app_assoc; reflexivity. }
             { exact Hk. }
@@ -1658,7 +1680,8 @@ Section Fixed_GCtx.
             { rewrite Hk1; apply tele_prefix_rel_snoc; assumption. }
             { rewrite Hk1; apply tele_prefix_rel_snoc; assumption. }
             rewrite <- !List.app_assoc in P1, P2; cbn in P1, P2.
-            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) ihsa ihsb wa wb wfu
+            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ (relevant_value a1 (⇑! a1 s) :: vsa) (relevant_value a2 (⇑! a2 s) :: vsb)
+                      ihsa ihsb wa wb wfu
                       _ _ _ _ _ _ _ _ _ _).
             * econstructor; [ exact E1 |]; rewrite <- env_args_snoc, <- !List.app_assoc; exact F1.
             * econstructor; [ exact E2 |]; rewrite <- env_args_snoc, <- !List.app_assoc; exact F2.
@@ -1696,7 +1719,7 @@ Section Fixed_GCtx.
             { apply leaf_flags_of_in; intros l Hin _; apply HIH.
               pose proof (leaf_mem_rank rk Hrk t 0 l Hin); lia. }
             destruct (proj1 (proj2 (proj2 ih_leaves_all)) _ _ _ _ _ _ _ _ Hsh eq_refl eq_refl
-                        (ex_intro _ _ (ex_intro _ _ eq_refl)) (ex_intro _ _ (ex_intro _ _ eq_refl)) Hds _ Hfl)
+                        (or_introl (ex_intro _ _ (ex_intro _ _ eq_refl))) (or_introl (ex_intro _ _ (ex_intro _ _ eq_refl))) Hds _ Hfl)
               as [tya tyb ih ih' _ _ J1 J2 La1 Lb1 Lc1 Ld1 Hres].
             rewrite List.length_map in La1, Lb1, Lc1, Ld1.
             pose proof (Hres _ _ (leaf_results_all_nest _ _ _ _ _ La1 Lb1 Lc1 Ld1)) as Hres'.
@@ -1746,7 +1769,7 @@ Section Fixed_GCtx.
             assert (Hfl : leaf_flags_ok elim_bot bs (shape_mems D t))
               by (apply leaf_flags_of_in; intros l Hin Hn; apply HIH; exact (Hlv l Hin Hn)).
             destruct (proj1 (proj2 (proj2 ih_leaves_all)) _ _ _ _ _ _ _ _ Hsh eq_refl eq_refl
-                        (ex_intro _ _ (ex_intro _ _ eq_refl)) (ex_intro _ _ (ex_intro _ _ eq_refl)) Hds bs Hfl)
+                        (or_introl (ex_intro _ _ (ex_intro _ _ eq_refl))) (or_introl (ex_intro _ _ (ex_intro _ _ eq_refl))) Hds bs Hfl)
               as [tya tyb resa resb G1 G2 J1 J2 La1 Lb1 Lc1 Ld1 Hres].
             destruct (fresh_wrap_results bs tya tyb resa resb s2 La1 Lb1 Lc1 Ld1)
               as (ihs1 & ihs2 & out & out' & V1 & V2 & Li & X1 & X2 & Ho).

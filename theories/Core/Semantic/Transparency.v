@@ -17,8 +17,8 @@ Import Domain_Notations.
 (** [domain_clean d]: the value [d], its closures' environments included, has no
     global neutral; mutually, for the other sorts of values. *)
 Inductive domain_clean : domain -> Prop :=
-(** A [Π]: its domain and its closure's environment *)
-| domain_clean_pi : forall a (ρ : env) B, domain_clean a -> (forall x, declean (env_entry ρ x)) -> domain_clean (Πᵈ a ρ B)
+(** A [Π] of either tag: its domain and its closure's environment *)
+| domain_clean_pi : forall r a (ρ : env) B, domain_clean a -> (forall x, declean (env_entry ρ x)) -> domain_clean (d_pi r a ρ B)
 (** A large universe *)
 | domain_clean_univ : forall i, domain_clean 𝕌ω@i
 (** A small universe: its level *)
@@ -27,14 +27,22 @@ Inductive domain_clean : domain -> Prop :=
 | domain_clean_level : forall n, domain_clean (Levelᵈ@n)
 (** A level: its atoms *)
 | domain_clean_lvl : forall c xs, level_atoms_clean xs -> domain_clean (lvᵈ c xs)
-(** The unit type *)
+(** [Prop] *)
+| domain_clean_prop : domain_clean Propᵈ
+(** The true proposition *)
 | domain_clean_True : domain_clean ⊤ᵈ
-(** The unit's element *)
+(** The proof *)
 | domain_clean_true : domain_clean ⋆ᵈ
-(** The empty type *)
+(** The false proposition *)
 | domain_clean_False : domain_clean ⊥ᵈ
-(** A λ: its closure's environment *)
-| domain_clean_fn : forall (ρ : env) M, (forall x, declean (env_entry ρ x)) -> domain_clean (λᵈ ρ M)
+(** A [Σₚ]: its first component and its closure's environment *)
+| domain_clean_and : forall a (ρ : env) Q, domain_clean a -> (forall x, declean (env_entry ρ x)) -> domain_clean (Σₚᵈ a ρ Q)
+(** The placeholder type *)
+| domain_clean_placeholder_type : domain_clean d_placeholder_type
+(** Its element *)
+| domain_clean_placeholder : domain_clean d_placeholder
+(** A λ: its domain and its closure's environment *)
+| domain_clean_fn : forall a (ρ : env) M, domain_clean a -> (forall x, declean (env_entry ρ x)) -> domain_clean (λᵈ a ρ M)
 (** A neutral: its type and itself *)
 | domain_clean_neut : forall a m, domain_clean a -> domain_ne_clean m -> domain_clean (⇑ a m)
 (** A member of a module value: the module value *)
@@ -64,10 +72,8 @@ with domain_ne_clean : domain_ne -> Prop :=
 | domain_clean_var : forall x, domain_ne_clean (#ᵈ x)
 (** An application: its head and its argument *)
 | domain_clean_app : forall m n, domain_ne_clean m -> domain_nf_clean n -> domain_ne_clean (m $ᵈ n)
-(** A stuck [efq]: its environment and its scrutinee *)
-| domain_clean_exfalso : forall (ρ : env) A m,
-    (forall x, declean (env_entry ρ x)) -> domain_ne_clean m ->
-    domain_ne_clean (efqᵈ m under ρ return A)
+(** Ex falso: its type *)
+| domain_clean_absurd : forall c, domain_clean c -> domain_ne_clean (efqᵈ c)
 (** A stuck eliminator: its environment, its uniform parameters, its
     parameters and its scrutinee *)
 | domain_clean_elim : forall (ρ : env) Bks p ups j args m,
@@ -149,12 +155,15 @@ Proof. intros * H1 H2 a Ha; apply in_app_or in Ha as [Ha | Ha]; auto. Qed.
 Lemma nflds_cons_clean : forall t m g rs pre ns,
     domain_clean t -> (forall x, In x ns -> domain_clean x) -> domain_ne_clean m -> (forall x, In x pre -> domain_clean x) ->
     ((forall x, In x ns -> domain_clean x) -> domain_ne_clean m ->
-       (forall y, In y (pre ++ ⇑ t (d_proj g m) :: nil) -> domain_clean y) -> forall z, In z rs -> domain_clean z) ->
-    forall d, In d (⇑ t (d_proj g m) :: rs) -> domain_clean d.
+       (forall y, In y (pre ++ relevant_value t (⇑ t (d_proj g m)) :: nil) -> domain_clean y) -> forall z, In z rs -> domain_clean z) ->
+    forall d, In d (relevant_value t (⇑ t (d_proj g m)) :: rs) -> domain_clean d.
 Proof.
-  intros * Ht Hns Hm Hpre IH d [<- | Hd]; [ constructor; [ exact Ht | constructor; exact Hm ] |].
+  intros * Ht Hns Hm Hpre IH.
+  assert (Hv : domain_clean (relevant_value t (⇑ t (d_proj g m))))
+    by (unfold relevant_value; destruct (domain_relevance t); [ constructor; [ exact Ht | constructor; exact Hm ] | constructor ]).
+  intros d [<- | Hd]; [ exact Hv |].
   apply (IH Hns Hm); [| exact Hd ].
-  apply clean_app_snoc; [ exact Hpre | constructor; [ exact Ht | constructor; exact Hm ] ].
+  apply clean_app_snoc; [ exact Hpre | exact Hv ].
 Qed.
 
 Lemma env_clean_entry : forall ρ x, env_clean ρ -> declean (env_entry ρ x).
@@ -174,6 +183,10 @@ Proof. induction 1; cbn; repeat constructor; assumption. Qed.
 Lemma level_atoms_clean_app : forall xs ys, level_atoms_clean xs -> level_atoms_clean ys -> level_atoms_clean (xs ++ ys).
 Proof. induction 1; cbn; intros; [ assumption | constructor; auto ]. Qed.
 
+(** A value or the proof in its place, by the sort of its type. *)
+Lemma domain_clean_relevant_value : forall a v, domain_clean v -> domain_clean (relevant_value a v).
+Proof. intros * Hv; unfold relevant_value; destruct (domain_relevance a); [ exact Hv | constructor ]. Qed.
+
 Lemma domain_clean_lvl_lit : forall n, domain_clean (dlvl_lit n).
 Proof. intros; repeat constructor. Qed.
 
@@ -185,6 +198,9 @@ Proof. intros; unfold dlvl_max; constructor; apply level_atoms_clean_app; apply 
 
 #[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_extend_dm env_clean_var env_clean_mod
   env_clean_args clean_app_snoc dmclean_global_nil env_clean_entry : mctt.
+(** [domain_clean_relevant_value] is no hint: its conclusion matches a
+    goal about an unknown value, which [eauto] would then try at every
+    such goal.  The proofs apply it where the goal is a [relevant_value]. *)
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
     [Hint Resolve] their conclusions would match a goal about an unknown
@@ -262,7 +278,9 @@ Section Transparent.
        (forall a, In a pre -> domain_clean a) -> forall a, In a rs -> domain_clean a) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> domain_clean v -> forall a, In a ws -> domain_clean a) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' -> ups_clean ups ->
-       env_clean ρm -> env_clean ρ -> (forall a, In a vs -> domain_clean a) -> forall a, In a as' -> domain_clean a).
+       env_clean ρm -> env_clean ρ -> (forall a, In a vs -> domain_clean a) -> forall a, In a as' -> domain_clean a) /\
+    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> env_clean ρ -> forall a, In a vs -> domain_clean a) /\
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_clean f -> env_clean ρ -> domain_clean r).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_clean ρ -> domain_clean m)
@@ -291,8 +309,13 @@ Section Transparent.
                 (forall a, In a pre -> domain_clean a) -> forall a, In a rs -> domain_clean a)
              (fun fl v ws _ => domain_clean v -> forall a, In a ws -> domain_clean a)
              (fun p ups ρm As ρ gs vs as' _ => ups_clean ups -> env_clean ρm -> env_clean ρ ->
-                (forall a, In a vs -> domain_clean a) -> forall a, In a as' -> domain_clean a));
+                (forall a, In a vs -> domain_clean a) -> forall a, In a as' -> domain_clean a)
+             (fun rs Ms ρ vs _ => env_clean ρ -> forall a, In a vs -> domain_clean a)
+             (fun f Ms ρ r _ => domain_clean f -> env_clean ρ -> domain_clean r));
       intros; cbn [snd] in *.
+    (* a neutral evaluation builds: the proof [⋆ᵈ] at a proposition, else
+       the neutral ([eval_app_neut], [eval_elim_neut], [eval_exp_absurd]) *)
+    all: try match goal with |- domain_clean (relevant_value _ _) => apply domain_clean_relevant_value end.
     (* records: a type former's arguments, a tuple's fields, and the
        projections of a neutral at their types *)
     all: try solve [ apply domain_clean_record; intros ? [] ].
@@ -323,7 +346,8 @@ Section Transparent.
       end ].
     all: try solve [ match goal with Hin : In _ nil |- _ => destruct Hin end ].
     all: try solve [ match goal with
-      | IHT : env_clean (env_args nil (?ns ++ ?pre)) -> domain_clean ?t, Hin : In ?d (⇑ ?t (d_proj _ ?m) :: ?rs) |- domain_clean ?d =>
+      | IHT : env_clean (env_args nil (?ns ++ ?pre)) -> domain_clean ?t,
+        Hin : In ?d (relevant_value ?t (⇑ ?t (d_proj _ ?m)) :: ?rs) |- domain_clean ?d =>
           eapply (nflds_cons_clean t m _ rs pre ns);
             [ apply IHT, env_clean_args; [ exact env_clean_nil | apply clean_app; eassumption ] | eassumption .. ]
       end ].
@@ -420,10 +444,9 @@ Section Transparent.
                      first [ destruct Hin
                            | apply List.in_combine_r, in_skipn_in in Hin; eapply clean_app_snoc; [ eassumption | eassumption | exact Hin ] ] ].
     all: try solve [ apply domain_clean_record; clean_prem ].
-    all: try solve [ eauto 4 with mctt ].
     (* an opaque definition or an axiom *)
-    all: try solve [ match goal with H : gc_resolve _ _ _ = Some (ge_def _ _ _ _), Ho : _ \/ _ |- _ =>
-         destruct (gc_transparent_resolve _ _ _ _ _ _ _ Htr H) end; intuition congruence ].
+    all: try solve [ match goal with H : gc_resolve _ _ _ = Some (ge_def _ _ _ _ _), Ho : _ \/ _ |- _ =>
+         destruct (gc_transparent_resolve _ _ _ _ _ _ _ _ Htr H) end; intuition congruence ].
     (* the [⊥]-eliminator, whose scrutinee is clean *)
     all: try solve [ match goal with H : env_clean ?ρ -> domain_clean (⇑ _ _), Hρ : env_clean ?ρ |- _ =>
         specialize (H Hρ); inversion_clear H end; eauto 7 with mctt ].
@@ -476,6 +499,11 @@ Section Transparent.
     (* a definition with a module part in a body: its term and its unit *)
     all: try solve [ apply env_clean_extend_dm; eauto 6 with mctt ].
     all: try solve [ match goal with Hin : In _ nil |- _ => destruct Hin end ].
+    (* an environment extended in a body *)
+    all: try solve [ first [ apply env_clean_extend | apply env_clean_extend_mod ]; auto ].
+    (* by the rules, shallowly, after the targeted clauses above, so that
+       it is not tried at the goals they close *)
+    all: try solve [ eauto 4 with mctt ].
     (* the rest: by the rules and the hypotheses *)
     all: eauto 6 with mctt.
   Qed.
@@ -485,6 +513,7 @@ Section Transparent.
   Ltac clean_val :=
     first [ assumption
           | solve [ eapply all_in_head; eassumption ]
+          | solve [ apply domain_clean_relevant_value; clean_val ]
           | solve [ constructor; [ clean_val | constructor ] ]
           | solve [ constructor; [ clean_val | assumption ] ]
           | solve [ constructor; all_in_with clean_val ] ].
@@ -522,7 +551,8 @@ Section Transparent.
       (forall a, In a as' -> domain_clean a) -> forall a, In a vs -> domain_clean a.
   Proof.
     induction 1; intros Ha; [ apply all_in_nil | | apply IHfresh_leaf_vars; all_in_with assumption ].
-    apply all_in_cons; [ constructor; [ apply Ha; left; reflexivity | constructor ] | apply IHfresh_leaf_vars; all_in_with assumption ].
+    apply all_in_cons; [ apply domain_clean_relevant_value; constructor; [ apply Ha; left; reflexivity | constructor ]
+                       | apply IHfresh_leaf_vars; all_in_with assumption ].
   Qed.
 
   Lemma fresh_ihs_clean : forall ρ A p ups Dc ρa gs' gs vs s ihs,
@@ -704,7 +734,8 @@ Section Transparent.
          | IH : context [ ne_clean ?W ] |- ne_clean ?W => apply IH
          | IH : context [ all_list _ ?W ] |- all_list _ ?W => apply IH
          end.
-    all: repeat first [ eassumption | apply env_clean_nil | constructor | apply env_clean_extend | apply env_clean_args
+    all: repeat first [ eassumption | apply env_clean_nil | apply domain_clean_relevant_value | constructor
+                      | apply env_clean_extend | apply env_clean_args
                       | eapply Hpjs; [ eassumption | ]
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] | eapply Hsh; [ eassumption | |] ].
   Qed.
@@ -712,7 +743,8 @@ Section Transparent.
   Lemma initial_env_clean : forall Γ ρ, initial_env Θ Ξ Γ ρ -> env_clean ρ.
   Proof.
     destruct eval_clean as (He & _ & _ & _ & Hm & _).
-    induction 1; eauto with mctt.
+    induction 1;
+      try (apply env_clean_extend; [ assumption | apply domain_clean_relevant_value ]); eauto with mctt.
   Qed.
 
   Theorem nbe_clean : forall Γ M A W, nbe Θ Ξ Γ M A W -> nf_clean W.

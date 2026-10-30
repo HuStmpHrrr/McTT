@@ -20,9 +20,9 @@ Import Domain_Notations.
     mutually, in the neutral [M]. *)
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
-  | nf_pi A B | nf_fn A B => nf_stuck G A /\ nf_stuck G B
+  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
   | nf_neut M => ne_stuck G M
   | nf_record _ Ms => all_list (nf_stuck G) Ms
@@ -30,7 +30,7 @@ Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   end
 with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
-  | ne_exfalso A M => nf_stuck G A /\ ne_stuck G M
+  | ne_absurd A => nf_stuck G A
   | ne_elim _ Us _ Bks M =>
       all_list (nf_stuck G) Us /\
       all_list (fun b => nf_stuck G (block_motive b) /\ all_list (fun br => nf_stuck G (branch_body br)) (block_branches b)) Bks /\
@@ -48,19 +48,27 @@ Proof. intros * H; apply level_atoms_all_all_list, level_atoms_all_sort, level_a
 (** A global that does not unfold: an opaque definition or an axiom. *)
 #[warnings="-cannot-define-projection"]
 Record gstuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop := mk_gstuck
-  { gstuck_transparent : bool
+  { (** Whether the definition is transparent *)
+    gstuck_transparent : bool
+    (** Whether it is private *)
   ; gstuck_private : bool
+    (** Its tag *)
+  ; gstuck_relevance : relevance
+    (** Its type *)
   ; gstuck_typ : typ
+    (** Its body, if any *)
   ; gstuck_body : option exp
-  ; gstuck_resolve : gc_resolve Θ Ξ p = Some (ge_def gstuck_transparent gstuck_private gstuck_typ gstuck_body)
+    (** It is what the global resolves to *)
+  ; gstuck_resolve : gc_resolve Θ Ξ p = Some (ge_def gstuck_transparent gstuck_private gstuck_relevance gstuck_typ gstuck_body)
+    (** It does not unfold *)
   ; gstuck_opaque : gstuck_transparent = false \/ gstuck_body = None }.
 
 Section Stuck.
   Variables (Θ : gdeps) (Ξ : gstack).
 
-  Lemma gstuck_intro : forall p b pv A B,
-      gc_resolve Θ Ξ p = Some (ge_def b pv A B) -> b = false \/ B = None -> gstuck Θ Ξ p.
-  Proof. intros * Hr Ho; exact (mk_gstuck _ _ _ _ _ _ _ Hr Ho). Qed.
+  Lemma gstuck_intro : forall p b pv r A B,
+      gc_resolve Θ Ξ p = Some (ge_def b pv r A B) -> b = false \/ B = None -> gstuck Θ Ξ p.
+  Proof. intros * Hr Ho; exact (mk_gstuck _ _ _ _ _ _ _ _ Hr Ho). Qed.
   #[local] Hint Resolve gstuck_intro : mctt.
 
 (** ** Values Whose Global Neutrals Are Stuck *)
@@ -69,8 +77,8 @@ Section Stuck.
     environments included, is stuck ([gstuck]); mutually, for the other
     sorts of values. *)
 Inductive domain_stuck : domain -> Prop :=
-(** A [Π]: its domain and its closure's environment *)
-| domain_stuck_pi : forall a (ρ : env) B, domain_stuck a -> (forall x, destuck (env_entry ρ x)) -> domain_stuck (Πᵈ a ρ B)
+(** A [Π] of either tag: its domain and its closure's environment *)
+| domain_stuck_pi : forall r a (ρ : env) B, domain_stuck a -> (forall x, destuck (env_entry ρ x)) -> domain_stuck (d_pi r a ρ B)
 (** A large universe *)
 | domain_stuck_univ : forall i, domain_stuck 𝕌ω@i
 (** A small universe: its level *)
@@ -79,14 +87,22 @@ Inductive domain_stuck : domain -> Prop :=
 | domain_stuck_level : forall n, domain_stuck (Levelᵈ@n)
 (** A level: its atoms *)
 | domain_stuck_lvl : forall c xs, level_atoms_stuck xs -> domain_stuck (lvᵈ c xs)
-(** The unit type *)
+(** [Prop] *)
+| domain_stuck_prop : domain_stuck Propᵈ
+(** The true proposition *)
 | domain_stuck_True : domain_stuck ⊤ᵈ
-(** The unit's element *)
+(** The proof *)
 | domain_stuck_true : domain_stuck ⋆ᵈ
-(** The empty type *)
+(** The false proposition *)
 | domain_stuck_False : domain_stuck ⊥ᵈ
-(** A λ: its closure's environment *)
-| domain_stuck_fn : forall (ρ : env) M, (forall x, destuck (env_entry ρ x)) -> domain_stuck (λᵈ ρ M)
+(** A [Σₚ]: its first component and its closure's environment *)
+| domain_stuck_and : forall a (ρ : env) Q, domain_stuck a -> (forall x, destuck (env_entry ρ x)) -> domain_stuck (Σₚᵈ a ρ Q)
+(** The placeholder type *)
+| domain_stuck_placeholder_type : domain_stuck d_placeholder_type
+(** Its element *)
+| domain_stuck_placeholder : domain_stuck d_placeholder
+(** A λ: its domain and its closure's environment *)
+| domain_stuck_fn : forall a (ρ : env) M, domain_stuck a -> (forall x, destuck (env_entry ρ x)) -> domain_stuck (λᵈ a ρ M)
 (** A neutral: its type and itself *)
 | domain_stuck_neut : forall a m, domain_stuck a -> domain_ne_stuck m -> domain_stuck (⇑ a m)
 (** A member of a module value: the module value *)
@@ -118,10 +134,8 @@ with domain_ne_stuck : domain_ne -> Prop :=
 | domain_stuck_glob : forall p, gstuck Θ Ξ p -> domain_ne_stuck (d_glob p)
 (** An application: its head and its argument *)
 | domain_stuck_app : forall m n, domain_ne_stuck m -> domain_nf_stuck n -> domain_ne_stuck (m $ᵈ n)
-(** A stuck [efq]: its environment and its scrutinee *)
-| domain_stuck_exfalso : forall (ρ : env) A m,
-    (forall x, destuck (env_entry ρ x)) -> domain_ne_stuck m ->
-    domain_ne_stuck (efqᵈ m under ρ return A)
+(** Ex falso: its type *)
+| domain_stuck_absurd : forall c, domain_stuck c -> domain_ne_stuck (efqᵈ c)
 (** A stuck eliminator: its environment, its uniform parameters, its
     parameters and its scrutinee *)
 | domain_stuck_elim : forall (ρ : env) Bks p ups j args m,
@@ -203,12 +217,15 @@ Proof. intros * H1 H2 a Ha; apply in_app_or in Ha as [Ha | Ha]; auto. Qed.
 Lemma nflds_cons_stuck : forall t m g rs pre ns,
     domain_stuck t -> (forall x, In x ns -> domain_stuck x) -> domain_ne_stuck m -> (forall x, In x pre -> domain_stuck x) ->
     ((forall x, In x ns -> domain_stuck x) -> domain_ne_stuck m ->
-       (forall y, In y (pre ++ ⇑ t (d_proj g m) :: nil) -> domain_stuck y) -> forall z, In z rs -> domain_stuck z) ->
-    forall d, In d (⇑ t (d_proj g m) :: rs) -> domain_stuck d.
+       (forall y, In y (pre ++ relevant_value t (⇑ t (d_proj g m)) :: nil) -> domain_stuck y) -> forall z, In z rs -> domain_stuck z) ->
+    forall d, In d (relevant_value t (⇑ t (d_proj g m)) :: rs) -> domain_stuck d.
 Proof.
-  intros * Ht Hns Hm Hpre IH d [<- | Hd]; [ constructor; [ exact Ht | constructor; exact Hm ] |].
+  intros * Ht Hns Hm Hpre IH.
+  assert (Hv : domain_stuck (relevant_value t (⇑ t (d_proj g m))))
+    by (unfold relevant_value; destruct (domain_relevance t); [ constructor; [ exact Ht | constructor; exact Hm ] | constructor ]).
+  intros d [<- | Hd]; [ exact Hv |].
   apply (IH Hns Hm); [| exact Hd ].
-  apply stuck_app_snoc; [ exact Hpre | constructor; [ exact Ht | constructor; exact Hm ] ].
+  apply stuck_app_snoc; [ exact Hpre | exact Hv ].
 Qed.
 
 Lemma env_stuck_entry : forall ρ x, env_stuck ρ -> destuck (env_entry ρ x).
@@ -229,6 +246,10 @@ Proof. induction 1; cbn; repeat constructor; assumption. Qed.
 Lemma level_atoms_stuck_app : forall xs ys, level_atoms_stuck xs -> level_atoms_stuck ys -> level_atoms_stuck (xs ++ ys).
 Proof. induction 1; cbn; intros; [ assumption | constructor; auto ]. Qed.
 
+(** A value or the proof in its place, by the sort of its type. *)
+Lemma domain_stuck_relevant_value : forall a v, domain_stuck v -> domain_stuck (relevant_value a v).
+Proof. intros * Hv; unfold relevant_value; destruct (domain_relevance a); [ exact Hv | constructor ]. Qed.
+
 Lemma domain_stuck_lvl_lit : forall n, domain_stuck (dlvl_lit n).
 Proof. intros; repeat constructor. Qed.
 
@@ -240,6 +261,9 @@ Proof. intros; unfold dlvl_max; constructor; apply level_atoms_stuck_app; apply 
 
 #[local] Hint Resolve env_stuck_nil env_stuck_extend env_stuck_extend_mod env_stuck_extend_dm env_stuck_var env_stuck_mod
   env_stuck_args stuck_app_snoc dmstuck_global_nil env_stuck_entry : mctt.
+(** [domain_stuck_relevant_value] is no hint: its conclusion matches a
+    goal about an unknown value, which [eauto] would then try at every
+    such goal.  The proofs apply it where the goal is a [relevant_value]. *)
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
     [Hint Resolve] their conclusions would match a goal about an unknown
@@ -314,7 +338,9 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
        (forall a, In a pre -> domain_stuck a) -> forall a, In a rs -> domain_stuck a) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> domain_stuck v -> forall a, In a ws -> domain_stuck a) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' -> ups_stuck ups ->
-       env_stuck ρm -> env_stuck ρ -> (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a).
+       env_stuck ρm -> env_stuck ρ -> (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a) /\
+    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> env_stuck ρ -> forall a, In a vs -> domain_stuck a) /\
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_stuck f -> env_stuck ρ -> domain_stuck r).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> domain_stuck m)
@@ -343,8 +369,15 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
                 (forall a, In a pre -> domain_stuck a) -> forall a, In a rs -> domain_stuck a)
              (fun fl v ws _ => domain_stuck v -> forall a, In a ws -> domain_stuck a)
              (fun p ups ρm As ρ gs vs as' _ => ups_stuck ups -> env_stuck ρm -> env_stuck ρ ->
-                (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a));
+                (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a)
+             (fun rs Ms ρ vs _ => env_stuck ρ -> forall a, In a vs -> domain_stuck a)
+             (fun f Ms ρ r _ => domain_stuck f -> env_stuck ρ -> domain_stuck r));
       intros; cbn [snd] in *.
+    (* a neutral evaluation builds: the proof [⋆ᵈ] at a proposition, else
+       the neutral ([eval_app_neut], [eval_elim_neut], [eval_exp_absurd]) *)
+    all: try match goal with |- domain_stuck (relevant_value _ _) => apply domain_stuck_relevant_value end.
+    all: try solve [ match goal with H : env_stuck ?ρ -> domain_stuck ?c, Hρ : env_stuck ?ρ |- domain_stuck (⇑ ?c (efqᵈ ?c)) =>
+                       specialize (H Hρ); constructor; [ exact H | constructor; exact H ] end ].
     (* records: a type former's arguments, a tuple's fields, and the
        projections of a neutral at their types *)
     all: try solve [ apply domain_stuck_record; intros ? [] ].
@@ -375,7 +408,8 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
       end ].
     all: try solve [ match goal with Hin : In _ nil |- _ => destruct Hin end ].
     all: try solve [ match goal with
-      | IHT : env_stuck (env_args nil (?ns ++ ?pre)) -> domain_stuck ?t, Hin : In ?d (⇑ ?t (d_proj _ ?m) :: ?rs) |- domain_stuck ?d =>
+      | IHT : env_stuck (env_args nil (?ns ++ ?pre)) -> domain_stuck ?t,
+        Hin : In ?d (relevant_value ?t (⇑ ?t (d_proj _ ?m)) :: ?rs) |- domain_stuck ?d =>
           eapply (nflds_cons_stuck t m _ rs pre ns);
             [ apply IHT, env_stuck_args; [ exact env_stuck_nil | apply stuck_app; eassumption ] | eassumption .. ]
       end ].
@@ -472,7 +506,8 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
                      first [ destruct Hin
                            | apply List.in_combine_r, in_skipn_in in Hin; eapply stuck_app_snoc; [ eassumption | eassumption | exact Hin ] ] ].
     all: try solve [ apply domain_stuck_record; stuck_prem ].
-    all: try solve [ eauto 4 with mctt ].
+    (* the values the rules build of stuck parts *)
+    all: try solve [ constructor ].
     (* the [⊥]-eliminator, whose scrutinee is stuck *)
     all: try solve [ match goal with H : env_stuck ?ρ -> domain_stuck (⇑ _ _), Hρ : env_stuck ?ρ |- _ =>
         specialize (H Hρ); inversion_clear H end; eauto 7 with mctt ].
@@ -525,6 +560,19 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
     all: try solve [ match goal with IH : dmstuck ?h1 -> _ -> dmstuck ?r, IH1 : dmstuck ?h -> domain_stuck ?n -> dmstuck ?h1,
                       Ha : forall a, In a (cons ?n _) -> domain_stuck a |- dmstuck ?r =>
         apply IH; [ apply IH1; [ assumption | apply Ha; left; reflexivity ] | intros; apply Ha; right; assumption ] end ].
+    (* a neutral applied, its type and parts inverted above: the neutral at
+       the codomain's instance *)
+    all: try solve [ match goal with H : env_stuck (?ρ ↦ ?n) -> domain_stuck ?b, Hn : domain_stuck ?n, Hm : domain_ne_stuck ?m,
+                       Ha : domain_stuck ?a |- domain_stuck (⇑ ?b (?m $ᵈ ⇓ ?a ?n)) =>
+                       apply domain_stuck_neut; [ apply H, env_stuck_extend; [ assumption | exact Hn ]
+                                                | apply domain_stuck_app; [ exact Hm | apply domain_stuck_dom; assumption ] ] end ].
+    (* a definition and a submodule of a body: the entries before it, then
+       its value *)
+    all: try solve [ apply env_stuck_extend; eauto 3 with mctt ].
+    all: try solve [ apply env_stuck_extend_mod; eauto 3 with mctt ].
+    (* by the rules, shallowly, after the targeted clauses above, so that
+       it is not tried at the goals they close *)
+    all: try solve [ eauto 4 with mctt ].
     (* the rest: by the rules and the hypotheses *)
     all: eauto 6 with mctt.
   Qed.
@@ -534,6 +582,7 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
   Ltac stuck_val :=
     first [ assumption
           | solve [ eapply all_in_head; eassumption ]
+          | solve [ apply domain_stuck_relevant_value; stuck_val ]
           | solve [ constructor; [ stuck_val | constructor ] ]
           | solve [ constructor; [ stuck_val | assumption ] ]
           | solve [ constructor; all_in_with stuck_val ] ].
@@ -571,7 +620,8 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
       (forall a, In a as' -> domain_stuck a) -> forall a, In a vs -> domain_stuck a.
   Proof.
     induction 1; intros Ha; [ apply all_in_nil | | apply IHfresh_leaf_vars; all_in_with assumption ].
-    apply all_in_cons; [ constructor; [ apply Ha; left; reflexivity | constructor ] | apply IHfresh_leaf_vars; all_in_with assumption ].
+    apply all_in_cons; [ apply domain_stuck_relevant_value; constructor; [ apply Ha; left; reflexivity | constructor ]
+                       | apply IHfresh_leaf_vars; all_in_with assumption ].
   Qed.
 
   Lemma fresh_ihs_stuck : forall ρ A p ups Dc ρa gs' gs vs s ihs,
@@ -755,7 +805,8 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
          | IH : context [ ne_stuck (gstuck Θ Ξ) ?W ] |- ne_stuck (gstuck Θ Ξ) ?W => apply IH
          | IH : context [ all_list _ ?W ] |- all_list _ ?W => apply IH
          end.
-    all: repeat first [ eassumption | apply env_stuck_nil | constructor | apply env_stuck_extend | apply env_stuck_args
+    all: repeat first [ eassumption | apply env_stuck_nil | apply domain_stuck_relevant_value | constructor
+                      | apply env_stuck_extend | apply env_stuck_args
                       | eapply Hpjs; [ eassumption | ]
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] | eapply Hsh; [ eassumption | |] ].
   Qed.
@@ -763,7 +814,8 @@ with stuck_one := first [ stuck_prem | solve [ constructor; stuck_prem ] ].
   Lemma initial_env_stuck : forall Γ ρ, initial_env Θ Ξ Γ ρ -> env_stuck ρ.
   Proof.
     destruct eval_stuck as (He & _ & _ & _ & Hm & _).
-    induction 1; eauto with mctt.
+    induction 1;
+      try (apply env_stuck_extend; [ assumption | apply domain_stuck_relevant_value ]); eauto with mctt.
   Qed.
 
   Theorem nbe_stuck : forall Γ M A W, nbe Θ Ξ Γ M A W -> nf_stuck (gstuck Θ Ξ) W.

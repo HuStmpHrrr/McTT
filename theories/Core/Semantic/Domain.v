@@ -34,8 +34,10 @@ From Mctt.Core.Syntactic Require Export Syntax.
     ([Core.Base]), so [domain_ind] carries the hypotheses about the values
     they hold. *)
 Inductive domain : Set :=
-(** [d_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
-| d_pi : domain -> list dentry -> exp -> domain
+(** [d_pi r a ρ B]: a [Π] at the relevance [r] (a type when [relevant], a
+    proposition when [propositional]) with domain [a], its codomain [B] a
+    closure in [ρ] *)
+| d_pi : relevance -> domain -> list dentry -> exp -> domain
 (** A large universe *)
 | d_univ : nat -> domain
 (** A small universe at a level value.  The level is a value of type [Level],
@@ -50,14 +52,25 @@ Inductive domain : Set :=
     view ([dlvl_view]) of their arguments, where the neutral is an atom of
     sort [n]. *)
 | d_lvl : o2 -> list (nat * nat * domain_ne) -> domain
+(** [Prop] *)
+| d_prop : domain
 (** [⊤] *)
 | d_True : domain
-(** Its element *)
+(** The proof [⋆]: the value of every proof *)
 | d_true : domain
 (** [⊥] *)
 | d_False : domain
-(** [d_fn ρ M]: a function, its body a closure in [ρ] *)
-| d_fn : list dentry -> exp -> domain
+(** [d_and p ρ Q]: a [Σₚ] with first component [p], its second [Q] a
+    closure in [ρ] *)
+| d_and : domain -> list dentry -> exp -> domain
+(** The placeholder type *)
+| d_placeholder_type : domain
+(** Its element, and the value read past the end of an environment *)
+| d_placeholder : domain
+(** [d_fn a ρ M]: a function with domain [a], its body a closure in
+    [ρ].  It keeps its domain so that an application can tell whether its
+    argument is a proof, which is never evaluated. *)
+| d_fn : domain -> list dentry -> exp -> domain
 (** [d_neut a m]: a neutral [m] at the type [a] *)
 | d_neut : domain -> domain_ne -> domain
 (** A term member of a module still lacking arguments (see above) *)
@@ -110,8 +123,9 @@ with domain_ne : Set :=
 | d_var : forall (x : nat), domain_ne
 (** A neutral applied to a normal argument *)
 | d_app : domain_ne -> domain_nf -> domain_ne
-(** The [⊥]-eliminator on a neutral, with its motive as a closure. *)
-| d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
+(** Ex falso at the type [c]: it holds no proof, so it is stuck on
+    nothing, a closed neutral. *)
+| d_absurd : domain -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : qname -> domain_ne
 (** [d_elim ρ Bks p ups m as m']: the eliminator of the group at [p] at
@@ -149,12 +163,12 @@ Derive NoConfusion for domain domain_ne domain_nf dmod dentry.
     and their entries under a selection, which needs these. *)
 Derive NoConfusion for gmod gentry.
 
-(** The entry of the variable [#x], or the term [⋆ᵈ] past the end of the
+(** The entry of the variable [#x], or the placeholder past the end of the
     list.  [env_entry] is [nth], but defined by recursion on the index so that
     [ρ↯ x] is [ρ (S x)] by conversion. *)
 Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
   match x with
-  | 0 => List.hd (de_term d_true) ρ
+  | 0 => List.hd (de_term d_placeholder) ρ
   | S x' => env_entry (List.tl ρ) x'
   end.
 
@@ -168,7 +182,7 @@ Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
   | de_term d => d
-  | de_mod _ => d_true
+  | de_mod _ => d_placeholder
   | de_dm d _ => d
   end.
 #[warning="-uniform-inheritance"]
@@ -181,11 +195,11 @@ Definition env_mod (ρ : env) (x : nat) : dmod :=
   | de_dm _ m => m
   end.
 
-Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ (de_term d_true).
+Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ (de_term d_placeholder).
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
 Lemma env_var_nth : forall ρ x,
-    env_var ρ x = match List.nth x ρ (de_term d_true) with de_term d | de_dm d _ => d | de_mod _ => d_true end.
+    env_var ρ x = match List.nth x ρ (de_term d_placeholder) with de_term d | de_dm d _ => d | de_mod _ => d_placeholder end.
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
 Definition extend_env (ρ : env) (d : domain) : env := de_term d :: ρ.
@@ -229,16 +243,19 @@ Module Domain_Notations.
   Notation "'Levelᵈ'" := (d_level 0) : mctt_scope.
   Notation "'lvᵈ' c xs" := (d_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvᵈ' c  xs") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
+  Notation "'Propᵈ'" := d_prop : mctt_scope.
   Notation "'⊤ᵈ'" := d_True : mctt_scope.
   Notation "'⋆ᵈ'" := d_true : mctt_scope.
   Notation "'⊥ᵈ'" := d_False : mctt_scope.
-  Notation "'λᵈ' ρ M" := (d_fn ρ M) (at level 2, ρ at level 1, M at level 9) : mctt_scope.
-  Notation "'Πᵈ' a ρ B" := (d_pi a ρ B) (at level 2, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
+  Notation "'λᵈ' a ρ M" := (d_fn a ρ M) (at level 2, a at level 1, ρ at level 1, M at level 9) : mctt_scope.
+  Notation "'∀ₚᵈ' a ρ P" := (d_pi propositional a ρ P) (at level 2, a at level 1, ρ at level 0, P at level 9) : mctt_scope.
+  Notation "'Σₚᵈ' p ρ Q" := (d_and p ρ Q) (at level 2, p at level 1, ρ at level 0, Q at level 9) : mctt_scope.
+  Notation "'Πᵈ' a ρ B" := (d_pi relevant a ρ B) (at level 2, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
   Notation "'⇑' a m" := (d_neut a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇓' a m" := (d_dom a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇑!' a n" := (d_neut a (d_var n)) (at level 2, a at level 1, n at level 0) : mctt_scope.
   Notation "m '$ᵈ' n" := (d_app m n) (at level 10, left associativity, format "m  $ᵈ  n") : mctt_scope.
-  Notation "'efqᵈ' m 'under' ρ 'return' P" := (d_exfalso ρ P m) (at level 2, m at level 60, ρ at level 60, P at level 60) : mctt_scope.
+  Notation "'efqᵈ' c" := (d_absurd c) (at level 2, c at level 60) : mctt_scope.
 
   Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
   Notation "ρ '↦ᵐ' m" := (extend_env_mod ρ m) (at level 20, left associativity) : mctt_scope.
@@ -256,6 +273,27 @@ Definition universe_index_value (u : universe_index) : domain :=
     the default is never used. *)
 Definition domain_level_sort (a : domain) : nat :=
   match a with d_level n => n | _ => 0 end.
+
+(** ** The Sort of a Type Value
+
+    The sort of a type value is read from its head, with no evaluation:
+    [⊤], [⊥], a [Σₚ] and a neutral at [Prop] are propositions, a [Π] is of
+    its tag's relevance; every other value is relevant.  Relevance-directed
+    evaluation never evaluates a term of a propositional type: it puts the
+    proof [⋆ᵈ] in its place. *)
+Definition domain_relevance (a : domain) : relevance :=
+  match a with
+  | d_pi r _ _ _ => r
+  | d_True | d_False | d_and _ _ _ | d_neut d_prop _ => propositional
+  | _ => relevant
+  end.
+
+(** A case whose premise gives a value with a known head the wrong
+    relevance is impossible: inversions leave such cases, and [mauto]
+    closes them. *)
+#[export]
+Hint Extern 1 =>
+  match goal with H : domain_relevance _ = _ |- _ => progress cbn in H; discriminate H end : mctt.
 
 (** The flat view of a value of type [Level]: a flat level is its own view, and
     a neutral is the single atom [(0, n, m)] at the sort of its type.  No other
@@ -372,8 +410,8 @@ Proof. reflexivity. Qed.
 
     Two environments are equal when they agree at every index, entry by entry.  Evaluating a
     substitution determines its result only up to this equality, since a list
-    can end in any number of [⋆ᵈ]s.  Evaluation does not respect it, because
-    [λᵈ ρ M] carries its environment; values from pointwise-equal environments
+    can end in any number of placeholders.  Evaluation does not respect it, because
+    [λᵈ a ρ M] carries its environment; values from pointwise-equal environments
     are related by the PER model instead. *)
 Definition env_eq : relation env := fun ρ ρ' => forall x, env_entry ρ x = env_entry ρ' x.
 
@@ -508,7 +546,7 @@ Proof.
   rewrite List.seq_nth, env_entry_nth by assumption; reflexivity.
 Qed.
 
-Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = de_term d_true.
+Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = de_term d_placeholder.
 Proof.
   intros; rewrite env_entry_nth; apply List.nth_overflow; assumption.
 Qed.
@@ -533,7 +571,7 @@ Proof. intros * Hφ x; unfold env_mod; rewrite eval_wk_entry by assumption; refl
 Lemma env_ext : forall ρ ρ', List.length ρ = List.length ρ' ->
     (forall x, x < List.length ρ -> env_entry ρ x = env_entry ρ' x) -> ρ = ρ'.
 Proof.
-  intros * Hl H; apply (List.nth_ext _ _ (de_term d_true) (de_term d_true)); [ assumption |].
+  intros * Hl H; apply (List.nth_ext _ _ (de_term d_placeholder) (de_term d_placeholder)); [ assumption |].
   intros; rewrite <- !env_entry_nth; auto.
 Qed.
 

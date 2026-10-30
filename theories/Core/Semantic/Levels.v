@@ -104,7 +104,7 @@ Lemma dlvl_canon_of_read : forall s l L,
     Rnf ⇓ Levelᵈ l in s ↘ L ->
     dlvl_shape l /\ exists L', L = nf_lvl_of L' /\ dlvl_canon s l L'.
 Proof.
-  inversion 1; subst.
+  inversion 1; subst; try solve [ exfalso; clear_wrong_relevance ].
   - split; [ constructor |].
     eexists (lvl_canon (_, _)); split; [ reflexivity |].
     eexists; split; [ eassumption | reflexivity ].

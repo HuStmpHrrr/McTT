@@ -111,6 +111,18 @@ These are the ways an edit to a tactic goes wrong silently.
   is one has a `…_pred` definition beside it, and the automation reaches the
   pair through a pattern-less `Hint Extern` (`Soundness/LogicalRelation/Definitions.v`):
   a pattern headed by a definition never fires.
+- **No judgment under an `exists` in a rule premise.** The generated mutual
+  induction scheme gives no induction hypothesis for a judgment nested under
+  `exists`. Without one, `wk_preserves_wf` / `sub_preserves_wf` cannot move
+  the rule along an operation, because that would need the lemma being
+  proved. Bind the witness in the rule instead, and quantify only with
+  `forall`. Precedent: the relevant-only parameter premises of
+  `wf_unit_eq_body`/`alias`/`flatten`, `wf_gentry_ind_nil` and
+  `wf_gentry_record`. They read `forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
+  … ⊢ T : Typeω@param_level`, with one level bound by the rule, not
+  `exists i, … ⊢ T : Typeω@i`. One level loses nothing by cumulativity: the
+  producer takes a common upper bound. `entry_sort` in `wf_unit_eq_body` is
+  the function-valued form of the same idea.
 
 ## 4. Cost discipline
 

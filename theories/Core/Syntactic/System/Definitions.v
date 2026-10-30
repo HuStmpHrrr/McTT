@@ -98,11 +98,12 @@ where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
     member types in [Members]). *)
 
 (** Two bodies compared entry by entry: the same names and kinds in the same
-    order, the same privacy, and transparent definitions with a body; and
-    local opens at the same places, with the same items. *)
+    order, the same privacy, and transparent definitions with a body, of
+    the same sort; and local opens at the same places, with the same
+    items. *)
 Definition entry_shape (E E' : gentry) : Prop :=
   match E, E' with
-  | ge_def b pv _ (Some _), ge_def b' pv' _ (Some _) => b = true /\ b' = true /\ pv = pv'
+  | ge_def b pv r _ (Some _), ge_def b' pv' r' _ (Some _) => b = true /\ b' = true /\ pv = pv' /\ r = r'
   | ge_mod pv _, ge_mod pv' _ => pv = pv'
   | ge_def_mod pv _ _ _, ge_def_mod pv' _ _ _ => pv = pv'
   | _, _ => False
@@ -116,10 +117,53 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   | _, _ => False
   end.
 
-(** The annotation of a local definition, if any, is the type it is checked
-    at; without one, the type is any its body has. *)
-Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some A.
+(** The sorts of the types: a type is in a large universe, or is a
+    proposition, in [Prop].  [type_sort S] says that [S] is one of them, so
+    [Θ ⍮ Ξ ⍮ Γ ⊢ A : S] with [type_sort S] says that [A] is a type.  A
+    proposition is in no universe ([Prop] sits beside the cumulative
+    hierarchy), so a rule that takes a type of either sort takes its sort
+    as a premise. *)
+Inductive type_sort : exp -> Prop :=
+(** A large universe: the types of the universes *)
+| type_sort_universe : forall i, type_sort (Typeω@i)
+(** [Prop]: the propositions *)
+| type_sort_prop : type_sort Propₘ.
 
+(** The sort a declaration's part of the relevance [r] is checked at: the
+    declaration's own sort [S] when it is relevant, [Prop] when it is a
+    proposition. *)
+Definition relevance_sort (r : relevance) (S : exp) : exp :=
+  match r with relevant => S | propositional => Propₘ end.
+
+(** The sort at a relevance, moved: [Prop] stays. *)
+Lemma relevance_sort_sub : forall r S σ, (relevance_sort r S)[σ] = relevance_sort r S[σ].
+Proof. intros [] *; reflexivity. Qed.
+
+Lemma relevance_sort_wk : forall r S φ, (relevance_sort r S)[φ]ʷ = relevance_sort r S[φ]ʷ.
+Proof. intros [] *; reflexivity. Qed.
+
+(** It is a sort when [S] is. *)
+Lemma type_sort_relevance : forall r S, type_sort S -> type_sort (relevance_sort r S).
+Proof. intros [] * HS; [ exact HS | constructor ]. Qed.
+
+#[export]
+Hint Resolve type_sort_relevance : mctt.
+
+(** The sorts the domain of a [Π] in the universe [U] may have: [U]
+    itself, or [Prop], a [Π] out of a proposition.  The [Π]'s own sort is
+    [U] or [Prop] by its relevance tag, independently of the domain's. *)
+Inductive pi_domain_sort (U : exp) : exp -> Prop :=
+(** The domain is in the universe [U]. *)
+| pi_domain_universe : pi_domain_sort U U
+(** The domain is a proposition. *)
+| pi_domain_prop : pi_domain_sort U Propₘ.
+(** The annotation of a local definition, if any, is the type it is checked
+    at, of the sort [S]; without one, the type is any its body has, and it
+    is a type of a universe: evaluation, which cannot see types, evaluates
+    an unannotated definition, and evaluates no proof.  The typed fill
+    annotates every local definition, so a proof is always annotated. *)
+Definition let_ann (oA : option typ) (A : typ) (S : typ) : Prop :=
+  (oA = None /\ exists i, S = Typeω@i) \/ oA = Some A.
 (** A rank [rk] of the members of a group [D]: [0] at a declared member,
     and below a view's at every member the view nests through in any block
     the eliminator at the view reads (one per member [i'] of the
@@ -226,17 +270,21 @@ Inductive wf_ctx : gdeps -> gstack -> ctx -> Prop :=
   `( ⊢ᵍ Θ ⍮ Ξ ->
      ⊢ Θ ⍮ Ξ ⍮ ⋅ )
 | wf_ctx_extend :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A )
 | wf_ctx_extend_def :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M )
 (** A module slot holds a well-formed unit. *)
 | wf_ctx_extend_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U )
-(** A definition with a module part: a definition and a module slot. *)
+(** A definition with a module part: a definition and a module slot.  Its
+    type is a type of a universe: what has a module part is never a
+    proof. *)
 | wf_ctx_extend_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -275,23 +323,75 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N : Level@n )
-(** The unit type is small, at the least level. *)
+(** The universe of propositions is a small type, at the least level.  A
+    proposition is a type, but no universe [Type@{L}] contains it. *)
+| wf_prop :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Type@0 )
+(** The true proposition. *)
 | wf_True :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@0 )
-(** The unit's only element. *)
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Propₘ )
+(** Its proof. *)
 | wf_true :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤ )
-(** The empty type is small, at the least level. *)
+(** The proof [⋆] proves every proposition that has a proof: proofs are
+    irrelevant, and [⋆] is the normal form of every proof. *)
+| wf_star :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : P )
+(** The false proposition. *)
 | wf_False :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@0 )
-(** Elimination of the empty type, at a motive over it. *)
-| wf_exfalso :
-  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Propₘ )
+(** Ex falso: a proof of [⊥] is a term of every type, of either sort. *)
+| wf_absurd :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ C : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A : A[Id,,M] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return C : C )
+(** The dependent conjunction of propositions. *)
+| wf_and :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q : Propₘ )
+(** The proof of a conjunction [T] from proofs of its components; [T] is
+    the annotation, a conjunction.  [T] is premised to be a proposition,
+    as the type of [wf_tuple] is: reflexivity at a proof is proof
+    irrelevance, which needs its type typed before substitution is. *)
+| wf_conj :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ T : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ Σₚ P Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : Q[Id,,M] ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_conj T M N : T )
+(** The proof of the first component of a conjunction. *)
+| wf_left :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ P Q ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_left M : P )
+(** The proof of the second component, at the first.  Its type is
+    premised to be a proposition, as for [wf_conj]. *)
+| wf_right :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ P Q ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Q[Id,,a_left M] : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_right M : Q[Id,,a_left M] )
+(** The placeholder type, small at the least level, the type of a slot no
+    term reads. *)
+| wf_placeholder_type :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : Type@0 )
+(** Its element. *)
+| wf_placeholder :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder : a_placeholder_type )
 (** The type former of a declared member of a group of inductive types, of
     the type the declaration gives: a [Π] over its parameters of the
     sort. *)
@@ -332,7 +432,9 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     of [j].  The parameters are typed one by one, at the instances of their
     telescope.  The eliminator carries the uniform parameters [Us], those
     of the scrutinee's type: the scrutinee and each annotated block are at
-    the members' types at them.  The record views have no block (there are
+    the members' types at them.  The motives are all of one sort [S]: all
+    types of a universe, or all propositions (then the eliminator is a
+    proof, never evaluated); no elimination mixes the two.  The record views have no block (there are
     [ind_nblk D] blocks, for the members before them), and a recursive
     argument at a record view has the results of its fields' leaf paths.
     The premises on the motives' and the branches' contexts range over
@@ -356,46 +458,58 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
      (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                     ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
-(** A [Π] is in a universe its domain and codomain are in, small or large.
-    The codomain's universe is the weakening of the domain's: a universe that
-    mentions the bound variable has no name here. *)
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+(** A [Π] of the sort [r]: at [relevant] a type of functions, in a
+    universe its domain and codomain are in, small or large, or out of a
+    proposition (a function of a proof); at [propositional] the
+    impredicative [∀], over a type of any universe or a proposition, into
+    a family of propositions.  The codomain's universe is the weakening of
+    the domain's: a universe that mentions the bound variable has no name
+    here. *)
 | wf_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : U[↑]ʷ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : U )
-(** A λ-abstraction, over a type. *)
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     pi_domain_sort U Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : (relevance_sort r U)[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B : relevance_sort r U )
+(** A λ-abstraction, over a type of either sort, into a type of the sort
+    [r]: a function, or a proof of a [∀]. *)
 | wf_fn :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : Π A B )
-(** An application, at the codomain instantiated by the argument. *)
+     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : a_pi r A B )
+(** An application, at the codomain instantiated by the argument: of a
+    function, or of a proof of a [∀]. *)
 | wf_app :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
-(** A local definition, of its annotated type or of a type its body has. *)
+(** A local definition, of its annotated type or of a type of a universe
+    its body has. *)
 | wf_let :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
-     let_ann oA A ->
+     let_ann oA A Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : C[Id,,M] )
 (** A local module occupies one index, a slot holding its unit.  The body's
     type is premised to be a type, as the canonical type of [wf_mem] is:
@@ -403,7 +517,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     sides then meet at that type. *)
 | wf_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C[Id ,,ₘ me_lit U] )
 (** A member: the module expression is well formed and looks the member up
@@ -417,7 +532,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
      mdesc_type R = Some A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
      (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
 (** A variable, at the type the context gives it. *)
@@ -431,7 +547,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     the derivation: the field names are distinct, the parameters are
     assumptions, the type is a closed type, the fields' context is well
     formed, the sort is a universe over the parameters, and each field is
-    a type in the sort over the fields before it and the parameters. *)
+    a type in the sort, or a proposition, as its stored relevance says,
+    over the fields before it and the parameters. *)
 | wf_record :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      record_lookup Θ Ξ p = Some R ->
@@ -441,7 +558,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
      Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
      (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
+     List.length (record_field_relevance R) = List.length (record_fields R) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R )
 (** An element of a record type [T], the type former at the parameters
     [Ns]: the fields by name in the declaration's order, each at its type
@@ -470,7 +588,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
         Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
      List.nth_error (record_fields R) k = Some (f, U) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)] )
 (** Subsumption: a term is at every type above its type. *)
 | wf_exp_subtyp :
@@ -480,7 +599,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
          [Γ ⊢ Typeω@0[↑]ʷ : Typeω@1] underivable, since weakening it would require
          [Γ ⊢ Typeω@1[↑]ʷ : Typeω@2], which requires [Γ ⊢ Typeω@2[↑]ʷ : Typeω@3], and
          so on. *)
-     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ M : A" := (wf_exp Θ Ξ Γ A M) : type_scope
@@ -545,20 +665,37 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_maxl_succl :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ maxl M (succl M) ≈ succl M : Level@n )
+(** The congruences at the propositions: of a proof, (irr) is the
+    congruence. *)
+| wf_exp_eq_prop_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ≈ Propₘ : Type@0 )
 | wf_exp_eq_True_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@0 )
-| wf_exp_eq_true_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ ≈ ⋆ : ⊤ )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Propₘ )
 | wf_exp_eq_False_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@0 )
-| wf_exp_eq_exfalso_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A ≈ efq M' return A' : A[Id,,M] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Propₘ )
+(** Ex falso at equal types, its proofs typed and otherwise irrelevant. *)
+| wf_exp_eq_absurd_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ C : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ C ≈ C' : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M' : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return C ≈ efq M' return C' : C )
+| wf_exp_eq_and_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q ≈ Q' : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q ≈ Σₚ P' Q' : Propₘ )
+(** The placeholder type and its element, each equal to itself. *)
+| wf_exp_eq_placeholder_type_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ≈ a_placeholder_type : Type@0 )
+| wf_exp_eq_placeholder_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder ≈ a_placeholder : a_placeholder_type )
 | wf_exp_eq_ind_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
@@ -603,16 +740,16 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
      (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : relevance_sort r Typeω@i) ->
      (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k b b', List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
         List.map fst (eb_brs b) = List.map fst (eb_brs b')) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                     ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
@@ -620,34 +757,39 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         List.nth_error Bks' k = Some b' ->
         nth_error (eb_brs b) i = Some (c, n, B) -> nth_error (eb_brs b') i = Some (c, n, B') ->
         ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
+        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
           : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M ≈ a_elim oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M ≈ a_elim r oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : U[↑]ʷ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : U )
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     pi_domain_sort U Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : (relevance_sort r U)[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B ≈ a_pi r A' B' : relevance_sort r U )
 | wf_exp_eq_fn_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : Π A B )
+     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : a_pi r A B )
 | wf_exp_eq_app_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Π A B ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
 | wf_exp_eq_let_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
-     let_ann oA A ->
-     let_ann oA' A' ->
+     let_ann oA A Srt ->
+     let_ann oA' A' Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ a_let (b_def oA' M') B' : C[Id,,M] )
 (** The right-hand side is typed in its own context, which differs from the
     left's by the unit. *)
@@ -674,8 +816,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ #x : A )
 (** *** Computation rules *)
 | wf_exp_eq_pi_beta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] )
@@ -704,24 +847,24 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
      (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                     ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
-                          elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
+                          elim_ihs r p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                           apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                             (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] )
@@ -750,22 +893,22 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
      (forall k Mk, ind_member D k = Some Mk ->        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                     ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M
-       ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-           (view_wrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M
+       ≈ a_elim r (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
+           (view_wrap r p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A constructor of a view at the group's uniform parameters [Us] is the
     container's constructor at the view's arguments there, both sides at
@@ -793,15 +936,17 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
-     let_ann oA A ->
+     let_ann oA A Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : C[Id,,M] )
 (** [ζ] for local modules: the slot is replaced by the unit. *)
 | wf_exp_eq_let_mod_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
@@ -821,13 +966,21 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ M : A )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : Π A B )
-| wf_exp_eq_true_eta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊤ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ ⋆ : ⊤ )
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : a_pi r A B )
+(** η for the placeholder type: its element is the only one. *)
+| wf_exp_eq_placeholder_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : a_placeholder_type ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ a_placeholder : a_placeholder_type )
+(** Proof irrelevance: two proofs of a proposition are equal. *)
+| wf_exp_eq_irrelevant :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M' : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : P )
 (** *** Records *)
 (** The record type former is equal to itself, with the premises of
     [wf_record]. *)
@@ -840,7 +993,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
      Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
      (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
+     List.length (record_field_relevance R) = List.length (record_fields R) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_record p ≈ a_record p : record_ty R )
 (** Record elements of equal types with equal fields, both sides typed.
     The parameters are typed and the field names are the declaration's, as
@@ -876,7 +1030,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
         Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
      List.nth_error (record_fields R) k = Some (f, U) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M ≈ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)] )
 (** Field-β: the field of a record element is its first field so named.
@@ -901,7 +1056,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** *** Subsumption and the PER rules *)
 | wf_exp_eq_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
+     type_sort Srt ->
      (** This premise mirrors the one of [wf_exp_subtyp]. *)
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A' )
@@ -919,8 +1075,9 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
 | wf_subtyp_refl :
   (** This premise lets the presupposition lemmas be proved independently: it
       gives presupposition for the right-hand side directly. *)
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ M' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M' : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ⊆ M' )
 | wf_subtyp_trans :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ⊆ M' ->
@@ -952,10 +1109,14 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ ⊆ Typeω@i )
+(** Π types with relevant codomains are covariant in the codomain, out of
+    equal domains of a type sort.  Propositional Π types are propositions,
+    so they are only related by [wf_subtyp_refl]. *)
 | wf_subtyp_pi :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
+     pi_domain_sort Typeω@i Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
@@ -993,17 +1154,19 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ ⋅ ≈ ⋅ )
 | wf_ext_eq_ass :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' )
 | wf_ext_eq_def :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M ≈ M' : A ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ M' : A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M' )
 | wf_ext_eq_mod :
@@ -1042,8 +1205,10 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_
     part ([entry_tm]) as a definition is, and its module part
     ([entry_unit]) as a module is, so a definition with a module part is
     compared as both.  Every entry can be filled in:
-    a local body has no bodiless definition and no inductive type.  The
-    level of the type of the definition named [y] is [lv y]. *)
+    a local body has no bodiless definition and no inductive type.
+    [entry_sort y] is the sort of definition [y]'s type: a large universe
+    or [Prop] by the entry's relevance tag ([entry_relevance]) on either
+    side, as for a global definition. *)
 with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
 | wf_unit_eq_body :
   `( body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
@@ -1051,16 +1216,21 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' ->
+     (forall y, type_sort (entry_sort y)) ->
+     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+        exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : entry_sort y) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] ≈ A'[σ'] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] ≈ A'[σ'] : entry_sort y) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -1080,7 +1250,7 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-        Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ A'[σ'] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ A'[σ'] : entry_sort y) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -1109,6 +1279,11 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      body_shape Φ Φ' ->
      body_shape Φx Φx' ->
      List.NoDup (gm_names Φ) ->
+     (** The parameters of both sides are types of a universe, not
+         propositions: [param_level] is a level containing every parameter
+         type; by cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
+     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' )
 | wf_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
@@ -1116,6 +1291,11 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      tele_ass Δ' ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E' ->
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ E' ≈ E' ->
+     (** The parameters of both sides are types of a universe:
+         [param_level] is a level containing every parameter type; by
+         cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
+     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
 (** An alias of a literal is the literal over both telescopes, the alias's
     outermost: the merge lookup performs ([udenote_alias], [mdesc_up]).  The
@@ -1125,6 +1305,10 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ ->
      tele_ass Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
+     (** The outer parameters are types of a universe: [param_level] is a
+         level containing every parameter type; by cumulativity any common
+         upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D )
 | wf_unit_eq_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
@@ -1247,12 +1431,15 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
     is the entry's own module path, which a nested module's frame is named by. *)
 
 with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
-(** A definition or an axiom: its type is a type, and its body, if it has
-    one, carries the type. *)
+(** A definition or an axiom: its type is a type, or a proposition when
+    the tag [r] is [propositional], and its body, if it has one, carries
+    the type.  It is filed generalized over the parameters by Π types at
+    the tag ([ctx_pi_at r]), so that a propositional member stays a
+    proposition. *)
 | wf_gentry_def :
-  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
      (forall M, oM = Some M -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A) ->
-     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) (option_map (ctx_fn (gs_tele Ξ)) oM) )
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (option_map (ctx_fn (gs_tele Ξ)) oM) )
 (** An internal module, under the parameters [Δ'] it declares. *)
 | wf_gentry_mod :
   `( Θ ⍮ Ξ ⍮ mp ⍮ fk_module ⍮ Δ' ⊢ᵍᵐ Φ ->
@@ -1264,6 +1451,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
   `( tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+     (** The parameters are types of a universe, as a unit's are:
+         [param_level] is a level containing every parameter type; by
+         cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A group of inductive types, at its first member, before the members of
     its module: its declaration, with uniform parameters [Δ] over the
@@ -1298,9 +1489,9 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))) ->
      (forall k Mk Δ1 T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass T :: Δ2 ->
         Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
-     (forall k Mk c gs gs1 A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg A :: gs2 ->
+     (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
-          ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+          ⊢ A : relevance_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
      (forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
         gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
         Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
@@ -1456,6 +1647,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         exists D', ind_lookup Θ Ξ qc = Some D' /\ view_wrap_ok D D' vm) ->
      (** the views agree on their maps *)
      view_maps_coherent Θ Ξ D ->
+     (** the group's own uniform parameters are types of a universe, not
+         propositions: [param_level] is a level containing every parameter
+         type; by cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp 0 D ⋄ )
 (** A later declared member of a group, before the members of its module:
     the group is filed at its first member, [y0], an entry of the same
@@ -1470,6 +1665,11 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      0 < k ->
      k < ind_ndecl D ->
      im_head Mk = mh_decl (qname_in mq y) ->
+     (** the group's own uniform parameters are types of a universe, as for
+         [wf_gentry_ind_nil]: [param_level] is a level containing every
+         parameter type; by cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
+        Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, gu_body Δ Φ0) :: Ξ) ⊢ T : Typeω@param_level) ->
      Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y0) k D ⋄ )
 (** A declared member of a group with the body of its module: the body
     is checked as an ordinary module over the uniform parameters, in the
@@ -1491,6 +1691,9 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+     (** The module part's parameters are types of a universe, as an
+         alias's are ([wf_gentry_alias]) *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def_mod pv (ctx_pi (gs_tele Ξ) A) (ctx_fn (gs_tele Ξ) M) (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A record type, with parameters [Δ] over the frames' parameters, before
     the members of its module: its sort is a universe over the parameters,
@@ -1506,7 +1709,12 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
      List.NoDup (List.map fst (record_fields R)) ->
      (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
+     List.length (record_field_relevance R) = List.length (record_fields R) ->
+     (** the record's own parameters are types of a universe, not
+         propositions: [param_level] is a level containing every parameter
+         type; by cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv mp R ⋄ )
 (** A record type with the body of its module: the body is checked as an
     ordinary module over the record's own parameters and then a value of
@@ -1527,6 +1735,10 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 | wf_gmod_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+     (** The parameters are types of a universe, as a unit's are:
+         [param_level] is a level containing every parameter type; by
+         cumulativity any common upper bound works *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
      Θ ⍮ Ξ ⍮ mp ⍮ fk_module ⍮ Δ ⊢ᵍᵐ ⋄ )
 (** The module of the declared member [k] of the group [D] at [pq], before
     its members: the member's declaration, checked as an entry with an
@@ -1537,6 +1749,9 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 | wf_gmod_ind_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+     (** The parameters are types of a universe, as for [wf_gmod_nil] *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
+        Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, Uq) :: Ξ) ⊢ T : Typeω@param_level) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ ->
      ind_uparams D = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δ ⊢ᵍᵐ ⋄ )
@@ -1551,6 +1766,10 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 | wf_gmod_record_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+     (** The parameters are types of a universe, as for [wf_gmod_nil]; so
+         is the value's type, a record type, where it is typed *)
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
+        Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, Uq) :: Ξ) ⊢ T : Typeω@param_level) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_record pv mp R ⋄ ->
      record_params R = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_record R ⍮ ce_ass (record_self mp R) :: Δ ⊢ᵍᵐ ⋄ )
@@ -1735,10 +1954,64 @@ Qed.
 Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp wf_is_univ ctx_lookup ctx_lookup_def : mctt.
 
 
-Lemma let_ann_none : forall A, let_ann None A.
-Proof. intros; left; reflexivity. Qed.
+(** ** Types of Either Sort
 
-Lemma let_ann_some : forall A, let_ann (Some A) A.
+    [Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A]: [A] is a type, of a large universe or a
+    proposition.  (A trailing word [type] would make [type] a keyword,
+    which breaks every [%type] scope delimiter.)  It is a record outside the mutual block, so no mutual
+    induction has a motive for it; the rules state its two parts as
+    premises, [Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt] and [type_sort Srt]. *)
+#[warnings="-cannot-define-projection"]
+Record wf_type (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A : typ) : Prop := mk_wf_type
+  { (** The sort [A] is of *)
+    wf_type_sort : exp
+    (** It is a sort: a large universe or [Prop] *)
+  ; wf_type_sort_ok : type_sort wf_type_sort
+    (** [A] is of it *)
+  ; wf_type_typed : Θ ⍮ Ξ ⍮ Γ ⊢ A : wf_type_sort }.
+Arguments mk_wf_type {Θ Ξ Γ A}.
+
+Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A" := (wf_type Θ Ξ Γ A) (at level 70, Ξ at level 69, Γ at level 69, A at level 69) : type_scope.
+
+(** [Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A']: [A] and [A'] are types of the same sort
+    (a [,] would steal Rocq's pairs; a notation sharing the prefix
+    [⊢ᵗ A] with [wf_type]'s does not parse, the two do not factor). *)
+#[warnings="-cannot-define-projection"]
+Record wf_types_same_sort (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A A' : typ) : Prop := mk_wf_types_same_sort
+  { (** The sort both are of *)
+    wf_types_sort : exp
+    (** It is a sort: a large universe or [Prop] *)
+  ; wf_types_sort_ok : type_sort wf_types_sort
+    (** [A] is of it *)
+  ; wf_types_left : Θ ⍮ Ξ ⍮ Γ ⊢ A : wf_types_sort
+    (** and so is [A'] *)
+  ; wf_types_right : Θ ⍮ Ξ ⍮ Γ ⊢ A' : wf_types_sort }.
+Arguments mk_wf_types_same_sort {Θ Ξ Γ A A'}.
+
+Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A'" := (wf_types_same_sort Θ Ξ Γ A A') (at level 70, Ξ at level 69, Γ at level 69, A at level 69, A' at level 69) : type_scope.
+
+#[export]
+Hint Constructors wf_type wf_types_same_sort : mctt.
+
+(** A type of a large universe is a type. *)
+Lemma wf_type_univ : forall {Θ Ξ Γ A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+Proof. intros * H; exact (mk_wf_type _ (type_sort_universe i) H). Qed.
+
+(** So is a proposition. *)
+Lemma wf_type_prop : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+Proof. intros * H; exact (mk_wf_type _ type_sort_prop H). Qed.
+
+(** So is a term of the sort at a relevance. *)
+Lemma wf_type_relevance : forall {Θ Ξ Γ r A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+Proof. intros * H; exact (mk_wf_type _ (type_sort_relevance r _ (type_sort_universe i)) H). Qed.
+
+#[export]
+Hint Resolve wf_type_univ wf_type_prop : mctt.
+
+Lemma let_ann_none : forall A i, let_ann None A (Typeω@i).
+Proof. intros; left; split; [ reflexivity | eexists; reflexivity ]. Qed.
+
+Lemma let_ann_some : forall A S, let_ann (Some A) A S.
 Proof. intros; right; reflexivity. Qed.
 
 #[export]
@@ -1748,25 +2021,40 @@ Ltac solve_let_ann := first [ apply let_ann_some | eassumption | apply let_ann_n
 
 (** The annotations of the local definitions in context, as the two cases. *)
 Ltac destruct_let_ann :=
-  repeat match goal with H : let_ann _ _ |- _ => destruct H as [-> | ->] end; cbv beta iota in *.
+  repeat match goal with H : let_ann _ _ _ |- _ => destruct H as [[-> [? ?]] | ->] end; cbv beta iota in *.
+
+(** The sort of a type, in its two cases. *)
+(** Make the sorts of a rule concrete: a type sort is a large universe or
+    [Prop], a [Π]'s domain is of its universe or a proposition, and a
+    relevance tag is one of the two, so that [relevance_sort] computes. *)
+Ltac destruct_type_sort :=
+  repeat match goal with
+         | H : type_sort _ |- _ => destruct H
+         | H : pi_domain_sort _ _ |- _ => destruct H
+         | r : relevance |- _ => destruct r
+         end;
+  cbn [relevance_sort] in *.
+
+#[export]
+Hint Constructors type_sort pi_domain_sort : mctt.
 
 #[export]
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.
 
 (** The two instances of [wf_gentry_def], with a body and without (an
     axiom), whose conclusions name the entry as it is filed. *)
-Lemma wf_gentry_def_body : forall Θ Ξ mp b pv A M i,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+Lemma wf_gentry_def_body : forall Θ Ξ mp b pv r A M i,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
 Proof.
   intros * HA HM; change (Some (ctx_fn (gs_tele Ξ) M)) with (option_map (ctx_fn (gs_tele Ξ)) (Some M)).
   eapply wf_gentry_def; [ exact HA | intros ? [= <-]; exact HM ].
 Qed.
 
-Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv A i,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) None.
+Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv r A i,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None.
 Proof.
   intros * HA; change (@None exp) with (option_map (ctx_fn (gs_tele Ξ)) None).
   eapply wf_gentry_def; [ exact HA | discriminate ].
@@ -1905,7 +2193,7 @@ Lemma wf_univ_large_tm : forall {Θ Ξ Γ M i n},
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ : Typeω@i.
 Proof.
   intros * HΓ HM; eapply wf_exp_subtyp;
-    [ eapply wf_univ, HM | apply wf_typ, HΓ | eapply wf_subtyp_small_large; [ exact HΓ | apply wf_succl, HM ] ].
+    [ eapply wf_univ, HM | apply wf_typ, HΓ | constructor | eapply wf_subtyp_small_large; [ exact HΓ | apply wf_succl, HM ] ].
 Qed.
 
 Lemma wf_univ_large : forall {Θ Ξ Γ o i},
@@ -1914,23 +2202,25 @@ Lemma wf_univ_large : forall {Θ Ξ Γ o i},
 Proof. intros; eapply wf_univ_large_tm; [ assumption | apply wf_llit_ord; assumption ]. Qed.
 
 (** The base types are types of every large universe. *)
-Lemma wf_True_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_True | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
-
-Lemma wf_False_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_False | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
-
 Lemma wf_level_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
 
 Lemma wf_exp_eq_level_cong_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
 
-Lemma wf_exp_eq_True_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_True_cong | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+(** So are [Prop] and the placeholder type. *)
+Lemma wf_prop_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Typeω@i.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_prop | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
 
-Lemma wf_exp_eq_False_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_False_cong | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Lemma wf_exp_eq_prop_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ≈ Propₘ : Typeω@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_prop_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+
+Lemma wf_placeholder_type_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : Typeω@i.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_placeholder_type | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+
+Lemma wf_exp_eq_placeholder_type_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ≈ a_placeholder_type : Typeω@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_placeholder_type_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
 
 Lemma wf_exp_eq_univ_cong_large_tm : forall {Θ Ξ Γ M M' i n},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -1939,7 +2229,7 @@ Lemma wf_exp_eq_univ_cong_large_tm : forall {Θ Ξ Γ M M' i n},
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ ≈ Type⟨M'⟩ : Typeω@i.
 Proof.
   intros * HΓ HMt HM; eapply wf_exp_eq_subtyp;
-    [ eapply wf_exp_eq_univ_cong, HM | apply wf_typ, HΓ
+    [ eapply wf_exp_eq_univ_cong, HM | apply wf_typ, HΓ | constructor
     | eapply wf_subtyp_small_large; [ exact HΓ | apply wf_succl, HMt ] ].
 Qed.
 
@@ -1997,7 +2287,7 @@ Proof.
   assert (HT : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨succl M⟩ : Typeω@0)
     by (eapply wf_univ_large_tm; [ exact HΓ | apply wf_succl, HM ]).
   eapply wf_exp_subtyp;
-    [ eapply wf_univ, HM' | exact HT
+    [ eapply wf_univ, HM' | exact HT | constructor
     | eapply wf_subtyp_suniv_succl_eq; [ exact HΓ | exact HM | exact HM' | exact H ] ].
 Qed.
 
@@ -2052,7 +2342,7 @@ Proof.
   destruct a' as [| m]; [ lia |].
   eapply wf_exp_eq_subtyp;
     [ apply wf_exp_eq_maxl_absorb, wf_llit; [ cbn; lia | exact HΓ ]
-    | apply (wf_level_large (i := 0)), HΓ
+    | apply (wf_level_large (i := 0)), HΓ | constructor
     | apply wf_subtyp_level; [ exact Hn | exact HΓ ] ].
 Qed.
 
@@ -2123,7 +2413,7 @@ Proof.
   assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, b)⟩ : Type⟨succl 𝕃ᵒ(a, b)⟩)
     by (eapply (wf_univ _ _ _ a), wf_llit; [ reflexivity | exact HΓ ]).
   assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, S b)⟩ : Typeω@0) by (apply wf_univ_large; exact HΓ).
-  eapply wf_exp_subtyp; [ exact H1 | exact H2 | apply wf_subtyp_suniv_succl, HΓ ].
+  eapply wf_exp_subtyp; [ exact H1 | exact H2 | constructor | apply wf_subtyp_suniv_succl, HΓ ].
 Qed.
 
 Lemma wf_exp_eq_univ_cong_lit : forall {Θ Ξ Γ a b},
@@ -2134,7 +2424,7 @@ Proof.
   assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, b)⟩ ≈ Type⟨𝕃ᵒ(a, b)⟩ : Type⟨succl 𝕃ᵒ(a, b)⟩)
     by (eapply (wf_exp_eq_univ_cong _ _ _ a), wf_exp_eq_llit_cong; [ reflexivity | exact HΓ ]).
   assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, S b)⟩ : Typeω@0) by (apply wf_univ_large; exact HΓ).
-  eapply wf_exp_eq_subtyp; [ exact H1 | exact H2 | apply wf_subtyp_suniv_succl, HΓ ].
+  eapply wf_exp_eq_subtyp; [ exact H1 | exact H2 | constructor | apply wf_subtyp_suniv_succl, HΓ ].
 Qed.
 
 #[export]
@@ -2178,13 +2468,14 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ : Typeω@?i) => fix_open_level i; apply
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ ≈ Level@_ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_level_cong_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Typeω@?i) => fix_open_level i; apply wf_True_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ : Typeω@?i) => fix_open_level i; apply wf_prop_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Typeω@?i) => fix_open_level i; apply wf_False_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ ≈ Propₘ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_prop_cong_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_True_cong_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ a_placeholder_type : Typeω@?i) => fix_open_level i; apply wf_placeholder_type_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_False_cong_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ a_placeholder_type ≈ a_placeholder_type : Typeω@?i) =>
+  fix_open_level i; apply wf_exp_eq_placeholder_type_cong_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨_⟩ ≈ Type⟨_⟩ : Typeω@?i) => fix_open_level i; eapply wf_exp_eq_univ_cong_large_tm : mctt.
 #[export]
@@ -2285,21 +2576,21 @@ Hint Resolve presup_subtyp_ctx : mctt.
     universe and at a small one. *)
 Lemma wf_pi_large : forall Θ Ξ Γ i A B,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i.
-Proof. intros * HA HB; eapply wf_pi; [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | exact HB ]. Qed.
+Proof. intros * HA HB; eapply wf_pi with (r := relevant); [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | apply pi_domain_universe | exact HB ]. Qed.
 
 Lemma wf_pi_lvl : forall Θ Ξ Γ n L A B,
     Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type⟨L⟩.
-Proof. intros * HL HA HB; eapply wf_pi; [ eapply wf_is_univ_small, HL | exact HA | exact HB ]. Qed.
+Proof. intros * HL HA HB; eapply wf_pi with (r := relevant); [ eapply wf_is_univ_small, HL | exact HA | apply pi_domain_universe | exact HB ]. Qed.
 
 Lemma wf_exp_eq_pi_cong_large : forall Θ Ξ Γ i A A' B B',
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@i.
-Proof. intros * HA HAA HB; eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | exact HAA | exact HB ]. Qed.
+Proof. intros * HA HAA HB; eapply wf_exp_eq_pi_cong with (r := relevant); [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | apply pi_domain_universe | exact HAA | exact HB ]. Qed.
 
 Lemma wf_exp_eq_pi_cong_lvl : forall Θ Ξ Γ n L A A' B B',
     Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type⟨L[↑]ʷ⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type⟨L⟩.
-Proof. intros * HL HA HAA HB; eapply wf_exp_eq_pi_cong; [ eapply wf_is_univ_small, HL | exact HA | exact HAA | exact HB ]. Qed.
+Proof. intros * HL HA HAA HB; eapply wf_exp_eq_pi_cong with (r := relevant); [ eapply wf_is_univ_small, HL | exact HA | apply pi_domain_universe | exact HAA | exact HB ]. Qed.
 
 #[export]
 Hint Resolve wf_pi_large wf_pi_lvl wf_exp_eq_pi_cong_large wf_exp_eq_pi_cong_lvl : mctt.
@@ -2308,15 +2599,16 @@ Hint Resolve wf_pi_large wf_pi_lvl wf_exp_eq_pi_cong_large wf_exp_eq_pi_cong_lvl
 Lemma wf_is_univ_typ : forall {Θ Ξ Γ U}, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ U : Typeω@i.
 Proof.
   inversion 1; subst; [ exists (S i); apply wf_typ; assumption |].
-  exists 0; eapply wf_exp_subtyp; [ eapply wf_univ; eassumption | apply wf_typ; mauto 2 | eapply wf_subtyp_small_large; mauto 2 ].
+  exists 0; eapply wf_exp_subtyp; [ eapply wf_univ; eassumption | apply wf_typ; mauto 2 | constructor | eapply wf_subtyp_small_large; mauto 2 ].
 Qed.
 
 #[export]
 Hint Resolve wf_is_univ_typ : mctt.
 
-Lemma presup_subtyp_right : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i.
+Lemma presup_subtyp_right : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ B.
 Proof.
-  induction 1; mautosolve.
+  induction 1; try (econstructor; eassumption); try mautosolve 3.
+  econstructor; [ constructor | eapply wf_pi with (r := relevant); [ apply wf_is_univ_large; mauto 2 | eassumption | eassumption | eassumption ] ].
 Qed.
 
 #[export]
@@ -2329,9 +2621,9 @@ Lemma wf_exp_subtyp' : forall Θ Ξ Γ A A' M,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
-  intros.
-  assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i) as [] by mauto.
-  econstructor; mauto.
+  intros * HM HA.
+  destruct (presup_subtyp_right HA).
+  econstructor; eassumption.
 Qed.
 
 #[export]
@@ -2344,9 +2636,9 @@ Lemma wf_exp_eq_subtyp' : forall Θ Ξ Γ A A' M M',
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
-  intros.
-  assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i) as [] by mauto.
-  econstructor; mauto.
+  intros * HM HA.
+  destruct (presup_subtyp_right HA).
+  econstructor; eassumption.
 Qed.
 
 #[export]

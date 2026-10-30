@@ -13,6 +13,25 @@ Reserved Notation "Γ '⊢aᵇ' Φ ⇝ Φx" (at level 70, Φ at level 69, Φx at
 
 Generalizable All Variables.
 
+(** That a normal form is the type of a type: a universe, whose elements
+    are relevant, or [Prop], whose elements are propositions.  The side
+    condition of every algorithmic rule that asks for a type of either
+    sort.  The universe [u] is the one the type is counted in when a [Π]
+    joins its parts: a proposition counts as the least small universe, as
+    [Prop : Type@0]. *)
+Variant is_sort_nf : nf -> relevance -> unf -> Prop :=
+(** A universe: its types are relevant *)
+| is_sort_nf_univ : forall W u, is_univ_nf W u -> is_sort_nf W relevant u
+(** [Prop]: its types are propositions *)
+| is_sort_nf_prop : is_sort_nf Propⁿ propositional (uns (ofin 0, nil)).
+
+#[export]
+Hint Constructors is_sort_nf : mctt.
+
+(** The type [A] of a local definition with the annotation [oA]: none, or
+    [A] itself. *)
+Definition alg_let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some A.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
@@ -68,18 +87,51 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ⊢a M ⟹ Levelⁿ@m ->
      Γ ⊢a N ⟹ Levelⁿ@n ->
      Γ ⊢a maxl M N ⟹ Levelⁿ@(Nat.max m n) )
+(** [Prop] is a small type at the least level. *)
+| alg_type_infer_prop :
+  `( Γ ⊢a Propₘ ⟹ Typeⁿ@0 )
+(** [⊤] and [⊥] are propositions, and [⋆] proves [⊤]. *)
 | alg_type_infer_True :
-  `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
+  `( Γ ⊢a ⊤ ⟹ Propⁿ )
 | alg_type_infer_true :
   `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
 | alg_type_infer_False :
-  `( Γ ⊢a ⊥ ⟹ Typeⁿ@0 )
-| alg_type_infer_exfalso :
-  `( Γ ▹ ⊥ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
+  `( Γ ⊢a ⊥ ⟹ Propⁿ )
+(** Ex falso: the target is a type of either sort, the proof is checked
+    at [⊥], and the term infers the target's normal form. *)
+| alg_type_infer_absurd :
+  `( Γ ⊢a C ⟹ UC ->
+     is_sort_nf UC r u ->
      Γ ⊢a M ⟸ ⊥ ->
-     nbe_ty_f Γ A[Id,,M] B ->
-     Γ ⊢a efq M return A ⟹ B )
+     nbe_ty_f Γ C W ->
+     Γ ⊢a efq M return C ⟹ W )
+(** The dependent conjunction of two propositions is a proposition. *)
+| alg_type_infer_and :
+  `( Γ ⊢a P ⟹ Propⁿ ->
+     Γ ▹ P ⊢a Q ⟹ Propⁿ ->
+     Γ ⊢a Σₚ P Q ⟹ Propⁿ )
+(** A proof of a conjunction: the annotation is a proposition whose
+    normal form is a conjunction, each component is checked at its part,
+    and the proof infers that normal form. *)
+| alg_type_infer_conj :
+  `( Γ ⊢a T ⟹ Propⁿ ->
+     nbe_ty_f Γ T (Σₚⁿ P Q) ->
+     Γ ⊢a M ⟸ P ->
+     Γ ⊢a N ⟸ (nf_to_exp Q)[Id,,M] ->
+     Γ ⊢a a_conj T M N ⟹ Σₚⁿ P Q )
+(** The proofs of the components of a proof of a conjunction. *)
+| alg_type_infer_left :
+  `( Γ ⊢a M ⟹ Σₚⁿ P Q ->
+     Γ ⊢a a_left M ⟹ P )
+| alg_type_infer_right :
+  `( Γ ⊢a M ⟹ Σₚⁿ P Q ->
+     nbe_ty_f Γ (nf_to_exp Q)[Id,,a_left M] W ->
+     Γ ⊢a a_right M ⟹ W )
+(** The placeholder type and its element. *)
+| alg_type_infer_placeholder_type :
+  `( Γ ⊢a a_placeholder_type ⟹ Typeⁿ@0 )
+| alg_type_infer_placeholder :
+  `( Γ ⊢a a_placeholder ⟹ nf_placeholder_type )
 (** The type former of a declared member and a constructor of any member
     infer the normal forms of their closed types. *)
 | alg_type_infer_ind_case :
@@ -102,8 +154,9 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     and the uniform arguments of the member's type at them ([im_pre]) have
     the normal forms of the inferred type's; its other parameters [Ns] are
     the member's non-uniform ones.  The blocks are checked at [Us]: the
-    annotations and the motives at one universe [Typeω@i], an annotation
-    of the member's type there, the branches at their types.  The type is
+    annotations at one universe [Typeω@i], an annotation of the member's
+    type there, the motives of the eliminator's sort [r] (types of
+    [Typeω@i], or propositions), the branches at their types.  The type is
     the normal form of the motive's instance. *)
 | alg_type_infer_elim :
   `( Γ ⊢a M ⟹ nf_indty pc k Rs ->
@@ -129,16 +182,16 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
         alg_ty_conv (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) Z
           (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj)))) ->
      (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-        elim_mctx p D j Mj Us ++ Γ ⊢a eb_motive b ⟸ Typeω@i) ->
+        elim_mctx p D j Mj Us ++ Γ ⊢a eb_motive b ⟸ relevance_sort r Typeω@i) ->
      (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)) ->
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
         n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat) ->
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-        elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us) ->
+        elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us) ->
      nbe_ty_f Γ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] T ->
-     Γ ⊢a a_elim oq Us m Bks M ⟹ T )
+     Γ ⊢a a_elim r oq Us m Bks M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
     large universe absorbs a small one, and two small ones join on levels,
     the codomain's bounded under the binder ([lvl_bound]): an atom that
@@ -152,33 +205,48 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     normal form are the sorts of the atoms' types.  (An inferred type is
     already normal, [alg_type_infer_normal], so [UB'] is [UB]; the premise
     is what lets soundness, which that theorem rests on, see it.) *)
+(** The domain is a type of either sort; a proposition counts as the
+    least small universe ([is_sort_nf]). *)
 | alg_type_infer_pi :
   `( Γ ⊢a A ⟹ UA ->
      Γ ▹ A ⊢a B ⟹ UB ->
-     is_univ_nf UA u ->
+     is_sort_nf UA rA u ->
      nbe_ty_f (Γ ▹ A) UB UB' ->
      is_univ_nf UB' v ->
      nbe_ty_f Γ (unf_pi_tm u v) W ->
      Γ ⊢a Π A B ⟹ W )
+(** A [∀]: over a type of either sort, into propositions, a proposition. *)
+| alg_type_infer_all :
+  `( Γ ⊢a A ⟹ UA ->
+     is_sort_nf UA rA u ->
+     Γ ▹ A ⊢a B ⟹ Propⁿ ->
+     Γ ⊢a ∀ₚ A B ⟹ Propⁿ )
+(** A λ-abstraction, over a type of either sort: a function, or a proof of
+    a [∀], as the sort [r] of its body's type is. *)
 | alg_type_infer_fn :
   `( Γ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
+     is_sort_nf UA rA u ->
      Γ ▹ A ⊢a M ⟹ B ->
+     Γ ▹ A ⊢a B ⟹ UB ->
+     is_sort_nf UB r v ->
      nbe_ty_f Γ A C ->
-     Γ ⊢a λ A M ⟹ Πⁿ C B )
+     Γ ⊢a λ A M ⟹ nf_pi r C B )
+(** An application of a function or of a proof of a [∀]. *)
 | alg_type_infer_app :
-  `( Γ ⊢a M ⟹ Πⁿ A B ->
+  `( Γ ⊢a M ⟹ nf_pi r A B ->
      Γ ⊢a N ⟸ A ->
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
-(** A local definition: an annotation is a type and the body is checked
-    against it; without one, the body infers the type.  Then the body of the
-    [let].  The two cases are premises under the annotation they are about,
-    so that the induction principle has a hypothesis for each. *)
+(** A local definition: its type [A], the annotation or the type the body
+    infers, is a type of the sort [r]; an annotation is checked against,
+    and without one [A] is of a universe.  Then the body of the [let].
+    The two cases are premises under the annotation they are about, so
+    that the induction principle has a hypothesis for each. *)
 | alg_type_infer_let :
-  `( let_ann oA A ->
-     (oA = Some A -> Γ ⊢a A ⟹ UA) ->
-     (oA = Some A -> is_univ_nf UA u) ->
+  `( alg_let_ann oA A ->
+     Γ ⊢a A ⟹ UA ->
+     is_sort_nf UA r u ->
+     (oA = None -> r = relevant) ->
      (oA = Some A -> Γ ⊢a M ⟸ A) ->
      (oA = None -> Γ ⊢a M ⟹ W) ->
      (oA = None -> A = nf_to_exp W) ->
@@ -236,15 +304,17 @@ where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 with alg_ext : ctx -> ctx -> Prop :=
 | alg_ext_nil :
   `( Γ ⊢aˣ ⋅ )
+(** An assumption of a type of either sort *)
 | alg_ext_ass :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
+     is_sort_nf UA r u ->
      Γ ⊢aˣ Ψ ▹ A )
+(** A definition of a type of either sort, its body checked against it *)
 | alg_ext_def :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
+     is_sort_nf UA r u ->
      Ψ ++ Γ ⊢a M ⟸ A ->
      Γ ⊢aˣ Ψ ▸ A ≔ M )
 | alg_ext_mod :
@@ -284,12 +354,13 @@ where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
 with alg_body : ctx -> gmod -> gmod -> Prop :=
 | alg_body_nil :
   `( Γ ⊢aᵇ gm_nil ⇝ gm_nil )
+(** A definition, of a type of the sort its tag [r] says *)
 | alg_body_def :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
+     is_sort_nf UA r u ->
      body_ctx Φx ++ Γ ⊢a M ⟸ A ->
-     Γ ⊢aᵇ gm_ext Φ x (ge_def b pv A (Some M)) ⇝ gm_ext Φx x (ge_def b pv A (Some M)) )
+     Γ ⊢aᵇ gm_ext Φ x (ge_def b pv r A (Some M)) ⇝ gm_ext Φx x (ge_def b pv r A (Some M)) )
 | alg_body_mod :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵘ U ->
@@ -371,9 +442,9 @@ Combined Scheme alg_type_mut_ind from
 Section LetInstances.
   Context {GC : GCtx}.
 
-  Lemma alg_type_infer_let_some : forall Γ A UA u M B C D,
+  Lemma alg_type_infer_let_some : forall Γ A UA r u M B C D,
       Γ ⊢a A ⟹ UA ->
-      is_univ_nf UA u ->
+      is_sort_nf UA r u ->
       Γ ⊢a M ⟸ A ->
       Γ ▸ A ≔ M ⊢a B ⟹ C ->
       nbe_ty_f Γ C[Id,,M] D ->
@@ -381,19 +452,21 @@ Section LetInstances.
   Proof.
     intros * HA Hu HM HB HD.
     eapply alg_type_infer_let with (W := UA);
-      [ right; reflexivity | intros _; exact HA | intros _; exact Hu | intros _; exact HM
+      [ right; reflexivity | exact HA | exact Hu | discriminate | intros _; exact HM
       | discriminate | discriminate | exact HB | exact HD ].
   Qed.
 
-  Lemma alg_type_infer_let_none : forall Γ M (A : nf) B C D,
+  Lemma alg_type_infer_let_none : forall Γ M (A : nf) UA u B C D,
       Γ ⊢a M ⟹ A ->
+      Γ ⊢a A ⟹ UA ->
+      is_univ_nf UA u ->
       Γ ▸ (A : exp) ≔ M ⊢a B ⟹ C ->
       nbe_ty_f Γ C[Id,,M] D ->
       Γ ⊢a ℓ ≔ M in B ⟹ D.
   Proof.
-    intros * HM HB HD.
-    eapply alg_type_infer_let with (W := A) (UA := A) (u := unl 0);
-      [ left; reflexivity | discriminate | discriminate | discriminate
+    intros * HM HA Hu HB HD.
+    eapply alg_type_infer_let with (W := A) (UA := UA) (r := relevant) (u := u);
+      [ left; reflexivity | exact HA | constructor; exact Hu | intros _; reflexivity | discriminate
       | intros _; exact HM | intros _; reflexivity | exact HB | exact HD ].
   Qed.
 End LetInstances.
@@ -406,8 +479,8 @@ Hint Resolve alg_type_infer_let_some alg_type_infer_let_none : mctt.
     annotation that is a constructor already fixes the type. *)
 Ltac simpl_let_guards :=
   repeat match goal with
-         | H : let_ann (Some _) _ |- _ => destruct H as [[=] | [= <-]]
-         | H : let_ann None _ |- _ => clear H
+         | H : alg_let_ann (Some _) _ |- _ => destruct H as [[=] | [= <-]]
+         | H : alg_let_ann None _ |- _ => clear H
          | H : ?x = ?x -> _ |- _ => specialize (H eq_refl)
          | H : None = Some _ -> _ |- _ => clear H
          | H : Some _ = None -> _ |- _ => clear H
@@ -438,16 +511,41 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp M ->
      user_exp N ->
      user_exp (a_maxl M N) )
+(** [Prop] *)
+| user_exp_prop :
+  `( user_exp a_prop )
 | user_exp_True :
   `( user_exp a_True )
 | user_exp_true :
   `( user_exp a_true )
 | user_exp_False :
   `( user_exp a_False )
-| user_exp_exfalso :
-  `( user_exp A ->
+(** Ex falso: its target and its proof *)
+| user_exp_absurd :
+  `( user_exp C ->
      user_exp M ->
-     user_exp (a_exfalso A M) )
+     user_exp (a_absurd C M) )
+(** A conjunction, its proofs and their components *)
+| user_exp_and :
+  `( user_exp P ->
+     user_exp Q ->
+     user_exp (a_and P Q) )
+| user_exp_conj :
+  `( user_exp T ->
+     user_exp M ->
+     user_exp N ->
+     user_exp (a_conj T M N) )
+| user_exp_left :
+  `( user_exp M ->
+     user_exp (a_left M) )
+| user_exp_right :
+  `( user_exp M ->
+     user_exp (a_right M) )
+(** The placeholder type and its element *)
+| user_exp_placeholder_type :
+  `( user_exp a_placeholder_type )
+| user_exp_placeholder :
+  `( user_exp a_placeholder )
 | user_exp_indty :
   `( user_exp (a_ind p k) )
 | user_exp_con :
@@ -464,11 +562,11 @@ Inductive user_exp : exp -> Prop :=
      (forall b, List.In b Bks -> user_exp (eb_motive b)) ->
      (forall b br, List.In b Bks -> List.In br (eb_brs b) -> user_exp (snd br)) ->
      user_exp M ->
-     user_exp (a_elim oq Us m Bks M) )
+     user_exp (a_elim r oq Us m Bks M) )
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->
-     user_exp (a_pi A B) )
+     user_exp (a_pi r A B) )
 | user_exp_fn :
   `( user_exp A ->
      user_exp M ->
@@ -516,7 +614,7 @@ Proof.
     (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
     intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b as [[] |]; destruct_conjs end;
     try lazymatch goal with
-      | HU : List.Forall user_exp ?Us, HB : List.Forall _ ?Bks |- user_exp (a_elim _ ?Us _ ?Bks _) =>
+      | HU : List.Forall user_exp ?Us, HB : List.Forall _ ?Bks |- user_exp (a_elim _ _ ?Us _ ?Bks _) =>
           rewrite List.Forall_forall in HU, HB;
           constructor; [ exact HU
                        | intros b Z Hb HZ; exact (proj1 (HB b Hb) Z HZ)

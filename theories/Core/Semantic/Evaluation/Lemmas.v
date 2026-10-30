@@ -32,22 +32,22 @@ Import Domain_Notations.
         | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _),
-          H2 : (exists TΦ, Members.gc_loc Θ Ξ ?p = Some TΦ) \/ (exists b pv A B, Members.gc_resolve Θ Ξ ?p = Some (ge_def b pv A B)) |- _ =>
-            exfalso; destruct H2 as [(? & H2) | (? & ? & ? & ? & H2)];
+          H2 : (exists TΦ, Members.gc_loc Θ Ξ ?p = Some TΦ) \/ (exists b pv ra A B, Members.gc_resolve Θ Ξ ?p = Some (ge_def b pv ra A B)) |- _ =>
+            exfalso; destruct H2 as [(? & H2) | (? & ? & ? & ? & ? & H2)];
             [ exact (gc_loc_not_alias _ _ _ _ _ H2 H1) | rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2 ]
-        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _),
-          H2 : forall b pv A B, Members.gc_resolve Θ Ξ ?p <> Some (ge_def b pv A B) |- _ =>
-            exfalso; exact (H2 _ _ _ _ H1)
+        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _ _),
+          H2 : forall b pv ra A B, Members.gc_resolve Θ Ξ ?p <> Some (ge_def b pv ra A B) |- _ =>
+            exfalso; exact (H2 _ _ _ _ _ H1)
         | H1 : Members.dm_path Θ Ξ ?p, H2 : ~ Members.dm_path Θ Ξ ?p |- _ => exfalso; exact (H2 H1)
         | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
             exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
-        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _), H2 : Members.dm_path Θ Ξ ?p |- _ =>
-            exfalso; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ H1 H2)
+        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _ _), H2 : Members.dm_path Θ Ξ ?p |- _ =>
+            exfalso; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ H1 H2)
         | H : (@nil ?T) <> nil \/ _ |- _ => destruct H as [H | H]; [ exfalso; exact (H eq_refl) |]
         | H : (@nil ?T) <> nil |- _ => exfalso; exact (H eq_refl)
         | H : context [?l ++ nil] |- _ => rewrite List.app_nil_r in H
         | H : dmod_member_kind Θ Ξ (dm_global _ _) nil _ |- _ => inversion H; subst; clear H
-        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _),
+        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _ _),
           H2 : (exists T oD, Members.gc_module Θ Ξ ?p = Some (Members.mr_body T oD)) \/ (exists TΦ, gc_frame Ξ ?p = Some TΦ) |- _ =>
             exfalso; destruct H2 as [(? & ? & H2) | (? & H2)];
             [ rewrite (gc_module_resolve _ _ _ _ H2) in H1 | rewrite (gc_frame_resolve _ _ _ _ H2) in H1 ]; discriminate H1
@@ -105,7 +105,9 @@ Import Domain_Notations.
       (forall ns m fl pre rs1, eval_nflds Θ Ξ ns m fl pre rs1 -> forall rs2, eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2) /\
       (forall fl v ws1, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws1 -> forall ws2, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws2 -> ws1 = ws2) /\
       (forall p ups ρm As ρ gs vs r1, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2).
+          forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall rs Ms ρ ms1, eval_fvals Θ Ξ rs Ms ρ ms1 -> forall ms2, eval_fvals Θ Ξ rs Ms ρ ms2 -> ms1 = ms2) /\
+      (forall f Ms ρ r1, eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -189,6 +191,7 @@ Import Domain_Notations.
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>
             assert_fails (constr_eq a b); specialize (IH _ H); subst
         | H : d_neut _ _ = d_neut _ _ |- _ => injection H; intros; subst; clear H
+        | H : d_record _ _ = d_record _ _ |- _ => injection H; intros; subst; clear H
         | H : eval_selc _ _ _ nil _ |- _ => inversion H
         end;
       cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
@@ -296,18 +299,79 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_sub : forall {Θ Ξ} σ ρ ρσ1 ρσ2,
-      ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ1 ->
-      ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ2 ->
-      env_eq ρσ1 ρσ2.
+  (** Equality of values is decidable: they are first-order data. *)
+  Fixpoint domain_eq_dec (a b : domain) {struct a} : {a = b} + {a <> b}
+  with domain_ne_eq_dec (a b : domain_ne) {struct a} : {a = b} + {a <> b}
+  with domain_nf_eq_dec (a b : domain_nf) {struct a} : {a = b} + {a <> b}
+  with dmod_eq_dec (a b : dmod) {struct a} : {a = b} + {a <> b}
+  with dentry_eq_dec (a b : dentry) {struct a} : {a = b} + {a <> b}.
   Proof.
-    intros * H1 H2 x; specialize (H1 x); specialize (H2 x).
-    destruct (σ x); cbn in H1, H2.
+    all: decide equality;
+      first [ apply Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec
+            | apply relevance_eq_dec | apply exp_eq_dec | apply moddef_eq_dec
+            | apply (List.list_eq_dec dentry_eq_dec) | apply (List.list_eq_dec domain_eq_dec)
+            | apply (List.list_eq_dec exp_eq_dec) | apply (List.list_eq_dec centry_eq_dec)
+            | apply (List.list_eq_dec String.string_dec)
+            | apply (eblocks_eq_dec_g exp_eq_dec) | apply (ptyp_eq_dec_g exp_eq_dec)
+            | apply List.list_eq_dec; intros; repeat (decide equality || apply domain_eq_dec || apply domain_ne_eq_dec
+                                                        || apply Nat.eq_dec || apply String.string_dec)
+            | idtac ].
+  Defined.
+
+  Corollary functional_eval_fvals : forall {Θ Ξ} rs Ms ρ ms1 ms2,
+      eval_fvals Θ Ξ rs Ms ρ ms1 ->
+      eval_fvals Θ Ξ rs Ms ρ ms2 ->
+      ms1 = ms2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  (** Whether an entry is a proposition depends only on the substitution
+      and its source environment, so two evaluations agree on it. *)
+  (** A substitution entry denotes one entry. *)
+  Corollary functional_eval_sentry : forall {Θ Ξ} e ρ d1 d2,
+      ⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d1 ->
+      ⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d2 ->
+      d1 = d2.
+  Proof.
+    intros * H1 H2; destruct e; cbn in H1, H2.
     - congruence.
     - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_exp; eassumption.
     - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_modexp; eassumption.
     - destruct H1 as (n1 & m1 & -> & Hn1 & H1), H2 as (n2 & m2 & -> & Hn2 & H2); f_equal;
         [ eapply functional_eval_exp | eapply functional_eval_modexp ]; eassumption.
+  Qed.
+
+  (** Whether the head entry is a proposition depends only on the tail. *)
+  Lemma entry_propositional_zero_tail : forall {Θ Ξ} Δ ρσ1 ρσ2,
+      env_eq (drop_env ρσ1) (drop_env ρσ2) -> entry_propositional Θ Ξ Δ ρσ1 0 -> entry_propositional Θ Ξ Δ ρσ2 0.
+  Proof.
+    intros * Ht []; econstructor; [ eassumption | | eassumption | eassumption ].
+    intros y; rewrite entry_propositional_env_eq, !env_entry_skipn; cbn [Nat.add].
+    rewrite <- !env_entry_drop; apply Ht.
+  Qed.
+
+  (** Whether an entry is a proposition depends only on the entries after
+      it, so two evaluations of a substitution agree, entry by entry from
+      the last; values are decidably equal, so no case analysis on a
+      proposition is needed. *)
+  Corollary functional_eval_sub : forall {Θ Ξ} Δ σ ρ ρσ1 ρσ2,
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ1 ->
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ2 ->
+      env_eq ρσ1 ρσ2.
+  Proof.
+    intros Θ Ξ Δ; induction Δ as [| e Δ IH]; intros σ ρ ρσ1 ρσ2 H1 H2.
+    - intros x; eapply functional_eval_sentry; [ apply (H1 x) | apply (H2 x) ];
+        intros []; unfold ctx_entry_type in *; destruct x; discriminate.
+    - assert (Ht : env_eq (drop_env ρσ1) (drop_env ρσ2)) by (eapply IH; eapply eval_sub_shift_pre; eassumption).
+      intros [| x]; [| rewrite <- !env_entry_drop; apply Ht ].
+      destruct (dentry_eq_dec (env_entry ρσ1 0) (env_entry ρσ2 0)) as [| Hne]; [ assumption | exfalso ].
+      assert (Ht' : env_eq (drop_env ρσ2) (drop_env ρσ1)) by (intros y; symmetry; apply Ht).
+      assert (Hn1 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ1 0).
+      { intros Hp; apply Hne; rewrite (proj1 (H1 0) Hp), (proj1 (H2 0) (entry_propositional_zero_tail _ _ _ Ht Hp)); reflexivity. }
+      assert (Hn2 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ2 0)
+        by (intros Hp; apply Hn1, (entry_propositional_zero_tail _ _ _ Ht' Hp)).
+      apply Hne; eapply functional_eval_sentry; [ apply (proj2 (H1 0) Hn1) | apply (proj2 (H2 0) Hn2) ].
   Qed.
 
 #[export]
@@ -384,8 +448,9 @@ Proof.
              (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True) (fun _ _ _ _ _ _ _ _ _ => True)
              (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
-             (fun _ _ _ _ _ _ _ _ _ => True)) as H.
-  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _);
+             (fun _ _ _ _ _ _ _ _ _ => True)
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _ & _ & _);
     clear H; [ .. | split; [ exact Hihs | split; [ exact Hih | exact Hp ] ] ]; intros; try exact I.
   - (* no argument *) cbn; auto.
   - (* a non-recursive argument *)
@@ -441,8 +506,9 @@ Proof.
              (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun p ups ρm As ρ gs vs r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
-                List.length vs = List.length gs /\ List.length r = cargs_nrec D gs)) as H.
-  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys);
+                List.length vs = List.length gs /\ List.length r = cargs_nrec D gs)
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys & _ & _);
     clear H; [ .. | split; [ exact Hty | exact Htys ] ]; intros; try exact I.
   - (* at a member with a block *)
     match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>

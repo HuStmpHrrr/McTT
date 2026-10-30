@@ -18,9 +18,9 @@ Import Syntax_Notations Wk_Notations.
 
 Corollary presup_exp : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof.
-  intros; split; mauto 2 using presup_exp_typ.
+  intros; split; [ mauto 2 | eapply presup_exp_typ; eassumption ].
 Qed.
 
 (** ** Context Conversion of Substitutions
@@ -129,15 +129,16 @@ Hint Resolve ctxsub_sub_eq : mctt.
     cycle by taking the equation as a premise; that is precisely what the
     induction hypothesis for the domain supplies at every use site. *)
 
-Lemma wf_sub_eq_q : forall Θ Ξ Γ Δ σ σ' A i,
+Lemma wf_sub_eq_q : forall Θ Ξ Γ Δ σ σ' A Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Srt ->
     Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢ˢ q σ ≈ q σ' : Δ ▹ A.
 Proof.
-  intros * H ? ?; saturate_sub_eq.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Typeω@i) by mauto 2.
+  intros * H ? HS ?; saturate_sub_eq.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Srt) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Srt) by mauto 2.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢ʷ ↑ : Γ) by mauto 2.
   econstructor; [ mauto 2 | | |].
@@ -154,26 +155,27 @@ Qed.
 
 (** The same over a definition, with the substituted bodies equal as a
     premise for the same reason. *)
-Lemma wf_sub_eq_q_def : forall Θ Ξ Γ Δ σ σ' A M i,
+Lemma wf_sub_eq_q_def : forall Θ Ξ Γ Δ σ σ' A M Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ] ⊢ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
 Proof.
-  intros * H ? ? ? ?; saturate_sub_eq.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Typeω@i) by mauto 2.
+  intros * H ? HS ? ? ?; saturate_sub_eq.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Srt) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Srt) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M[σ'] : A[σ']) by mauto 2.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ] ⊢ʷ ↑ : Γ) by mauto 2.
   econstructor; [ mauto 2 | | |].
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] ≈ A[σ] : Typeω@i) by mauto 2.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] ≈ A[σ] : Srt) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M[σ'] ≈ M[σ] : A[σ']) by
       (eapply wf_exp_eq_subtyp'; [ symmetry; eassumption | eapply wf_subtyp_refl; eassumption ]).
-    eapply ctxsub_sub; [ eapply wf_sub_id_extend_def_eq; eassumption | mauto 2 ].
+    eapply ctxsub_sub; [ eapply (wf_sub_id_extend_def_eq _ _ _ _ _ _ _ Srt); try eassumption; mauto 2 | mauto 2 ].
   - intros x B Hlk.
     inversion Hlk; subst; reduce_index; rewrite exp_wk_shift_sub_q; [ mauto 3 | ].
     rewrite <- !sentry_exp_wk; fold (exp_sub (a_var n) σ) (exp_sub (a_var n) σ').
@@ -187,27 +189,17 @@ Qed.
 #[export]
 Hint Resolve wf_sub_eq_q wf_sub_eq_q_def : mctt.
 
-Corollary wf_sub_eq_q_False : forall Θ Ξ Γ Δ σ σ',
+Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' A M M' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ˢ q σ ≈ q σ' : Δ ▹ ⊥.
-Proof.
-  intros * H; saturate_sub_eq.
-  apply (wf_sub_eq_q Θ Ξ Γ Δ σ σ' ⊥ 0); simpl; mauto 2.
-Qed.
-
-#[export]
-Hint Resolve wf_sub_eq_q_False : mctt.
-
-Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' A M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ'] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,M ≈ σ',,M' : Δ ▹ A.
 Proof.
-  intros * H ? ? ? ?; saturate_sub_eq.
-  econstructor; [ mauto 2 | mauto 2 | |].
+  intros * H HA HS ? ? ?; saturate_sub_eq.
+  econstructor; [ eapply wf_sub_extend; eassumption | eapply wf_sub_extend; eassumption | |].
   - intros x B Hlk.
     inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
       [ assumption | eapply wf_sub_eq_apply; eassumption ].
@@ -218,8 +210,9 @@ Qed.
     equal terms.  Stating it separately is what keeps [exp_sub_id] out of the
     call sites, which would otherwise have to rewrite [A[Id]] to [A] three
     times over. *)
-Corollary wf_sub_eq_id_extend : forall Θ Ξ Γ A M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+Corollary wf_sub_eq_id_extend : forall Θ Ξ Γ A M M' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -227,16 +220,17 @@ Corollary wf_sub_eq_id_extend : forall Θ Ξ Γ A M M' i,
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2.
-  apply (wf_sub_eq_extend Θ Ξ Γ Γ sb_id sb_id A M M' i);
-    [ mauto 3 | assumption
+  apply (wf_sub_eq_extend Θ Ξ Γ Γ sb_id sb_id A M M' Srt);
+    [ mauto 3 | assumption | assumption
     | rewrite exp_sub_id; assumption
     | rewrite exp_sub_id; assumption
     | rewrite exp_sub_id; assumption ].
 Qed.
 
-Lemma wf_sub_eq_extend_def : forall Θ Ξ Γ Δ σ σ' A M N N' i,
+Lemma wf_sub_eq_extend_def : forall Θ Ξ Γ Δ σ σ' A M N N' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N' : A[σ'] ->
@@ -245,16 +239,17 @@ Lemma wf_sub_eq_extend_def : forall Θ Ξ Γ Δ σ σ' A M N N' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,N ≈ σ',,N' : Δ ▸ A ≔ M.
 Proof.
-  intros * H ? ? ? ? ? ? ?; saturate_sub_eq.
-  econstructor; [ mauto 2 | mauto 2 | |].
+  intros * H HA HS ? ? ? ? ? ?; saturate_sub_eq.
+  econstructor; [ eapply wf_sub_extend_def; eassumption | eapply wf_sub_extend_def; eassumption | |].
   - intros x B Hlk.
     inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
       [ assumption | eapply wf_sub_eq_apply; eassumption ].
   - intros x U Hlk; inversion Hlk; subst; cbn; eapply wf_sub_eq_apply_mod; eassumption.
 Qed.
 
-Corollary wf_sub_eq_id_extend_def : forall Θ Ξ Γ A M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+Corollary wf_sub_eq_id_extend_def : forall Θ Ξ Γ A M M' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -262,7 +257,7 @@ Corollary wf_sub_eq_id_extend_def : forall Θ Ξ Γ A M M' i,
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2.
-  apply (wf_sub_eq_extend_def Θ Ξ Γ Γ sb_id sb_id A M M M' i);
+  apply (wf_sub_eq_extend_def Θ Ξ Γ Γ sb_id sb_id A M M M' Srt);
     rewrite ?exp_sub_id; mauto 3.
 Qed.
 
@@ -300,19 +295,20 @@ Proof.
 Qed.
 
 (** Two sides reduced to equal terms, at types that are equal. *)
-Lemma wf_exp_eq_meet : forall Θ Ξ Γ L N N' L' T T' i,
+Lemma wf_exp_eq_meet : forall Θ Ξ Γ L N N' L' T T' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ L ≈ N : T ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T ->
     Θ ⍮ Ξ ⍮ Γ ⊢ L' ≈ N' : T' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ T : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ L ≈ L' : T.
 Proof.
-  intros.
+  intros * ? ? ? ? HS ?.
   eapply wf_exp_eq_trans; [ eassumption |].
   eapply wf_exp_eq_trans; [ eassumption |].
   eapply wf_exp_eq_sym, wf_exp_eq_subtyp'; [ eassumption |].
-  eapply wf_subtyp_refl; [ eassumption | eapply wf_exp_eq_sym; eassumption ].
+  eapply wf_subtyp_refl; [ eassumption | exact HS | eapply wf_exp_eq_sym; eassumption ].
 Qed.
 
 (** ** Equivalent Substitutions Preserve Typing
@@ -327,21 +323,13 @@ Qed.
     need presupposition for the symmetry case, and so come after it, in
     [Core.Syntactic.SubEq]. *)
 
-Ltac lift_sub_eq_False :=
-  match goal with
-  | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Δ) (a_typ _) _, Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ' |- _ =>
-      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass a_False) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass a_False) Δ) in
-      assert_fails (assert T by assumption);
-      assert T by (apply wf_sub_eq_q_False; exact Hσ)
-  end.
-
 Ltac lift_sub_eq_step :=
   match goal with
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
-    IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_typ _) (exp_sub ?A _) _ |- _ =>
+    IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ ?S (exp_sub ?A _) _ |- _ =>
       let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass A) Δ) in
       assert_fails (assert T by assumption);
-      assert T by (eapply wf_sub_eq_q; [ exact Hσ | | exact (IH _ _ _ Hσ) ]; mauto 2)
+      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ S); [ exact Hσ | | constructor | exact (IH _ _ _ Hσ) ]; mauto 2)
   (** A domain in a small universe, at a level it is given to be one: both are
       moved into the least large universe. *)
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
@@ -350,8 +338,8 @@ Ltac lift_sub_eq_step :=
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) _ |- _ =>
       let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass A) Δ) in
       assert_fails (assert T by assumption);
-      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ 0);
-                   [ exact Hσ | exact (wf_exp_suniv_large HL HA)
+      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ (a_typ 0));
+                   [ exact Hσ | exact (wf_exp_suniv_large HL HA) | constructor
                    | eapply wf_exp_eq_suniv_large; [| exact (IH _ _ _ Hσ) ];
                      let HLs := fresh "HLs" in
                      pose proof (sub_preserves_exp _ _ _ _ _ _ _ HL (wf_sub_eq_left _ _ _ _ _ _ Hσ)) as HLs;
@@ -362,14 +350,14 @@ Ltac lift_sub_eq_def :=
   match goal with
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
     _ : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ (cons (ce_def ?A ?M) ?Δ) _ _ -> _,
-    IHA : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_typ _) (exp_sub ?A _) _,
+    IHA : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ ?S (exp_sub ?A _) _,
     IHM : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (exp_sub ?A _) (exp_sub ?M _) _ |- _ =>
       let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_def (exp_sub A σ) (exp_sub M σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_def A M) Δ) in
       assert_fails (assert T by assumption);
-      assert T by (eapply wf_sub_eq_q_def; [ exact Hσ | | | exact (IHA _ _ _ Hσ) | exact (IHM _ _ _ Hσ) ]; mauto 2)
+      assert T by (eapply (wf_sub_eq_q_def _ _ _ _ _ _ _ _ S); [ exact Hσ | | constructor | | exact (IHA _ _ _ Hσ) | exact (IHM _ _ _ Hσ) ]; mauto 2)
   end.
 
-Ltac lift_sub_eq := repeat first [ lift_sub_eq_False | lift_sub_eq_step | lift_sub_eq_def ].
+Ltac lift_sub_eq := repeat first [ lift_sub_eq_step | lift_sub_eq_def ].
 
 (** [saturate_sub_typ] and [saturate_sub_eq_IH] are the counterparts of
     [push_sub]/[lift_sub] for the equivalence induction: the first transports
@@ -389,6 +377,10 @@ Ltac saturate_sub_typ :=
       let T := constr:(Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : a_univ i) in
       assert_fails (assert T by assumption);
       assert T by (eapply sub_preserves_styp; eassumption)
+  | H : wf_exp ?Θ ?Ξ ?Δ a_prop ?A, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
+      let T := constr:(Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : a_prop) in
+      assert_fails (assert T by assumption);
+      assert T by (eapply sub_preserves_sort; [ exact H | constructor | exact Hσ ])
   end.
 
 Ltac saturate_sub_eq_IH :=
@@ -399,11 +391,26 @@ Ltac saturate_sub_eq_IH :=
       pose proof (IH _ _ _ Hσ)
   end.
 
+(** The parts of an equation of telescopes ending in assumptions [A] and
+    [A']: the telescopes before, and the heads at one sort. *)
+#[warnings="-cannot-define-projection"]
+Record ext_eq_ass_head (Θ : gdeps) (Ξ : gstack) (Γ Ψ Ψ' : ctx) (A A' : typ) : Prop := mk_ext_eq_ass_head
+  { (** The sort both heads are of *)
+    ext_head_sort : exp
+    (** It is a sort: a large universe or [Prop] *)
+  ; ext_head_sort_ok : type_sort ext_head_sort
+    (** The telescopes before the heads are equal *)
+  ; ext_head_tail : Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'
+    (** The left head is of the sort *)
+  ; ext_head_left : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : ext_head_sort
+    (** The heads are equal at it, in the left telescope *)
+  ; ext_head_eq : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : ext_head_sort
+    (** The right head is of the sort, in the right telescope *)
+  ; ext_head_right : Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : ext_head_sort }.
+
 (** The head of an equation of telescopes of assumptions. *)
-Lemma ext_eq_ass_inv : forall Θ Ξ Γ Ψ Ψ' A A', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' /\ Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Typeω@i /\
-      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Typeω@i.
-Proof. intros * H; inversion H; subst; eexists; eauto. Qed.
+Lemma ext_eq_ass_inv : forall Θ Ξ Γ Ψ Ψ' A A', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' -> ext_eq_ass_head Θ Ξ Γ Ψ Ψ' A A'.
+Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
 
 (** An annotated motive context [T ▹ Z] equal to [T' ▹ Z'] and to the
     motive's context [T ▹ H]: [T ▹ Z'] is equal to the motive's context
@@ -413,21 +420,28 @@ Lemma ann_ctx_trans : forall Θ Ξ Δ T T' Z Z' H,
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z' ≈ T ▹ H.
 Proof.
   intros * Ha Hb HT.
-  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Ha) as (i & HTT' & HZ & HZZ' & HZ').
-  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Hb) as (j & HTT & _ & HZH & HH).
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Ha) as [S1 HS1 HTT' HZ HZZ' HZ'].
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Hb) as [S2 HS2 HTT _ HZH HH].
   pose proof (ctxsub_exp _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ HTT' HT) HZ') as HZ'l.
-  eapply wf_ext_eq_ass with (i := max i j);
-    [ exact HTT | eapply lift_exp_max_left; exact HZ'l
-    | eapply wf_exp_eq_trans; [ eapply wf_exp_eq_sym, lift_exp_eq_max_left; exact HZZ' | eapply lift_exp_eq_max_right; exact HZH ]
-    | eapply lift_exp_max_right; exact HH ].
-Qed.
+  destruct HS1 as [i |], HS2 as [j |].
+  - eapply wf_ext_eq_ass with (Srt := Typeω@(max i j));
+      [ exact HTT | eapply lift_exp_max_left; exact HZ'l | constructor
+      | eapply wf_exp_eq_trans; [ eapply wf_exp_eq_sym, lift_exp_eq_max_left; exact HZZ' | eapply lift_exp_eq_max_right; exact HZH ]
+      | eapply lift_exp_max_right; exact HH ].
+  - (* PENDING design: cross-sort transitivity *) admit.
+  - (* PENDING design: cross-sort transitivity *) admit.
+  - eapply wf_ext_eq_ass with (Srt := Propₘ);
+      [ exact HTT | exact HZ'l | constructor
+      | eapply wf_exp_eq_trans; [ eapply wf_exp_eq_sym; exact HZZ' | exact HZH ]
+      | exact HH ].
+Admitted.
 
 (** The eliminator: the scrutinee, the motives, the annotations and the
     branches move under the equivalent substitutions lifted over their
     contexts, which the induction hypotheses of the telescope premises
     give; the annotations of the second side by the equations of the
     annotated contexts. *)
-Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq Us m Mm Bks bm Ps M i,
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D oq Us m Mm Bks bm Ps M i,
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq p m ->
     ind_member D m = Some Mm ->
@@ -462,10 +476,10 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq Us m Mm Bks bm Ps M i,
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ
            ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ')) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[τ] ≈ (eb_motive b)[τ'] : Typeω@i[τ]) ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[τ] ≈ (eb_motive b)[τ'] : (relevance_sort r Typeω@i)[τ]) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk, ind_member D k = Some Mk ->
@@ -486,40 +500,41 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq Us m Mm Bks bm Ps M i,
            ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ')) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                    ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                    ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
-         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
-           ⊢ˢ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
-            ≈ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
-           : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
-           ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ') /\
-       (tele_ass (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
-         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
-           ⊢ˢ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
-            ≈ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
-           : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
-           ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ')) ->
+       (tele_ass (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
+           : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ') /\
+       (tele_ass (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
+           : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ')) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-       Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+       Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] ≈ (a_elim oq Us m Bks M)[σ']
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim r oq Us m Bks M)[σ] ≈ (a_elim r oq Us m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
   intros * Hl Hg HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
+  pose proof (type_sort_relevance r _ (type_sort_universe i)) as HS.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
   assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HlP; lia).
@@ -534,7 +549,7 @@ Proof.
     by (intros; eapply sub_preserves_ext; eauto).
   assert (HA1 : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : Typeω@i[σ0])
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : (relevance_sort r Typeω@i)[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
   assert (HΨ1 : forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
              Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
@@ -542,12 +557,12 @@ Proof.
     by (intros; eapply sub_preserves_ext; eauto).
   assert (HΨB1 : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
-                          ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0)
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
+                          ≈ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0)
     by (intros; eapply sub_preserves_ext; eauto).
   assert (HB1 : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
+             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
              Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
   pose proof (sub_as_sub_dom Θ Ξ) as Rd; pose proof (sub_as_sub_ext Θ Ξ) as Re.
@@ -595,7 +610,8 @@ Proof.
     pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm oZ A0 Bs0]; cbn in Enm |- *; subst nm.
     destruct (proj1 (IHΨ _ _ HMk _ _ _ Hσ) (elim_mctx_ass _ _ _ _ _ HD HMk)) as [Hlift _].
     rewrite length_elim_mctx in Hlift; erewrite elim_mctx_sub in Hlift by eassumption.
-    rewrite List.firstn_map; exact (IHA _ _ _ HMk Hb0 _ _ _ Hlift).
+    rewrite List.firstn_map; pose proof (IHA _ _ _ HMk Hb0 _ _ _ Hlift) as HAσ.
+    rewrite type_sort_sub in HAσ by exact HS; exact HAσ.
   - intros k Mk HMk; rewrite List.firstn_map; erewrite <- elim_mctx_sub by eassumption; exact (HΨ1 _ _ HMk _ _ Hs).
   - apply mv_blocks_names; exact Hn.
   - intros k b b' Hb Hb'; rewrite !nth_error_blocks_sub in Hb, Hb'.
@@ -614,7 +630,7 @@ Proof.
     rewrite Hi in Hi'; injection Hi' as <-.
     pose proof (List.nth_error_In _ _ Hi) as Hin; cbn [eb_brs] in Hin.
     pose proof (Hk _ _ _ _ _ _ _ HMk Hb0 Hc Hin) as En; cbn in En; subst n2.
-    destruct (proj1 (IHΨB _ _ _ _ HMk Hc _ _ _ Hσ) (elim_bctx_ass _ _ _ _ _ _ _ HD HMk)) as [Hlift _].
+    destruct (proj1 (IHΨB _ _ _ _ HMk Hc _ _ _ Hσ) (elim_bctx_ass _ _ _ _ _ _ _ _ HD HMk)) as [Hlift _].
     rewrite length_elim_bctx in Hlift.
     erewrite elim_bctx_sub in Hlift;
       [| eassumption | eassumption | apply cons_lookup_in; eassumption | eassumption | intros j0 Mj HMj; eapply blocks_motives_sub; eassumption ].
@@ -630,28 +646,6 @@ Qed.
     with the entries before them filled in, in its parameters' context, so
     they are moved only under the lifting over the parameters, which are
     assumptions. *)
-
-(** The entry of a body of the same shape named as one of the other's. *)
-Lemma shape_prefix : forall Φ Φ' y Φ0 E, body_shape Φ Φ' -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
-    exists Φ0' E', gm_prefix_upto Φ' y = Some (gm_ext Φ0' y E') /\ body_shape Φ0 Φ0' /\ entry_shape E E'.
-Proof.
-  induction Φ as [| Φ IH x E0 | Φ IH H its]; intros [| Φ' x' E0' | Φ' H' its'] * Hs Hp; cbn in Hs, Hp |- *; try contradiction; try discriminate.
-  - destruct Hs as (Hs & <- & HE).
-    destruct (String.eqb y x); [ injection Hp as ? ? ?; subst; do 2 eexists; split; [ reflexivity | split; assumption ] |].
-    exact (IH _ _ _ _ Hs Hp).
-  - destruct Hs as (Hs & <-); destruct (List.existsb _ _); [ discriminate | exact (IH _ _ _ _ Hs Hp) ].
-Qed.
-
-Lemma fill_prefix : forall Φ y Φ0 E, gm_fill Φ <> None -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
-    exists σ, gm_fill Φ0 = Some σ.
-Proof.
-  induction Φ as [| Φ IH x E0 | Φ IH H its]; intros * Hf Hp; cbn in Hf, Hp; try discriminate.
-  - assert (Hf0 : gm_fill Φ <> None)
-      by (destruct E0 as [? ? ? [] | | | | ]; try contradiction; destruct (gm_fill Φ); cbn in Hf; congruence).
-    destruct (String.eqb y x); [ injection Hp as ? ? ?; subst; destruct (gm_fill Φ0) eqn:Ef; [ eauto | contradiction ] |].
-    exact (IH _ _ _ Hf0 Hp).
-  - contradiction.
-Qed.
 
 Lemma body_shape_dropn : forall n Φ Φ', body_shape Φ Φ' -> body_shape (gm_dropn n Φ) (gm_dropn n Φ').
 Proof.
@@ -684,40 +678,57 @@ Proof.
     injection Hk as <- <-; do 2 eexists; split; [ reflexivity | split; [ exact Hsx0 | eapply body_xp_nopens; exact Hx ] ].
 Qed.
 
-Lemma sub_eq_ext_ass_diag : forall Θ Ξ Δ Ψ A i Γ0 σ σ',
+Lemma sub_eq_ext_ass_diag : forall Θ Ξ Δ Ψ A Srt Γ0 σ σ',
     Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ0 ⊢ˢ sb_qn (length Ψ) σ ≈ sb_qn (length Ψ) σ' : Ψ ++ Δ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ σ' ->
     ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ ->
-    Θ ⍮ Ξ ⍮ Ψ ++ Δ ⊢ A : Typeω@i ->
-    (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[τ] ≈ A[τ'] : Typeω@i[τ]) ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Δ ⊢ A : Srt ->
+    type_sort Srt ->
+    (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[τ] ≈ A[τ'] : Srt[τ]) ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ tele_sub (Ψ ▹ A) σ ++ Γ0 ⊢ˢ sb_qn (length (Ψ ▹ A)) σ ≈ sb_qn (length (Ψ ▹ A)) σ' : Ψ ▹ A ++ Δ /\
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub (Ψ ▹ A) σ ≈ tele_sub (Ψ ▹ A) σ'.
 Proof.
-  intros * Hl HE HΨ HA IHA Hσ.
+  intros * Hl HE HΨ HA HS IHA Hσ.
+  pose proof (IHA _ _ _ Hl) as HAσ; rewrite type_sort_sub in HAσ by exact HS.
   split.
-  - cbn [tele_sub List.length sb_qn List.app]; eapply wf_sub_eq_q; [ exact Hl | exact HA | exact (IHA _ _ _ Hl) ].
+  - cbn [tele_sub List.length sb_qn List.app]; eapply wf_sub_eq_q; [ exact Hl | exact HA | exact HS | exact HAσ ].
   - cbn [tele_sub List.length].
     assert (Hr : Θ ⍮ Ξ ⍮ tele_sub Ψ σ' ++ Γ0 ⊢ˢ sb_qn (length Ψ) σ' : Ψ ++ Δ)
       by (apply wf_sub_ext; [ exact (wf_sub_eq_right _ _ _ _ _ _ Hσ) | exact (ext_eq_ctx_right _ _ _ _ _ HE) | exact HΨ ]).
-    eapply wf_ext_eq_ass.
+    eapply wf_ext_eq_ass with (Srt := Srt).
     + exact HE.
-    + exact (sub_preserves_typ _ _ _ _ _ _ _ HA (wf_sub_eq_left _ _ _ _ _ _ Hl)).
-    + exact (IHA _ _ _ Hl).
-    + exact (sub_preserves_typ _ _ _ _ _ _ _ HA Hr).
+    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_left _ _ _ _ _ _ Hl)).
+    + exact HS.
+    + exact HAσ.
+    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hr).
 Qed.
 
+(** The relevant-only parameters [Δu] of a unit, given as the rule's premise
+    [HRp], moved by one substitution [Hs] into the context [HΔ] from the
+    parameters' context [HΓ]: [mv_params_case] at [sub_as_sub], each
+    parameter type moved by [sub_preserves_typ]. *)
+Ltac sub_eq_params_case Hs HΓ HΔ HRp :=
+  eapply (mv_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _));
+  [ exact Hs | exact HΓ | exact HΔ
+  | let E := fresh "E" in let Hσ0 := fresh "Hσ0" in
+    intros ? ? ? E ? ? Hσ0; exact (sub_preserves_typ _ _ _ _ _ _ _ (HRp _ _ _ E) Hσ0) ].
+
 (** One side of a body unit, moved by two equivalent substitutions. *)
-Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx lv Γ0 σ σ',
+Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx entry_sort l Γ0 σ σ',
     body_xp Θ Ξ (Δu ++ Γ) Φ Φx ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Γ0 ⊢ˢ sb_qn (length Δu) σ ≈ sb_qn (length Δu) σ' : Δu ++ Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Δu σ ≈ tele_sub Δu σ' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δu ≈ body_ctx Φx ++ Δu ->
+    (forall y, type_sort (entry_sort y)) ->
+    (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
-        Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : entry_sort y) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
-        forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[σf][τ] ≈ A[σf][τ'] : Typeω@(lv y)[τ]) ->
+        forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[σf][τ] ≈ A[σf][τ'] : (entry_sort y)[τ]) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ M[σf] : A[σf]) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
@@ -733,7 +744,7 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx lv Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu Φ)[σ']ᵘ.
 Proof.
-  intros * Hb Hσ L HΔσ Hx HA IHA HM IHM HU IHU Ho IHo Ha Hs Hsx Hn HU0.
+  intros * Hb Hσ L HΔσ Hx Hes Htg HRp HA IHA HM IHM HU IHU Ho IHo Ha Hs Hsx Hn HU0.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs0; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs1.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact Hx).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & _).
@@ -746,9 +757,12 @@ Proof.
   (* both prefixes of a self-pair are the same *)
   assert (Hsame : forall y X X', gm_prefix_upto Φx y = Some X -> gm_prefix_upto Φx y = Some X' -> X = X')
     by (intros * E1 E2; rewrite E1 in E2; injection E2 as ->; reflexivity).
-  eapply (unit_body_moved Θ Ξ Γ Δu Δu Φ Φ Φx Φx lv Γ0 σ σ');
+  eapply (unit_body_moved Θ Ξ Γ Δu Δu Φ Φ Φx Φx entry_sort l Γ0 σ σ');
     [ | | exact HΔσ | exact Hxσ | exact Hxσ' | | | | | | | | | exact Hb | exact Hb | exact Ha | exact Ha
-    | reflexivity | exact Hs | exact Hsx | exact Hn ].
+    | reflexivity | exact Hs | exact Hsx | exact Hn | exact Hes | exact Htg | exact Htg | | ].
+  (* the relevant-only parameters, moved by either substitution *)
+  all: try solve [ sub_eq_params_case Hs0 HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔσ) HRp
+                 | sub_eq_params_case Hs1 HΔΓ (ext_eq_ctx_right _ _ _ _ _ HΔσ) HRp ].
   - eapply body_xp_sub; [ exact Hc | exact Hb | apply ctx_scoped_app_iff; split; assumption | rewrite List.length_app; exact HΦs
                         | apply sub_mod_compat_ext; eauto using wf_sub_mod_compat ].
   - eapply body_xp_sub; [ exact Hc | exact Hb | apply ctx_scoped_app_iff; split; assumption | rewrite List.length_app; exact HΦs
@@ -756,8 +770,8 @@ Proof.
   - intros * Hp HE Hp' HE' Hf0 Hf0'.
     pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <- <-.
     rewrite Hf0 in Hf0'; injection Hf0' as <-.
-    pose proof (IHA _ _ _ _ _ _ Hp HE Hf0 _ _ _ L) as HAσ; cbn in HAσ.
-    pose proof (sub_preserves_typ _ _ _ _ _ _ _ (HA _ _ _ _ _ _ Hp HE Hf0) (wf_sub_eq_left _ _ _ _ _ _ L)) as HAl.
+    pose proof (IHA _ _ _ _ _ _ Hp HE Hf0 _ _ _ L) as HAσ; rewrite type_sort_sub in HAσ by exact (Hes y).
+    pose proof (sub_preserves_sort _ _ _ _ _ _ _ (HA _ _ _ _ _ _ Hp HE Hf0) (Hes y) (wf_sub_eq_left _ _ _ _ _ _ L)) as HAl.
     split; [ exact HAl | split; [ exact HAσ | split ] ].
     + exact (sub_preserves_exp _ _ _ _ _ _ _ (HM _ _ _ _ _ _ Hp HE Hf0) (wf_sub_eq_left _ _ _ _ _ _ L)).
     + exact (IHM _ _ _ _ _ _ Hp HE Hf0 _ _ _ L).
@@ -768,7 +782,7 @@ Proof.
   - intros * Hp HE Hp' HE' Hf0 Hf0'.
     pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <- <-.
     rewrite Hf0 in Hf0'; injection Hf0' as <-.
-    split; [ exact (sub_preserves_typ _ _ _ _ _ _ _ (HA _ _ _ _ _ _ Hp HE Hf0) R)
+    split; [ exact (sub_preserves_sort _ _ _ _ _ _ _ (HA _ _ _ _ _ _ Hp HE Hf0) (Hes y) R)
            | exact (sub_preserves_exp _ _ _ _ _ _ _ (HM _ _ _ _ _ _ Hp HE Hf0) R) ].
   - intros * Hp HE Hp' HE' Hf0 Hf0'.
     pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <-.
@@ -798,25 +812,31 @@ Proof.
     exact (sub_preserves_modexp _ _ _ _ _ _ _ HH1 R).
 Qed.
 
-Lemma sub_eq_unit_alias_self : forall Θ Ξ Γ Δu E Γ0 σ σ',
+Lemma sub_eq_unit_alias_self : forall Θ Ξ Γ Δu E l Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Γ0 ⊢ˢ sb_qn (length Δu) σ ≈ sb_qn (length Δu) σ' : Δu ++ Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Δu σ ≈ tele_sub Δu σ' ->
     tele_ass Δu ->
     Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ᵐ E ≈ E ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ E[τ]ᵐ ≈ E[τ']ᵐ) ->
+    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δu (md_alias E))[σ]ᵘ ≈ (gu_mk Δu (md_alias E))[σ']ᵘ.
 Proof.
-  intros * Hσ L HΔσ Ha HE IHE.
+  intros * Hσ L HΔσ Ha HE IHE HRp.
+  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs0; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs1.
+  pose proof (presup_modexp_eq_ctx HE) as HΔΓ.
   rewrite !gunit_sub_mk; cbn [moddef_sub].
-  eapply wf_unit_eq_alias; [ exact HΔσ | apply tele_ass_sub; exact Ha | apply tele_ass_sub; exact Ha | exact (IHE _ _ _ L) |].
+  eapply wf_unit_eq_alias with (param_level := l);
+    [ exact HΔσ | apply tele_ass_sub; exact Ha | apply tele_ass_sub; exact Ha | exact (IHE _ _ _ L) |
+    | sub_eq_params_case Hs0 HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔσ) HRp
+    | sub_eq_params_case Hs1 HΔΓ (ext_eq_ctx_right _ _ _ _ _ HΔσ) HRp ].
   eapply sub_preserves_modexp; [ exact HE |].
-  apply wf_sub_ext; [ exact (wf_sub_eq_right _ _ _ _ _ _ Hσ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔσ) | exact (presup_modexp_eq_ctx HE) ].
+  apply wf_sub_ext; [ exact Hs1 | exact (ext_eq_ctx_right _ _ _ _ _ HΔσ) | exact HΔΓ ].
 Qed.
 
 (** Both sides of a flattened alias of a literal: the alias by congruence,
     the merged literal through the alias by flattening on either side. *)
-Lemma sub_eq_unit_flatten_case : forall Θ Ξ Γ Δ Δ' D Γ0 σ σ',
+Lemma sub_eq_unit_flatten_case : forall Θ Ξ Γ Δ Δ' D l Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ tele_sub Δ σ ++ Γ0 ⊢ˢ sb_qn (length Δ) σ ≈ sb_qn (length Δ) σ' : Δ ++ Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Δ σ ≈ tele_sub Δ σ' ->
@@ -824,12 +844,14 @@ Lemma sub_eq_unit_flatten_case : forall Θ Ξ Γ Δ Δ' D Γ0 σ σ',
     tele_ass Δ ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δ ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ (gu_mk Δ' D)[τ]ᵘ ≈ (gu_mk Δ' D)[τ']ᵘ) ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ]ᵘ ≈ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ']ᵘ /\
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk (Δ' ++ Δ) D)[σ]ᵘ ≈ (gu_mk (Δ' ++ Δ) D)[σ']ᵘ.
 Proof.
-  intros * Hσ L HΔσ HΔ Ha HU IHU.
+  intros * Hσ L HΔσ HΔ Ha HU IHU HRp.
+  pose proof (presup_unit_eq_ctx HU) as HΔΓ.
   assert (HL : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ]ᵘ ≈ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ']ᵘ).
-  { eapply sub_eq_unit_alias_self; [ exact Hσ | exact L | exact HΔσ | exact Ha | apply wf_me_lit; exact HU |].
+  { eapply sub_eq_unit_alias_self; [ exact Hσ | exact L | exact HΔσ | exact Ha | apply wf_me_lit; exact HU | | exact HRp ].
     intros * Hτ; cbn [modexp_sub]; apply wf_me_lit, IHU; exact Hτ. }
   split; [ exact HL |].
   assert (Hflat : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ s : Γ ->
@@ -840,37 +862,27 @@ Proof.
     pose proof (sub_preserves_unit _ _ _ _ _ _ _ HU Hq) as HUs.
     change (gu_mk (Δ' ++ Δ) D) with (gunit_abs Δ (gu_mk Δ' D)); rewrite gunit_abs_sub, gunit_sub_mk; cbn [moddef_sub modexp_sub].
     revert HUs; destruct ((gu_mk Δ' D)[sb_qn (length Δ) s]ᵘ) as [Δw Dw]; intros HUs; cbn [gunit_abs].
-    eapply wf_unit_eq_flatten; [ exact HΔs | apply tele_ass_sub; exact Ha | exact HUs ]. }
+    eapply wf_unit_eq_flatten with (param_level := l);
+      [ exact HΔs | apply tele_ass_sub; exact Ha | exact HUs
+      | sub_eq_params_case Hs HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔs) HRp ]. }
   eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym, Hflat, (wf_sub_eq_left _ _ _ _ _ _ Hσ) |].
   eapply wf_unit_eq_trans; [ exact HL | apply Hflat, (wf_sub_eq_right _ _ _ _ _ _ Hσ) ].
 Qed.
 
-(** Entries of the same shape both have a term part, or neither. *)
-Lemma entry_shape_tm : forall E E' A M, entry_shape E E' -> entry_tm E = Some (A, M) ->
-    exists A' M', entry_tm E' = Some (A', M').
-Proof.
-  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
-Qed.
-
-Lemma entry_shape_tm_r : forall E E' A' M', entry_shape E E' -> entry_tm E' = Some (A', M') ->
-    exists A M, entry_tm E = Some (A, M).
-Proof.
-  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
-Qed.
 
 (** Entries of the same shape both have a module part, or neither. *)
 Lemma entry_shape_unit : forall E E' U, entry_shape E E' -> entry_unit E = Some U -> exists U', entry_unit E' = Some U'.
 Proof.
-  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
+  intros [? ? ? ? [] | | | | ] [? ? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
 Qed.
 
 Lemma entry_shape_unit_r : forall E E' U', entry_shape E E' -> entry_unit E' = Some U' -> exists U, entry_unit E = Some U.
 Proof.
-  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
+  intros [? ? ? ? [] | | | | ] [? ? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
 Qed.
 
 (** Both sides of a body unit, from the rule's premises. *)
-Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Γ0 σ σ',
+Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Γ0 σ σ',
     body_xp Θ Ξ (Δu ++ Γ) Φ Φx ->
     body_xp Θ Ξ (Δu' ++ Γ) Φ' Φx' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δu ≈ Δu' ->
@@ -885,17 +897,17 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Γ0 σ
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
-        Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : entry_sort y) ->
     (forall y Φ0 E A M Φ0' E' A' M' σf σf',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
-        forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[σf][τ] ≈ A[σf][τ'] : Typeω@(lv y)[τ]) ->
+        forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[σf][τ] ≈ A[σf][τ'] : (entry_sort y)[τ]) ->
     (forall y Φ0 E A M Φ0' E' A' M' σf σf',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
-        Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] ≈ A'[σf'] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] ≈ A'[σf'] : entry_sort y) ->
     (forall y Φ0 E A M Φ0' E' A' M' σf σf',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -926,12 +938,12 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Γ0 σ
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
-        Θ ⍮ Ξ ⍮ Δu' ++ Γ ⊢ A'[σf'] : Typeω@(lv y)) ->
+        Θ ⍮ Ξ ⍮ Δu' ++ Γ ⊢ A'[σf'] : entry_sort y) ->
     (forall y Φ0 E A M Φ0' E' A' M' σf σf',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
-        forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A'[σf'][τ] ≈ A'[σf'][τ'] : Typeω@(lv y)[τ]) ->
+        forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A'[σf'][τ] ≈ A'[σf'][τ'] : (entry_sort y)[τ]) ->
     (forall y Φ0 E A M Φ0' E' A' M' σf σf',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -975,12 +987,19 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Γ0 σ
           Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ H'[σf']ᵐ[τ]ᵐ ≈ H'[σf']ᵐ[τ']ᵐ /\ Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ H'[σf']ᵐ[τ]ᵐ ≈ H'[σf']ᵐ[τ']ᵐ) ->
     tele_ass Δu -> tele_ass Δu' -> length Δu = length Δu' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
+    (forall y, type_sort (entry_sort y)) ->
+    (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+    (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
+    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
+    (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu Φ)[σ']ᵘ /\
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu' Φ')[σ]ᵘ ≈ (gu_open Δu' Φ')[σ']ᵘ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx Hx' HA IHA HAA HM IHM HMM HU IHU HAr IHAr HMr IHMr HUr IHUr Ho Ho' HOO IHOO HOR IHOR
-           Ha Ha' Hl Hs Hsx Hn Hσ.
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' HRp HRp' Hσ.
   (* an open of one side has its counterpart on the other, filled in *)
   assert (Hopair : forall k Φ0 H σf, List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> gm_fill Φ0 = Some σf ->
             exists Φ0' H' σf', List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') /\ gm_fill Φ0' = Some σf').
@@ -1011,12 +1030,12 @@ Proof.
             exists Φ0 E σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) /\ entry_shape E E' /\ gm_fill Φ0 = Some σf).
   { intros * Hp'; destruct (shape_prefix _ _ _ _ _ (body_shape_sym _ _ Hsx) Hp') as (Φ0 & E & Hp & _ & HE).
     destruct (fill_prefix _ _ _ _ Hf Hp) as (σf & Hf0).
-    destruct E' as [? ? ? [] | | | | ], E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; do 3 eexists;
+    destruct E' as [? ? ? ? [] | | | | ], E as [? ? ? ? [] | | | | ]; cbn in HE; try contradiction; do 3 eexists;
       (split; [ exact Hp | split; [| exact Hf0 ] ]); cbn; intuition. }
   assert (HU0 : Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu' Φ')
     by (eapply wf_unit_eq_body; eassumption).
   split.
-  - eapply sub_eq_unit_self; [ exact Hb | exact Hσ | exact L | exact HΔσ | exact Hx | | | | | | | exact Ho |
+  - eapply sub_eq_unit_self; [ exact Hb | exact Hσ | exact L | exact HΔσ | exact Hx | exact Hes | exact Htg | exact HRp | | | | | | | exact Ho |
                              | exact Ha | exact Hs1 | exact Hsx1 | exact Hn | eapply wf_unit_eq_trans; [ exact HU0 | apply wf_unit_eq_sym; exact HU0 ] ].
     7: intros k Φ0 H σf Ek Hf0; destruct (Hopair _ _ _ _ Ek Hf0) as (Φ0' & H' & σf' & Ek' & Hf0');
          intros; eapply proj1; eapply IHOO; eassumption.
@@ -1033,7 +1052,7 @@ Proof.
         eapply wf_unit_eq_trans; [ eapply HU; eassumption | apply wf_unit_eq_sym; eapply HU; eassumption ].
     + intros y Φ0 E U σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
         destruct (entry_shape_unit _ _ _ HS HE) as (U' & HE'); intros; eapply proj1; eapply IHU; eassumption.
-  - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | | | | | | | exact Ho' |
+  - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | exact Hes | exact Htg' | exact HRp' | | | | | | | exact Ho' |
                              | exact Ha' | exact Hs2 | exact Hsx2 | rewrite <- Hnames; exact Hn
                              | eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; exact HU0 | exact HU0 ] ].
     7: intros k Φ0' H' σf' Ek' Hf0'; destruct (Hopair' _ _ _ _ Ek' Hf0') as (Φ0 & H & σf & Ek & Hf0);
@@ -1050,6 +1069,24 @@ Proof.
         destruct (entry_shape_unit_r _ _ _ HS HE') as (U & HE); eapply HUr; eassumption.
     + intros y Φ0' E' U' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
         destruct (entry_shape_unit_r _ _ _ HS HE') as (U & HE); intros; eapply proj1; eapply IHUr; eassumption.
+Qed.
+
+(** The parameters of a unit are types of a universe.  Every rule of the
+    unit judgment requires it of its sides. *)
+Definition unit_params_relevant (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
+  exists l, params_relevant Θ Ξ Γ (gu_params U) l.
+
+(** Both sides of an equation of units have relevant parameters. *)
+Lemma unit_eq_params_relevant : forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+    unit_params_relevant Θ Ξ Γ U /\ unit_params_relevant Θ Ξ Γ U'.
+Proof.
+  intros * H; induction H; unfold unit_params_relevant in *; cbn [gu_params] in *;
+    try solve [ split; eexists; eassumption | tauto ].
+  (* the flattened literal: the outer parameters by the premise, the inner
+     ones by the literal's *)
+  destruct IHwf_unit_eq as [_ [l' Hl']].
+  split; [ eexists; eassumption |].
+  exists (max l' param_level); apply params_relevant_app; assumption.
 Qed.
 
 (** A literal given its outermost parameter, both sides moved. *)
@@ -1071,8 +1108,8 @@ Proof.
       exact (desc_ok_mtele_last _ _ _ _ _ (udenote_is_mod _ _ _ _ _ _ Hu0) Hok) end. }
   destruct (Ht _ _ _ _ HR1 (HK1 _ HR1)) as (T1 & HT1).
   destruct (Ht _ _ _ _ HR2 (HK2 _ HR2)) as (T2 & HT2).
-  destruct (presup_exp_typ HN1) as [i HX1].
-  destruct (presup_exp_typ HN2) as [j HX2].
+  destruct (unit_eq_params_relevant _ _ _ _ _ HU) as [[i HX1] [j HX2]]; cbn [gu_params] in HX1, HX2.
+  specialize (HX1 _ _ _ eq_refl); specialize (HX2 _ _ _ eq_refl); cbn [List.app] in HX1, HX2.
   eapply wf_me_app; [ exact HH | exact HR1 | exact HT1 | apply tele_view_last | exact HX1 | exact HN1 | exact HN
                     | exact HR2 | exact HT2 | apply tele_view_last | exact HX2 | exact HN2 ].
 Qed.
@@ -1087,11 +1124,12 @@ Lemma sub_eq_record_case : forall Θ Ξ Γ Δ σ σ' p R i,
     ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
     Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
     (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-       Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+       Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
+    List.length (record_field_relevance R) = List.length (record_fields R) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a_record p)[σ] ≈ (a_record p)[σ'] : (record_ty R)[σ].
 Proof.
-  intros * Hl Hnd Hass Hty Hc Hs Hf Hσ.
+  intros * Hl Hnd Hass Hty Hc Hs Hf Hrl Hσ.
   pose proof (wf_sub_dom _ _ _ _ _ (wf_sub_eq_left _ _ _ _ _ _ Hσ)) as HΓ.
   rewrite record_ty_sub by (eapply wf_record_closed; [ exact HΓ | exact Hl ]).
   cbn [exp_sub]; eapply wf_exp_eq_record_cong; eassumption.
@@ -1145,11 +1183,12 @@ Proof.
     rewrite (record_field_sub _ _ _ _ _ _ _ HRd HU Hn) in H.
     + rewrite tuple_values_sub in H; exact H.
     + rewrite List.length_firstn, List.length_map; pose proof (nth_error_lt_length _ _ _ HM); lia.
-  - eapply wf_exp_subtyp; [ exact Htr | exact HTl | eapply wf_subtyp_refl; [ exact HTl | apply wf_exp_eq_sym; exact ET ] ].
+  - eapply wf_exp_subtyp; [ exact Htr | exact HTl | constructor
+                          | eapply wf_subtyp_refl; [ exact HTl | constructor | apply wf_exp_eq_sym; exact ET ] ].
 Qed.
 
 (** A projection: its own congruence, at the moved scrutinee. *)
-Lemma sub_eq_proj_case : forall Θ Ξ Γ Δ σ σ' M p Ns R k f U i,
+Lemma sub_eq_proj_case : forall Θ Ξ Γ Δ σ σ' M p Ns R k f U Srt,
     Θ ⍮ Ξ ⍮ Δ ⊢ M : apps_exp (a_record p) Ns ->
     (forall Γ0 τ τ', Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ τ ≈ τ' : Δ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ M[τ] ≈ M[τ'] : (apps_exp (a_record p) Ns)[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ a_record p : record_ty R ->
@@ -1158,34 +1197,70 @@ Lemma sub_eq_proj_case : forall Θ Ξ Γ Δ σ σ' M p Ns R k f U i,
     (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
        Θ ⍮ Ξ ⍮ Δ ⊢ N : A) ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Srt ->
     (forall Γ0 τ τ', Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ τ ≈ τ' : Δ ->
-       Θ ⍮ Ξ ⍮ Γ0 ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)][τ] ≈ U[sb_of_list Id (Ns ++ record_pre R k M)][τ'] : Typeω@i[τ]) ->
+       Θ ⍮ Ξ ⍮ Γ0 ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)][τ] ≈ U[sb_of_list Id (Ns ++ record_pre R k M)][τ'] : Srt[τ]) ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a_proj f M)[σ] ≈ (a_proj f M)[σ'] : U[sb_of_list Id (Ns ++ record_pre R k M)][σ].
 Proof.
-  intros * HM IHM Hr Hl Hn HN Hk HU IHU Hσ.
+  intros * HM IHM Hr Hl Hn HN Hk HU IHU HS Hσ.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HRd : record_closed R) by (eapply wf_record_closed; [ exact (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
   assert (HL : List.length (record_pre R k M) = k)
     by (apply length_record_pre; pose proof (nth_error_lt_length _ _ _ Hk); lia).
   assert (Hp : Θ ⍮ Ξ ⍮ Δ ⊢ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)]) by (eapply wf_proj; eassumption).
   pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hp Hs') as Hpr.
-  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HU Hs) as HUl.
-  pose proof (IHU _ _ _ Hσ) as EU.
+  pose proof (sub_preserves_sort _ _ _ _ _ _ _ HU HS Hs) as HUl.
+  pose proof (IHU _ _ _ Hσ) as EU; rewrite type_sort_sub in EU by exact HS.
   assert (Hpr' : Θ ⍮ Ξ ⍮ Γ ⊢ (a_proj f M)[σ'] : U[sb_of_list Id (Ns ++ record_pre R k M)][σ])
-    by (eapply wf_exp_subtyp; [ exact Hpr | exact HUl | eapply wf_subtyp_refl; [ exact HUl | apply wf_exp_eq_sym; exact EU ] ]).
+    by (eapply wf_exp_subtyp; [ exact Hpr | exact HUl | exact HS
+                              | eapply wf_subtyp_refl; [ exact HUl | exact HS | apply wf_exp_eq_sym; exact EU ] ]).
   pose proof (IHM _ _ _ Hσ) as EM; rewrite apps_exp_sub in EM.
   pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hr Hs) as Hrσ; rewrite record_ty_sub in Hrσ by exact HRd.
   rewrite (record_field_sub _ _ _ _ _ _ _ HRd Hk Hn HL), record_pre_sub in HUl, Hpr' |- *.
   cbn [exp_sub] in Hpr' |- *.
   eapply wf_exp_eq_proj_cong; [ exact EM | exact Hrσ | exact Hl | rewrite List.length_map; exact Hn | | exact Hk | exact HUl
-                              | exact Hpr' ].
+                              | exact HS | exact Hpr' ].
   intros j N' A' HN' HA'.
   rewrite <- record_params_insts_sub in HA' by exact HRd.
   apply nth_error_map_inv in HN' as (N & HN0 & ->); apply nth_error_map_inv in HA' as (A & HA0 & ->).
   exact (sub_preserves_exp _ _ _ _ _ _ _ (HN _ _ _ HN0 HA0) Hs).
 Qed.
+
+(** The local-module case of [sub_eq_preserves_mut], at a body's type of
+    either sort: both sides are reduced by [ζ] and meet at the body under
+    the two extended substitutions, at the body's type. *)
+Ltac sub_eq_let_mod_case :=
+  match goal with
+  | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ0 ?Γ ?σ ?σ', HU : wf_unit_eq _ _ ?Γ ?U ?U,
+    HC : wf_exp _ _ (ce_mod ?U :: ?Γ) ?S ?C, HB : wf_exp _ _ (ce_mod ?U :: ?Γ) ?C ?B,
+    Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hr : wf_sub _ _ ?Γ0 ?Γ ?σ',
+    IHC : forall _ _ _, wf_sub_eq _ _ _ (ce_mod ?U :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?C _) _,
+    IHB : forall _ _ _, wf_sub_eq _ _ _ (ce_mod ?U :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B _) _,
+    IHU : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub ?U _) (gunit_sub ?U _) /\ _ |- _ =>
+      let HS := fresh "HS" in let Hτ := fresh "Hτ" in let HUl := fresh "HUl" in let HUr := fresh "HUr" in
+      let Hz := fresh "Hz" in let HCτ := fresh "HCτ" in
+      assert (HS : type_sort S) by constructor;
+      pose proof (wf_sub_eq_extend_mod _ _ _ _ _ _ _ Hσ HU (proj1 (IHU _ _ _ Hσ))) as Hτ;
+      assert (HUl : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) by (eapply sub_preserves_unit; eassumption);
+      assert (HUr : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[σ']ᵘ ≈ U[σ']ᵘ) by (eapply sub_preserves_unit; eassumption);
+      assert (Hz : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ s : Γ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[s]ᵘ ≈ U[s]ᵘ ->
+                     Θ ⍮ Ξ ⍮ Γ0 ⊢ ℓₘ U[s]ᵘ in B[q s] ≈ B[s ,,ₘ me_lit U[s]ᵘ] : C[s ,,ₘ me_lit U[s]ᵘ])
+        by (let s := fresh "s" in let Hs := fresh "Hs" in let HUs := fresh "HUs" in
+            intros s Hs HUs; rewrite <- (exp_sub_q_extend_mod B), <- (exp_sub_q_extend_mod C);
+            eapply wf_exp_eq_let_mod_zeta;
+            [ exact HUs
+            | eapply sub_preserves_sort; [ exact HC | exact HS | apply wf_sub_q_mod; assumption ]
+            | exact HS
+            | eapply sub_preserves_exp; [ exact HB | apply wf_sub_q_mod; assumption ] ]);
+      rewrite exp_sub_extend_mod_sub;
+      pose proof (IHC _ _ _ Hτ) as HCτ; try rewrite type_sort_sub in HCτ by exact HS;
+      eapply wf_exp_eq_meet;
+        [ exact (Hz _ Hl HUl) | exact (IHB _ _ _ Hτ) | exact (Hz _ Hr HUr)
+        | eapply sub_preserves_sort; [ exact HC | exact HS | eapply wf_sub_eq_left; exact Hτ ]
+        | exact HS | exact HCτ ]
+  end.
 
 Lemma sub_eq_preserves_mut :
   (forall Θ Ξ Δ A M, Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
@@ -1217,9 +1292,9 @@ Proof.
       |- wf_unit_eq _ _ _ (gunit_sub (gu_mk ?Δu (md_alias ?E)) ?σ) _ /\ _ =>
         destruct (IHΔ _ _ _ Hσ) as [HL HR]; destruct (HL Ha) as [L HΔσ]; destruct (HR Ha') as [L' HΔσ'];
         split; [ eapply sub_eq_unit_alias_self; [ exact Hσ | exact L | exact HΔσ | exact Ha | eapply wf_modexp_eq_refl_left; exact HE
-                                                | intros; exact (proj1 (IHE _ _ _ ltac:(eassumption))) ]
+                                                | intros; exact (proj1 (IHE _ _ _ ltac:(eassumption))) | eassumption ]
                | eapply sub_eq_unit_alias_self; [ exact Hσ | exact L' | exact HΔσ' | exact Ha' | exact HE'
-                                                | intros; exact (proj1 (IHE' _ _ _ ltac:(eassumption))) ] ]
+                                                | intros; exact (proj1 (IHE' _ _ _ ltac:(eassumption))) | eassumption ] ]
     end ].
   all: try solve [
     match goal with
@@ -1230,7 +1305,8 @@ Proof.
       |- wf_unit_eq _ _ _ (gunit_sub (gu_mk ?Δ (md_alias (me_lit (gu_mk ?Δ' ?D)))) ?σ) _ /\ _ =>
         destruct (IHΔ _ _ _ Hσ) as [HL _]; destruct (HL Ha) as [L HΔσ];
         eapply sub_eq_unit_flatten_case;
-        [ exact Hσ | exact L | exact HΔσ | exact HΔ | exact Ha | exact HU | intros; exact (proj1 (IHU _ _ _ ltac:(eassumption))) ]
+        [ exact Hσ | exact L | exact HΔσ | exact HΔ | exact Ha | exact HU | intros; exact (proj1 (IHU _ _ _ ltac:(eassumption)))
+        | eassumption ]
     end ].
   (** Symmetry and transitivity: each side as the induction hypotheses give
       it. *)
@@ -1378,7 +1454,7 @@ Proof.
   all: try solve [
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HH : wf_modexp_eq _ _ _ ?H ?H, Hm : mdenote _ _ _ (me_mem ?H ?x) ?R,
-      Ht : mdesc_type ?R = Some ?A, HA : wf_exp _ _ _ (a_typ _) ?A,
+      Ht : mdesc_type ?R = Some ?A, HA : wf_exp _ _ _ ?S ?A, HS : type_sort ?S,
       HMr : forall _, mdesc_reduct ?R = Some _ -> wf_exp _ _ _ ?A _,
       IHA : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
       IH : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?H _) _ /\ _
@@ -1386,7 +1462,7 @@ Proof.
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
         let Hc := fresh "Hc" in
         pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc;
-        pose proof (IHA _ _ _ Hσ) as HAσ; cbn [exp_sub] in HAσ;
+        pose proof (IHA _ _ _ Hσ) as HAσ; rewrite type_sort_sub in HAσ by exact HS;
         cbn [exp_sub]; eapply wf_exp_eq_mem_cong;
         [ exact (proj1 (IH _ _ _ Hσ))
         | eapply wf_sub_mdenote_mem; [ exact HH | exact Hm | exact Hl ]
@@ -1397,12 +1473,15 @@ Proof.
           [ eapply wf_mem; [ eapply sub_preserves_modexp; [ exact HH | exact Hr ]
                            | eapply wf_sub_mdenote_mem; [ exact HH | exact Hm | exact Hr ]
                            | eapply mdesc_type_sub; exact Ht
-                           | eapply sub_preserves_typ; [ exact HA | exact Hr ]
+                           | eapply sub_preserves_sort; [ exact HA | exact HS | exact Hr ]
+                           | exact HS
                            | let HM' := fresh "HM'" in
                              intros ? HM'; destruct (mdesc_reduct_sub_inv _ _ _ HM') as (? & ? & ->);
                              eapply sub_preserves_exp; [ eapply HMr; eassumption | exact Hr ] ]
-          | eapply sub_preserves_typ; [ exact HA | exact Hl ]
-          | eapply wf_subtyp_refl; [ eapply sub_preserves_typ; [ exact HA | exact Hl ] | apply wf_exp_eq_sym; exact HAσ ] ] ]
+          | eapply sub_preserves_sort; [ exact HA | exact HS | exact Hl ]
+          | exact HS
+          | eapply wf_subtyp_refl; [ eapply sub_preserves_sort; [ exact HA | exact HS | exact Hl ] | exact HS
+                                   | apply wf_exp_eq_sym; exact HAσ ] ] ]
     end ].
   (** [Π]: by the kind of its universe. *)
   (** The records, before the universe premise of the type former is
@@ -1418,21 +1497,47 @@ Proof.
   all: try solve [
     match goal with
     | HΨ : wf_ext_eq _ _ ?Δ ?Ψ ?Ψ', IHx : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (tele_ass ?Ψ -> _) /\ (tele_ass ?Ψ' -> _),
-      HA : wf_exp _ _ (?Ψ ++ ?Δ) (a_typ ?i) ?A,
+      HA : wf_exp _ _ (?Ψ ++ ?Δ) ?S ?A,
+      HS : type_sort ?S,
       IHA : forall _ _ _, wf_sub_eq _ _ _ (?Ψ ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
-      HA' : wf_exp _ _ (?Ψ' ++ ?Δ) (a_typ ?i) ?A',
+      HA' : wf_exp _ _ (?Ψ' ++ ?Δ) ?S ?A',
       IHA' : forall _ _ _, wf_sub_eq _ _ _ (?Ψ' ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A' _) _,
       Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ' |- _ =>
         destruct (IHx _ _ _ Hσ) as [IHl IHr];
         split; intros Hass; inversion_clear Hass as [| ? ? _ Hass'];
         [ destruct (IHl Hass') as [Hl HE];
-          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_left _ _ _ _ _ HΨ) HA IHA Hσ)
+          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_left _ _ _ _ _ HΨ) HA HS IHA Hσ)
         | destruct (IHr Hass') as [Hl HE];
-          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_right _ _ _ _ _ HΨ) HA' IHA' Hσ) ]
+          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_right _ _ _ _ _ HΨ) HA' HS IHA' Hσ) ]
     end ].
   (** The eliminator. *)
   all: try solve [ eapply sub_eq_elim_case; eassumption ].
-  all: destruct_let_ann; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
+  (** A proof: it is typed again from the rule's premises, and so is its
+      proposition, for the irrelevance step below. *)
+  all: try match goal with
+    | Hσ : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ' |- wf_exp_eq _ _ ?Γ0 (exp_sub ?A ?σ) (exp_sub ?X ?σ) (exp_sub ?X ?σ') =>
+        let HX := fresh "HX" in let HAP := fresh "HAP" in
+        assert (HX : wf_exp _ _ Γ A X)
+          by (solve [ eauto 2 using wf_star, wf_conj, wf_left, wf_right ]);
+        assert (HAP : wf_exp _ _ Γ a_prop A) by (solve [ eauto 2 ])
+    end.
+  (** Where the proposition is a premise, its induction hypothesis moves it
+      to the other substitution, and both sides are proofs of it. *)
+  all: try solve [
+    match goal with
+    | Hσ : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ', HX : wf_exp _ _ ?Γ ?A ?X, HAP : wf_exp _ _ ?Γ a_prop ?A,
+      IHA : forall _ _ _, wf_sub_eq _ _ _ ?Γ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) (exp_sub ?A _)
+      |- wf_exp_eq _ _ ?Γ0 (exp_sub ?A ?σ) (exp_sub ?X ?σ) (exp_sub ?X ?σ') =>
+        let Hl := fresh "Hl" in let Hr := fresh "Hr" in let HAl := fresh "HAl" in
+        pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAP Hl) as HAl;
+        eapply wf_exp_eq_irrelevant;
+        [ exact HAl | exact (sub_preserves_exp _ _ _ _ _ _ _ HX Hl)
+        | eapply wf_exp_subtyp;
+          [ exact (sub_preserves_exp _ _ _ _ _ _ _ HX Hr) | exact HAl | constructor
+          | eapply wf_subtyp_refl; [ exact HAl | constructor | apply wf_exp_eq_sym; exact (IHA _ _ _ Hσ) ] ] ]
+    end ].
+  all: destruct_let_ann; destruct_type_sort; try discriminate; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
     saturate_sub_typ; saturate_sub_eq_IH.
   (** In the [a_glob] case the recorded type reaches [Γ] only through
       [saturate_sub_typ], i.e. after [push_sub] has run. *)
@@ -1461,46 +1566,54 @@ Proof.
         eauto using wf_sub_dom
     end ].
   all: try solve [ mauto 3 ].
-  (** The small [Π]: the codomain's universe, the weakened level, commutes
-      with the lifted substitution. *)
+  (** Applications at a tag: the rule at the tag of the function's [Π]. *)
+  all: try solve [ eapply wf_exp_eq_app_cong with (r := relevant); mauto 3 ].
+  all: try solve [ eapply wf_exp_eq_app_cong with (r := propositional) (i := 0);
+                   first [ solve [ eassumption | constructor ] | mauto 3 ] ].
+  (** [Π] at a tag: the domain is of the universe or a proposition, the
+      codomain's sort commutes with the lifted substitution. *)
   all: try solve [
     match goal with
-    | HL : wf_exp _ _ ?Δ (a_level ?n) ?L, HA : wf_exp _ _ ?Δ (a_univ ?L) ?A, Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ',
-      Hs : wf_sub _ _ ?Γ ?Δ ?σ, IHA : forall _ _ _, wf_sub_eq _ _ _ ?Δ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
-      IHB : forall _ _ _, wf_sub_eq _ _ _ (cons (ce_ass ?A) ?Δ) _ _ -> _,
-      Hq : wf_sub_eq _ _ _ (cons (ce_ass ?A) ?Δ) (sb_q ?σ) (sb_q ?σ') |- _ =>
-        eapply wf_exp_eq_pi_cong_lvl;
-        [ let H' := fresh in pose proof (sub_preserves_exp _ _ _ _ _ _ _ HL Hs) as H'; exact H'
-        | let H' := fresh in pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hs) as H'; exact H'
-        | exact (IHA _ _ _ Hσ)
-        | rewrite <- exp_wk_shift_sub_q; exact (IHB _ _ _ Hq) ]
+    | |- wf_exp_eq _ _ _ _ (a_pi ?r0 _ _) _ =>
+        eapply wf_exp_eq_pi_cong with (r := r0);
+        [ idtac | first [ eassumption | eapply sub_preserves_exp; eassumption ] | constructor | eassumption
+        | cbn [relevance_sort exp_wk]; try rewrite <- exp_wk_shift_sub_q; eassumption ];
+        first [ eassumption | apply wf_is_univ_large; eassumption
+              | match goal with
+                | HL : wf_exp _ _ ?D (a_level _) ?L0, Hs : wf_sub _ _ _ ?D ?s |- _ =>
+                    let Hu := fresh "Hu" in
+                    pose proof (sub_preserves_univ _ _ _ _ (a_univ L0) s ltac:(eapply wf_is_univ_small; exact HL) Hs) as Hu;
+                    exact Hu
+                end ]
+    end ].
+  (** A proof: both sides are proofs of the moved proposition, equal by
+      irrelevance. *)
+  all: try solve [
+    match goal with
+    | HX : wf_exp _ _ ?Γ ?A ?X, HAP : wf_exp _ _ ?Γ a_prop ?A,
+      Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hr : wf_sub _ _ ?Γ0 ?Γ ?σ' |- wf_exp_eq _ _ ?Γ0 _ _ _ =>
+        let HAl := fresh "HAl" in pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAP Hl) as HAl;
+        eapply wf_exp_eq_irrelevant;
+        [ exact HAl | exact (sub_preserves_exp _ _ _ _ _ _ _ HX Hl)
+        | eapply wf_exp_subtyp;
+          [ exact (sub_preserves_exp _ _ _ _ _ _ _ HX Hr) | exact HAl | constructor
+          | eapply wf_subtyp_refl; [ exact HAl | constructor | cbn [exp_sub]; mauto 3 ] ] ]
+    end ].
+  (** Ex falso: its congruence, at the moved target and scrutinee. *)
+  all: try solve [
+    match goal with
+    | HM : wf_exp _ _ ?Γ a_False ?M, Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hr : wf_sub _ _ ?Γ0 ?Γ ?σ'
+      |- wf_exp_eq _ _ ?Γ0 _ (a_absurd _ (exp_sub ?M ?σ)) (a_absurd _ (exp_sub ?M ?σ')) =>
+        eapply wf_exp_eq_absurd_cong;
+        [ eassumption | constructor | eassumption
+        | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hl) | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hr) ]
     end ].
   (** A local module: both sides are reduced by [ζ] and meet at the body
       under the two extended substitutions, at the body's type. *)
-  1: { match goal with
-    | h1 : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ', h2 : wf_unit_eq _ _ ?Γ ?U ?U,
-      h3 : wf_exp _ _ (ce_mod ?U :: ?Γ) (a_typ _) ?C, h4 : wf_exp _ _ (ce_mod ?U :: ?Γ) ?C ?B,
-      h5 : wf_sub _ _ ?Γ0 ?Γ ?σ, h6 : wf_sub _ _ ?Γ0 ?Γ ?σ',
-      h7 : forall _ _ _, wf_sub_eq _ _ _ (ce_mod ?U :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?C _) _,
-      h8 : forall _ _ _, wf_sub_eq _ _ _ (ce_mod ?U :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B _) _ |- _ =>
-        rename h1 into Hσ, h2 into HU, h3 into HC, h4 into HB, h5 into Hl, h6 into Hr, h7 into IHC, h8 into IHB
-    end.
-match goal with IHU : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub U _) (gunit_sub U _) /\ _ |- _ =>
-      pose proof (wf_sub_eq_extend_mod _ _ _ _ _ _ _ Hσ HU (proj1 (IHU _ _ _ Hσ))) as Hτ end.
-    assert (HUl : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) by (eapply sub_preserves_unit; eassumption).
-    assert (HUr : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[σ']ᵘ ≈ U[σ']ᵘ) by (eapply sub_preserves_unit; eassumption).
-    assert (Hz : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ s : Γ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[s]ᵘ ≈ U[s]ᵘ ->
-                   Θ ⍮ Ξ ⍮ Γ0 ⊢ ℓₘ U[s]ᵘ in B[q s] ≈ B[s ,,ₘ me_lit U[s]ᵘ] : C[s ,,ₘ me_lit U[s]ᵘ]).
-    { intros s Hs HUs; rewrite <- (exp_sub_q_extend_mod B), <- (exp_sub_q_extend_mod C).
-      eapply wf_exp_eq_let_mod_zeta;
-      [ exact HUs
-      | eapply sub_preserves_typ; [ exact HC | apply wf_sub_q_mod; assumption ]
-      | eapply sub_preserves_exp; [ exact HB | apply wf_sub_q_mod; assumption ] ]. }
-    rewrite exp_sub_extend_mod_sub.
-    eapply wf_exp_eq_meet;
-        [ exact (Hz _ Hl HUl) | exact (IHB _ _ _ Hτ) | exact (Hz _ Hr HUr)
-        | eapply sub_preserves_typ; [ exact HC | eapply wf_sub_eq_left; exact Hτ ]
-        | exact (IHC _ _ _ Hτ) ]. }
+  all: sub_eq_let_mod_case.
+  (** The level of a propositional rule's universe is never read: [Propₘ]
+      does not mention it. *)
+  Unshelve. all: exact 0.
 Qed.
 
 
@@ -1540,8 +1653,18 @@ Proof.
   assumption.
 Qed.
 
+(** The same at any sort: a large universe or [Prop]. *)
+Corollary sub_eq_preserves_sort : forall Θ Ξ Γ Δ A σ σ' Srt,
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Srt.
+Proof.
+  intros * HA HS Hσ; rewrite <- (type_sort_sub _ σ HS); exact (sub_eq_preserves_exp _ _ _ _ _ HA _ _ _ Hσ).
+Qed.
+
 #[export]
-Hint Resolve sub_eq_preserves_typ : mctt.
+Hint Resolve sub_eq_preserves_typ sub_eq_preserves_sort : mctt.
 
 (** ** Substitution Equivalence is a PER
 
@@ -1555,10 +1678,11 @@ Proof.
   intros * H; saturate_sub_eq.
   econstructor; [ mauto 2 | mauto 2 | |].
   - intros x A Hlk.
-    assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i) as [i ?] by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i) by mauto 2.
+    destruct (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) Hlk) as [S HS HA].
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : S) by (eapply sub_eq_preserves_sort; eassumption).
     eapply wf_exp_eq_subtyp';
-      [ symmetry; eapply wf_sub_eq_apply; eassumption | mauto 3 ].
+      [ symmetry; eapply wf_sub_eq_apply; eassumption
+      | eapply wf_subtyp_refl; [ eapply sub_preserves_sort; eassumption | exact HS | assumption ] ].
   - intros x U Hl; apply wf_me_sym; eapply wf_sub_eq_apply_mod; eassumption.
 Qed.
 
@@ -1570,10 +1694,12 @@ Proof.
   intros * H1 H2; saturate_sub_eq.
   econstructor; [ mauto 2 | mauto 2 | |].
   - intros x A Hlk.
-    assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i) as [i ?] by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i) by mauto 2.
+    destruct (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) Hlk) as [S HS HA].
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : S) by (eapply sub_eq_preserves_sort; eassumption).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ'] ≈ #x[σ''] : A[σ]) by
-      (eapply wf_exp_eq_subtyp'; [ eapply wf_sub_eq_apply; eassumption | mauto 4 ]).
+      (eapply wf_exp_eq_subtyp';
+       [ eapply wf_sub_eq_apply; eassumption
+       | eapply wf_subtyp_refl; [ eapply sub_preserves_sort; eassumption | exact HS | symmetry; assumption ] ]).
     etransitivity; [ eapply wf_sub_eq_apply; eassumption | eassumption ].
   - intros x U Hl; eapply wf_me_trans; eapply wf_sub_eq_apply_mod; eassumption.
 Qed.
@@ -1666,16 +1792,17 @@ Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : 
 (** [Id ,, #0] and its variable form [sb_extend Id (se_var 0)] substitute the
     same terms, though not the same module expressions; on a well-typed term
     they agree judgmentally. *)
-Lemma wf_sub_eq_var_zero : forall Θ Ξ Γ A i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+Lemma wf_sub_eq_var_zero : forall Θ Ξ Γ A Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ Id,,#0 ≈ sb_extend Id (se_var 0) : Γ ▹ A ▹ A[↑]ʷ.
 Proof.
-  intros * HA.
+  intros * HA HS.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
-  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; eassumption).
+  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; eassumption).
   assert (Hv : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
-  assert (Hl : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ Id,,#0 : Γ ▹ A ▹ A[↑]ʷ) by (eapply wf_sub_single; eassumption).
+  assert (Hl : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ Id,,#0 : Γ ▹ A ▹ A[↑]ʷ) by (eapply wf_sub_single; [ exact HA' | exact HS | exact Hv ]).
   assert (Hr : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ sb_extend Id (se_var 0) : Γ ▹ A ▹ A[↑]ʷ).
   { apply wf_sub_extend_gen; [ mauto 3 | mauto 3 | | |]; intros * Hlk; inversion Hlk; subst; cbn.
     rewrite exp_sub_shift_extend, exp_sub_id; exact Hv. }
@@ -1686,30 +1813,33 @@ Proof.
   - intros x U Hlk; inversion Hlk; subst; cbn; eapply wf_me_var; [ mauto 2 | eassumption ].
 Qed.
 
-Lemma wf_fn_eta_expand : forall Θ Ξ Γ A B M i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : Π A B.
+Lemma wf_fn_eta_expand : forall Θ Ξ Γ r A B M Srt i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : a_pi r A B.
 Proof.
-  intros.
+  intros * HA HS HB HM.
+  assert (HSr : type_sort (relevance_sort r Typeω@i)) by (destruct r; constructor).
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (Π A B) ↑) as H'
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (a_pi r A B) ↑) as H'
       by (eapply wk_preserves_exp; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : Π A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : a_pi r A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
+  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : Typeω@i)
-      by (eapply wk_preserves_typ; [ eassumption | eapply wf_wk_q'; eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0]) by (eapply wf_app; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : Typeω@i).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : relevance_sort r Typeω@i)
+      by (eapply wk_preserves_sort; [ eassumption | exact HSr | eapply (wf_wk_q' _ _ _ _ _ _ Srt); eassumption ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0])
+    by (eapply wf_app; [ exact HA' | exact HS | eassumption | eassumption | eassumption ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : relevance_sort r Typeω@i).
   { rewrite <- (exp_wk_q_shift_single B) at 2.
-    eapply (sub_eq_preserves_typ _ _ _ _ _ _ _ i); [ eassumption | eapply wf_sub_eq_var_zero; eassumption ]. }
+    eapply sub_eq_preserves_sort; [ eassumption | exact HSr | eapply wf_sub_eq_var_zero; eassumption ]. }
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B).
   { eapply wf_exp_subtyp'; [ eassumption |].
-    eapply wf_subtyp_refl; [ eassumption | eassumption ]. }
-  mauto 2.
+    eapply wf_subtyp_refl; [ eassumption | exact HSr | eassumption ]. }
+  eapply wf_fn; [ exact HA | exact HS | exact HB | eassumption ].
 Qed.
 
 #[export]
@@ -1731,8 +1861,11 @@ Proof.
     destruct W; try (simpl in *; congruence);
     autoinjections; cbn in *; destruct_all;
     eauto.
+  (** Ex falso keeps no scrutinee: [★ : ⊥] in the empty context is excluded
+      only by consistency, which the model gives. *)
+  1: (* PENDING M3 *) admit.
   inversion_by_head ctx_lookup.
-Qed.
+Admitted.
 
 #[export]
 Hint Resolve no_closed_neutral : mctt.
@@ -1764,6 +1897,30 @@ Qed.
 
 #[export]
 Hint Resolve wf_conv wf_exp_eq_conv : mctt.
+
+(** Conversion along an equation at any sort, a universe or [Prop]. *)
+Lemma wf_conv_sort : forall Θ Ξ Γ M A A' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
+Proof.
+  intros * HM HA' HS HAA; eapply wf_exp_subtyp; [ exact HM | exact HA' | exact HS |].
+  eapply wf_subtyp_refl; [ exact HA' | exact HS | exact HAA ].
+Qed.
+
+(** The same for an equation of terms. *)
+Lemma wf_exp_eq_conv_sort : forall Θ Ξ Γ M M' A A' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
+Proof.
+  intros * HM HA' HS HAA; eapply wf_exp_eq_subtyp; [ exact HM | exact HA' | exact HS |].
+  eapply wf_subtyp_refl; [ exact HA' | exact HS | exact HAA ].
+Qed.
 
 (** ** The Global Context
 

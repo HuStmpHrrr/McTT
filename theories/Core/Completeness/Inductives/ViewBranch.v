@@ -618,7 +618,7 @@ Section WrapBranch.
                  cargs_sub (sb_of_list Id Ps) gs1 Aw y = cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw y).
       { apply cargs_sub_lt_base; [ unfold Aw; rewrite length_vars_from; lia |].
         intros z Hz; unfold wrap_base; fold n; fold Uw Nw Ps; apply sb_of_list_lt_base; lia. }
-      rewrite (leaf_ih_agree _ _ _ l _ _ _ _ _ _ Hsl Hag) in H.
+      rewrite (leaf_ih_agree _ _ _ _ l_ _ _ _ _ _ Hsl Hag) in H.
       rewrite (leaf_ihty_sb_agree l _ _ _ _ _ _ Hsl Hag) in H.
       replace (leaf_ihty As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
                  (a_var (List.length E + (na - 1 - List.length gs1))) l)

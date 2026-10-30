@@ -45,7 +45,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
       | x :: ip' =>
           if String.eqb x y
           then match ip', E with
-               | nil, ge_def _ _ _ _ => Some E
+               | nil, ge_def _ _ _ _ _ => Some E
                | _ :: _, ge_mod _ (gu_mk _ (md_body sm Φ')) => gm_resolve Φ' ip'
                | _ :: _, ge_ind _ _ _ _ Φ' => gm_resolve Φ' ip'
                | _ :: _, ge_record _ _ _ Φ' => gm_resolve Φ' ip'
@@ -154,7 +154,7 @@ Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : op
             | nil => Some (mr_body (record_mod_tele p R) None)
             | z :: ip' => gm_submodule (record_mod_tele p R) Φ' z ip'
             end
-        | ge_def _ _ _ _ => None
+        | ge_def _ _ _ _ _ => None
         end
       else gm_submodule T Φ0 x ip
   end.
@@ -598,10 +598,11 @@ Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry := gc
     a transparent definition it resolves to, or the term of the definition
     with a module part stored there.  Resolution reads a definition with a
     module part as a module only (its alias), so its term is read off the
-    entry. *)
+    entry.  A definition tagged a proposition has none: its body is a
+    proof, never evaluated, and it is selected as the proof [⋆ᵈ]. *)
 Definition gc_term (Θ : gdeps) (Ξ : gstack) (p : qname) : option exp :=
   match gc_resolve Θ Ξ p with
-  | Some (ge_def true _ _ (Some M)) => Some M
+  | Some (ge_def true _ relevant _ (Some M)) => Some M
   | _ =>
       match gc_entry Θ Ξ p with
       | Some (ge_def_mod _ _ M _) => Some M
@@ -653,7 +654,7 @@ Definition record_ty_at (R : record_decl) (Us : list exp) : typ :=
 (** Whether an entry is private. *)
 Definition ge_private (E : gentry) : bool :=
   match E with
-  | ge_def _ pv _ _ => pv
+  | ge_def _ pv _ _ _ => pv
   | ge_mod pv _ => pv
   | ge_ind pv _ _ _ _ => pv
   | ge_def_mod pv _ _ _ => pv
@@ -709,13 +710,13 @@ End UnitsOk.
     The entry a path names ([gc_entry]) tells a global from the module of
     an inductive type in one pass, which [gc_resolve] and [ind_lookup] would
     each take. *)
-Lemma gm_entry_resolve_def : forall Φ ip b pv A B,
-    gm_entry Φ ip = Some (ge_def b pv A B) <-> gm_resolve Φ ip = Some (ge_def b pv A B).
+Lemma gm_entry_resolve_def : forall Φ ip b pv r A B,
+    gm_entry Φ ip = Some (ge_def b pv r A B) <-> gm_resolve Φ ip = Some (ge_def b pv r A B).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ H its] [| x ip] *; cbn; try tauto; try exact (IH _ _ _ _ _ _).
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _) ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ' | E']] | pv' ? ? D Φ' | pv' A1 M1 U1 | pv' Rr Φ']; cbn; try tauto;
-    try (split; intros; discriminate); exact (IH _ _ _ _ _ _).
+  fix IH 1; intros [| Φ y E | Φ H its] [| x ip] *; cbn; try tauto; try exact (IH _ _ _ _ _ _ _).
+  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ _) ].
+  destruct ip as [| z ip], E as [b' pv' r' A' B' | pm [Δ [? Φ' | E']] | pv' ? ? D Φ' | pv' A1 M1 U1 | pv' Rr Φ']; cbn; try tauto;
+    try (split; intros; discriminate); exact (IH _ _ _ _ _ _ _).
 Qed.
 
 Lemma gm_entry_ind_resolve : forall Φ ip pv pq k D Φ',
@@ -750,8 +751,8 @@ Qed.
 Lemma gm_entry_nil : forall Φ, gm_entry Φ nil = None.
 Proof. induction Φ; cbn; auto. Qed.
 
-Lemma gc_entry_def : forall Θ Ξ p b pv A B,
-    gc_entry Θ Ξ p = Some (ge_def b pv A B) <-> gc_resolve Θ Ξ p = Some (ge_def b pv A B).
+Lemma gc_entry_def : forall Θ Ξ p b pv r A B,
+    gc_entry Θ Ξ p = Some (ge_def b pv r A B) <-> gc_resolve Θ Ξ p = Some (ge_def b pv r A B).
 Proof.
   intros; unfold gc_entry, gc_entry_u, gc_resolve, gc_resolve_u.
   destruct (gs_find Ξ p) as [[U ip] |]; [ apply gm_entry_resolve_def |].
@@ -804,7 +805,7 @@ Proof.
 Qed.
 
 Lemma gm_entry_resolve_none : forall Φ ip E,
-    gm_entry Φ ip = Some E -> (forall b pv A B, E <> ge_def b pv A B) -> gm_resolve Φ ip = None.
+    gm_entry Φ ip = Some E -> (forall b pv r A B, E <> ge_def b pv r A B) -> gm_resolve Φ ip = None.
 Proof.
   fix IH 1; intros [| Φ y E | Φ H its] [| x ip] * He Hn; cbn in He |- *; try discriminate; try (eapply IH; eassumption).
   destruct (String.eqb x y); [| eapply IH; eassumption ].
@@ -961,7 +962,7 @@ Qed.
     definitions are added to it. *)
 Inductive gm_grows (Φ : gmod) : gmod -> Prop :=
 | gm_grows_refl : gm_grows Φ Φ
-| gm_grows_ext : forall Φ' x b pv A B, gm_grows Φ Φ' -> gm_fresh x Φ' -> gm_grows Φ (Φ' ⊳ x ↦ ge_def b pv A B).
+| gm_grows_ext : forall Φ' x b pv r A B, gm_grows Φ Φ' -> gm_fresh x Φ' -> gm_grows Φ (Φ' ⊳ x ↦ ge_def b pv r A B).
 
 #[export]
 Hint Constructors gm_grows : mctt.
@@ -1237,7 +1238,7 @@ Proof. induction 1; intros z Hz; cbn; auto. Qed.
 Lemma gm_grows_submodule : forall Φ Φ', gm_grows Φ Φ' ->
     forall T x ip, gm_submodule T Φ' x ip = gm_submodule T Φ x ip.
 Proof.
-  induction 1 as [| Φ' y b pv A B Hg IH Hf]; intros; [ reflexivity |].
+  induction 1 as [| Φ' y b pv r A B Hg IH Hf]; intros; [ reflexivity |].
   cbn; destruct (String.eqb_spec x y) as [-> |]; [| apply IH ].
   destruct (gm_submodule T Φ y ip) eqn:E; [| reflexivity ].
   exfalso; exact (Hf (gm_grows_names _ _ Hg _ (gm_submodule_head _ _ _ _ _ E))).
@@ -1577,7 +1578,7 @@ Qed.
     module body. *)
 Fixpoint ge_transparent (E : gentry) : Prop :=
   match E with
-  | ge_def b _ _ B => b = true /\ B <> None
+  | ge_def b _ _ _ B => b = true /\ B <> None
   | ge_mod _ (gu_mk _ (md_body sm Φ)) => gm_transparent Φ
   | ge_mod _ (gu_mk _ (md_alias _)) => True
   | ge_ind _ _ _ _ Φ => gm_transparent Φ
@@ -1609,9 +1610,9 @@ Proof.
   - eapply IH; [ exact HE | exact H ].
 Qed.
 
-Lemma gc_transparent_resolve : forall Θ Ξ p b pv A B,
+Lemma gc_transparent_resolve : forall Θ Ξ p b pv r A B,
     gc_transparent Θ Ξ ->
-    gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
+    gc_resolve Θ Ξ p = Some (ge_def b pv r A B) ->
     b = true /\ B <> None.
 Proof.
   intros * [HΘ HΞ] Hr.
@@ -1732,7 +1733,7 @@ Fixpoint me_noargs (H : modexp) : Prop :=
 (** The Π a type is, looking through local definitions and local modules. *)
 Fixpoint pi_view (A : typ) : option (typ * typ)%type :=
   match A with
-  | a_pi B C => Some (B, C)
+  | a_pi _ B C => Some (B, C)
   | a_let (b_def B N) T =>
       match pi_view T with
       | Some (B', C') => Some (B'[Id,,N], C'[q (Id,,N)])
@@ -1754,7 +1755,7 @@ Fixpoint pi_view (A : typ) : option (typ * typ)%type :=
     second, at the head) and the codomain [Typeω@0]. *)
 Fixpoint nf_pi_tele (W : nf) : (ctx * nf)%type :=
   match W with
-  | nf_pi B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass (nf_to_exp B) :: nil, C')
+  | nf_pi _ B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass (nf_to_exp B) :: nil, C')
   | _ => (nil, W)
   end.
 
@@ -1856,8 +1857,9 @@ Inductive member_kind : Set :=
 (** A member description: what a module expression or an entry denotes
     (see the section header above). *)
 Inductive mdesc : Set :=
-(** A term of the type, with its δ-reduct if it is transparent *)
-| mdesc_term : typ -> option exp -> mdesc
+(** A term of the type of the sort [r] (a proof at [propositional]), with
+    its δ-reduct if it is transparent *)
+| mdesc_term : relevance -> typ -> option exp -> mdesc
 (** An open body module: its parameters, its written body and its
     expansion *)
 | mdesc_open : ctx -> gmod -> gmod -> mdesc
@@ -1895,10 +1897,18 @@ Definition mdesc_body (o : option qname) (sm : smark) (Δ : ctx) (Φ Φx : gmod)
     module part, over the outside parameters. *)
 Definition mdesc_type (R : mdesc) : option typ :=
   match R with
-  | mdesc_term A _ => Some A
+  | mdesc_term _ A _ => Some A
   (** A definition with a module part: its term part's type *)
   | mdesc_dm Θd A _ _ => Some (ctx_pi Θd A)
   | _ => None
+  end.
+
+(** The relevance of the term part: a term's tag; a definition with a
+    module part is relevant. *)
+Definition mdesc_relevance (R : mdesc) : relevance :=
+  match R with
+  | mdesc_term r _ _ => r
+  | _ => relevant
   end.
 
 (** The δ-reduct of the term part: the body of a transparent definition, or
@@ -1906,7 +1916,7 @@ Definition mdesc_type (R : mdesc) : option typ :=
     definition have none. *)
 Definition mdesc_reduct (R : mdesc) : option exp :=
   match R with
-  | mdesc_term _ om => om
+  | mdesc_term _ _ om => om
   | mdesc_dm Θd _ M _ => Some (ctx_fn Θd M)
   | _ => None
   end.
@@ -1919,7 +1929,7 @@ Fixpoint mdesc_mod (R : mdesc) : option mdesc :=
   (** A definition with a module part: the module of its module part, so
       that a module part is always read as a module *)
   | mdesc_dm _ _ _ Rm => mdesc_mod Rm
-  | mdesc_term _ _ => None
+  | mdesc_term _ _ _ => None
   end.
 
 (** The telescope of parameters a module still takes: an open module's
@@ -1948,7 +1958,7 @@ Definition mdesc_mod_tele (R : mdesc) : option ctx :=
     outside it.  [Π] and [λ] read a definition entry of [Θ'] as a [let]. *)
 Fixpoint mdesc_up (Θ' : ctx) (R : mdesc) : mdesc :=
   match R with
-  | mdesc_term A om => mdesc_term (ctx_pi Θ' A) (option_map (ctx_fn Θ') om)
+  | mdesc_term r A om => mdesc_term r (ctx_pi_at r Θ' A) (option_map (ctx_fn Θ') om)
   | mdesc_open Δ Φ Φx => mdesc_open (Δ ++ Θ') Φ Φx
   | mdesc_closed Θ p T Φ Ns => mdesc_closed (Θ ++ Θ') p T Φ Ns
   | mdesc_dm Θd A M Rm => mdesc_dm (Θd ++ Θ') A M (mdesc_up Θ' Rm)
@@ -2013,14 +2023,14 @@ Fixpoint tele_split (R : list centry) : ((typ * ctx * sub) + sub)%type :=
     member of a closed module at them: [mdesc_read].) *)
 Fixpoint mdesc_at (R : mdesc) (N : exp) : option mdesc :=
   match R with
-  | mdesc_term A om =>
+  | mdesc_term r A om =>
       match pi_view A with
       | Some (_, C) =>
           match om with
-          | None => Some (mdesc_term C[Id,,N] None)
+          | None => Some (mdesc_term r C[Id,,N] None)
           | Some M =>
               match fn_view M with
-              | Some M' => Some (mdesc_term C[Id,,N] (Some M'[Id,,N]))
+              | Some M' => Some (mdesc_term r C[Id,,N] (Some M'[Id,,N]))
               | None => None
               end
           end
@@ -2073,7 +2083,7 @@ Inductive reader : Set :=
     closed. *)
 Fixpoint mdesc_sub (R : mdesc) (σ : sub) : mdesc :=
   match R with
-  | mdesc_term A om => mdesc_term A[σ] (option_map (fun M => M[σ]) om)
+  | mdesc_term r A om => mdesc_term r A[σ] (option_map (fun M => M[σ]) om)
   | mdesc_open Δ Φ Φx => mdesc_open (tele_sub Δ σ) (gmod_sub Φ (sb_qn (List.length Δ) σ)) (gmod_sub Φx (sb_qn (List.length Δ) σ))
   | mdesc_closed Θ p T Φ Ns => mdesc_closed (tele_sub Θ σ) p T Φ (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
   | mdesc_dm Θd A M Rm => mdesc_dm (tele_sub Θd σ) A[sb_qn (List.length Θd) σ] M[sb_qn (List.length Θd) σ] (mdesc_sub Rm σ)
@@ -2087,7 +2097,7 @@ Fixpoint mdesc_sub (R : mdesc) (σ : sub) : mdesc :=
 Fixpoint gm_fill (Φ : gmod) : option sub :=
   match Φ with
   | gm_nil => Some Id
-  | gm_ext Φ' _ (ge_def _ _ _ (Some M)) => option_map (fun σ => σ ,, M[σ]) (gm_fill Φ')
+  | gm_ext Φ' _ (ge_def _ _ _ _ (Some M)) => option_map (fun σ => σ ,, M[σ]) (gm_fill Φ')
   | gm_ext Φ' _ (ge_mod _ U) => option_map (fun σ => σ ,,ₘ me_lit U[σ]ᵘ) (gm_fill Φ')
   | gm_ext Φ' _ (ge_def_mod _ _ M U) => option_map (fun σ => σ ,,ᵈ M[σ] ‖ me_lit U[σ]ᵘ) (gm_fill Φ')
   | _ => None
@@ -2097,7 +2107,7 @@ Fixpoint gm_fill (Φ : gmod) : option sub :=
     definition δ-reduces to its own name. *)
 Definition mdesc_self (M : exp) (R : mdesc) : mdesc :=
   match R with
-  | mdesc_term A None => mdesc_term A (Some M)
+  | mdesc_term r A None => mdesc_term r A (Some M)
   | _ => R
   end.
 
@@ -2131,9 +2141,9 @@ Proof. intros [|] [|] * H; cbn; first [ reflexivity | exact H ]. Qed.
 
 (** A term of no δ-reduct is read bare as itself, and otherwise as its
     name. *)
-Lemma mdesc_named_term_none : forall Θ Ns M A,
-    (mdesc_named Θ Ns M (mdesc_term A None) = mdesc_term A None /\ Θ = nil /\ Ns = nil) \/
-    mdesc_named Θ Ns M (mdesc_term A None) = mdesc_term A (Some M).
+Lemma mdesc_named_term_none : forall Θ Ns M r A,
+    (mdesc_named Θ Ns M (mdesc_term r A None) = mdesc_term r A None /\ Θ = nil /\ Ns = nil) \/
+    mdesc_named Θ Ns M (mdesc_term r A None) = mdesc_term r A (Some M).
 Proof. intros [|] [|] *; cbn; auto. Qed.
 
 (** Read at an outside parameter or an argument, it is [mdesc_self]. *)
@@ -2154,12 +2164,12 @@ Fixpoint app_const (M : exp) : bool :=
     (see [mdesc_ats_read]). *)
 Definition mdesc_term_part_at (R : mdesc) (N : exp) : option mdesc :=
   match R with
-  | mdesc_term A (Some M) =>
+  | mdesc_term r A (Some M) =>
       match pi_view A with
       | Some (_, C) =>
           match fn_view M with
-          | Some M' => Some (mdesc_term C[Id,,N] (Some M'[Id,,N]))
-          | None => if app_const M then Some (mdesc_term C[Id,,N] (Some (a_app M N))) else None
+          | Some M' => Some (mdesc_term r C[Id,,N] (Some M'[Id,,N]))
+          | None => if app_const M then Some (mdesc_term r C[Id,,N] (Some (a_app M N))) else None
           end
       | None => None
       end
@@ -2201,8 +2211,8 @@ Fixpoint mdesc_term_part_ats (R : mdesc) (Ns : list exp) : option mdesc :=
 Definition mdesc_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
   match R with
   | mdesc_dm nil A M Rm =>
-      match mdesc_term_part_ats (mdesc_term A (Some M)) Ns, mdesc_ats Rm Ns with
-      | Some (mdesc_term B (Some M')), Some Rm' => Some (mdesc_dm nil B M' Rm')
+      match mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns, mdesc_ats Rm Ns with
+      | Some (mdesc_term _ B (Some M')), Some Rm' => Some (mdesc_dm nil B M' Rm')
       | _, _ => None
       end
   | _ => mdesc_ats R Ns
@@ -2212,7 +2222,7 @@ Definition mdesc_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
     [mdesc_dm nil] of the two parts given the arguments. *)
 Ltac mdesc_dm_read_shape H :=
   match type of H with
-  | context [mdesc_term_part_ats ?R ?Ns] => destruct (mdesc_term_part_ats R Ns) as [[? [?|] | | |] |]; cbn in H; try discriminate H
+  | context [mdesc_term_part_ats ?R ?Ns] => destruct (mdesc_term_part_ats R Ns) as [[? ? [?|] | | |] |]; cbn in H; try discriminate H
   end;
   match type of H with
   | context [mdesc_ats ?R ?Ns] => destruct (mdesc_ats R Ns); cbn in H; [ injection H as <- | discriminate H ]
@@ -2222,13 +2232,13 @@ Ltac mdesc_dm_read_shape H :=
     no outside parameter, given the arguments in both its parts. *)
 Lemma mdesc_ats_read_inv : forall R Ns R', mdesc_ats_read R Ns = Some R' ->
     mdesc_ats R Ns = Some R' \/
-    exists A M Rm B M' Rm', R = mdesc_dm nil A M Rm /\ R' = mdesc_dm nil B M' Rm' /\
-      mdesc_term_part_ats (mdesc_term A (Some M)) Ns = Some (mdesc_term B (Some M')) /\ mdesc_ats Rm Ns = Some Rm'.
+    exists A M Rm r B M' Rm', R = mdesc_dm nil A M Rm /\ R' = mdesc_dm nil B M' Rm' /\
+      mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns = Some (mdesc_term r B (Some M')) /\ mdesc_ats Rm Ns = Some Rm'.
 Proof.
   intros [| | | [| e Θd] A M Rm] Ns R' Ha; cbn [mdesc_ats_read] in Ha; try (left; exact Ha).
-  right; destruct (mdesc_term_part_ats (mdesc_term A (Some M)) Ns) as [[B [M' |] | | |] |] eqn:Et; try discriminate.
+  right; destruct (mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | |] |] eqn:Et; try discriminate.
   destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
-  do 6 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Et | exact E ] ] ].
+  do 7 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Et | exact E ] ] ].
 Qed.
 
 (** At no argument, [mdesc_ats_read] reads the description as it is. *)
@@ -2256,11 +2266,11 @@ Definition mdesc_read (rd : reader) (R : mdesc) : option mdesc :=
   end.
 
 (** A term read as a name is a term. *)
-Lemma mdesc_named_term : forall Θ Ns M A om, exists om', mdesc_named Θ Ns M (mdesc_term A om) = mdesc_term A om'.
+Lemma mdesc_named_term : forall Θ Ns M r A om, exists om', mdesc_named Θ Ns M (mdesc_term r A om) = mdesc_term r A om'.
 Proof. intros [|] [|] * ; destruct om; cbn; eexists; reflexivity. Qed.
 
-Lemma mdesc_mod_named_term : forall Δ Θ Ns M A om, mdesc_mod (mdesc_up Δ (mdesc_named Θ Ns M (mdesc_term A om))) = None.
-Proof. intros; destruct (mdesc_named_term Θ Ns M A om) as [om' ->]; reflexivity. Qed.
+Lemma mdesc_mod_named_term : forall Δ Θ Ns M r A om, mdesc_mod (mdesc_up Δ (mdesc_named Θ Ns M (mdesc_term r A om))) = None.
+Proof. intros; destruct (mdesc_named_term Θ Ns M r A om) as [om' ->]; reflexivity. Qed.
 
 (** A stored closed entry read in a closed body of telescope [T]: as it is,
     except that a closed submodule, stored with its own parameters only,
@@ -2285,7 +2295,7 @@ Definition mdesc_entry (R : mdesc) (y : string) : option (ctx * gentry * reader)
               is a local definition with a module part; an abstract
               definition, and one without a body, are not: they are used
               only inside the body, as its definitions there. *)
-          | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
+          | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ _ None | ge_def false _ _ _ _ => None
           | _ => Some (body_ctx Φ' ++ Δ, E, reader_open Δ Φ')
           end
       | _ => None
@@ -2434,8 +2444,9 @@ Qed.
 
 (** What an item declares, read in the context of the open. *)
 Inductive generated_item : Set :=
-(** [generated_item_def d pv A M]: the definition [d] of type [A] equal to [M] *)
-| generated_item_def : string -> bool -> typ -> exp -> generated_item
+(** [generated_item_def d pv r A M]: the definition [d] of type [A], of the
+    sort [r], equal to [M] *)
+| generated_item_def : string -> bool -> relevance -> typ -> exp -> generated_item
 (** [generated_item_alias d pv E]: the alias [d] of [E] *)
 | generated_item_alias : string -> bool -> modexp -> generated_item
 (** [generated_item_def_mod d pv A M E]: the definition [d] of type [A] equal to [M],
@@ -2446,7 +2457,7 @@ Inductive generated_item : Set :=
 (** A generated item as a body entry. *)
 Definition generated_item_entry (g : generated_item) : (string * gentry)%type :=
   match g with
-  | generated_item_def d pv A M => (d, ge_def true pv A (Some M))
+  | generated_item_def d pv r A M => (d, ge_def true pv r A (Some M))
   | generated_item_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
   | generated_item_def_mod d pv A M E => (d, ge_def_mod pv A M (gu_mk nil (md_alias E)))
   end.
@@ -2457,7 +2468,7 @@ Definition generated_item_name (g : generated_item) : string := fst (generated_i
     is ([generated_item_entry_wk], [generated_item_entry_sub]). *)
 Definition generated_item_wk (g : generated_item) (φ : wk) : generated_item :=
   match g with
-  | generated_item_def d pv A M => generated_item_def d pv A[φ]ʷ M[φ]ʷ
+  | generated_item_def d pv r A M => generated_item_def d pv r A[φ]ʷ M[φ]ʷ
   | generated_item_alias d pv E => generated_item_alias d pv (modexp_wk E φ)
   | generated_item_def_mod d pv A M E => generated_item_def_mod d pv A[φ]ʷ M[φ]ʷ (modexp_wk E φ)
   end.
@@ -2465,7 +2476,7 @@ Definition generated_item_wk (g : generated_item) (φ : wk) : generated_item :=
 (** The substitution counterpart of [generated_item_wk]. *)
 Definition generated_item_sub (g : generated_item) (σ : sub) : generated_item :=
   match g with
-  | generated_item_def d pv A M => generated_item_def d pv A[σ] M[σ]
+  | generated_item_def d pv r A M => generated_item_def d pv r A[σ] M[σ]
   | generated_item_alias d pv E => generated_item_alias d pv E[σ]ᵐ
   | generated_item_def_mod d pv A M E => generated_item_def_mod d pv A[σ] M[σ] E[σ]ᵐ
   end.
@@ -2609,8 +2620,8 @@ with udenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gunit -> mdesc 
 with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc -> Prop :=
 (** A definition: a term of its type, with its body as δ-reduct when it is
     transparent *)
-| edenote_def : forall Γ o b pv A oM,
-    edenote Θ Ξ Γ o (ge_def b pv A oM) (mdesc_term A (if b then oM else None))
+| edenote_def : forall Γ o b pv r A oM,
+    edenote Θ Ξ Γ o (ge_def b pv r A oM) (mdesc_term r A (if b then oM else None))
 (** A module: what its unit denotes *)
 | edenote_mod : forall Γ o pv U R,
     udenote Θ Ξ Γ o U R ->
@@ -2672,10 +2683,10 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list 
     items_gen Θ Ξ Γ H its gs ->
     items_gen Θ Ξ Γ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
 (** An item naming a term: a definition of its type, by selection *)
-| items_gen_def : forall Γ H n d pv A om its gs,
-    mdenote Θ Ξ Γ (me_mem H n) (mdesc_term A om) ->
+| items_gen_def : forall Γ H n d pv r A om its gs,
+    mdenote Θ Ξ Γ (me_mem H n) (mdesc_term r A om) ->
     items_gen Θ Ξ Γ H its gs ->
-    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_def d pv A (a_mem H n) :: gs)
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (generated_item_def d pv r A (a_mem H n) :: gs)
 (** An item naming a module: an alias of the selection *)
 | items_gen_mod : forall Γ H n d pv R its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
@@ -2791,7 +2802,7 @@ Proof.
   induction gs as [| g gs IH]; intros; cbn [gens_append]; [ reflexivity |].
   destruct (generated_item_entry g) as [d E].
   rewrite IH, (IH (gm_ext gm_nil d _)), <- List.app_assoc.
-  destruct E as [? ? ? [] | | | |]; reflexivity.
+  destruct E as [? ? ? ? [] | | | |]; reflexivity.
 Qed.
 
 Lemma gens_append_binders : forall gs Φ k, gm_binders (gens_append Φ k gs) = List.length gs + gm_binders Φ.
@@ -3004,7 +3015,7 @@ Qed.
 
 (** A path resolving to a definition names no member with a term part and
     a module part. *)
-Lemma gc_resolve_def_not_dm : forall Θ Ξ p b pv A B, gc_resolve Θ Ξ p = Some (ge_def b pv A B) -> ~ dm_path Θ Ξ p.
+Lemma gc_resolve_def_not_dm : forall Θ Ξ p b pv r A B, gc_resolve Θ Ξ p = Some (ge_def b pv r A B) -> ~ dm_path Θ Ξ p.
 Proof.
   intros * Hr [(r & Hi) | [(R & Hl) | (pv' & A' & M' & U & He)]].
   - destruct (ind_mlookup_module _ _ _ _ Hi) as [(T & Hm) | Hf].
@@ -3022,14 +3033,15 @@ Qed.
 
 (** The term part a path is selected as: the body of a transparent
     definition it resolves to, or the term of a definition with a module
-    part stored there, which resolves to nothing. *)
+    part stored there, which resolves to nothing.  The definition is
+    relevant. *)
 Lemma gc_term_inv : forall Θ Ξ p M, gc_term Θ Ξ p = Some M ->
-    (exists pv A, gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M))) \/
+    (exists pv A, gc_resolve Θ Ξ p = Some (ge_def true pv relevant A (Some M))) \/
     (exists pv A U, gc_entry Θ Ξ p = Some (ge_def_mod pv A M U)).
 Proof.
   intros * Ht; unfold gc_term in Ht.
   destruct (gc_resolve Θ Ξ p) as [E |] eqn:Er.
-  - destruct E as [[] pv A [M' |] | | | |];
+  - destruct E as [[] pv [] A [M' |] | | | |];
       try (injection Ht as <-; left; eauto; fail);
       rewrite (gc_resolve_entry _ _ _ _ Er) in Ht; cbn in Ht;
       first [ discriminate | injection Ht as <-; right; do 3 eexists; exact (gc_resolve_entry _ _ _ _ Er) ].
@@ -3037,9 +3049,10 @@ Proof.
     injection Ht as <-; right; eauto.
 Qed.
 
-(** A path resolving to a transparent definition is selected as its body. *)
+(** A path resolving to a relevant transparent definition is selected as
+    its body. *)
 Lemma gc_term_of_resolve : forall Θ Ξ p pv A M,
-    gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M)) -> gc_term Θ Ξ p = Some M.
+    gc_resolve Θ Ξ p = Some (ge_def true pv relevant A (Some M)) -> gc_term Θ Ξ p = Some M.
 Proof. intros * Hr; unfold gc_term; rewrite Hr; reflexivity. Qed.
 
 (** A path storing a definition with a module part is selected as its term. *)
@@ -3048,8 +3061,8 @@ Lemma gc_term_of_def_mod : forall Θ Ξ p pv A M U,
 Proof.
   intros * He; unfold gc_term.
   destruct (gc_resolve Θ Ξ p) as [E |] eqn:Hr; [| rewrite He; reflexivity ].
-  destruct E as [[|] pv' A' [M' |] | | | |]; try (rewrite He; reflexivity).
-  exfalso; apply (gc_resolve_def_not_dm _ _ _ _ _ _ _ Hr); right; right; do 4 eexists; exact He.
+  destruct E as [[|] pv' [] A' [M' |] | | | |]; try (rewrite He; reflexivity).
+  exfalso; apply (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ Hr); right; right; do 4 eexists; exact He.
 Qed.
 
 (** What a term entry stored at [o] describes as a term: a definition; a
@@ -3059,13 +3072,13 @@ Qed.
     so it describes its type former only where it is stored. *)
 Definition entry_term (o : option qname) (E : gentry) : option mdesc :=
   match E with
-  | ge_def b _ A oM => Some (mdesc_term A (if b then oM else None))
+  | ge_def b _ r A oM => Some (mdesc_term r A (if b then oM else None))
   | ge_ind _ pq k D _ =>
-      option_map (fun Mk => mdesc_term (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
+      option_map (fun Mk => mdesc_term relevant (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
         (ind_member D k)
-  | ge_def_mod _ A M _ => Some (mdesc_term A (Some M))
+  | ge_def_mod _ A M _ => Some (mdesc_term relevant A (Some M))
   | ge_mod _ _ => None
-  | ge_record _ _ R _ => option_map (fun p => mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
+  | ge_record _ _ R _ => option_map (fun p => mdesc_term relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
   end.
 
 (** A stored alias entry as the alias unit it is, over its full telescope:

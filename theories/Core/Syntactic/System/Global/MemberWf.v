@@ -34,18 +34,19 @@ Proof.
   induction X as [| [A | A M | U | A M U] X IH]; intros * H; cbn in H.
   - constructor; exact H.
   - inversion H; subst.
-    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i |- _ =>
-      eapply wf_ext_eq_ass; [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HA ] end.
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : ?S, HS : type_sort ?S |- _ =>
+      eapply wf_ext_eq_ass;
+        [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | eapply wf_exp_eq_refl; exact HA | exact HA ] end.
   - inversion H; subst.
-    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A |- _ =>
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : ?S, HS : type_sort ?S, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A |- _ =>
       eapply wf_ext_eq_def;
-        [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HM
+        [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | eapply wf_exp_eq_refl; exact HA | exact HM
         | eapply wf_exp_eq_refl; exact HM | exact HA | exact HM ] end.
   - inversion H; subst.
     match goal with HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
       eapply wf_ext_eq_mod; [ apply IH; eauto using presup_unit_eq_ctx | exact HU | exact HU ] end.
   - inversion H; subst.
-    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A,
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@_, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A,
                     HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
       eapply wf_ext_eq_dm;
         [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HM
@@ -123,14 +124,14 @@ Corollary unit_opens_of_wf : forall Θ Ξ Γ Δ Φ Φx, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ 
 Proof. intros * HU Hx; exact (proj1 (unit_eq_opens _ _ _ _ _ HU) _ _ _ eq_refl Hx). Qed.
 
 (** A filed definition of a well-formed body has a body. *)
-Lemma body_shape_prefix_def : forall Φ x Φ' b pv A B, body_shape Φ Φ ->
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) -> exists M, B = Some M.
+Lemma body_shape_prefix_def : forall Φ x Φ' b pv r A B, body_shape Φ Φ ->
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv r A B)) -> exists M, B = Some M.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c its]; intros * Hs Hx; cbn in Hx; try discriminate.
   - destruct (String.eqb x y); [ injection Hx; intros; subst; cbn in Hs |].
     + destruct B as [M |]; [ eauto | destruct Hs as (_ & _ & []) ].
-    + exact (IH _ _ _ _ _ _ (proj1 Hs) Hx).
-  - destruct (existsb _ _); [ discriminate | exact (IH _ _ _ _ _ _ (proj1 Hs) Hx) ].
+    + exact (IH _ _ _ _ _ _ _ (proj1 Hs) Hx).
+  - destruct (existsb _ _); [ discriminate | exact (IH _ _ _ _ _ _ _ (proj1 Hs) Hx) ].
 Qed.
 
 Lemma member_ref_cons : forall H y ch, ch <> nil -> member_ref H (y :: ch) = member_ref (me_mem H y) ch.
@@ -211,5 +212,5 @@ Theorem gc_body_tele_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> ⊢ Θ ⍮ Ξ ⍮ T /\ tele_ass T.
 Proof.
   intros * Hg * Hb.
-  destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg) (or_intror Hb)) as [[Ha HT] _]; split; assumption.
+  destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg) (or_intror Hb)) as [[Ha HT _ _] _]; split; assumption.
 Qed.

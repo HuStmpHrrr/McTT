@@ -6,12 +6,15 @@
     [Core.Syntactic.System.Lemmas], derived from the mutual theorem
     [presup_global].
 
-    These statements come after [sub_eq_preserves_exp], because
-    [wf_exp_eq_exfalso_cong] lets the motive vary: the equation is at
-    [A[Id ,, M]], while the right-hand side is naturally typed at
-    [A'[Id ,, M']], and [sub_eq_preserves_exp] bridges the two.  That lemma is
+    These statements come after [sub_eq_preserves_exp], because the
+    congruences whose type depends on a left premise, such as application's
+    [B[Id ,, N]], type their right-hand side at the type built from the right
+    premises, and [sub_eq_preserves_exp] bridges the two.  That lemma is
     about typing derivations only, so it is proved by induction on [wf_exp]
     without presupposition.
+
+    The type of a term is a type of some sort, a universe or [Prop]
+    ([⊢ᵗ]), and the two sides of a refinement are of one sort ([⊢ᵗ²]).
 
     None of the three statements needs a mutual induction:
 
@@ -53,8 +56,8 @@ Proof.
     match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H ≈ _, Hm : mdenote _ _ _ (me_mem ?H _) ?R, Ht : mdesc_type ?R = Some ?A |- _ =>
       let Hv := fresh "Hv" in
       pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv;
-      destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [[? HA] HM];
-      first [ eapply wf_mem; [ eapply wf_modexp_eq_refl_left; exact HH | exact Hm | exact Ht | exact HA | exact HM ]
+      destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [[? HS HA] HM];
+      first [ eapply wf_mem; [ eapply wf_modexp_eq_refl_left; exact HH | exact Hm | exact Ht | exact HA | exact HS | exact HM ]
             | apply HM; assumption ]
     end ].
 
@@ -76,7 +79,9 @@ Proof.
       eliminator at a view: each side by the lemmas of
       [System/Inductives/Typing.v].  The positional premises of the
       congruence on the motives and the branches give those of either side,
-      one component of their induction hypotheses each. *)
+      one component of their induction hypotheses each.  The lemmas are
+      stated at the motives' sort, [relevance_sort r Typeω@i], so they
+      cover both tags. *)
   all: try solve [ eapply wf_iota_lhs; eassumption | eapply wf_iota_rhs; eassumption ].
   all: try solve [ eapply wf_elim; eassumption | eapply wf_elim_view_rhs; eassumption ].
   all: try solve [ (eapply wf_elim_cong_lhs + eapply wf_elim_cong_rhs); try eassumption;
@@ -87,80 +92,96 @@ Proof.
                        edestruct H as [HL HR]; [ eassumption .. | first [ exact HR | exact HL ] ]
                    end ].
 
-  (** [efq], right.  The motive varies, so the eliminator has to be built at
-      [A'[Id ,, M']] and then transported twice: along [Id ,, M' ≈ Id ,, M] by
-      [sub_eq_preserves_exp], and along [A' ≈ A] by [sub_preserves_wf]. *)
-  - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ⊥) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M : Γ ▹ ⊥) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M' : Γ ▹ ⊥) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ efq M' return A' : A'[Id,,M']) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ⊥) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M' ≈ Id,,M : Γ ▹ ⊥) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Typeω@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Typeω@i) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Typeω@i) by mauto 2.
-    eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
+  (** [efq], right: at its own type [C'], moved to [C] along [C' ≈ C]. *)
+  all: try solve [ eapply wf_conv_sort;
+                   [ eapply wf_absurd; eassumption | eassumption | eassumption | apply wf_exp_eq_sym; eassumption ] ].
 
-  (** [Π], right.  Only the codomain has to move, and it moves by context
-      conversion: [Γ ▹ A'] refines [Γ ▹ A].  In a small universe, the domain
-      is moved to a large one for context conversion first. *)
-  - match goal with Hu : _ ⍮ _ ⍮ _ ⊢ᵤ _ |- _ => inversion Hu; subst end.
-    + assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A) by mauto 3.
-      eapply wf_pi; [ eassumption | eassumption | cbn in *; mauto 3 ].
-    + match goal with HL : _ ⍮ _ ⍮ _ ⊢ _ : Level@?n |- _ => rename HL into HL0 end.
-      assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@0) by (eapply wf_exp_eq_suniv_large; eassumption).
-      assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
-      assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@0) by mauto 3.
-      assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A) by mauto 3.
-      eapply wf_pi; [ eassumption | eassumption | mauto 3 ].
+  (** [Π] of either tag, right.  Only the codomain has to move, and it
+      moves by context conversion: [Γ ▹ A'] refines [Γ ▹ A], at the sort of
+      types the domain's sort lifts to. *)
+  all: try solve [
+    match goal with
+    | HU : _ ⍮ _ ⍮ ?G ⊢ᵤ ?U, HD : pi_domain_sort ?U ?S, HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : ?S,
+      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : ?S, HB' : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B' : _
+      |- _ ⍮ _ ⍮ ?G ⊢ a_pi _ ?A' ?B' : _ =>
+        destruct (pi_domain_eq_sort HU HD HA HA' HAA) as (S0 & HS0 & HA0 & HA0' & HAA0);
+        let HI := fresh "HI" in let HB'' := fresh "HB''" in
+        assert (HI : _ ⍮ _ ⍮ G ▹ A' ⊢ˢ Id : G ▹ A) by (eapply wf_sub_id_extend_eq; eassumption);
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' HI) as HB''; rewrite !exp_sub_id in HB'';
+        eapply wf_pi; [ exact HU | exact HA' | exact HD | exact HB'' ]
+    end ].
 
-  (** [λ], right.  The codomain [B] is not the type of any premise, so its
-      level is unrelated to [i] and the bridging equation [Π A' B ≈ Π A B] has
-      to be assembled at the maximum of the two. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A) by mauto 3.
-    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@j) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ λ A' M' : Π A' B) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@(max i j)) by mauto 3 using lift_exp_max_left.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@(max i j)) by mauto 2 using lift_exp_max_right.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A : Typeω@(max i j)) by mauto 3 using lift_exp_eq_max_left.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(max i j)) by mauto 3 using lift_exp_max_left.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@(max i j)) by mauto 2 using lift_exp_max_right.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@(max i j)) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ Π A' B ≈ Π A B : Typeω@(max i j)) by mauto 3.
-    eapply wf_conv; eassumption.
+  (** [λ] of either tag, right.  The codomain moves by context conversion;
+      the bridging equation [a_pi r A' B ≈ a_pi r A B] is at a level of the
+      tag's sort. *)
+  all: try solve [
+    match goal with
+    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HS : type_sort ?S, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : ?S,
+      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : ?S, HB : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B : relevance_sort ?r Typeω@?i,
+      HM' : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?M' : ?B
+      |- _ ⍮ _ ⍮ ?G ⊢ λ ?A' ?M' : a_pi ?r ?A ?B =>
+        let HI := fresh "HI" in
+        assert (HI : _ ⍮ _ ⍮ G ▹ A' ⊢ˢ Id : G ▹ A) by (eapply wf_sub_id_extend_eq; eassumption);
+        let HBi := fresh "HBi" in let HMi := fresh "HMi" in
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB HI) as HBi; rewrite !exp_sub_id in HBi;
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HM' HI) as HMi; rewrite !exp_sub_id in HMi;
+        let HF := fresh "HF" in
+        assert (HF : _ ⍮ _ ⍮ G ⊢ λ A' M' : a_pi r A' B) by (eapply wf_fn; [ exact HA' | exact HS | exact HBi | exact HMi ]);
+        let HP := fresh "HP" in let HPP := fresh "HPP" in
+        destruct (wf_pi_sort_at _ _ _ r _ _ _ _ HA HS HB) as [j HP];
+        destruct (wf_exp_eq_pi_sort_at _ _ _ r _ _ _ _ _ _ HA' HS ltac:(apply wf_exp_eq_sym; exact HAA)
+                    ltac:(apply wf_exp_eq_refl; exact HBi)) as [k HPP];
+        eapply wf_conv_sort;
+          [ exact HF | eapply lift_rel_max_left with (j := k); exact HP | apply type_sort_relevance; constructor
+          | eapply lift_rel_eq_max_right; exact HPP ]
+    end ].
 
-  (** application, right: the type is the codomain at the argument, and the
-      arguments are equal. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,N : Γ ▹ A) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' $ N' : B[Id,,N']) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ N' ≈ N : A) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,N' ≈ Id,,N : Γ ▹ A) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N'] ≈ B[Id,,N] : Typeω@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N] : Typeω@i) by mauto 2.
-    eapply wf_conv; eassumption.
+  (** Application of either tag, right: the type is the codomain at the
+      argument, and the arguments are equal. *)
+  all: try solve [
+    match goal with
+    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HS : type_sort ?S, HB : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B : relevance_sort ?r Typeω@?i,
+      HM' : _ ⍮ _ ⍮ ?G ⊢ ?M' : a_pi ?r ?A ?B, HN : _ ⍮ _ ⍮ ?G ⊢ ?N : ?A, HN' : _ ⍮ _ ⍮ ?G ⊢ ?N' : ?A,
+      HNN : _ ⍮ _ ⍮ ?G ⊢ ?N ≈ ?N' : ?A
+      |- _ ⍮ _ ⍮ ?G ⊢ ?M' $ ?N' : ?B[Id,,?N] =>
+        let HSr := fresh "HSr" in
+        assert (HSr : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor);
+        let Hs := fresh "Hs" in let Hss := fresh "Hss" in
+        assert (Hs : _ ⍮ _ ⍮ G ⊢ˢ Id,,N : G ▹ A) by (eapply wf_sub_single; [ exact HA | exact HS | exact HN ]);
+        assert (Hss : _ ⍮ _ ⍮ G ⊢ˢ Id,,N' ≈ Id,,N : G ▹ A)
+          by (eapply wf_sub_eq_id_extend; [ exact HA | exact HS | exact HN' | exact HN | apply wf_exp_eq_sym; exact HNN ]);
+        eapply wf_conv_sort;
+          [ eapply wf_app; [ exact HA | exact HS | exact HB | exact HM' | exact HN' ]
+          | exact (sub_preserves_sort _ _ _ _ _ _ _ HB HSr Hs) | exact HSr
+          | exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HB HSr Hss) ]
+    end ].
+
+  (** [Σₚ], right: the family moves by context conversion. *)
+  - assert (Θ ⍮ Ξ ⍮ Γ ▹ P' ⊢ˢ Id : Γ ▹ P) by mauto 3.
+    eapply wf_and; [ eassumption | mauto 3 ].
 
   (** [let], right: as for [λ], the body moves by context conversion, and the
       type moves along the equal bodies. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by mauto 3.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by (eapply wf_conv_sort; eassumption).
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ˢ Id : Γ ▸ A ≔ M) by mauto 3.
-    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
+    match goal with HB : _ ⍮ _ ⍮ _ ▸ A ≔ M ⊢ B : C |- _ => destruct (presup_exp_typ HB) as [SC HSC HC] end.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA' M') B' : C[Id,,M']) by (eapply wf_let; cycle 3; [ eassumption | eassumption .. ]).
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA' M') B' : C[Id,,M'])
+      by (eapply wf_let; cycle 4; [ eassumption | eassumption | eassumption | eassumption | eassumption ]).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Typeω@j) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Typeω@j) by mauto 3.
-    eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : SC) by (eapply sub_eq_preserves_sort; eassumption).
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : SC) by (eapply sub_preserves_sort; [ eassumption | eassumption | mauto 3 ]).
+    eapply wf_conv_sort; [ eassumption | eassumption | eassumption | apply wf_exp_eq_sym; eassumption ].
 
   (** [let module], left: the body's type is a type, by presupposition. *)
-  - assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
+  - match goal with HB : _ ⍮ _ ⍮ _ ▹ₘ _ ⊢ B : C |- _ => destruct (presup_exp_typ HB) as [SC HSC HC] end.
     eapply wf_let_mod; eauto using wf_unit_eq_refl_left.
 
 Qed.
 
 Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof.
   intros * H; destruct (presup_exp_eq_sides H) as [HM HM'].
   repeat split; eauto using presup_exp_ctx, presup_exp_typ.
@@ -183,33 +204,69 @@ Qed.
 #[export]
 Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
 
+(** [wf_conj] without its first premise: the annotation is a
+    proposition, the left side of its equation to a conjunction. *)
+Corollary wf_conj' : forall Θ Ξ Γ T P Q M N,
+    Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ Σₚ P Q : Propₘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+    Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : Q[Id,,M] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_conj T M N : T.
+Proof.
+  intros * HT HP HQ HM HN; eapply wf_conj; [ exact (presup_exp_eq_left HT) | exact HT | exact HP | exact HQ | exact HM | exact HN ].
+Qed.
+
+#[export]
+Hint Resolve wf_conj' : mctt.
+
 (** ** The Two Sides of a Refinement
 
-    A refinement holds between types at a common universe level, which is what
-    makes the statement existential and its cases uniform: in each of them the
-    two sides are types at levels that need not agree, and [lift_exp_common]
-    raises both.  ([wf_subtyp_refl]'s case is where [presup_exp_eq] is used, and
-    the only place it is needed.) *)
+    A refinement holds between types of a common sort.  In the cases between
+    universes the two sides are types at levels that need not agree, and
+    [lift_exp_common] raises both.  ([wf_subtyp_refl]'s case is where
+    [presup_exp_eq] is used, and the only place it is needed.) *)
 
 Lemma presup_subtyp_types : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A'.
 Proof.
-  induction 1; destruct_conjs; eapply lift_exp_common; mauto 2.
-Qed.
+  induction 1; destruct_conjs.
+  (** Reflexivity: at the sort of the equation. *)
+  1: exact (mk_wf_types_same_sort _ H0 (presup_exp_eq_left H1) H).
+  (** Transitivity: the two sorts of the middle type agree, or are lifted to
+      a common universe. *)
+  1:{ destruct IHwf_subtyp1 as [S1 HS1 HM HM'], IHwf_subtyp2 as [S2 HS2 HM'b HM''].
+      destruct HS1 as [i |], HS2 as [j |].
+      - destruct (lift_exp_common _ _ _ _ _ _ _ HM HM'') as (k & Hk & Hk'').
+        exact (mk_wf_types_same_sort _ (type_sort_universe k) Hk Hk'').
+      - (* PENDING design: cross-sort transitivity *) admit.
+      - (* PENDING design: cross-sort transitivity *) admit.
+      - exact (mk_wf_types_same_sort _ type_sort_prop HM HM''). }
+  (** The others are between types of universes. *)
+  all: try (match goal with |- ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ᵗ² ?A ‖ ?A' =>
+              assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i) as (k & Hk & Hk')
+                by (eapply lift_exp_common; mauto 2);
+              exact (mk_wf_types_same_sort _ (type_sort_universe k) Hk Hk') end).
+  (** [Π], its domains of the universe of its codomains or propositions:
+      both sides are of that universe. *)
+  all: assert (Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@i) by mauto 3.
+  all: apply (mk_wf_types_same_sort _ (type_sort_universe i));
+         eapply wf_pi with (r := relevant); eassumption.
+Admitted.
 
 Theorem presup_subtyp : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A'.
 Proof.
   intros * H; split; [ eapply presup_subtyp_ctx; eassumption | apply presup_subtyp_types, H ].
 Qed.
 
 Corollary presup_subtyp_left : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof.
-  intros * H; apply presup_subtyp in H; destruct_conjs; eexists; eassumption.
+  intros * H; destruct (presup_subtyp_types H) as [S HS HA _]; exact (mk_wf_type _ HS HA).
 Qed.
 
 #[export]
@@ -240,10 +297,11 @@ Ltac gen_presup1 H :=
       pose proof presup_exp_eq_sides H as [HM HM'];
       try gen_core_presup HM
   | ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ ?A ⊆ ?A' =>
-      let i := fresh "i" in
+      let S := fresh "S" in
+      let HS := fresh "HS" in
       let HA := fresh "HA" in
       let HA' := fresh "HA'" in
-      pose proof presup_subtyp_types H as [i [HA HA']];
+      pose proof presup_subtyp_types H as [S HS HA HA'];
       try gen_core_presup HA
   | wf_sub_eq _ _ _ _ _ _ =>
       (** The two projections of [wf_sub_eq]; see [saturate_sub_eq]. *)

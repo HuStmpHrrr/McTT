@@ -291,7 +291,7 @@ Section Blocks.
                           ⨟ sb_of_list σv (projections_of (List.map fst fs1) (apps_vars_iter (List.length (ptyp_doms t)) x0)))).
         { pose proof (wk_pat_projections fs1 nil σv (apps_vars_iter (List.length (ptyp_doms t)) x0)) as E.
           rewrite List.app_nil_r in E; symmetry; etransitivity; [ exact E |]; apply sb_of_list_cong; intros z; reflexivity. }
-        rewrite (leaf_ih_sb_eq _ _ _ l1 _ _ _ _ _ Eσ), (leaf_ihty_sb_eq l1 _ _ (sb_shift_iter (List.length (ptyp_doms t)) β0) _ _ _ (reflexivity _) Eσ).
+        rewrite (leaf_ih_sb_eq _ _ _ _ l1 _ _ _ _ _ Eσ), (leaf_ihty_sb_eq _ l1 _ _ (sb_shift_iter (List.length (ptyp_doms t)) β0) _ _ _ (reflexivity _) Eσ).
         assert (Hin1' : In l1 (shape_leaves (rv_leaves D) (im_nn Mj + List.length (cargs_nonrec (List.map snd fs1)) + 0) (ptyp_skip 0 tf))).
         { replace (im_nn Mj + List.length (cargs_nonrec (List.map snd fs1)) + 0) with (List.length (fields_args fs1)); [ exact Hin1 |].
           rewrite Hnn; clear; induction fs1 as [| [? []] fs1 IH]; cbn [List.map snd fields_args cargs_nonrec]; cbn [List.length]; lia. }
@@ -637,7 +637,7 @@ Section LeafVals.
                   rewrite List.app_nil_r in E; etransitivity; [ exact E |]; apply sb_of_list_cong; intros z; reflexivity. }
                 replace (im_nn Mj + List.length (cargs_nonrec (List.map snd fs1)) + 0) with (List.length (fields_args fs1)) in Erf
                   by (rewrite Hnn, length_fields_args; lia).
-                rewrite (List.map_ext _ _ (fun l => leaf_ih_sb_eq _ _ _ l _ _ _ _ _ Eσ)) in Erf.
+                rewrite (List.map_ext _ _ (fun l => leaf_ih_sb_eq _ _ _ _ l _ _ _ _ _ Eσ)) in Erf.
                 exact Erf.
               * econstructor; [ exact Erf' | exact Ers2' ].
               * rewrite ?List.app_nil_r in Hrr2.

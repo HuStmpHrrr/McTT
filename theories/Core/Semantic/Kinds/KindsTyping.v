@@ -20,10 +20,11 @@ Import Domain_Notations Syntax_Notations Wk_Notations.
 
 (** ** Generated Entries *)
 
-(** A generated item without its type, as kinds read it ([kinds_items_gen]). *)
+(** A generated item without its type and its tag, as kinds read it
+    ([kinds_items_gen]). *)
 Definition generated_item_erase (g : generated_item) : generated_item :=
   match g with
-  | generated_item_def d pv _ M => generated_item_def d pv a_True M
+  | generated_item_def d pv _ _ M => generated_item_def d pv propositional a_True M
   | generated_item_def_mod d pv _ M E => generated_item_def_mod d pv a_True M E
   | _ => g
   end.
@@ -233,7 +234,7 @@ Section Match.
   Lemma kinds_match_ext : forall Φ y E Γ ρ1, kinds_match (body_ctx Φ ++ Γ) ρ1 ->
       kinds_match (body_ctx (gm_ext Φ y E) ++ Γ) (kinds_body_entry ρ1 E :: ρ1).
   Proof.
-    intros * H; destruct E as [b pv A [M |] | pm U | pv pq k D Φd | pv A M U | pv pr Rr Φr]; cbn [body_ctx kinds_body_entry app];
+    intros * H; destruct E as [b pv ra A [M |] | pm U | pv pq k D Φd | pv A M U | pv pr Rr Φr]; cbn [body_ctx kinds_body_entry app];
       first [ apply kinds_match_cons_mod; [ exact H | apply kinds_equiv_refl ]
             | apply kinds_match_cons_dm; [ exact H | apply kinds_equiv_refl ]
             | apply kinds_match_cons_term; [ exact H | discriminate | discriminate ] ].

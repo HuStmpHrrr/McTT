@@ -943,7 +943,7 @@ Proof. intros * Hl; cbn [body_opens]; rewrite <- Hl, gm_dropn_gens_append; refle
 
 (** The prefix of a valid body's expansion is valid, and evaluates. *)
 Lemma body_prefix_rel_ctx_wf : forall Φx0 y E C, ⊨ body_ctx (gm_ext Φx0 y E) ++ C -> ⊨ body_ctx Φx0 ++ C.
-Proof. intros * H; destruct E as [? ? ? [] | | | |]; exact (rel_ctx_wf_tail H). Qed.
+Proof. intros * H; destruct E as [? ? ? ? [] | | | |]; exact (rel_ctx_wf_tail H). Qed.
 
 (** The original's generated block against itself: the target read again
     after the first [k] entries the open generates. *)

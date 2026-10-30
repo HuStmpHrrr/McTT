@@ -64,11 +64,26 @@ Record rel_wk (φ : wk) (R R' : relation env) : Prop := mk_rel_wk
 
 #[warnings="-cannot-define-projection"]
 Record rel_wk_under_ctx Γ φ Δ : Prop := mk_rel_wk_under_ctx
-  { rel_wk_under_ctx_rel : relation env
+  { (** The relation of the source context's environments *)
+    rel_wk_under_ctx_rel : relation env
   ; rel_wk_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_wk_under_ctx_rel
+    (** The relation of the target context's environments *)
   ; rel_wk_under_ctx_rel' : relation env
   ; rel_wk_under_ctx_per' : EF Δ ≈ Δ ∈ per_ctx_env ↘ rel_wk_under_ctx_rel'
-  ; rel_wk_under_ctx_wk : rel_wk φ rel_wk_under_ctx_rel rel_wk_under_ctx_rel' }.
+    (** The weakening takes the one to the other *)
+  ; rel_wk_under_ctx_wk : rel_wk φ rel_wk_under_ctx_rel rel_wk_under_ctx_rel'
+    (** An entry of the source that is a proposition is taken to one of
+        the target.  Context-directed evaluation needs this to evaluate the
+        substitution [ι φ ⨟ τ] at [Δ] to [⟪φ⟫ ρτ] when [τ] evaluates at
+        [Γ] to [ρτ]: at a target entry that is no proposition it asks for
+        the value of [τ (φ x)], which [ρτ] holds only when the source
+        entry [φ x] is no proposition either.  It is a condition on
+        semantic weakenings that their relations do not imply: [wk_id]
+        from [C ++ Γ0] to [C], with [C = ⋅ ▹ ℕ] and [Γ0 = ⋅ ▹ ⊤], takes
+        related environments to related ones, but the source entry [1]
+        is the proposition [⊤] and the target has no entry [1]. *)
+  ; rel_wk_under_ctx_props : forall ρ ρ', Dom ρ ≈ ρ' ∈ rel_wk_under_ctx_rel ->
+      forall x, entry_propositional gc_deps gc_stack Γ ρ (φ x) -> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x }.
 
 Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
@@ -78,20 +93,27 @@ Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
     the Kripke-like quantification that makes the judgment usable under context
     extension.  The four environments are the two ways of evaluating each side:
     [σ[φ]] in [ρ] (the substitution [sb_wk σ φ], which is [σ] postcomposed with
-    [φ]) against [σ] in [⟪φ⟫ ρ]. *)
+    [φ]) against [σ] in [⟪φ⟫ ρ].  Evaluation is directed by the target
+    context [Δ], which puts the proof [⋆ᵈ] at its propositions. *)
 
 #[warnings="-cannot-define-projection"]
-Record rel_sub (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : relation env) : Prop := mk_rel_sub
-  { ρσφ : env
+Record rel_sub (Δ : ctx) (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : relation env) : Prop := mk_rel_sub
+  { (** The value of [σ[φ]] in [ρ] *)
+    ρσφ : env
+    (** The value of [σ] in [⟪φ⟫ ρ] *)
   ; ρσ : env
+    (** The value of [σ'] in [⟪φ⟫ ρ'] *)
   ; ρ'σ' : env
+    (** The value of [σ'[φ]] in [ρ'] *)
   ; ρ'σ'φ : env
-  ; rel_sub_eval_wk : ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσφ
-  ; rel_sub_eval : ⟦ σ ⟧s ⟪φ⟫ ρ ↘ ρσ
-  ; rel_sub_eval' : ⟦ σ' ⟧s ⟪φ⟫ ρ' ↘ ρ'σ'
-  ; rel_sub_eval_wk' : ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ
+    (** The evaluations, at the target [Δ] *)
+  ; rel_sub_eval_wk : ⟦ (sb_wk σ φ) : Δ ⟧s ρ ↘ ρσφ
+  ; rel_sub_eval : ⟦ σ : Δ ⟧s ⟪φ⟫ ρ ↘ ρσ
+  ; rel_sub_eval' : ⟦ σ' : Δ ⟧s ⟪φ⟫ ρ' ↘ ρ'σ'
+  ; rel_sub_eval_wk' : ⟦ (sb_wk σ' φ) : Δ ⟧s ρ' ↘ ρ'σ'φ
+    (** The four are related in a chain *)
   ; rel_sub_chain : rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) }.
-#[global] Arguments mk_rel_sub {_ _ _ _ _ _}.
+#[global] Arguments mk_rel_sub {_ _ _ _ _ _ _}.
 Hint Constructors rel_sub : mctt.
 
 #[warnings="-cannot-define-projection"]
@@ -104,7 +126,7 @@ Record rel_sub_under_ctx Γ Δ σ σ' : Prop := mk_rel_sub_under_ctx
       rel_wk φ env_rel' rel_sub_under_ctx_rel ->
       forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        rel_sub σ φ ρ σ' ρ' rel_sub_under_ctx_rel_o }.
+        rel_sub Δ σ φ ρ σ' ρ' rel_sub_under_ctx_rel_o }.
 
 Definition valid_sub_under_ctx Γ Δ σ := rel_sub_under_ctx Γ Δ σ σ.
 #[global] Arguments valid_sub_under_ctx _ _ _ /.
@@ -163,7 +185,17 @@ Hint Unfold rel_typ : mctt.
     environment the caller names.  This is what makes the inductive cases fit: a
     premise's values arrive in the same environment as the conclusion's, so two
     instantiations of one relation share values rather than being pointwise
-    equal, and [rel_chain_merge] applies. *)
+    equal, and [rel_chain_merge] applies.
+
+    At a type whose value is a proposition ([type_propositional]) the
+    terms are proofs, which evaluation never reaches, so they are related
+    by their typing alone: the judgment asks nothing of their values.  One
+    value of the type is enough, as the PER model relates propositions to
+    propositions only. *)
+
+(** The left substituted value of the type [A] is a proposition. *)
+Definition type_propositional (A : typ) (σ : sub) (ρ : env) : Prop := rel_typ_propositional A[σ] ρ.
+
 #[warnings="-cannot-define-projection"]
 Record rel_exp_under_ctx Γ A M M' : Prop := mk_rel_exp_under_ctx
   { rel_exp_under_ctx_rel : relation env
@@ -173,11 +205,11 @@ Record rel_exp_under_ctx Γ A M M' : Prop := mk_rel_exp_under_ctx
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
         exists (elem_rel : relation domain),
           rel_typ rel_exp_under_ctx_lvl A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\
-          rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel }.
+          (type_propositional A σ ρ \/ rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel) }.
 
 Definition valid_exp_under_ctx Γ A M := rel_exp_under_ctx Γ A M M.
 #[global] Arguments valid_exp_under_ctx _ _ _ /.
@@ -213,13 +245,37 @@ Record rel_subtyp_under_ctx Γ A A' : Prop := mk_rel_subtyp_under_ctx
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
         rel_subtyp rel_subtyp_under_ctx_lvl A σ ρ ρσ A' σ' ρ' ρ'σ' }.
 
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
 Notation "Γ ⊨ M ⊆ M'" := (rel_subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
 Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level 69, A at level 69).
+
+(** *** Types of Either Sort
+
+    Two types related at the index [i]: their four values related in
+    [per_univ i], whatever their sort.  A type of a universe is one
+    ([Γ ⊨ A ≈ A' : Typeω@i] relates relevant types, the elements of the
+    universe), and so is a proposition ([Γ ⊨ A ≈ A' : Prop] relates
+    propositions, which are types of every index).  This is what an
+    extension of a context, and the domain of a [Π], need of a type. *)
+#[warnings="-cannot-define-projection"]
+Record rel_type_under_ctx Γ (i : nat) A A' : Prop := mk_rel_type_under_ctx
+  { (** The relation of the context's environments *)
+    rel_type_under_ctx_rel : relation env
+  ; rel_type_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_type_under_ctx_rel
+    (** At every semantic substitution, the four values related *)
+  ; rel_type_under_ctx_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i) }.
+
+Notation "Γ ⊨ᵗ A ≈ A' 'at' i" := (rel_type_under_ctx Γ i A A') (at level 70, A at level 69, A' at level 69, i at level 69).
 
 (** *** Module Expressions
 
@@ -249,8 +305,8 @@ Record rel_modexp_under_ctx Γ H H' : Prop := mk_rel_modexp_under_ctx
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
         rel_modexp H σ ρ ρσ H' σ' ρ' ρ'σ' }.
 
 Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
@@ -263,21 +319,29 @@ Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H 
     definition with a module part, of both), so
     [rel_ctx_wf_per_ctx_env] reads the PER off any derivation.  The validity of
     a unit's parts ([rel_unit_wf]) is defined with it, since a body unit's
-    parts form a context. *)
+    parts form a context.  An assumption or a definition is of a type of
+    a universe or of a proposition ([type_sort]), as in [wf_ctx_extend];
+    a definition with a module part is of a type of a universe. *)
 
 Inductive rel_ctx_wf : ctx -> Prop :=
+(** The empty context *)
 | rel_ctx_wf_nil : ⊨ ⋅
-| rel_ctx_wf_cons : forall Γ A i env_rel,
+(** An assumption of a type of the sort [Srt] *)
+| rel_ctx_wf_cons : forall Γ A Srt env_rel,
     ⊨ Γ ->
     EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
-    Γ ⊨ A ≈ A : Typeω@i ->
+    type_sort Srt ->
+    Γ ⊨ A ≈ A : Srt ->
     ⊨ Γ ▹ A
-| rel_ctx_wf_cons_def : forall Γ A M i env_rel,
+(** A definition of a type of the sort [Srt], its body valid at it *)
+| rel_ctx_wf_cons_def : forall Γ A M Srt env_rel,
     ⊨ Γ ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ env_rel ->
-    Γ ⊨ A ≈ A : Typeω@i ->
+    type_sort Srt ->
+    Γ ⊨ A ≈ A : Srt ->
     Γ ⊨ M ≈ M : A ->
     ⊨ Γ ▸ A ≔ M
+(** A module slot: its unit valid *)
 | rel_ctx_wf_cons_mod : forall Γ U env_rel,
     ⊨ Γ ->
     EF Γ ▹ₘ U ≈ Γ ▹ₘ U ∈ per_ctx_env ↘ env_rel ->
@@ -337,6 +401,7 @@ Notation "Γ ⊨ˢ σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ a
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
 Notation "Γ ⊨ M ⊆ M'" := (rel_subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
 Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level 69, A at level 69).
+Notation "Γ ⊨ᵗ A ≈ A' 'at' i" := (rel_type_under_ctx Γ i A A') (at level 70, A at level 69, A' at level 69, i at level 69).
 Notation "⊨ Γ" := (rel_ctx_wf Γ) : type_scope.
 Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
 Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
@@ -444,20 +509,27 @@ Section Filed.
     definition with a module part, a record type) is both ([member_kind_dm]). *)
 Definition entry_kind (E : gentry) : member_kind :=
   match E with
-  | ge_def _ _ _ _ => member_kind_term
+  | ge_def _ _ _ _ _ => member_kind_term
   | ge_mod _ _ => member_kind_mod
   | _ => member_kind_dm
   end.
 
 (** A value [g] related to itself at the value of the closed type
-    [ctx_pi T A0]. *)
+    [ctx_pi_at r T A0], of the sort [r].  At a proposition [g] is the
+    proof [⋆ᵈ], as selection gives it ([eval_sel_global_proof]). *)
 #[warnings="-cannot-define-projection"]
-Record rel_self (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
-  { rel_self_lvl : universe_index
+Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
+  { (** The universe index of the type *)
+    rel_self_lvl : universe_index
+    (** The relation of its elements *)
   ; rel_self_rel : relation domain
+    (** Its value *)
   ; rel_self_typ : domain
-  ; rel_self_eval : ⟦ ctx_pi T A0 ⟧ nil ↘ rel_self_typ
+    (** The type evaluates to it *)
+  ; rel_self_eval : ⟦ ctx_pi_at r T A0 ⟧ nil ↘ rel_self_typ
+    (** It is a type of the index, of that relation *)
   ; rel_self_per : per_univ_elem rel_self_lvl rel_self_rel rel_self_typ rel_self_typ
+    (** [g] is related to itself at it *)
   ; rel_self_elem : rel_self_rel g g }.
 
 (** The term member [x] of the filed module [p], over its telescope [T],
@@ -465,21 +537,29 @@ Record rel_self (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
     its δ-reduct at arguments for the outer part of [T] (read as a filed
     entry's term part is, [mdesc_term_part_ats]), if it has one, a term over that
     part instantiated, valid there, whose value at arguments is the
-    member's value applied to them. *)
+    member's value applied to them.  The type is of the member's sort
+    [mdesc_relevance R0], and so are the [Π]s over the telescope. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
-  { valid_filed_term_typ : exp
+  { (** The member's type over the telescope *)
+    valid_filed_term_typ : exp
+    (** Its level *)
   ; valid_filed_term_lvl : nat
+    (** The member's value *)
   ; valid_filed_term_val : domain
-  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : Typeω@valid_filed_term_lvl
+    (** The type is a valid type of the member's sort *)
+  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : relevance_sort (mdesc_relevance R0) Typeω@valid_filed_term_lvl
+    (** The reading at arguments for the outer part of the telescope *)
   ; valid_filed_term_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
-      mdesc_type R1 = Some (ctx_pi T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
+      mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
-       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 valid_filed_term_typ /\
+       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ /\
          forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
            $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ m)
+    (** The value is the member selected *)
   ; valid_filed_term_sel : dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ valid_filed_term_val
-  ; valid_filed_term_self : rel_self T valid_filed_term_typ valid_filed_term_val }.
+    (** It is related to itself at the closed type *)
+  ; valid_filed_term_self : rel_self (mdesc_relevance R0) T valid_filed_term_typ valid_filed_term_val }.
 
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
@@ -500,10 +580,10 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
     (** The open frame of a member's module under it is its type former,
         as a filed member's entry is *)
   ; valid_filed_mod_ind_frames : forall x pq k D Mk, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
-      valid_filed_term p T x (mdesc_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
+      valid_filed_term p T x (mdesc_term relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
     (** So is the open frame of a record type's module under it *)
   ; valid_filed_mod_record_frames : forall x R, gs_find_record Ξm (qname_in p x) = Some R ->
-      valid_filed_term p T x (mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
+      valid_filed_term p T x (mdesc_term relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
   ; valid_filed_mod_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.
@@ -519,6 +599,15 @@ Definition valid_filed_mods : Prop :=
     arguments of a constructor. *)
 Definition nparams_prefix (M : imember) (k : nat) : ctx := List.rev (List.firstn k (List.rev (im_nparams M))).
 Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List.firstn k (List.map ce_ass (cargs_nonrec gs))).
+
+(** The sorts of a constructor's non-recursive arguments, in the order of
+    [cargs_nonrec]. *)
+Fixpoint cargs_nonrec_relevance (gs : list carg) : list relevance :=
+  match gs with
+  | nil => nil
+  | ca_arg r _ :: gs => r :: cargs_nonrec_relevance gs
+  | ca_rec _ :: gs => cargs_nonrec_relevance gs
+  end.
 
 (** The views of a group with its members as variables ([grp_sctx]),
     read in the PER model: [views_self_typed], each judgment semantic.  The
@@ -636,12 +725,13 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
     context *)
 ; valid_ind_decl_strat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
     ⊨ nonrec_args_prefix gs j ++ im_params D Mk
-(** Each non-recursive argument is a valid type of the sort, and a type,
-    over those before it *)
-; valid_ind_decl_arg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-    List.nth_error (cargs_nonrec gs) j = Some A ->
-    nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ /\
-    exists i, nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : Typeω@i
+(** Each non-recursive argument is a valid type of the sort, or a
+    proposition, as its tag [r] says, and a type of that sort, over those
+    before it *)
+; valid_ind_decl_arg : forall k Mk c gs j r A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    List.nth_error (cargs_nonrec gs) j = Some A -> List.nth_error (cargs_nonrec_relevance gs) j = Some r ->
+    nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : relevance_sort r (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ /\
+    exists i, nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : relevance_sort r Typeω@i
 (** Each member's constructor names are distinct *)
 ; valid_ind_decl_nodup : forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))
 (** Each parameter of a recursive argument's shape is valid at its
@@ -681,10 +771,10 @@ Record valid_record_decl (R : record_decl) : Prop := mk_valid_record_decl
 ; sort_valid : exists i : nat, record_params R ⊨ record_sort R : Typeω@i
 (** The fields, over the parameters, are a valid context *)
 ; field_ctx_valid : ⊨ record_fctx R (List.length (record_fields R)) ++ record_params R
-(** Each field is a type of the sort over the parameters and the fields
-    before it *)
+(** Each field is a type of the sort, or a proposition, as its stored
+    relevance says, over the parameters and the fields before it *)
 ; fields_valid : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-    record_fctx R k ++ record_params R ⊨ T : (record_sort R)[wk_shiftn k]ʷ
+    record_fctx R k ++ record_params R ⊨ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ
 }.
 
 End Filed.

@@ -266,7 +266,7 @@ Inductive spec_exp : list scope_entry -> Cst.expression -> exp -> Prop :=
 | spec_exp_true_tm : forall S, spec_exp S Cst.true_tm ⋆
 | spec_exp_false_ty : forall S, spec_exp S Cst.false_ty ⊥
 | spec_exp_exfalso : forall S om mx oA M A,
-    spec_exp S om M -> spec_exp (scope_entry_tvar mx :: S) oA A -> spec_exp S (Cst.exfalso om mx oA) (efq M return A)
+    spec_exp S om M -> spec_exp S oA A -> spec_exp S (Cst.exfalso om mx oA) (efq M return A)
 | spec_exp_pi : forall S x oA oB A B,
     spec_exp S oA A -> spec_exp (scope_entry_tvar x :: S) oB B -> spec_exp S (Cst.pi x oA oB) (Π A B)
 | spec_exp_fn : forall S x oA oM A M,

@@ -10,17 +10,31 @@ Generalizable All Variables.
     neutral at its own de Bruijn level, each definition is the value of its
     body, each module slot is the closure of its unit, and each definition
     with a module part is both.  The level of a definition or a slot is
-    never given to a neutral. *)
+    never given to a neutral.  An assumption or a definition of a
+    proposition is the proof [⋆ᵈ], as relevance-directed evaluation has
+    it. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
+(** An assumption: a fresh variable of its type, the proof [⋆ᵈ] at a
+    proposition *)
 | initial_env_cons :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     initial_env Θ Ξ (Γ ▹ A) (ρ ↦ ⇑! a (length Γ)))
+     initial_env Θ Ξ (Γ ▹ A) (ρ ↦ relevant_value a (⇑! a (length Γ))))
+(** A definition of a relevant type: the value of its body *)
 | initial_env_cons_def :
   `( initial_env Θ Ξ Γ ρ ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     domain_relevance a = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m))
+(** A definition of a proposition: the proof [⋆ᵈ], its body not
+    evaluated *)
+| initial_env_cons_def_proof :
+  `( initial_env Θ Ξ Γ ρ ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     domain_relevance a = propositional ->
+     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ ⋆ᵈ))
 | initial_env_cons_mod :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
@@ -45,18 +59,19 @@ Proof.
   induction 1; intros ? Hother; inversion_clear Hother; eauto.
   all: erewrite IHinitial_env in *; try eassumption;
     functional_eval_rewrite_clear;
+    try congruence;
     eauto.
 Qed.
 
 #[export]
 Hint Resolve functional_initial_env : mctt.
 
-(** Only an assumption is a neutral in the initial environment; a definition
-    is the value of its body. *)
+(** Only an assumption is a neutral in the initial environment, the proof
+    [⋆ᵈ] at a proposition; a definition is the value of its body. *)
 Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ A,
     initial_env Θ Ξ Γ ρ ->
     List.nth_error Γ x = Some (ce_ass A) ->
-    exists a, ρ x = ⇑! a (length Γ - x - 1).
+    exists a, ρ x = relevant_value a (⇑! a (length Γ - x - 1)).
 Proof.
   induction x; intros * Hinit Hlookup;
     dependent destruction Hinit; simpl in *; try discriminate.
@@ -114,7 +129,8 @@ Proof.
   inversion_clear 1.
   simplify_evals.
   inversion_clear_by_head read_nf.
-  mauto.
+  (** A universe is no proposition: only the case of a type is left. *)
+  all: try (cbn in *; discriminate); mauto.
 Qed.
 
 Lemma lift_nbe_ge : forall {Θ Ξ Γ A i j W},
@@ -187,7 +203,7 @@ Lemma nbe_type_to_nbe_ty : forall {Θ Ξ} Γ M i w,
     nbe_ty Θ Ξ Γ M w.
 Proof.
   intros. progressive_inversion.
-  mauto.
+  inversion_clear_by_head read_nf; mauto.
 Qed.
 
 #[export]

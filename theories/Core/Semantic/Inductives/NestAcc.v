@@ -62,9 +62,10 @@ Section NestAcc.
   Inductive shape_end : domain -> domain -> Prop :=
   (** No [Π]: the type itself *)
   | se_here : forall a, shape_end a a
-  (** A [Π]: the end of its codomain at a fresh variable of its domain *)
+  (** A [Π]: the end of its codomain at a fresh variable of its domain,
+      the proof [⋆ᵈ] when the domain is a proposition *)
   | se_pi : forall e a ρ B n b,
-      ⟦ B ⟧ ρ ↦ ⇑! a n ↘ b -> shape_end e b -> shape_end e (Πᵈ a ρ B).
+      ⟦ B ⟧ ρ ↦ relevant_value a (⇑! a n) ↘ b -> shape_end e b -> shape_end e (Πᵈ a ρ B).
 
   (** One step of nesting, out of a group at [ups], or out of a record
       type at its parameters. *)
@@ -187,6 +188,17 @@ Section NestAcc.
     apply nest_acc_non_ind; [ exact (non_ind_related _ _ _ _ Hea Ha) | exact (non_record_related _ _ _ _ Hea Hr) ].
   Qed.
 
+  (** A proposition is none of the three: its relevance tells it from
+      them. *)
+  Lemma prop_nest : forall a a' j R z e j2 R2 e',
+      per_prop a a' -> DF z ≈ a ∈ per_univ_elem j ↘ R ->
+      shape_end e z -> DF e' ≈ e ∈ per_univ_elem j2 ↘ R2 -> nest_acc e'.
+  Proof.
+    intros * [Hl _ _] Hz He He'.
+    eapply non_ind_non_pi_nest; [ exact Hz | | | | exact He | exact He' ];
+      intros *; intros ->; cbn in Hl; discriminate Hl.
+  Qed.
+
   (** The fields before the [j]-th, as a telescope of assumptions. *)
   Lemma fields_tele_nth : forall (R : record_decl) j k A,
       List.nth_error (List.map (fun fT => ce_ass (snd fT)) (List.firstn j (record_fields R))) k = Some (ce_ass A) ->
@@ -304,18 +316,23 @@ Section NestAcc.
           exact (non_ind_non_pi_nest _ _ _ _ _ _ _ _ Hz ltac:(intros; discriminate) ltac:(intros; discriminate)
                    ltac:(intros; discriminate) He He')
       end.
+    (** A proposition *)
+    all: try match goal with
+      | Hp : per_prop ?a _, Hz : per_univ_elem _ _ ?z ?a, He : shape_end ?e ?z, He' : per_univ_elem _ _ ?e' ?e
+        |- nest_acc ?e' => exact (prop_nest _ _ _ _ _ _ _ _ _ Hp Hz He He')
+      end.
     - (* a [Π]: the shape end of a related type is one of a codomain at a
          fresh variable, related to this codomain's at a fresh variable *)
-      destruct (per_univ_left_pi _ _ _ _ _ _ (per_univ_sym _ _ _ _ H5)) as (az & ρz & Bz & ->).
-      inversion H6 as [| ee a1 ρ1 B1 n b Hb Hse]; subst.
+      destruct (per_univ_left_pi _ _ _ _ _ _ (per_univ_sym _ _ _ _ H6)) as (az & ρz & Bz & ->).
+      inversion H7 as [| ee a1 ρ1 B1 n b Hb Hse]; subst.
       { apply nest_acc_non_ind;
-          [ exact (non_ind_related _ _ _ _ H7 ltac:(intros; discriminate))
-          | exact (non_record_related _ _ _ _ H7 ltac:(intros; discriminate)) ]. }
-      basic_invert_per_univ_elem H5.
-      assert (Hc0 : in_rel0 (⇑! az n) (⇑! a0 n)) by (eapply var_per_elem; eassumption).
-      destruct (H6 _ _ Hc0) as [b1 b2 Eb1 Eb2 Hb12].
+          [ exact (non_ind_related _ _ _ _ H8 ltac:(intros; discriminate))
+          | exact (non_record_related _ _ _ _ H8 ltac:(intros; discriminate)) ]. }
+      basic_invert_per_univ_elem H6.
+      assert (Hc0 : in_rel0 (relevant_value az (⇑! az n)) (relevant_value a0 (⇑! a0 n))) by (eapply var_per_elem; eassumption).
+      destruct (H7 _ _ Hc0) as [b1 b2 Eb1 Eb2 Hb12].
       pose proof (functional_eval_exp _ _ _ _ Hb Eb1) as <-.
-      assert (Hc : in_rel (⇑! a0 n) (⇑! a'0 n)) by (eapply var_per_elem; eassumption).
+      assert (Hc : in_rel (relevant_value a0 (⇑! a0 n)) (relevant_value a'0 (⇑! a'0 n))) by (eapply var_per_elem; eassumption).
       destruct (H3 _ _ Hc) as [c1 c2 Ec1 Ec2 [_ HIH]].
       pose proof (functional_eval_exp _ _ _ _ Eb2 Ec1) as <-.
       eapply HIH; eassumption.

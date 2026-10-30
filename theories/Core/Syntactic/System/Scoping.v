@@ -27,16 +27,17 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 (** [exp_scoped n M], with its mutual parts for the subterms' sorts. *)
 Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => True
-  | a_succl M | a_univ M => exp_scoped n M
-  | a_maxl M N => exp_scoped n M /\ exp_scoped n N
-  | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
+  | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+  | a_placeholder_type | a_placeholder => True
+  | a_succl M | a_univ M | a_left M | a_right M => exp_scoped n M
+  | a_maxl M N | a_absurd M N => exp_scoped n M /\ exp_scoped n N
+  | a_conj T M N => exp_scoped n T /\ exp_scoped n M /\ exp_scoped n N
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ Us _ Bks M =>
+  | a_elim _ _ Us _ Bks M =>
       all_list (exp_scoped n) Us /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_scoped (nm - 1 + n)) oZ /\ exp_scoped (nm + n) A /\
                                     all_brs (fun k B => exp_scoped (k + n) B) Bs) Bks /\ exp_scoped n M
-  | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
+  | a_pi _ A B | a_fn A B | a_and A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N
   | a_var x => x < n
   | a_let b B => bnd_scoped n b /\ exp_scoped (S n) B
@@ -81,7 +82,7 @@ with gmod_scoped (n : nat) (Φ : gmod) : Prop :=
   end
 with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ A B => exp_scoped n A /\ match B with Some M => exp_scoped n M | None => True end
+  | ge_def _ _ _ A B => exp_scoped n A /\ match B with Some M => exp_scoped n M | None => True end
   | ge_mod _ U => gunit_scoped n U
   | ge_ind _ _ _ D Φ => gmod_scoped (ind_nu D + n) Φ
   | ge_def_mod _ A M U => exp_scoped n A /\ exp_scoped n M /\ gunit_scoped n U
@@ -513,8 +514,8 @@ Corollary exp_mvc_mono : forall M n m, n <= m -> exp_mvc n M -> exp_mvc m M.
 Proof. exact (proj1 syn_mvc_mono). Qed.
 
 (** A [Π] over assumptions without module variables. *)
-Lemma ctx_pi_mvc : forall Δ A n,
-    tele_ass Δ -> List.Forall (centry_mvc n) Δ -> exp_mvc (List.length Δ + n) A -> exp_mvc n (ctx_pi Δ A).
+Lemma ctx_pi_mvc : forall r Δ A n,
+    tele_ass Δ -> List.Forall (centry_mvc n) Δ -> exp_mvc (List.length Δ + n) A -> exp_mvc n (ctx_pi_at r Δ A).
 Proof.
   induction Δ as [| e Δ IH]; intros * Hass Hm HA; cbn in *; [ exact HA |].
   inversion Hass as [| ? ? [B ->] Hass']; inversion Hm; subst; cbn in *.
@@ -763,10 +764,10 @@ Lemma exp_scoped_sub1_dm : forall A N H n,
     exp_scoped (S n) A -> exp_scoped n N -> modexp_scoped n H -> exp_scoped n A[Id ,,ᵈ N ‖ H].
 Proof. intros; eapply exp_scoped_sub; [ eassumption |]; intros [|x] ?; cbn; [ split; assumption | lia ]. Qed.
 
-Lemma ctx_pi_scoped : forall Δ A n,
+Lemma ctx_pi_scoped : forall r Δ A n,
     ctx_scoped n Δ ->
     exp_scoped (length Δ + n) A ->
-    exp_scoped n (ctx_pi Δ A).
+    exp_scoped n (ctx_pi_at r Δ A).
 Proof.
   induction Δ as [| [] Δ IHΔ]; intros * HΔ HA; cbn in *; destruct_all; [ assumption | | | |].
   all: apply IHΔ; cbn; auto; apply exp_scoped_sub1_dm; cbn; auto.
@@ -802,7 +803,7 @@ Lemma ctx_lookup_mod_length : forall Γ x U, Γ ∋ #x ≔ₘ U -> x < length Γ
 Proof. induction 1; cbn; lia. Qed.
 
 Lemma length_body_ctx : forall Φ, length (body_ctx Φ) = gm_binders Φ.
-Proof. induction Φ as [| Φ IH x [? ? ? [] | | | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
+Proof. induction Φ as [| Φ IH x [? ? ? ? [] | | | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
 
 (** A typed body, with no local open, is scoped when the context it binds
     is. *)
@@ -814,7 +815,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Ho Hs; cbn in Hs, Ho; try contradiction; try discriminate.
   - split; intros; exact I.
   - destruct Hs as (Hs & -> & HE); destruct (IH _ n Ho Hs) as [IH1 IH2].
-    destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction;
+    destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in HE; try contradiction;
       split; intros HΦ; cbn in *; destruct_all; repeat split; auto;
       first [ rewrite <- length_body_ctx; assumption | rewrite <- (length_body_ctx Φ'); assumption ].
 Qed.
@@ -846,7 +847,7 @@ Lemma body_shape_sym : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ.
 Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto;
     destruct_all; subst; repeat split; auto.
-  destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in *; destruct_all; subst; auto.
+  destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in *; destruct_all; subst; auto.
 Qed.
 
 Lemma body_shape_refl : forall Φ Φ', body_shape Φ Φ' ->
@@ -855,7 +856,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] H; cbn in H |- *; try contradiction.
   - auto.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
-    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?], E' as [b' pv' A' [M' |] | pm' U' | ? ? ? | ? ? ? ? | ? ? ?]; cbn in HE |- *; try contradiction;
+    destruct E as [b pv r A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?], E' as [b' pv' r' A' [M' |] | pm' U' | ? ? ? | ? ? ? ? | ? ? ?]; cbn in HE |- *; try contradiction;
       intuition congruence.
   - destruct H as (HΦ & <-); destruct (IH _ HΦ) as (H1 & H2 & H3); intuition congruence.
 Qed.
@@ -897,7 +898,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Ho Hs; cbn in Ho, Hs |- *;
     try contradiction; try discriminate; [ split; discriminate |].
   destruct Hs as (Hs & _ & HE); destruct (IH _ Ho Hs) as [H1 H2].
-  destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in HE |- *; try contradiction;
+  destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in HE |- *; try contradiction;
     (split; [ destruct (gm_fill Φ) | destruct (gm_fill Φ') ]; cbn; congruence).
 Qed.
 
@@ -957,7 +958,7 @@ Record member_closed (D : ind_decl) (M : imember) : Prop := mk_member_closed
       List.length fl = List.length gs
     (** A non-recursive argument is over the parameters and the
         non-recursive arguments before it *)
-  ; member_closed_args : forall c gs gs1 A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg A :: gs2 ->
+  ; member_closed_args : forall c gs gs1 ra A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg ra A :: gs2 ->
       exp_scoped (List.length (cargs_strat gs1) + im_np D M) A
     (** So is a recursive argument's shape *)
   ; member_closed_recs : forall c gs gs1 t gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -1124,23 +1125,23 @@ Qed.
 Lemma cargs_ctx_aux_scoped : forall pq D nn gs pat k,
     decl_closed D ->
     pat_nargs pat = k ->
-    (forall gs1 A gs2, gs = gs1 ++ ca_arg A :: gs2 ->
+    (forall gs1 ra A gs2, gs = gs1 ++ ca_arg ra A :: gs2 ->
        exp_scoped (k + List.length (cargs_strat gs1) + (nn + ind_nu D)) A) ->
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
        ptyp_scoped (k + List.length (cargs_strat gs1) + (nn + ind_nu D)) t) ->
     ctx_scoped (List.length pat + (nn + ind_nu D)) (cargs_ctx_aux pq D nn pat gs).
 Proof.
-  induction gs as [| [A | t] gs IH]; intros * HD Hk HA HPs; cbn; [ exact I | |].
+  induction gs as [| [ra A | t] gs IH]; intros * HD Hk HA HPs; cbn; [ exact I | |].
   all: rewrite ctx_scoped_app; cbn; split; [| split; [| exact I ] ].
   - apply (IH (false :: pat) (S k) HD); cbn; [ rewrite Hk; reflexivity | |].
-    + intros gs1 A' gs2 ->; specialize (HA (ca_arg A :: gs1) A' gs2 eq_refl); cbn in HA.
+    + intros gs1 ra' A' gs2 ->; specialize (HA (ca_arg ra A :: gs1) ra' A' gs2 eq_refl); cbn in HA.
       rewrite length_app in HA; cbn in HA; match goal with |- exp_scoped ?n _ => replace n with (k + (length (cargs_strat gs1) + 1) + (nn + ind_nu D)) by lia end; exact HA.
-    + intros gs1 Ps gs2 ->; specialize (HPs (ca_arg A :: gs1) Ps gs2 eq_refl); cbn in HPs.
+    + intros gs1 Ps gs2 ->; specialize (HPs (ca_arg ra A :: gs1) Ps gs2 eq_refl); cbn in HPs.
       rewrite length_app in HPs; cbn in HPs; match goal with |- ptyp_scoped ?n _ => replace n with (k + (length (cargs_strat gs1) + 1) + (nn + ind_nu D)) by lia end; exact HPs.
-  - specialize (HA nil A gs eq_refl); cbn in HA.
+  - specialize (HA nil ra A gs eq_refl); cbn in HA.
     eapply exp_scoped_wk; [ exact HA |]; intros x Hx; rewrite ?Nat.add_0_r; apply wk_pat_bound; lia.
   - apply (IH (true :: pat) k HD); cbn; [ exact Hk | |].
-    + intros gs1 A' gs2 ->; exact (HA (ca_rec t :: gs1) A' gs2 eq_refl).
+    + intros gs1 ra' A' gs2 ->; exact (HA (ca_rec t :: gs1) ra' A' gs2 eq_refl).
     + intros gs1 Ps' gs2 ->; exact (HPs (ca_rec t :: gs1) Ps' gs2 eq_refl).
   - specialize (HPs nil t gs eq_refl); cbn in HPs; rewrite Nat.add_0_r in HPs.
     apply ptyp_ty_scoped; [ exact HD | rewrite Hk; exact HPs ].
@@ -1245,10 +1246,10 @@ Lemma length_tele_insts_cargs : forall p D M gs σ As,
     List.length As = List.length gs -> List.length (tele_insts (cargs_ctx p D M gs) σ As) = List.length As.
 Proof. intros * Hl; rewrite length_tele_insts by apply cargs_ctx_aux_ass; rewrite length_cargs_ctx; lia. Qed.
 
-Lemma elim_brs_scoped : forall p D M Us As Bs m,
+Lemma elim_brs_scoped : forall r p D M Us As Bs m,
     brs_names (im_cons M) Bs ->
     (forall c gs n B, ind_con M c = Some gs -> In (c, n, B) Bs -> n = (im_nn M + List.length gs + cargs_nrec D gs)%nat) ->
-    (forall c gs n B, ind_con M c = Some gs -> In (c, n, B) Bs -> exp_scoped (List.length (elim_bctx p D M gs As Us) + m) B) ->
+    (forall c gs n B, ind_con M c = Some gs -> In (c, n, B) Bs -> exp_scoped (List.length (elim_bctx r p D M gs As Us) + m) B) ->
     all_brs (fun k B => exp_scoped (k + m) B) Bs.
 Proof.
   intros * Hn Hk HB; apply all_brs_Forall, List.Forall_forall; intros [[c n] B] Hin; cbn.
@@ -1264,12 +1265,12 @@ Proof.
   destruct (nth_error Bs' k) as [[[c' n'] B'] |]; cbn in Hm; [ injection Hm as -> ->; eauto | discriminate ].
 Qed.
 
-Lemma elim_brs_scoped' : forall p D M Us As Bs (Bs' : list (String.string * nat * exp)) m,
+Lemma elim_brs_scoped' : forall r p D M Us As Bs (Bs' : list (String.string * nat * exp)) m,
     brs_names (im_cons M) Bs ->
     List.map fst Bs = List.map fst Bs' ->
     (forall c gs n B, ind_con M c = Some gs -> In (c, n, B) Bs -> n = (im_nn M + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k c gs n B B', nth_error Bs k = Some (c, n, B) -> nth_error Bs' k = Some (c, n, B') ->
-       ind_con M c = Some gs -> exp_scoped (List.length (elim_bctx p D M gs As Us) + m) B') ->
+       ind_con M c = Some gs -> exp_scoped (List.length (elim_bctx r p D M gs As Us) + m) B') ->
     all_brs (fun k B => exp_scoped (k + m) B) Bs'.
 Proof.
   intros * Hn Hm Hk HB; apply all_brs_Forall, List.Forall_forall; intros [[c n] B'] Hin'; cbn.
@@ -1300,8 +1301,8 @@ Definition blocks_scoped (m : nat) (Bks : list eblock) : Prop :=
   all_blocks (fun nm oZ A Bs => opt_all (exp_scoped (nm - 1 + m)) oZ /\ exp_scoped (nm + m) A /\
                                 all_brs (fun k B => exp_scoped (k + m) B) Bs) Bks.
 
-Lemma exp_scoped_elim : forall n oq Us k Bks M,
-    exp_scoped n (a_elim oq Us k Bks M) <-> List.Forall (exp_scoped n) Us /\ blocks_scoped n Bks /\ exp_scoped n M.
+Lemma exp_scoped_elim : forall n r oq Us k Bks M,
+    exp_scoped n (a_elim r oq Us k Bks M) <-> List.Forall (exp_scoped n) Us /\ blocks_scoped n Bks /\ exp_scoped n M.
 Proof. intros; cbn [exp_scoped]; rewrite all_list_Forall; reflexivity. Qed.
 
 Lemma blocks_wk_scoped : forall Bks m n φ, blocks_scoped m Bks ->
@@ -1340,13 +1341,13 @@ Qed.
 Definition blocks_nm_ok (D : ind_decl) (Bks : list eblock) : Prop :=
   forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk).
 
-Lemma elim_at_scoped : forall pq D oq Us Bks j M m,
+Lemma elim_at_scoped : forall r pq D oq Us Bks j M m,
     decl_closed D -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks -> exp_scoped m M ->
-    exp_scoped m (elim_at pq D oq Us Bks j M).
+    exp_scoped m (elim_at r pq D oq Us Bks j M).
 Proof.
   intros * HD Hl HUs Hnm HB HM; unfold elim_at.
-  apply (proj2 (exp_scoped_elim _ _ _ _ _ _)); split; [ exact HUs | split; [ exact HB | exact HM ] ].
+  apply (proj2 (exp_scoped_elim _ _ _ _ _ _ _)); split; [ exact HUs | split; [ exact HB | exact HM ] ].
 Qed.
 
 Lemma blocks_nm_ok_wk : forall D Bks φ, blocks_nm_ok D Bks -> blocks_nm_ok D (blocks_wk Bks φ).
@@ -1407,9 +1408,9 @@ Lemma fields_leaves_combine_scoped : forall tbl nu fl gs ns,
        ptyp_scoped (List.length ns + List.length (cargs_strat gs1) + nu) t) ->
     List.Forall (leaf_scoped nu) (fields_leaves tbl ns (List.combine fl gs)).
 Proof.
-  intros tbl nu; induction fl as [| f fl IH]; intros [| [A | t] gs] ns Htbl Hl Hf; cbn in *; try discriminate; [ constructor | |].
+  intros tbl nu; induction fl as [| f fl IH]; intros [| [ra A | t] gs] ns Htbl Hl Hf; cbn in *; try discriminate; [ constructor | |].
   - apply IH; [ exact Htbl | lia |]; intros gs1 t gs2 E.
-    specialize (Hf (ca_arg A :: gs1) t gs2 ltac:(rewrite E; reflexivity)); cbn in Hf.
+    specialize (Hf (ca_arg ra A :: gs1) t gs2 ltac:(rewrite E; reflexivity)); cbn in Hf.
     rewrite List.length_app in *; cbn in *.
     replace (List.length ns + 1 + List.length (cargs_strat gs1) + nu)
       with (List.length ns + (List.length (cargs_strat gs1) + 1) + nu) by lia; exact Hf.
@@ -1473,8 +1474,8 @@ Lemma fields_leaves_combine_plen : forall D tbl fl gs ns,
     cargs_plen D gs ->
     List.Forall (leaf_plen D) (fields_leaves tbl ns (List.combine fl gs)).
 Proof.
-  intros D tbl; induction fl as [| f fl IH]; intros [| [A | t] gs] ns Htbl Hp; cbn; try constructor.
-  - apply IH; [ exact Htbl |]; intros gs1 t gs2 E; exact (Hp (ca_arg A :: gs1) t gs2 ltac:(rewrite E; reflexivity)).
+  intros D tbl; induction fl as [| f fl IH]; intros [| [ra A | t] gs] ns Htbl Hp; cbn; try constructor.
+  - apply IH; [ exact Htbl |]; intros gs1 t gs2 E; exact (Hp (ca_arg ra A :: gs1) t gs2 ltac:(rewrite E; reflexivity)).
   - apply List.Forall_app; split.
     + apply List.Forall_map; eapply List.Forall_impl; [| apply shape_leaves_plen; [ exact Htbl | exact (Hp nil t gs eq_refl) ] ].
       intros l Hl; exact Hl.
@@ -1508,13 +1509,13 @@ Proof.
   apply shape_leaves_plen; [ exact (rv_leaves_plen D HD) | exact (member_closed_rec_len _ _ HMc _ _ Hin _ _ _ E) ].
 Qed.
 
-Lemma leaf_ih_scoped : forall pq D oq l Us Bks σ M m k,
+Lemma leaf_ih_scoped : forall r pq D oq l Us Bks σ M m k,
     decl_closed D -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks ->
     (forall x, x < k -> sentry_scoped m (σ x)) -> leaf_scoped k l -> exp_scoped m M ->
-    exp_scoped m (leaf_ih pq D oq Us Bks σ M l).
+    exp_scoped m (leaf_ih r pq D oq Us Bks σ M l).
 Proof.
-  intros pq D oq l; induction l as [k0 Ps | B l IH | f ns l IH]; intros * HD Hl HUs Hnm HBs Hσ Ht HM; cbn in *.
+  intros r pq D oq l; induction l as [k0 Ps | B l IH | f ns l IH]; intros * HD Hl HUs Hnm HBs Hσ Ht HM; cbn in *.
   - split; [ apply all_list_Forall; exact HUs | split; assumption ].
   - destruct Ht as [HB Ht]; split; [ eapply exp_scoped_sub; eassumption |].
     eapply IH; [ exact HD | rewrite length_map; exact Hl | | apply blocks_nm_ok_wk; exact Hnm | | apply sb_q_bound; exact Hσ | exact Ht | ].
@@ -1527,17 +1528,17 @@ Proof.
     unfold projections_of; apply List.Forall_map, List.Forall_forall; intros; exact HM.
 Qed.
 
-Lemma elim_ihs_scoped : forall pq D oq Us Bks gs σ As m n k,
+Lemma elim_ihs_scoped : forall r pq D oq Us Bks gs σ As m n k,
     decl_closed D -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks -> k = n + ind_nu D ->
     (forall x, x < k -> sentry_scoped m (σ x)) ->
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ptyp_scoped (List.length (cargs_strat gs1) + k) t) ->
-    List.Forall (exp_scoped m) As -> List.Forall (exp_scoped m) (elim_ihs pq D oq Us Bks σ n gs As).
+    List.Forall (exp_scoped m) As -> List.Forall (exp_scoped m) (elim_ihs r pq D oq Us Bks σ n gs As).
 Proof.
-  induction gs as [| [A0 | t] gs IH]; intros σ [| N As] m n k HD Hl HUs Hnm HBs Hk Hσ Ht HAs; cbn; try constructor;
+  induction gs as [| [ra A0 | t] gs IH]; intros σ [| N As] m n k HD Hl HUs Hnm HBs Hk Hσ Ht HAs; cbn; try constructor;
     inversion_clear HAs.
   - eapply (IH _ _ _ (S n) (S k)); [ eassumption .. | lia | apply sb_ext_bound; assumption | | assumption ].
-    intros gs1 t gs2 ->; specialize (Ht (ca_arg A0 :: gs1) t gs2 eq_refl); cbn in Ht; rewrite length_app in Ht; cbn in Ht.
+    intros gs1 t gs2 ->; specialize (Ht (ca_arg ra A0 :: gs1) t gs2 eq_refl); cbn in Ht; rewrite length_app in Ht; cbn in Ht.
     eapply ptyp_scoped_mono; [| exact Ht ]; lia.
   - apply List.Forall_app; split; [| eapply IH; [ eassumption .. | | assumption ] ].
     + apply List.Forall_map.
@@ -1550,14 +1551,14 @@ Qed.
 
 (** The recursive results of [ι]: the shapes' domains instantiated by the
     parameters and the arguments. *)
-Lemma elim_ihs_scoped_at : forall pq D oq k M c gs Bks Ps As m,
+Lemma elim_ihs_scoped_at : forall r pq D oq k M c gs Bks Ps As m,
     decl_closed D -> ind_member D k = Some M -> ind_con M c = Some gs -> List.length Ps = im_np D M ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks ->
     List.Forall (exp_scoped m) Ps -> List.Forall (exp_scoped m) As ->
-    List.Forall (exp_scoped m) (elim_ihs pq D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn M) gs As).
+    List.Forall (exp_scoped m) (elim_ihs r pq D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn M) gs As).
 Proof.
   intros * Hc HM Hcon Hl Hnm HBs HPs HAs; pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HM)) as Ht.
-  eapply (elim_ihs_scoped _ _ _ _ _ _ _ _ _ _ (List.length Ps + 0)); [ exact Hc | | | exact Hnm | exact HBs | | | | exact HAs ].
+  eapply (elim_ihs_scoped _ _ _ _ _ _ _ _ _ _ _ (List.length Ps + 0)); [ exact Hc | | | exact Hnm | exact HBs | | | | exact HAs ].
   - rewrite List.length_firstn; unfold im_np in Hl; lia.
   - apply Forall_firstn'; exact HPs.
   - unfold im_np in Hl; lia.
@@ -1577,12 +1578,12 @@ Proof.
     exact (Forall_skipn' _ _ _ HPs).
 Qed.
 
-Lemma elim_brs_scoped_l : forall p D M Us As Bs (Bs' : list (String.string * nat * exp)) m,
+Lemma elim_brs_scoped_l : forall r p D M Us As Bs (Bs' : list (String.string * nat * exp)) m,
     brs_names (im_cons M) Bs ->
     List.map fst Bs = List.map fst Bs' ->
     (forall c gs n B, ind_con M c = Some gs -> In (c, n, B) Bs -> n = (im_nn M + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k c gs n B B', nth_error Bs k = Some (c, n, B) -> nth_error Bs' k = Some (c, n, B') ->
-       ind_con M c = Some gs -> exp_scoped (List.length (elim_bctx p D M gs As Us) + m) B) ->
+       ind_con M c = Some gs -> exp_scoped (List.length (elim_bctx r p D M gs As Us) + m) B) ->
     all_brs (fun k B => exp_scoped (k + m) B) Bs.
 Proof.
   intros * Hn Hm Hk HB; eapply elim_brs_scoped; [ eassumption | eassumption |].
@@ -1627,7 +1628,7 @@ Qed.
 (** The blocks of an eliminator, scoped, from what typing says of each:
     the annotation under the member's non-uniform parameters, the motive
     under them and the scrutinee, each branch under its context. *)
-Lemma elim_blocks_scoped : forall p D Us Bks m,
+Lemma elim_blocks_scoped : forall r p D Us Bks m,
     List.length Bks = ind_nblk D ->
     blocks_nm_ok D Bks ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
@@ -1639,7 +1640,7 @@ Lemma elim_blocks_scoped : forall p D Us Bks m,
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-       exp_scoped (List.length (elim_bctx p D Mk gs (blocks_motives Bks) Us) + m) B) ->
+       exp_scoped (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) Us) + m) B) ->
     blocks_scoped m Bks.
 Proof.
   intros * Hl Hnm HZ HA Hn Hk HB; apply all_blocks_nth; intros k b Hb.
@@ -1654,7 +1655,7 @@ Qed.
 
 (** The same where the branches are given position by position against the
     left blocks' ([elim_brs_scoped']). *)
-Lemma elim_blocks_scoped' : forall p D Us Bks Bks' m,
+Lemma elim_blocks_scoped' : forall r p D Us Bks Bks' m,
     List.length Bks' = ind_nblk D ->
     blocks_nm_ok D Bks' ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_ann b = Some Z ->
@@ -1670,7 +1671,7 @@ Lemma elim_blocks_scoped' : forall p D Us Bks Bks' m,
        List.nth_error Bks' k = Some b' ->
        nth_error (eb_brs b) i = Some (c, n, B) -> nth_error (eb_brs b') i = Some (c, n, B') ->
        ind_con Mk c = Some gs ->
-       exp_scoped (List.length (elim_bctx p D Mk gs (blocks_motives Bks) Us) + m) B') ->
+       exp_scoped (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) Us) + m) B') ->
     List.length Bks = ind_nblk D ->
     blocks_scoped m Bks'.
 Proof.
@@ -1689,7 +1690,7 @@ Proof.
 Qed.
 
 (** The left blocks, where the branches are given position by position. *)
-Lemma elim_blocks_scoped_l : forall p D Us Bks (Bks' : list eblock) m,
+Lemma elim_blocks_scoped_l : forall r p D Us Bks (Bks' : list eblock) m,
     List.length Bks = ind_nblk D ->
     blocks_nm_ok D Bks ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
@@ -1705,7 +1706,7 @@ Lemma elim_blocks_scoped_l : forall p D Us Bks (Bks' : list eblock) m,
        List.nth_error Bks' k = Some b' ->
        nth_error (eb_brs b) i = Some (c, n, B) -> nth_error (eb_brs b') i = Some (c, n, B') ->
        ind_con Mk c = Some gs ->
-       exp_scoped (List.length (elim_bctx p D Mk gs (blocks_motives Bks) Us) + m) B) ->
+       exp_scoped (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) Us) + m) B) ->
     List.length Bks' = ind_nblk D ->
     blocks_scoped m Bks.
 Proof.
@@ -1784,7 +1785,7 @@ Proof.
 Qed.
 
 (** A branch of the container's block, scoped. *)
-Lemma wrap_br_scoped : forall pq D D' vm Us Bks Mv Bs c gs' m,
+Lemma wrap_br_scoped : forall r pq D D' vm Us Bks Mv Bs c gs' m,
     decl_closed D -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks ->
     member_closed D Mv ->
@@ -1792,7 +1793,7 @@ Lemma wrap_br_scoped : forall pq D D' vm Us Bks Mv Bs c gs' m,
     (exists gs, ind_con Mv c = Some gs) ->
     (forall gs n B, ind_con Mv c = Some gs -> In (c, n, B) Bs -> n = (im_nn Mv + List.length gs + cargs_nrec D gs)%nat) ->
     all_brs (fun k B => exp_scoped (k + m) B) Bs ->
-    exp_scoped (snd (fst (wrap_br pq D D' Us Bks Mv Bs c gs')) + m) (snd (wrap_br pq D D' Us Bks Mv Bs c gs')).
+    exp_scoped (snd (fst (wrap_br r pq D D' Us Bks Mv Bs c gs')) + m) (snd (wrap_br r pq D D' Us Bks Mv Bs c gs')).
 Proof.
   intros * HD Hl HUs Hnm HBks HMv Hcorr [gs Hgs] Hn HBs; unfold wrap_br; rewrite Hgs; cbn [fst snd].
   pose proof (Hcorr _ Hgs) as Hc; pose proof (cargs_corr_length _ _ _ Hc) as Hlen.
@@ -1815,7 +1816,7 @@ Proof.
     + apply vars_from_scoped; subst n'; lia.
     + apply vars_from_scoped; subst n'; lia.
     + eapply wrap_ihs_scoped; [ exact Hc | subst n'; lia | subst n'; lia |].
-      eapply (elim_ihs_scoped _ _ _ _ _ _ _ _ _ (im_nn Mv) (List.length Us + im_nn Mv)).
+      eapply (elim_ihs_scoped _ _ _ _ _ _ _ _ _ _ (im_nn Mv) (List.length Us + im_nn Mv)).
       * exact HD.
       * rewrite length_map; exact Hl.
       * exact HUs'.
@@ -1831,16 +1832,16 @@ Proof.
 Qed.
 
 (** The container's blocks at a view, scoped. *)
-Lemma view_wrap_scoped : forall pq D D' vm Us Bks m,
+Lemma view_wrap_scoped : forall r pq D D' vm Us Bks m,
     decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_nm_ok D Bks -> blocks_scoped m Bks ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
-    blocks_scoped m (view_wrap pq D D' vm Us Bks).
+    blocks_scoped m (view_wrap r pq D D' vm Us Bks).
 Proof.
   intros * HD Hvw Hl HUs Hnm HBks Hnames Hn; apply all_blocks_nth; intros k b Hb.
-  destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ Hb) as (Mi' & HMi'b & ->); cbn [Nat.add].
+  destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ _ Hb) as (Mi' & HMi'b & ->); cbn [Nat.add].
   destruct (ind_bmembers_member _ _ _ HMi'b) as [HMi' _].
   unfold view_wrap_block.
   destruct (List.nth_error vm k) as [v |] eqn:Hv;
@@ -1886,7 +1887,7 @@ Lemma member_closed_intro : forall D M,
     (forall qr Is fl, im_head M = mh_record qr Is fl -> List.Forall (exp_scoped (List.length (ind_uparams D))) Is) ->
     (forall qr Is fl, im_head M = mh_record qr Is fl -> im_nparams M = nil) ->
     (forall qr Is fl c gs, im_head M = mh_record qr Is fl -> In (c, gs) (im_cons M) -> List.length fl = List.length gs) ->
-    (forall c gs gs1 A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg A :: gs2 ->
+    (forall c gs gs1 ra A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg ra A :: gs2 ->
        exp_scoped (List.length (cargs_strat gs1 ++ im_params D M)) A) ->
     (forall c gs gs1 t gs2 Bs1 B Bs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
        ptyp_doms t = Bs1 ++ B :: Bs2 ->
@@ -1903,7 +1904,7 @@ Lemma member_closed_intro : forall D M,
 Proof.
   intros D M HassU HassM Hass HN Hh Hrh Hrn Hrl HA HB Hl HPs; constructor; try assumption.
   - apply ctx_scoped_intro; [| exact Hass ]; intros * E; specialize (HN _ _ _ E); rewrite length_app in HN; exact HN.
-  - intros * Hin Heq; specialize (HA _ _ _ _ _ Hin Heq); rewrite length_app, length_im_params in HA; exact HA.
+  - intros * Hin Heq; specialize (HA _ _ _ _ _ _ Hin Heq); rewrite length_app, length_im_params in HA; exact HA.
   - intros * Hin Heq; apply ptyp_scoped_intro.
     + intros Bs1 B Bs2 E; specialize (HB _ _ _ _ _ _ _ _ Hin Heq E).
       unfold doms_ctx in HB; rewrite !length_app, length_rev, length_map, length_im_params in HB.
@@ -1945,7 +1946,7 @@ Proof. intros; rewrite ctx_scoped_app, Nat.add_0_r; reflexivity. Qed.
     [decl_closed]. *)
 Definition entry_closed (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
+  | ge_def _ _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
   | ge_mod _ _ => True
   | ge_ind _ _ _ D _ => decl_closed D
   | ge_def_mod _ A M U => exp_scoped 0 A /\ exp_scoped 0 M /\ gunit_scoped 0 U
@@ -1977,7 +1978,7 @@ Fixpoint body_closed (k : nat) (Φ : gmod) {struct Φ} : Prop :=
   | gm_ext Φ' _ E =>
       body_closed k Φ' /\
       match E with
-      | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
+      | ge_def _ _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
       | ge_mod _ (gu_mk Δ (md_body sm Φ1)) => sm = sm_closed /\ ctx_scoped k Δ /\ body_closed (List.length Δ + k) Φ1
       | ge_mod _ U => gunit_scoped 0 U
       | ge_ind _ _ _ D Φ1 => decl_closed D /\ body_closed (List.length (ind_uparams D)) Φ1
@@ -2095,9 +2096,9 @@ Proof.
   destruct (qname_strip mq p); [ injection Hf as <- <- <-; exact HV | eauto ].
 Qed.
 
-Lemma gctx_closed_resolve : forall Θ Ξ p b pv A B,
+Lemma gctx_closed_resolve : forall Θ Ξ p b pv r A B,
     gctx_closed Θ Ξ ->
-    gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
+    gc_resolve Θ Ξ p = Some (ge_def b pv r A B) ->
     exp_scoped 0 A /\ opt_scoped 0 B.
 Proof.
   intros * [HΘ HΞ] Hr.
@@ -2169,7 +2170,7 @@ Proof. intros; split; [ assumption | exact I ]. Qed.
 (** What an entry adds is closed if the entry is. *)
 Definition entry_ok (T : ctx) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ _ _ => entry_closed E
+  | ge_def _ _ _ _ _ => entry_closed E
   | ge_mod _ (gu_mk Δ (md_body sm Φ)) => sm = sm_closed /\ unit_closed (Δ ++ T) Φ
   | ge_mod _ U => gunit_scoped 0 U
   | ge_ind _ _ _ D Φ => decl_closed D /\ unit_closed (ind_uparams D) Φ

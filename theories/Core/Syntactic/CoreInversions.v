@@ -118,9 +118,32 @@ Qed.
 #[export]
 Hint Resolve wf_maxl_inversion : mctt.
 
+(** ** Propositions *)
+
+(** [Prop] is a type of the least large universe, so refines itself. *)
+Lemma wf_prop_large : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Typeω@0.
+Proof. intros * HΓ; eapply wf_exp_suniv_large; [ | mauto 3 ]; mauto 3. Qed.
+
+Lemma wf_subtyp_prop_refl : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ⊆ Propₘ.
+Proof. intros * HΓ; exact (wf_subtyp_refl_large _ _ _ _ _ (wf_prop_large _ _ _ HΓ)). Qed.
+
+#[export]
+Hint Resolve wf_prop_large wf_subtyp_prop_refl : mctt.
+
+Lemma wf_prop_inversion : forall Θ Ξ Γ A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_prop_inversion : mctt.
+
 Lemma wf_True_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -129,13 +152,15 @@ Qed.
 #[export]
 Hint Resolve wf_True_inversion : mctt.
 
-Corollary wf_true_inversion : forall Θ Ξ Γ A,
+(** [⋆] proves a proposition below its type: [⊤], or any proved one. *)
+Lemma wf_true_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ⊆ A.
+    exists P, Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ /\ Θ ⍮ Ξ ⍮ Γ ⊢ P ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
-    try specialize (IHwf_exp eq_refl); mautosolve 4.
+    try (destruct (IHwf_exp1 eq_refl) as (P & HP & HPs));
+    first [ exists ⊤; split; mautosolve 3 | eexists; split; [ eassumption | mautosolve 3 ] ].
 Qed.
 
 #[export]
@@ -143,7 +168,7 @@ Hint Resolve wf_true_inversion : mctt.
 
 Lemma wf_False_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -152,115 +177,387 @@ Qed.
 #[export]
 Hint Resolve wf_False_inversion : mctt.
 
-Lemma wf_exfalso_inversion : forall Θ Ξ Γ A M A',
-    Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A' : A ->
-    (exists i, Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A' : Typeω@i) /\
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ /\
-    Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ⊆ A.
+(** What ex falso [efq M return C] is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record absurd_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C A : typ) : Prop := mk_absurd_inv
+  { (** The sort of the type it returns *)
+    absurd_inv_sort : typ
+    (** It is a sort *)
+  ; absurd_inv_sort_ok : type_sort absurd_inv_sort
+    (** The type it returns is of it *)
+  ; absurd_inv_typ : Θ ⍮ Ξ ⍮ Γ ⊢ C : absurd_inv_sort
+    (** The proof of [⊥] *)
+  ; absurd_inv_proof : Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥
+    (** The type it returns is below [A] *)
+  ; absurd_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ C ⊆ A }.
+
+Lemma wf_absurd_inversion : forall Θ Ξ Γ A M C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ efq M return C : A ->
+    absurd_inv Θ Ξ Γ M C A.
 Proof.
   intros * H.
-  dependent induction H;
-    try (specialize (IHwf_exp1 _ _ eq_refl));
-    destruct_conjs; gen_core_presups; repeat split; mautosolve.
+  dependent induction H.
+  - econstructor; [ eassumption | eassumption | eassumption | mautosolve 3 ].
+  - destruct (IHwf_exp1 _ _ eq_refl) as [S HS HC HM Hs].
+    econstructor; [ exact HS | exact HC | exact HM | eapply wf_subtyp_trans; eassumption ].
 Qed.
 
 #[export]
-Hint Resolve wf_exfalso_inversion : mctt.
+Hint Resolve wf_absurd_inversion : mctt.
 
-(** A [Π] is in a large universe, or in a small one at a level. *)
-Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
-    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ C) \/
-    (exists L n, Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ /\
-               Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨L⟩ ⊆ C).
+(** What a [∀] is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record all_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A P C : typ) : Prop := mk_all_inv
+  { (** The sort of the domain *)
+    all_inv_sort : typ
+    (** It is a sort *)
+  ; all_inv_sort_ok : type_sort all_inv_sort
+    (** The domain is of it *)
+  ; all_inv_dom : Θ ⍮ Ξ ⍮ Γ ⊢ A : all_inv_sort
+    (** The family is of propositions *)
+  ; all_inv_cod : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ P : Propₘ
+    (** [Prop] is below [C] *)
+  ; all_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ⊆ C }.
+
+(** The type of a term refines itself. *)
+Lemma wf_subtyp_of_typed : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
+Proof.
+  intros * H; destruct (presup_exp_typ H) as [S HS Hi].
+  eapply wf_subtyp_refl; [ exact Hi | exact HS | apply wf_exp_eq_refl; exact Hi ].
+Qed.
+
+(** What a [Π] of the tag [r] is typed by: the premises of [wf_pi], and
+    its sort below [C]. *)
+#[warnings="-cannot-define-projection"]
+Record pi_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (A B C : typ) : Prop := mk_pi_inv
+  { (** The universe of the [Π] *)
+    pi_inv_univ : typ
+    (** The sort of the domain *)
+  ; pi_inv_dom_sort : typ
+    (** The universe is one *)
+  ; pi_inv_univ_ok : Θ ⍮ Ξ ⍮ Γ ⊢ᵤ pi_inv_univ
+    (** The domain is of its sort *)
+  ; pi_inv_dom : Θ ⍮ Ξ ⍮ Γ ⊢ A : pi_inv_dom_sort
+    (** The domain's sort is the universe or [Prop] *)
+  ; pi_inv_dom_ok : pi_domain_sort pi_inv_univ pi_inv_dom_sort
+    (** The codomain is of the tag's sort over the universe *)
+  ; pi_inv_cod : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : (relevance_sort r pi_inv_univ)[↑]ʷ
+    (** The [Π]'s sort is below [C] *)
+  ; pi_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ relevance_sort r pi_inv_univ ⊆ C }.
+
+Lemma wf_pi_inversion_at : forall {Θ Ξ Γ r A B C},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B : C ->
+    pi_inv Θ Ξ Γ r A B C.
 Proof.
   intros * H.
-  dependent induction H;
-    try specialize (IHwf_exp1 _ _ eq_refl);
-    try destruct IHwf_exp1 as [(j & ? & ? & ?) | (L' & n' & ? & ? & ? & ?)];
-    repeat match goal with Hu : wf_is_univ _ _ _ _ |- _ => inversion Hu; subst; clear Hu end;
-    cbn [exp_wk] in *; gen_core_presups.
-  - left; eexists; mautosolve 4.
-  - right; do 2 eexists; repeat split; try eassumption; mautosolve 4.
-  - left; exists j; repeat split; try assumption; mautosolve 4.
-  - right; exists L', n'; repeat split; try assumption; mautosolve 4.
+  dependent induction H.
+  - econstructor; [ eassumption | eassumption | eassumption | eassumption |].
+    eapply wf_subtyp_of_typed; eapply wf_pi; eassumption.
+  - destruct (IHwf_exp1 _ _ _ eq_refl) as [U S HU HA HD HB Hs].
+    econstructor; [ exact HU | exact HA | exact HD | exact HB | eapply wf_subtyp_trans; eassumption ].
+Qed.
+
+Lemma wf_all_inversion : forall Θ Ξ Γ A P C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ ∀ₚ A P : C ->
+    all_inv Θ Ξ Γ A P C.
+Proof.
+  intros * H.
+  destruct (wf_pi_inversion_at H) as [U S HU HA HD HB Hs]; cbn [relevance_sort exp_wk] in HB, Hs.
+  destruct HD.
+  - inversion HU; subst.
+    + econstructor; [ constructor | exact HA | exact HB | exact Hs ].
+    + econstructor; [ apply (type_sort_universe 0) | eapply wf_exp_suniv_large; eassumption | exact HB | exact Hs ].
+  - econstructor; [ constructor | exact HA | exact HB | exact Hs ].
+Qed.
+
+#[export]
+Hint Resolve wf_all_inversion : mctt.
+
+(** What a [Σₚ] is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record and_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (P Q C : typ) : Prop := mk_and_inv
+  { (** The first component is a proposition *)
+    and_inv_left : Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ
+    (** The second is one under the first *)
+  ; and_inv_right : Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ
+    (** [Prop] is below [C] *)
+  ; and_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ⊆ C }.
+
+Lemma wf_and_inversion : forall Θ Ξ Γ P Q C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q : C ->
+    and_inv Θ Ξ Γ P Q C.
+Proof.
+  intros * H.
+  dependent induction H.
+  - econstructor; [ eassumption | eassumption | mautosolve 3 ].
+  - destruct (IHwf_exp1 _ _ eq_refl) as [HP HQ Hs].
+    econstructor; [ exact HP | exact HQ | eapply wf_subtyp_trans; eassumption ].
+Qed.
+
+#[export]
+Hint Resolve wf_and_inversion : mctt.
+
+(** What a proof of a conjunction is typed by: its annotation [T], a
+    proposition equal to [Σₚ P Q], and its components. *)
+#[warnings="-cannot-define-projection"]
+Record conj_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (T M N C : typ) : Prop := mk_conj_inv
+  { (** The first component's proposition *)
+    conj_inv_left_prop : typ
+    (** The second component's, under the first *)
+  ; conj_inv_right_prop : typ
+    (** The annotation is a proposition *)
+  ; conj_inv_ann : Θ ⍮ Ξ ⍮ Γ ⊢ T : Propₘ
+    (** It is the conjunction *)
+  ; conj_inv_eq : Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ Σₚ conj_inv_left_prop conj_inv_right_prop : Propₘ
+    (** The first component's proposition is one *)
+  ; conj_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ conj_inv_left_prop : Propₘ
+    (** So is the second's, under the first *)
+  ; conj_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹ conj_inv_left_prop ⊢ conj_inv_right_prop : Propₘ
+    (** The first component *)
+  ; conj_inv_left : Θ ⍮ Ξ ⍮ Γ ⊢ M : conj_inv_left_prop
+    (** The second component, at the first *)
+  ; conj_inv_right : Θ ⍮ Ξ ⍮ Γ ⊢ N : conj_inv_right_prop[Id,,M]
+    (** The annotation is below [C] *)
+  ; conj_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ T ⊆ C }.
+
+Lemma wf_conj_inversion : forall Θ Ξ Γ T M N C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_conj T M N : C ->
+    conj_inv Θ Ξ Γ T M N C.
+Proof.
+  intros * H.
+  dependent induction H.
+  - econstructor; try eassumption; mautosolve 3.
+  - destruct (IHwf_exp1 _ _ _ eq_refl) as [P Q HT HTe HP HQ HM HN Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
+Qed.
+
+#[export]
+Hint Resolve wf_conj_inversion : mctt.
+
+(** What a first projection of a proof of a conjunction is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record left_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C : typ) : Prop := mk_left_inv
+  { (** The first component's proposition *)
+    left_inv_left_prop : typ
+    (** The second's, under the first *)
+  ; left_inv_right_prop : typ
+    (** The first is a proposition *)
+  ; left_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ left_inv_left_prop : Propₘ
+    (** So is the second, under the first *)
+  ; left_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹ left_inv_left_prop ⊢ left_inv_right_prop : Propₘ
+    (** The projected proof *)
+  ; left_inv_arg : Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ left_inv_left_prop left_inv_right_prop
+    (** The first component's proposition is below [C] *)
+  ; left_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ left_inv_left_prop ⊆ C }.
+
+Lemma wf_left_inversion : forall Θ Ξ Γ M C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_left M : C ->
+    left_inv Θ Ξ Γ M C.
+Proof.
+  intros * H.
+  dependent induction H.
+  - econstructor; try eassumption; mautosolve 3.
+  - destruct (IHwf_exp1 _ eq_refl) as [P Q HP HQ HM Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
+Qed.
+
+#[export]
+Hint Resolve wf_left_inversion : mctt.
+
+(** What a second projection is typed by: the same, at the first
+    projection. *)
+#[warnings="-cannot-define-projection"]
+Record right_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C : typ) : Prop := mk_right_inv
+  { (** The first component's proposition *)
+    right_inv_left_prop : typ
+    (** The second's, under the first *)
+  ; right_inv_right_prop : typ
+    (** The first is a proposition *)
+  ; right_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ right_inv_left_prop : Propₘ
+    (** So is the second, under the first *)
+  ; right_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹ right_inv_left_prop ⊢ right_inv_right_prop : Propₘ
+    (** The projected proof *)
+  ; right_inv_arg : Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ right_inv_left_prop right_inv_right_prop
+    (** The second at the first projection is below [C] *)
+  ; right_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ right_inv_right_prop[Id,,a_left M] ⊆ C }.
+
+Lemma wf_right_inversion : forall Θ Ξ Γ M C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_right M : C ->
+    right_inv Θ Ξ Γ M C.
+Proof.
+  intros * H.
+  dependent induction H.
+  - eapply mk_right_inv with (right_inv_left_prop := P) (right_inv_right_prop := Q); try eassumption; mautosolve 3.
+  - destruct (IHwf_exp1 _ eq_refl) as [P Q HP HQ HM Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
+Qed.
+
+#[export]
+Hint Resolve wf_right_inversion : mctt.
+
+(** A [Π] is in a large universe, or in a small one at a level, its domain
+    a type of that universe or a proposition. *)
+Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
+    (exists i, (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i \/ Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ) /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i /\
+               Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ C) \/
+    (exists L n, Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n /\ (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ \/ Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ) /\
+               Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨L⟩ ⊆ C).
+Proof.
+  intros * H.
+  destruct (wf_pi_inversion_at H) as [U S HU HA HD HB Hs]; cbn [relevance_sort] in HB, Hs.
+  inversion HU; subst; cbn [exp_wk] in HB; destruct HD.
+  - left; eexists; split; [ left; exact HA | split; eassumption ].
+  - left; eexists; split; [ right; exact HA | split; eassumption ].
+  - right; do 2 eexists; split; [ eassumption | split; [ left; exact HA | split; eassumption ] ].
+  - right; do 2 eexists; split; [ eassumption | split; [ right; exact HA | split; eassumption ] ].
 Qed.
 
 #[export]
 Hint Resolve wf_pi_inversion : mctt.
 
 (** The level the domain and the codomain are checked at can always be taken to
-    be the level of the [Π]-type itself.  Moving the refinement [Typeω@j ⊆ Typeω@i]
-    from [Γ] into [Γ ▹ A] is a weakening, and it is the only step that needs any
+    be the level of the [Π]-type itself, the domain a type of that universe
+    or a proposition.  Moving the refinement [Typeω@j ⊆ Typeω@i] from [Γ]
+    into [Γ ▹ A] is a weakening, and it is the only step that needs any
     work: both sides are unchanged by it ([Typeω@j[↑]ʷ] is [Typeω@j]), but only by
     computation, so the step is taken by hand. *)
 Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i.
+    (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i \/ Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ) /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i.
 Proof.
-  intros * [[j [? []]] | [L [n [? [? []]]]]]%wf_pi_inversion.
-  2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
+  intros * [[j [HA []]] | [L [n [? [HA []]]]]]%wf_pi_inversion.
+  2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by (destruct HA; mauto 3).
       assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
       assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ (Level@n)); eassumption).
-      split; eapply wf_exp_suniv_large; eassumption. }
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
+      split; [ destruct HA; [ left; eapply wf_exp_suniv_large; eassumption | right; assumption ] |].
+      eapply wf_exp_suniv_large; eassumption. }
+  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by (destruct HA; mauto 3).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@j ⊆ Typeω@i) by assumption.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Typeω@j ↑ ⊆ exp_wk Typeω@i ↑) as H'
       by (eapply wk_preserves_subtyp; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ Typeω@j ⊆ Typeω@i) by exact H'.
-  split; mauto 3.
+  split; [ destruct HA; [ left; mauto 3 | right; assumption ] | mauto 3 ].
 Qed.
 
 #[export]
 Hint Resolve wf_pi_inversion' : mctt.
 
+(** A λ-abstraction is a function, of a [Π], or a proof, of a [∀]. *)
 Corollary wf_fn_inversion : forall {Θ Ξ Γ A M C},
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : C ->
-    exists B, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B /\ Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ C.
+    exists B, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B /\ (Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ C \/ Θ ⍮ Ξ ⍮ Γ ⊢ ∀ₚ A B ⊆ C).
 Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
-    destruct_conjs; gen_core_presups;
-    eexists; split; mautosolve 3.
+    destruct_conjs; gen_core_presups.
+  - eexists; split; [ eassumption |].
+    destruct r; [ left | right ]; eapply wf_subtyp_of_typed; eapply wf_fn; eassumption.
+  - match goal with Hs : _ \/ _ |- _ => destruct Hs end;
+      eexists; (split; [ eassumption | ]); [ left | right ]; eapply wf_subtyp_trans; eassumption.
 Qed.
 
 #[export]
 Hint Resolve wf_fn_inversion : mctt.
 
+(** What an application is typed by: a function applied, or a proof of a
+    [∀] instantiated. *)
+#[warnings="-cannot-define-projection"]
+Record app_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M N C : typ) : Prop := mk_app_inv
+  { (** The domain *)
+    app_inv_dom : typ
+    (** The codomain *)
+  ; app_inv_cod : typ
+    (** The applied term is a function or a proof of a [∀] *)
+  ; app_inv_fun : Θ ⍮ Ξ ⍮ Γ ⊢ M : Π app_inv_dom app_inv_cod \/ Θ ⍮ Ξ ⍮ Γ ⊢ M : ∀ₚ app_inv_dom app_inv_cod
+    (** The argument is in the domain *)
+  ; app_inv_arg : Θ ⍮ Ξ ⍮ Γ ⊢ N : app_inv_dom
+    (** The codomain at the argument is below [C] *)
+  ; app_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ app_inv_cod[Id,,N] ⊆ C }.
+
 Lemma wf_app_inversion : forall {Θ Ξ Γ M N C},
     Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : C ->
-    exists A B, Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N] ⊆ C.
+    app_inv Θ Ξ Γ M N C.
 Proof.
   intros * H.
-  dependent induction H;
-    try specialize (IHwf_exp1 _ _ eq_refl);
-    destruct_conjs;
-    do 2 eexists; repeat split; mautosolve 4.
+  dependent induction H.
+  - match goal with
+    | HA : _ ⍮ _ ⍮ _ ⊢ A : ?S, HS : type_sort ?S, HB : _ ⍮ _ ⍮ _ ▹ A ⊢ B : _, HM : _ ⍮ _ ⍮ _ ⊢ M : a_pi _ A B,
+      HN : _ ⍮ _ ⍮ _ ⊢ N : A |- _ =>
+        refine (mk_app_inv _ _ _ _ _ _ A B _ HN
+                  (wf_subtyp_of_typed ltac:(eapply wf_app; [ exact HA | exact HS | exact HB | exact HM | exact HN ])));
+        destruct r; [ left | right ]; exact HM
+    end.
+  - destruct (IHwf_exp1 _ _ eq_refl) as [X Y HM HN Hs].
+    econstructor; [ exact HM | exact HN | eapply wf_subtyp_trans; eassumption ].
 Qed.
 
 #[export]
 Hint Resolve wf_app_inversion : mctt.
 
+(** What a local definition is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record let_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oA : option typ) (M B T : typ) : Prop := mk_let_inv
+  { (** The definition's type *)
+    let_inv_typ : typ
+    (** Its sort *)
+  ; let_inv_sort : typ
+    (** The body's type *)
+  ; let_inv_body_typ : typ
+    (** The annotation, if any, is the type; an unannotated one is of a
+        universe *)
+  ; let_inv_ann : let_ann oA let_inv_typ let_inv_sort
+    (** The sort is a sort *)
+  ; let_inv_sort_ok : type_sort let_inv_sort
+    (** The type is of it *)
+  ; let_inv_typed : Θ ⍮ Ξ ⍮ Γ ⊢ let_inv_typ : let_inv_sort
+    (** The definition is of the type *)
+  ; let_inv_def : Θ ⍮ Ξ ⍮ Γ ⊢ M : let_inv_typ
+    (** The body is typed under the definition *)
+  ; let_inv_body : Θ ⍮ Ξ ⍮ Γ ▸ let_inv_typ ≔ M ⊢ B : let_inv_body_typ
+    (** The body's type at the definition is below [T] *)
+  ; let_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ let_inv_body_typ[Id,,M] ⊆ T }.
+
 Lemma wf_let_inversion : forall {Θ Ξ Γ oA M B T},
     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : T ->
-    exists A i C, let_ann oA A /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
-           Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
+    let_inv Θ Ξ Γ oA M B T.
 Proof.
   intros * H.
-  dependent induction H;
-    try specialize (IHwf_exp1 _ _ _ eq_refl);
-    destruct_conjs; gen_core_presups;
-    do 3 eexists; repeat split; first [ solve [ eassumption ] | mautosolve 4 ].
+  dependent induction H.
+  - match goal with HB : _ ⍮ _ ⍮ _ ▸ _ ≔ _ ⊢ _ : ?C |- _ => destruct (presup_exp_typ HB) as [SC HSC HC] end.
+    econstructor; try eassumption.
+    eapply wf_subtyp_refl_typ; [ eapply sub_preserves_sort; [ eassumption | eassumption | mauto 3 ] | eassumption ].
+  - destruct (IHwf_exp1 _ _ _ eq_refl) as [X S Y Ha HS HX HM HB Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 
-(** For an annotated definition, the type is the annotation. *)
+(** What an annotated local definition is typed by: the same, the type
+    the annotation. *)
+#[warnings="-cannot-define-projection"]
+Record let_ann_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A M B T : typ) : Prop := mk_let_ann_inv
+  { (** The annotation's sort *)
+    let_ann_inv_sort : typ
+    (** The body's type *)
+  ; let_ann_inv_body_typ : typ
+    (** The sort is a sort *)
+  ; let_ann_inv_sort_ok : type_sort let_ann_inv_sort
+    (** The annotation is of it *)
+  ; let_ann_inv_typed : Θ ⍮ Ξ ⍮ Γ ⊢ A : let_ann_inv_sort
+    (** The definition is of the annotation *)
+  ; let_ann_inv_def : Θ ⍮ Ξ ⍮ Γ ⊢ M : A
+    (** The body is typed under the definition *)
+  ; let_ann_inv_body : Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : let_ann_inv_body_typ
+    (** The body's type at the definition is below [T] *)
+  ; let_ann_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ let_ann_inv_body_typ[Id,,M] ⊆ T }.
+
 Corollary wf_let_ann_inversion : forall {Θ Ξ Γ A M B T},
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : T ->
-    exists i C, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
-           Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
+    let_ann_inv Θ Ξ Γ A M B T.
 Proof.
-  intros * H; destruct (wf_let_inversion H) as (A' & i & C & [[=] | [= <-]] & ?); eauto.
+  intros * H; destruct (wf_let_inversion H) as [A' S C [[[=] _] | [= <-]] HS HA HM HB Hs].
+  econstructor; eassumption.
 Qed.
 
 #[export]
@@ -305,13 +602,7 @@ Hint Resolve wf_vlookup_inversion : mctt.
 Lemma wf_apps_head : forall {Θ Ξ Γ} Ns M T, Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp M Ns : T -> exists T', Θ ⍮ Ξ ⍮ Γ ⊢ M : T'.
 Proof.
   intros Θ Ξ Γ Ns; induction Ns as [| N Ns IH]; intros * H; cbn in H; [ eauto |].
-  destruct (IH _ _ H) as (T' & HT'); destruct (wf_app_inversion HT') as (X & Y & HM & _); eauto.
-Qed.
-
-Lemma wf_subtyp_of_typed : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
-Proof.
-  intros * H; destruct (presup_exp_typ H) as [i Hi].
-  eapply wf_subtyp_refl; [ exact Hi | apply wf_exp_eq_refl; exact Hi ].
+  destruct (IH _ _ H) as (T' & HT'); destruct (wf_app_inversion HT') as [X Y [HM | HM] _ _]; eauto.
 Qed.
 
 (** What the type former [a_ind p k] is typed by. *)
@@ -370,7 +661,7 @@ Qed.
     parameters are exactly those of the derivation ([elim_inv_ups]): convertible
     ones are reached only through the congruence rule. *)
 #[warnings="-cannot-define-projection"]
-Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (Us : list exp) (m : nat)
+Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (oq : option qname) (Us : list exp) (m : nat)
     (Bks : list eblock) (M T : typ) : Prop := mk_elim_inv
   { (** The group's path *)
     elim_inv_grp : qname
@@ -382,8 +673,8 @@ Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (Us : 
   ; elim_inv_block : eblock
     (** The scrutinee type's parameters, uniform then non-uniform *)
   ; elim_inv_params : list exp
-    (** The motives' level *)
-  ; elim_inv_lvl : nat
+    (** The level of the motives' sort, [relevance_sort r Typeω@_] *)
+  ; elim_inv_level : nat
     (** The group is found at its path *)
   ; elim_inv_lookup : ind_lookup Θ Ξ elim_inv_grp = Some elim_inv_decl
     (** The eliminator's group annotation names it *)
@@ -403,17 +694,17 @@ Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (Us : 
     (** The stored uniform parameters are the derivation's *)
   ; elim_inv_ups : Us = List.firstn (ind_nu elim_inv_decl) elim_inv_params
     (** The blocks are typed *)
-  ; elim_inv_blocks : blocks_typed Θ Ξ Γ elim_inv_grp elim_inv_decl (List.firstn (ind_nu elim_inv_decl) elim_inv_params) Bks elim_inv_lvl
+  ; elim_inv_blocks : blocks_typed Θ Ξ Γ elim_inv_grp elim_inv_decl (List.firstn (ind_nu elim_inv_decl) elim_inv_params) Bks r elim_inv_level
     (** The block's motive at the non-uniform parameters and the scrutinee
         is below [T] *)
   ; elim_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ (eb_motive elim_inv_block)[sb_of_list Id (List.skipn (ind_nu elim_inv_decl) elim_inv_params ++ M :: nil)] ⊆ T }.
 
-Lemma wf_elim_inversion : forall {Θ Ξ Γ oq Us m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : T ->
-    elim_inv Θ Ξ Γ oq Us m Bks M T.
+Lemma wf_elim_inversion : forall {Θ Ξ Γ r oq Us m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M : T ->
+    elim_inv Θ Ξ Γ r oq Us m Bks M T.
 Proof.
   intros * H; dependent induction H.
   - econstructor; try eassumption; try reflexivity; [ constructor; eassumption |].
     eapply wf_subtyp_of_typed; eapply wf_elim; try eassumption; reflexivity.
-  - destruct (IHwf_exp1 _ _ _ _ _ eq_refl) as [p D Mm bm Ps i0 Hl Hg Hm Hb HPl HPs HM HUs HBt Hs].
+  - destruct (IHwf_exp1 _ _ _ _ _ _ eq_refl) as [p D Mm bm Ps i0 Hl Hg Hm Hb HPl HPs HM HUs HBt Hs].
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.

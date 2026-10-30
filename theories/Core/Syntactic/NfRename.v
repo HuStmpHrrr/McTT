@@ -30,10 +30,14 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_univ c xs => nf_univ c (List.map (map_level_atom (ne_wk φ)) xs)
   | nf_level n => nf_level n
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_wk φ)) xs)
+  | nf_prop => nf_prop
   | nf_True => nf_True
   | nf_true => nf_true
   | nf_False => nf_False
-  | nf_pi A B => nf_pi (nf_wk φ A) (nf_wk (wk_q φ) B)
+  | nf_and P Q => nf_and (nf_wk φ P) (nf_wk (wk_q φ) Q)
+  | nf_placeholder_type => nf_placeholder_type
+  | nf_placeholder => nf_placeholder
+  | nf_pi r A B => nf_pi r (nf_wk φ A) (nf_wk (wk_q φ) B)
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
   | nf_indty p k Ms => nf_indty p k (List.map (nf_wk φ) Ms)
   | nf_con p k c Ms => nf_con p k c (List.map (nf_wk φ) Ms)
@@ -43,7 +47,7 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   end
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
-  | ne_exfalso A u => ne_exfalso (nf_wk (wk_q φ) A) (ne_wk φ u)
+  | ne_absurd A => ne_absurd (nf_wk φ A)
   | ne_elim p Us m Bks u =>
       ne_elim p (List.map (nf_wk φ) Us) m (List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) Bks) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
@@ -222,6 +226,7 @@ Proof.
     | |- ne_cmp _ (ne_wk _ ?N) = _ => destruct N
     end;
     repeat match goal with p : o2 |- _ => destruct p end;
+    repeat match goal with r : relevance |- _ => destruct r end;
     cmp_norm; try reflexivity.
   (** The lists, element by element. *)
   all: repeat match goal with

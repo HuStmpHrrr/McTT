@@ -39,7 +39,7 @@ Import Syntax_Notations.
     arguments. *)
 Fixpoint nf_formers (d : nat) (W : nf) {struct W} : list (qname * nat * list exp) :=
   match W with
-  | nf_pi A B => nf_formers d A ++ nf_formers (S d) B
+  | nf_pi _ A B => nf_formers d A ++ nf_formers (S d) B
   | nf_fn A M => nf_formers d A ++ nf_formers (S d) M
   | nf_indty p _ Ms => (p, d, List.map nf_to_exp Ms) :: List.flat_map (nf_formers d) Ms
   | nf_con _ _ _ Ms | nf_record _ Ms => List.flat_map (nf_formers d) Ms

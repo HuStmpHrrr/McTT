@@ -484,7 +484,7 @@ Section Tele.
   Proof.
     induction 1 as [k pre pre' s | k pre pre' s A T a a' Ea Ea' Hr H IH]; [ exists nil, nil; repeat split; constructor |].
     destruct IH as (ws & ws' & F & F' & Hl & Hw).
-    exists (⇑! a s :: ws), (⇑! a' s :: ws'); split; [| split; [| split ] ].
+    exists (relevant_value a (⇑! a s) :: ws), (relevant_value a' (⇑! a' s) :: ws'); split; [| split; [| split ] ].
     - econstructor; [ exact Ea |]; rewrite <- env_args_snoc, <- List.app_assoc; exact F.
     - econstructor; [ exact Ea' |]; rewrite <- env_args_snoc, <- List.app_assoc; exact F'.
     - cbn; rewrite Hl; reflexivity.
@@ -850,8 +850,8 @@ Section Tele.
       eapply nonrec_prefix; eassumption.
     Qed.
 
-    Lemma nonrec_arg_vals_snoc_arg : forall gs1 vp A v, List.length vp = List.length gs1 ->
-        nonrec_arg_vals (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) = nonrec_arg_vals gs1 vp ++ v :: nil.
+    Lemma nonrec_arg_vals_snoc_arg : forall gs1 vp r A v, List.length vp = List.length gs1 ->
+        nonrec_arg_vals (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) = nonrec_arg_vals gs1 vp ++ v :: nil.
     Proof. intros; rewrite nonrec_arg_vals_app by assumption; reflexivity. Qed.
 
     Lemma nonrec_arg_vals_snoc_rec : forall gs1 vp t v, List.length vp = List.length gs1 ->
@@ -946,7 +946,7 @@ Section Tele.
       - intros; constructor.
       - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
         constructor.
-        apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
+        apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
           [ rewrite Hρ, nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
           | rewrite Hρ', nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
           | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
@@ -1073,10 +1073,10 @@ Section Tele.
                                | eapply (args_rel_trans _ _ HM _ _ _ Hn Hc); eassumption |].
         apply (IH _ _ _ Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
       - intros * _ _ _ _ _ _ _ _ _ Hz; inversion Hz; subst; constructor.
-      - intros k u1 u2 pre1 v1 pre2 v2 gs vs1 vs2 A Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 Hl1 Hl2 Hn Hc Heq Ha Hz.
+      - intros k u1 u2 pre1 v1 pre2 v2 gs vs1 vs2 r A Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 Hl1 Hl2 Hn Hc Heq Ha Hz.
         inversion Hz; subst.
         constructor.
-        eapply (IH _ _ _ Mk ms1 ms2 c (gs1 ++ ca_arg A :: gs) (gs1 ++ ca_arg A :: nil) (vp1 ++ v1 :: nil) (vp2 ++ v2 :: nil) HM);
+        eapply (IH _ _ _ Mk ms1 ms2 c (gs1 ++ ca_arg r A :: gs) (gs1 ++ ca_arg r A :: nil) (vp1 ++ v1 :: nil) (vp2 ++ v2 :: nil) HM);
           [ rewrite nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
           | rewrite nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
           | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
@@ -1196,7 +1196,7 @@ Section Tele.
           destruct (adm_nparam_vars _ _ _ _ _ _ Hcl m Mm (List.length T0) A pre pre0 s HM HA Hp) as [b b0 Eb Eb0 Rb].
           pose proof (functional_eval_exp _ _ _ _ Eb Ea) as ->; pose proof (functional_eval_exp _ _ _ _ Eb0 Ea0) as ->.
           rewrite <- env_args_snoc, <- List.app_assoc in F', F0'.
-          pose proof (IH (T0 ++ ce_ass A :: nil) (S (List.length T0)) (pre ++ ⇑! a s :: nil) (pre0 ++ ⇑! a0 s :: nil) (S s) vs vs0 HM
+          pose proof (IH (T0 ++ ce_ass A :: nil) (S (List.length T0)) (pre ++ relevant_value a (⇑! a s) :: nil) (pre0 ++ relevant_value a0 (⇑! a0 s) :: nil) (S s) vs vs0 HM
                         ltac:(rewrite HT, <- List.app_assoc; reflexivity) ltac:(rewrite List.length_app; cbn; lia)
                         (tele_prefix_rel_snoc _ _ _ _ _ _ Hp Rb) F' F0') as H.
           rewrite <- !List.app_assoc in H; cbn in H.
@@ -1231,13 +1231,13 @@ Section Tele.
           tele_prefix_rel (args_rel m ns c) k ws ws' ->
           fresh_cargs_rel D ups ups' nparams_rel (args_rel m ns c) (doms_rel m) ns ns' k ws ws' s gs.
       Proof.
-        intros m Mm c gsf gs1 gs; revert gs1; induction gs as [| [A | t] gs IH];
+        intros m Mm c gsf gs1 gs; revert gs1; induction gs as [| [r A | t] gs IH];
           intros gs1 ns ns' k ws ws' s HM Hc Heq Hk Hn Hp; [ constructor | |].
         - assert (HA : List.nth_error (cargs_nonrec gsf) k = Some A)
             by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Hk, Nat.sub_diag by lia; reflexivity).
           destruct (adm_arg_vars _ _ _ _ _ _ Hcl m Mm ns ns' c gsf k A ws ws' s HM Hn Hc HA Hp) as [a a' Ea Ea' Ra].
           econstructor; [ exact Ea | exact Ea' | exact Ra |].
-          apply (IH (gs1 ++ ca_arg A :: nil)); [ exact HM | exact Hc | rewrite Heq, <- List.app_assoc; reflexivity
+          apply (IH (gs1 ++ ca_arg r A :: nil)); [ exact HM | exact Hc | rewrite Heq, <- List.app_assoc; reflexivity
                                               | rewrite cargs_nonrec_app, List.length_app, Hk; cbn; lia | exact Hn |].
           apply tele_prefix_rel_snoc; [ exact Hp | exact Ra ].
         - subst k.
@@ -1321,7 +1321,7 @@ Section Tele.
         - intros; constructor.
         - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
           constructor.
-          apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
+          apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
             [ rewrite Hρ, nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
             | rewrite Hρ', nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
@@ -1418,7 +1418,7 @@ Section Tele.
         - intros; constructor.
         - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' Hu HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
           constructor.
-          apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) Hu HM);
+          apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) Hu HM);
             [ rewrite Hρ, nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
             | rewrite Hρ', nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
@@ -1521,7 +1521,7 @@ Section Tele.
         - intros; constructor.
         - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
           constructor.
-          apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
+          apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
             [ rewrite Hρ, nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
             | rewrite Hρ', nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
@@ -1903,7 +1903,7 @@ Section Tele.
       - intros; constructor.
       - intros * Hia IH Mk ms c gsf gs1 vp vp' HM Hρ Hl Hl' Hn' Hc Heq Har.
         constructor.
-        apply (IH Mk ms c gsf (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
+        apply (IH Mk ms c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
           [ rewrite Hρ, nonrec_arg_vals_app, <- List.app_assoc by assumption; reflexivity
           | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
           | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Har ].

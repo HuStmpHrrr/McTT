@@ -7,10 +7,11 @@ Reserved Notation "Γ ⊢a A ⊆ A'" (at level 70, A at level 69, A' at level 69
 Reserved Notation "⊢anf A ⊆ A'" (at level 70, A at level 69, A' at level 69).
 
 (** The normal forms whose subtyping is not syntactic equality: the
-    universes, the types of levels and [Π]. *)
+    universes, the types of levels and the relevant [Π].  A propositional
+    [Π] is a proposition, related by equality only. *)
 Definition not_univ_pi (A : nf) : Prop :=
   match A with
-  | nf_typ _ | nf_univ _ _ | nf_level _ | nf_pi _ _ => False
+  | nf_typ _ | nf_univ _ _ | nf_level _ | nf_pi relevant _ _ => False
   | _ => True
   end.
 

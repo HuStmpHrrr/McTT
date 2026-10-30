@@ -32,18 +32,23 @@ Generalizable All Variables.
     under fresh variables, of the types the declaration gives: the
     non-uniform parameters, the arguments of a constructor, and the
     recursive results.  Each type is evaluated in the environment of the
-    variables before it; nothing is built. *)
+    variables before it; nothing is built.  A variable of a propositional
+    type is the proof [⋆ᵈ] ([relevant_value]): relevance-directed
+    evaluation never puts a variable at a proposition. *)
 
 (** A telescope, outermost first: [fresh_tele ρ T s vs] gives the variables
     from [s] on, the type of each evaluated in [ρ] extended by those
     before it. *)
 Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
+(** No entry *)
 | fresh_tele_nil :
   `( Ftele nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
+(** The first entry's variable at its type, then the rest with it in the
+    environment *)
 | fresh_tele_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Ftele T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
-     Ftele ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+     Ftele T in Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ⍮ S s ↘ vs ->
+     Ftele ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ relevant_value a (⇑! a s) :: vs )
 where "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fresh_tele Θ Ξ ρ T s vs) : type_scope.
 
 (** The arguments of a constructor of [p] at the uniform parameters [ups]:
@@ -52,12 +57,16 @@ where "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fresh_tele Θ Ξ 
     it; a recursive one of the type of its shape there. *)
 Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> list domain -> Prop :=
+(** No argument *)
 | fresh_cargs_nil :
   `( Fcargs nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
+(** A non-recursive argument: its variable at its declared type *)
 | fresh_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
-     Fcargs ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ⍮ S s ↘ vs ->
+     Fcargs ca_arg r A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ relevant_value a (⇑! a s) :: vs )
+(** A recursive argument: its variable at its shape's type, which is
+    relevant *)
 | fresh_cargs_rec :
   `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ S s ↘ vs ->
@@ -72,7 +81,7 @@ Inductive fresh_leaf_vars : list bool -> list domain -> nat -> list domain -> Pr
 | fresh_leaf_vars_nil : forall s, fresh_leaf_vars nil nil s nil
 (** A path of the container's: a fresh variable at its type *)
 | fresh_leaf_vars_fresh : forall bs a as' s vs,
-    fresh_leaf_vars bs as' (S s) vs -> fresh_leaf_vars (true :: bs) (a :: as') s (⇑! a s :: vs)
+    fresh_leaf_vars bs as' (S s) vs -> fresh_leaf_vars (true :: bs) (a :: as') s (relevant_value a (⇑! a s) :: vs)
 (** A path nested through: none *)
 | fresh_leaf_vars_skip : forall bs a as' s vs,
     fresh_leaf_vars bs as' s vs -> fresh_leaf_vars (false :: bs) (a :: as') s vs.
@@ -95,7 +104,7 @@ Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : q
 (** A non-recursive argument: none, the argument entering [ρa] *)
 | fresh_ihs_arg :
   `( Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ↦ v ⍮ s ↘ ihs ->
-     Fihs v :: vs at (ca_arg T' :: gs') (ca_arg T :: gs) of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
+     Fihs v :: vs at (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 (** An argument recursive in both: a fresh variable at each recursive
     result's type, along the paths of the container's *)
 | fresh_ihs_rec :
@@ -107,7 +116,7 @@ Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : q
 (** An argument recursive in [gs] only (nested through): no variable *)
 | fresh_ihs_nest :
   `( Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
-     Fihs v :: vs at (ca_arg T' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
+     Fihs v :: vs at (ca_arg ra' T' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 where "'Fihs' vs 'at' gs' gs 'of' Dc 'under' ρm As 'at' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" :=
   (fresh_ihs Θ Ξ ρm As p ups Dc ρ gs' gs vs s ihs) : type_scope.
 
@@ -151,11 +160,11 @@ Inductive wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups :
 | wrap_ihs_eval_nest :
   `( ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
      ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ++ r )
+     ⟦wihs v :: vs of (ca_arg ra' T' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ++ r )
 (** Non-recursive: no result *)
 | wrap_ihs_eval_arg :
   `( ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_arg T :: gs) of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦wihs v :: vs of (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦wihs' vs 'of' gs' gs 'of' Dc 'with' ihs 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" :=
   (wrap_ihs_eval Θ Ξ ρ p ups Bks Dc gs' gs vs ihs r) : type_scope.
 
@@ -183,23 +192,33 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) M :: nil) )
-(** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
-| read_nf_true :
-  `( Rnf ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
-| read_nf_False_neut :
-  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ ⊥ᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+(** Proof irrelevance: every value of a proposition reads back as [⋆],
+    whatever it is.  This is the only rule at a propositional type. *)
+| read_nf_proof :
+  `( domain_relevance a = propositional ->
+     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
+(** A proposition, as an element of [Prop], reads back as a type. *)
+| read_nf_prop :
+  `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
+     Rnf ⇓ Propᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
+(** η for the placeholder type: its only value is the placeholder. *)
+| read_nf_placeholder :
+  `( Rnf ⇓ d_placeholder_type m in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder )
+(** A function, η-long: its body applied to a fresh variable of its
+    domain, the proof [⋆ᵈ] at a propositional domain. *)
 | read_nf_fn :
   `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      (** The normal form of the η-expanded body. *)
-     $| m & ⇑! a s | Θ ⍮ Ξ ↘ m' ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ↘ b ->
+     $| m & relevant_value a (⇑! a s) | Θ ⍮ Ξ ↘ m' ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
      Rnf ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
 
      Rnf ⇓ (Πᵈ a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
+(** A neutral at a neutral type that is not a proposition *)
 | read_nf_neut :
-  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+  `( domain_relevance (⇑ a b) = relevant ->
+     Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 (** A constructor at all its parameters and arguments: the parameters are
     read off the type, at the types the declaration gives them, and the
@@ -268,15 +287,11 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf n in Θ ⍮ Ξ ⍮ s ↘ N ->
      Rne m $ᵈ n in Θ ⍮ Ξ ⍮ s ↘ M $ⁿ N )
-| read_ne_exfalso :
-  `( (** The normal form of the motive. *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ⊥ᵈ s ↘ b ->
-     Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
-
-     (** The neutral form of the scrutinee. *)
-     Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-
-     Rne efqᵈ m under ρ return B in Θ ⍮ Ξ ⍮ s ↘ efqⁿ M return B' )
+(** Ex falso at the type [c]: the type read back; the proof of [⊥] is not
+    kept, and its normal form is [⋆] ([nf_to_exp]). *)
+| read_ne_absurd :
+  `( Rtyp c in Θ ⍮ Ξ ⍮ s ↘ C ->
+     Rne efqᵈ c in Θ ⍮ Ξ ⍮ s ↘ efqⁿ C )
 | read_ne_glob :
   `( Rne d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
 (** A stuck eliminator of the group at [p] at its member [j], read as the
@@ -322,19 +337,51 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
 | read_typ_level :
   `( Rtyp Levelᵈ@n in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ@n )
+(** The universe of propositions *)
+| read_typ_prop :
+  `( Rtyp Propᵈ in Θ ⍮ Ξ ⍮ s ↘ Propⁿ )
+(** The true proposition *)
 | read_typ_True :
   `( Rtyp ⊤ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊤ⁿ )
+(** The false proposition *)
 | read_typ_False :
   `( Rtyp ⊥ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊥ⁿ )
+(** The placeholder type *)
+| read_typ_placeholder_type :
+  `( Rtyp d_placeholder_type in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder_type )
+(** A Π type: its codomain under a fresh variable of its domain, the
+    proof [⋆ᵈ] at a propositional domain *)
 | read_typ_pi :
   `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
 
      (** The normal form of the return type. *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ↘ b ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 
      Rtyp Πᵈ a ρ B in Θ ⍮ Ξ ⍮ s ↘ Πⁿ A B')
+(** A universal proposition: its body under a fresh variable of its
+    domain, as for Π *)
+| read_typ_all :
+  `( (** The normal form of the domain. *)
+     Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
+
+     (** The normal form of the body. *)
+     ⟦ P ⟧ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
+     Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ P' ->
+
+     Rtyp ∀ₚᵈ a ρ P in Θ ⍮ Ξ ⍮ s ↘ ∀ₚⁿ A P')
+(** A dependent conjunction: its second component under a fresh
+    variable of its first, which is the proof [⋆ᵈ] *)
+| read_typ_and :
+  `( (** The normal form of the first component. *)
+     Rtyp a in Θ ⍮ Ξ ⍮ s ↘ P' ->
+
+     (** The normal form of the second component. *)
+     ⟦ Q ⟧ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
+     Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ Q' ->
+
+     Rtyp Σₚᵈ a ρ Q in Θ ⍮ Ξ ⍮ s ↘ Σₚⁿ P' Q')
 | read_typ_neut :
   `( Rne b in Θ ⍮ Ξ ⍮ s ↘ B ->
      Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
@@ -406,7 +453,7 @@ with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env 
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rcargs v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
+     Rcargs v :: vs at ca_arg r A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 (** A recursive argument, along its shape *)
 | read_cargs_rec :
   `( Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V ->
@@ -429,8 +476,8 @@ with read_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env 
 | read_shape_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ s ↘ A ->
-     $| v & ⇑! b s | Θ ⍮ Ξ ↘ r ->
-     Rsh r at t of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! b s ⍮ S s ↘ V ->
+     $| v & relevant_value b (⇑! b s) | Θ ⍮ Ξ ↘ r ->
+     Rsh r at t of p ups in Θ ⍮ Ξ ⍮ ρ ↦ relevant_value b (⇑! b s) ⍮ S s ↘ V ->
      Rsh v at pt_pi B t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ λⁿ A V )
 where "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (read_shape Θ Ξ s p ups ρ t v V) : type_scope
 (** The blocks of a stuck eliminator of the group at [p], its blocks [Bks]

@@ -21,6 +21,21 @@ From Mctt.Core.Syntactic.System.Records Require Export Syntax.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
+(** A field's equation at the record's sort below a universe is one at the
+    field's sort there: the universe, or [Prop]. *)
+Lemma relevance_sort_exp_eq_up : forall Θ Ξ Γ r A A' S n,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : relevance_sort r S -> Θ ⍮ Ξ ⍮ Γ ⊢ S ⊆ Typeω@n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : relevance_sort r Typeω@n.
+Proof. intros * HAA HS; destruct r; cbn in *; [ eapply wf_exp_eq_subtyp'; eassumption | exact HAA ]. Qed.
+
+(** Conversion along an equation at a field's sort. *)
+Lemma wf_conv_rel : forall Θ Ξ Γ r M A A' n,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : relevance_sort r Typeω@n -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
+Proof.
+  intros * HM HAA; eapply wf_conv_sort;
+    [ exact HM | exact (presup_exp_eq_right HAA) | apply type_sort_relevance; constructor | exact HAA ].
+Qed.
+
   (** What the type former [a_record p] is typed by: the premises of
       [wf_record], and its type below [T]. *)
   #[warnings="-cannot-define-projection"]
@@ -41,11 +56,15 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     ; former_fctx_wf : ⊢ Θ ⍮ Ξ ⍮ record_fctx former_decl (List.length (record_fields former_decl)) ++ record_params former_decl
       (** The sort is a universe over the parameters *)
     ; former_sort : Θ ⍮ Ξ ⍮ record_params former_decl ⊢ᵤ record_sort former_decl
-      (** Each field is a type of the sort over the fields before it *)
+      (** Each field is a type of the sort over the fields before it, a
+          proposition at a propositional field *)
     ; former_fields : forall k f U, List.nth_error (record_fields former_decl) k = Some (f, U) ->
-        Θ ⍮ Ξ ⍮ record_fctx former_decl k ++ record_params former_decl ⊢ U : (record_sort former_decl)[wk_shiftn k]ʷ
+        Θ ⍮ Ξ ⍮ record_fctx former_decl k ++ record_params former_decl
+          ⊢ U : relevance_sort (record_field_rel former_decl k) (record_sort former_decl)[wk_shiftn k]ʷ
       (** The type former's type is below [T] *)
-    ; former_sub : Θ ⍮ Ξ ⍮ Γ ⊢ record_ty former_decl ⊆ T }.
+    ; former_sub : Θ ⍮ Ξ ⍮ Γ ⊢ record_ty former_decl ⊆ T
+      (** One sort per field *)
+    ; former_rel_len : List.length (record_field_relevance former_decl) = List.length (record_fields former_decl) }.
 
   Lemma wf_record_inversion : forall {Θ Ξ Γ p T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : T -> record_former_inv Θ Ξ Γ p T.
   Proof.
@@ -112,8 +131,8 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     ; proj_index : nat
       (** The field's type *)
     ; proj_field_typ : typ
-      (** The universe of the field's type there *)
-    ; proj_level : nat
+      (** The sort of the field's type there *)
+    ; proj_sort : typ
       (** The element is of the record type at the parameters *)
     ; proj_elem : Θ ⍮ Ξ ⍮ Γ ⊢ M : apps_exp (a_record proj_path) proj_params
       (** The type former is typed *)
@@ -127,8 +146,10 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
         List.nth_error (tele_insts (record_params proj_decl) Id proj_params) k = Some B -> Θ ⍮ Ξ ⍮ Γ ⊢ N : B
       (** The field is the declaration's at the position *)
     ; proj_field : List.nth_error (record_fields proj_decl) proj_index = Some (f, proj_field_typ)
-      (** Its type there is a type *)
-    ; proj_typ : Θ ⍮ Ξ ⍮ Γ ⊢ proj_field_typ[sb_of_list Id (proj_params ++ record_pre proj_decl proj_index M)] : Typeω@proj_level
+      (** Its type there is a type of the sort *)
+    ; proj_typ : Θ ⍮ Ξ ⍮ Γ ⊢ proj_field_typ[sb_of_list Id (proj_params ++ record_pre proj_decl proj_index M)] : proj_sort
+      (** It is a sort *)
+    ; proj_sort_ok : type_sort proj_sort
       (** It is below [A] *)
     ; proj_sub : Θ ⍮ Ξ ⍮ Γ ⊢ proj_field_typ[sb_of_list Id (proj_params ++ record_pre proj_decl proj_index M)] ⊆ A }.
 
@@ -136,7 +157,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
   Proof.
     intros * H; dependent induction H.
     - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
-    - destruct (IHwf_exp1 _ _ eq_refl) as [p0 R0 Ns0 k0 U0 i0 HM0 Hr0 Hl0 Hn0 HNs0 Hfk0 HU0 Hsub0].
+    - destruct (IHwf_exp1 _ _ eq_refl) as [p0 R0 Ns0 k0 U0 i0 HM0 Hr0 Hl0 Hn0 HNs0 Hfk0 HU0 HS0 Hsub0].
       econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
   Qed.
 
@@ -184,7 +205,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
   (** A field's type is a type over the fields before it. *)
   Lemma record_field_typ_wf : forall Θ Ξ R k f U, List.nth_error (record_fields R) k = Some (f, U) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
-      exists i, Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ U : Typeω@i.
+      Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ᵗ U.
   Proof.
     intros * Hk HF.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
@@ -211,22 +232,22 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
       List.length Ms = k + List.length (record_params R) -> List.length Ms' = k + List.length (record_params R) ->
       (forall j N N' A, List.nth_error Ms j = Some N -> List.nth_error Ms' j = Some N' ->
          List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id Ms) j = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A) ->
-      exists i, Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id Ms] ≈ U[sb_of_list Id Ms'] : Typeω@i.
+      exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id Ms] ≈ U[sb_of_list Id Ms'] : S.
   Proof.
     intros * Hc Hass HF HΓ Hk HMl HMl' HMs.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
-    destruct (record_field_typ_wf _ _ _ _ _ _ Hk HF) as [i HU].
+    destruct (record_field_typ_wf _ _ _ _ _ _ Hk HF) as [i HSi HU].
     assert (HΔΓ : ⊢ Θ ⍮ Ξ ⍮ (record_fctx R k ++ record_params R) ++ Γ) by (apply record_fctx_app_wf; auto; lia).
     assert (Hlen : List.length (record_fctx R k ++ record_params R) = k + List.length (record_params R))
       by (rewrite List.length_app, length_record_fctx by lia; reflexivity).
-    assert (HUΓ : Θ ⍮ Ξ ⍮ (record_fctx R k ++ record_params R) ++ Γ ⊢ U : Typeω@i).
+    assert (HUΓ : Θ ⍮ Ξ ⍮ (record_fctx R k ++ record_params R) ++ Γ ⊢ U : i).
     { apply wf_exp_closed_app; [ apply record_fctx_params_ass; exact Hass
                                | apply record_fctx_scoped; [ lia | intros; eapply closed_fields; eassumption | exact (closed_params _ Hc) ]
-                               | rewrite Hlen; exact (closed_fields _ Hc _ _ _ Hk) | cbn; exact I | exact HU | exact HΓ ]. }
+                               | rewrite Hlen; exact (closed_fields _ Hc _ _ _ Hk) | destruct HSi; cbn; exact I | exact HU | exact HΓ ]. }
     assert (Hσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms' : (record_fctx R k ++ record_params R) ++ Γ).
     { eapply wf_sub_eq_of_list; [ apply record_fctx_params_ass; exact Hass | exact HΔΓ | apply wf_sub_eq_refl; mauto 3
                                 | rewrite Hlen; exact HMl | rewrite Hlen; exact HMl' | exact HMs ]. }
-    exists i; exact (sub_eq_preserves_typ _ _ _ _ _ _ _ _ HUΓ Hσ).
+    exists i; split; [ exact HSi | exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HUΓ HSi Hσ) ].
   Qed.
 
   (** A term over a closed telescope, at equal instances of it. *)
@@ -289,31 +310,36 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
   Qed.
 
   (** A field's type at equal instances of the fields' telescope, at the
-      sort. *)
+      field's sort: the record's sort, or [Prop] at a propositional
+      field. *)
   Lemma record_field_sort_cong : forall Θ Ξ Γ R k f U Ns Ls Ms',
       record_closed R -> tele_ass (record_params R) ->
       (forall k f U, List.nth_error (record_fields R) k = Some (f, U) ->
-         Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ U : (record_sort R)[wk_shiftn k]ʷ) -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+         Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ U : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
+      ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.nth_error (record_fields R) k = Some (f, U) ->
       List.length Ns = List.length (record_params R) -> List.length Ls = k ->
       List.length Ms' = k + List.length (record_params R) ->
       (forall j N N' A, List.nth_error (Ns ++ Ls) j = Some N -> List.nth_error Ms' j = Some N' ->
          List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id (Ns ++ Ls)) j = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A) ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ Ls)] ≈ U[sb_of_list Id Ms'] : (record_sort R)[sb_of_list Id Ns].
+      Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ Ls)] ≈ U[sb_of_list Id Ms'] : relevance_sort (record_field_rel R k) (record_sort R)[sb_of_list Id Ns].
   Proof.
     intros * Hc Hass HFs HΓ Hk HNl HLl HMl HMs.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
     assert (Hlen : List.length (record_fctx R k ++ record_params R) = k + List.length (record_params R))
       by (rewrite List.length_app, length_record_fctx by lia; reflexivity).
-    replace ((record_sort R)[sb_of_list Id Ns]) with ((record_sort R)[wk_shiftn (List.length Ls)]ʷ[sb_of_list Id (Ns ++ Ls)])
-      by apply exp_shift_past.
+    pose proof (HFs _ _ _ Hk) as HU; rewrite <- relevance_sort_wk in HU.
+    replace (relevance_sort (record_field_rel R k) (record_sort R)[sb_of_list Id Ns])
+      with ((relevance_sort (record_field_rel R k) (record_sort R))[wk_shiftn (List.length Ls)]ʷ[sb_of_list Id (Ns ++ Ls)])
+      by (rewrite exp_shift_past; apply relevance_sort_sub).
     rewrite HLl.
     apply (closed_tele_exp_cong _ _ _ (record_fctx R k ++ record_params R));
       [ apply record_fctx_params_ass; exact Hass
       | apply record_fctx_scoped; [ lia | intros; eapply closed_fields; eassumption | exact (closed_params _ Hc) ]
       | rewrite Hlen; exact (closed_fields _ Hc _ _ _ Hk)
-      | rewrite Hlen; eapply exp_scoped_wk; [ exact (closed_sort _ Hc) | intros x Hx; unfold wk_shiftn; lia ]
-      | exact (HFs _ _ _ Hk) | exact HΓ | rewrite List.length_app; lia | rewrite Hlen; exact HMl | exact HMs ].
+      | rewrite Hlen; eapply exp_scoped_wk;
+        [ destruct (record_field_rel R k); [ exact (closed_sort _ Hc) | exact I ] | intros x Hx; unfold wk_shiftn; lia ]
+      | exact HU | exact HΓ | rewrite List.length_app; lia | rewrite Hlen; exact HMl | exact HMs ].
   Qed.
 
   (** The parameters a record type is at: the right side of an equal
@@ -336,9 +362,9 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     destruct (nth_error_lt_some (tele_insts (record_params R) Id Xs) j) as [T0 HT0].
     { rewrite length_tele_insts by exact Hass; lia. }
     destruct (tele_insts_cong (record_params R) Γ Γ Id Id Xs Ys Hass HΔΓ ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY
-                _ _ _ HT0 HT) as [i HTT].
+                _ _ _ HT0 HT) as (S & HS & HTT).
     pose proof (HXY _ _ _ _ HX HY HT0) as HE.
-    eapply wf_conv'; [| exact HTT ]; gen_presups; eassumption.
+    eapply wf_conv_sort; [ exact (presup_exp_eq_right HE) | exact (presup_exp_eq_right HTT) | exact HS | exact HTT ].
   Qed.
 
   Lemma wf_exp_eq_record_apps : forall Θ Ξ Γ p R Xs Ys,
@@ -399,9 +425,9 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
       rewrite tele_insts_cons_snoc in HA
         by (try (apply record_fctx_params_ass; exact Hass); rewrite HlL, List.length_app, length_record_fctx by lia; lia).
       pose proof (IH ltac:(lia)) as IHk.
-      destruct (record_field_typ_cong _ _ _ _ _ _ _ _ _ Hc Hass HF HΓ Hfk HlL HlL' IHk) as [i0 HUU].
-      assert (HUl : Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i0) by (gen_presups; assumption).
-      assert (HUr : Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M')] : Typeω@i0) by (gen_presups; assumption).
+      destruct (record_field_typ_cong _ _ _ _ _ _ _ _ _ Hc Hass HF HΓ Hfk HlL HlL' IHk) as (i0 & HSi0 & HUU).
+      pose proof (presup_exp_eq_left HUU) as HUl.
+      pose proof (presup_exp_eq_right HUU) as HUr.
       assert (Hlen : List.length (tele_insts (record_fctx R k ++ record_params R) Id (Ns ++ record_pre R k M))
                      = k + List.length (record_params R)).
       { rewrite length_tele_insts by (apply record_fctx_params_ass; exact Hass).
@@ -415,12 +441,10 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
           (destruct (j - (k + List.length (record_params R))) eqn:E; [ reflexivity |];
            exfalso; cbn in HN; destruct n; discriminate).
         cbn in HN, HN', HA; injection HN as <-; injection HN' as <-; injection HA as <-.
-        assert (Hp : Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)])
-          by (eapply wf_proj; [ gen_presups; eassumption | exact Hr | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl ]).
         assert (Hp' : Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M')])
-          by (eapply wf_proj; [ exact HM' | exact Hr | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUr ]).
-        eapply wf_exp_eq_proj_cong; [ exact HMM | exact Hr | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl |].
-        eapply wf_conv'; [ exact Hp' | symmetry; exact HUU ].
+          by (eapply wf_proj; [ exact HM' | exact Hr | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUr | exact HSi0 ]).
+        eapply wf_exp_eq_proj_cong; [ exact HMM | exact Hr | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl | exact HSi0 |].
+        eapply wf_conv_sort; [ exact Hp' | exact HUl | exact HSi0 | symmetry; exact HUU ].
   Qed.
 
   (** So a field's types at the projections of two equal elements are
@@ -432,7 +456,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
       (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
          Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
       List.nth_error (record_fields R) k = Some (f, U) ->
-      exists i, Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns ++ record_pre R k M')] : Typeω@i.
+      exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns ++ record_pre R k M')] : S.
   Proof.
     intros * HMM Hr Hl Hn HNs Hfk.
     destruct (wf_record_inversion Hr) as [R0 Hl0 Hnd Hass i Hty HF HS HFs _].
@@ -485,7 +509,8 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
          Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
       Θ ⍮ Ξ ⍮ Γ ⊢ (record_sort R)[sb_of_list Id Ns] ⊆ Typeω@n ->
       List.nth_error (record_fields R) k = Some (f, U) ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns ++ record_pre R k M')] : Typeω@n /\
+      Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns ++ record_pre R k M')]
+        : relevance_sort (record_field_rel R k) Typeω@n /\
       Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M ≈ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)].
   Proof.
     intros * HMM Hrt Hl Hn HNs HS Hfk.
@@ -498,14 +523,15 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     pose proof (record_field_sort_cong _ _ _ R k f U Ns (record_pre R k M) (Ns ++ record_pre R k M')
                   Hc Hass HFs HΓ Hfk Hn
                   ltac:(apply length_record_pre; lia) ltac:(rewrite List.length_app, length_record_pre by lia; lia) Hpe) as HTT.
-    assert (HTTn : Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns ++ record_pre R k M')] : Typeω@n)
-      by (eapply wf_exp_eq_subtyp'; [ exact HTT | exact HS ]).
-    assert (HUl : Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@n) by (gen_presups; eassumption).
+    pose proof (relevance_sort_exp_eq_up _ _ _ _ _ _ _ _ HTT HS) as HTTn.
+    assert (HSr : type_sort (relevance_sort (record_field_rel R k) Typeω@n)) by (apply type_sort_relevance; constructor).
     assert (Hp' : Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M')])
-      by (eapply wf_proj; [ gen_presups; eassumption | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk | gen_presups; eassumption ]).
+      by (eapply wf_proj; [ gen_presups; eassumption | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk
+                          | exact (presup_exp_eq_right HTTn) | exact HSr ]).
     split; [ exact HTTn |].
-    eapply wf_exp_eq_proj_cong; [ exact HMM | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl |].
-    eapply wf_conv'; [ exact Hp' | symmetry; exact HTTn ].
+    eapply wf_exp_eq_proj_cong; [ exact HMM | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk
+                                | exact (presup_exp_eq_left HTTn) | exact HSr |].
+    eapply wf_conv_rel; [ exact Hp' | symmetry; exact HTTn ].
   Qed.
 
   (** The η-expansion of an element of a record type is one. *)
@@ -609,7 +635,8 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
          List.nth_error (tele_insts (record_params R) Id Ns) j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T) ->
       Θ ⍮ Ξ ⍮ Γ ⊢ (record_sort R)[sb_of_list Id Ns] ⊆ Typeω@n ->
       List.nth_error (record_fields R) k = Some (f, U) ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns' ++ record_pre R k M)] : Typeω@n.
+      Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns' ++ record_pre R k M)]
+        : relevance_sort (record_field_rel R k) Typeω@n.
   Proof.
     intros * HM Hrt Hl Hn Hn' HNs HNN HS Hfk.
     destruct (wf_record_inversion Hrt) as [R0 Hl0 Hnd Hass i Hty HF HSu HFs _].
@@ -617,7 +644,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
     pose proof (wf_record_closed _ _ _ _ _ HΓ Hl) as Hc.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-    eapply wf_exp_eq_subtyp'; [| exact HS ].
+    eapply relevance_sort_exp_eq_up; [| exact HS ].
     eapply (record_field_sort_cong _ _ _ R k f U Ns (record_pre R k M) (Ns' ++ record_pre R k M));
       [ exact Hc | exact Hass | exact HFs | exact HΓ | exact Hfk | exact Hn | apply length_record_pre; lia
       | rewrite List.length_app, length_record_pre by lia; lia |].
@@ -681,7 +708,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     pose proof (record_field_sort_cong _ _ _ R k f U Ns (List.firstn k (List.map snd fs)) (Ns' ++ List.firstn k (List.map snd fs'))
                   Hc Hass HFs HΓ Hfk Hn ltac:(rewrite List.length_firstn, List.length_map; lia)
                   ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) (Hins k ltac:(lia))) as HTT.
-    eapply wf_conv'; [ gen_presups; eassumption | eapply wf_exp_eq_subtyp'; [ exact HTT | exact HS ] ].
+    eapply wf_conv_rel; [ gen_presups; eassumption | eapply relevance_sort_exp_eq_up; [ exact HTT | exact HS ] ].
   Qed.
 
   (** The entries and names of a list of pairs. *)
@@ -716,7 +743,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
          List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id (Ns ++ record_pre R k (a_tuple T fs))) j = Some A ->
          Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A) ->
       Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))]
-        ≈ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : (record_sort R)[sb_of_list Id Ns] /\
+        ≈ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : relevance_sort (record_field_rel R k) (record_sort R)[sb_of_list Id Ns] /\
       Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) ≈ M : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))].
   Proof.
     intros * Ht HT Hrt Hl Hn HNs Hfs HMs k f M U Hk Hfk Hpre.
@@ -729,17 +756,17 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
       by (rewrite <- (List.length_map fst fs), <- (List.length_map fst (record_fields R)), Hfs; reflexivity).
     destruct (record_field_typ_cong _ _ _ _ _ _ _ (Ns ++ record_pre R k (a_tuple T fs)) (Ns ++ List.firstn k (List.map snd fs))
                 Hc Hass HF HΓ Hfk ltac:(rewrite List.length_app, length_record_pre by lia; lia)
-                ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) Hpre) as [i0 HUU].
+                ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) Hpre) as (S0 & HS0 & HUU).
     split.
     { eapply record_field_sort_cong; [ exact Hc | exact Hass | exact HFs | exact HΓ | exact Hfk | exact Hn
                                      | apply length_record_pre; lia
                                      | rewrite List.length_app, List.length_firstn, List.length_map; lia | exact Hpre ]. }
     assert (Ht' : Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : apps_exp (a_record p) Ns) by (eapply wf_conv'; [ exact Ht | exact HT ]).
-    assert (HUl : Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))] : Typeω@i0) by (gen_presups; assumption).
+    pose proof (presup_exp_eq_left HUU) as HUl.
     assert (Hp : Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))])
-      by (eapply wf_proj; [ exact Ht' | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl ]).
+      by (eapply wf_proj; [ exact Ht' | exact Hrt | exact Hl | exact Hn | exact HNs | exact Hfk | exact HUl | exact HS0 ]).
     assert (HM : Θ ⍮ Ξ ⍮ Γ ⊢ M : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))])
-      by (eapply wf_conv'; [ exact (HMs _ _ _ _ Hk Hfk) | symmetry; exact HUU ]).
+      by (eapply wf_conv_sort; [ exact (HMs _ _ _ _ Hk Hfk) | exact HUl | exact HS0 | symmetry; exact HUU ]).
     eapply wf_exp_eq_field_beta; [ exact Ht | | exact Hp | exact HM ].
     apply (field_lookup_nth _ k); [ rewrite Hfs; exact Hnd | exact Hk ].
   Qed.
@@ -821,7 +848,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
          Θ ⍮ Ξ ⍮ Γ ⊢ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
       forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
       Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))]
-        ≈ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : (record_sort R)[sb_of_list Id Ns] /\
+        ≈ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : relevance_sort (record_field_rel R k) (record_sort R)[sb_of_list Id Ns] /\
       Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) ≈ M : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))].
   Proof.
     intros * Ht HT Hrt Hl Hn HNs Hfs HMs k f M U Hk Hfk.

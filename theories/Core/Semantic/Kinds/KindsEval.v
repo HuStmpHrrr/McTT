@@ -93,9 +93,11 @@ Section KindsEval.
   Lemma kshape_pad_push : forall m ρ n, kshape (kinds_placeholders m (de_term n :: ρ)) (kinds_placeholders (S m) ρ).
   Proof.
     intros; unfold kinds_placeholders.
-    replace (List.repeat (de_term d_true) m ++ de_term n :: ρ) with ((List.repeat (de_term d_true) m ++ de_term n :: nil) ++ ρ)
+    replace (List.repeat (de_term d_placeholder) m ++ de_term n :: ρ)
+      with ((List.repeat (de_term d_placeholder) m ++ de_term n :: nil) ++ ρ)
       by (rewrite <- app_assoc; reflexivity).
-    replace (List.repeat (de_term d_true) (S m) ++ ρ) with ((List.repeat (de_term d_true) m ++ de_term d_true :: nil) ++ ρ)
+    replace (List.repeat (de_term d_placeholder) (S m) ++ ρ)
+      with ((List.repeat (de_term d_placeholder) m ++ de_term d_placeholder :: nil) ++ ρ)
       by (cbn [List.repeat]; rewrite List.repeat_cons, <- app_assoc; reflexivity).
     apply kshape_terms.
     - rewrite !length_app, !repeat_length; reflexivity.
@@ -165,8 +167,8 @@ Section KindsEval.
   Proof.
     intros * Ha.
     assert (Hst : (exists TΦ, gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ) \/
-                  (exists b pv A B, gc_resolve Θ Ξ (qname_app p (y :: nil)) = Some (ge_def b pv A B)) -> False)
-      by (intros [(? & Hl) | (? & ? & ? & ? & Hr)];
+                  (exists b pv ra A B, gc_resolve Θ Ξ (qname_app p (y :: nil)) = Some (ge_def b pv ra A B)) -> False)
+      by (intros [(? & Hl) | (? & ? & ? & ? & ? & Hr)];
           [ exact (gc_loc_not_alias _ _ _ _ _ Hl Ha) | rewrite (gc_module_resolve _ _ _ _ Ha) in Hr; discriminate Hr ]).
     pose proof (proj1 (proj2 (@functional_kind Θ Ξ))) as Fu.
     pose proof (proj1 (proj2 (kind_nil_not_dm Θ Ξ))) as Nd.
@@ -265,7 +267,7 @@ Section KindsEval.
   Lemma gunit_member_kind_body_entry : forall ρ sm Φ y Φ' E ch k,
       gm_prefix_upto Φ y = Some (gm_ext Φ' y E) ->
       gunit_member_kind Θ Ξ ρ (gu_mk nil (md_body sm Φ)) (y :: ch) k <->
-      ((exists b pv A B, E = ge_def b pv A B) /\ ch = nil /\ k = member_kind_term) \/
+      ((exists b pv ra A B, E = ge_def b pv ra A B) /\ ch = nil /\ k = member_kind_term) \/
       (exists pm U ρ1, E = ge_mod pm U /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 U ch k) \/
       (exists pv A M U ρ1 k0, E = ge_def_mod pv A M U /\ ch = nil /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 U nil k0 /\ k = dm_of k0) \/
       (exists pv A M U ρ1, E = ge_def_mod pv A M U /\ ch <> nil /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 U ch k).
@@ -274,11 +276,11 @@ Section KindsEval.
     - inversion Hu; subst;
         try (rewrite (gm_prefix_item_excl _ _ _ Hp) in *; discriminate);
         match goal with H2 : gm_prefix_upto _ _ = Some _ |- _ => rewrite Hp in H2; injection H2; intros; subst end.
-      + left; repeat split; eauto.
+      + left; split; [ do 5 eexists; reflexivity | split; reflexivity ].
       + right; left; do 3 eexists; repeat split; eassumption.
       + right; right; left; do 6 eexists; repeat split; eassumption.
       + right; right; right; do 5 eexists; repeat split; eassumption.
-    - destruct Hu as [((b & pv & A & B & ->) & -> & ->) | [(pm & U & ρ1 & -> & Hk & Hu)
+    - destruct Hu as [((b & pv & ra & A & B & ->) & -> & ->) | [(pm & U & ρ1 & -> & Hk & Hu)
                      | [(pv & A & M & U & ρ1 & k0 & -> & -> & Hk & Hu & ->) | (pv & A & M & U & ρ1 & -> & Hc & Hk & Hu)]]].
       + eapply gunit_member_kind_def; exact Hp.
       + eapply gunit_member_kind_mod; [ exact Hp | exact Hk | exact Hu ].
@@ -374,12 +376,12 @@ Section KindsEval.
         * (* the open's target itself *)
           rewrite gunit_wk_mk; cbn [tele_wk List.length moddef_wk].
           split; [ intros Hu; right; left; do 3 eexists; split; [ reflexivity | split; [ exact Hkx | apply Hsh, Hu ] ] |].
-          intros [((? & ? & ? & ? & ?) & _) | [(pm & U & ρ1 & [= <- <-] & Hk1 & Hu)
+          intros [((? & ? & ? & ? & ? & ?) & _) | [(pm & U & ρ1 & [= <- <-] & Hk1 & Hu)
                  | [(? & ? & ? & ? & ? & ? & [=] & _) | (? & ? & ? & ? & ? & [=] & _)]]]; try discriminate.
           pose proof (Fk _ _ _ Hk1 _ Hkx) as ->; apply Hsh, Hu.
         * (* a term member: a definition *)
           split.
-          -- intros [(-> & -> & _) | [(Hm & _) | (Hm & _)]]; [ left; split; [ do 4 eexists; reflexivity | split; reflexivity ] | |];
+          -- intros [(-> & -> & _) | [(Hm & _) | (Hm & _)]]; [ left; split; [ do 5 eexists; reflexivity | split; reflexivity ] | |];
                pose proof (Fs _ _ _ _ Hs _ Hm); discriminate.
           -- intros [(_ & -> & ->) | [(? & ? & ? & [=] & _) | [(? & ? & ? & ? & ? & ? & [=] & _) | (? & ? & ? & ? & ? & [=] & _)]]];
                left; repeat split; exact Hs.
@@ -391,7 +393,7 @@ Section KindsEval.
              right; left; do 3 eexists; split; [ reflexivity | split; [ exact Hkx | apply (Hsh (me_mem H n)) ] ].
              apply modexp_member_kind_mem_iff; left; split; [ exact Hu |].
              destruct ch as [| c ch]; [ right; rewrite <- (Fs _ _ _ _ Hs _ Hu); discriminate | left; discriminate ].
-          -- intros [((? & ? & ? & ? & ?) & _) | [(pm & U & ρ1 & [= <- <-] & Hk1 & Hu)
+          -- intros [((? & ? & ? & ? & ? & ?) & _) | [(pm & U & ρ1 & [= <- <-] & Hk1 & Hu)
                     | [(? & ? & ? & ? & ? & ? & [=] & _) | (? & ? & ? & ? & ? & [=] & _)]]]; try discriminate.
              pose proof (Fk _ _ _ Hk1 _ Hkx) as ->.
              right; left; split; [ exact Hs |].
@@ -409,7 +411,7 @@ Section KindsEval.
                   [ apply (Hsh (me_mem H n)), modexp_member_kind_mem_dm, Hs | reflexivity ].
              ++ right; right; right; do 5 eexists; split; [ reflexivity | split; [ discriminate | split; [ exact Hkx |] ] ].
                 apply (Hsh (me_mem H n)), modexp_member_kind_mem_cons_iff, Hu.
-          -- intros [((? & ? & ? & ? & ?) & _) | [(? & ? & ? & [=] & _)
+          -- intros [((? & ? & ? & ? & ? & ?) & _) | [(? & ? & ? & [=] & _)
                     | [(pv' & A' & M' & U & ρ1 & k0 & [= <- <- <- <-] & -> & Hk1 & Hu & ->)
                       | (pv' & A' & M' & U & ρ1 & [= <- <- <- <-] & Hc & Hk1 & Hu)]]];
                try discriminate.
@@ -445,17 +447,17 @@ Section KindsEval.
       + intros Hu; pose proof (Nd _ _ _ _ Hu eq_refl) as Hn.
         left; split; [ right; left; do 3 eexists; split; [ reflexivity | split; [ exact Hk1 | exact Hu ] ] | right; exact Hn ].
       + intros [[H0 _] | (_ & -> & H0)].
-        * destruct H0 as [((? & ? & ? & ? & [=]) & _) | [(pm' & U' & ρ0 & [= <- <-] & Hk0 & Hu)
+        * destruct H0 as [((? & ? & ? & ? & ? & [=]) & _) | [(pm' & U' & ρ0 & [= <- <-] & Hk0 & Hu)
                          | [(? & ? & ? & ? & ? & ? & [=] & _) | (? & ? & ? & ? & ? & [=] & _)]]].
           pose proof (Fk _ _ _ Hk0 _ Hk1) as ->; exact Hu.
         * apply (gunit_member_kind_kinds_body_xp _ _ _ Hb), (gunit_member_kind_body_entry _ _ _ _ _ _ _ _ Hp) in H0.
-          destruct H0 as [((? & ? & ? & ? & [=]) & _) | [(pm' & U' & ρ0 & [= <- <-] & Hk0 & Hu)
+          destruct H0 as [((? & ? & ? & ? & ? & [=]) & _) | [(pm' & U' & ρ0 & [= <- <-] & Hk0 & Hu)
                          | [(? & ? & ? & ? & ? & ? & [=] & _) | (? & ? & ? & ? & ? & [=] & _)]]].
           pose proof (Fk _ _ _ Hk0 _ Hk1) as ->; exfalso; exact (Nd _ _ _ _ Hu eq_refl eq_refl).
     - (* a submodule, past its name *)
       split.
       + intros Hu; right; left; do 3 eexists; split; [ reflexivity | split; [ exact Hk1 | exact Hu ] ].
-      + intros [((? & ? & ? & ? & [=]) & _) | [(pm' & U' & ρ0 & [= <- <-] & Hk0 & Hu)
+      + intros [((? & ? & ? & ? & ? & [=]) & _) | [(pm' & U' & ρ0 & [= <- <-] & Hk0 & Hu)
                | [(? & ? & ? & ? & ? & ? & [=] & _) | (? & ? & ? & ? & ? & [=] & _)]]].
         pose proof (Fk _ _ _ Hk0 _ Hk1) as ->; exact Hu.
     - (* a definition with a module part, itself: selected as a module *)
@@ -468,13 +470,13 @@ Section KindsEval.
         * left; split; [| right; exact Hn ].
           right; right; left; do 6 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Hk1 | split; [ exact Hu | symmetry; exact Ek ] ] ] ].
       + intros [[H0 Hc] | (_ & -> & H0)].
-        * destruct H0 as [((? & ? & ? & ? & [=]) & _) | [(? & ? & ? & [=] & _)
+        * destruct H0 as [((? & ? & ? & ? & ? & [=]) & _) | [(? & ? & ? & [=] & _)
                          | [(pv' & A' & M' & U' & ρ0 & k0 & [= <- <- <- <-] & _ & Hk0 & Hu & ->) | (? & ? & ? & ? & ? & _ & Hn & _)]]].
           -- pose proof (Fk _ _ _ Hk0 _ Hk1) as ->.
              destruct (dm_of_cases k0) as [(-> & ->) | (_ & ->)]; [ destruct Hc as [Hc | Hc]; exfalso; exact (Hc eq_refl) | exact Hu ].
           -- exfalso; exact (Hn eq_refl).
         * apply (gunit_member_kind_kinds_body_xp _ _ _ Hb), (gunit_member_kind_body_entry _ _ _ _ _ _ _ _ Hp) in H0.
-          destruct H0 as [((? & ? & ? & ? & [=]) & _) | [(? & ? & ? & [=] & _)
+          destruct H0 as [((? & ? & ? & ? & ? & [=]) & _) | [(? & ? & ? & [=] & _)
                          | [(pv' & A' & M' & U' & ρ0 & k0 & [= <- <- <- <-] & _ & Hk0 & Hu & Ek) | (? & ? & ? & ? & ? & _ & Hn & _)]]].
           -- pose proof (Fk _ _ _ Hk0 _ Hk1) as ->.
              destruct (dm_of_cases k0) as [(-> & _) | (_ & Ek')]; [ exact Hu |].
@@ -483,7 +485,7 @@ Section KindsEval.
     - (* a definition with a module part, past its name *)
       split.
       + intros Hu; right; right; right; do 5 eexists; split; [ reflexivity | split; [ discriminate | split; [ exact Hk1 | exact Hu ] ] ].
-      + intros [((? & ? & ? & ? & [=]) & _) | [(? & ? & ? & [=] & _) | [(? & ? & ? & ? & ? & ? & _ & [=] & _)
+      + intros [((? & ? & ? & ? & ? & [=]) & _) | [(? & ? & ? & [=] & _) | [(? & ? & ? & ? & ? & ? & _ & [=] & _)
                | (pv' & A' & M' & U' & ρ0 & [= <- <- <- <-] & _ & Hk0 & Hu)]]].
         pose proof (Fk _ _ _ Hk0 _ Hk1) as ->; exact Hu.
   Qed.
@@ -521,7 +523,9 @@ Section KindsEval.
     (forall f m r, eval_proj Θ Ξ f m r -> True) /\
     (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> True) /\
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> True) /\
-    (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> True).
+    (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> True) /\
+    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> True) /\
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> True).
   Proof.
     apply eval_mut_ind; intros; try exact I.
     (* module expressions *)
@@ -558,8 +562,13 @@ Section KindsEval.
     - rewrite H0; apply dmod_member_kind_member_snoc; exact H.
     (* bodies *)
     - exists σ; split; [ constructor | assumption ].
-    - destruct (H _ H1) as (σ1 & Hk & Hs).
-      exists (kinds_body_entry σ1 (ge_def b pv A (Some M)) :: σ1); split; [ constructor; exact Hk |].
+    - (* a definition of a relevant type *)
+      match goal with Hρ : kshape ρ σ, IHΦ : forall σ0, kshape ρ σ0 -> _ |- _ => destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs) end.
+      exists (kinds_body_entry σ1 (ge_def b pv ra A (Some M)) :: σ1); split; [ constructor; exact Hk |].
+      apply kshape_cons_term; exact Hs.
+    - (* a definition of a proposition: its placeholder proof *)
+      match goal with Hρ : kshape ρ σ, IHΦ : forall σ0, kshape ρ σ0 -> _ |- _ => destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs) end.
+      exists (kinds_body_entry σ1 (ge_def b pv ra A (Some M)) :: σ1); split; [ constructor; exact Hk |].
       apply kshape_cons_term; exact Hs.
     - destruct (H _ H1) as (σ1 & Hk & Hs).
       exists (kinds_body_entry σ1 (ge_mod pm (gu_mk Δy Dy)) :: σ1); split; [ constructor; exact Hk |].

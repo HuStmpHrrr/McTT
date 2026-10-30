@@ -172,7 +172,12 @@ Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   | nf_True => ltree_node 7 ltree_nil t
   | nf_true => ltree_node 8 ltree_nil t
   | nf_False => ltree_node 9 ltree_nil t
-  | nf_pi A B => ltree_node 10 (nf_code A (nf_code B ltree_nil)) t
+  | nf_prop => ltree_node 17 ltree_nil t
+  | nf_and P Q => ltree_node 19 (nf_code P (nf_code Q ltree_nil)) t
+  | nf_placeholder_type => ltree_node 20 ltree_nil t
+  | nf_placeholder => ltree_node 21 ltree_nil t
+  | nf_pi r A B =>
+      ltree_node (match r with relevant => 10 | propositional => 18 end) (nf_code A (nf_code B ltree_nil)) t
   | nf_fn A M' => ltree_node 11 (nf_code A (nf_code M' ltree_nil)) t
   | nf_neut m => ltree_node 12 (ne_code m ltree_nil) t
   | nf_indty p k Ms =>
@@ -195,7 +200,7 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_var x => ltree_node 0 (ltree_node x ltree_nil ltree_nil) t
   | ne_glob p => ltree_node 1 (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil)) t
   | ne_app m' N => ltree_node 2 (ne_code m' (nf_code N ltree_nil)) t
-  | ne_exfalso A m' => ltree_node 4 (nf_code A (ne_code m' ltree_nil)) t
+  | ne_absurd A => ltree_node 4 (nf_code A ltree_nil) t
   | ne_elim p Us m Bks m' =>
       ltree_node 5 (ltree_node m (strs_code (q_unit p) (strs_code (q_chain p) ltree_nil))
                    (list_code (block_code (fun A => nf_code A ltree_nil)) Bks
@@ -265,7 +270,7 @@ Proof.
                | H : nf_code _ _ = nf_code ?N _ |- _ => destruct N
                | H : ne_code _ _ = ne_code ?N _ |- _ => destruct N
                end.
-  all: repeat match goal with p : o2 |- _ => destruct p end.
+  all: repeat match goal with p : o2 |- _ => destruct p | r : relevance |- _ => destruct r end.
   all: match goal with
        | H : nf_code _ _ = nf_code _ _ |- _ => cbn in H; injection H as; subst; try discriminate
        | H : ne_code _ _ = ne_code _ _ |- _ => cbn in H; injection H as; subst; try discriminate

@@ -35,9 +35,10 @@ Ltac eexists_rel_sub :=
   first [ eapply mk_rel_sub_under_ctx; [eassumption | eassumption |] | eexists_ctx_pair ].
 
 (** [rel_wk_under_ctx] has the same outer shape as [rel_sub_under_ctx] — two
-    environment PERs, each with its context witness read off the goal. *)
+    environment PERs, each with its context witness read off the goal —
+    then the weakening and its correspondence of propositional entries. *)
 Ltac eexists_rel_wk :=
-  first [ eapply mk_rel_wk_under_ctx; [eassumption | eassumption |] | eexists_ctx_pair ].
+  first [ eapply mk_rel_wk_under_ctx; [eassumption | eassumption | |] | eexists_ctx_pair ].
 
 Ltac eexists_subtyp :=
   first [ eapply mk_rel_subtyp_under_ctx; [eassumption |] | eexists_ctx_level ].

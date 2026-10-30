@@ -252,10 +252,11 @@ Section Fixed_GCtx.
   (** ** The Projections of a Neutral and the Readback of Fields *)
 
   (** Each neutral projection is the projection of the neutral at the
-      field's type, at the parameters and the projections before it. *)
+      field's type, at the parameters and the projections before it; the
+      proof [⋆ᵈ] at a field of a proposition. *)
   Lemma eval_nflds_nth : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs ->
       forall j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error rs j = Some r ->
-      exists a, r = ⇑ a (d_proj g m) /\ ⟦ T ⟧ env_args nil (ns ++ pre ++ List.firstn j rs) ↘ a.
+      exists a, r = relevant_value a (⇑ a (d_proj g m)) /\ ⟦ T ⟧ env_args nil (ns ++ pre ++ List.firstn j rs) ↘ a.
   Proof.
     induction 1 as [| T ns pre a m fl g rs Ea E IH]; intros [| j] g' T' r Hj Hr; cbn in Hj, Hr; try discriminate.
     - injection Hj as <- <-; injection Hr as <-; exists a; split; [ reflexivity |].
@@ -266,12 +267,12 @@ Section Fixed_GCtx.
 
   (** The projections of a neutral of a record type: each the neutral
       projection at the field's type, at the parameters and the projections
-      before it. *)
+      before it; the proof [⋆ᵈ] at a field of a proposition. *)
   Lemma record_projs_neut_nth : forall p R ns m vs, record_lookup gc_deps gc_stack p = Some R ->
       List.NoDup (List.map fst (record_fields R)) ->
       record_projs R (⇑ (d_record p ns) m) vs ->
       forall k f T r, List.nth_error (record_fields R) k = Some (f, T) -> List.nth_error vs k = Some r ->
-      exists a, r = ⇑ a (d_proj f m) /\ ⟦ T ⟧ env_args nil (ns ++ List.firstn k vs) ↘ a.
+      exists a, r = relevant_value a (⇑ a (d_proj f m)) /\ ⟦ T ⟧ env_args nil (ns ++ List.firstn k vs) ↘ a.
   Proof.
     intros * Hl Hnd Hvs k f T r Hk Hr.
     pose proof (Forall2_nth_both _ _ _ _ _ _ Hvs Hk Hr) as Hp; cbn [fst] in Hp.

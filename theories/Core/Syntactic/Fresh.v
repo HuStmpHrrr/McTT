@@ -41,16 +41,16 @@ Definition unwk (k : nat) : wk := wk_qn k pred.
 Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   match M with
   | a_typ _ | a_level _ | a_llit _
-  | a_True | a_true | a_False => True
-  | a_univ M | a_succl M => exp_fresh k M
-  | a_maxl M N | a_app M N => exp_fresh k M /\ exp_fresh k N
-  | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
+  | a_prop | a_True | a_true | a_False | a_placeholder_type | a_placeholder => True
+  | a_univ M | a_succl M | a_left M | a_right M => exp_fresh k M
+  | a_maxl M N | a_app M N | a_absurd M N => exp_fresh k M /\ exp_fresh k N
+  | a_conj T M N => exp_fresh k T /\ exp_fresh k M /\ exp_fresh k N
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ Us _ Bks M =>
+  | a_elim _ _ Us _ Bks M =>
       all_list (exp_fresh k) Us /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_fresh (nm - 1 + k)) oZ /\ exp_fresh (nm + k) A /\
                                     all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
-  | a_pi A B | a_fn A B => exp_fresh k A /\ exp_fresh (S k) B
+  | a_pi _ A B | a_fn A B | a_and A B => exp_fresh k A /\ exp_fresh (S k) B
   | a_var x => x <> k
   | a_let b B => bnd_fresh k b /\ exp_fresh (S k) B
   | a_mem H _ => modexp_fresh k H
@@ -94,7 +94,7 @@ with gmod_fresh (k : nat) (Φ : gmod) {struct Φ} : Prop :=
   end
 with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   match E with
-  | ge_def _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
+  | ge_def _ _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
   | ge_mod _ U => gunit_fresh k U
   | ge_ind _ _ _ D Φ => gmod_fresh (ind_nu D + k) Φ
   | ge_def_mod _ A M U => exp_fresh k A /\ exp_fresh k M /\ gunit_fresh k U
@@ -257,7 +257,7 @@ Qed.
 (** The term part of an entry avoids what the entry avoids. *)
 Lemma entry_tm_fresh : forall E A M k, entry_tm E = Some (A, M) -> gentry_fresh k E -> exp_fresh k M.
 Proof.
-  intros [? ? ? [] | | | |] * He Hf; cbn in *; try discriminate;
+  intros [? ? ? ? [] | | | |] * He Hf; cbn in *; try discriminate;
     injection He as <- <-; tauto.
 Qed.
 
@@ -320,8 +320,8 @@ Proof. intros; exact (exp_wk_fresh 0 M). Qed.
     re-canonicalises ([lvl_canon]) after un-weakening a level. *)
 (** Freshness of an eliminator: of its uniform parameters, its blocks and
     its scrutinee. *)
-Lemma exp_fresh_elim : forall k oq Us m Bks M,
-    exp_fresh k (a_elim oq Us m Bks M) <->
+Lemma exp_fresh_elim : forall k r oq Us m Bks M,
+    exp_fresh k (a_elim r oq Us m Bks M) <->
       all_list (exp_fresh k) Us /\ blocks_fresh k Bks /\ exp_fresh k M.
 Proof. reflexivity. Qed.
 
@@ -333,9 +333,10 @@ Proof. induction Ms; intros * HM HF; inversion HF; subst; cbn; [ assumption | ap
     [W]; mutually, in the neutral [u]. *)
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False
+  | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
-  | nf_pi A B | nf_fn A B => nf_fresh k A /\ nf_fresh (S k) B
+  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh k) Ms
   | nf_neut u => ne_fresh k u
   | nf_record _ Ms => all_list (nf_fresh k) Ms
@@ -343,7 +344,7 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   end
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
-  | ne_exfalso A u => nf_fresh (S k) A /\ ne_fresh k u
+  | ne_absurd A => nf_fresh k A
   | ne_elim _ Us _ Bks u =>
       all_list (nf_fresh k) Us /\ all_list (normal_block_forall (fun n => nf_fresh (n + k))) Bks /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
@@ -361,10 +362,14 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_univ c xs => nf_univ c (List.map (map_level_atom (ne_unwk k)) xs)
   | nf_level n => nf_level n
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_unwk k)) xs)
+  | nf_prop => nf_prop
   | nf_True => nf_True
   | nf_true => nf_true
   | nf_False => nf_False
-  | nf_pi A B => nf_pi (nf_unwk k A) (nf_unwk (S k) B)
+  | nf_and P Q => nf_and (nf_unwk k P) (nf_unwk (S k) Q)
+  | nf_placeholder_type => nf_placeholder_type
+  | nf_placeholder => nf_placeholder
+  | nf_pi r A B => nf_pi r (nf_unwk k A) (nf_unwk (S k) B)
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
   | nf_indty p j Ms => nf_indty p j (List.map (nf_unwk k) Ms)
   | nf_con p j c Ms => nf_con p j c (List.map (nf_unwk k) Ms)
@@ -374,7 +379,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   end
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
-  | ne_exfalso A u => ne_exfalso (nf_unwk (S k) A) (ne_unwk k u)
+  | ne_absurd A => ne_absurd (nf_unwk k A)
   | ne_elim p Us m Bks u =>
       ne_elim p (List.map (nf_unwk k) Us) m (List.map (map_normal_block (fun n => nf_unwk (n + k))) Bks) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
@@ -537,9 +542,10 @@ Qed.
     reflection. *)
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
-  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => true
+  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False
+  | nf_placeholder_type | nf_placeholder => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
-  | nf_pi A B | nf_fn A B => nf_freshb k A && nf_freshb (S k) B
+  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb (nf_freshb k) Ms
   | nf_neut u => ne_freshb k u
   | nf_record _ Ms => List.forallb (nf_freshb k) Ms
@@ -547,7 +553,7 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   end
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
-  | ne_exfalso A u => nf_freshb (S k) A && ne_freshb k u
+  | ne_absurd A => nf_freshb k A
   | ne_elim _ Us _ Bks u =>
       List.forallb (nf_freshb k) Us && (List.forallb (normal_block_forallb (fun n => nf_freshb (n + k))) Bks
                                          && ne_freshb k u)

@@ -76,9 +76,29 @@ Section Fill.
       literals are filled by their own rules. *)
   Definition exp_leaf (M : exp) : bool :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False
+    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+    | a_placeholder_type | a_placeholder
     | a_ind _ _ | a_con _ _ _ | a_var _ | a_record _ => true
     | _ => false
+    end.
+
+  (** The tag of a [Π] or an eliminator whose codomain or motive infers to
+      the type [W]: [propositional] at [Prop], [relevant] otherwise.  At a
+      type that is neither [Prop] nor a universe the tag is [relevant], and
+      the typing rule rejects the term. *)
+  Definition sort_relevance (W : nf) : relevance :=
+    match W with
+    | nf_prop => propositional
+    | _ => relevant
+    end.
+
+  (** A conjunction annotation the elaborator leaves for the fill: the
+      proposition of the first component given, the second component's
+      unknown. *)
+  Definition and_ann_right_omitted (T : exp) : Prop :=
+    match T with
+    | a_and _ a_placeholder => True
+    | _ => False
     end.
 
   (** The binder [k] of [Γ] holds a term only, an assumption or a
@@ -118,11 +138,30 @@ Section Fill.
   | fill_exp_succl : forall Γ M M', fill_exp Γ M M' -> fill_exp Γ (a_succl M) (a_succl M')
   (** A join of levels *)
   | fill_exp_maxl : forall Γ M M' N N', fill_exp Γ M M' -> fill_exp Γ N N' -> fill_exp Γ (a_maxl M N) (a_maxl M' N')
-  (** [efq M return A]: the motive under a proof of [⊥] *)
-  | fill_exp_exfalso : forall Γ A A' M M',
-      fill_exp (Γ ▹ ⊥) A A' -> fill_exp Γ M M' -> fill_exp Γ (a_exfalso A M) (a_exfalso A' M')
-  (** A [Π]: the codomain under the filled domain *)
-  | fill_exp_pi : forall Γ A A' B B', fill_exp Γ A A' -> fill_exp (Γ ▹ A') B B' -> fill_exp Γ (a_pi A B) (a_pi A' B')
+  (** [efq M return C] *)
+  | fill_exp_absurd : forall Γ C C' M M',
+      fill_exp Γ C C' -> fill_exp Γ M M' -> fill_exp Γ (a_absurd C M) (a_absurd C' M')
+  (** A [Π]: the codomain under the filled domain; its tag the sort the
+      filled codomain infers to *)
+  | fill_exp_pi : forall Γ r A A' B B' W,
+      fill_exp Γ A A' -> fill_exp (Γ ▹ A') B B' -> ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A' -> Γ ▹ A' ⊢a B' ⟹ W ->
+      fill_exp Γ (a_pi r A B) (a_pi (sort_relevance W) A' B')
+  (** A conjunction: the second proposition under the filled first *)
+  | fill_exp_and : forall Γ P P' Q Q', fill_exp Γ P P' -> fill_exp (Γ ▹ P') Q Q' -> fill_exp Γ (a_and P Q) (a_and P' Q')
+  (** A proof of a conjunction with its annotation given *)
+  | fill_exp_conj : forall Γ T T' M M' N N',
+      ~ and_ann_right_omitted T ->
+      fill_exp Γ T T' -> fill_exp Γ M M' -> fill_exp Γ N N' -> fill_exp Γ (a_conj T M N) (a_conj T' M' N')
+  (** A proof of a conjunction as written, [conj (m : P) q]: the second
+      proposition is the type the filled second component infers to,
+      weakened past the first's binder *)
+  | fill_exp_conj_right_inferred : forall Γ P P' M M' N N' W,
+      fill_exp Γ P P' -> fill_exp Γ M M' -> fill_exp Γ N N' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a N' ⟹ W ->
+      fill_exp Γ (a_conj (a_and P a_placeholder) M N) (a_conj (a_and P' (exp_wk (nf_to_exp W) wk_shift)) M' N')
+  (** The first component of a proof of a conjunction *)
+  | fill_exp_left : forall Γ M M', fill_exp Γ M M' -> fill_exp Γ (a_left M) (a_left M')
+  (** The second component *)
+  | fill_exp_right : forall Γ M M', fill_exp Γ M M' -> fill_exp Γ (a_right M) (a_right M')
   (** A [λ]: the body under the filled domain *)
   | fill_exp_fn : forall Γ A A' M M', fill_exp Γ A A' -> fill_exp (Γ ▹ A') M M' -> fill_exp Γ (a_fn A M) (a_fn A' M')
   (** An application *)
@@ -131,11 +170,11 @@ Section Fill.
   | fill_exp_let_ann : forall Γ A A' M M' B B',
       fill_exp Γ A A' -> fill_exp Γ M M' -> fill_exp (Γ ▸ A' ≔ M') B B' ->
       fill_exp Γ (a_let (b_def (Some A) M) B) (a_let (b_def (Some A') M') B')
-  (** A [let] without one: the definition at the type it infers, as
-      [alg_type_infer_let] reads it *)
+  (** A [let] without one: the definition at the type it infers, which
+      the fill records as its annotation *)
   | fill_exp_let_infer : forall Γ M M' W B B',
       fill_exp Γ M M' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a M' ⟹ W -> fill_exp (Γ ▸ nf_to_exp W ≔ M') B B' ->
-      fill_exp Γ (a_let (b_def None M) B) (a_let (b_def None M') B')
+      fill_exp Γ (a_let (b_def None M) B) (a_let (b_def (Some (nf_to_exp W)) M') B')
   (** A local module: the rest under the filled unit *)
   | fill_exp_let_mod : forall Γ U U' B B',
       fill_unit Γ U U' -> fill_exp (Γ ▹ₘ U') B B' -> fill_exp Γ (a_let (b_mod U) B) (a_let (b_mod U') B')
@@ -151,15 +190,20 @@ Section Fill.
   (** An eliminator as written: its scrutinee filled; its group [p] and
       uniform parameters [Us] the one reading of it that fits its blocks,
       read off the scrutinee's inferred type ([elim_target]); its blocks
-      at them and at the filled motives *)
-  | fill_exp_elim : forall Γ m Bks Bks' M M' pc k Rs p D Us,
+      at them and at the filled motives; its tag the sort the filled
+      motive of the scrutinee's member [m] infers to *)
+  | fill_exp_elim : forall Γ r m Bks Bks' M M' pc k Rs p D Us Mm bm W,
       fill_exp Γ M M' ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
       Γ ⊢a M' ⟹ nf_indty pc k Rs ->
       elim_target Θ Ξ pc k Rs m Bks = elim_target_one p Us ->
       ind_lookup Θ Ξ p = Some D ->
-      fill_blocks Γ p D Us (blocks_motives Bks') 0 Bks Bks' ->
-      fill_exp Γ (a_elim None nil m Bks M) (a_elim (Some p) Us m Bks' M')
+      ind_member D m = Some Mm ->
+      List.nth_error Bks' m = Some bm ->
+      ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D m Mm Us ++ Γ ->
+      elim_mctx p D m Mm Us ++ Γ ⊢a eb_motive bm ⟹ W ->
+      fill_blocks (sort_relevance W) Γ p D Us (blocks_motives Bks') 0 Bks Bks' ->
+      fill_exp Γ (a_elim r None nil m Bks M) (a_elim (sort_relevance W) (Some p) Us m Bks' M')
 
   (** The fields of a record value, each its name and its value *)
   with fill_fvals : ctx -> list (string * exp) -> list (string * exp) -> Prop :=
@@ -173,33 +217,33 @@ Section Fill.
       [j] on, at the uniform parameters [Us] and the motives [As]: each its
       annotation over its member's non-uniform parameters, its motive over
       them and the scrutinee, and its branches, with as many binders as
-      [alg_type_infer_elim] asks *)
-  with fill_blocks : ctx -> qname -> ind_decl -> list exp -> list exp -> nat -> list eblock -> list eblock -> Prop :=
+      [alg_type_infer_elim] asks, at the eliminator's tag [r] *)
+  with fill_blocks : relevance -> ctx -> qname -> ind_decl -> list exp -> list exp -> nat -> list eblock -> list eblock -> Prop :=
   (** No block *)
-  | fill_blocks_nil : forall Γ p D Us As j, fill_blocks Γ p D Us As j nil nil
+  | fill_blocks_nil : forall r Γ p D Us As j, fill_blocks r Γ p D Us As j nil nil
   (** The block of the member [j], then the rest *)
-  | fill_blocks_cons : forall Γ p D Us As j Mj nm oZ oZ' A A' Bs Bs' Bks Bks',
+  | fill_blocks_cons : forall r Γ p D Us As j Mj nm oZ oZ' A A' Bs Bs' Bks Bks',
       ind_member D j = Some Mj ->
       nm = S (im_nn Mj) ->
       fill_oexp (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) oZ oZ' ->
       fill_exp (elim_mctx p D j Mj Us ++ Γ) A A' ->
-      fill_brs Γ p D Mj Us As Bs Bs' ->
-      fill_blocks Γ p D Us As (S j) Bks Bks' ->
-      fill_blocks Γ p D Us As j (eb_mk nm oZ A Bs :: Bks) (eb_mk nm oZ' A' Bs' :: Bks')
+      fill_brs r Γ p D Mj Us As Bs Bs' ->
+      fill_blocks r Γ p D Us As (S j) Bks Bks' ->
+      fill_blocks r Γ p D Us As j (eb_mk nm oZ A Bs :: Bks) (eb_mk nm oZ' A' Bs' :: Bks')
 
   (** The branches of a block of the member [Mj], each in its
-      constructor's branch context *)
-  with fill_brs : ctx -> qname -> ind_decl -> imember -> list exp -> list exp ->
+      constructor's branch context at the tag [r] *)
+  with fill_brs : relevance -> ctx -> qname -> ind_decl -> imember -> list exp -> list exp ->
                   list (string * nat * exp) -> list (string * nat * exp) -> Prop :=
   (** No branch *)
-  | fill_brs_nil : forall Γ p D Mj Us As, fill_brs Γ p D Mj Us As nil nil
+  | fill_brs_nil : forall r Γ p D Mj Us As, fill_brs r Γ p D Mj Us As nil nil
   (** The branch of the constructor [c], then the rest *)
-  | fill_brs_cons : forall Γ p D Mj Us As c gs n B B' Bs Bs',
+  | fill_brs_cons : forall r Γ p D Mj Us As c gs n B B' Bs Bs',
       ind_con Mj c = Some gs ->
       n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat ->
-      fill_exp (elim_bctx p D Mj gs As Us ++ Γ) B B' ->
-      fill_brs Γ p D Mj Us As Bs Bs' ->
-      fill_brs Γ p D Mj Us As ((c, n, B) :: Bs) ((c, n, B') :: Bs')
+      fill_exp (elim_bctx r p D Mj gs As Us ++ Γ) B B' ->
+      fill_brs r Γ p D Mj Us As Bs Bs' ->
+      fill_brs r Γ p D Mj Us As ((c, n, B) :: Bs) ((c, n, B') :: Bs')
 
   (** A term that may be absent *)
   with fill_oexp : ctx -> option exp -> option exp -> Prop :=
@@ -224,12 +268,12 @@ Section Fill.
       rejects *)
   | fill_read_mem_module : forall Γ H H' op y,
       fill_mod Γ H H' op -> sel_ok op y ->
-      (forall A oM, ~ mdenote Θ Ξ Γ (me_mem H' y) (mdesc_term A oM)) ->
+      (forall r A oM, ~ mdenote Θ Ξ Γ (me_mem H' y) (mdesc_term r A oM)) ->
       fill_read Γ (me_mem H y) (read_module (me_mem H' y))
   (** A member that is a term: the term *)
-  | fill_read_mem_term : forall Γ H H' op y A oM,
+  | fill_read_mem_term : forall Γ H H' op y r A oM,
       fill_mod Γ H H' op -> sel_ok op y ->
-      mdenote Θ Ξ Γ (me_mem H' y) (mdesc_term A oM) ->
+      mdenote Θ Ξ Γ (me_mem H' y) (mdesc_term r A oM) ->
       fill_read Γ (me_mem H y) (read_term (a_mem H' y))
   (** A module applied: a module *)
   | fill_read_app_module : forall Γ H H' N N',
@@ -292,11 +336,12 @@ Section Fill.
   with fill_body : ctx -> gmod -> gmod -> Prop :=
   (** The empty body *)
   | fill_body_nil : forall Γ, fill_body Γ gm_nil gm_nil
-  (** A definition *)
-  | fill_body_def : forall Γ Φ Φ' Φx x b pv A A' oM oM',
+  (** A definition: its tag the sort its filled type infers to *)
+  | fill_body_def : forall Γ Φ Φ' Φx x b pv r A A' oM oM' W,
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx ->
       fill_exp (body_ctx Φx ++ Γ) A A' -> fill_oexp (body_ctx Φx ++ Γ) oM oM' ->
-      fill_body Γ (gm_ext Φ x (ge_def b pv A oM)) (gm_ext Φ' x (ge_def b pv A' oM'))
+      ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢a A' ⟹ W ->
+      fill_body Γ (gm_ext Φ x (ge_def b pv r A oM)) (gm_ext Φ' x (ge_def b pv (sort_relevance W) A' oM'))
   (** A module *)
   | fill_body_mod : forall Γ Φ Φ' Φx x pv U U',
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx -> fill_unit (body_ctx Φx ++ Γ) U U' ->
@@ -381,7 +426,7 @@ Section Fill.
       (** The clauses, each in its constructor's branch context, are
           filled *)
     ; fill_raw_fun_body_clauses : forall Mm, ind_member D m = Some Mm ->
-        fill_brs Γ pq D Mm Us As (raw_fun_clauses f) (raw_fun_clauses f') }.
+        fill_brs relevant Γ pq D Mm Us As (raw_fun_clauses f) (raw_fun_clauses f') }.
 
   (** A constructor's arguments over [Γ], filled: the names kept, the
       types filled as a telescope, each over the ones before it, as

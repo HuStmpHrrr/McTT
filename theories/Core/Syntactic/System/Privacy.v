@@ -281,7 +281,7 @@ with gmod_privacy_tables (S : list privacy_table) (Φ : gmod) : list (string * b
   end
 with gentry_privacy_table (S : list privacy_table) (E : gentry) : privacy_table :=
   match E with
-  | ge_def _ _ _ _ => privacy_table_none
+  | ge_def _ _ _ _ _ => privacy_table_none
   | ge_mod _ U => gunit_privacy_table S U
   | ge_ind _ _ _ D Φ => privacy_table_body nil (gmod_privacy_tables (repeat privacy_table_none (ind_nu D) ++ S) Φ)
   | ge_def_mod _ _ _ U => gunit_privacy_table S U
@@ -315,12 +315,14 @@ Fixpoint chain_refs (H : modexp) (ch : list string) : list (privacy_table * stri
     the target, not written, so they are not checked. *)
 Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * string)%type :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ => nil
-  | a_succl M | a_univ M => exp_refs S M
-  | a_maxl M N => exp_refs S M ++ exp_refs S N
-  | a_exfalso A M => exp_refs (privacy_table_none :: S) A ++ exp_refs S M
+  | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False | a_var _
+  | a_placeholder_type | a_placeholder => nil
+  | a_succl M | a_univ M | a_left M | a_right M => exp_refs S M
+  | a_maxl M N | a_absurd M N => exp_refs S M ++ exp_refs S N
+  | a_and A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
+  | a_conj T M N => exp_refs S T ++ exp_refs S M ++ exp_refs S N
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => nil
-  | a_elim _ Us _ Bks M =>
+  | a_elim _ _ Us _ Bks M =>
       (fix ups_refs (Us : list exp) : list (privacy_table * string)%type :=
          match Us with
          | nil => nil
@@ -338,7 +340,7 @@ Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * str
                 | b :: Bs' => exp_refs (repeat privacy_table_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
                 end) Bs ++ blks_refs Bks'
          end) Bks ++ exp_refs S M
-  | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
+  | a_pi _ A M | a_fn A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
   | a_app M N => exp_refs S M ++ exp_refs S N
   | a_let b B => bnd_refs S b ++ exp_refs (bnd_privacy_table S b :: S) B
   | a_mem H x => (modexp_privacy_table S H, x) :: modexp_refs S H
@@ -388,7 +390,7 @@ with gmod_refs (S : list privacy_table) (Φ : gmod) : list (privacy_table * stri
   end
 with gentry_refs (S : list privacy_table) (E : gentry) : list (privacy_table * string)%type :=
   match E with
-  | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
+  | ge_def _ _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
   (* a local alias of a member with a term part and a module part: as
      written, its alias unit, as for a global alias command; its type and

@@ -144,9 +144,9 @@ Section Fixed_GCtx.
       k < im_nn Mi' -> tele_prefix_rel (nr' i') k vs vs' -> (nr' i' k vs <~> nr v k vs)
     (** An argument non-recursive in both, after the arguments [vp] before
         it, [gs1'] and [gs1] as the container and the group have them. *)
-    ; agree_args_rel : forall i' Mi' v Mv c gs1' A' gs2' gs1 A gs2 ms ms' vp vp' x y,
+    ; agree_args_rel : forall i' Mi' v Mv c gs1' rA' A' gs2' gs1 rA A gs2 ms ms' vp vp' x y,
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
-      ind_con Mi' c = Some (gs1' ++ ca_arg A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_arg A :: gs2) ->
+      ind_con Mi' c = Some (gs1' ++ ca_arg rA' A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_arg rA A :: gs2) ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
       tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
@@ -154,9 +154,9 @@ Section Fixed_GCtx.
        ar v ms c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp) x y)
     (** An argument the view nests through: non-recursive in the
         container, recursive of a shape in the group. *)
-    ; agree_nested_arg_rel : forall i' Mi' v Mv c gs1' A' gs2' gs1 t gs2 ms ms' vp vp' x y,
+    ; agree_nested_arg_rel : forall i' Mi' v Mv c gs1' rA' A' gs2' gs1 t gs2 ms ms' vp vp' x y,
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
-      ind_con Mi' c = Some (gs1' ++ ca_arg A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
+      ind_con Mi' c = Some (gs1' ++ ca_arg rA' A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
       tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
@@ -257,14 +257,14 @@ Section Fixed_GCtx.
         assert (Hlc' : List.length vp' = List.length gs1') by (rewrite Hlp'; symmetry; exact (cargs_corr_len _ _ _ Hcorr1)).
         assert (Hk' : List.length (nonrec_arg_vals gs1' vp) = List.length (cargs_nonrec gs1'))
           by exact (length_nonrec_arg_vals _ _ Hlc).
-        destruct g' as [A' | t'], g as [A | t]; cbn [cargs_corr] in Hcorr; try contradiction;
+        destruct g' as [rA' A' | t'], g as [rA A | t]; cbn [cargs_corr] in Hcorr; try contradiction;
           cbn [nonrec_arg_vals tele_rel_from] in Hfr |- *.
         + (* non-recursive in both *)
           destruct Hfr as [Hx Hfr].
           split.
-          * exact (proj1 (HA _ _ _ _ _ _ _ _ _ _ _ _ ms' _ vp' _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpre) Hx).
-          * pose proof (IH gs (gs1' ++ ca_arg A' :: nil) (gs1 ++ ca_arg A :: nil) (vp ++ x :: nil) (vp' ++ x' :: nil) vs vs'
-                          HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg A' :: nil) (ca_arg A :: nil) Hcorr1 I) Hcorr Hlp1 Hlp1' ltac:(lia) ltac:(lia) Hms) as IH'.
+          * exact (proj1 (HA _ _ _ _ _ _ _ _ _ _ _ _ _ _ ms' _ vp' _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpre) Hx).
+          * pose proof (IH gs (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_arg rA A :: nil) (vp ++ x :: nil) (vp' ++ x' :: nil) vs vs'
+                          HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg rA' A' :: nil) (ca_arg rA A :: nil) Hcorr1 I) Hcorr Hlp1 Hlp1' ltac:(lia) ltac:(lia) Hms) as IH'.
             rewrite !cargs_nonrec_app, !nonrec_arg_vals_app, !List.length_app in IH' by lia;
             cbn [cargs_nonrec nonrec_arg_vals List.length List.app] in IH'; rewrite ?List.app_nil_r, ?Nat.add_0_r, ?Nat.add_1_r in IH'.
             apply IH'; [| exact Hfr ].
@@ -272,8 +272,8 @@ Section Fixed_GCtx.
             rewrite <- Hk' in Hx |- *; exact Hx.
         + (* the view nests through it *)
           destruct Hfr as [Hx Hfr].
-          pose proof (IH gs (gs1' ++ ca_arg A' :: nil) (gs1 ++ ca_rec t :: nil) (vp ++ x :: nil) (vp' ++ x' :: nil) vs vs'
-                        HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg A' :: nil) (ca_rec t :: nil) Hcorr1 I) Hcorr Hlp1 Hlp1' ltac:(lia) ltac:(lia) Hms) as IH'.
+          pose proof (IH gs (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_rec t :: nil) (vp ++ x :: nil) (vp' ++ x' :: nil) vs vs'
+                        HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg rA' A' :: nil) (ca_rec t :: nil) Hcorr1 I) Hcorr Hlp1 Hlp1' ltac:(lia) ltac:(lia) Hms) as IH'.
           rewrite !cargs_nonrec_app, !nonrec_arg_vals_app, !List.length_app in IH' by lia;
             cbn [cargs_nonrec nonrec_arg_vals List.length List.app] in IH'; rewrite ?List.app_nil_r, ?Nat.add_0_r, ?Nat.add_1_r in IH'.
           apply IH'; [| exact Hfr ].
@@ -399,52 +399,52 @@ Section Fixed_GCtx.
         intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
         destruct gs; cbn in Hcorr; [ constructor | contradiction ].
       - (* a non-recursive argument of the container's *)
-        intros k u u' pre x pre' x' gs' vs vs' A' Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
+        intros k u u' pre x pre' x' gs' vs vs' rA' A' Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
           HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
         assert (Hlc : List.length vp = List.length gs1') by (rewrite Hlp; symmetry; exact (cargs_corr_len _ _ _ Hcorr1)).
         assert (Hlc' : List.length vp' = List.length gs1') by (rewrite Hlp'; symmetry; exact (cargs_corr_len _ _ _ Hcorr1)).
         assert (Hk' : List.length (nonrec_arg_vals gs1' vp) = List.length (cargs_nonrec gs1'))
           by exact (length_nonrec_arg_vals _ _ Hlc).
-        assert (Hc1' : ind_con Mi' c = Some ((gs1' ++ ca_arg A' :: nil) ++ gs')) by (rewrite <- List.app_assoc; exact Hc').
+        assert (Hc1' : ind_con Mi' c = Some ((gs1' ++ ca_arg rA' A' :: nil) ++ gs')) by (rewrite <- List.app_assoc; exact Hc').
         cbn [nonrec_arg_vals tele_rel_from] in Hfr; destruct Hfr as [Hx Hfr].
         assert (Hnv : forall w w', List.length w = List.length gs1' ->
-                   nonrec_arg_vals (gs1' ++ ca_arg A' :: nil) (w ++ w' :: nil) = nonrec_arg_vals gs1' w ++ w' :: nil)
+                   nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (w ++ w' :: nil) = nonrec_arg_vals gs1' w ++ w' :: nil)
           by (intros; rewrite nonrec_arg_vals_app by lia; reflexivity).
-        assert (Hln : List.length (cargs_nonrec (gs1' ++ ca_arg A' :: nil)) = S (List.length (cargs_nonrec gs1')))
+        assert (Hln : List.length (cargs_nonrec (gs1' ++ ca_arg rA' A' :: nil)) = S (List.length (cargs_nonrec gs1')))
           by (rewrite cargs_nonrec_app, List.length_app; cbn; lia).
-        assert (Hpw1 : tele_prefix_rel (ar' k ms c) (List.length (cargs_nonrec (gs1' ++ ca_arg A' :: nil)))
-                         (nonrec_arg_vals (gs1' ++ ca_arg A' :: nil) (vp ++ x :: nil))
-                         (nonrec_arg_vals (gs1' ++ ca_arg A' :: nil) (vp' ++ x' :: nil))).
+        assert (Hpw1 : tele_prefix_rel (ar' k ms c) (List.length (cargs_nonrec (gs1' ++ ca_arg rA' A' :: nil)))
+                         (nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp ++ x :: nil))
+                         (nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp' ++ x' :: nil))).
         { rewrite Hln, !Hnv by lia; apply tele_prefix_rel_snoc; [ exact Hpw | rewrite <- Hk' in Hx |- *; exact Hx ]. }
-        assert (Hfr1 : tele_rel_from (ar' k ms c) (List.length (cargs_nonrec (gs1' ++ ca_arg A' :: nil)))
-                         (nonrec_arg_vals (gs1' ++ ca_arg A' :: nil) (vp ++ x :: nil)) (nonrec_arg_vals gs' vs) (nonrec_arg_vals gs' vs'))
+        assert (Hfr1 : tele_rel_from (ar' k ms c) (List.length (cargs_nonrec (gs1' ++ ca_arg rA' A' :: nil)))
+                         (nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp ++ x :: nil)) (nonrec_arg_vals gs' vs) (nonrec_arg_vals gs' vs'))
           by (rewrite Hln, Hnv by lia; exact Hfr).
-        assert (Hpre1 : pre ++ x :: nil = ms ++ nonrec_arg_vals (gs1' ++ ca_arg A' :: nil) (vp ++ x :: nil))
+        assert (Hpre1 : pre ++ x :: nil = ms ++ nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp ++ x :: nil))
           by (rewrite Hnv, Hpre, <- List.app_assoc by lia; reflexivity).
-        assert (Hpre1' : pre' ++ x' :: nil = ms' ++ nonrec_arg_vals (gs1' ++ ca_arg A' :: nil) (vp' ++ x' :: nil))
+        assert (Hpre1' : pre' ++ x' :: nil = ms' ++ nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp' ++ x' :: nil))
           by (rewrite Hnv, Hpre', <- List.app_assoc by lia; reflexivity).
-        destruct gs as [| [A | t] gs0]; cbn in Hcorr; try contradiction.
+        destruct gs as [| [rA A | t] gs0]; cbn in Hcorr; try contradiction.
         + (* non-recursive in the group too *)
-          assert (Hc1 : ind_con Mv c = Some ((gs1 ++ ca_arg A :: nil) ++ gs0)) by (rewrite <- List.app_assoc; exact Hc).
-          pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_arg A' :: nil) (gs1 ++ ca_arg A :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
-                        HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg A' :: nil) (ca_arg A :: nil) Hcorr1 I) Hcorr
+          assert (Hc1 : ind_con Mv c = Some ((gs1 ++ ca_arg rA A :: nil) ++ gs0)) by (rewrite <- List.app_assoc; exact Hc).
+          pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_arg rA A :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
+                        HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg rA' A' :: nil) (ca_arg rA A :: nil) Hcorr1 I) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                         Hpre1 Hpre1' Hms Hpw1 Hfr1) as H.
           rewrite !nonrec_arg_vals_app in H by lia; cbn [nonrec_arg_vals] in H.
           apply con_args_arg; rewrite <- !List.app_assoc; exact H.
         + (* recursive in the group: the view nests through it *)
           assert (Hc1 : ind_con Mv c = Some ((gs1 ++ ca_rec t :: nil) ++ gs0)) by (rewrite <- List.app_assoc; exact Hc).
-          pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_arg A' :: nil) (gs1 ++ ca_rec t :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
-                        HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg A' :: nil) (ca_rec t :: nil) Hcorr1 I) Hcorr
+          pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_rec t :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
+                        HM Hv Hc1' Hc1 (cargs_corr_app _ _ _ (ca_arg rA' A' :: nil) (ca_rec t :: nil) Hcorr1 I) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                         Hpre1 Hpre1' Hms Hpw1 Hfr1) as H.
           rewrite !nonrec_arg_vals_app in H by lia; cbn [nonrec_arg_vals] in H; rewrite !List.app_nil_r in H.
           apply con_args_rec; [| exact H ].
-          exact (proj1 (HR _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hx).
+          exact (proj1 (HR _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hx).
       - (* a recursive argument of the container's *)
         intros k u u' pre pre' t' x x' gs' vs vs' Hr IHr Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
           HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
-        destruct gs as [| [A | t] gs0]; cbn in Hcorr; try contradiction.
+        destruct gs as [| [rA A | t] gs0]; cbn in Hcorr; try contradiction.
         destruct Hcorr as (Hm & Hd & Hcorr).
         assert (Hc1' : ind_con Mi' c = Some ((gs1' ++ ca_rec t' :: nil) ++ gs')) by (rewrite <- List.app_assoc; exact Hc').
         assert (Hc1 : ind_con Mv c = Some ((gs1 ++ ca_rec t :: nil) ++ gs0)) by (rewrite <- List.app_assoc; exact Hc).
@@ -642,23 +642,23 @@ Section Fixed_GCtx.
           intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
           destruct gs'; [ split; [ constructor | exact I ] | destruct c0; contradiction ].
         - (* a non-recursive argument of the group's *)
-          intros k u u' pre x pre' x' gs vs vs' A Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
+          intros k u u' pre x pre' x' gs vs vs' rA A Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
             HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
-          destruct gs' as [| [A' | t'] gs0']; cbn in Hcorr; try contradiction.
+          destruct gs' as [| [rA' A' | t'] gs0']; cbn in Hcorr; try contradiction.
           assert (Hlc : List.length vp = List.length gs1') by (rewrite Hlp; symmetry; exact (cargs_corr_len _ _ _ Hcorr1)).
           assert (Hlc' : List.length vp' = List.length gs1') by (rewrite Hlp'; symmetry; exact (cargs_corr_len _ _ _ Hcorr1)).
           cbn [nonrec_arg_vals tele_rel_from] in Hfr; destruct Hfr as [Hx Hfr].
-          pose proof (proj2 (HA _ _ _ _ _ _ _ _ _ _ _ _ ms' _ vp' _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hx) as Hx'.
-          assert (Hnv : forall gs1x Ax w w', List.length w = List.length gs1x ->
-                     nonrec_arg_vals (gs1x ++ ca_arg Ax :: nil) (w ++ w' :: nil) = nonrec_arg_vals gs1x w ++ w' :: nil)
+          pose proof (proj2 (HA _ _ _ _ _ _ _ _ _ _ _ _ _ _ ms' _ vp' _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hx) as Hx'.
+          assert (Hnv : forall gs1x rx Ax w w', List.length w = List.length gs1x ->
+                     nonrec_arg_vals (gs1x ++ ca_arg rx Ax :: nil) (w ++ w' :: nil) = nonrec_arg_vals gs1x w ++ w' :: nil)
             by (intros; rewrite nonrec_arg_vals_app by lia; reflexivity).
-          assert (Hln : forall gs1x Ax, List.length (cargs_nonrec (gs1x ++ ca_arg Ax :: nil)) = S (List.length (cargs_nonrec gs1x)))
+          assert (Hln : forall gs1x rx Ax, List.length (cargs_nonrec (gs1x ++ ca_arg rx Ax :: nil)) = S (List.length (cargs_nonrec gs1x)))
             by (intros; rewrite cargs_nonrec_app, List.length_app; cbn; lia).
           assert (Hk' : List.length (nonrec_arg_vals gs1' vp) = List.length (cargs_nonrec gs1'))
             by exact (length_nonrec_arg_vals _ _ Hlc).
-          pose proof (IH Hu Hu' i' Mi' Mw c (gs1' ++ ca_arg A' :: nil) (gs1 ++ ca_arg A :: nil) gs0' ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
+          pose proof (IH Hu Hu' i' Mi' Mw c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_arg rA A :: nil) gs0' ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                         HM Hv ltac:(rewrite <- List.app_assoc; exact Hc') ltac:(rewrite <- List.app_assoc; exact Hc)
-                        (cargs_corr_app _ _ _ (ca_arg A' :: nil) (ca_arg A :: nil) Hcorr1 I) Hcorr
+                        (cargs_corr_app _ _ _ (ca_arg rA' A' :: nil) (ca_arg rA A :: nil) Hcorr1 I) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                         ltac:(rewrite Hnv, Hpre, <- List.app_assoc by lia; reflexivity)
                         ltac:(rewrite Hnv, Hpre', <- List.app_assoc by lia; reflexivity) Hms
@@ -678,19 +678,19 @@ Section Fixed_GCtx.
             by (intros; rewrite nonrec_arg_vals_app by lia; cbn; apply List.app_nil_r).
           assert (HlnR : forall gs1x tx, List.length (cargs_nonrec (gs1x ++ ca_rec tx :: nil)) = List.length (cargs_nonrec gs1x))
             by (intros; rewrite cargs_nonrec_app, List.length_app; cbn; lia).
-          assert (Hnv : forall gs1x Ax w w', List.length w = List.length gs1x ->
-                     nonrec_arg_vals (gs1x ++ ca_arg Ax :: nil) (w ++ w' :: nil) = nonrec_arg_vals gs1x w ++ w' :: nil)
+          assert (Hnv : forall gs1x rx Ax w w', List.length w = List.length gs1x ->
+                     nonrec_arg_vals (gs1x ++ ca_arg rx Ax :: nil) (w ++ w' :: nil) = nonrec_arg_vals gs1x w ++ w' :: nil)
             by (intros; rewrite nonrec_arg_vals_app by lia; reflexivity).
-          assert (Hln : forall gs1x Ax, List.length (cargs_nonrec (gs1x ++ ca_arg Ax :: nil)) = S (List.length (cargs_nonrec gs1x)))
+          assert (Hln : forall gs1x rx Ax, List.length (cargs_nonrec (gs1x ++ ca_arg rx Ax :: nil)) = S (List.length (cargs_nonrec gs1x)))
             by (intros; rewrite cargs_nonrec_app, List.length_app; cbn; lia).
           cbn [nonrec_arg_vals] in Hfr.
-          destruct gs' as [| [A' | t'] gs0']; cbn in Hcorr; try contradiction.
+          destruct gs' as [| [rA' A' | t'] gs0']; cbn in Hcorr; try contradiction.
           + (* the view nests through it *)
             subst pre pre' u u'.
-            pose proof (proj2 (HR _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hr) as Hx'.
-            pose proof (IH eq_refl eq_refl i' Mi' Mw c (gs1' ++ ca_arg A' :: nil) (gs1 ++ ca_rec t :: nil) gs0' ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
+            pose proof (proj2 (HR _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hr) as Hx'.
+            pose proof (IH eq_refl eq_refl i' Mi' Mw c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_rec t :: nil) gs0' ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                           HM Hv ltac:(rewrite <- List.app_assoc; exact Hc') ltac:(rewrite <- List.app_assoc; exact Hc)
-                          (cargs_corr_app _ _ _ (ca_arg A' :: nil) (ca_rec t :: nil) Hcorr1 I) Hcorr
+                          (cargs_corr_app _ _ _ (ca_arg rA' A' :: nil) (ca_rec t :: nil) Hcorr1 I) Hcorr
                           ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                           ltac:(rewrite HnvR by lia; reflexivity) ltac:(rewrite HnvR by lia; reflexivity) Hms
                           ltac:(rewrite Hln, !Hnv by lia; apply tele_prefix_rel_snoc; [ exact Hpw | exact Hx' ])

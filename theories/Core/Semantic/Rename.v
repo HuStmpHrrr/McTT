@@ -45,15 +45,19 @@ Section Rename.
       environments included; mutually, for the other sorts of values. *)
   Fixpoint domain_rename (d : domain) : domain :=
     match d with
-    | d_pi a ρ B => d_pi (domain_rename a) (List.map dentry_rename ρ) B
+    | d_pi r a ρ B => d_pi r (domain_rename a) (List.map dentry_rename ρ) B
     | d_univ i => d_univ i
     | d_suniv l => d_suniv (domain_rename l)
     | d_level n => d_level n
     | d_lvl c xs => d_lvl c (List.map (fun ka => match ka with (k, n, m) => (k, n, domain_ne_rename m) end) xs)
+    | d_prop => d_prop
     | d_True => d_True
     | d_true => d_true
     | d_False => d_False
-    | d_fn ρ M => d_fn (List.map dentry_rename ρ) M
+    | d_and a ρ Q => d_and (domain_rename a) (List.map dentry_rename ρ) Q
+    | d_placeholder_type => d_placeholder_type
+    | d_placeholder => d_placeholder
+    | d_fn a ρ M => d_fn (domain_rename a) (List.map dentry_rename ρ) M
     | d_neut a m => d_neut (domain_rename a) (domain_ne_rename m)
     | d_member h ch => d_member (dmod_rename h) ch
     | d_ind p k args => d_ind p k (List.map domain_rename args)
@@ -68,7 +72,7 @@ Section Rename.
     match m with
     | d_var x => d_var (f x)
     | d_app m n => d_app (domain_ne_rename m) (domain_nf_rename n)
-    | d_exfalso ρ A m => d_exfalso (List.map dentry_rename ρ) A (domain_ne_rename m)
+    | d_absurd c => d_absurd (domain_rename c)
     | d_elim ρ Bks p ups j args m =>
         d_elim (List.map dentry_rename ρ) Bks p (List.map domain_rename ups) j (List.map domain_rename args) (domain_ne_rename m)
     | d_glob p => d_glob p
@@ -107,7 +111,7 @@ Section Rename.
   Lemma env_entry_rn : forall ρ x, env_entry (env_rename ρ) x = dentry_rename (env_entry ρ x).
   Proof.
     intros; rewrite !env_entry_nth; unfold env_rename.
-    change (de_term d_true) with (dentry_rename (de_term d_true)) at 1.
+    change (de_term d_placeholder) with (dentry_rename (de_term d_placeholder)) at 1.
     apply List.map_nth.
   Qed.
 
@@ -146,6 +150,27 @@ Section Rename.
       List.map (fun ga => match ga with (g, a) => (g, domain_rename a) end) vs = List.map (fun p => (fst p, domain_rename (snd p))) vs.
   Proof. intros; apply List.map_ext; intros []; reflexivity. Qed.
 
+  (** The sort of a type value is read off its head, which the renaming
+      keeps. *)
+  Lemma domain_relevance_rn : forall d, domain_relevance (domain_rename d) = domain_relevance d.
+  Proof. intros []; try reflexivity; match goal with |- context [ d_neut ?a _ ] => destruct a; reflexivity end. Qed.
+
+  (** A neutral's sort is its type's head's, whatever the neutral. *)
+  Lemma domain_relevance_neut_rn : forall a m m', domain_relevance (d_neut (domain_rename a) m) = domain_relevance (d_neut a m').
+  Proof. intros []; reflexivity. Qed.
+
+  Lemma relevant_value_rn : forall a v, domain_rename (relevant_value a v) = relevant_value (domain_rename a) (domain_rename v).
+  Proof. intros; unfold relevant_value; rewrite domain_relevance_rn; destruct (domain_relevance a); reflexivity. Qed.
+
+  (** So is the sort of a function's next argument. *)
+  Lemma arg_relevance_rn : forall Θ Ξ m, arg_relevance Θ Ξ (domain_rename m) = arg_relevance Θ Ξ m.
+  Proof.
+    intros; destruct m; cbn [domain_rename]; unfold arg_relevance; rewrite ?domain_relevance_rn, ?List.length_map; try reflexivity.
+    (* a neutral, at the type its head reads *)
+    match goal with |- match domain_rename ?m with _ => _ end = _ => destruct m end;
+      cbn [domain_rename]; rewrite ?domain_relevance_rn; reflexivity.
+  Qed.
+
   (** The group of an eliminator is read off the head of a value, which the
       renaming keeps. *)
   Lemma elim_grp_of_rn : forall oq m, elim_grp_of oq (domain_rename m) = elim_grp_of oq m.
@@ -163,8 +188,8 @@ Create Rewrite HintDb rn.
 Section Eval.
   Variables (Θ : gdeps) (Ξ : gstack) (f : nat -> nat).
 
-  #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn dlvl_suc_rn dlvl_max_rn
-    List.map_app List.length_map List.firstn_map List.skipn_map : rn.
+  #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn dlvl_suc_rn dlvl_max_rn relevant_value_rn domain_relevance_rn
+    arg_relevance_rn List.map_app List.length_map List.firstn_map List.skipn_map : rn.
 
   Lemma kinds_placeholders_rn : forall n ρ, env_rename f (kinds_placeholders n ρ) = kinds_placeholders n (env_rename f ρ).
   Proof. intros; unfold kinds_placeholders, env_rename; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
@@ -231,7 +256,9 @@ Section Eval.
        eval_nflds Θ Ξ (List.map (domain_rename f) ns) (domain_ne_rename f m) fl (List.map (domain_rename f) pre) (List.map (domain_rename f) rs)) /\
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> ⟦projs fl of domain_rename f m ⟧ Θ ⍮ Ξ ↘ List.map (domain_rename f) ws) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
-       ⟦ihtys List.map (domain_rename f) vs of gs at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ List.map (domain_rename f) as').
+       ⟦ihtys List.map (domain_rename f) vs of gs at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ List.map (domain_rename f) as') /\
+    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> eval_fvals Θ Ξ rs Ms (env_rename f ρ) (List.map (domain_rename f) vs)) /\
+    (forall g Ms ρ r, eval_app_args Θ Ξ g Ms ρ r -> eval_app_args Θ Ξ (domain_rename f g) Ms (env_rename f ρ) (domain_rename f r)).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => ⟦ M ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ domain_rename f m)
@@ -261,7 +288,9 @@ Section Eval.
              (fun fl m ws _ => ⟦projs fl of domain_rename f m ⟧ Θ ⍮ Ξ ↘ List.map (domain_rename f) ws)
              (fun p ups ρm As ρ gs vs as' _ =>
                 ⟦ihtys List.map (domain_rename f) vs of gs at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ
-                  ↘ List.map (domain_rename f) as'));
+                  ↘ List.map (domain_rename f) as')
+             (fun rs Ms ρ vs _ => eval_fvals Θ Ξ rs Ms (env_rename f ρ) (List.map (domain_rename f) vs))
+             (fun g Ms ρ r _ => eval_app_args Θ Ξ (domain_rename f g) Ms (env_rename f ρ) (domain_rename f r)));
       intros; cbn [domain_rename domain_ne_rename domain_nf_rename dmod_rename dentry_rename List.map extend_env fst snd] in *;
       rewrite ?tuple_rn in *;
       repeat change (List.map (dentry_rename f) ?ρ) with (env_rename f ρ) in *;
@@ -271,6 +300,8 @@ Section Eval.
     all: try solve [ econstructor; [ eassumption | eassumption | rewrite elim_grp_of_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eauto | eauto ] ].
     all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eassumption | eauto | eauto ] ].
+    all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eassumption | eassumption | eauto | eauto ] ].
+    all: try solve [ eapply eval_sel_body_proof; [ apply kind_rn; eassumption | eassumption | eassumption | eassumption ] ].
     (* records: a tuple's fields, a field of a tuple, a neutral projection *)
     all: try solve [ rewrite <- combine_map_r; constructor; assumption ].
     all: try solve [ constructor; rewrite field_lookup_map;
@@ -290,6 +321,19 @@ Section Eval.
     (* at a function shape: one per leaf path of the rest *)
     all: try solve [ rewrite List.map_map; cbn [domain_rename List.map dentry_rename]; repeat change (List.map (dentry_rename f) ?ρ) with (env_rename f ρ);
                      first [ eapply eval_ih_pi; eassumption | eapply eval_ihty_pi; eassumption ] ].
+    (* the cases relevance directs: the sort read off a value, which the
+       renaming keeps *)
+    all: cbn [env_rename List.map dentry_rename domain_rename] in *.
+    all: try solve [ eapply eval_exp_app; [ eassumption | rewrite arg_relevance_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_app_proof; [ eassumption | rewrite arg_relevance_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_let_ann; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_let_proof; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply eval_benv_def; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply eval_benv_def_proof; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption ] ].
+    all: try solve [ rewrite <- combine_map_r; eapply eval_exp_tuple; eassumption ].
+    all: try solve [ match goal with H0 : eval_nflds _ _ _ _ _ (_ ++ domain_rename _ (relevant_value _ _) :: nil) _ |- _ =>
+                       rewrite relevant_value_rn in H0; cbn [domain_rename domain_ne_rename] in *;
+                       eapply eval_nflds_cons; [ eassumption | exact H0 ] end ].
     - (* a variable *) rewrite <- env_var_rn; apply eval_exp_var.
     - (* a module slot *) rewrite <- env_mod_rn; apply eval_me_var.
   Qed.
@@ -347,6 +391,12 @@ Section Bound.
     intros * Hs Ha v Hv; constructor; [ eapply domain_avoids_mono'; [| apply Ha ]; lia | constructor; lia ].
   Qed.
 
+  (** The same, or the proof in its place at a proposition. *)
+  Lemma domain_bounded_rfresh : forall b s a, s < b -> domain_bounded s a -> domain_bounded b (relevant_value a (⇑! a s)).
+  Proof.
+    intros * Hs Ha v Hv; apply domain_avoids_relevant_value; exact (domain_bounded_fresh _ _ _ Hs Ha v Hv).
+  Qed.
+
   Lemma domain_bounded_bot : forall b, domain_bounded b ⊥ᵈ.
   Proof. intros b v Hv; constructor. Qed.
   Lemma domain_bounded_level : forall b n, domain_bounded b (Levelᵈ@n).
@@ -365,7 +415,7 @@ Section Bound.
   Definition domain_bounded_clo2 (b : nat) (ρ : env) (B : exp) : Prop :=
     forall b' c1 c2 d, b <= b' -> domain_bounded b' c1 -> domain_bounded b' c2 -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c1 ↦ c2 ↘ d -> domain_bounded b' d.
 
-  Lemma domain_bounded_pi_inv : forall b a ρ B, domain_bounded b (Πᵈ a ρ B) -> domain_bounded b a /\ domain_bounded_clo b ρ B.
+  Lemma domain_bounded_pi_inv : forall b r a ρ B, domain_bounded b (d_pi r a ρ B) -> domain_bounded b a /\ domain_bounded_clo b ρ B.
   Proof.
     intros * H; split; [ intros v Hv; specialize (H v Hv); inversion H; assumption |].
     intros b' c d Hb Hc Hd v Hv.
@@ -373,14 +423,18 @@ Section Bound.
     eapply eval_clo_avoids; [ eapply env_avoids_mono; [| eassumption ]; lia | eassumption | apply Hc; lia | exact Hd ].
   Qed.
 
-  Lemma domain_bounded_exfalso_inv : forall b ρ A m,
-      domain_ne_bounded b (efqᵈ m under ρ return A) -> domain_ne_bounded b m /\ domain_bounded_clo b ρ A.
+  (** The same for a [Σₚ]. *)
+  Lemma domain_bounded_and_inv : forall b a ρ Q, domain_bounded b (Σₚᵈ a ρ Q) -> domain_bounded b a /\ domain_bounded_clo b ρ Q.
   Proof.
     intros * H; split; [ intros v Hv; specialize (H v Hv); inversion H; assumption |].
     intros b' c d Hb Hc Hd v Hv.
     specialize (H v ltac:(lia)); inversion_clear H.
     eapply eval_clo_avoids; [ eapply env_avoids_mono; [| eassumption ]; lia | eassumption | apply Hc; lia | exact Hd ].
   Qed.
+
+  (** Ex falso: its type. *)
+  Lemma domain_bounded_absurd_inv : forall b c, domain_ne_bounded b (efqᵈ c) -> domain_bounded b c.
+  Proof. intros * H v Hv; specialize (H v Hv); inversion H; assumption. Qed.
 
   (** ** Inductive Types
 
@@ -503,8 +557,8 @@ Section Bound.
     assert (Ha : domain_bounded s a) by (eapply eval_domain_bounded; eassumption).
     cbn [List.length]; replace (s + S (List.length T)) with (S s + List.length T) by lia.
     intros d [<- | Hd].
-    - apply domain_bounded_fresh; [ lia | exact Ha ].
-    - apply IHfresh_tele; [| exact Hd ]. apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_fresh; [ lia | exact Ha ] ].
+    - apply domain_bounded_rfresh; [ lia | exact Ha ].
+    - apply IHfresh_tele; [| exact Hd ]. apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_rfresh; [ lia | exact Ha ] ].
   Qed.
 
   Lemma shty_domain_bounded : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -521,9 +575,9 @@ Section Bound.
     - intros ? [].
     - assert (Ha : domain_bounded s a) by (eapply eval_domain_bounded; eassumption).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
-      intros d [<- | Hd]; [ apply domain_bounded_fresh; [ lia | exact Ha ] |].
+      intros d [<- | Hd]; [ apply domain_bounded_rfresh; [ lia | exact Ha ] |].
       apply IHfresh_cargs;
-        [ apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_fresh; [ lia | exact Ha ] ]
+        [ apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_rfresh; [ lia | exact Ha ] ]
         | intros; eapply domain_bounded_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
     - assert (Ha : domain_bounded s a) by (eapply shty_domain_bounded; eassumption).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
@@ -539,7 +593,7 @@ Section Bound.
   Proof.
     induction 1; intros Ha; [ apply all_in_nil | | ].
     - cbn [List.length]; replace (s + S (List.length vs)) with (S s + List.length vs) by lia.
-      apply all_in_cons; [ apply domain_bounded_fresh; [ lia | exact (all_in_head _ _ _ Ha) ] |].
+      apply all_in_cons; [ apply domain_bounded_rfresh; [ lia | exact (all_in_head _ _ _ Ha) ] |].
       apply IHfresh_leaf_vars; intros; eapply domain_bounded_mono; [| apply Ha; right; eassumption ]; lia.
     - apply IHfresh_leaf_vars; exact (all_in_tail _ _ _ Ha).
   Qed.
@@ -561,7 +615,7 @@ Section Bound.
     - apply (IHfresh_ihs b0); try assumption.
       + apply env_domain_bounded_cons; [ exact Hρa | exact (all_in_head _ _ _ Hvs) ].
       + intros w Hw; destruct (Hl w Hw) as (K & HK & HK'); exists K; split; [ exact HK |].
-        intros gs1 t gs2 E; apply (HK' (ca_arg T :: gs1) t gs2); rewrite E; reflexivity.
+        intros gs1 t gs2 E; eapply (HK' (ca_arg _ _ :: gs1) t gs2); rewrite E; reflexivity.
       + exact (all_in_tail _ _ _ Hvs).
     - assert (Has : forall a, In a as' -> domain_bounded s a).
       { intros a Ha w Hw; destruct (Hl w ltac:(lia)) as (K & HK & HK').
@@ -613,6 +667,7 @@ Ltac domain_bounded_solve :=
   first [ eassumption
         | apply domain_nf_bounded_dom; domain_bounded_solve
         | apply domain_bounded_fresh; [ lia | domain_bounded_solve ]
+        | apply domain_bounded_rfresh; [ lia | domain_bounded_solve ]
         | apply domain_bounded_bot | apply domain_bounded_level
         | match goal with
           | Hc : domain_bounded_clo ?b ?ρ ?B, e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↦ ?c ↘ ?d |- domain_bounded ?b' ?d =>
@@ -679,10 +734,11 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       Ftele T in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (domain_rename f) ns.
   Proof.
     induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor |].
-    cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
+    rewrite relevant_value_rn; cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
     constructor; [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ H) |].
     pose proof (IHfresh_tele (S s') ltac:(intros; rewrite Hf by lia; lia) ltac:(lia)) as IH.
-    cbn [env_rename List.map dentry_rename domain_rename domain_ne_rename extend_env] in IH; rewrite (Hf s) in IH by lia.
+    cbn [env_rename List.map dentry_rename extend_env] in IH; rewrite relevant_value_rn in IH.
+    cbn [domain_rename domain_ne_rename] in IH; rewrite (Hf s) in IH by lia.
     replace (s + (s' - s)) with s' in IH by lia; exact IH.
   Qed.
 
@@ -750,10 +806,11 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       Fcargs gs of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (domain_rename f) vs.
   Proof.
     induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor | |].
-    - cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
+    - rewrite relevant_value_rn; cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
       constructor; [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ H) |].
       pose proof (IHfresh_cargs (S s') ltac:(intros; rewrite Hf by lia; lia) ltac:(lia)) as IH.
-      cbn [env_rename List.map dentry_rename domain_rename domain_ne_rename extend_env] in IH; rewrite (Hf s) in IH by lia.
+      cbn [env_rename List.map dentry_rename extend_env] in IH; rewrite relevant_value_rn in IH.
+      cbn [domain_rename domain_ne_rename] in IH; rewrite (Hf s) in IH by lia.
       replace (s + (s' - s)) with s' in IH by lia; exact IH.
     - cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
       constructor; [ exact (shty_rn _ _ _ _ _ H) |].
@@ -766,7 +823,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       fresh_leaf_vars bs (List.map (domain_rename f) as') s' (List.map (domain_rename f) vs).
   Proof.
     induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor | |].
-    - cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
+    - rewrite relevant_value_rn; cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
       constructor; apply (IHfresh_leaf_vars (S s')); [ intros; rewrite Hf by lia; lia | lia ].
     - constructor; exact (IHfresh_leaf_vars s' Hf Hs).
   Qed.
@@ -860,10 +917,11 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       | H : domain_bounded _ (d_neut _ _) |- _ => apply domain_bounded_neut_inv in H as [? ?]
       | H : domain_bounded _ (d_suniv _) |- _ => apply domain_bounded_suniv_inv in H
       | H : domain_bounded _ (d_lvl _ _) |- _ => apply domain_bounded_lvl_inv in H
-      | H : domain_bounded _ (d_pi _ _ _) |- _ => apply domain_bounded_pi_inv in H as [? ?]
+      | H : domain_bounded _ (d_pi _ _ _ _) |- _ => apply domain_bounded_pi_inv in H as [? ?]
       | H : level_atoms_bounded _ ((_, _) :: _) |- _ => apply level_atoms_bounded_inv in H as [? ?]
       | H : domain_ne_bounded _ (d_app _ _) |- _ => apply domain_bounded_app_inv in H as [? ?]
-      | H : domain_ne_bounded _ (d_exfalso _ _ _) |- _ => apply domain_bounded_exfalso_inv in H as [? ?]
+      | H : domain_bounded _ (d_and _ _ _) |- _ => apply domain_bounded_and_inv in H as [? ?]
+      | H : domain_ne_bounded _ (d_absurd _) |- _ => apply domain_bounded_absurd_inv in H
       | H : domain_bounded _ (d_ind _ _ _) |- _ => pose proof (domain_bounded_indty_inv _ _ _ _ H); clear H
       | H : domain_bounded _ (d_con _ _ _ _) |- _ => pose proof (domain_bounded_con_inv _ _ _ _ _ H); clear H
       | H : domain_ne_bounded _ (d_elim _ _ _ _ _ _ _) |- _ => apply domain_bounded_elim_inv in H as (? & ? & ? & ?)
@@ -886,6 +944,10 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
           let H' := fresh "Er" in pose proof (app_rn _ _ _ H) as H'; cbn [domain_rename domain_ne_rename] in H'
       | _ => idtac
       end.
+    (** A fresh variable, or the proof in its place: renamed by its type. *)
+    all: repeat match goal with H : context [ domain_rename f (relevant_value _ _) ] |- _ =>
+                  rewrite relevant_value_rn in H; cbn [domain_rename domain_ne_rename] in H end.
+    all: rewrite ?domain_relevance_rn.
     all: rewrite ?Hf0, ?Hf1 in *.
     all: repeat change (List.map (dentry_rename f) ?ρ) with (env_rename f ρ).
     all: cbn [level_atoms_rename] in *.
@@ -1049,7 +1111,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e)
       | apply H; [ exact H1 | apply domain_nf_bounded_dom; [ eapply eval_domain_bounded; eassumption | apply (all_in_head _ _ _ H3) ] ]
       | apply H0; [ exact H1 | apply env_domain_bounded_cons; [ assumption | apply (all_in_head _ _ _ H3) ] | exact (all_in_tail _ _ _ H3) ] ] end ].
-    all: try solve [ lazymatch goal with |- read_cargs _ _ _ _ _ _ (ca_arg _ :: _) _ _ =>
+    all: try solve [ lazymatch goal with |- read_cargs _ _ _ _ _ _ (ca_arg _ _ :: _) _ _ =>
       econstructor;
       [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e)
       | apply H; [ exact H1 | apply domain_nf_bounded_dom; [ eapply eval_domain_bounded; eassumption | apply (all_in_head _ _ _ H4) ] ]
@@ -1157,19 +1219,22 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
         variable of its domain. *)
     all: try solve [ lazymatch goal with |- read_shape _ _ _ _ _ _ (pt_pi _ _) _ _ =>
       match goal with
-      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b, e0 : $| ?x & ⇑! ?b ?s | _ ⍮ _ ↘ ?r, Er : $| domain_rename f ?x & _ | _ ⍮ _ ↘ domain_rename f ?r,
+      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b, e0 : $| ?x & relevant_value ?b (⇑! ?b ?s) | _ ⍮ _ ↘ ?r,
+        Er : $| domain_rename f ?x & _ | _ ⍮ _ ↘ domain_rename f ?r,
         IHA : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded ?s ?b -> read_typ _ _ s0 _ _,
         IHV : forall s0 φ0, rn_ok f (S ?s) s0 φ0 -> _ -> env_domain_bounded (S ?s) (?ρ ↦ _) -> domain_bounded (S ?s) ?r -> _,
         Hok : rn_ok f ?s ?s' ?φ, Hok1 : rn_ok f (S ?s) (S ?s') _, Hf0 : f ?s = ?s',
         Hρ : env_domain_bounded ?s ?ρ, Hu : forall a, In a ?ups -> domain_bounded ?s a, Hx : domain_bounded ?s ?x |- _ =>
           let Hbd := fresh "Hbd" in
           assert (Hbd : domain_bounded s b) by (eapply eval_domain_bounded; eassumption);
+          rewrite ?relevant_value_rn in Er; cbn [domain_rename domain_ne_rename] in Er; rewrite ?Hf0 in Er;
           econstructor; [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e) | exact (IHA s' φ Hok Hbd) | exact Er |];
-          change (env_rename f (ρ ↦ ⇑! b s)) with (env_rename f ρ ↦ domain_rename f (⇑! b s)) in IHV; cbn [domain_rename domain_ne_rename] in IHV; rewrite Hf0 in IHV;
+          change (env_rename f (ρ ↦ relevant_value b (⇑! b s))) with (env_rename f ρ ↦ domain_rename f (relevant_value b (⇑! b s))) in IHV;
+          rewrite ?relevant_value_rn in IHV; cbn [domain_rename domain_ne_rename] in IHV; rewrite ?Hf0 in IHV;
           apply (IHV (S s') (wk_q φ) Hok1);
           [ intros; eapply domain_bounded_mono; [| apply Hu; eassumption ]; lia
-          | apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_fresh; [ lia | exact Hbd ] ]
-          | eapply domain_bounded_app; [ exact e0 | eapply domain_bounded_mono; [| exact Hx ]; lia | apply domain_bounded_fresh; [ lia | exact Hbd ] ] ]
+          | apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_rfresh; [ lia | exact Hbd ] ]
+          | eapply domain_bounded_app; [ exact e0 | eapply domain_bounded_mono; [| exact Hx ]; lia | apply domain_bounded_rfresh; [ lia | exact Hbd ] ] ]
       end end ].
     (** Records: a tuple at its record type, the parameters and the fields
         renamed; a record type at its parameters; a field, projected and
@@ -1206,6 +1271,8 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
     all: econstructor.
     all: try rewrite <- nf_lvl_of_wk.
     all: try eassumption.
+    (** The sort a readback is directed by: the renamed type's head's. *)
+    all: try solve [ first [ rewrite domain_relevance_rn | erewrite domain_relevance_neut_rn ]; eassumption ].
     all: match goal with
          | IH : _ |- _ => solve [ eapply IH; [ eassumption | domain_bounded_solve ] ]
          end.
@@ -1248,16 +1315,21 @@ Lemma initial_env_rn : forall Θ Ξ Γ ρ,
     initial_env Θ Ξ Γ ρ ->
     forall f, (forall x, x < List.length Γ -> f x = x) -> env_rename f ρ = ρ.
 Proof.
-  induction 1; intros f Hf; cbn [List.length] in Hf; [ reflexivity | | | |].
+  induction 1; intros f Hf; cbn [List.length] in Hf; [ reflexivity | | | | |].
   all: assert (Hρ : env_rename f ρ = ρ) by (apply IHinitial_env; intros; apply Hf; lia).
-  - pose proof (proj1 (eval_rn Θ Ξ f) _ _ _ H0) as Ha; rewrite Hρ in Ha.
+  - (* an assumption: a variable, or the proof at a proposition *)
+    pose proof (proj1 (eval_rn Θ Ξ f) _ _ _ H0) as Ha; rewrite Hρ in Ha.
     assert (domain_rename f a = a) as Ea by (eapply functional_eval_exp; eassumption).
-    cbn [extend_env env_rename List.map dentry_rename domain_rename domain_ne_rename]; fold (env_rename f ρ).
-    rewrite Hρ, Ea, Hf by lia; reflexivity.
-  - pose proof (proj1 (eval_rn Θ Ξ f) _ _ _ H0) as Hm; rewrite Hρ in Hm.
+    unfold relevant_value; destruct (domain_relevance a);
+      cbn [extend_env env_rename List.map dentry_rename domain_rename domain_ne_rename]; fold (env_rename f ρ);
+      rewrite Hρ; [ rewrite Ea, Hf by lia |]; reflexivity.
+  - match goal with Hm0 : ⟦ M ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => pose proof (proj1 (eval_rn Θ Ξ f) _ _ _ Hm0) as Hm end.
+    rewrite Hρ in Hm.
     assert (domain_rename f m = m) as Em by (eapply functional_eval_exp; eassumption).
     cbn [extend_env env_rename List.map dentry_rename]; fold (env_rename f ρ).
     rewrite Hρ, Em; reflexivity.
+  - (* a definition of a proposition: the proof *)
+    cbn [extend_env env_rename List.map dentry_rename domain_rename]; fold (env_rename f ρ); rewrite Hρ; reflexivity.
   - pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (eval_rn Θ Ξ f))))) _ _ _ H0) as Hh; rewrite Hρ in Hh.
     assert (dmod_rename f h = h) as Eh by (eapply functional_eval_modexp; eassumption).
     cbn [extend_env_mod env_rename List.map dentry_rename]; fold (env_rename f ρ); rewrite Hρ, Eh; reflexivity.

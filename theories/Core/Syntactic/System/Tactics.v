@@ -17,6 +17,24 @@ From Mctt.Core.Syntactic.System Require Export Definitions Lemmas.
 From Mctt.Core.Syntactic.System.Inductives Require Export Typing Views UniformParams.
 Import Syntax_Notations Wk_Notations.
 
+(** A type [HAi : Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A] is added as its sort, the sort's
+    [type_sort] and the typing, unless the context already has [A] at a
+    universe, at [Propₘ], or at a sort it knows to be one. *)
+Ltac add_type Θ Ξ Γ A HAi :=
+  match goal with
+  | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
+  | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => clear HAi
+  | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ |- _ => clear HAi
+  | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Propₘ |- _ => clear HAi
+  | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : ?S, _: type_sort ?S |- _ => clear HAi
+  | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : ?S, _: type_sort ?S |- _ => clear HAi
+  | _ =>
+      let S := fresh "S" in
+      let HS := fresh "HS" in
+      let HA := fresh "HA" in
+      destruct HAi as [S HS HA]
+  end.
+
 (** [ctx_decomp] on a single context well-formedness hypothesis.  The type of
     the top binding is only added if the context does not already have it. *)
 #[local]
@@ -26,27 +44,13 @@ Ltac invert_wf_ctx1 H :=
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof ctx_decomp H as [HΓ HAi];
-      match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
-      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => clear HAi
-      | _ =>
-          let i := fresh "i" in
-          let HA := fresh "HA" in
-          destruct HAi as [i HA]
-      end
+      add_type Θ Ξ Γ A HAi
   | ⊢ ?Θ ⍮ ?Ξ ⍮ ?Γ ▸ ?A ≔ ?M =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       let HM := fresh "HM" in
       pose proof ctx_decomp_def H as [HΓ [HAi HM]];
-      match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
-      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => clear HAi
-      | _ =>
-          let i := fresh "i" in
-          let HA := fresh "HA" in
-          destruct HAi as [i HA]
-      end
+      add_type Θ Ξ Γ A HAi
   end.
 
 Ltac invert_wf_ctx :=
@@ -64,12 +68,10 @@ Ltac gen_core_presup H :=
       let HAi := fresh "HAi" in
       pose proof presup_exp H as [HΓ HAi];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
       | _: __mark__ _ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
-      | _ =>
-          let i := fresh "i" in
-          let HA := fresh "HA" in
-          destruct HAi as [i HA]
+      | _: __mark__ _ Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ |- _ => clear HAi
+      | _: __mark__ _ Θ ⍮ Ξ ⍮ Γ ⊢ A : ?S, _: type_sort ?S |- _ => clear HAi
+      | _ => add_type Θ Ξ Γ A HAi
       end
   end.
 
@@ -79,10 +81,15 @@ Ltac gen_lookup_presup H :=
       match goal with
       | _: _ ⍮ _ ⍮ Γ ⊢ A : Typeω@_ |- _ => fail
       | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => fail
+      | _: _ ⍮ _ ⍮ Γ ⊢ A : Propₘ |- _ => fail
+      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ A : Propₘ |- _ => fail
+      | _: _ ⍮ _ ⍮ Γ ⊢ A : ?S, _: type_sort ?S |- _ => fail
+      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ A : ?S, _: type_sort ?S |- _ => fail
       | _ =>
-          let i := fresh "i" in
+          let S := fresh "S" in
+          let HS := fresh "HS" in
           let HA := fresh "HA" in
-          pose proof (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) H) as [i HA]
+          pose proof (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) H) as [S HS HA]
       end
   | ?Γ ∋ #?x ≔ ?M : ?A =>
       match goal with

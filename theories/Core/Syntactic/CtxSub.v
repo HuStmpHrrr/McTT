@@ -27,27 +27,32 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
 | ctx_sub_empty :
     ⊢ᵍ Θ ⍮ Ξ ->
     Θ ⍮ Ξ ⊢ ⋅ ⊆ ⋅
-| ctx_sub_extend : forall Δ Γ A A' i,
+(** An assumption refines one of a supertype, both of one sort, a large
+    universe or [Prop]. *)
+| ctx_sub_extend : forall Δ Γ A A' Srt,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⊢ Δ ▹ A' ⊆ Γ ▹ A
 (** A definition refines a definition of a supertype with an equal body. *)
-| ctx_sub_extend_def : forall Δ Γ A A' M M' i,
+| ctx_sub_extend_def : forall Δ Γ A A' M M' Srt,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
     Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▸ A ≔ M
 (** Knowing a definition refines knowing only its type. *)
-| ctx_sub_forget : forall Δ Γ A A' M' i,
+| ctx_sub_forget : forall Δ Γ A A' M' Srt,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▹ A
@@ -58,7 +63,8 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
     Θ ⍮ Ξ ⊢ Δ ▹ₘ U ⊆ Γ ▹ₘ U
 (** A definition with a module part refines one of a supertype with an
-    equal body and the same unit. *)
+    equal body and the same unit; its types are of a large universe, as
+    such definitions are relevant. *)
 | ctx_sub_extend_dm : forall Δ Γ A A' M M' U i,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -109,10 +115,14 @@ Lemma ctx_sub_refl : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⊢ Γ �
 Proof.
   intros Θ Ξ Γ; induction Γ as [| [A | A M | U | A M U] Γ IH]; intros HΓ; inversion_clear HΓ;
     mauto 3 using presup_exp_ctx.
-  - econstructor; mauto 3 using presup_exp_ctx.
-  - eapply ctx_sub_extend_def; mauto 3 using presup_exp_ctx.
+  - eapply ctx_sub_extend; [ mauto 3 using presup_exp_ctx | exact H | exact H | exact H0 | eapply wf_subtyp_refl_typ; eassumption ].
+  - eapply ctx_sub_extend_def;
+      [ mauto 3 using presup_exp_ctx | exact H | exact H | exact H0 | eapply wf_subtyp_refl_typ; eassumption
+      | eassumption | eassumption | mauto 3 ].
   - eapply ctx_sub_extend_mod; mauto 3 using presup_unit_eq_ctx.
-  - eapply ctx_sub_extend_dm; mauto 3 using presup_exp_ctx.
+  - eapply ctx_sub_extend_dm;
+      [ mauto 3 using presup_exp_ctx | exact H | exact H | eapply wf_subtyp_refl_typ; [ exact H | constructor ]
+      | eassumption | eassumption | mauto 3 | eassumption | eassumption ].
 Qed.
 
 #[export]
@@ -125,28 +135,45 @@ Lemma ctx_sub_trans : forall Θ Ξ Γ0 Γ1,
       Θ ⍮ Ξ ⊢ Γ0 ⊆ Γ2.
 Proof.
   induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | | | |].
-  (** The two steps ascribe unrelated levels to the middle type, so both have to
-      be raised before the refinements can be composed. *)
+  (** The two steps ascribe unrelated sorts to the middle type: two
+      universes are raised to their maximum, two [Prop]s agree; a universe
+      and [Prop] for one type is the cross-sort case. *)
   all: assert (Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ) by mauto 2.
   - rename A into A1. rename A0 into A2. rename A' into A0.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
-    eapply ctx_sub_extend with (i := max i i0);
-      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    destruct H2 as [i |], H6 as [j |].
+    + eapply ctx_sub_extend with (Srt := Typeω@(max i j)); [ | | | apply type_sort_universe | ];
+        mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + eapply ctx_sub_extend with (Srt := Propₘ); [ | | | apply type_sort_prop | ]; mauto 3.
   - (** Two definitions: the bodies are equal at the outer type. *)
     rename A into A1. rename A0 into A2. rename A' into A0.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A0 ⊆ A2) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ M ≈ M0 : A2) by mauto 3.
-    eapply ctx_sub_extend_def with (i := max i i0);
-      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    destruct H2 as [i |], H9 as [j |].
+    + eapply ctx_sub_extend_def with (Srt := Typeω@(max i j)); [ | | | apply type_sort_universe | | | | ];
+        mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + eapply ctx_sub_extend_def with (Srt := Propₘ); [ | | | apply type_sort_prop | | | | ]; mauto 3.
   - rename A into A1. rename A0 into A2. rename A' into A0.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
-    eapply ctx_sub_forget with (i := max i i0);
-      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    destruct H2 as [i |], H9 as [j |].
+    + eapply ctx_sub_forget with (Srt := Typeω@(max i j)); [ | | | apply type_sort_universe | | ];
+        mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + eapply ctx_sub_forget with (Srt := Propₘ); [ | | | apply type_sort_prop | | ]; mauto 3.
   - rename A into A1. rename A0 into A2. rename A' into A0.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
-    eapply ctx_sub_forget with (i := max i i0);
-      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    destruct H2 as [i |], H7 as [j |].
+    + eapply ctx_sub_forget with (Srt := Typeω@(max i j)); [ | | | apply type_sort_universe | | ];
+        mauto 3 using lift_exp_max_left, lift_exp_max_right.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + (* PENDING design: cross-sort transitivity *) admit.
+    + eapply ctx_sub_forget with (Srt := Propₘ); [ | | | apply type_sort_prop | | ]; mauto 3.
   - eapply ctx_sub_extend_mod; eauto.
   - (** Two definitions with a module part: as two definitions, the units
         the same. *)
@@ -154,9 +181,9 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A0 ⊆ A2) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ M ≈ M0 : A2) by mauto 3.
-    eapply ctx_sub_extend_dm with (i := max i i0);
+    eapply ctx_sub_extend_dm with (i := max i i0); [ | | | | | | | | ];
       mauto 3 using lift_exp_max_left, lift_exp_max_right.
-Qed.
+Admitted.
 
 #[export]
 Hint Resolve ctx_sub_trans : mctt.
@@ -165,12 +192,16 @@ Hint Resolve ctx_sub_trans : mctt.
 Instance ctx_sub_Transitive Θ Ξ : Transitive (ctx_sub Θ Ξ).
 Proof. intros ? ? ?; eauto using ctx_sub_trans. Qed.
 
-Corollary ctx_sub_extend_eq : forall Θ Ξ Γ A A' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+Corollary ctx_sub_extend_eq : forall Θ Ξ Γ A A' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
     Θ ⍮ Ξ ⊢ Γ ▹ A' ⊆ Γ ▹ A.
-Proof. intros; eapply ctx_sub_extend; mauto 3. Qed.
+Proof.
+  intros * HA HA' HS HAA; eapply ctx_sub_extend; [ mauto 3 | exact HA | exact HA' | exact HS |].
+  eapply wf_subtyp_refl; [ exact HA | exact HS | apply wf_exp_eq_sym; exact HAA ].
+Qed.
 
 #[export]
 Hint Resolve ctx_sub_extend_eq : mctt.

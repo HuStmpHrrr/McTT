@@ -132,8 +132,8 @@ Qed.
 
 Lemma cargs_nin_own_of_ass : forall D, grp_tele_ass D -> forall gs, cargs_plen D gs -> cargs_nin D D gs gs = cargs_nrec D gs.
 Proof.
-  intros D Hass; induction gs as [| [A | t] gs IH]; intros Hpl; cbn [cargs_nin cargs_nrec]; [ reflexivity | |].
-  - apply IH; intros gs1 t gs2 E; apply (Hpl (ca_arg A :: gs1) t gs2); rewrite E; reflexivity.
+  intros D Hass; induction gs as [| [rA A | t] gs IH]; intros Hpl; cbn [cargs_nin cargs_nrec]; [ reflexivity | |].
+  - apply IH; intros gs1 t gs2 E; apply (Hpl (ca_arg rA A :: gs1) t gs2); rewrite E; reflexivity.
   - f_equal.
     + destruct (Hpl nil t gs eq_refl) as (M & HM & _).
       unfold leaves_in_count.
@@ -226,7 +226,7 @@ Section ViewCount.
           assert (L1 : List.length (fs1 ++ (f, g) :: nil) = List.length (fs1' ++ (f, g') :: nil)) by (rewrite !List.length_app; cbn; lia).
           assert (Hfind : List.find (fun fg => String.eqb (fst fg) f) (List.combine fl gsr') = Some (f, g')).
           { rewrite E'; apply find_name_split; rewrite <- E', combine_fst_eq by exact (eq_sym Hlen'); exact Hnd. }
-          destruct g as [A | t], g' as [A' | t']; cbn [cargs_corr] in Hco; try contradiction.
+          destruct g as [rA A | t], g' as [rA' A' | t']; cbn [cargs_corr] in Hco; try contradiction.
           - cbn [fields_leaves]; exact (IHf _ _ _ _ _ E1 E1' L1 Hco).
           - (** Nested through by the group: none of its paths is the
                 container's. *)
@@ -267,7 +267,7 @@ Section ViewCount.
       results. *)
   Lemma cargs_nin_view : forall gs' gs, cargs_corr vm gs' gs -> cargs_nin D D' gs' gs = cargs_nrec D' gs'.
   Proof.
-    induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] Hco; cbn [cargs_corr] in Hco; try contradiction;
+    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] Hco; cbn [cargs_corr] in Hco; try contradiction;
       cbn [cargs_nin cargs_nrec]; try reflexivity; try exact (IH _ Hco).
     destruct Hco as (Hmt & Hdp & Hco).
     rewrite IH by exact Hco; f_equal.

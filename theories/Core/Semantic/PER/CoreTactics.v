@@ -16,6 +16,10 @@ Ltac destruct_rel_by_assumption in_rel H :=
         | rel_typ _ _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
         | rel_elem _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
         | rel_mod_app _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
+        (** The bodies of a definition, unless its type is a proposition:
+            one case each *)
+        | rel_typ_propositional _ _ \/ rel_elem _ _ _ _ _ =>
+            let Hr := fresh "Hr" in destruct (H _ _ H') as [Hr | Hr]; [| destruct_anon Hr ]
         | _ => destruct (H _ _ H') as []
         end;
         destruct_all;
@@ -52,6 +56,8 @@ Ltac destruct_rel_typ :=
         destruct_rel_by_assumption in_rel H; mark H
     | H : rel_elem _ _ _ _ _ |- _ =>
         destruct_anon H
+    | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_typ_propositional _ _ \/ rel_elem _ _ _ _ _) |- _ =>
+        destruct_rel_by_assumption in_rel H; mark H
     end;
   unmark_all.
 
@@ -67,10 +73,22 @@ Ltac rewrite_per_univ_below :=
         rewrite (per_univ_below_spec i j) by solve_universe_index
     end.
 
+(** A case of an inversion whose relevance premise is false of a value
+    with a known head: a proposition clause at a relevant head, the neutral
+    clause at a neutral proposition. *)
+Ltac clear_wrong_relevance :=
+  repeat match goal with Hp : per_prop _ _ |- _ => destruct Hp end;
+  match goal with
+  | Hr : domain_relevance _ = _ |- _ => progress cbn in Hr; discriminate Hr
+  | H1 : domain_relevance ?x = relevant, H2 : domain_relevance ?x = propositional |- _ =>
+      rewrite H1 in H2; discriminate H2
+  end.
+
 Ltac basic_invert_per_univ_elem H :=
   progress simp per_univ_elem in H;
   unmark_vars;
   dependent destruction H;
+  try solve [ clear_wrong_relevance ];
   rewrite_per_univ_below;
   try rewrite <- per_univ_elem_equation_1 in *.
 

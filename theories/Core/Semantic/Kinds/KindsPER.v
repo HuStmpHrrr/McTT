@@ -121,7 +121,7 @@ Section Fixed_GCtx.
     - apply H1 in Hρ as [Ht _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kinds_match_drop_term; first [ assumption | discriminate ].
-    - apply H2 in Hρ as [Ht _].
+    - apply H3 in Hρ as [Ht _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kinds_match_drop_term; first [ assumption | discriminate ].
     - apply H1 in Hρ as (Ht & P1 & P2 & P3 & P4).
@@ -134,7 +134,7 @@ Section Fixed_GCtx.
         eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
         intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
     - (* a definition with a module part: its unit as a slot's *)
-      apply H3 in Hρ as [Ht _ _ _ _ _ P1 _ _ P4].
+      apply H4 in Hρ as [Ht _ _ P1 _ _ P4].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kinds_match_drop_dm; try assumption.
       + destruct P1 as (h & Hh & Hr).

@@ -181,7 +181,7 @@ Proof.
                split; [ reflexivity | split; [ exact Hbh1 | split; [ exact Hmh | apply E; exact HRm ] ] ]
            end.
     + (* an entry before it *)
-      assert (HC0 : ⊨ body_ctx Φx ++ Γ) by (destruct E as [? ? ? [] | | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
+      assert (HC0 : ⊨ body_ctx Φx ++ Γ) by (destruct E as [? ? ? ? [] | | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
       destruct (IH Hsx0 HC0 Ho _ _ HRD Hρ _ Hkb0 Hkx0 _ _ _ _ _ Hp HEt) as (ρ' & a & i & RA & r & Hb & Ha & HRA & Hr & Hh).
       exists ρ', a, i, RA, r; split; [ exact Hb | split; [ exact Ha | split; [ exact HRA | split; [ exact Hr |] ] ] ].
       intros ρh Φh Φhk Hbh Hkh.
@@ -478,7 +478,7 @@ Proof.
     pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
     assert (He' : exists Ee', mdesc_entry (mdesc_open Δe Φ Φx) x = Some (body_ctx Φ' ++ Δe, Ee', reader_open Δe Φ') /\
                     Ee = Ee' /\ Γy = body_ctx Φ' ++ Δe ++ Δ /\ rd = reader_open (Δe ++ Δ) Φ').
-    { cbn; rewrite Hp; destruct E0 as [[|] ? ? [] | | | |]; try discriminate; injection He as <- <- <-; eexists; repeat split. }
+    { cbn; rewrite Hp; destruct E0 as [[|] ? ? ? [] | | | |]; try discriminate; injection He as <- <- <-; eexists; repeat split. }
     destruct He' as (Ee' & He' & -> & -> & ->).
     cbn [mdesc_read] in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
     exists (mdesc_up Δe (mdesc_sub R1 σ)); split; [| left; rewrite mdesc_up_cat; reflexivity ].

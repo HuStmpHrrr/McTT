@@ -24,6 +24,7 @@ Module Fixed_Notations.
   Notation "Γ ⊢ M ≈ M' : A" := (wf_exp_eq gc_deps gc_stack Γ A M M')
     (at level 70, M at level 69, M' at level 69, A at level 69) : type_scope.
   Notation "Γ ⊢ A ⊆ A'" := (wf_subtyp gc_deps gc_stack Γ A A') (at level 70, A at level 69, A' at level 69) : type_scope.
+  Notation "Γ ⊢ᵗ A" := (wf_type gc_deps gc_stack Γ A) (at level 70, A at level 69) : type_scope.
   Notation "Γ ⊢ʷ φ : Δ" := (wf_wk gc_deps gc_stack Γ Δ φ) (at level 70, φ constr at level 60, Δ at level 69) : type_scope.
   Notation "Γ ⊢ˢ σ : Δ" := (wf_sub gc_deps gc_stack Γ Δ σ) (at level 70, σ at level 69, Δ at level 69) : type_scope.
   Notation "Γ ⊢ˢ σ ≈ σ' : Δ" := (wf_sub_eq gc_deps gc_stack Γ Δ σ σ')
@@ -37,8 +38,8 @@ Module Fixed_Notations.
     (at level 70, M at level 69, ρ at level 69, r at level 69).
   Notation "'$|' m '&' n '|↘' r" := (eval_app gc_deps gc_stack m n r)
     (at level 70, m at level 69, n at level 69, r at level 69).
-  Notation "'⟦' σ '⟧s' ρ '↘' ρσ" := (eval_sub gc_deps gc_stack σ ρ ρσ)
-    (at level 70, σ at level 69, ρ at level 69, ρσ at level 69) : mctt_scope.
+  Notation "'⟦' σ ':' Δ '⟧s' ρ '↘' ρσ" := (eval_sub gc_deps gc_stack Δ σ ρ ρσ)
+    (at level 70, σ at level 69, Δ at level 69, ρ at level 69, ρσ at level 69) : mctt_scope.
   Notation "'Rnf' m 'in' s ↘ M" := (read_nf gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).
   Notation "'Rne' m 'in' s ↘ M" := (read_ne gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).
   Notation "'Rtyp' m 'in' s ↘ M" := (read_typ gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).

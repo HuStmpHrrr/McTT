@@ -32,12 +32,14 @@ Section Fixed_GCtx.
       rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
       destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; destruct Ms' as [| M0' Ms']; [ cbn in Hl'; lia |]; cbn in Hl, Hl'.
       rewrite <- List.app_assoc in HΔ |- *; cbn [List.app] in HΔ |- *.
-      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [k HA0]].
+      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [S0 HS0 HA0]].
       assert (HM0 : Θ ⍮ Ξ ⍮ Γ ⊢ M0 ≈ M0' : A0[σ]) by (apply (HMs 0); [ reflexivity | reflexivity | rewrite tele_insts_snoc; reflexivity ]).
       cbn [sb_of_list]; eapply IH; [ exact Hass | exact HΔ | | lia | lia |].
-      + gen_presups.
-        eapply wf_sub_eq_extend; [ exact Hσ | exact HA0 | assumption | | assumption ].
-        eapply wf_conv'; [ eassumption | mauto 3 ].
+      + pose proof (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HA0 HS0 Hσ) as HAA.
+        pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS0 (wf_sub_eq_right _ _ _ _ _ _ Hσ)) as HA0'.
+        eapply wf_sub_eq_extend;
+          [ exact Hσ | exact HA0 | exact HS0 | exact (presup_exp_eq_left HM0)
+          | eapply wf_conv_sort; [ exact (presup_exp_eq_right HM0) | exact HA0' | exact HS0 | exact HAA ] | exact HM0 ].
       + intros k' N N' T HN HN' HT; apply (HMs (S k')); [ exact HN | exact HN' | rewrite tele_insts_snoc; exact HT ].
   Qed.
 
@@ -60,13 +62,13 @@ Section Fixed_GCtx.
       rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
       destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; destruct Ms' as [| M0' Ms']; [ cbn in Hl'; lia |]; cbn in Hl, Hl'.
       rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
-      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [k HA0]].
+      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [k HSk HA0]].
       assert (HM0 : Θ ⍮ Ξ ⍮ Γ ⊢ M0 ≈ M0' : A0)
         by (rewrite <- (exp_sub_id A0); apply (HMs 0); [ reflexivity | reflexivity | rewrite tele_insts_snoc; reflexivity ]).
       assert (Happ : Θ ⍮ Ξ ⍮ Γ ⊢ M $ M0 ≈ M' $ M0' : (ctx_pi Δ B)[Id,,M0]) by (eapply wf_exp_eq_app_cong'; eassumption).
       rewrite ctx_pi_sub in Happ.
       assert (HM0t : Θ ⍮ Ξ ⍮ Γ ⊢ M0 : A0) by (gen_presups; assumption).
-      pose proof (wf_sub_single _ _ _ _ _ _ HA0 HM0t) as Hs.
+      pose proof (wf_sub_single _ _ _ _ _ _ HA0 HSk HM0t) as Hs.
       assert (HΔ' : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ (Id,,M0) ++ Γ) by (eapply ctx_sub_wf; eassumption).
       pose proof (wf_sub_ext _ _ _ _ _ _ Hs HΔ' HΔ) as Hs'.
       cbn [apps_exp sb_of_list].
@@ -190,7 +192,7 @@ Section Fixed_GCtx.
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
          List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T) ->
       forall k T T', List.nth_error (tele_insts Δ σ Ms) k = Some T -> List.nth_error (tele_insts Δ σ' Ms') k = Some T' ->
-        exists i, Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Typeω@i.
+        exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : S.
   Proof.
     induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ Hl Hl' HMs k T T' HT HT'.
     - destruct Ms; [| discriminate ]; unfold tele_insts in HT; cbn in HT; destruct k; discriminate.
@@ -198,16 +200,18 @@ Section Fixed_GCtx.
       rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
       destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; destruct Ms' as [| M0' Ms']; [ cbn in Hl'; lia |]; cbn in Hl, Hl'.
       rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
-      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [i0 HA0]].
+      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [S0 HS0 HA0]].
       rewrite tele_insts_snoc in HT, HT'.
       destruct k as [| k]; cbn [List.nth_error] in HT, HT'.
-      + injection HT as <-; injection HT' as <-; exists i0; eapply sub_eq_preserves_typ; eassumption.
+      + injection HT as <-; injection HT' as <-; exists S0; split; [ exact HS0 | eapply sub_eq_preserves_sort; eassumption ].
       + assert (HM0 : Θ ⍮ Ξ ⍮ Γ ⊢ M0 ≈ M0' : A0[σ])
           by (apply (HMs 0); [ reflexivity | reflexivity | rewrite tele_insts_snoc; reflexivity ]).
         eapply (IH Γ (Γ0 ▹ A0) (σ,,M0) (σ',,M0') Ms Ms'); [ exact Hass | exact HΔ | | lia | lia | | exact HT | exact HT' ].
-        * gen_presups.
-          eapply wf_sub_eq_extend; [ exact Hσ | exact HA0 | assumption | | assumption ].
-          eapply wf_conv'; [ eassumption | mauto 3 ].
+        * pose proof (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HA0 HS0 Hσ) as HAA.
+          pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS0 (wf_sub_eq_right _ _ _ _ _ _ Hσ)) as HA0'.
+          eapply wf_sub_eq_extend;
+            [ exact Hσ | exact HA0 | exact HS0 | exact (presup_exp_eq_left HM0)
+            | eapply wf_conv_sort; [ exact (presup_exp_eq_right HM0) | exact HA0' | exact HS0 | exact HAA ] | exact HM0 ].
         * intros k' N N' T0 HN HN' HT0; apply (HMs (S k')); [ exact HN | exact HN' | rewrite tele_insts_snoc; exact HT0 ].
   Qed.
 
@@ -226,7 +230,7 @@ Section Fixed_GCtx.
       (forall j X Y T, List.nth_error Xs j = Some X -> List.nth_error Ys j = Some Y ->
          List.nth_error (tele_insts (im_params D Mk) Id Xs) j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T) ->
       forall j T T', List.nth_error (tele_insts (im_params D Mk) Id Xs) j = Some T ->
-        List.nth_error (tele_insts (im_params D Mk) Id Ys) j = Some T' -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Typeω@i.
+        List.nth_error (tele_insts (im_params D Mk) Id Ys) j = Some T' -> exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : S.
   Proof.
     intros * Hl Hk HΓ HXl HYl HXY.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
@@ -250,9 +254,10 @@ Section Fixed_GCtx.
     destruct (nth_error_lt_some (tele_insts (im_params D Mk) Id Ys) j) as [T' HT'].
     { rewrite length_tele_insts_params by (try (eapply decl_closed_params_ass; eassumption); exact HYl).
       rewrite HYl, <- HZl; apply List.nth_error_Some; congruence. }
-    destruct (params_types_cong _ _ _ _ _ _ _ Hl Hk HΓ HXl HYl HXY _ _ _ HT HT') as [i HTT].
+    destruct (params_types_cong _ _ _ _ _ _ _ Hl Hk HΓ HXl HYl HXY _ _ _ HT HT') as (S & HS & HTT).
     etransitivity; [ exact (HXY _ _ _ _ HX HY HT) |].
-    eapply wf_exp_eq_conv'; [ exact (HYZ _ _ _ _ HY HZ HT') | symmetry; exact HTT ].
+    eapply wf_exp_eq_conv_sort;
+      [ exact (HYZ _ _ _ _ HY HZ HT') | exact (presup_exp_eq_left HTT) | exact HS | symmetry; exact HTT ].
   Qed.
 
   Lemma params_eq_sym : forall Γ p D k Mk Xs Ys, ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -267,8 +272,8 @@ Section Fixed_GCtx.
     destruct (nth_error_lt_some (tele_insts (im_params D Mk) Id Xs) j) as [T0 HT0].
     { rewrite length_tele_insts_params by (try (eapply decl_closed_params_ass; eassumption); exact HXl).
       rewrite HXl, <- HYl; apply List.nth_error_Some; congruence. }
-    destruct (params_types_cong _ _ _ _ _ _ _ Hl Hk HΓ HXl HYl HXY _ _ _ HT0 HT) as [i HTT].
-    symmetry; eapply wf_exp_eq_conv'; [ exact (HXY _ _ _ _ HX HY HT0) | exact HTT ].
+    destruct (params_types_cong _ _ _ _ _ _ _ Hl Hk HΓ HXl HYl HXY _ _ _ HT0 HT) as (S & HS & HTT).
+    symmetry; eapply wf_exp_eq_conv_sort; [ exact (HXY _ _ _ _ HX HY HT0) | exact (presup_exp_eq_right HTT) | exact HS | exact HTT ].
   Qed.
 
   (** The same for any closed telescope. *)
@@ -287,9 +292,10 @@ Section Fixed_GCtx.
     destruct (nth_error_lt_some (tele_insts C Id Ys) k) as [T' HT'].
     { rewrite length_tele_insts by exact Hass.
       assert (k < List.length Zs) by (apply List.nth_error_Some; congruence); lia. }
-    destruct (tele_insts_cong C Γ Γ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT HT') as [i HTT].
+    destruct (tele_insts_cong C Γ Γ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT HT') as (S & HS & HTT).
     etransitivity; [ exact (HXY _ _ _ _ HX HY HT) |].
-    eapply wf_exp_eq_conv'; [ exact (HYZ _ _ _ _ HY HZ HT') | symmetry; exact HTT ].
+    eapply wf_exp_eq_conv_sort;
+      [ exact (HYZ _ _ _ _ HY HZ HT') | exact (presup_exp_eq_left HTT) | exact HS | symmetry; exact HTT ].
   Qed.
 
   (** Symmetry, for any closed telescope. *)
@@ -305,8 +311,8 @@ Section Fixed_GCtx.
     destruct (nth_error_lt_some (tele_insts C Id Xs) k) as [T0 HT0].
     { rewrite length_tele_insts by exact Hass.
       assert (k < List.length Xs) by (apply List.nth_error_Some; congruence); lia. }
-    destruct (tele_insts_cong C Γ Γ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT0 HT) as [i HTT].
-    symmetry; eapply wf_exp_eq_conv'; [ exact (HXY _ _ _ _ HX HY HT0) | exact HTT ].
+    destruct (tele_insts_cong C Γ Γ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT0 HT) as (S & HS & HTT).
+    symmetry; eapply wf_exp_eq_conv_sort; [ exact (HXY _ _ _ _ HX HY HT0) | exact (presup_exp_eq_right HTT) | exact HS | exact HTT ].
   Qed.
 
   Lemma uparams_ctx_wf : forall Γ p D, ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ.
@@ -374,7 +380,7 @@ Section Fixed_GCtx.
 
   Lemma ctx_pi_split_typed : forall Δt Γ B j, tele_ass Δt -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δt B : Typeω@j ->
       (forall Δ1 Δ2, Δt = Δ1 ++ Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ ctx_pi Δ1 B : Typeω@j) /\
-      (forall Δ1 A Δ2, Δt = Δ1 ++ ce_ass A :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Typeω@j).
+      (forall Δ1 A Δ2, Δt = Δ1 ++ ce_ass A :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Typeω@j \/ Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Propₘ).
   Proof.
     intros * Hass H; split.
     - intros Δ1 Δ2 ->; rewrite ctx_pi_app in H.

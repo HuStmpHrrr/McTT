@@ -22,6 +22,11 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     sort. *)
 Definition record_ty (R : record_decl) : typ := ctx_pi (record_params R) (record_sort R).
 
+(** The sort of the [k]-th field, as the declaration stores it
+    ([relevant] past the fields). *)
+Definition record_field_rel (R : record_decl) (k : nat) : relevance :=
+  List.nth k (record_field_relevance R) relevant.
+
 (** The context of the first [k] fields, innermost first. *)
 Definition record_fctx (R : record_decl) (k : nat) : ctx :=
   List.rev (List.map (fun fT => ce_ass (snd fT)) (List.firstn k (record_fields R))).
