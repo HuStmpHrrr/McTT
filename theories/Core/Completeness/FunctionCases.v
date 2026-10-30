@@ -695,11 +695,11 @@ Hint Resolve rel_exp_under_ctx_app_cong : mctt.
 
 (** A head whose type's value in the tail is a proposition is a
     proposition. *)
-Lemma head_propositional_of_value : forall {A ρ a},
+Lemma head_propositional_of_value : forall {Γ A ρ a},
     ⟦ A ⟧ ρ ↘ a ->
     domain_relevance a = propositional ->
-    head_propositional gc_deps gc_stack (ce_ass A) ρ.
-Proof. intros * Ha Hr; econstructor; [ reflexivity | intros y; reflexivity | exact Ha | exact Hr ]. Qed.
+    head_propositional gc_deps gc_stack (ce_ass A) Γ ρ.
+Proof. intros * Ha Hr; econstructor; [ reflexivity | intros y _; reflexivity | exact Ha | exact Hr ]. Qed.
 
 (** ** The Type Judgment of an Instantiation at a Proposition
 
@@ -739,8 +739,8 @@ Proof.
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
   destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   pose proof Hachain as (_ & [Hr2 Hr3 _] & _).
-  pose proof (head_propositional_of_value Ha2 Hr2) as Hp2.
-  pose proof (head_propositional_of_value Ha3 Hr3) as Hp3.
+  pose proof (head_propositional_of_value (Γ := Γ) Ha2 Hr2) as Hp2.
+  pose proof (head_propositional_of_value (Γ := Γ) Ha3 Hr3) as Hp3.
   destruct (eval_sub_id_rel HΓ Hρσ) as [Hid2 Hid3].
   (** The two instantiations, their outer values rewritten into the goal's
       spelling. *)
@@ -1042,8 +1042,8 @@ Proof.
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
   pose proof Hachain as ([Hr1 _ _] & [Hr2 Hr3 _] & _).
   assert (Ha14 : DF a1 ≈ a4 ∈ per_univ_elem i ↘ per_proof) by (apply per_univ_elem_of_prop; pairwise).
-  pose proof (head_propositional_of_value Ha2 Hr2) as Hp2.
-  pose proof (head_propositional_of_value Ha3 Hr3) as Hp3.
+  pose proof (head_propositional_of_value (Γ := Γ) Ha2 Hr2) as Hp2.
+  pose proof (head_propositional_of_value (Γ := Γ) Ha3 Hr3) as Hp3.
   destruct (eval_sub_id_rel HΓ Hρσ) as [Hid2 Hid3].
   assert (Hstar : Dom ⋆ᵈ ≈ ⋆ᵈ ∈ per_proof) by (split; reflexivity).
   assert (Hext : Dom ρσ ↦ ⋆ᵈ ≈ ρ'σ' ↦ ⋆ᵈ ∈ per_env_extend A A env_relΓ)

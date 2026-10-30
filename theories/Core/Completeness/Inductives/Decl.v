@@ -265,7 +265,8 @@ Qed.
     before it: the environment extended by the terms' values. *)
 Lemma eval_sb_of_list : forall Ms ts σ Δ ρ ρσ ms,
     ⟦ σ : Δ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ts = List.length Ms ->
-    (forall k e, List.nth_error ts k = Some e -> ~ head_propositional gc_deps gc_stack e (env_args ρσ (List.firstn k ms))) ->
+    (forall k e, List.nth_error ts k = Some e ->
+       ~ head_propositional gc_deps gc_stack e (List.rev (List.firstn k ts) ++ Δ) (env_args ρσ (List.firstn k ms))) ->
     ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_args ρσ ms.
 Proof.
   induction Ms as [| M Ms IH]; intros [| e ts] * Hσ HMs Hl Hn; inversion HMs; subst; cbn [sb_of_list] in *;
@@ -273,7 +274,8 @@ Proof.
   change (env_args ρσ (m :: ms0)) with (env_args (ρσ ↦ m) ms0).
   cbn [List.rev]; rewrite <- List.app_assoc; cbn [List.app].
   apply IH; [ apply eval_sub_extend; [ assumption | exact (Hn 0 e eq_refl) | assumption ] | assumption | cbn [List.length] in Hl; lia |].
-  intros k e' He'; exact (Hn (S k) e' He').
+  intros k e' He'; pose proof (Hn (S k) e' He') as Hk.
+  cbn [List.firstn List.rev] in Hk; rewrite <- List.app_assoc in Hk; exact Hk.
 Qed.
 
 
@@ -410,17 +412,18 @@ Qed.
 Lemma rel_wk_under_ctx_compose : forall Γ Δ Θ' φ ψ,
     Γ ⊨ʷ ψ : Δ -> Δ ⊨ʷ φ : Θ' -> Γ ⊨ʷ (wk_compose φ ψ) : Θ'.
 Proof.
-  intros * [R1 H1 R2 H2 Hψ Pψ] [R3 H3 R4 H4 Hφ Pφ].
+  intros * [R1 H1 R2 H2 Hψ Bψ Pψ] [R3 H3 R4 H4 Hφ Bφ Pφ].
   assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (Hφ' : rel_wk φ R2 R4) by (destruct Hφ as [Hm Hφ]; split; [ exact Hm | intros; apply Hφ, E; assumption ]).
-  eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 | eapply rel_wk_compose; [ exact Hψ | exact Hφ' ] |].
+  eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 | eapply rel_wk_compose; [ exact Hψ | exact Hφ' ]
+                                 | intros x Hx; exact (Bψ _ (Bφ x Hx)) |].
   (** A proposition of [Γ] at [ψ (φ x)] is one of [Δ] at [φ x], and so one
       of [Θ'] at [x]. *)
-  intros ρ ρ' Hρ x Hp.
+  intros ρ ρ' Hρ x Hx Hp.
   pose proof Hψ as [Hψm Hψr]; pose proof Hφ' as [Hφm _].
   pose proof (Hψr _ _ Hρ) as Hρψ.
   rewrite eval_wk_compose by (first [ exact Hψm | exact Hφm ]).
-  exact (Pφ _ _ (proj1 (E _ _) Hρψ) x (Pψ _ _ Hρ (φ x) Hp)).
+  exact (Pφ _ _ (proj1 (E _ _) Hρψ) x Hx (Pψ _ _ Hρ (φ x) (Bφ x Hx) Hp)).
 Qed.
 
 (** ** Variables of an Environment of Arguments *)

@@ -155,23 +155,24 @@ Lemma rel_sub_q_entry : forall {Γ'' Δ τ τ' e Re RΔ},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ RΔ ->
     Γ'' ⊨ˢ τ ≈ τ' : Δ ->
     forall x u, Re x x -> ⟦ τ : Δ ⟧s x↯ ↘ u ->
-      forall e', (forall t t', RΔ t t' -> ~ head_propositional gc_deps gc_stack e' t) ->
+      forall e', (forall t t', RΔ t t' -> ~ head_propositional gc_deps gc_stack e' Δ t) ->
       exists t, ⟦ q τ : e' :: Δ ⟧s x ↘ env_entry x 0 :: t /\ RΔ t u.
 Proof.
   intros * He HΔ [R1 H1 R2 H2 Hσ] x u Hx Hu e' Hnp.
   pose proof (rel_wk_shift H1 He) as Hsh.
   destruct (Hσ _ _ He _ Hsh _ _ Hx) as [t v v' t' Ht Hv Hv' Ht' Hc].
   rewrite eval_wk_shift in Hv, Hv'.
-  assert (Heq : env_eq v u) by (eapply functional_eval_sub; eassumption).
   assert (E : R2 <~> RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (Htu : RΔ t u) by (apply E; rewrite <- Heq; destruct Hc as [Hc _]; exact Hc).
+  assert (Htu : RΔ t u).
+  { apply E; destruct Hc as [Hc _].
+    exact (per_ctx_env_resp_agree H2 _ _ _ _ (reflexivity _) (functional_eval_sub _ _ _ _ _ Hv Hu) Hc). }
   exists t; split; [| exact Htu ].
   apply eval_sub_q; [ exact Ht |].
   intros Hpt; exfalso; exact (Hnp _ _ Htu Hpt).
 Qed.
 
 (** A slot is never a proposition. *)
-Lemma head_not_propositional_mod : forall U ρ, ~ head_propositional gc_deps gc_stack (ce_mod U) ρ.
+Lemma head_not_propositional_mod : forall U Δ ρ, ~ head_propositional gc_deps gc_stack (ce_mod U) Δ ρ.
 Proof. intros * [T HT]; discriminate HT. Qed.
 
 (** A head tied to the value of [U[σ]] over a tail is tied to the value of
@@ -216,10 +217,12 @@ Proof.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (E2 a b) H)) in Htails.
   destruct (Hσ _ _ HΓ'U _ Hshift _ _ (Hψ _ _ Hρ)) as [z1 y2 y3 z4 Hz1 Hy2 Hy3 Hz4 Hbtails].
   rewrite ?eval_wk_shift in *.
-  assert (Heq1 : env_eq y1 z1) by (eapply functional_eval_sub; eassumption).
-  assert (Heq4 : env_eq y4 z4) by (eapply functional_eval_sub; eassumption).
-  assert (Hy12 : R y1 y2) by (rewrite Heq1; pairwise).
-  assert (Hy43 : R y4 y3) by (rewrite Heq4; pairwise).
+  assert (Hy12 : R y1 y2).
+  { assert (Hz : R z1 y2) by pairwise.
+    exact (per_ctx_env_resp_agree HΓ _ _ _ _ (functional_eval_sub _ _ _ _ _ Hz1 Hy1) (reflexivity _) Hz). }
+  assert (Hy43 : R y4 y3).
+  { assert (Hz : R z4 y3) by pairwise.
+    exact (per_ctx_env_resp_agree HΓ _ _ _ _ (functional_eval_sub _ _ _ _ _ Hz4 Hy4) (reflexivity _) Hz). }
   assert (Htl : R' (⟪ψ⟫ ρ)↯ (⟪ψ⟫ ρ)↯) by (etransitivity; [ exact Htail | symmetry; exact Htail ]).
   assert (Htr : R' (⟪ψ⟫ ρ')↯ (⟪ψ⟫ ρ')↯) by (etransitivity; [ symmetry; exact Htail | exact Htail ]).
   pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
@@ -243,7 +246,7 @@ Proof.
                     (env_entry ρ' (ψ 0) :: y4) (env_entry ρ' (ψ 0) :: x4));
     [ apply eval_sub_wk_q | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q
     | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q | apply eval_sub_wk_q | ];
-    try solve [ eassumption | intros Hp; exfalso; exact (head_not_propositional_mod _ _ Hp) ].
+    try solve [ eassumption | intros Hp; exfalso; exact (head_not_propositional_mod _ _ _ Hp) ].
   cbn [rel_chain]; cbn [drop_env tl].
   unfold env_mod in Hm, Hm' |- *; cbn [env_entry hd] in Hm, Hm' |- *.
   repeat split.
@@ -487,10 +490,11 @@ Lemma eval_sub_wk_extend_mod : forall U Δ σ H φ ρ ρσ h,
     ⟦ modexp_wk H φ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h ->
     ⟦ sb_wk (σ ,,ₘ H) φ : ce_mod U :: Δ ⟧s ρ ↘ ρσ ↦ᵐ h.
 Proof.
-  intros * Hσ HH [| x].
+  intros * Hσ HH [| x] Hx.
   - split; [ intros []; discriminate | intros _; exists h; split; [ reflexivity | assumption ] ].
-  - split; [ intros Hp; apply (Hσ x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
-           | intros Hn; apply (Hσ x); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp; apply (Hσ x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
+           | intros Hn; apply (Hσ x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 (** An evaluated extension by a slot: the tail, and the module. *)
@@ -499,10 +503,10 @@ Lemma eval_sub_extend_mod_inv : forall U Δ σ H ρ ρτ,
     ⟦ σ : Δ ⟧s ρ ↘ ρτ↯ /\ exists h, env_entry ρτ 0 = de_mod h /\ ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h.
 Proof.
   intros * Hτ; split.
-  - intros x; rewrite env_entry_drop; split.
-    + intros Hp; apply (Hτ (S x)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
-    + intros Hn; apply (Hτ (S x)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
-  - exact (proj2 (Hτ 0) (fun Hp => head_not_propositional_mod U ρτ↯ (proj1 (entry_propositional_zero_head _ _ _) Hp))).
+  - intros x Hx; rewrite env_entry_drop; split.
+    + intros Hp; apply (Hτ (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
+    + intros Hn; apply (Hτ (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
+  - exact (proj2 (Hτ 0 ltac:(cbn; lia)) (fun Hp => head_not_propositional_mod U _ ρτ↯ (proj1 (entry_propositional_zero_head _ _ _) Hp))).
 Qed.
 
 (** A literal's value is the value of its closure. *)
@@ -595,22 +599,22 @@ Lemma eval_sub_dm_combine : forall ed U edm Δ σd σm σdm N H ρ ρd ρm,
     ⟦ σd : ed :: Δ ⟧s ρ ↘ ρd -> ⟦ σm : ce_mod U :: Δ ⟧s ρ ↘ ρm ->
     (forall x, σdm (S x) = σd (S x)) ->
     σd 0 = se_exp N -> σm 0 = se_mod H -> σdm 0 = se_dm N H ->
-    ~ head_propositional gc_deps gc_stack ed ρd↯ ->
-    ~ head_propositional gc_deps gc_stack edm ρd↯ ->
+    ~ head_propositional gc_deps gc_stack ed Δ ρd↯ ->
+    ~ head_propositional gc_deps gc_stack edm Δ ρd↯ ->
     ⟦ σdm : edm :: Δ ⟧s ρ ↘ de_dm (ρd 0) (env_mod ρm 0) :: ρd↯.
 Proof.
-  intros * Hed Hem Ht Hd Hm Hdm Hnd Hndm [| x].
+  intros * Hed Hem Ht Hd Hm Hdm Hnd Hndm [| x] Hx.
   - split; [ intros Hp; exfalso; apply Hndm; exact (proj1 (entry_propositional_head _ _ _ _) Hp) |].
     intros _.
-    pose proof (proj2 (Hed 0) (fun Hp => Hnd (proj1 (entry_propositional_zero_head _ _ _) Hp))) as Hed0.
-    pose proof (proj2 (Hem 0) (fun Hp => head_not_propositional_mod U _ (proj1 (entry_propositional_zero_head _ _ _) Hp))) as Hem0.
+    pose proof (proj2 (Hed 0 ltac:(cbn; lia)) (fun Hp => Hnd (proj1 (entry_propositional_zero_head _ _ _) Hp))) as Hed0.
+    pose proof (proj2 (Hem 0 ltac:(cbn; lia)) (fun Hp => head_not_propositional_mod U _ _ (proj1 (entry_propositional_zero_head _ _ _) Hp))) as Hem0.
     rewrite Hd in Hed0; rewrite Hm in Hem0; rewrite Hdm.
     destruct Hed0 as (n & En & Hn); destruct Hem0 as (h & Eh & Hh).
     exists n, h; unfold env_var, env_mod; rewrite En, Eh; cbn [env_entry hd]; repeat split; assumption.
-  - rewrite Ht; cbn [env_entry]; rewrite env_entry_drop; split.
-    + intros Hp; apply (Hed (S x)).
+  - cbn [List.length] in Hx; rewrite Ht; cbn [env_entry]; rewrite env_entry_drop; split.
+    + intros Hp; apply (Hed (S x) ltac:(cbn; lia)).
       apply (proj2 (entry_propositional_succ _ _ _ _)); exact (proj1 (entry_propositional_extend _ _ _ _ _) Hp).
-    + intros Hn; apply (Hed (S x)); intros Hp; apply Hn.
+    + intros Hn; apply (Hed (S x) ltac:(cbn; lia)); intros Hp; apply Hn.
       apply (proj2 (entry_propositional_extend _ _ _ _ _)); exact (proj1 (entry_propositional_succ _ _ _ _) Hp).
 Qed.
 
@@ -622,13 +626,13 @@ Lemma eval_sub_dm_split : forall ed U edm Δ σd σm σdm N H ρ e,
     ⟦ σdm : edm :: Δ ⟧s ρ ↘ e ->
     (forall x, σdm (S x) = σd (S x)) -> (forall x, σm (S x) = σd (S x)) ->
     σd 0 = se_exp N -> σm 0 = se_mod H -> σdm 0 = se_dm N H ->
-    ~ head_propositional gc_deps gc_stack edm e↯ ->
-    ~ head_propositional gc_deps gc_stack ed e↯ ->
+    ~ head_propositional gc_deps gc_stack edm Δ e↯ ->
+    ~ head_propositional gc_deps gc_stack ed Δ e↯ ->
     ⟦ σd : ed :: Δ ⟧s ρ ↘ de_term (e 0) :: e↯ /\ ⟦ σm : ce_mod U :: Δ ⟧s ρ ↘ de_mod (env_mod e 0) :: e↯ /\
     env_eq e (de_dm (e 0) (env_mod e 0) :: e↯).
 Proof.
   intros * He Ht Htm Hd Hm Hdm Hndm Hnd.
-  pose proof (proj2 (He 0) (fun Hp => Hndm (proj1 (entry_propositional_zero_head _ _ _) Hp))) as H0.
+  pose proof (proj2 (He 0 ltac:(cbn; lia)) (fun Hp => Hndm (proj1 (entry_propositional_zero_head _ _ _) Hp))) as H0.
   rewrite Hdm in H0; destruct H0 as (n & h & En & Hn & Hh).
   assert (Ev : e 0 = n) by (unfold env_var; rewrite En; reflexivity).
   assert (Emod : env_mod e 0 = h) by (unfold env_mod; rewrite En; reflexivity).
@@ -643,32 +647,32 @@ Proof.
              entry_propositional gc_deps gc_stack (edm :: Δ) e (S x))
     by (intros; rewrite entry_propositional_extend, entry_propositional_succ; reflexivity).
   rewrite Ev, Emod; split; [| split ].
-  - intros [| x].
+  - intros [| x] Hx.
     + split; [ intros Hp; exfalso; exact (Hnd (proj1 (entry_propositional_head _ _ _ _) Hp)) |].
       intros _; rewrite Hd; exists n; split; [ reflexivity | exact Hn ].
     + rewrite <- Ht; rewrite env_entry_cons_succ, env_entry_drop; split.
-      * intros Hp; apply (He (S x)); exact (proj1 (Hs' _ _ _) Hp).
-      * intros Hn'; apply (He (S x)); intros Hp; apply Hn'; exact (proj2 (Hs' ed (de_term n) x) Hp).
-  - intros [| x].
+      * intros Hp; apply (He (S x) Hx); exact (proj1 (Hs' _ _ _) Hp).
+      * intros Hn'; apply (He (S x) Hx); intros Hp; apply Hn'; exact (proj2 (Hs' ed (de_term n) x) Hp).
+  - intros [| x] Hx.
     + split; [ intros [T HT]; discriminate HT |].
       intros _; rewrite Hm; exists h; split; [ reflexivity | exact Hh ].
     + rewrite Htm, <- Ht; rewrite env_entry_cons_succ, env_entry_drop; split.
-      * intros Hp; apply (He (S x)); exact (proj1 (Hs' _ _ _) Hp).
-      * intros Hn'; apply (He (S x)); intros Hp; apply Hn'; exact (proj2 (Hs' (ce_mod U) (de_mod h) x) Hp).
+      * intros Hp; apply (He (S x) Hx); exact (proj1 (Hs' _ _ _) Hp).
+      * intros Hn'; apply (He (S x) Hx); intros Hp; apply Hn'; exact (proj2 (Hs' (ce_mod U) (de_mod h) x) Hp).
   - intros [| x]; [ exact En | reflexivity ].
 Qed.
 #[local] Opaque eval_sub.
 
 (** A head tied to a unit over one tail is tied to it over any tail with the
-    same entries. *)
+    same entries on the context. *)
 Lemma tie_mod_env_eq : forall {Γ U R m t t'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
-    R t' t' -> env_eq t t' ->
+    R t' t' -> env_agree_upto (List.length Γ) t t' ->
     tie_mod m (me_lit U) t -> tie_mod m (me_lit U) t'.
 Proof.
   intros * HΓ HU Ht' Heq Hm.
-  assert (Htt : R t t') by (eapply (per_ctx_env_resp_env_eq HΓ); [ symmetry; exact Heq | reflexivity | exact Ht' ]).
+  assert (Htt : R t t') by (eapply (per_ctx_env_resp_agree HΓ); [ symmetry; exact Heq | reflexivity | exact Ht' ]).
   exact (tie_mod_move _ _ _ _ _ Hm (unit_chain_at HU HΓ _ _ Htt)).
 Qed.
 
@@ -681,7 +685,7 @@ Lemma per_env_extend_dm_combine : forall {Γ A M U R a b ma mb},
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
     per_env_extend_def A M R a b ->
     env_ext_mod U U R ma mb ->
-    env_eq ma↯ a↯ -> env_eq mb↯ b↯ ->
+    env_agree_upto (List.length Γ) ma↯ a↯ -> env_agree_upto (List.length Γ) mb↯ b↯ ->
     per_env_extend_dm A M U R (de_dm (a 0) (env_mod ma 0) :: a↯) (de_dm (b 0) (env_mod mb 0) :: b↯).
 Proof.
   intros * HΓ HUU Hab Hm Qa Qb.
@@ -725,18 +729,18 @@ Proof.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Cd.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Em a b) H)) in Cm.
   (** The tails of the two evaluations of each side have the same entries. *)
-  assert (Q1 : env_eq m1↯ d1↯)
+  assert (Q1 : env_agree_upto (List.length Γ) m1↯ d1↯)
     by (eapply functional_eval_sub; [ exact (eval_sub_shift_pre _ _ _ _ _ Hm1) | exact (eval_sub_shift_pre _ _ _ _ _ Hd1) ]).
-  assert (Q2 : env_eq m2↯ d2↯)
+  assert (Q2 : env_agree_upto (List.length Γ) m2↯ d2↯)
     by (eapply functional_eval_sub; [ exact (eval_sub_shift_pre _ _ _ _ _ Hm2) | exact (eval_sub_shift_pre _ _ _ _ _ Hd2) ]).
-  assert (Q3 : env_eq m3↯ d3↯)
+  assert (Q3 : env_agree_upto (List.length Γ) m3↯ d3↯)
     by (eapply functional_eval_sub; [ exact (eval_sub_shift_pre _ _ _ _ _ Hm3) | exact (eval_sub_shift_pre _ _ _ _ _ Hd3) ]).
-  assert (Q4 : env_eq m4↯ d4↯)
+  assert (Q4 : env_agree_upto (List.length Γ) m4↯ d4↯)
     by (eapply functional_eval_sub; [ exact (eval_sub_shift_pre _ _ _ _ _ Hm4) | exact (eval_sub_shift_pre _ _ _ _ _ Hd4) ]).
   (** [A] is a type of a universe: no head is a proof. *)
   assert (Hnp : forall t t', Dom t ≈ t' ∈ R ->
-                  ~ head_propositional gc_deps gc_stack (ce_def A M) t /\
-                  ~ head_propositional gc_deps gc_stack (ce_dm A M U) t)
+                  ~ head_propositional gc_deps gc_stack (ce_def A M) Γ t /\
+                  ~ head_propositional gc_deps gc_stack (ce_dm A M U) Γ t)
     by (intros t t' Ht; split;
         [ exact (proj1 (head_not_propositional_of_typ (e := ce_def A M) HΓ eq_refl HA _ _ Ht))
         | exact (proj1 (head_not_propositional_of_typ (e := ce_dm A M U) HΓ eq_refl HA _ _ Ht)) ]).
@@ -765,17 +769,18 @@ Lemma per_env_extend_dm_of_parts : forall {Γ A M U R a b ma mb},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
     per_env_extend_def A M R a b -> env_ext_mod U U R ma mb ->
-    env_eq ma a -> env_eq mb b -> per_env_extend_dm A M U R a b.
+    env_agree_upto (S (List.length Γ)) ma a -> env_agree_upto (S (List.length Γ)) mb b ->
+    per_env_extend_dm A M U R a b.
 Proof.
   intros * HΓ HU Hab [_ Ta _ Tb _] Qa Qb.
   assert (HPR : PER R) by (eapply per_env_PER; exact HΓ).
   destruct Hab as [[Hab1 Hab2 _ _] Hta Htb].
   assert (Raa : R a↯ a↯) by (etransitivity; [ exact Hab1 | symmetry; exact Hab1 ]).
   assert (Rbb : R b↯ b↯) by (etransitivity; [ symmetry; exact Hab1 | exact Hab1 ]).
-  rewrite (env_eq_mod _ _ Qa 0) in Ta; rewrite (env_eq_mod _ _ Qb 0) in Tb.
+  rewrite (env_agree_mod _ _ _ Qa 0 ltac:(lia)) in Ta; rewrite (env_agree_mod _ _ _ Qb 0 ltac:(lia)) in Tb.
   econstructor; [ exact Hab1 | exact Hab2 | exact Hta | exact Htb
-               | exact (tie_mod_env_eq HΓ HU Raa (fun x => Qa (S x)) Ta)
-               | exact (tie_mod_env_eq HΓ HU Rbb (fun x => Qb (S x)) Tb) ].
+               | exact (tie_mod_env_eq HΓ HU Raa (env_agree_upto_drop _ _ _ Qa) Ta)
+               | exact (tie_mod_env_eq HΓ HU Rbb (env_agree_upto_drop _ _ _ Qb) Tb) ].
 Qed.
 
 (** One substitution into the definition entry of a term part and into the
@@ -802,7 +807,7 @@ Proof.
       either. *)
   assert (Hmd : forall τ e e' t, Dom e ≈ e' ∈ Rm -> ⟦ τ : Δ ▹ₘ U ⟧s t ↘ e -> ⟦ τ : Δ ▸ A ≔ M ⟧s t ↘ e).
   { intros τ e e' t He Hev.
-    eapply eval_sub_change_target; [ exact Hev | | intros [| x] [T HT E0 HE0 a Ea Hp]; [ discriminate HT | econstructor; eassumption ] ].
+    eapply eval_sub_change_target; [ exact Hev | cbn; lia | | intros [| x] _ [T HT E0 HE0 a Ea Hp]; [ discriminate HT | econstructor; eassumption ] ].
     pose proof (proj1 (per_ctx_env_proofs _ _ _ HΔm _ _ He)) as Hpf.
     intros [| x] Hx.
     - exfalso.
@@ -814,10 +819,10 @@ Proof.
     by (intros [| x]; reflexivity).
   assert (PER Rm) by (eapply per_env_PER; eassumption).
   pose proof Cm as (M12' & M23' & M34').
-  assert (Q1 : env_eq m1 d1) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M12' | exact Hm1 ] | exact Hd1 ]).
-  assert (Q2 : env_eq m2 d2) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M23' | exact Hm2 ] | exact Hd2 ]).
-  assert (Q3 : env_eq m3 d3) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M34' | exact Hm3 ] | exact Hd3 ]).
-  assert (Q4 : env_eq m4 d4)
+  assert (Q1 : env_agree_upto (List.length (Δ ▸ A ≔ M)) m1 d1) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M12' | exact Hm1 ] | exact Hd1 ]).
+  assert (Q2 : env_agree_upto (List.length (Δ ▸ A ≔ M)) m2 d2) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M23' | exact Hm2 ] | exact Hd2 ]).
+  assert (Q3 : env_agree_upto (List.length (Δ ▸ A ≔ M)) m3 d3) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M34' | exact Hm3 ] | exact Hd3 ]).
+  assert (Q4 : env_agree_upto (List.length (Δ ▸ A ≔ M)) m4 d4)
     by (eapply functional_eval_sub; [ eapply Hmd; [ symmetry; exact M34' | exact Hm4 ] | exact Hd4 ]).
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Cd.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Em a b) H)) in Cm.
@@ -866,7 +871,7 @@ Proof.
     eapply rel_sub_under_ctx_restrict;
       [ exact HΓ'dm | exact (per_ctx_env_of_def_sub HΓ' Hσj HA HM)
       | exact (per_ctx_env_of_def HΓ HA HM) | exact (per_ctx_env_of_def HΓ HA HM)
-      | | intros; assumption | intros ? ? _ ? Hp; exact Hp
+      | | intros; assumption | cbn; lia | intros ? ? _ ? _ Hp; exact Hp
       | exact (rel_sub_under_ctx_q_def Hσj HA HM) ].
     intros e e' [Ht Hh Tl Tr _ _].
     assert (PER R') by (eapply per_env_PER; eassumption).
@@ -879,7 +884,7 @@ Proof.
       [ exact HΓ'dm | exact (per_ctx_env_of_mod_sub HΓ' Hσj HU)
       | exact (per_ctx_env_of_mod HΓ HU) | exact (per_ctx_env_of_mod HΓ HU)
       | intros ? ? [Ht _ _ _ T1 T2]; constructor; assumption | intros; assumption
-      | intros ? ? _ ? Hp; exact Hp
+      | cbn; lia | intros ? ? _ ? _ Hp; exact Hp
       | exact (rel_sub_under_ctx_q_mod Hσj HU) ].
 Qed.
 
@@ -967,7 +972,7 @@ Proof.
   assert (Tv4 : tie_mod v4 (me_lit U'[σ']ᵘ) ρ') by (exists v4; split; [ exact Hv4 | etransitivity; [ symmetry; exact Dv34 | exact Dv34 ] ]).
   assert (Hpair : env_ext_mod U'[σ']ᵘ U'[σ']ᵘ R' (ρ' ↦ᵐ v4) (ρ' ↦ᵐ v4))
     by (cbn [drop_env tl env_mod env_entry hd]; repeat split; assumption).
-  destruct (rel_sub_q_entry HΓ'U' HΓ Hσ'σ' _ _ Hpair Hev' (ce_mod U') (fun t t' _ => head_not_propositional_mod U' t))
+  destruct (rel_sub_q_entry HΓ'U' HΓ Hσ'σ' _ _ Hpair Hev' (ce_mod U') (fun t t' _ => head_not_propositional_mod U' _ t))
     as [t [Hqt Htr]].
   pose proof (rel_sub_under_ctx_q_mod Hσ'σ' HUr) as Hq.
   destruct (HB'gen _ _ HΓ'U' _ _ Hq _ _ _ _ Hpair Hqt Hqt) as [R3 [HI3t HI3e]].
@@ -1235,7 +1240,9 @@ Proof.
   intros * [T HT E HE a Ea Hp]; econstructor; [ | | exact Ea | exact Hp ].
   - unfold ctx_entry_type in *; rewrite List.nth_error_app2 in HT by lia.
     replace (List.length Ψ + x - List.length Ψ) with x in HT by lia; exact HT.
-  - intros y; rewrite HE, !env_entry_skipn; f_equal; lia.
+  - intros y Hy.
+    rewrite (HE y) by (rewrite !List.length_skipn, List.length_app in *; lia).
+    rewrite !env_entry_skipn; f_equal; lia.
 Qed.
 
 Lemma rel_wk_under_ctx_shiftn : forall Ψ Γ, ⊨ Ψ ++ Γ -> Ψ ++ Γ ⊨ʷ (wk_shiftn (List.length Ψ)) : Γ.
@@ -1243,8 +1250,9 @@ Proof.
   intros * H.
   destruct (rel_ctx_wf_per_ctx_env H) as [R HR].
   destruct (rel_ctx_wf_per_ctx_env (rel_ctx_wf_app_r _ _ H)) as [RΓ HΓ].
-  eapply rel_wk_under_ctx_intro; [ exact HR | exact HΓ | exact (rel_wk_shiftn _ _ _ _ HR HΓ) |].
-  intros ρ ρ' _ x Hx; rewrite eval_wk_shiftn; apply entry_propositional_shiftn.
+  eapply rel_wk_under_ctx_intro; [ exact HR | exact HΓ | exact (rel_wk_shiftn _ _ _ _ HR HΓ)
+                                 | intros x Hx; cbn [wk_shiftn]; rewrite List.length_app; lia |].
+  intros ρ ρ' _ x _ Hx; rewrite eval_wk_shiftn; apply entry_propositional_shiftn.
   cbn [wk_shiftn] in Hx; rewrite PeanoNat.Nat.add_comm in Hx; exact Hx.
 Qed.
 
