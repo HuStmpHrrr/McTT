@@ -340,7 +340,7 @@ Corollary head_not_propositional_of_typ : forall {Γ e A A'} {i : nat} {env_rel�
     ctx_entry_type (e :: nil) 0 = Some A ->
     Γ ⊨ A ≈ A' : Typeω@i ->
     forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
-      ~ head_propositional gc_deps gc_stack e ρ /\ ~ head_propositional gc_deps gc_stack e ρ'.
+      ~ head_propositional gc_deps gc_stack e Γ ρ /\ ~ head_propositional gc_deps gc_stack e Γ ρ'.
 Proof.
   intros * HΓ He HA ρ ρ' Hρ.
   pose proof (rel_exp_of_typ_relevant_at HΓ (rel_exp_under_ctx_refl_left HA)) as HArel.
@@ -350,7 +350,7 @@ Proof.
     assert (E5 : env_relΓ <~> env_relΓ5) by (eapply per_ctx_env_right_irrel; eassumption).
     intros ρ1 ρ1' Hρ1%E5; exact (HAs _ _ Hρ1). }
   assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
-  assert (Hnp : forall ρ1 ρ1', Dom ρ1 ≈ ρ1' ∈ env_relΓ -> ~ head_propositional gc_deps gc_stack e ρ1).
+  assert (Hnp : forall ρ1 ρ1', Dom ρ1 ≈ ρ1' ∈ env_relΓ -> ~ head_propositional gc_deps gc_stack e Γ ρ1).
   { intros ρ1 ρ1' Hρ1 Hp.
     destruct (HArel _ _ Hρ1) as (a0 & Ea0 & Er0).
     apply (head_propositional_iff HΓ He HAs Hρ1 Ea0) in Hp; congruence. }

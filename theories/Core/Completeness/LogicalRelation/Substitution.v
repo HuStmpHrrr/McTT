@@ -235,7 +235,7 @@ Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A} {i : nat},
     Γ ▹ A[ψ]ʷ ⊨ʷ (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
-  pose proof Hψj as [env_relΓ HΓ env_relΔ HΔ Hψ Hψp].
+  pose proof Hψj as [env_relΓ HΓ env_relΔ HΔ Hψ Hψl Hψp].
   pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   handle_per_ctx_env_irrel.
   pose proof (rel_wk_mono _ _ _ Hψ) as Hψm.
@@ -291,14 +291,18 @@ Proof.
       assert (H34 : Dom a ≈ a4 ∈ per_univ i) by pairwise.
       destruct H34 as [R34 H34]; pose proof (per_univ_elem_relevance _ _ _ _ H34).
       exists a4; split; [ exact Ha4 | congruence ].
+  - (** The target's entries: the head to the head, the others as [ψ]
+      takes them. *)
+    intros [| x] Hx; cbn [wk_q]; [ cbn; lia |].
+    pose proof (Hψl x ltac:(cbn in Hx; lia)); cbn; lia.
   - (** The head: [A[ψ]ʷ] at a tail is a proposition exactly when [A] is at
-      its image, by the commutation obligation, at a tail pointwise equal
-      to the given one. *)
-    intros ρ ρ' [Htail _ _ _] [| x] Hx.
+      its image, by the commutation obligation, at a tail agreeing with the
+      given one. *)
+    intros ρ ρ' [Htail _ _ _] [| x] Hlt Hx.
     + destruct Hx as [T HT E HE v Ev Hv]; cbn in HT; injection HT as <-.
       rewrite skipn_one_drop in HE.
       assert (HE' : Dom E ≈ ρ'↯ ∈ env_relΓ)
-        by (eapply per_ctx_env_resp_env_eq; [ exact HΓ | symmetry; exact HE | reflexivity | exact Htail ]).
+        by (eapply per_ctx_env_resp_agree; [ exact HΓ | symmetry; exact HE | reflexivity | exact Htail ]).
       destruct (Hcom _ _ HE') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
       rewrite exp_sub_of_wk in Ha1.
       functional_eval_rewrite_clear.
@@ -306,12 +310,12 @@ Proof.
       destruct H12 as [R12 H12].
       pose proof (per_univ_elem_relevance _ _ _ _ H12) as Hr12.
       econstructor; [ reflexivity | | exact Ha2 | congruence ].
-      intros y; rewrite skipn_one_drop, eval_wk_q_tail by typeclasses eauto.
-      rewrite !eval_wk_entry by assumption; apply HE.
+      intros y Hy; rewrite skipn_one_drop, eval_wk_q_tail by typeclasses eauto.
+      rewrite !eval_wk_entry by assumption; apply HE, Hψl; exact Hy.
     + apply (proj1 (entry_propositional_succ _ _ _ _)) in Hx.
       apply (proj2 (entry_propositional_succ _ _ _ _)).
       rewrite eval_wk_q_tail by typeclasses eauto.
-      exact (Hψp _ _ Htail _ Hx).
+      exact (Hψp _ _ Htail x ltac:(cbn in Hlt; lia) Hx).
 Qed.
 
 (** ** Extension is Semantic
@@ -375,10 +379,10 @@ Proof.
   destruct (domain_relevance d2) eqn:Er2.
   - (** A relevant head: the heads are the term's four values, related in
       the head PER of [A] through the chains. *)
-    assert (Hn2 : ~ head_propositional gc_deps gc_stack (ce_ass A) t2) by (rewrite I2; discriminate).
-    assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass A) t1) by (rewrite I12; exact Hn2).
-    assert (Hn3 : ~ head_propositional gc_deps gc_stack (ce_ass A) t3) by (rewrite <- I23; exact Hn2).
-    assert (Hn4 : ~ head_propositional gc_deps gc_stack (ce_ass A) t4) by (rewrite <- I34; exact Hn3).
+    assert (Hn2 : ~ head_propositional gc_deps gc_stack (ce_ass A) Δ t2) by (rewrite I2; discriminate).
+    assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass A) Δ t1) by (rewrite I12; exact Hn2).
+    assert (Hn3 : ~ head_propositional gc_deps gc_stack (ce_ass A) Δ t3) by (rewrite <- I23; exact Hn2).
+    assert (Hn4 : ~ head_propositional gc_deps gc_stack (ce_ass A) Δ t4) by (rewrite <- I34; exact Hn3).
     apply (rel_exp_or_prop_relevant Htyp (ex_intro _ d1 (conj Hd1 Er12))) in Hexp.
     destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hheads].
     rewrite exp_sub_of_wk in Hm1, Hm4.
@@ -399,10 +403,10 @@ Proof.
     solve_per_env_extend_chain.
   - (** A propositional head: the heads are proofs, which the head PER of
       [A] relates at every link. *)
-    assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass A) t2) by (rewrite I2; reflexivity).
-    assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass A) t1) by (rewrite I12; exact Hp2).
-    assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass A) t3) by (rewrite <- I23; exact Hp2).
-    assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass A) t4) by (rewrite <- I34; exact Hp3).
+    assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass A) Δ t2) by (rewrite I2; reflexivity).
+    assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass A) Δ t1) by (rewrite I12; exact Hp2).
+    assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass A) Δ t3) by (rewrite <- I23; exact Hp2).
+    assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass A) Δ t4) by (rewrite <- I34; exact Hp3).
     apply (mk_rel_sub (t1 ↦ ⋆ᵈ) (t2 ↦ ⋆ᵈ) (t3 ↦ ⋆ᵈ) (t4 ↦ ⋆ᵈ));
       [ apply eval_sub_wk_extend_proof; eassumption
       | apply eval_sub_extend_proof; eassumption
@@ -481,10 +485,10 @@ Proof.
   2:{
     (** A propositional head: the heads are proofs, which the head PER of
       [T] relates at every link. *)
-    assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass T) t1) by (rewrite I1; reflexivity).
-    assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass T) t2) by (rewrite <- I12; exact Hp1).
-    assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass T) t3) by (rewrite <- I23; exact Hp2).
-    assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass T) t4) by (rewrite <- I34; exact Hp3).
+    assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass T) Δ t1) by (rewrite I1; reflexivity).
+    assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass T) Δ t2) by (rewrite <- I12; exact Hp1).
+    assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass T) Δ t3) by (rewrite <- I23; exact Hp2).
+    assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass T) Δ t4) by (rewrite <- I34; exact Hp3).
     apply (mk_rel_sub (t1 ↦ ⋆ᵈ) (t2 ↦ ⋆ᵈ) (t3 ↦ ⋆ᵈ) (t4 ↦ ⋆ᵈ));
       [ apply eval_sub_wk_extend_proof; eassumption
       | apply eval_sub_extend_proof; eassumption
@@ -503,10 +507,10 @@ Proof.
       first [ pairwise | eapply per_head_proof; eassumption ].
   }
   (** A relevant head: the three term instantiations give values. *)
-  assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass T) t1) by (rewrite I1; discriminate).
-  assert (Hn2 : ~ head_propositional gc_deps gc_stack (ce_ass T) t2) by (rewrite <- I12; exact Hn1).
-  assert (Hn3 : ~ head_propositional gc_deps gc_stack (ce_ass T) t3) by (rewrite <- I23; exact Hn2).
-  assert (Hn4 : ~ head_propositional gc_deps gc_stack (ce_ass T) t4) by (rewrite <- I34; exact Hn3).
+  assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass T) Δ t1) by (rewrite I1; discriminate).
+  assert (Hn2 : ~ head_propositional gc_deps gc_stack (ce_ass T) Δ t2) by (rewrite <- I12; exact Hn1).
+  assert (Hn3 : ~ head_propositional gc_deps gc_stack (ce_ass T) Δ t3) by (rewrite <- I23; exact Hn2).
+  assert (Hn4 : ~ head_propositional gc_deps gc_stack (ce_ass T) Δ t4) by (rewrite <- I34; exact Hn3).
   assert (Hrel1 : rel_typ_sort T t1 relevant) by (exists e1; split; assumption).
   assert (Hrel2 : rel_typ_sort T t2 relevant) by (exists e2; split; congruence).
   apply (rel_exp_or_prop_relevant Htyp1 Hrel1) in Hexp1.
@@ -623,8 +627,9 @@ Proof.
     substitution evaluation (up to [env_eq], not [eq]) links the two chains. *)
   destruct (Hσ _ _ HΓA' _ Hshift _ _ (Hψ _ _ Hρ)) as [z1 y2 y3 z4 Hz1 Hy2 Hy3 Hz4 Hbtails].
   rewrite ?eval_wk_shift in *.
-  assert (Heq : env_eq y1 z1) by (eapply functional_eval_sub; eassumption).
-  assert (Hy12 : Dom y1 ≈ y2 ∈ env_relΔ) by (rewrite Heq; pairwise).
+  assert (Hy12 : Dom y1 ≈ y2 ∈ env_relΔ).
+  { assert (Hz : Dom z1 ≈ y2 ∈ env_relΔ) by pairwise.
+    exact (per_ctx_env_resp_agree HΔ3 _ _ _ _ (functional_eval_sub _ _ _ _ _ Hz1 Hy1) (reflexivity _) Hz). }
   (** The three instantiations of the type judgment.  The first is the one the
     head hypothesis speaks about (its outer values are [A[σ]]'s at the dropped
     environments); it is taken at [Hy2] and at the [σ]-evaluation from the simple
@@ -651,26 +656,26 @@ Proof.
   pose proof (head_propositional_iff_right (e := ce_ass A) HΔ3 eq_refl HAs Hy12 Hc2) as Iy2.
   destruct (per_ctx_env_proofs _ _ _ HΓA' _ _ (Hψ _ _ Hρ)) as [Hpl Hpr].
   assert (Hsl : forall t, Dom t ≈ y2 ∈ env_relΔ ->
-                  head_propositional gc_deps gc_stack (ce_ass A) t -> env_entry (⟪ψ⟫ ρ) 0 = de_term ⋆ᵈ).
+                  head_propositional gc_deps gc_stack (ce_ass A) Δ t-> env_entry (⟪ψ⟫ ρ) 0 = de_term ⋆ᵈ).
   { intros t Ht Hp.
     apply (head_propositional_pair (e := ce_ass A) HΔ3 eq_refl HAs Ht), Iy2 in Hp.
     apply Hpl.
     eapply mk_entry_propositional with (entry_propositional_env := (⟪ψ⟫ ρ)↯);
-      [ reflexivity | intros y; rewrite ?skipn_one_drop; reflexivity | exact Hc1 | congruence ]. }
+      [ reflexivity | intros y _; rewrite ?skipn_one_drop; reflexivity | exact Hc1 | congruence ]. }
   assert (Hsr : forall t, Dom t ≈ y2 ∈ env_relΔ ->
-                  head_propositional gc_deps gc_stack (ce_ass A) t -> env_entry (⟪ψ⟫ ρ') 0 = de_term ⋆ᵈ).
+                  head_propositional gc_deps gc_stack (ce_ass A) Δ t-> env_entry (⟪ψ⟫ ρ') 0 = de_term ⋆ᵈ).
   { intros t Ht Hp.
     apply (head_propositional_pair (e := ce_ass A) HΔ3 eq_refl HAs Ht), Iy2 in Hp.
     apply Hpr.
     eapply mk_entry_propositional with (entry_propositional_env := (⟪ψ⟫ ρ')↯);
-      [ reflexivity | intros y; rewrite ?skipn_one_drop; reflexivity | exact Hc4 | congruence ]. }
-  assert (Hq1 : head_propositional gc_deps gc_stack (ce_ass A) x1 -> env_entry ρ (ψ 0) = de_term ⋆ᵈ)
+      [ reflexivity | intros y _; rewrite ?skipn_one_drop; reflexivity | exact Hc4 | congruence ]. }
+  assert (Hq1 : head_propositional gc_deps gc_stack (ce_ass A) Δ x1 -> env_entry ρ (ψ 0) = de_term ⋆ᵈ)
     by (intros Hp; rewrite <- (eval_wk_app_entry ψ); exact (Hsl x1 ltac:(etransitivity; [| exact Hy12]; pairwise) Hp)).
-  assert (Hq2 : head_propositional gc_deps gc_stack (ce_ass A) y1 -> env_entry (⟪ψ⟫ ρ) 0 = de_term ⋆ᵈ)
+  assert (Hq2 : head_propositional gc_deps gc_stack (ce_ass A) Δ y1 -> env_entry (⟪ψ⟫ ρ) 0 = de_term ⋆ᵈ)
     by (exact (Hsl y1 Hy12)).
-  assert (Hq3 : head_propositional gc_deps gc_stack (ce_ass A) y4 -> env_entry (⟪ψ⟫ ρ') 0 = de_term ⋆ᵈ)
+  assert (Hq3 : head_propositional gc_deps gc_stack (ce_ass A) Δ y4 -> env_entry (⟪ψ⟫ ρ') 0 = de_term ⋆ᵈ)
     by (exact (Hsr y4 ltac:(etransitivity; [| exact Hy12]; pairwise))).
-  assert (Hq4 : head_propositional gc_deps gc_stack (ce_ass A) x4 -> env_entry ρ' (ψ 0) = de_term ⋆ᵈ)
+  assert (Hq4 : head_propositional gc_deps gc_stack (ce_ass A) Δ x4 -> env_entry ρ' (ψ 0) = de_term ⋆ᵈ)
     by (intros Hp; rewrite <- (eval_wk_app_entry ψ); exact (Hsr x4 ltac:(etransitivity; [| exact Hy12]; pairwise) Hp)).
   (** Weak functionality names [A[σ]]'s element PER, so the [per_head] hypothesis
       is instantiated at it directly with no transport.  Both heads are the same
@@ -780,10 +785,14 @@ Proof.
   pose proof (rel_wk_shift HΓ3 HΓA) as Hshift.
   destruct (Hσ _ _ HΓA _ Hshift _ _ Hpair) as [s u2 u3 s' Hs Hu2 Hu3 Hs' Hstails].
   rewrite ?eval_wk_shift in *.
-  assert (Heq2 : env_eq ρσ u2) by (eapply functional_eval_sub; eassumption).
-  assert (Heq3 : env_eq ρ'σ' u3) by (eapply functional_eval_sub; eassumption).
-  assert (Htails : rel_chain env_relΔ ([s; ρσ; ρ'σ'; s']))
-    by (apply rel_chain_4; [ rewrite Heq2 | rewrite Heq2, Heq3 | rewrite Heq3 ]; pairwise).
+  assert (Hag2 : env_agree_upto (List.length Δ) u2 ρσ) by (eapply functional_eval_sub; [ exact Hu2 | exact Hev ]).
+  assert (Hag3 : env_agree_upto (List.length Δ) u3 ρ'σ') by (eapply functional_eval_sub; [ exact Hu3 | exact Hev' ]).
+  assert (Htails : rel_chain env_relΔ ([s; ρσ; ρ'σ'; s'])).
+  { match goal with HD : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ |- _ =>
+      apply rel_chain_4;
+        [ eapply (per_ctx_env_resp_agree HD); [ reflexivity | exact Hag2 | pairwise ]
+        | eapply (per_ctx_env_resp_agree HD); [ exact Hag2 | exact Hag3 | pairwise ]
+        | eapply (per_ctx_env_resp_agree HD); [ exact Hag3 | reflexivity | pairwise ] ] end. }
   (** Heads: the values of [A] at all four tails, so that irrelevance identifies
     every PER a head obligation quantifies over with the one the two heads are
     related in; and the values of [A[σ]] at [ρ] and [ρ'], which the head
@@ -810,10 +819,10 @@ Proof.
   destruct Hr12 as [? Hr12]; destruct Hr24 as [? Hr24].
   pose proof (per_univ_elem_relevance _ _ _ _ Hr12) as Er12.
   pose proof (per_univ_elem_relevance _ _ _ _ Hr24) as Er24.
-  assert (Hql : head_propositional gc_deps gc_stack (ce_ass A) s -> env_entry (ρ ↦ c) 0 = de_term ⋆ᵈ).
+  assert (Hql : head_propositional gc_deps gc_stack (ce_ass A) Δ s-> env_entry (ρ ↦ c) 0 = de_term ⋆ᵈ).
   { intros Hp; rewrite I1, Ie2 in Hp.
     eapply per_ctx_env_head_proof_left; [ exact HΓA | reflexivity | exact Hpair | exact He1 | congruence ]. }
-  assert (Hqr : head_propositional gc_deps gc_stack (ce_ass A) s' -> env_entry (ρ' ↦ c') 0 = de_term ⋆ᵈ).
+  assert (Hqr : head_propositional gc_deps gc_stack (ce_ass A) Δ s' -> env_entry (ρ' ↦ c') 0 = de_term ⋆ᵈ).
   { intros Hp; rewrite <- I3, <- I2, Ie2 in Hp.
     eapply per_ctx_env_head_proof_right; [ exact HΓA | reflexivity | exact Hpair | exact He4 | congruence ]. }
   functionalize_per_univ_chain Hechain R.
