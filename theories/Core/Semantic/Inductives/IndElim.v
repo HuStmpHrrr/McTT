@@ -128,8 +128,8 @@ Section Fixed_GCtx.
   Lemma cargs_correspond_length : forall vm gs' gs, cargs_correspond vm gs' gs -> List.length gs' = List.length gs.
   Proof.
     induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction; try reflexivity.
-    - f_equal; exact (IH _ H).
-    - f_equal; exact (IH _ H).
+    - f_equal; exact (IH _ (proj2 H)).
+    - f_equal; exact (IH _ (proj2 H)).
     - f_equal; exact (IH _ (proj2 (proj2 H))).
   Qed.
 
@@ -162,8 +162,8 @@ Section Fixed_GCtx.
 
   Lemma cargs_kinds_of_correspond : forall vm gs' gs, cargs_correspond vm gs' gs -> cargs_kinds gs' gs.
   Proof.
-    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction; auto.
-    exact (IH _ (proj2 (proj2 H))).
+    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction;
+      [ exact I | exact (IH _ (proj2 H)) | exact (IH _ (proj2 H)) | exact (IH _ (proj2 (proj2 H))) ].
   Qed.
 
   Lemma cargs_kinds_length : forall gs' gs, cargs_kinds gs' gs -> List.length gs' = List.length gs.
