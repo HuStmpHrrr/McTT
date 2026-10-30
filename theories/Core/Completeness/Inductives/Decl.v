@@ -89,19 +89,26 @@ Proof. intros [o | n] * H; [ exists 0; eapply per_univ_elem_cumu_universe_index;
 
     A family [f] of values, one per list of arguments, that applies by
     taking the next argument, and whose full applications are related at
-    the codomain, is an element of the [Π]. *)
+    the codomain, is an element of the [Π].  Its parameters are relevant:
+    each value of the family before the last takes relevant arguments
+    ([Hfr]), and each parameter's type is relevant at related arguments
+    before it ([Hdom]). *)
 Lemma ctx_pi_rel_elem : forall N (f : list domain -> domain) B,
     (forall xs x, List.length xs < N -> $| f xs & x | gc_deps ⍮ gc_stack ↘ f (xs ++ x :: nil)) ->
+    (forall xs, List.length xs < N -> arg_relevance gc_deps gc_stack (f xs) = relevant) ->
     forall ts, tele_ass ts ->
     forall ρ ρ' xs xs' a a' (i : universe_index) R,
       List.length xs + List.length ts = N -> List.length xs' = List.length xs ->
+      (forall ts1 A ts2 ys ys' b, ts = ts1 ++ ce_ass A :: ts2 ->
+         per_gargs ts1 (env_args ρ xs) (env_args ρ' xs') ys ys' -> List.length ys = List.length ts1 ->
+         ⟦ A ⟧ env_args ρ (xs ++ ys) ↘ b -> domain_relevance b = relevant) ->
       ⟦ ctx_pi (List.rev ts) B ⟧ env_args ρ xs ↘ a -> ⟦ ctx_pi (List.rev ts) B ⟧ env_args ρ' xs' ↘ a' ->
       DF a ≈ a' ∈ per_univ_elem i ↘ R ->
       (forall ys ys', per_gargs ts (env_args ρ xs) (env_args ρ' xs') ys ys' -> List.length ys = List.length ts ->
          Dom f (xs ++ ys) ≈ f (xs' ++ ys') ∈ per_head B B (env_args ρ (xs ++ ys)) (env_args ρ' (xs' ++ ys'))) ->
       Dom f xs ≈ f xs' ∈ R.
 Proof.
-  intros N f B Happ ts; induction ts as [| e ts IH]; intros Hts * Hl Hl' Ha Ha' HR Hbase.
+  intros N f B Happ Hfr ts; induction ts as [| e ts IH]; intros Hts * Hl Hl' Hdom Ha Ha' HR Hbase.
   - cbn [List.rev ctx_pi] in Ha, Ha'.
     specialize (Hbase nil nil ltac:(constructor) eq_refl); rewrite !List.app_nil_r in Hbase.
     exact (Hbase _ _ _ _ Ha Ha' HR).
@@ -110,22 +117,38 @@ Proof.
     assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
     cbn [List.rev] in Ha, Ha'; rewrite ctx_pi_snoc in Ha, Ha'.
     inversion Ha; subst a; inversion Ha'; subst a'.
+    match goal with E1 : ⟦ A ⟧ env_args ρ xs ↘ ?b |- _ => rename b into a0; rename E1 into Ea0 end.
     basic_invert_per_univ_elem HR.
     apply_relation_equivalence.
-    intros c c' Hc.
     cbn [List.length] in Hl.
+    (** The parameter is relevant, and so is what the family takes. *)
+    assert (Ha0 : domain_relevance a0 = relevant).
+    { apply (Hdom nil A ts nil nil); [ reflexivity | constructor | reflexivity |]; rewrite List.app_nil_r; exact Ea0. }
+    constructor;
+      [ rewrite Hfr by lia; symmetry; exact Ha0
+      | rewrite Hfr by lia; rewrite <- (per_univ_elem_relevance _ _ _ _ equiv_a_a'); symmetry; exact Ha0 |].
+    intros c c' Hc.
     destruct_rel_mod_eval.
     econstructor; [ apply Happ; lia | apply Happ; lia |].
     rewrite <- !env_args_snoc in *.
+    (** Arguments related at a prefix of the rest, after this one, are
+        related at the corresponding prefix with this one first. *)
+    assert (Hcons : forall ts1 ys ys',
+               per_gargs ts1 (env_args ρ (xs ++ c :: nil)) (env_args ρ' (xs' ++ c' :: nil)) ys ys' ->
+               per_gargs (ce_ass A :: ts1) (env_args ρ xs) (env_args ρ' xs') (c :: ys) (c' :: ys')).
+    { intros * Hys.
+      match goal with E1 : ⟦ A ⟧ env_args ρ xs ↘ ?b, E2 : ⟦ A ⟧ env_args ρ' xs' ↘ ?b' |- _ =>
+        destruct (per_univ_elem_to_nat _ _ _ _ equiv_a_a') as [n Hn];
+        econstructor; [ exact (mk_rel_mod_eval b b' E1 E2 Hn) | exact Hc |] end.
+      rewrite <- !env_args_snoc; exact Hys. }
     eapply (IH Hts' ρ ρ' (xs ++ c :: nil) (xs' ++ c' :: nil));
-      [ rewrite List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | eassumption | eassumption | eassumption |].
-    intros ys ys' Hys Hlys.
-    rewrite <- !List.app_assoc; cbn [List.app].
-    apply Hbase; [| cbn; lia ].
-    match goal with E1 : ⟦ A ⟧ env_args ρ xs ↘ ?b, E2 : ⟦ A ⟧ env_args ρ' xs' ↘ ?b' |- _ =>
-      destruct (per_univ_elem_to_nat _ _ _ _ equiv_a_a') as [n Hn];
-      econstructor; [ exact (mk_rel_mod_eval b b' E1 E2 Hn) | exact Hc |] end.
-    rewrite <- !env_args_snoc; exact Hys.
+      [ rewrite List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | | eassumption | eassumption | eassumption |].
+    + intros ts1 Aj ts2 ys ys' b -> Hys Hlys Eb.
+      apply (Hdom (ce_ass A :: ts1) Aj ts2 (c :: ys) (c' :: ys')); [ reflexivity | exact (Hcons _ _ _ Hys) | cbn; lia |].
+      rewrite <- List.app_assoc in Eb; exact Eb.
+    + intros ys ys' Hys Hlys.
+      rewrite <- !List.app_assoc; cbn [List.app].
+      apply Hbase; [ exact (Hcons _ _ _ Hys) | cbn; lia ].
 Qed.
 
 (** ** Arguments over Another Base
@@ -144,14 +167,14 @@ Proof.
   assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
   inversion Hg as [| ? A0 ? ? x x' ? ys ys' R HA Hx Hg']; subst; [ constructor |].
   cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
-  destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
+  destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
   pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
   assert (HP : PER RTb) by (eapply per_env_PER; exact HTb).
   assert (H34 : RTb ρ3 ρ4) by (etransitivity; [ symmetry; exact H13 | etransitivity; [ exact H12 | exact H24 ] ]).
   destruct HA as [a1 a2 Ea1 Ea2 HR].
-  destruct (rel_exp_of_typ_inversion_simple_at HTb HAv _ _ H13) as (b1 & a3 & Eb1 & Ea3 & [R13 HR13]).
-  destruct (rel_exp_of_typ_inversion_simple_at HTb HAv _ _ H24) as (b2 & a4 & Eb2 & Ea4 & [R24 HR24]).
-  destruct (rel_exp_of_typ_inversion_simple_at HTb HAv _ _ H34) as (b3 & b4 & Eb3 & Eb4 & [R34 HR34]).
+  destruct (rel_type_inversion_simple_at HTb HAv _ _ H13) as (b1 & a3 & Eb1 & Ea3 & [R13 HR13]).
+  destruct (rel_type_inversion_simple_at HTb HAv _ _ H24) as (b2 & a4 & Eb2 & Ea4 & [R24 HR24]).
+  destruct (rel_type_inversion_simple_at HTb HAv _ _ H34) as (b3 & b4 & Eb3 & Eb4 & [R34 HR34]).
   assert (b1 = a1) as -> by (eapply functional_eval_exp; eassumption).
   assert (b2 = a2) as -> by (eapply functional_eval_exp; eassumption).
   assert (b3 = a3) as -> by (eapply functional_eval_exp; eassumption).
@@ -182,12 +205,12 @@ Proof.
   assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
   inversion Hg as [| ? A0 ? ? x x' ? ys ys' R HA Hx Hg']; subst; [ constructor |].
   cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
-  destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
+  destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
   pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
   assert (HP : PER RTb) by (eapply per_env_PER; exact HTb).
   assert (Hρρ : RTb ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
   destruct HA as [a1 a2 Ea1 Ea2 HR].
-  destruct (rel_exp_of_typ_inversion_simple_at HTb HAv _ _ Hρρ) as (b1 & b1' & Eb1 & Eb1' & [R11 HR11]).
+  destruct (rel_type_inversion_simple_at HTb HAv _ _ Hρρ) as (b1 & b1' & Eb1 & Eb1' & [R11 HR11]).
   assert (b1 = a1) as -> by (eapply functional_eval_exp; eassumption).
   assert (b1' = a1) as -> by (eapply functional_eval_exp; eassumption).
   assert (E : R <~> R11) by (eapply per_univ_elem_right_irrel; [ exact HR | exact HR11 ]).
@@ -214,11 +237,11 @@ Proof.
     assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
     destruct xs as [| x xs], xs' as [| x' xs']; cbn in Hl, Hl'; try discriminate.
     cbn [List.rev] in HC, HR; rewrite <- List.app_assoc in HC, HR; cbn [List.app] in HC, HR.
-    destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
+    destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
     pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
     destruct (IH _ _ _ HTb' HC Hts' HR (ρ ↦ x) (ρ' ↦ x') xs xs' ltac:(lia) ltac:(lia) Hρ) as [[Hb Hh] Hg].
     split; [ exact Hb |].
-    destruct (rel_exp_of_typ_inversion_simple_at HTb HAv _ _ Hb) as (a & a' & Ea & Ea' & [R0 HR0]).
+    destruct (rel_type_inversion_simple_at HTb HAv _ _ Hb) as (a & a' & Ea & Ea' & [R0 HR0]).
     econstructor; [ exact (mk_rel_mod_eval a a' Ea Ea' HR0) | | exact Hg ].
     exact (Hh _ _ _ _ Ea Ea' HR0).
 Qed.
@@ -237,12 +260,20 @@ Qed.
 
 (** ** Environments of Arguments *)
 
-Lemma eval_sb_of_list : forall Ms σ ρ ρσ ms,
-    ⟦ σ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> ⟦ sb_of_list σ Ms ⟧s ρ ↘ env_args ρσ ms.
+(** A substitution extended by terms, at a context extended by entries
+    [ts] (outermost first) none of which is a proposition at the values
+    before it: the environment extended by the terms' values. *)
+Lemma eval_sb_of_list : forall Ms ts σ Δ ρ ρσ ms,
+    ⟦ σ : Δ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ts = List.length Ms ->
+    (forall k e, List.nth_error ts k = Some e -> ~ head_propositional gc_deps gc_stack e (env_args ρσ (List.firstn k ms))) ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_args ρσ ms.
 Proof.
-  induction Ms as [| M Ms IH]; intros * Hσ HMs; inversion HMs; subst; cbn [sb_of_list]; [ exact Hσ |].
+  induction Ms as [| M Ms IH]; intros [| e ts] * Hσ HMs Hl Hn; inversion HMs; subst; cbn [sb_of_list] in *;
+    try discriminate; [ exact Hσ |].
   change (env_args ρσ (m :: ms0)) with (env_args (ρσ ↦ m) ms0).
-  apply IH; [ apply eval_sub_extend; assumption | assumption ].
+  cbn [List.rev]; rewrite <- List.app_assoc; cbn [List.app].
+  apply IH; [ apply eval_sub_extend; [ assumption | exact (Hn 0 e eq_refl) | assumption ] | assumption | cbn [List.length] in Hl; lia |].
+  intros k e' He'; exact (Hn (S k) e' He').
 Qed.
 
 
@@ -260,7 +291,7 @@ Definition univ_idx (a : domain) : universe_index :=
 Definition is_univ (a : domain) : Prop := (exists j, a = d_univ j) \/ (exists l, a = d_suniv l).
 
 Lemma per_univ_elem_univ : forall (i : universe_index) R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R -> is_univ a ->
-    univ_idx a' = univ_idx a /\ (R <~> per_univ (univ_idx a)).
+    univ_idx a' = univ_idx a /\ (R <~> per_relevant (per_univ (univ_idx a))).
 Proof.
   intros * H [[j ->] | [l ->]]; basic_invert_per_univ_elem H; cbn [univ_idx].
   - split; [ reflexivity | assumption ].
@@ -295,7 +326,7 @@ Proof.
   - apply (mk_rel_exp a1 a2 a3 a4); [ rewrite HT; exact Ea1 | exact Ea2 | exact Ea3 | rewrite HT; exact Ea4 |].
     apply rel_chain_4; [ eapply per_univ_elem_resp_iff; [ exact HR12 | exact E12 ] | exact HR23
                        | eapply per_univ_elem_resp_iff; [ exact HR34 | exact E34 ] ].
-  - apply (mk_rel_exp n1 n2 n3 n4); [ rewrite HN; exact En1 | exact En2 | exact En3 | rewrite HN; exact En4 |].
+  - right; apply (mk_rel_exp n1 n2 n3 n4); [ rewrite HN; exact En1 | exact En2 | exact En3 | rewrite HN; exact En4 |].
     apply rel_chain_4; [ apply E12, Hn12 | exact Hn23 | apply E34, Hn34 ].
 Qed.
 
@@ -311,12 +342,14 @@ Proof.
   intros * HC HS HR HE Eb Ea Hb.
   destruct (rel_exp_under_ctx_wk_simple (rel_wk_under_ctx_shiftn _ _ HC) HS) as (RΓ & HΓ & j & Hwk).
   assert (ER : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (Hwk _ _ (proj1 (ER _ _) HE)) as (x & x' & Rx & Ex & Ex' & HRx & m & m' & Em & Em' & Hmm).
+  destruct (Hwk _ _ (proj1 (ER _ _) HE)) as (x & x' & Rx & Ex & Ex' & HRx & Hmm0).
+  cbn in Ex; inversion Ex; subst.
+  (** A universe is a relevant type. *)
+  destruct Hmm0 as [Hp | (m & m' & Em & Em' & Hmm)]; [ discriminate Hp |].
   assert (m = b) as -> by (eapply functional_eval_exp; eassumption).
   assert (m' = a) as -> by (eapply functional_eval_exp; eassumption).
-  cbn in Ex; inversion Ex; subst.
   basic_invert_per_univ_elem HRx.
-  match goal with Hm : ?r b a, H : ?r <~> _ |- _ => apply H in Hm; destruct Hm as [Rm HRm] end.
+  match goal with Hm : ?r b a, H : ?r <~> _ |- _ => apply H in Hm; destruct Hm as [[Rm HRm] _ _] end.
   exact (proj1 (per_univ_elem_univ _ _ _ _ HRm Hb)).
 Qed.
 
@@ -377,11 +410,17 @@ Qed.
 Lemma rel_wk_under_ctx_compose : forall Γ Δ Θ' φ ψ,
     Γ ⊨ʷ ψ : Δ -> Δ ⊨ʷ φ : Θ' -> Γ ⊨ʷ (wk_compose φ ψ) : Θ'.
 Proof.
-  intros * [R1 H1 R2 H2 Hψ] [R3 H3 R4 H4 Hφ].
+  intros * [R1 H1 R2 H2 Hψ Pψ] [R3 H3 R4 H4 Hφ Pφ].
   assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).
-  eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 |].
-  eapply rel_wk_compose; [ exact Hψ |].
-  destruct Hφ as [Hm Hφ]; split; [ exact Hm | intros; apply Hφ, E; assumption ].
+  assert (Hφ' : rel_wk φ R2 R4) by (destruct Hφ as [Hm Hφ]; split; [ exact Hm | intros; apply Hφ, E; assumption ]).
+  eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 | eapply rel_wk_compose; [ exact Hψ | exact Hφ' ] |].
+  (** A proposition of [Γ] at [ψ (φ x)] is one of [Δ] at [φ x], and so one
+      of [Θ'] at [x]. *)
+  intros ρ ρ' Hρ x Hp.
+  pose proof Hψ as [Hψm Hψr]; pose proof Hφ' as [Hφm _].
+  pose proof (Hψr _ _ Hρ) as Hρψ.
+  rewrite eval_wk_compose by (first [ exact Hψm | exact Hφm ]).
+  exact (Pφ _ _ (proj1 (E _ _) Hρψ) x (Pψ _ _ Hρ (φ x) Hp)).
 Qed.
 
 (** ** Variables of an Environment of Arguments *)

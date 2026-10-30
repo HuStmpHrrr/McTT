@@ -83,6 +83,10 @@ Proof.
   exact (rel_type_of_sort_ge HS HA).
 Qed.
 
+(** In particular it is a type of an index. *)
+Corollary rel_ctx_wf_ass_typ : forall {Γ A}, ⊨ Γ ▹ A -> exists i, Γ ⊨ᵗ A ≈ A at i.
+Proof. intros * H; destruct (rel_ctx_wf_ass_type H) as [i Hi]; exists i; exact (Hi i (le_n i)). Qed.
+
 Lemma rel_ctx_wf_mod_inv : forall {Γ U}, ⊨ Γ ▹ₘ U -> Γ ⊨ᵘ U ≈ U.
 Proof. intros * H; inversion H; subst; constructor; assumption. Qed.
 
