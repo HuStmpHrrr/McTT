@@ -345,36 +345,40 @@ Import Domain_Notations.
         [ eapply functional_eval_exp | eapply functional_eval_modexp ]; eassumption.
   Qed.
 
-  (** Whether the head entry is a proposition depends only on the tail. *)
-  Lemma entry_propositional_zero_tail : forall {Θ Ξ} Δ ρσ1 ρσ2,
-      env_eq (drop_env ρσ1) (drop_env ρσ2) -> entry_propositional Θ Ξ Δ ρσ1 0 -> entry_propositional Θ Ξ Δ ρσ2 0.
+  (** Whether the head entry is a proposition depends only on the tail, on
+      the entries of the context. *)
+  Lemma entry_propositional_zero_tail : forall {Θ Ξ} e Δ ρσ1 ρσ2,
+      env_agree_upto (List.length Δ) (drop_env ρσ1) (drop_env ρσ2) ->
+      entry_propositional Θ Ξ (e :: Δ) ρσ1 0 -> entry_propositional Θ Ξ (e :: Δ) ρσ2 0.
   Proof.
-    intros * Ht []; econstructor; [ eassumption | | eassumption | eassumption ].
-    intros y; rewrite entry_propositional_env_eq, !env_entry_skipn; cbn [Nat.add].
-    rewrite <- !env_entry_drop; apply Ht.
+    intros * Ht [T HT E HE v Ev Hv]; econstructor; [ exact HT | | exact Ev | exact Hv ].
+    intros y Hy; rewrite (HE y Hy), !env_entry_skipn; cbn [Nat.add].
+    rewrite <- !env_entry_drop; apply Ht; exact Hy.
   Qed.
 
   (** Whether an entry is a proposition depends only on the entries after
-      it, so two evaluations of a substitution agree, entry by entry from
-      the last; values are decidably equal, so no case analysis on a
-      proposition is needed. *)
+      it, so two evaluations of a substitution agree on the entries of its
+      target, entry by entry from the last; values are decidably equal, so
+      no case analysis on a proposition is needed.  Past the target they
+      may differ. *)
   Corollary functional_eval_sub : forall {Θ Ξ} Δ σ ρ ρσ1 ρσ2,
       ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ1 ->
       ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ2 ->
-      env_eq ρσ1 ρσ2.
+      env_agree_upto (List.length Δ) ρσ1 ρσ2.
   Proof.
     intros Θ Ξ Δ; induction Δ as [| e Δ IH]; intros σ ρ ρσ1 ρσ2 H1 H2.
-    - intros x; eapply functional_eval_sentry; [ apply (H1 x) | apply (H2 x) ];
-        intros []; unfold ctx_entry_type in *; destruct x; discriminate.
-    - assert (Ht : env_eq (drop_env ρσ1) (drop_env ρσ2)) by (eapply IH; eapply eval_sub_shift_pre; eassumption).
-      intros [| x]; [| rewrite <- !env_entry_drop; apply Ht ].
+    - intros x Hx; cbn in Hx; lia.
+    - assert (Ht : env_agree_upto (List.length Δ) (drop_env ρσ1) (drop_env ρσ2))
+        by (eapply IH; eapply eval_sub_shift_pre; eassumption).
+      intros [| x] Hx; [| rewrite <- !env_entry_drop; apply Ht; cbn in Hx; lia ].
       destruct (dentry_eq_dec (env_entry ρσ1 0) (env_entry ρσ2 0)) as [| Hne]; [ assumption | exfalso ].
-      assert (Ht' : env_eq (drop_env ρσ2) (drop_env ρσ1)) by (intros y; symmetry; apply Ht).
+      assert (Ht' : env_agree_upto (List.length Δ) (drop_env ρσ2) (drop_env ρσ1)) by (symmetry; exact Ht).
       assert (Hn1 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ1 0).
-      { intros Hp; apply Hne; rewrite (proj1 (H1 0) Hp), (proj1 (H2 0) (entry_propositional_zero_tail _ _ _ Ht Hp)); reflexivity. }
+      { intros Hp; apply Hne.
+        rewrite (proj1 (H1 0 Hx) Hp), (proj1 (H2 0 Hx) (entry_propositional_zero_tail _ _ _ _ Ht Hp)); reflexivity. }
       assert (Hn2 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ2 0)
-        by (intros Hp; apply Hn1, (entry_propositional_zero_tail _ _ _ Ht' Hp)).
-      apply Hne; eapply functional_eval_sentry; [ apply (proj2 (H1 0) Hn1) | apply (proj2 (H2 0) Hn2) ].
+        by (intros Hp; apply Hn1, (entry_propositional_zero_tail _ _ _ _ Ht' Hp)).
+      apply Hne; eapply functional_eval_sentry; [ apply (proj2 (H1 0 Hx) Hn1) | apply (proj2 (H2 0 Hx) Hn2) ].
   Qed.
 
 #[export]

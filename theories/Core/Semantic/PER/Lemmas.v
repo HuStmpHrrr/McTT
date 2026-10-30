@@ -3687,20 +3687,20 @@ Proof.
   eauto using per_ctx_subtyp_trans.
 Qed.
 
-(** * Context PERs Respect Pointwise Equality of Environments
+(** * Context PERs Respect Agreement of Environments
 
-    Evaluating a substitution determines its result only up to [env_eq]
-    ([functional_eval_sub]), so every use of a context PER in the completeness
-    proof needs this lemma.  It does not follow from evaluation respecting
-    [env_eq], which is false because a closure captures its environment.  It
-    holds because a context PER inspects an environment only pointwise, and
-    its head relations at pointwise-equal environments coincide up to [<~>] by
-    irrelevance. *)
-Lemma per_ctx_env_resp_env_eq : forall {Γ Δ R},
+    Evaluating a substitution determines its result only on the entries of
+    its target ([functional_eval_sub]), so every use of a context PER in the
+    completeness proof needs this lemma.  It does not follow from evaluation
+    respecting [env_eq], which is false because a closure captures its
+    environment.  It holds because a context PER inspects an environment
+    only pointwise, on the entries of its context, and its head relations at
+    agreeing environments coincide up to [<~>] by irrelevance. *)
+Lemma per_ctx_env_resp_agree : forall {Γ Δ R},
     EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
     forall ρ1 ρ2 ρ1' ρ2',
-      env_eq ρ1 ρ2 ->
-      env_eq ρ1' ρ2' ->
+      env_agree_upto (List.length Γ) ρ1 ρ2 ->
+      env_agree_upto (List.length Γ) ρ1' ρ2' ->
       Dom ρ1 ≈ ρ1' ∈ R ->
       Dom ρ2 ≈ ρ2' ∈ R.
 Proof.
@@ -3709,8 +3709,8 @@ Proof.
   4: { (** A definition with a module part: the term part as a definition,
          the unit as a slot. *)
     destruct HR as [Dtail1 Hh Hterms T1 T2 T3 T4].
-    assert (Hd : env_eq ρ1↯ ρ2↯) by (now rewrite Heq).
-    assert (Hd' : env_eq ρ1'↯ ρ2'↯) by (now rewrite Heq').
+    assert (Hd : env_agree_upto (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_upto_drop _ _ _ Heq).
+    assert (Hd' : env_agree_upto (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_upto_drop _ _ _ Heq').
     assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption ]).
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption).
     assert (D11 : Dom ρ1↯ ≈ ρ1↯ ∈ tail_rel) by solve_per.
@@ -3730,14 +3730,14 @@ Proof.
     all: solve_def_heads_pre.
     all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Dtail2);
       try (match goal with |- def_heads_at _ _ _ _ _ _ => cbn [def_heads_at]; constructor end);
-      try rewrite <- (env_eq_var _ _ Heq 0); try rewrite <- (env_eq_var _ _ Heq' 0);
-      try rewrite <- (env_eq_mod _ _ Heq 0); try rewrite <- (env_eq_mod _ _ Heq' 0);
+      try rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia));
+      try rewrite <- (env_agree_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_mod _ _ _ Heq' 0 ltac:(cbn; lia));
       try solve [ solve_tie ]; solve_def_heads_post. }
   3: { (** A slot: the heads are the same, and the closures over the new
          tails are related to those over the old ones. *)
     destruct HR as (Dtail1 & T1 & T2 & T3 & T4).
-    assert (Hd : env_eq ρ1↯ ρ2↯) by (now rewrite Heq).
-    assert (Hd' : env_eq ρ1'↯ ρ2'↯) by (now rewrite Heq').
+    assert (Hd : env_agree_upto (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_upto_drop _ _ _ Heq).
+    assert (Hd' : env_agree_upto (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_upto_drop _ _ _ Heq').
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption).
     assert (D11 : Dom ρ1↯ ≈ ρ1↯ ∈ tail_rel) by solve_per.
     assert (D11' : Dom ρ1'↯ ≈ ρ1'↯ ∈ tail_rel) by solve_per.
@@ -3745,19 +3745,19 @@ Proof.
     assert (D12' : Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11' ]).
     destruct (rel_modexp_evals_move _ _ _ _ _ _ D12 H0) as (M1 & M2 & M3 & M4).
     destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' H0) as (M1' & M2' & M3' & M4').
-    rewrite <- (env_eq_mod _ _ Heq 0), <- (env_eq_mod _ _ Heq' 0).
+    rewrite <- (env_agree_mod _ _ _ Heq 0 ltac:(cbn; lia)), <- (env_agree_mod _ _ _ Heq' 0 ltac:(cbn; lia)).
     repeat split; [ exact Dtail2 | .. ]; solve_tie. }
   all: destruct HR as [Dtail1 Hhead1];
-    assert (Hd : env_eq ρ1↯ ρ2↯) by (now rewrite Heq);
-    assert (Hd' : env_eq ρ1'↯ ρ2'↯) by (now rewrite Heq');
+    assert (Hd : env_agree_upto (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_upto_drop _ _ _ Heq);
+    assert (Hd' : env_agree_upto (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_upto_drop _ _ _ Heq');
     assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption ]);
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption);
     first [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Dtail2) | apply (mk_per_ctx_env_def_rel' _ _ _ _ _ _ _ _ _ Dtail2) ];
     (** The term-head fields: the new tails' types are propositions exactly
         when the old ones' are, through the mixed pair. *)
-    try (let Hp := fresh "Hp" in intros Hp; rewrite <- (Heq 0), <- (env_eq_var _ _ Heq 0); revert Hp; solve_prop_head);
-    try (let Hp := fresh "Hp" in intros Hp; rewrite <- (Heq' 0), <- (env_eq_var _ _ Heq' 0); revert Hp; solve_prop_head);
-    rewrite <- (env_eq_var _ _ Heq 0), <- (env_eq_var _ _ Heq' 0).
+    try (let Hp := fresh "Hp" in intros Hp; rewrite <- (Heq 0 ltac:(cbn; lia)), <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); revert Hp; solve_prop_head);
+    try (let Hp := fresh "Hp" in intros Hp; rewrite <- (Heq' 0 ltac:(cbn; lia)), <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia)); revert Hp; solve_prop_head);
+    rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)), <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia)).
   - pose proof (H0 _ _ Dtail1).
     pose proof (H0 _ _ Dmix).
     pose proof (H0 _ _ Dtail2).
@@ -3775,7 +3775,24 @@ Proof.
       [| split; [ solve_def_heads | exact I ] ].
     solve_def_heads_pre.
     split; [ solve_def_heads_post |].
-    constructor; try rewrite <- (env_eq_var _ _ Heq 0); try rewrite <- (env_eq_var _ _ Heq' 0); solve_def_heads_post.
+    constructor; try rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia));
+      solve_def_heads_post.
+Qed.
+
+(** Related contexts have as many entries. *)
+Lemma per_ctx_env_length : forall {Γ Δ R}, EF Γ ≈ Δ ∈ per_ctx_env ↘ R -> List.length Γ = List.length Δ.
+Proof. induction 1; cbn [List.length]; congruence. Qed.
+
+(** In particular, context PERs respect pointwise equality. *)
+Corollary per_ctx_env_resp_env_eq : forall {Γ Δ R},
+    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
+    forall ρ1 ρ2 ρ1' ρ2',
+      env_eq ρ1 ρ2 ->
+      env_eq ρ1' ρ2' ->
+      Dom ρ1 ≈ ρ1' ∈ R ->
+      Dom ρ2 ≈ ρ2' ∈ R.
+Proof.
+  intros * H * Heq Heq'; apply (per_ctx_env_resp_agree H); apply env_eq_agree_upto; assumption.
 Qed.
 
 #[local] Instance per_ctx_env_Proper {Γ Δ R} (H : EF Γ ≈ Δ ∈ per_ctx_env ↘ R) :
@@ -3834,11 +3851,11 @@ Lemma per_ctx_head_propositional_left : forall Γ Γ' tail_rel i A A'
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' (Ht : Dom ρ ≈ ρ' ∈ tail_rel) E a,
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    env_eq E ρ -> ⟦ A ⟧ E ↘ a -> domain_relevance a = propositional ->
+    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_relevance a = propositional ->
     head_rel Ht <~> per_proof.
 Proof.
   intros * HΓ HT HE Ea Hp.
-  assert (HE' : Dom E ≈ ρ' ∈ tail_rel) by (eapply per_ctx_env_resp_env_eq; [ exact HΓ | symmetry; exact HE | reflexivity | exact Ht ]).
+  assert (HE' : Dom E ≈ ρ' ∈ tail_rel) by (eapply per_ctx_env_resp_agree; [ exact HΓ | symmetry; exact HE | reflexivity | exact Ht ]).
   destruct (HT _ _ HE') as [a1 b1 Ea1 Eb1 R1].
   destruct (HT _ _ Ht) as [a0 b0 Ea0 Eb0 R0].
   functional_eval_rewrite_clear.
@@ -3851,11 +3868,12 @@ Lemma per_ctx_head_propositional_right : forall Γ Γ' tail_rel i A A'
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' (Ht : Dom ρ ≈ ρ' ∈ tail_rel) E a',
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    env_eq E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_relevance a' = propositional ->
+    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_relevance a' = propositional ->
     head_rel Ht <~> per_proof.
 Proof.
   intros * HΓ HT HE Ea Hp.
-  assert (HE' : Dom ρ ≈ E ∈ tail_rel) by (eapply per_ctx_env_resp_env_eq; [ exact HΓ | reflexivity | symmetry; exact HE | exact Ht ]).
+  assert (HE' : Dom ρ ≈ E ∈ tail_rel)
+    by (eapply per_ctx_env_resp_agree; [ exact HΓ | reflexivity | rewrite (per_ctx_env_length HΓ); symmetry; exact HE | exact Ht ]).
   destruct (HT _ _ HE') as [a1 b1 Ea1 Eb1 R1].
   destruct (HT _ _ Ht) as [a0 b0 Ea0 Eb0 R0].
   functional_eval_rewrite_clear.
@@ -3870,11 +3888,11 @@ Lemma rel_typ_propositional_env_eq_left : forall Γ Γ' tail_rel i A A'
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
     Dom ρ ≈ ρ' ∈ tail_rel ->
-    env_eq E ρ -> ⟦ A ⟧ E ↘ a -> domain_relevance a = propositional ->
+    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_relevance a = propositional ->
     rel_typ_propositional A ρ.
 Proof.
   intros * HΓ HT Ht HE Ea Hp.
-  assert (HE' : Dom E ≈ ρ' ∈ tail_rel) by (eapply per_ctx_env_resp_env_eq; [ exact HΓ | symmetry; exact HE | reflexivity | exact Ht ]).
+  assert (HE' : Dom E ≈ ρ' ∈ tail_rel) by (eapply per_ctx_env_resp_agree; [ exact HΓ | symmetry; exact HE | reflexivity | exact Ht ]).
   exact (rel_typ_propositional_left (HT _ _ Ht) (rel_typ_propositional_right (HT _ _ HE') (ex_intro _ a (conj Ea Hp)))).
 Qed.
 
@@ -3883,11 +3901,12 @@ Lemma rel_typ_propositional_env_eq_right : forall Γ Γ' tail_rel i A A'
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
     Dom ρ ≈ ρ' ∈ tail_rel ->
-    env_eq E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_relevance a' = propositional ->
+    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_relevance a' = propositional ->
     rel_typ_propositional A' ρ'.
 Proof.
   intros * HΓ HT Ht HE Ea Hp.
-  assert (HE' : Dom ρ ≈ E ∈ tail_rel) by (eapply per_ctx_env_resp_env_eq; [ exact HΓ | reflexivity | symmetry; exact HE | exact Ht ]).
+  assert (HE' : Dom ρ ≈ E ∈ tail_rel)
+    by (eapply per_ctx_env_resp_agree; [ exact HΓ | reflexivity | rewrite (per_ctx_env_length HΓ); symmetry; exact HE | exact Ht ]).
   exact (rel_typ_propositional_right (HT _ _ Ht) (rel_typ_propositional_left (HT _ _ HE') (ex_intro _ a' (conj Ea Hp)))).
 Qed.
 
@@ -3950,11 +3969,12 @@ Proof.
       destruct (H1 _ _ Ht) as (a1 & Ea1 & Hr1).
       functional_eval_rewrite_clear.
       pose proof (per_univ_elem_propositional _ _ _ _ R0) as HR0.
-      assert (HE' : Dom E ≈ ρ'↯ ∈ tail_rel) by (eapply per_ctx_env_resp_env_eq; [ exact equiv_Γ_Γ' | symmetry; exact HE | reflexivity | exact Ht ]).
+      assert (HE' : Dom E ≈ ρ'↯ ∈ tail_rel) by (eapply per_ctx_env_resp_agree; [ exact equiv_Γ_Γ' | symmetry; exact HE | reflexivity | exact Ht ]).
       destruct (H0 _ _ HE') as [a2 b2 Ea2 Eb2 R2].
       functional_eval_rewrite_clear.
       pose proof (per_univ_elem_relevance _ _ _ _ R2); pose proof (per_univ_elem_relevance _ _ _ _ R0); congruence.
-    + assert (HE' : Dom ρ↯ ≈ E ∈ tail_rel) by (eapply per_ctx_env_resp_env_eq; [ exact equiv_Γ_Γ' | reflexivity | symmetry; exact HE | exact Ht ]).
+    + assert (HE' : Dom ρ↯ ≈ E ∈ tail_rel)
+        by (eapply per_ctx_env_resp_agree; [ exact equiv_Γ_Γ' | reflexivity | rewrite (per_ctx_env_length equiv_Γ_Γ'); symmetry; exact HE | exact Ht ]).
       destruct (H0 _ _ HE') as [a2 b2 Ea2 Eb2 R2].
       destruct (H1 _ _ Ht) as (a1 & Ea1 & Hr1).
       functional_eval_rewrite_clear.

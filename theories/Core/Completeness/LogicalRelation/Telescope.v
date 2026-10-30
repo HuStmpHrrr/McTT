@@ -53,21 +53,23 @@ Proof.
   - assert (He : exists A, e = ce_ass A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as [A ->].
     assert (HCa' : tele_ass C) by (inversion HCa; assumption).
-    destruct (rel_ctx_wf_ass_inv HC) as [i HA].
+    destruct (rel_ctx_wf_ass_inv HC) as (Srt & HS & HA).
     pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (IH Γ HCa' HC' HΓ) as [HCΓ Hres].
     destruct (rel_ctx_wf_per_ctx_env HC') as [RC' HRC'].
     destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ' HRCΓ'].
-    assert (HA' : C ++ Γ ⊨ A ≈ A : Typeω@i)
+    assert (HA' : C ++ Γ ⊨ A ≈ A : Srt)
       by (eapply rel_exp_under_ctx_restrict; [ exact HRCΓ' | exact HRC' | apply Hres; assumption | exact HA ]).
-    pose proof (per_ctx_env_of_typ HRC' HA) as HRCA.
-    pose proof (per_ctx_env_of_typ HRCΓ' HA') as HRCΓA.
-    split; [ econstructor; [ exact HCΓ | exact HRCΓA | exact HA' ] |].
+    destruct (rel_type_of_sort HS HA) as [i HAt].
+    destruct (rel_type_of_sort HS HA') as [i' HAt'].
+    pose proof (per_ctx_env_of_typ HRC' HAt) as HRCA.
+    pose proof (per_ctx_env_of_typ HRCΓ' HAt') as HRCΓA.
+    split; [ econstructor; [ exact HCΓ | exact HRCΓA | exact HS | exact HA' ] |].
     intros * HR HRΓ ρ ρ' Hρ.
     assert (E1 : RC <~> per_env_extend A A RC') by (eapply per_ctx_env_right_irrel; eassumption).
     assert (E2 : RCΓ <~> per_env_extend A A RCΓ') by (eapply per_ctx_env_right_irrel; eassumption).
-    apply E1; apply E2 in Hρ; destruct Hρ as [Ht Hh].
-    split; [ exact (Hres _ _ HRC' HRCΓ' _ _ Ht) | exact Hh ].
+    apply E1; apply E2 in Hρ; destruct Hρ as [Ht Hh Hl Hr].
+    exact (mk_per_ctx_env_cons_rel _ _ _ _ _ _ (Hres _ _ HRC' HRCΓ' _ _ Ht) Hh Hl Hr).
 Qed.
 
 Lemma closed_app_valid : forall C Γ T M M', tele_ass C -> ⊨ C -> ⊨ Γ ->
@@ -103,7 +105,7 @@ Proof.
     assert (HlT : List.length (tele_insts C Id Ms') = List.length C) by (rewrite length_tele_insts by exact HCa'; lia).
     pose proof (IH Γ Ms' HCa' HC' HΓ ltac:(lia)) as Hg.
     rewrite sb_of_list_app; cbn [sb_of_list List.app].
-    eapply gsub_ass; [ apply Hg | exact (closed_app_valid _ _ _ _ _ HCa' HC' HΓ HA) | ].
+    eapply gsub_ass; [ apply Hg | exact HS | exact (closed_app_valid _ _ _ _ _ HCa' HC' HΓ HA) | ].
     + intros k N T HN HT.
       assert (Hk : k < List.length C) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
       apply (HMs k); [ rewrite List.nth_error_app1 by lia; exact HN | rewrite Hti, List.nth_error_app1 by lia; exact HT ].

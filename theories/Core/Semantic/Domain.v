@@ -429,6 +429,35 @@ Proof. split; [ intros ? ? | intros ? ? ? ? | intros ? ? ? ? ? ? ]; congruence. 
 Instance extend_env_Proper : Proper (env_eq ==> eq ==> env_eq) extend_env.
 Proof. intros ρ ρ' Hρ d d' <- [| n]; [ reflexivity | apply Hρ ]. Qed.
 
+(** ** Agreement on a Prefix
+
+    Two environments agree up to [n] when they have the same entries below
+    [n].  Evaluating a substitution into a context of [n] entries determines
+    its result only up to this agreement: a substitution into a context says
+    nothing of the entries past it. *)
+Definition env_agree_upto (n : nat) : relation env := fun ρ ρ' => forall x, x < n -> env_entry ρ x = env_entry ρ' x.
+
+#[export]
+Instance env_agree_upto_Equivalence n : Equivalence (env_agree_upto n).
+Proof. split; [ intros ? ? ? | intros ? ? H ? Hx; symmetry; exact (H _ Hx) | intros ? ? ? H1 H2 ? Hx; rewrite (H1 _ Hx); exact (H2 _ Hx) ]; reflexivity. Qed.
+
+(** Pointwise-equal environments agree up to any index. *)
+Lemma env_eq_agree_upto : forall n ρ ρ', env_eq ρ ρ' -> env_agree_upto n ρ ρ'.
+Proof. intros * H x _; apply H. Qed.
+
+(** Environments agreeing up to [S n] have tails agreeing up to [n] and
+    equal heads. *)
+Lemma env_agree_upto_drop : forall n ρ ρ', env_agree_upto (S n) ρ ρ' -> env_agree_upto n ρ↯ ρ'↯.
+Proof. intros * H x Hx; rewrite !env_entry_drop; apply H; lia. Qed.
+
+(** Agreeing environments have the same variables and module slots below
+    the bound. *)
+Lemma env_agree_var : forall n ρ ρ', env_agree_upto n ρ ρ' -> forall x, x < n -> env_var ρ x = env_var ρ' x.
+Proof. intros * H x Hx; unfold env_var; rewrite (H x Hx); reflexivity. Qed.
+
+Lemma env_agree_mod : forall n ρ ρ', env_agree_upto n ρ ρ' -> forall x, x < n -> env_mod ρ x = env_mod ρ' x.
+Proof. intros * H x Hx; unfold env_mod; rewrite (H x Hx); reflexivity. Qed.
+
 #[export]
 Instance extend_env_mod_Proper : Proper (env_eq ==> eq ==> env_eq) extend_env_mod.
 Proof. intros ρ ρ' Hρ d d' <- [| n]; [ reflexivity | apply Hρ ]. Qed.

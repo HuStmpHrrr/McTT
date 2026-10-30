@@ -1344,19 +1344,22 @@ Definition ctx_entry_type (Δ : ctx) (x : nat) : option typ :=
 
 (** The entry [x] of [Δ] is a proposition in the environment [ρσ] of [Δ]:
     its type, over the entries after it, evaluates in the tail of [ρσ]
-    after [x] to a propositional value.  The tail is taken up to pointwise
-    equality ([env_eq]), so that the notion does not depend on how an
-    environment is represented: a closure captures the environment it is
-    built in, so evaluation itself does not respect [env_eq]. *)
+    after [x] to a propositional value.  The tail is taken up to agreement
+    on the entries of [Δ] after [x] ([env_agree_upto]), the ones the type
+    is over: the notion depends neither on how an environment is
+    represented (a closure captures the environment it is built in, so
+    evaluation itself does not respect [env_eq]) nor on the entries past
+    [Δ], of which a substitution into [Δ] says nothing ([eval_sub]). *)
 #[warnings="-cannot-define-projection"]
 Record entry_propositional (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρσ : env) (x : nat) : Prop := mk_entry_propositional
   { (** The entry's type *)
     entry_propositional_type : typ
     (** It is the type of the entry [x] *)
   ; entry_propositional_lookup : ctx_entry_type Δ x = Some entry_propositional_type
-    (** An environment pointwise equal to the tail of [ρσ] after [x] *)
+    (** An environment agreeing with the tail of [ρσ] after [x] on the
+        entries of [Δ] after [x] *)
   ; entry_propositional_env : env
-  ; entry_propositional_env_eq : env_eq entry_propositional_env (List.skipn (S x) ρσ)
+  ; entry_propositional_env_eq : env_agree_upto (List.length (List.skipn (S x) Δ)) entry_propositional_env (List.skipn (S x) ρσ)
     (** The type's value in it *)
   ; entry_propositional_value : domain
   ; entry_propositional_eval : ⟦ entry_propositional_type ⟧ Θ ⍮ Ξ ⍮ entry_propositional_env ↘ entry_propositional_value
@@ -1366,12 +1369,15 @@ Record entry_propositional (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρσ : env) (x
 (** Evaluation of a substitution is directed by its target context [Δ]:
     at an entry of [Δ] that is a proposition, the value is the proof [⋆ᵈ],
     and the substitution's entry, a proof, is not evaluated; at every
-    other index [ρσ] holds what [σ x] denotes in [ρ].  The two cases are
-    stated as implications, so that building an evaluation needs no case
-    analysis on whether an entry is a proposition. *)
+    other entry of [Δ], [ρσ] holds what [σ x] denotes in [ρ].  Past the
+    entries of [Δ] nothing is said: a substitution into [Δ] says nothing
+    of the indices past it.  The two cases are stated as implications, so
+    that building an evaluation needs no case analysis on whether an entry
+    is a proposition. *)
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (σ : sub) (ρ ρσ : env) : Prop :=
-  forall x, (entry_propositional Θ Ξ Δ ρσ x -> env_entry ρσ x = de_term ⋆ᵈ)
-         /\ (~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x).
+  forall x, x < List.length Δ ->
+    (entry_propositional Θ Ξ Δ ρσ x -> env_entry ρσ x = de_term ⋆ᵈ)
+    /\ (~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x).
 Arguments eval_sub : simpl never.
 
 Notation "'⟦' σ ':' Δ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" := (eval_sub Θ Ξ Δ σ ρ ρσ) : mctt_scope.
@@ -1397,21 +1403,27 @@ Qed.
 Lemma env_eq_skipn : forall n ρ ρ', env_eq ρ ρ' -> env_eq (List.skipn n ρ) (List.skipn n ρ').
 Proof. intros * H y; rewrite !env_entry_skipn; apply H. Qed.
 
-(** Being a proposition is read up to pointwise equality. *)
-Lemma entry_propositional_resp_env_eq : forall {Θ Ξ} Δ ρσ ρσ' x,
-    env_eq ρσ ρσ' -> entry_propositional Θ Ξ Δ ρσ x -> entry_propositional Θ Ξ Δ ρσ' x.
+(** Being a proposition is read up to agreement on the entries of the
+    context. *)
+Lemma entry_propositional_resp_agree : forall {Θ Ξ} Δ ρσ ρσ' x,
+    env_agree_upto (List.length Δ) ρσ ρσ' -> entry_propositional Θ Ξ Δ ρσ x -> entry_propositional Θ Ξ Δ ρσ' x.
 Proof.
-  intros * Hρ []; econstructor; [ eassumption | | eassumption | eassumption ].
-  intros y; rewrite entry_propositional_env_eq; apply (env_eq_skipn _ _ _ Hρ).
+  intros * Hρ [T HT E HE v Ev Hv]; econstructor; [ exact HT | | exact Ev | exact Hv ].
+  intros y Hy; rewrite (HE y Hy), !env_entry_skipn; apply Hρ; rewrite List.length_skipn in Hy; lia.
 Qed.
+
+(** In particular up to pointwise equality. *)
+Corollary entry_propositional_resp_env_eq : forall {Θ Ξ} Δ ρσ ρσ' x,
+    env_eq ρσ ρσ' -> entry_propositional Θ Ξ Δ ρσ x -> entry_propositional Θ Ξ Δ ρσ' x.
+Proof. intros * Hρ; apply entry_propositional_resp_agree, env_eq_agree_upto, Hρ. Qed.
 
 (** The entries after the first of [e :: Δ] are those of [Δ], in the tail
     of the environment. *)
 Lemma entry_propositional_succ : forall {Θ Ξ} e Δ ρσ x,
     entry_propositional Θ Ξ (e :: Δ) ρσ (S x) <-> entry_propositional Θ Ξ Δ ρσ↯ x.
 Proof.
-  intros; split; intros []; econstructor; try eassumption;
-    intros y; rewrite entry_propositional_env_eq, !env_entry_skipn; cbn [drop_env];
+  intros; split; intros [T HT E HE v Ev Hv]; econstructor; try eassumption;
+    intros y Hy; rewrite (HE y Hy), !env_entry_skipn; cbn [drop_env];
     rewrite ?env_entry_drop; reflexivity.
 Qed.
 
@@ -1433,19 +1445,26 @@ Lemma entry_propositional_mod : forall {Θ Ξ} Δ ρσ x,
     ctx_entry_type Δ x = None -> ~ entry_propositional Θ Ξ Δ ρσ x.
 Proof. intros * Hx []; congruence. Qed.
 
+(** A propositional entry is an entry. *)
+Lemma entry_propositional_lt : forall {Θ Ξ} Δ ρσ x, entry_propositional Θ Ξ Δ ρσ x -> x < List.length Δ.
+Proof.
+  intros * [T HT _ _ _ _ _]; unfold ctx_entry_type in HT.
+  destruct (List.nth_error Δ x) eqn:E; [ apply List.nth_error_Some; congruence | discriminate ].
+Qed.
+
 (** The two cases of an evaluation of a substitution at an index. *)
 Lemma eval_sub_at_prop : forall {Θ Ξ} Δ σ ρ ρσ x,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> entry_propositional Θ Ξ Δ ρσ x -> env_entry ρσ x = de_term ⋆ᵈ.
-Proof. intros * H; apply H. Qed.
+Proof. intros * H Hp; exact (proj1 (H x (entry_propositional_lt _ _ _ Hp)) Hp). Qed.
 
 Proposition eval_sub_index : forall {Θ Ξ} Δ σ (ρ ρσ : env),
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    forall x, ~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x.
-Proof. intros * H x; apply H. Qed.
+    forall x, x < List.length Δ -> ~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x.
+Proof. intros * H x Hx; apply (H x Hx). Qed.
 
 (** The identity evaluates to an environment holding its proofs. *)
 Lemma eval_sub_id : forall {Θ Ξ} Δ ρ, env_proofs Θ Ξ Δ ρ -> ⟦ Id : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ.
-Proof. intros * H x; split; [ apply H | intros _; reflexivity ]. Qed.
+Proof. intros * H x _; split; [ apply H | intros _; reflexivity ]. Qed.
 
 (** The tail of an environment holding its proofs holds its tail's. *)
 Lemma env_proofs_drop : forall {Θ Ξ} e Δ ρ, env_proofs Θ Ξ (e :: Δ) ρ -> env_proofs Θ Ξ Δ ρ↯.
@@ -1455,47 +1474,47 @@ Proof. intros * H x Hx; rewrite env_entry_drop; apply H; exact (proj2 (entry_pro
     proofs. *)
 Lemma eval_sub_shift : forall {Θ Ξ} e Δ ρ, env_proofs Θ Ξ (e :: Δ) ρ -> ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ↯.
 Proof.
-  intros * H x; split; [ apply (env_proofs_drop _ _ _ H) | intros _; reflexivity ].
+  intros * H x _; split; [ apply (env_proofs_drop _ _ _ H) | intros _; reflexivity ].
 Qed.
 
-(** An extension by a term at an entry that is not a proposition: the
-    term's value. *)
-(** The head entry of [e :: Δ] is a proposition over the tail [ρσ]: its
-    type evaluates there, up to [env_eq], to a proposition.  It does not
-    depend on the head of the environment. *)
-Definition head_propositional (Θ : gdeps) (Ξ : gstack) (e : centry) (ρσ : env) : Prop :=
-  entry_propositional Θ Ξ (e :: nil) (de_term d_placeholder :: ρσ) 0.
+(** The head entry of [e :: Δ] is a proposition over the tail [ρσ] of
+    [Δ]: its type evaluates there, up to agreement on the entries of [Δ], to
+    a proposition.  It does not depend on the head of the environment. *)
+Definition head_propositional (Θ : gdeps) (Ξ : gstack) (e : centry) (Δ : ctx) (ρσ : env) : Prop :=
+  entry_propositional Θ Ξ (e :: Δ) (de_term d_placeholder :: ρσ) 0.
 
 Lemma entry_propositional_head : forall {Θ Ξ} e Δ d ρσ,
-    entry_propositional Θ Ξ (e :: Δ) (d :: ρσ) 0 <-> head_propositional Θ Ξ e ρσ.
+    entry_propositional Θ Ξ (e :: Δ) (d :: ρσ) 0 <-> head_propositional Θ Ξ e Δ ρσ.
 Proof. intros; split; intros []; econstructor; eassumption. Qed.
 
 (** An extension by a term at an entry that is not a proposition: the
     term's value. *)
 Lemma eval_sub_extend : forall {Θ Ξ} e Δ σ ρ ρσ M m,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    ~ head_propositional Θ Ξ e ρσ ->
+    ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
 Proof.
-  intros * H Hn HM [| x].
+  intros * H Hn HM [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
            | intros _; exists m; split; [ reflexivity | assumption ] ].
-  - split; [ intros Hp; apply (H x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
-           | intros Hp; apply (H x); intros Hp'; exact (Hp (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
+           | intros Hp; apply (H x ltac:(lia)); intros Hp'; exact (Hp (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 (** An extension at an entry that is a proposition: the proof [⋆ᵈ], the
     entry unevaluated. *)
 Lemma eval_sub_extend_proof : forall {Θ Ξ} e Δ σ ρ ρσ M,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    head_propositional Θ Ξ e ρσ ->
+    head_propositional Θ Ξ e Δ ρσ ->
     ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ⋆ᵈ.
 Proof.
-  intros * H Hp [| x].
+  intros * H Hp [| x] Hx.
   - split; [ reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
-  - split; [ intros Hp'; apply (H x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
-           | intros Hn; apply (H x); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
+           | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 (** An extension by a module expression at a module slot. *)
@@ -1504,31 +1523,33 @@ Lemma eval_sub_extend_mod : forall {Θ Ξ} U Δ σ ρ ρσ H h,
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
     ⟦ σ ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵐ h.
 Proof.
-  intros * Hσ HH [| x].
+  intros * Hσ HH [| x] Hx.
   - split; [ intros []; discriminate | intros _; exists h; split; [ reflexivity | assumption ] ].
-  - split; [ intros Hp; apply (Hσ x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
-           | intros Hn; apply (Hσ x); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp; apply (Hσ x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
+           | intros Hn; apply (Hσ x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 (** An extension by a term and a module expression, at an entry that is
     not a proposition. *)
 Lemma eval_sub_extend_dm : forall {Θ Ξ} e Δ σ ρ ρσ N H n h,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    ~ head_propositional Θ Ξ e ρσ ->
+    ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
     ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ‖ h.
 Proof.
-  intros * Hσ Hn HN HH [| x].
+  intros * Hσ Hn HN HH [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
            | intros _; exists n, h; split; [ reflexivity | split; assumption ] ].
-  - split; [ intros Hp; apply (Hσ x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
-           | intros Hm; apply (Hσ x); intros Hp'; exact (Hm (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp; apply (Hσ x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
+           | intros Hm; apply (Hσ x ltac:(lia)); intros Hp'; exact (Hm (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 Corollary eval_sub_single_dm : forall {Θ Ξ} e Δ ρ N H n h,
     env_proofs Θ Ξ Δ ρ ->
-    ~ head_propositional Θ Ξ e ρ ->
+    ~ head_propositional Θ Ξ e Δ ρ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
     ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵈ n ‖ h.
@@ -1538,7 +1559,7 @@ Qed.
 
 Corollary eval_sub_single : forall {Θ Ξ} e Δ ρ M m,
     env_proofs Θ Ξ Δ ρ ->
-    ~ head_propositional Θ Ξ e ρ ->
+    ~ head_propositional Θ Ξ e Δ ρ ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ m.
 Proof.
@@ -1547,7 +1568,7 @@ Qed.
 
 Corollary eval_sub_single_proof : forall {Θ Ξ} e Δ ρ M,
     env_proofs Θ Ξ Δ ρ ->
-    head_propositional Θ Ξ e ρ ->
+    head_propositional Θ Ξ e Δ ρ ->
     ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ ⋆ᵈ.
 Proof.
   intros; apply eval_sub_extend_proof; [ apply eval_sub_id; assumption | assumption ].
@@ -1567,10 +1588,11 @@ Qed.
     reads. *)
 Lemma eval_sub_var : forall {Θ Ξ} Δ σ ρ ρσ x,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    x < List.length Δ ->
     ~ entry_propositional Θ Ξ Δ ρσ x ->
     ⟦ #x[σ] ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρσ x.
 Proof.
-  intros * Hσ Hnp; specialize (proj2 (Hσ x) Hnp) as Hσx; clear Hσ Hnp; rename Hσx into Hσ; cbn; unfold env_var.
+  intros * Hσ Hx Hnp; specialize (proj2 (Hσ x Hx) Hnp) as Hσx; clear Hσ Hnp; rename Hσx into Hσ; cbn; unfold env_var.
   destruct (σ x) as [y | M | H | N H]; cbn in Hσ |- *.
   - rewrite Hσ; apply eval_exp_var.
   - destruct Hσ as (m & -> & Hm); exact Hm.
@@ -1580,10 +1602,11 @@ Qed.
 
 Lemma eval_sub_mvar : forall {Θ Ξ} Δ σ ρ ρσ x,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    x < List.length Δ ->
     ~ entry_propositional Θ Ξ Δ ρσ x ->
     ⟦ (me_var x)[σ]ᵐ ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ env_mod ρσ x.
 Proof.
-  intros * Hσ Hnp; specialize (proj2 (Hσ x) Hnp) as Hσx; clear Hσ Hnp; rename Hσx into Hσ; cbn; unfold env_mod.
+  intros * Hσ Hx Hnp; specialize (proj2 (Hσ x Hx) Hnp) as Hσx; clear Hσ Hnp; rename Hσx into Hσ; cbn; unfold env_mod.
   destruct (σ x) as [y | M | H | N H]; cbn in Hσ |- *.
   - rewrite Hσ; apply eval_me_var.
   - destruct Hσ as (m & -> & _); apply eval_me_unit.
@@ -1599,11 +1622,11 @@ Instance eval_sub_Proper : forall {Θ Ξ} Δ, Proper (sb_eq ==> eq ==> env_eq ==
 Proof.
   intros Θ Ξ Δ σ σ' Hσ ρ ρ0 <- ρσ ρσ' Hρσ.
   assert (Hρσ' : env_eq ρσ' ρσ) by (intros y; symmetry; apply Hρσ).
-  split; intros H x; (split; [ intros Hp | intros Hn ]).
-  - rewrite <- (Hρσ x); apply (proj1 (H x)); eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite <- (Hσ x), <- (Hρσ x); apply (proj2 (H x)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite (Hρσ x); apply (proj1 (H x)); eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite (Hσ x), (Hρσ x); apply (proj2 (H x)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
+  split; intros H x Hx; (split; [ intros Hp | intros Hn ]).
+  - rewrite <- (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
+  - rewrite <- (Hσ x), <- (Hρσ x); apply (proj2 (H x Hx)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
+  - rewrite (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
+  - rewrite (Hσ x), (Hρσ x); apply (proj2 (H x Hx)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
 Qed.
 
 (** ** The Substitutions that Compute
@@ -1621,7 +1644,7 @@ Lemma eval_sub_of_vars : forall {Θ Ξ} Δ σ ρ ρσ,
     env_proofs Θ Ξ Δ ρσ ->
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ.
 Proof.
-  intros * Hv Hp x; split; [ apply Hp | intros _ ].
+  intros * Hv Hp x _; split; [ apply Hp | intros _ ].
   destruct (Hv x) as (y & -> & ->); reflexivity.
 Qed.
 
@@ -1636,42 +1659,43 @@ Qed.
 (** A weakened extension. *)
 Lemma eval_sub_wk_extend : forall {Θ Ξ} e Δ σ M φ ρ ρσ m,
     ⟦ sb_wk σ φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    ~ head_propositional Θ Ξ e ρσ ->
+    ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ M[φ]ʷ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
 Proof.
-  intros * H Hn HM [| x].
+  intros * H Hn HM [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
            | intros _; exists m; split; [ reflexivity | assumption ] ].
-  - split; [ intros Hp; apply (H x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
-           | intros Hm; apply (H x); intros Hp'; exact (Hm (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
+  - cbn [List.length] in Hx.
+    split; [ intros Hp; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
+           | intros Hm; apply (H x ltac:(lia)); intros Hp'; exact (Hm (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 (** A lifted substitution, plain and weakened.  [q σ] extends [σ[↑]] by the
     variable [0], so its head is the entry already in [ρ]. *)
 Lemma eval_sub_q : forall {Θ Ξ} e Δ σ ρ ρσ,
     ⟦ sb_wk σ ↑ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    (head_propositional Θ Ξ e ρσ -> env_entry ρ 0 = de_term ⋆ᵈ) ->
+    (head_propositional Θ Ξ e Δ ρσ -> env_entry ρ 0 = de_term ⋆ᵈ) ->
     ⟦ q σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρ 0 :: ρσ.
 Proof.
-  intros * H Hp [| x].
+  intros * H Hp [| x] Hx.
   - split; [ intros Hp'; exact (Hp (proj1 (entry_propositional_head _ _ _ _) Hp')) | intros _; reflexivity ].
-  - split.
-    + intros Hp'; apply (H x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
-    + intros Hn; exact (proj2 (H x) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
+  - cbn [List.length] in Hx; split.
+    + intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
+    + intros Hn; exact (proj2 (H x ltac:(lia)) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
 Qed.
 
 Lemma eval_sub_wk_q : forall {Θ Ξ} e Δ σ φ ρ ρσ,
     ⟦ sb_wk (sb_wk σ ↑) φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    (head_propositional Θ Ξ e ρσ -> env_entry ρ (φ 0) = de_term ⋆ᵈ) ->
+    (head_propositional Θ Ξ e Δ ρσ -> env_entry ρ (φ 0) = de_term ⋆ᵈ) ->
     ⟦ sb_wk (q σ) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρ (φ 0) :: ρσ.
 Proof.
-  intros * H Hp [| x].
+  intros * H Hp [| x] Hx.
   - split; [ intros Hp'; exact (Hp (proj1 (entry_propositional_head _ _ _ _) Hp'))
            | intros _; cbn [sb_wk]; rewrite sb_q_zero; reflexivity ].
-  - split.
-    + intros Hp'; apply (H x); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
-    + intros Hn; exact (proj2 (H x) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
+  - cbn [List.length] in Hx; split.
+    + intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
+    + intros Hn; exact (proj2 (H x ltac:(lia)) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
 Qed.
 
 (** Precomposition by a weakening reindexes the environment [σ] evaluates
@@ -1679,12 +1703,13 @@ Qed.
     exactly to those of [σ]'s. *)
 Lemma eval_sub_wk_pre : forall {Θ Ξ} Δ Δ' φ σ ρ ρσ `{Hφ : WkMono φ},
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    (forall x, x < List.length Δ' -> φ x < List.length Δ) ->
     (forall x, entry_propositional Θ Ξ Δ' (⟪φ⟫ ρσ) x <-> entry_propositional Θ Ξ Δ ρσ (φ x)) ->
     ⟦ (ι φ) ⨟ σ : Δ' ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ⟪φ⟫ ρσ.
 Proof.
-  intros Θ Ξ Δ Δ' φ σ ρ ρσ Hφ H Hiff x; rewrite (eval_wk_entry _ _ Hφ x); split.
-  - intros Hp; apply (H (φ x)), Hiff, Hp.
-  - intros Hn; apply (H (φ x)); intros Hp; apply Hn, Hiff, Hp.
+  intros Θ Ξ Δ Δ' φ σ ρ ρσ Hφ H Hl Hiff x Hx; rewrite (eval_wk_entry _ _ Hφ x); split.
+  - intros Hp; apply (H (φ x) (Hl _ Hx)), Hiff, Hp.
+  - intros Hn; apply (H (φ x) (Hl _ Hx)); intros Hp; apply Hn, Hiff, Hp.
 Qed.
 
 (** The tail of an evaluated substitution is that of its result. *)
@@ -1692,9 +1717,9 @@ Corollary eval_sub_shift_pre : forall {Θ Ξ} e Δ σ ρ ρσ,
     ⟦ σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ Wk ⨟ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ↯.
 Proof.
-  intros * H x; rewrite env_entry_drop; split.
-  - intros Hp; apply (H (S x)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
-  - intros Hn; apply (H (S x)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
+  intros * H x Hx; rewrite env_entry_drop; split.
+  - intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
+  - intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
 Qed.
 
 #[export]
