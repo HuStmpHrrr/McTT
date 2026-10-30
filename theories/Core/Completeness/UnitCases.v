@@ -822,7 +822,7 @@ Proof.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Cd.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Em a b) H)) in Cm.
   destruct Cd as (D12 & D23 & D34); destruct Cm as (M12 & M23 & M34).
-  apply (mk_rel_sub d1 d2 d3 d4); try (apply (eval_sub_same_types Htys); assumption).
+  apply (mk_rel_sub d1 d2 d3 d4); try (apply (eval_sub_same_types Htys eq_refl); assumption).
   apply rel_chain_4;
     [ apply (per_env_extend_dm_of_parts HΔ HU (ma := m1) (mb := m2))
     | apply (per_env_extend_dm_of_parts HΔ HU (ma := m2) (mb := m3))
@@ -906,7 +906,7 @@ Proof.
   (** [B'] in the context of the right-hand unit. *)
   assert (HB'r : Γ ▹ₘ U' ⊨ B' ≈ B' : C).
   { eapply rel_exp_under_ctx_restrict;
-      [ exact HΓU' | exact HΓU | | intros ? ? _ [| x] [T HT E HE a Ea Hp]; econstructor; eassumption | exact HBr ].
+      [ exact HΓU' | exact HΓU | | cbn; lia | intros ? ? _ [| x] _ [T HT E HE a Ea Hp]; econstructor; eassumption | exact HBr ].
     intros ρ ρ' [Ht T1 _ T3 _].
     assert (Htt : R ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]).
     assert (Ht't' : R ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact Ht | exact Ht ]).

@@ -684,13 +684,13 @@ Proof.
   assert (Hσa : Γ' ⊨ˢ σ ≈ σ' : Γ ▹ B[τ])
     by (eapply (rel_sub_under_ctx_restrict HΓ' HΓ' HΓBd HΓB);
         [ tauto | intros ? ? [? _]; assumption | apply ctx_props_incl_same_types; apply Tys | exact Hσ ]).
-  pose proof (eval_sub_same_types (Tys _ _ _) Hev) as Hev'.
+  pose proof (eval_sub_same_types (Tys _ _ _) eq_refl Hev) as Hev'.
   destruct (sub_link_q Hτj Hl HBt _ _ HΓ' _ _ Hσa _ HΔBa _ _ Hρ Hev') as [e1 [He1 L]].
-  exists e1; split; [ exact (eval_sub_same_types (fun x => eq_sym (Tys _ _ _ x)) He1) |].
+  exists e1; split; [ exact (eval_sub_same_types (fun x => eq_sym (Tys _ _ _ x)) eq_refl He1) |].
   intros e2 He2.
   assert (E : RΔB <~> per_env_extend_def B M RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   apply E.
-  pose proof (L _ (eval_sub_same_types (Tys _ _ _) He2)) as H12.
+  pose proof (L _ (eval_sub_same_types (Tys _ _ _) eq_refl He2)) as H12.
   assert (Hρσ : per_env_extend_def B[τ] M[τ] RΓ ρσ ρσ)
     by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓBd); eassumption).
   pose proof Hρσ as [[Hρσt _ _ _] [m0 [Hm0 Htie0]] _].
@@ -759,12 +759,12 @@ Proof.
   assert (Hσa : Γ' ⊨ˢ σ ≈ σ' : Γ ▹ B[τ])
     by (eapply (rel_sub_under_ctx_restrict HΓ' HΓ' HΓd HΓB);
         [ tauto | exact (per_ctx_env_def_as_ass HΓd HΓ) | apply ctx_props_incl_same_types; apply Tys | exact Hσ ]).
-  pose proof (eval_sub_same_types (Tys _ _ _) Hev) as Hev'.
+  pose proof (eval_sub_same_types (Tys _ _ _) eq_refl Hev) as Hev'.
   destruct (sub_link_q Hτj Hl HBt _ _ HΓ' _ _ Hσa _ HΔBa _ _ Hρ Hev') as [e1 [He1 L]].
-  exists e1; split; [ exact (eval_sub_same_types (fun x => eq_sym (Tys _ _ _ x)) He1) |].
+  exists e1; split; [ exact (eval_sub_same_types (fun x => eq_sym (Tys _ _ _ x)) eq_refl He1) |].
   intros e2 He2.
   assert (E : RΔB <~> per_env_extend B B RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
-  apply E, L, (eval_sub_same_types (Tys _ _ _) He2).
+  apply E, L, (eval_sub_same_types (Tys _ _ _) eq_refl He2).
 Qed.
 
 (** A lifted substitution into a slot: as for an assumption, and the head
@@ -867,14 +867,14 @@ Proof.
   (** A definition with a module part has its term part's entry type. *)
   assert (Tdm : forall A N V Θ0 x, ctx_entry_type (ce_dm A N V :: Θ0) x = ctx_entry_type (ce_def A N :: Θ0) x)
     by (intros ? ? ? ? []; reflexivity).
-  pose proof (eval_sub_same_types (Tdm _ _ _ _) Hev) as Hevd.
+  pose proof (eval_sub_same_types (Tdm _ _ _ _) eq_refl Hev) as Hevd.
   pose proof (eval_sub_change_head _ (ce_mod U[τ]ᵘ) _ _ _ _ Hev (Hnpτ (ce_dm B[τ] M[τ] U[τ]ᵘ) _ _ eq_refl Hρσt)
                 (head_not_propositional_mod _ _)) as Hevm.
   destruct (sub_link_q_def Hτj Hl HB HM _ _ HΓ' _ _ Hσd _ (per_ctx_env_of_def HΔ HB HM) _ _ Hρ Hevd) as [ed [Hed Ld]].
   destruct (sub_link_q_mod Hτj Hl HU _ _ HΓ' _ _ Hσm _ (per_ctx_env_of_mod HΔ HU) _ _ Hρ Hevm) as [em [Hem Lm]].
   assert (E : RΔd <~> per_env_extend_dm B M U RΔ)
     by (eapply per_ctx_env_right_irrel; [ exact HΔd | exact (per_ctx_env_of_dm HΔ HB HM HU) ]).
-  exists ed; split; [ exact (eval_sub_same_types (fun x => eq_sym (Tdm _ _ _ _ x)) Hed) |].
+  exists ed; split; [ exact (eval_sub_same_types (fun x => eq_sym (Tdm _ _ _ _ x)) eq_refl Hed) |].
   intros e2 He2; apply E.
   pose proof (rel_exp_of_typ_inversion_simple_at HΔ HB) as HS.
   assert (Hnp : forall e ρ0 ρ0', ctx_entry_type (e :: nil) 0 = Some B -> RΔ ρ0 ρ0' -> ~ head_propositional gc_deps gc_stack e ρ0).
@@ -882,7 +882,7 @@ Proof.
     assert (Hr0 : RΔ ρ0 ρ0) by (etransitivity; [ exact Hr | symmetry; exact Hr ]).
     destruct (rel_exp_of_typ_relevant_at HΔ HB _ _ Hr0) as (a & Ea & Ha).
     exact (head_not_propositional HΔ He HS Hr0 Ea Ha). }
-  pose proof (eval_sub_same_types (Tdm _ _ _ _) He2) as He2d.
+  pose proof (eval_sub_same_types (Tdm _ _ _ _) eq_refl He2) as He2d.
   pose proof (Ld _ He2d) as Hdd.
   pose proof Hdd as [[Hdt _ _ _] _ _].
   assert (He22 : RΔ e2↯ e2↯) by (etransitivity; [ symmetry; exact Hdt | exact Hdt ]).

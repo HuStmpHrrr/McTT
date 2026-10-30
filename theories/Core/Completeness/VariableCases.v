@@ -178,8 +178,8 @@ Proof.
   assert (PER Rv) by (eapply per_elem_PER; eassumption).
   (** [#0[σ]] is [σ 0], so the outer values are the heads too. *)
   apply (mk_rel_exp (ρσ 0) (ρσ 0) (ρ'σ' 0) (ρ'σ' 0));
-    [ exact (eval_sub_var _ _ _ _ 0 Hev Hnp) | apply eval_exp_var | apply eval_exp_var
-    | exact (eval_sub_var _ _ _ _ 0 Hev' Hnp') |].
+    [ exact (eval_sub_var _ _ _ _ 0 Hev ltac:(cbn; lia) Hnp) | apply eval_exp_var | apply eval_exp_var
+    | exact (eval_sub_var _ _ _ _ 0 Hev' ltac:(cbn; lia) Hnp') |].
   apply rel_chain_4_of_2; [ assumption | apply Hvu; exact Hh ].
 Qed.
 
@@ -254,8 +254,7 @@ Proof.
   - exact (rel_exp_under_ctx_shift HR HM).
   - intros ρ ρ' Hρ; right.
     (** [M[↑]ʷ] against [M] in the tail, along the weakening [↑]. *)
-    pose proof (rel_wk_under_ctx_intro HR HT (rel_wk_shift HT HR)
-                  (fun _ _ _ x => entry_propositional_shift_wk _ _ _ x)) as Hwk.
+    pose proof (rel_wk_under_ctx_shift_per HR HT) as Hwk.
     pose proof (rel_exp_under_ctx_wk_simple Hwk HM) as [R0 [HR0 [j Hws]]].
     assert (E : R <~> R0) by (eapply per_ctx_env_right_irrel; eassumption).
     assert (PER R) by (eapply per_env_PER; eassumption).

@@ -266,12 +266,12 @@ Qed.
 
 (** Evaluation at a target reads its entries' types only. *)
 Lemma eval_sub_same_types : forall {Δ1 Δ2 σ ρ ρσ},
-    List.length Δ1 = List.length Δ2 ->
     (forall x, ctx_entry_type Δ1 x = ctx_entry_type Δ2 x) ->
+    List.length Δ1 = List.length Δ2 ->
     ⟦ σ : Δ1 ⟧s ρ ↘ ρσ ->
     ⟦ σ : Δ2 ⟧s ρ ↘ ρσ.
 Proof.
-  intros * Hl Ht H x Hx.
+  intros * Ht Hl H x Hx.
   assert (Hsk : forall n, List.length (List.skipn n Δ1) = List.length (List.skipn n Δ2))
     by (intros n; rewrite !List.length_skipn, Hl; reflexivity).
   assert (I : entry_propositional gc_deps gc_stack Δ2 ρσ x <-> entry_propositional gc_deps gc_stack Δ1 ρσ x).
@@ -543,6 +543,18 @@ Proof.
 Qed.
 
 Hint Resolve rel_wk_under_ctx_shift : mctt.
+
+(** The same, from the two context PERs. *)
+Lemma rel_wk_under_ctx_shift_per : forall {Γ e R R'},
+    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R' ->
+    (e :: Γ)%list ⊨ʷ ↑ : Γ.
+Proof.
+  intros * HR HR'.
+  eapply rel_wk_under_ctx_intro; [ exact HR | exact HR' | eapply rel_wk_shift; eassumption | |].
+  - intros x Hx; cbn; lia.
+  - intros ρ ρ' _ x _; apply entry_propositional_shift_wk.
+Qed.
 
 Corollary rel_sub_shift : forall {Γ e},
     ⊨ (e :: Γ)%list ->
@@ -1228,6 +1240,22 @@ Proof.
   econstructor; [ | | exact Ea | exact Hp ].
   - unfold ctx_entry_type in *; rewrite List.nth_error_app1 in HT by exact Hx; exact HT.
   - intros y Hy; apply HE; rewrite List.length_skipn, List.length_app; rewrite List.length_skipn in Hy; lia.
+Qed.
+
+(** The identity from a context to a prefix of it, when the context's
+    relation is included in the prefix's: past the prefix nothing is asked
+    of the environments. *)
+Lemma rel_wk_under_ctx_drop : forall {Γ Δ R R'},
+    EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ R' ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R') ->
+    Δ ++ Γ ⊨ʷ wk_id : Δ.
+Proof.
+  intros * HR HR' Hsub.
+  eapply rel_wk_under_ctx_intro;
+    [ exact HR | exact HR' | split; [ typeclasses eauto | intros ρ ρ' Hρ; rewrite !eval_wk_id; exact (Hsub _ _ Hρ) ] | |].
+  - intros x Hx; rewrite List.length_app; unfold wk_id; lia.
+  - intros ρ ρ' Hρ x Hx Hp; rewrite eval_wk_id; exact (ctx_props_incl_app _ Δ Γ ρ ρ' Hρ x Hx Hp).
 Qed.
 
 (** An evaluation at [Δ1] is one at [Δ2] when the propositional entries of
