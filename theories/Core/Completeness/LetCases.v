@@ -68,6 +68,19 @@ Proof.
   exists a1; split; [ exact Ha1 | exact (per_relevant_left _ _ _ Hr) ].
 Qed.
 
+(** So it is no proposition. *)
+Corollary not_rel_typ_propositional_of_typ_sub : forall {Γ Δ σ σ' A A'} {i : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A' : Typeω@i ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> ~ rel_typ_propositional A[σ] ρ.
+Proof.
+  intros * HΓ Hσj HA ρ ρ' Hρ (a & Ea & Hp).
+  destruct (rel_exp_of_typ_sub_relevant HΓ Hσj HA _ _ Hρ) as (a0 & Ea0 & Hr).
+  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+  congruence.
+Qed.
+
 (** At a type of a universe the term judgment relates the values. *)
 Lemma rel_exp_under_ctx_sub_simple : forall {Γ Δ σ σ' A M M' env_relΓ} {i : nat},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->

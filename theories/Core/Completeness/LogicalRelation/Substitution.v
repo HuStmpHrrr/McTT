@@ -273,8 +273,24 @@ Proof.
       eapply per_head_bridge;
         [ exact Hhead | exact Ha1 | exact Ha4 | pairwise | exact Ha2 | exact Ha3
         | pairwise_univ ].
-    + rewrite eval_wk_q_zero_entry; exact Hl.
-    + rewrite eval_wk_q_zero_entry; exact Hr.
+    + (** [A] at the image of the tail is a proposition exactly when
+          [A[ψ]ʷ] is at the tail. *)
+      rewrite eval_wk_q_zero_entry; intros (a & Ea & Hp); apply Hl.
+      rewrite ?eval_wk_q_tail in Ea by typeclasses eauto.
+      destruct (Hcom _ _ Htail) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
+      rewrite exp_sub_of_wk in Ha1.
+      assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+      assert (H12 : Dom a1 ≈ a ∈ per_univ i) by pairwise.
+      destruct H12 as [R12 H12]; pose proof (per_univ_elem_relevance _ _ _ _ H12).
+      exists a1; split; [ exact Ha1 | congruence ].
+    + rewrite eval_wk_q_zero_entry; intros (a & Ea & Hp); apply Hr.
+      rewrite ?eval_wk_q_tail in Ea by typeclasses eauto.
+      destruct (Hcom _ _ Htail) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
+      rewrite exp_sub_of_wk in Ha4.
+      assert (a3 = a) as -> by (eapply functional_eval_exp; eassumption).
+      assert (H34 : Dom a ≈ a4 ∈ per_univ i) by pairwise.
+      destruct H34 as [R34 H34]; pose proof (per_univ_elem_relevance _ _ _ _ H34).
+      exists a4; split; [ exact Ha4 | congruence ].
   - (** The head: [A[ψ]ʷ] at a tail is a proposition exactly when [A] is at
       its image, by the commutation obligation, at a tail pointwise equal
       to the given one. *)
@@ -676,13 +692,38 @@ Proof.
       are [⟦A⟧y1] and [⟦A⟧y2], which are [b2] and [c2], so the [b]- and
       [c]-chains meet.  [Hcchain] is already at one PER; saturating irrelevance
       once here rather than inside [solve_per_head] keeps the last step cheap. *)
-  rewrite Hle, Hre.
+  (** At a tail where [A] is a proposition, the heads are term entries:
+      [A[σ]] is one at the dropped environments, which the [c]-chain links
+      to the tails. *)
+  assert (Hlit_l : forall t, Dom t ≈ y2 ∈ env_relΔ -> rel_typ_propositional A t ->
+                     env_entry ρ (ψ 0) = de_term (ρ (ψ 0))).
+  { intros t Ht (a & Ea & Hp); apply Hle; exists c1; split; [ exact Hc1 |].
+    destruct (HAs _ _ Ht) as (a1 & a2 & Ea1 & Ea2 & [R' HR']).
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a2 = c2) as -> by (eapply functional_eval_exp; eassumption).
+    pose proof (per_univ_elem_relevance _ _ _ _ HR'); congruence. }
+  assert (Hlit_r : forall t, Dom t ≈ y2 ∈ env_relΔ -> rel_typ_propositional A t ->
+                     env_entry ρ' (ψ 0) = de_term (ρ' (ψ 0))).
+  { intros t Ht (a & Ea & Hp); apply Hre; exists c4; split; [ exact Hc4 |].
+    destruct (HAs _ _ Ht) as (a1 & a2 & Ea1 & Ea2 & [R' HR']).
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a2 = c2) as -> by (eapply functional_eval_exp; eassumption).
+    pose proof (per_univ_elem_relevance _ _ _ _ HR'); congruence. }
   functional_eval_rewrite_clear.
   destruct Hcchain as [? [? ?]].
   destruct_per_univ_chain Hbchain.
   destruct_per_univ_chain Hdchain.
   handle_per_univ_elem_irrel.
-  solve_per_env_extend_chain.
+  repeat
+    match goal with
+    | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
+    | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
+    end;
+    apply per_env_extend_intro;
+    first
+      [ pairwise
+      | solve_per_head
+      | (first [ apply Hlit_l | apply Hlit_r ]); first [ exact Hy12 | etransitivity; [| exact Hy12 ]; pairwise ] ].
 Qed.
 
 (** ** Instantiating a Premise in an Extended Context

@@ -320,6 +320,19 @@ Proof.
   exists a; split; [ exact Ha | exact (per_relevant_left _ _ _ Hr) ].
 Qed.
 
+(** A type of a universe is no proposition at an environment a context PER
+    relates. *)
+Corollary not_rel_typ_propositional_of_typ : forall {Γ A A'} {i : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> ~ rel_typ_propositional A ρ.
+Proof.
+  intros * HΓ HA ρ ρ' Hρ (a & Ea & Hp).
+  destruct (rel_exp_of_typ_relevant_at HΓ (rel_exp_under_ctx_refl_left HA) _ _ Hρ) as (a0 & Ea0 & Hr).
+  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+  congruence.
+Qed.
+
 (** So an entry of a type of a universe is no proposition, at either
     environment of a related pair. *)
 Corollary head_not_propositional_of_typ : forall {Γ e A A'} {i : nat} {env_relΓ},
