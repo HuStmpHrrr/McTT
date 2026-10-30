@@ -827,7 +827,7 @@ Section Fixed_GCtx.
       as (RS & RΔ & Y & HRS & HSS & HRΔ & _ & _ & _).
     assert (HXΓ : Δ ++ U ++ Γu ⊨ X : Typeω@jX)
       by (rewrite List.app_assoc; exact (closed_app_valid _ _ _ _ _ HΔa HΔU HΓs HXs)).
-    destruct (outer_typ_link Δ (U ++ Γu) Γu RΓu σ ρ0 (env_args ρ0 us) X X jX HΔa' HΔUΓ HXΓ HRΓu Hτ Hab Eσ xs Hxsσ Hlx)
+    destruct (outer_universe_type_link Δ (U ++ Γu) Γu RΓu σ ρ0 (env_args ρ0 us) X X jX HΔa' HΔUΓ HXΓ HRΓu Hτ Hab Eσ xs Hxsσ Hlx)
       as (t & b & Et & Eb & Htb).
     (** the normal form's value, related to the type's *)
     pose proof (soundness_ty' HT HW) as HTW.

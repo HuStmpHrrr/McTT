@@ -137,8 +137,8 @@ Section TeleLink.
     (** Each side's type under its substitution, against the type at the
         substitution's value. *)
     destruct (HTg _ _ HG) as [ig HGv]; destruct (HTc _ _ HC) as [ic HCv].
-    destruct (outer_typ_link _ _ _ _ _ _ _ _ _ _ Hag' HWg' HGv HRΓ Hσg HρS HEg _ Hgg Hlg) as (ag & bg & Eag & Ebg & [Rg HRg]).
-    destruct (outer_typ_link _ _ _ _ _ _ _ _ _ _ Hac' HWc' HCv HRΓ Hσc HρS HEc _ Hgc Hlc) as (ac & bc & Eac & Ebc & [Rc HRc]).
+    destruct (outer_universe_type_link _ _ _ _ _ _ _ _ _ _ Hag' HWg' HGv HRΓ Hσg HρS HEg _ Hgg Hlg) as (ag & bg & Eag & Ebg & [Rg HRg]).
+    destruct (outer_universe_type_link _ _ _ _ _ _ _ _ _ _ Hac' HWc' HCv HRΓ Hσc HρS HEc _ Hgc Hlc) as (ac & bc & Eac & Ebc & [Rc HRc]).
     rewrite List.length_rev, Hfg in Eag; rewrite List.length_rev, Hfc in Eac.
     destruct Ht0 as [a1 a2 Ea1 Ea2 HR0].
     assert (a1 = ag) as -> by (eapply functional_eval_exp; eassumption).
@@ -179,8 +179,8 @@ Section TeleLink.
     assert (E : RT0 <~> RSg) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (Hty _ _ (proj2 (E _ _) HEg')) as (i0 & R0 & Ht0).
     destruct (HTg _ _ HG) as [ig HGv]; destruct (HTc _ _ HC) as [ic HCv].
-    destruct (outer_typ_link _ _ _ _ _ _ _ _ _ _ Hag' HWg' HGv HRΓ Hσg HρS HEg _ Hgg Hlg) as (ag & bg & Eag & Ebg & [Rg HRg]).
-    destruct (outer_typ_link _ _ _ _ _ _ _ _ _ _ Hac' HWc' HCv HRΓ Hσc HρS HEc _ Hgc Hlc) as (ac & bc & Eac & Ebc & [Rc HRc]).
+    destruct (outer_universe_type_link _ _ _ _ _ _ _ _ _ _ Hag' HWg' HGv HRΓ Hσg HρS HEg _ Hgg Hlg) as (ag & bg & Eag & Ebg & [Rg HRg]).
+    destruct (outer_universe_type_link _ _ _ _ _ _ _ _ _ _ Hac' HWc' HCv HRΓ Hσc HρS HEc _ Hgc Hlc) as (ac & bc & Eac & Ebc & [Rc HRc]).
     rewrite List.length_rev, Hfg in Eag; rewrite List.length_rev, Hfc in Eac.
     destruct Ht0 as [a1 a2 Ea1 Ea2 HR0].
     assert (a1 = ag) as -> by (eapply functional_eval_exp; eassumption).

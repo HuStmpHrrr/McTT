@@ -571,7 +571,7 @@ Proof.
 Qed.
 
 (** The same for a type of a universe. *)
-Lemma outer_typ_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
+Lemma outer_universe_type_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ A ≈ A' : Typeω@i ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->

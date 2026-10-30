@@ -2859,7 +2859,7 @@ Section GroupElim.
                          ∈ per_ctx_env ↘ RM)
           by (rewrite List.rev_involutive; exact HRM).
         pose proof (proj2 (rel_gargs _ _ _ _ HRΓ HMr (List.Forall_rev (elim_mctx_ass p D j Mj Us Hc HMj)) HRMr _ _ _ _ Ll Ll El)) as Hg.
-        destruct (outer_typ_link (elim_mctx p D j Mj Us) Γ Γ' RΓ' σ0 ρ0 ρ0σ0 A0 A0 iA (elim_mctx_ass p D j Mj Us Hc HMj) HM
+        destruct (outer_universe_type_link (elim_mctx p D j Mj Us) Γ Γ' RΓ' σ0 ρ0 ρ0σ0 A0 A0 iA (elim_mctx_ass p D j Mj Us Hc HMj) HM
                     (rel_exp_under_ctx_refl_right HA0) HRΓ' Hσ0 Hρ0 Hev0 _ Hg ltac:(rewrite List.length_rev in Ll; exact Ll))
           as (a & b0 & Ea & Eb0 & Hab0).
         rewrite length_elim_mctx in Ea.
@@ -3146,7 +3146,7 @@ Section GroupElim.
             rewrite <- !List.app_assoc in HKkΓ.
             pose proof (closed_app_valid _ _ _ _ _ HKka HKk HΓ HBv) as HBvΓ; rewrite <- !List.app_assoc in HBvΓ.
             pose proof (frame_side_dom_gargs kd Bσ w X nv ys ltac:(lia) HwU Lw LX Lnv HX Hnvs Hys) as Hgy; fold Δ in Hgy.
-            destruct (outer_typ_link Δ Tg (Ψ0 ++ Γ) RΨ σ0 _ _ Bk Bk i0 HΔa HKkΓ HBvΓ HRΨ (gsub_valid Hsig) HE Hσe ys Hgy
+            destruct (outer_universe_type_link Δ Tg (Ψ0 ++ Γ) RΨ σ0 _ _ Bk Bk i0 HΔa HKkΓ HBvΓ HRΨ (gsub_valid Hsig) HE Hσe ys Hgy
                         ltac:(rewrite LΔ; exact Lys)) as (a' & b' & Ea' & Eb' & Hab).
             rewrite LΔ in Ea'; assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
             destruct (rel_ctx_wf_per_ctx_env HKk) as [RK HRK].
