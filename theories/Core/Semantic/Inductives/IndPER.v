@@ -98,7 +98,7 @@ Section Fixed_GCtx.
         List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
         exists a a', ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ a /\ ⟦ A ⟧ env_args nil (u2 ++ ms' ++ vs') ↘ a' /\
           Dom a ≈ a' ∈ per_univ u.
-    (** The same for the shapes' domains. *)
+    (** The same for the shapes' domains, relevant types. *)
     Definition doms_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
@@ -106,7 +106,7 @@ Section Fixed_GCtx.
         tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
         List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
         exists a a', ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ a /\
-          ⟦ B ⟧ env_args nil (u2 ++ ms' ++ ws' ++ ys') ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
+          ⟦ B ⟧ env_args nil (u2 ++ ms' ++ ws' ++ ys') ↘ a' /\ Dom a ≈ a' ∈ per_relevant (per_univ u).
     (** The recursive arguments' parameters at [ups] and at [u2] are
         related at the member each shape ends in. *)
     Definition recs_related (u2 : list domain) : Prop :=
@@ -248,7 +248,7 @@ Section Fixed_GCtx.
         rel_mod_eval (per_univ_elem u) B (env_args nil (ups ++ ms ++ ws ++ ys)) B (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
           (dr m (ms ++ ws ++ ys) B).
     Proof.
-      intros * HM Hm Hc Heq Hw HB Hy; destruct (Hdm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [R HR]).
+      intros * HM Hm Hc Heq Hw HB Hy; destruct (Hdm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] _ _]).
       econstructor; [ exact Ea | exact Ea' |].
       unfold dr, canon_doms_rel; exact (per_head_diag Ea HR).
     Qed.
@@ -319,8 +319,8 @@ Section Fixed_GCtx.
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys' HM Hm Hc Heq Hw HB Hy.
-        destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [R HR]).
-        exists a a'; [ exact Ea | exact Ea' |].
+        destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] Hra Hra']).
+        exists a a'; [ exact Ea | exact Ea' | | exact Hra | exact Hra' ].
         pose proof (per_head_diag Ea HR) as HR'.
         destruct (realize_per_univ_elem_gen HR') as (_ & _ & Hrb).
         intros x x' Hx; apply Hrb; exact Hx.
@@ -361,4 +361,10 @@ Section Fixed_GCtx.
     match goal with Hf : forall c c', dr _ _ _ c c' -> _ |- _ => pose proof (Hf c c' Hc) as Happ end.
     inversion Happ; subst; eauto.
   Qed.
+
+  (** The two functions take relevant arguments. *)
+  Lemma rec_arg_pi_relevance : forall p D okr nr ar dr k u u' pre pre' B t f f',
+      rec_arg_rel p D okr nr ar dr k u u' pre pre' (pt_pi B t) f f' ->
+      arg_relevance gc_deps gc_stack f = relevant /\ arg_relevance gc_deps gc_stack f' = relevant.
+  Proof. intros * H; inversion H; subst; split; assumption. Qed.
 End Fixed_GCtx.

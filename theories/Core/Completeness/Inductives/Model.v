@@ -556,14 +556,14 @@ Section Sort.
   Lemma rev_uparams_ass : tele_ass (List.rev (ind_uparams D)).
   Proof. apply List.Forall_rev, uparams_ass. Qed.
 
-  Lemma sort_typ_rel : forall Pre T, ⊨ Pre ++ ind_uparams D ->
+  Lemma sort_typ_rel_relevant : forall Pre T, ⊨ Pre ++ ind_uparams D ->
       Pre ++ ind_uparams D ⊨ T : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ ->
       forall ups ups' zs zs', List.length zs = List.length Pre -> List.length zs' = List.length Pre ->
         List.length ups = ind_nu D -> List.length ups' = ind_nu D ->
         per_gargs (List.rev (Pre ++ ind_uparams D)) nil nil (ups ++ zs) (ups' ++ zs') ->
         forall a, ⟦ ind_sort D ⟧ env_args nil ups ↘ a ->
         exists t t', ⟦ T ⟧ env_args nil (ups ++ zs) ↘ t /\ ⟦ T ⟧ env_args nil (ups' ++ zs') ↘ t' /\
-          Dom t ≈ t' ∈ per_univ (univ_idx a).
+          Dom t ≈ t' ∈ per_relevant (per_univ (univ_idx a)).
   Proof.
     intros * HC HT * Hz Hz' Hu Hu' Hg a Ha.
     destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
@@ -593,6 +593,21 @@ Section Sort.
     destruct (per_univ_elem_univ _ _ _ _ HRm (sort_wk_univ _ _ _ Eb)) as [Hidx _].
     exists t, t'; split; [ exact Et | split; [ exact Et' |] ].
     rewrite Hidx; apply ER0; exact Htt.
+  Qed.
+
+  (** So the values are related types of the universe. *)
+  Corollary sort_typ_rel : forall Pre T, ⊨ Pre ++ ind_uparams D ->
+      Pre ++ ind_uparams D ⊨ T : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ ->
+      forall ups ups' zs zs', List.length zs = List.length Pre -> List.length zs' = List.length Pre ->
+        List.length ups = ind_nu D -> List.length ups' = ind_nu D ->
+        per_gargs (List.rev (Pre ++ ind_uparams D)) nil nil (ups ++ zs) (ups' ++ zs') ->
+        forall a, ⟦ ind_sort D ⟧ env_args nil ups ↘ a ->
+        exists t t', ⟦ T ⟧ env_args nil (ups ++ zs) ↘ t /\ ⟦ T ⟧ env_args nil (ups' ++ zs') ↘ t' /\
+          Dom t ≈ t' ∈ per_univ (univ_idx a).
+  Proof.
+    intros * HC HT * Hz Hz' Hu Hu' Hg a Ha.
+    destruct (sort_typ_rel_relevant _ _ HC HT _ _ _ _ Hz Hz' Hu Hu' Hg a Ha) as (t & t' & Et & Et' & Htt).
+    exists t, t'; split; [ exact Et | split; [ exact Et' | exact (per_relevant_rel _ _ _ Htt) ] ].
   Qed.
 
   (** The same at either sort: a proposition evaluates to related
@@ -769,7 +784,9 @@ Section Sort.
                                  (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk))) (ptyp_ps t)) m
                  = Some T ->
                (per_head T T (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
-                  <~> canon_nparams_rel D ups (ptyp_mem t) m (List.firstn m bs))).
+                  <~> canon_nparams_rel D ups (ptyp_mem t) m (List.firstn m bs)) /\
+               (** a non-uniform parameter is relevant *)
+               rel_typ_sort T (env_args nil (ups ++ ms ++ ws ++ ys)) relevant).
     Proof.
       intros * Hcon Heq HMj * Hu Hm Hw Hy Hu' Hm' Hw' Hy' Hg.
       rename t into Ps.
@@ -827,7 +844,8 @@ Section Sort.
                    per_gargs (List.firstn m (List.rev (im_nparams Mj))) (env_args nil ups) (env_args nil ups') bs bs' /\
                    (forall m' P T, m' < m -> List.nth_error (ptyp_ps Ps) m' = Some P ->
                       List.nth_error (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn L)) (ptyp_ps Ps)) m' = Some T ->
-                      (per_head T T E E' <~> canon_nparams_rel D ups (ptyp_mem Ps) m' (List.firstn m' bs)))).
+                      (per_head T T E E' <~> canon_nparams_rel D ups (ptyp_mem Ps) m' (List.firstn m' bs)) /\
+                      rel_typ_sort T E relevant)).
       { induction m as [| m IH]; intros Hmn.
         - cbn [List.firstn sb_of_list]; unfold nparams_prefix; cbn [List.firstn List.rev List.app].
           split; [ exact Hwk |]; exists nil, nil; split; [ constructor | split; [ constructor | split; [ constructor | intros; lia ] ] ].
@@ -908,6 +926,7 @@ Section Sort.
               exact (Hil _ _ _ Hlt HP' HT').
             * assert (m' = m) as -> by lia.
               rewrite HT in HT'; injection HT' as <-.
+              split; [| exact (rel_exp_of_typ_sub_relevant HR0 Hτ HAv _ _ HEE) ].
               rewrite List.firstn_app, Hlbs, Nat.sub_diag, List.firstn_all2 by lia; cbn; rewrite List.app_nil_r.
               unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HMj HA).
               assert (HR22 : DF t2 ≈ t2 ∈ per_univ_elem j ↘ R23)
@@ -1139,7 +1158,7 @@ Section Sort.
         by (unfold Pre; rewrite <- !List.app_assoc; exact (valid_ind_decl_dctx _ HD _ _ _ _ _ _ _ k0 HM Hcon Heq ltac:(lia))).
       assert (HT : Pre ++ ind_uparams D ⊨ B : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ)
         by (rewrite HLP; unfold Pre; rewrite <- !List.app_assoc; exact HBv).
-      eapply (sort_typ_rel Pre B HC HT ups ups2 (ms ++ ws ++ ys) (ms' ++ ws' ++ ys'));
+      eapply (sort_typ_rel_relevant Pre B HC HT ups ups2 (ms ++ ws ++ ys) (ms' ++ ws' ++ ys'));
         [ rewrite HLP, !List.length_app; lia | rewrite HLP, !List.length_app; lia | exact Hu | exact Hu2 | | exact Ha ].
       unfold Pre; rewrite <- !List.app_assoc; exact Hgall.
     Qed.

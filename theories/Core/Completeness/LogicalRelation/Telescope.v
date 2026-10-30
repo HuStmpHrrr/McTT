@@ -416,6 +416,14 @@ Proof.
   eapply rel_ctx_wf_cons; [ exact HΓ | exact (per_ctx_env_of_typ HR (rel_type_of_typ HA)) | exact (type_sort_universe i) | exact HA ].
 Qed.
 
+(** The same, for a type of any sort. *)
+Lemma rel_ctx_wf_ext_sort : forall Γ A S, ⊨ Γ -> type_sort S -> Γ ⊨ A : S -> ⊨ Γ ▹ A.
+Proof.
+  intros * HΓ HS HA; destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
+  destruct (rel_type_of_sort HS HA) as [i HAi].
+  eapply rel_ctx_wf_cons; [ exact HΓ | exact (per_ctx_env_of_typ HR HAi) | exact HS | exact HA ].
+Qed.
+
 Lemma gsub_rel_ctx_wf : forall Γ τ Δ, gsub Γ τ Δ -> ⊨ Γ.
 Proof. intros * Hg; exact (proj1 (gsub_sem Hg)). Qed.
 

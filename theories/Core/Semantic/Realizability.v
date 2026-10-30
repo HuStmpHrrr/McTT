@@ -366,7 +366,7 @@ Proof.
       exists V; split; econstructor; eassumption.
     - (** A domain of a shape: its variables are related at the type's
           parameters, hence at the element's own ([HdI]). *)
-      intros k0 pre B u u' pre' t f f' Hf IH Mk0 ms ms' xs xs' c gs1 t0 gs2 ws ws' k1 ys ys' HM Hρ Hρ' Hm Hx Hx' Hc Hw Hs Hk
+      intros k0 pre B u u' pre' t f f' Hf IH _ _ Mk0 ms ms' xs xs' c gs1 t0 gs2 ws ws' k1 ys ys' HM Hρ Hρ' Hm Hx Hx' Hc Hw Hs Hk
         Hy s.
       destruct (ptyp_skip_pi _ _ _ _ Hs) as [HB Hs'].
       assert (Hkl : k1 < List.length (ptyp_doms t0)) by (apply List.nth_error_Some; congruence).

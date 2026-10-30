@@ -280,7 +280,12 @@ Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_
   ; rel_dom_apps_right : domain
   ; rel_dom_apps_eval_left : ⟦ B ⟧ ρ ↘ rel_dom_apps_left
   ; rel_dom_apps_eval_right : ⟦ B ⟧ ρ' ↘ rel_dom_apps_right
-  ; rel_dom_apps_top : forall x x', R x x' -> per_top (d_dom rel_dom_apps_left x) (d_dom rel_dom_apps_right x') }.
+  ; rel_dom_apps_top : forall x x', R x x' -> per_top (d_dom rel_dom_apps_left x) (d_dom rel_dom_apps_right x')
+    (** The domain's left value is a relevant type, as a shape's domain, a
+        type of a universe, is *)
+  ; rel_dom_apps_left_relevant : domain_relevance rel_dom_apps_left = relevant
+    (** So is its right value *)
+  ; rel_dom_apps_right_relevant : domain_relevance rel_dom_apps_right = relevant }.
 
 (** ** Admissible Uniform Parameters
 
@@ -556,10 +561,14 @@ with rec_arg_rel (p : qname) (D : ind_decl)
      okr j pre' Ps bs' ->
      ind_rel p D okr nparams_rel args_rel doms_rel j u u' bs bs' v v' ->
      rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_self j Ps) v v' }
-(** At a domain: related arguments give related results *)
+(** At a domain: related arguments give related results, and the
+    functions take relevant arguments, as the elements of a [Π] over the
+    domain, a type of a universe, do ([pi_elements]) *)
 | rec_arg_pi :
   `{ (forall c c', doms_rel k pre B c c' ->
         rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
+     arg_relevance gc_deps gc_stack f = relevant ->
+     arg_relevance gc_deps gc_stack f' = relevant ->
      rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_pi B t) f f' }
 (** Two functions at two arguments: their results are related at the rest
     of the shape *)

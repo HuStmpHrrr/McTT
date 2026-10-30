@@ -692,8 +692,8 @@ Section Fixed_GCtx.
           assert (Hkl : k < List.length (ptyp_doms t0)) by (apply List.nth_error_Some; congruence).
           inversion E1 as [| | B0 ρ0 b1 t1 ? ? Eb1]; subst.
           inversion E2 as [| | B0 ρ0 b2 t1 ? ? Eb2]; subst.
-          destruct (HD1 _ _ _ _ HB Hy1) as [bu b1' Ebu Eb1' Htop1].
-          destruct (HD2 _ _ _ _ HB Hy2) as [bu' b2' Ebu' Eb2' Htop2].
+          destruct (HD1 _ _ _ _ HB Hy1) as [bu b1' Ebu Eb1' Htop1 _ Hrel1].
+          destruct (HD2 _ _ _ _ HB Hy2) as [bu' b2' Ebu' Eb2' Htop2 _ Hrel2].
           pose proof (functional_eval_exp _ _ _ _ Ebu Ebu') as <-.
           pose proof (functional_eval_exp _ _ _ _ Eb1 Eb1') as <-.
           pose proof (functional_eval_exp _ _ _ _ Eb2 Eb2') as <-.
@@ -701,7 +701,7 @@ Section Fixed_GCtx.
                         Hwuu k ysu ys1 ltac:(lia) Hy1) as Hyuu.
           pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Huu Hc eq_refl Hwuu HB Hyuu) as HPd.
           pose proof (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn1 Hc eq_refl Hw1 HB Hy1) as HI1.
-          constructor; intros c0 c0' Hcc.
+          constructor; [| exact Hrel1 | exact Hrel2 ]; intros c0 c0' Hcc.
           (** The argument of the domain, at [ups]'s prefix. *)
           apply (proj2 (HI1 _ _)) in Hcc.
           assert (Hcc0 : dr m (nsu ++ wsu ++ ysu) B c0 c0) by (etransitivity; [ exact Hcc | symmetry; exact Hcc ]).
@@ -775,8 +775,8 @@ Section Fixed_GCtx.
       induction n as [| n IH]; intros k ysu ys1 ys2 Hkn Hy1 Hy2.
       - rewrite Nat.add_0_r in Hkn; subst k; rewrite ptyp_skip_end; constructor.
       - destruct (ptyp_skip_lt k t0 ltac:(lia)) as (B & HB & Hs); rewrite Hs.
-        destruct (HD1 _ _ _ _ HB Hy1) as [bu b1 Ebu Eb1 Htop1].
-        destruct (HD2 _ _ _ _ HB Hy2) as [bu' b2 Ebu' Eb2 Htop2].
+        destruct (HD1 _ _ _ _ HB Hy1) as [bu b1 Ebu Eb1 Htop1 _ _].
+        destruct (HD2 _ _ _ _ HB Hy2) as [bu' b2 Ebu' Eb2 Htop2 _ _].
         pose proof (functional_eval_exp _ _ _ _ Ebu Ebu') as <-.
         pose proof (doms_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm HM nsu c _ gs1 t0 gs2 wsu Huu Hc eq_refl
                       Hwuu k ysu ys1 ltac:(lia) Hy1) as Hyuu.
@@ -1363,7 +1363,7 @@ Section Fixed_GCtx.
               | eapply eval_ih_rview; eassumption | eapply eval_ih_rview; eassumption |].
             intros out out' Ho; eapply rec_result_rview; [ exact HM | exact Hh | exact Hcs | exact Ew | exact Ew' | exact (Hr _ _ Ho) ].
         - (** A domain: at related arguments. *)
-          intros k pre B u u' pre' t f f' Hr IH -> -> Hf Hf' Hd bs Hbs.
+          intros k pre B u u' pre' t f f' Hr IH _ _ -> -> Hf Hf' Hd bs Hbs.
           inversion Hd as [| ? ? ? ? b b' Eb Eb' Htop Hrest]; subst.
           rewrite shape_mems_pi in Hbs.
           pose proof (leaf_flags_ok_length _ _ _ Hbs) as Lbs; rewrite length_shape_mems in Lbs.
@@ -2089,7 +2089,7 @@ Section Fixed_GCtx.
           + exists rs, rs'; split; [ eapply eval_ih_rview; eassumption | split; [ eapply eval_ih_rview; eassumption |] ].
             eapply rec_result_rview; eassumption.
         - (** A function shape: the families, at each leaf path. *)
-          intros * Hf IH.
+          intros * Hf IH _ _.
           match goal with |- exists rs rs', ⟦ih ?f of pt_pi _ ?t under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ rs /\
                                             ⟦ih ?f' of _ under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ rs' /\ _ =>
             exists (List.map (fun i => d_ihfn ρa Bksa p ua t i f) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))),

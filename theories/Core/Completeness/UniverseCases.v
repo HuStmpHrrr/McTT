@@ -670,6 +670,13 @@ Proof.
   eapply rel_chain_mono; [| exact Hc ]; intros ? ? Hp; eexists; exact (per_univ_elem_of_prop _ _ _ Hp).
 Qed.
 
+(** So a type of a universe, or a proposition, as its tag says, is a type
+    of the universe. *)
+Corollary rel_type_of_relevance : forall {Γ A A' r} {i : nat},
+    Γ ⊨ A ≈ A' : relevance_sort r Typeω@i ->
+    Γ ⊨ᵗ A ≈ A' at i.
+Proof. intros * H; destruct r; [ exact (rel_type_of_typ H) | exact (rel_type_of_prop i H) ]. Qed.
+
 (** A type of an index is a type of every larger one. *)
 Lemma rel_type_cumu_ge : forall {Γ A A'} {i j : nat},
     i <= j ->

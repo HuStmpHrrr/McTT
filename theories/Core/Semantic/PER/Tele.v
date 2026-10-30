@@ -771,10 +771,10 @@ Section Tele.
         pose proof (args_rel_pre_refl_l _ _ HM ms c gs Hmm Hc _ ws ws' Hk Hp) as Hww.
         pose proof (doms_rel_refl_l _ _ HM ms c gs gs1 t gs2 ws Hmm Hc Heq Hww k ys ys' ltac:(lia) Hy) as Hyy.
         pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww HB Hyy) as HPd.
-        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww HB Hyy) as [a0 a1 E0 E1 T1].
-        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0' a2 E0' E2 T2].
+        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww HB Hyy) as [a0 a1 E0 E1 T1 _ Hr1].
+        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0' a2 E0' E2 T2 _ Hr2].
         functional_eval_rewrite_clear.
-        exists a1 a2; [ exact E1 | exact E2 |].
+        exists a1 a2; [ exact E1 | exact E2 | | exact Hr1 | exact Hr2 ].
         intros x x' Hx.
         assert (Hxx : doms_rel m (ms ++ ws ++ ys) B x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
         exact (per_top_trans' _ _ _ (per_top_sym' _ _ (T1 _ _ Hxx)) (T2 _ _ Hx)).
@@ -821,11 +821,11 @@ Section Tele.
         pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hm Hc Hk Hp) as Hw'.
         pose proof (doms_rel_refl_inst _ _ HM ms ms' c gs gs1 t gs2 ws ws' k ys ys' Hm Hc Heq Hp ltac:(lia) Hy) as Hy'.
         pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Heq Hw' HB Hy') as HPd.
-        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0 a1 E0 E1 T1].
-        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Heq Hw' HB Hy') as [a1' a2 E1' E2 T2].
+        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0 a1 E0 E1 T1 Hr0 _].
+        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Heq Hw' HB Hy') as [a1' a2 E1' E2 T2 _ Hr2].
         pose proof (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as HdIe.
         functional_eval_rewrite_clear.
-        exists a0 a2; [ exact E0 | exact E2 |].
+        exists a0 a2; [ exact E0 | exact E2 | | exact Hr0 | exact Hr2 ].
         intros x x' Hx.
         pose proof (proj1 (HdIe _ _) Hx) as Hx'.
         assert (Hxx : doms_rel m (ms' ++ ws' ++ ys') B x' x') by (etransitivity; [ symmetry; exact Hx' | exact Hx' ]).
@@ -965,11 +965,11 @@ Section Tele.
       - (** The recursive argument: the two evaluations are swapped. *)
         intros * E E' O O' Hr IHr.
         intros; econstructor; [ exact E' | exact E | exact O' | exact O | exact IHr ].
-      - intros * Hf IH Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
+      - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
         destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
         subst pre pre'.
-        constructor; intros a a' Haa.
+        constructor; [| exact Hfr' | exact Hfr ]; intros a a' Haa.
         pose proof (proj2 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn Hc eq_refl Hw HB Hy _ _) Haa) as Haa0.
         assert (Hsym : doms_rel k (ms ++ ws ++ ys) B a' a) by (symmetry; exact Haa0).
         apply (IH a' a Hsym Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a' :: nil) (ys' ++ a :: nil) HM);
@@ -1098,12 +1098,13 @@ Section Tele.
         intros Ps u1 pre1 bs1 u2 pre2 bs2 j v1 v2 k E1 E2 O1 O2 Hr IHr u3 pre3 v3; intros.
         match goal with Hz : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => inversion Hz; subst end.
         econstructor; [ exact E1 | eassumption | exact O1 | eassumption | eapply IHr; eassumption ].
-      - intros k pre1 B u1 u2 pre2 t f1 f2 Hf IH u3 pre3 f3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 k0 ys1 ys2 HM Hρ1 Hρ2 Hn Hc Hw Hs Hk Hy Hz.
+      - intros k pre1 B u1 u2 pre2 t f1 f2 Hf IH Hfr1 Hfr2 u3 pre3 f3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 k0 ys1 ys2 HM Hρ1 Hρ2 Hn Hc Hw Hs Hk Hy Hz.
         subst pre1 pre2; inversion Hz; subst.
+        match goal with Hx : arg_relevance _ _ f3 = relevant |- _ => rename Hx into Hfr3 end.
         match goal with Hz0 : forall c c', doms_rel _ _ _ c c' -> _ |- _ => rename Hz0 into Hz' end.
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
         destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
-        constructor; intros a a3 Haa.
+        constructor; [| exact Hfr1 | exact Hfr3 ]; intros a a3 Haa.
         assert (H33 : doms_rel k (ms1 ++ ws1 ++ ys1) B a3 a3) by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
         pose proof (proj1 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn Hc eq_refl Hw HB Hy _ _) H33) as H33'.
         specialize (Hz' _ _ H33').
@@ -1358,11 +1359,11 @@ Section Tele.
           econstructor; [ exact E | exact E' | | | exact IHr ].
           + exact (admissible_index_at_base _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hww Hyy O).
           + exact (admissible_index_at_base _ _ _ _ _ _ _ _ _ _ HM Hnn' Hc Hww' Hyy' O').
-        - intros * Hf IH Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
+        - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
           subst pre pre'.
-          constructor; intros a a' Haa.
+          constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           apply (IH a a' Haa Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) HM);
             [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
             | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' |].
@@ -1458,11 +1459,11 @@ Section Tele.
             destruct O as [idx0 Ei0 Ri0].
             destruct (nparams_tele_rel_member _ _ _ (nparams_tele_rel_refl_r _ _ _ Ri0)) as (Mj0 & HMj0 & H00).
             rewrite HMj in HMj0; injection HMj0 as <-; exact H00.
-        - intros * Hf IH Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' Hu HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
+        - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' Hu HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
           subst pre pre'.
-          constructor; intros a a' Haa.
+          constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           apply (IH a a' Haa Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) Hu HM);
             [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
             | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' |].
@@ -1558,11 +1559,11 @@ Section Tele.
           destruct O as [idx0 Ei0 Ri0].
           destruct (nparams_tele_rel_member _ _ _ (nparams_tele_rel_refl_r _ _ _ Ri0)) as (Mj0 & HMj0 & H00).
           rewrite HMj in HMj0; injection HMj0 as <-; exact H00.
-        - intros * Hf IH Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
+        - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
           subst pre pre'.
-          constructor; intros a a' Haa.
+          constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           apply (IH a a' Haa Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) HM);
             [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
             | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' |].
@@ -1646,13 +1647,13 @@ Section Tele.
             rewrite HMj in HMj0; injection HMj0 as <-; exact H00.
         - (** A domain of a shape: the new prefix extended by the right
               argument, related to itself at the old one's domain. *)
-          intros * Hf IH Mk ms ms' ms'' c gs1 t0 gs2 ws ws' ws'' k0 ys ys' ys'' Hu HM Hρ Hρ' Hn Hn' Hc Hw Hw' Hs Hk Hy Hy'.
+          intros * Hf IH Hfr Hfr' Mk ms ms' ms'' c gs1 t0 gs2 ws ws' ws'' k0 ys ys' ys'' Hu HM Hρ Hρ' Hn Hn' Hc Hw Hw' Hs Hk Hy Hy'.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn') as Hnn'.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn' Hc Hw' Hs Hy') as (_ & _ & _ & HP' & Hstep').
           subst pre pre'.
-          constructor; intros a a' Haa.
+          constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           assert (Ha'a' : doms_rel k (ms ++ ws ++ ys) B a' a') by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
           pose proof (proj1 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn Hc eq_refl Hw HB Hy _ _) Ha'a') as Ha'.
           replace ((ms'' ++ ws'' ++ ys'') ++ a' :: nil) with (ms'' ++ ws'' ++ ys'' ++ a' :: nil)
@@ -1847,8 +1848,8 @@ Section Tele.
         pose proof (tele_prefix_rel_sh_change' _ _ HM ms ms' ms' c gs gs1 t gs2 ws ws' ws' k ys ys' Hm1 Hm Hc Heq Hp1 Hp ltac:(lia) Hy) as Hy1.
         pose proof (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hm Hc Heq Hp1 Hp Hkl Hy1 Hy) as Hdd.
         unfold shape_doms_rel in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd.
-        destruct (H4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hc Heq Hp1 HB Hy1) as [a a' E E' Ht].
-        exists a a'; [ exact E | exact E' |].
+        destruct (H4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hc Heq Hp1 HB Hy1) as [a a' E E' Ht Hr Hr'].
+        exists a a'; [ exact E | exact E' | | exact Hr | exact Hr' ].
         intros x x' Hx; exact (Ht _ _ (proj2 (Hdd _ _) Hx)).
     Qed.
 
@@ -1918,7 +1919,7 @@ Section Tele.
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
             | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Har ].
       - intros * Hb Hb' O O' Hr IHr; intros; econstructor; [ exact Hb | exact Hb' | exact (HK _ _ _ _ O) | exact (HK _ _ _ _ O') | exact IHr ].
-      - intros * Hf IH Mk ns c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hn' Hc Hw Hs Hk Hy.
+      - intros * Hf IH Hfr Hfr' Mk ns c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hn' Hc Hw Hs Hk Hy.
         destruct (ptyp_skip_pi _ _ _ _ Hs) as [HB Hs'].
         assert (Hkl : k0 < List.length (ptyp_doms t0)) by (apply List.nth_error_Some; congruence).
         pose proof (tele_rel_nr_change _ _ HM _ _ Hn') as Hn2.
@@ -1928,7 +1929,7 @@ Section Tele.
         pose proof (tele_prefix_rel_sh_change _ _ HM _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hn' Hn2 Hc eq_refl Hw Hw2 Hk Hy) as Hy2.
         pose proof (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn' Hn2 Hc eq_refl Hw Hw2 Hkl Hy Hy2) as Hdd.
         unfold shape_doms_rel in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd.
-        constructor; intros a a' Haa.
+        constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
         subst pre; pose proof (proj2 (Hdd _ _) Haa) as Haa1.
         apply (IH a a' Haa1 Mk ns c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) HM);
           [ rewrite <- !List.app_assoc; reflexivity | exact Hn' | exact Hc | exact Hw | exact Hs' | lia |].

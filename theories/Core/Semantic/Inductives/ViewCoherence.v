@@ -504,12 +504,12 @@ Section Fixed_GCtx.
           exact (nparams_tele_rel_of p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ (view_member_mem _ _ _ _ Hv') Hidx).
         + exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HMj Hg Hbgt Hbgt').
       - (* a domain of a shape *)
-        intros k pre B' u u' pre' t3 f f' Hr IH Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
+        intros k pre B' u u' pre' t3 f f' Hr IH Hrl Hrl' Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
           HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
         destruct (ptyp_skip_pi _ _ _ _ (eq_sym Hsk)) as (HB' & Hsk3).
         assert (Hdl : d < List.length (ptyp_doms t)) by (unfold ptyp_depth in Hdep; rewrite <- Hdep; apply List.nth_error_Some; congruence).
         destruct (ptyp_skip_lt d t Hdl) as (B & HB & Hskt).
-        rewrite Hskt; apply rec_arg_pi; intros c0 c0' Hcc.
+        rewrite Hskt; apply rec_arg_pi; [| exact Hrl | exact Hrl' ]; intros c0 c0' Hcc.
         pose proof (HD _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' HB' HB Hms Hpw Hpy) as E.
         apply (proj2 (E _ _)) in Hcc.
         subst pre pre'.
@@ -746,12 +746,12 @@ Section Fixed_GCtx.
           + exact (ind_rel_idx qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' _ _ _ _ _ _ _ _ _ _ _ HMj' Hg
                      (Hsym _ _ Hbg) (Hsym _ _ Hbg')).
         - (* a domain of a shape *)
-          intros k pre B u u' pre' t3 f f' Hr IH Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
+          intros k pre B u u' pre' t3 f f' Hr IH Hrl Hrl' Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
             HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
           destruct (ptyp_skip_pi _ _ _ _ (eq_sym Hsk)) as (HB & Hsk3).
           assert (Hdl : d < List.length (ptyp_doms t')) by (unfold ptyp_depth in Hdep; rewrite Hdep; apply List.nth_error_Some; congruence).
           destruct (ptyp_skip_lt d t' Hdl) as (B' & HB' & Hskt).
-          rewrite Hskt; apply rec_arg_pi; intros c0 c0' Hcc.
+          rewrite Hskt; apply rec_arg_pi; [| exact Hrl | exact Hrl' ]; intros c0 c0' Hcc.
           pose proof (HD _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' HB' HB Hms Hpw Hpy) as E.
           pose proof (proj1 (E _ _) Hcc) as Hcc'.
           subst pre pre'.

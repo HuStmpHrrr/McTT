@@ -2316,7 +2316,7 @@ Section CrossElim.
         * eapply cross_result_rview; [ exact HMi' | exact Hh' | exact Hcs' | exact HMj | exact Hh0 | exact Hcs | exact Ep | exact Ep'
                                      | exact Hcr ].
     - (** A function shape: the families, at each leaf path. *)
-      intros * Hf IH [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
+      intros * Hf IH _ _ [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
       match goal with |- cross_arg_vals _ _ _ _ _ _ (pt_pi _ ?t) ?f ?f' =>
         refine (mk_cross_arg_vals _ _ _ _ _ _ _ _ _
                   (List.map (fun i => d_ihfn ρb VBb qc ub t' i f) (List.seq 0 (List.length (shape_leaves (rview_leaves D') 0 t'))))
