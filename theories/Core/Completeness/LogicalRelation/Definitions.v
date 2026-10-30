@@ -614,6 +614,11 @@ Fixpoint cargs_nonrec_relevance (gs : list carg) : list relevance :=
   | ca_rec _ :: gs => cargs_nonrec_relevance gs
   end.
 
+(** The sorts of all of a constructor's arguments, in order; a recursive
+    argument is relevant. *)
+Definition cargs_relevance (gs : list carg) : list relevance :=
+  List.map (fun g => match g with ca_arg r _ => r | ca_rec _ => relevant end) gs.
+
 (** The views of a group with its members as variables ([grp_selfs_ctx]),
     read in the PER model: [views_self_typed], each judgment semantic.  The
     instances [IsS] are the views' arguments before the group is filed;

@@ -59,6 +59,13 @@ Proof.
     + apply IH; tauto.
 Qed.
 
+(** So the two constructors' arguments have the same sorts. *)
+Lemma cargs_correspond_relevance : forall vm gs' gs, cargs_correspond vm gs' gs -> cargs_relevance gs' = cargs_relevance gs.
+Proof.
+  intros vm; induction gs' as [| [r' A' | t'] gs' IH]; intros [| [r A | t] gs] H; cbn in H; try contradiction; [ reflexivity | | |];
+    unfold cargs_relevance in *; cbn [List.map]; f_equal; try (apply IH; tauto); tauto.
+Qed.
+
 (** A concatenation split inside its right part. *)
 Lemma app_split_right : forall {X} (l1 l2 m1 m2 : list X) x, l1 ++ l2 = m1 ++ x :: m2 -> List.length m2 < List.length l2 ->
     exists m1', l2 = m1' ++ x :: m2.

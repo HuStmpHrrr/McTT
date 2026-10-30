@@ -305,6 +305,65 @@ Proof.
   - eapply eval_field_vals_proof; [ exact Hr | apply IH ].
 Qed.
 
+(** The values of fields followed by more: the first fields', then the
+    rest's at the sorts past them. *)
+Lemma eval_field_vals_app : forall Us rs Ms ρ us zs, eval_field_vals gc_deps gc_stack rs Us ρ us ->
+    eval_field_vals gc_deps gc_stack (List.skipn (List.length Us) rs) Ms ρ zs ->
+    eval_field_vals gc_deps gc_stack rs (Us ++ Ms) ρ (us ++ zs).
+Proof.
+  induction Us as [| U Us IH]; intros rs Ms ρ us zs Hus Hzs; inversion Hus; subst; [ exact Hzs | |].
+  - eapply eval_field_vals_relevant; [ assumption | eassumption | apply IH; [ assumption |] ].
+    destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
+  - eapply eval_field_vals_proof; [ assumption | apply IH; [ assumption |] ].
+    destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
+Qed.
+
+(** And conversely. *)
+Lemma eval_field_vals_app_inv : forall Us rs Ms ρ vs, eval_field_vals gc_deps gc_stack rs (Us ++ Ms) ρ vs ->
+    exists us zs, vs = us ++ zs /\ eval_field_vals gc_deps gc_stack rs Us ρ us /\
+      eval_field_vals gc_deps gc_stack (List.skipn (List.length Us) rs) Ms ρ zs.
+Proof.
+  induction Us as [| U Us IH]; intros rs Ms ρ vs Hvs; [ exists nil, vs; split; [ reflexivity | split; [ constructor | exact Hvs ] ] |].
+  inversion Hvs; subst.
+  - match goal with H : eval_field_vals _ _ (List.tl rs) (Us ++ Ms) ρ ?ms |- _ =>
+      destruct (IH _ _ _ _ H) as (us & zs & -> & Hus & Hzs) end.
+    eexists (_ :: us), zs; split; [ reflexivity | split; [ eapply eval_field_vals_relevant; eassumption |] ].
+    destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
+  - match goal with H : eval_field_vals _ _ (List.tl rs) (Us ++ Ms) ρ ?ms |- _ =>
+      destruct (IH _ _ _ _ H) as (us & zs & -> & Hus & Hzs) end.
+    exists (⋆ᵈ :: us), zs; split; [ reflexivity | split; [ eapply eval_field_vals_proof; eassumption |] ].
+    destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
+Qed.
+
+(** Fields all of relevant sorts: their values are the terms'. *)
+Lemma eval_field_vals_of_exps : forall Ms rs ρ ms, (forall j, j < List.length Ms -> List.nth j rs relevant = relevant) ->
+    ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> eval_field_vals gc_deps gc_stack rs Ms ρ ms.
+Proof.
+  induction Ms as [| M Ms IH]; intros rs ρ ms Hr Hms; inversion Hms; subst; [ constructor |].
+  eapply eval_field_vals_relevant; [ rewrite <- (Hr 0 ltac:(cbn; lia)); destruct rs; reflexivity | eassumption |].
+  apply IH; [| assumption ]; intros j Hj; rewrite nth_tl_relevance; apply Hr; cbn; lia.
+Qed.
+
+(** The terms' values, the proof at each propositional sort: the
+    fields' values. *)
+Lemma eval_field_vals_of_exps_proofs : forall Ms rs ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms ->
+    (forall j m, List.nth_error ms j = Some m -> List.nth j rs relevant = propositional -> m = ⋆ᵈ) ->
+    eval_field_vals gc_deps gc_stack rs Ms ρ ms.
+Proof.
+  intros * Hms Hpf; apply eval_field_vals_of_nth; [ exact (eval_exps_length _ _ _ Hms) |].
+  intros k M v HM Hv; split; [ intros _ | exact (Hpf k v Hv) ].
+  destruct (eval_exps_nth _ _ _ k M Hms HM) as (v' & Hv' & Ev'); rewrite Hv in Hv'; injection Hv' as <-; exact Ev'.
+Qed.
+
+(** And conversely. *)
+Lemma eval_exps_of_field_vals : forall rs Ms ρ ms, eval_field_vals gc_deps gc_stack rs Ms ρ ms ->
+    (forall j, j < List.length Ms -> List.nth j rs relevant = relevant) -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms.
+Proof.
+  induction 1 as [rs ρ | rs M ρ m Ms ms Hr Hm Hms IH | rs M ρ Ms ms Hr Hms IH]; intros Hall; [ constructor | |].
+  - constructor; [ exact Hm | apply IH; intros j Hj; rewrite nth_tl_relevance; apply Hall; cbn; lia ].
+  - exfalso; specialize (Hall 0 ltac:(cbn; lia)); destruct rs; cbn in *; congruence.
+Qed.
+
 (** A substitution extended by fields, at a context extended by entries
     [ts] whose sorts are the fields', evaluated: to the fields' values. *)
 Lemma eval_sb_of_list_fields : forall Fs ts σ Δ ρ ρσ rs vs,

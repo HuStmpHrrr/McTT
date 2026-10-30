@@ -1249,34 +1249,89 @@ Section ConValueApps.
   Definition con_entry_relevance (n : nat) : relevance :=
     if Nat.ltb n (im_np D Mk) then relevant else con_arg_relevance Mk c (n - im_np D Mk).
 
-  (** The constructor's values along terms whose values are the proof
-      [⋆ᵈ] at each propositional entry: those values are the ones it is
-      applied to. *)
+  (** Past the [n]-th element of the elements past the first [n]: those
+      past the first [n + 1]. *)
+  Lemma tl_skipn : forall {A} n (l : list A), List.tl (List.skipn n l) = List.skipn (n + 1) l.
+  Proof. induction n as [| n IH]; intros [| x l]; cbn; try reflexivity; exact (IH l). Qed.
+
+  (** The sorts of all the values the constructor takes, in order: its
+      parameters, relevant, then its arguments'. *)
+  Definition con_relevances : list relevance :=
+    List.repeat relevant (im_np D Mk) ++ cargs_relevance gs.
+
+  (** Past some of the parameters: the rest, then the arguments'. *)
+  Lemma con_relevances_skipn : forall n, n <= im_np D Mk ->
+      List.skipn n con_relevances = List.repeat relevant (im_np D Mk - n) ++ cargs_relevance gs.
+  Proof.
+    intros n Hn; unfold con_relevances.
+    replace (im_np D Mk) with (n + (im_np D Mk - n)) at 1 by lia.
+    rewrite List.repeat_app, <- List.app_assoc, List.skipn_app, List.skipn_all2, List.repeat_length, Nat.sub_diag
+      by (rewrite List.repeat_length; lia).
+    reflexivity.
+  Qed.
+
+  (** The head of the values past the first [n]: the [n]-th. *)
+  Lemma hd_skipn : forall {A} (d : A) n l, List.hd d (List.skipn n l) = List.nth n l d.
+  Proof. intros A d; induction n as [| n IH]; intros [| x l]; cbn; try reflexivity; exact (IH l). Qed.
+
+  (** The sort of the [n]-th value is the one [con_value_arg_relevance]
+      reads off. *)
+  Lemma con_relevances_hd : forall n, n < im_np D Mk + List.length gs ->
+      List.hd relevant (List.skipn n con_relevances) = con_entry_relevance n.
+  Proof.
+    intros * Hn; rewrite hd_skipn; unfold con_relevances, con_entry_relevance.
+    destruct (Nat.ltb_spec n (im_np D Mk)).
+    - rewrite List.app_nth1 by (rewrite List.repeat_length; exact H).
+      apply List.nth_repeat.
+    - rewrite List.app_nth2 by (rewrite List.repeat_length; exact H); rewrite List.repeat_length.
+      unfold con_arg_relevance, cargs_relevance; rewrite Hcon.
+      destruct (nth_error_lt_some gs (n - im_np D Mk) ltac:(lia)) as [g Hg].
+      rewrite (List.nth_error_nth _ _ _ (List.map_nth_error _ _ _ Hg)), Hg; reflexivity.
+  Qed.
+
+  (** The constructor's values along terms: the values it is applied to,
+      the terms' at its relevant entries, the proof at its propositional
+      ones. *)
+  Lemma con_value_app_args_sorted : forall Ms ys w ρ l,
+      List.length ys + List.length Ms <= im_np D Mk + List.length gs ->
+      con_value p D k Mk c ys w -> eval_app_args gc_deps gc_stack w Ms ρ l ->
+      exists zs, eval_field_vals gc_deps gc_stack (List.skipn (List.length ys) con_relevances) Ms ρ zs /\
+        con_value p D k Mk c (ys ++ zs) l.
+  Proof.
+    induction Ms as [| M Ms IH]; intros * Hlen Hw Ea; inversion Ea; subst.
+    - exists nil; split; [ constructor | rewrite List.app_nil_r; exact Hw ].
+    - cbn [List.length] in Hlen.
+      match goal with Har : arg_relevance _ _ w = relevant, En : ⟦ M ⟧ _ ⍮ _ ⍮ ρ ↘ ?n, Eg : eval_app _ _ w ?n ?g0,
+                      Er : eval_app_args _ _ ?g0 Ms ρ l |- _ =>
+        destruct (IH (ys ++ n :: nil) g0 ρ l ltac:(rewrite List.length_app; cbn [List.length]; lia)
+                    (con_value_app ys n w g0 ltac:(lia) Hw Eg) Er) as (zs & Ezs & Hl0);
+        exists (n :: zs); split; [| rewrite <- List.app_assoc in Hl0; exact Hl0 ];
+        rewrite (con_value_arg_relevance P p D HP HPD k Mk c gs HM Hcon ys w ltac:(lia) Hw) in Har;
+        eapply eval_field_vals_relevant; [ rewrite con_relevances_hd by lia; exact Har | exact En |];
+        rewrite List.length_app in Ezs; cbn [List.length] in Ezs;
+        rewrite tl_skipn, <- Nat.add_1_r; exact Ezs end.
+    - cbn [List.length] in Hlen.
+      match goal with Har : arg_relevance _ _ w = propositional, Eg : eval_app _ _ w ⋆ᵈ ?g0,
+                      Er : eval_app_args _ _ ?g0 Ms ρ l |- _ =>
+        destruct (IH (ys ++ ⋆ᵈ :: nil) g0 ρ l ltac:(rewrite List.length_app; cbn [List.length]; lia)
+                    (con_value_app ys ⋆ᵈ w g0 ltac:(lia) Hw Eg) Er) as (zs & Ezs & Hl0);
+        exists (⋆ᵈ :: zs); split; [| rewrite <- List.app_assoc in Hl0; exact Hl0 ];
+        rewrite (con_value_arg_relevance P p D HP HPD k Mk c gs HM Hcon ys w ltac:(lia) Hw) in Har;
+        eapply eval_field_vals_proof; [ rewrite con_relevances_hd by lia; exact Har |];
+        rewrite List.length_app in Ezs; cbn [List.length] in Ezs;
+        rewrite tl_skipn, <- Nat.add_1_r; exact Ezs end.
+  Qed.
+
+  (** And so at given values of the terms of those sorts: the
+      constructor's values along them. *)
   Lemma con_value_app_args_values : forall Ms zs ys w ρ l,
       List.length ys + List.length Ms <= im_np D Mk + List.length gs ->
-      con_value p D k Mk c ys w -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ zs ->
-      (forall j z, List.nth_error zs j = Some z -> con_entry_relevance (List.length ys + j) = propositional -> z = ⋆ᵈ) ->
+      con_value p D k Mk c ys w -> eval_field_vals gc_deps gc_stack (List.skipn (List.length ys) con_relevances) Ms ρ zs ->
       eval_app_args gc_deps gc_stack w Ms ρ l -> con_value p D k Mk c (ys ++ zs) l.
   Proof.
-    induction Ms as [| M Ms IH]; intros * Hlen Hw Ezs Hpf Ea; inversion Ezs as [| ? ? m ? ms Em Ems]; subst.
-    - inversion Ea; subst; rewrite List.app_nil_r; exact Hw.
-    - cbn [List.length] in Hlen.
-      assert (Hz : exists g, $| w & m | gc_deps ⍮ gc_stack ↘ g /\ eval_app_args gc_deps gc_stack g Ms ρ l).
-      { inversion Ea; subst.
-        - match goal with En : ⟦ M ⟧ _ ⍮ _ ⍮ ρ ↘ ?n, Eg : eval_app _ _ w ?n ?g, Er : eval_app_args _ _ ?g Ms ρ l |- _ =>
-            pose proof (functional_eval_exp _ _ _ _ En Em) as ->; exists g; split; [ exact Eg | exact Er ] end.
-        - match goal with Har : arg_relevance _ _ w = propositional, Eg : eval_app _ _ w ⋆ᵈ ?g,
-                          Er : eval_app_args _ _ ?g Ms ρ l |- _ =>
-            rewrite (con_value_arg_relevance P p D HP HPD k Mk c gs HM Hcon ys w ltac:(lia) Hw) in Har;
-            rewrite (Hpf 0 m eq_refl ltac:(unfold con_entry_relevance; rewrite Nat.add_0_r; exact Har));
-            exists g; split; [ exact Eg | exact Er ] end. }
-      destruct Hz as (g & Eg & Er).
-      replace (ys ++ m :: ms) with ((ys ++ m :: nil) ++ ms) by (rewrite <- List.app_assoc; reflexivity).
-      apply (IH ms (ys ++ m :: nil) g ρ l);
-        [ rewrite List.length_app; cbn [List.length]; lia | exact (con_value_app ys m w g ltac:(lia) Hw Eg) | exact Ems | | exact Er ].
-      intros j z Hj Hzr; apply (Hpf (S j) z Hj).
-      rewrite List.length_app in Hzr; cbn [List.length] in Hzr; replace (List.length ys + S j) with (List.length ys + 1 + j) by lia;
-        exact Hzr.
+    intros * Hlen Hw Ezs Ea.
+    destruct (con_value_app_args_sorted Ms ys w ρ l Hlen Hw Ea) as (zs' & Ezs' & Hzs').
+    pose proof (functional_eval_field_vals _ _ _ _ _ Ezs Ezs') as ->; exact Hzs'.
   Qed.
 
   (** The constructor's values along its parameters, which it takes
@@ -1300,23 +1355,35 @@ Section ConValueApps.
   Qed.
 
   (** The value of the constructor applied to all its parameters and
-      arguments, whose values are the proof [⋆ᵈ] at each propositional
-      entry. *)
+      arguments, at their values of the constructor's sorts. *)
   Lemma con_apps_value : forall ρ Ms zs l, im_is_rview Mk = false ->
-      ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ zs ->
-      (forall j z, List.nth_error zs j = Some z -> con_entry_relevance j = propositional -> z = ⋆ᵈ) ->
+      eval_field_vals gc_deps gc_stack con_relevances Ms ρ zs ->
       List.length Ms = im_np D Mk + List.length gs ->
       ⟦ apps (a_con p k c) Ms ⟧ ρ ↘ l ->
       exists cs, List.length cs = im_unu D Mk /\
         l = d_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c (cs ++ List.skipn (ind_nu D) zs).
   Proof.
-    intros * Hrv Ezs Hpf HlM El.
+    intros * Hrv Ezs HlM El.
     apply eval_apps_exp in El as (f & Ef & Ea).
     destruct (con_value_start P p D HP HPD k Mk c HM ρ) as (f0 & Ef0 & Hf0).
     pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.
-    pose proof (eval_exps_length _ _ _ Ezs) as Lzs.
-    pose proof (con_value_app_args_values Ms zs nil f0 ρ l ltac:(cbn; lia) Hf0 Ezs Hpf Ea) as Hl0; cbn [List.app] in Hl0.
+    pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Ezs) as Lzs.
+    pose proof (con_value_app_args_values Ms zs nil f0 ρ l ltac:(cbn; lia) Hf0 Ezs Ea) as Hl0; cbn [List.app] in Hl0.
     exact (con_value_full p D k Mk c gs zs l Hrv ltac:(lia) Hl0).
+  Qed.
+
+  (** The application has values of the constructor's sorts. *)
+  Lemma con_apps_sorted : forall ρ Ms l,
+      List.length Ms = im_np D Mk + List.length gs ->
+      ⟦ apps (a_con p k c) Ms ⟧ ρ ↘ l ->
+      exists zs, eval_field_vals gc_deps gc_stack con_relevances Ms ρ zs.
+  Proof.
+    intros * HlM El.
+    apply eval_apps_exp in El as (f & Ef & Ea).
+    destruct (con_value_start P p D HP HPD k Mk c HM ρ) as (f0 & Ef0 & Hf0).
+    pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.
+    destruct (con_value_app_args_sorted Ms nil f0 ρ l ltac:(cbn; lia) Hf0 Ea) as (zs & Ezs & _).
+    exists zs; exact Ezs.
   Qed.
 End ConValueApps.
 
@@ -1374,40 +1441,60 @@ Proof.
       destruct (Nat.ltb_spec (List.length xs) (im_np Dq Mq)); [ discriminate | lia ] end.
 Qed.
 
-(** A declared member's constructor along terms whose values are the
-    proof [⋆ᵈ] at each propositional entry: those values are the ones it
-    is applied to. *)
-Lemma eval_app_args_con_decl_values : forall qh Dq kq Mq pm c gs' Ns ρ ns xs l, ind_lookup gc_deps gc_stack qh = Some Dq ->
+(** The sort of the next value a declared member's constructor takes:
+    its entry's. *)
+Lemma arg_relevance_con_decl : forall qh Dq kq Mq pm c xs, ind_lookup gc_deps gc_stack qh = Some Dq ->
+    ind_member Dq kq = Some Mq -> im_head Mq = mh_decl pm ->
+    arg_relevance gc_deps gc_stack (d_con qh kq c xs) = con_entry_relevance Dq Mq c (List.length xs).
+Proof. intros * Hq HM Hh; cbn [arg_relevance]; rewrite Hq, HM; unfold con_param_count; rewrite Hh; reflexivity. Qed.
+
+(** A declared member's constructor along terms: the values it is
+    applied to are of the constructor's sorts. *)
+Lemma eval_app_args_con_decl_sorted : forall qh Dq kq Mq pm c gs' Ns ρ xs l, ind_lookup gc_deps gc_stack qh = Some Dq ->
     ind_member Dq kq = Some Mq -> im_head Mq = mh_decl pm -> ind_con Mq c = Some gs' ->
-    ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> List.length xs + List.length Ns <= im_np Dq Mq + List.length gs' ->
-    (forall j z, List.nth_error ns j = Some z -> con_entry_relevance Dq Mq c (List.length xs + j) = propositional -> z = ⋆ᵈ) ->
-    eval_app_args gc_deps gc_stack (d_con qh kq c xs) Ns ρ l -> l = d_con qh kq c (xs ++ ns).
+    List.length xs + List.length Ns <= im_np Dq Mq + List.length gs' ->
+    eval_app_args gc_deps gc_stack (d_con qh kq c xs) Ns ρ l ->
+    exists ns, eval_field_vals gc_deps gc_stack (List.skipn (List.length xs) (con_relevances Dq Mq gs')) Ns ρ ns /\
+      l = d_con qh kq c (xs ++ ns).
 Proof.
-  intros qh Dq kq Mq pm c gs'; induction Ns as [| N Ns IH]; intros ρ ns xs l Hq HM Hh Hcon Ens Hlen Hpf Ea;
-    inversion Ens as [| ? ? m ? ms Em Ems]; subst; inversion Ea; subst; [ rewrite List.app_nil_r; reflexivity | |].
+  intros qh Dq kq Mq pm c gs'; induction Ns as [| N Ns IH]; intros ρ xs l Hq HM Hh Hcon Hlen Ea; inversion Ea; subst.
+  - exists nil; rewrite List.app_nil_r; split; [ constructor | reflexivity ].
   - cbn [List.length] in Hlen.
-    match goal with En : ⟦ N ⟧ _ ⍮ _ ⍮ ρ ↘ ?n, Eg : eval_app _ _ _ ?n ?g0, Er : eval_app_args _ _ ?g0 Ns ρ l |- _ =>
-      pose proof (functional_eval_exp _ _ _ _ En Em) as ->;
-      assert (Eg0 : $| d_con qh kq c xs & m | gc_deps ⍮ gc_stack ↘ d_con qh kq c (xs ++ m :: nil))
+    match goal with Har : arg_relevance _ _ _ = relevant, En : ⟦ N ⟧ _ ⍮ _ ⍮ ρ ↘ ?n, Eg : eval_app _ _ _ ?n ?g0,
+                    Er : eval_app_args _ _ ?g0 Ns ρ l |- _ =>
+      assert (Eg0 : $| d_con qh kq c xs & n | gc_deps ⍮ gc_stack ↘ d_con qh kq c (xs ++ n :: nil))
         by (eapply eval_app_con; [ exact Hq | exact HM | exact Hh | exact Hcon | lia ]);
       pose proof (functional_eval_app _ _ _ _ Eg Eg0) as ->;
-      rewrite (IH ρ ms (xs ++ m :: nil) l Hq HM Hh Hcon Ems ltac:(rewrite List.length_app; cbn [List.length]; lia)
-                 ltac:(intros j z Hj Hz; apply (Hpf (S j) z Hj); rewrite List.length_app in Hz; cbn [List.length] in Hz;
-                       replace (List.length xs + S j) with (List.length xs + 1 + j) by lia; exact Hz) Er);
-      rewrite <- List.app_assoc; reflexivity end.
+      destruct (IH ρ (xs ++ n :: nil) l Hq HM Hh Hcon ltac:(rewrite List.length_app; cbn [List.length]; lia) Er)
+        as (ns & Ens & ->);
+      exists (n :: ns); split; [| rewrite <- List.app_assoc; reflexivity ];
+      rewrite (arg_relevance_con_decl _ _ _ _ _ _ _ Hq HM Hh) in Har;
+      eapply eval_field_vals_relevant; [ rewrite (con_relevances_hd Dq Mq c gs' Hcon) by lia; exact Har | exact En |];
+      rewrite List.length_app in Ens; cbn [List.length] in Ens; rewrite tl_skipn; exact Ens end.
   - cbn [List.length] in Hlen.
     match goal with Har : arg_relevance _ _ _ = propositional, Eg : eval_app _ _ _ ⋆ᵈ ?g0, Er : eval_app_args _ _ ?g0 Ns ρ l |- _ =>
-      assert (Hm : m = ⋆ᵈ)
-        by (apply (Hpf 0 m eq_refl); revert Har; cbn [arg_relevance]; rewrite Hq, HM; unfold con_param_count; rewrite Hh;
-            unfold con_entry_relevance; rewrite Nat.add_0_r; exact (fun H => H));
-      subst m;
       assert (Eg0 : $| d_con qh kq c xs & ⋆ᵈ | gc_deps ⍮ gc_stack ↘ d_con qh kq c (xs ++ ⋆ᵈ :: nil))
         by (eapply eval_app_con; [ exact Hq | exact HM | exact Hh | exact Hcon | lia ]);
       pose proof (functional_eval_app _ _ _ _ Eg Eg0) as ->;
-      rewrite (IH ρ ms (xs ++ ⋆ᵈ :: nil) l Hq HM Hh Hcon Ems ltac:(rewrite List.length_app; cbn [List.length]; lia)
-                 ltac:(intros j z Hj Hz; apply (Hpf (S j) z Hj); rewrite List.length_app in Hz; cbn [List.length] in Hz;
-                       replace (List.length xs + S j) with (List.length xs + 1 + j) by lia; exact Hz) Er);
-      rewrite <- List.app_assoc; reflexivity end.
+      destruct (IH ρ (xs ++ ⋆ᵈ :: nil) l Hq HM Hh Hcon ltac:(rewrite List.length_app; cbn [List.length]; lia) Er)
+        as (ns & Ens & ->);
+      exists (⋆ᵈ :: ns); split; [| rewrite <- List.app_assoc; reflexivity ];
+      rewrite (arg_relevance_con_decl _ _ _ _ _ _ _ Hq HM Hh) in Har;
+      eapply eval_field_vals_proof; [ rewrite (con_relevances_hd Dq Mq c gs' Hcon) by lia; exact Har |];
+      rewrite List.length_app in Ens; cbn [List.length] in Ens; rewrite tl_skipn; exact Ens end.
+Qed.
+
+(** And so at given values of the terms of those sorts: the values it
+    is applied to. *)
+Lemma eval_app_args_con_decl_values : forall qh Dq kq Mq pm c gs' Ns ρ ns xs l, ind_lookup gc_deps gc_stack qh = Some Dq ->
+    ind_member Dq kq = Some Mq -> im_head Mq = mh_decl pm -> ind_con Mq c = Some gs' ->
+    eval_field_vals gc_deps gc_stack (List.skipn (List.length xs) (con_relevances Dq Mq gs')) Ns ρ ns ->
+    List.length xs + List.length Ns <= im_np Dq Mq + List.length gs' ->
+    eval_app_args gc_deps gc_stack (d_con qh kq c xs) Ns ρ l -> l = d_con qh kq c (xs ++ ns).
+Proof.
+  intros * Hq HM Hh Hcon Ens Hlen Ea.
+  destruct (eval_app_args_con_decl_sorted _ _ _ _ _ _ _ _ _ _ _ Hq HM Hh Hcon Hlen Ea) as (ns' & Ens' & ->).
+  rewrite (functional_eval_field_vals _ _ _ _ _ Ens Ens'); reflexivity.
 Qed.
 
 (** A declared member's constructor along terms: the values it takes
@@ -1750,21 +1837,19 @@ Qed.
 
 (** The value of the constructor of a member as the group reads it, at
     the member's instance of some uniform parameters and further
-    arguments [Ms], whose values are the proof [⋆ᵈ] at each propositional
-    entry: the constructor at some stored uniform parameters and the
-    values of [Ms]. *)
+    arguments [Ms], at their values of the constructor's sorts: the
+    constructor at some stored uniform parameters and those values. *)
 Lemma con_ref_apps_value : forall P p D, valid_groups P -> P p D ->
     forall k Mk c gs ρ Us0 Ms zs l, ind_member D k = Some Mk -> im_is_rview Mk = false -> ind_con Mk c = Some gs ->
     List.length Us0 = ind_nu D ->
-    ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ zs ->
-    (forall j z, List.nth_error zs j = Some z -> con_entry_relevance D Mk c (ind_nu D + j) = propositional -> z = ⋆ᵈ) ->
+    eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_relevances D Mk gs)) Ms ρ zs ->
     List.length Ms = (im_nn Mk + List.length gs)%nat ->
     ⟦ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Us0 ++ Ms) ⟧ ρ ↘ l ->
     exists cs, List.length cs = im_unu D Mk /\ l = d_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c (cs ++ zs).
 Proof.
-  intros P p D HP HPD * HM Hrv Hcon HU0 Ezs Hpf HMl El.
+  intros P p D HP HPD * HM Hrv Hcon HU0 Ezs HMl El.
   pose proof (valid_groups_valid P HP p D HPD) as Hg.
-  pose proof (eval_exps_length _ _ _ Ezs) as Hlzs.
+  pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Ezs) as Hlzs.
   unfold im_ref in *; unfold im_unu; destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; cbn [fst snd] in *;
     [| | exfalso; exact (not_rview_record _ _ _ _ Hrv Hh) ].
   - unfold im_pre in El; rewrite Hh in El.
@@ -1777,12 +1862,10 @@ Proof.
                 ltac:(cbn [List.length]; unfold im_np; lia) Hf0 Eg) as (us0 & Eus0 & _).
     pose proof (eval_exps_length _ _ _ Eus0) as Hlus.
     destruct (con_apps_value P p D HP HPD k Mk c gs HM Hcon ρ (Us0 ++ Ms) (us0 ++ zs) l Hrv
-                ltac:(apply eval_exps_app; assumption)
-                ltac:(intros j z Hj Hz; destruct (Nat.lt_ge_cases j (ind_nu D)) as [Hlt | Hge];
-                      [ revert Hz; unfold con_entry_relevance, im_np;
-                        destruct (Nat.ltb_spec j (im_nn Mk + ind_nu D)); [ discriminate | lia ]
-                      | rewrite List.nth_error_app2 in Hj by lia; apply (Hpf (j - List.length us0) z Hj);
-                        replace (ind_nu D + (j - List.length us0)) with j by lia; exact Hz ])
+                ltac:(apply Mctt.Core.Completeness.Records.Model.eval_field_vals_app; [| rewrite HU0; exact Ezs ];
+                      apply Mctt.Core.Completeness.Records.Model.eval_field_vals_of_exps; [| exact Eus0 ];
+                      intros j Hj; unfold con_relevances;
+                      rewrite List.app_nth1 by (rewrite List.repeat_length; unfold im_np; lia); apply List.nth_repeat)
                 ltac:(rewrite List.length_app, HU0, HMl; unfold im_np; lia) El)
       as (cs & Hlcs & ->).
     unfold im_ref in *; unfold im_unu in Hlcs; rewrite Hh in *; cbn [fst snd] in *.
@@ -1805,17 +1888,58 @@ Proof.
                 ltac:(cbn [List.length]; rewrite Hlpre; unfold im_np; lia) Eg) as (us0 & Eus0 & ->).
     pose proof (eval_exps_length _ _ _ Eus0) as Hlus; cbn [List.app] in Ea.
     (** The container's arguments are of the view's sorts. *)
-    assert (Hsort : forall j, con_entry_relevance Dq Mk' c (List.length us0 + j) = con_entry_relevance D Mk c (ind_nu D + j)).
-    { intros j; unfold con_entry_relevance, im_np.
-      destruct (Nat.ltb_spec (List.length us0 + j) (im_nn Mk' + ind_nu Dq));
-        destruct (Nat.ltb_spec (ind_nu D + j) (im_nn Mk + ind_nu D)); try lia; [ reflexivity |].
-      unfold con_arg_relevance; rewrite Hcon, Hcon'.
-      replace (List.length us0 + j - (im_nn Mk' + ind_nu Dq)) with (ind_nu D + j - (im_nn Mk + ind_nu D)) by lia.
-      exact (cargs_correspond_tags _ _ _ _ Hcorr). }
-    rewrite (eval_app_args_con_decl_values qc Dq kc Mk' pm c gs' Ms ρ zs us0 l Hq HMk' Hh' Hcon' Ezs
-               ltac:(unfold im_np in *; lia)
-               ltac:(intros j z Hj Hz; rewrite Hsort in Hz; exact (Hpf j z Hj Hz)) Ea).
+    assert (Hsort : List.skipn (List.length us0) (con_relevances Dq Mk' gs') = List.skipn (ind_nu D) (con_relevances D Mk gs)).
+    { rewrite !con_relevances_skipn by (unfold im_np; lia).
+      rewrite (cargs_correspond_relevance _ _ _ Hcorr); unfold im_np; f_equal; f_equal; lia. }
+    rewrite (eval_app_args_con_decl_values qc Dq kc Mk' pm c gs' Ms ρ zs us0 l Hq HMk' Hh' Hcon'
+               ltac:(rewrite Hsort; exact Ezs) ltac:(unfold im_np in *; lia) Ea).
     exists us0; split; [ lia | reflexivity ].
+Qed.
+
+(** The further arguments of such an application have values of the
+    constructor's sorts. *)
+Lemma con_ref_apps_sorted : forall P p D, valid_groups P -> P p D ->
+    forall k Mk c gs ρ Us0 Ms l, ind_member D k = Some Mk -> im_is_rview Mk = false -> ind_con Mk c = Some gs ->
+    List.length Us0 = ind_nu D -> List.length Ms = (im_nn Mk + List.length gs)%nat ->
+    ⟦ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Us0 ++ Ms) ⟧ ρ ↘ l ->
+    exists zs, eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_relevances D Mk gs)) Ms ρ zs.
+Proof.
+  intros P p D HP HPD * HM Hrv Hcon HU0 HMl El.
+  pose proof (valid_groups_valid P HP p D HPD) as Hg.
+  unfold im_ref in *; destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; cbn [fst snd] in *;
+    [| | exfalso; exact (not_rview_record _ _ _ _ Hrv Hh) ].
+  - unfold im_pre in El; rewrite Hh in El.
+    apply eval_apps_exp in El as (f & Ef & Ea).
+    destruct (con_value_start P p D HP HPD k Mk c HM ρ) as (f0 & Ef0 & Hf0).
+    pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.
+    apply eval_app_args_app in Ea as (g & Eg & Ea).
+    destruct (con_value_app_args_params P p D HP HPD k Mk c gs HM Hcon Us0 nil f0 ρ g
+                ltac:(cbn [List.length]; unfold im_np; lia) Hf0 Eg) as (us0 & Eus0 & Hg0).
+    pose proof (eval_exps_length _ _ _ Eus0) as Hlus; cbn [List.app] in Hg0.
+    destruct (con_value_app_args_sorted P p D HP HPD k Mk c gs HM Hcon Ms us0 g ρ l
+                ltac:(rewrite Hlus, HU0, HMl; unfold im_np; lia) Hg0 Ea) as (zs & Ezs & _).
+    rewrite Hlus, HU0 in Ezs; exists zs; exact Ezs.
+  - destruct (view_target_decl P p D HP HPD k Mk HM qc kc Is vm Hh) as (Dq & Mk' & pm & Hq & HMk' & Hh' & HIl).
+    destruct (view_con_container p D (valid_group_ass _ _ Hg) (valid_group_typed _ _ Hg) k Mk qc kc Is vm Dq Mk' c gs HM Hh Hq HMk' Hcon)
+      as (gs' & Hcon' & Hcorr).
+    pose proof (cargs_correspond_len _ _ _ Hcorr) as Hlg.
+    destruct (grp_tele_ass_views _ (valid_group_ass _ _ Hg) k Mk qc kc Is vm HM Hh) as (Dq0 & Mc & Hq0 & HMc & Hnn & _).
+    rewrite Hq in Hq0; injection Hq0 as <-; rewrite HMk' in HMc; injection HMc as <-.
+    assert (Ef0 : ⟦ a_con qc kc c ⟧ ρ ↘ d_con qc kc c nil)
+      by (eapply eval_exp_con; [ exact Hq | exact HMk' | unfold im_starts, im_is_decl; rewrite Hh'; reflexivity ]).
+    apply eval_apps_exp in El as (f & Ef & Ea).
+    pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.
+    assert (Hlpre : List.length (im_pre Mk Us0) = ind_nu Dq) by (unfold im_pre; rewrite Hh, List.length_map; exact HIl).
+    apply eval_app_args_app in Ea as (g & Eg & Ea).
+    destruct (eval_app_args_con_decl_params_inv qc Dq kc Mk' pm c gs' (im_pre Mk Us0) ρ nil g Hq HMk' Hh' Hcon'
+                ltac:(cbn [List.length]; rewrite Hlpre; unfold im_np; lia) Eg) as (us0 & Eus0 & ->).
+    pose proof (eval_exps_length _ _ _ Eus0) as Hlus; cbn [List.app] in Ea.
+    assert (Hsort : List.skipn (List.length us0) (con_relevances Dq Mk' gs') = List.skipn (ind_nu D) (con_relevances D Mk gs)).
+    { rewrite !con_relevances_skipn by (unfold im_np; lia).
+      rewrite (cargs_correspond_relevance _ _ _ Hcorr); unfold im_np; f_equal; f_equal; lia. }
+    destruct (eval_app_args_con_decl_sorted qc Dq kc Mk' pm c gs' Ms ρ us0 l Hq HMk' Hh' Hcon'
+                ltac:(unfold im_np in *; lia) Ea) as (zs & Ezs & _).
+    exists zs; rewrite <- Hsort; exact Ezs.
 Qed.
 
 (** ** Substitutions Built from Valid Parts, Moved
@@ -5617,16 +5741,23 @@ Section GroupElim.
             unfold con_arg_relevance in Hr; rewrite Hcon in Hr.
             destruct (List.nth_error gs (j - im_nn Mk)) as [[r0 A0 | t0] |] eqn:Hg0; try discriminate Hr; subst r0.
             exact (con_args_proofs k Mk c gs X vs vs' HMk Hcon (trefl_l _ _ HMk _ _ HX) Har Lv Lv' _ A0 z z' Hg0 Hz Hz'). }
+          assert (Hsr : forall j, j < im_nn Mk + List.length gs ->
+                     List.nth j (List.skipn (ind_nu D) (con_relevances D Mk gs)) relevant = con_entry_relevance D Mk c (ind_nu D + j)).
+          { intros j Hj; rewrite List.nth_skipn, <- hd_skipn; apply (con_relevances_hd D Mk c gs Hcon); unfold im_np; lia. }
           destruct (con_ref_apps_value P p D HP HPD k Mk c gs _ Ub (Nb ++ Ab) (X ++ vs) l1 HMk HrvK Hcon HUb
-                      (eval_branch_type_args B1 X vs ihs LX Lv Li)
-                      ltac:(intros j z Hz Hr; destruct (nth_error_lt_some' (X' ++ vs') j
-                              ltac:(apply nth_error_lt_length in Hz; rewrite !List.length_app in *; lia)) as [z' Hz'];
+                      ltac:(apply Mctt.Core.Completeness.Records.Model.eval_field_vals_of_exps_proofs;
+                            [ exact (eval_branch_type_args B1 X vs ihs LX Lv Li) |];
+                            intros j z Hz Hr; pose proof (nth_error_lt_length _ _ _ Hz) as Hjl;
+                            rewrite List.length_app in Hjl; rewrite (Hsr j ltac:(lia)) in Hr;
+                            destruct (nth_error_lt_some' (X' ++ vs') j ltac:(rewrite !List.length_app in *; lia)) as [z' Hz'];
                             exact (proj1 (Hpf _ _ _ Hz Hz' Hr)))
                       LNA El1) as (cs1 & Lcs1 & El1v).
           destruct (con_ref_apps_value P p D HP HPD k Mk c gs _ Ub (Nb ++ Ab) (X' ++ vs') l2 HMk HrvK Hcon HUb
-                      (eval_branch_type_args B2 X' vs' ihs' LX' Lv' Li')
-                      ltac:(intros j z' Hz' Hr; destruct (nth_error_lt_some' (X ++ vs) j
-                              ltac:(apply nth_error_lt_length in Hz'; rewrite !List.length_app in *; lia)) as [z Hz];
+                      ltac:(apply Mctt.Core.Completeness.Records.Model.eval_field_vals_of_exps_proofs;
+                            [ exact (eval_branch_type_args B2 X' vs' ihs' LX' Lv' Li') |];
+                            intros j z' Hz' Hr; pose proof (nth_error_lt_length _ _ _ Hz') as Hjl;
+                            rewrite List.length_app in Hjl; rewrite (Hsr j ltac:(lia)) in Hr;
+                            destruct (nth_error_lt_some' (X ++ vs) j ltac:(rewrite !List.length_app in *; lia)) as [z Hz];
                             exact (proj2 (Hpf _ _ _ Hz Hz' Hr)))
                       LNA El2) as (cs2 & Lcs2 & El2v).
           rewrite Href in El1v, El2v; cbn [fst snd] in El1v, El2v.
