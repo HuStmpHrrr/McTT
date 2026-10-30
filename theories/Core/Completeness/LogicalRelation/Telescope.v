@@ -161,23 +161,43 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma eval_sub_qn_args : forall n σ ρ xs Y, List.length xs = n ->
-    ⟦ sb_wk σ (wk_shiftn n) ⟧s env_args ρ xs ↘ Y -> ⟦ sb_qn n σ ⟧s env_args ρ xs ↘ env_args Y xs.
+(** [q^n σ] at the arguments [xs] of a telescope [Δ] over [Γ]: the
+    arguments, then the value of [σ] past them.  Its value holds the proof
+    at every propositional entry of [Γ] ([σ]'s value does), and must hold it
+    at those of [Δ]. *)
+#[local] Transparent eval_sub.
+Lemma eval_sub_qn_args : forall Δ Γ σ ρ xs Y, List.length xs = List.length Δ ->
+    ⟦ sb_wk σ (wk_shiftn (List.length Δ)) : Γ ⟧s env_args ρ xs ↘ Y ->
+    (forall x, x < List.length Δ -> entry_propositional gc_deps gc_stack (Δ ++ Γ) (env_args Y xs) x ->
+       env_entry (env_args Y xs) x = de_term ⋆ᵈ) ->
+    ⟦ sb_qn (List.length Δ) σ : Δ ++ Γ ⟧s env_args ρ xs ↘ env_args Y xs.
 Proof.
-  intros * Hl H x.
-  destruct (Nat.lt_ge_cases x n) as [Hx | Hx].
-  - rewrite sb_qn_lt by exact Hx; cbn; apply env_entry_args_lt; lia.
-  - rewrite sb_qn_ge by exact Hx.
-    replace x with (List.length xs + (x - n)) at 2 by lia.
-    rewrite env_entry_args_app; exact (H (x - n)).
+  intros * Hl H Hp x Hx; rewrite List.length_app in Hx.
+  destruct (Nat.lt_ge_cases x (List.length Δ)) as [Hlt | Hge].
+  - split; [ exact (Hp x Hlt) |].
+    intros _; rewrite sb_qn_lt by exact Hlt; cbn; apply env_entry_args_lt; lia.
+  - destruct (Nat.le_exists_sub (List.length Δ) x Hge) as (k & -> & _).
+    rewrite (Nat.add_comm k) in *.
+    pose proof (H k ltac:(lia)) as [Hp1 Hn1].
+    assert (Hs : List.skipn (List.length Δ) (env_args Y xs) = Y) by (rewrite <- Hl; apply skipn_env_args).
+    assert (Ee : env_entry (env_args Y xs) (List.length Δ + k) = env_entry Y k)
+      by (rewrite <- Hl; apply env_entry_args_app).
+    rewrite Ee; split.
+    + intros Hpx; apply Hp1.
+      pose proof (entry_propositional_shiftn _ _ _ _ Hpx) as Hpx'; rewrite Hs in Hpx'; exact Hpx'.
+    + intros Hnx; rewrite sb_qn_ge by lia.
+      replace (List.length Δ + k - List.length Δ) with k by lia.
+      apply Hn1; intros Hp'; apply Hnx.
+      apply entry_propositional_shiftn_intro; rewrite Hs; exact Hp'.
 Qed.
+#[local] Opaque eval_sub.
 
 (** The tail of [q^n] at a stage: the value of the substitution past the
     telescope's values, related to its value at the stage's own tail. *)
 Lemma stage_base : forall Ψ Γ' Γ σ RΓ RS ρ ρσ xs,
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Ψ ++ Γ' ≈ Ψ ++ Γ' ∈ per_ctx_env ↘ RS ->
-    Γ' ⊨ˢ σ ≈ σ : Γ -> RS (env_args ρ xs) (env_args ρ xs) -> List.length xs = List.length Ψ -> ⟦ σ ⟧s ρ ↘ ρσ ->
-    exists Y, ⟦ sb_wk σ (wk_shiftn (List.length Ψ)) ⟧s env_args ρ xs ↘ Y /\ RΓ Y ρσ.
+    Γ' ⊨ˢ σ ≈ σ : Γ -> RS (env_args ρ xs) (env_args ρ xs) -> List.length xs = List.length Ψ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+    exists Y, ⟦ sb_wk σ (wk_shiftn (List.length Ψ)) : Γ ⟧s env_args ρ xs ↘ Y /\ RΓ Y ρσ.
 Proof.
   intros * HΓ HS Hσ HE Hl Hev.
   destruct Hσ as [R1 H1 R2 H2 Hσ].
@@ -195,7 +215,7 @@ Qed.
 
 Lemma typ_inst_link : forall Δ0 Γ0 A A' (i : nat) τ RΓ0 E Eτ,
     Δ0 ⊨ᵗ A ≈ A' at i -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨ˢ τ ≈ τ : Δ0 ->
-    RΓ0 E E -> ⟦ τ ⟧s E ↘ Eτ ->
+    RΓ0 E E -> ⟦ τ : Δ0 ⟧s E ↘ Eτ ->
     exists a b, ⟦ A[τ] ⟧ E ↘ a /\ ⟦ A ⟧ Eτ ↘ b /\ Dom a ≈ b ∈ per_univ i.
 Proof.
   intros * HA HΓ0 Hτ HE Hev.
@@ -206,13 +226,15 @@ Qed.
 
 Lemma exp_inst_link : forall Δ0 Γ0 T M M' τ RΓ0 E Eτ,
     Δ0 ⊨ M ≈ M' : T -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨ˢ τ ≈ τ : Δ0 ->
-    RΓ0 E E -> ⟦ τ ⟧s E ↘ Eτ ->
+    RΓ0 E E -> ⟦ τ : Δ0 ⟧s E ↘ Eτ -> rel_typ_sort T Eτ relevant ->
     exists m n, ⟦ M[τ] ⟧ E ↘ m /\ ⟦ M ⟧ Eτ ↘ n /\ Dom m ≈ n ∈ per_head T T Eτ Eτ.
 Proof.
-  intros * HM HΓ0 Hτ HE Hev.
+  intros * HM HΓ0 Hτ HE Hev Hr.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
   destruct HMl as [R HR i Hgen].
-  destruct (Hgen _ _ HΓ0 _ _ Hτ _ _ _ _ HE Hev Hev) as (R0 & [a b c d Ha Hb Hc Hd Hch] & [m n n' m' Hm Hn Hn' Hm' Hmc]).
+  destruct (Hgen _ _ HΓ0 _ _ Hτ _ _ _ _ HE Hev Hev) as (R0 & Htyp & Hexp).
+  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
+  destruct Htyp as [a b c d Ha Hb Hc Hd Hch]; destruct Hexp as [m n n' m' Hm Hn Hn' Hm' Hmc].
   exists m, n; split; [ exact Hm | split; [ exact Hn |] ].
   destruct Hch as (_ & Hbc & _); destruct Hmc as (Hmn & _).
   eapply per_head_of; [ exact Hb | exact Hc | exact Hbc | exact Hmn ].
@@ -223,7 +245,7 @@ Qed.
     Arguments related at a telescope over the value of [σ] at [ρ] are, over
     [ρ], related at its instance by [σ]. *)
 Lemma tele_stage_rel : forall Δ Γ Γ' σ RΓ' ρ ρσ, tele_ass Δ -> ⊨ Δ ++ Γ ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     forall RS, EF tele_sub Δ σ ++ Γ' ≈ tele_sub Δ σ ++ Γ' ∈ per_ctx_env ↘ RS -> RS (env_args ρ xs) (env_args ρ xs).
 Proof.
@@ -255,20 +277,21 @@ Proof.
     assert (E : RS <~> per_env_extend B[sb_qn (List.length Δ) σ] B[sb_qn (List.length Δ) σ] RS')
       by (eapply per_ctx_env_right_irrel; eassumption).
     apply E; rewrite env_args_snoc.
-    split; [ exact IHx |].
+    apply per_env_extend_intro; [ exact IHx | | intros _; reflexivity | intros _; reflexivity ].
     (** The head: the instance's value at the stage, against the type's at
         the value of [q^n σ] and then at [ρσ]. *)
     destruct (stage_base (tele_sub Δ σ) Γ' Γ σ RΓ RS' ρ ρσ xs' HRΓ HS' Hσ IHx ltac:(rewrite length_tele_sub; exact Hl') Hev)
       as (Y & HY & HYρ).
     rewrite length_tele_sub in HY.
-    pose proof (eval_sub_qn_args _ _ _ _ _ Hl' HY) as Hqev.
-    destruct (typ_inst_link _ _ _ _ _ _ _ _ _ HB HS' (rel_sub_under_ctx_refl_left Hq) IHx Hqev) as (a & b & Ea & Eb & Hab).
     assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
     assert (Hρσ : RΓ ρσ ρσ) by (etransitivity; [ symmetry; exact HYρ | exact HYρ ]).
     assert (HgY : per_gargs (List.rev Δ) Y ρσ xs' xs').
     { eapply (per_gargs_base _ _ _ HRΓ ltac:(rewrite List.rev_involutive; exact HΔ') ltac:(apply List.Forall_rev; exact HΔa')
                 ρσ ρσ); [ exact Hρσ | symmetry; exact HYρ | exact Hρσ | exact Hg' ]. }
     pose proof (gargs_env_rel_gen _ _ _ _ _ _ _ _ HRΓ HRΔ HΔ' HYρ Hl' HgY) as HYE.
+    pose proof (eval_sub_qn_args _ _ _ _ _ _ Hl' HY (fun x _ Hp => proj1 (per_ctx_env_proofs _ _ _ HRΔ _ _ HYE) x Hp))
+      as Hqev.
+    destruct (typ_inst_link _ _ _ _ _ _ _ _ _ HB HS' (rel_sub_under_ctx_refl_left Hq) IHx Hqev) as (a & b & Ea & Eb & Hab).
     destruct (rel_type_inversion_simple_at HRΔ HB _ _ HYE) as (b' & c & Eb' & Ec & Hbc).
     assert (b' = b) as -> by (eapply functional_eval_exp; eassumption).
     destruct HB0 as [c0 c1 Ec0 Ec1 HR0].
@@ -313,7 +336,7 @@ Lemma closed_typ_inst : forall Pre C0 Γ X (j : nat) τ RΓ RK RS B zs Bτ F,
     EF tele_sub Pre τ ++ Γ ≈ tele_sub Pre τ ++ Γ ∈ per_ctx_env ↘ RS ->
     Pre ++ C0 ⊨ X : Typeω@j -> Γ ⊨ˢ τ ≈ τ : C0 ++ Γ ->
     RS (env_args B zs) (env_args B zs) -> List.length zs = List.length Pre ->
-    ⟦ τ ⟧s B ↘ Bτ -> RK (env_args Bτ zs) F ->
+    ⟦ τ : C0 ++ Γ ⟧s B ↘ Bτ -> RK (env_args Bτ zs) F ->
     exists a b, ⟦ X[sb_qn (List.length Pre) τ] ⟧ env_args B zs ↘ a /\ ⟦ X ⟧ F ↘ b /\ Dom a ≈ b ∈ per_univ j.
 Proof.
   intros * HKa HK HC0a HC0 HΓ HRΓ HRK HRS HX Hτ HE Hl Hev HF.
@@ -328,10 +351,8 @@ Proof.
   destruct (stage_base (tele_sub Pre τ) Γ (C0 ++ Γ) τ R0Γ RS B Bτ zs HR0Γ HRS Hτ HE
               ltac:(rewrite length_tele_sub; exact Hl) Hev) as (Y & HY & HYτ).
   rewrite length_tele_sub in HY.
-  pose proof (eval_sub_qn_args _ _ _ _ _ Hl HY) as Hqev.
   pose proof (rel_sub_qn Pre (C0 ++ Γ) Γ τ τ HPa ltac:(rewrite List.app_assoc; exact HKΓ) Hτ) as Hq.
   assert (HXΓ : Pre ++ C0 ++ Γ ⊨ X : Typeω@j) by (rewrite List.app_assoc; exact (closed_app_valid _ _ _ _ _ HKa HK HΓ HX)).
-  destruct (typ_inst_link _ _ _ _ _ _ _ _ _ (rel_type_of_typ HXΓ) HRS (rel_sub_under_ctx_refl_left Hq) HE Hqev) as (a & b0 & Ea & Eb0 & Hab).
   (** The value at the instance's tail, against the given one. *)
   assert (HYτ0 : R0 Y Bτ) by (exact (Hres0 _ _ HR0 HR0Γ _ _ HYτ)).
   assert (HPre : ⊨ List.rev (List.rev Pre) ++ C0) by (rewrite List.rev_involutive; exact HK).
@@ -342,6 +363,17 @@ Proof.
               ltac:(rewrite List.length_rev; exact Hl) ltac:(rewrite List.length_rev; exact Hl) HBB) as [HBτ Hg].
   pose proof (per_gargs_base _ _ _ HR0 HPre (List.Forall_rev HPa) Bτ Bτ Y Bτ zs zs HBτ (symmetry HYτ0) HBτ Hg) as Hg'.
   pose proof (gargs_env_rel_gen Pre C0 _ _ _ _ _ _ HR0 HRK HK HYτ0 Hl Hg') as HYB.
+  (** The value of [q^n τ]: the proofs at the propositions of [Pre] are
+      those of an environment of [Pre ++ C0]. *)
+  assert (Hpf : forall x, x < List.length Pre ->
+             entry_propositional gc_deps gc_stack (Pre ++ C0 ++ Γ) (env_args Y zs) x ->
+             env_entry (env_args Y zs) x = de_term ⋆ᵈ).
+  { intros x Hx Hp; rewrite List.app_assoc in Hp.
+    apply (proj1 (per_ctx_env_proofs _ _ _ HRK _ _ HYB)).
+    exact (ctx_props_incl_app RK (Pre ++ C0) Γ _ _ HYB x ltac:(rewrite List.length_app; lia) Hp). }
+  pose proof (eval_sub_qn_args _ _ _ _ _ _ Hl HY Hpf) as Hqev.
+  destruct (typ_inst_link _ _ _ _ _ _ _ _ _ (rel_type_of_typ HXΓ) HRS (rel_sub_under_ctx_refl_left Hq) HE Hqev)
+    as (a & b0 & Ea & Eb0 & Hab).
   assert (HYF : RK (env_args Y zs) F) by (etransitivity; [ exact HYB | exact HF ]).
   destruct (rel_exp_of_typ_inversion_simple_at HRK HX _ _ HYF) as (b1 & b & Eb1 & Eb & Hbb).
   assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption).
@@ -381,7 +413,7 @@ Qed.
 Lemma rel_ctx_wf_ext_typ : forall Γ A (i : nat), ⊨ Γ -> Γ ⊨ A : Typeω@i -> ⊨ Γ ▹ A.
 Proof.
   intros * HΓ HA; destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
-  econstructor; [ exact HΓ | exact (per_ctx_env_of_typ HR HA) | exact HA ].
+  eapply rel_ctx_wf_cons; [ exact HΓ | exact (per_ctx_env_of_typ HR (rel_type_of_typ HA)) | exact (type_sort_universe i) | exact HA ].
 Qed.
 
 Lemma gsub_rel_ctx_wf : forall Γ τ Δ, gsub Γ τ Δ -> ⊨ Γ.
@@ -487,11 +519,11 @@ Qed.
     environment of the instance of [Δ] over [ρ], against the judgment at
     the value of [σ] at [ρ] extended by the same arguments. *)
 Lemma outer_base : forall Δ Γ Γ' RΓ' σ ρ ρσ, tele_ass Δ -> ⊨ Δ ++ Γ ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     exists RS RΔ Y, EF tele_sub Δ σ ++ Γ' ≈ tele_sub Δ σ ++ Γ' ∈ per_ctx_env ↘ RS /\ RS (env_args ρ xs) (env_args ρ xs) /\
       EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ RΔ /\
-      ⟦ sb_qn (List.length Δ) σ ⟧s env_args ρ xs ↘ env_args Y xs /\
+      ⟦ sb_qn (List.length Δ) σ : Δ ++ Γ ⟧s env_args ρ xs ↘ env_args Y xs /\
       RΔ (env_args Y xs) (env_args ρσ xs) /\
       tele_sub Δ σ ++ Γ' ⊨ˢ sb_qn (List.length Δ) σ ≈ sb_qn (List.length Δ) σ : Δ ++ Γ.
 Proof.
@@ -505,19 +537,20 @@ Proof.
   destruct (stage_base (tele_sub Δ σ) Γ' Γ σ RΓ RS ρ ρσ xs HRΓ HRS Hσ HE ltac:(rewrite length_tele_sub; exact Hl) Hev)
     as (Y & HY & HYρ).
   rewrite length_tele_sub in HY.
-  pose proof (eval_sub_qn_args _ _ _ _ _ Hl HY) as Hqev.
   assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
   assert (Hρσ : RΓ ρσ ρσ) by (etransitivity; [ symmetry; exact HYρ | exact HYρ ]).
   assert (HgY : per_gargs (List.rev Δ) Y ρσ xs xs).
   { eapply (per_gargs_base _ _ _ HRΓ ltac:(rewrite List.rev_involutive; exact HΔ) ltac:(apply List.Forall_rev; exact HΔa)
               ρσ ρσ); [ exact Hρσ | symmetry; exact HYρ | exact Hρσ | exact Hg ]. }
   pose proof (gargs_env_rel_gen _ _ _ _ _ _ _ _ HRΓ HRΔ HΔ HYρ Hl HgY) as HYE.
+  pose proof (eval_sub_qn_args _ _ _ _ _ _ Hl HY (fun x _ Hp => proj1 (per_ctx_env_proofs _ _ _ HRΔ _ _ HYE) x Hp))
+    as Hqev.
   exists RS, RΔ, Y; repeat split; assumption.
 Qed.
 
 Lemma outer_typ_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ A ≈ A' : Typeω@i ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     exists a b, ⟦ A[sb_qn (List.length Δ) σ] ⟧ env_args ρ xs ↘ a /\ ⟦ A ⟧ env_args ρσ xs ↘ b /\ Dom a ≈ b ∈ per_univ i.
 Proof.
@@ -532,18 +565,25 @@ Qed.
 
 Lemma outer_exp_link : forall Δ Γ Γ' RΓ' σ ρ ρσ T M M', tele_ass Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ M ≈ M' : T ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
+    rel_typ_sort T (env_args ρσ xs) relevant ->
     exists RΔ F m n, EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ RΔ /\ RΔ F (env_args ρσ xs) /\
       ⟦ M[sb_qn (List.length Δ) σ] ⟧ env_args ρ xs ↘ m /\ ⟦ M ⟧ env_args ρσ xs ↘ n /\
       Dom m ≈ n ∈ per_head T T F (env_args ρσ xs).
 Proof.
-  intros * HΔa HΔ HM HΓ' Hσ Hρ Hev xs Hg Hl.
+  intros * HΔa HΔ HM HΓ' Hσ Hρ Hev xs Hg Hl [t [Et Hrt]].
   destruct (outer_base _ _ _ _ _ _ _ HΔa HΔ HΓ' Hσ Hρ Hev _ Hg Hl) as (RS & RΔ & Y & HRS & HE & HRΔ & Hqev & HYE & Hq).
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
-  destruct (exp_inst_link _ _ _ _ _ _ _ _ _ HMl HRS Hq HE Hqev) as (m & n0 & Em & En0 & Hmn).
   destruct (rel_exp_under_ctx_simple_full_at HRΔ HMl) as [k Hs].
-  destruct (Hs _ _ HYE) as (t1 & t2 & Rt & Et1 & Et2 & HRt & n1 & n & En1 & En & Hnn).
+  destruct (Hs _ _ HYE) as (t1 & t2 & Rt & Et1 & Et2 & HRt & Hd).
+  assert (t2 = t) as -> by (eapply functional_eval_exp; eassumption).
+  pose proof (per_univ_elem_relevance _ _ _ _ HRt) as Er.
+  destruct Hd as [Hd | (n1 & n & En1 & En & Hnn)]; [ congruence |].
+  (** The type is relevant at the stage's environment too. *)
+  assert (Er1 : domain_relevance t1 = relevant) by congruence.
+  destruct (exp_inst_link _ _ _ _ _ _ _ _ _ HMl HRS Hq HE Hqev (ex_intro _ t1 (conj Et1 Er1)))
+    as (m & n0 & Em & En0 & Hmn).
   assert (n1 = n0) as -> by (eapply functional_eval_exp; eassumption).
   exists RΔ, (env_args Y xs), m, n; repeat split; try assumption.
   (** Both relations are those of the type at the left environment. *)

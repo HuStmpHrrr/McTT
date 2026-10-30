@@ -1245,6 +1245,20 @@ Proof.
     rewrite !env_entry_skipn; f_equal; lia.
 Qed.
 
+(** And conversely: an entry of [Γ] past the prefix [Ψ] that is a
+    proposition is one of [Ψ ++ Γ]. *)
+Lemma entry_propositional_shiftn_intro : forall Ψ Γ ρ x,
+    entry_propositional gc_deps gc_stack Γ (List.skipn (List.length Ψ) ρ) x ->
+    entry_propositional gc_deps gc_stack (Ψ ++ Γ) ρ (List.length Ψ + x).
+Proof.
+  intros * [T HT E HE a Ea Hp]; econstructor; [ | | exact Ea | exact Hp ].
+  - unfold ctx_entry_type in *; rewrite List.nth_error_app2 by lia.
+    replace (List.length Ψ + x - List.length Ψ) with x by lia; exact HT.
+  - intros y Hy.
+    rewrite (HE y) by (rewrite !List.length_skipn, List.length_app in *; lia).
+    rewrite !env_entry_skipn; f_equal; lia.
+Qed.
+
 Lemma rel_wk_under_ctx_shiftn : forall Ψ Γ, ⊨ Ψ ++ Γ -> Ψ ++ Γ ⊨ʷ (wk_shiftn (List.length Ψ)) : Γ.
 Proof.
   intros * H.
