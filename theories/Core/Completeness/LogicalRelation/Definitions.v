@@ -72,18 +72,22 @@ Record rel_wk_under_ctx Γ φ Δ : Prop := mk_rel_wk_under_ctx
   ; rel_wk_under_ctx_per' : EF Δ ≈ Δ ∈ per_ctx_env ↘ rel_wk_under_ctx_rel'
     (** The weakening takes the one to the other *)
   ; rel_wk_under_ctx_wk : rel_wk φ rel_wk_under_ctx_rel rel_wk_under_ctx_rel'
-    (** An entry of the source that is a proposition is taken to one of
-        the target.  Context-directed evaluation needs this to evaluate the
+    (** It takes the entries of the target to entries of the source *)
+  ; rel_wk_under_ctx_bound : forall x, x < List.length Δ -> φ x < List.length Γ
+    (** An entry of the target whose image in the source is a proposition
+        is one.  Context-directed evaluation needs this to evaluate the
         substitution [ι φ ⨟ τ] at [Δ] to [⟪φ⟫ ρτ] when [τ] evaluates at
         [Γ] to [ρτ]: at a target entry that is no proposition it asks for
         the value of [τ (φ x)], which [ρτ] holds only when the source
         entry [φ x] is no proposition either.  It is a condition on
-        semantic weakenings that their relations do not imply: [wk_id]
-        from [C ++ Γ0] to [C], with [C = ⋅ ▹ ℕ] and [Γ0 = ⋅ ▹ ⊤], takes
-        related environments to related ones, but the source entry [1]
-        is the proposition [⊤] and the target has no entry [1]. *)
+        semantic weakenings that their relations do not imply: the
+        identity from [⋅ ▹ ⊤] to [⋅ ▹ a_placeholder_type] takes related
+        environments to related ones, since the placeholder type relates
+        all values, the proof [⋆ᵈ] among them, but the source entry is a
+        proposition and the target entry is not. *)
   ; rel_wk_under_ctx_props : forall ρ ρ', Dom ρ ≈ ρ' ∈ rel_wk_under_ctx_rel ->
-      forall x, entry_propositional gc_deps gc_stack Γ ρ (φ x) -> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x }.
+      forall x, x < List.length Δ ->
+      entry_propositional gc_deps gc_stack Γ ρ (φ x) -> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x }.
 
 Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
