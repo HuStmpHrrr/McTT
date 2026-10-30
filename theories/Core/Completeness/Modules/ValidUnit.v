@@ -251,7 +251,7 @@ Qed.
 
 (** A body without opens that can be filled in evaluates at every
     environment of its context, to one of the context it makes. *)
-Lemma benv_exists : forall Φ D, gm_nopens Φ = 0 -> gm_fill Φ <> None -> ⊨ body_ctx Φ ++ D ->
+Lemma body_env_exists : forall Φ D, gm_nopens Φ = 0 -> gm_fill Φ <> None -> ⊨ body_ctx Φ ++ D ->
     forall R RD, EF D ≈ D ∈ per_ctx_env ↘ RD -> EF body_ctx Φ ++ D ≈ body_ctx Φ ++ D ∈ per_ctx_env ↘ R ->
     forall ρ, RD ρ ρ -> exists ρ1, ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ R ρ1 ρ1.
 Proof.
@@ -288,11 +288,11 @@ Qed.
 
 Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
 
-Lemma kshape_sym : forall ρ ρ', kshape gc_deps gc_stack ρ ρ' -> kshape gc_deps gc_stack ρ' ρ.
+Lemma kinds_shape_sym : forall ρ ρ', kinds_shape gc_deps gc_stack ρ ρ' -> kinds_shape gc_deps gc_stack ρ' ρ.
 Proof. intros * [K S]; split; [ intros x; apply kinds_equiv_sym, K | intros x; symmetry; apply S ]. Qed.
 
-Lemma kshape_trans : forall ρ1 ρ2 ρ3, kshape gc_deps gc_stack ρ1 ρ2 -> kshape gc_deps gc_stack ρ2 ρ3 ->
-    kshape gc_deps gc_stack ρ1 ρ3.
+Lemma kinds_shape_trans : forall ρ1 ρ2 ρ3, kinds_shape gc_deps gc_stack ρ1 ρ2 -> kinds_shape gc_deps gc_stack ρ2 ρ3 ->
+    kinds_shape gc_deps gc_stack ρ1 ρ3.
 Proof.
   intros * [K1 S1] [K2 S2]; split; [ intros x; eapply kinds_equiv_trans; [ apply K1 | apply K2 ] | intros x; rewrite S1; apply S2 ].
 Qed.
@@ -387,7 +387,7 @@ Proof.
           | right; right; eapply mk_def_mod_eq_upto_type; reflexivity ].
 Qed.
 
-Lemma body_eq_upto_types_benv : forall Φk Φx, body_eq_upto_types Φk Φx -> forall ρ ρ1,
+Lemma body_eq_upto_types_body_env : forall Φk Φx, body_eq_upto_types Φk Φx -> forall ρ ρ1,
     ⟦ Φk ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 <-> ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1.
 Proof.
   induction Φk as [| Φk IH y Ek | ]; intros [| Φx y' Ex | ] Hk ρ ρ1; cbn [body_eq_upto_types] in Hk; try contradiction; [ reflexivity |].
@@ -521,7 +521,7 @@ Proof.
 Qed.
 
 Lemma items_kinds_items_gen : forall Γ H its gs, items_gen Θm Ξm Γ H its gs -> kinds_ok Γ H ->
-    forall RΓ ρ σ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> kshape gc_deps gc_stack ρ σ ->
+    forall RΓ ρ σ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> kinds_shape gc_deps gc_stack ρ σ ->
     kinds_items_gen gc_deps gc_stack σ H its (List.map generated_item_erase gs).
 Proof.
   intros * Hg Hk RΓ ρ σ HΓ Hρ Hs.
@@ -545,7 +545,7 @@ Qed.
     environment with the kinds of one of its context. *)
 Lemma kinds_body_xp_exists : forall C Φ Φx, body_xp Θm Ξm C Φ Φx -> body_shape Φx Φx -> ⊨ body_ctx Φx ++ C ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> kinds_ok (Ψ ++ C) H) ->
-    forall RC ρ σ, EF C ≈ C ∈ per_ctx_env ↘ RC -> RC ρ ρ -> kshape gc_deps gc_stack ρ σ ->
+    forall RC ρ σ, EF C ≈ C ∈ per_ctx_env ↘ RC -> RC ρ ρ -> kinds_shape gc_deps gc_stack ρ σ ->
     exists Φk, kinds_body_xp gc_deps gc_stack σ Φ Φk /\ body_eq_upto_types Φk Φx.
 Proof.
   intros * Hx; induction Hx as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its R Rm gs Hx IH HR HRm Hg Hok];
@@ -566,9 +566,9 @@ Proof.
     destruct (IH Hsh0 HC0 (fun k => Ho (S k)) _ _ _ HRC Hρ Hs) as (Φk & Hb & Hk).
     destruct (body_eq_upto_types_kinds_env_exists _ _ Hk σ) as (σ1 & Hσ1).
     destruct (rel_ctx_wf_per_ctx_env HC0) as [R1 HR1].
-    destruct (benv_exists _ _ (body_xp_nopens _ _ _ _ _ Hx) (proj1 (body_shape_fill _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsh0))
+    destruct (body_env_exists _ _ (body_xp_nopens _ _ _ _ _ Hx) (proj1 (body_shape_fill _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsh0))
                 HC0 _ _ HRC HR1 _ Hρ) as (ρ1 & Hb1 & Hρ1).
-    destruct (kind_eval_benv _ _ _ _ _ Hb1 _ Hs) as (σ' & Hk' & Hs').
+    destruct (kind_eval_body_env _ _ _ _ _ Hb1 _ Hs) as (σ' & Hk' & Hs').
     apply (body_eq_upto_types_kinds_env _ _ Hk) in Hσ1.
     pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk') as <-.
     apply (body_eq_upto_types_kinds_env _ _ Hk) in Hσ1.
@@ -764,7 +764,7 @@ Proof.
     (* an environment of the parameters, and the kinds of the closure there *)
     destruct (rel_ctx_wf_per_ctx_env (rel_ctx_wf_app_r _ _ HC)) as [RΔ HRΔ].
     destruct (params_env _ _ _ _ HΔ HRΓ HRΔ _ Hρ) as (args & Hl & Hρa).
-    pose proof (kshape_args_pad gc_deps gc_stack ρ _ _ Hl) as Hsa.
+    pose proof (kinds_shape_args_pad gc_deps gc_stack ρ _ _ Hl) as Hsa.
     destruct (kinds_body_xp_exists _ _ _ Hx Hsx HC (fun k Ψ H Hk => proj1 (conj (IHops k Ψ H Hk) I)) _ _ _ HRΔ Hρa Hsa) as (Φk & Hb & Hk).
     apply modexp_member_kind_lit, gunit_member_kind_pad, (gunit_member_kind_kinds_body_xp _ _ _ _ _ Hb).
     destruct (body_eq_upto_types_prefix _ _ Hk _ _ _ Hp) as (Φk' & Ek & Hpk & Hk' & HE).
@@ -784,11 +784,11 @@ Proof.
       rewrite HX, <- app_assoc in HC; pose proof (rel_ctx_wf_app_r _ _ HC) as HC1; cbn [body_ctx app] in HC1;
       pose proof (rel_ctx_wf_tail HC1) as HC0;
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0];
-      destruct (benv_exists _ _ Hn' (proj1 (body_shape_fill _ _ Hn' Hsh')) HC0 _ _ HRΔ HR0 _ Hρa) as (ρ1 & Hb1 & Hρ1);
-      destruct (kind_eval_benv _ _ _ _ _ Hb1 _ Hsa) as (σ' & Hk1 & Hs1);
+      destruct (body_env_exists _ _ Hn' (proj1 (body_shape_fill _ _ Hn' Hsh')) HC0 _ _ HRΔ HR0 _ Hρa) as (ρ1 & Hb1 & Hρ1);
+      destruct (kind_eval_body_env _ _ _ _ _ Hb1 _ Hsa) as (σ' & Hk1 & Hs1);
       apply (body_eq_upto_types_kinds_env _ _ Hk') in Hσ1;
       pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk1) as <-;
-      apply (gunit_member_kind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs1))), modexp_member_kind_lit_iff;
+      apply (gunit_member_kind_id _ _ _ _ (proj1 (kinds_shape_sym _ _ Hs1))), modexp_member_kind_lit_iff;
       exact (valid_nil_kind _ _ _ (rel_unit_under_ctx_lit _ _ _ (proj2 (proj2 (rel_ctx_wf_dm_inv HC1)))) HR0 _ Hρ1).
     + (* a submodule: a module, at an environment of its context *)
       destruct (body_eq_upto_types_kinds_env_exists _ _ Hk' (kinds_placeholders (List.length Δ) ρ)) as (σ1 & Hσ1).
@@ -797,11 +797,11 @@ Proof.
       rewrite HX, <- app_assoc in HC; pose proof (rel_ctx_wf_app_r _ _ HC) as HC1; cbn [body_ctx app] in HC1.
       pose proof (rel_ctx_wf_tail HC1) as HC0.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
-      destruct (benv_exists _ _ Hn' (proj1 (body_shape_fill _ _ Hn' Hsh')) HC0 _ _ HRΔ HR0 _ Hρa) as (ρ1 & Hb1 & Hρ1).
-      destruct (kind_eval_benv _ _ _ _ _ Hb1 _ Hsa) as (σ' & Hk1 & Hs1).
+      destruct (body_env_exists _ _ Hn' (proj1 (body_shape_fill _ _ Hn' Hsh')) HC0 _ _ HRΔ HR0 _ Hρa) as (ρ1 & Hb1 & Hρ1).
+      destruct (kind_eval_body_env _ _ _ _ _ Hb1 _ Hsa) as (σ' & Hk1 & Hs1).
       apply (body_eq_upto_types_kinds_env _ _ Hk') in Hσ1.
       pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk1) as <-.
-      apply (gunit_member_kind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs1))), modexp_member_kind_lit_iff.
+      apply (gunit_member_kind_id _ _ _ _ (proj1 (kinds_shape_sym _ _ Hs1))), modexp_member_kind_lit_iff.
       exact (valid_nil_kind _ _ _ (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC1)) HR0 _ Hρ1).
   - (* an alias *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE.
@@ -814,7 +814,7 @@ Proof.
     destruct (mdesc_entry_up_inv _ _ _ _ _ _ He) as (Γy' & rd' & He').
     destruct (rel_ctx_wf_per_ctx_env HΔΓ) as [RΔ HRΔ].
     destruct (params_env _ _ _ _ HΔ HRΓ HRΔ _ Hρ) as (args & Hl & Hρa).
-    pose proof (kshape_args_pad gc_deps gc_stack ρ _ _ Hl) as Hsa.
+    pose proof (kinds_shape_args_pad gc_deps gc_stack ρ _ _ Hl) as Hsa.
     apply modexp_member_kind_lit, gunit_member_kind_alias, (modexp_member_kind_id _ _ _ _ (proj1 Hsa)).
     exact (kinds_ok_entry _ _ IHE _ _ _ _ _ _ HmE HmodE He' _ _ HRΔ Hρa).
   - (* a module expression equal to a valid unit: as the unit *)

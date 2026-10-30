@@ -1110,7 +1110,7 @@ Section OrderFast.
 
   (** So [mdenote] is decided on every module expression, typed or not. *)
   Definition mdenote_dec (Γ : ctx) (H : modexp) :
-      { R : fmdesc | mdenote (fc_deps F) (fc_stack F) Γ H (dec_desc R) } + { forall R, ~ mdenote (fc_deps F) (fc_stack F) Γ H R } :=
+      { R : fmdesc | mdenote (fc_deps F) (fc_stack F) Γ H (decode_desc R) } + { forall R, ~ mdenote (fc_deps F) (fc_stack F) Γ H R } :=
     mdenote_impl F Hg Γ H (mdenote_order_all _ _ Hg Γ H).
 
   (** So a body's expansion is decided on every body, typed or not. *)

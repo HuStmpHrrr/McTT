@@ -168,10 +168,10 @@ Proof.
   apply (rel_exp_of_univ (u := us (a, S n))).
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_relevant (per_univ (us (a, S n))) 𝕌@(dlvl_lit (a, n)) 𝕌@(dlvl_lit (a, n)))
+  assert (Hu : per_relevant (per_univ (us (a, S n))) 𝕌@(domain_level_lit (a, n)) 𝕌@(domain_level_lit (a, n)))
     by (constructor; [| reflexivity | reflexivity ];
         eexists; apply per_univ_elem_core_suniv';
-        [ apply per_lvl_lit | cbn; ord | reflexivity ]).
+        [ apply per_lvl_lit | cbn; ordinal_solve | reflexivity ]).
   econstructor; try (apply eval_exp_univ, eval_exp_llit).
   apply rel_chain_4; assumption.
 Qed.

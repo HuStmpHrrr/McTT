@@ -29,11 +29,11 @@ Section type_check.
       condition of every rule that asks for a type.  A plain [match], so that
       the extracted code is one case analysis and the two universe cases are
       visibly the only ones. *)
-  Definition univ_nf_idx_dec (A : nf) : { u : unf | is_univ_nf A u } + { forall u, ~ is_univ_nf A u }.
+  Definition univ_nf_idx_dec (A : nf) : { u : universe_nf | is_univ_nf A u } + { forall u, ~ is_univ_nf A u }.
   Proof.
     destruct A as [ i | c xs | | ? ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? | ? ? | ? ? ? ? ];
-      [ left; exists (unl i); constructor
-      | left; exists (uns (c, xs)); constructor
+      [ left; exists (universe_large i); constructor
+      | left; exists (universe_small (c, xs)); constructor
       | right; intros ? H; inversion H .. ].
   Defined.
 
@@ -86,7 +86,7 @@ Section type_check.
     - exact (Bool.bool_dec pd pd').
   Defined.
 
-  Definition iitem_eq_dec : forall it it' : iitem, { it = it' } + { it <> it' }.
+  Definition import_item_eq_dec : forall it it' : import_item, { it = it' } + { it <> it' }.
   Proof. repeat decide equality; apply string_dec. Defined.
 
   Definition body_shape_dec : forall Φ Φ', { body_shape Φ Φ' } + { ~ body_shape Φ Φ' }.
@@ -97,7 +97,7 @@ Section type_check.
       destruct (string_dec x x') as [H2 | H2]; [| right; intuition ].
       destruct (entry_shape_dec E E') as [H3 | H3]; [ left; auto | right; intuition ].
     - destruct (IH Φ') as [H1 | H1]; [| right; intuition ].
-      destruct (list_eq_dec iitem_eq_dec its its') as [H2 | H2]; [ left; auto | right; intuition ].
+      destruct (list_eq_dec import_item_eq_dec its its') as [H2 | H2]; [ left; auto | right; intuition ].
   Defined.
 
   (** The outermost parameter of an arity, if any. *)
@@ -109,17 +109,17 @@ Section type_check.
   (** What a description gives the rules: a member's type ([mdesc_type]), a
       module's telescope ([mdesc_mod_tele]) and module part ([mdesc_mod]), read off
       the fast description of [MemberType.mdenote_impl]. *)
-  Equations mdesc_type_dec (R : fmdesc) : { A | mdesc_type (dec_desc R) = Some A } + { mdesc_type (dec_desc R) = None } :=
+  Equations mdesc_type_dec (R : fmdesc) : { A | mdesc_type (decode_desc R) = Some A } + { mdesc_type (decode_desc R) = None } :=
   mdesc_type_dec R with fmdesc_type_s R := {
     | exist _ (Some A) E => inleft (exist _ A E)
     | exist _ None E => inright E }.
 
-  Equations mdesc_mod_tele_dec (R : fmdesc) : { T | mdesc_mod_tele (dec_desc R) = Some T } + { mdesc_mod_tele (dec_desc R) = None } :=
+  Equations mdesc_mod_tele_dec (R : fmdesc) : { T | mdesc_mod_tele (decode_desc R) = Some T } + { mdesc_mod_tele (decode_desc R) = None } :=
   mdesc_mod_tele_dec R with inspect (fmdesc_mod_tele R) := {
     | exist _ (Some T) E => inleft (exist _ T (eq_trans (fmdesc_mod_tele_dec R) E))
     | exist _ None E => inright (eq_trans (fmdesc_mod_tele_dec R) E) }.
 
-  Equations mdesc_mod_dec (R : fmdesc) : { Rm : fmdesc | mdesc_mod (dec_desc R) = Some (dec_desc Rm) } + { mdesc_mod (dec_desc R) = None } :=
+  Equations mdesc_mod_dec (R : fmdesc) : { Rm : fmdesc | mdesc_mod (decode_desc R) = Some (decode_desc Rm) } + { mdesc_mod (decode_desc R) = None } :=
   mdesc_mod_dec R with fmdesc_mod_s R := {
     | exist _ (Some Rm) E => inleft (exist _ Rm E)
     | exist _ None E => inright E }.
@@ -162,9 +162,9 @@ Section type_check.
       ([fast_env]), which the fast evaluation computes.  The checker computes it
       once, where it enters a context, and extends it entry by entry under
       binders, rather than once per normalization ([nbe_ty_env_impl]). *)
-  Definition tenv G := fast_env gc_deps gc_stack G.
+  Definition checker_env G := fast_env gc_deps gc_stack G.
 
-  Lemma tenv_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
+  Lemma checker_env_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
   Proof.
     intros G HG.
     assert (G ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
@@ -172,14 +172,14 @@ Section type_check.
   Qed.
 
   (** The reference value of the type or definition an extension adds. *)
-  Lemma tenv_ref_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p -> exists a, ⟦ A ⟧ p ↘ a.
+  Lemma checker_env_ref_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p -> exists a, ⟦ A ⟧ p ↘ a.
   Proof.
     intros * HGA Hp; inversion HGA as [| ? ? ? i ? HA | | |]; subst.
     destruct (soundness_ty HA) as [W [HW _]]; inversion HW; subst.
     functional_initial_env_rewrite_clear; eauto.
   Qed.
 
-  Lemma tenv_ref_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p -> exists m, ⟦ M ⟧ p ↘ m.
+  Lemma checker_env_ref_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p -> exists m, ⟦ M ⟧ p ↘ m.
   Proof.
     intros * HGA Hp; inversion HGA as [| | ? ? ? i ? ? HA HM | |]; subst.
     destruct (soundness HM) as [W [HW _]]; inversion HW; subst.
@@ -187,52 +187,52 @@ Section type_check.
   Qed.
 
   (** The fast environment the checker carries is right. *)
-  Lemma tenv_ok : forall G p',
+  Lemma checker_env_ok : forall G p',
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       fenv_ok gc_deps gc_stack p'.
   Proof. intros * (p & _ & Hag); eapply fast_env_agree_ok; exact Hag. Qed.
 
-  Lemma tenv_eval_order_ass : forall G A p', ⊢ G ▹ A ->
+  Lemma checker_env_eval_order_ass : forall G A p', ⊢ G ▹ A ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       fast_eval_exp_order gc_deps gc_stack A (fenv_erase p').
   Proof.
-    intros * HGA (p & Hp & Hag); destruct (tenv_ref_ass _ _ _ HGA Hp) as [a Ha].
+    intros * HGA (p & Hp & Hag); destruct (checker_env_ref_ass _ _ _ HGA Hp) as [a Ha].
     eapply (fast_eval_of_ref _ _ _ _ _ _ Ha), fast_env_agree_all, Hag.
   Qed.
 
-  Lemma tenv_eval_order_def : forall G A M p', ⊢ G ▸ A ≔ M ->
+  Lemma checker_env_eval_order_def : forall G A M p', ⊢ G ▸ A ≔ M ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       fast_eval_exp_order gc_deps gc_stack M (fenv_erase p').
   Proof.
-    intros * HGA (p & Hp & Hag); destruct (tenv_ref_def _ _ _ _ HGA Hp) as [m Hm].
+    intros * HGA (p & Hp & Hag); destruct (checker_env_ref_def _ _ _ _ HGA Hp) as [m Hm].
     eapply (fast_eval_of_ref _ _ _ _ _ _ Hm), fast_env_agree_all, Hag.
   Qed.
 
-  Lemma tenv_ass_sim : forall G A p' a', ⊢ G ▹ A ->
+  Lemma checker_env_ass_sim : forall G A p' a', ⊢ G ▹ A ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' /\ fdomain_ok gc_deps gc_stack a' ->
       exists p, initial_env gc_deps gc_stack (G ▹ A) p /\
              fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env p' (fd_neut a' (fd_var (List.length G)))).
   Proof.
-    intros * HGA (p & Hp & Hag) [Ha' Hok]; destruct (tenv_ref_ass _ _ _ HGA Hp) as [a Ha].
+    intros * HGA (p & Hp & Hag) [Ha' Hok]; destruct (checker_env_ref_ass _ _ _ HGA Hp) as [a Ha].
     pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (fast_env_agree_all _ _ _ _ _ Hag)) _ Ha').
     eexists; split; [ econstructor; eassumption |].
     eapply fast_env_agree_term; [ exact Hag | cbn; repeat constructor; assumption | repeat constructor; assumption ].
   Qed.
 
-  Lemma tenv_def_sim : forall G A M p' m', ⊢ G ▸ A ≔ M ->
+  Lemma checker_env_def_sim : forall G A M p' m', ⊢ G ▸ A ≔ M ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       ⟦ M ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase m' /\ fdomain_ok gc_deps gc_stack m' ->
       exists p, initial_env gc_deps gc_stack (G ▸ A ≔ M) p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env p' m').
   Proof.
-    intros * HGA (p & Hp & Hag) [Hm' Hok]; destruct (tenv_ref_def _ _ _ _ HGA Hp) as [m Hm].
+    intros * HGA (p & Hp & Hag) [Hm' Hok]; destruct (checker_env_ref_def _ _ _ _ HGA Hp) as [m Hm].
     pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm (fast_env_agree_all _ _ _ _ _ Hag)) _ Hm').
     eexists; split; [ econstructor; eassumption |].
     eapply fast_env_agree_term; eassumption.
   Qed.
 
   (** The reference value of the unit a module slot adds. *)
-  Lemma tenv_ref_mod : forall G U p, ⊢ G ▹ₘ U -> initial_env gc_deps gc_stack G p ->
+  Lemma checker_env_ref_mod : forall G U p, ⊢ G ▹ₘ U -> initial_env gc_deps gc_stack G p ->
       exists h, ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ p ↘ h.
   Proof.
     intros * HGU Hp.
@@ -241,20 +241,20 @@ Section type_check.
     inversion Hi; subst; functional_initial_env_rewrite_clear; eauto.
   Qed.
 
-  Lemma tenv_eval_order_mod : forall G U p', ⊢ G ▹ₘ U ->
+  Lemma checker_env_eval_order_mod : forall G U p', ⊢ G ▹ₘ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       fast_eval_modexp_order gc_deps gc_stack (me_lit U) (fenv_erase p').
   Proof.
-    intros * HGU (p & Hp & Hag); destruct (tenv_ref_mod _ _ _ HGU Hp) as [h Hh].
+    intros * HGU (p & Hp & Hag); destruct (checker_env_ref_mod _ _ _ HGU Hp) as [h Hh].
     eapply (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh), fast_env_agree_all, Hag.
   Qed.
 
-  Lemma tenv_mod_sim : forall G U p' h', ⊢ G ▹ₘ U ->
+  Lemma checker_env_mod_sim : forall G U p' h', ⊢ G ▹ₘ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       ⟦ me_lit U ⟧ᵐᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdmod_erase h' /\ fdmod_ok gc_deps gc_stack h' ->
       exists p, initial_env gc_deps gc_stack (G ▹ₘ U) p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env_mod p' h').
   Proof.
-    intros * HGU (p & Hp & Hag) [Hh' Hok]; destruct (tenv_ref_mod _ _ _ HGU Hp) as [h Hh].
+    intros * HGU (p & Hp & Hag) [Hh' Hok]; destruct (checker_env_ref_mod _ _ _ HGU Hp) as [h Hh].
     pose proof (proj2 (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh (fast_env_agree_all _ _ _ _ _ Hag)) _ Hh').
     eexists; split; [ econstructor; eassumption |].
     eapply fast_env_agree_mod; eassumption.
@@ -262,7 +262,7 @@ Section type_check.
 
   (** The reference values of the term and the unit a definition with a
       module part adds. *)
-  Lemma tenv_ref_dm : forall G A M U p, ⊢ G ▸ₘ A ≔ M ‖ U -> initial_env gc_deps gc_stack G p ->
+  Lemma checker_env_ref_dm : forall G A M U p, ⊢ G ▸ₘ A ≔ M ‖ U -> initial_env gc_deps gc_stack G p ->
       exists m h, ⟦ M ⟧ p ↘ m /\ ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ p ↘ h.
   Proof.
     intros * HG Hp.
@@ -271,37 +271,37 @@ Section type_check.
     inversion Hi; subst; functional_initial_env_rewrite_clear; eauto.
   Qed.
 
-  Lemma tenv_eval_order_dm_tm : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
+  Lemma checker_env_eval_order_dm_tm : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       fast_eval_exp_order gc_deps gc_stack M (fenv_erase p').
   Proof.
-    intros * HG (p & Hp & Hag); destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & _).
+    intros * HG (p & Hp & Hag); destruct (checker_env_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & _).
     eapply (fast_eval_of_ref _ _ _ _ _ _ Hm), fast_env_agree_all, Hag.
   Qed.
 
-  Lemma tenv_eval_order_dm_unit : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
+  Lemma checker_env_eval_order_dm_unit : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       fast_eval_modexp_order gc_deps gc_stack (me_lit U) (fenv_erase p').
   Proof.
-    intros * HG (p & Hp & Hag); destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & _ & Hh).
+    intros * HG (p & Hp & Hag); destruct (checker_env_ref_dm _ _ _ _ _ HG Hp) as (m & h & _ & Hh).
     eapply (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh), fast_env_agree_all, Hag.
   Qed.
 
-  Lemma tenv_dm_sim : forall G A M U p' m' h', ⊢ G ▸ₘ A ≔ M ‖ U ->
+  Lemma checker_env_dm_sim : forall G A M U p' m' h', ⊢ G ▸ₘ A ≔ M ‖ U ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       ⟦ M ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase m' /\ fdomain_ok gc_deps gc_stack m' ->
       ⟦ me_lit U ⟧ᵐᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdmod_erase h' /\ fdmod_ok gc_deps gc_stack h' ->
       exists p, initial_env gc_deps gc_stack (G ▸ₘ A ≔ M ‖ U) p /\
              fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env_dm p' m' h').
   Proof.
-    intros * HG (p & Hp & Hag) [Hm' Hokm] [Hh' Hokh]; destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & Hh).
+    intros * HG (p & Hp & Hag) [Hm' Hokm] [Hh' Hokh]; destruct (checker_env_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & Hh).
     pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm (fast_env_agree_all _ _ _ _ _ Hag)) _ Hm').
     pose proof (proj2 (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh (fast_env_agree_all _ _ _ _ _ Hag)) _ Hh').
     eexists; split; [ econstructor; eassumption |].
     eapply fast_env_agree_dm; eassumption.
   Qed.
 
-  Lemma tenv_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
+  Lemma checker_env_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
   Proof. intros * [? HX]; gen_presups; assumption. Qed.
 
   Inductive type_check_order : exp -> Prop :=
@@ -519,7 +519,7 @@ Variable F : FCtx.
 
 Section lookup.
   #[local]
-  Ltac impl_obl_tac1 :=
+  Ltac impl_obligation_tac1 :=
     match goal with
     | |- ~ _ => intro
     | H: ⊢ _ :: _ |- _ => inversion_clear H
@@ -529,12 +529,12 @@ Section lookup.
     end.
 
   #[local]
-  Ltac impl_obl_tac :=
+  Ltac impl_obligation_tac :=
     intros;
-    repeat impl_obl_tac1;
+    repeat impl_obligation_tac1;
     intuition (mauto 4).
 
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations lookup G (HG : ⊢ G) x : { A | G ∋ #x : A } + { forall A, ~ G ∋ #x : A } :=
   | cons e G, HG, x with x => {
     | 0 with e => {
@@ -557,15 +557,15 @@ End lookup.
     outright. *)
 
 Definition mdenote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-    { R : fmdesc | mdenote gc_deps gc_stack Γ H (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ H R } :=
+    { R : fmdesc | mdenote gc_deps gc_stack Γ H (decode_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ H R } :=
   mdenote_impl F Hg Γ H (mdenote_order_of_wf _ _ Hg _ _ _ HH).
 
 Definition mem_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H y (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-    { R : fmdesc | mdenote gc_deps gc_stack Γ (me_mem H y) (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_mem H y) R } :=
+    { R : fmdesc | mdenote gc_deps gc_stack Γ (me_mem H y) (decode_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_mem H y) R } :=
   mdenote_impl F Hg Γ (me_mem H y) (mdenote_order_mem_of_wf _ _ Hg _ _ _ y HH).
 
 Definition path_denote_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ fp :
-    { R : fmdesc | mdenote gc_deps gc_stack Γ (me_unit fp) (dec_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_unit fp) R } :=
+    { R : fmdesc | mdenote gc_deps gc_stack Γ (me_unit fp) (decode_desc R) } + { forall R, ~ mdenote gc_deps gc_stack Γ (me_unit fp) R } :=
   mdenote_impl F Hg Γ (me_unit fp) (mdenote_order_path _ _ Γ fp).
 
 (** What a local open of a module generates. *)
@@ -578,45 +578,45 @@ Extraction Inline mdenote_dec mem_denote_dec path_denote_dec items_gen_dec.
 (** *** The Initial Environment, Computed *)
 
 (** The initial environment of a context, from scratch. *)
-Definition tenv_of G (HG : ⊢ G) : tenv G :=
-  initial_env_impl F G (tenv_order_of_wf G HG).
+Definition checker_env_of G (HG : ⊢ G) : checker_env G :=
+  initial_env_impl F G (checker_env_order_of_wf G HG).
 
 (** The initial environment of an extended context, from that of the
     context: one entry more, by its rule of [initial_env]. *)
-Definition tenv_ass G (P : tenv G) A (HGA : ⊢ G ▹ A) : tenv (G ▹ A) :=
+Definition checker_env_ass G (P : checker_env G) A (HGA : ⊢ G ▹ A) : checker_env (G ▹ A) :=
   let (p, Hp) := P in
-  let (a, Ha) := fast_eval_exp_impl F A p (tenv_ok G p Hp) (tenv_eval_order_ass G A p HGA Hp) in
-  exist _ (fextend_env p (fd_neut a (fd_var (List.length G)))) (tenv_ass_sim _ _ _ _ HGA Hp Ha).
+  let (a, Ha) := fast_eval_exp_impl F A p (checker_env_ok G p Hp) (checker_env_eval_order_ass G A p HGA Hp) in
+  exist _ (fextend_env p (fd_neut a (fd_var (List.length G)))) (checker_env_ass_sim _ _ _ _ HGA Hp Ha).
 
 (** The same for a definition entry: its body's value. *)
-Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
+Definition checker_env_def G (P : checker_env G) A M (HGA : ⊢ G ▸ A ≔ M) : checker_env (G ▸ A ≔ M) :=
   let (p, Hp) := P in
-  let (m, Hm) := fast_eval_exp_impl F M p (tenv_ok G p Hp) (tenv_eval_order_def G A M p HGA Hp) in
-  exist _ (fextend_env p m) (tenv_def_sim _ _ _ _ _ HGA Hp Hm).
+  let (m, Hm) := fast_eval_exp_impl F M p (checker_env_ok G p Hp) (checker_env_eval_order_def G A M p HGA Hp) in
+  exist _ (fextend_env p m) (checker_env_def_sim _ _ _ _ _ HGA Hp Hm).
 
 (** The same for a module slot: the closure of its unit. *)
-Definition tenv_mod G (P : tenv G) U (HGU : ⊢ G ▹ₘ U) : tenv (G ▹ₘ U) :=
+Definition checker_env_mod G (P : checker_env G) U (HGU : ⊢ G ▹ₘ U) : checker_env (G ▹ₘ U) :=
   let (p, Hp) := P in
-  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (tenv_ok G p Hp) (tenv_eval_order_mod G U p HGU Hp) in
-  exist _ (fextend_env_mod p h) (tenv_mod_sim _ _ _ _ HGU Hp Hh).
+  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (checker_env_ok G p Hp) (checker_env_eval_order_mod G U p HGU Hp) in
+  exist _ (fextend_env_mod p h) (checker_env_mod_sim _ _ _ _ HGU Hp Hh).
 
 (** The same for a definition with a module part: the value of its term
     part's body and the closure of its unit, side by side. *)
-Definition tenv_dm G (P : tenv G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : tenv (G ▸ₘ A ≔ M ‖ U) :=
+Definition checker_env_dm G (P : checker_env G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : checker_env (G ▸ₘ A ≔ M ‖ U) :=
   let (p, Hp) := P in
-  let (m, Hm) := fast_eval_exp_impl F M p (tenv_ok G p Hp) (tenv_eval_order_dm_tm G A M U p HG Hp) in
-  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (tenv_ok G p Hp) (tenv_eval_order_dm_unit G A M U p HG Hp) in
-  exist _ (fextend_env_dm p m h) (tenv_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
+  let (m, Hm) := fast_eval_exp_impl F M p (checker_env_ok G p Hp) (checker_env_eval_order_dm_tm G A M U p HG Hp) in
+  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (checker_env_ok G p Hp) (checker_env_eval_order_dm_unit G A M U p HG Hp) in
+  exist _ (fextend_env_dm p m h) (checker_env_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
 
 (** The initial environment of an extension [Ψ ++ G], from that of [G]:
     one entry more per entry of [Ψ], rather than all of [G]'s again. *)
-Fixpoint tenv_ext G (P : tenv G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> tenv (Ψ ++ G) :=
-  match Ψ as Ψ0 return ⊢ Ψ0 ++ G -> tenv (Ψ0 ++ G) with
+Fixpoint checker_env_ext G (P : checker_env G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> checker_env (Ψ ++ G) :=
+  match Ψ as Ψ0 return ⊢ Ψ0 ++ G -> checker_env (Ψ0 ++ G) with
   | nil => fun _ => P
-  | ce_ass A :: Ψ' => fun H => tenv_ass (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A H
-  | ce_def A M :: Ψ' => fun H => tenv_def (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M H
-  | ce_mod U :: Ψ' => fun H => tenv_mod (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) U H
-  | ce_dm A M U :: Ψ' => fun H => tenv_dm (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M U H
+  | ce_ass A :: Ψ' => fun H => checker_env_ass (Ψ' ++ G) (checker_env_ext G P Ψ' (ctx_decomp_tail H)) A H
+  | ce_def A M :: Ψ' => fun H => checker_env_def (Ψ' ++ G) (checker_env_ext G P Ψ' (ctx_decomp_tail H)) A M H
+  | ce_mod U :: Ψ' => fun H => checker_env_mod (Ψ' ++ G) (checker_env_ext G P Ψ' (ctx_decomp_tail H)) U H
+  | ce_dm A M U :: Ψ' => fun H => checker_env_dm (Ψ' ++ G) (checker_env_ext G P Ψ' (ctx_decomp_tail H)) A M U H
   end.
 End Fast.
 
@@ -624,7 +624,7 @@ Ltac clear_defs :=
   repeat lazymatch goal with
     | H: (forall (G : ctx) (A : typ),
              (exists i : nat, G ⊢ A : Typeω@i) ->
-             tenv G ->
+             checker_env G ->
              forall M : typ,
                type_check_order M ->
                ({ G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A }))
@@ -632,13 +632,13 @@ Ltac clear_defs :=
         clear H
     | H: (let H := fixproto in
           forall (G : ctx) (A : typ),
-            (exists i : nat, G ⊢ A : Typeω@i) -> tenv G -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
+            (exists i : nat, G ⊢ A : Typeω@i) -> checker_env G -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
       |- _ =>
         clear H
     | H: (let H := fixproto in
           forall G : ctx,
             ⊢ G ->
-            tenv G ->
+            checker_env G ->
             forall M : typ,
               type_infer_order M ->
               ({ B : nf | G ⊢a M ⟹ B /\
@@ -648,7 +648,7 @@ Ltac clear_defs :=
         clear H
     | H: (forall G : ctx,
              ⊢ G ->
-             tenv G ->
+             checker_env G ->
              forall M : typ,
                type_infer_order M ->
                ({ B : nf | G ⊢a M ⟹ B /\
@@ -665,29 +665,29 @@ Ltac ctx_wf_tac :=
   | |- ⊢ ?G => assumption
   | |- ⊢ ?G ▹ ?A =>
       match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA ?u |- _ =>
-        assert (G ⊢ A : unf_tm u)
+        assert (G ⊢ A : universe_nf_tm u)
           by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
               eapply alg_type_infer_sound; eassumption);
-        assert (G ⊢ A : Typeω@(unf_large u))
-          by (apply wf_exp_unf_large; eassumption);
+        assert (G ⊢ A : Typeω@(universe_nf_large_index u))
+          by (apply wf_exp_universe_nf_large_index; eassumption);
         mauto 2 end
   | |- ⊢ ?G ▸ ?A ≔ ?M =>
       match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA ?u, H' : G ⊢a M ⟸ A |- _ =>
-        assert (G ⊢ A : unf_tm u)
+        assert (G ⊢ A : universe_nf_tm u)
           by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
               eapply alg_type_infer_sound; eassumption);
-        assert (G ⊢ A : Typeω@(unf_large u))
-          by (apply wf_exp_unf_large; eassumption);
+        assert (G ⊢ A : Typeω@(universe_nf_large_index u))
+          by (apply wf_exp_universe_nf_large_index; eassumption);
         assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption); mauto 2 end
   | |- ⊢ ?G ▹ₘ ?U =>
       match goal with H : G ⊢aᵘ U |- _ => apply wf_ctx_extend_mod; eapply alg_unit_sound; eassumption end
   | |- ⊢ ?G ▸ₘ ?A ≔ ?M ‖ ?U =>
       match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA ?u, H' : G ⊢a M ⟸ A, HU : G ⊢aᵘ U |- _ =>
-        assert (G ⊢ A : unf_tm u)
+        assert (G ⊢ A : universe_nf_tm u)
           by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
               eapply alg_type_infer_sound; eassumption);
-        assert (G ⊢ A : Typeω@(unf_large u))
-          by (apply wf_exp_unf_large; eassumption);
+        assert (G ⊢ A : Typeω@(universe_nf_large_index u))
+          by (apply wf_exp_universe_nf_large_index; eassumption);
         assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption);
         eapply wf_ctx_extend_dm; [ eassumption | eassumption | eapply alg_unit_sound; eassumption ] end
   | |- ⊢ ?Ψ ++ ?G =>
@@ -699,7 +699,7 @@ Ltac ctx_wf_tac :=
 
 (** The last two components of [type_infer]'s postcondition: the inferred
     type infers a universe, and is a type. *)
-Ltac is_type_obl :=
+Ltac is_type_obligation :=
   split; [ do 2 eexists; split; [ mauto 3 | constructor ] | eexists; mauto 3 ].
 
 (** The subject of a universe premise, as a typing at the large level the
@@ -709,28 +709,28 @@ Ltac is_type_obl :=
 Ltac saturate_infer_univ :=
   repeat match goal with
     | Ha : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA ?u |- _ =>
-        let T := constr:(G ⊢ A : a_typ (unf_large u)) in
+        let T := constr:(G ⊢ A : a_typ (universe_nf_large_index u)) in
         assert_fails (assert T by assumption);
-        assert (G ⊢ A : unf_tm u)
+        assert (G ⊢ A : universe_nf_tm u)
           by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
               eapply alg_type_infer_sound; [ exact Ha | ctx_wf_tac ]);
-        assert T by (apply wf_exp_unf_large; eassumption)
+        assert T by (apply wf_exp_universe_nf_large_index; eassumption)
     | HnC : nbe_ty _ _ (?G ▹ ?A) _ ?UB', Hv : is_univ_nf ?UB' ?v,
       HC : ?G ▹ ?A ⊢a ?B ⟹ ?UB, HB : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA _ |- _ =>
         (** A codomain whose universe was normalised ([alg_type_infer_pi]): its
             typing at the large level of the normal form's index. *)
-        let T := constr:(G ▹ A ⊢ B : a_typ (unf_large v)) in
+        let T := constr:(G ▹ A ⊢ B : a_typ (universe_nf_large_index v)) in
         assert_fails (assert T by assumption);
         let HG' := fresh "HG" in
         assert (HG' : ⊢ G) by ctx_wf_tac;
         let HCv := fresh "HCv" in
         destruct (alg_pi_parts_sound HG' HB Hu HC HnC Hv) as (_ & HCv & _);
         clear HG';
-        assert T by (apply wf_exp_unf_large; exact HCv)
+        assert T by (apply wf_exp_universe_nf_large_index; exact HCv)
     end.
 
-(** A type whose inferred universe is [univ_nf u] is a type of [unf_tm u],
-    and so of the large universe [Typeω@(unf_large u)] the index lives at. *)
+(** A type whose inferred universe is [universe_nf_to_nf u] is a type of [universe_nf_tm u],
+    and so of the large universe [Typeω@(universe_nf_large_index u)] the index lives at. *)
 Ltac typ_of_infer := saturate_infer_univ.
 
 (** ** Obligations of the Module Cases *)
@@ -755,7 +755,7 @@ Ltac md_unify :=
     | H1 : ?f = Some _, H2 : ?f = None |- _ => rewrite H1 in H2; discriminate H2
     end.
 
-Ltac negc :=
+Ltac failure_contradiction :=
   match goal with
   | Hx : _ ⊢aˣ (_ :: _) |- False => inversion Hx; subst
   | Hx : _ ⊢aᵘ (gu_mk _ _) |- False => inversion Hx; subst
@@ -764,7 +764,7 @@ Ltac negc :=
   end;
   functional_alg_type_infer_rewrite_clear;
   md_unify;
-  first [ match goal with H : forall u : unf, ?X <> univ_nf u |- _ => exact (H _ eq_refl) end
+  first [ match goal with H : forall u : universe_nf, ?X <> universe_nf_to_nf u |- _ => exact (H _ eq_refl) end
         | congruence
         | solve [ match goal with HN : forall _, ~ _ |- _ => eapply HN; eassumption end ]
         | firstorder ].
@@ -776,7 +776,7 @@ Ltac typ_sound :=
       match goal with H : wf_exp gc_deps gc_stack G (a_typ ?k) A |- _ => exists k; exact H end
   end.
 
-Ltac ctxp :=
+Ltac ctx_premise :=
   first [ assumption
         | ctx_wf_tac
         | match goal with Hls : forall Φ c, _ \/ _ -> _ |- _ => eapply Hls; left; reflexivity end ].
@@ -787,18 +787,18 @@ Ltac ctxp :=
     that proves it. *)
 
 (** A loaded unit: what it denotes, and that is a module. *)
-Ltac mo_2 :=
+Ltac module_obligation_2 :=
   clear_defs; destruct_conjs;
   solve [ eapply alg_modexp_unit; eassumption ].
 
 (** A failure of a selection or an application: its rule's premises are
     read off what it denotes. *)
-Ltac mo_3 :=
+Ltac module_obligation_3 :=
   clear_defs; destruct_conjs;
-  solve [ negc ].
+  solve [ failure_contradiction ].
 
 (** The type a member is read at is a type. *)
-Ltac mo_7 :=
+Ltac module_obligation_7 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
               | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : mdesc_type _ = Some ?A
@@ -808,7 +808,7 @@ Ltac mo_7 :=
               end ].
 
 (** A member infers the normal form of that type. *)
-Ltac mo_8 :=
+Ltac module_obligation_8 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
               | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : mdesc_type _ = Some ?A,
@@ -817,34 +817,34 @@ Ltac mo_8 :=
               end;
               split; [ eapply alg_type_infer_mem; eassumption | eapply level_of_nbe; eassumption ] ].
 
-Ltac mo_10 :=
+Ltac module_obligation_10 :=
   clear_defs; destruct_conjs;
-  solve [ negc ].
+  solve [ failure_contradiction ].
 
-Ltac mo_14 :=
+Ltac module_obligation_14 :=
   clear_defs; destruct_conjs;
   solve [ typ_sound ].
 
-Ltac mo_18 :=
+Ltac module_obligation_18 :=
   clear_defs; destruct_conjs;
-  solve [ eapply alg_modexp_sound; [ eassumption | ctxp ] ].
+  solve [ eapply alg_modexp_sound; [ eassumption | ctx_premise ] ].
 
-Ltac mo_19 :=
+Ltac module_obligation_19 :=
   clear_defs; destruct_conjs;
   solve [ econstructor; apply ctx_find_mod_sound; eassumption ].
 
-Ltac mo_20 :=
+Ltac module_obligation_20 :=
   clear_defs; destruct_conjs;
   solve [ match goal with Hx : _ ⊢aᵐ me_var _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
               match goal with Hl : ctx_lookup_mod _ _ _ |- _ => apply ctx_find_mod_complete in Hl end; congruence ].
 
-Ltac mo_21 :=
+Ltac module_obligation_21 :=
   clear_defs; destruct_conjs;
-  solve [ negc ].
+  solve [ failure_contradiction ].
 
 (** The outermost parameter of a checked module expression is a type
     ([mtele_head_wf]). *)
-Ltac mo_22 :=
+Ltac module_obligation_22 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
               | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G ?M _, Ht : mdesc_mod_tele _ = Some ?T,
@@ -861,7 +861,7 @@ Ltac mo_22 :=
     for the guard of the checker's structural recursion.  An application
     reaches its head and its argument through [app_order], whose components
     are the orders of checks. *)
-Ltac ob_ord :=
+Ltac obligation_order :=
   clear_defs;
   try match goal with H : type_check_order _ |- _ => progressive_invert H end;
   first
@@ -883,7 +883,7 @@ Ltac ob_ord :=
 
 (** The orders of the parts of an eliminator: its scrutinee, a uniform
     parameter, and an annotation, a motive or a branch of a block. *)
-Ltac ob_ord_elim :=
+Ltac obligation_order_elim :=
   clear_defs;
   match goal with H : type_infer_order (a_elim _ _ _ _ _) |- _ => progressive_invert H end;
   first
@@ -892,7 +892,7 @@ Ltac ob_ord_elim :=
 
 (** The orders of the parts of a tuple and of a projection: the annotation
     or a field, the element. *)
-Ltac ob_ord_record :=
+Ltac obligation_order_record :=
   clear_defs;
   match goal with
   | H : type_infer_order (a_tuple _ _) |- _ => progressive_invert H
@@ -903,13 +903,13 @@ Ltac ob_ord_record :=
     | match goal with Hall : forall _ : _, _ |- _ => solve [ eapply Hall; eassumption ] end ].
 
 (** A context premise. *)
-Ltac ob_ctx := clear_defs; destruct_conjs; solve [ ctx_wf_tac ].
+Ltac obligation_ctx := clear_defs; destruct_conjs; solve [ ctx_wf_tac ].
 
-Ltac ob_ctx_ext := clear_defs; destruct_conjs; saturate_infer_univ; mauto 3.
+Ltac obligation_ctx_ext := clear_defs; destruct_conjs; saturate_infer_univ; mauto 3.
 
 (** A failure branch: the judgment the branch rules out is inverted against
     the failure of the premise. *)
-Ltac ob_neg :=
+Ltac obligation_failure :=
   clear_defs;
   (** The judgment ruled out is the newest hypothesis. *)
   lazymatch goal with
@@ -917,7 +917,7 @@ Ltac ob_neg :=
       lazymatch J with
       | _ ⊢a _ ⟹ _ => idtac
       | _ ⊢a _ ⟸ _ => idtac
-      | _ => fail "ob_neg: the newest hypothesis is not a judgment:" J
+      | _ => fail "obligation_failure: the newest hypothesis is not a judgment:" J
       end;
       inversion H; subst; clear H
   end;
@@ -930,7 +930,7 @@ Ltac ob_neg :=
 
 (** A failure branch of a member: the member's inference is inverted, and
     each rule it could come from contradicts the branch's premises. *)
-Ltac ob_mem_neg :=
+Ltac obligation_mem_failure :=
   clear_defs;
   lazymatch goal with H : _ ⊢a a_mem _ _ ⟹ _ |- False => inversion H; subst; clear H end;
   md_unify;
@@ -940,7 +940,7 @@ Ltac ob_mem_neg :=
 
 (** The postcondition of a closed small type: it infers [Typeⁿ@0], and
     [Type@0] is a type, so it infers a universe. *)
-Ltac ob_post_suniv0 :=
+Ltac obligation_post_suniv0 :=
   clear_defs;
   match goal with HG : ⊢ ?G |- _ =>
     let HT := fresh "HT" in
@@ -952,20 +952,20 @@ Ltac ob_post_suniv0 :=
 
 (** The postcondition of a closed type or level form: the inference by its
     rule, and the inferred type is a type. *)
-Ltac ob_post := clear_defs; split; [ mauto 3 | is_type_obl ].
+Ltac obligation_post := clear_defs; split; [ mauto 3 | is_type_obligation ].
 
 (** The postcondition of a level operation: its arguments infer types of
     levels, so its rule applies. *)
-Ltac ob_post_lvl :=
+Ltac obligation_post_lvl :=
   clear_defs; destruct_conjs; subst;
   split; [ econstructor; eassumption |];
   split; [ do 2 eexists; split; [ apply alg_type_infer_level | constructor ] | exists 0; apply wf_level_large; assumption ].
 
 (** A closed type is a type. *)
-Ltac ob_typ_closed := clear_defs; exists 0; mauto 3.
+Ltac obligation_typ_closed := clear_defs; exists 0; mauto 3.
 
 (** The subtyping order of [type_check]. *)
-Ltac ob_subord :=
+Ltac obligation_suborder :=
   clear_defs; destruct_conjs;
   match goal with
   | |- subtyping_order ?G ?A ?B =>
@@ -976,12 +976,12 @@ Ltac ob_subord :=
   end.
 
 (** The positive case of [type_check]. *)
-Ltac ob_check := clear_defs; destruct_conjs; mauto 3.
+Ltac obligation_check := clear_defs; destruct_conjs; mauto 3.
 
 (** The obligations of a body: a failure inverts the body's judgment,
     whose prefix has one expansion ([alg_body_functional]); a success is
     the rule, past a context the soundness of the prefix makes. *)
-Ltac bc_neg :=
+Ltac body_obligation_failure :=
   intros;
   repeat match goal with
     | Hb : _ ⊢aᵇ gm_ext _ _ _ ⇝ _ |- _ => inversion Hb; subst; clear Hb
@@ -997,26 +997,26 @@ Ltac bc_neg :=
   first [ contradiction
         | solve [ firstorder ]
         | congruence
-        | match goal with H : forall u : unf, ?X <> univ_nf u |- _ => exact (H _ eq_refl) end ].
+        | match goal with H : forall u : universe_nf, ?X <> universe_nf_to_nf u |- _ => exact (H _ eq_refl) end ].
 
-Ltac bc_obl1 :=
-  first [ solve [ bc_neg ]
+Ltac body_obligation1 :=
+  first [ solve [ body_obligation_failure ]
         | solve [ split; [ constructor | cbn; assumption ] ]
         | solve [ split; [ econstructor; eassumption | first [ ctx_wf_tac | eapply alg_body_ctx; [ eassumption | econstructor; eassumption ] ] ] ]
-        | solve [ ob_check ]
+        | solve [ obligation_check ]
         | assumption
         | solve [ ctx_wf_tac ]
-        | solve [ eapply ctx_wf_gctx; ctxp ]
-        | solve [ eapply alg_modexp_sound; [ eassumption | ctxp ] ]
+        | solve [ eapply ctx_wf_gctx; ctx_premise ]
+        | solve [ eapply alg_modexp_sound; [ eassumption | ctx_premise ] ]
         | solve [ typ_sound ] ].
 
-Ltac bc_obl :=
-  first [ ob_ord | clear_defs; intros; destruct_conjs; bc_obl1 ].
+Ltac body_obligation :=
+  first [ obligation_order | clear_defs; intros; destruct_conjs; body_obligation1 ].
 
 
 (** A small universe: its level infers a type of levels, so the universe
     above is a type, whose normal form is the inferred universe. *)
-Ltac ob_suniv_lvl :=
+Ltac obligation_suniv_lvl :=
   destruct_conjs; subst;
   match goal with HM : ?G ⊢a ?M ⟹ Levelⁿ@?k, HG : ⊢ ?G |- _ =>
     assert (G ⊢ M : Level@k) by (exact (alg_type_infer_sound HM HG));
@@ -1024,8 +1024,8 @@ Ltac ob_suniv_lvl :=
       by (eapply wf_univ_large_tm; [ exact HG | eapply wf_succl; eassumption ])
   end.
 
-Ltac ob_suniv_nbe := clear_defs; ob_suniv_lvl; eapply nbe_order_of_typ; eassumption.
+Ltac obligation_suniv_nbe := clear_defs; obligation_suniv_lvl; eapply nbe_order_of_typ; eassumption.
 
-Ltac ob_suniv_post :=
-  clear_defs; ob_suniv_lvl;
+Ltac obligation_suniv_post :=
+  clear_defs; obligation_suniv_lvl;
   split; [ eapply alg_type_infer_suniv; eassumption | eapply level_of_nbe; eassumption ].

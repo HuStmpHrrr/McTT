@@ -10,7 +10,7 @@ every fast context `F` (see below).
 
 | Extracted | Reference | Refinement |
 | --- | --- | --- |
-| `Extraction/TypeCheck.v` | `Reference/TypeCheck.v` | an application spine is checked against the *value* of the head's type (`type_infer_val_in`, `type_infer_app_in`), and the codomain is evaluated without the argument when it does not read it (`app_cod`); a check normalizes only the type it checks against; an eliminator's motive and branches get their initial environments from the context's (`tenv_ext`) |
+| `Extraction/TypeCheck.v` | `Reference/TypeCheck.v` | an application spine is checked against the *value* of the head's type (`type_infer_val_in`, `type_infer_app_in`), and the codomain is evaluated without the argument when it does not read it (`app_cod`); a check normalizes only the type it checks against; an eliminator's motive and branches get their initial environments from the context's (`checker_env_ext`) |
 | `Extraction/Evaluation.v`, `Readback.v` | `Reference/Evaluation.v`, `Readback.v` | the eliminator of an inductive type at a constructor computes the result of a recursive argument only when the branch reads it (`exp_freshb (cargs_nrec gs) B`); an unread entry is `𝕌ω@0`.  Constructors of the shape of `zero` and `succ` are taken apart without lists (`con_view`); a branch's environment is built without copying the arguments (`elim_env`); global names are looked up in the data of the command (`FCtx`) |
 | `Extraction/NbE.v` | `Reference/NbE.v` | normalization by the fast evaluator, same specification (`nbe`, `nbe_ty`) |
 
@@ -19,7 +19,7 @@ the reference evaluator: they are the specification the checker's
 obligations prove.
 
 Shared by both checkers: `Extraction/TypeCheckBase.v` (orders, side-condition
-decisions, `tenv`, and the obligation tactics, which live outside the
+decisions, `checker_env`, and the obligation tactics, which live outside the
 sections so that both checkers can use them).
 
 ## The value of a type (`typ_val`)
@@ -69,7 +69,7 @@ Readback has one rule more: a type former without arguments reads back as
 `nf_indty p nil` without looking its declaration up
 (`fast_read_typ_indty_nil`; the general rule asks `as' <> nil`).
 
-The implementations keep a declaration they looked up (`lk_cache`,
+The implementations keep a declaration they looked up (`lookup_cache`,
 `cache_lookup`, `Extraction/Lookup.v`): the eliminator passes the one of
 the constructor it takes apart to the recursive results, and readback of a
 constructor or of a stuck eliminator to what it reads below, so a lookup of
@@ -98,7 +98,7 @@ fresh; `env_agree P ρ ρ'` is agreement at the entries `P` selects.
 So the fast normalizers meet `nbe`/`nbe_ty` (`Extraction/NbE.v`): the order
 gives the reference derivation, `fast_eval_sim`/`fast_read_sim` the fast one, and
 determinism of fast readback the equality.  The checker's environment
-`tenv G` is `fast_env`: a fast environment related to the initial environment of
+`checker_env G` is `fast_env`: a fast environment related to the initial environment of
 `G` entry by entry.
 
 ## What the extracted code looks up in (`Extraction/FastContext.v`, `Lookup.v`)
@@ -109,21 +109,21 @@ The extracted code runs on fast data only.  Neither a Core global context
 - the filed units are one map from the whole path of a unit to the unit,
   with the filing order (`funits`, `Extraction/FastGlobal.v`);
 - next to it, in `funits`, the units the unit being run sees: a second map
-  of the same kind (`fus_vis`), whose invariant `vis_rep s D` says it holds
+  of the same kind (`fus_visible`), whose invariant `visible_rep s D` says it holds
   exactly the filed units at the imported paths `D`.  It grows by one add
   per path that becomes imported (`fus_see`, at a load); while an imported
   unit runs it is set aside and that run starts from an empty one
-  (`fus_with_vis`, `unit_pre_f`); it is never rebuilt per command.  What a
+  (`fus_with_visible`, `unit_pre_f`); it is never rebuilt per command.  What a
   command sees (`fview`: the units and the list `D`) is built in O(1)
-  (`cmd_view`), and a unit lookup is one search in `fus_vis` (`fv_find`);
+  (`cmd_view`), and a unit lookup is one search in `fus_visible` (`fv_find`);
 - a unit's body, and the body of every open frame, is a trie: a balanced
   map from a member's name to its entry, with the order index of the names
   (`ftrie`, `fentry`, `funit`; `fframe`, `fstack`).
 
 The searches are written directly over the trees, one comparison per node
-(`sfind` for member names, `pfind` for paths), with `_ok` lemmas equating
+(`string_tree_find` for member names, `path_tree_find` for paths), with `_ok` lemmas equating
 them with `SRaw.find` / `PM.find`.  Both unit maps are keyed by the reversed
-path (`path_key`, through `pk_find` / `pk_add`).  Names and paths are compared
+path (`path_key`, through `path_key_find` / `path_key_add`).  Names and paths are compared
 by `String.compare`, which the directive of `Entrypoint.v` extracts to the
 native comparison; `String.eqb` and `string_dec` extract to OCaml's generic
 `(=)`, so hot equalities (`names_eqb`, `qname_eqb`, `qname_dec`) go through
@@ -134,11 +134,11 @@ Record FCtx : Type := mk_fctx
   { fc_view : fview                 (* the units the unit being run sees *)
   ; fc_frames : fstack              (* the open frames *)
   ; fc_ok : fctx_ok fc_view fc_frames   (* a Prop: they translate a canonical Core context *)
-  ; fc_seed_found : lk_cache (view_deps fc_view) (dec_stack fc_frames) }.
+  ; fc_seed_found : lookup_cache (view_deps fc_view) (decode_stack fc_frames) }.
 ```
 
 The Core context a fast context stands for, `fc_gctx F` (`fc_deps F`,
-`fc_stack F`), is the decoding of its data (`dec_units`, `dec_stack`,
+`fc_stack F`), is the decoding of its data (`decode_units`, `decode_stack`,
 `view_deps`).  It is in types and proofs only: the decoding sits behind the
 sealed module of `Extraction/Decoding.v` (`FcDecoding`, `fc_gctx_eq`
 implemented by a proof), in a file of its own so that extraction does not
@@ -150,35 +150,35 @@ function of the checker that reads the global context has a twin over `F`
 Core is unchanged.
 
 **The run's state** (`Extraction/Command.v`).  The interpreter keeps the
-state fast (`cstate`: the filed units, the closures, the paths imported,
-the builtin bindings, the frames; `ustate` for a unit's result); the
-invariants and the `post_*` are about its Core reading (`cs_read`,
-`us_read`).  A step takes `pre ch s K D fs`: the invariant of the reading,
-`units_rep s (dec_units s)`, `vis_rep s D` and `fs = fs_of (dec_stack fs)`.
+state fast (`run_state`: the filed units, the closures, the paths imported,
+the builtin bindings, the frames; `unit_result` for a unit's result); the
+invariants and the `post_*` are about its Core reading (`run_state_read`,
+`unit_result_read`).  A step takes `pre ch s K D fs`: the invariant of the reading,
+`units_rep s (decode_units s)`, `visible_rep s D` and `fs = fs_of (decode_stack fs)`.
 Its checks run at `fctx_cmd B s D fs Hok`, the fast context of the command,
 where `Hok : fctx_ok (cmd_view s D) fs` comes from `pre_fctx_ok`: the
 reading is canonical because the invariant makes it well formed
-(`canon_of_wf`).  A result carries `fast_res P r`: `P (cs_read r)` with the
+(`canon_of_wf`).  A result carries `fast_res P r`: `P (run_state_read r)` with the
 same three refinements.  How the refinement is kept:
 
 - the units seen: a step that keeps `D` keeps them (`state_res`,
   `same_res`); a load that hits a filed unit sees it and its closure
   (`see_res`); a fresh load files the unit and sees it and its closure on
   top of the units seen before, which stay valid because the run only adds
-  units (`load_units`, `load_vis`, from `ext_sub` of the unit's post);
+  units (`load_units`, `load_visible`, from `ext_sub` of the unit's post);
 
 - a frame opened is empty (`push_frames`, `pre_cons`);
 - an entry added is the translation of a canonical Core entry
-  (`add_res`, `dec_stack_add`);
-- a frame closed is the translation of its own reading (`frame_body_tr`,
+  (`add_res`, `decode_stack_add`);
+- a frame closed is the translation of its own reading (`frame_body_translate`,
   `close_res`, `mod_res`, `record_res`);
 - a unit filed is the translation of a canonical unit (`load_res`,
-  `dec_units_file`, `units_rep_file`); a unit's run returns its unit fast,
-  `usf_unit r = tr_unit (dec_unit (usf_unit r))` (`unit_run_ok`, `unit_res`).
+  `decode_units_file`, `units_rep_file`); a unit's run returns its unit fast,
+  `unit_result_unit r = translate_unit (decode_unit (unit_result_unit r))` (`unit_run_ok`, `unit_res`).
 
 The main theorems read the fast results in Core: `prog_impl_sound`,
-`prog_impl_complete`, `main_sound`, `main_complete` at `dec_units s` and
-`dec_unit u`; `prog_impl_rep` and `main_rep` state that `s` and `u` are the
+`prog_impl_complete`, `main_sound`, `main_complete` at `decode_units s` and
+`decode_unit u`; `prog_impl_rep` and `main_rep` state that `s` and `u` are the
 translations of their readings.
 
 **The scan.**  No decoding and no Core global context may reach the
@@ -186,7 +186,7 @@ extracted OCaml.  After `make -f CoqMakefile.mk post-all`:
 
 ```sh
 cd driver/extracted
-grep -nw 'dec_units\|dec_stack\|view_deps\|gds_restrict\|dec_mod\|dec_entry\|dec_unit\|dec_frame\|gds_lookup\|gdeps\|gstack\|fc_gctx\|FcDecoding\|coq_GCtx\|gc_deps\|gc_stack' *.ml *.mli
+grep -nw 'decode_units\|decode_stack\|view_deps\|gds_restrict\|decode_mod\|decode_entry\|decode_unit\|decode_frame\|gds_lookup\|gdeps\|gstack\|fc_gctx\|FcDecoding\|coq_GCtx\|gc_deps\|gc_stack' *.ml *.mli
 ```
 
 must print nothing: not even the types `gdeps`, `gstack` or `GCtx` are
@@ -235,7 +235,7 @@ body, closed over the frames' parameters, has in the empty environment:
 `fe_def b pv A oM ov` and `fe_def_mod pv A M u ov` carry
 `ov : option fdomain`.  A selection of a global definition applies the
 stored value instead of evaluating the body (`fast_eval_sel_impl`, through
-`gc_entry_vf`).  `None` is a translation (`tr_entry`), an axiom or an
+`gc_entry_with_values`).  `None` is a translation (`translate_entry`), an axiom or an
 opaque definition; on all of `lib/` no selection meets a transparent
 definition without its value.
 
@@ -258,7 +258,7 @@ definition without its value.
   (`frames_values_current`, `units_values_view`).  Closing a frame uses
   `gc_sub_close`, filing a unit `gc_sub_file`, both with the frame's shape
   from the Core run (`cmds_growth`, `closed_frame_ok`).
-- Decoding forgets the values (`dec_entry_drop` and the like); the
+- Decoding forgets the values (`decode_entry_drop` and the like); the
   equations "fast data = translation" hold modulo `fentry_drop` /
   `funit_drop` / `fstack_drop` / `funits_drop`.  `unit_run` drops them once,
   at the end of the program, so `prog_impl_rep` keeps its statement.
@@ -315,12 +315,12 @@ still stands for the normal form (`typ_val_app_cod_step`).  A numeral, a
 chain of `n` constructors typed by the spine rule, is typed in time linear
 in `n`: `eval succ 3200` takes 15 ms, 141 ms before.
 
-**The environments of an eliminator's motive and branches (`tenv_ext`).**
+**The environments of an eliminator's motive and branches (`checker_env_ext`).**
 They are checked in extensions `Ψ ++ G` of the context `G` of the
-eliminator.  `tenv_ext G P Ψ : ⊢ Ψ ++ G -> tenv (Ψ ++ G)` extends `G`'s
+eliminator.  `checker_env_ext G P Ψ : ⊢ Ψ ++ G -> checker_env (Ψ ++ G)` extends `G`'s
 initial environment `P`, which the checker carries, by one entry per entry
 of `Ψ`, rather than computing the environment of `Ψ ++ G` from scratch
-(`tenv_of`).  The contexts of `lib/` are small at eliminators, so the
+(`checker_env_of`).  The contexts of `lib/` are small at eliminators, so the
 timings do not move beyond noise; the work no longer grows with `G`.
 
 ## The equalities at every fast context (`Reference/Refinement.v`)
@@ -376,4 +376,4 @@ The commit message of each refinement carries the table with one column
 more.  The `lib` total, refinement by refinement, in the order they were
 added: the seed 3978.5 → 3901.6, `con_view` → 3613.4, `elim_env` and the
 types without indices → 3531.0, the trie → 3312.8, `app_cod` → 3195.5,
-`tenv_ext` within noise.
+`checker_env_ext` within noise.

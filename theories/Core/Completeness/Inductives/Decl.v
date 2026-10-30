@@ -253,7 +253,7 @@ Qed.
 Definition univ_idx (a : domain) : universe_index :=
   match a with
   | d_univ j => ul j
-  | d_suniv l => us (dlvl_real l)
+  | d_suniv l => us (domain_level_real l)
   | _ => ul 0
   end.
 

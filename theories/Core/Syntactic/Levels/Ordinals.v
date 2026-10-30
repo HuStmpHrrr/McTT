@@ -12,7 +12,7 @@ From Stdlib Require Import Compare_dec Lia PeanoNat Relation_Operators Setoid Wf
     same tier ([ordinal_max (0, n) (0, m) = (0, Nat.max n m)] by [reflexivity]), so
     that finite levels compute as they did on naturals.
 
-    [ord] decides the goals of the linear arithmetic of pairs, the
+    [ordinal_solve] decides the goals of the linear arithmetic of pairs, the
     counterpart of [lia]. *)
 
 Definition o2 : Set := (nat * nat)%type.
@@ -20,7 +20,7 @@ Definition o2 : Set := (nat * nat)%type.
 (** The finite ordinal [n].  An abbreviation rather than a definition, so
     that a finite literal is always the pair itself, which the notations of
     the finite levels match on. *)
-Abbreviation ofin n := (@pair nat nat 0 n).
+Abbreviation ordinal_of_nat n := (@pair nat nat 0 n).
 
 Definition ordinal_zero : o2 := (0, 0).
 
@@ -39,13 +39,13 @@ Definition ordinal_succ (x : o2) : o2 := (fst x, S (snd x)).
 Definition ordinal_add_nat (k : nat) (x : o2) : o2 := (fst x, k + snd x).
 
 (** The operations are opaque to [cbn]: a [cbn] would unfold [ordinal_max] to a
-    [match] on [Nat.ltb] that [ord] no longer recognises.  They still compute
+    [match] on [Nat.ltb] that [ordinal_solve] no longer recognises.  They still compute
     by conversion. *)
 #[global] Arguments ordinal_max : simpl never.
 #[global] Arguments ordinal_succ : simpl never.
 #[global] Arguments ordinal_add_nat : simpl never.
 
-(** An ordinal that [ord] treats as opaque: one that is neither a variable
+(** An ordinal that [ordinal_solve] treats as opaque: one that is neither a variable
     nor built by the operations above. *)
 Ltac o2_atom t :=
   lazymatch type of t with
@@ -62,8 +62,8 @@ Ltac o2_atom t :=
   end.
 
 (** Names every opaque ordinal of the goal and of the ordinal hypotheses
-    ([=], [ordinal_lt], [ordinal_le]), so that [ord] can split it into its two parts. *)
-Ltac ord_abstract :=
+    ([=], [ordinal_lt], [ordinal_le]), so that [ordinal_solve] can split it into its two parts. *)
+Ltac ordinal_abstract :=
   repeat first
     [ match goal with
       | |- context [?t] => o2_atom t; let x := fresh "w" in set (x := t) in *; clearbody x
@@ -82,8 +82,8 @@ Ltac ord_abstract :=
           end
       end ].
 
-Ltac ord :=
-  intros; ord_abstract; unfold ordinal_lt, ordinal_le, ordinal_max, ordinal_succ, ordinal_add_nat, ordinal_zero in *;
+Ltac ordinal_solve :=
+  intros; ordinal_abstract; unfold ordinal_lt, ordinal_le, ordinal_max, ordinal_succ, ordinal_add_nat, ordinal_zero in *;
   repeat match goal with p : o2 |- _ => destruct p end;
   repeat match goal with p : (nat * nat)%type |- _ => destruct p end;
   cbn [fst snd] in *;
@@ -99,43 +99,43 @@ Ltac ord :=
   try (apply pair_equal_spec; split);
   try lia; try (exfalso; lia); intuition lia.
 
-Lemma ordinal_max_fin : forall n m, ordinal_max (ofin n) (ofin m) = ofin (Nat.max n m).
+Lemma ordinal_max_of_nat : forall n m, ordinal_max (ordinal_of_nat n) (ordinal_of_nat m) = ordinal_of_nat (Nat.max n m).
 Proof. reflexivity. Qed.
 
-Lemma ordinal_succ_fin : forall n, ordinal_succ (ofin n) = ofin (S n).
+Lemma ordinal_succ_of_nat : forall n, ordinal_succ (ordinal_of_nat n) = ordinal_of_nat (S n).
 Proof. reflexivity. Qed.
 
-Lemma ordinal_lt_irrefl : forall x, ~ ordinal_lt x x. Proof. intros; ord. Qed.
-Lemma ordinal_lt_trans : forall x y z, ordinal_lt x y -> ordinal_lt y z -> ordinal_lt x z. Proof. intros; ord. Qed.
-Lemma ordinal_lt_ordinal_le_trans : forall x y z, ordinal_lt x y -> ordinal_le y z -> ordinal_lt x z. Proof. intros; ord. Qed.
-Lemma ordinal_le_ordinal_lt_trans : forall x y z, ordinal_le x y -> ordinal_lt y z -> ordinal_lt x z. Proof. intros; ord. Qed.
-Lemma ordinal_lt_ordinal_le : forall x y, ordinal_lt x y -> ordinal_le x y. Proof. intros; ord. Qed.
-Lemma ordinal_le_refl : forall x, ordinal_le x x. Proof. intros; ord. Qed.
-Lemma ordinal_le_trans : forall x y z, ordinal_le x y -> ordinal_le y z -> ordinal_le x z. Proof. intros; ord. Qed.
-Lemma ordinal_le_antisym : forall x y, ordinal_le x y -> ordinal_le y x -> x = y. Proof. intros; ord. Qed.
-Lemma ordinal_le_or_ordinal_lt : forall x y, ordinal_le x y \/ ordinal_lt y x. Proof. intros; ord. Qed.
-Lemma ordinal_le_zero : forall x, ordinal_le ordinal_zero x. Proof. intros; ord. Qed.
-Lemma ordinal_le_fin : forall n m, n <= m -> ordinal_le (ofin n) (ofin m). Proof. intros; ord. Qed.
-Lemma ordinal_lt_fin : forall n m, n < m -> ordinal_lt (ofin n) (ofin m). Proof. intros; ord. Qed.
+Lemma ordinal_lt_irrefl : forall x, ~ ordinal_lt x x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_lt_trans : forall x y z, ordinal_lt x y -> ordinal_lt y z -> ordinal_lt x z. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_lt_ordinal_le_trans : forall x y z, ordinal_lt x y -> ordinal_le y z -> ordinal_lt x z. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_ordinal_lt_trans : forall x y z, ordinal_le x y -> ordinal_lt y z -> ordinal_lt x z. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_lt_ordinal_le : forall x y, ordinal_lt x y -> ordinal_le x y. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_refl : forall x, ordinal_le x x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_trans : forall x y z, ordinal_le x y -> ordinal_le y z -> ordinal_le x z. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_antisym : forall x y, ordinal_le x y -> ordinal_le y x -> x = y. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_or_ordinal_lt : forall x y, ordinal_le x y \/ ordinal_lt y x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_zero : forall x, ordinal_le ordinal_zero x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_of_nat : forall n m, n <= m -> ordinal_le (ordinal_of_nat n) (ordinal_of_nat m). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_lt_of_nat : forall n m, n < m -> ordinal_lt (ordinal_of_nat n) (ordinal_of_nat m). Proof. intros; ordinal_solve. Qed.
 
-Lemma ordinal_max_comm : forall x y, ordinal_max x y = ordinal_max y x. Proof. intros; ord. Qed.
-Lemma ordinal_max_assoc : forall x y z, ordinal_max (ordinal_max x y) z = ordinal_max x (ordinal_max y z). Proof. intros; ord. Qed.
-Lemma ordinal_max_idem : forall x, ordinal_max x x = x. Proof. intros; ord. Qed.
-Lemma ordinal_max_zero_l : forall x, ordinal_max ordinal_zero x = x. Proof. intros; ord. Qed.
-Lemma ordinal_max_zero_r : forall x, ordinal_max x ordinal_zero = x. Proof. intros; ord. Qed.
-Lemma ordinal_le_ordinal_max_l : forall x y, ordinal_le x (ordinal_max x y). Proof. intros; ord. Qed.
-Lemma ordinal_le_ordinal_max_r : forall x y, ordinal_le y (ordinal_max x y). Proof. intros; ord. Qed.
-Lemma ordinal_max_lub : forall x y z, ordinal_le x z -> ordinal_le y z -> ordinal_le (ordinal_max x y) z. Proof. intros; ord. Qed.
-Lemma ordinal_max_lub_lt : forall x y z, ordinal_lt x z -> ordinal_lt y z -> ordinal_lt (ordinal_max x y) z. Proof. intros; ord. Qed.
-Lemma ordinal_max_r : forall x y, ordinal_le x y -> ordinal_max x y = y. Proof. intros; ord. Qed.
-Lemma ordinal_max_l : forall x y, ordinal_le y x -> ordinal_max x y = x. Proof. intros; ord. Qed.
-Lemma ordinal_succ_ordinal_max : forall x y, ordinal_succ (ordinal_max x y) = ordinal_max (ordinal_succ x) (ordinal_succ y). Proof. intros; ord. Qed.
-Lemma ordinal_le_ordinal_succ : forall x, ordinal_le x (ordinal_succ x). Proof. intros; ord. Qed.
-Lemma ordinal_lt_ordinal_succ : forall x, ordinal_lt x (ordinal_succ x). Proof. intros; ord. Qed.
-Lemma ordinal_lt_ordinal_succ_ordinal_le : forall x y, ordinal_lt x (ordinal_succ y) <-> ordinal_le x y. Proof. intros; ord. Qed.
-Lemma ordinal_succ_mono : forall x y, ordinal_le x y -> ordinal_le (ordinal_succ x) (ordinal_succ y). Proof. intros; ord. Qed.
-Lemma ordinal_succ_inj : forall x y, ordinal_succ x = ordinal_succ y -> x = y. Proof. intros; ord. Qed.
-Lemma ordinal_max_fst_le : forall x y n, fst x <= n -> fst y <= n -> fst (ordinal_max x y) <= n. Proof. intros; ord. Qed.
+Lemma ordinal_max_comm : forall x y, ordinal_max x y = ordinal_max y x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_assoc : forall x y z, ordinal_max (ordinal_max x y) z = ordinal_max x (ordinal_max y z). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_idem : forall x, ordinal_max x x = x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_zero_l : forall x, ordinal_max ordinal_zero x = x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_zero_r : forall x, ordinal_max x ordinal_zero = x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_ordinal_max_l : forall x y, ordinal_le x (ordinal_max x y). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_ordinal_max_r : forall x y, ordinal_le y (ordinal_max x y). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_lub : forall x y z, ordinal_le x z -> ordinal_le y z -> ordinal_le (ordinal_max x y) z. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_lub_lt : forall x y z, ordinal_lt x z -> ordinal_lt y z -> ordinal_lt (ordinal_max x y) z. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_r : forall x y, ordinal_le x y -> ordinal_max x y = y. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_l : forall x y, ordinal_le y x -> ordinal_max x y = x. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_succ_ordinal_max : forall x y, ordinal_succ (ordinal_max x y) = ordinal_max (ordinal_succ x) (ordinal_succ y). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_le_ordinal_succ : forall x, ordinal_le x (ordinal_succ x). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_lt_ordinal_succ : forall x, ordinal_lt x (ordinal_succ x). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_lt_ordinal_succ_ordinal_le : forall x y, ordinal_lt x (ordinal_succ y) <-> ordinal_le x y. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_succ_mono : forall x y, ordinal_le x y -> ordinal_le (ordinal_succ x) (ordinal_succ y). Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_succ_inj : forall x y, ordinal_succ x = ordinal_succ y -> x = y. Proof. intros; ordinal_solve. Qed.
+Lemma ordinal_max_fst_le : forall x y n, fst x <= n -> fst y <= n -> fst (ordinal_max x y) <= n. Proof. intros; ordinal_solve. Qed.
 Lemma ordinal_succ_fst : forall x, fst (ordinal_succ x) = fst x. Proof. reflexivity. Qed.
 
 Definition o2_eq_dec : forall x y : o2, {x = y} + {x <> y}.

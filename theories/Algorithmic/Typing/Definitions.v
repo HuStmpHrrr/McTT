@@ -19,11 +19,11 @@ Generalizable All Variables.
     sort.  The universe [u] is the one the type is counted in when a [Π]
     joins its parts: a proposition counts as the least small universe, as
     [Prop : Type@0]. *)
-Variant is_sort_nf : nf -> relevance -> unf -> Prop :=
+Variant is_sort_nf : nf -> relevance -> universe_nf -> Prop :=
 (** A universe: its types are relevant *)
 | is_sort_nf_univ : forall W u, is_univ_nf W u -> is_sort_nf W relevant u
 (** [Prop]: its types are propositions *)
-| is_sort_nf_prop : is_sort_nf Propⁿ propositional (uns (ofin 0, nil)).
+| is_sort_nf_prop : is_sort_nf Propⁿ propositional (universe_small (ordinal_of_nat 0, nil)).
 
 #[export]
 Hint Constructors is_sort_nf : mctt.
@@ -175,7 +175,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs))
        (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
      Ns = List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ->
-     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)) ->
+     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_binder_count b = S (im_nn Mj)) ->
      (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
         tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ ⊢a Z ⟸ Typeω@i) ->
      (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
@@ -189,10 +189,10 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
         n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat) ->
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-        elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us) ->
+        elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_branch_type p D j Mj c gs (eb_motive b) Us) ->
      nbe_ty_f Γ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] T ->
      Γ ⊢a a_elim r oq Us m Bks M ⟹ T )
-(** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
+(** A [Π] is at the join of the universes of its parts ([universe_nf_pi_tm]): a
     large universe absorbs a small one, and two small ones join on levels,
     the codomain's bounded under the binder ([lvl_bound]): an atom that
     mentions the bound variable is bounded by its sort.  The join is the
@@ -213,7 +213,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      is_sort_nf UA rA u ->
      nbe_ty_f (Γ ▹ A) UB UB' ->
      is_univ_nf UB' v ->
-     nbe_ty_f Γ (unf_pi_tm u v) W ->
+     nbe_ty_f Γ (universe_nf_pi_tm u v) W ->
      Γ ⊢a Π A B ⟹ W )
 (** A [∀]: over a type of either sort, into propositions, a proposition. *)
 | alg_type_infer_all :
@@ -612,7 +612,7 @@ Proof.
   eapply proj1, (syn_mut_ind user_exp (fun _ => True)
     (fun b => match b with b_def oA M => (forall A, oA = Some A -> user_exp A) /\ user_exp M | b_mod _ => True end)
     (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
-    intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b as [[] |]; destruct_conjs end;
+    intros; try destruct_conjs; try match goal with b : binding |- _ => destruct b as [[] |]; destruct_conjs end;
     try lazymatch goal with
       | HU : List.Forall user_exp ?Us, HB : List.Forall _ ?Bks |- user_exp (a_elim _ _ ?Us _ ?Bks _) =>
           rewrite List.Forall_forall in HU, HB;

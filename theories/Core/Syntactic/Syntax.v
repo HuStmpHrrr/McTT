@@ -6,7 +6,7 @@ From Mctt.Core.Syntactic.Levels Require Export Ordinals.
 (** An item of an open: [(Some n, d, pv)] declares [d] as the member [n] of
     the opened module, [(None, d, pv)] declares [d] as the opened module
     itself; private when [pv].  The surface syntax and the core share it. *)
-Definition iitem : Set := (option string * string * bool)%type.
+Definition import_item : Set := (option string * string * bool)%type.
 
 (** * Concrete Syntax Tree *)
 Module Cst.
@@ -15,14 +15,14 @@ Module Cst.
 
     [private] hides a definition from importers, [abstract] makes its body
     opaque.  The two are orthogonal, hence a record rather than a variant. *)
-Record mods : Set :=
-  { md_private : bool
-  ; md_abstract : bool }.
+Record modifiers : Set :=
+  { modifiers_private : bool
+  ; modifiers_abstract : bool }.
 
-Definition md_pub : mods := {| md_private := false; md_abstract := false |}.
-Definition md_priv : mods := {| md_private := true; md_abstract := false |}.
-Definition md_abs : mods := {| md_private := false; md_abstract := true |}.
-Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
+Definition public_modifiers : modifiers := {| modifiers_private := false; modifiers_abstract := false |}.
+Definition private_modifiers : modifiers := {| modifiers_private := true; modifiers_abstract := false |}.
+Definition abstract_modifiers : modifiers := {| modifiers_private := false; modifiers_abstract := true |}.
+Definition private_abstract_modifiers : modifiers := {| modifiers_private := true; modifiers_abstract := true |}.
 
 (** ** Definition Keywords
 
@@ -41,18 +41,18 @@ Definition definition_keyword_name (k : definition_keyword) : string :=
   end.
 
 (** The modifiers of [m k], or why [k] rejects [m]. *)
-Definition definition_keyword_mods (k : definition_keyword) (m : mods) : (mods + string)%type :=
+Definition definition_keyword_mods (k : definition_keyword) (m : modifiers) : (modifiers + string)%type :=
   match k with
   | definition_keyword_def => inl m
   | definition_keyword_theorem | definition_keyword_lemma =>
-      if md_abstract m then inr (definition_keyword_name k ++ " is already abstract")%string
-      else inl {| md_private := md_private m; md_abstract := true |}
+      if modifiers_abstract m then inr (definition_keyword_name k ++ " is already abstract")%string
+      else inl {| modifiers_private := modifiers_private m; modifiers_abstract := true |}
   | definition_keyword_fact | definition_keyword_remark =>
-      if orb (md_private m) (md_abstract m) then inr (definition_keyword_name k ++ " takes no modifiers")%string
-      else inl md_priv_abs
+      if orb (modifiers_private m) (modifiers_abstract m) then inr (definition_keyword_name k ++ " takes no modifiers")%string
+      else inl private_abstract_modifiers
   | definition_keyword_let | definition_keyword_given =>
-      if md_private m then inr (definition_keyword_name k ++ " is already private")%string
-      else inl {| md_private := true; md_abstract := md_abstract m |}
+      if modifiers_private m then inr (definition_keyword_name k ++ " is already private")%string
+      else inl {| modifiers_private := true; modifiers_abstract := modifiers_abstract m |}
   end.
 
 (** ** Objects, Declarations and Commands
@@ -70,8 +70,8 @@ Definition definition_keyword_mods (k : definition_keyword) (m : mods) : (mods +
     a [proj], the head of an application in such a head, an alias body and an
     open target are modules, everything else is a term.
 
-    [letb] binds one declaration at a time; the parser folds the bindings of
-    [let x : A := a; y : B := b in body end] into nested [letb]s.
+    [let_in] binds one declaration at a time; the parser folds the bindings of
+    [let x : A := a; y : B := b in body end] into nested [let_in]s.
 
     A module declaration has one shape at the top level and in a [let]: its
     parameters, and its definition [mdef], a body [where cmds end] or an
@@ -121,7 +121,7 @@ Inductive expression : Set :=
 (** [M.x]: a member of a module *)
 | proj : expression -> string -> expression
 (** [let d in M end], one declaration at a time *)
-| letb : decl -> expression -> expression
+| let_in : decl -> expression -> expression
 (** [elim M at xs (z : Z) -> A | c ys ⇒ B … with … end]: the eliminator
     of a group of inductive types, one block per member in member order,
     the one marked [at] ([true]) the scrutinee's.  A block's binders, the
@@ -154,7 +154,7 @@ with cmd : Set :=
 (** [private module x (ps) md], private when the flag is set *)
 | c_mod : bool -> string -> list (string * expression) -> mdef -> cmd
 (** [private abstract def x : A := M end], with its modifiers *)
-| c_def : mods -> string -> expression -> expression -> cmd
+| c_def : modifiers -> string -> expression -> expression -> cmd
 (** [axiom x : A], a definition with no body; it takes no modifiers. *)
 | c_axiom : string -> expression -> cmd
 (** [import X::Y] loads the unit [X::Y], so that it may be named.  It
@@ -166,7 +166,7 @@ with cmd : Set :=
     use (x)] is [c_open nil ["A"; "B"] nil [(Some "x", "x", true)]], and
     [open X::Y Nat export (f as g)] is [c_open ["X"; "Y"] nil [nat] [(Some
     "f", "g", false)]].  [as W] is the item [(None, "W", true)] ([open_cmds]). *)
-| c_open : list string -> list string -> list expression -> list iitem -> cmd
+| c_open : list string -> list string -> list expression -> list import_item -> cmd
 (** A command the parser rejects, with the reason, which elaboration
     reports: a definition keyword with a modifier it already implies
     ([def_cmd]). *)
@@ -186,7 +186,7 @@ with cmd : Set :=
     with g … end], with its modifiers: the common parameters [Δ], and the
     functions, each its name, its parameters (the non-uniform ones, then
     the scrutinee, last), its result type and its clauses. *)
-| c_mdef : mods -> list (string * expression) -> list (string * list (string * expression) * expression * list (string * list string * expression)) -> cmd
+| c_mdef : modifiers -> list (string * expression) -> list (string * list (string * expression) * expression * list (string * list string * expression)) -> cmd
 (** [builtin k := X]: binds the inductive type [X] as the builtin [k];
     [natural] is the one kind. *)
 | c_builtin : string -> expression -> cmd
@@ -221,7 +221,7 @@ Definition c_mod_dotted (pv : bool) (x : string) (rev_pre : list string) (ps : l
 
 (** [k x : A := M end] with the modifiers [m]: the definition, or the
     rejection of [m]. *)
-Definition def_cmd (k : definition_keyword) (m : mods) (x : string) (A M : expression) : cmd :=
+Definition def_cmd (k : definition_keyword) (m : modifiers) (x : string) (A M : expression) : cmd :=
   match definition_keyword_mods k m with
   | inl m' => c_def m' x A M
   | inr e => c_error e
@@ -230,7 +230,7 @@ Definition def_cmd (k : definition_keyword) (m : mods) (x : string) (A M : expre
 (** [mutual k (Δ) f … with g … end] with the modifiers [m], [k] a
     definition keyword: the mutual definition with the modifiers [k] gives
     it, as [def_cmd] gives a single definition, or the rejection of [m]. *)
-Definition mdef_cmd (k : definition_keyword) (m : mods) (ps : list (string * expression))
+Definition mdef_cmd (k : definition_keyword) (m : modifiers) (ps : list (string * expression))
     (fs : list (string * list (string * expression) * expression * list (string * list string * expression))) : cmd :=
   match definition_keyword_mods k m with
   | inl m' => c_mdef m' ps fs
@@ -239,20 +239,20 @@ Definition mdef_cmd (k : definition_keyword) (m : mods) (ps : list (string * exp
 
 (** [axiom x : A] with the modifiers [m]: the axiom, or the rejection of
     [m]. *)
-Definition axiom_cmd (m : mods) (x : string) (A : expression) : cmd :=
-  if orb (md_private m) (md_abstract m) then c_error "axiom takes no modifiers" else c_axiom x A.
+Definition axiom_cmd (m : modifiers) (x : string) (A : expression) : cmd :=
+  if orb (modifiers_private m) (modifiers_abstract m) then c_error "axiom takes no modifiers" else c_axiom x A.
 
 (** [mutual T (ps) where inductive … end end] with the modifiers [m]: the
     module [T], private with [m], holding the group and its recursor module
     [T.Rec], or the rejection of [abstract]. *)
-Definition mutual_cmd (m : mods) (g : string) (ps : list (string * expression))
+Definition mutual_cmd (m : modifiers) (g : string) (ps : list (string * expression))
     (ms : list (string * expression * list (string * list (string * expression)))) : cmd :=
-  if md_abstract m then c_error "a group of inductive types takes no abstract"
-  else c_mod (md_private m) g nil (md_where (c_ind false true ps ms :: nil)).
+  if modifiers_abstract m then c_error "a group of inductive types takes no abstract"
+  else c_mod (modifiers_private m) g nil (md_where (c_ind false true ps ms :: nil)).
 
 (** [open E as W its] is [open E as W] then [open W its]: the items refer
     to the alias, and an open declares either the module or its members. *)
-Definition open_cmds (fq ip : list string) (args : list expression) (oW : option string) (its : list iitem)
+Definition open_cmds (fq ip : list string) (args : list expression) (oW : option string) (its : list import_item)
   : list cmd :=
   match oW with
   | None => c_open fq ip args its :: nil
@@ -266,7 +266,7 @@ Definition open_cmds (fq ip : list string) (args : list expression) (oW : option
 
 (** [import X::Y ip args as W its] is [import X::Y] then [open X::Y ip
     args as W its]; a bare [import X::Y] only loads. *)
-Definition import_cmds (fq ip : list string) (args : list expression) (oW : option string) (its : list iitem)
+Definition import_cmds (fq ip : list string) (args : list expression) (oW : option string) (its : list import_item)
   : list cmd :=
   c_import fq ::
     match ip, args, oW, its with
@@ -587,7 +587,7 @@ Arguments eb_mk {E}.
 Scheme All for eblock_g.
 
 (** The number of variables a block's motive binds. *)
-Definition eb_nm {E : Set} (b : eblock_g E) : nat := match b with eb_mk nm _ _ _ => nm end.
+Definition eb_binder_count {E : Set} (b : eblock_g E) : nat := match b with eb_mk nm _ _ _ => nm end.
 (** A block's scrutinee type as written, if it is written. *)
 Definition eb_ann {E : Set} (b : eblock_g E) : option E := match b with eb_mk _ oZ _ _ => oZ end.
 (** A block's motive. *)
@@ -622,9 +622,9 @@ Definition eb_brs {E : Set} (b : eblock_g E) : list (string * nat * E) := match 
       slot [ce_mod U], which binds one index to the unit [U]. *)
 (** The two ways a module's entries are stored: open (a local module) and
     closed (a filed module or an open frame). *)
-Inductive smark : Set := sm_open | sm_closed.
+Inductive storage_mark : Set := sm_open | sm_closed.
 
-Definition smark_eq_dec : forall (s s' : smark), {s = s'} + {s <> s'}.
+Definition storage_mark_eq_dec : forall (s s' : storage_mark), {s = s'} + {s <> s'}.
 Proof. decide equality. Defined.
 
 (** The terms and the module syntax are one mutual family; its mutual
@@ -718,7 +718,7 @@ Inductive exp : Set :=
 | a_var : nat -> exp
 (** Local binding: [a_let b B] binds [#0] in [B] to the definition or the
     module [b]. *)
-| a_let : bnd -> exp -> exp
+| a_let : binding -> exp -> exp
 (** The member [x] of the module [H].  A member of a global module is
     closed: [X::Y::Z.W.bar] stands for [bar] generalized over the parameters
     of every module enclosing it, outermost first, and is applied to them. *)
@@ -742,12 +742,12 @@ with modexp : Set :=
 | me_app : modexp -> exp -> modexp
 (** A unit given literally; only substitution produces one *)
 | me_lit : gunit -> modexp
-with bnd : Set :=
+with binding : Set :=
 (** [b_def oA M]: a definition, of the type [A] when [oA = Some A], and of
     a type it infers when [oA = None] *)
-| b_def : option exp -> exp -> bnd
+| b_def : option exp -> exp -> binding
 (** [b_mod U]: a local module *)
-| b_mod : gunit -> bnd
+| b_mod : gunit -> binding
 with gunit : Set :=
 (** [gu_mk Δ D]: the parameters, innermost first, and the definition under
     them *)
@@ -756,7 +756,7 @@ with moddef : Set :=
 (** A body, stored open (a local module: its entries mention the parameters
     and the entries before them) or closed (a filed module or an open frame:
     every entry is closed over the module's full telescope) *)
-| md_body : smark -> gmod -> moddef
+| md_body : storage_mark -> gmod -> moddef
 (** An alias of a module expression *)
 | md_alias : modexp -> moddef
 with gmod : Set :=
@@ -767,7 +767,7 @@ with gmod : Set :=
 (** [gm_open Φ H items]: a local open.  It binds one index per item, the
     entries its items generate ([items_gen]); every reader of the body reads
     it as those entries ([body_xp]). *)
-| gm_open : gmod -> modexp -> list iitem -> gmod
+| gm_open : gmod -> modexp -> list import_item -> gmod
 with gentry : Set :=
 (** [ge_def b pv r A B]: [b] says whether the definition is transparent,
     [pv] whether it is private, [r] the sort of its type [A] (a proof at
@@ -878,7 +878,7 @@ Qed.
     sort; a telescope carries [Forall] of the entry motive, and a definition
     body the motive of every expression it may hold. *)
 Section syn_mut_ind.
-  Variables (Pe : exp -> Prop) (Pm : modexp -> Prop) (Pb : bnd -> Prop)
+  Variables (Pe : exp -> Prop) (Pm : modexp -> Prop) (Pb : binding -> Prop)
     (Pu : gunit -> Prop) (Pd : moddef -> Prop) (Pg : gmod -> Prop)
     (Pn : gentry -> Prop) (Pc : centry -> Prop).
 
@@ -1000,7 +1000,7 @@ Section syn_mut_ind.
     | a_fn A M => case_fn A M (exp_mut A) (exp_mut M)
     | a_app M N => case_app M N (exp_mut M) (exp_mut N)
     | a_var x => case_var x
-    | a_let b B => case_let b B (bnd_mut b) (exp_mut B)
+    | a_let b B => case_let b B (binding_mut b) (exp_mut B)
     | a_mem H x => case_mem H x (modexp_mut H)
     | a_record p => case_record p
     | a_tuple T fs0 =>
@@ -1020,7 +1020,7 @@ Section syn_mut_ind.
     | me_app H N => case_me_app H N (modexp_mut H) (exp_mut N)
     | me_lit U => case_me_lit U (gunit_mut U)
     end
-  with bnd_mut (b : bnd) : Pb b :=
+  with binding_mut (b : binding) : Pb b :=
     match b with
     | b_def oA M =>
         case_b_def oA M
@@ -1083,7 +1083,7 @@ Section syn_mut_ind.
     (forall D, Pd D) /\ (forall Φ, Pg Φ) /\ (forall E, Pn E) /\
     (forall e, Pc e).
   Proof.
-    repeat split; [ exact exp_mut | exact modexp_mut | exact bnd_mut | exact gunit_mut
+    repeat split; [ exact exp_mut | exact modexp_mut | exact binding_mut | exact gunit_mut
                   | exact moddef_mut | exact gmod_mut | exact gentry_mut
                   | exact centry_mut ].
   Qed.
@@ -1193,14 +1193,14 @@ Fixpoint gm_binders (Φ : gmod) : nat :=
   end.
 
 (** The name an import item declares. *)
-Definition iitem_name (it : iitem) : string := let '(_, d, _) := it in d.
+Definition import_item_name (it : import_item) : string := let '(_, d, _) := it in d.
 
 (** The names [Φ] declares, outermost last, and a name not among them. *)
 Fixpoint gm_names (Φ : gmod) : list string :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' x _ => x :: gm_names Φ'
-  | gm_open Φ' _ its => rev (map iitem_name its) ++ gm_names Φ'
+  | gm_open Φ' _ its => rev (map import_item_name its) ++ gm_names Φ'
   end.
 
 Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
@@ -1227,7 +1227,7 @@ Module Exp_Notations.
   (** A small universe at an arbitrary level term, and — for a literal level —
       the short form the literal-level rules are written with. *)
   Notation "'Type' ⟨ t ⟩" := (a_univ t) (at level 0, t at level 99, format "'Type' ⟨ t ⟩") : mctt_scope.
-  Notation "'Type' @ n" := (a_univ (a_llit (ofin n))) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
+  Notation "'Type' @ n" := (a_univ (a_llit (ordinal_of_nat n))) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
   (** [Level@n] is the type of levels below [ω·(n+1)], and [Level] the
       finite ones, [Level@0]: [Level] is declared second so that it is the
       spelling a level type of sort [0] prints with. *)
@@ -1237,7 +1237,7 @@ Module Exp_Notations.
       level [n], the surface syntax's [<n>l].  The token is not a word: [lv]
       would make every identifier of that name a keyword. *)
   Notation "'𝕃ᵒ' o" := (a_llit o) (at level 1, o at level 0, format "'𝕃ᵒ' o") : mctt_scope.
-  Notation "'𝕃' @ n" := (a_llit (ofin n)) (at level 1, n at level 0, format "'𝕃' @ n") : mctt_scope.
+  Notation "'𝕃' @ n" := (a_llit (ordinal_of_nat n)) (at level 1, n at level 0, format "'𝕃' @ n") : mctt_scope.
   Notation "'succl' M" := (a_succl M) (at level 2, M at level 1) : mctt_scope.
   Notation "'maxl' M N" := (a_maxl M N) (at level 2, M at level 1, N at level 1) : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
@@ -1373,16 +1373,16 @@ Definition universe_index_le (u v : universe_index) : Prop :=
   end.
 
 Lemma universe_index_lt_le_trans : forall u v w, universe_index_lt u v -> universe_index_le v w -> universe_index_lt u w.
-Proof. intros [] [] []; cbn; intros; auto; try lia; ord. Qed.
+Proof. intros [] [] []; cbn; intros; auto; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_le_refl : forall u, universe_index_le u u.
-Proof. intros []; cbn; [ ord | lia ]. Qed.
+Proof. intros []; cbn; [ ordinal_solve | lia ]. Qed.
 
 Lemma universe_index_le_trans : forall u v w, universe_index_le u v -> universe_index_le v w -> universe_index_le u w.
-Proof. intros [] [] []; cbn; intros; auto; try lia; ord. Qed.
+Proof. intros [] [] []; cbn; intros; auto; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_lt_le : forall u v, universe_index_lt u v -> universe_index_le u v.
-Proof. intros [] []; cbn; intros; auto; try lia; ord. Qed.
+Proof. intros [] []; cbn; intros; auto; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_wf : well_founded universe_index_lt.
 Proof.
@@ -1419,7 +1419,7 @@ Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
 (** The least index: [Type@0] is below every universe. *)
 Lemma universe_index_le_least : forall u, universe_index_le (us ordinal_zero) u.
-Proof. intros []; cbn; [ ord | exact I ]. Qed.
+Proof. intros []; cbn; [ ordinal_solve | exact I ]. Qed.
 
 (** The large levels of two ordered indices are ordered: a small universe
     lives in [Typeω@0], and the large tier's order is the order on levels. *)
@@ -1436,20 +1436,20 @@ Definition universe_index_max (u v : universe_index) : universe_index :=
   end.
 
 Lemma universe_index_le_universe_index_max_left : forall u v, universe_index_le u (universe_index_max u v).
-Proof. intros [] []; cbn; try exact I; try lia; ord. Qed.
+Proof. intros [] []; cbn; try exact I; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_le_universe_index_max_right : forall u v, universe_index_le v (universe_index_max u v).
-Proof. intros [] []; cbn; try exact I; try lia; ord. Qed.
+Proof. intros [] []; cbn; try exact I; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_max_lub : forall u v w, universe_index_le u w -> universe_index_le v w -> universe_index_le (universe_index_max u v) w.
-Proof. intros [] [] []; cbn; intros; try contradiction; try exact I; try lia; ord. Qed.
+Proof. intros [] [] []; cbn; intros; try contradiction; try exact I; try lia; ordinal_solve. Qed.
 
 (** Discharges the order side conditions between universe indices. *)
 Ltac solve_universe_index :=
   first [ assumption | exact I | solve [ cbn [universe_index_lt universe_index_le] in *; lia ]
-        | solve [ cbn [universe_index_lt universe_index_le] in *; ord ]
+        | solve [ cbn [universe_index_lt universe_index_le] in *; ordinal_solve ]
         | solve [ repeat match goal with k : universe_index |- _ => destruct k end;
-                  cbn [universe_index_lt universe_index_le] in *; first [ contradiction | exact I | lia | ord ] ] ].
+                  cbn [universe_index_lt universe_index_le] in *; first [ contradiction | exact I | lia | ordinal_solve ] ] ].
 
 
 (** * Levels as Expressions
@@ -1792,26 +1792,26 @@ Proof. intros ? ? H; apply nf_lvl_of_inj in H as ->; reflexivity. Qed.
     small universe at a canonical level, or a large one.  It is not the
     semantic index [universe_index]: a small universe's semantic index is the realiser
     of its level, an ordinal below ω², while the checker compares the canonical
-    levels themselves (see [Core.Syntactic.Levels.Levels]: [unf_le], [unf_max]). *)
-Inductive unf : Set :=
+    levels themselves (see [Core.Syntactic.Levels.Levels]: [universe_nf_le], [universe_nf_max]). *)
+Inductive universe_nf : Set :=
 (** A small universe at a canonical level *)
-| uns : lvl -> unf
+| universe_small : lvl -> universe_nf
 (** The large universe [Typeω²+n] *)
-| unl : nat -> unf.
+| universe_large : nat -> universe_nf.
 
-Coercion unl : nat >-> unf.
+Coercion universe_large : nat >-> universe_nf.
 
 (** The universe normal form itself, and the term it embeds to. *)
-Definition univ_nf (u : unf) : nf :=
-  match u with uns L => nf_univ_of L | unl n => nf_typ n end.
+Definition universe_nf_to_nf (u : universe_nf) : nf :=
+  match u with universe_small L => nf_univ_of L | universe_large n => nf_typ n end.
 
-Definition unf_tm (u : unf) : exp :=
+Definition universe_nf_tm (u : universe_nf) : exp :=
   match u with
-  | uns L => a_univ (lvl_exp_of (fst L) (List.map atom_exp (snd L)))
-  | unl n => a_typ n
+  | universe_small L => a_univ (lvl_exp_of (fst L) (List.map atom_exp (snd L)))
+  | universe_large n => a_typ n
   end.
 
-Lemma nf_to_exp_univ_nf : forall u, nf_to_exp (univ_nf u) = unf_tm u.
+Lemma nf_to_exp_univ_nf : forall u, nf_to_exp (universe_nf_to_nf u) = universe_nf_tm u.
 Proof. intros [[] |]; reflexivity. Qed.
 
 (** That a normal form is a universe.  This is the side condition of every
@@ -1820,14 +1820,14 @@ Proof. intros [[] |]; reflexivity. Qed.
     of that equation is a [match] stuck on [W], and
     [progressive_inversion] does not terminate on such a hypothesis — it
     inverts it to an equation of the same shape, for ever. *)
-Variant is_univ_nf : nf -> unf -> Prop :=
-| is_univ_nf_typ : forall i, is_univ_nf (nf_typ i) (unl i)
-| is_univ_nf_univ : forall c xs, is_univ_nf (nf_univ c xs) (uns (c, xs)).
+Variant is_univ_nf : nf -> universe_nf -> Prop :=
+| is_univ_nf_typ : forall i, is_univ_nf (nf_typ i) (universe_large i)
+| is_univ_nf_univ : forall c xs, is_univ_nf (nf_univ c xs) (universe_small (c, xs)).
 
-Lemma is_univ_nf_univ_nf : forall u, is_univ_nf (univ_nf u) u.
+Lemma is_univ_nf_univ_nf : forall u, is_univ_nf (universe_nf_to_nf u) u.
 Proof. intros [[] |]; constructor. Qed.
 
-Lemma is_univ_nf_eq : forall W u, is_univ_nf W u -> W = univ_nf u.
+Lemma is_univ_nf_eq : forall W u, is_univ_nf W u -> W = universe_nf_to_nf u.
 Proof. intros ? ? H; destruct H; reflexivity. Qed.
 
 Lemma is_univ_nf_functional : forall W u v, is_univ_nf W u -> is_univ_nf W v -> u = v.
@@ -1912,7 +1912,7 @@ Module Nf_Notations.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
   Notation "'Typeωⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeωⁿ' @ n") : mctt_scope.
   Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
-  Notation "'Typeⁿ' @ n" := (nf_univ (ofin n) nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
+  Notation "'Typeⁿ' @ n" := (nf_univ (ordinal_of_nat n) nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ' @ n" := (nf_level n) (at level 1, n at level 0, format "'Levelⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ'" := (nf_level 0) : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
@@ -2011,7 +2011,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
-  | a_let b B => a_let (bnd_wk b φ) (exp_wk B (wk_q φ))
+  | a_let b B => a_let (binding_wk b φ) (exp_wk B (wk_q φ))
   | a_mem H x => a_mem (modexp_wk H φ) x
   | a_record p => a_record p
   | a_tuple T fs => a_tuple (exp_wk T φ) (List.map (fun f => (fst f, exp_wk (snd f) φ)) fs)
@@ -2025,7 +2025,7 @@ with modexp_wk (H : modexp) (φ : wk) : modexp :=
   | me_app H N => me_app (modexp_wk H φ) (exp_wk N φ)
   | me_lit U => me_lit (gunit_wk U φ)
   end
-with bnd_wk (b : bnd) (φ : wk) : bnd :=
+with binding_wk (b : binding) (φ : wk) : binding :=
   match b with
   | b_def oA M => b_def (match oA with Some A => Some (exp_wk A φ) | None => None end) (exp_wk M φ)
   | b_mod U => b_mod (gunit_wk U φ)
@@ -2211,7 +2211,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
   | a_var x => sentry_exp (σ x)
-  | a_let b B => a_let (bnd_sub b σ) (exp_sub B (sb_q σ))
+  | a_let b B => a_let (binding_sub b σ) (exp_sub B (sb_q σ))
   | a_mem H x => a_mem (modexp_sub H σ) x
   | a_record p => a_record p
   | a_tuple T fs => a_tuple (exp_sub T σ) (List.map (fun f => (fst f, exp_sub (snd f) σ)) fs)
@@ -2225,7 +2225,7 @@ with modexp_sub (H : modexp) (σ : sub) : modexp :=
   | me_app H N => me_app (modexp_sub H σ) (exp_sub N σ)
   | me_lit U => me_lit (gunit_sub U σ)
   end
-with bnd_sub (b : bnd) (σ : sub) : bnd :=
+with binding_sub (b : binding) (σ : sub) : binding :=
   match b with
   | b_def oA M => b_def (match oA with Some A => Some (exp_sub A σ) | None => None end) (exp_sub M σ)
   | b_mod U => b_mod (gunit_sub U σ)

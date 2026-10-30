@@ -684,7 +684,7 @@ Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (oq : opti
     (** Its block is the [m]-th *)
   ; elim_inv_nth : List.nth_error Bks m = Some elim_inv_block
     (** There are as many parameters as the member has *)
-  ; elim_inv_plen : List.length elim_inv_params = im_np elim_inv_decl elim_inv_mem
+  ; elim_inv_params_length : List.length elim_inv_params = im_np elim_inv_decl elim_inv_mem
     (** Each parameter is typed at the member's telescope *)
   ; elim_inv_ps : forall k P T, List.nth_error elim_inv_params k = Some P ->
       List.nth_error (tele_insts (im_params elim_inv_decl elim_inv_mem) Id elim_inv_params) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P : T

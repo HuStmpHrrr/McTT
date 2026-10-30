@@ -33,11 +33,11 @@ Ltac lvl_pw :=
           | H : rel_chain (per_lvl_at ?n) _ |- per_lvl _ _ => apply (per_lvl_at_lvl n); pairwise_from H (per_lvl_at n)
           end ].
 
-Ltac lvl_bnd :=
+Ltac lvl_sort_bounded :=
   first [ pairwise
         | solve [ apply per_lvl_at_lit; cbn; lia ]
-        | solve [ apply per_lvl_at_suc; lvl_bnd ]
-        | solve [ apply per_lvl_at_max; lvl_bnd ] ].
+        | solve [ apply per_lvl_at_suc; lvl_sort_bounded ]
+        | solve [ apply per_lvl_at_max; lvl_sort_bounded ] ].
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -234,7 +234,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hchain].
-  apply (mk_rel_exp (dlvl_suc m1) (dlvl_suc m2) (dlvl_suc m3) (dlvl_suc m4));
+  apply (mk_rel_exp (domain_level_suc m1) (domain_level_suc m2) (domain_level_suc m3) (domain_level_suc m4));
     try (apply eval_exp_succl; eassumption).
   apply rel_chain_4; apply per_lvl_at_suc; pairwise.
 Qed.
@@ -267,7 +267,7 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
-  apply (mk_rel_exp (dlvl_max m1 n1) (dlvl_max m2 n2) (dlvl_max m3 n3) (dlvl_max m4 n4));
+  apply (mk_rel_exp (domain_level_max m1 n1) (domain_level_max m2 n2) (domain_level_max m3 n3) (domain_level_max m4 n4));
     try (apply eval_exp_maxl; eassumption).
   apply rel_chain_4; apply per_lvl_at_max; pairwise.
 Qed.
@@ -295,12 +295,12 @@ Proof.
   intros * Ha HΓ.
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  apply (mk_rel_exp (dlvl_lit (a, S b)) (dlvl_lit (a, S b)) (dlvl_suc (dlvl_lit (a, b))) (dlvl_suc (dlvl_lit (a, b))));
+  apply (mk_rel_exp (domain_level_lit (a, S b)) (domain_level_lit (a, S b)) (domain_level_suc (domain_level_lit (a, b))) (domain_level_suc (domain_level_lit (a, b))));
     try (apply eval_exp_llit);
     try (apply eval_exp_succl, eval_exp_llit).
   apply rel_chain_4;
     [ apply per_lvl_at_lit; exact Ha
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_llit_suc | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_llit_suc | lvl_sort_bounded ]
     | apply per_lvl_at_suc, per_lvl_at_lit; exact Ha ].
 Qed.
 
@@ -327,12 +327,12 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  apply (mk_rel_exp (dlvl_max (dlvl_lit ordinal_zero) m1) (dlvl_max (dlvl_lit ordinal_zero) m2) m3 m4);
+  apply (mk_rel_exp (domain_level_max (domain_level_lit ordinal_zero) m1) (domain_level_max (domain_level_lit ordinal_zero) m2) m3 m4);
     try (apply eval_exp_maxl; [ apply eval_exp_llit | eassumption ]);
     try eassumption.
   apply rel_chain_4;
     [ apply per_lvl_at_max; [ apply per_lvl_at_lit; cbn; lia | pairwise ]
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_zero; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_zero; lvl_pw | lvl_sort_bounded ]
     | pairwise ].
 Qed.
 
@@ -354,13 +354,13 @@ Proof.
     as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
   destruct (HPgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [p1 p2 p3 p4 Hp1 Hp2 Hp3 Hp4 Hpchain].
-  apply (mk_rel_exp (dlvl_max (dlvl_max m1 n1) p1) (dlvl_max (dlvl_max m2 n2) p2)
-                    (dlvl_max m3 (dlvl_max n3 p3)) (dlvl_max m4 (dlvl_max n4 p4)));
+  apply (mk_rel_exp (domain_level_max (domain_level_max m1 n1) p1) (domain_level_max (domain_level_max m2 n2) p2)
+                    (domain_level_max m3 (domain_level_max n3 p3)) (domain_level_max m4 (domain_level_max n4 p4)));
     try (apply eval_exp_maxl; [ apply eval_exp_maxl |]; eassumption);
     try (apply eval_exp_maxl; [| apply eval_exp_maxl ]; eassumption).
   apply rel_chain_4;
     [ apply per_lvl_at_max; [ apply per_lvl_at_max |]; pairwise
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_assoc; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_assoc; lvl_pw | lvl_sort_bounded ]
     | apply per_lvl_at_max; [| apply per_lvl_at_max ]; pairwise ].
 Qed.
 
@@ -378,11 +378,11 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
-  apply (mk_rel_exp (dlvl_max m1 n1) (dlvl_max m2 n2) (dlvl_max n3 m3) (dlvl_max n4 m4));
+  apply (mk_rel_exp (domain_level_max m1 n1) (domain_level_max m2 n2) (domain_level_max n3 m3) (domain_level_max n4 m4));
     try (apply eval_exp_maxl; eassumption).
   apply rel_chain_4;
     [ apply per_lvl_at_max; pairwise
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_comm; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_comm; lvl_pw | lvl_sort_bounded ]
     | apply per_lvl_at_max; pairwise ].
 Qed.
 
@@ -396,12 +396,12 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  apply (mk_rel_exp (dlvl_max m1 m1) (dlvl_max m2 m2) m3 m4);
+  apply (mk_rel_exp (domain_level_max m1 m1) (domain_level_max m2 m2) m3 m4);
     try (apply eval_exp_maxl; eassumption);
     try eassumption.
   apply rel_chain_4;
     [ apply per_lvl_at_max; pairwise
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_idem; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_idem; lvl_pw | lvl_sort_bounded ]
     | pairwise ].
 Qed.
 
@@ -419,13 +419,13 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
-  apply (mk_rel_exp (dlvl_suc (dlvl_max m1 n1)) (dlvl_suc (dlvl_max m2 n2))
-                    (dlvl_max (dlvl_suc m3) (dlvl_suc n3)) (dlvl_max (dlvl_suc m4) (dlvl_suc n4)));
+  apply (mk_rel_exp (domain_level_suc (domain_level_max m1 n1)) (domain_level_suc (domain_level_max m2 n2))
+                    (domain_level_max (domain_level_suc m3) (domain_level_suc n3)) (domain_level_max (domain_level_suc m4) (domain_level_suc n4)));
     try (apply eval_exp_succl, eval_exp_maxl; eassumption);
     try (apply eval_exp_maxl; apply eval_exp_succl; eassumption).
   apply rel_chain_4;
     [ apply per_lvl_at_suc, per_lvl_at_max; pairwise
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_suc_max; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_suc_max; lvl_pw | lvl_sort_bounded ]
     | apply per_lvl_at_max; apply per_lvl_at_suc; pairwise ].
 Qed.
 
@@ -439,13 +439,13 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  apply (mk_rel_exp (dlvl_max m1 (dlvl_suc m1)) (dlvl_max m2 (dlvl_suc m2))
-                    (dlvl_suc m3) (dlvl_suc m4));
+  apply (mk_rel_exp (domain_level_max m1 (domain_level_suc m1)) (domain_level_max m2 (domain_level_suc m2))
+                    (domain_level_suc m3) (domain_level_suc m4));
     try (apply eval_exp_maxl; [ eassumption | apply eval_exp_succl; eassumption ]);
     try (apply eval_exp_succl; eassumption).
   apply rel_chain_4;
     [ apply per_lvl_at_max; [ pairwise | apply per_lvl_at_suc; pairwise ]
-    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_suc; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_suc; lvl_pw | lvl_sort_bounded ]
     | apply per_lvl_at_suc; pairwise ].
 Qed.
 
@@ -467,8 +467,8 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   assert (H12 : Dom m1 ≈ m2 ∈ per_lvl_at n) by pairwise.
   assert (H22 : Dom m2 ≈ m2 ∈ per_lvl_at n) by pairwise.
-  apply (mk_rel_exp (dlvl_max m1 (dlvl_lit (S n, 0))) (dlvl_max m2 (dlvl_lit (S n, 0)))
-                    (dlvl_lit (S n, 0)) (dlvl_lit (S n, 0)));
+  apply (mk_rel_exp (domain_level_max m1 (domain_level_lit (S n, 0))) (domain_level_max m2 (domain_level_lit (S n, 0)))
+                    (domain_level_lit (S n, 0)) (domain_level_lit (S n, 0)));
     try (apply eval_exp_maxl; [ eassumption | apply eval_exp_llit ]);
     try (apply eval_exp_llit).
   assert (H12' : Dom m1 ≈ m2 ∈ per_lvl_at (S n)) by (eapply per_lvl_at_mono; [| exact H12 ]; lia).
@@ -515,7 +515,7 @@ Lemma rel_exp_of_suniv_tm : forall {Γ T A A'},
           ⟦ σ ⟧s ρ ↘ ρσ ->
           ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
           forall t, ⟦ T ⟧ ρσ ↘ t ->
-          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (dlvl_real t)))) ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (domain_level_real t)))) ->
     Γ ⊨ A ≈ A' : Type⟨T⟩.
 Proof.
   intros * HT [env_relΓ [HΓ H]].
@@ -530,7 +530,7 @@ Proof.
   pose proof (per_lvl_real _ _ H12) as E12.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
-  exists (per_univ (us (dlvl_real t2))).
+  exists (per_univ (us (domain_level_real t2))).
   split; [| eapply H; eassumption ].
   apply (mk_rel_exp 𝕌@t1 𝕌@t2 𝕌@t3 𝕌@t4);
     try (apply eval_exp_univ; eassumption).
@@ -551,7 +551,7 @@ Lemma rel_exp_of_suniv_tm_inversion : forall {Γ T A A'},
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (dlvl_real t))).
+        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (domain_level_real t))).
 Proof.
   intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
@@ -570,7 +570,7 @@ Proof.
   eapply rel_chain_mono; [| exact Hc ].
   intros x y Hxy.
   match goal with
-  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_univ (us (dlvl_real ?b)) _ _ =>
+  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_univ (us (domain_level_real ?b)) _ _ =>
       rewrite <- (per_lvl_real _ _ Hl); apply Heq in Hxy; exact Hxy
   end.
 Qed.
@@ -581,7 +581,7 @@ Corollary rel_exp_of_suniv_tm_inversion_simple : forall {Γ T A A'},
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_rel ->
       exists a a' t,
-        ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\ Dom a ≈ a' ∈ per_univ (us (dlvl_real t)).
+        ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\ Dom a ≈ a' ∈ per_univ (us (domain_level_real t)).
 Proof.
   intros * H%rel_exp_of_suniv_tm_inversion.
   destruct H as [env_relΓ [HΓ HA]].
@@ -635,10 +635,10 @@ Proof.
   pose proof (per_lvl_real _ _ H12) as E12.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
-  rewrite dlvl_real_suc.
+  rewrite domain_level_real_suc.
   apply (mk_rel_exp 𝕌@m1 𝕌@m2 𝕌@m3 𝕌@m4); try (apply eval_exp_univ; eassumption).
   apply rel_chain_4; eexists; apply per_univ_elem_core_suniv';
-    first [ eassumption | cbn; ord | reflexivity ].
+    first [ eassumption | cbn; ordinal_solve | reflexivity ].
 Qed.
 
 Corollary sem_univ :
@@ -677,7 +677,7 @@ Proof.
   assert (Dom m2 ≈ m2 ∈ per_lvl) by lvl_pw.
   assert (Dom n4 ≈ n3 ∈ per_lvl) by lvl_pw.
   assert (Dom n2 ≈ n3 ∈ per_lvl) by lvl_pw.
-  assert (Dom dlvl_max m2 n2 ≈ n3 ∈ per_lvl) by lvl_pw.
+  assert (Dom domain_level_max m2 n2 ≈ n3 ∈ per_lvl) by lvl_pw.
   functional_eval_rewrite_clear.
   exists 𝕌@m1 𝕌@m2 𝕌@n4 𝕌@n3; try (apply eval_exp_univ; eassumption).
   - eexists; apply per_univ_elem_core_suniv';

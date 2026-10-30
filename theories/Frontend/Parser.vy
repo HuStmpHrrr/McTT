@@ -39,7 +39,7 @@ Definition path_list (p : string * list string) : list string := List.rev' (fst 
 %type <list (string * Cst.expression)> params params_opt
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
-%type <Cst.mods> mods
+%type <Cst.modifiers> modifiers
 %type <Cst.definition_keyword> definition_keyword
 %type <(string * list string)%type> path
 %type <list string> fpath ipath upath mpath_opt
@@ -48,7 +48,7 @@ Definition path_list (p : string * list string) : list string := List.rev' (fst 
 %type <list Cst.expression> iargs
 %type <(list string * list string)%type> qpath
 %type <option string> as_opt
-%type <list iitem> ilists ilist
+%type <list import_item> ilists ilist
 %type <list Cst.cmd> cmd lead_cmd import_cmd open_cmd
 %type <(list (string * Cst.expression) * Cst.mdef)%type> mdecl
 %type <Cst.mdef> mdef
@@ -68,7 +68,7 @@ Definition path_list (p : string * list string) : list string := List.rev' (fst 
 %type <list (string * Cst.expression)> rfields rfields1 tfields tfields1
 %type <list Cst.cmd> rwith
 
-%on_error_reduce expression params params_opt app_expression atomic_expression cmds leads mods path fpath
+%on_error_reduce expression params params_opt app_expression atomic_expression cmds leads modifiers path fpath
 
 %%
 
@@ -100,10 +100,10 @@ let cmd :=
   | PRIVATE; MODULE; p = path; md = mdecl; { [Cst.c_mod_dotted true (fst p) (snd p) (fst md) (snd md)] }
   (* [def] and its shorthands share one production, so they take the same
      parameters, type and body; the keyword decides which modifiers it takes. *)
-  | m = mods; k = definition_keyword; x = VAR; ps = params_opt; ":"; a = expression; ":="; b = expression; END;
+  | m = modifiers; k = definition_keyword; x = VAR; ps = params_opt; ":"; a = expression; ":="; b = expression; END;
       { [Cst.def_cmd k m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b)] }
   (* An axiom has [def]'s parameters and type, and no body. *)
-  | m = mods; AXIOM; x = VAR; ps = params_opt; ":"; a = expression;
+  | m = modifiers; AXIOM; x = VAR; ps = params_opt; ":"; a = expression;
       { [Cst.axiom_cmd m (snd x) (fold_params Cst.pi ps a)] }
   | ~ = import_cmd; <>
   | ~ = open_cmd; <>
@@ -118,13 +118,13 @@ let cmd :=
       { [Cst.c_ind true false (List.rev' ps) ((snd x, t, List.rev' cs) :: List.rev' ms)] }
   (* [mutual T (ps) where inductive x : S where … with y : U where … end
      end]: the group in the module [T], its members [T.x], [T.y]. *)
-  | m = mods; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END; END;
+  | m = modifiers; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = expression; WHERE; cs = ctors; ms = imembers; END; END;
       { [Cst.mutual_cmd m (snd g) (List.rev' ps) ((snd x, t, List.rev' cs) :: List.rev' ms)] }
   (* [mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B … with g … end]: the
      common parameters, then the functions, with the modifiers of a
      definition.  Any definition keyword may follow [mutual], and decides
      which modifiers it takes, as for a single definition. *)
-  | m = mods; MUTUAL; k = definition_keyword; ps = params_opt; fs = mfuns; END;
+  | m = modifiers; MUTUAL; k = definition_keyword; ps = params_opt; fs = mfuns; END;
       { [Cst.mdef_cmd k m (List.rev' ps) (List.rev' fs)] }
   (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
      at the arguments [Ms], under the parameters. *)
@@ -236,12 +236,12 @@ let iargs :=
   | { @nil Cst.expression }
   | ~ = iargs; ~ = atomic_expression; { atomic_expression :: iargs }
 
-let mods :=
-  | { Cst.md_pub }
-  | PRIVATE; { Cst.md_priv }
-  | ABSTRACT; { Cst.md_abs }
-  | PRIVATE; ABSTRACT; { Cst.md_priv_abs }
-  | ABSTRACT; PRIVATE; { Cst.md_priv_abs }
+let modifiers :=
+  | { Cst.public_modifiers }
+  | PRIVATE; { Cst.private_modifiers }
+  | ABSTRACT; { Cst.abstract_modifiers }
+  | PRIVATE; ABSTRACT; { Cst.private_abstract_modifiers }
+  | ABSTRACT; PRIVATE; { Cst.private_abstract_modifiers }
 
 let as_opt :=
   | { None }
@@ -250,7 +250,7 @@ let as_opt :=
 (* Reversed list of the items of the [use] and [export] lists so far, in any
    order *)
 let ilists :=
-  | { @nil iitem }
+  | { @nil import_item }
   | ls = ilists; l = ilist; { l ++ ls }
 
 (* One list, its items reversed: private for [use], public for [export] *)
@@ -322,8 +322,8 @@ let expression :=
     { Cst.elim escr (List.rev' bks) }
 
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
-     [letb]s, so each one sees the earlier ones. *)
-  | LET; ds = let_defns; IN; body = expression; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
+     [let_in]s, so each one sees the earlier ones. *)
+  | LET; ds = let_defns; IN; body = expression; END; { List.fold_left (fun acc d => Cst.let_in d acc) ds body }
 
   (* [record T where f := M ; … end]: a value of the record type [T], its
      fields in order.  Not atomic, as a command may follow an object with

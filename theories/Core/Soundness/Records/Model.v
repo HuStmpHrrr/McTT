@@ -659,7 +659,7 @@ Section RecordAt.
         exists a; split; [ exact Ha | split; [ exact Hpa | exact HP ] ].
       - destruct (glu_rel_exp_of_suniv_tm_inversion' HSb HA _ _ _ Hσ) as (l & Hlv & _ & _ & a & Ha & Hpa & HP & _).
         exists a; split; [ exact Ha |].
-        assert (Hidx : Completeness.Inductives.Decl.univ_idx bu = us (dlvl_real l)).
+        assert (Hidx : Completeness.Inductives.Decl.univ_idx bu = us (domain_level_real l)).
         { assert (HCs : ⊨ Pre ++ record_params R) by (apply completeness_fundamental_ctx; exact HPre).
           assert (HSs : record_params R ⊨ Type⟨t⟩ : Typeω@iS) by (apply completeness_fundamental_exp; exact HS).
           destruct (rel_ctx_wf_per_ctx_env HCs) as [RC HRC].

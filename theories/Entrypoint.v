@@ -30,7 +30,7 @@ Import Syntax_Notations GlobalCtx_Notations.
 
     The run returns the filed units and the program's unit fast
     ([Extraction.FastGlobal]); the statements read them in Core
-    ([dec_units], [dec_unit]), and [main_rep] says the fast results are the
+    ([decode_units], [decode_unit]), and [main_rep] says the fast results are the
     translations of their readings. *)
 
 Variant main_result :=
@@ -82,8 +82,8 @@ Section Main.
       off the fast ones. *)
   Theorem main_sound : forall log_fuel buf prg B s u log,
       main log_fuel buf = AllGood prg B s u log ->
-      (exists ΘR, prog_sem load_path read to_core prg B ΘR (dec_unit u) /\ gds_equiv ΘR (dec_units s) /\
-                  ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ dec_unit u) /\
+      (exists ΘR, prog_sem load_path read to_core prg B ΘR (decode_unit u) /\ gds_equiv ΘR (decode_units s) /\
+                  ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ decode_unit u) /\
       (forall e, In e log ->
          ⊢ᵍ eval_entry_deps e ⍮ eval_entry_stack e /\ eval_entry_deps e ⍮ eval_entry_stack e ⍮ gs_tele (eval_entry_stack e) ⊢ eval_entry_exp e : eval_entry_typ e /\
          nbe (eval_entry_deps e) (eval_entry_stack e) (gs_tele (eval_entry_stack e)) (eval_entry_exp e) (eval_entry_typ e) (eval_entry_nf e)).
@@ -102,10 +102,10 @@ Section Main.
   Qed.
 
   (** The fast results of [AllGood] are the translations of their
-      readings: the filed units refine [dec_units s], and [u] is the
-      translation of [dec_unit u]. *)
+      readings: the filed units refine [decode_units s], and [u] is the
+      translation of [decode_unit u]. *)
   Theorem main_rep : forall log_fuel buf prg B s u log,
-      main log_fuel buf = AllGood prg B s u log -> units_rep s (dec_units s) /\ u = tr_unit (dec_unit u).
+      main log_fuel buf = AllGood prg B s u log -> units_rep s (decode_units s) /\ u = translate_unit (decode_unit u).
   Proof.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
@@ -122,7 +122,7 @@ Section Main.
       Parser.prog log_fuel buf = Parsed_pr prg buf' ->
       prog_sem load_path read to_core prg B ΘR U ->
       (forall msg, elaborate_core prg <> elab_failure msg) ->
-      exists s u log, main log_fuel buf = AllGood prg B s u log /\ dec_unit u = U /\ gds_equiv ΘR (dec_units s).
+      exists s u log, main log_fuel buf = AllGood prg B s u log /\ decode_unit u = U /\ gds_equiv ΘR (decode_units s).
   Proof.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.
     destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].

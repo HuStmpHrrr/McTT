@@ -78,7 +78,7 @@ Proof.
 Qed.
 
 (** The type of a shape is relevant: a member, a record or a [Π]. *)
-Lemma eval_shty_relevant : forall p ups ρ t a,
+Lemma eval_shape_type_relevant : forall p ups ρ t a,
     ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> domain_relevance a = relevant.
 Proof. intros * H; inversion H; reflexivity. Qed.
 
@@ -101,7 +101,7 @@ Proof. intros; rewrite !List.app_assoc, env_args_snoc; reflexivity. Qed.
     view is read at the view's own telescopes ([read_nf_con_view]), as one
     of a declared member is at its own, so the two cases are one.  A
     recursive argument's index at the type's prefix is related to the
-    element's own through the index at the element's own prefix ([okr_at]),
+    element's own through the index at the element's own prefix ([admissible_index_at]),
     the two prefixes related by the admissibility of the type's uniform
     parameters beside themselves ([Hcd]) and beside the other side's
     ([Hcl]). *)
@@ -138,7 +138,7 @@ Lemma realize_indty : forall p D ups ups'
     forall k Mk ns ns', ind_member D k = Some Mk ->
     tele_rel (nr k) (List.rev (im_nparams Mk)) ns ns' ->
     Dom d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_top_typ /\
-    (forall u u' b b', ind_rel p D (okr_at D ups nr) nr ar dr k u u' ns ns' b b' ->
+    (forall u u' b b', ind_rel p D (admissible_index_at D ups nr) nr ar dr k u u' ns ns' b b' ->
        Dom ⇓ (d_ind p k (ups ++ ns)) b ≈ ⇓ (d_ind p k (ups' ++ ns')) b' ∈ per_top).
 Proof.
   intros * Hl Hass Hu Hps HnP HnI HaP HaI HdP HdI Hn Ha Hdr Hcl Hcd.
@@ -169,17 +169,17 @@ Proof.
   pose proof (doms_rel_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tshi.
   pose proof (doms_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tshl.
   pose proof (doms_rel_refl_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tshri.
-  pose proof (ntele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as ntsym.
-  pose proof (ntele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as nttrans.
+  pose proof (nparams_tele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as ntsym.
+  pose proof (nparams_tele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as nttrans.
   (** The elements are read back at indices [xs] and [xs'] related to their
       own, the arguments and shapes after values of the type's parameters
       [xs] and [xs'] related to their own [ms] and [ms']. *)
   assert (Hmain :
-    (forall k u u' ns0 ns0' x y, ind_rel p D (okr_at D ups nr) nr ar dr k u u' ns0 ns0' x y ->
+    (forall k u u' ns0 ns0' x y, ind_rel p D (admissible_index_at D ups nr) nr ar dr k u u' ns0 ns0' x y ->
        forall Mk xs xs', ind_member D k = Some Mk ->
          tele_rel (nr k) (List.rev (im_nparams Mk)) xs ns0 -> tele_rel (nr k) (List.rev (im_nparams Mk)) xs' ns0' ->
          Dom ⇓ (d_ind p k (ups ++ xs)) x ≈ ⇓ (d_ind p k (ups' ++ xs')) y ∈ per_top) /\
-    (forall k u u' pre pre' gs vs vs', con_args_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' gs vs vs' ->
+    (forall k u u' pre pre' gs vs vs', con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' gs vs vs' ->
        forall Mk ms ms' xs xs' c gsf gs1 vp vp', ind_member D k = Some Mk ->
          pre = ms ++ nonrec_arg_vals gs1 vp -> pre' = ms' ++ nonrec_arg_vals gs1 vp' ->
          List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
@@ -190,7 +190,7 @@ Proof.
          forall s, exists Vs,
            Rcargs vs at gs of p ups in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ xs ++ nonrec_arg_vals gs1 vp) ⍮ s ↘ Vs /\
            Rcargs vs' at gs of p ups' in gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ xs' ++ nonrec_arg_vals gs1 vp') ⍮ s ↘ Vs) /\
-    (forall k u u' pre pre' t v v', rec_arg_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t v v' ->
+    (forall k u u' pre pre' t v v', rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' t v v' ->
        forall Mk ms ms' xs xs' c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk ->
          pre = ms ++ ws ++ ys -> pre' = ms' ++ ws' ++ ys' ->
          tele_rel (nr k) (List.rev (im_nparams Mk)) ms ms' ->
@@ -201,7 +201,7 @@ Proof.
          tele_prefix_rel (shape_doms_rel (dr k) ms ws (ptyp_doms t0)) kk ys ys' ->
          forall s, exists V, Rsh v at t of p ups in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ xs ++ ws ++ ys) ⍮ s ↘ V /\
            Rsh v' at t of p ups' in gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ xs' ++ ws' ++ ys') ⍮ s ↘ V) /\
-    (forall k u u' pre pre' t f x f' x', rec_arg_app_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t f x f' x' ->
+    (forall k u u' pre pre' t f x f' x', rec_arg_app_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' t f x f' x' ->
        forall Mk ms ms' xs xs' c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk ->
          pre = ms ++ ws ++ ys -> pre' = ms' ++ ws' ++ ys' ->
          tele_rel (nr k) (List.rev (im_nparams Mk)) ms ms' ->
@@ -328,7 +328,7 @@ Proof.
       exists (cons V Vs); split; econstructor; eassumption.
     - (** The end of a shape: the index at the type's prefix is related to
           the element's own through the index at the element's own prefix
-          ([okr_at]), the two prefixes related by [Hcd] on the left and by
+          ([admissible_index_at]), the two prefixes related by [Hcd] on the left and by
           [Hcl] on the right. *)
       intros Ps u pre bs u' pre' bs' j v v' k0 _ _ O O' Hr IHr Mk0 ms ms' xs xs' c gs1 t0 gs2 ws ws' k1 ys ys'
         HM Hρ Hρ' Hm Hx Hx' Hc Hw Hs Hk Hy s.
@@ -359,8 +359,8 @@ Proof.
       pose proof (functional_eval_exps' _ _ _ _ E1 Ei') as <-.
       pose proof (nttrans _ _ _ _ RT Ri) as Rb.
       pose proof (nttrans _ _ _ _ (ntsym _ _ _ RT') Ri') as Rb'.
-      destruct (ntele_rel_member p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Rb) as (Mj & HMj & Hb1).
-      destruct (ntele_rel_member p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Rb') as (Mj' & HMj' & Hb2).
+      destruct (nparams_tele_rel_member p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Rb) as (Mj & HMj & Hb1).
+      destruct (nparams_tele_rel_member p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Rb') as (Mj' & HMj' & Hb2).
       rewrite HMj in HMj'; injection HMj' as <-.
       destruct (IHr Mj bT bT' HMj Hb1 Hb2 s) as (V & HV & HV').
       exists V; split; econstructor; eassumption.
@@ -441,13 +441,13 @@ Qed.
 
 (** The neutral projections of a prefix of the fields are the prefix of
     the neutral projections. *)
-Lemma eval_nflds_firstn : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs ->
-    forall n, eval_nflds gc_deps gc_stack ns m (List.firstn n fl) pre (List.firstn n rs).
+Lemma eval_neutral_fields_firstn : forall ns m fl pre rs, eval_neutral_fields gc_deps gc_stack ns m fl pre rs ->
+    forall n, eval_neutral_fields gc_deps gc_stack ns m (List.firstn n fl) pre (List.firstn n rs).
 Proof.
   induction 1; intros [| n]; cbn [List.firstn]; econstructor; eauto.
 Qed.
 
-Lemma eval_nflds_length : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs ->
+Lemma eval_neutral_fields_length : forall ns m fl pre rs, eval_neutral_fields gc_deps gc_stack ns m fl pre rs ->
     List.length rs = List.length fl.
 Proof. induction 1; cbn; congruence. Qed.
 
@@ -506,8 +506,8 @@ Proof.
         field's type, and the projections they are. *)
     intros c c' Hc.
     assert (Hall : forall m j pre pre', m + j = List.length fl -> tele_prefix_rel fr j pre pre' ->
-               exists rs rs', eval_nflds gc_deps gc_stack ns c (List.skipn j fl) pre rs /\
-                 eval_nflds gc_deps gc_stack ns' c' (List.skipn j fl) pre' rs' /\
+               exists rs rs', eval_neutral_fields gc_deps gc_stack ns c (List.skipn j fl) pre rs /\
+                 eval_neutral_fields gc_deps gc_stack ns' c' (List.skipn j fl) pre' rs' /\
                  tele_prefix_rel fr (List.length fl) (pre ++ rs) (pre' ++ rs')).
     { induction m as [| m IH]; intros j pre pre' Hj Hp.
       - rewrite List.skipn_all2 by lia; exists nil, nil; rewrite !List.app_nil_r.
@@ -524,12 +524,12 @@ Proof.
         split; [ econstructor; eassumption | split; [ econstructor; eassumption | exact Hrs ] ]. }
     destruct (Hall (List.length fl) 0 nil nil ltac:(lia) (tele_prefix_rel_nil _)) as (rs & rs' & Er & Er' & Hrs).
     cbn [List.skipn List.app] in *.
-    assert (Hproj : forall ms m0 rs0, eval_nflds gc_deps gc_stack ms m0 fl nil rs0 ->
+    assert (Hproj : forall ms m0 rs0, eval_neutral_fields gc_deps gc_stack ms m0 fl nil rs0 ->
                record_projs R (⇑ (d_record p ms) m0) rs0).
     { intros ms m0 rs0 E.
-      apply Forall2_of_nth; [ symmetry; exact (eval_nflds_length _ _ _ _ _ E) |].
+      apply Forall2_of_nth; [ symmetry; exact (eval_neutral_fields_length _ _ _ _ _ E) |].
       intros k [g T] r Hk Hr; cbn [fst].
-      econstructor; [ exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hk) | apply eval_nflds_firstn; exact E |].
+      econstructor; [ exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hk) | apply eval_neutral_fields_firstn; exact E |].
       rewrite List.nth_error_firstn; destruct (Nat.ltb_spec k (S k)); [ exact Hr | lia ]. }
     destruct Hrs as [Hlr Hfrom].
     econstructor; [ exact (Hproj _ _ _ Er) | exact (Hproj _ _ _ Er') | split; [ exact Hlr | exact Hfrom ] ].
@@ -802,7 +802,7 @@ Proof.
     destruct IHper_ctx_env as [ρ [ρ' [? [? Hρ]]]].
     assert (Dom ρ ≈ ρ ∈ tail_rel) by solve_per.
     assert (Dom ρ' ≈ ρ' ∈ tail_rel) by solve_per.
-    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _ |- _ =>
+    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _ |- _ =>
       destruct (HU _ _ Hρ) as [h h' Hh Hh' Hr] end.
     assert (T1 : tie_mod h (me_lit U) ρ)
       by (exists h; split; [ exact Hh | eapply per_dmod_trans; [ exact Hr | apply per_dmod_sym, Hr ] ]).
@@ -822,7 +822,7 @@ Proof.
     | Hbody : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_elem _ _ _ _ _ |- _ =>
         destruct (Hbody _ _ Hρ) as [m m' Hm Hm' Hmm]
     end.
-    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _ |- _ =>
+    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _ |- _ =>
       destruct (HU _ _ Hρ) as [h h' Hh Hh' Hr] end.
     assert (T1 : tie_mod h (me_lit U) ρ)
       by (exists h; split; [ exact Hh | eapply per_dmod_trans; [ exact Hr | apply per_dmod_sym, Hr ] ]).

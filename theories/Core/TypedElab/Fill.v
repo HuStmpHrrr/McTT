@@ -110,7 +110,7 @@ Section Fill.
     end.
 
   (** The members an open's items name. *)
-  Definition items_members (its : list iitem) : list string :=
+  Definition items_members (its : list import_item) : list string :=
     List.flat_map (fun it => match fst (fst it) with Some n => n :: nil | None => nil end) its.
 
   (** ** The Fill of Terms
@@ -184,7 +184,7 @@ Section Fill.
       fill_mod Γ H H' op -> sel_ok op x -> fill_exp Γ (a_mem H x) (a_mem H' x)
   (** A record value: its type and its fields *)
   | fill_exp_tuple : forall Γ T T' fs fs',
-      fill_exp Γ T T' -> fill_fvals Γ fs fs' -> fill_exp Γ (a_tuple T fs) (a_tuple T' fs')
+      fill_exp Γ T T' -> fill_field_vals Γ fs fs' -> fill_exp Γ (a_tuple T fs) (a_tuple T' fs')
   (** A projection *)
   | fill_exp_proj : forall Γ f M M', fill_exp Γ M M' -> fill_exp Γ (a_proj f M) (a_proj f M')
   (** An eliminator as written: its scrutinee filled; its group [p] and
@@ -206,12 +206,12 @@ Section Fill.
       fill_exp Γ (a_elim r None nil m Bks M) (a_elim (sort_relevance W) (Some p) Us m Bks' M')
 
   (** The fields of a record value, each its name and its value *)
-  with fill_fvals : ctx -> list (string * exp) -> list (string * exp) -> Prop :=
+  with fill_field_vals : ctx -> list (string * exp) -> list (string * exp) -> Prop :=
   (** No field *)
-  | fill_fvals_nil : forall Γ, fill_fvals Γ nil nil
+  | fill_field_vals_nil : forall Γ, fill_field_vals Γ nil nil
   (** The first field, then the rest *)
-  | fill_fvals_cons : forall Γ f M M' fs fs',
-      fill_exp Γ M M' -> fill_fvals Γ fs fs' -> fill_fvals Γ ((f, M) :: fs) ((f, M') :: fs')
+  | fill_field_vals_cons : forall Γ f M M' fs fs',
+      fill_exp Γ M M' -> fill_field_vals Γ fs fs' -> fill_field_vals Γ ((f, M) :: fs) ((f, M') :: fs')
 
   (** The blocks of an eliminator of the group [p], [D], from the member
       [j] on, at the uniform parameters [Us] and the motives [As]: each its
@@ -225,7 +225,7 @@ Section Fill.
   | fill_blocks_cons : forall r Γ p D Us As j Mj nm oZ oZ' A A' Bs Bs' Bks Bks',
       ind_member D j = Some Mj ->
       nm = S (im_nn Mj) ->
-      fill_oexp (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) oZ oZ' ->
+      fill_optional_exp (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) oZ oZ' ->
       fill_exp (elim_mctx p D j Mj Us ++ Γ) A A' ->
       fill_brs r Γ p D Mj Us As Bs Bs' ->
       fill_blocks r Γ p D Us As (S j) Bks Bks' ->
@@ -246,11 +246,11 @@ Section Fill.
       fill_brs r Γ p D Mj Us As ((c, n, B) :: Bs) ((c, n, B') :: Bs')
 
   (** A term that may be absent *)
-  with fill_oexp : ctx -> option exp -> option exp -> Prop :=
+  with fill_optional_exp : ctx -> option exp -> option exp -> Prop :=
   (** Absent *)
-  | fill_oexp_none : forall Γ, fill_oexp Γ None None
+  | fill_optional_exp_none : forall Γ, fill_optional_exp Γ None None
   (** Present *)
-  | fill_oexp_some : forall Γ M M', fill_exp Γ M M' -> fill_oexp Γ (Some M) (Some M')
+  | fill_optional_exp_some : forall Γ M M', fill_exp Γ M M' -> fill_optional_exp Γ (Some M) (Some M')
 
   (** [fill_read Γ H r]: in module position, [H] reads as [r] *)
   with fill_read : ctx -> modexp -> module_read -> Prop :=
@@ -339,7 +339,7 @@ Section Fill.
   (** A definition: its tag the sort its filled type infers to *)
   | fill_body_def : forall Γ Φ Φ' Φx x b pv r A A' oM oM' W,
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx ->
-      fill_exp (body_ctx Φx ++ Γ) A A' -> fill_oexp (body_ctx Φx ++ Γ) oM oM' ->
+      fill_exp (body_ctx Φx ++ Γ) A A' -> fill_optional_exp (body_ctx Φx ++ Γ) oM oM' ->
       ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢a A' ⟹ W ->
       fill_body Γ (gm_ext Φ x (ge_def b pv r A oM)) (gm_ext Φ' x (ge_def b pv (sort_relevance W) A' oM'))
   (** A module *)
@@ -359,18 +359,18 @@ Section Fill.
       fill_body Γ (gm_open Φ H its) (gm_open Φ' H' its).
 
   Scheme fill_exp_mut_ind := Induction for fill_exp Sort Prop
-  with fill_fvals_mut_ind := Induction for fill_fvals Sort Prop
+  with fill_field_vals_mut_ind := Induction for fill_field_vals Sort Prop
   with fill_blocks_mut_ind := Induction for fill_blocks Sort Prop
   with fill_brs_mut_ind := Induction for fill_brs Sort Prop
-  with fill_oexp_mut_ind := Induction for fill_oexp Sort Prop
+  with fill_optional_exp_mut_ind := Induction for fill_optional_exp Sort Prop
   with fill_read_mut_ind := Induction for fill_read Sort Prop
   with fill_mod_mut_ind := Induction for fill_mod Sort Prop
   with fill_unit_mut_ind := Induction for fill_unit Sort Prop
   with fill_def_mut_ind := Induction for fill_def Sort Prop
   with fill_tele_mut_ind := Induction for fill_tele Sort Prop
   with fill_body_mut_ind := Induction for fill_body Sort Prop.
-  Combined Scheme fill_mut_ind from fill_exp_mut_ind, fill_fvals_mut_ind, fill_blocks_mut_ind, fill_brs_mut_ind,
-    fill_oexp_mut_ind, fill_read_mut_ind, fill_mod_mut_ind, fill_unit_mut_ind, fill_def_mut_ind,
+  Combined Scheme fill_mut_ind from fill_exp_mut_ind, fill_field_vals_mut_ind, fill_blocks_mut_ind, fill_brs_mut_ind,
+    fill_optional_exp_mut_ind, fill_read_mut_ind, fill_mod_mut_ind, fill_unit_mut_ind, fill_def_mut_ind,
     fill_tele_mut_ind, fill_body_mut_ind.
 
   (** The fields of a record declaration, each over the filled ones before
@@ -430,16 +430,16 @@ Section Fill.
 
   (** A constructor's arguments over [Γ], filled: the names kept, the
       types filled as a telescope, each over the ones before it, as
-      [cls_args_in] reads them. *)
+      [classify_args_in] reads them. *)
   Record fill_raw_args (Γ : ctx) (args args' : list (string * exp)) : Prop := mk_fill_raw_args
     { (** The names are kept *)
       fill_raw_args_names : List.map fst args' = List.map fst args
       (** The types, each over the ones before it, are filled *)
-    ; fill_raw_args_types : fill_tele Γ (rtele args) (rtele args') }.
+    ; fill_raw_args_types : fill_tele Γ (raw_args_tele args) (raw_args_tele args') }.
 
   (** A declared member [Mr] of a group whose filled form is [R'], filled
       to [Mr']: its parameters and sort over the uniform parameters, its
-      constructors' arguments over its context ([rm_pctx]), in the filled
+      constructors' arguments over its context ([raw_member_args_ctx]), in the filled
       group. *)
   Record fill_raw_member (R' : raw_decl) (Mr Mr' : raw_member) : Prop := mk_fill_raw_member
     { (** The name is kept *)
@@ -451,7 +451,7 @@ Section Fill.
       (** Each constructor keeps its name, and its arguments are filled
           over the member's context *)
     ; fill_raw_member_cons :
-        Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
+        Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args (raw_member_args_ctx Ξ R' Mr') (snd rc) (snd rc'))
           (raw_member_cons Mr) (raw_member_cons Mr') }.
 
   (** [fill_raw_decl R R']: the group as written [R] is filled to [R'],
@@ -471,7 +471,7 @@ Section Fill.
   Inductive fill_cmd : core_cmd -> core_cmd -> Prop :=
   (** A definition: its type and its body *)
   | fill_cmd_def : forall x b pv A A' oM oM',
-      fill_exp (gs_tele Ξ) A A' -> fill_oexp (gs_tele Ξ) oM oM' ->
+      fill_exp (gs_tele Ξ) A A' -> fill_optional_exp (gs_tele Ξ) oM oM' ->
       fill_cmd (core_cmd_def x b pv A oM) (core_cmd_def x b pv A' oM')
   (** A module: its telescope; its commands are filled when they run *)
   | fill_cmd_mod : forall x pv Δ Δ' cs,
@@ -501,7 +501,7 @@ Section Fill.
       fill_mod (gs_tele Ξ) E E' None -> fill_cmd (core_cmd_builtin k E) (core_cmd_builtin k E')
   (** An evaluation: its term and its type *)
   | fill_cmd_eval : forall M M' oA oA',
-      fill_exp (gs_tele Ξ) M M' -> fill_oexp (gs_tele Ξ) oA oA' -> fill_cmd (core_cmd_eval M oA) (core_cmd_eval M' oA')
+      fill_exp (gs_tele Ξ) M M' -> fill_optional_exp (gs_tele Ξ) oA oA' -> fill_cmd (core_cmd_eval M oA) (core_cmd_eval M' oA')
   (** A group: each part in the context the classification reads it in *)
   | fill_cmd_ind_decl : forall pv R R', fill_raw_decl R R' -> fill_cmd (core_cmd_inductive pv R) (core_cmd_inductive pv R')
   (** A mutual definition: its telescope; its functions' parameters and
@@ -533,5 +533,5 @@ Section Fill.
 End Fill.
 
 #[export]
-Hint Constructors module_read fill_exp fill_fvals fill_blocks fill_brs fill_oexp fill_read
+Hint Constructors module_read fill_exp fill_field_vals fill_blocks fill_brs fill_optional_exp fill_read
   fill_mod fill_unit fill_def fill_tele fill_body fill_fields fill_cmd : mctt.

@@ -254,7 +254,7 @@ Section Fixed_GCtx.
   (** Each neutral projection is the projection of the neutral at the
       field's type, at the parameters and the projections before it; the
       proof [⋆ᵈ] at a field of a proposition. *)
-  Lemma eval_nflds_nth : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs ->
+  Lemma eval_neutral_fields_nth : forall ns m fl pre rs, eval_neutral_fields gc_deps gc_stack ns m fl pre rs ->
       forall j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error rs j = Some r ->
       exists a, r = relevant_value a (⇑ a (d_proj g m)) /\ ⟦ T ⟧ env_args nil (ns ++ pre ++ List.firstn j rs) ↘ a.
   Proof.
@@ -281,11 +281,11 @@ Section Fixed_GCtx.
     rewrite (field_index_nth_nodup _ _ _ _ Hnd Hk) in Hi; injection Hi as <-.
     assert (Hkf : List.nth_error (List.firstn (S k) (record_fields R)) k = Some (f, T))
       by (rewrite List.nth_error_firstn; destruct (Nat.ltb_spec k (S k)); [ exact Hk | lia ]).
-    destruct (eval_nflds_nth _ _ _ _ _ E _ _ _ _ Hkf Hrk) as (a & -> & Ea); exists a; split; [ reflexivity |].
+    destruct (eval_neutral_fields_nth _ _ _ _ _ E _ _ _ _ Hkf Hrk) as (a & -> & Ea); exists a; split; [ reflexivity |].
     cbn [List.app] in Ea.
     replace (List.firstn k vs) with (List.firstn k rs); [ exact Ea |].
     assert (Hlk : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
-    pose proof (eval_nflds_length _ _ _ _ _ E) as Hrl; rewrite List.length_firstn in Hrl.
+    pose proof (eval_neutral_fields_length _ _ _ _ _ E) as Hrl; rewrite List.length_firstn in Hrl.
     pose proof (List.Forall2_length Hvs) as Hvl.
     apply List.nth_error_ext; intros j.
     rewrite !List.nth_error_firstn; destruct (Nat.ltb_spec j k) as [Hjk |]; [| reflexivity ].
@@ -296,7 +296,7 @@ Section Fixed_GCtx.
     pose proof (Forall2_nth_both _ _ _ _ _ _ Hvs Hj Hv) as Hpv; cbn [fst] in Hpv.
     assert (Hpw : eval_proj gc_deps gc_stack g (⇑ (d_record p ns) m) w).
     { econstructor; [ exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hj) | |].
-      - pose proof (eval_nflds_firstn _ _ _ _ _ E (S j)) as Ej.
+      - pose proof (eval_neutral_fields_firstn _ _ _ _ _ E (S j)) as Ej.
         rewrite List.firstn_firstn, Nat.min_l in Ej by lia; exact Ej.
       - rewrite List.nth_error_firstn; destruct (Nat.ltb_spec j (S j)); [ exact Hw | lia ]. }
     exact (functional_eval_proj _ _ _ _ Hpw Hpv).

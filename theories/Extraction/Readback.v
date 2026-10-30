@@ -165,7 +165,7 @@ Proof. intros; rewrite fleaf_wrap_f_erase; reflexivity. Qed.
 
 (** The operations on fast values, read through their erasure equations *)
 #[local] Opaque fleaf_vars_f fleaf_wrap_f fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args
-  fdlvl_suc fdlvl_max fdlvl_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
+  fdomain_level_suc fdomain_level_max fdomain_level_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
 
 (** The erasures of the leaf paths' computations, read as Core ones *)
 Ltac fleaf_norm :=
@@ -199,7 +199,7 @@ Inductive fast_fresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : l
      fast_fresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
 (** A recursive argument's type, then the rest *)
 | fast_fresh_cargs_order_rec_case :
-  `( fast_eval_shty_order Θ Ξ p ups ρ t ->
+  `( fast_eval_shape_type_order Θ Ξ p ups ρ t ->
      fast_fresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      fast_fresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
 
@@ -219,21 +219,21 @@ Inductive fast_fresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list 
     container's *)
 | fast_fresh_ihs_order_rec_case :
   `( ind_lookup Θ Ξ p = Some D ->
-     ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = false ->
+     ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t)) = false ->
      fast_eval_ihty_order Θ Ξ p ups ρ As ρa t v ->
      (forall as', ⟦ihtyᶠ v of t at p ups under ρ As ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
-        List.length as' = List.length (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))) ->
+        List.length as' = List.length (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))) ->
      (forall as', ⟦ihtyᶠ v of t at p ups under ρ As ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
         fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs
-          (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s) + s)) ->
+          (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s) + s)) ->
      fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
 (** Recursive in both, no result read: the rest after the variables *)
 | fast_fresh_ihs_order_skip :
   `( ind_lookup Θ Ξ p = Some D ->
-     ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t)) = true ->
+     ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t)) = true ->
      fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs
-       (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
-                       (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s) + s) ->
+       (List.length (leaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))
+                       (List.repeat 𝕌ω@0 (List.length (shape_leaves (rview_leaves D) 0 t))) s) + s) ->
      fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
 (** Nested through: the rest *)
 | fast_fresh_ihs_order_nest :
@@ -252,12 +252,12 @@ Inductive fast_wrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) 
   `( ind_lookup Θ Ξ p = Some D ->
      fast_eval_ih_order Θ Ξ ρ p ups Bks t v ->
      (forall rs, ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-        List.length rs = List.length (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) /\
-        List.length (List.filter (fun b => b) (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)))
+        List.length rs = List.length (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) /\
+        List.length (List.filter (fun b => b) (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)))
           <= List.length ihs) ->
      (forall rs, ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
         fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs
-          (snd (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs))) ->
+          (snd (leaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs))) ->
      fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
 (** Nested through: the eliminator at the argument, then the rest *)
 | fast_wrap_ihs_order_nest :
@@ -311,7 +311,7 @@ Section FreshImpl.
   #[local] Abbreviation Ξ := (fc_stack F).
 
   #[local]
-  Ltac fr_rel :=
+  Ltac fast_readback_obligation_rel :=
     repeat match goal with
       | H : fast_fresh_tele_order _ _ _ _ _ |- _ => progressive_invert H
       | H : fast_fresh_cargs_order _ _ _ _ _ _ _ |- _ => progressive_invert H
@@ -350,19 +350,19 @@ Section FreshImpl.
 
   (** The erasures read as Core values, and the results' two parts apart *)
   #[local]
-  Ltac fr_norm :=
+  Ltac fast_readback_obligation_norm :=
     intros; cbv beta iota in *; cbn [fst snd] in *; ferase_norm; fleaf_norm; ferase_norm;
     repeat match goal with H : _ /\ _ |- _ => destruct H end.
 
   #[local]
-  Ltac fr_obl :=
-    fr_norm;
+  Ltac fast_readback_obligation :=
+    fast_readback_obligation_norm;
     lazymatch goal with
-    | |- _ /\ _ => split; [ fr_rel | ok_solve ]
+    | |- _ /\ _ => split; [ fast_readback_obligation_rel | ok_solve ]
     | |- Forall _ _ => ok_solve
     | |- fenv_ok _ _ _ => ok_solve
     | |- fdomain_ok _ _ _ => ok_solve
-    | |- _ => fr_rel
+    | |- _ => fast_readback_obligation_rel
     end.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
@@ -374,7 +374,7 @@ Section FreshImpl.
       let (vs, Hvs) := fast_fresh_tele_impl (fextend_env ρ (fd_neut a (fd_var s))) T (S s) _ _ in
       exist _ (fd_neut a (fd_var s) :: vs) _
   | ρ, _, s, Hρ, H => False_rect _ _.
-  Solve All Obligations with fr_obl.
+  Solve All Obligations with fast_readback_obligation.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations fast_fresh_cargs_impl p (ups : list fdomain) (ρ : fenv) gs s (Hups : Forall (fdomain_ok Θ Ξ) ups) (Hρ : fenv_ok Θ Ξ ρ)
@@ -386,10 +386,10 @@ Section FreshImpl.
       let (vs, Hvs) := fast_fresh_cargs_impl p ups (fextend_env ρ (fd_neut a (fd_var s))) gs (S s) Hups _ _ in
       exist _ (fd_neut a (fd_var s) :: vs) _
   | p, ups, ρ, ca_rec t :: gs, s, Hups, Hρ, H =>
-      let (a, Ha) := fast_eval_shty_impl F p ups ρ t Hups Hρ _ in
+      let (a, Ha) := fast_eval_shape_type_impl F p ups ρ t Hups Hρ _ in
       let (vs, Hvs) := fast_fresh_cargs_impl p ups ρ gs (S s) Hups Hρ _ in
       exist _ (fd_neut a (fd_var s) :: vs) _.
-  Solve All Obligations with fr_obl.
+  Solve All Obligations with fast_readback_obligation.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   (** The recursive results' variables of a stuck eliminator's branch, at
@@ -405,25 +405,25 @@ Section FreshImpl.
       let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B (fextend_env ρa v) gs' gs vs s D Ed Hρ Hups _ _ _ in
       exist _ ihs _
   | ρ, As, p, ups, Dc, B, ρa, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H
-        with inspect (ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) := {
+        with inspect (ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t))) := {
       (** The branch reads none of the argument's results: their types are
           not computed. *)
       | exist _ true E =>
           let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
-                               (List.length (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
-                                               (List.repeat (fd_univ 0) (List.length (shape_leaves (rv_leaves D) 0 t))) s) + s) D Ed Hρ Hups Hρa _ _ in
-          exist _ (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
-                     (List.repeat (fd_univ 0) (List.length (shape_leaves (rv_leaves D) 0 t))) s ++ ihs) _
+                               (List.length (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))
+                                               (List.repeat (fd_univ 0) (List.length (shape_leaves (rview_leaves D) 0 t))) s) + s) D Ed Hρ Hups Hρa _ _ in
+          exist _ (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))
+                     (List.repeat (fd_univ 0) (List.length (shape_leaves (rview_leaves D) 0 t))) s ++ ihs) _
       | exist _ false E =>
           let (as', Has) := fast_eval_ihty_impl F p ups ρ As ρa t v Hups Hρ Hρa _ _ in
           let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
-                               (List.length (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s) + s) D Ed Hρ Hups Hρa _ _ in
-          exist _ (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s ++ ihs) _ }
+                               (List.length (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s) + s) D Ed Hρ Hups Hρa _ _ in
+          exist _ (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s ++ ihs) _ }
   | ρ, As, p, ups, Dc, B, ρa, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H =>
       let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs s D Ed Hρ Hups Hρa _ _ in
       exist _ ihs _
   | ρ, As, p, ups, Dc, B, ρa, _, _, _, s, D, Ed, Hρ, Hups, Hρa, Hvs, H => False_rect _ _.
-  Solve All Obligations with fr_obl.
+  Solve All Obligations with fast_readback_obligation.
 
   (** The recursive results a stuck eliminator's branch is read under, at
       the declaration [D] of the group the readback holds *)
@@ -438,8 +438,8 @@ Section FreshImpl.
   | ρ, p, ups, Bks, Dc, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, ihs, D, Ed, Hρ, Hups, Hvs, Hihs, H =>
         let (rs, Hrs) := fast_eval_ih_impl F ρ p ups Bks t v D Ed Hρ Hups _ _ in
         let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs
-                         (snd (fleaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs)) D Ed Hρ Hups _ _ _ in
-        exist _ (fst (fleaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs) ++ r) _
+                         (snd (fleaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs)) D Ed Hρ Hups _ _ _ in
+        exist _ (fst (fleaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs) ++ r) _
   | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, ihs, D, Ed, Hρ, Hups, Hvs, Hihs, H =>
         let (rs, Hrs) := fast_eval_ih_impl F ρ p ups Bks t v D Ed Hρ Hups _ _ in
         let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs D Ed Hρ Hups _ Hihs _ in
@@ -448,7 +448,7 @@ Section FreshImpl.
       let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs D Ed Hρ Hups _ Hihs _ in
       exist _ r _
   | ρ, p, ups, Bks, Dc, _, _, _, _, D, Ed, Hρ, Hups, Hvs, Hihs, H => False_rect _ _.
-  Solve All Obligations with fr_obl.
+  Solve All Obligations with fast_readback_obligation.
 End FreshImpl.
 
 (** ** The Orders of Readback *)
@@ -558,11 +558,11 @@ with fast_read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      ind_lookup Θ Ξ pc = Some Dq ->
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
-     blocks_nm_at D None Bks ->
+     blocks_binder_count_at D None Bks ->
      rview_leaf_arity D ->
      fast_eval_mref_order Θ Ξ p ups j ->
      (forall pre, ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pc, k, pre) -> fast_read_ps_order Θ Ξ s nil (List.rev (ind_uparams Dq)) pre) ->
-     fast_read_blocks_order Θ Ξ s ρ p ups Bks Dq (im_sel Mj) 0 (ind_bmembers Dq) ->
+     fast_read_blocks_order Θ Ξ s ρ p ups Bks Dq (im_sel Mj) 0 (ind_block_members Dq) ->
      fast_read_ne_order Θ Ξ s m ->
      fast_read_ne_order Θ Ξ s (d_elim ρ Bks p ups j as' m) )
 (** The field of a neutral *)
@@ -682,7 +682,7 @@ with fast_read_blocks_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> 
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
      List.nth_error Bks (elim_src sel i) = Some b ->
-     Nat.eqb (eb_nm b) (S (im_nn Mi)) = true ->
+     Nat.eqb (eb_binder_count b) (S (im_nn Mi)) = true ->
      fast_eval_mref_order Θ Ξ p ups (elim_src sel i) ->
      fast_fresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
      (forall pk k pre ns, ⟦mrefᶠ elim_src sel i of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pk, k, pre) ->
@@ -709,8 +709,8 @@ with fast_read_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> lis
   `( ind_con Mv c = Some gs ->
      Nat.eqb n0 (im_nn Mi + List.length gs' + cargs_nrec D gs)%nat = true ->
      ind_lookup Θ Ξ p = Some D ->
-     cargs_nin D Dc gs' gs = cargs_nrec Dc gs' ->
-     cargs_plen D gs ->
+     cargs_container_count D Dc gs' gs = cargs_nrec Dc gs' ->
+     cargs_params_length D gs ->
      fast_fresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
      (forall ns,
          Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
@@ -836,7 +836,7 @@ Lemma fast_read_nf_con_view_last : forall Θ Ξ s p D j Mj qc k Is vm c gs as' v
 Proof. intros; subst; eapply fast_read_nf_con_view; try eassumption; lia. Qed.
 
 #[local]
-Ltac impl_obl_tac1 :=
+Ltac impl_obligation_tac1 :=
   match goal with
   | H : fast_read_nf_order _ _ _ _ |- _ => progressive_invert H
   | H : fast_read_ne_order _ _ _ _ |- _ => progressive_invert H
@@ -860,7 +860,7 @@ Variable F : FCtx.
 #[local] Abbreviation Ξ := (fc_stack F).
 
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdomain_nf_ok Θ Ξ d)
+Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd : fdomain_nf_ok Θ Ξ d)
     (H : fast_read_nf_order Θ Ξ s (fdomain_nf_erase d)) : { m | Rnfᶠ fdomain_nf_erase d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, fd_dom (fd_univ i) a, ck, Hd, H =>
     let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
@@ -937,7 +937,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
 (** No other value has a readback order *)
 | s, _, ck, Hd, H => False_rect _ _
 
-  with fast_read_ne_impl_c s (d : fdomain_ne) (ck : lk_cache Θ Ξ) (Hd : fdomain_ne_ok Θ Ξ d)
+  with fast_read_ne_impl_c s (d : fdomain_ne) (ck : lookup_cache Θ Ξ) (Hd : fdomain_ne_ok Θ Ξ d)
       (H : fast_read_ne_order Θ Ξ s (fdomain_ne_erase d)) : { m | Rneᶠ fdomain_ne_erase d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, fd_var x, ck, Hd, H => exist _ #ⁿ (s - x - 1) _
 | s, fd_glob p, ck, Hd, H => exist _ (ne_glob p) _
@@ -957,7 +957,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
         | inleft (exist _ Dq Edq) with fast_eval_mref_impl F p ups j _ _ := {
           | exist _ (mk_fast_member_reference _ _ _ pre) Hm =>
               let (Us, HUs) := fast_read_ps_impl_c s nil (List.rev (ind_uparams Dq)) pre ck _ _ _ in
-              let (NBks, HNBks) := fast_read_blocks_impl_c s ρ p ups Bks Dq (im_sel Mj) 0 (ind_bmembers Dq)
+              let (NBks, HNBks) := fast_read_blocks_impl_c s ρ p ups Bks Dq (im_sel Mj) 0 (ind_block_members Dq)
                                      D (fdomain_ne_ok_elim_decl _ _ _ _ _ _ _ _ _ _ Hd)
                                      (Some (exist _ (p, D) (fdomain_ne_ok_elim_decl _ _ _ _ _ _ _ _ _ _ Hd))) _ _ _ in
               let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
@@ -968,7 +968,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
     let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
     exist _ (ne_proj f M) _
 
-  with fast_read_typ_impl_c s (d : fdomain) (ck : lk_cache Θ Ξ) (Hd : fdomain_ok Θ Ξ d)
+  with fast_read_typ_impl_c s (d : fdomain) (ck : lookup_cache Θ Ξ) (Hd : fdomain_ok Θ Ξ d)
       (H : fast_read_typ_order Θ Ξ s (fdomain_erase d)) : { m | Rtypᶠ fdomain_erase d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, fd_univ i, ck, Hd, H => exist _ Typeωⁿ@i _
 | s, fd_suniv l, ck, Hd, H =>
@@ -1001,7 +1001,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
 (** No other value has a readback order as a type *)
 | s, _, ck, Hd, H => False_rect _ _
 
-  with fast_read_level_atoms_impl_c s (xs : list (nat * nat * fdomain_ne)) (ck : lk_cache Θ Ξ)
+  with fast_read_level_atoms_impl_c s (xs : list (nat * nat * fdomain_ne)) (ck : lookup_cache Θ Ξ)
       (Hxs : Forall (fun ka => fdomain_ne_ok Θ Ξ (snd ka)) xs)
       (H : fast_read_level_atoms_order Θ Ξ s (List.map (fun ka => (fst ka, fdomain_ne_erase (snd ka))) xs)) :
       { ys | Rlaᶠ List.map (fun ka => (fst ka, fdomain_ne_erase (snd ka))) xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
@@ -1011,7 +1011,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
     let (ys, Hys) := fast_read_level_atoms_impl_c s xs ck _ _ in
     exist _ (cons (mk_level_atom k n M) ys) _
 
-  with fast_read_ps_impl_c s (ρ : fenv) T (vs : list fdomain) (ck : lk_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ)
+  with fast_read_ps_impl_c s (ρ : fenv) T (vs : list fdomain) (ck : lookup_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ)
       (Hvs : Forall (fdomain_ok Θ Ξ) vs) (H : fast_read_ps_order Θ Ξ s (fenv_erase ρ) T (fdomains_erase vs)) :
       { Ms | Rpsᶠ fdomains_erase vs at T in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ Ms } by struct H :=
 | s, ρ, nil, nil, ck, Hρ, Hvs, H => exist _ nil _
@@ -1022,7 +1022,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
     exist _ (cons V Vs) _
 | s, ρ, _, _, ck, Hρ, Hvs, H => False_rect _ _
 
-  with fast_read_fields_impl_c s (ρ : fenv) fl (v : fdomain) (ck : lk_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ) (Hv : fdomain_ok Θ Ξ v)
+  with fast_read_fields_impl_c s (ρ : fenv) fl (v : fdomain) (ck : lookup_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ) (Hv : fdomain_ok Θ Ξ v)
       (H : fast_read_fields_order Θ Ξ s (fenv_erase ρ) fl (fdomain_erase v)) :
     { Fs | Rfldsᶠ fdomain_erase v at fl in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ Fs } by struct H :=
 | s, ρ, nil, v, ck, Hρ, Hv, H => exist _ nil _
@@ -1033,7 +1033,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
     let (Vs, HVs) := fast_read_fields_impl_c s (fextend_env ρ r) fl v ck _ Hv _ in
     exist _ (cons V Vs) _
 
-  with fast_read_cargs_impl_c s p (ups : list fdomain) (ρ : fenv) gs (vs : list fdomain) (ck : lk_cache Θ Ξ)
+  with fast_read_cargs_impl_c s p (ups : list fdomain) (ρ : fenv) gs (vs : list fdomain) (ck : lookup_cache Θ Ξ)
       (Hups : Forall (fdomain_ok Θ Ξ) ups) (Hρ : fenv_ok Θ Ξ ρ) (Hvs : Forall (fdomain_ok Θ Ξ) vs)
       (H : fast_read_cargs_order Θ Ξ s p (fdomains_erase ups) (fenv_erase ρ) gs (fdomains_erase vs)) :
     { Ms | Rcargsᶠ fdomains_erase vs at gs of p (fdomains_erase ups) in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ Ms } by struct H :=
@@ -1049,7 +1049,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
     exist _ (cons V Vs) _
 | s, p, ups, ρ, _, _, ck, Hups, Hρ, Hvs, H => False_rect _ _
 
-  with fast_read_shape_impl_c s p (ups : list fdomain) (ρ : fenv) t (v : fdomain) (ck : lk_cache Θ Ξ)
+  with fast_read_shape_impl_c s p (ups : list fdomain) (ρ : fenv) t (v : fdomain) (ck : lookup_cache Θ Ξ)
       (Hups : Forall (fdomain_ok Θ Ξ) ups) (Hρ : fenv_ok Θ Ξ ρ) (Hv : fdomain_ok Θ Ξ v)
       (H : fast_read_shape_order Θ Ξ s p (fdomains_erase ups) (fenv_erase ρ) t (fdomain_erase v)) :
     { V | Rshᶠ fdomain_erase v at t of p (fdomains_erase ups) in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ V } by struct H :=
@@ -1067,7 +1067,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
   (** The blocks of a stuck eliminator, at the declaration [D] of its
       group *)
   with fast_read_blocks_impl_c s (ρ : fenv) p (ups : list fdomain) Bks Dc sel i Ms (D : ind_decl) (Ed : ind_lookup Θ Ξ p = Some D)
-      (ck : lk_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ) (Hups : Forall (fdomain_ok Θ Ξ) ups)
+      (ck : lookup_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ) (Hups : Forall (fdomain_ok Θ Ξ) ups)
       (H : fast_read_blocks_order Θ Ξ s (fenv_erase ρ) p (fdomains_erase ups) Bks Dc sel i Ms) :
     { NBks | Rblksᶠ i Ms of Dc from p (fdomains_erase ups) Bks sel in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ NBks } by struct H :=
 | s, ρ, p, ups, Bks, Dc, sel, i, nil, D, Ed, ck, Hρ, Hups, H => exist _ nil _
@@ -1089,7 +1089,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lk_cache Θ Ξ) (Hd : fdo
 
   (** The branches of a block, at the declaration [D] of the group *)
   with fast_read_brs_impl_c s (ρ : fenv) p (ups : list fdomain) Bks Dc Mv A Mi (r : fast_member_reference) cs Bs
-         (D : ind_decl) (Ed : ind_lookup Θ Ξ p = Some D) (ck : lk_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ) (Hups : Forall (fdomain_ok Θ Ξ) ups)
+         (D : ind_decl) (Ed : ind_lookup Θ Ξ p = Some D) (ck : lookup_cache Θ Ξ) (Hρ : fenv_ok Θ Ξ ρ) (Hups : Forall (fdomain_ok Θ Ξ) ups)
          (Hr : fast_member_reference_ok Θ Ξ r)
          (H : fast_read_brs_order Θ Ξ s (fenv_erase ρ) p (fdomains_erase ups) Bks Dc Mv A Mi (fast_member_reference_erase r) cs Bs) :
     { Bs' | Rbrsᶠ Bs at cs of Mi (fast_member_reference_erase r) of Dc from p (fdomains_erase ups) Bks Mv A
@@ -1164,7 +1164,7 @@ Ltac readback_glob :=
 
 #[local]
 Ltac readback_order :=
-  repeat impl_obl_tac1; rewrite ?List.length_map in *; readback_glob;
+  repeat impl_obligation_tac1; rewrite ?List.length_map in *; readback_glob;
   first [ eassumption
         (** A readback under a binder: the order of the body is a premise
             quantified over the results of the evaluations above it. *)
@@ -1174,13 +1174,13 @@ Ltac readback_order :=
 Ltac readback_eqb := repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end.
 
 #[local]
-Ltac readback_run := repeat impl_obl_tac1; rewrite ?List.length_map in *; readback_glob; readback_eqb; econstructor; eassumption.
+Ltac readback_run := repeat impl_obligation_tac1; rewrite ?List.length_map in *; readback_glob; readback_eqb; econstructor; eassumption.
 
 (** The rules of inductive types have premises the order records under
     quantifiers, and lookups the order rules out when they fail. *)
 #[local]
 Ltac readback_ind :=
-  repeat impl_obl_tac1; rewrite ?List.length_map in *; readback_glob; readback_eqb;
+  repeat impl_obligation_tac1; rewrite ?List.length_map in *; readback_glob; readback_eqb;
   first [ congruence
         (** The number of values, read on the fast values *)
         | solve [ eapply fast_read_nf_con_view_last; try eassumption; rewrite ?List.length_map in *;

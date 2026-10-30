@@ -7,7 +7,7 @@ proposal with its cost, not implemented.
 ## 1. The idea
 
 Today's elaborator keeps three kinds of state and three searches: local
-binders (`lbind`, `lb_lookup`), a stack of open frames (`sframe`, `ustate`,
+binders (`lbind`, `lb_lookup`), a stack of open frames (`sframe`, `unit_result`,
 `fr_lookup`, `preapp`) and per-frame import scopes (`sscope`, `starget`,
 `alias_lookup`). The searches have no priority between them, so the spec needs
 the invariant `sf_wf` (one binding per name per frame) to be functional, and
@@ -40,7 +40,7 @@ Two facts make this enough:
 * **No frame stack.** `elab_cmd` elaborates the body of `module x … where body
   end` by recursion where it stands, then binds `x`. Frames are just the
   segment `F` of the scope that the current module has bound (needed for the
-  freshness check only). `ustate`, `us_open`, `us_close`, `us_top`,
+  freshness check only). `unit_result`, `us_open`, `us_close`, `us_top`,
   `"unbalanced modules"` and `"no module to close"` disappear.
 
 The spec (`ElabSpec.v`) is a homomorphism on every constructor except the two
@@ -57,7 +57,7 @@ property the proof must preserve.
 | Names → de Bruijn | `lb_lookup`, `fr_lookup`, `alias_lookup`; three searches, unordered, need `sf_wf` | one `lookup` over `list ent`, first match (`bound`) | 0 |
 | Term vs module by position | `spec_exp`/`spec_modexp` | same | 0 |
 | Pre-application of open-frame members | `preapp`, `tele`, `vars_desc off (tele …)`, offsets in `fbind` | `vars_desc k n` read off the entry's position | 0 (removal: option O6, large) |
-| Open frames | `sframe` stack in `ustate`, open/close | none; body elaborated by structural recursion | 0 |
+| Open frames | `sframe` stack in `unit_result`, open/close | none; body elaborated by structural recursion | 0 |
 | `import … as y` / `use (n)` | `sscope`, `starget`, `wk_starget`, `ss_add`, `ibinds`, `use_binds` over a separate alias list | entries `en_as`/`en_use`, weakened by `k` at use (`mwk E k`) | 0 (move: options O2/O3) |
 | Unit reachability | `ss_units` in every frame scope + leading scope, `unit_in` | `en_unit fq` entry, `In (en_unit fq) S` | 0 (move: option O5) |
 | One binding per name per frame | `sf_wf`/`ss_wf` invariants, `NoDup` over aliases ++ members ++ params, preservation lemmas | premise `fresh x F`; no invariant | 0 (move: option O4) |
@@ -236,7 +236,7 @@ Line estimates are for the current core; the core is being refactored on
   check is redundant there; dropping it splits one language rule over two
   layers and changes the message (`duplicate name x`). (b) Parameter vs
   member and duplicate parameters cannot move: core contexts are nameless.
-  Giving `core_cmd_mod`/`core_cmd_alias`/`cunit` parameter names and the stack a name list
+  Giving `core_cmd_mod`/`core_cmd_alias`/`core_unit` parameter names and the stack a name list
   touches `gstack`, i.e. all of typing. **Keep the check in the elaborator**:
   without the invariant it is one premise per declaring rule.  *Historical:
   since `wip/elab-perf` (2026-10-28), (a) is done (the core's message is

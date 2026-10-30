@@ -115,7 +115,7 @@ Section ElimTarget.
         match ind_lookup Θ Ξ pq with
         | Some D =>
             if view_of D m pc k && blocks_fit D Bks
-            then match img_pats (List.repeat true d) (List.firstn (ind_nu D) As) with
+            then match image_pats (List.repeat true d) (List.firstn (ind_nu D) As) with
                  | Some Us => (pq, Us) :: rest
                  | None => rest
                  end

@@ -609,7 +609,7 @@ Fixpoint cargs_nonrec_relevance (gs : list carg) : list relevance :=
   | ca_rec _ :: gs => cargs_nonrec_relevance gs
   end.
 
-(** The views of a group with its members as variables ([grp_sctx]),
+(** The views of a group with its members as variables ([grp_selfs_ctx]),
     read in the PER model: [views_self_typed], each judgment semantic.  The
     instances [IsS] are the views' arguments before the group is filed;
     the filed ones are their images by [grp_sb] ([views_self_valid_link]). *)
@@ -624,7 +624,7 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
   ; views_self_valid_is : forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> nth_error (IsS k) j = Some I ->
       nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
-      grp_sctx D ⊨ I : T
+      grp_selfs_ctx D ⊨ I : T
     (** The view a view maps a container view to has, as instance, the
         container view's arguments at this view's instance *)
   ; views_self_valid_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
@@ -635,22 +635,22 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
       nth_error (IsS v) j' = Some C ->
       nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
       nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
-      grp_sctx D ⊨ C ≈ C' : T[sb_of_list Id (IsS k)]
+      grp_selfs_ctx D ⊨ C ≈ C' : T[sb_of_list Id (IsS k)]
     (** A mapped member's non-uniform parameters are the container
         member's at the instance *)
   ; views_self_valid_nparams : forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv ->
-      grp_sctx D ⊨ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))
+      grp_selfs_ctx D ⊨ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))
     (** A mapped member's constructor arguments are the container
         member's at the instance *)
   ; views_self_valid_args : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
-      tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
-        ⊨ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs
+      tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
+        ⊨ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ self_cargs_ctx D IsS Mv gs
     (** The shapes' domains of corresponding recursive arguments agree at
         the instance *)
   ; views_self_valid_doms : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
@@ -659,8 +659,8 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
       gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
       d < ptyp_depth t ->
-      exists i : nat, tele_wk (sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
-                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+      exists i : nat, tele_wk (shape_domains_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ self_cargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
         ⊨ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
         ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i
     (** The parameters of corresponding recursive arguments agree at the
@@ -674,34 +674,34 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
       nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
       nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                    (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
-      tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
-                ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+      tele_wk (shape_domains_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                ++ self_cargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
         ⊨ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
         ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
         : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
     (** The container's sort at the instance is below the group's *)
   ; views_self_valid_sort : forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' ->
-      grp_sctx D ⊨ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ
+      grp_selfs_ctx D ⊨ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ
     (** Each record view's instance is its [IsS] instance with the members
         sent to the group's own type formers *)
-  ; views_self_valid_rlink : forall mp, ind_mpath D 0 = Some mp ->
+  ; views_self_valid_record_link : forall mp, ind_mpath D 0 = Some mp ->
       forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
     (** Each record view's instance argument is valid at the record's
         parameters, over the members as variables *)
-  ; views_self_valid_ris : forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  ; views_self_valid_record_instances : forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       record_lookup gc_deps gc_stack qr = Some R -> nth_error (IsS k) j = Some I ->
       nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
-      grp_sctx D ⊨ I : T
+      grp_selfs_ctx D ⊨ I : T
     (** The record's fields at a record view's instance are the view's
         classified ones (the record view equations) *)
-  ; views_self_valid_rfields : forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  ; views_self_valid_record_fields : forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       record_lookup gc_deps gc_stack qr = Some R -> im_cons Mk = (c, gs) :: nil ->
-      grp_sctx D ⊨ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k)) ≈ scargs_ctx D IsS Mk gs
+      grp_selfs_ctx D ⊨ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k)) ≈ self_cargs_ctx D IsS Mk gs
     (** A record view's type is in the group's sort *)
-  ; views_self_valid_rtype : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
-      grp_sctx D ⊨ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ }.
+  ; views_self_valid_record_type : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      grp_selfs_ctx D ⊨ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ }.
 
 (** A semantically valid group (see above). *)
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
@@ -718,7 +718,7 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 ; valid_ind_decl_ty : forall k Mk, ind_member D k = Some Mk -> exists i, ⋅ ⊨ ind_ty D Mk : Typeω@i
 (** Each non-uniform parameter is a valid type of the sort, and a type,
     over those before it *)
-; valid_ind_decl_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
+; valid_ind_decl_nparams : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
     nparams_prefix Mk j ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn j]ʷ /\
     exists i, nparams_prefix Mk j ++ ind_uparams D ⊨ A : Typeω@i
 (** Each prefix of a constructor's non-recursive arguments is a valid
@@ -753,7 +753,7 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
       ⊨ B : Typeω@i
 (** Each recursive argument gives its member as many parameters as it
     has *)
-; valid_ind_decl_plen : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> cargs_plen D gs
+; valid_ind_decl_params_length : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> cargs_params_length D gs
 (** The contexts of a shape's domains are valid *)
 ; valid_ind_decl_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->

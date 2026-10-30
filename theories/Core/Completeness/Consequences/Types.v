@@ -190,7 +190,7 @@ Proof.
   destruct Histyp;
     [ assert (a = 𝕌ω@i0) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌@(dlvl_lit n)) as ->
+    | assert (a = 𝕌@(domain_level_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
     | inversion Ha; subst
     | assert (a = ⊤ᵈ) as ->
@@ -231,7 +231,7 @@ Proof.
   destruct Histyp;
     [ assert (a = 𝕌ω@i0) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌@(dlvl_lit n)) as ->
+    | assert (a = 𝕌@(domain_level_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
     | inversion Ha; subst
     | assert (a = ⊤ᵈ) as ->
@@ -260,12 +260,12 @@ Proof.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
   destruct (rel_typ_under_ctx_at_initial_env Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a' = 𝕌@(dlvl_lit n)) as ->
+  assert (a' = 𝕌@(domain_level_lit n)) as ->
       by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_univ, eval_exp_llit ]).
   destruct Histyp;
     [ assert (a = 𝕌ω@i) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌@(dlvl_lit n0)) as ->
+    | assert (a = 𝕌@(domain_level_lit n0)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
     | inversion Ha; subst
     | assert (a = ⊤ᵈ) as ->

@@ -152,7 +152,7 @@ Proof. intros * H1 H2 a Ha; apply in_app_or in Ha as [Ha | Ha]; auto. Qed.
 
 (** The neutral projections of the fields of a neutral of a record type,
     one more: the next one at its type, then the rest after it. *)
-Lemma nflds_cons_clean : forall t m g rs pre ns,
+Lemma neutral_fields_cons_clean : forall t m g rs pre ns,
     domain_clean t -> (forall x, In x ns -> domain_clean x) -> domain_ne_clean m -> (forall x, In x pre -> domain_clean x) ->
     ((forall x, In x ns -> domain_clean x) -> domain_ne_clean m ->
        (forall y, In y (pre ++ relevant_value t (⇑ t (d_proj g m)) :: nil) -> domain_clean y) -> forall z, In z rs -> domain_clean z) ->
@@ -174,7 +174,7 @@ Proof. intros; constructor; intros ? []. Qed.
 
 (** The atoms a level value is built of.  The flat view of a neutral is the
     single atom [(0, m)], so the level operations preserve the property. *)
-Lemma level_atoms_clean_view : forall d, domain_clean d -> level_atoms_clean (dlvl_atoms d).
+Lemma level_atoms_clean_view : forall d, domain_clean d -> level_atoms_clean (domain_level_atoms d).
 Proof. destruct 1; cbn; repeat constructor; assumption. Qed.
 
 Lemma level_atoms_clean_suc : forall xs, level_atoms_clean xs -> level_atoms_clean (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs).
@@ -187,14 +187,14 @@ Proof. induction 1; cbn; intros; [ assumption | constructor; auto ]. Qed.
 Lemma domain_clean_relevant_value : forall a v, domain_clean v -> domain_clean (relevant_value a v).
 Proof. intros * Hv; unfold relevant_value; destruct (domain_relevance a); [ exact Hv | constructor ]. Qed.
 
-Lemma domain_clean_lvl_lit : forall n, domain_clean (dlvl_lit n).
+Lemma domain_clean_lvl_lit : forall n, domain_clean (domain_level_lit n).
 Proof. intros; repeat constructor. Qed.
 
-Lemma domain_clean_lvl_suc : forall d, domain_clean d -> domain_clean (dlvl_suc d).
-Proof. intros; unfold dlvl_suc; constructor; apply level_atoms_clean_suc, level_atoms_clean_view; assumption. Qed.
+Lemma domain_clean_lvl_suc : forall d, domain_clean d -> domain_clean (domain_level_suc d).
+Proof. intros; unfold domain_level_suc; constructor; apply level_atoms_clean_suc, level_atoms_clean_view; assumption. Qed.
 
-Lemma domain_clean_lvl_max : forall d e, domain_clean d -> domain_clean e -> domain_clean (dlvl_max d e).
-Proof. intros; unfold dlvl_max; constructor; apply level_atoms_clean_app; apply level_atoms_clean_view; assumption. Qed.
+Lemma domain_clean_lvl_max : forall d e, domain_clean d -> domain_clean e -> domain_clean (domain_level_max d e).
+Proof. intros; unfold domain_level_max; constructor; apply level_atoms_clean_app; apply level_atoms_clean_view; assumption. Qed.
 
 #[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_extend_dm env_clean_var env_clean_mod
   env_clean_args clean_app_snoc dmclean_global_nil env_clean_entry : mctt.
@@ -204,34 +204,34 @@ Proof. intros; unfold dlvl_max; constructor; apply level_atoms_clean_app; apply 
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
     [Hint Resolve] their conclusions would match a goal about an unknown
-    value, since [dlvl_suc] and [dlvl_max] unfold to a flat level. *)
-#[local] Hint Extern 1 (domain_clean (dlvl_lit _)) => apply domain_clean_lvl_lit : mctt.
-#[local] Hint Extern 1 (domain_clean (dlvl_suc _)) => apply domain_clean_lvl_suc : mctt.
-#[local] Hint Extern 1 (domain_clean (dlvl_max _ _)) => apply domain_clean_lvl_max : mctt.
+    value, since [domain_level_suc] and [domain_level_max] unfold to a flat level. *)
+#[local] Hint Extern 1 (domain_clean (domain_level_lit _)) => apply domain_clean_lvl_lit : mctt.
+#[local] Hint Extern 1 (domain_clean (domain_level_suc _)) => apply domain_clean_lvl_suc : mctt.
+#[local] Hint Extern 1 (domain_clean (domain_level_max _ _)) => apply domain_clean_lvl_max : mctt.
 
 (** A member of a suffix is a member of the list. *)
 Lemma in_skipn_in : forall {A : Type} n (l : list A) x, In x (List.skipn n l) -> In x l.
 Proof. intros A n; induction n as [| n IH]; intros [| y l] x H; cbn in H; auto; right; exact (IH _ _ H). Qed.
 
-(** The premises of a clean value built of clean ones ([clean_prem]), and
+(** The premises of a clean value built of clean ones ([clean_premise]), and
     the members of a list of clean values ([clean_in]): along the list's
     structure, then by the hypothesis about the list. *)
-Ltac clean_prem :=
+Ltac clean_premise :=
   first [ assumption
         | apply env_clean_nil
-        | solve [ apply env_clean_extend; clean_prem ]
-        | solve [ apply env_clean_args; [ clean_prem | intros ? ?; clean_in ] ]
+        | solve [ apply env_clean_extend; clean_premise ]
+        | solve [ apply env_clean_args; [ clean_premise | intros ? ?; clean_in ] ]
         | match goal with H : forall a, In a (?x :: _) -> domain_clean a |- domain_clean ?x => apply H; left; reflexivity end
         | match goal with H : forall a, In a (_ :: ?l) -> domain_clean a |- forall a, In a ?l -> domain_clean a =>
             exact (all_in_tail _ _ _ H) end
         | match goal with H : context [ forall a, In a ?l -> domain_clean a ] |- forall a, In a ?l -> domain_clean a =>
-            solve [ apply H; clean_prem ] end
+            solve [ apply H; clean_premise ] end
         | match goal with
-          | H : _ -> domain_clean ?r |- domain_clean ?r => solve [ apply H; clean_prem ]
-          | H : _ -> _ -> domain_clean ?r |- domain_clean ?r => solve [ apply H; clean_prem ]
-          | H : _ -> _ -> _ -> domain_clean ?r |- domain_clean ?r => solve [ apply H; clean_prem ]
+          | H : _ -> domain_clean ?r |- domain_clean ?r => solve [ apply H; clean_premise ]
+          | H : _ -> _ -> domain_clean ?r |- domain_clean ?r => solve [ apply H; clean_premise ]
+          | H : _ -> _ -> _ -> domain_clean ?r |- domain_clean ?r => solve [ apply H; clean_premise ]
           end
-        | match goal with |- domain_clean ?x => tryif is_var x then fail else solve [ constructor; clean_prem ] end ]
+        | match goal with |- domain_clean ?x => tryif is_var x then fail else solve [ constructor; clean_premise ] end ]
 with clean_in :=
   match goal with
   | Ha : In ?a (?l1 ++ ?l2) |- domain_clean ?a => apply List.in_app_or in Ha as [Ha | Ha]; clean_in
@@ -240,10 +240,10 @@ with clean_in :=
   | Ha : In ?a ?l, Hu : ups_clean ?l |- domain_clean ?a => exact (Hu _ Ha)
   | Ha : In ?a (List.map _ _) |- domain_clean ?a => apply List.in_map_iff in Ha as (? & <- & _); clean_one
   | Hn : List.nth_error ?l _ = Some ?a, IH : context [ forall b, In b ?l -> domain_clean b ] |- domain_clean ?a =>
-      eapply IH; [ .. | eapply List.nth_error_In; exact Hn ]; clean_prem
-  | Ha : In ?a ?l, IH : context [ forall b, In b ?l -> domain_clean b ] |- domain_clean ?a => eapply IH; [ .. | exact Ha ]; clean_prem
+      eapply IH; [ .. | eapply List.nth_error_In; exact Hn ]; clean_premise
+  | Ha : In ?a ?l, IH : context [ forall b, In b ?l -> domain_clean b ] |- domain_clean ?a => eapply IH; [ .. | exact Ha ]; clean_premise
   end
-with clean_one := first [ clean_prem | solve [ constructor; clean_prem ] ].
+with clean_one := first [ clean_premise | solve [ constructor; clean_premise ] ].
 
 Section Transparent.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -274,12 +274,12 @@ Section Transparent.
     (forall p ups ρm As ρ t v as', ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' -> ups_clean ups -> env_clean ρm ->
        env_clean ρ -> domain_clean v -> forall a, In a as' -> domain_clean a) /\
     (forall f m r, eval_proj Θ Ξ f m r -> domain_clean m -> domain_clean r) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> (forall a, In a ns -> domain_clean a) -> domain_ne_clean m ->
+    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs -> (forall a, In a ns -> domain_clean a) -> domain_ne_clean m ->
        (forall a, In a pre -> domain_clean a) -> forall a, In a rs -> domain_clean a) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> domain_clean v -> forall a, In a ws -> domain_clean a) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' -> ups_clean ups ->
        env_clean ρm -> env_clean ρ -> (forall a, In a vs -> domain_clean a) -> forall a, In a as' -> domain_clean a) /\
-    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> env_clean ρ -> forall a, In a vs -> domain_clean a) /\
+    (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> env_clean ρ -> forall a, In a vs -> domain_clean a) /\
     (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_clean f -> env_clean ρ -> domain_clean r).
   Proof.
     apply (eval_mut_ind Θ Ξ
@@ -348,7 +348,7 @@ Section Transparent.
     all: try solve [ match goal with
       | IHT : env_clean (env_args nil (?ns ++ ?pre)) -> domain_clean ?t,
         Hin : In ?d (relevant_value ?t (⇑ ?t (d_proj _ ?m)) :: ?rs) |- domain_clean ?d =>
-          eapply (nflds_cons_clean t m _ rs pre ns);
+          eapply (neutral_fields_cons_clean t m _ rs pre ns);
             [ apply IHT, env_clean_args; [ exact env_clean_nil | apply clean_app; eassumption ] | eassumption .. ]
       end ].
     all: repeat match goal with
@@ -443,7 +443,7 @@ Section Transparent.
     all: try solve [ apply domain_clean_tuple; intros ? ? Hin;
                      first [ destruct Hin
                            | apply List.in_combine_r, in_skipn_in in Hin; eapply clean_app_snoc; [ eassumption | eassumption | exact Hin ] ] ].
-    all: try solve [ apply domain_clean_record; clean_prem ].
+    all: try solve [ apply domain_clean_record; clean_premise ].
     (* an opaque definition or an axiom *)
     all: try solve [ match goal with H : gc_resolve _ _ _ = Some (ge_def _ _ _ _ _), Ho : _ \/ _ |- _ =>
          destruct (gc_transparent_resolve _ _ _ _ _ _ _ _ Htr H) end; intuition congruence ].
@@ -629,7 +629,7 @@ Section Transparent.
       | H : eval_exps _ _ _ _ ?bs |- _ =>
           let h := fresh "Hs" in
           assert (h : forall x, In x bs -> domain_clean x) by (eapply Hes; [ exact H | clean_env ]); clear H
-      | H : eval_shty _ _ _ _ _ _ ?a |- _ =>
+      | H : eval_shape_type _ _ _ _ _ _ ?a |- _ =>
           let h := fresh "Hs" in
           assert (h : domain_clean a) by (eapply Hsh; [ exact H | solve [ all_in_with clean_val ] | clean_env ]); clear H
       end.

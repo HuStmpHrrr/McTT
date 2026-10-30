@@ -127,18 +127,18 @@ Section Rename.
   Lemma domain_level_sort_rn : forall d, domain_level_sort (domain_rename d) = domain_level_sort d.
   Proof. destruct d; reflexivity. Qed.
 
-  Lemma dlvl_view_rn : forall d, dlvl_view (domain_rename d) = (fst (dlvl_view d), level_atoms_rename (snd (dlvl_view d))).
+  Lemma domain_level_view_rn : forall d, domain_level_view (domain_rename d) = (fst (domain_level_view d), level_atoms_rename (snd (domain_level_view d))).
   Proof. destruct d; cbn; try reflexivity; rewrite domain_level_sort_rn; reflexivity. Qed.
 
-  Lemma dlvl_suc_rn : forall d, domain_rename (dlvl_suc d) = dlvl_suc (domain_rename d).
+  Lemma domain_level_suc_rn : forall d, domain_rename (domain_level_suc d) = domain_level_suc (domain_rename d).
   Proof.
-    intros; unfold dlvl_suc, dlvl_cst, dlvl_atoms; rewrite dlvl_view_rn, domain_rename_lvl; cbn [fst snd]; f_equal.
+    intros; unfold domain_level_suc, domain_level_const, domain_level_atoms; rewrite domain_level_view_rn, domain_rename_lvl; cbn [fst snd]; f_equal.
     unfold level_atoms_rename; rewrite !List.map_map; apply List.map_ext; intros [[] ?]; reflexivity.
   Qed.
 
-  Lemma dlvl_max_rn : forall d e, domain_rename (dlvl_max d e) = dlvl_max (domain_rename d) (domain_rename e).
+  Lemma domain_level_max_rn : forall d e, domain_rename (domain_level_max d e) = domain_level_max (domain_rename d) (domain_rename e).
   Proof.
-    intros; unfold dlvl_max, dlvl_cst, dlvl_atoms; rewrite !dlvl_view_rn, domain_rename_lvl; cbn [fst snd]; f_equal.
+    intros; unfold domain_level_max, domain_level_const, domain_level_atoms; rewrite !domain_level_view_rn, domain_rename_lvl; cbn [fst snd]; f_equal.
     unfold level_atoms_rename; apply List.map_app.
   Qed.
 
@@ -188,7 +188,7 @@ Create Rewrite HintDb rn.
 Section Eval.
   Variables (Θ : gdeps) (Ξ : gstack) (f : nat -> nat).
 
-  #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn dlvl_suc_rn dlvl_max_rn relevant_value_rn domain_relevance_rn
+  #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn domain_level_suc_rn domain_level_max_rn relevant_value_rn domain_relevance_rn
     arg_relevance_rn List.map_app List.length_map List.firstn_map List.skipn_map : rn.
 
   Lemma kinds_placeholders_rn : forall n ρ, env_rename f (kinds_placeholders n ρ) = kinds_placeholders n (env_rename f ρ).
@@ -252,12 +252,12 @@ Section Eval.
     (forall p ups ρm As ρ t m as', ⟦ihty m of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
        ⟦ihty domain_rename f m of t at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ List.map (domain_rename f) as') /\
     (forall g m r, eval_proj Θ Ξ g m r -> eval_proj Θ Ξ g (domain_rename f m) (domain_rename f r)) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs ->
-       eval_nflds Θ Ξ (List.map (domain_rename f) ns) (domain_ne_rename f m) fl (List.map (domain_rename f) pre) (List.map (domain_rename f) rs)) /\
+    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs ->
+       eval_neutral_fields Θ Ξ (List.map (domain_rename f) ns) (domain_ne_rename f m) fl (List.map (domain_rename f) pre) (List.map (domain_rename f) rs)) /\
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> ⟦projs fl of domain_rename f m ⟧ Θ ⍮ Ξ ↘ List.map (domain_rename f) ws) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
        ⟦ihtys List.map (domain_rename f) vs of gs at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ List.map (domain_rename f) as') /\
-    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> eval_fvals Θ Ξ rs Ms (env_rename f ρ) (List.map (domain_rename f) vs)) /\
+    (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> eval_field_vals Θ Ξ rs Ms (env_rename f ρ) (List.map (domain_rename f) vs)) /\
     (forall g Ms ρ r, eval_app_args Θ Ξ g Ms ρ r -> eval_app_args Θ Ξ (domain_rename f g) Ms (env_rename f ρ) (domain_rename f r)).
   Proof.
     apply (eval_mut_ind Θ Ξ
@@ -284,12 +284,12 @@ Section Eval.
                 ⟦ihty domain_rename f m of t at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ List.map (domain_rename f) as')
              (fun g m r _ => eval_proj Θ Ξ g (domain_rename f m) (domain_rename f r))
              (fun ns m fl pre rs _ =>
-                eval_nflds Θ Ξ (List.map (domain_rename f) ns) (domain_ne_rename f m) fl (List.map (domain_rename f) pre) (List.map (domain_rename f) rs))
+                eval_neutral_fields Θ Ξ (List.map (domain_rename f) ns) (domain_ne_rename f m) fl (List.map (domain_rename f) pre) (List.map (domain_rename f) rs))
              (fun fl m ws _ => ⟦projs fl of domain_rename f m ⟧ Θ ⍮ Ξ ↘ List.map (domain_rename f) ws)
              (fun p ups ρm As ρ gs vs as' _ =>
                 ⟦ihtys List.map (domain_rename f) vs of gs at p (List.map (domain_rename f) ups) under (env_rename f ρm) As ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ
                   ↘ List.map (domain_rename f) as')
-             (fun rs Ms ρ vs _ => eval_fvals Θ Ξ rs Ms (env_rename f ρ) (List.map (domain_rename f) vs))
+             (fun rs Ms ρ vs _ => eval_field_vals Θ Ξ rs Ms (env_rename f ρ) (List.map (domain_rename f) vs))
              (fun g Ms ρ r _ => eval_app_args Θ Ξ (domain_rename f g) Ms (env_rename f ρ) (domain_rename f r)));
       intros; cbn [domain_rename domain_ne_rename domain_nf_rename dmod_rename dentry_rename List.map extend_env fst snd] in *;
       rewrite ?tuple_rn in *;
@@ -328,12 +328,12 @@ Section Eval.
     all: try solve [ eapply eval_exp_app_proof; [ eassumption | rewrite arg_relevance_rn; eassumption | eassumption ] ].
     all: try solve [ eapply eval_exp_let_ann; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption | eassumption ] ].
     all: try solve [ eapply eval_exp_let_proof; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
-    all: try solve [ eapply eval_benv_def; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
-    all: try solve [ eapply eval_benv_def_proof; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption ] ].
+    all: try solve [ eapply eval_body_env_def; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply eval_body_env_def_proof; [ eassumption | eassumption | rewrite domain_relevance_rn; eassumption ] ].
     all: try solve [ rewrite <- combine_map_r; eapply eval_exp_tuple; eassumption ].
-    all: try solve [ match goal with H0 : eval_nflds _ _ _ _ _ (_ ++ domain_rename _ (relevant_value _ _) :: nil) _ |- _ =>
+    all: try solve [ match goal with H0 : eval_neutral_fields _ _ _ _ _ (_ ++ domain_rename _ (relevant_value _ _) :: nil) _ |- _ =>
                        rewrite relevant_value_rn in H0; cbn [domain_rename domain_ne_rename] in *;
-                       eapply eval_nflds_cons; [ eassumption | exact H0 ] end ].
+                       eapply eval_neutral_fields_cons; [ eassumption | exact H0 ] end ].
     - (* a variable *) rewrite <- env_var_rn; apply eval_exp_var.
     - (* a module slot *) rewrite <- env_mod_rn; apply eval_me_var.
   Qed.
@@ -505,7 +505,7 @@ Section Bound.
   Definition domain_bounded_blocks (b : nat) (ρ : env) (Bks : list eblock) : Prop :=
     forall v, b <= v -> exists K, env_avoids Θ Ξ v b K ρ /\ blocks_optional_exp_fresh K Bks.
 
-  Lemma domain_bounded_blocks_motive : forall b ρ Bks bk, domain_bounded_blocks b ρ Bks -> In bk Bks -> domain_bounded_eclo b ρ (eb_motive bk) (eb_nm bk).
+  Lemma domain_bounded_blocks_motive : forall b ρ Bks bk, domain_bounded_blocks b ρ Bks -> In bk Bks -> domain_bounded_eclo b ρ (eb_motive bk) (eb_binder_count bk).
   Proof.
     intros * H Hin v Hv; destruct (H v Hv) as (K & HK & HB); exists K; split; [ exact HK | exact (proj1 (HB _ Hin)) ].
   Qed.
@@ -561,10 +561,10 @@ Section Bound.
     - apply IHfresh_tele; [| exact Hd ]. apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_rfresh; [ lia | exact Ha ] ].
   Qed.
 
-  Lemma shty_domain_bounded : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+  Lemma shape_type_domain_bounded : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
       env_domain_bounded b ρ -> (forall u, In u ups -> domain_bounded b u) -> domain_bounded b a.
   Proof.
-    intros * H Hρ Hu v Hv; eapply shty_avoids; [ exact H | apply Hρ, Hv | apply optional_ptyp_fresh_none | intros; apply Hu; assumption ].
+    intros * H Hρ Hu v Hv; eapply shape_type_avoids; [ exact H | apply Hρ, Hv | apply optional_ptyp_fresh_none | intros; apply Hu; assumption ].
   Qed.
 
   Lemma fresh_cargs_domain_bounded : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
@@ -579,7 +579,7 @@ Section Bound.
       apply IHfresh_cargs;
         [ apply env_domain_bounded_cons; [ eapply env_domain_bounded_mono; [| exact Hρ ]; lia | apply domain_bounded_rfresh; [ lia | exact Ha ] ]
         | intros; eapply domain_bounded_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
-    - assert (Ha : domain_bounded s a) by (eapply shty_domain_bounded; eassumption).
+    - assert (Ha : domain_bounded s a) by (eapply shape_type_domain_bounded; eassumption).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
       intros d [<- | Hd]; [ apply domain_bounded_fresh; [ lia | exact Ha ] |].
       apply IHfresh_cargs;
@@ -642,7 +642,7 @@ Section Bound.
       the blocks: their shapes end where the motives avoid the excluded
       level. *)
   Lemma ihs_motives_domain_bounded : forall p D Bks b ρ gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-      cargs_plen D gs -> blocks_nm_at D None Bks -> domain_bounded_blocks b ρ Bks ->
+      cargs_params_length D gs -> blocks_binder_count_at D None Bks -> domain_bounded_blocks b ρ Bks ->
       forall v, b <= v -> exists K, env_avoids Θ Ξ v b K ρ /\
                               forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh Θ Ξ p K (blocks_motives Bks) t.
   Proof.
@@ -742,7 +742,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
     replace (s + (s' - s)) with s' in IH by lia; exact IH.
   Qed.
 
-  Lemma shty_rn : forall p ups ρ t a,
+  Lemma shape_type_rn : forall p ups ρ t a,
       ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦shty t of p (List.map (domain_rename f) ups) ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ domain_rename f a.
   Proof.
     intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
@@ -813,7 +813,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       cbn [domain_rename domain_ne_rename] in IH; rewrite (Hf s) in IH by lia.
       replace (s + (s' - s)) with s' in IH by lia; exact IH.
     - cbn [domain_rename domain_ne_rename]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
-      constructor; [ exact (shty_rn _ _ _ _ _ H) |].
+      constructor; [ exact (shape_type_rn _ _ _ _ _ H) |].
       apply (IHfresh_cargs (S s')); [ intros; rewrite Hf by lia; lia | lia ].
   Qed.
 
@@ -864,12 +864,12 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
        Rsh domain_rename f x at t of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ nf_wk φ X) /\
     (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
-       (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
+       (forall D, ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks) ->
        (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> domain_bounded s a) ->
        Rblks i Ms of Dc from p (List.map (domain_rename f) ups) Bks sel in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
-       (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
+       (forall D, ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks) ->
        (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> im_nn Mv = im_nn Mi ->
        domain_bounded_eclo s ρ A (S (im_nn Mi)) ->
        (forall c n B, In (c, n, B) Bs -> domain_bounded_clon s ρ B n) -> (forall a, In a ups -> domain_bounded s a) ->
@@ -894,11 +894,11 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
                 env_domain_bounded s ρ -> domain_bounded s x ->
                 Rsh domain_rename f x at t of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ nf_wk φ X)
              (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
-                (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
+                (forall D, ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks) ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> domain_bounded s a) ->
                 Rblks i Ms of Dc from p (List.map (domain_rename f) ups) Bks sel in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks)
              (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall s' φ, rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
-                (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) ->
+                (forall D, ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks) ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> im_nn Mv = im_nn Mi ->
                 domain_bounded_eclo s ρ A (S (im_nn Mi)) ->
                 (forall c n B, In (c, n, B) Bs -> domain_bounded_clon s ρ B n) -> (forall a, In a ups -> domain_bounded s a) ->
@@ -1031,7 +1031,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       match goal with
       | Hl : ind_lookup _ _ ?p = Some ?D, Hj : ind_member ?D ?j = Some ?Mj, Hr : im_ref ?p ?j ?Mj = (?pc, ?k),
         Hl' : ind_lookup _ _ ?pc = Some ?Dq, Hk : ind_member ?Dq ?k = Some ?Mk, Hlen : List.length ?as' = im_np _ _,
-        Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
+        Hnm : blocks_binder_count_at ?D None ?Bks, Har : rview_leaf_arity ?D,
         Hm : eval_mref _ _ ?p ?ups ?j (?pc, ?k, ?pre),
         IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_domain_bounded ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
         IHb : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> read_blocks _ _ s0 _ _ _ _ _ _ _ _ _,
@@ -1051,7 +1051,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
     all: try solve [ lazymatch goal with |- read_blocks _ _ _ _ _ _ _ _ _ _ (_ :: _) _ =>
       match goal with
       | Hl : ind_lookup _ _ ?p = Some ?D, Hv : ind_member ?D (elim_src ?sel ?i) = Some ?Mv,
-        Hb : List.nth_error ?Bks (elim_src ?sel ?i) = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi),
+        Hb : List.nth_error ?Bks (elim_src ?sel ?i) = Some ?bk, Hnmb : eb_binder_count ?bk = S (im_nn ?Mi),
         Hm : eval_mref _ _ ?p ?X (elim_src ?sel ?i) (?hd, ?k, ?pre),
         f0 : fresh_tele _ _ (env_args nil ?X) _ ?s ?ns,
         e2 : ⟦ eb_motive ?bk ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ _) ↘ ?a,
@@ -1060,7 +1060,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
               _ -> _ -> _ -> read_brs _ _ s0 _ _ _ _ _ _ _ _ _ _ _ _,
         IHK : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> read_blocks _ _ s0 _ _ _ _ _ _ _ _ _,
         Hok : rn_ok f ?s ?s' ?φ, HBd : domain_bounded_blocks ?s ?ρ ?Bks,
-        Hnm : forall D0, ind_lookup _ _ ?p = Some D0 -> blocks_nm_at _ _ _,
+        Hnm : forall D0, ind_lookup _ _ ?p = Some D0 -> blocks_binder_count_at _ _ _,
         Har : forall D0, ind_lookup _ _ ?p = Some D0 -> rview_leaf_arity _,
         HX : forall a, In a ?X -> domain_bounded ?s a |- _ =>
           let Hss := fresh "Hss" in let Hfx := fresh "Hfx" in
@@ -1126,7 +1126,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
       lazymatch goal with
       | Hc : ind_con ?Mv ?c = Some ?gs, Hl : ind_lookup _ _ ?p = Some ?D,
         Hn0 : ?n0 = (im_nn ?Mi + _ + cargs_nrec ?D ?gs)%nat, Hn : ?n = (im_nn ?Mi + _ + cargs_nrec ?Dc ?gs')%nat,
-        Hcnt : cargs_nin ?D ?Dc ?gs' ?gs = cargs_nrec ?Dc ?gs', Hpl : cargs_plen ?D ?gs,
+        Hcnt : cargs_container_count ?D ?Dc ?gs' ?gs = cargs_nrec ?Dc ?gs', Hpl : cargs_params_length ?D ?gs,
         f0 : fresh_tele _ _ (env_args nil ?X) _ ?s ?ns, Fc : fresh_cargs _ _ _ _ _ ?gs _ ?vs,
         Fi : fresh_ihs _ _ ?ρ _ _ _ ?Dc _ ?gs' ?gs ?vs _ ?ihs, Fw : wrap_ihs_eval _ _ ?ρ _ _ _ ?Dc ?gs' ?gs ?vs ?ihs ?wihs,
         e0 : ⟦ ?B ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?wihs) ↘ ?bv,
@@ -1135,7 +1135,7 @@ Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
         IHR : forall s0 φ0, rn_ok f ?s s0 φ0 -> domain_bounded_blocks ?s ?ρ ?Bks -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
               read_brs _ _ s0 _ _ _ _ _ _ _ _ _ _ _ _,
         Hok : rn_ok f ?s ?s' ?φ, HBd : domain_bounded_blocks ?s ?ρ ?Bks,
-        Hnm : forall D0, ind_lookup _ _ ?p = Some D0 -> blocks_nm_at _ _ _,
+        Hnm : forall D0, ind_lookup _ _ ?p = Some D0 -> blocks_binder_count_at _ _ _,
         Har : forall D0, ind_lookup _ _ ?p = Some D0 -> rview_leaf_arity _, Hnn : im_nn ?Mv = im_nn ?Mi,
         HAd : domain_bounded_eclo ?s ?ρ ?A _, HBs : forall c0 n1 B0, In (c0, n1, B0) _ -> domain_bounded_clon ?s ?ρ B0 n1,
         HX : forall a, In a ?X -> domain_bounded ?s a, Hp : forall a, In a ?pre -> domain_bounded ?s a |- _ =>

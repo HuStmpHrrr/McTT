@@ -329,14 +329,14 @@ Proof.
       rewrite HMw in HMw'; injection HMw' as <-; exists X, vm'; split; [ exact Hhw | exact HlX ].
     + destruct (decl_typed_view_rview _ _ _ HD _ _ _ _ _ _ _ _ _ _ _ _ _ HMv Hh HDq HMi' Hh' Hw) as (Mw' & X & HMw' & Hhw & HlX).
       rewrite HMw in HMw'; injection HMw' as <-; exists X; split; [ exact Hhw | exact HlX ].
-  - exact (decl_typed_plen _ _ _ HD).
+  - exact (decl_typed_params_length _ _ _ HD).
   - intros v Mv qc kc Is vm Dq i' Mi' c gs' HMv Hh HDq HMi' Hin.
-    exact (decl_typed_plen _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq) _ _ _ _ HMi' Hin).
-  - exact (decl_typed_rstruct _ _ _ HD).
+    exact (decl_typed_params_length _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq) _ _ _ _ HMi' Hin).
+  - exact (decl_typed_record_struct _ _ _ HD).
   - intros v Mv qc kc Is vm Dq HMv Hh HDq.
-    exact (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq))).
+    exact (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq))).
   - intros v Mv qc kc Is vm Dq HMv Hh HDq.
-    exact (decl_typed_rstruct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq)).
+    exact (decl_typed_record_struct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq)).
 Qed.
 
 (** The values of the declared members of the group at [p] at the uniform
@@ -515,7 +515,7 @@ Section Sort.
 
     Lemma length_rec_ps : forall c gs gs1 t gs2, ind_con Mk c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj.
-    Proof. intros * Hcon Heq; exact (valid_ind_decl_plen _ HD _ _ _ _ HM Hcon _ _ _ Heq). Qed.
+    Proof. intros * Hcon Heq; exact (valid_ind_decl_params_length _ HD _ _ _ _ HM Hcon _ _ _ Heq). Qed.
 
     (** The parameters of a recursive argument, at related arguments before
         it, are related at the non-uniform parameters of the member its
@@ -595,7 +595,7 @@ Section Sort.
           destruct HT as [T HT].
           destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
           pose proof (valid_ind_decl_rec_field _ HD _ _ _ _ _ _ _ _ _ _ _ HM Hcon Heq HMj HP HT) as HPv.
-          destruct (valid_ind_decl_npar _ HD _ _ _ _ HMj HA) as (_ & j & HAv).
+          destruct (valid_ind_decl_nparams _ HD _ _ _ _ HMj HA) as (_ & j & HAv).
           set (τ := sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m (ptyp_ps Ps))) in *.
           (** The new entry, and the substitution extended by it. *)
           assert (Hτ' : Ξ0 ⊨ˢ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) (ptyp_ps Ps))
@@ -663,7 +663,7 @@ Section Sort.
                     ltac:(rewrite !List.app_nil_r; exact Hg) Ha) as Hcan.
       rewrite !List.app_nil_r in Hcan; apply Hcan; [ | | rewrite List.length_rev, length_im_nparams; exact Hj | exact Hp ].
       - intros j0 A HA; cbn [List.app List.length]; rewrite Nat.add_0_r.
-        split; [ exact (nparams_prefix_sem j0) | exact (proj1 (valid_ind_decl_npar _ HD _ _ _ _ HM HA)) ].
+        split; [ exact (nparams_prefix_sem j0) | exact (proj1 (valid_ind_decl_nparams _ HD _ _ _ _ HM HA)) ].
       - intros j0 A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM HA); reflexivity.
     Qed.
 
@@ -809,7 +809,7 @@ Section Sort.
         by (rewrite <- length_im_nparams, <- List.length_rev; apply List.nth_error_Some; congruence).
       pose proof (nr_gargs _ _ HM _ _ _ Hg2 Hu Ha k0 vs vs' ltac:(lia) Hp) as Hgv.
       pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
-      pose proof (proj1 (valid_ind_decl_npar _ HD _ _ _ _ HM Hk)) as HAv; rewrite <- (length_nparams_prefix Mm k0) in HAv at 2 by lia.
+      pose proof (proj1 (valid_ind_decl_nparams _ HD _ _ _ _ HM Hk)) as HAv; rewrite <- (length_nparams_prefix Mm k0) in HAv at 2 by lia.
       eapply (sort_typ_rel (nparams_prefix Mm k0) A (nparams_prefix_sem _ _ HM k0) HAv ups ups2 vs vs');
         [ rewrite length_nparams_prefix; lia | rewrite length_nparams_prefix; lia | exact Hu | exact Hu2 | | exact Ha ].
       rewrite rev_nparams_prefix; apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg2 | exact Hgv ].
@@ -883,7 +883,7 @@ Section Sort.
       destruct (rec_closure _ _ HM _ _ _ _ _ _ Hcon Heq HMj ups ups2 ms ms' ws ws' ys ys' Hu Hlm Hlw Hly Hu2 Hlm' Hlw' Hly' Hgall)
         as (bs & bs' & Ebs & Ebs' & Hgb & _).
       apply (mk_rel_evals _ _ _ _ bs bs' Ebs Ebs').
-      unfold ntele_rel; rewrite HMj.
+      unfold nparams_tele_rel; rewrite HMj.
       eapply (gargs_tele_canon _ (canon_nparams_rel D ups (ptyp_mem t)) (env_args nil ups)); [ | exact Hgb |].
       - intros j A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HMj HA), env_args_app; reflexivity.
       - rewrite (eval_exps_length _ _ _ Ebs), List.length_rev, length_im_nparams; exact HPl.
@@ -1090,7 +1090,7 @@ Section Sort.
       variables, is a type over the uniform parameters, and the type former
       [j] at uniform parameters is of it there.  So the values of the
       declared members at related uniform parameters, after them, are
-      related environments of [grp_sctx D]. *)
+      related environments of [grp_selfs_ctx D]. *)
   Section Selfs.
     Hypothesis (Hord : ind_order_ok D).
 
@@ -1137,8 +1137,8 @@ Section Sort.
       exact (rel_ctx_wf_ext_typ _ _ _ HC Hw).
     Qed.
 
-    Lemma grp_sctx_sem : ⊨ grp_sctx D.
-    Proof. unfold grp_sctx, grp_selfs; exact (grp_selfs_prefix_sem _ (le_n _)). Qed.
+    Lemma grp_selfs_ctx_sem : ⊨ grp_selfs_ctx D.
+    Proof. unfold grp_selfs_ctx, grp_selfs; exact (grp_selfs_prefix_sem _ (le_n _)). Qed.
 
     Lemma uparams_refl_r : forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
         per_gargs (List.rev (ind_uparams D)) nil nil ups' ups'.
@@ -1234,17 +1234,17 @@ Section Sort.
     Qed.
 
     (** The values of the declared members at the uniform parameters [ups],
-        after them: an environment of [grp_sctx D]. *)
-    Lemma selfs_env_rel : forall RS, EF grp_sctx D ≈ grp_sctx D ∈ per_ctx_env ↘ RS ->
+        after them: an environment of [grp_selfs_ctx D]. *)
+    Lemma selfs_env_rel : forall RS, EF grp_selfs_ctx D ≈ grp_selfs_ctx D ∈ per_ctx_env ↘ RS ->
         forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
         RS (env_args (env_args nil ups) (selfs_vals p D ups)) (env_args (env_args nil ups') (selfs_vals p D ups')).
     Proof.
       intros RS HRS ups ups' Hg Hu.
       pose proof (length_ups_gargs _ _ Hg Hu) as Hu'.
       rewrite <- !env_args_app.
-      apply (gargs_env_rel _ _ _ _ _ _ HRS grp_sctx_sem).
-      - rewrite length_grp_sctx, List.length_app; unfold selfs_vals; rewrite List.length_map, List.length_seq; lia.
-      - unfold grp_sctx, grp_selfs; rewrite List.rev_app_distr.
+      apply (gargs_env_rel _ _ _ _ _ _ HRS grp_selfs_ctx_sem).
+      - rewrite length_grp_selfs_ctx, List.length_app; unfold selfs_vals; rewrite List.length_map, List.length_seq; lia.
+      - unfold grp_selfs_ctx, grp_selfs; rewrite List.rev_app_distr.
         apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg |].
         exact (selfs_gargs _ (le_n _) _ _ Hg Hu).
     Qed.
@@ -1299,10 +1299,10 @@ Section Sort.
         rewrite List.length_firstn, Nat.min_l by lia; reflexivity.
     Qed.
 
-    Lemma grp_sb_gsub : gsub (ind_uparams D) (grp_sb p D) (grp_sctx D).
+    Lemma grp_sb_gsub : gsub (ind_uparams D) (grp_sb p D) (grp_selfs_ctx D).
     Proof.
-      unfold grp_sb, grp_sctx.
-      apply gsub_of_list; [ exact (gsub_id _ uparams_sem) | | exact grp_sctx_sem | |].
+      unfold grp_sb, grp_selfs_ctx.
+      apply gsub_of_list; [ exact (gsub_id _ uparams_sem) | | exact grp_selfs_ctx_sem | |].
       - unfold grp_selfs; generalize 0; induction (List.firstn (ind_ndecl D) (ind_members D)) as [| M ms IH]; intros j;
           cbn [grp_selfs_from]; [ constructor |].
         apply List.Forall_app; split; [ apply IH | constructor; [ eexists; reflexivity | constructor ] ].

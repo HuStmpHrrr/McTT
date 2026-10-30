@@ -204,7 +204,7 @@ Ltac pointwise_solve :=
 (** The mutual induction of a law stated for every sort at once. *)
 Ltac syn_mut_ind :=
   lazymatch goal with
-  | |- (forall M : exp, @?Pe M) /\ (forall H : modexp, @?Pm H) /\ (forall b : bnd, @?Pb b) /\
+  | |- (forall M : exp, @?Pe M) /\ (forall H : modexp, @?Pm H) /\ (forall b : binding, @?Pb b) /\
       (forall U : gunit, @?Pu U) /\ (forall D : moddef, @?Pd D) /\ (forall Φ : gmod, @?Pg Φ) /\
       (forall E : gentry, @?Pn E) /\ (forall e : centry, @?Pc e) =>
       apply (syn_mut_ind Pe Pm Pb Pu Pd Pg Pn Pc)
@@ -375,8 +375,8 @@ Ltac blocks_eq_case one :=
 
 Ltac syn_ext_case_with lift liftn vars :=
   intros; autorewrite with syn_ops; intros;
-  cbn [exp_wk modexp_wk bnd_wk moddef_wk gmod_wk gentry_wk centry_wk
-       exp_sub modexp_sub bnd_sub moddef_sub gmod_sub gentry_sub centry_sub];
+  cbn [exp_wk modexp_wk binding_wk moddef_wk gmod_wk gentry_wk centry_wk
+       exp_sub modexp_sub binding_sub moddef_sub gmod_sub gentry_sub centry_sub];
   autorewrite with syn_ops;
   repeat match goal with
          | B : option exp |- _ => destruct B; cbn iota
@@ -422,7 +422,7 @@ Proof. intros ? ? ? ? ? ?; now apply wk_compose_cong. Qed.
 Lemma syn_wk_wk_eq :
   (forall M φ ψ, wk_eq φ ψ -> exp_wk M φ = exp_wk M ψ) /\
   (forall H φ ψ, wk_eq φ ψ -> modexp_wk H φ = modexp_wk H ψ) /\
-  (forall b φ ψ, wk_eq φ ψ -> bnd_wk b φ = bnd_wk b ψ) /\
+  (forall b φ ψ, wk_eq φ ψ -> binding_wk b φ = binding_wk b ψ) /\
   (forall U φ ψ, wk_eq φ ψ -> gunit_wk U φ = gunit_wk U ψ) /\
   (forall D φ ψ, wk_eq φ ψ -> moddef_wk D φ = moddef_wk D ψ) /\
   (forall Φ φ ψ, wk_eq φ ψ -> gmod_wk Φ φ = gmod_wk Φ ψ) /\
@@ -434,7 +434,7 @@ Corollary exp_wk_wk_eq : forall M φ ψ, wk_eq φ ψ -> exp_wk M φ = exp_wk M �
 Proof. exact (proj1 syn_wk_wk_eq). Qed.
 Corollary modexp_wk_wk_eq : forall H φ ψ, wk_eq φ ψ -> modexp_wk H φ = modexp_wk H ψ.
 Proof. exact (proj1 (proj2 syn_wk_wk_eq)). Qed.
-Corollary bnd_wk_wk_eq : forall b φ ψ, wk_eq φ ψ -> bnd_wk b φ = bnd_wk b ψ.
+Corollary binding_wk_wk_eq : forall b φ ψ, wk_eq φ ψ -> binding_wk b φ = binding_wk b ψ.
 Proof. exact (proj1 (proj2 (proj2 syn_wk_wk_eq))). Qed.
 Corollary gunit_wk_wk_eq : forall U φ ψ, wk_eq φ ψ -> gunit_wk U φ = gunit_wk U ψ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_wk_wk_eq)))). Qed.
@@ -491,7 +491,7 @@ Proof. induction n; intros; simpl; auto using wk_q_id_ext. Qed.
 Lemma syn_wk_id_ext :
   (forall M φ, wk_eq φ wk_id -> exp_wk M φ = M) /\
   (forall H φ, wk_eq φ wk_id -> modexp_wk H φ = H) /\
-  (forall b φ, wk_eq φ wk_id -> bnd_wk b φ = b) /\
+  (forall b φ, wk_eq φ wk_id -> binding_wk b φ = b) /\
   (forall U φ, wk_eq φ wk_id -> gunit_wk U φ = U) /\
   (forall D φ, wk_eq φ wk_id -> moddef_wk D φ = D) /\
   (forall Φ φ, wk_eq φ wk_id -> gmod_wk Φ φ = Φ) /\
@@ -503,7 +503,7 @@ Corollary exp_wk_id_ext : forall M φ, wk_eq φ wk_id -> exp_wk M φ = M.
 Proof. exact (proj1 syn_wk_id_ext). Qed.
 Corollary modexp_wk_id_ext : forall H φ, wk_eq φ wk_id -> modexp_wk H φ = H.
 Proof. exact (proj1 (proj2 syn_wk_id_ext)). Qed.
-Corollary bnd_wk_id_ext : forall b φ, wk_eq φ wk_id -> bnd_wk b φ = b.
+Corollary binding_wk_id_ext : forall b φ, wk_eq φ wk_id -> binding_wk b φ = b.
 Proof. exact (proj1 (proj2 (proj2 syn_wk_id_ext))). Qed.
 Corollary gunit_wk_id_ext : forall U φ, wk_eq φ wk_id -> gunit_wk U φ = U.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_wk_id_ext)))). Qed.
@@ -520,8 +520,8 @@ Corollary exp_wk_id : forall M, exp_wk M wk_id = M.
 Proof. intros; now apply exp_wk_id_ext. Qed.
 Corollary modexp_wk_id : forall H, modexp_wk H wk_id = H.
 Proof. intros; now apply modexp_wk_id_ext. Qed.
-Corollary bnd_wk_id : forall b, bnd_wk b wk_id = b.
-Proof. intros; now apply bnd_wk_id_ext. Qed.
+Corollary binding_wk_id : forall b, binding_wk b wk_id = b.
+Proof. intros; now apply binding_wk_id_ext. Qed.
 Corollary gunit_wk_id : forall U, gunit_wk U wk_id = U.
 Proof. intros; now apply gunit_wk_id_ext. Qed.
 Corollary moddef_wk_id : forall D, moddef_wk D wk_id = D.
@@ -551,7 +551,7 @@ Proof. induction n; intros; simpl; auto using wk_q_compose_ext. Qed.
 Lemma syn_wk_wk_ext :
   (forall M φ ψ χ, wk_eq (φ ⊙ ψ) χ -> exp_wk (exp_wk M φ) ψ = exp_wk M χ) /\
   (forall H φ ψ χ, wk_eq (φ ⊙ ψ) χ -> modexp_wk (modexp_wk H φ) ψ = modexp_wk H χ) /\
-  (forall b φ ψ χ, wk_eq (φ ⊙ ψ) χ -> bnd_wk (bnd_wk b φ) ψ = bnd_wk b χ) /\
+  (forall b φ ψ χ, wk_eq (φ ⊙ ψ) χ -> binding_wk (binding_wk b φ) ψ = binding_wk b χ) /\
   (forall U φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gunit_wk (gunit_wk U φ) ψ = gunit_wk U χ) /\
   (forall D φ ψ χ, wk_eq (φ ⊙ ψ) χ -> moddef_wk (moddef_wk D φ) ψ = moddef_wk D χ) /\
   (forall Φ φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gmod_wk (gmod_wk Φ φ) ψ = gmod_wk Φ χ) /\
@@ -563,7 +563,7 @@ Corollary exp_wk_wk_ext : forall M φ ψ χ, wk_eq (φ ⊙ ψ) χ -> exp_wk (exp
 Proof. exact (proj1 syn_wk_wk_ext). Qed.
 Corollary modexp_wk_wk_ext : forall H φ ψ χ, wk_eq (φ ⊙ ψ) χ -> modexp_wk (modexp_wk H φ) ψ = modexp_wk H χ.
 Proof. exact (proj1 (proj2 syn_wk_wk_ext)). Qed.
-Corollary bnd_wk_wk_ext : forall b φ ψ χ, wk_eq (φ ⊙ ψ) χ -> bnd_wk (bnd_wk b φ) ψ = bnd_wk b χ.
+Corollary binding_wk_wk_ext : forall b φ ψ χ, wk_eq (φ ⊙ ψ) χ -> binding_wk (binding_wk b φ) ψ = binding_wk b χ.
 Proof. exact (proj1 (proj2 (proj2 syn_wk_wk_ext))). Qed.
 Corollary gunit_wk_wk_ext : forall U φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gunit_wk (gunit_wk U φ) ψ = gunit_wk U χ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_wk_wk_ext)))). Qed.
@@ -580,8 +580,8 @@ Corollary exp_wk_wk : forall M φ ψ, exp_wk (exp_wk M φ) ψ = exp_wk M (φ ⊙
 Proof. intros; now apply exp_wk_wk_ext. Qed.
 Corollary modexp_wk_wk : forall H φ ψ, modexp_wk (modexp_wk H φ) ψ = modexp_wk H (φ ⊙ ψ).
 Proof. intros; now apply modexp_wk_wk_ext. Qed.
-Corollary bnd_wk_wk : forall b φ ψ, bnd_wk (bnd_wk b φ) ψ = bnd_wk b (φ ⊙ ψ).
-Proof. intros; now apply bnd_wk_wk_ext. Qed.
+Corollary binding_wk_wk : forall b φ ψ, binding_wk (binding_wk b φ) ψ = binding_wk b (φ ⊙ ψ).
+Proof. intros; now apply binding_wk_wk_ext. Qed.
 Corollary gunit_wk_wk : forall U φ ψ, gunit_wk (gunit_wk U φ) ψ = gunit_wk U (φ ⊙ ψ).
 Proof. intros; now apply gunit_wk_wk_ext. Qed.
 Corollary moddef_wk_wk : forall D φ ψ, moddef_wk (moddef_wk D φ) ψ = moddef_wk D (φ ⊙ ψ).
@@ -655,7 +655,7 @@ Proof. induction n; intros; simpl; auto using sb_q_cong. Qed.
 Lemma syn_sub_sb_eq :
   (forall M σ τ, sb_eq σ τ -> exp_sub M σ = exp_sub M τ) /\
   (forall H σ τ, sb_eq σ τ -> modexp_sub H σ = modexp_sub H τ) /\
-  (forall b σ τ, sb_eq σ τ -> bnd_sub b σ = bnd_sub b τ) /\
+  (forall b σ τ, sb_eq σ τ -> binding_sub b σ = binding_sub b τ) /\
   (forall U σ τ, sb_eq σ τ -> gunit_sub U σ = gunit_sub U τ) /\
   (forall D σ τ, sb_eq σ τ -> moddef_sub D σ = moddef_sub D τ) /\
   (forall Φ σ τ, sb_eq σ τ -> gmod_sub Φ σ = gmod_sub Φ τ) /\
@@ -667,7 +667,7 @@ Corollary exp_sub_sb_eq : forall M σ τ, sb_eq σ τ -> exp_sub M σ = exp_sub 
 Proof. exact (proj1 syn_sub_sb_eq). Qed.
 Corollary modexp_sub_sb_eq : forall H σ τ, sb_eq σ τ -> modexp_sub H σ = modexp_sub H τ.
 Proof. exact (proj1 (proj2 syn_sub_sb_eq)). Qed.
-Corollary bnd_sub_sb_eq : forall b σ τ, sb_eq σ τ -> bnd_sub b σ = bnd_sub b τ.
+Corollary binding_sub_sb_eq : forall b σ τ, sb_eq σ τ -> binding_sub b σ = binding_sub b τ.
 Proof. exact (proj1 (proj2 (proj2 syn_sub_sb_eq))). Qed.
 Corollary gunit_sub_sb_eq : forall U σ τ, sb_eq σ τ -> gunit_sub U σ = gunit_sub U τ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_sub_sb_eq)))). Qed.
@@ -752,7 +752,7 @@ Proof. induction n; intros; simpl; auto using sb_q_of_wk_ext. Qed.
 Lemma syn_sub_of_wk_ext :
   (forall M φ σ, sb_eq (ι φ) σ -> exp_sub M σ = exp_wk M φ) /\
   (forall H φ σ, sb_eq (ι φ) σ -> modexp_sub H σ = modexp_wk H φ) /\
-  (forall b φ σ, sb_eq (ι φ) σ -> bnd_sub b σ = bnd_wk b φ) /\
+  (forall b φ σ, sb_eq (ι φ) σ -> binding_sub b σ = binding_wk b φ) /\
   (forall U φ σ, sb_eq (ι φ) σ -> gunit_sub U σ = gunit_wk U φ) /\
   (forall D φ σ, sb_eq (ι φ) σ -> moddef_sub D σ = moddef_wk D φ) /\
   (forall Φ φ σ, sb_eq (ι φ) σ -> gmod_sub Φ σ = gmod_wk Φ φ) /\
@@ -764,7 +764,7 @@ Corollary exp_sub_of_wk_ext : forall M φ σ, sb_eq (ι φ) σ -> exp_sub M σ =
 Proof. exact (proj1 syn_sub_of_wk_ext). Qed.
 Corollary modexp_sub_of_wk_ext : forall H φ σ, sb_eq (ι φ) σ -> modexp_sub H σ = modexp_wk H φ.
 Proof. exact (proj1 (proj2 syn_sub_of_wk_ext)). Qed.
-Corollary bnd_sub_of_wk_ext : forall b φ σ, sb_eq (ι φ) σ -> bnd_sub b σ = bnd_wk b φ.
+Corollary binding_sub_of_wk_ext : forall b φ σ, sb_eq (ι φ) σ -> binding_sub b σ = binding_wk b φ.
 Proof. exact (proj1 (proj2 (proj2 syn_sub_of_wk_ext))). Qed.
 Corollary gunit_sub_of_wk_ext : forall U φ σ, sb_eq (ι φ) σ -> gunit_sub U σ = gunit_wk U φ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_sub_of_wk_ext)))). Qed.
@@ -781,8 +781,8 @@ Corollary exp_sub_of_wk : forall M φ, exp_sub M (ι φ) = exp_wk M φ.
 Proof. intros; now apply exp_sub_of_wk_ext. Qed.
 Corollary modexp_sub_of_wk : forall H φ, modexp_sub H (ι φ) = modexp_wk H φ.
 Proof. intros; now apply modexp_sub_of_wk_ext. Qed.
-Corollary bnd_sub_of_wk : forall b φ, bnd_sub b (ι φ) = bnd_wk b φ.
-Proof. intros; now apply bnd_sub_of_wk_ext. Qed.
+Corollary binding_sub_of_wk : forall b φ, binding_sub b (ι φ) = binding_wk b φ.
+Proof. intros; now apply binding_sub_of_wk_ext. Qed.
 Corollary gunit_sub_of_wk : forall U φ, gunit_sub U (ι φ) = gunit_wk U φ.
 Proof. intros; now apply gunit_sub_of_wk_ext. Qed.
 Corollary moddef_sub_of_wk : forall D φ, moddef_sub D (ι φ) = moddef_wk D φ.
@@ -821,7 +821,7 @@ Proof. induction n; intros; simpl; auto using sb_q_id_ext. Qed.
 Lemma syn_sub_id_ext :
   (forall M σ, sb_eq σ Id -> exp_sub M σ = M) /\
   (forall H σ, sb_eq σ Id -> modexp_sub H σ = H) /\
-  (forall b σ, sb_eq σ Id -> bnd_sub b σ = b) /\
+  (forall b σ, sb_eq σ Id -> binding_sub b σ = b) /\
   (forall U σ, sb_eq σ Id -> gunit_sub U σ = U) /\
   (forall D σ, sb_eq σ Id -> moddef_sub D σ = D) /\
   (forall Φ σ, sb_eq σ Id -> gmod_sub Φ σ = Φ) /\
@@ -833,7 +833,7 @@ Corollary exp_sub_id_ext : forall M σ, sb_eq σ Id -> exp_sub M σ = M.
 Proof. exact (proj1 syn_sub_id_ext). Qed.
 Corollary modexp_sub_id_ext : forall H σ, sb_eq σ Id -> modexp_sub H σ = H.
 Proof. exact (proj1 (proj2 syn_sub_id_ext)). Qed.
-Corollary bnd_sub_id_ext : forall b σ, sb_eq σ Id -> bnd_sub b σ = b.
+Corollary binding_sub_id_ext : forall b σ, sb_eq σ Id -> binding_sub b σ = b.
 Proof. exact (proj1 (proj2 (proj2 syn_sub_id_ext))). Qed.
 Corollary gunit_sub_id_ext : forall U σ, sb_eq σ Id -> gunit_sub U σ = U.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_sub_id_ext)))). Qed.
@@ -850,8 +850,8 @@ Corollary exp_sub_id : forall M, exp_sub M Id = M.
 Proof. intros; now apply exp_sub_id_ext. Qed.
 Corollary modexp_sub_id : forall H, modexp_sub H Id = H.
 Proof. intros; now apply modexp_sub_id_ext. Qed.
-Corollary bnd_sub_id : forall b, bnd_sub b Id = b.
-Proof. intros; now apply bnd_sub_id_ext. Qed.
+Corollary binding_sub_id : forall b, binding_sub b Id = b.
+Proof. intros; now apply binding_sub_id_ext. Qed.
 Corollary gunit_sub_id : forall U, gunit_sub U Id = U.
 Proof. intros; now apply gunit_sub_id_ext. Qed.
 Corollary moddef_sub_id : forall D, moddef_sub D Id = D.
@@ -892,7 +892,7 @@ Proof. induction n; intros; simpl; auto using sb_q_wk_ext. Qed.
 Lemma syn_wk_sub_ext :
   (forall M σ φ τ, sb_eq (sb_wk σ φ) τ -> exp_wk (exp_sub M σ) φ = exp_sub M τ) /\
   (forall H σ φ τ, sb_eq (sb_wk σ φ) τ -> modexp_wk (modexp_sub H σ) φ = modexp_sub H τ) /\
-  (forall b σ φ τ, sb_eq (sb_wk σ φ) τ -> bnd_wk (bnd_sub b σ) φ = bnd_sub b τ) /\
+  (forall b σ φ τ, sb_eq (sb_wk σ φ) τ -> binding_wk (binding_sub b σ) φ = binding_sub b τ) /\
   (forall U σ φ τ, sb_eq (sb_wk σ φ) τ -> gunit_wk (gunit_sub U σ) φ = gunit_sub U τ) /\
   (forall D σ φ τ, sb_eq (sb_wk σ φ) τ -> moddef_wk (moddef_sub D σ) φ = moddef_sub D τ) /\
   (forall Φ σ φ τ, sb_eq (sb_wk σ φ) τ -> gmod_wk (gmod_sub Φ σ) φ = gmod_sub Φ τ) /\
@@ -904,7 +904,7 @@ Corollary exp_wk_sub_ext : forall M σ φ τ, sb_eq (sb_wk σ φ) τ -> exp_wk (
 Proof. exact (proj1 syn_wk_sub_ext). Qed.
 Corollary modexp_wk_sub_ext : forall H σ φ τ, sb_eq (sb_wk σ φ) τ -> modexp_wk (modexp_sub H σ) φ = modexp_sub H τ.
 Proof. exact (proj1 (proj2 syn_wk_sub_ext)). Qed.
-Corollary bnd_wk_sub_ext : forall b σ φ τ, sb_eq (sb_wk σ φ) τ -> bnd_wk (bnd_sub b σ) φ = bnd_sub b τ.
+Corollary binding_wk_sub_ext : forall b σ φ τ, sb_eq (sb_wk σ φ) τ -> binding_wk (binding_sub b σ) φ = binding_sub b τ.
 Proof. exact (proj1 (proj2 (proj2 syn_wk_sub_ext))). Qed.
 Corollary gunit_wk_sub_ext : forall U σ φ τ, sb_eq (sb_wk σ φ) τ -> gunit_wk (gunit_sub U σ) φ = gunit_sub U τ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_wk_sub_ext)))). Qed.
@@ -921,8 +921,8 @@ Corollary exp_wk_sub : forall M σ φ, exp_wk (exp_sub M σ) φ = exp_sub M (sb_
 Proof. intros; now apply exp_wk_sub_ext. Qed.
 Corollary modexp_wk_sub : forall H σ φ, modexp_wk (modexp_sub H σ) φ = modexp_sub H (sb_wk σ φ).
 Proof. intros; now apply modexp_wk_sub_ext. Qed.
-Corollary bnd_wk_sub : forall b σ φ, bnd_wk (bnd_sub b σ) φ = bnd_sub b (sb_wk σ φ).
-Proof. intros; now apply bnd_wk_sub_ext. Qed.
+Corollary binding_wk_sub : forall b σ φ, binding_wk (binding_sub b σ) φ = binding_sub b (sb_wk σ φ).
+Proof. intros; now apply binding_wk_sub_ext. Qed.
 Corollary gunit_wk_sub : forall U σ φ, gunit_wk (gunit_sub U σ) φ = gunit_sub U (sb_wk σ φ).
 Proof. intros; now apply gunit_wk_sub_ext. Qed.
 Corollary moddef_wk_sub : forall D σ φ, moddef_wk (moddef_sub D σ) φ = moddef_sub D (sb_wk σ φ).
@@ -978,7 +978,7 @@ Proof. induction n; intros * Heq; simpl; [ exact Heq | apply sb_q_wk_pre_ext; ap
 Lemma syn_sub_wk_ext :
   (forall M φ σ τ, (forall x, σ (φ x) = τ x) -> exp_sub (exp_wk M φ) σ = exp_sub M τ) /\
   (forall H φ σ τ, (forall x, σ (φ x) = τ x) -> modexp_sub (modexp_wk H φ) σ = modexp_sub H τ) /\
-  (forall b φ σ τ, (forall x, σ (φ x) = τ x) -> bnd_sub (bnd_wk b φ) σ = bnd_sub b τ) /\
+  (forall b φ σ τ, (forall x, σ (φ x) = τ x) -> binding_sub (binding_wk b φ) σ = binding_sub b τ) /\
   (forall U φ σ τ, (forall x, σ (φ x) = τ x) -> gunit_sub (gunit_wk U φ) σ = gunit_sub U τ) /\
   (forall D φ σ τ, (forall x, σ (φ x) = τ x) -> moddef_sub (moddef_wk D φ) σ = moddef_sub D τ) /\
   (forall Φ φ σ τ, (forall x, σ (φ x) = τ x) -> gmod_sub (gmod_wk Φ φ) σ = gmod_sub Φ τ) /\
@@ -990,7 +990,7 @@ Corollary exp_sub_wk_ext : forall M φ σ τ, (forall x, σ (φ x) = τ x) -> ex
 Proof. exact (proj1 syn_sub_wk_ext). Qed.
 Corollary modexp_sub_wk_ext : forall H φ σ τ, (forall x, σ (φ x) = τ x) -> modexp_sub (modexp_wk H φ) σ = modexp_sub H τ.
 Proof. exact (proj1 (proj2 syn_sub_wk_ext)). Qed.
-Corollary bnd_sub_wk_ext : forall b φ σ τ, (forall x, σ (φ x) = τ x) -> bnd_sub (bnd_wk b φ) σ = bnd_sub b τ.
+Corollary binding_sub_wk_ext : forall b φ σ τ, (forall x, σ (φ x) = τ x) -> binding_sub (binding_wk b φ) σ = binding_sub b τ.
 Proof. exact (proj1 (proj2 (proj2 syn_sub_wk_ext))). Qed.
 Corollary gunit_sub_wk_ext : forall U φ σ τ, (forall x, σ (φ x) = τ x) -> gunit_sub (gunit_wk U φ) σ = gunit_sub U τ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_sub_wk_ext)))). Qed.
@@ -1007,8 +1007,8 @@ Corollary exp_sub_wk : forall M φ σ, exp_sub (exp_wk M φ) σ = exp_sub M ((ι
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 Corollary modexp_sub_wk : forall H φ σ, modexp_sub (modexp_wk H φ) σ = modexp_sub H ((ι φ) ⨟ σ).
 Proof. intros; apply modexp_sub_wk_ext; intros; reflexivity. Qed.
-Corollary bnd_sub_wk : forall b φ σ, bnd_sub (bnd_wk b φ) σ = bnd_sub b ((ι φ) ⨟ σ).
-Proof. intros; apply bnd_sub_wk_ext; intros; reflexivity. Qed.
+Corollary binding_sub_wk : forall b φ σ, binding_sub (binding_wk b φ) σ = binding_sub b ((ι φ) ⨟ σ).
+Proof. intros; apply binding_sub_wk_ext; intros; reflexivity. Qed.
 Corollary gunit_sub_wk : forall U φ σ, gunit_sub (gunit_wk U φ) σ = gunit_sub U ((ι φ) ⨟ σ).
 Proof. intros; apply gunit_sub_wk_ext; intros; reflexivity. Qed.
 Corollary moddef_sub_wk : forall D φ σ, moddef_sub (moddef_wk D φ) σ = moddef_sub D ((ι φ) ⨟ σ).
@@ -1095,7 +1095,7 @@ Proof. induction n; intros * Heq; simpl; [ exact Heq | apply sb_q_comm_ext; appl
 Lemma syn_wk_sub_comm_ext :
   (forall M φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> exp_sub (exp_wk M φ) σ = exp_wk (exp_sub M τ) ψ) /\
   (forall H φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> modexp_sub (modexp_wk H φ) σ = modexp_wk (modexp_sub H τ) ψ) /\
-  (forall b φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> bnd_sub (bnd_wk b φ) σ = bnd_wk (bnd_sub b τ) ψ) /\
+  (forall b φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> binding_sub (binding_wk b φ) σ = binding_wk (binding_sub b τ) ψ) /\
   (forall U φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gunit_sub (gunit_wk U φ) σ = gunit_wk (gunit_sub U τ) ψ) /\
   (forall D φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> moddef_sub (moddef_wk D φ) σ = moddef_wk (moddef_sub D τ) ψ) /\
   (forall Φ φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gmod_sub (gmod_wk Φ φ) σ = gmod_wk (gmod_sub Φ τ) ψ) /\
@@ -1107,7 +1107,7 @@ Corollary exp_wk_sub_comm_ext : forall M φ σ τ ψ, (forall x, σ (φ x) = sen
 Proof. exact (proj1 syn_wk_sub_comm_ext). Qed.
 Corollary modexp_wk_sub_comm_ext : forall H φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> modexp_sub (modexp_wk H φ) σ = modexp_wk (modexp_sub H τ) ψ.
 Proof. exact (proj1 (proj2 syn_wk_sub_comm_ext)). Qed.
-Corollary bnd_wk_sub_comm_ext : forall b φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> bnd_sub (bnd_wk b φ) σ = bnd_wk (bnd_sub b τ) ψ.
+Corollary binding_wk_sub_comm_ext : forall b φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> binding_sub (binding_wk b φ) σ = binding_wk (binding_sub b τ) ψ.
 Proof. exact (proj1 (proj2 (proj2 syn_wk_sub_comm_ext))). Qed.
 Corollary gunit_wk_sub_comm_ext : forall U φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gunit_sub (gunit_wk U φ) σ = gunit_wk (gunit_sub U τ) ψ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext)))). Qed.
@@ -1130,8 +1130,8 @@ Corollary exp_wk_shift_sub_q : forall M σ, exp_sub (exp_wk M wk_shift) (q σ) =
 Proof. intros; apply exp_wk_sub_comm_ext; intros; reflexivity. Qed.
 Corollary modexp_wk_shift_sub_q : forall H σ, modexp_sub (modexp_wk H wk_shift) (q σ) = modexp_wk (modexp_sub H σ) wk_shift.
 Proof. intros; apply modexp_wk_sub_comm_ext; intros; reflexivity. Qed.
-Corollary bnd_wk_shift_sub_q : forall b σ, bnd_sub (bnd_wk b wk_shift) (q σ) = bnd_wk (bnd_sub b σ) wk_shift.
-Proof. intros; apply bnd_wk_sub_comm_ext; intros; reflexivity. Qed.
+Corollary binding_wk_shift_sub_q : forall b σ, binding_sub (binding_wk b wk_shift) (q σ) = binding_wk (binding_sub b σ) wk_shift.
+Proof. intros; apply binding_wk_sub_comm_ext; intros; reflexivity. Qed.
 Corollary gunit_wk_shift_sub_q : forall U σ, gunit_sub (gunit_wk U wk_shift) (q σ) = gunit_wk (gunit_sub U σ) wk_shift.
 Proof. intros; apply gunit_wk_sub_comm_ext; intros; reflexivity. Qed.
 Corollary moddef_wk_shift_sub_q : forall D σ, moddef_sub (moddef_wk D wk_shift) (q σ) = moddef_wk (moddef_sub D σ) wk_shift.
@@ -1161,11 +1161,11 @@ Proof.
   apply modexp_wk_wk_eq; pointwise_solve.
 Qed.
 
-Corollary bnd_wk_shift_wk_q : forall b φ,
-    bnd_wk (bnd_wk b ↑) (wk_q φ) = bnd_wk (bnd_wk b φ) ↑.
+Corollary binding_wk_shift_wk_q : forall b φ,
+    binding_wk (binding_wk b ↑) (wk_q φ) = binding_wk (binding_wk b φ) ↑.
 Proof.
-  intros; do 2 rewrite bnd_wk_wk.
-  apply bnd_wk_wk_eq; pointwise_solve.
+  intros; do 2 rewrite binding_wk_wk.
+  apply binding_wk_wk_eq; pointwise_solve.
 Qed.
 
 Corollary gunit_wk_shift_wk_q : forall U φ,
@@ -1210,8 +1210,8 @@ Corollary exp_sub_shift_extend : forall M σ en, exp_sub (exp_wk M wk_shift) (sb
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 Corollary modexp_sub_shift_extend : forall H σ en, modexp_sub (modexp_wk H wk_shift) (sb_extend σ en) = modexp_sub H σ.
 Proof. intros; apply modexp_sub_wk_ext; intros; reflexivity. Qed.
-Corollary bnd_sub_shift_extend : forall b σ en, bnd_sub (bnd_wk b wk_shift) (sb_extend σ en) = bnd_sub b σ.
-Proof. intros; apply bnd_sub_wk_ext; intros; reflexivity. Qed.
+Corollary binding_sub_shift_extend : forall b σ en, binding_sub (binding_wk b wk_shift) (sb_extend σ en) = binding_sub b σ.
+Proof. intros; apply binding_sub_wk_ext; intros; reflexivity. Qed.
 Corollary gunit_sub_shift_extend : forall U σ en, gunit_sub (gunit_wk U wk_shift) (sb_extend σ en) = gunit_sub U σ.
 Proof. intros; apply gunit_sub_wk_ext; intros; reflexivity. Qed.
 Corollary moddef_sub_shift_extend : forall D σ en, moddef_sub (moddef_wk D wk_shift) (sb_extend σ en) = moddef_sub D σ.
@@ -1248,7 +1248,7 @@ Proof. induction n; intros; simpl; auto using sb_q_compose_ext. Qed.
 Lemma syn_sub_sub_ext :
   (forall M σ τ δ, sb_eq (σ ⨟ τ) δ -> exp_sub (exp_sub M σ) τ = exp_sub M δ) /\
   (forall H σ τ δ, sb_eq (σ ⨟ τ) δ -> modexp_sub (modexp_sub H σ) τ = modexp_sub H δ) /\
-  (forall b σ τ δ, sb_eq (σ ⨟ τ) δ -> bnd_sub (bnd_sub b σ) τ = bnd_sub b δ) /\
+  (forall b σ τ δ, sb_eq (σ ⨟ τ) δ -> binding_sub (binding_sub b σ) τ = binding_sub b δ) /\
   (forall U σ τ δ, sb_eq (σ ⨟ τ) δ -> gunit_sub (gunit_sub U σ) τ = gunit_sub U δ) /\
   (forall D σ τ δ, sb_eq (σ ⨟ τ) δ -> moddef_sub (moddef_sub D σ) τ = moddef_sub D δ) /\
   (forall Φ σ τ δ, sb_eq (σ ⨟ τ) δ -> gmod_sub (gmod_sub Φ σ) τ = gmod_sub Φ δ) /\
@@ -1260,7 +1260,7 @@ Corollary exp_sub_sub_ext : forall M σ τ δ, sb_eq (σ ⨟ τ) δ -> exp_sub (
 Proof. exact (proj1 syn_sub_sub_ext). Qed.
 Corollary modexp_sub_sub_ext : forall H σ τ δ, sb_eq (σ ⨟ τ) δ -> modexp_sub (modexp_sub H σ) τ = modexp_sub H δ.
 Proof. exact (proj1 (proj2 syn_sub_sub_ext)). Qed.
-Corollary bnd_sub_sub_ext : forall b σ τ δ, sb_eq (σ ⨟ τ) δ -> bnd_sub (bnd_sub b σ) τ = bnd_sub b δ.
+Corollary binding_sub_sub_ext : forall b σ τ δ, sb_eq (σ ⨟ τ) δ -> binding_sub (binding_sub b σ) τ = binding_sub b δ.
 Proof. exact (proj1 (proj2 (proj2 syn_sub_sub_ext))). Qed.
 Corollary gunit_sub_sub_ext : forall U σ τ δ, sb_eq (σ ⨟ τ) δ -> gunit_sub (gunit_sub U σ) τ = gunit_sub U δ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_sub_sub_ext)))). Qed.
@@ -1277,8 +1277,8 @@ Corollary exp_sub_sub : forall M σ τ, exp_sub (exp_sub M σ) τ = exp_sub M (�
 Proof. intros; now apply exp_sub_sub_ext. Qed.
 Corollary modexp_sub_sub : forall H σ τ, modexp_sub (modexp_sub H σ) τ = modexp_sub H (σ ⨟ τ).
 Proof. intros; now apply modexp_sub_sub_ext. Qed.
-Corollary bnd_sub_sub : forall b σ τ, bnd_sub (bnd_sub b σ) τ = bnd_sub b (σ ⨟ τ).
-Proof. intros; now apply bnd_sub_sub_ext. Qed.
+Corollary binding_sub_sub : forall b σ τ, binding_sub (binding_sub b σ) τ = binding_sub b (σ ⨟ τ).
+Proof. intros; now apply binding_sub_sub_ext. Qed.
 Corollary gunit_sub_sub : forall U σ τ, gunit_sub (gunit_sub U σ) τ = gunit_sub U (σ ⨟ τ).
 Proof. intros; now apply gunit_sub_sub_ext. Qed.
 Corollary moddef_sub_sub : forall D σ τ, moddef_sub (moddef_sub D σ) τ = moddef_sub D (σ ⨟ τ).

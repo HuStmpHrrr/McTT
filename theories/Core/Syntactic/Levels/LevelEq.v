@@ -245,7 +245,7 @@ Proof.
   eapply wf_exp_subtyp'; [ exact Ha | apply wf_subtyp_level; assumption ].
 Qed.
 
-Lemma level_atoms_wf_ins : forall {Γ} k s (a : ne) ys,
+Lemma level_atoms_wf_insert : forall {Γ} k s (a : ne) ys,
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n ->
     level_atoms_wf Γ ys ->
     level_atoms_wf Γ (level_atoms_insert k s a ys).
@@ -259,7 +259,7 @@ Lemma level_atoms_wf_sort : forall {Γ} xs,
     level_atoms_wf Γ (level_atoms_sort xs).
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
-  destruct H; apply level_atoms_wf_ins; auto.
+  destruct H; apply level_atoms_wf_insert; auto.
 Qed.
 
 Lemma level_atoms_wf_keep : forall {Γ} c xs,
@@ -270,7 +270,7 @@ Proof.
   destruct H; destruct (fst c <=? s); cbn; auto.
 Qed.
 
-Lemma level_atoms_well_scoped_ins : forall {Γ} k s (a : ne) ys,
+Lemma level_atoms_well_scoped_insert : forall {Γ} k s (a : ne) ys,
     s <= n ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s ->
     level_atoms_well_scoped Γ ys ->
@@ -285,7 +285,7 @@ Lemma level_atoms_well_scoped_sort : forall {Γ} xs,
     level_atoms_well_scoped Γ (level_atoms_sort xs).
 Proof.
   intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
-  destruct H as [[? ?] ?]; apply level_atoms_well_scoped_ins; auto.
+  destruct H as [[? ?] ?]; apply level_atoms_well_scoped_insert; auto.
 Qed.
 
 Lemma level_atoms_well_scoped_keep : forall {Γ} c xs,
@@ -518,7 +518,7 @@ Qed.
 
 (** ** Sorting, Merging and Dropping *)
 
-Lemma lvl_tm_ins : forall {Γ} c k s (a : ne) ys,
+Lemma lvl_tm_insert : forall {Γ} c k s (a : ne) ys,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n ->
@@ -565,7 +565,7 @@ Proof.
   intros Γ c xs Hc HΓ; induction xs as [| [k s a] r IH]; cbn; intros Hxs; [ mauto 3 |].
   destruct Hxs as [Ha Hr].
   transitivity (maxl (succl_n k a) (lvl_tm c (level_atoms_sort r)));
-    [ apply lvl_tm_ins; [ assumption | assumption | assumption | apply level_atoms_wf_sort; assumption ] |].
+    [ apply lvl_tm_insert; [ assumption | assumption | assumption | apply level_atoms_wf_sort; assumption ] |].
   unfold lvl_tm; cbn.
   apply wf_exp_eq_maxl_cong; [ mauto 3 | apply IH; assumption ].
 Qed.
@@ -629,11 +629,11 @@ Qed.
 
 (** The constant is dropped when some atom's offset dominates it; such a
     constant is finite. *)
-Lemma lvl_tm_drop_fin : forall {Γ} c xs,
+Lemma lvl_tm_drop_finite : forall {Γ} c xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     level_atoms_wf Γ xs ->
     c <= level_atoms_max_offset xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm (ofin c) xs ≈ lvl_tm ordinal_zero xs : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm (ordinal_of_nat c) xs ≈ lvl_tm ordinal_zero xs : Level@n.
 Proof.
   intros Γ c xs HΓ; induction xs as [| [k s a] r IH]; cbn; intros Hxs Hle.
   - (** No atom: the constant is [0] already. *)
@@ -665,19 +665,19 @@ Qed.
 Lemma lvl_tm_drop : forall {Γ} c xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     level_atoms_wf Γ xs ->
-    ordinal_le c (ofin (level_atoms_max_offset xs)) ->
+    ordinal_le c (ordinal_of_nat (level_atoms_max_offset xs)) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm ordinal_zero xs : Level@n.
 Proof.
   intros Γ [a c] xs HΓ Hxs Hle.
   assert (a = 0) as -> by (unfold ordinal_le in Hle; cbn in Hle; lia).
-  apply lvl_tm_drop_fin;
+  apply lvl_tm_drop_finite;
     [ assumption | assumption | unfold ordinal_le in Hle; cbn in Hle; lia ].
 Qed.
 
 (** ** The Canonical Form
 
     The equation soundness needs: a level is equal to its canonical form. *)
-Lemma lvl_canon_cst_le : forall c xs, fst (fst (lvl_canon (c, xs))) <= fst c.
+Lemma lvl_canon_const_le : forall c xs, fst (fst (lvl_canon (c, xs))) <= fst c.
 Proof.
   intros; unfold lvl_canon; cbn [fst snd].
   destruct (o2_dominated _ _); cbn; lia.
@@ -713,7 +713,7 @@ Proof.
   pose proof (level_atoms_well_scoped_wf _ Hxs) as Hxw.
   assert (Hcanon : level_atoms_wf Γ (snd (lvl_canon (c, xs))))
     by (unfold lvl_canon; cbn; apply level_atoms_wf_keep, level_atoms_wf_sort; assumption).
-  assert (Hcc : fst (fst (lvl_canon (c, xs))) <= n) by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hc ]).
+  assert (Hcc : fst (fst (lvl_canon (c, xs))) <= n) by (eapply Nat.le_trans; [ apply lvl_canon_const_le | exact Hc ]).
   transitivity (lvl_tm c xs); [ apply lvl_exp_of_tm; assumption |].
   transitivity (lvl_tm (fst (lvl_canon (c, xs))) (snd (lvl_canon (c, xs))));
     [ apply lvl_tm_canon; assumption |].

@@ -24,50 +24,50 @@ Import ListNotations.
 Definition fs_def (b pv : bool) (fs : fstack) (A M : exp) : gentry :=
   ge_def b pv (ctx_pi (fs_tele fs) A) (Some (ctx_fn (fs_tele fs) M)).
 
-Lemma fs_def_dec : forall b pv fs A M, fs_def b pv fs A M = gs_def b pv (dec_stack fs) A M.
+Lemma fs_def_dec : forall b pv fs A M, fs_def b pv fs A M = gs_def b pv (decode_stack fs) A M.
 Proof. intros; unfold fs_def, gs_def; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [gs_axiom]'s twin *)
 Definition fs_axiom (b pv : bool) (fs : fstack) (A : exp) : gentry :=
   ge_def b pv (ctx_pi (fs_tele fs) A) None.
 
-Lemma fs_axiom_dec : forall b pv fs A, fs_axiom b pv fs A = gs_axiom b pv (dec_stack fs) A.
+Lemma fs_axiom_dec : forall b pv fs A, fs_axiom b pv fs A = gs_axiom b pv (decode_stack fs) A.
 Proof. intros; unfold fs_axiom, gs_axiom; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [dm_entry]'s twin *)
 Definition fs_dm_entry (fs : fstack) (pv : bool) (Δ : ctx) (A M : exp) (H : modexp) : gentry :=
   ge_def_mod pv (ctx_pi (fs_tele fs) (ctx_pi Δ A)) (ctx_fn (fs_tele fs) (ctx_fn Δ M)) (gu_mk (Δ ++ fs_tele fs) (md_alias H)).
 
-Lemma fs_dm_entry_dec : forall fs pv Δ A M H, fs_dm_entry fs pv Δ A M H = dm_entry (dec_stack fs) pv Δ A M H.
+Lemma fs_dm_entry_dec : forall fs pv Δ A M H, fs_dm_entry fs pv Δ A M H = dm_entry (decode_stack fs) pv Δ A M H.
 Proof. intros; unfold fs_dm_entry, dm_entry; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [ind_qname]'s twin: a name in the innermost frame *)
 Definition fs_ind_qname (fs : fstack) (x : string) : qname := qname_in (fs_path fs) x.
 
-Lemma fs_ind_qname_dec : forall fs x, fs_ind_qname fs x = ind_qname (dec_stack fs) x.
+Lemma fs_ind_qname_dec : forall fs x, fs_ind_qname fs x = ind_qname (decode_stack fs) x.
 Proof. intros; unfold fs_ind_qname, ind_qname; rewrite fs_path_dec; reflexivity. Qed.
 
 (** [record_at]'s twin *)
 Definition fs_record_at (fs : fstack) (Δ : ctx) (S : typ) (fds : list (string * typ)) : record_decl :=
   mk_record_decl (Δ ++ fs_tele fs) S fds.
 
-Lemma fs_record_at_dec : forall fs Δ S fds, fs_record_at fs Δ S fds = record_at (dec_stack fs) Δ S fds.
+Lemma fs_record_at_dec : forall fs Δ S fds, fs_record_at fs Δ S fds = record_at (decode_stack fs) Δ S fds.
 Proof. intros; unfold fs_record_at, record_at; rewrite fs_tele_dec; reflexivity. Qed.
 
-(** [rms_filed]'s twin *)
-Fixpoint rms_filed_f (fs : fstack) (n : nat) (Vs : list view_key) (ms : list raw_member)
-    (css : list (list (string * list rcarg))) : option (list imember) :=
+(** [raw_members_filed]'s twin *)
+Fixpoint raw_members_filed_f (fs : fstack) (n : nat) (Vs : list view_key) (ms : list raw_member)
+    (css : list (list (string * list classified_carg))) : option (list imember) :=
   match ms, css with
   | nil, nil => Some nil
   | Mr :: ms', cs :: css' =>
-      match rcons_num n Vs cs, rms_filed_f fs n Vs ms' css' with
+      match classified_cons_num n Vs cs, raw_members_filed_f fs n Vs ms' css' with
       | Some cs', Some Ms => Some (mk_imember (mh_decl (fs_ind_qname fs (raw_member_name Mr))) (raw_member_nparams Mr) cs' :: Ms)
       | _, _ => None
       end
   | _, _ => None
   end.
 
-Lemma rms_filed_f_dec : forall fs n Vs ms css, rms_filed_f fs n Vs ms css = rms_filed (dec_stack fs) n Vs ms css.
+Lemma raw_members_filed_f_dec : forall fs n Vs ms css, raw_members_filed_f fs n Vs ms css = raw_members_filed (decode_stack fs) n Vs ms css.
 Proof.
   intros fs n Vs; induction ms as [| Mr ms IH]; intros [| cs css]; cbn; try reflexivity.
   rewrite IH, fs_ind_qname_dec; reflexivity.
@@ -77,16 +77,16 @@ Qed.
 
 (** The frames of a fast context are those of the Core stack they decode
     to, which is canonical. *)
-Lemma fctx_ok_frames : forall v fs, fctx_ok v fs -> fstack_drop fs = fs_of (dec_stack fs) /\ canon_stack (dec_stack fs).
+Lemma fctx_ok_frames : forall v fs, fctx_ok v fs -> fstack_drop fs = fs_of (decode_stack fs) /\ canon_stack (decode_stack fs).
 Proof.
   intros v fs [Θ Ξ _ HcΞ _ _ Hf].
-  assert (E : dec_stack fs = Ξ) by (rewrite <- dec_stack_drop, Hf; apply dec_stack_ok, HcΞ).
+  assert (E : decode_stack fs = Ξ) by (rewrite <- decode_stack_drop, Hf; apply decode_stack_ok, HcΞ).
   rewrite E; split; [ exact Hf | exact HcΞ ].
 Qed.
 
 (** Whether [x] is fresh in the innermost frame, decided fast *)
-Definition fs_fresh_sum (x : string) (fs : fstack) (Hr : fstack_drop fs = fs_of (dec_stack fs)) (Hc : canon_stack (dec_stack fs)) :
-    {gs_fresh x (dec_stack fs)} + {~ gs_fresh x (dec_stack fs)}.
+Definition fs_fresh_sum (x : string) (fs : fstack) (Hr : fstack_drop fs = fs_of (decode_stack fs)) (Hc : canon_stack (decode_stack fs)) :
+    {gs_fresh x (decode_stack fs)} + {~ gs_fresh x (decode_stack fs)}.
 Proof.
   destruct (fs_fresh_dec x fs) eqn:E; [ left | right ].
   - abstract (rewrite <- fs_fresh_dec_drop, Hr in E; exact (proj1 (fs_fresh_dec_of _ _ Hc) E)).
@@ -96,15 +96,15 @@ Defined.
 (** Adding an entry that stands for a canonical one to the innermost
     frame: the frames, their values dropped, are those of the stack with
     the entry added. *)
-Lemma fs_add_drop_of : forall fs x e E, fstack_drop fs = fs_of (dec_stack fs) -> fentry_drop e = tr_entry E ->
-    fstack_drop (fs_add x e fs) = fs_of (gs_add x E (dec_stack fs)).
+Lemma fs_add_drop_of : forall fs x e E, fstack_drop fs = fs_of (decode_stack fs) -> fentry_drop e = translate_entry E ->
+    fstack_drop (fs_add x e fs) = fs_of (gs_add x E (decode_stack fs)).
 Proof. intros fs x e E Hr He; rewrite fs_add_drop, Hr, He; apply fs_add_of. Qed.
 
-Lemma dec_stack_add : forall fs x e E, fstack_drop fs = fs_of (dec_stack fs) -> fentry_drop e = tr_entry E ->
-    canon_stack (gs_add x E (dec_stack fs)) -> dec_stack (fs_add x e fs) = gs_add x E (dec_stack fs).
+Lemma decode_stack_add : forall fs x e E, fstack_drop fs = fs_of (decode_stack fs) -> fentry_drop e = translate_entry E ->
+    canon_stack (gs_add x E (decode_stack fs)) -> decode_stack (fs_add x e fs) = gs_add x E (decode_stack fs).
 Proof.
   intros fs x e E Hr He Hc.
-  rewrite <- dec_stack_drop, (fs_add_drop_of _ _ _ _ Hr He); apply dec_stack_ok, Hc.
+  rewrite <- decode_stack_drop, (fs_add_drop_of _ _ _ _ Hr He); apply decode_stack_ok, Hc.
 Qed.
 
 (** Adding an entry whose values are right keeps the values of the frames
@@ -118,15 +118,15 @@ Qed.
 
 (** An entry added keeps a fast context a translation, when its values are
     right where it is added and the context grows by it. *)
-Lemma fctx_ok_add : forall v fs x e E, fctx_ok v fs -> fentry_drop e = tr_entry E -> canon_stack (gs_add x E (dec_stack fs)) ->
-    gc_sub (view_deps v) (dec_stack fs) (view_deps v) (gs_add x E (dec_stack fs)) ->
-    fentry_values_ok (view_deps v) (gs_add x E (dec_stack fs)) e ->
+Lemma fctx_ok_add : forall v fs x e E, fctx_ok v fs -> fentry_drop e = translate_entry E -> canon_stack (gs_add x E (decode_stack fs)) ->
+    gc_sub (view_deps v) (decode_stack fs) (view_deps v) (gs_add x E (decode_stack fs)) ->
+    fentry_values_ok (view_deps v) (gs_add x E (decode_stack fs)) e ->
     fctx_ok v (fs_add x e fs).
 Proof.
   intros v fs x e E Hok He Hc Hs Hev; destruct (fctx_ok_frames _ _ Hok) as [Hr _].
-  pose proof (dec_stack_add _ _ _ _ Hr He Hc) as Ed.
+  pose proof (decode_stack_add _ _ _ _ Hr He Hc) as Ed.
   destruct Hok as [Θ Ξ HcΘ HcΞ Hu Hv Hf Huv Hfv].
-  apply (mk_fctx_ok _ _ Θ (gs_add x E (dec_stack fs)) HcΘ Hc Hu Hv); rewrite ?Ed.
+  apply (mk_fctx_ok _ _ Θ (gs_add x E (decode_stack fs)) HcΘ Hc Hu Hv); rewrite ?Ed.
   - exact (fs_add_drop_of _ _ _ _ Hr He).
   - intros fp u Hfp; exact (funit_values_grow _ _ _ _ Hs _ (Huv _ _ Hfp)).
   - apply fs_add_values; [| exact Hev ].
@@ -134,10 +134,10 @@ Proof.
 Qed.
 
 (** Filing a unit that stands for a canonical one, read in Core *)
-Lemma dec_units_file : forall s fp u U, units_rep (funits_drop s) (dec_units s) -> funit_drop u = tr_unit U ->
-    canon_deps ((fp, U) :: dec_units s) -> dec_units (fus_file fp u s) = (fp, U) :: dec_units s.
+Lemma decode_units_file : forall s fp u U, units_rep (funits_drop s) (decode_units s) -> funit_drop u = translate_unit U ->
+    canon_deps ((fp, U) :: decode_units s) -> decode_units (fus_file fp u s) = (fp, U) :: decode_units s.
 Proof.
-  intros s fp u U Hr Hu Hc; rewrite <- dec_units_drop; exact (dec_units_ok _ _ Hc (units_rep_drop_file _ _ _ _ _ Hr Hu)).
+  intros s fp u U Hr Hu Hc; rewrite <- decode_units_drop; exact (decode_units_ok _ _ Hc (units_rep_drop_file _ _ _ _ _ Hr Hu)).
 Qed.
 
 (** ** The Units a Command Sees *)
@@ -155,7 +155,7 @@ Qed.
     imported; nothing is built, the units seen are kept in [s]. *)
 Definition cmd_view (s : funits) (D : list path) : fview := mk_fview s D.
 
-Lemma cmd_view_deps : forall s D, view_deps (cmd_view s D) = gds_restrict D (dec_units s).
+Lemma cmd_view_deps : forall s D, view_deps (cmd_view s D) = gds_restrict D (decode_units s).
 Proof. reflexivity. Qed.
 
 (** The fast context of a command at [s], [D] and the frames [fs], the
@@ -165,13 +165,13 @@ Definition fctx_cmd (B : builtins) (s : funits) (D : list path) (fs : fstack) (H
 
 (** It stands for the restriction and the decoded stack. *)
 Lemma fc_gctx_cmd : forall B s D fs Hok,
-    fc_gctx (fctx_cmd B s D fs Hok) = gc_mk (gds_restrict D (dec_units s)) (dec_stack fs).
+    fc_gctx (fctx_cmd B s D fs Hok) = gc_mk (gds_restrict D (decode_units s)) (decode_stack fs).
 Proof. intros; rewrite fc_gctx_eq; unfold fctx_cmd, fctx_at; cbn [fc_view fc_frames]; rewrite cmd_view_deps; reflexivity. Qed.
 
-Lemma fc_tele_cmd : forall B s D fs Hok, fc_tele (fctx_cmd B s D fs Hok) = gs_tele (dec_stack fs).
+Lemma fc_tele_cmd : forall B s D fs Hok, fc_tele (fctx_cmd B s D fs Hok) = gs_tele (decode_stack fs).
 Proof. intros; unfold fc_tele, fctx_cmd, fctx_at; cbn [fc_frames]; symmetry; apply fs_tele_dec. Qed.
 
-Lemma fc_path_cmd : forall B s D fs Hok, fc_path (fctx_cmd B s D fs Hok) = gs_path (dec_stack fs).
+Lemma fc_path_cmd : forall B s D fs Hok, fc_path (fctx_cmd B s D fs Hok) = gs_path (decode_stack fs).
 Proof. intros; unfold fc_path, fctx_cmd, fctx_at; cbn [fc_frames]; symmetry; apply fs_path_dec. Qed.
 
 (** The Core reading of the facts found at a command's fast context: its

@@ -164,7 +164,7 @@ Definition fdomain_level_sort (a : fdomain) : nat :=
   match a with fd_level n => n | _ => 0 end.
 
 (** The flat view of a level value *)
-Definition fdlvl_view (d : fdomain) : (o2 * list (nat * nat * fdomain_ne))%type :=
+Definition fdomain_level_view (d : fdomain) : (o2 * list (nat * nat * fdomain_ne))%type :=
   match d with
   | fd_lvl c xs => (c, xs)
   | fd_neut a m => (ordinal_zero, (0, fdomain_level_sort a, m) :: nil)
@@ -172,15 +172,15 @@ Definition fdlvl_view (d : fdomain) : (o2 * list (nat * nat * fdomain_ne))%type 
   end.
 
 (** The successor of a level: one more on the constant and every offset *)
-Definition fdlvl_suc (d : fdomain) : fdomain :=
-  fd_lvl (ordinal_succ (fst (fdlvl_view d))) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (snd (fdlvl_view d))).
+Definition fdomain_level_suc (d : fdomain) : fdomain :=
+  fd_lvl (ordinal_succ (fst (fdomain_level_view d))) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (snd (fdomain_level_view d))).
 
 (** The join of two levels: the join of the constants, the atoms of both *)
-Definition fdlvl_max (d e : fdomain) : fdomain :=
-  fd_lvl (ordinal_max (fst (fdlvl_view d)) (fst (fdlvl_view e))) (snd (fdlvl_view d) ++ snd (fdlvl_view e)).
+Definition fdomain_level_max (d e : fdomain) : fdomain :=
+  fd_lvl (ordinal_max (fst (fdomain_level_view d)) (fst (fdomain_level_view e))) (snd (fdomain_level_view d) ++ snd (fdomain_level_view e)).
 
 (** A literal level *)
-Definition fdlvl_lit (o : o2) : fdomain := fd_lvl o nil.
+Definition fdomain_level_lit (o : o2) : fdomain := fd_lvl o nil.
 
 (** ** The Erasure
 
@@ -290,22 +290,22 @@ Proof. induction vs as [| v vs IH]; intros ρ; [ reflexivity | apply IH ]. Qed.
 Lemma fdomain_level_sort_erase : forall a, domain_level_sort (fdomain_erase a) = fdomain_level_sort a.
 Proof. intros [] ; reflexivity. Qed.
 
-Lemma fdlvl_suc_erase : forall d, fdomain_erase (fdlvl_suc d) = dlvl_suc (fdomain_erase d).
+Lemma fdomain_level_suc_erase : forall d, fdomain_erase (fdomain_level_suc d) = domain_level_suc (fdomain_erase d).
 Proof.
-  intros d; unfold fdlvl_suc, dlvl_suc, dlvl_cst, dlvl_atoms.
+  intros d; unfold fdomain_level_suc, domain_level_suc, domain_level_const, domain_level_atoms.
   destruct d; cbn; rewrite ?List.map_map; try reflexivity.
   rewrite fdomain_level_sort_erase; reflexivity.
 Qed.
 
-Lemma fdlvl_max_erase : forall d e, fdomain_erase (fdlvl_max d e) = dlvl_max (fdomain_erase d) (fdomain_erase e).
+Lemma fdomain_level_max_erase : forall d e, fdomain_erase (fdomain_level_max d e) = domain_level_max (fdomain_erase d) (fdomain_erase e).
 Proof.
-  intros d e; unfold fdlvl_max, dlvl_max, dlvl_cst, dlvl_atoms; cbn [fdomain_erase].
+  intros d e; unfold fdomain_level_max, domain_level_max, domain_level_const, domain_level_atoms; cbn [fdomain_erase].
   rewrite List.map_app; f_equal; [ destruct d, e; reflexivity |].
   f_equal; [ destruct d; cbn; rewrite ?fdomain_level_sort_erase; reflexivity
            | destruct e; cbn; rewrite ?fdomain_level_sort_erase; reflexivity ].
 Qed.
 
-Lemma fdlvl_lit_erase : forall o, fdomain_erase (fdlvl_lit o) = dlvl_lit o.
+Lemma fdomain_level_lit_erase : forall o, fdomain_erase (fdomain_level_lit o) = domain_level_lit o.
 Proof. reflexivity. Qed.
 
 (** A record value's fields, erased *)
@@ -526,19 +526,19 @@ Section Ok.
     apply IH; [ apply fextend_env_ok |]; assumption.
   Qed.
 
-  Lemma fdlvl_view_ok : forall d, fdomain_ok d -> Forall (fun ka => fdomain_ne_ok (snd ka)) (snd (fdlvl_view d)).
+  Lemma fdomain_level_view_ok : forall d, fdomain_ok d -> Forall (fun ka => fdomain_ne_ok (snd ka)) (snd (fdomain_level_view d)).
   Proof. intros d H; destruct d; cbn; inversion H; subst; auto. Qed.
 
-  Lemma fdlvl_suc_ok : forall d, fdomain_ok d -> fdomain_ok (fdlvl_suc d).
+  Lemma fdomain_level_suc_ok : forall d, fdomain_ok d -> fdomain_ok (fdomain_level_suc d).
   Proof.
-    intros d H; unfold fdlvl_suc; constructor; apply Forall_map.
-    eapply Forall_impl; [| exact (fdlvl_view_ok d H) ]; intros; assumption.
+    intros d H; unfold fdomain_level_suc; constructor; apply Forall_map.
+    eapply Forall_impl; [| exact (fdomain_level_view_ok d H) ]; intros; assumption.
   Qed.
 
-  Lemma fdlvl_max_ok : forall d e, fdomain_ok d -> fdomain_ok e -> fdomain_ok (fdlvl_max d e).
-  Proof. intros; unfold fdlvl_max; constructor; apply Forall_app; split; apply fdlvl_view_ok; assumption. Qed.
+  Lemma fdomain_level_max_ok : forall d e, fdomain_ok d -> fdomain_ok e -> fdomain_ok (fdomain_level_max d e).
+  Proof. intros; unfold fdomain_level_max; constructor; apply Forall_app; split; apply fdomain_level_view_ok; assumption. Qed.
 
-  Lemma fdlvl_lit_ok : forall o, fdomain_ok (fdlvl_lit o).
+  Lemma fdomain_level_lit_ok : forall o, fdomain_ok (fdomain_level_lit o).
   Proof. intros; constructor; constructor. Qed.
 
   Lemma fdm_clo_ok : forall U ρ, fenv_ok ρ -> fdmod_ok (fdm_clo U ρ).
@@ -640,7 +640,7 @@ Hint Extern 3 (Forall (fdentry_ok ?T ?X) ?ρ) => change (fenv_ok T X ρ) : mctt.
 Hint Constructors fdomain_ok fdomain_ne_ok fdomain_nf_ok fdmod_ok fdentry_ok : mctt.
 #[export]
 Hint Resolve fenv_var_ok fenv_mod_ok fextend_env_ok fextend_env_mod_ok fextend_env_dm_ok fenv_args_ok
-  fdlvl_suc_ok fdlvl_max_ok fdlvl_lit_ok fdm_clo_ok fkinds_placeholders_ok fkinds_body_entry_ok
+  fdomain_level_suc_ok fdomain_level_max_ok fdomain_level_lit_ok fdm_clo_ok fkinds_placeholders_ok fkinds_body_entry_ok
   fkinds_items_gen_env_ok combine_ok : mctt.
 
 (** The operations on fast values are read through their erasure
@@ -648,7 +648,7 @@ Hint Resolve fenv_var_ok fenv_mod_ok fextend_env_ok fextend_env_mod_ok fextend_e
     implementations state them as computed.  [Opaque] has no [export]
     form, so each file defining implementations on fast values makes
     [fenv_var], [fenv_mod], [fextend_env], [fextend_env_mod],
-    [fextend_env_dm], [fenv_args], [fdlvl_suc], [fdlvl_max], [fdlvl_lit],
+    [fextend_env_dm], [fenv_args], [fdomain_level_suc], [fdomain_level_max], [fdomain_level_lit],
     [fdm_clo], [fkinds_placeholders], [fkinds_body_entry],
     [fkinds_items_gen_env], [felim_grp_of] and [carry] opaque locally. *)
 
@@ -684,7 +684,7 @@ Ltac ok_invert :=
 Ltac ok_solve :=
   ok_invert; repeat match goal with |- _ /\ _ => split end;
   solve [ eauto 8 using fenv_var_ok, fenv_mod_ok, fenv_args_ok, fdomains_nth_error_ok, field_lookup_ok, combine_ok, Forall_map_intro,
-                         fdlvl_suc_ok, fdlvl_max_ok, fdlvl_lit_ok, fkinds_body_entry_ok, fkinds_items_gen_env_ok,
+                         fdomain_level_suc_ok, fdomain_level_max_ok, fdomain_level_lit_ok, fkinds_body_entry_ok, fkinds_items_gen_env_ok,
                          fkinds_placeholders_ok, fdm_clo_ok with mctt ].
 
 (** ** Reading Erasures as Core Values
@@ -697,7 +697,7 @@ Ltac ferase_ops :=
   rewrite <- ?fenv_var_erase, <- ?fenv_mod_erase, <- ?felim_grp_of_erase in *;
   rewrite ?fextend_env_erase, ?fextend_env_mod_erase, ?fextend_env_dm_erase, ?fenv_args_erase,
     ?fkinds_placeholders_erase, ?fkinds_items_gen_env_erase, ?fkinds_body_entry_erase, ?fdm_clo_erase,
-    ?fdlvl_suc_erase, ?fdlvl_max_erase, ?fdlvl_lit_erase, ?fields_erase_combine,
+    ?fdomain_level_suc_erase, ?fdomain_level_max_erase, ?fdomain_level_lit_erase, ?fields_erase_combine,
     ?field_lookup_erase in *.
 
 Ltac ferase_norm :=

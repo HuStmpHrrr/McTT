@@ -7,7 +7,7 @@ From Mctt.Extraction Require Export FastGlobal FastValues.
 
 (** * The Fast Context
 
-    The declarations the evaluator and readback keep ([lk_cache]), and the
+    The declarations the evaluator and readback keep ([lookup_cache]), and the
     fast context the implementations run on ([FCtx]): the only run-time
     global context of the extracted code.  Its Core reading is in
     [Extraction.Decoding], its lookups in [Extraction.Lookup]. *)
@@ -60,7 +60,7 @@ Section Cache.
       constructor it takes apart for the recursive results, whose arguments
       are of the same type, and compares names instead of looking up
       again. *)
-  Definition lk_cache : Set := option {x : qname * ind_decl | ind_lookup Θ Ξ (fst x) = Some (snd x)}.
+  Definition lookup_cache : Set := option {x : qname * ind_decl | ind_lookup Θ Ξ (fst x) = Some (snd x)}.
 End Cache.
 
 (** ** The Fast Context
@@ -90,13 +90,13 @@ Record fctx_ok (v : fview) (fs : fstack) : Prop := mk_fctx_ok
     (** the units, their stored values dropped, are those of [fo_deps] *)
   ; fo_units : units_rep (funits_drop (fv_units v)) fo_deps
     (** the units seen are those filed at the imported paths *)
-  ; fo_vis : vis_rep (fv_units v) (fv_dom v)
+  ; fo_visible : visible_rep (fv_units v) (fv_dom v)
     (** the frames, their stored values dropped, are those of [fo_stack] *)
   ; fo_frames : fstack_drop fs = fs_of fo_stack
     (** the values stored in the units seen are right in the decoding *)
-  ; fo_unit_values : forall fp u, fv_find v fp = Some u -> funit_values_ok (view_deps v) (dec_stack fs) u
+  ; fo_unit_values : forall fp u, fv_find v fp = Some u -> funit_values_ok (view_deps v) (decode_stack fs) u
     (** the values stored in the frames are right in the decoding *)
-  ; fo_frame_values : Forall (fun f => ftrie_values_ok (view_deps v) (dec_stack fs) (ff_body f)) fs }.
+  ; fo_frame_values : Forall (fun f => ftrie_values_ok (view_deps v) (decode_stack fs) (ff_body f)) fs }.
 
 (** A fast context: the units seen, the open frames, the proof that they
     translate a canonical Core context, and a declaration looked up
@@ -110,4 +110,4 @@ Record FCtx : Type := mk_fctx
   ; fc_ok : fctx_ok fc_view fc_frames
     (** a declaration the evaluator and readback start from, as if they
         had looked it up already *)
-  ; fc_seed_found : lk_cache (view_deps fc_view) (dec_stack fc_frames) }.
+  ; fc_seed_found : lookup_cache (view_deps fc_view) (decode_stack fc_frames) }.

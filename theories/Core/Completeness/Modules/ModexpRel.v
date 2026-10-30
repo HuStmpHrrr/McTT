@@ -62,7 +62,7 @@ Qed.
     against that of [H] at the substitution's value there. *)
 Definition modexp_sub_rel (Γ : ctx) (H : modexp) : Prop :=
   forall Γ' R' σ σ' ρ ρσ, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R' -> Γ' ⊨ˢ σ ≈ σ' : Γ -> R' ρ ρ ->
-    ⟦ σ ⟧s gc_deps ⍮ gc_stack ⍮ ρ ↘ ρσ -> rel_mexp H[σ]ᵐ ρ H ρσ.
+    ⟦ σ ⟧s gc_deps ⍮ gc_stack ⍮ ρ ↘ ρσ -> rel_modexp_evals H[σ]ᵐ ρ H ρσ.
 
 (** A valid module expression is so moved. *)
 Lemma modexp_sub_rel_of_valid : forall Γ H H', Γ ⊨ᵐ H ≈ H' -> modexp_sub_rel Γ H.
@@ -81,7 +81,7 @@ Lemma env_eq_head : forall ρ m, env_entry ρ 0 = de_term m -> env_eq ρ (ρ↯ 
 Proof. intros [| e ρ] m He [| x]; cbn in *; try exact He; try reflexivity; destruct x; reflexivity. Qed.
 
 Lemma rel_modexp_of_links : forall Γ H H', ⊨ Γ -> modexp_sub_rel Γ H -> modexp_sub_rel Γ H' ->
-    (forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> rel_mexp H ρ H' ρ') ->
+    (forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> rel_modexp_evals H ρ H' ρ') ->
     Γ ⊨ᵐ H ≈ H'.
 Proof.
   intros * HΓ L L' Hat.
@@ -124,7 +124,7 @@ Proof.
   - (* a definition with a module part: its module part, as a slot's *)
     inversion HR; subst.
     match goal with
-    | HE : R <~> _, HU : forall ρ ρ', ?T ρ ρ' -> rel_mexp _ _ _ _ |- _ =>
+    | HE : R <~> _, HU : forall ρ ρ', ?T ρ ρ' -> rel_modexp_evals _ _ _ _ |- _ =>
         apply HE in Hρ as [Ht _ _ _ _ _ H1 _ H3 _];
         exact (tie_mod_rel _ _ _ _ _ _ H1 H3 (HU _ _ Ht))
     end.
@@ -202,7 +202,7 @@ Proof.
   pose proof Hφ as [_ _ _ _ [Hwm _]].
   pose proof (modexp_sub_rel_of_valid _ _ _ HU _ _ _ _ _ _ HR (rel_sub_of_wk Hφ) Hρ (@eval_sub_of_wk _ _ φ ρ Hwm)) as Hd.
   cbn [modexp_sub] in Hd; rewrite gunit_sub_of_wk in Hd.
-  exact (tie_mod_move _ _ _ _ _ (Ht _ _ HR Hρ) (rel_mexp_sym _ _ _ _ Hd)).
+  exact (tie_mod_move _ _ _ _ _ (Ht _ _ HR Hρ) (rel_modexp_evals_sym _ _ _ _ Hd)).
 Qed.
 
 (** [δ] for a slot: the slot is its unit. *)
@@ -230,7 +230,7 @@ Record modexp_next_param_at (H : modexp) (B : typ) (ρ : env) : Prop := mk_modex
   ; modexp_next_param_at_lvl : universe_index
   ; modexp_next_param_at_rel : relation domain
   ; modexp_next_param_at_eval_mod : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ modexp_next_param_at_mod
-  ; modexp_next_param_at_next : nextparam modexp_next_param_at_mod modexp_next_param_at_param
+  ; modexp_next_param_at_next : next_param modexp_next_param_at_mod modexp_next_param_at_param
   ; modexp_next_param_at_eval_typ : ⟦ B ⟧ ρ ↘ modexp_next_param_at_typ
   ; modexp_next_param_at_per : per_univ_elem modexp_next_param_at_lvl modexp_next_param_at_rel modexp_next_param_at_param modexp_next_param_at_typ }.
 
@@ -322,13 +322,13 @@ Qed.
 Lemma rel_lit_arg : forall Γ Δ X D Δ' X' D' R,
     Γ ⊨ᵐ me_lit (gu_mk (Δ ++ ce_ass X :: nil) D) ≈ me_lit (gu_mk (Δ' ++ ce_ass X' :: nil) D') ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ' a c c', R ρ ρ' -> ⟦ X ⟧ ρ ↘ a -> per_head X X' ρ ρ' c c' ->
-    rel_mexp (me_lit (gu_mk Δ D)) (ρ ↦ c) (me_lit (gu_mk Δ' D')) (ρ' ↦ c').
+    rel_modexp_evals (me_lit (gu_mk Δ D)) (ρ ↦ c) (me_lit (gu_mk Δ' D')) (ρ' ↦ c').
 Proof.
   intros * HU HR * Hρ Ha Hc.
   destruct (unit_chain_at HU HR _ _ Hρ) as [h h' Hh Hh' Hd].
   pose proof (functional_eval_modexp _ _ _ _ Hh (lit_params_val _ _ _ _)) as ->.
   pose proof (functional_eval_modexp _ _ _ _ Hh' (lit_params_val _ _ _ _)) as ->.
-  destruct (per_dmod_appm _ _ _ Hd (nextparam_local _ _ _ _ _ Ha)) as (i & RX & a' & Hp' & HRX & Hap).
+  destruct (per_dmod_appm _ _ _ Hd (next_param_local _ _ _ _ _ Ha)) as (i & RX & a' & Hp' & HRX & Hap).
   inversion Hp' as [Δ0 A ? ? ? Ha' Hl | |]; subst.
   apply app_inj_tail in Hl as [-> [= ->]].
   destruct (Hap c c' (Hc _ _ _ _ Ha Ha' HRX)) as (hc & hc' & Hc1 & Hc2 & Hcc).
@@ -349,7 +349,7 @@ Section Beta.
   (** The instance at an environment, against the literal under one
       parameter fewer at the argument's value. *)
   Lemma beta_link : forall R ρ n, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ -> ⟦ N ⟧ ρ ↘ n ->
-      rel_mexp (me_lit (gu_mk Δ D)[Id,,N]ᵘ) ρ (me_lit (gu_mk Δ D)) (ρ ↦ n).
+      rel_modexp_evals (me_lit (gu_mk Δ D)[Id,,N]ᵘ) ρ (me_lit (gu_mk Δ D)) (ρ ↦ n).
   Proof.
     intros * HR Hρ Hn.
     exact (HL _ _ _ _ _ _ HR (gsub_valid gid) Hρ (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn)).
@@ -358,7 +358,7 @@ Section Beta.
   (** The values of the literal under one parameter fewer, at related
       arguments. *)
   Lemma beta_mid : forall R ρ ρ' n n', EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ' -> ⟦ N ⟧ ρ ↘ n -> ⟦ N ⟧ ρ' ↘ n' ->
-      rel_mexp (me_lit (gu_mk Δ D)) (ρ ↦ n) (me_lit (gu_mk Δ D)) (ρ' ↦ n').
+      rel_modexp_evals (me_lit (gu_mk Δ D)) (ρ ↦ n) (me_lit (gu_mk Δ D)) (ρ' ↦ n').
   Proof.
     intros * HR Hρ Hn Hn'.
     destruct (rel_exp_of_typ_inversion_simple_at HR HX _ _ Hρ) as (a & a' & Ha & Ha' & _).
@@ -393,7 +393,7 @@ Section Beta.
       assert (Hc : per_head X X e1↯ ρσ m n) by (eapply per_head_of; [ exact Hx1 | exact Hx2 | exact HRx | exact Hh ]).
       pose proof (rel_lit_arg _ _ _ _ _ _ _ _ HU HR _ _ _ m n Ht Ha Hc) as Hmid.
       pose proof (beta_link _ _ _ HR Hρσ Hn) as L2.
-      exact (rel_mexp_trans _ _ _ _ _ _ L1 (rel_mexp_trans _ _ _ _ _ _ Hmid (rel_mexp_sym _ _ _ _ L2))). }
+      exact (rel_modexp_evals_trans _ _ _ _ _ _ L1 (rel_modexp_evals_trans _ _ _ _ _ _ Hmid (rel_modexp_evals_sym _ _ _ _ L2))). }
     apply rel_modexp_of_links; [ exact HΓ | exact Ls | exact Ls |].
     intros R' HR' ρ ρ' Hρ.
     assert (E : R' <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
@@ -401,8 +401,8 @@ Section Beta.
     assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
     assert (Hρ'ρ' : R ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
     destruct (rel_exp_under_ctx_simple_at HR HN _ _ Hρ) as (n & n' & Hn & Hn' & _).
-    exact (rel_mexp_trans _ _ _ _ _ _ (beta_link _ _ _ HR Hρρ Hn)
-             (rel_mexp_trans _ _ _ _ _ _ (beta_mid _ _ _ _ _ HR Hρ Hn Hn') (rel_mexp_sym _ _ _ _ (beta_link _ _ _ HR Hρ'ρ' Hn')))).
+    exact (rel_modexp_evals_trans _ _ _ _ _ _ (beta_link _ _ _ HR Hρρ Hn)
+             (rel_modexp_evals_trans _ _ _ _ _ _ (beta_mid _ _ _ _ _ HR Hρ Hn Hn') (rel_modexp_evals_sym _ _ _ _ (beta_link _ _ _ HR Hρ'ρ' Hn')))).
   Qed.
 
   (** A literal given its outermost parameter is the literal under the

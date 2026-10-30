@@ -712,10 +712,10 @@ Lemma ihs_ctx_aux_sub : forall r D nn As As' Us na τ gs pat j,
     List.length pat + List.length gs = na ->
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
        ptyp_scoped (pat_nargs pat + List.length (cargs_strat gs1) + (nn + List.length Us)) t /\
-       (forall l, In l (shape_leaves (rv_leaves D) (pat_nargs pat + List.length (cargs_strat gs1) + nn) t) ->
+       (forall l, In l (shape_leaves (rview_leaves D) (pat_nargs pat + List.length (cargs_strat gs1) + nn) t) ->
           List.nth (leaf_mem l) As' a_True = (List.nth (leaf_mem l) As a_True)[sb_qn (S (List.length (leaf_ps l))) τ])) ->
-    tele_sub (ihs_ctx_aux r (rv_leaves D) nn As Us na pat j gs) (sb_qn (j + na + nn) τ)
-    = ihs_ctx_aux r (rv_leaves D) nn As' (List.map (fun U => U[τ]) Us) na pat j gs.
+    tele_sub (ihs_ctx_aux r (rview_leaves D) nn As Us na pat j gs) (sb_qn (j + na + nn) τ)
+    = ihs_ctx_aux r (rview_leaves D) nn As' (List.map (fun U => U[τ]) Us) na pat j gs.
 Proof.
   intros r D nn As As' Us na τ; induction gs as [| [rB B | t] gs IH]; intros * HD HU Hna HPs; cbn [ihs_ctx_aux];
     [ reflexivity | |].
@@ -730,14 +730,14 @@ Proof.
     cbn in Hna.
     rewrite tele_sub_app; f_equal.
     + rewrite length_leaves_ctx.
-      set (nl := List.length (shape_leaves (rv_leaves D) (pat_nargs pat + nn) t)).
+      set (nl := List.length (shape_leaves (rview_leaves D) (pat_nargs pat + nn) t)).
       rewrite (tele_sub_sb_eq _ _ (sb_qn (nl + j + na + nn) τ))
         by (intros x; replace (nl + j + na + nn) with (nl + (j + na + nn)) by lia;
             apply (sb_qn_add nl (j + na + nn) τ x)).
       apply (IH (true :: pat) (nl + j) HD HU); [ cbn; lia |].
       intros gs1 t' gs2 Egs; exact (HPs (ca_rec t :: gs1) t' gs2 ltac:(rewrite Egs; reflexivity)).
     + apply leaves_ctx_sub; [ lia | | exact HA0 ].
-      pose proof (shape_leaves_scoped (rv_leaves D) (ind_nu D) t (pat_nargs pat + nn) (rv_leaves_scoped D HD)) as Hs.
+      pose proof (shape_leaves_scoped (rview_leaves D) (ind_nu D) t (pat_nargs pat + nn) (rview_leaves_scoped D HD)) as Hs.
       rewrite <- HU in Hs; replace (pat_nargs pat + nn + List.length Us) with (pat_nargs pat + (nn + List.length Us)) in Hs by lia.
       apply Hs; exact HPs0.
 Qed.
@@ -754,7 +754,7 @@ Proof.
   - apply (ihs_ctx_aux_sub r D (im_nn M) As As' Us (List.length gs) τ gs nil 0 HD Hl eq_refl).
     intros * Heq; split.
     + rewrite Hl; exact (member_closed_recs _ _ HMc _ _ _ _ _ Hin Heq).
-    + intros l Hlf; pose proof (cargs_leaves_plen _ _ _ _ _ _ _ _ (pat_nargs nil + length (cargs_strat gs1) + im_nn M) HD HM Hin Heq) as Hp.
+    + intros l Hlf; pose proof (cargs_leaves_params_length _ _ _ _ _ _ _ _ (pat_nargs nil + length (cargs_strat gs1) + im_nn M) HD HM Hin Heq) as Hp.
       rewrite List.Forall_forall in Hp; destruct (Hp l Hlf) as (Mj & HMj & HlMj).
       rewrite HlMj; apply HAs; exact HMj.
   - rewrite tele_sub_sub.
@@ -765,12 +765,12 @@ Proof.
   - eapply nparams_sub; eassumption.
 Qed.
 
-Lemma elim_bty_sub : forall pq D k M c gs A Us τ,
+Lemma elim_branch_type_sub : forall pq D k M c gs A Us τ,
     decl_closed D -> ind_member D k = Some M -> List.length Us = ind_nu D ->
-    (elim_bty pq D k M c gs A Us)[sb_qn (im_nn M + List.length gs + cargs_nrec D gs) τ]
-    = elim_bty pq D k M c gs A[sb_qn (S (im_nn M)) τ] (List.map (fun U => U[τ]) Us).
+    (elim_branch_type pq D k M c gs A Us)[sb_qn (im_nn M + List.length gs + cargs_nrec D gs) τ]
+    = elim_branch_type pq D k M c gs A[sb_qn (S (im_nn M)) τ] (List.map (fun U => U[τ]) Us).
 Proof.
-  intros * HD HM Hl; unfold elim_bty; rewrite !exp_sub_sub; apply exp_sub_sb_eq.
+  intros * HD HM Hl; unfold elim_branch_type; rewrite !exp_sub_sub; apply exp_sub_sb_eq.
   rewrite sb_of_list_compose with (σ := τ) (ρ' := ι (wk_shiftn (im_nn M + List.length gs + cargs_nrec D gs)))
     by apply sb_shiftn_qn_comm.
   rewrite length_app, length_vars_from; cbn [List.length]; rewrite Nat.add_1_r.
@@ -811,7 +811,7 @@ Proof. intros; unfold blocks_sub; apply List.nth_error_map. Qed.
 Lemma length_blocks_sub : forall Bks τ, List.length (blocks_sub Bks τ) = List.length Bks.
 Proof. intros; apply List.length_map. Qed.
 
-Lemma blocks_nm_ok_sub : forall D Bks τ, blocks_nm_ok D Bks -> blocks_nm_ok D (blocks_sub Bks τ).
+Lemma blocks_binder_count_ok_sub : forall D Bks τ, blocks_binder_count_ok D Bks -> blocks_binder_count_ok D (blocks_sub Bks τ).
 Proof.
   intros * H k Mk b HM Hb; rewrite nth_error_blocks_sub in Hb.
   destruct (List.nth_error Bks k) as [[nm oZ A Bs] |] eqn:E; cbn in Hb; [| discriminate ].
@@ -820,7 +820,7 @@ Qed.
 
 (** The motive of the member [j], moved under its binders. *)
 Lemma blocks_motives_sub : forall D Bks τ j Mj,
-    blocks_nm_ok D Bks -> ind_member D j = Some Mj ->
+    blocks_binder_count_ok D Bks -> ind_member D j = Some Mj ->
     List.nth j (blocks_motives (blocks_sub Bks τ)) a_True = (List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) τ].
 Proof.
   intros * Hnm HMj; unfold blocks_motives.
@@ -866,7 +866,7 @@ Proof. intros [| b Bks] τ; reflexivity. Qed.
 (** The motive of the block at the member [m], moved, at the non-uniform
     parameters and the scrutinee moved. *)
 Lemma elim_type_sub : forall D Mm bm Ps M τ,
-    List.length Ps = im_np D Mm -> eb_nm bm = S (im_nn Mm) ->
+    List.length Ps = im_np D Mm -> eb_binder_count bm = S (im_nn Mm) ->
     ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[τ]
     = (eb_motive (eblock_sub bm τ))[sb_of_list Id (List.skipn (ind_nu D) (List.map (fun P => P[τ]) Ps) ++ M[τ] :: nil)].
 Proof.
@@ -877,7 +877,7 @@ Proof.
 Qed.
 
 Lemma elim_at_sub : forall r pq D oq Us Bks j M τ,
-    decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+    decl_closed D -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
     (elim_at r pq D oq Us Bks j M)[τ] = elim_at r pq D oq (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) j M[τ].
 Proof.
   intros * HD Hl Hnm; unfold elim_at; destruct (ind_has_views D); rewrite exp_sub_elim; reflexivity.
@@ -905,13 +905,13 @@ Qed.
 
 (** The recursive result along a leaf path under [τ]. *)
 Lemma leaf_ih_sub : forall r pq D oq l Us Bks σ M τ,
-    decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+    decl_closed D -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
     (leaf_ih r pq D oq Us Bks σ M l)[τ] = leaf_ih r pq D oq (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) (σ ⨟ τ) M[τ] l.
 Proof.
   intros r pq D oq l; induction l as [j Ps | B l IH | f ns l IH]; intros * HD Hl Hnm; cbn [leaf_ih].
   - apply elim_at_sub; assumption.
   - cbn [exp_sub]; f_equal; [ apply exp_sub_sub |].
-    rewrite IH by first [ assumption | rewrite length_map; exact Hl | apply blocks_nm_ok_wk; exact Hnm ].
+    rewrite IH by first [ assumption | rewrite length_map; exact Hl | apply blocks_binder_count_ok_wk; exact Hnm ].
     rewrite (leaf_ih_sb_eq _ _ _ _ _ _ _ _ _ _ (sb_q_compose σ τ)); f_equal.
     + rewrite !map_map; apply map_ext; intros U; apply exp_wk_shift_sub_q.
     + apply blocks_sub_wk_shift.
@@ -929,7 +929,7 @@ Proof.
 Qed.
 
 Lemma elim_ihs_sub : forall r pq D oq Us Bks gs σ m As τ,
-    decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+    decl_closed D -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
     List.map (fun N => N[τ]) (elim_ihs r pq D oq Us Bks σ m gs As)
     = elim_ihs r pq D oq (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) (σ ⨟ τ) m gs (List.map (fun N => N[τ]) As).
 Proof.
@@ -965,7 +965,7 @@ Proof.
       eapply ptyp_scoped_mono; [| exact Ht ]; lia.
   - f_equal.
     + apply map_ext_in; intros l Hlf; eapply leaf_ih_agree; [| exact Hσ ].
-      pose proof (shape_leaves_scoped (rv_leaves D) (ind_nu D) t m (rv_leaves_scoped D HD)) as Hs.
+      pose proof (shape_leaves_scoped (rview_leaves D) (ind_nu D) t m (rview_leaves_scoped D HD)) as Hs.
       specialize (Ht nil t gs eq_refl); cbn in Ht; subst k.
       exact (proj1 (List.Forall_forall _ _) (Hs Ht) l Hlf).
     + eapply IH; [ exact HD | exact Hk | exact Hσ |]; intros gs1 t' gs2 E;
@@ -976,7 +976,7 @@ Qed.
     domains are instantiated at move. *)
 Lemma elim_ihs_sub_inst : forall r pq D oq k M c gs Bks Ps As τ,
     decl_closed D -> ind_member D k = Some M -> In (c, gs) (im_cons M) -> List.length Ps = im_np D M ->
-    blocks_nm_ok D Bks ->
+    blocks_binder_count_ok D Bks ->
     List.map (fun N => N[τ]) (elim_ihs r pq D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn M) gs As)
     = elim_ihs r pq D oq (List.firstn (ind_nu D) (List.map (fun P => P[τ]) Ps)) (blocks_sub Bks τ)
         (sb_of_list Id (List.map (fun P => P[τ]) Ps)) (im_nn M) gs (List.map (fun N => N[τ]) As).
@@ -1082,7 +1082,7 @@ Proof.
 Qed.
 
 Lemma blocks_motives_wk : forall D Bks φ j Mj,
-    blocks_nm_ok D Bks -> ind_member D j = Some Mj ->
+    blocks_binder_count_ok D Bks -> ind_member D j = Some Mj ->
     List.nth j (blocks_motives (blocks_wk Bks φ)) a_True = (List.nth j (blocks_motives Bks) a_True)[wk_qn (S (im_nn Mj)) φ]ʷ.
 Proof. intros; rewrite <- blocks_sub_of_wk, <- exp_sub_qn_of_wk; eapply blocks_motives_sub; eassumption. Qed.
 
@@ -1100,18 +1100,18 @@ Proof.
   intros j Mj HMj; rewrite exp_sub_qn_of_wk; exact (HAs _ _ HMj).
 Qed.
 
-Lemma elim_bty_wk : forall pq D k M c gs A Us φ,
+Lemma elim_branch_type_wk : forall pq D k M c gs A Us φ,
     decl_closed D -> ind_member D k = Some M -> List.length Us = ind_nu D ->
-    (elim_bty pq D k M c gs A Us)[wk_qn (im_nn M + List.length gs + cargs_nrec D gs) φ]ʷ
-    = elim_bty pq D k M c gs A[wk_qn (S (im_nn M)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us).
+    (elim_branch_type pq D k M c gs A Us)[wk_qn (im_nn M + List.length gs + cargs_nrec D gs) φ]ʷ
+    = elim_branch_type pq D k M c gs A[wk_qn (S (im_nn M)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us).
 Proof.
-  intros; rewrite <- exp_sub_qn_of_wk; erewrite elim_bty_sub by eassumption.
+  intros; rewrite <- exp_sub_qn_of_wk; erewrite elim_branch_type_sub by eassumption.
   rewrite exp_sub_qn_of_wk, map_sub_of_wk; reflexivity.
 Qed.
 
 Lemma elim_ihs_wk_inst : forall r pq D oq k M c gs Bks Ps As φ,
     decl_closed D -> ind_member D k = Some M -> In (c, gs) (im_cons M) -> List.length Ps = im_np D M ->
-    blocks_nm_ok D Bks ->
+    blocks_binder_count_ok D Bks ->
     List.map (fun N => N[φ]ʷ) (elim_ihs r pq D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn M) gs As)
     = elim_ihs r pq D oq (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) (blocks_wk Bks φ)
         (sb_of_list Id (List.map (fun P => P[φ]ʷ) Ps)) (im_nn M) gs (List.map (fun N => N[φ]ʷ) As).
@@ -1191,17 +1191,17 @@ Proof.
 Qed.
 
 (** A branch of the container's block, moved under its binders. *)
-Lemma wrap_br_sub : forall r pq D D' vm Us Bks v Mv Bs c gs' gs τ,
-    decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks -> ind_member D v = Some Mv ->
-    ind_con Mv c = Some gs -> cargs_corr vm gs' gs ->
+Lemma wrap_branch_sub : forall r pq D D' vm Us Bks v Mv Bs c gs' gs τ,
+    decl_closed D -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks -> ind_member D v = Some Mv ->
+    ind_con Mv c = Some gs -> cargs_correspond vm gs' gs ->
     (forall n B, In (c, n, B) Bs -> n = (im_nn Mv + List.length gs + cargs_nrec D gs)%nat) ->
-    (fst (wrap_br r pq D D' Us Bks Mv Bs c gs'),
-     (snd (wrap_br r pq D D' Us Bks Mv Bs c gs'))[sb_qn (snd (fst (wrap_br r pq D D' Us Bks Mv Bs c gs'))) τ])
-    = wrap_br r pq D D' (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) Mv (brs_sub Bs τ) c gs'.
+    (fst (wrap_branch r pq D D' Us Bks Mv Bs c gs'),
+     (snd (wrap_branch r pq D D' Us Bks Mv Bs c gs'))[sb_qn (snd (fst (wrap_branch r pq D D' Us Bks Mv Bs c gs'))) τ])
+    = wrap_branch r pq D D' (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) Mv (brs_sub Bs τ) c gs'.
 Proof.
   intros * HD Hl Hnm HMv Hgs Hc Hn.
-  pose proof (cargs_corr_length _ _ _ Hc) as Hlen.
-  unfold wrap_br; rewrite Hgs, brs_lookup_sub; cbv zeta; cbn [fst snd].
+  pose proof (cargs_correspond_length _ _ _ Hc) as Hlen.
+  unfold wrap_branch; rewrite Hgs, brs_lookup_sub; cbv zeta; cbn [fst snd].
   destruct (brs_lookup Bs c) as [[n B] |] eqn:Hb; cbn [option_map fst snd]; [| reflexivity ].
   pose proof (Hn _ _ (brs_lookup_in _ _ _ _ Hb)) as En; subst n.
   f_equal.
@@ -1214,7 +1214,7 @@ Proof.
     do 2 f_equal.
     rewrite wrap_ihs_sub by (intros x Hx; apply sb_qn_lt; subst n'; lia).
     f_equal.
-    rewrite elim_ihs_sub by first [ assumption | rewrite length_map; exact Hl | apply blocks_nm_ok_wk; exact Hnm ].
+    rewrite elim_ihs_sub by first [ assumption | rewrite length_map; exact Hl | apply blocks_binder_count_ok_wk; exact Hnm ].
     rewrite (vars_from_sub _ _ n') by (subst n'; lia).
     rewrite blocks_sub_wk_shiftn.
     assert (HUs : List.map (fun U => U[sb_qn n' τ]) (List.map (fun U => U[wk_shiftn n']ʷ) Us)
@@ -1235,7 +1235,7 @@ Qed.
 
 (** The container's block for its member [i'], moved. *)
 Lemma view_wrap_block_sub : forall r pq D D' vm Us Bks i' Mi' τ,
-    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     ind_member D' i' = Some Mi' ->
@@ -1254,13 +1254,13 @@ Proof.
   assert (Hc : In c (List.map fst (im_cons Mv))) by (rewrite Hcs; apply List.in_map_iff; exists (c, gs'); auto).
   apply List.in_map_iff in Hc as ([c0 gs0] & E0 & Hin0); cbn in E0; subst c0.
   destruct (cons_lookup_of_in _ _ _ Hin0) as [gs Hgs].
-  eapply wrap_br_sub; [ eassumption .. | exact (Hcorr _ _ _ Hin Hgs) |].
+  eapply wrap_branch_sub; [ eassumption .. | exact (Hcorr _ _ _ Hin Hgs) |].
   intros n B HB; exact (Hn _ _ _ _ _ _ _ HMv Hb Hgs HB).
 Qed.
 
 (** The container's blocks at a view, moved. *)
 Lemma view_wrap_sub : forall r pq D D' vm Us Bks τ,
-    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     blocks_sub (view_wrap r pq D D' vm Us Bks) τ = view_wrap r pq D D' vm (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ).
@@ -1273,11 +1273,11 @@ Proof.
     unfold blocks_sub in *; cbn [view_wrap_from List.map]; f_equal.
     - eapply view_wrap_block_sub; try eassumption; rewrite <- (Nat.add_0_r s); exact (Hms 0 _ eq_refl).
     - apply IH; intros i Mi Hi; replace (S s + i) with (s + S i) by lia; exact (Hms (S i) _ Hi). }
-  apply H; intros i Mi' Hi; exact (proj1 (ind_bmembers_member _ _ _ Hi)).
+  apply H; intros i Mi' Hi; exact (proj1 (ind_block_members_member _ _ _ Hi)).
 Qed.
 
 Lemma view_wrap_wk : forall r pq D D' vm Us Bks φ,
-    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
+    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     blocks_wk (view_wrap r pq D D' vm Us Bks) φ = view_wrap r pq D D' vm (List.map (fun U => U[φ]ʷ) Us) (blocks_wk Bks φ).

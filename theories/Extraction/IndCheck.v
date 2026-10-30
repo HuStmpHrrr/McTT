@@ -125,7 +125,7 @@ Proof.
 Qed.
 
 (** The type former of a declared member. *)
-Definition ind_infer G (HG : ⊢ G) (P : tenv G) p k :
+Definition ind_infer G (HG : ⊢ G) (P : checker_env G) p k :
   { A : nf | G ⊢a a_ind p k ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) }
   + { forall A, ~ G ⊢a a_ind p k ⟹ A }.
 Proof.
@@ -137,7 +137,7 @@ Proof.
 Defined.
 
 (** A constructor of a member. *)
-Definition con_infer G (HG : ⊢ G) (P : tenv G) p k c :
+Definition con_infer G (HG : ⊢ G) (P : checker_env G) p k c :
   { A : nf | G ⊢a a_con p k c ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) }
   + { forall A, ~ G ⊢a a_con p k c ⟹ A }.
 Proof.
@@ -187,7 +187,7 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
   ; elim_ok_agree : nfs_agree G (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs))
       (tele_insts (ind_uparams Dq) Id (im_pre Mm Us))
     (** Each block binds the non-uniform parameters and the scrutinee *)
-  ; elim_ok_binders : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)
+  ; elim_ok_binders : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_binder_count b = S (im_nn Mj)
     (** The annotations are checked at the universe *)
   ; elim_ok_annotation_typed : forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
       tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G ⊢a Z ⟸ Typeω@i
@@ -206,7 +206,7 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
     (** The branches are checked at their types *)
   ; elim_ok_branches : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-      elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us
+      elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_branch_type p D j Mj c gs (eb_motive b) Us
     (** The type is the normal form of the motive's instance *)
   ; elim_ok_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)] T }.
 
@@ -262,8 +262,8 @@ Qed.
 
 (** Whether terms check at the instances of a telescope, each at its
     instance once those before it check. *)
-Definition tele_check_dec G (HG : ⊢ G) (P : tenv G) Δ (Hass : tele_ass Δ) (HΔ : ⊢ (Δ ++ G)%list) (Ms : list exp)
-    (chk : forall N, In N Ms -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : tenv G'),
+Definition tele_check_dec G (HG : ⊢ G) (P : checker_env G) Δ (Hass : tele_ass Δ) (HΔ : ⊢ (Δ ++ G)%list) (Ms : list exp)
+    (chk : forall N, In N Ms -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : checker_env G'),
         { G' ⊢a N ⟸ A' } + { ~ G' ⊢a N ⟸ A' }) :
   { forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts Δ Id Ms) j = Some T -> G ⊢a N ⟸ T }
   + { ~ forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts Δ Id Ms) j = Some T -> G ⊢a N ⟸ T }.
@@ -325,7 +325,7 @@ Qed.
 
 (** Whether terms have, position by position, the normal forms of others
     at their instances of a telescope. *)
-Definition nfs_agree_dec G (HG : ⊢ G) (P : tenv G) Δ (Hass : tele_ass Δ) (HΔ : ⊢ (Δ ++ G)%list) Ms Rs
+Definition nfs_agree_dec G (HG : ⊢ G) (P : checker_env G) Δ (Hass : tele_ass Δ) (HΔ : ⊢ (Δ ++ G)%list) Ms Rs
     (HMl : List.length Ms = List.length Δ) (HRl : List.length Rs = List.length Δ)
     (HMs : forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts Δ Id Ms) j = Some T -> G ⊢ N : T)
     (HRs : forall j N T, List.nth_error Rs j = Some N -> List.nth_error (tele_insts Δ Id Rs) j = Some T -> G ⊢ N : T) :
@@ -361,8 +361,8 @@ Proof.
 Qed.
 
 (** A type that infers a universe is checked at its index. *)
-Lemma check_typ_of_infer : forall Δ A UA u, ⊢ Δ -> Δ ⊢a A ⟹ UA -> is_univ_nf UA u -> Δ ⊢a A ⟸ Typeω@(unf_large u).
-Proof. intros * HΔ HA Hu; eapply alg_type_check_typ_of; [ exact HΔ | exact HA | exact Hu | apply unf_le_large ]. Qed.
+Lemma check_typ_of_infer : forall Δ A UA u, ⊢ Δ -> Δ ⊢a A ⟹ UA -> is_univ_nf UA u -> Δ ⊢a A ⟸ Typeω@(universe_nf_large_index u).
+Proof. intros * HΔ HA Hu; eapply alg_type_check_typ_of; [ exact HΔ | exact HA | exact Hu | apply universe_nf_le_large ]. Qed.
 
 (** A type checked at a universe is typed at it. *)
 Lemma check_typ_sound : forall Δ A l, ⊢ Δ -> Δ ⊢a A ⟸ Typeω@l -> Δ ⊢ A : Typeω@l.
@@ -377,7 +377,7 @@ Definition block_univ (G : ctx) (p : qname) (D : ind_decl) (Us : list exp) (Bks 
      elim_mctx p D j Mj Us ++ G ⊢a eb_motive b ⟸ Typeω@l).
 
 Section Blocks.
-  Variables (G : ctx) (HG : ⊢ G) (P : tenv G) (p : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock).
+  Variables (G : ctx) (HG : ⊢ G) (P : checker_env G) (p : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock).
   Hypothesis (HC : forall j Mj, ind_member D j = Some Mj -> ⊢ (elim_mctx p D j Mj Us ++ G)%list).
 
   Let Hg : ⊢ᵍ gc_deps ⍮ gc_stack := ctx_wf_gctx _ _ _ HG.
@@ -404,10 +404,10 @@ Section Blocks.
 
   (** A universe for the annotation and the motive of the member [j]. *)
   Definition block_univ_dec
-      (infZ : forall b Z, In b Bks -> eb_ann b = Some Z -> forall G' (HG' : ⊢ G') (P' : tenv G'),
+      (infZ : forall b Z, In b Bks -> eb_ann b = Some Z -> forall G' (HG' : ⊢ G') (P' : checker_env G'),
           { UA : nf | G' ⊢a Z ⟹ UA /\ (exists UB u, G' ⊢a UA ⟹ UB /\ is_univ_nf UB u) /\ (exists i : nat, G' ⊢ UA : Typeω@i) }
           + { forall UA, ~ G' ⊢a Z ⟹ UA })
-      (infA : forall b, In b Bks -> forall G' (HG' : ⊢ G') (P' : tenv G'),
+      (infA : forall b, In b Bks -> forall G' (HG' : ⊢ G') (P' : checker_env G'),
           { UA : nf | G' ⊢a eb_motive b ⟹ UA /\ (exists UB u, G' ⊢a UA ⟹ UB /\ is_univ_nf UB u) /\ (exists i : nat, G' ⊢ UA : Typeω@i) }
           + { forall UA, ~ G' ⊢a eb_motive b ⟹ UA })
       (j : nat) : { l | block_univ G p D Us Bks j l } + { forall l, ~ block_univ G p D Us Bks j l }.
@@ -419,9 +419,9 @@ Section Blocks.
     assert (lZ : { l | forall Z, eb_ann b = Some Z -> tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G ⊢a Z ⟸ Typeω@l }
                  + { forall l, ~ forall Z, eb_ann b = Some Z -> tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G ⊢a Z ⟸ Typeω@l }).
     { destruct (eb_ann b) as [Z |] eqn:HZ; [| left; exists 0; intros; discriminate ].
-      destruct (infZ b Z (List.nth_error_In _ _ Hb) HZ _ HΨ (tenv_ext F G P _ HΨ)) as [[UA (HZi & _)] | HnZ].
+      destruct (infZ b Z (List.nth_error_In _ _ Hb) HZ _ HΨ (checker_env_ext F G P _ HΨ)) as [[UA (HZi & _)] | HnZ].
       - destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu].
-        + left; exists (unf_large u); intros ? [= <-]; exact (check_typ_of_infer _ _ _ _ HΨ HZi Hu).
+        + left; exists (universe_nf_large_index u); intros ? [= <-]; exact (check_typ_of_infer _ _ _ _ HΨ HZi Hu).
         + right; intros l H.
           destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ (H Z eq_refl)) as (UA' & u' & HZi' & Hu' & _).
           rewrite (functional_alg_type_infer Hg HZi HZi') in Hnu; exact (Hnu _ Hu').
@@ -431,9 +431,9 @@ Section Blocks.
     destruct lZ as [[lZ HlZ] | HnZ]; [| right; intros l [HZ _]; apply (HnZ l); intros Z HZ'; exact (HZ _ _ _ Hj Hb HZ') ].
     (** The motive. *)
     pose proof (HC _ _ Hj) as HCj.
-    destruct (infA b (List.nth_error_In _ _ Hb) _ HCj (tenv_ext F G P _ HCj)) as [[UA (HAi & _)] | HnA].
+    destruct (infA b (List.nth_error_In _ _ Hb) _ HCj (checker_env_ext F G P _ HCj)) as [[UA (HAi & _)] | HnA].
     - destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu].
-      + left; exists (Nat.max lZ (unf_large u)); split.
+      + left; exists (Nat.max lZ (universe_nf_large_index u)); split.
         * intros Mj' b' Z Hj' Hb' HZ; rewrite Hj in Hj'; rewrite Hb in Hb'; injection Hj' as <-; injection Hb' as <-.
           eapply check_typ_mono; [ exact HΨ | | exact (HlZ _ HZ) ]; lia.
         * intros Mj' b' Hj' Hb'; rewrite Hj in Hj'; rewrite Hb in Hb'; injection Hj' as <-; injection Hb' as <-.
@@ -466,8 +466,8 @@ Section Blocks.
       destruct (eb_ann b) as [Z |] eqn:HZ; [| left; intros; congruence ].
       destruct (ann_ctx_wf _ _ Hj) as [HΨ _].
       pose proof (check_typ_sound _ _ _ HΨ (proj1 (HL j Hjl) _ _ _ Hj Hb HZ)) as HZt.
-      destruct (nbe_ty_env_impl F _ (tenv_ext F G P _ HΨ) Z (nbe_order_of_typ _ _ _ HZt)) as [W1 HW1].
-      destruct (nbe_ty_env_impl F _ (tenv_ext F G P _ HΨ) _ (ann_mty_order _ _ Hj)) as [W2 HW2].
+      destruct (nbe_ty_env_impl F _ (checker_env_ext F G P _ HΨ) Z (nbe_order_of_typ _ _ _ HZt)) as [W1 HW1].
+      destruct (nbe_ty_env_impl F _ (checker_env_ext F G P _ HΨ) _ (ann_mty_order _ _ Hj)) as [W2 HW2].
       destruct (nf_eq_dec W1 W2) as [<- | Hne].
       - left; intros Mj' b' Z' Hj' Hb' HZ'; injection Hj' as <-; injection Hb' as <-.
         rewrite HZ in HZ'; injection HZ' as <-; exists W1; split; assumption.
@@ -520,18 +520,18 @@ Ltac inv_elim Hg HG HMi :=
     them compared with the scrutinee type's ([nfs_agree_dec]).  The blocks'
     annotations and motives infer universes, and are checked at the
     largest ([bound_lt_dec]), at which the branches' types are types. *)
-Definition elim_infer G (HG : ⊢ G) (P : tenv G) oq (Us : list exp) m (Bks : list eblock) M
+Definition elim_infer G (HG : ⊢ G) (P : checker_env G) oq (Us : list exp) m (Bks : list eblock) M
   (rM : { T : nf | G ⊢a M ⟹ T /\ (exists UA u, G ⊢a T ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T : Typeω@i) }
         + { forall T, ~ G ⊢a M ⟹ T })
-  (chkU : forall U, In U Us -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : tenv G'),
+  (chkU : forall U, In U Us -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : checker_env G'),
       { G' ⊢a U ⟸ A' } + { ~ G' ⊢a U ⟸ A' })
-  (infZ : forall b Z, In b Bks -> eb_ann b = Some Z -> forall G' (HG' : ⊢ G') (P' : tenv G'),
+  (infZ : forall b Z, In b Bks -> eb_ann b = Some Z -> forall G' (HG' : ⊢ G') (P' : checker_env G'),
       { UA : nf | G' ⊢a Z ⟹ UA /\ (exists UB u, G' ⊢a UA ⟹ UB /\ is_univ_nf UB u) /\ (exists i : nat, G' ⊢ UA : Typeω@i) }
       + { forall UA, ~ G' ⊢a Z ⟹ UA })
-  (infA : forall b, In b Bks -> forall G' (HG' : ⊢ G') (P' : tenv G'),
+  (infA : forall b, In b Bks -> forall G' (HG' : ⊢ G') (P' : checker_env G'),
       { UA : nf | G' ⊢a eb_motive b ⟹ UA /\ (exists UB u, G' ⊢a UA ⟹ UB /\ is_univ_nf UB u) /\ (exists i : nat, G' ⊢ UA : Typeω@i) }
       + { forall UA, ~ G' ⊢a eb_motive b ⟹ UA })
-  (chkB : forall b br, In b Bks -> In br (eb_brs b) -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : tenv G'),
+  (chkB : forall b br, In b Bks -> In br (eb_brs b) -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : checker_env G'),
       { G' ⊢a snd br ⟸ A' } + { ~ G' ⊢a snd br ⟸ A' }) :
   { T : nf | G ⊢a a_elim oq Us m Bks M ⟹ T /\ (exists UA u, G ⊢a T ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T : Typeω@i) }
   + { forall T, ~ G ⊢a a_elim oq Us m Bks M ⟹ T }.
@@ -570,7 +570,7 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HG Hl) as [HD Hc].
   destruct (decl_of_lookup _ _ _ _ _ HG Hlq) as [HDq Hcq].
   (** The member eliminated has a block: it is no record view. *)
-  pose proof (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ HD)) as Hsuf.
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD)) as Hsuf.
   pose proof (block_member_not_rview _ _ _ _ _ Hsuf HBl Hm Hb) as Hnr.
   (** The uniform parameters. *)
   destruct (tele_check_dec G HG P (ind_uparams D) (decl_closed_ass _ Hc) (wf_uparams_app _ _ _ HD Hc _ HG) Us chkU) as [HUc | HUc];
@@ -597,7 +597,7 @@ Proof.
       the branches. *)
   assert (HC : forall j Mj, ind_member D j = Some Mj -> ⊢ (elim_mctx p D j Mj Us ++ G)%list)
     by (intros; eapply elim_mctx_wf; eassumption).
-  destruct (blocks_dec D Bks (fun j Mj b => eb_nm b = S (im_nn Mj)) (fun j Mj b _ _ => Nat.eq_dec _ _)) as [HBnm | HBnm];
+  destruct (blocks_dec D Bks (fun j Mj b => eb_binder_count b = S (im_nn Mj)) (fun j Mj b _ _ => Nat.eq_dec _ _)) as [HBnm | HBnm];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   destruct (bound_lt_dec (block_univ G p D Us Bks) (block_univ_mono G p D Us Bks HC) (List.length Bks)
               (fun j _ => block_univ_dec G HG P p D Us Bks HC infZ infA j)) as [[L HL] | HnL];
@@ -627,24 +627,24 @@ Proof.
     assert (Hjl : j < List.length Bks) by (apply List.nth_error_Some; congruence).
     exact (check_typ_sound _ _ _ (HC _ _ Hj) (proj2 (HL j Hjl) _ _ Hj Hb0)). }
   assert (Hbt : forall j Mj b c gs, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
-             exists i, elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢ elim_bty p D j Mj c gs (eb_motive b) Us : Typeω@i).
+             exists i, elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢ elim_branch_type p D j Mj c gs (eb_motive b) Us : Typeω@i).
   { intros j Mj b c gs Hj Hb0 Hcon; exists L.
     assert (Hjl : j < List.length Bks) by (apply List.nth_error_Some; congruence).
-    pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0)
+    pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0)
                   HG HUl HUt HC HAs Hcon) as Hbs.
     exact (sub_preserves_exp _ _ _ _ _ _ _ (check_typ_sound _ _ _ (HC _ _ Hj) (proj2 (HL j Hjl) _ _ Hj Hb0)) Hbs). }
   assert (Hbr : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
              { forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us }
+                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_branch_type p D j Mj c gs (eb_motive b) Us }
              + { ~ forall c gs n B, ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p D j Mj c gs (eb_motive b) Us }).
+                 elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_branch_type p D j Mj c gs (eb_motive b) Us }).
   { intros j Mj b Hj Hb0.
     destruct (forall_in_dec (fun br => forall gs, ind_con Mj (fst (fst br)) = Some gs ->
-                elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a snd br ⟸ elim_bty p D j Mj (fst (fst br)) gs (eb_motive b) Us)
+                elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a snd br ⟸ elim_branch_type p D j Mj (fst (fst br)) gs (eb_motive b) Us)
                 (eb_brs b)) as [Ha | Ha].
     - intros br Hin; destruct (ind_con Mj (fst (fst br))) as [gs |] eqn:Hcon; [| left; intros ? [=] ].
       pose proof (Hbt _ _ _ _ _ Hj Hb0 Hcon) as HT.
-      destruct (chkB b br (List.nth_error_In _ _ Hb0) Hin _ _ HT (tenv_ext F G P _ (tenv_ctx_of_typ _ _ HT))) as [E | E];
+      destruct (chkB b br (List.nth_error_In _ _ Hb0) Hin _ _ HT (checker_env_ext F G P _ (checker_env_ctx_of_typ _ _ HT))) as [E | E];
         [ left; intros ? [= <-]; exact E | right; intros H; exact (E (H gs eq_refl)) ].
     - left; intros c gs n B Hcon Hin; exact (Ha _ Hin gs Hcon).
     - right; intros H; apply Ha; intros [[c n] B] Hin gs Hcon; exact (H _ _ _ _ Hcon Hin). }

@@ -65,7 +65,7 @@ Qed.
 Lemma per_ctx_env_cons_mod_inversion : forall {Γ Γ' U U' RΓ R},
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ RΓ ->
     EF Γ ▹ₘ U ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ R ->
-    (forall ρ ρ', RΓ ρ ρ' -> rel_mexp (me_lit U) ρ (me_lit U') ρ') /\ (R <~> env_ext_mod U U' RΓ).
+    (forall ρ ρ', RΓ ρ ρ' -> rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') /\ (R <~> env_ext_mod U U' RΓ).
 Proof.
   intros * HΓ H; inversion H; subst.
   match goal with Ht : per_ctx_env ?T Γ Γ' |- _ =>
@@ -91,8 +91,8 @@ Proof.
   exists h2, h3; repeat split; assumption.
 Qed.
 
-Corollary rel_mexp_at : forall Γ Γ' H H' R,
-    Γ ⊨ᵐ H ≈ H' -> EF Γ ≈ Γ' ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> rel_mexp H ρ H' ρ'.
+Corollary rel_modexp_evals_at : forall Γ Γ' H H' R,
+    Γ ⊨ᵐ H ≈ H' -> EF Γ ≈ Γ' ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> rel_modexp_evals H ρ H' ρ'.
 Proof.
   intros * HH HR ρ ρ' Hρ; destruct (rel_modexp_at _ _ _ _ _ HH HR _ _ Hρ) as (h & h' & ? & ? & ?).
   exists h h'; assumption.
@@ -102,8 +102,8 @@ Qed.
 Lemma unit_chain_at : forall {Γ U U' R},
     Γ ⊨ᵐ me_lit U ≈ me_lit U' ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    forall ρ ρ', R ρ ρ' -> rel_mexp (me_lit U) ρ (me_lit U') ρ'.
-Proof. intros * HU HΓ ρ ρ' Hρ; exact (rel_mexp_at _ _ _ _ _ HU HΓ _ _ Hρ). Qed.
+    forall ρ ρ', R ρ ρ' -> rel_modexp_evals (me_lit U) ρ (me_lit U') ρ'.
+Proof. intros * HU HΓ ρ ρ' Hρ; exact (rel_modexp_evals_at _ _ _ _ _ HU HΓ _ _ Hρ). Qed.
 
 Lemma per_ctx_env_of_mod : forall {Γ U U' R},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
@@ -122,8 +122,8 @@ Lemma unit_sub_chain : forall {Γ' Γ σ σ' U U' R'},
     Γ' ⊨ˢ σ ≈ σ' : Γ ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U' ->
     forall ρ ρ' ρσ ρ'σ', R' ρ ρ' -> ⟦ σ : Γ ⟧s ρ ↘ ρσ -> ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-      rel_mexp (me_lit U[σ]ᵘ) ρ (me_lit U) ρσ /\ rel_mexp (me_lit U) ρσ (me_lit U') ρ'σ' /\
-      rel_mexp (me_lit U') ρ'σ' (me_lit U'[σ']ᵘ) ρ'.
+      rel_modexp_evals (me_lit U[σ]ᵘ) ρ (me_lit U) ρσ /\ rel_modexp_evals (me_lit U) ρσ (me_lit U') ρ'σ' /\
+      rel_modexp_evals (me_lit U') ρ'σ' (me_lit U'[σ']ᵘ) ρ'.
 Proof.
   intros * HΓ' Hσ [R HΓ HU] * Hρ Hev Hev'.
   destruct (HU _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [h1 h2 h3 h4 H1 H2 H3 H4 (C12 & C23 & C34)].
@@ -145,7 +145,7 @@ Proof.
   assert (E : R' <~> R1) by (eapply per_ctx_env_right_irrel; eassumption).
   destruct (Hs _ _ (proj1 (E _ _) Hρ)) as (ρσ & ρ'σ & Hev & Hev' & _).
   destruct (unit_sub_chain HΓ' Hσσ HU _ _ _ _ Hρ Hev Hev') as (C1 & C2 & C3).
-  eapply rel_mexp_trans; [ exact C1 | eapply rel_mexp_trans; [ exact C2 | exact C3 ] ].
+  eapply rel_modexp_evals_trans; [ exact C1 | eapply rel_modexp_evals_trans; [ exact C2 | exact C3 ] ].
 Qed.
 
 (** [q τ] at an environment of an extension: the head is kept, and the
@@ -548,7 +548,7 @@ Proof.
             (exists g, ⟦ me_lit U' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ t ↘ g /\ per_dmod h0 g) ->
             tie_mod h0 (me_lit U) t /\ tie_mod h0 (me_lit U') t).
   { intros t h0 Ht Hh0 (g & Hg & Hhg); split; [| exists g; split; assumption ].
-    exact (tie_mod_move _ _ _ _ _ (ex_intro _ g (conj Hg Hhg)) (rel_mexp_sym _ _ _ _ (unit_chain_at HU HΓ _ _ Ht))). }
+    exact (tie_mod_move _ _ _ _ _ (ex_intro _ g (conj Hg Hhg)) (rel_modexp_evals_sym _ _ _ _ (unit_chain_at HU HΓ _ _ Ht))). }
   assert (R11 : R x1 x1) by (etransitivity; [ exact H12 | symmetry; exact H12 ]).
   assert (R22 : R x2 x2) by (etransitivity; [ symmetry; exact H12 | exact H12 ]).
   assert (R33 : R x3 x3) by (etransitivity; [ exact H34 | symmetry; exact H34 ]).
@@ -847,7 +847,7 @@ Proof.
   assert (E : R <~> R1) by (eapply per_ctx_env_right_irrel; eassumption).
   destruct (Hs _ _ (proj1 (E _ _) Hρ)) as (ρσ & ρ'σ & Hev & Hev' & _).
   destruct (unit_sub_chain HΓ Hσσ HU _ _ _ _ Hρ Hev Hev') as (C1 & C2 & C3).
-  eapply rel_mexp_trans; [ exact C1 | eapply rel_mexp_trans; [ exact C2 | exact C3 ] ].
+  eapply rel_modexp_evals_trans; [ exact C1 | eapply rel_modexp_evals_trans; [ exact C2 | exact C3 ] ].
 Qed.
 
 (** [q σ] into a definition with a module part: as into a definition entry
@@ -910,8 +910,8 @@ Proof.
     intros ρ ρ' [Ht T1 _ T3 _].
     assert (Htt : R ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]).
     assert (Ht't' : R ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact Ht | exact Ht ]).
-    pose proof (tie_mod_move _ _ _ _ _ T1 (rel_mexp_sym _ _ _ _ (unit_chain_at HU HΓ _ _ Htt))) as T1'.
-    pose proof (tie_mod_move _ _ _ _ _ T3 (rel_mexp_sym _ _ _ _ (unit_chain_at HU HΓ _ _ Ht't'))) as T3'.
+    pose proof (tie_mod_move _ _ _ _ _ T1 (rel_modexp_evals_sym _ _ _ _ (unit_chain_at HU HΓ _ _ Htt))) as T1'.
+    pose proof (tie_mod_move _ _ _ _ _ T3 (rel_modexp_evals_sym _ _ _ _ (unit_chain_at HU HΓ _ _ Ht't'))) as T3'.
     repeat split; assumption. }
   destruct (rel_exp_under_ctx_simple_full_at HΓU HB) as [kX HX].
   destruct (rel_exp_under_ctx_simple_full_at HΓU HBl) as [kY HY].
@@ -1047,7 +1047,7 @@ Proof.
   apply (mk_rel_exp w1 w2' bx2 f1); try eassumption.
   - rewrite exp_sub_extend_mod_sub; exact Hw1.
   - eapply eval_exp_let_mod; [ exact Hv3 | exact Hbx2 ].
-  - cbn [exp_sub bnd_sub]; rewrite gunit_sub_mk; eapply eval_exp_let_mod; [ exact Hv4 | exact Hf1 ].
+  - cbn [exp_sub binding_sub]; rewrite gunit_sub_mk; eapply eval_exp_let_mod; [ exact Hv4 | exact Hf1 ].
   - apply rel_chain_4; solve_per.
 Qed.
 

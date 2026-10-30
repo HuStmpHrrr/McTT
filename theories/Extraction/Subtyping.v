@@ -51,7 +51,7 @@ Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
     branch knows (a disequality of normal forms, or an arithmetic bound)
     contradicts every rule that could have derived it. *)
 #[local]
-Ltac st_neg :=
+Ltac subtyping_failure :=
   lazymatch goal with H : ⊢anf _ ⊆ _ |- False => inversion H; subst end;
   simpl in *;
   first [ lia | congruence | contradiction ].
@@ -77,7 +77,7 @@ Ltac st_pos :=
   | |- ⊢anf ?A ⊆ ?A => apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ]
   end.
 
-Solve All Obligations with (repeat intro; first [ discriminate | st_neg | st_pos ]).
+Solve All Obligations with (repeat intro; first [ discriminate | subtyping_failure | st_pos ]).
 
 
 (** [subtyping_nf_impl] is sound by construction, and its completeness is
@@ -87,7 +87,7 @@ Theorem subtyping_nf_impl_complete : forall A B,
     ⊢anf A ⊆ B ->
     exists H, subtyping_nf_impl A B = left H.
 Proof.
-  intros; dec_complete.
+  intros; decision_complete.
 Qed.
 
 Inductive subtyping_order {GC : GCtx} G A B :=
@@ -184,7 +184,7 @@ Theorem subtyping_impl_complete' : forall G A B,
     forall (H : subtyping_order G A B),
       exists H', subtyping_impl G A B H = left H'.
 Proof.
-  intros; dec_complete.
+  intros; decision_complete.
 Qed.
 
 #[local]

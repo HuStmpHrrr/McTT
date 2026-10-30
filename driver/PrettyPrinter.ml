@@ -43,16 +43,16 @@ let utf8_width (s : string) : int =
   String.iter (fun c -> if Char.code c land 0xC0 <> 0x80 then incr n) s;
   !n
 
-let pp_u (f : Format.formatter) (s : string) : unit = Format.pp_print_as f (utf8_width s) s
+let pp_utf8 (f : Format.formatter) (s : string) : unit = Format.pp_print_as f (utf8_width s) s
 
 (* [Format.pp_print_text] with the words at their width in characters: a
    space is a break hint, a newline a forced one. *)
-let pp_text_u (f : Format.formatter) (s : string) : unit =
+let pp_text_utf8 (f : Format.formatter) (s : string) : unit =
   List.iteri
     (fun i line ->
       if i > 0 then Format.pp_force_newline f ();
       List.iteri
-        (fun j w -> if j > 0 then Format.pp_print_space f (); pp_u f w)
+        (fun j w -> if j > 0 then Format.pp_print_space f (); pp_utf8 f w)
         (String.split_on_char ' ' line))
     (String.split_on_char '\n' s)
 
@@ -77,17 +77,17 @@ let rec get_pi_params_of_expression : Cst.expression -> (string * Cst.expression
      ((px, ep) :: params, eret')
   | eret -> ([], eret)
 
-(* A run of nested [letb]s prints as one [let] with several bindings, which is
+(* A run of nested [let_in]s prints as one [let] with several bindings, which is
    how it was written. *)
 let rec get_letb_decls_of_expression : Cst.expression -> Cst.decl list * Cst.expression = function
-  | Cst.Coq_letb (d, ebody) ->
+  | Cst.Coq_let_in (d, ebody) ->
      let decls, ebody' = get_letb_decls_of_expression ebody in
      (d :: decls, ebody')
   | ebody -> ([], ebody)
 
-let format_mods (f : Format.formatter) (m : Cst.mods) : unit =
-  if m.Cst.md_private then Format.pp_print_string f "private ";
-  if m.Cst.md_abstract then Format.pp_print_string f "abstract "
+let format_mods (f : Format.formatter) (m : Cst.modifiers) : unit =
+  if m.Cst.modifiers_private then Format.pp_print_string f "private ";
+  if m.Cst.modifiers_abstract then Format.pp_print_string f "abstract "
 
 (* The items of an open: [as W] first, then the member items, consecutive
    ones of the same privacy sharing a [use] or [export] list; [c] is the item
@@ -108,16 +108,16 @@ let format_items (f : Format.formatter) (its : ((string option * string) * bool)
     (groups its)
 
 (* A unit path, its names joined by [›]. *)
-let string_of_upath (fp : string list) : string = String.concat s_coloncolon fp
+let string_of_unit_path (fp : string list) : string = String.concat s_coloncolon fp
 
 (* [›] joins a file path and [.] an internal one; either half may be empty. *)
-let string_of_qpath (fp : string list) (ip : string list) : string =
+let string_of_qualified_path (fp : string list) (ip : string list) : string =
   match (fp, ip) with
   | [], _ -> String.concat "." ip
-  | _, [] -> string_of_upath fp
-  | _, _ -> string_of_upath fp ^ "." ^ String.concat "." ip
+  | _, [] -> string_of_unit_path fp
+  | _, _ -> string_of_unit_path fp ^ "." ^ String.concat "." ip
 
-let pp_upath (f : Format.formatter) (fp : string list) : unit = pp_u f (string_of_upath fp)
+let pp_unit_path (f : Format.formatter) (fp : string list) : unit = pp_utf8 f (string_of_unit_path fp)
 
 let rec format_expression_prec (p : int) (f : Format.formatter) : Cst.expression -> unit =
   let open Format in
@@ -242,11 +242,11 @@ let rec format_expression_prec (p : int) (f : Format.formatter) : Cst.expression
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
   | Cst.Coq_var x -> pp_print_string f x
-  | Cst.Coq_glob path -> pp_upath f path
+  | Cst.Coq_glob path -> pp_unit_path f path
   (* Dot binds tighter than application, so the target prints at the precedence
      of an application argument. *)
   | Cst.Coq_proj (e, x) -> fprintf f "%a.%s" (format_expression_prec 2) e x
-  | Cst.Coq_letb _ as e ->
+  | Cst.Coq_let_in _ as e ->
      let decls, ebody = get_letb_decls_of_expression e in
      let impl f () =
        fprintf f "let @[<hv 0>%a@]@ in @[<hov 2>%a@]@ end"
@@ -322,9 +322,9 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      pp_close_box f ()
   | Cst.Coq_c_axiom (x, ea) ->
      fprintf f "@[<hov 2>axiom %s :@ %a@]" x format_expression ea
-  | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %a@]" pp_upath fp
+  | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %a@]" pp_unit_path fp
   | Cst.Coq_c_open (fp, ip, args, its) ->
-     fprintf f "@[<hov 2>open %a" pp_u (string_of_qpath fp ip);
+     fprintf f "@[<hov 2>open %a" pp_utf8 (string_of_qualified_path fp ip);
      List.iter (fun a -> fprintf f "@ %a" (format_expression_prec 2) a) args;
      fprintf f "%a@]" format_items its
   | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
@@ -390,7 +390,7 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
   List.iter (fun c -> fprintf f "%a@ " format_cmd c) is;
   pp_open_vbox f 2;
   (* The unit's own name is a [›] path *)
-  fprintf f "module %a" pp_upath path;
+  fprintf f "module %a" pp_unit_path path;
   List.iter (fun p -> fprintf f " %a" format_expression_param p) params;
   pp_print_string f " where";
   List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
@@ -405,7 +405,7 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
 let current_unit : string list ref = ref []
 
 (* The builtin bindings the run ended with ([builtin natural]). *)
-let current_bt : McttExtracted.Builtin.builtins ref = ref McttExtracted.Builtin.builtins_empty
+let current_builtins : McttExtracted.Builtin.builtins ref = ref McttExtracted.Builtin.builtins_empty
 
 (* The natural numbers bound where the terms printed are, as the bindings
    see them in the state of the eval printed: the type and its two
@@ -422,19 +422,19 @@ let empty_view : FG.fview = McttExtracted.FastState.cmd_view FG.funits_empty []
 
 (* The state the printed terms live in, where it is known: that of the eval
    printed, as the checker keeps it, fast: the units it sees and the open
-   frames.  [current_fc] is the checker's fast context at that state, which
+   frames.  [current_fctx] is the checker's fast context at that state, which
    every lookup of the printer goes through ([Extraction.Lookup]). *)
 let current_state : (FG.fview * FG.fstack) ref = ref (empty_view, [])
-let current_fc : McttExtracted.FastContext.coq_FCtx ref = ref (Lk.fctx_at empty_view [] None)
+let current_fctx : McttExtracted.FastContext.coq_FCtx ref = ref (Lk.fctx_at empty_view [] None)
 
 (* The state set: the units seen [v] and the frames [fs]. *)
 let set_state (v : FG.fview) (fs : FG.fstack) : unit =
   current_state := (v, fs);
-  current_fc := Lk.fctx_at v fs !current_bt
+  current_fctx := Lk.fctx_at v fs !current_builtins
 
 let set_nat_bind () : unit =
   nat_bind :=
-    (match LT.nat_view_f !current_fc !current_bt with
+    (match LT.nat_view_f !current_fctx !current_builtins with
      | Some ((p, z), s) -> Some (p, z, s)
      | None -> None)
 
@@ -533,7 +533,7 @@ let path_of_term : exp -> qname option =
    definition with a module part whose term is a path naming it. *)
 let rec names_bound_nat (q : qname) : bool =
   is_bound_nat q ||
-  (match Lk.gc_entry_f !current_fc q with
+  (match Lk.gc_entry_f !current_fctx q with
    | Some (FG.Coq_fe_def_mod (_, _, m, _, _)) ->
       (match path_of_term m with Some p -> p <> q && names_bound_nat p | None -> false)
    | _ -> false)
@@ -553,7 +553,7 @@ let con_of : exp -> (qname * string) option =
        (match chain h with
         | None -> None
         | Some (fp, ms) ->
-           (match Lk.gc_resolve_f !current_fc { q_unit = fp; q_chain = ms @ [ c ] } with
+           (match Lk.gc_resolve_f !current_fctx { q_unit = fp; q_chain = ms @ [ c ] } with
             (* A definition naming a constructor, as an [open] declares one,
                not one whose body is a value. *)
             | Some (Coq_ge_def (_, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
@@ -583,18 +583,18 @@ let ind_decls : (exp, centry) ind_decl_g list ref = ref []
 
 (* Every declaration of an inductive type the state sees, in its units and
    its frames, their modules included ([fc_all_inds]). *)
-let set_ind_decls () : unit = ind_decls := LT.fc_all_inds !current_fc
+let set_ind_decls () : unit = ind_decls := LT.fc_all_inds !current_fctx
 
 (* The member [m] of the group at [p], where the state printed has it. *)
 let group_member (p : qname) (m : int) : (exp, centry) imember_g option =
-  match Lk.fc_ind !current_fc p with
+  match Lk.fc_ind !current_fctx p with
   | Some d -> McttExtracted.Syntax.ind_member d m
   | None -> None
 
 (* The path of the module of the declared member [k] of the group at [p]:
    the group's own for its first member. *)
 let member_path (p : qname) (k : int) : qname =
-  match Lk.fc_ind !current_fc p with
+  match Lk.fc_ind !current_fctx p with
   | Some d -> (match McttExtracted.Members.ind_mpath d k with Some pm -> pm | None -> p)
   | None -> p
 
@@ -605,7 +605,7 @@ let member_path (p : qname) (k : int) : qname =
 let unview (e : exp) : exp option =
   match McttExtracted.Group.app_head e with
   | (Coq_a_ind (p, j) | Coq_a_con (p, j, _)) as h ->
-     (match Lk.fc_ind !current_fc p with
+     (match Lk.fc_ind !current_fctx p with
       | Some d ->
          (match McttExtracted.Syntax.ind_member d j with
           | Some mj ->
@@ -636,7 +636,7 @@ let record_value_of (h : modexp) : exp option =
   | head, (_ :: _ as args) ->
      (match chain head with
       | Some (fp, ms) ->
-         (match Lk.fc_record !current_fc { q_unit = fp; q_chain = ms } with
+         (match Lk.fc_record !current_fctx { q_unit = fp; q_chain = ms } with
           | Some r when List.length args = List.length r.record_params + 1 -> Some (List.nth args (List.length args - 1))
           | _ -> None)
       | None -> None)
@@ -650,7 +650,7 @@ let record_value_of (h : modexp) : exp option =
 let elim_groups (bks : exp eblock_g list) : (exp, centry) ind_decl_g list =
   List.filter
     (fun d ->
-      let ms = McttExtracted.Inductives.ind_bmembers d in
+      let ms = McttExtracted.Inductives.ind_block_members d in
       List.length ms = List.length bks
       && List.for_all2
            (fun mk (Coq_eb_mk (_, _, _, bs)) -> List.map fst mk.im_cons = List.map (fun ((c, _), _) -> c) bs)
@@ -670,7 +670,7 @@ let block_members (oq : qname option) (bks : exp eblock_g list) (j : int)
        | Some (Coq_eb_mk (_, _, _, bs)) -> List.map (fun ((c, _), _) -> c) bs
        | None -> [] in
      let fits (mk : (exp, centry) imember_g) = List.map fst mk.im_cons = names in
-     (match Lk.fc_ind !current_fc p with
+     (match Lk.fc_ind !current_fctx p with
       | None -> []
       | Some d ->
          (match McttExtracted.Syntax.ind_member d j with
@@ -791,12 +791,12 @@ let exp_to_expression =
        let ea' = Option.map (impl ctx) oa in
        let em' = impl ctx em in
        let ebody' = impl (px :: ctx) ebody in
-       Cst.Coq_letb (Cst.Coq_d_def (px, ea', em'), ebody')
+       Cst.Coq_let_in (Cst.Coq_d_def (px, ea', em'), ebody')
     | Coq_a_let (Coq_b_mod u, ebody) ->
        let px = new_mod () in
        let params, md = impl_unit ctx u in
        let ebody' = impl (px :: ctx) ebody in
-       Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), ebody')
+       Cst.Coq_let_in (Cst.Coq_d_mod (px, params, md), ebody')
     (* A member naming the bound type, directly or by an inductive alias
        without arguments, or one of its constructors, prints as they do. *)
     | Coq_a_mem (h, x) when (match chain_of h with
@@ -929,7 +929,7 @@ let exp_to_expression =
     | Coq_me_lit u ->
        let px = new_mod () in
        let params, md = impl_unit ctx u in
-       Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), Cst.Coq_var px)
+       Cst.Coq_let_in (Cst.Coq_d_mod (px, params, md), Cst.Coq_var px)
   and impl_unit (ctx : string list) (Coq_gu_mk (delta, md) : gunit)
       : (string * Cst.expression) list * Cst.mdef =
     (* The parameter context lists the innermost parameter first. *)
@@ -956,7 +956,7 @@ let exp_to_expression =
        let cs, ctx' = impl_body ctx phi in
        let c = match ge with
          | Coq_ge_def (transp, priv, a, om) ->
-            let m = { Cst.md_private = priv; Cst.md_abstract = not transp } in
+            let m = { Cst.modifiers_private = priv; Cst.modifiers_abstract = not transp } in
             let a' = impl ctx' a in
             (match om with
              | Some e -> Cst.Coq_c_def (m, x, a', impl ctx' e)
@@ -1061,7 +1061,7 @@ let rec find_ind_decl (cs : Cst.cmd list) (x : string) =
 (* The names the source gives the context of the argument [y] of the
    constructor [c] of the type [x] of the innermost frame, innermost
    first: the arguments before [y], [x]'s own parameters, the group's
-   uniform parameters, then its types (the context [rm_pctx] of the
+   uniform parameters, then its types (the context [raw_member_args_ctx] of the
    classification); none past them. *)
 let ind_arg_names (x : string) (c : string) (y : string) : string option list =
   let _, xi = !current_state in
@@ -1176,7 +1176,7 @@ let ih_names (d : (exp, centry) ind_decl_g option) (gs : exp carg_g list) (ys : 
   in
   let leaves (t : exp ptyp_g) : McttExtracted.Inductives.leaf_path list =
     match d with
-    | Some d -> McttExtracted.Inductives.shape_leaves (McttExtracted.Inductives.rv_leaves d) 0 t
+    | Some d -> McttExtracted.Inductives.shape_leaves (McttExtracted.Inductives.rview_leaves d) 0 t
     | None -> [ Coq_leaf_self (0, []) ]
   in
   let names =
@@ -1212,9 +1212,9 @@ let member_label (delta : centry list) (p : qname) (us : exp list) (k : int) (mk
    arguments and its induction hypotheses, the bodies left out. *)
 let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j, scr) : unit =
   let open Format in
-  let od = Lk.fc_ind !current_fc p in
+  let od = Lk.fc_ind !current_fctx p in
   let ms = match od with
-    | Some d -> McttExtracted.Inductives.ind_bmembers d
+    | Some d -> McttExtracted.Inductives.ind_block_members d
     | None -> [] in
   let j = if j < List.length ms then j else 0 in
   let str e = asprintf "%a" format_expression e in
@@ -1227,13 +1227,13 @@ let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j,
                  (exp_to_expression ~delta (McttExtracted.Syntax.apps_exp (Coq_a_ind (p, k)) us)) ps in
       let binders = String.concat "" (List.map (fun y -> y ^ " ") ps) ^ "(z : " ^ str ty ^ ")" in
       if k > 0 then pp_print_cut f () else pp_print_string f " ";
-      pp_u f (Printf.sprintf "%s %s %s \u{2026}" (if k = j then "at" else "with") binders s_arrow);
+      pp_utf8 f (Printf.sprintf "%s %s %s \u{2026}" (if k = j then "at" else "with") binders s_arrow);
       List.iter
         (fun (c, ys) ->
           let gs = match McttExtracted.Inductives.ind_con mk c with Some gs -> gs | None -> [] in
           let hs = ih_names od gs ys in
           pp_print_cut f ();
-          fprintf f "%a" pp_u
+          fprintf f "%a" pp_utf8
             (Printf.sprintf "| %s%s%s %s \u{2026}" c
                (String.concat "" (List.map (fun y -> " " ^ y) (ps @ ys)))
                (if hs = [] then "" else "," ^ String.concat "" (List.map (fun h -> " " ^ h) hs))
@@ -1297,18 +1297,18 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
   | Coq_run_error_cycle ch ->
      fprintf f "@[<hov 2>Error: cyclic import:@ %a@]"
-       pp_u (String.concat (" " ^ s_arrow ^ " ") (List.map string_of_upath ch))
+       pp_utf8 (String.concat (" " ^ s_arrow ^ " ") (List.map string_of_unit_path ch))
   | Coq_run_error_unit (fp, msg) ->
-     fprintf f "@[<hov 2>Error: %a:@ %s@]" pp_upath fp msg
+     fprintf f "@[<hov 2>Error: %a:@ %s@]" pp_unit_path fp msg
   (* A private member is named by the module declaring it, from its unit. *)
   (* Option B: an alias, or any module but by the direct path of an
      inductive type, is no term. *)
   | Coq_run_error_mod_term q ->
-     fprintf f "@[<hov 2>Error: %a is a module, not a term@]" pp_u (string_of_qpath q.q_unit q.q_chain)
+     fprintf f "@[<hov 2>Error: %a is a module, not a term@]" pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
   | Coq_run_error_not_ind q ->
-     fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit q.q_chain)
+     fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
   | Coq_run_error_private (q, x) ->
-     fprintf f "@[<hov 2>Error: %a is private@]" pp_u (string_of_qpath q.q_unit (q.q_chain @ [x]))
+     fprintf f "@[<hov 2>Error: %a is private@]" pp_utf8 (string_of_qualified_path q.q_unit (q.q_chain @ [x]))
   (* A member selected from a term, in the binders crossed to reach it:
      the term's type is not inferred, or is no record type. *)
   | Coq_run_error_access_no_type (_, ox, delta, m, y) ->
@@ -1325,20 +1325,20 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        (format_exp_named ox delta) ty
   | Coq_run_error_record_fields_order (q, xs, y, x) ->
      fprintf f "@[<hov 2>Error: fields of %a must be given in order:@ %s;@ got %s before %s@]"
-       pp_u (string_of_qpath q.q_unit q.q_chain) (String.concat ", " xs) y x
+       pp_utf8 (string_of_qualified_path q.q_unit q.q_chain) (String.concat ", " xs) y x
   | Coq_run_error_record_field_unknown (q, y) ->
-     fprintf f "@[<hov 2>Error: %s is not a field of record %a@]" y pp_u (string_of_qpath q.q_unit q.q_chain)
+     fprintf f "@[<hov 2>Error: %s is not a field of record %a@]" y pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
   | Coq_run_error_record_field_missing (q, x) ->
-     fprintf f "@[<hov 2>Error: field %s of record %a is missing@]" x pp_u (string_of_qpath q.q_unit q.q_chain)
+     fprintf f "@[<hov 2>Error: field %s of record %a is missing@]" x pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
   (* A field whose value is not of its type, in the binders crossed to
      reach the record value: the type is the field's at the record's
      parameters and the fields before it. *)
   | Coq_run_error_record_field (_, ox, delta, q, x, m, a) ->
      fprintf f "@[<hov 2>Error: field %s of record %a:@ %a@ is not of type@ %a@]"
-       x pp_u (string_of_qpath q.q_unit q.q_chain) (format_exp_named ox delta) m (format_exp_named ox delta) a
+       x pp_utf8 (string_of_qualified_path q.q_unit q.q_chain) (format_exp_named ox delta) m (format_exp_named ox delta) a
   | Coq_run_error_record_member (q, y) ->
      fprintf f "@[<hov 2>Error: %s is not a member of record %a: neither a field nor a member of its with-area@]"
-       y pp_u (string_of_qpath q.q_unit q.q_chain)
+       y pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
   | Coq_run_error_access_not_record (_, ox, delta, m, a, y) ->
      fprintf f "@[<hov 2>Error: %s is selected from@ %a,@ of type@ %a,@ which is not a record type@]"
        y (format_exp_named ox delta) m (format_exp_named ox delta) a
@@ -1378,12 +1378,12 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
      let reading (q, us) = Format.asprintf "%a" (format_exp_in delta) (McttExtracted.Syntax.apps_exp (Coq_a_ind (q, 0)) us) in
      fprintf f "@[<hov 2>Error: the eliminator of@ %a@ is ambiguous:@ its blocks fit the eliminators of@ %a@]"
-       (format_exp_in delta) scr pp_u (String.concat " and of " (List.map reading rs))
+       (format_exp_in delta) scr pp_utf8 (String.concat " and of " (List.map reading rs))
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
   | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
-     let ms = match Lk.fc_ind !current_fc p with
-       | Some d -> McttExtracted.Inductives.ind_bmembers d
+     let ms = match Lk.fc_ind !current_fctx p with
+       | Some d -> McttExtracted.Inductives.ind_block_members d
        | None -> [] in
      let labels = List.mapi (fun k mk -> member_label delta p us k mk) ms in
      let label k = Option.value (List.nth_opt labels k) ~default:"?" in
@@ -1404,7 +1404,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
           | is -> [ String.concat ", " (List.map block is) ^ " are for no member left" ])
        @ (if missing = [] && extra = [] then [ "the blocks are not in member order" ] else []) in
      fprintf f "@[<v 2>@[<hov 2>Error: an eliminator has one block per member of its group,@ in member order:@ %a;@ %a.@]@,The eliminator should read:@,%a@]"
-       pp_u (String.concat ", " labels) pp_u (String.concat "; " why) (format_elim_skeleton delta) (p, us, j, scr)
+       pp_utf8 (String.concat ", " labels) pp_utf8 (String.concat "; " why) (format_elim_skeleton delta) (p, us, j, scr)
   | Coq_run_error_elim_blocks _ -> fprintf f "@[<hov 2>Error: the blocks of an eliminator are not those of its group@]"
   | Coq_run_error_view (x, key, why) ->
      let open McttExtracted.IndDecl in
@@ -1414,14 +1414,14 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      (match why with
       | Coq_view_why_container ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ which is no declared type of a filed group@]" x format_exp inst
-      | Coq_view_why_cls (c, y, _) ->
+      | Coq_view_why_classify (c, y, _) ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ whose constructor %s's argument %s is not positive in %s there@]"
            x format_exp inst c y x
       | Coq_view_why_untyped ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ at which a parameter or a sibling of the container is not typed@]" x format_exp inst
       | Coq_view_why_mentions_group ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ a non-uniform parameter of which mentions the group@]" x format_exp inst)
-  | Coq_run_error_ind_npar (x, k, delta, t, s) ->
+  | Coq_run_error_ind_nparams (x, k, delta, t, s) ->
      fprintf f "@[<hov 2>Error: the type of the non-uniform parameter %d of %s,@ %a,@ is not in the sort of %s,@ %a@]"
        (k + 1) x (format_exp_in delta) t x (format_exp_in delta) s
   | Coq_run_error_import e ->
@@ -1435,7 +1435,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
            | Coq_me_mem (h, y) -> Option.map (fun (fp, ch) -> (fp, ch @ [y])) (chain h)
            | _ -> None in
          (match chain h with
-          | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
+          | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_utf8 (string_of_qualified_path fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_open_failure_reason_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_open_failure_reason_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
@@ -1470,7 +1470,7 @@ let eval_outputs : main_result -> string list option = function
   | AllGood ((_, ((path, _), _)), bt, _, _, log) ->
      current_unit := path;
      current_prog := None;
-     current_bt := bt;
+     current_builtins := bt;
      Some (List.map (Format.asprintf "%a" format_eval) log)
   | _ -> None
 
@@ -1480,7 +1480,7 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
   | AllGood ((_, ((path, _), _)), bt, _, _, log) ->
      current_unit := path;
      current_prog := None;
-     current_bt := bt;
+     current_builtins := bt;
      pp_open_vbox f 0;
      List.iteri
        (fun i r ->
@@ -1498,9 +1498,9 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
   (* [ω^2] is accepted only in a large universe, [Type@{ω^2+i}]: anywhere
      else, whatever the parser state, it is a level beyond every level. *)
   | ParserFailure (_, (Parser.OMEGA2 _ as t)) ->
-     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_u
+     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_utf8
        "ω^2 is not a level: every level is below it. It is written only in a large universe, \"Type@{ω^2}\" or \"Type@{ω^2+i}\"."
   | ParserFailure (s, t) ->
-     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_u
+     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_utf8
        (String.trim (ParserMessages.message (Parser.Aut.coq_N_of_state s)))
   | ParserTimeout fuel -> fprintf f "@[<hov 2>Error: parser timeout with fuel %d@]" fuel

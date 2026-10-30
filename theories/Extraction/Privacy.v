@@ -307,7 +307,7 @@ Section Below.
   Hypothesis He : gctx_embedding_with_bodies Θ1 Ξ1 Θ2 Ξ2.
 
   Let Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2 := gctx_embedding_with_bodies_wf _ _ _ _ He.
-  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He).
+  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_sub_keeping_bodies_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He).
 
   (** A member is an open frame of the smaller context, or neither a unit
       nor the open frame of a member's module or of a record type's module
@@ -563,7 +563,7 @@ Section Sited.
   Hypothesis He : gctx_embedding_with_bodies Θ1 Ξ1 Θ2 Ξ2.
   Hypothesis Ha : aliases_sited Θ1 Ξ1 Θ2 Ξ2.
 
-  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He).
+  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_sub_keeping_bodies_sub _ _ _ _ (gctx_embedding_with_bodies_resolution _ _ _ _ He).
 
   (** What denotes in the smaller context has an order in the bigger one. *)
   Lemma site_order_of_mdenote : forall H Γ R, mdenote Θ1 Ξ1 Γ H R -> site_order Θ2 Ξ2 H.
@@ -663,9 +663,9 @@ Qed.
 (** A private member out of reach: declared in the module of a unit, or
     an entry of a local body, at the chain of submodules [ch] from the local
     module. *)
-Inductive priv_err : Set :=
-| priv_err_global : qname -> string -> priv_err
-| priv_err_local : list string -> string -> priv_err.
+Inductive privacy_error : Set :=
+| privacy_error_global : qname -> string -> privacy_error
+| privacy_error_local : list string -> string -> privacy_error.
 
 Definition entry_is_body_b (E : gentry) : bool :=
   match E with
@@ -677,7 +677,7 @@ Lemma entry_is_body_b_spec : forall E, entry_is_body_b E = true <-> entry_is_bod
 Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn; split; intros; auto; try discriminate; contradiction. Qed.
 
 (** The fast test is the test of the entry a fast one stands for. *)
-Lemma fe_is_body_b_core : forall e, fe_is_body_b e = entry_is_body_b (dec_entry e).
+Lemma fe_is_body_b_core : forall e, fe_is_body_b e = entry_is_body_b (decode_entry e).
 Proof. intros [| pv [Δ [t] | [Δ [sm Φ | E]]] | | pv A M [Δ [t] | [Δ [sm Φ | E]]] |]; reflexivity. Qed.
 
 Section PrivacyImpl.
@@ -702,15 +702,15 @@ Section PrivacyImpl.
   Proof. intros * Hf; destruct (frame_record_of_some _ _ _ _ Hf) as [Hq Hk]; exact (ms_record_frame _ _ _ _ _ Hq Hk). Qed.
 
   #[local]
-  Ltac site_obl :=
+  Ltac site_obligation :=
     intros; cbv beta in *;
     (** the fast data found, read as the Core data it stands for, which is
         all the obligations are about *)
-    cbn [option_map dec_loc] in *; rewrite ?fe_alias_dec, ?fe_is_body_b_core in *;
+    cbn [option_map decode_loc] in *; rewrite ?fe_alias_dec, ?fe_is_body_b_core in *;
     repeat match goal with e : fentry |- _ =>
-      let E := fresh "E" in set (E := dec_entry e) in *; clearbody E; clear e end;
+      let E := fresh "E" in set (E := decode_entry e) in *; clearbody E; clear e end;
     repeat match goal with t : ftrie |- _ =>
-      let Φ := fresh "Φ" in set (Φ := dec_mod t) in *; clearbody Φ; clear t end;
+      let Φ := fresh "Φ" in set (Φ := decode_mod t) in *; clearbody Φ; clear t end;
     repeat match goal with
       | H : site_order _ _ (me_mem _ _) |- _ => progressive_invert H
       | H : site_order _ _ (me_app _ _) |- _ => progressive_invert H
@@ -785,26 +785,26 @@ Section PrivacyImpl.
               | exist _ None Ea with inspect (fe_is_body_b e) := {
                 | exist _ true Eb => inleft (exist _ (qname_in pq z) _)
                 | exist _ false Eb => inright _ } } } } } } }.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
-  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
+  Next Obligation. site_obligation. Defined.
 
   (** Where a member is declared: an entry of the module its module is
       stored at. *)
@@ -820,25 +820,25 @@ Section PrivacyImpl.
   Defined.
 
   (** Whether a module is an open frame or an ancestor of one. *)
-  Definition open_anc_b (qd : qname) : bool :=
+  Definition open_ancestor_b (qd : qname) : bool :=
     existsb (fun f => andb (path_beq (q_unit (ff_path f)) (q_unit qd))
                         (match strip_prefix (q_chain qd) (q_chain (ff_path f)) with Some _ => true | None => false end))
       (fc_frames F).
 
-  Lemma open_anc_b_spec : forall qd, open_anc_b qd = true <-> open_anc Ξ qd.
+  Lemma open_ancestor_b_spec : forall qd, open_ancestor_b qd = true <-> open_ancestor Ξ qd.
   Proof.
     intros qd.
-    assert (E : open_anc_b qd =
+    assert (E : open_ancestor_b qd =
                 existsb (fun e => let '(mp, _, _) := e in
                                   andb (path_beq (q_unit mp) (q_unit qd))
                                     (match strip_prefix (q_chain qd) (q_chain mp) with Some _ => true | None => false end)) Ξ)
-      by (rewrite fc_stack_frames; unfold open_anc_b, dec_stack;
+      by (rewrite fc_stack_frames; unfold open_ancestor_b, decode_stack;
           induction (fc_frames F) as [| f fs IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]).
     rewrite E, existsb_exists; clear E; split.
     - intros ([[mp K] U] & Hin & Hb); apply andb_prop in Hb as [H1 H2]; cbn in *.
       apply path_beq_true in H1.
       destruct (strip_prefix (q_chain qd) (q_chain mp)) as [suf |] eqn:E; [| discriminate ].
-      exact (mk_open_anc _ _ mp K U suf Hin H1 (strip_prefix_spec _ _ _ E)).
+      exact (mk_open_ancestor _ _ mp K U suf Hin H1 (strip_prefix_spec _ _ _ E)).
     - intros [mp K U suf Hin H1 H2]; exists (mp, K, U); split; [ exact Hin |]; cbn.
       rewrite H1, path_beq_refl, H2, strip_prefix_app; reflexivity.
   Qed.
@@ -850,29 +850,29 @@ Section PrivacyImpl.
   Proof.
     unfold glob_ok.
     destruct (decl_impl H x) as [[[qd [|]] Hd] | HN]; cbn [fst snd] in *.
-    - destruct (open_anc_b qd) eqn:Eo.
+    - destruct (open_ancestor_b qd) eqn:Eo.
       + right; intros qd' Hd'; destruct (mdecl_functional _ _ Hg _ _ _ _ Hd _ _ Hd') as [<- _].
-        apply open_anc_b_spec; exact Eo.
+        apply open_ancestor_b_spec; exact Eo.
       + left; exists (qd, x); intros Hok; specialize (Hok _ Hd).
-        apply open_anc_b_spec in Hok; congruence.
+        apply open_ancestor_b_spec in Hok; congruence.
     - right; intros qd' Hd'; destruct (mdecl_functional _ _ Hg _ _ _ _ Hd _ _ Hd') as [_ [=]].
     - right; intros qd' Hd'; exfalso; exact (HN _ _ Hd').
   Defined.
 
   Definition ref_check (r : (privacy_table * string)%type) :
-      { e : priv_err | ~ ref_ok Θ Ξ r } + { ref_ok Θ Ξ r }.
+      { e : privacy_error | ~ ref_ok Θ Ξ r } + { ref_ok Θ Ξ r }.
   Proof.
     destruct r as [[| H | ch es] x]; unfold ref_ok; cbn [fst snd].
     - right; exact I.
-    - destruct (glob_check H x) as [[qx Hq] | Hok]; [ left; exists (priv_err_global (fst qx) (snd qx)); exact Hq | right; exact Hok ].
+    - destruct (glob_check H x) as [[qx Hq] | Hok]; [ left; exists (privacy_error_global (fst qx) (snd qx)); exact Hq | right; exact Hok ].
     - destruct (option_map fst (privacy_table_find x es)) as [[|] |] eqn:E.
-      + left; exists (priv_err_local ch x); intros Hn; apply Hn; reflexivity.
+      + left; exists (privacy_error_local ch x); intros Hn; apply Hn; reflexivity.
       + right; discriminate.
       + right; discriminate.
   Defined.
 
   Definition refs_check : forall (l : list (privacy_table * string)%type),
-      { e : priv_err | ~ acc_ok Θ Ξ l } + { acc_ok Θ Ξ l }.
+      { e : privacy_error | ~ acc_ok Θ Ξ l } + { acc_ok Θ Ξ l }.
   Proof.
     induction l as [| r l IH]; [ right; constructor |].
     destruct (ref_check r) as [[e Hr] | Hr]; [ left; exists e; intros Hall; inversion Hall; contradiction |].

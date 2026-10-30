@@ -88,7 +88,7 @@ Hint Unfold per_top_typ : mctt.
 Definition per_lvl : relation domain := fun m m' => Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ m' ∈ per_top.
 
 (** The elements of [Level@n]: levels that read back, at every length, as
-    the same canonical level of sort [n] ([lvl_bnd]), below ω·(n+1).  A small
+    the same canonical level of sort [n] ([lvl_sort_bounded]), below ω·(n+1).  A small
     universe is indexed by any level, so its levels are related by [per_lvl]
     alone.  Like [per_lvl] it has a [forall] head, so the shared scripts do
     not split it. *)
@@ -97,7 +97,7 @@ Record lvl_reads (n : nat) (m m' : domain) (s : nat) : Prop := mk_lvl_reads
   { lvl_reads_lvl : lvl
   ; lvl_reads_left : Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of lvl_reads_lvl
   ; lvl_reads_right : Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of lvl_reads_lvl
-  ; lvl_reads_bnd : lvl_bnd n lvl_reads_lvl }.
+  ; lvl_reads_sort_bounded : lvl_sort_bounded n lvl_reads_lvl }.
 
 Definition per_lvl_at (n : nat) : relation domain :=
   fun m m' => forall s, lvl_reads n m m' s.
@@ -247,8 +247,8 @@ Record rel_evals (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain 
     non-uniform parameters of the member [m] ([nr m]), the non-recursive
     arguments of its constructors ([ar m]) and the domains of their shapes
     ([dr m]).  Two lists of values are related at the non-uniform parameters
-    of the member [j] ([ntele_rel]). *)
-Definition ntele_rel (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) (j : nat)
+    of the member [j] ([nparams_tele_rel]). *)
+Definition nparams_tele_rel (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) (j : nat)
     (a b : list domain) : Prop :=
   match ind_member D j with
   | Some Mj => tele_rel (nr j) (List.rev (im_nparams Mj)) a b
@@ -316,7 +316,7 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
       tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
       tele_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
       rel_evals (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys'))
-        (ntele_rel D nparams_rel (ptyp_mem t))
+        (nparams_tele_rel D nparams_rel (ptyp_mem t))
     (** An element of a function shape's domain at [ups] reads back alike
         at the domain at [ua] *)
   ; adm_shape_doms : forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
@@ -376,7 +376,7 @@ Inductive fresh_cargs_rel (D : ind_decl) (ups ua : list domain)
 | fresh_cargs_rel_rec : forall k ws ws' s t gs,
     (forall ys ys', tele_rel (shape_doms_rel doms_rel ns ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
        rel_evals (ptyp_ps t) (env_args nil (ups ++ ns ++ ws ++ ys)) (env_args nil (ua ++ ns' ++ ws' ++ ys'))
-         (ntele_rel D nparams_rel (ptyp_mem t))) ->
+         (nparams_tele_rel D nparams_rel (ptyp_mem t))) ->
     (forall j B ys ys', List.nth_error (ptyp_doms t) j = Some B ->
        tele_prefix_rel (shape_doms_rel doms_rel ns ws (ptyp_doms t)) j ys ys' ->
        rel_dom_apps B (env_args nil (ups ++ ns ++ ws ++ ys)) (env_args nil (ua ++ ns' ++ ws' ++ ys'))
@@ -417,14 +417,14 @@ Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     the member [j] the shape ends in.  No relation of the group is
     quantified over (model L). *)
 #[warnings="-cannot-define-projection"]
-Record okr_at (D : ind_decl) (ups : list domain) (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (j : nat) (pre : list domain) (Ps : list exp) (bs : list domain) : Prop := mk_okr_at
+Record admissible_index_at (D : ind_decl) (ups : list domain) (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (j : nat) (pre : list domain) (Ps : list exp) (bs : list domain) : Prop := mk_admissible_index_at
   { (** The index at the type's base *)
-    okr_idx : list domain
+    admissible_index_base : list domain
     (** It is what [Ps] evaluate to at [ups] and [pre] *)
-  ; okr_eval : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ okr_idx
+  ; admissible_index_eval : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ admissible_index_base
     (** It is related to [bs] at the member [j] *)
-  ; okr_rel : ntele_rel D nparams_rel j okr_idx bs }.
+  ; admissible_index_rel : nparams_tele_rel D nparams_rel j admissible_index_base bs }.
 
 (** A member's own uniform parameters: the group's for a declared one, the
     container's for a view.  A record view's pseudo-constructor is the
@@ -597,7 +597,7 @@ Hint Constructors ind_rel con_args_rel rec_arg_rel rec_arg_app_rel : mctt.
     the view; the rank, the views' members and the agreement of the
     views' maps as the declaration checks them; and the parameters of every recursive argument's shape, of the
     group's constructors and of its views' containers', as many as the
-    member's the shape ends in ([cargs_plen], which readback asks of the
+    member's the shape ends in ([cargs_params_length], which readback asks of the
     blocks it reads). *)
 
 (** The member [j] of the group a view's [vm] takes the container's
@@ -652,24 +652,24 @@ Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_member_image D qc Is vm i' Mi'
     (** Each recursive argument of the group's constructors gives its
         member as many parameters as it has *)
-  ; grp_tele_ass_plen : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_plen D gs
+  ; grp_tele_ass_params_length : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_params_length D gs
     (** So does each of the views' containers' constructors *)
   ; grp_tele_ass_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.In (c, gs') (im_cons Mi') ->
-      cargs_plen Dq gs'
+      cargs_params_length Dq gs'
     (** The record views' facts without a judgment: each a record's at its
         instance, of no non-uniform parameter and one constructor, after
         every other member, their fields ending in record views before
         them *)
-  ; grp_tele_ass_rstruct : rview_struct_ok gc_deps gc_stack D
+  ; grp_tele_ass_record_struct : rview_struct_ok gc_deps gc_stack D
     (** A view's container's record views come last, after its members
         with a block *)
   ; grp_tele_ass_csuffix : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> rview_suffix_ok Dq
     (** A view's container's record views' facts without a judgment, as
-        the group's own ([grp_tele_ass_rstruct]): what the count of the
+        the group's own ([grp_tele_ass_record_struct]): what the count of the
         container's leaf paths among the view's reads
-        ([ViewCount.cargs_nin_view]) *)
+        ([ViewCount.cargs_container_count_view]) *)
   ; grp_tele_ass_crstruct : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> rview_struct_ok gc_deps gc_stack Dq }.
 
@@ -678,8 +678,8 @@ Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
 Lemma grp_tele_ass_leaf_arity : forall D, grp_tele_ass D -> rview_leaf_arity D.
 Proof.
   intros D HD; constructor.
-  - intros * HMk _ Hin; exact (grp_tele_ass_plen _ HD _ _ _ _ HMk Hin).
-  - exact (rview_struct_order _ _ _ (grp_tele_ass_rstruct _ HD)).
+  - intros * HMk _ Hin; exact (grp_tele_ass_params_length _ HD _ _ _ _ HMk Hin).
+  - exact (rview_struct_order _ _ _ (grp_tele_ass_record_struct _ HD)).
 Qed.
 
 (** The non-uniform parameters' relations are PERs at related prefixes. *)
@@ -776,7 +776,7 @@ Definition grp_rel (p : qname) (D : ind_decl) (ups : list domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : nat -> list domain -> exp -> relation domain) :
     nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
-  ind_rel p D (okr_at D ups nr) nr ar dr.
+  ind_rel p D (admissible_index_at D ups nr) nr ar dr.
 
 (** ** Records
 
@@ -852,9 +852,9 @@ Section Per_univ_elem_core_def.
       length. *)
   | per_univ_elem_core_suniv :
     `{ forall (elem_rel : relation domain)
-          (lt_j_i : universe_index_lt (us (dlvl_real l)) i),
+          (lt_j_i : universe_index_lt (us (domain_level_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant (per_univ_rec (us (dlvl_real l)))) ->
+          (elem_rel <~> per_relevant (per_univ_rec (us (domain_level_real l)))) ->
           DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
   (** [Level@n], its elements the related levels of sort [n]. *)
   | per_univ_elem_core_level :
@@ -963,9 +963,9 @@ Section Per_univ_elem_core_def.
           j = j' ->
           (elem_rel <~> per_relevant (per_univ_rec (ul j))) ->
           motive elem_rel 𝕌ω@j 𝕌ω@j')
-      (case_SU : forall {l l' elem_rel} (lt_j_i : universe_index_lt (us (dlvl_real l)) i),
+      (case_SU : forall {l l' elem_rel} (lt_j_i : universe_index_lt (us (domain_level_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant (per_univ_rec (us (dlvl_real l)))) ->
+          (elem_rel <~> per_relevant (per_univ_rec (us (domain_level_real l)))) ->
           motive elem_rel 𝕌@l 𝕌@l')
       (case_level : forall {n elem_rel},
           (elem_rel <~> per_lvl_at n) ->
@@ -1213,8 +1213,8 @@ Qed.
 
 Lemma per_univ_elem_core_suniv' : forall l l' i elem_rel,
     Dom l ≈ l' ∈ per_lvl ->
-    universe_index_lt (us (dlvl_real l)) i ->
-    (elem_rel <~> per_relevant (per_univ (us (dlvl_real l)))) ->
+    universe_index_lt (us (domain_level_real l)) i ->
+    (elem_rel <~> per_relevant (per_univ (us (domain_level_real l)))) ->
     DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
@@ -1237,11 +1237,11 @@ Section Per_univ_elem_ind_def.
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
           motive i elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall i {l l' elem_rel},
-          universe_index_lt (us (dlvl_real l)) i ->
+          universe_index_lt (us (domain_level_real l)) i ->
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant (per_univ (us (dlvl_real l)))) ->
-          (forall A B R, DF A ≈ B ∈ per_univ_elem (us (dlvl_real l)) ↘ R ->
-                         motive (us (dlvl_real l)) R A B) ->
+          (elem_rel <~> per_relevant (per_univ (us (domain_level_real l)))) ->
+          (forall A B R, DF A ≈ B ∈ per_univ_elem (us (domain_level_real l)) ↘ R ->
+                         motive (us (domain_level_real l)) R A B) ->
           motive i elem_rel 𝕌@l 𝕌@l')
       (case_L : forall i {n elem_rel},
           (elem_rel <~> per_lvl_at n) ->
@@ -1365,7 +1365,7 @@ Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
     ([per_sublvl]), never the order on realisers. *)
 | per_subtyp_suniv :
   `( per_sublvl l l' ->
-     universe_index_lt (us (dlvl_real l')) k ->
+     universe_index_lt (us (domain_level_real l')) k ->
      Sub 𝕌@l <: 𝕌@l' at k )
 (** A small universe below a large one. *)
 | per_subtyp_small_large :
@@ -1442,18 +1442,18 @@ Definition rel_typ_propositional (A : exp) (ρ : env) : Prop :=
 (** The next parameter's type a module value still lacks: a closure's
     outermost missing parameter, in its environment; a global module's
     first parameter past its arguments; a submodule closure's base's. *)
-Inductive nextparam : dmod -> domain -> Prop :=
-| nextparam_local : forall Δ A D ρ a,
+Inductive next_param : dmod -> domain -> Prop :=
+| next_param_local : forall Δ A D ρ a,
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
-    nextparam (dm_local (Δ ++ ce_ass A :: nil) D ρ) a
-| nextparam_global : forall p T Φ args A a,
+    next_param (dm_local (Δ ++ ce_ass A :: nil) D ρ) a
+| next_param_global : forall p T Φ args A a,
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
     List.nth_error (List.rev T) (List.length args) = Some (ce_ass A) ->
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil args ↘ a ->
-    nextparam (dm_global p args) a
-| nextparam_member : forall h ch a,
-    nextparam h a ->
-    nextparam (dm_member h ch) a.
+    next_param (dm_global p args) a
+| next_param_member : forall h ch a,
+    next_param h a ->
+    next_param (dm_member h ch) a.
 
 Inductive per_dmod : dmod -> dmod -> Prop :=
 (** The same saturated global module, its arguments related at its
@@ -1471,8 +1471,8 @@ Inductive per_dmod : dmod -> dmod -> Prop :=
     arguments. *)
 | per_dmod_fun :
   `{ forall R,
-       nextparam h a ->
-       nextparam h' a' ->
+       next_param h a ->
+       next_param h' a' ->
        per_univ_elem i R a a' ->
        (forall c c', R c c' -> exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
        (forall c c', R c c' -> exists hc', $ᵐ| h' & c' | gc_deps ⍮ gc_stack ↘ hc') ->
@@ -1493,7 +1493,7 @@ with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop
        per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
 (** Two bodies as written, each entry seen in the environment its
     predecessors make, read through the entries their local opens generate
-    ([kinds_body_xp], [eval_benv]). *)
+    ([kinds_body_xp], [eval_body_env]). *)
 with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** Two empty bodies. *)
 | per_body_nil :
@@ -1573,16 +1573,16 @@ with per_body_mut_ind := Induction for per_body Sort Prop.
 Combined Scheme per_dmod_mut_ind_all from
   per_dmod_mut_ind, per_gargs_mut_ind, per_body_mut_ind.
 
-Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
+Hint Constructors next_param per_dmod per_gargs per_body : mctt.
 
 (** Two module expressions evaluate to related module values. *)
 #[warnings="-cannot-define-projection"]
-Record rel_mexp (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop := mk_rel_mexp
-  { rel_mexp_left : dmod
-  ; rel_mexp_right : dmod
-  ; rel_mexp_eval_left : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ rel_mexp_left
-  ; rel_mexp_eval_right : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ rel_mexp_right
-  ; rel_mexp_rel : per_dmod rel_mexp_left rel_mexp_right }.
+Record rel_modexp_evals (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop := mk_rel_modexp_evals
+  { rel_modexp_evals_left : dmod
+  ; rel_modexp_evals_right : dmod
+  ; rel_modexp_evals_eval_left : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ rel_modexp_evals_left
+  ; rel_modexp_evals_eval_right : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ rel_modexp_evals_right
+  ; rel_modexp_evals_rel : per_dmod rel_modexp_evals_left rel_modexp_evals_right }.
 
 (** A module value is related to the value of a module expression. *)
 Definition tie_mod (m : dmod) (H : modexp) (ρ : env) : Prop :=
@@ -1725,7 +1725,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel),
         PER tail_rel ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
-            rel_mexp (me_lit U) ρ (me_lit U') ρ') ->
+            rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') ->
         (env_rel <~> fun ρ ρ' =>
              (Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) /\
              tie_mod (env_mod ρ 0) (me_lit U) ρ↯ /\
@@ -1750,7 +1750,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             def_bodies_rel r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
-            rel_mexp (me_lit U) ρ (me_lit U') ρ') ->
+            rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') ->
         (env_rel <~> per_ctx_env_dm_rel tail_rel (@head_rel) r M M' U U') ->
         r = relevant ->
         EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ' ▸ₘ A' ≔ M' ‖ U' ∈ per_ctx_env ↘ env_rel }
@@ -1863,7 +1863,7 @@ Hint Transparent rel_elem : mctt.
 #[export]
 Hint Unfold rel_elem : mctt.
 #[export]
-Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
+Hint Constructors next_param per_dmod per_gargs per_body : mctt.
 #[export]
 Hint Constructors per_ctx_env : mctt.
 Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.

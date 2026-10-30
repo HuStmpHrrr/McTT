@@ -21,13 +21,13 @@ Import Domain_Notations.
     right ([funit_values_ok] and the like), and stays right as the global
     context grows ([funit_values_grow] and the like,
     [Extraction.FastEvalGrowth]).  A translation stores no value, so its
-    values are right anywhere ([tr_unit_values]).
+    values are right anywhere ([translate_unit_values]).
 
     The values of the open frames are right in the context of the frame
     and those below it ([frames_values_ok]); in a well-formed stack they
     are right in the whole stack ([frames_values_current]).  A lookup
     through the fast context finds an entry whose values are right
-    ([fgc_entry_values]). *)
+    ([fast_gc_entry_values]). *)
 
 (** ** Every Element of a Tree *)
 
@@ -38,9 +38,9 @@ Fixpoint sraw_all {A} (P : A -> Prop) (m : SRaw.tree A) : Prop :=
   | SRaw.Node l _ e r _ => sraw_all P l /\ P e /\ sraw_all P r
   end.
 
-(** What [sfind] finds in a tree [P] holds of every element of, [P]
+(** What [string_tree_find] finds in a tree [P] holds of every element of, [P]
     holds of. *)
-Lemma sraw_all_find : forall {A} (P : A -> Prop) x m e, sraw_all P m -> sfind x m = Some e -> P e.
+Lemma sraw_all_find : forall {A} (P : A -> Prop) x m e, sraw_all P m -> string_tree_find x m = Some e -> P e.
 Proof.
   intros A P x; induction m as [| l IHl y d r IHr h]; intros e Hm Hf; cbn in Hf; [ discriminate |].
   destruct Hm as (Hl & Hd & Hr); destruct (String.compare x y); [ injection Hf as <-; exact Hd | eauto | eauto ].
@@ -174,14 +174,14 @@ Section ValuesOk.
   Qed.
 
   (** A translation stores no value. *)
-  Lemma tr_unit_values : forall U, funit_values_ok (tr_unit U).
-  Proof. intros U; rewrite <- tr_unit_drop; apply funit_drop_values. Qed.
+  Lemma translate_unit_values : forall U, funit_values_ok (translate_unit U).
+  Proof. intros U; rewrite <- translate_unit_drop; apply funit_drop_values. Qed.
 
-  Lemma tr_mod_values : forall Φ, ftrie_values_ok (tr_mod Φ).
-  Proof. intros Φ; rewrite <- tr_mod_drop; apply ftrie_drop_values. Qed.
+  Lemma translate_mod_values : forall Φ, ftrie_values_ok (translate_mod Φ).
+  Proof. intros Φ; rewrite <- translate_mod_drop; apply ftrie_drop_values. Qed.
 
-  Lemma tr_entry_values : forall E, fentry_values_ok (tr_entry E).
-  Proof. intros E; rewrite <- tr_entry_drop; apply fentry_drop_values. Qed.
+  Lemma translate_entry_values : forall E, fentry_values_ok (translate_entry E).
+  Proof. intros E; rewrite <- translate_entry_drop; apply fentry_drop_values. Qed.
 End ValuesOk.
 
 (** ** Along a Growth of the Global Context *)
@@ -219,17 +219,17 @@ End ValuesGrow.
 Fixpoint frames_values_ok (Θ : gdeps) (fs : fstack) : Prop :=
   match fs with
   | nil => True
-  | f :: fs' => ftrie_values_ok Θ (dec_stack fs) (ff_body f) /\ frames_values_ok Θ fs'
+  | f :: fs' => ftrie_values_ok Θ (decode_stack fs) (ff_body f) /\ frames_values_ok Θ fs'
   end.
 
 (** In a well-formed stack, every frame's values are right in the whole
     stack. *)
-Lemma frames_values_current : forall Θ fs, ⊢ᵍ Θ ⍮ dec_stack fs -> frames_values_ok Θ fs ->
-    Forall (fun f => ftrie_values_ok Θ (dec_stack fs) (ff_body f)) fs.
+Lemma frames_values_current : forall Θ fs, ⊢ᵍ Θ ⍮ decode_stack fs -> frames_values_ok Θ fs ->
+    Forall (fun f => ftrie_values_ok Θ (decode_stack fs) (ff_body f)) fs.
 Proof.
   intros Θ; induction fs as [| f fs IH]; intros HΞ Hv; [ constructor |].
   destruct Hv as [Hf Hv].
-  change (dec_stack (f :: fs)) with ((dec_frame f :: nil) ++ dec_stack fs) in HΞ |- *.
+  change (decode_stack (f :: fs)) with ((decode_frame f :: nil) ++ decode_stack fs) in HΞ |- *.
   destruct (wf_gstack_app_inv _ _ _ HΞ) as [HΞ' Hsub].
   constructor; [ exact Hf |].
   refine (Forall_impl _ _ (IH HΞ' Hv)); intros f' Hf'; exact (ftrie_values_grow _ _ _ _ Hsub _ Hf').
@@ -247,26 +247,26 @@ Lemma frames_values_push : forall Θ fs f, frames_values_ok Θ fs -> ff_body f =
 Proof. intros * Hfs Ht; cbn [frames_values_ok]; rewrite Ht; split; [ exact (ft_empty_values _ _) | exact Hfs ]. Qed.
 
 (** An entry added to the innermost frame, its values right there *)
-Lemma frames_values_add : forall Θ fs x e E, ⊢ᵍ Θ ⍮ dec_stack fs -> ⊢ᵍ Θ ⍮ gs_add x E (dec_stack fs) -> frames_values_ok Θ fs ->
-    dec_stack (fs_add x e fs) = gs_add x E (dec_stack fs) -> fentry_values_ok Θ (gs_add x E (dec_stack fs)) e ->
+Lemma frames_values_add : forall Θ fs x e E, ⊢ᵍ Θ ⍮ decode_stack fs -> ⊢ᵍ Θ ⍮ gs_add x E (decode_stack fs) -> frames_values_ok Θ fs ->
+    decode_stack (fs_add x e fs) = gs_add x E (decode_stack fs) -> fentry_values_ok Θ (gs_add x E (decode_stack fs)) e ->
     frames_values_ok Θ (fs_add x e fs).
 Proof.
   intros Θ [| f fs] x e E HΞ HΞ' Hv Ed He; [ exact I |].
-  assert (Hfr : gs_fresh x (dec_stack (f :: fs))) by (destruct f as [mp Kf Δ t]; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ _ HΞ')).
+  assert (Hfr : gs_fresh x (decode_stack (f :: fs))) by (destruct f as [mp Kf Δ t]; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ _ HΞ')).
   destruct Hv as [Hf Hfs].
   change (frames_values_ok Θ (fs_add x e (f :: fs))) with
-    (ftrie_values_ok Θ (dec_stack (fs_add x e (f :: fs))) (ft_ext (ff_body f) x e) /\ frames_values_ok Θ fs).
+    (ftrie_values_ok Θ (decode_stack (fs_add x e (f :: fs))) (ft_ext (ff_body f) x e) /\ frames_values_ok Θ fs).
   rewrite Ed; split; [| exact Hfs ].
   apply ft_ext_values; [ exact (ftrie_values_grow _ _ _ _ (gc_sub_add _ _ _ _ HΞ Hfr) _ Hf) | exact He ].
 Qed.
 
 (** Alike, the entry's values right before it is added *)
-Lemma frames_values_add_before : forall Θ fs x e E, ⊢ᵍ Θ ⍮ dec_stack fs -> ⊢ᵍ Θ ⍮ gs_add x E (dec_stack fs) -> frames_values_ok Θ fs ->
-    dec_stack (fs_add x e fs) = gs_add x E (dec_stack fs) -> fentry_values_ok Θ (dec_stack fs) e ->
+Lemma frames_values_add_before : forall Θ fs x e E, ⊢ᵍ Θ ⍮ decode_stack fs -> ⊢ᵍ Θ ⍮ gs_add x E (decode_stack fs) -> frames_values_ok Θ fs ->
+    decode_stack (fs_add x e fs) = gs_add x E (decode_stack fs) -> fentry_values_ok Θ (decode_stack fs) e ->
     frames_values_ok Θ (fs_add x e fs).
 Proof.
   intros Θ [| f fs] x e E HΞ HΞ' Hv Ed He; [ exact I |].
-  assert (Hfr : gs_fresh x (dec_stack (f :: fs))) by (destruct f as [mp Kf Δ t]; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ _ HΞ')).
+  assert (Hfr : gs_fresh x (decode_stack (f :: fs))) by (destruct f as [mp Kf Δ t]; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ _ HΞ')).
   exact (frames_values_add _ _ _ _ _ HΞ HΞ' Hv Ed (fentry_values_grow _ _ _ _ (gc_sub_add _ _ _ _ HΞ Hfr) _ He)).
 Qed.
 
@@ -274,18 +274,18 @@ Qed.
     it: [f]'s values were right with [f] open, and are where it is
     closed. *)
 Lemma frames_values_close : forall Θ Θ' fs f x pv e, Θ ⊑ Θ' -> frames_values_ok Θ fs ->
-    ftrie_values_ok Θ' (dec_frame f :: dec_stack fs) (ff_body f) ->
-    ⊢ᵍ Θ' ⍮ dec_stack fs -> gs_fresh x (dec_stack fs) ->
-    ⊢ᵍ Θ' ⍮ gs_add x (frame_entry pv (ff_path f) (ff_kind f) (ff_params f) (dec_mod (ff_body f))) (dec_stack fs) ->
-    ff_path f = qname_in (gs_path (dec_stack fs)) x ->
-    kind_tele (ff_path f) (ff_kind f) (ff_params f) (gs_tele (dec_stack fs)) ->
+    ftrie_values_ok Θ' (decode_frame f :: decode_stack fs) (ff_body f) ->
+    ⊢ᵍ Θ' ⍮ decode_stack fs -> gs_fresh x (decode_stack fs) ->
+    ⊢ᵍ Θ' ⍮ gs_add x (frame_entry pv (ff_path f) (ff_kind f) (ff_params f) (decode_mod (ff_body f))) (decode_stack fs) ->
+    ff_path f = qname_in (gs_path (decode_stack fs)) x ->
+    kind_tele (ff_path f) (ff_kind f) (ff_params f) (gs_tele (decode_stack fs)) ->
     (forall Θ0 Ξ0, ftrie_values_ok Θ0 Ξ0 (ff_body f) -> fentry_values_ok Θ0 Ξ0 e) ->
-    dec_stack (fs_add x e fs) = gs_add x (frame_entry pv (ff_path f) (ff_kind f) (ff_params f) (dec_mod (ff_body f))) (dec_stack fs) ->
+    decode_stack (fs_add x e fs) = gs_add x (frame_entry pv (ff_path f) (ff_kind f) (ff_params f) (decode_mod (ff_body f))) (decode_stack fs) ->
     frames_values_ok Θ' (fs_add x e fs).
 Proof.
   intros * HΘ Hfs Hf HΞ Hfr HΞ' Hp HK He Ed.
   apply (frames_values_add _ _ _ _ _ HΞ HΞ' (frames_values_deps _ _ _ HΘ Hfs) Ed).
-  apply He; destruct f as [mp Kf Δ t]; cbn [ff_path ff_kind ff_params ff_body dec_frame] in *; subst mp.
+  apply He; destruct f as [mp Kf Δ t]; cbn [ff_path ff_kind ff_params ff_body decode_frame] in *; subst mp.
   exact (ftrie_values_grow _ _ _ _ (gc_sub_close _ _ _ pv _ _ _ HΞ Hfr HK) _ Hf).
 Qed.
 
@@ -293,14 +293,14 @@ Qed.
 Lemma fs_of_values : forall Θ Ξ, frames_values_ok Θ (fs_of Ξ).
 Proof.
   intros Θ; induction Ξ as [| [[mp K] U] Ξ IH]; cbn [fs_of frames_values_ok]; [ exact I |].
-  split; [| exact IH ]; destruct U as [Δ [[|] Φ | H]]; cbn; first [ apply tr_mod_values | exact I ].
+  split; [| exact IH ]; destruct U as [Δ [[|] Φ | H]]; cbn; first [ apply translate_mod_values | exact I ].
 Qed.
 
 (** Alike, in any context *)
 Lemma fs_of_values_all : forall Θ Ξ' Ξ, Forall (fun f => ftrie_values_ok Θ Ξ' (ff_body f)) (fs_of Ξ).
 Proof.
   intros Θ Ξ'; induction Ξ as [| [[mp K] U] Ξ IH]; cbn [fs_of]; constructor; [| exact IH ].
-  destruct U as [Δ [[|] Φ | H]]; cbn; first [ apply tr_mod_values | exact I ].
+  destruct U as [Δ [[|] Φ | H]]; cbn; first [ apply translate_mod_values | exact I ].
 Qed.
 
 (** ** What a Lookup Finds *)
@@ -314,12 +314,12 @@ Qed.
 
 (** An entry looked up through units and frames whose values are right
     has right values. *)
-Lemma fgc_entry_values : forall Θ Ξ (uf : path -> option funit) fs p e,
+Lemma fast_gc_entry_values : forall Θ Ξ (uf : path -> option funit) fs p e,
     (forall fp u, uf fp = Some u -> funit_values_ok Θ Ξ u) ->
     Forall (fun f => ftrie_values_ok Θ Ξ (ff_body f)) fs ->
-    fgc_entry uf fs p = Some e -> fentry_values_ok Θ Ξ e.
+    fast_gc_entry uf fs p = Some e -> fentry_values_ok Θ Ξ e.
 Proof.
-  intros * Hu Hfs He; unfold fgc_entry in He.
+  intros * Hu Hfs He; unfold fast_gc_entry in He.
   destruct (fs_find fs p) as [[f ip] |] eqn:Ef.
   - pose proof (proj1 (Forall_forall _ _) Hfs _ (fs_find_in _ _ _ _ Ef)) as Hf.
     exact (ft_entry_values _ _ _ _ _ Hf He).
@@ -330,17 +330,17 @@ Qed.
 (** ** The Units Seen *)
 
 (** A unit seen after [fus_see] is one filed, or one seen before. *)
-Lemma fus_see_vis : forall L s fp u, pk_find fp (fus_vis (fus_see L s)) = Some u ->
-    fus_find s fp = Some u \/ pk_find fp (fus_vis s) = Some u.
+Lemma fus_see_visible : forall L s fp u, path_key_find fp (fus_visible (fus_see L s)) = Some u ->
+    fus_find s fp = Some u \/ path_key_find fp (fus_visible s) = Some u.
 Proof.
-  intros L s fp u; unfold fus_see; cbn [fus_vis fus_with_vis].
-  assert (H : forall m, (forall u', pk_find fp m = Some u' -> fus_find s fp = Some u' \/ pk_find fp (fus_vis s) = Some u') ->
-    pk_find fp (fold_left (fun m fq => match fus_find s fq with Some u => pk_add fq u m | None => m end) L m) = Some u ->
-    fus_find s fp = Some u \/ pk_find fp (fus_vis s) = Some u).
+  intros L s fp u; unfold fus_see; cbn [fus_visible fus_with_visible].
+  assert (H : forall m, (forall u', path_key_find fp m = Some u' -> fus_find s fp = Some u' \/ path_key_find fp (fus_visible s) = Some u') ->
+    path_key_find fp (fold_left (fun m fq => match fus_find s fq with Some u => path_key_add fq u m | None => m end) L m) = Some u ->
+    fus_find s fp = Some u \/ path_key_find fp (fus_visible s) = Some u).
   { induction L as [| fq L IH]; intros m Hm; cbn [fold_left]; [ apply Hm |].
     apply IH; intros u' Hu'.
     destruct (fus_find s fq) as [w |] eqn:Ew; [| exact (Hm _ Hu') ].
-    rewrite pk_find_add in Hu'; destruct (path_beq fp fq) eqn:Eb; [| exact (Hm _ Hu') ].
+    rewrite path_key_find_add in Hu'; destruct (path_beq fp fq) eqn:Eb; [| exact (Hm _ Hu') ].
     apply path_beq_true in Eb as ->; injection Hu' as <-; left; exact Ew. }
   apply H; auto.
 Qed.

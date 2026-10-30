@@ -455,7 +455,7 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D oq Us m Mm Bks bm Ps M 
     (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[τ]) ->
     Us = List.firstn (ind_nu D) Ps ->
-    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
@@ -524,11 +524,11 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D oq Us m Mm Bks bm Ps M 
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-         : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+         : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim r oq Us m Bks M)[σ] ≈ (a_elim r oq Us m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
@@ -563,25 +563,25 @@ Proof.
   assert (HB1 : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0])
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
   pose proof (sub_as_sub_dom Θ Ξ) as Rd; pose proof (sub_as_sub_ext Θ Ξ) as Re.
   rewrite !exp_sub_elim, (elim_type_sub D Mm bm) by eauto.
   eapply wf_exp_eq_elim_cong;
     [ exact Hl | exact Hg | exact Hg | exact HMm | rewrite nth_error_blocks_sub, Hbm; reflexivity
     | rewrite length_blocks_sub; exact HlB | rewrite length_blocks_sub; exact HlB | rewrite List.length_map; exact HlP | .. ].
-  - eapply mv_elim_params with (R := sub_as_sub Θ Ξ); eassumption.
+  - eapply move_elim_params with (R := sub_as_sub Θ Ξ); eassumption.
   - rewrite List.length_map; exact HlP.
   - intros j0 P0 P0' T0 HP HP' HT; erewrite <- params_insts_sub in HT by eassumption.
     apply nth_error_map_inv in HP as (P & HP & ->); apply nth_error_map_inv in HP' as (P2 & HP' & ->).
     rewrite HP in HP'; injection HP' as <-; apply nth_error_map_inv in HT as (T & HT & ->).
     exact (IHPs _ _ _ HP HT _ _ _ Hσ).
   - rewrite <- ind_mty_split_sub by (try assumption; unfold im_np in HlP; lia); exact (IHM _ _ _ Hσ).
-  - apply mv_elim_ups; exact Hann.
-  - apply mv_elim_ups; exact Hann.
-  - apply blocks_nm_ok_sub; exact Hnm.
-  - apply blocks_nm_ok_sub; exact Hnm.
-  - rewrite List.firstn_map; eapply mv_blocks_ann with (R := sub_as_sub Θ Ξ); eassumption.
+  - apply move_elim_ups; exact Hann.
+  - apply move_elim_ups; exact Hann.
+  - apply blocks_binder_count_ok_sub; exact Hnm.
+  - apply blocks_binder_count_ok_sub; exact Hnm.
+  - rewrite List.firstn_map; eapply move_blocks_ann with (R := sub_as_sub Θ Ξ); eassumption.
   - (* the annotations at the second substitution, at the parameters at the
        first: equal to those at the first *)
     intros k Mk b Z HMk Hb HZb.
@@ -593,7 +593,7 @@ Proof.
     assert (Hlft : Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps)))
                                   ▹ Z0[sb_qn (im_nn Mk) σ]
                                 ≈ elim_mctx p D k Mk (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps))).
-    { eapply mv_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) (Some Z0) A0 Bs0) σ);
+    { eapply move_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) (Some Z0) A0 Bs0) σ);
         first [ eassumption | rewrite nth_error_blocks_sub, Hb0; reflexivity | cbn [eblock_sub eb_ann option_map]; replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia; reflexivity ]. }
     assert (HtZ : tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z0))
       by (constructor; [ eauto | apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption ]).
@@ -602,7 +602,7 @@ Proof.
     erewrite !nparams_sub in HZσ by eassumption.
     rewrite List.firstn_map; unfold elim_mctx in Hlft |- *; eapply ann_ctx_trans; [ exact HZσ | exact Hlft |].
     apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption.
-  - rewrite List.firstn_map; eapply mv_blocks_motive with (R := sub_as_sub Θ Ξ); eassumption.
+  - rewrite List.firstn_map; eapply move_blocks_motive with (R := sub_as_sub Θ Ξ); eassumption.
   - (* the motives at the two substitutions *)
     intros k Mk b b' HMk Hb Hb'.
     rewrite !nth_error_blocks_sub in Hb, Hb'; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb, Hb'; [| discriminate ].
@@ -613,12 +613,12 @@ Proof.
     rewrite List.firstn_map; pose proof (IHA _ _ _ HMk Hb0 _ _ _ Hlift) as HAσ.
     rewrite type_sort_sub in HAσ by exact HS; exact HAσ.
   - intros k Mk HMk; rewrite List.firstn_map; erewrite <- elim_mctx_sub by eassumption; exact (HΨ1 _ _ HMk _ _ Hs).
-  - apply mv_blocks_names; exact Hn.
+  - apply move_blocks_names; exact Hn.
   - intros k b b' Hb Hb'; rewrite !nth_error_blocks_sub in Hb, Hb'.
     destruct (List.nth_error Bks k) as [[nm oZ A0 Bs0] |]; cbn in Hb, Hb'; [| discriminate ].
     injection Hb as <-; injection Hb' as <-; cbn; unfold brs_sub; rewrite !brs_fst_map; reflexivity.
-  - rewrite List.firstn_map; eapply mv_blocks_bctx with (R := sub_as_sub Θ Ξ); eassumption.
-  - apply mv_blocks_counts; exact Hk.
+  - rewrite List.firstn_map; eapply move_blocks_bctx with (R := sub_as_sub Θ Ξ); eassumption.
+  - apply move_blocks_counts; exact Hk.
   - (* the branches at the two substitutions *)
     intros k Mk b b' i0 c gs n B1 B2 HMk Hb Hb' Hi Hi' Hc.
     rewrite !nth_error_blocks_sub in Hb, Hb'; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb, Hb'; [| discriminate ].
@@ -634,7 +634,7 @@ Proof.
     rewrite length_elim_bctx in Hlift.
     erewrite elim_bctx_sub in Hlift;
       [| eassumption | eassumption | apply cons_lookup_in; eassumption | eassumption | intros j0 Mj HMj; eapply blocks_motives_sub; eassumption ].
-    rewrite List.firstn_map; erewrite <- elim_bty_sub by eassumption.
+    rewrite List.firstn_map; erewrite <- elim_branch_type_sub by eassumption.
     replace (im_nn Mk + List.length gs + cargs_nrec D gs) with (cargs_nrec D gs + List.length gs + im_nn Mk) by lia.
     exact (IHB _ _ _ _ _ _ _ HMk Hb0 Hc Hin _ _ _ Hlift).
 Qed.
@@ -706,10 +706,10 @@ Qed.
 
 (** The relevant-only parameters [Δu] of a unit, given as the rule's premise
     [HRp], moved by one substitution [Hs] into the context [HΔ] from the
-    parameters' context [HΓ]: [mv_params_case] at [sub_as_sub], each
+    parameters' context [HΓ]: [move_params_case] at [sub_as_sub], each
     parameter type moved by [sub_preserves_typ]. *)
 Ltac sub_eq_params_case Hs HΓ HΔ HRp :=
-  eapply (mv_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _));
+  eapply (move_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _));
   [ exact Hs | exact HΓ | exact HΔ
   | let E := fresh "E" in let Hσ0 := fresh "Hσ0" in
     intros ? ? ? E ? ? Hσ0; exact (sub_preserves_typ _ _ _ _ _ _ _ (HRp _ _ _ E) Hσ0) ].

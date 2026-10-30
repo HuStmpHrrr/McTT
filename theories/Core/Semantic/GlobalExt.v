@@ -105,11 +105,11 @@ Section GlobalExt.
     (forall p ups ρm As ρ t v a, ⟦ihty v of t at p ups under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a ->
        ⟦ihty v of t at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
     (forall f m r, eval_proj Θ1 Ξ1 f m r -> eval_proj Θ2 Ξ2 f m r) /\
-    (forall ns m fl pre rs, eval_nflds Θ1 Ξ1 ns m fl pre rs -> eval_nflds Θ2 Ξ2 ns m fl pre rs) /\
+    (forall ns m fl pre rs, eval_neutral_fields Θ1 Ξ1 ns m fl pre rs -> eval_neutral_fields Θ2 Ξ2 ns m fl pre rs) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ1 ⍮ Ξ1 ↘ ws -> ⟦projs fl of v ⟧ Θ2 ⍮ Ξ2 ↘ ws) /\
     (forall p ups ρm As ρ gs vs a, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a ->
        ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
-    (forall rs Ms ρ vs, eval_fvals Θ1 Ξ1 rs Ms ρ vs -> eval_fvals Θ2 Ξ2 rs Ms ρ vs) /\
+    (forall rs Ms ρ vs, eval_field_vals Θ1 Ξ1 rs Ms ρ vs -> eval_field_vals Θ2 Ξ2 rs Ms ρ vs) /\
     (forall f Ms ρ r, eval_app_args Θ1 Ξ1 f Ms ρ r -> eval_app_args Θ2 Ξ2 f Ms ρ r).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
@@ -125,18 +125,18 @@ Section GlobalExt.
              (fun h y r _ => eval_selm Θ2 Ξ2 h y r)
              (fun h ch r _ => eval_selc Θ2 Ξ2 h ch r)
              (fun h ch r _ => eval_selmc Θ2 Ξ2 h ch r)
-             (fun ρ Φ ρ' _ => eval_benv Θ2 Ξ2 ρ Φ ρ')
+             (fun ρ Φ ρ' _ => eval_body_env Θ2 Ξ2 ρ Φ ρ')
              (fun ρ p ups Bks j m r _ => eval_elim Θ2 Ξ2 ρ p ups Bks j m r)
              (fun ρ p ups Bks gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ p ups Bks gs vs ihs)
              (fun ρ p ups Bks t v r _ => eval_ih Θ2 Ξ2 ρ p ups Bks t v r)
              (fun p ups j r _ => eval_mref Θ2 Ξ2 p ups j r)
-             (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
+             (fun p ups ρ t a _ => eval_shape_type Θ2 Ξ2 p ups ρ t a)
              (fun p ups ρm As ρ t v a _ => eval_ihty Θ2 Ξ2 p ups ρm As ρ t v a)
              (fun f m r _ => eval_proj Θ2 Ξ2 f m r)
-             (fun ns m fl pre rs _ => eval_nflds Θ2 Ξ2 ns m fl pre rs)
+             (fun ns m fl pre rs _ => eval_neutral_fields Θ2 Ξ2 ns m fl pre rs)
              (fun fl v ws _ => eval_projs Θ2 Ξ2 fl v ws)
              (fun p ups ρm As ρ gs vs a _ => eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs a)
-             (fun rs Ms ρ vs _ => eval_fvals Θ2 Ξ2 rs Ms ρ vs)
+             (fun rs Ms ρ vs _ => eval_field_vals Θ2 Ξ2 rs Ms ρ vs)
              (fun f Ms ρ r _ => eval_app_args Θ2 Ξ2 f Ms ρ r)).
     all: intros;
       repeat match goal with

@@ -95,7 +95,7 @@ with an `Equations`-style interface. Two consequences:
   `rewrite_glu_univ_below` restate the universes below the level.
   This is precisely the body of `basic_per_univ_elem_econstructor` and friends.
 - Obligations are discharged by the tactic named in the
-  `#[tactic="..."]` attribute — that is what every `impl_obl_tac` and
+  `#[tactic="..."]` attribute — that is what every `impl_obligation_tac` and
   `def_simp` in the tree is for.
 
 ### Notation scopes
@@ -193,7 +193,7 @@ Judgments are notated, so their head constants (`wf_exp`, `eval_exp`,
 | `unify_by_head_of t head` | 167 | Succeed iff `t`'s head is `head`, for arities up to 10 (hand-unrolled because Ltac1 cannot pattern-match a spine). |
 | `match_by_head1 head tac` | 182 | Run `tac H` on one hypothesis whose head is `head`. |
 | `match_by_head head tac` | 186 | Run `tac H` on every such hypothesis exactly once (marks as it goes). |
-| `inversion_by_head`, `dir_inversion_by_head`, `inversion_clear_by_head`, `dir_inversion_clear_by_head`, `destruct_by_head`, `dir_destruct_by_head` | 188–189–190–191–192–193 | The six obvious combinations of `inversion` / `inversion_clear` / `destruct`, each optionally wrapped in `directed`. |
+| `inversion_by_head`, `directed_inversion_by_head`, `inversion_clear_by_head`, `directed_inversion_clear_by_head`, `destruct_by_head`, `directed_destruct_by_head` | 188–189–190–191–192–193 | The six obvious combinations of `inversion` / `inversion_clear` / `destruct`, each optionally wrapped in `directed`. |
 
 ### 1.6 Rewriting
 
@@ -257,7 +257,7 @@ whether the above work:
 
 | Tactic | Line | Description |
 | --- | --- | --- |
-| `dec_complete` | 483 | For a goal `exists _, L = _` where `L : sumbool _ _`: `destruct L eqn:Heq`, then `eauto`/`contradiction`. The standard one-liner for "this decision procedure is complete". |
+| `decision_complete` | 483 | For a goal `exists _, L = _` where `L : sumbool _ _`: `destruct L eqn:Heq`, then `eauto`/`contradiction`. The standard one-liner for "this decision procedure is complete". |
 
 ---
 
@@ -614,21 +614,21 @@ Equations eval_exp_impl m p (H : eval_exp_order m p) : { d | eval_exp m p d } by
 ```
 
 Each such definition names an obligation tactic in
-`#[tactic="impl_obl_tac"]`. They all follow the same recipe: invert the order
+`#[tactic="impl_obligation_tac"]`. They all follow the same recipe: invert the order
 predicate to expose the recursive sub-orders, then `econstructor; mauto`.
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `impl_obl_tac1` / `impl_obl_tac` | `Extraction/Evaluation.v:96, 104` | Inverts `eval_exp_order`, `eval_natrec_order`, `eval_app_order`, `eval_sub_order`; then `try econstructor; eauto`. |
-| `impl_obl_tac1` / `impl_obl_tac` | `Extraction/Readback.v:102, 110` | Same for `read_nf_order`, `read_ne_order`, `read_typ_order`. |
-| `impl_obl_tac1` / `impl_obl_tac` | `Extraction/NbE.v:35/41`, `123/129`, `181/187` | Three separate copies inside three `Section`s, for `initial_env_order`, `nbe_order`, and `nbe_ty_order` respectively. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Evaluation.v:96, 104` | Inverts `eval_exp_order`, `eval_natrec_order`, `eval_app_order`, `eval_sub_order`; then `try econstructor; eauto`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Readback.v:102, 110` | Same for `read_nf_order`, `read_ne_order`, `read_typ_order`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/NbE.v:35/41`, `123/129`, `181/187` | Three separate copies inside three `Section`s, for `initial_env_order`, `nbe_order`, and `nbe_ty_order` respectively. |
 | `subtyping_tac` | `Extraction/Subtyping.v:9` | Obligations of the *decision* procedure `subtyping_nf_impl`: for a positive goal `⊢anf A ⊆ B`, `subst; mauto 4; try congruence; econstructor`; for a negative goal, introduce, `dependent destruction`, and close by `lia`/`congruence`. |
 | `subtyping_impl_tac1` / `subtyping_impl_tac` | `Extraction/Subtyping.v:69, 76` | Inverts `subtyping_order` and `nbe_ty_order`; then `econstructor; mauto`. |
-| `impl_obl_tac1` / `impl_obl_tac` | `Extraction/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ ▹ A` and impossible `⋅ ∋ #x : A` / `Γ ▹ A ∋ #(S x) : A` hypotheses, then `intuition (mauto 4)`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ ▹ A` and impossible `⋅ ∋ #x : A` / `Γ ▹ A ∋ #(S x) : A` hypotheses, then `intuition (mauto 4)`. |
 | `clear_defs` | `Extraction/TypeCheckBase.v:492` | Housekeeping: `Equations` leaves the mutual recursive-call hypotheses and `let H := fixproto in …` bindings in every obligation context, where they confuse `mauto`. This clears them by matching their (spelled-out) types. |
-| `impl_obl_tac` | `Extraction/TypeCheck.v:121` | The big one — obligations of `type_check` / `type_infer`. `clear_defs`, invert the order predicates, `destruct_conjs`, then dispatch on the goal: well-formedness and typing goals via `gen_presups; mautosolve 4`; universe-level maxima via `lift_exp_max_left/right`; negative goals by inverting the algorithmic derivation and using `functional_alg_type_infer_rewrite_clear`; `subtyping_order` goals by routing through `soundness_ty` and `nbe_ty_order_sound`. |
-| `impl_obl_tac` | `Extraction/TypeCheck.v:394` | Obligations of `type_check_closed`: `unfold not in *; intros; mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order`. |
-| `impl_obl_tac` | `Entrypoint.v:31` | `try eassumption` — the top-level `main` needs nothing more. |
+| `impl_obligation_tac` | `Extraction/TypeCheck.v:121` | The big one — obligations of `type_check` / `type_infer`. `clear_defs`, invert the order predicates, `destruct_conjs`, then dispatch on the goal: well-formedness and typing goals via `gen_presups; mautosolve 4`; universe-level maxima via `lift_exp_max_left/right`; negative goals by inverting the algorithmic derivation and using `functional_alg_type_infer_rewrite_clear`; `subtyping_order` goals by routing through `soundness_ty` and `nbe_ty_order_sound`. |
+| `impl_obligation_tac` | `Extraction/TypeCheck.v:394` | Obligations of `type_check_closed`: `unfold not in *; intros; mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order`. |
+| `impl_obligation_tac` | `Entrypoint.v:31` | `try eassumption` — the top-level `main` needs nothing more. |
 
 Completeness of the extracted functions is proved by a third pattern: assert
 the order predicate, run the function, and use functionality to identify the
@@ -664,7 +664,7 @@ pseudo-monadic notations for `sumbool`/`sumor` in
   redefinition* — its meaning depends
   on whether `Soundness/UniverseCases.v` is in scope.
 - **`Extraction/TypeCheck.v:115` (`impl_obl_tac_helper`) is dead code** — it
-  is defined and never referenced. `impl_obl_tac` at line 121 inlines the same
+  is defined and never referenced. `impl_obligation_tac` at line 121 inlines the same
   `type_infer_order` inversion.
 - **`clear_defs` hard-codes the types it clears.** If the signature of
   `type_check`/`type_infer` changes, its `lazymatch` patterns silently stop
@@ -702,11 +702,11 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `clear_predicate_equivalence` | `Core/Soundness/LogicalRelation/CoreLemmas.v:400` |
 | `clear_relation_equivalence` | `Core/Semantic/PER/Lemmas.v:285` |
 | `cutexec` | `LibTactics.v:286` |
-| `dec_complete` | `LibTactics.v:483` |
+| `decision_complete` | `LibTactics.v:483` |
 | `deepexec` | `LibTactics.v:266` |
 | `def_simp` | `Core/Semantic/PER/Definitions.v:215`; `Core/Soundness/LogicalRelation/Definitions.v:233` |
 | `destruct_all`, `destruct_logic` | `LibTactics.v:77, 67` |
-| `destruct_by_head`, `dir_destruct_by_head` | `LibTactics.v:192, 193` |
+| `destruct_by_head`, `directed_destruct_by_head` | `LibTactics.v:192, 193` |
 | `destruct_glu_rel_by_assumption` | `Core/Soundness/LogicalRelation/Lemmas.v:996` |
 | `destruct_glu_rel_exp_with_sub` | `Core/Soundness/LogicalRelation/Lemmas.v:1006` |
 | `destruct_glu_rel_typ_with_sub` | `Core/Soundness/LogicalRelation/Lemmas.v:1015` |
@@ -744,11 +744,11 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `handle_functional_glu_univ_elem` | `Core/Soundness/LogicalRelation/CoreLemmas.v:530` |
 | `handle_per_ctx_env_irrel` | `Core/Semantic/PER/Lemmas.v:999` |
 | `handle_per_univ_elem_irrel` | `Core/Semantic/PER/Lemmas.v:463` |
-| `impl_obl_tac`, `…1` | `Entrypoint.v:31`; `Extraction/Evaluation.v:104, 96`; `Extraction/NbE.v:41/35, 129/123, 187/181`; `Extraction/Readback.v:110, 102`; `Extraction/TypeCheck.v:23/14, 121, 394` |
+| `impl_obligation_tac`, `…1` | `Entrypoint.v:31`; `Extraction/Evaluation.v:104, 96`; `Extraction/NbE.v:41/35, 129/123, 187/181`; `Extraction/Readback.v:110, 102`; `Extraction/TypeCheck.v:23/14, 121, 394` |
 | `impl_obl_tac_helper` (unused) | `Extraction/TypeCheck.v:115` |
 | `impl_opt_constructor` | `Core/Syntactic/SystemOpt.v:68` |
-| `inversion_by_head`, `dir_inversion_by_head` | `LibTactics.v:188, 189` |
-| `inversion_clear_by_head`, `dir_inversion_clear_by_head` | `LibTactics.v:190, 191` |
+| `inversion_by_head`, `directed_inversion_by_head` | `LibTactics.v:188, 189` |
+| `inversion_clear_by_head`, `directed_inversion_clear_by_head` | `LibTactics.v:190, 191` |
 | `invert_glu_ctx_env` | `Core/Soundness/LogicalRelation/Lemmas.v:875` |
 | `invert_glu_rel1` | `Core/Soundness/LogicalRelation/CoreTactics.v:17` |
 | `invert_glu_rel_exp` | `Core/Soundness/LogicalRelation/Lemmas.v:2155`; redefined `Core/Soundness/UniverseCases.v:270` |

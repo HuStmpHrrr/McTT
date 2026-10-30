@@ -128,12 +128,12 @@ end
 * ι: `elim (c … f …) ≈ B[…, f, …, λ b. elim (f b), …]` (`wf_iota`).
 * Semantics: `eval_ih` (the eliminator at `v`, or the value
   `d_ihfn ρ nm A Bs t v` at a `Π` shape), applied by `eval_app_ihfn`
-  (apply `v`, then `eval_ih` of the rest); `eval_shty` / `eval_ihty` give
+  (apply `v`, then `eval_ih` of the rest); `eval_shape_type` / `eval_ihty` give
   the type of an argument / of its hypothesis, a `Πᵈ b (nil ↦ fam) fam_cod`
   whose codomain closure applies the family `d_shfam` / `d_ihfam`
   (`eval_app_shfam`, `eval_app_ihfam`).  Readback needs nothing new: a
   hypothesis is read back by η at its `Π` type.
-* `read_brs_cons` has the premise `cargs_plen (ind_nn D) gs` (every shape
+* `read_brs_cons` has the premise `cargs_params_length (ind_nn D) gs` (every shape
   ends at `ind_nn D` parameters): the freshness invariant of
   `Core/Semantic/Avoid.v` places the motive's bad position by it.
 * `wf_con` has a third derivable premise: the context of the arguments
@@ -143,11 +143,13 @@ end
   fundamental theorem needs the rest's types valid at the target
   (`rel_exp_under_ctx_con_of_embedding`, `glu_rel_exp_con_of_embedding`), and no
   inversion on a `Π` gives them.
-* The classification: `cls_sh nu np gs1 d T t` (a shape under `d`
-  domains), `cls_rec` files it.  `cls_wkd d np gs1 = wk_pat (repeat false d
-  ++ cargs_pat gs1 ++ repeat false np ++ [true])`.  The normal-form path
-  makes `(f : Arr Ord)`, `Arr X := ∀ (n : ℕ) → X`, recursive.
-* Rejections (`cls_reason`, `Extraction/IndDecl.v`, messages in
+* The classification: `classify_shape grp_nu rec_np nu np n pat d T` (a
+  shape under `d` domains, `Core/Syntactic/Inductives/Group.v`), which
+  `classify_arg` files as `classified_carg_rec_case`.  A domain must be
+  Self-free: an `image_pat` under `classify_pat d np n pat = repeat false d
+  ++ pat ++ repeat false np ++ repeat true n`.  The normal-form path makes
+  `(f : Arr Ord)`, `Arr X := ∀ (n : ℕ) → X`, recursive.
+* Rejections (`classify_reason`, `Extraction/IndDecl.v`, messages in
   `Extraction/Command.v`): the name in a domain ("… occurs in the domain of
   a function in the argument f of mk, which is not strictly positive"),
   under a head that does not compute, not at the uniform parameters as
@@ -162,36 +164,43 @@ declaration's own parameters, then `Self : Π Δ. S`, bound outside them (but
 inside the parameters of the enclosing frames, which stay implicit).  A
 recursive occurrence is written Rocq-style with all the declaration's own
 parameters, `cons (x : A) (xs : List A)`.
-`run_cmd_ind_case` classifies each argument (`cls_args nu np`,
-`Core/Syntactic/System/Inductives/Classify.v`):
+`run_cmd_ind_case` classifies each argument (`classify_arg grp_nu rec_np nu
+np n pat T`, `Core/Syntactic/Inductives/Group.v`; `pat` marks the earlier
+arguments that are recursive):
 
-* `cls_free`: `T = A[cls_wk np gs1]` — neither `Self` nor an earlier
-  recursive argument occurs; filed `ca_arg A`;
-* `cls_rec` with `cls_sh … 0 T t`: `T = Π B1[cls_wkd 0]. … #(d + k + np)
-  (uvars ++ Ps[cls_wkd d])`, the leading `nu` arguments exactly the uniform
-  variables; filed `ca_rec t`;
-* anything else has no rule.
-  `cls_wk np gs1 = wk_pat (cargs_pat gs1 ++ repeat false np ++ [true])`.
+* Self-free: `T = A[wk_pat (classify_pat 0 np n pat)]` — neither a `Self`
+  nor an earlier recursive argument occurs; filed `classified_carg_arg
+  relevant A`;
+* recursive, `classify_shape … 0 T = Some t`: `T = Π B1. … Self_j (uvars ++
+  Ps)` with Self-free domains, the leading `nu` arguments exactly the
+  uniform variables (`classify_self`), or a nested occurrence
+  (`classify_nest`) or a record view (`classify_record_view`); filed
+  `classified_carg_rec_case t`;
+* anything else is `None`.
 
-The classification is syntactic (`img_dec`: candidate by the left inverse
+The classification is syntactic (`image_pat`: candidate by the left inverse
 `unwk_pat`, then `exp_eq_dec`).
 
 ### On normal forms (stage A″, design P-cmd)
 
 An argument the syntactic classification rejects is classified as its
-normal form (`cls_arg_in`, `System/Command.v`):
+normal form (`classify_arg_in`, `System/Command.v`):
 
 ```
-cls_in_nf : (forall g', ~ cls_arg nu np gs1 T g') ->
-            Θ ⍮ Ξ ⍮ rarg_ctx Ξ R args1 ⊢ T : Typeω@i ->
-            nbe_ty Θ Ξ (rarg_ctx Ξ R args1) T W ->
-            cls_arg nu np gs1 (nf_to_exp W) g -> cls_arg_in Θ Ξ R args1 gs1 T g
+classify_in_nf : forall i W g,
+    classify_arg grp_none rec_none nu np n pat T = None ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
+    nbe_ty Θ Ξ Γ T W ->
+    classify_arg (grp_info Θ Ξ) (rec_info Θ Ξ) nu np n pat (nf_to_exp W) = Some g ->
+    classify_arg_in Θ Ξ Γ nu np n pat T g
 ```
 
-`rarg_ctx Ξ R args1 = rtele args1 ++ tele_wk (rd_params R) ↑ ++ Self :: gs_tele Ξ`,
-`Self : rd_self_ty R = Π (own params). S`.  The syntactic path comes first,
-so the classification is a function (`cls_arg_in_functional`); `run_cmd_ind_case` has
-the premise `cls_cons_in Θ Ξ R cs`.  The nbe premise is in the command
+`classify_args_in` takes `Γ = raw_args_tele args1 ++ raw_member_args_ctx Ξ R Mr`,
+`raw_member_args_ctx Ξ R Mr = tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R)
+(wk_shiftn (raw_decl_nmembers R)) ++ raw_decl_selfs R ++ gs_tele Ξ`
+(`System/Translations.v`).  The syntactic path comes first,
+so the classification is a function (`classify_arg_in_functional`); `run_cmd_ind_case` has
+the premise `Forall2 (raw_member_classify Θ Ξ R) (raw_decl_members R) cs`.  The nbe premise is in the command
 judgment, outside the mutual block; NbE builds no syntax.
 
 * `Id N`, `M.F N` (a transparent member), `let Y := N in Y` are recursive;
@@ -200,8 +209,8 @@ judgment, outside the mutual block; NbE builds no syntax.
   in a non-positive position in the argument f of mk".
 * `F Bad` with `F` abstract, an axiom or a module parameter: "Bad occurs in
   the argument f of mk under a head that does not compute (an opaque
-  definition, an axiom or a parameter)" (`cls_reason` 4).
-* The checker (`cls_arg_in_dec`, `Extraction/IndDecl.v`) checks the context
+  definition, an axiom or a parameter)" (`classify_reason` 4).
+* The checker (`classify_arg_in_dec`, `Extraction/IndDecl.v`) checks the context
   and that the argument is a type, normalizes it, and classifies the normal
   form; a rejection gives the reason on the normal form.  The judgment's
   global state is equivalent to the checker's, so the normal forms agree
@@ -211,7 +220,7 @@ judgment, outside the mutual block; NbE builds no syntax.
 each constructor of each declared member `j` is filed (`filed_con_ty`) at a
 type `≈` at `⋅` to the user's (`user_con_ty`, every `Self_i := a_ind p i` at
 the frames' parameters, `sb_selfs`): an argument classified is filed as its
-image under that instantiation (`cls_arg_filed`; a nested occurrence, found
+image under that instantiation (`classify_arg_filed`; a nested occurrence, found
 on a normal form, as its view, the container's member at the instance); one
 classified as its normal form is equal to it by `soundness_ty'`, and the
 equality moves through the instantiation of the `Self`s (`base_sub`,
@@ -228,7 +237,7 @@ step to be proved never to fail at the user's type, beyond
 | What | Where |
 | --- | --- |
 | `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_def_mod pv A M U` | `Core/Syntactic/Syntax.v` |
-| telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives/Inductives.v` |
+| telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_branch_type`, `elim_ihs` | `Core/Syntactic/Inductives/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
 | declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/Inductives/IndCong.v`, `Syntactic/Inductives/IndConv.v` |
 | values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
@@ -276,7 +285,7 @@ stored closed over them, as every definition is.
   reads the frame first). The frame denotes the member's type former with
   the frame's body so far as its module part,
   `ind_former_desc pq k D Mk (mdesc_closed nil p Tm Φm nil)` (`mdenote_ind_frame`).
-* `run_cmd_ind_case` (`System/Command.v`) checks the group as written (`rd_filed`,
+* `run_cmd_ind_case` (`System/Command.v`) checks the group as written (`raw_decl_filed`,
   `ind_nil_at`). Then `run_ind_members` runs each declared member in
   order (`run_ind_members_cons`):
   - it checks the member with an empty module;
@@ -372,14 +381,14 @@ are marked `bare` and left unlinked (accepted for now).
 
 A record view (`mh_record qr Is fl`) has no block: the eliminator at a
 member nesting through a record reads the record's fields' recursive
-results along *leaf paths* (`shape_leaves (rv_leaves D)`), one recursive
+results along *leaf paths* (`shape_leaves (rview_leaves D)`), one recursive
 result per path. Three premises of the semantic rules hold of every typed
 group. They are stated on the rules so that the semantic lemmas do not
 need typing:
 
 - **`rview_leaf_arity D` on `read_ne_elim`.** Each path through the
   group's record views ends at a member with as many parameters as its
-  motive binds (`rview_leaf_plen`), and fields end only in record views
+  motive binds (`rview_leaf_params_length`), and fields end only in record views
   earlier in the group (`rview_leaf_order`). The readback of a stuck
   eliminator needs it to bound, rename and relate the motives along each
   path: `Rename.read_rn` (`ihs_motives_domain_bounded`), `Avoid.read_avoids`
@@ -396,12 +405,12 @@ need typing:
   `wrap_ihs_eval_length` and the fast evaluator's skip of unread results
   (`ihs_skipb`, `Simulation.fast_fresh_wrap_sim`). Discharged by
   `leaves_coherent_of_order (rview_struct_order …)`.
-- **`cargs_nin D Dc gs' gs = cargs_nrec Dc gs'` on `read_brs_cons`.** The
+- **`cargs_container_count D Dc gs' gs = cargs_nrec Dc gs'` on `read_brs_cons`.** The
   fresh variables for the paths of the group read `Dc` are exactly as
   many as the branch read binds. This keeps them below the length the
   branch is read at (`s + n`), which `read_avoids` and `read_rn` need. It is
   the twin of `eval_elim_con`'s count. Discharged by
-  `ViewCount.cargs_nin_view` (and the `branch_read_pair_count_*` fields of
+  `ViewCount.cargs_container_count_view` (and the `branch_read_pair_count_*` fields of
   `ReadPairs`).
 
 In the Extraction and Reference implementations the gates are premises of
@@ -416,22 +425,22 @@ conditions, not checks the evaluator runs.
   record view, the record at all its parameters `Is`.
 - **Classification.** The classification on normal forms finds a record
   view at the end of an argument's shape, `a_record qr` at all its
-  parameters (`cls_record_view`, `rec_info`). Two conditions apply:
+  parameters (`classify_record_view`, `rec_info`). Two conditions apply:
   - a `Self` must occur in the instance (otherwise the argument is
     `Self`-free, e.g. `Box T` with no recursive field: no IH);
   - the instance must be guarded (`selfs_guarded`): a `Self` may be an
     argument only of a type former, a record type or a `Self`.
   `node (b : Box (F (T F)))` is rejected with "T appears as an argument of
-  F in the type of b" (`cls_why_self_arg`, `run_error_self_arg`).
+  F in the type of b" (`classify_why_self_arg`, `run_error_self_arg`).
 - **Data.**
-  - A record view's siblings are itself alone (`view_sibs_record`).
+  - A record view's siblings are itself alone (`view_siblings_record`).
   - Its constructor `rview_con` takes the record's fields at `Is`, classified
-    as a declared member's arguments are (`view_cls_record`).
-  - It has no non-uniform parameters (`view_nps_record`).
-  - A container's record member gives a record sibling (`sibs_from_record`).
+    as a declared member's arguments are (`view_classify_record`).
+  - It has no non-uniform parameters (`view_nparams_record`).
+  - A container's record member gives a record sibling (`siblings_from_record`).
 - **Search order.** `views_dfs` searches depth first. Newly met instances
   go to the front of the queue (`ViewsSearch.v`).
-- **Filing order** (`rd_filed`, `filed_keys`):
+- **Filing order** (`raw_decl_filed`, `filed_keys`):
   1. the declared members;
   2. the inductive views, in the search's order;
   3. the record views, stably sorted by record height (`sort_by_height`).
@@ -439,11 +448,11 @@ conditions, not checks the evaluator runs.
   only in record views before them (`rview_order_ok`), even when a record
   view is met inside another one through an inductive view (the cycle
   `L A := cons (p : Q (Pair A (L A)))`, `T := node (p : Pair T (L T))`).
-  The checker computes the filing through the filed units (`rd_filed_f`,
-  `rd_filed_case`).
+  The checker computes the filing through the filed units (`raw_decl_filed_f`,
+  `raw_decl_filed_case`).
 - **Mutual definitions.** A mutual definition has one function per member
   with a block (`mdef_group_count : length ms = ind_nblk D`, `mdef_member`
-  over `ind_bmembers D`). A record view has no function.
+  over `ind_block_members D`). A record view has no function.
 - **Termination of the search** (`ViewsCluster.v`, `ViewsFound.v`).
   - `NestAcc.grp_step_record` is a nesting step out of a record type into
     a field's type, at elements of the fields before. `per_univ_nest_acc`
@@ -453,7 +462,7 @@ conditions, not checks the evaluator runs.
   - A record view is its own cluster. Every instance it meets is below it
     (`record_view_meets_below`).
   - A record sibling's meets are its container member's, by the record view
-    equations (`record_sib_link`, `record_sib_meets`).
+    equations (`record_sibling_link`, `record_sibling_meets`).
 
 `view_rank_ok_rview` constrains the rank at *each* constructor of a record
 view (`List.In (c, gs) (im_cons Mk)`), not only at its one constructor.
@@ -467,25 +476,25 @@ its module (`ind_rec_cmds`), over the uniform parameters `Γ0`:
 
 ```
 rec : Π (u : Level). Π (P : Π Δn. Π (z : X us ns). Type⟨u⟩).
-      Π (b_c : Π (elim_bctx … P …). elim_bty … P …) … .
+      Π (b_c : Π (elim_bctx … P …). elim_branch_type … P …) … .
       Π Δn. Π (z : X us ns). P ns z
 rec := λ u P b_c … . λ Δn z. a_elim (S nn) P' [(c, n_c, b_c $ its n_c vars)] z
 ```
 
-(`rec_ty`, `rec_fn`, `rec_tele`, `rec_btys`, `rec_motive`, `rec_brs`,
+(`rec_ty`, `rec_fn`, `rec_tele`, `rec_branch_types`, `rec_motive`, `rec_brs`,
 `System/Command.v`): each branch argument has exactly the type the
 eliminator gives the branch at the motive `P`. It is a definition of the
 module, checked as the constructors' are, by the ordinary rules. The
 surface reads `X.rec`. `rec` is an ordinary name, so `open X use (rec)`
 declares it too.
 
-Every group also files a recursor module `Rec` (`grec_mod_cmd`). It has
+Every group also files a recursor module `Rec` (`recursor_mod_cmd`). It has
 one function `rec_<member>` per member, views included; a view is named
 by its instance, e.g. `rec_List_Rose`.
 
 | group | `Rec` is filed | example |
 |---|---|---|
-| a single declared type `X` | in `X`'s module (`ind_grec_cmds`, member 0) | `Nat.Rec.rec_Nat`, `Rose.Rec.rec_List_Rose` |
+| a single declared type `X` | in `X`'s module (`ind_recursor_cmds`, member 0) | `Nat.Rec.rec_Nat`, `Rose.Rec.rec_List_Rose` |
 | `mutual T where …` | in `T`'s frame, after the members (`rec_cmds`) | `T.Rec.rec_Tm` |
 | `inductive A … with B … end` | in the first declared member's module | `A.Rec.rec_B` |
 
@@ -547,13 +556,13 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
 * **Scope.**  A unit sees the bindings it makes and those of the units it
   imports, transitively, never those of the unit importing it.
   `run_cmd`/`run_cmds` (`Core/Syntactic/System/Command.v`) thread the
-  record `B` of the unit being run and a map `Rb : bmap` from each filed
+  record `B` of the unit being run and a map `Rb : builtins_map` from each filed
   unit to the record it ended with: `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c ⇝ Θ' ⍮ Ξ' ⍮
   B' ⍮ Rb'`.  The map is apart from `Θ` and the stack.  `run_unit ch u B Rb
   Θ U` runs from `builtins_empty` and `nil` and returns the unit's record `B` and
   the map `Rb` of what it filed.  `run_cmd_load` merges the loaded unit's record
-  in and files it in the map (`bm_merge Rb ((fp, BU) :: RbU)`);
-  `run_cmd_load_filed` merges the record the map keeps (`bm_lookup Rb fp`).
+  in and files it in the map (`builtins_map_merge Rb ((fp, BU) :: RbU)`);
+  `run_cmd_load_filed` merges the record the map keeps (`builtins_map_lookup Rb fp`).
   `prog_sem prg B Θ U` hides the map.
 * **`run_cmd_builtin`.**  `core_cmd_builtin k H` with `k = natural`: `H` names, by
   `ind_target`, an inductive type `p` or an inductive alias of one with no
@@ -585,7 +594,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   - `run_builtins_wf`, `prog_sem_builtins_wf`: the record stays read at
     its state, `builtins_wf Θ Ξ B` (the bound type is found by
     `ind_lookup`, has `nat_shape`, is in `Type@0`), and so are the records
-    of the filed units (`bm_wf Θ Rb`), through added entries, closed module
+    of the filed units (`builtins_map_wf Θ Rb`), through added entries, closed module
     frames (`ind_lookup_close`), filing, merging and record merges.
   - `canonical_form_of_bound_nat_prog` (`Core/Consequences/Consistency.v`):
     with `builtins_nat B = Some p` at the end of a program, a closed term of
@@ -598,8 +607,8 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   `Prelude›Builtin›Nat` is one binding; `Lib›Unary` and `Lib›Peano` together
   conflict; a binding made in a body does not reach a unit imported later
   in it, and meets that unit's own binding there.
-* **Checker.**  `Extraction/Command.v`: `cstate` / `ustate` carry the
-  record (`cstate_bt`, `us_bt`); the map of records is part of `unit_closure_map`, which
+* **Checker.**  `Extraction/Command.v`: `run_state` / `unit_result` carry the
+  record (`run_state_core_builtins`, `unit_result_core_builtins`); the map of records is part of `unit_closure_map`, which
   keeps, for each filed unit, its closure (`unit_closure_find`) and its record (`unit_closure_builtins`).
   The judgment's map is related by `builtin_records_ok K ΘR RbR` (canonical, and the
   records `K` keeps); `post_*` quantify over it.  A loaded unit is checked
@@ -649,7 +658,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
    `rec_result_rel_rebase`).
 5. **Gluing redesigns.** The components of the type (non-uniform parameter
    types and argument types) are glued inside the type predicate
-   (`ind_glu_comps`), the sort is required `⊆` the gluing's universe, the
+   (`ind_glu_components`), the sort is required `⊆` the gluing's universe, the
    recursive facts of `ind_glu_elem_con` are closed under related parameter
    values (PER-closed) and under weakening and equal instances of the
    parameters (Kripke wrappers), the earlier link between the type

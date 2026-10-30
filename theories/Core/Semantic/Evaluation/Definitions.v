@@ -367,7 +367,7 @@ with kinds_body_xp (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
 (** What the items of an open of [H] generate, by the kinds of the members
     they name, in [ρ]; a generated definition carries no type: its type
     [⊤] and its tag [propositional] are placeholders. *)
-with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list generated_item -> Prop :=
+with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_item -> list generated_item -> Prop :=
 (** No items generate nothing *)
 | kinds_items_gen_nil : forall ρ H, kinds_items_gen Θ Ξ ρ H nil nil
 (** An item naming the target itself: an alias of the target *)
@@ -437,17 +437,17 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ Level@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ@n )
 (** A level literal is the flat level with that constant and no atom. *)
 | eval_exp_llit :
-  `( ⟦ 𝕃ᵒ o ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_lit o )
+  `( ⟦ 𝕃ᵒ o ⟧ Θ ⍮ Ξ ⍮ ρ ↘ domain_level_lit o )
 (** The level operations only flatten: they add to the offsets, or join the
     constants and concatenate the atoms.  Canonicalisation is readback's. *)
 | eval_exp_succl :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ succl M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_suc m )
+     ⟦ succl M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ domain_level_suc m )
 (** The join of two levels: the flat join of their values. *)
 | eval_exp_maxl :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
-     ⟦ maxl M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_max m n )
+     ⟦ maxl M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ domain_level_max m n )
 (** A variable is read off the environment. *)
 | eval_exp_var :
   `( ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )
@@ -600,13 +600,13 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_record :
   `( ⟦ a_record p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record p nil )
 (** A record element is the tuple of its fields' values, by name, a
-    propositional field [⋆ᵈ] ([eval_fvals]); the type it is annotated with
+    propositional field [⋆ᵈ] ([eval_field_vals]); the type it is annotated with
     is evaluated only to find the record, whose declaration stores the
     fields' sorts, and the value carries no parameters. *)
 | eval_exp_tuple :
   `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record p ns ->
      record_lookup Θ Ξ p = Some R ->
-     eval_fvals Θ Ξ (record_field_relevance R) (List.map snd fs) ρ vs ->
+     eval_field_vals Θ Ξ (record_field_relevance R) (List.map snd fs) ρ vs ->
      ⟦ a_tuple T fs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple (List.combine (List.map fst fs) vs) )
 (** A field: the field of the value. *)
 | eval_exp_proj :
@@ -628,22 +628,22 @@ with eval_proj (Θ : gdeps) (Ξ : gstack) : string -> domain -> domain -> Prop :
 | eval_proj_neut :
   `( record_lookup Θ Ξ p = Some R ->
      field_index (record_fields R) f = Some k ->
-     eval_nflds Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs ->
+     eval_neutral_fields Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs ->
      List.nth_error rs k = Some r ->
      eval_proj Θ Ξ f (⇑ (d_record p ns) m) r )
-(** [eval_nflds ns m fl pre rs]: the neutral projections [rs] of [m] at
+(** [eval_neutral_fields ns m fl pre rs]: the neutral projections [rs] of [m] at
     the fields [fl], after the projections [pre] of the fields before them,
     each at its type at the parameters [ns] and the projections before
     it. *)
-with eval_nflds (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> list domain -> Prop :=
+with eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> list domain -> Prop :=
 (** No field left *)
-| eval_nflds_nil :
-  `( eval_nflds Θ Ξ ns m nil pre nil )
+| eval_neutral_fields_nil :
+  `( eval_neutral_fields Θ Ξ ns m nil pre nil )
 (** The next field's projection, at its type, then the rest after it *)
-| eval_nflds_cons :
+| eval_neutral_fields_cons :
   `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
-     eval_nflds Θ Ξ ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil) rs ->
-     eval_nflds Θ Ξ ns m ((g, T) :: fl) pre (relevant_value a (⇑ a (d_proj g m)) :: rs) )
+     eval_neutral_fields Θ Ξ ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil) rs ->
+     eval_neutral_fields Θ Ξ ns m ((g, T) :: fl) pre (relevant_value a (⇑ a (d_proj g m)) :: rs) )
 (** The eliminator of the group at [p] at its member [j], on a value.  The
     member is the declared member [k] of the group at [q] ([im_ref]): the
     group itself at a declared member, the container's at a view.  On a
@@ -688,7 +688,7 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
      List.nth_error Bks j = Some b ->
-     eb_nm b = S (im_nn Mk) ->
+     eb_binder_count b = S (im_nn Mk) ->
      ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil) ↘ a ->
      ⟦elim ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ relevant_value a (⇑ a (d_elim ρ Bks p ups j as' m)) )
 where "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p ups Bks j m r)
@@ -737,7 +737,7 @@ with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eb
 | eval_ih_pi :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ih v of pt_pi B t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ
-       ↘ List.map (fun i => d_ihfn ρ Bks p ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t))) )
+       ↘ List.map (fun i => d_ihfn ρ Bks p ups t i v) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ih' v 'of' t 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ p ups Bks t v r)
 (** The projections of a value at the fields [fl], in order. *)
 with eval_projs (Θ : gdeps) (Ξ : gstack) : list string -> domain -> list domain -> Prop :=
@@ -775,25 +775,25 @@ where "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" := (eval_mref Θ Ξ p u
     every value and every neutral of a view is of the container's member.
     Readback reads an argument of a shape at the group's own member instead
     ([read_shape]). *)
-with eval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
+with eval_shape_type (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
 (** At the end: the member's type former at the shape's parameters *)
-| eval_shty_self :
+| eval_shape_type_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pc k (pre ++ bs) )
 (** At the end, at a record view: the record type at the view's instance
     at [ups] *)
-| eval_shty_rview :
+| eval_shape_type_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
      ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
      ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record qr cups )
 (** At a domain: a [Π] over it, of the shape family *)
-| eval_shty_pi :
+| eval_shape_type_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
-where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shty Θ Ξ p ups ρ t r)
+where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shape_type Θ Ξ p ups ρ t r)
 (** The types of the recursive results of an argument [v] of shape [t],
     one per leaf path, its components in [ρ], of the group at [p] at the
     uniform parameters [ups]: the motive of the member the shape ends in,
@@ -826,7 +826,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ
        ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ t i v) fam_cod)
-           (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t))) )
+           (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ p ups ρm As ρ t v r)
 (** The types of the recursive results of the fields [vs] of a record
     view, of kinds [gs], their components in [ρ], which a non-recursive
@@ -974,24 +974,24 @@ with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> dom
      $| f & ⋆ᵈ | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
-(** [eval_fvals rs Ms ρ vs]: the values [vs] of the fields [Ms] of a record
+(** [eval_field_vals rs Ms ρ vs]: the values [vs] of the fields [Ms] of a record
     value, the field at the sort [propositional] in [rs] the proof [⋆ᵈ],
     not evaluated (a sort past [rs] is relevant). *)
-with eval_fvals (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> list domain -> Prop :=
+with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> list domain -> Prop :=
 (** No field. *)
-| eval_fvals_nil :
-  `( eval_fvals Θ Ξ rs nil ρ nil )
+| eval_field_vals_nil :
+  `( eval_field_vals Θ Ξ rs nil ρ nil )
 (** A relevant field: its value, then the rest. *)
-| eval_fvals_relevant :
+| eval_field_vals_relevant :
   `( List.hd relevant rs = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     eval_fvals Θ Ξ (List.tl rs) Ms ρ ms ->
-     eval_fvals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
+     eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
+     eval_field_vals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
 (** A propositional field: [⋆ᵈ], then the rest. *)
-| eval_fvals_proof :
+| eval_field_vals_proof :
   `( List.hd relevant rs = propositional ->
-     eval_fvals Θ Ξ (List.tl rs) Ms ρ ms ->
-     eval_fvals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ :: ms) )
+     eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
+     eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ :: ms) )
 with eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
 (** No arguments. *)
 | eval_apps_nil :
@@ -1197,36 +1197,36 @@ with eval_selmc (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> dmod -> Prop
 where "h '·ₘ*' ch Θ '⍮' Ξ '↘' r" := (eval_selmc Θ Ξ h ch r)
 (** The environment the members of a body see after its entries [Φ]: each
     definition adds its value and each module its closure. *)
-with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
+with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** The empty body adds nothing. *)
-| eval_benv_nil :
+| eval_body_env_nil :
   `( ⟦ gm_nil ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ )
 (** A definition of a relevant type adds its value. *)
-| eval_benv_def :
+| eval_body_env_def :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a ->
      domain_relevance a = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ gm_ext Φ y (ge_def b pv ra A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m )
 (** A definition of a proposition, a proof, adds [⋆ᵈ], unevaluated. *)
-| eval_benv_def_proof :
+| eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a ->
      domain_relevance a = propositional ->
      ⟦ gm_ext Φ y (ge_def b pv ra A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ )
 (** A submodule adds its unit's closure. *)
-| eval_benv_mod :
+| eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
      ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h )
 (** A definition with a module part adds its term's value and its unit's
     closure. *)
-| eval_benv_dm :
+| eval_body_env_dm :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
      ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ‖ h )
-where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_benv Θ Ξ ρ Φ ρ').
+where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_body_env Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
 with eval_app_mut_ind := Induction for eval_app Sort Prop
@@ -1240,18 +1240,18 @@ with eval_sel_mut_ind := Induction for eval_sel Sort Prop
 with eval_selm_mut_ind := Induction for eval_selm Sort Prop
 with eval_selc_mut_ind := Induction for eval_selc Sort Prop
 with eval_selmc_mut_ind := Induction for eval_selmc Sort Prop
-with eval_benv_mut_ind := Induction for eval_benv Sort Prop
+with eval_body_env_mut_ind := Induction for eval_body_env Sort Prop
 with eval_elim_mut_ind := Induction for eval_elim Sort Prop
 with eval_ihs_mut_ind := Induction for eval_ihs Sort Prop
 with eval_ih_mut_ind := Induction for eval_ih Sort Prop
 with eval_mref_mut_ind := Induction for eval_mref Sort Prop
-with eval_shty_mut_ind := Induction for eval_shty Sort Prop
+with eval_shape_type_mut_ind := Induction for eval_shape_type Sort Prop
 with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop
 with eval_proj_mut_ind := Induction for eval_proj Sort Prop
-with eval_nflds_mut_ind := Induction for eval_nflds Sort Prop
+with eval_neutral_fields_mut_ind := Induction for eval_neutral_fields Sort Prop
 with eval_projs_mut_ind := Induction for eval_projs Sort Prop
 with eval_ihtys_mut_ind := Induction for eval_ihtys Sort Prop
-with eval_fvals_mut_ind := Induction for eval_fvals Sort Prop
+with eval_field_vals_mut_ind := Induction for eval_field_vals Sort Prop
 with eval_app_args_mut_ind := Induction for eval_app_args Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
@@ -1266,23 +1266,23 @@ Combined Scheme eval_mut_ind from
   eval_selm_mut_ind,
   eval_selc_mut_ind,
   eval_selmc_mut_ind,
-  eval_benv_mut_ind,
+  eval_body_env_mut_ind,
   eval_elim_mut_ind,
   eval_ihs_mut_ind,
   eval_ih_mut_ind,
   eval_mref_mut_ind,
-  eval_shty_mut_ind,
+  eval_shape_type_mut_ind,
   eval_ihty_mut_ind,
   eval_proj_mut_ind,
-  eval_nflds_mut_ind,
+  eval_neutral_fields_mut_ind,
   eval_projs_mut_ind,
   eval_ihtys_mut_ind,
-  eval_fvals_mut_ind,
+  eval_field_vals_mut_ind,
   eval_app_args_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_proj eval_nflds eval_projs eval_elim eval_ihs eval_ih eval_mref eval_shty eval_ihty eval_ihtys eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
-  eval_selc eval_selmc eval_benv eval_fvals eval_app_args : mctt.
+Hint Constructors eval_exp eval_proj eval_neutral_fields eval_projs eval_elim eval_ihs eval_ih eval_mref eval_shape_type eval_ihty eval_ihtys eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
+  eval_selc eval_selmc eval_body_env eval_field_vals eval_app_args : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
     application, so unifying against it directly can pick the wrong [ρ] and

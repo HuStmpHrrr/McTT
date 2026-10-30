@@ -15,49 +15,49 @@ Import Domain_Notations Fixed_Notations.
     identity between maxima of ordinals.
 
     A value of type [Level] is flat, or a neutral, which is the single atom at
-    offset [0]: that is its flat view ([dlvl_view]).  [dlvl_shape] says which of
+    offset [0]: that is its flat view ([domain_level_view]).  [domain_level_shape] says which of
     the two a value is; no other value is read back at [Level]. *)
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Variant dlvl_shape : domain -> Prop :=
-| dlvl_shape_lvl : forall c xs, dlvl_shape (lvᵈ c xs)
-| dlvl_shape_neut : forall a m, dlvl_shape (⇑ a m).
+Variant domain_level_shape : domain -> Prop :=
+| domain_level_shape_lvl : forall c xs, domain_level_shape (lvᵈ c xs)
+| domain_level_shape_neut : forall a m, domain_level_shape (⇑ a m).
 
-Hint Constructors dlvl_shape : mctt.
+Hint Constructors domain_level_shape : mctt.
 
-Lemma dlvl_shape_suc : forall l, dlvl_shape (dlvl_suc l).
-Proof. intros; unfold dlvl_suc; constructor. Qed.
+Lemma domain_level_shape_suc : forall l, domain_level_shape (domain_level_suc l).
+Proof. intros; unfold domain_level_suc; constructor. Qed.
 
-Lemma dlvl_shape_max : forall l l', dlvl_shape (dlvl_max l l').
-Proof. intros; unfold dlvl_max; constructor. Qed.
+Lemma domain_level_shape_max : forall l l', domain_level_shape (domain_level_max l l').
+Proof. intros; unfold domain_level_max; constructor. Qed.
 
-Lemma dlvl_shape_lit : forall n, dlvl_shape (dlvl_lit n).
-Proof. intros; unfold dlvl_lit; constructor. Qed.
+Lemma domain_level_shape_lit : forall n, domain_level_shape (domain_level_lit n).
+Proof. intros; unfold domain_level_lit; constructor. Qed.
 
-Hint Resolve dlvl_shape_suc dlvl_shape_max dlvl_shape_lit : mctt.
+Hint Resolve domain_level_shape_suc domain_level_shape_max domain_level_shape_lit : mctt.
 
 (** The flat view of each operation, as equations rather than by unfolding, so
-    that [dlvl_cst] and [dlvl_atoms] stay abstract on a level that is not one
+    that [domain_level_const] and [domain_level_atoms] stay abstract on a level that is not one
     of the operations. *)
-Fact dlvl_cst_lit : forall n, dlvl_cst (dlvl_lit n) = n.
+Fact domain_level_const_lit : forall n, domain_level_const (domain_level_lit n) = n.
 Proof. reflexivity. Qed.
 
-Fact dlvl_atoms_lit : forall n, dlvl_atoms (dlvl_lit n) = nil.
+Fact domain_level_atoms_lit : forall n, domain_level_atoms (domain_level_lit n) = nil.
 Proof. reflexivity. Qed.
 
-Fact dlvl_cst_suc : forall l, dlvl_cst (dlvl_suc l) = ordinal_succ (dlvl_cst l).
+Fact domain_level_const_suc : forall l, domain_level_const (domain_level_suc l) = ordinal_succ (domain_level_const l).
 Proof. reflexivity. Qed.
 
-Fact dlvl_atoms_suc : forall l,
-    dlvl_atoms (dlvl_suc l) = List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms l).
+Fact domain_level_atoms_suc : forall l,
+    domain_level_atoms (domain_level_suc l) = List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (domain_level_atoms l).
 Proof. reflexivity. Qed.
 
-Fact dlvl_cst_max : forall l l', dlvl_cst (dlvl_max l l') = ordinal_max (dlvl_cst l) (dlvl_cst l').
+Fact domain_level_const_max : forall l l', domain_level_const (domain_level_max l l') = ordinal_max (domain_level_const l) (domain_level_const l').
 Proof. reflexivity. Qed.
 
-Fact dlvl_atoms_max : forall l l', dlvl_atoms (dlvl_max l l') = dlvl_atoms l ++ dlvl_atoms l'.
+Fact domain_level_atoms_max : forall l l', domain_level_atoms (domain_level_max l l') = domain_level_atoms l ++ domain_level_atoms l'.
 Proof. reflexivity. Qed.
 
 (** ** Readback of the Atoms *)
@@ -81,16 +81,16 @@ Hint Resolve read_level_atoms_app read_level_atoms_suc : mctt.
 
 (** ** The Canonical Form of a Level at a Length
 
-    [dlvl_canon s l L]: at length [s], the atoms of [l] read back and make the
-    canonical level [L].  It is what [l] reads back as ([dlvl_canon_read]), it
+    [domain_level_canon s l L]: at length [s], the atoms of [l] read back and make the
+    canonical level [L].  It is what [l] reads back as ([domain_level_canon_read]), it
     is unique, and it computes on the level operations — which is how the level
     equations are proved. *)
-Definition dlvl_canon (s : nat) (l : domain) (L : lvl) : Prop :=
-  exists ys, Rla (dlvl_atoms l) in s ↘ ys /\ L = lvl_canon (dlvl_cst l, ys).
+Definition domain_level_canon (s : nat) (l : domain) (L : lvl) : Prop :=
+  exists ys, Rla (domain_level_atoms l) in s ↘ ys /\ L = lvl_canon (domain_level_const l, ys).
 
-Lemma dlvl_canon_read : forall s l L,
-    dlvl_shape l ->
-    dlvl_canon s l L ->
+Lemma domain_level_canon_read : forall s l L,
+    domain_level_shape l ->
+    domain_level_canon s l L ->
     Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of L.
 Proof.
   intros * Hl [ys [Hys ->]]; destruct Hl; cbn in *.
@@ -100,9 +100,9 @@ Proof.
     constructor; assumption.
 Qed.
 
-Lemma dlvl_canon_of_read : forall s l L,
+Lemma domain_level_canon_of_read : forall s l L,
     Rnf ⇓ Levelᵈ l in s ↘ L ->
-    dlvl_shape l /\ exists L', L = nf_lvl_of L' /\ dlvl_canon s l L'.
+    domain_level_shape l /\ exists L', L = nf_lvl_of L' /\ domain_level_canon s l L'.
 Proof.
   inversion 1; subst; try solve [ exfalso; clear_wrong_relevance ].
   - split; [ constructor |].
@@ -113,9 +113,9 @@ Proof.
     eexists; split; [ repeat constructor; eassumption | reflexivity ].
 Qed.
 
-Lemma dlvl_canon_functional : forall s l L L',
-    dlvl_canon s l L ->
-    dlvl_canon s l L' ->
+Lemma domain_level_canon_functional : forall s l L L',
+    domain_level_canon s l L ->
+    domain_level_canon s l L' ->
     L = L'.
 Proof.
   intros * [ys [Hys ->]] [ys' [Hys' ->]].
@@ -124,39 +124,39 @@ Proof.
 Qed.
 
 (** A canonical form from a reading of the atoms is canonical. *)
-Lemma dlvl_canon_canonical : forall s l L,
-    dlvl_canon s l L ->
+Lemma domain_level_canon_canonical : forall s l L,
+    domain_level_canon s l L ->
     lvl_canon L = L.
 Proof.
   intros * [ys [_ ->]]; apply lvl_canon_idem.
 Qed.
 
-Lemma dlvl_canon_lit : forall s n, dlvl_canon s (dlvl_lit n) (lvl_lit n).
+Lemma domain_level_canon_lit : forall s n, domain_level_canon s (domain_level_lit n) (lvl_lit n).
 Proof.
-  intros; eexists; rewrite dlvl_atoms_lit, dlvl_cst_lit.
+  intros; eexists; rewrite domain_level_atoms_lit, domain_level_const_lit.
   split; [ constructor | symmetry; apply lvl_canon_lit ].
 Qed.
 
-Lemma dlvl_canon_suc : forall s l L,
-    dlvl_canon s l L ->
-    dlvl_canon s (dlvl_suc l) (lvl_canon (lvl_suc L)).
+Lemma domain_level_canon_suc : forall s l L,
+    domain_level_canon s l L ->
+    domain_level_canon s (domain_level_suc l) (lvl_canon (lvl_suc L)).
 Proof.
-  intros * [ys [Hys ->]]; eexists; rewrite dlvl_atoms_suc, dlvl_cst_suc.
+  intros * [ys [Hys ->]]; eexists; rewrite domain_level_atoms_suc, domain_level_const_suc.
   split; [ apply read_level_atoms_suc; eassumption |].
   rewrite lvl_canon_suc; reflexivity.
 Qed.
 
-Lemma dlvl_canon_max : forall s l L m M,
-    dlvl_canon s l L ->
-    dlvl_canon s m M ->
-    dlvl_canon s (dlvl_max l m) (lvl_canon (lvl_max L M)).
+Lemma domain_level_canon_max : forall s l L m M,
+    domain_level_canon s l L ->
+    domain_level_canon s m M ->
+    domain_level_canon s (domain_level_max l m) (lvl_canon (lvl_max L M)).
 Proof.
-  intros * [ys [Hys ->]] [zs [Hzs ->]]; eexists; rewrite dlvl_atoms_max, dlvl_cst_max.
+  intros * [ys [Hys ->]] [zs [Hzs ->]]; eexists; rewrite domain_level_atoms_max, domain_level_const_max.
   split; [ apply read_level_atoms_app; eassumption |].
   rewrite lvl_canon_max_l, lvl_canon_max_r; reflexivity.
 Qed.
 
-Hint Resolve dlvl_canon_lit dlvl_canon_suc dlvl_canon_max : mctt.
+Hint Resolve domain_level_canon_lit domain_level_canon_suc domain_level_canon_max : mctt.
 
 (** ** The Level PER through Canonical Forms
 
@@ -164,40 +164,40 @@ Hint Resolve dlvl_canon_lit dlvl_canon_suc dlvl_canon_max : mctt.
     length.  These are the introduction and the elimination form; every
     equation below is an identity of canonical forms. *)
 Lemma per_lvl_of : forall l l',
-    dlvl_shape l ->
-    dlvl_shape l' ->
-    (forall s, exists L, dlvl_canon s l L) ->
-    (forall s, exists L, dlvl_canon s l' L) ->
-    (forall s L L', dlvl_canon s l L -> dlvl_canon s l' L' -> L = L') ->
+    domain_level_shape l ->
+    domain_level_shape l' ->
+    (forall s, exists L, domain_level_canon s l L) ->
+    (forall s, exists L, domain_level_canon s l' L) ->
+    (forall s L L', domain_level_canon s l L -> domain_level_canon s l' L' -> L = L') ->
     Dom l ≈ l' ∈ per_lvl.
 Proof.
   intros * Hl Hl' Hex Hex' Heq s.
   destruct (Hex s) as [L HL]; destruct (Hex' s) as [L' HL'].
-  exists (nf_lvl_of L); split; [ apply dlvl_canon_read; assumption |].
-  rewrite (Heq _ _ _ HL HL'); apply dlvl_canon_read; assumption.
+  exists (nf_lvl_of L); split; [ apply domain_level_canon_read; assumption |].
+  rewrite (Heq _ _ _ HL HL'); apply domain_level_canon_read; assumption.
 Qed.
 
 Lemma per_lvl_shape : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    dlvl_shape l /\ dlvl_shape l'.
+    domain_level_shape l /\ domain_level_shape l'.
 Proof.
   intros * H.
   destruct (H 0) as [L [HL HL']].
-  apply dlvl_canon_of_read in HL as [? _]; apply dlvl_canon_of_read in HL' as [? _].
+  apply domain_level_canon_of_read in HL as [? _]; apply domain_level_canon_of_read in HL' as [? _].
   split; assumption.
 Qed.
 
 Lemma per_lvl_ex : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    forall s, exists L, dlvl_canon s l L.
+    forall s, exists L, domain_level_canon s l L.
 Proof.
   intros * H s.
-  destruct (H s) as [L [HL _]]; apply dlvl_canon_of_read in HL as [_ [L' [_ ?]]]; eauto.
+  destruct (H s) as [L [HL _]]; apply domain_level_canon_of_read in HL as [_ [L' [_ ?]]]; eauto.
 Qed.
 
 Lemma per_lvl_ex_right : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    forall s, exists L, dlvl_canon s l' L.
+    forall s, exists L, domain_level_canon s l' L.
 Proof.
   intros * H; apply (per_lvl_ex l' l), per_lvl_sym; assumption.
 Qed.
@@ -205,69 +205,69 @@ Qed.
 Lemma per_lvl_eq : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
     forall s L L',
-      dlvl_canon s l L ->
-      dlvl_canon s l' L' ->
+      domain_level_canon s l L ->
+      domain_level_canon s l' L' ->
       L = L'.
 Proof.
   intros * H * HL HL'.
   destruct (H s) as [W [HW HW']].
-  apply dlvl_canon_of_read in HW as [_ [L1 [-> HL1]]].
-  apply dlvl_canon_of_read in HW' as [_ [L2 [Heq HL2]]].
-  assert (L1 = L) as <- by (eapply dlvl_canon_functional; eassumption).
-  assert (L2 = L') as <- by (eapply dlvl_canon_functional; eassumption).
+  apply domain_level_canon_of_read in HW as [_ [L1 [-> HL1]]].
+  apply domain_level_canon_of_read in HW' as [_ [L2 [Heq HL2]]].
+  assert (L1 = L) as <- by (eapply domain_level_canon_functional; eassumption).
+  assert (L2 = L') as <- by (eapply domain_level_canon_functional; eassumption).
   apply nf_lvl_of_inj; exact Heq.
 Qed.
 
 (** ** The Level Operations Respect the PER
 
     Each proof reads the atoms of the levels at a length, computes the
-    canonical form of each side by [dlvl_canon_suc] and [dlvl_canon_max], and
+    canonical form of each side by [domain_level_canon_suc] and [domain_level_canon_max], and
     compares the two by [lvl_canon_iff]. *)
 
 Lemma per_lvl_suc : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    Dom dlvl_suc l ≈ dlvl_suc l' ∈ per_lvl.
+    Dom domain_level_suc l ≈ domain_level_suc l' ∈ per_lvl.
 Proof.
   intros * H.
   pose proof (per_lvl_shape _ _ H) as [Hl Hl'].
   apply per_lvl_of; [ mauto 3 | mauto 3 | | |].
   - intros s; destruct (per_lvl_ex _ _ H s) as [A HA].
-    eexists; apply dlvl_canon_suc; exact HA.
+    eexists; apply domain_level_canon_suc; exact HA.
   - intros s; destruct (per_lvl_ex_right _ _ H s) as [B HB].
-    eexists; apply dlvl_canon_suc; exact HB.
+    eexists; apply domain_level_canon_suc; exact HB.
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ H s) as [A HA].
     destruct (per_lvl_ex_right _ _ H s) as [B HB].
     assert (A = B) as <- by (eapply per_lvl_eq; [ exact H | exact HA | exact HB ]).
     assert (L = lvl_canon (lvl_suc A)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_suc; exact HA ]).
+      by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_suc; exact HA ]).
     assert (L' = lvl_canon (lvl_suc A)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_suc; exact HB ]).
+      by (eapply domain_level_canon_functional; [ exact HL' | apply domain_level_canon_suc; exact HB ]).
     reflexivity.
 Qed.
 
 Lemma per_lvl_max : forall l l' m m',
     Dom l ≈ l' ∈ per_lvl ->
     Dom m ≈ m' ∈ per_lvl ->
-    Dom dlvl_max l m ≈ dlvl_max l' m' ∈ per_lvl.
+    Dom domain_level_max l m ≈ domain_level_max l' m' ∈ per_lvl.
 Proof.
   intros * H H'.
   pose proof (per_lvl_shape _ _ H) as [Hl Hl'].
   pose proof (per_lvl_shape _ _ H') as [Hm Hm'].
   apply per_lvl_of; [ mauto 3 | mauto 3 | | |].
   - intros s; destruct (per_lvl_ex _ _ H s) as [A HA]; destruct (per_lvl_ex _ _ H' s) as [B HB].
-    eexists; apply dlvl_canon_max; [ exact HA | exact HB ].
+    eexists; apply domain_level_canon_max; [ exact HA | exact HB ].
   - intros s; destruct (per_lvl_ex_right _ _ H s) as [A HA]; destruct (per_lvl_ex_right _ _ H' s) as [B HB].
-    eexists; apply dlvl_canon_max; [ exact HA | exact HB ].
+    eexists; apply domain_level_canon_max; [ exact HA | exact HB ].
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ H s) as [A HA]; destruct (per_lvl_ex _ _ H' s) as [B HB].
     destruct (per_lvl_ex_right _ _ H s) as [A' HA']; destruct (per_lvl_ex_right _ _ H' s) as [B' HB'].
     assert (A = A') as <- by (eapply per_lvl_eq; [ exact H | exact HA | exact HA' ]).
     assert (B = B') as <- by (eapply per_lvl_eq; [ exact H' | exact HB | exact HB' ]).
     assert (L = lvl_canon (lvl_max A B)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HB ] ]).
+      by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_max; [ exact HA | exact HB ] ]).
     assert (L' = lvl_canon (lvl_max A B)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_max; [ exact HA' | exact HB' ] ]).
+      by (eapply domain_level_canon_functional; [ exact HL' | apply domain_level_canon_max; [ exact HA' | exact HB' ] ]).
     reflexivity.
 Qed.
 
@@ -278,16 +278,16 @@ Hint Resolve per_lvl_suc per_lvl_max : mctt.
     The elements of [Level@n] read back as canonical levels of sort [n]
     ([per_lvl_at]).  Readback keeps the sorts of the atoms, which are read off
     the types of the neutrals, and the level operations keep the bound. *)
-Lemma per_lvl_at_canon_bnd : forall n l l' s L,
+Lemma per_lvl_at_canon_sort_bounded : forall n l l' s L,
     Dom l ≈ l' ∈ per_lvl_at n ->
-    dlvl_canon s l L ->
-    lvl_bnd n L.
+    domain_level_canon s l L ->
+    lvl_sort_bounded n L.
 Proof.
   intros * H HL.
   destruct (H s) as [L' HL' _ Hb].
-  apply dlvl_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
+  apply domain_level_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
   apply nf_lvl_of_inj in Heq as <-.
-  assert (L = L') as -> by (eapply dlvl_canon_functional; eassumption).
+  assert (L = L') as -> by (eapply domain_level_canon_functional; eassumption).
   exact Hb.
 Qed.
 
@@ -295,12 +295,12 @@ Qed.
     element of [Level@n]. *)
 Lemma per_lvl_at_intro : forall n l l',
     Dom l ≈ l' ∈ per_lvl ->
-    (forall s L, dlvl_canon s l L -> lvl_bnd n L) ->
+    (forall s L, domain_level_canon s l L -> lvl_sort_bounded n L) ->
     Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
   intros * H Hb s.
   destruct (H s) as (W & HW & HW').
-  pose proof HW as HW0; apply dlvl_canon_of_read in HW0 as [_ [L [-> HL]]].
+  pose proof HW as HW0; apply domain_level_canon_of_read in HW0 as [_ [L [-> HL]]].
   exists L; [ exact HW | exact HW' | eapply Hb; exact HL ].
 Qed.
 
@@ -310,37 +310,37 @@ Lemma per_lvl_at_of_lvl : forall n l l',
     Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
   intros * H Hb; apply per_lvl_at_intro; [ exact H |].
-  intros; eapply per_lvl_at_canon_bnd; eassumption.
+  intros; eapply per_lvl_at_canon_sort_bounded; eassumption.
 Qed.
 
-Lemma per_lvl_at_lit : forall n o, fst o <= n -> Dom dlvl_lit o ≈ dlvl_lit o ∈ per_lvl_at n.
+Lemma per_lvl_at_lit : forall n o, fst o <= n -> Dom domain_level_lit o ≈ domain_level_lit o ∈ per_lvl_at n.
 Proof.
   intros; apply per_lvl_at_intro; [ apply per_lvl_lit |].
-  intros s L HL; assert (L = lvl_lit o) as -> by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_lit ]).
-  apply lvl_bnd_lit; assumption.
+  intros s L HL; assert (L = lvl_lit o) as -> by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_lit ]).
+  apply lvl_sort_bounded_lit; assumption.
 Qed.
 
 Lemma per_lvl_at_suc : forall n l l',
-    Dom l ≈ l' ∈ per_lvl_at n -> Dom dlvl_suc l ≈ dlvl_suc l' ∈ per_lvl_at n.
+    Dom l ≈ l' ∈ per_lvl_at n -> Dom domain_level_suc l ≈ domain_level_suc l' ∈ per_lvl_at n.
 Proof.
   intros * H; pose proof (per_lvl_at_lvl _ _ _ H) as Hl.
   apply per_lvl_at_intro; [ apply per_lvl_suc; exact Hl |].
   intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA].
   assert (L = lvl_canon (lvl_suc A)) as ->
-    by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_suc; exact HA ]).
-  apply lvl_bnd_canon, lvl_bnd_suc; eapply per_lvl_at_canon_bnd; eassumption.
+    by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_suc; exact HA ]).
+  apply lvl_sort_bounded_canon, lvl_sort_bounded_suc; eapply per_lvl_at_canon_sort_bounded; eassumption.
 Qed.
 
 Lemma per_lvl_at_max : forall n l l' m m',
     Dom l ≈ l' ∈ per_lvl_at n -> Dom m ≈ m' ∈ per_lvl_at n ->
-    Dom dlvl_max l m ≈ dlvl_max l' m' ∈ per_lvl_at n.
+    Dom domain_level_max l m ≈ domain_level_max l' m' ∈ per_lvl_at n.
 Proof.
   intros * H H'; pose proof (per_lvl_at_lvl _ _ _ H) as Hl; pose proof (per_lvl_at_lvl _ _ _ H') as Hm.
   apply per_lvl_at_intro; [ apply per_lvl_max; assumption |].
   intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
   assert (L = lvl_canon (lvl_max A B)) as ->
-    by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HB ] ]).
-  apply lvl_bnd_canon, lvl_bnd_max; [ exact (per_lvl_at_canon_bnd _ _ _ _ _ H HA) | exact (per_lvl_at_canon_bnd _ _ _ _ _ H' HB) ].
+    by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_max; [ exact HA | exact HB ] ]).
+  apply lvl_sort_bounded_canon, lvl_sort_bounded_max; [ exact (per_lvl_at_canon_sort_bounded _ _ _ _ _ H HA) | exact (per_lvl_at_canon_sort_bounded _ _ _ _ _ H' HB) ].
 Qed.
 
 Hint Resolve per_lvl_at_lit per_lvl_at_suc per_lvl_at_max : mctt.
@@ -348,20 +348,20 @@ Hint Resolve per_lvl_at_lit per_lvl_at_suc per_lvl_at_max : mctt.
 (** The limit [ω·(n+1)] absorbs every level of sort [n]. *)
 Lemma per_lvl_absorb : forall n l l',
     Dom l ≈ l' ∈ per_lvl_at n ->
-    Dom dlvl_max l (dlvl_lit (S n, 0)) ≈ dlvl_lit (S n, 0) ∈ per_lvl.
+    Dom domain_level_max l (domain_level_lit (S n, 0)) ≈ domain_level_lit (S n, 0) ∈ per_lvl.
 Proof.
   intros * H; pose proof (per_lvl_at_lvl _ _ _ H) as Hl0.
   pose proof (per_lvl_shape _ _ Hl0) as [Hl _].
   apply per_lvl_of; [ mauto 3 | mauto 3 | | eauto with mctt |].
   - intros s; destruct (per_lvl_ex _ _ Hl0 s) as [A HA].
-    eexists; apply dlvl_canon_max; [ exact HA | apply dlvl_canon_lit ].
+    eexists; apply domain_level_canon_max; [ exact HA | apply domain_level_canon_lit ].
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ Hl0 s) as [A HA].
     assert (L = lvl_canon (lvl_max A (lvl_lit (S n, 0)))) as ->
-      by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | apply dlvl_canon_lit ] ]).
+      by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_max; [ exact HA | apply domain_level_canon_lit ] ]).
     assert (L' = lvl_lit (S n, 0)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_lit ]).
-    apply lvl_canon_absorb; eapply per_lvl_at_canon_bnd; eassumption.
+      by (eapply domain_level_canon_functional; [ exact HL' | apply domain_level_canon_lit ]).
+    apply lvl_canon_absorb; eapply per_lvl_at_canon_sort_bounded; eassumption.
 Qed.
 
 (** ** The Level Equations in the Model
@@ -370,43 +370,43 @@ Qed.
     [lvl_canon_iff] turns into arithmetic of maxima. *)
 
 Lemma per_lvl_llit_suc : forall a b,
-    Dom dlvl_lit (a, S b) ≈ dlvl_suc (dlvl_lit (a, b)) ∈ per_lvl.
+    Dom domain_level_lit (a, S b) ≈ domain_level_suc (domain_level_lit (a, b)) ∈ per_lvl.
 Proof.
   intros; apply per_lvl_of; [ mauto 3 | mauto 3 | eauto with mctt | eauto with mctt |].
   intros s L L' HL HL'.
   assert (L = lvl_lit (a, S b)) as ->
-    by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_lit ]).
+    by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_lit ]).
   assert (L' = lvl_canon (lvl_suc (lvl_lit (a, b)))) as ->
-    by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_suc, dlvl_canon_lit ]).
+    by (eapply domain_level_canon_functional; [ exact HL' | apply domain_level_canon_suc, domain_level_canon_lit ]).
   rewrite <- (lvl_canon_lit (a, S b)); apply lvl_canon_iff; intros ν Hν.
-  rewrite lvl_ev_suc, !lvl_ev_lit; reflexivity.
+  rewrite lvl_eval_suc, !lvl_eval_lit; reflexivity.
 Qed.
 
 Lemma per_lvl_max_zero : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    Dom dlvl_max (dlvl_lit ordinal_zero) l ≈ l' ∈ per_lvl.
+    Dom domain_level_max (domain_level_lit ordinal_zero) l ≈ l' ∈ per_lvl.
 Proof.
   intros * H.
   pose proof (per_lvl_shape _ _ H) as [Hl Hl'].
   apply per_lvl_of; [ mauto 3 | assumption | | |].
   - intros s; destruct (per_lvl_ex _ _ H s) as [A HA].
-    eexists; apply dlvl_canon_max; [ apply dlvl_canon_lit | exact HA ].
+    eexists; apply domain_level_canon_max; [ apply domain_level_canon_lit | exact HA ].
   - intros s; exact (per_lvl_ex_right _ _ H s).
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ H s) as [A HA].
     assert (L = lvl_canon (lvl_max (lvl_lit ordinal_zero) A)) as ->
-      by (eapply dlvl_canon_functional;
-          [ exact HL | apply dlvl_canon_max; [ apply dlvl_canon_lit | exact HA ] ]).
+      by (eapply domain_level_canon_functional;
+          [ exact HL | apply domain_level_canon_max; [ apply domain_level_canon_lit | exact HA ] ]).
     assert (L' = A) as -> by (symmetry; eapply per_lvl_eq; [ exact H | exact HA | exact HL' ]).
-    transitivity (lvl_canon A); [| exact (dlvl_canon_canonical _ _ _ HA) ].
-    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max, lvl_ev_lit; lvl_ord.
+    transitivity (lvl_canon A); [| exact (domain_level_canon_canonical _ _ _ HA) ].
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_eval_max, lvl_eval_lit; lvl_ordinal.
 Qed.
 
 Lemma per_lvl_max_assoc : forall l l' m m' n n',
     Dom l ≈ l' ∈ per_lvl ->
     Dom m ≈ m' ∈ per_lvl ->
     Dom n ≈ n' ∈ per_lvl ->
-    Dom dlvl_max (dlvl_max l m) n ≈ dlvl_max l' (dlvl_max m' n') ∈ per_lvl.
+    Dom domain_level_max (domain_level_max l m) n ≈ domain_level_max l' (domain_level_max m' n') ∈ per_lvl.
 Proof.
   intros * Hl Hm Hn.
   pose proof (per_lvl_shape _ _ Hl) as [Hls Hls'].
@@ -415,10 +415,10 @@ Proof.
   apply per_lvl_of; [ mauto 3 | mauto 3 | | |].
   - intros s; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB];
       destruct (per_lvl_ex _ _ Hn s) as [C HC].
-    eexists; repeat apply dlvl_canon_max; [ exact HA | exact HB | exact HC ].
+    eexists; repeat apply domain_level_canon_max; [ exact HA | exact HB | exact HC ].
   - intros s; destruct (per_lvl_ex_right _ _ Hl s) as [A HA]; destruct (per_lvl_ex_right _ _ Hm s) as [B HB];
       destruct (per_lvl_ex_right _ _ Hn s) as [C HC].
-    eexists; repeat apply dlvl_canon_max; [ exact HA | exact HB | exact HC ].
+    eexists; repeat apply domain_level_canon_max; [ exact HA | exact HB | exact HC ].
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB];
       destruct (per_lvl_ex _ _ Hn s) as [C HC].
@@ -428,108 +428,108 @@ Proof.
     assert (B = B') as <- by (eapply per_lvl_eq; [ exact Hm | exact HB | exact HB' ]).
     assert (C = C') as <- by (eapply per_lvl_eq; [ exact Hn | exact HC | exact HC' ]).
     assert (L = lvl_canon (lvl_max (lvl_canon (lvl_max A B)) C)) as ->
-      by (eapply dlvl_canon_functional;
-          [ exact HL | repeat apply dlvl_canon_max; [ exact HA | exact HB | exact HC ] ]).
+      by (eapply domain_level_canon_functional;
+          [ exact HL | repeat apply domain_level_canon_max; [ exact HA | exact HB | exact HC ] ]).
     assert (L' = lvl_canon (lvl_max A (lvl_canon (lvl_max B C)))) as ->
-      by (eapply dlvl_canon_functional;
-          [ exact HL' | repeat apply dlvl_canon_max; [ exact HA' | exact HB' | exact HC' ] ]).
+      by (eapply domain_level_canon_functional;
+          [ exact HL' | repeat apply domain_level_canon_max; [ exact HA' | exact HB' | exact HC' ] ]).
     rewrite lvl_canon_max_l, lvl_canon_max_r.
-    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_eval_max; lvl_ordinal.
 Qed.
 
 Lemma per_lvl_max_comm : forall l l' m m',
     Dom l ≈ l' ∈ per_lvl ->
     Dom m ≈ m' ∈ per_lvl ->
-    Dom dlvl_max l m ≈ dlvl_max m' l' ∈ per_lvl.
+    Dom domain_level_max l m ≈ domain_level_max m' l' ∈ per_lvl.
 Proof.
   intros * Hl Hm.
   pose proof (per_lvl_shape _ _ Hl) as [Hls Hls'].
   pose proof (per_lvl_shape _ _ Hm) as [Hms Hms'].
   apply per_lvl_of; [ mauto 3 | mauto 3 | | |].
   - intros s; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
-    eexists; apply dlvl_canon_max; [ exact HA | exact HB ].
+    eexists; apply domain_level_canon_max; [ exact HA | exact HB ].
   - intros s; destruct (per_lvl_ex_right _ _ Hl s) as [A HA]; destruct (per_lvl_ex_right _ _ Hm s) as [B HB].
-    eexists; apply dlvl_canon_max; [ exact HB | exact HA ].
+    eexists; apply domain_level_canon_max; [ exact HB | exact HA ].
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
     destruct (per_lvl_ex_right _ _ Hl s) as [A' HA']; destruct (per_lvl_ex_right _ _ Hm s) as [B' HB'].
     assert (A = A') as <- by (eapply per_lvl_eq; [ exact Hl | exact HA | exact HA' ]).
     assert (B = B') as <- by (eapply per_lvl_eq; [ exact Hm | exact HB | exact HB' ]).
     assert (L = lvl_canon (lvl_max A B)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HB ] ]).
+      by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_max; [ exact HA | exact HB ] ]).
     assert (L' = lvl_canon (lvl_max B A)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_max; [ exact HB' | exact HA' ] ]).
-    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max; lvl_ord.
+      by (eapply domain_level_canon_functional; [ exact HL' | apply domain_level_canon_max; [ exact HB' | exact HA' ] ]).
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_eval_max; lvl_ordinal.
 Qed.
 
 Lemma per_lvl_max_idem : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    Dom dlvl_max l l ≈ l' ∈ per_lvl.
+    Dom domain_level_max l l ≈ l' ∈ per_lvl.
 Proof.
   intros * H.
   pose proof (per_lvl_shape _ _ H) as [Hl Hl'].
   apply per_lvl_of; [ mauto 3 | assumption | | |].
   - intros s; destruct (per_lvl_ex _ _ H s) as [A HA].
-    eexists; apply dlvl_canon_max; [ exact HA | exact HA ].
+    eexists; apply domain_level_canon_max; [ exact HA | exact HA ].
   - intros s; exact (per_lvl_ex_right _ _ H s).
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ H s) as [A HA].
     assert (L = lvl_canon (lvl_max A A)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HA ] ]).
+      by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_max; [ exact HA | exact HA ] ]).
     assert (L' = A) as -> by (symmetry; eapply per_lvl_eq; [ exact H | exact HA | exact HL' ]).
-    transitivity (lvl_canon A); [| exact (dlvl_canon_canonical _ _ _ HA) ].
-    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max; lvl_ord.
+    transitivity (lvl_canon A); [| exact (domain_level_canon_canonical _ _ _ HA) ].
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_eval_max; lvl_ordinal.
 Qed.
 
 Lemma per_lvl_suc_max : forall l l' m m',
     Dom l ≈ l' ∈ per_lvl ->
     Dom m ≈ m' ∈ per_lvl ->
-    Dom dlvl_suc (dlvl_max l m) ≈ dlvl_max (dlvl_suc l') (dlvl_suc m') ∈ per_lvl.
+    Dom domain_level_suc (domain_level_max l m) ≈ domain_level_max (domain_level_suc l') (domain_level_suc m') ∈ per_lvl.
 Proof.
   intros * Hl Hm.
   pose proof (per_lvl_shape _ _ Hl) as [Hls Hls'].
   pose proof (per_lvl_shape _ _ Hm) as [Hms Hms'].
   apply per_lvl_of; [ mauto 3 | mauto 3 | | |].
   - intros s; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
-    eexists; apply dlvl_canon_suc, dlvl_canon_max; [ exact HA | exact HB ].
+    eexists; apply domain_level_canon_suc, domain_level_canon_max; [ exact HA | exact HB ].
   - intros s; destruct (per_lvl_ex_right _ _ Hl s) as [A HA]; destruct (per_lvl_ex_right _ _ Hm s) as [B HB].
-    eexists; apply dlvl_canon_max; apply dlvl_canon_suc; [ exact HA | exact HB ].
+    eexists; apply domain_level_canon_max; apply domain_level_canon_suc; [ exact HA | exact HB ].
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
     destruct (per_lvl_ex_right _ _ Hl s) as [A' HA']; destruct (per_lvl_ex_right _ _ Hm s) as [B' HB'].
     assert (A = A') as <- by (eapply per_lvl_eq; [ exact Hl | exact HA | exact HA' ]).
     assert (B = B') as <- by (eapply per_lvl_eq; [ exact Hm | exact HB | exact HB' ]).
     assert (L = lvl_canon (lvl_suc (lvl_canon (lvl_max A B)))) as ->
-      by (eapply dlvl_canon_functional;
-          [ exact HL | apply dlvl_canon_suc, dlvl_canon_max; [ exact HA | exact HB ] ]).
+      by (eapply domain_level_canon_functional;
+          [ exact HL | apply domain_level_canon_suc, domain_level_canon_max; [ exact HA | exact HB ] ]).
     assert (L' = lvl_canon (lvl_max (lvl_canon (lvl_suc A)) (lvl_canon (lvl_suc B)))) as ->
-      by (eapply dlvl_canon_functional;
-          [ exact HL' | apply dlvl_canon_max; apply dlvl_canon_suc; [ exact HA' | exact HB' ] ]).
+      by (eapply domain_level_canon_functional;
+          [ exact HL' | apply domain_level_canon_max; apply domain_level_canon_suc; [ exact HA' | exact HB' ] ]).
     rewrite lvl_canon_suc, lvl_canon_max_l, lvl_canon_max_r.
-    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_suc, !lvl_ev_max, !lvl_ev_suc; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_eval_suc, !lvl_eval_max, !lvl_eval_suc; lvl_ordinal.
 Qed.
 
 Lemma per_lvl_max_suc : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
-    Dom dlvl_max l (dlvl_suc l) ≈ dlvl_suc l' ∈ per_lvl.
+    Dom domain_level_max l (domain_level_suc l) ≈ domain_level_suc l' ∈ per_lvl.
 Proof.
   intros * H.
   pose proof (per_lvl_shape _ _ H) as [Hl Hl'].
   apply per_lvl_of; [ mauto 3 | mauto 3 | | |].
   - intros s; destruct (per_lvl_ex _ _ H s) as [A HA].
-    eexists; apply dlvl_canon_max; [ exact HA | apply dlvl_canon_suc; exact HA ].
+    eexists; apply domain_level_canon_max; [ exact HA | apply domain_level_canon_suc; exact HA ].
   - intros s; destruct (per_lvl_ex_right _ _ H s) as [B HB].
-    eexists; apply dlvl_canon_suc; exact HB.
+    eexists; apply domain_level_canon_suc; exact HB.
   - intros s L L' HL HL'.
     destruct (per_lvl_ex _ _ H s) as [A HA]; destruct (per_lvl_ex_right _ _ H s) as [B HB].
     assert (A = B) as <- by (eapply per_lvl_eq; [ exact H | exact HA | exact HB ]).
     assert (L = lvl_canon (lvl_max A (lvl_canon (lvl_suc A)))) as ->
-      by (eapply dlvl_canon_functional;
-          [ exact HL | apply dlvl_canon_max; [ exact HA | apply dlvl_canon_suc; exact HA ] ]).
+      by (eapply domain_level_canon_functional;
+          [ exact HL | apply domain_level_canon_max; [ exact HA | apply domain_level_canon_suc; exact HA ] ]).
     assert (L' = lvl_canon (lvl_suc A)) as ->
-      by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_suc; exact HB ]).
+      by (eapply domain_level_canon_functional; [ exact HL' | apply domain_level_canon_suc; exact HB ]).
     rewrite lvl_canon_max_r.
-    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max, !lvl_ev_suc; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_eval_max, !lvl_eval_suc; lvl_ordinal.
 Qed.
 
 (** ** The Order on Levels from a Join
@@ -541,7 +541,7 @@ Qed.
 Lemma per_sublvl_of_max : forall l m m',
     Dom l ≈ l ∈ per_lvl ->
     Dom m ≈ m' ∈ per_lvl ->
-    Dom dlvl_max l m ≈ m' ∈ per_lvl ->
+    Dom domain_level_max l m ≈ m' ∈ per_lvl ->
     per_sublvl l m'.
 Proof.
   intros * Hl Hm Hmax s.
@@ -552,9 +552,9 @@ Proof.
   destruct (per_lvl_ex_right _ _ Hm s) as [B' HB'].
   assert (B = B') as <- by (eapply per_lvl_eq; [ exact Hm | exact HB | exact HB' ]).
   assert (lvl_canon (lvl_max A B) = B) as Hj
-    by (eapply per_lvl_eq; [ exact Hmax | apply dlvl_canon_max; [ exact HA | exact HB ] | exact HB' ]).
-  exists A B; [ apply dlvl_canon_read; assumption | apply dlvl_canon_read; assumption |].
-  unfold lvl_le; rewrite Hj; symmetry; exact (dlvl_canon_canonical _ _ _ HB').
+    by (eapply per_lvl_eq; [ exact Hmax | apply domain_level_canon_max; [ exact HA | exact HB ] | exact HB' ]).
+  exists A B; [ apply domain_level_canon_read; assumption | apply domain_level_canon_read; assumption |].
+  unfold lvl_le; rewrite Hj; symmetry; exact (domain_level_canon_canonical _ _ _ HB').
 Qed.
 
 (** The same from readbacks: if [maxl l l'] and [l'] read back equally, the
@@ -563,34 +563,34 @@ Qed.
 Lemma read_max_lvl_le : forall s n1 n2 n3 n4 l l' L L' W,
     Rnf ⇓ (Levelᵈ@n1) l in s ↘ nf_lvl_of L ->
     Rnf ⇓ (Levelᵈ@n2) l' in s ↘ nf_lvl_of L' ->
-    Rnf ⇓ (Levelᵈ@n3) (dlvl_max l l') in s ↘ W ->
+    Rnf ⇓ (Levelᵈ@n3) (domain_level_max l l') in s ↘ W ->
     Rnf ⇓ (Levelᵈ@n4) l' in s ↘ W ->
     lvl_le L L'.
 Proof.
   intros * HL HL' Hmax Hmax'.
   apply (read_nf_level_sort _ _ 0 _ _) in HL, HL', Hmax, Hmax'.
   pose proof (functional_read_nf _ _ _ _ HL' Hmax') as <-.
-  apply dlvl_canon_of_read in HL as [_ [L1 [Heq1 HL1]]].
+  apply domain_level_canon_of_read in HL as [_ [L1 [Heq1 HL1]]].
   apply nf_lvl_of_inj in Heq1 as <-.
-  apply dlvl_canon_of_read in HL' as [_ [L2 [Heq2 HL2]]].
+  apply domain_level_canon_of_read in HL' as [_ [L2 [Heq2 HL2]]].
   apply nf_lvl_of_inj in Heq2 as <-.
-  apply dlvl_canon_of_read in Hmax as [_ [L3 [Heq3 HL3]]].
+  apply domain_level_canon_of_read in Hmax as [_ [L3 [Heq3 HL3]]].
   apply nf_lvl_of_inj in Heq3.
   assert (L3 = lvl_canon (lvl_max L L')) as Hc
-    by (eapply dlvl_canon_functional; [ exact HL3 | apply dlvl_canon_max; eassumption ]).
-  unfold lvl_le; rewrite <- Hc, <- Heq3, (dlvl_canon_canonical _ _ _ HL2); reflexivity.
+    by (eapply domain_level_canon_functional; [ exact HL3 | apply domain_level_canon_max; eassumption ]).
+  unfold lvl_le; rewrite <- Hc, <- Heq3, (domain_level_canon_canonical _ _ _ HL2); reflexivity.
 Qed.
 
 End Fixed_GCtx.
 
 #[export]
-Hint Constructors dlvl_shape : mctt.
+Hint Constructors domain_level_shape : mctt.
 #[export]
-Hint Resolve dlvl_shape_suc dlvl_shape_max dlvl_shape_lit : mctt.
+Hint Resolve domain_level_shape_suc domain_level_shape_max domain_level_shape_lit : mctt.
 #[export]
 Hint Resolve read_level_atoms_app read_level_atoms_suc : mctt.
 #[export]
-Hint Resolve dlvl_canon_lit dlvl_canon_suc dlvl_canon_max : mctt.
+Hint Resolve domain_level_canon_lit domain_level_canon_suc domain_level_canon_max : mctt.
 #[export]
 Hint Resolve per_lvl_suc per_lvl_max : mctt.
 #[export]

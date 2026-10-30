@@ -47,12 +47,12 @@ Section Fixed_GCtx.
 Lemma flat_walk : forall Δ Γ Δ' D RΓ, tele_ass Δ -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     Δ ++ Γ ⊨ᵐ me_lit (gu_mk Δ' D) ≈ me_lit (gu_mk Δ' D) ->
     forall ρ ρ', RΓ ρ ρ' ->
-      rel_mexp (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) ρ (me_lit (gu_mk (Δ' ++ Δ) D)) ρ'.
+      rel_modexp_evals (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) ρ (me_lit (gu_mk (Δ' ++ Δ) D)) ρ'.
 Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HC HΓ HU ρ ρ' Hρ; cbn [List.app] in *.
   - rewrite app_nil_r.
     destruct (unit_chain_at HU HΓ _ _ Hρ) as [h h' Hh Hh' Hhh].
-    apply (mk_rel_mexp _ _ _ _ h h'); [ apply eval_me_lit, eval_close_alias0; exact Hh | exact Hh' | exact Hhh ].
+    apply (mk_rel_modexp_evals _ _ _ _ h h'); [ apply eval_me_lit, eval_close_alias0; exact Hh | exact Hh' | exact Hhh ].
   - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? [A ->] _]; subst.
     rewrite <- app_assoc in HC, HU; cbn [List.app] in HC, HU.
     destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [i HA].

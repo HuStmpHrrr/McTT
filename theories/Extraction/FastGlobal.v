@@ -24,16 +24,16 @@ Import ListNotations.
 
     The Core context is never built at run time.  It appears in types and
     proofs only:
-    - [tr_unit] and the like translate Core data into fast data; the
+    - [translate_unit] and the like translate Core data into fast data; the
       refinement [units_rep s Θ] says that [s] finds the translation of what
       [gds_lookup Θ] finds;
-    - [dec_unit] and the like decode fast data back into Core data, in
+    - [decode_unit] and the like decode fast data back into Core data, in
       types only; on canonical data ([canon_unit]: no local open, no name
-      declared twice) decoding undoes the translation ([dec_tr_unit]).
+      declared twice) decoding undoes the translation ([decode_translate_unit]).
 
     Every lookup of [Core.Syntactic.Members] has a twin here over fast data
     with a lemma stating that, on a translation, it finds the translation of
-    what the Core lookup finds ([ft_entry_ok], [fgc_entry_ok], …). *)
+    what the Core lookup finds ([ft_entry_ok], [fast_gc_entry_ok], …). *)
 
 (** ** Balanced Maps *)
 
@@ -82,21 +82,21 @@ Qed.
 
 (** [SRaw.find], written directly: one [String.compare] per node, with no
     [OrderedType.Compare] built and matched. *)
-Fixpoint sfind {A} (x : string) (m : SRaw.tree A) : option A :=
+Fixpoint string_tree_find {A} (x : string) (m : SRaw.tree A) : option A :=
   match m with
   | SRaw.Leaf _ => None
   | SRaw.Node l y d r _ =>
       match String.compare x y with
       | Eq => Some d
-      | Lt => sfind x l
-      | Gt => sfind x r
+      | Lt => string_tree_find x l
+      | Gt => string_tree_find x r
       end
   end.
 
 (** It is [SRaw.find]. *)
-Lemma sfind_ok {A} x (m : SRaw.tree A) : sfind x m = SRaw.find x m.
+Lemma string_tree_find_ok {A} x (m : SRaw.tree A) : string_tree_find x m = SRaw.find x m.
 Proof.
-  induction m as [| l IHl y d r IHr h]; [ reflexivity |]; cbn [sfind SRaw.find].
+  induction m as [| l IHl y d r IHr h]; [ reflexivity |]; cbn [string_tree_find SRaw.find].
   destruct (OrderedTypeEx.String_as_OT.compare x y) as [E | E | E].
   - apply OrderedTypeEx.String_as_OT.cmp_lt in E; change (String.compare x y = Lt) in E; rewrite E; exact IHl.
   - cbv [OrderedTypeEx.String_as_OT.eq] in E; subst; rewrite str_cmp_refl; reflexivity.
@@ -234,22 +234,22 @@ Qed.
 
 (** [PM.find], written directly over the tree: one [PathOrd.compare] per
     node, with no [OrderedType.Compare] built and matched. *)
-Fixpoint pfind {A} (x : path) (m : PM.Raw.tree A) : option A :=
+Fixpoint path_tree_find {A} (x : path) (m : PM.Raw.tree A) : option A :=
   match m with
   | PM.Raw.Leaf _ => None
   | PM.Raw.Node l y d r _ =>
       match PathOrd.compare x y with
       | Eq => Some d
-      | Lt => pfind x l
-      | Gt => pfind x r
+      | Lt => path_tree_find x l
+      | Gt => path_tree_find x r
       end
   end.
 
 (** It is [PM.find]. *)
-Lemma pfind_ok {A} x (m : PM.t A) : pfind x (PM.this m) = PM.find x m.
+Lemma path_tree_find_ok {A} x (m : PM.t A) : path_tree_find x (PM.this m) = PM.find x m.
 Proof.
   unfold PM.find; generalize (PM.this m); clear m; intros m.
-  induction m as [| l IHl y d r IHr h]; [ reflexivity |]; cbn [pfind PM.Raw.find].
+  induction m as [| l IHl y d r IHr h]; [ reflexivity |]; cbn [path_tree_find PM.Raw.find].
   destruct (PathOT.compare x y) as [E | E | E].
   - change (PathOrd.compare x y = Lt) in E; rewrite E; exact IHl.
   - cbv [PathOT.eq] in E; subst; rewrite PathOrd.compare_refl; reflexivity.
@@ -273,22 +273,22 @@ Proof.
 Qed.
 
 (** A map of paths keyed by [path_key]: what it finds at [fp] *)
-Definition pk_find {A} (fp : path) (m : PM.t A) : option A := pfind (path_key fp) (PM.this m).
+Definition path_key_find {A} (fp : path) (m : PM.t A) : option A := path_tree_find (path_key fp) (PM.this m).
 
 (** Adding [x] at [fp] *)
-Definition pk_add {A} (fp : path) (x : A) (m : PM.t A) : PM.t A := PM.add (path_key fp) x m.
+Definition path_key_add {A} (fp : path) (x : A) (m : PM.t A) : PM.t A := PM.add (path_key fp) x m.
 
-(** [pk_find] after [pk_add] *)
-Lemma pk_find_add : forall {A} (m : PM.t A) fp fq x,
-    pk_find fq (pk_add fp x m) = if path_beq fq fp then Some x else pk_find fq m.
+(** [path_key_find] after [path_key_add] *)
+Lemma path_key_find_add : forall {A} (m : PM.t A) fp fq x,
+    path_key_find fq (path_key_add fp x m) = if path_beq fq fp then Some x else path_key_find fq m.
 Proof.
-  intros A m fp fq x; unfold pk_find, pk_add.
-  rewrite (pfind_ok _ (PM.add _ _ m)), (pfind_ok _ m), pm_find_add, path_key_beq; reflexivity.
+  intros A m fp fq x; unfold path_key_find, path_key_add.
+  rewrite (path_tree_find_ok _ (PM.add _ _ m)), (path_tree_find_ok _ m), pm_find_add, path_key_beq; reflexivity.
 Qed.
 
 (** Nothing is found in the empty map. *)
-Lemma pk_find_empty : forall {A} fp, pk_find fp (PM.empty A) = None.
-Proof. intros; unfold pk_find; rewrite pfind_ok; apply PMF.empty_o. Qed.
+Lemma path_key_find_empty : forall {A} fp, path_key_find fp (PM.empty A) = None.
+Proof. intros; unfold path_key_find; rewrite path_tree_find_ok; apply PMF.empty_o. Qed.
 
 (** ** The Fast Module Layer *)
 
@@ -311,8 +311,8 @@ with ftrie : Type :=
 with fentry : Type :=
 (** Core's [ge_def b pv A oM], and the value its body has in the empty
     environment, when it is stored: [Some v] for a transparent definition
-    a command added, [None] from a translation ([tr_entry]); decoding
-    forgets it ([dec_entry]) *)
+    a command added, [None] from a translation ([translate_entry]); decoding
+    forgets it ([decode_entry]) *)
 | fe_def : bool -> bool -> exp -> option exp -> option fdomain -> fentry
 (** Core's [ge_mod pv U], the unit fast *)
 | fe_mod : bool -> funit -> fentry
@@ -337,7 +337,7 @@ Definition ft_ext (t : ftrie) (x : string) (e : fentry) : ftrie :=
   match t with ft_mk m xs => ft_mk (SRaw.add x e m) (x :: xs) end.
 
 (** The member named [x]: the newest one of that name. *)
-Definition ft_find (t : ftrie) (x : string) : option fentry := sfind x (ft_map t).
+Definition ft_find (t : ftrie) (x : string) : option fentry := string_tree_find x (ft_map t).
 
 (** The body a path descends into through an entry, as [gm_entry] reads
     it: a submodule's body, an inductive type's or a record's module. *)
@@ -389,24 +389,24 @@ Definition fe_private (e : fentry) : bool :=
     The entries are added oldest first, so that the newest entry of a name
     is the one the map keeps, as in [gm_entry]; a local open adds nothing,
     as [gm_entry] skips it (and a filed or open-frame body has none). *)
-Fixpoint tr_unit (U : gunit) : funit :=
+Fixpoint translate_unit (U : gunit) : funit :=
   match U with
-  | gu_mk Δ (md_body sm_closed Φ) => fu_mk Δ (fmd_body (tr_mod Φ))
+  | gu_mk Δ (md_body sm_closed Φ) => fu_mk Δ (fmd_body (translate_mod Φ))
   | _ => fu_core U
   end
-with tr_mod (Φ : gmod) : ftrie :=
+with translate_mod (Φ : gmod) : ftrie :=
   match Φ with
   | gm_nil => ft_empty
-  | gm_ext Φ' x E => ft_ext (tr_mod Φ') x (tr_entry E)
-  | gm_open Φ' _ _ => tr_mod Φ'
+  | gm_ext Φ' x E => ft_ext (translate_mod Φ') x (translate_entry E)
+  | gm_open Φ' _ _ => translate_mod Φ'
   end
-with tr_entry (E : gentry) : fentry :=
+with translate_entry (E : gentry) : fentry :=
   match E with
   | ge_def b pv A oM => fe_def b pv A oM None
-  | ge_mod pv U => fe_mod pv (tr_unit U)
-  | ge_ind pv pq k D Φ => fe_ind pv pq k D (tr_mod Φ)
-  | ge_def_mod pv A M U => fe_def_mod pv A M (tr_unit U) None
-  | ge_record pv p R Φ => fe_record pv p R (tr_mod Φ)
+  | ge_mod pv U => fe_mod pv (translate_unit U)
+  | ge_ind pv pq k D Φ => fe_ind pv pq k D (translate_mod Φ)
+  | ge_def_mod pv A M U => fe_def_mod pv A M (translate_unit U) None
+  | ge_record pv p R Φ => fe_record pv p R (translate_mod Φ)
   end.
 
 (** ** Decoding to Core
@@ -416,10 +416,10 @@ with tr_entry (E : gentry) : fentry :=
     in place, then its body assembled along the order index. *)
 
 (** The entries of a tree, decoded in place. *)
-Fixpoint dec_tree_with (f : fentry -> gentry) (m : SRaw.tree fentry) : SRaw.tree gentry :=
+Fixpoint decode_tree_with (f : fentry -> gentry) (m : SRaw.tree fentry) : SRaw.tree gentry :=
   match m with
   | SRaw.Leaf _ => SRaw.Leaf _
-  | SRaw.Node l k e r h => SRaw.Node (dec_tree_with f l) k (f e) (dec_tree_with f r) h
+  | SRaw.Node l k e r h => SRaw.Node (decode_tree_with f l) k (f e) (decode_tree_with f r) h
   end.
 
 (** The body whose entries, newest first, are those of [dm] at the names
@@ -435,33 +435,33 @@ Fixpoint assemble (dm : SRaw.tree gentry) (xs : list string) : gmod :=
   end.
 
 (** The Core unit, body and entry fast data stand for *)
-Fixpoint dec_unit (u : funit) : gunit :=
+Fixpoint decode_unit (u : funit) : gunit :=
   match u with
-  | fu_mk Δ (fmd_body t) => gu_mk Δ (md_body sm_closed (dec_mod t))
+  | fu_mk Δ (fmd_body t) => gu_mk Δ (md_body sm_closed (decode_mod t))
   | fu_core U => U
   end
-with dec_mod (t : ftrie) : gmod :=
+with decode_mod (t : ftrie) : gmod :=
   match t with
   | ft_mk m xs =>
-      assemble ((fix dec_tree (m : SRaw.tree fentry) : SRaw.tree gentry :=
+      assemble ((fix decode_tree (m : SRaw.tree fentry) : SRaw.tree gentry :=
                    match m with
                    | SRaw.Leaf _ => SRaw.Leaf _
-                   | SRaw.Node l k e r h => SRaw.Node (dec_tree l) k (dec_entry e) (dec_tree r) h
+                   | SRaw.Node l k e r h => SRaw.Node (decode_tree l) k (decode_entry e) (decode_tree r) h
                    end) m) xs
   end
-with dec_entry (e : fentry) : gentry :=
+with decode_entry (e : fentry) : gentry :=
   match e with
   | fe_def b pv A oM _ => ge_def b pv A oM
-  | fe_mod pv u => ge_mod pv (dec_unit u)
-  | fe_ind pv pq k D t => ge_ind pv pq k D (dec_mod t)
-  | fe_def_mod pv A M u _ => ge_def_mod pv A M (dec_unit u)
-  | fe_record pv p R t => ge_record pv p R (dec_mod t)
+  | fe_mod pv u => ge_mod pv (decode_unit u)
+  | fe_ind pv pq k D t => ge_ind pv pq k D (decode_mod t)
+  | fe_def_mod pv A M u _ => ge_def_mod pv A M (decode_unit u)
+  | fe_record pv p R t => ge_record pv p R (decode_mod t)
   end.
 
 (** A body decodes by assembling its decoded tree. *)
-Lemma dec_mod_unfold : forall m xs, dec_mod (ft_mk m xs) = assemble (dec_tree_with dec_entry m) xs.
+Lemma decode_mod_unfold : forall m xs, decode_mod (ft_mk m xs) = assemble (decode_tree_with decode_entry m) xs.
 Proof.
-  intros m xs; cbn [dec_mod]; f_equal.
+  intros m xs; cbn [decode_mod]; f_equal.
   induction m as [| l IHl k e r IHr h]; cbn; [ reflexivity | rewrite IHl, IHr; reflexivity ].
 Qed.
 
@@ -496,11 +496,11 @@ with canon_entry (E : gentry) : Prop :=
 (** ** Member Lookup Is [gm_entry]'s *)
 
 (** A translated body is a search tree. *)
-Lemma tr_mod_bst : forall Φ, SRaw.bst (ft_map (tr_mod Φ)).
+Lemma translate_mod_bst : forall Φ, SRaw.bst (ft_map (translate_mod Φ)).
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; cbn [tr_mod].
+  induction Φ as [| Φ IH x E | Φ IH H its]; cbn [translate_mod].
   - constructor.
-  - destruct (tr_mod Φ) as [m xs] eqn:Et; cbn in *; apply SP.add_bst; exact IH.
+  - destruct (translate_mod Φ) as [m xs] eqn:Et; cbn in *; apply SP.add_bst; exact IH.
   - exact IH.
 Qed.
 
@@ -513,13 +513,13 @@ Fixpoint gm_newest (Φ : gmod) (x : string) : option gentry :=
   end.
 
 (** A name finds the translation of its newest entry. *)
-Lemma tr_mod_find : forall Φ x, ft_find (tr_mod Φ) x = option_map tr_entry (gm_newest Φ x).
+Lemma translate_mod_find : forall Φ x, ft_find (translate_mod Φ) x = option_map translate_entry (gm_newest Φ x).
 Proof.
-  intros Φ x; unfold ft_find; rewrite sfind_ok; revert x.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros x; cbn [tr_mod gm_newest].
+  intros Φ x; unfold ft_find; rewrite string_tree_find_ok; revert x.
+  induction Φ as [| Φ IH y E | Φ IH H its]; intros x; cbn [translate_mod gm_newest].
   - reflexivity.
-  - pose proof (tr_mod_bst Φ) as Hb.
-    destruct (tr_mod Φ) as [m xs] eqn:Et; cbn [ft_ext ft_map] in *.
+  - pose proof (translate_mod_bst Φ) as Hb.
+    destruct (translate_mod Φ) as [m xs] eqn:Et; cbn [ft_ext ft_map] in *.
     rewrite sraw_find_add by exact Hb; destruct (String.eqb x y); [ reflexivity | apply IH ].
   - apply IH.
 Qed.
@@ -535,7 +535,7 @@ Definition entry_body (E : gentry) : option gmod :=
   end.
 
 (** The body a canonical entry leads into, translated *)
-Lemma fe_body_tr : forall E, canon_entry E -> fe_body (tr_entry E) = option_map tr_mod (entry_body E).
+Lemma fe_body_translate : forall E, canon_entry E -> fe_body (translate_entry E) = option_map translate_mod (entry_body E).
 Proof. intros [| ? [? [[|] ?|] ] | | |] Hc; cbn in Hc; first [ contradiction | reflexivity ]. Qed.
 
 (** The newest entry of a name in a canonical body is canonical. *)
@@ -571,33 +571,33 @@ Proof.
 Qed.
 
 (** The trie finds the translation of what [gm_entry] finds. *)
-Theorem ft_entry_ok : forall ip Φ, canon_mod Φ -> ft_entry (tr_mod Φ) ip = option_map tr_entry (gm_entry Φ ip).
+Theorem ft_entry_ok : forall ip Φ, canon_mod Φ -> ft_entry (translate_mod Φ) ip = option_map translate_entry (gm_entry Φ ip).
 Proof.
   induction ip as [| x ip IH]; intros Φ Hc; [ rewrite gm_entry_nil; reflexivity |].
-  cbn [ft_entry]; rewrite tr_mod_find, gm_entry_newest.
+  cbn [ft_entry]; rewrite translate_mod_find, gm_entry_newest.
   destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; [| reflexivity ].
   pose proof (canon_newest _ _ _ Hc En) as HE.
   destruct ip as [| z ip']; [ reflexivity |].
-  rewrite fe_body_tr by exact HE; destruct (entry_body E) eqn:Eb; cbn [option_map]; [| reflexivity ].
+  rewrite fe_body_translate by exact HE; destruct (entry_body E) eqn:Eb; cbn [option_map]; [| reflexivity ].
   apply IH, (canon_entry_body _ _ HE Eb).
 Qed.
 
 (** A translated unit's parameters *)
-Lemma tr_unit_params : forall U, fu_params (tr_unit U) = gu_params U.
+Lemma translate_unit_params : forall U, fu_params (translate_unit U) = gu_params U.
 Proof. intros [Δ [[|] Φ | H]]; reflexivity. Qed.
 
 (** A canonical translated unit's body *)
-Lemma tr_unit_body : forall U, canon_unit U -> fu_body (tr_unit U) = tr_mod (gu_mod U).
+Lemma translate_unit_body : forall U, canon_unit U -> fu_body (translate_unit U) = translate_mod (gu_mod U).
 Proof. intros [Δ [[|] Φ | H]] Hc; cbn in Hc; first [ contradiction | reflexivity ]. Qed.
 
 (** A translated entry's privacy *)
-Lemma tr_entry_private : forall E, fe_private (tr_entry E) = ge_private E.
+Lemma translate_entry_private : forall E, fe_private (translate_entry E) = ge_private E.
 Proof. intros []; reflexivity. Qed.
 
 (** ** Decoding Undoes the Translation on Canonical Data *)
 
 (** Finding in a decoded tree decodes what is found. *)
-Lemma find_dec_tree : forall m x, SRaw.find x (dec_tree_with dec_entry m) = option_map dec_entry (SRaw.find x m).
+Lemma find_decode_tree : forall m x, SRaw.find x (decode_tree_with decode_entry m) = option_map decode_entry (SRaw.find x m).
 Proof.
   induction m as [| l IHl k e r IHr h]; intros x; cbn; [ reflexivity |].
   destruct (OrderedTypeEx.String_as_OT.compare x k); auto.
@@ -605,47 +605,47 @@ Qed.
 
 (** Assembling along names other than [x] ignores an [add] at [x]. *)
 Lemma assemble_add : forall xs m x e, SRaw.bst m -> ~ In x xs ->
-    assemble (dec_tree_with dec_entry (SRaw.add x e m)) xs = assemble (dec_tree_with dec_entry m) xs.
+    assemble (decode_tree_with decode_entry (SRaw.add x e m)) xs = assemble (decode_tree_with decode_entry m) xs.
 Proof.
   induction xs as [| y xs IH]; intros m x e Hb Hn; cbn [assemble]; [ reflexivity |].
-  rewrite !find_dec_tree, sraw_find_add by exact Hb.
+  rewrite !find_decode_tree, sraw_find_add by exact Hb.
   destruct (String.eqb_spec y x) as [-> | _]; [ elim Hn; left; reflexivity |].
   rewrite IH by (auto || (intros Hi; apply Hn; right; exact Hi)); reflexivity.
 Qed.
 
 (** Decoding one more member: one more [gm_ext]. *)
-Lemma dec_ext : forall t x e, SRaw.bst (ft_map t) -> ~ In x (ft_names t) ->
-    dec_mod (ft_ext t x e) = gm_ext (dec_mod t) x (dec_entry e).
+Lemma decode_ext : forall t x e, SRaw.bst (ft_map t) -> ~ In x (ft_names t) ->
+    decode_mod (ft_ext t x e) = gm_ext (decode_mod t) x (decode_entry e).
 Proof.
   intros [m xs] x e Hb Hn; cbn [ft_ext ft_map ft_names] in *.
-  rewrite !dec_mod_unfold; cbn [assemble].
-  rewrite find_dec_tree, sraw_find_add, String.eqb_refl by exact Hb; cbn [option_map].
+  rewrite !decode_mod_unfold; cbn [assemble].
+  rewrite find_decode_tree, sraw_find_add, String.eqb_refl by exact Hb; cbn [option_map].
   rewrite assemble_add by assumption; reflexivity.
 Qed.
 
 (** The order index of a canonical body is its names. *)
-Lemma tr_mod_names : forall Φ, canon_mod Φ -> ft_names (tr_mod Φ) = gm_names Φ.
+Lemma translate_mod_names : forall Φ, canon_mod Φ -> ft_names (translate_mod Φ) = gm_names Φ.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros Hc; cbn in *; [ reflexivity | | contradiction ].
-  destruct Hc as (_ & Hc & _); destruct (tr_mod Φ) as [m xs] eqn:Et; cbn in *; rewrite <- IH by exact Hc; reflexivity.
+  destruct Hc as (_ & Hc & _); destruct (translate_mod Φ) as [m xs] eqn:Et; cbn in *; rewrite <- IH by exact Hc; reflexivity.
 Qed.
 
 (** Decoding undoes the translation of canonical data. *)
-Fixpoint dec_tr_unit (U : gunit) {struct U} : canon_unit U -> dec_unit (tr_unit U) = U
-with dec_tr_mod (Φ : gmod) {struct Φ} : canon_mod Φ -> dec_mod (tr_mod Φ) = Φ
-with dec_tr_entry (E : gentry) {struct E} : canon_entry E -> dec_entry (tr_entry E) = E.
+Fixpoint decode_translate_unit (U : gunit) {struct U} : canon_unit U -> decode_unit (translate_unit U) = U
+with decode_translate_mod (Φ : gmod) {struct Φ} : canon_mod Φ -> decode_mod (translate_mod Φ) = Φ
+with decode_translate_entry (E : gentry) {struct E} : canon_entry E -> decode_entry (translate_entry E) = E.
 Proof.
-  - destruct U as [Δ [[|] Φ | H]]; cbn; intros Hc; [ contradiction | rewrite (dec_tr_mod Φ Hc) |]; reflexivity.
-  - destruct Φ as [| Φ x E | Φ H its]; cbn [tr_mod canon_mod]; intros Hc; [ reflexivity | | contradiction ].
+  - destruct U as [Δ [[|] Φ | H]]; cbn; intros Hc; [ contradiction | rewrite (decode_translate_mod Φ Hc) |]; reflexivity.
+  - destruct Φ as [| Φ x E | Φ H its]; cbn [translate_mod canon_mod]; intros Hc; [ reflexivity | | contradiction ].
     destruct Hc as (Hn & HcΦ & HcE).
-    rewrite dec_ext by (apply tr_mod_bst || (rewrite tr_mod_names by exact HcΦ; exact Hn)).
-    rewrite (dec_tr_mod Φ HcΦ), (dec_tr_entry E HcE); reflexivity.
+    rewrite decode_ext by (apply translate_mod_bst || (rewrite translate_mod_names by exact HcΦ; exact Hn)).
+    rewrite (decode_translate_mod Φ HcΦ), (decode_translate_entry E HcE); reflexivity.
   - destruct E as [b pv A oM | pv U | pv pq k D Φ | pv A M U | pv p R Φ]; cbn; intros Hc.
     + reflexivity.
-    + rewrite (dec_tr_unit U Hc); reflexivity.
-    + rewrite (dec_tr_mod Φ Hc); reflexivity.
-    + rewrite (dec_tr_unit U Hc); reflexivity.
-    + rewrite (dec_tr_mod Φ Hc); reflexivity.
+    + rewrite (decode_translate_unit U Hc); reflexivity.
+    + rewrite (decode_translate_mod Φ Hc); reflexivity.
+    + rewrite (decode_translate_unit U Hc); reflexivity.
+    + rewrite (decode_translate_mod Φ Hc); reflexivity.
 Qed.
 
 (** ** The Filed Units
@@ -653,9 +653,9 @@ Qed.
     One balanced map from the whole path of a unit to the unit, and the
     filing order (paths only, newest first), which decoding reads.  Filing
     a unit is one [PM.add] and one cons.  Next to them, the units the unit
-    being run sees, in a map of their own ([fus_vis]): it grows by one add
+    being run sees, in a map of their own ([fus_visible]): it grows by one add
     per path that becomes imported ([fus_see]), is set aside while an
-    imported unit runs ([fus_with_vis]), and is never rebuilt, so that a
+    imported unit runs ([fus_with_visible]), and is never rebuilt, so that a
     lookup is one search.  Both maps are keyed by [path_key]. *)
 Record funits : Type := mk_funits
   { (** each filed unit, by its whole path *)
@@ -663,22 +663,22 @@ Record funits : Type := mk_funits
     (** the paths, in filing order, newest first *)
   ; fus_order : list path
     (** the filed units the unit being run imported, by their whole paths
-        ([vis_rep]) *)
-  ; fus_vis : PM.t funit }.
+        ([visible_rep]) *)
+  ; fus_visible : PM.t funit }.
 
 (** Nothing filed *)
 Definition funits_empty : funits := mk_funits (PM.empty _) nil (PM.empty _).
 
 (** Filing the unit [u] at [fp]; the units seen are not changed. *)
 Definition fus_file (fp : path) (u : funit) (s : funits) : funits :=
-  mk_funits (pk_add fp u (fus_map s)) (fp :: fus_order s) (fus_vis s).
+  mk_funits (path_key_add fp u (fus_map s)) (fp :: fus_order s) (fus_visible s).
 
 (** The unit filed at [fp] *)
-Definition fus_find (s : funits) (fp : path) : option funit := pk_find fp (fus_map s).
+Definition fus_find (s : funits) (fp : path) : option funit := path_key_find fp (fus_map s).
 
 (** The Core units [s] stands for, for types only. *)
-Definition dec_units (s : funits) : gdeps :=
-  flat_map (fun fp => match fus_find s fp with Some u => [(fp, dec_unit u)] | None => nil end) (fus_order s).
+Definition decode_units (s : funits) : gdeps :=
+  flat_map (fun fp => match fus_find s fp with Some u => [(fp, decode_unit u)] | None => nil end) (fus_order s).
 
 (** Canonical filed units: no path filed twice, every unit canonical. *)
 Fixpoint canon_deps (Θ : gdeps) : Prop :=
@@ -690,20 +690,20 @@ Fixpoint canon_deps (Θ : gdeps) : Prop :=
 (** [s] refines [Θ]. *)
 Record units_rep (s : funits) (Θ : gdeps) : Prop := mk_units_rep
   { (** a path finds the translation of what [gds_lookup] finds *)
-    ur_find : forall fp, fus_find s fp = option_map tr_unit (gds_lookup Θ fp)
+    ur_find : forall fp, fus_find s fp = option_map translate_unit (gds_lookup Θ fp)
     (** the order index lists exactly [Θ]'s paths *)
   ; ur_order : fus_order s = map fst Θ }.
 
 (** Nothing filed refines nothing filed. *)
 Lemma units_rep_empty : units_rep funits_empty nil.
-Proof. constructor; [ intros; apply pk_find_empty | reflexivity ]. Qed.
+Proof. constructor; [ intros; apply path_key_find_empty | reflexivity ]. Qed.
 
 (** Filing one unit keeps the refinement. *)
 Theorem units_rep_file : forall s Θ fp U,
-    units_rep s Θ -> units_rep (fus_file fp (tr_unit U) s) ((fp, U) :: Θ).
+    units_rep s Θ -> units_rep (fus_file fp (translate_unit U) s) ((fp, U) :: Θ).
 Proof.
   intros s Θ fp U [Hf Ho]; unfold fus_file; constructor; cbn [fus_order map fst]; [| rewrite Ho; reflexivity ].
-  intros fq; unfold fus_find; cbn [fus_map gds_lookup]; rewrite pk_find_add.
+  intros fq; unfold fus_find; cbn [fus_map gds_lookup]; rewrite path_key_find_add.
   destruct (path_beq fq fp); [ reflexivity | apply Hf ].
 Qed.
 
@@ -715,16 +715,16 @@ Proof.
 Qed.
 
 (** Decoding gives a canonical [Θ] back. *)
-Theorem dec_units_ok : forall Θ s, canon_deps Θ -> units_rep s Θ -> dec_units s = Θ.
+Theorem decode_units_ok : forall Θ s, canon_deps Θ -> units_rep s Θ -> decode_units s = Θ.
 Proof.
-  intros Θ s Hc [Hf Ho]; unfold dec_units; rewrite Ho.
+  intros Θ s Hc [Hf Ho]; unfold decode_units; rewrite Ho.
   assert (Hgen : forall Θ0, canon_deps Θ0 ->
-    (forall fp, In fp (map fst Θ0) -> fus_find s fp = option_map tr_unit (gds_lookup Θ0 fp)) ->
-    flat_map (fun fp => match fus_find s fp with Some u => [(fp, dec_unit u)] | None => nil end) (map fst Θ0) = Θ0).
+    (forall fp, In fp (map fst Θ0) -> fus_find s fp = option_map translate_unit (gds_lookup Θ0 fp)) ->
+    flat_map (fun fp => match fus_find s fp with Some u => [(fp, decode_unit u)] | None => nil end) (map fst Θ0) = Θ0).
   { induction Θ0 as [| [fp U] Θ0 IH]; intros HC HF; [ reflexivity |].
     destruct HC as (Hn & HU & HC); cbn [map fst flat_map].
     pose proof (HF fp (or_introl eq_refl)) as E; cbn [gds_lookup] in E.
-    rewrite path_beq_refl in E; rewrite E; cbn [option_map app]; rewrite dec_tr_unit by exact HU.
+    rewrite path_beq_refl in E; rewrite E; cbn [option_map app]; rewrite decode_translate_unit by exact HU.
     f_equal; apply IH; [ exact HC |]; intros fq Hq; rewrite (HF fq (or_intror Hq)); cbn [gds_lookup].
     destruct (path_beq fq fp) eqn:Eb; [| reflexivity ].
     apply path_beq_true in Eb as ->.
@@ -736,12 +736,12 @@ Qed.
 
 (** The decoded units find the decoding of what the map finds, for any
     [Θ] the map refines. *)
-Lemma dec_units_lookup : forall s Θ, units_rep s Θ -> forall fp, gds_lookup (dec_units s) fp = option_map dec_unit (fus_find s fp).
+Lemma decode_units_lookup : forall s Θ, units_rep s Θ -> forall fp, gds_lookup (decode_units s) fp = option_map decode_unit (fus_find s fp).
 Proof.
-  intros s Θ [Hf Ho] fp; unfold dec_units; rewrite Ho.
+  intros s Θ [Hf Ho] fp; unfold decode_units; rewrite Ho.
   assert (Hgen : forall L, (forall q, In q L -> fus_find s q <> None) ->
-    gds_lookup (flat_map (fun fp => match fus_find s fp with Some u => [(fp, dec_unit u)] | None => nil end) L) fp =
-    if existsb (path_beq fp) L then option_map dec_unit (fus_find s fp) else None).
+    gds_lookup (flat_map (fun fp => match fus_find s fp with Some u => [(fp, decode_unit u)] | None => nil end) L) fp =
+    if existsb (path_beq fp) L then option_map decode_unit (fus_find s fp) else None).
   { induction L as [| q L IH]; intros HL; [ reflexivity |]; cbn [flat_map existsb].
     destruct (fus_find s q) as [u |] eqn:Eq; [| exfalso; exact (HL q (or_introl eq_refl) Eq) ].
     cbn [app gds_lookup]; destruct (path_beq fp q) eqn:Eb; cbn [orb].
@@ -760,31 +760,31 @@ Qed.
 
 (** ** What a Unit Sees
 
-    The unit being run sees what it imported: the units of [fus_vis], which
-    are the filed units at the paths it imported ([vis_rep]).  The map
+    The unit being run sees what it imported: the units of [fus_visible], which
+    are the filed units at the paths it imported ([visible_rep]).  The map
     grows by one [add] per path that becomes imported ([fus_see]); it is
-    set aside, not rebuilt, while an imported unit runs ([fus_with_vis]).
+    set aside, not rebuilt, while an imported unit runs ([fus_with_visible]).
     The restriction itself is never built. *)
 
 (** The units seen at [s] are exactly those filed at the paths of [D].
     The invariants state it of the units with their stored values
-    dropped ([vis_rep]); the lookups read it of those ([vis_rep_drop]). *)
-Definition vis_rep_exact (s : funits) (D : list path) : Prop :=
-  forall fp, pk_find fp (fus_vis s) = if existsb (path_beq fp) D then fus_find s fp else None.
+    dropped ([visible_rep]); the lookups read it of those ([visible_rep_drop]). *)
+Definition visible_rep_exact (s : funits) (D : list path) : Prop :=
+  forall fp, path_key_find fp (fus_visible s) = if existsb (path_beq fp) D then fus_find s fp else None.
 
 (** [s] with the units seen [m] *)
-Definition fus_with_vis (s : funits) (m : PM.t funit) : funits := mk_funits (fus_map s) (fus_order s) m.
+Definition fus_with_visible (s : funits) (m : PM.t funit) : funits := mk_funits (fus_map s) (fus_order s) m.
 
 (** The paths [L] seen as well: one [add] each, of the unit filed there *)
 Definition fus_see (L : list path) (s : funits) : funits :=
-  fus_with_vis s (fold_left (fun m fp => match fus_find s fp with Some u => pk_add fp u m | None => m end) L (fus_vis s)).
+  fus_with_visible s (fold_left (fun m fp => match fus_find s fp with Some u => path_key_add fp u m | None => m end) L (fus_visible s)).
 
 (** Changing the units seen changes no unit filed. *)
-Lemma units_rep_with_vis : forall s m Θ, units_rep s Θ -> units_rep (fus_with_vis s m) Θ.
+Lemma units_rep_with_visible : forall s m Θ, units_rep s Θ -> units_rep (fus_with_visible s m) Θ.
 Proof. intros s m Θ [Hf Ho]; constructor; [ exact Hf | exact Ho ]. Qed.
 
 Lemma units_rep_see : forall L s Θ, units_rep s Θ -> units_rep (fus_see L s) Θ.
-Proof. intros; apply units_rep_with_vis; assumption. Qed.
+Proof. intros; apply units_rep_with_visible; assumption. Qed.
 
 (** What a unit sees: the units, and the paths it imported *)
 Record fview : Type := mk_fview
@@ -794,26 +794,26 @@ Record fview : Type := mk_fview
   ; fv_dom : list path }.
 
 (** The unit at [fp], if it is imported: one search *)
-Definition fv_find (v : fview) (fp : path) : option funit := pk_find fp (fus_vis (fv_units v)).
+Definition fv_find (v : fview) (fp : path) : option funit := path_key_find fp (fus_visible (fv_units v)).
 
 (** The Core units a view stands for, for types only: the restriction of
     the decoded units to the imported paths. *)
-Definition view_deps (v : fview) : gdeps := gds_restrict (fv_dom v) (dec_units (fv_units v)).
+Definition view_deps (v : fview) : gdeps := gds_restrict (fv_dom v) (decode_units (fv_units v)).
 
 (** The view finds the translation of what the restriction finds. *)
-Theorem fv_find_ok : forall v Θ fp, units_rep (fv_units v) Θ -> vis_rep_exact (fv_units v) (fv_dom v) ->
-    fv_find v fp = option_map tr_unit (gds_lookup (gds_restrict (fv_dom v) Θ) fp).
+Theorem fv_find_ok : forall v Θ fp, units_rep (fv_units v) Θ -> visible_rep_exact (fv_units v) (fv_dom v) ->
+    fv_find v fp = option_map translate_unit (gds_lookup (gds_restrict (fv_dom v) Θ) fp).
 Proof.
   intros [s D] Θ fp H Hv; unfold fv_find; cbn [fv_dom fv_units] in *; rewrite gds_lookup_restrict, Hv.
   destruct (existsb _ _); [ apply (ur_find _ _ H) | reflexivity ].
 Qed.
 
 (** The decoded view finds the decoding of what the view finds. *)
-Theorem view_deps_lookup : forall v Θ fp, units_rep (fv_units v) Θ -> vis_rep_exact (fv_units v) (fv_dom v) ->
-    gds_lookup (view_deps v) fp = option_map dec_unit (fv_find v fp).
+Theorem view_deps_lookup : forall v Θ fp, units_rep (fv_units v) Θ -> visible_rep_exact (fv_units v) (fv_dom v) ->
+    gds_lookup (view_deps v) fp = option_map decode_unit (fv_find v fp).
 Proof.
   intros [s D] Θ fp H Hv; unfold view_deps, fv_find; cbn [fv_dom fv_units] in *.
-  rewrite gds_lookup_restrict, Hv; destruct (existsb _ _); [ exact (dec_units_lookup _ _ H fp) | reflexivity ].
+  rewrite gds_lookup_restrict, Hv; destruct (existsb _ _); [ exact (decode_units_lookup _ _ H fp) | reflexivity ].
 Qed.
 
 (** ** Open Frames
@@ -833,18 +833,18 @@ Record fframe : Type := mk_fframe
 Definition fstack : Type := list fframe.
 
 (** The fast frame of a Core one *)
-Definition tr_frame (f : (qname * frame_kind * gunit)%type) : fframe :=
-  let '(mp, K, U) := f in mk_fframe mp K (gu_params U) (tr_mod (gu_mod U)).
+Definition translate_frame (f : (qname * frame_kind * gunit)%type) : fframe :=
+  let '(mp, K, U) := f in mk_fframe mp K (gu_params U) (translate_mod (gu_mod U)).
 
 (** The fast frames of a Core stack *)
-Definition fs_of (Ξ : gstack) : fstack := map tr_frame Ξ.
+Definition fs_of (Ξ : gstack) : fstack := map translate_frame Ξ.
 
 (** The Core frame a fast one stands for, for types only *)
-Definition dec_frame (f : fframe) : (qname * frame_kind * gunit)%type :=
-  (ff_path f, ff_kind f, gu_body (ff_params f) (dec_mod (ff_body f))).
+Definition decode_frame (f : fframe) : (qname * frame_kind * gunit)%type :=
+  (ff_path f, ff_kind f, gu_body (ff_params f) (decode_mod (ff_body f))).
 
 (** The Core stack a fast one stands for, for types only *)
-Definition dec_stack (fs : fstack) : gstack := map dec_frame fs.
+Definition decode_stack (fs : fstack) : gstack := map decode_frame fs.
 
 (** A frame of a well-formed stack: a closed body. *)
 Definition frame_closed (U : gunit) : Prop :=
@@ -874,13 +874,13 @@ Proof.
 Qed.
 
 (** Decoding the fast frames of a canonical stack gives it back. *)
-Theorem dec_stack_ok : forall Ξ, canon_stack Ξ -> dec_stack (fs_of Ξ) = Ξ.
+Theorem decode_stack_ok : forall Ξ, canon_stack Ξ -> decode_stack (fs_of Ξ) = Ξ.
 Proof.
-  unfold dec_stack, fs_of; intros Ξ H; induction H as [| f Ξ Hf _ IH]; [ reflexivity |].
+  unfold decode_stack, fs_of; intros Ξ H; induction H as [| f Ξ Hf _ IH]; [ reflexivity |].
   destruct f as [[mp K] [Δ [[|] Φ | E]]]; cbn in Hf; try contradiction.
-  change (dec_frame (tr_frame (mp, K, gu_body Δ Φ)) :: map dec_frame (map tr_frame Ξ) = (mp, K, gu_body Δ Φ) :: Ξ).
-  rewrite IH; unfold dec_frame, tr_frame; cbn [ff_path ff_kind ff_params ff_body gu_params gu_mod].
-  rewrite dec_tr_mod by exact Hf; reflexivity.
+  change (decode_frame (translate_frame (mp, K, gu_body Δ Φ)) :: map decode_frame (map translate_frame Ξ) = (mp, K, gu_body Δ Φ) :: Ξ).
+  rewrite IH; unfold decode_frame, translate_frame; cbn [ff_path ff_kind ff_params ff_body gu_params gu_mod].
+  rewrite decode_translate_mod by exact Hf; reflexivity.
 Qed.
 
 (** The parameters of all the frames, [gs_tele]'s twin *)
@@ -895,8 +895,8 @@ Lemma fs_tele_of : forall Ξ, fs_tele (fs_of Ξ) = gs_tele Ξ.
 Proof. unfold fs_of; induction Ξ as [| [[mp K] U] Ξ IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 (** The telescope of a decoded stack is that of the fast frames. *)
-Lemma fs_tele_dec : forall fs, gs_tele (dec_stack fs) = fs_tele fs.
-Proof. unfold dec_stack; induction fs as [| f fs IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+Lemma fs_tele_dec : forall fs, gs_tele (decode_stack fs) = fs_tele fs.
+Proof. unfold decode_stack; induction fs as [| f fs IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 (** The innermost frame's path, [gs_path]'s twin *)
 Definition fs_path (fs : fstack) : qname :=
@@ -910,7 +910,7 @@ Lemma fs_path_of : forall Ξ, fs_path (fs_of Ξ) = gs_path Ξ.
 Proof. intros [| [[mp K] U] Ξ]; reflexivity. Qed.
 
 (** The path of the innermost frame of a decoded stack *)
-Lemma fs_path_dec : forall fs, gs_path (dec_stack fs) = fs_path fs.
+Lemma fs_path_dec : forall fs, gs_path (decode_stack fs) = fs_path fs.
 Proof. intros [| f fs]; reflexivity. Qed.
 
 (** One member more in the innermost frame, [gs_add]'s twin: one
@@ -922,7 +922,7 @@ Definition fs_add (x : string) (e : fentry) (fs : fstack) : fstack :=
   end.
 
 (** Adding a translated entry fast is adding it in Core. *)
-Lemma fs_add_of : forall x E Ξ, fs_add x (tr_entry E) (fs_of Ξ) = fs_of (gs_add x E Ξ).
+Lemma fs_add_of : forall x E Ξ, fs_add x (translate_entry E) (fs_of Ξ) = fs_of (gs_add x E Ξ).
 Proof. intros x E [| [[mp K] U] Ξ]; reflexivity. Qed.
 
 (** A frame pushed, [gs_push]'s twin *)
@@ -971,7 +971,7 @@ Proof.
   intros x [| [[mp K] U] Ξ] Hc; cbn; [ split; [ discriminate | contradiction ] |].
   inversion Hc as [| ? ? HU _]; subst; cbn in HU.
   destruct U as [Δ [[|] Φ | E]]; try contradiction; cbn [gu_mod].
-  rewrite tr_mod_find; unfold gm_fresh; rewrite <- (gm_newest_names Φ x HU).
+  rewrite translate_mod_find; unfold gm_fresh; rewrite <- (gm_newest_names Φ x HU).
   destruct (gm_newest Φ x); cbn [option_map]; split; congruence.
 Qed.
 
@@ -980,10 +980,10 @@ Qed.
     Each Core lookup of a global path, over a function [uf] giving the
     filed units fast and over the fast frames.  On the translation of a
     Core context it finds what the Core lookup finds, translated
-    ([fgc_entry_ok] and the like). *)
+    ([fast_gc_entry_ok] and the like). *)
 
 (** A located body: its full telescope and its members, fast *)
-Definition tr_loc (r : (ctx * gmod)%type) : (ctx * ftrie)%type := (fst r, tr_mod (snd r)).
+Definition translate_loc (r : (ctx * gmod)%type) : (ctx * ftrie)%type := (fst r, translate_mod (snd r)).
 
 (** The innermost frame [p] is in, with [p] read inside it, and the
     parameters of the frames outside it; [gs_find_tele]'s twin. *)
@@ -1002,12 +1002,12 @@ Definition ff_view (r : (fframe * list string * ctx)%type) : (ctx * ftrie * list
   let '(f, ip, T) := r in (ff_params f, ff_body f, ip, T).
 
 (** The same of a Core frame, translated *)
-Definition gf_view (r : (gunit * list string * ctx)%type) : (ctx * ftrie * list string * ctx)%type :=
-  let '(U, ip, T) := r in (gu_params U, tr_mod (gu_mod U), ip, T).
+Definition translate_frame_view (r : (gunit * list string * ctx)%type) : (ctx * ftrie * list string * ctx)%type :=
+  let '(U, ip, T) := r in (gu_params U, translate_mod (gu_mod U), ip, T).
 
 (** The frame found fast reads as the Core frame found. *)
 Lemma fs_find_tele_of : forall Ξ p,
-    option_map ff_view (fs_find_tele (fs_of Ξ) p) = option_map gf_view (gs_find_tele Ξ p).
+    option_map ff_view (fs_find_tele (fs_of Ξ) p) = option_map translate_frame_view (gs_find_tele Ξ p).
 Proof.
   induction Ξ as [| [[mp K] U] Ξ IH]; intros p; cbn; [ reflexivity |].
   destruct (qname_strip mp p); [ cbn; rewrite fs_tele_of; reflexivity | apply IH ].
@@ -1016,7 +1016,7 @@ Qed.
 (** The kind of the frame found, alike *)
 Lemma fs_find_tele_kind : forall Ξ p f ip T,
     fs_find_tele (fs_of Ξ) p = Some (f, ip, T) ->
-    exists mp U T', gs_find_tele Ξ p = Some (U, ip, T') /\ f = tr_frame (mp, ff_kind f, U).
+    exists mp U T', gs_find_tele Ξ p = Some (U, ip, T') /\ f = translate_frame (mp, ff_kind f, U).
 Proof.
   induction Ξ as [| [[mp K] U] Ξ IH]; intros * H; cbn in *; [ discriminate |].
   destruct (qname_strip mp p); [ injection H as <- <- <-; do 3 eexists; split; reflexivity | exact (IH _ _ _ _ H) ].
@@ -1072,7 +1072,7 @@ Definition ff_find_view (r : (fframe * list string)%type) : (ftrie * list string
 
 (** Alike for [gs_find] *)
 Lemma fs_find_of : forall Ξ p,
-    option_map ff_find_view (fs_find (fs_of Ξ) p) = option_map (fun r => (tr_mod (gu_mod (fst r)), snd r)) (gs_find Ξ p).
+    option_map ff_find_view (fs_find (fs_of Ξ) p) = option_map (fun r => (translate_mod (gu_mod (fst r)), snd r)) (gs_find Ξ p).
 Proof.
   induction Ξ as [| [[mp K] U] Ξ IH]; intros p; cbn; [ reflexivity |].
   destruct (qname_strip mp p); [ reflexivity | apply IH ].
@@ -1130,15 +1130,15 @@ Proof.
 Qed.
 
 (** The trie resolves what [gm_resolve] resolves. *)
-Theorem ft_resolve_ok : forall ip Φ, canon_mod Φ -> ft_resolve (tr_mod Φ) ip = gm_resolve Φ ip.
+Theorem ft_resolve_ok : forall ip Φ, canon_mod Φ -> ft_resolve (translate_mod Φ) ip = gm_resolve Φ ip.
 Proof.
   induction ip as [| x ip IH]; intros Φ Hc; [ rewrite gm_resolve_nil; reflexivity |].
-  cbn [ft_resolve]; rewrite tr_mod_find, gm_resolve_newest.
+  cbn [ft_resolve]; rewrite translate_mod_find, gm_resolve_newest.
   destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; [| reflexivity ].
   pose proof (canon_newest _ _ _ Hc En) as HE.
   destruct ip as [| z ip'].
   - destruct E; reflexivity.
-  - rewrite fe_body_tr by exact HE; destruct (entry_body E) eqn:Eb; cbn [option_map]; [| reflexivity ].
+  - rewrite fe_body_translate by exact HE; destruct (entry_body E) eqn:Eb; cbn [option_map]; [| reflexivity ].
     apply IH, (canon_entry_body _ _ HE Eb).
 Qed.
 
@@ -1225,14 +1225,14 @@ Proof.
 Qed.
 
 (** The trie finds the submodule [gm_submodule] finds. *)
-Theorem ft_submodule_ok : forall ip Φ T x, canon_mod Φ -> ft_submodule T (tr_mod Φ) x ip = gm_submodule T Φ x ip.
+Theorem ft_submodule_ok : forall ip Φ T x, canon_mod Φ -> ft_submodule T (translate_mod Φ) x ip = gm_submodule T Φ x ip.
 Proof.
-  induction ip as [| z ip IH]; intros Φ T x Hc; unfold ft_submodule; rewrite tr_mod_find, gm_submodule_newest;
+  induction ip as [| z ip IH]; intros Φ T x Hc; unfold ft_submodule; rewrite translate_mod_find, gm_submodule_newest;
     destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; try reflexivity;
     pose proof (canon_newest _ _ _ Hc En) as HE;
     destruct E as [b pv A oM | pv [Δ [[|] Φ' | E']] | pv pq k D Φ' | pv A M [Δ [[|] Φ' | E']] | pv p R Φ'];
     cbn in HE; try contradiction; try reflexivity;
-    cbn [tr_entry tr_unit fe_submodule]; rewrite <- IH by exact HE; reflexivity.
+    cbn [translate_entry translate_unit fe_submodule]; rewrite <- IH by exact HE; reflexivity.
 Qed.
 
 (** [gm_module]'s twin *)
@@ -1243,7 +1243,7 @@ Definition ft_module (T : ctx) (oD : option indref) (t : ftrie) (ip : list strin
   end.
 
 (** The trie finds the module [gm_module] finds. *)
-Lemma ft_module_ok : forall T oD Φ ip, canon_mod Φ -> ft_module T oD (tr_mod Φ) ip = gm_module T oD Φ ip.
+Lemma ft_module_ok : forall T oD Φ ip, canon_mod Φ -> ft_module T oD (translate_mod Φ) ip = gm_module T oD Φ ip.
 Proof. intros T oD Φ [| x ip] Hc; [ reflexivity | apply ft_submodule_ok, Hc ]. Qed.
 
 (** The body module [ip] through the entry [e], [gm_subbody]'s step *)
@@ -1303,14 +1303,14 @@ Proof.
 Qed.
 
 (** The trie finds the translation of the body [gm_subbody] finds. *)
-Theorem ft_subbody_ok : forall ip Φ T x, canon_mod Φ -> ft_subbody T (tr_mod Φ) x ip = option_map tr_loc (gm_subbody T Φ x ip).
+Theorem ft_subbody_ok : forall ip Φ T x, canon_mod Φ -> ft_subbody T (translate_mod Φ) x ip = option_map translate_loc (gm_subbody T Φ x ip).
 Proof.
-  induction ip as [| z ip IH]; intros Φ T x Hc; unfold ft_subbody; rewrite tr_mod_find, gm_subbody_newest;
+  induction ip as [| z ip IH]; intros Φ T x Hc; unfold ft_subbody; rewrite translate_mod_find, gm_subbody_newest;
     destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; try reflexivity;
     pose proof (canon_newest _ _ _ Hc En) as HE;
     destruct E as [b pv A oM | pv [Δ [[|] Φ' | E']] | pv pq k D Φ' | pv A M [Δ [[|] Φ' | E']] | pv p R Φ'];
     cbn in HE; try contradiction; try reflexivity;
-    cbn [tr_entry tr_unit fe_subbody]; rewrite <- IH by exact HE; reflexivity.
+    cbn [translate_entry translate_unit fe_subbody]; rewrite <- IH by exact HE; reflexivity.
 Qed.
 
 (** What [gm_subbody] finds in a canonical body is canonical. *)
@@ -1342,7 +1342,7 @@ Definition ft_body (T : ctx) (t : ftrie) (ip : list string) : option (ctx * ftri
   end.
 
 (** Alike for [gm_body] *)
-Lemma ft_body_ok : forall T Φ ip, canon_mod Φ -> ft_body T (tr_mod Φ) ip = option_map tr_loc (gm_body T Φ ip).
+Lemma ft_body_ok : forall T Φ ip, canon_mod Φ -> ft_body T (translate_mod Φ) ip = option_map translate_loc (gm_body T Φ ip).
 Proof. intros T Φ [| x ip] Hc; [ reflexivity | apply ft_subbody_ok, Hc ]. Qed.
 
 (** What [gm_body] finds in a canonical body is canonical. *)
@@ -1356,7 +1356,7 @@ Section Lookups.
   Variable uf : path -> option funit.
 
   (** [gc_resolve]'s twin *)
-  Definition fgc_resolve (fs : fstack) (p : qname) : option gentry :=
+  Definition fast_gc_resolve (fs : fstack) (p : qname) : option gentry :=
     match fs_find fs p with
     | Some (f, ip) => ft_resolve (ff_body f) ip
     | None =>
@@ -1367,7 +1367,7 @@ Section Lookups.
     end.
 
   (** [gc_module]'s twin *)
-  Definition fgc_module (fs : fstack) (p : qname) : option modres :=
+  Definition fast_gc_module (fs : fstack) (p : qname) : option modres :=
     match fs_find_tele fs p with
     | Some (f, nil, _) => None
     | Some (f, x :: ip, T) => ft_submodule (ff_params f ++ T) (ff_body f) x ip
@@ -1379,7 +1379,7 @@ Section Lookups.
     end.
 
   (** [gc_body]'s twin *)
-  Definition fgc_body (fs : fstack) (p : qname) : option (ctx * ftrie) :=
+  Definition fast_gc_body (fs : fstack) (p : qname) : option (ctx * ftrie) :=
     match fs_find_tele fs p with
     | Some (f, nil, _) => None
     | Some (f, x :: ip, T) => ft_subbody (ff_params f ++ T) (ff_body f) x ip
@@ -1391,35 +1391,35 @@ Section Lookups.
     end.
 
   (** [gc_frame]'s twin: every fast frame is a closed body. *)
-  Definition fgc_frame (fs : fstack) (p : qname) : option (ctx * ftrie) :=
+  Definition fast_gc_frame (fs : fstack) (p : qname) : option (ctx * ftrie) :=
     match fs_find_tele fs p with
     | Some (f, nil, T0) => Some (ff_params f ++ T0, ff_body f)
     | _ => None
     end.
 
   (** [gc_loc]'s twin *)
-  Definition fgc_loc (fs : fstack) (p : qname) : option (ctx * ftrie) :=
-    match fgc_frame fs p with
+  Definition fast_gc_loc (fs : fstack) (p : qname) : option (ctx * ftrie) :=
+    match fast_gc_frame fs p with
     | Some r => Some r
-    | None => fgc_body fs p
+    | None => fast_gc_body fs p
     end.
 
   (** [ind_mlookup]'s twin *)
-  Definition fgc_mlookup (fs : fstack) (p : qname) : option indref :=
+  Definition fast_gc_mlookup (fs : fstack) (p : qname) : option indref :=
     match fs_find_ind fs p with
     | Some r => Some r
     | None =>
-        match fgc_module fs p with
+        match fast_gc_module fs p with
         | Some (mr_body _ oD) => oD
         | _ => None
         end
     end.
 
   (** [ind_lookup]'s twin *)
-  Definition fgc_ind (fs : fstack) (p : qname) : option ind_decl := ind_of_ref (fgc_mlookup fs p).
+  Definition fast_gc_ind (fs : fstack) (p : qname) : option ind_decl := ind_of_ref (fast_gc_mlookup fs p).
 
   (** [gc_entry]'s twin *)
-  Definition fgc_entry (fs : fstack) (p : qname) : option fentry :=
+  Definition fast_gc_entry (fs : fstack) (p : qname) : option fentry :=
     match fs_find fs p with
     | Some (f, ip) => ft_entry (ff_body f) ip
     | None =>
@@ -1430,29 +1430,29 @@ Section Lookups.
     end.
 
   (** [gc_term]'s twin *)
-  Definition fgc_term (fs : fstack) (p : qname) : option exp :=
-    match fgc_resolve fs p with
+  Definition fast_gc_term (fs : fstack) (p : qname) : option exp :=
+    match fast_gc_resolve fs p with
     | Some (ge_def true _ _ (Some M)) => Some M
     | _ =>
-        match fgc_entry fs p with
+        match fast_gc_entry fs p with
         | Some (fe_def_mod _ _ M _ _) => Some M
         | _ => None
         end
     end.
 
   (** [record_lookup]'s twin *)
-  Definition fgc_record (fs : fstack) (p : qname) : option record_decl :=
+  Definition fast_gc_record (fs : fstack) (p : qname) : option record_decl :=
     match fs_find_record fs p with
     | Some R => Some R
     | None =>
-        match fgc_entry fs p with
+        match fast_gc_entry fs p with
         | Some (fe_record _ _ R _) => Some R
         | _ => None
         end
     end.
 
   (** [gc_unit]'s twin *)
-  Definition fgc_unit (fs : fstack) (H : modexp) : option (ctx * ftrie) :=
+  Definition fast_gc_unit (fs : fstack) (H : modexp) : option (ctx * ftrie) :=
     match mod_qname H with
     | Some mp =>
         match fs_find_tele fs mp with
@@ -1508,7 +1508,7 @@ Qed.
     the Core lookups find, translated. *)
 Section LookupsOk.
   Variables (uf : path -> option funit) (Θ : gdeps).
-  Hypothesis Huf : forall fp, uf fp = option_map tr_unit (gds_lookup Θ fp).
+  Hypothesis Huf : forall fp, uf fp = option_map translate_unit (gds_lookup Θ fp).
   Hypothesis HcΘ : canon_deps Θ.
 
   (** A unit found is canonical. *)
@@ -1517,7 +1517,7 @@ Section LookupsOk.
 
   Lemma fs_find_some : forall Ξ p,
       match fs_find (fs_of Ξ) p, gs_find Ξ p with
-      | Some (f, ip), Some (U, ip') => ff_body f = tr_mod (gu_mod U) /\ ip = ip'
+      | Some (f, ip), Some (U, ip') => ff_body f = translate_mod (gu_mod U) /\ ip = ip'
       | None, None => True
       | _, _ => False
       end.
@@ -1529,7 +1529,7 @@ Section LookupsOk.
 
   Lemma fs_find_tele_some : forall Ξ p,
       match fs_find_tele (fs_of Ξ) p, gs_find_tele Ξ p with
-      | Some (f, ip, T), Some (U, ip', T') => ff_params f = gu_params U /\ ff_body f = tr_mod (gu_mod U) /\ ip = ip' /\ T = T'
+      | Some (f, ip, T), Some (U, ip', T') => ff_params f = gu_params U /\ ff_body f = translate_mod (gu_mod U) /\ ip = ip' /\ T = T'
       | None, None => True
       | _, _ => False
       end.
@@ -1540,92 +1540,92 @@ Section LookupsOk.
     injection H as -> -> -> ->; auto.
   Qed.
 
-  Theorem fgc_resolve_ok : forall Ξ p, canon_stack Ξ -> fgc_resolve uf (fs_of Ξ) p = gc_resolve Θ Ξ p.
+  Theorem fast_gc_resolve_ok : forall Ξ p, canon_stack Ξ -> fast_gc_resolve uf (fs_of Ξ) p = gc_resolve Θ Ξ p.
   Proof.
-    intros Ξ p HcΞ; unfold fgc_resolve, gc_resolve, gc_resolve_u.
+    intros Ξ p HcΞ; unfold fast_gc_resolve, gc_resolve, gc_resolve_u.
     pose proof (fs_find_some Ξ p) as H.
     destruct (fs_find (fs_of Ξ) p) as [[f ip] |], (gs_find Ξ p) as [[U ip'] |] eqn:Eg; try contradiction.
     - destruct H as [-> ->]; apply ft_resolve_ok, canon_frame_mod, (canon_gs_find _ _ _ _ HcΞ Eg).
     - rewrite Huf; destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; cbn [option_map]; [| reflexivity ].
-      rewrite tr_unit_body by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_resolve_ok, (canon_found _ _ El).
+      rewrite translate_unit_body by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_resolve_ok, (canon_found _ _ El).
   Qed.
 
-  Theorem fgc_module_ok : forall Ξ p, canon_stack Ξ -> fgc_module uf (fs_of Ξ) p = gc_module Θ Ξ p.
+  Theorem fast_gc_module_ok : forall Ξ p, canon_stack Ξ -> fast_gc_module uf (fs_of Ξ) p = gc_module Θ Ξ p.
   Proof.
-    intros Ξ p HcΞ; unfold fgc_module, gc_module, gc_module_u.
+    intros Ξ p HcΞ; unfold fast_gc_module, gc_module, gc_module_u.
     pose proof (fs_find_tele_some Ξ p) as H.
     destruct (fs_find_tele (fs_of Ξ) p) as [[[f ip] T] |], (gs_find_tele Ξ p) as [[[U ip'] T'] |] eqn:Eg; try contradiction.
     - destruct H as (-> & -> & <- & <-); destruct ip; [ reflexivity |].
       apply ft_submodule_ok, canon_frame_mod, (canon_gs_find_tele _ _ _ _ _ HcΞ Eg).
     - rewrite Huf; destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; cbn [option_map]; [| reflexivity ].
-      rewrite tr_unit_body, tr_unit_params by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_module_ok, (canon_found _ _ El).
+      rewrite translate_unit_body, translate_unit_params by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_module_ok, (canon_found _ _ El).
   Qed.
 
-  Theorem fgc_body_ok : forall Ξ p, canon_stack Ξ -> fgc_body uf (fs_of Ξ) p = option_map tr_loc (gc_body Θ Ξ p).
+  Theorem fast_gc_body_ok : forall Ξ p, canon_stack Ξ -> fast_gc_body uf (fs_of Ξ) p = option_map translate_loc (gc_body Θ Ξ p).
   Proof.
-    intros Ξ p HcΞ; unfold fgc_body, gc_body.
+    intros Ξ p HcΞ; unfold fast_gc_body, gc_body.
     pose proof (fs_find_tele_some Ξ p) as H.
     destruct (fs_find_tele (fs_of Ξ) p) as [[[f ip] T] |], (gs_find_tele Ξ p) as [[[U ip'] T'] |] eqn:Eg; try contradiction.
     - destruct H as (-> & -> & <- & <-); destruct ip; [ reflexivity |].
       apply ft_subbody_ok, canon_frame_mod, (canon_gs_find_tele _ _ _ _ _ HcΞ Eg).
     - rewrite Huf; destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; cbn [option_map]; [| reflexivity ].
-      rewrite tr_unit_body, tr_unit_params by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_body_ok, (canon_found _ _ El).
+      rewrite translate_unit_body, translate_unit_params by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_body_ok, (canon_found _ _ El).
   Qed.
 
-  Theorem fgc_frame_ok : forall Ξ p, stack_closed Ξ -> fgc_frame (fs_of Ξ) p = option_map tr_loc (gc_frame Ξ p).
+  Theorem fast_gc_frame_ok : forall Ξ p, stack_closed Ξ -> fast_gc_frame (fs_of Ξ) p = option_map translate_loc (gc_frame Ξ p).
   Proof.
     induction Ξ as [| [[mp K] U] Ξ IH]; intros p Hc; [ reflexivity |].
     inversion Hc as [| ? ? HU Hc']; subst; cbn in HU.
-    unfold fgc_frame, gc_frame in *; cbn [fs_of map tr_frame fs_find_tele gs_find_tele ff_path].
+    unfold fast_gc_frame, gc_frame in *; cbn [fs_of map translate_frame fs_find_tele gs_find_tele ff_path].
     destruct (qname_strip mp p) as [[| x ip] |].
     - destruct U as [Δ [[|] Φ | E]]; cbn in HU |- *; try contradiction; rewrite fs_tele_of; reflexivity.
     - destruct U as [Δ [[|] Φ | E]]; reflexivity.
     - exact (IH p Hc').
   Qed.
 
-  Theorem fgc_loc_ok : forall Ξ p, canon_stack Ξ -> fgc_loc uf (fs_of Ξ) p = option_map tr_loc (gc_loc Θ Ξ p).
+  Theorem fast_gc_loc_ok : forall Ξ p, canon_stack Ξ -> fast_gc_loc uf (fs_of Ξ) p = option_map translate_loc (gc_loc Θ Ξ p).
   Proof.
-    intros * Hc; unfold fgc_loc, gc_loc; rewrite fgc_frame_ok by exact (canon_stack_closed _ Hc).
-    destruct (gc_frame Ξ p); [ reflexivity | apply fgc_body_ok, Hc ].
+    intros * Hc; unfold fast_gc_loc, gc_loc; rewrite fast_gc_frame_ok by exact (canon_stack_closed _ Hc).
+    destruct (gc_frame Ξ p); [ reflexivity | apply fast_gc_body_ok, Hc ].
   Qed.
 
-  Theorem fgc_mlookup_ok : forall Ξ p, canon_stack Ξ -> fgc_mlookup uf (fs_of Ξ) p = ind_mlookup Θ Ξ p.
+  Theorem fast_gc_mlookup_ok : forall Ξ p, canon_stack Ξ -> fast_gc_mlookup uf (fs_of Ξ) p = ind_mlookup Θ Ξ p.
   Proof.
-    intros * Hc; unfold fgc_mlookup, ind_mlookup, ind_mlookup_u; rewrite fs_find_ind_of.
+    intros * Hc; unfold fast_gc_mlookup, ind_mlookup, ind_mlookup_u; rewrite fs_find_ind_of.
     destruct (gs_find_ind Ξ p); [ reflexivity |].
-    rewrite fgc_module_ok by exact Hc; reflexivity.
+    rewrite fast_gc_module_ok by exact Hc; reflexivity.
   Qed.
 
-  Theorem fgc_ind_ok : forall Ξ p, canon_stack Ξ -> fgc_ind uf (fs_of Ξ) p = ind_lookup Θ Ξ p.
-  Proof. intros * Hc; unfold fgc_ind, ind_lookup, ind_lookup_u; rewrite fgc_mlookup_ok by exact Hc; reflexivity. Qed.
+  Theorem fast_gc_ind_ok : forall Ξ p, canon_stack Ξ -> fast_gc_ind uf (fs_of Ξ) p = ind_lookup Θ Ξ p.
+  Proof. intros * Hc; unfold fast_gc_ind, ind_lookup, ind_lookup_u; rewrite fast_gc_mlookup_ok by exact Hc; reflexivity. Qed.
 
-  Theorem fgc_entry_ok : forall Ξ p, canon_stack Ξ -> fgc_entry uf (fs_of Ξ) p = option_map tr_entry (gc_entry Θ Ξ p).
+  Theorem fast_gc_entry_ok : forall Ξ p, canon_stack Ξ -> fast_gc_entry uf (fs_of Ξ) p = option_map translate_entry (gc_entry Θ Ξ p).
   Proof.
-    intros Ξ p HcΞ; unfold fgc_entry, gc_entry, gc_entry_u.
+    intros Ξ p HcΞ; unfold fast_gc_entry, gc_entry, gc_entry_u.
     pose proof (fs_find_some Ξ p) as H.
     destruct (fs_find (fs_of Ξ) p) as [[f ip] |], (gs_find Ξ p) as [[U ip'] |] eqn:Eg; try contradiction.
     - destruct H as [-> ->]; apply ft_entry_ok, canon_frame_mod, (canon_gs_find _ _ _ _ HcΞ Eg).
     - rewrite Huf; destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; cbn [option_map]; [| reflexivity ].
-      rewrite tr_unit_body by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_entry_ok, (canon_found _ _ El).
+      rewrite translate_unit_body by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_entry_ok, (canon_found _ _ El).
   Qed.
 
-  Theorem fgc_term_ok : forall Ξ p, canon_stack Ξ -> fgc_term uf (fs_of Ξ) p = gc_term Θ Ξ p.
+  Theorem fast_gc_term_ok : forall Ξ p, canon_stack Ξ -> fast_gc_term uf (fs_of Ξ) p = gc_term Θ Ξ p.
   Proof.
-    intros * Hc; unfold fgc_term, gc_term; rewrite fgc_resolve_ok, fgc_entry_ok by exact Hc.
+    intros * Hc; unfold fast_gc_term, gc_term; rewrite fast_gc_resolve_ok, fast_gc_entry_ok by exact Hc.
     destruct (gc_resolve Θ Ξ p) as [[[] ? ? [] | | | |] |];
       try (destruct (gc_entry Θ Ξ p) as [[| | | | ] |]; reflexivity); reflexivity.
   Qed.
 
-  Theorem fgc_record_ok : forall Ξ p, canon_stack Ξ -> fgc_record uf (fs_of Ξ) p = record_lookup Θ Ξ p.
+  Theorem fast_gc_record_ok : forall Ξ p, canon_stack Ξ -> fast_gc_record uf (fs_of Ξ) p = record_lookup Θ Ξ p.
   Proof.
-    intros * Hc; unfold fgc_record, record_lookup; rewrite fs_find_record_of, fgc_entry_ok by exact Hc.
+    intros * Hc; unfold fast_gc_record, record_lookup; rewrite fs_find_record_of, fast_gc_entry_ok by exact Hc.
     destruct (gs_find_record Ξ p); [ reflexivity |].
     destruct (gc_entry Θ Ξ p) as [[| | | | ] |]; reflexivity.
   Qed.
 
-  Theorem fgc_unit_ok : forall Ξ H, canon_stack Ξ -> fgc_unit uf (fs_of Ξ) H = option_map tr_loc (gc_unit Θ Ξ H).
+  Theorem fast_gc_unit_ok : forall Ξ H, canon_stack Ξ -> fast_gc_unit uf (fs_of Ξ) H = option_map translate_loc (gc_unit Θ Ξ H).
   Proof.
-    intros * Hc0; pose proof (canon_stack_closed _ Hc0) as Hc; unfold fgc_unit, gc_unit.
+    intros * Hc0; pose proof (canon_stack_closed _ Hc0) as Hc; unfold fast_gc_unit, gc_unit.
     destruct (mod_qname H) as [mp |]; [| reflexivity ].
     rewrite fs_find_ind_of, fs_find_record_of.
     destruct (fs_find_tele (fs_of Ξ) mp) as [[[f ip] T] |] eqn:Ef.
@@ -1636,7 +1636,7 @@ Section LookupsOk.
       { clear -Hc Eg; induction Hc as [| [[mp' K'] U'] Ξ HU' _ IH]; cbn in Eg; [ discriminate |].
         destruct (qname_strip mp' mp); [ injection Eg as -> _ _; exact HU' | exact (IH Eg) ]. }
       destruct ip as [| x ip]; [| reflexivity ].
-      destruct U as [Δ [[|] Φ | E]]; cbn in HU; try contradiction; cbn [tr_frame ff_params ff_body gu_params gu_mod].
+      destruct U as [Δ [[|] Φ | E]]; cbn in HU; try contradiction; cbn [translate_frame ff_params ff_body gu_params gu_mod].
       destruct (gs_find_ind Ξ mp), (gs_find_record Ξ mp); reflexivity.
     - pose proof (fs_find_tele_some Ξ mp) as Hs; rewrite Ef in Hs.
       destruct (gs_find_tele Ξ mp) as [[[U ip] T] |]; [ contradiction |].
@@ -1727,11 +1727,11 @@ Section CanonLookups.
 End CanonLookups.
 
 (** A located body, decoded *)
-Definition dec_loc (r : (ctx * ftrie)%type) : (ctx * gmod)%type := (fst r, dec_mod (snd r)).
+Definition decode_loc (r : (ctx * ftrie)%type) : (ctx * gmod)%type := (fst r, decode_mod (snd r)).
 
 (** Decoding undoes the translation of a canonical located body. *)
-Lemma dec_tr_loc : forall r, canon_mod (snd r) -> dec_loc (tr_loc r) = r.
-Proof. intros [T Φ] H; unfold dec_loc, tr_loc; cbn in *; rewrite dec_tr_mod by exact H; reflexivity. Qed.
+Lemma decode_translate_loc : forall r, canon_mod (snd r) -> decode_loc (translate_loc r) = r.
+Proof. intros [T Φ] H; unfold decode_loc, translate_loc; cbn in *; rewrite decode_translate_mod by exact H; reflexivity. Qed.
 
 (** ** Forgetting the Stored Values
 
@@ -1740,8 +1740,8 @@ Proof. intros [T Φ] H; unfold dec_loc, tr_loc; cbn in *; rewrite dec_tr_mod by 
     them ([fentry_drop] and the like) gives fast data that is the
     translation of its decoding, which is the refinement the invariants
     state ([units_rep], [fs_of]).  Decoding forgets them anyway
-    ([dec_entry_drop]), and every fast lookup commutes with dropping
-    ([fgc_entry_drop] and the like).  The executable drops them once, at
+    ([decode_entry_drop]), and every fast lookup commutes with dropping
+    ([fast_gc_entry_drop] and the like).  The executable drops them once, at
     the end of a program's run. *)
 
 (** Every stored value set to [None] *)
@@ -1804,24 +1804,24 @@ Proof.
   destruct (OrderedTypeEx.String_as_OT.compare x y); cbn; rewrite ?sraw_map_bal, ?IHl, ?IHr; reflexivity.
 Qed.
 
-Lemma sfind_map : forall {A B} (f : A -> B) x m, sfind x (SRaw.map f m) = option_map f (sfind x m).
+Lemma string_tree_find_map : forall {A B} (f : A -> B) x m, string_tree_find x (SRaw.map f m) = option_map f (string_tree_find x m).
 Proof. intros A B f x; induction m as [| l IHl y d r IHr h]; cbn; [ reflexivity |]; destruct (String.compare x y); auto. Qed.
 
 (** *** Decoding Forgets the Values *)
 
-Fixpoint dec_unit_drop (u : funit) : dec_unit (funit_drop u) = dec_unit u
-with dec_mod_drop (t : ftrie) : dec_mod (ftrie_drop t) = dec_mod t
-with dec_entry_drop (e : fentry) : dec_entry (fentry_drop e) = dec_entry e.
+Fixpoint decode_unit_drop (u : funit) : decode_unit (funit_drop u) = decode_unit u
+with decode_mod_drop (t : ftrie) : decode_mod (ftrie_drop t) = decode_mod t
+with decode_entry_drop (e : fentry) : decode_entry (fentry_drop e) = decode_entry e.
 Proof.
-  - destruct u as [Δ [t] | U]; cbn [funit_drop fmoddef_drop dec_unit]; [ rewrite dec_mod_drop |]; reflexivity.
-  - destruct t as [m xs]; cbn [ftrie_drop]; rewrite !dec_mod_unfold; f_equal.
-    revert m; fix IHm 1; intros [| l k e r h]; cbn [SRaw.map dec_tree_with]; [ reflexivity |].
-    rewrite (IHm l), (IHm r), (dec_entry_drop e); reflexivity.
-  - destruct e; cbn [fentry_drop dec_entry]; rewrite ?dec_unit_drop, ?dec_mod_drop; reflexivity.
+  - destruct u as [Δ [t] | U]; cbn [funit_drop fmoddef_drop decode_unit]; [ rewrite decode_mod_drop |]; reflexivity.
+  - destruct t as [m xs]; cbn [ftrie_drop]; rewrite !decode_mod_unfold; f_equal.
+    revert m; fix IHm 1; intros [| l k e r h]; cbn [SRaw.map decode_tree_with]; [ reflexivity |].
+    rewrite (IHm l), (IHm r), (decode_entry_drop e); reflexivity.
+  - destruct e; cbn [fentry_drop decode_entry]; rewrite ?decode_unit_drop, ?decode_mod_drop; reflexivity.
 Qed.
 
-Lemma dec_loc_drop : forall r, dec_loc (loc_drop r) = dec_loc r.
-Proof. intros [T t]; unfold dec_loc, loc_drop; cbn; rewrite dec_mod_drop; reflexivity. Qed.
+Lemma decode_loc_drop : forall r, decode_loc (loc_drop r) = decode_loc r.
+Proof. intros [T t]; unfold decode_loc, loc_drop; cbn; rewrite decode_mod_drop; reflexivity. Qed.
 
 (** *** A Translation Stores No Value *)
 
@@ -1831,23 +1831,23 @@ Proof. intros [m xs] x e; cbn; rewrite sraw_map_add; reflexivity. Qed.
 Lemma ftrie_drop_empty : ftrie_drop ft_empty = ft_empty.
 Proof. reflexivity. Qed.
 
-Fixpoint tr_unit_drop (U : gunit) : funit_drop (tr_unit U) = tr_unit U
-with tr_mod_drop (Φ : gmod) : ftrie_drop (tr_mod Φ) = tr_mod Φ
-with tr_entry_drop (E : gentry) : fentry_drop (tr_entry E) = tr_entry E.
+Fixpoint translate_unit_drop (U : gunit) : funit_drop (translate_unit U) = translate_unit U
+with translate_mod_drop (Φ : gmod) : ftrie_drop (translate_mod Φ) = translate_mod Φ
+with translate_entry_drop (E : gentry) : fentry_drop (translate_entry E) = translate_entry E.
 Proof.
-  - destruct U as [Δ [[|] Φ | H]]; cbn [tr_unit funit_drop fmoddef_drop]; rewrite ?tr_mod_drop; reflexivity.
-  - destruct Φ as [| Φ x E | Φ H its]; cbn [tr_mod]; [ reflexivity | | apply tr_mod_drop ].
-    rewrite ftrie_drop_ext, tr_mod_drop, tr_entry_drop; reflexivity.
-  - destruct E; cbn [tr_entry fentry_drop]; rewrite ?tr_unit_drop, ?tr_mod_drop; reflexivity.
+  - destruct U as [Δ [[|] Φ | H]]; cbn [translate_unit funit_drop fmoddef_drop]; rewrite ?translate_mod_drop; reflexivity.
+  - destruct Φ as [| Φ x E | Φ H its]; cbn [translate_mod]; [ reflexivity | | apply translate_mod_drop ].
+    rewrite ftrie_drop_ext, translate_mod_drop, translate_entry_drop; reflexivity.
+  - destruct E; cbn [translate_entry fentry_drop]; rewrite ?translate_unit_drop, ?translate_mod_drop; reflexivity.
 Qed.
 
-Lemma tr_loc_drop : forall r, loc_drop (tr_loc r) = tr_loc r.
-Proof. intros [T Φ]; unfold loc_drop, tr_loc; cbn; rewrite tr_mod_drop; reflexivity. Qed.
+Lemma translate_loc_drop : forall r, loc_drop (translate_loc r) = translate_loc r.
+Proof. intros [T Φ]; unfold loc_drop, translate_loc; cbn; rewrite translate_mod_drop; reflexivity. Qed.
 
 (** *** The Lookups in a Body Commute with Dropping *)
 
 Lemma ft_find_drop : forall t x, ft_find (ftrie_drop t) x = option_map fentry_drop (ft_find t x).
-Proof. intros [m xs] x; unfold ft_find; cbn; apply sfind_map. Qed.
+Proof. intros [m xs] x; unfold ft_find; cbn; apply string_tree_find_map. Qed.
 
 Lemma ft_names_drop : forall t, ft_names (ftrie_drop t) = ft_names t.
 Proof. intros [m xs]; reflexivity. Qed.
@@ -1920,17 +1920,17 @@ Definition fframe_drop (f : fframe) : fframe := mk_fframe (ff_path f) (ff_kind f
 (** The frames, their values dropped *)
 Definition fstack_drop (fs : fstack) : fstack := map fframe_drop fs.
 
-Lemma dec_stack_drop : forall fs, dec_stack (fstack_drop fs) = dec_stack fs.
+Lemma decode_stack_drop : forall fs, decode_stack (fstack_drop fs) = decode_stack fs.
 Proof.
-  unfold dec_stack, fstack_drop; induction fs as [| f fs IH]; [ reflexivity |]; cbn [map] in *.
-  unfold dec_frame, fframe_drop; cbn [ff_path ff_kind ff_params ff_body]; rewrite dec_mod_drop.
+  unfold decode_stack, fstack_drop; induction fs as [| f fs IH]; [ reflexivity |]; cbn [map] in *.
+  unfold decode_frame, fframe_drop; cbn [ff_path ff_kind ff_params ff_body]; rewrite decode_mod_drop.
   f_equal; exact IH.
 Qed.
 
 Lemma fs_of_drop : forall Ξ, fstack_drop (fs_of Ξ) = fs_of Ξ.
 Proof.
   unfold fs_of, fstack_drop; induction Ξ as [| [[mp K] U] Ξ IH]; [ reflexivity |]; cbn [map] in *.
-  unfold tr_frame, fframe_drop; cbn [ff_path ff_kind ff_params ff_body]; rewrite tr_mod_drop.
+  unfold translate_frame, fframe_drop; cbn [ff_path ff_kind ff_params ff_body]; rewrite translate_mod_drop.
   f_equal; exact IH.
 Qed.
 
@@ -1994,68 +1994,68 @@ Section LookupsDrop.
   Variables (uf ufd : path -> option funit).
   Hypothesis Hufd : forall fp, ufd fp = option_map funit_drop (uf fp).
 
-  Lemma fgc_resolve_drop : forall fs p, fgc_resolve ufd (fstack_drop fs) p = fgc_resolve uf fs p.
+  Lemma fast_gc_resolve_drop : forall fs p, fast_gc_resolve ufd (fstack_drop fs) p = fast_gc_resolve uf fs p.
   Proof.
-    intros; unfold fgc_resolve; rewrite fs_find_drop.
+    intros; unfold fast_gc_resolve; rewrite fs_find_drop.
     destruct (fs_find fs p) as [[f ip] |]; cbn [option_map]; [ apply ft_resolve_drop |].
     rewrite Hufd; destruct (uf (q_unit p)); cbn [option_map]; [ rewrite fu_body_drop; apply ft_resolve_drop | reflexivity ].
   Qed.
 
-  Lemma fgc_module_drop : forall fs p, fgc_module ufd (fstack_drop fs) p = fgc_module uf fs p.
+  Lemma fast_gc_module_drop : forall fs p, fast_gc_module ufd (fstack_drop fs) p = fast_gc_module uf fs p.
   Proof.
-    intros; unfold fgc_module; rewrite fs_find_tele_drop.
+    intros; unfold fast_gc_module; rewrite fs_find_tele_drop.
     destruct (fs_find_tele fs p) as [[[f [| x ip]] T] |]; cbn [option_map]; [ reflexivity | apply ft_submodule_drop |].
     rewrite Hufd; destruct (uf (q_unit p)); cbn [option_map]; [ rewrite fu_params_drop, fu_body_drop; apply ft_module_drop | reflexivity ].
   Qed.
 
-  Lemma fgc_body_drop : forall fs p, fgc_body ufd (fstack_drop fs) p = option_map loc_drop (fgc_body uf fs p).
+  Lemma fast_gc_body_drop : forall fs p, fast_gc_body ufd (fstack_drop fs) p = option_map loc_drop (fast_gc_body uf fs p).
   Proof.
-    intros; unfold fgc_body; rewrite fs_find_tele_drop.
+    intros; unfold fast_gc_body; rewrite fs_find_tele_drop.
     destruct (fs_find_tele fs p) as [[[f [| x ip]] T] |]; cbn [option_map]; [ reflexivity | apply ft_subbody_drop |].
     rewrite Hufd; destruct (uf (q_unit p)); cbn [option_map]; [ rewrite fu_params_drop, fu_body_drop; apply ft_body_drop | reflexivity ].
   Qed.
 
-  Lemma fgc_frame_drop : forall fs p, fgc_frame (fstack_drop fs) p = option_map loc_drop (fgc_frame fs p).
+  Lemma fast_gc_frame_drop : forall fs p, fast_gc_frame (fstack_drop fs) p = option_map loc_drop (fast_gc_frame fs p).
   Proof.
-    intros; unfold fgc_frame; rewrite fs_find_tele_drop.
+    intros; unfold fast_gc_frame; rewrite fs_find_tele_drop.
     destruct (fs_find_tele fs p) as [[[f [| x ip]] T] |]; reflexivity.
   Qed.
 
-  Lemma fgc_loc_drop : forall fs p, fgc_loc ufd (fstack_drop fs) p = option_map loc_drop (fgc_loc uf fs p).
+  Lemma fast_gc_loc_drop : forall fs p, fast_gc_loc ufd (fstack_drop fs) p = option_map loc_drop (fast_gc_loc uf fs p).
   Proof.
-    intros; unfold fgc_loc; rewrite fgc_frame_drop.
-    destruct (fgc_frame fs p); cbn [option_map]; [ reflexivity | apply fgc_body_drop ].
+    intros; unfold fast_gc_loc; rewrite fast_gc_frame_drop.
+    destruct (fast_gc_frame fs p); cbn [option_map]; [ reflexivity | apply fast_gc_body_drop ].
   Qed.
 
-  Lemma fgc_mlookup_drop : forall fs p, fgc_mlookup ufd (fstack_drop fs) p = fgc_mlookup uf fs p.
-  Proof. intros; unfold fgc_mlookup; rewrite fs_find_ind_drop, fgc_module_drop; reflexivity. Qed.
+  Lemma fast_gc_mlookup_drop : forall fs p, fast_gc_mlookup ufd (fstack_drop fs) p = fast_gc_mlookup uf fs p.
+  Proof. intros; unfold fast_gc_mlookup; rewrite fs_find_ind_drop, fast_gc_module_drop; reflexivity. Qed.
 
-  Lemma fgc_ind_drop : forall fs p, fgc_ind ufd (fstack_drop fs) p = fgc_ind uf fs p.
-  Proof. intros; unfold fgc_ind; rewrite fgc_mlookup_drop; reflexivity. Qed.
+  Lemma fast_gc_ind_drop : forall fs p, fast_gc_ind ufd (fstack_drop fs) p = fast_gc_ind uf fs p.
+  Proof. intros; unfold fast_gc_ind; rewrite fast_gc_mlookup_drop; reflexivity. Qed.
 
-  Lemma fgc_entry_drop : forall fs p, fgc_entry ufd (fstack_drop fs) p = option_map fentry_drop (fgc_entry uf fs p).
+  Lemma fast_gc_entry_drop : forall fs p, fast_gc_entry ufd (fstack_drop fs) p = option_map fentry_drop (fast_gc_entry uf fs p).
   Proof.
-    intros; unfold fgc_entry; rewrite fs_find_drop.
+    intros; unfold fast_gc_entry; rewrite fs_find_drop.
     destruct (fs_find fs p) as [[f ip] |]; cbn [option_map]; [ apply ft_entry_drop |].
     rewrite Hufd; destruct (uf (q_unit p)); cbn [option_map]; [ rewrite fu_body_drop; apply ft_entry_drop | reflexivity ].
   Qed.
 
-  Lemma fgc_term_drop : forall fs p, fgc_term ufd (fstack_drop fs) p = fgc_term uf fs p.
+  Lemma fast_gc_term_drop : forall fs p, fast_gc_term ufd (fstack_drop fs) p = fast_gc_term uf fs p.
   Proof.
-    intros; unfold fgc_term; rewrite fgc_resolve_drop, fgc_entry_drop.
-    destruct (fgc_resolve uf fs p) as [[[|] ? ? [?|] | | | |] |];
-      try reflexivity; destruct (fgc_entry uf fs p) as [[] |]; reflexivity.
+    intros; unfold fast_gc_term; rewrite fast_gc_resolve_drop, fast_gc_entry_drop.
+    destruct (fast_gc_resolve uf fs p) as [[[|] ? ? [?|] | | | |] |];
+      try reflexivity; destruct (fast_gc_entry uf fs p) as [[] |]; reflexivity.
   Qed.
 
-  Lemma fgc_record_drop : forall fs p, fgc_record ufd (fstack_drop fs) p = fgc_record uf fs p.
+  Lemma fast_gc_record_drop : forall fs p, fast_gc_record ufd (fstack_drop fs) p = fast_gc_record uf fs p.
   Proof.
-    intros; unfold fgc_record; rewrite fs_find_record_drop, fgc_entry_drop.
-    destruct (fs_find_record fs p); [ reflexivity |]; destruct (fgc_entry uf fs p) as [[] |]; reflexivity.
+    intros; unfold fast_gc_record; rewrite fs_find_record_drop, fast_gc_entry_drop.
+    destruct (fs_find_record fs p); [ reflexivity |]; destruct (fast_gc_entry uf fs p) as [[] |]; reflexivity.
   Qed.
 
-  Lemma fgc_unit_drop : forall fs H, fgc_unit ufd (fstack_drop fs) H = option_map loc_drop (fgc_unit uf fs H).
+  Lemma fast_gc_unit_drop : forall fs H, fast_gc_unit ufd (fstack_drop fs) H = option_map loc_drop (fast_gc_unit uf fs H).
   Proof.
-    intros; unfold fgc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
+    intros; unfold fast_gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
     rewrite fs_find_tele_drop, fs_find_ind_drop, fs_find_record_drop.
     destruct (fs_find_tele fs mp) as [[[f [| x ip]] T] |]; cbn [option_map].
     - destruct (fs_find_ind fs mp), (fs_find_record fs mp); reflexivity.
@@ -2067,47 +2067,47 @@ End LookupsDrop.
 
 (** *** Filed Units *)
 
-Lemma pfind_map : forall {A B} (f : A -> B) x m, pfind x (PM.Raw.map f m) = option_map f (pfind x m).
+Lemma path_tree_find_map : forall {A B} (f : A -> B) x m, path_tree_find x (PM.Raw.map f m) = option_map f (path_tree_find x m).
 Proof. intros A B f x; induction m as [| l IHl y d r IHr h]; cbn; [ reflexivity |]; destruct (PathOrd.compare x y); auto. Qed.
 
-Lemma pk_find_map : forall {A B} (f : A -> B) fp m, pk_find fp (PM.map f m) = option_map f (pk_find fp m).
-Proof. intros; unfold pk_find; apply pfind_map. Qed.
+Lemma path_key_find_map : forall {A B} (f : A -> B) fp m, path_key_find fp (PM.map f m) = option_map f (path_key_find fp m).
+Proof. intros; unfold path_key_find; apply path_tree_find_map. Qed.
 
 (** The filed units and the units seen, their values dropped *)
 Definition funits_drop (s : funits) : funits :=
-  mk_funits (PM.map funit_drop (fus_map s)) (fus_order s) (PM.map funit_drop (fus_vis s)).
+  mk_funits (PM.map funit_drop (fus_map s)) (fus_order s) (PM.map funit_drop (fus_visible s)).
 
 Lemma fus_find_drop : forall s fp, fus_find (funits_drop s) fp = option_map funit_drop (fus_find s fp).
-Proof. intros; apply pk_find_map. Qed.
+Proof. intros; apply path_key_find_map. Qed.
 
-Lemma dec_units_drop : forall s, dec_units (funits_drop s) = dec_units s.
+Lemma decode_units_drop : forall s, decode_units (funits_drop s) = decode_units s.
 Proof.
-  intros s; unfold dec_units; cbn [fus_order funits_drop].
+  intros s; unfold decode_units; cbn [fus_order funits_drop].
   induction (fus_order s) as [| fp L IH]; [ reflexivity |]; cbn [flat_map].
-  rewrite fus_find_drop, IH; destruct (fus_find s fp); cbn [option_map]; rewrite ?dec_unit_drop; reflexivity.
+  rewrite fus_find_drop, IH; destruct (fus_find s fp); cbn [option_map]; rewrite ?decode_unit_drop; reflexivity.
 Qed.
 
 (** The units seen at [s] are those filed at the paths of [D], their
     stored values dropped: a unit seen and the unit filed at its path may
     differ in their stored values only. *)
-Definition vis_rep (s : funits) (D : list path) : Prop :=
-  forall fp, option_map funit_drop (pk_find fp (fus_vis s)) =
+Definition visible_rep (s : funits) (D : list path) : Prop :=
+  forall fp, option_map funit_drop (path_key_find fp (fus_visible s)) =
         if existsb (path_beq fp) D then option_map funit_drop (fus_find s fp) else None.
 
 (** The units, their values dropped, are seen exactly. *)
-Lemma vis_rep_drop : forall s D, vis_rep s D -> vis_rep_exact (funits_drop s) D.
+Lemma visible_rep_drop : forall s D, visible_rep s D -> visible_rep_exact (funits_drop s) D.
 Proof.
-  intros s D H fp; unfold vis_rep, vis_rep_exact in *; rewrite fus_find_drop.
-  change (fus_vis (funits_drop s)) with (PM.map funit_drop (fus_vis s)); rewrite pk_find_map, H.
+  intros s D H fp; unfold visible_rep, visible_rep_exact in *; rewrite fus_find_drop.
+  change (fus_visible (funits_drop s)) with (PM.map funit_drop (fus_visible s)); rewrite path_key_find_map, H.
   destruct (existsb _ _); reflexivity.
 Qed.
 
 (** Seeing nothing *)
-Lemma vis_rep_nil : forall s, vis_rep (fus_with_vis s (PM.empty _)) nil.
-Proof. intros s fp; cbn [fus_vis fus_with_vis]; rewrite pk_find_empty; reflexivity. Qed.
+Lemma visible_rep_nil : forall s, visible_rep (fus_with_visible s (PM.empty _)) nil.
+Proof. intros s fp; cbn [fus_visible fus_with_visible]; rewrite path_key_find_empty; reflexivity. Qed.
 
 (** The same paths, in another list *)
-Lemma vis_rep_ext : forall s D D', (forall x, In x D <-> In x D') -> vis_rep s D -> vis_rep s D'.
+Lemma visible_rep_ext : forall s D D', (forall x, In x D <-> In x D') -> visible_rep s D -> visible_rep s D'.
 Proof.
   intros s D D' HD H fp; rewrite H.
   destruct (existsb (path_beq fp) D) eqn:E1, (existsb (path_beq fp) D') eqn:E2; try reflexivity.
@@ -2116,15 +2116,15 @@ Proof.
 Qed.
 
 (** Seeing [L] as well *)
-Lemma vis_rep_see : forall L s D, vis_rep s D -> vis_rep (fus_see L s) (D ++ L).
+Lemma visible_rep_see : forall L s D, visible_rep s D -> visible_rep (fus_see L s) (D ++ L).
 Proof.
-  intros L s; unfold vis_rep, fus_see; cbn [fus_vis fus_with_vis]; generalize (fus_vis s) as m.
+  intros L s; unfold visible_rep, fus_see; cbn [fus_visible fus_with_visible]; generalize (fus_visible s) as m.
   induction L as [| q L IH]; intros m D H fp; cbn [fold_left].
   - rewrite app_nil_r; apply H.
   - replace (D ++ q :: L) with ((D ++ q :: nil) ++ L) by (rewrite <- app_assoc; reflexivity).
     apply (IH _ (D ++ q :: nil)); clear fp; intros fp.
     rewrite existsb_app; cbn [existsb]; rewrite Bool.orb_false_r.
-    destruct (fus_find s q) as [u |] eqn:Eq; [ rewrite pk_find_add |];
+    destruct (fus_find s q) as [u |] eqn:Eq; [ rewrite path_key_find_add |];
       destruct (path_beq fp q) eqn:Eb; rewrite ?Bool.orb_true_r, ?Bool.orb_false_r.
     + apply path_beq_true in Eb as ->; rewrite Eq; reflexivity.
     + exact (H fp).
@@ -2134,11 +2134,11 @@ Qed.
 
 (** Units filed meanwhile, at paths not seen: the units seen stay, up to
     their stored values. *)
-Lemma vis_rep_grow : forall s s' D, vis_rep s D ->
+Lemma visible_rep_grow : forall s s' D, visible_rep s D ->
     (forall q, In q D -> option_map funit_drop (fus_find s' q) = option_map funit_drop (fus_find s q)) ->
-    vis_rep (fus_with_vis s' (fus_vis s)) D.
+    visible_rep (fus_with_visible s' (fus_visible s)) D.
 Proof.
-  intros s s' D H Hq fp; cbn [fus_vis fus_with_vis]; rewrite H.
+  intros s s' D H Hq fp; cbn [fus_visible fus_with_visible]; rewrite H.
   destruct (existsb (path_beq fp) D) eqn:E; [| reflexivity ].
   apply existsb_path_beq in E; symmetry; exact (Hq fp E).
 Qed.
@@ -2147,31 +2147,31 @@ Qed.
 Lemma units_rep_drop_of_rep : forall s Θ, units_rep s Θ -> units_rep (funits_drop s) Θ.
 Proof.
   intros s Θ [Hf Ho]; constructor; [| exact Ho ].
-  intros fp; rewrite fus_find_drop, Hf; destruct (gds_lookup Θ fp); cbn [option_map]; rewrite ?tr_unit_drop; reflexivity.
+  intros fp; rewrite fus_find_drop, Hf; destruct (gds_lookup Θ fp); cbn [option_map]; rewrite ?translate_unit_drop; reflexivity.
 Qed.
 
 (** Filing one unit keeps the refinement of the dropped units. *)
-Lemma units_rep_drop_file : forall s Θ fp u U, units_rep (funits_drop s) Θ -> funit_drop u = tr_unit U ->
+Lemma units_rep_drop_file : forall s Θ fp u U, units_rep (funits_drop s) Θ -> funit_drop u = translate_unit U ->
     units_rep (funits_drop (fus_file fp u s)) ((fp, U) :: Θ).
 Proof.
   intros s Θ fp u U [Hf Ho] Hu; constructor; cbn [funits_drop fus_order fus_file map fst] in *; [| rewrite Ho; reflexivity ].
-  intros fq; rewrite fus_find_drop; unfold fus_find, fus_file; cbn [fus_map gds_lookup]; rewrite pk_find_add.
+  intros fq; rewrite fus_find_drop; unfold fus_find, fus_file; cbn [fus_map gds_lookup]; rewrite path_key_find_add.
   destruct (path_beq fq fp); [ cbn; rewrite Hu; reflexivity |].
   rewrite <- (Hf fq), fus_find_drop; reflexivity.
 Qed.
 
-Lemma units_rep_drop_with_vis : forall s m Θ, units_rep (funits_drop s) Θ -> units_rep (funits_drop (fus_with_vis s m)) Θ.
+Lemma units_rep_drop_with_visible : forall s m Θ, units_rep (funits_drop s) Θ -> units_rep (funits_drop (fus_with_visible s m)) Θ.
 Proof. intros s m Θ [Hf Ho]; constructor; [ exact Hf | exact Ho ]. Qed.
 
 Lemma units_rep_drop_see : forall L s Θ, units_rep (funits_drop s) Θ -> units_rep (funits_drop (fus_see L s)) Θ.
-Proof. intros; apply units_rep_drop_with_vis; assumption. Qed.
+Proof. intros; apply units_rep_drop_with_visible; assumption. Qed.
 
 (** The view, its values dropped *)
 Definition fview_drop (v : fview) : fview := mk_fview (funits_drop (fv_units v)) (fv_dom v).
 
 Lemma fv_find_drop : forall v fp, fv_find (fview_drop v) fp = option_map funit_drop (fv_find v fp).
-Proof. intros; apply pk_find_map. Qed.
+Proof. intros; apply path_key_find_map. Qed.
 
 Lemma view_deps_drop : forall v, view_deps (fview_drop v) = view_deps v.
-Proof. intros; unfold view_deps, fview_drop; cbn [fv_units fv_dom]; rewrite dec_units_drop; reflexivity. Qed.
+Proof. intros; unfold view_deps, fview_drop; cbn [fv_units fv_dom]; rewrite decode_units_drop; reflexivity. Qed.
 

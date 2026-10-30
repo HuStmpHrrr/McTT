@@ -138,7 +138,7 @@ be.
 
 Almost all checking time goes to normalizations at the initial environment
 of the context. The checker therefore carries that environment along
-(`tenv` in `Extraction/TypeCheckBase.v`, `nbe_ty_env_impl` in
+(`checker_env` in `Extraction/TypeCheckBase.v`, `nbe_ty_env_impl` in
 `Extraction/NbE.v`), and never rebuilds it per normalization.  The
 refinements of the checker and of evaluation are in
 [`refinement.md`](refinement.md).

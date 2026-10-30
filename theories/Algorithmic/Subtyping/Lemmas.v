@@ -29,14 +29,14 @@ Lemma nbe_ty_pi_cod : forall Γ A B A' B',
 Proof.
   intros * Hn.
   inversion Hn; subst.
-  dir_inversion_by_head eval_exp; subst.
-  dir_inversion_by_head read_typ; subst.
+  directed_inversion_by_head eval_exp; subst.
+  directed_inversion_by_head read_typ; subst.
   econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ].
 Qed.
 
 (** The two normal forms are their own normal forms, as the normal forms
     algorithmic subtyping compares are: the sorts their level atoms carry are
-    then the sorts of the atoms ([univ_nf_ws]), which the absorption step of
+    then the sorts of the atoms ([univ_nf_well_scoped]), which the absorption step of
     [lvl_exp_of_le] needs. *)
 Lemma alg_subtyping_nf_sound : forall A B,
     ⊢anf A ⊆ B ->
@@ -53,8 +53,8 @@ Proof.
   (** Two small universes: the order on canonical levels is the level
       equation [lvl_exp_of_le], at a sort both levels are of. *)
   - gen_presups.
-    destruct (univ_nf_ws HA HnA) as (n1 & Ht & Hc & Hxs).
-    destruct (univ_nf_ws HB HnB) as (n2 & Ht' & Hd & Hys).
+    destruct (univ_nf_well_scoped HA HnA) as (n1 & Ht & Hc & Hxs).
+    destruct (univ_nf_well_scoped HB HnB) as (n2 & Ht' & Hd & Hys).
     assert (Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@(Nat.max n1 n2))
       by (eapply wf_exp_subtyp'; [ exact Ht | apply wf_subtyp_level; [ lia | mauto 2 ] ]).
     assert (Γ ⊢ lvl_exp_of d (List.map atom_exp ys) : Level@(Nat.max n1 n2))

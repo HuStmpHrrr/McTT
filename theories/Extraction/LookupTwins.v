@@ -23,7 +23,7 @@ Proof. intros; destruct (fc_gctx F); reflexivity. Qed.
 (** ** Entries *)
 
 (** [ge_private] of the entry a fast one stands for *)
-Lemma fe_private_dec : forall e, fe_private e = ge_private (dec_entry e).
+Lemma fe_private_dec : forall e, fe_private e = ge_private (decode_entry e).
 Proof. intros []; reflexivity. Qed.
 
 (** [entry_alias]'s twin: the module an alias entry names *)
@@ -34,7 +34,7 @@ Definition fe_alias (e : fentry) : option modexp :=
   | _ => None
   end.
 
-Lemma fe_alias_dec : forall e, fe_alias e = entry_alias (dec_entry e).
+Lemma fe_alias_dec : forall e, fe_alias e = entry_alias (decode_entry e).
 Proof. intros [| pv [Δ [t] | [Δ [sm Φ | E]]] | | pv A M [Δ [t] | [Δ [sm Φ | E]]] |]; reflexivity. Qed.
 
 (** Whether an entry has a body: [entry_is_body], decided, on fast
@@ -45,7 +45,7 @@ Definition fe_is_body_b (e : fentry) : bool :=
   | _ => false
   end.
 
-Lemma fe_is_body_b_spec : forall e, fe_is_body_b e = true <-> entry_is_body (dec_entry e).
+Lemma fe_is_body_b_spec : forall e, fe_is_body_b e = true <-> entry_is_body (decode_entry e).
 Proof.
   intros [| pv [Δ [t] | [Δ [sm Φ | E]]] | | pv A M [Δ [t] | [Δ [sm Φ | E]]] |]; cbn;
     split; intros; first [ exact I | reflexivity | discriminate | contradiction ].
@@ -315,7 +315,7 @@ Section Twins.
         match fc_ind F pq with
         | Some D =>
             if view_of D m pc k && blocks_fit D Bks
-            then match img_pats (List.repeat true d) (List.firstn (ind_nu D) As) with
+            then match image_pats (List.repeat true d) (List.firstn (ind_nu D) As) with
                  | Some Us => (pq, Us) :: rest
                  | None => rest
                  end
@@ -364,53 +364,53 @@ Section Twins.
     destruct (app_head I); try reflexivity; rewrite member_name_f_ok; reflexivity.
   Qed.
 
-  (** [grec_member_name] *)
-  Definition grec_member_name_f (Mi : imember) : string :=
+  (** [recursor_member_name] *)
+  Definition recursor_member_name_f (Mi : imember) : string :=
     match im_head Mi with
     | mh_decl pm => qname_last pm
     | mh_view qc k Is _ => (member_name_f qc k ++ inst_member_names_f Is)%string
     | mh_record qr Is _ => (qname_last qr ++ inst_member_names_f Is)%string
     end.
 
-  Lemma grec_member_name_f_ok : forall Mi, grec_member_name_f Mi = grec_member_name Θ Ξ Mi.
+  Lemma recursor_member_name_f_ok : forall Mi, recursor_member_name_f Mi = recursor_member_name Θ Ξ Mi.
   Proof.
-    intros; unfold grec_member_name_f, grec_member_name; destruct (im_head Mi);
+    intros; unfold recursor_member_name_f, recursor_member_name; destruct (im_head Mi);
       rewrite ?member_name_f_ok, ?inst_member_names_f_ok; reflexivity.
   Qed.
 
-  (** [grec_names] *)
-  Definition grec_names_f (D : ind_decl) : list string :=
-    List.map (fun x => ("rec_" ++ x)%string) (grec_fresh_names nil (List.map grec_member_name_f (ind_bmembers D))).
+  (** [recursor_names] *)
+  Definition recursor_names_f (D : ind_decl) : list string :=
+    List.map (fun x => ("rec_" ++ x)%string) (recursor_fresh_names nil (List.map recursor_member_name_f (ind_block_members D))).
 
-  Lemma grec_names_f_ok : forall D, grec_names_f D = grec_names Θ Ξ D.
-  Proof. intros; unfold grec_names_f, grec_names; rewrite (map_ext _ _ grec_member_name_f_ok); reflexivity. Qed.
+  Lemma recursor_names_f_ok : forall D, recursor_names_f D = recursor_names Θ Ξ D.
+  Proof. intros; unfold recursor_names_f, recursor_names; rewrite (map_ext _ _ recursor_member_name_f_ok); reflexivity. Qed.
 
-  (** [grec_mod_cmd] *)
-  Definition grec_mod_cmd_f (pq : qname) (D : ind_decl) (Δu : ctx) : core_cmd :=
-    core_cmd_gen (core_cmd_mod "Rec" false (grec_tele pq D Δu)
-      (List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_gen (core_cmd_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj))))
-         (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) (grec_names_f D)))).
+  (** [recursor_mod_cmd] *)
+  Definition recursor_mod_cmd_f (pq : qname) (D : ind_decl) (Δu : ctx) : core_cmd :=
+    core_cmd_gen (core_cmd_mod "Rec" false (recursor_tele pq D Δu)
+      (List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_gen (core_cmd_def x true false (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj))))
+         (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) (recursor_names_f D)))).
 
-  Lemma grec_mod_cmd_f_ok : forall pq D Δu, grec_mod_cmd_f pq D Δu = grec_mod_cmd Θ Ξ pq D Δu.
-  Proof. intros; unfold grec_mod_cmd_f, grec_mod_cmd; rewrite grec_names_f_ok; reflexivity. Qed.
+  Lemma recursor_mod_cmd_f_ok : forall pq D Δu, recursor_mod_cmd_f pq D Δu = recursor_mod_cmd Θ Ξ pq D Δu.
+  Proof. intros; unfold recursor_mod_cmd_f, recursor_mod_cmd; rewrite recursor_names_f_ok; reflexivity. Qed.
 
   (** [rec_cmds] *)
   Definition rec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) : list core_cmd :=
-    if raw_decl_rec_field R then grec_mod_cmd_f pq D (raw_decl_uparams R) :: nil else nil.
+    if raw_decl_rec_field R then recursor_mod_cmd_f pq D (raw_decl_uparams R) :: nil else nil.
 
   Lemma rec_cmds_f_ok : forall R pq D, rec_cmds_f R pq D = rec_cmds Θ Ξ R pq D.
-  Proof. intros; unfold rec_cmds_f, rec_cmds; rewrite grec_mod_cmd_f_ok; reflexivity. Qed.
+  Proof. intros; unfold rec_cmds_f, rec_cmds; rewrite recursor_mod_cmd_f_ok; reflexivity. Qed.
 
-  (** [ind_grec_cmds] *)
-  Definition ind_grec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list core_cmd :=
-    if Nat.eqb k 0 && negb (raw_decl_rec_field R) then grec_mod_cmd_f pq D nil :: nil else nil.
+  (** [ind_recursor_cmds] *)
+  Definition ind_recursor_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list core_cmd :=
+    if Nat.eqb k 0 && negb (raw_decl_rec_field R) then recursor_mod_cmd_f pq D nil :: nil else nil.
 
   (** [ind_mod_cmds] *)
   Definition ind_mod_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) (M : imember) : list core_cmd :=
-    List.map (ind_con_cmd pq D k M) (im_cons M) ++ ind_rec_cmds pq D M ++ ind_grec_cmds_f R pq D k.
+    List.map (ind_con_cmd pq D k M) (im_cons M) ++ ind_rec_cmds pq D M ++ ind_recursor_cmds_f R pq D k.
 
   Lemma ind_mod_cmds_f_ok : forall R pq D k M, ind_mod_cmds_f R pq D k M = ind_mod_cmds Θ Ξ R pq D k M.
-  Proof. intros; unfold ind_mod_cmds_f, ind_mod_cmds, ind_grec_cmds_f, ind_grec_cmds; rewrite grec_mod_cmd_f_ok; reflexivity. Qed.
+  Proof. intros; unfold ind_mod_cmds_f, ind_mod_cmds, ind_recursor_cmds_f, ind_recursor_cmds; rewrite recursor_mod_cmd_f_ok; reflexivity. Qed.
 
   Lemma elim_target_f_ok : forall pc k Rs m Bks, elim_target_f pc k Rs m Bks = elim_target Θ Ξ pc k Rs m Bks.
   Proof.

@@ -146,7 +146,7 @@ Proof.
   destruct E; try contradiction; destruct (String.eqb y z); auto.
 Qed.
 
-(** [gm_coh T Φ]: the body [Φ], filed over the telescope [T], is coherent
+(** [gm_coherent T Φ]: the body [Φ], filed over the telescope [T], is coherent
     with it: every definition's type is closed over [T] by [Π]s at its
     tag, every module's and
     alias's parameters extend [T], and every inductive member's uniform
@@ -154,20 +154,20 @@ Qed.
     definition with a module part has a type and a term closed over [T],
     the [Π] and the [λ] over it, and its module part is an alias whose
     parameters extend [T]. *)
-Fixpoint gm_coh (T : ctx) (Φ : gmod) : Prop :=
+Fixpoint gm_coherent (T : ctx) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
-  | gm_open Φ0 _ _ => gm_coh T Φ0
-  | gm_ext Φ0 _ (ge_def _ _ r A _) => gm_coh T Φ0 /\ exists A0, A = ctx_pi_at r T A0
-  | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body sm Φ'))) => gm_coh T Φ0 /\ tele_ass Δ /\ gm_coh (Δ ++ T) Φ'
-  | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_alias _))) => gm_coh T Φ0 /\ exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
+  | gm_open Φ0 _ _ => gm_coherent T Φ0
+  | gm_ext Φ0 _ (ge_def _ _ r A _) => gm_coherent T Φ0 /\ exists A0, A = ctx_pi_at r T A0
+  | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body sm Φ'))) => gm_coherent T Φ0 /\ tele_ass Δ /\ gm_coherent (Δ ++ T) Φ'
+  | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_alias _))) => gm_coherent T Φ0 /\ exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
   | gm_ext Φ0 _ (ge_ind _ _ _ D Φ') =>
-      gm_coh T Φ0 /\ (exists Δ0, ind_uparams D = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coh (ind_uparams D) Φ'
+      gm_coherent T Φ0 /\ (exists Δ0, ind_uparams D = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coherent (ind_uparams D) Φ'
   | gm_ext Φ0 _ (ge_def_mod _ A M U) =>
-      gm_coh T Φ0 /\ (exists A0 M0, A = ctx_pi T A0 /\ M = ctx_fn T M0) /\
+      gm_coherent T Φ0 /\ (exists A0 M0, A = ctx_pi T A0 /\ M = ctx_fn T M0) /\
       exists Δ0 E, U = gu_mk (Δ0 ++ T) (md_alias E) /\ tele_ass Δ0
   | gm_ext Φ0 _ (ge_record _ p R Φ') =>
-      gm_coh T Φ0 /\ (exists Δ0, record_params R = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coh (record_mod_tele p R) Φ'
+      gm_coherent T Φ0 /\ (exists Δ0, record_params R = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coherent (record_mod_tele p R) Φ'
   end.
 
 (** A record's module telescope extends what its parameters extend, by
@@ -178,8 +178,8 @@ Proof.
   intros * HP HΔ; unfold record_mod_tele; rewrite HP; split; [ reflexivity | constructor; eauto ].
 Qed.
 
-Lemma gm_coh_subbody : forall Φ T x ip T' Φ',
-    gm_coh T Φ -> gm_subbody T Φ x ip = Some (T', Φ') -> gm_coh T' Φ' /\ exists Δ, T' = Δ ++ T /\ tele_ass Δ.
+Lemma gm_coherent_subbody : forall Φ T x ip T' Φ',
+    gm_coherent T Φ -> gm_subbody T Φ x ip = Some (T', Φ') -> gm_coherent T' Φ' /\ exists Δ, T' = Δ ++ T /\ tele_ass Δ.
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * Hc H; cbn in Hc, H; [ discriminate | | exact (IH _ _ _ _ _ _ Hc H) ].
   destruct E as [b pv ra A B | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Aa Ma [Δa [? Φa | Ea]] | ? pr Rr ΦR];
@@ -203,8 +203,8 @@ Proof.
                            split; [ reflexivity | apply Forall_app; auto ] ].
 Qed.
 
-Lemma gm_coh_child : forall Φ T y r,
-    gm_coh T Φ -> gm_submodule T Φ y nil = Some r ->
+Lemma gm_coherent_child : forall Φ T y r,
+    gm_coherent T Φ -> gm_submodule T Φ y nil = Some r ->
     (exists Δ oD, r = mr_body (Δ ++ T) oD /\ tele_ass Δ) \/
     (exists U Δ, r = mr_alias U /\ gu_params U = Δ ++ T /\ tele_ass Δ).
 Proof.
@@ -239,21 +239,21 @@ Proof.
   rewrite Hp in Ha; apply Forall_app in Ha as [Ha _]; exact Ha.
 Qed.
 
-Lemma wf_gmod_coh :
+Lemma wf_gmod_coherent :
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> forall Ξ' mp' K' Δ Φ, Ξ = (mp', K', gu_body Δ Φ) :: Ξ' ->
      match E with
      | ge_def _ _ r A _ => exists A0, A = ctx_pi_at r (Δ ++ gs_tele Ξ') A0
-     | ge_mod _ (gu_mk Δ1 (md_body sm Φ1)) => tele_ass Δ1 /\ gm_coh (Δ1 ++ Δ ++ gs_tele Ξ') Φ1
+     | ge_mod _ (gu_mk Δ1 (md_body sm Φ1)) => tele_ass Δ1 /\ gm_coherent (Δ1 ++ Δ ++ gs_tele Ξ') Φ1
      | ge_mod _ (gu_mk Δ1 (md_alias _)) => exists Δ0, Δ1 = Δ0 ++ Δ ++ gs_tele Ξ' /\ tele_ass Δ0
      | ge_ind _ _ _ D Φ1 =>
-         (exists Δ0, ind_uparams D = Δ0 ++ Δ ++ gs_tele Ξ' /\ tele_ass Δ0) /\ gm_coh (ind_uparams D) Φ1
+         (exists Δ0, ind_uparams D = Δ0 ++ Δ ++ gs_tele Ξ' /\ tele_ass Δ0) /\ gm_coherent (ind_uparams D) Φ1
      | ge_def_mod _ A M U =>
          (exists A0 M0, A = ctx_pi (Δ ++ gs_tele Ξ') A0 /\ M = ctx_fn (Δ ++ gs_tele Ξ') M0) /\
          exists Δ0 E, U = gu_mk (Δ0 ++ Δ ++ gs_tele Ξ') (md_alias E) /\ tele_ass Δ0
      | ge_record _ p R Φ1 =>
-         (exists Δ0, record_params R = Δ0 ++ Δ ++ gs_tele Ξ' /\ tele_ass Δ0) /\ gm_coh (record_mod_tele p R) Φ1
+         (exists Δ0, record_params R = Δ0 ++ Δ ++ gs_tele Ξ' /\ tele_ass Δ0) /\ gm_coherent (record_mod_tele p R) Φ1
      end) /\
-  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> tele_ass Δ /\ gm_coh (Δ ++ gs_tele Ξ) Φ).
+  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> tele_ass Δ /\ gm_coherent (Δ ++ gs_tele Ξ) Φ).
 Proof.
   apply global_wf_mut_ind; intros; subst; cbn.
   - eauto.
@@ -268,7 +268,7 @@ Proof.
     split; [| exact I ].
     match goal with Hp : ind_uparams ?D = ?Δd ++ _ |- _ => exact (uparams_split _ _ _ Hp ltac:(assumption)) end.
   - (* a declared member with the body of its module, over its uniform parameters *)
-    match goal with IH : tele_ass ?Δu /\ gm_coh _ _, Hp : ind_uparams _ = _ |- _ =>
+    match goal with IH : tele_ass ?Δu /\ gm_coherent _ _, Hp : ind_uparams _ = _ |- _ =>
       destruct IH as [HΔu Hc]; cbn in Hp; rewrite Hp; split; [ exists Δu; split; [ reflexivity | exact HΔu ] | exact Hc ] end.
   - (* a definition with a module part *)
     split; [ do 2 eexists; split; reflexivity | do 2 eexists; split; [ reflexivity | assumption ] ].
@@ -276,7 +276,7 @@ Proof.
     split; [| exact I ].
     match goal with Hp : record_params ?R = ?Δd ++ _ |- _ => exact (params_split _ _ _ Hp ltac:(assumption)) end.
   - (* a record with the body of its module, over its parameters and a value *)
-    match goal with IH : tele_ass (_ :: ?Δu) /\ gm_coh _ _, Hp : record_params _ = _ |- _ =>
+    match goal with IH : tele_ass (_ :: ?Δu) /\ gm_coherent _ _, Hp : record_params _ = _ |- _ =>
       destruct IH as [HΔu Hc]; cbn in Hp; unfold record_mod_tele; rewrite Hp;
       split; [ exists Δu; split; [ reflexivity | inversion HΔu; assumption ] | exact Hc ] end.
   - split; [ assumption | exact I ].
@@ -316,34 +316,34 @@ Qed.
 
 (** ** Coherence of What a Well-Formed Context Reads *)
 
-Lemma wf_gstack_coh : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
-    forall p U ip T, gs_find_tele Ξ p = Some (U, ip, T) -> gm_coh (gu_params U ++ T) (gu_mod U).
+Lemma wf_gstack_coherent : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
+    forall p U ip T, gs_find_tele Ξ p = Some (U, ip, T) -> gm_coherent (gu_params U ++ T) (gu_mod U).
 Proof.
   induction 1 as [| | Θ Ξ mp Kp Δ Φ HΞ IH HΦ Hff]; intros * Hf; cbn in Hf; try discriminate.
   destruct (qname_strip mp p); [| eauto ].
   injection Hf as <- <- <-.
-  exact (proj2 (proj2 wf_gmod_coh _ _ _ _ _ _ HΦ)).
+  exact (proj2 (proj2 wf_gmod_coherent _ _ _ _ _ _ HΦ)).
 Qed.
 
-Lemma wf_gdeps_coh : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall fp U, gds_lookup Θ fp = Some U -> gm_coh (gu_params U) (gu_mod U).
+Lemma wf_gdeps_coherent : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall fp U, gds_lookup Θ fp = Some U -> gm_coherent (gu_params U) (gu_mod U).
 Proof.
   induction 1 as [| Θ fq V Hg IH | Θ Ξ mp Kp Δ Φ HΞ IH HΦ Hff]; intros fp U Hl; cbn in Hl; [ discriminate | | eauto ].
   destruct (path_beq fp fq); [ injection Hl as -> | eauto ].
-  pose proof (wf_gstack_coh _ _ Hg (q_abs fq nil) U nil nil) as Hc; rewrite app_nil_r in Hc; apply Hc.
+  pose proof (wf_gstack_coherent _ _ Hg (q_abs fq nil) U nil nil) as Hc; rewrite app_nil_r in Hc; apply Hc.
   cbn; unfold qname_strip; cbn; rewrite path_beq_refl; reflexivity.
 Qed.
 
-Lemma gc_body_coh : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> gm_coh T Φ.
+Lemma gc_body_coherent : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> gm_coherent T Φ.
 Proof.
   intros * Hg * H.
   pose proof Hg as Hs.
   unfold gc_body in H.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |] eqn:Ef; [ discriminate | |].
-  - exact (proj1 (gm_coh_subbody _ _ _ _ _ _ (wf_gstack_coh _ _ Hs _ _ _ _ Ef) H)).
+  - exact (proj1 (gm_coherent_subbody _ _ _ _ _ _ (wf_gstack_coherent _ _ Hs _ _ _ _ Ef) H)).
   - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; [| discriminate ].
-    pose proof (wf_gdeps_coh _ _ Hs _ _ El) as Hc.
+    pose proof (wf_gdeps_coherent _ _ Hs _ _ El) as Hc.
     destruct (q_chain p) as [| x ip]; cbn in H; [ injection H as <- <-; exact Hc |].
-    exact (proj1 (gm_coh_subbody _ _ _ _ _ _ Hc H)).
+    exact (proj1 (gm_coherent_subbody _ _ _ _ _ _ Hc H)).
 Qed.
 
 (** ** A Closed Module Is Read in its Body *)
@@ -459,7 +459,7 @@ Proof.
   intros * Hg * Hp Hy.
   destruct (gc_module_body _ _ _ _ _ Hp) as [Φ HΦ].
   destruct (closed_read _ _ Hg _ _ _ _ HΦ Hp (y :: nil)) as [H1 _]; rewrite H1 in Hy; cbn in Hy.
-  destruct (gm_coh_child _ _ _ _ (gc_body_coh _ _ Hg _ _ _ HΦ) Hy) as [(Δ & oD0 & [= -> _] & HΔ) | (U & Δ & [=] & _)]; eauto.
+  destruct (gm_coherent_child _ _ _ _ (gc_body_coherent _ _ Hg _ _ _ HΦ) Hy) as [(Δ & oD0 & [= -> _] & HΔ) | (U & Δ & [=] & _)]; eauto.
 Qed.
 
 Lemma wf_gc_alias_params : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T oD y U,
@@ -469,7 +469,7 @@ Proof.
   intros * Hg * Hp Hy.
   destruct (gc_module_body _ _ _ _ _ Hp) as [Φ HΦ].
   destruct (closed_read _ _ Hg _ _ _ _ HΦ Hp (y :: nil)) as [H1 _]; rewrite H1 in Hy; cbn in Hy.
-  destruct (gm_coh_child _ _ _ _ (gc_body_coh _ _ Hg _ _ _ HΦ) Hy) as [(Δ & oD0 & [=] & _) | (U' & Δ & [= <-] & HU & HΔ)]; eauto.
+  destruct (gm_coherent_child _ _ _ _ (gc_body_coherent _ _ Hg _ _ _ HΦ) Hy) as [(Δ & oD0 & [=] & _) | (U' & Δ & [= <-] & HU & HΔ)]; eauto.
 Qed.
 
 (** ** Decomposing Paths into Bodies *)
@@ -576,12 +576,12 @@ Proof.
   - destruct ip as [| w ip]; [ discriminate |]; exact (IH _ _ _ _ _ H ch Hch).
 Qed.
 
-Lemma gm_coh_body_tele : forall T Φ ip T' Φ',
-    gm_coh T Φ -> gm_body T Φ ip = Some (T', Φ') -> gm_coh T' Φ' /\ exists Δ, T' = Δ ++ T /\ tele_ass Δ.
+Lemma gm_coherent_body_tele : forall T Φ ip T' Φ',
+    gm_coherent T Φ -> gm_body T Φ ip = Some (T', Φ') -> gm_coherent T' Φ' /\ exists Δ, T' = Δ ++ T /\ tele_ass Δ.
 Proof.
   intros * Hc H; destruct ip as [| x ip]; cbn in H.
   - injection H as <- <-; split; [ exact Hc | exists nil; split; [ reflexivity | constructor ] ].
-  - exact (gm_coh_subbody _ _ _ _ _ _ Hc H).
+  - exact (gm_coherent_subbody _ _ _ _ _ _ Hc H).
 Qed.
 
 (** ** Frames Do Not Hide the Members of a Closed Module *)

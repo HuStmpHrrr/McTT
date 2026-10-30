@@ -6,7 +6,7 @@
 
     - a weakening of the syntax, in an environment whose module entries
       have the kinds of the original's at the renamed positions, has the
-      same kinds ([kind_ren]);
+      same kinds ([kind_rename]);
     - a module expression has the kinds of its value ([kind_eval], in
       [KindsEval]). *)
 
@@ -115,7 +115,7 @@ Section Kinds.
       gunit_member_kind Θ Ξ ρ (gu_mk nil (md_body sm Φ)) (y :: ch) k.
   Proof.
     intros * Hn.
-    assert (Ey : existsb (String.eqb y) (map iitem_name its) = false).
+    assert (Ey : existsb (String.eqb y) (map import_item_name its) = false).
     { destruct (existsb _ _) eqn:E; [| reflexivity ].
       exfalso; clear - E Hn; induction its as [| it its IH]; cbn in *; [ discriminate |].
       destruct (items_upto y its) as [[] |]; [ discriminate |].
@@ -228,14 +228,14 @@ Section Kinds.
   Definition kinds_rename_mod (H : modexp) : Prop :=
     forall φ ρ ρ', kinds_rename φ ρ ρ' -> forall ch k, modexp_member_kind Θ Ξ ρ (modexp_wk H φ) ch k <-> modexp_member_kind Θ Ξ ρ' H ch k.
 
-  Lemma kinds_items_gen_ren_fwd : forall H, kinds_rename_mod H -> forall φ ρ ρ', kinds_rename φ ρ ρ' ->
+  Lemma kinds_items_gen_rename_fwd : forall H, kinds_rename_mod H -> forall φ ρ ρ', kinds_rename φ ρ ρ' ->
       forall its gs, kinds_items_gen Θ Ξ ρ' H its gs -> kinds_items_gen Θ Ξ ρ (modexp_wk H φ) its (List.map (fun g => generated_item_wk g φ) gs).
   Proof.
     intros H HH φ ρ ρ' Hφ; induction 1; cbn [List.map generated_item_wk exp_wk modexp_wk]; constructor; auto;
       apply (HH _ _ _ Hφ); assumption.
   Qed.
 
-  Lemma kinds_items_gen_ren_bwd : forall H, kinds_rename_mod H -> forall φ ρ ρ', kinds_rename φ ρ ρ' ->
+  Lemma kinds_items_gen_rename_bwd : forall H, kinds_rename_mod H -> forall φ ρ ρ', kinds_rename φ ρ ρ' ->
       forall its gs0, kinds_items_gen Θ Ξ ρ (modexp_wk H φ) its gs0 ->
       exists gs, kinds_items_gen Θ Ξ ρ' H its gs /\ gs0 = List.map (fun g => generated_item_wk g φ) gs.
   Proof.
@@ -299,7 +299,7 @@ Section Kinds.
     - cbn [modexp_wk]; rewrite !modexp_member_kind_mem_iff, (HH _ _ _ H1), (HH _ _ _ H1), (HH _ _ _ H2), (HH _ _ _ H2); reflexivity.
   Qed.
 
-  Lemma kinds_items_gen_env_ren : forall H, kinds_rename_mod H -> forall φ ρ1 ρ1' its gs,
+  Lemma kinds_items_gen_env_rename : forall H, kinds_rename_mod H -> forall φ ρ1 ρ1' its gs,
       kinds_rename φ ρ1 ρ1' -> kinds_items_gen Θ Ξ ρ1' H its gs ->
       forall gs1 A B, List.length A = List.length B ->
       kinds_rename (wk_qn (List.length A) φ) (A ++ ρ1) (B ++ ρ1') ->
@@ -363,16 +363,16 @@ Section Kinds.
       kinds_rename (wk_qn (List.length gs) φ) (kinds_items_gen_env ρ1 0 (List.map (fun g => generated_item_wk g φ) gs)) (kinds_items_gen_env ρ1' 0 gs).
   Proof.
     intros * HH * Hφ Hg.
-    exact (kinds_items_gen_env_ren H HH φ ρ1 ρ1' its gs Hφ Hg gs nil nil eq_refl Hφ (fun g Hin => Hin)).
+    exact (kinds_items_gen_env_rename H HH φ ρ1 ρ1' its gs Hφ Hg gs nil nil eq_refl Hφ (fun g Hin => Hin)).
   Qed.
 
-  #[local] Ltac kih :=
+  #[local] Ltac kinds_rename_ih :=
     match goal with IH : forall φ ρ ρ', kinds_rename φ ρ ρ' -> _, Hr : kinds_rename _ _ _ |- _ => apply IH; exact Hr end.
 
-  Lemma kind_ren :
+  Lemma kind_rename :
     (forall H, kinds_rename_mod H) /\ (forall U, kinds_rename_unit U) /\ (forall D, kinds_rename_def D) /\ (forall Φ, kinds_rename_body Φ).
   Proof.
-    cut ((forall M : exp, True) /\ (forall H, kinds_rename_mod H) /\ (forall b : bnd, True) /\ (forall U, kinds_rename_unit U) /\
+    cut ((forall M : exp, True) /\ (forall H, kinds_rename_mod H) /\ (forall b : binding, True) /\ (forall U, kinds_rename_unit U) /\
          (forall D, kinds_rename_def D) /\ (forall Φ, kinds_rename_body Φ) /\ (forall E, kinds_rename_entry E) /\ (forall e : centry, True));
       [ intros (_ & H1 & _ & H2 & H3 & H4 & _); auto |].
     apply (syn_mut_ind (fun _ => True) kinds_rename_mod (fun _ => True) kinds_rename_unit kinds_rename_def kinds_rename_body kinds_rename_entry (fun _ => True));
@@ -385,9 +385,9 @@ Section Kinds.
       intros φ ρ ρ' Hφ ch kk; cbn [modexp_wk]; rewrite !modexp_member_kind_mem_iff;
         match goal with IH : forall φ ρ ρ', kinds_rename φ ρ ρ' -> _ |- _ => rewrite (IH _ _ _ Hφ), (IH _ _ _ Hφ); reflexivity end.
     - (* an application *)
-      intros φ ρ ρ' Hφ ch kk; cbn [modexp_wk]; rewrite !modexp_member_kind_app_iff; kih.
+      intros φ ρ ρ' Hφ ch kk; cbn [modexp_wk]; rewrite !modexp_member_kind_app_iff; kinds_rename_ih.
     - (* a literal *)
-      intros φ ρ ρ' Hφ ch kk; cbn [modexp_wk]; rewrite !modexp_member_kind_lit_iff; kih.
+      intros φ ρ ρ' Hφ ch kk; cbn [modexp_wk]; rewrite !modexp_member_kind_lit_iff; kinds_rename_ih.
     - (* a unit: its definition under its parameters *)
       intros φ ρ ρ' Hφ ch kk; rewrite gunit_wk_mk, (gunit_member_kind_pad ρ (tele_wk Δ φ)), (gunit_member_kind_pad ρ' Δ), length_tele_wk.
       match goal with IH : forall φ ρ ρ', kinds_rename φ ρ ρ' -> _ |- _ => apply IH end; apply kinds_rename_pad; exact Hφ.
@@ -467,7 +467,7 @@ Section Kinds.
       + intros ρ2' Hk; inversion Hk; subst; cbn [gmod_wk gm_binders].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         match goal with Hg : kinds_items_gen _ _ _ _ _ ?gs |- _ =>
-          pose proof (kinds_items_gen_ren_fwd _ IHH _ _ _ Hr1 _ _ Hg) as Hgw;
+          pose proof (kinds_items_gen_rename_fwd _ IHH _ _ _ Hr1 _ _ Hg) as Hgw;
           pose proof (kinds_items_gen_env_ren0 _ IHH _ _ _ _ _ Hr1 Hg) as Hre;
           pose proof (kinds_items_gen_length _ _ _ _ _ _ Hg) as Hl end.
         eexists; split; [ apply kinds_env_open; [ exact Hk1 | exact Hgw ] |].
@@ -475,7 +475,7 @@ Section Kinds.
       + intros ρ2 Hk; cbn [gmod_wk] in Hk; inversion Hk; subst; cbn [gm_binders].
         destruct (IH2 _ ltac:(eassumption)) as (ρb & Hk1 & Hr1).
         match goal with Hg : kinds_items_gen _ _ _ _ _ _ |- _ =>
-          destruct (kinds_items_gen_ren_bwd _ IHH _ _ _ Hr1 _ _ Hg) as (gs1 & Hg' & ->) end.
+          destruct (kinds_items_gen_rename_bwd _ IHH _ _ _ Hr1 _ _ Hg) as (gs1 & Hg' & ->) end.
         pose proof (kinds_items_gen_env_ren0 _ IHH _ _ _ _ _ Hr1 Hg') as Hre.
         pose proof (kinds_items_gen_length _ _ _ _ _ _ Hg') as Hl.
         eexists; split; [ apply kinds_env_open; [ exact Hk1 | exact Hg' ] |].
@@ -483,7 +483,7 @@ Section Kinds.
       + intros sm0 y ch kk; cbn [gmod_wk].
         destruct (items_upto y its) as [[its1 it] |] eqn:Ey;
           [| rewrite (gunit_member_kind_body_open_other _ _ _ _ _ _ _ _ Ey), gunit_member_kind_body_open_other by exact Ey; apply IH3 ].
-        assert (Hex : existsb (String.eqb y) (map iitem_name its) = true) by (eapply items_upto_some; exact Ey).
+        assert (Hex : existsb (String.eqb y) (map import_item_name its) = true) by (eapply items_upto_some; exact Ey).
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_wk] in *; rewrite ?Ey, ?Hex in *;
           try discriminate.
         all: match goal with Hp : Some _ = Some (_, _, _, _) |- _ => injection Hp; intros; subst end.
@@ -511,7 +511,7 @@ Section Kinds.
   Proof.
     intros * H [| x] ch k; rewrite ?sb_q_zero, ?sb_q_succ; cbn [sentry_modexp].
     - rewrite modexp_member_kind_var_iff; reflexivity.
-    - rewrite <- sentry_modexp_wk, (proj1 kind_ren _ wk_shift (de_term d :: ρ) ρ (fun x => kinds_equiv_refl _)).
+    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_term d :: ρ) ρ (fun x => kinds_equiv_refl _)).
       apply H.
   Qed.
 
@@ -519,7 +519,7 @@ Section Kinds.
   Proof.
     intros * H Hh [| x] ch k; rewrite ?sb_q_zero, ?sb_q_succ; cbn [sentry_modexp].
     - rewrite modexp_member_kind_var_iff; apply Hh.
-    - rewrite <- sentry_modexp_wk, (proj1 kind_ren _ wk_shift (de_mod h :: ρ) ρ (fun x => kinds_equiv_refl _)).
+    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_mod h :: ρ) ρ (fun x => kinds_equiv_refl _)).
       apply H.
   Qed.
 
@@ -528,7 +528,7 @@ Section Kinds.
   Proof.
     intros * H Hh [| x] ch k; rewrite ?sb_q_zero, ?sb_q_succ; cbn [sentry_modexp].
     - rewrite modexp_member_kind_var_iff; apply Hh.
-    - rewrite <- sentry_modexp_wk, (proj1 kind_ren _ wk_shift (de_dm d h :: ρ) ρ (fun x => kinds_equiv_refl _)).
+    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_dm d h :: ρ) ρ (fun x => kinds_equiv_refl _)).
       apply H.
   Qed.
 
@@ -598,8 +598,8 @@ Section Kinds.
   Proof.
     intros H HH σ ρ1 ρ1' A B E Hσ Hl HE ch k.
     rewrite !dmod_member_kind_local_iff, !gunit_member_kind_alias_iff.
-    rewrite (proj1 kind_ren _ (wk_shiftn (List.length A)) (A ++ ρ1) ρ1 (kinds_rename_shift_app A ρ1)).
-    rewrite Hl, (proj1 kind_ren _ (wk_shiftn (List.length B)) (B ++ ρ1') ρ1' (kinds_rename_shift_app B ρ1')).
+    rewrite (proj1 kind_rename _ (wk_shiftn (List.length A)) (A ++ ρ1) ρ1 (kinds_rename_shift_app A ρ1)).
+    rewrite Hl, (proj1 kind_rename _ (wk_shiftn (List.length B)) (B ++ ρ1') ρ1' (kinds_rename_shift_app B ρ1')).
     destruct HE as [-> | [n ->]]; [ rewrite (HH _ _ _ Hσ); reflexivity |].
     cbn [modexp_sub]; rewrite !modexp_member_kind_mem_iff, (HH _ _ _ Hσ), (HH _ _ _ Hσ); reflexivity.
   Qed.
@@ -643,13 +643,13 @@ Section Kinds.
     exact (kinds_items_gen_env_sub H HH σ ρ1 ρ1' its gs Hσ Hg gs nil nil eq_refl Hσ (fun g Hin => Hin)).
   Qed.
 
-  #[local] Ltac ksih :=
+  #[local] Ltac kinds_sub_ih :=
     match goal with IH : forall σ ρ ρ', kinds_sub σ ρ ρ' -> _, Hr : kinds_sub _ _ _ |- _ => apply IH; exact Hr end.
 
   Lemma kind_sub :
     (forall H, kinds_sub_mod H) /\ (forall U, kinds_sub_unit U) /\ (forall D, kinds_sub_def D) /\ (forall Φ, kinds_sub_body Φ).
   Proof.
-    cut ((forall M : exp, True) /\ (forall H, kinds_sub_mod H) /\ (forall b : bnd, True) /\ (forall U, kinds_sub_unit U) /\
+    cut ((forall M : exp, True) /\ (forall H, kinds_sub_mod H) /\ (forall b : binding, True) /\ (forall U, kinds_sub_unit U) /\
          (forall D, kinds_sub_def D) /\ (forall Φ, kinds_sub_body Φ) /\ (forall E, kinds_sub_entry E) /\ (forall e : centry, True));
       [ intros (_ & H1 & _ & H2 & H3 & H4 & _); auto |].
     apply (syn_mut_ind (fun _ => True) kinds_sub_mod (fun _ => True) kinds_sub_unit kinds_sub_def kinds_sub_body kinds_sub_entry (fun _ => True));
@@ -662,9 +662,9 @@ Section Kinds.
       intros σ ρ ρ' Hσ ch kk; cbn [modexp_sub]; rewrite !modexp_member_kind_mem_iff;
         match goal with IH : forall σ ρ ρ', kinds_sub σ ρ ρ' -> _ |- _ => rewrite (IH _ _ _ Hσ), (IH _ _ _ Hσ); reflexivity end.
     - (* an application *)
-      intros σ ρ ρ' Hσ ch kk; cbn [modexp_sub]; rewrite !modexp_member_kind_app_iff; ksih.
+      intros σ ρ ρ' Hσ ch kk; cbn [modexp_sub]; rewrite !modexp_member_kind_app_iff; kinds_sub_ih.
     - (* a literal *)
-      intros σ ρ ρ' Hσ ch kk; cbn [modexp_sub]; rewrite !modexp_member_kind_lit_iff; ksih.
+      intros σ ρ ρ' Hσ ch kk; cbn [modexp_sub]; rewrite !modexp_member_kind_lit_iff; kinds_sub_ih.
     - (* a unit: its definition under its parameters *)
       intros σ ρ ρ' Hσ ch kk; rewrite gunit_sub_mk, (gunit_member_kind_pad ρ (tele_sub Δ σ)), (gunit_member_kind_pad ρ' Δ), length_tele_sub.
       match goal with IH : forall σ ρ ρ', kinds_sub σ ρ ρ' -> _ |- _ => apply IH end; apply kinds_sub_pad; exact Hσ.
@@ -760,7 +760,7 @@ Section Kinds.
       + intros sm0 y ch kk; cbn [gmod_sub].
         destruct (items_upto y its) as [[its1 it] |] eqn:Ey;
           [| rewrite (gunit_member_kind_body_open_other _ _ _ _ _ _ _ _ Ey), gunit_member_kind_body_open_other by exact Ey; apply IH3 ].
-        assert (Hex : existsb (String.eqb y) (map iitem_name its) = true) by (eapply items_upto_some; exact Ey).
+        assert (Hex : existsb (String.eqb y) (map import_item_name its) = true) by (eapply items_upto_some; exact Ey).
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_sub] in *; rewrite ?Ey, ?Hex in *;
           try discriminate.
         all: match goal with Hp : Some _ = Some (_, _, _, _) |- _ => injection Hp; intros; subst end.

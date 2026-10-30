@@ -116,7 +116,7 @@ Section Fixed_GCtx.
         tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
         tele_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
         rel_evals (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (u2 ++ ms' ++ ws' ++ ys'))
-          (ntele_rel D nr (ptyp_mem t)).
+          (nparams_tele_rel D nr (ptyp_mem t)).
     Hypothesis (Hn : nparams_related ups') (Hnd : nparams_related ups).
     Hypothesis (Ha : args_related ups') (Had : args_related ups).
     Hypothesis (Hdm : doms_related ups') (Hdmd : doms_related ups).

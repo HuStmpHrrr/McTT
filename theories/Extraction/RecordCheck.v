@@ -53,7 +53,7 @@ Proof.
 Qed.
 
 (** A record's type former. *)
-Definition record_infer G (HG : ⊢ G) (P : tenv G) p :
+Definition record_infer G (HG : ⊢ G) (P : checker_env G) p :
   { A : nf | infer_post G (a_record p) A } + { forall A, ~ G ⊢a a_record p ⟹ A }.
 Proof.
   destruct (record_lookup_f F p) as [[R |] Hl]; [| right; intros A H; inversion H; congruence ].
@@ -86,7 +86,7 @@ Proof.
 Qed.
 
 (** A projection, from the inference of its element. *)
-Definition proj_infer G (HG : ⊢ G) (P : tenv G) f M
+Definition proj_infer G (HG : ⊢ G) (P : checker_env G) f M
   (IM : { A : nf | infer_post G M A } + { forall A, ~ G ⊢a M ⟹ A }) :
   { A : nf | infer_post G (a_proj f M) A } + { forall A, ~ G ⊢a a_proj f M ⟹ A }.
 Proof.
@@ -181,14 +181,14 @@ Proof.
   intros * HG HTi Hu Hn Hl Hfs HQ.
   assert (HTs : G ⊢ T : UT) by exact (alg_type_infer_sound HTi HG).
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HTs.
-  pose proof (wf_exp_unf_large HTs) as HTl.
+  pose proof (wf_exp_universe_nf_large_index HTs) as HTl.
   split; [ eapply alg_type_infer_tuple; [ exact HTi | exact Hu | exact Hn | exact Hl | exact Hfs | intros k; exact (HQ k) ]
          | eapply level_of_nbe; eassumption ].
 Qed.
 
 (** A tuple, from the inference of its annotation and a check of each field
     at any type. *)
-Definition tuple_infer G (HG : ⊢ G) (P : tenv G) T (fs : list (string * exp))
+Definition tuple_infer G (HG : ⊢ G) (P : checker_env G) T (fs : list (string * exp))
   (IT : { A : nf | infer_post G T A } + { forall A, ~ G ⊢a T ⟹ A })
   (CF : forall fm, List.In fm fs -> forall A, (exists i, G ⊢ A : Typeω@i) -> { G ⊢a snd fm ⟸ A } + { ~ G ⊢a snd fm ⟸ A }) :
   { A : nf | infer_post G (a_tuple T fs) A } + { forall A, ~ G ⊢a a_tuple T fs ⟹ A }.
@@ -201,7 +201,7 @@ Proof.
        eapply Hnu; eassumption ].
   assert (HTs : G ⊢ T : UT) by exact (alg_type_infer_sound HTi HG).
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HTs.
-  pose proof (wf_exp_unf_large HTs) as HTl.
+  pose proof (wf_exp_universe_nf_large_index HTs) as HTl.
   destruct (nbe_ty_env_impl F G P T (nbe_order_of_typ _ _ _ HTl)) as [W HW].
   destruct (get_record_nf W) as [(p & Rs & ->) | Hne];
     [| right; intros A H; inversion H; subst;

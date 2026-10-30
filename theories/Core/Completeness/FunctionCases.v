@@ -115,7 +115,7 @@ Lemma suniv_real_shift : forall {Δ A L} {i n : nat} {env_relΔA},
       Dom e ↦ x ≈ e' ↦ x' ∈ env_relΔA ->
       ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t1 ->
       ⟦ L ⟧ e' ↘ t2 ->
-      dlvl_real t1 = dlvl_real t2.
+      domain_level_real t1 = domain_level_real t2.
 Proof.
   intros * HA HL HΔA * Hee Ht1 Ht2.
   pose proof (rel_exp_of_level_inversion HL) as [env_relΔ [HΔ _]].
@@ -148,13 +148,13 @@ Lemma rel_exp_of_suniv_under_ctx_q : forall {Γ Δ σ σ' A} {i n : nat} {B B' L
       ⟦ L ⟧ ρσ ↘ t ->
       (exists b b',
           ⟦ B[q σ] ⟧ ρ ↦ c ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ↘ b' /\
-          Dom b ≈ b' ∈ per_univ (us (dlvl_real t))) /\
+          Dom b ≈ b' ∈ per_univ (us (domain_level_real t))) /\
       (exists b b',
           ⟦ B ⟧ ρσ ↦ c ↘ b /\ ⟦ B' ⟧ ρ'σ' ↦ c' ↘ b' /\
-          Dom b ≈ b' ∈ per_univ (us (dlvl_real t))) /\
+          Dom b ≈ b' ∈ per_univ (us (domain_level_real t))) /\
       (exists b b',
           ⟦ B' ⟧ ρ'σ' ↦ c ↘ b /\ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ↘ b' /\
-          Dom b ≈ b' ∈ per_univ (us (dlvl_real t))).
+          Dom b ≈ b' ∈ per_univ (us (domain_level_real t))).
 Proof.
   intros * HΓ Hσj HA HL HB * Hpair Hev Hev' Ht.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
@@ -178,15 +178,15 @@ Proof.
   destruct (HBr _ _ P3) as [z1 [z2 [t3 [Hz1 [Hz2 [Ht3 Hz]]]]]].
   destruct (HBr _ _ P4) as [u1 [u2 [t4 [Hu1 [Hu2 [Ht4 Hu]]]]]].
   (** All five realisers are [L]'s at [ρσ]. *)
-  assert (R0 : dlvl_real t0 = dlvl_real t)
+  assert (R0 : domain_level_real t0 = domain_level_real t)
     by (eapply (suniv_real_shift HA HL HΔA3 s c ρσ c); [ pairwise | exact Ht0 | exact Ht ]).
-  assert (R1 : dlvl_real t1 = dlvl_real t)
+  assert (R1 : domain_level_real t1 = domain_level_real t)
     by (eapply (suniv_real_shift HA HL HΔA3 s c ρσ c); [ pairwise | exact Ht1 | exact Ht ]).
-  assert (R2 : dlvl_real t2 = dlvl_real t)
+  assert (R2 : domain_level_real t2 = domain_level_real t)
     by (eapply (suniv_real_shift HA HL HΔA3 ρσ c ρσ c); [ pairwise | exact Ht2 | exact Ht ]).
-  assert (R3 : dlvl_real t3 = dlvl_real t)
+  assert (R3 : domain_level_real t3 = domain_level_real t)
     by (eapply (suniv_real_shift HA HL HΔA3 s' c' ρσ c); [ pairwise | exact Ht3 | exact Ht ]).
-  assert (R4 : dlvl_real t4 = dlvl_real t)
+  assert (R4 : domain_level_real t4 = domain_level_real t)
     by (eapply (suniv_real_shift HA HL HΔA3 ρ'σ' c ρσ c); [ pairwise | exact Ht4 | exact Ht ]).
   rewrite R0 in Hbchain; rewrite R1 in Hx; rewrite R2 in Hy; rewrite R3 in Hz; rewrite R4 in Hu.
   assert (x1 = b2) by (eapply functional_eval_exp; eassumption).
@@ -195,7 +195,7 @@ Proof.
   assert (u2 = b3) by (eapply functional_eval_exp; eassumption).
   subst.
   apply rel_chain_of_pair in Hx, Hy, Hz, Hu.
-  set (j := us (dlvl_real t)) in *.
+  set (j := us (domain_level_real t)) in *.
   assert (M1 : rel_chain (per_univ j) ([b1; b2; b3; b4; x2]))
     by (merge_rel_chain Hbchain Hx b2).
   assert (M2 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2]))

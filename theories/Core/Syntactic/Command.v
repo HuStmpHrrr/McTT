@@ -80,7 +80,7 @@ Inductive core_cmd : Set :=
 | core_cmd_load : path -> core_cmd
 (** [core_cmd_open E items]: check that [E] is a module, and declare the items,
     as definitions and aliases of this frame. *)
-| core_cmd_open : modexp -> list iitem -> core_cmd
+| core_cmd_open : modexp -> list import_item -> core_cmd
 (** [eval M], or [eval M : A] *)
 | core_cmd_eval : exp -> option typ -> core_cmd
 (** [inductive x (Δ) : S where | c … with y : T where | … end], private or
@@ -146,10 +146,10 @@ Proof.
     [ split; constructor | rewrite List.Forall_cons_iff, IH; reflexivity ].
 Qed.
 (** A unit: its leading imports, its parameters, its body. *)
-Definition cunit : Set := (list core_cmd * ctx * list core_cmd)%type.
+Definition core_unit : Set := (list core_cmd * ctx * list core_cmd)%type.
 
 (** A written unit: its leading imports and its body. *)
-Definition unit_written (u : cunit) : Prop := let '(imps, _, cs) := u in cmds_written imps /\ cmds_written cs.
+Definition unit_written (u : core_unit) : Prop := let '(imps, _, cs) := u in cmds_written imps /\ cmds_written cs.
 
 Definition prog_path (prg : Cst.prog) : path :=
   let '(_, (fp, _, _)) := prg in fp.

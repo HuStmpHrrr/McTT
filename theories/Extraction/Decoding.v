@@ -23,14 +23,14 @@ Module Type FcDecodingSig.
   (** The Core global context a fast context stands for *)
   Parameter fc_gctx : FCtx -> GCtx.
   (** It is the decoding of the fast data. *)
-  Parameter fc_gctx_eq : forall F, fc_gctx F = gc_mk (view_deps (fc_view F)) (dec_stack (fc_frames F)).
+  Parameter fc_gctx_eq : forall F, fc_gctx F = gc_mk (view_deps (fc_view F)) (decode_stack (fc_frames F)).
 End FcDecodingSig.
 
 (** The implementation of [FcDecodingSig]: the decoding itself *)
 Module FcDecoding : FcDecodingSig.
   (** The decoding of the fast data *)
-  Definition fc_gctx (F : FCtx) : GCtx := gc_mk (view_deps (fc_view F)) (dec_stack (fc_frames F)).
+  Definition fc_gctx (F : FCtx) : GCtx := gc_mk (view_deps (fc_view F)) (decode_stack (fc_frames F)).
   (** By definition *)
-  Lemma fc_gctx_eq : forall F, fc_gctx F = gc_mk (view_deps (fc_view F)) (dec_stack (fc_frames F)).
+  Lemma fc_gctx_eq : forall F, fc_gctx F = gc_mk (view_deps (fc_view F)) (decode_stack (fc_frames F)).
   Proof. reflexivity. Qed.
 End FcDecoding.

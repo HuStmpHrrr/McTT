@@ -69,23 +69,23 @@ Proof.
 Qed.
 
 (** Inserting an entry at position [k], and dropping it again. *)
-Definition env_ins (k : nat) (e : dentry) (ρ : env) : env :=
+Definition env_insert (k : nat) (e : dentry) (ρ : env) : env :=
   List.firstn k ρ ++ e :: List.skipn k ρ.
 
-Lemma env_ins_zero : forall e ρ, env_ins 0 e ρ = e :: ρ.
+Lemma env_insert_zero : forall e ρ, env_insert 0 e ρ = e :: ρ.
 Proof. reflexivity. Qed.
 
-Lemma env_ins_succ : forall k e e' ρ, env_ins (S k) e (e' :: ρ) = e' :: env_ins k e ρ.
+Lemma env_insert_succ : forall k e e' ρ, env_insert (S k) e (e' :: ρ) = e' :: env_insert k e ρ.
 Proof. reflexivity. Qed.
 
-Lemma eval_wk_qn_shift_ins : forall k e ρ,
+Lemma eval_wk_qn_shift_insert : forall k e ρ,
     k <= List.length ρ ->
-    ⟪wk_qn k ↑⟫ (env_ins k e ρ) = ρ.
+    ⟪wk_qn k ↑⟫ (env_insert k e ρ) = ρ.
 Proof.
   induction k as [| k IH]; intros * Hk; cbn [wk_qn].
-  - rewrite env_ins_zero; apply eval_wk_shift.
+  - rewrite env_insert_zero; apply eval_wk_shift.
   - destruct ρ as [| e' ρ]; cbn [List.length] in Hk; [ lia |].
-    rewrite env_ins_succ, eval_wk_q_cons by typeclasses eauto.
+    rewrite env_insert_succ, eval_wk_q_cons by typeclasses eauto.
     rewrite IH by lia; reflexivity.
 Qed.
 
@@ -186,11 +186,11 @@ Lemma long_env : forall Δ Γ A R ρs,
 Proof.
   intros * Hass HΓs HΓf HR Hρs.
   (** The insertion is the construction; its image is the short environment by
-      [eval_wk_qn_shift_ins], once the telescope is known to fit. *)
-  enough (exists e, Dom (env_ins (length Δ) e ρs) ≈ (env_ins (length Δ) e ρs) ∈ R)
+      [eval_wk_qn_shift_insert], once the telescope is known to fit. *)
+  enough (exists e, Dom (env_insert (length Δ) e ρs) ≈ (env_insert (length Δ) e ρs) ∈ R)
     as [e He].
-  { exists (env_ins (length Δ) e ρs); split; [ exact He |].
-    apply eval_wk_qn_shift_ins.
+  { exists (env_insert (length Δ) e ρs); split; [ exact He |].
+    apply eval_wk_qn_shift_insert.
     rewrite (initial_env_length _ _ Hρs), length_app; lia. }
   clear - Hass HΓs HΓf HR Hρs.
   revert Γ A R ρs Hass HΓs HΓf HR Hρs.
@@ -212,7 +212,7 @@ Proof.
     assert (ρ0' = ρs) as -> by (eapply functional_initial_env; eassumption).
     destruct (Htyp _ _ Hrel) as [a1 a2 Ha1 Ha2 Helem].
     exists (de_term (⇑! a1 0)).
-    apply Heqv; unfold env_ins; cbn [List.firstn List.skipn List.app].
+    apply Heqv; unfold env_insert; cbn [List.firstn List.skipn List.app].
     exists Hrel.
     functional_eval_rewrite_clear; cbn.
     eapply per_bot_then_per_elem; [ exact Helem | apply var_per_bot ].
@@ -227,7 +227,7 @@ Proof.
     destruct (IH _ _ _ _ Hass' ltac:(eassumption) ltac:(eassumption) Hctx Hρs') as [e He].
     exists e.
     assert (Hsucc : forall k (d : dentry) (r : env) m,
-               env_ins (S k) d (r ↦ m) = (env_ins k d r) ↦ m) by reflexivity.
+               env_insert (S k) d (r ↦ m) = (env_insert k d r) ↦ m) by reflexivity.
     rewrite Hsucc.
     apply Heqv; exists He.
     destruct (Htyp _ _ He) as [a1 a2 Ha1 Ha2 Helem].
@@ -235,7 +235,7 @@ Proof.
                            HT _ Hctx He) as (b1 & b2 & Hb1 & Hb2 & Hbb).
     (** [b2] is the value of [T] in the short environment, which is [t]; [b1]
         is the long one, which is [a1]. *)
-    rewrite eval_wk_qn_shift_ins in Hb2
+    rewrite eval_wk_qn_shift_insert in Hb2
       by (rewrite (initial_env_length _ _ Hρs'), length_app; lia).
     functional_eval_rewrite_clear.
     cbn.
@@ -245,7 +245,7 @@ Proof.
     destruct Hbb as [R' HR'].
     assert (HR's : per_univ_elem iT R' t a1)
       by (eapply (per_univ_PER.(PER_Symmetric)); exact HR').
-    assert (Hiff : head_rel (env_ins (length Δ) e ρ0) (env_ins (length Δ) e ρ0) He <~> R')
+    assert (Hiff : head_rel (env_insert (length Δ) e ρ0) (env_insert (length Δ) e ρ0) He <~> R')
       by (eapply per_univ_elem_left_irrel; [ exact Helem | exact HR's ]).
     assert (Htt : per_univ_elem iT R' t t)
       by (eapply (per_univ_PER.(PER_Transitive)); [ exact HR's | exact HR' ]).
@@ -752,7 +752,7 @@ Qed.
 
 (** The constant of a fold typed at [Level@n] is a literal of a tier at most
     [n]. *)
-Lemma lvl_fold_maxl_cst : forall Γ c X r n,
+Lemma lvl_fold_maxl_const : forall Γ c X r n,
     Γ ⊢ lvl_fold (maxl (𝕃ᵒ c) X) r : Level@n ->
     fst c <= n.
 Proof.
@@ -792,7 +792,7 @@ Proof.
       repeat constructor; cbn; eapply (wf_succl_n_inversion (S k)); exact Ha.
     + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC |].
       split; [ apply lvl_fold_hd_sort in H; apply wf_maxl_inversion in H as (m0 & H0 & _ & Hs0);
-               apply subtyp_level_inv in Hs0; pose proof (lvl_fold_maxl_cst _ _ _ nil _ H0); lia |].
+               apply subtyp_level_inv in Hs0; pose proof (lvl_fold_maxl_const _ _ _ nil _ H0); lia |].
       apply lvl_fold_wf_list in H as [Hh Hr]; apply wf_maxl_inversion in Hh as (m & Hh1 & ? & Hmn).
       apply wf_maxl_inversion in Hh1 as (m' & _ & ? & Hm'm).
       assert (Γ ⊢ Level@m' ⊆ Level@n) by (etransitivity; eassumption).
@@ -800,7 +800,7 @@ Proof.
                    | constructor; [ cbn; eapply (wf_succl_n_inversion k'); eapply wf_exp_subtyp'; eassumption | exact Hr ] ].
     + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC |].
       split; [ apply lvl_fold_hd_sort in H; apply wf_maxl_inversion in H as (m0 & H0 & _ & Hs0);
-               apply subtyp_level_inv in Hs0; pose proof (lvl_fold_maxl_cst _ _ _ nil _ H0); lia |].
+               apply subtyp_level_inv in Hs0; pose proof (lvl_fold_maxl_const _ _ _ nil _ H0); lia |].
       apply lvl_fold_wf_list in H as [Hh Hr]; apply wf_maxl_inversion in Hh as (m & Hh1 & ? & Hmn).
       apply wf_maxl_inversion in Hh1 as (m' & _ & Hk & Hm'm).
       assert (Γ ⊢ Level@m' ⊆ Level@n) by (etransitivity; eassumption).
@@ -1769,7 +1769,7 @@ Proof.
   destruct Hg as [Eq | [Eq _]]; [ injection Eq as Ep; subst p | discriminate ].
   pose proof (ctx_wf_gctx _ _ _ HΓs) as Hg; pose proof (decls_of_ctx _ _ _ HΓs) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
-  pose proof (rview_struct_suffix _ _ _ (decl_typed_rstruct _ _ _ HD)) as Hsuf.
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD)) as Hsuf.
   pose proof (block_member_not_rview _ _ _ _ _ Hsuf (blocks_typed_len _ _ _ _ _ _ _ _ HBt) Hm Hb) as Hnr.
   assert (HUl : List.length Us = ind_nu D)
     by (apply (f_equal (@List.length _)) in HUL; rewrite List.length_map, List.length_firstn in HUL; unfold im_np in HPl; lia).
@@ -1909,11 +1909,11 @@ Proof.
   (** The blocks, short. *)
   assert (Hbw : forall j b, List.nth_error Bks j = Some b ->
              List.nth_error (blocks_wk Bks φ) j =
-               Some (eb_mk (eb_nm b) (option_map (fun Z => Z[wk_qn (eb_nm b - 1) φ]ʷ) (eb_ann b)) (eb_motive b)[wk_qn (eb_nm b) φ]ʷ
+               Some (eb_mk (eb_binder_count b) (option_map (fun Z => Z[wk_qn (eb_binder_count b - 1) φ]ʷ) (eb_ann b)) (eb_motive b)[wk_qn (eb_binder_count b) φ]ʷ
                        (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) (eb_brs b))))
     by (intros j [nm oZ A0 Bs0] Hj; unfold blocks_wk; rewrite List.nth_error_map, Hj; reflexivity).
-  assert (HBnm : blocks_nm_ok D Bks).
-  { intros j Mj b Hj Hb0; pose proof (blocks_typed_nm _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as H; exact H. }
+  assert (HBnm : blocks_binder_count_ok D Bks).
+  { intros j Mj b Hj Hb0; pose proof (blocks_typed_binder_count _ _ _ _ _ _ _ _ HBt _ _ _ Hj (Hbw _ _ Hb0)) as H; exact H. }
   assert (HUt' : forall j Mj, ind_member D j = Some Mj -> ⊢ (elim_mctx pc D j Mj Us ++ Δ ++ Γ)%list)
     by (intros; eapply elim_mctx_wf; eassumption).
   assert (HBmot : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
@@ -1939,7 +1939,7 @@ Proof.
   pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓs HUl HUt) as Hσ.
   assert (HBbr : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
              ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
-             (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ ++ Γ)%list ⊢ B : elim_bty pc D j Mj c gs (eb_motive b) Us).
+             (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ ++ Γ)%list ⊢ B : elim_branch_type pc D j Mj c gs (eb_motive b) Us).
   { intros j Mj b c gs n B Hj Hb0 Hcon Hin.
     pose proof (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0) as Hjr.
     pose proof (proj1 (List.Forall_forall _ _) IHBs b (List.nth_error_In _ _ Hb0)) as (_ & _ & IHbr).
@@ -1948,7 +1948,7 @@ Proof.
     pose proof (blocks_typed_counts _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as Hn.
     pose proof (blocks_typed_brs _ _ _ _ _ _ _ _ HBt _ _ _ _ _ _ _ Hj (Hbw _ _ Hb0) Hcon Hin') as HBL; cbn [eb_motive] in HBL.
     rewrite (HBnm _ _ _ Hj Hb0) in HBL.
-    pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj Hjr HΓs HUl HUt HUt' HAs Hcon) as Hbs.
+    pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hj Hjr HΓs HUl HUt HUt' HAs Hcon) as Hbs.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HBmot _ _ _ Hj Hb0) Hbs) as Hbt.
     assert (HLb : (tele_wk (elim_bctx pc D Mj gs (blocks_motives Bks) Us ++ Δ) ↑ ++ Γ ▹ A)%list
                   = (elim_bctx pc D Mj gs (blocks_motives (blocks_wk Bks φ)) (List.map (fun U => U[φ]ʷ) Us) ++ Lf)%list).
@@ -1963,7 +1963,7 @@ Proof.
     - rewrite <- List.app_assoc; exact Hbt.
     - rewrite HLb, List.length_app, length_elim_bctx, wk_qn_plus; fold φ.
       replace (cargs_nrec D gs + List.length gs + im_nn Mj) with (im_nn Mj + List.length gs + cargs_nrec D gs) by lia.
-      rewrite (elim_bty_wk pc D j Mj c gs (eb_motive b) Us φ Hc Hj HUl), <- Hn; exact HBL. }
+      rewrite (elim_branch_type_wk pc D j Mj c gs (eb_motive b) Us φ Hc Hj HUl), <- Hn; exact HBL. }
   assert (HBts : blocks_typed gc_deps gc_stack (Δ ++ Γ)%list pc D Us Bks i).
   { constructor; [ exact HBl | exact HBnm | | exact HBmot | | | | | exact HBbr ].
     - intros j Mj b Z Hj Hb0 HZ.
@@ -2232,7 +2232,7 @@ Proof.
     assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
       by (eapply level_atoms_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
     assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
-      by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_cst_sort HW) | assumption | assumption ]).
+      by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_const_sort HW) | assumption | assumption ]).
     eapply wf_exp_subtyp; [ eapply wf_univ; exact HL | exact HT |].
     eapply subtyp_strengthen';
       [ exact Hass | exact HΓf | apply (wf_univ_large_tm (i := 0) (n := n)); [ exact HΓs | eapply wf_succl; exact HL ] | exact HT | exact Hs ].

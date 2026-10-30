@@ -267,7 +267,7 @@ Proof.
     rewrite (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
   - exact Hdom.
-  - intros * HMk Hcon; exact (decl_typed_plen _ _ _ Hdt _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon)).
+  - intros * HMk Hcon; exact (decl_typed_params_length _ _ _ Hdt _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon)).
   - intros k Mk c gs gs1 t gs2 j HMk Hcon Heq; induction j as [| j IH]; intros Hj.
     + cbn [List.firstn doms_ctx List.map List.rev List.app].
       apply (Hstrat k Mk c); [ exact HMk | exact Hcon | rewrite Heq, cargs_nonrec_app, List.length_app; lia ].
@@ -314,21 +314,21 @@ Proof.
     + intros * HMk Hh Hq.
       apply (rel_subtyp_of_embedding _ _ _ _ _ _ _ Hμ).
       eapply (views_self_typed_sort _ _ _ _ HV); [ exact HMk | exact Hh | exact (Hcont _ _ _ _ _ _ _ HMk Hh Hq) ].
-    + exact (views_self_typed_rlink _ _ _ _ HV).
+    + exact (views_self_typed_record_link _ _ _ _ HV).
     + intros * HMk Hh HlR HI HT.
-      destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
+      destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
       pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
       cbn in HlR; rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR') in HlR; injection HlR as <-.
       apply (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ).
-      exact (views_self_typed_ris _ _ _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR' HI HT).
+      exact (views_self_typed_record_instances _ _ _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR' HI HT).
     + intros * HMk Hh HlR Hcs.
-      destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
+      destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
       pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
       cbn in HlR; rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR') in HlR; injection HlR as <-.
       apply (rel_ext_of_embedding _ _ _ _ _ _ _ Hμ).
-      exact (views_self_typed_rfields _ _ _ _ HV _ _ _ _ _ _ _ _ HMk Hh HlR' Hcs).
+      exact (views_self_typed_record_fields _ _ _ _ HV _ _ _ _ _ _ _ _ HMk Hh HlR' Hcs).
     + intros * HMk Hh; apply (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ).
-      exact (views_self_typed_rtype _ _ _ _ HV _ _ _ _ _ HMk Hh).
+      exact (views_self_typed_record_type _ _ _ _ HV _ _ _ _ _ HMk Hh).
 Qed.
 
 Lemma valid_entry_ind : forall Θ Ξ D Θ2 Ξ2,

@@ -111,13 +111,13 @@ Remove Hints wf_exp_eq_conv : mctt.
 Corollary wf_level_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_level; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ordinal_solve | apply wf_level; assumption ]. Qed.
 
 (** [Prop] is in every small universe. *)
 Corollary wf_prop_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_prop; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ordinal_solve | apply wf_prop; assumption ]. Qed.
 
 Corollary wf_univ' : forall Θ Ξ Γ o o',
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -125,18 +125,18 @@ Corollary wf_univ' : forall Θ Ξ Γ o o',
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ : Type⟨𝕃ᵒ o'⟩.
 Proof.
   intros * ? Hlt; destruct o as [a b].
-  eapply (lift_exp_universe_index _ _ _ _ (us (a, S b)) (us o')); [ cbn; ord | apply wf_univ_lit; assumption ].
+  eapply (lift_exp_universe_index _ _ _ _ (us (a, S b)) (us o')); [ cbn; ordinal_solve | apply wf_univ_lit; assumption ].
 Qed.
 
 Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_exp_eq_level_cong; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ordinal_solve | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_prop_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ≈ Propₘ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ord | apply wf_exp_eq_prop_cong; assumption ]. Qed.
+Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ordinal_solve | apply wf_exp_eq_prop_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_univ_cong_small : forall Θ Ξ Γ o o',
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -145,7 +145,7 @@ Corollary wf_exp_eq_univ_cong_small : forall Θ Ξ Γ o o',
 Proof.
   intros * ? Hlt; destruct o as [a b].
   eapply (lift_exp_eq_universe_index _ _ _ _ _ (us (a, S b)) (us o'));
-    [ cbn; ord | apply wf_exp_eq_univ_cong_lit; assumption ].
+    [ cbn; ordinal_solve | apply wf_exp_eq_univ_cong_lit; assumption ].
 Qed.
 
 (** As hints these are guarded on the goal's universe being a small one, and
@@ -161,9 +161,9 @@ Qed.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ ≈ Propₘ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_exp_eq_prop_cong_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ : Type⟨𝕃ᵒ ?m⟩) =>
-  fix_open_level m; (apply wf_univ'; [ assumption | ord ]) : mctt.
+  fix_open_level m; (apply wf_univ'; [ assumption | ordinal_solve ]) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ ≈ Type⟨𝕃ᵒ _⟩ : Type⟨𝕃ᵒ ?m⟩) =>
-  fix_open_level m; (apply wf_exp_eq_univ_cong_small; [ assumption | ord ]) : mctt.
+  fix_open_level m; (apply wf_exp_eq_univ_cong_small; [ assumption | ordinal_solve ]) : mctt.
 
 (** [Prop] is a type at every level, not only at [0]. *)
 Corollary wf_prop' : forall Θ Ξ Γ i,

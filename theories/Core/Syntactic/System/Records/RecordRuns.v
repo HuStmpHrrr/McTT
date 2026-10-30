@@ -84,7 +84,7 @@ Qed.
 Section RecordRuns.
   Variable load_path : path -> option string.
   Variable read : string -> option Cst.prog.
-  Variable to_core : Cst.prog -> option cunit.
+  Variable to_core : Cst.prog -> option core_unit.
 
   (** ** An Accepted Declaration Runs
 

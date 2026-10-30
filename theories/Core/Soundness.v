@@ -91,13 +91,13 @@ Qed.
 
 (** The normal form of a level of sort [n] is a canonical level of sort [n]:
     its constant is of a tier at most [n], and each atom is a level of its
-    own sort ([nf_lvl_ws]).  It is read off the gluing of the level, whose
+    own sort ([nf_lvl_well_scoped]).  It is read off the gluing of the level, whose
     atoms are glued at their types.  The algorithmic layer needs it to trust
     the sorts an atom of a normal form carries. *)
-Theorem soundness_lvl_ws : forall {Γ M n W},
+Theorem soundness_lvl_well_scoped : forall {Γ M n W},
     Γ ⊢ M : Level@n ->
     nbe_f Γ M Level@n W ->
-    nf_lvl_ws n Γ W.
+    nf_lvl_well_scoped n Γ W.
 Proof.
   intros * H Hn.
   assert (⊢ Γ) by mauto 3.

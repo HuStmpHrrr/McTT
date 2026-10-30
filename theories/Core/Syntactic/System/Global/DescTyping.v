@@ -1477,18 +1477,18 @@ Proof.
 Qed.
 
 (** What a coherent body says of one of its entries. *)
-Definition ge_coh (T : ctx) (E : gentry) : Prop :=
+Definition ge_coherent (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ r A _ => exists A0, A = ctx_pi_at r T A0
-  | ge_mod _ (gu_mk Δ (md_body _ Φ')) => tele_ass Δ /\ gm_coh (Δ ++ T) Φ'
+  | ge_mod _ (gu_mk Δ (md_body _ Φ')) => tele_ass Δ /\ gm_coherent (Δ ++ T) Φ'
   | ge_mod _ (gu_mk Δ (md_alias _)) => exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
-  | ge_ind _ _ _ D Φ' => (exists Δ0, ind_uparams D = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coh (ind_uparams D) Φ'
+  | ge_ind _ _ _ D Φ' => (exists Δ0, ind_uparams D = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coherent (ind_uparams D) Φ'
   | ge_def_mod _ A M U =>
       (exists A0 M0, A = ctx_pi T A0 /\ M = ctx_fn T M0) /\ exists Δ0 E, U = gu_mk (Δ0 ++ T) (md_alias E) /\ tele_ass Δ0
-  | ge_record _ p R Φ' => (exists Δ0, record_params R = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coh (record_mod_tele p R) Φ'
+  | ge_record _ p R Φ' => (exists Δ0, record_params R = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coherent (record_mod_tele p R) Φ'
   end.
 
-Lemma gm_coh_prefix : forall T Φ y Φ0 E, gm_coh T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> ge_coh T E.
+Lemma gm_coherent_prefix : forall T Φ y Φ0 E, gm_coherent T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> ge_coherent T E.
 Proof.
   induction Φ as [| Φ IH x E0 | Φ IH H its]; intros * Hc Hp; cbn in Hc, Hp; [ discriminate | |].
   - destruct (String.eqb y x); [ injection Hp as -> -> -> |].
@@ -1498,12 +1498,12 @@ Proof.
   - destruct (existsb _ _); [ discriminate | eauto ].
 Qed.
 
-Lemma loc_coh : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ, loc Θ Ξ p T Φ -> gm_coh T Φ.
+Lemma loc_coherent : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ, loc Θ Ξ p T Φ -> gm_coherent T Φ.
 Proof.
-  intros * Hg * [Hl | Hl]; [| exact (gc_body_coh _ _ Hg _ _ _ Hl) ].
+  intros * Hg * [Hl | Hl]; [| exact (gc_body_coherent _ _ Hg _ _ _ Hl) ].
   unfold gc_frame in Hl.
   destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ0 | E]] [| ? ?]] T0] |] eqn:Ef; try discriminate.
-  injection Hl as <- <-; exact (wf_gstack_coh _ _ Hg _ _ _ _ Ef).
+  injection Hl as <- <-; exact (wf_gstack_coherent _ _ Hg _ _ _ _ Ef).
 Qed.
 
 
@@ -1852,7 +1852,7 @@ Lemma params_relevant_sub : forall Θ Ξ Γ Γ' Δ σ l,
     params_relevant Θ Ξ Γ' (tele_sub Δ σ) l.
 Proof.
   intros * HR Hσ HΔ HΔ'; unfold params_relevant in *.
-  eapply (mv_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _)); [ exact Hσ | exact HΔ | exact HΔ' |].
+  eapply (move_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _)); [ exact Hσ | exact HΔ | exact HΔ' |].
   intros Δ1 T Δ2 E Δ0 σ0 Hσ0; exact (sub_preserves_typ _ _ _ _ _ _ _ (HR _ _ _ E) Hσ0).
 Qed.
 

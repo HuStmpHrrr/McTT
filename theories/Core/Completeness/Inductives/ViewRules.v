@@ -191,8 +191,8 @@ Lemma con_rview_value : forall P p D, valid_groups P -> P p D ->
 Proof.
   intros P p D HP HPD * HMj Hh HUl HMl El.
   pose proof (valid_group_typed _ _ (valid_groups_valid P HP p D HPD)) as Hdt.
-  destruct (rview_struct_con _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as (gs & _ & Hlen).
-  pose proof (rview_struct_nparams _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as Hnp.
+  destruct (rview_struct_con _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as (gs & _ & Hlen).
+  pose proof (rview_struct_nparams _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as Hnp.
   assert (Hnn : im_nn Mj = 0) by (unfold im_nn; rewrite Hnp; reflexivity).
   apply eval_apps_exp in El as (f & zs & Ef & Ezs & Eap).
   apply eval_exps_app_inv in Ezs as (us & ms & -> & Eus & Ems).

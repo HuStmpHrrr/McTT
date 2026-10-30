@@ -130,7 +130,7 @@ Proof.
   intros Δ σ ρ Hσ.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
-  exists (dlvl_lit o); split; [ mauto 3 | split; [ apply per_lvl_at_lit; exact Ho |] ].
+  exists (domain_level_lit o); split; [ mauto 3 | split; [ apply per_lvl_at_lit; exact Ho |] ].
   simplify_subs; apply glu_lvl_lit; assumption.
 Qed.
 
@@ -151,22 +151,22 @@ Proof.
   intros Δ σ ρ Hσ.
   destruct (glu_rel_exp_level_elim ltac:(eassumption) HM _ _ _ Hσ) as [m [Hev [Hper Hglu]]].
   pose proof (per_lvl_at_lvl _ _ _ Hper) as Hperl.
-  exists (dlvl_suc m); split; [ mauto 3 | split; [ apply per_lvl_at_suc; exact Hper |] ].
+  exists (domain_level_suc m); split; [ mauto 3 | split; [ apply per_lvl_at_suc; exact Hper |] ].
   intros Δ' φ L Hφ Hr.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-  apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
+  apply domain_level_canon_of_read in Hr as [_ [L' [-> Hc]]].
   destruct (per_lvl_ex _ _ Hperl (length Δ')) as [A HA].
   assert (L' = lvl_canon (lvl_suc A)) as ->
-    by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_suc; exact HA ]).
-  assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hperl); assumption).
-  assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply dlvl_canon_read; [ exact Hsh | exact HA ]).
+    by (eapply domain_level_canon_functional; [ exact Hc | apply domain_level_canon_suc; exact HA ]).
+  assert (Hsh : domain_level_shape m) by (destruct (per_lvl_shape _ _ Hperl); assumption).
+  assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply domain_level_canon_read; [ exact Hsh | exact HA ]).
   destruct (Hglu _ _ _ Hφ HrA) as [HMA HwsA].
   destruct A as [c xs]; cbn in HwsA; destruct HwsA as [Hc0 Hws].
   pose proof (level_atoms_well_scoped_wf _ Hws) as Hwf.
   assert (Hcs : fst (ordinal_succ c) <= n) by (rewrite ordinal_succ_fst; exact Hc0).
   assert (Hws' : @level_atoms_well_scoped gc_deps gc_stack n Δ' (level_atoms_suc xs)) by (apply level_atoms_well_scoped_suc; exact Hws).
   assert (Hcc : fst (fst (lvl_canon (lvl_suc (c, xs)))) <= n)
-    by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcs ]).
+    by (eapply Nat.le_trans; [ apply lvl_canon_const_le | exact Hcs ]).
   assert (Hwsc : @level_atoms_well_scoped gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_suc (c, xs)))))
     by (unfold lvl_canon, lvl_suc; cbn; apply level_atoms_well_scoped_keep, level_atoms_well_scoped_sort; exact Hws').
   split.
@@ -201,18 +201,18 @@ Proof.
   destruct (glu_rel_exp_level_elim ltac:(eassumption) HN _ _ _ Hσ) as [m' [Hev' [Hper' Hglu']]].
   pose proof (per_lvl_at_lvl _ _ _ Hper) as Hperl.
   pose proof (per_lvl_at_lvl _ _ _ Hper') as Hperl'.
-  exists (dlvl_max m m'); split; [ mauto 3 | split; [ apply per_lvl_at_max; eassumption |] ].
+  exists (domain_level_max m m'); split; [ mauto 3 | split; [ apply per_lvl_at_max; eassumption |] ].
   intros Δ' φ L Hφ Hr.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-  apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
+  apply domain_level_canon_of_read in Hr as [_ [L' [-> Hc]]].
   destruct (per_lvl_ex _ _ Hperl (length Δ')) as [A HA].
   destruct (per_lvl_ex _ _ Hperl' (length Δ')) as [B HB].
   assert (L' = lvl_canon (lvl_max A B)) as ->
-    by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_max; eassumption ]).
-  assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hperl); assumption).
-  assert (Hsh' : dlvl_shape m') by (destruct (per_lvl_shape _ _ Hperl'); assumption).
-  assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply dlvl_canon_read; [ exact Hsh | exact HA ]).
-  assert (HrB : Rnf ⇓ Levelᵈ m' in length Δ' ↘ nf_lvl_of B) by (apply dlvl_canon_read; [ exact Hsh' | exact HB ]).
+    by (eapply domain_level_canon_functional; [ exact Hc | apply domain_level_canon_max; eassumption ]).
+  assert (Hsh : domain_level_shape m) by (destruct (per_lvl_shape _ _ Hperl); assumption).
+  assert (Hsh' : domain_level_shape m') by (destruct (per_lvl_shape _ _ Hperl'); assumption).
+  assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply domain_level_canon_read; [ exact Hsh | exact HA ]).
+  assert (HrB : Rnf ⇓ Levelᵈ m' in length Δ' ↘ nf_lvl_of B) by (apply domain_level_canon_read; [ exact Hsh' | exact HB ]).
   destruct (Hglu _ _ _ Hφ HrA) as [HMA HwsA].
   destruct (Hglu' _ _ _ Hφ HrB) as [HNB HwsB].
   destruct A as [c xs]; destruct B as [d ys].
@@ -221,7 +221,7 @@ Proof.
   assert (Hcd : fst (ordinal_max c d) <= n) by (apply ordinal_max_fst_le; assumption).
   assert (Hwsa : @level_atoms_well_scoped gc_deps gc_stack n Δ' (xs ++ ys)%list) by (apply level_atoms_well_scoped_app; [ exact Hwsx | exact Hwsy ]).
   assert (Hcc : fst (fst (lvl_canon (lvl_max (c, xs) (d, ys)))) <= n)
-    by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcd ]).
+    by (eapply Nat.le_trans; [ apply lvl_canon_const_le | exact Hcd ]).
   assert (Hwsm : @level_atoms_well_scoped gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_max (c, xs) (d, ys)))))
     by (unfold lvl_canon, lvl_max; cbn; apply level_atoms_well_scoped_keep, level_atoms_well_scoped_sort; exact Hwsa).
   split.
@@ -275,9 +275,9 @@ Proof.
   - eapply wf_univ; eassumption.
   - apply (mk_suniv_glu_typ _ _ _ _ (succl M[σ]) n); [ exact Hglu' |].
     eapply wf_exp_eq_univ_cong_large_tm; [ assumption | mauto 3 | mauto 3 ].
-  - rewrite dlvl_real_suc.
+  - rewrite domain_level_real_suc.
     glu_witness2;
-      [ apply glu_univ_elem_core_suniv'; [ exact Hper | cbn; ord | reflexivity | reflexivity ] |].
+      [ apply glu_univ_elem_core_suniv'; [ exact Hper | cbn; ordinal_solve | reflexivity | reflexivity ] |].
     apply (mk_suniv_glu_typ _ _ _ _ M[σ] n); [ exact Hglu |].
     eapply wf_exp_eq_univ_cong_large_tm; [ assumption | eassumption | mauto 3 ].
   - intros Δ' φ W Hφ Hr.
@@ -320,8 +320,8 @@ Lemma glu_rel_exp_of_suniv_tm_inversion' : forall {Γ Sb T A},
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
         exists a,
           ⟦ A ⟧ ρ ↘ a /\
-            Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
-            (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+            Dom a ≈ a ∈ per_univ (us (domain_level_real l)) /\
+            (forall P El, DG a ∈ glu_univ_elem (us (domain_level_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
             (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
 Proof.
@@ -353,8 +353,8 @@ Lemma glu_rel_exp_of_suniv_tm : forall {Γ Sb T A},
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
           exists a,
             ⟦ A ⟧ ρ ↘ a /\
-              Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
-              (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+              Dom a ≈ a ∈ per_univ (us (domain_level_real l)) /\
+              (forall P El, DG a ∈ glu_univ_elem (us (domain_level_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
               (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                          Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩)) ->
     Γ ⊩ A : Type⟨T⟩.
@@ -368,7 +368,7 @@ Proof.
   pose proof (per_lvl_at_lvl _ _ _ Hper0) as Hper.
   destruct (Hbody _ _ _ Hσ l Hl) as [HAσ [a [Ha [Haper [HaP Hrb]]]]].
   assert (Δ ⊢ T[σ] : Level@n) by (eapply (glu_lvl_escape _ _ _ _ Hper Hglu); assumption).
-  assert (exists P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
+  assert (exists P El, DG a ∈ glu_univ_elem (us (domain_level_real l)) ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
   econstructor;
     [ apply eval_exp_univ; eassumption
     | eassumption
@@ -394,8 +394,8 @@ Lemma glu_rel_exp_of_suniv_tm_inversion : forall {Γ Sb T A},
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
         exists a,
           ⟦ A ⟧ ρ ↘ a /\
-            Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
-            (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+            Dom a ≈ a ∈ per_univ (us (domain_level_real l)) /\
+            (forall P El, DG a ∈ glu_univ_elem (us (domain_level_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
             (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
 Proof.

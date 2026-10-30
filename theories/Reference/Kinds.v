@@ -22,7 +22,7 @@ Section KindImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
 
   #[local]
-  Ltac kd_inv :=
+  Ltac kinds_obligation_inv :=
     match goal with
     | H : dmod_member_kind_order _ _ _ _ |- _ => progressive_invert H
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => progressive_invert H
@@ -33,7 +33,7 @@ Section KindImpl.
     end.
 
   #[local]
-  Ltac kd_glob :=
+  Ltac kinds_obligation_glob :=
     repeat match goal with
       | H : (exists _ _, gc_module _ _ _ = Some _) \/ (exists _, gc_frame _ _ = Some _) |- _ =>
           destruct H as [(? & ? & ?) | (? & ?)]
@@ -62,7 +62,7 @@ Section KindImpl.
       | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = None |- _ =>
           rewrite H1 in H2; discriminate H2
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-          rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
+          rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
       | H1 : gc_frame _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
@@ -97,7 +97,7 @@ Section KindImpl.
       end.
 
   #[local]
-  Ltac kd_split :=
+  Ltac kinds_obligation_split :=
     match goal with
     | H : dmod_member_kind_order _ _ _ _ |- _ => dependent destruction H
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => dependent destruction H
@@ -108,8 +108,8 @@ Section KindImpl.
     end.
 
   #[local]
-  Ltac kd_finish :=
-    kd_glob;
+  Ltac kinds_obligation_finish :=
+    kinds_obligation_glob;
     try solve [ intuition discriminate ];
     try solve [ eapply dmod_member_kind_global_step;
                 [ first [ left; eexists; eassumption | right; do 4 eexists; eassumption ]
@@ -122,21 +122,21 @@ Section KindImpl.
     try econstructor; eauto with mctt.
 
   #[local]
-  Ltac kd_obl :=
-    intros; cbv beta in *; repeat kd_inv;
-    first [ solve [ kd_finish ] | solve [ kd_split; kd_finish ] | kd_finish ].
+  Ltac kinds_obligation :=
+    intros; cbv beta in *; repeat kinds_obligation_inv;
+    first [ solve [ kinds_obligation_finish ] | solve [ kinds_obligation_split; kinds_obligation_finish ] | kinds_obligation_finish ].
 
   #[local]
-  Ltac kd_obl_auto :=
+  Ltac kinds_obligation_auto :=
     intros;
     lazymatch goal with
-    | |- dmod_member_kind_order _ _ _ _ => kd_obl
-    | |- gunit_member_kind_order _ _ _ _ _ => kd_obl
-    | |- modexp_member_kind_order _ _ _ _ _ => kd_obl
-    | |- kinds_env_order _ _ _ _ => kd_obl
-    | |- kinds_items_gen_order _ _ _ _ _ => kd_obl
-    | |- kinds_body_xp_order _ _ _ _ => kd_obl
-    | |- _ => abstract kd_obl
+    | |- dmod_member_kind_order _ _ _ _ => kinds_obligation
+    | |- gunit_member_kind_order _ _ _ _ _ => kinds_obligation
+    | |- modexp_member_kind_order _ _ _ _ _ => kinds_obligation
+    | |- kinds_env_order _ _ _ _ => kinds_obligation
+    | |- kinds_items_gen_order _ _ _ _ _ => kinds_obligation
+    | |- kinds_body_xp_order _ _ _ _ => kinds_obligation
+    | |- _ => abstract kinds_obligation
     end.
 
   (** The kind of a selection from a module value *)
@@ -259,7 +259,7 @@ Section KindImpl.
         let (gs, Hgs) := kinds_items_gen_impl p E its _ in
         exist _ (generated_item_def_mod d pv a_True (a_mem E n) (me_mem E n) :: gs) _ }.
 
-  Solve All Obligations with kd_obl_auto.
+  Solve All Obligations with kinds_obligation_auto.
 
   (** A body read through the entries its opens generate. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
@@ -274,5 +274,5 @@ Section KindImpl.
       let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
       exist _ (gens_append Φx 0 gs) _.
 
-  Solve All Obligations with kd_obl_auto.
+  Solve All Obligations with kinds_obligation_auto.
 End KindImpl.

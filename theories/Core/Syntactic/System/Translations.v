@@ -7,9 +7,9 @@
     definition those contexts and that group are defined here.
 
     - The contexts a group's parts are written in: the [Self]s of its
-      declared members ([rd_selfs]), its uniform parameters under them
-      ([rd_uctx]), a declared member's constructor arguments ([rm_pctx]),
-      and a constructor's arguments as a telescope ([rtele]).
+      declared members ([raw_decl_selfs]), its uniform parameters under them
+      ([raw_decl_uniform_ctx]), a declared member's constructor arguments ([raw_member_args_ctx]),
+      and a constructor's arguments as a telescope ([raw_args_tele]).
     - The translation of a mutual definition: its group, read off its
       functions' scrutinees ([mdef_group]), and the eliminator each
       function is filed as ([mdef_blocks], [mdef_defs]). *)
@@ -28,40 +28,40 @@ Import Syntax_Notations GlobalCtx_Notations.
 (** ** The Contexts of a Group as Written *)
 
 (** The number of declared members of a raw declaration. *)
-Definition rd_n (R : raw_decl) : nat := List.length (raw_decl_members R).
+Definition raw_decl_nmembers (R : raw_decl) : nat := List.length (raw_decl_members R).
 (** The number of uniform parameters of a raw declaration. *)
-Definition rd_nu (R : raw_decl) : nat := List.length (raw_decl_uparams R).
+Definition raw_decl_nu (R : raw_decl) : nat := List.length (raw_decl_uparams R).
 
 (** The type of [Self_j]: the declared member's, over its own parameters,
     the group's uniform ones outermost. *)
-Definition rd_self_ty (R : raw_decl) (Mr : raw_member) : typ :=
+Definition raw_decl_self_ty (R : raw_decl) (Mr : raw_member) : typ :=
   ctx_pi (raw_member_nparams Mr ++ raw_decl_uparams R) (raw_member_sort Mr)[wk_shiftn (List.length (raw_member_nparams Mr))]ʷ.
 
 (** The [Self]s, innermost first, each over those before it. *)
-Fixpoint rd_selfs_from (R : raw_decl) (j : nat) (ms : list raw_member) : ctx :=
+Fixpoint raw_decl_selfs_from (R : raw_decl) (j : nat) (ms : list raw_member) : ctx :=
   match ms with
   | nil => nil
-  | Mr :: ms' => rd_selfs_from R (S j) ms' ++ ce_ass (rd_self_ty R Mr)[wk_shiftn j]ʷ :: nil
+  | Mr :: ms' => raw_decl_selfs_from R (S j) ms' ++ ce_ass (raw_decl_self_ty R Mr)[wk_shiftn j]ʷ :: nil
   end.
 
 (** The context of the [Self]s of all declared members, [Self_0]
     outermost. *)
-Definition rd_selfs (R : raw_decl) : ctx := rd_selfs_from R 0 (raw_decl_members R).
+Definition raw_decl_selfs (R : raw_decl) : ctx := raw_decl_selfs_from R 0 (raw_decl_members R).
 
 (** The parameters' types are written over the frames' parameters, so
     under the [Self]s they are weakened past them: the group's uniform
     parameters, and a declared member's parameters. *)
-Definition rd_uctx (Ξ : gstack) (R : raw_decl) : ctx :=
-  tele_wk (raw_decl_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ gs_tele Ξ.
+Definition raw_decl_uniform_ctx (Ξ : gstack) (R : raw_decl) : ctx :=
+  tele_wk (raw_decl_uparams R) (wk_shiftn (raw_decl_nmembers R)) ++ raw_decl_selfs R ++ gs_tele Ξ.
 
 (** The context a declared member's constructor arguments are written in:
     its own parameters and the uniform ones, under the [Self]s and the
     frames' parameters. *)
-Definition rm_pctx (Ξ : gstack) (R : raw_decl) (Mr : raw_member) : ctx :=
-  tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ gs_tele Ξ.
+Definition raw_member_args_ctx (Ξ : gstack) (R : raw_decl) (Mr : raw_member) : ctx :=
+  tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (raw_decl_nmembers R)) ++ raw_decl_selfs R ++ gs_tele Ξ.
 
 (** The arguments as written, as a telescope, innermost first. *)
-Definition rtele (args : list (string * exp)) : ctx := List.rev (List.map (fun a => ce_ass (snd a)) args).
+Definition raw_args_tele (args : list (string * exp)) : ctx := List.rev (List.map (fun a => ce_ass (snd a)) args).
 
 (** ** Mutual Definitions
 
@@ -141,7 +141,7 @@ Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us
                nbe_ty Θ Ξ (raw_fun_nparams f ++ Δ ++ gs_tele Ξ)
                  (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (raw_fun_nparams f))]ʷ) Us)
                     (vars_from 0 (List.length (raw_fun_nparams f)))) Wj)
-      (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D)) Ws ->
+      (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) Ws ->
     nf_index W Ws = Some m ->
     ind_member D m = Some Mm ->
     im_nn Mm = List.length (raw_fun_nparams f) ->
@@ -166,7 +166,7 @@ Record mdef_group (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (f0 : raw_fun) (fs : lis
     (** The uniform parameters, free of the first function's own
         parameters *)
   ; mdef_group_uparams :
-      img_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us
+      image_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us
     (** Each function's member *)
   ; mdef_group_members : Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms
     (** One function per member with a block: all but the record views *)
@@ -241,9 +241,9 @@ Lemma raw_decl_parts_eq : forall R R',
 Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
 
 (** Arguments are their names and their telescope. *)
-Lemma rtele_names_eq : forall args args', List.map fst args' = List.map fst args -> rtele args' = rtele args -> args' = args.
+Lemma raw_args_tele_names_eq : forall args args', List.map fst args' = List.map fst args -> raw_args_tele args' = raw_args_tele args -> args' = args.
 Proof.
-  intros args args' En Et; unfold rtele in Et; apply (f_equal (@List.rev _)) in Et; rewrite !rev_involutive in Et.
+  intros args args' En Et; unfold raw_args_tele in Et; apply (f_equal (@List.rev _)) in Et; rewrite !rev_involutive in Et.
   revert args En Et; induction args' as [| [y T] a' IH]; intros [| [z U] a] En Et; cbn in *; try discriminate;
     [ reflexivity |].
   injection En as -> En; injection Et as -> Et; rewrite (IH _ En Et); reflexivity.
@@ -251,19 +251,19 @@ Qed.
 
 (** The [Self]s are read off the uniform parameters and the members'
     parameters and sorts. *)
-Lemma rd_selfs_from_heads_eq : forall R1 R2 ms1 ms2 j, raw_decl_uparams R1 = raw_decl_uparams R2 ->
+Lemma raw_decl_selfs_from_heads_eq : forall R1 R2 ms1 ms2 j, raw_decl_uparams R1 = raw_decl_uparams R2 ->
     Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) ms1 ms2 ->
-    rd_selfs_from R1 j ms1 = rd_selfs_from R2 j ms2.
+    raw_decl_selfs_from R1 j ms1 = raw_decl_selfs_from R2 j ms2.
 Proof.
   intros * Eu H; revert j; induction H as [| M1 M2 ms1 ms2 [En Es] _ IH]; intros j; cbn; [ reflexivity |].
-  rewrite IH; unfold rd_self_ty; rewrite Eu, En, Es; reflexivity.
+  rewrite IH; unfold raw_decl_self_ty; rewrite Eu, En, Es; reflexivity.
 Qed.
 
 (** So is a member's context. *)
-Lemma rm_pctx_heads_eq : forall Ξ R1 R2 Mr1 Mr2, raw_decl_uparams R1 = raw_decl_uparams R2 ->
+Lemma raw_member_args_ctx_heads_eq : forall Ξ R1 R2 Mr1 Mr2, raw_decl_uparams R1 = raw_decl_uparams R2 ->
     Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) (raw_decl_members R1) (raw_decl_members R2) ->
-    raw_member_nparams Mr1 = raw_member_nparams Mr2 -> rm_pctx Ξ R1 Mr1 = rm_pctx Ξ R2 Mr2.
+    raw_member_nparams Mr1 = raw_member_nparams Mr2 -> raw_member_args_ctx Ξ R1 Mr1 = raw_member_args_ctx Ξ R2 Mr2.
 Proof.
-  intros * Eu Hm En; unfold rm_pctx, rd_selfs, rd_n.
-  rewrite Eu, En, (rd_selfs_from_heads_eq _ _ _ _ 0 Eu Hm), (Forall2_length Hm); reflexivity.
+  intros * Eu Hm En; unfold raw_member_args_ctx, raw_decl_selfs, raw_decl_nmembers.
+  rewrite Eu, En, (raw_decl_selfs_from_heads_eq _ _ _ _ 0 Eu Hm), (Forall2_length Hm); reflexivity.
 Qed.

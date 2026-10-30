@@ -417,7 +417,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      ind_con M c = Some gs ->
      ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D M gs ++ im_params D M ->
      (forall gs1 t gs2 j, gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
-        ⊢ Θ ⍮ Ξ ⍮ (sh_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D M gs1 ++ im_params D M)
+        ⊢ Θ ⍮ Ξ ⍮ (shape_domains_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D M gs1 ++ im_params D M)
                   ▹ ptyp_ty p D (im_nn M) (List.repeat false j ++ cargs_pat gs1) (ptyp_skip j t)) ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D k M gs : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_con p k c : con_ty p D k M gs )
@@ -453,7 +453,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
      Us = List.firstn (ind_nu D) Ps ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
@@ -470,7 +470,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A [Π] of the sort [r]: at [relevant] a type of functions, in a
     universe its domain and codomain are in, small or large, or out of a
@@ -731,8 +731,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
      Us = List.firstn (ind_nu D) Ps ->
      Us' = List.firstn (ind_nu D) Ps' ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_nm b = S (im_nn Mk)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
@@ -758,7 +758,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         nth_error (eb_brs b) i = Some (c, n, B) -> nth_error (eb_brs b') i = Some (c, n, B') ->
         ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
-          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M ≈ a_elim r oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
@@ -842,7 +842,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
      Us = List.firstn (ind_nu D) Ps ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
@@ -859,7 +859,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
@@ -888,7 +888,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
      Us = List.firstn (ind_nu D) Ps ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
@@ -905,7 +905,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-          : elim_bty p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M
        ≈ a_elim r (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
            (view_wrap r p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
@@ -1469,7 +1469,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     uniform parameters, its siblings are the views [vm] lists, its
     non-uniform parameters those of the container's member at [Is], its
     constructors the container's at [Is] (the view equations), classified
-    for this group ([cargs_corr]), and its sort in this group's.  The types are not filed yet, so no argument mentions
+    for this group ([cargs_correspond]), and its sort in this group's.  The types are not filed yet, so no argument mentions
     them but as a recursive argument: positivity is by construction.  No
     type of the declaration has a free module variable ([decl_mvc]), as no
     type in a context of assumptions. *)
@@ -1496,7 +1496,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
         Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
           ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
-     (forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> cargs_plen D gs) ->
+     (forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> cargs_params_length D gs) ->
      (forall k Mk c gs gs1 t gs2 Mj j P T, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
         gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
         nth_error (ptyp_ps t) j = Some P ->
@@ -1510,16 +1510,16 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
           List.length Is = ind_nu D' /\ List.length vm = List.length (ind_members D') /\
           List.nth_error vm k' = Some k /\
           List.map fst (im_cons Mk) = List.map fst (im_cons Mk') /\
-          (forall c gs' gs, ind_con Mk' c = Some gs' -> ind_con Mk c = Some gs -> cargs_corr vm gs' gs)) ->
+          (forall c gs' gs, ind_con Mk' c = Some gs' -> ind_con Mk c = Some gs -> cargs_correspond vm gs' gs)) ->
      (** each view's instance [Is] is [IsS] with the members as variables
-         ([grp_sctx]); the instance and the view equations are checked
+         ([grp_selfs_ctx]); the instance and the view equations are checked
          there, as the group is not filed yet *)
      (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)) ->
      (forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> nth_error (IsS k) j = Some I ->
         nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ I : T) ->
      (forall k Mk qc k' Is vm D' i' Mi' v pm', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_decl pm' ->
         nth_error vm i' = Some v ->
@@ -1537,7 +1537,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         nth_error (IsS v) j' = Some C ->
         nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
         nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
      (** the view equations, for each member [i'] of the container's group
          and the member [v] of this group the view takes it to: the
          non-uniform parameters, the arguments of each constructor, and, of an
@@ -1549,20 +1549,20 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
         ind_member D v = Some Mv ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
         ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
-        Θ ⍮ Ξ ⍮ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
-          ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs) ->
+        Θ ⍮ Ξ ⍮ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
+          ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ self_cargs_ctx D IsS Mv gs) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
         ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
         ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
         gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
         d < ptyp_depth t ->
-        Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
-                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+        Θ ⍮ Ξ ⍮ tele_wk (shape_domains_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ self_cargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
           ⊢ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
           ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
@@ -1574,8 +1574,8 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
         nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                      (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
-        Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
-                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+        Θ ⍮ Ξ ⍮ tele_wk (shape_domains_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ self_cargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
           ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
           : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
@@ -1587,14 +1587,14 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
         nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                      (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
-        Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
-                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+        Θ ⍮ Ξ ⍮ tele_wk (shape_domains_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ self_cargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_selfs_ctx D
           ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
           ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
           : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ) ->
      (forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
      (** the record views: the facts without a judgment
          ([rview_struct_ok]); each instance is [IsS] with the members as
          variables, and, there, each instance typed at the record's
@@ -1607,22 +1607,22 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
         record_lookup Θ Ξ qr = Some R -> nth_error (IsS k) j = Some I ->
         nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ I : T) ->
      (forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
         record_lookup Θ Ξ qr = Some R -> im_cons Mk = (c, gs) :: nil ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
-                              ≈ scargs_ctx D IsS Mk gs) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id (IsS k))
+                              ≈ self_cargs_ctx D IsS Mk gs) ->
      (forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
         record_lookup Θ Ξ qr = Some R ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ (record_sort R)[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
      (** the record view's type is in the group's sort.  This follows in
          principle from the instance's typing and the sort premise by the
          record's formation rule, but that rule holds at the record's own
-         position in the global context, and moving it into [grp_sctx D]
+         position in the global context, and moving it into [grp_selfs_ctx D]
          needs a weakening of the global context the presupposition does
          not have; so it is a premise *)
      (forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ apps_exp (a_record qr) (IsS k) : (ind_sort D)[self_wk D 0]ʷ) ->
      (** a view's map takes its container's record views to record views
          of the same record, at instances equal to the container's at the
          view's instance *)
@@ -1638,7 +1638,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         nth_error (IsS v) j' = Some C ->
         nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
         nth_error (tele_insts (record_params R'') Id Is'') j' = Some T ->
-        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
+        Θ ⍮ Ξ ⍮ grp_selfs_ctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
      (** the views' nesting is well founded *)
      (exists rk, view_rank_ok Θ Ξ D rk) ->
      (** each view's members are those of the container's group, as the
@@ -2171,16 +2171,16 @@ Qed.
 
 (** The two forms of a literal's typing the proofs below name: at its own
     sort, the least one, and at sort [0] for a finite one. *)
-Lemma wf_llit_ord : forall {Θ Ξ Γ o},
+Lemma wf_llit_ordinal : forall {Θ Ξ Γ o},
     ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : Level@(fst o).
 Proof. intros; apply wf_llit; [ reflexivity | assumption ]. Qed.
 
-Lemma wf_llit_fin : forall {Θ Ξ Γ n},
+Lemma wf_llit_of_nat : forall {Θ Ξ Γ n},
     ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n : Level.
 Proof. intros; apply wf_llit; [ reflexivity | assumption ]. Qed.
 
 #[export]
-Hint Resolve wf_llit_ord wf_llit_fin : mctt.
+Hint Resolve wf_llit_ordinal wf_llit_of_nat : mctt.
 (** The side condition of [wf_llit] and of the literal equations: the tier
     of a literal is at most the sort. *)
 #[export]
@@ -2199,28 +2199,28 @@ Qed.
 Lemma wf_univ_large : forall {Θ Ξ Γ o i},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ : Typeω@i.
-Proof. intros; eapply wf_univ_large_tm; [ assumption | apply wf_llit_ord; assumption ]. Qed.
+Proof. intros; eapply wf_univ_large_tm; [ assumption | apply wf_llit_ordinal; assumption ]. Qed.
 
 (** The base types are types of every large universe. *)
 Lemma wf_level_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_exp_eq_level_cong_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 (** So are [Prop] and the placeholder type. *)
 Lemma wf_prop_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_prop | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_prop | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_exp_eq_prop_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ≈ Propₘ : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_prop_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_prop_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_placeholder_type_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_placeholder_type | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_placeholder_type | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_exp_eq_placeholder_type_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ≈ a_placeholder_type : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_placeholder_type_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_placeholder_type_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_exp_eq_univ_cong_large_tm : forall {Θ Ξ Γ M M' i n},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -2234,7 +2234,7 @@ Proof.
 Qed.
 
 Lemma wf_exp_eq_univ_cong_large : forall {Θ Ξ Γ o i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ≈ Type⟨𝕃ᵒ o⟩ : Typeω@i.
-Proof. intros; eapply wf_exp_eq_univ_cong_large_tm; [ assumption | apply wf_llit_ord; assumption | apply wf_exp_eq_llit_cong; [ reflexivity | assumption ] ]. Qed.
+Proof. intros; eapply wf_exp_eq_univ_cong_large_tm; [ assumption | apply wf_llit_ordinal; assumption | apply wf_exp_eq_llit_cong; [ reflexivity | assumption ] ]. Qed.
 
 (** ** Literal Levels
 
@@ -2378,7 +2378,7 @@ Qed.
 Lemma wf_subtyp_small_large_lit : forall {Θ Ξ Γ o i},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ⊆ Typeω@i.
-Proof. intros; eapply wf_subtyp_small_large; [ assumption | apply wf_llit_ord; assumption ]. Qed.
+Proof. intros; eapply wf_subtyp_small_large; [ assumption | apply wf_llit_ordinal; assumption ]. Qed.
 
 Lemma wf_subtyp_suniv_ordinal_le : forall {Θ Ξ Γ o o'},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->

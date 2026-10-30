@@ -49,31 +49,31 @@ Section Bridge.
   Qed.
 
   (** Soundness at the inferred universe, precisely: a type that infers the
-      universe [u] is a type of [unf_tm u], at either tier. *)
+      universe [u] is a type of [universe_nf_tm u], at either tier. *)
   Lemma alg_type_infer_typ_sound' : forall Θ Ξ Γ UA u A,
       @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
       is_univ_nf UA u ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : unf_tm u.
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_nf_tm u.
   Proof.
     intros * H Hu HΓ.
     rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu).
     exact (alg_type_infer_sound' _ _ _ UA _ H HΓ).
   Qed.
 
-  (** The same at an index of either tier: a type of [unf_tm u] is one of the
-      large universe [Typeω@(unf_large u)] the index lives at. *)
+  (** The same at an index of either tier: a type of [universe_nf_tm u] is one of the
+      large universe [Typeω@(universe_nf_large_index u)] the index lives at. *)
   Lemma alg_type_infer_univ_sound' : forall Θ Ξ Γ UA u A,
       @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
       is_univ_nf UA u ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(unf_large u).
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(universe_nf_large_index u).
   Proof.
     intros * H Hu HΓ.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : unf_tm u)
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_nf_tm u)
       by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
           exact (alg_type_infer_sound' _ _ _ UA _ H HΓ)).
-    exact (wf_exp_unf_large (GC := gc_mk Θ Ξ) ltac:(eassumption)).
+    exact (wf_exp_universe_nf_large_index (GC := gc_mk Θ Ξ) ltac:(eassumption)).
   Qed.
 
   Lemma alg_type_check_sound' : forall Θ Ξ Γ i A M,
@@ -101,7 +101,7 @@ Section Bridge.
       exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u.
   Proof.
     intros * H.
-    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u /\ unf_le u (unl i))
+    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u /\ universe_nf_le u (universe_large i))
         as [UA [u [? []]]]
         by (eapply (alg_type_infer_large_typ_complete (GC := gc_mk Θ Ξ));
             [ apply user_exp_all | eassumption ]).
@@ -113,7 +113,7 @@ Section Bridge.
   Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ T A,
       univ_term T ->
       Θ ⍮ Ξ ⍮ Γ ⊢ A : T ->
-      exists u v, nbe_ty Θ Ξ Γ T (univ_nf u) /\ @alg_type_infer (gc_mk Θ Ξ) Γ (univ_nf v) A /\ unf_le v u.
+      exists u v, nbe_ty Θ Ξ Γ T (universe_nf_to_nf u) /\ @alg_type_infer (gc_mk Θ Ξ) Γ (universe_nf_to_nf v) A /\ universe_nf_le v u.
   Proof.
     intros * HT H.
     exact (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ) (user_exp_all _) HT H).
@@ -189,12 +189,12 @@ Section BridgeInstance.
   (** [alg_type_infer_univ_sound'] *)
   Lemma alg_type_infer_univ_sound_gc : forall Γ UA u A,
       Γ ⊢a A ⟹ UA -> is_univ_nf UA u -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
-      gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@(unf_large u).
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@(universe_nf_large_index u).
   Proof.
     intros * H Hu HΓ.
-    assert (gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : unf_tm u)
+    assert (gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : universe_nf_tm u)
       by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu); exact (alg_type_infer_sound H HΓ)).
-    exact (wf_exp_unf_large ltac:(eassumption)).
+    exact (wf_exp_universe_nf_large_index ltac:(eassumption)).
   Qed.
 
   (** [alg_type_check_complete'] *)
@@ -206,7 +206,7 @@ Section BridgeInstance.
       gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i -> exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u.
   Proof.
     intros * H.
-    assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i)) as [UA [u [? []]]]
+    assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ universe_nf_le u (universe_large i)) as [UA [u [? []]]]
       by (eapply alg_type_infer_large_typ_complete; [ apply user_exp_all | eassumption ]).
     eauto.
   Qed.
@@ -277,7 +277,7 @@ Section check_exp.
   | Γ, HΓ, A =>
       let*o (exist _ UA _) := type_infer F Γ _ A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
-      pureo (exist _ (unf_large u) _)
+      pureo (exist _ (universe_nf_large_index u) _)
   .
   Obligation 1. Qed.
   (** Every user term has an inference order. *)
@@ -294,7 +294,7 @@ Section check_exp.
     end.
   Qed.
   (** The inferred universe gives the typing at its own large level. *)
-  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(unf_large u) *)
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(universe_nf_large_index u) *)
     eapply alg_type_infer_univ_sound_gc; eassumption.
   Qed.
 

@@ -755,7 +755,7 @@ Proof.
   pose proof (loc_modexp_wf _ _ _ HΓ _ _ _ Hl) as HwP.
   destruct (loc_valid _ _ _ _ _ Hv Hl) as [_ HvΦ].
   pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0.
-  pose proof (gm_coh_prefix _ _ _ _ _ (loc_coh _ _ Hg _ _ _ Hl) Hp) as HcE0.
+  pose proof (gm_coherent_prefix _ _ _ _ _ (loc_coherent _ _ Hg _ _ _ Hl) Hp) as HcE0.
   pose proof (loc_closed _ _ Hg _ _ _ Hl) as [_ HcΦ].
   pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
   pose proof (closed_tele_wf _ _ _ _ HsT HT HΓ) as HTΓ.
@@ -1044,24 +1044,24 @@ Qed.
     with no parameter by its target, and an application by [β]. *)
 
 Inductive unit_nf (Θ : gdeps) (Ξ : gstack) : modexp -> Prop :=
-| unf_filed : forall p T Φ Ns, loc Θ Ξ p T Φ -> unit_nf Θ Ξ (me_apps (qname_mod p) Ns)
-| unf_body : forall Δ Φ, unit_nf Θ Ξ (me_lit (gu_open Δ Φ))
-| unf_alias : forall Δ E, Δ <> nil -> unit_nf Θ Ξ E -> unit_nf Θ Ξ (me_lit (gu_mk Δ (md_alias E))).
+| unit_nf_filed : forall p T Φ Ns, loc Θ Ξ p T Φ -> unit_nf Θ Ξ (me_apps (qname_mod p) Ns)
+| unit_nf_body : forall Δ Φ, unit_nf Θ Ξ (me_lit (gu_open Δ Φ))
+| unit_nf_alias : forall Δ E, Δ <> nil -> unit_nf Θ Ξ E -> unit_nf Θ Ξ (me_lit (gu_mk Δ (md_alias E))).
 
 Lemma unit_nf_sub : forall Θ Ξ K, unit_nf Θ Ξ K -> forall σ, unit_nf Θ Ξ K[σ]ᵐ.
 Proof.
   induction 1 as [p T Φ Ns Hl | Δ Φ | Δ E HΔ HE IH]; intros σ.
-  - rewrite me_apps_sub, qname_mod_sub; eapply unf_filed; exact Hl.
-  - cbn [modexp_sub]; rewrite gunit_sub_mk; apply unf_body.
-  - cbn [modexp_sub]; rewrite gunit_sub_mk; apply unf_alias; [ destruct Δ; [ contradiction | discriminate ] | apply IH ].
+  - rewrite me_apps_sub, qname_mod_sub; eapply unit_nf_filed; exact Hl.
+  - cbn [modexp_sub]; rewrite gunit_sub_mk; apply unit_nf_body.
+  - cbn [modexp_sub]; rewrite gunit_sub_mk; apply unit_nf_alias; [ destruct Δ; [ contradiction | discriminate ] | apply IH ].
 Qed.
 
 Lemma mdesc_unit_nf : forall Θ Ξ Rm, mdesc_canonical Θ Ξ Rm -> mdesc_is_mod Rm -> unit_nf Θ Ξ (mdesc_unit Rm).
 Proof.
   intros * Hc Hm; destruct Rm as [A om | Δ Φ | [| e Θ'] p T Φ Ns | ]; cbn in Hm, Hc |- *; try contradiction.
-  - apply unf_body.
-  - eapply unf_filed; exact Hc.
-  - apply unf_alias; [ discriminate | eapply unf_filed; exact Hc ].
+  - apply unit_nf_body.
+  - eapply unit_nf_filed; exact Hc.
+  - apply unit_nf_alias; [ discriminate | eapply unit_nf_filed; exact Hc ].
 Qed.
 
 Lemma mdenote_lit_inv : forall Θ Ξ Γ U R, mdenote Θ Ξ Γ (me_lit U) R -> udenote Θ Ξ Γ None U R.
@@ -1129,16 +1129,16 @@ Proof.
   intros Θ Ξ Hg * Hnf Hw Hm Ha.
   assert (HmA : mdenote Θ Ξ Γ (me_app K N) RK') by (eapply mdenote_app; eassumption).
   destruct Hnf as [p T Φ Ns Hl | Δ Φ | Δ E HΔ HE].
-  - exists (me_app (me_apps (qname_mod p) Ns) N), RK'; split; [ rewrite <- me_apps_snoc; eapply unf_filed; exact Hl |].
+  - exists (me_app (me_apps (qname_mod p) Ns) N), RK'; split; [ rewrite <- me_apps_snoc; eapply unit_nf_filed; exact Hl |].
     split; [ exact Hw |]; split; [ exact HmA | reflexivity ].
-  - destruct (lit_app_last _ _ Hg _ _ _ _ (unf_body _ _ Δ Φ) Hw Hm) as (Δ0 & X & D & HU & Hf & HN).
+  - destruct (lit_app_last _ _ Hg _ _ _ _ (unit_nf_body _ _ Δ Φ) Hw Hm) as (Δ0 & X & D & HU & Hf & HN).
     injection HU as -> <-.
     pose proof (unit_eq_of_full _ _ _ _ Hf) as HU.
     destruct (mdenote_beta _ _ _ _ _ _ N HU _ (mdenote_lit_inv _ _ _ _ _ Hm)) as (R' & HmA' & HmL & _).
     rewrite <- (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmA' _ HmA).
     eexists; exists R'; split; [| split; [ exact (beta_step _ _ _ _ _ _ _ HU HN) | split; [ exact HmL | reflexivity ] ] ].
-    rewrite gunit_sub_mk; apply unf_body.
-  - pose proof (unf_alias _ _ _ _ HΔ HE) as Hnf.
+    rewrite gunit_sub_mk; apply unit_nf_body.
+  - pose proof (unit_nf_alias _ _ _ _ HΔ HE) as Hnf.
     destruct (lit_app_last _ _ Hg _ _ _ _ Hnf Hw Hm) as (Δ0 & X & D & HU & Hf & HN).
     injection HU as -> <-.
     pose proof (unit_eq_of_full _ _ _ _ Hf) as HU.
@@ -1157,7 +1157,7 @@ Proof.
       split; [ eapply wf_me_trans; [ exact Hβ | apply wf_me_beta_alias0; exact HE' ] |].
       split; [ exact HmE | rewrite HmdE, HmdR'; reflexivity ].
     + eexists; exists R'; split; [| split; [ exact Hβ | split; [ exact HmL | reflexivity ] ] ].
-      apply unf_alias; [ discriminate | apply unit_nf_sub; exact HE ].
+      apply unit_nf_alias; [ discriminate | apply unit_nf_sub; exact HE ].
 Qed.
 
 Lemma lookup_sound_all : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
@@ -1173,12 +1173,12 @@ Proof.
   - (* a loaded unit or an open frame *)
     intros Γ H p T Φ Hq Hu HH Rm Hmd.
     destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq' & Hl); rewrite Hq in Hq'; injection Hq' as <-.
-    exists H, (mdesc_closed nil p T Φ nil); split; [ rewrite (mod_qname_inv _ _ Hq); exact (unf_filed _ _ p T Φ nil Hl) |].
+    exists H, (mdesc_closed nil p T Φ nil); split; [ rewrite (mod_qname_inv _ _ Hq); exact (unit_nf_filed _ _ p T Φ nil Hl) |].
     split; [ exact HH |]; split; [ apply mdenote_unit; assumption | exact Hmd ].
   - (* the open frame of a member's module: itself, a filed module *)
     intros Γ H p pq k D Mk Tm Φm Hq Hk HMk Hl HH Rm Hmd; cbn in Hmd.
     exists H, (ind_former_desc pq k D Mk (mdesc_closed nil p Tm Φm nil)).
-    split; [ rewrite (mod_qname_inv _ _ Hq); exact (unf_filed _ _ p Tm Φm nil (gc_loc_loc _ _ _ _ _ Hl)) |].
+    split; [ rewrite (mod_qname_inv _ _ Hq); exact (unit_nf_filed _ _ p Tm Φm nil (gc_loc_loc _ _ _ _ _ Hl)) |].
     split; [ exact HH |]; split; [ eapply mdenote_ind_frame; eassumption | exact Hmd ].
   - (* a slot: its unit *)
     intros Γ x U R Hx Hu IH HH Rm Hmd.
@@ -1217,12 +1217,12 @@ Proof.
   - (* the open frame of a record's module: itself, a filed module *)
     intros Γ H p R Tm Φm Hq Hk Hl HH Rm Hmd; cbn in Hmd.
     exists H, (record_former_desc p R (mdesc_closed nil p Tm Φm nil)).
-    split; [ rewrite (mod_qname_inv _ _ Hq); exact (unf_filed _ _ p Tm Φm nil (gc_loc_loc _ _ _ _ _ Hl)) |].
+    split; [ rewrite (mod_qname_inv _ _ Hq); exact (unit_nf_filed _ _ p Tm Φm nil (gc_loc_loc _ _ _ _ _ Hl)) |].
     split; [ exact HH |]; split; [ eapply mdenote_record_frame; eassumption | exact Hmd ].
   - (* a body *)
     intros Γ o Δ sm Φ Φx R Hx _ Hb -> HU Rm Hmd.
     destruct sm; cbn in Hb; [ injection Hb as <- | discriminate ].
-    exists (me_lit (gu_open Δ Φ)), (mdesc_open Δ Φ Φx); split; [ apply unf_body |].
+    exists (me_lit (gu_open Δ Φ)), (mdesc_open Δ Φ Φx); split; [ apply unit_nf_body |].
     split; [ apply wf_me_lit; exact HU |]; split; [ apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ] | exact Hmd ].
   - (* an alias: with no parameter its target, otherwise over the unit its target is equal to *)
     intros Γ o Δ E R R' Hm IH HR' -> HU Rm Hmd.
@@ -1233,7 +1233,7 @@ Proof.
     + rewrite mdesc_up_nil, (mdesc_is_mod_mod _ Him) in Hmd; injection Hmd as <-.
       exists K, RK; split; [ exact Hnf |]; split; [ eapply wf_me_trans; [ apply wf_me_beta_alias0; exact HE | exact HK ] |].
       split; assumption.
-    + exists (me_lit (gu_mk (e :: Δ') (md_alias K))), (mdesc_up (e :: Δ') R'); split; [ apply unf_alias; [ discriminate | exact Hnf ] |].
+    + exists (me_lit (gu_mk (e :: Δ') (md_alias K))), (mdesc_up (e :: Δ') R'); split; [ apply unit_nf_alias; [ discriminate | exact Hnf ] |].
       split; [ apply wf_me_lit; eapply wf_unit_eq_alias with (param_level := lp);
                [ apply ext_of_ctx; exact HΔ | exact Ha | exact Ha | exact HK | exact (wf_modexp_eq_refl_right HK)
                | exact HRp | exact HRp ] |].

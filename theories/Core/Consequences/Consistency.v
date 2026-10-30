@@ -61,13 +61,13 @@ Proof.
   (on_all_hyp: fun H => apply completeness_ty in H).
   (on_all_hyp: fun H => pose proof (soundness H)).
   destruct_conjs.
-  dir_inversion_clear_by_head nbe.
-  dir_inversion_clear_by_head nbe_ty.
-  dir_inversion_by_head initial_env; subst.
+  directed_inversion_clear_by_head nbe.
+  directed_inversion_clear_by_head nbe_ty.
+  directed_inversion_by_head initial_env; subst.
   functional_initial_env_rewrite_clear.
   invert_rel_typ_body.
-  dir_inversion_clear_by_head read_nf.
-  dir_inversion_by_head read_typ; subst.
+  directed_inversion_clear_by_head read_nf.
+  directed_inversion_by_head read_typ; subst.
   functional_eval_rewrite_clear.
   functional_read_rewrite_clear.
   autoinjections.
@@ -172,9 +172,9 @@ Lemma nf_of_pi : forall {Γ M A B},
     exists W1 W2, nbe_f Γ M (Π A B) λⁿ W1 W2.
 Proof.
   intros * [? []]%soundness.
-  dir_inversion_clear_by_head nbe.
+  directed_inversion_clear_by_head nbe.
   invert_rel_typ_body.
-  dir_inversion_clear_by_head read_nf.
+  directed_inversion_clear_by_head read_nf.
   do 2 eexists; mauto 4.
 Qed.
 Hint Resolve nf_of_pi : mctt.
@@ -688,7 +688,7 @@ Proof.
   eapply wf_exp_subtyp'; [ exact Hhd | exact Hs ].
 Qed.
 
-Lemma lvl_exp_of_cst_sort : forall {Γ c} {l : list (nat * exp)} {n},
+Lemma lvl_exp_of_const_sort : forall {Γ c} {l : list (nat * exp)} {n},
     Γ ⊢ lvl_exp_of c l : Level@n ->
     fst c <= n.
 Proof.
@@ -749,7 +749,7 @@ Hint Constructors small_typ_nf : mctt.
     [u] is large), and the large universes below [u].  A literal small
     universe's instance is [small_typ_nf] ([typ_nf_below_lit]); a large one's
     gives the type constructors ([typ_nf_below_large]). *)
-Inductive typ_nf_below : unf -> nf -> Prop :=
+Inductive typ_nf_below : universe_nf -> nf -> Prop :=
 (** The unit type *)
 | typ_nf_below_True : forall u, typ_nf_below u ⊤ⁿ
 (** The empty type *)
@@ -760,10 +760,10 @@ Inductive typ_nf_below : unf -> nf -> Prop :=
 | typ_nf_below_pi : forall u A B, typ_nf_below u (Πⁿ A B)
 (** A small universe whose successor level is below [u] *)
 | typ_nf_below_univ : forall u c xs,
-    unf_le (uns (lvl_suc (c, xs))) u ->
+    universe_nf_le (universe_small (lvl_suc (c, xs))) u ->
     typ_nf_below u (univⁿ c xs)
 (** A large universe below [u] *)
-| typ_nf_below_typ : forall i j, j < i -> typ_nf_below (unl i) Typeωⁿ@j
+| typ_nf_below_typ : forall i j, j < i -> typ_nf_below (universe_large i) Typeωⁿ@j
 (** An inductive type at its parameters *)
 | typ_nf_below_indty : forall u p k Ms, typ_nf_below u (nf_indty p k Ms)
 (** A record type at its parameters *)
@@ -775,22 +775,22 @@ Hint Constructors typ_nf_below : mctt.
     unbounded below a finite literal, [lvl_le_lit_closed]) and a finite
     level below [n]. *)
 Lemma typ_nf_below_lit : forall n W,
-    typ_nf_below (uns (lvl_lit (ofin n))) W ->
+    typ_nf_below (universe_small (lvl_lit (ordinal_of_nat n))) W ->
     small_typ_nf n W.
 Proof.
   intros * H; inversion H as [| | | | ? c xs Hle | | |]; subst; try constructor.
-  cbn [unf_le] in Hle.
+  cbn [universe_nf_le] in Hle.
   pose proof (lvl_le_lit_closed _ _ Hle) as Hxs.
   destruct xs as [| [k s a] r]; cbn in Hxs; [| discriminate ].
   rewrite lvl_le_correct in Hle; specialize (Hle _ lvl_adm_zero).
-  rewrite lvl_ev_suc in Hle; unfold lvl_ev, lvl_lit in Hle; cbn in Hle.
-  destruct c as [a m]; assert (a = 0) as -> by ord.
-  constructor; ord.
+  rewrite lvl_eval_suc in Hle; unfold lvl_eval, lvl_lit in Hle; cbn in Hle.
+  destruct c as [a m]; assert (a = 0) as -> by ordinal_solve.
+  constructor; ordinal_solve.
 Qed.
 
 (** Below a large universe, a type constructor that is not neutral. *)
 Lemma typ_nf_below_large : forall i W,
-    typ_nf_below (unl i) W ->
+    typ_nf_below (universe_large i) W ->
     is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
 Proof.
   intros * H; inversion H; subst; (split; [ cbn; constructor | intros ? Heq; discriminate Heq ]).
@@ -817,7 +817,7 @@ Proof.
     as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 _ _ Hsub].
   inversion Hn; subst.
   inversion Hn'; subst.
-  dir_inversion_by_head eval_exp; subst.
+  directed_inversion_by_head eval_exp; subst.
   functional_initial_env_rewrite_clear.
   functional_eval_rewrite_clear.
   inversion Hsub; subst.
@@ -832,12 +832,12 @@ Qed.
 Corollary subtyp_suniv_lit_bound : forall {Γ M n L},
     Γ ⊢ Type⟨M⟩ ⊆ Type@n ->
     nbe_f Γ M Level (nf_lvl_of L) ->
-    lvl_le L (lvl_lit (ofin n)).
+    lvl_le L (lvl_lit (ordinal_of_nat n)).
 Proof.
   intros * Hs Hn; eapply subtyp_suniv_bound; [ exact Hs | exact Hn |].
   inversion Hn; subst.
   econstructor; [ eassumption | eassumption | apply eval_exp_llit |].
-  dir_inversion_by_head eval_exp; subst; mauto 3.
+  directed_inversion_by_head eval_exp; subst; mauto 3.
 Qed.
 
 (** The normal form of a small universe is the universe at the normal form of
@@ -848,8 +848,8 @@ Lemma nbe_ty_univ_level : forall {Γ t L n},
 Proof.
   intros * Hn.
   inversion Hn; subst.
-  dir_inversion_by_head eval_exp; subst.
-  dir_inversion_by_head read_typ; subst.
+  directed_inversion_by_head eval_exp; subst.
+  directed_inversion_by_head read_typ; subst.
   match goal with H1 : fst ?L0 = fst L, H2 : snd ?L0 = snd L |- _ =>
     assert (L0 = L) as -> by (destruct L0, L; cbn in *; congruence) end.
   econstructor; [ eassumption | apply eval_exp_level | eassumption | eapply read_nf_level_sort; eassumption ].
@@ -857,8 +857,8 @@ Qed.
 
 (** The level of a small universe in normal form is a canonical level of a
     sort its level term has: its constant is of a tier at most that sort, and
-    each atom is a level of its own sort ([soundness_lvl_ws]). *)
-Lemma univ_nf_ws : forall {Γ c xs A},
+    each atom is a level of its own sort ([soundness_lvl_well_scoped]). *)
+Lemma univ_nf_well_scoped : forall {Γ c xs A},
     Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : A ->
     nbe_ty_f Γ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ (univⁿ c xs) ->
     exists n, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n /\ fst c <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Γ xs.
@@ -866,7 +866,7 @@ Proof.
   intros * HA Hn.
   destruct (wf_univ_lvl_inversion HA) as [n Ht].
   pose proof (nbe_ty_univ_level (L := (c, xs)) (n := n) Hn) as Hl.
-  pose proof (soundness_lvl_ws Ht Hl) as Hws; cbn in Hws.
+  pose proof (soundness_lvl_well_scoped Ht Hl) as Hws; cbn in Hws.
   exists n; split; [ exact Ht | exact Hws ].
 Qed.
 
@@ -877,8 +877,8 @@ Lemma nbe_suniv_to_nbe_ty : forall {Γ M t W},
 Proof.
   intros * Hn.
   inversion Hn; subst.
-  dir_inversion_by_head eval_exp; subst.
-  dir_inversion_by_head read_nf; subst.
+  directed_inversion_by_head eval_exp; subst.
+  directed_inversion_by_head read_nf; subst.
   econstructor; eassumption.
 Qed.
 
@@ -888,11 +888,11 @@ Lemma nbe_ty_suniv_lit : forall {Γ n W},
     W = nf_univ n nil.
 Proof.
   intros * Hn.
-  dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
+  directed_inversion_clear_by_head nbe_ty; directed_inversion_by_head eval_exp; subst.
   match goal with H : eval_exp _ _ (a_llit _) _ _ |- _ => inversion H; subst end.
-  dir_inversion_by_head read_typ; subst.
-  match goal with H : Rnf ⇓ Levelᵈ (dlvl_lit n) in _ ↘ _ |- _ =>
-    pose proof (read_nf_dlvl_lit n (length Γ)) as Hk;
+  directed_inversion_by_head read_typ; subst.
+  match goal with H : Rnf ⇓ Levelᵈ (domain_level_lit n) in _ ↘ _ |- _ =>
+    pose proof (read_nf_domain_level_lit n (length Γ)) as Hk;
     assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption) end.
   reflexivity.
 Qed.
@@ -918,36 +918,36 @@ Qed.
 Lemma nbe_ty_univ_term : forall {Γ T W},
     univ_term T ->
     nbe_ty_f Γ T W ->
-    exists u, W = univ_nf u.
+    exists u, W = universe_nf_to_nf u.
 Proof.
   intros * HT Hn; inversion HT; subst;
-    dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst;
-    dir_inversion_by_head read_typ; subst.
-  - exists (unl i); reflexivity.
-  - exists (uns L); reflexivity.
+    directed_inversion_clear_by_head nbe_ty; directed_inversion_by_head eval_exp; subst;
+    directed_inversion_by_head read_typ; subst.
+  - exists (universe_large i); reflexivity.
+  - exists (universe_small L); reflexivity.
 Qed.
 
 Lemma nbe_ty_typ_univ_nf : forall {Γ i u},
-    nbe_ty_f Γ Typeω@i (univ_nf u) ->
-    u = unl i.
+    nbe_ty_f Γ Typeω@i (universe_nf_to_nf u) ->
+    u = universe_large i.
 Proof.
-  intros * Hn; dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
+  intros * Hn; directed_inversion_clear_by_head nbe_ty; directed_inversion_by_head eval_exp; subst.
   destruct u; cbn in *; match goal with H : Rtyp _ in _ ↘ _ |- _ => inversion H; subst end; congruence.
 Qed.
 
 Lemma nbe_ty_suniv_univ_nf : forall {Γ t u},
-    nbe_ty_f Γ Type⟨t⟩ (univ_nf u) ->
-    exists L, u = uns L /\ nbe_f Γ t Level (nf_lvl_of L).
+    nbe_ty_f Γ Type⟨t⟩ (universe_nf_to_nf u) ->
+    exists L, u = universe_small L /\ nbe_f Γ t Level (nf_lvl_of L).
 Proof.
   intros * Hn; destruct u as [L | i].
   - exists L; split; [ reflexivity | exact (nbe_ty_univ_level Hn) ].
-  - exfalso; dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
+  - exfalso; directed_inversion_clear_by_head nbe_ty; directed_inversion_by_head eval_exp; subst.
     cbn in *; match goal with H : Rtyp _ in _ ↘ _ |- _ => inversion H end.
 Qed.
 
 Lemma nbe_ty_lit_univ_nf : forall {Γ n u},
-    nbe_ty_f Γ Type@n (univ_nf u) ->
-    u = uns (lvl_lit (ofin n)).
+    nbe_ty_f Γ Type@n (universe_nf_to_nf u) ->
+    u = universe_small (lvl_lit (ordinal_of_nat n)).
 Proof.
   intros * Hn; apply nbe_ty_suniv_lit in Hn.
   destruct u as [[c xs] | i]; cbn in Hn; inversion Hn; reflexivity.
@@ -994,7 +994,7 @@ Qed.
 Lemma typ_nf_below_of_nbe : forall {Γ M T u W},
     univ_term T ->
     Γ ⊢ M : T ->
-    nbe_ty_f Γ T (univ_nf u) ->
+    nbe_ty_f Γ T (universe_nf_to_nf u) ->
     nbe_f Γ M T W ->
     (forall V, W <> ⇑ⁿ V) ->
     typ_nf_below u W.
@@ -1024,24 +1024,24 @@ Proof.
     destruct HT as [i | t].
     + apply nbe_ty_typ_univ_nf in HnT as ->; exact I.
     + destruct (nbe_ty_suniv_univ_nf HnT) as (L' & -> & HL').
-      cbn [unf_le nf_to_exp] in *.
+      cbn [universe_nf_le nf_to_exp] in *.
       set (E := lvl_exp_of c (List.map atom_exp xs)) in *.
       apply wf_univ_inversion in HW.
       assert (HL : nbe_f Γ E Level (nf_lvl_of (c, xs))) by (apply (nbe_ty_univ_level (L := (c, xs))); exact HWW).
       inversion HL; subst.
-      dir_inversion_by_head eval_exp; subst.
+      directed_inversion_by_head eval_exp; subst.
       match goal with Hr : Rnf ⇓ Levelᵈ ?l in _ ↘ _, HE : ⟦ E ⟧ _ ↘ ?l |- _ =>
-        destruct (dlvl_canon_of_read _ _ _ Hr) as [Hsh [L0 [HL0 Hc]]] end.
+        destruct (domain_level_canon_of_read _ _ _ Hr) as [Hsh [L0 [HL0 Hc]]] end.
       apply nf_lvl_of_inj in HL0; subst L0.
       (** The universe above has the successor level, whose canonical form
           is the canonical successor of [(c, xs)]. *)
-      pose proof (dlvl_canon_suc _ _ _ Hc) as Hc'.
+      pose proof (domain_level_canon_suc _ _ _ Hc) as Hc'.
       assert (Hn' : nbe_f Γ (succl E) Level (nf_lvl_of (lvl_canon (lvl_suc (c, xs))))).
       { econstructor; [ eassumption | eassumption | apply eval_exp_succl; eassumption
-                      | apply dlvl_canon_read; [ apply dlvl_shape_suc | exact Hc' ] ]. }
+                      | apply domain_level_canon_read; [ apply domain_level_shape_suc | exact Hc' ] ]. }
       pose proof (subtyp_suniv_bound HW Hn' HL') as Hle.
       rewrite lvl_le_correct in *; intros ν Hν; specialize (Hle ν Hν).
-      rewrite lvl_canon_ev in Hle by exact Hν; exact Hle.
+      rewrite lvl_canon_eval in Hle by exact Hν; exact Hle.
 Qed.
 
 End Small_Typ.
@@ -1088,7 +1088,7 @@ Theorem consistency_False : forall M,
 Proof.
   intros * [W [Hnbe HMW]]%soundness.
   pose proof (nbe_clean _ _ Htr _ _ _ _ Hnbe) as Hc.
-  dir_inversion_clear_by_head nbe.
+  directed_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head read_nf ltac:(fun H => directed dependent destruction H).
   simpl in *.
@@ -1104,7 +1104,7 @@ Qed.
 Theorem canonical_form_of_typ : forall {T M},
     univ_term T ->
     ⋅ ⊢ M : T ->
-    exists u W, nbe_ty_f ⋅ T (univ_nf u) /\ nbe_f ⋅ M T W /\ typ_nf_below u W.
+    exists u W, nbe_ty_f ⋅ T (universe_nf_to_nf u) /\ nbe_f ⋅ M T W /\ typ_nf_below u W.
 Proof.
   intros * HT HM.
   destruct (soundness HM) as (W & Hn & HMW).
@@ -1382,7 +1382,7 @@ Corollary canonical_form_of_typ_gctx : forall Θ Ξ T M,
     gc_transparent Θ Ξ ->
     univ_term T ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : T ->
-    exists u W, nbe_ty Θ Ξ ⋅ T (univ_nf u) /\ nbe Θ Ξ ⋅ M T W /\ typ_nf_below u W.
+    exists u W, nbe_ty Θ Ξ ⋅ T (universe_nf_to_nf u) /\ nbe Θ Ξ ⋅ M T W /\ typ_nf_below u W.
 Proof. intros * Htr HT HM; exact (@canonical_form_of_typ (gc_mk Θ Ξ) Htr T M HT HM). Qed.
 
 Corollary canonical_form_of_large_typ_gctx : forall Θ Ξ i M,
@@ -1560,7 +1560,7 @@ Qed.
 Theorem canonical_form_of_typ_stuck : forall {T M},
     univ_term T ->
     ⋅ ⊢ M : T ->
-    exists u W, nbe_ty_f ⋅ T (univ_nf u) /\ nbe_f ⋅ M T W /\ nf_stuck (gstuck gc_deps gc_stack) W /\
+    exists u W, nbe_ty_f ⋅ T (universe_nf_to_nf u) /\ nbe_f ⋅ M T W /\ nf_stuck (gstuck gc_deps gc_stack) W /\
       (typ_nf_below u W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
 Proof.
   intros * HT HM.
@@ -1607,7 +1607,7 @@ Proof. intros * Hl Hs HM; exact (@canonical_form_of_ind_nat_stuck (gc_mk Θ Ξ) 
 Corollary canonical_form_of_typ_stuck_gctx : forall Θ Ξ T M,
     univ_term T ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : T ->
-    exists u W, nbe_ty Θ Ξ ⋅ T (univ_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (gstuck Θ Ξ) W /\
+    exists u W, nbe_ty Θ Ξ ⋅ T (universe_nf_to_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (gstuck Θ Ξ) W /\
       (typ_nf_below u W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
 Proof. intros * HT HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) T M HT HM). Qed.
 
@@ -1688,9 +1688,9 @@ Theorem canonical_form_of_typ_no_axioms : forall Θ Ξ T M,
     gc_no_axioms Θ Ξ ->
     univ_term T ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : T ->
-    exists u W, nbe_ty Θ Ξ ⋅ T (univ_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (gopaque Θ Ξ) W /\
+    exists u W, nbe_ty Θ Ξ ⋅ T (universe_nf_to_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (gopaque Θ Ξ) W /\
       (typ_nf_below u W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
-      exists u' V, nbe_ty (gds_unseal Θ) (gs_unseal Ξ) ⋅ T (univ_nf u') /\
+      exists u' V, nbe_ty (gds_unseal Θ) (gs_unseal Ξ) ⋅ T (universe_nf_to_nf u') /\
         nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M T V /\ typ_nf_below u' V /\
         gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : T.
 Proof.
@@ -1752,7 +1752,7 @@ Qed.
 
 Section Programs.
   Variables (load_path : path -> option String.string) (read : String.string -> option Cst.prog)
-            (to_core : Cst.prog -> option cunit).
+            (to_core : Cst.prog -> option core_unit).
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
 Corollary consistency_False_run : forall ch B Rb cs B' Rb' Θ Ξ M,

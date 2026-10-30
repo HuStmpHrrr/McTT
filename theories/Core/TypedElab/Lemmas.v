@@ -70,12 +70,12 @@ Ltac fill_functional_step Hg :=
       end
     | match goal with
       | IH : forall _, fill_exp _ _ _ _ _ _ -> _, Hp : fill_exp _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
-      | IH : forall _, fill_fvals _ _ _ _ _ _ -> _, Hp : fill_fvals _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
+      | IH : forall _, fill_field_vals _ _ _ _ _ _ -> _, Hp : fill_field_vals _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
       | IH : forall _ _, fill_blocks _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_blocks _ _ _ _ _ _ _ ?Y _ _ ?X |- _ =>
           feed_nontrivial2 IH Y X Hp
       | IH : forall _, fill_brs _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_brs _ _ _ _ _ _ _ _ _ _ ?X |- _ =>
           feed_nontrivial IH X Hp
-      | IH : forall _, fill_oexp _ _ _ _ _ _ -> _, Hp : fill_oexp _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
+      | IH : forall _, fill_optional_exp _ _ _ _ _ _ -> _, Hp : fill_optional_exp _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
       | IH : forall _, fill_read _ _ _ _ _ _ -> _, Hp : fill_read _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
       | IH : forall _ _, fill_mod _ _ _ _ _ _ _ -> _, Hp : fill_mod _ _ _ _ _ ?X ?Y |- _ => feed_nontrivial2 IH X Y Hp
       | IH : forall _, fill_unit _ _ _ _ _ _ -> _, Hp : fill_unit _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
@@ -91,13 +91,13 @@ Section Functional.
   (** Each part of the fill has one fill. *)
   Lemma fill_functional_all :
     (forall Γ M M1, fill_exp Θ Ξ B Γ M M1 -> forall M2, fill_exp Θ Ξ B Γ M M2 -> M1 = M2) /\
-    (forall Γ fs fs1, fill_fvals Θ Ξ B Γ fs fs1 -> forall fs2, fill_fvals Θ Ξ B Γ fs fs2 -> fs1 = fs2) /\
+    (forall Γ fs fs1, fill_field_vals Θ Ξ B Γ fs fs1 -> forall fs2, fill_field_vals Θ Ξ B Γ fs fs2 -> fs1 = fs2) /\
     (forall Γ p D Us As j Bks Bks1, fill_blocks Θ Ξ B Γ p D Us As j Bks Bks1 ->
        forall As' Bks2, fill_blocks Θ Ξ B Γ p D Us As' j Bks Bks2 ->
        blocks_motives Bks1 = blocks_motives Bks2 /\ (As = As' -> Bks1 = Bks2)) /\
     (forall Γ p D Mj Us As Bs Bs1, fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs1 ->
        forall Bs2, fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs2 -> Bs1 = Bs2) /\
-    (forall Γ oM oM1, fill_oexp Θ Ξ B Γ oM oM1 -> forall oM2, fill_oexp Θ Ξ B Γ oM oM2 -> oM1 = oM2) /\
+    (forall Γ oM oM1, fill_optional_exp Θ Ξ B Γ oM oM1 -> forall oM2, fill_optional_exp Θ Ξ B Γ oM oM2 -> oM1 = oM2) /\
     (forall Γ H r1, fill_read Θ Ξ B Γ H r1 -> forall r2, fill_read Θ Ξ B Γ H r2 -> r1 = r2) /\
     (forall Γ H H1 op1, fill_mod Θ Ξ B Γ H H1 op1 -> forall H2 op2, fill_mod Θ Ξ B Γ H H2 op2 -> H1 = H2 /\ op1 = op2) /\
     (forall Γ U U1, fill_unit Θ Ξ B Γ U U1 -> forall U2, fill_unit Θ Ξ B Γ U U2 -> U1 = U2) /\
@@ -150,7 +150,7 @@ Section Functional.
     intros * H1; revert cs2; induction H1 as [| [c args] [c1 a1] cs cs1 [Ef1 [Hn1 Ht1]] _ IH]; intros cs2 H2;
       inversion H2 as [| ? [c2 a2] ? cs2' [Ef2 [Hn2 Ht2]] H2']; subst; [ reflexivity |].
     cbn in *; subst.
-    rewrite (IH _ H2'), (rtele_names_eq a2 a1 (eq_trans Hn1 (eq_sym Hn2)) (Ft _ _ _ Ht1 _ Ht2)); reflexivity.
+    rewrite (IH _ H2'), (raw_args_tele_names_eq a2 a1 (eq_trans Hn1 (eq_sym Hn2)) (Ft _ _ _ Ht1 _ Ht2)); reflexivity.
   Qed.
 
   (** A group's members have one fill, in groups that agree on the
@@ -163,7 +163,7 @@ Section Functional.
     intros * Eu Hh H1; revert ms2; induction H1 as [| Mr M1 ms ms1 [En1 _ _ Ec1] _ IH]; intros ms2 H2 Hh0;
       inversion H2 as [| ? M2 ? ms2' [En2 _ _ Ec2] H2']; subst; [ reflexivity |].
     inversion Hh0 as [| ? ? ? ? [Enp Ens] Hh0']; subst.
-    rewrite (rm_pctx_heads_eq Ξ R1 R2 M1 M2 Eu Hh Enp) in Ec1.
+    rewrite (raw_member_args_ctx_heads_eq Ξ R1 R2 M1 M2 Eu Hh Enp) in Ec1.
     rewrite (raw_member_parts_eq M2 M1 (eq_trans En1 (eq_sym En2)) Enp Ens (fill_raw_cons_functional _ _ _ _ Ec1 Ec2)),
       (IH _ H2' Hh0'); reflexivity.
   Qed.
@@ -224,7 +224,7 @@ Section Functional.
           assert_fails constr_eq X Y; pose proof (Ft _ _ _ Ha _ Hb); subst X
       | Ha : fill_exp _ _ _ ?G ?D ?X, Hb : fill_exp _ _ _ ?G ?D ?Y |- _ =>
           assert_fails constr_eq X Y; pose proof (Fe _ _ _ Ha _ Hb); subst X
-      | Ha : fill_oexp _ _ _ ?G ?D ?X, Hb : fill_oexp _ _ _ ?G ?D ?Y |- _ =>
+      | Ha : fill_optional_exp _ _ _ ?G ?D ?X, Hb : fill_optional_exp _ _ _ ?G ?D ?Y |- _ =>
           assert_fails constr_eq X Y; pose proof (Fo _ _ _ Ha _ Hb); subst X
       | Ha : fill_mod _ _ _ ?G ?D ?X _, Hb : fill_mod _ _ _ ?G ?D ?Y _ |- _ =>
           assert_fails constr_eq X Y; destruct (Fm _ _ _ _ Ha _ _ Hb) as [? _]; subst X

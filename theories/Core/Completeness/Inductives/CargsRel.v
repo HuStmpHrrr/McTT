@@ -63,7 +63,7 @@ Section ConArgs.
   Let Hass := valid_group_ass _ _ Hg.
   Variables (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
   Hypotheses (HM : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
-  Let HΨ := vg_cargs_sem p D Hg Hcv k Mk c gs HM Hcon.
+  Let HΨ := valid_group_cargs_sem p D Hg Hcv k Mk c gs HM Hcon.
   Variables (ps ps' as1 as1' : list domain).
   Hypotheses (Hgp : per_gargs (List.rev (im_params D Mk)) nil nil ps ps') (Hlp : List.length ps = im_np D Mk)
     (Hga : per_gargs (List.rev (cargs_ctx p D Mk gs)) (env_args nil ps) (env_args nil ps') as1 as1')
@@ -106,7 +106,7 @@ Section ConArgs.
 
   Lemma con_ns_refl : tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ns ns.
   Proof.
-    destruct (vg_canon p D Hg ups con_ups_refl con_ups_len) as [CnP CnI CaP CaI CdP CdI].
+    destruct (valid_group_canon p D Hg ups con_ups_refl con_ups_len) as [CnP CnI CaP CaI CdP CdI].
     exact (nparams_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI k Mk HM _ _ con_ns_rel).
   Qed.
 
@@ -213,7 +213,7 @@ Section ConArgs.
       tele_prefix_rel (canon_args_rel D ups k ns c) (List.length (cargs_nonrec gs1))
         (nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1)) (nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1')) ->
       forall x x', List.nth_error as1 (List.length gs1) = Some x -> List.nth_error as1' (List.length gs1) = Some x' ->
-        rec_arg_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+        rec_arg_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
           k ups ups' (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1))
           (ns' ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1')) t x x'.
   Proof.
@@ -233,7 +233,7 @@ Section ConArgs.
                   INV Hpre Hend Hrend (List.length (ptyp_doms t)) 0 nil a i Rk eq_refl (tele_prefix_rel_nil _) ltac:(cbn; constructor)
                   ltac:(rewrite List.app_nil_r; exact Ea) HRd) as Hsh.
     rewrite List.app_nil_r in Hsh; cbn [ptyp_skip] in Hsh; apply Hsh in Hxx.
-    apply (vg_rec_arg_move_right p D Hg k Mk c gs1 t gs2 ups ups' ns ns' _ _ x x' HM ltac:(rewrite <- Heq; exact Hcon)
+    apply (valid_group_rec_arg_move_right p D Hg k Mk c gs1 t gs2 ups ups' ns ns' _ _ x x' HM ltac:(rewrite <- Heq; exact Hcon)
              con_ups_rel con_ups_len con_ns_rel INVc).
     exact Hxx.
   Qed.
@@ -271,7 +271,7 @@ Section ConArgs.
   Qed.
 
   Lemma con_args_relate : forall gs2 gs1, gs = gs1 ++ gs2 ->
-      con_args_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+      con_args_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
         k ups ups' (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1))
         (ns' ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1')) gs2
         (List.skipn (List.length gs1) as1) (List.skipn (List.length gs1) as1').
@@ -303,7 +303,7 @@ Section ConArgs.
       parameters. *)
   Lemma con_args_canon :
       tele_rel (canon_args_rel D ups k ns c) (cargs_nonrec gs) (nonrec_arg_vals gs as1) (nonrec_arg_vals gs as1') /\
-      con_args_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+      con_args_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
         k ups ups' ns ns' gs as1 as1'.
   Proof.
     pose proof con_las' as Hla'.
@@ -317,7 +317,7 @@ Section ConArgs.
   (** The constructor at the arguments, at a member that is not a record
       view. *)
   Lemma con_rel : forall cs cs', im_is_rview Mk = false -> List.length cs = im_unu D Mk -> List.length cs' = im_unu D Mk ->
-      ind_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+      ind_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
         k ups ups' ns ns'
         (d_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c ((cs ++ ns) ++ as1))
         (d_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c ((cs' ++ ns') ++ as1')).
@@ -328,7 +328,7 @@ Section ConArgs.
     assert (Hsk : forall (l1 l2 : list domain), List.length l1 = im_unu D Mk -> List.skipn (im_unu D Mk) (l1 ++ l2) = l2)
       by (intros l1 l2 Hl1; rewrite <- Hl1, List.skipn_app, List.skipn_all, Nat.sub_diag; reflexivity).
     assert (Hlns' : List.length ns' = im_nn Mk) by (unfold ns'; rewrite List.length_skipn; unfold im_np in *; lia).
-    destruct (vg_canon p D Hg ups con_ups_refl con_ups_len) as [CnP CnI CaP CaI CdP CdI].
+    destruct (valid_group_canon p D Hg ups con_ups_refl con_ups_len) as [CnP CnI CaP CaI CdP CdI].
     destruct con_args_canon as [Hnr Hia].
     eapply ind_rel_con with (gs := gs) (Mk := Mk);
       [ exact HM | exact Hrv | apply surjective_pairing | exact con_ns_rel | exact Hcon
@@ -357,7 +357,7 @@ Section ConCanon.
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
   Let dr := canon_doms_rel u0.
-  #[local] Abbreviation Hcp := (vg_canon p D Hg u0 u0_gargs u0_len).
+  #[local] Abbreviation Hcp := (valid_group_canon p D Hg u0 u0_gargs u0_len).
   #[local] Abbreviation HnP := (ind_canon_props_np_per _ _ Hcp).
   #[local] Abbreviation HnI := (ind_canon_props_np_iff _ _ Hcp).
   #[local] Abbreviation HaP := (ind_canon_props_arg_per _ _ Hcp).
@@ -367,7 +367,7 @@ Section ConCanon.
   #[local] Abbreviation trefl_l := (nparams_rel_refl_l p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI).
   Variable (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
   Hypotheses (HMk : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
-  Let HΨ := vg_cargs_sem p D Hg Hcv k Mk c gs HMk Hcon.
+  Let HΨ := valid_group_cargs_sem p D Hg Hcv k Mk c gs HMk Hcon.
   Let T := List.rev (im_nparams Mk).
   (** The relations of the types of the members the recursive arguments'
       shapes end in *)
@@ -377,7 +377,7 @@ Section ConCanon.
   Lemma cargs_gargs : forall X X' vs vs',
       tele_rel (nr k) T X X' ->
       tele_rel (ar k X c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
-      con_args_rel p D (okr_at D u0 nr) nr ar dr k u0 u0 X X' gs vs vs' ->
+      con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 X X' gs vs vs' ->
       forall n, n <= List.length gs ->
       per_gargs (List.rev (cargs_ctx p D Mk (List.firstn n gs))) (env_args nil (u0 ++ X)) (env_args nil (u0 ++ X'))
         (List.firstn n vs) (List.firstn n vs').
@@ -459,7 +459,7 @@ Section ConCanon.
       destruct (per_univ_elem_to_nat _ _ _ _ HR) as [m0 Hm0].
       apply (per_gargs_snoc _ _ _ _ _ _ _ _ m0 R); [ rewrite List.length_rev, length_cargs_ctx; lia | exact IHk
                                                    | exact (mk_rel_mod_eval _ _ Et Et' Hm0) |].
-      destruct (vg_arg_head p D Hg Hcv k Mk c gs gs1 A _ u0 X fa HMk Hcon Heq u0_len Lna (eq_trans Lfa (eq_sym Lk)) Hgd)
+      destruct (valid_group_arg_head p D Hg Hcv k Mk c gs gs1 A _ u0 X fa HMk Hcon Heq u0_len Lna (eq_trans Lfa (eq_sym Lk)) Hgd)
         as (iA0 & Rh & a & Ea & Haa' & ERh).
       rewrite <- List.app_assoc in Et0.
       assert (a = t) as -> by (eapply functional_eval_exp; eassumption).
@@ -491,7 +491,7 @@ Section ConCanon.
       destruct (con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t _ Heq) as (y & y' & Hy & Hy' & Hrel).
       rewrite Lk in Hy, Hy', Hrel; rewrite Hx in Hy; injection Hy as <-; rewrite Hx' in Hy'; injection Hy' as <-.
       fold fa fa' in Hrel.
-      exact (proj2 (vg_rec_arg_move_right p D Hg k Mk c gs1 t _ u0 u0 X X' _ _ x x' HMk
+      exact (proj2 (valid_group_rec_arg_move_right p D Hg k Mk c gs1 t _ u0 u0 X X' _ _ x x' HMk
                       ltac:(rewrite <- Heq; exact Hcon) u0_gargs u0_len Hab Hpk0) Hrel).
   Qed.
 End ConCanon.

@@ -1503,30 +1503,30 @@ Qed.
 
 (** ** Growth Keeping Bodies
 
-    [gc_subx]: growth that keeps every body module's body as it is.  Every
+    [gc_sub_keeping_bodies]: growth that keeps every body module's body as it is.  Every
     way a well-formed global context is extended by a command or a frame
     is of this kind; only the module of an inductive type grows its body,
     while its members are checked. *)
-Definition gc_subx (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+Definition gc_sub_keeping_bodies (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
   gc_sub Θ1 Ξ1 Θ2 Ξ2 /\ (forall p r, gc_body Θ1 Ξ1 p = Some r -> gc_body Θ2 Ξ2 p = Some r).
 
-Lemma gc_subx_sub : forall Θ1 Ξ1 Θ2 Ξ2, gc_subx Θ1 Ξ1 Θ2 Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2.
+Lemma gc_sub_keeping_bodies_sub : forall Θ1 Ξ1 Θ2 Ξ2, gc_sub_keeping_bodies Θ1 Ξ1 Θ2 Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2.
 Proof. intros * [H _]; exact H. Qed.
 
-Lemma gc_subx_body : forall Θ1 Ξ1 Θ2 Ξ2 p r,
-    gc_subx Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some r -> gc_body Θ2 Ξ2 p = Some r.
+Lemma gc_sub_keeping_bodies_body : forall Θ1 Ξ1 Θ2 Ξ2 p r,
+    gc_sub_keeping_bodies Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some r -> gc_body Θ2 Ξ2 p = Some r.
 Proof. intros * [_ H]; apply H. Qed.
 
-Lemma gc_subx_refl : forall Θ Ξ, gc_subx Θ Ξ Θ Ξ.
+Lemma gc_sub_keeping_bodies_refl : forall Θ Ξ, gc_sub_keeping_bodies Θ Ξ Θ Ξ.
 Proof. split; [ apply gc_sub_refl | auto ]. Qed.
 
-Lemma gc_subx_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
-    gc_subx Θ1 Ξ1 Θ2 Ξ2 -> gc_subx Θ2 Ξ2 Θ3 Ξ3 -> gc_subx Θ1 Ξ1 Θ3 Ξ3.
+Lemma gc_sub_keeping_bodies_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
+    gc_sub_keeping_bodies Θ1 Ξ1 Θ2 Ξ2 -> gc_sub_keeping_bodies Θ2 Ξ2 Θ3 Ξ3 -> gc_sub_keeping_bodies Θ1 Ξ1 Θ3 Ξ3.
 Proof.
   intros * [H12 B12] [H23 B23]; split; [ eapply gc_sub_trans; eassumption | auto ].
 Qed.
 
-Lemma gc_subx_push : forall Θ Ξ mp K U, frame_fresh Θ Ξ mp -> gc_subx Θ Ξ Θ ((mp, K, U) :: Ξ).
+Lemma gc_sub_keeping_bodies_push : forall Θ Ξ mp K U, frame_fresh Θ Ξ mp -> gc_sub_keeping_bodies Θ Ξ Θ ((mp, K, U) :: Ξ).
 Proof.
   intros * Hf; split; [ apply gc_sub_push; exact Hf |].
   intros p r Hr; unfold gc_body in *; cbn.
@@ -1542,9 +1542,9 @@ Proof.
     exact (Hx (gm_subbody_head _ _ _ _ _ Hr)).
 Qed.
 
-Lemma gc_subx_grow : forall Θ Ξ mp K Δ Φ x E,
+Lemma gc_sub_keeping_bodies_grow : forall Θ Ξ mp K Δ Φ x E,
     gm_fresh x Φ ->
-    gc_subx Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ ((mp, K, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ).
+    gc_sub_keeping_bodies Θ ((mp, K, gu_body Δ Φ) :: Ξ) Θ ((mp, K, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ).
 Proof.
   intros * Hf; split; [ apply gc_sub_grow; exact Hf |].
   intros p r Hr; unfold gc_body in *; cbn in *.
@@ -1552,9 +1552,9 @@ Proof.
   cbn in *; apply gm_subbody_ext_fresh; assumption.
 Qed.
 
-Lemma gc_subx_file : forall Θ fp U,
+Lemma gc_sub_keeping_bodies_file : forall Θ fp U,
     gds_lookup Θ fp = None ->
-    gc_subx Θ ((q_abs fp nil, fk_module, U) :: nil) ((fp, U) :: Θ) nil.
+    gc_sub_keeping_bodies Θ ((q_abs fp nil, fk_module, U) :: nil) ((fp, U) :: Θ) nil.
 Proof.
   intros * Hn; split; [ apply gc_sub_file; exact Hn |].
   intros p r Hr; unfold gc_body in *; cbn [gs_find_tele] in *.
@@ -1669,18 +1669,18 @@ Proof. intros * H H'; apply ctx_find_mod_spec in H, H'; congruence. Qed.
 
 (** The items of an open up to and including the last one named [x], and
     that item. *)
-Fixpoint items_upto (x : string) (its : list iitem) : option (list iitem * iitem) :=
+Fixpoint items_upto (x : string) (its : list import_item) : option (list import_item * import_item) :=
   match its with
   | nil => None
   | it :: its' =>
       match items_upto x its' with
       | Some (its1, it1) => Some (it :: its1, it1)
-      | None => if String.eqb x (iitem_name it) then Some (it :: nil, it) else None
+      | None => if String.eqb x (import_item_name it) then Some (it :: nil, it) else None
       end
   end.
 
 (** The chain an item of an open reads in its target, before [ch]. *)
-Definition item_ch (it : iitem) (ch : list string) : list string :=
+Definition item_chain (it : import_item) (ch : list string) : list string :=
   match it with
   | (Some n, _, _) => n :: ch
   | (None, _, _) => ch
@@ -1692,13 +1692,13 @@ Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y _ => if String.eqb x y then Some Φ else gm_prefix_upto Φ' x
-  | gm_open Φ' _ its => if existsb (String.eqb x) (map iitem_name its) then None else gm_prefix_upto Φ' x
+  | gm_open Φ' _ its => if existsb (String.eqb x) (map import_item_name its) then None else gm_prefix_upto Φ' x
   end.
 
 (** The local open that declares [x]: the body before it, its target, the
     items up to and including [x]'s, and [x]'s item.  An entry named [x]
     after the open shadows it. *)
-Fixpoint gm_item_upto (Φ : gmod) (x : string) : option (gmod * modexp * list iitem * iitem) :=
+Fixpoint gm_item_upto (Φ : gmod) (x : string) : option (gmod * modexp * list import_item * import_item) :=
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y _ => if String.eqb x y then None else gm_item_upto Φ' x
@@ -1887,7 +1887,7 @@ Definition mdesc_is_mod (R : mdesc) : Prop :=
     its body and the expansion; a closed one, stored at the path [o] it is
     read at, is given no argument yet.  A closed body is a module only where
     it is stored: read anywhere else, it has no description. *)
-Definition mdesc_body (o : option qname) (sm : smark) (Δ : ctx) (Φ Φx : gmod) : option mdesc :=
+Definition mdesc_body (o : option qname) (sm : storage_mark) (Δ : ctx) (Φ Φx : gmod) : option mdesc :=
   match sm with
   | sm_open => Some (mdesc_open Δ Φ Φx)
   | sm_closed => option_map (fun pq => mdesc_closed nil pq Δ Φx nil) o
@@ -2201,7 +2201,7 @@ Fixpoint mdesc_term_part_ats (R : mdesc) (Ns : list exp) : option mdesc :=
     by [β], when its body is a [λ], and otherwise, when its body is a type
     former applied ([app_const]), by applying it to the argument.  The
     second step is stable: it runs only at a filed entry's frame
-    arguments, where the entry's coherence ([gm_coh]) makes a definition's
+    arguments, where the entry's coherence ([gm_coherent]) makes a definition's
     body a [ctx_fn] over the frames' parameters, and where a type former's
     term part ([ind_former_desc], [record_former_desc]) is the closed
     constant [a_ind pq k] or [a_record p], applied: no substitution makes
@@ -2364,20 +2364,20 @@ Definition gc_unit (Θ : gdeps) (Ξ : gstack) (H : modexp) : option (ctx * gmod)
   end.
 
 (** A name an open declares is found by one lookup only. *)
-Lemma items_upto_none : forall x its, existsb (String.eqb x) (map iitem_name its) = false -> items_upto x its = None.
+Lemma items_upto_none : forall x its, existsb (String.eqb x) (map import_item_name its) = false -> items_upto x its = None.
 Proof.
   induction its as [| it its IH]; intros H; cbn in *; [ reflexivity |].
   apply Bool.orb_false_iff in H as [H1 H2]; rewrite IH by assumption; rewrite H1; reflexivity.
 Qed.
 
-Lemma items_upto_some : forall x its r, items_upto x its = Some r -> existsb (String.eqb x) (map iitem_name its) = true.
+Lemma items_upto_some : forall x its r, items_upto x its = Some r -> existsb (String.eqb x) (map import_item_name its) = true.
 Proof.
   induction its as [| it its IH]; intros r H; cbn in *; [ discriminate |].
   destruct (items_upto x its) eqn:E; [ rewrite (IH _ eq_refl); apply Bool.orb_true_r |].
-  destruct (String.eqb x (iitem_name it)); [ reflexivity | discriminate ].
+  destruct (String.eqb x (import_item_name it)); [ reflexivity | discriminate ].
 Qed.
 
-Lemma gm_prefix_item_excl : forall Φ x Φ1, gm_prefix_upto Φ x = Some Φ1 -> gm_item_upto Φ x = None.
+Lemma gm_prefix_item_exclusive : forall Φ x Φ1, gm_prefix_upto Φ x = Some Φ1 -> gm_item_upto Φ x = None.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hp; cbn in *; [ discriminate | |].
   - destruct (String.eqb x y); [ reflexivity | eauto ].
@@ -2387,10 +2387,10 @@ Qed.
 
 (** A body's entry named [x] and a name an open of the body declares for
     [x] exclude each other. *)
-Ltac prefix_item_excl :=
+Ltac prefix_item_exclusive :=
   match goal with
   | Hp : gm_prefix_upto ?Φ ?x = Some _, Hi : gm_item_upto ?Φ ?x = Some _ |- _ =>
-      rewrite (gm_prefix_item_excl _ _ _ Hp) in Hi; discriminate Hi
+      rewrite (gm_prefix_item_exclusive _ _ _ Hp) in Hi; discriminate Hi
   end.
 
 (** A path through an alias names no definition, and a path naming a module
@@ -2492,13 +2492,13 @@ Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list generated_item) : gmod :=
   end.
 
 (** The first member named both by a private and by a public item. *)
-Definition src_has (n : string) (pv : bool) (its : list iitem) : bool :=
+Definition src_has (n : string) (pv : bool) (its : list import_item) : bool :=
   existsb (fun it => match it with
                      | (Some m, _, pv') => String.eqb n m && Bool.eqb pv pv'
                      | _ => false
                      end) its.
 
-Definition both_dup (its : list iitem) : option string :=
+Definition both_dup (its : list import_item) : option string :=
   match find (fun it => match it with
                         | (Some n, _, pv) => src_has n (negb pv) its
                         | _ => false
@@ -2516,8 +2516,8 @@ Fixpoint name_dup (xs : list string) : option string :=
 
 (** The open's own conditions on its items: no member both used and
     exported, and the declared names distinct. *)
-Definition items_ok (its : list iitem) : Prop :=
-  both_dup its = None /\ name_dup (List.map iitem_name its) = None.
+Definition items_ok (its : list import_item) : Prop :=
+  both_dup its = None /\ name_dup (List.map import_item_name its) = None.
 
 (** A telescope of parameters has assumptions only: a module's arguments are
     terms.  A unit has members only under such parameters. *)
@@ -2674,7 +2674,7 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
     both a term part and a module part a definition with a module part; an
     item naming no member, the alias of [H] itself, whatever [H] is.  A
     global open and a local one generate alike. *)
-with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list generated_item -> Prop :=
+with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list import_item -> list generated_item -> Prop :=
 (** No item generates nothing *)
 | items_gen_nil : forall Γ H, items_gen Θ Ξ Γ H nil nil
 (** An item naming no member ([open E as y]): the alias of [H] itself,
@@ -2719,7 +2719,7 @@ Hint Constructors mdenote udenote edenote body_xp items_gen : mctt.
     [H] is a module, and [gs] is what the items declare.  (Its witnesses
     are informative, so they have no projections.) *)
 #[warnings="-cannot-define-projection"]
-Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list generated_item) : Prop :=
+Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list import_item) (gs : list generated_item) : Prop :=
   mk_open_gens
   { open_gens_desc : mdesc
   ; open_gens_mod : mdesc
@@ -2792,7 +2792,7 @@ Fixpoint gm_nopens (Φ : gmod) : nat :=
 Lemma items_gen_length : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.length gs = List.length its.
 Proof. induction 1; cbn; auto. Qed.
 
-Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.map generated_item_name gs = List.map iitem_name its.
+Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.map generated_item_name gs = List.map import_item_name its.
 Proof. induction 1; cbn; f_equal; auto. Qed.
 
 (** The context an open's entries make, over the body before it. *)

@@ -237,7 +237,7 @@ Proof.
   { eapply glu_ctx_env_cons; [ eassumption | exact HAl | | reflexivity ].
     intros Δ σ ρ HΔ.
     destruct (HAg _ _ _ HΔ) as (l & _ & _ & _ & _ & a & ? & ? & ? & _).
-    apply (glu_rel_typ_with_sub_universe_index (u := us (dlvl_real l))).
+    apply (glu_rel_typ_with_sub_universe_index (u := us (domain_level_real l))).
     exists a; repeat split; eassumption. }
   assert (HBw : Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩) by (eapply glu_rel_exp_to_wf_exp; exact HB).
   pose proof (glu_rel_exp_of_suniv_tm_inversion' HSbA HB) as HBg.
@@ -263,13 +263,13 @@ Proof.
     by (rewrite <- exp_wk_shift_sub_q; eapply (sub_preserves_exp _ _ _ _ Type⟨L[↑]ʷ⟩); eassumption).
   split; [ cbn [exp_sub]; eapply wf_pi_lvl; eassumption |].
   assert (Hρ : Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  set (n := dlvl_real l) in *.
+  set (n := domain_level_real l) in *.
   (** Every realiser met below is [n]. *)
   assert (Hreal : forall e x e' x' t, Dom e ↦ x ≈ e' ↦ x' ∈ per_env_extend A A env_relΓ ->
-                   ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t -> ⟦ L ⟧ e' ↘ l -> dlvl_real t = n).
+                   ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t -> ⟦ L ⟧ e' ↘ l -> domain_level_real t = n).
   { intros * Hee Ht Hl'; exact (FunctionCases.suniv_real_shift HAc HLc HΓA' _ _ _ _ _ _ Hee Ht Hl'). }
   assert (Hrealg : forall Δ0 σ0 x, Δ0 ⊢ˢ σ0 ® ρ ↦ x ∈ cons_glu_sub_pred 0 Γ A SbΓ ->
-                    forall t, ⟦ L[↑]ʷ ⟧ ρ ↦ x ↘ t -> dlvl_real t = n).
+                    forall t, ⟦ L[↑]ʷ ⟧ ρ ↦ x ↘ t -> domain_level_real t = n).
   { intros * Hc t Ht.
     assert (Dom ρ ↦ x ≈ ρ ↦ x ∈ per_env_extend A A env_relΓ) as Hxx
       by (eapply glu_ctx_env_per_env; revgoals; eassumption).

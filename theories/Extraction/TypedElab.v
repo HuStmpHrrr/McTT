@@ -84,7 +84,7 @@ Section AlgEquiv.
   Qed.
 
   Lemma equiv_glob_ok : forall H y, glob_ok Θ Ξ H y -> glob_ok Θ' Ξ H y.
-  Proof. intros * Hok qd Hd; apply Hok; exact (mdecl_dsub _ _ _ (proj2 He) _ _ _ _ Hd). Qed.
+  Proof. intros * Hok qd Hd; apply Hok; exact (mdecl_deps_sub _ _ _ (proj2 He) _ _ _ _ Hd). Qed.
 
   Lemma equiv_sel_ok : forall op y, sel_ok Θ Ξ op y -> sel_ok Θ' Ξ op y.
   Proof. intros [p |] y; cbn; [ apply equiv_glob_ok | auto ]. Qed.
@@ -97,10 +97,10 @@ Section AlgEquiv.
       eliminator readings, the literals and privacy, all alike. *)
   Lemma equiv_fill_all :
     (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp Θ' Ξ B Γ M M') /\
-    (forall Γ fs fs', fill_fvals Θ Ξ B Γ fs fs' -> fill_fvals Θ' Ξ B Γ fs fs') /\
+    (forall Γ fs fs', fill_field_vals Θ Ξ B Γ fs fs' -> fill_field_vals Θ' Ξ B Γ fs fs') /\
     (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' -> fill_blocks Θ' Ξ B Γ p D Us As j Bks Bks') /\
     (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs' -> fill_brs Θ' Ξ B Γ p D Mj Us As Bs Bs') /\
-    (forall Γ oM oM', fill_oexp Θ Ξ B Γ oM oM' -> fill_oexp Θ' Ξ B Γ oM oM') /\
+    (forall Γ oM oM', fill_optional_exp Θ Ξ B Γ oM oM' -> fill_optional_exp Θ' Ξ B Γ oM oM') /\
     (forall Γ H r, fill_read Θ Ξ B Γ H r -> fill_read Θ' Ξ B Γ H r) /\
     (forall Γ H H' op, fill_mod Θ Ξ B Γ H H' op -> fill_mod Θ' Ξ B Γ H H' op) /\
     (forall Γ U U', fill_unit Θ Ξ B Γ U U' -> fill_unit Θ' Ξ B Γ U U') /\
@@ -580,7 +580,7 @@ Section Decide.
     end.
 
   (** A term that may be absent. *)
-  Definition fill_oexp_fn (Γ : ctx) (oM : option exp) : fill_result (option exp) :=
+  Definition fill_optional_exp_fn (Γ : ctx) (oM : option exp) : fill_result (option exp) :=
     match oM with
     | None => fill_ok None
     | Some M => let%a M' := fill_exp_fn Γ M in fill_ok (Some M')
@@ -592,7 +592,7 @@ Section Decide.
       that what they compute can be stated. *)
 
   (** The fields of a record value. *)
-  Definition fvals_fn (Γ : ctx) :=
+  Definition field_vals_fn (Γ : ctx) :=
     fix fields (fs : list (string * exp)) : fill_result (list (string * exp)) :=
       match fs with
       | nil => fill_ok nil
@@ -687,19 +687,19 @@ Section Decide.
 
   (** The heads of a mutual definition's functions over [Γ]: each one's
       parameters, then its scrutinee over them. *)
-  Fixpoint fill_rfun_heads_fn (Γ : ctx) (fs : list raw_fun) : fill_result (list raw_fun) :=
+  Fixpoint fill_raw_fun_heads_fn (Γ : ctx) (fs : list raw_fun) : fill_result (list raw_fun) :=
     match fs with
     | nil => fill_ok nil
     | f :: fs0 =>
         let%a ys' := fill_tele_fn Γ (raw_fun_nparams f) in
         let%a Z' := fill_exp_fn (ys' ++ Γ) (raw_fun_scrut f) in
-        let%a fs0' := fill_rfun_heads_fn Γ fs0 in
+        let%a fs0' := fill_raw_fun_heads_fn Γ fs0 in
         fill_ok (mk_rfun (raw_fun_name f) ys' Z' (raw_fun_res f) (raw_fun_clauses f) :: fs0')
     end.
 
   (** The results of functions, each of its member, in the motive's
       context. *)
-  Fixpoint fill_rfun_results_fn (Γ : ctx) (pq : qname) (D : ind_decl) (Us : list exp) (fms : list (raw_fun * nat)) :
+  Fixpoint fill_raw_fun_results_fn (Γ : ctx) (pq : qname) (D : ind_decl) (Us : list exp) (fms : list (raw_fun * nat)) :
       fill_result (list raw_fun) :=
     match fms with
     | nil => fill_ok nil
@@ -708,14 +708,14 @@ Section Decide.
         | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
             let%a A' := fill_exp_fn (elim_mctx pq D m Mm Us ++ Γ) (raw_fun_res f) in
-            let%a fs0' := fill_rfun_results_fn Γ pq D Us fms0 in
+            let%a fs0' := fill_raw_fun_results_fn Γ pq D Us fms0 in
             fill_ok (mk_rfun (raw_fun_name f) (raw_fun_nparams f) (raw_fun_scrut f) A' (raw_fun_clauses f) :: fs0')
         end
     end.
 
   (** The clauses of functions, each of its member, in their branches'
       contexts at the motives [As]. *)
-  Fixpoint fill_rfun_clauses_fn (Γ : ctx) (pq : qname) (D : ind_decl) (Us As : list exp) (fms : list (raw_fun * nat)) :
+  Fixpoint fill_raw_fun_clauses_fn (Γ : ctx) (pq : qname) (D : ind_decl) (Us As : list exp) (fms : list (raw_fun * nat)) :
       fill_result (list raw_fun) :=
     match fms with
     | nil => fill_ok nil
@@ -724,7 +724,7 @@ Section Decide.
         | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
             let%a Bs' := brs_fn Γ pq D Mm As Us (raw_fun_clauses f) in
-            let%a fs0' := fill_rfun_clauses_fn Γ pq D Us As fms0 in
+            let%a fs0' := fill_raw_fun_clauses_fn Γ pq D Us As fms0 in
             fill_ok (mk_rfun (raw_fun_name f) (raw_fun_nparams f) (raw_fun_scrut f) (raw_fun_res f) Bs' :: fs0')
         end
     end.
@@ -732,15 +732,15 @@ Section Decide.
   (** A mutual definition's functions over [Γ], their heads filled as
       [hs]: their group, then their results, then their clauses at the
       motives of the blocks of the functions with their results filled. *)
-  Definition fill_rfun_bodies_fn (Γ : ctx) (Δ' : ctx) (hs : list raw_fun) : fill_result (list raw_fun) :=
+  Definition fill_raw_fun_bodies_fn (Γ : ctx) (Δ' : ctx) (hs : list raw_fun) : fill_result (list raw_fun) :=
     match hs with
     | nil => fill_error (fill_failure_message "a mutual definition with no function")
     | h0 :: hs0 =>
         match mdef_group_dec F Hg Δ' h0 hs0 with
         | inr e => fill_error (fill_failure_mdef_group e)
         | inl (exist _ (pq, m0, Ps, D, Us, ms) _) =>
-            let%a rs := fill_rfun_results_fn Γ pq D Us (List.combine hs ms) in
-            fill_rfun_clauses_fn Γ pq D Us (blocks_motives (mdef_blocks 0 (ind_nblk D) rs ms))
+            let%a rs := fill_raw_fun_results_fn Γ pq D Us (List.combine hs ms) in
+            fill_raw_fun_clauses_fn Γ pq D Us (blocks_motives (mdef_blocks 0 (ind_nblk D) rs ms))
               (List.combine rs ms)
         end
     end.
@@ -757,7 +757,7 @@ Section Decide.
   (** A constructor's arguments over [Γ], filled as a telescope, their
       names kept. *)
   Definition fill_raw_args_fn (Γ : ctx) (args : list (string * exp)) : fill_result (list (string * exp)) :=
-    let%a Δ' := fill_tele_fn Γ (rtele args) in
+    let%a Δ' := fill_tele_fn Γ (raw_args_tele args) in
     match zip_ass (List.map fst args) (List.rev Δ') with
     | Some args' => fill_ok args'
     | None => fill_error (fill_failure_message "internal error: a constructor's arguments filled to no arguments")
@@ -788,10 +788,10 @@ Section Decide.
 
   (** Declared members' constructors, each over the member's context in
       the group [Rh], whose parameters and sorts are filled. *)
-  (** The context of a member's constructors ([rm_pctx]), over the frames'
+  (** The context of a member's constructors ([raw_member_args_ctx]), over the frames'
       parameters [Γt] *)
-  Definition rm_pctx_at (Γt : ctx) (R : raw_decl) (Mr : raw_member) : ctx :=
-    tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ Γt.
+  Definition raw_member_args_ctx_at (Γt : ctx) (R : raw_decl) (Mr : raw_member) : ctx :=
+    tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (raw_decl_nmembers R)) ++ raw_decl_selfs R ++ Γt.
 
   (** The fills below of a command and of what it is made of, over the
       frames' parameters [Γt]: the extracted checker computes them over
@@ -801,7 +801,7 @@ Section Decide.
     match ms with
     | nil => fill_ok nil
     | Mr :: ms0 =>
-        let%a cs' := fill_raw_cons_fn (rm_pctx_at Γt Rh Mr) (raw_member_cons Mr) in
+        let%a cs' := fill_raw_cons_fn (raw_member_args_ctx_at Γt Rh Mr) (raw_member_cons Mr) in
         let%a ms0' := fill_raw_bodies_at Γt Rh ms0 in
         fill_ok (mk_rmem (raw_member_name Mr) (raw_member_nparams Mr) (raw_member_sort Mr) cs' :: ms0')
     end.
@@ -820,7 +820,7 @@ Section Decide.
     match c with
     | core_cmd_def x b pv A oM =>
         let%a A' := fill_exp_fn Γt A in
-        let%a oM' := fill_oexp_fn Γt oM in
+        let%a oM' := fill_optional_exp_fn Γt oM in
         fill_ok (core_cmd_def x b pv A' oM')
     | core_cmd_mod x pv Δ cs => let%a Δ' := fill_tele_fn Γt Δ in fill_ok (core_cmd_mod x pv Δ' cs)
     | core_cmd_alias x pv Δ E =>
@@ -853,7 +853,7 @@ Section Decide.
         end
     | core_cmd_eval M oA =>
         let%a M' := fill_exp_fn Γt M in
-        let%a oA' := fill_oexp_fn Γt oA in
+        let%a oA' := fill_optional_exp_fn Γt oA in
         fill_ok (core_cmd_eval M' oA')
     | core_cmd_record x pv Δ Srt fs cs =>
         let%a Δ' := fill_tele_fn Γt Δ in
@@ -862,8 +862,8 @@ Section Decide.
         fill_ok (core_cmd_record x pv Δ' Srt' fs' cs)
     | core_cmd_mdef b pv Δ fs =>
         let%a Δ' := fill_tele_fn Γt Δ in
-        let%a hs := fill_rfun_heads_fn (Δ' ++ Γt) fs in
-        let%a fs' := fill_rfun_bodies_fn (Δ' ++ Γt) Δ' hs in
+        let%a hs := fill_raw_fun_heads_fn (Δ' ++ Γt) fs in
+        let%a fs' := fill_raw_fun_bodies_fn (Δ' ++ Γt) Δ' hs in
         fill_ok (core_cmd_mdef b pv Δ' fs')
     | core_cmd_inductive pv R => let%a R' := fill_raw_decl_at Γt R in fill_ok (core_cmd_inductive pv R')
     | core_cmd_load _ | core_cmd_gen _ => fill_ok c
@@ -890,7 +890,7 @@ Section Decide.
 
   (** A record value, through the named loop. *)
   Lemma fill_exp_fn_tuple : forall Γ T fs,
-      fill_exp_fn Γ (a_tuple T fs) = let%a T' := fill_exp_fn Γ T in let%a fs' := fvals_fn Γ fs in fill_ok (a_tuple T' fs').
+      fill_exp_fn Γ (a_tuple T fs) = let%a T' := fill_exp_fn Γ T in let%a fs' := field_vals_fn Γ fs in fill_ok (a_tuple T' fs').
   Proof. reflexivity. Qed.
 
   (** A unit, through [fill_tele_fn]. *)
@@ -994,7 +994,7 @@ Section Decide.
     | ce_mod U => unit_fill_sound U
     | ce_dm A M U => exp_fill_sound A /\ exp_fill_sound M /\ unit_fill_sound U
     end.
-  Definition bnd_fill_sound (b : bnd) : Prop :=
+  Definition binding_fill_sound (b : binding) : Prop :=
     match b with
     | b_def oA M => (forall A, oA = Some A -> exp_fill_sound A) /\ exp_fill_sound M
     | b_mod U => unit_fill_sound U
@@ -1024,8 +1024,8 @@ Section Decide.
     destruct E as (HΓ & p & Rs & HW & -> & ->); econstructor; eassumption.
   Qed.
 
-  Lemma oexp_fill_sound : forall Γ oM oM', (forall M, oM = Some M -> exp_fill_sound M) ->
-      fill_oexp_fn Γ oM = fill_ok oM' -> fill_oexp Θ Ξ B Γ oM oM'.
+  Lemma optional_exp_fill_sound : forall Γ oM oM', (forall M, oM = Some M -> exp_fill_sound M) ->
+      fill_optional_exp_fn Γ oM = fill_ok oM' -> fill_optional_exp Θ Ξ B Γ oM oM'.
   Proof.
     intros Γ [M |] oM' IH E; cbn in E; bind_inv; constructor; [ exact (IH _ eq_refl _ _ H) ].
   Qed.
@@ -1039,8 +1039,8 @@ Section Decide.
     destruct e as [A | A M | U | A M U]; cbn in *; bind_inv; constructor; auto; apply He; assumption.
   Qed.
 
-  Lemma fvals_fill_sound : forall Γ fs fs', Forall (fun f => exp_fill_sound (snd f)) fs ->
-      fvals_fn Γ fs = fill_ok fs' -> fill_fvals Θ Ξ B Γ fs fs'.
+  Lemma field_vals_fill_sound : forall Γ fs fs', Forall (fun f => exp_fill_sound (snd f)) fs ->
+      field_vals_fn Γ fs = fill_ok fs' -> fill_field_vals Θ Ξ B Γ fs fs'.
   Proof.
     intros Γ; induction fs as [| [f N] fs IH]; intros fs' Hf E; cbn in E; bind_inv; constructor;
       inversion Hf; subst; auto.
@@ -1073,7 +1073,7 @@ Section Decide.
     destruct (IH _ _ _ HB0 H1 H3) as [Hb Hm].
     split; [| cbn; f_equal; exact Hm ].
     econstructor; [ exact Ej | reflexivity | | exact (HA _ _ H0) | eapply brs_fill_sound; eassumption | exact Hb ].
-    destruct oZ as [Z |]; bind_inv; [ apply fill_oexp_some; eapply HZ; [ reflexivity | eassumption ] | apply fill_oexp_none ].
+    destruct oZ as [Z |]; bind_inv; [ apply fill_optional_exp_some; eapply HZ; [ reflexivity | eassumption ] | apply fill_optional_exp_none ].
   Qed.
 
   (** An eliminator as written, its scrutinee filled. *)
@@ -1095,12 +1095,12 @@ Section Decide.
   Qed.
 
   Lemma fill_fn_sound_all :
-    (forall M, exp_fill_sound M) /\ (forall H, read_fill_sound H) /\ (forall b, bnd_fill_sound b) /\
+    (forall M, exp_fill_sound M) /\ (forall H, read_fill_sound H) /\ (forall b, binding_fill_sound b) /\
     (forall U, unit_fill_sound U) /\ (forall D, def_fill_sound D) /\ (forall Φ, body_fill_sound Φ) /\
     (forall E, gentry_fill_sound E) /\ (forall e, centry_fill_sound e).
   Proof.
     apply syn_mut_ind; unfold exp_fill_sound, read_fill_sound, unit_fill_sound, def_fill_sound, body_fill_sound,
-      centry_fill_sound, bnd_fill_sound, gentry_fill_sound; intros; try exact I; try (split; assumption);
+      centry_fill_sound, binding_fill_sound, gentry_fill_sound; intros; try exact I; try (split; assumption);
       try match goal with
         |- forall _ _, _ = fill_ok _ -> _ => let G := fresh "Γ" in let X := fresh "X" in let E := fresh "E" in intros G X E
         end.
@@ -1137,7 +1137,7 @@ Section Decide.
       destruct (sel_check (snd x0) x) as [[qd y] |] eqn:Es; [ discriminate |]; bind_inv.
       destruct x0 as [H' op]; econstructor; [ eapply fill_mod_of_read_sound; eassumption | apply sel_check_spec; exact Es ].
     - (* a record value *)
-      constructor; [ apply H; assumption | eapply fvals_fill_sound; eassumption ].
+      constructor; [ apply H; assumption | eapply field_vals_fill_sound; eassumption ].
     - (* a binder in module position *)
       destruct (term_binder_b Γ k) eqn:Et; bind_inv.
       + apply term_binder_b_spec in Et; econstructor; exact Et.
@@ -1162,7 +1162,7 @@ Section Decide.
       + destruct H0 as [HA HoM].
         eapply fill_body_def; [ apply H; eassumption | eassumption | apply HA; assumption |].
         destruct oM as [M |]; bind_inv;
-          [ apply fill_oexp_some; eapply HoM; [ reflexivity | eassumption ] | apply fill_oexp_none ].
+          [ apply fill_optional_exp_some; eapply HoM; [ reflexivity | eassumption ] | apply fill_optional_exp_none ].
       + eapply fill_body_mod; [ apply H; eassumption | eassumption | apply H0; assumption ].
       + destruct H0 as (HA & HM & HU).
         eapply fill_body_dm; [ apply H; eassumption | eassumption | apply HA; assumption | apply HM; assumption
@@ -1183,12 +1183,12 @@ Section Decide.
 
   Lemma fill_fn_complete_all :
     (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp_fn Γ M = fill_ok M') /\
-    (forall Γ fs fs', fill_fvals Θ Ξ B Γ fs fs' -> fvals_fn Γ fs = fill_ok fs') /\
+    (forall Γ fs fs', fill_field_vals Θ Ξ B Γ fs fs' -> field_vals_fn Γ fs = fill_ok fs') /\
     (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' ->
        heads_fn Γ p D Us j Bks = fill_ok (block_heads Bks') /\
        blocks_fn Γ p D As Us j Bks (block_heads Bks') = fill_ok Bks') /\
     (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs' -> brs_fn Γ p D Mj As Us Bs = fill_ok Bs') /\
-    (forall Γ oM oM', fill_oexp Θ Ξ B Γ oM oM' -> fill_oexp_fn Γ oM = fill_ok oM') /\
+    (forall Γ oM oM', fill_optional_exp Θ Ξ B Γ oM oM' -> fill_optional_exp_fn Γ oM = fill_ok oM') /\
     (forall Γ H r, fill_read Θ Ξ B Γ H r -> fill_read_fn Γ H = fill_ok r) /\
     (forall Γ H H' op, fill_mod Θ Ξ B Γ H H' op -> forall y, fill_mod_fn Γ y H = fill_ok (H', op)) /\
     (forall Γ U U', fill_unit Θ Ξ B Γ U U' -> fill_unit_fn Γ U = fill_ok U') /\
@@ -1201,8 +1201,8 @@ Section Decide.
       try match goal with |- fill_exp_fn _ (a_tuple _ _) = _ => rewrite fill_exp_fn_tuple end;
       try match goal with |- fill_unit_fn _ (gu_mk _ _) = _ => rewrite fill_unit_fn_mk end;
       try match goal with |- fill_mod_fn _ _ _ = _ => unfold fill_mod_fn end;
-      cbn [fill_exp_fn fill_read_fn fill_def_fn fill_body_fn fill_tele_fn fvals_fn brs_fn heads_fn blocks_fn
-           fill_oexp_fn];
+      cbn [fill_exp_fn fill_read_fn fill_def_fn fill_body_fn fill_tele_fn field_vals_fn brs_fn heads_fn blocks_fn
+           fill_optional_exp_fn];
       repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end;
       try reflexivity.
     - (* a term with no subterm *)
@@ -1226,7 +1226,7 @@ Section Decide.
     - (* a block *)
       rewrite e; subst nm; rewrite Nat.eqb_refl.
       change (match oZ with Some Z => _ | None => fill_ok None end)
-        with (fill_oexp_fn (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) oZ).
+        with (fill_optional_exp_fn (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) oZ).
       rewrite H, H0; destruct H2 as [Hh Hb]; rewrite Hh; split; cbn; [ reflexivity |].
       rewrite H1; cbn; unfold block_heads in Hb; rewrite Hb; reflexivity.
     - (* a branch *)
@@ -1252,7 +1252,7 @@ Section Decide.
       cbn; repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
     - (* an entry of a body, in the expansion of the body before it *)
       rewrite (proj2 (body_xp_fn_spec _ _ _) b0); cbn; rewrite H0; cbn.
-      change (match oM with Some M => _ | None => fill_ok None end) with (fill_oexp_fn (body_ctx Φx ++ Γ) oM).
+      change (match oM with Some M => _ | None => fill_ok None end) with (fill_optional_exp_fn (body_ctx Φx ++ Γ) oM).
       rewrite H1; reflexivity.
     - rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn; rewrite H0; reflexivity.
     - (* a definition with a module part of a body *)
@@ -1268,8 +1268,8 @@ Section Decide.
   Lemma fill_exp_fn_sound : forall Γ M M', fill_exp_fn Γ M = fill_ok M' -> fill_exp Θ Ξ B Γ M M'.
   Proof. intros; apply (proj1 fill_fn_sound_all); assumption. Qed.
 
-  Lemma fill_oexp_fn_sound : forall Γ oM oM', fill_oexp_fn Γ oM = fill_ok oM' -> fill_oexp Θ Ξ B Γ oM oM'.
-  Proof. intros; eapply oexp_fill_sound; [ intros; apply (proj1 fill_fn_sound_all) | eassumption ]. Qed.
+  Lemma fill_optional_exp_fn_sound : forall Γ oM oM', fill_optional_exp_fn Γ oM = fill_ok oM' -> fill_optional_exp Θ Ξ B Γ oM oM'.
+  Proof. intros; eapply optional_exp_fill_sound; [ intros; apply (proj1 fill_fn_sound_all) | eassumption ]. Qed.
 
   Lemma fill_tele_fn_sound : forall Γ Δ Δ', fill_tele_fn Γ Δ = fill_ok Δ' -> fill_tele Θ Ξ B Γ Δ Δ'.
   Proof.
@@ -1292,16 +1292,16 @@ Section Decide.
   Qed.
 
   (** A mutual definition's heads, filled as the relation fills them. *)
-  Lemma fill_rfun_heads_fn_sound : forall Γ fs hs,
-      fill_rfun_heads_fn Γ fs = fill_ok hs -> Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs.
+  Lemma fill_raw_fun_heads_fn_sound : forall Γ fs hs,
+      fill_raw_fun_heads_fn Γ fs = fill_ok hs -> Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs.
   Proof.
     intros Γ fs; induction fs as [| f fs IH]; intros hs E; cbn in E; bind_inv; constructor; [| apply IH; assumption ].
     constructor; cbn; [ reflexivity | apply fill_tele_fn_sound; assumption | apply fill_exp_fn_sound; assumption
                       | reflexivity | reflexivity ].
   Qed.
 
-  Lemma fill_rfun_heads_fn_complete : forall Γ fs hs,
-      Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs -> fill_rfun_heads_fn Γ fs = fill_ok hs.
+  Lemma fill_raw_fun_heads_fn_complete : forall Γ fs hs,
+      Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs -> fill_raw_fun_heads_fn Γ fs = fill_ok hs.
   Proof.
     pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     induction 1 as [| f h fs hs [En Ep Es Er Ec] _ IH]; cbn; [ reflexivity |].
@@ -1313,9 +1313,9 @@ Section Decide.
   (** A mutual definition's results, then its clauses, filled as the
       relation fills them: the results keep the parameters, which, with
       them, fix the motives. *)
-  Lemma fill_rfun_bodies_parts_sound : forall Γ pq D Us As hs ms rs fs',
-      fill_rfun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs ->
-      fill_rfun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs' ->
+  Lemma fill_raw_fun_bodies_parts_sound : forall Γ pq D Us As hs ms rs fs',
+      fill_raw_fun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs ->
+      fill_raw_fun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs' ->
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' /\
       Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs' rs.
   Proof.
@@ -1331,11 +1331,11 @@ Section Decide.
       apply Forall_forall; intros; apply fill_fn_sound_all.
   Qed.
 
-  Lemma fill_rfun_bodies_parts_complete : forall Γ pq D Us As hs ms fs',
+  Lemma fill_raw_fun_bodies_parts_complete : forall Γ pq D Us As hs ms fs',
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' ->
-      exists rs, fill_rfun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs /\
+      exists rs, fill_raw_fun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs /\
         Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) rs fs' /\
-        fill_rfun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs'.
+        fill_raw_fun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs'.
   Proof.
     pose proof fill_fn_complete_all as (Ce & _ & _ & Cb & _).
     intros Γ pq D Us As hs; induction hs as [| h hs IH]; intros [| m ms] fs' Hb; cbn in Hb;
@@ -1372,8 +1372,8 @@ Section Decide.
     destruct (zip_ass _ _) as [a |] eqn:Ez; [| discriminate ]; injection E as <-.
     destruct (zip_ass_sound _ _ _ Ez) as [En Et].
     constructor; [ exact En |].
-    replace (rtele a) with x; [ apply fill_tele_fn_sound; assumption |].
-    unfold rtele; rewrite Et, rev_involutive; reflexivity.
+    replace (raw_args_tele a) with x; [ apply fill_tele_fn_sound; assumption |].
+    unfold raw_args_tele; rewrite Et, rev_involutive; reflexivity.
   Qed.
 
   Lemma fill_raw_args_fn_complete : forall Γ args args',
@@ -1381,7 +1381,7 @@ Section Decide.
   Proof.
     pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     intros * [En Ht]; unfold fill_raw_args_fn; rewrite (Ct _ _ _ Ht); cbn [fill_result_bind].
-    rewrite <- En; unfold rtele; rewrite rev_involutive, zip_ass_complete; reflexivity.
+    rewrite <- En; unfold raw_args_tele; rewrite rev_involutive, zip_ass_complete; reflexivity.
   Qed.
 
   Lemma fill_raw_cons_fn_sound : forall Γ cs cs', fill_raw_cons_fn Γ cs = fill_ok cs' ->
@@ -1410,7 +1410,7 @@ Section Decide.
 
   Lemma fill_raw_bodies_fn_sound : forall Rh hs ms', fill_raw_bodies_at (gs_tele Ξ) Rh hs = fill_ok ms' ->
       Forall2 (fun Mh Mr' => raw_member_name Mr' = raw_member_name Mh /\ raw_member_nparams Mr' = raw_member_nparams Mh /\ raw_member_sort Mr' = raw_member_sort Mh /\
-                             Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B (rm_pctx Ξ Rh Mh) (snd rc) (snd rc'))
+                             Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B (raw_member_args_ctx Ξ Rh Mh) (snd rc) (snd rc'))
                                (raw_member_cons Mh) (raw_member_cons Mr')) hs ms'.
   Proof.
     intros Rh hs; induction hs as [| Mh hs IH]; intros ms' E; cbn in E; bind_inv; [ constructor |].
@@ -1425,13 +1425,13 @@ Section Decide.
                             fill_exp Θ Ξ B (ups ++ gs_tele Ξ) (raw_member_sort Mr) (raw_member_sort Mh) /\ raw_member_cons Mh = raw_member_cons Mr) ms hs ->
       Forall2 (fun Mh Mr' => raw_member_name Mr' = raw_member_name Mh /\ raw_member_nparams Mr' = raw_member_nparams Mh /\ raw_member_sort Mr' = raw_member_sort Mh /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
-                                                    fill_raw_args Θ Ξ B (rm_pctx Ξ (mk_raw ups hsG rec) Mh) (snd rc) (snd rc'))
+                                                    fill_raw_args Θ Ξ B (raw_member_args_ctx Ξ (mk_raw ups hsG rec) Mh) (snd rc) (snd rc'))
                                (raw_member_cons Mh) (raw_member_cons Mr')) hs ms' ->
       Forall2 (fill_raw_member Θ Ξ B (mk_raw ups msG rec)) ms ms'.
   Proof.
     intros * HG Hh; revert ms'; induction Hh as [| Mr Mh ms hs (En & Hn & Hs & Hc) _ IH]; intros ms' Hb;
       inversion Hb as [| ? Mr' ? ms'' (En' & Ep' & Es' & Hc') Hb']; subst; constructor; [| exact (IH _ Hb') ].
-    rewrite (rm_pctx_heads_eq Ξ (mk_raw ups hsG rec) (mk_raw ups msG rec) Mh Mr' eq_refl HG (eq_sym Ep')) in Hc'.
+    rewrite (raw_member_args_ctx_heads_eq Ξ (mk_raw ups hsG rec) (mk_raw ups msG rec) Mh Mr' eq_refl HG (eq_sym Ep')) in Hc'.
     rewrite Hc in Hc'.
     constructor; cbn; [ congruence | rewrite Ep'; exact Hn | rewrite Es'; exact Hs | exact Hc' ].
   Qed.
@@ -1454,7 +1454,7 @@ Section Decide.
       exists hs, fill_raw_heads_fn (raw_decl_uparams R' ++ gs_tele Ξ) ms = fill_ok hs /\
         Forall2 (fun Mh Mr' => raw_member_name Mh = raw_member_name Mr' /\ raw_member_nparams Mh = raw_member_nparams Mr' /\ raw_member_sort Mh = raw_member_sort Mr' /\
                                Forall2 (fun rc rc' => fst rc' = fst rc /\
-                                                      fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
+                                                      fill_raw_args Θ Ξ B (raw_member_args_ctx Ξ R' Mr') (snd rc) (snd rc'))
                                  (raw_member_cons Mh) (raw_member_cons Mr')) hs ms'.
   Proof.
     pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
@@ -1468,13 +1468,13 @@ Section Decide.
       Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) (raw_decl_members Rh) (raw_decl_members R') ->
       Forall2 (fun Mh Mr' => raw_member_name Mh = raw_member_name Mr' /\ raw_member_nparams Mh = raw_member_nparams Mr' /\ raw_member_sort Mh = raw_member_sort Mr' /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
-                                                    fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
+                                                    fill_raw_args Θ Ξ B (raw_member_args_ctx Ξ R' Mr') (snd rc) (snd rc'))
                                (raw_member_cons Mh) (raw_member_cons Mr')) hs ms' ->
       fill_raw_bodies_at (gs_tele Ξ) Rh hs = fill_ok ms'.
   Proof.
     intros * Eu HG; induction 1 as [| Mh Mr' hs ms' (En & Ep & Es & Hc) _ IH]; cbn; [ reflexivity |].
-    change (rm_pctx_at (gs_tele Ξ)) with (rm_pctx Ξ).
-    rewrite (rm_pctx_heads_eq Ξ Rh R' Mh Mr' Eu HG Ep), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
+    change (raw_member_args_ctx_at (gs_tele Ξ)) with (raw_member_args_ctx Ξ).
+    rewrite (raw_member_args_ctx_heads_eq Ξ Rh R' Mh Mr' Eu HG Ep), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
     rewrite IH; cbn [fill_result_bind].
     rewrite (raw_member_parts_eq Mr' (mk_rmem (raw_member_name Mh) (raw_member_nparams Mh) (raw_member_sort Mh) (raw_member_cons Mr')) En Ep Es eq_refl);
       reflexivity.
@@ -1493,9 +1493,9 @@ Section Decide.
   Qed.
 
   (** A mutual definition's bodies, filled as the relation fills them. *)
-  Lemma fill_rfun_bodies_fn_sound : forall Γ Δ' h0 hs0 fs',
+  Lemma fill_raw_fun_bodies_fn_sound : forall Γ Δ' h0 hs0 fs',
       Γ = (Δ' ++ gs_tele Ξ)%list ->
-      fill_rfun_bodies_fn Γ Δ' (h0 :: hs0) = fill_ok fs' ->
+      fill_raw_fun_bodies_fn Γ Δ' (h0 :: hs0) = fill_ok fs' ->
       exists f0' fs0' pq m0 Ps D Us ms, fs' = f0' :: fs0' /\
         mdef_group Θ Ξ Δ' h0 hs0 pq m0 Ps D Us ms /\
         Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ
@@ -1503,10 +1503,10 @@ Section Decide.
                                 (fst fm) (snd fm) f')
           (List.combine (h0 :: hs0) ms) (f0' :: fs0').
   Proof.
-    intros * -> E; unfold fill_rfun_bodies_fn in E.
+    intros * -> E; unfold fill_raw_fun_bodies_fn in E.
     destruct (mdef_group_dec F Hg Δ' h0 hs0) as [[[[[[[pq m0] Ps] D] Us] ms] Hgp] | e]; [| discriminate ].
     bind_inv.
-    destruct (fill_rfun_bodies_parts_sound _ _ _ _ _ _ _ _ _ H E) as [Hb Hrs].
+    destruct (fill_raw_fun_bodies_parts_sound _ _ _ _ _ _ _ _ _ H E) as [Hb Hrs].
     pose proof (mdef_group_members _ _ _ _ _ _ _ _ _ _ _ Hgp) as Hms.
     destruct ms as [| m ms]; [ inversion Hms |]; cbn in Hb.
     inversion Hb as [| ? f0' ? fs0' ? ?]; subst.
@@ -1514,17 +1514,17 @@ Section Decide.
     rewrite (mdef_blocks_motives_eq _ _ _ _ _ Hrs); exact Hb.
   Qed.
 
-  Lemma fill_rfun_bodies_fn_complete : forall Δ' h0 hs0 f0' fs0' pq m0 Ps D Us ms,
+  Lemma fill_raw_fun_bodies_fn_complete : forall Δ' h0 hs0 f0' fs0' pq m0 Ps D Us ms,
       mdef_group Θ Ξ Δ' h0 hs0 pq m0 Ps D Us ms ->
       Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us (Δ' ++ gs_tele Ξ)%list
                               (blocks_motives (mdef_blocks 0 (ind_nblk D) (f0' :: fs0') ms))
                               (fst fm) (snd fm) f')
         (List.combine (h0 :: hs0) ms) (f0' :: fs0') ->
-      fill_rfun_bodies_fn (Δ' ++ gs_tele Ξ)%list Δ' (h0 :: hs0) = fill_ok (f0' :: fs0').
+      fill_raw_fun_bodies_fn (Δ' ++ gs_tele Ξ)%list Δ' (h0 :: hs0) = fill_ok (f0' :: fs0').
   Proof.
-    intros * Hgp Hb; unfold fill_rfun_bodies_fn.
+    intros * Hgp Hb; unfold fill_raw_fun_bodies_fn.
     destruct (mdef_group_dec_complete _ Hg _ _ _ _ _ _ _ _ _ Hgp) as [Hp ->].
-    destruct (fill_rfun_bodies_parts_complete _ _ _ _ _ _ _ _ Hb) as (rs & Er & Hrs & Ec).
+    destruct (fill_raw_fun_bodies_parts_complete _ _ _ _ _ _ _ _ Hb) as (rs & Er & Hrs & Ec).
     rewrite Er; cbn; rewrite (mdef_blocks_motives_eq _ _ _ _ _ Hrs); exact Ec.
   Qed.
 
@@ -1532,23 +1532,23 @@ Section Decide.
   Theorem fill_cmd_fn_sound : forall c c', fill_cmd_fn c = fill_ok c' -> fill_cmd Θ Ξ B c c'.
   Proof.
     intros c c'; rewrite fill_cmd_fn_core; destruct c; cbn [fill_cmd_at]; intros E; bind_inv; try discriminate.
-    - constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
+    - constructor; [ apply fill_exp_fn_sound | apply fill_optional_exp_fn_sound ]; assumption.
     - constructor; apply fill_tele_fn_sound; assumption.
     - destruct x0 as [E' op]; econstructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
     - constructor.
     - destruct x as [E' op]; destruct x0; apply sels_check_spec in H0.
       econstructor; [ eapply fill_mod_fn_sound; eassumption | exact H0 ].
-    - constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
+    - constructor; [ apply fill_exp_fn_sound | apply fill_optional_exp_fn_sound ]; assumption.
     - (* a group *)
       constructor; apply fill_raw_decl_fn_sound; assumption.
     - (* a mutual definition: its telescope, its heads, then its bodies *)
       match goal with
-      | Ht : fill_tele_fn _ _ = fill_ok _, Hh : fill_rfun_heads_fn _ ?fs = fill_ok ?hs,
-        Hb : fill_rfun_bodies_fn _ _ ?hs = fill_ok _ |- _ =>
+      | Ht : fill_tele_fn _ _ = fill_ok _, Hh : fill_raw_fun_heads_fn _ ?fs = fill_ok ?hs,
+        Hb : fill_raw_fun_bodies_fn _ _ ?hs = fill_ok _ |- _ =>
           destruct hs as [| h0 hs0]; [ discriminate |];
-          destruct (fill_rfun_bodies_fn_sound _ _ _ _ _ eq_refl Hb)
+          destruct (fill_raw_fun_bodies_fn_sound _ _ _ _ _ eq_refl Hb)
             as (f0' & fs0' & pq & m0 & Ps & D & Us & ms & -> & Hgp & Hb');
-          pose proof (fill_rfun_heads_fn_sound _ _ _ Hh) as Hh';
+          pose proof (fill_raw_fun_heads_fn_sound _ _ _ Hh) as Hh';
           destruct fs as [| f0 fs]; [ inversion Hh' |];
           eapply fill_cmd_mdef; [ apply fill_tele_fn_sound; exact Ht | exact Hh' | exact Hgp | exact Hb' ]
       end.
@@ -1578,9 +1578,9 @@ Section Decide.
     - (* a group *)
       rewrite (fill_raw_decl_fn_complete _ _ H0); reflexivity.
     - (* a mutual definition: its telescope, its heads, then its bodies *)
-      rewrite (Ct _ _ _ H0); cbn [fill_result_bind]; rewrite (fill_rfun_heads_fn_complete _ _ _ H1);
+      rewrite (Ct _ _ _ H0); cbn [fill_result_bind]; rewrite (fill_raw_fun_heads_fn_complete _ _ _ H1);
         cbn [fill_result_bind].
-      rewrite (fill_rfun_bodies_fn_complete _ _ _ _ _ _ _ _ _ _ _ H2 H3); reflexivity.
+      rewrite (fill_raw_fun_bodies_fn_complete _ _ _ _ _ _ _ _ _ _ _ H2 H3); reflexivity.
     - rewrite (Ct _ _ _ H0); cbn; rewrite (Ce _ _ _ H1); cbn; rewrite (fill_fields_fn_complete _ _ _ H2); reflexivity.
   Qed.
 

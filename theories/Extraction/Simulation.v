@@ -85,7 +85,7 @@ Inductive domain_simulation : domain -> domain -> Prop :=
     the blocks' motives and branches may read, as [domain_ne_simulation_elim] *)
 | domain_simulation_ihfn : forall (ρ ρ' : env) Bks p ups ups' t i f f',
     (forall b, In b Bks ->
-       (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) /\
+       (forall x, ~ exp_fresh (eb_binder_count b + x) (eb_motive b) -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) /\
        (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> dentry_simulation (env_entry ρ x) (env_entry ρ' x))) ->
     domain_list_simulation ups ups' ->
     domain_simulation f f' -> domain_simulation (d_ihfn ρ Bks p ups t i f) (d_ihfn ρ' Bks p ups' t i f')
@@ -123,7 +123,7 @@ with domain_ne_simulation : domain_ne -> domain_ne -> Prop :=
     and branches may read, under their binders. *)
 | domain_ne_simulation_elim : forall (ρ ρ' : env) Bks p ups ups' j args args' m m',
     (forall b, In b Bks ->
-       (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) /\
+       (forall x, ~ exp_fresh (eb_binder_count b + x) (eb_motive b) -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) /\
        (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> dentry_simulation (env_entry ρ x) (env_entry ρ' x))) ->
     domain_list_simulation ups ups' -> domain_list_simulation args args' -> domain_ne_simulation m m' ->
     domain_ne_simulation (d_elim ρ Bks p ups j args m) (d_elim ρ' Bks p ups' j args' m')
@@ -197,7 +197,7 @@ Definition env_agree (P : nat -> Prop) (ρ ρ' : env) : Prop :=
     and [domain_simulation_ihfn]. *)
 Definition blocks_agree (Bks : list eblock) (ρ ρ' : env) : Prop :=
   forall b, In b Bks ->
-    env_agree (fun x => ~ exp_fresh (eb_nm b + x) (eb_motive b)) ρ ρ' /\
+    env_agree (fun x => ~ exp_fresh (eb_binder_count b + x) (eb_motive b)) ρ ρ' /\
     (forall c n B, In (c, n, B) (eb_brs b) -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ').
 
 (** ** Environments *)
@@ -240,10 +240,10 @@ Proof. intros * H Hx; unfold env_mod; destruct (H x Hx); [ repeat constructor | 
 Lemma domain_level_sort_sim : forall a a', domain_simulation a a' -> domain_level_sort a = domain_level_sort a'.
 Proof. intros * H; destruct H; reflexivity. Qed.
 
-Lemma dlvl_cst_sim : forall d d', domain_simulation d d' -> dlvl_cst d = dlvl_cst d'.
+Lemma domain_level_const_sim : forall d d', domain_simulation d d' -> domain_level_const d = domain_level_const d'.
 Proof. intros * H; destruct H; reflexivity. Qed.
 
-Lemma dlvl_atoms_sim : forall d d', domain_simulation d d' -> level_atoms_simulation (dlvl_atoms d) (dlvl_atoms d').
+Lemma domain_level_atoms_sim : forall d d', domain_simulation d d' -> level_atoms_simulation (domain_level_atoms d) (domain_level_atoms d').
 Proof.
   intros * H; destruct H; cbn; try constructor; try assumption.
   erewrite domain_level_sort_sim by eassumption; repeat constructor; assumption.
@@ -257,16 +257,16 @@ Proof. induction 1; cbn; constructor; assumption. Qed.
 Lemma level_atoms_simulation_app : forall xs xs' ys ys', level_atoms_simulation xs xs' -> level_atoms_simulation ys ys' -> level_atoms_simulation (xs ++ ys) (xs' ++ ys').
 Proof. induction 1; intros; cbn; [ assumption | constructor; auto ]. Qed.
 
-Lemma domain_simulation_lvl_suc : forall d d', domain_simulation d d' -> domain_simulation (dlvl_suc d) (dlvl_suc d').
+Lemma domain_simulation_lvl_suc : forall d d', domain_simulation d d' -> domain_simulation (domain_level_suc d) (domain_level_suc d').
 Proof.
-  intros * H; unfold dlvl_suc; rewrite (dlvl_cst_sim _ _ H).
-  constructor; apply level_atoms_simulation_suc, dlvl_atoms_sim, H.
+  intros * H; unfold domain_level_suc; rewrite (domain_level_const_sim _ _ H).
+  constructor; apply level_atoms_simulation_suc, domain_level_atoms_sim, H.
 Qed.
 
-Lemma domain_simulation_lvl_max : forall d d' e e', domain_simulation d d' -> domain_simulation e e' -> domain_simulation (dlvl_max d e) (dlvl_max d' e').
+Lemma domain_simulation_lvl_max : forall d d' e e', domain_simulation d d' -> domain_simulation e e' -> domain_simulation (domain_level_max d e) (domain_level_max d' e').
 Proof.
-  intros * Hd He; unfold dlvl_max; rewrite (dlvl_cst_sim _ _ Hd), (dlvl_cst_sim _ _ He).
-  constructor; apply level_atoms_simulation_app; apply dlvl_atoms_sim; assumption.
+  intros * Hd He; unfold domain_level_max; rewrite (domain_level_const_sim _ _ Hd), (domain_level_const_sim _ _ He).
+  constructor; apply level_atoms_simulation_app; apply domain_level_atoms_sim; assumption.
 Qed.
 
 Lemma domain_list_simulation_snoc : forall args args' n n', domain_list_simulation args args' -> domain_simulation n n' ->
@@ -401,11 +401,11 @@ Qed.
 
 (** The motives at the ends of the leaf paths of a shape, read where the
     blocks may: each end at as many parameters as its member's motive
-    binds ([rview_leaf_arity], [blocks_nm_at]), down the record views'
+    binds ([rview_leaf_arity], [blocks_binder_count_at]), down the record views'
     fields by their order, as [Core.Semantic.Avoid]'s
     [ends_fresh_of_blocks]. *)
 Lemma ends_agree_of_blocks : forall p D Bks ρ ρ', ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-    blocks_nm_at D None Bks -> blocks_agree Bks ρ ρ' ->
+    blocks_binder_count_at D None Bks -> blocks_agree Bks ρ ρ' ->
     forall t, (exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj) ->
       ends_agree p (blocks_motives Bks) ρ ρ' t.
 Proof.
@@ -421,7 +421,7 @@ Proof.
       unfold im_is_rview in Hrv; destruct (im_head Mj) as [| | qr Is fl] eqn:Hh; try discriminate Hrv.
       eapply ends_agree_rview; [ exact HD | exact HMj | exact Hh |].
       intros c gs gs1 t gs2 Hcs E.
-      pose proof (rview_leaf_plen _ Har _ _ _ _ HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)
+      pose proof (rview_leaf_params_length _ Har _ _ _ _ HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)
                     ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 E) as Hpt.
       apply (IHn j (Hrk Mj HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)) t); [| exact Hpt ].
       intros Mt HMt HrT; exact (rview_leaf_order _ Har _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs E HMt HrT).
@@ -435,7 +435,7 @@ Qed.
 
 (** And so at every recursive argument of a constructor of [D]. *)
 Lemma cargs_ends_agree : forall p D Bks ρ ρ' gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-    blocks_nm_at D None Bks -> blocks_agree Bks ρ ρ' -> cargs_plen D gs ->
+    blocks_binder_count_at D None Bks -> blocks_agree Bks ρ ρ' -> cargs_params_length D gs ->
     forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p (blocks_motives Bks) ρ ρ' t.
 Proof. intros * HD Har Hnm HB Hpl gs1 t gs2 E; exact (ends_agree_of_blocks _ _ _ _ _ HD Har Hnm HB t (Hpl gs1 t gs2 E)). Qed.
 
@@ -582,7 +582,7 @@ Ltac sim_fwd :=
 
 (** The goal: the fast rule, and the relation between the results, whose
     closures agree where the reference ones may read. *)
-Ltac sim_fin :=
+Ltac sim_finish :=
   eexists; split;
   [ econstructor; solve [ eassumption | len_tac
                         | rewrite <- (domain_list_simulation_length _ _ ltac:(eassumption)); eassumption ]
@@ -812,7 +812,7 @@ Definition ihs_read (oB : option exp) : nat -> Prop :=
 (** The group's table of leaf paths is coherent where results may be
     skipped: the skipped results of an argument are as many as its leaf
     paths. *)
-Definition ihs_coh (p : qname) (oB : option exp) : Prop :=
+Definition ihs_coherent (p : qname) (oB : option exp) : Prop :=
   match oB with Some _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D | None => True end.
 
 (** Lists related at every entry are related. *)
@@ -891,7 +891,7 @@ Section Eval.
        blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_simulation m m' ->
        exists r', ⟦elimᶠ m' at j of p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ domain_simulation r r') /\
     (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' ups' vs' oB,
-       blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_list_simulation vs vs' -> ihs_coh p oB ->
+       blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_list_simulation vs vs' -> ihs_coherent p oB ->
        exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
        domain_list_simulation_at (ihs_read oB) ihs ihs') /\
     (forall ρ p ups Bks t m r, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
@@ -907,9 +907,9 @@ Section Eval.
        exists a', ⟦ihtyᶠ m' of t at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_list_simulation a a') /\
     (forall f m r, eval_proj Θ Ξ f m r -> forall m', domain_simulation m m' ->
        exists r', fast_eval_proj Θ Ξ f m' r' /\ domain_simulation r r') /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> forall ns' m' pre',
+    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs -> forall ns' m' pre',
        domain_list_simulation ns ns' -> domain_ne_simulation m m' -> domain_list_simulation pre pre' ->
-       exists rs', fast_eval_nflds Θ Ξ ns' m' fl pre' rs' /\ domain_list_simulation rs rs') /\
+       exists rs', fast_eval_neutral_fields Θ Ξ ns' m' fl pre' rs' /\ domain_list_simulation rs rs') /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> forall v', domain_simulation v v' ->
        exists ws', ⟦projsᶠ fl of v' ⟧ᶠ Θ ⍮ Ξ ↘ ws' /\ domain_list_simulation ws ws') /\
     (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> forall ups' ρm' ρ' vs',
@@ -942,7 +942,7 @@ Section Eval.
          blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_simulation m m' ->
          exists r', ⟦elimᶠ m' at j of p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ domain_simulation r r')
       (fun ρ p ups Bks gs vs ihs _ => forall ρ' ups' vs' oB,
-         blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_list_simulation vs vs' -> ihs_coh p oB ->
+         blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_list_simulation vs vs' -> ihs_coherent p oB ->
          exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
          domain_list_simulation_at (ihs_read oB) ihs ihs')
       (fun ρ p ups Bks t m r _ => forall ρ' ups' m',
@@ -959,7 +959,7 @@ Section Eval.
       (fun f m r _ => forall m', domain_simulation m m' -> exists r', fast_eval_proj Θ Ξ f m' r' /\ domain_simulation r r')
       (fun ns m fl pre rs _ => forall ns' m' pre',
          domain_list_simulation ns ns' -> domain_ne_simulation m m' -> domain_list_simulation pre pre' ->
-         exists rs', fast_eval_nflds Θ Ξ ns' m' fl pre' rs' /\ domain_list_simulation rs rs')
+         exists rs', fast_eval_neutral_fields Θ Ξ ns' m' fl pre' rs' /\ domain_list_simulation rs rs')
       (fun fl v ws _ => forall v', domain_simulation v v' -> exists ws', ⟦projsᶠ fl of v' ⟧ᶠ Θ ⍮ Ξ ↘ ws' /\ domain_list_simulation ws ws')
       (fun p ups ρm As ρ gs vs rs _ => forall ups' ρm' ρ' vs',
          domain_list_simulation ups ups' -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρm ρm' t) ->
@@ -1001,7 +1001,7 @@ Section Eval.
             destruct (IH ns' m' nil Hns Hm ltac:(constructor)) as (rs' & ? & Hrs);
             destruct (domain_list_simulation_nth_error _ _ _ _ Hrs Hk) as (r' & ? & ?);
             exists r'; split; [ econstructor; eassumption | assumption ] end
-      | |- exists _, fast_eval_nflds _ _ _ _ nil _ _ /\ _ => eexists; split; constructor
+      | |- exists _, fast_eval_neutral_fields _ _ _ _ nil _ _ /\ _ => eexists; split; constructor
       end ].
     all: repeat first [ sim_inv | sim_fwd ].
     (** The next field of a neutral: its type, at the related parameters
@@ -1017,7 +1017,7 @@ Section Eval.
           eexists; split; [ econstructor; eassumption | constructor; [ constructor; [ exact Ha | constructor; exact Hm ] | assumption ] ]
       end ].
     all: repeat first [ sim_inv | sim_fwd ].
-    all: try solve [ sim_fin ].
+    all: try solve [ sim_finish ].
     (** The eliminator: its blocks agree where it does; the group it
         eliminates by is read off related values alike. *)
     all: try solve [ match goal with
@@ -1034,7 +1034,7 @@ Section Eval.
         environment of the parameters, the arguments and the results. *)
     all: try solve [ match goal with
       | IHi : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation (skipn _ ?vs) vs0 ->
-              ihs_coh ?p oB0 -> exists _, _ /\ _,
+              ihs_coherent ?p oB0 -> exists _, _ /\ _,
         IHB : forall ρ0, env_agree (fun x => ~ exp_fresh x ?B) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
         HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups',
         Hvs : domain_list_simulation ?vs ?vs', Hb : nth_error ?Bks _ = Some ?bk, e : brs_lookup (eb_brs ?bk) ?c = Some (_, ?B),
@@ -1043,7 +1043,7 @@ Section Eval.
         Hih : ⟦ihs _ of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
           let ihs' := fresh "ihs'" in let Hihs' := fresh "Hihs'" in let Hsi := fresh "Hsi" in
           let r' := fresh "r'" in let Hcoh := fresh "Hcoh" in
-          assert (Hcoh : ihs_coh p (Some B))
+          assert (Hcoh : ihs_coherent p (Some B))
             by (let D0 := fresh "D0" in let HD0 := fresh "HD0" in
                 intros D0 HD0; rewrite Hlk in HD0; injection HD0 as <-; exact Hco);
           destruct (IHi ρ' ups' (skipn (im_np Dq Mk) vs') (Some B) HBk Hu (domain_list_simulation_skipn _ _ _ Hvs) Hcoh)
@@ -1065,7 +1065,7 @@ Section Eval.
         environments that agree where the blocks read. *)
     all: try solve [ match goal with
       | IH : forall ρ0, env_agree (fun x => ~ exp_fresh x (eb_motive ?bk)) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
-        HBk : blocks_agree ?Bks ?ρ ?ρ', Hb : nth_error ?Bks _ = Some ?bk, Hn : eb_nm ?bk = S (im_nn ?Mk),
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hb : nth_error ?Bks _ = Some ?bk, Hn : eb_binder_count ?bk = S (im_nn ?Mk),
         Has : domain_list_simulation ?as' ?as'', Hm : domain_ne_simulation ?m ?m', Hu : domain_list_simulation ?ups ?ups',
         Hl : List.length ?as' = im_np ?Dq ?Mk
         |- exists _, ⟦elimᶠ ⇑ (d_ind ?pc ?k ?as'') ?m' at _ of _ _ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
@@ -1086,27 +1086,27 @@ Section Eval.
         paths, the group's table being coherent. *)
     all: try solve [ eexists; split; [ constructor | constructor ] ].
     all: try solve [ match goal with
-      | IH : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?vs vs0 -> ihs_coh ?p oB0 -> exists _, _ /\ _,
-        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hvs : domain_list_simulation ?vs ?vs', Hc : ihs_coh ?p ?oB
+      | IH : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?vs vs0 -> ihs_coherent ?p oB0 -> exists _, _ /\ _,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hvs : domain_list_simulation ?vs ?vs', Hc : ihs_coherent ?p ?oB
         |- exists _, fast_eval_ihs _ _ _ _ _ _ ?oB (ca_arg _ :: _) _ _ /\ _ =>
           let ihs' := fresh "ihs'" in
           destruct (IH ρ' ups' vs' oB HB Hu Hvs Hc) as (ihs' & ? & ?);
           exists ihs'; split; [ constructor; eassumption | assumption ]
       | IHi : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_simulation ?v m0 -> exists _, fast_eval_ih _ _ _ _ _ _ _ _ _ /\ _,
-        IHs : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?vs vs0 -> ihs_coh ?p oB0 -> exists _, _ /\ _,
+        IHs : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?vs vs0 -> ihs_coherent ?p oB0 -> exists _, _ /\ _,
         Hi : eval_ih _ _ ?ρ ?p ?ups ?Bks ?t ?v ?ihs1, Hs : eval_ihs _ _ ?ρ ?p ?ups ?Bks ?gs ?vs ?ihs,
-        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hv : domain_simulation ?v ?v', Hvs : domain_list_simulation ?vs ?vs', Hc : ihs_coh ?p ?oB
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hv : domain_simulation ?v ?v', Hvs : domain_list_simulation ?vs ?vs', Hc : ihs_coherent ?p ?oB
         |- exists _, fast_eval_ihs _ _ _ _ _ _ ?oB (ca_rec ?t :: ?gs) _ _ /\ _ =>
           let D := fresh "D" in let HD := fresh "HD" in let ihs' := fresh "ihs'" in let Hsi := fresh "Hsi" in
           let Hsk := fresh "Hsk" in
           destruct (eval_ih_lookup _ _ _ _ _ _ _ Hi) as (D & HD);
           destruct (IHs ρ' ups' vs' oB HB Hu Hvs Hc) as (ihs' & ? & Hsi);
-          destruct (ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) eqn:Hsk;
+          destruct (ihs_skipb oB (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t))) eqn:Hsk;
           [ let B := fresh "B" in let HBf := fresh "HBf" in let Hco := fresh "Hco" in let Hli := fresh "Hli" in
             destruct (ihs_skipb_sound _ _ _ Hsk) as (B & -> & HBf);
             pose proof (Hc D HD) as Hco;
             pose proof (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Hi _ HD Hco) as Hli;
-            exists (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t)) ++ ihs'); split;
+            exists (List.repeat 𝕌ω@0 (List.length (shape_leaves (rview_leaves D) 0 t)) ++ ihs'); split;
             [ eapply fast_eval_ihs_skip; eassumption
             | apply domain_list_simulation_at_skip;
               [ rewrite List.repeat_length; exact Hli
@@ -1148,7 +1148,7 @@ Section Eval.
           destruct (IH ρ' ups' v' HB Hu Hv) as (r' & ? & ?); exists (r' :: nil); split;
             [ econstructor; eassumption | repeat constructor; assumption ]
       | IHp : forall v0, domain_simulation ?v v0 -> exists _, fast_eval_projs _ _ _ _ _ /\ _,
-        IHs : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?ws vs0 -> ihs_coh _ oB0 ->
+        IHs : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?ws vs0 -> ihs_coherent _ oB0 ->
               exists _, _ /\ _,
         HB : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hv : domain_simulation ?v ?v'
         |- exists _, fast_eval_ih _ _ _ _ _ _ _ _ _ /\ _ =>
@@ -1236,7 +1236,7 @@ Section Eval.
             [ unfold extend_env; eapply env_agree_cons; [ exact Hρ | constructor; exact Hn | intros y Hy; exact Hy ] |];
           exists a'; split; [ econstructor; eassumption | assumption ]
       | Hu : domain_list_simulation ?ups ?ups', Hρ : env_agree (fun x => ~ ptyp_fresh x (pt_pi _ _)) _ _,
-        He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : domain_simulation _ ?b' |- exists _, fast_eval_shty _ _ _ _ _ _ _ /\ _ =>
+        He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : domain_simulation _ ?b' |- exists _, fast_eval_shape_type _ _ _ _ _ _ _ /\ _ =>
           eexists; split; [ constructor; exact He | apply domain_simulation_fam_pi; [ exact Hb | constructor; [ exact Hu |] ] ];
           let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
           intros y Hy; apply Hρ; cbn; intros [_ Hf]; exact (Hy Hf)
@@ -1418,7 +1418,7 @@ Section Read.
     exact (Hm _ _ _ _ H).
   Qed.
 
-  Lemma fast_eval_shty_sim : forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
+  Lemma fast_eval_shape_type_sim : forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
       domain_list_simulation ups ups' -> env_agree (fun x => ~ ptyp_fresh x t) ρ ρ' ->
       exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ domain_simulation a a'.
   Proof.
@@ -1462,7 +1462,7 @@ Section Read.
       destruct (IHfresh_cargs ups' (ρ' ↦ ⇑! a' s)) as (vs' & ? & ?);
         [ exact Hu | apply env_agree_all_cons; [ exact Hρ | repeat constructor; assumption ] |].
       exists (⇑! a' s :: vs'); split; [ constructor; assumption | repeat constructor; assumption ].
-    - destruct (fast_eval_shty_sim _ _ _ _ _ H ups' ρ' Hu) as (a' & Ha' & Hsa);
+    - destruct (fast_eval_shape_type_sim _ _ _ _ _ H ups' ρ' Hu) as (a' & Ha' & Hsa);
         [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |].
       destruct (IHfresh_cargs ups' ρ' Hu Hρ) as (vs' & ? & ?).
       exists (⇑! a' s :: vs'); split; [ constructor; assumption | repeat constructor; assumption ].
@@ -1568,12 +1568,12 @@ Section Read.
                   Hρa HB Hu Hv2) as (ihs'0 & wihs' & ? & ? & Hsi).
       destruct (fast_eval_ih_sim _ _ _ _ _ _ _ Hih ρ' ups' a' HB Hu Hv1) as (rs' & ? & Hrs).
       pose proof (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Hih _ HD' Hco) as Hlr.
-      assert (Hlb : List.length (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
-                    = List.length (shape_leaves (rv_leaves D) 0 t)) by apply List.length_map.
-      destruct (ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rv_leaves D) 0 t))) eqn:Hsk.
+      assert (Hlb : List.length (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))
+                    = List.length (shape_leaves (rview_leaves D) 0 t)) by apply List.length_map.
+      destruct (ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t))) eqn:Hsk.
       + (** Skipped: variables at [𝕌ω@0], none read *)
-        destruct (fresh_leaf_vars_exists (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t))
-                    (List.repeat 𝕌ω@0 (List.length (shape_leaves (rv_leaves D) 0 t))) s
+        destruct (fresh_leaf_vars_exists (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))
+                    (List.repeat 𝕌ω@0 (List.length (shape_leaves (rview_leaves D) 0 t))) s
                     ltac:(rewrite List.repeat_length, Hlb; reflexivity)) as (ihs1' & Hfl').
         destruct (wrap_leaf_vals_exists _ rs' ihs1' ltac:(rewrite <- (domain_list_simulation_length _ _ Hrs), Hlr, Hlb; reflexivity)
                     (fresh_leaf_vars_length _ _ _ _ Hfl')) as (out' & Hout).
@@ -1590,7 +1590,7 @@ Section Read.
       + (** Computed: variables at the related types *)
         destruct (fast_eval_ihty_sim _ _ _ _ _ _ _ _ Hty ups' ρ' ρa' a' Hu (HA nil t gs eq_refl)
                     ltac:(eapply env_agree_mono; [ exact Hρa | intros; exact I ]) Hv1) as (a2 & ? & Ha2).
-        destruct (fresh_leaf_vars_exists (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) a2 s
+        destruct (fresh_leaf_vars_exists (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) a2 s
                     ltac:(rewrite <- (domain_list_simulation_length _ _ Ha2); exact (fresh_leaf_vars_lengths _ _ _ _ Hfl))) as (ihs1' & Hfl').
         destruct (wrap_leaf_vals_exists _ rs' ihs1' ltac:(rewrite <- (domain_list_simulation_length _ _ Hrs), Hlr, Hlb; reflexivity)
                     (fresh_leaf_vars_length _ _ _ _ Hfl')) as (out' & Hout).
@@ -1628,13 +1628,13 @@ Section Read.
     (forall s p ups ρ t v V, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> forall ups' ρ' v',
        domain_list_simulation ups ups' -> env_agree (fun _ => True) ρ ρ' -> domain_simulation v v' -> Rshᶠ v' at t of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ V) /\
     (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks -> forall ρ' ups' D,
-       blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
+       blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks ->
        rview_leaf_arity D ->
        Rblksᶠ i Ms of Dc from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall ρ' ups' pre' D,
        blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_list_simulation (snd r) pre' ->
-       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
+       ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
        env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
        Rbrsᶠ Bs at cs of Mi (fst r, pre') of Dc from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs') /\
@@ -1653,12 +1653,12 @@ Section Read.
       (fun s p ups ρ t v V _ => forall ups' ρ' v',
          domain_list_simulation ups ups' -> env_agree (fun _ => True) ρ ρ' -> domain_simulation v v' -> Rshᶠ v' at t of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ V)
       (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall ρ' ups' D,
-         blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
+         blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks ->
          rview_leaf_arity D ->
          Rblksᶠ i Ms of Dc from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks)
       (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall ρ' ups' pre' D,
          blocks_agree Bks ρ ρ' -> domain_list_simulation ups ups' -> domain_list_simulation (snd r) pre' ->
-         ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
+         ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
          env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
          Rbrsᶠ Bs at cs of Mi (fst r, pre') of Dc from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs')
@@ -1828,13 +1828,13 @@ Section Read.
     all: try solve [ constructor ].
     all: try solve [ match goal with
       | f : fresh_tele _ _ (env_args nil ?ups) (List.rev (im_nparams ?Mv)) ?s ?ns,
-        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi), HMv : ind_member ?D0 ?ix = Some ?Mv,
+        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_binder_count ?bk = S (im_nn ?Mi), HMv : ind_member ?D0 ?ix = Some ?Mv,
         em : eval_mref _ _ ?p ?ups _ (?pk, ?k, ?pre),
         e2 : ⟦ eb_motive ?bk ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ _) ↘ ?a,
         IHA : forall a0, domain_simulation ?a a0 -> Rtypᶠ a0 in _ ⍮ _ ⍮ _ ↘ _,
         IHS : forall ρ0 ups0 pre0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,
         IHR : forall ρ0 ups0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,
-        HD0 : ind_lookup Θ Ξ ?p = Some ?D0, Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks,
+        HD0 : ind_lookup Θ Ξ ?p = Some ?D0, Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_binder_count_at ?D None ?Bks,
         HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups' |- _ =>
           let pre' := fresh "pre'" in let Hem := fresh "Hem" in let Hpre := fresh "Hpre" in
           let ns' := fresh "ns'" in let Hsn := fresh "Hsn" in let a' := fresh "a'" in let Hsa := fresh "Hsa" in
@@ -1869,8 +1869,8 @@ Section Read.
         fw : wrap_ihs_eval _ _ ?ρ _ _ _ _ ?gs' ?gs ?vs ?ihs ?wihs,
         e0 : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?wihs) ↘ ?b,
         e1 : ⟦ ?A ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ d_con ?pk ?k ?c (?pre ++ _) :: nil) ↘ ?t,
-        Hn0 : ?n0 = _, Hpl : cargs_plen ?D0 ?gs, HD0 : ind_lookup Θ Ξ ?p = Some ?D0,
-        Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
+        Hn0 : ?n0 = _, Hpl : cargs_params_length ?D0 ?gs, HD0 : ind_lookup Θ Ξ ?p = Some ?D0,
+        Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_binder_count_at ?D None ?Bks, Har : rview_leaf_arity ?D,
         Hnn : im_nn ?Mv = im_nn ?Mi,
         IHV : forall n0, domain_nf_simulation (⇓ ?t ?b) n0 -> _,
         IHT : forall ρ0 ups0 pre0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,

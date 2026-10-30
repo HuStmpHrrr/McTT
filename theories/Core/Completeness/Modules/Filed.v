@@ -258,7 +258,7 @@ Proof.
       assert (E1 : R1 <~> R) by (eapply per_univ_elem_left_irrel; [ exact HR1 | exact HR ]).
       exists u v; [ eapply eval_sel_global_apps; eassumption | eapply eval_sel_global_apps; eassumption
                   | apply E1; exact Huu ].
-    + exfalso; destruct (nextparam_global_lt _ _ _ Hpf') as (T1 & oT1 & Hm1 & Hlt).
+    + exfalso; destruct (next_param_global_lt _ _ _ Hpf') as (T1 & oT1 & Hm1 & Hlt).
       rewrite Hm in Hm1; injection Hm1 as <- <-; lia.
   - (* one more parameter missing *)
     pose proof HT as HT0; rewrite ET in HT0.
@@ -290,7 +290,7 @@ Proof.
       rewrite nth_error_app1 by (rewrite length_app, length_rev; cbn; lia).
       rewrite nth_error_app2 by (rewrite length_rev; lia).
       rewrite length_rev, Hl, Nat.sub_diag; reflexivity. }
-    assert (Hnp : nextparam (dm_global p args) a1) by (econstructor; [ exact Hm | exact Hn | exact Ha1 ]).
+    assert (Hnp : next_param (dm_global p args) a1) by (econstructor; [ exact Hm | exact Hn | exact Ha1 ]).
     destruct (apps_rel_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hargs HeT HeT HE Hgg) as (v & _ & _ & _ & _ & Hv & _).
     assert (Hkk : per_dmod (dm_global p args) (dm_global p args))
       by (eapply gval_rel; [ exact Hm | exact HT | exact HTs | reflexivity | rewrite length_app; cbn; lia | exact Hargs ]).

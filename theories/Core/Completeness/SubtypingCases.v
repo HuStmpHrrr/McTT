@@ -195,7 +195,7 @@ Proof.
   pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit m) 𝕌@(dlvl_lit m); try (apply eval_exp_univ, eval_exp_llit).
+  exists 𝕌@(domain_level_lit n) 𝕌@(domain_level_lit n) 𝕌@(domain_level_lit m) 𝕌@(domain_level_lit m); try (apply eval_exp_univ, eval_exp_llit).
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
   - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_universe_index ].
@@ -209,7 +209,7 @@ Proof.
   pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
+  exists 𝕌@(domain_level_lit n) 𝕌@(domain_level_lit n) 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
   - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_universe_index ].

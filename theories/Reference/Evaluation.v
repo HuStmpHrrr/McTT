@@ -157,22 +157,22 @@ with eval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
 | eval_proj_order_neut :
   `( record_lookup Θ Ξ pq = Some R ->
      field_index (record_fields R) f = Some k ->
-     eval_nflds_order Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil ->
-     (forall rs, eval_nflds Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs -> List.nth_error rs k <> None) ->
+     eval_neutral_fields_order Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil ->
+     (forall rs, eval_neutral_fields Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs -> List.nth_error rs k <> None) ->
      eval_proj_order Θ Ξ f (⇑ (d_record pq ns) m) )
 
-(** The neutral projections at a list of fields, as [eval_nflds] reads
+(** The neutral projections at a list of fields, as [eval_neutral_fields] reads
     them *)
-with eval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> Prop :=
+with eval_neutral_fields_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> Prop :=
 (** No field left *)
-| eval_nflds_order_nil :
-  `( eval_nflds_order Θ Ξ ns m nil pre )
+| eval_neutral_fields_order_nil :
+  `( eval_neutral_fields_order Θ Ξ ns m nil pre )
 (** The next field's type, then the rest after its projection *)
-| eval_nflds_order_cons :
+| eval_neutral_fields_order_cons :
   `( eval_exp_order Θ Ξ T (env_args nil (ns ++ pre)) ->
      (forall a, ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
-        eval_nflds_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
-     eval_nflds_order Θ Ξ ns m ((g, T) :: fl) pre )
+        eval_neutral_fields_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
+     eval_neutral_fields_order Θ Ξ ns m ((g, T) :: fl) pre )
 
 (** The eliminator of the group at [pq] at its member [j], on a value, as
     [eval_elim] reads it. *)
@@ -205,7 +205,7 @@ with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain ->
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
      List.nth_error Bks j = Some b ->
-     eb_nm b = S (im_nn Mk) ->
+     eb_binder_count b = S (im_nn Mk) ->
      eval_exp_order Θ Ξ (eb_motive b) (env_args p (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil)) ->
      eval_elim_order Θ Ξ p pq ups Bks j (⇑ (d_ind pc k as') m) )
 
@@ -276,26 +276,26 @@ with eval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat ->
      eval_mref_order Θ Ξ pq ups j )
 
 (** The type of an argument of a shape *)
-with eval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
+with eval_shape_type_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
 (** At the end: the parameters, and the member stood for *)
-| eval_shty_order_self :
+| eval_shape_type_order_self :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      eval_exps_order Θ Ξ Ps p ->
      eval_mref_order Θ Ξ pq ups j ->
-     eval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
+     eval_shape_type_order Θ Ξ pq ups p (pt_self j Ps) )
 (** At the end, at a record view: the view's instance *)
-| eval_shty_order_rview :
+| eval_shape_type_order_rview :
   `( ind_lookup Θ Ξ pq = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
      eval_exps_order Θ Ξ Is (env_args nil ups) ->
-     eval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
+     eval_shape_type_order Θ Ξ pq ups p (pt_self j Ps) )
 (** At a domain *)
-| eval_shty_order_pi :
+| eval_shape_type_order_pi :
   `( eval_exp_order Θ Ξ B p ->
-     eval_shty_order Θ Ξ pq ups p (pt_pi B t) )
+     eval_shape_type_order Θ Ξ pq ups p (pt_pi B t) )
 
 (** The types of the recursive results of an argument of a shape *)
 with eval_ihty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> ptyp -> domain -> Prop :=
@@ -396,7 +396,7 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      (forall fn rs, $| f & n | Θ ⍮ Ξ ↘ fn -> ⟦ih fn of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ rs -> List.nth_error rs i <> None) ->
      eval_app_order Θ Ξ (d_ihfn p Bks pq ups t i f) n )
 | eval_app_order_shfam :
-  `( eval_shty_order Θ Ξ pq ups (p ↦ n) t ->
+  `( eval_shape_type_order Θ Ξ pq ups (p ↦ n) t ->
      eval_app_order Θ Ξ (d_shfam pq ups p t) n )
 (** The [i]-th recursive result's family: those of the rest, which has an
     [i]-th *)
@@ -508,7 +508,7 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( kinds_body_xp Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
-     eval_benv_order Θ Ξ p Φ' ->
+     eval_body_env_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_exp_order Θ Ξ M p') ->
      eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
 | eval_sel_order_member :
@@ -537,7 +537,7 @@ with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( kinds_body_xp Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
-     eval_benv_order Θ Ξ p Φ' ->
+     eval_body_env_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_close_order Θ Ξ Δy Dy p') ->
      eval_selm_order Θ Ξ (dm_local nil (md_body sm Φ) p) y )
 | eval_selm_order_member :
@@ -560,28 +560,28 @@ with eval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :
      (forall h1, h ·ₘ y Θ ⍮ Ξ ↘ h1 -> eval_selmc_order Θ Ξ h1 ch) ->
      eval_selmc_order Θ Ξ h (y :: ch) )
 
-with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
-| eval_benv_order_nil :
-  `( eval_benv_order Θ Ξ p gm_nil )
-| eval_benv_order_def :
-  `( eval_benv_order Θ Ξ p Φ ->
+with eval_body_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
+| eval_body_env_order_nil :
+  `( eval_body_env_order Θ Ξ p gm_nil )
+| eval_body_env_order_def :
+  `( eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
-     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
-| eval_benv_order_mod :
-  `( eval_benv_order Θ Ξ p Φ ->
+     eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
+| eval_body_env_order_mod :
+  `( eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
-     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) )
+     eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) )
 (** A definition with a module part: its term and its unit's closure *)
-| eval_benv_order_dm :
-  `( eval_benv_order Θ Ξ p Φ ->
+| eval_body_env_order_dm :
+  `( eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
-     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy))) ).
+     eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy))) ).
 
 #[local]
-Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
+Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shape_type_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_close_order eval_appm_order eval_appms_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
-  eval_benv_order eval_proj_order eval_nflds_order eval_projs_order eval_ihtys_order : mctt.
+  eval_body_env_order eval_proj_order eval_neutral_fields_order eval_projs_order eval_ihtys_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
 Ltac functional_eval_all :=
@@ -625,9 +625,9 @@ Ltac functional_eval_all :=
     | H1 : eval_selmc ?T ?X ?m ?n ?r1, H2 : eval_selmc ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))))))) _ _ _ H1 _ H2); subst; clear H2
-    | H1 : eval_benv ?T ?X ?m ?n ?r1, H2 : eval_benv ?T ?X ?m ?n ?r2 |- _ =>
+    | H1 : eval_body_env ?T ?X ?m ?n ?r1, H2 : eval_body_env ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_eval_benv _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_eval_body_env _ _ _ _ H1 H2); subst; clear H2
     | H1 : eval_elim ?T ?X ?p ?pg ?u ?Bs ?j ?m ?r1, H2 : eval_elim ?T ?X ?p ?pg ?u ?Bs ?j ?m ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_elim _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
@@ -641,9 +641,9 @@ Ltac functional_eval_all :=
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_mref _ _ _ _ _ H1 H2); subst; clear H2
     | H : (_, _) = (_, _) |- _ => injection H; clear H; intros; subst
-    | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
+    | H1 : eval_shape_type ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shape_type ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_eval_shty _ _ _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_eval_shape_type _ _ _ _ _ _ H1 H2); subst; clear H2
     | H1 : eval_ihty ?T ?X ?p ?u ?ρm ?A ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?p ?u ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_ihty _ _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
@@ -660,9 +660,9 @@ Ltac functional_eval_all :=
     | H1 : eval_proj ?T ?X ?f ?m ?r1, H2 : eval_proj ?T ?X ?f ?m ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_proj _ _ _ _ H1 H2); subst; clear H2
-    | H1 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
+    | H1 : eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_eval_nflds _ _ _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_eval_neutral_fields _ _ _ _ _ _ H1 H2); subst; clear H2
     end.
 
 Lemma eval_order_sound : forall Θ Ξ,
@@ -678,15 +678,15 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> eval_selm_order Θ Ξ h y) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> eval_selc_order Θ Ξ h ch) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> eval_selmc_order Θ Ξ h ch) /\
-    (forall p Φ p', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_benv_order Θ Ξ p Φ) /\
+    (forall p Φ p', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_body_env_order Θ Ξ p Φ) /\
     (forall p pq ups Bks j m r, ⟦elim m at j of pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_elim_order Θ Ξ p pq ups Bks j m) /\
     (forall p pq ups Bks gs vs ihs, ⟦ihs vs of gs under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs -> eval_ihs_order Θ Ξ p pq ups Bks gs vs) /\
     (forall p pq ups Bks t v r, ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_ih_order Θ Ξ p pq ups Bks t v) /\
     (forall pq ups j r, ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r -> eval_mref_order Θ Ξ pq ups j) /\
-    (forall pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t) /\
+    (forall pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shape_type_order Θ Ξ pq ups p t) /\
     (forall pq ups pm As p t v a, ⟦ihty v of t at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pq ups pm As p t v) /\
     (forall f m r, eval_proj Θ Ξ f m r -> eval_proj_order Θ Ξ f m) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> eval_nflds_order Θ Ξ ns m fl pre) /\
+    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs -> eval_neutral_fields_order Θ Ξ ns m fl pre) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> eval_projs_order Θ Ξ fl v) /\
     (forall pq ups pm As p gs vs rs, ⟦ihtys vs of gs at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ rs ->
        eval_ihtys_order Θ Ξ pq ups pm As p gs vs).
@@ -700,8 +700,8 @@ Proof.
     solve [ eapply eval_sel_order_global_neut; eauto; intros; functional_eval_all; eauto
           (** A shape's end at a member with a block: the member its type
               stands for has one, not a record view. *)
-          | match goal with H : eval_mref _ _ ?pq _ ?j _ |- eval_shty_order _ _ ?pq _ _ (pt_self ?j _) =>
-              inversion H; subst; eapply eval_shty_order_self; try eassumption;
+          | match goal with H : eval_mref _ _ ?pq _ ?j _ |- eval_shape_type_order _ _ ?pq _ _ (pt_self ?j _) =>
+              inversion H; subst; eapply eval_shape_type_order_self; try eassumption;
               unfold im_is_rview; match goal with Hh : im_head _ = _ |- _ => rewrite Hh end; reflexivity end
           | econstructor; try eassumption; intros; functional_eval_all; eauto using kinds_items_gen_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
@@ -725,7 +725,7 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ Ξ)))). Qed
 Lemma eval_modexp_order_sound : forall Θ Ξ H p h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_modexp_order Θ Ξ H p.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (eval_order_sound Θ Ξ)))))). Qed.
 
-Lemma eval_shty_order_sound : forall Θ Ξ pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t.
+Lemma eval_shape_type_order_sound : forall Θ Ξ pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shape_type_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 Lemma eval_ihty_order_sound : forall Θ Ξ pq ups pm As p t v a, ⟦ihty v of t at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
@@ -734,7 +734,7 @@ Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Q
 
 #[export]
 Hint Resolve eval_exp_order_sound eval_app_order_sound eval_exps_order_sound eval_modexp_order_sound
-  eval_shty_order_sound eval_ihty_order_sound : mctt.
+  eval_shape_type_order_sound eval_ihty_order_sound : mctt.
 
 Lemma eval_ih_order_sound : forall Θ Ξ p pq ups Bks t v r, ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
     eval_ih_order Θ Ξ p pq ups Bks t v.
@@ -787,7 +787,7 @@ Section EvalImpl.
   Defined.
 
   #[local]
-  Ltac impl_obl_tac1 :=
+  Ltac impl_obligation_tac1 :=
     match goal with
     | H : eval_exp_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_app_order _ _ _ _ |- _ => progressive_invert H
@@ -801,23 +801,23 @@ Section EvalImpl.
     | H : eval_selm_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_selc_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_selmc_order _ _ _ _ |- _ => progressive_invert H
-    | H : eval_benv_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_body_env_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_elim_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_mref_order _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
-    | H : eval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_shape_type_order _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ihty_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ihtys_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_projs_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_proj_order _ _ _ _ |- _ => progressive_invert H
-    | H : eval_nflds_order _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_neutral_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
     end.
 
   (** The lookups recorded in the order are the ones computed, which either
       fixes what is looked up or rules the case out. *)
   #[local]
-  Ltac impl_obl_glob :=
+  Ltac impl_obligation_glob :=
     repeat match goal with
       (** A term part an order records is a definition's body or a
           definition with a module part's term. *)
@@ -941,7 +941,7 @@ Section EvalImpl.
   (** The [efq] case: the order says that the scrutinee evaluates to a
       neutral, which rules out every other value. *)
   #[local]
-  Ltac impl_obl_exfalso :=
+  Ltac impl_obligation_exfalso :=
     repeat match goal with
       | H : forall m, eval_exp _ _ ?M ?p m -> exists _ _, m = ⇑ _ _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
           destruct (H _ Hm) as (? & ? & ?); clear H
@@ -949,7 +949,7 @@ Section EvalImpl.
       | H : forall m, eval_exp _ _ ?M ?p m -> exists _, elim_grp_of _ m = Some _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
           destruct (H _ Hm) as (? & ?); clear H
       (** The projections of a neutral reach the field projected. *)
-      | H : forall rs, eval_nflds _ _ ?ns ?m ?fl ?pre rs -> _, Hm : eval_nflds _ _ ?ns ?m ?fl ?pre _ |- _ =>
+      | H : forall rs, eval_neutral_fields _ _ ?ns ?m ?fl ?pre rs -> _, Hm : eval_neutral_fields _ _ ?ns ?m ?fl ?pre _ |- _ =>
           specialize (H _ Hm)
       (** A function shape's recursive results, or their types, have the
           one applied. *)
@@ -962,7 +962,7 @@ Section EvalImpl.
       end.
 
   #[local]
-  Ltac impl_obl_split :=
+  Ltac impl_obligation_split :=
     match goal with
     | H : eval_exp_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_app_order _ _ _ _ |- _ => dependent destruction H
@@ -973,26 +973,26 @@ Section EvalImpl.
     | H : eval_sel_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_selm_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_selc_order _ _ _ _ |- _ => dependent destruction H
-    | H : eval_benv_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_body_env_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_elim_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_mref_order _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
-    | H : eval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_shape_type_order _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ihty_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ihtys_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_projs_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_proj_order _ _ _ _ |- _ => dependent destruction H
-    | H : eval_nflds_order _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_neutral_fields_order _ _ _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
-  Ltac impl_obl_finish :=
-    impl_obl_exfalso;
-    impl_obl_glob;
+  Ltac impl_obligation_finish :=
+    impl_obligation_exfalso;
+    impl_obligation_glob;
     (** once more, at the lookups fixed *)
-    impl_obl_exfalso;
-    impl_obl_glob;
+    impl_obligation_exfalso;
+    impl_obligation_glob;
     cbn [gu_params] in *;
     try solve [ intuition discriminate ];
     try solve [ exfalso; lia ];
@@ -1010,48 +1010,48 @@ Section EvalImpl.
     try econstructor; eauto.
 
   #[local]
-  Ltac ev_obl :=
+  Ltac eval_obligation :=
     intros; cbv beta in *;
-    repeat impl_obl_tac1;
+    repeat impl_obligation_tac1;
     first [ (** The member a shape's end stands for: its order is a
                 premise of the shape's, so the recursive call is on a
                 subterm *)
-            lazymatch goal with |- eval_mref_order _ _ _ _ _ => solve [ impl_obl_split; impl_obl_finish ] end
-          | solve [ impl_obl_finish ]
-          | solve [ impl_obl_split; impl_obl_finish ]
-          | impl_obl_finish ].
+            lazymatch goal with |- eval_mref_order _ _ _ _ _ => solve [ impl_obligation_split; impl_obligation_finish ] end
+          | solve [ impl_obligation_finish ]
+          | solve [ impl_obligation_split; impl_obligation_finish ]
+          | impl_obligation_finish ].
 
   (** An obligation whose conclusion is an order stays transparent, since
       the guard condition sees it in the recursive calls; any other is
       proved opaquely. *)
   #[local]
-  Ltac ev_obl_auto :=
+  Ltac eval_obligation_auto :=
     intros;
     lazymatch goal with
-    | |- eval_exp_order _ _ _ _ => ev_obl
-    | |- eval_app_order _ _ _ _ => ev_obl
-    | |- eval_exps_order _ _ _ _ => ev_obl
-    | |- eval_apps_order _ _ _ _ => ev_obl
-    | |- eval_modexp_order _ _ _ _ => ev_obl
-    | |- eval_close_order _ _ _ _ _ => ev_obl
-    | |- eval_appm_order _ _ _ _ => ev_obl
-    | |- eval_appms_order _ _ _ _ => ev_obl
-    | |- eval_sel_order _ _ _ _ => ev_obl
-    | |- eval_selm_order _ _ _ _ => ev_obl
-    | |- eval_selc_order _ _ _ _ => ev_obl
-    | |- eval_selmc_order _ _ _ _ => ev_obl
-    | |- eval_benv_order _ _ _ _ => ev_obl
-    | |- eval_elim_order _ _ _ _ _ _ _ _ => ev_obl
-    | |- eval_mref_order _ _ _ _ _ => ev_obl
-    | |- eval_ihs_order _ _ _ _ _ _ _ _ => ev_obl
-    | |- eval_ih_order _ _ _ _ _ _ _ _ => ev_obl
-    | |- eval_shty_order _ _ _ _ _ _ => ev_obl
-    | |- eval_ihty_order _ _ _ _ _ _ _ _ _ => ev_obl
-    | |- eval_ihtys_order _ _ _ _ _ _ _ _ _ => ev_obl
-    | |- eval_projs_order _ _ _ _ => ev_obl
-    | |- eval_proj_order _ _ _ _ => ev_obl
-    | |- eval_nflds_order _ _ _ _ _ _ => ev_obl
-    | |- _ => abstract ev_obl
+    | |- eval_exp_order _ _ _ _ => eval_obligation
+    | |- eval_app_order _ _ _ _ => eval_obligation
+    | |- eval_exps_order _ _ _ _ => eval_obligation
+    | |- eval_apps_order _ _ _ _ => eval_obligation
+    | |- eval_modexp_order _ _ _ _ => eval_obligation
+    | |- eval_close_order _ _ _ _ _ => eval_obligation
+    | |- eval_appm_order _ _ _ _ => eval_obligation
+    | |- eval_appms_order _ _ _ _ => eval_obligation
+    | |- eval_sel_order _ _ _ _ => eval_obligation
+    | |- eval_selm_order _ _ _ _ => eval_obligation
+    | |- eval_selc_order _ _ _ _ => eval_obligation
+    | |- eval_selmc_order _ _ _ _ => eval_obligation
+    | |- eval_body_env_order _ _ _ _ => eval_obligation
+    | |- eval_elim_order _ _ _ _ _ _ _ _ => eval_obligation
+    | |- eval_mref_order _ _ _ _ _ => eval_obligation
+    | |- eval_ihs_order _ _ _ _ _ _ _ _ => eval_obligation
+    | |- eval_ih_order _ _ _ _ _ _ _ _ => eval_obligation
+    | |- eval_shape_type_order _ _ _ _ _ _ => eval_obligation
+    | |- eval_ihty_order _ _ _ _ _ _ _ _ _ => eval_obligation
+    | |- eval_ihtys_order _ _ _ _ _ _ _ _ _ => eval_obligation
+    | |- eval_projs_order _ _ _ _ => eval_obligation
+    | |- eval_proj_order _ _ _ _ => eval_obligation
+    | |- eval_neutral_fields_order _ _ _ _ _ _ => eval_obligation
+    | |- _ => abstract eval_obligation
     end.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
@@ -1062,14 +1062,14 @@ Section EvalImpl.
       exist _ 𝕌@m _
   | #x    , p, H => eval_var_impl x p H
   | Level@n, p, H => exist _ (Levelᵈ@n) _
-  | 𝕃ᵒ o  , p, H => exist _ (dlvl_lit o) _
+  | 𝕃ᵒ o  , p, H => exist _ (domain_level_lit o) _
   | succl M, p, H =>
       let (m , Hm) := eval_exp_impl M p _ in
-      exist _ (dlvl_suc m) _
+      exist _ (domain_level_suc m) _
   | maxl M N, p, H =>
       let (m , Hm) := eval_exp_impl M p _ in
       let (n , Hn) := eval_exp_impl N p _ in
-      exist _ (dlvl_max m n) _
+      exist _ (domain_level_max m n) _
   | ⊤     , p, H => exist _ ⊤ᵈ _
   | ⋆     , p, H => exist _ ⋆ᵈ _
   | ⊥     , p, H => exist _ ⊥ᵈ _
@@ -1141,7 +1141,7 @@ Section EvalImpl.
     | exist _ None E => False_rect _ _ }
   | f, ⇑ (d_record pq ns) m, H with inspect (record_lookup Θ Ξ pq) := {
     | exist _ (Some R) El with inspect (field_index (record_fields R) f) := {
-      | exist _ (Some k) Ek with eval_nflds_impl ns m (List.firstn (S k) (record_fields R)) nil _ := {
+      | exist _ (Some k) Ek with eval_neutral_fields_impl ns m (List.firstn (S k) (record_fields R)) nil _ := {
         | exist _ rs Hrs with inspect (List.nth_error rs k) := {
           | exist _ (Some r) Er => exist _ r _
           | exist _ None Er => False_rect _ _ } }
@@ -1149,12 +1149,12 @@ Section EvalImpl.
     | exist _ None El => False_rect _ _ }
   | f, _, H => False_rect _ _
 
-  with eval_nflds_impl ns m fl pre (H : eval_nflds_order Θ Ξ ns m fl pre) :
-      { rs | eval_nflds Θ Ξ ns m fl pre rs } by struct H :=
+  with eval_neutral_fields_impl ns m fl pre (H : eval_neutral_fields_order Θ Ξ ns m fl pre) :
+      { rs | eval_neutral_fields Θ Ξ ns m fl pre rs } by struct H :=
   | ns, m, nil, pre, H => exist _ nil _
   | ns, m, (g, T) :: fl, pre, H =>
       let (a, Ha) := eval_exp_impl T (env_args nil (ns ++ pre)) _ in
-      let (rs, Hrs) := eval_nflds_impl ns m fl (pre ++ ⇑ a (d_proj g m) :: nil) _ in
+      let (rs, Hrs) := eval_neutral_fields_impl ns m fl (pre ++ ⇑ a (d_proj g m) :: nil) _ in
       exist _ (⇑ a (d_proj g m) :: rs) _
 
   with eval_elim_impl p pq ups Bks j m (H : eval_elim_order Θ Ξ p pq ups Bks j m) :
@@ -1217,7 +1217,7 @@ Section EvalImpl.
     | exist _ None Ed => False_rect _ _ }
   | p, pq, ups, Bks, pt_pi B t, v, H with inspect (ind_lookup Θ Ξ pq) := {
     | exist _ (Some D) Ed =>
-        exist _ (List.map (fun i => d_ihfn p Bks pq ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
+        exist _ (List.map (fun i => d_ihfn p Bks pq ups t i v) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))) _
     | exist _ None Ed => False_rect _ _ }
 
   with eval_projs_impl fl v (H : eval_projs_order Θ Ξ fl v) : { ws | ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws } by struct H :=
@@ -1239,7 +1239,7 @@ Section EvalImpl.
       | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
 
-  with eval_shty_impl pq ups p t (H : eval_shty_order Θ Ξ pq ups p t) : { a | ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
+  with eval_shape_type_impl pq ups p t (H : eval_shape_type_order Θ Ξ pq ups p t) : { a | ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
   | pq, ups, p, pt_self j Ps, H with inspect (ind_lookup Θ Ξ pq) := {
     | exist _ (Some D) Ed with inspect (ind_member D j) := {
       | exist _ (Some Mj) Em with inspect (im_head Mj) := {
@@ -1276,7 +1276,7 @@ Section EvalImpl.
     | exist _ (Some D) Ed =>
         let (b, Hb) := eval_exp_impl B p _ in
         exist _ (List.map (fun i => Πᵈ b (nil ↦ d_ihfam pm As pq ups p t i v) fam_cod)
-                   (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t)))) _
+                   (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))) _
     | exist _ None Ed => False_rect _ _ }
 
   with eval_ihtys_impl pq ups pm As p gs vs (H : eval_ihtys_order Θ Ξ pq ups pm As p gs vs) :
@@ -1323,7 +1323,7 @@ Section EvalImpl.
         | exist _ (Some r) Er => exist _ r _
         | exist _ None Er => False_rect _ _ } } }
   | d_shfam pq ups p t, n, H =>
-      let (a, Ha) := eval_shty_impl pq ups (p ↦ n) t _ in
+      let (a, Ha) := eval_shape_type_impl pq ups (p ↦ n) t _ in
       exist _ a _
   | d_ihfam pm As pq ups p t i f, n, H with eval_app_impl f n _ := {
     | exist _ fn Hfn with eval_ihty_impl pq ups pm As (p ↦ n) t fn _ := {
@@ -1429,7 +1429,7 @@ Section EvalImpl.
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_tm E) := {
         | exist _ (Some (A, M)) Et =>
-            let (p', Hp') := eval_benv_impl p Φ' _ in
+            let (p', Hp') := eval_body_env_impl p Φ' _ in
             let (r, Hr) := eval_exp_impl M p' _ in
             exist _ r _
         | exist _ None Et => False_rect _ _ }
@@ -1449,7 +1449,7 @@ Section EvalImpl.
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx y) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_unit E) := {
         | exist _ (Some (gu_mk Δy Dy)) Eu =>
-            let (p', Hp') := eval_benv_impl p Φ' _ in
+            let (p', Hp') := eval_body_env_impl p Φ' _ in
             let (r, Hr) := eval_close_impl Δy Dy p' _ in
             exist _ r _
         | exist _ None Eu => False_rect _ _ }
@@ -1473,19 +1473,19 @@ Section EvalImpl.
       let (r, Hr) := eval_selmc_impl h1 ch _ in
       exist _ r _
 
-  with eval_benv_impl p Φ (H : eval_benv_order Θ Ξ p Φ) : { p' | ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' } by struct H :=
+  with eval_body_env_impl p Φ (H : eval_body_env_order Θ Ξ p Φ) : { p' | ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' } by struct H :=
   | p, gm_nil, H => exist _ p _
   | p, gm_ext Φ y (ge_def b pv A (Some M)), H =>
-      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      let (p1, Hp1) := eval_body_env_impl p Φ _ in
       let (m, Hm) := eval_exp_impl M p1 _ in
       exist _ (p1 ↦ m) _
   | p, gm_ext Φ y (ge_def b pv A None), H => False_rect _ _
   | p, gm_ext Φ y (ge_mod _ (gu_mk Δy Dy)), H =>
-      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      let (p1, Hp1) := eval_body_env_impl p Φ _ in
       let (h, Hh) := eval_close_impl Δy Dy p1 _ in
       exist _ (p1 ↦ᵐ h) _
   | p, gm_ext Φ y (ge_def_mod _ A M (gu_mk Δy Dy)), H =>
-      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      let (p1, Hp1) := eval_body_env_impl p Φ _ in
       let (m, Hm) := eval_exp_impl M p1 _ in
       let (h, Hh) := eval_close_impl Δy Dy p1 _ in
       exist _ (p1 ↦ᵈ m ‖ h) _
@@ -1493,9 +1493,9 @@ Section EvalImpl.
 
 (** Each hole is an order premise read off the order of the whole by
     inversion, the evaluation itself by its rule, or a branch the order rules
-    out ([ev_obl]); one whose conclusion is not an order is proved
-    opaquely ([ev_obl_auto]). *)
-Solve All Obligations with ev_obl_auto.
+    out ([eval_obligation]); one whose conclusion is not an order is proved
+    opaquely ([eval_obligation_auto]). *)
+Solve All Obligations with eval_obligation_auto.
 End EvalImpl.
 
 (** The [eval_*_impl] functions are sound by construction.  Completeness

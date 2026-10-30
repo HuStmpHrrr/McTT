@@ -105,7 +105,7 @@ environment after a body).  The selected name and the chain are at level 0:
 The eliminator's auxiliary relations follow `⟦ihs vs of gs under nm A Bs ⟧`:
 `⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r` (`eval_ih`, the recursive result
 of an argument `v` of shape `t`), `⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a`
-(`eval_shty`, the type of an argument of shape `t` at the uniform parameters
+(`eval_shape_type`, the type of an argument of shape `t` at the uniform parameters
 `ups` of `p`) and `⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a` (`eval_ihty`, the
 type of its recursive result, the motive `A` in `ρm`); the components after
 `under` and `of p` are at level 0.  A substitution entry evaluates by
@@ -155,7 +155,7 @@ The types of levels are indexed by a sort: `Level@n` in `exp` (`a_level n`),
 are the sort-0 ones.  `Level@m ⊆ Level@n` for `m <= n`
 (`wf_subtyp_level`), and every `Level@n` is in `Type@0`.  Their terms are `𝕃ᵒ o` (a literal: an ordinal
 `o = (a, b)`, that is `ω·a + b`, below ω²; `Core/Syntactic/Levels/Ordinals.v`),
-`succl M` and `maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values
+`succl M` and `maxl M N`, with `domain_level_lit`, `domain_level_suc`, `domain_level_max` on values
 and `nf_lvl_of L` on normal forms.  `𝕃@n` is the finite literal
 `𝕃ᵒ (0, n)` and `Type@n` is `Type⟨𝕃@n⟩`: both notations match only a
 finite literal, so a lemma about any literal is stated with `𝕃ᵒ`.

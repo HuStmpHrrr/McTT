@@ -828,8 +828,8 @@ Qed.
 
 (** ** Unsealing Preserves Every Judgment *)
 
-Ltac seal_prem := first [ eassumption | solve [ intros; eapply proj1; eauto ] | solve [ eauto ] ].
-Ltac unseal_prem :=
+Ltac seal_premise := first [ eassumption | solve [ intros; eapply proj1; eauto ] | solve [ eauto ] ].
+Ltac unseal_premise :=
   first [ eassumption | solve [ intros; eapply proj2; eauto ]
         | solve [ eauto using gc_resolve_unseal_def, gc_resolve_unseal_transparent, gm_fresh_unseal, frame_fresh_unseal ] ].
 
@@ -848,13 +848,13 @@ Lemma unseal_preserves_wf_all :
 Proof.
   apply wf_mut_ind_all; intros; destruct_conjs; split.
   (* the judgment itself *)
-  all: try (solve [ econstructor; seal_prem ]).
+  all: try (solve [ econstructor; seal_premise ]).
   (* unsealed *)
   all: cbn.
   all: try rewrite <- (gs_tele_unseal Ξ).
   all: try rewrite <- (ind_lookup_unseal Θ Ξ) in *.
   all: try rewrite <- (record_lookup_unseal Θ Ξ) in *.
-  all: try solve [ econstructor; rewrite ?gs_tele_unseal; unseal_prem ].
+  all: try solve [ econstructor; rewrite ?gs_tele_unseal; unseal_premise ].
   (* a member: what it looks up, unsealed *)
   all: try match goal with
     | |- gds_unseal ?Θ ⍮ gs_unseal ?Ξ ⍮ ?Γ ⊢ a_mem ?H ?x : ?A =>
@@ -918,7 +918,7 @@ Proof.
         let Hg := fresh "Hg" in
         assert (Hg : ⊢ᵍ Θ ⍮ Ξ) by (eapply ctx_wf_gctx; eapply presup_ext_eq_ctx; eassumption);
         eapply wf_unit_eq_body;
-          [ exact (body_xp_unseal _ _ _ _ _ Hg Hx Ho) | exact (body_xp_unseal _ _ _ _ _ Hg Hx' Ho') | unseal_prem .. ]
+          [ exact (body_xp_unseal _ _ _ _ _ Hg Hx Ho) | exact (body_xp_unseal _ _ _ _ _ Hg Hx' Ho') | unseal_premise .. ]
     end.
   (* a group: the containers of its views found unsealed alike *)
   all: try match goal with |- gds_unseal _ ⍮ gs_unseal _ ⍮ _ ⊢ᵉ _ => idtac end.
@@ -1112,7 +1112,7 @@ Fixpoint cmd_no_axioms (c : core_cmd) : Prop :=
 
 Definition cmds_no_axioms (cs : list core_cmd) : Prop := List.Forall cmd_no_axioms cs.
 
-Definition unit_no_axioms (u : cunit) : Prop :=
+Definition unit_no_axioms (u : core_unit) : Prop :=
   let '(imps, _, cs) := u in cmds_no_axioms imps /\ cmds_no_axioms cs.
 
 Lemma cmd_no_axioms_mod : forall x pv Δ cs, cmd_no_axioms (core_cmd_mod x pv Δ cs) <-> cmds_no_axioms cs.
@@ -1139,7 +1139,7 @@ Qed.
 Lemma fill_cmd_no_axioms : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
   intros * H Hc; destruct H; try exact Hc; cbn in *; try exact I.
-  match goal with Ho : fill_oexp _ _ _ _ _ _ |- _ => destruct Ho end; [ contradiction | discriminate ].
+  match goal with Ho : fill_optional_exp _ _ _ _ _ _ |- _ => destruct Ho end; [ contradiction | discriminate ].
 Qed.
 
 Lemma in_gds_merge : forall Θ Θ' x,
@@ -1199,7 +1199,7 @@ Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, cmds_no_axioms (rec_cmds Θ Ξ R
 Proof.
   intros; unfold rec_cmds; destruct (raw_decl_rec_field R); [| constructor ].
   constructor; [| constructor ].
-  unfold grec_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
+  unfold recursor_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
   apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
 Qed.
@@ -1208,20 +1208,20 @@ Qed.
     constructors, its recursor and its recursor module. *)
 Lemma ind_mod_cmds_no_axioms : forall Θ Ξ R pq D k M, cmds_no_axioms (ind_mod_cmds Θ Ξ R pq D k M).
 Proof.
-  intros; unfold ind_mod_cmds, ind_rec_cmds, ind_grec_cmds, cmds_no_axioms.
+  intros; unfold ind_mod_cmds, ind_rec_cmds, ind_recursor_cmds, cmds_no_axioms.
   apply List.Forall_app; split; [| apply List.Forall_app; split ].
   - apply List.Forall_forall; intros c Hin; apply List.in_map_iff in Hin as (cg & <- & _); cbn; discriminate.
   - destruct (ind_has_rec D); [ constructor; [ cbn; discriminate | constructor ] | constructor ].
   - destruct (Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool; [| constructor ].
     constructor; [| constructor ].
-    unfold grec_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
+    unfold recursor_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
     apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
 Qed.
 
 Section Run.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
-            (to_core : Cst.prog -> option cunit).
+            (to_core : Cst.prog -> option core_unit).
   (** Every unit the elaborator gives declares no axiom. *)
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 

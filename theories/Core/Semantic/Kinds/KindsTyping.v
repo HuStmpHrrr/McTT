@@ -43,11 +43,11 @@ Proof.
   intros; rewrite gens_append_app; cbn [gens_append]; unfold generated_item_name; destruct (generated_item_entry g); reflexivity.
 Qed.
 
-Lemma items_upto_none_iff : forall x its, items_upto x its = None -> existsb (String.eqb x) (map iitem_name its) = false.
+Lemma items_upto_none_iff : forall x its, items_upto x its = None -> existsb (String.eqb x) (map import_item_name its) = false.
 Proof.
   induction its as [| it its IH]; intros H; cbn in *; [ reflexivity |].
   destruct (items_upto x its) as [[] |]; [ discriminate |].
-  destruct (String.eqb x (iitem_name it)); [ discriminate |]; cbn; auto.
+  destruct (String.eqb x (import_item_name it)); [ discriminate |]; cbn; auto.
 Qed.
 
 (** Past the names an open declares, the generated entries are skipped. *)
@@ -81,11 +81,11 @@ Proof.
   all: split; [ solve [ econstructor; eauto using items_gen_nil ] |].
   all: split; [ eexists _, _; split; reflexivity |].
   all: intros Φ kk; cbn [gens_append app generated_item_entry]; rewrite gens_prefix_none by exact Hn;
-         cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
+         cbn [gm_prefix_upto import_item_name] in *; rewrite Ey; reflexivity.
 Qed.
 
 (** The same for the items kinds read. *)
-Lemma kinds_items_gen_names : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs -> List.map generated_item_name gs = List.map iitem_name its.
+Lemma kinds_items_gen_names : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs -> List.map generated_item_name gs = List.map import_item_name its.
 Proof. induction 1; cbn; f_equal; auto. Qed.
 
 Lemma kinds_items_gen_prefix_some : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs ->
@@ -104,7 +104,7 @@ Proof.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (kinds_items_gen_names _ _ _ _ _ _ Hg) in Hn.
   all: eexists nil, _; split; [ solve [ econstructor; eauto using kinds_items_gen_nil ] |].
   all: intros Φ k; cbn [gens_append app generated_item_entry]; rewrite gens_prefix_none by exact Hn;
-         cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
+         cbn [gm_prefix_upto import_item_name] in *; rewrite Ey; reflexivity.
 Qed.
 
 Lemma app_length_inv : forall {A} (l1 l2 l3 l4 : list A),
@@ -139,7 +139,7 @@ Section Match.
 
   Lemma gunit_member_kind_shift : forall d ρ U ch k, gunit_member_kind Θ Ξ (d :: ρ) (gunit_wk U wk_shift) ch k <-> gunit_member_kind Θ Ξ ρ U ch k.
   Proof.
-    intros; apply (proj1 (proj2 (kind_ren Θ Ξ)) U wk_shift (d :: ρ) ρ).
+    intros; apply (proj1 (proj2 (kind_rename Θ Ξ)) U wk_shift (d :: ρ) ρ).
     intros x; apply kinds_equiv_refl.
   Qed.
 
@@ -178,7 +178,7 @@ Section Match.
   (** The same, for an environment read past its first entry. *)
   Lemma gunit_member_kind_drop : forall ρ U ch k, gunit_member_kind Θ Ξ ρ (gunit_wk U wk_shift) ch k <-> gunit_member_kind Θ Ξ ρ↯ U ch k.
   Proof.
-    intros; apply (proj1 (proj2 (kind_ren Θ Ξ)) U wk_shift ρ ρ↯).
+    intros; apply (proj1 (proj2 (kind_rename Θ Ξ)) U wk_shift ρ ρ↯).
     intros x; cbn [wk_shift]; rewrite env_mod_drop; apply kinds_equiv_refl.
   Qed.
 

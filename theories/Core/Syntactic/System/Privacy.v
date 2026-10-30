@@ -42,7 +42,7 @@ Proof.
   destruct (gds_lookup Θ (q_unit p)); [ apply gm_entry_resolve; exact H | discriminate ].
 Qed.
 
-Lemma gc_entry_dsub : forall Θ1 Θ2 Ξ p E, Θ1 ⊑ Θ2 -> gc_entry Θ1 Ξ p = Some E -> gc_entry Θ2 Ξ p = Some E.
+Lemma gc_entry_deps_sub : forall Θ1 Θ2 Ξ p E, Θ1 ⊑ Θ2 -> gc_entry Θ1 Ξ p = Some E -> gc_entry Θ2 Ξ p = Some E.
 Proof.
   intros * Hs H; unfold gc_entry, gc_entry_u in *.
   destruct (gs_find Ξ p) as [[U ip] |]; [ exact H |].
@@ -51,7 +51,7 @@ Proof.
 Qed.
 
 (** A module of a unit read in a bigger set of dependencies. *)
-Lemma gc_unit_dsub : forall Θ1 Θ2 Ξ H r, Θ1 ⊑ Θ2 -> gc_unit Θ1 Ξ H = Some r -> gc_unit Θ2 Ξ H = Some r.
+Lemma gc_unit_deps_sub : forall Θ1 Θ2 Ξ H r, Θ1 ⊑ Θ2 -> gc_unit Θ1 Ξ H = Some r -> gc_unit Θ2 Ξ H = Some r.
 Proof.
   intros * Hs H0; unfold gc_unit in *.
   destruct (mod_qname H) as [mp |]; [| discriminate ].
@@ -170,17 +170,17 @@ Proof.
 Qed.
 
 (** Declarations are read off lookups, which more dependencies only extend. *)
-Lemma msite_dsub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 -> forall H pq, msite Θ1 Ξ H pq -> msite Θ2 Ξ H pq.
+Lemma msite_deps_sub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 -> forall H pq, msite Θ1 Ξ H pq -> msite Θ2 Ξ H pq.
 Proof.
   intros * Hs; induction 1; [ eapply ms_unit | eapply ms_ind_frame | eapply ms_body | eapply ms_alias | eapply ms_app
                             | eapply ms_record_frame ];
-    eauto using gc_unit_dsub, gc_entry_dsub.
+    eauto using gc_unit_deps_sub, gc_entry_deps_sub.
 Qed.
 
-Lemma mdecl_dsub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 ->
+Lemma mdecl_deps_sub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 ->
     forall H y qd pv, mdecl Θ1 Ξ H y qd pv -> mdecl Θ2 Ξ H y qd pv.
 Proof.
-  intros * Hs * [pq E HH He]; constructor; [ eapply msite_dsub; eassumption | eapply gc_entry_dsub; eassumption ].
+  intros * Hs * [pq E HH He]; constructor; [ eapply msite_deps_sub; eassumption | eapply gc_entry_deps_sub; eassumption ].
 Qed.
 
 (** The module [mdecl] finds declares the member: the member names an entry
@@ -234,18 +234,18 @@ Definition privacy_table_select (t : privacy_table) (y : string) : privacy_table
 Definition privacy_table_scope (es : list (string * bool * privacy_table)) : list privacy_table := map snd es.
 
 (** Whether an import item declares a private name. *)
-Definition iitem_private (it : iitem) : bool := let '(_, _, pv) := it in pv.
+Definition import_item_private (it : import_item) : bool := let '(_, _, pv) := it in pv.
 
 (** What an import item names, in the table [t] of the imported module:
     the module itself, or its member. *)
-Definition item_privacy_table (t : privacy_table) (it : iitem) : privacy_table :=
+Definition item_privacy_table (t : privacy_table) (it : import_item) : privacy_table :=
   match it with
   | (None, _, _) => t
   | (Some n, _, _) => privacy_table_select t n
   end.
 
 (** The references an import's items make: each member it names. *)
-Definition item_refs (t : privacy_table) (its : list iitem) : list (privacy_table * string)%type :=
+Definition item_refs (t : privacy_table) (its : list import_item) : list (privacy_table * string)%type :=
   flat_map (fun it => match it with
                       | (Some n, _, _) => (t, n) :: nil
                       | (None, _, _) => nil
@@ -277,7 +277,7 @@ with gmod_privacy_tables (S : list privacy_table) (Φ : gmod) : list (string * b
   | gm_open Φ H its =>
       let es := gmod_privacy_tables S Φ in
       let t := modexp_privacy_table (privacy_table_scope es ++ S) H in
-      rev (map (fun it => (iitem_name it, iitem_private it, item_privacy_table t it)) its) ++ es
+      rev (map (fun it => (import_item_name it, import_item_private it, item_privacy_table t it)) its) ++ es
   end
 with gentry_privacy_table (S : list privacy_table) (E : gentry) : privacy_table :=
   match E with
@@ -289,7 +289,7 @@ with gentry_privacy_table (S : list privacy_table) (E : gentry) : privacy_table 
   end.
 
 (** The table a local binding gives its index. *)
-Definition bnd_privacy_table (S : list privacy_table) (b : bnd) : privacy_table :=
+Definition binding_privacy_table (S : list privacy_table) (b : binding) : privacy_table :=
   match b with
   | b_def _ _ => privacy_table_none
   | b_mod U => gunit_privacy_table S U
@@ -342,7 +342,7 @@ Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * str
          end) Bks ++ exp_refs S M
   | a_pi _ A M | a_fn A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
   | a_app M N => exp_refs S M ++ exp_refs S N
-  | a_let b B => bnd_refs S b ++ exp_refs (bnd_privacy_table S b :: S) B
+  | a_let b B => binding_refs S b ++ exp_refs (binding_privacy_table S b :: S) B
   | a_mem H x => (modexp_privacy_table S H, x) :: modexp_refs S H
   | a_record _ => nil
   | a_tuple T fs =>
@@ -361,7 +361,7 @@ with modexp_refs (S : list privacy_table) (H : modexp) : list (privacy_table * s
   | me_app H N => modexp_refs S H ++ exp_refs S N
   | me_lit U => gunit_refs S U
   end
-with bnd_refs (S : list privacy_table) (b : bnd) : list (privacy_table * string)%type :=
+with binding_refs (S : list privacy_table) (b : binding) : list (privacy_table * string)%type :=
   match b with
   | b_def oA M => match oA with Some A => exp_refs S A | None => nil end ++ exp_refs S M
   | b_mod U => gunit_refs S U
@@ -417,10 +417,10 @@ Fixpoint tele_refs (S : list privacy_table) (Δ : ctx) : list (privacy_table * s
     and its constructors' arguments over the declared types and all the
     member's parameters, each argument binding a variable for the ones after
     it. *)
-Fixpoint rargs_refs (S : list privacy_table) (args : list (string * exp)) : list (privacy_table * string)%type :=
+Fixpoint raw_args_refs (S : list privacy_table) (args : list (string * exp)) : list (privacy_table * string)%type :=
   match args with
   | nil => nil
-  | (_, T) :: args' => exp_refs S T ++ rargs_refs (privacy_table_none :: S) args'
+  | (_, T) :: args' => exp_refs S T ++ raw_args_refs (privacy_table_none :: S) args'
   end.
 
 (** The references a declared member makes as written: its non-uniform
@@ -429,7 +429,7 @@ Fixpoint rargs_refs (S : list privacy_table) (args : list (string * exp)) : list
 Definition rmem_refs (nu nself : nat) (Mr : raw_member) : list (privacy_table * string)%type :=
   tele_refs (repeat privacy_table_none nu) (raw_member_nparams Mr) ++
   exp_refs (repeat privacy_table_none nu) (raw_member_sort Mr) ++
-  flat_map (fun cg => rargs_refs (repeat privacy_table_none (List.length (raw_member_nparams Mr) + nu + nself)) (snd cg)) (raw_member_cons Mr).
+  flat_map (fun cg => raw_args_refs (repeat privacy_table_none (List.length (raw_member_nparams Mr) + nu + nself)) (snd cg)) (raw_member_cons Mr).
 
 (** The references a group declaration makes as written: its uniform
     parameters, then each member's. *)
@@ -440,7 +440,7 @@ Definition decl_refs (R : raw_decl) : list (privacy_table * string)%type :=
 (** The references of a function of a [mutual def] as written, under the
     block's parameters: its non-uniform parameters, its scrutinee's type,
     its result type and its clauses. *)
-Definition rfun_refs (np : nat) (f : raw_fun) : list (privacy_table * string)%type :=
+Definition raw_fun_refs (np : nat) (f : raw_fun) : list (privacy_table * string)%type :=
   tele_refs (repeat privacy_table_none np) (raw_fun_nparams f) ++
   exp_refs (repeat privacy_table_none (List.length (raw_fun_nparams f) + np)) (raw_fun_scrut f) ++
   exp_refs (repeat privacy_table_none (S (List.length (raw_fun_nparams f) + np))) (raw_fun_res f) ++
@@ -460,14 +460,14 @@ Definition cmd_refs (c : core_cmd) : list (privacy_table * string)%type :=
   | core_cmd_open E its => modexp_refs nil E ++ item_refs (modexp_privacy_table nil E) its
   | core_cmd_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
   | core_cmd_inductive _ D => decl_refs D
-  | core_cmd_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (rfun_refs (List.length Δ)) fs
+  | core_cmd_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (raw_fun_refs (List.length Δ)) fs
   | core_cmd_builtin _ H => modexp_refs nil H
   | core_cmd_inductive_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   | core_cmd_record_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   (** A record's parameters, sort and fields, each field binding a variable
       for the ones after it; its with-area is checked when it runs *)
   | core_cmd_record _ _ Δ Srt fs _ =>
-      tele_refs nil Δ ++ exp_refs (repeat privacy_table_none (List.length Δ)) Srt ++ rargs_refs (repeat privacy_table_none (List.length Δ)) fs
+      tele_refs nil Δ ++ exp_refs (repeat privacy_table_none (List.length Δ)) Srt ++ raw_args_refs (repeat privacy_table_none (List.length Δ)) fs
   end.
 
 (** ** Accessibility *)
@@ -475,26 +475,26 @@ Definition cmd_refs (c : core_cmd) : list (privacy_table * string)%type :=
 (** The module [qd] is an open frame, or an ancestor of one: a reference made
     here is made inside it. *)
 #[warnings="-cannot-define-projection"]
-Record open_anc (Ξ : gstack) (qd : qname) : Prop := mk_open_anc
+Record open_ancestor (Ξ : gstack) (qd : qname) : Prop := mk_open_ancestor
   { (** The path of the open frame *)
-    open_anc_frame : qname
+    open_ancestor_frame : qname
     (** The frame's kind *)
-  ; open_anc_kind : frame_kind
+  ; open_ancestor_kind : frame_kind
     (** The frame's body so far *)
-  ; open_anc_unit : gunit
+  ; open_ancestor_unit : gunit
     (** The frame's path below [qd] *)
-  ; open_anc_suffix : list string
+  ; open_ancestor_suffix : list string
     (** The frame is on the stack *)
-  ; open_anc_in : List.In (open_anc_frame, open_anc_kind, open_anc_unit) Ξ
+  ; open_ancestor_in : List.In (open_ancestor_frame, open_ancestor_kind, open_ancestor_unit) Ξ
     (** It is in the unit of [qd] *)
-  ; open_anc_same_unit : q_unit open_anc_frame = q_unit qd
+  ; open_ancestor_same_unit : q_unit open_ancestor_frame = q_unit qd
     (** It is [qd] or below it *)
-  ; open_anc_chain : q_chain open_anc_frame = q_chain qd ++ open_anc_suffix }.
+  ; open_ancestor_chain : q_chain open_ancestor_frame = q_chain qd ++ open_ancestor_suffix }.
 
 (** A reference to [x] in a module reached from a unit is to a public
     member, or made inside the module declaring it. *)
 Definition glob_ok (Θ : gdeps) (Ξ : gstack) (H : modexp) (x : string) : Prop :=
-  forall qd, mdecl Θ Ξ H x qd true -> open_anc Ξ qd.
+  forall qd, mdecl Θ Ξ H x qd true -> open_ancestor Ξ qd.
 
 (** A reference into a local body is to a public entry: inside the body,
     its entries are variables, not references. *)
@@ -509,10 +509,10 @@ Definition acc_ok (Θ : gdeps) (Ξ : gstack) (l : list (privacy_table * string)%
   List.Forall (ref_ok Θ Ξ) l.
 
 (** Accessibility reads declarations, which equal lookups preserve. *)
-Lemma acc_ok_dsub : forall Θ1 Θ2 Ξ, Θ2 ⊑ Θ1 ->
+Lemma acc_ok_deps_sub : forall Θ1 Θ2 Ξ, Θ2 ⊑ Θ1 ->
     forall l, acc_ok Θ1 Ξ l -> acc_ok Θ2 Ξ l.
 Proof.
   intros * Hs l Hl; eapply List.Forall_impl; [| exact Hl ].
   intros [[| H |] x]; unfold ref_ok, glob_ok; cbn [fst snd]; auto.
-  intros Hok qd Hd; apply Hok; eapply mdecl_dsub; eassumption.
+  intros Hok qd Hd; apply Hok; eapply mdecl_deps_sub; eassumption.
 Qed.

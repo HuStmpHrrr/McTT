@@ -111,26 +111,26 @@ Hint Resolve per_lvl_then_per_top : mctt.
 (** A literal level reads back as itself, so it is related to itself and the
     literals are ordered by their indices.  These are the only levels the
     universes at a [universe_index] use. *)
-Lemma read_nf_dlvl_lit : forall n s,
-    Rnf ⇓ Levelᵈ (dlvl_lit n) in s ↘ nf_lvl_of (lvl_lit n).
+Lemma read_nf_domain_level_lit : forall n s,
+    Rnf ⇓ Levelᵈ (domain_level_lit n) in s ↘ nf_lvl_of (lvl_lit n).
 Proof.
   intros n s; rewrite <- (lvl_canon_lit n); apply read_nf_lvl; constructor.
 Qed.
 
-Hint Resolve read_nf_dlvl_lit : mctt.
+Hint Resolve read_nf_domain_level_lit : mctt.
 
-Lemma per_lvl_lit : forall n, Dom dlvl_lit n ≈ dlvl_lit n ∈ per_lvl.
+Lemma per_lvl_lit : forall n, Dom domain_level_lit n ≈ domain_level_lit n ∈ per_lvl.
 Proof.
-  intros n s; eexists; split; apply read_nf_dlvl_lit.
+  intros n s; eexists; split; apply read_nf_domain_level_lit.
 Qed.
 
 Hint Resolve per_lvl_lit : mctt.
 
 Lemma per_sublvl_lit : forall n m,
     ordinal_le n m ->
-    per_sublvl (dlvl_lit n) (dlvl_lit m).
+    per_sublvl (domain_level_lit n) (domain_level_lit m).
 Proof.
-  intros n m Hle s; exists (lvl_lit n) (lvl_lit m); [ apply read_nf_dlvl_lit | apply read_nf_dlvl_lit |].
+  intros n m Hle s; exists (lvl_lit n) (lvl_lit m); [ apply read_nf_domain_level_lit | apply read_nf_domain_level_lit |].
   apply lvl_le_lit; assumption.
 Qed.
 
@@ -140,7 +140,7 @@ Hint Resolve per_sublvl_lit : mctt.
     the realiser is the one of the canonical form both read back as. *)
 Lemma per_lvl_real : forall m n,
     Dom m ≈ n ∈ per_lvl ->
-    dlvl_real m = dlvl_real n.
+    domain_level_real m = domain_level_real n.
 Proof.
   intros * H; destruct (H 0) as [W [HW HW']].
   apply read_nf_level_real in HW as [L [-> HL]].
@@ -174,7 +174,7 @@ Hint Resolve per_sublvl_left per_sublvl_right : mctt.
 
 Lemma per_sublvl_real : forall l l',
     per_sublvl l l' ->
-    ordinal_le (dlvl_real l) (dlvl_real l').
+    ordinal_le (domain_level_real l) (domain_level_real l').
 Proof.
   intros * H; destruct (H 0) as [L L' HL HL' Hle].
   apply read_nf_level_real in HL as [L1 [HL1 <-]].
@@ -274,13 +274,13 @@ Proof.
   - intros ? ? ?; apply per_lvl_at_trans.
 Qed.
 
-Lemma lvl_bnd_mono : forall m n L, m <= n -> lvl_bnd m L -> lvl_bnd n L.
+Lemma lvl_sort_bounded_mono : forall m n L, m <= n -> lvl_sort_bounded m L -> lvl_sort_bounded n L.
 Proof. intros * Hmn [Hc Ha]; split; [ lia | intros; eapply Nat.le_trans; [ eapply Ha; eassumption | exact Hmn ] ]. Qed.
 
 Lemma per_lvl_at_mono : forall m n l l', m <= n -> Dom l ≈ l' ∈ per_lvl_at m -> Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
   intros * Hmn H s; destruct (H s) as [L HL HL' Hb].
-  exists L; [ assumption | assumption | eapply lvl_bnd_mono; eassumption ].
+  exists L; [ assumption | assumption | eapply lvl_sort_bounded_mono; eassumption ].
 Qed.
 
 Lemma per_bot_then_per_lvl_at : forall n m m',
@@ -488,7 +488,7 @@ Hint Resolve per_top_typ_sym : mctt.
 Hint Resolve per_top_typ_trans : mctt.
 #[export] Existing Instance per_top_typ_PER.
 #[export]
-Hint Resolve read_nf_dlvl_lit per_lvl_lit per_sublvl_lit : mctt.
+Hint Resolve read_nf_domain_level_lit per_lvl_lit per_sublvl_lit : mctt.
 #[export]
 Hint Resolve per_lvl_real : mctt.
 #[export]
@@ -698,7 +698,7 @@ Proof.
                        (adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr ups' H15))); [| reflexivity ].
       eapply (ind_rel_idx p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ _ _ _ ns ns' _ _ _ _ HM);
         [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _
-                           (okr_at_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr)
+                           (admissible_index_at_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr)
                            (fun m Mm a b Hm H => nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm a b H)));
           exact Hm
         | exact (nparams_rel_refl_l p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ Hns0)
@@ -708,7 +708,7 @@ Proof.
                        (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB ups'0 H35))); [| reflexivity ].
       eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns ns'0 _ _ _ _ HM);
         [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _
-                           (okr_at_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
+                           (admissible_index_at_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
                            (fun m Mm a b Hm H => nparams_rel_refl_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 m Mm Hm a b H)));
           exact Hm
         | exact (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns)
@@ -768,7 +768,7 @@ Proof.
       eapply proj1; mautosolve.
   - (** The two levels are related, hence have the same realiser, so the
         index of the elements is the same on both sides. *)
-    assert (Heq : dlvl_real l = dlvl_real l') by (apply per_lvl_real; assumption).
+    assert (Heq : domain_level_real l = domain_level_real l') by (apply per_lvl_real; assumption).
     split.
     + apply per_univ_elem_core_suniv';
         [ apply per_lvl_sym; assumption | rewrite <- Heq | rewrite <- Heq ]; assumption.
@@ -867,17 +867,17 @@ Proof.
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hp HB Hy).
       * (** The elements: at the bases admissible beside [ups'], which are
-            those beside [ups] ([ind_rel_okr_base]), at the exchanged
+            those beside [ups] ([ind_rel_admissible_index_base]), at the exchanged
             indices. *)
         unfold grp_rel; intros m m'; split; intro Hm0.
         -- apply HE in Hm0; unfold grp_rel in Hm0.
            eapply (ind_rel_idx p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns ns' _ _ _ _ HM); [| exact Hns | exact Hsn ].
-           apply (proj1 (ind_rel_okr_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl)).
+           apply (proj1 (ind_rel_admissible_index_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl)).
            apply (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ ups ups' _ _ _ _ _ _ Hcd Hcl Hcl Hcd).
            exact Hm0.
         -- apply HE; unfold grp_rel.
            eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
-           apply (proj1 (ind_rel_okr_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl)).
+           apply (proj1 (ind_rel_admissible_index_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl)).
            apply (ind_rel_bases p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI _ ups' ups _ _ _ _ _ _
                     (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) Hfl Hfl
                     (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl)).
@@ -1725,7 +1725,7 @@ Qed.
 
 Hint Resolve per_subtyp_trans : mctt.
 
-#[local] Instance per_subtyp_trans_ins i : Transitive (per_subtyp i).
+#[local] Instance per_subtyp_trans_instance i : Transitive (per_subtyp i).
 Proof.
   eauto using per_subtyp_trans.
 Qed.
@@ -1889,7 +1889,7 @@ Hint Resolve per_subtyp_refl1 : mctt.
 Hint Resolve per_subtyp_refl2 : mctt.
 #[export]
 Hint Resolve per_subtyp_trans : mctt.
-#[export] Existing Instance per_subtyp_trans_ins.
+#[export] Existing Instance per_subtyp_trans_instance.
 #[export]
 Hint Resolve per_subtyp_cumu : mctt.
 
@@ -1906,7 +1906,7 @@ Lemma functional_eval_close : forall Δ D ρ h1 h2,
     ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ h1 -> ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ h2 -> h1 = h2.
 Proof. intros * H1 H2; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
 
-Lemma nextparam_functional : forall h a1, nextparam h a1 -> forall a2, nextparam h a2 -> a1 = a2.
+Lemma next_param_functional : forall h a1, next_param h a1 -> forall a2, next_param h a2 -> a1 = a2.
 Proof.
   induction 1; intros a2 H2; inversion H2; subst; auto.
   - match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- [= <-]] end.
@@ -1917,9 +1917,9 @@ Proof.
 Qed.
 
 (** A saturated value lacks no parameter. *)
-Lemma nextparam_global_sat : forall p T Φ args a,
+Lemma next_param_global_sat : forall p T Φ args a,
     gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
-    nextparam (dm_global p args) a -> False.
+    next_param (dm_global p args) a -> False.
 Proof.
   intros * Hm Hl Hn; inversion Hn; subst.
   match goal with H1 : gc_loc _ _ ?p = Some _ |- _ => rewrite Hm in H1; injection H1 as <- <- end.
@@ -1928,7 +1928,7 @@ Proof.
   apply nth_error_Some in Hx'; rewrite length_rev in Hx'; lia.
 Qed.
 
-Lemma nextparam_body_nil : forall sm Φ ρ a, nextparam (dm_local nil (md_body sm Φ) ρ) a -> False.
+Lemma next_param_body_nil : forall sm Φ ρ a, next_param (dm_local nil (md_body sm Φ) ρ) a -> False.
 Proof. intros * Hn; inversion Hn; subst; destruct Δ; discriminate. Qed.
 
 Lemma per_gargs_len_eq : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> length args = length args'.
@@ -1939,8 +1939,8 @@ Ltac solve_mid_body :=
   repeat match goal with
     | H1 : kinds_body_xp _ _ ?ρ ?Φ ?Φ1, H2 : kinds_body_xp _ _ ?ρ ?Φ ?Φ2 |- _ =>
         assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
-    | H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-        assert_fails (constr_eq r1 r2); assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst r2
+    | H1 : eval_body_env _ _ ?ρ ?Φ ?r1, H2 : eval_body_env _ _ ?ρ ?Φ ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2); assert (r1 = r2) by (eapply functional_eval_body_env; eassumption); subst r2
     end.
 
 (** ** Symmetry *)
@@ -1985,18 +1985,18 @@ Proof.
         rewrite H1 in H2; injection H2 as <- <- end.
       econstructor; eauto.
     + match goal with HL : List.length ?args = _, HG : per_gargs _ _ _ ?args ?args' |- _ =>
-        exfalso; eapply nextparam_global_sat; [ eassumption | | eassumption ];
+        exfalso; eapply next_param_global_sat; [ eassumption | | eassumption ];
         rewrite <- HL; symmetry; eapply per_gargs_len_eq; exact HG end.
   - (* bodies *)
     match goal with H : per_dmod _ _ |- _ => inversion H; subst; clear H end.
     + econstructor; eauto.
-    + exfalso; eapply nextparam_body_nil; eassumption.
+    + exfalso; eapply next_param_body_nil; eassumption.
   - (* a missing parameter: the middle side is quantified against itself *)
     match goal with H : per_dmod _ _ |- _ => inversion H; subst; clear H end.
-    + exfalso; eapply nextparam_global_sat; eassumption.
-    + exfalso; eapply nextparam_body_nil; eassumption.
-    + match goal with H1 : nextparam ?h ?a1, H2 : nextparam ?h ?a2 |- _ =>
-        pose proof (nextparam_functional _ _ H1 _ H2) as <-; clear H2 end.
+    + exfalso; eapply next_param_global_sat; eassumption.
+    + exfalso; eapply next_param_body_nil; eassumption.
+    + match goal with H1 : next_param ?h ?a1, H2 : next_param ?h ?a2 |- _ =>
+        pose proof (next_param_functional _ _ H1 _ H2) as <-; clear H2 end.
       match goal with H1 : per_univ_elem ?i ?R ?a ?a', H2 : per_univ_elem ?j ?R' ?a' ?a'' |- _ =>
         rename H1 into Hu1; rename H2 into Hu2 end.
       destruct (per_univ_elem_sym _ _ _ _ Hu1) as [Hu1s Hs1].
@@ -2064,24 +2064,24 @@ Proof. split; [ exact per_dmod_sym | exact per_dmod_trans ]. Qed.
 
 (** ** Module Expressions Evaluating to Related Values *)
 
-Lemma rel_mexp_sym : forall H ρ H' ρ', rel_mexp H ρ H' ρ' -> rel_mexp H' ρ' H ρ.
+Lemma rel_modexp_evals_sym : forall H ρ H' ρ', rel_modexp_evals H ρ H' ρ' -> rel_modexp_evals H' ρ' H ρ.
 Proof. intros * [h h' Hh Hh' Hr]; exists h' h; [ exact Hh' | exact Hh | apply per_dmod_sym, Hr ]. Qed.
 
-Lemma rel_mexp_trans : forall H1 ρ1 H2 ρ2 H3 ρ3, rel_mexp H1 ρ1 H2 ρ2 -> rel_mexp H2 ρ2 H3 ρ3 -> rel_mexp H1 ρ1 H3 ρ3.
+Lemma rel_modexp_evals_trans : forall H1 ρ1 H2 ρ2 H3 ρ3, rel_modexp_evals H1 ρ1 H2 ρ2 -> rel_modexp_evals H2 ρ2 H3 ρ3 -> rel_modexp_evals H1 ρ1 H3 ρ3.
 Proof.
   intros * [h1 h2 Hh1 Hh2 Hr] [h2' h3 Hh2' Hh3 Hr'].
   pose proof (functional_eval_modexp _ _ _ _ Hh2 Hh2') as <-.
   exists h1 h3; [ exact Hh1 | exact Hh3 | eapply per_dmod_trans; eassumption ].
 Qed.
 
-Lemma tie_mod_move : forall m H ρ H' ρ', tie_mod m H ρ -> rel_mexp H ρ H' ρ' -> tie_mod m H' ρ'.
+Lemma tie_mod_move : forall m H ρ H' ρ', tie_mod m H ρ -> rel_modexp_evals H ρ H' ρ' -> tie_mod m H' ρ'.
 Proof.
   intros * (h & Hh & Hm) [h1 h' Hh1 Hh' Hr].
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-.
   exists h'; split; [ exact Hh' | eapply per_dmod_trans; eassumption ].
 Qed.
 
-Lemma tie_mod_rel : forall m H ρ m' H' ρ', tie_mod m H ρ -> tie_mod m' H' ρ' -> rel_mexp H ρ H' ρ' -> per_dmod m m'.
+Lemma tie_mod_rel : forall m H ρ m' H' ρ', tie_mod m H ρ -> tie_mod m' H' ρ' -> rel_modexp_evals H ρ H' ρ' -> per_dmod m m'.
 Proof.
   intros * (h & Hh & Hm) (h' & Hh' & Hm') [h1 h1' Hh1 Hh1' Hr].
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-; pose proof (functional_eval_modexp _ _ _ _ Hh' Hh1') as <-.
@@ -2090,19 +2090,19 @@ Qed.
 
 (** The values of two module expressions related over related tails, read
     at two related tails in either combination. *)
-Lemma rel_mexp_move : forall (T : relation env) H H' ρ1 ρ2,
+Lemma rel_modexp_evals_move : forall (T : relation env) H H' ρ1 ρ2,
     PER T -> T ρ1 ρ2 ->
-    (forall ρ ρ', T ρ ρ' -> rel_mexp H ρ H' ρ') ->
-    rel_mexp H ρ1 H ρ2 /\ rel_mexp H ρ1 H' ρ2 /\ rel_mexp H' ρ1 H ρ2 /\ rel_mexp H' ρ1 H' ρ2.
+    (forall ρ ρ', T ρ ρ' -> rel_modexp_evals H ρ H' ρ') ->
+    rel_modexp_evals H ρ1 H ρ2 /\ rel_modexp_evals H ρ1 H' ρ2 /\ rel_modexp_evals H' ρ1 H ρ2 /\ rel_modexp_evals H' ρ1 H' ρ2.
 Proof.
   intros * HT H12 HP.
   assert (H11 : T ρ1 ρ1) by (etransitivity; [ exact H12 | symmetry; exact H12 ]).
   assert (H22 : T ρ2 ρ2) by (etransitivity; [ symmetry; exact H12 | exact H12 ]).
   pose proof (HP _ _ H12) as A; pose proof (HP _ _ H11) as B; pose proof (HP _ _ H22) as C.
-  assert (D1 : rel_mexp H ρ1 H ρ2) by (eapply rel_mexp_trans; [ exact A | apply rel_mexp_sym; exact C ]).
+  assert (D1 : rel_modexp_evals H ρ1 H ρ2) by (eapply rel_modexp_evals_trans; [ exact A | apply rel_modexp_evals_sym; exact C ]).
   split; [ exact D1 | split; [ exact A | split ] ].
-  - eapply rel_mexp_trans; [ apply rel_mexp_sym; exact B | exact D1 ].
-  - eapply rel_mexp_trans; [ apply rel_mexp_sym; exact B | exact A ].
+  - eapply rel_modexp_evals_trans; [ apply rel_modexp_evals_sym; exact B | exact D1 ].
+  - eapply rel_modexp_evals_trans; [ apply rel_modexp_evals_sym; exact B | exact A ].
 Qed.
 
 Add Parametric Morphism : per_ctx_env
@@ -2169,15 +2169,15 @@ Ltac solve_tie :=
   | |- tie_mod ?m ?H2 ?r =>
       first [ assumption
             | match goal with
-              | Ht : tie_mod m ?H1 ?r1, Hm : rel_mexp ?H1 ?r1 H2 r |- _ => exact (tie_mod_move _ _ _ _ _ Ht Hm)
+              | Ht : tie_mod m ?H1 ?r1, Hm : rel_modexp_evals ?H1 ?r1 H2 r |- _ => exact (tie_mod_move _ _ _ _ _ Ht Hm)
               end
             | match goal with
-              | Ht : tie_mod m ?H1 r, HU : forall ρ ρ', ?T ρ ρ' -> rel_mexp ?H1 ρ H2 ρ', Hr : ?T r r |- _ =>
+              | Ht : tie_mod m ?H1 r, HU : forall ρ ρ', ?T ρ ρ' -> rel_modexp_evals ?H1 ρ H2 ρ', Hr : ?T r r |- _ =>
                   exact (tie_mod_move _ _ _ _ _ Ht (HU _ _ Hr))
               end
             | match goal with
-              | Ht : tie_mod m ?H1 r, HU : forall ρ ρ', ?T ρ ρ' -> rel_mexp H2 ρ ?H1 ρ', Hr : ?T r r |- _ =>
-                  exact (tie_mod_move _ _ _ _ _ Ht (rel_mexp_sym _ _ _ _ (HU _ _ Hr)))
+              | Ht : tie_mod m ?H1 r, HU : forall ρ ρ', ?T ρ ρ' -> rel_modexp_evals H2 ρ ?H1 ρ', Hr : ?T r r |- _ =>
+                  exact (tie_mod_move _ _ _ _ _ Ht (rel_modexp_evals_sym _ _ _ _ (HU _ _ Hr)))
               end ]
   end.
 
@@ -2440,11 +2440,11 @@ Proof.
   - (** A slot.  The swapped context ties the heads to the same closures. *)
     simpl in *; destruct_conjs.
     match goal with
-    | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _,
+    | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _,
       HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ |- _ =>
         split;
         [ eapply per_ctx_env_cons_mod; [ eassumption | eassumption | | ];
-          [ intros ρ ρ' Hρ; apply rel_mexp_sym, HU, Hs, Hρ
+          [ intros ρ ρ' Hρ; apply rel_modexp_evals_sym, HU, Hs, Hρ
           | intros ρ ρ'; split; intros Hρ; [ apply HE in Hρ | apply HE ]; destruct_conjs; repeat split; assumption ]
         | intros ρ ρ' Hρ; apply HE in Hρ; apply HE; destruct_conjs; repeat split; eauto ]
     end.
@@ -2452,7 +2452,7 @@ Proof.
         unit as a slot. *)
     simpl in *; destruct_conjs.
     match goal with
-    | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _,
+    | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _,
       HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ |- _ =>
         rename HU into HU0; rename HE into HE0; rename Hs into Hs0
     end.
@@ -2482,7 +2482,7 @@ Proof.
         move_by_relation_equivalence.
         econstructor; try eassumption.
         move_goal_by_relation_equivalence; solve_per.
-      * intros ρ ρ' Hρ; apply rel_mexp_sym, HU0, Hs0, Hρ.
+      * intros ρ ρ' Hρ; apply rel_modexp_evals_sym, HU0, Hs0, Hρ.
       * intros ρ ρ'; split; intros Hρ;
           [ apply HE0 in Hρ | apply HE0 ]; destruct Hρ as [Ht Hh Hd ? ? ? ?];
           (apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Ht); try assumption; apply def_heads_at_swap; assumption).
@@ -2716,12 +2716,12 @@ Proof with solve [eauto using per_univ_trans].
         last through the middle unit. *)
     destruct IHper_ctx_env as [IHctx IHenv].
     match goal with
-    | HU1 : forall ρ ρ', ?T ρ ρ' -> rel_mexp (me_lit ?U1) ρ (me_lit ?U2) ρ',
-      HU2 : forall ρ ρ', ?T ρ ρ' -> rel_mexp (me_lit ?U2) ρ (me_lit ?U3) ρ',
+    | HU1 : forall ρ ρ', ?T ρ ρ' -> rel_modexp_evals (me_lit ?U1) ρ (me_lit ?U2) ρ',
+      HU2 : forall ρ ρ', ?T ρ ρ' -> rel_modexp_evals (me_lit ?U2) ρ (me_lit ?U3) ρ',
       HE : _ <~> _, HT : PER ?T, Hc : per_ctx_env ?T ?Γ2 ?Γ3 |- per_ctx_env _ (?Γ1 ▹ₘ ?U1) (?Γ3 ▹ₘ ?U3) =>
         eapply per_ctx_env_cons_mod with (tail_rel := T);
         [ apply IHctx; exact Hc | exact HT
-        | intros ρ ρ' Hρ; eapply rel_mexp_trans;
+        | intros ρ ρ' Hρ; eapply rel_modexp_evals_trans;
           [ apply HU1, Hρ | apply HU2; etransitivity; [ symmetry |]; exact Hρ ]
         | intros ρ ρ'; split; intros Hρ;
           [ pose proof (proj2 (HE ρ ρ') Hρ) as Hρ'; destruct Hρ' as (Ht & ? & ? & ? & ?);
@@ -2757,7 +2757,7 @@ Proof with solve [eauto using per_univ_trans].
     + intros ρ ρ' Hρ.
       assert (tail_rel ρ' ρ') by (etransitivity; [ symmetry |]; exact Hρ).
       assert (tail_rel0 ρ' ρ') by intuition.
-      eapply rel_mexp_trans; eauto.
+      eapply rel_modexp_evals_trans; eauto.
     + (** As for a definition, and the right unit's ties as a slot's. *)
       intros ρ ρ'; split; intros [Ht ?]; destruct_conjs;
         assert (tail_rel ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]);
@@ -3210,7 +3210,7 @@ Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_typ_sort S ρ relevant) ->
-    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_mexp (me_lit U) ρ (me_lit U) ρ') ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_modexp_evals (me_lit U) ρ (me_lit U) ρ') ->
     EF Δ ▸ₘ S ≔ M ‖ U ≈ Δ ▸ₘ S ≔ M ‖ U ∈ per_ctx_env ↘ per_env_extend_dm S M U env_relΔ.
 Proof.
   intros * HΔ HS HM HSr HU.
@@ -3663,7 +3663,7 @@ Qed.
 
 Hint Resolve per_ctx_subtyp_trans : mctt.
 
-#[local] Instance per_ctx_subtyp_trans_ins : Transitive per_ctx_subtyp.
+#[local] Instance per_ctx_subtyp_trans_instance : Transitive per_ctx_subtyp.
 Proof.
   eauto using per_ctx_subtyp_trans.
 Qed.
@@ -3698,8 +3698,8 @@ Proof.
     assert (D11' : Dom ρ1'↯ ≈ ρ1'↯ ∈ tail_rel) by solve_per.
     assert (D12 : Dom ρ1↯ ≈ ρ2↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11 ]).
     assert (D12' : Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11' ]).
-    destruct (rel_mexp_move _ _ _ _ _ _ D12 H3) as (M1 & M2 & M3 & M4).
-    destruct (rel_mexp_move _ _ _ _ _ _ D12' H3) as (M1' & M2' & M3' & M4').
+    destruct (rel_modexp_evals_move _ _ _ _ _ _ D12 H3) as (M1 & M2 & M3 & M4).
+    destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' H3) as (M1' & M2' & M3' & M4').
     assert (Dom ρ2↯ ≈ ρ2↯ ∈ tail_rel) by solve_per.
     assert (Dom ρ2'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
     (** The heads are read at the old pair, the new one and the mixed one;
@@ -3724,8 +3724,8 @@ Proof.
     assert (D11' : Dom ρ1'↯ ≈ ρ1'↯ ∈ tail_rel) by solve_per.
     assert (D12 : Dom ρ1↯ ≈ ρ2↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11 ]).
     assert (D12' : Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11' ]).
-    destruct (rel_mexp_move _ _ _ _ _ _ D12 H0) as (M1 & M2 & M3 & M4).
-    destruct (rel_mexp_move _ _ _ _ _ _ D12' H0) as (M1' & M2' & M3' & M4').
+    destruct (rel_modexp_evals_move _ _ _ _ _ _ D12 H0) as (M1 & M2 & M3 & M4).
+    destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' H0) as (M1' & M2' & M3' & M4').
     rewrite <- (env_eq_mod _ _ Heq 0), <- (env_eq_mod _ _ Heq' 0).
     repeat split; [ exact Dtail2 | .. ]; solve_tie. }
   all: destruct HR as [Dtail1 Hhead1];
@@ -3783,7 +3783,7 @@ Proof.
   intros [n | n] * Hlt; cbn.
   - (** The small universe at [n] is the one at the literal level [n], whose
         realiser is [n]. *)
-    assert (Hr : dlvl_real (d_lvl n nil) = n) by apply dlvl_real_lit.
+    assert (Hr : domain_level_real (d_lvl n nil) = n) by apply domain_level_real_lit.
     apply per_univ_elem_core_suniv'; rewrite ?Hr;
       [ apply per_lvl_lit | assumption | reflexivity ].
   - apply per_univ_elem_core_univ'; solve [ assumption | reflexivity ].
@@ -3946,7 +3946,7 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve per_ctx_subtyp_trans : mctt.
-#[export] Existing Instance per_ctx_subtyp_trans_ins.
+#[export] Existing Instance per_ctx_subtyp_trans_instance.
 #[export] Existing Instance per_ctx_env_Proper.
 
 #[export]

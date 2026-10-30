@@ -3,7 +3,7 @@
     A body module is read in its body: its definitions and submodules are the
     entries of that body, at the module's telescope.  In a well-formed global
     context every entry is stored over the telescope of the module it is filed
-    in ([gm_coh]): a definition's type is generalized over it, a submodule
+    in ([gm_coherent]): a definition's type is generalized over it, a submodule
     adds parameters to it, and an alias's parameters extend it. *)
 
 From Stdlib Require Import Lia List PeanoNat.

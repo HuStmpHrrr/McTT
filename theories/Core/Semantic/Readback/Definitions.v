@@ -110,7 +110,7 @@ Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : q
 | fresh_ihs_rec :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ihty v of t at p ups under ρ As ⟧ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
-     fresh_leaf_vars (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) as' s ihs1 ->
+     fresh_leaf_vars (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s ihs1 ->
      Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ (List.length ihs1 + s) ↘ ihs ->
      Fihs v :: vs at (ca_rec t' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ++ ihs )
 (** An argument recursive in [gs] only (nested through): no variable *)
@@ -152,7 +152,7 @@ Inductive wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups :
 | wrap_ihs_eval_rec :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-     wrap_leaf_vals (List.map (leaf_in Dc t') (shape_leaves (rv_leaves D) 0 t)) rs ihs ihs' r1 ->
+     wrap_leaf_vals (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs ihs' r1 ->
      ⟦wihs vs of gs' gs of Dc with ihs' under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦wihs v :: vs of (ca_rec t' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ++ r )
 (** Recursive for the branch's group only: the eliminator at the
@@ -300,7 +300,7 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
     member of [p]'s group [im_sel] gives, read under fresh variables of the
     telescopes of that member of [p]'s group at uniform parameters [ups],
     each block's motive binding its own member's non-uniform parameters
-    and the scrutinee ([blocks_nm_at D None]), the paths through the
+    and the scrutinee ([blocks_binder_count_at D None]), the paths through the
     group's record views ending at as many parameters as those motives
     bind ([rview_leaf_arity D]).  The uniform parameters
     [ups] are the eliminator's own; the stuck eliminator carries the
@@ -313,11 +313,11 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      ind_lookup Θ Ξ pc = Some Dq ->
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
-     blocks_nm_at D None Bks ->
+     blocks_binder_count_at D None Bks ->
      rview_leaf_arity D ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      Rps pre at List.rev (ind_uparams Dq) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Us ->
-     Rblks 0 (ind_bmembers Dq) of Dq from p ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
+     Rblks 0 (ind_block_members Dq) of Dq from p ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rne d_elim ρ Bks p ups j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc Us k NBks M )
 (** The field of a neutral *)
@@ -330,7 +330,7 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
   `( Rtyp 𝕌ω@i in Θ ⍮ Ξ ⍮ s ↘ Typeωⁿ@i )
 (** A small universe reads back as the universe at the canonical form its
     level reads back as: that readback is always of the shape [nf_lvl_of L]
-    (see [Core.Semantic.Levels.dlvl_canon_of_read]), and the universe takes
+    (see [Core.Semantic.Levels.domain_level_canon_of_read]), and the universe takes
     the same canonical level. *)
 | read_typ_suniv :
   `( Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of L ->
@@ -465,7 +465,7 @@ where "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" 
     its domain, and at the end at the member of the group the shape ends
     in, a view too ([read_nf_con_view]), at the shape's non-uniform
     parameters.  Its value is of the container's type at a view
-    ([eval_shty]); it is read at the group's own member. *)
+    ([eval_shape_type]); it is read at the group's own member. *)
 with read_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> nf -> Prop :=
 (** At the end: at the group's own member at the shape's parameters *)
 | read_shape_self :
@@ -501,7 +501,7 @@ with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
      List.nth_error Bks (elim_src sel i) = Some b ->
-     eb_nm b = S (im_nn Mi) ->
+     eb_binder_count b = S (im_nn Mi) ->
      ⟦mref elim_src sel i of p ups ⟧ Θ ⍮ Ξ ↘ (hd, k, pre) ->
      Ftele List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
      ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind hd k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil) ↘ a ->
@@ -519,7 +519,7 @@ where "'Rblks' i Ms 'of' Dc 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮'
     the motive's instance at the constructor, the member [Mi] being the
     declared member [k] of the group at [hd] at the uniform parameters
     [pre], of the group read [Dc].  The fresh recursive results, one per
-    leaf path of the group's that is one of [Dc]'s ([cargs_nin]), are as
+    leaf path of the group's that is one of [Dc]'s ([cargs_container_count]), are as
     many as the branch read binds ([cargs_nrec Dc]): a gate, the twin of
     [eval_elim_con]'s, that keeps the fresh variables below the length the
     branch is read at. *)
@@ -536,8 +536,8 @@ with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain ->
      ind_lookup Θ Ξ p = Some D ->
      n0 = (im_nn Mi + List.length gs' + cargs_nrec D gs)%nat ->
      n = (im_nn Mi + List.length gs' + cargs_nrec Dc gs')%nat ->
-     cargs_nin D Dc gs' gs = cargs_nrec Dc gs' ->
-     cargs_plen D gs ->
+     cargs_container_count D Dc gs' gs = cargs_nrec Dc gs' ->
+     cargs_params_length D gs ->
      Ftele List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
      Fcargs gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi)%nat ↘ vs ->
      Fihs vs at gs' gs of Dc under ρ (blocks_motives Bks) at p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ ihs ->

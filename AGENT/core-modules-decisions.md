@@ -341,7 +341,7 @@ let module M (A : Type@0) where def x : Nat := zero end
 The selected name and the chain are at level 0.
 
 ### 10.6 Optional `let` annotations
-`b_def : option exp -> exp -> bnd`; `ℓ A ≔ M in B` is `b_def (Some A)`,
+`b_def : option exp -> exp -> binding`; `ℓ A ≔ M in B` is `b_def (Some A)`,
 `ℓ ≔ M in B` is `b_def None`.  Context entries stay `ce_def A M`, and
 telescopes (`ctx_pi`) still generalize definitions with their type.
 - **One rule per judgment, not a second family.**  `wf_let`,
@@ -365,7 +365,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   (`spec_exp_let_infer`).  `def` keeps its required type.
 
 ### 10.7 Imports generate definitions
-- `import E items` is the command `core_cmd_import E items` (`iitem := option
+- `import E items` is the command `core_cmd_import E items` (`import_item := option
   string * string * bool`: member or the module itself, declared name,
   private).  `import_gen mt Γ E items` (`Core/Syntactic/Imports.v`) checks
   `E` is a module and each item a member, rejects a member both used and
@@ -417,7 +417,7 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   ip args as W items` is `import X::Y` then `open X::Y ip args as W items`.
 - `import` in a local body is an elaborator error, `import is not allowed in
   a local module; use open`.
-- The surface items are core `iitem`s, now defined before `Cst`.
+- The surface items are core `import_item`s, now defined before `Cst`.
 - Leading imports and opens are read twice by the elaborator (§10.7's
   restriction is lifted): before the header, the names they declare denote
   the members they name, so `import Prelude::Arith::Equality open
@@ -540,4 +540,4 @@ record type is accepted.
   parameters.  Rejected on the way: a pre-fill entry `ge_alias` that the
   fill turns into `ge_def_mod` (cost of a new gentry constructor), a dummy
   type the fill replaces (loses the keyword check), and keyword-tagged
-  open items (`alias_kw` on `iitem`, accepted then withdrawn).
+  open items (`alias_kw` on `import_item`, accepted then withdrawn).

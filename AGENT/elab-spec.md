@@ -2,7 +2,7 @@
 
 | File | What |
 | --- | --- |
-| `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> cunit -> Prop`: the scope (`scope_entry`, `bound`), objects (`spec_exp`, `spec_modexp`, `spec_params`, `spec_unit`, `spec_def`, `spec_body`), opens (`item_scope_entries`, `item_mems`, `open_scope_entries`, `itarget`), commands (`spec_cmd`, `spec_cmds`), the leading scope (`spec_lead`). |
+| `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> core_unit -> Prop`: the scope (`scope_entry`, `bound`), objects (`spec_exp`, `spec_modexp`, `spec_params`, `spec_unit`, `spec_def`, `spec_body`), opens (`item_scope_entries`, `item_mems`, `open_scope_entries`, `import_target`), commands (`spec_cmd`, `spec_cmds`), the leading scope (`spec_lead`). |
 | `theories/Frontend/Elaborator.v` | `elaborate_core`, on the spec's own scope of entries. |
 | `theories/Frontend/ElabCorrect.v` | `elaborate_core_iff`, soundness, completeness, functionality, failure characterization. |
 | `theories/Frontend/ElabExamples.v` | Hand-written `Cst.prog`s with their core units: the running example, pre-application, every module form (`module … where`, `module x (ps) := E`, `module A.B`, `let module` with a body or an alias, opens in a local body and the rejection of an unloaded unit there, the rejection of imports and evals in a local body, private entries of a local body), the definition keywords and each modifier rejection, opens with arguments, `use … as`, `export` and lists in any order, a repeated import, leading imports and opens (the parameter-type scope, and the frame), and every rejection of the one-binding rule, with its message. |
@@ -45,7 +45,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   module arity and whether `M.x` is a term are left to typing, and privacy
   to the core's command judgment (`run_cmd`, `acc_ok`); the elaborator checks
   none of them.
-* The surface items are the core's `iitem`s (`option string * string *
+* The surface items are the core's `import_item`s (`option string * string *
   bool`), written by the parser: `as W` is `(None, W, true)`, `use (c as
   d)` is `(Some c, d, true)`, `export (e)` is `(Some e, e, false)`, in the
   order written.  The parser also splits the compound forms
@@ -55,7 +55,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   as W items`; a bare `import X::Y` only loads.
 * `import X::Y` (`Cst.c_import fq`) emits `core_cmd_load fq` and puts the unit in
   scope (`scope_entry_unit fq`); it declares nothing, and a repeated one is the core's
-  no-op.  `open fq.ip args items` (`Cst.c_open`) has the target `itarget fq
+  no-op.  `open fq.ip args items` (`Cst.c_open`) has the target `import_target fq
   ip args`, read by `spec_modexp` like an alias body, so a unit it names must be
   imported (`the unit is not imported`); it loads nothing.
 * In a frame, an open emits `core_cmd_open E items`; the core checks the target
@@ -113,14 +113,14 @@ Inductive spec_lead : list scope_entry -> list Cst.cmd -> list scope_entry -> li
     spec_lead (scope_entry_unit fq :: L) cs L' lds ->
     spec_lead L (Cst.c_import fq :: cs) L' (core_cmd_load fq :: lds)
 | spec_lead_open : forall L fq ip args its o E cs L' lds,
-    itarget fq ip args = Some o -> spec_modexp L o E ->
+    import_target fq ip args = Some o -> spec_modexp L o E ->
     spec_lead (open_scope_entries E its ++ L) cs L' lds ->
     spec_lead L (Cst.c_open fq ip args its :: cs) L' lds.
 
 | elab_spec_intro : forall leads fp ps cs L lds tys ccs,
     spec_lead nil leads L lds -> NoDup (map fst ps) -> spec_params L ps tys ->
     spec_cmds fp nil (map fst ps) (param_scope_entries ps ++ L) (leads ++ cs) ccs ->
-    elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).
+    elab_spec (leads, (fp, ps, cs)) (lds, params_tele tys, ccs).
 ```
 
 * **Before the header** (`spec_lead`), in no binder: their units are in scope,
@@ -187,7 +187,7 @@ Main.M.id $ #3`.  In `j`, `M` is closed, so `M` in module position is
 
 ## Proof structure
 
-One `iff` per function: `lookup_iff`, `ihead_iff` (the head of an open
+One `iff` per function: `lookup_iff`, `import_head_iff` (the head of an open
 target), `args_iff`/`target_iff` (open targets, computed without building
 the object, so that the elaborator's local bodies stay structural),
 `expressions_iff` (by `Cst.cst_ind`), `commands_iff` (by `Cst.cst_ind`, motive `md = md_where body

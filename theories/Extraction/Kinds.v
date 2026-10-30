@@ -170,7 +170,7 @@ with kinds_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      (forall p1, kinds_env Θ Ξ p Φ p1 -> kinds_items_gen_order Θ Ξ p1 E its) ->
      kinds_env_order Θ Ξ p (gm_open Φ E its) )
 
-with kinds_items_gen_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> Prop :=
+with kinds_items_gen_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_item -> Prop :=
 (** No items ([kinds_items_gen_nil]) *)
 | kinds_items_gen_order_nil :
   `( kinds_items_gen_order Θ Ξ p E nil )
@@ -268,19 +268,19 @@ Proof.
 Defined.
 
 (** The same, through the lookups of a fast context *)
-Definition dm_path_fdec (F : FCtx) (p : qname) : {dm_path (fc_deps F) (fc_stack F) p} + {~ dm_path (fc_deps F) (fc_stack F) p}.
+Definition dm_path_fast_dec (F : FCtx) (p : qname) : {dm_path (fc_deps F) (fc_stack F) p} + {~ dm_path (fc_deps F) (fc_stack F) p}.
 Proof.
   destruct (fc_mlookup F p) as [r |] eqn:Ei; [ left; left; exists r; rewrite fc_mlookup_ok; exact Ei |].
   destruct (fc_record F p) as [R |] eqn:Er; [ left; right; left; exists R; rewrite fc_record_ok; exact Er |].
   destruct (fc_entry F p) as [[| | | pv A M u |] |] eqn:Ee;
     try (right; intros [(r0 & H) | [(R0 & H) | (pv0 & A0 & M0 & U0 & H)]];
          rewrite ?fc_mlookup_ok, ?fc_record_ok, ?fc_entry_ok, ?Ei, ?Er, ?Ee in H; cbn in H; congruence).
-  left; right; right; exists pv, A, M, (dec_unit u); rewrite fc_entry_ok, Ee; reflexivity.
+  left; right; right; exists pv, A, M, (decode_unit u); rewrite fc_entry_ok, Ee; reflexivity.
 Defined.
 
 (** The operations on fast values, read through their erasure equations *)
-#[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdlvl_suc fdlvl_max
-  fdlvl_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
+#[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdomain_level_suc fdomain_level_max
+  fdomain_level_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
 
 (** The kinds, computed through the fast context [F] *)
 Section KindImpl.
@@ -289,7 +289,7 @@ Section KindImpl.
   #[local] Abbreviation Ξ := (fc_stack F).
 
   #[local]
-  Ltac kd_inv :=
+  Ltac kinds_obligation_inv :=
     match goal with
     | H : dmod_member_kind_order _ _ _ _ |- _ => progressive_invert H
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => progressive_invert H
@@ -300,7 +300,7 @@ Section KindImpl.
     end.
 
   #[local]
-  Ltac kd_glob :=
+  Ltac kinds_obligation_glob :=
     repeat match goal with
       | H : (exists _ _, gc_module _ _ _ = Some _) \/ (exists _, gc_frame _ _ = Some _) |- _ =>
           destruct H as [(? & ? & ?) | (? & ?)]
@@ -329,7 +329,7 @@ Section KindImpl.
       | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = None |- _ =>
           rewrite H1 in H2; discriminate H2
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-          rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
+          rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
       | H1 : gc_frame _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
@@ -364,7 +364,7 @@ Section KindImpl.
       end.
 
   #[local]
-  Ltac kd_split :=
+  Ltac kinds_obligation_split :=
     match goal with
     | H : dmod_member_kind_order _ _ _ _ |- _ => dependent destruction H
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => dependent destruction H
@@ -375,8 +375,8 @@ Section KindImpl.
     end.
 
   #[local]
-  Ltac kd_finish :=
-    kd_glob;
+  Ltac kinds_obligation_finish :=
+    kinds_obligation_glob;
     try solve [ intuition discriminate ];
     try solve [ eapply dmod_member_kind_global_step;
                 [ first [ left; eexists; eassumption | right; do 4 eexists; eassumption ]
@@ -389,21 +389,21 @@ Section KindImpl.
     try econstructor; eauto with mctt.
 
   #[local]
-  Ltac kd_obl :=
-    intros; cbv beta in *; cbn [option_map dec_loc fst snd] in *; ferase_norm; repeat kd_inv;
-    first [ solve [ kd_finish ] | solve [ kd_split; kd_finish ] | kd_finish ].
+  Ltac kinds_obligation :=
+    intros; cbv beta in *; cbn [option_map decode_loc fst snd] in *; ferase_norm; repeat kinds_obligation_inv;
+    first [ solve [ kinds_obligation_finish ] | solve [ kinds_obligation_split; kinds_obligation_finish ] | kinds_obligation_finish ].
 
   #[local]
-  Ltac kd_obl_auto :=
+  Ltac kinds_obligation_auto :=
     intros;
     lazymatch goal with
-    | |- dmod_member_kind_order _ _ _ _ => kd_obl
-    | |- gunit_member_kind_order _ _ _ _ _ => kd_obl
-    | |- modexp_member_kind_order _ _ _ _ _ => kd_obl
-    | |- kinds_env_order _ _ _ _ => kd_obl
-    | |- kinds_items_gen_order _ _ _ _ _ => kd_obl
-    | |- kinds_body_xp_order _ _ _ _ => kd_obl
-    | |- _ => abstract kd_obl
+    | |- dmod_member_kind_order _ _ _ _ => kinds_obligation
+    | |- gunit_member_kind_order _ _ _ _ _ => kinds_obligation
+    | |- modexp_member_kind_order _ _ _ _ _ => kinds_obligation
+    | |- kinds_env_order _ _ _ _ => kinds_obligation
+    | |- kinds_items_gen_order _ _ _ _ _ => kinds_obligation
+    | |- kinds_body_xp_order _ _ _ _ => kinds_obligation
+    | |- _ => abstract kinds_obligation
     end.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
@@ -416,7 +416,7 @@ Section KindImpl.
       | exist _ _ E with gc_resolve_f F pq := {
         | exist _ (Some (ge_def b pv A B)) E2 => exist _ member_kind_term _
         | exist _ _ E2 => False_rect _ _ } } }
-  | fdm_global pq args, y :: ch, H with dm_path_fdec F (qname_app pq (y :: nil)), ch := {
+  | fdm_global pq args, y :: ch, H with dm_path_fast_dec F (qname_app pq (y :: nil)), ch := {
     | left Hd, nil with gc_module_f F (qname_app pq (y :: nil)) := {
       (** a definition with a module part stored as an alias: [dm_of] its
           alias's kind *)
@@ -530,7 +530,7 @@ Section KindImpl.
         let (gs, Hgs) := kinds_items_gen_impl p E its _ in
         exist _ (generated_item_def_mod d pv a_True (a_mem E n) (me_mem E n) :: gs) _ }.
 
-  Solve All Obligations with kd_obl_auto.
+  Solve All Obligations with kinds_obligation_auto.
 
   (** A body read through the entries its opens generate. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
@@ -546,7 +546,7 @@ Section KindImpl.
       let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
       exist _ (gens_append Φx 0 gs) _.
 
-  Solve All Obligations with kd_obl_auto.
+  Solve All Obligations with kinds_obligation_auto.
 End KindImpl.
 
 (** ** The Outermost Missing Parameter

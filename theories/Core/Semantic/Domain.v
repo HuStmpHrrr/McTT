@@ -49,7 +49,7 @@ Inductive domain : Set :=
     sort: evaluation of [succl] and [maxl] only flattens, so the same level
     has many values; readback canonicalises.  A neutral level is not of this
     shape — it is [⇑ (Levelᵈ@n) m] — so the level operations take the flat
-    view ([dlvl_view]) of their arguments, where the neutral is an atom of
+    view ([domain_level_view]) of their arguments, where the neutral is an atom of
     sort [n]. *)
 | d_lvl : o2 -> list (nat * nat * domain_ne) -> domain
 (** [Prop] *)
@@ -298,24 +298,24 @@ Hint Extern 1 =>
 (** The flat view of a value of type [Level]: a flat level is its own view, and
     a neutral is the single atom [(0, n, m)] at the sort of its type.  No other
     value has type [Level], so the default is never used. *)
-Definition dlvl_view (d : domain) : o2 * list (nat * nat * domain_ne) :=
+Definition domain_level_view (d : domain) : o2 * list (nat * nat * domain_ne) :=
   match d with
   | d_lvl c xs => (c, xs)
   | d_neut a m => (ordinal_zero, (0, domain_level_sort a, m) :: nil)
   | _ => (ordinal_zero, nil)
   end.
 
-Definition dlvl_cst (d : domain) : o2 := fst (dlvl_view d).
-Definition dlvl_atoms (d : domain) : list (nat * nat * domain_ne) := snd (dlvl_view d).
+Definition domain_level_const (d : domain) : o2 := fst (domain_level_view d).
+Definition domain_level_atoms (d : domain) : list (nat * nat * domain_ne) := snd (domain_level_view d).
 
 (** The successor and the join of levels: both only flatten. *)
-Definition dlvl_suc (d : domain) : domain :=
-  d_lvl (ordinal_succ (dlvl_cst d)) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms d)).
+Definition domain_level_suc (d : domain) : domain :=
+  d_lvl (ordinal_succ (domain_level_const d)) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (domain_level_atoms d)).
 
-Definition dlvl_max (d e : domain) : domain :=
-  d_lvl (ordinal_max (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
+Definition domain_level_max (d e : domain) : domain :=
+  d_lvl (ordinal_max (domain_level_const d) (domain_level_const e)) (domain_level_atoms d ++ domain_level_atoms e).
 
-Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
+Definition domain_level_lit (o : o2) : domain := d_lvl o nil.
 
 (** ** The Realiser of a Level Value
 
@@ -326,47 +326,47 @@ Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
 (** The maximum of the offsets of the atoms and the constant.  The constant is
     the base of the fold rather than an [ordinal_max] on top of it, so that the
     realiser of a literal level is that literal by computation. *)
-Fixpoint dla_max (c : o2) (xs : list (nat * nat * domain_ne)) : o2 :=
+Fixpoint domain_level_max_offset (c : o2) (xs : list (nat * nat * domain_ne)) : o2 :=
   match xs with
   | nil => c
-  | ka :: r => ordinal_max (ofin (fst (fst ka))) (dla_max c r)
+  | ka :: r => ordinal_max (ordinal_of_nat (fst (fst ka))) (domain_level_max_offset c r)
   end.
 
-Definition dlvl_real (d : domain) : o2 := dla_max (dlvl_cst d) (dlvl_atoms d).
+Definition domain_level_real (d : domain) : o2 := domain_level_max_offset (domain_level_const d) (domain_level_atoms d).
 
-Fact dlvl_real_lit : forall o, dlvl_real (dlvl_lit o) = o.
+Fact domain_level_real_lit : forall o, domain_level_real (domain_level_lit o) = o.
 Proof. reflexivity. Qed.
 
-Fact dlvl_real_neut : forall a m, dlvl_real (d_neut a m) = ordinal_zero.
+Fact domain_level_real_neut : forall a m, domain_level_real (d_neut a m) = ordinal_zero.
 Proof. reflexivity. Qed.
 
-Fact dla_max_app : forall c c' xs ys,
-    dla_max (ordinal_max c c') (xs ++ ys) = ordinal_max (dla_max c xs) (dla_max c' ys).
+Fact domain_level_max_offset_app : forall c c' xs ys,
+    domain_level_max_offset (ordinal_max c c') (xs ++ ys) = ordinal_max (domain_level_max_offset c xs) (domain_level_max_offset c' ys).
 Proof.
-  intros c c' xs ys; induction xs as [| ka xs IH]; cbn [dla_max List.app].
-  - induction ys as [| ka ys IH]; cbn [dla_max]; [ reflexivity |].
-    rewrite IH; generalize (dla_max c' ys); intros; ord.
-  - rewrite IH; generalize (dla_max c xs) (dla_max c' ys); intros; ord.
+  intros c c' xs ys; induction xs as [| ka xs IH]; cbn [domain_level_max_offset List.app].
+  - induction ys as [| ka ys IH]; cbn [domain_level_max_offset]; [ reflexivity |].
+    rewrite IH; generalize (domain_level_max_offset c' ys); intros; ordinal_solve.
+  - rewrite IH; generalize (domain_level_max_offset c xs) (domain_level_max_offset c' ys); intros; ordinal_solve.
 Qed.
 
-Fact dla_max_suc : forall c xs,
-    dla_max (ordinal_succ c) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) = ordinal_succ (dla_max c xs).
+Fact domain_level_max_offset_suc : forall c xs,
+    domain_level_max_offset (ordinal_succ c) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) = ordinal_succ (domain_level_max_offset c xs).
 Proof.
-  intros c xs; induction xs as [| ka xs IH]; cbn [dla_max List.map fst snd];
-    [ reflexivity | rewrite IH; generalize (dla_max c xs); intros; ord ].
+  intros c xs; induction xs as [| ka xs IH]; cbn [domain_level_max_offset List.map fst snd];
+    [ reflexivity | rewrite IH; generalize (domain_level_max_offset c xs); intros; ordinal_solve ].
 Qed.
 
-Fact dlvl_real_suc : forall l, dlvl_real (dlvl_suc l) = ordinal_succ (dlvl_real l).
+Fact domain_level_real_suc : forall l, domain_level_real (domain_level_suc l) = ordinal_succ (domain_level_real l).
 Proof.
-  intros; unfold dlvl_real, dlvl_suc, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
-  apply dla_max_suc.
+  intros; unfold domain_level_real, domain_level_suc, domain_level_const, domain_level_atoms; cbn [domain_level_view fst snd].
+  apply domain_level_max_offset_suc.
 Qed.
 
-Fact dlvl_real_max : forall l l',
-    dlvl_real (dlvl_max l l') = ordinal_max (dlvl_real l) (dlvl_real l').
+Fact domain_level_real_max : forall l l',
+    domain_level_real (domain_level_max l l') = ordinal_max (domain_level_real l) (domain_level_real l').
 Proof.
-  intros; unfold dlvl_real, dlvl_max, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
-  apply dla_max_app.
+  intros; unfold domain_level_real, domain_level_max, domain_level_const, domain_level_atoms; cbn [domain_level_view fst snd].
+  apply domain_level_max_offset_app.
 Qed.
 
 

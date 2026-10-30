@@ -2,7 +2,7 @@
 
     The types of the telescopes of a group's members, at uniform
     parameters glued to [ups], are glued at the gluings of the clause of
-    [d_ind] ([comps_of_uparams]); a declared member's type at glued
+    [d_ind] ([components_of_uparams]); a declared member's type at glued
     parameters is then glued at its universe ([ind_typ_at_of_args]), and its
     type former at its type ([glu_rel_exp_ind0]).  The families of the
     clause are named by [ind_fams_glu]. *)
@@ -50,10 +50,10 @@ Record ind_fams_glu (D : ind_decl) (ups : list domain) (u : universe_index)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) : Prop :=
   mk_ind_fams_glu
   { (** Each non-uniform parameter's type evaluates *)
-    ind_fams_glu_npar_eval : forall m Mm j A vs, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
+    ind_fams_glu_nparams_eval : forall m Mm j A vs, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
       tele_prefix_rel (canon_nparams_rel D ups m) j vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b
     (** and its value is glued at [NP] and [NEl] *)
-  ; ind_fams_glu_npar_glu : forall m Mm j A vs b, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
+  ; ind_fams_glu_nparams_glu : forall m Mm j A vs b, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
       tele_prefix_rel (canon_nparams_rel D ups m) j vs vs -> ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b ->
       DG b ∈ glu_univ_elem u ↘ NP m j vs ↘ NEl m j vs
     (** Each non-recursive argument's type evaluates *)
@@ -103,8 +103,8 @@ Section Comps.
     (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
 
-  Let HeN := ind_fams_glu_npar_eval _ _ _ _ _ _ _ _ _ Hf.
-  Let HNP := ind_fams_glu_npar_glu _ _ _ _ _ _ _ _ _ Hf.
+  Let HeN := ind_fams_glu_nparams_eval _ _ _ _ _ _ _ _ _ Hf.
+  Let HNP := ind_fams_glu_nparams_glu _ _ _ _ _ _ _ _ _ Hf.
   Let HeA := ind_fams_glu_arg_eval _ _ _ _ _ _ _ _ _ Hf.
   Let HAP := ind_fams_glu_arg_glu _ _ _ _ _ _ _ _ _ Hf.
   Let HeD := ind_fams_glu_dom_eval _ _ _ _ _ _ _ _ _ Hf.
@@ -127,7 +127,7 @@ Section Comps.
       exists a; split; [ exact Ha | split; [ exact Hpa | exact HP ] ].
     - destruct (glu_rel_exp_of_suniv_tm_inversion' HSb HA _ _ _ Hσ) as (l & Hlv & _ & _ & a & Ha & Hpa & HP & _).
       exists a; split; [ exact Ha |].
-      assert (Hidx : Completeness.Inductives.Decl.univ_idx bu = us (dlvl_real l)).
+      assert (Hidx : Completeness.Inductives.Decl.univ_idx bu = us (domain_level_real l)).
       { assert (HCs : ⊨ Pre ++ ind_uparams D) by (apply completeness_fundamental_ctx; exact HPre).
         assert (HSs : ind_uparams D ⊨ Type⟨t⟩ : Typeω@iS) by (apply completeness_fundamental_exp; exact HS).
         destruct (rel_ctx_wf_per_ctx_env HCs) as [R HR].
@@ -159,7 +159,7 @@ Section Comps.
     unfold nparams_prefix; rewrite <- List.rev_app_distr, List.firstn_skipn, List.rev_involutive; reflexivity.
   Qed.
 
-  Lemma comps_npar : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+  Lemma components_nparams : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
       forall m Mm k Ns ns T, ind_member D m = Some Mm -> List.length ns = k -> k < im_nn Mm ->
         List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) k = Some T ->
         (forall j N T' n, j < k -> List.nth_error Ns j = Some N ->
@@ -172,7 +172,7 @@ Section Comps.
     pose proof (decl_closed_nparams_ass D Hc m Mm HM) as HassN0.
     assert (Hk' : k < List.length (List.rev (im_nparams Mm))) by (rewrite List.length_rev, length_im_nparams; lia).
     destruct (nparams_lt_ass D m Mm k Hass HM Hk') as [A HA].
-    pose proof (glu_ind_decl_npar _ HG m Mm k A HM HA) as HV.
+    pose proof (glu_ind_decl_nparams _ HG m Mm k A HM HA) as HV.
     pose proof HV as [SbC HSbC _ _].
     pose proof (nparams_prefix_ass_member m Mm k HM) as HassC.
     pose proof (length_nparams_prefix Mm k ltac:(lia)) as Hlpre.
@@ -321,7 +321,7 @@ Section Comps.
         | exact Hgb | eapply glu_univ_elem_trm_typ; eassumption | exact HNg ].
   Qed.
 
-  Lemma comps_arg : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+  Lemma components_arg : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
       forall m Mm c gs gs1 A0 gs2 Ns ns As vs T, ind_member D m = Some Mm -> ind_con Mm c = Some gs -> gs = gs1 ++ ca_arg A0 :: gs2 ->
         glu_nparams m Mm NEl Δ Us Ns ns -> tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ns ns ->
         List.length vs = List.length gs1 ->
@@ -372,7 +372,7 @@ Section Comps.
 
   (** Glued arguments of the non-uniform parameters' telescope are glued
       at the gluings of the clause, given the components. *)
-  Lemma nparams_of_glu_args : forall m Mm Δ Us Ns ns, ind_member D m = Some Mm -> ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us ->
+  Lemma nparams_of_glu_args : forall m Mm Δ Us Ns ns, ind_member D m = Some Mm -> ind_glu_components p D ups NP NEl AP AEl DP DEl Δ Us ->
       glu_args Δ (im_nparams Mm) (sb_of_list Id Us) (env_args nil ups) Ns ns ->
       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ns ns ->
       glu_nparams m Mm NEl Δ Us Ns ns.
@@ -505,7 +505,7 @@ Section Comps.
 
   (** The types of the recursive arguments, at uniform parameters glued to
       [ups], are glued at the gluings of the domains of their shapes. *)
-  Lemma comps_rec : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+  Lemma components_rec : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
       forall m Mm c gs gs1 t gs2 Ns ns As vs T, ind_member D m = Some Mm -> ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         glu_nparams m Mm NEl Δ Us Ns ns -> tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ns ns ->
         List.length vs = List.length gs1 ->
@@ -528,7 +528,7 @@ Section Comps.
     cbn [List.firstn doms_ctx List.map List.rev List.app] in HSbC0.
     pose proof (nonrec_args_prefix_glu_sub Δ Us HΔ HUs m Mm c gs gs1 (ca_rec t) gs2 Ns ns As vs SbC0 HM Hcon Heq Hnp Hns Hvl
                   ltac:(lia) Hpre Hp HSbC0) as Hσ.
-    pose proof (cargs_rec_type_sh p D Mm gs gs1 t gs2 (Us ++ Ns) As T Heq Hc
+    pose proof (cargs_rec_type_shape p D Mm gs gs1 t gs2 (Us ++ Ns) As T Heq Hc
                   ltac:(rewrite List.length_app, LU, LN; unfold im_np, ind_nu in *; lia) HT) as ET.
     rewrite firstn_app_exact in ET by exact LU.
     assert (Hlnv : List.length (nonrec_arg_vals gs1 vs) = List.length (cargs_nonrec gs1)) by (apply length_nonrec_arg_vals; exact Hvl).
@@ -542,13 +542,13 @@ Section Comps.
   Qed.
 
   (** The components, at uniform parameters glued to [ups]. *)
-  Lemma comps_of_uparams : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
-      ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us.
+  Lemma components_of_uparams : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+      ind_glu_components p D ups NP NEl AP AEl DP DEl Δ Us.
   Proof.
     intros * HΔ HUs; constructor.
-    - intros m Mm k Ns ns T HM Hl' Hk HT Hpre Hp; eapply comps_npar; eassumption.
-    - intros m Mm c gs gs1 A0 gs2 Ns ns As vs T HM Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply comps_arg; eassumption.
-    - intros m Mm c gs gs1 t gs2 Ns ns As vs T HM Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply comps_rec; eassumption.
+    - intros m Mm k Ns ns T HM Hl' Hk HT Hpre Hp; eapply components_nparams; eassumption.
+    - intros m Mm c gs gs1 A0 gs2 Ns ns As vs T HM Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply components_arg; eassumption.
+    - intros m Mm c gs gs1 t gs2 Ns ns As vs T HM Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply components_rec; eassumption.
   Qed.
 
 End Comps.
@@ -670,7 +670,7 @@ Section Former.
         pose proof (glu_args_resp_eq _ _ _ _ _ _ HassP (member_params_wf _ _ _ _ _ Hdt HM) HΔ' HPs' Hg') as Hg''.
         pose proof (glu_args_uparams_of_params _ _ _ _ Hg'') as HUs.
         rewrite firstn_app_exact in HUs by exact Hu.
-        eapply comps_of_uparams; eassumption.
+        eapply components_of_uparams; eassumption.
   Qed.
 
   (** The gluing of a declared member's type in the PER model. *)

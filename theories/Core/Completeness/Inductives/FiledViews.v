@@ -2,7 +2,7 @@
 
     The semantic view equations of a group ([views_self_valid]) are
     judgments over the context of its members as variables
-    ([grp_sctx]).  Once the group is filed at [p], the substitution
+    ([grp_selfs_ctx]).  Once the group is filed at [p], the substitution
     [grp_sb p D] of its type formers at the uniform parameters for those
     variables is built from valid parts ([grp_sb_gsub]), and moves each
     equation to the filed group: a view's instance is typed at the uniform
@@ -84,10 +84,10 @@ Section FiledViews.
   Lemma filed_link : grp_link p D IsS.
   Proof. exact (views_self_valid_link _ _ Hvsv _ Hmp). Qed.
 
-  Lemma filed_rlink : rgrp_link p D IsS.
-  Proof. exact (views_self_valid_rlink _ _ Hvsv _ Hmp). Qed.
+  Lemma filed_record_link : record_group_link p D IsS.
+  Proof. exact (views_self_valid_record_link _ _ Hvsv _ Hmp). Qed.
 
-  Lemma grp_sb_valid : gsub (ind_uparams D) (grp_sb p D) (grp_sctx D).
+  Lemma grp_sb_valid : gsub (ind_uparams D) (grp_sb p D) (grp_selfs_ctx D).
   Proof. exact (grp_sb_gsub _ HD Hc Hsu p Hl Hass (decl_typed_order _ _ _ Hdt) (decl_typed_mvc _ _ _ Hdt)). Qed.
 
   (** What a view's equations share: the container is closed, the instance
@@ -134,10 +134,10 @@ Section FiledViews.
     intros * Hk Hh HlR HI HT.
     destruct (valid_group_records _ _ Hg _ _ _ _ _ Hk Hh) as [R' [HlR' _ HcR _]].
     rewrite HlR in HlR'; injection HlR' as <-.
-    rewrite (filed_rlink _ _ _ _ _ Hk Hh) in HI, HT.
+    rewrite (filed_record_link _ _ _ _ _ Hk Hh) in HI, HT.
     rewrite <- (record_params_insts_sub R (IsS k) (grp_sb p D) HcR) in HT.
     apply nth_error_map_inv in HI as (I0 & HI0 & ->); apply nth_error_map_inv in HT as (T0 & HT0 & ->).
-    exact (rel_exp_under_ctx_gsub grp_sb_valid (views_self_valid_ris _ _ Hvsv _ _ _ _ _ _ _ _ _ Hk Hh HlR HI0 HT0)).
+    exact (rel_exp_under_ctx_gsub grp_sb_valid (views_self_valid_record_instances _ _ Hvsv _ _ _ _ _ _ _ _ _ Hk Hh HlR HI0 HT0)).
   Qed.
 
   (** The record view equation over the uniform parameters: the record's
@@ -148,26 +148,26 @@ Section FiledViews.
       ind_uparams D ⊨ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id Is) ≈ cargs_ctx p D Mk gs.
   Proof.
     intros * Hk Hh HlR Hcs.
-    pose proof (views_self_valid_rfields _ _ Hvsv _ _ _ _ _ _ _ _ Hk Hh HlR Hcs) as H.
+    pose proof (views_self_valid_record_fields _ _ Hvsv _ _ _ _ _ _ _ _ Hk Hh HlR Hcs) as H.
     pose proof (rel_ext_under_ctx_gsub _ _ _ _ _ grp_sb_valid (tele_ass_sub _ _ (record_fctx_ass _ _))
-                  (scargs_ctx_aux_ass _ _ _ _ _) H) as H'.
-    pose proof (rview_struct_nparams _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ Hk Hh) as Hnn.
-    destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ Hk Hh) as [R' HR'].
+                  (self_cargs_ctx_aux_ass _ _ _ _ _) H) as H'.
+    pose proof (rview_struct_nparams _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ Hk Hh) as Hnn.
+    destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ Hk Hh) as [R' HR'].
     rewrite (rview_record_lookup _ _ _ _ _ _ HR') in HlR; injection HlR as <-.
     pose proof (rview_record_count _ _ _ _ _ _ HR') as HIl.
     destruct (valid_group_records _ _ Hg _ _ _ _ _ Hk Hh) as [R0 [HlR0 _ HcR _]].
     rewrite (rview_record_lookup _ _ _ _ _ _ HR') in HlR0; injection HlR0 as <-.
     assert (Hnn0 : im_nn Mk = 0) by (unfold im_nn; rewrite Hnn; reflexivity).
-    pose proof (scargs_ctx_grp_sb p D IsS Mk gs Hc (decl_typed_mvc _ _ _ Hdt) (decl_typed_order _ _ _ Hdt) filed_link filed_rlink) as Er.
-    change (scargs_ctx_aux D IsS (im_nn Mk) nil gs) with (scargs_ctx D IsS Mk gs) in H'.
+    pose proof (self_cargs_ctx_grp_sb p D IsS Mk gs Hc (decl_typed_mvc _ _ _ Hdt) (decl_typed_order _ _ _ Hdt) filed_link filed_record_link) as Er.
+    change (self_cargs_ctx_aux D IsS (im_nn Mk) nil gs) with (self_cargs_ctx D IsS Mk gs) in H'.
     rewrite Hnn0 in Er; cbn [sb_qn] in Er; rewrite Er in H'.
     rewrite tele_sub_sub in H'.
     pose proof (record_fctx_scoped R' _ (le_n _) (fun k0 f T Hk0 _ => closed_fields _ HcR k0 f T Hk0) (closed_params _ HcR)) as HF.
     apply ctx_scoped_app_iff in HF as [HF _].
     rewrite (tele_scoped_sub_agree _ _ _ (sb_of_list Id (List.map (fun I => I[grp_sb p D]) (IsS k))) HF) in H'.
-    - rewrite <- (filed_rlink _ _ _ _ _ Hk Hh) in H'; exact H'.
+    - rewrite <- (filed_record_link _ _ _ _ _ Hk Hh) in H'; exact H'.
     - intros x Hx; cbn [sb_compose]; apply sb_of_list_lt_compose.
-      rewrite (filed_rlink _ _ _ _ _ Hk Hh), List.length_map in HIl; lia.
+      rewrite (filed_record_link _ _ _ _ _ Hk Hh), List.length_map in HIl; lia.
   Qed.
 
   (** A record view's type, the record at its instance, is in the sort,
@@ -176,9 +176,9 @@ Section FiledViews.
       ind_uparams D ⊨ apps_exp (a_record qr) Is : ind_sort D.
   Proof.
     intros * Hk Hh.
-    pose proof (rel_exp_under_ctx_gsub grp_sb_valid (views_self_valid_rtype _ _ Hvsv _ _ _ _ _ Hk Hh)) as H.
+    pose proof (rel_exp_under_ctx_gsub grp_sb_valid (views_self_valid_record_type _ _ Hvsv _ _ _ _ _ Hk Hh)) as H.
     rewrite apps_exp_sub in H; cbn [exp_sub] in H.
-    rewrite (exp_self_wk_grp_sb p D 0) in H; rewrite (filed_rlink _ _ _ _ _ Hk Hh); exact H.
+    rewrite (exp_self_wk_grp_sb p D 0) in H; rewrite (filed_record_link _ _ _ _ _ Hk Hh); exact H.
   Qed.
 
   (** A view of the container of a view's container's member that is a view
@@ -254,12 +254,12 @@ Section FiledViews.
       by exact (tele_ass_wk _ _ (decl_typed_nparams_ass _ _ _ Hdt _ _ HMv)).
     pose proof (gsub_qn _ _ _ _ grp_sb_valid Hass' (rel_ctx_wf_app_r _ _ (rel_ext_under_ctx_left _ _ _ H))) as Hq'.
     pose proof (rel_ext_under_ctx_gsub _ _ _ _ _ Hq' (tele_ass_sub _ _ (cargs_ctx_aux_ass _ _ _ _ _))
-                  (scargs_ctx_aux_ass _ _ _ _ _) H) as H'.
+                  (self_cargs_ctx_aux_ass _ _ _ _ _) H) as H'.
     rewrite length_tele_wk, grp_sb_nparams in H'; fold (im_nn Mv) in H'.
     change (cargs_ctx_aux qc Dq (im_nn Mi') nil gs') with (cargs_ctx qc Dq Mi' gs') in H'.
-    change (scargs_ctx_aux D IsS (im_nn Mv) nil gs) with (scargs_ctx D IsS Mv gs) in H'.
-    rewrite tele_list_grp_sb, scargs_ctx_grp_sb in H' by
-      (try exact Hc; try exact (decl_typed_mvc _ _ _ Hdt); try exact (decl_typed_order _ _ _ Hdt); try exact filed_link; try exact filed_rlink;
+    change (self_cargs_ctx_aux D IsS (im_nn Mv) nil gs) with (self_cargs_ctx D IsS Mv gs) in H'.
+    rewrite tele_list_grp_sb, self_cargs_ctx_grp_sb in H' by
+      (try exact Hc; try exact (decl_typed_mvc _ _ _ Hdt); try exact (decl_typed_order _ _ _ Hdt); try exact filed_link; try exact filed_record_link;
        rewrite Hnn, HIl; exact (decl_closed_cargs_scoped _ Hc' _ _ _ _ _ Hi' (cons_lookup_in _ _ _ Hc1))).
     rewrite <- (filed_link _ _ _ _ _ _ Hk Hh) in H'; exact H'.
   Qed.
@@ -407,7 +407,7 @@ Section FiledViews.
       valid_rview_record qr R -> List.length Is = List.length (record_params R).
   Proof.
     intros * Hk Hh HR.
-    destruct (rview_struct_record _ _ _ (decl_typed_rstruct _ _ _ Hdt) _ _ _ _ _ Hk Hh) as [R' HR'].
+    destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ Hk Hh) as [R' HR'].
     pose proof (rview_record_lookup _ _ _ _ _ _ HR') as HlR'.
     rewrite (valid_rview_record_lookup _ _ HR) in HlR'; injection HlR' as <-.
     exact (rview_record_count _ _ _ _ _ _ HR').
@@ -539,22 +539,22 @@ Section ValidGroupViews.
   Variables (p : qname) (D : ind_decl).
   Hypotheses (Hg : valid_group p D) (Hcv : containers_valid D).
 
-  Lemma vg_view_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  Lemma valid_group_views_view_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error Is j = Some I ->
       List.nth_error (tele_insts (ind_uparams Dq) Id Is) j = Some T ->
       ind_uparams D ⊨ I : T.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_view_is p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_rview_fields : forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  Lemma valid_group_views_rview_fields : forall k Mk qr Is fl R c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       record_lookup gc_deps gc_stack qr = Some R -> im_cons Mk = (c, gs) :: nil ->
       ind_uparams D ⊨ˣ tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id Is) ≈ cargs_ctx p D Mk gs.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_rview_fields p D IsS Hg Hvsv). Qed.
 
-  Lemma vg_rview_type : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  Lemma valid_group_views_rview_type : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       ind_uparams D ⊨ apps_exp (a_record qr) Is : ind_sort D.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_rview_type p D IsS Hg Hvsv). Qed.
 
-  Lemma vg_view_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
+  Lemma valid_group_views_view_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
       ind_lookup gc_deps gc_stack q'' = Some D'' -> decl_closed D'' ->
@@ -565,26 +565,26 @@ Section ValidGroupViews.
       ind_uparams D ⊨ C ≈ C' : T[sb_of_list Id Is].
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_view_view_is p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_view_nparams : forall k Mk qc k' Is vm Dq i' Mi' v Mv, ind_member D k = Some Mk ->
+  Lemma valid_group_views_view_nparams : forall k Mk qc k' Is vm Dq i' Mi' v Mv, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.nth_error vm i' = Some v ->
       ind_member D v = Some Mv ->
       ind_uparams D ⊨ˣ im_nparams Mv ≈ tele_sub (im_nparams Mi') (sb_of_list Id Is).
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_view_nparams p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_view_args : forall k Mk qc k' Is vm Dq i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
+  Lemma valid_group_views_view_args : forall k Mk qc k' Is vm Dq i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.nth_error vm i' = Some v ->
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
       im_params D Mv ⊨ˣ tele_sub (cargs_ctx qc Dq Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id Is)) ≈ cargs_ctx p D Mv gs.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_view_args p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_view_args_gsub : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  Lemma valid_group_views_view_args_gsub : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq ->
       gsub (ind_uparams D) (sb_of_list Id Is) (ind_uparams Dq ++ ind_uparams D).
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (view_args_gsub p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_view_args_values : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  Lemma valid_group_views_view_args_values : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
       exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
@@ -592,7 +592,7 @@ Section ValidGroupViews.
         per_gargs (List.rev (ind_uparams Dq)) nil nil cups cups'.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (view_args_values p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_view_args_wk : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  Lemma valid_group_views_view_args_wk : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq ->
       forall Z RZ ups zs, ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
         List.length zs = List.length Z -> List.length ups = ind_nu D ->
@@ -603,11 +603,11 @@ Section ValidGroupViews.
           per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (view_args_wk p D IsS Hg Hcv Hvsv). Qed.
 
-  Lemma vg_rview_args_gsub : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  Lemma valid_group_views_rview_args_gsub : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       valid_rview_record qr R -> gsub (ind_uparams D) (sb_of_list Id Is) (record_params R ++ ind_uparams D).
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (rview_args_gsub p D IsS Hg Hvsv). Qed.
 
-  Lemma vg_rview_args_values : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  Lemma valid_group_views_rview_args_values : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       valid_rview_record qr R ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
       exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
@@ -615,7 +615,7 @@ Section ValidGroupViews.
         per_gargs (List.rev (record_params R)) nil nil cups cups'.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (rview_args_values p D IsS Hg Hvsv). Qed.
 
-  Lemma vg_rview_args_wk : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  Lemma valid_group_views_rview_args_wk : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       valid_rview_record qr R ->
       forall Z RZ ups zs, ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
         List.length zs = List.length Z -> List.length ups = ind_nu D ->

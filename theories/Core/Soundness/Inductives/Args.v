@@ -676,7 +676,7 @@ Qed.
 (** The type of a recursive argument: the shape's type at the uniform
     parameters of the parameters, under the parameters and the
     non-recursive arguments before it. *)
-Lemma cargs_rec_type_sh : forall p D Mk gs gs1 t gs2 Ps As T, gs = gs1 ++ ca_rec t :: gs2 ->
+Lemma cargs_rec_type_shape : forall p D Mk gs gs1 t gs2 Ps As T, gs = gs1 ++ ca_rec t :: gs2 ->
     decl_closed D -> List.length Ps = im_np D Mk ->
     List.nth_error (tele_insts (cargs_ctx p D Mk gs) (sb_of_list Id Ps) As) (List.length gs1) = Some T ->
     T = ptyp_ty_at p D (List.firstn (ind_nu D) Ps) (sb_of_list Id (Ps ++ nonrec_exps gs1 (List.firstn (List.length gs1) As))) t.

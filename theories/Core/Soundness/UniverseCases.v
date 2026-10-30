@@ -94,7 +94,7 @@ Proof.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
     destruct u as [n | j]; cbn [universe_index_value universe_index_term large_level_above] in *;
       inversion Hr; subst; cbn.
-    + assert (Hn := read_nf_dlvl_lit n (length Δ')); unfold dlvl_lit in Hn.
+    + assert (Hn := read_nf_domain_level_lit n (length Δ')); unfold domain_level_lit in Hn.
       assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
       cbn; apply wf_exp_eq_univ_cong_large; assumption.
     + mauto 3.
@@ -210,19 +210,19 @@ Proof.
   saturate_sub.
   cbn.
   split; [ apply wf_univ_lit; assumption |].
-  exists 𝕌@(dlvl_lit (a, n)).
+  exists 𝕌@(domain_level_lit (a, n)).
   split; [ apply eval_exp_univ, eval_exp_llit |].
-  split; [ eexists; apply (per_univ_elem_universe_index_value (us (a, n)) (us (a, S n))); cbn; ord |].
+  split; [ eexists; apply (per_univ_elem_universe_index_value (us (a, n)) (us (a, S n))); cbn; ordinal_solve |].
   split.
   - intros P El HPEl.
-    pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ord)).
+    pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ordinal_solve)).
     handle_functional_glu_univ_elem.
     cbn; apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ(a, n)) a); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
   - (** The small universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
     inversion Hr; subst.
-    assert (Hn := read_nf_dlvl_lit (a, n) (length Δ')); unfold dlvl_lit in Hn.
+    assert (Hn := read_nf_domain_level_lit (a, n) (length Δ')); unfold domain_level_lit in Hn.
     assert (L = lvl_lit (a, n)) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
     cbn; apply wf_exp_eq_univ_cong_lit; assumption.
 Qed.

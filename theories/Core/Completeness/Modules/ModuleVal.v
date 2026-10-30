@@ -38,15 +38,15 @@ Proof. intros * H1 H2; pose proof (@functional_eval gc_deps gc_stack) as Hf; des
 
 (** ** Application *)
 
-Lemma per_dmod_appm : forall h h' a, per_dmod h h' -> nextparam h a ->
-    exists i R a', nextparam h' a' /\ per_univ_elem i R a a' /\
+Lemma per_dmod_appm : forall h h' a, per_dmod h h' -> next_param h a ->
+    exists i R a', next_param h' a' /\ per_univ_elem i R a a' /\
       forall c c', R c c' -> exists hc hc', $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc /\
                                       $ᵐ| h' & c' | gc_deps ⍮ gc_stack ↘ hc' /\ per_dmod hc hc'.
 Proof.
   intros * Hr Hn; inversion Hr; subst.
-  - exfalso; eapply nextparam_global_sat; eassumption.
-  - exfalso; eapply nextparam_body_nil; eassumption.
-  - match goal with Hn0 : nextparam h ?a0 |- _ => pose proof (nextparam_functional _ _ Hn _ Hn0) as <- end.
+  - exfalso; eapply next_param_global_sat; eassumption.
+  - exfalso; eapply next_param_body_nil; eassumption.
+  - match goal with Hn0 : next_param h ?a0 |- _ => pose proof (next_param_functional _ _ Hn _ Hn0) as <- end.
     do 3 eexists; split; [ eassumption |]; split; [ eassumption |].
     intros c c' Hc.
     match goal with E1 : forall c c', _ -> exists hc, eval_appm _ _ h c hc,
@@ -117,7 +117,7 @@ Lemma nth_rev_app_lt : forall (Δ T : list centry) k, k < List.length T ->
     List.nth_error (List.rev (Δ ++ T)) k = List.nth_error (List.rev T) k.
 Proof. intros * Hk; rewrite List.rev_app_distr, List.nth_error_app1 by (rewrite List.length_rev; lia); reflexivity. Qed.
 
-Lemma nextparam_global_lt : forall p args a, nextparam (dm_global p args) a ->
+Lemma next_param_global_lt : forall p args a, next_param (dm_global p args) a ->
     exists T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) /\ List.length args < List.length T.
 Proof.
   intros * Hn; inversion Hn; subst; do 2 eexists; split; [ eassumption |].
@@ -128,7 +128,7 @@ Qed.
 (** ** Selection from a Value Lacking a Parameter *)
 
 (** A submodule of a value lacking a parameter lacks the same one. *)
-Lemma nextparam_selm : forall h a, nextparam h a -> forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r -> nextparam r a.
+Lemma next_param_selm : forall h a, next_param h a -> forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r -> next_param r a.
 Proof.
   intros * Hn * Hs; inversion Hs; subst.
   - (* a body submodule of a global module *)
@@ -141,7 +141,7 @@ Proof.
       assert (Hx' : nth_error (rev T) (length args) <> None) by congruence end.
     apply nth_error_Some in Hx'; rewrite length_rev in Hx'; exact Hx'.
   - (* an alias submodule of a global module: its closure at the arguments *)
-    destruct (nextparam_global_lt _ _ _ Hn) as (T & Φ & Hm & Hlt).
+    destruct (next_param_global_lt _ _ _ Hn) as (T & Φ & Hm & Hlt).
     match goal with Ha : gc_module _ _ (qname_app p _) = Some (mr_alias _) |- _ =>
       rewrite <- qname_in_app in Ha;
       destruct (loc_alias_params _ _ Hgw _ _ _ _ _ Hm Ha) as (Δy & HΔ & HaΔ); rewrite qname_in_app in Ha end;
@@ -161,13 +161,13 @@ Proof.
   - (* a closure lacking a parameter *)
     constructor; exact Hn.
   - (* a saturated body lacks none *)
-    exfalso; eapply nextparam_body_nil; exact Hn.
+    exfalso; eapply next_param_body_nil; exact Hn.
   - (* a submodule closure *)
     inversion Hn; subst; constructor; assumption.
 Qed.
 
 (** Selection from a value lacking a parameter commutes with application. *)
-Lemma selm_appm_comm : forall h a, nextparam h a -> forall y r c hc,
+Lemma selm_appm_comm : forall h a, next_param h a -> forall y r c hc,
     h ·ₘ y gc_deps ⍮ gc_stack ↘ r -> $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
     forall rc, $ᵐ| r & c | gc_deps ⍮ gc_stack ↘ rc <-> hc ·ₘ y gc_deps ⍮ gc_stack ↘ rc.
 Proof.
@@ -197,7 +197,7 @@ Proof.
       match goal with Hc : eval_selmc _ _ _ (y :: nil) _ |- _ => inversion Hc; subst end.
       match goal with Hc : eval_selmc _ _ _ nil _ |- _ => inversion Hc; subst end; assumption.
     + econstructor; [ exact Hh | econstructor; [ exact Hr | constructor ] ].
-  - exfalso; eapply nextparam_body_nil; exact Hn.
+  - exfalso; eapply next_param_body_nil; exact Hn.
   - (* a submodule closure *)
     inversion Hh; subst; split; intros Hr.
     + inversion Hr; subst.
@@ -212,7 +212,7 @@ Qed.
 
 (** A value lacking a parameter has a submodule wherever it has one at an
     argument. *)
-Lemma selm_of_appm : forall h a, nextparam h a -> forall c hc y rc,
+Lemma selm_of_appm : forall h a, next_param h a -> forall c hc y rc,
     $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc -> hc ·ₘ y gc_deps ⍮ gc_stack ↘ rc ->
     exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r.
 Proof.

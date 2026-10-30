@@ -2,10 +2,10 @@
 
     A view of a container's member, under its map [vm], has the
     container's leaf paths among its own: of a shape [t] of the group [D]
-    against the container's corresponding shape [t'] ([shape_corr]), the
+    against the container's corresponding shape [t'] ([shape_correspond]), the
     group's leaf paths that are the container's ([leaf_in]) are as many as
     the container's own ([leaves_in_count_view]), and over a constructor's
-    arguments as many as the container's branch binds ([cargs_nin_view]).
+    arguments as many as the container's branch binds ([cargs_container_count_view]).
     Readback reads a stuck eliminator at a view as the container's and asks
     this count of each branch ([read_brs_cons]); the eliminator's model
     ([IndElim]) and completeness give it. *)
@@ -25,17 +25,17 @@ Section Fixed_GCtx.
 (** ** The Shapes of a View against its Container's
 
     A shape [t'] of the container's against the view's [t]: as many
-    domains, ending in a member the view's map takes to [t]'s ([cargs_corr]
+    domains, ending in a member the view's map takes to [t]'s ([cargs_correspond]
     at a recursive argument). *)
-Fixpoint shape_corr (vm : list nat) (t' t : ptyp) : Prop :=
+Fixpoint shape_correspond (vm : list nat) (t' t : ptyp) : Prop :=
   match t', t with
   | pt_self j' _, pt_self j _ => List.nth_error vm j' = Some j
-  | pt_pi _ t1', pt_pi _ t1 => shape_corr vm t1' t1
+  | pt_pi _ t1', pt_pi _ t1 => shape_correspond vm t1' t1
   | _, _ => False
   end.
 
-Lemma shape_corr_of : forall vm t' t, List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) -> ptyp_depth t' = ptyp_depth t ->
-    shape_corr vm t' t.
+Lemma shape_correspond_of : forall vm t' t, List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) -> ptyp_depth t' = ptyp_depth t ->
+    shape_correspond vm t' t.
 Proof.
   intros vm t'; induction t' as [j' Ps' | B' t' IH]; intros [j Ps | B t] Hm Hd; unfold ptyp_depth in Hd; cbn in *;
     try discriminate; [ exact Hm | apply IH; [ exact Hm | unfold ptyp_depth; lia ] ].
@@ -58,14 +58,14 @@ Proof.
   destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv' & HMv' & _ & Hnames & Hcorr).
   rewrite HMv in HMv'; injection HMv' as <-.
   exists v, Mv.
-  assert (Hc1 : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_corr vm gs' gs).
+  assert (Hc1 : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_correspond vm gs' gs).
   { intros c gs' Hc.
     pose proof (cons_lookup_in _ _ _ Hc) as Hin.
     assert (Hn : List.In c (List.map fst (im_cons Mv))) by (rewrite Hnames; exact (List.in_map fst _ (c, gs') Hin)).
     apply List.in_map_iff in Hn; destruct Hn as ([c0 gs0] & Ec & Hin0); cbn in Ec; subst c0.
     destruct (cons_lookup_of_in _ _ _ Hin0) as [gs HCv].
     exists gs; split; [ exact HCv | exact (Hcorr c gs' gs Hin HCv) ]. }
-  assert (Hc2 : forall c gs, ind_con Mv c = Some gs -> exists gs', ind_con Mi' c = Some gs' /\ cargs_corr vm gs' gs).
+  assert (Hc2 : forall c gs, ind_con Mv c = Some gs -> exists gs', ind_con Mi' c = Some gs' /\ cargs_correspond vm gs' gs).
   { intros c gs Hc.
     pose proof (cons_lookup_in _ _ _ Hc) as Hin.
     assert (Hn : List.In c (List.map fst (im_cons Mi'))) by (rewrite <- Hnames; exact (List.in_map fst _ (c, gs) Hin)).
@@ -114,25 +114,25 @@ Qed.
 
     Every leaf path of a shape of the group is the group's own
     ([leaf_in]), and so a branch read as its own group's binds as many
-    recursive results as the group's ([cargs_nin_own_of_ass]). *)
+    recursive results as the group's ([cargs_container_count_own_of_ass]). *)
 Lemma own_leaves_of_ass : forall D, grp_tele_ass D -> forall t m l, (exists M, ind_member D (ptyp_mem t) = Some M) ->
-    In l (shape_leaves (rv_leaves D) m t) -> leaf_in D t l = true.
+    In l (shape_leaves (rview_leaves D) m t) -> leaf_in D t l = true.
 Proof.
   intros D Hass.
-  pose proof (grp_tele_ass_rstruct _ Hass) as Hrs.
+  pose proof (grp_tele_ass_record_struct _ Hass) as Hrs.
   apply (leaf_in_own D (leaves_coherent_of_order D (rview_struct_order _ _ _ Hrs))).
   - intros * HM Hh.
     destruct (rview_struct_record _ _ _ Hrs _ _ _ _ _ HM Hh) as [R HR].
     destruct (rview_struct_con _ _ _ Hrs _ _ _ _ _ HM Hh) as (gs & Hcs & Hlen).
     split; [ exact (rview_record_nodup _ _ _ _ _ _ HR) | exists rview_con, gs; split; [ exact Hcs | lia ] ].
   - intros * HM Hh Hcs.
-    destruct (grp_tele_ass_plen _ Hass _ _ _ _ HM ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 eq_refl) as (M & HM' & _).
+    destruct (grp_tele_ass_params_length _ Hass _ _ _ _ HM ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 eq_refl) as (M & HM' & _).
     exists M; exact HM'.
 Qed.
 
-Lemma cargs_nin_own_of_ass : forall D, grp_tele_ass D -> forall gs, cargs_plen D gs -> cargs_nin D D gs gs = cargs_nrec D gs.
+Lemma cargs_container_count_own_of_ass : forall D, grp_tele_ass D -> forall gs, cargs_params_length D gs -> cargs_container_count D D gs gs = cargs_nrec D gs.
 Proof.
-  intros D Hass; induction gs as [| [rA A | t] gs IH]; intros Hpl; cbn [cargs_nin cargs_nrec]; [ reflexivity | |].
+  intros D Hass; induction gs as [| [rA A | t] gs IH]; intros Hpl; cbn [cargs_container_count cargs_nrec]; [ reflexivity | |].
   - apply IH; intros gs1 t gs2 E; apply (Hpl (ca_arg rA A :: gs1) t gs2); rewrite E; reflexivity.
   - f_equal.
     + destruct (Hpl nil t gs eq_refl) as (M & HM & _).
@@ -180,8 +180,8 @@ Section ViewCount.
       as the container has, by induction on the record views' order. *)
   Lemma leaves_in_count_view : forall n t' t m,
       (forall Mj, ind_member D (ptyp_mem t) = Some Mj -> im_is_rview Mj = true -> ptyp_mem t < n) ->
-      shape_corr vm t' t ->
-      leaves_in_count D' t' (shape_leaves (rv_leaves D) m t) = List.length (shape_leaves (rv_leaves D') 0 t').
+      shape_correspond vm t' t ->
+      leaves_in_count D' t' (shape_leaves (rview_leaves D) m t) = List.length (shape_leaves (rview_leaves D') 0 t').
   Proof.
     induction n as [n IHn] using Wf_nat.lt_wf_ind.
     intros t'; induction t' as [j' Ps' | B' t1' IHt]; intros [j Ps | B t1] m Hrk Hsc; cbn in Hsc; try contradiction.
@@ -205,10 +205,10 @@ Section ViewCount.
         rewrite leaves_in_count_map_wk, List.length_map.
         (** The fields after [fs1] and [fs1']. *)
         assert (Hfs : forall fs2 fs2' fs1 fs1' ns ns', List.combine fl gsr = fs1 ++ fs2 -> List.combine fl gsr' = fs1' ++ fs2' ->
-                   List.length fs1 = List.length fs1' -> cargs_corr vm (List.map snd fs2') (List.map snd fs2) ->
-                   leaves_in_count D' (pt_self j' Ps') (fields_leaves (rv_leaves D) ns fs2)
-                   = List.length (fields_leaves (rv_leaves D') ns' fs2')).
-        { induction fs2 as [| [f g] fs2 IHf]; intros [| [f' g'] fs2'] fs1 fs1' ns ns' E E' Lf Hco; cbn [List.map cargs_corr] in Hco;
+                   List.length fs1 = List.length fs1' -> cargs_correspond vm (List.map snd fs2') (List.map snd fs2) ->
+                   leaves_in_count D' (pt_self j' Ps') (fields_leaves (rview_leaves D) ns fs2)
+                   = List.length (fields_leaves (rview_leaves D') ns' fs2')).
+        { induction fs2 as [| [f g] fs2 IHf]; intros [| [f' g'] fs2'] fs1 fs1' ns ns' E E' Lf Hco; cbn [List.map cargs_correspond] in Hco;
             try (destruct g'; contradiction); try (destruct g; contradiction); [ reflexivity |].
           destruct (combine_app_split _ _ _ _ (eq_sym Hlen) E) as [Efl Egs].
           destruct (combine_app_split _ _ _ _ (eq_sym Hlen') E') as [Efl' Egs'].
@@ -226,22 +226,22 @@ Section ViewCount.
           assert (L1 : List.length (fs1 ++ (f, g) :: nil) = List.length (fs1' ++ (f, g') :: nil)) by (rewrite !List.length_app; cbn; lia).
           assert (Hfind : List.find (fun fg => String.eqb (fst fg) f) (List.combine fl gsr') = Some (f, g')).
           { rewrite E'; apply find_name_split; rewrite <- E', combine_fst_eq by exact (eq_sym Hlen'); exact Hnd. }
-          destruct g as [rA A | t], g' as [rA' A' | t']; cbn [cargs_corr] in Hco; try contradiction.
+          destruct g as [rA A | t], g' as [rA' A' | t']; cbn [cargs_correspond] in Hco; try contradiction.
           - cbn [fields_leaves]; exact (IHf _ _ _ _ _ E1 E1' L1 Hco).
           - (** Nested through by the group: none of its paths is the
                 container's. *)
             cbn [fields_leaves]; rewrite leaves_in_count_app.
-            assert (H0 : leaves_in_count D' (pt_self j' Ps') (List.map (leaf_proj f ns) (shape_leaves (rv_leaves D) (List.length ns) t)) = 0).
-            { generalize (shape_leaves (rv_leaves D) (List.length ns) t) as ls; intros ls.
+            assert (H0 : leaves_in_count D' (pt_self j' Ps') (List.map (leaf_proj f ns) (shape_leaves (rview_leaves D) (List.length ns) t)) = 0).
+            { generalize (shape_leaves (rview_leaves D) (List.length ns) t) as ls; intros ls.
               induction ls as [| l ls IHl]; [ reflexivity |].
               unfold leaves_in_count in *; cbn [List.map List.filter leaf_in]; rewrite HMj', Hh', Hcs', Hfind; exact IHl. }
             rewrite H0; exact (IHf _ _ _ _ _ E1 E1' L1 Hco).
           - (** Recursive in both: the field's shapes correspond. *)
             destruct Hco as (Hmt & Hdp & Hco).
             cbn [fields_leaves]; rewrite leaves_in_count_app, List.length_app, List.length_map.
-            assert (H0 : leaves_in_count D' (pt_self j' Ps') (List.map (leaf_proj f ns) (shape_leaves (rv_leaves D) (List.length ns) t))
-                         = leaves_in_count D' t' (shape_leaves (rv_leaves D) (List.length ns) t)).
-            { generalize (shape_leaves (rv_leaves D) (List.length ns) t) as ls; intros ls.
+            assert (H0 : leaves_in_count D' (pt_self j' Ps') (List.map (leaf_proj f ns) (shape_leaves (rview_leaves D) (List.length ns) t))
+                         = leaves_in_count D' t' (shape_leaves (rview_leaves D) (List.length ns) t)).
+            { generalize (shape_leaves (rview_leaves D) (List.length ns) t) as ls; intros ls.
               induction ls as [| l ls IHl]; [ reflexivity |].
               unfold leaves_in_count in *; cbn [List.map List.filter leaf_in]; rewrite HMj', Hh', Hcs', Hfind.
               destruct (leaf_in D' t' l); cbn; rewrite IHl; reflexivity. }
@@ -249,14 +249,14 @@ Section ViewCount.
             destruct (combine_split_at _ _ _ _ _ _ (eq_sym Hlen) E) as [_ Egs1].
             assert (Hrk' : forall Mt, ind_member D (ptyp_mem t) = Some Mt -> im_is_rview Mt = true -> ptyp_mem t < j).
             { intros Mt HMt HrT; exact (rview_struct_order _ _ _ HrsD _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs Egs1 HMt HrT). }
-            rewrite (IHn j Hrk t' t (List.length ns) Hrk' (shape_corr_of _ _ _ Hmt Hdp)).
+            rewrite (IHn j Hrk t' t (List.length ns) Hrk' (shape_correspond_of _ _ _ Hmt Hdp)).
             rewrite (length_shape_leaves _ t' 0 (List.length ns')).
             f_equal; exact (IHf _ _ _ _ _ E1 E1' L1 Hco). }
         apply (Hfs (List.combine fl gsr) (List.combine fl gsr') nil nil nil nil eq_refl eq_refl eq_refl).
         rewrite !combine_snd_eq by lia; exact Hcorr.
       + (** Members with a block: one path each. *)
         assert (Hrv' : im_is_rview Mj' = false) by congruence.
-        cbn [shape_leaves]; rewrite (rv_leaves_not_rview _ _ _ HMj Hrv), (rv_leaves_not_rview _ _ _ HMj' Hrv').
+        cbn [shape_leaves]; rewrite (rview_leaves_not_rview _ _ _ HMj Hrv), (rview_leaves_not_rview _ _ _ HMj' Hrv').
         unfold leaves_in_count; cbn [List.filter leaf_in]; rewrite HMj', Hrv'; reflexivity.
     - (** Through a domain. *)
       cbn [shape_leaves]; rewrite leaves_in_count_map_pi, List.length_map.
@@ -265,13 +265,13 @@ Section ViewCount.
 
   (** Of a constructor's arguments: as many as the container's recursive
       results. *)
-  Lemma cargs_nin_view : forall gs' gs, cargs_corr vm gs' gs -> cargs_nin D D' gs' gs = cargs_nrec D' gs'.
+  Lemma cargs_container_count_view : forall gs' gs, cargs_correspond vm gs' gs -> cargs_container_count D D' gs' gs = cargs_nrec D' gs'.
   Proof.
-    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] Hco; cbn [cargs_corr] in Hco; try contradiction;
-      cbn [cargs_nin cargs_nrec]; try reflexivity; try exact (IH _ Hco).
+    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] Hco; cbn [cargs_correspond] in Hco; try contradiction;
+      cbn [cargs_container_count cargs_nrec]; try reflexivity; try exact (IH _ Hco).
     destruct Hco as (Hmt & Hdp & Hco).
     rewrite IH by exact Hco; f_equal.
-    apply (leaves_in_count_view (S (ptyp_mem t))); [ intros; lia | exact (shape_corr_of _ _ _ Hmt Hdp) ].
+    apply (leaves_in_count_view (S (ptyp_mem t))); [ intros; lia | exact (shape_correspond_of _ _ _ Hmt Hdp) ].
   Qed.
 End ViewCount.
 End Fixed_GCtx.

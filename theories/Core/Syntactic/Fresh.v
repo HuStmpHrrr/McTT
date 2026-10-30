@@ -52,7 +52,7 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
                                     all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
   | a_pi _ A B | a_fn A B | a_and A B => exp_fresh k A /\ exp_fresh (S k) B
   | a_var x => x <> k
-  | a_let b B => bnd_fresh k b /\ exp_fresh (S k) B
+  | a_let b B => binding_fresh k b /\ exp_fresh (S k) B
   | a_mem H _ => modexp_fresh k H
   | a_record _ => True
   | a_tuple T fs => exp_fresh k T /\ all_list (fun f => exp_fresh k (snd f)) fs
@@ -66,7 +66,7 @@ with modexp_fresh (k : nat) (H : modexp) {struct H} : Prop :=
   | me_app H N => modexp_fresh k H /\ exp_fresh k N
   | me_lit U => gunit_fresh k U
   end
-with bnd_fresh (k : nat) (b : bnd) {struct b} : Prop :=
+with binding_fresh (k : nat) (b : binding) {struct b} : Prop :=
   match b with
   | b_def oA M => match oA with Some A => exp_fresh k A | None => True end /\ exp_fresh k M
   | b_mod U => gunit_fresh k U
@@ -150,8 +150,8 @@ Hint Resolve wk_id_away_q wk_id_away_qn wk_avoids_q wk_avoids_qn : core.
     induction hypotheses. *)
 #[local]
 Ltac fresh_case :=
-  intros; cbn [exp_fresh modexp_fresh bnd_fresh gunit_fresh moddef_fresh gmod_fresh
-               gentry_fresh centry_fresh exp_wk modexp_wk bnd_wk gunit_wk moddef_wk
+  intros; cbn [exp_fresh modexp_fresh binding_fresh gunit_fresh moddef_fresh gmod_fresh
+               gentry_fresh centry_fresh exp_wk modexp_wk binding_wk gunit_wk moddef_wk
                gmod_wk gentry_wk centry_wk] in *;
   repeat match goal with
          | B : option exp |- _ => destruct B; cbn iota in *
@@ -165,7 +165,7 @@ Ltac fresh_case :=
 Lemma syn_fresh_id :
   (forall M k χ, exp_fresh k M -> wk_id_away k χ -> M[χ]ʷ = M) /\
   (forall H k χ, modexp_fresh k H -> wk_id_away k χ -> modexp_wk H χ = H) /\
-  (forall b k χ, bnd_fresh k b -> wk_id_away k χ -> bnd_wk b χ = b) /\
+  (forall b k χ, binding_fresh k b -> wk_id_away k χ -> binding_wk b χ = b) /\
   (forall U k χ, gunit_fresh k U -> wk_id_away k χ -> gunit_wk U χ = U) /\
   (forall D k χ, moddef_fresh k D -> wk_id_away k χ -> moddef_wk D χ = D) /\
   (forall Φ k χ, gmod_fresh k Φ -> wk_id_away k χ -> gmod_wk Φ χ = Φ) /\
@@ -188,7 +188,7 @@ Qed.
 Lemma syn_wk_fresh :
   (forall M k φ, wk_avoids k φ -> exp_fresh k M[φ]ʷ) /\
   (forall H k φ, wk_avoids k φ -> modexp_fresh k (modexp_wk H φ)) /\
-  (forall b k φ, wk_avoids k φ -> bnd_fresh k (bnd_wk b φ)) /\
+  (forall b k φ, wk_avoids k φ -> binding_fresh k (binding_wk b φ)) /\
   (forall U k φ, wk_avoids k φ -> gunit_fresh k (gunit_wk U φ)) /\
   (forall D k φ, wk_avoids k φ -> moddef_fresh k (moddef_wk D φ)) /\
   (forall Φ k φ, wk_avoids k φ -> gmod_fresh k (gmod_wk Φ φ)) /\
@@ -222,7 +222,7 @@ Hint Resolve wk_reflects_q wk_reflects_qn : core.
 Lemma syn_fresh_wk :
   (forall M k k' φ, exp_fresh k M -> wk_reflects k k' φ -> exp_fresh k' M[φ]ʷ) /\
   (forall H k k' φ, modexp_fresh k H -> wk_reflects k k' φ -> modexp_fresh k' (modexp_wk H φ)) /\
-  (forall b k k' φ, bnd_fresh k b -> wk_reflects k k' φ -> bnd_fresh k' (bnd_wk b φ)) /\
+  (forall b k k' φ, binding_fresh k b -> wk_reflects k k' φ -> binding_fresh k' (binding_wk b φ)) /\
   (forall U k k' φ, gunit_fresh k U -> wk_reflects k k' φ -> gunit_fresh k' (gunit_wk U φ)) /\
   (forall D k k' φ, moddef_fresh k D -> wk_reflects k k' φ -> moddef_fresh k' (moddef_wk D φ)) /\
   (forall Φ k k' φ, gmod_fresh k Φ -> wk_reflects k k' φ -> gmod_fresh k' (gmod_wk Φ φ)) /\
@@ -602,18 +602,18 @@ Proof.
     apply level_atoms_lookup_In in L; exfalso; apply Ha; eapply level_atoms_fresh_In; eassumption. }
   set (N := S (snd d + level_atoms_max_offset ys)).
   specialize (Hle (ν_at a s N) (ν_at_adm _ _ _)).
-  unfold lvl_ev in Hle; cbn [fst snd] in Hle.
+  unfold lvl_eval in Hle; cbn [fst snd] in Hle.
   rewrite (level_atoms_eval_at_none _ _ _ _ Hn) in Hle.
   assert (Hge : ordinal_le (s, N) (level_atoms_eval (ν_at a s N) xs)).
   { clear Hle; induction xs as [| [j0 t b] r IH]; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [(<- & <- & <-) | Hin].
     - unfold ν_at at 1; rewrite at_cmp_refl.
-      generalize (level_atoms_eval (ν_at a s N) r); intros; ord.
-    - specialize (IH Hin); revert IH; generalize (level_atoms_eval (ν_at a s N) r) (ν_at a s N b t); intros; ord. }
+      generalize (level_atoms_eval (ν_at a s N) r); intros; ordinal_solve.
+    - specialize (IH Hin); revert IH; generalize (level_atoms_eval (ν_at a s N) r) (ν_at a s N b t); intros; ordinal_solve. }
   assert (HN1 : snd d < N) by (subst N; lia).
   assert (HN2 : level_atoms_max_offset ys < N) by (subst N; lia).
   clearbody N.
-  revert Hle Hge Hs HN1 HN2; generalize (level_atoms_eval (ν_at a s N) xs) (level_atoms_max_offset ys); intros; ord.
+  revert Hle Hge Hs HN1 HN2; generalize (level_atoms_eval (ν_at a s N) xs) (level_atoms_max_offset ys); intros; ordinal_solve.
 Qed.
 
 (** ** The Bound of a Level Under a Binder
@@ -643,14 +643,14 @@ Definition lvl_bound (k : nat) (l : lvl) : lvl :=
 Lemma lvl_bound_above : forall k l,
     lvl_le l (ordinal_max (fst l) (level_atoms_open_bound k (snd l)), level_atoms_fresh_part k (snd l)).
 Proof.
-  intros k [c xs]; apply lvl_le_correct; intros ν Hν; unfold lvl_ev; cbn [fst snd].
+  intros k [c xs]; apply lvl_le_correct; intros ν Hν; unfold lvl_eval; cbn [fst snd].
   enough (ordinal_le (level_atoms_eval ν xs) (ordinal_max (level_atoms_open_bound k xs) (level_atoms_eval ν (level_atoms_fresh_part k xs)))) as H
-    by (revert H; generalize (level_atoms_eval ν xs) (level_atoms_open_bound k xs) (level_atoms_eval ν (level_atoms_fresh_part k xs)); intros; ord).
-  induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_open_bound level_atoms_fresh_part]; [ ord |].
+    by (revert H; generalize (level_atoms_eval ν xs) (level_atoms_open_bound k xs) (level_atoms_eval ν (level_atoms_fresh_part k xs)); intros; ordinal_solve).
+  induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_open_bound level_atoms_fresh_part]; [ ordinal_solve |].
   specialize (Hν a s).
   destruct (ne_freshb k a); cbn [level_atoms_eval].
-  - revert IH; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ord.
-  - revert IH Hν; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ord.
+  - revert IH; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ordinal_solve.
+  - revert IH Hν; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ordinal_solve.
 Qed.
 
 (** The bound is below every level fresh at [k] above the level, un-weakened:
@@ -661,9 +661,9 @@ Proof. intros ν k; induction xs as [| [j s a] r IH]; cbn; [ reflexivity | rewri
 
 Lemma level_atoms_eval_fresh_part : forall ν k xs, ordinal_le (level_atoms_eval ν (level_atoms_fresh_part k xs)) (level_atoms_eval ν xs).
 Proof.
-  intros ν k; induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_fresh_part]; [ ord |].
+  intros ν k; induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_fresh_part]; [ ordinal_solve |].
   destruct (ne_freshb k a); cbn [level_atoms_eval];
-    revert IH; generalize (level_atoms_eval ν r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ord.
+    revert IH; generalize (level_atoms_eval ν r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ordinal_solve.
 Qed.
 
 Lemma level_atoms_open_bound_le : forall k xs d,
@@ -675,7 +675,7 @@ Proof.
   destruct (ne_freshb k a) eqn:E; [ exact IH' |].
   assert (Hs : s < fst d).
   { eapply H; [ left; auto |]. intros Hf; apply (proj2 nf_freshb_iff) in Hf; congruence. }
-  revert IH' Hs; generalize (level_atoms_open_bound k r); intros; ord.
+  revert IH' Hs; generalize (level_atoms_open_bound k r); intros; ordinal_solve.
 Qed.
 
 Lemma lvl_le_bound : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
@@ -687,10 +687,10 @@ Proof.
   rewrite lvl_le_correct in Hle |- *; intros ν Hν.
   set (ν' := fun a s => ν (ne_unwk k a) s).
   assert (Hν' : lvl_adm ν') by (intros a s; apply Hν).
-  specialize (Hle ν' Hν'); unfold lvl_bound, lvl_ev in *; cbn [fst snd] in *.
+  specialize (Hle ν' Hν'); unfold lvl_bound, lvl_eval in *; cbn [fst snd] in *.
   rewrite !level_atoms_eval_unwk; fold ν'.
   pose proof (level_atoms_eval_fresh_part ν' k xs) as Hf.
-  revert Hle Hb Hf; generalize (level_atoms_eval ν' xs) (level_atoms_eval ν' ys) (level_atoms_eval ν' (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ord.
+  revert Hle Hb Hf; generalize (level_atoms_eval ν' xs) (level_atoms_eval ν' ys) (level_atoms_eval ν' (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ordinal_solve.
 Qed.
 
 (** The fresh atoms are fresh and are atoms of the level; the bound of the
@@ -722,9 +722,9 @@ Proof.
   pose proof (lvl_le_level_atoms_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
   pose proof (level_atoms_open_bound_le k xs d Hs) as Hb.
   rewrite lvl_le_correct in Hle |- *; intros ν Hν.
-  specialize (Hle ν Hν); unfold lvl_ev in *; cbn [fst snd] in *.
+  specialize (Hle ν Hν); unfold lvl_eval in *; cbn [fst snd] in *.
   pose proof (level_atoms_eval_fresh_part ν k xs) as Hf.
-  revert Hle Hb Hf; generalize (level_atoms_eval ν xs) (level_atoms_eval ν ys) (level_atoms_eval ν (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ord.
+  revert Hle Hb Hf; generalize (level_atoms_eval ν xs) (level_atoms_eval ν ys) (level_atoms_eval ν (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ordinal_solve.
 Qed.
 
 (** ** The Universe of a [Π]
@@ -733,13 +733,13 @@ Qed.
     domain's level and the bound of the codomain's ([lvl_bound]): the
     codomain's level lives under the domain, and an atom of it that mentions
     the bound variable is bounded by its sort.  Any other [Π] is at the join
-    of the universes of its parts ([unf_max]).  This is the term the checker
+    of the universes of its parts ([universe_nf_max]).  This is the term the checker
     normalises: the join is not canonical, and normalising it is what makes
     the inferred universe a normal form. *)
-Definition unf_pi_tm (u v : unf) : exp :=
+Definition universe_nf_pi_tm (u v : universe_nf) : exp :=
   match u, v with
-  | uns l, uns l' =>
+  | universe_small l, universe_small l' =>
       a_univ (a_maxl (lvl_exp_of (fst l) (List.map atom_exp (snd l)))
                      (lvl_exp_of (fst (lvl_bound 0 l')) (List.map atom_exp (snd (lvl_bound 0 l')))))
-  | _, _ => unf_tm (unf_max u v)
+  | _, _ => universe_nf_tm (universe_nf_max u v)
   end.

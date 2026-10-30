@@ -135,7 +135,7 @@ End GenericDec.
     decidable. *)
 Fixpoint exp_eq_dec (M N : exp) {struct M} : {M = N} + {M <> N}
 with modexp_eq_dec (M N : modexp) {struct M} : {M = N} + {M <> N}
-with bnd_eq_dec (M N : bnd) {struct M} : {M = N} + {M <> N}
+with binding_eq_dec (M N : binding) {struct M} : {M = N} + {M <> N}
 with gunit_eq_dec (M N : gunit) {struct M} : {M = N} + {M <> N}
 with moddef_eq_dec (M N : moddef) {struct M} : {M = N} + {M <> N}
 with gmod_eq_dec (M N : gmod) {struct M} : {M = N} + {M <> N}
@@ -307,7 +307,7 @@ Definition ind_order_ok (D : ind_decl) : Prop :=
     parameters, the [Self]s and the frames' parameters.  The view [v] is
     the member [n + v].
 
-    [cls_pat d np n pat] is the pattern of the weakening that sends the
+    [classify_pat d np n pat] is the pattern of the weakening that sends the
     context of the domains, the non-recursive arguments before ([pat] tells,
     innermost first, which arguments before are recursive), the parameters
     and the frames into the full one: a term in its image mentions no
@@ -315,9 +315,9 @@ Definition ind_order_ok (D : ind_decl) : Prop :=
 
     The classification is a function, written as a recognizer: a term is in
     the image of a pattern weakening exactly when it is the image of its own
-    preimage candidate ([img_pat]).  A nested occurrence is classified with
-    its instance, not yet numbered ([rptyp]); the command numbers the views
-    once it has found them all ([rptyp_num]). *)
+    preimage candidate ([image_pat]).  A nested occurrence is classified with
+    its instance, not yet numbered ([classified_ptyp]); the command numbers the views
+    once it has found them all ([classified_ptyp_num]). *)
 
 (** The key of a view during classification: an instance met, which the
     group files as one of its members. *)
@@ -357,19 +357,19 @@ Definition view_key_args (x : view_key) : list exp :=
     [Self]-free parts into the context the argument is written in: [d]
     domains, the arguments before ([pat]), [np] parameters, then the [n]
     [Self]s, which the image avoids. *)
-Definition cls_pat (d np n : nat) (pat : list bool) : list bool :=
+Definition classify_pat (d np n : nat) (pat : list bool) : list bool :=
   List.repeat false d ++ pat ++ List.repeat false np ++ List.repeat true n.
 
 (** The preimage of a term under a pattern weakening, if it has one. *)
-Definition img_pat (pat : list bool) (T : exp) : option exp :=
+Definition image_pat (pat : list bool) (T : exp) : option exp :=
   if exp_eq_dec T T[unwk_pat pat]ʷ[wk_pat pat]ʷ then Some T[unwk_pat pat]ʷ else None.
 
 (** The preimages of a list of terms, if each has one. *)
-Fixpoint img_pats (pat : list bool) (Ts : list exp) : option (list exp) :=
+Fixpoint image_pats (pat : list bool) (Ts : list exp) : option (list exp) :=
   match Ts with
   | nil => Some nil
   | T :: Ts' =>
-      match img_pat pat T, img_pats pat Ts' with
+      match image_pat pat T, image_pats pat Ts' with
       | Some A, Some As => Some (A :: As)
       | _, _ => None
       end
@@ -402,69 +402,69 @@ Definition view_key_mem (x : view_key) (Vs : list view_key) : bool :=
 
 (** A shape as classified, a nested occurrence at its instance; an
     argument as classified. *)
-Inductive rptyp : Set :=
+Inductive classified_ptyp : Set :=
 (** The declared member [j] at the non-uniform parameters [Ps]. *)
-| rptyp_self : nat -> list exp -> rptyp
+| classified_ptyp_self : nat -> list exp -> classified_ptyp
 (** A nested occurrence: the view of the instance [x], not yet numbered,
     at the non-uniform parameters [Ns]. *)
-| rptyp_nest : view_key -> list exp -> rptyp
+| classified_ptyp_nest : view_key -> list exp -> classified_ptyp
 (** A function from a [Self]-free domain into a shape. *)
-| rptyp_pi : exp -> rptyp -> rptyp.
+| classified_ptyp_pi : exp -> classified_ptyp -> classified_ptyp.
 
 (** An argument as classified, its views not yet numbered. *)
-Inductive rcarg : Set :=
+Inductive classified_carg : Set :=
 (** A non-recursive argument, of a [Self]-free type, of the sort the
     relevance says. *)
-| rcarg_arg : relevance -> exp -> rcarg
+| classified_carg_arg : relevance -> exp -> classified_carg
 (** A recursive argument, of a shape. *)
-| rcarg_rec_case : rptyp -> rcarg.
+| classified_carg_rec_case : classified_ptyp -> classified_carg.
 
 (** Whether a classified argument is recursive: its bit in the pattern of
     the arguments before the next one. *)
-Definition rcarg_bit (g : rcarg) : bool := match g with rcarg_rec_case _ => true | rcarg_arg _ _ => false end.
+Definition classified_carg_bit (g : classified_carg) : bool := match g with classified_carg_rec_case _ => true | classified_carg_arg _ _ => false end.
 
 (** A classified argument at the sort [r]: a non-recursive one takes it,
     a recursive one is relevant and keeps its shape.  The syntactic
-    classification ([cls_arg]) cannot see sorts; the command tags the
+    classification ([classify_arg]) cannot see sorts; the command tags the
     non-recursive arguments by the sort their types infer to. *)
-Definition rcarg_tag (r : relevance) (g : rcarg) : rcarg :=
-  match g with rcarg_arg _ A => rcarg_arg r A | rcarg_rec_case t => rcarg_rec_case t end.
+Definition classified_carg_tag (r : relevance) (g : classified_carg) : classified_carg :=
+  match g with classified_carg_arg _ A => classified_carg_arg r A | classified_carg_rec_case t => classified_carg_rec_case t end.
 
-Lemma rcarg_bit_tag : forall r g, rcarg_bit (rcarg_tag r g) = rcarg_bit g.
+Lemma classified_carg_bit_tag : forall r g, classified_carg_bit (classified_carg_tag r g) = classified_carg_bit g.
 Proof. intros r [] ; reflexivity. Qed.
 
 (** The views numbered: the view [v] is the member [n + v]. *)
-Fixpoint rptyp_num (n : nat) (Vs : list view_key) (t : rptyp) : option ptyp :=
+Fixpoint classified_ptyp_num (n : nat) (Vs : list view_key) (t : classified_ptyp) : option ptyp :=
   match t with
-  | rptyp_self j Ps => Some (pt_self j Ps)
-  | rptyp_nest x Ns => option_map (fun v => pt_self (n + v) Ns) (view_key_index x Vs)
-  | rptyp_pi B t' => option_map (pt_pi B) (rptyp_num n Vs t')
+  | classified_ptyp_self j Ps => Some (pt_self j Ps)
+  | classified_ptyp_nest x Ns => option_map (fun v => pt_self (n + v) Ns) (view_key_index x Vs)
+  | classified_ptyp_pi B t' => option_map (pt_pi B) (classified_ptyp_num n Vs t')
   end.
 
 (** A classified argument with its views numbered. *)
-Definition rcarg_num (n : nat) (Vs : list view_key) (g : rcarg) : option carg :=
+Definition classified_carg_num (n : nat) (Vs : list view_key) (g : classified_carg) : option carg :=
   match g with
-  | rcarg_arg r A => Some (ca_arg r A)
-  | rcarg_rec_case t => option_map ca_rec (rptyp_num n Vs t)
+  | classified_carg_arg r A => Some (ca_arg r A)
+  | classified_carg_rec_case t => option_map ca_rec (classified_ptyp_num n Vs t)
   end.
 
 (** A constructor's classified arguments with their views numbered. *)
-Fixpoint rcargs_num (n : nat) (Vs : list view_key) (gs : list rcarg) : option (list carg) :=
+Fixpoint classified_cargs_num (n : nat) (Vs : list view_key) (gs : list classified_carg) : option (list carg) :=
   match gs with
   | nil => Some nil
   | g :: gs' =>
-      match rcarg_num n Vs g, rcargs_num n Vs gs' with
+      match classified_carg_num n Vs g, classified_cargs_num n Vs gs' with
       | Some g', Some gs'' => Some (g' :: gs'')
       | _, _ => None
       end
   end.
 
 (** A member's classified constructors with their views numbered. *)
-Fixpoint rcons_num (n : nat) (Vs : list view_key) (cs : list (string * list rcarg)) : option (list (string * list carg)) :=
+Fixpoint classified_cons_num (n : nat) (Vs : list view_key) (cs : list (string * list classified_carg)) : option (list (string * list carg)) :=
   match cs with
   | nil => Some nil
   | (c, gs) :: cs' =>
-      match rcargs_num n Vs gs, rcons_num n Vs cs' with
+      match classified_cargs_num n Vs gs, classified_cons_num n Vs cs' with
       | Some gs', Some cs'' => Some ((c, gs') :: cs'')
       | _, _ => None
       end
@@ -490,7 +490,7 @@ Definition selfs_occur (nu n : nat) (Cs : list exp) : bool :=
 
 (** Whether a term mentions one of the variables [lo] to [lo + n - 1]. *)
 Definition mentions_vars (lo n : nat) (M : exp) : bool :=
-  match img_pat (List.repeat false lo ++ List.repeat true n) M with Some _ => false | None => true end.
+  match image_pat (List.repeat false lo ++ List.repeat true n) M with Some _ => false | None => true end.
 
 (** Whether the head [h] of an application may take a [Self]: a type
     former, a record type, or a [Self] itself. *)
@@ -547,24 +547,24 @@ Section Classify.
 
   (** A [Self_j] at the uniform parameters and Self-free non-uniform ones,
       under [d] domains: the variable [x] at [args]. *)
-  Definition cls_self (d x : nat) (args : list exp) : option rptyp :=
+  Definition classify_self (d x : nat) (args : list exp) : option classified_ptyp :=
     let b := (d + List.length pat + np)%nat in
     if (b <=? x) && (x <? b + n) then
       if list_eq_dec exp_eq_dec (List.firstn nu args) (vars_from (d + List.length pat + (np - nu)) nu)
-      then option_map (rptyp_self (n - 1 - (x - b))) (img_pats (cls_pat d np n pat) (List.skipn nu args))
+      then option_map (classified_ptyp_self (n - 1 - (x - b))) (image_pats (classify_pat d np n pat) (List.skipn nu args))
       else None
     else None.
 
   (** A declared member [k] of a filed group at uniform arguments [Cs] in
       which a [Self] occurs, and no argument, domain or non-uniform
       parameter, and at Self-free non-uniform ones: the view [(qc, k, Cs)]. *)
-  Definition cls_nest (d : nat) (qc : qname) (k : nat) (args : list exp) : option rptyp :=
+  Definition classify_nest (d : nat) (qc : qname) (k : nat) (args : list exp) : option classified_ptyp :=
     match grp_nu qc k with
     | Some m =>
         if m <=? List.length args then
-          match img_pats (List.repeat true (d + List.length pat + (np - nu))) (List.firstn m args),
-                img_pats (cls_pat d np n pat) (List.skipn m args) with
-          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (rptyp_nest (vk_ind qc k Cs) Ns) else None
+          match image_pats (List.repeat true (d + List.length pat + (np - nu))) (List.firstn m args),
+                image_pats (classify_pat d np n pat) (List.skipn m args) with
+          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (classified_ptyp_nest (vk_ind qc k Cs) Ns) else None
           | _, _ => None
           end
         else None
@@ -575,45 +575,45 @@ Section Classify.
       occurs, and no argument, domain or non-uniform parameter, and only
       where a type former or a [Π] takes it ([selfs_guarded]): the record
       view [(qr, Is)], of no non-uniform parameter. *)
-  Definition cls_record_view (d : nat) (qr : qname) (args : list exp) : option rptyp :=
+  Definition classify_record_view (d : nat) (qr : qname) (args : list exp) : option classified_ptyp :=
     match rec_np qr with
     | Some m =>
         if Nat.eqb m (List.length args) then
-          match img_pats (List.repeat true (d + List.length pat + (np - nu))) args with
-          | Some Is => if selfs_occur nu n Is && selfs_guarded nu n Is then Some (rptyp_nest (vk_record qr Is) nil) else None
+          match image_pats (List.repeat true (d + List.length pat + (np - nu))) args with
+          | Some Is => if selfs_occur nu n Is && selfs_guarded nu n Is then Some (classified_ptyp_nest (vk_record qr Is) nil) else None
           | None => None
           end
         else None
     | None => None
     end.
 
-  (** A shape under [d] of its domains: [cls_self], [cls_nest],
-      [cls_record_view], or a [Π] over a Self-free domain into a shape.  A
+  (** A shape under [d] of its domains: [classify_self], [classify_nest],
+      [classify_record_view], or a [Π] over a Self-free domain into a shape.  A
       [Self] thus occurs only strictly positively, and in a nested
       occurrence only in its uniform arguments, or in a record's
       instance. *)
-  Fixpoint cls_sh (d : nat) (T : exp) : option rptyp :=
+  Fixpoint classify_shape (d : nat) (T : exp) : option classified_ptyp :=
     match T with
     | a_pi relevant B T' =>
-        match img_pat (cls_pat d np n pat) B with
-        | Some B0 => option_map (rptyp_pi B0) (cls_sh (S d) T')
+        match image_pat (classify_pat d np n pat) B with
+        | Some B0 => option_map (classified_ptyp_pi B0) (classify_shape (S d) T')
         | None => None
         end
     | _ =>
         match app_head T with
-        | a_var x => cls_self d x (app_args T)
-        | a_ind qc k => cls_nest d qc k (app_args T)
-        | a_record qr => cls_record_view d qr (app_args T)
+        | a_var x => classify_self d x (app_args T)
+        | a_ind qc k => classify_nest d qc k (app_args T)
+        | a_record qr => classify_record_view d qr (app_args T)
         | _ => None
         end
     end.
 
   (** An argument: Self-free (and free of the recursive arguments before
       it), or recursive of a shape. *)
-  Definition cls_arg (T : exp) : option rcarg :=
-    match img_pat (cls_pat 0 np n pat) T with
-    | Some A => Some (rcarg_arg relevant A)
-    | None => option_map rcarg_rec_case (cls_sh 0 T)
+  Definition classify_arg (T : exp) : option classified_carg :=
+    match image_pat (classify_pat 0 np n pat) T with
+    | Some A => Some (classified_carg_arg relevant A)
+    | None => option_map classified_carg_rec_case (classify_shape 0 T)
     end.
 End Classify.
 
@@ -627,36 +627,36 @@ Definition rec_none : qname -> option nat := fun _ => None.
 
 (** The classification reads the records' parameter counts pointwise: any
     function equal to [rec_np] at every record classifies alike. *)
-Lemma cls_sh_rec_ext : forall grp_nu rec_np rec_np', (forall qr, rec_np qr = rec_np' qr) ->
-    forall nu np n pat T d, cls_sh grp_nu rec_np nu np n pat d T = cls_sh grp_nu rec_np' nu np n pat d T.
+Lemma classify_shape_rec_ext : forall grp_nu rec_np rec_np', (forall qr, rec_np qr = rec_np' qr) ->
+    forall nu np n pat T d, classify_shape grp_nu rec_np nu np n pat d T = classify_shape grp_nu rec_np' nu np n pat d T.
 Proof.
-  intros * Hr nu np n pat T; induction T; intros d; cbn [cls_sh];
-    try (destruct (app_head _); try reflexivity; unfold cls_record_view; rewrite Hr; reflexivity).
-  destruct (img_pat _ T1); [ rewrite IHT2 |]; reflexivity.
+  intros * Hr nu np n pat T; induction T; intros d; cbn [classify_shape];
+    try (destruct (app_head _); try reflexivity; unfold classify_record_view; rewrite Hr; reflexivity).
+  destruct (image_pat _ T1); [ rewrite IHT2 |]; reflexivity.
 Qed.
 
-Lemma cls_arg_rec_ext : forall grp_nu rec_np rec_np', (forall qr, rec_np qr = rec_np' qr) ->
-    forall nu np n pat T, cls_arg grp_nu rec_np nu np n pat T = cls_arg grp_nu rec_np' nu np n pat T.
-Proof. intros * Hr *; unfold cls_arg; rewrite (cls_sh_rec_ext _ _ _ Hr); reflexivity. Qed.
+Lemma classify_arg_rec_ext : forall grp_nu rec_np rec_np', (forall qr, rec_np qr = rec_np' qr) ->
+    forall nu np n pat T, classify_arg grp_nu rec_np nu np n pat T = classify_arg grp_nu rec_np' nu np n pat T.
+Proof. intros * Hr *; unfold classify_arg; rewrite (classify_shape_rec_ext _ _ _ Hr); reflexivity. Qed.
 
 (** The instances a classified argument meets, in order: the one its
     shape ends in, if it ends in a nested occurrence. *)
-Fixpoint rptyp_view (t : rptyp) : list view_key :=
+Fixpoint classified_ptyp_view (t : classified_ptyp) : list view_key :=
   match t with
-  | rptyp_nest x _ => x :: nil
-  | rptyp_pi _ t' => rptyp_view t'
-  | rptyp_self _ _ => nil
+  | classified_ptyp_nest x _ => x :: nil
+  | classified_ptyp_pi _ t' => classified_ptyp_view t'
+  | classified_ptyp_self _ _ => nil
   end.
 
 (** The instance a classified argument meets, if it is a nested
     occurrence. *)
-Definition rcarg_view (g : rcarg) : list view_key :=
-  match g with rcarg_rec_case t => rptyp_view t | rcarg_arg _ _ => nil end.
+Definition classified_carg_view (g : classified_carg) : list view_key :=
+  match g with classified_carg_rec_case t => classified_ptyp_view t | classified_carg_arg _ _ => nil end.
 
 (** The instances the constructors [cs] meet, constructors in order,
     arguments left to right. *)
-Definition rcons_views (cs : list (string * list rcarg)) : list view_key :=
-  List.concat (List.map (fun c => List.concat (List.map rcarg_view (snd c))) cs).
+Definition classified_cons_views (cs : list (string * list classified_carg)) : list view_key :=
+  List.concat (List.map (fun c => List.concat (List.map classified_carg_view (snd c))) cs).
 
 (** ** The Views of a Group
 
@@ -761,13 +761,13 @@ Qed.
 (** The siblings and the instances met of an instance, read off tables
     aligned with the views; an instance not among them is alone and meets
     nothing. *)
-Definition sibs_tbl (Vs : list view_key) (Ss : list (list view_key)) (x : view_key) : list view_key :=
+Definition siblings_table (Vs : list view_key) (Ss : list (list view_key)) (x : view_key) : list view_key :=
   match view_key_index x Vs with Some v => List.nth v Ss (x :: nil) | None => x :: nil end.
 
 (** The instances the constructors of a view meet, read off a table
     aligned with the views. *)
-Definition meets_tbl (Vs : list view_key) (Cs : list (list (string * list rcarg))) (x : view_key) : list view_key :=
-  match view_key_index x Vs with Some v => rcons_views (List.nth v Cs nil) | None => nil end.
+Definition meets_table (Vs : list view_key) (Cs : list (list (string * list classified_carg))) (x : view_key) : list view_key :=
+  match view_key_index x Vs with Some v => classified_cons_views (List.nth v Cs nil) | None => nil end.
 
 (** ** The Order of the Filed Views
 

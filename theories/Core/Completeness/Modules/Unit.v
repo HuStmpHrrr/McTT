@@ -298,7 +298,7 @@ Qed.
 
 Lemma closure_walk : forall Δ Γ Δy D RΓ, tele_ass Δ -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     Δ ++ Γ ⊨ᵐ me_lit (gu_mk Δy D) ≈ me_lit (gu_mk Δy D) ->
-    forall ρ ρ', RΓ ρ ρ' -> rel_mexp (me_lit (gu_mk (Δy ++ Δ) D)) ρ (me_lit (gu_mk (Δy ++ Δ) D)) ρ'.
+    forall ρ ρ', RΓ ρ ρ' -> rel_modexp_evals (me_lit (gu_mk (Δy ++ Δ) D)) ρ (me_lit (gu_mk (Δy ++ Δ) D)) ρ'.
 Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HC HΓ HU ρ ρ' Hρ; cbn [List.app] in *.
   - rewrite app_nil_r; exact (unit_chain_at HU HΓ _ _ Hρ).
@@ -308,9 +308,9 @@ Proof.
     pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
     destruct (rel_exp_of_typ_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
     rewrite app_assoc.
-    apply (mk_rel_mexp _ _ _ _ (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ) (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ'));
+    apply (mk_rel_modexp_evals _ _ _ _ (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ) (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ'));
       [ apply lit_params_val | apply lit_params_val |].
-    assert (Hstep : forall c c', Ra c c' -> rel_mexp (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ ↦ c) (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ' ↦ c')).
+    assert (Hstep : forall c c', Ra c c' -> rel_modexp_evals (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ ↦ c) (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ' ↦ c')).
     { intros c c' Hc; apply (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU).
       split; [ exact Hρ | eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] ]. }
     eapply (per_dmod_fun Ra); [ constructor; exact Ha | constructor; exact Ha' | exact HRa | | |].
@@ -336,7 +336,7 @@ Proof.
   pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
   pose proof (wf_me_lit _ _ _ _ _ (unit_eq_of_full _ _ _ _ (unit_full_abs _ _ _ _ _ Hf HΔ))) as Hw'.
   assert (Hat : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' ->
-             rel_mexp (me_lit (gunit_abs Δ U)) ρ (me_lit (gunit_abs Δ U)) ρ').
+             rel_modexp_evals (me_lit (gunit_abs Δ U)) ρ (me_lit (gunit_abs Δ U)) ρ').
   { intros R HR ρ ρ' Hρ.
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct U as [Δy D]; cbn [gunit_abs].

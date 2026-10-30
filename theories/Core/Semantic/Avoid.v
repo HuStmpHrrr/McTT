@@ -66,7 +66,7 @@ Qed.
     has, and so is each branch under its own.  (The annotations are never
     evaluated.) *)
 Definition blocks_optional_exp_fresh (K : option nat) (Bks : list eblock) : Prop :=
-  forall b, In b Bks -> optional_exp_fresh (optional_shift (eb_nm b) K) (eb_motive b) /\
+  forall b, In b Bks -> optional_exp_fresh (optional_shift (eb_binder_count b) K) (eb_motive b) /\
     (forall c n B, In (c, n, B) (eb_brs b) -> optional_exp_fresh (optional_shift n K) B).
 
 Lemma blocks_optional_exp_fresh_none : forall Bks, blocks_optional_exp_fresh None Bks.
@@ -319,7 +319,7 @@ Section Env.
   Qed.
 
   (** The atoms of a level value avoid [v] when the value does. *)
-  Lemma level_atoms_avoid_view : forall d, domain_avoids v b d -> level_atoms_avoid v b (dlvl_atoms d).
+  Lemma level_atoms_avoid_view : forall d, domain_avoids v b d -> level_atoms_avoid v b (domain_level_atoms d).
   Proof. destruct 1; cbn; repeat constructor; assumption. Qed.
 
   Lemma level_atoms_avoid_suc : forall xs, level_atoms_avoid v b xs -> level_atoms_avoid v b (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs).
@@ -328,11 +328,11 @@ Section Env.
   Lemma level_atoms_avoid_app : forall xs ys, level_atoms_avoid v b xs -> level_atoms_avoid v b ys -> level_atoms_avoid v b (xs ++ ys).
   Proof. induction 1; cbn; intros; [ assumption | constructor; auto ]. Qed.
 
-  Lemma domain_avoids_lvl_suc : forall d, domain_avoids v b d -> domain_avoids v b (dlvl_suc d).
-  Proof. intros; unfold dlvl_suc; constructor; apply level_atoms_avoid_suc, level_atoms_avoid_view; assumption. Qed.
+  Lemma domain_avoids_lvl_suc : forall d, domain_avoids v b d -> domain_avoids v b (domain_level_suc d).
+  Proof. intros; unfold domain_level_suc; constructor; apply level_atoms_avoid_suc, level_atoms_avoid_view; assumption. Qed.
 
-  Lemma domain_avoids_lvl_max : forall d e, domain_avoids v b d -> domain_avoids v b e -> domain_avoids v b (dlvl_max d e).
-  Proof. intros; unfold dlvl_max; constructor; apply level_atoms_avoid_app; apply level_atoms_avoid_view; assumption. Qed.
+  Lemma domain_avoids_lvl_max : forall d e, domain_avoids v b d -> domain_avoids v b e -> domain_avoids v b (domain_level_max d e).
+  Proof. intros; unfold domain_level_max; constructor; apply level_atoms_avoid_app; apply level_atoms_avoid_view; assumption. Qed.
 
   Lemma dmod_avoids_global_nil : forall p, dmod_avoids v b (dm_global p nil).
   Proof. intros; constructor; intros ? []. Qed.
@@ -523,7 +523,7 @@ Section OFresh.
     induction Bks as [| [nm oZ A Bs] Bks IH]; intros b Hb; [ destruct Hb |].
     cbn [all_blocks] in H; destruct H as [(_ & HA & HBs) HBks].
     destruct Hb as [<- | Hb]; [| exact (IH HBks _ Hb) ].
-    cbn [eb_nm eb_motive eb_brs optional_shift option_map optional_exp_fresh]; split; [ exact HA |].
+    cbn [eb_binder_count eb_motive eb_brs optional_shift option_map optional_exp_fresh]; split; [ exact HA |].
     intros c n B Hin; apply all_brs_Forall in HBs; exact (proj1 (Forall_forall _ _) HBs _ Hin).
   Qed.
   Lemma optional_exp_fresh_elim_M : forall r oq oUs j Bks M, optional_exp_fresh K (a_elim r oq oUs j Bks M) -> optional_exp_fresh K M.
@@ -638,9 +638,9 @@ Section Eval.
         apply Forall_forall; exact (optional_exp_fresh_elim_ups K r oq Us j Bks M H)
     end : avoid.
   #[local] Hint Extern 1 (ups_avoids _ _ _) => unfold ups_avoids : avoid.
-  #[local] Hint Extern 1 (domain_avoids _ _ (dlvl_lit _)) => repeat constructor : mctt.
-  #[local] Hint Extern 1 (domain_avoids _ _ (dlvl_suc _)) => apply domain_avoids_lvl_suc : mctt.
-  #[local] Hint Extern 1 (domain_avoids _ _ (dlvl_max _ _)) => apply domain_avoids_lvl_max : mctt.
+  #[local] Hint Extern 1 (domain_avoids _ _ (domain_level_lit _)) => repeat constructor : mctt.
+  #[local] Hint Extern 1 (domain_avoids _ _ (domain_level_suc _)) => apply domain_avoids_lvl_suc : mctt.
+  #[local] Hint Extern 1 (domain_avoids _ _ (domain_level_max _ _)) => apply domain_avoids_lvl_max : mctt.
 
   (** The entry an extension adds, given the invariant of its value. *)
   Ltac dentry_avoids_of d :=
@@ -690,7 +690,7 @@ Section Eval.
   (** The next neutral projection of a neutral of a record type: at its
       field's type, evaluated in the parameters and the projections before
       it, which avoid. *)
-  Ltac nflds_head_avoids :=
+  Ltac neutral_fields_head_avoids :=
     match goal with IHT : forall K0, env_avoids _ _ K0 (env_args nil (?ns ++ ?pre)) -> optional_exp_fresh K0 _ -> domain_avoids _ _ ?t |- _ =>
       constructor;
         [ apply (IHT None);
@@ -731,14 +731,14 @@ Section Eval.
        forall Km, env_avoids v b Km ρm -> ends_fresh p Km As t -> ups_avoids v b ups ->
        forall K, env_avoids v b K ρ -> optional_ptyp_fresh K t -> domain_avoids v b m -> forall a, In a as' -> domain_avoids v b a) /\
     (forall f m r, eval_proj Θ Ξ f m r -> domain_avoids v b m -> domain_avoids v b r) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs ->
+    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs ->
        (forall a, In a ns -> domain_avoids v b a) -> domain_ne_avoids v b m -> (forall a, In a pre -> domain_avoids v b a) ->
        forall a, In a rs -> domain_avoids v b a) /\
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> domain_avoids v b m -> forall a, In a ws -> domain_avoids v b a) /\
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
        forall Km, env_avoids v b Km ρm -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh p Km As t) ->
        ups_avoids v b ups -> env_avoids v b None ρ -> (forall a, In a vs -> domain_avoids v b a) -> forall a, In a as' -> domain_avoids v b a) /\
-    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs ->
+    (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs ->
        forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> forall a, In a vs -> domain_avoids v b a) /\
     (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r ->
        forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> domain_avoids v b f -> domain_avoids v b r).
@@ -826,7 +826,7 @@ Section Eval.
               exact (proj2 (HBk _ (List.nth_error_In _ _ Hb)) _ _ _ (brs_lookup_in _ _ _ _ e)) ]
       end ].
     all: try solve [ match goal with
-      | Hl : List.length ?as' = im_np ?Dq ?Mk, Hn : eb_nm ?bk = S (im_nn ?Mk), Hb : List.nth_error ?Bks _ = Some ?bk,
+      | Hl : List.length ?as' = im_np ?Dq ?Mk, Hn : eb_binder_count ?bk = S (im_nn ?Mk), Hb : List.nth_error ?Bks _ = Some ?bk,
         HBk : blocks_optional_exp_fresh ?K ?Bks, Hρ : env_avoids _ _ ?K ?ρ,
         IHA : forall K0, env_avoids _ _ K0 (env_args ?ρ ?L) -> optional_exp_fresh K0 (eb_motive ?bk) -> domain_avoids _ _ ?a
         |- domain_avoids _ _ (⇑ ?a (d_elim _ _ _ _ _ _ _)) =>
@@ -874,14 +874,14 @@ Section Eval.
       | IH : (forall y, In y nil -> domain_avoids _ _ y) -> forall z, In z ?rs -> domain_avoids _ _ z, Hk : List.nth_error ?rs _ = Some ?r |- domain_avoids _ _ ?r =>
           exact (IH (fun _ Hin => match Hin with end) _ (List.nth_error_In _ _ Hk))
       end ].
-    all: try solve [ lazymatch goal with |- domain_avoids _ _ (⇑ _ (d_proj _ _)) => nflds_head_avoids end ].
+    all: try solve [ lazymatch goal with |- domain_avoids _ _ (⇑ _ (d_proj _ _)) => neutral_fields_head_avoids end ].
     (** A record type of a global module: its type former, applied to the
         module's arguments. *)
     all: try solve [ match goal with IH : domain_avoids _ _ (d_record _ nil) -> _ -> _, Ha : forall a, In a _ -> domain_avoids _ _ a |- _ =>
                        apply IH; [ apply domain_avoids_record; intros ? [] | exact Ha ] end ].
     all: try solve [ match goal with
       | IH : (forall y, In y (?pre ++ ?x :: nil) -> domain_avoids _ _ y) -> forall z, In z ?rs -> domain_avoids _ _ z, Hin : In ?d ?rs |- domain_avoids _ _ ?d =>
-          eapply IH; [ apply domain_avoids_args_snoc; [ assumption | apply domain_avoids_relevant_value; nflds_head_avoids ] | exact Hin ]
+          eapply IH; [ apply domain_avoids_args_snoc; [ assumption | apply domain_avoids_relevant_value; neutral_fields_head_avoids ] | exact Hin ]
       end ].
     (** The recursive results along leaf paths, and their types, are
         lists: the [i]-th of a function shape's, a member of one. *)
@@ -1053,7 +1053,7 @@ Qed.
 Lemma app_avoids : forall v b m n r, $| m & n | Θ ⍮ Ξ ↘ r -> domain_avoids v b m -> domain_avoids v b n -> domain_avoids v b r.
 Proof. intros * H; exact (proj1 (proj2 (eval_avoids v b)) _ _ _ H). Qed.
 
-Lemma shty_avoids : forall v b p ups ρ t a K, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+Lemma shape_type_avoids : forall v b p ups ρ t a K, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
     env_avoids v b K ρ -> optional_ptyp_fresh K t -> (forall u, In u ups -> domain_avoids v b u) -> domain_avoids v b a.
 Proof.
   intros * H; destruct (eval_avoids v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
@@ -1174,22 +1174,22 @@ Qed.
 
 (** The shapes of a constructor's recursive arguments end in a member at
     as many parameters as it has non-uniform ones, argument by argument. *)
-Lemma plen_forall : forall D (gs : list carg), cargs_plen D gs ->
+Lemma params_length_forall : forall D (gs : list carg), cargs_params_length D gs ->
     Forall (fun g => match g with
                      | ca_rec t => exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj
                      | ca_arg _ _ => True end) gs.
 Proof.
-  unfold cargs_plen; intros D; induction gs as [| g gs IH]; intros H; constructor.
+  unfold cargs_params_length; intros D; induction gs as [| g gs IH]; intros H; constructor.
   - destruct g as [r A | t]; [ exact I | exact (H nil t gs eq_refl) ].
   - apply IH; intros gs1 t gs2 E; apply (H (g :: gs1) t gs2); rewrite E; reflexivity.
 Qed.
 
 (** The motives at the ends of the leaf paths of a shape, fresh under
     their binders, from the blocks: each end at as many parameters as its
-    member's motive binds ([rview_leaf_arity], [blocks_nm_at]), down the
+    member's motive binds ([rview_leaf_arity], [blocks_binder_count_at]), down the
     record views' fields by their order. *)
 Lemma ends_fresh_of_blocks : forall p D Bks K, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-    blocks_nm_at D None Bks -> blocks_optional_exp_fresh K Bks ->
+    blocks_binder_count_at D None Bks -> blocks_optional_exp_fresh K Bks ->
     forall t, (exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj) ->
       ends_fresh p K (blocks_motives Bks) t.
 Proof.
@@ -1205,7 +1205,7 @@ Proof.
       unfold im_is_rview in Hrv; destruct (im_head Mj) as [| | qr Is fl] eqn:Hh; try discriminate Hrv.
       eapply ends_fresh_rview; [ exact HD | exact HMj | exact Hh |].
       intros c gs gs1 t gs2 Hcs E.
-      pose proof (rview_leaf_plen _ Har _ _ _ _ HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)
+      pose proof (rview_leaf_params_length _ Har _ _ _ _ HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)
                     ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 E) as Hpt.
       apply (IHn j (Hrk Mj HMj ltac:(unfold im_is_rview; rewrite Hh; reflexivity)) t); [| exact Hpt ].
       intros Mt HMt HrT; exact (rview_leaf_order _ Har _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs E HMt HrT).
@@ -1219,7 +1219,7 @@ Qed.
 
 (** And so of every recursive argument of a constructor of [D]. *)
 Lemma cargs_ends_fresh : forall p D Bks K gs, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D ->
-    blocks_nm_at D None Bks -> blocks_optional_exp_fresh K Bks -> cargs_plen D gs ->
+    blocks_binder_count_at D None Bks -> blocks_optional_exp_fresh K Bks -> cargs_params_length D gs ->
     forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_fresh p K (blocks_motives Bks) t.
 Proof. intros * HD Har Hnm HB Hpl gs1 t gs2 E; exact (ends_fresh_of_blocks _ _ _ _ HD Har Hnm HB t (Hpl gs1 t gs2 E)). Qed.
 
@@ -1304,7 +1304,7 @@ Section Read.
       apply (IHfresh_cargs (S s)); [ lia | lia | | intros; eapply domain_avoids_mono'; [| apply Hu; eassumption ]; lia ].
       change (@None nat) with (optional_shift 1 None).
       apply env_avoids_cons; [ eapply env_avoids_mono; [| exact Hρ ]; lia | constructor; apply (domain_avoids_fresh_relevant_variable b0); assumption ].
-    - assert (Ha : domain_avoids v b0 a) by (eapply shty_avoids; [ eassumption | exact Hρ | apply optional_ptyp_fresh_none | exact Hu ]).
+    - assert (Ha : domain_avoids v b0 a) by (eapply shape_type_avoids; [ eassumption | exact Hρ | apply optional_ptyp_fresh_none | exact Hu ]).
       cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
       apply all_in_cons; [ eapply domain_avoids_mono'; [| apply (domain_avoids_fresh_var b0); assumption ]; lia |].
       apply (IHfresh_cargs b0); [ lia | lia | exact Hρ | exact Hu ].
@@ -1392,8 +1392,8 @@ Section Read.
       ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con hd k c (pre ++ ns ++ vs) :: nil) ↘ t ->
       ind_lookup Θ Ξ p = Some D ->
       n0 = (im_nn Mi + List.length gs' + cargs_nrec D gs)%nat -> im_nn Mv = im_nn Mi ->
-      cargs_nin D Dc gs' gs = cargs_nrec Dc gs' ->
-      cargs_plen D gs -> blocks_nm_at D None Bks -> rview_leaf_arity D ->
+      cargs_container_count D Dc gs' gs = cargs_nrec Dc gs' ->
+      cargs_params_length D gs -> blocks_binder_count_at D None Bks -> rview_leaf_arity D ->
       v < s -> b <= s -> env_avoids v b K ρ -> blocks_optional_exp_fresh K Bks -> ups_avoids v b ups ->
       optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A -> optional_exp_fresh (optional_shift n0 K) B ->
       (forall x, In x pre -> domain_avoids v b x) ->
@@ -1463,11 +1463,11 @@ Section Read.
        domain_avoids v b x -> nf_fresh (s - v - 1) X) /\
     (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        forall b K D, v < s -> b <= s -> env_avoids v b K ρ -> blocks_optional_exp_fresh K Bks ->
-       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D ->
+       ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks -> rview_leaf_arity D ->
        (forall a, In a ups -> domain_avoids v b a) -> all_list (normal_block_forall (fun n => nf_fresh (n + (s - v - 1)))) NBks) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall b K D, v < s -> b <= s -> env_avoids v b K ρ -> blocks_optional_exp_fresh K Bks ->
-       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
+       ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks -> rview_leaf_arity D -> im_nn Mv = im_nn Mi ->
        optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A ->
        (forall c n B, In (c, n, B) Bs -> optional_exp_fresh (optional_shift n K) B) ->
        (forall a, In a ups -> domain_avoids v b a) -> (forall a, In a (snd r) -> domain_avoids v b a) -> all_list (fun br => nf_fresh (branch_arity br + (s - v - 1)) (branch_body br)) Bs') /\
@@ -1488,12 +1488,12 @@ Section Read.
                                      (forall a, In a ups -> domain_avoids v b a) -> domain_avoids v b x -> nf_fresh (s - v - 1) X)
              (fun s ρ p ups Bks Dc sel i Ms NBks _ => forall b K D, v < s -> b <= s -> env_avoids v b K ρ ->
                                                       blocks_optional_exp_fresh K Bks ->
-                                                      ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
+                                                      ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks ->
                                                       rview_leaf_arity D ->
                                                       (forall a, In a ups -> domain_avoids v b a) -> all_list (normal_block_forall (fun n => nf_fresh (n + (s - v - 1)))) NBks)
              (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => forall b K D, v < s -> b <= s -> env_avoids v b K ρ ->
                                                             blocks_optional_exp_fresh K Bks ->
-                                                            ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
+                                                            ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks ->
                                                             rview_leaf_arity D ->
                                                             im_nn Mv = im_nn Mi ->
                                                             optional_exp_fresh (optional_shift (S (im_nn Mi)) K) A ->
@@ -1639,9 +1639,9 @@ Section Read.
       end ].
     all: try solve [ match goal with
       | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_avoids v b0 K0 ?ρ -> blocks_optional_exp_fresh K0 ?Bks ->
-               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> rview_leaf_arity D0 ->
+               ind_lookup _ _ ?p = Some D0 -> blocks_binder_count_at D0 None ?Bks -> rview_leaf_arity D0 ->
                (forall a, In a ?ups -> _) -> all_list _ ?W,
-        Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
+        Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_binder_count_at ?D None ?Bks, Har : rview_leaf_arity ?D,
         Hb : ?b <= ?s, Hρ : forall x, ?K <> Some x -> dentry_avoids v ?b (env_entry ?ρ x), HBk : blocks_optional_exp_fresh ?K ?Bks,
         Hu : forall a, In a ?ups -> domain_avoids v ?b a |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Har | exact Hu ]
@@ -1652,8 +1652,8 @@ Section Read.
         read, both being the motive's binders. *)
     all: try solve [ match goal with
       | f : fresh_tele _ _ (env_args nil ?X) (List.rev (im_nparams ?Mv)) ?s ?ns,
-        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi), HMv : ind_member ?D ?ix = Some ?Mv,
-        Hnm : blocks_nm_at ?D None ?Bks,
+        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_binder_count ?bk = S (im_nn ?Mi), HMv : ind_member ?D ?ix = Some ?Mv,
+        Hnm : blocks_binder_count_at ?D None ?Bks,
         em : eval_mref _ _ _ ?X _ (_, _, ?pre),
         e2 : ⟦ eb_motive ?bk ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ _) ↘ ?a,
         IH : forall b0, _ -> _ -> domain_avoids v b0 ?a -> nf_fresh _ ?A',
@@ -1670,11 +1670,11 @@ Section Read.
       end ].
     all: try solve [ match goal with
       | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_avoids v b0 K0 ?ρ -> blocks_optional_exp_fresh K0 ?Bks ->
-               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> rview_leaf_arity D0 -> im_nn ?Mv = im_nn ?Mi ->
+               ind_lookup _ _ ?p = Some D0 -> blocks_binder_count_at D0 None ?Bks -> rview_leaf_arity D0 -> im_nn ?Mv = im_nn ?Mi ->
                _ -> _ -> _ -> _ -> all_list _ ?W,
-        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi), HMv : ind_member ?D ?ix = Some ?Mv,
+        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_binder_count ?bk = S (im_nn ?Mi), HMv : ind_member ?D ?ix = Some ?Mv,
         em : eval_mref _ _ _ ?X _ (_, _, ?pre),
-        Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
+        Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_binder_count_at ?D None ?Bks, Har : rview_leaf_arity ?D,
         Hb : ?b <= ?s, Hρ : env_avoids v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
         HX : forall x, In x ?X -> domain_avoids v ?b x |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Har
@@ -1685,9 +1685,9 @@ Section Read.
       end ].
     all: try solve [ match goal with
       | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_avoids v b0 K0 ?ρ -> blocks_optional_exp_fresh K0 ?Bks ->
-               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> rview_leaf_arity D0 ->
+               ind_lookup _ _ ?p = Some D0 -> blocks_binder_count_at D0 None ?Bks -> rview_leaf_arity D0 ->
                (forall a, In a ?X -> _) -> all_list _ ?W,
-        Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Har : rview_leaf_arity ?D,
+        Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_binder_count_at ?D None ?Bks, Har : rview_leaf_arity ?D,
         Hb : ?b <= ?s, Hρ : env_avoids v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
         HX : forall x, In x ?X -> domain_avoids v ?b x |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Har | exact HX ]
@@ -1702,8 +1702,8 @@ Section Read.
         e0 : ⟦ ?B ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?wihs) ↘ ?bv,
         e1 : ⟦ ?A ⟧ _ ⍮ _ ⍮ env_args ?ρ (?ns ++ _) ↘ ?t,
         HD0 : ind_lookup _ _ _ = Some ?D0,
-        Hn0 : ?n0 = _, Hn : ?n = _, Hnn : im_nn _ = im_nn ?Mi, Hcnt : cargs_nin ?D0 _ ?gs' ?gs = _,
-        Hpl : cargs_plen ?D0 ?gs, Hnm : blocks_nm_at ?D0 None ?Bks, Har : rview_leaf_arity ?D0,
+        Hn0 : ?n0 = _, Hn : ?n = _, Hnn : im_nn _ = im_nn ?Mi, Hcnt : cargs_container_count ?D0 _ ?gs' ?gs = _,
+        Hpl : cargs_params_length ?D0 ?gs, Hnm : blocks_binder_count_at ?D0 None ?Bks, Har : rview_leaf_arity ?D0,
         IH : forall b0, _ -> _ -> domain_nf_avoids v b0 (⇓ ?t ?bv) -> nf_fresh _ ?B',
         Hb : ?b <= ?s, Hρ : env_avoids v ?b ?K ?ρ, HBk : blocks_optional_exp_fresh ?K ?Bks,
         HA : optional_exp_fresh (optional_shift (S (im_nn ?Mi)) ?K) ?A,

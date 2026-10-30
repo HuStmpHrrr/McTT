@@ -339,7 +339,7 @@ Section IndRealize.
   Lemma ind_glu_elem_readback :
       forall k' Γ Us Ns M m, ind_glu_elem p D ups NEl AEl DP DEl k' Γ Us Ns M m -> ⊢ Γ ->
       forall Mk' ns', ind_member D k' = Some Mk' -> glu_params_top D Mk' Γ (Us ++ Ns) (ups ++ ns') ->
-      ind_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups)
+      ind_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups)
         (canon_doms_rel ups) k' ups ups ns' ns' m m ->
       forall (w : nf), Rnf ⇓ (d_ind p k' (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : im_ty_at p k' Mk' Us Ns.
   Proof.
@@ -353,7 +353,7 @@ Section IndRealize.
     apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
              (fun k' Γ Us Ns M m _ => ⊢ Γ -> forall Mk' ns', ind_member D k' = Some Mk' ->
                 glu_params_top D Mk' Γ (Us ++ Ns) (ups ++ ns') ->
-                ind_rel p D (okr_at D ups nr) nr ar dr k' ups ups ns' ns' m m ->
+                ind_rel p D (admissible_index_at D ups nr) nr ar dr k' ups ups ns' ns' m m ->
                 forall (w : nf), Rnf ⇓ (d_ind p k' (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : im_ty_at p k' Mk' Us Ns)
              (fun k' Γ Us pre t A N v _ => ⊢ Γ -> Γ ⊢ N : A -> (exists σ', A = ptyp_ty_at p D Us σ' t) ->
                 forall Mk' xs ms c0 gs1 t0 gs2 ws kk ys, ind_member D k' = Some Mk' -> pre = ms ++ ws ++ ys ->
@@ -362,7 +362,7 @@ Section IndRealize.
                 tele_prefix_rel (ar k' ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
                 ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
                 tele_prefix_rel (shape_doms_rel (dr k') ms ws (ptyp_doms t0)) kk ys ys ->
-                rec_arg_rel p D (okr_at D ups nr) nr ar dr k' ups ups pre pre t v v ->
+                rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k' ups ups pre pre t v v ->
                 List.length Us = ind_nu D ->
                 forall (V : nf), Rsh v at t of p ups in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ xs ++ ws ++ ys) ⍮ length Γ ↘ V ->
                 Γ ⊢ N ≈ V : A)).
@@ -472,7 +472,7 @@ Section IndRealize.
       pose proof (functional_eval_projs _ _ _ _ Hps Hps0) as <-.
       pose proof (functional_eval_projs _ _ _ _ Hps Hps1) as <-.
       clear Hrel.
-      pose proof (rview_struct_nparams _ _ _ (grp_tele_ass_rstruct _ Hass) _ _ _ _ _ HMk0 Hhr) as Hnp0.
+      pose proof (rview_struct_nparams _ _ _ (grp_tele_ass_record_struct _ Hass) _ _ _ _ _ HMk0 Hhr) as Hnp0.
       pose proof (ind_con_single _ _ _ Hcs) as Hc.
       destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Hvl _].
       assert (Hn0 : tele_rel (nr k') (List.rev (im_nparams Mk0)) nil nil) by (rewrite Hnp0; split; reflexivity + exact I).
@@ -570,7 +570,7 @@ Section IndRealize.
       pose proof (functional_eval_exps' _ _ _ _ ET Ebt) as ->.
       destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs' & Ebs & Ebs' & _ & _ & Hvv).
       pose proof (functional_eval_exps' _ _ _ _ Ebs E0) as ->; pose proof (functional_eval_exps' _ _ _ _ Ebs' E0) as ->.
-      unfold ntele_rel in R0T; rewrite HMj in R0T.
+      unfold nparams_tele_rel in R0T; rewrite HMj in R0T.
       destruct (Hc1 _ _ E0 HA) as (HQl & _ & Hgn).
       destruct (Hgn _ R0T) as [_ HQt].
       assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
@@ -1082,7 +1082,7 @@ Proof.
     + saturate_kripke_escape.
       pose proof (H13 Γ wk_id ltac:(mauto 3)) as HIT.
       rewrite exp_wk_id in HIT.
-      dir_inversion_clear_by_head read_typ.
+      directed_inversion_clear_by_head read_typ.
       assert (Γ ⊢ IT ® glu_typ_top i a) as Hgtt by mauto 3; destruct_anon Hgtt.
       assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(large_level i)) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.

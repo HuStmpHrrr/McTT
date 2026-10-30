@@ -1,7 +1,7 @@
 (** * The View Equations, Read in the PER Model
 
     The semantic view equations of a group ([views_self_valid]) are
-    judgments over the context [grp_sctx D] of the group's members as
+    judgments over the context [grp_selfs_ctx D] of the group's members as
     variables.  At an environment [ρS] of that context related to itself,
     they relate the group's telescopes, weakened past the members
     ([self_wk]), to the container's, instantiated at the view's arguments.
@@ -269,13 +269,13 @@ Qed.
     in [Core.Semantic.Inductives.ViewCount]. *)
 
 (** The field [agree_recursive_targets]: a recursive argument of the container's
-    ends in a member of its group ([grp_tele_ass_plen] of the container). *)
+    ends in a member of its group ([grp_tele_ass_params_length] of the container). *)
 Lemma view_agree_recursive_targets : forall Dq, grp_tele_ass Dq ->
     forall i' Mi' c gs1' t' gs2', ind_member Dq i' = Some Mi' -> ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') ->
       exists Mj', ind_member Dq (ptyp_mem t') = Some Mj'.
 Proof.
   intros * Hass * HMi' Hc.
-  destruct (grp_tele_ass_plen _ Hass _ _ _ _ HMi' (cons_lookup_in _ _ _ Hc) _ _ _ eq_refl) as (Mj & HMj & _).
+  destruct (grp_tele_ass_params_length _ Hass _ _ _ _ HMi' (cons_lookup_in _ _ _ Hc) _ _ _ eq_refl) as (Mj & HMj & _).
   exists Mj; exact HMj.
 Qed.
 

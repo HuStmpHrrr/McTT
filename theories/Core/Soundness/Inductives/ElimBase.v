@@ -190,7 +190,7 @@ Record rec_leaf_pos (D : ind_decl) (gs : list carg) (k : nat) : Prop := mk_rec_l
     (** The kinds, split at the argument *)
   ; leaf_pos_split : gs = leaf_pos_before ++ ca_rec leaf_pos_shape :: leaf_pos_after
     (** The index is one of a leaf path of the shape *)
-  ; leaf_pos_bound : leaf_pos_index < List.length (shape_leaves (rv_leaves D) 0 leaf_pos_shape)
+  ; leaf_pos_bound : leaf_pos_index < List.length (shape_leaves (rview_leaves D) 0 leaf_pos_shape)
     (** The position, after the results of the arguments before *)
   ; leaf_pos_at : k = cargs_nrec D leaf_pos_before + leaf_pos_index }.
 
@@ -200,9 +200,9 @@ Proof.
   intros D gs; induction gs as [| [A | t] gs IH]; intros k Hk; cbn [cargs_nrec] in Hk; [ lia | |].
   - destruct (IH k Hk) as [gs1 t gs2 idx Heq Hb Hat].
     exact (mk_rec_leaf_pos D (ca_arg A :: gs) k (ca_arg A :: gs1) t gs2 idx ltac:(rewrite Heq; reflexivity) Hb Hat).
-  - destruct (Nat.lt_ge_cases k (List.length (shape_leaves (rv_leaves D) 0 t))) as [Hlt | Hge].
+  - destruct (Nat.lt_ge_cases k (List.length (shape_leaves (rview_leaves D) 0 t))) as [Hlt | Hge].
     + exact (mk_rec_leaf_pos D (ca_rec t :: gs) k nil t gs k eq_refl Hlt eq_refl).
-    + destruct (IH (k - List.length (shape_leaves (rv_leaves D) 0 t)) ltac:(lia)) as [gs1 t' gs2 idx Heq Hb Hat].
+    + destruct (IH (k - List.length (shape_leaves (rview_leaves D) 0 t)) ltac:(lia)) as [gs1 t' gs2 idx Heq Hb Hat].
       refine (mk_rec_leaf_pos D (ca_rec t :: gs) k (ca_rec t :: gs1) t' gs2 idx ltac:(rewrite Heq; reflexivity) Hb _).
       cbn [cargs_nrec]; lia.
 Qed.
@@ -211,8 +211,8 @@ Qed.
     recursive argument: after the results of the arguments before it and
     of the paths before it, the type of the path's result. *)
 Lemma ihs_ctx_nth : forall D nn As Us na gs gs1 t gs2 idx l, gs = gs1 ++ ca_rec t :: gs2 ->
-    List.nth_error (shape_leaves (rv_leaves D) (pat_nargs (cargs_pat gs1) + nn) t) idx = Some l ->
-    List.nth_error (List.rev (ihs_ctx_aux (rv_leaves D) nn As Us na nil 0 gs)) (cargs_nrec D gs1 + idx)
+    List.nth_error (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t) idx = Some l ->
+    List.nth_error (List.rev (ihs_ctx_aux (rview_leaves D) nn As Us na nil 0 gs)) (cargs_nrec D gs1 + idx)
     = Some (ce_ass (leaf_ihty As (sb_of_wk (wk_shiftn ((cargs_nrec D gs1 + idx) + na + nn)))
                       (ihs_sub nn Us na (cargs_pat gs1) (cargs_nrec D gs1 + idx))
                       (a_var ((cargs_nrec D gs1 + idx) + na - 1 - List.length (cargs_pat gs1))) l)).
@@ -227,7 +227,7 @@ Proof.
   rewrite List.nth_error_app2
     by (rewrite List.length_rev, length_leaves_ctx, List.length_firstn; apply nth_error_lt_length in Hl; lia).
   rewrite List.length_rev, length_leaves_ctx, List.length_firstn.
-  replace (idx - Nat.min idx (List.length (shape_leaves (rv_leaves D) (pat_nargs (cargs_pat gs1) + nn) t))) with 0
+  replace (idx - Nat.min idx (List.length (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t))) with 0
     by (apply nth_error_lt_length in Hl; lia).
   reflexivity.
 Qed.
@@ -237,7 +237,7 @@ Qed.
     the non-recursive arguments before it. *)
 Lemma elim_ihs_nth : forall pq D oq Us Bks σ m gs gs1 t gs2 As N idx l, gs = gs1 ++ ca_rec t :: gs2 ->
     List.length As = List.length gs -> List.nth_error As (List.length gs1) = Some N ->
-    List.nth_error (shape_leaves (rv_leaves D) (m + List.length (cargs_nonrec gs1)) t) idx = Some l ->
+    List.nth_error (shape_leaves (rview_leaves D) (m + List.length (cargs_nonrec gs1)) t) idx = Some l ->
     List.nth_error (elim_ihs pq D oq Us Bks σ m gs As) (cargs_nrec D gs1 + idx)
     = Some (leaf_ih pq D oq Us Bks (cargs_sub σ gs1 As) N l).
 Proof.
@@ -253,7 +253,7 @@ Proof.
       replace (S m + List.length (cargs_nonrec gs1)) with (m + S (List.length (cargs_nonrec gs1))) by lia; exact Hlf.
     + rewrite List.nth_error_app2 by (rewrite List.length_map, (length_shape_leaves _ _ _ 0); lia).
       rewrite List.length_map, (length_shape_leaves _ _ m 0).
-      replace (List.length (shape_leaves (rv_leaves D) 0 t0) + cargs_nrec D gs1 + idx - List.length (shape_leaves (rv_leaves D) 0 t0))
+      replace (List.length (shape_leaves (rview_leaves D) 0 t0) + cargs_nrec D gs1 + idx - List.length (shape_leaves (rview_leaves D) 0 t0))
         with (cargs_nrec D gs1 + idx) by lia.
       cbn [cargs_nonrec] in Hlf.
       exact (IH σ m _ t gs2 As N idx l eq_refl ltac:(injection Hl as Hl; exact Hl) HN Hlf).
@@ -353,7 +353,7 @@ Qed.
     per leaf path of the rest of the shape. *)
 Lemma eval_ih_pi_inv : forall ρ0 p D ups Bks0 B t v r, ind_lookup gc_deps gc_stack p = Some D ->
     ⟦ih v of pt_pi B t under p ups Bks0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ r ->
-    r = List.map (fun i => d_ihfn ρ0 Bks0 p ups t i v) (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t))).
+    r = List.map (fun i => d_ihfn ρ0 Bks0 p ups t i v) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))).
 Proof.
   intros * Hl H; inversion H; subst.
   match goal with H' : ind_lookup _ _ p = Some ?D' |- _ => rewrite Hl in H'; injection H' as <- end; reflexivity.
@@ -364,7 +364,7 @@ Lemma eval_ihty_pi_inv : forall p D ups ρm As ρ0 B t v a, ind_lookup gc_deps g
     ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ a ->
     exists b, ⟦ B ⟧ ρ0 ↘ b /\
       a = List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ0 t i v) fam_cod)
-            (List.seq 0 (List.length (shape_leaves (rv_leaves D) 0 t))).
+            (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))).
 Proof.
   intros * Hl H; inversion H; subst.
   match goal with H' : ind_lookup _ _ p = Some ?D' |- _ => rewrite Hl in H'; injection H' as <- end; eauto.

@@ -292,10 +292,10 @@ Section FiledOk.
 
   #[local] Instance GC2 : GCtx := gc_mk Θ2 Ξ2.
 
-  Lemma fo_wf : ⊢ᵍ Θ2 ⍮ Ξ2.
+  Lemma filed_ok_wf : ⊢ᵍ Θ2 ⍮ Ξ2.
   Proof. exact (gctx_embedding_wf _ _ _ _ He). Qed.
 
-  Lemma fo_sub : gc_sub Θm Ξm Θ2 Ξ2.
+  Lemma filed_ok_sub : gc_sub Θm Ξm Θ2 Ξ2.
   Proof. exact (gctx_embedding_resolution _ _ _ _ He). Qed.
 
   Lemma gc_loc_valid : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
@@ -309,7 +309,7 @@ Section FiledOk.
   Qed.
 
   (** An entry of a stored body, read at both global contexts. *)
-  Lemma fo_entry : forall p T Φ x Φ0 E, gc_loc Θm Ξm p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+  Lemma filed_ok_entry : forall p T Φ x Φ0 E, gc_loc Θm Ξm p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       exists Φ2 E2, gc_loc Θ2 Ξ2 p = Some (T, Φ2) /\ gm_entry Φ2 (x :: nil) = Some E2 /\
         gc_entry Θ2 Ξ2 (qname_in p x) = Some E2 /\ entry_grows E E2 /\
         gc_entry Θm Ξm (qname_in p x) = Some E /\ gm_entry Φ (x :: nil) = Some E.
@@ -318,19 +318,19 @@ Section FiledOk.
     destruct (gm_prefix_entry _ _ _ Hp) as (Φ0' & E' & Heq & Hent); injection Heq as <- <-.
     pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hlc.
     pose proof (proj2 (loc_entry _ _ Hgm _ _ _ Hlc x E) Hent) as HeE.
-    destruct (gc_sub_entry _ _ _ _ _ _ fo_sub HeE) as (E2 & HeE2 & Hgr).
-    destruct (gc_loc_grow _ _ _ _ fo_wf fo_sub _ _ _ Hl) as (Φ2 & Hl2 & _ & Hlc2).
-    pose proof (proj1 (loc_entry _ _ fo_wf _ _ _ Hlc2 x E2) HeE2) as Hent2.
+    destruct (gc_sub_entry _ _ _ _ _ _ filed_ok_sub HeE) as (E2 & HeE2 & Hgr).
+    destruct (gc_loc_grow _ _ _ _ filed_ok_wf filed_ok_sub _ _ _ Hl) as (Φ2 & Hl2 & _ & Hlc2).
+    pose proof (proj1 (loc_entry _ _ filed_ok_wf _ _ _ Hlc2 x E2) HeE2) as Hent2.
     exists Φ2, E2; repeat split; assumption.
   Qed.
 
   (** An alias entry is an alias at the target. *)
-  Lemma fo_alias_module : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_alias_module : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_alias_unit E = Some Ua ->
       gc_module Θ2 Ξ2 (qname_in p x) = Some (mr_alias Ua).
   Proof.
     intros * Hl Hp HUa.
-    destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & _).
+    destruct (filed_ok_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & _).
     assert (HE : E = E2).
     { apply entry_grows_eq; [ exact Hgr | | | ]; intros * ->;
         destruct E as [| ? [? [? ?| ?]] | | | ]; cbn in Hgr, HUa; try discriminate; try contradiction; congruence. }
@@ -339,13 +339,13 @@ Section FiledOk.
       cbn in HUa; try discriminate; injection HUa as <-.
     - destruct (gm_entry_head _ _ _ Hent2) as (z & ip & [= <- <-] & Hin).
       pose proof (gc_loc_loc _ _ _ _ _ Hl2) as Hlc2.
-      rewrite qname_in_app, (proj1 (proj2 (proj2 (loc_read _ _ fo_wf _ _ _ Hlc2 _ Hin nil)))).
+      rewrite qname_in_app, (proj1 (proj2 (proj2 (loc_read _ _ filed_ok_wf _ _ _ Hlc2 _ Hin nil)))).
       exact (gm_entry_alias_submodule _ _ _ _ _ _ Hent2).
     - exact (gc_entry_def_mod_alias _ _ _ _ _ _ _ _ HeE2).
   Qed.
 
   (** An alias entry is a valid unit in the empty context. *)
-  Lemma fo_alias_valid_unit : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_alias_valid_unit : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_alias_unit E = Some Ua -> valid_unit Θm Ξm ⋅ (me_lit Ua).
   Proof.
     intros * Hl Hp HUa.
@@ -359,14 +359,14 @@ Section FiledOk.
 
   (** An alias entry has its kind at the target: a module, or, for a
       definition with a module part, a member with both parts. *)
-  Lemma fo_alias_kind : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_alias_kind : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_alias_unit E = Some Ua ->
       dmod_member_kind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
   Proof.
     intros * Hl Hp HUa.
-    pose proof (fo_alias_module _ _ _ _ _ _ _ Hl Hp HUa) as Hm; rewrite qname_in_app in Hm.
-    pose proof (fo_alias_valid_unit _ _ _ _ _ _ _ Hl Hp HUa) as HK.
-    destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & _ & _ & HeE2 & Hgr & _).
+    pose proof (filed_ok_alias_module _ _ _ _ _ _ _ Hl Hp HUa) as Hm; rewrite qname_in_app in Hm.
+    pose proof (filed_ok_alias_valid_unit _ _ _ _ _ _ _ Hl Hp HUa) as HK.
+    destruct (filed_ok_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & _ & _ & HeE2 & Hgr & _).
     assert (HE : E = E2).
     { apply entry_grows_eq; [ exact Hgr | | | ]; intros * ->;
         destruct E as [| ? [? [? ?| ?]] | | | ]; cbn in Hgr, HUa; try discriminate; try contradiction; congruence. }
@@ -383,11 +383,11 @@ Section FiledOk.
   Qed.
 
   (** Each entry of a stored body has its kind at the target. *)
-  Lemma fo_kind : forall p T Φ x Φ0 E, gc_loc Θm Ξm p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+  Lemma filed_ok_kind : forall p T Φ x Φ0 E, gc_loc Θm Ξm p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       dmod_member_kind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
   Proof.
     intros * Hl Hp.
-    destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & _).
+    destruct (filed_ok_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & _).
     pose proof (gc_loc_loc _ _ _ _ _ Hl2) as Hlc2.
     rewrite (entry_kind_grows _ _ Hgr).
     pose proof HeE2 as HeE2'; rewrite qname_in_app in HeE2'.
@@ -396,31 +396,31 @@ Section FiledOk.
       eapply dmod_member_kind_global_step; [ right; do 4 eexists; exact HeE2 | right; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ HeE2)
                              | eapply dmod_member_kind_global_here_def; exact HeE2 ].
     - (* a body module: a body stored at its path, which names no member with both parts *)
-      destruct (loc_child_mod _ _ fo_wf _ _ _ Hlc2 _ _ _ _ _ Hent2) as [Hb Hm].
+      destruct (loc_child_mod _ _ filed_ok_wf _ _ _ Hlc2 _ _ _ _ _ Hent2) as [Hb Hm].
       destruct (gc_body_loc _ _ _ _ Hb) as (r & Hr).
       rewrite qname_in_app in Hr, Hm.
       eapply dmod_member_kind_global_step; [ left; eexists; exact Hr | right | exact (gc_loc_kind _ _ _ _ _ Hr) ].
       exact (module_body_not_dm _ _ _ _ Hm (module_entry_no_record _ _ _ _ _ _ Hm HeE2')).
     - assert (HE : E = ge_mod pv (gu_mk Δ (md_alias Ea)))
         by (apply entry_grows_eq; [ exact Hgr | intros * [=] | intros * [=] | intros * [=] ]).
-      subst E; exact (fo_alias_kind _ _ _ _ _ _ _ Hl Hp eq_refl).
+      subst E; exact (filed_ok_alias_kind _ _ _ _ _ _ _ Hl Hp eq_refl).
     - (* an inductive type: a member with both parts, its module a body stored at its path *)
-      destruct (gc_body_loc _ _ _ _ (loc_child_ind _ _ fo_wf _ _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
+      destruct (gc_body_loc _ _ _ _ (loc_child_ind _ _ filed_ok_wf _ _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
       rewrite qname_in_app in Hr.
       eapply dmod_member_kind_global_here_dm; [ left | exact Hr ].
       rewrite ind_mlookup_unfold; destruct (gs_find_ind Ξ2 (qname_app p (x :: nil))); [ eexists; reflexivity |].
       destruct (gm_entry_head _ _ _ Hent2) as (z & ip & [= <- <-] & Hin).
-      rewrite (proj1 (proj2 (proj2 (loc_read _ _ fo_wf _ _ _ Hlc2 _ Hin nil)))),
+      rewrite (proj1 (proj2 (proj2 (loc_read _ _ filed_ok_wf _ _ _ Hlc2 _ Hin nil)))),
         (proj2 (gm_entry_subbody_ind _ T _ _ _ _ _ _ Hent2)).
       eexists; reflexivity.
     - (* a definition with a module part: a member with both parts, by its alias *)
       assert (HE : E = ge_def_mod pv Ad Md Ud)
         by (apply entry_grows_eq; [ exact Hgr | intros * [=] | intros * [=] | intros * [=] ]).
       subst E.
-      pose proof (gm_coh_prefix _ _ _ _ _ (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) Hp) as (_ & Δ0 & Ea & -> & _).
-      exact (fo_alias_kind _ _ _ _ _ _ _ Hl Hp eq_refl).
+      pose proof (gm_coherent_prefix _ _ _ _ _ (loc_coherent _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) Hp) as (_ & Δ0 & Ea & -> & _).
+      exact (filed_ok_alias_kind _ _ _ _ _ _ _ Hl Hp eq_refl).
     - (* a record type: a member with both parts, its module a body stored at its path *)
-      destruct (gc_body_loc _ _ _ _ (loc_child_record _ _ fo_wf _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
+      destruct (gc_body_loc _ _ _ _ (loc_child_record _ _ filed_ok_wf _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
       rewrite qname_in_app in Hr.
       eapply dmod_member_kind_global_here_dm; [ right; left | exact Hr ].
       unfold record_lookup; destruct (gs_find_record Ξ2 (qname_app p (x :: nil))); [ eexists; reflexivity |].
@@ -429,25 +429,25 @@ Section FiledOk.
 
   (** Each body stored below a stored body, the module of no member with a
       term part, is a module at the target. *)
-  Lemma fo_sub_kind : forall p x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
+  Lemma filed_ok_sub_kind : forall p x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
       ~ dm_path Θ2 Ξ2 (qname_app p (x :: nil)) ->
       dmod_member_kind Θ2 Ξ2 (dm_global p nil) (x :: nil) member_kind_mod.
   Proof.
     intros * Hl Hdm; destruct TΦ as [T Φ].
-    destruct (gc_loc_grow _ _ _ _ fo_wf fo_sub _ _ _ Hl) as (Φ2 & Hl2 & _).
+    destruct (gc_loc_grow _ _ _ _ filed_ok_wf filed_ok_sub _ _ _ Hl) as (Φ2 & Hl2 & _).
     eapply dmod_member_kind_global_step; [ left; eexists; exact Hl2 | right; exact Hdm | exact (gc_loc_kind _ _ _ _ _ Hl2) ].
   Qed.
 
   (** Each alias stored in a stored body is a valid unit in any valid context. *)
-  Lemma fo_alias : forall p T Φ y Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_alias : forall p T Φ y Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module Θ2 Ξ2 (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua).
   Proof.
-    intros * Hl Hp HUa; split; [ exact (fo_alias_module _ _ _ _ _ _ _ Hl Hp HUa) |].
+    intros * Hl Hp HUa; split; [ exact (filed_ok_alias_module _ _ _ _ _ _ _ Hl Hp HUa) |].
     intros Γ HΓ Hw.
     pose proof (loc_closed _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as [_ Hc].
-    apply (@valid_unit_closed_weaken GC2 fo_wf _ _ Hgm fo_sub); [ exact (fo_alias_valid_unit _ _ _ _ _ _ _ Hl Hp HUa) | | exact HΓ | exact Hw ].
+    apply (@valid_unit_closed_weaken GC2 filed_ok_wf _ _ Hgm filed_ok_sub); [ exact (filed_ok_alias_valid_unit _ _ _ _ _ _ _ Hl Hp HUa) | | exact HΓ | exact Hw ].
     exact (entry_alias_unit_scoped _ _ _ _ _ _ 0 Hc Hp HUa).
   Qed.
 
@@ -455,7 +455,7 @@ Section FiledOk.
 
   (** The reduct clause, for a reduct that is a [λ] over the telescope of a
       valid body, the member's value its value. *)
-  Lemma fo_term_fn : forall T A0 i M0 R0 g, tele_ass T -> ⊨ T -> T ⊨ A0 : Typeω@i -> T ⊨ M0 : A0 ->
+  Lemma filed_ok_term_fn : forall T A0 i M0 R0 g, tele_ass T -> ⊨ T -> T ⊨ A0 : Typeω@i -> T ⊨ M0 : A0 ->
       ⟦ ctx_fn T M0 ⟧ nil ↘ g ->
       (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
          mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
@@ -484,7 +484,7 @@ Section FiledOk.
   Qed.
 
   (** The reduct clause for an abstracted description, by its parts. *)
-  Lemma fo_ats_up : forall T R Ns R1 T1 T2, T = T1 ++ T2 -> tele_ass T -> List.length T2 = List.length Ns ->
+  Lemma filed_ok_ats_up : forall T R Ns R1 T1 T2, T = T1 ++ T2 -> tele_ass T -> List.length T2 = List.length Ns ->
       mdesc_ats (mdesc_up T R) Ns = Some R1 ->
       (forall A, mdesc_type (mdesc_up T1 R) = Some A -> mdesc_type R1 = Some A[sb_of_list Id Ns]) /\
       mdesc_reduct R1 = option_map (fun M => M[sb_of_list Id Ns]) (mdesc_reduct (mdesc_up T1 R)).
@@ -499,7 +499,7 @@ Section FiledOk.
   (** The type former of the member [k] of the group [D], at [p.x], over the
       telescope [T] of [p]: what a filed member's entry and the open frame
       of a member's module both are. *)
-  Lemma fo_ind_term : forall p T Φ x pq k D Mk Δu, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_ind_term : forall p T Φ x pq k D Mk Δu, gc_loc Θm Ξm p = Some (T, Φ) ->
       ind_mlookup Θm Ξm (qname_in p x) = Some (pq, k, D) -> ind_selfpath pq k D (qname_in p x) ->
       ind_member D k = Some Mk -> ind_uparams D = Δu ++ T ->
       gc_resolve Θ2 Ξ2 (qname_in p x) = None -> ind_mlookup Θ2 Ξ2 (qname_in p x) = Some (pq, k, D) ->
@@ -508,7 +508,7 @@ Section FiledOk.
     intros * Hl Hindm Hsp HMk HU Hres2 Hind2.
     destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] _].
     pose proof (ind_mlookup_group _ _ Hgm _ _ _ _ Hindm) as HlD.
-    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ fo_sub HlD) as HlD2.
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ filed_ok_sub HlD) as HlD2.
     destruct (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ HlD) as [HD HDs].
     destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ Hgm) HlD) as [Hdt Hc].
     pose proof (decl_typed_sort_univ _ _ _ Hdt) as Hsu.
@@ -561,17 +561,17 @@ Section FiledOk.
   (** The type former of the record type [R] at [p.x], its parameters [Δ0]
       then the telescope [T] of [p]: what a filed record entry and the open
       frame of a record type's module both are. *)
-  Lemma fo_record_term : forall p T Φ x R Δ0, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_record_term : forall p T Φ x R Δ0, gc_loc Θm Ξm p = Some (T, Φ) ->
       record_lookup Θm Ξm (qname_in p x) = Some R -> record_params R = Δ0 ++ T ->
       valid_filed_term p T x (mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
     intros * Hl Hrl HP.
     destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] _].
-    pose proof (record_lookup_gc_sub _ _ _ _ _ _ fo_sub Hrl) as Hrl2.
+    pose proof (record_lookup_gc_sub _ _ _ _ _ _ filed_ok_sub Hrl) as Hrl2.
     pose proof (record_lookup_resolve _ _ _ _ Hrl2) as Hres2.
     destruct (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hrl) as [HPv HSv HFv HTv].
     pose proof (record_lookup_typed _ _ Hgm (gctx_valid_syn _ _ Hgm) _ _ Hrl) as Hty.
-    pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ fo_wf) Hrl2) as Hc.
+    pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ filed_ok_wf) Hrl2) as Hc.
     pose proof (record_typed_sort_univ _ _ _ Hty) as Hsu.
     pose proof (typed_params_ass _ _ _ Hty) as Hass.
     pose proof (typed_nodup _ _ _ Hty) as Hnd.
@@ -618,14 +618,14 @@ Section FiledOk.
     - exact (mk_rel_self _ _ _ j E0 e He0 HE0 Hgg).
   Qed.
 
-  Lemma fo_term : forall p T Φ x Φ0 E R0, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_term : forall p T Φ x Φ0 E R0, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term (Some (qname_in p x)) E = Some R0 ->
       valid_filed_term p T x R0.
   Proof.
     intros * Hl Hp HR0.
     destruct (gc_loc_valid _ _ _ Hl) as [[HT HTa] Hv].
     pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hp) as HV.
-    destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & HeE & Hent).
+    destruct (filed_ok_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & HeE & Hent).
     destruct E as [b pv A oM | pv U | pv pq k D ΦD | pv Ad Md U | pv pr Rr ΦR]; cbn in HR0; try discriminate;
       try (injection HR0 as <-).
     - (* a definition *)
@@ -642,7 +642,7 @@ Section FiledOk.
                 mdesc_reduct R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (if b then oM0 else None)).
       { intros * HT12 Hlen Ha.
         rewrite (mdesc_term_part_ats_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
-        destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
+        destruct (filed_ok_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; cbn; destruct (if b then oM0 else None); reflexivity ]. }
       destruct b; [ destruct oM0 as [M0 |] |].
       1:{ (* transparent: its body *)
@@ -650,7 +650,7 @@ Section FiledOk.
         assert (HM0' : T ++ ⋅ ⊨ M0 : A0) by (rewrite app_nil_r; exact (HM0 _ eq_refl)).
         destruct (valid_at _ _ _ _ (valid_exp_under_ctx_ctx_fn _ _ _ _ HTa HT0 HM0') per_ctx_env_nil_true nil nil I)
           as (g & _ & _ & _ & _ & Hg & _).
-        destruct (fo_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
+        destruct (filed_ok_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
         apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_lvl := i) (valid_filed_term_val := g); [ exact HA0 | exact Hred | | exact Hper ].
         eapply eval_sel_global; [ exact (gc_term_of_resolve _ _ _ _ _ _ HeE2) | exact Hg | constructor ]. }
       all: (* an axiom or an abstract definition: its name, a neutral *)
@@ -673,11 +673,11 @@ Section FiledOk.
       destruct (gc_entry_ind _ _ _ _ _ _ _ _ HeE2) as [Hres2 Hind2].
       destruct (gc_entry_ind _ _ _ _ _ _ _ _ HeE) as [_ Hindm].
       pose proof (gc_entry_selfpath _ _ Hgm _ _ _ _ _ _ HeE) as Hsp.
-      pose proof (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.
-      destruct (gm_coh_child _ _ _ _ Hcoh (gm_entry_submodule _ T _ _ _ _ _ _ _ Hent))
+      pose proof (loc_coherent _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.
+      destruct (gm_coherent_child _ _ _ _ Hcoh (gm_entry_submodule _ T _ _ _ _ _ _ _ Hent))
         as [(Δu & oD & [= HU _] & HΔu) | (? & ? & [=] & _)].
       destruct (ind_member D k) as [Mk |] eqn:HMk; cbn in HR0; [ injection HR0 as <- | discriminate ].
-      exact (fo_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk HU Hres2 Hind2).
+      exact (filed_ok_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk HU Hres2 Hind2).
     - (* a definition with a module part: its term part, as a transparent
          definition *)
       cbn in HV; destruct HV as [_ (A0 & i & oM0 & -> & HoM & HA0 & HM0)].
@@ -692,25 +692,25 @@ Section FiledOk.
                 mdesc_reduct R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (Some M0)).
       { intros * HT12 Hlen Ha.
         rewrite (mdesc_term_part_ats_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
-        destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
+        destruct (filed_ok_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; reflexivity ]. }
       assert (HT0 : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT).
       assert (HM0' : T ++ ⋅ ⊨ M0 : A0) by (rewrite app_nil_r; exact (HM0 _ eq_refl)).
       destruct (valid_at _ _ _ _ (valid_exp_under_ctx_ctx_fn _ _ _ _ HTa HT0 HM0') per_ctx_env_nil_true nil nil I)
         as (g & _ & _ & _ & _ & Hg & _).
-      destruct (fo_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
+      destruct (filed_ok_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
       apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_lvl := i) (valid_filed_term_val := g); [ exact HA0 | exact Hred | | exact Hper ].
       eapply eval_sel_global; [ exact (gc_term_of_def_mod _ _ _ _ _ _ _ HeE2) | exact Hg | constructor ].
     - (* a record type: its type former *)
       pose proof (gc_entry_record _ _ _ _ _ _ _ HeE) as Hrl.
-      pose proof (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.
-      destruct (gm_coh_prefix _ _ _ _ _ Hcoh Hp) as ((Δ0 & HP & _) & _).
-      exact (fo_record_term _ _ _ _ _ _ Hl Hrl HP).
+      pose proof (loc_coherent _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.
+      destruct (gm_coherent_prefix _ _ _ _ _ Hcoh Hp) as ((Δ0 & HP & _) & _).
+      exact (filed_ok_record_term _ _ _ _ _ _ Hl Hrl HP).
   Qed.
 
   (** The open frame of a record type's module under a stored body is its
       type former, as a filed record entry is. *)
-  Lemma fo_record_frame : forall p T Φ x R, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_record_frame : forall p T Φ x R, gc_loc Θm Ξm p = Some (T, Φ) ->
       gs_find_record Ξm (qname_in p x) = Some R ->
       valid_filed_term p T x (mdesc_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
@@ -721,12 +721,12 @@ Section FiledOk.
     assert (HTq : T = Tq) by (unfold gc_loc in Hl; rewrite Hfq in Hl; injection Hl as <- _; reflexivity).
     subst Tq; destruct (frame_record_split _ _ Hgm _ _ _ _ Hk Ht0) as (Δr & _ & HP).
     rewrite (frame_child_outer _ _ Hgm _ _ _ _ _ _ Ht0 Hfq) in HP.
-    exact (fo_record_term _ _ _ _ _ _ Hl Hrl HP).
+    exact (filed_ok_record_term _ _ _ _ _ _ Hl Hrl HP).
   Qed.
 
   (** The open frame of a member's module under a stored body is its type
       former, as a filed member's entry is. *)
-  Lemma fo_ind_frame : forall p T Φ x pq k D Mk, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma filed_ok_ind_frame : forall p T Φ x pq k D Mk, gc_loc Θm Ξm p = Some (T, Φ) ->
       gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
       valid_filed_term p T x (mdesc_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
   Proof.
@@ -739,9 +739,9 @@ Section FiledOk.
     destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
     assert (HTq : T = Tq) by (unfold gc_loc in Hl; rewrite Hfq in Hl; injection Hl as <- _; reflexivity).
     subst Tq; destruct (frame_child_tele _ _ Hgm _ _ _ _ _ _ Hfx Hfq) as (Δu & ->).
-    pose proof (gc_sub_frame_ind _ _ _ _ _ _ fo_sub Hk) as Hind2.
+    pose proof (gc_sub_frame_ind _ _ _ _ _ _ filed_ok_sub Hk) as Hind2.
     pose proof (ind_mlookup_resolve _ _ _ _ Hind2) as Hres2.
-    exact (fo_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk (eq_sym HTx) Hres2 Hind2).
+    exact (filed_ok_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk (eq_sym HTx) Hres2 Hind2).
   Qed.
 
 End FiledOk.
@@ -758,9 +758,9 @@ Proof.
   pose proof (loc_closed _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as [HTs _].
   constructor;
     [ eauto | intros ρ; exact (gc_loc_path _ _ (gctx_embedding_wf _ _ _ _ He) _ _ ρ Hl2) | exact HT | exact HTa | exact HTs
-    | intros; eapply fo_kind; eassumption | intros; eapply fo_sub_kind; eassumption
-    | intros; eapply fo_term; eassumption | intros; eapply fo_ind_frame; eassumption
-    | intros; eapply fo_record_frame; eassumption | intros; eapply fo_alias; eassumption ].
+    | intros; eapply filed_ok_kind; eassumption | intros; eapply filed_ok_sub_kind; eassumption
+    | intros; eapply filed_ok_term; eassumption | intros; eapply filed_ok_ind_frame; eassumption
+    | intros; eapply filed_ok_record_frame; eassumption | intros; eapply filed_ok_alias; eassumption ].
 Qed.
 
 (** A sound embedding, from the validity at the target of what the source

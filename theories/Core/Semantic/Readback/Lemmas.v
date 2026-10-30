@@ -204,7 +204,7 @@ Import Domain_Notations.
     length. *)
   Lemma read_level_atoms_max : forall {Θ Ξ} s xs ys,
       Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-      forall c, level_atoms_max c ys = dla_max c xs.
+      forall c, level_atoms_max c ys = domain_level_max_offset c xs.
   Proof.
     intros * H; induction H; intros c; cbn; [ reflexivity | congruence ].
   Qed.
@@ -219,12 +219,12 @@ Import Domain_Notations.
 
   Lemma read_nf_level_real : forall {Θ Ξ} s n l W,
       Rnf ⇓ (Levelᵈ@n) l in Θ ⍮ Ξ ⍮ s ↘ W ->
-      exists L, W = nf_lvl_of L /\ lvl_real L = dlvl_real l.
+      exists L, W = nf_lvl_of L /\ lvl_real L = domain_level_real l.
   Proof.
     inversion 1; subst; try discriminate.
     - eexists; split; [ reflexivity |].
       rewrite lvl_real_canon.
-      unfold lvl_real, dlvl_real; cbn.
+      unfold lvl_real, domain_level_real; cbn.
       erewrite read_level_atoms_max by eassumption; reflexivity.
     - exists (ordinal_zero, (mk_level_atom 0 (domain_level_sort a) M :: nil)%list); split; [ reflexivity | reflexivity ].
   Qed.
@@ -261,12 +261,12 @@ Lemma fresh_leaf_vars_length : forall bs as' s vs, fresh_leaf_vars bs as' s vs -
 Proof. induction 1; cbn; congruence. Qed.
 
 Lemma fresh_ihs_length : forall {Θ Ξ} ρ As p ups Dc ρa gs' gs vs s ihs D, ind_lookup Θ Ξ p = Some D ->
-    Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nin D Dc gs' gs.
+    Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_container_count D Dc gs' gs.
 Proof.
   intros * HD H; induction H; cbn; try congruence.
   match goal with H1 : ind_lookup _ _ _ = Some _, H2 : ind_lookup _ _ _ = Some _ |- _ => rewrite H1 in H2; injection H2 as <- end.
   rewrite List.length_app, (fresh_leaf_vars_length _ _ _ _ H1), IHfresh_ihs by assumption.
   unfold leaves_in_count; f_equal.
-  clear; induction (shape_leaves (rv_leaves D) 0 t); cbn; [ reflexivity |].
+  clear; induction (shape_leaves (rview_leaves D) 0 t); cbn; [ reflexivity |].
   destruct (leaf_in Dc t' a); cbn; congruence.
 Qed.

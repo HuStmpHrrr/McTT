@@ -137,7 +137,7 @@ Qed.
 
 (** Selecting a term member from a value lacking a parameter commutes with
     giving it that parameter. *)
-Lemma sel_app_comm : forall h a, nextparam h a ->
+Lemma sel_app_comm : forall h a, next_param h a ->
     forall c hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
     forall x f, h ·ₜ x gc_deps ⍮ gc_stack ↘ f ->
     forall r, $| f & c |↘ r <-> hc ·ₜ x gc_deps ⍮ gc_stack ↘ r.
@@ -180,7 +180,7 @@ Qed.
 
 (** A value lacking a parameter has a term member wherever it has one at an
     argument. *)
-Lemma sel_of_appm : forall h a, nextparam h a -> forall c hc x r,
+Lemma sel_of_appm : forall h a, next_param h a -> forall c hc x r,
     $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc -> hc ·ₜ x gc_deps ⍮ gc_stack ↘ r ->
     exists f, h ·ₜ x gc_deps ⍮ gc_stack ↘ f.
 Proof.
@@ -375,7 +375,7 @@ Qed.
     that parameter: when it is related at the codomain once applied, it is
     related at the [Π]. *)
 Lemma dmod_has_mem_fun : forall k a0 x i E a ρB B,
-    nextparam k a0 -> per_dmod k k ->
+    next_param k a0 -> per_dmod k k ->
     per_univ_elem i E (Πᵈ a ρB B) (Πᵈ a ρB B) ->
     (exists j R0, per_univ_elem j R0 a0 a) ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
@@ -429,7 +429,7 @@ Proof. intros * Hm E h Hh; destruct (Hm _ Hh) as [r r' Hr Hr' Hrr]; exists r r';
 (** A function related, once applied, to the member of the applied values
     is related to the member at the [Π]. *)
 Lemma red_fun : forall k a0 x i E a ρB B f fk,
-    nextparam k a0 ->
+    next_param k a0 ->
     per_univ_elem i E (Πᵈ a ρB B) (Πᵈ a ρB B) ->
     (exists j R0, per_univ_elem j R0 a0 a) -> per_dmod k k -> k ·ₜ x gc_deps ⍮ gc_stack ↘ fk ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
@@ -439,7 +439,7 @@ Lemma red_fun : forall k a0 x i E a ρB B f fk,
 Proof.
   intros * Hpk HE (j0 & R0 & H0) Hkk Hfk Hcod.
   destruct (per_dmod_appm _ _ _ Hkk Hpk) as (ih & Rh & ah & Hph & HRh & Happ).
-  pose proof (nextparam_functional _ _ Hph _ Hpk) as ->.
+  pose proof (next_param_functional _ _ Hph _ Hpk) as ->.
   destruct (per_univ_elem_pi_inv HE) as (in_rel & out_rel & Hin & Hout & HEq).
   assert (HPin : PER in_rel) by (eapply per_elem_PER; exact Hin).
   assert (E1 : Rh <~> R0) by (eapply per_univ_elem_right_irrel; [ exact HRh | exact H0 ]).

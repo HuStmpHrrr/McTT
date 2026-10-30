@@ -75,14 +75,14 @@ Section Fixed_GCtx.
         (** The right branch binds what it should *)
       ; branch_read_pair_arity_b : nb = (im_nn Mi + List.length gs' + cargs_nrec Db branch_read_pair_gsb)%nat
         (** The left recursive arguments' parameter counts *)
-      ; branch_read_pair_plen_a : cargs_plen Da branch_read_pair_gsa
+      ; branch_read_pair_params_length_a : cargs_params_length Da branch_read_pair_gsa
         (** The right recursive arguments' parameter counts *)
-      ; branch_read_pair_plen_b : cargs_plen Db branch_read_pair_gsb
+      ; branch_read_pair_params_length_b : cargs_params_length Db branch_read_pair_gsb
         (** The left fresh recursive results are as many as the branch
             read binds *)
-      ; branch_read_pair_count_a : cargs_nin Da Dc gs' branch_read_pair_gsa = cargs_nrec Dc gs'
+      ; branch_read_pair_count_a : cargs_container_count Da Dc gs' branch_read_pair_gsa = cargs_nrec Dc gs'
         (** The right ones too *)
-      ; branch_read_pair_count_b : cargs_nin Db Dc gs' branch_read_pair_gsb = cargs_nrec Dc gs'
+      ; branch_read_pair_count_b : cargs_container_count Db Dc gs' branch_read_pair_gsb = cargs_nrec Dc gs'
         (** The left arguments are fresh at [ua] *)
       ; branch_read_pair_args_a : Fcargs branch_read_pair_gsa of pa ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi)%nat ↘ branch_read_pair_vsa
         (** The right arguments are fresh at [ub] *)
@@ -180,9 +180,9 @@ Section Fixed_GCtx.
         (** The right block is that member's *)
       ; block_read_pair_block_b : List.nth_error Bksb (elim_src selb i) = Some block_read_pair_bb
         (** The left motive binds [Mi]'s parameters and the scrutinee *)
-      ; block_read_pair_nm_a : eb_nm block_read_pair_ba = S (im_nn Mi)
+      ; block_read_pair_binder_count_a : eb_binder_count block_read_pair_ba = S (im_nn Mi)
         (** So does the right one *)
-      ; block_read_pair_nm_b : eb_nm block_read_pair_bb = S (im_nn Mi)
+      ; block_read_pair_binder_count_b : eb_binder_count block_read_pair_bb = S (im_nn Mi)
         (** The left member's type at [ua] *)
       ; block_read_pair_ref_a : ⟦mref elim_src sela i of pa ua ⟧ gc_deps ⍮ gc_stack ↘ (block_read_pair_hd, block_read_pair_k, block_read_pair_prea)
         (** The right member's type at [ub] *)
@@ -240,18 +240,18 @@ Section Fixed_GCtx.
         im_ref pa ja Mja = (pc, k) -> im_ref pb jb Mjb = (pc, k) ->
         ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
         List.length asa = im_np Dq Mk -> List.length asb = im_np Dq Mk ->
-        blocks_nm_at Da None Bksa -> blocks_nm_at Db None Bksb ->
+        blocks_binder_count_at Da None Bksa -> blocks_binder_count_at Db None Bksb ->
         rview_leaf_arity Da -> rview_leaf_arity Db ->
         ⟦mref ja of pa ua ⟧ gc_deps ⍮ gc_stack ↘ (pc, k, prea) -> ⟦mref jb of pb ub ⟧ gc_deps ⍮ gc_stack ↘ (pc, k, preb) ->
         per_top_ps (List.rev (ind_uparams Dq)) prea preb ->
         Dom ea ≈ eb ∈ per_bot ->
-        (forall s n Mn, List.nth_error (ind_bmembers Dq) n = Some Mn -> block_read_pair s Dq (im_sel Mja) (im_sel Mjb) n Mn) ->
+        (forall s n Mn, List.nth_error (ind_block_members Dq) n = Some Mn -> block_read_pair s Dq (im_sel Mja) (im_sel Mjb) n Mn) ->
         Dom d_elim ρa Bksa pa ua ja asa ea ≈ d_elim ρb Bksb pb ub jb asb eb ∈ per_bot.
     Proof.
       intros * HMa HMb Hra Hrb Hq HMk La Lb Hnma Hnmb Hara Harb Ra Rb Hps He Hblk s.
       destruct (He s) as (M & RM1 & RM2).
       destruct (Hps s) as (Us & RU1 & RU2).
-      destruct (read_blocks_pair s Dq (im_sel Mja) (im_sel Mjb) (ind_bmembers Dq) 0) as (NBks & RB1 & RB2).
+      destruct (read_blocks_pair s Dq (im_sel Mja) (im_sel Mjb) (ind_block_members Dq) 0) as (NBks & RB1 & RB2).
       { intros n Mn Hn; exact (Hblk s (0 + n) Mn Hn). }
       exists (ne_elim pc Us k NBks M); split.
       - eapply read_ne_elim; [ exact Hla | exact HMa | exact Hra | exact Hq | exact HMk | exact La | exact Hnma | exact Hara

@@ -27,14 +27,14 @@ Section KindsEval.
   Lemma modexp_member_kind_id : forall ρ ρ', kinds_rename Θ Ξ wk_id ρ ρ' -> forall H ch k, modexp_member_kind Θ Ξ ρ H ch k <-> modexp_member_kind Θ Ξ ρ' H ch k.
   Proof.
     intros * K H ch k.
-    rewrite <- (proj1 (kind_ren Θ Ξ) H wk_id ρ ρ' K), modexp_wk_id_ext by (intros x; reflexivity).
+    rewrite <- (proj1 (kind_rename Θ Ξ) H wk_id ρ ρ' K), modexp_wk_id_ext by (intros x; reflexivity).
     reflexivity.
   Qed.
 
   Lemma gunit_member_kind_id : forall ρ ρ', kinds_rename Θ Ξ wk_id ρ ρ' -> forall U ch k, gunit_member_kind Θ Ξ ρ U ch k <-> gunit_member_kind Θ Ξ ρ' U ch k.
   Proof.
     intros * K U ch k.
-    rewrite <- (proj1 (proj2 (kind_ren Θ Ξ)) U wk_id ρ ρ' K), gunit_wk_id_ext by (intros x; reflexivity).
+    rewrite <- (proj1 (proj2 (kind_rename Θ Ξ)) U wk_id ρ ρ' K), gunit_wk_id_ext by (intros x; reflexivity).
     reflexivity.
   Qed.
 
@@ -56,18 +56,18 @@ Section KindsEval.
 
   (** Two environments with the same kinds, and entries of the same sorts
       at the same places. *)
-  Definition kshape (ρ ρ' : env) : Prop :=
+  Definition kinds_shape (ρ ρ' : env) : Prop :=
     kinds_rename Θ Ξ wk_id ρ ρ' /\ forall x, dentry_tag (env_entry ρ x) = dentry_tag (env_entry ρ' x).
 
-  Lemma kshape_cons_term : forall ρ ρ' a a', kshape ρ ρ' -> kshape (de_term a :: ρ) (de_term a' :: ρ').
+  Lemma kinds_shape_cons_term : forall ρ ρ' a a', kinds_shape ρ ρ' -> kinds_shape (de_term a :: ρ) (de_term a' :: ρ').
   Proof. intros * [K S]; split; intros [| x]; first [ apply kinds_equiv_refl | apply K | reflexivity | apply S ]. Qed.
 
-  Lemma kshape_cons_mod : forall ρ ρ' h h', kshape ρ ρ' -> kinds_equiv Θ Ξ h h' -> kshape (de_mod h :: ρ) (de_mod h' :: ρ').
+  Lemma kinds_shape_cons_mod : forall ρ ρ' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' -> kinds_shape (de_mod h :: ρ) (de_mod h' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
   (** A term with a module part, by the kinds of its module part. *)
-  Lemma kshape_cons_dm : forall ρ ρ' a a' h h', kshape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
-      kshape (de_dm a h :: ρ) (de_dm a' h' :: ρ').
+  Lemma kinds_shape_cons_dm : forall ρ ρ' a a' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
+      kinds_shape (de_dm a h :: ρ) (de_dm a' h' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
   Lemma env_args_rev_args : forall args ρ, env_args ρ args = List.rev (List.map de_term args) ++ ρ.
@@ -76,21 +76,21 @@ Section KindsEval.
     unfold env_args in *; cbn [List.fold_left List.map List.rev]; rewrite IH, <- app_assoc; reflexivity.
   Qed.
 
-  Lemma kshape_terms : forall X Y ρ ρ', List.length X = List.length Y ->
+  Lemma kinds_shape_terms : forall X Y ρ ρ', List.length X = List.length Y ->
       Forall (fun e => dentry_tag e = 0) X -> Forall (fun e => dentry_tag e = 0) Y ->
-      kshape ρ ρ' -> kshape (X ++ ρ) (Y ++ ρ').
+      kinds_shape ρ ρ' -> kinds_shape (X ++ ρ) (Y ++ ρ').
   Proof.
     induction X as [| e X IH]; intros [| e' Y] * Hl HX HY Hs; cbn in Hl; try discriminate; [ exact Hs |].
     inversion HX; inversion HY; subst.
     destruct e as [a | h | a h], e' as [a' | h' | a' h']; cbn in *; try discriminate.
-    apply kshape_cons_term, IH; auto.
+    apply kinds_shape_cons_term, IH; auto.
   Qed.
 
-  Lemma kshape_refl : forall ρ, kshape ρ ρ.
+  Lemma kinds_shape_refl : forall ρ, kinds_shape ρ ρ.
   Proof. intros ρ; split; [ intros x; apply kinds_equiv_refl | reflexivity ]. Qed.
 
   (** An argument pushed under placeholders is one more placeholder. *)
-  Lemma kshape_pad_push : forall m ρ n, kshape (kinds_placeholders m (de_term n :: ρ)) (kinds_placeholders (S m) ρ).
+  Lemma kinds_shape_pad_push : forall m ρ n, kinds_shape (kinds_placeholders m (de_term n :: ρ)) (kinds_placeholders (S m) ρ).
   Proof.
     intros; unfold kinds_placeholders.
     replace (List.repeat (de_term d_placeholder) m ++ de_term n :: ρ)
@@ -99,16 +99,16 @@ Section KindsEval.
     replace (List.repeat (de_term d_placeholder) (S m) ++ ρ)
       with ((List.repeat (de_term d_placeholder) m ++ de_term d_placeholder :: nil) ++ ρ)
       by (cbn [List.repeat]; rewrite List.repeat_cons, <- app_assoc; reflexivity).
-    apply kshape_terms.
+    apply kinds_shape_terms.
     - rewrite !length_app, !repeat_length; reflexivity.
     - apply Forall_app; split; [ apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity | repeat constructor ].
     - apply Forall_app; split; [ apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity | repeat constructor ].
-    - apply kshape_refl.
+    - apply kinds_shape_refl.
   Qed.
 
-  Lemma kshape_args_pad : forall ρ args n, List.length args = n -> kshape (env_args ρ args) (kinds_placeholders n ρ).
+  Lemma kinds_shape_args_pad : forall ρ args n, List.length args = n -> kinds_shape (env_args ρ args) (kinds_placeholders n ρ).
   Proof.
-    intros * <-; rewrite env_args_rev_args; unfold kinds_placeholders; apply kshape_terms.
+    intros * <-; rewrite env_args_rev_args; unfold kinds_placeholders; apply kinds_shape_terms.
     - rewrite length_rev, length_map, repeat_length; reflexivity.
     - apply Forall_rev, Forall_map, Forall_forall; reflexivity.
     - apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity.
@@ -274,7 +274,7 @@ Section KindsEval.
   Proof.
     intros * Hp; split; intros Hu.
     - inversion Hu; subst;
-        try (rewrite (gm_prefix_item_excl _ _ _ Hp) in *; discriminate);
+        try (rewrite (gm_prefix_item_exclusive _ _ _ Hp) in *; discriminate);
         match goal with H2 : gm_prefix_upto _ _ = Some _ |- _ => rewrite Hp in H2; injection H2; intros; subst end.
       + left; split; [ do 5 eexists; reflexivity | split; reflexivity ].
       + right; left; do 3 eexists; repeat split; eassumption.
@@ -301,7 +301,7 @@ Section KindsEval.
   Proof.
     intros * Hi Hk; split; intros Hu.
     - inversion Hu; subst;
-        try match goal with H2 : gm_prefix_upto _ _ = Some _ |- _ => rewrite (gm_prefix_item_excl _ _ _ H2) in Hi; discriminate end;
+        try match goal with H2 : gm_prefix_upto _ _ = Some _ |- _ => rewrite (gm_prefix_item_exclusive _ _ _ H2) in Hi; discriminate end;
         match goal with H2 : gm_item_upto _ _ = Some _ |- _ => rewrite Hi in H2; injection H2; intros; subst end;
         match goal with Hk0 : kinds_env _ _ ?e ?Q ?r, Hk3 : kinds_env _ _ ?e ?Q ?r' |- _ =>
           assert_fails (constr_eq r r');
@@ -368,7 +368,7 @@ Section KindsEval.
                    gunit_member_kind Θ Ξ (X ++ ρ2) (gu_mk nil (md_alias (modexp_wk E0 (wk_shiftn (0 + List.length gs0))))) ch0 k0 <->
                    modexp_member_kind Θ Ξ ρ2 E0 ch0 k0).
         { intros; rewrite gunit_member_kind_alias_iff; cbn [Nat.add]; rewrite <- Hl.
-          exact (proj1 (kind_ren Θ Ξ) _ (wk_shiftn (List.length X)) (X ++ ρ2) ρ2 (kinds_rename_shift_app Θ Ξ X ρ2) _ _). }
+          exact (proj1 (kind_rename Θ Ξ) _ (wk_shiftn (List.length X)) (X ++ ρ2) ρ2 (kinds_rename_shift_app Θ Ξ X ρ2) _ _). }
         pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ)))) as Fs.
         pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind Θ Ξ))))) as Fk.
         inversion Hg1 as [| ? ? d pv ? ? Hn | ? ? n d pv ? ? Hs Hn | ? ? n d pv ? ? Hs Hn | ? ? n d pv ? ? Hs Hn]; subst;
@@ -492,10 +492,10 @@ Section KindsEval.
 
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
 
-  Lemma gm_item_prefix_excl : forall Φ x r, gm_item_upto Φ x = Some r -> gm_prefix_upto Φ x = None.
+  Lemma gm_item_prefix_exclusive : forall Φ x r, gm_item_upto Φ x = Some r -> gm_prefix_upto Φ x = None.
   Proof.
     intros * Hi; destruct (gm_prefix_upto Φ x) eqn:E; [| reflexivity ].
-    rewrite (gm_prefix_item_excl _ _ _ E) in Hi; discriminate.
+    rewrite (gm_prefix_item_exclusive _ _ _ E) in Hi; discriminate.
   Qed.
 
   (** *** The Kinds of Values *)
@@ -513,7 +513,7 @@ Section KindsEval.
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> forall ch k, dmod_member_kind Θ Ξ r ch k <-> dmod_member_kind Θ Ξ (dm_member h (y :: nil)) ch k) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> True) /\
     (forall h ch0 r, h ·ₘ* ch0 Θ ⍮ Ξ ↘ r -> forall ch k, dmod_member_kind Θ Ξ r ch k <-> dmod_member_kind Θ Ξ (dm_member h ch0) ch k) /\
-    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> forall σ, kshape ρ σ -> exists σ', kinds_env Θ Ξ σ Φ σ' /\ kshape ρ' σ') /\
+    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> forall σ, kinds_shape ρ σ -> exists σ', kinds_env Θ Ξ σ Φ σ' /\ kinds_shape ρ' σ') /\
     (forall ρ p ups Bks j m r, ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
     (forall ρ p ups Bks gs vs r, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
     (forall ρ p ups Bks t v r, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
@@ -521,10 +521,10 @@ Section KindsEval.
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
     (forall p ups ρm As ρ t v a, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
     (forall f m r, eval_proj Θ Ξ f m r -> True) /\
-    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> True) /\
+    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs -> True) /\
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> True) /\
     (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> True) /\
-    (forall rs Ms ρ vs, eval_fvals Θ Ξ rs Ms ρ vs -> True) /\
+    (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> True) /\
     (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> True).
   Proof.
     apply eval_mut_ind; intros; try exact I.
@@ -541,7 +541,7 @@ Section KindsEval.
     (* application: the arguments of a module are no part of its kinds *)
     - split; apply dmod_member_kind_global_args.
     - rewrite H, dmod_member_kind_local_iff, (gunit_member_kind_pad _ _ (ρ ↦ n)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass A :: nil)), length_app, Nat.add_1_r.
-      apply gunit_member_kind_id, kshape_pad_push.
+      apply gunit_member_kind_id, kinds_shape_pad_push.
     - (* a submodule closure: its parent applied, then the chain *)
       rewrite H0, (dmod_member_kind_member_iff Θ Ξ h'), (dmod_member_kind_member_iff Θ Ξ h), (H (ch ++ ch0)), (H ch); reflexivity.
     - reflexivity.
@@ -551,7 +551,7 @@ Section KindsEval.
     - rewrite H0, H; apply dmod_member_kind_global_alias; assumption.
     - reflexivity.
     - (* a body's submodule, found in the body read through its opens *)
-      destruct (H _ (kshape_refl ρ)) as (σ & Hk & Hs).
+      destruct (H _ (kinds_shape_refl ρ)) as (σ & Hk & Hs).
       rewrite H0, (gunit_member_kind_id _ _ (proj1 Hs)).
       eapply gunit_member_kind_kinds_body_xp_mod; eassumption.
     - (* a submodule closure: a longer chain *)
@@ -563,24 +563,24 @@ Section KindsEval.
     (* bodies *)
     - exists σ; split; [ constructor | assumption ].
     - (* a definition of a relevant type *)
-      match goal with Hρ : kshape ρ σ, IHΦ : forall σ0, kshape ρ σ0 -> _ |- _ => destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs) end.
+      match goal with Hρ : kinds_shape ρ σ, IHΦ : forall σ0, kinds_shape ρ σ0 -> _ |- _ => destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs) end.
       exists (kinds_body_entry σ1 (ge_def b pv ra A (Some M)) :: σ1); split; [ constructor; exact Hk |].
-      apply kshape_cons_term; exact Hs.
+      apply kinds_shape_cons_term; exact Hs.
     - (* a definition of a proposition: its placeholder proof *)
-      match goal with Hρ : kshape ρ σ, IHΦ : forall σ0, kshape ρ σ0 -> _ |- _ => destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs) end.
+      match goal with Hρ : kinds_shape ρ σ, IHΦ : forall σ0, kinds_shape ρ σ0 -> _ |- _ => destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs) end.
       exists (kinds_body_entry σ1 (ge_def b pv ra A (Some M)) :: σ1); split; [ constructor; exact Hk |].
-      apply kshape_cons_term; exact Hs.
+      apply kinds_shape_cons_term; exact Hs.
     - destruct (H _ H1) as (σ1 & Hk & Hs).
       exists (kinds_body_entry σ1 (ge_mod pm (gu_mk Δy Dy)) :: σ1); split; [ constructor; exact Hk |].
-      apply kshape_cons_mod; [ exact Hs |].
+      apply kinds_shape_cons_mod; [ exact Hs |].
       intros ch k; rewrite H0, dmod_member_kind_clo_iff; apply gunit_member_kind_id, Hs.
     - (* a definition with a module part: a placeholder and its unit's
          closure *)
-      match goal with Hρ : kshape ρ σ, IHΦ : forall σ0, kshape ρ σ0 -> _,
+      match goal with Hρ : kinds_shape ρ σ, IHΦ : forall σ0, kinds_shape ρ σ0 -> _,
                       IHc : forall ch k, dmod_member_kind _ _ h ch k <-> _ |- _ =>
         destruct (IHΦ _ Hρ) as (σ1 & Hk & Hs);
         exists (kinds_body_entry σ1 (ge_def_mod pv A M (gu_mk Δy Dy)) :: σ1); split; [ constructor; exact Hk |];
-        apply kshape_cons_dm; [ exact Hs |];
+        apply kinds_shape_cons_dm; [ exact Hs |];
         intros ch k; rewrite IHc, dmod_member_kind_clo_iff; apply gunit_member_kind_id, Hs end.
   Qed.
 
@@ -596,8 +596,8 @@ Section KindsEval.
       forall ch k, dmod_member_kind Θ Ξ r ch k <-> dmod_member_kind Θ Ξ h ch k.
   Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
 
-  Corollary kind_eval_benv : forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
-      forall σ, kshape ρ σ -> exists σ', kinds_env Θ Ξ σ Φ σ' /\ kshape ρ' σ'.
+  Corollary kind_eval_body_env : forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
+      forall σ, kinds_shape ρ σ -> exists σ', kinds_env Θ Ξ σ Φ σ' /\ kinds_shape ρ' σ'.
   Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
 
 End KindsEval.

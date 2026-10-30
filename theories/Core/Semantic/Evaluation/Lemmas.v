@@ -28,7 +28,7 @@ Import Domain_Notations.
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-            rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
+            rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
         | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _),
@@ -102,11 +102,11 @@ Import Domain_Notations.
       (forall p ups ρm As ρ t v a1, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 ->
           forall a2, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
       (forall f m r1, eval_proj Θ Ξ f m r1 -> forall r2, eval_proj Θ Ξ f m r2 -> r1 = r2) /\
-      (forall ns m fl pre rs1, eval_nflds Θ Ξ ns m fl pre rs1 -> forall rs2, eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2) /\
+      (forall ns m fl pre rs1, eval_neutral_fields Θ Ξ ns m fl pre rs1 -> forall rs2, eval_neutral_fields Θ Ξ ns m fl pre rs2 -> rs1 = rs2) /\
       (forall fl v ws1, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws1 -> forall ws2, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws2 -> ws1 = ws2) /\
       (forall p ups ρm As ρ gs vs r1, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall rs Ms ρ ms1, eval_fvals Θ Ξ rs Ms ρ ms1 -> forall ms2, eval_fvals Θ Ξ rs Ms ρ ms2 -> ms1 = ms2) /\
+      (forall rs Ms ρ ms1, eval_field_vals Θ Ξ rs Ms ρ ms1 -> forall ms2, eval_field_vals Θ Ξ rs Ms ρ ms2 -> ms1 = ms2) /\
       (forall f Ms ρ r1, eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
@@ -241,7 +241,7 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_shty : forall {Θ Ξ} p ups ρ t a1 a2,
+  Corollary functional_eval_shape_type : forall {Θ Ξ} p ups ρ t a1 a2,
       ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
@@ -276,8 +276,8 @@ Import Domain_Notations.
   Qed.
 
   (** So are the neutral projections of the fields of a neutral. *)
-  Corollary functional_eval_nflds : forall {Θ Ξ} ns m fl pre rs1 rs2,
-      eval_nflds Θ Ξ ns m fl pre rs1 -> eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2.
+  Corollary functional_eval_neutral_fields : forall {Θ Ξ} ns m fl pre rs1 rs2,
+      eval_neutral_fields Θ Ξ ns m fl pre rs1 -> eval_neutral_fields Θ Ξ ns m fl pre rs2 -> rs1 = rs2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
@@ -291,7 +291,7 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
-  Corollary functional_eval_benv : forall {Θ Ξ} ρ Φ ρ1 ρ2,
+  Corollary functional_eval_body_env : forall {Θ Ξ} ρ Φ ρ1 ρ2,
       ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
       ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 ->
       ρ1 = ρ2.
@@ -318,9 +318,9 @@ Import Domain_Notations.
             | idtac ].
   Defined.
 
-  Corollary functional_eval_fvals : forall {Θ Ξ} rs Ms ρ ms1 ms2,
-      eval_fvals Θ Ξ rs Ms ρ ms1 ->
-      eval_fvals Θ Ξ rs Ms ρ ms2 ->
+  Corollary functional_eval_field_vals : forall {Θ Ξ} rs Ms ρ ms1 ms2,
+      eval_field_vals Θ Ξ rs Ms ρ ms1 ->
+      eval_field_vals Θ Ξ rs Ms ρ ms2 ->
       ms1 = ms2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
@@ -375,7 +375,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_nflds functional_eval_projs functional_eval_ihtys : mctt.
+Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shape_type functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_neutral_fields functional_eval_projs functional_eval_ihtys : mctt.
 
 
 
@@ -396,7 +396,7 @@ Ltac functional_eval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_mref ?T ?X ?p ?ups ?j ?r1, H2 : eval_mref ?T ?X ?p ?ups ?j ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
+  | H1 : eval_shape_type ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shape_type ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_ihty ?T ?X ?p ?ups ?ρm ?As ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?p ?ups ?ρm ?As ?ρ ?t ?v ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
@@ -406,7 +406,7 @@ Ltac functional_eval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_proj ?T ?X ?f ?m ?r1, H2 : eval_proj ?T ?X ?f ?m ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
+  | H1 : eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise
@@ -431,7 +431,7 @@ Lemma eval_ih_length_all : forall {Θ Ξ},
     (forall ρ p ups Bks t v r,
         ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
         forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
-        List.length r = List.length (shape_leaves (rv_leaves D) 0 t)) /\
+        List.length r = List.length (shape_leaves (rview_leaves D) 0 t)) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> List.length ws = List.length fl).
 Proof.
   intros Θ Ξ.
@@ -444,7 +444,7 @@ Proof.
              (fun ρ p ups Bks gs vs ihs _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
                 List.length vs = List.length gs /\ List.length ihs = cargs_nrec D gs)
              (fun ρ p ups Bks t v r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
-                List.length r = List.length (shape_leaves (rv_leaves D) 0 t))
+                List.length r = List.length (shape_leaves (rview_leaves D) 0 t))
              (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True) (fun _ _ _ _ _ _ _ _ _ => True)
              (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
@@ -485,7 +485,7 @@ Lemma eval_ihty_length_all : forall {Θ Ξ},
     (forall p ups ρm As ρ t v r,
         ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
         forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
-        List.length r = List.length (shape_leaves (rv_leaves D) 0 t)) /\
+        List.length r = List.length (shape_leaves (rview_leaves D) 0 t)) /\
     (forall p ups ρm As ρ gs vs r,
         ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
         forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
@@ -502,7 +502,7 @@ Proof.
              (fun _ _ _ _ _ _ _ _ => True)
              (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
              (fun p ups ρm As ρ t v r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
-                List.length r = List.length (shape_leaves (rv_leaves D) 0 t))
+                List.length r = List.length (shape_leaves (rview_leaves D) 0 t))
              (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun p ups ρm As ρ gs vs r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->

@@ -186,15 +186,15 @@ Section Growth.
     (forall h y r, fast_eval_selm Θ1 Ξ1 h y r -> fast_eval_selm Θ2 Ξ2 h y r) /\
     (forall h ch r, fast_eval_selc Θ1 Ξ1 h ch r -> fast_eval_selc Θ2 Ξ2 h ch r) /\
     (forall h ch r, fast_eval_selmc Θ1 Ξ1 h ch r -> fast_eval_selmc Θ2 Ξ2 h ch r) /\
-    (forall ρ Φ ρ1, fast_eval_benv Θ1 Ξ1 ρ Φ ρ1 -> fast_eval_benv Θ2 Ξ2 ρ Φ ρ1) /\
+    (forall ρ Φ ρ1, fast_eval_body_env Θ1 Ξ1 ρ Φ ρ1 -> fast_eval_body_env Θ2 Ξ2 ρ Φ ρ1) /\
     (forall ρ p ups Bks j m r, fast_eval_elim Θ1 Ξ1 ρ p ups Bks j m r -> fast_eval_elim Θ2 Ξ2 ρ p ups Bks j m r) /\
     (forall ρ p ups Bks oB gs vs r, fast_eval_ihs Θ1 Ξ1 ρ p ups Bks oB gs vs r -> fast_eval_ihs Θ2 Ξ2 ρ p ups Bks oB gs vs r) /\
     (forall ρ p ups Bks t v r, fast_eval_ih Θ1 Ξ1 ρ p ups Bks t v r -> fast_eval_ih Θ2 Ξ2 ρ p ups Bks t v r) /\
     (forall p ups j r, fast_eval_mref Θ1 Ξ1 p ups j r -> fast_eval_mref Θ2 Ξ2 p ups j r) /\
-    (forall p ups ρ t a, fast_eval_shty Θ1 Ξ1 p ups ρ t a -> fast_eval_shty Θ2 Ξ2 p ups ρ t a) /\
+    (forall p ups ρ t a, fast_eval_shape_type Θ1 Ξ1 p ups ρ t a -> fast_eval_shape_type Θ2 Ξ2 p ups ρ t a) /\
     (forall p ups ρm As ρ t v a, fast_eval_ihty Θ1 Ξ1 p ups ρm As ρ t v a -> fast_eval_ihty Θ2 Ξ2 p ups ρm As ρ t v a) /\
     (forall f m r, fast_eval_proj Θ1 Ξ1 f m r -> fast_eval_proj Θ2 Ξ2 f m r) /\
-    (forall ns m fl pre rs, fast_eval_nflds Θ1 Ξ1 ns m fl pre rs -> fast_eval_nflds Θ2 Ξ2 ns m fl pre rs) /\
+    (forall ns m fl pre rs, fast_eval_neutral_fields Θ1 Ξ1 ns m fl pre rs -> fast_eval_neutral_fields Θ2 Ξ2 ns m fl pre rs) /\
     (forall fl v ws, fast_eval_projs Θ1 Ξ1 fl v ws -> fast_eval_projs Θ2 Ξ2 fl v ws) /\
     (forall p ups ρm As ρ gs vs as', fast_eval_ihtys Θ1 Ξ1 p ups ρm As ρ gs vs as' -> fast_eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs as').
   Proof.

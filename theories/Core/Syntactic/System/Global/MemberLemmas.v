@@ -441,10 +441,10 @@ Proof.
   induction R as [| e R IH]; intros σ; [ reflexivity |].
   rewrite !ctx_pi_rev_cons; destruct e as [B | B N | U | B N U].
   - reflexivity.
-  - cbn [exp_sub bnd_sub pi_view option_map]; rewrite IH.
+  - cbn [exp_sub binding_sub pi_view option_map]; rewrite IH.
     destruct (pi_view (ctx_pi (rev R) a_True)) as [[B' C'] |]; cbn; [| reflexivity ].
     f_equal; f_equal; [ apply (exp_sub_extend_comm_gen _ _ (se_exp N)) | apply (exp_sub_q_extend_comm_gen _ _ (se_exp N)) ].
-  - cbn [exp_sub bnd_sub pi_view option_map]; rewrite IH.
+  - cbn [exp_sub binding_sub pi_view option_map]; rewrite IH.
     destruct (pi_view (ctx_pi (rev R) a_True)) as [[B' C'] |]; cbn; [| reflexivity ].
     f_equal; f_equal;
       [ apply (exp_sub_extend_comm_gen _ _ (se_mod (me_lit U))) | apply (exp_sub_q_extend_comm_gen _ _ (se_mod (me_lit U))) ].
@@ -1450,7 +1450,7 @@ Ltac ind_decl_scoped :=
     HA : forall k Mk c gs gs1 r A gs2, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> (_ /\ _) /\ exp_scoped _ A /\ _,
     HB : forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> ptyp_doms t = _ ->
            (_ /\ _) /\ exp_scoped _ B /\ _,
-    HL : forall k Mk c gs, ind_member _ k = Some Mk -> In _ _ -> cargs_plen _ gs,
+    HL : forall k Mk c gs, ind_member _ k = Some Mk -> In _ _ -> cargs_params_length _ gs,
     HP : forall k Mk c gs gs1 t gs2 Mj j P T, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> ind_member _ _ = Some Mj ->
            nth_error _ j = Some P -> nth_error _ j = Some T -> (_ /\ _) /\ exp_scoped _ P /\ _,
     HX : forall k Mk qc k' Is vm, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> exists D', _,
@@ -1803,7 +1803,7 @@ Proof. intros * HΓ Hr; apply (wf_gc_resolve_closed _ _ _ _ _ _ _ _ _ HΓ Hr). Q
     module's stored unit is not, being closed.  Weakenings are the
     substitutions [ι φ] ([mdenote_wk_all]). *)
 
-Definition rd_sub (rd : reader) (σ : sub) : reader :=
+Definition reader_sub (rd : reader) (σ : sub) : reader :=
   match rd with
   | reader_open Δ Φ' => reader_open (tele_sub Δ σ) (gmod_sub Φ' (sb_qn (length Δ) σ))
   | reader_closed Θ Ns M => reader_closed (tele_sub Θ σ) (List.map (fun M => M[sb_qn (length Θ) σ]) Ns) M[sb_qn (length Θ) σ]
@@ -2201,7 +2201,7 @@ Proof. intros * Heq; rewrite <- sb_qn_plus, !gunit_sub_sub, Heq; reflexivity. Qe
 (** The entries of a description, substituted. *)
 Lemma mdesc_entry_sub_open : forall Δ Φw Φ y Γy E rd σ,
     mdesc_entry (mdesc_open Δ Φw Φ) y = Some (Γy, E, rd) ->
-    mdesc_entry (mdesc_sub (mdesc_open Δ Φw Φ) σ) y = Some (tele_sub Γy σ, gentry_sub E (sb_qn (length Γy) σ), rd_sub rd σ).
+    mdesc_entry (mdesc_sub (mdesc_open Δ Φw Φ) σ) y = Some (tele_sub Γy σ, gentry_sub E (sb_qn (length Γy) σ), reader_sub rd σ).
 Proof.
   intros * He; cbn in *.
   rewrite gm_prefix_upto_sub.
@@ -2210,7 +2210,7 @@ Proof.
   all: rewrite tele_sub_app, body_ctx_sub, length_app, length_body_ctx, sb_qn_plus; reflexivity.
 Qed.
 
-Lemma mdesc_entry_open_rd : forall Δ Φw Φ y Γy E rd, mdesc_entry (mdesc_open Δ Φw Φ) y = Some (Γy, E, rd) ->
+Lemma mdesc_entry_open_reader : forall Δ Φw Φ y Γy E rd, mdesc_entry (mdesc_open Δ Φw Φ) y = Some (Γy, E, rd) ->
     exists Φ', Γy = body_ctx Φ' ++ Δ /\ rd = reader_open Δ Φ'.
 Proof.
   intros * He; cbn in He.
@@ -2220,7 +2220,7 @@ Qed.
 
 Lemma mdesc_entry_sub_closed : forall Θ p T Φ Ns y Γy E rd σ,
     mdesc_entry (mdesc_closed Θ p T Φ Ns) y = Some (Γy, E, rd) ->
-    mdesc_entry (mdesc_sub (mdesc_closed Θ p T Φ Ns) σ) y = Some (Γy, E, rd_sub rd σ).
+    mdesc_entry (mdesc_sub (mdesc_closed Θ p T Φ Ns) σ) y = Some (Γy, E, reader_sub rd σ).
 Proof.
   intros * He; cbn in *.
   destruct (gm_prefix_upto Φ y) as [[| Φ' x E' | Φ' H its] |]; cbn in *; try discriminate.
@@ -2603,7 +2603,7 @@ Proof.
     destruct R0m as [r A0 om | Δ0 Φ0 | Θ0 q0 T0 Φ0 Ns0 | A0 M0 Rm0]; cbn in ee; try discriminate.
     + (* an open body *)
       destruct (mdesc_entry_scoped _ _ _ _ _ _ HR0m ee) as (HΓy & HE & _).
-      destruct (mdesc_entry_open_rd Δ0 Φ0 _ _ _ _ _ ee) as (Φ' & -> & ->).
+      destruct (mdesc_entry_open_reader Δ0 Φ0 _ _ _ _ _ ee) as (Φ' & -> & ->).
       eapply mdenote_mem; [ eapply IH0; eassumption | apply mdesc_mod_sub; exact em | apply mdesc_entry_sub_open; exact ee | |].
       * rewrite mdesc_entry_path_sub; eapply IHe; [ apply slots_ok_app; eassumption | exact HE |].
         apply sub_mod_compat_lt_ext; assumption.

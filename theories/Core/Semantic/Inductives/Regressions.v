@@ -12,8 +12,8 @@
       ([t_over_rose_in_model]).
     - [C (A) : A → Type | mk (a : A) : C A a ; T := t (x : T) (c : C T x) : T]:
       the view [C T] would have a non-uniform parameter of type [T], which
-      mentions the group, so [view_nps] has no derivation
-      ([view_nps_self_param_absurd]); and [run_cmd_ind_case] rejects the
+      mentions the group, so [view_nparams] has no derivation
+      ([view_nparams_self_param_absurd]); and [run_cmd_ind_case] rejects the
       declaration, already at [c], whose type mentions the recursive
       argument [x] ([run_cmd_ind_self_param_rejected]).
 
@@ -89,7 +89,7 @@ Ltac grp_suffix_none := intros ? ? ?; grp_cases; vm_compute; (split; intros Hx; 
 
 (** A group without record views: the record views' facts hold
     vacuously. *)
-Ltac grp_rstruct_none :=
+Ltac grp_record_struct_none :=
   constructor; [ intros * ? ?; grp_cases | intros * ? ?; grp_cases | intros * ? ?; grp_cases | grp_suffix_none
                | hnf; intros * ? ?; grp_cases ].
 
@@ -103,7 +103,7 @@ Ltac grp_in_model Hl Hta G :=
   try (red; intros; grp_vacuous; fail);
   try (cbn; split; [ reflexivity | exact I ]);
   try (constructor; intros; grp_vacuous;
-       (econstructor; [ cbn; constructor | cbn; constructor | unfold ntele_rel, ind_member, G; cbn; split; [ reflexivity | exact I ] ])).
+       (econstructor; [ cbn; constructor | cbn; constructor | unfold nparams_tele_rel, ind_member, G; cbn; split; [ reflexivity | exact I ] ])).
 
 (** No non-uniform parameter, no non-recursive argument, no domain of a
     shape: the components' relations are never asked. *)
@@ -191,8 +191,8 @@ Section ChainedViews.
     all: eapply mk_view_member_image; [ reflexivity | reflexivity | reflexivity | cbn; eauto ].
   Qed.
 
-  Lemma t_over_c_plen : forall k Mk c gs, ind_member t_over_c_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
-      cargs_plen t_over_c_group gs.
+  Lemma t_over_c_params_length : forall k Mk c gs, ind_member t_over_c_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
+      cargs_params_length t_over_c_group gs.
   Proof.
     intros * Hk Hin; grp_cases; cbn in Hin; destruct Hin as [Hin | []]; injection Hin; intros; subst.
     all: intros gs1 t0 gs2 Heq; destruct gs1 as [| g1 [| g2 gs1]]; cbn in Heq; injection Heq; intros; subst;
@@ -201,9 +201,9 @@ Section ChainedViews.
     all: eexists; split; reflexivity.
   Qed.
 
-  Lemma t_over_c_container_plen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_c_group v = Some Mv ->
+  Lemma t_over_c_container_params_length : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_c_group v = Some Mv ->
       im_head Mv = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
-      In (c, gs') (im_cons Mi') -> cargs_plen Dq gs'.
+      In (c, gs') (im_cons Mi') -> cargs_params_length Dq gs'.
   Proof.
     intros * Hv Hh Hl Hi' Hin; grp_cases; cbn in Hin; destruct Hin as [Hin | []]; injection Hin; intros; subst.
     all: intros gs1 t0 gs2 Heq; destruct gs1 as [| g1 [| g2 gs1]]; cbn in Heq; injection Heq; intros; subst;
@@ -223,11 +223,11 @@ Section ChainedViews.
     - exact t_over_c_view_wrap.
     - exact t_over_c_coherent.
     - exact t_over_c_images.
-    - exact t_over_c_plen.
-    - exact t_over_c_container_plen.
-    - grp_rstruct_none.
+    - exact t_over_c_params_length.
+    - exact t_over_c_container_params_length.
+    - grp_record_struct_none.
     - intros * Hv Hh Hl; grp_cases; grp_suffix_none.
-    - intros * Hv Hh Hl; grp_cases; grp_rstruct_none.
+    - intros * Hv Hh Hl; grp_cases; grp_record_struct_none.
   Qed.
 
   (** [T] is a type of the model, its elements the group's relation. *)
@@ -315,8 +315,8 @@ Section RoseViews.
     all: eapply mk_view_member_image; [ reflexivity | reflexivity | reflexivity | cbn; eauto ].
   Qed.
 
-  Lemma t_over_rose_plen : forall k Mk c gs, ind_member t_over_rose_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
-      cargs_plen t_over_rose_group gs.
+  Lemma t_over_rose_params_length : forall k Mk c gs, ind_member t_over_rose_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
+      cargs_params_length t_over_rose_group gs.
   Proof.
     intros * Hk Hin; grp_cases; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
       injection Hin; intros; subst.
@@ -326,9 +326,9 @@ Section RoseViews.
     all: eexists; split; reflexivity.
   Qed.
 
-  Lemma t_over_rose_container_plen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_rose_group v = Some Mv ->
+  Lemma t_over_rose_container_params_length : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_rose_group v = Some Mv ->
       im_head Mv = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
-      In (c, gs') (im_cons Mi') -> cargs_plen Dq gs'.
+      In (c, gs') (im_cons Mi') -> cargs_params_length Dq gs'.
   Proof.
     intros * Hv Hh Hl Hi' Hin; grp_cases; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
       injection Hin; intros; subst.
@@ -349,11 +349,11 @@ Section RoseViews.
     - exact t_over_rose_view_wrap.
     - exact t_over_rose_coherent.
     - exact t_over_rose_images.
-    - exact t_over_rose_plen.
-    - exact t_over_rose_container_plen.
-    - grp_rstruct_none.
+    - exact t_over_rose_params_length.
+    - exact t_over_rose_container_params_length.
+    - grp_record_struct_none.
     - intros * Hv Hh Hl; grp_cases; grp_suffix_none.
-    - intros * Hv Hh Hl; grp_cases; grp_rstruct_none.
+    - intros * Hv Hh Hl; grp_cases; grp_record_struct_none.
   Qed.
 
   (** [T] is a type of the model, its elements the group's relation. *)
@@ -427,8 +427,8 @@ Section PhantomViews.
     all: eapply mk_view_member_image; [ reflexivity | reflexivity | reflexivity | cbn; eauto ].
   Qed.
 
-  Lemma t_over_phantom_plen : forall k Mk c gs, ind_member t_over_phantom_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
-      cargs_plen t_over_phantom_group gs.
+  Lemma t_over_phantom_params_length : forall k Mk c gs, ind_member t_over_phantom_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
+      cargs_params_length t_over_phantom_group gs.
   Proof.
     intros * Hk Hin; grp_cases; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
       injection Hin; intros; subst.
@@ -438,9 +438,9 @@ Section PhantomViews.
     all: eexists; split; reflexivity.
   Qed.
 
-  Lemma t_over_phantom_container_plen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_phantom_group v = Some Mv ->
+  Lemma t_over_phantom_container_params_length : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_phantom_group v = Some Mv ->
       im_head Mv = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
-      In (c, gs') (im_cons Mi') -> cargs_plen Dq gs'.
+      In (c, gs') (im_cons Mi') -> cargs_params_length Dq gs'.
   Proof.
     intros * Hv Hh Hl Hi' Hin; grp_cases; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
       injection Hin; intros; subst.
@@ -461,11 +461,11 @@ Section PhantomViews.
     - exact t_over_phantom_view_wrap.
     - exact t_over_phantom_coherent.
     - exact t_over_phantom_images.
-    - exact t_over_phantom_plen.
-    - exact t_over_phantom_container_plen.
-    - grp_rstruct_none.
+    - exact t_over_phantom_params_length.
+    - exact t_over_phantom_container_params_length.
+    - grp_record_struct_none.
     - intros * Hv Hh Hl; grp_cases; grp_suffix_none.
-    - intros * Hv Hh Hl; grp_cases; grp_rstruct_none.
+    - intros * Hv Hh Hl; grp_cases; grp_record_struct_none.
   Qed.
 
   (** [T] at uniform parameters [g] and [g'] whose readbacks agree: related
@@ -483,7 +483,7 @@ Section PhantomViews.
       try (cbn; split; [ reflexivity | exact I ]);
       try (constructor; intros; grp_vacuous;
            (econstructor; [ cbn; constructor | cbn; constructor
-                          | unfold ntele_rel, ind_member, t_over_phantom_group; cbn; split; [ reflexivity | exact I ] ])).
+                          | unfold nparams_tele_rel, ind_member, t_over_phantom_group; cbn; split; [ reflexivity | exact I ] ])).
   Qed.
 
 End PhantomViews.
@@ -493,8 +493,8 @@ End PhantomViews.
     [C (A : Typeω@iU) : A → Type] ([im_nparams = [ce_ass #0]]) and
     [T := t (x : T) (c : C T x) : T].  The view [C T] would have a
     non-uniform parameter of type [T]: its non-uniform parameters,
-    normalized, mention the group, so [view_nps] has no derivation
-    ([view_nps_self_param_absurd]).  The declaration does not get that
+    normalized, mention the group, so [view_nparams] has no derivation
+    ([view_nparams_self_param_absurd]).  The declaration does not get that
     far: [c]'s type mentions the recursive argument [x], so [c] is
     classified neither as written nor as its normal form, and [run_cmd_ind_case]
     rejects the declaration ([run_cmd_ind_self_param_rejected]). *)
@@ -509,17 +509,17 @@ Proof.
   cbn [List.length]; replace (S (Datatypes.length Γ) - Datatypes.length Γ - 1) with 0 by lia; reflexivity.
 Qed.
 
-Lemma view_nps_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
-    raw_decl_uparams R = nil -> rd_n R = 1 ->
+Lemma view_nparams_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
+    raw_decl_uparams R = nil -> raw_decl_nmembers R = 1 ->
     ind_lookup Θ Ξ pC = Some DC -> ind_member DC 0 = Some MC -> im_nparams MC = ce_ass (a_var 0) :: nil ->
-    ~ view_nps Θ Ξ R (vk_ind pC 0 (a_var 0 :: nil)) Nv.
+    ~ view_nparams Θ Ξ R (vk_ind pC 0 (a_var 0 :: nil)) Nv.
 Proof.
   intros * Hu Hn Hl Hk Hnp Hv.
   inversion Hv as [? ? ? D' Mk' Ws ? Hl' Hk' Hnbe Himg |]; subst.
   rewrite Hl in Hl'; injection Hl' as <-; rewrite Hk in Hk'; injection Hk' as <-.
   rewrite Hnp in Hnbe; cbn in Hnbe.
   destruct R as [Us [| Mr [| ? ?]]]; cbn in Hu, Hn; try discriminate; subst Us.
-  unfold rd_uctx, rd_selfs in Hnbe; cbn in Hnbe.
+  unfold raw_decl_uniform_ctx, raw_decl_selfs in Hnbe; cbn in Hnbe.
   inversion Hnbe as [| A Δ W Δ' _ HW Hrest]; subst.
   inversion Hrest; subst.
   (** The parameter's type normalizes to [Self], which is not in the
@@ -571,14 +571,14 @@ Qed.
 (** The container at [Self] and a recursive argument is no argument: the
     recursive argument is neither a uniform argument nor a [Self]-free
     non-uniform one, whatever the uniform parameters of the container. *)
-Lemma cls_container_at_rec_none : forall grp recs pC,
-    cls_arg grp recs 0 0 1 (true :: nil) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) = None.
+Lemma classify_container_at_rec_none : forall grp recs pC,
+    classify_arg grp recs 0 0 1 (true :: nil) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) = None.
 Proof.
-  intros grp recs pC; unfold cls_arg.
-  unfold img_pat at 1.
+  intros grp recs pC; unfold classify_arg.
+  unfold image_pat at 1.
   match goal with |- context [exp_eq_dec ?T ?T'] => destruct (exp_eq_dec T T') as [E | _] end.
   { exfalso; cbn in E; injection E; intros; discriminate. }
-  cbn [cls_sh app_head app_args List.app]; unfold cls_nest.
+  cbn [classify_shape app_head app_args List.app]; unfold classify_nest.
   destruct (grp pC 0) as [[| [| [| m]]] |]; vm_compute; reflexivity.
 Qed.
 
@@ -593,21 +593,21 @@ Theorem run_cmd_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb
 Proof.
   intros * Hl Hu Hk Hnp Hr.
   inversion Hr; subst.
-  match goal with H : Forall2 (rm_cls _ _ _) _ _ |- _ => rename H into Hcls end.
+  match goal with H : Forall2 (raw_member_classify _ _ _) _ _ |- _ => rename H into Hcls end.
   cbn in Hcls; inversion Hcls as [| ? cs ? ? Hc _]; subst.
-  unfold rm_cls, cls_cons_in in Hc; cbn in Hc.
+  unfold raw_member_classify, classify_cons_in in Hc; cbn in Hc.
   inversion Hc as [| ? ? ? ? [_ Hargs] _]; subst.
   inversion Hargs as [| ? ? ? ? ? g1 ? Hg1 Hrest]; subst.
   inversion Hrest as [| ? ? ? ? ? g2 ? Hg2 _]; subst.
   (** The first argument, [x : T], is recursive. *)
-  assert (Eg1 : g1 = rcarg_rec_case (rptyp_self 0 nil)).
+  assert (Eg1 : g1 = classified_carg_rec_case (classified_ptyp_self 0 nil)).
   { inversion Hg1 as [? Hs | ? ? ? Hs]; subst; vm_compute in Hs; [ injection Hs as <-; reflexivity | discriminate ]. }
-  subst g1; cbn [rcarg_bit] in Hg2.
+  subst g1; cbn [classified_carg_bit] in Hg2.
   (** The second, [c : C T x], mentions it: it is classified neither as
       written nor as its normal form. *)
   inversion Hg2 as [? Hs | i W ? _ _ HW Hs]; subst.
-  - rewrite cls_container_at_rec_none in Hs; discriminate.
-  - cbn [rtele List.map List.rev List.app snd] in HW; unfold rm_pctx, rd_selfs in HW; cbn in HW.
+  - rewrite classify_container_at_rec_none in Hs; discriminate.
+  - cbn [raw_args_tele List.map List.rev List.app snd] in HW; unfold raw_member_args_ctx, raw_decl_selfs in HW; cbn in HW.
     rewrite (nbe_ty_container_at_self _ _ _ _ _ _ _ _ _ _ Hl Hu Hk Hnp HW) in Hs.
-    cbn in Hs; rewrite cls_container_at_rec_none in Hs; discriminate.
+    cbn in Hs; rewrite classify_container_at_rec_none in Hs; discriminate.
 Qed.

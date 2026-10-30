@@ -25,7 +25,7 @@ already a tactic.
 | Get the syntactic consequences of glue membership | `saturate_glu_info`, `saturate_weakening_escape` |
 | Do the same thing to every hypothesis | `on_all_hyp: fun H => …`, or `match_by_head <head> ltac:(fun H => …)` |
 | Invert without risking a case split | `progressive_invert`, or wrap in `directed` |
-| Discharge an extraction obligation | the `impl_obl_tac` of that file |
+| Discharge an extraction obligation | the `impl_obligation_tac` of that file |
 
 If your step is not in this table, it is still worth grepping
 `doc/tactics.md` — the index there is complete.
@@ -43,7 +43,7 @@ In order of preference — the cheapest fix is usually the right one.
 2. **Add a case to the dispatcher.** The saturation and obligation tactics are
    `match goal` dispatch tables. A new judgment form gets a new branch in
    `gen_core_presup`; a new order predicate gets a new branch in the relevant
-   `impl_obl_tac1`. Copy the shape of the neighbouring branches, including
+   `impl_obligation_tac1`. Copy the shape of the neighbouring branches, including
    their guards.
 3. **Extend a fallback chain.** `invert_*` and `*_econstructor` tactics are
    `tac_a + tac_b + tac_basic` chains, cheapest and most informative first.

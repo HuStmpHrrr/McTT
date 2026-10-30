@@ -246,11 +246,11 @@ Ltac match_by_head1 head tac :=
 Ltac match_by_head head tac := repeat (match_by_head1 head ltac:(fun H => tac H; try mark H)); unmark_all.
 
 Ltac inversion_by_head head := match_by_head head ltac:(fun H => inversion H).
-Ltac dir_inversion_by_head head := match_by_head head ltac:(fun H => directed inversion H).
+Ltac directed_inversion_by_head head := match_by_head head ltac:(fun H => directed inversion H).
 Ltac inversion_clear_by_head head := match_by_head head ltac:(fun H => inversion_clear H).
-Ltac dir_inversion_clear_by_head head := match_by_head head ltac:(fun H => directed inversion_clear H).
+Ltac directed_inversion_clear_by_head head := match_by_head head ltac:(fun H => directed inversion_clear H).
 Ltac destruct_by_head head := match_by_head head ltac:(fun H => destruct H).
-Ltac dir_destruct_by_head head := match_by_head head ltac:(fun H => directed destruct H).
+Ltac directed_destruct_by_head head := match_by_head head ltac:(fun H => directed destruct H).
 
 (** *** McTT automation *)
 
@@ -568,7 +568,7 @@ Ltac bulky_rewrite_in HT := repeat (bulky_rewrite_in1 HT; mauto 2).
 
 
 (** This tactic provides a trivial proof for the completeness of a decision procedure. *)
-Ltac dec_complete :=
+Ltac decision_complete :=
   lazymatch goal with
   | |- exists _, ?L = _ =>
       lazymatch type of L with

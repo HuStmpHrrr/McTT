@@ -78,7 +78,7 @@ Section MdefDecide.
     destruct (typ_least_dec F HΞ Γ (raw_fun_scrut f)) as [[i [HZ _]] | HnZ];
       [| right; exists mdef_why_scrut_untyped; intros m H; to_core_at Γ; inversion H as [? ? ? ? ? [i' HZ'] _ _ _ _ _]; exact (HnZ _ HZ') ].
     destruct (nbe_ty_impl F Γ (raw_fun_scrut f) (typ_nbe_ty_order F _ _ _ HZ)) as [W HW].
-    destruct (tys_nbe_dec T Γ (List.combine (List.seq 0 (ind_nblk D)) (ind_bmembers D))) as [[Ws HWs] | [j Hn]];
+    destruct (tys_nbe_dec T Γ (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D))) as [[Ws HWs] | [j Hn]];
       [| right; exists (mdef_why_member_untyped j); intros m H; to_core_at Γ; inversion H; subst; eapply Hn; eassumption ].
     destruct (nf_index W Ws) as [m |] eqn:Hm.
     2:{ right; exists (mdef_why_no_member W); intros m H; to_core_at Γ; inversion H as [? W' Ws' ? Mm _ HW' HWs' Hm' _ _]; subst.
@@ -179,7 +179,7 @@ Lemma mdef_group_of_fast : forall F Δ f0 fs pq m0 Ps D Us ms i,
     fc_deps F ⍮ fc_stack F ⍮ raw_fun_nparams f0 ++ Δ ++ fc_tele F ⊢ raw_fun_scrut f0 : Typeω@i ->
     nbe_ty (fc_deps F) (fc_stack F) (raw_fun_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_scrut f0) (nf_indty pq m0 Ps) ->
     ind_lookup (fc_deps F) (fc_stack F) pq = Some D -> m0 < ind_ndecl D ->
-    img_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us ->
+    image_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us ->
     Forall2 (mdef_member (fc_deps F) (fc_stack F) pq D Us Δ) (f0 :: fs) ms -> List.length ms = ind_nblk D -> NoDup ms ->
     mdef_group (fc_deps F) (fc_stack F) Δ f0 fs pq m0 Ps D Us ms.
 Proof.
@@ -203,7 +203,7 @@ Definition mdef_group_dec (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Δ
               match Compare_dec.lt_dec m0 (ind_ndecl D) with
               | right _ => inr (mdef_group_why_view (raw_fun_name f0))
               | left Hm0 =>
-                  match inspect (img_pats (List.repeat true (List.length (raw_fun_nparams f0)))
+                  match inspect (image_pats (List.repeat true (List.length (raw_fun_nparams f0)))
                                    (List.firstn (ind_nu D) (List.map nf_to_exp Ps))) with
                   | exist _ None _ => inr (mdef_group_why_uparams (raw_fun_name f0))
                   | exist _ (Some Us) HUs =>

@@ -95,31 +95,31 @@ Definition cmp_then (c c' : comparison) : comparison :=
   match c with Eq => c' | _ => c end.
 
 (** The order on normal forms: of their codings. *)
-Definition nf_cmp (M N : nf) : comparison := lt_cmp (nf_code M ltree_nil) (nf_code N ltree_nil).
+Definition nf_cmp (M N : nf) : comparison := lt_cmp (nf_code M code_tree_nil) (nf_code N code_tree_nil).
 (** The order on lists, each element coded by [f]: of their codings. *)
-Definition list_cmp {A : Set} (f : A -> ltree) (l l' : list A) : comparison :=
-  lt_cmp (list_code f l ltree_nil) (list_code f l' ltree_nil).
+Definition list_cmp {A : Set} (f : A -> code_tree) (l l' : list A) : comparison :=
+  lt_cmp (list_code f l code_tree_nil) (list_code f l' code_tree_nil).
 
 Lemma cmp_then_eq : forall c, cmp_then c Eq = c.
 Proof. intros []; reflexivity. Qed.
 
 Lemma lt_cmp_node : forall a c t b c' t',
-    lt_cmp (ltree_node a c t) (ltree_node b c' t')
+    lt_cmp (code_tree_node a c t) (code_tree_node b c' t')
     = cmp_then (Nat.compare a b) (cmp_then (lt_cmp c c') (lt_cmp t t')).
 Proof. intros; cbn; destruct (Nat.compare a b), (lt_cmp c c'); reflexivity. Qed.
 
 Lemma lt_cmp_node_nil : forall a c t b c' t',
-    lt_cmp (ltree_node a c t) (ltree_node b c' t')
-    = cmp_then (lt_cmp (ltree_node a c ltree_nil) (ltree_node b c' ltree_nil)) (lt_cmp t t').
+    lt_cmp (code_tree_node a c t) (code_tree_node b c' t')
+    = cmp_then (lt_cmp (code_tree_node a c code_tree_nil) (code_tree_node b c' code_tree_nil)) (lt_cmp t t').
 Proof.
   intros; rewrite !lt_cmp_node; cbn [lt_cmp].
   destruct (Nat.compare a b), (lt_cmp c c'); reflexivity.
 Qed.
 
-Lemma nf_code_node : forall M t, exists a c, nf_code M t = ltree_node a c t /\ nf_code M ltree_nil = ltree_node a c ltree_nil.
+Lemma nf_code_node : forall M t, exists a c, nf_code M t = code_tree_node a c t /\ nf_code M code_tree_nil = code_tree_node a c code_tree_nil.
 Proof. intros [] t; repeat match goal with p : o2 |- _ => destruct p end; cbn; eauto. Qed.
 
-Lemma ne_code_node : forall m t, exists a c, ne_code m t = ltree_node a c t /\ ne_code m ltree_nil = ltree_node a c ltree_nil.
+Lemma ne_code_node : forall m t, exists a c, ne_code m t = code_tree_node a c t /\ ne_code m code_tree_nil = code_tree_node a c code_tree_nil.
 Proof. intros [] t; cbn; eauto. Qed.
 
 Lemma nf_code_cmp : forall M N t t',
@@ -141,17 +141,17 @@ Qed.
 Lemma cmp_then_assoc : forall a b c, cmp_then (cmp_then a b) c = cmp_then a (cmp_then b c).
 Proof. intros [] [] []; reflexivity. Qed.
 
-Lemma list_code_cmp {A : Set} (f : A -> ltree) : forall l l' t t',
+Lemma list_code_cmp {A : Set} (f : A -> code_tree) : forall l l' t t',
     lt_cmp (list_code f l t) (list_code f l' t') = cmp_then (list_cmp f l l') (lt_cmp t t').
 Proof.
   unfold list_cmp; induction l as [| x l IH]; intros [| y l'] t t'; cbn [list_code];
     rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
-  rewrite (IH l' t t'), (IH l' ltree_nil ltree_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
+  rewrite (IH l' t t'), (IH l' code_tree_nil code_tree_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
 Qed.
 
 (** A map that preserves the order on the elements of a list preserves
     the order on the list. *)
-Lemma list_cmp_map {A : Set} (P : A -> Set) (f : A -> ltree) (g : A -> A) : forall l,
+Lemma list_cmp_map {A : Set} (P : A -> Set) (f : A -> code_tree) (g : A -> A) : forall l,
     list_all A P l -> (forall x, P x -> forall y, lt_cmp (f (g x)) (f (g y)) = lt_cmp (f x) (f y)) ->
     forall l', list_cmp f (List.map g l) (List.map g l') = list_cmp f l l'.
 Proof.

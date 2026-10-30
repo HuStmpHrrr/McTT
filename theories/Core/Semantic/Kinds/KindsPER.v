@@ -25,10 +25,10 @@ Section Fixed_GCtx.
   (** The environment a body makes, as kinds read it, has the kinds of the
       environment its expansion evaluates to. *)
   Lemma body_kinds_env : forall ρ Φ Φx, kinds_body_xp gc_deps gc_stack ρ Φ Φx -> forall ρ1, ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
-      exists σ, kinds_env gc_deps gc_stack ρ Φ σ /\ kshape gc_deps gc_stack ρ1 σ.
+      exists σ, kinds_env gc_deps gc_stack ρ Φ σ /\ kinds_shape gc_deps gc_stack ρ1 σ.
   Proof.
     intros * Hb * He.
-    destruct (kind_eval_benv _ _ _ _ _ He ρ (kshape_refl _ _ ρ)) as (σ & Hk & Hs).
+    destruct (kind_eval_body_env _ _ _ _ _ He ρ (kinds_shape_refl _ _ ρ)) as (σ & Hk & Hs).
     destruct (kinds_env_of_kinds_body_xp _ _ _ _ _ Hb) as (σw & Hkw).
     pose proof (kinds_env_eq_kinds_body_xp _ _ _ _ _ _ _ Hb Hkw Hk) as ->.
     exists σ; split; assumption.

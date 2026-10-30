@@ -25,16 +25,16 @@ Hint Resolve initial_env_order_sound nbe_order_sound nbe_ty_order_sound : mctt.
 Section InitialEnvImpl.
 
   #[local]
-  Ltac impl_obl_tac1 :=
+  Ltac impl_obligation_tac1 :=
   match goal with
   | H : initial_env_order _ _ _ |- _ => progressive_invert H
   end.
 
   #[local]
-  Ltac impl_obl_tac :=
-    repeat impl_obl_tac1; try econstructor; mauto.
+  Ltac impl_obligation_tac :=
+    repeat impl_obligation_tac1; try econstructor; mauto.
 
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations initial_env_impl Θ Ξ G (H : initial_env_order Θ Ξ G) : { p | initial_env Θ Ξ G p } by struct H :=
   | Θ, Ξ, nil, H => exist _ nil _
   | Θ, Ξ, cons (ce_ass A) G, H =>
@@ -89,16 +89,16 @@ Ltac functional_nbe_complete :=
 Section NbEDef.
 
   #[local]
-  Ltac impl_obl_tac1 :=
+  Ltac impl_obligation_tac1 :=
   match goal with
   | H : nbe_order _ _ _ _ _ |- _ => progressive_invert H
   end.
 
   #[local]
-  Ltac impl_obl_tac :=
-    repeat impl_obl_tac1; try econstructor; mauto.
+  Ltac impl_obligation_tac :=
+    repeat impl_obligation_tac1; try econstructor; mauto.
 
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations nbe_impl Θ Ξ G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
   | Θ, Ξ, G, M, A, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
@@ -119,16 +119,16 @@ Qed.
 Section NbETyDef.
 
   #[local]
-  Ltac impl_obl_tac1 :=
+  Ltac impl_obligation_tac1 :=
   match goal with
   | H : nbe_ty_order _ _ _ _ |- _ => progressive_invert H
   end.
 
   #[local]
-  Ltac impl_obl_tac :=
-    repeat impl_obl_tac1; try econstructor; mauto.
+  Ltac impl_obligation_tac :=
+    repeat impl_obligation_tac1; try econstructor; mauto.
 
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations nbe_ty_impl Θ Ξ G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } :=
   | Θ, Ξ, G, A, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
@@ -151,16 +151,16 @@ Qed.
 Section NbETyEnvDef.
 
   #[local]
-  Ltac impl_obl_tac1 :=
+  Ltac impl_obligation_tac1 :=
   match goal with
   | H : nbe_ty_order _ _ _ _ |- _ => progressive_invert H
   end.
 
   #[local]
-  Ltac impl_obl_tac :=
-    repeat impl_obl_tac1; try econstructor; mauto.
+  Ltac impl_obligation_tac :=
+    repeat impl_obligation_tac1; try econstructor; mauto.
 
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations nbe_ty_env_impl Θ Ξ G (P : { p | initial_env Θ Ξ G p }) A (H : nbe_ty_order Θ Ξ G A) :
     { w | nbe_ty Θ Ξ G A w } :=
   | Θ, Ξ, G, exist _ p Hp, A, H =>
