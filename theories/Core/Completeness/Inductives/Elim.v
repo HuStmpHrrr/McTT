@@ -3687,17 +3687,16 @@ Section GroupElim.
           Variable (RΨ : relation env).
           Hypothesis (HRΨ : EF Ψ0 ++ Γ ≈ Ψ0 ++ Γ ∈ per_ctx_env ↘ RΨ).
 
-          (** The domain of the [kd]-th step at a side, against its
-              canonical value. *)
-          Lemma frame_dom_link : forall kd Bk, List.nth_error (ptyp_doms t) kd = Some Bk ->
-              forall E B zs w X nv v ys a, sem_frame_vals Ψ0 σ0 x0 RΨ E B zs w X nv v -> List.length ys = kd ->
+          (** The domain of the [kd]-th step at a side: its value, against
+              its canonical value, relevant. *)
+          Lemma frame_dom_value : forall kd Bk, List.nth_error (ptyp_doms t) kd = Some Bk ->
+              forall E B zs w X nv v ys, sem_frame_vals Ψ0 σ0 x0 RΨ E B zs w X nv v -> List.length ys = kd ->
               tele_rel (nr k) T X X -> tele_prefix_rel (ar k X c) K nv nv ->
               tele_prefix_rel (shape_doms_rel (dr k) X nv (ptyp_doms t)) kd ys ys ->
-              ⟦ Bk[sb_qn kd σ0] ⟧ env_args E ys ↘ a ->
-              exists b (i : nat), ⟦ Bk ⟧ env_args nil (u0 ++ X ++ nv ++ ys) ↘ b /\ Dom a ≈ b ∈ per_univ i /\
-                domain_relevance a = relevant.
+              exists a b (i : nat), ⟦ Bk[sb_qn kd σ0] ⟧ env_args E ys ↘ a /\
+                ⟦ Bk ⟧ env_args nil (u0 ++ X ++ nv ++ ys) ↘ b /\ Dom a ≈ b ∈ per_univ i /\ domain_relevance a = relevant.
           Proof.
-            intros * HBk * Hv Lys HX Hnvs Hys Ea.
+            intros * HBk * Hv Lys HX Hnvs Hys.
             destruct Hf as [_ Hsig _ _ _ _]; destruct Hv as [HE _ _ _ [Bσ Hσe] _ HwU Lw LX Lnv].
             assert (Hk : kd < L) by (unfold L; apply List.nth_error_Some; congruence).
             set (Δ := doms_ctx (List.firstn kd (ptyp_doms t))).
@@ -3712,8 +3711,8 @@ Section GroupElim.
             pose proof (closed_app_valid _ _ _ _ _ HKka HKk HΓ HBv) as HBvΓ; rewrite <- !List.app_assoc in HBvΓ.
             pose proof (frame_side_dom_gargs kd Bσ w X nv ys ltac:(lia) HwU Lw LX Lnv HX Hnvs Hys) as Hgy; fold Δ in Hgy.
             destruct (outer_universe_type_link Δ Tg (Ψ0 ++ Γ) RΨ σ0 _ _ Bk Bk i0 HΔa HKkΓ HBvΓ HRΨ (gsub_valid Hsig) HE Hσe ys Hgy
-                        ltac:(rewrite LΔ; exact Lys)) as (a' & b' & Ea' & Eb' & Hab).
-            rewrite LΔ in Ea'; assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+                        ltac:(rewrite LΔ; exact Lys)) as (a & b' & Ea & Eb' & Hab).
+            rewrite LΔ in Ea.
             destruct (rel_ctx_wf_per_ctx_env HKk) as [RK HRK].
             pose proof (frame_closed_link kd Bσ w X _ ys ltac:(lia) HwU Lw LX Lnv Lys
                           (frame_canon_gargs kd X X _ _ ys ys ltac:(lia) HX Hnvs Hys) RK HRK) as HEK.
@@ -3724,7 +3723,23 @@ Section GroupElim.
             destruct (rel_exp_of_typ_relevant_at HRK HBv _ _ HEK) as (b2 & Eb2 & Hr2).
             assert (b2 = b') as -> by (eapply functional_eval_exp; eassumption).
             destruct Hab as [Rab HRab]; pose proof (per_univ_elem_relevance _ _ _ _ HRab) as Hr.
-            exists b, i0; split; [ exact Eb | split; [ etransitivity; [ exists Rab; exact HRab | exact Hbb ] | congruence ] ].
+            exists a, b, i0; split; [ exact Ea | split; [ exact Eb | split; [ etransitivity; [ exists Rab; exact HRab | exact Hbb ] | congruence ] ] ].
+          Qed.
+
+          (** The domain of the [kd]-th step at a side, against its
+              canonical value. *)
+          Lemma frame_dom_link : forall kd Bk, List.nth_error (ptyp_doms t) kd = Some Bk ->
+              forall E B zs w X nv v ys a, sem_frame_vals Ψ0 σ0 x0 RΨ E B zs w X nv v -> List.length ys = kd ->
+              tele_rel (nr k) T X X -> tele_prefix_rel (ar k X c) K nv nv ->
+              tele_prefix_rel (shape_doms_rel (dr k) X nv (ptyp_doms t)) kd ys ys ->
+              ⟦ Bk[sb_qn kd σ0] ⟧ env_args E ys ↘ a ->
+              exists b (i : nat), ⟦ Bk ⟧ env_args nil (u0 ++ X ++ nv ++ ys) ↘ b /\ Dom a ≈ b ∈ per_univ i /\
+                domain_relevance a = relevant.
+          Proof.
+            intros * HBk * Hv Lys HX Hnvs Hys Ea.
+            destruct (frame_dom_value kd Bk HBk E B zs w X nv v ys Hv Lys HX Hnvs Hys) as (a' & b & i & Ea' & Eb & Hab & Hr).
+            assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+            exists b, i; split; [ exact Eb | split; [ exact Hab | exact Hr ] ].
           Qed.
 
           (** *** The End of the Frame's Shape
