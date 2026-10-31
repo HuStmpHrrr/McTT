@@ -752,6 +752,8 @@ Section Transparent.
     destruct eval_clean as (He & _); destruct read_clean as (Hr & _).
     intros * Hn; inversion Hn; subst.
     match goal with Hρ : initial_env _ _ _ _ |- _ => pose proof (initial_env_clean _ _ Hρ) end.
-    eapply Hr; eauto with mctt.
+    (** A proof is [⋆ⁿ]; otherwise the read back value. *)
+    match goal with Hw : nbe_term _ _ _ _ _ _ _ |- _ => destruct Hw end;
+      [ solve [ constructor | cbn; auto | eauto with mctt ] | eapply Hr; eauto with mctt ].
   Qed.
 End Transparent.

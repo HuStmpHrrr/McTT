@@ -37,6 +37,14 @@ Ltac feed_nontrivial2 IH X Y Hp :=
   | _ => specialize (IH X Y Hp)
   end.
 
+Ltac feed_nontrivial3 IH X Y Z Hp :=
+  let T := type of (IH X Y Z Hp) in
+  lazymatch T with
+  | ?a = ?a => fail
+  | ?a = ?a /\ _ => fail
+  | _ => specialize (IH X Y Z Hp)
+  end.
+
 (** One step towards two fills of one part being one: use an equation, or
     the functionality of what the fill reads, or give an induction
     hypothesis the other fill of its part. *)
@@ -71,9 +79,9 @@ Ltac fill_functional_step Hg :=
     | match goal with
       | IH : forall _, fill_exp _ _ _ _ _ _ -> _, Hp : fill_exp _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
       | IH : forall _, fill_field_vals _ _ _ _ _ _ -> _, Hp : fill_field_vals _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
-      | IH : forall _ _, fill_blocks _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_blocks _ _ _ _ _ _ _ ?Y _ _ ?X |- _ =>
-          feed_nontrivial2 IH Y X Hp
-      | IH : forall _, fill_brs _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_brs _ _ _ _ _ _ _ _ _ _ ?X |- _ =>
+      | IH : forall _ _ _, fill_blocks _ _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_blocks _ _ _ ?R _ _ _ _ ?Y _ _ ?X |- _ =>
+          feed_nontrivial3 IH Y R X Hp
+      | IH : forall _, fill_brs _ _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_brs _ _ _ _ _ _ _ _ _ _ _ ?X |- _ =>
           feed_nontrivial IH X Hp
       | IH : forall _, fill_optional_exp _ _ _ _ _ _ -> _, Hp : fill_optional_exp _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
       | IH : forall _, fill_read _ _ _ _ _ _ -> _, Hp : fill_read _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
@@ -92,11 +100,11 @@ Section Functional.
   Lemma fill_functional_all :
     (forall Γ M M1, fill_exp Θ Ξ B Γ M M1 -> forall M2, fill_exp Θ Ξ B Γ M M2 -> M1 = M2) /\
     (forall Γ fs fs1, fill_field_vals Θ Ξ B Γ fs fs1 -> forall fs2, fill_field_vals Θ Ξ B Γ fs fs2 -> fs1 = fs2) /\
-    (forall Γ p D Us As j Bks Bks1, fill_blocks Θ Ξ B Γ p D Us As j Bks Bks1 ->
-       forall As' Bks2, fill_blocks Θ Ξ B Γ p D Us As' j Bks Bks2 ->
-       blocks_motives Bks1 = blocks_motives Bks2 /\ (As = As' -> Bks1 = Bks2)) /\
-    (forall Γ p D Mj Us As Bs Bs1, fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs1 ->
-       forall Bs2, fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs2 -> Bs1 = Bs2) /\
+    (forall r Γ p D Us As j Bks Bks1, fill_blocks Θ Ξ B r Γ p D Us As j Bks Bks1 ->
+       forall As' r' Bks2, fill_blocks Θ Ξ B r' Γ p D Us As' j Bks Bks2 ->
+       blocks_motives Bks1 = blocks_motives Bks2 /\ (r = r' -> As = As' -> Bks1 = Bks2)) /\
+    (forall r Γ p D Mj Us As Bs Bs1, fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs1 ->
+       forall Bs2, fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs2 -> Bs1 = Bs2) /\
     (forall Γ oM oM1, fill_optional_exp Θ Ξ B Γ oM oM1 -> forall oM2, fill_optional_exp Θ Ξ B Γ oM oM2 -> oM1 = oM2) /\
     (forall Γ H r1, fill_read Θ Ξ B Γ H r1 -> forall r2, fill_read Θ Ξ B Γ H r2 -> r1 = r2) /\
     (forall Γ H H1 op1, fill_mod Θ Ξ B Γ H H1 op1 -> forall H2 op2, fill_mod Θ Ξ B Γ H H2 op2 -> H1 = H2 /\ op1 = op2) /\
@@ -113,11 +121,30 @@ Section Functional.
       (** A binder or a member read as a module and as a term *)
       try solve [ exfalso; match goal with
         | Hn : ~ term_binder ?G ?k, Hl : term_binder ?G ?k |- _ => exact (Hn Hl)
-        | Hn : forall A oM, ~ mdenote _ _ ?G ?E _, Hm : mdenote _ _ ?G ?E _ |- _ => eapply Hn; exact Hm
+        | Hn : forall r A oM, ~ mdenote _ _ ?G ?E _, Hm : mdenote _ _ ?G ?E _ |- _ => eapply Hn; exact Hm
+        (** A conjunction annotated with its right part omitted, and not *)
+        | Hn : ~ and_ann_right_omitted _ |- _ => apply Hn; exact I
         end ].
-    (** A block: its motive first, then, at one set of motives, its
-        branches *)
-    split; [ cbn; f_equal; exact H0 | intros <-; rewrite (H1 _ H20), (H2 eq_refl); reflexivity ].
+    (** An eliminator: the blocks' motives are filled alike at any
+        relevance, so the motive of the member infers one sort, and the
+        blocks are filled at one relevance. *)
+    - match goal with
+      | Emot : blocks_motives ?L1 = blocks_motives ?L2,
+        Hm1 : nth_error ?L1 ?m = Some ?b1, Hm2 : nth_error ?L2 ?m = Some ?b2,
+        Hw1 : _ ⊢a eb_motive ?b1 ⟹ ?W1, Hw2 : _ ⊢a eb_motive ?b2 ⟹ ?W2 |- _ =>
+          assert (Emb : eb_motive b1 = eb_motive b2)
+            by (unfold blocks_motives in Emot; pose proof (List.map_nth_error eb_motive _ _ Hm1) as E1;
+                pose proof (List.map_nth_error eb_motive _ _ Hm2) as E2; rewrite Emot in E1; congruence);
+          rewrite Emb in Hw1;
+          assert (W1 = W2) as <- by (refine (@functional_alg_type_infer _ _ _ _ _ _ Hw1 Hw2); exact Hg)
+      end.
+      repeat match goal with E : ?a = ?a -> _ |- _ => specialize (E eq_refl) end.
+      repeat match goal with E : blocks_motives ?L1 = blocks_motives ?L2 -> _, E' : blocks_motives ?L1 = blocks_motives ?L2 |- _ =>
+        specialize (E E') end.
+      subst; reflexivity.
+    (** A block: its motive first, then, at one relevance and one set of
+        motives, its branches *)
+    - split; [ cbn; f_equal; assumption | intros <- <-; f_equal; f_equal; [ auto | apply H2; reflexivity ] ].
   Qed.
 
   (** A record's fields have one fill. *)
@@ -207,7 +234,7 @@ Section Functional.
     pose proof (Fe _ _ _ (Hr1 Mm eq_refl) _ (Hr2 Mm eq_refl)) as Er.
     destruct (IH _ H2') as [Hrs IHe].
     split; [ constructor; [ split; [ congruence | exact Er ] | exact Hrs ] |].
-    intros <-; pose proof (Fb _ _ _ _ _ _ _ _ (Hc1 Mm eq_refl) _ (Hc2 Mm eq_refl)) as Ec.
+    intros <-; pose proof (Fb _ _ _ _ _ _ _ _ _ (Hc1 Mm eq_refl) _ (Hc2 Mm eq_refl)) as Ec.
     rewrite (raw_fun_parts_eq f2 f1 (eq_trans En1 (eq_sym En2)) (eq_trans Ep1 (eq_sym Ep2)) (eq_trans Es1 (eq_sym Es2))
                Er Ec), (IHe eq_refl); reflexivity.
   Qed.

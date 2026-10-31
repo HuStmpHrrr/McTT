@@ -94,7 +94,9 @@ Qed.
 
 Hint Resolve exp_eq_univ_implies_eq_level : mctt.
 
-(** A type headed by a type constructor, or a variable. *)
+(** A type of a large universe headed by a type constructor, or a
+    variable.  The propositions [⊤], [⊥], [∀ₚ] and [Σₚ] are in [Prop], in no
+    universe. *)
 Inductive is_typ_constr : typ -> Prop :=
 (** A large universe *)
 | typ_is_typ_constr : forall i, is_typ_constr Typeω@i
@@ -103,10 +105,10 @@ Inductive is_typ_constr : typ -> Prop :=
 | univ_is_typ_constr : forall t, is_typ_constr Type⟨t⟩
 (** A type of levels *)
 | level_is_typ_constr : forall n, is_typ_constr Level@n
-(** The unit type *)
-| True_is_typ_constr : is_typ_constr ⊤
-(** The empty type *)
-| False_is_typ_constr : is_typ_constr ⊥
+(** The universe of propositions *)
+| prop_is_typ_constr : is_typ_constr Propₘ
+(** The placeholder type *)
+| placeholder_is_typ_constr : is_typ_constr a_placeholder_type
 (** A [Π] *)
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
 (** A variable *)

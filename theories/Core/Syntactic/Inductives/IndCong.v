@@ -437,3 +437,10 @@ Section Fixed_GCtx.
   Lemma exp_shift_extend_wk : forall U φ b, U[↑]ʷ[(ι φ),,b] = U[φ]ʷ.
   Proof. intros; rewrite exp_sub_shift; apply exp_sub_of_wk_ext; intros [|?]; reflexivity. Qed.
 End Fixed_GCtx.
+
+(** [Xs] and [Ys] are equal at the telescope [T], each at its type
+    instantiated by the [Xs] before it, and of one length. *)
+Definition exps_eq_at {GC : GCtx} (Δ : ctx) (T : ctx) (Xs Ys : list exp) : Prop :=
+  List.length Xs = List.length Ys /\
+  forall k X Y A, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
+    List.nth_error (tele_insts T Id Xs) k = Some A -> gc_deps ⍮ gc_stack ⍮ Δ ⊢ X ≈ Y : A.

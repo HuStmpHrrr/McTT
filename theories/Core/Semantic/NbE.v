@@ -161,6 +161,23 @@ Proof.
   destruct Hw as [Hp | m w Hr' Hm Hw]; [ congruence | exists m; split; assumption ].
 Qed.
 
+(** NbE at a relevant type, from its steps: the environment, the type's
+    value, the term's value and its readback, at a relevant type. *)
+Lemma nbe_relevant_intro : forall {Θ Ξ Γ M A w ρ a m},
+    initial_env Θ Ξ Γ ρ -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+    Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w -> domain_relevance a = relevant ->
+    nbe Θ Ξ Γ M A w.
+Proof. intros * Hi Ha Hm Hw Hr; econstructor; [ exact Hi | exact Ha | eapply nbe_term_relevant; eassumption ]. Qed.
+
+(** Split every [nbe_term] into its two cases: a proof, discarded when the
+    type's value is relevant, and a term evaluated and read back. *)
+Ltac invert_nbe_term :=
+  repeat match goal with
+    | H : nbe_term _ _ _ _ _ _ _ |- _ =>
+        let Hp := fresh "Hp" in
+        inversion H as [Hp | ? ? Hp ? ?]; subst; clear H; try (cbn in Hp; discriminate)
+    end.
+
 #[export]
 Hint Resolve functional_nbe : mctt.
 

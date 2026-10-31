@@ -80,28 +80,46 @@ Proof.
     repeat match goal with H1 : List.nth_error ?fl ?k = Some (?f, ?U1), H2 : List.nth_error ?fl ?k = Some (?f, ?U2) |- _ =>
       assert_fails constr_eq U1 U2; assert (U1 = U2) as <- by congruence; clear H2 end;
     functional_nbe_rewrite_clear; reflexivity ].
-  (** A module [let]: the same type of the rest. *)
-  4:{ assert (C = C0) as <- by eauto. functional_nbe_rewrite_clear. reflexivity. }
-  (** [Π]: the two parts infer the same universes, so the two universes the
+  (** The projections of a conjunction: the proof infers one conjunction. *)
+  - match goal with IH : forall A'0, _ -> Σₚⁿ _ _ = A'0, H : _ ⊢a _ ⟹ Σₚⁿ _ _ |- _ =>
+      specialize (IH _ H); injection IH as -> -> end; reflexivity.
+  - match goal with IH : forall A'0, _ -> Σₚⁿ _ _ = A'0, H : _ ⊢a _ ⟹ Σₚⁿ _ _ |- _ =>
+      specialize (IH _ H); injection IH as -> -> end.
+    functional_nbe_rewrite_clear; reflexivity.
+  (** [Π]: the two parts infer the same sorts, so the two universes the
       side conditions normalise are the same. *)
   - assert (UA = UA0) as <- by intuition.
     assert (UB = UB0) as <- by intuition.
     functional_nbe_rewrite_clear.
-    assert (u = u0) as <- by (eapply is_univ_nf_functional; eassumption).
+    destruct (is_sort_nf_functional _ _ _ _ _ H H5) as [<- <-].
     assert (v = v0) as <- by (eapply is_univ_nf_functional; eassumption).
     functional_nbe_rewrite_clear.
     reflexivity.
-  - assert (Πⁿ A B = Πⁿ A0 B0) as [= <- <-] by intuition.
-    functional_nbe_rewrite_clear.
-    reflexivity.
+  (** A function: the codomain's sort is one. *)
+  - assert (B = B0) as <- by intuition.
+    assert (UB = UB0) as <- by intuition.
+    exact (proj1 (is_sort_nf_functional _ _ _ _ _ H0 H6)).
+  (** An application: the function infers one [Π]. *)
+  - match goal with IH : forall A'0, _ -> nf_pi _ _ _ = A'0, H : _ ⊢a _ ⟹ nf_pi _ _ _ |- _ =>
+      specialize (IH _ H); injection IH as -> -> -> end.
+    functional_nbe_rewrite_clear; reflexivity.
   (** [let]: both derivations read the same annotation; without one, the
       body's type, then the type of the rest. *)
-  - destruct H as [-> | ->]; destruct H8 as [[=] | [= <-]]; simpl_let_guards.
+  - match goal with
+    | Ha : alg_let_ann ?oA ?A1, Hb : alg_let_ann ?oA ?A2 |- _ =>
+        assert_fails constr_eq A1 A2; destruct Ha as [-> | ->]; destruct Hb as [[=] | [= <-]]
+    end; simpl_let_guards.
     + assert (W = W0) as <- by eauto. assert (C = C0) as <- by eauto.
       functional_nbe_rewrite_clear. reflexivity.
     + assert (C = C0) as <- by eauto.
       functional_nbe_rewrite_clear. reflexivity.
-  - assert (A = A0) as <- by mauto using ctx_lookup_functional.
+  (** A module [let]: the same type of the rest. *)
+  - assert (C = C0) as <- by eauto.
+    functional_nbe_rewrite_clear.
+    reflexivity.
+  (** A variable: one type in the context. *)
+  - match goal with H1 : ?G ∋ #?x : ?T1, H2 : ?G ∋ #?x : ?T2 |- _ =>
+      assert_fails constr_eq T1 T2; assert (T1 = T2) as <- by mauto using ctx_lookup_functional end.
     functional_nbe_rewrite_clear.
     reflexivity.
 Qed.

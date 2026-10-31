@@ -18,7 +18,6 @@ Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
 Print Assumptions Mctt.Core.Soundness.soundness'.
-Print Assumptions Mctt.Core.Soundness.FundamentalTheorem.soundness_fundamental.
 Print Assumptions Mctt.Core.Consequences.Consistency.consistency.
 Print Assumptions Mctt.Core.Consequences.Consistency.consistency_gctx.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ_gctx.

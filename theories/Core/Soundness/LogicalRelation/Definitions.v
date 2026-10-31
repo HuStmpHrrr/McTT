@@ -7,6 +7,7 @@ From Mctt.Core.Semantic Require Export PER.
 From Mctt.Core.Semantic.Inductives Require Export IndPER.
 From Mctt.Core.Semantic Require Export RecordPER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
+From Mctt.Core.Syntactic.Inductives Require Export IndCong.
 From Mctt.Core.Syntactic.Levels Require Import Levels LevelEq.
 From Mctt.Core.Syntactic.System.Global Require Import Presup Paths.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
@@ -201,11 +202,8 @@ Definition suniv_glu_typ_pred (l : domain) (U : typ) : glu_typ_pred := suniv_glu
     their readback, at their telescope: their types may be larger than the
     inductive type, so they have no gluing at its universe.  The non-uniform
     ones are glued at the gluing predicates of their types ([NEl], indexed
-    by the position and the values before it). *)
-Definition exps_eq_at (Δ : ctx) (T : ctx) (Xs Ys : list exp) : Prop :=
-  List.length Xs = List.length Ys /\
-  forall k X Y A, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
-    List.nth_error (tele_insts T Id Xs) k = Some A -> Δ ⊢ X ≈ Y : A.
+    by the position and the values before it).  The parameters' equation
+    is [exps_eq_at] (Syntactic/Inductives/IndCong.v). *)
 
 (** The parameters [Ps] of a type whose head is the declared member [Mh]
     of the group [Dh], glued to their values by their readback at the

@@ -28,6 +28,14 @@ Variant is_sort_nf : nf -> relevance -> universe_nf -> Prop :=
 #[export]
 Hint Constructors is_sort_nf : mctt.
 
+(** A normal form is the type of a type of one sort and universe. *)
+Lemma is_sort_nf_functional : forall W r r' u u', is_sort_nf W r u -> is_sort_nf W r' u' -> r = r' /\ u = u'.
+Proof.
+  intros * H H'; destruct H as [W u Hu |]; inversion H'; subst;
+    try solve [ inversion Hu ]; try solve [ match goal with Hu' : is_univ_nf _ _ |- _ => inversion Hu' end ];
+    [ split; [ reflexivity | eapply is_univ_nf_functional; eassumption ] | split; reflexivity ].
+Qed.
+
 (** The type [A] of a local definition with the annotation [oA]: none, or
     [A] itself. *)
 Definition alg_let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some A.
