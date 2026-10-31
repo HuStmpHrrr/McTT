@@ -35,7 +35,10 @@ Context {GC : GCtx}.
 
 (** [nbe] of a type, at a large universe it lives in. *)
 Lemma nbe_ty_to_nbe_type : forall Γ T i W, nbe_ty_f Γ T W -> nbe_f Γ T Typeω@i W.
-Proof. intros * H; inversion_clear H; econstructor; [ eassumption | constructor | eassumption | constructor; eassumption ]. Qed.
+Proof.
+  intros * H; inversion_clear H.
+  eapply nbe_relevant_intro; [ eassumption | constructor | eassumption | constructor; eassumption | reflexivity ].
+Qed.
 
 (** ** NbE Commutes with Weakening *)
 Theorem nbe_wk : forall Γ A M T W,
@@ -52,26 +55,39 @@ Proof.
   (** The initial environment of [Γ ▹ A], related to itself. *)
   destruct (per_ctx_then_per_env_initial_env HR1) as (ρ1 & ρ1' & Hρ1 & Hρ1' & Hrel1).
   assert (ρ1' = ρ1) as -> by (eapply functional_initial_env; eassumption).
-  (** [M] along the weakening: its values at [ρ1] and at the tail of [ρ1]. *)
+  (** The tail of [ρ1] is the initial environment of [Γ], whose proofs the
+      weakening evaluates at. *)
+  destruct (per_ctx_then_per_env_initial_env HR0) as (ρ0 & ρ0' & Hρ0 & Hρ0' & Hrel0).
+  assert (ρ0' = ρ0) as -> by (eapply functional_initial_env; eassumption).
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_shift HA)) as Hs.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack ↑ ρ1 _) as Hev.
+  inversion Hρ1 as [| ? ρ ? ? Hρ | | | |]; subst.
+  assert (ρ = ρ0) as -> by (eapply functional_initial_env; eassumption).
+  destruct (per_ctx_env_proofs _ _ _ HR0 _ _ Hrel0) as [Hpf _].
+  pose proof (@eval_sub_of_wk gc_deps gc_stack Γ ↑ (ρ0 ↦ relevant_value a ⇑! a (length Γ)) _) as Hev.
+  rewrite eval_wk_shift in Hev; change (drop_env (ρ0 ↦ ?x)) with ρ0 in Hev; specialize (Hev Hpf).
+  (** [M] along the weakening: its values at [ρ1] and at its tail. *)
   destruct (HMg _ _ HR1 _ _ Hs _ _ _ _ Hrel1 Hev Hev) as [er [Ht He]].
-  destruct Ht as [aσ a ? ? Haσ Ha ? ? [Htc _]].
-  destruct He as [mσ m ? ? Hmσ Hm ? ? [Hmc _]].
-  rewrite !exp_sub_of_wk, !eval_wk_shift in *.
-  (** The tail of [ρ1] is the initial environment of [Γ], where [M] has the
-      normal form [W]. *)
-  inversion Hρ1 as [| ? ρ ? ? Hρ | | |]; subst.
-  change (drop_env (ρ ↦ ?x)) with ρ in *.
-  inversion_clear Hn as [? ? ? Hρ' Ha' Hm' HW].
+  destruct Ht as [aσ a0 ? ? Haσ Ha ? ? [Htc _]].
+  pose proof (per_univ_elem_relevance _ _ _ _ Htc) as Hrel.
+  rewrite !exp_sub_of_wk in *.
+  inversion_clear Hn as [? ? Hρ' Ha' Hnt].
   functional_initial_env_rewrite_clear.
   functional_eval_rewrite_clear.
-  (** One variable further out, the short value reads back as the weakening
-      of [W] ([read_shift]), and the long value as the short one. *)
-  pose proof (read_shift _ _ Γ ρ T M _ _ W Hρ ltac:(eassumption) ltac:(eassumption) HW) as HW1.
-  destruct (per_elem_then_per_top Htc Hmc (S (length Γ))) as [W' [HW' HW'']].
-  functional_read_rewrite_clear.
-  econstructor; eassumption.
+  destruct Hnt as [Hp | m w Hr Hm HW].
+  - (** A proof: [⋆ⁿ], at the weakened type of the same relevance *)
+    cbn [nf_wk]; econstructor; [ exact Hρ1 | exact Haσ | apply nbe_term_proof; rewrite Hrel; exact Hp ].
+  - destruct He as [(x & Hx & Hxp) | He].
+    + exfalso; rewrite exp_sub_of_wk in Hx; functional_eval_rewrite_clear; congruence.
+    + destruct He as [mσ m0 ? ? Hmσ Hm0 ? ? [Hmc _]].
+      rewrite !exp_sub_of_wk in *.
+      functional_eval_rewrite_clear.
+      (** One variable further out, the short value reads back as the
+          weakening of [W] ([read_shift]), and the long value as the short
+          one. *)
+      pose proof (read_shift _ _ Γ ρ0 T M _ _ w Hρ ltac:(eassumption) ltac:(eassumption) HW) as HW1.
+      destruct (per_elem_then_per_top Htc Hmc (S (length Γ))) as [W' [HW' HW'']].
+      functional_read_rewrite_clear.
+      eapply nbe_relevant_intro; [ exact Hρ1 | exact Haσ | exact Hmσ | eassumption | congruence ].
 Qed.
 
 Corollary nbe_ty_wk : forall Γ A T i W,

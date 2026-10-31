@@ -27,6 +27,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules.
 From Mctt.Core.Syntactic.System Require Export Privacy Translations.
 From Mctt.Core Require Export TypedElab.
 From Mctt.Core.Semantic Require Import NbE.
+From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Algorithmic.Typing Require Import Definitions Functional.
 Import Syntax_Notations GlobalCtx_Notations.
 
@@ -527,11 +528,14 @@ Inductive classify_arg_in (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (nu np n : nat) 
 | classify_in_syn : forall g,
     classify_arg grp_none rec_none nu np n pat T = Some g ->
     classify_arg_in Θ Ξ Γ nu np n pat T g
-(** As its normal form, when not as written. *)
+(** As its normal form, when not as written.  The normal form holds no
+    proof ([nf_proof_free]): an instance it nests at is strengthened past
+    the arguments before it, which a proof [⋆ⁿ] in it could have used. *)
 | classify_in_nf : forall i W g,
     classify_arg grp_none rec_none nu np n pat T = None ->
     Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
     nbe_ty Θ Ξ Γ T W ->
+    nf_proof_free W ->
     classify_arg (grp_info Θ Ξ) (rec_info Θ Ξ) nu np n pat (nf_to_exp W) = Some g ->
     classify_arg_in Θ Ξ Γ nu np n pat T g.
 

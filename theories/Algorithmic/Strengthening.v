@@ -97,6 +97,32 @@ Qed.
 Section Fixed_GCtx.
 Context {GC : GCtx}.
 
+(** A term of a type of a universe: its type is no proposition, so the
+    propositional disjunct of its relatedness ([type_propositional]) is
+    impossible. *)
+Ltac univ_not_propositional H :=
+  let x := fresh "x" in let Hx := fresh "Hx" in let Hxp := fresh "Hxp" in
+  destruct H as [(x & Hx & Hxp) | H];
+  [ exfalso; cbn in Hx; inversion Hx; subst; cbn in Hxp; discriminate Hxp |].
+
+(** A subtyping of values of a universe is not the one of propositions
+    ([per_prop]), which relates only propositional values. *)
+Ltac drop_per_prop :=
+  try (match goal with Hp : per_prop _ _ |- _ => destruct Hp; cbn in *; discriminate end).
+
+(** A semantic weakening evaluates, at the environments its source's PER
+    relates, to their images: the proofs it needs are the target's, which
+    the target's PER gives. *)
+Lemma eval_sub_of_wk_under : forall {Γ Δ φ R ρ ρ'},
+    Γ ⊨ʷ φ : Δ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R ->
+    ⟦ ι φ : Δ ⟧s ρ ↘ ⟪φ⟫ ρ /\ ⟦ ι φ : Δ ⟧s ρ' ↘ ⟪φ⟫ ρ'.
+Proof.
+  intros * [R1 HR1 R2 HR2 Hw _ _] HR Hρ.
+  assert (Hirr : R <~> R1) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hirr ρ ρ') as [Hf _].
+  exact (eval_sub_of_wk_pair Hw HR2 (Hf Hρ)).
+Qed.
+
 Lemma rel_wk_under_ctx_qn : forall Δ Γ A,
     tele_ass Δ ->
     ⊢ (Δ ++ Γ)%list ->
@@ -112,11 +138,10 @@ Proof.
     inversion Hass as [| ? ? [T ->] Hass']; subst.
     assert (⊢ (Δ ++ Γ)%list) by (eapply ctx_decomp_left; eassumption).
     assert (⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list) by (eapply ctx_decomp_left; eassumption).
-    destruct (ctx_decomp HΓs) as [_ [i HT]].
+    destruct (ctx_decomp HΓs) as [_ [S HS HT]].
     pose proof (IH _ _ Hass' ltac:(eassumption) ltac:(eassumption) HA) as Hψ.
-    assert ((Δ ++ Γ)%list ⊨ T ≈ T : Typeω@i)
-      by (apply completeness_fundamental_exp_eq; mauto 2).
-    cbn [centry_wk]; exact (rel_wk_under_ctx_q Hψ ltac:(eassumption)).
+    destruct (rel_type_of_sort HS (completeness_fundamental_exp_eq _ _ _ _ (wf_exp_eq_refl HT))) as [k Hk].
+    cbn [centry_wk]; exact (rel_wk_under_ctx_q Hψ Hk).
 Qed.
 
 
@@ -136,30 +161,31 @@ Lemma initial_env_length : forall Γ ρ, initial_env_f Γ ρ -> List.length ρ =
 Proof. induction 1; cbn; congruence. Qed.
 
 (** A type of the short context, read in the long environment and in its
-    image: the two values are related, which is what identifies the head PERs
-    of the two contexts. *)
-Lemma typ_along_qn : forall Δ Γ A T i ρ,
+    image: the two values are related, at some level, which is what
+    identifies the head PERs of the two contexts.  The type may be a type
+    or a proposition ([type_sort]). *)
+Lemma typ_along_qn : forall Δ Γ A T S ρ,
     tele_ass Δ ->
     ⊢ (Δ ++ Γ)%list ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
-    (Δ ++ Γ)%list ⊢ T : Typeω@i ->
+    type_sort S ->
+    (Δ ++ Γ)%list ⊢ T : S ->
     forall R,
       EF (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list ∈ per_ctx_env ↘ R ->
       Dom ρ ≈ ρ ∈ R ->
-      exists a b, ⟦ T[wk_qn (length Δ) ↑]ʷ ⟧ ρ ↘ a /\ ⟦ T ⟧ ⟪wk_qn (length Δ) ↑⟫ ρ ↘ b /\
+      exists (i : nat) a b, ⟦ T[wk_qn (length Δ) ↑]ʷ ⟧ ρ ↘ a /\ ⟦ T ⟧ ⟪wk_qn (length Δ) ↑⟫ ρ ↘ b /\
                     Dom a ≈ b ∈ per_univ i.
 Proof.
-  intros * Hass HΓs HΓf HT * HR Hρ.
+  intros * Hass HΓs HΓf HS HT * HR Hρ.
   assert (⊨ Γ ▹ A) as HA
     by (apply completeness_fundamental_ctx; eapply ctx_app_wf_tail; exact HΓf).
   pose proof (rel_wk_under_ctx_qn _ _ _ Hass HΓs HΓf HA) as Hψ.
-  assert ((Δ ++ Γ)%list ⊨ T ≈ T : Typeω@i)
-    by (apply completeness_fundamental_exp_eq; mauto 2).
-  pose proof (rel_exp_of_typ_inversion ltac:(eassumption)) as [R0 [HR0 Hgen]].
+  destruct (rel_type_of_sort HS (completeness_fundamental_exp_eq _ _ _ _ (wf_exp_eq_refl HT))) as [i [R0 HR0 Hgen]].
   destruct (Hgen _ _ HR _ _ (rel_sub_of_wk Hψ) _ _ _ _ Hρ
-                 (eval_sub_of_wk _ _) (eval_sub_of_wk _ _)) as [a1 a2 ? ? Ha1 Ha2 ? ? Hchain].
+                 (proj1 (eval_sub_of_wk_under Hψ HR Hρ)) (proj2 (eval_sub_of_wk_under Hψ HR Hρ)))
+    as [a1 a2 ? ? Ha1 Ha2 ? ? Hchain].
   rewrite exp_sub_of_wk in Ha1.
-  exists a1, a2; repeat split; try eassumption.
+  exists i, a1, a2; repeat split; try eassumption.
   (** The first two links of the chain are the two readings of [T]. *)
   destruct Hchain as [H12 _]; exact H12.
 Qed.
@@ -211,19 +237,21 @@ Proof.
     assert (ρ0 = ρs) as -> by (eapply functional_initial_env; eassumption).
     assert (ρ0' = ρs) as -> by (eapply functional_initial_env; eassumption).
     destruct (Htyp _ _ Hrel) as [a1 a2 Ha1 Ha2 Helem].
-    exists (de_term (⇑! a1 0)).
+    exists (de_term (relevant_value a1 (⇑! a1 0))).
     apply Heqv; unfold env_insert; cbn [List.firstn List.skipn List.app].
     exists Hrel.
-    functional_eval_rewrite_clear; cbn.
+    functional_eval_rewrite_clear; cbn -[relevant_value].
     eapply per_bot_then_per_elem; [ exact Helem | apply var_per_bot ].
+    (** The entry is a value, at a proposition too *)
+    all: intros _; reflexivity.
   - (** Under an assumption of the telescope: the entry of the short initial
         environment stays where it is, and the insertion moves one position
         inwards.  Its annotation is the short type value, so the head PER is
         reached through [typ_along_qn]. *)
     assert (⊢ (Δ ++ Γ)%list) by (eapply ctx_decomp_left; eassumption).
     assert (⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list) by (eapply ctx_decomp_left; eassumption).
-    destruct (ctx_decomp HΓs) as [_ [iT HT]].
-    inversion Hρs as [| ? ρ0 ? t Hρs' Ht | | |]; subst.
+    destruct (ctx_decomp HΓs) as [_ [ST HST HT]].
+    inversion Hρs as [| ? ρ0 ? t Hρs' Ht | | | |]; subst.
     destruct (IH _ _ _ _ Hass' ltac:(eassumption) ltac:(eassumption) Hctx Hρs') as [e He].
     exists e.
     assert (Hsucc : forall k (d : dentry) (r : env) m,
@@ -232,24 +260,30 @@ Proof.
     apply Heqv; exists He.
     destruct (Htyp _ _ He) as [a1 a2 Ha1 Ha2 Helem].
     destruct (typ_along_qn _ _ _ _ _ _ Hass' ltac:(eassumption) ltac:(eassumption)
-                           HT _ Hctx He) as (b1 & b2 & Hb1 & Hb2 & Hbb).
+                           HST HT _ Hctx He) as (k & b1 & b2 & Hb1 & Hb2 & Hbb).
     (** [b2] is the value of [T] in the short environment, which is [t]; [b1]
         is the long one, which is [a1]. *)
     rewrite eval_wk_qn_shift_insert in Hb2
       by (rewrite (initial_env_length _ _ Hρs'), length_app; lia).
     functional_eval_rewrite_clear.
-    cbn.
-    eapply per_bot_then_per_elem; [| apply var_per_bot ].
-    (** The long and the short value of [T] are related, so the annotation the
-        short environment carries sits in the same PER. *)
+    cbn -[relevant_value].
+    (** The long and the short value of [T] are related, at the larger of
+        their levels, so the annotation the short environment carries sits in
+        the same PER. *)
     destruct Hbb as [R' HR'].
-    assert (HR's : per_univ_elem iT R' t a1)
-      by (eapply (per_univ_PER.(PER_Symmetric)); exact HR').
+    set (m := max i k).
+    assert (Helem' : per_univ_elem m (head_rel (env_insert (length Δ) e ρ0) (env_insert (length Δ) e ρ0) He) a1 a1)
+      by (eapply per_univ_elem_cumu_ge; [| exact Helem ]; lia).
+    assert (HR'm : per_univ_elem m R' a1 t) by (eapply per_univ_elem_cumu_ge; [| exact HR' ]; lia).
+    assert (HR's : per_univ_elem m R' t a1)
+      by (eapply (per_univ_PER.(PER_Symmetric)); exact HR'm).
     assert (Hiff : head_rel (env_insert (length Δ) e ρ0) (env_insert (length Δ) e ρ0) He <~> R')
-      by (eapply per_univ_elem_left_irrel; [ exact Helem | exact HR's ]).
-    assert (Htt : per_univ_elem iT R' t t)
-      by (eapply (per_univ_PER.(PER_Transitive)); [ exact HR's | exact HR' ]).
-    eapply per_univ_elem_resp_iff; [ exact Htt | symmetry; exact Hiff ].
+      by (eapply per_univ_elem_left_irrel; [ exact Helem' | exact HR's ]).
+    assert (Htt : per_univ_elem m R' t t)
+      by (eapply (per_univ_PER.(PER_Transitive)); [ exact HR's | exact HR'm ]).
+    eapply per_bot_then_per_elem; [ eapply per_univ_elem_resp_iff; [ exact Htt | symmetry; exact Hiff ] | apply var_per_bot ].
+    (** The entry is a value, at a proposition too *)
+    all: intros _; reflexivity.
 Qed.
 
 
@@ -286,19 +320,39 @@ Proof.
   assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
       by (eexists; exact HR1).
   (** The long equation at the identity. *)
-  destruct (HLg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (HLg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
     as [er1 [Ht1 He1]].
   (** [M] and [N] along the weakening: each links its long value to its short
       one. *)
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hs.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
   destruct (HMg _ _ HR1 _ _ Hs _ _ _ _ Hρ Hev Hev) as [er2 [Ht2 He2]].
   destruct (HNg _ _ HR1 _ _ Hs _ _ _ _ Hρ Hev Hev) as [er3 [Ht3 He3]].
   destruct Ht1 as [t1 ? ? ? Ht11 ? ? ? Htc1].
-  destruct He1 as [m1 ? n3 ? Hm11 ? Hn13 ? Hmc1].
   destruct Ht2 as [? ? ? ? ? ? ? ? Huc].
-  destruct He2 as [? ? ? ? ? ? ? ? Hpc].
   destruct Ht3 as [? ? ? ? ? ? ? ? Hvc].
+  rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
+  rewrite !exp_sub_id in *.
+  rewrite Himg in *.
+  functional_eval_rewrite_clear.
+  (** The type's long and short values are of one relevance. *)
+  assert (Hrt : domain_relevance t1 = domain_relevance m'0)
+    by (destruct Huc as [Hx _]; exact (per_univ_elem_relevance _ _ _ _ Hx)).
+  destruct (domain_relevance m'0) eqn:Hrm.
+  2:{ (** A proposition: both ends are proofs, read back as [⋆ⁿ] *)
+      assert (nbe_f (Δ ++ Γ)%list M T ⋆ⁿ) by (econstructor; [ exact Hρs | eassumption | apply nbe_term_proof; exact Hrm ]).
+      assert (nbe_f (Δ ++ Γ)%list N T ⋆ⁿ) by (econstructor; [ exact Hρs | eassumption | apply nbe_term_proof; exact Hrm ]).
+      transitivity ⋆ⁿ; [| symmetry ]; eapply soundness'; eassumption. }
+  (** A relevant type: the ends' values are related *)
+  destruct He1 as [(x & Hx & Hxp) | He1]; [ exfalso; rewrite exp_sub_id in Hx; functional_eval_rewrite_clear; congruence |].
+  destruct He2 as [(x & Hx & Hxp) | He2];
+    [ exfalso; rewrite (exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in Hx by reflexivity;
+      functional_eval_rewrite_clear; congruence |].
+  destruct He3 as [(x & Hx & Hxp) | He3];
+    [ exfalso; rewrite (exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in Hx by reflexivity;
+      functional_eval_rewrite_clear; congruence |].
+  destruct He1 as [m1 ? n3 ? Hm11 ? Hn13 ? Hmc1].
+  destruct He2 as [? ? ? ? ? ? ? ? Hpc].
   destruct He3 as [? ? ? ? ? ? ? ? Hqc].
   rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
   rewrite !exp_sub_id in *.
@@ -324,8 +378,8 @@ Proof.
   (** Read back at the short length: the values are already those of the short
       environment, so no shift lemma is needed. *)
   destruct (per_elem_then_per_top Hu Hpq (length (Δ ++ Γ)%list)) as [W [HW HW']].
-  assert (nbe_f (Δ ++ Γ)%list M T W) by (econstructor; eassumption).
-  assert (nbe_f (Δ ++ Γ)%list N T W) by (econstructor; eassumption).
+  assert (nbe_f (Δ ++ Γ)%list M T W) by (eapply nbe_relevant_intro; eassumption).
+  assert (nbe_f (Δ ++ Γ)%list N T W) by (eapply nbe_relevant_intro; eassumption).
   transitivity W; [| symmetry ]; eapply soundness'; eassumption.
 Qed.
 
@@ -371,15 +425,16 @@ Proof.
   destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
   destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
   assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
       by (eexists; exact HR1).
   (** The type at the long environment and at its image. *)
   destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
   destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
+  univ_not_propositional He.
   destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
   (** The subtyping at the identity: its two values are the ones above. *)
-  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
     as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 Hau Ha'u Hsub].
   rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
   rewrite !exp_sub_id in *.
@@ -389,18 +444,18 @@ Proof.
       environment is one too, since [per_univ_elem] relates only values with the
       same head. *)
   inversion Ha3; subst.
-  inversion Hsub; subst.
+  inversion Hsub; subst; drop_per_prop.
   simplify_evals.
   assert (Hu : per_univ_elem j er 𝕌ω@i 𝕌ω@i) by (destruct Huc as [Hx _]; exact Hx).
   invert_per_univ_elem Hu.
   apply_relation_equivalence.
-  assert (Hmm : per_univ i (Πᵈ a0 ρ0 B) m0) by (destruct Hpc as [Hx _]; exact Hx).
+  assert (Hmm : per_univ i (Πᵈ a0 ρ0 B) m0) by (destruct Hpc as [[Hx _ _] _]; exact Hx).
   destruct Hmm as [Rm HRm].
   invert_per_univ_elem HRm.
   (** The short value reads back, and the readback of a [Πᵈ] is a [Πⁿ]. *)
   match goal with
   | Hp : rel_chain _ (_ :: ?v :: _) |- _ =>
-      assert (Hshort : per_univ i v v) by (destruct Hpc as [_ [Hx _]]; exact Hx)
+      assert (Hshort : per_univ i v v) by (destruct Hpc as [_ [[Hx _ _] _]]; exact Hx)
   end.
   destruct Hshort as [Rs HRs].
   destruct (per_univ_then_per_top_typ HRs (length (Δ ++ Γ)%list)) as [W [HW1 ?]].
@@ -436,27 +491,28 @@ Proof.
   destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
   destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
   assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
       by (eexists; exact HR1).
   destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
   destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
+  univ_not_propositional He.
   destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
-  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
     as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 Hau Ha'u Hsub].
   rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
   rewrite !exp_sub_id in *.
   functional_eval_rewrite_clear.
   destruct (eval_ind_value _ _ _ _ _ Ha3) as [ms ->].
-  inversion Hsub; subst.
+  inversion Hsub; subst; drop_per_prop.
   simplify_evals.
   assert (Hu : per_univ_elem j er 𝕌ω@i 𝕌ω@i) by (destruct Huc as [Hx _]; exact Hx).
   invert_per_univ_elem Hu.
   apply_relation_equivalence.
   match goal with
   | Hp : rel_chain _ (?m1 :: ?m2 :: _) |- _ =>
-      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [Hx _]; exact Hx);
-      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [Hx _]]; exact Hx)
+      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [[Hx _ _] _]; exact Hx);
+      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [[Hx _ _] _]]; exact Hx)
   end.
   destruct Hmm as [Rm HRm].
   invert_per_univ_elem HRm.
@@ -484,27 +540,28 @@ Proof.
   destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
   destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
   assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
       by (eexists; exact HR1).
   destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
   destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
+  univ_not_propositional He.
   destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
-  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
     as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 Hau Ha'u Hsub].
   rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
   rewrite !exp_sub_id in *.
   functional_eval_rewrite_clear.
   destruct (eval_record_value _ _ _ _ Ha3) as [ms ->].
-  inversion Hsub; subst.
+  inversion Hsub; subst; drop_per_prop.
   simplify_evals.
   assert (Hu : per_univ_elem j er 𝕌ω@i 𝕌ω@i) by (destruct Huc as [Hx _]; exact Hx).
   invert_per_univ_elem Hu.
   apply_relation_equivalence.
   match goal with
   | Hp : rel_chain _ (?m1 :: ?m2 :: _) |- _ =>
-      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [Hx _]; exact Hx);
-      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [Hx _]]; exact Hx)
+      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [[Hx _ _] _]; exact Hx);
+      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [[Hx _ _] _]]; exact Hx)
   end.
   destruct Hmm as [Rm HRm].
   invert_per_univ_elem HRm.
@@ -538,13 +595,14 @@ Proof.
   destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
   destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
   assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
       by (eexists; exact HR1).
   destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
   destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
+  univ_not_propositional He.
   destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
-  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
     as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 Hau Ha'u Hsub].
   rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
   rewrite !exp_sub_id in *.
@@ -556,13 +614,13 @@ Proof.
   apply_relation_equivalence.
   match type of Hpc with
   | rel_chain _ (?m1 :: ?m2 :: _) =>
-      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [Hx _]; exact Hx);
-      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [Hx _]]; exact Hx)
+      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [[Hx _ _] _]; exact Hx);
+      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [[Hx _ _] _]]; exact Hx)
   end.
   destruct Hmm as [Rm HRm].
   destruct Hshort as [Rs HRs].
   (** The left-hand side is a universe, so the right-hand one is too. *)
-  destruct HU; inversion Ha1; subst; inversion Hsub; subst.
+  destruct HU; inversion Ha1; subst; inversion Hsub; subst; drop_per_prop.
   all: invert_per_univ_elem HRm.
   all: destruct (per_univ_then_per_top_typ HRs (length (Δ ++ Γ)%list)) as [W [HW1 ?]].
   all: inversion HW1; subst.
@@ -582,7 +640,7 @@ Lemma per_subtyp_read : forall i a b,
     forall s, exists A B, Rtyp a in s ↘ A /\ Rtyp b in s ↘ B /\ ⊢anf A ⊆ B.
 Proof.
   induction 1; intros s.
-  1-4: try destruct (H s) as [L [HL HL']];
+  1-4: try (match goal with Hb : per_bot _ _ |- _ => destruct (Hb s) as [L [HL HL']] end);
     do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption
                                     | first [ apply alg_subtyping_nf_level; assumption | constructor; cbn; auto ] ].
   - do 2 eexists; repeat split; [ constructor | constructor | apply alg_subtyping_nf_univ; assumption ].
@@ -616,6 +674,13 @@ Proof.
     destruct (per_univ_then_per_top_typ H s) as [W [HW HW']].
     exists W, W; split; [ exact HW | split; [ exact HW' |] ].
     inversion HW; subst; apply alg_subtyping_nf_refl_case; cbn; auto.
+  - (** So do related propositions, which are no universe and no relevant
+        [Π]. *)
+    destruct H as [Hl Hr Htop]; destruct (Htop s) as [W [HW HW']].
+    exists W, W; split; [ exact HW | split; [ exact HW' |] ].
+    inversion HW; subst; cbn in Hl; try discriminate;
+      first [ apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ]
+            | match goal with |- ⊢anf nf_pi ?r _ _ ⊆ _ => destruct r; [ discriminate | apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ] ] end ].
 Qed.
 
 (** ** SubStr: Strengthening a Subtyping
@@ -645,16 +710,18 @@ Proof.
   destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
   destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
-  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
   assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
       by (eexists; exact HR1).
   destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
   destruct (HTg' _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er' [Ht' He']].
-  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
     as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 Hau Ha'u Hsub].
   destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
+  univ_not_propositional He.
   destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
   destruct Ht' as [? ? ? ? Hv1 ? ? ? Hvc].
+  univ_not_propositional He'.
   destruct He' as [? ? ? ? Hq1 Hq2 ? ? Hqc].
   rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
   rewrite !exp_sub_id in *.
@@ -668,8 +735,8 @@ Proof.
   invert_per_univ_elem Hu.
   invert_per_univ_elem Hu'.
   apply_relation_equivalence.
-  assert (Hm : per_univ i mσ0 m'0) by (destruct Hpc as [Hx _]; exact Hx).
-  assert (Hn : per_univ i mσ2 m'2) by (destruct Hqc as [Hx _]; exact Hx).
+  assert (Hm : per_univ i mσ0 m'0) by (destruct Hpc as [[Hx _ _] _]; exact Hx).
+  assert (Hn : per_univ i mσ2 m'2) by (destruct Hqc as [[Hx _ _] _]; exact Hx).
   destruct Hm as [Rm HRm]; destruct Hn as [Rn HRn].
   assert (Hs2 : Sub m'0 <: m'2 at (max i i')).
   { eapply per_subtyp_transp;
@@ -848,14 +915,14 @@ Proof.
   - (** The type the member is looked up at: closed, as the lookup reads
         nothing of the context. *)
     match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ ?H0, Hd : mdenote _ _ _ (me_mem ?H0 ?y) ?R, Ht : mdesc_type ?R = Some ?A0,
-                    HA0 : _ ⊢ ?A0 : Typeω@_ |- _ =>
+                    HA0 : _ ⊢ ?A0 : ?S, HS : type_sort ?S |- _ =>
       pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg;
       pose proof (wf_gstack_closed _ _ Hg) as Hc;
       assert (HHs : modexp_scoped 0 (me_mem H0 y)) by (cbn; exact (mod_qname_scoped _ _ _ Hpm));
       assert (HA : exp_scoped 0 A0)
         by (pose proof (proj1 (mdenote_scoped_all _ _ Hc) _ _ _ Hd 0 ltac:(intros ? ? Hx; lia) HHs) as HR;
             exact (mdesc_type_scoped _ _ _ HR Ht));
-      exists A0; split; [ exact HA | split; [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; exact HA0 |] ];
+      exists A0; split; [ exact HA | split; [ eapply wf_subtyp_refl; [ exact HA0 | exact HS | apply wf_exp_eq_refl; exact HA0 ] |] ];
       intros Γ' HΓ';
       eapply wf_mem_desc; [ eapply path_wf_any_ctx; [ exact Hpm | exact HH | exact HΓ' ] | | exact Ht ];
       exact (mdenote_closed_any _ _ Hc _ _ _ Γ' Hd HHs) end.
@@ -892,24 +959,32 @@ Proof.
   eapply subtyp_strengthen'; eassumption.
 Qed.
 
-(** A [Π] below a [Π]: the domains are equal and the codomains below each
-    other, under the left domain. *)
+(** A [Π] below a [Π]: the domains are equal, at their sort (a type or a
+    proposition), and the codomains below each other, under the left
+    domain. *)
 Lemma subtyp_pi_inv : forall Γ A B A' B',
     Γ ⊢ Π A B ⊆ Π A' B' ->
-    (exists k, Γ ⊢ A ≈ A' : Typeω@k) /\ Γ ▹ A ⊢ B ⊆ B'.
+    (exists S, type_sort S /\ Γ ⊢ A ≈ A' : S) /\ Γ ▹ A ⊢ B ⊆ B'.
 Proof.
   intros * H.
-  destruct (subtyp_spec H) as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & HUV) | (A1 & A2 & B1 & B2 & [k1 Ha] & [k2 Hb] & [k3 Hab] & Hsub)]].
+  assert (exists C, Γ ⊢ Π A B : C) as [C HC] by (gen_presups; eexists; eassumption).
+  destruct (wf_pi_typed_large HC) as [k0 Hk0].
+  (** A domain equation at a large universe or at [Prop] is at a sort *)
+  assert (Hsort : forall X Y k, Γ ⊢ X ≈ Y : Typeω@k \/ Γ ⊢ X ≈ Y : Propₘ -> exists S, type_sort S /\ Γ ⊢ X ≈ Y : S)
+    by (intros X Y k [Hx | Hx]; [ exists Typeω@k | exists Propₘ ]; split; [ constructor | exact Hx | constructor | exact Hx ]).
+  destruct (subtyp_spec_large (k := k0) H (or_introl Hk0))
+    as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & HUV) | (A1 & A2 & B1 & B2 & [k1 Ha] & [k2 Hb] & (S3 & HS3 & Hab) & Hsub)]].
   - destruct (exp_eq_pi_inversion Heq) as [HA HB].
-    split; [ eexists; exact HA | eapply wf_subtyp_refl'; exact HB ].
+    split; [ exact (Hsort _ _ _ HA) | eapply wf_subtyp_refl'; exact HB ].
   - exfalso; destruct (univ_sub_sort_term HUV) as [HUt _].
     eapply (pi_sort_term_absurd HUt); exact HU.
   - destruct (exp_eq_pi_inversion Ha) as [HA1 HA2].
     destruct (exp_eq_pi_inversion Hb) as [HB1 HB2].
-    assert (HAB1 : Γ ⊢ A ≈ B1 : Typeω@(max k1 k3))
-      by (eapply exp_eq_trans_typ_max; [ exact HA1 | exact Hab ]).
-    assert (HId : Γ ▹ A ⊢ˢ Id : Γ ▹ B1) by (eapply wf_sub_id_extend_eq'; symmetry; exact HAB1).
-    split; [ eexists; eapply exp_eq_trans_typ_max; [ exact HAB1 | exact HB1 ] |].
+    destruct (Hsort _ _ _ HA1) as (S1 & HS1 & HA1').
+    destruct (Hsort _ _ _ HB1) as (S2 & HS2 & HB1').
+    destruct (exp_eq_trans_sort HS1 HS3 HA1' Hab) as (S4 & HS4 & HAB1).
+    assert (HId : Γ ▹ A ⊢ˢ Id : Γ ▹ B1) by exact (sub_id_extend_of_exp_eq HS4 HAB1).
+    split; [ exact (exp_eq_trans_sort HS4 HS2 HAB1 HB1') |].
     etransitivity; [ eapply wf_subtyp_refl'; exact HA2 |].
     etransitivity; [ eapply ctxsub_subtyp; [ exact HId | exact Hsub ] |].
     eapply wf_subtyp_refl', ctxsub_exp_eq; [ exact HId | exact HB2 ].
@@ -921,7 +996,10 @@ Lemma subtyp_pi_left_shape : forall Γ A B T,
     exists A' B' k, Γ ⊢ T ≈ Π A' B' : Typeω@k.
 Proof.
   intros * H.
-  destruct (subtyp_spec H) as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & HUV) | (A1 & A2 & B1 & B2 & _ & [k2 Hb] & _ & _)]].
+  assert (exists C, Γ ⊢ Π A B : C) as [C HC] by (gen_presups; eexists; eassumption).
+  destruct (wf_pi_typed_large HC) as [k0 Hk0].
+  destruct (subtyp_spec_large (k := k0) H (or_introl Hk0))
+    as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & HUV) | (A1 & A2 & B1 & B2 & _ & [k2 Hb] & _ & _)]].
   - do 3 eexists; symmetry; exact Heq.
   - exfalso; destruct (univ_sub_sort_term HUV) as [HUt _].
     eapply (pi_sort_term_absurd HUt); exact HU.
@@ -949,21 +1027,23 @@ Proof.
     rewrite List.length_app in Hl; cbn in Hl.
     destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
     rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
-    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [kA HA0]].
+    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [SA HSA HA0]].
     cbn [apps_exp] in HMs.
     (** The first argument, of the first type. *)
     assert (Happ : forall T', Γ ⊢ M $ M0 : T' -> Γ ⊢ M0 : A0 /\ Γ ⊢ (ctx_pi Δ B)[Id,,M0] ⊆ T').
     { intros T' HT'.
-      destruct (wf_app_inversion HT') as (X & Y & HM & HM0 & HYT).
+      destruct (wf_app_inversion HT') as [X Y [HM | HM] HM0 HYT].
+      2:{ (** A function is no proof of a [∀] *)
+          exfalso; pose proof (HP _ HM) as Hs; rewrite ctx_pi_snoc in Hs; exact (subtyp_pi_all_absurd Hs). }
       pose proof (HP _ HM) as Hs; rewrite ctx_pi_snoc in Hs.
-      destruct (subtyp_pi_inv _ _ _ _ _ Hs) as [[k HAX] HBY].
-      assert (HM0' : Γ ⊢ M0 : A0) by (eapply wf_conv'; [ exact HM0 | symmetry; exact HAX ]).
+      destruct (subtyp_pi_inv _ _ _ _ _ Hs) as [(S & HS & HAX) HBY].
+      assert (HM0' : Γ ⊢ M0 : A0) by (eapply exp_conv_sort; [ exact HS | symmetry; exact HAX | exact HM0 ]).
       split; [ exact HM0' |].
       etransitivity; [| exact HYT ].
-      eapply sub_preserves_subtyp; [ exact HBY | eapply wf_sub_single; [ exact HA0 | exact HM0' ] ]. }
+      eapply sub_preserves_subtyp; [ exact HBY | eapply wf_sub_single; [ exact HA0 | exact HSA | exact HM0' ] ]. }
     destruct (wf_apps_head _ _ _ HMs) as (T1 & HT1).
     destruct (Happ _ HT1) as [HM0 _].
-    pose proof (wf_sub_single _ _ _ _ _ _ HA0 HM0) as Hs.
+    pose proof (wf_sub_single _ _ _ _ _ _ HA0 HSA HM0) as Hs.
     assert (HΔ' : ⊢ (tele_sub Δ (Id,,M0) ++ Γ)%list) by (eapply ctx_sub_wf; eassumption).
     pose proof (wf_sub_ext _ _ _ _ _ _ Hs HΔ' HΔ) as Hs'.
     intros [| k'] N T' HN HT'.
@@ -1030,8 +1110,9 @@ Proof.
   intros * Hl H.
   apply wf_exp_eq_refl, completeness_fundamental_exp_eq in H.
   destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
-  apply Modules.eval_apps_exp in Ha as (f & xs & Ef & Exs & Eap).
-  inversion Ef; subst; apply eval_apps_record_inv in Eap; cbn in Eap; subst.
+  apply Modules.eval_apps_exp in Ha as (f & Ef & Hargs).
+  inversion Ef; subst; apply Modules.eval_app_args_record in Hargs as (xs & Exs & Eap).
+  apply eval_apps_record_inv in Eap; cbn in Eap; subst.
   destruct (eval_record_value _ _ _ _ Ha') as [ys ->].
   invert_per_univ_elem HR.
   match goal with H' : record_lookup _ _ p = Some ?R1 |- _ => rewrite Hl in H'; injection H' as <- end.
@@ -1051,7 +1132,8 @@ Proof.
   destruct (ctx_pi_wf _ _ (record_params R) ⋅ (record_sort R) i HP ltac:(rewrite List.app_nil_r; exact Hi)) as [j Hj].
   exists j; split.
   - eapply wf_record; [ exact HΓ | exact Hl | exact (typed_nodup _ _ _ Ht) | exact (typed_params_ass _ _ _ Ht) | exact Hj
-                      | exact (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) | exact HS | exact (typed_fields _ _ _ Ht) ].
+                      | exact (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) | exact HS | exact (typed_fields _ _ _ Ht)
+                      | exact (typed_relevance_length _ _ _ Ht) ].
   - exact (closed_weaken_exp _ _ _ _ _ HΓ Hj (record_ty_scoped _ Hc) ltac:(cbn; exact I)).
 Qed.
 
@@ -1100,7 +1182,7 @@ Lemma tuple_fields_typed_seq : forall Γ p R Ns (fs : list (String.string * exp)
     List.length Ns = List.length (record_params R) -> List.map fst fs = List.map fst (record_fields R) ->
     (forall j N B, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) j = Some B -> Γ ⊢ N : B) ->
     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
-       (exists i, Γ ⊢ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : Typeω@i) ->
+       (exists S, type_sort S /\ Γ ⊢ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : S) ->
        Γ ⊢ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
     forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
       Γ ⊢ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))].
@@ -1121,8 +1203,8 @@ Proof.
     by (rewrite List.length_app, List.length_firstn, List.length_map; lia).
   destruct (record_field_typ_cong _ _ _ R k f U _ _ Hc Hass HF HΓ Hfk Hl1 Hl1
               ltac:(intros j0 N N' B HN HN' HB; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl; exact (Hins _ _ _ HN HB)))
-    as [i HUU].
-  exists i; gen_presups; assumption.
+    as (S & HS' & HUU).
+  exists S; split; [ exact HS' | gen_presups; assumption ].
 Qed.
 
 (** Two equal record types at their type formers have one path, and
@@ -1135,8 +1217,9 @@ Proof.
   intros * H Hl HYl.
   apply completeness_fundamental_exp_eq in H.
   destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
-  apply Modules.eval_apps_exp in Ha as (f & xs & Ef & Exs & Eap).
-  inversion Ef; subst; apply eval_apps_record_inv in Eap; cbn in Eap; subst.
+  apply Modules.eval_apps_exp in Ha as (f & Ef & Hargs).
+  inversion Ef; subst; apply Modules.eval_app_args_record in Hargs as (xs & Exs & Eap).
+  apply eval_apps_record_inv in Eap; cbn in Eap; subst.
   destruct (eval_record_value _ _ _ _ Ha') as [ys ->].
   invert_per_univ_elem HR.
   match goal with H' : record_lookup _ _ p' = Some ?R1 |- _ => rewrite Hl in H'; injection H' as <- end.
@@ -1147,14 +1230,15 @@ Qed.
 (** ** Instances of Telescopes
 
     An entry of a telescope instantiated at terms of the instances of the
-    entries before it is a type; so terms each typed at its instance once
-    that instance is a type are all typed. *)
+    entries before it is a type of a sort ([type_sort]): a type or a
+    proposition; so terms each typed at its instance once that instance is
+    a type are all typed. *)
 Lemma tele_insts_typed : forall Δ Γ0 Γ σ Ms,
     tele_ass Δ -> ⊢ (Δ ++ Γ0)%list -> Γ ⊢ˢ σ : Γ0 ->
     forall j T, List.nth_error (tele_insts Δ σ Ms) j = Some T ->
       (forall j' N T', j' < j -> List.nth_error Ms j' = Some N -> List.nth_error (tele_insts Δ σ Ms) j' = Some T' ->
          Γ ⊢ N : T') ->
-      exists i, Γ ⊢ T : Typeω@i.
+      exists S, type_sort S /\ Γ ⊢ T : S.
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ j T HT HMs.
   - unfold tele_insts in HT; cbn in HT; destruct Ms, j; discriminate.
@@ -1163,11 +1247,11 @@ Proof.
     + unfold tele_insts in HT; rewrite List.rev_app_distr in HT; cbn in HT; destruct j; discriminate.
     + rewrite tele_insts_snoc in HT, HMs.
       rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
-      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [k HA0]].
+      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [SA HS HA0]].
       destruct j as [| j]; cbn in HT.
-      * injection HT as <-; exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA0 Hσ).
+      * injection HT as <-; exists SA; split; [ exact HS | exact (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS Hσ) ].
       * eapply IH; [ exact Hass | exact HΔ | | exact HT |].
-        -- eapply wf_sub_extend; [ exact Hσ | exact HA0 |].
+        -- eapply wf_sub_extend; [ exact Hσ | exact HA0 | exact HS |].
            apply (HMs 0); [ lia | reflexivity | reflexivity ].
         -- intros j' N T' Hj' HN HT'; apply (HMs (S j')); [ lia | exact HN | exact HT' ].
 Qed.
@@ -1175,7 +1259,7 @@ Qed.
 Lemma tele_insts_typed_all : forall Δ Γ0 Γ σ Ms,
     tele_ass Δ -> ⊢ (Δ ++ Γ0)%list -> Γ ⊢ˢ σ : Γ0 ->
     (forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts Δ σ Ms) j = Some T ->
-       (exists i, Γ ⊢ T : Typeω@i) -> Γ ⊢ N : T) ->
+       (exists S, type_sort S /\ Γ ⊢ T : S) -> Γ ⊢ N : T) ->
     forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts Δ σ Ms) j = Some T -> Γ ⊢ N : T.
 Proof.
   intros * Hass HΔ Hσ HMs j; induction j as [j IH] using lt_wf_ind; intros N T HN HT.
@@ -1370,8 +1454,8 @@ Proof.
       assert (j < List.length Ns) by (apply List.nth_error_Some; congruence); lia. }
     destruct (tele_insts_cong _ _ _ _ _ _ _ (decl_closed_nparams_ass _ Hcq _ _ Hk) HPΓ (wf_sub_eq_sym _ _ _ _ _ _ Hσσ) HNl HNl
                 ltac:(intros j1 N1 N1' T1 HN1 HN1' HT1; rewrite HN1 in HN1'; injection HN1' as <-;
-                      apply wf_exp_eq_refl; exact (HRn _ _ _ HN1 HT1)) _ _ _ HT' HT) as [i Hi].
-    eapply wf_conv'; [ exact (HRn _ _ _ HN HT') | exact Hi ]. }
+                      apply wf_exp_eq_refl; exact (HRn _ _ _ HN1 HT1)) _ _ _ HT' HT) as (Si & HSi & Hi).
+    eapply exp_conv_sort; [ exact HSi | exact Hi | exact (HRn _ _ _ HN HT') ]. }
   (** The type former at the uniform arguments and the rest, equal to it
       at [Rs]. *)
   assert (Hkl : k < ind_ndecl Dq).
@@ -1521,7 +1605,7 @@ Lemma tele_insts_cong_upto : forall Δ Γ0 Γ σ σ' Ms Ms',
     forall j T T', List.nth_error (tele_insts Δ σ Ms) j = Some T -> List.nth_error (tele_insts Δ σ' Ms') j = Some T' ->
       (forall j' N N' T0, j' < j -> List.nth_error Ms j' = Some N -> List.nth_error Ms' j' = Some N' ->
          List.nth_error (tele_insts Δ σ Ms) j' = Some T0 -> Γ ⊢ N ≈ N' : T0) ->
-      exists i, Γ ⊢ T ≈ T' : Typeω@i.
+      exists S, type_sort S /\ Γ ⊢ T ≈ T' : S.
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ j T T' HT HT' HMs.
   - unfold tele_insts in HT; cbn in HT; destruct Ms, j; discriminate.
@@ -1530,14 +1614,16 @@ Proof.
     destruct Ms' as [| M0' Ms']; [ unfold tele_insts in HT'; rewrite List.rev_app_distr in HT'; cbn in HT'; destruct j; discriminate |].
     rewrite tele_insts_snoc in HT, HT', HMs.
     rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
-    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [k HA0]].
-    assert (HAA : Γ ⊢ A0[σ] ≈ A0[σ'] : Typeω@k) by (eapply sub_eq_preserves_typ; [ exact HA0 | exact Hσ ]).
+    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [S0 HS0 HA0]].
+    assert (HAA : Γ ⊢ A0[σ] ≈ A0[σ'] : S0) by (eapply sub_eq_preserves_sort; eassumption).
     destruct j as [| j]; cbn in HT, HT'.
-    + injection HT as <-; injection HT' as <-; exists k; exact HAA.
+    + injection HT as <-; injection HT' as <-; exists S0; split; [ exact HS0 | exact HAA ].
     + assert (HMM : Γ ⊢ M0 ≈ M0' : A0[σ]) by (apply (HMs 0); [ lia | reflexivity | reflexivity | reflexivity ]).
+      pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS0 (wf_sub_eq_right _ _ _ _ _ _ Hσ)) as HA0'.
       eapply IH; [ exact Hass | exact HΔ | | exact HT | exact HT' |].
-      * eapply wf_sub_eq_extend; [ exact Hσ | exact HA0 | gen_presups; eassumption | | exact HMM ].
-        eapply wf_conv'; [ gen_presups; eassumption | exact HAA ].
+      * eapply wf_sub_eq_extend;
+          [ exact Hσ | exact HA0 | exact HS0 | exact (presup_exp_eq_left HMM)
+          | eapply wf_conv_sort; [ exact (presup_exp_eq_right HMM) | exact HA0' | exact HS0 | exact HAA ] | exact HMM ].
       * intros j' N N' T0 Hj' HN HN' HT0; apply (HMs (S j')); [ lia | exact HN | exact HN' | exact HT0 ].
 Qed.
 
@@ -1559,9 +1645,9 @@ Proof.
   { rewrite length_tele_insts by exact Hat.
     assert (j < List.length Ys) by (apply List.nth_error_Some; congruence); lia. }
   destruct (tele_insts_cong_upto _ _ _ _ _ _ _ Hat HΔt (wf_sub_eq_refl _ _ _ _ _ (wf_sub_id _ _ _ HΓs)) _ _ _ HT HT')
-    as [i Hi]; [ intros j' N1 N1' T1 Hj' HN1 HN1' HT1; exact (IH j' Hj' _ _ _ HN1 HN1' HT1) |].
+    as (Si & HSi & Hi); [ intros j' N1 N1' T1 Hj' HN1 HN1' HT1; exact (IH j' Hj' _ _ _ HN1 HN1' HT1) |].
   eapply exp_eq_strengthen; [ exact Hass | exact HΓf | exact (HXs _ _ _ HN HT) | | exact (HL _ _ _ _ HN HN' HT) ].
-  eapply wf_conv'; [ exact (HYs _ _ _ HN' HT') | symmetry; exact Hi ].
+  eapply exp_conv_sort; [ exact HSi | symmetry; exact Hi | exact (HYs _ _ _ HN' HT') ].
 Qed.
 
 

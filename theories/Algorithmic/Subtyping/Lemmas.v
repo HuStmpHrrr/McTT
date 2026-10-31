@@ -6,6 +6,7 @@ From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic Require Import SystemOpt.
 From Mctt.Core Require Import Semantic.Levels Consequences.Consistency.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
+From Mctt.Core.Completeness Require Import UniverseCases ContextCases.
 Import Syntax_Notations Fixed_Notations.
 
 #[local]
@@ -32,6 +33,20 @@ Proof.
   directed_inversion_by_head eval_exp; subst.
   directed_inversion_by_head read_typ; subst.
   econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ].
+Qed.
+
+(** Conversely, a [Π]'s normal form is the [Π] of its domain's and of its
+    codomain's, in the context extended by the domain. *)
+Lemma nbe_ty_pi_intro : forall Γ A B WA WB,
+    nbe_ty_f Γ A WA ->
+    nbe_ty_f (Γ ▹ A) B WB ->
+    nbe_ty_f Γ (Π A B) (Πⁿ WA WB).
+Proof.
+  intros * [ρ a Hi Ha Hr] [ρ' b Hi' Hb Hr'].
+  inversion Hi'; subst.
+  functional_initial_env_rewrite_clear.
+  functional_eval_rewrite_clear.
+  econstructor; [ exact Hi | constructor; exact Ha | econstructor; eassumption ].
 Qed.
 
 (** The two normal forms are their own normal forms, as the normal forms
@@ -68,16 +83,14 @@ Proof.
       by (eapply wf_univ_lvl_inversion; eassumption).
     eapply wf_subtyp_small_large; [ assumption | exact Ht ].
   - gen_presups; apply wf_subtyp_level; assumption.
-  - on_all_hyp: fun H => apply wf_pi_inversion' in H; destruct H as [? ?].
-    destruct_all.
-    gen_presups.
-    (** [Typeω@i[↑]ʷ] is [Typeω@i], so [wf_subtyp_ge] derives [Typeω@i ⊆ Typeω@j]
-        in the extended context from [⊢ Γ ▹ A] alone. *)
-    apply_subtyping.
-    pose proof (nbe_ty_pi_cod _ _ _ _ _ HnA).
-    pose proof (nbe_ty_pi_cod _ _ _ _ _ HnB).
-    deepexec IHalg_subtyping_nf ltac:(fun H => pose proof H).
-    mauto 3.
+  - (** Two [Π]s over one domain, a type or a proposition: the codomains
+        compare in the context extended by it. *)
+    pose proof (nbe_ty_pi_cod _ _ _ _ _ HnA) as HnB1; pose proof (nbe_ty_pi_cod _ _ _ _ _ HnB) as HnB2.
+    apply wf_pi_inversion' in HA as [HdA HB1]; apply wf_pi_inversion' in HB as [_ HB2].
+    assert (IH : Γ ▹ A' ⊢ B ⊆ B') by (eapply IHalg_subtyping_nf; eassumption).
+    destruct HdA as [HdA | HdA];
+      (eapply wf_subtyp_pi; [ exact HdA | exact HdA | constructor | apply wf_exp_eq_refl; exact HdA
+                            | exact HB1 | exact HB2 | exact IH ]).
 Qed.
 
 Lemma alg_subtyping_nf_trans : forall A0 A1 A2,
@@ -98,8 +111,15 @@ Qed.
 Lemma alg_subtyping_nf_refl : forall A,
     ⊢anf A ⊆ A.
 Proof.
-  induction A;
-    solve [constructor; simpl; trivial | apply alg_subtyping_nf_suniv, lvl_le_refl | apply alg_subtyping_nf_level; reflexivity].
+  induction A.
+  (** A relevant [Π] by its codomain; a propositional one is no subtype
+      but of itself *)
+  all: try (match goal with |- ⊢anf nf_pi ?r _ _ ⊆ _ => destruct r end).
+  all: first [ apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ]
+             | apply alg_subtyping_nf_univ; lia
+             | apply alg_subtyping_nf_suniv, lvl_le_refl
+             | apply alg_subtyping_nf_level; reflexivity
+             | apply alg_subtyping_nf_pi; [ reflexivity | assumption ] ].
 Qed.
 
 #[local]
@@ -129,63 +149,69 @@ Proof.
   induction H; subst;
     repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
     mauto.
-  - match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H as [W [? ?]]).
-    econstructor; mauto.
-  - assert (Γ ⊢ Typeω@i : Typeω@(S i)) by mauto.
-    assert (Γ ⊢ Typeω@j : Typeω@(S j)) by mauto.
-    on_all_hyp: fun H => apply soundness in H.
-    destruct_all.
-    econstructor; mauto 2.
-    progressive_inversion.
-    mauto.
+  - (** An equation at a sort: one normal form *)
+    match goal with H : _ ⊢ _ ≈ _ : ?S, HS : type_sort ?S |- _ => destruct (completeness_ty_sort HS H) as (W & Hn1 & Hn2) end.
+    econstructor; [ exact Hn1 | exact Hn2 | apply alg_subtyping_nf_refl ].
+  - assert (Γ ⊢ Typeω@i : Typeω@(S i)) as (W1 & HW1 & _)%soundness_ty by (apply wf_typ; assumption).
+    assert (Γ ⊢ Typeω@j : Typeω@(S j)) as (W2 & HW2 & _)%soundness_ty by (apply wf_typ; assumption).
+    econstructor; [ exact HW1 | exact HW2 |].
+    inversion HW1 as [? ? _ He1 Hr1]; inversion HW2 as [? ? _ He2 Hr2]; subst.
+    inversion He1; subst; inversion He2; subst; inversion Hr1; subst; inversion Hr2; subst.
+    constructor; lia.
   (** The two small-universe rules: a small universe is its own normal
       form, read back by [read_typ_suniv]. *)
   - (** The order on the two canonical levels is read off the normal form of
         the premise [maxl M M' ≈ M'] ([read_max_lvl_le]). *)
     match goal with H : wf_exp_eq _ _ _ _ (maxl _ _) _ |- _ =>
       apply completeness in H as [W [Hn1 Hn2]] end.
-    assert (Γ ⊢ Type⟨M⟩ : Typeω@0) as HA%soundness by (eapply wf_univ_large_tm; eassumption).
-    assert (Γ ⊢ Type⟨M'⟩ : Typeω@0) as HB%soundness by (eapply wf_univ_large_tm; eassumption).
-    destruct HA as [WA [HA _]]; destruct HB as [WB [HB _]].
-    econstructor; mauto 2.
-    progressive_inversion.
+    assert (Γ ⊢ Type⟨M⟩ : Typeω@0) as (WA & HA & _)%soundness_ty by (eapply wf_univ_large_tm; eassumption).
+    assert (Γ ⊢ Type⟨M'⟩ : Typeω@0) as (WB & HB & _)%soundness_ty by (eapply wf_univ_large_tm; eassumption).
+    econstructor; [ exact HA | exact HB |].
+    (** The two levels and their maximum, evaluated and read back at one
+        environment; levels are relevant *)
+    destruct Hn1 as [ρ1 a1 Hi1 Ha1 Ht1]; destruct Hn2 as [ρ2 a2 Hi2 Ha2 Ht2].
+    destruct HA as [ρ3 m3 Hi3 He3 Hr3]; destruct HB as [ρ4 m4 Hi4 He4 Hr4].
     functional_initial_env_rewrite_clear.
-    simplify_evals.
+    inversion Ha1; subst; inversion Ha2; subst.
+    destruct Ht1 as [Hp | ? ? _ Hm1 Hw1]; [ cbn in Hp; discriminate |].
+    destruct Ht2 as [Hp | ? ? _ Hm2 Hw2]; [ cbn in Hp; discriminate |].
+    inversion He3; subst; inversion He4; subst; inversion Hm1; subst.
+    inversion Hr3; subst; inversion Hr4; subst.
+    functional_eval_rewrite_clear.
     apply alg_subtyping_nf_suniv; eapply read_max_lvl_le; eassumption.
   (** The types of levels are their own normal forms. *)
-  - assert (Γ ⊢ Level@m : Typeω@0) by mauto 3.
-    assert (Γ ⊢ Level@n : Typeω@0) by mauto 3.
-    on_all_hyp: fun H => apply soundness in H.
-    destruct_all.
-    econstructor; mauto 2.
-    progressive_inversion.
+  - assert (Γ ⊢ Level@m : Typeω@0) as (W1 & HW1 & _)%soundness_ty by mauto 3.
+    assert (Γ ⊢ Level@n : Typeω@0) as (W2 & HW2 & _)%soundness_ty by mauto 3.
+    econstructor; [ exact HW1 | exact HW2 |].
+    inversion HW1 as [? ? _ He1 Hr1]; inversion HW2 as [? ? _ He2 Hr2]; subst.
+    inversion He1; subst; inversion He2; subst; inversion Hr1; subst; inversion Hr2; subst.
     apply alg_subtyping_nf_level; assumption.
-  - assert (Γ ⊢ Type⟨M⟩ : Typeω@0) by (eapply wf_univ_large_tm; eassumption).
-    assert (Γ ⊢ Typeω@i : Typeω@(S i)) by mauto.
-    on_all_hyp: fun H => apply soundness in H.
-    destruct_all.
-    econstructor; mauto 2.
-    progressive_inversion.
+  - assert (Γ ⊢ Type⟨M⟩ : Typeω@0) as (W1 & HW1 & _)%soundness_ty by (eapply wf_univ_large_tm; eassumption).
+    assert (Γ ⊢ Typeω@i : Typeω@(S i)) as (W2 & HW2 & _)%soundness_ty by (apply wf_typ; assumption).
+    econstructor; [ exact HW1 | exact HW2 |].
+    inversion HW1 as [? ? _ He1 Hr1]; inversion HW2 as [? ? _ He2 Hr2]; subst.
+    inversion He1; subst; inversion He2; subst; inversion Hr1; subst; inversion Hr2; subst.
     apply alg_subtyping_nf_small_large.
-  - (** [ctxeq_nbe_eq] takes a semantic context equality, which
-        [per_ctx_of_exp_eq] builds from the domains. *)
-    assert (⊨ Γ ▹ A ≈ Γ ▹ A') by mauto.
-    (** The codomain's normal form is read back in [Γ ▹ A], but the induction
-        hypothesis gives it in [Γ ▹ A'], so it is transported.  This is added
-        as a fact rather than a rewrite because [Γ ▹ A ⊢ B : Typeω@i] is still
-        needed below. *)
-    assert (exists W, nbe_f (Γ ▹ A) B Typeω@i W /\ nbe_f (Γ ▹ A') B Typeω@i W)
-      by mauto 3 using ctxeq_nbe_eq.
-    match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H).
-    assert (Γ ⊢ Π A B : Typeω@i) as ?%soundness by mauto.
-    assert (Γ ⊢ Π A' B' : Typeω@i) as ?%soundness by mauto.
-    destruct_all.
-    econstructor; mauto 2.
-    progressive_inversion.
-    functional_initial_env_rewrite_clear.
-    simplify_evals.
-    functional_read_rewrite_clear.
-    mauto 2.
+  - (** The domains have one normal form; the codomain's, read back in
+        [Γ ▹ A], is the one in [Γ ▹ A'] the induction hypothesis gives:
+        [ctxeq_nbe_eq] moves it, at the semantic context equality the
+        domains give. *)
+    match goal with
+    | HS : pi_domain_sort _ ?S, HAA : _ ⊢ A ≈ A' : ?S, HB : _ ▹ A ⊢ B : Typeω@i, IH : _ ▹ A' ⊢a B ⊆ B' |- _ =>
+        assert (type_sort S) as HS' by (destruct HS; constructor);
+        rename HAA into HAA', HB into HB', IH into IH'
+    end.
+    assert (HΓA : ⊨ Γ ▹ A ≈ Γ ▹ A').
+    { destruct (rel_type_of_sort HS' (completeness_fundamental_exp_eq _ _ _ _ HAA')) as [k Hk].
+      eapply per_ctx_extend_type; [| exact Hk ].
+      apply rel_ctx_wf_per_ctx, completeness_fundamental_ctx; gen_presups; assumption. }
+    destruct (ctxeq_nbe_eq _ _ _ _ HB' HΓA) as (WB & HWB1 & HWB2).
+    destruct IH' as [X Y HX HY Hsub].
+    apply nbe_type_to_nbe_ty in HWB1, HWB2.
+    functional_nbe_rewrite_clear.
+    destruct (completeness_ty_sort HS' HAA') as (WA & HWA1 & HWA2).
+    econstructor; [ eapply nbe_ty_pi_intro; eassumption | eapply nbe_ty_pi_intro; eassumption |].
+    apply alg_subtyping_nf_pi; [ reflexivity | exact Hsub ].
 Qed.
 
 Lemma alg_subtyping_sound : forall Γ A B i,

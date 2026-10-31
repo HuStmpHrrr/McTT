@@ -117,7 +117,7 @@ Qed.
 
 (** A [Π] is a type of a large universe: of the universe it is in, or of
     every large one above the small one it is in. *)
-Lemma wf_pi_large : forall {Γ A B C}, Γ ⊢ Π A B : C -> exists k, Γ ⊢ Π A B : Typeω@k.
+Lemma wf_pi_typed_large : forall {Γ A B C}, Γ ⊢ Π A B : C -> exists k, Γ ⊢ Π A B : Typeω@k.
 Proof.
   intros * H.
   destruct (wf_pi_inversion H) as [(i & HA & HB & _) | (L & n & HL & HA & HB & _)].
@@ -145,6 +145,19 @@ Proof.
     + refine (wf_pi _ _ _ Typeω@0 _ _ propositional _ _ HB _ _); [ apply wf_is_univ_large; assumption | constructor | exact HP ].
   - destruct (wf_and_inversion _ _ _ _ _ _ H) as [HP HQ _].
     apply wf_and; assumption.
+Qed.
+
+(** A [Π], a type of a large universe, is below no [∀], a proposition
+    ([subtyp_same_relevance]). *)
+Lemma subtyp_pi_all_absurd : forall {Γ A B X Y},
+    Γ ⊢ Π A B ⊆ ∀ₚ X Y -> False.
+Proof.
+  intros * Hs.
+  assert (exists C, Γ ⊢ Π A B : C) as [C HC] by (gen_presups; eexists; eassumption).
+  destruct (wf_pi_typed_large HC) as [k Hk].
+  assert (exists C', Γ ⊢ ∀ₚ X Y : C') as [C' HC'] by (gen_presups; eexists; eassumption).
+  pose proof (prop_former_typed HC' ltac:(eauto 6)) as Hp.
+  discriminate (subtyp_same_relevance Γ _ _ relevant propositional k k Hs Hk Hp).
 Qed.
 
 (** Extended by equal types, a context refines the other extension. *)
@@ -1334,7 +1347,7 @@ Lemma subtyp_pi_dom_conv : forall {Γ A' B' A B N},
 Proof.
   intros * H HN.
   assert (exists C, Γ ⊢ Π A B : C) as [C HC] by (gen_presups; eexists; eassumption).
-  destruct (wf_pi_large HC) as [k0 Hk0].
+  destruct (wf_pi_typed_large HC) as [k0 Hk0].
   apply (subtyp_spec_large (k := k0)) in H
     as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & [k2 HB] & (S3 & HS3 & H13) & _)]];
     [| | | right; exact Hk0 ].
@@ -1404,7 +1417,7 @@ Lemma subtyp_ind_pi_absurd : forall {Γ p m X A B},
 Proof.
   intros * H.
   assert (exists C, Γ ⊢ Π A B : C) as [C HC] by (gen_presups; eexists; eassumption).
-  destruct (wf_pi_large HC) as [k0 Hk0].
+  destruct (wf_pi_typed_large HC) as [k0 Hk0].
   apply (subtyp_spec_large (k := k0)) in H as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & _)]];
     [| | | right; exact Hk0 ].
   - eapply exp_eq_ind_pi_absurd; exact Heq.

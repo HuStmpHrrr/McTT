@@ -156,8 +156,7 @@ Proof.
                                                (Some (a_mem H n)[wk_shiftn (length (body_ctx Φg))]ʷ))))).
     apply (IH Γ0 Ψ eq_refl HH).
     rewrite app_assoc in HA1, HM1; cbn [body_ctx app].
-    eapply wf_ext_eq_def; [ exact HX | exact HA1 | exact HS | apply wf_exp_eq_refl; exact HA1 | exact HM1
-                          | apply wf_exp_eq_refl; exact HM1 | exact HA1 | exact HM1 ].
+    eapply wf_ext_eq_def_same; [ exact HX | exact HA1 | exact HS | exact HA1 | exact HM1 | exact HM1 ].
   - (* a module member: an alias of it *)
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.

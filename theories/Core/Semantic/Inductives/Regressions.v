@@ -90,7 +90,8 @@ Ltac grp_suffix_none := intros ? ? ?; grp_cases; vm_compute; (split; intros Hx; 
 (** A group without record views: the record views' facts hold
     vacuously. *)
 Ltac grp_record_struct_none :=
-  constructor; [ intros * ? ?; grp_cases | intros * ? ?; grp_cases | intros * ? ?; grp_cases | grp_suffix_none
+  constructor; [ intros * ? ?; grp_cases | intros * ? ?; grp_cases | intros * ? ?; grp_cases
+               | intros * ? ? ?; grp_cases | grp_suffix_none
                | hnf; intros * ? ?; grp_cases ].
 
 (** A declared member, without parameters, of a group of that kind: its
@@ -128,7 +129,7 @@ Section ChainedViews.
   (** The filed group of [Sigma]: one declared member, no view. *)
   Definition sigma_group : ind_decl :=
     mk_ind (ce_ass TP :: ce_ass TA :: nil) SS
-      (mk_imember (mh_decl pmS) nil (("pair", ca_arg (a_var 1) :: ca_arg (a_app (a_var 1) (a_var 0)) :: nil) :: nil) :: nil).
+      (mk_imember (mh_decl pmS) nil (("pair", ca_arg relevant (a_var 1) :: ca_arg relevant (a_app (a_var 1) (a_var 0)) :: nil) :: nil) :: nil).
 
   (** The instance [Sigma (C B) (λ_. B')] of [Sigma]'s uniform
       parameters. *)
@@ -140,7 +141,7 @@ Section ChainedViews.
     mk_ind (ce_ass TB :: nil) SC
       (mk_imember (mh_decl pmC) nil (("mk", ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: mk_imember (mh_view pS 0 (sigma_inst (a_var 0) (a_var 1)) (1 :: nil)) nil
-            (("pair", ca_rec (pt_self 0 nil) :: ca_arg (a_var 0) :: nil) :: nil)
+            (("pair", ca_rec (pt_self 0 nil) :: ca_arg relevant (a_var 0) :: nil) :: nil)
        :: nil).
 
   (** The filed group of [T]: [T], the view [C T], and the inherited view
@@ -253,13 +254,13 @@ Section RoseViews.
   (** The filed group of [List]: one declared member, no view. *)
   Definition list_group : ind_decl :=
     mk_ind (ce_ass TL :: nil) SL
-      (mk_imember (mh_decl pmL) nil (("nil", nil) :: ("cons", ca_arg (a_var 0) :: ca_rec (pt_self 0 nil) :: nil) :: nil)
+      (mk_imember (mh_decl pmL) nil (("nil", nil) :: ("cons", ca_arg relevant (a_var 0) :: ca_rec (pt_self 0 nil) :: nil) :: nil)
        :: nil).
 
   (** The filed group of [Rose]: [Rose], and the view [List (Rose A)]. *)
   Definition rose_group : ind_decl :=
     mk_ind (ce_ass TR :: nil) SR
-      (mk_imember (mh_decl pmR) nil (("node", ca_arg (a_var 0) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
+      (mk_imember (mh_decl pmR) nil (("node", ca_arg relevant (a_var 0) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: mk_imember (mh_view pL 0 (a_app (a_ind pR 0) (a_var 0) :: nil) (1 :: nil)) nil
             (("nil", nil) :: ("cons", ca_rec (pt_self 0 nil) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: nil).
@@ -380,7 +381,7 @@ Section PhantomViews.
   (** The filed group of [Phantom]: one declared member, no view. *)
   Definition phantom_group : ind_decl :=
     mk_ind (ce_ass TB :: ce_ass TA :: nil) SP
-      (mk_imember (mh_decl pmP) nil (("mk", ca_arg (a_var 1) :: nil) :: nil) :: nil).
+      (mk_imember (mh_decl pmP) nil (("mk", ca_arg relevant (a_var 1) :: nil) :: nil) :: nil).
 
   (** The filed group of [T]: [T], and the view [Phantom (T f) (f Z)]. *)
   Definition t_over_phantom_group : ind_decl :=
@@ -497,14 +498,19 @@ End PhantomViews.
     ([view_nparams_self_param_absurd]).  The declaration does not get that
     far: [c]'s type mentions the recursive argument [x], so [c] is
     classified neither as written nor as its normal form, and [run_cmd_ind_case]
-    rejects the declaration ([run_cmd_ind_self_param_rejected]). *)
+    rejects the declaration ([run_cmd_ind_self_param_rejected]).  [T] is of
+    a universe ([ind_sort_univ]): were it a proposition, [x] would be a
+    proof, read back as [⋆ⁿ], and [C T ⋆ⁿ] mentions no recursive
+    argument. *)
 
 Lemma nbe_ty_var0 : forall Θ Ξ A Γ W, nbe_ty Θ Ξ (ce_ass A :: Γ) (a_var 0) W -> W = nf_neut (ne_var 0).
 Proof.
   intros * [ρ m Hi He Hr].
   inversion Hi; subst.
   inversion He; subst.
-  inversion Hr; subst.
+  (** The variable's value is a neutral at a relevant type, [⋆ᵈ] at a
+      proposition, which is no type *)
+  unfold relevant_value in *; destruct (domain_relevance _); cbn in Hr; inversion Hr; subst.
   match goal with H : read_ne _ _ _ _ _ |- _ => inversion H; subst end.
   cbn [List.length]; replace (S (Datatypes.length Γ) - Datatypes.length Γ - 1) with 0 by lia; reflexivity.
 Qed.
@@ -528,44 +534,56 @@ Proof.
   vm_compute in Himg; discriminate.
 Qed.
 
-(** The container at [Self] and the argument before it, in normal form. *)
-Lemma nbe_ty_container_at_self : forall Θ Ξ A B Γ pC DC MC iU W,
+(** The container at [Self] and the argument before it, in normal form,
+    where [Self] is of a universe, so the argument is relevant: of a
+    proposition [Self] it would be read back as [⋆ⁿ].  The argument's type
+    is [Self] itself ([a_var 0]), as in the declaration: at a general type
+    [A] the statement is false, since [A] may be a proposition ([⊤]), whose
+    variable is read back as [⋆ⁿ]. *)
+Lemma nbe_ty_container_at_self : forall Θ Ξ B Γ pC DC MC iU W,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
     im_nparams MC = ce_ass (a_var 0) :: nil ->
-    nbe_ty Θ Ξ (ce_ass A :: ce_ass B :: Γ) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) W ->
+    ind_sort_univ B ->
+    nbe_ty Θ Ξ (ce_ass (a_var 0) :: ce_ass B :: Γ) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) W ->
     W = nf_indty pC 0 (cons (nf_neut (ne_var 1)) (cons (nf_neut (ne_var 0)) nil)).
 Proof.
-  intros * Hl Hu Hk Hnp [ρ m Hi He Hr].
-  inversion Hi as [| ? ρ1 ? a1 Hi1 Ha1 | | |]; subst.
-  inversion Hi1 as [| ? ρ0 ? a0 Hi0 Ha0 | | |]; subst.
-  inversion He; subst.
-  repeat match goal with
-  | H : ⟦ a_app _ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
-  | H : ⟦ a_var _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
-  | H : ⟦ a_ind _ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
-  | H : $| d_ind _ _ _ & _ | _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
-  end.
-  cbn in Hr.
-  inversion Hr as [| | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps |]; subst; clear Hr.
-  rewrite Hl in Hk3; injection Hk3 as <-; rewrite Hk in Hlen3; injection Hlen3 as <-.
-  match goal with H : read_ps _ _ _ _ _ _ _ |- _ => rename H into Hps' end.
-  unfold im_params in Hps'; rewrite Hnp, Hu in Hps'; cbn in Hps'.
-  inversion Hps'; subst; clear Hps'.
-  match goal with H : read_ps _ _ _ _ _ _ _ |- _ => inversion H; subst; clear H end.
-  match goal with H : read_ps _ _ _ _ _ nil _ |- _ => inversion H; subst; clear H end.
-  repeat match goal with
+  intros * Hl Hu Hk Hnp HB [ρ m Hi He Hr].
+  (** The type's value: the type former, which takes relevant arguments,
+      at the two variables' values *)
+  assert (Hv : ⟦ a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pC 0 ((nil ++ ρ 1 :: nil) ++ ρ 0 :: nil))
+    by (assert (Hnp2 : im_np DC MC = 2) by (unfold im_np, im_nn, ind_nu; rewrite Hu, Hnp; reflexivity);
+        eapply eval_exp_app;
+        [ eapply eval_exp_app; [ apply eval_exp_indty | reflexivity | apply eval_exp_var
+                               | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]
+        | reflexivity | apply eval_exp_var | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]).
+  functional_eval_rewrite_clear.
+  inversion Hi as [| ? ρ1 ? a1 Hi1 Ha1 | | | |]; subst.
+  inversion Hi1 as [| ? ρ0 ? a0 Hi0 Ha0 | | | |]; subst.
+  (** The variables' values: neutrals, at a universe and at a variable of
+      it, both relevant *)
+  destruct HB as [[i ->] | [t ->]]; inversion Ha0; subst; inversion Ha1; subst.
+  all: cbn [relevant_value domain_relevance] in *.
+  all: cbn in Hr.
+  all: inversion Hr as [| | | | | | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps |]; subst; clear Hr.
+  all: rewrite Hl in Hk3; injection Hk3 as <-; rewrite Hk in Hlen3; injection Hlen3 as <-.
+  all: match goal with H : read_ps _ _ _ _ _ _ _ |- _ => rename H into Hps' end.
+  all: unfold im_params in Hps'; rewrite Hnp, Hu in Hps'; cbn in Hps'.
+  all: inversion Hps'; subst; clear Hps'.
+  all: match goal with H : read_ps _ _ _ _ _ _ _ |- _ => inversion H; subst; clear H end.
+  all: match goal with H : read_ps _ _ _ _ _ nil _ |- _ => inversion H; subst; clear H end.
+  all: repeat match goal with
   | H : ⟦ a_typ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
   | H : ⟦ a_var _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
   end.
-  (** Each parameter is read back as the variable it is. *)
-  repeat match goal with
-  | H : read_nf _ _ _ _ _ |- _ => cbn in H; inversion H; subst; clear H
+  (** Each parameter is read back as the variable it is *)
+  all: repeat match goal with
+  | H : read_nf _ _ _ _ _ |- _ => cbn in H; inversion H; subst; clear H; try (cbn in *; discriminate)
   | H : read_typ _ _ _ _ _ |- _ => inversion H; subst; clear H
   | H : read_ne _ _ _ _ _ |- _ => inversion H; subst; clear H
   end.
-  replace (Datatypes.S (Datatypes.S (Datatypes.length Γ)) - Datatypes.length Γ - 1) with 1 by lia.
-  replace (Datatypes.S (Datatypes.S (Datatypes.length Γ)) - Datatypes.S (Datatypes.length Γ) - 1) with 0 by lia.
-  reflexivity.
+  all: replace (Datatypes.S (Datatypes.S (Datatypes.length Γ)) - Datatypes.length Γ - 1) with 1 by lia.
+  all: replace (Datatypes.S (Datatypes.S (Datatypes.length Γ)) - Datatypes.S (Datatypes.length Γ) - 1) with 0 by lia.
+  all: reflexivity.
 Qed.
 
 (** The container at [Self] and a recursive argument is no argument: the
@@ -589,9 +607,10 @@ Definition self_param_decl (pC : qname) (x : string) (ST : exp) : raw_decl :=
 Theorem run_cmd_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb' Θ' Ξ' pC DC MC iU x ST,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
     im_nparams MC = ce_ass (a_var 0) :: nil ->
+    ind_sort_univ ST ->
     ~ (Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨lp ⍮ rd ⍮ tc⟩ core_cmd_inductive pv (self_param_decl pC x ST) ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb').
 Proof.
-  intros * Hl Hu Hk Hnp Hr.
+  intros * Hl Hu Hk Hnp HST Hr.
   inversion Hr; subst.
   match goal with H : Forall2 (raw_member_classify _ _ _) _ _ |- _ => rename H into Hcls end.
   cbn in Hcls; inversion Hcls as [| ? cs ? ? Hc _]; subst.
@@ -608,6 +627,8 @@ Proof.
   inversion Hg2 as [? Hs | i W ? _ _ HW Hs]; subst.
   - rewrite classify_container_at_rec_none in Hs; discriminate.
   - cbn [raw_args_tele List.map List.rev List.app snd] in HW; unfold raw_member_args_ctx, raw_decl_selfs in HW; cbn in HW.
-    rewrite (nbe_ty_container_at_self _ _ _ _ _ _ _ _ _ _ Hl Hu Hk Hnp HW) in Hs.
+    assert (HSTw : ind_sort_univ ST[wk_shiftn 0]ʷ[wk_shiftn 0]ʷ)
+      by exact (proj1 (ind_sort_univ_wk _ _ (proj1 (ind_sort_univ_wk _ _ HST)))).
+    rewrite (nbe_ty_container_at_self _ _ _ _ _ _ _ _ _ Hl Hu Hk Hnp HSTw HW) in Hs.
     cbn in Hs; rewrite classify_container_at_rec_none in Hs; discriminate.
 Qed.

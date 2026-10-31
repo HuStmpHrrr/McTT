@@ -580,6 +580,79 @@ Proof.
   all: (eapply list_all_forallb; [ eassumption |]); intros y Hy; destruct Hy; cbn; eauto.
 Qed.
 
+(** ** Normal Forms Free of Proofs
+
+    [nf_proof_free W]: the normal form [W] holds no proof [⋆ⁿ] and no ex
+    falso; mutually, [ne_proof_free u] for the neutral [u].  A proof reads
+    back as [⋆ⁿ] and an ex falso keeps no proof of [⊥], so a normal form
+    that holds one no longer says which variables the proof used, and it
+    cannot be strengthened past a variable it does not mention: with
+    [f : ⊥ → Type@0], the normal form [f ⋆ⁿ] is a type in [f ▹ (x : ⊥)],
+    where [x] proves [⊥], but not in [f] alone.  The normal forms that are
+    strengthened ([Algorithmic.Strengthening.nf_strengthen]) and the
+    classification of an argument by its normal form ([classify_in_nf])
+    ask for proof-free ones. *)
+Fixpoint nf_proof_free (W : nf) {struct W} : Prop :=
+  match W with
+  | nf_true => False
+  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_False
+  | nf_placeholder_type | nf_placeholder => True
+  | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
+  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_proof_free Ms
+  | nf_neut u => ne_proof_free u
+  | nf_record _ Ms => all_list nf_proof_free Ms
+  | nf_tuple _ Ms _ Ns => all_list nf_proof_free Ms /\ all_list nf_proof_free Ns
+  end
+with ne_proof_free (u : ne) {struct u} : Prop :=
+  match u with
+  | ne_absurd _ => False
+  | ne_elim _ Us _ Bks u =>
+      all_list nf_proof_free Us /\ all_list (normal_block_forall (fun _ => nf_proof_free)) Bks /\ ne_proof_free u
+  | ne_app u W => ne_proof_free u /\ nf_proof_free W
+  | ne_var _ | ne_glob _ => True
+  | ne_proj _ u => ne_proof_free u
+  end.
+
+(** Proof-freedom is decided by a boolean function with the same clauses. *)
+Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
+  match W with
+  | nf_true => false
+  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_False
+  | nf_placeholder_type | nf_placeholder => true
+  | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
+  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb nf_proof_freeb Ms
+  | nf_neut u => ne_proof_freeb u
+  | nf_record _ Ms => List.forallb nf_proof_freeb Ms
+  | nf_tuple _ Ms _ Ns => List.forallb nf_proof_freeb Ms && List.forallb nf_proof_freeb Ns
+  end
+with ne_proof_freeb (u : ne) {struct u} : bool :=
+  match u with
+  | ne_absurd _ => false
+  | ne_elim _ Us _ Bks u =>
+      List.forallb nf_proof_freeb Us && (List.forallb (normal_block_forallb (fun _ => nf_proof_freeb)) Bks
+                                         && ne_proof_freeb u)
+  | ne_app u W => ne_proof_freeb u && nf_proof_freeb W
+  | ne_var _ | ne_glob _ => true
+  | ne_proj _ u => ne_proof_freeb u
+  end.
+
+Lemma nf_proof_freeb_iff :
+  (forall W, nf_proof_freeb W = true <-> nf_proof_free W) /\
+  (forall u, ne_proof_freeb u = true <-> ne_proof_free u).
+Proof.
+  assert (Hand : forall A B C D : Prop, (A <-> B) -> (C <-> D) -> (A /\ C <-> B /\ D)) by tauto.
+  apply nf_ne_ind; intros; cbn; rewrite ?Bool.andb_true_iff;
+    repeat apply Hand;
+    try solve [ split; [ intros _; exact I | reflexivity ] | split; [ discriminate | contradiction ] | eauto ].
+  (** The lists, element by element. *)
+  all: (eapply list_all_forallb; [ eassumption |]); intros x Hx; try destruct Hx; cbn; try solve [ tauto | eauto ].
+  (** A block: its motive and its branches. *)
+  all: unfold normal_block_forallb, normal_block_forall; cbn; rewrite Bool.andb_true_iff; apply Hand; [ tauto |].
+  all: (eapply list_all_forallb; [ eassumption |]); intros y Hy; destruct Hy; cbn; tauto.
+Qed.
+
 (** A level below a level fresh at [k] mentions [k] only in atoms that the
     larger one's constant absorbs: an atom of the smaller one that mentions
     [k] is not an atom of the larger, and the assignment that makes it alone
