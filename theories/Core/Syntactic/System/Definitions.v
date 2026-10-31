@@ -1169,21 +1169,30 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
 | wf_ext_eq_nil :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ ⋅ ≈ ⋅ )
+(** An assumption: the two types are each below the other, each a type
+    of its own sort, so that equations chain whatever sorts the middle
+    type is given ([wf_subtyp_trans]); that the sorts agree is the
+    same-sort theorem, after completeness. *)
 | wf_ext_eq_ass :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt' ->
+     type_sort Srt' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A' ⊆ A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' )
+(** A definition: its types as an assumption's, and equal bodies. *)
 | wf_ext_eq_def :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt' ->
+     type_sort Srt' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A' ⊆ A ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M ≈ M' : A ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ M' : A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M' )
 | wf_ext_eq_mod :
@@ -1990,25 +1999,8 @@ Arguments mk_wf_type {Θ Ξ Γ A}.
 
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A" := (wf_type Θ Ξ Γ A) (at level 70, Ξ at level 69, Γ at level 69, A at level 69) : type_scope.
 
-(** [Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A']: [A] and [A'] are types of the same sort
-    (a [,] would steal Rocq's pairs; a notation sharing the prefix
-    [⊢ᵗ A] with [wf_type]'s does not parse, the two do not factor). *)
-#[warnings="-cannot-define-projection"]
-Record wf_types_same_sort (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A A' : typ) : Prop := mk_wf_types_same_sort
-  { (** The sort both are of *)
-    wf_types_sort : exp
-    (** It is a sort: a large universe or [Prop] *)
-  ; wf_types_sort_ok : type_sort wf_types_sort
-    (** [A] is of it *)
-  ; wf_types_left : Θ ⍮ Ξ ⍮ Γ ⊢ A : wf_types_sort
-    (** and so is [A'] *)
-  ; wf_types_right : Θ ⍮ Ξ ⍮ Γ ⊢ A' : wf_types_sort }.
-Arguments mk_wf_types_same_sort {Θ Ξ Γ A A'}.
-
-Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A'" := (wf_types_same_sort Θ Ξ Γ A A') (at level 70, Ξ at level 69, Γ at level 69, A at level 69, A' at level 69) : type_scope.
-
 #[export]
-Hint Constructors wf_type wf_types_same_sort : mctt.
+Hint Constructors wf_type : mctt.
 
 (** A type of a large universe is a type. *)
 Lemma wf_type_univ : forall {Θ Ξ Γ A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.

@@ -14,7 +14,7 @@
     without presupposition.
 
     The type of a term is a type of some sort, a universe or [Prop]
-    ([⊢ᵗ]), and the two sides of a refinement are of one sort ([⊢ᵗ²]).
+    ([⊢ᵗ]), and so is each side of a refinement, each at its own sort.
 
     None of the three statements needs a mutual induction:
 
@@ -222,51 +222,33 @@ Hint Resolve wf_conj' : mctt.
 
 (** ** The Two Sides of a Refinement
 
-    A refinement holds between types of a common sort.  In the cases between
-    universes the two sides are types at levels that need not agree, and
-    [lift_exp_common] raises both.  ([wf_subtyp_refl]'s case is where
-    [presup_exp_eq] is used, and the only place it is needed.) *)
-
-Lemma presup_subtyp_types : forall {Θ Ξ Γ A A'},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A'.
-Proof.
-  induction 1; destruct_conjs.
-  (** Reflexivity: at the sort of the equation. *)
-  1: exact (mk_wf_types_same_sort _ H0 (presup_exp_eq_left H1) H).
-  (** Transitivity: the two sorts of the middle type agree, or are lifted to
-      a common universe. *)
-  1:{ destruct IHwf_subtyp1 as [S1 HS1 HM HM'], IHwf_subtyp2 as [S2 HS2 HM'b HM''].
-      destruct HS1 as [i |], HS2 as [j |].
-      - destruct (lift_exp_common _ _ _ _ _ _ _ HM HM'') as (k & Hk & Hk'').
-        exact (mk_wf_types_same_sort _ (type_sort_universe k) Hk Hk'').
-      - (* PENDING design: cross-sort transitivity *) admit.
-      - (* PENDING design: cross-sort transitivity *) admit.
-      - exact (mk_wf_types_same_sort _ type_sort_prop HM HM''). }
-  (** The others are between types of universes. *)
-  all: try (match goal with |- ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ᵗ² ?A ‖ ?A' =>
-              assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i) as (k & Hk & Hk')
-                by (eapply lift_exp_common; mauto 2);
-              exact (mk_wf_types_same_sort _ (type_sort_universe k) Hk Hk') end).
-  (** [Π], its domains of the universe of its codomains or propositions:
-      both sides are of that universe. *)
-  all: assert (Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@i) by mauto 3.
-  all: apply (mk_wf_types_same_sort _ (type_sort_universe i));
-         eapply wf_pi with (r := relevant); eassumption.
-Admitted.
-
-Theorem presup_subtyp : forall {Θ Ξ Γ A A'},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ² A ‖ A'.
-Proof.
-  intros * H; split; [ eapply presup_subtyp_ctx; eassumption | apply presup_subtyp_types, H ].
-Qed.
+    Each side of a refinement is a type, each of its own sort: that the two
+    sorts agree is the same-sort theorem, which needs completeness.
+    ([wf_subtyp_refl]'s case is where [presup_exp_eq] is used, and the only
+    place it is needed.) *)
 
 Corollary presup_subtyp_left : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof.
-  intros * H; destruct (presup_subtyp_types H) as [S HS HA _]; exact (mk_wf_type _ HS HA).
+  induction 1; try assumption.
+  (** Reflexivity: at the sort of the equation. *)
+  1: exact (mk_wf_type _ H0 (presup_exp_eq_left H1)).
+  (** The others are between types of universes. *)
+  all: try (match goal with |- ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ᵗ ?A =>
+              assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) as (k & Hk) by (eexists; mauto 3);
+              exact (mk_wf_type _ (type_sort_universe k) Hk) end).
+  (** [Π], its domains of the universe of its codomains or propositions. *)
+  all: assert (Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@i) by mauto 3.
+  all: apply (mk_wf_type _ (type_sort_universe i));
+         eapply wf_pi with (r := relevant); eassumption.
+Qed.
+
+Theorem presup_subtyp : forall {Θ Ξ Γ A A'},
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A'.
+Proof.
+  intros * H; exact (conj (presup_subtyp_ctx H) (conj (presup_subtyp_left H) (presup_subtyp_right H))).
 Qed.
 
 #[export]
@@ -300,8 +282,11 @@ Ltac gen_presup1 H :=
       let S := fresh "S" in
       let HS := fresh "HS" in
       let HA := fresh "HA" in
+      let S' := fresh "S'" in
+      let HS' := fresh "HS'" in
       let HA' := fresh "HA'" in
-      pose proof presup_subtyp_types H as [S HS HA HA'];
+      pose proof presup_subtyp_left H as [S HS HA];
+      pose proof presup_subtyp_right H as [S' HS' HA'];
       try gen_core_presup HA
   | wf_sub_eq _ _ _ _ _ _ =>
       (** The two projections of [wf_sub_eq]; see [saturate_sub_eq]. *)

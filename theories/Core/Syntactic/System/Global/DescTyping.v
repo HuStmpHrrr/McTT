@@ -352,7 +352,7 @@ Proof.
   induction Δ as [| e Δ IH]; intros * Hass HΔ; cbn in *; [ constructor; assumption |].
   inversion_clear Hass as [| ? ? [A ->] Hass'].
   destruct (ctx_decomp HΔ) as [HΔ' [Srt HS HA]].
-  eapply wf_ext_eq_ass; [ apply IH; assumption | exact HA | exact HS | apply wf_exp_eq_refl, HA | exact HA ].
+  eapply wf_ext_eq_ass_same; [ apply IH; assumption | exact HA | exact HS | exact HA ].
 Qed.
 
 Lemma ctx_sub_wf : forall Θ Ξ Γ Γ' Δ σ,
@@ -455,12 +455,11 @@ Proof.
   - constructor; exact H.
   - inversion H; subst.
     match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : ?S, HS : type_sort ?S |- _ =>
-      eapply wf_ext_eq_ass; [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | eapply wf_exp_eq_refl; exact HA | exact HA ] end.
+      eapply wf_ext_eq_ass_same; [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | exact HA ] end.
   - inversion H; subst.
     match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : ?S, HS : type_sort ?S, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A |- _ =>
-      eapply wf_ext_eq_def;
-        [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | eapply wf_exp_eq_refl; exact HA | exact HM
-        | eapply wf_exp_eq_refl; exact HM | exact HA | exact HM ] end.
+      eapply wf_ext_eq_def_same;
+        [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | exact HA | exact HM | exact HM ] end.
   - inversion H; subst.
     match goal with HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
       eapply wf_ext_eq_mod; [ apply IH; eauto using presup_unit_eq_ctx | exact HU | exact HU ] end.

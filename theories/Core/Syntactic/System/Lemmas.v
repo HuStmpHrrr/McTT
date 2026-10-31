@@ -392,49 +392,53 @@ Ltac saturate_sub_eq_IH :=
   end.
 
 (** The parts of an equation of telescopes ending in assumptions [A] and
-    [A']: the telescopes before, and the heads at one sort. *)
+    [A']: the telescopes before, the heads each at its own sort, and each
+    head below the other in the left telescope. *)
 #[warnings="-cannot-define-projection"]
 Record ext_eq_ass_head (Θ : gdeps) (Ξ : gstack) (Γ Ψ Ψ' : ctx) (A A' : typ) : Prop := mk_ext_eq_ass_head
-  { (** The sort both heads are of *)
-    ext_head_sort : exp
+  { (** The sort of the left head *)
+    ext_head_sort_left : exp
     (** It is a sort: a large universe or [Prop] *)
-  ; ext_head_sort_ok : type_sort ext_head_sort
+  ; ext_head_sort_left_ok : type_sort ext_head_sort_left
+    (** The sort of the right head *)
+  ; ext_head_sort_right : exp
+    (** It is a sort: a large universe or [Prop] *)
+  ; ext_head_sort_right_ok : type_sort ext_head_sort_right
     (** The telescopes before the heads are equal *)
   ; ext_head_tail : Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'
-    (** The left head is of the sort *)
-  ; ext_head_left : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : ext_head_sort
-    (** The heads are equal at it, in the left telescope *)
-  ; ext_head_eq : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : ext_head_sort
-    (** The right head is of the sort, in the right telescope *)
-  ; ext_head_right : Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : ext_head_sort }.
+    (** The left head is of its sort, in the left telescope *)
+  ; ext_head_left : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : ext_head_sort_left
+    (** The right head is of its sort, in the right telescope *)
+  ; ext_head_right : Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : ext_head_sort_right
+    (** The left head is below the right one, in the left telescope *)
+  ; ext_head_sub : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ⊆ A'
+    (** and the right one below the left one *)
+  ; ext_head_sub_rev : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A' ⊆ A }.
 
 (** The head of an equation of telescopes of assumptions. *)
 Lemma ext_eq_ass_inv : forall Θ Ξ Γ Ψ Ψ' A A', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' -> ext_eq_ass_head Θ Ξ Γ Ψ Ψ' A A'.
-Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
+Proof.
+  intros * H; inversion H; subst.
+  (** The sorts are found by the typings, so the choices backtrack. *)
+  econstructor; multimatch goal with Hx : _ |- _ => exact Hx end.
+Qed.
 
 (** An annotated motive context [T ▹ Z] equal to [T' ▹ Z'] and to the
     motive's context [T ▹ H]: [T ▹ Z'] is equal to the motive's context
-    too. *)
+    too, the heads chained by [wf_subtyp_trans]. *)
 Lemma ann_ctx_trans : forall Θ Ξ Δ T T' Z Z' H,
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z ≈ T' ▹ Z' -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z ≈ T ▹ H -> tele_ass T ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z' ≈ T ▹ H.
 Proof.
   intros * Ha Hb HT.
-  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Ha) as [S1 HS1 HTT' HZ HZZ' HZ'].
-  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Hb) as [S2 HS2 HTT _ HZH HH].
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Ha) as [S1 HS1 S1' HS1' HTT' HZ HZ' HZZ' HZ'Z].
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Hb) as [S2 HS2 S2' HS2' HTT _ HH HZH HHZ].
   pose proof (ctxsub_exp _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ HTT' HT) HZ') as HZ'l.
-  destruct HS1 as [i |], HS2 as [j |].
-  - eapply wf_ext_eq_ass with (Srt := Typeω@(max i j));
-      [ exact HTT | eapply lift_exp_max_left; exact HZ'l | constructor
-      | eapply wf_exp_eq_trans; [ eapply wf_exp_eq_sym, lift_exp_eq_max_left; exact HZZ' | eapply lift_exp_eq_max_right; exact HZH ]
-      | eapply lift_exp_max_right; exact HH ].
-  - (* PENDING design: cross-sort transitivity *) admit.
-  - (* PENDING design: cross-sort transitivity *) admit.
-  - eapply wf_ext_eq_ass with (Srt := Propₘ);
-      [ exact HTT | exact HZ'l | constructor
-      | eapply wf_exp_eq_trans; [ eapply wf_exp_eq_sym; exact HZZ' | exact HZH ]
-      | exact HH ].
-Admitted.
+  eapply wf_ext_eq_ass;
+    [ exact HTT | exact HZ'l | exact HS1' | exact HH | exact HS2'
+    | eapply wf_subtyp_trans; [ exact HZ'Z | exact HZH ]
+    | eapply wf_subtyp_trans; [ exact HHZ | exact HZZ' ] ].
+Qed.
 
 (** The eliminator: the scrutinee, the motives, the annotations and the
     branches move under the equivalent substitutions lifted over their
@@ -696,11 +700,12 @@ Proof.
   - cbn [tele_sub List.length].
     assert (Hr : Θ ⍮ Ξ ⍮ tele_sub Ψ σ' ++ Γ0 ⊢ˢ sb_qn (length Ψ) σ' : Ψ ++ Δ)
       by (apply wf_sub_ext; [ exact (wf_sub_eq_right _ _ _ _ _ _ Hσ) | exact (ext_eq_ctx_right _ _ _ _ _ HE) | exact HΨ ]).
-    eapply wf_ext_eq_ass with (Srt := Srt).
+    eapply wf_ext_eq_ass_eq with (Srt := Srt).
     + exact HE.
     + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_left _ _ _ _ _ _ Hl)).
     + exact HS.
     + exact HAσ.
+    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_right _ _ _ _ _ _ Hl)).
     + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hr).
 Qed.
 
@@ -1500,7 +1505,8 @@ Proof.
       HA : wf_exp _ _ (?Ψ ++ ?Δ) ?S ?A,
       HS : type_sort ?S,
       IHA : forall _ _ _, wf_sub_eq _ _ _ (?Ψ ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
-      HA' : wf_exp _ _ (?Ψ' ++ ?Δ) ?S ?A',
+      HA' : wf_exp _ _ (?Ψ' ++ ?Δ) ?S' ?A',
+      HS' : type_sort ?S',
       IHA' : forall _ _ _, wf_sub_eq _ _ _ (?Ψ' ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A' _) _,
       Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ' |- _ =>
         destruct (IHx _ _ _ Hσ) as [IHl IHr];
@@ -1508,7 +1514,7 @@ Proof.
         [ destruct (IHl Hass') as [Hl HE];
           exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_left _ _ _ _ _ HΨ) HA HS IHA Hσ)
         | destruct (IHr Hass') as [Hl HE];
-          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_right _ _ _ _ _ HΨ) HA' HS IHA' Hσ) ]
+          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_right _ _ _ _ _ HΨ) HA' HS' IHA' Hσ) ]
     end ].
   (** The eliminator. *)
   all: try solve [ eapply sub_eq_elim_case; eassumption ].

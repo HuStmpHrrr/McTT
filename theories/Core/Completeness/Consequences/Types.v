@@ -4,13 +4,15 @@
     forces [i = j].  Each proof reads the judgment at the initial environment and
     inverts the resulting [per_univ]; only the variable-against-variable case needs
     work, since there the values are neutrals whose levels must be turned back
-    into indices. *)
+    into indices.  The same-sort theorem for subtyping reads the relevance of
+    each side's value. *)
 
 From Stdlib Require Import Lia.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
+From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 Import Domain_Notations Fixed_Notations.
@@ -403,6 +405,41 @@ Proof.
   intros * H; destruct u as [n | i]; cbn in H;
     [ assert (Π A B = Type⟨𝕃ᵒ n⟩) as Heq by mauto 3 | assert (Π A B = Typeω@i) as Heq by mauto 3 ];
     discriminate Heq.
+Qed.
+
+(** The same-sort theorem: the two sides of a subtyping are types of the
+    same relevance, at an environment of the context their values are of
+    one sort, which a subtyping keeps ([per_subtyp_relevance]).  It is why
+    telescope equations ([wf_ext_eq_ass]) and context refinements
+    ([ctx_sub_extend]) lose nothing by giving each side its own sort: the
+    two sorts are of the same relevance, which only the PER model shows. *)
+Theorem subtyp_same_relevance : forall Γ A A' r r' (i j : nat),
+    Γ ⊢ A ⊆ A' ->
+    Γ ⊢ A : relevance_sort r Typeω@i ->
+    Γ ⊢ A' : relevance_sort r' Typeω@j ->
+    r = r'.
+Proof.
+  intros * Hs HA HA'.
+  pose proof (completeness_fundamental_subtyp _ _ _ Hs) as [R HR k Hsub].
+  pose proof (completeness_fundamental_exp _ _ _ HA) as HAs.
+  pose proof (completeness_fundamental_exp _ _ _ HA') as HA's.
+  (** An environment of [Γ], with its proofs as [⋆ᵈ]. *)
+  pose proof (per_ctx_then_per_env_initial_env HR) as [ρ [ρ' [_ [_ Hρ]]]].
+  assert (HPR : PER R) by (eapply per_env_PER; exact HR).
+  assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  destruct (per_ctx_env_proofs _ _ _ HR _ _ Hρρ) as [Hpf _].
+  destruct (Hsub _ _ HR _ _ (rel_sub_id (ex_intro _ _ HR)) _ _ _ _ Hρρ (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf))
+    as [aσ a a'σ' a' _ Ha _ Ha' _ _ Hsa].
+  pose proof (per_subtyp_relevance _ _ _ Hsa) as Hr.
+  (** A type of a large universe is relevant, a type of [Prop] a
+      proposition. *)
+  assert (Hrel : forall X s (l : nat), Γ ⊨ X : relevance_sort s Typeω@l -> forall x, ⟦ X ⟧ ρ ↘ x -> domain_relevance x = s).
+  { intros X [] l HX x Hx; cbn [relevance_sort] in HX.
+    - destruct (rel_exp_of_typ_relevant_at HR HX _ _ Hρρ) as [x' [Hx' Hr']].
+      functional_eval_rewrite_clear; exact Hr'.
+    - destruct (rel_exp_of_prop_inversion_simple_at HR HX _ _ Hρρ) as (x' & _ & Hx' & _ & [Hl _ _]).
+      functional_eval_rewrite_clear; exact Hl. }
+  rewrite <- (Hrel _ _ _ HAs _ Ha), <- (Hrel _ _ _ HA's _ Ha'); exact Hr.
 Qed.
 
 End Fixed_GCtx.

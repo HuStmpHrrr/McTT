@@ -318,16 +318,18 @@ Proof. intros * HH; eapply rel_modexp_under_ctx_trans; [ apply rel_modexp_under_
 (** ** Extensions *)
 
 (** Two definition entries with related types and bodies, over related
-    contexts. *)
-Lemma per_ctx_env_extend_def_cross : forall {Δ Δ' A A' M M' S} {R},
+    contexts: the left type of a sort, related to the right one as types
+    ([rel_type_of_mutual_subtyp] gives that from a telescope equation). *)
+Lemma per_ctx_env_extend_def_cross : forall {Δ Δ' A A' M M' S} {R} {i : nat},
     type_sort S ->
     EF Δ ≈ Δ' ∈ per_ctx_env ↘ R ->
-    Δ ⊨ A ≈ A' : S ->
+    Δ ⊨ A : S ->
+    Δ ⊨ᵗ A ≈ A' at i ->
     Δ ⊨ M ≈ M' : A ->
     exists R', EF Δ ▸ A ≔ M ≈ Δ' ▸ A' ≔ M' ∈ per_ctx_env ↘ R'.
 Proof.
-  intros * HS HR HA HM.
-  destruct (rel_type_of_sort HS HA) as [i Hi].
+  intros * HS HR HA0 Hi HM.
+  assert (HA : Δ ⊨ A ≈ A : S) by exact HA0.
   pose proof (rel_type_inversion_simple Hi) as [RΔ [HΔ HAs]].
   assert (E : R <~> RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   (** The sort of the entry: relevant at a universe, a proposition at
@@ -413,43 +415,51 @@ Proof.
   constructor; [ exact H | exact H | exact (rel_ctx_wf_per_ctx H) ].
 Qed.
 
+(** The heads, each below the other, are equal types in the PER model
+    ([rel_type_of_mutual_subtyp]). *)
 Lemma sem_ext_eq_ass :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ' ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A ≈ A' : Srt ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ A' : Srt' ->
+     type_sort Srt' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A' ⊆ A ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A' ).
 Proof.
-  intros * HΨ HA HS HAA' HA'; sem_intro0.
+  intros * HΨ HA HS HA' HS' HAA' HA'A; sem_intro0.
   assert (Hr : Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A').
   { destruct HΨ as [H1 H2 H3].
     constructor; cbn [app].
     - exact (rel_ctx_wf_extend_sort H1 HS HA).
-    - exact (rel_ctx_wf_extend_sort H2 HS HA').
-    - destruct (rel_type_of_sort HS HAA') as [k Hk]; exact (per_ctx_extend_type H3 Hk). }
+    - exact (rel_ctx_wf_extend_sort H2 HS' HA').
+    - destruct (rel_type_of_mutual_subtyp HAA' HA'A) as [k Hk]; exact (per_ctx_extend_type H3 Hk). }
   constructor; [ assumption | exact Hr | apply valid_ctx_ass | apply valid_ctx_ass ];
     first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.
 
+(** The same at a definition, the bodies equal. *)
 Lemma sem_ext_eq_def :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ' ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A ≈ A' : Srt ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ A' : Srt' ->
+     type_sort Srt' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A' ⊆ A ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ M : A ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ M ≈ M' : A ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ A' : Srt ->
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ M' : A' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M' ).
 Proof.
-  intros * HΨ HA HS HAA' HM HMM' HA' HM'; sem_intro0.
+  intros * HΨ HA HS HA' HS' HAA' HA'A HM HMM' HM'; sem_intro0.
   assert (Hr : Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M').
   { destruct HΨ as [H1 H2 [R HR]].
+    destruct (rel_type_of_mutual_subtyp HAA' HA'A) as [k Hk].
     constructor; cbn [app].
     - exact (rel_ctx_wf_extend_def_sort H1 HS HA HM).
-    - exact (rel_ctx_wf_extend_def_sort H2 HS HA' HM').
-    - exact (per_ctx_env_extend_def_cross HS HR HAA' HMM'). }
+    - exact (rel_ctx_wf_extend_def_sort H2 HS' HA' HM').
+    - exact (per_ctx_env_extend_def_cross HS HR HA Hk HMM'). }
   constructor; [ assumption | exact Hr | apply valid_ctx_def | apply valid_ctx_def ];
     first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.

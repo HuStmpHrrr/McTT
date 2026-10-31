@@ -1908,9 +1908,9 @@ Proof.
                                           (ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E0))
                                           (a_var (List.length E0 + List.length gs - 1 - List.length (cargs_pat gs1))) l) :: E0)).
       rewrite !List.app_comm_cons, !List.app_assoc; apply IHl; [ intros l' Hl'; apply Hls; right; exact Hl' | cbn; lia |].
-      cbn [List.app]; eapply wf_ext_eq_ass with (Srt := relevance_sort r Typeω@(max j j'));
+      cbn [List.app]; eapply wf_ext_eq_ass_eq with (Srt := relevance_sort r Typeω@(max j j'));
         [ exact HEE0 | eapply lift_rel_max_left; exact HAj | apply type_sort_relevance; constructor
-        | eapply lift_rel_eq_max_left; exact HAAj | eapply lift_rel_max_right; exact HA'j' ]. }
+        | eapply lift_rel_eq_max_left; exact HAAj | eapply lift_rel_max_left; exact HA'j | eapply lift_rel_max_right; exact HA'j' ]. }
     pose proof (HL ls E E' (List.incl_refl _) ltac:(lia) HEE) as HL'.
     rewrite <- List.app_assoc.
     replace (true :: cargs_pat gs1) with (cargs_pat (gs1 ++ ca_rec t :: nil)) by (rewrite cargs_pat_snoc; reflexivity).

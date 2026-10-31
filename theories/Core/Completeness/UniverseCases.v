@@ -832,4 +832,116 @@ Proof.
     intros A HA; rewrite <- app_assoc; exact (rel_exp_cumu_ge (i := l) (j := max l l') ltac:(lia) (Hh A HA)).
 Qed.
 
+(** ** Antisymmetry
+
+    A telescope equation states that its heads are each below the other
+    ([wf_ext_eq_ass]); the PER model reads that back as an equation of
+    types, as related environments of its two sides need. *)
+
+(** A level reads back in canonical form: the canonical form of its
+    constant and atoms, or a single atom at offset [0]. *)
+Lemma read_nf_level_canonical : forall s n l L,
+    Rnf ⇓ (Levelᵈ@n) l in gc_deps ⍮ gc_stack ⍮ s ↘ nf_lvl_of L ->
+    lvl_canonical L.
+Proof.
+  intros * H; inversion H; subst; try discriminate; destruct L as [c' ys']; cbn in *; subst.
+  - change (lvl_canonical (lvl_canon (c, ys))); apply lvl_canon_canonical.
+  - constructor; cbn.
+    + split; [ intros * Hin; cbn in Hin; first [ contradiction | inversion Hin ] | exact I ].
+    + intros * Hin; cbn; lia.
+    + left; reflexivity.
+Qed.
+
+(** Two levels each below the other are related: at every length their
+    canonical forms are ordered both ways, so they are equal. *)
+Lemma per_sublvl_antisym : forall l l',
+    per_sublvl l l' -> per_sublvl l' l -> Dom l ≈ l' ∈ per_lvl.
+Proof.
+  intros * H H' s.
+  destruct (H s) as [L L' HL HL' Hle]; destruct (H' s) as [K K' HK HK' Hle'].
+  functional_read_rewrite_clear.
+  repeat match goal with Heq : nf_lvl_of _ = nf_lvl_of _ |- _ => apply nf_lvl_of_inj in Heq; subst end.
+  pose proof (lvl_le_antisym _ _ Hle Hle') as Hc.
+  rewrite (lvl_canonical_canon _ (read_nf_level_canonical _ _ _ _ HL)),
+    (lvl_canonical_canon _ (read_nf_level_canonical _ _ _ _ HL')) in Hc.
+  subst; exists (nf_lvl_of L'); split; assumption.
+Qed.
+
+(** Two types each below the other are related types.  The second
+    refinement is inverted at the head of the first:
+    - two neutral relevant types are related by [per_bot] already;
+    - types of levels, universes and small universes have equal indices,
+      the levels of two small universes by [per_sublvl_antisym];
+    - a small universe is never above a large one;
+    - two [Π]s have related domains, and codomains each below the other at
+      related arguments, related by induction;
+    - inductive and record types are invariant, so already related;
+    - two propositions are related by [per_prop], as the proposition clause
+      of [per_univ_elem] relates them;
+    - a relevant type and a proposition are never one below the other
+      ([per_subtyp_relevance]), so the mixed pairs are impossible
+      ([clear_wrong_relevance]). *)
+Lemma per_subtyp_antisym : forall i a a',
+    Sub a <: a' at i -> Sub a' <: a at i -> exists R, DF a ≈ a' ∈ per_univ_elem i ↘ R.
+Proof.
+  induction 1; intros Hsub; dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
+  - eexists; per_univ_elem_econstructor; [ assumption | assumption | assumption | reflexivity ].
+  - assert (m = n) as -> by lia; eexists; per_univ_elem_econstructor; reflexivity.
+  - eexists; per_univ_elem_econstructor; reflexivity.
+  - eexists; per_univ_elem_econstructor; reflexivity.
+  - assert (i = j) as -> by lia; eexists; per_univ_elem_econstructor; [ eassumption | reflexivity | reflexivity ].
+  - eexists; per_univ_elem_econstructor; [ eassumption | apply per_sublvl_antisym; assumption | reflexivity ].
+  - rename H into Haa', H0 into Hsub_cod, H1 into IHcod, H2 into HΠ, H3 into HΠ', H4 into Ha'a, H5 into Hsub_cod'.
+    basic_invert_per_univ_elem HΠ.
+    rename in_rel0 into in_relL, out_rel into out_relL, H0 into HBB, H1 into HBsort, equiv_a_a' into Haa.
+    basic_invert_per_univ_elem HΠ'.
+    rename in_rel0 into in_relR, out_rel into out_relR, equiv_a_a' into Ha'a'.
+    match goal with HX : forall c c' (e : in_relR c c'), rel_mod_eval _ B' _ B' _ _ |- _ => rename HX into HB'B' end.
+    (** The three relations of the domains agree. *)
+    assert (HiL : in_rel <~> in_relL) by (eapply per_univ_elem_right_irrel; [ exact Haa' | exact Haa ]).
+    assert (HiR : in_rel <~> in_relR) by (eapply per_univ_elem_left_irrel; [ exact Haa' | exact Ha'a' ]).
+    assert (Hi1 : in_rel <~> in_rel1)
+      by (eapply per_univ_elem_right_irrel; [ exact Haa' | exact (proj1 (per_univ_elem_sym _ _ _ _ Ha'a)) ]).
+    assert (HPin : PER in_rel) by (eapply per_elem_PER; exact Haa').
+    (** The codomains' relations are the left side's. *)
+    exists (pi_elements a a' in_rel (fun c c' Hc => out_relL c c' (proj1 (HiL c c') Hc))).
+    eapply per_univ_elem_pi' with (out_rel := fun c c' Hc => out_relL c c' (proj1 (HiL c c') Hc)); [ exact Haa' | | | reflexivity ].
+    + intros c c' Hcc.
+      destruct (HBB _ _ (proj1 (HiL c c') Hcc)) as [b b0 Hb Hb0 Hbb0].
+      assert (Hc'c' : in_rel c' c') by (etransitivity; [ symmetry |]; exact Hcc).
+      destruct (HB'B' _ _ (proj1 (HiR c' c') Hc'c')) as [b' b'' Hb' Hb'' _].
+      pose proof (Hsub_cod _ _ _ _ Hcc Hb Hb') as Hs1.
+      pose proof (Hsub_cod' _ _ _ _ (proj1 (Hi1 c' c) (symmetry Hcc)) Hb' Hb) as Hs2.
+      destruct (IHcod _ _ _ _ Hcc Hb Hb' Hs2) as [R HR].
+      assert (HRR : R <~> out_relL c c' (proj1 (HiL c c') Hcc)) by (eapply per_univ_elem_right_irrel; [ exact HR | exact Hbb0 ]).
+      econstructor; [ exact Hb | exact Hb' | eapply per_univ_elem_resp_iff; [ exact HR | exact HRR ] ].
+    + intros c c' Hcc; exact (HBsort _ _ (proj1 (HiL c c') Hcc)).
+  - eexists; eassumption.
+  - eexists; eassumption.
+  - eexists; simp per_univ_elem; eapply per_univ_elem_core_prop; [ symmetry; assumption | reflexivity ].
+Qed.
+
+(** Two types each below the other in the PER model are equal types there,
+    at a level containing both refinements ([per_subtyp_antisym]). *)
+Lemma rel_type_of_mutual_subtyp : forall {Γ A A'},
+    Γ ⊨ A ⊆ A' -> Γ ⊨ A' ⊆ A -> exists i : nat, Γ ⊨ᵗ A ≈ A' at i.
+Proof.
+  intros * [R HR i Hsub] [R' HR' i' Hsub'].
+  exists (max i i'); econstructor; [ exact HR |].
+  intros Γ' env_rel' HΓ' σ σ' Hσσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (HPρ : PER env_rel') by (eapply per_env_PER; exact HΓ').
+  destruct (Hsub _ _ HΓ' _ _ Hσσ _ _ _ _ Hρ Hev Hev') as [aσ a a'σ' a' Haσ Ha Ha'σ' Ha' [Ra Hl] [Ra' Hr] Hs].
+  destruct (Hsub' _ _ HΓ' _ _ (rel_sub_under_ctx_sym Hσσ) _ _ _ _ (symmetry Hρ) Hev' Hev)
+    as [b'σ' b' bσ b Hb'σ' Hb' Hbσ Hb _ _ Hs'].
+  functional_eval_rewrite_clear.
+  destruct (per_subtyp_antisym (max i i') a a'
+              (per_subtyp_cumu _ _ _ Hs (max i i') ltac:(lia)) (per_subtyp_cumu _ _ _ Hs' (max i i') ltac:(lia)))
+    as [Rm HRm].
+  econstructor; [ exact Haσ | exact Ha | exact Ha' | exact Ha'σ' |].
+  cbn; repeat split.
+  - exists Ra; exact (per_univ_elem_cumu_max_left _ _ _ _ _ Hl).
+  - exists Rm; exact HRm.
+  - exists Ra'; exact (per_univ_elem_cumu_max_left _ _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ Hr))).
+Qed.
+
 End Fixed_GCtx.

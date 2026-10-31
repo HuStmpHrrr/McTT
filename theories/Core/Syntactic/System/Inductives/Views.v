@@ -413,7 +413,8 @@ Proof.
       destruct (ind_apps_conv_large _ _ _ _ _ _ _ _ _ Hg HDs Hl'' Hk'' Hlt'' HΨv HlLc HlLv HLc' HLv HLL) as (j3 & _ & _ & Hj3).
       exists j3; apply wf_exp_eq_sym; exact Hj3. }
   destruct Heq as [j3 Hj3].
-  unfold elim_mctx; eapply wf_ext_eq_ass with (Srt := Typeω@(max j1 (max j2 j3))); [ exact Htail | | apply type_sort_universe | |].
+  unfold elim_mctx; eapply wf_ext_eq_ass_of_exp_eq with (Srt := Typeω@(max j1 (max j2 j3)));
+    [ exact Htail | exact (tele_ass_sub _ _ (decl_typed_nparams_ass _ _ _ HD _ _ Hmv)) | | apply type_sort_universe | |].
   - eapply lift_exp_ge; [| exact Hj1 ]; lia.
   - eapply lift_exp_eq_ge; [| exact Hj3 ]; lia.
   - eapply lift_exp_ge; [| exact Hj2 ]; lia.
@@ -459,12 +460,12 @@ Qed.
 (** Equal telescopes of assumptions, the other way round. *)
 Lemma ext_eq_sym_ass : forall Θ Ξ Γ Ψ Ψ', tele_ass Ψ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ' ≈ Ψ.
 Proof.
-  intros * Hass H; induction H as [| ? ? ? ? ? ? ? ? HΨ IH HA HS HAA HA' | | | ].
+  intros * Hass H; induction H as [| ? ? ? ? ? ? ? ? ? HΨ IH HA HS HA' HS' H12 H21 | | | ].
   - constructor; assumption.
   - inversion_clear Hass as [| ? ? _ Hass'].
     pose proof (ctxsub_ext _ _ _ _ _ HΨ Hass') as HId.
-    pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HAA HId) as HAA'; rewrite !exp_sub_id in HAA'.
-    eapply wf_ext_eq_ass; [ exact (IH Hass') | exact HA' | exact HS | apply wf_exp_eq_sym; exact HAA' | exact HA ].
+    eapply wf_ext_eq_ass; [ exact (IH Hass') | exact HA' | exact HS' | exact HA | exact HS
+                          | exact (ctxsub_subtyp _ _ _ _ _ _ HId H21) | exact (ctxsub_subtyp _ _ _ _ _ _ HId H12) ].
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
@@ -475,18 +476,18 @@ Lemma ext_eq_app : forall Θ Ξ Γ N N' A A',
     tele_ass N -> tele_ass A -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ N ≈ N' -> Θ ⍮ Ξ ⍮ N ++ Γ ⊢ˣ A ≈ A' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ A ++ N ≈ A' ++ N'.
 Proof.
   intros * HaN HaA HN HA; remember (N ++ Γ) as Γ1 eqn:EΓ1.
-  revert HaA; induction HA as [| ? ? ? ? ? ? ? ? HΨ IH HB HS HBB HB' | | | ]; intros HaA; subst.
+  revert HaA; induction HA as [| ? ? ? ? ? ? ? ? ? HΨ IH HB HS HB' HS' HBB HBB' | | | ]; intros HaA; subst.
   - exact HN.
   - inversion_clear HaA as [| ? ? _ HaA'].
     specialize (IH HN eq_refl HaA').
-    cbn [List.app]; eapply wf_ext_eq_ass;
-      [ exact IH | rewrite <- List.app_assoc; exact HB | exact HS | rewrite <- List.app_assoc; exact HBB |].
     pose proof (ctxsub_ext _ _ _ _ _ IH (proj2 (List.Forall_app _ _ _) (conj HaA' HaN) : tele_ass (Ψ ++ N))) as Hs1.
     pose proof (ctxsub_ext_rev _ _ _ _ _ HΨ HaA') as Hs2.
     rewrite <- !List.app_assoc in Hs1.
     pose proof (wf_sub_compose _ _ _ _ _ _ _ Hs2 Hs1) as Hs; rewrite sb_compose_id_left in Hs.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' Hs) as H; rewrite !exp_sub_id in H; cbn in H.
-    rewrite <- List.app_assoc; exact H.
+    cbn [List.app]; eapply wf_ext_eq_ass;
+      [ exact IH | rewrite <- List.app_assoc; exact HB | exact HS | rewrite <- List.app_assoc; exact H | exact HS'
+      | rewrite <- List.app_assoc; exact HBB | rewrite <- List.app_assoc; exact HBB' ].
   - inversion_clear HaA as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear HaA as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear HaA as [| ? ? [? Heq] _]; discriminate.

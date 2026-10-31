@@ -900,9 +900,8 @@ Proof.
   induction 1 as [| | | |]; intros Hass.
   - cbn; apply wf_sub_id; assumption.
   - inversion_clear Hass as [| ? ? _ Hass'].
-    cbn [List.app]; eapply wf_sub_id_extend; [ apply IHwf_ext_eq; exact Hass' | eassumption | eassumption | eassumption |].
-    eapply wf_subtyp_refl; [ eapply ctxsub_exp; [ apply IHwf_ext_eq; exact Hass' | eassumption ] | eassumption |].
-    eapply wf_exp_eq_sym, ctxsub_exp_eq; [ apply IHwf_ext_eq; exact Hass' | eassumption ].
+    cbn [List.app]; eapply wf_sub_id_extend; [ apply IHwf_ext_eq; exact Hass' | eassumption | eassumption | eassumption | eassumption |].
+    eapply ctxsub_subtyp; [ apply IHwf_ext_eq; exact Hass' | eassumption ].
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
@@ -914,11 +913,24 @@ Proof.
   induction 1 as [| | | |]; intros Hass.
   - cbn; apply wf_sub_id; assumption.
   - inversion_clear Hass as [| ? ? _ Hass'].
-    cbn [List.app]; eapply wf_sub_id_extend; [ apply IHwf_ext_eq; exact Hass' | eassumption | eassumption | eassumption |].
-    eapply wf_subtyp_refl; [ | eassumption | ]; mauto 3.
+    cbn [List.app]; eapply wf_sub_id_extend; [ apply IHwf_ext_eq; exact Hass' | eassumption | eassumption | eassumption | eassumption | eassumption ].
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
+Qed.
+
+(** A telescope equation of assumptions at equal heads of one sort, the
+    right head typed in the right telescope only: it is typed in the left
+    one through [ctxsub_ext_rev] ([wf_ext_eq_ass_eq]). *)
+Lemma wf_ext_eq_ass_of_exp_eq : forall Θ Ξ Γ Ψ Ψ' A A' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> tele_ass Ψ ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt -> type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A'.
+Proof.
+  intros * HΨ Hass HA HS HAA HA'.
+  eapply wf_ext_eq_ass_eq; [ exact HΨ | exact HA | exact HS | exact HAA | | exact HA' ].
+  exact (ctxsub_exp _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ HΨ Hass) HA').
 Qed.
 
 (** Terms typed at the instances of a telescope are typed at those of an

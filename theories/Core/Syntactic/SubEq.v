@@ -51,7 +51,7 @@ Lemma sub_eq_preserves_subtyp : forall Θ Ξ Γ Δ A A' σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ'].
 Proof.
   intros * ? H; saturate_sub_eq.
-  match goal with HA : _ ⍮ _ ⍮ Δ ⊢ A ⊆ A' |- _ => destruct (presup_subtyp_types HA) as [S HS _ HA'] end.
+  match goal with HA : _ ⍮ _ ⍮ Δ ⊢ A ⊆ A' |- _ => destruct (presup_subtyp_right HA) as [S HS HA'] end.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ'] : S) by (eapply sub_preserves_sort; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ≈ A'[σ'] : S) by (eapply sub_eq_preserves_sort; eassumption).

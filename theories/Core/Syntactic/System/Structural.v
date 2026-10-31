@@ -2235,12 +2235,14 @@ Proof.
         destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         first [ eapply wf_ext_eq_mod; [ exact (IHx _ _ Hφ) | .. ]; rewrite ?Hlen in *; eauto
+              | eapply wf_ext_eq_dm; [ exact (IHx _ _ Hφ) | .. ]; rewrite ?Hlen in *; eauto
               | match goal with
-                | HA : wf_exp _ _ (Ψ ++ Γ) ?S ?A |- _ =>
+                | HA : wf_exp _ _ (Ψ ++ Γ) ?S ?A, HA' : wf_exp _ _ (Ψ' ++ Γ) ?S' ?A' |- _ =>
                     let HS := fresh "HS" in
+                    let HS' := fresh "HS'" in
                     assert (HS : type_sort S) by constructor;
-                    first [ eapply wf_ext_eq_ass with (Srt := S) | eapply wf_ext_eq_def with (Srt := S)
-                          | eapply wf_ext_eq_dm ];
+                    assert (HS' : type_sort S') by constructor;
+                    first [ eapply wf_ext_eq_ass with (Srt := S) (Srt' := S') | eapply wf_ext_eq_def with (Srt := S) (Srt' := S') ];
                     [ exact (IHx _ _ Hφ) | .. ];
                     rewrite ?Hlen in *; eauto
                 end ]
@@ -2508,6 +2510,60 @@ Qed.
 Lemma wf_subtyp_refl_typ : forall Θ Ξ Γ A Srt, Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt -> type_sort Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
 Proof.
   intros; eapply wf_subtyp_refl; mauto 2.
+Qed.
+
+(** Two types equal at a sort are each below the other. *)
+Lemma wf_subtyp_of_exp_eq : forall Θ Ξ Γ A A' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt -> type_sort Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A.
+Proof.
+  intros * HA HA' HS HAA; split; eapply wf_subtyp_refl; [ exact HA' | exact HS | exact HAA | exact HA | exact HS | apply wf_exp_eq_sym, HAA ].
+Qed.
+
+(** A telescope equation at equal heads of one sort, the right one typed
+    on both sides ([wf_ext_eq_ass] at [wf_subtyp_of_exp_eq]). *)
+Lemma wf_ext_eq_ass_eq : forall Θ Ξ Γ Ψ Ψ' A A' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt -> type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt -> Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A' : Srt -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A'.
+Proof.
+  intros * HΨ HA HS HAA HA'l HA'.
+  destruct (wf_subtyp_of_exp_eq _ _ _ _ _ _ HA HA'l HS HAA) as [H1 H2].
+  eapply wf_ext_eq_ass; [ exact HΨ | exact HA | exact HS | exact HA' | exact HS | exact H1 | exact H2 ].
+Qed.
+
+(** The same at a definition. *)
+Lemma wf_ext_eq_def_eq : forall Θ Ξ Γ Ψ Ψ' A A' M M' Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt -> type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Srt -> Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A' : Srt -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Srt ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M ≈ M' : A -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ M' : A' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M'.
+Proof.
+  intros * HΨ HA HS HAA HA'l HA' HM HMM HM'.
+  destruct (wf_subtyp_of_exp_eq _ _ _ _ _ _ HA HA'l HS HAA) as [H1 H2].
+  eapply wf_ext_eq_def; [ exact HΨ | exact HA | exact HS | exact HA' | exact HS | exact H1 | exact H2 | exact HM | exact HMM | exact HM' ].
+Qed.
+
+(** A telescope equation at the same head, typed on both sides. *)
+Lemma wf_ext_eq_ass_same : forall Θ Ξ Γ Ψ Ψ' A Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt -> type_sort Srt -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A : Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A.
+Proof.
+  intros * HΨ HA HS HA'.
+  eapply wf_ext_eq_ass_eq; [ exact HΨ | exact HA | exact HS | apply wf_exp_eq_refl, HA | exact HA | exact HA' ].
+Qed.
+
+(** The same at a definition with the same type and body. *)
+Lemma wf_ext_eq_def_same : forall Θ Ξ Γ Ψ Ψ' A M Srt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Srt -> type_sort Srt -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A : Srt ->
+    Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A ≔ M.
+Proof.
+  intros * HΨ HA HS HA' HM HM'.
+  eapply wf_ext_eq_def_eq; [ exact HΨ | exact HA | exact HS | apply wf_exp_eq_refl, HA | exact HA | exact HA'
+                           | exact HM | apply wf_exp_eq_refl, HM | exact HM' ].
 Qed.
 
 (** The two instances, a large universe and [Prop]: as hints they spare
@@ -3297,12 +3353,14 @@ Proof.
         destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         first [ eapply wf_ext_eq_mod; [ exact (IHx _ _ Hσ) | .. ]; rewrite ?Hlen in *; eauto
+              | eapply wf_ext_eq_dm; [ exact (IHx _ _ Hσ) | .. ]; rewrite ?Hlen in *; eauto
               | match goal with
-                | HA : wf_exp _ _ (Ψ ++ Γ) ?S ?A |- _ =>
+                | HA : wf_exp _ _ (Ψ ++ Γ) ?S ?A, HA' : wf_exp _ _ (Ψ' ++ Γ) ?S' ?A' |- _ =>
                     let HS := fresh "HS" in
+                    let HS' := fresh "HS'" in
                     assert (HS : type_sort S) by constructor;
-                    first [ eapply wf_ext_eq_ass with (Srt := S) | eapply wf_ext_eq_def with (Srt := S)
-                          | eapply wf_ext_eq_dm ];
+                    assert (HS' : type_sort S') by constructor;
+                    first [ eapply wf_ext_eq_ass with (Srt := S) (Srt' := S') | eapply wf_ext_eq_def with (Srt := S) (Srt' := S') ];
                     [ exact (IHx _ _ Hσ) | .. ];
                     rewrite ?Hlen in *; eauto
                 end ]
@@ -3599,15 +3657,16 @@ Proof.
     inversion Hlk; subst; constructor; eapply ctxsub_lookup_mod; eassumption.
 Qed.
 
-Lemma wf_sub_id_extend : forall Θ Ξ Γ Δ A A' Srt,
+Lemma wf_sub_id_extend : forall Θ Ξ Γ Δ A A' Srt Srt',
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt ->
     type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt' ->
+    type_sort Srt' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ˢ Id : Γ ▹ A.
 Proof.
-  intros * HId ? ? ? ?; saturate_sub.
+  intros * HId ? ? ? ? ?; saturate_sub.
   assert (⊢ Θ ⍮ Ξ ⍮ Δ ▹ A') by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ʷ ↑ : Δ) by mauto 2.
   eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | | |];
@@ -3619,18 +3678,19 @@ Proof.
 Qed.
 
 (** A definition refines a definition of a supertype with an equal body. *)
-Lemma wf_sub_id_extend_def : forall Θ Ξ Γ Δ A A' M M' Srt,
+Lemma wf_sub_id_extend_def : forall Θ Ξ Γ Δ A A' M M' Srt Srt',
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt ->
     type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt' ->
+    type_sort Srt' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
     Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢ˢ Id : Γ ▸ A ≔ M.
 Proof.
-  intros * HId ? ? ? ? ? ? ?; saturate_sub.
+  intros * HId ? ? ? ? ? ? ? ?; saturate_sub.
   assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M') by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢ʷ ↑ : Δ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢ A'[↑]ʷ ⊆ A[↑]ʷ) by (eapply wk_preserves_subtyp; eassumption).
@@ -3644,16 +3704,17 @@ Proof.
 Qed.
 
 (** A definition refines an assumption of a supertype. *)
-Lemma wf_sub_id_forget : forall Θ Ξ Γ Δ A A' M' Srt,
+Lemma wf_sub_id_forget : forall Θ Ξ Γ Δ A A' M' Srt Srt',
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt ->
     type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt' ->
+    type_sort Srt' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢ˢ Id : Γ ▹ A.
 Proof.
-  intros * HId ? ? ? ? ?; saturate_sub.
+  intros * HId ? ? ? ? ? ?; saturate_sub.
   assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M') by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢ʷ ↑ : Δ) by mauto 2.
   eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | | |];

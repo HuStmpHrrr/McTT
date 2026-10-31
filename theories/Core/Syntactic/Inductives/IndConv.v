@@ -65,9 +65,7 @@ Section Fixed_GCtx.
       exact (HNe _ _ _ _ HN HN' HT). }
     assert (Hδ' : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns' : tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ) by (gen_presups; assumption).
     (* the member's type: at the other non-uniform, then uniform, parameters *)
-    pose proof (HMc_eq := elim_mctx_us_eq _ _ _ _ _ _ _ Hl Hm HΓ HUl HUl' Hσσ).
-    unfold elim_mctx in HMc_eq.
-    destruct (ext_eq_ass_inv _ _ _ _ _ _ _ HMc_eq) as [S HS _ Hhd Hhh _].
+    destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hm HΓ HUl HUl' Hσσ) as [S HS _ Hhd Hhh _].
     assert (Ehd : forall Vs Xs, List.length Vs = ind_nu D -> List.length Xs = im_nn Mm ->
                (ind_mty p D m (List.map (fun U => U[wk_shiftn (im_nn Mm)]ʷ) Vs) (vars_from 0 (im_nn Mm)))[sb_of_list Id Xs]
                = ind_mty p D m Vs Xs).
