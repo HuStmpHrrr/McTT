@@ -91,32 +91,74 @@ Ltac functional_initial_env_rewrite_clear1 :=
   end.
 Ltac functional_initial_env_rewrite_clear := repeat functional_initial_env_rewrite_clear1.
 
-(** NbE in [Θ ⍮ Ξ ⍮ Γ]: evaluate in the initial environment of [Γ], then read
-    back.  Only [Γ] contributes variables; globals are resolved in [Θ ⍮ Ξ]. *)
+(** The normal form of a term [M] at the value [a] of its type, in the
+    environment [ρ] of [s] variables, relevance-directed: a proof is never
+    evaluated. *)
+Inductive nbe_term (Θ : gdeps) (Ξ : gstack) (s : nat) (ρ : env) (M : exp) (a : domain) : nf -> Prop :=
+(** At a proposition: the proof [⋆ⁿ], the term not evaluated *)
+| nbe_term_proof :
+    domain_relevance a = propositional ->
+    nbe_term Θ Ξ s ρ M a ⋆ⁿ
+(** At a relevant type: the value of the term, read back at the type *)
+| nbe_term_relevant : forall m w,
+    domain_relevance a = relevant ->
+    ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+    Rnf ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ w ->
+    nbe_term Θ Ξ s ρ M a w.
+
+#[export]
+Hint Constructors nbe_term : mctt.
+
+(** NbE in [Θ ⍮ Ξ ⍮ Γ]: evaluate the type in the initial environment of
+    [Γ], then, at a relevant type, the term, and read it back
+    ([nbe_term]).  Only [Γ] contributes variables; globals are resolved in
+    [Θ ⍮ Ξ]. *)
 #[warnings="-cannot-define-projection"]
 Record nbe (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (A : typ) (w : nf) : Prop := nbe_run
-  { ρ : env
+  { (** The initial environment of [Γ] *)
+    ρ : env
+    (** The value of the type *)
   ; a : domain
-  ; m : domain
   ; nbe_init : initial_env Θ Ξ Γ ρ
   ; nbe_eval_typ : ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a
-  ; nbe_eval : ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
-  ; nbe_read : Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w }.
+    (** The normal form of the term at it *)
+  ; nbe_result : nbe_term Θ Ξ (length Γ) ρ M a w }.
 
 #[export]
 Hint Constructors nbe : mctt.
+
+(** The normal form at a type is unique. *)
+Lemma functional_nbe_term : forall {Θ Ξ} s ρ M a w w',
+    nbe_term Θ Ξ s ρ M a w ->
+    nbe_term Θ Ξ s ρ M a w' ->
+    w = w'.
+Proof.
+  intros * H H'; destruct H; destruct H'; try congruence.
+  functional_eval_rewrite_clear; functional_read_rewrite_clear; reflexivity.
+Qed.
+
+#[export]
+Hint Resolve functional_nbe_term : mctt.
 
 Lemma functional_nbe : forall {Θ Ξ} Γ M A w w',
     nbe Θ Ξ Γ M A w ->
     nbe Θ Ξ Γ M A w' ->
     w = w'.
 Proof.
-  intros.
-  inversion_clear H; inversion_clear H0;
-    functional_initial_env_rewrite_clear;
-  functional_eval_rewrite_clear;
-  functional_read_rewrite_clear;
-  reflexivity.
+  intros * [ρ a Hi Ha Hw] [ρ' a' Hi' Ha' Hw'].
+  functional_initial_env_rewrite_clear; functional_eval_rewrite_clear.
+  exact (functional_nbe_term _ _ _ _ _ _ Hw Hw').
+Qed.
+
+(** NbE at a relevant type: the term evaluated and read back. *)
+Lemma nbe_relevant_inv : forall {Θ Ξ Γ M A w},
+    nbe Θ Ξ Γ M A w ->
+    forall ρ a, initial_env Θ Ξ Γ ρ -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> domain_relevance a = relevant ->
+    exists m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m /\ Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w.
+Proof.
+  intros * [ρ0 a0 Hi Ha Hw] ρ a Hi' Ha' Hr.
+  functional_initial_env_rewrite_clear; functional_eval_rewrite_clear.
+  destruct Hw as [Hp | m w Hr' Hm Hw]; [ congruence | exists m; split; assumption ].
 Qed.
 
 #[export]
@@ -126,11 +168,12 @@ Lemma nbe_cumu : forall {Θ Ξ Γ A i W},
     nbe Θ Ξ Γ A Typeω@i W ->
     nbe Θ Ξ Γ A Typeω@(S i) W.
 Proof.
-  inversion_clear 1.
+  intros * [ρ a Hi Ha Hw].
   simplify_evals.
-  inversion_clear_by_head read_nf.
   (** A universe is no proposition: only the case of a type is left. *)
-  all: try (cbn in *; discriminate); mauto.
+  destruct Hw as [Hp | m w Hr Hm Hw]; [ cbn in Hp; discriminate |].
+  inversion_clear_by_head read_nf; try (cbn in *; discriminate).
+  all: econstructor; [ eassumption | mauto | eapply nbe_term_relevant; [ reflexivity | eassumption | mauto ] ].
 Qed.
 
 Lemma lift_nbe_ge : forall {Θ Ξ Γ A i j W},
@@ -202,8 +245,10 @@ Lemma nbe_type_to_nbe_ty : forall {Θ Ξ} Γ M i w,
     nbe Θ Ξ Γ M Typeω@i w ->
     nbe_ty Θ Ξ Γ M w.
 Proof.
-  intros. progressive_inversion.
-  inversion_clear_by_head read_nf; mauto.
+  intros * [ρ a Hi Ha Hw].
+  simplify_evals.
+  destruct Hw as [Hp | m w' Hr Hm Hw]; [ cbn in Hp; discriminate |].
+  inversion_clear_by_head read_nf; try (cbn in *; discriminate); mauto.
 Qed.
 
 #[export]

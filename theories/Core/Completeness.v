@@ -19,28 +19,37 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** At a proposition nothing is asked of the terms' values: proofs are
+    never evaluated. *)
 Lemma rel_exp_under_ctx_at_initial_env : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
-    exists ρ i elem_rel a m m',
+    exists ρ i elem_rel a,
       initial_env_f Γ ρ /\
-      ⟦ A ⟧ ρ ↘ a /\ ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ ↘ m' /\
+      ⟦ A ⟧ ρ ↘ a /\
       DF a ≈ a ∈ per_univ_elem i ↘ elem_rel /\
-      Dom m ≈ m' ∈ elem_rel.
+      (domain_relevance a = propositional \/
+       exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ ↘ m' /\ Dom m ≈ m' ∈ elem_rel).
 Proof.
   intros * H.
   destruct H as [env_relΓ HΓ i HMgen].
   pose proof (per_ctx_then_per_env_initial_env HΓ) as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
   assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  pose proof (proj1 (per_ctx_env_proofs _ _ _ HΓ _ _ Hrel)) as Hpf.
   destruct (HMgen _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hrel
-                  (eval_sub_id _) (eval_sub_id _)) as [elem_rel [Htyp Hexp]].
+                  (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf)) as [elem_rel [Htyp Hexp]].
   pose proof (rel_typ_elem_PER Htyp) as HPER.
+  pose proof Htyp as Htyp0.
   destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
-  destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   assert (a3 = a2) as -> by (eapply functional_eval_exp; eassumption).
-  exists ρ, i, elem_rel, a2, m2, m3.
-  repeat apply conj; try eassumption.
-  - pairwise.
-  - pairwise.
+  exists ρ, i, elem_rel, a2.
+  repeat apply conj; try eassumption; [ pairwise |].
+  destruct Hexp as [Hp | Hexp].
+  - left.
+    destruct (rel_typ_prop_any Htyp0 (or_introl Hp)) as (_ & (c & Ec & Hc) & _).
+    functional_eval_rewrite_clear; exact Hc.
+  - right.
+    destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
+    exists m2, m3; repeat apply conj; try eassumption; pairwise.
 Qed.
 
 (** The same at a type equality, where the element relation is [per_univ i]. *)
@@ -72,10 +81,14 @@ Proof.
   pose proof (proj1 (proj2 (proj2 completeness_fundamental)) _ _ _ _ _ _ H) as HK.
   pose proof (sem_exp_eq_at_rel (HK _ _ (valid_gctx_embedding_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))))) as Hrel.
   destruct (@rel_exp_under_ctx_at_initial_env (gc_mk Θ Ξ) _ _ _ _ Hrel)
-    as [ρ [i [elem_rel [a [m [m' [Hρ [Ha [Hm [Hm' [Htyp Hrel']]]]]]]]]]].
-  destruct (per_elem_then_per_top Htyp Hrel' (length Γ)) as [W [HW HW']].
-  exists W.
-  split; econstructor; eassumption.
+    as (ρ & i & elem_rel & a & Hρ & Ha & Htyp & [Hp | (m & m' & Hm & Hm' & Hrel')]).
+  (** A proof: [⋆ⁿ], neither term evaluated *)
+  - exists ⋆ⁿ; split; econstructor; try eassumption; apply nbe_term_proof; exact Hp.
+  (** Otherwise both values, read back at the type *)
+  - destruct (domain_relevance a) eqn:Hr.
+    + destruct (per_elem_then_per_top Htyp Hrel' (length Γ)) as [W [HW HW']].
+      exists W; split; econstructor; try eassumption; eapply nbe_term_relevant; eassumption.
+    + exists ⋆ⁿ; split; econstructor; try eassumption; apply nbe_term_proof; exact Hr.
 Qed.
 
 Section Fixed_GCtx.

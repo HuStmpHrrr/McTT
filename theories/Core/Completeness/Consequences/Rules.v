@@ -43,19 +43,29 @@ Proof.
       one on each side. *)
   pose proof (per_ctx_then_per_env_initial_env HΓΓ') as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
   rewrite Hirrel in Hrel.
+  destruct (per_ctx_env_proofs _ _ _ HΓ _ _ Hrel) as [Hpf Hpf'].
   destruct (HMgen _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hrel
-                  (eval_sub_id _) (eval_sub_id _)) as [elem_rel [Htyp Hexp]].
+                  (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf')) as [elem_rel [Htyp Hexp]].
   pose proof (rel_typ_elem_PER Htyp) as HPER.
+  pose proof Htyp as Htyp0.
   destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
-  destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   assert (Ha : DF a2 ≈ a3 ∈ per_univ_elem i ↘ elem_rel) by pairwise.
-  assert (Hm : Dom m2 ≈ m3 ∈ elem_rel) by pairwise.
-  destruct (per_elem_then_per_top Ha Hm (length Γ)) as [W [HW HW']].
-  exists W.
-  split.
-  - econstructor; eassumption.
-  - econstructor; try eassumption.
-    rewrite <- Hlen; eassumption.
+  pose proof (per_univ_elem_relevance _ _ _ _ Ha) as Hra.
+  destruct Hexp as [Hp | Hexp].
+  (** A proof: [⋆ⁿ] on both sides, neither evaluated *)
+  - destruct (rel_typ_prop_any Htyp0 (or_introl Hp)) as (_ & (c & Ec & Hc) & _).
+    functional_eval_rewrite_clear.
+    exists ⋆ⁿ; split; econstructor; try eassumption; apply nbe_term_proof; congruence.
+  - destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
+    assert (Hm : Dom m2 ≈ m3 ∈ elem_rel) by pairwise.
+    destruct (domain_relevance a2) eqn:Hr.
+    + destruct (per_elem_then_per_top Ha Hm (length Γ)) as [W [HW HW']].
+      exists W.
+      split.
+      * econstructor; try eassumption; eapply nbe_term_relevant; eassumption.
+      * econstructor; try eassumption; eapply nbe_term_relevant; [ congruence | eassumption |].
+        rewrite <- Hlen; eassumption.
+    + exists ⋆ⁿ; split; econstructor; try eassumption; apply nbe_term_proof; congruence.
 Qed.
 
 Corollary ctxeq_nbe_eq' : forall Γ Γ' M A W,

@@ -33,10 +33,17 @@ Lemma eval_var_at_initial_env : forall {Γ x} {i : nat} {ρ a},
 Proof.
   intros * [A Hlookup] Hρ Hev Hx.
   pose proof (initial_env_spec _ _ _ _ Hρ Hlookup) as [b Heq].
-  split.
-  - apply List.nth_error_Some; congruence.
-  - exists b.
-    eapply functional_eval_exp; [ exact Hev | apply eval_exp_var_eq; exact Heq ].
+  assert (Ha : a = relevant_value b (⇑! b (length Γ - x - 1)))
+    by (eapply functional_eval_exp; [ exact Hev | apply eval_exp_var_eq; exact Heq ]).
+  split; [ apply List.nth_error_Some; congruence |].
+  exists b.
+  unfold relevant_value in Ha; destruct (domain_relevance b) eqn:Hb; [ exact Ha |].
+  (** A variable of a proposition is the proof [⋆ᵈ], which is no type. *)
+  exfalso.
+  destruct (rel_typ_under_ctx_at_initial_env (completeness_fundamental_exp _ _ _ Hx)) as [ρ' [a1 [a1' [Hρ' [Ha1 [_ [R HR]]]]]]].
+  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+  subst a; invert_per_univ_elem HR.
 Qed.
 
 Lemma exp_eq_typ_implies_eq_level : forall {Γ} {i : nat} {j k},
@@ -146,8 +153,9 @@ Qed.
 
 Lemma eval_ind_value : forall p k Ms ρ a, ⟦ apps_exp (a_ind p k) Ms ⟧ ρ ↘ a -> exists ms, a = d_ind p k ms.
 Proof.
-  intros * H; apply eval_apps_exp in H as (f & ms & Hf & _ & Hap).
-  inversion Hf; subst; apply eval_apps_ind_inv in Hap; eauto.
+  intros * H; apply eval_apps_exp in H as (f & Hf & Hargs).
+  inversion Hf; subst; apply eval_app_args_ind in Hargs as (ms & _ & Hap).
+  apply eval_apps_ind_inv in Hap; eauto.
 Qed.
 
 (** A record type evaluates to a record type value. *)
@@ -162,8 +170,9 @@ Qed.
 
 Lemma eval_record_value : forall p Ms ρ a, ⟦ apps_exp (a_record p) Ms ⟧ ρ ↘ a -> exists ms, a = d_record p ms.
 Proof.
-  intros * H; apply eval_apps_exp in H as (f & ms & Hf & _ & Hap).
-  inversion Hf; subst; apply eval_apps_record_inv in Hap; eauto.
+  intros * H; apply eval_apps_exp in H as (f & Hf & Hargs).
+  inversion Hf; subst; apply eval_app_args_record in Hargs as (ms & _ & Hap).
+  apply eval_apps_record_inv in Hap; eauto.
 Qed.
 
 (** A universe as a term: a large one, or a small one at any level term. *)
@@ -203,15 +212,26 @@ Proof.
     | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->]
     | destruct (eval_record_value _ _ _ _ Ha) as [? ->] ];
     invert_per_univ_elem HR.
-  - (** [Π A B] evaluates to a [Π]-value once its domain does. *)
-    match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
-  - (** Two neutral variables related in [per_bot]: read both back at
-        [length Γ] and compare the indices they produce. *)
-    f_equal.
-    enough (length Γ - x0 - 1 = length Γ - x - 1) by lia.
-    match_by_head1 per_bot ltac:(fun H => destruct (H (length Γ)) as [? []]).
-    match_by_head read_ne ltac:(fun H => directed dependent destruction H).
-    lia.
+  (** Two propositions related in [per_prop] read back to one type: a
+      relevant type or a type former is no neutral variable's. *)
+  all: try solve [ match goal with Hp : per_prop _ _ |- _ =>
+                     let Hl := fresh "Hl" in let Ht := fresh "Ht" in let HC := fresh "HC" in let HC' := fresh "HC'" in
+                     destruct Hp as [Hl _ Ht];
+                     try (match goal with He : ⟦ Π _ _ ⟧ _ ↘ _ |- _ => inversion He; subst end);
+                     first [ cbn in Hl; discriminate
+                           | destruct (Ht (length Γ)) as [? [HC HC']]; inversion HC; subst; inversion HC' ] end ].
+  (** [Π A B] evaluates to a [Π]-value once its domain does. *)
+  all: try solve [ match_by_head eval_exp ltac:(fun H => directed dependent destruction H) ].
+  (** Two neutral variables related in [per_bot], or as propositions in
+      [per_prop]: read both back at [length Γ] and compare the indices they
+      produce. *)
+  all: match goal with |- #?y = #?z => f_equal; enough (length Γ - y - 1 = length Γ - z - 1) by lia end.
+  all: first [ match_by_head1 per_bot ltac:(fun H => destruct (H (length Γ)) as [? []])
+             | match goal with Hp : per_prop _ _ |- _ =>
+                 let Ht := fresh "Ht" in destruct Hp as [_ _ Ht]; destruct (Ht (length Γ)) as [? []] end;
+               match_by_head read_typ ltac:(fun H => directed dependent destruction H) ].
+  all: match_by_head read_ne ltac:(fun H => directed dependent destruction H).
+  all: lia.
 Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
