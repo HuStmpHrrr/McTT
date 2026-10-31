@@ -676,6 +676,28 @@ Proof. intros; apply (mdesc_named_cases (fun R' => mdesc_type R' = mdesc_type R)
 Lemma mdesc_reduct_named_some : forall Θ' Ns M R N, mdesc_reduct R = Some N -> mdesc_reduct (mdesc_named Θ' Ns M R) = Some N.
 Proof. intros * H; apply (mdesc_named_cases (fun R' => mdesc_reduct R' = Some N)); [ exact H | destruct R as [r A [?|] | | | ]; cbn in *; congruence ]. Qed.
 
+(** A description read as a name keeps its tag. *)
+Lemma mdesc_relevance_named : forall Θ' Ns M R, mdesc_relevance (mdesc_named Θ' Ns M R) = mdesc_relevance R.
+Proof. intros; apply (mdesc_named_cases (fun R' => mdesc_relevance R' = mdesc_relevance R)); [| destruct R as [r A [?|] | | | ] ]; reflexivity. Qed.
+
+(** The term part of a term at an argument is a term of the same tag. *)
+Lemma mdesc_term_part_at_term : forall N r A om R', mdesc_term_part_at (mdesc_term r A om) N = Some R' ->
+    exists A' om', R' = mdesc_term r A' om'.
+Proof.
+  intros * H; destruct om as [M |]; cbn [mdesc_term_part_at mdesc_at] in H;
+    repeat (match type of H with context [match ?e with _ => _ end] => destruct e end); try discriminate;
+    injection H as <-; eauto.
+Qed.
+
+(** So is the term part of a term at arguments. *)
+Lemma mdesc_term_part_ats_term : forall Ns r A om R', mdesc_term_part_ats (mdesc_term r A om) Ns = Some R' ->
+    exists A' om', R' = mdesc_term r A' om'.
+Proof.
+  induction Ns as [| N Ns IH]; intros * H; cbn [mdesc_term_part_ats] in H; [ injection H as <-; eauto |].
+  destruct (mdesc_term_part_at (mdesc_term r A om) N) as [R0 |] eqn:E; [| discriminate ].
+  destruct (mdesc_term_part_at_term _ _ _ _ _ E) as (A0 & om0 & ->); exact (IH _ _ _ _ H).
+Qed.
+
 (** A stored term part with a module part, read at arguments: its term
     part, as a transparent definition is. *)
 #[local] Ltac filed_dm_read :=
@@ -685,7 +707,9 @@ Proof. intros * H; apply (mdesc_named_cases (fun R' => mdesc_reduct R' = Some N)
       match type of Ha with
       | context [mdesc_term_part_ats (mdesc_term ?r1 ?A1 (Some ?M1)) Ns] =>
           destruct (mdesc_term_part_ats (mdesc_term r1 A1 (Some M1)) Ns) as [[r2 B [M' |] | | |] |] eqn:Et; try discriminate;
-          exists (mdesc_term r1 A1 (Some M1)), (mdesc_term r2 B (Some M'))
+          let Er := fresh "Er" in
+          destruct (mdesc_term_part_ats_term _ _ _ _ _ Et) as (? & ? & Er); injection Er as -> _ _;
+          exists (mdesc_term r1 A1 (Some M1)), (mdesc_term r1 B (Some M'))
       end;
       match type of Ha with
       | context [mdesc_ats ?Rx Ns] => destruct (mdesc_ats Rx Ns) as [Rm' |]; [ injection Ha as <- | discriminate ]
@@ -693,7 +717,7 @@ Proof. intros * H; apply (mdesc_named_cases (fun R' => mdesc_reduct R' = Some N)
       (split; [ left; do 2 eexists; split; [ reflexivity | cbn [entry_term];
                                          try (match goal with HMk : ind_member _ _ = Some _ |- _ => rewrite HMk end);
                                          reflexivity ] | split; [ eassumption |] ]);
-      [ .. | rewrite !mdesc_named_fix by reflexivity; split; reflexivity ]
+      [ .. | rewrite !mdesc_named_fix by reflexivity; split; [ reflexivity | split; reflexivity ] ]
   end.
 
 (** A term member of a filed module at arguments, read off its stored
@@ -708,6 +732,7 @@ Lemma filed_mem_desc : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ
        (exists Rr, gs_find_record Ξm (qname_in p x) = Some Rr /\
           R0 = mdesc_term relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x))))) /\
       mdesc_term_part_ats R0 Ns = Some R1 /\
+      mdesc_relevance R = mdesc_relevance R1 /\
       mdesc_type R = mdesc_type (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1) /\
       mdesc_reduct R = mdesc_reduct (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1).
 Proof.
@@ -720,13 +745,13 @@ Proof.
     cbn [me_apps] in Hq; rewrite <- qname_mod_in, mod_qname_qname_mod in Hq; injection Hq as <-.
     eexists; eexists;
       split; [ right; left; exists pq, k, D, Mk; split; [ exact Hk | split; [ exact HMk | reflexivity ] ] |].
-    split; [ reflexivity | rewrite mdesc_named_nil; split; reflexivity ]. }
+    split; [ reflexivity | rewrite mdesc_named_nil; split; [ reflexivity | split; reflexivity ] ]. }
   2:{ (* the open frame of a record type's module: likewise *)
     destruct Ns as [| N Ns'] using List.rev_ind; [| rewrite me_apps_snoc in Hq; discriminate ].
     cbn [me_apps] in Hq; rewrite <- qname_mod_in, mod_qname_qname_mod in Hq; injection Hq as <-.
     eexists; eexists;
       split; [ right; right; exists Rr; split; [ exact Hk | reflexivity ] |].
-    split; [ reflexivity | rewrite mdesc_named_nil; split; reflexivity ]. }
+    split; [ reflexivity | rewrite mdesc_named_nil; split; [ reflexivity | split; reflexivity ] ]. }
   destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R2 & Hm2 & Hmod2).
   rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm0 _ Hm2), Hmod2 in Hmd; injection Hmd as <-.
   cbn in He; destruct (gm_prefix_upto Φ x) as [[| Φ0 z E0 | ] |] eqn:Hp; try discriminate.
@@ -736,7 +761,8 @@ Proof.
   rewrite mdesc_up_nil in Hty |- *.
   destruct E0 as [b pv r A0 oM | pv U | pv pq D Φd | pv Ad Md Ud | pv Rr Φr].
   - inversion Hed; subst; cbn [mdesc_ats_read] in Ha.
-    do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact (mdesc_term_part_ats_of_ats _ _ _ Ha) | split; reflexivity ] ].
+    do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact (mdesc_term_part_ats_of_ats _ _ _ Ha) |] ].
+    split; [ apply mdesc_relevance_named | split; reflexivity ].
   - exfalso.
     assert (HU : exists U', ge_read T (ge_mod pv U) = ge_mod pv U') by (destruct U as [? [[] ?|?]]; eexists; reflexivity).
     destruct HU as [U' HU]; rewrite HU in Hed; inversion Hed; subst.
@@ -756,12 +782,23 @@ Qed.
     at them too. *)
 Lemma filed_mem : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> mdesc_type R = Some A ->
-    valid_mem Γ (me_apps (qname_mod p) Ns) x A (mdesc_reduct R).
+    valid_mem Γ (me_apps (qname_mod p) Ns) x A (mdesc_reduct R) /\
+    exists i : nat, Γ ⊨ A : relevance_sort (mdesc_relevance R) Typeω@i.
 Proof.
   intros * Hl HΓ Hs Hm Ht.
-  destruct (filed_mem_desc _ _ _ _ _ _ _ _ Hl Hm Ht) as (R0 & R1 & HR0 & Ha & HtR & HrR).
-  rewrite HtR in Ht; rewrite HrR.
+  destruct (filed_mem_desc _ _ _ _ _ _ _ _ Hl Hm Ht) as (R0 & R1 & HR0 & Ha & HrelR & HtR & HrR).
+  rewrite HtR in Ht; rewrite HrR, HrelR.
   rewrite mdesc_type_named_m in Ht.
+  (* the read description is tagged as the stored one *)
+  assert (HrR1 : mdesc_relevance R1 = mdesc_relevance R0).
+  { assert (HR0t : exists r A om, R0 = mdesc_term r A om).
+    { destruct HR0 as [(Φ0 & E & Hp & He) | [(pq & k & D & Mk & Hk & HMk & ->) | (Rr & Hk & ->)]]; [| eauto | eauto ].
+      destruct E; cbn [entry_term] in He;
+        repeat (match type of He with context [option_map _ ?o] => destruct o; cbn [option_map] in He end);
+        try discriminate; injection He as <-; eauto. }
+    destruct HR0t as (r & A1 & om & ->).
+    destruct (mdesc_term_part_ats_term _ _ _ _ _ Ha) as (A2 & om2 & ->); reflexivity. }
+  rewrite HrR1.
   destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents Hfrs Hrfrs _ HTrel].
   pose proof Hs as [T1 T2 -> Hlen HTa2 HTs2 HNs HNr].
   assert (Hvt : valid_filed_term p (T1 ++ T2) x R0)
@@ -785,11 +822,13 @@ Proof.
     destruct (valid_exp_under_ctx_ctx_pi_at propositional T1 T2 A0 i HT HA0) as [iX HX]; cbn [relevance_sort] in HX.
     assert (HXΓ : Γ ⊨ (ctx_pi_at propositional T1 A0)[sb_of_list Id Ns] : Propₘ)
       by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
+    split; [| exists 0; exact HXΓ ].
     apply valid_mem_of_prop; [ exact HXΓ | intros M _; exact (rel_exp_under_ctx_proof HXΓ) | exact HK ]. }
   cbn [relevance_sort] in HA0.
   destruct (rel_exp_ctx_pi _ _ _ _ HTa1 HT HA0) as [iX HX].
   assert (HXΓ : Γ ⊨ (ctx_pi T1 A0)[sb_of_list Id Ns] : Typeω@iX)
     by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
+  split; [| exists iX; exact HXΓ ].
   (* the member, pointwise *)
   assert (Hpt : forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
              exists ns a k RX, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\ ⟦ (ctx_pi T1 A0)[sb_of_list Id Ns] ⟧ ρ ↘ a /\

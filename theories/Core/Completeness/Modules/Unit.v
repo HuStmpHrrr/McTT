@@ -49,7 +49,7 @@ Proof. exact (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ Hgm Hgw Hsub)
 
 Lemma valid_unit_lit_unit : forall Γ U, valid_unit Γ (me_lit U) -> Γ ⊨ᵘ U ≈ U.
 Proof.
-  intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΓ HΔΓ HU HE Hsm];
+  intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |].
   - assert (Hsu : rel_unit_wf Γ (gu_open Δ Φ))
       by (eapply rel_unit_wf_body; [ exact HΔ | exact (body_xp_target _ _ _ Hx) | exact Hsh | exact Hsx | exact HC | exact Hsv | exact Hov ]).
@@ -85,7 +85,7 @@ Qed.
 
 Lemma valid_unit_links : forall Γ U, valid_unit Γ (me_lit U) -> modexp_sub_rel Γ (me_lit U).
 Proof.
-  intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΓ HΔΓ HU HE Hsm];
+  intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - eapply unit_sub_link_body; try eassumption.
@@ -97,7 +97,7 @@ Qed.
 Lemma valid_unit_links_unabs1 : forall Γ Δ X D, valid_unit Γ (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) ->
     modexp_sub_rel (Γ ▹ X) (me_lit (gu_mk Δ D)).
 Proof.
-  intros * HK; inversion HK as [| ? Δ0 Φ Φx Hw Hx HΔ HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ0 E Hw HΔ HΓ HΔΓ HU HE Hsm];
+  intros * HK; inversion HK as [| ? Δ0 Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ0 E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - rewrite <- app_assoc in Hx, HC, Hsv, Hov, Hos; cbn [List.app] in Hx, HC, Hsv, Hov, Hos.
@@ -120,11 +120,28 @@ Proof.
   split; [ exact H1 |]; split; [ exact H2 |]; split; [ exact Hw' | apply wf_sub_ext; assumption ].
 Qed.
 
+(** Relevant parameters stay relevant along a substitution built from
+    valid parts. *)
+Lemma rel_params_relevant_gsub : forall Ψ Δ Γ τ l, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ Ψ ++ Δ -> gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
+    rel_params_relevant Δ Ψ l -> rel_params_relevant Γ (tele_sub Ψ τ) l.
+Proof.
+  induction Ψ as [| e Ψ IH]; intros * HC HwC Hg Hτ HΨ; cbn [tele_sub]; [ apply rel_params_relevant_nil |].
+  apply rel_params_relevant_cons_iff in HΨ as [Hh Ht].
+  cbn [List.app] in HC, HwC.
+  pose proof (rel_ctx_wf_tail HC) as HC0.
+  pose proof (ctx_app_wf_tail _ _ (e :: nil) _ HwC) as HwC0.
+  apply rel_params_relevant_cons_iff; split; [| exact (IH _ _ _ _ HC0 HwC0 Hg Hτ Ht) ].
+  intros A HA; destruct e; cbn in HA; try discriminate; injection HA as <-.
+  destruct (ext_gsub Ψ Δ Γ τ HC0 HwC0 Hg Hτ) as (_ & HgΨ & _).
+  exact (rel_exp_under_ctx_gsub HgΨ (Hh _ eq_refl)).
+Qed.
+
 (** The parts of a body, along a substitution built from valid parts, make
     a valid unit, once its literal is valid there. *)
 Lemma valid_unit_body_sub : forall Δ Δu Φ Φx Γ τ,
     Θm ⍮ Ξm ⍮ Δ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
-    body_xp Θm Ξm (Δu ++ Δ) Φ Φx -> tele_ass Δu -> ⊨ body_ctx Φx ++ Δu ++ Δ -> body_sorts_valid Φx (Δu ++ Δ) ->
+    body_xp Θm Ξm (Δu ++ Δ) Φ Φx -> tele_ass Δu -> (exists l, rel_params_relevant Δ Δu l) ->
+    ⊨ body_ctx Φx ++ Δu ++ Δ -> body_sorts_valid Φx (Δu ++ Δ) ->
     body_shape Φ Φ -> body_shape Φx Φx ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        forall Γ0 τ0, gsub Γ0 τ0 (body_ctx Φ0 ++ Δu ++ Δ) -> Θm ⍮ Ξm ⍮ Γ0 ⊢ˢ τ0 : body_ctx Φ0 ++ Δu ++ Δ ->
@@ -137,7 +154,7 @@ Lemma valid_unit_body_sub : forall Δ Δu Φ Φx Γ τ,
     Γ ⊨ᵐ (me_lit (gu_open Δu Φ))[τ]ᵐ ≈ (me_lit (gu_open Δu Φ))[τ]ᵐ ->
     valid_unit Γ (me_lit (gu_open Δu Φ))[τ]ᵐ.
 Proof.
-  intros Δ Δu Φ Φx Γ τ HU Hx HΔu HC Hsv Hs Hsx IHmods Hopv IHops Hg Hτ Hw' HK'.
+  intros Δ Δu Φ Φx Γ τ HU Hx HΔu HΔur HC Hsv Hs Hsx IHmods Hopv IHops Hg Hτ Hw' HK'.
   destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [Φx0 _ lv Hx0 HwCx _ _ _ _ _ _ _ _ _].
   pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hgm)))) _ _ _ Hx _ Hx0) as <-.
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU) as (HΔs & HUs & _).
@@ -154,6 +171,7 @@ Proof.
   1: exact Hw'.
   1: exact Hxσ.
   1: apply tele_ass_sub; exact HΔu.
+  1: destruct HΔur as [l Hl]; exists l; exact (rel_params_relevant_gsub _ _ _ _ _ (rel_ctx_wf_app_r _ _ HC) HwΔ Hg Hτ Hl).
   1: exact (proj1 (gsub_sem Hg)).
   1: { rewrite app_assoc in HC, HwCx.
        destruct (ext_gsub _ _ Γ τ HC HwCx Hg Hτ) as (HCσ & _).
@@ -198,18 +216,20 @@ Qed.
 
 Lemma valid_unit_alias_sub : forall Δ Δu E Γ τ,
     Θm ⍮ Ξm ⍮ Δ ⊢ᵘ gu_mk Δu (md_alias E) ≈ gu_mk Δu (md_alias E) ->
-    tele_ass Δu -> ⊨ Δu ++ Δ -> Δu ++ Δ ⊨ᵐ E ≈ E ->
+    tele_ass Δu -> (exists l, rel_params_relevant Δ Δu l) -> ⊨ Δu ++ Δ -> Δu ++ Δ ⊨ᵐ E ≈ E ->
     (forall Γ0 τ0, gsub Γ0 τ0 (Δu ++ Δ) -> Θm ⍮ Ξm ⍮ Γ0 ⊢ˢ τ0 : Δu ++ Δ -> valid_modexp Γ0 E[τ0]ᵐ) ->
     gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ ≈ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ ->
     Γ ⊨ᵐ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ ≈ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ ->
     valid_unit Γ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ.
 Proof.
-  intros Δ Δu E Γ τ HU HΔu HΔΔ HE IHE Hg Hτ Hw' HK'.
+  intros Δ Δu E Γ τ HU HΔu [l HΔur] HΔΔ HE IHE Hg Hτ Hw' HK'.
   destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [_ HwΔ _ _ _].
   destruct (ext_gsub Δu Δ Γ τ HΔΔ HwΔ Hg Hτ) as (HΔσ & HgΔ & HwΔσ & HτΔ).
   cbn [modexp_sub] in Hw', HK' |- *; rewrite gunit_sub_mk in Hw', HK' |- *; cbn [moddef_sub] in Hw', HK' |- *.
-  apply valid_unit_alias; [ exact Hw' | apply tele_ass_sub; exact HΔu | exact (proj1 (gsub_sem Hg)) | exact HΔσ | exact HK'
+  apply valid_unit_alias; [ exact Hw' | apply tele_ass_sub; exact HΔu
+                  | exists l; exact (rel_params_relevant_gsub _ _ _ _ _ HΔΔ HwΔ Hg Hτ HΔur)
+                  | exact (proj1 (gsub_sem Hg)) | exact HΔσ | exact HK'
                   | exact (rel_modexp_under_ctx_gsub HgΔ HE) | exact (IHE _ _ HgΔ HτΔ) ].
 Qed.
 
@@ -236,14 +256,14 @@ Proof.
       destruct (HNr _ _ HA0) as [i Hi]; exists i.
       exact (rel_exp_under_ctx_gsub Hg Hi).
   - (* a body *)
-    intros Δ Δu Φ Φx Hw Hx HΔu HΔ HC Hsv Hsl IHsl Hs Hsx HK Hopv Hops IHops Γ τ Hg Hτ.
+    intros Δ Δu Φ Φx Hw Hx HΔu HΔur HΔ HC Hsv Hsl IHsl Hs Hsx HK Hopv Hops IHops Γ τ Hg Hτ.
     pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
-    exact (valid_unit_body_sub _ _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf) Hx HΔu HC Hsv Hs Hsx IHsl Hopv IHops Hg Hτ
+    exact (valid_unit_body_sub _ _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf) Hx HΔu HΔur HC Hsv Hs Hsx IHsl Hopv IHops Hg Hτ
              (sub_preserves_modexp _ _ _ _ _ _ _ Hw Hτ) (rel_modexp_under_ctx_gsub Hg HK)).
   - (* an alias *)
-    intros Δ Δu E Hw HΔu HΔ HΔΔ HK HE Hsmt IHE Γ τ Hg Hτ.
+    intros Δ Δu E Hw HΔu HΔur HΔ HΔΔ HK HE Hsmt IHE Γ τ Hg Hτ.
     pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
-    exact (valid_unit_alias_sub _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf) HΔu HΔΔ HE IHE Hg Hτ
+    exact (valid_unit_alias_sub _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf) HΔu HΔur HΔΔ HE IHE Hg Hτ
              (sub_preserves_modexp _ _ _ _ _ _ _ Hw Hτ) (rel_modexp_under_ctx_gsub Hg HK)).
   - (* a module expression equal to a valid unit *)
     intros Δ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK Γ τ Hg Hτ.
@@ -286,41 +306,58 @@ Proof.
     by (eapply gsub_ass; [ constructor; exact HΓ | apply type_sort_universe | exact HX | rewrite exp_sub_id; exact HN ]).
   pose proof (rel_lit_beta Γ T1 X D N i HΓ (valid_unit_rel _ _ HK) (valid_unit_links_unabs1 _ _ _ _ HK) HX HN) as HKN.
   pose proof (wf_me_lit _ _ _ _ _ HUNw) as HwN.
-  inversion HK as [| ? Δ Φ Φx Hw0 Hx HΔ HΓ0 HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw0 HΔ HΓ0 HΔΓ HU HE Hsm];
+  inversion HK as [| ? Δ Φ Φx Hw0 Hx HΔ HΔr HΓ0 HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw0 HΔ HΔr HΓ0 HΔΓ HU HE Hsm];
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |].
   - (* a body *)
     change (valid_unit Γ (me_lit (gu_open T1 Φ))[Id,,N]ᵐ).
     rewrite <- app_assoc in Hx, HC, Hsv, Hsl, Hov, Hos; cbn [List.app] in Hx, HC, Hsv, Hsl, Hov, Hos.
-    eapply (valid_unit_body_sub (Γ ▹ X)); [ exact HU1 | exact Hx | exact (proj1 (tele_ass_app_inv _ _ HΔ)) | exact HC | exact Hsv | exact Hsh
+    destruct HΔr as [l HΔr].
+    eapply (valid_unit_body_sub (Γ ▹ X)); [ exact HU1 | exact Hx | exact (proj1 (tele_ass_app_inv _ _ HΔ))
+                                   | exists l; exact (proj2 (rel_params_relevant_snoc_inv _ _ _ _ HΔr)) | exact HC | exact Hsv | exact Hsh
                                    | exact Hsx | | exact Hov | | exact Hg | exact Hτ | exact HwN | exact HKN ].
     + intros * Hp HEu * Hg0 Hτ0; exact (valid_unit_gsub _ _ _ _ (Hsl _ _ _ _ Hp HEu) Hg0 Hτ0).
     + intros * Hk * Hg0 Hτ0; exact (valid_modexp_gsub _ _ _ _ (Hos _ _ _ Hk) Hg0 Hτ0).
   - (* an alias *)
     change (valid_unit Γ (me_lit (gu_mk T1 (md_alias E)))[Id,,N]ᵐ).
     rewrite <- app_assoc in HΔΓ, HE, Hsm; cbn [List.app] in HΔΓ, HE, Hsm.
-    eapply (valid_unit_alias_sub (Γ ▹ X)); [ exact HU1 | exact (proj1 (tele_ass_app_inv _ _ HΔ)) | exact HΔΓ | exact HE
+    destruct HΔr as [l HΔr].
+    eapply (valid_unit_alias_sub (Γ ▹ X)); [ exact HU1 | exact (proj1 (tele_ass_app_inv _ _ HΔ))
+                                    | exists l; exact (proj2 (rel_params_relevant_snoc_inv _ _ _ _ HΔr)) | exact HΔΓ | exact HE
                                     | | exact Hg | exact Hτ | exact HwN | exact HKN ].
     intros * Hg0 Hτ0; exact (valid_modexp_gsub _ _ _ _ Hsm Hg0 Hτ0).
 Qed.
 
+(** The parameters of a well-formed literal, relevant in the PER model, are
+    relevant in both senses at one level. *)
+Lemma lit_params_relevant_both : forall Γ U, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U ->
+    (exists l, rel_params_relevant Γ (gu_params U) l) ->
+    exists l, params_relevant Θm Ξm Γ (gu_params U) l /\ rel_params_relevant Γ (gu_params U) l.
+Proof.
+  intros * Hw [lr Hr].
+  pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
+  destruct (proj1 (unit_eq_params_relevant _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf))) as [lw Hlw].
+  exists (max lw lr); split; [ exact (params_relevant_max _ _ _ _ _ _ Hlw) | exact (rel_params_relevant_ge _ _ lr (max lw lr) ltac:(lia) Hr) ].
+Qed.
+
 (** ** Valid Units Abstracted over Parameters *)
 
-Lemma closure_walk : forall Δ Γ Δy D RΓ l, tele_ass Δ -> rel_params_relevant Γ Δ l -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+Lemma closure_walk : forall Δ Γ Δy D RΓ, tele_ass Δ -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     Δ ++ Γ ⊨ᵐ me_lit (gu_mk Δy D) ≈ me_lit (gu_mk Δy D) ->
     forall ρ ρ', RΓ ρ ρ' -> rel_modexp_evals (me_lit (gu_mk (Δy ++ Δ) D)) ρ (me_lit (gu_mk (Δy ++ Δ) D)) ρ'.
 Proof.
-  induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HΔr HC HΓ HU ρ ρ' Hρ; cbn [List.app] in *.
+  induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HC HΓ HU ρ ρ' Hρ; cbn [List.app] in *.
   - rewrite app_nil_r; exact (unit_chain_at HU HΓ _ _ Hρ).
   - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? [A ->] _]; subst.
-    destruct (rel_params_relevant_snoc_inv _ _ _ _ HΔr) as [HA HΔ0r].
     rewrite <- app_assoc in HC, HU; cbn [List.app] in HC, HU.
-    pose proof (per_ctx_env_of_typ HΓ (rel_type_of_typ HA)) as HΓA.
-    destruct (rel_exp_of_typ_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
+    destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as (Srt & HS & HA0).
+    destruct (rel_type_of_sort HS HA0) as [i HA].
+    pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
+    destruct (rel_type_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
     rewrite app_assoc.
     apply (mk_rel_modexp_evals _ _ _ _ (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ) (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ'));
       [ apply lit_params_val | apply lit_params_val |].
     assert (Hstep : forall c c', Ra c c' -> rel_modexp_evals (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ ↦ c) (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ' ↦ c')).
-    { intros c c' Hc; apply (IH (Γ ▹ A) _ _ _ _ HΔ0 HΔ0r HC HΓA HU).
+    { intros c c' Hc; apply (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU).
       apply (mk_per_ctx_env_cons_rel _ _ _ _ (ρ ↦ c) (ρ' ↦ c') Hρ);
         [ eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] | intros _; reflexivity | intros _; reflexivity ]. }
     eapply per_dmod_closure_step; [ exact Ha | exact Ha' | exact HRa |].
@@ -329,8 +366,7 @@ Proof.
 Qed.
 
 Lemma valid_unit_abs : forall Δ Γ U l, valid_unit (Δ ++ Γ) (me_lit U) -> tele_ass Δ ->
-    params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
-    valid_unit Γ (me_lit (gunit_abs Δ U)).
+    params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l -> valid_unit Γ (me_lit (gunit_abs Δ U)).
 Proof.
   intros * HK HΔ HΔw HΔr.
   pose proof (valid_unit_rel _ _ HK) as HU.
@@ -345,17 +381,19 @@ Proof.
   { intros R HR ρ ρ' Hρ.
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct U as [Δy D]; cbn [gunit_abs].
-    exact (closure_walk _ _ _ _ _ _ HΔ HΔr HC HRΓ HU _ _ (proj1 (E _ _) Hρ)). }
-  inversion HK as [| ? Δy Φ Φx Hw0 Hx HΔy HΓ0 HCx Hsv Hsl Hsh Hsx HU0 Hov Hos | ? Δy E Hw0 HΔy HΓ0 HΔΓ HU0 HE Hsm];
+    exact (closure_walk _ _ _ _ _ HΔ HC HRΓ HU _ _ (proj1 (E _ _) Hρ)). }
+  inversion HK as [| ? Δy Φ Φx Hw0 Hx HΔy HΔyr HΓ0 HCx Hsv Hsl Hsh Hsx HU0 Hov Hos | ? Δy E Hw0 HΔy HΔyr HΓ0 HΔΓ HU0 HE Hsm];
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
-    cbn [gunit_abs] in *.
+    cbn [gunit_abs] in *;
+    destruct HΔyr as [ly HΔyr];
+    assert (HΔyΔr : exists l', rel_params_relevant Γ (Δy ++ Δ) l') by (eexists; exact (rel_params_relevant_app _ _ _ _ _ HΔyr HΔr)).
   - assert (HL : modexp_sub_rel Γ (me_lit (gu_open (Δy ++ Δ) Φ))).
     { intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
       eapply unit_sub_link_body; [ apply List.Forall_app; split; assumption | rewrite <- app_assoc; exact Hx | exact Hsh | exact Hsx
                                  | rewrite <- app_assoc; exact HCx | rewrite <- app_assoc; exact Hsv | | eassumption .. ].
       intros k Ψ H Hk; rewrite <- app_assoc.
       split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ]. }
-    eapply valid_unit_body; [ exact Hw' | rewrite <- app_assoc; exact Hx | apply List.Forall_app; split; assumption | exact HΓ
+    eapply valid_unit_body; [ exact Hw' | rewrite <- app_assoc; exact Hx | apply List.Forall_app; split; assumption | exact HΔyΔr | exact HΓ
                     | rewrite <- app_assoc; exact HCx | rewrite <- app_assoc; exact Hsv | rewrite <- app_assoc; exact Hsl | exact Hsh | exact Hsx
                     | exact (rel_modexp_of_links _ _ _ HΓ HL HL Hat)
                     | intros * Hk; rewrite <- app_assoc; exact (Hov _ _ _ Hk)
@@ -364,7 +402,7 @@ Proof.
     { intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
       eapply unit_sub_link_alias; [ apply List.Forall_app; split; assumption | rewrite <- app_assoc; exact HΔΓ
                                   | rewrite <- app_assoc; exact HE | eassumption .. ]. }
-    eapply valid_unit_alias; [ exact Hw' | apply List.Forall_app; split; assumption | exact HΓ | rewrite <- app_assoc; exact HΔΓ
+    eapply valid_unit_alias; [ exact Hw' | apply List.Forall_app; split; assumption | exact HΔyΔr | exact HΓ | rewrite <- app_assoc; exact HΔΓ
                      | exact (rel_modexp_of_links _ _ _ HΓ HL HL Hat) | rewrite <- app_assoc; exact HE | rewrite <- app_assoc; exact Hsm ].
 Qed.
 

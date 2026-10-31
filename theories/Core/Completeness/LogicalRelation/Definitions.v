@@ -482,13 +482,21 @@ Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
     a valid unit denoting the same module part: the semantic counterpart of
     lookup soundness. *)
 Inductive valid_unit : ctx -> modexp -> Prop :=
+(** A filed module at arguments valid against its telescope *)
 | valid_unit_filed : forall Γ p T Φ Ns,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
     gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
     valid_unit Γ (me_apps (qname_mod p) Ns)
+(** A local body, its parts valid.  The unit's own parameters are relevant
+    in the PER model ([rel_params_relevant]): the member closures of the
+    unit lacking them relate at a relevant domain only.  For example, in
+    [module M (A : Typeω@0) := { def x : A -> A := fun a => a }], the
+    member [M.x] read without an argument is a member closure, related to
+    [λ a. a] because [A]'s value is relevant. *)
 | valid_unit_body : forall Γ Δ Φ Φx,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ) ->
-    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ -> body_sorts_valid Φx (Δ ++ Γ) ->
+    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> (exists l : nat, rel_params_relevant Γ Δ l) ->
+    ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ -> body_sorts_valid Φx (Δ ++ Γ) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        valid_unit (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U)) ->
     body_shape Φ Φ -> body_shape Φx Φx ->
@@ -496,14 +504,17 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> valid_modexp (Ψ ++ Δ ++ Γ) H) ->
     valid_unit Γ (me_lit (gu_open Δ Φ))
+(** An alias, its target valid.  The unit's own parameters are relevant in
+    the PER model, as for [valid_unit_body] *)
 | valid_unit_alias : forall Γ Δ E,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
-    tele_ass Δ -> ⊨ Γ -> ⊨ Δ ++ Γ ->
+    tele_ass Δ -> (exists l : nat, rel_params_relevant Γ Δ l) -> ⊨ Γ -> ⊨ Δ ++ Γ ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
     Δ ++ Γ ⊨ᵐ E ≈ E -> valid_modexp (Δ ++ Γ) E ->
     valid_unit Γ (me_lit (gu_mk Δ (md_alias E)))
 (** [valid_modexp Γ H]: [H] is equal to a valid unit that denotes its module part. *)
 with valid_modexp : ctx -> modexp -> Prop :=
+(** [H] and the valid unit [K] denote the same module part *)
 | valid_modexp_intro : forall Γ H R Rm K RK,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H ->
     mdenote Θm Ξm Γ H R -> mdesc_mod R = Some Rm ->

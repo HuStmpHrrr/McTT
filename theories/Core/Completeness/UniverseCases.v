@@ -770,4 +770,38 @@ Proof.
   rewrite <- app_assoc in HB; exact HB.
 Qed.
 
+(** Relevant parameters, read from the innermost: the innermost entry, if
+    an assumption, is relevant over the rest, and the rest are relevant. *)
+Lemma rel_params_relevant_cons_iff : forall Γ e Ψ l,
+    rel_params_relevant Γ (e :: Ψ) l <->
+    (forall A, e = ce_ass A -> Ψ ++ Γ ⊨ A : Typeω@l) /\ rel_params_relevant Γ Ψ l.
+Proof.
+  intros *; split.
+  - intros H; split; [ intros A ->; exact (H nil A Ψ eq_refl) |].
+    intros Δ1 A Δ2 ->; exact (H (e :: Δ1) A Δ2 eq_refl).
+  - intros [Hh Ht] [| e' Δ1] A Δ2 HE; cbn in HE; injection HE as -> HE; [ subst; exact (Hh A eq_refl) |].
+    exact (Ht Δ1 A Δ2 HE).
+Qed.
+
+(** No parameters are relevant at every level. *)
+Lemma rel_params_relevant_nil : forall Γ l, rel_params_relevant Γ nil l.
+Proof. intros * [| ? ?] ? ? HE; discriminate. Qed.
+
+(** Relevant parameters are relevant at a larger level. *)
+Lemma rel_params_relevant_ge : forall Γ Ψ l l', l <= l' -> rel_params_relevant Γ Ψ l -> rel_params_relevant Γ Ψ l'.
+Proof. intros * Hl H Δ1 A Δ2 HE; exact (rel_exp_cumu_ge Hl (H _ _ _ HE)). Qed.
+
+(** Relevant parameters over relevant parameters are relevant, at the
+    larger level. *)
+Lemma rel_params_relevant_app : forall Γ Δy Δ l l',
+    rel_params_relevant (Δ ++ Γ) Δy l -> rel_params_relevant Γ Δ l' ->
+    rel_params_relevant Γ (Δy ++ Δ) (max l l').
+Proof.
+  induction Δy as [| e Δy IH]; intros * Hy HΔ; cbn [List.app].
+  - exact (rel_params_relevant_ge _ _ l' (max l l') ltac:(lia) HΔ).
+  - apply rel_params_relevant_cons_iff in Hy as [Hh Ht].
+    apply rel_params_relevant_cons_iff; split; [| exact (IH _ _ _ Ht HΔ) ].
+    intros A HA; rewrite <- app_assoc; exact (rel_exp_cumu_ge (i := l) (j := max l l') ltac:(lia) (Hh A HA)).
+Qed.
+
 End Fixed_GCtx.

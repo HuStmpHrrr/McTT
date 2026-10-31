@@ -110,15 +110,23 @@ Proof.
   etransitivity; [ exact T23 | symmetry; exact T23 ].
 Qed.
 
-Lemma valid_typ_inst : forall Δ A i D τ RD, Δ ⊨ A : Typeω@i -> D ⊨ˢ τ ≈ τ : Δ -> EF D ≈ D ∈ per_ctx_env ↘ RD ->
+(** A type of either sort, along a semantic substitution: its value under
+    the substitution against its value at the substitution's value. *)
+Lemma rel_type_inst : forall Δ A i D τ RD, Δ ⊨ᵗ A ≈ A at i -> D ⊨ˢ τ ≈ τ : Δ -> EF D ≈ D ∈ per_ctx_env ↘ RD ->
     forall ρ ρτ, RD ρ ρ -> ⟦ τ : Δ ⟧s ρ ↘ ρτ ->
     exists a1 a2, ⟦ A[τ] ⟧ ρ ↘ a1 /\ ⟦ A ⟧ ρτ ↘ a2 /\ Dom a1 ≈ a2 ∈ per_univ i.
 Proof.
   intros * HA Hτ HD ρ ρτ Hρ Hev.
-  pose proof (rel_type_inversion (rel_type_of_typ HA)) as [R0 [HΔ0 HAgen]].
+  pose proof (rel_type_inversion HA) as [R0 [HΔ0 HAgen]].
   destruct (HAgen _ _ HD _ _ Hτ _ _ _ _ Hρ Hev Hev) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & _)].
   exists a1, a2; repeat split; assumption.
 Qed.
+
+(** The same, for a type of a universe. *)
+Corollary valid_typ_inst : forall Δ A i D τ RD, Δ ⊨ A : Typeω@i -> D ⊨ˢ τ ≈ τ : Δ -> EF D ≈ D ∈ per_ctx_env ↘ RD ->
+    forall ρ ρτ, RD ρ ρ -> ⟦ τ : Δ ⟧s ρ ↘ ρτ ->
+    exists a1 a2, ⟦ A[τ] ⟧ ρ ↘ a1 /\ ⟦ A ⟧ ρτ ↘ a2 /\ Dom a1 ≈ a2 ∈ per_univ i.
+Proof. intros * HA; exact (rel_type_inst _ _ _ _ _ _ (rel_type_of_typ HA)). Qed.
 
 Lemma valid_mod_inst : forall Δ H D τ RD, Δ ⊨ᵐ H ≈ H -> D ⊨ˢ τ ≈ τ : Δ -> EF D ≈ D ∈ per_ctx_env ↘ RD ->
     forall ρ ρτ, RD ρ ρ -> ⟦ τ : Δ ⟧s ρ ↘ ρτ ->
@@ -416,6 +424,12 @@ Definition entry_eq_upto_type (Ek Ex : gentry) : Prop :=
   Ek = Ex \/ (exists b pv r A A' M, Ek = ge_def b pv r A (Some M) /\ Ex = ge_def b pv r A' (Some M)) \/
   def_mod_eq_upto_type Ek Ex.
 
+(** Two entries the same but for a type are tagged alike. *)
+Lemma entry_eq_upto_type_relevance : forall Ek Ex, entry_eq_upto_type Ek Ex -> entry_relevance Ek = entry_relevance Ex.
+Proof.
+  intros * [-> | [(b & pv & r & A & A' & M & -> & ->) | [pv A A' M U -> ->]]]; reflexivity.
+Qed.
+
 Fixpoint body_eq_upto_types (Φk Φx : gmod) : Prop :=
   match Φk, Φx with
   | gm_nil, gm_nil => True
@@ -592,6 +606,14 @@ Lemma body_sorts_valid_of_gens_append : forall gs Φ k D, body_sorts_valid (gens
 Proof.
   induction gs as [| g gs IH]; intros * Hv; cbn [gens_append] in Hv; [ exact Hv |].
   destruct (generated_item_entry g) as [d E]; exact (proj1 (IH _ _ _ Hv)).
+Qed.
+
+(** A body prefixed by some of an open's generated entries has its sorts
+    valid when the whole does. *)
+Lemma body_sorts_valid_gens_firstn : forall Φ D gs0 gs1, body_sorts_valid (gens_append Φ 0 (gs0 ++ gs1)) D ->
+    body_sorts_valid (gens_append Φ 0 gs0) D.
+Proof.
+  intros * Hsv; rewrite gens_append_app in Hsv; exact (body_sorts_valid_of_gens_append _ _ _ _ Hsv).
 Qed.
 
 (** The entries an open generates are of their tagged sorts over any base
@@ -832,7 +854,7 @@ Proof.
     destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _ _ _].
     apply modexp_member_kind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite entry_kind_read; exact (Hk _ _ _ Hp).
   - (* a body *)
-    intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC Hsv Hslots IHslots Hs Hsx HK Hopv Hops IHops.
+    intros Γ Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hslots IHslots Hs Hsx HK Hopv Hops IHops.
     split; [| intros x (TΦ & Hu); cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate
             | intros x [(p & r & Hq & _) | (p & r & Hq & _)]; cbn in Hq; discriminate ].
     intros R Rm x Γy E rd Hm Hmod He RΓ ρ HRΓ Hρ.
@@ -889,7 +911,7 @@ Proof.
       apply (gunit_member_kind_id _ _ _ _ (proj1 (kinds_shape_sym _ _ Hs1))), modexp_member_kind_lit_iff.
       exact (valid_nil_kind _ _ _ (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC1)) HR0 _ Hρ1).
   - (* an alias *)
-    intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE.
+    intros Γ Δ E Hw HΔ HΔr HΓ HΔΓ HK HE Hsmt IHE.
     split; [| intros x (TΦ & Hu); cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate
             | intros x [(p & r & Hq & _) | (p & r & Hq & _)]; cbn in Hq; discriminate ].
     intros R Rm x Γy E' rd Hm Hmod He RΓ ρ HRΓ Hρ.
