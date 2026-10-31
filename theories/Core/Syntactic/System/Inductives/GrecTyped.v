@@ -352,6 +352,77 @@ Section GrecTyped.
   (** The module's whole telescope, over the uniform parameters. *)
   Lemma CT_wf : ⊢ Θ ⍮ Ξ ⍮ CT.
   Proof. apply (recursor_case_tys_wf _ 0 0 nil); [ intros; assumption | reflexivity | exact MT_wf ]. Qed.
+
+  (** ** The Telescope's Types Are Types of Universes
+
+      The motives' types are [Π]s into a universe, the cases' [Π]s into a
+      motive: each is a type of a large universe ([params_relevant]), as a
+      module's parameters must be. *)
+
+  Lemma recursor_motive_ctx_relevant : forall ms a E l, (forall j M, List.nth_error ms j = Some M -> ind_member D (a + j) = Some M) ->
+      List.length E = a -> ⊢ Θ ⍮ Ξ ⍮ E ++ L1 -> params_relevant Θ Ξ L1 E l ->
+      exists l', params_relevant Θ Ξ L1 (List.rev (recursor_motive_ctx_from a ms) ++ E) l'.
+  Proof.
+    induction ms as [| M ms IH]; intros a E l Hms HE HEw HR; [ exists l; exact HR |].
+    unfold recursor_motive_ctx_from; cbn [List.length List.seq List.combine List.map List.rev fst snd].
+    rewrite <- List.app_assoc; cbn [List.app].
+    destruct (recursor_motive_type_typed a M E ltac:(rewrite <- (Nat.add_0_r a); exact (Hms 0 M eq_refl)) HE HEw) as [j Hj].
+    apply (IH (S a) (ce_ass (recursor_mty a M) :: E) (max j l));
+      [ | cbn; rewrite HE; reflexivity | eapply wf_ctx_extend; [ exact Hj | constructor ] | exact (params_relevant_snoc _ _ _ _ _ _ _ HR Hj) ].
+    intros j' M' Hj'; rewrite Nat.add_succ_comm; exact (Hms (S j') M' Hj').
+  Qed.
+
+  Lemma recursor_cases_relevant : forall i Mi cs k E l, List.nth_error (ind_block_members D) i = Some Mi ->
+      (forall c gs, In (c, gs) cs -> ind_con Mi c = Some gs) -> List.length E = k -> ⊢ Θ ⍮ Ξ ⍮ E ++ MT ->
+      params_relevant Θ Ξ MT E l ->
+      exists l', params_relevant Θ Ξ MT (List.rev (recursor_cases i Mi k cs) ++ E) l'.
+  Proof.
+    intros i Mi; induction cs as [| [c gs] cs IH]; intros k E l HMi Hcs HE HEw HR; [ exists l; exact HR |].
+    cbn [recursor_cases List.rev]; rewrite <- List.app_assoc; cbn [List.app].
+    pose proof (Hcs c gs (or_introl eq_refl)) as Hcon.
+    destruct (recursor_case_at E _ _ _ _ HMi Hcon HEw) as [HB Hty]; rewrite HE in HB, Hty.
+    destruct (ctx_pi_wf _ _ _ _ _ _ HB (Hty 0)) as [j Hj].
+    apply (IH (S k) (_ :: E) (max j l));
+      [ exact HMi | intros; apply Hcs; right; assumption | cbn; rewrite HE; reflexivity
+      | eapply wf_ctx_extend; [ exact Hj | constructor ] | exact (params_relevant_snoc _ _ _ _ _ _ _ HR Hj) ].
+  Qed.
+
+  Lemma recursor_case_tys_relevant : forall ms i k E l,
+      (forall j M, List.nth_error ms j = Some M -> List.nth_error (ind_block_members D) (i + j) = Some M) ->
+      List.length E = k -> ⊢ Θ ⍮ Ξ ⍮ E ++ MT -> params_relevant Θ Ξ MT E l ->
+      exists l', params_relevant Θ Ξ MT (List.rev (recursor_case_tys p D i k ms) ++ E) l'.
+  Proof.
+    induction ms as [| M ms IH]; intros i k E l Hms HE HEw HR; [ exists l; exact HR |].
+    rewrite recursor_case_tys_cons, List.rev_app_distr, <- List.app_assoc.
+    assert (HB : List.nth_error (ind_block_members D) i = Some M) by (rewrite <- (Nat.add_0_r i); exact (Hms 0 M eq_refl)).
+    pose proof (block_member_member _ _ HB) as HM.
+    assert (Hcs : forall c gs, In (c, gs) (im_cons M) -> ind_con M c = Some gs)
+      by (intros c gs Hin; exact (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ HD _ _ HM) Hin)).
+    pose proof (recursor_cases_wf _ _ (im_cons M) k E HB Hcs HE HEw) as H1.
+    destruct (recursor_cases_relevant _ _ (im_cons M) k E l HB Hcs HE HEw HR) as [l1 HR1].
+    apply (IH (S i) (k + List.length (im_cons M)) (List.rev (recursor_cases i M k (im_cons M)) ++ E) l1);
+      [ intros j' M' Hj'; rewrite Nat.add_succ_comm; exact (Hms (S j') M' Hj')
+      | rewrite List.length_app, List.length_rev, length_recursor_cases, HE; lia
+      | rewrite <- List.app_assoc; exact H1 | exact HR1 ].
+  Qed.
+
+  (** The motives over the level and the cases over the motives. *)
+  Lemma MT_relevant : exists l, params_relevant Θ Ξ L1 (List.rev (recursor_motive_tys p D)) l.
+  Proof.
+    rewrite recursor_motive_tys_from.
+    destruct (recursor_motive_ctx_relevant (ind_block_members D) 0 nil 0) as [l HRl];
+      [ intros; apply block_member_member; assumption | reflexivity
+      | cbn; eapply wf_ctx_extend; [ apply (wf_level_large (i := 0)); exact HU | constructor ]
+      | apply params_relevant_nil |].
+    exists l; rewrite List.app_nil_r in HRl; exact HRl.
+  Qed.
+
+  Lemma CT_relevant : exists l, params_relevant Θ Ξ MT (List.rev (recursor_case_tys p D 0 0 (ind_block_members D))) l.
+  Proof.
+    destruct (recursor_case_tys_relevant (ind_block_members D) 0 0 nil 0) as [l HRl];
+      [ intros; assumption | reflexivity | exact MT_wf | apply params_relevant_nil |].
+    exists l; rewrite List.app_nil_r in HRl; exact HRl.
+  Qed.
   (** ** The Function of a Member *)
 
   (** The number of cases of the members [ms]. *)

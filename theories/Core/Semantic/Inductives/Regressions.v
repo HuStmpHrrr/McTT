@@ -624,7 +624,7 @@ Proof.
   subst g1; cbn [classified_carg_bit] in Hg2.
   (** The second, [c : C T x], mentions it: it is classified neither as
       written nor as its normal form. *)
-  inversion Hg2 as [? Hs | i W ? _ _ HW Hs]; subst.
+  inversion Hg2 as [? Hs | i W ? _ _ HW _ Hs]; subst.
   - rewrite classify_container_at_rec_none in Hs; discriminate.
   - cbn [raw_args_tele List.map List.rev List.app snd] in HW; unfold raw_member_args_ctx, raw_decl_selfs in HW; cbn in HW.
     assert (HSTw : ind_sort_univ ST[wk_shiftn 0]ʷ[wk_shiftn 0]ʷ)

@@ -19,6 +19,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Typing Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core.Syntactic.System.Inductives Require Import Runs GrecTyped.
+From Mctt.Algorithmic.Typing Require Import Definitions Lemmas.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -272,6 +273,24 @@ Section IndRuns.
     eapply run_cmds_cons; [ eassumption | eassumption | eassumption | eapply IH; eassumption ].
   Qed.
 
+  (** The type of a typed term is of a sort, whose relevance the
+      algorithm infers ([type_relevance]): it checks against its sort
+      ([alg_type_check_complete]), so infers a sort
+      ([alg_type_check_sort_infer]). *)
+  Lemma typed_type_relevance : forall Θ Ξ Γ A M,
+      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+      exists r (i : nat), Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i /\ type_relevance Θ Ξ Γ A r.
+  Proof.
+    intros * HM.
+    destruct (presup_exp_typ HM) as [S HS HA].
+    assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
+    pose proof (@alg_type_check_complete (gc_mk Θ Ξ) _ _ _ (user_exp_all A) HA) as HAc.
+    destruct (@alg_type_check_sort_infer (gc_mk Θ Ξ) _ _ _ HΓ HS HAc) as (UA & r & u & HAi & Hs).
+    exists r, (universe_nf_large_index u); split;
+      [ exact (@sort_typed_of_is_sort_nf (gc_mk Θ Ξ) _ _ _ _ _ (@alg_type_infer_sound (gc_mk Θ Ξ) _ _ _ HAi HΓ) Hs)
+      | exists UA, u; split; assumption ].
+  Qed.
+
   (** Generated definitions [ds], their names distinct and fresh in the
       innermost frame, each typed at every stack the frame grows to: they
       run, the frame growing by them. *)
@@ -292,10 +311,11 @@ Section IndRuns.
     - exists Φ; split; [ constructor | split; [ exact Hg | split; [ apply gc_sub_refl | auto ] ] ].
     - cbn [List.map fst snd] in *; inversion Hnd as [| ? ? Hx Hnd']; subst; inversion Hfr as [| ? ? Hx0 Hfr']; subst.
       pose proof (Hty Φ Hg (gc_sub_refl _ _)) as Hall; inversion Hall as [| ? ? HM _]; subst; cbn [fst snd] in HM.
-      set (Φ1 := (Φ ⊳ x ↦ gs_def b pv ((mp, K, gu_body Δ Φ) :: Ξ0) A M)).
-      assert (Hadd : gs_add x (gs_def b pv ((mp, K, gu_body Δ Φ) :: Ξ0) A M) ((mp, K, gu_body Δ Φ) :: Ξ0) = (mp, K, gu_body Δ Φ1) :: Ξ0)
+      destruct (typed_type_relevance _ _ _ _ _ HM) as (r & i & HAr & HAt).
+      set (Φ1 := (Φ ⊳ x ↦ gs_def b pv r ((mp, K, gu_body Δ Φ) :: Ξ0) A M)).
+      assert (Hadd : gs_add x (gs_def b pv r ((mp, K, gu_body Δ Φ) :: Ξ0) A M) ((mp, K, gu_body Δ Φ) :: Ξ0) = (mp, K, gu_body Δ Φ1) :: Ξ0)
         by reflexivity.
-      assert (Hg1 : ⊢ᵍ Θ ⍮ (mp, K, gu_body Δ Φ1) :: Ξ0) by (rewrite <- Hadd; apply add_def_wf; [ exact Hg | exact HM | exact Hx0 ]).
+      assert (Hg1 : ⊢ᵍ Θ ⍮ (mp, K, gu_body Δ Φ1) :: Ξ0) by (rewrite <- Hadd; eapply add_def_wf; [ exact Hg | exact HAr | exact HM | exact Hx0 ]).
       assert (Hs1 : gc_sub Θ ((mp, K, gu_body Δ Φ) :: Ξ0) Θ ((mp, K, gu_body Δ Φ1) :: Ξ0))
         by (rewrite <- Hadd; apply gc_sub_add; [ exact Hg | exact Hx0 ]).
       assert (Hfr1 : forall y, gm_fresh y Φ -> y <> x -> gm_fresh y Φ1)
@@ -306,7 +326,7 @@ Section IndRuns.
       + intros Φ2 Hg2 Hs2; pose proof (Hty Φ2 Hg2 (gc_sub_trans _ _ _ _ _ _ Hs1 Hs2)) as H; inversion H; assumption.
       + exists Φ'; split; [| split; [ exact Hg' | split; [ eapply gc_sub_trans; eassumption |] ] ].
         * eapply run_gen_cons; [| exact Hr ].
-          rewrite <- Hadd; constructor; [ exact HM | exact Hx0 ].
+          rewrite <- Hadd; econstructor; [ exact HAr | exact HAt | exact HM | exact Hx0 ].
         * intros y Hy Hn; apply Hf'; [ apply Hfr1; [ exact Hy | intros ->; apply Hn; left; reflexivity ] | intros Hin; apply Hn; right; exact Hin ].
   Qed.
 
@@ -336,21 +356,40 @@ Section IndRuns.
   (** The recursor module of a group found at [pq], at a stack over its
       uniform parameters [Δu], where [Rec] is fresh: it runs, whatever
       stack its names are read at. *)
-  Lemma recursor_mod_run : forall ch B Rb Θ Ξ pq D Δu Θ0 Ξ0,
+  Lemma recursor_mod_run : forall ch B Rb Θ Ξ pq D Δu lu Θ0 Ξ0,
       ⊢ᵍ Θ ⍮ Ξ -> ind_lookup Θ Ξ pq = Some D -> ind_uparams D = Δu ++ gs_tele Ξ -> gs_fresh "Rec" Ξ ->
+      params_relevant Θ Ξ (gs_tele Ξ) Δu lu ->
       exists U, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ recursor_mod_cmd Θ0 Ξ0 pq D Δu ⇝
         Θ ⍮ gs_add "Rec" (ge_body false (recursor_tele pq D Δu) (gu_mod U)) Ξ ⍮ B ⍮ Rb.
   Proof.
-    intros * Hg Hl Hu Hfr.
+    intros * Hg Hl Hu Hfr HRu.
     destruct (group_facts _ _ _ _ Hg Hl) as (Hds & HD & Hc & HU & Ha).
     assert (HaΔ : tele_ass Δu) by (rewrite Hu in Ha; apply List.Forall_app in Ha; tauto).
     assert (HT : recursor_tele pq D Δu ++ gs_tele Ξ = List.rev (recursor_case_tys pq D 0 0 (ind_block_members D)) ++ List.rev (recursor_motive_tys pq D) ++ ce_ass (a_level 0) :: ind_uparams D)
       by (rewrite recursor_tele_app, Hu; reflexivity).
+    (** The telescope's types are types of universes: the uniform
+        parameters', the level's, the motives' and the cases'. *)
+    assert (HRt : exists lr, params_relevant Θ Ξ (gs_tele Ξ) (recursor_tele pq D Δu) lr).
+    { destruct (MT_relevant _ _ _ _ Hg Hds HD Hc Hl HU) as [lm Hm].
+      destruct (CT_relevant _ _ _ _ Hg Hds HD Hc Hl HU) as [lc Hcs].
+      assert (HL : params_relevant Θ Ξ (Δu ++ gs_tele Ξ) (ce_ass (a_level 0) :: nil) 0).
+      { intros [| e Δ1] T Δ2 E; cbn in E; [ injection E as <- <-; cbn; apply (wf_level_large (i := 0)); rewrite <- Hu; exact HU
+                                         | destruct Δ1; discriminate ]. }
+      pose proof (params_relevant_app _ _ _ _ _ _ _ HL HRu) as H1.
+      rewrite Hu in Hm, Hcs.
+      pose proof (params_relevant_app _ _ (gs_tele Ξ) _ (ce_ass (a_level 0) :: Δu) _ _ Hm H1) as H2.
+      assert (Hcs' : params_relevant Θ Ξ ((List.rev (recursor_motive_tys pq D) ++ ce_ass (a_level 0) :: Δu) ++ gs_tele Ξ)
+                       (List.rev (recursor_case_tys pq D 0 0 (ind_block_members D))) lc)
+        by (rewrite <- List.app_assoc; exact Hcs).
+      pose proof (params_relevant_app _ _ (gs_tele Ξ) _ _ _ _ Hcs' H2) as H3.
+      eexists; rewrite <- (List.app_nil_r (recursor_tele pq D Δu)), recursor_tele_app, List.app_nil_r; exact H3. }
+    destruct HRt as [lr HRt].
     destruct Ξ as [| [[mq Kq] Uq] Ξs]; [ contradiction |].
     set (Ξ := (mq, Kq, Uq) :: Ξs) in *.
     set (mr := qname_in (gs_path Ξ) "Rec").
     assert (Hpush : ⊢ᵍ Θ ⍮ (mr, fk_module, gu_body (recursor_tele pq D Δu) ⋄) :: Ξ).
-    { apply wf_gstack_cons; [ exact Hg | constructor; [ apply recursor_tele_ass; exact HaΔ | rewrite HT; exact (CT_wf _ _ _ _ Hg Hds HD Hc Hl HU) ] |].
+    { apply wf_gstack_cons; [ exact Hg | eapply wf_gmod_nil with (param_level := lr);
+        [ apply recursor_tele_ass; exact HaΔ | rewrite HT; exact (CT_wf _ _ _ _ Hg Hds HD Hc Hl HU) | exact HRt ] |].
       cbn; exists "Rec"%string; split; [ reflexivity | exact Hfr ]. }
     set (ds := List.map (fun jx => let '(j, Mj, x) := jx in (x, (recursor_fn_ty pq D j Mj, recursor_fn pq D j Mj)))
                  (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) (recursor_names Θ0 Ξ0 D))).
@@ -376,7 +415,7 @@ Section IndRuns.
       rewrite HT.
       exact (recursor_fn_typed _ _ _ _ Hg' Hds' HD' Hc Hl' HU' j Mj Hin).
     - exists (gu_body (recursor_tele pq D Δu) Φ'); unfold recursor_mod_cmd; rewrite Hcmds.
-      eapply run_cmd_gen_mod; [ apply recursor_tele_ass; exact HaΔ | rewrite HT; exact (CT_wf _ _ _ _ Hg Hds HD Hc Hl HU) | exact Hfr | exact Hr ].
+      eapply run_cmd_gen_mod; [ apply recursor_tele_ass; exact HaΔ | rewrite HT; exact (CT_wf _ _ _ _ Hg Hds HD Hc Hl HU) | exact HRt | exact Hfr | exact Hr ].
   Qed.
 
   (** A member's frame names its group, found where it is open. *)
@@ -399,11 +438,12 @@ Section IndRuns.
   Proof.
     intros * Hg Hu Hfr HE HM Hh Hrnc Hrmnc.
     destruct (ind_nil_entry_uparams _ _ _ _ _ _ _ _ HE Hu) as [Htel HΔ].
+    destruct (ind_empty_entry_params_relevant _ _ _ _ _ _ _ _ HE Hu) as [lu HRu].
     destruct Ξ as [| [[mq Kq] Uq] Ξs]; [ contradiction |].
     set (Ξ := (mq, Kq, Uq) :: Ξs) in *.
     set (mp := ind_qname Ξ x); set (Δu := raw_decl_uparams R); set (K := fk_ind pq k D).
     assert (Hpush : ⊢ᵍ Θ ⍮ (mp, K, gu_body Δu ⋄) :: Ξ).
-    { apply wf_gstack_cons; [ exact Hg | eapply wf_gmod_ind_nil; eassumption |].
+    { apply wf_gstack_cons; [ exact Hg | eapply wf_gmod_ind_nil with (param_level := lu); eassumption |].
       cbn; exists x; split; [ reflexivity | exact Hfr ]. }
     assert (Hfacts : forall Φ', ⊢ᵍ Θ ⍮ (mp, K, gu_body Δu Φ') :: Ξ ->
               ind_lookup Θ ((mp, K, gu_body Δu Φ') :: Ξ) pq = Some D /\ decls_typed Θ ((mp, K, gu_body Δu Φ') :: Ξ) /\
@@ -455,8 +495,8 @@ Section IndRuns.
     assert (Hgrec : exists U, Θ ⍮ (mp, K, gu_body Δu Φ2) :: Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ ind_recursor_cmds Θ0 Ξ0 R pq D k ⇝*
                      Θ ⍮ (mp, K, U) :: Ξ ⍮ B ⍮ Rb).
     { unfold ind_recursor_cmds; destruct ((Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool) eqn:Hb; [| exists (gu_body Δu Φ2); constructor ].
-      destruct (recursor_mod_run ch B Rb Θ ((mp, K, gu_body Δu Φ2) :: Ξ) pq D nil Θ0 Ξ0 Hg2 (proj1 (Hfacts _ Hg2))
-                  ltac:(cbn [gs_tele gu_params List.app]; unfold Δu; exact Hu) (HRec2 eq_refl)) as [U HU].
+      destruct (recursor_mod_run ch B Rb Θ ((mp, K, gu_body Δu Φ2) :: Ξ) pq D nil 0 Θ0 Ξ0 Hg2 (proj1 (Hfacts _ Hg2))
+                  ltac:(cbn [gs_tele gu_params List.app]; unfold Δu; exact Hu) (HRec2 eq_refl) (params_relevant_nil _ _ _ _)) as [U HU].
       eexists; unfold recursor_mod_cmd in HU |- *; eapply run_gen_cons; [ exact HU | constructor ]. }
     destruct Hgrec as [U Hr3].
     exists U; unfold ind_mod_cmds, gs_push_ind.
@@ -477,10 +517,10 @@ Section IndRuns.
       (ind_has_rec D = true -> forall M0, ind_member D 0 = Some M0 -> ~ In "rec"%string (List.map fst (im_cons M0))) ->
       (raw_decl_rec_field R = false -> forall M0, ind_member D 0 = Some M0 -> ~ In "Rec"%string (List.map fst (im_cons M0))) ->
       exists Ξ', run_ind_members load_path read to_core ch B Rb Θ Ξ pv R pq D k xs B Rb Θ Ξ' /\ ⊢ᵍ Θ ⍮ Ξ' /\
-        gs_tele Ξ' = gs_tele Ξ /\ (forall y, gs_fresh y Ξ -> ~ In y xs -> gs_fresh y Ξ').
+        gs_tele Ξ' = gs_tele Ξ /\ (forall y, gs_fresh y Ξ -> ~ In y xs -> gs_fresh y Ξ') /\ gc_sub Θ Ξ Θ Ξ'.
   Proof.
     induction xs as [| x xs IH]; intros * Hg Hp HE Hrnc Hrmnc.
-    - exists Ξ; split; [ constructor | split; [ exact Hg | split; [ reflexivity | auto ] ] ].
+    - exists Ξ; split; [ constructor | split; [ exact Hg | split; [ reflexivity | split; [ auto | apply gc_sub_refl ] ] ] ].
     - pose proof (mems_fresh_head Hp) as Hfr; pose proof (mems_pre_uparams _ _ _ _ _ _ Hp) as Hu.
       destruct (mems_pre_heads _ _ _ _ _ _ Hp 0 x eq_refl) as (M & HM & Hh); rewrite Nat.add_0_r in HM.
       pose proof (HE x xs eq_refl) as HE0.
@@ -488,18 +528,26 @@ Section IndRuns.
                   Hg Hu Hfr HE0 HM Hh Hrnc Hrmnc) as [U Hr].
       destruct (ind_member_run_gen load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg Hu Hfr HE0 Hr) as [_ _ _ Hg1 _].
       pose proof (mems_pre_tail Hp pv (gu_mod U)) as Hp1.
-      destruct (IH ch B Rb Θ (gs_add x (ge_ind pv pq k D (gu_mod U)) Ξ) pv R pq D (S k) Hg1 Hp1) as (Ξ' & Hr' & Hg' & Ht' & Hf').
+      destruct (IH ch B Rb Θ (gs_add x (ge_ind pv pq k D (gu_mod U)) Ξ) pv R pq D (S k) Hg1 Hp1) as (Ξ' & Hr' & Hg' & Ht' & Hf' & Hs').
       + intros y ys ->.
         destruct (mems_pre_later _ _ _ _ _ _ Hp1 ltac:(apply Nat.lt_0_succ)) as [mq Kq Δ Φ Ξ0 y0 pv0 Φm HΞ He Hat].
         destruct (mems_pre_heads _ _ _ _ _ _ Hp1 0 y eq_refl) as (My & HMy & Hhy); rewrite Nat.add_0_r in HMy.
         pose proof (mems_pre_count _ _ _ _ _ _ Hp1) as Hc; cbn [List.length] in Hc.
         pose proof (mems_pre_uparams _ _ _ _ _ _ Hp1) as Hu1.
-        rewrite HΞ in Hg1, Hhy, Hu1 |- *; rewrite Hat; rewrite Hat in He.
-        eapply later_member_entry; [ exact Hg1 | exact He | exact HMy | apply Nat.lt_0_succ | lia | exact Hhy | exact Hu1 ].
+        (** The uniform parameters are relevant where the first member is
+            declared, and so after it is filed. *)
+        destruct (ind_empty_entry_params_relevant _ _ _ _ _ _ _ _ HE0 Hu) as [lu HRu].
+        assert (HRu1 : params_relevant Θ (gs_add x (ge_ind pv pq k D (gu_mod U)) Ξ)
+                         (gs_tele (gs_add x (ge_ind pv pq k D (gu_mod U)) Ξ)) (raw_decl_uparams R) lu)
+          by (rewrite gs_tele_add;
+              exact (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg1 (gc_sub_add _ _ _ _ Hg Hfr)) HRu)).
+        rewrite HΞ in Hg1, Hhy, Hu1, HRu1 |- *; rewrite Hat; rewrite Hat in He.
+        eapply later_member_entry; [ exact Hg1 | exact He | exact HMy | apply Nat.lt_0_succ | lia | exact Hhy | exact Hu1 | exact HRu1 ].
       + exact Hrnc.
       + exact Hrmnc.
       + exists Ξ'; split; [ econstructor; [ exact HM | exact Hfr | exact HE0 | exact Hr | exact Hr' ] | split; [ exact Hg' |] ].
         split; [ rewrite Ht', gs_tele_add; reflexivity |].
+        split; [| exact (gc_sub_trans _ _ _ _ _ _ (gc_sub_add _ _ _ _ Hg Hfr) Hs') ].
         intros y Hy Hn; apply Hf'; [ apply gs_fresh_add; [ exact Hy | intros ->; apply Hn; left; reflexivity ] | intros Hin; apply Hn; right; exact Hin ].
   Qed.
 
@@ -528,7 +576,7 @@ Section IndRuns.
     set (pq := ind_qname Ξ (raw_member_name Mr0)).
     pose proof (ind_mems_pre HR Hfil Hnd Hfr) as Hp.
     pose proof (mems_pre_uparams _ _ _ _ _ _ Hp) as Hu.
-    destruct (ind_members_run (List.map raw_member_name (raw_decl_members R)) ch B Rb Θ Ξ pv R pq D 0 Hg Hp) as (Ξ1 & Hr1 & Hg1 & Ht1 & Hf1).
+    destruct (ind_members_run (List.map raw_member_name (raw_decl_members R)) ch B Rb Θ Ξ pv R pq D 0 Hg Hp) as (Ξ1 & Hr1 & Hg1 & Ht1 & Hf1 & Hs1).
     { rewrite HR; cbn [List.map]; intros x xs [= <- _]; exact (ind_nil_at_entry _ _ _ _ _ Hnil pv). }
     { exact (rec_not_constructor _ _ _ Hgn). }
     { exact (rec_module_not_constructor _ _ _ Hgn). }
@@ -536,8 +584,13 @@ Section IndRuns.
     { unfold rec_cmds; destruct (raw_decl_rec_field R) eqn:Hrr; [| exists Ξ1; constructor ].
       assert (Hl1 : ind_lookup Θ Ξ1 pq = Some D).
       { rewrite HR in Hr1; cbn [List.map] in Hr1; exact (ind_members_run_lookup load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr1 Hg Hu). }
-      destruct (recursor_mod_run ch B Rb Θ Ξ1 pq D (raw_decl_uparams R) Θ Ξ1 Hg1 Hl1 ltac:(rewrite Ht1; exact Hu)
-                  (Hf1 _ (mutual_rec_fresh _ _ _ Hgn Hrr) (mutual_rec_not_member _ _ _ Hgn Hrr))) as [U HU].
+      (** The uniform parameters are relevant where the group is declared
+          ([ind_empty_entry_params_relevant]), and so after its members. *)
+      destruct (ind_empty_entry_params_relevant _ _ _ _ _ _ _ _ (ind_nil_at_entry _ _ _ _ _ Hnil pv) Hu) as [lu HRu].
+      assert (HRu1 : params_relevant Θ Ξ1 (gs_tele Ξ1) (raw_decl_uparams R) lu)
+        by (rewrite Ht1; exact (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg1 Hs1) HRu)).
+      destruct (recursor_mod_run ch B Rb Θ Ξ1 pq D (raw_decl_uparams R) lu Θ Ξ1 Hg1 Hl1 ltac:(rewrite Ht1; exact Hu)
+                  (Hf1 _ (mutual_rec_fresh _ _ _ Hgn Hrr) (mutual_rec_not_member _ _ _ Hgn Hrr)) HRu1) as [U HU].
       eexists; unfold recursor_mod_cmd in HU |- *; eapply run_gen_cons; [ exact HU | constructor ]. }
     destruct Hrec as [Ξ2 Hr2].
     exists Ξ2; eapply run_cmd_ind_case; eassumption.

@@ -1833,6 +1833,16 @@ Proof.
   - apply lift_exp_max_right; exact (HΔ _ _ _ E2).
 Qed.
 
+(** One more parameter, of a type of a universe. *)
+Lemma params_relevant_snoc : forall Θ Ξ Γ Δ T l (j : nat),
+    params_relevant Θ Ξ Γ Δ l -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ T : Typeω@j ->
+    params_relevant Θ Ξ Γ (ce_ass T :: Δ) (max j l).
+Proof.
+  intros * HΔ HT.
+  apply (params_relevant_app _ _ _ (ce_ass T :: nil) Δ j l); [| exact HΔ ].
+  intros [| e Δ1] T' Δ2 E; cbn in E; [ injection E as <- <-; exact HT | destruct Δ1; discriminate ].
+Qed.
+
 (** And apart. *)
 Lemma params_relevant_app_inv : forall Θ Ξ Γ Δy Δ l,
     params_relevant Θ Ξ Γ (Δy ++ Δ) l ->

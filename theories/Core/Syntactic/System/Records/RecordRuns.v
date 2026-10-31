@@ -19,6 +19,8 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Inductives Require Import IndRuns.
+From Mctt.Core.Completeness.Consequences Require Import Types.
+From Mctt.Algorithmic.Typing Require Import Definitions Lemmas.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -81,6 +83,26 @@ Proof.
   unfold record_field_ty; gen_presups; eassumption.
 Qed.
 
+(** The algorithm infers each field's type at the sort its tag says
+    ([type_relevance]): a type of the record's universe infers a universe
+    ([alg_type_infer_typ_complete]), a proposition [Prop]
+    ([alg_type_check_prop_infer]). *)
+Lemma record_field_type_relevance : forall Θ Ξ R k f T,
+    record_typed Θ Ξ R -> List.nth_error (record_fields R) k = Some (f, T) ->
+    type_relevance Θ Ξ (record_fctx R k ++ record_params R) T (record_field_rel R k).
+Proof.
+  intros * HRt Hk.
+  pose proof (typed_fields _ _ _ HRt _ _ _ Hk) as HT.
+  destruct (record_field_rel R k); cbn [relevance_sort] in HT.
+  - assert (Hu : univ_term (record_sort R)[wk_shiftn k]ʷ)
+      by (destruct (typed_sort _ _ _ HRt); cbn [exp_wk]; constructor).
+    destruct (@alg_type_infer_typ_complete (gc_mk Θ Ξ) _ _ _ (user_exp_all T) Hu HT) as (u & v & _ & Hi & _).
+    exists (universe_nf_to_nf v), v; split; [ exact Hi | constructor; apply is_univ_nf_univ_nf ].
+  - assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R) by (gen_presups; assumption).
+    exists Propⁿ, (universe_small (ordinal_of_nat 0, nil)); split; [| constructor ].
+    exact (@alg_type_check_prop_infer (gc_mk Θ Ξ) _ _ HΓ (@alg_type_check_complete (gc_mk Θ Ξ) _ _ _ (user_exp_all T) HT)).
+Qed.
+
 Section RecordRuns.
   Variable load_path : path -> option string.
   Variable read : string -> option Cst.prog.
@@ -91,25 +113,26 @@ Section RecordRuns.
       A record checked with an empty module where it is declared, its name
       fresh: its field definitions run in its module's frame, and the
       record files whenever its with-area runs after them. *)
-  Theorem run_cmd_record_runs : forall ch B Rb Θ Ξ x pv Δ Srt fs,
+  Theorem run_cmd_record_runs : forall ch B Rb Θ Ξ x pv Δ Srt fs rs,
       ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) ⋄ ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs rs) ⋄ ->
       exists Ξf,
-        Θ ⍮ gs_push_record (ind_qname Ξ x) (record_at Ξ Δ Srt fs) Δ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩
-          record_field_cmds (record_at Ξ Δ Srt fs) ⇝* Θ ⍮ Ξf ⍮ B ⍮ Rb /\
+        Θ ⍮ gs_push_record (ind_qname Ξ x) (record_at Ξ Δ Srt fs rs) Δ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩
+          record_field_cmds (record_at Ξ Δ Srt fs rs) ⇝* Θ ⍮ Ξf ⍮ B ⍮ Rb /\
         forall cs B' Rb' Θ' mp K U,
           Θ ⍮ Ξf ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
           Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_record x pv Δ Srt fs cs ⇝
-            Θ' ⍮ gs_add x (ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) (gu_mod U)) Ξ ⍮ B' ⍮ Rb'.
+            Θ' ⍮ gs_add x (ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs rs) (gu_mod U)) Ξ ⍮ B' ⍮ Rb'.
   Proof.
     intros * Hg Hfr HE.
-    set (R := record_at Ξ Δ Srt fs) in *; set (mp := ind_qname Ξ x) in *.
-    destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
+    set (R := record_at Ξ Δ Srt fs rs) in *; set (mp := ind_qname Ξ x) in *.
+    destruct (record_nil_entry_params _ _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
+    destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ _ HE) as [lp HPr].
     pose proof (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) as HRt.
     destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
     assert (Hff : frame_fresh Θ ((mq, Kq, Uq) :: Ξ0) mp) by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
     assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record mp R Δ ((mq, Kq, Uq) :: Ξ0))
-      by (apply wf_gstack_cons; [ exact Hg | eapply wf_gmod_record_nil; [ exact Htel | exact HΔ | exact HE | reflexivity ]
+      by (apply wf_gstack_cons; [ exact Hg | eapply wf_gmod_record_nil; [ exact Htel | exact HΔ | exact HPr | exact HE | reflexivity ]
                                 | exact Hff ]).
     assert (HEm : gctx_embedding Θ ((mq, Kq, Uq) :: Ξ0) Θ (gs_push_record mp R Δ ((mq, Kq, Uq) :: Ξ0)))
       by (constructor; [ exact Hpush | apply gc_sub_push; exact Hff ]).
@@ -130,7 +153,8 @@ Section RecordRuns.
       replace (record_params R) with (Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ0)) in Ht by reflexivity; exact Ht.
     - exists ((mp, fk_record R, gu_body (ce_ass (record_self mp R) :: Δ) Φ') :: (mq, Kq, Uq) :: Ξ0); split.
       + unfold record_field_cmds; rewrite record_fields_cmds_defs; exact Hr.
-      + intros * Hcs; eapply run_cmd_record; [ exact Hfr | exact HE | | exact Hcs ].
+      + intros * Hcs; eapply run_cmd_record;
+          [ exact Hfr | intros k f T Hk; exact (record_field_type_relevance _ _ _ _ _ _ HRt Hk) | exact HE | | exact Hcs ].
         unfold record_field_cmds; rewrite record_fields_cmds_defs; exact Hr.
   Qed.
 End RecordRuns.
