@@ -748,12 +748,31 @@ Ltac ok_solve :=
     constructor, and turns the erasure of a fast operation into the Core
     operation on the erasures: the form in which the relations and the
     orders state them.  The erasure of a variable stays. *)
+(** [rewrite ?L in *] only where the head [c] of its left side occurs:
+    a rewrite that finds no instance still searches every hypothesis, and
+    an obligation has many. *)
+Ltac ferase_rw_at c L :=
+  try (match goal with
+       | |- context [c] => idtac
+       | H : context [c] |- _ => idtac
+       end; rewrite ?L in *).
+
+Ltac ferase_rw_back_at c L :=
+  try (match goal with
+       | |- context [c] => idtac
+       | H : context [c] |- _ => idtac
+       end; rewrite <- ?L in *).
+
 Ltac ferase_ops :=
-  rewrite <- ?fenv_var_erase, <- ?fenv_mod_erase, <- ?felim_grp_of_erase in *;
-  rewrite ?fextend_env_erase, ?fextend_env_mod_erase, ?fextend_env_dm_erase, ?fenv_args_erase,
-    ?fkinds_placeholders_erase, ?fkinds_items_gen_env_erase, ?fkinds_body_entry_erase, ?fdm_clo_erase,
-    ?fdomain_level_suc_erase, ?fdomain_level_max_erase, ?fdomain_level_lit_erase, ?fields_erase_combine,
-    ?field_lookup_erase, ?frelevant_value_erase in *.
+  ferase_rw_back_at fenv_var fenv_var_erase; ferase_rw_back_at fenv_mod fenv_mod_erase;
+  ferase_rw_back_at felim_grp_of felim_grp_of_erase;
+  ferase_rw_at fextend_env fextend_env_erase; ferase_rw_at fextend_env_mod fextend_env_mod_erase;
+  ferase_rw_at fextend_env_dm fextend_env_dm_erase; ferase_rw_at fenv_args fenv_args_erase;
+  ferase_rw_at fkinds_placeholders fkinds_placeholders_erase; ferase_rw_at fkinds_items_gen_env fkinds_items_gen_env_erase;
+  ferase_rw_at fkinds_body_entry fkinds_body_entry_erase; ferase_rw_at fdm_clo fdm_clo_erase;
+  ferase_rw_at fdomain_level_suc fdomain_level_suc_erase; ferase_rw_at fdomain_level_max fdomain_level_max_erase;
+  ferase_rw_at fdomain_level_lit fdomain_level_lit_erase; ferase_rw_at (@List.combine) fields_erase_combine;
+  ferase_rw_at field_lookup field_lookup_erase; ferase_rw_at frelevant_value frelevant_value_erase.
 
 Ltac ferase_norm :=
   unfold fast_member_reference_ok in *;

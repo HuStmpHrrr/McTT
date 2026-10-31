@@ -1302,7 +1302,11 @@ Section EvalImpl.
   (** The erasures read as Core values, and the results' two parts apart *)
   #[local]
   Ltac eval_obligation_norm :=
-    intros; cbv beta iota in *; cbn [option_map decode_entry fst snd] in *;
+    intros;
+    (** The recursive functions in scope are not needed by an obligation;
+        dropped, the rewriting below has far less to go through. *)
+    repeat match goal with f : _ |- _ => lazymatch type of f with context [@sig _ _] => clear f end end;
+    cbv beta iota in *; cbn [option_map decode_entry fst snd] in *;
     rewrite ?felim_env_erase in *; ferase_norm;
     rewrite ?elim_env_eq in *;
     repeat match goal with H : _ /\ _ |- _ => destruct H end.

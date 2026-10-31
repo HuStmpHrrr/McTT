@@ -275,3 +275,17 @@ Proof.
   destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Hte & _).
   exists l; intros Δ1 T Δ2 E; exact (Hte _ _ _ (Hl _ _ _ E)).
 Qed.
+
+(** A declaration is checked at one list of field sorts only: each sort
+    is the one its field's type infers. *)
+Lemma record_checked_relevance_functional : forall Θ Ξ Γt Δ S fs rs rs', ⊢ᵍ Θ ⍮ Ξ ->
+    record_checked Θ Ξ Γt Δ S fs rs -> record_checked Θ Ξ Γt Δ S fs rs' -> rs = rs'.
+Proof.
+  intros * HΞ [Ht _] [Ht' _].
+  pose proof (typed_relevance_length _ _ _ Ht) as Hl; pose proof (typed_relevance_length _ _ _ Ht') as Hl'; cbn in Hl, Hl'.
+  apply (List.nth_ext _ _ relevant relevant); [ congruence |].
+  intros k Hk.
+  destruct (List.nth_error fs k) as [[f T] |] eqn:Hf; [| apply List.nth_error_None in Hf; lia ].
+  exact (type_relevance_functional _ _ _ _ _ _ HΞ (record_field_type_relevance _ _ _ _ _ _ Ht Hf)
+           (record_field_type_relevance _ _ _ _ _ _ Ht' Hf)).
+Qed.

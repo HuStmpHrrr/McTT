@@ -1236,7 +1236,11 @@ Ltac readback_ind :=
     two parts apart *)
 #[local]
 Ltac readback_norm :=
-  intros; cbv beta iota in *; cbn [fst snd] in *; ferase_norm; fleaf_norm; ferase_norm;
+  intros;
+  (** The recursive functions in scope are not needed by an obligation;
+      dropped, the rewriting below has far less to go through. *)
+  repeat match goal with f : _ |- _ => lazymatch type of f with context [@sig _ _] => clear f end end;
+  cbv beta iota in *; cbn [fst snd] in *; ferase_norm; fleaf_norm; ferase_norm;
   rewrite <- ?fdomain_level_sort_erase in *;
   repeat match goal with H : _ /\ _ |- _ => destruct H end;
   (** The sort of a fast type, as its erasure's, which the rules read *)
