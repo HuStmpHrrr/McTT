@@ -220,6 +220,36 @@ Section BridgeInstance.
     exact (Hno _ HA).
   Qed.
 
+  (** A type of either sort infers a sort. *)
+  Lemma alg_type_infer_sort_complete_gc : forall Γ A,
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵗ A -> exists UA r u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA r u.
+  Proof.
+    intros * [S HS HA].
+    assert (⊢ gc_deps ⍮ gc_stack ⍮ Γ) by (gen_presups; assumption).
+    exact (alg_type_check_sort_infer ltac:(eassumption) HS (alg_type_check_complete_gc _ _ _ HA)).
+  Qed.
+
+  (** The two ways "is [A] a type of either sort?" can fail, as for a type
+      of a universe. *)
+  Lemma not_wf_type_of_no_infer_gc : forall Γ A,
+      (forall B : nf, ~ Γ ⊢a A ⟹ B) -> ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵗ A.
+  Proof.
+    intros * Hno H.
+    destruct (alg_type_infer_sort_complete_gc _ _ H) as (UA & r & u & HA & _).
+    exact (Hno _ HA).
+  Qed.
+
+  Lemma not_wf_type_of_infer_not_sort_gc : forall Γ A (B : nf),
+      Γ ⊢a A ⟹ B -> (forall r u, ~ is_sort_nf B r u) -> ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵗ A.
+  Proof.
+    intros * HB Hne H.
+    pose proof H as [S _ HA0].
+    destruct (alg_type_infer_sort_complete_gc _ _ H) as (UA & r & u & HA & Hu).
+    assert (B = UA)
+      by (eapply functional_alg_type_infer; [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx HA0)) | eassumption .. ]).
+    subst; exact (Hne _ _ Hu).
+  Qed.
+
   (** [not_wf_typ_of_infer_not_typ] *)
   Lemma not_wf_typ_of_infer_not_typ_gc : forall Γ A (B : nf),
       Γ ⊢a A ⟹ B -> (forall u, ~ is_univ_nf B u) -> forall i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i.
@@ -252,12 +282,10 @@ Definition level_blame_app {F : FCtx} {Γ} Δ (b : level_blame (fc_deps F) (fc_s
   | exist _ (Δ', t) Ht => exist _ (Δ' ++ Δ, t) (level_blame_app_ok _ _ _ _ _ _ Ht)
   end.
 
-(** The type of a well-typed term is a type. *)
-Lemma not_exp_of_not_typ : forall Θ Ξ Γ A M,
-    (forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
-Proof.
-  intros * HA HM; gen_presups; eapply HA; eassumption.
-Qed.
+(** The type of a well-typed term is a type of either sort. *)
+Lemma not_exp_of_not_type : forall Θ Ξ Γ A M,
+    ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
+Proof. intros * HA HM; exact (HA (presup_exp_typ HM)). Qed.
 
 (** ** Types and Terms at the Core Context of a Fast Context *)
 
@@ -296,6 +324,35 @@ Section check_exp.
   (** The inferred universe gives the typing at its own large level. *)
   Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(universe_nf_large_index u) *)
     eapply alg_type_infer_univ_sound_gc; eassumption.
+  Qed.
+
+  (** "Is [A] a type of either sort?": infer a type for [A], then require it
+      to be a sort ([is_sort_nf]); the answer is the sort, by its relevance,
+      at a universe. *)
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
+  Equations check_type Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
+    { r & { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i } } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A } :=
+  | Γ, HΓ, A =>
+      let*o (exist _ UA _) := type_infer F Γ _ A _ while _ in
+      let*o (existT _ r (exist _ u _)) := sort_nf_dec UA while _ in
+      pureo (existT _ r (exist _ (universe_nf_large_index u) _))
+  .
+  Obligation 1. Qed.
+  Obligation 2. (* type_infer_order A *)
+    apply user_exp_to_type_infer_order, user_exp_all.
+  Defined.
+  Obligation 3. (* nothing is inferred for [A] *)
+    eapply not_wf_type_of_no_infer_gc; eassumption.
+  Qed.
+  Obligation 4. (* what is inferred for [A] is no sort *)
+    match goal with
+    | Ha : _ ⊢a _ ⟹ ?UA, Hn : forall r u, ~ is_sort_nf ?UA r u |- False =>
+        eapply not_wf_type_of_infer_not_sort_gc; [ exact Ha | exact Hn | eassumption ]
+    end.
+  Qed.
+  (** The inferred sort gives the typing at its own large level. *)
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@(universe_nf_large_index u) *)
+    destruct_conjs; eapply sort_typed_of_is_sort_nf; [ eapply alg_type_infer_sound; eassumption | eassumption ].
   Qed.
 
   (** ** Blaming the Level of a Universe
@@ -370,14 +427,14 @@ Section check_exp.
         | inleft _ => None
         | inright Ht => Some (exist _ (nil, t) Ht)
         end
-    | a_pi A' B =>
+    | a_pi _ A' B =>
         match find_level_blame Γ HΓ A' with
         | Some b => Some b
         | None =>
-            match check_typ Γ HΓ A' with
-            | inleft (exist _ i HA) =>
+            match check_type Γ HΓ A' with
+            | inleft (existT _ r (exist _ i HA)) =>
                 option_map (level_blame_app (ce_ass A' :: nil))
-                  (find_level_blame (Γ ▹ A') (wf_ctx_extend _ _ _ _ _ HA) B)
+                  (find_level_blame (Γ ▹ A') (wf_ctx_extend _ _ _ _ _ HA (type_sort_relevance_universe r i)) B)
             | inright _ => None
             end
         end
@@ -396,8 +453,8 @@ Section check_exp.
         match find_tele_blame Γ HΓ Δ' with
         | inleft b => inleft b
         | inright HΔ' =>
-            match check_typ (Δ' ++ Γ) HΔ' A with
-            | inleft (exist _ i HA) => inright (wf_ctx_extend _ _ _ _ _ HA)
+            match check_type (Δ' ++ Γ) HΔ' A with
+            | inleft (existT _ r (exist _ i HA)) => inright (wf_ctx_extend _ _ _ _ _ HA (type_sort_relevance_universe r i))
             | inright _ => inleft (option_map (level_blame_app Δ') (find_level_blame (Δ' ++ Γ) HΔ' A))
             end
         end
@@ -412,7 +469,7 @@ Section check_exp.
       [check_typ] has succeeded, so that a caller can tell the two failures
       apart without inferring [A] twice. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_exp_typed Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) M :
+  Equations check_exp_typed Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A) M :
     { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
   | Γ, HΓ, A, HA, M =>
       let*b _ := type_check F Γ A HA M _ while _ in
@@ -425,14 +482,18 @@ Section check_exp.
     eapply H, alg_type_check_complete_gc; eassumption.
   Qed.
   Obligation 3. (* Θ ⍮ Ξ ⍮ Γ ⊢ M : A *)
-    eapply alg_type_check_sound; eassumption.
+    destruct HA as [S HS HA']; eapply alg_type_check_sound_sort; eassumption.
   Qed.
+
+  (** A type of the sort of [r] at a universe is a type. *)
+  Definition type_of_check_type Γ A r i (HA : Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i) : Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A :=
+    mk_wf_type _ (type_sort_relevance_universe r i) HA.
 
   Definition check_exp Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
       { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
-    match check_typ Γ HΓ A with
-    | inleft (exist _ i HA) => check_exp_typed Γ HΓ A (ex_intro _ i HA) M
-    | inright HA => right (not_exp_of_not_typ _ _ _ _ _ HA)
+    match check_type Γ HΓ A with
+    | inleft (existT _ r (exist _ i HA)) => check_exp_typed Γ HΓ A (type_of_check_type Γ A r i HA) M
+    | inright HA => right (not_exp_of_not_type _ _ _ _ _ HA)
     end.
 
   (** A unit and a module expression, through their algorithmic checks. *)
@@ -480,7 +541,7 @@ Section check_ctx.
   | HΞ, ⋅ => pureb _
   | HΞ, Γ ▹ A =>
       let*b HΓ := check_ctx HΞ Γ while _ in
-      let*o->b (exist _ i _) := check_typ F Γ HΓ A while _ in
+      let*o->b (existT _ r (exist _ i _)) := check_type F Γ HΓ A while _ in
       pureb _
   | HΞ, Γ ▸ A ≔ M =>
       let*b HΓ := check_ctx HΞ Γ while _ in
@@ -490,9 +551,11 @@ Section check_ctx.
       let*b HΓ := check_ctx HΞ Γ while _ in
       let*b _ := check_unit F Γ HΓ U while _ in
       pureb _
+  (** A definition with a module part: its type is one of a universe *)
   | HΞ, Γ ▸ₘ A ≔ M ‖ U =>
       let*b HΓ := check_ctx HΞ Γ while _ in
-      let*b _ := check_exp F Γ HΓ A M while _ in
+      let*o->b (exist _ i _) := check_typ F Γ HΓ A while _ in
+      let*b _ := check_exp_typed F Γ HΓ A _ M while _ in
       let*b _ := check_unit F Γ HΓ U while _ in
       pureb _
   .
@@ -506,10 +569,10 @@ Section check_ctx.
     eapply H; mauto 2.
   Qed.
   Obligation 3. (* the assumption is no type *)
-    destruct (ctx_decomp H0) as [? [? ?]]; eapply H; eassumption.
+    destruct (ctx_decomp H0) as [_ HA]; exact (H HA).
   Qed.
   Obligation 4. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A *)
-    mauto 2.
+    eapply wf_ctx_extend; [ eassumption | apply type_sort_relevance_universe ].
   Qed.
   Obligation 5. (* the prefix of a definition is no context *)
     eapply H; mauto 2.
@@ -532,14 +595,20 @@ Section check_ctx.
   Obligation 11. (* the prefix of a definition with a module part is no context *)
     eapply H; mauto 2.
   Qed.
-  Obligation 12. (* its term part is not of the declared type *)
+  Obligation 12. (* its type is no type of a universe *)
     inversion H0; subst; eapply H; eassumption.
   Qed.
-  Obligation 13. (* its unit is not well formed *)
-    inversion H0; subst; contradiction.
+  Obligation 13. (* its type is a type *)
+    eapply wf_type_univ; eassumption.
+  Defined.
+  Obligation 14. (* its term part is not of the declared type *)
+    match goal with Hc : ⊢ _ ⍮ _ ⍮ _ ▸ₘ _ ≔ _ ‖ _ |- _ => inversion Hc; subst; contradiction end.
   Qed.
-  Obligation 14. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U *)
-    gen_presups; eapply wf_ctx_extend_dm; eassumption.
+  Obligation 15. (* its unit is not well formed *)
+    match goal with Hc : ⊢ _ ⍮ _ ⍮ _ ▸ₘ _ ≔ _ ‖ _ |- _ => inversion Hc; subst; contradiction end.
+  Qed.
+  Obligation 16. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U *)
+    eapply wf_ctx_extend_dm; eassumption.
   Qed.
 
 End check_ctx.

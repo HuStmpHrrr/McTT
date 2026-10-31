@@ -3,7 +3,7 @@ From Stdlib Require Import List String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members.
-From Mctt.Core.Syntactic.System.Global Require Import Paths.
+From Mctt.Core.Syntactic.System.Global Require Import Paths LookupSound.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Extraction Require Import FastEval FastDomain.
 Import Domain_Notations.
@@ -43,6 +43,103 @@ Proof.
   unfold gm_module in H; destruct (q_chain p) as [| x ip]; [ discriminate | eapply gm_submodule_alias_entry; exact H ].
 Qed.
 
+(** ** Where a Member's Module Is Stored
+
+    A selection from a saturated global module ([module_saturated]) reads
+    the module's telescope off where the module is stored.  In a
+    well-formed context, a module one of whose members is found is
+    stored. *)
+
+(** An entry below a body's member [x] is in the body [x] names. *)
+Lemma gm_entry_snoc_inv : forall Φ T x ip y E, gm_entry Φ (x :: ip ++ y :: nil) = Some E ->
+    exists T' Φ', gm_subbody T Φ x ip = Some (T', Φ') /\ gm_entry Φ' (y :: nil) = Some E.
+Proof.
+  fix IH 1; intros [| Φ z E0 | Φ H its] T x ip y E He; cbn in He |- *; [ discriminate | | exact (IH _ _ _ _ _ _ He) ].
+  destruct (String.eqb x z); [| exact (IH _ _ _ _ _ _ He) ].
+  destruct ip as [| w ip]; cbn in He.
+  - destruct E0 as [? ? ? ? ? | ? [Δ [sm Φ' | E']] | ? ? ? D Φ' | ? ? ? ? | ? pr R Φ']; try discriminate; eauto.
+  - destruct E0 as [? ? ? ? ? | ? [Δ [sm Φ' | E']] | ? ? ? D Φ' | ? ? ? ? | ? pr R Φ']; try discriminate; eapply IH; exact He.
+Qed.
+
+(** A module one of whose entries is found is stored: an open frame, or a
+    body module. *)
+Lemma entry_parent_loc : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p y E, gc_entry Θ Ξ (qname_in p y) = Some E ->
+    exists T Φ, loc Θ Ξ p T Φ.
+Proof.
+  intros * Hg * He; unfold gc_entry, gc_entry_u in He; rewrite gs_find_tele_find in He.
+  destruct (gs_find_tele Ξ (qname_in p y)) as [[[U ip] T0] |] eqn:Ef; cbn [option_map] in He.
+  - destruct (gs_find_tele_body _ _ Hg _ _ _ _ Ef) as (ΔU & ΦU & ->); cbn [gu_mod] in He.
+    destruct (gs_find_tele_found _ _ _ _ _ Ef) as (F & HF & HFf).
+    apply qname_strip_app_inv in HF.
+    destruct ip as [| w ip] using rev_ind; [ rewrite gm_entry_nil in He; discriminate |].
+    clear IHip.
+    assert (Hy : w = y /\ p = qname_app F ip).
+    { destruct p as [fq cq], F as [ff cf]; unfold qname_in, qname_app in HF |- *; cbn in HF |- *.
+      injection HF as -> Hc; rewrite List.app_assoc in Hc.
+      apply List.app_inj_tail in Hc as [-> ->]; split; reflexivity. }
+    destruct Hy as [-> ->].
+    destruct ip as [| x ip].
+    + exists (ΔU ++ T0), ΦU; left; unfold gc_frame; rewrite qname_app_nil, HFf; reflexivity.
+    + cbn [app] in He.
+      destruct (gm_entry_snoc_inv _ (ΔU ++ T0) _ _ _ _ He) as (Tq & Φq & Hsb & _).
+      destruct (gs_find_tele_head _ _ Hg _ _ _ _ _ Ef (gm_subbody_head _ _ _ _ _ Hsb)) as (Fp & HFp & HFall).
+      assert (Fp = F) as ->.
+      { destruct F as [ff cf], Fp as [fp' cp']; unfold qname_app in HFp, HF; cbn in HFp, HF.
+        rewrite HF in HFp; injection HFp as -> Hc.
+        apply List.app_inv_tail in Hc as ->; reflexivity. }
+      exists Tq, Φq; right; unfold gc_body; rewrite HFall; exact Hsb.
+  - destruct (gds_lookup Θ (q_unit (qname_in p y))) as [Uf |] eqn:El; [| discriminate ].
+    cbn [q_unit qname_in q_chain] in El, He.
+    pose proof (gs_find_tele_filed _ _ Hg p _ El nil) as Ef0; rewrite qname_app_nil in Ef0.
+    destruct (q_chain p) as [| x ip] eqn:Hc.
+    + exists (gu_params Uf), (gu_mod Uf); right; unfold gc_body; rewrite Ef0, El, Hc; reflexivity.
+    + cbn [app] in He.
+      destruct (gm_entry_snoc_inv _ (gu_params Uf) _ _ _ _ He) as (Tq & Φq & Hsb & _).
+      exists Tq, Φq; right; unfold gc_body; rewrite Ef0, El, Hc; exact Hsb.
+Qed.
+
+(** What a selection from a global module finds below it: a term part, a
+    definition, the module of a member of a group or a record type. *)
+Definition child_found (Θ : gdeps) (Ξ : gstack) (pc : qname) : Prop :=
+  (exists E, gc_entry Θ Ξ pc = Some E) \/ (exists r, gs_find_ind Ξ pc = Some r) \/ (exists R, gs_find_record Ξ pc = Some R).
+
+Lemma child_found_term : forall Θ Ξ pc M, gc_term Θ Ξ pc = Some M -> child_found Θ Ξ pc.
+Proof.
+  intros * H; left; unfold gc_term in H.
+  destruct (gc_resolve Θ Ξ pc) as [E |] eqn:Er; [ exists E; exact (gc_resolve_entry _ _ _ _ Er) |].
+  destruct (gc_entry Θ Ξ pc) as [E |]; [ eauto | discriminate ].
+Qed.
+
+Lemma child_found_resolve : forall Θ Ξ pc E, gc_resolve Θ Ξ pc = Some E -> child_found Θ Ξ pc.
+Proof. intros * H; left; exists E; exact (gc_resolve_entry _ _ _ _ H). Qed.
+
+Lemma child_found_ind : forall Θ Ξ pc r, ind_mlookup Θ Ξ pc = Some r -> child_found Θ Ξ pc.
+Proof.
+  intros Θ Ξ pc [[pq k] D] H; destruct (ind_mlookup_entry _ _ _ _ _ _ H) as [(pv & Φ & He) | Hf]; [ left | right; left ]; eauto.
+Qed.
+
+Lemma child_found_record : forall Θ Ξ pc R, record_lookup Θ Ξ pc = Some R -> child_found Θ Ξ pc.
+Proof.
+  intros * H; unfold record_lookup in H.
+  destruct (gs_find_record Ξ pc) as [R' |] eqn:Hf; [ right; right; eauto |].
+  destruct (gc_entry Θ Ξ pc) as [E |] eqn:He; [ left; eauto | discriminate ].
+Qed.
+
+(** A global module a member of which is found is stored. *)
+Lemma child_found_parent_loc : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p x, child_found Θ Ξ (qname_app p (x :: nil)) ->
+    exists T Φ, gc_loc Θ Ξ p = Some (T, Φ).
+Proof.
+  intros * Hg * Hc; rewrite <- qname_in_app in Hc.
+  assert (Hl : exists T Φ, loc Θ Ξ p T Φ).
+  { destruct Hc as [(E & He) | [([[pq k] D] & Hf) | (R & Hf)]].
+    - exact (entry_parent_loc _ _ Hg _ _ _ He).
+    - destruct (frame_ind_loc _ _ Hg _ _ _ _ Hf) as (U & T0 & T & Φ & Mk & _ & Hfr & _ & _).
+      exact (loc_parent _ _ Hg _ _ _ _ (or_introl Hfr)).
+    - destruct (frame_record_loc _ _ Hg _ _ Hf) as (U & T0 & T & Φ & _ & Hfr & _).
+      exact (loc_parent _ _ Hg _ _ _ _ (or_introl Hfr)). }
+  destruct Hl as (T & Φ & Hl); exists T, Φ; exact (gc_loc_of_loc _ _ Hg _ _ _ Hl).
+Qed.
+
 Scheme fdomain_ok_mut_ind0 := Minimality for fdomain_ok Sort Prop
 with fdomain_ne_ok_mut_ind0 := Minimality for fdomain_ne_ok Sort Prop
 with fdomain_nf_ok_mut_ind0 := Minimality for fdomain_nf_ok Sort Prop
@@ -68,7 +165,7 @@ Section Growth.
   Proof.
     intros * H; unfold gc_term in H |- *.
     destruct (gc_resolve Θ1 Ξ1 p) as [E |] eqn:Er.
-    - destruct E as [[|] pv A [M' |] | | | |]; try discriminate;
+    - destruct E as [[|] pv [|] A [M' |] | | | |]; try discriminate;
         try (rewrite (gc_sub_resolve _ _ _ _ _ _ Hs Er); assumption).
       all: pose proof (gc_resolve_entry _ _ _ _ Er) as Ee; rewrite Ee in H; try discriminate.
       exfalso; rewrite (gc_entry_def_mod _ _ _ _ _ _ _ Ee) in Er; discriminate.
@@ -102,8 +199,8 @@ Section Growth.
 
   (** A definition names no member with a term part and a module part,
       before and after. *)
-  Lemma not_dm_path_def_grows : forall p b pv A B, gc_resolve Θ1 Ξ1 p = Some (ge_def b pv A B) -> ~ dm_path Θ2 Ξ2 p.
-  Proof. intros * H; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs H)). Qed.
+  Lemma not_dm_path_def_grows : forall p b pv r A B, gc_resolve Θ1 Ξ1 p = Some (ge_def b pv r A B) -> ~ dm_path Θ2 Ξ2 p.
+  Proof. intros * H; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs H)). Qed.
 
   (** A location that is no member with a term part and a module part
       stays none: a frame of no member's and no record type's module is
@@ -162,16 +259,51 @@ Section Growth.
       destruct o as [? | Hn]; [ left; assumption | right; exact (not_dm_path_alias_grows _ _ e Hn) ].
     - eapply dmod_member_kind_global_alias_dm; [ exact (gc_sub_module _ _ _ _ _ _ Hs e) | exact (dm_path_grows _ d) | exact H ].
     - apply dmod_member_kind_global_step; [ | | exact H ].
-      + destruct o as [(TΦ & Hl) | (b & pv & A & B & Hr)].
+      + destruct o as [(TΦ & Hl) | (b & pv & r & A & B & Hr)].
         * left; exact (gc_loc_grows _ _ Hl).
-        * right; exists b, pv, A, B; exact (gc_sub_resolve _ _ _ _ _ _ Hs Hr).
+        * right; exists b, pv, r, A, B; exact (gc_sub_resolve _ _ _ _ _ _ Hs Hr).
       + destruct o0 as [? | Hn]; [ left; assumption | right ].
-        destruct o as [(TΦ & Hl) | (b & pv & A & B & Hr)].
+        destruct o as [(TΦ & Hl) | (b & pv & r & A & B & Hr)].
         * exact (not_dm_path_loc_grows _ _ Hl Hn).
-        * exact (not_dm_path_def_grows _ _ _ _ _ Hr).
+        * exact (not_dm_path_def_grows _ _ _ _ _ _ Hr).
   Qed.
 
-  (** ** The Fast Evaluation *)
+  (** ** The Fast Evaluation
+
+      Evaluation reads two things whose absence counts: the sort of a
+      function's next argument ([arg_relevance], relevant when the
+      constructor's group is not found) and whether a global module lacks
+      no parameter ([module_saturated], over where the module is stored).
+      The first is read only of a function the evaluation then applies,
+      which finds the group; the second only where a member of the module
+      is found, so that the module is stored, with the same telescope in
+      the bigger context, when both contexts are well-formed. *)
+
+  Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
+  Hypothesis Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2.
+
+  (** A stored module keeps its telescope ([Paths.gc_loc_grow]). *)
+  Lemma gc_loc_grows_tele : forall p T Φ, gc_loc Θ1 Ξ1 p = Some (T, Φ) -> exists Φ', gc_loc Θ2 Ξ2 p = Some (T, Φ').
+  Proof. intros * H; destruct (gc_loc_grow _ _ _ _ Hg2 Hs _ _ _ H) as (Φ' & H' & _); eauto. Qed.
+
+  (** A global module a member of which is found stays saturated. *)
+  Lemma module_saturated_grows : forall p x args, child_found Θ1 Ξ1 (qname_app p (x :: nil)) ->
+      module_saturated Θ1 Ξ1 p args -> module_saturated Θ2 Ξ2 p args.
+  Proof.
+    intros * Hc Hsat T Φ Hl2.
+    destruct (child_found_parent_loc _ _ Hg1 _ _ Hc) as (T1 & Φ1 & Hl1).
+    destruct (gc_loc_grows_tele _ _ _ Hl1) as (Φ' & Hl1').
+    rewrite Hl2 in Hl1'; injection Hl1' as <- _; exact (Hsat _ _ Hl1).
+  Qed.
+
+  (** A function that is applied takes its next argument at the same sort:
+      a constructor applied is of a group found. *)
+  Lemma arg_relevance_grows : forall m n r, fast_eval_app Θ1 Ξ1 m n r -> arg_relevance Θ2 Ξ2 m = arg_relevance Θ1 Ξ1 m.
+  Proof.
+    intros * H; destruct m; try reflexivity.
+    inversion H; subst; cbn [arg_relevance];
+      match goal with Hl : ind_lookup Θ1 Ξ1 _ = Some _ |- _ => rewrite Hl, (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) end; reflexivity.
+  Qed.
 
   Theorem fast_eval_grow :
     (forall M ρ a, fast_eval_exp Θ1 Ξ1 M ρ a -> fast_eval_exp Θ2 Ξ2 M ρ a) /\
@@ -196,17 +328,35 @@ Section Growth.
     (forall f m r, fast_eval_proj Θ1 Ξ1 f m r -> fast_eval_proj Θ2 Ξ2 f m r) /\
     (forall ns m fl pre rs, fast_eval_neutral_fields Θ1 Ξ1 ns m fl pre rs -> fast_eval_neutral_fields Θ2 Ξ2 ns m fl pre rs) /\
     (forall fl v ws, fast_eval_projs Θ1 Ξ1 fl v ws -> fast_eval_projs Θ2 Ξ2 fl v ws) /\
-    (forall p ups ρm As ρ gs vs as', fast_eval_ihtys Θ1 Ξ1 p ups ρm As ρ gs vs as' -> fast_eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs as').
+    (forall p ups ρm As ρ gs vs as', fast_eval_ihtys Θ1 Ξ1 p ups ρm As ρ gs vs as' -> fast_eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs as') /\
+    (forall rs Ms ρ ms, fast_eval_field_vals Θ1 Ξ1 rs Ms ρ ms -> fast_eval_field_vals Θ2 Ξ2 rs Ms ρ ms) /\
+    (forall f Ms ρ r, fast_eval_app_args Θ1 Ξ1 f Ms ρ r -> fast_eval_app_args Θ2 Ξ2 f Ms ρ r).
   Proof.
     pose proof kinds_grow as (_ & _ & _ & _ & Hkb & Hkg).
     apply fast_eval_mut_ind; intros;
+      (** the sort of an applied function's argument, and the saturation
+          of a module a member of which is found *)
+      repeat match goal with
+        | H : arg_relevance Θ1 Ξ1 ?m = _, Ha : fast_eval_app Θ1 Ξ1 ?m _ _ |- _ =>
+            rewrite <- (arg_relevance_grows _ _ _ Ha) in H
+        | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : gc_term Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
+            apply (module_saturated_grows _ _ _ (child_found_term _ _ _ _ Hc)) in H
+        | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : gc_resolve Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
+            apply (module_saturated_grows _ _ _ (child_found_resolve _ _ _ _ Hc)) in H
+        | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : ind_mlookup Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
+            apply (module_saturated_grows _ _ _ (child_found_ind _ _ _ _ Hc)) in H
+        | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : record_lookup Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
+            apply (module_saturated_grows _ _ _ (child_found_record _ _ _ _ Hc)) in H
+        | H : gc_loc Θ1 Ξ1 ?p = Some (?T, _) |- fast_eval_sel _ _ _ _ _ =>
+            let Φ' := fresh "Φ'" in destruct (gc_loc_grows_tele _ _ _ H) as (Φ' & ?); clear H
+        end;
       try solve [ econstructor; eauto using ind_lookup_gc_sub, record_lookup_gc_sub, ind_mlookup_gc_sub, gc_sub_resolve, gc_sub_module, gc_term_grows ].
     (** The module of a member of a group, or a record type, as a term:
         still no definition, as it is still such a module *)
     - pose proof (ind_mlookup_gc_sub _ _ _ _ _ _ Hs e0) as e0'.
-      eapply fast_eval_sel_global_ind; [ exact (ind_mlookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
+      eapply fast_eval_sel_global_ind; [ exact m | exact (ind_mlookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
     - pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs e0) as e0'.
-      eapply fast_eval_sel_global_record; [ exact (record_lookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
+      eapply fast_eval_sel_global_record; [ exact m | exact (record_lookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
     (** A submodule located in place: still located, perhaps grown *)
     - destruct (gc_loc_grows _ _ e) as (TΦ' & e'); eapply fast_eval_selm_global; exact e'.
   Qed.

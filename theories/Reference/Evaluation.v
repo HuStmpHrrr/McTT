@@ -51,22 +51,39 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ M p ->
      eval_exp_order Θ Ξ N p ->
      eval_exp_order Θ Ξ (maxl M N) p )
+(** [Prop] *)
+| eval_exp_order_prop :
+  `( eval_exp_order Θ Ξ Propₘ p )
 | eval_exp_order_True :
   `( eval_exp_order Θ Ξ ⊤ p )
 | eval_exp_order_true :
   `( eval_exp_order Θ Ξ ⋆ p )
 | eval_exp_order_False :
   `( eval_exp_order Θ Ξ ⊥ p )
-(** The scrutinee of [efq] must evaluate to a neutral, since no other value
-    has a rule. *)
-| eval_exp_order_exfalso :
-  `( eval_exp_order Θ Ξ M p ->
-     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists b n, m = ⇑ b n) ->
-     (forall b m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ ⇑ b m -> eval_exp_order Θ Ξ A (p ↦ ⇑ b m)) ->
-     eval_exp_order Θ Ξ (efq M return A) p )
+(** [efq]: its type only; its proof is not evaluated *)
+| eval_exp_order_absurd :
+  `( eval_exp_order Θ Ξ C p ->
+     eval_exp_order Θ Ξ (efq M return C) p )
+(** A [Σₚ]: its first component *)
+| eval_exp_order_and :
+  `( eval_exp_order Θ Ξ P p ->
+     eval_exp_order Θ Ξ (Σₚ P Q) p )
+(** The proofs of a conjunction and of its components: nothing evaluated *)
+| eval_exp_order_conj :
+  `( eval_exp_order Θ Ξ (a_conj T M N) p )
+| eval_exp_order_left :
+  `( eval_exp_order Θ Ξ (a_left M) p )
+| eval_exp_order_right :
+  `( eval_exp_order Θ Ξ (a_right M) p )
+(** The placeholder type and its element *)
+| eval_exp_order_placeholder_type :
+  `( eval_exp_order Θ Ξ a_placeholder_type p )
+| eval_exp_order_placeholder :
+  `( eval_exp_order Θ Ξ a_placeholder p )
+(** A [Π], at its tag: its domain *)
 | eval_exp_order_pi :
   `( eval_exp_order Θ Ξ A p ->
-     eval_exp_order Θ Ξ (Π A B) p )
+     eval_exp_order Θ Ξ (a_pi r A B) p )
 | eval_exp_order_indty :
   `( eval_exp_order Θ Ξ (a_ind pq k) p )
 (** A constructor that is a value of its own before any argument *)
@@ -109,18 +126,38 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists pq, elim_grp_of oq m = Some pq) ->
      (forall ups m pq, ⟦ Us ⟧* Θ ⍮ Ξ ⍮ p ↘ ups -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> elim_grp_of oq m = Some pq ->
         eval_elim_order Θ Ξ p pq ups Bks j m) ->
-     eval_exp_order Θ Ξ (a_elim oq Us j Bks M) p )
+     eval_exp_order Θ Ξ (a_elim relevant oq Us j Bks M) p )
+(** An eliminator into propositions: nothing evaluated *)
+| eval_exp_order_elim_proof :
+  `( eval_exp_order Θ Ξ (a_elim propositional oq Us j Bks M) p )
+(** A function: its domain *)
 | eval_exp_order_fn :
-  `( eval_exp_order Θ Ξ (λ A M) p )
+  `( eval_exp_order Θ Ξ A p ->
+     eval_exp_order Θ Ξ (λ A M) p )
+(** An application: the function, then, by the sort of the argument it
+    takes, the argument and the application to it, or the application to
+    the proof *)
 | eval_exp_order_app :
   `( eval_exp_order Θ Ξ M p ->
-     eval_exp_order Θ Ξ N p ->
-     (forall m n, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n -> eval_app_order Θ Ξ m n) ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> arg_relevance Θ Ξ m = relevant -> eval_exp_order Θ Ξ N p) ->
+     (forall m n, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> arg_relevance Θ Ξ m = relevant -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n ->
+        eval_app_order Θ Ξ m n) ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> arg_relevance Θ Ξ m = propositional -> eval_app_order Θ Ξ m ⋆ᵈ) ->
      eval_exp_order Θ Ξ (M $ N) p )
+(** An unannotated local definition: its body, then the rest *)
 | eval_exp_order_let :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_exp_order Θ Ξ B (p ↦ m)) ->
-     eval_exp_order Θ Ξ (a_let (b_def oA M) B) p )
+     eval_exp_order Θ Ξ (a_let (b_def None M) B) p )
+(** An annotated one: its type, then, by the type's sort, its body and the
+    rest, or the rest at the proof *)
+| eval_exp_order_let_ann :
+  `( eval_exp_order Θ Ξ A p ->
+     (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = relevant -> eval_exp_order Θ Ξ M p) ->
+     (forall a m, ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = relevant -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
+        eval_exp_order Θ Ξ B (p ↦ m)) ->
+     (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = propositional -> eval_exp_order Θ Ξ B (p ↦ ⋆ᵈ)) ->
+     eval_exp_order Θ Ξ (a_let (b_def (Some A) M) B) p )
 | eval_exp_order_let_mod :
   `( eval_close_order Θ Ξ Δ D p ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ p ↘ h -> eval_exp_order Θ Ξ B (p ↦ᵐ h)) ->
@@ -136,15 +173,37 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 (** A record's type former is a value. *)
 | eval_exp_order_record :
   `( eval_exp_order Θ Ξ (a_record pq) p )
-(** A record element: the values of its fields *)
+(** A record element: its type, which finds a record, then the values of
+    its fields at the record's sorts *)
 | eval_exp_order_tuple :
-  `( eval_exps_order Θ Ξ (List.map snd fs) p ->
+  `( eval_exp_order Θ Ξ T p ->
+     (forall t, ⟦ T ⟧ Θ ⍮ Ξ ⍮ p ↘ t -> exists pq ns R, t = d_record pq ns /\ record_lookup Θ Ξ pq = Some R) ->
+     (forall pq ns R, ⟦ T ⟧ Θ ⍮ Ξ ⍮ p ↘ d_record pq ns -> record_lookup Θ Ξ pq = Some R ->
+        eval_field_vals_order Θ Ξ (record_field_relevance R) (List.map snd fs) p) ->
      eval_exp_order Θ Ξ (a_tuple T fs) p )
 (** A field: the value, then the field of it *)
 | eval_exp_order_proj :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_proj_order Θ Ξ f m) ->
      eval_exp_order Θ Ξ (a_proj f M) p )
+
+(** The values of the fields of a record value, as [eval_field_vals]
+    reads them *)
+with eval_field_vals_order (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> Prop :=
+(** No field *)
+| eval_field_vals_order_nil :
+  `( eval_field_vals_order Θ Ξ rs nil p )
+(** A relevant field: its value, then the rest *)
+| eval_field_vals_order_relevant :
+  `( List.hd relevant rs = relevant ->
+     eval_exp_order Θ Ξ M p ->
+     eval_field_vals_order Θ Ξ (List.tl rs) Ms p ->
+     eval_field_vals_order Θ Ξ rs (M :: Ms) p )
+(** A propositional field: the rest *)
+| eval_field_vals_order_proof :
+  `( List.hd relevant rs = propositional ->
+     eval_field_vals_order Θ Ξ (List.tl rs) Ms p ->
+     eval_field_vals_order Θ Ξ rs (M :: Ms) p )
 
 (** The field [f] of a value, as [eval_proj] reads it *)
 with eval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
@@ -171,7 +230,7 @@ with eval_neutral_fields_order (Θ : gdeps) (Ξ : gstack) : list domain -> domai
 | eval_neutral_fields_order_cons :
   `( eval_exp_order Θ Ξ T (env_args nil (ns ++ pre)) ->
      (forall a, ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
-        eval_neutral_fields_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
+        eval_neutral_fields_order Θ Ξ ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil)) ->
      eval_neutral_fields_order Θ Ξ ns m ((g, T) :: fl) pre )
 
 (** The eliminator of the group at [pq] at its member [j], on a value, as
@@ -217,7 +276,7 @@ with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> 
 (** A non-recursive argument *)
 | eval_ihs_order_arg :
   `( eval_ihs_order Θ Ξ p pq ups Bks gs vs ->
-     eval_ihs_order Θ Ξ p pq ups Bks (ca_arg T :: gs) (v :: vs) )
+     eval_ihs_order Θ Ξ p pq ups Bks (ca_arg r T :: gs) (v :: vs) )
 (** A recursive argument: its result, then the rest *)
 | eval_ihs_order_rec_case :
   `( eval_ih_order Θ Ξ p pq ups Bks t v ->
@@ -332,7 +391,7 @@ with eval_ihtys_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -
 (** A non-recursive field: the rest, under it *)
 | eval_ihtys_order_arg :
   `( eval_ihtys_order Θ Ξ pq ups pm As (p ↦ v) gs vs ->
-     eval_ihtys_order Θ Ξ pq ups pm As p (ca_arg T :: gs) (v :: vs) )
+     eval_ihtys_order Θ Ξ pq ups pm As p (ca_arg r T :: gs) (v :: vs) )
 (** A recursive field: its shape's, then the rest *)
 | eval_ihtys_order_rec :
   `( eval_ihty_order Θ Ξ pq ups pm As p t v ->
@@ -342,7 +401,10 @@ with eval_ihtys_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -
 with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | eval_app_order_fn :
   `( eval_exp_order Θ Ξ M (p ↦ n) ->
-     eval_app_order Θ Ξ λᵈ p M n )
+     eval_app_order Θ Ξ (λᵈ a p M) n )
+(** The proof applied: the proof *)
+| eval_app_order_proof :
+  `( eval_app_order Θ Ξ ⋆ᵈ n )
 | eval_app_order_neut :
   `( eval_exp_order Θ Ξ B (p ↦ n) ->
      eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
@@ -486,37 +548,59 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 (** A term part of a global module ([gc_term]): it, closed, applied to the
     arguments *)
 | eval_sel_order_global :
-  `( gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
      eval_exp_order Θ Ξ M nil ->
      (forall f, ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
 | eval_sel_order_global_neut :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv A B) ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv relevant A B) ->
      b = false \/ B = None ->
      eval_exp_order Θ Ξ A nil ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a -> eval_apps_order Θ Ξ (⇑ a (d_glob (qname_app pq (x :: nil)))) args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
+(** A proof member of a saturated global module: nothing evaluated *)
+| eval_sel_order_global_proof :
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv propositional A B) ->
+     eval_sel_order Θ Ξ (dm_global pq args) x )
 | eval_sel_order_global_ind :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      eval_apps_order Θ Ξ (d_ind pg k nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
+(** A member of a global module lacking a parameter: no recursion *)
+| eval_sel_order_global_unsat :
+  `( gc_loc Θ Ξ pq = Some (T, Φ) ->
+     List.length args < List.length T ->
+     eval_sel_order Θ Ξ (dm_global pq args) x )
 | eval_sel_order_unsat :
   `( eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
-(** A term part of a saturated body ([entry_tm]) *)
+(** A relevant term part of a saturated body ([entry_tm]) *)
 | eval_sel_order_body :
   `( kinds_body_xp Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
+     entry_relevance E = relevant ->
      eval_body_env_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_exp_order Θ Ξ M p') ->
+     eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
+(** A proof member of a saturated body: nothing evaluated *)
+| eval_sel_order_body_proof :
+  `( kinds_body_xp Θ Ξ p Φ Φx ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+     entry_tm E = Some (A, M) ->
+     entry_relevance E = propositional ->
      eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
 | eval_sel_order_member :
   `( eval_sel_order Θ Ξ (dm_member h ch) x )
 (** A record type of a global module, not a definition: its type former,
     applied to the arguments *)
 | eval_sel_order_global_record :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      record_lookup Θ Ξ (qname_app pq (x :: nil)) = Some R ->
      eval_apps_order Θ Ξ (d_record (qname_app pq (x :: nil)) nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
@@ -566,7 +650,11 @@ with eval_body_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 | eval_body_env_order_def :
   `( eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
-     eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
+     eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv relevant A (Some M))) )
+(** A definition tagged a proposition: the body before it *)
+| eval_body_env_order_def_proof :
+  `( eval_body_env_order Θ Ξ p Φ ->
+     eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv propositional A (Some M))) )
 | eval_body_env_order_mod :
   `( eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
@@ -581,7 +669,8 @@ with eval_body_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 #[local]
 Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shape_type_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_close_order eval_appm_order eval_appms_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
-  eval_body_env_order eval_proj_order eval_neutral_fields_order eval_projs_order eval_ihtys_order : mctt.
+  eval_body_env_order eval_proj_order eval_neutral_fields_order eval_projs_order eval_ihtys_order
+  eval_field_vals_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
 Ltac functional_eval_all :=
@@ -663,6 +752,10 @@ Ltac functional_eval_all :=
     | H1 : eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_neutral_fields _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_field_vals ?T ?X ?rs ?Ms ?p ?r1, H2 : eval_field_vals ?T ?X ?rs ?Ms ?p ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_field_vals _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H : d_record _ _ = d_record _ _ |- _ => injection H; clear H; intros; subst
     end.
 
 Lemma eval_order_sound : forall Θ Ξ,
@@ -689,7 +782,10 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs -> eval_neutral_fields_order Θ Ξ ns m fl pre) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws -> eval_projs_order Θ Ξ fl v) /\
     (forall pq ups pm As p gs vs rs, ⟦ihtys vs of gs at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ rs ->
-       eval_ihtys_order Θ Ξ pq ups pm As p gs vs).
+       eval_ihtys_order Θ Ξ pq ups pm As p gs vs) /\
+    (forall rs Ms p ms, eval_field_vals Θ Ξ rs Ms p ms -> eval_field_vals_order Θ Ξ rs Ms p) /\
+    (** The evaluator does not apply a function along terms. *)
+    (forall f Ms p r, eval_app_args Θ Ξ f Ms p r -> True).
 Proof.
   intros Θ Ξ; apply eval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -706,6 +802,9 @@ Proof.
           | econstructor; try eassumption; intros; functional_eval_all; eauto using kinds_items_gen_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_eval_all; congruence
+          (** A tuple: its type finds the record, whose sorts direct its
+              fields. *)
+          | econstructor; [ eassumption | intros t Ht; functional_eval_all; eauto | intros; functional_eval_all; congruence ]
           (** The eliminator: the group the scrutinee's value names, once. *)
           | econstructor; try eassumption; intros; functional_eval_all;
             first [ eexists; eassumption
@@ -786,6 +885,19 @@ Section EvalImpl.
     exists (env_var p x); apply eval_exp_var.
   Defined.
 
+  (** Whether the global module at [pq] lacks no parameter given [args],
+      decided by where it is stored *)
+  Definition module_saturated_r (pq : qname) (args : list domain) :
+      { module_saturated Θ Ξ pq args } +
+      { exists T Φ, gc_loc Θ Ξ pq = Some (T, Φ) /\ List.length args < List.length T }.
+  Proof.
+    destruct (gc_loc Θ Ξ pq) as [[T Φ] |] eqn:E.
+    - destruct (Nat.ltb (List.length args) (List.length T)) eqn:Elt.
+      + right; exists T, Φ; split; [ reflexivity | apply Nat.ltb_lt, Elt ].
+      + left; intros T' Φ' Hl; rewrite E in Hl; injection Hl as <- _; apply Nat.ltb_ge, Elt.
+    - left; intros T' Φ' Hl; rewrite E in Hl; discriminate.
+  Defined.
+
   #[local]
   Ltac impl_obligation_tac1 :=
     match goal with
@@ -812,6 +924,7 @@ Section EvalImpl.
     | H : eval_projs_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_proj_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_neutral_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_field_vals_order _ _ _ _ _ |- _ => progressive_invert H
     end.
 
   (** The lookups recorded in the order are the ones computed, which either
@@ -849,6 +962,14 @@ Section EvalImpl.
           exfalso; exact (ind_lookup_not_alias _ _ _ _ _ H1 H2)
       | H1 : gc_loc _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _) |- _ =>
           exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
+      | H : d_record _ _ = d_record _ _ |- _ => injection H; clear H; intros; subst
+      (** A sort read twice: one value *)
+      | H1 : ?x = relevant, H2 : ?x = propositional |- _ => rewrite H1 in H2; discriminate H2
+      (** A saturated module lacks no parameter. *)
+      | H : exists T Φ, gc_loc _ _ ?p = Some (T, Φ) /\ _ |- _ =>
+          let T := fresh "T" in let Φ := fresh "Φ" in destruct H as (T & Φ & ? & ?)
+      | H1 : module_saturated _ _ ?p _, H2 : gc_loc _ _ ?p = Some (?T, _), H3 : _ < List.length ?T |- _ =>
+          exfalso; specialize (H1 _ _ H2); rewrite ?List.length_map in *; lia
       | H1 : kinds_body_xp _ _ ?p ?Φ ?r1, H2 : kinds_body_xp _ _ ?p ?Φ ?r2 |- _ =>
           assert_fails (constr_eq r1 r2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst; clear H2
       | H : tele_snoc _ = None |- _ => rewrite tele_snoc_app in H; discriminate H
@@ -943,8 +1064,9 @@ Section EvalImpl.
   #[local]
   Ltac impl_obligation_exfalso :=
     repeat match goal with
-      | H : forall m, eval_exp _ _ ?M ?p m -> exists _ _, m = ⇑ _ _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
-          destruct (H _ Hm) as (? & ? & ?); clear H
+      (** A record element's type finds a record. *)
+      | H : forall t, eval_exp _ _ ?T ?p t -> exists _ _ _, t = d_record _ _ /\ _, Ht : eval_exp _ _ ?T ?p _ |- _ =>
+          destruct (H _ Ht) as (? & ? & ? & ? & ?); clear H
       (** The eliminator's scrutinee names a group. *)
       | H : forall m, eval_exp _ _ ?M ?p m -> exists _, elim_grp_of _ m = Some _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
           destruct (H _ Hm) as (? & ?); clear H
@@ -984,6 +1106,7 @@ Section EvalImpl.
     | H : eval_projs_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_proj_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_neutral_fields_order _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_field_vals_order _ _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
@@ -998,7 +1121,7 @@ Section EvalImpl.
     try solve [ exfalso; lia ];
     try solve [ eapply eval_sel_global_neut; eauto ];
     (** A term part, by the lookups its branch fixed. *)
-    try solve [ eapply eval_sel_global; [| eassumption | eassumption ]; unfold gc_term;
+    try solve [ eapply eval_sel_global; [ eassumption | | eassumption | eassumption ]; unfold gc_term;
                 repeat match goal with
                        | H : gc_resolve _ _ _ = _ |- context [gc_resolve _ _ _] => rewrite H
                        | H : gc_entry _ _ _ = _ |- context [gc_entry _ _ _] => rewrite H
@@ -1070,18 +1193,29 @@ Section EvalImpl.
       let (m , Hm) := eval_exp_impl M p _ in
       let (n , Hn) := eval_exp_impl N p _ in
       exist _ (domain_level_max m n) _
+  | Propₘ , p, H => exist _ Propᵈ _
   | ⊤     , p, H => exist _ ⊤ᵈ _
   | ⋆     , p, H => exist _ ⋆ᵈ _
   | ⊥     , p, H => exist _ ⊥ᵈ _
-  | efq M return A, p, H with eval_exp_impl M p _ := {
-    | exist _ (⇑ b m) Hm =>
-        let (a, Ha) := eval_exp_impl A (p ↦ ⇑ b m) _ in
-        exist _ ⇑ a (efqᵈ m under p return A) _
-    | exist _ _ Hm => False_rect _ _ }
-  | Π A B , p, H =>
-      let (r , Hr) := eval_exp_impl A p _ in
-      exist _ Πᵈ r p B _
-  | λ A M , p, H => exist _ λᵈ p M _
+  (** [efq]: stuck at its type, its proof not evaluated *)
+  | efq M return C, p, H =>
+      let (c, Hc) := eval_exp_impl C p _ in
+      exist _ (relevant_value c (⇑ c (efqᵈ c))) _
+  | Σₚ P Q, p, H =>
+      let (a, Ha) := eval_exp_impl P p _ in
+      exist _ (Σₚᵈ a p Q) _
+  (** Proofs: never evaluated *)
+  | a_conj T M N, p, H => exist _ ⋆ᵈ _
+  | a_left M, p, H => exist _ ⋆ᵈ _
+  | a_right M, p, H => exist _ ⋆ᵈ _
+  | a_placeholder_type, p, H => exist _ d_placeholder_type _
+  | a_placeholder, p, H => exist _ d_placeholder _
+  | a_pi r A B , p, H =>
+      let (a , Ha) := eval_exp_impl A p _ in
+      exist _ (d_pi r a p B) _
+  | λ A M , p, H =>
+      let (a , Ha) := eval_exp_impl A p _ in
+      exist _ (λᵈ a p M) _
   | a_ind pq k, p, H => exist _ (d_ind pq k nil) _
   | a_con pq k c, p, H with inspect (ind_lookup Θ Ξ pq) := {
     | exist _ (Some D) Ed with inspect (ind_member D k) := {
@@ -1099,22 +1233,39 @@ Section EvalImpl.
   (** A literal is generated before it is ever evaluated. *)
   | a_ntok, p, H => False_rect _ _
   | a_nlit _, p, H => False_rect _ _
-  | a_elim oq Us j Bks M, p, H with eval_exps_impl Us p _ := {
+  | a_elim relevant oq Us j Bks M, p, H with eval_exps_impl Us p _ := {
     | exist _ ups Hups with eval_exp_impl M p _ := {
       | exist _ m Hm with inspect (elim_grp_of oq m) := {
         | exist _ (Some pq) Eg =>
             let (r, Hr) := eval_elim_impl p pq ups Bks j m _ in
             exist _ r _
         | exist _ None Eg => False_rect _ _ } } }
-  | M $ N   , p, H =>
-      let (m , Hm) := eval_exp_impl M p _ in
-      let (n , Hn) := eval_exp_impl N p _ in
-      let (a, Ha) := eval_app_impl m n _ in
-      exist _ a _
-  | a_let (b_def oA M) B, p, H =>
+  (** An eliminator into propositions: a proof, not evaluated *)
+  | a_elim propositional oq Us j Bks M, p, H => exist _ ⋆ᵈ _
+  (** An application, by the sort of the argument the function takes *)
+  | M $ N   , p, H with eval_exp_impl M p _ := {
+    | exist _ m Hm with inspect (arg_relevance Θ Ξ m) := {
+      | exist _ relevant Er =>
+          let (n , Hn) := eval_exp_impl N p _ in
+          let (a, Ha) := eval_app_impl m n _ in
+          exist _ a _
+      | exist _ propositional Er =>
+          let (a, Ha) := eval_app_impl m ⋆ᵈ _ in
+          exist _ a _ } }
+  | a_let (b_def None M) B, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
       let (r, Hr) := eval_exp_impl B (p ↦ m) _ in
       exist _ r _
+  (** An annotated local definition, by the sort of its type *)
+  | a_let (b_def (Some A) M) B, p, H with eval_exp_impl A p _ := {
+    | exist _ a Ha with inspect (domain_relevance a) := {
+      | exist _ relevant Er =>
+          let (m, Hm) := eval_exp_impl M p _ in
+          let (r, Hr) := eval_exp_impl B (p ↦ m) _ in
+          exist _ r _
+      | exist _ propositional Er =>
+          let (r, Hr) := eval_exp_impl B (p ↦ ⋆ᵈ) _ in
+          exist _ r _ } }
   | a_let (b_mod (gu_mk Δ D)) B, p, H =>
       let (h, Hh) := eval_close_impl Δ D p _ in
       let (r, Hr) := eval_exp_impl B (p ↦ᵐ h) _ in
@@ -1127,13 +1278,31 @@ Section EvalImpl.
         let (r, Hr) := eval_apps_impl f ns _ in
         exist _ r _ }
   | a_record pq, p, H => exist _ (d_record pq nil) _
-  | a_tuple T fs, p, H =>
-      let (vs, Hvs) := eval_exps_impl (List.map snd fs) p _ in
-      exist _ (d_tuple (List.combine (List.map fst fs) vs)) _
+  (** A record element: its type finds the record, whose sorts direct the
+      fields *)
+  | a_tuple T fs, p, H with eval_exp_impl T p _ := {
+    | exist _ (d_record pq ns) Ht with inspect (record_lookup Θ Ξ pq) := {
+      | exist _ (Some R) El =>
+          let (vs, Hvs) := eval_field_vals_impl (record_field_relevance R) (List.map snd fs) p _ in
+          exist _ (d_tuple (List.combine (List.map fst fs) vs)) _
+      | exist _ None El => False_rect _ _ }
+    | exist _ _ Ht => False_rect _ _ }
   | a_proj f M, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
       let (r, Hr) := eval_proj_impl f m _ in
       exist _ r _
+
+  with eval_field_vals_impl rs Ms p (H : eval_field_vals_order Θ Ξ rs Ms p) :
+      { ms | eval_field_vals Θ Ξ rs Ms p ms } by struct H :=
+  | rs, nil, p, H => exist _ nil _
+  | rs, M :: Ms, p, H with inspect (List.hd relevant rs) := {
+    | exist _ relevant Er =>
+        let (m, Hm) := eval_exp_impl M p _ in
+        let (ms, Hms) := eval_field_vals_impl (List.tl rs) Ms p _ in
+        exist _ (m :: ms) _
+    | exist _ propositional Er =>
+        let (ms, Hms) := eval_field_vals_impl (List.tl rs) Ms p _ in
+        exist _ (⋆ᵈ :: ms) _ }
 
   with eval_proj_impl f m (H : eval_proj_order Θ Ξ f m) : { r | eval_proj Θ Ξ f m r } by struct H :=
   | f, d_tuple vs, H with inspect (field_lookup vs f) := {
@@ -1154,8 +1323,8 @@ Section EvalImpl.
   | ns, m, nil, pre, H => exist _ nil _
   | ns, m, (g, T) :: fl, pre, H =>
       let (a, Ha) := eval_exp_impl T (env_args nil (ns ++ pre)) _ in
-      let (rs, Hrs) := eval_neutral_fields_impl ns m fl (pre ++ ⇑ a (d_proj g m) :: nil) _ in
-      exist _ (⇑ a (d_proj g m) :: rs) _
+      let (rs, Hrs) := eval_neutral_fields_impl ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil) _ in
+      exist _ (relevant_value a (⇑ a (d_proj g m)) :: rs) _
 
   with eval_elim_impl p pq ups Bks j m (H : eval_elim_order Θ Ξ p pq ups Bks j m) :
       { r | ⟦elim m at j of pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
@@ -1182,7 +1351,7 @@ Section EvalImpl.
     | exist _ (Some Dq) Edq with inspect (List.nth_error Bks j) := {
       | exist _ (Some b) Eb =>
           let (a, Ha) := eval_exp_impl (eb_motive b) (env_args p (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil)) _ in
-          exist _ (⇑ a (d_elim p Bks pq ups j as' m)) _
+          exist _ (relevant_value a (⇑ a (d_elim p Bks pq ups j as' m))) _
       | exist _ None Eb => False_rect _ _ }
     | exist _ None Edq => False_rect _ _ }
   | p, pq, ups, Bks, j, _, H => False_rect _ _
@@ -1190,7 +1359,7 @@ Section EvalImpl.
   with eval_ihs_impl p pq ups Bks gs vs (H : eval_ihs_order Θ Ξ p pq ups Bks gs vs) :
       { ihs | ⟦ihs vs of gs under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
   | p, pq, ups, Bks, nil, nil, H => exist _ nil _
-  | p, pq, ups, Bks, ca_arg T :: gs, v :: vs, H =>
+  | p, pq, ups, Bks, ca_arg r T :: gs, v :: vs, H =>
       let (ihs, Hihs) := eval_ihs_impl p pq ups Bks gs vs _ in
       exist _ ihs _
   | p, pq, ups, Bks, ca_rec t :: gs, v :: vs, H =>
@@ -1282,7 +1451,7 @@ Section EvalImpl.
   with eval_ihtys_impl pq ups pm As p gs vs (H : eval_ihtys_order Θ Ξ pq ups pm As p gs vs) :
       { rs | ⟦ihtys vs of gs at pq ups under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ rs } by struct H :=
   | pq, ups, pm, As, p, nil, nil, H => exist _ nil _
-  | pq, ups, pm, As, p, ca_arg T :: gs, v :: vs, H =>
+  | pq, ups, pm, As, p, ca_arg r T :: gs, v :: vs, H =>
       let (rs, Hrs) := eval_ihtys_impl pq ups pm As (p ↦ v) gs vs _ in
       exist _ rs _
   | pq, ups, pm, As, p, ca_rec t :: gs, v :: vs, H =>
@@ -1292,12 +1461,14 @@ Section EvalImpl.
   | pq, ups, pm, As, p, _, _, H => False_rect _ _
 
   with eval_app_impl m n (H : eval_app_order Θ Ξ m n) : { d | $| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
-  | λᵈ p M        , n, H =>
+  | λᵈ a p M      , n, H =>
       let (m, Hm) := eval_exp_impl M (p ↦ n) _ in
       exist _ m _
+  (** The proof applied: the proof *)
+  | ⋆ᵈ, n, H => exist _ ⋆ᵈ _
   | ⇑ (Πᵈ a p B) m, n, H =>
       let (b, Hb) := eval_exp_impl B (p ↦ n) _ in
-      exist _ ⇑ b (m $ᵈ ⇓ a n) _
+      exist _ (relevant_value b (⇑ b (m $ᵈ ⇓ a n))) _
   | d_member h ch, n, H =>
       let (h', Hh') := eval_appm_impl h n _ in
       let (r, Hr) := eval_selc_impl h' ch _ in
@@ -1390,16 +1561,21 @@ Section EvalImpl.
       exist _ r _
 
   with eval_sel_impl h x (H : eval_sel_order Θ Ξ h x) : { r | h ·ₜ x Θ ⍮ Ξ ↘ r } by struct H :=
-  | dm_global pq args, x, H with inspect (gc_resolve Θ Ξ (qname_app pq (x :: nil))) := {
-    | exist _ (Some (ge_def true pv A (Some M))) E =>
+  (** A member of a global module lacking a parameter: a member closure *)
+  | dm_global pq args, x, H with module_saturated_r pq args := {
+    | right Hu => exist _ (d_member (dm_global pq args) (x :: nil)) _
+    | left Hs with inspect (gc_resolve Θ Ξ (qname_app pq (x :: nil))) := {
+    (** A proof: not evaluated *)
+    | exist _ (Some (ge_def _ _ propositional _ _)) E => exist _ ⋆ᵈ _
+    | exist _ (Some (ge_def true pv relevant A (Some M))) E =>
         let (f, Hf) := eval_exp_impl M nil _ in
         let (r, Hr) := eval_apps_impl f args _ in
         exist _ r _
-    | exist _ (Some (ge_def true _ A None)) E =>
+    | exist _ (Some (ge_def true _ relevant A None)) E =>
         let (a, Ha) := eval_exp_impl A nil _ in
         let (r, Hr) := eval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
-    | exist _ (Some (ge_def false _ A B)) E =>
+    | exist _ (Some (ge_def false _ relevant A B)) E =>
         let (a, Ha) := eval_exp_impl A nil _ in
         let (r, Hr) := eval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
@@ -1422,16 +1598,19 @@ Section EvalImpl.
               let (f, Hf) := eval_exp_impl M nil _ in
               let (r, Hr) := eval_apps_impl f args _ in
               exist _ r _
-          | exist _ _ Ea => False_rect _ _ } } } }
+          | exist _ _ Ea => False_rect _ _ } } } } }
   | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
   | dm_local nil (md_body sm Φ) p, x, H with kinds_body_xp_impl Θ Ξ p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_tm E) := {
-        | exist _ (Some (A, M)) Et =>
-            let (p', Hp') := eval_body_env_impl p Φ' _ in
-            let (r, Hr) := eval_exp_impl M p' _ in
-            exist _ r _
+        | exist _ (Some (A, M)) Et with inspect (entry_relevance E) := {
+          | exist _ relevant Er =>
+              let (p', Hp') := eval_body_env_impl p Φ' _ in
+              let (r, Hr) := eval_exp_impl M p' _ in
+              exist _ r _
+          (** A proof member: not evaluated *)
+          | exist _ propositional Er => exist _ ⋆ᵈ _ }
         | exist _ None Et => False_rect _ _ }
       | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
@@ -1475,11 +1654,15 @@ Section EvalImpl.
 
   with eval_body_env_impl p Φ (H : eval_body_env_order Θ Ξ p Φ) : { p' | ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' } by struct H :=
   | p, gm_nil, H => exist _ p _
-  | p, gm_ext Φ y (ge_def b pv A (Some M)), H =>
+  | p, gm_ext Φ y (ge_def b pv relevant A (Some M)), H =>
       let (p1, Hp1) := eval_body_env_impl p Φ _ in
       let (m, Hm) := eval_exp_impl M p1 _ in
       exist _ (p1 ↦ m) _
-  | p, gm_ext Φ y (ge_def b pv A None), H => False_rect _ _
+  (** A definition tagged a proposition: the proof, not evaluated *)
+  | p, gm_ext Φ y (ge_def b pv propositional A (Some M)), H =>
+      let (p1, Hp1) := eval_body_env_impl p Φ _ in
+      exist _ (p1 ↦ ⋆ᵈ) _
+  | p, gm_ext Φ y (ge_def b pv r A None), H => False_rect _ _
   | p, gm_ext Φ y (ge_mod _ (gu_mk Δy Dy)), H =>
       let (p1, Hp1) := eval_body_env_impl p Φ _ in
       let (h, Hh) := eval_close_impl Δy Dy p1 _ in

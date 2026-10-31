@@ -21,17 +21,17 @@ Import ListNotations.
 (** ** The Frames, Fast *)
 
 (** [gs_def]'s twin: a definition closed over the frames' parameters *)
-Definition fs_def (b pv : bool) (fs : fstack) (A M : exp) : gentry :=
-  ge_def b pv (ctx_pi (fs_tele fs) A) (Some (ctx_fn (fs_tele fs) M)).
+Definition fs_def (b pv : bool) (r : relevance) (fs : fstack) (A M : exp) : gentry :=
+  ge_def b pv r (ctx_pi_at r (fs_tele fs) A) (Some (ctx_fn (fs_tele fs) M)).
 
-Lemma fs_def_dec : forall b pv fs A M, fs_def b pv fs A M = gs_def b pv (decode_stack fs) A M.
+Lemma fs_def_dec : forall b pv r fs A M, fs_def b pv r fs A M = gs_def b pv r (decode_stack fs) A M.
 Proof. intros; unfold fs_def, gs_def; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [gs_axiom]'s twin *)
-Definition fs_axiom (b pv : bool) (fs : fstack) (A : exp) : gentry :=
-  ge_def b pv (ctx_pi (fs_tele fs) A) None.
+Definition fs_axiom (b pv : bool) (r : relevance) (fs : fstack) (A : exp) : gentry :=
+  ge_def b pv r (ctx_pi_at r (fs_tele fs) A) None.
 
-Lemma fs_axiom_dec : forall b pv fs A, fs_axiom b pv fs A = gs_axiom b pv (decode_stack fs) A.
+Lemma fs_axiom_dec : forall b pv r fs A, fs_axiom b pv r fs A = gs_axiom b pv r (decode_stack fs) A.
 Proof. intros; unfold fs_axiom, gs_axiom; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [dm_entry]'s twin *)
@@ -48,10 +48,10 @@ Lemma fs_ind_qname_dec : forall fs x, fs_ind_qname fs x = ind_qname (decode_stac
 Proof. intros; unfold fs_ind_qname, ind_qname; rewrite fs_path_dec; reflexivity. Qed.
 
 (** [record_at]'s twin *)
-Definition fs_record_at (fs : fstack) (Δ : ctx) (S : typ) (fds : list (string * typ)) : record_decl :=
-  mk_record_decl (Δ ++ fs_tele fs) S fds.
+Definition fs_record_at (fs : fstack) (Δ : ctx) (S : typ) (fds : list (string * typ)) (rs : list relevance) : record_decl :=
+  mk_record_decl (Δ ++ fs_tele fs) S fds rs.
 
-Lemma fs_record_at_dec : forall fs Δ S fds, fs_record_at fs Δ S fds = record_at (decode_stack fs) Δ S fds.
+Lemma fs_record_at_dec : forall fs Δ S fds rs, fs_record_at fs Δ S fds rs = record_at (decode_stack fs) Δ S fds rs.
 Proof. intros; unfold fs_record_at, record_at; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [raw_members_filed]'s twin *)
@@ -120,17 +120,18 @@ Qed.
     right where it is added and the context grows by it. *)
 Lemma fctx_ok_add : forall v fs x e E, fctx_ok v fs -> fentry_drop e = translate_entry E -> canon_stack (gs_add x E (decode_stack fs)) ->
     gc_sub (view_deps v) (decode_stack fs) (view_deps v) (gs_add x E (decode_stack fs)) ->
+    ⊢ᵍ view_deps v ⍮ decode_stack fs -> ⊢ᵍ view_deps v ⍮ gs_add x E (decode_stack fs) ->
     fentry_values_ok (view_deps v) (gs_add x E (decode_stack fs)) e ->
     fctx_ok v (fs_add x e fs).
 Proof.
-  intros v fs x e E Hok He Hc Hs Hev; destruct (fctx_ok_frames _ _ Hok) as [Hr _].
+  intros v fs x e E Hok He Hc Hs Hg1 Hg2 Hev; destruct (fctx_ok_frames _ _ Hok) as [Hr _].
   pose proof (decode_stack_add _ _ _ _ Hr He Hc) as Ed.
   destruct Hok as [Θ Ξ HcΘ HcΞ Hu Hv Hf Huv Hfv].
   apply (mk_fctx_ok _ _ Θ (gs_add x E (decode_stack fs)) HcΘ Hc Hu Hv); rewrite ?Ed.
   - exact (fs_add_drop_of _ _ _ _ Hr He).
-  - intros fp u Hfp; exact (funit_values_grow _ _ _ _ Hs _ (Huv _ _ Hfp)).
+  - intros fp u Hfp; exact (funit_values_grow _ _ _ _ Hs Hg1 Hg2 _ (Huv _ _ Hfp)).
   - apply fs_add_values; [| exact Hev ].
-    refine (Forall_impl _ _ Hfv); intros f Hf'; exact (ftrie_values_grow _ _ _ _ Hs _ Hf').
+    refine (Forall_impl _ _ Hfv); intros f Hf'; exact (ftrie_values_grow _ _ _ _ Hs Hg1 Hg2 _ Hf').
 Qed.
 
 (** Filing a unit that stands for a canonical one, read in Core *)

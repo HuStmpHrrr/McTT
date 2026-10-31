@@ -51,6 +51,9 @@ Ltac gctx_wf_tac :=
             | match goal with H : exists i, wf_exp T X _ _ _ |- _ =>
                 let i := fresh "i" in let Hi := fresh "Hi" in
                 destruct H as [i Hi]; exact (ctx_wf_gctx _ _ _ (presup_exp_ctx Hi)) end
+            | match goal with H : wf_type T X _ _ |- _ =>
+                let Hi := fresh "Hi" in
+                destruct H as [? ? Hi]; exact (ctx_wf_gctx _ _ _ (presup_exp_ctx Hi)) end
             | solve [ mauto 3 ] ]
   end.
 

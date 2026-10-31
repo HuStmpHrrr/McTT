@@ -298,10 +298,12 @@ Inductive spec_exp : list scope_entry -> Cst.expression -> exp -> Prop :=
 (** An eliminator: its blocks, the one marked [at] the scrutinee's.  It
     carries no group and no uniform parameters: the core fills them from
     the annotations.  How many binders and branches there must be, and
-    which constructor a branch is for, is the core's to check. *)
+    which constructor a branch is for, is the core's to check.  Its sort
+    tag is [relevant] as written; the core fills it from the motive
+    ([fill_exp_elim]). *)
 | spec_exp_elim : forall S om bks M Bks m,
     spec_exp S om M -> spec_blocks S bks Bks -> elim_at (List.map (fun bk => fst (fst (fst bk))) bks) = Some m ->
-    spec_exp S (Cst.elim om bks) (a_elim None nil m Bks M)
+    spec_exp S (Cst.elim om bks) (a_elim relevant None nil m Bks M)
 (** A record value: its type and its fields, as written.  Whether the type
     is a record type and the fields are its own, in order, is the core's
     to check. *)
@@ -385,12 +387,14 @@ with spec_def : list scope_entry -> Cst.mdef -> moddef -> Prop :=
     Each entry is a core binder for the entries after it.  An open is a
     pre-form the core expands ([gm_open]); each of its items is a core
     binder.  The names of a body are checked fresh by the core.  A local
-    body has no [import]s, no [eval]s and no axioms. *)
+    body has no [import]s, no [eval]s and no axioms.  A definition's sort
+    tag is [relevant] as written; the core fills it from its type
+    ([fill_body]). *)
 with spec_body : list scope_entry -> gmod -> list Cst.cmd -> gmod -> Prop :=
 | spec_body_nil : forall S Φ, spec_body S Φ nil Φ
 | spec_body_def : forall S Φ m x oA oM A M cs Φ',
     spec_exp S oA A -> spec_exp S oM M ->
-    spec_body (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) A (Some M))) cs Φ' ->
+    spec_body (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) relevant A (Some M))) cs Φ' ->
     spec_body S Φ (Cst.c_def m x oA oM :: cs) Φ'
 | spec_body_mod : forall S Φ pv x ps md U cs Φ',
     spec_unit S ps md U ->

@@ -63,7 +63,7 @@ with udenote_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> Prop :=
     mdenote_order Θ Ξ (Δ ++ Γ) E ->
     udenote_order Θ Ξ Γ (gu_mk Δ (md_alias E))
 with edenote_order (Θ : gdeps) (Ξ : gstack) : ctx -> gentry -> Prop :=
-| edenote_order_def : forall Γ b pv A oM, edenote_order Θ Ξ Γ (ge_def b pv A oM)
+| edenote_order_def : forall Γ b pv r A oM, edenote_order Θ Ξ Γ (ge_def b pv r A oM)
 | edenote_order_mod : forall Γ pv U,
     udenote_order Θ Ξ Γ U ->
     edenote_order Θ Ξ Γ (ge_mod pv U)
@@ -495,7 +495,7 @@ Section DenoteImpl.
       { R : fmdesc | edenote Θ Ξ Γ o (decode_entry_source s) (decode_desc R) } + { forall R, ~ edenote Θ Ξ Γ o (decode_entry_source s) R }
       by struct Ho :=
   (** A local entry, at no path *)
-  | Γ, o, entry_source_core (ge_def b pv A oM), Hos, Ho => inleft (exist _ (fmdesc_term A (if b then oM else None)) _)
+  | Γ, o, entry_source_core (ge_def b pv r A oM), Hos, Ho => inleft (exist _ (fmdesc_term r A (if b then oM else None)) _)
   | Γ, o, entry_source_core (ge_mod pv U), Hos, Ho with udenote_impl Γ U _ := {
     | inleft (exist _ R HR) => inleft (exist _ R _)
     | inright HN => inright _ }
@@ -519,7 +519,7 @@ Section DenoteImpl.
         inleft (exist _ (fast_record_former_desc p R (fmdesc_closed nil p Tm tm (proj2 El Tm tm eq_refl) nil)) _) }
   | Γ, None, entry_source_core (ge_record pv pr R Φ), Hos, Ho => inright _
   (** A stored entry, at its path *)
-  | Γ, o, entry_source_fast pe (fe_def b pv A oM _) Hc, Hos, Ho => inleft (exist _ (fmdesc_term A (if b then oM else None)) _)
+  | Γ, o, entry_source_fast pe (fe_def b pv r A oM _) Hc, Hos, Ho => inleft (exist _ (fmdesc_term r A (if b then oM else None)) _)
   | Γ, None, entry_source_fast pe (fe_mod pv (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
       inright (fun R => edenote_closed_none _ _ Γ pv Δ (decode_mod t) R)
   | Γ, Some pq, entry_source_fast pe (fe_mod pv (fu_mk Δ (fmd_body t))) Hc, Hos, Ho =>
@@ -580,8 +580,8 @@ Section DenoteImpl.
     | inright HN => inright _ }
   | Γ, H, (Some n, d, pv) :: its, Ho with mdenote_impl Γ (me_mem H n) _ := {
     | inright HN => inright _
-    | inleft (exist _ (fmdesc_term A om) HR) with items_gen_impl Γ H its _ := {
-      | inleft (exist _ gs Hgs) => inleft (exist _ (generated_item_def d pv A (a_mem H n) :: gs) _)
+    | inleft (exist _ (fmdesc_term r A om) HR) with items_gen_impl Γ H its _ := {
+      | inleft (exist _ gs Hgs) => inleft (exist _ (generated_item_def d pv r A (a_mem H n) :: gs) _)
       | inright HN => inright _ }
     | inleft (exist _ (fmdesc_open Δ Φ Φx) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (generated_item_alias d pv (me_mem H n) :: gs) _)
@@ -663,11 +663,11 @@ Section Orders.
       desc_ok Θ Ξ Γ Rm -> mdesc_entry Rm y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    intros * Hok He; destruct Rm as [A om | Δ Φw Φ | Θ' pc T Φ Ns | ]; cbn in He; try discriminate.
+    intros * Hok He; destruct Rm as [r0 A om | Δ Φw Φ | Θ' pc T Φ Ns | ]; cbn in He; try discriminate.
     - (* an open module: a slot of its extended context *)
-      inversion Hok as [| ? ? ? ? HΓ Hno Hsub | |]; subst.
+      inversion Hok as [| ? ? ? ? ? HΓ Hno Hsub | |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
-      destruct E0 as [[|] pv A [M |] | pv U | ? ? ? ? ? | pv A M U | ? ? ?]; try discriminate; injection He as <- <- <-;
+      destruct E0 as [[|] pv r0 A [M |] | pv U | ? ? ? ? ? | pv A M U | ? ? ?]; try discriminate; injection He as <- <- <-;
         [ constructor | |].
       all: destruct (gm_prefix_body_ctx _ _ _ Hno Hp) as (Ψ & HΨ); rewrite HΨ in HΓ; cbn [body_ctx] in HΓ;
              rewrite <- !app_assoc in HΓ; apply ctx_app_wf_right in HΓ.
@@ -682,12 +682,12 @@ Section Orders.
         constructor; inversion HR; subst.
         rewrite <- !app_assoc; eapply (proj1 order_of_denote); rewrite ?app_assoc in *; eassumption.
     - (* a closed module: a stored entry *)
-      inversion Hok as [| | ? ? ? ? ? Θ0 Ξ0 ? Hg0 Hsub Hloc HaT HsT HT HΘ' Hargs |]; subst.
+      inversion Hok as [| | ? ? ? ? ? Θ0 Ξ0 ? ? Hg0 Hsub Hloc HaT HsT HT HΘ' Hargs |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
       injection He as <- <- <-; cbn [List.app].
       pose proof (loc_closed _ _ Hg0 _ _ _ Hloc) as [_ HcΦ].
       pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
-      destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | pvd Ad Md [Δ [sm Φy | E']] | ? ? ?]; cbn [ge_read];
+      destruct E0 as [b pv r0 A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | pvd Ad Md [Δ [sm Φy | E']] | ? ? ?]; cbn [ge_read];
         try solve [ constructor ].
       + (* a closed submodule: its body has no open *)
         destruct HcE as (-> & HsΔ & HcΦy); cbn [ge_read].
@@ -709,7 +709,7 @@ Section Orders.
         cbn [ge_valid syn_V] in HE0; destruct HE0 as (_ & HΔ & Hcl).
         rewrite gunit_scoped_mk in HcE; destruct HcE as [HsΔ _].
         pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HΘ')) as HΔΓ.
-        destruct (proj1 (Hcl _ HΔΓ)) as (R & HR).
+        destruct (proj1 (proj2 Hcl _ HΔΓ)) as (R & HR).
         constructor; constructor; exact (proj1 order_of_denote _ _ _ HR).
       + (* a definition with a module part: valid, so its module part's
            target denotes *)
@@ -729,7 +729,7 @@ Section Orders.
         cbn [ge_valid syn_V] in HE0; destruct HE0 as [(_ & HΔ & Hcl) _].
         destruct HcE as (_ & _ & HsU); rewrite gunit_scoped_mk in HsU; destruct HsU as [HsΔ _].
         pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HΘ')) as HΔΓ.
-        destruct (proj1 (Hcl _ HΔΓ)) as (R & HR).
+        destruct (proj1 (proj2 Hcl _ HΔΓ)) as (R & HR).
         constructor; exact (proj1 order_of_denote _ _ _ HR).
   Qed.
 

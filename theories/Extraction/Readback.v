@@ -26,7 +26,7 @@ Definition lvl_of_nf (W : nf) : lvl :=
 Lemma fast_read_nf_level_lvl_of_nf : forall Θ Ξ s l W,
     Rnfᶠ ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
     W = nf_lvl_of (lvl_of_nf W).
-Proof. inversion 1; subst; reflexivity. Qed.
+Proof. inversion 1; subst; first [ reflexivity | match goal with H : domain_relevance _ = _ |- _ => discriminate H end ]. Qed.
 
 Lemma fast_read_typ_suniv_of_nf : forall Θ Ξ s l W,
     Rnfᶠ ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
@@ -42,10 +42,10 @@ Qed.
     paths' flags [bs], each sound at lengths its relation has. *)
 
 (** The fresh variables at the flagged paths, from [s], at the types
-    [as'] *)
+    [as'], the proof at a propositional type *)
 Fixpoint leaf_vars_f (bs : list bool) (as' : list domain) (s : nat) : list domain :=
   match bs, as' with
-  | true :: bs, a :: as' => ⇑! a s :: leaf_vars_f bs as' (S s)
+  | true :: bs, a :: as' => relevant_value a (⇑! a s) :: leaf_vars_f bs as' (S s)
   | false :: bs, _ :: as' => leaf_vars_f bs as' s
   | _, _ => nil
   end.
@@ -97,17 +97,17 @@ Proof. induction 1; cbn; lia. Qed.
 (** [leaf_vars_f]'s twin, on fast values *)
 Fixpoint fleaf_vars_f (bs : list bool) (as' : list fdomain) (s : nat) : list fdomain :=
   match bs, as' with
-  | true :: bs, a :: as' => fd_neut a (fd_var s) :: fleaf_vars_f bs as' (S s)
+  | true :: bs, a :: as' => frelevant_value a (fd_neut a (fd_var s)) :: fleaf_vars_f bs as' (S s)
   | false :: bs, _ :: as' => fleaf_vars_f bs as' s
   | _, _ => nil
   end.
 
 Lemma fleaf_vars_f_erase : forall bs as' s, fdomains_erase (fleaf_vars_f bs as' s) = leaf_vars_f bs (fdomains_erase as') s.
-Proof. induction bs as [| [|] bs IH]; intros [| a as'] s; cbn; f_equal; auto. Qed.
+Proof. induction bs as [| [|] bs IH]; intros [| a as'] s; cbn; rewrite ?frelevant_value_erase; f_equal; auto. Qed.
 
 Lemma fleaf_vars_f_ok : forall Θ Ξ bs as' s, Forall (fdomain_ok Θ Ξ) as' -> Forall (fdomain_ok Θ Ξ) (fleaf_vars_f bs as' s).
 Proof.
-  intros Θ Ξ; induction bs as [| [|] bs IH]; intros [| a as'] s H; cbn; try constructor; inversion H; subst; auto with mctt.
+  intros Θ Ξ; induction bs as [| [|] bs IH]; intros [| a as'] s H; cbn; try constructor; inversion H; subst; auto using frelevant_value_ok with mctt.
 Qed.
 
 (** [leaf_wrap_f]'s twin, on fast values *)
@@ -183,7 +183,7 @@ Inductive fast_fresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry 
 (** The first entry's type, then the rest under its variable *)
 | fast_fresh_tele_order_cons :
   `( fast_eval_exp_order Θ Ξ A ρ ->
-     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_fresh_tele_order Θ Ξ (ρ ↦ ⇑! a s) T (S s)) ->
+     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_fresh_tele_order Θ Ξ (ρ ↦ relevant_value a (⇑! a s)) T (S s)) ->
      fast_fresh_tele_order Θ Ξ ρ (ce_ass A :: T) s ).
 
 (** The variables of the arguments of a constructor *)
@@ -195,8 +195,8 @@ Inductive fast_fresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : l
 (** A non-recursive argument's type, then the rest *)
 | fast_fresh_cargs_order_arg :
   `( fast_eval_exp_order Θ Ξ A ρ ->
-     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_fresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
-     fast_fresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
+     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_fresh_cargs_order Θ Ξ p ups (ρ ↦ relevant_value a (⇑! a s)) gs (S s)) ->
+     fast_fresh_cargs_order Θ Ξ p ups ρ (ca_arg r A :: gs) s )
 (** A recursive argument's type, then the rest *)
 | fast_fresh_cargs_order_rec_case :
   `( fast_eval_shape_type_order Θ Ξ p ups ρ t ->
@@ -213,7 +213,7 @@ Inductive fast_fresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list 
 (** A non-recursive argument, entering the environment *)
 | fast_fresh_ihs_order_arg :
   `( fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B (ρa ↦ v) gs' gs vs s ->
-     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) s )
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) (v :: vs) s )
 (** Recursive in both, one result read: the types of its results, one per
     leaf path, then the rest after the variables at the paths of the
     container's *)
@@ -238,7 +238,7 @@ Inductive fast_fresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list 
 (** Nested through: the rest *)
 | fast_fresh_ihs_order_nest :
   `( fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa gs' gs vs s ->
-     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
+     fast_fresh_ihs_order Θ Ξ ρ As p ups Dc B ρa (ca_arg ra' T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
 
 (** The recursive results a branch is read under, wrapped *)
 Inductive fast_wrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock)
@@ -263,11 +263,11 @@ Inductive fast_wrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) 
 | fast_wrap_ihs_order_nest :
   `( fast_eval_ih_order Θ Ξ ρ p ups Bks t v ->
      fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs ->
-     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
+     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg ra' T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
 (** Non-recursive: the rest *)
 | fast_wrap_ihs_order_arg :
   `( fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc gs' gs vs ihs ->
-     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) ihs ).
+     fast_wrap_ihs_order Θ Ξ ρ p ups Bks Dc (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) (v :: vs) ihs ).
 
 #[local]
 Hint Constructors fast_fresh_tele_order fast_fresh_cargs_order fast_fresh_ihs_order fast_wrap_ihs_order : mctt.
@@ -371,8 +371,8 @@ Section FreshImpl.
   | ρ, nil, s, Hρ, H => exist _ nil _
   | ρ, ce_ass A :: T, s, Hρ, H =>
       let (a, Ha) := fast_eval_exp_impl F A ρ Hρ _ in
-      let (vs, Hvs) := fast_fresh_tele_impl (fextend_env ρ (fd_neut a (fd_var s))) T (S s) _ _ in
-      exist _ (fd_neut a (fd_var s) :: vs) _
+      let (vs, Hvs) := fast_fresh_tele_impl (fextend_env ρ (frelevant_value a (fd_neut a (fd_var s)))) T (S s) _ _ in
+      exist _ (frelevant_value a (fd_neut a (fd_var s)) :: vs) _
   | ρ, _, s, Hρ, H => False_rect _ _.
   Solve All Obligations with fast_readback_obligation.
 
@@ -381,10 +381,10 @@ Section FreshImpl.
       (H : fast_fresh_cargs_order Θ Ξ p (fdomains_erase ups) (fenv_erase ρ) gs s) :
     { vs | Fcargsᶠ gs of p (fdomains_erase ups) in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ fdomains_erase vs /\ Forall (fdomain_ok Θ Ξ) vs } by struct H :=
   | p, ups, ρ, nil, s, Hups, Hρ, H => exist _ nil _
-  | p, ups, ρ, ca_arg A :: gs, s, Hups, Hρ, H =>
+  | p, ups, ρ, ca_arg r A :: gs, s, Hups, Hρ, H =>
       let (a, Ha) := fast_eval_exp_impl F A ρ Hρ _ in
-      let (vs, Hvs) := fast_fresh_cargs_impl p ups (fextend_env ρ (fd_neut a (fd_var s))) gs (S s) Hups _ _ in
-      exist _ (fd_neut a (fd_var s) :: vs) _
+      let (vs, Hvs) := fast_fresh_cargs_impl p ups (fextend_env ρ (frelevant_value a (fd_neut a (fd_var s)))) gs (S s) Hups _ _ in
+      exist _ (frelevant_value a (fd_neut a (fd_var s)) :: vs) _
   | p, ups, ρ, ca_rec t :: gs, s, Hups, Hρ, H =>
       let (a, Ha) := fast_eval_shape_type_impl F p ups ρ t Hups Hρ _ in
       let (vs, Hvs) := fast_fresh_cargs_impl p ups ρ gs (S s) Hups Hρ _ in
@@ -401,7 +401,7 @@ Section FreshImpl.
     { ihs | Fihsᶠ (fdomains_erase vs) at gs' gs of Dc under (fenv_erase ρ) As at p (fdomains_erase ups) for B in Θ ⍮ Ξ ⍮ (fenv_erase ρa) ⍮ s
               ↘ fdomains_erase ihs /\ Forall (fdomain_ok Θ Ξ) ihs } by struct H :=
   | ρ, As, p, ups, Dc, B, ρa, nil, nil, nil, s, D, Ed, Hρ, Hups, Hρa, Hvs, H => exist _ nil _
-  | ρ, As, p, ups, Dc, B, ρa, ca_arg _ :: gs', ca_arg _ :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H =>
+  | ρ, As, p, ups, Dc, B, ρa, ca_arg _ _ :: gs', ca_arg _ _ :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H =>
       let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B (fextend_env ρa v) gs' gs vs s D Ed Hρ Hups _ _ _ in
       exist _ ihs _
   | ρ, As, p, ups, Dc, B, ρa, ca_rec t' :: gs', ca_rec t :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H
@@ -419,7 +419,7 @@ Section FreshImpl.
           let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs
                                (List.length (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s) + s) D Ed Hρ Hups Hρa _ _ in
           exist _ (fleaf_vars_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s ++ ihs) _ }
-  | ρ, As, p, ups, Dc, B, ρa, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H =>
+  | ρ, As, p, ups, Dc, B, ρa, ca_arg _ _ :: gs', ca_rec t :: gs, v :: vs, s, D, Ed, Hρ, Hups, Hρa, Hvs, H =>
       let (ihs, Hihs) := fast_fresh_ihs_impl ρ As p ups Dc B ρa gs' gs vs s D Ed Hρ Hups Hρa _ _ in
       exist _ ihs _
   | ρ, As, p, ups, Dc, B, ρa, _, _, _, s, D, Ed, Hρ, Hups, Hρa, Hvs, H => False_rect _ _.
@@ -440,11 +440,11 @@ Section FreshImpl.
         let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs
                          (snd (fleaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs)) D Ed Hρ Hups _ _ _ in
         exist _ (fst (fleaf_wrap_f (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs) ++ r) _
-  | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, ihs, D, Ed, Hρ, Hups, Hvs, Hihs, H =>
+  | ρ, p, ups, Bks, Dc, ca_arg _ _ :: gs', ca_rec t :: gs, v :: vs, ihs, D, Ed, Hρ, Hups, Hvs, Hihs, H =>
         let (rs, Hrs) := fast_eval_ih_impl F ρ p ups Bks t v D Ed Hρ Hups _ _ in
         let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs D Ed Hρ Hups _ Hihs _ in
         exist _ (rs ++ r) _
-  | ρ, p, ups, Bks, Dc, ca_arg _ :: gs', ca_arg _ :: gs, _ :: vs, ihs, D, Ed, Hρ, Hups, Hvs, Hihs, H =>
+  | ρ, p, ups, Bks, Dc, ca_arg _ _ :: gs', ca_arg _ _ :: gs, _ :: vs, ihs, D, Ed, Hρ, Hups, Hvs, Hihs, H =>
       let (r, Hr) := fast_wrap_ihs_impl ρ p ups Bks Dc gs' gs vs ihs D Ed Hρ Hups _ Hihs _ in
       exist _ r _
   | ρ, p, ups, Bks, Dc, _, _, _, _, D, Ed, Hρ, Hups, Hvs, Hihs, H => False_rect _ _.
@@ -466,22 +466,25 @@ Inductive fast_read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Pr
 | fast_read_nf_order_lvl_neut :
   `( fast_read_ne_order Θ Ξ s m ->
      fast_read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (⇑ a m) )
-| fast_read_nf_order_true :
-  `( fast_read_nf_order Θ Ξ s ⇓ ⊤ᵈ m )
-| fast_read_nf_order_False_neut :
-  `( fast_read_ne_order Θ Ξ s m ->
-     fast_read_nf_order Θ Ξ s ⇓ ⊥ᵈ (⇑ a m) )
+(** A proposition, as a type *)
+| fast_read_nf_order_prop :
+  `( fast_read_typ_order Θ Ξ s a ->
+     fast_read_nf_order Θ Ξ s ⇓ Propᵈ a )
+(** The placeholder: no recursion *)
+| fast_read_nf_order_placeholder :
+  `( fast_read_nf_order Θ Ξ s ⇓ d_placeholder_type m )
 | fast_read_nf_order_fn :
   `( fast_read_typ_order Θ Ξ s a ->
-     fast_eval_app_order Θ Ξ m ⇑! a s ->
-     fast_eval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
+     fast_eval_app_order Θ Ξ m (relevant_value a (⇑! a s)) ->
+     fast_eval_exp_order Θ Ξ B (p ↦ relevant_value a (⇑! a s)) ->
      (forall m' b,
-         $ᶠ| m & ⇑! a s | Θ ⍮ Ξ ↘ m' ->
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! a s ↘ b ->
+         $ᶠ| m & relevant_value a (⇑! a s) | Θ ⍮ Ξ ↘ m' ->
+         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ relevant_value a (⇑! a s) ↘ b ->
          fast_read_nf_order Θ Ξ (S s) ⇓ b m') ->
      fast_read_nf_order Θ Ξ s ⇓ (Πᵈ a p B) m )
 | fast_read_nf_order_neut :
-  `( fast_read_ne_order Θ Ξ s m ->
+  `( domain_relevance (⇑ a b) = relevant ->
+     fast_read_ne_order Θ Ξ s m ->
      fast_read_nf_order Θ Ξ s ⇓ (⇑ a b) (⇑ c m) )
 (** A constructor of a declared member *)
 | fast_read_nf_order_con :
@@ -532,6 +535,11 @@ Inductive fast_read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Pr
      fast_read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
      fast_read_fields_order Θ Ξ s (env_args nil ns) (record_fields R) v ->
      fast_read_nf_order Θ Ξ s ⇓ (d_record p ns) v )
+(** A value of a proposition: the proof, no recursion.  Last, so that a
+    constructor tried in order meets the rules of each head first. *)
+| fast_read_nf_order_proof :
+  `( domain_relevance a = propositional ->
+     fast_read_nf_order Θ Ξ s ⇓ a m )
 
 with fast_read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
 | fast_read_ne_order_var :
@@ -540,13 +548,10 @@ with fast_read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
   `( fast_read_ne_order Θ Ξ s m ->
      fast_read_nf_order Θ Ξ s n ->
      fast_read_ne_order Θ Ξ s (m $ᵈ n) )
-| fast_read_ne_order_exfalso :
-  `( fast_eval_exp_order Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) ->
-     (forall b,
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! ⊥ᵈ s ↘ b ->
-         fast_read_typ_order Θ Ξ (S s) b) ->
-     fast_read_ne_order Θ Ξ s m ->
-     fast_read_ne_order Θ Ξ s efqᵈ m under p return B )
+(** A stuck [efq]: its type *)
+| fast_read_ne_order_absurd :
+  `( fast_read_typ_order Θ Ξ s c ->
+     fast_read_ne_order Θ Ξ s (efqᵈ c) )
 | fast_read_ne_order_glob :
   `( fast_read_ne_order Θ Ξ s (d_glob p) )
 (** A stuck eliminator: the container's uniform parameters, the blocks
@@ -579,17 +584,30 @@ with fast_read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      fast_read_typ_order Θ Ξ s 𝕌@l )
 | fast_read_typ_order_level :
   `( fast_read_typ_order Θ Ξ s (Levelᵈ@n) )
+| fast_read_typ_order_prop :
+  `( fast_read_typ_order Θ Ξ s Propᵈ )
 | fast_read_typ_order_True :
   `( fast_read_typ_order Θ Ξ s ⊤ᵈ )
 | fast_read_typ_order_False :
   `( fast_read_typ_order Θ Ξ s ⊥ᵈ )
+| fast_read_typ_order_placeholder_type :
+  `( fast_read_typ_order Θ Ξ s d_placeholder_type )
+(** A [Π] or a universal proposition, at its tag *)
 | fast_read_typ_order_pi :
   `( fast_read_typ_order Θ Ξ s a ->
-     fast_eval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
+     fast_eval_exp_order Θ Ξ B (p ↦ relevant_value a (⇑! a s)) ->
      (forall b,
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! a s ↘ b ->
+         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ relevant_value a (⇑! a s) ↘ b ->
          fast_read_typ_order Θ Ξ (S s) b) ->
-     fast_read_typ_order Θ Ξ s Πᵈ a p B)
+     fast_read_typ_order Θ Ξ s (d_pi r a p B))
+(** A dependent conjunction *)
+| fast_read_typ_order_and :
+  `( fast_read_typ_order Θ Ξ s a ->
+     fast_eval_exp_order Θ Ξ Q (p ↦ relevant_value a (⇑! a s)) ->
+     (forall b,
+         ⟦ Q ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ relevant_value a (⇑! a s) ↘ b ->
+         fast_read_typ_order Θ Ξ (S s) b) ->
+     fast_read_typ_order Θ Ξ s (Σₚᵈ a p Q))
 | fast_read_typ_order_neut :
   `( fast_read_ne_order Θ Ξ s b ->
     fast_read_typ_order Θ Ξ s ⇑ a b )
@@ -648,7 +666,7 @@ with fast_read_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list dom
   `( fast_eval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fast_read_nf_order Θ Ξ s ⇓ a v) ->
      fast_read_cargs_order Θ Ξ s p ups (ρ ↦ v) gs vs ->
-     fast_read_cargs_order Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) )
+     fast_read_cargs_order Θ Ξ s p ups ρ (ca_arg r A :: gs) (v :: vs) )
 (** A recursive argument, along its shape *)
 | fast_read_cargs_order_rec_case :
   `( fast_read_shape_order Θ Ξ s p ups ρ t v ->
@@ -666,9 +684,9 @@ with fast_read_shape_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list dom
 | fast_read_shape_order_pi :
   `( fast_eval_exp_order Θ Ξ B ρ ->
      (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> fast_read_typ_order Θ Ξ s b) ->
-     (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> fast_eval_app_order Θ Ξ v (⇑! b s)) ->
-     (forall b r, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> $ᶠ| v & ⇑! b s | Θ ⍮ Ξ ↘ r ->
-        fast_read_shape_order Θ Ξ (S s) p ups (ρ ↦ ⇑! b s) t r) ->
+     (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> fast_eval_app_order Θ Ξ v (relevant_value b (⇑! b s))) ->
+     (forall b r, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> $ᶠ| v & relevant_value b (⇑! b s) | Θ ⍮ Ξ ↘ r ->
+        fast_read_shape_order Θ Ξ (S s) p ups (ρ ↦ relevant_value b (⇑! b s)) t r) ->
      fast_read_shape_order Θ Ξ s p ups ρ (pt_pi B t) v )
 
 (** The blocks of a stuck eliminator *)
@@ -874,16 +892,24 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd :
 | s, fd_dom (fd_level n) (fd_neut a m), ck, Hd, H =>
     let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
     exist _ (lvⁿ ordinal_zero (cons (mk_level_atom 0 (fdomain_level_sort a) M) nil)) _
+(** A value of a proposition: the proof *)
 | s, fd_dom fd_True m, ck, Hd, H => exist _ ⋆ⁿ _
-| s, fd_dom fd_False (fd_neut _ m), ck, Hd, H =>
-    let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
-    exist _ ⇑ⁿ M _
-| s, fd_dom (fd_pi a p B) m, ck, Hd, H =>
+| s, fd_dom fd_False m, ck, Hd, H => exist _ ⋆ⁿ _
+| s, fd_dom (fd_and _ _ _) m, ck, Hd, H => exist _ ⋆ⁿ _
+| s, fd_dom (fd_pi propositional _ _ _) m, ck, Hd, H => exist _ ⋆ⁿ _
+(** A proposition, as a type *)
+| s, fd_dom fd_prop a, ck, Hd, H =>
     let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
-    let (m', Hm') := fast_eval_app_impl F m (fd_neut a (fd_var s)) _ _ _ in
-    let (b, Hb) := fast_eval_exp_impl F B (fextend_env p (fd_neut a (fd_var s))) _ _ in
+    exist _ A _
+| s, fd_dom fd_placeholder_type m, ck, Hd, H => exist _ nf_placeholder _
+| s, fd_dom (fd_pi relevant a p B) m, ck, Hd, H =>
+    let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
+    let (m', Hm') := fast_eval_app_impl F m (frelevant_value a (fd_neut a (fd_var s))) _ _ _ in
+    let (b, Hb) := fast_eval_exp_impl F B (fextend_env p (frelevant_value a (fd_neut a (fd_var s)))) _ _ in
     let (M, HM) := fast_read_nf_impl_c (S s) (fd_dom b m') ck _ _ in
     exist _ (λⁿ A M) _
+(** A neutral type: the proof at a proposition, a neutral otherwise *)
+| s, fd_dom (fd_neut fd_prop b) v, ck, Hd, H => exist _ ⋆ⁿ _
 | s, fd_dom (fd_neut a b) (fd_neut c m), ck, Hd, H =>
     let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
     exist _ ⇑ⁿ M _
@@ -945,11 +971,9 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd :
     let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
     let (N, HN) := fast_read_nf_impl_c s n ck _ _ in
     exist _ (M $ⁿ N) _
-| s, fd_exfalso p B m, ck, Hd, H =>
-    let (b, Hb) := fast_eval_exp_impl F B (fextend_env p (fd_neut fd_False (fd_var s))) _ _ in
-    let (B', HB') := fast_read_typ_impl_c (S s) b ck _ _ in
-    let (M, HM) := fast_read_ne_impl_c s m ck _ _ in
-    exist _ (efqⁿ M return B') _
+| s, fd_absurd c, ck, Hd, H =>
+    let (C, HC) := fast_read_typ_impl_c s c ck _ _ in
+    exist _ (efqⁿ C) _
 (** The stuck eliminator carries the declaration of its group *)
 | s, fd_elim ρ Bks p D ups j as' m, ck, Hd, H with inspect (ind_member D j) := {
     | exist _ (Some Mj) Em with inspect (im_ref p j Mj) := {
@@ -975,13 +999,25 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd :
     let (W, HW) := fast_read_nf_impl_c s (fd_dom (fd_level 0) l) ck _ _ in
     exist _ (nf_univ_of (lvl_of_nf W)) _
 | s, fd_level n, ck, Hd, H => exist _ (Levelⁿ@n) _
+| s, fd_prop, ck, Hd, H => exist _ Propⁿ _
 | s, fd_True, ck, Hd, H => exist _ ⊤ⁿ _
 | s, fd_False, ck, Hd, H => exist _ ⊥ⁿ _
-| s, fd_pi a p B, ck, Hd, H =>
+| s, fd_placeholder_type, ck, Hd, H => exist _ nf_placeholder_type _
+| s, fd_pi relevant a p B, ck, Hd, H =>
     let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
-    let (b, Hb) := fast_eval_exp_impl F B (fextend_env p (fd_neut a (fd_var s))) _ _ in
+    let (b, Hb) := fast_eval_exp_impl F B (fextend_env p (frelevant_value a (fd_neut a (fd_var s)))) _ _ in
     let (B', HB') := fast_read_typ_impl_c (S s) b ck _ _ in
     exist _ (Πⁿ A B') _
+| s, fd_pi propositional a p P, ck, Hd, H =>
+    let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
+    let (b, Hb) := fast_eval_exp_impl F P (fextend_env p (frelevant_value a (fd_neut a (fd_var s)))) _ _ in
+    let (P', HP') := fast_read_typ_impl_c (S s) b ck _ _ in
+    exist _ (∀ₚⁿ A P') _
+| s, fd_and a p Q, ck, Hd, H =>
+    let (P', HP') := fast_read_typ_impl_c s a ck _ _ in
+    let (b, Hb) := fast_eval_exp_impl F Q (fextend_env p (frelevant_value a (fd_neut a (fd_var s)))) _ _ in
+    let (Q', HQ') := fast_read_typ_impl_c (S s) b ck _ _ in
+    exist _ (Σₚⁿ P' Q') _
 | s, fd_neut a b, ck, Hd, H =>
     let (B, HB) := fast_read_ne_impl_c s b ck _ _ in
     exist _ ⇑ⁿ B _
@@ -1038,7 +1074,7 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd :
       (H : fast_read_cargs_order Θ Ξ s p (fdomains_erase ups) (fenv_erase ρ) gs (fdomains_erase vs)) :
     { Ms | Rcargsᶠ fdomains_erase vs at gs of p (fdomains_erase ups) in Θ ⍮ Ξ ⍮ fenv_erase ρ ⍮ s ↘ Ms } by struct H :=
 | s, p, ups, ρ, nil, nil, ck, Hups, Hρ, Hvs, H => exist _ nil _
-| s, p, ups, ρ, ca_arg A :: gs, v :: vs, ck, Hups, Hρ, Hvs, H =>
+| s, p, ups, ρ, ca_arg r A :: gs, v :: vs, ck, Hups, Hρ, Hvs, H =>
     let (a, Ha) := fast_eval_exp_impl F A ρ Hρ _ in
     let (V, HV) := fast_read_nf_impl_c s (fd_dom a v) ck _ _ in
     let (Vs, HVs) := fast_read_cargs_impl_c s p ups (fextend_env ρ v) gs vs ck Hups _ _ _ in
@@ -1060,8 +1096,8 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd :
 | s, p, ups, ρ, pt_pi B t, v, ck, Hups, Hρ, Hv, H =>
     let (b, Hb) := fast_eval_exp_impl F B ρ Hρ _ in
     let (A, HA) := fast_read_typ_impl_c s b ck _ _ in
-    let (r, Hr) := fast_eval_app_impl F v (fd_neut b (fd_var s)) Hv _ _ in
-    let (V, HV) := fast_read_shape_impl_c (S s) p ups (fextend_env ρ (fd_neut b (fd_var s))) t r ck Hups _ _ _ in
+    let (r, Hr) := fast_eval_app_impl F v (frelevant_value b (fd_neut b (fd_var s))) Hv _ _ in
+    let (V, HV) := fast_read_shape_impl_c (S s) p ups (fextend_env ρ (frelevant_value b (fd_neut b (fd_var s)))) t r ck Hups _ _ _ in
     exist _ (λⁿ A V) _
 
   (** The blocks of a stuck eliminator, at the declaration [D] of its
@@ -1149,6 +1185,9 @@ Ltac readback_glob :=
         exfalso; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1
     | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
         rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+    (** The sort of a type of a known head, computed: a proof's order at a
+        relevant type is ruled out *)
+    | H : domain_relevance _ = _ |- _ => progress cbn [domain_relevance] in H; try discriminate H
     (** A record, looked up once *)
     | H1 : record_lookup _ _ ?p = Some ?x, H2 : record_lookup _ _ ?p = Some ?y |- _ =>
         assert_fails (constr_eq x y);
@@ -1174,7 +1213,8 @@ Ltac readback_order :=
 Ltac readback_eqb := repeat match goal with H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H end.
 
 #[local]
-Ltac readback_run := repeat impl_obligation_tac1; rewrite ?List.length_map in *; readback_glob; readback_eqb; econstructor; eassumption.
+Ltac readback_run := repeat impl_obligation_tac1; rewrite ?List.length_map in *; readback_glob; readback_eqb;
+  econstructor; first [ eassumption | reflexivity ].
 
 (** The rules of inductive types have premises the order records under
     quantifiers, and lookups the order rules out when they fail. *)
@@ -1199,6 +1239,12 @@ Ltac readback_norm :=
   intros; cbv beta iota in *; cbn [fst snd] in *; ferase_norm; fleaf_norm; ferase_norm;
   rewrite <- ?fdomain_level_sort_erase in *;
   repeat match goal with H : _ /\ _ |- _ => destruct H end;
+  (** The sort of a fast type, as its erasure's, which the rules read *)
+  repeat match goal with H : fdomain_relevance _ = _ |- _ =>
+           rewrite <- fdomain_relevance_erase in H; cbn [fdomain_erase] in H end;
+  (** A sort an order records of a known head, computed *)
+  repeat match goal with H : domain_relevance _ = _ |- _ =>
+           progress cbn [domain_relevance] in H; try discriminate H end;
   (** The declaration a stuck eliminator carries is its group's *)
   try match goal with Hd : fdomain_ne_ok _ _ (fd_elim _ _ _ _ _ _ _ _) |- _ =>
         pose proof (fdomain_ne_ok_elim_decl _ _ _ _ _ _ _ _ _ _ Hd) end.

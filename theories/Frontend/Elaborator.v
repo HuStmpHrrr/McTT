@@ -310,7 +310,7 @@ Fixpoint elab (S : list scope_entry) (o : Cst.expression) {struct o} : elab_resu
       let* M := elab S om in
       let* Bks := elab_blocks_with elab S bks in
       match elim_at (List.map (fun bk => fst (fst (fst bk))) bks) with
-      | Some m => elab_success (a_elim None nil m Bks M)
+      | Some m => elab_success (a_elim relevant None nil m Bks M)
       | None => elab_failure elim_at_msg
       end
   | Cst.tuple oT fs =>
@@ -352,7 +352,7 @@ with elab_mdef (S : list scope_entry) (md : Cst.mdef) {struct md} : elab_result 
            | Cst.c_def m x oA oM :: cs' =>
                let* A := elab S oA in
                let* M := elab S oM in
-               go (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) A (Some M))) cs'
+               go (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) relevant A (Some M))) cs'
            | Cst.c_mod pv x ps md' :: cs' =>
                let* _ := check_params ps in
                let* tys := elab_params_with elab S ps in

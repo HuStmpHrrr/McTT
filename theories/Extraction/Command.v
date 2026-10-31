@@ -28,7 +28,10 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
-From Mctt.Core Require Import Base Soundness.
+From Mctt.Core Require Import Base Soundness Completeness.
+From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import Structural Command.
 From Mctt.Core Require Import TypedElab.
@@ -67,21 +70,45 @@ Lemma nf_pi_tele_spec : forall W Ds C, nf_pi_tele W = (Ds, C) -> nf_to_exp W = c
 Proof.
   induction W; intros * E; cbn [nf_pi_tele] in E;
     try (injection E as <- <-; split; [ reflexivity | constructor ]).
+  destruct r; [| injection E as <- <-; split; [ reflexivity | constructor ] ].
   destruct (nf_pi_tele W2) as [Ds' C'] eqn:E2; injection E as <- <-.
   destruct (IHW2 _ _ eq_refl) as [HW Ha].
   cbn [nf_to_exp]; rewrite ctx_pi_snoc, <- HW; split; [ reflexivity |].
   apply List.Forall_app; split; [ exact Ha | constructor; [ eexists; reflexivity | constructor ] ].
 Qed.
 
+(** A relevant [Π] typed at a sort is a type of a large universe: its
+    value at the initial environment is a relevant [Π]
+    ([typed_at_sort_of_initial_relevance]). *)
+Lemma relevant_pi_large : forall Θ Ξ Γ A B S, type_sort S -> Θ ⍮ Ξ ⍮ Γ ⊢ a_pi relevant A B : S ->
+    exists j : nat, Θ ⍮ Ξ ⍮ Γ ⊢ a_pi relevant A B : Typeω@j.
+Proof.
+  intros * HS HT.
+  pose proof (@completeness_fundamental_exp (gc_mk Θ Ξ) _ _ _ HT) as HTs.
+  destruct (@rel_exp_under_ctx_at_initial_env (gc_mk Θ Ξ) _ _ _ _ HTs) as [ρ i R s Hρ Es HSs Hterms].
+  destruct Hterms as [Hp | m m' Em _ _].
+  - exfalso; destruct HS; inversion Es; subst; discriminate Hp.
+  - destruct (@typed_at_sort_of_initial_relevance (gc_mk Θ Ξ) _ _ _ _ _ HS HT Hρ Em) as [k Hk].
+    inversion Em; subst; exists k; exact Hk.
+Qed.
+
 (** A term of a normal type, at the variables of the type's domains, is of
-    its codomain past them. *)
+    its codomain past them: a relevant [Π]'s, at a large universe. *)
 Lemma applied_vars_typed : forall Θ Ξ Γ M W Ds C, Θ ⍮ Ξ ⍮ Γ ⊢ M : nf_to_exp W -> nf_pi_tele W = (Ds, C) ->
     Θ ⍮ Ξ ⍮ Ds ++ Γ ⊢ exp_applied_to_vars M (List.length Ds) : nf_to_exp C.
 Proof.
   intros * HM Ep; destruct (nf_pi_tele_spec _ _ _ Ep) as [HW Ha]; rewrite HW in HM.
-  destruct (presup_exp_typ HM) as [i HT].
-  pose proof (ctx_pi_inv_outer _ _ _ _ Ha HT) as HC.
-  exact (wf_apps_vars _ _ _ _ _ _ _ Ha (presup_exp_ctx HC) HC HM).
+  destruct Ds as [| e Ds0] using List.rev_ind.
+  - cbn in HM |- *; unfold exp_applied_to_vars; cbn.
+    rewrite exp_wk_id_ext by (intros x; cbn; lia); exact HM.
+  - destruct (presup_exp_typ HM) as [S HS HT].
+    assert (He : exists A, e = ce_ass A)
+      by (unfold tele_ass in Ha; apply List.Forall_app in Ha as [_ He]; inversion He as [| ? ? He0]; exact He0).
+    destruct He as [A ->]; rewrite ctx_pi_snoc in HT.
+    destruct (relevant_pi_large _ _ _ _ _ _ HS HT) as [i HT'].
+    rewrite <- ctx_pi_snoc in HT'.
+    pose proof (ctx_pi_inv_outer _ _ _ _ Ha HT') as HC.
+    exact (wf_apps_vars _ _ _ _ _ _ _ Ha (presup_exp_ctx HC) HC HM).
 Qed.
 
 (** Whether a normal type is a universe. *)
@@ -322,10 +349,11 @@ Section ModBlame.
 
   Fixpoint mod_blame (M : exp) : option run_error :=
     match M with
-    | a_succl M | a_univ M => mod_blame M
-    | a_maxl M N | a_pi M N | a_fn M N | a_app M N => first_some (mod_blame M) (fun _ => mod_blame N)
-    | a_exfalso A M => first_some (mod_blame M) (fun _ => mod_blame A)
-    | a_elim _ Us _ Bks M =>
+    | a_succl M | a_univ M | a_left M | a_right M => mod_blame M
+    | a_maxl M N | a_pi _ M N | a_fn M N | a_app M N | a_and M N => first_some (mod_blame M) (fun _ => mod_blame N)
+    | a_absurd A M => first_some (mod_blame M) (fun _ => mod_blame A)
+    | a_conj T M N => first_some (mod_blame T) (fun _ => first_some (mod_blame M) (fun _ => mod_blame N))
+    | a_elim _ _ Us _ Bks M =>
         first_some (mod_blame M) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
               match Us with
@@ -446,10 +474,11 @@ Section BranchBlame.
   (** The first mismatch of a block's branches in a term, inside out. *)
   Fixpoint brs_blame (F : FCtx) (M : exp) : option run_error :=
     match M with
-    | a_succl M | a_univ M => brs_blame F M
-    | a_maxl M N | a_pi M N | a_fn M N | a_app M N => first_some (brs_blame F M) (fun _ => brs_blame F N)
-    | a_exfalso A M => first_some (brs_blame F M) (fun _ => brs_blame F A)
-    | a_elim _ Us _ Bks M =>
+    | a_succl M | a_univ M | a_left M | a_right M => brs_blame F M
+    | a_maxl M N | a_pi _ M N | a_fn M N | a_app M N | a_and M N => first_some (brs_blame F M) (fun _ => brs_blame F N)
+    | a_absurd A M => first_some (brs_blame F M) (fun _ => brs_blame F A)
+    | a_conj T M N => first_some (brs_blame F T) (fun _ => first_some (brs_blame F M) (fun _ => brs_blame F N))
+    | a_elim _ _ Us _ Bks M =>
         first_some (brs_blame F M) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
               match Us with
@@ -549,14 +578,14 @@ Section BlocksBlame.
       ([brs_blame]), not the blocks. *)
   Definition elim_blocks_check (Γ : ctx) (E : exp) : option run_error :=
     match E with
-    | a_elim oq Us m Bks M0 =>
+    | a_elim r oq Us m Bks M0 =>
         match match elim_group oq m Bks with
               | Some p => option_map (fun D => (p, D)) (fc_ind F p)
               | None => None
               end with
         | None => None
         | Some (p, D) =>
-            let E := a_elim (Some p) Us m Bks M0 in
+            let E := a_elim r (Some p) Us m Bks M0 in
             let Ms := ind_block_members D in
             let a := blocks_members Ms nil None Bks in
             let missing :=
@@ -583,11 +612,12 @@ Section BlocksBlame.
       whose blocks do not match its group: its parts first, then itself. *)
   Fixpoint blocks_blame (Γ : ctx) (M : exp) : option run_error :=
     match M with
-    | a_succl M | a_univ M => blocks_blame Γ M
+    | a_succl M | a_univ M | a_left M | a_right M => blocks_blame Γ M
     | a_maxl M N | a_app M N => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N)
-    | a_pi A B | a_fn A B => first_some (blocks_blame Γ A) (fun _ => blocks_blame (ce_ass A :: Γ) B)
-    | a_exfalso A M => first_some (blocks_blame Γ M) (fun _ => blocks_blame (unread_binder :: Γ) A)
-    | a_elim oq Us m Bks M0 =>
+    | a_pi _ A B | a_fn A B | a_and A B => first_some (blocks_blame Γ A) (fun _ => blocks_blame (ce_ass A :: Γ) B)
+    | a_absurd A M => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ A)
+    | a_conj T M N => first_some (blocks_blame Γ T) (fun _ => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N))
+    | a_elim _ oq Us m Bks M0 =>
         first_some (blocks_blame Γ M0) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
               match Us with
@@ -676,12 +706,13 @@ Section ValueBlame.
 
   Fixpoint value_blame (Γ : ctx) (M : exp) : option run_error :=
     match M with
-    | a_succl M0 | a_univ M0 | a_proj _ M0 => value_blame Γ M0
+    | a_succl M0 | a_univ M0 | a_proj _ M0 | a_left M0 | a_right M0 => value_blame Γ M0
     | a_maxl M0 N => first_some (value_blame Γ M0) (fun _ => value_blame Γ N)
     | a_app M0 N =>
         first_some (applied_blame Γ M) (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N))
-    | a_pi A B | a_fn A B => first_some (value_blame Γ A) (fun _ => value_blame (ce_ass A :: Γ) B)
-    | a_exfalso A M0 => first_some (value_blame Γ M0) (fun _ => value_blame (unread_binder :: Γ) A)
+    | a_pi _ A B | a_fn A B | a_and A B => first_some (value_blame Γ A) (fun _ => value_blame (ce_ass A :: Γ) B)
+    | a_absurd A M0 => first_some (value_blame Γ M0) (fun _ => value_blame Γ A)
+    | a_conj T M0 N => first_some (value_blame Γ T) (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N))
     | a_let (b_def oA N) B =>
         first_some (match oA with Some A => value_blame Γ A | None => None end)
           (fun _ => first_some (value_blame Γ N) (fun _ => value_blame (unread_binder :: Γ) B))
@@ -694,7 +725,7 @@ Section ValueBlame.
                | nil => None
                | (_, N) :: fs' => first_some (value_blame Γ N) (fun _ => fields fs')
                end) fs))
-    | a_elim _ Us _ Bks M0 =>
+    | a_elim _ _ Us _ Bks M0 =>
         first_some (value_blame Γ M0) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
               match Us with
@@ -744,15 +775,16 @@ Section FieldBlame.
   Fixpoint field_value_blame (Δ : ctx) (HΔ : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ fc_tele F)) (M : exp) {struct M} : option run_error :=
     match M with
     | a_fn A B =>
-        match check_typ F (Δ ++ fc_tele F) HΔ A with
-        | inleft (exist _ i HA) => field_value_blame (ce_ass A :: Δ) (wf_ctx_extend _ _ _ _ _ HA) B
+        match check_type F (Δ ++ fc_tele F) HΔ A with
+        | inleft (existT _ r (exist _ i HA)) =>
+            field_value_blame (ce_ass A :: Δ) (wf_ctx_extend _ _ _ _ _ HA (type_sort_relevance_universe r i)) B
         | inright _ => None
         end
     | a_let (b_def (Some A) N) B =>
-        match check_typ F (Δ ++ fc_tele F) HΔ A with
-        | inleft (exist _ i HA) =>
-            match check_exp_typed F (Δ ++ fc_tele F) HΔ A (ex_intro _ i HA) N with
-            | left HN => field_value_blame (ce_def A N :: Δ) (wf_ctx_extend_def _ _ _ _ _ _ HA HN) B
+        match check_type F (Δ ++ fc_tele F) HΔ A with
+        | inleft (existT _ r (exist _ i HA)) =>
+            match check_exp_typed F (Δ ++ fc_tele F) HΔ A (type_of_check_type F _ _ _ _ HA) N with
+            | left HN => field_value_blame (ce_def A N :: Δ) (wf_ctx_extend_def _ _ _ _ _ _ HA (type_sort_relevance_universe r i) HN) B
             | right _ => None
             end
         | inright _ => None
@@ -774,15 +806,15 @@ Section FieldBlame.
                    match List.nth_error (record_fields R) k with
                    | Some (_, U) =>
                        let Uk := U[sb_of_list Id (app_args T ++ List.firstn k (List.map snd fs))] in
-                       match check_typ F (Δ ++ fc_tele F) HΔ Uk with
-                       | inleft (exist _ i HU) =>
-                           match check_exp_typed F (Δ ++ fc_tele F) HΔ Uk (ex_intro _ i HU) N with
+                       match check_type F (Δ ++ fc_tele F) HΔ Uk with
+                       | inleft (existT _ r (exist _ i HU)) =>
+                           match check_exp_typed F (Δ ++ fc_tele F) HΔ Uk (type_of_check_type F _ _ _ _ HU) N with
                            | left _ => fields (S k) fs'
                            | right _ =>
                                first_some (field_value_blame Δ HΔ N)
                                  (fun _ =>
                                     let (W, _) := nbe_ty_impl F (Δ ++ fc_tele F) Uk
-                                                    (typ_nbe_ty_order F _ _ _ HU) in
+                                                    (@nbe_order_of_type (fc_gctx F) _ _ (type_of_check_type F _ _ _ _ HU)) in
                                     Some (run_error_record_field (fc_frames F) ox Δ p f N (nf_to_exp W)))
                            end
                        | inright _ => None
@@ -972,18 +1004,52 @@ Lemma equiv_alg_infer : forall Θ Θ' Ξ Γ W M, gds_equiv Θ Θ' ->
     @alg_type_infer (gc_mk Θ Ξ) Γ W M -> @alg_type_infer (gc_mk Θ' Ξ) Γ W M.
 Proof. intros * He; exact (proj1 (proj2 (equiv_alg_all _ _ _ He)) _ _ _). Qed.
 
+(** Parameters of a universe stay so along an equivalence. *)
+Lemma equiv_params_relevant : forall Θ Θ' Ξ Γ Δ l, gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
+    params_relevant Θ Ξ Γ Δ l -> params_relevant Θ' Ξ Γ Δ l.
+Proof. intros * He HΞ HR Δ1 T Δ2 E; exact (equiv_exp _ _ _ _ _ _ He HΞ (HR _ _ _ E)). Qed.
+
+(** A member of a group well formed as an entry has relevant uniform
+    parameters of its own, over the frames' parameters: by the premise of
+    its rule, or by (R) of its module. *)
+Lemma ind_entry_params_relevant : forall Θ Ξ mp pv pq k D Φ Δu,
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D Φ -> ind_uparams D = (Δu ++ gs_tele Ξ)%list ->
+    exists l, params_relevant Θ Ξ (gs_tele Ξ) Δu l.
+Proof.
+  intros * HE; revert Δu; inversion HE; subst; intros Δu' Hu.
+  all: match goal with HU : ind_uparams ?D0 = (?Δ0 ++ gs_tele _)%list |- _ =>
+         assert_fails constr_eq Δ0 Δu'; rewrite Hu in HU; apply app_inv_tail in HU; subst Δ0 end.
+  all: try solve [ eexists; eassumption ].
+  match goal with HΦ : _ ⍮ _ ⍮ _ ⍮ fk_ind _ _ _ ⍮ _ ⊢ᵍᵐ _ |- _ =>
+    destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l Hl]; exists l; exact Hl end.
+Qed.
+
+(** The uniform parameters of a member of a group just filed in the
+    innermost frame are relevant there: the entry is well formed in the
+    frame before it ([wf_gmod_ext]). *)
+Lemma added_ind_params_relevant : forall Θ Ξ x pv pq k Dd Φx Δu,
+    gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (ge_ind pv pq k Dd Φx) Ξ -> ind_uparams Dd = (Δu ++ gs_tele Ξ)%list ->
+    exists l, params_relevant Θ (gs_add x (ge_ind pv pq k Dd Φx) Ξ) (gs_tele (gs_add x (ge_ind pv pq k Dd Φx) Ξ)) Δu l.
+Proof.
+  intros * Hfr Hg Hu.
+  destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |]; cbn [gs_add] in Hg |- *.
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hg0 & HU & Hff).
+  pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ; cbn [gu_mod gu_params] in HΦ.
+  inversion HΦ; subst.
+  (** the frame before the entry, where it is well formed *)
+  assert (HgU : ⊢ᵍ Θ ⍮ (mq, Kq, gu_body (gu_params U) (gu_mod U)) :: Ξ0)
+    by (apply wf_gstack_cons; [ exact Hg0 | eassumption | exact Hff ]).
+  match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_ind _ _ _ _ _ |- _ =>
+    destruct (ind_entry_params_relevant _ _ _ _ _ _ _ _ _ HE Hu) as [l Hl] end.
+  exists l.
+  exact (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg (gc_sub_add _ _ x (ge_ind pv pq k Dd Φx) HgU Hfr)) Hl).
+Qed.
+
+(** So does the relevance of a type, read off its inferred sort. *)
+Lemma equiv_type_relevance : forall Θ Θ' Ξ Γ A r, gds_equiv Θ Θ' -> type_relevance Θ Ξ Γ A r -> type_relevance Θ' Ξ Γ A r.
+Proof. intros * He (U & u & HU & Hs); exists U, u; split; [ exact (equiv_alg_infer _ _ _ _ _ _ He HU) | exact Hs ]. Qed.
+
 (** ** Mutual Definitions *)
-
-(** The definitions [ds] filed in order in [Ξ]. *)
-Fixpoint mdefs_stack (b pv : bool) (ds : list (string * typ * exp)) (Ξ : gstack) : gstack :=
-  match ds with
-  | nil => Ξ
-  | (x, A, M) :: ds' => mdefs_stack b pv ds' (gs_add x (gs_def b pv Ξ A M) Ξ)
-  end.
-
-(** Filing the definitions ends on [mdefs_stack]. *)
-Lemma mdefs_run_stack : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> Ξ' = mdefs_stack b pv ds Ξ.
-Proof. induction 1; cbn [mdefs_stack]; auto. Qed.
 
 (** [mdef_why], [mdef_member_dec] and [mdef_members_dec] are in
     [MdefGroup], with the group's decision ([mdef_group_dec]). *)
@@ -993,13 +1059,15 @@ Proof. induction 1; cbn [mdefs_stack]; auto. Qed.
 Inductive mdefs_why : Type :=
 (** The name, taken *)
 | mdefs_why_dup : string -> mdefs_why
+(** The name, the stack and the type, which is no type *)
+| mdefs_why_untyped_type : string -> fstack -> typ -> mdefs_why
 (** The name, the stack, the type and the term *)
 | mdefs_why_untyped : string -> fstack -> typ -> exp -> mdefs_why.
 
 (** A definition filed, its frames wf: the frames, read in Core, kept
     canonical. *)
-Lemma add_def_canon : forall Θ Ξ x b pv A M, ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ->
-    canon_stack (gs_add x (gs_def b pv Ξ A M) Ξ).
+Lemma add_def_canon : forall Θ Ξ x b pv r A M, ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv r Ξ A M) Ξ ->
+    canon_stack (gs_add x (gs_def b pv r Ξ A M) Ξ).
 Proof. intros * H; exact (proj2 (canon_of_wf _ _ H)). Qed.
 
 (** ** Values Stored at Definitions
@@ -1009,47 +1077,68 @@ Proof. intros * H; exact (proj2 (canon_of_wf _ _ H)). Qed.
     closed term typed in the empty context terminates: the reference one
     does ([soundness]), and the fast one wherever the reference one does
     ([fast_eval_of_ref]). *)
-Lemma closed_eval_order {Θ Ξ M A} : Θ ⍮ Ξ ⍮ nil ⊢ M : A -> Mctt.Extraction.Evaluation.fast_eval_exp_order Θ Ξ M nil.
+Lemma closed_eval_order {Θ Ξ M A} : (exists i : nat, Θ ⍮ Ξ ⍮ nil ⊢ A : Typeω@i) -> Θ ⍮ Ξ ⍮ nil ⊢ M : A ->
+    Mctt.Extraction.Evaluation.fast_eval_exp_order Θ Ξ M nil.
 Proof.
-  intros HM; destruct (typed_nbe_order HM) as [_ _ Hexp _].
-  destruct (eval_of_order Θ Ξ _ _ (Hexp _ (initial_env_nil _ _))) as [a Ha].
-  exact (proj1 (fast_eval_of_ref Θ Ξ _ _ _ _ Ha (Mctt.Extraction.Simulation.env_agree_nil Θ Ξ _))).
+  intros [i HA] HM; destruct (typed_nbe_order HM) as [_ _ Hexp _].
+  (** a term of a type of a large universe is evaluated *)
+  destruct (@rel_exp_of_typ_relevant_at (gc_mk Θ Ξ) nil A A i _ per_ctx_env_nil_true
+              (@completeness_fundamental_exp (gc_mk Θ Ξ) _ _ _ HA) nil nil I) as (a & Ea & Hr).
+  destruct (eval_of_order Θ Ξ _ _ (Hexp _ _ (initial_env_nil _ _) Ea Hr)) as [m Hm].
+  exact (proj1 (fast_eval_of_ref Θ Ξ _ _ _ _ Hm (Mctt.Extraction.Simulation.env_agree_nil Θ Ξ _))).
 Qed.
 
-(** The value a closed term has, fast, in the empty environment *)
-Definition closed_value (F : FCtx) (M : exp) (A : typ) (HM : fc_deps F ⍮ fc_stack F ⍮ nil ⊢ M : A) :
+(** The value a closed term of a type of a large universe has, fast, in
+    the empty environment *)
+Definition closed_value (F : FCtx) (M : exp) (A : typ) (HA : exists i : nat, fc_deps F ⍮ fc_stack F ⍮ nil ⊢ A : Typeω@i)
+    (HM : fc_deps F ⍮ fc_stack F ⍮ nil ⊢ M : A) :
     { v | value_ok (fc_deps F) (fc_stack F) M v } :=
-  let (v, Hv) := Mctt.Extraction.Evaluation.fast_eval_exp_impl F M nil (Forall_nil _) (closed_eval_order HM) in
+  let (v, Hv) := Mctt.Extraction.Evaluation.fast_eval_exp_impl F M nil (Forall_nil _) (closed_eval_order HA HM) in
   exist _ v (mk_value_ok _ _ _ _ (proj1 Hv) (proj2 Hv)).
 
-(** A term typed under a telescope, closed over it *)
-Lemma under_typed {Θ Ξ Δ Γ M A} : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A.
+(** A term of a type of a large universe typed under a telescope, closed
+    over it *)
+Lemma under_typed {Θ Ξ Δ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A /\ exists j : nat, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Typeω@j.
 Proof.
-  intros HM; destruct (presup_exp_typ HM) as [i HA].
-  exact (Mctt.Core.Syntactic.System.Global.DescTyping.ctx_fn_wf _ _ _ _ _ _ _ (presup_exp_ctx HM) HA HM).
+  intros HA HM; split;
+    [ exact (Mctt.Core.Syntactic.System.Global.DescTyping.ctx_fn_wf _ _ _ _ _ _ _ (presup_exp_ctx HM) HA HM)
+    | exact (Mctt.Core.Syntactic.System.Global.DescTyping.ctx_pi_wf _ _ _ _ _ _ (presup_exp_ctx HM) HA) ].
 Qed.
 
-Lemma closed_typed {Θ Ξ Γ M A} : Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ nil ⊢ ctx_fn Γ M : ctx_pi Γ A.
-Proof. intros HM; rewrite <- (app_nil_r Γ) in HM; exact (under_typed HM). Qed.
+Lemma closed_typed {Θ Ξ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ nil ⊢ ctx_fn Γ M : ctx_pi Γ A /\ exists j : nat, Θ ⍮ Ξ ⍮ nil ⊢ ctx_pi Γ A : Typeω@j.
+Proof. intros HA HM; rewrite <- (app_nil_r Γ) in HA, HM; exact (under_typed HA HM). Qed.
 
-(** The fast entry of a definition [A ≔ M] in the innermost frame of [F]:
-    a transparent one stores the value of its body, closed over the
-    frames' parameters *)
-Definition def_fentry (F : FCtx) (b pv : bool) (A M : exp) (HM : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ M : A) :
-    { e : fentry | fentry_drop e = translate_entry (fs_def b pv (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } :=
-  match b as b0 return { e : fentry | fentry_drop e = translate_entry (fs_def b0 pv (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } with
-  | true =>
-      let (v, Hv) := closed_value F (ctx_fn (fc_tele F) M) (ctx_pi (fc_tele F) A) (closed_typed HM) in
-      exist _ (fe_def true pv (ctx_pi (fc_tele F) A) (Some (ctx_fn (fc_tele F) M)) (Some v)) (conj eq_refl Hv)
-  | false => exist _ (translate_entry (fs_def false pv (fc_frames F) A M)) (conj (translate_entry_drop _) (translate_entry_values _ _ _))
-  end.
+(** The fast entry of a definition [A ≔ M] of the relevance [r] in the
+    innermost frame of [F]: a transparent relevant one stores the value of
+    its body, closed over the frames' parameters; a proof stores none, as
+    proofs are never evaluated *)
+Definition def_fentry (F : FCtx) (b pv : bool) (r : relevance) (i : nat) (A M : exp)
+    (HA : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ A : relevance_sort r Typeω@i) (HM : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ M : A) :
+    { e : fentry | fentry_drop e = translate_entry (fs_def b pv r (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } :=
+  match b as b0, r as r0
+    return fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ A : relevance_sort r0 Typeω@i ->
+      { e : fentry | fentry_drop e = translate_entry (fs_def b0 pv r0 (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } with
+  | true, relevant => fun HA =>
+      let (v, Hv) := closed_value F (ctx_fn (fc_tele F) M) (ctx_pi (fc_tele F) A) (proj2 (closed_typed HA HM)) (proj1 (closed_typed HA HM)) in
+      exist _ (fe_def true pv relevant (ctx_pi (fc_tele F) A) (Some (ctx_fn (fc_tele F) M)) (Some v)) (conj eq_refl Hv)
+  | b0, r0 => fun _ =>
+      exist _ (translate_entry (fs_def b0 pv r0 (fc_frames F) A M)) (conj (translate_entry_drop _) (translate_entry_values _ _ _))
+  end HA.
 
 (** The fast entry of a definition with a module part [A ≔ M ‖ E] under
     [Δ], in the innermost frame of [F]: it stores the value of its term,
     closed over [Δ] and the frames' parameters *)
-Definition dm_fentry (F : FCtx) (pv : bool) (Δ : ctx) (A M : exp) (E : modexp) (HM : fc_deps F ⍮ fc_stack F ⍮ Δ ++ fc_tele F ⊢ M : A) :
+Lemma closed_under_typed {Θ Ξ Δ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ nil ⊢ ctx_fn Γ (ctx_fn Δ M) : ctx_pi Γ (ctx_pi Δ A) /\ exists j : nat, Θ ⍮ Ξ ⍮ nil ⊢ ctx_pi Γ (ctx_pi Δ A) : Typeω@j.
+Proof. intros HA HM; destruct (under_typed HA HM) as [HM' [j HA']]; exact (closed_typed HA' HM'). Qed.
+
+Definition dm_fentry (F : FCtx) (pv : bool) (Δ : ctx) (i : nat) (A M : exp) (E : modexp)
+    (HA : fc_deps F ⍮ fc_stack F ⍮ Δ ++ fc_tele F ⊢ A : Typeω@i) (HM : fc_deps F ⍮ fc_stack F ⍮ Δ ++ fc_tele F ⊢ M : A) :
     { e : fentry | fentry_drop e = translate_entry (fs_dm_entry (fc_frames F) pv Δ A M E) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } :=
-  let (v, Hv) := closed_value F (ctx_fn (fc_tele F) (ctx_fn Δ M)) (ctx_pi (fc_tele F) (ctx_pi Δ A)) (closed_typed (under_typed HM)) in
+  let (v, Hv) := closed_value F (ctx_fn (fc_tele F) (ctx_fn Δ M)) (ctx_pi (fc_tele F) (ctx_pi Δ A))
+                   (proj2 (closed_under_typed HA HM)) (proj1 (closed_under_typed HA HM)) in
   exist _ (fe_def_mod pv (ctx_pi (fc_tele F) (ctx_pi Δ A)) (ctx_fn (fc_tele F) (ctx_fn Δ M)) (translate_unit (gu_mk (Δ ++ fc_tele F) (md_alias E))) (Some v))
     (conj (f_equal (fun u => fe_def_mod pv (ctx_pi (fc_tele F) (ctx_pi Δ A)) (ctx_fn (fc_tele F) (ctx_fn Δ M)) u None)
              (translate_unit_drop (gu_mk (Δ ++ fc_tele F) (md_alias E))))
@@ -1080,28 +1169,42 @@ Proof.
   - destruct (fctx_ok_frames _ _ Hok) as [Hr Hc].
     destruct (fs_fresh_sum x fs Hr Hc) as [Hfr | Hn];
       [| right; exists (mdefs_why_dup x); intros Ξ' Hr'; inversion Hr'; subst; contradiction ].
-    destruct (check_exp_at F HΞF (fc_tele F) A M) as [HM | Hn].
+    (** the judgments at [F] are those at the Core stack *)
+    assert (Eqs : fc_deps F = view_deps v /\ fc_stack F = decode_stack fs /\ fc_tele F = gs_tele (decode_stack fs))
+      by (unfold F; rewrite fc_deps_view, fc_stack_frames, <- (fc_tele_ok (mk_fctx v fs Hok None)), fc_stack_frames;
+          cbn [fc_view fc_frames]; repeat split).
+    destruct Eqs as (Ed & Es & Et).
+    destruct (check_ctx F HΞF (fc_tele F)) as [HT | HnT].
+    2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst; apply HnT.
+        rewrite Ed, Es, Et; gen_presups; assumption. }
+    destruct (check_type_relevance F HΞF (fc_tele F) HT A) as [(r & i & HA & Hrel) | HnA].
+    2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst; apply HnA.
+        rewrite Ed, Es, Et; eapply mk_wf_type; [ apply type_sort_relevance_universe | eassumption ]. }
+    destruct (check_exp_typed F (fc_tele F) HT A (type_of_check_type F _ _ _ _ HA) M) as [HM | Hn].
     2:{ right; exists (mdefs_why_untyped x fs A M); intros Ξ' Hr'; inversion Hr'; subst; apply Hn.
-        unfold F; rewrite fc_deps_view, fc_stack_frames, <- (fc_tele_ok (mk_fctx v fs Hok None)), fc_stack_frames;
-        cbn [fc_view fc_frames]; assumption. }
-    assert (HM' : view_deps v ⍮ decode_stack fs ⍮ gs_tele (decode_stack fs) ⊢ M : A)
-      by (unfold F in HM; rewrite <- (fc_tele_ok (mk_fctx v fs Hok None)), fc_deps_view, fc_stack_frames in HM; exact HM).
-    pose proof (add_def_wf _ _ _ b pv _ _ HΞ HM' Hfr) as HΞ'.
-    pose proof (add_def_canon _ _ _ _ _ _ _ HΞ') as HcΞ'.
+        rewrite Ed, Es, Et; assumption. }
+    pose proof HA as HAF; rewrite Ed, Es, Et in HA, Hrel.
+    assert (HM' : view_deps v ⍮ decode_stack fs ⍮ gs_tele (decode_stack fs) ⊢ M : A) by (rewrite <- Et, <- Ed, <- Es; exact HM).
+    pose proof (add_def_wf _ _ _ b pv _ _ _ _ HΞ HA HM' Hfr) as HΞ'.
+    pose proof (add_def_canon _ _ _ _ _ _ _ _ HΞ') as HcΞ'.
     rewrite <- fs_def_dec in HΞ', HcΞ'.
-    destruct (def_fentry F b pv A M HM) as [e0 [Hd Hev]].
-    change (fentry_drop e0 = translate_entry (fs_def b pv fs A M)) in Hd.
+    destruct (def_fentry F b pv r i A M HAF HM) as [e0 [Hd Hev]].
+    change (fentry_drop e0 = translate_entry (fs_def b pv r fs A M)) in Hd.
     assert (Hev' : fentry_values_ok (view_deps v) (decode_stack fs) e0)
       by (unfold F in Hev; rewrite fc_deps_view, fc_stack_frames in Hev; exact Hev).
     destruct (mdefs_dec v b pv ds' (fs_add x e0 fs)
-                (fctx_ok_add _ _ _ _ _ Hok Hd HcΞ' (gc_sub_add _ _ _ _ HΞ Hfr) (fentry_values_grow _ _ _ _ (gc_sub_add _ _ _ _ HΞ Hfr) _ Hev'))
+                (fctx_ok_add _ _ _ _ _ Hok Hd HcΞ' (gc_sub_add _ _ _ _ HΞ Hfr) HΞ HΞ'
+                   (fentry_values_grow _ _ _ _ (gc_sub_add _ _ _ _ HΞ Hfr) HΞ HΞ' _ Hev'))
                 (eq_ind_r (fun Ξ0 => ⊢ᵍ view_deps v ⍮ Ξ0) HΞ' (decode_stack_add _ _ _ _ Hr Hd HcΞ'))
                 (frames_values_add_before _ _ _ _ _ HΞ HΞ' Hv (decode_stack_add _ _ _ _ Hr Hd HcΞ') Hev'))
       as [[fs' [Hok' Hv' Hr']] | [e Hn]].
     + left; exists fs'; constructor; [ exact Hok' | exact Hv' |].
       rewrite (decode_stack_add _ _ _ _ Hr Hd HcΞ'), fs_def_dec in Hr'.
       econstructor; eassumption.
-    + right; exists e; intros Ξ' Hr'; inversion Hr'; subst; eapply Hn.
+    + (** the definition is filed at the one relevance its type infers *)
+      right; exists e; intros Ξ' Hr'; inversion Hr'; subst; eapply Hn.
+      match goal with Hr0 : type_relevance _ _ _ A ?r0 |- _ =>
+        pose proof (type_relevance_functional _ _ _ _ _ _ HΞ Hrel Hr0) as <- end.
       rewrite (decode_stack_add _ _ _ _ Hr Hd HcΞ'), fs_def_dec; eassumption.
 Defined.
 
@@ -1109,9 +1212,11 @@ Defined.
 Lemma equiv_mdefs_run : forall Θ Θ' b pv ds Ξ Ξ', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
     mdefs_run Θ b pv ds Ξ Ξ' -> mdefs_run Θ' b pv ds Ξ Ξ'.
 Proof.
-  intros * He HΞ Hr; revert HΞ; induction Hr as [| x A M ds Ξ Ξ' HM Hfr _ IH]; intros HΞ; [ constructor |].
+  intros * He HΞ Hr; revert HΞ; induction Hr as [| x r A M i ds Ξ Ξ' HA Hrel HM Hfr _ IH]; intros HΞ; [ constructor |].
   pose proof (equiv_exp _ _ _ _ _ _ He HΞ HM) as HM'.
-  econstructor; [ exact HM' | exact Hfr | apply IH, add_def_wf; assumption ].
+  pose proof (equiv_exp _ _ _ _ _ _ He HΞ HA) as HA'.
+  econstructor; [ exact HA' | exact (equiv_type_relevance _ _ _ _ _ _ He Hrel) | exact HM' | exact Hfr
+                | apply IH; eapply add_def_wf; eassumption ].
 Qed.
 
 (** What a command's checks look names up in ([Extraction.Lookup]) is
@@ -1547,29 +1652,33 @@ Section Impl.
     intros Hli Hc Hr; apply (unit_invariant_stack Hli); [ exact (proj1 (unit_invariant_run_wf Hli Hc Hr)) | exact (unit_invariant_run_stack Hli Hr) ].
   Qed.
 
-  Lemma unit_invariant_push {ch Θ K D ΘR Ξ x Δ} :
+  Lemma unit_invariant_push {ch Θ K D ΘR Ξ x Δ l} :
     unit_invariant ch Θ K D ΘR Ξ -> tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+    params_relevant (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l ->
     ⊢ ΘR ⍮ Ξ ⍮ Δ ++ gs_tele Ξ /\ unit_invariant ch Θ K D ΘR (gs_push (qname_in (gs_path Ξ) x) Δ Ξ).
   Proof.
-    intros Hli Htel Hfr HΔ.
+    intros Hli Htel Hfr HΔ HPr.
     assert (HΔ' : ⊢ ΘR ⍮ Ξ ⍮ Δ ++ gs_tele Ξ)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HΔ).
+    pose proof (equiv_params_relevant _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HPr) as HPr'.
     split; [ exact HΔ' |]; apply (unit_invariant_stack Hli); [| exact (stack_in_push _ _ _ _ (ui_stack _ _ _ _ _ _ Hli) Hfr) ].
-    apply wf_gstack_cons; [ apply (ui_wf _ _ _ _ _ _ Hli) | constructor; [ exact Htel | exact HΔ' ] |].
+    apply wf_gstack_cons; [ apply (ui_wf _ _ _ _ _ _ Hli) | econstructor; [ exact Htel | exact HΔ' | exact HPr' ] |].
     destruct Ξ as [| [[mp Kq] U] Ξ]; [ contradiction |]; cbn; exists x; split; [ reflexivity | exact Hfr ].
   Qed.
 
   (** A unit's own frame: its path heads the chain, so it is not filed. *)
-  Lemma unit_invariant_push_unit {fp ch Θ K D ΘR P} :
+  Lemma unit_invariant_push_unit {fp ch Θ K D ΘR P l} :
     unit_invariant (fp :: ch) Θ K D ΘR nil -> tele_ass P -> ⊢ gds_restrict D Θ ⍮ nil ⍮ P ->
+    params_relevant (gds_restrict D Θ) nil nil P l ->
     ⊢ ΘR ⍮ nil ⍮ P /\ unit_invariant (fp :: ch) Θ K D ΘR (gs_push (q_abs fp nil) P nil).
   Proof.
-    intros Hli Htel HP.
+    intros Hli Htel HP HPr.
     assert (HP' : ⊢ ΘR ⍮ nil ⍮ P)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HP).
+    pose proof (equiv_params_relevant _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HPr) as HPr'.
     split; [ exact HP' |]; apply (unit_invariant_stack Hli); [| intros ? ? ? [[= <- <- <-] | []]; left; reflexivity ].
     apply wf_gstack_cons;
-      [ apply (ui_wf _ _ _ _ _ _ Hli) | constructor; [ exact Htel | cbn; rewrite app_nil_r; exact HP' ] |].
+      [ apply (ui_wf _ _ _ _ _ _ Hli) | econstructor; [ exact Htel | cbn; rewrite app_nil_r; exact HP' | exact HPr' ] |].
     cbn; split; [| reflexivity ].
     exact (sub_none _ _ _ (ui_sub _ _ _ _ _ _ Hli) (gi_chain _ _ _ (ui_global _ _ _ _ _ _ Hli) _ (or_introl eq_refl))).
   Qed.
@@ -1638,26 +1747,30 @@ Section Impl.
       Each lemma proves the [post_*] of one branch of the executable from the
       checks that branch makes. *)
 
-  Lemma def_ok {ch Θ K D B Ξ x b pv A M} :
-    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    post_cmd ch Θ K D B Ξ (core_cmd_def x b pv A (Some M)) (mk_run_state_core Θ K D B (gs_add x (gs_def b pv Ξ A M) Ξ)).
+  Lemma def_ok {ch Θ K D B Ξ x b pv r A M} {i : nat} :
+    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    type_relevance (gds_restrict D Θ) Ξ (gs_tele Ξ) A r -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+    post_cmd ch Θ K D B Ξ (core_cmd_def x b pv A (Some M)) (mk_run_state_core Θ K D B (gs_add x (gs_def b pv r Ξ A M) Ξ)).
   Proof.
-    intros Hfr HM ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
-    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv A (Some M) ⇝ ΘR ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ⍮ B ⍮ RbR).
-    { constructor; [| exact Hfr ].
-      exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HM). }
+    intros Hfr HA Hrel HM ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as He.
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv A (Some M) ⇝ ΘR ⍮ gs_add x (gs_def b pv r Ξ A M) Ξ ⍮ B ⍮ RbR).
+    { eapply run_cmd_def; [ exact (equiv_exp _ _ _ _ _ _ He (ui_wf _ _ _ _ _ _ Hli) HA) | exact (equiv_type_relevance _ _ _ _ _ _ He Hrel)
+                          | exact (equiv_exp _ _ _ _ _ _ He (ui_wf _ _ _ _ _ _ Hli) HM) | exact Hfr ]. }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
       [ exact Hr | exact (unit_invariant_run_same Hli (proj1 Hrb) Hr) | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
 
-  Lemma axiom_ok {ch Θ K D B Ξ x b pv A i} :
-    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
-    post_cmd ch Θ K D B Ξ (core_cmd_def x b pv A None) (mk_run_state_core Θ K D B (gs_add x (gs_axiom b pv Ξ A) Ξ)).
+  Lemma axiom_ok {ch Θ K D B Ξ x b pv r A} {i : nat} :
+    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    type_relevance (gds_restrict D Θ) Ξ (gs_tele Ξ) A r ->
+    post_cmd ch Θ K D B Ξ (core_cmd_def x b pv A None) (mk_run_state_core Θ K D B (gs_add x (gs_axiom b pv r Ξ A) Ξ)).
   Proof.
-    intros Hfr HA ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
-    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv A None ⇝ ΘR ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ ⍮ B ⍮ RbR).
-    { econstructor; [| exact Hfr ].
-      exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HA). }
+    intros Hfr HA Hrel ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as He.
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv A None ⇝ ΘR ⍮ gs_add x (gs_axiom b pv r Ξ A) Ξ ⍮ B ⍮ RbR).
+    { eapply run_cmd_axiom; [ exact (equiv_exp _ _ _ _ _ _ He (ui_wf _ _ _ _ _ _ Hli) HA) | exact (equiv_type_relevance _ _ _ _ _ _ He Hrel)
+                            | exact Hfr ]. }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
       [ exact Hr | exact (unit_invariant_run_same Hli (proj1 Hrb) Hr) | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
@@ -1705,18 +1818,21 @@ Section Impl.
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR); [ exact Hr | exact Hli | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
 
-  Lemma mod_pre {ch Θ K D Ξ x Δ} :
+  Lemma mod_pre {ch Θ K D Ξ x Δ l} :
     (exists ΘR, unit_invariant ch Θ K D ΘR Ξ) -> tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+    params_relevant (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l ->
     exists ΘR, unit_invariant ch Θ K D ΘR (gs_push (qname_in (gs_path Ξ) x) Δ Ξ).
-  Proof. intros [ΘR Hli] Htel Hfr HΔ; exists ΘR; exact (proj2 (unit_invariant_push Hli Htel Hfr HΔ)). Qed.
+  Proof. intros [ΘR Hli] Htel Hfr HΔ HPr; exists ΘR; exact (proj2 (unit_invariant_push Hli Htel Hfr HΔ HPr)). Qed.
 
-  Lemma mod_ok {ch Θ K D B Ξ x pv Δ cs r mp Kf U Ξ2} :
+  Lemma mod_ok {ch Θ K D B Ξ x pv Δ l cs r mp Kf U Ξ2} :
     tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+    params_relevant (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l ->
     post_cmds ch Θ K D B (gs_push (qname_in (gs_path Ξ) x) Δ Ξ) cs r -> run_state_core_stack r = (mp, Kf, U) :: Ξ2 ->
     post_cmd ch Θ K D B Ξ (core_cmd_mod x pv Δ cs) (mk_run_state_core (run_state_core_deps r) (run_state_core_closures r) (run_state_core_imports r) (run_state_core_builtins r) (gs_add x (ge_body pv Δ (gu_mod U)) Ξ)).
   Proof.
-    intros Htel Hfr HΔ Hpost HΞ ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
-    destruct (unit_invariant_push Hli Htel Hfr HΔ) as [HΔ' Hli'].
+    intros Htel Hfr HΔ HPr Hpost HΞ ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    pose proof (equiv_params_relevant _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HPr) as HPr'.
+    destruct (unit_invariant_push Hli Htel Hfr HΔ HPr) as [HΔ' Hli'].
     destruct (Hpost _ _ Hli' Hrb) as [ΘR' RbR' Hrun Hli2 Hrb2 Hext Hgr]; cbn beta in Hrun.
     rewrite HΞ in Hrun, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrun) as [F HF]; injection HF as <- ->.
@@ -1726,39 +1842,44 @@ Section Impl.
     apply (unit_invariant_stack Hli2); [ exact (proj1 (unit_invariant_run_wf Hli (proj1 Hrb) Hr)) | exact (unit_invariant_run_stack Hli Hr) ].
   Qed.
 
-  Lemma alias_ok {ch Θ K D B Ξ x pv Δ E} :
+  Lemma alias_ok {ch Θ K D B Ξ x pv Δ l E} :
     tele_ass Δ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
-    gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh x Ξ ->
+    gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E -> params_relevant (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l -> gs_fresh x Ξ ->
     post_cmd ch Θ K D B Ξ (core_cmd_alias x pv Δ E) (mk_run_state_core Θ K D B (gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ)).
   Proof.
-    intros Htel HΔ HE Hfr ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    intros Htel HΔ HE HPr Hfr ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq.
     assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_alias x pv Δ E ⇝ ΘR ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ ⍮ B ⍮ RbR)
-      by (constructor; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HΔ)
-                       | exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE) | exact Hfr ]).
+      by (eapply run_cmd_alias; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HΔ)
+                       | exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE)
+                       | exact (equiv_params_relevant _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HPr) | exact Hfr ]).
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
       [ exact Hr | exact (unit_invariant_run_same Hli (proj1 Hrb) Hr) | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
 
   (** An inductive alias, with the premises of [run_cmd_ind_alias] at the
       restriction. *)
-  Lemma indalias_ok {ch Θ K D B Ξ x pv Δ E M W} :
+  Lemma indalias_ok {ch Θ K D B Ξ x pv Δ l E M W} {i : nat} :
     tele_ass Δ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    params_relevant (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l ->
     modexp_as_term E = Some M ->
     @alg_type_infer (gc_mk (gds_restrict D Θ) Ξ) (Δ ++ gs_tele Ξ) W M ->
+    gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
     ind_former (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) M W ->
     gs_fresh x Ξ ->
     post_cmd ch Θ K D B Ξ (core_cmd_inductive_alias x pv Δ E) (mk_run_state_core Θ K D B (gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M E) Ξ)).
   Proof.
-    intros Htel HΔ HE Ht HW HM Hf Hfr ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    intros Htel HΔ HE HPr Ht HW HWt HM Hf Hfr ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq.
     assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_inductive_alias x pv Δ E ⇝
                    ΘR ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M E) Ξ ⍮ B ⍮ RbR).
     { eapply run_cmd_ind_alias; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HΔ)
-                           | exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE) | exact Ht
+                           | exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE)
+                           | exact (equiv_params_relevant _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HPr) | exact Ht
                            | exact (equiv_alg_infer _ _ _ _ _ _ Heq HW)
+                           | exact (equiv_exp _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HWt)
                            | exact (equiv_exp _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HM)
                            | exact (equiv_ind_former _ _ _ _ _ _ Heq Hf) | exact Hfr ]. }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
@@ -1767,23 +1888,27 @@ Section Impl.
 
   (** A record alias, with the premises of [run_cmd_record_alias] at the
       restriction. *)
-  Lemma recalias_ok {ch Θ K D B Ξ x pv Δ E M W} :
+  Lemma recalias_ok {ch Θ K D B Ξ x pv Δ l E M W} {i : nat} :
     tele_ass Δ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    params_relevant (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l ->
     modexp_as_term E = Some M ->
     @alg_type_infer (gc_mk (gds_restrict D Θ) Ξ) (Δ ++ gs_tele Ξ) W M ->
+    gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
     record_former (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) M W ->
     gs_fresh x Ξ ->
     post_cmd ch Θ K D B Ξ (core_cmd_record_alias x pv Δ E) (mk_run_state_core Θ K D B (gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M E) Ξ)).
   Proof.
-    intros Htel HΔ HE Ht HW HM Hf Hfr ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    intros Htel HΔ HE HPr Ht HW HWt HM Hf Hfr ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq.
     assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_record_alias x pv Δ E ⇝
                    ΘR ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M E) Ξ ⍮ B ⍮ RbR).
     { eapply run_cmd_record_alias; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HΔ)
-                              | exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE) | exact Ht
+                              | exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE)
+                              | exact (equiv_params_relevant _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HPr) | exact Ht
                               | exact (equiv_alg_infer _ _ _ _ _ _ Heq HW)
+                              | exact (equiv_exp _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HWt)
                               | exact (equiv_exp _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HM)
                               | exact (equiv_record_former _ _ _ _ _ _ Heq Hf) | exact Hfr ]. }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
@@ -1992,14 +2117,17 @@ Section Impl.
   Lemma gens_nil_ok {ch Θ K D Ξ} : post_gens ch Θ K D Ξ nil Ξ.
   Proof. intros ΘR Hli; split; [ constructor | exact Hli ]. Qed.
 
-  Lemma gen_def_step {ch Θ K D ΘR Ξ d pv A M} :
-    unit_invariant ch Θ K D ΘR Ξ -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A /\ unit_invariant ch Θ K D ΘR (gs_add d (gs_def true pv Ξ A M) Ξ).
+  Lemma gen_def_step {ch Θ K D ΘR Ξ d pv r A M} {i : nat} :
+    unit_invariant ch Θ K D ΘR Ξ -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+    ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i /\ ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A /\
+    unit_invariant ch Θ K D ΘR (gs_add d (gs_def true pv r Ξ A M) Ξ).
   Proof.
-    intros Hli Hfr HM.
+    intros Hli Hfr HA HM.
     pose proof (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HM) as HM'.
-    split; [ exact HM' |].
-    exact (unit_invariant_stack Hli (add_def_wf _ _ _ _ _ _ _ (ui_wf _ _ _ _ _ _ Hli) HM' Hfr)
+    pose proof (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HA) as HA'.
+    split; [ exact HA' | split; [ exact HM' |] ].
+    exact (unit_invariant_stack Hli (add_def_wf _ _ _ _ _ _ _ _ _ (ui_wf _ _ _ _ _ _ Hli) HA' HM' Hfr)
              (stack_in_add _ _ _ _ (ui_stack _ _ _ _ _ _ Hli))).
   Qed.
 
@@ -2011,27 +2139,30 @@ Section Impl.
     pose proof (equiv_modexp _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HE) as HE'.
     split; [ exact HE' |].
     apply (unit_invariant_stack Hli); [| exact (stack_in_add _ _ _ _ (ui_stack _ _ _ _ _ _ Hli)) ].
-    apply (add_alias_wf _ _ _ _ nil); [ exact (ui_wf _ _ _ _ _ _ Hli) | constructor | | exact HE' | exact Hfr ].
+    apply (add_alias_wf _ _ _ _ nil _ 0);
+      [ exact (ui_wf _ _ _ _ _ _ Hli) | constructor | | exact HE' | apply params_relevant_nil | exact Hfr ].
     constructor; exact (presup_modexp_eq_ctx HE').
   Qed.
 
-  Lemma gen_def_pre {ch Θ K D Ξ d pv A M} :
-    (exists ΘR, unit_invariant ch Θ K D ΘR Ξ) -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    exists ΘR, unit_invariant ch Θ K D ΘR (gs_add d (gs_def true pv Ξ A M) Ξ).
-  Proof. intros [ΘR Hli] Hfr HM; exists ΘR; exact (proj2 (gen_def_step Hli Hfr HM)). Qed.
+  Lemma gen_def_pre {ch Θ K D Ξ d pv r A M} {i : nat} :
+    (exists ΘR, unit_invariant ch Θ K D ΘR Ξ) -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+    exists ΘR, unit_invariant ch Θ K D ΘR (gs_add d (gs_def true pv r Ξ A M) Ξ).
+  Proof. intros [ΘR Hli] Hfr HA HM; exists ΘR; exact (proj2 (proj2 (gen_def_step Hli Hfr HA HM))). Qed.
 
   Lemma gen_alias_pre {ch Θ K D Ξ d pv E} :
     (exists ΘR, unit_invariant ch Θ K D ΘR Ξ) -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     exists ΘR, unit_invariant ch Θ K D ΘR (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ).
   Proof. intros [ΘR Hli] Hfr HE; exists ΘR; exact (proj2 (gen_alias_step Hli Hfr HE)). Qed.
 
-  Lemma gen_def_ok {ch Θ K D Ξ d pv A M gs Ξ'} :
-    gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    post_gens ch Θ K D (gs_add d (gs_def true pv Ξ A M) Ξ) gs Ξ' ->
-    post_gens ch Θ K D Ξ (generated_item_def d pv A M :: gs) Ξ'.
+  Lemma gen_def_ok {ch Θ K D Ξ d pv r A M gs Ξ'} {i : nat} :
+    gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+    post_gens ch Θ K D (gs_add d (gs_def true pv r Ξ A M) Ξ) gs Ξ' ->
+    post_gens ch Θ K D Ξ (generated_item_def d pv r A M :: gs) Ξ'.
   Proof.
-    intros Hfr HM Hp ΘR Hli; destruct (gen_def_step (pv := pv) Hli Hfr HM) as [HM' Hli'].
-    destruct (Hp _ Hli') as [Hg Hli2]; split; [ constructor; assumption | exact Hli2 ].
+    intros Hfr HA HM Hp ΘR Hli; destruct (gen_def_step (pv := pv) Hli Hfr HA HM) as (HA' & HM' & Hli').
+    destruct (Hp _ Hli') as [Hg Hli2]; split; [ econstructor; eassumption | exact Hli2 ].
   Qed.
 
   Lemma gen_alias_ok {ch Θ K D Ξ d pv E gs Ξ'} :
@@ -2045,44 +2176,52 @@ Section Impl.
 
   (** A generated definition with a module part, its term [M] of the type
       [W] inferred for it and its module part the alias of [E]. *)
-  Lemma gen_dm_step {ch Θ K D ΘR Ξ d pv M E W} :
+  Lemma gen_dm_step {ch Θ K D ΘR Ξ d pv M E W} {i : nat} :
     unit_invariant ch Θ K D ΘR Ξ -> gs_fresh d Ξ ->
     @alg_type_infer (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) W M ->
+    gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    @alg_type_infer (gc_mk ΘR Ξ) (gs_tele Ξ) W M /\ ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W /\
+    @alg_type_infer (gc_mk ΘR Ξ) (gs_tele Ξ) W M /\ ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i /\
+    ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W /\
     ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E /\ unit_invariant ch Θ K D ΘR (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ).
   Proof.
-    intros Hli Hfr HW HM HE.
+    intros Hli Hfr HW HWt HM HE.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq.
     pose proof (equiv_exp _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HM) as HM'.
+    pose proof (equiv_exp _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HWt) as HWt'.
     pose proof (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE) as HE'.
-    split; [ exact (equiv_alg_infer _ _ _ _ _ _ Heq HW) | split; [ exact HM' | split; [ exact HE' |] ] ].
+    split; [ exact (equiv_alg_infer _ _ _ _ _ _ Heq HW) | split; [ exact HWt' | split; [ exact HM' | split; [ exact HE' |] ] ] ].
     apply (unit_invariant_stack Hli); [| exact (stack_in_add _ _ _ _ (ui_stack _ _ _ _ _ _ Hli)) ].
-    apply (add_dm_wf _ _ _ _ nil); [ exact (ui_wf _ _ _ _ _ _ Hli) | constructor | | exact HM' | exact HE' | exact Hfr ].
+    apply (add_dm_wf _ _ _ _ nil _ _ _ i 0);
+      [ exact (ui_wf _ _ _ _ _ _ Hli) | constructor | | exact HWt' | exact HM' | exact HE' | apply params_relevant_nil | exact Hfr ].
     constructor; exact (presup_exp_ctx HM').
   Qed.
 
   (** The invariant after a generated definition with a module part. *)
-  Lemma gen_dm_pre {ch Θ K D Ξ d pv M E W} :
+  Lemma gen_dm_pre {ch Θ K D Ξ d pv M E W} {i : nat} :
     (exists ΘR, unit_invariant ch Θ K D ΘR Ξ) -> gs_fresh d Ξ ->
     @alg_type_infer (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) W M ->
+    gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     exists ΘR, unit_invariant ch Θ K D ΘR (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ).
-  Proof. intros [ΘR Hli] Hfr HW HM HE; exists ΘR; exact (proj2 (proj2 (proj2 (gen_dm_step Hli Hfr HW HM HE)))). Qed.
+  Proof.
+    intros [ΘR Hli] Hfr HW HWt HM HE; exists ΘR; exact (proj2 (proj2 (proj2 (proj2 (gen_dm_step Hli Hfr HW HWt HM HE))))).
+  Qed.
 
   (** A generated definition with a module part, then the rest, run as
       [gens_run_def_mod] runs them. *)
-  Lemma gen_dm_ok {ch Θ K D Ξ d pv A M E W gs Ξ'} :
+  Lemma gen_dm_ok {ch Θ K D Ξ d pv A M E W gs Ξ'} {i : nat} :
     gs_fresh d Ξ ->
     @alg_type_infer (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) W M ->
+    gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     post_gens ch Θ K D (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
     post_gens ch Θ K D Ξ (generated_item_def_mod d pv A M E :: gs) Ξ'.
   Proof.
-    intros Hfr HW HM HE Hp ΘR Hli; destruct (gen_dm_step (pv := pv) Hli Hfr HW HM HE) as (HW' & HM' & HE' & Hli').
+    intros Hfr HW HWt HM HE Hp ΘR Hli; destruct (gen_dm_step (pv := pv) Hli Hfr HW HWt HM HE) as (HW' & HWt' & HM' & HE' & Hli').
     destruct (Hp _ Hli') as [Hg Hli2]; split; [ econstructor; eassumption | exact Hli2 ].
   Qed.
 
@@ -2150,16 +2289,18 @@ Section Impl.
   (** A later member is well formed with an empty module where it is
       declared. *)
   Lemma later_head_entry {ch Θ K D Ξ pv R pq Dd k xs} : mems_pre Ξ R pq Dd (S k) xs ->
+      (forall ΘR, unit_invariant ch Θ K D ΘR Ξ -> exists l, params_relevant ΘR Ξ (gs_tele Ξ) (raw_decl_uparams R) l) ->
       head_entry ch Θ K D Ξ pv pq Dd (S k) xs.
   Proof.
-    intros Hp; destruct xs as [| x xs]; [ exact I |]; intros ΘR Hli.
+    intros Hp Hrel; destruct xs as [| x xs]; [ exact I |]; intros ΘR Hli.
+    destruct (Hrel ΘR Hli) as [lu Hlu].
     destruct (mems_pre_later _ _ _ _ _ _ Hp ltac:(apply PeanoNat.Nat.lt_0_succ)) as [mq Kq Δ Φ Ξ0 y0 pv0 Φm -> He ->].
     destruct (mems_pre_heads _ _ _ _ _ _ Hp 0 x eq_refl) as (M & HM & Hh); rewrite PeanoNat.Nat.add_0_r in HM.
     pose proof (mems_pre_count _ _ _ _ _ _ Hp) as Hc; cbn [List.length] in Hc.
     eapply later_member_entry;
       [ exact (ui_wf _ _ _ _ _ _ Hli) | exact He | exact HM | apply PeanoNat.Nat.lt_0_succ
       | eapply PeanoNat.Nat.lt_le_trans; [| exact Hc ]; rewrite PeanoNat.Nat.add_succ_r; apply PeanoNat.Nat.lt_succ_r, PeanoNat.Nat.le_add_r
-      | exact Hh | exact (mems_pre_uparams _ _ _ _ _ _ Hp) ].
+      | exact Hh | exact (mems_pre_uparams _ _ _ _ _ _ Hp) | exact Hlu ].
   Qed.
 
   (** The first member is, by the group checked at its views' instances. *)
@@ -3735,7 +3876,12 @@ Section Impl.
                          (ind_mod_cmds_f (cmd_F B (member_push_pre H Hp HE)) R pq Dd k M)) r1)
       (HΞ : run_state_frames r1 = f :: fs2) :
       head_entry ch (decode_units (run_state_units r1)) (run_state_closures r1) (run_state_imports r1) (decode_stack (fs_add x (fe_ind pv pq k Dd (ff_body f)) fs)) pv pq Dd (S k) xs.
-  Proof. rewrite (proj1 (member_entry_dec H Hp HE Hr1 HΞ)); exact (later_head_entry (mems_pre_tail Hp pv _)). Qed.
+  Proof.
+    rewrite (proj1 (member_entry_dec H Hp HE Hr1 HΞ)); apply (later_head_entry (mems_pre_tail Hp pv _)).
+    (** the uniform parameters are relevant where the member is filed *)
+    intros ΘR Hli.
+    exact (added_ind_params_relevant _ _ _ _ _ _ _ _ _ (mems_fresh_head Hp) (ui_wf _ _ _ _ _ _ Hli) (mems_pre_uparams _ _ _ _ _ _ Hp)).
+  Qed.
 
   (** The members [k], [k + 1], …, filed *)
   Lemma mems_cons_res {ch s K D B fs pv R pq Dd k x xs M} (H : pre ch s K D fs) (Hp : mems_pre (decode_stack fs) R pq Dd k (x :: xs))

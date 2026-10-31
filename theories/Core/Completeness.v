@@ -97,6 +97,37 @@ Proof.
   repeat apply conj; eassumption.
 Qed.
 
+(** The same at a semantic type equality ([⊨ᵗ]), of either sort. *)
+Lemma rel_type_under_ctx_at_initial_env : forall {Γ A A'} {i : nat},
+    Γ ⊨ᵗ A ≈ A' at i ->
+    exists ρ a a',
+      initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
+      Dom a ≈ a' ∈ per_univ i.
+Proof.
+  intros * [env_relΓ HΓ Hgen].
+  pose proof (per_ctx_then_per_env_initial_env HΓ) as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
+  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  pose proof (proj1 (per_ctx_env_proofs _ _ _ HΓ _ _ Hrel)) as Hpf.
+  destruct (Hgen _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hrel
+                 (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf)) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
+  exists ρ, a2, a3; repeat apply conj; try eassumption; pairwise.
+Qed.
+
+(** A type equality at a sort, read at the initial environment: the two
+    values are related in a universe ([rel_type_of_sort]). *)
+Lemma rel_typ_sort_at_initial_env : forall {Γ A A' Srt},
+    type_sort Srt ->
+    Γ ⊢ A ≈ A' : Srt ->
+    exists ρ a a' (i : nat),
+      initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
+      Dom a ≈ a' ∈ per_univ i.
+Proof.
+  intros * HS H.
+  destruct (rel_type_of_sort HS (completeness_fundamental_exp_eq _ _ _ _ H)) as [i Hi].
+  destruct (rel_type_under_ctx_at_initial_env Hi) as (ρ & a & a' & ?).
+  exists ρ, a, a', i; assumption.
+Qed.
+
 End Fixed_GCtx.
 
 (** Equal terms have the same normal form: the semantic equality of

@@ -32,7 +32,12 @@ Section InitialEnvImpl.
 
   #[local]
   Ltac impl_obligation_tac :=
-    repeat impl_obligation_tac1; try econstructor; mauto.
+    repeat impl_obligation_tac1;
+    first [ solve [ eauto ]
+          (** A definition: the proof, or its body's value, by the sort *)
+          | solve [ eapply initial_env_cons_def_proof; eassumption ]
+          | solve [ eapply initial_env_cons_def; eassumption ]
+          | try econstructor; mauto ].
 
   #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations initial_env_impl Θ Ξ G (H : initial_env_order Θ Ξ G) : { p | initial_env Θ Ξ G p } by struct H :=
@@ -40,11 +45,15 @@ Section InitialEnvImpl.
   | Θ, Ξ, cons (ce_ass A) G, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
-      exist _ (p ↦ ⇑! a (List.length G)) _
-  | Θ, Ξ, cons (ce_def A M) G, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ G _ in
-      let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
-      exist _ (p ↦ m) _
+      exist _ (p ↦ relevant_value a (⇑! a (List.length G))) _
+  (** A definition, by the sort of its type *)
+  | Θ, Ξ, cons (ce_def A M) G, H with initial_env_impl Θ Ξ G _ := {
+    | exist _ p Hp with eval_exp_impl Θ Ξ A p _ := {
+      | exist _ a Ha with inspect (domain_relevance a) := {
+        | exist _ relevant Er =>
+            let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
+            exist _ (p ↦ m) _
+        | exist _ propositional Er => exist _ (p ↦ ⋆ᵈ) _ } } }
   | Θ, Ξ, cons (ce_mod U) G, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (h, Hh) := eval_modexp_impl Θ Ξ (me_lit U) p _ in
@@ -96,16 +105,24 @@ Section NbEDef.
 
   #[local]
   Ltac impl_obligation_tac :=
-    repeat impl_obligation_tac1; try econstructor; mauto.
+    repeat impl_obligation_tac1;
+    first [ solve [ eauto ]
+          (** At a proposition, the proof; otherwise the term's normal form *)
+          | solve [ econstructor; [ eassumption | eassumption | apply nbe_term_proof; assumption ] ]
+          | solve [ eapply nbe_relevant_intro; eassumption ]
+          | try econstructor; mauto ].
 
   #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
   Equations nbe_impl Θ Ξ G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
-  | Θ, Ξ, G, M, A, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ G _ in
-      let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
-      let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
-      let (w, Hw) := read_nf_impl Θ Ξ (List.length G) ⇓ a m _ in
-      exist _ w _.
+  | Θ, Ξ, G, M, A, H with initial_env_impl Θ Ξ G _ := {
+    | exist _ p Hp with eval_exp_impl Θ Ξ A p _ := {
+      (** At a proposition: the proof, the term not evaluated *)
+      | exist _ a Ha with inspect (domain_relevance a) := {
+        | exist _ propositional Er => exist _ ⋆ⁿ _
+        | exist _ relevant Er =>
+            let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
+            let (w, Hw) := read_nf_impl Θ Ξ (List.length G) ⇓ a m _ in
+            exist _ w _ } } }.
 
 End NbEDef.
 

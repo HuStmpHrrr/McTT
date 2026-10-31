@@ -46,22 +46,39 @@ Inductive fast_eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( fast_eval_exp_order Θ Ξ M p ->
      fast_eval_exp_order Θ Ξ N p ->
      fast_eval_exp_order Θ Ξ (maxl M N) p )
+(** [Prop] *)
+| fast_eval_exp_order_prop :
+  `( fast_eval_exp_order Θ Ξ Propₘ p )
 | fast_eval_exp_order_True :
   `( fast_eval_exp_order Θ Ξ ⊤ p )
 | fast_eval_exp_order_true :
   `( fast_eval_exp_order Θ Ξ ⋆ p )
 | fast_eval_exp_order_False :
   `( fast_eval_exp_order Θ Ξ ⊥ p )
-(** The scrutinee of [efq] must evaluate to a neutral, since no other value
-    has a rule. *)
-| fast_eval_exp_order_exfalso :
-  `( fast_eval_exp_order Θ Ξ M p ->
-     (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> exists b n, m = ⇑ b n) ->
-     (forall b m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ⇑ b m -> fast_eval_exp_order Θ Ξ A (p ↦ ⇑ b m)) ->
-     fast_eval_exp_order Θ Ξ (efq M return A) p )
+(** [efq]: its type only; its proof is not evaluated *)
+| fast_eval_exp_order_absurd :
+  `( fast_eval_exp_order Θ Ξ C p ->
+     fast_eval_exp_order Θ Ξ (efq M return C) p )
+(** A [Σₚ]: its first component *)
+| fast_eval_exp_order_and :
+  `( fast_eval_exp_order Θ Ξ P p ->
+     fast_eval_exp_order Θ Ξ (Σₚ P Q) p )
+(** The proofs of a conjunction and of its components: nothing evaluated *)
+| fast_eval_exp_order_conj :
+  `( fast_eval_exp_order Θ Ξ (a_conj T M N) p )
+| fast_eval_exp_order_left :
+  `( fast_eval_exp_order Θ Ξ (a_left M) p )
+| fast_eval_exp_order_right :
+  `( fast_eval_exp_order Θ Ξ (a_right M) p )
+(** The placeholder type and its element *)
+| fast_eval_exp_order_placeholder_type :
+  `( fast_eval_exp_order Θ Ξ a_placeholder_type p )
+| fast_eval_exp_order_placeholder :
+  `( fast_eval_exp_order Θ Ξ a_placeholder p )
+(** A [Π], at its tag: its domain *)
 | fast_eval_exp_order_pi :
   `( fast_eval_exp_order Θ Ξ A p ->
-     fast_eval_exp_order Θ Ξ (Π A B) p )
+     fast_eval_exp_order Θ Ξ (a_pi r A B) p )
 | fast_eval_exp_order_indty :
   `( fast_eval_exp_order Θ Ξ (a_ind pq k) p )
 (** A constructor that is a value of its own before any argument *)
@@ -104,18 +121,38 @@ Inductive fast_eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> exists pq, elim_grp_of oq m = Some pq) ->
      (forall ups m pq, ⟦ Us ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ups -> ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> elim_grp_of oq m = Some pq ->
         fast_eval_elim_order Θ Ξ p pq ups Bks j m) ->
-     fast_eval_exp_order Θ Ξ (a_elim oq Us j Bks M) p )
+     fast_eval_exp_order Θ Ξ (a_elim relevant oq Us j Bks M) p )
+(** An eliminator into propositions: nothing evaluated *)
+| fast_eval_exp_order_elim_proof :
+  `( fast_eval_exp_order Θ Ξ (a_elim propositional oq Us j Bks M) p )
+(** A function: its domain *)
 | fast_eval_exp_order_fn :
-  `( fast_eval_exp_order Θ Ξ (λ A M) p )
+  `( fast_eval_exp_order Θ Ξ A p ->
+     fast_eval_exp_order Θ Ξ (λ A M) p )
+(** An application: the function, then, by the sort of the argument it
+    takes, the argument and the application to it, or the application to
+    the proof *)
 | fast_eval_exp_order_app :
   `( fast_eval_exp_order Θ Ξ M p ->
-     fast_eval_exp_order Θ Ξ N p ->
-     (forall m n, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ n -> fast_eval_app_order Θ Ξ m n) ->
+     (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> arg_relevance Θ Ξ m = relevant -> fast_eval_exp_order Θ Ξ N p) ->
+     (forall m n, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> arg_relevance Θ Ξ m = relevant -> ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ n ->
+        fast_eval_app_order Θ Ξ m n) ->
+     (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> arg_relevance Θ Ξ m = propositional -> fast_eval_app_order Θ Ξ m ⋆ᵈ) ->
      fast_eval_exp_order Θ Ξ (M $ N) p )
+(** An unannotated local definition: its body, then the rest *)
 | fast_eval_exp_order_let :
   `( fast_eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> fast_eval_exp_order Θ Ξ B (p ↦ m)) ->
-     fast_eval_exp_order Θ Ξ (a_let (b_def oA M) B) p )
+     fast_eval_exp_order Θ Ξ (a_let (b_def None M) B) p )
+(** An annotated one: its type, then, by the type's sort, its body and the
+    rest, or the rest at the proof *)
+| fast_eval_exp_order_let_ann :
+  `( fast_eval_exp_order Θ Ξ A p ->
+     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = relevant -> fast_eval_exp_order Θ Ξ M p) ->
+     (forall a m, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = relevant -> ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m ->
+        fast_eval_exp_order Θ Ξ B (p ↦ m)) ->
+     (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = propositional -> fast_eval_exp_order Θ Ξ B (p ↦ ⋆ᵈ)) ->
+     fast_eval_exp_order Θ Ξ (a_let (b_def (Some A) M) B) p )
 | fast_eval_exp_order_let_mod :
   `( fast_eval_close_order Θ Ξ Δ D p ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ p ↘ h -> fast_eval_exp_order Θ Ξ B (p ↦ᵐ h)) ->
@@ -131,15 +168,37 @@ Inductive fast_eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 (** A record's type former is a value. *)
 | fast_eval_exp_order_record :
   `( fast_eval_exp_order Θ Ξ (a_record pq) p )
-(** A record element: the values of its fields *)
+(** A record element: its type, which finds a record, then the values of
+    its fields at the record's sorts *)
 | fast_eval_exp_order_tuple :
-  `( fast_eval_exps_order Θ Ξ (List.map snd fs) p ->
+  `( fast_eval_exp_order Θ Ξ T p ->
+     (forall t, ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ t -> exists pq ns R, t = d_record pq ns /\ record_lookup Θ Ξ pq = Some R) ->
+     (forall pq ns R, ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ d_record pq ns -> record_lookup Θ Ξ pq = Some R ->
+        fast_eval_field_vals_order Θ Ξ (record_field_relevance R) (List.map snd fs) p) ->
      fast_eval_exp_order Θ Ξ (a_tuple T fs) p )
 (** A field: the value, then the field of it *)
 | fast_eval_exp_order_proj :
   `( fast_eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> fast_eval_proj_order Θ Ξ f m) ->
      fast_eval_exp_order Θ Ξ (a_proj f M) p )
+
+(** The values of the fields of a record value, as [fast_eval_field_vals]
+    reads them *)
+with fast_eval_field_vals_order (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> Prop :=
+(** No field *)
+| fast_eval_field_vals_order_nil :
+  `( fast_eval_field_vals_order Θ Ξ rs nil p )
+(** A relevant field: its value, then the rest *)
+| fast_eval_field_vals_order_relevant :
+  `( List.hd relevant rs = relevant ->
+     fast_eval_exp_order Θ Ξ M p ->
+     fast_eval_field_vals_order Θ Ξ (List.tl rs) Ms p ->
+     fast_eval_field_vals_order Θ Ξ rs (M :: Ms) p )
+(** A propositional field: the rest *)
+| fast_eval_field_vals_order_proof :
+  `( List.hd relevant rs = propositional ->
+     fast_eval_field_vals_order Θ Ξ (List.tl rs) Ms p ->
+     fast_eval_field_vals_order Θ Ξ rs (M :: Ms) p )
 
 (** The field [f] of a value, as [fast_eval_proj] reads it *)
 with fast_eval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
@@ -166,7 +225,7 @@ with fast_eval_neutral_fields_order (Θ : gdeps) (Ξ : gstack) : list domain -> 
 | fast_eval_neutral_fields_order_cons :
   `( fast_eval_exp_order Θ Ξ T (env_args nil (ns ++ pre)) ->
      (forall a, ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
-        fast_eval_neutral_fields_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
+        fast_eval_neutral_fields_order Θ Ξ ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil)) ->
      fast_eval_neutral_fields_order Θ Ξ ns m ((g, T) :: fl) pre )
 
 (** The eliminator of the group at [pq] at its member [j], on a value, as
@@ -214,7 +273,7 @@ with fast_eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domai
 (** A non-recursive argument *)
 | fast_eval_ihs_order_arg :
   `( fast_eval_ihs_order Θ Ξ p pq ups Bks oB gs vs ->
-     fast_eval_ihs_order Θ Ξ p pq ups Bks oB (ca_arg T :: gs) (v :: vs) )
+     fast_eval_ihs_order Θ Ξ p pq ups Bks oB (ca_arg r T :: gs) (v :: vs) )
 (** A recursive argument the branch reads one result of: its results,
     then the rest *)
 | fast_eval_ihs_order_rec_case :
@@ -338,7 +397,7 @@ with fast_eval_ihtys_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> 
 (** A non-recursive field: the rest, under it *)
 | fast_eval_ihtys_order_arg :
   `( fast_eval_ihtys_order Θ Ξ pq ups pm As (p ↦ v) gs vs ->
-     fast_eval_ihtys_order Θ Ξ pq ups pm As p (ca_arg T :: gs) (v :: vs) )
+     fast_eval_ihtys_order Θ Ξ pq ups pm As p (ca_arg r T :: gs) (v :: vs) )
 (** A recursive field: its shape's, then the rest *)
 | fast_eval_ihtys_order_rec :
   `( fast_eval_ihty_order Θ Ξ pq ups pm As p t v ->
@@ -348,7 +407,10 @@ with fast_eval_ihtys_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> 
 with fast_eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | fast_eval_app_order_fn :
   `( fast_eval_exp_order Θ Ξ M (p ↦ n) ->
-     fast_eval_app_order Θ Ξ λᵈ p M n )
+     fast_eval_app_order Θ Ξ (λᵈ a p M) n )
+(** The proof applied: the proof *)
+| fast_eval_app_order_proof :
+  `( fast_eval_app_order Θ Ξ ⋆ᵈ n )
 | fast_eval_app_order_neut :
   `( fast_eval_exp_order Θ Ξ B (p ↦ n) ->
      fast_eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
@@ -492,37 +554,59 @@ with fast_eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 (** A term part of a global module ([gc_term]): it, closed, applied to the
     arguments *)
 | fast_eval_sel_order_global :
-  `( gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
      fast_eval_exp_order Θ Ξ M nil ->
      (forall f, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f -> fast_eval_apps_order Θ Ξ f args) ->
      fast_eval_sel_order Θ Ξ (dm_global pq args) x )
 | fast_eval_sel_order_global_neut :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv A B) ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv relevant A B) ->
      b = false \/ B = None ->
      fast_eval_exp_order Θ Ξ A nil ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ a -> fast_eval_apps_order Θ Ξ (⇑ a (d_glob (qname_app pq (x :: nil)))) args) ->
      fast_eval_sel_order Θ Ξ (dm_global pq args) x )
+(** A proof member of a saturated global module: nothing evaluated *)
+| fast_eval_sel_order_global_proof :
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def b pv propositional A B) ->
+     fast_eval_sel_order Θ Ξ (dm_global pq args) x )
 | fast_eval_sel_order_global_ind :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      fast_eval_apps_order Θ Ξ (d_ind pg k nil) args ->
      fast_eval_sel_order Θ Ξ (dm_global pq args) x )
+(** A member of a global module lacking a parameter: no recursion *)
+| fast_eval_sel_order_global_unsat :
+  `( gc_loc Θ Ξ pq = Some (T, Φ) ->
+     List.length args < List.length T ->
+     fast_eval_sel_order Θ Ξ (dm_global pq args) x )
 | fast_eval_sel_order_unsat :
   `( fast_eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
-(** A term part of a saturated body ([entry_tm]) *)
+(** A relevant term part of a saturated body ([entry_tm]) *)
 | fast_eval_sel_order_body :
   `( kinds_body_xp Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
+     entry_relevance E = relevant ->
      fast_eval_body_env_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p' -> fast_eval_exp_order Θ Ξ M p') ->
+     fast_eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
+(** A proof member of a saturated body: nothing evaluated *)
+| fast_eval_sel_order_body_proof :
+  `( kinds_body_xp Θ Ξ p Φ Φx ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+     entry_tm E = Some (A, M) ->
+     entry_relevance E = propositional ->
      fast_eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
 | fast_eval_sel_order_member :
   `( fast_eval_sel_order Θ Ξ (dm_member h ch) x )
 (** A record type of a global module, not a definition: its type former,
     applied to the arguments *)
 | fast_eval_sel_order_global_record :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+  `( module_saturated Θ Ξ pq args ->
+     gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      record_lookup Θ Ξ (qname_app pq (x :: nil)) = Some R ->
      fast_eval_apps_order Θ Ξ (d_record (qname_app pq (x :: nil)) nil) args ->
      fast_eval_sel_order Θ Ξ (dm_global pq args) x )
@@ -572,7 +656,11 @@ with fast_eval_body_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :
 | fast_eval_body_env_order_def :
   `( fast_eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p1 -> fast_eval_exp_order Θ Ξ M p1) ->
-     fast_eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
+     fast_eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv relevant A (Some M))) )
+(** A definition tagged a proposition: the body before it *)
+| fast_eval_body_env_order_def_proof :
+  `( fast_eval_body_env_order Θ Ξ p Φ ->
+     fast_eval_body_env_order Θ Ξ p (gm_ext Φ y (ge_def b pv propositional A (Some M))) )
 | fast_eval_body_env_order_mod :
   `( fast_eval_body_env_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p1 -> fast_eval_close_order Θ Ξ Δy Dy p1) ->
@@ -587,7 +675,8 @@ with fast_eval_body_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :
 #[local]
 Hint Constructors fast_eval_exp_order fast_eval_elim_order fast_eval_ihs_order fast_eval_ih_order fast_eval_mref_order fast_eval_shape_type_order fast_eval_ihty_order fast_eval_app_order fast_eval_exps_order fast_eval_apps_order
   fast_eval_modexp_order fast_eval_close_order fast_eval_appm_order fast_eval_appms_order fast_eval_sel_order fast_eval_selm_order fast_eval_selc_order fast_eval_selmc_order
-  fast_eval_body_env_order fast_eval_proj_order fast_eval_neutral_fields_order fast_eval_projs_order fast_eval_ihtys_order : mctt.
+  fast_eval_body_env_order fast_eval_proj_order fast_eval_neutral_fields_order fast_eval_projs_order fast_eval_ihtys_order
+  fast_eval_field_vals_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
 Ltac functional_fast_eval_all :=
@@ -669,6 +758,10 @@ Ltac functional_fast_eval_all :=
     | H1 : fast_eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : fast_eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_fast_eval_neutral_fields _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : fast_eval_field_vals ?T ?X ?rs ?Ms ?p ?r1, H2 : fast_eval_field_vals ?T ?X ?rs ?Ms ?p ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_fast_eval_field_vals _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H : d_record _ _ = d_record _ _ |- _ => injection H; clear H; intros; subst
     end.
 
 Lemma fast_eval_order_sound : forall Θ Ξ,
@@ -696,7 +789,10 @@ Lemma fast_eval_order_sound : forall Θ Ξ,
     (forall ns m fl pre rs, fast_eval_neutral_fields Θ Ξ ns m fl pre rs -> fast_eval_neutral_fields_order Θ Ξ ns m fl pre) /\
     (forall fl v ws, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws -> fast_eval_projs_order Θ Ξ fl v) /\
     (forall pq ups pm As p gs vs rs, ⟦ihtysᶠ vs of gs at pq ups under pm As ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ rs ->
-       fast_eval_ihtys_order Θ Ξ pq ups pm As p gs vs).
+       fast_eval_ihtys_order Θ Ξ pq ups pm As p gs vs) /\
+    (forall rs Ms p ms, fast_eval_field_vals Θ Ξ rs Ms p ms -> fast_eval_field_vals_order Θ Ξ rs Ms p) /\
+    (** The evaluator does not apply a function along terms. *)
+    (forall f Ms p r, fast_eval_app_args Θ Ξ f Ms p r -> True).
 Proof.
   intros Θ Ξ; apply fast_eval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -713,6 +809,9 @@ Proof.
           | econstructor; try eassumption; intros; functional_fast_eval_all; eauto using kinds_items_gen_order_sound, tele_snoc_app
           (** The projections of a neutral reach the field projected. *)
           | econstructor; try eassumption; intros; functional_fast_eval_all; congruence
+          (** A tuple: its type finds the record, whose sorts direct its
+              fields. *)
+          | econstructor; [ eassumption | intros t Ht; functional_fast_eval_all; eauto | intros; functional_fast_eval_all; congruence ]
           (** The eliminator: the group the scrutinee's value names, once. *)
           | econstructor; try eassumption; intros; functional_fast_eval_all;
             first [ eexists; eassumption
@@ -832,7 +931,7 @@ Proof.
   - destruct (existsb _ _); [ discriminate | eauto ].
 Qed.
 
-#[local] Hint Resolve kinds_body_xp_order_sound : core.
+#[local] Hint Resolve kinds_body_xp_order_sound fdomain_relevance_erase_eq : core.
 
 (** The operations on fast values, read through their erasure equations *)
 #[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdomain_level_suc fdomain_level_max
@@ -840,7 +939,7 @@ Qed.
 
 (** A value a definition stores, right: its body's fast evaluation in the
     empty environment, and right itself *)
-Lemma stored_def_value : forall Θ Ξ b pv A M v, fentry_values_ok Θ Ξ (fe_def b pv A (Some M) (Some v)) ->
+Lemma stored_def_value : forall Θ Ξ b pv r A M v, fentry_values_ok Θ Ξ (fe_def b pv r A (Some M) (Some v)) ->
     ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ fenv_erase nil ↘ fdomain_erase v /\ fdomain_ok Θ Ξ v.
 Proof. intros * [He Hv]; split; assumption. Qed.
 
@@ -882,6 +981,46 @@ Section EvalImpl.
     | None => fun _ => decl_lookup ck p
     end Hok.
 
+  (** The sort of the [n]-th value a constructor [c] of the member [k] of
+      [D] takes, as [arg_relevance] reads it *)
+  Definition con_next_relevance (D : ind_decl) (k : nat) (c : string) (n : nat) : relevance :=
+    match ind_member D k with
+    | Some Mk => if Nat.ltb n (con_param_count D Mk) then relevant else con_arg_relevance Mk c (n - con_param_count D Mk)
+    | None => relevant
+    end.
+
+  (** [arg_relevance] of a fast value: a constructor's group's declaration
+      read off the value, or looked up through the cache [ck] *)
+  Definition fast_arg_relevance (ck : lookup_cache Θ Ξ) (f : fdomain) (Hf : fdomain_ok Θ Ξ f) :
+      { r | arg_relevance Θ Ξ (fdomain_erase f) = r }.
+  Proof.
+    refine (match f as f0 return fdomain_ok Θ Ξ f0 -> { r | arg_relevance Θ Ξ (fdomain_erase f0) = r } with
+            | fd_con p oD k c vs => fun Hf0 =>
+                match carried_lookup ck p oD (fdomain_ok_con_carried _ _ _ _ _ _ _ Hf0) with
+                | inleft (exist _ D E) => exist _ (con_next_relevance D k c (List.length vs)) _
+                | inright E => exist _ relevant _
+                end
+            | fd_fn a _ _ => fun _ => exist _ (fdomain_relevance a) _
+            | fd_neut (fd_pi _ a _ _) _ => fun _ => exist _ (fdomain_relevance a) _
+            | _ => fun _ => exist _ relevant _
+            end Hf).
+    all: cbn [fdomain_erase arg_relevance]; rewrite ?List.length_map, ?fdomain_relevance_erase; try reflexivity.
+    all: rewrite E; reflexivity.
+  Defined.
+
+  (** Whether the global module at [pq] lacks no parameter given [args],
+      decided through the fast context *)
+  Definition module_saturated_f (pq : qname) (args : list fdomain) :
+      { module_saturated Θ Ξ pq (fdomains_erase args) } +
+      { exists T Φ, gc_loc Θ Ξ pq = Some (T, Φ) /\ List.length (fdomains_erase args) < List.length T }.
+  Proof.
+    destruct (gc_loc_f F pq) as [[[T t] |] E].
+    - destruct (Nat.ltb (List.length args) (List.length T)) eqn:Elt.
+      + right; exists T, (decode_mod t); split; [ rewrite E; reflexivity | rewrite List.length_map; apply Nat.ltb_lt, Elt ].
+      + left; intros T' Φ' Hl; rewrite E in Hl; cbn in Hl; injection Hl as <- _; rewrite List.length_map; apply Nat.ltb_ge, Elt.
+    - left; intros T' Φ' Hl; rewrite E in Hl; discriminate.
+  Defined.
+
 
 
   #[local]
@@ -910,6 +1049,7 @@ Section EvalImpl.
     | H : fast_eval_projs_order _ _ _ _ |- _ => progressive_invert H
     | H : fast_eval_proj_order _ _ _ _ |- _ => progressive_invert H
     | H : fast_eval_neutral_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : fast_eval_field_vals_order _ _ _ _ _ |- _ => progressive_invert H
     end.
 
   (** The lookups recorded in the order are the ones computed, which either
@@ -929,10 +1069,10 @@ Section EvalImpl.
           rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
       | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H : gc_entry _ _ _ = Some (ge_def _ _ _ _) |- _ => apply gc_entry_def in H
+      | H : gc_entry _ _ _ = Some (ge_def _ _ _ _ _) |- _ => apply gc_entry_def in H
       | H : gc_entry _ _ _ = Some (ge_ind _ _ _ _ _) |- _ =>
           let H1 := fresh "Hr" in let H2 := fresh "Hl" in destruct (gc_entry_ind _ _ _ _ _ _ _ _ H) as [H1 H2]; clear H
-      | H : gc_entry ?T ?X ?p = _, H' : gc_resolve ?T ?X ?p = Some (ge_def _ _ _ _) |- _ =>
+      | H : gc_entry ?T ?X ?p = _, H' : gc_resolve ?T ?X ?p = Some (ge_def _ _ _ _ _) |- _ =>
           apply gc_entry_def in H'; rewrite H in H'; discriminate H'
       | H : gc_entry ?T ?X ?p = _, H' : ind_mlookup ?T ?X ?p = Some _ |- _ =>
           let He := fresh "He" in destruct (ind_mlookup_entry _ _ _ _ _ _ H') as (? & ? & He); rewrite H in He; discriminate He
@@ -954,6 +1094,11 @@ Section EvalImpl.
           exfalso; exact (ind_lookup_not_alias _ _ _ _ _ H1 H2)
       | H1 : gc_loc _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _) |- _ =>
           exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
+      (** A saturated module lacks no parameter. *)
+      | H : exists T Φ, gc_loc _ _ ?p = Some (T, Φ) /\ _ |- _ =>
+          let T := fresh "T" in let Φ := fresh "Φ" in destruct H as (T & Φ & ? & ?)
+      | H1 : module_saturated _ _ ?p _, H2 : gc_loc _ _ ?p = Some (?T, _), H3 : _ < List.length ?T |- _ =>
+          exfalso; specialize (H1 _ _ H2); rewrite ?List.length_map in *; lia
       | H1 : kinds_body_xp _ _ ?p ?Φ ?r1, H2 : kinds_body_xp _ _ ?p ?Φ ?r2 |- _ =>
           assert_fails (constr_eq r1 r2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst; clear H2
       | H : tele_snoc _ = None |- _ => rewrite tele_snoc_app in H; discriminate H
@@ -1081,8 +1226,9 @@ Section EvalImpl.
   #[local]
   Ltac impl_obligation_exfalso :=
     repeat match goal with
-      | H : forall m, fast_eval_exp _ _ ?M ?p m -> exists _ _, m = ⇑ _ _, Hm : fast_eval_exp _ _ ?M ?p _ |- _ =>
-          destruct (H _ Hm) as (? & ? & ?); clear H
+      (** A record element's type finds a record. *)
+      | H : forall t, fast_eval_exp _ _ ?T ?p t -> exists _ _ _, t = d_record _ _ /\ _, Ht : fast_eval_exp _ _ ?T ?p _ |- _ =>
+          destruct (H _ Ht) as (? & ? & ? & ? & ?); clear H
       (** The eliminator's scrutinee names a group. *)
       | H : forall m, fast_eval_exp _ _ ?M ?p m -> exists _, elim_grp_of _ m = Some _, Hm : fast_eval_exp _ _ ?M ?p _ |- _ =>
           destruct (H _ Hm) as (? & ?); clear H
@@ -1122,6 +1268,7 @@ Section EvalImpl.
     | H : fast_eval_projs_order _ _ _ _ |- _ => dependent destruction H
     | H : fast_eval_proj_order _ _ _ _ |- _ => dependent destruction H
     | H : fast_eval_neutral_fields_order _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : fast_eval_field_vals_order _ _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
@@ -1138,7 +1285,7 @@ Section EvalImpl.
     try solve [ exfalso; lia ];
     try solve [ eapply fast_eval_sel_global_neut; eauto ];
     (** A term part, by the lookups its branch fixed. *)
-    try solve [ eapply fast_eval_sel_global; [| eassumption | eassumption ]; unfold gc_term;
+    try solve [ eapply fast_eval_sel_global; [ eassumption | | eassumption | eassumption ]; unfold gc_term;
                 repeat match goal with
                        | H : gc_resolve _ _ _ = _ |- context [gc_resolve _ _ _] => rewrite H
                        | H : gc_entry _ _ _ = Some (ge_def_mod _ _ _ _) |- context [gc_resolve _ _ _] =>
@@ -1205,18 +1352,29 @@ Section EvalImpl.
       let (m , Hm) := fast_eval_exp_impl M p Hp _ in
       let (n , Hn) := fast_eval_exp_impl N p Hp _ in
       exist _ (fdomain_level_max m n) _
+  | Propₘ , p, Hp, H => exist _ fd_prop _
   | ⊤     , p, Hp, H => exist _ fd_True _
   | ⋆     , p, Hp, H => exist _ fd_true _
   | ⊥     , p, Hp, H => exist _ fd_False _
-  | efq M return A, p, Hp, H with fast_eval_exp_impl M p Hp _ := {
-    | exist _ (fd_neut b m) Hm =>
-        let (a, Ha) := fast_eval_exp_impl A (fextend_env p (fd_neut b m)) _ _ in
-        exist _ (fd_neut a (fd_exfalso p A m)) _
-    | exist _ _ Hm => False_rect _ _ }
-  | Π A B , p, Hp, H =>
-      let (r , Hr) := fast_eval_exp_impl A p Hp _ in
-      exist _ (fd_pi r p B) _
-  | λ A M , p, Hp, H => exist _ (fd_fn p M) _
+  (** [efq]: stuck at its type, its proof not evaluated *)
+  | efq M return C, p, Hp, H =>
+      let (c, Hc) := fast_eval_exp_impl C p Hp _ in
+      exist _ (frelevant_value c (fd_neut c (fd_absurd c))) _
+  | Σₚ P Q, p, Hp, H =>
+      let (a, Ha) := fast_eval_exp_impl P p Hp _ in
+      exist _ (fd_and a p Q) _
+  (** Proofs: never evaluated *)
+  | a_conj T M N, p, Hp, H => exist _ fd_true _
+  | a_left M, p, Hp, H => exist _ fd_true _
+  | a_right M, p, Hp, H => exist _ fd_true _
+  | a_placeholder_type, p, Hp, H => exist _ fd_placeholder_type _
+  | a_placeholder, p, Hp, H => exist _ fd_placeholder _
+  | a_pi r A B , p, Hp, H =>
+      let (a , Ha) := fast_eval_exp_impl A p Hp _ in
+      exist _ (fd_pi r a p B) _
+  | λ A M , p, Hp, H =>
+      let (a , Ha) := fast_eval_exp_impl A p Hp _ in
+      exist _ (fd_fn a p M) _
   | a_ind pq k, p, Hp, H => exist _ (fd_ind pq None k nil) _
   | a_con pq k c, p, Hp, H with decl_lookup (fc_seed F) pq := {
     | inleft (exist _ D Ed) with inspect (ind_member D k) := {
@@ -1234,22 +1392,39 @@ Section EvalImpl.
   (** A literal is generated before it is ever evaluated. *)
   | a_ntok, p, Hp, H => False_rect _ _
   | a_nlit _, p, Hp, H => False_rect _ _
-  | a_elim oq Us j Bks M, p, Hp, H with fast_eval_exps_impl Us p Hp _ := {
+  | a_elim relevant oq Us j Bks M, p, Hp, H with fast_eval_exps_impl Us p Hp _ := {
     | exist _ ups Hups with fast_eval_exp_impl M p Hp _ := {
       | exist _ m Hm with inspect (felim_grp_of oq m) := {
         | exist _ (Some pq) Eg =>
             let (r, Hr) := fast_eval_elim_impl p pq ups Bks j m (fc_seed F) Hp _ _ _ in
             exist _ r _
         | exist _ None Eg => False_rect _ _ } } }
-  | M $ N   , p, Hp, H =>
-      let (m , Hm) := fast_eval_exp_impl M p Hp _ in
-      let (n , Hn) := fast_eval_exp_impl N p Hp _ in
-      let (a, Ha) := fast_eval_app_impl m n _ _ _ in
-      exist _ a _
-  | a_let (b_def oA M) B, p, Hp, H =>
+  (** An eliminator into propositions: a proof, not evaluated *)
+  | a_elim propositional oq Us j Bks M, p, Hp, H => exist _ fd_true _
+  (** An application, by the sort of the argument the function takes *)
+  | M $ N   , p, Hp, H with fast_eval_exp_impl M p Hp _ := {
+    | exist _ m Hm with fast_arg_relevance (fc_seed F) m (proj2 Hm) := {
+      | exist _ relevant Er =>
+          let (n , Hn) := fast_eval_exp_impl N p Hp _ in
+          let (a, Ha) := fast_eval_app_impl m n _ _ _ in
+          exist _ a _
+      | exist _ propositional Er =>
+          let (a, Ha) := fast_eval_app_impl m fd_true _ _ _ in
+          exist _ a _ } }
+  | a_let (b_def None M) B, p, Hp, H =>
       let (m, Hm) := fast_eval_exp_impl M p Hp _ in
       let (r, Hr) := fast_eval_exp_impl B (fextend_env p m) _ _ in
       exist _ r _
+  (** An annotated local definition, by the sort of its type *)
+  | a_let (b_def (Some A) M) B, p, Hp, H with fast_eval_exp_impl A p Hp _ := {
+    | exist _ a Ha with inspect (fdomain_relevance a) := {
+      | exist _ relevant Er =>
+          let (m, Hm) := fast_eval_exp_impl M p Hp _ in
+          let (r, Hr) := fast_eval_exp_impl B (fextend_env p m) _ _ in
+          exist _ r _
+      | exist _ propositional Er =>
+          let (r, Hr) := fast_eval_exp_impl B (fextend_env p fd_true) _ _ in
+          exist _ r _ } }
   | a_let (b_mod (gu_mk Δ D)) B, p, Hp, H =>
       let (h, Hh) := fast_eval_close_impl Δ D p Hp _ in
       let (r, Hr) := fast_eval_exp_impl B (fextend_env_mod p h) _ _ in
@@ -1262,13 +1437,31 @@ Section EvalImpl.
         let (r, Hr) := fast_eval_apps_impl f ns _ _ _ in
         exist _ r _ }
   | a_record pq, p, Hp, H => exist _ (fd_record pq nil) _
-  | a_tuple T fs, p, Hp, H =>
-      let (vs, Hvs) := fast_eval_exps_impl (List.map snd fs) p Hp _ in
-      exist _ (fd_tuple (List.combine (List.map fst fs) vs)) _
+  (** A record element: its type finds the record, whose sorts direct the
+      fields *)
+  | a_tuple T fs, p, Hp, H with fast_eval_exp_impl T p Hp _ := {
+    | exist _ (fd_record pq ns) Ht with record_lookup_f F pq := {
+      | exist _ (Some R) El =>
+          let (vs, Hvs) := fast_eval_field_vals_impl (record_field_relevance R) (List.map snd fs) p Hp _ in
+          exist _ (fd_tuple (List.combine (List.map fst fs) vs)) _
+      | exist _ None El => False_rect _ _ }
+    | exist _ _ Ht => False_rect _ _ }
   | a_proj f M, p, Hp, H =>
       let (m, Hm) := fast_eval_exp_impl M p Hp _ in
       let (r, Hr) := fast_eval_proj_impl f m _ _ in
       exist _ r _
+
+  with fast_eval_field_vals_impl rs Ms (p : fenv) (Hp : fenv_ok Θ Ξ p) (H : fast_eval_field_vals_order Θ Ξ rs Ms (fenv_erase p)) :
+      { ms | fast_eval_field_vals Θ Ξ rs Ms (fenv_erase p) (fdomains_erase ms) /\ Forall (fdomain_ok Θ Ξ) ms } by struct H :=
+  | rs, nil, p, Hp, H => exist _ nil _
+  | rs, M :: Ms, p, Hp, H with inspect (List.hd relevant rs) := {
+    | exist _ relevant Er =>
+        let (m, Hm) := fast_eval_exp_impl M p Hp _ in
+        let (ms, Hms) := fast_eval_field_vals_impl (List.tl rs) Ms p Hp _ in
+        exist _ (m :: ms) _
+    | exist _ propositional Er =>
+        let (ms, Hms) := fast_eval_field_vals_impl (List.tl rs) Ms p Hp _ in
+        exist _ (fd_true :: ms) _ }
 
   with fast_eval_proj_impl f (m : fdomain) (Hm : fdomain_ok Θ Ξ m) (H : fast_eval_proj_order Θ Ξ f (fdomain_erase m)) :
       { r | fast_eval_proj Θ Ξ f (fdomain_erase m) (fdomain_erase r) /\ fdomain_ok Θ Ξ r } by struct H :=
@@ -1293,8 +1486,8 @@ Section EvalImpl.
   | ns, m, nil, pre, Hns, Hm, Hpre, H => exist _ nil _
   | ns, m, (g, T) :: fl, pre, Hns, Hm, Hpre, H =>
       let (a, Ha) := fast_eval_exp_impl T (fenv_args nil (ns ++ pre)) _ _ in
-      let (rs, Hrs) := fast_eval_neutral_fields_impl ns m fl (pre ++ fd_neut a (fd_proj g m) :: nil) Hns Hm _ _ in
-      exist _ (fd_neut a (fd_proj g m) :: rs) _
+      let (rs, Hrs) := fast_eval_neutral_fields_impl ns m fl (pre ++ frelevant_value a (fd_neut a (fd_proj g m)) :: nil) Hns Hm _ _ in
+      exist _ (frelevant_value a (fd_neut a (fd_proj g m)) :: rs) _
 
   (** The group of the eliminator is looked up through the cache [ck], and
       passed on as the cache of the container's lookup and of the
@@ -1327,7 +1520,7 @@ Section EvalImpl.
       | inleft (exist _ D Ed) with inspect (List.nth_error Bks j) := {
         | exist _ (Some b) Eb =>
             let (a, Ha) := fast_eval_exp_impl (eb_motive b) (fenv_args p (skipn (ind_nu Dq) as' ++ fd_neut (fd_ind pc oDq k as') m :: nil)) _ _ in
-            exist _ (fd_neut a (fd_elim p Bks pq D ups j as' m)) _
+            exist _ (frelevant_value a (fd_neut a (fd_elim p Bks pq D ups j as' m))) _
         | exist _ None Eb => False_rect _ _ }
       | inright Ed => False_rect _ _ }
     | inright Edq => False_rect _ _ }
@@ -1342,7 +1535,7 @@ Section EvalImpl.
       { ihs | ⟦ihsᶠ fdomains_erase vs of gs under pq (fdomains_erase ups) Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ fenv_erase p ↘ fdomains_erase ihs /\
               Forall (fdomain_ok Θ Ξ) ihs } by struct H :=
   | p, pq, ups, Bks, oB, nil, nil, D, Ed, Hp, Hups, Hvs, H => exist _ nil _
-  | p, pq, ups, Bks, oB, ca_arg T :: gs, v :: vs, D, Ed, Hp, Hups, Hvs, H =>
+  | p, pq, ups, Bks, oB, ca_arg r T :: gs, v :: vs, D, Ed, Hp, Hups, Hvs, H =>
       let (ihs, Hihs) := fast_eval_ihs_impl p pq ups Bks oB gs vs D Ed Hp Hups _ _ in
       exist _ ihs _
   | p, pq, ups, Bks, oB, ca_rec t :: gs, v :: vs, D, Ed, Hp, Hups, Hvs, H
@@ -1420,7 +1613,7 @@ Section EvalImpl.
     | inright Ed => False_rect _ _ }
   | pq, ups, p, pt_pi B t, Hups, Hp, H =>
       let (b, Hb) := fast_eval_exp_impl B p Hp _ in
-      exist _ (fd_pi b (fde_term (fd_shfam pq ups p t) :: nil) fam_cod) _
+      exist _ (fd_pi relevant b (fde_term (fd_shfam pq ups p t) :: nil) fam_cod) _
 
   with fast_eval_ihty_impl pq (ups : list fdomain) (pm : fenv) As (p : fenv) t (v : fdomain)
       (Hups : Forall (fdomain_ok Θ Ξ) ups) (Hpm : fenv_ok Θ Ξ pm) (Hp : fenv_ok Θ Ξ p) (Hv : fdomain_ok Θ Ξ v)
@@ -1445,7 +1638,7 @@ Section EvalImpl.
   | pq, ups, pm, As, p, pt_pi B t, v, Hups, Hpm, Hp, Hv, H with decl_lookup (fc_seed F) pq := {
     | inleft (exist _ D Ed) =>
         let (b, Hb) := fast_eval_exp_impl B p Hp _ in
-        exist _ (List.map (fun i => fd_pi b (fde_term (fd_ihfam pm As pq ups p t i v) :: nil) fam_cod)
+        exist _ (List.map (fun i => fd_pi relevant b (fde_term (fd_ihfam pm As pq ups p t i v) :: nil) fam_cod)
                    (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))) _
     | inright Ed => False_rect _ _ }
 
@@ -1455,7 +1648,7 @@ Section EvalImpl.
       { rs | ⟦ihtysᶠ fdomains_erase vs of gs at pq (fdomains_erase ups) under (fenv_erase pm) As ⟧ᶠ Θ ⍮ Ξ ⍮ fenv_erase p ↘ fdomains_erase rs /\
              Forall (fdomain_ok Θ Ξ) rs } by struct H :=
   | pq, ups, pm, As, p, nil, nil, Hups, Hpm, Hp, Hvs, H => exist _ nil _
-  | pq, ups, pm, As, p, ca_arg T :: gs, v :: vs, Hups, Hpm, Hp, Hvs, H =>
+  | pq, ups, pm, As, p, ca_arg r T :: gs, v :: vs, Hups, Hpm, Hp, Hvs, H =>
       let (rs, Hrs) := fast_eval_ihtys_impl pq ups pm As (fextend_env p v) gs vs Hups Hpm _ _ _ in
       exist _ rs _
   | pq, ups, pm, As, p, ca_rec t :: gs, v :: vs, Hups, Hpm, Hp, Hvs, H =>
@@ -1467,12 +1660,14 @@ Section EvalImpl.
   with fast_eval_app_impl (m n : fdomain) (Hm : fdomain_ok Θ Ξ m) (Hn : fdomain_ok Θ Ξ n)
       (H : fast_eval_app_order Θ Ξ (fdomain_erase m) (fdomain_erase n)) :
       { d | $ᶠ| fdomain_erase m & fdomain_erase n | Θ ⍮ Ξ ↘ fdomain_erase d /\ fdomain_ok Θ Ξ d } by struct H :=
-  | fd_fn p M, n, Hm, Hn, H =>
+  | fd_fn a p M, n, Hm, Hn, H =>
       let (m, Hm') := fast_eval_exp_impl M (fextend_env p n) _ _ in
       exist _ m _
-  | fd_neut (fd_pi a p B) m, n, Hm, Hn, H =>
+  (** The proof applied: the proof *)
+  | fd_true, n, Hm, Hn, H => exist _ fd_true _
+  | fd_neut (fd_pi relevant a p B) m, n, Hm, Hn, H =>
       let (b, Hb) := fast_eval_exp_impl B (fextend_env p n) _ _ in
-      exist _ (fd_neut b (fd_app m (fd_dom a n))) _
+      exist _ (frelevant_value b (fd_neut b (fd_app m (fd_dom a n)))) _
   | fd_member h ch, n, Hm, Hn, H =>
       let (h', Hh') := fast_eval_appm_impl h n _ Hn _ in
       let (r, Hr) := fast_eval_selc_impl h' ch _ _ in
@@ -1577,21 +1772,26 @@ Section EvalImpl.
 
   with fast_eval_sel_impl (h : fdmod) x (Hh : fdmod_ok Θ Ξ h) (H : fast_eval_sel_order Θ Ξ (fdmod_erase h) x) :
       { r | fdmod_erase h ·ₜᶠ x Θ ⍮ Ξ ↘ fdomain_erase r /\ fdomain_ok Θ Ξ r } by struct H :=
-  | fdm_global pq args, x, Hh, H with gc_entry_with_values F (qname_app pq (x :: nil)) := {
+  (** A member of a global module lacking a parameter: a member closure *)
+  | fdm_global pq args, x, Hh, H with module_saturated_f pq args := {
+    | right Hu => exist _ (fd_member (fdm_global pq args) (x :: nil)) _
+    | left Hs with gc_entry_with_values F (qname_app pq (x :: nil)) := {
+    (** A proof: not evaluated *)
+    | exist _ (Some (fe_def _ _ propositional _ _ _)) (conj E Ev) => exist _ fd_true _
     (** A transparent definition's stored value, applied *)
-    | exist _ (Some (fe_def true pv A (Some M) (Some v))) (conj E Ev) =>
-        let Hf := stored_def_value _ _ _ _ _ _ _ (Ev _ eq_refl) in
+    | exist _ (Some (fe_def true pv relevant A (Some M) (Some v))) (conj E Ev) =>
+        let Hf := stored_def_value _ _ _ _ _ _ _ _ (Ev _ eq_refl) in
         let (r, Hr) := fast_eval_apps_impl v args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_def true pv A (Some M) None)) (conj E Ev) =>
+    | exist _ (Some (fe_def true pv relevant A (Some M) None)) (conj E Ev) =>
         let (f, Hf) := fast_eval_exp_impl M nil _ _ in
         let (r, Hr) := fast_eval_apps_impl f args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_def true _ A None _)) (conj E Ev) =>
+    | exist _ (Some (fe_def true _ relevant A None _)) (conj E Ev) =>
         let (a, Ha) := fast_eval_exp_impl A nil _ _ in
         let (r, Hr) := fast_eval_apps_impl (fd_neut a (fd_glob (qname_app pq (x :: nil)))) args _ _ _ in
         exist _ r _
-    | exist _ (Some (fe_def false _ A B _)) (conj E Ev) =>
+    | exist _ (Some (fe_def false _ relevant A B _)) (conj E Ev) =>
         let (a, Ha) := fast_eval_exp_impl A nil _ _ in
         let (r, Hr) := fast_eval_apps_impl (fd_neut a (fd_glob (qname_app pq (x :: nil)))) args _ _ _ in
         exist _ r _
@@ -1628,16 +1828,19 @@ Section EvalImpl.
         | exist _ (Some R) Er =>
             let (r, Hr) := fast_eval_apps_impl (fd_record (qname_app pq (x :: nil)) nil) args _ _ _ in
             exist _ r _
-        | exist _ None Er => False_rect _ _ } } }
+        | exist _ None Er => False_rect _ _ } } } }
   | fdm_local (e :: Δ) D p, x, Hh, H => exist _ (fd_member (fdm_local (e :: Δ) D p) (x :: nil)) _
   | fdm_local nil (md_alias E) p, x, Hh, H => False_rect _ _
   | fdm_local nil (md_body sm Φ) p, x, Hh, H with kinds_body_xp_impl F p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
       | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_tm E) := {
-        | exist _ (Some (A, M)) Et =>
-            let (p', Hp') := fast_eval_body_env_impl p Φ' _ _ in
-            let (r, Hr) := fast_eval_exp_impl M p' _ _ in
-            exist _ r _
+        | exist _ (Some (A, M)) Et with inspect (entry_relevance E) := {
+          | exist _ relevant Er =>
+              let (p', Hp') := fast_eval_body_env_impl p Φ' _ _ in
+              let (r, Hr) := fast_eval_exp_impl M p' _ _ in
+              exist _ r _
+          (** A proof member: not evaluated *)
+          | exist _ propositional Er => exist _ fd_true _ }
         | exist _ None Et => False_rect _ _ }
       | exist _ _ P => False_rect _ _ } }
   | fdm_member h ch, x, Hh, H => exist _ (fd_member h (ch ++ x :: nil)) _
@@ -1685,11 +1888,15 @@ Section EvalImpl.
   with fast_eval_body_env_impl (p : fenv) Φ (Hp : fenv_ok Θ Ξ p) (H : fast_eval_body_env_order Θ Ξ (fenv_erase p) Φ) :
       { p' | ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ fenv_erase p ↘ fenv_erase p' /\ fenv_ok Θ Ξ p' } by struct H :=
   | p, gm_nil, Hp, H => exist _ p _
-  | p, gm_ext Φ y (ge_def b pv A (Some M)), Hp, H =>
+  | p, gm_ext Φ y (ge_def b pv relevant A (Some M)), Hp, H =>
       let (p1, Hp1) := fast_eval_body_env_impl p Φ Hp _ in
       let (m, Hm) := fast_eval_exp_impl M p1 _ _ in
       exist _ (fextend_env p1 m) _
-  | p, gm_ext Φ y (ge_def b pv A None), Hp, H => False_rect _ _
+  (** A definition tagged a proposition: the proof, not evaluated *)
+  | p, gm_ext Φ y (ge_def b pv propositional A (Some M)), Hp, H =>
+      let (p1, Hp1) := fast_eval_body_env_impl p Φ Hp _ in
+      exist _ (fextend_env p1 fd_true) _
+  | p, gm_ext Φ y (ge_def b pv r A None), Hp, H => False_rect _ _
   | p, gm_ext Φ y (ge_mod _ (gu_mk Δy Dy)), Hp, H =>
       let (p1, Hp1) := fast_eval_body_env_impl p Φ Hp _ in
       let (h, Hh) := fast_eval_close_impl Δy Dy p1 _ _ in
@@ -1713,7 +1920,7 @@ Extraction Inline fast_eval_exp_impl_functional
   fast_eval_ihs_impl_functional
   fast_eval_ih_impl_functional
   fast_eval_mref_impl_functional
-  fast_eval_shty_impl_functional
+  fast_eval_shape_type_impl_functional
   fast_eval_ihty_impl_functional
   fast_eval_app_impl_functional
   fast_eval_exps_impl_functional
@@ -1726,4 +1933,5 @@ Extraction Inline fast_eval_exp_impl_functional
   fast_eval_selm_impl_functional
   fast_eval_selc_impl_functional
   fast_eval_selmc_impl_functional
-  fast_eval_benv_impl_functional.
+  fast_eval_body_env_impl_functional
+  fast_eval_field_vals_impl_functional.

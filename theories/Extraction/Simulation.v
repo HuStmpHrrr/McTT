@@ -50,11 +50,12 @@ Section Sim.
     do not read; mutually, for neutrals, normal values, module values, level
     atoms, lists of values and environment entries. *)
 Inductive domain_simulation : domain -> domain -> Prop :=
-(** A [Π]: related domains, environments agreeing where the codomain reads *)
-| domain_simulation_pi : forall a a' (ρ ρ' : env) B,
+(** A [Π] at a relevance tag, the same on both sides: related domains,
+    environments agreeing where the codomain reads *)
+| domain_simulation_pi : forall r a a' (ρ ρ' : env) B,
     domain_simulation a a' ->
     (forall x, ~ exp_fresh (S x) B -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
-    domain_simulation (Πᵈ a ρ B) (Πᵈ a' ρ' B)
+    domain_simulation (d_pi r a ρ B) (d_pi r a' ρ' B)
 (** A large universe *)
 | domain_simulation_univ : forall i, domain_simulation 𝕌ω@i 𝕌ω@i
 (** A small universe at related levels *)
@@ -63,16 +64,29 @@ Inductive domain_simulation : domain -> domain -> Prop :=
 | domain_simulation_level : forall n, domain_simulation (Levelᵈ@n) (Levelᵈ@n)
 (** A level of related atoms *)
 | domain_simulation_lvl : forall c xs xs', level_atoms_simulation xs xs' -> domain_simulation (lvᵈ c xs) (lvᵈ c xs')
-(** The unit type *)
+(** The universe of propositions *)
+| domain_simulation_prop : domain_simulation Propᵈ Propᵈ
+(** The true proposition *)
 | domain_simulation_True : domain_simulation ⊤ᵈ ⊤ᵈ
-(** The unit's element *)
+(** The proof *)
 | domain_simulation_true : domain_simulation ⋆ᵈ ⋆ᵈ
-(** The empty type *)
+(** The false proposition *)
 | domain_simulation_False : domain_simulation ⊥ᵈ ⊥ᵈ
-(** A λ: environments agreeing where the body reads *)
-| domain_simulation_fn : forall (ρ ρ' : env) M,
+(** A dependent conjunction: related first components, environments
+    agreeing where the second reads *)
+| domain_simulation_and : forall p p' (ρ ρ' : env) Q,
+    domain_simulation p p' ->
+    (forall x, ~ exp_fresh (S x) Q -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
+    domain_simulation (Σₚᵈ p ρ Q) (Σₚᵈ p' ρ' Q)
+(** The placeholder type *)
+| domain_simulation_placeholder_type : domain_simulation d_placeholder_type d_placeholder_type
+(** Its element *)
+| domain_simulation_placeholder : domain_simulation d_placeholder d_placeholder
+(** A λ: related domains, environments agreeing where the body reads *)
+| domain_simulation_fn : forall a a' (ρ ρ' : env) M,
+    domain_simulation a a' ->
     (forall x, ~ exp_fresh (S x) M -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
-    domain_simulation (λᵈ ρ M) (λᵈ ρ' M)
+    domain_simulation (λᵈ a ρ M) (λᵈ a' ρ' M)
 (** A neutral at related types *)
 | domain_simulation_neut : forall a a' m m', domain_simulation a a' -> domain_ne_simulation m m' -> domain_simulation (⇑ a m) (⇑ a' m')
 (** A member of related module values *)
@@ -112,11 +126,10 @@ with domain_ne_simulation : domain_ne -> domain_ne -> Prop :=
 | domain_ne_simulation_var : forall x, domain_ne_simulation (#ᵈ x) (#ᵈ x)
 (** An application *)
 | domain_ne_simulation_app : forall m m' n n', domain_ne_simulation m m' -> domain_nf_simulation n n' -> domain_ne_simulation (m $ᵈ n) (m' $ᵈ n')
-(** A stuck [efq]: environments agreeing where its motive reads *)
-| domain_ne_simulation_exfalso : forall (ρ ρ' : env) A m m',
-    (forall x, ~ exp_fresh (S x) A -> dentry_simulation (env_entry ρ x) (env_entry ρ' x)) ->
-    domain_ne_simulation m m' ->
-    domain_ne_simulation (efqᵈ m under ρ return A) (efqᵈ m' under ρ' return A)
+(** A stuck [efq], at related types *)
+| domain_ne_simulation_absurd : forall c c',
+    domain_simulation c c' ->
+    domain_ne_simulation (efqᵈ c) (efqᵈ c')
 (** A global *)
 | domain_ne_simulation_glob : forall p, domain_ne_simulation (d_glob p) (d_glob p)
 (** A stuck eliminator: the environments agree where the blocks' motives
@@ -234,6 +247,42 @@ Proof. intros * H Hx; unfold env_var; destruct (H x Hx); [ assumption | construc
 
 Lemma env_agree_mod : forall P ρ ρ' x, env_agree P ρ ρ' -> P x -> dmod_simulation (env_mod ρ x) (env_mod ρ' x).
 Proof. intros * H Hx; unfold env_mod; destruct (H x Hx); [ repeat constructor | assumption | assumption ]. Qed.
+
+(** ** Relevance
+
+    Related values have the same head, so evaluation reads the same sorts
+    off them: of a type ([domain_relevance]), and of the next argument of
+    a function ([arg_relevance]). *)
+
+(** A global module lacks no parameter at related arguments alike. *)
+Lemma module_saturated_sim : forall p args args', module_saturated Θ Ξ p args -> domain_list_simulation args args' ->
+    module_saturated Θ Ξ p args'.
+Proof. intros * H Ha T Φ Hl; rewrite <- (domain_list_simulation_length _ _ Ha); exact (H _ _ Hl). Qed.
+
+(** Related types are of the same sort. *)
+Lemma domain_relevance_sim : forall a a', domain_simulation a a' -> domain_relevance a = domain_relevance a'.
+Proof.
+  intros * H; destruct H; try reflexivity.
+  match goal with H : domain_simulation _ _ |- _ => destruct H; reflexivity end.
+Qed.
+
+(** Related values at related types are related as proofs or values. *)
+Lemma relevant_value_sim : forall a a' v v', domain_simulation a a' -> domain_simulation v v' ->
+    domain_simulation (relevant_value a v) (relevant_value a' v').
+Proof.
+  intros * Ha Hv; unfold relevant_value; rewrite (domain_relevance_sim _ _ Ha).
+  destruct (domain_relevance a'); [ exact Hv | constructor ].
+Qed.
+
+(** Related functions take arguments of the same sort. *)
+Lemma arg_relevance_sim : forall f f', domain_simulation f f' -> arg_relevance Θ Ξ f = arg_relevance Θ Ξ f'.
+Proof.
+  intros * H; destruct H; cbn [arg_relevance]; try reflexivity.
+  - apply domain_relevance_sim; assumption.
+  - match goal with H : domain_simulation _ _ |- _ => destruct H; try reflexivity end.
+    apply domain_relevance_sim; assumption.
+  - rewrite (domain_list_simulation_length _ _ ltac:(eassumption)); reflexivity.
+Qed.
 
 (** ** Levels *)
 
@@ -380,14 +429,14 @@ Qed.
 
 (** The parts of an eliminator may read only what the eliminator may: its
     blocks, under their binders. *)
-Lemma agree_elim_blocks : forall oq Us j Bks M ρ ρ',
-    env_agree (fun x => ~ exp_fresh x (a_elim oq Us j Bks M)) ρ ρ' -> blocks_agree Bks ρ ρ'.
+Lemma agree_elim_blocks : forall r oq Us j Bks M ρ ρ',
+    env_agree (fun x => ~ exp_fresh x (a_elim r oq Us j Bks M)) ρ ρ' -> blocks_agree Bks ρ ρ'.
 Proof.
   intros * H b Hb; split.
   - intros x Hx; apply H; intros Hf; apply Hx.
-    pose proof (optional_exp_fresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [Hm _]; exact Hm.
+    pose proof (optional_exp_fresh_elim_blocks (Some x) r oq Us j Bks M Hf b Hb) as [Hm _]; exact Hm.
   - intros c n B Hin x Hx; apply H; intros Hf; apply Hx.
-    pose proof (optional_exp_fresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [_ Hbr]; exact (Hbr _ _ _ Hin).
+    pose proof (optional_exp_fresh_elim_blocks (Some x) r oq Us j Bks M Hf b Hb) as [_ Hbr]; exact (Hbr _ _ _ Hin).
 Qed.
 
 (** The group an eliminator eliminates by is read off related values
@@ -498,6 +547,9 @@ Ltac sim_inv :=
   | H : domain_simulation ⊤ᵈ _ |- _ => inversion H; subst; clear H
   | H : domain_simulation ⋆ᵈ _ |- _ => inversion H; subst; clear H
   | H : domain_simulation ⊥ᵈ _ |- _ => inversion H; subst; clear H
+  | H : domain_simulation Propᵈ _ |- _ => inversion H; subst; clear H
+  | H : domain_simulation d_placeholder_type _ |- _ => inversion H; subst; clear H
+  | H : domain_simulation d_placeholder _ |- _ => inversion H; subst; clear H
   | H : dmod_simulation (_ _ _) _ |- _ => inversion H; subst; clear H
   | H : dmod_simulation (_ _ _ _) _ |- _ => inversion H; subst; clear H
   | H : domain_list_simulation (_ :: _) _ |- _ => inversion H; subst; clear H
@@ -561,6 +613,9 @@ Ltac sim_fwd :=
       destruct (IH _ _ Hm Hn) as (? & ? & ?); clear IH
   | IH : forall m0 n0, domain_simulation ?m m0 -> domain_list_simulation ?n n0 -> exists _, _ /\ _, Hm : domain_simulation ?m ?m', Hn : domain_list_simulation ?n ?n' |- _ =>
       destruct (IH _ _ Hm Hn) as (? & ? & ?); clear IH
+  (** An application to the proof, related to itself *)
+  | IH : forall m0 n0, domain_simulation ?m m0 -> domain_simulation ⋆ᵈ n0 -> exists _, _ /\ _, Hm : domain_simulation ?m ?m' |- _ =>
+      destruct (IH _ ⋆ᵈ Hm domain_simulation_true) as (? & ? & ?); clear IH
   | IH : forall m0 n0, dmod_simulation ?m m0 -> domain_simulation ?n n0 -> exists _, _ /\ _, Hm : dmod_simulation ?m ?m', Hn : domain_simulation ?n ?n' |- _ =>
       destruct (IH _ _ Hm Hn) as (? & ? & ?); clear IH
   | IH : forall m0, dmod_simulation ?m m0 -> exists _, _ /\ _, Hm : dmod_simulation ?m ?m' |- _ =>
@@ -578,13 +633,38 @@ Ltac sim_fwd :=
   (** The member a view stands for, at related uniform parameters *)
   | IH : forall u0, domain_list_simulation ?u u0 -> exists _, _ /\ _, Hu : domain_list_simulation ?u ?u' |- _ =>
       destruct (IH _ Hu) as (? & ? & ?); clear IH
+  (** A function applied along terms: at the related function, in an
+      environment that agrees where the terms read *)
+  | IH : forall f0 ρ0, domain_simulation ?f f0 -> env_agree ?P ?ρ ρ0 -> exists _, _ /\ _, Hf : domain_simulation ?f ?f' |- _ =>
+      let H' := fresh "Ha" in
+      eassert (H' : env_agree P ρ _) by agree_tac;
+      destruct (IH _ _ Hf H') as (? & ? & ?); clear IH H'
   end.
+
+(** The sorts evaluation reads off a value, carried to the related fast
+    value ([arg_relevance_sim], [domain_relevance_sim]). *)
+Ltac rel_transfer :=
+  repeat match goal with
+  | H : arg_relevance ?T ?X ?m = ?r, Hs : domain_simulation ?m ?m' |- _ =>
+      lazymatch goal with
+      | _ : arg_relevance T X m' = r |- _ => fail
+      | _ => pose proof (eq_trans (eq_sym (arg_relevance_sim _ _ Hs)) H)
+      end
+  | H : domain_relevance ?a = ?r, Hs : domain_simulation ?a ?a' |- _ =>
+      lazymatch goal with
+      | _ : domain_relevance a' = r |- _ => fail
+      | _ => pose proof (eq_trans (eq_sym (domain_relevance_sim _ _ Hs)) H)
+      end
+  end.
+
+#[local]
+Hint Resolve relevant_value_sim : mctt.
 
 (** The goal: the fast rule, and the relation between the results, whose
     closures agree where the reference ones may read. *)
 Ltac sim_finish :=
   eexists; split;
-  [ econstructor; solve [ eassumption | len_tac
+  [ econstructor; solve [ eassumption | len_tac | eapply module_saturated_sim; eassumption
                         | rewrite <- (domain_list_simulation_length _ _ ltac:(eassumption)); eassumption ]
   | repeat first [ eassumption
                  | eapply env_agree_var; [ eassumption | cbn; intros Hne; apply Hne; reflexivity ]
@@ -643,7 +723,7 @@ Section KindSim.
     rewrite Nat.add_succ_comm; apply IH; [ intros; apply Hin; right; assumption |].
     apply env_agree_above_cons; [ exact Hρ |].
     destruct (kinds_items_gen_shape _ _ _ _ _ _ Hg g (Hin g (or_introl eq_refl)))
-      as [(d & pv & A0 & M & ->) | [(d & pv & E & ->) | (d & pv & A0 & M & E & ->)]];
+      as [(d & pv & r0 & A0 & M & ->) | [(d & pv & E & ->) | (d & pv & A0 & M & E & ->)]];
       cbn [kinds_generated_entry]; [ repeat constructor | |].
     - constructor; apply dmod_simulation_local.
       intros z Hz; apply Hρ; cbn in Hz.
@@ -915,7 +995,12 @@ Section Eval.
     (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> forall ups' ρm' ρ' vs',
        domain_list_simulation ups ups' -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρm ρm' t) ->
        env_agree (fun _ => True) ρ ρ' -> domain_list_simulation vs vs' ->
-       exists rs', ⟦ihtysᶠ vs' of gs at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ rs' /\ domain_list_simulation rs rs').
+       exists rs', ⟦ihtysᶠ vs' of gs at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ rs' /\ domain_list_simulation rs rs') /\
+    (forall rs Ms ρ ms, eval_field_vals Θ Ξ rs Ms ρ ms -> forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
+       exists ms', fast_eval_field_vals Θ Ξ rs Ms ρ' ms' /\ domain_list_simulation ms ms') /\
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> forall f' ρ', domain_simulation f f' ->
+       env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
+       exists r', fast_eval_app_args Θ Ξ f' Ms ρ' r' /\ domain_simulation r r').
   Proof.
     apply (eval_mut_ind Θ Ξ
       (fun M ρ m _ => forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
@@ -964,7 +1049,11 @@ Section Eval.
       (fun p ups ρm As ρ gs vs rs _ => forall ups' ρm' ρ' vs',
          domain_list_simulation ups ups' -> (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ends_agree p As ρm ρm' t) ->
          env_agree (fun _ => True) ρ ρ' -> domain_list_simulation vs vs' ->
-         exists rs', ⟦ihtysᶠ vs' of gs at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ rs' /\ domain_list_simulation rs rs'));
+         exists rs', ⟦ihtysᶠ vs' of gs at p ups' under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ rs' /\ domain_list_simulation rs rs')
+      (fun rs Ms ρ ms _ => forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
+         exists ms', fast_eval_field_vals Θ Ξ rs Ms ρ' ms' /\ domain_list_simulation ms ms')
+      (fun f Ms ρ r _ => forall f' ρ', domain_simulation f f' -> env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
+         exists r', fast_eval_app_args Θ Ξ f' Ms ρ' r' /\ domain_simulation r r'));
       intros; cbn [fst snd ptyp_ps ptyp_mem] in *.
     (** Records: a tuple's fields, a field of a value, and the projections
         of a neutral, each from related parts. *)
@@ -978,7 +1067,7 @@ Section Eval.
               intros x Hx Hf; apply Hx; cbn [exp_fresh] in Hf; destruct Hf as [_ Hf];
               apply (proj2 (List.Forall_map _ _ _)), (proj1 (all_list_Forall _ _)), Hf
             |];
-          eexists; split; [ constructor; eassumption | constructor; apply domain_fields_simulation_combine; assumption ]
+          eexists; split; [ econstructor; eassumption | constructor; apply domain_fields_simulation_combine; assumption ]
       | IHM : forall ρ0, env_agree (fun x => ~ exp_fresh x ?M) ?ρ ρ0 -> exists _, _ /\ _,
         IHp : forall m0, domain_simulation ?m m0 -> exists _, fast_eval_proj _ _ ?f m0 _ /\ _,
         Hρ : env_agree (fun x => ~ exp_fresh x (a_proj ?f ?M)) ?ρ ?ρ' |- _ =>
@@ -1008,24 +1097,41 @@ Section Eval.
         ([sim_fwd]), then the rest after its projection. *)
     all: try solve [ match goal with
       | IH : forall ns0 m0 pre0, domain_list_simulation ?ns ns0 -> domain_ne_simulation ?m m0 ->
-               domain_list_simulation (?pre ++ ⇑ ?a (d_proj ?g ?m) :: nil) pre0 -> exists _, _ /\ _,
+               domain_list_simulation (?pre ++ relevant_value ?a (⇑ ?a (d_proj ?g ?m)) :: nil) pre0 -> exists _, _ /\ _,
         Hns : domain_list_simulation ?ns ?ns', Hm : domain_ne_simulation ?m ?m', Hpre : domain_list_simulation ?pre ?pre',
         HT : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ env_args nil (?ns' ++ ?pre') ↘ ?a', Ha : domain_simulation ?a ?a' |- _ =>
-          let rs' := fresh "rs'" in
-          destruct (IH ns' m' (pre' ++ ⇑ a' (d_proj g m') :: nil) Hns Hm) as (rs' & ? & ?);
-            [ apply domain_list_simulation_snoc; [ exact Hpre | constructor; [ exact Ha | constructor; exact Hm ] ] |];
-          eexists; split; [ econstructor; eassumption | constructor; [ constructor; [ exact Ha | constructor; exact Hm ] | assumption ] ]
+          let rs' := fresh "rs'" in let Hp := fresh "Hp" in
+          assert (Hp : domain_simulation (relevant_value a (⇑ a (d_proj g m))) (relevant_value a' (⇑ a' (d_proj g m'))))
+            by (apply relevant_value_sim; [ exact Ha | constructor; [ exact Ha | constructor; exact Hm ] ]);
+          destruct (IH ns' m' (pre' ++ relevant_value a' (⇑ a' (d_proj g m')) :: nil) Hns Hm) as (rs' & ? & ?);
+            [ apply domain_list_simulation_snoc; [ exact Hpre | exact Hp ] |];
+          eexists; split; [ econstructor; eassumption | constructor; [ exact Hp | assumption ] ]
       end ].
     all: repeat first [ sim_inv | sim_fwd ].
+    all: rel_transfer.
+    (** A tuple: its type, evaluated by [sim_fwd], then its fields, at the
+        sorts its record's declaration stores. *)
+    all: try solve [ match goal with
+      | IH : forall ρ0, env_agree (fun x => ~ Forall (exp_fresh x) (List.map snd ?fs)) ?ρ ρ0 -> exists _, _ /\ _,
+        Hρ : env_agree (fun x => ~ exp_fresh x (a_tuple ?T ?fs)) ?ρ ?ρ' |- _ =>
+          let vs' := fresh "vs'" in
+          destruct (IH ρ') as (vs' & ? & ?);
+            [ eapply env_agree_mono; [ exact Hρ |];
+              let x := fresh "x" in let Hx := fresh "Hx" in let Hf := fresh "Hf" in
+              intros x Hx Hf; apply Hx; cbn [exp_fresh] in Hf; destruct Hf as [_ Hf];
+              apply (proj2 (List.Forall_map _ _ _)), (proj1 (all_list_Forall _ _)), Hf
+            |];
+          eexists; split; [ econstructor; eassumption | constructor; apply domain_fields_simulation_combine; assumption ]
+      end ].
     all: try solve [ sim_finish ].
     (** The eliminator: its blocks agree where it does; the group it
         eliminates by is read off related values alike. *)
     all: try solve [ match goal with
       | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_simulation ?m m0 -> exists _, _ /\ _,
         Hm : domain_simulation ?m ?m', Hu : domain_list_simulation ?ups ?ups', He : elim_grp_of _ ?m = Some _,
-        Hρ : env_agree (fun x => ~ exp_fresh x (a_elim _ _ _ ?Bks _)) ?ρ ?ρ' |- _ =>
+        Hρ : env_agree (fun x => ~ exp_fresh x (a_elim _ _ _ _ ?Bks _)) ?ρ ?ρ' |- _ =>
           let r' := fresh "r'" in
-          destruct (IH ρ' ups' m' (agree_elim_blocks _ _ _ _ _ _ _ Hρ) Hu Hm) as (r' & ? & ?);
+          destruct (IH ρ' ups' m' (agree_elim_blocks _ _ _ _ _ _ _ _ Hρ) Hu Hm) as (r' & ? & ?);
           exists r'; split;
             [ eapply fast_eval_exp_elim; [ eassumption | eassumption | rewrite (elim_grp_of_sim _ _ _ Hm); exact He | eassumption ]
             | assumption ]
@@ -1078,7 +1184,8 @@ Section Eval.
             |];
           eexists; split;
             [ eapply fast_eval_elim_neut; try eassumption; rewrite <- (domain_list_simulation_length _ _ Has); exact Hl
-            | constructor; [ assumption | apply domain_ne_simulation_elim; [ exact HBk | exact Hu | exact Has | exact Hm ] ] ]
+            | apply relevant_value_sim; [ assumption |];
+              constructor; [ assumption | apply domain_ne_simulation_elim; [ exact HBk | exact Hu | exact Has | exact Hm ] ] ]
       end ].
     (** The recursive results: those of an argument are computed when the
         branch reads one of them, and skipped when it reads none, as the
@@ -1088,7 +1195,7 @@ Section Eval.
     all: try solve [ match goal with
       | IH : forall ρ0 ups0 vs0 oB0, blocks_agree ?Bks ?ρ ρ0 -> domain_list_simulation ?ups ups0 -> domain_list_simulation ?vs vs0 -> ihs_coherent ?p oB0 -> exists _, _ /\ _,
         HB : blocks_agree ?Bks ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hvs : domain_list_simulation ?vs ?vs', Hc : ihs_coherent ?p ?oB
-        |- exists _, fast_eval_ihs _ _ _ _ _ _ ?oB (ca_arg _ :: _) _ _ /\ _ =>
+        |- exists _, fast_eval_ihs _ _ _ _ _ _ ?oB (ca_arg _ _ :: _) _ _ /\ _ =>
           let ihs' := fresh "ihs'" in
           destruct (IH ρ' ups' vs' oB HB Hu Hvs Hc) as (ihs' & ? & ?);
           exists ihs'; split; [ constructor; eassumption | assumption ]
@@ -1169,11 +1276,11 @@ Section Eval.
       | IH : forall ups0 ρm0 ρ0 vs0, domain_list_simulation ?ups ups0 -> _ -> env_agree _ (?ρ ↦ ?v) ρ0 -> domain_list_simulation ?vs vs0 -> exists _, _ /\ _,
         Hu : domain_list_simulation ?ups ?ups', HA : forall gs1 t gs2, _ -> ends_agree _ _ _ ?ρm' _,
         Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hv : domain_simulation ?v ?v', Hvs : domain_list_simulation ?vs ?vs'
-        |- exists _, fast_eval_ihtys _ _ _ _ _ _ _ (ca_arg ?T :: _) _ _ /\ _ =>
+        |- exists _, fast_eval_ihtys _ _ _ _ _ _ _ (ca_arg ?ra ?T :: _) _ _ /\ _ =>
           let rs' := fresh "rs'" in
           destruct (IH ups' ρm' (ρ' ↦ v') vs' Hu) as (rs' & ? & ?);
             [ let gs1 := fresh "gs1" in let t := fresh "t" in let gs2 := fresh "gs2" in let E := fresh "E" in
-              intros gs1 t gs2 E; apply (HA (ca_arg T :: gs1) t gs2); rewrite E; reflexivity
+              intros gs1 t gs2 E; apply (HA (ca_arg ra T :: gs1) t gs2); rewrite E; reflexivity
             | apply env_agree_all_cons; assumption | exact Hvs |];
           exists rs'; split; [ constructor; eassumption | assumption ]
       | IHt : forall ups0 ρm0 ρ0 m0, domain_list_simulation ?ups ups0 -> ends_agree _ _ _ ρm0 ?t -> env_agree _ ?ρ ρ0 -> domain_simulation ?v m0 -> exists _, _ /\ _,
@@ -1259,6 +1366,20 @@ Section Eval.
         through its opens, which the kinds read alike in both environments:
         the environment of the body before it agrees where the body may read,
         and so where the member may. *)
+    (** A proof member of a saturated body: the proof, in the body read
+        alike. *)
+    all: try solve [ match goal with
+      | Hk : kinds_body_xp _ _ ?ρ ?Φ ?Φx,
+        Hρ : env_agree (fun x => ~ gunit_fresh x (gu_mk nil (md_body ?sm ?Φ))) ?ρ ?ρ'
+        |- exists _, _ /\ domain_simulation ⋆ᵈ _ =>
+          let HΦ := fresh "HΦ" in
+          assert (HΦ : env_agree (fun x => ~ gmod_fresh x Φ) ρ ρ')
+            by (eapply env_agree_mono; [ exact Hρ |];
+                let z := fresh "z" in let Hz := fresh "Hz" in let Hf := fresh "Hf" in
+                intros z Hz Hf; apply Hz; cbn in Hf; destruct Hf as [_ Hf]; exact Hf);
+          pose proof (proj1 (proj2 (proj2 (proj2 (proj2 kind_sim)))) _ _ _ Hk ρ' _ (fun z Hz => Hz) HΦ);
+          eexists; split; [ eapply fast_eval_sel_body_proof; eassumption | constructor ]
+      end ].
     all: try solve [ match goal with
       | Hk : kinds_body_xp _ _ ?ρ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some (gm_ext ?Φ' _ ?E),
         IHb : forall ρ0 (P : nat -> Prop), (forall x, ~ gmod_fresh x ?Φ' -> P x) -> env_agree P ?ρ ρ0 -> _,
@@ -1301,7 +1422,12 @@ Section Eval.
           destruct (IH _ _ HP Hρ) as (ρ1' & ? & ?); clear IH
       end.
     all: try match goal with
-      | HQ : forall x, ~ gmod_fresh x (gm_ext ?Φ _ (ge_def _ _ _ (Some ?M))) -> ?P x,
+      (** A definition tagged a proposition adds the proof on both sides. *)
+      | Hab : env_agree (above (gm_binders ?Φ) ?P) ?ρ1 ?ρ1'
+        |- exists _, ⟦ gm_ext ?Φ _ (ge_def _ _ propositional _ (Some _)) ⟧ᵇᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
+          eexists; split; [ econstructor; eassumption |];
+          cbn [gm_binders]; apply env_agree_above_cons; [ exact Hab | repeat constructor ]
+      | HQ : forall x, ~ gmod_fresh x (gm_ext ?Φ _ (ge_def _ _ _ _ (Some ?M))) -> ?P x,
         IH : forall ρ0, env_agree (fun x => ~ exp_fresh x ?M) ?ρ1 ρ0 -> _,
         Hab : env_agree (above (gm_binders ?Φ) ?P) ?ρ1 ?ρ1' |- _ =>
           let Hq := fresh "Hq" in
@@ -1398,9 +1524,11 @@ Section Read.
   Proof.
     induction 1; intros ρ' Hρ; [ exists nil; split; constructor |].
     destruct (fast_eval_exp_sim _ _ _ H ρ') as (a' & Ha' & Hsa); [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |].
-    destruct (IHfresh_tele (ρ' ↦ ⇑! a' s)) as (ns' & ? & ?);
-      [ apply env_agree_all_cons; [ exact Hρ | repeat constructor; assumption ] |].
-    exists (⇑! a' s :: ns'); split; constructor; try eassumption; repeat constructor; assumption.
+    assert (Hv : domain_simulation (relevant_value a (⇑! a s)) (relevant_value a' (⇑! a' s)))
+      by (apply relevant_value_sim; repeat constructor; assumption).
+    destruct (IHfresh_tele (ρ' ↦ relevant_value a' (⇑! a' s))) as (ns' & ? & ?);
+      [ apply env_agree_all_cons; [ exact Hρ | exact Hv ] |].
+    exists (relevant_value a' (⇑! a' s) :: ns'); split; [ constructor; assumption | constructor; assumption ].
   Qed.
 
   Lemma fast_eval_ih_sim : forall ρ p ups Bks t m r, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
@@ -1459,9 +1587,11 @@ Section Read.
     induction 1; intros ups' ρ' Hu Hρ.
     - exists nil; repeat constructor.
     - destruct (fast_eval_exp_sim _ _ _ H ρ') as (a' & Ha' & Hsa); [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |].
-      destruct (IHfresh_cargs ups' (ρ' ↦ ⇑! a' s)) as (vs' & ? & ?);
-        [ exact Hu | apply env_agree_all_cons; [ exact Hρ | repeat constructor; assumption ] |].
-      exists (⇑! a' s :: vs'); split; [ constructor; assumption | repeat constructor; assumption ].
+      assert (Hv : domain_simulation (relevant_value a (⇑! a s)) (relevant_value a' (⇑! a' s)))
+        by (apply relevant_value_sim; repeat constructor; assumption).
+      destruct (IHfresh_cargs ups' (ρ' ↦ relevant_value a' (⇑! a' s))) as (vs' & ? & ?);
+        [ exact Hu | apply env_agree_all_cons; [ exact Hρ | exact Hv ] |].
+      exists (relevant_value a' (⇑! a' s) :: vs'); split; [ constructor; assumption | constructor; assumption ].
     - destruct (fast_eval_shape_type_sim _ _ _ _ _ H ups' ρ' Hu) as (a' & Ha' & Hsa);
         [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |].
       destruct (IHfresh_cargs ups' ρ' Hu Hρ) as (vs' & ? & ?).
@@ -1487,7 +1617,7 @@ Section Read.
       forall as2 vs2, fresh_leaf_vars bs as2 s vs2 -> domain_list_simulation as1 as2 -> domain_list_simulation vs1 vs2.
   Proof.
     induction 1; intros * H2 Ha; inversion H2; subst; inversion Ha; subst; [ constructor | | ].
-    - constructor; [ repeat constructor; assumption | eauto ].
+    - constructor; [ apply relevant_value_sim; repeat constructor; assumption | eauto ].
     - eauto.
   Qed.
 
@@ -1551,7 +1681,7 @@ Section Read.
     - inversion Hv; subst.
       match goal with Hv1 : domain_simulation v ?v1, Hv2 : domain_list_simulation vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
         destruct (IHfresh_ihs _ _ Hw1 D0 B ρ' (ρa' ↦ v1) ups' vs1 HD Hco
-                    ltac:(intros gs1 t gs2 E; apply (HA (ca_arg T :: gs1) t gs2); rewrite E; reflexivity)
+                    ltac:(intros gs1 t gs2 E; apply (HA (ca_arg ra T :: gs1) t gs2); rewrite E; reflexivity)
                     ltac:(apply env_agree_all_cons; assumption) HB Hu Hv2)
           as (ihs' & wihs' & ? & ? & ?) end.
       exists ihs', wihs'; repeat split; [ constructor; assumption | constructor; assumption | assumption ].
@@ -1678,6 +1808,8 @@ Section Read.
         | H : domain_simulation (_ _ _ _ _) _ |- _ => inversion H; subst; clear H
         | H : domain_simulation ⊤ᵈ _ |- _ => inversion H; subst; clear H
         | H : domain_simulation ⊥ᵈ _ |- _ => inversion H; subst; clear H
+        | H : domain_simulation Propᵈ _ |- _ => inversion H; subst; clear H
+        | H : domain_simulation d_placeholder_type _ |- _ => inversion H; subst; clear H
         | H : domain_list_simulation (_ :: _) _ |- _ => inversion H; subst; clear H
         | H : domain_list_simulation nil _ |- _ => inversion H; subst; clear H
         | H : forall b, In b ?Bks -> (forall x, _ -> dentry_simulation (env_entry ?ρ x) (env_entry ?ρ' x)) /\ _ |- _ =>
@@ -1792,16 +1924,18 @@ Section Read.
           destruct (fast_eval_exps_sim _ _ _ e ρ') as (bs' & ? & Hbs);
             [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |];
           econstructor; [ eassumption | apply IH; constructor; [ constructor; apply domain_list_simulation_app; assumption | exact Hv ] ]
-      | e : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ ?ρ ↘ ?b, ea : $| ?v & ⇑! ?b ?s | Θ ⍮ Ξ ↘ ?r,
+      | e : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ ?ρ ↘ ?b, ea : $| ?v & relevant_value ?b (⇑! ?b ?s) | Θ ⍮ Ξ ↘ ?r,
         Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hu : domain_list_simulation ?ups ?ups', Hv : domain_simulation ?v ?v',
         IHA : forall a0, domain_simulation ?b a0 -> Rtypᶠ a0 in _ ⍮ _ ⍮ _ ↘ _,
         IHV : forall ups0 ρ0 v0, domain_list_simulation ?ups ups0 -> env_agree _ (?ρ ↦ _) ρ0 -> domain_simulation ?r v0 -> _ |- _ =>
           let b' := fresh "b'" in let Hb := fresh "Hb" in let r' := fresh "r'" in let Hr := fresh "Hr" in
           destruct (fast_eval_exp_sim _ _ _ e ρ') as (b' & ? & Hb);
             [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |];
-          destruct (fast_eval_app_sim _ _ _ ea v' (⇑! b' s) Hv ltac:(repeat constructor; exact Hb)) as (r' & ? & Hr);
+          destruct (fast_eval_app_sim _ _ _ ea v' (relevant_value b' (⇑! b' s)) Hv
+                      ltac:(apply relevant_value_sim; repeat constructor; exact Hb)) as (r' & ? & Hr);
           econstructor; [ eassumption | apply IHA; exact Hb | eassumption
-                        | apply IHV; [ exact Hu | apply env_agree_all_cons; [ exact Hρ | repeat constructor; exact Hb ] | exact Hr ] ]
+                        | apply IHV; [ exact Hu | apply env_agree_all_cons; [ exact Hρ | apply relevant_value_sim; repeat constructor; exact Hb ]
+                                     | exact Hr ] ]
       end ].
     (** A stuck eliminator: the container's uniform parameters read at
         their telescope; the blocks at the eliminator's uniform
@@ -1925,6 +2059,16 @@ Section Read.
       end.
     (** A neutral level's sort is read off its type, which is related. *)
     all: try (erewrite domain_level_sort_sim by eassumption).
+    (** The sorts of related types agree: a proof at a related
+        proposition, a neutral at a related relevant neutral type. *)
+    all: repeat match goal with
+      | H : domain_relevance (⇑ ?a ?b) = ?r, Ha : domain_simulation ?a ?a', Hb : domain_ne_simulation ?b ?b' |- _ =>
+          lazymatch goal with
+          | _ : domain_relevance (⇑ a' b') = r |- _ => fail
+          | _ => pose proof (eq_trans (eq_sym (domain_relevance_sim _ _ (domain_simulation_neut _ _ _ _ Ha Hb))) H)
+          end
+      end.
+    all: rel_transfer.
     all: solve [ econstructor; eauto 6 with mctt ].
   Qed.
 

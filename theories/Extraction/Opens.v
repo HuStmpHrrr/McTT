@@ -123,7 +123,7 @@ Section Gen.
       | (None, d, pv) => open_success (generated_item_alias d pv H)
       | (Some n, d, pv) =>
           match mdenote_with_order Γ (me_mem H n) (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) with
-          | Some (fmdesc_term A _) => open_success (generated_item_def d pv A (a_mem H n))
+          | Some (fmdesc_term r A _) => open_success (generated_item_def d pv r A (a_mem H n))
           | Some R =>
               if fmdesc_is_modb R then open_success (generated_item_alias d pv (me_mem H n))
               else dm_gen d pv n R
@@ -234,7 +234,7 @@ End Gen.
 Abbreviation skeleton := (list (option gunit)).
 
 Definition skeleton_ctx (S : skeleton) : ctx :=
-  map (fun o => match o with Some U => ce_mod U | None => ce_ass a_True end) S.
+  map (fun o => match o with Some U => ce_mod U | None => ce_ass a_placeholder_type end) S.
 
 Definition centry_skeleton (e : centry) : option gunit :=
   match e with
@@ -277,22 +277,35 @@ Section OpenError.
 
   Fixpoint open_expand_exp (S : skeleton) (M : exp) {struct M} : open_result exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ => open_success M
+    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+    | a_placeholder_type | a_placeholder | a_var _ => open_success M
     | a_univ M => let+ M' := open_expand_exp S M in open_success (a_univ M')
     | a_succl M => let+ M' := open_expand_exp S M in open_success (a_succl M')
     | a_maxl M N =>
         let+ M' := open_expand_exp S M in
         let+ N' := open_expand_exp S N in
         open_success (a_maxl M' N')
-    | a_exfalso A M =>
-        let+ A' := open_expand_exp (None :: S) A in
+    | a_absurd C M =>
+        let+ C' := open_expand_exp S C in
         let+ M' := open_expand_exp S M in
-        open_success (a_exfalso A' M')
+        open_success (a_absurd C' M')
+    (** A conjunction binds its first component in its second *)
+    | a_and P Q =>
+        let+ P' := open_expand_exp S P in
+        let+ Q' := open_expand_exp (None :: S) Q in
+        open_success (a_and P' Q')
+    | a_conj T M N =>
+        let+ T' := open_expand_exp S T in
+        let+ M' := open_expand_exp S M in
+        let+ N' := open_expand_exp S N in
+        open_success (a_conj T' M' N')
+    | a_left M => let+ M' := open_expand_exp S M in open_success (a_left M')
+    | a_right M => let+ M' := open_expand_exp S M in open_success (a_right M')
     (** The literals are generated before expansion ([Builtin]). *)
     | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => open_success M
     (** An eliminator: its uniform parameters, each block's annotation,
         motive and branches under their binders, its scrutinee *)
-    | a_elim oq Us m Bks M =>
+    | a_elim r oq Us m Bks M =>
         let+ Us' := (fix open_expand_us (Us : list exp) : open_result (list exp) :=
                        match Us with
                        | nil => open_success nil
@@ -319,11 +332,11 @@ Section OpenError.
                             open_success (eb_mk nm oZ' A' Bs' :: Bks0')
                         end) Bks in
         let+ M' := open_expand_exp S M in
-        open_success (a_elim oq Us' m Bks' M')
-    | a_pi A B =>
+        open_success (a_elim r oq Us' m Bks' M')
+    | a_pi r A B =>
         let+ A' := open_expand_exp S A in
         let+ B' := open_expand_exp (None :: S) B in
-        open_success (a_pi A' B')
+        open_success (a_pi r A' B')
     | a_fn A M =>
         let+ A' := open_expand_exp S A in
         let+ M' := open_expand_exp (None :: S) M in
@@ -409,13 +422,13 @@ Section OpenError.
     end
   with open_expand_entry (S : skeleton) (E : gentry) {struct E} : open_result gentry :=
     match E with
-    | ge_def b pv A B =>
+    | ge_def b pv r A B =>
         let+ A' := open_expand_exp S A in
         let+ B' := match B with
                    | Some M => let+ M' := open_expand_exp S M in open_success (Some M')
                    | None => open_success None
                    end in
-        open_success (ge_def b pv A' B')
+        open_success (ge_def b pv r A' B')
     | ge_mod pv U => let+ U' := open_expand_unit S U in open_success (ge_mod pv U')
     | ge_def_mod pv A M U =>
         let+ A' := open_expand_exp S A in

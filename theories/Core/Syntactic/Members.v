@@ -1752,10 +1752,12 @@ Fixpoint pi_view (A : typ) : option (typ * typ)%type :=
     head, the first one's at the end), and the codomain past them, in that
     context.  [Π (A : Typeω@0). A → Typeω@0] gives the context
     [ce_ass #0 :: ce_ass Typeω@0 :: nil] (the inner domain [A], bound
-    second, at the head) and the codomain [Typeω@0]. *)
+    second, at the head) and the codomain [Typeω@0].  Only relevant [Π]s
+    are read: the type of a type former is one, and a [∀] ends in a
+    proposition, no universe. *)
 Fixpoint nf_pi_tele (W : nf) : (ctx * nf)%type :=
   match W with
-  | nf_pi _ B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass (nf_to_exp B) :: nil, C')
+  | nf_pi relevant B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass (nf_to_exp B) :: nil, C')
   | _ => (nil, W)
   end.
 

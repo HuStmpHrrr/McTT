@@ -24,8 +24,9 @@ From Mctt.Core.Semantic Require Import Domain Evaluation.
 (** ** The Values *)
 
 Inductive fdomain : Set :=
-(** [fd_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
-| fd_pi : fdomain -> list fdentry -> exp -> fdomain
+(** [fd_pi r a ρ B]: a [Π] at the relevance [r] with domain [a], its
+    codomain [B] a closure in [ρ] *)
+| fd_pi : relevance -> fdomain -> list fdentry -> exp -> fdomain
 (** A large universe *)
 | fd_univ : nat -> fdomain
 (** A small universe at a level value *)
@@ -35,14 +36,23 @@ Inductive fdomain : Set :=
 (** A flat level: its constant and its atoms, each with its offset and its
     sort *)
 | fd_lvl : o2 -> list (nat * nat * fdomain_ne) -> fdomain
+(** [Prop] *)
+| fd_prop : fdomain
 (** [⊤] *)
 | fd_True : fdomain
-(** Its element *)
+(** The proof [⋆]: the value of every proof *)
 | fd_true : fdomain
 (** [⊥] *)
 | fd_False : fdomain
-(** [fd_fn ρ M]: a function, its body a closure in [ρ] *)
-| fd_fn : list fdentry -> exp -> fdomain
+(** [fd_and p ρ Q]: a [Σₚ] with first component [p], its second [Q] a
+    closure in [ρ] *)
+| fd_and : fdomain -> list fdentry -> exp -> fdomain
+(** The placeholder type *)
+| fd_placeholder_type : fdomain
+(** Its element, and the value read past the end of an environment *)
+| fd_placeholder : fdomain
+(** [fd_fn a ρ M]: a function with domain [a], its body a closure in [ρ] *)
+| fd_fn : fdomain -> list fdentry -> exp -> fdomain
 (** [fd_neut a m]: a neutral [m] at the type [a] *)
 | fd_neut : fdomain -> fdomain_ne -> fdomain
 (** A term member of a module still lacking arguments *)
@@ -78,8 +88,8 @@ with fdomain_ne : Set :=
 | fd_var : nat -> fdomain_ne
 (** A neutral applied to a normal argument *)
 | fd_app : fdomain_ne -> fdomain_nf -> fdomain_ne
-(** The [⊥]-eliminator on a neutral, its motive a closure *)
-| fd_exfalso : list fdentry -> typ -> fdomain_ne -> fdomain_ne
+(** Ex falso at the type [c], a closed neutral *)
+| fd_absurd : fdomain -> fdomain_ne
 (** An opaque definition or an axiom *)
 | fd_glob : qname -> fdomain_ne
 (** [fd_elim ρ Bks p D ups m as m']: the eliminator of the group at [p],
@@ -118,10 +128,10 @@ Definition carry (D : ind_decl) : option ind_decl := Some D.
 
 (** ** Environments, as [Core.Semantic.Domain]'s *)
 
-(** The entry of [#x], or the term [fd_true] past the end *)
+(** The entry of [#x], or the placeholder past the end *)
 Fixpoint fenv_entry (ρ : fenv) (x : nat) : fdentry :=
   match x with
-  | 0 => List.hd (fde_term fd_true) ρ
+  | 0 => List.hd (fde_term fd_placeholder) ρ
   | S x' => fenv_entry (List.tl ρ) x'
   end.
 
@@ -132,7 +142,7 @@ Definition fdm_default : fdmod := fdm_global (q_abs nil nil) nil.
 Definition fenv_var (ρ : fenv) (x : nat) : fdomain :=
   match fenv_entry ρ x with
   | fde_term d => d
-  | fde_mod _ => fd_true
+  | fde_mod _ => fd_placeholder
   | fde_dm d _ => d
   end.
 
@@ -182,6 +192,15 @@ Definition fdomain_level_max (d e : fdomain) : fdomain :=
 (** A literal level *)
 Definition fdomain_level_lit (o : o2) : fdomain := fd_lvl o nil.
 
+(** ** The Sort of a Type Value, as [domain_relevance] *)
+
+Definition fdomain_relevance (a : fdomain) : relevance :=
+  match a with
+  | fd_pi r _ _ _ => r
+  | fd_True | fd_False | fd_and _ _ _ | fd_neut fd_prop _ => propositional
+  | _ => relevant
+  end.
+
 (** ** The Erasure
 
     The Core value a fast value stands for: the same value without the
@@ -189,15 +208,19 @@ Definition fdomain_level_lit (o : o2) : fdomain := fd_lvl o nil.
 
 Fixpoint fdomain_erase (d : fdomain) : domain :=
   match d with
-  | fd_pi a ρ B => d_pi (fdomain_erase a) (List.map fdentry_erase ρ) B
+  | fd_pi r a ρ B => d_pi r (fdomain_erase a) (List.map fdentry_erase ρ) B
   | fd_univ i => d_univ i
   | fd_suniv l => d_suniv (fdomain_erase l)
   | fd_level n => d_level n
   | fd_lvl c xs => d_lvl c (List.map (fun ka => (fst ka, fdomain_ne_erase (snd ka))) xs)
+  | fd_prop => d_prop
   | fd_True => d_True
   | fd_true => d_true
   | fd_False => d_False
-  | fd_fn ρ M => d_fn (List.map fdentry_erase ρ) M
+  | fd_and p ρ Q => d_and (fdomain_erase p) (List.map fdentry_erase ρ) Q
+  | fd_placeholder_type => d_placeholder_type
+  | fd_placeholder => d_placeholder
+  | fd_fn a ρ M => d_fn (fdomain_erase a) (List.map fdentry_erase ρ) M
   | fd_neut a m => d_neut (fdomain_erase a) (fdomain_ne_erase m)
   | fd_member h ch => d_member (fdmod_erase h) ch
   | fd_ind p _ k vs => d_ind p k (List.map fdomain_erase vs)
@@ -213,7 +236,7 @@ with fdomain_ne_erase (m : fdomain_ne) : domain_ne :=
   match m with
   | fd_var x => d_var x
   | fd_app m n => d_app (fdomain_ne_erase m) (fdomain_nf_erase n)
-  | fd_exfalso ρ A m => d_exfalso (List.map fdentry_erase ρ) A (fdomain_ne_erase m)
+  | fd_absurd c => d_absurd (fdomain_erase c)
   | fd_glob p => d_glob p
   | fd_elim ρ Bks p _ ups j as' m =>
       d_elim (List.map fdentry_erase ρ) Bks p (List.map fdomain_erase ups) j (List.map fdomain_erase as') (fdomain_ne_erase m)
@@ -308,6 +331,25 @@ Qed.
 Lemma fdomain_level_lit_erase : forall o, fdomain_erase (fdomain_level_lit o) = domain_level_lit o.
 Proof. reflexivity. Qed.
 
+Lemma fdomain_relevance_erase : forall a, domain_relevance (fdomain_erase a) = fdomain_relevance a.
+Proof. intros []; try reflexivity; match goal with a : fdomain |- _ => destruct a; reflexivity end. Qed.
+
+(** The sort of a fast type, read as its erasure's *)
+Lemma fdomain_relevance_erase_eq : forall a r, fdomain_relevance a = r -> domain_relevance (fdomain_erase a) = r.
+Proof. intros * H; rewrite fdomain_relevance_erase; exact H. Qed.
+
+(** [relevant_value]'s twin: the value [v] at the type [a], the proof at a
+    proposition *)
+Definition frelevant_value (a v : fdomain) : fdomain :=
+  match fdomain_relevance a with propositional => fd_true | relevant => v end.
+
+Lemma frelevant_value_erase : forall a v,
+    fdomain_erase (frelevant_value a v) = relevant_value (fdomain_erase a) (fdomain_erase v).
+Proof.
+  intros; unfold frelevant_value, relevant_value; rewrite fdomain_relevance_erase.
+  destruct (fdomain_relevance a); reflexivity.
+Qed.
+
 (** A record value's fields, erased *)
 Lemma fields_erase_combine : forall (fl : list string) vs,
     List.map (fun f => (fst f, fdomain_erase (snd f))) (List.combine fl vs) = List.combine fl (fdomains_erase vs).
@@ -346,7 +388,7 @@ Definition felim_grp_of (oq : option qname) (m : fdomain) : option qname :=
   end.
 
 Lemma felim_grp_of_erase : forall oq m, elim_grp_of oq (fdomain_erase m) = felim_grp_of oq m.
-Proof. intros [p |] m; [ reflexivity |]; destruct m as [| | | | | | | | | a ? | | | | | | | |]; try reflexivity; destruct a; reflexivity. Qed.
+Proof. intros [p |] m; [ reflexivity |]; destruct m as [ | | | | | | | | | | | | | a ? | | | | | | | | ]; try reflexivity; destruct a; reflexivity. Qed.
 
 (** [dm_clo]'s twin *)
 Definition fdm_clo (U : gunit) (ρ : fenv) : fdmod :=
@@ -356,7 +398,7 @@ Lemma fdm_clo_erase : forall U ρ, fdmod_erase (fdm_clo U ρ) = dm_clo U (fenv_e
 Proof. intros [Δ D] ρ; reflexivity. Qed.
 
 (** [kinds_placeholders]'s twin *)
-Definition fkinds_placeholders (n : nat) (ρ : fenv) : fenv := List.repeat (fde_term fd_true) n ++ ρ.
+Definition fkinds_placeholders (n : nat) (ρ : fenv) : fenv := List.repeat (fde_term fd_placeholder) n ++ ρ.
 
 Lemma fkinds_placeholders_erase : forall n ρ, fenv_erase (fkinds_placeholders n ρ) = kinds_placeholders n (fenv_erase ρ).
 Proof. intros; unfold fkinds_placeholders, kinds_placeholders; rewrite List.map_app, List.map_repeat; reflexivity. Qed.
@@ -365,8 +407,8 @@ Proof. intros; unfold fkinds_placeholders, kinds_placeholders; rewrite List.map_
 Definition fkinds_body_entry (ρ : fenv) (E : gentry) : fdentry :=
   match E with
   | ge_mod _ U => fde_mod (fdm_clo U ρ)
-  | ge_def_mod _ _ _ U => fde_dm fd_true (fdm_clo U ρ)
-  | _ => fde_term fd_true
+  | ge_def_mod _ _ _ U => fde_dm fd_placeholder (fdm_clo U ρ)
+  | _ => fde_term fd_placeholder
   end.
 
 Lemma fkinds_body_entry_erase : forall ρ E, fdentry_erase (fkinds_body_entry ρ E) = kinds_body_entry (fenv_erase ρ) E.
@@ -376,8 +418,8 @@ Proof. intros ρ [| ? [] | | ? ? ? [] |]; reflexivity. Qed.
 Definition fkinds_generated_entry (ρ : fenv) (k : nat) (g : generated_item) : fdentry :=
   match g with
   | generated_item_alias _ _ E => fde_mod (fdm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | generated_item_def_mod _ _ _ _ E => fde_dm fd_true (fdm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | _ => fde_term fd_true
+  | generated_item_def_mod _ _ _ _ E => fde_dm fd_placeholder (fdm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | _ => fde_term fd_placeholder
   end.
 
 (** [kinds_items_gen_env]'s twin *)
@@ -411,7 +453,7 @@ Section Ok.
 
   Inductive fdomain_ok : fdomain -> Prop :=
   (** A [Π]: its domain and its closure's environment *)
-  | fdomain_ok_pi : forall a ρ B, fdomain_ok a -> Forall fdentry_ok ρ -> fdomain_ok (fd_pi a ρ B)
+  | fdomain_ok_pi : forall r a ρ B, fdomain_ok a -> Forall fdentry_ok ρ -> fdomain_ok (fd_pi r a ρ B)
   (** A large universe *)
   | fdomain_ok_univ : forall i, fdomain_ok (fd_univ i)
   (** A small universe: its level *)
@@ -420,14 +462,22 @@ Section Ok.
   | fdomain_ok_level : forall n, fdomain_ok (fd_level n)
   (** A flat level: its atoms *)
   | fdomain_ok_lvl : forall c xs, Forall (fun ka => fdomain_ne_ok (snd ka)) xs -> fdomain_ok (fd_lvl c xs)
+  (** [Prop] *)
+  | fdomain_ok_prop : fdomain_ok fd_prop
   (** [⊤] *)
   | fdomain_ok_True : fdomain_ok fd_True
-  (** Its element *)
+  (** The proof *)
   | fdomain_ok_true : fdomain_ok fd_true
   (** [⊥] *)
   | fdomain_ok_False : fdomain_ok fd_False
-  (** A function: its closure's environment *)
-  | fdomain_ok_fn : forall ρ M, Forall fdentry_ok ρ -> fdomain_ok (fd_fn ρ M)
+  (** A conjunction: its first component and its closure's environment *)
+  | fdomain_ok_and : forall p ρ Q, fdomain_ok p -> Forall fdentry_ok ρ -> fdomain_ok (fd_and p ρ Q)
+  (** The placeholder type *)
+  | fdomain_ok_placeholder_type : fdomain_ok fd_placeholder_type
+  (** The placeholder *)
+  | fdomain_ok_placeholder : fdomain_ok fd_placeholder
+  (** A function: its domain and its closure's environment *)
+  | fdomain_ok_fn : forall a ρ M, fdomain_ok a -> Forall fdentry_ok ρ -> fdomain_ok (fd_fn a ρ M)
   (** A neutral: its type and itself *)
   | fdomain_ok_neut : forall a m, fdomain_ok a -> fdomain_ne_ok m -> fdomain_ok (fd_neut a m)
   (** A member of a module value: the module value *)
@@ -453,8 +503,8 @@ Section Ok.
   | fdomain_ne_ok_var : forall x, fdomain_ne_ok (fd_var x)
   (** An application: the neutral and the argument *)
   | fdomain_ne_ok_app : forall m n, fdomain_ne_ok m -> fdomain_nf_ok n -> fdomain_ne_ok (fd_app m n)
-  (** A stuck [efq]: its motive's environment and the neutral *)
-  | fdomain_ne_ok_exfalso : forall ρ A m, Forall fdentry_ok ρ -> fdomain_ne_ok m -> fdomain_ne_ok (fd_exfalso ρ A m)
+  (** Ex falso: its type *)
+  | fdomain_ne_ok_absurd : forall c, fdomain_ok c -> fdomain_ne_ok (fd_absurd c)
   (** A global *)
   | fdomain_ne_ok_glob : forall p, fdomain_ne_ok (fd_glob p)
   (** A stuck eliminator: its declaration is right, and its environment,
@@ -578,6 +628,10 @@ Section Ok.
   Proof. induction fl as [| f fl IH]; intros [| v vs] H; cbn; constructor; inversion H; subst; auto. Qed.
 
   (** The declarations carried, read off a right value *)
+  (** A value or the proof, right *)
+  Lemma frelevant_value_ok : forall a v, fdomain_ok v -> fdomain_ok (frelevant_value a v).
+  Proof. intros * Hv; unfold frelevant_value; destruct (fdomain_relevance a); [ exact Hv | constructor ]. Qed.
+
   Lemma fdomain_ok_con_carried : forall p oD k c vs, fdomain_ok (fd_con p oD k c vs) -> decl_carried_ok p oD.
   Proof. intros * H; inversion H; assumption. Qed.
 
@@ -659,11 +713,12 @@ Hint Resolve fenv_var_ok fenv_mod_ok fextend_env_ok fextend_env_mod_ok fextend_e
     environment right from the rightness of its parts. *)
 Ltac fd_head v :=
   lazymatch v with
-  | fd_pi _ _ _ => idtac | fd_univ _ => idtac | fd_suniv _ => idtac | fd_level _ => idtac | fd_lvl _ _ => idtac
-  | fd_True => idtac | fd_true => idtac | fd_False => idtac | fd_fn _ _ => idtac | fd_neut _ _ => idtac
+  | fd_pi _ _ _ _ => idtac | fd_univ _ => idtac | fd_suniv _ => idtac | fd_level _ => idtac | fd_lvl _ _ => idtac
+  | fd_prop => idtac | fd_True => idtac | fd_true => idtac | fd_False => idtac | fd_and _ _ _ => idtac
+  | fd_placeholder_type => idtac | fd_placeholder => idtac | fd_fn _ _ _ => idtac | fd_neut _ _ => idtac
   | fd_member _ _ => idtac | fd_ind _ _ _ _ => idtac | fd_con _ _ _ _ _ => idtac | fd_ihfn _ _ _ _ _ _ _ => idtac
   | fd_shfam _ _ _ _ => idtac | fd_ihfam _ _ _ _ _ _ _ _ => idtac | fd_record _ _ => idtac | fd_tuple _ => idtac
-  | fd_var _ => idtac | fd_app _ _ => idtac | fd_exfalso _ _ _ => idtac | fd_glob _ => idtac
+  | fd_var _ => idtac | fd_app _ _ => idtac | fd_absurd _ => idtac | fd_glob _ => idtac
   | fd_elim _ _ _ _ _ _ _ _ => idtac | fd_proj _ _ => idtac | fd_dom _ _ => idtac
   | fdm_global _ _ => idtac | fdm_local _ _ _ => idtac | fdm_member _ _ => idtac
   | fde_term _ => idtac | fde_mod _ => idtac | fde_dm _ _ => idtac
@@ -685,7 +740,7 @@ Ltac ok_solve :=
   ok_invert; repeat match goal with |- _ /\ _ => split end;
   solve [ eauto 8 using fenv_var_ok, fenv_mod_ok, fenv_args_ok, fdomains_nth_error_ok, field_lookup_ok, combine_ok, Forall_map_intro,
                          fdomain_level_suc_ok, fdomain_level_max_ok, fdomain_level_lit_ok, fkinds_body_entry_ok, fkinds_items_gen_env_ok,
-                         fkinds_placeholders_ok, fdm_clo_ok with mctt ].
+                         fkinds_placeholders_ok, fdm_clo_ok, frelevant_value_ok with mctt ].
 
 (** ** Reading Erasures as Core Values
 
@@ -698,7 +753,7 @@ Ltac ferase_ops :=
   rewrite ?fextend_env_erase, ?fextend_env_mod_erase, ?fextend_env_dm_erase, ?fenv_args_erase,
     ?fkinds_placeholders_erase, ?fkinds_items_gen_env_erase, ?fkinds_body_entry_erase, ?fdm_clo_erase,
     ?fdomain_level_suc_erase, ?fdomain_level_max_erase, ?fdomain_level_lit_erase, ?fields_erase_combine,
-    ?field_lookup_erase in *.
+    ?field_lookup_erase, ?frelevant_value_erase in *.
 
 Ltac ferase_norm :=
   unfold fast_member_reference_ok in *;
@@ -709,4 +764,7 @@ Ltac ferase_norm :=
   (** each rewrite moves an erasure inwards, past one list operation *)
   repeat progress (rewrite ?List.map_app, <- ?skipn_map, <- ?firstn_map, ?List.map_repeat, ?List.map_map in *);
   rewrite ?length_map, ?nth_error_map in *;
+  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase List.map option_map] in *;
+  (** the operations the list rewriting exposed *)
+  rewrite ?frelevant_value_erase in *;
   cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase List.map option_map] in *.

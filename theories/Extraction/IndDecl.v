@@ -2,7 +2,7 @@ From Stdlib Require Import Arith List ListDec String PeanoNat Bool Lia.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import System.
+From Mctt.Core.Syntactic Require Import System Fresh.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core Require Import Soundness Completeness.
@@ -29,12 +29,13 @@ Import Syntax_Notations GlobalCtx_Notations.
 
 Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => true
-  | a_succl M | a_univ M => exp_mvcb n M
-  | a_maxl M N => exp_mvcb n M && exp_mvcb n N
-  | a_exfalso A M => exp_mvcb (S n) A && exp_mvcb n M
+  | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+  | a_placeholder_type | a_placeholder => true
+  | a_succl M | a_univ M | a_left M | a_right M => exp_mvcb n M
+  | a_maxl M N | a_absurd M N => exp_mvcb n M && exp_mvcb n N
+  | a_conj T M N => exp_mvcb n T && exp_mvcb n M && exp_mvcb n N
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => true
-  | a_elim _ Us _ Bks M =>
+  | a_elim _ _ Us _ Bks M =>
       (fix us_mvcb (Us : list exp) : bool :=
          match Us with
          | nil => true
@@ -54,7 +55,7 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
              blocks_mvcb Bks'
          end) Bks &&
       exp_mvcb n M
-  | a_pi A B | a_fn A B => exp_mvcb n A && exp_mvcb (S n) B
+  | a_pi _ A B | a_fn A B | a_and A B => exp_mvcb n A && exp_mvcb (S n) B
   | a_app M N => exp_mvcb n M && exp_mvcb n N
   | a_var _ => true
   | a_let b B => binding_mvcb n b && exp_mvcb (S n) B
@@ -105,7 +106,7 @@ with gmod_mvcb (n : nat) (Φ : gmod) {struct Φ} : bool :=
   end
 with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   match E with
-  | ge_def _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
+  | ge_def _ _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
   | ge_mod _ U => gunit_mvcb n U
   | ge_ind _ _ _ D Φ => gmod_mvcb (ind_nu D + n) Φ
   | ge_def_mod _ A M U => exp_mvcb n A && exp_mvcb n M && gunit_mvcb n U
@@ -229,7 +230,7 @@ Qed.
 (** A constructor argument without free module variables, computed. *)
 Definition carg_mvcb (g : carg) : bool :=
   match g with
-  | ca_arg A => exp_mvcb 0 A
+  | ca_arg _ A => exp_mvcb 0 A
   | ca_rec t => forallb (exp_mvcb 0) (ptyp_doms t) && forallb (exp_mvcb 0) (ptyp_ps t)
   end.
 
@@ -473,8 +474,8 @@ Qed.
 Lemma in_cargs_rec_mems_inv : forall gs j, In j (cargs_rec_mems gs) ->
     exists gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 /\ ptyp_mem t = j.
 Proof.
-  induction gs as [| [A | t] gs IH]; intros j Hj; cbn in Hj; [ contradiction | |].
-  - destruct (IH _ Hj) as (gs1 & t & gs2 & -> & <-); exists (ca_arg A :: gs1), t, gs2; split; reflexivity.
+  induction gs as [| [rA A | t] gs IH]; intros j Hj; cbn in Hj; [ contradiction | |].
+  - destruct (IH _ Hj) as (gs1 & t & gs2 & -> & <-); exists (ca_arg rA A :: gs1), t, gs2; split; reflexivity.
   - destruct Hj as [<- | Hj]; [ exists nil, t, gs; split; reflexivity |].
     destruct (IH _ Hj) as (gs1 & t' & gs2 & -> & <-); exists (ca_rec t :: gs1), t', gs2; split; reflexivity.
 Qed.
@@ -872,6 +873,17 @@ Section Judgments.
   Lemma typ_nbe_ty_order : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> nbe_ty_order Θ Ξ Γ A.
   Proof. intros * HA; destruct (@soundness_ty (fc_gctx F) _ _ _ HA) as [W [HW _]]; exact (nbe_ty_order_sound _ _ _ _ _ HW). Qed.
 
+  (** A type of either sort in a context, which is checked first. *)
+  Definition type_dec (Γ : ctx) (A : typ) : {Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A} :=
+    match check_ctx F HΞ Γ with
+    | left HΓ =>
+        match check_type F Γ HΓ A with
+        | inleft (existT _ r (exist _ i HA)) => left (type_of_check_type F Γ A r i HA)
+        | inright HnA => right HnA
+        end
+    | right HnΓ => right (fun H => match H with mk_wf_type _ _ HA => HnΓ (presup_exp_ctx HA) end)
+    end.
+
   (** The least large universe a type is in: that of the universe it
       infers. *)
   Definition typ_least_dec (Γ : ctx) (A : typ) :
@@ -888,6 +900,30 @@ Section Judgments.
     pose proof (@functional_alg_type_infer (fc_gctx F) _ _ _ _ HΞ HAi HAi') as <-.
     pose proof (is_univ_nf_functional _ _ _ Hu Hu') as <-.
     destruct u; cbn in Hle |- *; lia.
+  Defined.
+
+  (** A level containing every type of the assumptions of a telescope,
+      each in the context of the entries after it: the largest of their
+      least universes. *)
+  Fixpoint params_level_dec (Γ Δ : ctx) {struct Δ} :
+    { l | forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l }
+    + { forall l, ~ forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l }.
+  Proof.
+    destruct Δ as [| e Δ'].
+    - left; exists 0; intros Δ1 T Δ2 E; exfalso; destruct Δ1; discriminate.
+    - destruct (params_level_dec Γ Δ') as [[l' Hl'] | Hn'];
+        [| right; intros l H; apply (Hn' l); intros Δ1 T Δ2 E; apply (H (e :: Δ1)); rewrite E; reflexivity ].
+      assert (Htail : forall k, l' <= k -> forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@k)
+        by (intros k Hk Δ1 T Δ2 E; eapply (lift_exp_ge _ _ _ _ l'); [ exact Hk | exact (Hl' _ _ _ E) ]).
+      destruct e as [T | T M | U | T M U].
+      + destruct (typ_least_dec (Δ' ++ Γ) T) as [[lT [HT _]] | HnT];
+          [| right; intros l H; exact (HnT l (H nil T Δ' eq_refl)) ].
+        left; exists (Nat.max l' lT); intros [| e1 Δ1] T0 Δ2 E; cbn in E; injection E as E1 E2.
+        * subst; eapply (lift_exp_ge _ _ _ _ lT); [ lia | exact HT ].
+        * subst; eapply Htail; [| reflexivity ]; lia.
+      + left; exists l'; intros [| e1 Δ1] T0 Δ2 E; cbn in E; injection E as E1 E2; [ discriminate | subst; eapply Htail; [ lia | reflexivity ] ].
+      + left; exists l'; intros [| e1 Δ1] T0 Δ2 E; cbn in E; injection E as E1 E2; [ discriminate | subst; eapply Htail; [ lia | reflexivity ] ].
+      + left; exists l'; intros [| e1 Δ1] T0 Δ2 E; cbn in E; injection E as E1 E2; [ discriminate | subst; eapply Htail; [ lia | reflexivity ] ].
   Defined.
 
   (** Two terms typed at a type with one normal form are equal there. *)
@@ -931,9 +967,21 @@ Section Judgments.
                             | apply (lift_exp_ge _ _ _ _ lB); [ lia | exact HB ] ].
   Defined.
 
+  (** Subtyping: both sides types, then the algorithmic check. *)
+  Definition sub_dec (Γ : ctx) (A B : typ) : {Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B}.
+  Proof.
+    destruct (type_dec Γ A) as [HtA | HnA]; [| right; intros H; exact (HnA (presup_subtyp_left H)) ].
+    destruct (type_dec Γ B) as [HtB | HnB]; [| right; intros H; exact (HnB (presup_subtyp_right H)) ].
+    destruct (subtyping_impl F Γ A B
+                (@subtyping_order_run (fc_gctx F) Γ A B (nbe_order_of_type _ _ HtA) (nbe_order_of_type _ _ HtB))) as [Hs | Hns].
+    - left; destruct HtA as [SA HSA HA], HtB as [SB HSB HB].
+      exact (@alg_subtyping_sound_sort (fc_gctx F) _ _ _ _ _ HSA HSB Hs HA HB).
+    - right; intros H; exact (Hns (@alg_subtyping_complete (fc_gctx F) _ _ _ H)).
+  Defined.
+
   (** The equality of two contexts' extensions, of assumptions on the
-      left: entry by entry, each pair of types at the least universe both
-      are in. *)
+      left: entry by entry, each pair of types each below the other
+      ([wf_ext_eq_ass]), each a type of its own sort. *)
   Fixpoint ext_eq_dec (Γ : ctx) (Ψ : ctx) {struct Ψ} :
     forall Ψ', tele_ass Ψ -> {Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'}.
   Proof.
@@ -945,35 +993,17 @@ Section Judgments.
       destruct e as [A | A M | U | A M U]; [| exfalso; destruct (List.Forall_inv Hass) as [? [=]] .. ].
       destruct Ψ' as [| [A' | A' M' | U' | A' M' U'] Ψ0']; try (right; intros H; inversion H; fail).
       destruct (ext_eq_dec Γ Ψ0 Ψ0' Hass') as [Hr | Hr]; [| right; intros H; apply Hr; inversion H; assumption ].
-      destruct (typ_least_dec (Ψ0 ++ Γ) A) as [[lA [HA HAm]] | HnA];
-        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as (i & _ & HA & _); exact (HnA _ HA) ].
-      destruct (typ_least_dec (Ψ0' ++ Γ) A') as [[lA' [HA' HA'm]] | HnA'];
-        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as (i & _ & _ & _ & HA'); exact (HnA' _ HA') ].
-      destruct (typ_least_dec (Ψ0 ++ Γ) A') as [[lA'' [HA'' HA''m]] | HnA''];
-        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as (i & _ & _ & HAA & _);
-           apply (HnA'' i); gen_presups; assumption ].
-      set (L := Nat.max lA (Nat.max lA' lA'')).
-      destruct (eq_at_dec (Ψ0 ++ Γ) Typeω@L A A') as [HAA | HnAA].
-      + left; eapply wf_ext_eq_ass with (i := L); [ exact Hr | apply (lift_exp_ge _ _ _ _ lA); [ lia | exact HA ]
-                                                | exact HAA | apply (lift_exp_ge _ _ _ _ lA'); [ lia | exact HA' ] ].
-      + right; intros H; apply HnAA.
-        destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as (i & _ & _ & HAA & _).
-        eapply typ_eq_at_level; [ exact HAA | apply (lift_exp_ge _ _ _ _ lA); [ lia | exact HA ]
-                                | apply (lift_exp_ge _ _ _ _ lA''); [ lia | exact HA'' ] ].
-  Defined.
-
-  (** Subtyping: both sides types, then the algorithmic check. *)
-  Definition sub_dec (Γ : ctx) (A B : typ) : {Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B}.
-  Proof.
-    destruct (typ_least_dec Γ A) as [[lA [HA _]] | HnA];
-      [| right; intros H; destruct (presup_subtyp_left H) as [i Hi]; exact (HnA _ Hi) ].
-    destruct (typ_least_dec Γ B) as [[lB [HB _]] | HnB];
-      [| right; intros H; destruct (presup_subtyp_right H) as [i Hi]; exact (HnB _ Hi) ].
-    destruct (subtyping_impl F Γ A B
-                (@subtyping_order_run (fc_gctx F) Γ A B (typ_nbe_ty_order _ _ _ HA) (typ_nbe_ty_order _ _ _ HB))) as [Hs | Hns].
-    - left; apply (@alg_subtyping_sound (fc_gctx F) _ _ _ (Nat.max lA lB) Hs);
-        [ apply (lift_exp_ge _ _ _ _ lA); [ lia | exact HA ] | apply (lift_exp_ge _ _ _ _ lB); [ lia | exact HB ] ].
-    - right; intros H; exact (Hns (@alg_subtyping_complete (fc_gctx F) _ _ _ H)).
+      destruct (type_dec (Ψ0 ++ Γ) A) as [HtA | HnA];
+        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as [S HS' _ _ _ HA _ _ _];
+           exact (HnA (mk_wf_type _ HS' HA)) ].
+      destruct (type_dec (Ψ0' ++ Γ) A') as [HtA' | HnA'];
+        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as [_ _ S' HS' _ _ HA' _ _];
+           exact (HnA' (mk_wf_type _ HS' HA')) ].
+      destruct (sub_dec (Ψ0 ++ Γ) A A') as [Hs | Hns];
+        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as [_ _ _ _ _ _ _ Hs _]; exact (Hns Hs) ].
+      destruct (sub_dec (Ψ0 ++ Γ) A' A) as [Hs' | Hns'];
+        [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as [_ _ _ _ _ _ _ _ Hs']; exact (Hns' Hs') ].
+      left; destruct HtA as [SA HSA HA], HtA' as [SA' HSA' HA']; eapply wf_ext_eq_ass; eassumption.
   Defined.
 End Judgments.
 
@@ -1103,23 +1133,26 @@ Section NilDecide.
     - right; intros H'; apply H; intros k Mk Hk Δ1 e Δ2 E T ->; exact (H' k Mk Δ1 T Δ2 Hk E).
   Defined.
 
-  (** Each non-recursive argument is in the sort. *)
+  (** Each non-recursive argument is in the sort its tag gives: the
+      declaration's at [relevant], [Prop] at [propositional]. *)
   Definition args_sort_dec :
-    {forall k Mk c gs gs1 A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg A :: gs2 ->
-       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ}
-    + {~ forall k Mk c gs gs1 A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg A :: gs2 ->
-       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ}.
+    {forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
+       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
+         ⊢ A : relevance_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ}
+    + {~ forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
+       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
+         ⊢ A : relevance_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ}.
   Proof.
     destruct (members_dec D (fun _ Mk => forall cg, In cg (im_cons Mk) -> forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 ->
-                forall A, g = ca_arg A ->
+                forall r A, g = ca_arg r A ->
                 Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
-                  ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ)) as [H | H].
-    - intros k Mk _; apply forall_in_dec; intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [| left; intros ? [=] ].
+                  ⊢ A : relevance_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ)) as [H | H].
+    - intros k Mk _; apply forall_in_dec; intros cg _; apply forall_split_dec; intros gs1 [r A | t] gs2 _; [| left; intros ? ? [=] ].
       destruct (check_exp_at F HΞ (cargs_strat gs1 ++ im_params D Mk)
-                  (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ A) as [HA | HA];
-        [ left; intros ? [= <-]; exact HA | right; intros H; exact (HA (H A eq_refl)) ].
-    - left; intros k Mk c gs gs1 A gs2 Hk Hin E; exact (H k Mk Hk (c, gs) Hin gs1 _ gs2 E A eq_refl).
-    - right; intros H'; apply H; intros k Mk Hk [c gs] Hin gs1 g gs2 E A ->; exact (H' k Mk c gs gs1 A gs2 Hk Hin E).
+                  (relevance_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) A) as [HA | HA];
+        [ left; intros ? ? [= <- <-]; exact HA | right; intros H; exact (HA (H r A eq_refl)) ].
+    - left; intros k Mk c gs gs1 r A gs2 Hk Hin E; exact (H k Mk Hk (c, gs) Hin gs1 _ gs2 E r A eq_refl).
+    - right; intros H'; apply H; intros k Mk Hk [c gs] Hin gs1 g gs2 E r A ->; exact (H' k Mk c gs gs1 r A gs2 Hk Hin E).
   Defined.
 
   (** Each domain of a recursive argument's shape is in the sort. *)
@@ -2168,7 +2201,13 @@ Section NilDecide.
     destruct view_wrap_dec as [HVw | HVw]; [| nil_reject ].
     destruct (view_maps_check_f F D) eqn:Hvm; rewrite view_maps_check_f_ok in Hvm;
       [| right; intros Hn0; destruct Hn0; rewrite (view_maps_check_complete _ _ _ ltac:(eassumption)) in Hvm; discriminate ].
-    left; apply (mk_ind_nil_at Θ Ξ mp D IsS Δ M0 (Nat.max lS lD) n); try assumption.
+    destruct (params_level_dec F HΞ (gs_tele Ξ) Δ) as [[lP HP] | HnP];
+      [| right; intros Hn0; destruct Hn0;
+         match goal with
+         | HΔ0 : ind_uparams D = ?Δ0 ++ gs_tele Ξ, HP0 : forall Δ1 T Δ2, ?Δ0 = _ -> _ |- _ =>
+             assert (Δ0 = Δ) as -> by (eapply app_inv_tail; rewrite <- HΔ0; exact HΔ); exact (HnP _ HP0)
+         end ].
+    left; apply (mk_ind_nil_at Θ Ξ mp D IsS Δ M0 (Nat.max lS lD) n lP); try assumption.
     - apply (lift_exp_ge _ _ _ _ lS); [ lia | exact HS ].
     - intros; apply (lift_exp_eq_ge _ _ _ _ _ lD); [ lia | eapply HDe; eassumption ].
     - exists (grp_rank Θ Ξ D); exact (rank_check_sound _ _ _ Hrk).
@@ -2206,7 +2245,11 @@ Inductive classify_why : Set :=
     that occurs, the head [H] it is an argument of, and the context [Δ]
     [H] is in, its first [k] entries unnamed (the domains and binders
     crossed inside the argument's type) *)
-| classify_why_self_arg : nat -> nat -> ctx -> exp -> classify_why.
+| classify_why_self_arg : nat -> nat -> ctx -> exp -> classify_why
+(** The argument's type is classified only as its normal form, and that
+    holds a proof ([nf_proof_free]): the instance it nests at could not be
+    strengthened past the arguments before it *)
+| classify_why_proof : classify_why.
 
 (** The offset, among the [n] [Self]s from the variable [lo] on, of the
     first one some term of [Ms] mentions. *)
@@ -2218,7 +2261,7 @@ Definition first_self_mentioned (lo n : nat) (Ms : list exp) : option nat :=
     the binders crossed, and the head. *)
 Fixpoint self_arg_site (lo n depth : nat) (M : exp) {struct M} : option (nat * nat * exp) :=
   match M with
-  | a_pi A B =>
+  | a_pi _ A B =>
       match self_arg_site lo n depth A with
       | Some r => Some r
       | None => self_arg_site (S lo) n (S depth) B
@@ -2257,7 +2300,7 @@ Fixpoint self_arg_sites (lo n : nat) (Is : list exp) : option (nat * nat * exp) 
 (** A reason's context, its unnamed entries over [Γ]. *)
 Definition self_arg_in (Γ : ctx) (r : classify_why) : classify_why :=
   match r with
-  | classify_why_self_arg j k _ H => classify_why_self_arg j k (List.repeat (ce_ass a_True) k ++ Γ) H
+  | classify_why_self_arg j k _ H => classify_why_self_arg j k (List.repeat (ce_ass a_placeholder_type) k ++ Γ) H
   | _ => r
   end.
 
@@ -2268,7 +2311,7 @@ Definition selfs_free (np n : nat) (pat : list bool) (d : nat) (T : exp) : bool 
 
 Fixpoint shape_reason (np n : nat) (pat : list bool) (d : nat) (T : exp) : classify_why :=
   match T with
-  | a_pi A B => if selfs_free np n pat d A then shape_reason np n pat (S d) B else classify_why_code 2
+  | a_pi relevant A B => if selfs_free np n pat d A then shape_reason np n pat (S d) B else classify_why_code 2
   | _ =>
       match app_head T with
       (* [Self_0] is outermost: the variable [b + i] is [Self_(n-1-i)]. *)
@@ -2342,11 +2385,17 @@ Section Classify.
     2:{ right; exists (classify_reason np n pat T); intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst;
         [ congruence | exact (HnT _ HT) ]. }
     destruct (nbe_ty_impl F Γ T (typ_nbe_ty_order F _ _ _ HT)) as [W HW].
+    destruct (nf_proof_freeb W) eqn:Hpf.
+    2:{ right; exists classify_why_proof.
+        intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' HW'pf Hg']; subst; [ congruence |].
+        pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
+        apply (proj1 nf_proof_freeb_iff) in HW'pf; congruence. }
+    apply (proj1 nf_proof_freeb_iff) in Hpf.
     destruct (classify_arg (grp_info_f F) rec_info_f nu np n pat (nf_to_exp W)) as [g |] eqn:Hn;
       rewrite (classify_arg_rec_ext _ _ _ rec_info_f_ok), (classify_arg_ext _ _ _ _ _ _ _ (grp_info_f_ok F)) in Hn.
     - left; exists g; eapply classify_in_nf; eassumption.
     - right; exists (self_arg_in Γ (classify_reason np n pat (nf_to_exp W))).
-      intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' Hg']; subst; [ congruence |].
+      intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' _ Hg']; subst; [ congruence |].
       pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence.
   Defined.
 
@@ -2618,7 +2667,8 @@ Section Equiv.
       pose proof (read_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody Hrec) as Hrd.
     pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody Hrec) as Hie.
     destruct_all.
-    intros * []; econstructor; eauto.
+    intros * [ρ a Hi Ha Hw]; econstructor; [ eauto | eauto |].
+    destruct Hw as [Hp | m w Hr Hm Hw]; [ apply nbe_term_proof; exact Hp | eapply nbe_term_relevant; eauto ].
   Qed.
 
 
@@ -2628,8 +2678,8 @@ Section Equiv.
   Lemma equiv_classify_arg_in : forall Γ nu np n pat T g,
       classify_arg_in Θ Ξ Γ nu np n pat T g -> classify_arg_in Θ' Ξ Γ nu np n pat T g.
   Proof.
-    intros * H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply classify_in_syn; exact Hg |].
-    eapply classify_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ' HT) | exact (equiv_nbe_ty _ _ _ HW) |].
+    intros * H; destruct H as [g Hg | i W g Hn HT HW Hpf Hg]; [ apply classify_in_syn; exact Hg |].
+    eapply classify_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ' HT) | exact (equiv_nbe_ty _ _ _ HW) | exact Hpf |].
     rewrite <- (classify_arg_ext (grp_info Θ Ξ)) by (intros; unfold grp_info; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity).
     rewrite <- (classify_arg_rec_ext _ (rec_info Θ Ξ)) by (intros; unfold rec_info; rewrite (gds_equiv_record_lookup _ _ _ _ He); reflexivity).
     exact Hg.
@@ -2725,9 +2775,9 @@ Section Equiv.
     destruct (deps_grow Θ Θ' Ξ (proj1 He) Hb) as (Hc & Hx & Hq & Hs & Hext & _ & _).
     assert (Hl : forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) by (intros; apply gds_equiv_ind_lookup, He).
     assert (Hr : forall p, record_lookup Θ Ξ p = record_lookup Θ' Ξ p) by (intros; apply gds_equiv_record_lookup, He).
-    intros * [Δ M0 i n H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H18 H19 H20 H21 H22 H23 H24 H25 H26 H27 H28
-                H29 H30 H31 H32 H33 H34 H35 H36 H37 H38 [rk Hrk] H40 H41].
-    apply (mk_ind_nil_at Θ' Ξ mp D IsS Δ M0 i n); auto.
+    intros * [Δ M0 i n lP H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H18 H19 H20 H21 H22 H23 H24 H25 H26 H27 H28
+                H29 H30 H31 H32 H33 H34 H35 H36 H37 H38 [rk Hrk] H40 H41 H42].
+    apply (mk_ind_nil_at Θ' Ξ mp D IsS Δ M0 i n lP); auto.
     all: try (intros; rewrite <- ?Hl, <- ?Hr in *; eauto; fail).
     - apply equiv_rview_struct_ok, H31.
     - exists rk; apply equiv_view_rank_ok, Hrk.

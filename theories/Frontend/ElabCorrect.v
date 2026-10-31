@@ -228,7 +228,7 @@ Fixpoint elab_body (S : list scope_entry) (Φ : gmod) (cs : list Cst.cmd) : elab
   | Cst.c_def m x oA oM :: cs' =>
       let* A := elab S oA in
       let* M := elab S oM in
-      elab_body (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) A (Some M))) cs'
+      elab_body (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) relevant A (Some M))) cs'
   | Cst.c_mod pv x ps md' :: cs' =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in

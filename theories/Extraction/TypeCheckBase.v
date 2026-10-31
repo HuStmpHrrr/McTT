@@ -31,19 +31,42 @@ Section type_check.
       visibly the only ones. *)
   Definition univ_nf_idx_dec (A : nf) : { u : universe_nf | is_univ_nf A u } + { forall u, ~ is_univ_nf A u }.
   Proof.
-    destruct A as [ i | c xs | | ? ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? | ? ? | ? ? ? ? ];
-      [ left; exists (universe_large i); constructor
-      | left; exists (universe_small (c, xs)); constructor
-      | right; intros ? H; inversion H .. ].
+    refine (match A with
+            | nf_typ i => inleft (exist _ (universe_large i) _)
+            | nf_univ c xs => inleft (exist _ (universe_small (c, xs)) _)
+            | _ => inright _
+            end);
+      first [ constructor | intros ? H; inversion H ].
   Defined.
 
-  (** Extraction should set the 9th bit of [Extraction Flag] (for example,
-      [Set Extraction Flag 1007.]); otherwise this function introduces
-      redundant pair construction and pattern matching. *)
+  (** Whether a normal form is the type of a type, of which sort and in
+      which universe: a universe, or [Prop] ([is_sort_nf]). *)
+  Definition sort_nf_dec (A : nf) : { r & { u : universe_nf | is_sort_nf A r u } } + { forall r u, ~ is_sort_nf A r u }.
+  Proof.
+    destruct (univ_nf_idx_dec A) as [[u Hu] | Hnu]; [ left; exists relevant, u; constructor; exact Hu |].
+    destruct A; try (right; intros ? ? H; inversion H; subst; eapply Hnu; eassumption).
+    left; exists propositional, (universe_small (ordinal_of_nat 0, nil)); constructor.
+  Defined.
+
+  (** Whether a normal form is [Prop]. *)
   #[derive(equations=no,eliminator=no)]
-  Equations get_subterms_of_pi_nf (A : nf) : { B & { C | A = Πⁿ B C } } + { forall B C, A <> Πⁿ B C } :=
-  | Πⁿ B C => pureo (existT _ B (exist _ C _))
-  | _              => inright _
+  Equations prop_nf_dec (A : nf) : { A = Propⁿ } + { A <> Propⁿ } :=
+  | Propⁿ => left eq_refl
+  | _ => right _
+  .
+
+  (** Whether a normal form is a [Π] of either sort, and its parts. *)
+  #[derive(equations=no,eliminator=no)]
+  Equations get_pi_nf (A : nf) : { r & { B & { C | A = nf_pi r B C } } } + { forall r B C, A <> nf_pi r B C } :=
+  | nf_pi r B C => pureo (existT _ r (existT _ B (exist _ C _)))
+  | _ => inright _
+  .
+
+  (** Whether a normal form is a conjunction, and its parts. *)
+  #[derive(equations=no,eliminator=no)]
+  Equations get_and_nf (A : nf) : { P & { Q | A = Σₚⁿ P Q } } + { forall P Q, A <> Σₚⁿ P Q } :=
+  | Σₚⁿ P Q => pureo (existT _ P (exist _ Q _))
+  | _ => inright _
   .
 
   (** Whether a normal form is a type of levels, and of which sort. *)
@@ -53,7 +76,10 @@ Section type_check.
   | _        => inright _
   .
 
-  Extraction Inline univ_nf_idx_dec get_subterms_of_pi_nf get_level_sort_nf.
+  (** Extraction should set the 9th bit of [Extraction Flag] (for example,
+      [Set Extraction Flag 1007.]); otherwise the decisions that return
+      parts introduce redundant pair construction and pattern matching. *)
+  Extraction Inline univ_nf_idx_dec sort_nf_dec prop_nf_dec get_pi_nf get_and_nf get_level_sort_nf.
 
   (** ** Deciding the Side Conditions of Units *)
 
@@ -79,9 +105,9 @@ Section type_check.
 
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
-    intros [b pv A [M |] | pm U | pvi Di Φi | pd ? ? ? | ? ? ?] [b' pv' A' [M' |] | pm' U' | pvi' Di' Φi' | pd' ? ? ? | ? ? ?]; cbn;
+    intros [b pv r A [M |] | pm U | pvi Di Φi | pd ? ? ? | ? ? ?] [b' pv' r' A' [M' |] | pm' U' | pvi' Di' Φi' | pd' ? ? ? | ? ? ?]; cbn;
       try (right; intros []; fail); try (left; exact I).
-    - destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
+    - destruct b, b', (Bool.bool_dec pv pv'), (relevance_eq_dec r r'); try (right; intuition congruence; fail); left; auto.
     - exact (Bool.bool_dec pm pm').
     - exact (Bool.bool_dec pd pd').
   Defined.
@@ -132,24 +158,125 @@ Section type_check.
   Lemma nbe_order_of_typ : forall G X i, G ⊢ X : Typeω@i -> nbe_ty_order gc_deps gc_stack G X.
   Proof. intros * HX; destruct (soundness_ty HX) as [W [HW _]]; eauto using nbe_ty_order_sound. Qed.
 
+  (** The same for a type of either sort. *)
+  Lemma nbe_order_of_type : forall G X, G ⊢ᵗ X -> nbe_ty_order gc_deps gc_stack G X.
+  Proof. intros * [S HS HX]; destruct (nbe_ty_exists_sort HS HX) as [W HW]; eauto using nbe_ty_order_sound. Qed.
+
   (** The normal form of a type is a type, both algorithmically and
       declaratively: the two halves of [type_infer]'s postcondition. *)
-  Lemma level_of_nbe : forall G X i D,
+  Lemma level_of_nbe : forall G X D,
+      G ⊢ᵗ X ->
+      nbe_ty_f G X D ->
+      (exists UD r u, G ⊢a D ⟹ UD /\ is_sort_nf UD r u) /\ G ⊢ᵗ D.
+  Proof.
+    intros * [S HS HX] HD.
+    assert (G ⊢ X ≈ D : S) by (eapply soundness_ty_at_sort; eassumption).
+    assert (HDS : G ⊢ D : S) by (gen_presups; eassumption).
+    assert (⊢ G) by (gen_presups; assumption).
+    destruct (alg_type_check_sort_infer ltac:(eassumption) HS (alg_type_check_complete (user_exp_nf D) HDS))
+      as (UD & r & u & ? & ?).
+    split; [ exists UD, r, u; split; assumption | exact (mk_wf_type _ HS HDS) ].
+  Qed.
+
+  (** The postcondition of a type of a large universe. *)
+  Lemma level_of_nbe_typ : forall G X i D,
       G ⊢ X : Typeω@i ->
       nbe_ty_f G X D ->
-      (exists UD u, G ⊢a D ⟹ UD /\ is_univ_nf UD u) /\ (exists j, G ⊢ D : Typeω@j).
+      (exists UD r u, G ⊢a D ⟹ UD /\ is_sort_nf UD r u) /\ G ⊢ᵗ D.
+  Proof. intros * HX; apply level_of_nbe, (wf_type_univ HX). Qed.
+
+  (** The postcondition of a normal form that is a type. *)
+  Lemma infer_post_of_type : forall G (T : nf),
+      G ⊢ᵗ T -> (exists UD r u, G ⊢a T ⟹ UD /\ is_sort_nf UD r u) /\ G ⊢ᵗ T.
   Proof.
-    intros * HX HD.
-    assert (G ⊢ X ≈ D : Typeω@i) by (eapply soundness_ty'; eassumption).
-    assert (G ⊢ D : Typeω@i) by (gen_presups; eassumption).
-    destruct (alg_type_infer_large_typ_complete (user_exp_nf D) ltac:(eassumption)) as [UD [u [? []]]].
-    split; [ exists UD, u; split; assumption | exists i; assumption ].
+    intros * [S HS HT].
+    assert (⊢ G) by (gen_presups; assumption).
+    destruct (alg_type_check_sort_infer ltac:(eassumption) HS (alg_type_check_complete (user_exp_nf T) HT))
+      as (UD & r & u & ? & ?).
+    split; [ exists UD, r, u; split; assumption | exact (mk_wf_type _ HS HT) ].
+  Qed.
+
+  (** A type of either sort, read off the sort its inference gives. *)
+  (** A type stays one along a substitution. *)
+  Lemma wf_type_sub_preserves : forall Γ Δ σ A, Δ ⊢ᵗ A -> Γ ⊢ˢ σ : Δ -> Γ ⊢ᵗ A[σ].
+  Proof.
+    intros * [S HS HA] Hσ; apply (mk_wf_type S HS).
+    rewrite <- (type_sort_sub S σ HS); exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ).
+  Qed.
+
+  (** The normal form of a type is a type. *)
+  Lemma wf_type_nbe : forall G X W, G ⊢ᵗ X -> nbe_ty_f G X W -> G ⊢ᵗ W.
+  Proof. intros * HX HW; exact (proj2 (level_of_nbe _ _ _ HX HW)). Qed.
+
+  (** The parts of a [Π] or a [∀] that is a type are types. *)
+  Lemma wf_type_pi_inv : forall G r A B, G ⊢ᵗ a_pi r A B -> G ⊢ᵗ A /\ G ▹ A ⊢ᵗ B.
+  Proof.
+    intros * [S HS H]; destruct r.
+    - destruct (wf_pi_typed_large H) as [k Hk]; destruct (wf_pi_inversion' Hk) as [[HA | HA] HB].
+      + split; [ exact (wf_type_univ HA) | exact (wf_type_univ HB) ].
+      + split; [ exact (wf_type_prop HA) | exact (wf_type_univ HB) ].
+    - destruct (wf_all_inversion _ _ _ _ _ _ H) as [S' HS' HA HP _].
+      split; [ exact (mk_wf_type _ HS' HA) | exact (wf_type_prop HP) ].
+  Qed.
+
+  (** A type is of one sort. *)
+  Lemma nbe_ty_relevance_functional : forall G A r r', nbe_ty_relevance G A r -> nbe_ty_relevance G A r' -> r = r'.
+  Proof.
+    intros * (ρ & a & Hρ & Ha & <-) (ρ' & a' & Hρ' & Ha' & <-).
+    functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; reflexivity.
+  Qed.
+
+  (** A [Π] or a [∀] of a type of either sort and a type of the tag's sort
+      over it is a type. *)
+  Lemma wf_type_pi_of_parts : forall G r A B, G ⊢ᵗ A ->
+      (exists l : nat, G ▹ A ⊢ B : relevance_sort r Typeω@l) -> G ⊢ᵗ a_pi r A B.
+  Proof.
+    intros * [SA HSA HA] [l HB].
+    assert (⊢ G) by (gen_presups; assumption).
+    destruct HSA as [k |].
+    - pose (m := Nat.max k l).
+      assert (HAm : G ⊢ A : Typeω@m) by (eapply lift_exp_max_left; exact HA).
+      assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HA | constructor ]).
+      assert (HBm : G ▹ A ⊢ B : relevance_sort r Typeω@m)
+        by (destruct r; cbn [relevance_sort] in *; [ eapply lift_exp_max_right; exact HB | exact HB ]).
+      eapply wf_type_relevance.
+      eapply wf_pi; [ apply wf_is_univ_large; assumption | exact HAm | apply pi_domain_universe |].
+      destruct r; exact HBm.
+    - eapply wf_type_relevance.
+      eapply wf_pi; [ apply wf_is_univ_large; eassumption | exact HA | apply pi_domain_prop |].
+      destruct r; exact HB.
+  Qed.
+
+  (** The type a λ infers is a type: the [Π] or [∀], of the sort of the
+      body's type, of the domain's normal form. *)
+  Lemma wf_type_fn_post : forall G A' A'' B r, G ⊢ᵗ A' -> nbe_ty_f G A' A'' -> G ▹ A' ⊢ᵗ B ->
+      nbe_ty_relevance (G ▹ A') B r -> G ⊢ᵗ a_pi r A'' B.
+  Proof.
+    intros * [SA HSA HA] Hn [SB HSB HB] (ρ & a & Hρ & Ha & Hr).
+    assert (HAA : G ⊢ A' ≈ A'' : SA) by (eapply soundness_ty_at_sort; eassumption).
+    assert (HA'' : G ⊢ A'' : SA) by (gen_presups; assumption).
+    destruct (typed_at_sort_of_initial_relevance HSB HB Hρ Ha) as [l Hl]; rewrite Hr in Hl.
+    assert (Hσ : G ▹ A'' ⊢ˢ Id : G ▹ A') by (eapply sub_id_extend_of_exp_eq; [ exact HSA | symmetry; exact HAA ]).
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hl Hσ) as Hl'.
+    rewrite !exp_sub_id in Hl'.
+    eapply wf_type_pi_of_parts; [ exact (mk_wf_type _ HSA HA'') | exists l; exact Hl' ].
+  Qed.
+
+  (** The parts of a conjunction that is a type are propositions. *)
+  Lemma wf_type_and_inv : forall G P Q, G ⊢ᵗ Σₚ P Q -> G ⊢ P : Propₘ /\ G ▹ P ⊢ Q : Propₘ.
+  Proof. intros * [S HS H]; destruct (wf_and_inversion _ _ _ _ _ _ H) as [HP HQ _]; split; assumption. Qed.
+
+  Lemma type_of_sort_infer : forall G A UA r u, ⊢ G -> G ⊢a A ⟹ UA -> is_sort_nf UA r u -> G ⊢ᵗ A.
+  Proof.
+    intros * HG HA Hs.
+    exact (mk_wf_type _ (type_sort_relevance_universe r (universe_nf_large_index u))
+             (sort_typed_of_is_sort_nf (alg_type_infer_sound HA HG) Hs)).
   Qed.
 
   (** The type a member of a checked module expression is read at is a
       type ([member_wf]). *)
   Lemma member_typ_of_alg : forall G M x R A, ⊢ G -> G ⊢aᵐ M ->
-      mdenote gc_deps gc_stack G (me_mem M x) R -> mdesc_type R = Some A -> exists i, G ⊢ A : Typeω@i.
+      mdenote gc_deps gc_stack G (me_mem M x) R -> mdesc_type R = Some A -> G ⊢ᵗ A.
   Proof.
     intros * HG HM Hm Ht.
     exact (proj1 (member_wf _ _ _ _ _ (alg_modexp_sound HM HG) Hm Ht)).
@@ -167,24 +294,41 @@ Section type_check.
   Lemma checker_env_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
   Proof.
     intros G HG.
-    assert (G ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
+    assert (G ⊢ Typeω@0 : Typeω@1) as [W [HW _]]%soundness_ty by mauto 2.
     inversion HW; subst; eauto using initial_env_order_sound.
   Qed.
 
-  (** The reference value of the type or definition an extension adds. *)
+  (** The reference value of the type an assumption adds. *)
   Lemma checker_env_ref_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p -> exists a, ⟦ A ⟧ p ↘ a.
   Proof.
-    intros * HGA Hp; inversion HGA as [| ? ? ? i ? HA | | |]; subst.
-    destruct (soundness_ty HA) as [W [HW _]]; inversion HW; subst.
+    intros * HGA Hp; inversion HGA; subst.
+    match goal with HA : G ⊢ A : ?S, HS : type_sort ?S |- _ => destruct (nbe_ty_exists_sort HS HA) as [W HW] end.
+    inversion HW; subst.
     functional_initial_env_rewrite_clear; eauto.
   Qed.
 
-  Lemma checker_env_ref_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p -> exists m, ⟦ M ⟧ p ↘ m.
+  (** The reference value of the type a definition adds. *)
+  Lemma checker_env_ref_def_typ : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p -> exists a, ⟦ A ⟧ p ↘ a.
   Proof.
-    intros * HGA Hp; inversion HGA as [| | ? ? ? i ? ? HA HM | |]; subst.
-    destruct (soundness HM) as [W [HW _]]; inversion HW; subst.
+    intros * HGA Hp; inversion HGA; subst.
+    match goal with HA : G ⊢ A : ?S, HS : type_sort ?S |- _ => destruct (nbe_ty_exists_sort HS HA) as [W HW] end.
+    inversion HW; subst.
     functional_initial_env_rewrite_clear; eauto.
   Qed.
+
+  (** The reference value of its body, at a relevant type. *)
+  Lemma checker_env_ref_def : forall G A M p a, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p ->
+      ⟦ A ⟧ p ↘ a -> domain_relevance a = relevant -> exists m, ⟦ M ⟧ p ↘ m.
+  Proof.
+    intros * HGA Hp Ha Hr; inversion HGA; subst.
+    match goal with HM : G ⊢ M : A |- _ => destruct (soundness HM) as [W [HW _]] end.
+    destruct (nbe_relevant_inv HW _ _ Hp Ha Hr) as (m & Hm & _); eauto.
+  Qed.
+
+  (** The sort of a reference type, read off the related fast one. *)
+  Lemma relevance_of_fast_sim : forall a a' r, domain_simulation gc_deps gc_stack a (fdomain_erase a') ->
+      fdomain_relevance a' = r -> domain_relevance a = r.
+  Proof. intros * Hs Er; rewrite (domain_relevance_sim _ _ _ _ Hs); apply fdomain_relevance_erase_eq; exact Er. Qed.
 
   (** The fast environment the checker carries is right. *)
   Lemma checker_env_ok : forall G p',
@@ -200,35 +344,82 @@ Section type_check.
     eapply (fast_eval_of_ref _ _ _ _ _ _ Ha), fast_env_agree_all, Hag.
   Qed.
 
-  Lemma checker_env_eval_order_def : forall G A M p', ⊢ G ▸ A ≔ M ->
+  Lemma checker_env_eval_order_def_typ : forall G A M p', ⊢ G ▸ A ≔ M ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
+      fast_eval_exp_order gc_deps gc_stack A (fenv_erase p').
+  Proof.
+    intros * HGA (p & Hp & Hag); destruct (checker_env_ref_def_typ _ _ _ _ HGA Hp) as [a Ha].
+    eapply (fast_eval_of_ref _ _ _ _ _ _ Ha), fast_env_agree_all, Hag.
+  Qed.
+
+  (** The reference value of a definition's type, related to the fast one,
+      and of the same sort. *)
+  Lemma checker_env_def_typ_sim : forall G A M p' a', ⊢ G ▸ A ≔ M ->
+      forall p, initial_env gc_deps gc_stack G p -> fast_env_agree gc_deps gc_stack (fun _ => True) p p' ->
+      ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' ->
+      exists a, ⟦ A ⟧ p ↘ a /\ domain_relevance a = fdomain_relevance a'.
+  Proof.
+    intros * HGA p Hp Hag Ha'; destruct (checker_env_ref_def_typ _ _ _ _ HGA Hp) as [a Ha].
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (fast_env_agree_all _ _ _ _ _ Hag)) _ Ha') as Hs.
+    exists a; split; [ exact Ha | eapply relevance_of_fast_sim; [ exact Hs | reflexivity ] ].
+  Qed.
+
+  Lemma checker_env_eval_order_def : forall G A M p' a', ⊢ G ▸ A ≔ M ->
+      (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
+      ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' -> fdomain_relevance a' = relevant ->
       fast_eval_exp_order gc_deps gc_stack M (fenv_erase p').
   Proof.
-    intros * HGA (p & Hp & Hag); destruct (checker_env_ref_def _ _ _ _ HGA Hp) as [m Hm].
+    intros * HGA (p & Hp & Hag) Ha' Er.
+    destruct (checker_env_def_typ_sim _ _ _ _ _ HGA _ Hp Hag Ha') as (a & Ha & Hr); rewrite Er in Hr.
+    destruct (checker_env_ref_def _ _ _ _ _ HGA Hp Ha Hr) as [m Hm].
     eapply (fast_eval_of_ref _ _ _ _ _ _ Hm), fast_env_agree_all, Hag.
   Qed.
 
+  (** An assumption: a fresh variable of its type, the proof at a
+      proposition. *)
   Lemma checker_env_ass_sim : forall G A p' a', ⊢ G ▹ A ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
       ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' /\ fdomain_ok gc_deps gc_stack a' ->
       exists p, initial_env gc_deps gc_stack (G ▹ A) p /\
-             fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env p' (fd_neut a' (fd_var (List.length G)))).
+             fast_env_agree gc_deps gc_stack (fun _ => True) p
+               (fextend_env p' (frelevant_value a' (fd_neut a' (fd_var (List.length G))))).
   Proof.
     intros * HGA (p & Hp & Hag) [Ha' Hok]; destruct (checker_env_ref_ass _ _ _ HGA Hp) as [a Ha].
     pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (fast_env_agree_all _ _ _ _ _ Hag)) _ Ha').
     eexists; split; [ econstructor; eassumption |].
-    eapply fast_env_agree_term; [ exact Hag | cbn; repeat constructor; assumption | repeat constructor; assumption ].
+    eapply fast_env_agree_term;
+      [ exact Hag
+      | rewrite frelevant_value_erase; apply relevant_value_sim; [ assumption | cbn; repeat constructor; assumption ]
+      | apply frelevant_value_ok; repeat constructor; assumption ].
   Qed.
 
-  Lemma checker_env_def_sim : forall G A M p' m', ⊢ G ▸ A ≔ M ->
+  (** A definition of a relevant type: its body's value. *)
+  Lemma checker_env_def_sim : forall G A M p' a' m', ⊢ G ▸ A ≔ M ->
       (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
+      ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' /\ fdomain_ok gc_deps gc_stack a' ->
+      fdomain_relevance a' = relevant ->
       ⟦ M ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase m' /\ fdomain_ok gc_deps gc_stack m' ->
       exists p, initial_env gc_deps gc_stack (G ▸ A ≔ M) p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env p' m').
   Proof.
-    intros * HGA (p & Hp & Hag) [Hm' Hok]; destruct (checker_env_ref_def _ _ _ _ HGA Hp) as [m Hm].
+    intros * HGA (p & Hp & Hag) [Ha' _] Er [Hm' Hok].
+    destruct (checker_env_def_typ_sim _ _ _ _ _ HGA _ Hp Hag Ha') as (a & Ha & Hr); rewrite Er in Hr.
+    destruct (checker_env_ref_def _ _ _ _ _ HGA Hp Ha Hr) as [m Hm].
     pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Hm (fast_env_agree_all _ _ _ _ _ Hag)) _ Hm').
-    eexists; split; [ econstructor; eassumption |].
+    eexists; split; [ eapply initial_env_cons_def; eassumption |].
     eapply fast_env_agree_term; eassumption.
+  Qed.
+
+  (** A definition of a proposition: the proof, its body not evaluated. *)
+  Lemma checker_env_def_proof_sim : forall G A M p' a', ⊢ G ▸ A ≔ M ->
+      (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
+      ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' /\ fdomain_ok gc_deps gc_stack a' ->
+      fdomain_relevance a' = propositional ->
+      exists p, initial_env gc_deps gc_stack (G ▸ A ≔ M) p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p (fextend_env p' fd_true).
+  Proof.
+    intros * HGA (p & Hp & Hag) [Ha' _] Er.
+    destruct (checker_env_def_typ_sim _ _ _ _ _ HGA _ Hp Hag Ha') as (a & Ha & Hr); rewrite Er in Hr.
+    eexists; split; [ eapply initial_env_cons_def_proof; eassumption |].
+    eapply fast_env_agree_term; [ exact Hag | cbn; constructor | constructor ].
   Qed.
 
   (** The reference value of the unit a module slot adds. *)
@@ -236,7 +427,7 @@ Section type_check.
       exists h, ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ p ↘ h.
   Proof.
     intros * HGU Hp.
-    assert (G ▹ₘ U ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
+    assert (G ▹ₘ U ⊢ Typeω@0 : Typeω@1) as [W [HW _]]%soundness_ty by mauto 2.
     inversion HW as [? ? Hi _ _]; subst.
     inversion Hi; subst; functional_initial_env_rewrite_clear; eauto.
   Qed.
@@ -266,7 +457,7 @@ Section type_check.
       exists m h, ⟦ M ⟧ p ↘ m /\ ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ p ↘ h.
   Proof.
     intros * HG Hp.
-    assert (G ▸ₘ A ≔ M ‖ U ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
+    assert (G ▸ₘ A ≔ M ‖ U ⊢ Typeω@0 : Typeω@1) as [W [HW _]]%soundness_ty by mauto 2.
     inversion HW as [? ? Hi _ _]; subst.
     inversion Hi; subst; functional_initial_env_rewrite_clear; eauto.
   Qed.
@@ -301,8 +492,35 @@ Section type_check.
     eapply fast_env_agree_dm; eassumption.
   Qed.
 
-  Lemma checker_env_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
-  Proof. intros * [? HX]; gen_presups; assumption. Qed.
+  Lemma checker_env_ctx_of_typ : forall G X, G ⊢ᵗ X -> ⊢ G.
+  Proof. intros * [? ? HX]; gen_presups; assumption. Qed.
+
+  (** The reference value of a type at the initial environment. *)
+  Lemma checker_env_ref_type : forall G T p, G ⊢ᵗ T -> initial_env gc_deps gc_stack G p -> exists a, ⟦ T ⟧ p ↘ a.
+  Proof.
+    intros * [S HS HT] Hp; destruct (nbe_ty_exists_sort HS HT) as [W HW]; inversion HW; subst.
+    functional_initial_env_rewrite_clear; eauto.
+  Qed.
+
+  Lemma checker_env_eval_order_type : forall G T p', G ⊢ᵗ T ->
+      (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
+      fast_eval_exp_order gc_deps gc_stack T (fenv_erase p').
+  Proof.
+    intros * HT (p & Hp & Hag); destruct (checker_env_ref_type _ _ _ HT Hp) as [a Ha].
+    eapply (fast_eval_of_ref _ _ _ _ _ _ Ha), fast_env_agree_all, Hag.
+  Qed.
+
+  (** The sort of a type is that of its fast value at the environment the
+      checker carries. *)
+  Lemma checker_relevance_sound : forall G T p' a', G ⊢ᵗ T ->
+      (exists p, initial_env gc_deps gc_stack G p /\ fast_env_agree gc_deps gc_stack (fun _ => True) p p') ->
+      ⟦ T ⟧ᶠ gc_deps ⍮ gc_stack ⍮ fenv_erase p' ↘ fdomain_erase a' ->
+      nbe_ty_relevance G T (fdomain_relevance a').
+  Proof.
+    intros * HT (p & Hp & Hag) Ha'; destruct (checker_env_ref_type _ _ _ HT Hp) as [a Ha].
+    pose proof (proj2 (fast_eval_of_ref _ _ _ _ _ _ Ha (fast_env_agree_all _ _ _ _ _ Hag)) _ Ha') as Hs.
+    exists p, a; repeat split; [ exact Hp | exact Ha | eapply relevance_of_fast_sim; [ exact Hs | reflexivity ] ].
+  Qed.
 
   Inductive type_check_order : exp -> Prop :=
   | type_check_order_ti : forall {A}, type_infer_order A -> type_check_order A
@@ -313,10 +531,24 @@ Section type_check.
   | type_infer_order_llit : forall {o}, type_infer_order (𝕃ᵒ o)
   | type_infer_order_succl : forall {M}, type_infer_order M -> type_infer_order (succl M)
   | type_infer_order_maxl : forall {M N}, type_infer_order M -> type_infer_order N -> type_infer_order (maxl M N)
+  (** [Prop] and the closed propositions recurse on nothing *)
+  | type_infer_order_prop : type_infer_order Propₘ
   | type_infer_order_True : type_infer_order ⊤
   | type_infer_order_true : type_infer_order ⋆
   | type_infer_order_False : type_infer_order ⊥
-  | type_infer_order_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
+  (** Ex falso infers its target and checks its proof *)
+  | type_infer_order_absurd : forall {C M}, type_infer_order C -> type_check_order M -> type_infer_order (efq M return C)
+  (** A conjunction infers its parts *)
+  | type_infer_order_and : forall {P Q}, type_infer_order P -> type_infer_order Q -> type_infer_order (Σₚ P Q)
+  (** A proof of a conjunction infers its annotation and checks its components *)
+  | type_infer_order_conj : forall {T M N}, type_infer_order T -> type_check_order M -> type_check_order N ->
+      type_infer_order (a_conj T M N)
+  (** The components of a proof of a conjunction infer it *)
+  | type_infer_order_left : forall {M}, type_infer_order M -> type_infer_order (a_left M)
+  | type_infer_order_right : forall {M}, type_infer_order M -> type_infer_order (a_right M)
+  (** The placeholder type and its element recurse on nothing *)
+  | type_infer_order_placeholder_type : type_infer_order a_placeholder_type
+  | type_infer_order_placeholder : type_infer_order a_placeholder
   | type_infer_order_indty : forall {p k}, type_infer_order (a_ind p k)
   | type_infer_order_con : forall {p k c}, type_infer_order (a_con p k c)
   (** A numeral is expanded before it is checked; it has no type. *)
@@ -324,13 +556,14 @@ Section type_check.
   | type_infer_order_ntok : type_infer_order a_ntok
   (** An eliminator: its scrutinee and the annotations and motives of its
       blocks infer, its uniform parameters and the branches are checked. *)
-  | type_infer_order_elim : forall {oq Us m Bks M}, type_infer_order M ->
+  | type_infer_order_elim : forall {r oq Us m Bks M}, type_infer_order M ->
       (forall U, List.In U Us -> type_check_order U) ->
       (forall b Z, List.In b Bks -> eb_ann b = Some Z -> type_infer_order Z) ->
       (forall b, List.In b Bks -> type_infer_order (eb_motive b)) ->
       (forall b br, List.In b Bks -> List.In br (eb_brs b) -> type_check_order (snd br)) ->
-      type_infer_order (a_elim oq Us m Bks M)
-  | type_infer_order_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
+      type_infer_order (a_elim r oq Us m Bks M)
+  (** A [Π] or a [∀] infers its domain and its codomain *)
+  | type_infer_order_pi : forall {r A B}, type_infer_order A -> type_infer_order B -> type_infer_order (a_pi r A B)
   | type_infer_order_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | type_infer_order_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
   | type_infer_order_let : forall {A M B}, type_infer_order A -> type_check_order M -> type_infer_order B -> type_infer_order (ℓ A ≔ M in B)
@@ -365,10 +598,10 @@ Section type_check.
       check. *)
   with body_order : gmod -> Prop :=
   | body_order_nil : body_order gm_nil
-  | body_order_def : forall {Φ x b pv A M}, body_order Φ -> type_infer_order A -> type_check_order M ->
-      body_order (gm_ext Φ x (ge_def b pv A (Some M)))
+  | body_order_def : forall {Φ x b pv r A M}, body_order Φ -> type_infer_order A -> type_check_order M ->
+      body_order (gm_ext Φ x (ge_def b pv r A (Some M)))
   | body_order_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
-  | body_order_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
+  | body_order_axiom : forall {Φ x b pv r A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv r A None))
   | body_order_ind_case : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
   (** A definition with a module part: its term part as a definition, its
       unit as a submodule *)
@@ -421,7 +654,7 @@ Section type_check.
            end) /\
     (forall Φ, body_order Φ) /\
     (forall E, match E with
-           | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
+           | ge_def _ _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
            | ge_def_mod _ A M U => type_infer_order A /\ type_infer_order M /\ unit_order U
            | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => True
@@ -440,7 +673,7 @@ Section type_check.
              end)
       body_order
       (fun E => match E with
-             | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
+             | ge_def _ _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
              | ge_def_mod _ A M U => type_infer_order A /\ type_infer_order M /\ unit_order U
              | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => True
@@ -451,7 +684,7 @@ Section type_check.
            rewrite List.Forall_forall in HF; constructor; [ assumption | intros fm Hfm; apply type_check_order_ti; auto ] end.
     - (* an eliminator: its uniform parameters and branches are checked *)
       match goal with
-      | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks |- type_infer_order (a_elim _ ?Us _ ?Bks _) =>
+      | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks |- type_infer_order (a_elim _ _ ?Us _ ?Bks _) =>
           rewrite List.Forall_forall in HU, HB
       end.
       constructor; [ assumption | intros U HU'; apply type_check_order_ti; auto
@@ -466,7 +699,7 @@ Section type_check.
         | apply type_infer_order_let_infer; assumption
         | apply type_infer_order_let_mod; assumption ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
-    - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? | ? ? ?]; destruct_conjs;
+    - destruct E as [b pv r A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? | ? ? ?]; destruct_conjs;
         first [ apply body_order_def; eauto with mctt | apply body_order_mod; assumption
               | apply body_order_axiom; assumption | apply body_order_ind_case; assumption | apply body_order_def_mod; eauto with mctt
               | apply body_order_record; assumption ].
@@ -586,13 +819,19 @@ Definition checker_env_of G (HG : ⊢ G) : checker_env G :=
 Definition checker_env_ass G (P : checker_env G) A (HGA : ⊢ G ▹ A) : checker_env (G ▹ A) :=
   let (p, Hp) := P in
   let (a, Ha) := fast_eval_exp_impl F A p (checker_env_ok G p Hp) (checker_env_eval_order_ass G A p HGA Hp) in
-  exist _ (fextend_env p (fd_neut a (fd_var (List.length G)))) (checker_env_ass_sim _ _ _ _ HGA Hp Ha).
+  exist _ (fextend_env p (frelevant_value a (fd_neut a (fd_var (List.length G))))) (checker_env_ass_sim _ _ _ _ HGA Hp Ha).
 
-(** The same for a definition entry: its body's value. *)
+(** The same for a definition entry, by the sort of its type: its body's
+    value, or the proof at a proposition. *)
 Definition checker_env_def G (P : checker_env G) A M (HGA : ⊢ G ▸ A ≔ M) : checker_env (G ▸ A ≔ M) :=
   let (p, Hp) := P in
-  let (m, Hm) := fast_eval_exp_impl F M p (checker_env_ok G p Hp) (checker_env_eval_order_def G A M p HGA Hp) in
-  exist _ (fextend_env p m) (checker_env_def_sim _ _ _ _ _ HGA Hp Hm).
+  let (a, Ha) := fast_eval_exp_impl F A p (checker_env_ok G p Hp) (checker_env_eval_order_def_typ G A M p HGA Hp) in
+  match fdomain_relevance a as r return fdomain_relevance a = r -> checker_env (G ▸ A ≔ M) with
+  | relevant => fun Er =>
+      let (m, Hm) := fast_eval_exp_impl F M p (checker_env_ok G p Hp) (checker_env_eval_order_def G A M p a HGA Hp (proj1 Ha) Er) in
+      exist _ (fextend_env p m) (checker_env_def_sim _ _ _ _ _ _ HGA Hp Ha Er Hm)
+  | propositional => fun Er => exist _ (fextend_env p fd_true) (checker_env_def_proof_sim _ _ _ _ _ HGA Hp Ha Er)
+  end eq_refl.
 
 (** The same for a module slot: the closure of its unit. *)
 Definition checker_env_mod G (P : checker_env G) U (HGU : ⊢ G ▹ₘ U) : checker_env (G ▹ₘ U) :=
@@ -608,6 +847,13 @@ Definition checker_env_dm G (P : checker_env G) A M U (HG : ⊢ G ▸ₘ A ≔ M
   let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (checker_env_ok G p Hp) (checker_env_eval_order_dm_unit G A M U p HG Hp) in
   exist _ (fextend_env_dm p m h) (checker_env_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
 
+(** The sort of a type, read off its fast value at the environment the
+    checker carries ([nbe_ty_relevance]). *)
+Definition checker_relevance G (P : checker_env G) T (HT : G ⊢ᵗ T) : { r | nbe_ty_relevance G T r } :=
+  let (p, Hp) := P in
+  let (a, Ha) := fast_eval_exp_impl F T p (checker_env_ok G p Hp) (checker_env_eval_order_type G T p HT Hp) in
+  exist _ (fdomain_relevance a) (checker_relevance_sound G T p a HT Hp (proj1 Ha)).
+
 (** The initial environment of an extension [Ψ ++ G], from that of [G]:
     one entry more per entry of [Ψ], rather than all of [G]'s again. *)
 Fixpoint checker_env_ext G (P : checker_env G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> checker_env (Ψ ++ G) :=
@@ -620,43 +866,21 @@ Fixpoint checker_env_ext G (P : checker_env G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ +
   end.
 End Fast.
 
+(** The recursive calls of a checker in the context of its obligations:
+    the functions over contexts that return a decision or an inference.
+    The obligations never use them. *)
 Ltac clear_defs :=
-  repeat lazymatch goal with
-    | H: (forall (G : ctx) (A : typ),
-             (exists i : nat, G ⊢ A : Typeω@i) ->
-             checker_env G ->
-             forall M : typ,
-               type_check_order M ->
-               ({ G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A }))
-      |- _ =>
-        clear H
-    | H: (let H := fixproto in
-          forall (G : ctx) (A : typ),
-            (exists i : nat, G ⊢ A : Typeω@i) -> checker_env G -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
-      |- _ =>
-        clear H
-    | H: (let H := fixproto in
-          forall G : ctx,
-            ⊢ G ->
-            checker_env G ->
-            forall M : typ,
-              type_infer_order M ->
-              ({ B : nf | G ⊢a M ⟹ B /\
-                  (exists UA u, G ⊢a (nf_to_exp B) ⟹ UA /\ is_univ_nf UA u) /\
-                  (exists i : nat, G ⊢ (nf_to_exp B) : Typeω@i) } + { forall C : nf, ~ G ⊢a M ⟹ C }))
-      |- _ =>
-        clear H
-    | H: (forall G : ctx,
-             ⊢ G ->
-             checker_env G ->
-             forall M : typ,
-               type_infer_order M ->
-               ({ B : nf | G ⊢a M ⟹ B /\
-                   (exists UA u, G ⊢a (nf_to_exp B) ⟹ UA /\ is_univ_nf UA u) /\
-                   (exists i : nat, G ⊢ (nf_to_exp B) : Typeω@i) } + { forall C : nf, ~ G ⊢a M ⟹ C }))
-      |- _ =>
-        clear H
-  end.
+  repeat match goal with
+    | H : _ |- _ =>
+        lazymatch type of H with
+        | context [ fixproto ] => clear H
+        | forall _ : ctx, _ =>
+            lazymatch type of H with
+            | context [ sumbool ] => clear H
+            | context [ sumor ] => clear H
+            end
+        end
+    end.
 
 (** A context the checker extends is well formed by the soundness of the
     check of the extension. *)
@@ -664,21 +888,25 @@ Ltac ctx_wf_tac :=
   match goal with
   | |- ⊢ ?G => assumption
   | |- ⊢ ?G ▹ ?A =>
-      match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA ?u |- _ =>
-        assert (G ⊢ A : universe_nf_tm u)
-          by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
-              eapply alg_type_infer_sound; eassumption);
-        assert (G ⊢ A : Typeω@(universe_nf_large_index u))
-          by (apply wf_exp_universe_nf_large_index; eassumption);
-        mauto 2 end
+      let HA := fresh "HA" in
+      assert (HA : G ⊢ᵗ A) by type_sound;
+      destruct HA as [? ? ?]; eapply wf_ctx_extend; eassumption
   | |- ⊢ ?G ▸ ?A ≔ ?M =>
-      match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA ?u, H' : G ⊢a M ⟸ A |- _ =>
-        assert (G ⊢ A : universe_nf_tm u)
-          by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
-              eapply alg_type_infer_sound; eassumption);
-        assert (G ⊢ A : Typeω@(universe_nf_large_index u))
-          by (apply wf_exp_universe_nf_large_index; eassumption);
-        assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption); mauto 2 end
+      first
+        [ match goal with H' : G ⊢a M ⟸ A |- _ =>
+            let HA := fresh "HA" in
+            assert (HA : G ⊢ᵗ A) by type_sound;
+            destruct HA as [? ? ?];
+            eapply wf_ctx_extend_def; [ eassumption | eassumption | eapply alg_type_check_sound_sort; [ exact H' | ctx_wf_tac | eassumption | eassumption ] ]
+          end
+        (** Without an annotation, at the type the body infers *)
+        | match goal with H' : G ⊢a M ⟹ ?B |- _ =>
+            change (⊢ G ▸ (B : exp) ≔ M);
+            let HA := fresh "HA" in
+            assert (HA : G ⊢ᵗ B) by type_sound;
+            destruct HA as [? ? ?];
+            eapply wf_ctx_extend_def; [ eassumption | eassumption | exact (alg_type_infer_sound H' ltac:(ctx_wf_tac)) ]
+          end ]
   | |- ⊢ ?G ▹ₘ ?U =>
       match goal with H : G ⊢aᵘ U |- _ => apply wf_ctx_extend_mod; eapply alg_unit_sound; eassumption end
   | |- ⊢ ?G ▸ₘ ?A ≔ ?M ‖ ?U =>
@@ -691,16 +919,39 @@ Ltac ctx_wf_tac :=
         assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption);
         eapply wf_ctx_extend_dm; [ eassumption | eassumption | eapply alg_unit_sound; eassumption ] end
   | |- ⊢ ?Ψ ++ ?G =>
-      match goal with H : G ⊢aˣ Ψ |- _ => eapply ext_eq_ctx_left, alg_ext_sound; eassumption end
+      first [ match goal with H : G ⊢aˣ Ψ |- _ => eapply ext_eq_ctx_left, alg_ext_sound; eassumption end
+            | match goal with H : G ⊢aᵖ Ψ |- _ => eapply ext_eq_ctx_left, (proj1 (alg_params_sound H ltac:(ctx_wf_tac))) end ]
   | |- ⊢ body_ctx ?Φ0 ++ ?Δ ++ ?G =>
       match goal with Hls : forall Φ c, In (Φ, c) _ -> ⊢ body_ctx Φ ++ Δ ++ G |- _ =>
         eapply Hls; left; reflexivity end
+  end
+(** A type the checker has inferred a sort of is a type of either sort
+    ([type_of_sort_infer]). *)
+with type_sound :=
+  match goal with
+  | |- ?G ⊢ᵗ ?A =>
+      first [ assumption
+            | match goal with Ha : G ⊢a A ⟹ ?UA, Hs : is_sort_nf ?UA _ _ |- _ =>
+                eapply type_of_sort_infer; [ ctx_wf_tac | exact Ha | exact Hs ] end
+            | match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA _ |- _ =>
+                eapply type_of_sort_infer; [ ctx_wf_tac | exact Ha | constructor; exact Hu ] end
+            | match goal with Ha : G ⊢a A ⟹ Propⁿ |- _ =>
+                eapply type_of_sort_infer; [ ctx_wf_tac | exact Ha | constructor ] end ]
   end.
 
+(** A closed type, or one the context types directly, is a type of either
+    sort. *)
+(** A type of a large universe; the universe index the typing leaves open
+    may be any. *)
+Ltac type_closed_large := unshelve (eapply wf_type_univ); [ .. | solve [ mauto 3 ] ]; try exact 0.
+
+Ltac type_closed :=
+  cbn; first [ type_closed_large | eapply wf_type_prop; solve [ mauto 3 ] ].
+
 (** The last two components of [type_infer]'s postcondition: the inferred
-    type infers a universe, and is a type. *)
+    type infers a sort, and is a type ([infer_post_of_type]). *)
 Ltac is_type_obligation :=
-  split; [ do 2 eexists; split; [ mauto 3 | constructor ] | eexists; mauto 3 ].
+  apply infer_post_of_type; first [ type_closed | type_sound ].
 
 (** The subject of a universe premise, as a typing at the large level the
     index of its side condition lives at: that is the form the obligations
@@ -715,8 +966,18 @@ Ltac saturate_infer_univ :=
           by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
               eapply alg_type_infer_sound; [ exact Ha | ctx_wf_tac ]);
         assert T by (apply wf_exp_universe_nf_large_index; eassumption)
+    (** A type of either sort: its typing at the sort *)
+    | Ha : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?r ?u |- _ =>
+        let T := constr:(G ⊢ A : relevance_sort r (a_typ (universe_nf_large_index u))) in
+        assert_fails (assert T by assumption);
+        assert T by (eapply sort_typed_of_is_sort_nf; [ eapply alg_type_infer_sound; [ exact Ha | ctx_wf_tac ] | exact Hs ])
+    (** A proposition *)
+    | Ha : ?G ⊢a ?A ⟹ Propⁿ |- _ =>
+        let T := constr:(G ⊢ A : Propₘ) in
+        assert_fails (assert T by assumption);
+        assert T by (exact (alg_type_infer_sound Ha ltac:(ctx_wf_tac)))
     | HnC : nbe_ty _ _ (?G ▹ ?A) _ ?UB', Hv : is_univ_nf ?UB' ?v,
-      HC : ?G ▹ ?A ⊢a ?B ⟹ ?UB, HB : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA _ |- _ =>
+      HC : ?G ▹ ?A ⊢a ?B ⟹ ?UB, HB : ?G ⊢a ?A ⟹ ?UA, Hu : is_sort_nf ?UA _ _ |- _ =>
         (** A codomain whose universe was normalised ([alg_type_infer_pi]): its
             typing at the large level of the normal form's index. *)
         let T := constr:(G ▹ A ⊢ B : a_typ (universe_nf_large_index v)) in
@@ -755,18 +1016,33 @@ Ltac md_unify :=
     | H1 : ?f = Some _, H2 : ?f = None |- _ => rewrite H1 in H2; discriminate H2
     end.
 
+(** One sort and universe of each type of a type. *)
+Ltac sort_unify :=
+  repeat match goal with
+    | H1 : is_sort_nf ?W ?r ?u, H2 : is_sort_nf ?W ?r' ?u' |- _ =>
+        assert_fails (constr_eq H1 H2);
+        let E1 := fresh "E" in let E2 := fresh "E" in
+        destruct (is_sort_nf_functional _ _ _ _ _ H1 H2) as [E1 E2]; clear H2; try subst
+    | H1 : is_univ_nf ?W ?u, H2 : is_univ_nf ?W ?u' |- _ =>
+        assert_fails (constr_eq H1 H2);
+        pose proof (is_univ_nf_functional _ _ _ H1 H2); clear H2; try subst
+    end.
+
 Ltac failure_contradiction :=
   match goal with
   | Hx : _ ⊢aˣ (_ :: _) |- False => inversion Hx; subst
+  | Hx : _ ⊢aᵖ (_ :: _) |- False => inversion Hx; subst
   | Hx : _ ⊢aᵘ (gu_mk _ _) |- False => inversion Hx; subst
   | Hx : _ ⊢aᵐ (_ _) |- False => inversion Hx; subst; try (cbn in *; congruence)
   | Hx : _ ⊢aᵐ (_ _ _) |- False => inversion Hx; subst; try (cbn in *; congruence)
   end;
   functional_alg_type_infer_rewrite_clear;
   md_unify;
+  sort_unify;
   first [ match goal with H : forall u : universe_nf, ?X <> universe_nf_to_nf u |- _ => exact (H _ eq_refl) end
         | congruence
         | solve [ match goal with HN : forall _, ~ _ |- _ => eapply HN; eassumption end ]
+        | solve [ match goal with HN : forall _ _, ~ _ |- _ => eapply HN; eassumption end ]
         | firstorder ].
 
 Ltac typ_sound :=
@@ -774,6 +1050,7 @@ Ltac typ_sound :=
   | |- exists i, ?G ⊢ ?A : Typeω@i =>
       saturate_infer_univ;
       match goal with H : wf_exp gc_deps gc_stack G (a_typ ?k) A |- _ => exists k; exact H end
+  | |- ?G ⊢ᵗ ?A => type_sound
   end.
 
 Ltac ctx_premise :=
@@ -803,8 +1080,7 @@ Ltac module_obligation_7 :=
   solve [ match goal with
               | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : mdesc_type _ = Some ?A
                 |- nbe_ty_order _ _ ?G ?A =>
-                  destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht) as [? ?];
-                  eapply nbe_order_of_typ; eassumption
+                  exact (nbe_order_of_type _ _ (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht))
               end ].
 
 (** A member infers the normal form of that type. *)
@@ -813,7 +1089,7 @@ Ltac module_obligation_8 :=
   solve [ match goal with
               | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : mdesc_type _ = Some ?A,
                 Hn : nbe_ty_f ?G ?A _ |- _ =>
-                  destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht) as [? ?]
+                  pose proof (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht)
               end;
               split; [ eapply alg_type_infer_mem; eassumption | eapply level_of_nbe; eassumption ] ].
 
@@ -848,8 +1124,9 @@ Ltac module_obligation_22 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
               | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G ?M _, Ht : mdesc_mod_tele _ = Some ?T,
-                Hv : tele_view ?T = Some (?B, _) |- exists i, ?G ⊢ ?B : Typeω@i =>
-                  exact (mtele_head_wf _ _ _ _ _ _ (alg_modexp_sound HM HG) Hm Ht Hv)
+                Hv : tele_view ?T = Some (?B, _) |- ?G ⊢ᵗ ?B =>
+                  destruct (mtele_head_wf _ _ _ _ _ _ (alg_modexp_sound HM HG) Hm Ht Hv) as [? HB];
+                  exact (wf_type_univ HB)
               end ].
 
 (** ** The Obligations of the Term Cases *)
@@ -885,7 +1162,7 @@ Ltac obligation_order :=
     parameter, and an annotation, a motive or a branch of a block. *)
 Ltac obligation_order_elim :=
   clear_defs;
-  match goal with H : type_infer_order (a_elim _ _ _ _ _) |- _ => progressive_invert H end;
+  match goal with H : type_infer_order (a_elim _ _ _ _ _ _) |- _ => progressive_invert H end;
   first
     [ eassumption
     | match goal with Hall : forall _ : _, _ |- _ => solve [ eapply Hall; eassumption ] end ].
@@ -907,6 +1184,16 @@ Ltac obligation_ctx := clear_defs; destruct_conjs; solve [ ctx_wf_tac ].
 
 Ltac obligation_ctx_ext := clear_defs; destruct_conjs; saturate_infer_univ; mauto 3.
 
+(** One normal form of each type: two normalizations of one type are made
+    one, and normal forms of one head have the same parts. *)
+Ltac nbe_ty_unify :=
+  repeat match goal with
+    | H1 : nbe_ty ?T ?X ?G ?A ?W1, H2 : nbe_ty ?T ?X ?G ?A ?W2 |- _ =>
+        let E := fresh "E" in
+        assert (E : W1 = W2) by (eapply functional_nbe_ty; [ exact H1 | exact H2 ]);
+        clear H2; try (injection E; clear E; intros); try subst
+    end.
+
 (** A failure branch: the judgment the branch rules out is inverted against
     the failure of the premise. *)
 Ltac obligation_failure :=
@@ -924,8 +1211,19 @@ Ltac obligation_failure :=
   simpl_let_guards;
   destruct_conjs;
   functional_alg_type_infer_rewrite_clear;
+  nbe_ty_unify;
+  sort_unify;
+  (** One sort of each type *)
+  repeat match goal with
+    | H1 : nbe_ty_relevance ?G ?A ?r, H2 : nbe_ty_relevance ?G ?A ?r' |- _ =>
+        assert_fails (constr_eq r r');
+        pose proof (nbe_ty_relevance_functional _ _ _ _ H1 H2); clear H2; try subst
+    end;
   first [ contradiction
         | solve [ match goal with HN : forall _, ~ _ |- _ => eapply HN; eassumption end ]
+        (** A normal form of no shape the rule asks *)
+        | solve [ match goal with HN : forall _ _, _ <> _ |- _ => eapply HN; reflexivity end ]
+        | solve [ match goal with HN : forall _ _ _, _ <> _ |- _ => eapply HN; reflexivity end ]
         | solve [ eauto 2 ] | congruence | solve [ firstorder ] ].
 
 (** A failure branch of a member: the member's inference is inverted, and
@@ -945,9 +1243,7 @@ Ltac obligation_post_suniv0 :=
   match goal with HG : ⊢ ?G |- _ =>
     let HT := fresh "HT" in
     assert (HT : G ⊢ Type@0 : Typeω@0) by (apply wf_univ_large; exact HG);
-    split; [ mauto 3 | ];
-    destruct (alg_type_infer_large_typ_complete (user_exp_all _) HT) as (? & ? & ? & ? & _);
-    split; [ do 2 eexists; split; eassumption | eexists; exact HT ]
+    split; [ mauto 3 | apply infer_post_of_type, (wf_type_univ HT) ]
   end.
 
 (** The postcondition of a closed type or level form: the inference by its
@@ -959,20 +1255,17 @@ Ltac obligation_post := clear_defs; split; [ mauto 3 | is_type_obligation ].
 Ltac obligation_post_lvl :=
   clear_defs; destruct_conjs; subst;
   split; [ econstructor; eassumption |];
-  split; [ do 2 eexists; split; [ apply alg_type_infer_level | constructor ] | exists 0; apply wf_level_large; assumption ].
+  apply infer_post_of_type; eapply wf_type_univ; apply wf_level_large; assumption.
 
 (** A closed type is a type. *)
-Ltac obligation_typ_closed := clear_defs; exists 0; mauto 3.
+Ltac obligation_typ_closed := clear_defs; type_closed.
 
-(** The subtyping order of [type_check]. *)
+(** The subtyping order of [type_check]: both types are types. *)
 Ltac obligation_suborder :=
   clear_defs; destruct_conjs;
   match goal with
   | |- subtyping_order ?G ?A ?B =>
-      enough (exists i, G ⊢ A : Typeω@i) as [? [? []]%soundness_ty];
-      only 1: enough (exists j, G ⊢ B : Typeω@j) as [? [? []]%soundness_ty];
-      only 1: solve [econstructor; eauto 3 using nbe_ty_order_sound];
-      solve [ typ_of_infer | mauto 4 using alg_type_infer_sound ]
+      constructor; apply nbe_order_of_type; first [ assumption | type_sound ]
   end.
 
 (** The positive case of [type_check]. *)
@@ -994,7 +1287,10 @@ Ltac body_obligation_failure :=
     end;
   functional_alg_type_infer_rewrite_clear;
   md_unify;
+  sort_unify;
   first [ contradiction
+        | solve [ match goal with HN : forall _, ~ _ |- _ => eapply HN; eassumption end ]
+        | solve [ match goal with HN : forall _ _, ~ _ |- _ => eapply HN; eassumption end ]
         | solve [ firstorder ]
         | congruence
         | match goal with H : forall u : universe_nf, ?X <> universe_nf_to_nf u |- _ => exact (H _ eq_refl) end ].
@@ -1028,4 +1324,187 @@ Ltac obligation_suniv_nbe := clear_defs; obligation_suniv_lvl; eapply nbe_order_
 
 Ltac obligation_suniv_post :=
   clear_defs; obligation_suniv_lvl;
-  split; [ eapply alg_type_infer_suniv; eassumption | eapply level_of_nbe; eassumption ].
+  split; [ eapply alg_type_infer_suniv; eassumption | eapply level_of_nbe_typ; eassumption ].
+
+(** ** One Tactic for the Obligations of the Checkers
+
+    The obligations of the checkers ([Reference.TypeCheck],
+    [Extraction.TypeCheck]) are proved by one tactic, [checker_obligation],
+    that reads the kind of each off its goal; the tactics before it prove
+    each kind. *)
+
+(** The types the obligations know of: the types the checker has inferred
+    a sort of, the normal forms of types, and the parts of [Π]s, [∀]s and
+    conjunctions among them. *)
+Ltac saturate_types :=
+  repeat match goal with
+    | Ha : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA _ _ |- _ =>
+        let T := constr:(G ⊢ᵗ A) in assert_fails (assert T by assumption);
+        assert T by (eapply type_of_sort_infer; [ ctx_wf_tac | exact Ha | exact Hs ])
+    | Ha : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA ?u |- _ =>
+        let T := constr:(G ⊢ᵗ A) in assert_fails (assert T by assumption);
+        assert T by (eapply type_of_sort_infer; [ ctx_wf_tac | exact Ha | constructor; exact Hu ])
+    | Ha : ?G ⊢a ?A ⟹ Propⁿ |- _ =>
+        let T := constr:(G ⊢ᵗ A) in assert_fails (assert T by assumption);
+        assert T by (eapply type_of_sort_infer; [ ctx_wf_tac | exact Ha | constructor ])
+    | HX : ?G ⊢ᵗ ?X, Hn : nbe_ty _ _ ?G ?X ?W |- _ =>
+        let T := constr:(G ⊢ᵗ (W : exp)) in assert_fails (assert T by assumption);
+        pose proof (wf_type_nbe _ _ _ HX Hn)
+    | H : ?G ⊢ᵗ nf_to_exp (nf_pi ?r ?A ?B) |- _ =>
+        let T := constr:(G ▹ (A : exp) ⊢ᵗ (B : exp)) in assert_fails (assert T by assumption);
+        destruct (wf_type_pi_inv G r A B H)
+    | H : ?G ⊢ᵗ a_pi ?r ?A ?B |- _ =>
+        let T := constr:(G ▹ A ⊢ᵗ B) in assert_fails (assert T by assumption);
+        destruct (wf_type_pi_inv G r A B H)
+    | H : ?G ⊢ᵗ nf_to_exp (nf_and ?P ?Q) |- _ =>
+        let T := constr:(G ▹ (P : exp) ⊢ᵗ (Q : exp)) in assert_fails (assert T by assumption);
+        let HP := fresh "HP" in let HQ := fresh "HQ" in
+        destruct (wf_type_and_inv G P Q H) as [HP HQ];
+        pose proof (wf_type_prop HP); pose proof (wf_type_prop HQ)
+    end.
+
+(** A term the checker has inferred or checked is typed. *)
+Ltac checker_term :=
+  lazymatch goal with
+  | |- ?G ⊢ a_left ?M : ?P =>
+      eapply wf_left; [ eassumption | eassumption | checker_term ]
+  | |- ?G ⊢ ?M : ?A =>
+      first [ assumption
+            | match goal with H : G ⊢a M ⟹ _ |- _ => exact (alg_type_infer_sound H ltac:(ctx_wf_tac)) end
+            | match goal with H : G ⊢a M ⟸ A |- _ =>
+                let HA := fresh "HA" in assert (HA : G ⊢ᵗ A) by checker_type;
+                destruct HA as [? ? ?]; eapply alg_type_check_sound_sort; [ exact H | ctx_wf_tac | eassumption | eassumption ] end ]
+  end
+(** A substitution of a term for the last entry of a context. *)
+with checker_sub :=
+  lazymatch goal with
+  | |- ?G ⊢ˢ Id,,?M : ?G ▸ ?A ≔ ?M =>
+      let HA := fresh "HA" in assert (HA : G ⊢ᵗ A) by checker_type;
+      destruct HA as [? ? ?]; eapply wf_sub_single_def; [ eassumption | eassumption | checker_term ]
+  | |- ?G ⊢ˢ Id,,?M : ?G ▹ ?A =>
+      let HA := fresh "HA" in assert (HA : G ⊢ᵗ A) by checker_type;
+      destruct HA as [? ? ?]; eapply wf_sub_single; [ eassumption | eassumption | checker_term ]
+  | |- ?G ⊢ˢ Id ,,ₘ me_lit ?U : ?G ▹ₘ ?U =>
+      eapply wf_sub_single_mod; eapply alg_unit_sound; [ eassumption | ctx_wf_tac ]
+  end
+(** A type the obligation knows of, or one built from those. *)
+with checker_type :=
+  saturate_types;
+  lazymatch goal with
+  | |- ?G ⊢ᵗ ?X =>
+      first [ assumption
+            | type_closed
+            | type_sound
+            (** A variable's type *)
+            | match goal with H : G ∋ #_ : X |- _ => eapply ctx_lookup_wf; [ ctx_wf_tac | exact H ] end
+            (** An instance *)
+            | lazymatch X with
+              | _[_] => eapply wf_type_sub_preserves; [ eassumption | checker_sub ]
+              end
+            (** The universe above a small universe *)
+            | lazymatch X with
+              | Type⟨succl _⟩ => obligation_suniv_lvl; eapply wf_type_univ; eassumption
+              end
+            (** The universe of a [Π] *)
+            | lazymatch X with
+              | universe_nf_pi_tm ?u ?v =>
+                  match goal with
+                  | HB : ?G ⊢a ?B ⟹ ?UB, Hu : is_sort_nf ?UB _ u, HC : ?G ▹ ?B ⊢a ?C ⟹ ?UC,
+                    HnC : nbe_ty _ _ (?G ▹ ?B) (nf_to_exp ?UC) ?UC', Hv : is_univ_nf ?UC' v |- _ =>
+                      let HBu := fresh "HBu" in let HCv := fresh "HCv" in let Hvw := fresh "Hvw" in
+                      let HG' := fresh "HG" in assert (HG' : ⊢ G) by ctx_wf_tac;
+                      destruct (alg_pi_parts_sound HG' HB Hu HC HnC Hv) as (HBu & HCv & Hvw);
+                      let k := fresh "k" in let Hk := fresh "Hk" in
+                      destruct (wf_universe_nf_pi_tm HBu HCv Hvw) as [k Hk]; exact (wf_type_univ Hk)
+                  end
+              end
+            (** The type of a λ: a [Π] or [∀] of its domain's normal form *)
+            | let r := lazymatch X with a_pi ?r _ _ => r | nf_to_exp (nf_pi ?r _ _) => r end in
+              match goal with
+              | Hr : nbe_ty_relevance (G ▹ ?A0) ?B0 r, Hn : nbe_ty _ _ G ?A0 ?W |- _ =>
+                  eapply (wf_type_fn_post G A0 W B0 r); [ checker_type | exact Hn | checker_type | exact Hr ]
+              end
+            (** A member's type *)
+            | match goal with
+              | HM : G ⊢aᵐ ?M, Hm : mdenote _ _ G (me_mem ?M _) _, Ht : mdesc_type _ = Some X |- _ =>
+                  eapply member_typ_of_alg; [ ctx_wf_tac | exact HM | exact Hm | exact Ht ]
+              end
+            (** A parameter a module expression still takes *)
+            | match goal with
+              | HM : G ⊢aᵐ ?M, Hm : mdenote _ _ G ?M _, Ht : mdesc_mod_tele _ = Some ?T,
+                Hv : tele_view ?T = Some (X, _) |- _ =>
+                  let HB := fresh "HB" in
+                  destruct (mtele_head_wf _ _ _ _ _ _ (alg_modexp_sound HM ltac:(ctx_wf_tac)) Hm Ht Hv) as [? HB];
+                  exact (wf_type_univ HB)
+              end ]
+  end.
+
+(** The postcondition of an inference: its rule, and that the inferred type
+    infers a sort and is a type. *)
+Ltac checker_post :=
+  lazymatch goal with
+  | |- ?G ⊢a ?M ⟹ ?W /\ _ =>
+      split;
+      [ first [ solve [ econstructor; eassumption ] | solve [ mauto 3 ] ]
+      | first [ match goal with
+                | Hn : nbe_ty _ _ G ?X W |- _ => apply (level_of_nbe G X W); [ checker_type | exact Hn ]
+                end
+              | apply (infer_post_of_type G W); checker_type ] ]
+  end.
+
+(** A failure: the judgment it rules out inverted against the failing
+    premise. *)
+Ltac checker_failure :=
+  first [ solve [ obligation_failure ]
+        | solve [ obligation_mem_failure ]
+        | solve [ module_obligation_10 ]
+        | solve [ module_obligation_20 ]
+        | solve [ body_obligation ] ].
+
+(** One inferred type, sort and universe of each term: the copies a chain
+    of [let*o] leaves are made one. *)
+Ltac checker_unify :=
+  repeat match goal with
+    | H1 : ?G ⊢a ?M ⟹ ?A1, H2 : ?G ⊢a ?M ⟹ ?A2 |- _ =>
+        assert_fails (constr_eq A1 A2);
+        let E := fresh "E" in
+        assert (E : A1 = A2) by (eapply functional_alg_type_infer; [ gctx_wf_tac | exact H1 | exact H2 ]);
+        clear H2; try subst
+    end;
+  nbe_ty_unify;
+  sort_unify.
+
+Ltac checker_obligation :=
+  program_simplify; intros; cbv beta; repeat match goal with |- ~ _ => intro end;
+  lazymatch goal with
+  | |- False => checker_failure
+  | |- type_check_order _ => clear_defs; obligation_order
+  | |- type_infer_order _ => clear_defs; obligation_order
+  | |- app_order _ _ => clear_defs; obligation_order
+  | |- ext_order _ => clear_defs; obligation_order
+  | |- unit_order _ => clear_defs; obligation_order
+  | |- body_order _ => clear_defs; obligation_order
+  | |- modexp_order _ => clear_defs; obligation_order
+  | |- _ => clear_defs; destruct_conjs; try subst; checker_unify; checker_obligation_positive
+  end
+with checker_obligation_positive :=
+  lazymatch goal with
+  | |- type_check_order _ => obligation_order
+  | |- type_infer_order _ => obligation_order
+  | |- app_order _ _ => obligation_order
+  | |- ext_order _ => obligation_order
+  | |- unit_order _ => obligation_order
+  | |- body_order _ => obligation_order
+  | |- modexp_order _ => obligation_order
+  | |- ⊢ᵍ _ ⍮ _ => obligation_check
+  | |- ⊢ ?G => first [ assumption
+                     | match goal with HA : G ⊢ᵗ _ |- _ => exact (checker_env_ctx_of_typ _ _ HA) end
+                     | ctx_wf_tac | obligation_ctx_ext | body_obligation ]
+  | |- subtyping_order _ _ _ => obligation_suborder
+  | |- nbe_ty_order _ _ _ _ => apply nbe_order_of_type; checker_type
+  | |- _ ⊢ᵗ _ => checker_type
+  | |- _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ => module_obligation_18
+  | |- _ ⊢a _ ⟹ _ /\ _ => checker_post
+  | |- _ ⊢a _ ⟸ _ => obligation_check
+  | |- _ => first [ solve [ obligation_check ] | solve [ body_obligation ] | module_obligation_2 | module_obligation_19 ]
+  end.

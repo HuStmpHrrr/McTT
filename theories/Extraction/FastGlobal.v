@@ -309,11 +309,11 @@ with ftrie : Type :=
     entry. *)
 | ft_mk : SRaw.tree fentry -> list string -> ftrie
 with fentry : Type :=
-(** Core's [ge_def b pv A oM], and the value its body has in the empty
-    environment, when it is stored: [Some v] for a transparent definition
-    a command added, [None] from a translation ([translate_entry]); decoding
-    forgets it ([decode_entry]) *)
-| fe_def : bool -> bool -> exp -> option exp -> option fdomain -> fentry
+(** Core's [ge_def b pv r A oM], and the value its body has in the empty
+    environment, when it is stored: [Some v] for a transparent relevant
+    definition a command added, [None] from a translation
+    ([translate_entry]); decoding forgets it ([decode_entry]) *)
+| fe_def : bool -> bool -> relevance -> exp -> option exp -> option fdomain -> fentry
 (** Core's [ge_mod pv U], the unit fast *)
 | fe_mod : bool -> funit -> fentry
 (** Core's [ge_ind pv pq k D Φ], the member's module a trie *)
@@ -381,7 +381,7 @@ Definition fu_body (u : funit) : ftrie :=
 (** Whether an entry is private, [ge_private]'s twin *)
 Definition fe_private (e : fentry) : bool :=
   match e with
-  | fe_def _ pv _ _ _ | fe_mod pv _ | fe_ind pv _ _ _ _ | fe_def_mod pv _ _ _ _ | fe_record pv _ _ _ => pv
+  | fe_def _ pv _ _ _ _ | fe_mod pv _ | fe_ind pv _ _ _ _ | fe_def_mod pv _ _ _ _ | fe_record pv _ _ _ => pv
   end.
 
 (** ** Translation from Core
@@ -402,7 +402,7 @@ with translate_mod (Φ : gmod) : ftrie :=
   end
 with translate_entry (E : gentry) : fentry :=
   match E with
-  | ge_def b pv A oM => fe_def b pv A oM None
+  | ge_def b pv r A oM => fe_def b pv r A oM None
   | ge_mod pv U => fe_mod pv (translate_unit U)
   | ge_ind pv pq k D Φ => fe_ind pv pq k D (translate_mod Φ)
   | ge_def_mod pv A M U => fe_def_mod pv A M (translate_unit U) None
@@ -451,7 +451,7 @@ with decode_mod (t : ftrie) : gmod :=
   end
 with decode_entry (e : fentry) : gentry :=
   match e with
-  | fe_def b pv A oM _ => ge_def b pv A oM
+  | fe_def b pv r A oM _ => ge_def b pv r A oM
   | fe_mod pv u => ge_mod pv (decode_unit u)
   | fe_ind pv pq k D t => ge_ind pv pq k D (decode_mod t)
   | fe_def_mod pv A M u _ => ge_def_mod pv A M (decode_unit u)
@@ -486,7 +486,7 @@ with canon_mod (Φ : gmod) : Prop :=
   end
 with canon_entry (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ _ _ => True
+  | ge_def _ _ _ _ _ => True
   | ge_mod _ U => canon_unit U
   | ge_ind _ _ _ _ Φ => canon_mod Φ
   | ge_def_mod _ _ _ U => canon_unit U
@@ -640,7 +640,7 @@ Proof.
     destruct Hc as (Hn & HcΦ & HcE).
     rewrite decode_ext by (apply translate_mod_bst || (rewrite translate_mod_names by exact HcΦ; exact Hn)).
     rewrite (decode_translate_mod Φ HcΦ), (decode_translate_entry E HcE); reflexivity.
-  - destruct E as [b pv A oM | pv U | pv pq k D Φ | pv A M U | pv p R Φ]; cbn; intros Hc.
+  - destruct E as [b pv r A oM | pv U | pv pq k D Φ | pv A M U | pv p R Φ]; cbn; intros Hc.
     + reflexivity.
     + rewrite (decode_translate_unit U Hc); reflexivity.
     + rewrite (decode_translate_mod Φ Hc); reflexivity.
@@ -1103,7 +1103,7 @@ Fixpoint ft_resolve (t : ftrie) (ip : list string) {struct ip} : option gentry :
       | None => None
       | Some e =>
           match ip', e with
-          | nil, fe_def b pv A oM _ => Some (ge_def b pv A oM)
+          | nil, fe_def b pv r A oM _ => Some (ge_def b pv r A oM)
           | _ :: _, _ => match fe_body e with Some t' => ft_resolve t' ip' | None => None end
           | nil, _ => None
           end
@@ -1116,7 +1116,7 @@ Lemma gm_resolve_newest : forall Φ x ip,
       match gm_newest Φ x with
       | None => None
       | Some E => match ip, E with
-                  | nil, ge_def _ _ _ _ => Some E
+                  | nil, ge_def _ _ _ _ _ => Some E
                   | _ :: _, _ => match entry_body E with Some Φ' => gm_resolve Φ' ip | None => None end
                   | nil, _ => None
                   end
@@ -1213,7 +1213,7 @@ Lemma gm_submodule_newest : forall Φ T x ip,
               | nil => Some (mr_body (record_mod_tele p R) None)
               | z :: ip' => gm_submodule (record_mod_tele p R) Φ' z ip'
               end
-          | ge_def _ _ _ _ => None
+          | ge_def _ _ _ _ _ => None
           end
       | None => None
       end.
@@ -1230,7 +1230,7 @@ Proof.
   induction ip as [| z ip IH]; intros Φ T x Hc; unfold ft_submodule; rewrite translate_mod_find, gm_submodule_newest;
     destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; try reflexivity;
     pose proof (canon_newest _ _ _ Hc En) as HE;
-    destruct E as [b pv A oM | pv [Δ [[|] Φ' | E']] | pv pq k D Φ' | pv A M [Δ [[|] Φ' | E']] | pv p R Φ'];
+    destruct E as [b pv r A oM | pv [Δ [[|] Φ' | E']] | pv pq k D Φ' | pv A M [Δ [[|] Φ' | E']] | pv p R Φ'];
     cbn in HE; try contradiction; try reflexivity;
     cbn [translate_entry translate_unit fe_submodule]; rewrite <- IH by exact HE; reflexivity.
 Qed.
@@ -1308,7 +1308,7 @@ Proof.
   induction ip as [| z ip IH]; intros Φ T x Hc; unfold ft_subbody; rewrite translate_mod_find, gm_subbody_newest;
     destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; try reflexivity;
     pose proof (canon_newest _ _ _ Hc En) as HE;
-    destruct E as [b pv A oM | pv [Δ [[|] Φ' | E']] | pv pq k D Φ' | pv A M [Δ [[|] Φ' | E']] | pv p R Φ'];
+    destruct E as [b pv r A oM | pv [Δ [[|] Φ' | E']] | pv pq k D Φ' | pv A M [Δ [[|] Φ' | E']] | pv p R Φ'];
     cbn in HE; try contradiction; try reflexivity;
     cbn [translate_entry translate_unit fe_subbody]; rewrite <- IH by exact HE; reflexivity.
 Qed.
@@ -1319,7 +1319,7 @@ Proof.
   induction ip as [| z ip IH]; intros Φ T x T' Φ' Hc Hs; rewrite gm_subbody_newest in Hs;
     destruct (gm_newest Φ x) as [E |] eqn:En; try discriminate;
     pose proof (canon_newest _ _ _ Hc En) as HE;
-    destruct E as [b pv A oM | pv [Δ [[|] Φ1 | E']] | pv pq k D Φ1 | pv A M U | pv p R Φ1];
+    destruct E as [b pv r A oM | pv [Δ [[|] Φ1 | E']] | pv pq k D Φ1 | pv A M U | pv p R Φ1];
     cbn in HE; try contradiction; try discriminate;
     first [ injection Hs as _ <-; exact HE | exact (IH _ _ _ _ _ HE Hs) ].
 Qed.
@@ -1432,7 +1432,7 @@ Section Lookups.
   (** [gc_term]'s twin *)
   Definition fast_gc_term (fs : fstack) (p : qname) : option exp :=
     match fast_gc_resolve fs p with
-    | Some (ge_def true _ _ (Some M)) => Some M
+    | Some (ge_def true _ relevant _ (Some M)) => Some M
     | _ =>
         match fast_gc_entry fs p with
         | Some (fe_def_mod _ _ M _ _) => Some M
@@ -1760,7 +1760,7 @@ with ftrie_drop (t : ftrie) : ftrie :=
   end
 with fentry_drop (e : fentry) : fentry :=
   match e with
-  | fe_def b pv A oM _ => fe_def b pv A oM None
+  | fe_def b pv r A oM _ => fe_def b pv r A oM None
   | fe_mod pv u => fe_mod pv (funit_drop u)
   | fe_ind pv pq k D t => fe_ind pv pq k D (ftrie_drop t)
   | fe_def_mod pv A M u _ => fe_def_mod pv A M (funit_drop u) None
@@ -2043,7 +2043,7 @@ Section LookupsDrop.
   Lemma fast_gc_term_drop : forall fs p, fast_gc_term ufd (fstack_drop fs) p = fast_gc_term uf fs p.
   Proof.
     intros; unfold fast_gc_term; rewrite fast_gc_resolve_drop, fast_gc_entry_drop.
-    destruct (fast_gc_resolve uf fs p) as [[[|] ? ? [?|] | | | |] |];
+    destruct (fast_gc_resolve uf fs p) as [[[|] ? [|] ? [?|] | | | |] |];
       try reflexivity; destruct (fast_gc_entry uf fs p) as [[] |]; reflexivity.
   Qed.
 

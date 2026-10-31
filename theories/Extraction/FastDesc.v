@@ -75,8 +75,8 @@ Qed.
 (** ** Descriptions *)
 
 Inductive fmdesc : Type :=
-(** [mdesc_term A om] *)
-| fmdesc_term : typ -> option exp -> fmdesc
+(** [mdesc_term r A om] *)
+| fmdesc_term : relevance -> typ -> option exp -> fmdesc
 (** [mdesc_open Δ Φ Φx]: a local body, Core's *)
 | fmdesc_open : ctx -> gmod -> gmod -> fmdesc
 (** [mdesc_closed Θ' p T Φ Ns], with the stored body [Φ] kept as the
@@ -88,7 +88,7 @@ Inductive fmdesc : Type :=
 (** The Core description a fast one stands for, for types only *)
 Fixpoint decode_desc (R : fmdesc) : mdesc :=
   match R with
-  | fmdesc_term A om => mdesc_term A om
+  | fmdesc_term r A om => mdesc_term r A om
   | fmdesc_open Δ Φ Φx => mdesc_open Δ Φ Φx
   | fmdesc_closed Θ' p T t _ Ns => mdesc_closed Θ' p T (decode_mod t) Ns
   | fmdesc_dm Θd A M Rm => mdesc_dm Θd A M (decode_desc Rm)
@@ -97,7 +97,7 @@ Fixpoint decode_desc (R : fmdesc) : mdesc :=
 (** [mdesc_type]'s twin *)
 Definition fmdesc_type (R : fmdesc) : option typ :=
   match R with
-  | fmdesc_term A _ => Some A
+  | fmdesc_term _ A _ => Some A
   | fmdesc_dm Θd A _ _ => Some (ctx_pi Θd A)
   | _ => None
   end.
@@ -105,10 +105,20 @@ Definition fmdesc_type (R : fmdesc) : option typ :=
 Lemma fmdesc_type_dec : forall R, mdesc_type (decode_desc R) = fmdesc_type R.
 Proof. intros []; reflexivity. Qed.
 
+(** [mdesc_relevance]'s twin *)
+Definition fmdesc_relevance (R : fmdesc) : relevance :=
+  match R with
+  | fmdesc_term r _ _ => r
+  | _ => relevant
+  end.
+
+Lemma fmdesc_relevance_dec : forall R, mdesc_relevance (decode_desc R) = fmdesc_relevance R.
+Proof. intros []; reflexivity. Qed.
+
 (** [mdesc_reduct]'s twin *)
 Definition fmdesc_reduct (R : fmdesc) : option exp :=
   match R with
-  | fmdesc_term _ om => om
+  | fmdesc_term _ _ om => om
   | fmdesc_dm Θd _ M _ => Some (ctx_fn Θd M)
   | _ => None
   end.
@@ -121,7 +131,7 @@ Fixpoint fmdesc_mod (R : fmdesc) : option fmdesc :=
   match R with
   | fmdesc_open _ _ _ | fmdesc_closed _ _ _ _ _ _ => Some R
   | fmdesc_dm _ _ _ Rm => fmdesc_mod Rm
-  | fmdesc_term _ _ => None
+  | fmdesc_term _ _ _ => None
   end.
 
 Lemma fmdesc_mod_dec : forall R, mdesc_mod (decode_desc R) = option_map decode_desc (fmdesc_mod R).
@@ -167,7 +177,7 @@ Qed.
 (** [mdesc_up]'s twin *)
 Fixpoint fmdesc_up (Θ' : ctx) (R : fmdesc) : fmdesc :=
   match R with
-  | fmdesc_term A om => fmdesc_term (ctx_pi Θ' A) (option_map (ctx_fn Θ') om)
+  | fmdesc_term r A om => fmdesc_term r (ctx_pi_at r Θ' A) (option_map (ctx_fn Θ') om)
   | fmdesc_open Δ Φ Φx => fmdesc_open (Δ ++ Θ') Φ Φx
   | fmdesc_closed Θ p T t Ht Ns => fmdesc_closed (Θ ++ Θ') p T t Ht Ns
   | fmdesc_dm Θd A M Rm => fmdesc_dm (Θd ++ Θ') A M (fmdesc_up Θ' Rm)
@@ -179,14 +189,14 @@ Proof. intros Θ'; induction R; cbn; f_equal; auto. Qed.
 (** [mdesc_at]'s twin *)
 Fixpoint fmdesc_at (R : fmdesc) (N : exp) : option fmdesc :=
   match R with
-  | fmdesc_term A om =>
+  | fmdesc_term r A om =>
       match pi_view A with
       | Some (_, C) =>
           match om with
-          | None => Some (fmdesc_term C[Id,,N] None)
+          | None => Some (fmdesc_term r C[Id,,N] None)
           | Some M =>
               match fn_view M with
-              | Some M' => Some (fmdesc_term C[Id,,N] (Some M'[Id,,N]))
+              | Some M' => Some (fmdesc_term r C[Id,,N] (Some M'[Id,,N]))
               | None => None
               end
           end
@@ -219,7 +229,7 @@ Fixpoint fmdesc_at (R : fmdesc) (N : exp) : option fmdesc :=
 
 Lemma fmdesc_at_dec : forall R N, mdesc_at (decode_desc R) N = option_map decode_desc (fmdesc_at R N).
 Proof.
-  induction R as [A om | Δ Φ Φx | Θ p T t Ht Ns | Θ A M Rm IH]; intros N; cbn [fmdesc_at mdesc_at decode_desc].
+  induction R as [r A om | Δ Φ Φx | Θ p T t Ht Ns | Θ A M Rm IH]; intros N; cbn [fmdesc_at mdesc_at decode_desc].
   - destruct (pi_view A) as [[? C] |]; [| reflexivity ].
     destruct om as [M |]; [| reflexivity ]; destruct (fn_view M); reflexivity.
   - destruct (tele_split (rev Δ)) as [[[? ?] ?] | ?]; reflexivity.
@@ -248,7 +258,7 @@ Qed.
 (** [mdesc_sub]'s twin *)
 Fixpoint fmdesc_sub (R : fmdesc) (σ : sub) : fmdesc :=
   match R with
-  | fmdesc_term A om => fmdesc_term A[σ] (option_map (fun M => M[σ]) om)
+  | fmdesc_term r A om => fmdesc_term r A[σ] (option_map (fun M => M[σ]) om)
   | fmdesc_open Δ Φ Φx => fmdesc_open (tele_sub Δ σ) (gmod_sub Φ (sb_qn (List.length Δ) σ)) (gmod_sub Φx (sb_qn (List.length Δ) σ))
   | fmdesc_closed Θ p T t Ht Ns => fmdesc_closed (tele_sub Θ σ) p T t Ht (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
   | fmdesc_dm Θd A M Rm => fmdesc_dm (tele_sub Θd σ) A[sb_qn (List.length Θd) σ] M[sb_qn (List.length Θd) σ] (fmdesc_sub Rm σ)
@@ -260,12 +270,12 @@ Proof. induction R; intros σ; cbn; f_equal; auto. Qed.
 (** [mdesc_self]'s twin *)
 Definition fmdesc_self (M : exp) (R : fmdesc) : fmdesc :=
   match R with
-  | fmdesc_term A None => fmdesc_term A (Some M)
+  | fmdesc_term r A None => fmdesc_term r A (Some M)
   | _ => R
   end.
 
 Lemma fmdesc_self_dec : forall M R, decode_desc (fmdesc_self M R) = mdesc_self M (decode_desc R).
-Proof. intros M [A [|] | | | ]; reflexivity. Qed.
+Proof. intros M [r A [|] | | | ]; reflexivity. Qed.
 
 (** [mdesc_named]'s twin *)
 Definition fmdesc_named (Θ : ctx) (Ns : list exp) (M : exp) (R : fmdesc) : fmdesc :=
@@ -280,12 +290,12 @@ Proof. intros [|] [|] M R; unfold fmdesc_named, mdesc_named; first [ reflexivity
 (** [mdesc_term_part_at]'s twin *)
 Definition fmdesc_term_part_at (R : fmdesc) (N : exp) : option fmdesc :=
   match R with
-  | fmdesc_term A (Some M) =>
+  | fmdesc_term r A (Some M) =>
       match pi_view A with
       | Some (_, C) =>
           match fn_view M with
-          | Some M' => Some (fmdesc_term C[Id,,N] (Some M'[Id,,N]))
-          | None => if app_const M then Some (fmdesc_term C[Id,,N] (Some (a_app M N))) else None
+          | Some M' => Some (fmdesc_term r C[Id,,N] (Some M'[Id,,N]))
+          | None => if app_const M then Some (fmdesc_term r C[Id,,N] (Some (a_app M N))) else None
           end
       | None => None
       end
@@ -294,7 +304,7 @@ Definition fmdesc_term_part_at (R : fmdesc) (N : exp) : option fmdesc :=
 
 Lemma fmdesc_term_part_at_dec : forall R N, mdesc_term_part_at (decode_desc R) N = option_map decode_desc (fmdesc_term_part_at R N).
 Proof.
-  intros R N; destruct R as [A [M |] | | | ];
+  intros R N; destruct R as [r A [M |] | | | ];
     try (match goal with |- mdesc_term_part_at (decode_desc ?R) ?N = _ => exact (fmdesc_at_dec R N) end).
   cbn [fmdesc_term_part_at mdesc_term_part_at decode_desc].
   destruct (pi_view A) as [[? C] |]; [| reflexivity ].
@@ -322,8 +332,8 @@ Qed.
 Definition fmdesc_ats_read (R : fmdesc) (Ns : list exp) : option fmdesc :=
   match R with
   | fmdesc_dm nil A M Rm =>
-      match fmdesc_term_part_ats (fmdesc_term A (Some M)) Ns, fmdesc_ats Rm Ns with
-      | Some (fmdesc_term B (Some M')), Some Rm' => Some (fmdesc_dm nil B M' Rm')
+      match fmdesc_term_part_ats (fmdesc_term relevant A (Some M)) Ns, fmdesc_ats Rm Ns with
+      | Some (fmdesc_term _ B (Some M')), Some Rm' => Some (fmdesc_dm nil B M' Rm')
       | _, _ => None
       end
   | _ => fmdesc_ats R Ns
@@ -334,9 +344,9 @@ Proof.
   intros R Ns; destruct R as [| | | [| e Θd] A M Rm];
     try (match goal with |- mdesc_ats_read (decode_desc ?R) ?Ns = _ => exact (fmdesc_ats_dec Ns R) end).
   cbn [fmdesc_ats_read mdesc_ats_read decode_desc].
-  change (mdesc_term A (Some M)) with (decode_desc (fmdesc_term A (Some M))).
+  change (mdesc_term relevant A (Some M)) with (decode_desc (fmdesc_term relevant A (Some M))).
   rewrite fmdesc_term_part_ats_dec, fmdesc_ats_dec.
-  destruct (fmdesc_term_part_ats (fmdesc_term A (Some M)) Ns) as [[B [M' |] | | | ] |]; cbn [option_map decode_desc];
+  destruct (fmdesc_term_part_ats (fmdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | | ] |]; cbn [option_map decode_desc];
     destruct (fmdesc_ats Rm Ns); reflexivity.
 Qed.
 
@@ -400,7 +410,7 @@ Definition fmdesc_entry (R : fmdesc) (y : string) : option (ctx * entry_source *
       match gm_prefix_upto Φx y with
       | Some (gm_ext Φ' _ E) =>
           match E with
-          | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
+          | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ _ None | ge_def false _ _ _ _ => None
           | _ => Some (body_ctx Φ' ++ Δ, entry_source_core E, reader_open Δ Φ')
           end
       | _ => None
@@ -422,7 +432,7 @@ Lemma fmdesc_entry_dec : forall R y,
 Proof.
   intros [| Δ Φ Φx | Θ p T t Ht Ns |] y; cbn [fmdesc_entry mdesc_entry decode_desc]; try reflexivity.
   - destruct (gm_prefix_upto Φx y) as [[| Φ' x E | ? ? ?] |]; try reflexivity.
-    destruct E as [[|] ? ? [|] | | | |]; reflexivity.
+    destruct E as [[|] ? ? ? [|] | | | |]; reflexivity.
   - pose proof Ht as (Φ0 & Ht0 & Hc).
     pose proof (prefix_newest Φ0 y Hc) as Hp.
     pose proof (translate_mod_find Φ0 y) as Hf; rewrite <- Ht0, ft_find_drop in Hf.
@@ -453,7 +463,7 @@ Lemma fmdesc_entry_source_path : forall R y Γy s rd, fmdesc_entry R y = Some (�
 Proof.
   intros [| Δ Φ Φx | Θ p T t Ht Ns |] y * He; cbn [fmdesc_entry] in He; try discriminate.
   - destruct (gm_prefix_upto Φx y) as [[| Φ' x E | ? ? ?] |]; try discriminate.
-    destruct E as [[|] ? ? [|] | | | |]; try discriminate; injection He as _ <- _; reflexivity.
+    destruct E as [[|] ? ? ? [|] | | | |]; try discriminate; injection He as _ <- _; reflexivity.
   - destruct (inspect (ft_find t y)) as [[e |] Ee]; [ injection He as _ <- _; reflexivity | discriminate ].
 Qed.
 

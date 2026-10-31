@@ -14,6 +14,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System Builtin Records.
 From Mctt.Core.Syntactic.System Require Import Privacy Translations.
 From Mctt.Core Require Import TypedElab.
+From Mctt.Core.Semantic Require Import GlobalExt.
 From Mctt.Core.Syntactic.System.Global Require Import Paths.
 From Mctt.Algorithmic.Typing Require Import Definitions Functional.
 From Mctt.Extraction Require Import Lookup TypeCheckBase TypeCheck GlobalCheck MemberType MemberOrder Privacy.
@@ -64,19 +65,41 @@ Section AlgEquiv.
   Lemma equiv_alg_subtyping : forall Γ A B, @alg_subtyping (gc_mk Θ Ξ) Γ A B -> @alg_subtyping (gc_mk Θ' Ξ) Γ A B.
   Proof. intros * []; econstructor; eauto. Qed.
 
+  (** The relevance of a type is read off its value, which evaluation
+      reads through the lookups alone. *)
+  Lemma equiv_nbe_ty_relevance : forall Γ A r, @nbe_ty_relevance (gc_mk Θ Ξ) Γ A r -> @nbe_ty_relevance (gc_mk Θ' Ξ) Γ A r.
+  Proof.
+    assert (Hs : (forall p, gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p) /\ (forall p, gc_module Θ Ξ p = gc_module Θ' Ξ p) /\
+                 (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) /\ (forall p, gc_entry Θ Ξ p = gc_entry Θ' Ξ p) /\
+                 (forall p, gc_frame Ξ p = gc_frame Ξ p) /\ (forall p, gs_find_ind Ξ p = gs_find_ind Ξ p) /\
+                 (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p) /\ (forall p, record_lookup Θ Ξ p = record_lookup Θ' Ξ p))
+      by (repeat split; intros; first [ reflexivity | apply gds_equiv_resolve | apply gds_equiv_module
+                                       | apply gds_equiv_ind_lookup | apply gds_equiv_entry | apply gds_equiv_body
+                                       | apply gds_equiv_record_lookup ];
+          exact He).
+    destruct Hs as (Hres & Hmod & Hind' & Hia & Hfr & Hfi & Hbody & Hrec').
+    pose proof (eval_ext _ _ _ _ Hres Hmod Hind' Hia Hfr Hfi Hbody Hrec') as Hev.
+    pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind' Hia Hfr Hfi Hbody Hrec') as Hie.
+    (** the section's [Let]s are no conjunctions to split *)
+    clear Hmd Hnbt Hnb.
+    destruct_all.
+    intros * (ρ & a & Hi & Ha & Hr); exists ρ, a; cbn in *; split; [| split ]; eauto.
+  Qed.
+
   (** Algorithmic typing reads the dependencies through their lookups
       alone. *)
   Lemma equiv_alg_all :
     (forall Γ A M, @alg_type_check (gc_mk Θ Ξ) Γ A M -> @alg_type_check (gc_mk Θ' Ξ) Γ A M) /\
     (forall Γ A M, @alg_type_infer (gc_mk Θ Ξ) Γ A M -> @alg_type_infer (gc_mk Θ' Ξ) Γ A M) /\
     (forall Γ Ψ, @alg_ext (gc_mk Θ Ξ) Γ Ψ -> @alg_ext (gc_mk Θ' Ξ) Γ Ψ) /\
+    (forall Γ Δ, @alg_params (gc_mk Θ Ξ) Γ Δ -> @alg_params (gc_mk Θ' Ξ) Γ Δ) /\
     (forall Γ U, @alg_unit (gc_mk Θ Ξ) Γ U -> @alg_unit (gc_mk Θ' Ξ) Γ U) /\
     (forall Γ Φ Φx, @alg_body (gc_mk Θ Ξ) Γ Φ Φx -> @alg_body (gc_mk Θ' Ξ) Γ Φ Φx) /\
     (forall Γ H, @alg_modexp (gc_mk Θ Ξ) Γ H -> @alg_modexp (gc_mk Θ' Ξ) Γ H).
   Proof.
     destruct Hmd as (Hm1 & Hm2 & Hm3 & Hm4 & Hm5).
     apply (@alg_type_mut_ind (gc_mk Θ Ξ)); intros; cbn [gc_deps gc_stack] in *;
-      try solve [ econstructor; eauto 6 using equiv_nfs_agree, equiv_alg_subtyping ].
+      try solve [ econstructor; eauto 6 using equiv_nfs_agree, equiv_alg_subtyping, equiv_nbe_ty_relevance ].
     (* an eliminator: at the groups it reads *)
     eapply alg_type_infer_elim with (D := D) (Dq := Dq) (Mm := Mm) (Mk := Mk) (bm := bm) (i := i) (p := p) (pc := pc) (k := k);
       try eassumption; eauto using equiv_nfs_agree.
@@ -98,8 +121,8 @@ Section AlgEquiv.
   Lemma equiv_fill_all :
     (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp Θ' Ξ B Γ M M') /\
     (forall Γ fs fs', fill_field_vals Θ Ξ B Γ fs fs' -> fill_field_vals Θ' Ξ B Γ fs fs') /\
-    (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' -> fill_blocks Θ' Ξ B Γ p D Us As j Bks Bks') /\
-    (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs' -> fill_brs Θ' Ξ B Γ p D Mj Us As Bs Bs') /\
+    (forall r Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B r Γ p D Us As j Bks Bks' -> fill_blocks Θ' Ξ B r Γ p D Us As j Bks Bks') /\
+    (forall r Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs' -> fill_brs Θ' Ξ B r Γ p D Mj Us As Bs Bs') /\
     (forall Γ oM oM', fill_optional_exp Θ Ξ B Γ oM oM' -> fill_optional_exp Θ' Ξ B Γ oM oM') /\
     (forall Γ H r, fill_read Θ Ξ B Γ H r -> fill_read Θ' Ξ B Γ H r) /\
     (forall Γ H H' op, fill_mod Θ Ξ B Γ H H' op -> fill_mod Θ' Ξ B Γ H H' op) /\
@@ -112,7 +135,7 @@ Section AlgEquiv.
     pose proof (proj1 (proj2 equiv_alg_all)) as Hinf.
     apply fill_mut_ind; intros; try solve [ econstructor; eauto using equiv_sel_ok, equiv_ctx, Forall_impl ].
     (* a member that is no term: no term along the equivalence either *)
-    eapply fill_read_mem_module; [ exact H0 | apply equiv_sel_ok; exact s | intros A oM Hm; exact (n A oM (Hm1' _ _ _ Hm)) ].
+    eapply fill_read_mem_module; [ exact H0 | apply equiv_sel_ok; exact s | intros r A oM Hm; exact (n r A oM (Hm1' _ _ _ Hm)) ].
   Qed.
 End AlgEquiv.
 
@@ -265,7 +288,7 @@ Section Decide.
   (** Whether the member [y] of [H] is a term. *)
   Definition member_term_b (Γ : ctx) (H : modexp) (y : string) : bool :=
     match mdenote_dec F Hg Γ (me_mem H y) with
-    | inleft (exist _ (fmdesc_term _ _) _) => true
+    | inleft (exist _ (fmdesc_term _ _ _) _) => true
     | _ => false
     end.
 
@@ -318,7 +341,8 @@ Section Decide.
 
   Fixpoint fill_exp_fn (Γ : ctx) (M : exp) {struct M} : fill_result exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False
+    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+    | a_placeholder_type | a_placeholder
     | a_ind _ _ | a_con _ _ _ | a_var _ | a_record _ => fill_ok M
     | a_nlit n =>
         match nat_view_f F B with
@@ -336,14 +360,36 @@ Section Decide.
         let%a M' := fill_exp_fn Γ M0 in
         let%a N' := fill_exp_fn Γ N0 in
         fill_ok (a_maxl M' N')
-    | a_exfalso A M0 =>
-        let%a A' := fill_exp_fn (ce_ass a_False :: Γ) A in
+    | a_absurd C M0 =>
+        let%a C' := fill_exp_fn Γ C in
         let%a M' := fill_exp_fn Γ M0 in
-        fill_ok (a_exfalso A' M')
-    | a_pi A B0 =>
+        fill_ok (a_absurd C' M')
+    | a_pi _ A B0 =>
         let%a A' := fill_exp_fn Γ A in
         let%a B' := fill_exp_fn (ce_ass A' :: Γ) B0 in
-        fill_ok (a_pi A' B')
+        match infer_at (ce_ass A' :: Γ) B' with
+        | Some W => fill_ok (a_pi (sort_relevance W) A' B')
+        | None => fill_error (fill_failure_message "the codomain of a Π infers no type")
+        end
+    | a_and P Q =>
+        let%a P' := fill_exp_fn Γ P in
+        let%a Q' := fill_exp_fn (ce_ass P' :: Γ) Q in
+        fill_ok (a_and P' Q')
+    | a_conj (a_and P a_placeholder) M0 N0 =>
+        let%a P' := fill_exp_fn Γ P in
+        let%a M' := fill_exp_fn Γ M0 in
+        let%a N' := fill_exp_fn Γ N0 in
+        match infer_at Γ N' with
+        | Some W => fill_ok (a_conj (a_and P' (exp_wk (nf_to_exp W) wk_shift)) M' N')
+        | None => fill_error (fill_failure_message "the second component of a proof of a conjunction infers no type")
+        end
+    | a_conj T M0 N0 =>
+        let%a T' := fill_exp_fn Γ T in
+        let%a M' := fill_exp_fn Γ M0 in
+        let%a N' := fill_exp_fn Γ N0 in
+        fill_ok (a_conj T' M' N')
+    | a_left M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_left M')
+    | a_right M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_right M')
     | a_fn A M0 =>
         let%a A' := fill_exp_fn Γ A in
         let%a M' := fill_exp_fn (ce_ass A' :: Γ) M0 in
@@ -362,7 +408,7 @@ Section Decide.
         match infer_at Γ M' with
         | Some W =>
             let%a B' := fill_exp_fn (ce_def (nf_to_exp W) M' :: Γ) B0 in
-            fill_ok (a_let (b_def None M') B')
+            fill_ok (a_let (b_def (Some (nf_to_exp W)) M') B')
         | None => fill_error (fill_failure_message "the definition of an unannotated let infers no type")
         end
     | a_let (b_mod U) B0 =>
@@ -388,7 +434,7 @@ Section Decide.
              end) fs in
         fill_ok (a_tuple T' fs')
     | a_proj f M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_proj f M')
-    | a_elim None nil m Bks M0 =>
+    | a_elim r0 None nil m Bks M0 =>
         let%a M' := fill_exp_fn Γ M0 in
         match infer_at Γ M' with
         | Some (nf_indty pc k Rs) =>
@@ -421,45 +467,56 @@ Section Decide.
                                  else fill_error (fill_failure_message "a block of an eliminator binds the wrong number of variables")
                              end
                          end) 0 Bks in
-                    (** then the branches, at the filled motives of all
-                        the blocks *)
                     let As := List.map snd hs in
-                    let%a Bks' :=
-                      (fix blocks (j : nat) (Bks : list eblock) (rest : list (option exp * exp)) : fill_result (list eblock) :=
-                         match Bks, rest with
-                         | nil, _ => fill_ok nil
-                         | eb_mk nm _ _ Bs :: Bks0, (oZ', A') :: rest0 =>
-                             match ind_member D j with
-                             | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
-                             | Some Mj =>
-                                 let%a Bs' :=
-                                   (fix brs (Bs : list (string * nat * exp)) : fill_result (list (string * nat * exp)) :=
-                                      match Bs with
-                                      | nil => fill_ok nil
-                                      | (c, n, B0) :: Bs0 =>
-                                          match ind_con Mj c with
-                                          | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
-                                          | Some gs =>
-                                              if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec D gs) then
-                                                let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us ++ Γ) B0 in
-                                                let%a Bs0' := brs Bs0 in
-                                                fill_ok ((c, n, B') :: Bs0')
-                                              else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
-                                          end
-                                      end) Bs in
-                                 let%a Bks0' := blocks (S j) Bks0 rest0 in
-                                 fill_ok (eb_mk nm oZ' A' Bs' :: Bks0')
-                             end
-                         | _ :: _, nil => fill_error (fill_failure_message "internal error: a block without its motive")
-                         end) 0 Bks hs in
-                    fill_ok (a_elim (Some p) Us m Bks' M')
+                    (** then the tag, the sort the filled motive of the
+                        scrutinee's member infers to *)
+                    match ind_member D m, List.nth_error As m with
+                    | Some Mm, Some Am =>
+                        match infer_at (elim_mctx p D m Mm Us ++ Γ) Am with
+                        | Some W =>
+                            let r := sort_relevance W in
+                            (** then the branches, at the filled motives of
+                                all the blocks and at the tag *)
+                            let%a Bks' :=
+                              (fix blocks (j : nat) (Bks : list eblock) (rest : list (option exp * exp)) : fill_result (list eblock) :=
+                                 match Bks, rest with
+                                 | nil, _ => fill_ok nil
+                                 | eb_mk nm _ _ Bs :: Bks0, (oZ', A') :: rest0 =>
+                                     match ind_member D j with
+                                     | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
+                                     | Some Mj =>
+                                         let%a Bs' :=
+                                           (fix brs (Bs : list (string * nat * exp)) : fill_result (list (string * nat * exp)) :=
+                                              match Bs with
+                                              | nil => fill_ok nil
+                                              | (c, n, B0) :: Bs0 =>
+                                                  match ind_con Mj c with
+                                                  | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
+                                                  | Some gs =>
+                                                      if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec D gs) then
+                                                        let%a B' := fill_exp_fn (elim_bctx r p D Mj gs As Us ++ Γ) B0 in
+                                                        let%a Bs0' := brs Bs0 in
+                                                        fill_ok ((c, n, B') :: Bs0')
+                                                      else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
+                                                  end
+                                              end) Bs in
+                                         let%a Bks0' := blocks (S j) Bks0 rest0 in
+                                         fill_ok (eb_mk nm oZ' A' Bs' :: Bks0')
+                                     end
+                                 | _ :: _, nil => fill_error (fill_failure_message "internal error: a block without its motive")
+                                 end) 0 Bks hs in
+                            fill_ok (a_elim r (Some p) Us m Bks' M')
+                        | None => fill_error (fill_failure_message "the motive of an eliminator infers no type")
+                        end
+                    | _, _ => fill_error (fill_failure_message "an eliminator with no block for its scrutinee's member")
+                    end
                 end
-            | elim_target_ambiguous rs => fill_error (fill_failure_elim_ambiguous Γ (a_elim None nil m Bks M') rs)
+            | elim_target_ambiguous rs => fill_error (fill_failure_elim_ambiguous Γ (a_elim r0 None nil m Bks M') rs)
             | elim_target_none => fill_error (fill_failure_elim_none Γ pc k Rs m Bks M')
             end
         | W => fill_error (fill_failure_elim_scrutinee Γ M' W)
         end
-    | a_elim _ _ _ _ _ => fill_error (fill_failure_message "an eliminator written with its group")
+    | a_elim _ _ _ _ _ _ => fill_error (fill_failure_message "an eliminator written with its group")
     end
 
   with fill_read_fn (Γ : ctx) (H : modexp) {struct H} : fill_result module_read :=
@@ -513,14 +570,18 @@ Section Decide.
         let%a Φ0' := fill_body_fn Γ Φ0 in
         let%a Φx := body_xp_fn Γ Φ0' in
         match E with
-        | ge_def b pv A oM =>
+        | ge_def b pv _ A oM =>
             let%a A' := fill_exp_fn (body_ctx Φx ++ Γ) A in
             let%a oM' :=
               match oM with
               | None => fill_ok None
               | Some M => let%a M' := fill_exp_fn (body_ctx Φx ++ Γ) M in fill_ok (Some M')
               end in
-            fill_ok (gm_ext Φ0' x (ge_def b pv A' oM'))
+            (** its tag, the sort its filled type infers to *)
+            match infer_at (body_ctx Φx ++ Γ) A' with
+            | Some W => fill_ok (gm_ext Φ0' x (ge_def b pv (sort_relevance W) A' oM'))
+            | None => fill_error (fill_failure_message "the type of a definition of a local body infers no type")
+            end
         | ge_mod pv U =>
             let%a U' := fill_unit_fn (body_ctx Φx ++ Γ) U in
             fill_ok (gm_ext Φ0' x (ge_mod pv U'))
@@ -626,8 +687,8 @@ Section Decide.
           end
       end.
 
-  (** A block's branches, at the motives [As]. *)
-  Definition brs_fn (Γ : ctx) (p : qname) (D : ind_decl) (Mj : imember) (As Us : list exp) :=
+  (** A block's branches, at the motives [As] and the tag [r]. *)
+  Definition brs_fn (Γ : ctx) (r : relevance) (p : qname) (D : ind_decl) (Mj : imember) (As Us : list exp) :=
     fix brs (Bs : list (string * nat * exp)) : fill_result (list (string * nat * exp)) :=
       match Bs with
       | nil => fill_ok nil
@@ -636,7 +697,7 @@ Section Decide.
           | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
           | Some gs =>
               if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec D gs) then
-                let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us ++ Γ) B0 in
+                let%a B' := fill_exp_fn (elim_bctx r p D Mj gs As Us ++ Γ) B0 in
                 let%a Bs0' := brs Bs0 in
                 fill_ok ((c, n, B') :: Bs0')
               else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
@@ -644,8 +705,8 @@ Section Decide.
       end.
 
   (** The blocks, their annotations and motives filled as [hs], and the
-      motives of all of them [As]. *)
-  Definition blocks_fn (Γ : ctx) (p : qname) (D : ind_decl) (As Us : list exp) :=
+      motives of all of them [As], at the tag [r]. *)
+  Definition blocks_fn (Γ : ctx) (r : relevance) (p : qname) (D : ind_decl) (As Us : list exp) :=
     fix blocks (j : nat) (Bks : list eblock) (rest : list (option exp * exp)) : fill_result (list eblock) :=
       match Bks, rest with
       | nil, _ => fill_ok nil
@@ -653,18 +714,19 @@ Section Decide.
           match ind_member D j with
           | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
           | Some Mj =>
-              let%a Bs' := brs_fn Γ p D Mj As Us Bs in
+              let%a Bs' := brs_fn Γ r p D Mj As Us Bs in
               let%a Bks0' := blocks (S j) Bks0 rest0 in
               fill_ok (eb_mk nm oZ' A' Bs' :: Bks0')
           end
       | _ :: _, nil => fill_error (fill_failure_message "internal error: a block without its motive")
       end.
 
-  (** An eliminator as written, its scrutinee filled to [M'] in [Γ]: the
-      one reading that fits its blocks, then its blocks at it, their
-      annotations and motives first, then their branches at the filled
-      motives. *)
-  Definition elim_fill_fn (Γ : ctx) (m : nat) (Bks : list eblock) (M' : exp) : fill_result exp :=
+  (** An eliminator as written, with the tag [r0], its scrutinee filled to
+      [M'] in [Γ]: the one reading that fits its blocks, then its blocks at
+      it, their annotations and motives first, then its tag, the sort the
+      filled motive of the scrutinee's member infers to, then their
+      branches at the filled motives and the tag. *)
+  Definition elim_fill_fn (Γ : ctx) (r0 : relevance) (m : nat) (Bks : list eblock) (M' : exp) : fill_result exp :=
     match infer_at Γ M' with
     | Some (nf_indty pc k Rs) =>
         match elim_target_f F pc k Rs m Bks with
@@ -674,10 +736,19 @@ Section Decide.
             | Some D =>
                 let%a hs := heads_fn Γ p D Us 0 Bks in
                 let As := List.map snd hs in
-                let%a Bks' := blocks_fn Γ p D As Us 0 Bks hs in
-                fill_ok (a_elim (Some p) Us m Bks' M')
+                match ind_member D m, List.nth_error As m with
+                | Some Mm, Some Am =>
+                    match infer_at (elim_mctx p D m Mm Us ++ Γ) Am with
+                    | Some W =>
+                        let r := sort_relevance W in
+                        let%a Bks' := blocks_fn Γ r p D As Us 0 Bks hs in
+                        fill_ok (a_elim r (Some p) Us m Bks' M')
+                    | None => fill_error (fill_failure_message "the motive of an eliminator infers no type")
+                    end
+                | _, _ => fill_error (fill_failure_message "an eliminator with no block for its scrutinee's member")
+                end
             end
-        | elim_target_ambiguous rs => fill_error (fill_failure_elim_ambiguous Γ (a_elim None nil m Bks M') rs)
+        | elim_target_ambiguous rs => fill_error (fill_failure_elim_ambiguous Γ (a_elim r0 None nil m Bks M') rs)
         | elim_target_none => fill_error (fill_failure_elim_none Γ pc k Rs m Bks M')
         end
     | W => fill_error (fill_failure_elim_scrutinee Γ M' W)
@@ -723,7 +794,7 @@ Section Decide.
         match ind_member D m with
         | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
-            let%a Bs' := brs_fn Γ pq D Mm As Us (raw_fun_clauses f) in
+            let%a Bs' := brs_fn Γ relevant pq D Mm As Us (raw_fun_clauses f) in
             let%a fs0' := fill_raw_fun_clauses_fn Γ pq D Us As fms0 in
             fill_ok (mk_rfun (raw_fun_name f) (raw_fun_nparams f) (raw_fun_scrut f) (raw_fun_res f) Bs' :: fs0')
         end
@@ -884,14 +955,26 @@ Section Decide.
   Proof. intros; unfold fill_params_fn; rewrite fc_tele_ok; reflexivity. Qed.
 
   (** An eliminator as written, through the named loops. *)
-  Lemma fill_exp_fn_elim : forall Γ m Bks M0,
-      fill_exp_fn Γ (a_elim None nil m Bks M0) = let%a M' := fill_exp_fn Γ M0 in elim_fill_fn Γ m Bks M'.
+  Lemma fill_exp_fn_elim : forall Γ r0 m Bks M0,
+      fill_exp_fn Γ (a_elim r0 None nil m Bks M0) = let%a M' := fill_exp_fn Γ M0 in elim_fill_fn Γ r0 m Bks M'.
   Proof. reflexivity. Qed.
 
   (** A record value, through the named loop. *)
   Lemma fill_exp_fn_tuple : forall Γ T fs,
       fill_exp_fn Γ (a_tuple T fs) = let%a T' := fill_exp_fn Γ T in let%a fs' := field_vals_fn Γ fs in fill_ok (a_tuple T' fs').
   Proof. reflexivity. Qed.
+
+  (** A conjunction annotation is one with its second proposition left
+      to the fill, or not. *)
+  Lemma conj_ann_cases : forall T, (exists P, T = a_and P a_placeholder) \/ ~ and_ann_right_omitted T.
+  Proof. destruct T; try solve [ right; intros [] ]; destruct T2; try solve [ right; intros [] ]; left; eauto. Qed.
+
+  (** A proof of a conjunction with its annotation given. *)
+  Lemma fill_exp_fn_conj_given : forall Γ T M N, ~ and_ann_right_omitted T ->
+      fill_exp_fn Γ (a_conj T M N) =
+        let%a T' := fill_exp_fn Γ T in let%a M' := fill_exp_fn Γ M in let%a N' := fill_exp_fn Γ N in
+        fill_ok (a_conj T' M' N').
+  Proof. intros * Hn; destruct T; try reflexivity; destruct T2; try reflexivity; exfalso; exact (Hn I). Qed.
 
   (** A unit, through [fill_tele_fn]. *)
   Lemma fill_unit_fn_mk : forall Γ Δ D,
@@ -930,13 +1013,13 @@ Section Decide.
   Qed.
 
   Lemma member_term_b_spec : forall Γ H y,
-      member_term_b Γ H y = true <-> exists A oM, mdenote Θ Ξ Γ (me_mem H y) (mdesc_term A oM).
+      member_term_b Γ H y = true <-> exists r A oM, mdenote Θ Ξ Γ (me_mem H y) (mdesc_term r A oM).
   Proof.
     intros; unfold member_term_b.
     destruct (mdenote_dec F Hg Γ (me_mem H y)) as [[R HR] | Hn].
     - destruct R; split; intros E; try discriminate; eauto;
-        destruct E as (A & oM & HA); pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ HA); discriminate.
-    - split; [ discriminate | intros (A & oM & HA); exfalso; exact (Hn _ HA) ].
+        destruct E as (r & A & oM & HA); pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ HA); discriminate.
+    - split; [ discriminate | intros (r & A & oM & HA); exfalso; exact (Hn _ HA) ].
   Qed.
 
   Lemma sel_check_spec : forall op y, sel_check op y = None <-> sel_ok Θ Ξ op y.
@@ -1001,7 +1084,7 @@ Section Decide.
     end.
   Definition gentry_fill_sound (E : gentry) : Prop :=
     match E with
-    | ge_def _ _ A oM => exp_fill_sound A /\ (forall M, oM = Some M -> exp_fill_sound M)
+    | ge_def _ _ _ A oM => exp_fill_sound A /\ (forall M, oM = Some M -> exp_fill_sound M)
     | ge_mod _ U => unit_fill_sound U
     | ge_def_mod _ A M U => exp_fill_sound A /\ exp_fill_sound M /\ unit_fill_sound U
     | _ => True
@@ -1046,10 +1129,10 @@ Section Decide.
       inversion Hf; subst; auto.
   Qed.
 
-  Lemma brs_fill_sound : forall Γ p D Mj As Us Bs Bs', Forall (fun br => exp_fill_sound (snd br)) Bs ->
-      brs_fn Γ p D Mj As Us Bs = fill_ok Bs' -> fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs'.
+  Lemma brs_fill_sound : forall Γ r p D Mj As Us Bs Bs', Forall (fun br => exp_fill_sound (snd br)) Bs ->
+      brs_fn Γ r p D Mj As Us Bs = fill_ok Bs' -> fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs'.
   Proof.
-    intros Γ p D Mj As Us; induction Bs as [| [[c n] B0] Bs IH]; intros Bs' HB E; cbn in E; bind_inv; [ constructor |].
+    intros Γ r p D Mj As Us; induction Bs as [| [[c n] B0] Bs IH]; intros Bs' HB E; cbn in E; bind_inv; [ constructor |].
     inversion HB; subst.
     destruct (ind_con Mj c) as [gs |] eqn:Ec; [| discriminate ].
     destruct (Nat.eqb_spec n (im_nn Mj + List.length gs + cargs_nrec D gs)); [| discriminate ].
@@ -1058,13 +1141,13 @@ Section Decide.
 
   (** The blocks of an eliminator: the motives they end with are the
       ones the branches were read at. *)
-  Lemma blocks_fill_sound : forall Γ p D Us As j Bks hs Bks',
+  Lemma blocks_fill_sound : forall Γ r p D Us As j Bks hs Bks',
       Forall (fun b => (forall Z, eb_ann b = Some Z -> exp_fill_sound Z) /\ exp_fill_sound (eb_motive b) /\
                        Forall (fun br => exp_fill_sound (snd br)) (eb_brs b)) Bks ->
-      heads_fn Γ p D Us j Bks = fill_ok hs -> blocks_fn Γ p D As Us j Bks hs = fill_ok Bks' ->
-      fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' /\ blocks_motives Bks' = List.map snd hs.
+      heads_fn Γ p D Us j Bks = fill_ok hs -> blocks_fn Γ r p D As Us j Bks hs = fill_ok Bks' ->
+      fill_blocks Θ Ξ B r Γ p D Us As j Bks Bks' /\ blocks_motives Bks' = List.map snd hs.
   Proof.
-    intros Γ p D Us As j Bks; revert j; induction Bks as [| [nm oZ A Bs] Bks IH]; intros j hs Bks' HB Eh Eb;
+    intros Γ r p D Us As j Bks; revert j; induction Bks as [| [nm oZ A Bs] Bks IH]; intros j hs Bks' HB Eh Eb;
       cbn in Eh; bind_inv; [ cbn in Eb; bind_inv; split; [ constructor | reflexivity ] |].
     inversion HB as [| ? ? (HZ & HA & HBs) HB0]; subst; cbn in HZ, HA, HBs.
     destruct (ind_member D j) as [Mj |] eqn:Ej; [| discriminate ].
@@ -1077,21 +1160,32 @@ Section Decide.
   Qed.
 
   (** An eliminator as written, its scrutinee filled. *)
-  Lemma elim_fill_fn_sound : forall Γ m Bks M M',
+  Lemma elim_fill_fn_sound : forall Γ r0 m Bks M M',
       Forall (fun b => (forall Z, eb_ann b = Some Z -> exp_fill_sound Z) /\ exp_fill_sound (eb_motive b) /\
                        Forall (fun br => exp_fill_sound (snd br)) (eb_brs b)) Bks ->
-      fill_exp Θ Ξ B Γ M M' -> forall E, elim_fill_fn Γ m Bks M' = fill_ok E ->
-      fill_exp Θ Ξ B Γ (a_elim None nil m Bks M) E.
+      fill_exp Θ Ξ B Γ M M' -> forall E, elim_fill_fn Γ r0 m Bks M' = fill_ok E ->
+      fill_exp Θ Ξ B Γ (a_elim r0 None nil m Bks M) E.
   Proof.
     intros * HB HM E Ee; unfold elim_fill_fn in Ee.
     destruct (infer_at Γ M') as [W |] eqn:Ei; [| discriminate ].
-    destruct W as [| | | | | | | | | pc k Rs | | | | ]; try discriminate.
+    destruct W; try discriminate.
     apply infer_at_sound in Ei as [HΓ HW].
-    destruct (elim_target_f F pc k Rs m Bks) as [p Us | rs |] eqn:Et; rewrite elim_target_f_ok in Et; try discriminate.
+    match type of Ee with context [elim_target_f F ?pc ?k ?Rs m Bks] =>
+      destruct (elim_target_f F pc k Rs m Bks) as [p Us | rs |] eqn:Et; rewrite elim_target_f_ok in Et; try discriminate end.
     destruct (fc_ind F p) as [D |] eqn:El; rewrite <- fc_ind_ok in El; [| discriminate ].
     bind_inv.
-    destruct (blocks_fill_sound _ _ _ _ _ _ _ _ _ HB H H0) as [Hbk Hm].
-    eapply fill_exp_elim; [ exact HM | exact HΓ | exact HW | exact Et | exact El | rewrite Hm; exact Hbk ].
+    destruct (ind_member D m) as [Mm |] eqn:HMm; [| discriminate ].
+    destruct (List.nth_error (List.map snd x) m) as [Am |] eqn:HAm; [| discriminate ].
+    destruct (infer_at (elim_mctx p D m Mm Us ++ Γ) Am) as [Wm |] eqn:EWm; [| discriminate ].
+    apply infer_at_sound in EWm as [HΓm HWm].
+    bind_inv.
+    destruct (blocks_fill_sound _ _ _ _ _ _ _ _ _ _ HB H H0) as [Hbk Hm].
+    (** the block of the scrutinee's member, whose motive is the one read *)
+    rewrite <- Hm in HAm; unfold blocks_motives in HAm; rewrite List.nth_error_map in HAm.
+    destruct (List.nth_error x0 m) as [bm |] eqn:Hbm; cbn in HAm; [ injection HAm as HAm | discriminate ].
+    subst Am.
+    eapply fill_exp_elim; [ exact HM | exact HΓ | exact HW | exact Et | exact El | exact HMm | exact Hbm
+                          | exact HΓm | exact HWm | rewrite Hm; exact Hbk ].
   Qed.
 
   Lemma fill_fn_sound_all :
@@ -1107,20 +1201,36 @@ Section Decide.
     all: try match goal with E : fill_exp_fn _ (a_tuple _ _) = _ |- _ => rewrite fill_exp_fn_tuple in E end;
       try match goal with E : fill_unit_fn _ (gu_mk _ _) = _ |- _ => rewrite fill_unit_fn_mk in E end.
     all: try match goal with
-      | E : fill_exp_fn _ (a_elim _ _ _ _ _) = fill_ok _ |- _ => idtac
+      | E : fill_exp_fn _ (a_elim _ _ _ _ _ _) = fill_ok _ |- _ => idtac
+      | E : fill_exp_fn _ (a_conj _ _ _) = fill_ok _ |- _ => idtac
       | E : fill_exp_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_exp_fn] in E
       | E : fill_read_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_read_fn] in E
       | E : fill_def_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_def_fn] in E
       | E : fill_body_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_body_fn] in E
       end; bind_inv.
     all: try solve [ apply fill_exp_leaf; reflexivity | econstructor; eauto ].
-    - (* a numeral *)
-      destruct (nat_view_f F B) as [[[p z] s] |] eqn:Ev; rewrite nat_view_f_ok in Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
+    (* a proof of a conjunction: its annotation given, or its second
+       proposition left to the type of the second component *)
+    2: { destruct (conj_ann_cases T) as [[P ->] | Hn].
+         - cbn [fill_exp_fn] in H2; bind_inv.
+           destruct (infer_at Γ x1) as [W |] eqn:Ei; [| discriminate ]; bind_inv.
+           apply infer_at_sound in Ei as [HG HW].
+           (** the first proposition, filled inside the annotation *)
+           assert (Hand : fill_exp Θ Ξ B Γ (a_and P a_placeholder) (a_and x a_placeholder))
+             by (apply H; cbn [fill_exp_fn]; rewrite H3; reflexivity).
+           inversion Hand; subst; [ cbn in *; discriminate |].
+           eapply fill_exp_conj_right_inferred; eauto.
+         - rewrite (fill_exp_fn_conj_given _ _ _ _ Hn) in H2; bind_inv; apply fill_exp_conj; eauto. }
+    (* a [Π]: its tag, the sort its filled codomain infers to *)
+    4: { destruct (infer_at (Γ ▹ x) x0) as [W |] eqn:Ei; [| discriminate ]; bind_inv.
+         apply infer_at_sound in Ei as [HG HW]; eapply fill_exp_pi; eauto. }
     - (* the token [ℕ] *)
+      destruct (nat_view_f F B) as [[[p z] s] |] eqn:Ev; rewrite nat_view_f_ok in Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
+    - (* a numeral *)
       destruct (nat_view_f F B) as [[[p z] s] |] eqn:Ev; rewrite nat_view_f_ok in Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
     - (* an eliminator: written without its group, its scrutinee, then the
          reading and its blocks *)
-      match goal with Ee : fill_exp_fn _ (a_elim _ _ _ _ _) = fill_ok _ |- _ => rename Ee into E end.
+      match goal with Ee : fill_exp_fn _ (a_elim _ _ _ _ _ _) = fill_ok _ |- _ => rename Ee into E end.
       destruct oq as [p |]; [ cbn in E; discriminate |]; destruct Us as [| U Us]; [| cbn in E; discriminate ].
       rewrite fill_exp_fn_elim in E; bind_inv.
       eapply elim_fill_fn_sound; [ eassumption | eauto | exact E ].
@@ -1147,10 +1257,10 @@ Section Decide.
       destruct (sel_check (snd x) y) as [[qd x0] |] eqn:Es; [ discriminate |].
       destruct x as [H' op]; cbn [fst snd] in *.
       destruct (member_term_b Γ H' y) eqn:Em; bind_inv.
-      + apply member_term_b_spec in Em as (A & oM & HA).
+      + apply member_term_b_spec in Em as (r0 & A & oM & HA).
         eapply fill_read_mem_term; [ eapply fill_mod_of_read_sound; eassumption | apply sel_check_spec; exact Es | exact HA ].
       + eapply fill_read_mem_module; [ eapply fill_mod_of_read_sound; eassumption | apply sel_check_spec; exact Es |].
-        intros A oM HA; assert (member_term_b Γ H' y = true) by (apply member_term_b_spec; eauto); congruence.
+        intros r0 A oM HA; assert (member_term_b Γ H' y = true) by (apply member_term_b_spec; eauto); congruence.
     - (* an application in module position *)
       destruct x; bind_inv; constructor; first [ apply H0; assumption | apply H1; assumption ].
     - exact H.
@@ -1158,9 +1268,11 @@ Section Decide.
     - destruct x as [E' op]; econstructor; eapply fill_mod_of_read_sound; eassumption.
     - (* an entry of a body, in the expansion of the body before it *)
       apply body_xp_fn_spec in H3.
-      destruct E as [b pv A oM | pv U | | |]; try discriminate; bind_inv.
+      destruct E as [b pv r A oM | pv U | | |]; try discriminate; bind_inv.
       + destruct H0 as [HA HoM].
-        eapply fill_body_def; [ apply H; eassumption | eassumption | apply HA; assumption |].
+        destruct (infer_at (body_ctx x1 ++ Γ) x2) as [W |] eqn:Ei; [| discriminate ]; bind_inv.
+        apply infer_at_sound in Ei as [HG HW].
+        eapply fill_body_def; [ apply H; eassumption | eassumption | apply HA; assumption | | exact HG | exact HW ].
         destruct oM as [M |]; bind_inv;
           [ apply fill_optional_exp_some; eapply HoM; [ reflexivity | eassumption ] | apply fill_optional_exp_none ].
       + eapply fill_body_mod; [ apply H; eassumption | eassumption | apply H0; assumption ].
@@ -1184,10 +1296,10 @@ Section Decide.
   Lemma fill_fn_complete_all :
     (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp_fn Γ M = fill_ok M') /\
     (forall Γ fs fs', fill_field_vals Θ Ξ B Γ fs fs' -> field_vals_fn Γ fs = fill_ok fs') /\
-    (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' ->
+    (forall r Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B r Γ p D Us As j Bks Bks' ->
        heads_fn Γ p D Us j Bks = fill_ok (block_heads Bks') /\
-       blocks_fn Γ p D As Us j Bks (block_heads Bks') = fill_ok Bks') /\
-    (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs' -> brs_fn Γ p D Mj As Us Bs = fill_ok Bs') /\
+       blocks_fn Γ r p D As Us j Bks (block_heads Bks') = fill_ok Bks') /\
+    (forall r Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs' -> brs_fn Γ r p D Mj As Us Bs = fill_ok Bs') /\
     (forall Γ oM oM', fill_optional_exp Θ Ξ B Γ oM oM' -> fill_optional_exp_fn Γ oM = fill_ok oM') /\
     (forall Γ H r, fill_read Θ Ξ B Γ H r -> fill_read_fn Γ H = fill_ok r) /\
     (forall Γ H H' op, fill_mod Θ Ξ B Γ H H' op -> forall y, fill_mod_fn Γ y H = fill_ok (H', op)) /\
@@ -1197,10 +1309,12 @@ Section Decide.
     (forall Γ Φ Φ', fill_body Θ Ξ B Γ Φ Φ' -> fill_body_fn Γ Φ = fill_ok Φ').
   Proof.
     apply fill_mut_ind; intros;
-      try match goal with |- fill_exp_fn _ (a_elim _ _ _ _ _) = _ => rewrite fill_exp_fn_elim end;
+      try match goal with |- fill_exp_fn _ (a_elim _ _ _ _ _ _) = _ => rewrite fill_exp_fn_elim end;
       try match goal with |- fill_exp_fn _ (a_tuple _ _) = _ => rewrite fill_exp_fn_tuple end;
       try match goal with |- fill_unit_fn _ (gu_mk _ _) = _ => rewrite fill_unit_fn_mk end;
       try match goal with |- fill_mod_fn _ _ _ = _ => unfold fill_mod_fn end;
+      try match goal with H : ~ and_ann_right_omitted ?T |- fill_exp_fn _ (a_conj ?T _ _) = _ =>
+            rewrite (fill_exp_fn_conj_given _ _ _ _ H) end;
       cbn [fill_exp_fn fill_read_fn fill_def_fn fill_body_fn fill_tele_fn field_vals_fn brs_fn heads_fn blocks_fn
            fill_optional_exp_fn];
       repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end;
@@ -1211,16 +1325,26 @@ Section Decide.
       rewrite nat_view_f_ok, e; reflexivity.
     - (* the token [ℕ] *)
       rewrite nat_view_f_ok, e; reflexivity.
+    - (* a [Π]: its codomain infers its tag *)
+      rewrite (infer_at_complete _ _ _ w a); reflexivity.
+    - (* a proof of a conjunction as written: its second component infers
+         the second proposition *)
+      rewrite (infer_at_complete _ _ _ w a); reflexivity.
     - (* an unannotated let: its definition infers the type *)
       rewrite (infer_at_complete _ _ _ w a); cbn; rewrite H0; reflexivity.
     - (* a member *)
       unfold fill_mod_fn in H0; rewrite (H0 x); cbn; rewrite (proj2 (sel_check_spec _ _) s); reflexivity.
-    - (* an eliminator: the reading, then its blocks, whose motives are
-         those its branches are read at *)
+    - (* an eliminator: the reading, then its blocks' heads, then its tag,
+         then its blocks, whose motives are those its branches are read
+         at *)
       unfold elim_fill_fn; rewrite (infer_at_complete _ _ _ w a), elim_target_f_ok, e, <- fc_ind_ok, e0.
       destruct H0 as [Hh Hb]; rewrite Hh; cbn.
       replace (List.map snd (block_heads Bks')) with (blocks_motives Bks')
         by (clear; induction Bks' as [| [] ? IH]; cbn; [ reflexivity | f_equal; exact IH ]).
+      rewrite e1.
+      assert (Hm : List.nth_error (blocks_motives Bks') m = Some (eb_motive bm))
+        by (unfold blocks_motives; rewrite List.nth_error_map, e2; reflexivity).
+      rewrite Hm, (infer_at_complete _ _ _ w0 a0); cbn.
       rewrite Hb; reflexivity.
     - split; reflexivity.
     - (* a block *)
@@ -1238,10 +1362,10 @@ Section Decide.
     - (* a member that is no term *)
       unfold fill_mod_fn in H0; rewrite (H0 y); cbn; rewrite (proj2 (sel_check_spec _ _) s).
       destruct (member_term_b Γ H' y) eqn:Em;
-        [ apply member_term_b_spec in Em as (A & oM & HA); exfalso; exact (n _ _ HA) | reflexivity ].
+        [ apply member_term_b_spec in Em as (r0 & A & oM & HA); exfalso; exact (n _ _ _ HA) | reflexivity ].
     - (* a member that is a term *)
       unfold fill_mod_fn in H0; rewrite (H0 y); cbn; rewrite (proj2 (sel_check_spec _ _) s).
-      rewrite (proj2 (member_term_b_spec Γ H' y) (ex_intro _ A (ex_intro _ oM m))); reflexivity.
+      rewrite (proj2 (member_term_b_spec Γ H' y) (ex_intro _ r (ex_intro _ A (ex_intro _ oM m)))); reflexivity.
     - (* a term of a record type *)
       cbn; rewrite (infer_at_complete _ _ _ w a); reflexivity.
     - unfold fill_mod_fn in H; rewrite (H ""); reflexivity.
@@ -1250,10 +1374,11 @@ Section Decide.
     - cbn; repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
     - (* a definition with a module part of a telescope *)
       cbn; repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
-    - (* an entry of a body, in the expansion of the body before it *)
+    - (* an entry of a body, in the expansion of the body before it, its
+         type inferring its tag *)
       rewrite (proj2 (body_xp_fn_spec _ _ _) b0); cbn; rewrite H0; cbn.
       change (match oM with Some M => _ | None => fill_ok None end) with (fill_optional_exp_fn (body_ctx Φx ++ Γ) oM).
-      rewrite H1; reflexivity.
+      rewrite H1; cbn; rewrite (infer_at_complete _ _ _ w a); reflexivity.
     - rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn; rewrite H0; reflexivity.
     - (* a definition with a module part of a body *)
       rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn;
@@ -1346,7 +1471,7 @@ Section Decide.
     exists (mk_rfun (raw_fun_name h) (raw_fun_nparams h) (raw_fun_scrut h) (raw_fun_res f') (raw_fun_clauses h) :: rs); cbn.
     rewrite Hj, (Ce _ _ _ (Hr Mm eq_refl)); cbn; rewrite Er; cbn.
     split; [ reflexivity | split; [ constructor; [ cbn; split; [ exact (eq_sym Ep) | reflexivity ] | exact Hrs ] |] ].
-    rewrite (Cb _ _ _ _ _ _ _ _ (Hc Mm eq_refl)); cbn; rewrite Ec; cbn.
+    rewrite (Cb _ _ _ _ _ _ _ _ _ (Hc Mm eq_refl)); cbn; rewrite Ec; cbn.
     rewrite (raw_fun_parts_eq f' (mk_rfun (raw_fun_name h) (raw_fun_nparams h) (raw_fun_scrut h) (raw_fun_res f') (raw_fun_clauses f'))
                (eq_sym En) (eq_sym Ep) (eq_sym Es) eq_refl eq_refl); reflexivity.
   Qed.
