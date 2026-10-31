@@ -1088,8 +1088,6 @@ Qed.
 
 (** The type predicate of an inductive type, along an equation, a context
     refinement and a weakening. *)
-Lemma wk_apps_ind : forall p k Ps φ, (apps (a_ind p k) Ps)[φ]ʷ = apps (a_ind p k) (List.map (fun P => P[φ]ʷ) Ps).
-Proof. intros; rewrite apps_exp_wk; reflexivity. Qed.
 
 Lemma ind_typ_at_resp_exp_eq : forall p D ups ns NP NEl AP AEl DP DEl k Mk n Γ A A' Ps,
     ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk Typeω@n Γ A Ps -> Γ ⊢ A ≈ A' : Typeω@n ->

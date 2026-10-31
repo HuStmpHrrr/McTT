@@ -15,6 +15,15 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** A type is of one relevance: the initial environment and evaluation are
+    functional. *)
+Lemma nbe_ty_relevance_functional : forall {Γ A r r'},
+    nbe_ty_relevance Γ A r -> nbe_ty_relevance Γ A r' -> r = r'.
+Proof.
+  intros * (ρ & a & Hρ & Ha & <-) (ρ' & a' & Hρ' & Ha' & <-).
+  functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; reflexivity.
+Qed.
+
 (** A term infers one type.  A member's is read off what its module
     denotes, which of a well-formed global context is one description
     ([mdenote_functional_all]). *)
@@ -95,10 +104,10 @@ Proof.
     assert (v = v0) as <- by (eapply is_univ_nf_functional; eassumption).
     functional_nbe_rewrite_clear.
     reflexivity.
-  (** A function: the codomain's sort is one. *)
+  (** A function: the codomain's relevance is one. *)
   - assert (B = B0) as <- by intuition.
-    assert (UB = UB0) as <- by intuition.
-    exact (proj1 (is_sort_nf_functional _ _ _ _ _ H0 H6)).
+    match goal with H1 : nbe_ty_relevance _ _ _, H2 : nbe_ty_relevance _ _ _ |- _ =>
+      exact (nbe_ty_relevance_functional H1 H2) end.
   (** An application: the function infers one [Π]. *)
   - match goal with IH : forall A'0, _ -> nf_pi _ _ _ = A'0, H : _ ⊢a _ ⟹ nf_pi _ _ _ |- _ =>
       specialize (IH _ H); injection IH as -> -> -> end.

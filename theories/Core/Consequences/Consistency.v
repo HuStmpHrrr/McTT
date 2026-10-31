@@ -24,7 +24,8 @@ From Mctt.Core.Syntactic Require Import CoreInversions.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Semantic Require Import Realizability Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
-From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness Require Import UniverseCases ContextCases.
+From Mctt.Core.Completeness.Consequences Require Import Rules.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.Inductives Require Import IndCong.
@@ -73,6 +74,95 @@ Proof.
   econstructor; eassumption.
 Qed.
 
+(** The normal form of a type of a sort is its own normal form. *)
+Lemma idempotent_nbe_ty_sort : forall {Γ S A B C},
+    type_sort S ->
+    Γ ⊢ A : S ->
+    nbe_ty_f Γ A B ->
+    nbe_ty_f Γ B C ->
+    B = C.
+Proof.
+  intros * HS HA HB HC.
+  destruct HS as [i |]; [ exact (idempotent_nbe_ty HA HB HC) |].
+  pose proof (soundness_ty_at_sort type_sort_prop HA HB) as HE.
+  destruct (completeness HE) as (W & H1 & H2).
+  apply nbe_prop_to_nbe_ty in H1, H2.
+  functional_nbe_rewrite_clear; reflexivity.
+Qed.
+
+(** A type of a sort has a normal form. *)
+Lemma nbe_ty_exists_sort : forall {Γ S A}, type_sort S -> Γ ⊢ A : S -> exists W, nbe_ty_f Γ A W.
+Proof.
+  intros * HS HA; destruct HS as [i |]; [ destruct (soundness_ty HA) as (W & HW & _); eauto |].
+  destruct (soundness HA) as (W & HW & _); exists W; exact (nbe_prop_to_nbe_ty HW).
+Qed.
+
+(** Semantically equal contexts give a type of a sort one normal form. *)
+Lemma ctxeq_nbe_ty_eq_sort : forall {Γ Γ' S A W},
+    type_sort S -> Γ ⊢ A : S -> ⊨ Γ ≈ Γ' -> nbe_ty_f Γ A W -> nbe_ty_f Γ' A W.
+Proof.
+  intros * HS HA HΓ HW; destruct HS as [i |]; [ exact (ctxeq_nbe_ty_eq' _ _ _ _ _ HA HΓ HW) |].
+  destruct (ctxeq_nbe_eq _ _ _ _ HA HΓ) as (W' & H1 & H2).
+  apply nbe_prop_to_nbe_ty in H1, H2.
+  functional_nbe_rewrite_clear; exact H2.
+Qed.
+
+(** Contexts extended by equal types of a sort are semantically equal. *)
+Lemma ctx_extend_sem_eq : forall {Γ S A A'}, type_sort S -> Γ ⊢ A ≈ A' : S -> ⊨ Γ ▹ A ≈ Γ ▹ A'.
+Proof.
+  intros * HS HAA.
+  destruct (rel_type_of_sort HS (completeness_fundamental_exp_eq _ _ _ _ HAA)) as [k Hk].
+  eapply per_ctx_extend_type; [| exact Hk ].
+  apply rel_ctx_wf_per_ctx, completeness_fundamental_ctx; gen_presups; assumption.
+Qed.
+
+(** Types related at an index, of either sort, have one normal form: at
+    the initial environment, by the identity substitution, their values
+    are related in [per_univ i], so read back equally. *)
+Lemma nbe_ty_of_rel_type : forall {Γ A A' i}, Γ ⊨ᵗ A ≈ A' at i -> exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W.
+Proof.
+  intros * [R HR Hbody].
+  pose proof (per_ctx_then_per_env_initial_env HR) as [ρ [ρ' [Hρi [Hρi' Hρ]]]].
+  assert (HPR : PER R) by (eapply per_env_PER; exact HR).
+  assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  destruct (per_ctx_env_proofs _ _ _ HR _ _ Hρρ) as [Hpf _].
+  destruct (Hbody _ _ HR _ _ (rel_sub_id (ex_intro _ _ HR)) _ _ _ _ Hρρ (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf))
+    as [aσ a a' a'σ' _ Ha Ha' _ Hch].
+  cbn in Hch; destruct Hch as (_ & [Rm HRm] & _).
+  destruct (per_univ_then_per_top_typ HRm (length Γ)) as (W & HW & HW').
+  exists W; split; [ econstructor; [ exact Hρi | exact Ha | exact HW ] | econstructor; [ exact Hρi | exact Ha' | exact HW' ] ].
+Qed.
+
+(** A type of a sort is of the sort its value at the initial environment
+    is of: a type of a large universe has relevant values, a proposition
+    propositional ones ([rel_exp_of_relevance_sort_at]). *)
+Lemma typed_at_sort_of_initial_relevance : forall {Γ A S ρ a},
+    type_sort S -> Γ ⊢ A : S -> initial_env_f Γ ρ -> ⟦ A ⟧ ρ ↘ a ->
+    exists k : nat, Γ ⊢ A : relevance_sort (domain_relevance a) Typeω@k.
+Proof.
+  intros * HS HA Hρi Ha.
+  assert (exists s (i : nat), S = relevance_sort s Typeω@i) as (s & i & ->)
+    by (destruct HS as [i |]; [ exists relevant, i | exists propositional, 0 ]; reflexivity).
+  pose proof (completeness_fundamental_exp _ _ _ HA) as HAs.
+  destruct HAs as [R HR _ _].
+  pose proof (per_ctx_then_per_env_initial_env HR) as [ρ0 [ρ0' [Hρ0 [_ Hρ]]]].
+  functional_initial_env_rewrite_clear.
+  destruct (rel_exp_of_relevance_sort_at HR (completeness_fundamental_exp _ _ _ HA) _ _ Hρ) as (a' & Ha' & <-).
+  functional_eval_rewrite_clear.
+  exists i; exact HA.
+Qed.
+
+(** Types each below the other have one normal form
+    ([rel_type_of_mutual_subtyp]). *)
+Lemma nbe_ty_of_mutual_subtyp : forall {Γ A A'},
+    Γ ⊢ A ⊆ A' -> Γ ⊢ A' ⊆ A -> exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W.
+Proof.
+  intros * H H'.
+  destruct (rel_type_of_mutual_subtyp (completeness_fundamental_subtyp _ _ _ H) (completeness_fundamental_subtyp _ _ _ H'))
+    as [i Hi].
+  exact (nbe_ty_of_rel_type Hi).
+Qed.
+
 (** Completeness for types equal at a sort: one normal form. *)
 Lemma completeness_ty_sort : forall {Γ S A B},
     type_sort S -> Γ ⊢ A ≈ B : S -> exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ B W.
@@ -113,6 +203,42 @@ Proof.
   intros * HS H HM.
   assert (Γ ⊢ A : S /\ Γ ⊢ A' : S) as [] by (gen_presups; split; assumption).
   eapply wf_exp_subtyp'; [ exact HM | eapply proj1, wf_subtyp_of_exp_eq; eassumption ].
+Qed.
+
+(** No type of a large universe is below a proposition. *)
+Lemma subtyp_relevant_prop_absurd : forall {Γ A A' i},
+    Γ ⊢ A ⊆ A' -> Γ ⊢ A : Typeω@i -> Γ ⊢ A' : Propₘ -> False.
+Proof. intros * Hs HA HA'; discriminate (subtyp_same_relevance Γ A A' relevant propositional i 0 Hs HA HA'). Qed.
+
+(** No proposition is below a type of a large universe. *)
+Lemma subtyp_prop_relevant_absurd : forall {Γ A A' i},
+    Γ ⊢ A ⊆ A' -> Γ ⊢ A : Propₘ -> Γ ⊢ A' : Typeω@i -> False.
+Proof. intros * Hs HA HA'; discriminate (subtyp_same_relevance Γ A A' propositional relevant 0 i Hs HA HA'). Qed.
+
+(** [Π] congruence over a domain of a sort ([type_sort]): a type or a
+    proposition. *)
+Lemma pi_cong_sort : forall {Θ Ξ Γ A A' B B' Sd i},
+    type_sort Sd -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Sd -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Sd -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
+    exists j, Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@j.
+Proof.
+  intros * [k |] HA HAA HB.
+  - exists (max k i); eapply wf_exp_eq_pi_cong_large;
+      [ eapply lift_exp_max_left; exact HA | eapply lift_exp_eq_max_left; exact HAA | eapply lift_exp_eq_max_right; exact HB ].
+  - exists i; change (Typeω@i) with (relevance_sort relevant Typeω@i) at 1.
+    eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; gen_presups; assumption | exact HA | apply pi_domain_prop
+                              | exact HAA | exact HB ].
+Qed.
+
+(** [∀ₚ] congruence over a domain of a sort ([type_sort]). *)
+Lemma all_cong_sort : forall {Θ Ξ Γ A A' P P' Sd},
+    type_sort Sd -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Sd -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Sd -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ P ≈ P' : Propₘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ∀ₚ A P ≈ ∀ₚ A' P' : Propₘ.
+Proof.
+  intros * HS HA HAA HP.
+  assert (⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
+  destruct HS as [k |]; [ change Propₘ with (relevance_sort propositional Typeω@k)
+                        | change Propₘ with (relevance_sort propositional Typeω@0) ].
+  all: eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; assumption | exact HA | constructor | exact HAA | exact HP ].
 Qed.
 
 (** A [Π] is a type of a large universe: of the universe it is in, or of
@@ -241,6 +367,64 @@ Proof.
   assert (Γ ▹ A ⊢ˢ Id : Γ ▹ A')
     by (destruct Hdom as [Hd | Hd]; eapply sub_id_extend_of_exp_eq; [ constructor | exact Hd | constructor | exact Hd ]).
   etransitivity; [| symmetry]; mauto 3.
+Qed.
+
+(** [∀] is injective: two equal propositions [∀] have domains equal at a
+    sort and propositions equal under the left domain.  Their normal forms
+    are one [∀ₚⁿ]: its domain is both domains' normal form, its body both
+    bodies', the right one moved to the left domain ([ctxeq_nbe_eq]). *)
+Lemma exp_eq_all_inversion : forall {Γ A P A' P'},
+    Γ ⊢ ∀ₚ A P ≈ ∀ₚ A' P' : Propₘ ->
+    (exists S, type_sort S /\ Γ ⊢ A ≈ A' : S) /\ Γ ▹ A ⊢ P ≈ P' : Propₘ.
+Proof.
+  intros * H.
+  assert (Γ ⊢ ∀ₚ A P : Propₘ /\ Γ ⊢ ∀ₚ A' P' : Propₘ) as [H1 H2] by (gen_presups; split; assumption).
+  destruct (wf_all_inversion _ _ _ _ _ _ H1) as [SA HS HA HP _].
+  destruct (wf_all_inversion _ _ _ _ _ _ H2) as [SA' HS' HA' HP' _].
+  destruct (completeness_ty_sort type_sort_prop H) as (W & [ρ a Hi Ha Hr] & [ρ' a' Hi' Ha' Hr']).
+  functional_initial_env_rewrite_clear.
+  inversion Ha; subst; inversion Ha'; subst.
+  inversion Hr; subst; inversion Hr'; subst.
+  functional_read_rewrite_clear.
+  (** The domains: one normal form, so equal at a sort *)
+  match goal with
+  | HeA : ⟦ A ⟧ ρ ↘ ?a0, HrA : Rtyp ?a0 in length Γ ↘ ?WA, HeA' : ⟦ A' ⟧ ρ ↘ ?a0', HrA' : Rtyp ?a0' in length Γ ↘ ?WA |- _ =>
+      assert (HnA : nbe_ty_f Γ A WA) by (econstructor; eassumption);
+      assert (HnA' : nbe_ty_f Γ A' WA) by (econstructor; eassumption)
+  end.
+  assert (HdA : exists S0, type_sort S0 /\ Γ ⊢ A ≈ A' : S0).
+  { destruct HS as [k |], HS' as [k' |].
+    - destruct (exp_eq_of_nbe_ty_same (i := max k k') (or_introl ltac:(eapply lift_exp_max_left; exact HA))
+                  (or_introl ltac:(eapply lift_exp_max_right; exact HA')) HnA HnA')
+        as [Hd | Hd]; eexists; (split; [ constructor | exact Hd ]).
+    - destruct (exp_eq_of_nbe_ty_same (i := k) (or_introl HA) (or_intror HA') HnA HnA') as [Hd | Hd];
+        eexists; (split; [ constructor | exact Hd ]).
+    - destruct (exp_eq_of_nbe_ty_same (i := k') (or_intror HA) (or_introl HA') HnA HnA') as [Hd | Hd];
+        eexists; (split; [ constructor | exact Hd ]).
+    - destruct (exp_eq_of_nbe_ty_same (i := 0) (or_intror HA) (or_intror HA') HnA HnA') as [Hd | Hd];
+        eexists; (split; [ constructor | exact Hd ]). }
+  split; [ exact HdA |].
+  destruct HdA as (S0 & HS0 & HAA).
+  (** The bodies: one normal form, in the left domain's context *)
+  assert (HΓA : ⊢ Γ ▹ A) by (gen_presups; assumption).
+  assert (HId : Γ ▹ A ⊢ˢ Id : Γ ▹ A') by exact (sub_id_extend_of_exp_eq HS0 HAA).
+  assert (HP'A : Γ ▹ A ⊢ P' : Propₘ) by (eapply ctxsub_exp; [ exact HId | exact HP' ]).
+  assert (Hsem : ⊨ Γ ▹ A' ≈ Γ ▹ A).
+  { destruct (rel_type_of_sort HS0 (completeness_fundamental_exp_eq _ _ _ _ ltac:(symmetry; exact HAA))) as [k Hk].
+    eapply per_ctx_extend_type; [| exact Hk ].
+    apply rel_ctx_wf_per_ctx, completeness_fundamental_ctx; gen_presups; assumption. }
+  destruct (ctxeq_nbe_eq _ _ _ _ HP' Hsem) as (WP' & HWP1 & HWP2).
+  apply nbe_prop_to_nbe_ty in HWP1, HWP2.
+  match goal with
+  | HeP : ⟦ P ⟧ ρ ↦ relevant_value ?a0 ⇑! ?a0 (length Γ) ↘ ?b, HrP : Rtyp ?b in S (length Γ) ↘ ?WP,
+    HeA : ⟦ A ⟧ ρ ↘ ?a0,
+    HeP' : ⟦ P' ⟧ ρ ↦ relevant_value ?a0' ⇑! ?a0' (length Γ) ↘ ?b', HrP' : Rtyp ?b' in S (length Γ) ↘ ?WP,
+    HeA' : ⟦ A' ⟧ ρ ↘ ?a0' |- _ =>
+      assert (HnP : nbe_ty_f (Γ ▹ A) P WP) by (econstructor; [ econstructor; eassumption | eassumption | exact HrP ]);
+      assert (HnP' : nbe_ty_f (Γ ▹ A') P' WP) by (econstructor; [ econstructor; eassumption | eassumption | exact HrP' ])
+  end.
+  pose proof (functional_nbe_ty _ _ _ _ HWP1 HnP') as <-.
+  etransitivity; [| symmetry ]; eapply soundness_ty_at_sort; first [ constructor | eassumption ].
 Qed.
 
 (** ** The Parameters of an Inductive Type
@@ -1445,6 +1629,21 @@ Proof.
   destruct (rel_exp_of_prop_inversion_simple_at HR HAs _ _ Hρρ) as (x' & _ & Hx' & _ & [Hl _ _]).
   functional_eval_rewrite_clear.
   rewrite Hl in Hr; discriminate Hr.
+Qed.
+
+(** A record type is no proposition: at an environment of the context its
+    value is a record type, which is relevant. *)
+Lemma typ_prop_record_absurd : forall {Γ p Ms}, Γ ⊢ apps (a_record p) Ms : Propₘ -> False.
+Proof.
+  intros * HA.
+  pose proof (completeness_fundamental_exp _ _ _ HA) as HAs.
+  destruct (rel_exp_of_prop_inversion HAs) as [R [HR _]].
+  pose proof (per_ctx_then_per_env_initial_env HR) as [ρ [ρ' [_ [_ Hρ]]]].
+  assert (HPR : PER R) by (eapply per_env_PER; exact HR).
+  assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  destruct (rel_exp_of_prop_inversion_simple_at HR HAs _ _ Hρρ) as (x & _ & Hx & _ & [Hl _ _]).
+  destruct (eval_record_value _ _ _ _ Hx) as [ms ->].
+  discriminate Hl.
 Qed.
 
 (** The argument of the constructor [s] of a closed term of a type of the

@@ -1667,6 +1667,11 @@ Lemma apps_exp_wk : forall Ms M φ,
     (apps_exp M Ms)[φ]ʷ = apps_exp M[φ]ʷ (List.map (fun N => N[φ]ʷ) Ms).
 Proof. induction Ms; intros; cbn; [ reflexivity | rewrite IHMs; reflexivity ]. Qed.
 
+(** An inductive type former's application, weakened: its arguments,
+    weakened. *)
+Lemma wk_apps_ind : forall p k Ps φ, (apps_exp (a_ind p k) Ps)[φ]ʷ = apps_exp (a_ind p k) (List.map (fun P => P[φ]ʷ) Ps).
+Proof. intros; rewrite apps_exp_wk; reflexivity. Qed.
+
 Lemma apps_exp_sub : forall Ms M σ,
     (apps_exp M Ms)[σ] = apps_exp M[σ] (List.map (fun N => N[σ]) Ms).
 Proof. induction Ms; intros; cbn; [ reflexivity | rewrite IHMs; reflexivity ]. Qed.

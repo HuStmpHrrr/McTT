@@ -408,20 +408,6 @@ Proof.
                               | apply wf_exp_eq_refl; exact HB | exact HA ].
 Qed.
 
-(** [Π] congruence over a domain of a sort ([type_sort]): a type or a
-    proposition. *)
-Lemma pi_cong_sort : forall {Θ Ξ Γ A A' B B' Sd i},
-    type_sort Sd -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Sd -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Sd -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
-    exists j, Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@j.
-Proof.
-  intros * [k |] HA HAA HB.
-  - exists (max k i); eapply wf_exp_eq_pi_cong_large;
-      [ eapply lift_exp_max_left; exact HA | eapply lift_exp_eq_max_left; exact HAA | eapply lift_exp_eq_max_right; exact HB ].
-  - exists i; change (Typeω@i) with (relevance_sort relevant Typeω@i) at 1.
-    eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; gen_presups; assumption | exact HA | apply pi_domain_prop
-                              | exact HAA | exact HB ].
-Qed.
-
 Lemma raw_decl_selfs_from_snoc : forall R j l Mr,
     raw_decl_selfs_from R j (l ++ Mr :: nil) = ce_ass (raw_decl_self_ty R Mr)[wk_shiftn (j + List.length l)]ʷ :: raw_decl_selfs_from R j l.
 Proof.
@@ -799,7 +785,7 @@ Section ConTypes.
           its filed entry. *)
       assert (HT' : exists grp recs T', classify_arg grp recs nu np n pat T' = Some g /\
                 (T' = T \/ exists i, Θ ⍮ Ξ ⍮ raw_args_tele args1 ++ raw_member_args_ctx Ξ R Mr ⊢ T ≈ T' : Typeω@i)).
-      { destruct Hg as [g0 Hc | i W g0 _ HTt HW Hc]; [ exists grp_none, rec_none, T; split; [ exact Hc | left; reflexivity ] |].
+      { destruct Hg as [g0 Hc | i W g0 _ HTt HW _ Hc]; [ exists grp_none, rec_none, T; split; [ exact Hc | left; reflexivity ] |].
         exists (grp_info Θ Ξ), (rec_info Θ Ξ), (nf_to_exp W); split; [ exact Hc | right; exists i ].
         exact (@soundness_ty' (gc_mk Θ Ξ) _ _ _ _ HTt HW). }
       destruct HT' as (grp & recs & T' & Hc & HTT).

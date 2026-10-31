@@ -220,4 +220,97 @@ Proof.
   exact (gens_ext_wf_gen _ _ _ _ Hg Γ0 (body_ctx Φx ++ Ψ) eq_refl HH gm_nil HX).
 Qed.
 
+(** ** The Sorts of a Body's Definitions
+
+    [body_tags Γ Φ L]: the type of every term part of the body [Φ] over [Γ]
+    is, in the context of the entries before it, of the sort its relevance
+    tag says, at the level [L] if relevant ([entry_relevance]).  This is
+    what the premises on [entry_sort] of the unit rules need. *)
+Definition body_tags (Γ : ctx) (Φ : gmod) (L : nat) : Prop :=
+  forall y Φ0 E A M, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+    (body_ctx Φ0 ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Typeω@L.
+
+(** A type of the sort at a tag is one at every larger level. *)
+Lemma relevance_sort_lift : forall Γ A r i j,
+    Γ ⊢ A : relevance_sort r Typeω@i -> i <= j -> Γ ⊢ A : relevance_sort r Typeω@j.
+Proof. intros * HA Hij; destruct r; cbn [relevance_sort] in *; [ eapply lift_exp_ge; eassumption | exact HA ]. Qed.
+
+Lemma body_tags_mono : forall Γ Φ L L', body_tags Γ Φ L -> L <= L' -> body_tags Γ Φ L'.
+Proof. intros * HT HL y Φ0 E A M Hp HE; eapply relevance_sort_lift; [ exact (HT _ _ _ _ _ Hp HE) | exact HL ]. Qed.
+
+Lemma body_tags_nil : forall Γ L, body_tags Γ gm_nil L.
+Proof. intros * y Φ0 E A M Hp; discriminate. Qed.
+
+(** An entry added, its term part, if any, of the sort at its tag. *)
+Lemma body_tags_ext : forall Γ Φ x E L,
+    body_tags Γ Φ L ->
+    (forall A M, entry_tm E = Some (A, M) -> (body_ctx Φ ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Typeω@L) ->
+    body_tags Γ (gm_ext Φ x E) L.
+Proof.
+  intros * HT HE y Φ0 E0 A M Hp HE0; cbn [gm_prefix_upto] in Hp.
+  destruct (String.eqb y x); [ injection Hp as HΦ0 _ HE1; subst Φ0 E0; exact (HE _ _ HE0) | exact (HT _ _ _ _ _ Hp HE0) ].
+Qed.
+
+(** The entries an open of a well-formed module generates are of the sorts
+    at their tags: a definition's is the member's ([desc_ok_ty_at]), a
+    definition with a module part is relevant.  Read past the [k] entries
+    generated before, a weakening of the context the module is read in. *)
+Lemma body_tags_gens : forall Γ1 H its gs, items_gen gc_deps gc_stack Γ1 H its gs ->
+    forall Γ Φ, Γ1 = (body_ctx Φ ++ Γ)%list -> gc_deps ⍮ gc_stack ⍮ Γ1 ⊢ᵐ H ≈ H ->
+    forall Φg Ψk L, body_ctx Φg = (Ψk ++ body_ctx Φ)%list ->
+    ⊢ (body_ctx (gens_append Φg (List.length Ψk) gs) ++ Γ)%list ->
+    body_tags Γ Φg L ->
+    exists L', body_tags Γ (gens_append Φg (List.length Ψk) gs) L'.
+Proof.
+  induction 1 as [Γ1 H | Γ1 H d pv its gs _ IH | Γ1 H n d pv ra A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
+                 | Γ1 H n d pv R A Rm its gs Hm Hty Hmd _ IH ];
+    intros Γ Φ -> HH Φg Ψk L HΦg HC HT; cbn [gens_append generated_item_entry] in *; [ exists L; exact HT | .. ].
+  (** The context of the entry being generated is well formed. *)
+  all: assert (HCg : ⊢ (body_ctx Φg ++ Γ)%list)
+         by (match type of HC with ⊢ (body_ctx (gens_append ?Φ' ?k' ?gs') ++ _)%list =>
+               destruct (gens_append_body_ctx gs' Φ' k') as [Ψ' HΨ']; rewrite HΨ' in HC end;
+             cbn [body_ctx gentry_wk option_map] in HC; rewrite <- List.app_assoc in HC;
+             exact (ctx_decomp_tail (ctx_app_wf_tail _ _ _ _ HC))).
+  all: assert (Hw : (body_ctx Φg ++ Γ)%list ⊢ʷ wk_shiftn (List.length Ψk) : (body_ctx Φ ++ Γ)%list)
+         by (rewrite HΦg, <- List.app_assoc; apply wf_wk_shiftn_app'; rewrite List.app_assoc, <- HΦg; exact HCg).
+  - (** The module itself: no term part. *)
+    change (S (List.length Ψk)) with (List.length (ce_mod (gunit_wk (gu_mk nil (md_alias H)) (wk_shiftn (List.length Ψk))) :: Ψk)).
+    eapply IH; [ reflexivity | exact HH | cbn [body_ctx]; rewrite HΦg; reflexivity | exact HC |].
+    apply body_tags_ext; [ exact HT | intros * [=] ].
+  - (** A term member, at the sort of its tag. *)
+    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
+    pose proof (gctx_valid_syn _ _ Hg) as Hv.
+    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) eq_refl) as [i HAi]; cbn [mdesc_relevance] in HAi.
+    assert (HA1 : (body_ctx Φg ++ Γ)%list ⊢ A[wk_shiftn (List.length Ψk)]ʷ : relevance_sort ra Typeω@i)
+      by (destruct ra; cbn [relevance_sort] in *; [ exact (wk_preserves_typ _ _ _ _ _ _ _ HAi Hw)
+                                                  | exact (wk_preserves_sort _ _ _ _ _ _ _ HAi type_sort_prop Hw) ]).
+    set (E1 := gentry_wk (ge_def true pv ra A (Some (a_mem H n))) (wk_shiftn (List.length Ψk))) in *.
+    change (S (List.length Ψk)) with (List.length (ce_def A[wk_shiftn (List.length Ψk)]ʷ (a_mem H n)[wk_shiftn (List.length Ψk)]ʷ :: Ψk)).
+    eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk option_map]; rewrite HΦg; reflexivity | exact HC |].
+    apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
+    intros A' M' HE; unfold E1 in HE; cbn [gentry_wk option_map entry_tm] in HE; injection HE as <- <-.
+    unfold E1; cbn [entry_relevance gentry_wk].
+    exact (relevance_sort_lift _ _ _ _ _ HA1 (Nat.le_max_r L i)).
+  - (** A module member: no term part. *)
+    change (S (List.length Ψk)) with (List.length (ce_mod (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (List.length Ψk))) :: Ψk)).
+    eapply IH; [ reflexivity | exact HH | cbn [body_ctx]; rewrite HΦg; reflexivity | exact HC |].
+    apply body_tags_ext; [ exact HT | intros * [=] ].
+  - (** A member with both parts: relevant. *)
+    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
+    pose proof (gctx_valid_syn _ _ Hg) as Hv.
+    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty) as [i HAi].
+    assert (Hr : mdesc_relevance R = relevant) by (destruct R; cbn in Hmd |- *; congruence).
+    rewrite Hr in HAi; cbn [relevance_sort] in HAi.
+    pose proof (wk_preserves_typ _ _ _ _ _ _ _ HAi Hw) as HA1.
+    set (E1 := gentry_wk (ge_def_mod pv A (a_mem H n) (gu_mk nil (md_alias (me_mem H n)))) (wk_shiftn (List.length Ψk))) in *.
+    change (S (List.length Ψk))
+      with (List.length (ce_dm A[wk_shiftn (List.length Ψk)]ʷ (a_mem H n)[wk_shiftn (List.length Ψk)]ʷ
+                           (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (List.length Ψk))) :: Ψk)).
+    eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk]; rewrite HΦg; reflexivity | exact HC |].
+    apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
+    intros A' M' HE; unfold E1 in HE; cbn [gentry_wk entry_tm] in HE; injection HE as <- <-.
+    unfold E1; cbn [entry_relevance gentry_wk relevance_sort].
+    eapply lift_exp_ge; [| exact HA1 ]; lia.
+Qed.
+
 End Fixed_GCtx.

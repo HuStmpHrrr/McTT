@@ -35,18 +35,48 @@ Proof.
   econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ].
 Qed.
 
+(** The normal form of a [Π] of the sort [r]: the [Π] of its domain's
+    normal form and of its codomain's, in the context extended by the
+    domain. *)
+Lemma nbe_ty_pi_inv : forall Γ r A B W,
+    nbe_ty_f Γ (a_pi r A B) W ->
+    exists WA WB, W = nf_pi r WA WB /\ nbe_ty_f Γ A WA /\ nbe_ty_f (Γ ▹ A) B WB.
+Proof.
+  intros * Hn.
+  inversion Hn; subst.
+  directed_inversion_by_head eval_exp; subst.
+  inversion nbe_ty_read; subst.
+  all: do 2 eexists; split; [ reflexivity | split ];
+    [ econstructor; eassumption | econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ] ].
+Qed.
+
+(** The normal form of a [Σₚ]: the [Σₚ] of its parts' normal forms, the
+    first's in the context, the second's in the context extended by the
+    first. *)
+Lemma nbe_ty_and_inv : forall Γ P Q W,
+    nbe_ty_f Γ (Σₚ P Q) W ->
+    exists WP WQ, W = Σₚⁿ WP WQ /\ nbe_ty_f Γ P WP /\ nbe_ty_f (Γ ▹ P) Q WQ.
+Proof.
+  intros * Hn.
+  inversion Hn; subst.
+  directed_inversion_by_head eval_exp; subst.
+  directed_inversion_by_head read_typ; subst.
+  do 2 eexists; split; [ reflexivity | split ];
+    [ econstructor; eassumption | econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ] ].
+Qed.
+
 (** Conversely, a [Π]'s normal form is the [Π] of its domain's and of its
-    codomain's, in the context extended by the domain. *)
-Lemma nbe_ty_pi_intro : forall Γ A B WA WB,
+    codomain's, in the context extended by the domain, at either sort. *)
+Lemma nbe_ty_pi_intro : forall Γ r A B WA WB,
     nbe_ty_f Γ A WA ->
     nbe_ty_f (Γ ▹ A) B WB ->
-    nbe_ty_f Γ (Π A B) (Πⁿ WA WB).
+    nbe_ty_f Γ (a_pi r A B) (nf_pi r WA WB).
 Proof.
   intros * [ρ a Hi Ha Hr] [ρ' b Hi' Hb Hr'].
   inversion Hi'; subst.
   functional_initial_env_rewrite_clear.
   functional_eval_rewrite_clear.
-  econstructor; [ exact Hi | constructor; exact Ha | econstructor; eassumption ].
+  econstructor; [ exact Hi | constructor; exact Ha | destruct r; econstructor; eassumption ].
 Qed.
 
 (** The two normal forms are their own normal forms, as the normal forms
@@ -241,6 +271,56 @@ Proof.
   transitivity A'; [mauto |].
   transitivity B'; [eassumption |].
   mauto.
+Qed.
+
+(** The normal form of a proposition is neither a universe, a type of
+    levels nor a relevant [Π]: each of those is a type of a large universe,
+    which no proposition is ([typ_prop_absurd]). *)
+Lemma nbe_ty_prop_not_univ_pi : forall Γ A W,
+    Γ ⊢ A : Propₘ -> nbe_ty_f Γ A W -> not_univ_pi W.
+Proof.
+  intros * HA Hn.
+  pose proof (soundness_ty_at_sort type_sort_prop HA Hn) as HE.
+  assert (HW : Γ ⊢ W : Propₘ) by (gen_presups; assumption).
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct W; try match goal with |- not_univ_pi (nf_pi ?r _ _) => destruct r end;
+    cbn; try exact I; exfalso; cbn [nf_to_exp] in HW.
+  - exact (typ_prop_absurd (wf_typ _ _ _ _ HΓ) HW).
+  - destruct (wf_univ_lvl_inversion HW) as [nL HL]; exact (typ_prop_absurd (wf_univ_large_tm (i := 0) HΓ HL) HW).
+  - exact (typ_prop_absurd (wf_level_large (i := 0) HΓ) HW).
+  - destruct (wf_pi_typed_large HW) as [k Hk]; exact (typ_prop_absurd Hk HW).
+Qed.
+
+(** Normal forms one of which is no universe, type of levels or relevant
+    [Π] are subtypes only if equal. *)
+Lemma alg_subtyping_nf_not_univ_pi_eq : forall A B,
+    ⊢anf A ⊆ B -> not_univ_pi A \/ not_univ_pi B -> A = B.
+Proof. intros * Hs Hn; inversion Hs; subst; [ reflexivity | .. ]; cbn in Hn; destruct Hn; contradiction. Qed.
+
+(** Algorithmic subtyping is sound for types of any sorts. *)
+Lemma alg_subtyping_sound_sort : forall Γ A B S S',
+    type_sort S -> type_sort S' ->
+    Γ ⊢a A ⊆ B ->
+    Γ ⊢ A : S ->
+    Γ ⊢ B : S' ->
+    Γ ⊢ A ⊆ B.
+Proof.
+  intros * HS HS' Hs HA HB.
+  destruct HS as [i |], HS' as [j |];
+    [ eapply (alg_subtyping_sound _ _ _ (max i j)); [ exact Hs | eapply lift_exp_max_left; exact HA | eapply lift_exp_max_right; exact HB ]
+    | .. ].
+  (** A proposition on a side: the normal forms are equal, so are the types. *)
+  all: destruct Hs as [A' B' HnA HnB Hsub].
+  all: assert (A' = B') as <-
+         by (apply alg_subtyping_nf_not_univ_pi_eq; [ exact Hsub |];
+             first [ right; eapply nbe_ty_prop_not_univ_pi; eassumption | left; eapply nbe_ty_prop_not_univ_pi; eassumption ]).
+  all: let E := fresh "E" in
+       first [ pose proof (exp_eq_of_nbe_ty_same (or_introl HA) (or_intror HB) HnA HnB) as E
+             | pose proof (exp_eq_of_nbe_ty_same (or_intror HA) (or_introl HB) HnA HnB) as E
+             | pose proof (exp_eq_of_nbe_ty_same (i := 0) (or_intror HA) (or_intror HB) HnA HnB) as E ];
+       destruct E as [HE | HE];
+       exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HE) (presup_exp_eq_right HE)
+                       ltac:(constructor) HE)).
 Qed.
 
 End Fixed_GCtx.

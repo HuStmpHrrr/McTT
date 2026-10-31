@@ -7,6 +7,7 @@ Import Domain_Notations Fixed_Notations.
 Reserved Notation "Γ '⊢a' M ⟹ A" (at level 70, M at level 69, A at level 69).
 Reserved Notation "Γ '⊢a' M ⟸ A" (at level 70, M at level 69, A at level 69).
 Reserved Notation "Γ '⊢aˣ' Ψ" (at level 70, Ψ at level 69).
+Reserved Notation "Γ '⊢aᵖ' Δ" (at level 70, Δ at level 69).
 Reserved Notation "Γ '⊢aᵘ' U" (at level 70, U at level 69).
 Reserved Notation "Γ '⊢aᵐ' H" (at level 70, H at level 69).
 Reserved Notation "Γ '⊢aᵇ' Φ ⇝ Φx" (at level 70, Φ at level 69, Φx at level 69).
@@ -61,6 +62,14 @@ Inductive nfs_agree (Γ : ctx) : list exp -> list exp -> list typ -> Prop :=
 
 (** [alg_ty_conv Γ A B]: the types [A] and [B] have one normal form. *)
 Definition alg_ty_conv (Γ : ctx) (A B : typ) : Prop := exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ B W.
+
+(** [nbe_ty_relevance Γ A r]: the type [A] is of the relevance [r], read
+    off its value at the initial environment ([domain_relevance]): a type
+    of a universe has a relevant value, a proposition a propositional one.
+    It decides the sort of a type the algorithm has inferred, which is a
+    normal form, not a subterm, so it is not inferred again. *)
+Definition nbe_ty_relevance (Γ : ctx) (A : typ) (r : relevance) : Prop :=
+  exists ρ a, initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ domain_relevance a = r.
 
 Inductive alg_type_check : ctx -> typ -> exp -> Prop :=
 | alg_type_check_ati :
@@ -230,13 +239,12 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ▹ A ⊢a B ⟹ Propⁿ ->
      Γ ⊢a ∀ₚ A B ⟹ Propⁿ )
 (** A λ-abstraction, over a type of either sort: a function, or a proof of
-    a [∀], as the sort [r] of its body's type is. *)
+    a [∀], as the relevance [r] of its body's type is ([nbe_ty_relevance]). *)
 | alg_type_infer_fn :
   `( Γ ⊢a A ⟹ UA ->
      is_sort_nf UA rA u ->
      Γ ▹ A ⊢a M ⟹ B ->
-     Γ ▹ A ⊢a B ⟹ UB ->
-     is_sort_nf UB r v ->
+     nbe_ty_relevance (Γ ▹ A) B r ->
      nbe_ty_f Γ A C ->
      Γ ⊢a λ A M ⟹ nf_pi r C B )
 (** An application of a function or of a proof of a [∀]. *)
@@ -246,15 +254,16 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
 (** A local definition: its type [A], the annotation or the type the body
-    infers, is a type of the sort [r]; an annotation is checked against,
-    and without one [A] is of a universe.  Then the body of the [let].
+    infers.  An annotation infers a sort, and the body is checked against
+    it; without one, [A] is relevant ([nbe_ty_relevance]), read off its
+    value, as it is an inferred normal form.  Then the body of the [let].
     The two cases are premises under the annotation they are about, so
     that the induction principle has a hypothesis for each. *)
 | alg_type_infer_let :
   `( alg_let_ann oA A ->
-     Γ ⊢a A ⟹ UA ->
-     is_sort_nf UA r u ->
-     (oA = None -> r = relevant) ->
+     (oA = Some A -> Γ ⊢a A ⟹ UA) ->
+     (oA = Some A -> is_sort_nf UA r u) ->
+     (oA = None -> nbe_ty_relevance Γ A relevant) ->
      (oA = Some A -> Γ ⊢a M ⟸ A) ->
      (oA = None -> Γ ⊢a M ⟹ W) ->
      (oA = None -> A = nf_to_exp W) ->
@@ -338,11 +347,24 @@ with alg_ext : ctx -> ctx -> Prop :=
      Ψ ++ Γ ⊢aᵘ U ->
      Γ ⊢aˣ Ψ ▸ₘ A ≔ M ‖ U )
 where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
+(** The parameters of a unit: assumptions, each of a type of a universe
+    (the premise (R) of the unit rules).  A proposition is no parameter. *)
+with alg_params : ctx -> ctx -> Prop :=
+(** No parameter *)
+| alg_params_nil :
+  `( Γ ⊢aᵖ ⋅ )
+(** A parameter, of a type that infers a universe *)
+| alg_params_ass :
+  `( Γ ⊢aᵖ Δ ->
+     Δ ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
+     Γ ⊢aᵖ Δ ▹ A )
+where "Γ '⊢aᵖ' Δ" := (alg_params Γ Δ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
 (** A body: its parameters, and its entries, each read as it stands in the
     expansion of the body before it. *)
 | alg_unit_body :
-  `( Γ ⊢aˣ Δ ->
+  `( Γ ⊢aᵖ Δ ->
      tele_ass Δ ->
      Δ ++ Γ ⊢aᵇ Φ ⇝ Φx ->
      body_shape Φ Φ ->
@@ -350,7 +372,7 @@ with alg_unit : ctx -> gunit -> Prop :=
      List.NoDup (gm_names Φ) ->
      Γ ⊢aᵘ gu_open Δ Φ )
 | alg_unit_alias :
-  `( Γ ⊢aˣ Δ ->
+  `( Γ ⊢aᵖ Δ ->
      tele_ass Δ ->
      Δ ++ Γ ⊢aᵐ E ->
      Γ ⊢aᵘ gu_mk Δ (md_alias E) )
@@ -418,23 +440,25 @@ with alg_modexp : ctx -> modexp -> Prop :=
      Γ ⊢aᵐ me_app H N )
 where "Γ '⊢aᵐ' H" := (alg_modexp Γ H) : type_scope.
 
-Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_body alg_modexp : mctt.
+Hint Constructors alg_type_check alg_type_infer alg_ext alg_params alg_unit alg_body alg_modexp : mctt.
 
 End Fixed_GCtx.
 
 Notation "Γ '⊢a' M ⟸ A" := (alg_type_check Γ A M) : type_scope.
 Notation "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope.
 Notation "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope.
+Notation "Γ '⊢aᵖ' Δ" := (alg_params Γ Δ) : type_scope.
 Notation "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope.
 Notation "Γ '⊢aᵐ' H" := (alg_modexp Γ H) : type_scope.
 Notation "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope.
 
 #[export]
-Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_body alg_modexp : mctt.
+Hint Constructors alg_type_check alg_type_infer alg_ext alg_params alg_unit alg_body alg_modexp : mctt.
 
 Scheme alg_type_check_mut_ind := Induction for alg_type_check Sort Prop
 with alg_type_infer_mut_ind := Induction for alg_type_infer Sort Prop
 with alg_ext_mut_ind := Induction for alg_ext Sort Prop
+with alg_params_mut_ind := Induction for alg_params Sort Prop
 with alg_unit_mut_ind := Induction for alg_unit Sort Prop
 with alg_body_mut_ind := Induction for alg_body Sort Prop
 with alg_modexp_mut_ind := Induction for alg_modexp Sort Prop.
@@ -442,6 +466,7 @@ Combined Scheme alg_type_mut_ind from
   alg_type_check_mut_ind,
   alg_type_infer_mut_ind,
   alg_ext_mut_ind,
+  alg_params_mut_ind,
   alg_unit_mut_ind,
   alg_body_mut_ind,
   alg_modexp_mut_ind.
@@ -460,22 +485,21 @@ Section LetInstances.
   Proof.
     intros * HA Hu HM HB HD.
     eapply alg_type_infer_let with (W := UA);
-      [ right; reflexivity | exact HA | exact Hu | discriminate | intros _; exact HM
+      [ right; reflexivity | intros _; exact HA | intros _; exact Hu | discriminate | intros _; exact HM
       | discriminate | discriminate | exact HB | exact HD ].
   Qed.
 
-  Lemma alg_type_infer_let_none : forall Γ M (A : nf) UA u B C D,
+  Lemma alg_type_infer_let_none : forall Γ M (A : nf) B C D,
       Γ ⊢a M ⟹ A ->
-      Γ ⊢a A ⟹ UA ->
-      is_univ_nf UA u ->
+      nbe_ty_relevance Γ A relevant ->
       Γ ▸ (A : exp) ≔ M ⊢a B ⟹ C ->
       nbe_ty_f Γ C[Id,,M] D ->
       Γ ⊢a ℓ ≔ M in B ⟹ D.
   Proof.
-    intros * HM HA Hu HB HD.
-    eapply alg_type_infer_let with (W := A) (UA := UA) (r := relevant) (u := u);
-      [ left; reflexivity | exact HA | constructor; exact Hu | intros _; reflexivity | discriminate
-      | intros _; exact HM | intros _; reflexivity | exact HB | exact HD ].
+    intros * HM Hr HB HD.
+    eapply alg_type_infer_let with (W := A) (UA := A) (r := relevant) (u := universe_large 0);
+      [ left; reflexivity | discriminate | discriminate | intros _; exact Hr
+      | discriminate | intros _; exact HM | intros _; reflexivity | exact HB | exact HD ].
   Qed.
 End LetInstances.
 
