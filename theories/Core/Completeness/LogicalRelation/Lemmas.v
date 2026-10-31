@@ -156,6 +156,24 @@ Proof.
   eexists_rel_wk; eassumption.
 Qed.
 
+(** Semantic weakenings compose. *)
+Lemma rel_wk_under_ctx_compose : forall Γ Δ Θ' φ ψ,
+    Γ ⊨ʷ ψ : Δ -> Δ ⊨ʷ φ : Θ' -> Γ ⊨ʷ (wk_compose φ ψ) : Θ'.
+Proof.
+  intros * [R1 H1 R2 H2 Hψ Bψ Pψ] [R3 H3 R4 H4 Hφ Bφ Pφ].
+  assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (Hφ' : rel_wk φ R2 R4) by (destruct Hφ as [Hm Hφ]; split; [ exact Hm | intros; apply Hφ, E; assumption ]).
+  eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 | eapply rel_wk_compose; [ exact Hψ | exact Hφ' ]
+                                 | intros x Hx; exact (Bψ _ (Bφ x Hx)) |].
+  (** A proposition of [Γ] at [ψ (φ x)] is one of [Δ] at [φ x], and so one
+      of [Θ'] at [x]. *)
+  intros ρ ρ' Hρ x Hx Hp.
+  pose proof Hψ as [Hψm Hψr]; pose proof Hφ' as [Hφm _].
+  pose proof (Hψr _ _ Hρ) as Hρψ.
+  rewrite eval_wk_compose by (first [ exact Hψm | exact Hφm ]).
+  exact (Pφ _ _ (proj1 (E _ _) Hρψ) x Hx (Pψ _ _ Hρ (φ x) (Bφ x Hx) Hp)).
+Qed.
+
 (** The propositional entries of an extended context's tail are those of
     the context, one index up: [↑] and [wk_id] take them along. *)
 Lemma entry_propositional_shift_wk : forall e Γ ρ x,
@@ -718,6 +736,18 @@ Proof.
   - left; exists a; split; assumption.
   - right; exists m, m'; repeat split; try eassumption.
     eapply per_head_of; eassumption.
+Qed.
+
+(** A valid term at related environments where its type is relevant: its
+    values, related at the type's head. *)
+Corollary rel_exp_under_ctx_simple_at_relevant : forall {Γ A M M' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ -> Γ ⊨ M ≈ M' : A ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant ->
+      exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head A A ρ ρ'.
+Proof.
+  intros * HΓ HM ρ ρ' Hρ (a & Ea & Hr).
+  destruct (rel_exp_under_ctx_simple_at HΓ HM _ _ Hρ) as [(a0 & Ea0 & Hp) | H]; [| exact H ].
+  exfalso; assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); congruence.
 Qed.
 
 Lemma rel_subtyp_under_ctx_simple : forall {Γ A A'},

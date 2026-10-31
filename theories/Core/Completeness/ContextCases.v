@@ -118,14 +118,15 @@ Qed.
 
 (** At a proposition, the canonical context PER of [Γ ▸ A ≔ M] is that of
     [Γ ▹ A]: the body is a proof, neither evaluated nor related, and the
-    head is the proof [⋆ᵈ]. *)
-Lemma per_ctx_env_of_def_prop : forall {Γ A M env_relΓ},
+    head is the proof [⋆ᵈ].  Stated for a type whose values at related
+    environments are related propositions, as a type moved along a
+    substitution is ([rel_exp_of_prop_sub_simple]). *)
+Lemma per_ctx_env_of_def_prop_at : forall {Γ A M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A : Propₘ ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_prop) ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend A A env_relΓ.
 Proof.
-  intros * HΓ HA.
-  pose proof (rel_exp_of_prop_inversion_simple_at HΓ HA) as HAp.
+  intros * HΓ HAp.
   assert (HPER : PER env_relΓ) by (eapply per_env_PER; eassumption).
   eapply per_ctx_env_cons_def
     with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΓ) => per_head A A ρ ρ') (r := propositional);
@@ -144,6 +145,12 @@ Proof.
     + intros [Ht Hh Hl Hr]; apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); [ exact Hh | exact I | exact Hl | exact Hr ].
     + intros [Ht Hh _ Hl Hr]; exact (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht Hh Hl Hr).
 Qed.
+
+Corollary per_ctx_env_of_def_prop : forall {Γ A M env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A : Propₘ ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend A A env_relΓ.
+Proof. intros * HΓ HA; exact (per_ctx_env_of_def_prop_at HΓ (rel_exp_of_prop_inversion_simple_at HΓ HA)). Qed.
 
 (** A definition of a type of either sort. *)
 Lemma rel_ctx_wf_extend_def_sort : forall {Γ A S M},

@@ -424,23 +424,6 @@ Proof.
       rewrite IH by lia; rewrite List.app_nil_r; reflexivity.
 Qed.
 
-Lemma rel_wk_under_ctx_compose : forall Γ Δ Θ' φ ψ,
-    Γ ⊨ʷ ψ : Δ -> Δ ⊨ʷ φ : Θ' -> Γ ⊨ʷ (wk_compose φ ψ) : Θ'.
-Proof.
-  intros * [R1 H1 R2 H2 Hψ Bψ Pψ] [R3 H3 R4 H4 Hφ Bφ Pφ].
-  assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (Hφ' : rel_wk φ R2 R4) by (destruct Hφ as [Hm Hφ]; split; [ exact Hm | intros; apply Hφ, E; assumption ]).
-  eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 | eapply rel_wk_compose; [ exact Hψ | exact Hφ' ]
-                                 | intros x Hx; exact (Bψ _ (Bφ x Hx)) |].
-  (** A proposition of [Γ] at [ψ (φ x)] is one of [Δ] at [φ x], and so one
-      of [Θ'] at [x]. *)
-  intros ρ ρ' Hρ x Hx Hp.
-  pose proof Hψ as [Hψm Hψr]; pose proof Hφ' as [Hφm _].
-  pose proof (Hψr _ _ Hρ) as Hρψ.
-  rewrite eval_wk_compose by (first [ exact Hψm | exact Hφm ]).
-  exact (Pφ _ _ (proj1 (E _ _) Hρψ) x Hx (Pψ _ _ Hρ (φ x) (Bφ x Hx) Hp)).
-Qed.
-
 (** ** Variables of an Environment of Arguments *)
 
 Lemma env_entry_args_app : forall ρ zs i, env_entry (env_args ρ zs) (List.length zs + i) = env_entry ρ i.

@@ -32,7 +32,8 @@ From Mctt.Core.Completeness.Inductives Require Import Elim.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import IndPER IndElim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
-From Mctt.Core.Completeness.Inductives Require Import Iota.
+From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes Iota.
+From Mctt.Core.Completeness Require Import PropCases ElimCases.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
@@ -58,31 +59,53 @@ Lemma sem_exp_eq_elim_iota :
         Θ ⍮ Ξ ⍮ Γ ⊨ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : relevance_sort r Typeω@i) ->
      (forall k Mk, ind_member D k = Some Mk ->
         Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                     ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
      (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
+        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
           : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim r oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
-                          elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
+                          elim_ihs r p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                           apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                             (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] ).
 Proof.
   intros * HΓ Hl Hgr HMm Hbm Hcon HLb HPl HPs HAl HAs -> Hnm _ HA HMx HBn HBc Har HB Hlk; sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
+  destruct r.
+  2:{ (** Into propositions: proofs, related to each other at the motive
+          at the constructor, a proposition. *)
+      apply rel_exp_under_ctx_proof.
+      pose proof (valid_groups_of_embedding _ _ _ _ Hμ) as HVP.
+      pose proof (valid_groups_valid _ HVP p D Hl) as Hvg.
+      assert (HPs' : forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Γ ⊨ P : T)
+        by (intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ))).
+      destruct (params_valid_split D m Mm Γ Ps (valid_group_closed _ _ Hvg) HMm HPl HPs') as [HUs HNs].
+      assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D)
+        by (rewrite List.length_firstn; unfold im_np in HPl; lia).
+      assert (HNl : List.length (List.skipn (ind_nu D) Ps) = im_nn Mm)
+        by (rewrite List.length_skipn; unfold im_np in HPl; lia).
+      pose proof (con_apps_ref_valid _ _ _ HVP Hl Γ m Mm c gs (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) As
+                    ltac:(assumption) HMm
+                    (Mctt.Core.Completeness.Inductives.Elim.block_not_rview D Bks m Mm bm (valid_group_typed _ _ Hvg) HLb HMm Hbm)
+                    Hcon HUl HUs
+                    HNl HNs HAl ltac:(rewrite List.firstn_skipn; intros * HN HT; exact (sem_exp_eq_at_rel (HAs _ _ _ HN HT _ _ Hμ))))
+        as HMc.
+      refine (rel_exp_motive_instance_prop _ _ _ HVP Hl Γ m Mm bm Ps _ ltac:(assumption) HMm HPl HPs' HMc _ _).
+      - exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMm _ _ Hμ))).
+      - exact (sem_exp_eq_at_rel (HA _ _ _ HMm Hbm _ _ Hμ)). }
   refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_embedding _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks c gs Ps As i
             ltac:(assumption) Hgr HMm Hbm Hcon HPl _ HAl _ HLb Hnm _ _ HBn _ Har _ n B Hlk).
   - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).

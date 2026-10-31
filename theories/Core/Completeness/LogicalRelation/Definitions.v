@@ -36,6 +36,7 @@ From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Scoping.
 From Mctt.Core.Semantic Require Export PER.
+From Mctt.Core.Semantic.Evaluation Require Import Modules.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
@@ -315,6 +316,27 @@ Record rel_modexp_under_ctx Γ H H' : Prop := mk_rel_modexp_under_ctx
 
 Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
 
+(** *** The Sorts of a Body's Definitions
+
+    Each term part of the body [Φ] over [D] is of the sort its relevance tag
+    says ([entry_relevance]): a type of a universe when it is tagged
+    relevant, a proposition when it is tagged propositional, in the context
+    the entries before it make.  A body's environment is read by the tags
+    ([eval_body_env]), while the context PER of its context ([body_ctx])
+    reads the sorts of the types, so the two agree only under this.  For
+    example, in a body [def h : P := p] with [P : Prop] tagged relevant,
+    [eval_body_env] stores the value of [p] at [h], while the context PER
+    relates only the proof [⋆ᵈ] there. *)
+Fixpoint body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ0 _ E =>
+      body_sorts_valid Φ0 D /\
+      forall A M, entry_tm E = Some (A, M) ->
+        exists i : nat, body_ctx Φ0 ++ D ⊨ A : relevance_sort (entry_relevance E) Typeω@i
+  | gm_open Φ0 _ _ => body_sorts_valid Φ0 D
+  end.
+
 (** *** Contexts
 
     An inductive relation whose extension step carries both the context PER
@@ -369,6 +391,7 @@ with rel_unit_wf : ctx -> gunit -> Prop :=
     body_shape Φ Φ ->
     body_shape Φx Φx ->
     ⊨ body_ctx Φx ++ Δ ++ Γ ->
+    body_sorts_valid Φx (Δ ++ Γ) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     rel_unit_wf Γ (gu_open Δ Φ)
 | rel_unit_wf_alias : forall Γ Δ E,
@@ -411,6 +434,17 @@ Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H 
 Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
 Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).
 
+(** [rel_params_relevant Γ Δ l]: every parameter of the telescope [Δ]
+    over [Γ] is, in the PER model, a type of the universe at [l], in the
+    context of the parameters after it.  It is the counterpart of
+    [params_relevant]: modules take relevant parameters, as the typing of
+    units and of module application asks.  For example, the parameter [X]
+    of [module M (X : Typeω@0) := ...] is a type of [Typeω@1], so
+    [rel_params_relevant Γ (ce_ass (Typeω@0) :: nil) 1] holds, while a
+    proposition [P : Prop] as a parameter is not of any universe. *)
+Definition rel_params_relevant {GC : GCtx} (Γ Δ : ctx) (l : nat) : Prop :=
+  forall Δ1 A Δ2, Δ = Δ1 ++ ce_ass A :: Δ2 -> Δ2 ++ Γ ⊨ A : Typeω@l.
+
 (** ** 2. Valid Units, and Contexts with Valid Slots
 
     Lookups are read at [Θm ⍮ Ξm], a global context [GC] extends. *)
@@ -432,7 +466,11 @@ Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
   ; valid_args_ass : tele_ass valid_args_filled
   ; valid_args_scoped : ctx_scoped 0 valid_args_filled
   ; valid_args_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
-      Γ ⊨ N : A }.
+      Γ ⊨ N : A
+    (** The types of the arguments are types of a universe: the parameters
+        of modules are relevant, as application asks ([wf_me_app]) *)
+  ; valid_args_relevant : forall k A, nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
+      exists i : nat, Γ ⊨ A : Typeω@i }.
 
 (** A unit is valid when its parts are ([valid_unit]): a filed module at
     arguments valid against its telescope ([valid_args]); a local body whose
@@ -450,7 +488,7 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
     valid_unit Γ (me_apps (qname_mod p) Ns)
 | valid_unit_body : forall Γ Δ Φ Φx,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ) ->
-    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ ->
+    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ -> body_sorts_valid Φx (Δ ++ Γ) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        valid_unit (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U)) ->
     body_shape Φ Φ -> body_shape Φx Φx ->
@@ -521,7 +559,8 @@ Definition entry_kind (E : gentry) : member_kind :=
 
 (** A value [g] related to itself at the value of the closed type
     [ctx_pi_at r T A0], of the sort [r].  At a proposition [g] is the
-    proof [⋆ᵈ], as selection gives it ([eval_sel_global_proof]). *)
+    proof [⋆ᵈ], as a member's stored value is
+    ([global_member_value_proof]). *)
 #[warnings="-cannot-define-projection"]
 Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
   { (** The universe index of the type *)
@@ -559,10 +598,13 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
       mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
        exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ /\
-         forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
+         forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
            $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ m)
-    (** The value is the member selected *)
-  ; valid_filed_term_sel : dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ valid_filed_term_val
+    (** The value is the member's stored value, closed over the telescope,
+        which selection at arguments for all of it applies to them
+        ([eval_sel_global_apps]); not the member closure that selection
+        at fewer arguments gives ([eval_sel_global_unsat]) *)
+  ; valid_filed_term_sel : global_member_value gc_deps gc_stack p x valid_filed_term_val
     (** It is related to itself at the closed type *)
   ; valid_filed_term_self : rel_self (mdesc_relevance R0) T valid_filed_term_typ valid_filed_term_val }.
 
@@ -591,7 +633,11 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
       valid_filed_term p T x (mdesc_term relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
   ; valid_filed_mod_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
-      forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.
+      forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua)
+    (** The parameters of the telescope are types of a universe, at one
+        level: modules take relevant parameters, as the typing of units
+        and of modules asks ([params_relevant]) *)
+  ; valid_filed_mod_tele_relevant : exists l : nat, rel_params_relevant nil T l }.
 
 Definition valid_filed_mods : Prop :=
   forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> valid_filed_mod p T Φ.

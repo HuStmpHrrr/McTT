@@ -296,6 +296,22 @@ Record valid_mem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : opt
     (** The member at every environment of the context *)
   ; valid_mem_vals : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> valid_mem_at K x A om ρ }.
 
+(** A member at a proposition is valid once its module evaluates: nothing
+    is asked of the member's value or of its reduct's. *)
+Lemma valid_mem_of_prop : forall Γ K x A om, Γ ⊨ A : Propₘ -> (forall M, om = Some M -> Γ ⊨ M : A) ->
+    (forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> exists h, ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h) ->
+    valid_mem Γ K x A om.
+Proof.
+  intros * HA HM HK; constructor; [ exists 0; exact (rel_type_of_prop 0 HA) | exact HM |].
+  intros R HR ρ Hρ.
+  destruct (HK _ HR _ Hρ) as [h Hh].
+  destruct (rel_exp_of_prop_inversion_simple_at HR HA _ _ Hρ) as (a & a' & Ea & _ & Hp).
+  pose proof (per_univ_elem_of_prop 0 _ _ Hp) as HRa.
+  assert (Haa : DF a ≈ a ∈ per_univ_elem 0 ↘ per_proof)
+    by (etransitivity; [ exact HRa | symmetry; exact HRa ]).
+  apply (mk_valid_mem_at _ _ _ _ _ h a 0 per_proof Hh Ea Haa); intros Hr; exfalso; destruct Hp as [Hl _ _]; congruence.
+Qed.
+
 (** The submodule [y] of [K] at every environment, from any value related
     to [K]'s, related to the value of [V]. *)
 #[warnings="-cannot-define-projection"]

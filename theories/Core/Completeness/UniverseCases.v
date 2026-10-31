@@ -656,6 +656,26 @@ Proof.
   split; [ exact Ha | split; [ exact Ha' | pairwise ] ].
 Qed.
 
+(** The same for a proposition moved along a semantic substitution, at
+    any related pair of environments of its domain. *)
+Lemma rel_exp_of_prop_sub_simple : forall {Γ Δ σ σ' A A' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A' : Propₘ ->
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      exists a a', ⟦ A[σ] ⟧ ρ ↘ a /\ ⟦ A'[σ] ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_prop.
+Proof.
+  intros * HΓ Hσj HA ρ ρ' Hρ.
+  pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
+  pose proof (rel_sub_under_ctx_simple Hσσ) as [env_relΓ1 [HΓ1 [env_relΔ [HΔ Hs]]]].
+  assert (E : env_relΓ <~> env_relΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hs _ _ (proj1 (E _ _) Hρ)) as [ρσ [ρ'σ [Hev [Hev' _]]]].
+  pose proof (rel_exp_of_prop_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  destruct (HAgen _ _ HΓ _ _ Hσσ _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
+  exists a1, a4; split; [ exact Ha1 | split; [ exact Ha4 | pairwise ] ].
+Qed.
+
 (** A proposition is a type of every index. *)
 Lemma rel_type_of_prop : forall {Γ A A'} (i : nat),
     Γ ⊨ A ≈ A' : Propₘ ->
@@ -714,11 +734,40 @@ Proof.
   intros * [i | ] H; [ exists i; exact (rel_type_of_typ H) | exists 0; exact (rel_type_of_prop 0 H) ].
 Qed.
 
+(** A type keeps its sort along a semantic substitution: the value of
+    [A[σ]] at an environment and the value of [A] at the substitution's
+    value there have the same relevance. *)
+Lemma rel_type_sub_relevance : forall {Γ Δ A S σ σ' R ρ ρ' ρσ a a'},
+    type_sort S -> Δ ⊨ A : S -> Γ ⊨ˢ σ ≈ σ' : Δ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R ->
+    ⟦ σ : Δ ⟧s ρ ↘ ρσ -> ⟦ A[σ] ⟧ ρ ↘ a -> ⟦ A ⟧ ρσ ↘ a' -> domain_relevance a = domain_relevance a'.
+Proof.
+  intros * HS HA Hσ HΓ Hρ Hev Ea Ea'.
+  destruct (rel_type_of_sort HS HA) as [i [RΔ HΔ HAgen]].
+  assert (HP : PER R) by (eapply per_env_PER; exact HΓ).
+  assert (Hρρ : Dom ρ ≈ ρ ∈ R) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  destruct (HAgen _ _ HΓ _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρρ Hev Hev)
+    as [a1 a2 a3 a4 E1 E2 E3 E4 ([R12 H12] & _)].
+  functional_eval_rewrite_clear.
+  exact (per_univ_elem_relevance _ _ _ _ H12).
+Qed.
+
 (** The same, at one index for all the types of the sort. *)
 Lemma rel_type_of_sort_at : forall {S}, type_sort S ->
     exists i, forall Γ A A', Γ ⊨ A ≈ A' : S -> Γ ⊨ᵗ A ≈ A' at i.
 Proof.
   intros * [i | ]; [ exists i; intros; apply rel_type_of_typ; assumption | exists 0; intros; apply rel_type_of_prop; assumption ].
+Qed.
+
+(** The innermost parameter of relevant parameters is relevant, and the
+    parameters before it are relevant over it. *)
+Lemma rel_params_relevant_snoc_inv : forall Γ Δ A l,
+    rel_params_relevant Γ (Δ ++ ce_ass A :: nil) l ->
+    Γ ⊨ A : Typeω@l /\ rel_params_relevant (Γ ▹ A) Δ l.
+Proof.
+  intros * H; split; [ exact (H Δ A nil eq_refl) |].
+  intros Δ1 B Δ2 ->.
+  pose proof (H Δ1 B (Δ2 ++ ce_ass A :: nil) ltac:(rewrite <- app_assoc; reflexivity)) as HB.
+  rewrite <- app_assoc in HB; exact HB.
 Qed.
 
 End Fixed_GCtx.

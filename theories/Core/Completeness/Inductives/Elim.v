@@ -476,18 +476,6 @@ Proof.
   rewrite List.app_nth2 by lia; rewrite Nat.sub_diag; reflexivity.
 Qed.
 
-(** A valid term at related environments where its type is relevant: its
-    values, related at the type's head. *)
-Lemma rel_exp_under_ctx_simple_at_relevant : forall {Γ A M M' env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ -> Γ ⊨ M ≈ M' : A ->
-    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant ->
-      exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head A A ρ ρ'.
-Proof.
-  intros * HΓ HM ρ ρ' Hρ (a & Ea & Hr).
-  destruct (rel_exp_under_ctx_simple_at HΓ HM _ _ Hρ) as [(a0 & Ea0 & Hp) | H]; [| exact H ].
-  exfalso; assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); congruence.
-Qed.
-
 (** The head relation of a valid type of either sort at related
     environments is a PER. *)
 Lemma per_head_trans : forall Γ0 T (i : nat) R0 E E', EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ R0 -> Γ0 ⊨ᵗ T ≈ T at i -> R0 E E' ->

@@ -1259,15 +1259,25 @@ Proof.
     rewrite !env_entry_skipn; f_equal; lia.
 Qed.
 
-Lemma rel_wk_under_ctx_shiftn : forall Ψ Γ, ⊨ Ψ ++ Γ -> Ψ ++ Γ ⊨ʷ (wk_shiftn (List.length Ψ)) : Γ.
+(** Dropping a prefix of a context is a semantic weakening, given the
+    context PERs of the context and of its tail. *)
+Lemma rel_wk_under_ctx_shiftn_per : forall Ψ Γ R RΓ,
+    EF Ψ ++ Γ ≈ Ψ ++ Γ ∈ per_ctx_env ↘ R -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+    Ψ ++ Γ ⊨ʷ (wk_shiftn (List.length Ψ)) : Γ.
 Proof.
-  intros * H.
-  destruct (rel_ctx_wf_per_ctx_env H) as [R HR].
-  destruct (rel_ctx_wf_per_ctx_env (rel_ctx_wf_app_r _ _ H)) as [RΓ HΓ].
+  intros * HR HΓ.
   eapply rel_wk_under_ctx_intro; [ exact HR | exact HΓ | exact (rel_wk_shiftn _ _ _ _ HR HΓ)
                                  | intros x Hx; cbn [wk_shiftn]; rewrite List.length_app; lia |].
   intros ρ ρ' _ x _ Hx; rewrite eval_wk_shiftn; apply entry_propositional_shiftn.
   cbn [wk_shiftn] in Hx; rewrite PeanoNat.Nat.add_comm in Hx; exact Hx.
+Qed.
+
+Corollary rel_wk_under_ctx_shiftn : forall Ψ Γ, ⊨ Ψ ++ Γ -> Ψ ++ Γ ⊨ʷ (wk_shiftn (List.length Ψ)) : Γ.
+Proof.
+  intros * H.
+  destruct (rel_ctx_wf_per_ctx_env H) as [R HR].
+  destruct (rel_ctx_wf_per_ctx_env (rel_ctx_wf_app_r _ _ H)) as [RΓ HΓ].
+  exact (rel_wk_under_ctx_shiftn_per _ _ _ _ HR HΓ).
 Qed.
 
 End Fixed_GCtx.

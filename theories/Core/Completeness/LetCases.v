@@ -128,6 +128,29 @@ Proof.
   exact (HM _ _ Hρ).
 Qed.
 
+(** The same at a type of a universe, where the values of the terms are
+    related. *)
+Corollary rel_exp_under_ctx_simple_full_at_rel : forall {Γ A M M' env_relΓ} {k : nat},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A : Typeω@k ->
+    Γ ⊨ M ≈ M' : A ->
+    exists i,
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      exists a a' R,
+        ⟦ A ⟧ ρ ↘ a /\
+        ⟦ A ⟧ ρ' ↘ a' /\
+        DF a ≈ a' ∈ per_univ_elem i ↘ R /\
+        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ R.
+Proof.
+  intros * HΓ HA H.
+  destruct (rel_exp_under_ctx_simple_full_at HΓ H) as [i HM].
+  exists i; intros ρ ρ' Hρ.
+  destruct (HM _ _ Hρ) as (a & a' & R & Ha & Ha' & HR & [Hp | Hm]); [| exists a, a', R; repeat split; assumption ].
+  destruct (rel_exp_of_typ_relevant_at HΓ HA _ _ Hρ) as (a0 & Ea0 & Hr).
+  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); congruence.
+Qed.
+
 (** The canonical context PER of a substituted definition entry. *)
 Lemma per_ctx_env_of_def_sub : forall {Γ Δ σ σ' A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
@@ -595,6 +618,23 @@ Proof.
   eapply rel_sub_under_ctx_restrict;
     [ exact HΓ | exact HΓ | exact HΔAc | exact HΔd | intros; assumption | intros; assumption | cbn; lia
     | intros ? ? _ [| x] _ [T HT E HE a Ea Hp]; econstructor; eassumption | exact Hσj ].
+Qed.
+
+(** A lifted substitution into a definition of a proposition: the source
+    context PER is that of the lifted assumption, the head a proof. *)
+Lemma rel_sub_under_ctx_q_def_prop : forall {Γ Δ σ σ' A M},
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ A : Propₘ ->
+    Γ ▸ A[σ] ≔ M[σ] ⊨ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
+Proof.
+  intros * Hσj HA.
+  pose proof Hσj as [RΓ HΓ _ _ _].
+  pose proof (rel_sub_under_ctx_q Hσj (rel_type_of_prop 0 HA)) as Hq.
+  pose proof Hq as [_ _ S HS _].
+  pose proof (per_ctx_env_of_typ_sub HΓ Hσj (rel_type_of_prop 0 HA)) as HΓB.
+  pose proof (per_ctx_env_of_def_prop_at (M := M[σ]) HΓ (rel_exp_of_prop_sub_simple HΓ Hσj HA)) as HΓBd.
+  apply (rel_sub_under_ctx_into_def_prop HA).
+  exact (rel_sub_under_ctx_restrict HΓBd HΓB HS HS (fun _ _ H => H) (fun _ _ H => H) (le_n _) (fun _ _ _ _ _ Hp => Hp) Hq).
 Qed.
 
 (** The [let] rules at a proposition.  The body binds the proof [⋆ᵈ] on
