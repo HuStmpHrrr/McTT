@@ -821,9 +821,10 @@ Proof. unfold view_maps_coherent; intros * Hc * Hk Hh Hl; rewrite ind_lookup_uns
 (** Nor do the facts about its record views without a judgment. *)
 Lemma rview_struct_ok_unseal : forall Θ Ξ D, rview_struct_ok Θ Ξ D -> rview_struct_ok (gds_unseal Θ) (gs_unseal Ξ) D.
 Proof.
-  intros * [Hr Hn Hc Hsu Ho]; constructor; try assumption.
-  intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has Hnd]]; exists R; constructor; try assumption.
-  rewrite record_lookup_unseal; exact Hl.
+  intros * [Hr Hn Hc Hrel Hsu Ho]; constructor; try assumption.
+  - intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has Hnd]]; exists R; constructor; try assumption.
+    rewrite record_lookup_unseal; exact Hl.
+  - intros * Hk Hh Hl; rewrite record_lookup_unseal in Hl; exact (Hrel _ _ _ _ _ _ _ Hk Hh Hl).
 Qed.
 
 (** ** Unsealing Preserves Every Judgment *)

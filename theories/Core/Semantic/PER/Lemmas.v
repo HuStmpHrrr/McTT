@@ -2348,7 +2348,7 @@ Proof.
         assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]) ];
       (** The two derivations give the type one sort, at a related tail. *)
       same_def_sort; apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht0); try exact Hl; try solve_prop_head;
-      cbn [def_heads_at]; solve_def_heads.
+      cbn [def_heads_at]; first [ exact I | solve_def_heads ].
   - (** A slot: the heads are tied to the closures of the left unit, which
         are related to the closures of either right unit. *)
     specialize (IHHorig _ _ equiv_Γ_Γ'0).
@@ -2734,7 +2734,7 @@ Proof with solve [eauto using per_univ_trans].
         destruct r; cbn [def_bodies_rel def_heads_at] in *;
         repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
         apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try exact Hl; try exact Hr; try solve_prop_head;
-        cbn [def_heads_at]; solve_def_heads.
+        cbn [def_heads_at]; first [ exact I | solve_def_heads ].
   - cbn beta in *; destruct_conjs; destruct_def_rels.
     assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
     assert (tail_rel ρ1↯ ρ1↯) by (etransitivity; [| symmetry]; eassumption).
@@ -2742,7 +2742,7 @@ Proof with solve [eauto using per_univ_trans].
     apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try assumption; try solve_prop_head.
     all: destruct r; cbn [def_bodies_rel def_heads_at] in *;
       repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
-      solve_def_heads.
+      first [ exact I | solve_def_heads ].
   - (** A slot: the closures of the first unit are related to those of the
         last through the middle unit. *)
     destruct IHper_ctx_env as [IHctx IHenv].

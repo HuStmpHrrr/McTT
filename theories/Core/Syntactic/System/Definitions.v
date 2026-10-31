@@ -209,7 +209,7 @@ Record rview_record_facts (Θ : gdeps) (Ξ : gstack) (R : record_decl) (qr : qna
 (** The facts about the record views of a group [D] that involve no
     judgment: each is a record's at its instance ([rview_record_facts]),
     with no non-uniform parameters, its one constructor [rview_con] taking
-    its fields in order; the record views come last ([rview_suffix_ok])
+    its fields in order, at their sorts; the record views come last ([rview_suffix_ok])
     and their fields end only in record views before them
     ([rview_order_ok]). *)
 Record rview_struct_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_rview_struct_ok
@@ -223,6 +223,12 @@ Record rview_struct_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_rv
     (** Its one constructor is [rview_con], of one argument per field *)
   ; rview_struct_con : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       exists gs, im_cons Mk = (rview_con, gs) :: nil /\ List.length gs = List.length fl
+    (** Its constructor's arguments are of the record's fields' sorts, so
+        that the constructor and the tuple of its fields take them
+        alike *)
+  ; rview_struct_relevance : forall k Mk qr Is fl R gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      record_lookup Θ Ξ qr = Some R -> im_cons Mk = (rview_con, gs) :: nil ->
+      cargs_relevance gs = record_field_relevance R
     (** The record views come last *)
   ; rview_struct_suffix : rview_suffix_ok D
     (** Their fields end only in record views before them *)
@@ -924,11 +930,14 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** The constructor of a record view at the group's uniform parameters
     [Us] and the fields [Ms] is the tuple of the fields, by name, at the
     record type at the view's instance there, both sides at the same
-    type. *)
+    type.  The constructor is the view's own ([ind_con]), as in [wf_con]:
+    it takes its fields at their sorts, which are the record's
+    ([rview_struct_relevance]), as the tuple does. *)
 | wf_exp_eq_con_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
+     ind_con Mj c = Some gs ->
      List.length Us = ind_nu D ->
      List.length Ms = List.length fl ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->

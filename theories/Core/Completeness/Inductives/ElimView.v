@@ -1059,7 +1059,8 @@ Section SelfElim.
       (** The right results *)
     ; self_rview_Rb : ⟦ihs ws' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ self_rview_rs' }.
 
-  Lemma self_rview_ihs : forall k ns ns' v v' Mk qr Is fl c gs ws ws', G k u0 u0 ns ns' v v' -> is_neut v -> is_neut v' ->
+  Lemma self_rview_ihs : forall k ns ns' v v' Mk qr Is fl c gs ws ws', G k u0 u0 ns ns' v v' ->
+      is_neut_or_proof v -> is_neut_or_proof v' ->
       ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl -> im_cons Mk = (c, gs) :: nil ->
       ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> ⟦projs fl of v' ⟧ gc_deps ⍮ gc_stack ↘ ws' ->
       self_rview_results gs ws ws'.
@@ -1067,7 +1068,7 @@ Section SelfElim.
     intros * HG Hv Hv' HM Hh Hcs Ew Ew'.
     assert (Hfl : forall ms : list nat, leaf_flags_ok (elim_bot p D u0 nr ar dr C1 C1 Bks Bks u0 u0) (List.map (fun _ => true) ms) ms)
       by (induction ms; cbn; constructor; assumption).
-    destruct (proj1 (XS ih_leaves_all) _ _ _ _ _ _ _ HG eq_refl eq_refl (or_introl Hv) (or_introl Hv') _ _ _ _ _ _ _ _ HM Hh Hcs Ew Ew' _ (Hfl _))
+    destruct (proj1 (XS ih_leaves_all) _ _ _ _ _ _ _ HG eq_refl eq_refl Hv Hv' _ _ _ _ _ _ _ _ HM Hh Hcs Ew Ew' _ (Hfl _))
       as [tya tyb resa resb Ta Tb Ra Rb _ _ _ _ _].
     exact (mk_self_rview_results _ _ _ tya tyb resa resb Ta Tb Ra Rb).
   Qed.

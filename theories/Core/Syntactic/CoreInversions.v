@@ -656,6 +656,31 @@ Proof.
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 
+(** The head of a typed application along terms is typed. *)
+Lemma wf_apps_exp_head : forall Θ Ξ Γ Ns M C, Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp M Ns : C -> exists T, Θ ⍮ Ξ ⍮ Γ ⊢ M : T.
+Proof.
+  intros Θ Ξ Γ; induction Ns as [| N Ns IH]; intros M C H; cbn [apps_exp] in H; [ eexists; exact H |].
+  destruct (IH _ _ H) as [T HT].
+  destruct (wf_app_inversion HT) as [X Y [HM | HM] _ _]; eexists; exact HM.
+Qed.
+
+(** The equation of a record view's constructor and the tuple of its
+    fields without the premise that the constructor is the view's: the
+    typing premise gives it ([wf_con]). *)
+Lemma wf_exp_eq_con_rview_any : forall Θ Ξ Γ p D j Mj qr Is fl c Us Ms A,
+    ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    List.length Us = ind_nu D -> List.length Ms = List.length fl ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A.
+Proof.
+  intros * Hl HMj Hh HUl HMl HL HR.
+  destruct (wf_apps_exp_head _ _ _ _ _ _ HL) as [T HT].
+  destruct (wf_con_inversion HT) as [D' Mj' gs Hl' HMj' Hc _].
+  rewrite Hl in Hl'; injection Hl' as <-; rewrite HMj in HMj'; injection HMj' as <-.
+  eapply wf_exp_eq_con_rview; eassumption.
+Qed.
+
 (** What the eliminator [a_elim oq Us m Bks M] is typed by: the premises of
     [wf_elim], and the type it gives below [T].  The stored uniform
     parameters are exactly those of the derivation ([elim_inv_ups]): convertible

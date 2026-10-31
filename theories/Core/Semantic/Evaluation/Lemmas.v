@@ -216,6 +216,16 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
+  (** A function applied along terms, each evaluated or the proof by the
+      sort it is taken at, has one value. *)
+  Corollary functional_eval_app_args : forall {Θ Ξ} f Ms ρ r1 r2,
+      eval_app_args Θ Ξ f Ms ρ r1 ->
+      eval_app_args Θ Ξ f Ms ρ r2 ->
+      r1 = r2.
+  Proof.
+    intros Θ Ξ * E1 E2; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
   Corollary functional_eval_elim : forall {Θ Ξ} ρ p ups Bks j m r1 r2,
       ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
       ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->

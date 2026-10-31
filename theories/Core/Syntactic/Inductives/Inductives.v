@@ -855,6 +855,11 @@ Definition ptyp_dom_at (pat : list bool) (d : nat) (t : ptyp) : typ :=
 Definition ptyp_ps_at (pat : list bool) (t : ptyp) : list exp :=
   List.map (fun P => P[wk_pat (List.repeat false (ptyp_depth t) ++ pat)]ʷ) (ptyp_ps t).
 
+(** The sorts of all of a constructor's arguments, in order; a recursive
+    argument is relevant. *)
+Definition cargs_relevance (gs : list carg) : list relevance :=
+  List.map (fun g => match g with ca_arg r _ => r | ca_rec _ => relevant end) gs.
+
 (** The arguments [gs] of a view's constructor are those [gs'] of the
     container's at its arguments, as this group sees them: an argument
     recursive in the container is recursive in the view, at the view's

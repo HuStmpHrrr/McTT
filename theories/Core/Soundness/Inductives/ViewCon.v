@@ -1271,7 +1271,7 @@ Proof.
   assert (HTy : im_ty_at p j Mj Us nil = apps_exp (a_record qr) (List.map (fun I => I[sb_of_list Id Us]) Is))
     by (unfold im_ty_at, im_pre; rewrite Hh, List.app_nil_r; reflexivity).
   assert (Hpre : im_pre Mj Us = List.map (fun I => I[sb_of_list Id Us]) Is) by (unfold im_pre; rewrite Hh; reflexivity).
-  eapply wf_exp_eq_con_rview; [ exact Hl | exact Hj | exact Hh | exact HUl | lia | exact HCt | rewrite Hpre, HTy; exact Ht ].
+  eapply wf_exp_eq_con_rview; [ exact Hl | exact Hj | exact Hh | exact Hcon | exact HUl | lia | exact HCt | rewrite Hpre, HTy; exact Ht ].
 Qed.
 
 (** A telescope of assumptions holds no module slot. *)

@@ -1850,6 +1850,22 @@ Section NilDecide.
       [ left; exists gs; split; [ reflexivity | exact HL ] | right; intros (gs' & E & HL'); injection E as <-; contradiction ].
   Defined.
 
+  (** A record view's constructor's arguments are of the record's fields'
+      sorts. *)
+  Definition rview_relevance_dec (Mk : imember) (qr : qname) :
+    {forall R gs, record_lookup Θ Ξ qr = Some R -> im_cons Mk = (rview_con, gs) :: nil ->
+       cargs_relevance gs = record_field_relevance R}
+    + {~ forall R gs, record_lookup Θ Ξ qr = Some R -> im_cons Mk = (rview_con, gs) :: nil ->
+       cargs_relevance gs = record_field_relevance R}.
+  Proof.
+    destruct (record_lookup_f F qr) as [[R |] Hl]; [| left; intros ? ? Hl'; congruence ].
+    destruct (im_cons Mk) as [| [c gs] [| cg rest]] eqn:Ec; [ left; intros ? ? ? [=] | | left; intros ? ? ? [=] ].
+    destruct (string_dec c rview_con) as [-> | Hc]; [| left; intros ? ? ? [= ? _]; congruence ].
+    destruct (list_eq_dec relevance_eq_dec (cargs_relevance gs) (record_field_relevance R)) as [HE | HE];
+      [ left; intros R' gs' Hl' [= <-]; rewrite Hl in Hl'; injection Hl' as <-; exact HE
+      | right; intros H; exact (HE (H _ _ Hl eq_refl)) ].
+  Defined.
+
   (** The fields of a record view end only in record views before it. *)
   Definition rview_order_dec : {rview_order_ok D} + {~ rview_order_ok D}.
   Proof.
@@ -1892,9 +1908,14 @@ Section NilDecide.
     destruct (rviews_dec D (fun _ Mk _ _ fl => exists gs, im_cons Mk = (rview_con, gs) :: nil /\ List.length gs = List.length fl)
                 (fun _ Mk _ _ fl _ _ => rview_con_dec Mk fl)) as [H3 | H3];
       [| right; intros Hs; apply H3; exact (rview_struct_con _ _ _ Hs) ].
+    destruct (rviews_dec D (fun _ Mk qr _ _ => forall R gs, record_lookup Θ Ξ qr = Some R -> im_cons Mk = (rview_con, gs) :: nil ->
+                              cargs_relevance gs = record_field_relevance R)
+                (fun _ Mk qr _ _ _ _ => rview_relevance_dec Mk qr)) as [H6 | H6];
+      [| right; intros Hs; apply H6; intros * Hk Hh R gs Hl Hc; exact (rview_struct_relevance _ _ _ Hs _ _ _ _ _ _ _ Hk Hh Hl Hc) ].
     destruct rview_suffix_dec as [H4 | H4]; [| right; intros Hs; exact (H4 (rview_struct_suffix _ _ _ Hs)) ].
     destruct rview_order_dec as [H5 | H5]; [| right; intros Hs; exact (H5 (rview_struct_order _ _ _ Hs)) ].
-    left; constructor; assumption.
+    left; constructor; try assumption.
+    intros * Hk Hh Hl Hc; exact (H6 _ _ _ _ _ Hk Hh _ _ Hl Hc).
   Defined.
 
   (** Each record view's instance is [IsS] with the members as variables. *)
@@ -2689,9 +2710,10 @@ Section Equiv.
   (** Nor do the record views' facts without a judgment. *)
   Lemma equiv_rview_struct_ok : forall D, rview_struct_ok Θ Ξ D -> rview_struct_ok Θ' Ξ D.
   Proof.
-    intros * [Hr Hn Hc Hsu Ho]; constructor; try assumption.
-    intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has Hnd]]; exists R; constructor; try assumption.
-    rewrite <- (gds_equiv_record_lookup _ _ _ _ He); exact Hl.
+    intros * [Hr Hn Hc Hrel Hsu Ho]; constructor; try assumption.
+    - intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has Hnd]]; exists R; constructor; try assumption.
+      rewrite <- (gds_equiv_record_lookup _ _ _ _ He); exact Hl.
+    - intros * Hk Hh Hl; rewrite <- (gds_equiv_record_lookup _ _ _ _ He) in Hl; exact (Hrel _ _ _ _ _ _ _ Hk Hh Hl).
   Qed.
 
   Lemma equiv_view_maps_coherent : forall D, view_maps_coherent Θ Ξ D -> view_maps_coherent Θ' Ξ D.

@@ -761,9 +761,12 @@ Qed.
     group's embeds into. *)
 Lemma rview_struct_gc_sub : forall Θ Ξ Θ2 Ξ2 D, gc_sub Θ Ξ Θ2 Ξ2 -> rview_struct_ok Θ Ξ D -> rview_struct_ok Θ2 Ξ2 D.
 Proof.
-  intros * Hs [Hr Hn Hc Hsu Ho]; constructor; try assumption.
-  intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has]]; exists R; constructor; try assumption.
-  exact (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl).
+  intros * Hs [Hr Hn Hc Hrel Hsu Ho]; constructor; try assumption.
+  - intros * Hk Hh; destruct (Hr _ _ _ _ _ Hk Hh) as [R [Hl Hnm Hct Has]]; exists R; constructor; try assumption.
+    exact (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl).
+  - intros * Hk Hh Hl2; destruct (Hr _ _ _ _ _ Hk Hh) as [R0 [Hl _ _ _ _]].
+    rewrite (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl) in Hl2; injection Hl2 as <-.
+    exact (Hrel _ _ _ _ _ _ _ Hk Hh Hl).
 Qed.
 
 (** The record of a record view found at a context the group's embeds

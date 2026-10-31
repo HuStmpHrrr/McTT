@@ -55,7 +55,7 @@ Record elim_exp_value (oq : option qname) (Us : list exp) (j : nat) (Bks : list 
     (** The eliminator on the scrutinee's value gives [r] *)
   ; elim_exp_value_elim : ⟦elim elim_exp_value_scrut at j of elim_exp_value_grp elim_exp_value_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
 
-Lemma elim_exp_value_of : forall oq Us j Bks M ρ r, ⟦ a_elim oq Us j Bks M ⟧ ρ ↘ r -> elim_exp_value oq Us j Bks M ρ r.
+Lemma elim_exp_value_of : forall oq Us j Bks M ρ r, ⟦ a_elim relevant oq Us j Bks M ⟧ ρ ↘ r -> elim_exp_value oq Us j Bks M ρ r.
 Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
 
 Section ElimViewRule.
@@ -92,7 +92,9 @@ Section ElimViewRule.
   Let HgQ := valid_groups_valid VP HP qc D' HVQ.
   Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
   Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
-  Let VB := view_wrap p D D' vm Us Bks.
+  Let VB := view_wrap relevant p D D' vm Us Bks.
+  Let HUr := valid_ind_decl_uparams_relevant _ HD.
+  Let HQr := valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ).
 
   (** *** The Container's Uniform Parameters
 
@@ -136,20 +138,22 @@ Section ElimViewRule.
         by (eapply closed_env_base; [ exact Ua | exact Usem | exact HRU | exact Hlu3 | exact Hlu3 | exact HU3 ]).
       (** [Is] at the two bases of [u3]. *)
       pose proof (gsub_valid (valid_group_views_view_args_gsub p D Hvg Hcv _ _ _ _ _ _ _ HMm Hh Hq)) as HσI.
-      destruct (sb_of_list_vals_rel _ _ _ _ RQ RU HaQ HWQ Usem HRQ HRU HσI HlIs HlIs _ _ HU33)
+      destruct (sb_of_list_vals_rel _ _ _ _ RQ RU HaQ HWQ Usem HRQ HRU HQr HσI HlIs HlIs _ _ HU33)
         as (cs0 & cups' & Ecs0 & Ecups' & H2).
       pose proof (functional_eval_exps' _ _ _ _ Ecups' Ecups) as ->.
       (** [Is] moved by [τU] at [C2], against at its value. *)
       destruct (closed_app_sem _ _ Ua Usem HΓ) as [HUΓ _].
-      destruct (closed_inst_cross _ (ind_uparams D ++ Γ) Is Is HaQ HWQ HUΓ HlIs HlIs) as [_ Hlk].
+      destruct (closed_inst_cross _ (ind_uparams D ++ Γ) Is Is HaQ HWQ HUΓ HQr HlIs HlIs) as [HsI Hlk].
       { intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-.
         exact (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HN HT)). }
-      assert (HTy : forall j I, List.nth_error Is j = Some I -> exists T, ind_uparams D ++ Γ ⊨ I : T).
-      { intros j I HI; destruct (pre_types _ _ HI) as [T HT]; exists T.
-        exact (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HI HT)). }
       pose proof (gsub_valid (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs)) as HτU.
-      pose proof (eval_sb_of_list _ _ _ _ _ (eval_sub_id C2) HUC2) as EτU.
-      destruct (closed_vals_sub_link _ _ Is RQ HaQ HWQ HUΓ HRQ HlIs HTy Hlk _ _ τU C2 (env_args C2 u3) cs0
+      (** The uniform parameters' substitution at [C2]: their values. *)
+      assert (EτU : ⟦ τU : ind_uparams D ++ Γ ⟧s C2 ↘ env_args C2 u3).
+      { destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
+        destruct (instance_values_of_sub _ _ Us RΓ RUΓ Ua HRΓ HRUΓ (closed_relevant_over _ _ Ua Usem HΓ HUr) HτU
+                    ltac:(rewrite HUl; reflexivity) C2 C2 HC22) as [u1 u2 Eu1 _ _ Hsu1 _].
+        pose proof (functional_eval_exps' _ _ _ _ Eu1 HUC2) as ->; exact Hsu1. }
+      destruct (closed_vals_sub_link _ _ Is RQ HaQ HWQ HUΓ HRQ HQr HlIs HsI Hlk _ _ τU C2 (env_args C2 u3) cs0
                   HRΓ HτU HC22 EτU Ecs0) as (w & Ew & H1).
       exists w; split; [ unfold im_pre; rewrite Hh; exact Ew |].
       etransitivity; [ exact H1 | exact H2 ].
@@ -157,7 +161,7 @@ Section ElimViewRule.
 
     (** Moved by a semantic substitution of value [C2]. *)
     Lemma pre_moved : forall Γ' RΓ' σ0 ρ0 RQ, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ -> RΓ' ρ0 ρ0 ->
-        ⟦ σ0 ⟧s ρ0 ↘ C2 -> EF ind_uparams D' ≈ ind_uparams D' ∈ per_ctx_env ↘ RQ ->
+        ⟦ σ0 : Γ ⟧s ρ0 ↘ C2 -> EF ind_uparams D' ≈ ind_uparams D' ∈ per_ctx_env ↘ RQ ->
         exists ub, ⟦ List.map (fun U => U[σ0]) (im_pre Mm Us) ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ ub /\
           RQ (env_args nil ub) (env_args nil cups).
     Proof.
@@ -177,15 +181,9 @@ Section ElimViewRule.
         rewrite HT in HT0'; injection HT0' as ->.
         pose proof (rel_exp_under_ctx_gsub HgU (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HI HT0))) as H.
         exact H. }
-      destruct (closed_inst_cross _ Γ (im_pre Mm Us) (im_pre Mm Us) HaQ HWQ HΓ Hlp Hlp) as [_ Hlk].
+      destruct (closed_inst_cross _ Γ (im_pre Mm Us) (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp Hlp) as [HsP Hlk].
       { intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; exact (Hpt _ _ _ HN HT). }
-      assert (HTy : forall j N, List.nth_error (im_pre Mm Us) j = Some N -> exists T, Γ ⊨ N : T).
-      { intros j N HN.
-        destruct (nth_error_lt_some' (tele_insts (ind_uparams D') Id (im_pre Mm Us)) j) as [T HT].
-        { rewrite length_tele_insts by exact HaQ.
-          assert (j < List.length (im_pre Mm Us)) by (apply List.nth_error_Some; congruence); lia. }
-        exists T; exact (Hpt _ _ _ HN HT). }
-      destruct (closed_vals_sub_link _ _ (im_pre Mm Us) RQ HaQ HWQ HΓ HRQ Hlp HTy Hlk _ _ σ0 ρ0 C2 uB
+      destruct (closed_vals_sub_link _ _ (im_pre Mm Us) RQ HaQ HWQ HΓ HRQ HQr Hlp HsP Hlk _ _ σ0 ρ0 C2 uB
                   HRΓ' Hσ0 Hρ0 Hev0 EuB) as (ub & Eub & H3).
       exists ub; split; [ exact Eub | etransitivity; [ exact H3 | exact HB ] ].
     Qed.
@@ -212,10 +210,10 @@ Section ElimViewRule.
     (HM : Γ ⊨ M : ind_mty p D m Us Ns).
 
   Lemma view_stage : forall Γ' RΓ' σ σ' ρ ρ' C1 C2, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ' : Γ -> RΓ' ρ ρ' ->
-      ⟦ σ ⟧s ρ ↘ C1 -> ⟦ σ' ⟧s ρ' ↘ C2 ->
+      ⟦ σ : Γ ⟧s ρ ↘ C1 -> ⟦ σ' : Γ ⟧s ρ' ↘ C2 ->
       exists R, rel_exp ((eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)]) σ ρ C1
                   ((eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)]) σ' ρ' C2 (per_univ_elem iA R) /\
-        rel_exp (a_elim oq Us m Bks M) σ ρ C1 (a_elim (Some qc) (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
+        rel_exp (a_elim relevant oq Us m Bks M) σ ρ C1 (a_elim relevant (Some qc) (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
   Proof.
     intros * HRΓ' Hσ Hρ Hev Hev'.
     pose proof HBk as [HLb0 HnmA _ _ HnaA HBc HarA HBv].
@@ -237,7 +235,7 @@ Section ElimViewRule.
     assert (HBB : forall k Mk b b' c0 gs0 n0 B0 B0', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
                List.nth_error Bks k = Some b' -> ind_con Mk c0 = Some gs0 ->
                brs_lookup (eb_brs b) c0 = Some (n0, B0) -> brs_lookup (eb_brs b') c0 = Some (n0, B0') ->
-               elim_bctx p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
+               elim_bctx relevant p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
       by (intros * HMk Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
           exact (HBv _ _ _ _ _ _ _ HMk Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
     destruct (elim_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC1 C2 HC12 Bks iA HBks HMall HAv
@@ -250,9 +248,14 @@ Section ElimViewRule.
     pose proof (functional_eval_exps' _ _ _ _ Eu3 HUC2) as ->.
     (** The scrutinee at [C2]. *)
     destruct (presup_rel_exp_under_ctx HM) as [iT HTM].
-    destruct (rel_exp_of_typ_inversion_simple_at HRΓ HTM _ _ HC22) as (t3 & t3' & Et3 & Et3' & [Rt Ht]).
+    destruct (rel_type_inversion_simple_at HRΓ HTM _ _ HC22) as (t3 & t3' & Et3 & Et3' & [Rt Ht]).
     assert (t3' = t3) as -> by (eapply functional_eval_exp; eassumption).
-    destruct (rel_exp_under_ctx_simple_at HRΓ HM _ _ HC22) as (m3' & m3'' & Em3' & Em3'' & Hmm).
+    (** The scrutinee's type is an inductive type, relevant. *)
+    assert (Ht3r : rel_typ_sort (ind_mty p D m Us Ns) C2 relevant).
+    { exists t3; split; [ exact Et3 |].
+      destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMm ltac:(unfold im_is_rview; rewrite Hh; reflexivity) Et3) as (? & ? & _ & _ & ->).
+      reflexivity. }
+    destruct (rel_exp_under_ctx_simple_at_relevant HRΓ HM _ _ HC22 Ht3r) as (m3' & m3'' & Em3' & Em3'' & Hmm).
     assert (m3' = m3) as -> by (eapply functional_eval_exp; eassumption).
     assert (m3'' = m3) as -> by (eapply functional_eval_exp; eassumption).
     pose proof (Hmm _ _ _ _ Et3 Et3 Ht) as Hm33.
@@ -264,8 +267,9 @@ Section ElimViewRule.
     (** The scrutinee moved by [σ'] at [ρ']. *)
     pose proof (rel_sub_under_ctx_refl_right Hσ) as Hσ'.
     pose proof HM as [RΓm HRΓm iM HMg].
-    destruct (HMg _ _ HRΓ' _ _ Hσ' _ _ _ _ Hρ'ρ' Hev' Hev')
-      as (RMe & [t1 t2 t5 t4 Et1 Et2 Et5 Et4 Htc] & [m4 m2 m5 m6 Em4 Em2 Em5 Em6 Hmc]).
+    destruct (HMg _ _ HRΓ' _ _ Hσ' _ _ _ _ Hρ'ρ' Hev' Hev') as (RMe & HTyM & HMor).
+    pose proof (rel_exp_or_prop_relevant HTyM Ht3r HMor) as [m4 m2 m5 m6 Em4 Em2 Em5 Em6 Hmc].
+    destruct HTyM as [t1 t2 t5 t4 Et1 Et2 Et5 Et4 Htc].
     assert (t2 = t3) as -> by (eapply functional_eval_exp; eassumption).
     assert (m2 = m3) as -> by (eapply functional_eval_exp; eassumption).
     destruct Htc as (_ & Ht23 & _); destruct Hmc as (H12 & _ & _).
@@ -338,8 +342,18 @@ Section ElimViewRule.
     assert (HPR : PER RT) by (eapply per_elem_PER; exact Hy23).
     pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ Hy23) Hy23) as Hy33.
     pose proof (per_head_iff Ey3 Ey3 Hy33) as ER1.
-    assert (Hτ3 : ⟦ sb_of_list Id (Ns ++ M :: nil) ⟧s C2 ↘ env_args C2 (ns3 ++ m3 :: nil))
-      by (apply eval_sb_of_list; [ apply eval_sub_id | apply eval_exps_app; [ exact Ens3 | econstructor; [ exact Em3 | constructor ] ] ]).
+    (** The motive's instance at [C2]: the terms' values, the motive's
+        context being relevant. *)
+    destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMm)) as [RM HRM].
+    assert (Lτ : List.length (Ns ++ M :: nil) = List.length (elim_mctx p D m Mm Us))
+      by (rewrite List.length_app, length_elim_mctx, HNl; cbn [List.length]; lia).
+    destruct (sb_of_list_values_of_sub (elim_mctx p D m Mm Us) Γ Γ Id (Ns ++ M :: nil) RΓ RM C2 C2
+                (elim_mctx_ass p D m Mm Us Hc HMm) HRΓ HRM
+                (mctx_relevant VP p D HP HPD Γ HΓ Us HUl HUs m Mm HMm (HMall _ _ HMm)) (gsub_valid Hg) Lτ HC22
+                (eval_sub_id _ _ (proj1 (per_ctx_env_proofs _ _ _ HRΓ _ _ HC22)))) as (q3 & Eq3 & Hτ3 & _).
+    assert (Eq3' : ⟦ Ns ++ M :: nil ⟧* gc_deps ⍮ gc_stack ⍮ C2 ↘ ns3 ++ m3 :: nil)
+      by (apply eval_exps_app; [ exact Ens3 | econstructor; [ exact Em3 | constructor ] ]).
+    pose proof (functional_eval_exps' _ _ _ _ Eq3 Eq3') as ->.
     pose proof (per_head_inst _ _ _ _ _ _ _ _ _ _ (HAv _ _ _ HMm Hbm) HRΓ (gsub_valid Hg) HC22 Hτ3 Hτ3) as ER2.
     assert (Hfin : forall a b, per_head (List.nth m (blocks_motives Bks) a_True) (List.nth m (blocks_motives Bks) a_True)
                      (env_args C2 (ns3 ++ m3 :: nil)) (env_args C2 (ns3 ++ m3 :: nil)) a b -> RT a b).
@@ -375,15 +389,16 @@ Theorem rel_exp_under_ctx_elim_view : forall VP p D, valid_groups VP -> VP p D -
        elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : Typeω@i) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-       ⊨ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
+       ⊨ elim_bctx relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> ind_con Mk c = Some gs ->
        In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> ind_con Mk c = Some gs ->
        In (c, n, B) (eb_brs b) ->
-       elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
+       elim_bctx relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Γ ⊨ a_elim oq (List.firstn (ind_nu D) Ps) m Bks M
-      ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k' (view_wrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+    Γ ⊨ a_elim relevant oq (List.firstn (ind_nu D) Ps) m Bks M
+      ≈ a_elim relevant (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
+          (view_wrap relevant p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros VP p D HP HPD * HΓ Hgr HMm Hh Hq Hbm HLb HPl HPs HM HnmA HMall HAv HnaA HBc HarA HBv.
@@ -401,8 +416,9 @@ Proof.
   destruct (rel_ctx_wf_per_ctx_env (valid_ind_decl_uparams _ HD)) as [RU HRU].
   refine (mk_rel_exp_under_ctx _ _ _ _ RΓ HRΓ i _).
   intros Γ' RΓ' HRΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exact (view_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs Bks i HBk qc D' m Mm k' Is vm Hq HMm Hh
-           oq bm Ns M Hgr Hbm HNl HgN Hg HM Γ' RΓ' σ σ' ρ ρ' ρσ ρ'σ' HRΓ' Hσ Hρ Hev Hev').
+  destruct (view_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs Bks i HBk qc D' m Mm k' Is vm Hq HMm Hh
+              oq bm Ns M Hgr Hbm HNl HgN Hg HM Γ' RΓ' σ σ' ρ ρ' ρσ ρ'σ' HRΓ' Hσ Hρ Hev Hev') as (R & HT & HE).
+  exists R; split; [ exact HT | right; exact HE ].
 Qed.
 
 End Fixed_GCtx.

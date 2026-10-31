@@ -2382,7 +2382,7 @@ Proof.
         rewrite apps_exp_wk in E2 |- *; cbn [exp_wk] in E2 |- *;
         rewrite (combine_map_snd (fun N => N[φ]ʷ)) in E2 |- *;
         rewrite (im_pre_wk D _ Mj Us) in E2 |- * by eassumption;
-        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
+        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                     | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
 Qed.
@@ -3418,7 +3418,7 @@ Proof.
         rewrite apps_exp_sub in E2 |- *; cbn [exp_sub] in E2 |- *;
         rewrite (combine_map_snd (fun N => N[σ])) in E2 |- *;
         rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption;
-        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
+        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                     | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
 Qed.
