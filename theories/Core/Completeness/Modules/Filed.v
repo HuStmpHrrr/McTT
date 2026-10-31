@@ -877,7 +877,7 @@ Proof.
       pose proof (Hfs _ _ _ Hns' _ Hns) as ->.
       functional_eval_rewrite_clear.
       assert (Hlns : List.length ns = List.length T2) by (rewrite (eval_exps_length _ _ _ Hns); lia).
-      destruct (Hred _ (HevM1 _ _ Hlns Hgs2 Hn)) as (r & Hr & Hnr).
+      destruct (Hred _ (HevM1 _ _ eq_refl Hlns Hgs2 Hn)) as (r & Hr & Hnr).
       apply (mk_rel_mem_reduct _ _ _ _ _ m r); [ exact Hm' | exact Hr |].
       assert (E2 : R2 <~> RX) by (eapply per_univ_elem_right_irrel; [ exact HR2 | exact Haa ]).
       assert (HPX : PER RX) by (eapply per_elem_PER; exact Haa).

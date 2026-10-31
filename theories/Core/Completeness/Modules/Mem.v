@@ -103,7 +103,8 @@ Proof.
 Qed.
 
 (** A context entry's term part is valid where the entry is, its type of
-    either sort. *)
+    either sort: a definition tagged propositional has a proposition as its
+    type, so no universe can be asked of it ([rel_ctx_wf_def_inv]). *)
 Lemma rel_ctx_wf_tm_inv : forall Γ e A M, ⊨ e :: Γ -> centry_tm e = Some (A, M) ->
     (exists Srt, type_sort Srt /\ Γ ⊨ A : Srt) /\ Γ ⊨ M : A.
 Proof.

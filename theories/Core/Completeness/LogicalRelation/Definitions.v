@@ -591,9 +591,12 @@ Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_r
     read as [R0]: of a type over [T], of a value related to itself, with
     its δ-reduct at arguments for the outer part of [T] (read as a filed
     entry's term part is, [mdesc_term_part_ats]), if it has one, a term over that
-    part instantiated, valid there, whose value at arguments is the
-    member's value applied to them.  The type is of the member's sort
-    [mdesc_relevance R0], and so are the [Π]s over the telescope. *)
+    part instantiated, valid there, whose value at arguments is, for a
+    relevant member, the member's value applied to them.  The type is of
+    the member's sort [mdesc_relevance R0], and so are the [Π]s over the
+    telescope.  A member tagged propositional is the proof [⋆ᵈ]
+    ([global_member_value_proof]), which its reduct's value is not: nothing
+    is asked of that value. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
   { (** The member's type over the telescope *)
@@ -609,7 +612,8 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
       mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
        exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ /\
-         forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
+         forall ns m, mdesc_relevance R0 = relevant ->
+           List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
            $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ m)
     (** The value is the member's stored value, closed over the telescope,
         which selection at arguments for all of it applies to them

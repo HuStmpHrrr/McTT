@@ -2653,6 +2653,24 @@ Proof.
   exists (max l l0); apply params_relevant_app; [ rewrite List.app_nil_r; exact HR | exact H0 ].
 Qed.
 
+(** A filed record's parameters are relevant in the empty context: its own
+    ones by the premise of [wf_gentry_record], or by (R) of the body of its
+    module ([wf_gmod_params_relevant], one entry out: the value), over the
+    frames' parameters ([params_relevant_over_stack]). *)
+Lemma wf_gentry_record_params_relevant : forall Θ Ξ mp pv pr R Φ, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr R Φ ->
+    exists l, params_relevant Θ Ξ nil (record_params R) l.
+Proof.
+  intros * HE; inversion HE; subst.
+  - match goal with HS : _ ⍮ _ ⍮ record_params R ⊢ᵤ _ |- _ => pose proof (ctx_wf_gctx _ _ _ (presup_is_univ_ctx HS)) as Hg end.
+    match goal with HU : record_params R = _ ++ gs_tele Ξ |- _ => rewrite HU end.
+    eapply params_relevant_over_stack; [ exact Hg | eassumption ].
+  - match goal with HΦ : _ ⍮ _ ⍮ _ ⍮ fk_record R ⍮ _ ⊢ᵍᵐ _ |- _ =>
+      destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l Hl]; pose proof (ctx_wf_gctx _ _ _ (wf_gmod_ctx _ _ _ _ _ _ HΦ)) as Hg end.
+    cbn [frame_params List.tl] in Hl.
+    match goal with HU : record_params R = _ ++ gs_tele Ξ |- _ => rewrite HU end.
+    exact (params_relevant_over_stack _ _ _ _ Hg Hl).
+Qed.
+
 Section Induction.
   (** [V Θ Ξ E]: the (closed) entry [E] is valid at [Θ ⍮ Ξ]; [VD Θ Ξ D]: so
       is the declaration [D] of an inductive type. *)
@@ -3046,9 +3064,11 @@ Section ModInduction.
   Hypothesis Hind : forall Θ Ξ D l Θ2 Ξ2,
       decl_typed Θ Ξ D -> params_relevant Θ Ξ nil (ind_uparams D) l ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D).
-  (** A record's declaration, at any target its context embeds into. *)
-  Hypothesis Hrecord : forall Θ Ξ R Θ2 Ξ2,
-      record_typed Θ Ξ R -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VR Θ2 Ξ2 R.
+  (** A record's declaration, with its parameters relevant, at any target
+      its context embeds into. *)
+  Hypothesis Hrecord : forall Θ Ξ R l Θ2 Ξ2,
+      record_typed Θ Ξ R -> params_relevant Θ Ξ nil (record_params R) l ->
+      bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VR Θ2 Ξ2 R.
   (** A record's module telescope, at any target its context embeds into
       where the record is found: its parameters, then a value of it, which
       is typed only there. *)
@@ -3149,7 +3169,12 @@ Section ModInduction.
          declaration, over its parameters and a value *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He [Hct _] Θs Ξs Hs _; cbn.
-      split; [ eapply Hrecord; [ constructor; eassumption | eassumption | exact He ] | split; [| exact I ] ].
+      assert (HRr : exists l, params_relevant Θ Ξ nil (record_params R) l).
+      { match goal with HU : record_params R = ?Δ ++ gs_tele ?Ξ0, HS : _ ⍮ _ ⍮ record_params R ⊢ᵤ _,
+                        Hp : forall Δ1 T Δ2, ?Δ = Δ1 ++ ce_ass T :: Δ2 -> _ |- _ =>
+          rewrite HU; eapply params_relevant_over_stack; [ exact (ctx_wf_gctx _ _ _ (presup_is_univ_ctx HS)) | exact Hp ] end. }
+      destruct HRr as [lR HRr].
+      split; [ eapply Hrecord; [ constructor; eassumption | exact HRr | eassumption | exact He ] | split; [| exact I ] ].
       eapply Hrecord_tele; [ constructor; eassumption | eassumption | exact He | exact (contributions_found_record_lookup _ _ _ _ _ _ _ _ Hct) |].
       match goal with
       | HU : record_params ?R = ?Δu ++ gs_tele ?Ξ', Ha : tele_ass (record_params ?R),
@@ -3186,7 +3211,8 @@ Section ModInduction.
       + intros Θ2 Ξ2 He; split; [ intros ? ? Heq; discriminate Heq |].
         intros R0 Heq; injection Heq as <-.
         match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ _ _ |- _ =>
-          exact (Hrecord _ _ _ _ _ (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) (proj1 IHE) He) end.
+          destruct (wf_gentry_record_params_relevant _ _ _ _ _ _ _ HE) as [lR HRr];
+          exact (Hrecord _ _ _ _ _ _ (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) HRr (proj1 IHE) He) end.
       + (* its telescope: the parameters, valid one frame out, and the
            value, where the record's frame is *)
         intros Θ2 Ξ2 Hp He; split; [| intros; exact I ].
@@ -4735,9 +4761,10 @@ Proof.
 Qed.
 
 (** A record: its declaration, typed where it is checked, moved along. *)
-Lemma syn_record : forall Θ Ξ R Θ2 Ξ2,
-    record_typed Θ Ξ R -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> syn_VR Θ2 Ξ2 R.
-Proof. intros * HR _ He; exact (gctx_embedding_preserves_record_typed _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) HR). Qed.
+Lemma syn_record : forall Θ Ξ R l Θ2 Ξ2,
+    record_typed Θ Ξ R -> params_relevant Θ Ξ nil (record_params R) l ->
+    bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> syn_VR Θ2 Ξ2 R.
+Proof. intros * HR _ _ He; exact (gctx_embedding_preserves_record_typed _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) HR). Qed.
 
 (** A record's module telescope, where the record is found: the value's
     type is typed there. *)

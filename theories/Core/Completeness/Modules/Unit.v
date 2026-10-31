@@ -339,6 +339,15 @@ Proof.
   exists (max lw lr); split; [ exact (params_relevant_max _ _ _ _ _ _ Hlw) | exact (rel_params_relevant_ge _ _ lr (max lw lr) ltac:(lia) Hr) ].
 Qed.
 
+(** So are the parameters of a valid literal. *)
+Lemma valid_unit_lit_params_relevant : forall Γ U, valid_unit Γ (me_lit U) ->
+    exists l, params_relevant Θm Ξm Γ (gu_params U) l /\ rel_params_relevant Γ (gu_params U) l.
+Proof.
+  intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr | ? Δ E Hw HΔ HΔr]; subst;
+    [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
+    exact (lit_params_relevant_both _ _ Hw HΔr).
+Qed.
+
 (** ** Valid Units Abstracted over Parameters *)
 
 Lemma closure_walk : forall Δ Γ Δy D RΓ, tele_ass Δ -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->

@@ -758,6 +758,34 @@ Proof.
   intros * [i | ]; [ exists i; intros; apply rel_type_of_typ; assumption | exists 0; intros; apply rel_type_of_prop; assumption ].
 Qed.
 
+(** A type of a sort whose values at every environment are of the
+    relevance [r] is a type of the sort at [r]: at an environment, a value
+    of the other relevance contradicts the sort. *)
+Lemma rel_exp_sort_of_relevance : forall Γ A S r, type_sort S -> Γ ⊨ A : S ->
+    (forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> rel_typ_sort A ρ r) ->
+    exists i : nat, Γ ⊨ A : relevance_sort r Typeω@i.
+Proof.
+  intros * [i |] HA Hr; destruct r; cbn [relevance_sort]; [ exists i; exact HA | | | exists 0; exact HA ].
+  - exists 0; apply rel_exp_of_prop.
+    destruct (rel_exp_of_typ_inversion HA) as [R [HR H]].
+    exists R, HR; intros Γ' R' HR' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'; exfalso.
+    assert (Hρσ : R ρσ ρ'σ') by (eapply rel_sub_under_ctx_at'; eassumption).
+    assert (HP : PER R) by (eapply per_env_PER; exact HR).
+    destruct (Hr _ HR ρσ ltac:(etransitivity; [ exact Hρσ | symmetry; exact Hρσ ])) as (a & Ea & Hra).
+    destruct (H _ _ HR' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & _)].
+    destruct T12 as [_ _ Hr2].
+    assert (a = a2) as -> by (eapply functional_eval_exp; eassumption); congruence.
+  - exists 0; apply rel_exp_of_typ.
+    destruct (rel_exp_of_prop_inversion HA) as [R [HR H]].
+    exists R, HR; intros Γ' R' HR' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'; exfalso.
+    assert (Hρσ : R ρσ ρ'σ') by (eapply rel_sub_under_ctx_at'; eassumption).
+    assert (HP : PER R) by (eapply per_env_PER; exact HR).
+    destruct (Hr _ HR ρσ ltac:(etransitivity; [ exact Hρσ | symmetry; exact Hρσ ])) as (a & Ea & Hra).
+    destruct (H _ _ HR' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & _)].
+    destruct T12 as [_ Hr2 _].
+    assert (a = a2) as -> by (eapply functional_eval_exp; eassumption); congruence.
+Qed.
+
 (** The innermost parameter of relevant parameters is relevant, and the
     parameters before it are relevant over it. *)
 Lemma rel_params_relevant_snoc_inv : forall Γ Δ A l,

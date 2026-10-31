@@ -1017,6 +1017,47 @@ Proof.
   exfalso; exact (Hz (prefix_in_names _ _ _ Hp)).
 Qed.
 
+(** The definitions of a body without opens are of their tagged sorts in
+    the context the body before each makes, once each, filled in, is of its
+    tagged sort over the body's context: at an environment of the body
+    before it, the type is read as the type filled in is at the tail
+    ([fill_rel_back]).  This turns the premises of the typing of a body
+    unit, which type its definitions filled in, into [body_sorts_valid]. *)
+Lemma body_sorts_valid_of_fill : forall Φ D, gm_nopens Φ = 0 -> body_shape Φ Φ -> List.NoDup (gm_names Φ) ->
+    ⊨ body_ctx Φ ++ D ->
+    (forall y Φ0 E A M σ, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σ ->
+       exists i, D ⊨ A[σ] : relevance_sort (entry_relevance E) Typeω@i) ->
+    body_sorts_valid Φ D.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hn Hs Hnd HC Hf; cbn [body_sorts_valid gm_nopens] in *; [ exact I | | discriminate ].
+  cbn [body_shape] in Hs; destruct Hs as (Hs0 & _ & HsE).
+  assert (HC0 : ⊨ body_ctx Φ ++ D) by (destruct E as [? ? ? ? [] | | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
+  split.
+  - apply (IH _ Hn Hs0 ltac:(cbn [gm_names] in Hnd; inversion Hnd; assumption) HC0).
+    intros y' Φ0 E' A M σ Hp HE' Hf0; exact (Hf y' Φ0 E' A M σ (prefix_ext_keep _ _ _ _ _ Hnd Hp) HE' Hf0).
+  - intros A M HE.
+    destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; [| exfalso; exact (proj1 (body_shape_fill _ _ Hn Hs0) Hf0) ].
+    destruct (Hf y Φ E A M σ0 ltac:(cbn [gm_prefix_upto]; rewrite String.eqb_refl; reflexivity) HE Hf0) as [i Hi].
+    (* the type, of a sort over the body before it *)
+    assert (HAS : exists Srt, type_sort Srt /\ body_ctx Φ ++ D ⊨ A : Srt).
+    { destruct E as [b pv r A' [M' |] | | | pv A' M' U |]; cbn in HE; try discriminate; injection HE as <- <-;
+        cbn [body_ctx app] in HC.
+      - exact (proj1 (rel_ctx_wf_def_inv HC)).
+      - destruct (rel_ctx_wf_dm_inv HC) as ([k Hk] & _ & _); exists Typeω@k; split; [ apply type_sort_universe | exact Hk ]. }
+    destruct HAS as (Srt & HS & HA).
+    pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0)) as Hτ.
+    apply (rel_exp_sort_of_relevance _ _ _ _ HS HA).
+    intros R HR ρ Hρ.
+    destruct (rel_ctx_wf_per_ctx_env (rel_ctx_wf_app_r _ _ HC0)) as [RD HD].
+    destruct (fill_rel_back _ _ _ Hn Hf0 HC0 _ _ HD HR _ Hρ) as (Htail & ρσ & Hσ & Hρσ).
+    destruct (rel_exp_of_relevance_sort_at HD Hi _ _ Htail) as (a & Ea & Hra).
+    destruct (rel_type_of_sort HS HA) as [k HAk].
+    destruct (rel_type_inversion_simple_at HR HAk _ _ Hρσ) as (a1 & a2 & Ea1 & Ea2 & [R12 H12]).
+    pose proof (rel_type_sub_relevance HS HA Hτ HD Htail Hσ Ea Ea2) as Erel.
+    exists a1; split; [ exact Ea1 |].
+    rewrite (per_univ_elem_relevance _ _ _ _ H12), <- Erel; exact Hra.
+Qed.
+
 Lemma prefix_gens_keep : forall gs Φ k y P, List.NoDup (gm_names (gens_append Φ k gs)) ->
     gm_prefix_upto Φ y = Some P -> gm_prefix_upto (gens_append Φ k gs) y = Some P.
 Proof.

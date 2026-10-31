@@ -1097,10 +1097,11 @@ Qed.
 
 Lemma sem_exp_eq_let_mod_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ C : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊨ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] ).
-Proof. intros * HU _ HB; sem_intro; [ assumption | exact (rel_exp_under_ctx_let_mod_zeta HU HB) ]. Qed.
+Proof. intros * HU _ _ HB; sem_intro; [ assumption | exact (rel_exp_under_ctx_let_mod_zeta HU HB) ]. Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -1141,10 +1142,11 @@ End Fixed_GCtx.
 
 Lemma sem_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ C : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊨ ℓₘ U in B : C[Id ,,ₘ me_lit U] ).
-Proof. intros * HU _ HB; sem_intro; [ assumption | exact (valid_exp_under_ctx_let_mod HU HB) ]. Qed.
+Proof. intros * HU _ _ HB; sem_intro; [ assumption | exact (valid_exp_under_ctx_let_mod HU HB) ]. Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
