@@ -1,6 +1,6 @@
 (* The booleans, an inductive type with the constructors [tt] and [ff], and
    their connectives.  The names [true] and [True] are taken: they are the
-   tokens of [unit] and [Unit].
+   keywords of the true proposition [⊤] and its proof.
 
    Each connective is defined by cases on its first argument, so it computes
    as soon as that argument is a constructor: [and tt b] is [b], [or ff b]

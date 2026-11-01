@@ -40,7 +40,7 @@ import Prelude›Function›Iter as Iter
    anywhere; this file uses the Unicode ones, which the checker also prints:
      →  ->      ⇒  =>      ≔  :=      ›  ::
      λ  fun     ∀  forall (or Π)
-     Unit  True    Void  False   unit  true    ω  omega
+     ⊤  True    ⊥  False   ∧  /\    ω  omega
    Identifiers are ASCII letters, so the symbols need no spaces around
    them: [λ(x:ℕ)→x] is [fun (x : ℕ) -> x]. *)
 
