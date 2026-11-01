@@ -2186,7 +2186,7 @@ Lemma wk_preserves_wf :
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk H φ ≈ modexp_wk H' φ).
 Proof.
-  apply syntactic_wf_mut_ind'; intros; destruct_let_ann;
+  apply syntactic_wf_mut_ind'; intros;
     try solve [ wk_elim_case ];
     try solve [ first [ eapply wk_mem_case; eassumption | eapply wk_mem_cong_case; eassumption
                       | eapply wk_mem_delta_case; eassumption
@@ -2215,9 +2215,9 @@ Proof.
   all: try solve [ econstructor; mauto 3 ].
   (** The module rules. *)
   all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod;
-                   eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop ].
+                   eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level ].
   all: try solve [ rewrite !exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta;
-                   eauto using wf_wk_q_mod, type_sort_universe, type_sort_prop ].
+                   eauto using wf_wk_q_mod, type_sort_universe, type_sort_prop, type_sort_level ].
   all: try solve [ rewrite exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_cong;
                    [ eauto | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | rewrite <- exp_wk_sub_extend_mod; eauto ] ].
   all: try solve [ cbn [tele_wk]; first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
@@ -2269,7 +2269,7 @@ Proof.
         destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         eapply wf_unit_eq_alias; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption | eauto | rewrite <- ?Hlen in *; eauto
-                                 | wk_params_case Hφ | wk_params_case Hφ ]
+                                 | eassumption | wk_params_case Hφ | wk_params_case Hφ ]
     end ].
   all: try solve [ eapply wk_unit_body_case; (eassumption || (eapply wf_unit_eq_body; eassumption)) ].
   (** An alias of a literal, flattened: the literal moves by the weakening
@@ -2284,7 +2284,7 @@ Proof.
         cbn [moddef_wk modexp_wk];
         pose proof (IHU _ _ Hl) as HU'; revert HU';
         destruct (gunit_wk (gu_mk Δ' D) (wk_qn (length Δ) φ)) as [Δw Dw]; intros HU'; cbn [gunit_abs];
-        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | exact HU' | wk_params_case Hφ ]
+        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | exact HU' | eassumption | wk_params_case Hφ ]
     end ].
   (** The remaining cases name their induction hypotheses by shape. *)
   all: try solve [ rewrite !gunit_wk_mk; cbn [moddef_wk];
@@ -2299,7 +2299,7 @@ Proof.
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         eapply wf_unit_eq_alias;
         [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption
-        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | wk_params_case Hφ | wk_params_case Hφ ]
+        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | wk_params_case Hφ | wk_params_case Hφ ]
     end ].
   all: try solve [
     match goal with
@@ -2492,7 +2492,7 @@ Proof.
   all: try solve [ eapply wf_exp_eq_irrelevant;
                    [ first [ eassumption | eapply wf_True; eassumption ]
                    | | ];
-                   eauto 3 using wf_true, wf_tt, wf_star, wf_conj, wf_left, wf_right ].
+                   eauto 3 using wf_tt, wf_conj, wf_left, wf_right ].
   (** Ex falso: its own congruence. *)
   all: try solve [ eapply wf_exp_eq_absurd_cong; eassumption ].
   all: first [ eapply wf_exp_eq_let_mod_cong; mauto 3
@@ -3320,7 +3320,7 @@ Lemma sub_preserves_wf :
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ H ≈ H' ->
       forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ]ᵐ).
 Proof.
-  apply syntactic_wf_mut_ind'; intros; destruct_let_ann;
+  apply syntactic_wf_mut_ind'; intros;
     try solve [ sub_elim_case ];
     try solve [ first [ eapply sub_mem_case; eassumption | eapply sub_mem_cong_case; eassumption
                       | eapply sub_mem_delta_case; eassumption
@@ -3342,9 +3342,9 @@ Proof.
   (** The module rules.  A local module is lifted over by [q σ] at the
       transported unit. *)
   all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod;
-                   eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop ].
+                   eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level ].
   all: try solve [ rewrite !exp_sub_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta;
-                   eauto using wf_sub_q_mod, type_sort_universe, type_sort_prop ].
+                   eauto using wf_sub_q_mod, type_sort_universe, type_sort_prop, type_sort_level ].
   all: try solve [
     match goal with
     | HU : wf_unit_eq _ _ ?Γ ?U ?U', IHU : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_unit_eq _ _ _ _ _,
@@ -3393,7 +3393,7 @@ Proof.
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         eapply wf_unit_eq_alias;
         [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
-        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | sub_params_case Hσ | sub_params_case Hσ ]
+        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | sub_params_case Hσ | sub_params_case Hσ ]
     end ].
   all: try solve [ eapply sub_unit_body_case; (eassumption || (eapply wf_unit_eq_body; eassumption)) ].
   (** An alias of a literal, flattened: the literal moves by the
@@ -3408,7 +3408,7 @@ Proof.
         cbn [moddef_sub modexp_sub];
         pose proof (IHU _ _ Hl) as HU'; revert HU';
         destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw]; intros HU'; cbn [gunit_abs];
-        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | exact HU' | sub_params_case Hσ ]
+        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | exact HU' | eassumption | sub_params_case Hσ ]
     end ].
   (** Module expressions. *)
   all: try solve [
@@ -4129,15 +4129,9 @@ Qed.
 #[export]
 Hint Resolve lift_exp_universe_index lift_exp_eq_universe_index : mctt.
 
-(** The closed small types are types of every universe, small or large: their
-    rules give them [Type@0], which [universe_index_le_least] lifts anywhere. *)
-Lemma wf_level_univ : forall {Θ Ξ Γ n} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : universe_index_term u.
-Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_level; assumption ]. Qed.
-
-Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ n} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : universe_index_term u.
-Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_exp_eq_level_cong; assumption ]. Qed.
-
-(** The placeholder type is a closed small type too. *)
+(** The placeholder type is a closed small type: a type of every universe,
+    small or large, its rule giving it [Type@0], which
+    [universe_index_le_least] lifts anywhere. *)
 Lemma wf_placeholder_type_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : universe_index_term u.
 Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_placeholder_type; assumption ]. Qed.
 

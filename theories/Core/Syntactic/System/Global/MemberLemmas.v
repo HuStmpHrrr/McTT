@@ -427,7 +427,7 @@ Lemma ctx_pi_rev_cons : forall r e R A,
     ctx_pi_at r (rev (e :: R)) A =
     match e with
     | ce_ass B => a_pi r B (ctx_pi_at r (rev R) A)
-    | ce_def B N => a_let (b_def (Some B) N) (ctx_pi_at r (rev R) A)
+    | ce_def B N => a_let (b_def B N) (ctx_pi_at r (rev R) A)
     | ce_mod U => a_let (b_mod U) (ctx_pi_at r (rev R) A)
     | ce_dm _ N U => (ctx_pi_at r (rev R) A)[Id ,,ᵈ N ‖ me_lit U]
     end.
@@ -1606,7 +1606,6 @@ Theorem wf_scoped :
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gctx_closed Θ Ξ).
 Proof.
   apply wf_mut_ind_all; intros;
-    repeat match goal with H : let_ann _ _ _ |- _ => destruct H as [[-> [? ?]] | ->] end;
     unfold ctx_ok in *; cbn in *; destruct_all;
     rewrite ?length_app, ?ctx_scoped_app_iff in *; destruct_all.
   all: repeat match goal with |- _ /\ _ => split end; try assumption;
