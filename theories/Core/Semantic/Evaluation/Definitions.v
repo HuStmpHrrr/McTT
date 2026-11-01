@@ -44,26 +44,18 @@ Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
 
 (** * Relevance-Directed Evaluation
 
-    No proof is ever evaluated: a term of a propositional type is never
-    reached by evaluation, which puts the proof [⋆ᵈ] in its place.  The
-    places where a proof may stand inside a relevant term read the sort of
-    what stands there off values or declarations, never off types: the
-    argument of an application ([arg_relevance]), a field of a record
-    value (its declaration's [record_field_relevance]), a local definition
-    and an entry of a module body (their types), and a substitution's entry
-    (its target context's type, [eval_sub]). *)
+    No proof is ever evaluated: a term of a propositional type is kept as
+    it is written, with the environment it stands in, as the proof value
+    [⋆ᵈ⟨M, ρ⟩].  The places where a proof may stand inside a relevant term
+    read the sort of what stands there off values or declarations, never
+    off types: the argument of an application ([arg_relevance]), a field of
+    a record value (its declaration's [record_field_relevance]), a local
+    definition and an entry of a module body (their types), and a
+    substitution's entry (its target context's type, [eval_sub]).
 
-(** The value [v] at the type [a]: [⋆ᵈ] when [a] is a proposition. *)
-Definition relevant_value (a v : domain) : domain :=
-  match domain_relevance a with propositional => ⋆ᵈ | relevant => v end.
-
-(** At a relevant type, the value itself. *)
-Lemma relevant_value_relevant : forall a v, domain_relevance a = relevant -> relevant_value a v = v.
-Proof. intros * H; unfold relevant_value; rewrite H; reflexivity. Qed.
-
-(** At a proposition, the proof. *)
-Lemma relevant_value_propositional : forall a v, domain_relevance a = propositional -> relevant_value a v = ⋆ᵈ.
-Proof. intros * H; unfold relevant_value; rewrite H; reflexivity. Qed.
+    Every variable an environment binds carries its type ([dtype]), which
+    the readback of a kept proof reads the variable at; the type is a
+    closure, evaluated only there. *)
 
 (** The number of values a constructor of the member [Mk] of [D] takes
     before its arguments: all the member's parameters, the uniform ones
@@ -108,6 +100,78 @@ Definition arg_relevance (Θ : gdeps) (Ξ : gstack) (f : domain) : relevance :=
       end
   | _ => relevant
   end.
+(** The proof a member [x] of a saturated module is, kept as its
+    selection from the module bound at [#0]: a proof member is never
+    evaluated, so its value is this proof in the environment holding the
+    module alone. *)
+Definition member_proof (x : string) : exp := a_mem (me_var 0) x.
+
+(** ** The Types of the Variables an Eliminator Binds
+
+    A branch binds the non-uniform parameters of its member, the arguments
+    of its constructor and their recursive results; a motive binds the
+    member's non-uniform parameters and the scrutinee.  Their types are
+    closures over the declaration's telescopes, at the uniform parameters
+    [ups] ([decl_env]); none is evaluated.  At a declared member the types
+    are those of the values.  REVISIT at a view: the values are the
+    container's and the telescopes the view's. *)
+
+(** The environment of a group's uniform parameters [ups]. *)
+Definition decl_env (D : ind_decl) (ups : list domain) : env := env_tele nil (List.rev (ind_uparams D)) ups.
+
+(** The arguments [vs] of a constructor of kinds [gs], with their types: a
+    non-recursive one the type its declaration gives, in [ρ] extended by
+    the non-recursive arguments before it; a recursive one the type of its
+    shape there, at the uniform parameters [ups] of the group at [p]. *)
+Fixpoint cargs_entries (p : qname) (ups : list domain) (ρ : env) (gs : list carg) (vs : list domain) : list (domain * dtype) :=
+  match vs with
+  | nil => nil
+  | v :: vs' =>
+      match gs with
+      | ca_arg _ A :: gs' => (v, dt_closure A ρ) :: cargs_entries p ups (ρ ↦ v ⦂ dt_closure A ρ) gs' vs'
+      | ca_rec t :: gs' => (v, dt_shape p ups ρ t) :: cargs_entries p ups ρ gs' vs'
+      | nil => (v, dt_value d_placeholder_type) :: cargs_entries p ups ρ nil vs'
+      end
+  end.
+
+(** The types of the recursive results of the arguments [vs] of kinds
+    [gs]: one per leaf path of each recursive argument, the motives [As]
+    in [ρm], the shape's components in [ρ], which a non-recursive argument
+    extends. *)
+Fixpoint ihs_types (D : ind_decl) (p : qname) (ups : list domain) (ρm : env) (As : list exp)
+    (ρ : env) (gs : list carg) (vs : list domain) : list dtype :=
+  match gs, vs with
+  | ca_arg _ A :: gs', v :: vs' => ihs_types D p ups ρm As (ρ ↦ v ⦂ dt_closure A ρ) gs' vs'
+  | ca_rec t :: gs', v :: vs' =>
+      List.map (fun i => dt_ihty ρm As p ups ρ t v i) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))
+        ++ ihs_types D p ups ρm As ρ gs' vs'
+  | _, _ => nil
+  end.
+
+(** Values with types, a value past the types at the placeholder type. *)
+Fixpoint typed_values (vs : list domain) (ts : list dtype) : list (domain * dtype) :=
+  match vs with
+  | nil => nil
+  | v :: vs' => (v, List.hd (dt_value d_placeholder_type) ts) :: typed_values vs' (List.tl ts)
+  end.
+
+(** The variables of a branch of the member [Mj] of the group [D] at
+    [p], at the uniform parameters [ups], the motives [As] in [ρm]: the
+    non-uniform parameters [ns], the arguments [vs] of kinds [gs] and the
+    recursive results [ihs], with their types. *)
+Definition branch_entries (D : ind_decl) (Mj : imember) (p : qname) (ups : list domain) (As : list exp) (ρm : env)
+    (gs : list carg) (ns vs ihs : list domain) : list (domain * dtype) :=
+  let nts := tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) ns in
+  let ρa := env_typed (decl_env D ups) nts in
+  nts ++ cargs_entries p ups ρa gs vs ++ typed_values ihs (ihs_types D p ups ρm As ρa gs vs).
+
+(** The environment of a motive of the member [Mk] of [D] over [ρ], at a
+    scrutinee [m] of the type [a] at all the member's parameters [as']:
+    the non-uniform parameters and the scrutinee. *)
+Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domain) (a m : domain) : env :=
+  env_typed ρ (tele_entries (decl_env D (List.firstn (ind_nu D) as')) (List.rev (im_nparams Mk)) (List.skipn (ind_nu D) as')
+               ++ (m, dt_value a) :: nil).
+
 (** The group an eliminator eliminates by: the one written, or else that
     of the value, a constructor or a neutral of a member. *)
 Definition elim_grp_of (oq : option qname) (m : domain) : option qname :=
@@ -137,7 +201,7 @@ Definition dm_clo (U : gunit) (ρ : env) : dmod :=
   match U with gu_mk Δ D => dm_local Δ D ρ end.
 
 (** [n] placeholders for parameters, terms, over [ρ]. *)
-Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat (de_term d_placeholder) n ++ ρ.
+Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat placeholder_entry n ++ ρ.
 
 (** The entry a body's entry adds over [ρ], as kinds read it: a module, its
     closure; a definition with a module part, a placeholder and the
@@ -145,8 +209,8 @@ Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat (de_term
 Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
   match E with
   | ge_mod _ U => de_mod (dm_clo U ρ)
-  | ge_def_mod _ _ _ U => de_dm d_placeholder (dm_clo U ρ)
-  | _ => de_term d_placeholder
+  | ge_def_mod _ _ _ U => de_dm d_placeholder (dt_value d_placeholder_type) (dm_clo U ρ)
+  | _ => placeholder_entry
   end.
 
 (** The entries generated items add over [ρ], as kinds read them, the
@@ -156,8 +220,8 @@ Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
 Definition kinds_generated_entry (ρ : env) (k : nat) (g : generated_item) : dentry :=
   match g with
   | generated_item_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | generated_item_def_mod _ _ _ _ E => de_dm d_placeholder (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | _ => de_term d_placeholder
+  | generated_item_def_mod _ _ _ _ E => de_dm d_placeholder (dt_value d_placeholder_type) (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | _ => placeholder_entry
   end.
 
 Fixpoint kinds_items_gen_env (ρ : env) (k : nat) (gs : list generated_item) : env :=
@@ -470,33 +534,31 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** [⊤] is a value. *)
 | eval_exp_True :
   `( ⟦ ⊤ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊤ᵈ )
-(** So is [⋆]. *)
-| eval_exp_true :
-  `( ⟦ ⋆ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
-(** The introduction of [⊤] is the proof [⋆ᵈ]. *)
+(** The introduction of [⊤] is a proof, kept as it is. *)
 | eval_exp_tt :
-  `( ⟦ a_tt ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_tt ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_tt, ρ⟩ )
 (** [⊥] is a value. *)
 | eval_exp_False :
   `( ⟦ ⊥ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )
-(** Ex falso never evaluates its proof: it is stuck at its type, the
-    proof [⋆ᵈ] at a proposition ([relevant_value]). *)
+(** Ex falso never evaluates its proof: it is stuck at its type, on the
+    proof kept as it is. *)
 | eval_exp_absurd :
   `( ⟦ C ⟧ Θ ⍮ Ξ ⍮ ρ ↘ c ->
-     ⟦ efq M return C ⟧ Θ ⍮ Ξ ⍮ ρ ↘ relevant_value c (⇑ c (efqᵈ c)) )
+     ⟦ efq M return C ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ c (efqᵈ ⋆ᵈ⟨M, ρ⟩ return c) )
 (** A [Σₚ] evaluates its first component and closes over its second. *)
 | eval_exp_and :
   `( ⟦ P ⟧ Θ ⍮ Ξ ⍮ ρ ↘ p ->
      ⟦ Σₚ P Q ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Σₚᵈ p ρ Q )
-(** The proof of a conjunction is [⋆ᵈ]; its parts are not evaluated. *)
+(** The proof of a conjunction is kept as it is; its parts are not
+    evaluated. *)
 | eval_exp_conj :
-  `( ⟦ a_conj T M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_conj T M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_conj T M N, ρ⟩ )
 (** So is the proof of its first component. *)
 | eval_exp_left :
-  `( ⟦ a_left M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_left M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_left M, ρ⟩ )
 (** And that of its second. *)
 | eval_exp_right :
-  `( ⟦ a_right M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_right M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_right M, ρ⟩ )
 (** The placeholder type is a value. *)
 | eval_exp_placeholder_type :
   `( ⟦ a_placeholder_type ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_placeholder_type )
@@ -521,7 +583,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      ind_nu D = 0 ->
-     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil nil ↘ cups ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ nil ↘ cups ->
      ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con qc k c cups )
 (** The constructor of a record view of a group with no uniform
     parameters, of a record with fields: a value of its own, waiting for
@@ -550,9 +612,9 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      elim_grp_of oq m = Some p ->
      ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦ a_elim relevant oq Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An eliminator into propositions is a proof: [⋆ᵈ], unevaluated. *)
+(** An eliminator into propositions is a proof, kept as it is. *)
 | eval_exp_elim_proof :
-  `( ⟦ a_elim propositional oq Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_elim propositional oq Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_elim propositional oq Us j Bks M, ρ⟩ )
 (** A [Π] evaluates its domain and closes over its codomain, at its
     relevance tag. *)
 | eval_exp_pi :
@@ -571,33 +633,27 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $| m & n | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An application of a function taking a proof applies it to [⋆ᵈ]; the
-    argument is not evaluated. *)
+(** An application of a function taking a proof applies it to the proof
+    kept as it is; the argument is not evaluated. *)
 | eval_exp_app_proof :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      arg_relevance Θ Ξ m = propositional ->
-     $| m & ⋆ᵈ | Θ ⍮ Ξ ↘ r ->
+     $| m & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An unannotated local definition, of a type of a universe, extends the
-    environment by the value of its body; nothing is substituted. *)
+(** A local definition at a relevant type extends the environment by the
+    value of its body, at its type; nothing is substituted. *)
 | eval_exp_let :
-  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ↘ r ->
-     ⟦ a_let (b_def None M) B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An annotated one at a relevant type, likewise. *)
-| eval_exp_let_ann :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_relevance a = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ↘ r ->
-     ⟦ a_let (b_def (Some A) M) B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An annotated one at a proposition binds [⋆ᵈ]; its body is a proof,
-    not evaluated. *)
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ dt_value a ↘ r ->
+     ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** One at a proposition binds its body, a proof, kept as it is. *)
 | eval_exp_let_proof :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_relevance a = propositional ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ ↘ r ->
-     ⟦ a_let (b_def (Some A) M) B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ dt_value a ↘ r ->
+     ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local module extends it by the unit's closure. *)
 | eval_exp_let_mod :
   `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
@@ -619,7 +675,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_record :
   `( ⟦ a_record p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record p nil )
 (** A record element is the tuple of its fields' values, by name, a
-    propositional field [⋆ᵈ] ([eval_field_vals]); the type it is annotated with
+    propositional field kept as it is ([eval_field_vals]); the type it is annotated with
     is evaluated only to find the record, whose declaration stores the
     fields' sorts, and the value carries no parameters. *)
 | eval_exp_tuple :
@@ -647,22 +703,21 @@ with eval_proj (Θ : gdeps) (Ξ : gstack) : string -> domain -> domain -> Prop :
 | eval_proj_neut :
   `( record_lookup Θ Ξ p = Some R ->
      field_index (record_fields R) f = Some k ->
-     eval_neutral_fields Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs ->
+     eval_neutral_fields Θ Ξ m (env_tele nil (List.rev (record_params R)) ns) (List.firstn (S k) (record_fields R)) rs ->
      List.nth_error rs k = Some r ->
      eval_proj Θ Ξ f (⇑ (d_record p ns) m) r )
-(** [eval_neutral_fields ns m fl pre rs]: the neutral projections [rs] of [m] at
-    the fields [fl], after the projections [pre] of the fields before them,
-    each at its type at the parameters [ns] and the projections before
-    it. *)
-with eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> list domain -> Prop :=
+(** [eval_neutral_fields m ρ fl rs]: the neutral projections [rs] of [m] at
+    the fields [fl], each at its type in [ρ], the environment of the
+    type's parameters and the projections of the fields before it. *)
+with eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : domain_ne -> env -> list (string * exp) -> list domain -> Prop :=
 (** No field left *)
 | eval_neutral_fields_nil :
-  `( eval_neutral_fields Θ Ξ ns m nil pre nil )
+  `( eval_neutral_fields Θ Ξ m ρ nil nil )
 (** The next field's projection, at its type, then the rest after it *)
 | eval_neutral_fields_cons :
-  `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
-     eval_neutral_fields Θ Ξ ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil) rs ->
-     eval_neutral_fields Θ Ξ ns m ((g, T) :: fl) pre (relevant_value a (⇑ a (d_proj g m)) :: rs) )
+  `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     eval_neutral_fields Θ Ξ m (ρ ↦ ⇑ a (d_proj g m) ⦂ dt_value a) fl rs ->
+     eval_neutral_fields Θ Ξ m ρ ((g, T) :: fl) (⇑ a (d_proj g m) :: rs) )
 (** The eliminator of the group at [p] at its member [j], on a value.  The
     member is the declared member [k] of the group at [q] ([im_ref]): the
     group itself at a declared member, the container's at a view.  On a
@@ -694,11 +749,10 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat ->
      leaves_coherent D ->
      ⟦ihs skipn (im_np Dq Mk) vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs) ↘ r ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_typed ρ (branch_entries D Mj p ups (blocks_motives Bks) ρ gs
+                                    (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs)) (skipn (im_np Dq Mk) vs) ihs) ↘ r ->
      ⟦elim d_con pc k c vs at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** On a neutral: a stuck eliminator, at the motive's instance; the
-    proof [⋆ᵈ] at a propositional instance, as every neutral evaluation
-    builds ([relevant_value]) *)
+(** On a neutral: a stuck eliminator, at the motive's instance *)
 | eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -708,8 +762,8 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      List.length as' = im_np Dq Mk ->
      List.nth_error Bks j = Some b ->
      eb_binder_count b = S (im_nn Mk) ->
-     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil) ↘ a ->
-     ⟦elim ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ relevant_value a (⇑ a (d_elim ρ Bks p ups j as' m)) )
+     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ motive_env Dq Mk ρ as' (d_ind pc k as') (⇑ (d_ind pc k as') m) ↘ a ->
+     ⟦elim ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p ups j as' m) )
 where "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p ups Bks j m r)
 (** The recursive results of the arguments [vs], one per leaf path of each
     recursive argument, in order. *)
@@ -785,7 +839,7 @@ with eval_mref (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> (qnam
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
-     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ decl_env D ups ↘ cups ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (qc, k, cups) )
 where "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" := (eval_mref Θ Ξ p ups j r)
 (** The type of an argument of shape [t] in [ρ], at the uniform parameters
@@ -806,12 +860,14 @@ with eval_shape_type (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env ->
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
-     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ decl_env D ups ↘ cups ->
      ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record qr cups )
-(** At a domain: a [Π] over it, of the shape family *)
+(** At a domain: a [Π] over it, of the shape family.  The environment of
+    the codomain [fam_cod] binds the family alone; it never holds a proof,
+    so its entry is at the placeholder type. *)
 | eval_shape_type_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
+     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ B t ⦂ dt_value d_placeholder_type) fam_cod )
 where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shape_type Θ Ξ p ups ρ t r)
 (** The types of the recursive results of an argument [v] of shape [t],
     one per leaf path, its components in [ρ], of the group at [p] at the
@@ -827,7 +883,8 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ List.nth j As a_placeholder_type ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
+     ⟦ List.nth j As a_placeholder_type ⟧ Θ ⍮ Ξ ⍮
+       env_typed ρm (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs ++ (v, dt_shape p ups ρ (pt_self j Ps)) :: nil) ↘ a ->
      ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
 (** At the end, at a record view: those of its fields at [v]'s
     projections *)
@@ -837,14 +894,14 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      im_head Mj = mh_record qr Is fl ->
      im_cons Mj = (c, gs) :: nil ->
      ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws ->
-     ⟦ihtys ws of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ env_args nil ups ↘ rs ->
+     ⟦ihtys ws of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ decl_env D ups ↘ rs ->
      ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs )
 (** At a domain: a [Π] over it, of each recursive result's family *)
 | eval_ihty_pi :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ
-       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ t i v) fam_cod)
+       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ dt_value d_placeholder_type) fam_cod)
            (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ p ups ρm As ρ t v r)
 (** The types of the recursive results of the fields [vs] of a record
@@ -857,7 +914,7 @@ with eval_ihtys (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list
 (** A non-recursive field has none, and extends the components'
     environment *)
 | eval_ihtys_arg :
-  `( ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ v ↘ rs ->
+  `( ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ dt_closure T ρ ↘ rs ->
      ⟦ihtys v :: vs of ca_arg r T :: gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs )
 (** A recursive field has those of its shape *)
 | eval_ihtys_rec :
@@ -868,22 +925,14 @@ where "'⟦ihtys' vs 'of' gs 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' �
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
-  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ m ->
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_value a ↘ m ->
      $| λᵈ a ρ M & n | Θ ⍮ Ξ ↘ m )
-(** The proof [⋆ᵈ] applied is a proof: [⋆ᵈ].  A proof member of a
-    saturated module is [⋆ᵈ] ([eval_sel_global_proof]).  [arg_relevance ⋆ᵈ]
-    is [relevant], but no term application reaches this rule with an
-    argument to evaluate: an application whose function is a proof is at
-    a [∀], hence itself a proof, which relevance-directed evaluation never
-    evaluates. *)
-| eval_app_proof :
-  `( $| ⋆ᵈ & n | Θ ⍮ Ξ ↘ ⋆ᵈ )
-(** A neutral applied, at the codomain's instance; the proof [⋆ᵈ] at a
-    propositional instance, as every neutral evaluation builds
-    ([relevant_value]). *)
+(** A neutral applied, at the codomain's instance.  No rule applies a
+    proof: an application whose function is a proof is at a [∀], hence
+    itself a proof, which relevance-directed evaluation never evaluates. *)
 | eval_app_neut :
-  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ b ->
-     $| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ relevant_value b (⇑ b (m $ᵈ ⇓ a n)) )
+  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_value a ↘ b ->
+     $| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
 (** The type former takes a parameter it still lacks. *)
 | eval_app_indty :
   `( ind_lookup Θ Ξ p = Some D ->
@@ -918,7 +967,7 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) = ind_nu D ->
-     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil (vs ++ n :: nil) ↘ cups ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ decl_env D (vs ++ n :: nil) ↘ cups ->
      $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con qc k c cups )
 (** The constructor of a record view takes the group's uniform parameters
     and the fields; before the last of them it waits for more *)
@@ -946,14 +995,14 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** The families of the types of an argument of a function shape and of its
     recursive result. *)
 | eval_app_shfam :
-  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
-     $| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
+  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_closure B ρ ↘ a ->
+     $| d_shfam p ups ρ B t & n | Θ ⍮ Ξ ↘ a )
 (** The [i]-th recursive result's family, at the argument's value *)
 | eval_app_ihfam :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ihty fn of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ as' ->
+     ⟦ihty fn of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_closure B ρ ↘ as' ->
      List.nth_error as' i = Some a ->
-     $| d_ihfam ρm As p ups ρ t i f & n | Θ ⍮ Ξ ↘ a )
+     $| d_ihfam ρm As p ups ρ B t i f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -972,7 +1021,7 @@ with eval_exps (Θ : gdeps) (Ξ : gstack) : list exp -> env -> list domain -> Pr
 where "'⟦' Ms '⟧*' Θ '⍮' Ξ '⍮' ρ '↘' ms" := (eval_exps Θ Ξ Ms ρ ms)
 (** [eval_app_args f Ms ρ r]: [f] applied to the terms [Ms] in [ρ],
     outermost first, is [r]; an argument the function at that point takes
-    as a proof ([arg_relevance]) is [⋆ᵈ], unevaluated, as in
+    as a proof ([arg_relevance]) is kept as it is, unevaluated, as in
     [eval_exp_app_proof]. *)
 with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> domain -> Prop :=
 (** No argument: the function itself. *)
@@ -985,15 +1034,15 @@ with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> dom
      $| f & n | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
-(** A proof argument: [⋆ᵈ] applied, then the rest. *)
+(** A proof argument: the proof applied, kept as it is, then the rest. *)
 | eval_app_args_proof :
   `( arg_relevance Θ Ξ f = propositional ->
-     $| f & ⋆ᵈ | Θ ⍮ Ξ ↘ g ->
+     $| f & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
 (** [eval_field_vals rs Ms ρ vs]: the values [vs] of the fields [Ms] of a record
-    value, the field at the sort [propositional] in [rs] the proof [⋆ᵈ],
-    not evaluated (a sort past [rs] is relevant). *)
+    value, the field at the sort [propositional] in [rs] a proof kept as
+    it is, not evaluated (a sort past [rs] is relevant). *)
 with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> list domain -> Prop :=
 (** No field. *)
 | eval_field_vals_nil :
@@ -1004,11 +1053,11 @@ with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> 
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
      eval_field_vals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
-(** A propositional field: [⋆ᵈ], then the rest. *)
+(** A propositional field: the proof kept as it is, then the rest. *)
 | eval_field_vals_proof :
   `( List.hd relevant rs = propositional ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
-     eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ :: ms) )
+     eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ⟨M, ρ⟩ :: ms) )
 with eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
 (** No arguments. *)
 | eval_apps_nil :
@@ -1068,7 +1117,7 @@ with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 (** A closure takes it as its outermost missing parameter, in its
     environment. *)
 | eval_appm_local :
-  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ r ->
+  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_closure A ρ ↘ r ->
      $ᵐ| dm_local (Δ ++ ce_ass A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
 (** A submodule of an unsaturated module passes it to the module, then selects again. *)
 | eval_appm_member :
@@ -1112,12 +1161,12 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A definition of a saturated global module tagged a proposition,
-    transparent or not: the proof [⋆ᵈ].  Neither its body nor its type is
-    evaluated. *)
+    transparent or not: a proof, kept as the selection of the member from
+    the module.  Neither its body nor its type is evaluated. *)
 | eval_sel_global_proof :
   `( module_saturated Θ Ξ p args ->
      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
-     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ )
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, de_mod (dm_global p args) :: nil⟩ )
 (** The module of a member of a group of inductive types, as a term, in a
     saturated global module: the member's type former, applied to the
     module's arguments. *)
@@ -1148,14 +1197,15 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A definition of a saturated body tagged a proposition: the proof
-    [⋆ᵈ], its body not evaluated. *)
+(** A definition of a saturated body tagged a proposition: a proof, kept
+    as the selection of the member from the body, its body not
+    evaluated. *)
 | eval_sel_body_proof :
   `( kinds_body_xp Θ Ξ ρ Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = propositional ->
-     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ )
+     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, de_mod (dm_local nil (md_body sm Φ) ρ) :: nil⟩ )
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
@@ -1239,11 +1289,12 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 | eval_body_env_def :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m )
-(** A definition tagged a proposition, a proof, adds [⋆ᵈ], unevaluated. *)
+     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ dt_closure A ρ1 )
+(** A definition tagged a proposition, a proof, adds it kept as it is,
+    unevaluated. *)
 | eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ )
+     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ dt_closure A ρ1 )
 (** A submodule adds its unit's closure. *)
 | eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
@@ -1255,7 +1306,7 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
-     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ‖ h )
+     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ dt_closure A ρ1 ‖ h )
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_body_env Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
@@ -1327,17 +1378,36 @@ Proof. intros * <-; apply eval_exp_var. Qed.
     Evaluation of a substitution is pointwise: at every variable [x], [ρσ x]
     is the entry [σ x] denotes in [ρ]: the entry of a variable, the value of a
     term, the value of a module expression, or the values of both.  Past its end [ρσ] reads the
-    term [⋆ᵈ], so a result exists only when, from some index on, every
-    [σ x] denotes it, for example as a variable past the end of [ρ]. *)
+    placeholder, so a result exists only when, from some index on, every
+    [σ x] denotes it, for example as a variable past the end of [ρ].
+
+    Only the metatheory evaluates substitutions; NbE never does.  An
+    entry that is a term is stored at [substituted_type], the placeholder
+    type: the type of a term is not known to evaluation, and the entry's
+    type must not depend on the result environment, so that evaluation of
+    a substitution stays functional.  REVISIT: the readback of a kept
+    proof in such an environment reads those entries at the placeholder
+    type. *)
+Definition substituted_type : dtype := dt_value d_placeholder_type.
+
 Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (e : sentry) (ρ : env) (d : dentry) : Prop :=
   match e with
   | se_var y => d = env_entry ρ y
-  | se_exp M => exists m, d = de_term m /\ ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
+  | se_exp M => exists m, d = de_term m substituted_type /\ ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
   | se_mod H => exists h, d = de_mod h /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
-  | se_dm N H => exists n h, d = de_dm n h /\ ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
+  | se_dm N H => exists n h, d = de_dm n substituted_type h /\ ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
   end.
 
 Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" := (eval_sentry Θ Ξ e ρ d) : mctt_scope.
+
+(** The entry a substitution entry [e] denotes in [ρ] at a proposition:
+    the proof kept as it is, or the entry of a variable. *)
+Definition eval_sentry_proof (e : sentry) (ρ : env) (d : dentry) : Prop :=
+  match e with
+  | se_var y => d = env_entry ρ y
+  | se_exp M => d = de_term ⋆ᵈ⟨M, ρ⟩ substituted_type
+  | _ => False
+  end.
 
 (** The type of the entry [x] of a context, a term's: of an assumption, a
     definition or a definition with a module part; a module slot has
@@ -1373,27 +1443,20 @@ Record entry_propositional (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρσ : env) (x
   ; entry_propositional_prop : domain_relevance entry_propositional_value = propositional }.
 
 (** Evaluation of a substitution is directed by its target context [Δ]:
-    at an entry of [Δ] that is a proposition, the value is the proof [⋆ᵈ],
-    and the substitution's entry, a proof, is not evaluated; at every
-    other entry of [Δ], [ρσ] holds what [σ x] denotes in [ρ].  Past the
-    entries of [Δ] nothing is said: a substitution into [Δ] says nothing
-    of the indices past it.  The two cases are stated as implications, so
-    that building an evaluation needs no case analysis on whether an entry
-    is a proposition. *)
+    at an entry of [Δ] that is a proposition, the substitution's entry, a
+    proof, is kept as it is, not evaluated; at every other entry of [Δ],
+    [ρσ] holds what [σ x] denotes in [ρ].  Past the entries of [Δ] nothing
+    is said: a substitution into [Δ] says nothing of the indices past it.
+    The two cases are stated as implications, so that building an
+    evaluation needs no case analysis on whether an entry is a
+    proposition. *)
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (σ : sub) (ρ ρσ : env) : Prop :=
   forall x, x < List.length Δ ->
-    (entry_propositional Θ Ξ Δ ρσ x -> env_entry ρσ x = de_term ⋆ᵈ)
+    (entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof (σ x) ρ (env_entry ρσ x))
     /\ (~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x).
 Arguments eval_sub : simpl never.
 
 Notation "'⟦' σ ':' Δ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" := (eval_sub Θ Ξ Δ σ ρ ρσ) : mctt_scope.
-
-(** An environment [ρ] of [Δ] holds [⋆ᵈ] at each of [Δ]'s propositional
-    entries: relevance-directed evaluation only ever builds such
-    environments.  It is the condition under which the identity evaluates
-    to [ρ]. *)
-Definition env_proofs (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρ : env) : Prop :=
-  forall x, entry_propositional Θ Ξ Δ ρ x -> env_entry ρ x = de_term ⋆ᵈ.
 
 (** The tail of an environment past [n] entries reads its entries from
     [n] on. *)
@@ -1460,7 +1523,7 @@ Qed.
 
 (** The two cases of an evaluation of a substitution at an index. *)
 Lemma eval_sub_at_prop : forall {Θ Ξ} Δ σ ρ ρσ x,
-    ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> entry_propositional Θ Ξ Δ ρσ x -> env_entry ρσ x = de_term ⋆ᵈ.
+    ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof (σ x) ρ (env_entry ρσ x).
 Proof. intros * H Hp; exact (proj1 (H x (entry_propositional_lt _ _ _ Hp)) Hp). Qed.
 
 Proposition eval_sub_index : forall {Θ Ξ} Δ σ (ρ ρσ : env),
@@ -1468,26 +1531,19 @@ Proposition eval_sub_index : forall {Θ Ξ} Δ σ (ρ ρσ : env),
     forall x, x < List.length Δ -> ~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x.
 Proof. intros * H x Hx; apply (H x Hx). Qed.
 
-(** The identity evaluates to an environment holding its proofs. *)
-Lemma eval_sub_id : forall {Θ Ξ} Δ ρ, env_proofs Θ Ξ Δ ρ -> ⟦ Id : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ.
-Proof. intros * H x _; split; [ apply H | intros _; reflexivity ]. Qed.
+(** The identity evaluates to the environment itself. *)
+Lemma eval_sub_id : forall {Θ Ξ} Δ ρ, ⟦ Id : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ.
+Proof. intros * x _; split; intros _; reflexivity. Qed.
 
-(** The tail of an environment holding its proofs holds its tail's. *)
-Lemma env_proofs_drop : forall {Θ Ξ} e Δ ρ, env_proofs Θ Ξ (e :: Δ) ρ -> env_proofs Θ Ξ Δ ρ↯.
-Proof. intros * H x Hx; rewrite env_entry_drop; apply H; exact (proj2 (entry_propositional_succ _ _ _ _) Hx). Qed.
-
-(** The shift evaluates to the tail of an environment holding its
-    proofs. *)
-Lemma eval_sub_shift : forall {Θ Ξ} e Δ ρ, env_proofs Θ Ξ (e :: Δ) ρ -> ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ↯.
-Proof.
-  intros * H x _; split; [ apply (env_proofs_drop _ _ _ H) | intros _; reflexivity ].
-Qed.
+(** The shift evaluates to the tail. *)
+Lemma eval_sub_shift : forall {Θ Ξ} Δ ρ, ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ↯.
+Proof. intros * x _; split; intros _; reflexivity. Qed.
 
 (** The head entry of [e :: Δ] is a proposition over the tail [ρσ] of
     [Δ]: its type evaluates there, up to agreement on the entries of [Δ], to
     a proposition.  It does not depend on the head of the environment. *)
 Definition head_propositional (Θ : gdeps) (Ξ : gstack) (e : centry) (Δ : ctx) (ρσ : env) : Prop :=
-  entry_propositional Θ Ξ (e :: Δ) (de_term d_placeholder :: ρσ) 0.
+  entry_propositional Θ Ξ (e :: Δ) (placeholder_entry :: ρσ) 0.
 
 Lemma entry_propositional_head : forall {Θ Ξ} e Δ d ρσ,
     entry_propositional Θ Ξ (e :: Δ) (d :: ρσ) 0 <-> head_propositional Θ Ξ e Δ ρσ.
@@ -1499,7 +1555,7 @@ Lemma eval_sub_extend : forall {Θ Ξ} e Δ σ ρ ρσ M m,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
+    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ substituted_type.
 Proof.
   intros * H Hn HM [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
@@ -1509,31 +1565,15 @@ Proof.
            | intros Hp; apply (H x ltac:(lia)); intros Hp'; exact (Hp (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
-(** An extension at an entry that is a proposition: the proof [⋆ᵈ], the
-    entry unevaluated. *)
+(** An extension at an entry that is a proposition: the term kept as it
+    is, unevaluated. *)
 Lemma eval_sub_extend_proof : forall {Θ Ξ} e Δ σ ρ ρσ M,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     head_propositional Θ Ξ e Δ ρσ ->
-    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ⋆ᵈ.
+    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ substituted_type.
 Proof.
   intros * H Hp [| x] Hx.
   - split; [ reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
-  - cbn [List.length] in Hx.
-    split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
-           | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
-Qed.
-
-(** An extension by a term whose value is the proof [⋆ᵈ] whenever the
-    entry is a proposition: either way the term's value. *)
-Lemma eval_sub_extend_any : forall {Θ Ξ} e Δ σ ρ ρσ M m,
-    ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    (head_propositional Θ Ξ e Δ ρσ -> m = ⋆ᵈ) ->
-    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
-Proof.
-  intros * H HM Hp [| x] Hx.
-  - split; [ intros Hx0; cbn; rewrite (Hp (proj1 (entry_propositional_head _ _ _ _) Hx0)); reflexivity
-           | intros _; exists m; split; [ reflexivity | assumption ] ].
   - cbn [List.length] in Hx.
     split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
@@ -1559,7 +1599,7 @@ Lemma eval_sub_extend_dm : forall {Θ Ξ} e Δ σ ρ ρσ N H n h,
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ‖ h.
+    ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ⦂ substituted_type ‖ h.
 Proof.
   intros * Hσ Hn HN HH [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
@@ -1570,38 +1610,34 @@ Proof.
 Qed.
 
 Corollary eval_sub_single_dm : forall {Θ Ξ} e Δ ρ N H n h,
-    env_proofs Θ Ξ Δ ρ ->
     ~ head_propositional Θ Ξ e Δ ρ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵈ n ‖ h.
+    ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵈ n ⦂ substituted_type ‖ h.
 Proof.
-  intros; apply eval_sub_extend_dm; [ apply eval_sub_id; assumption | assumption .. ].
+  intros; apply eval_sub_extend_dm; [ apply eval_sub_id | assumption .. ].
 Qed.
 
 Corollary eval_sub_single : forall {Θ Ξ} e Δ ρ M m,
-    env_proofs Θ Ξ Δ ρ ->
     ~ head_propositional Θ Ξ e Δ ρ ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ m.
+    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ m ⦂ substituted_type.
 Proof.
-  intros; apply eval_sub_extend; [ apply eval_sub_id; assumption | assumption .. ].
+  intros; apply eval_sub_extend; [ apply eval_sub_id | assumption .. ].
 Qed.
 
 Corollary eval_sub_single_proof : forall {Θ Ξ} e Δ ρ M,
-    env_proofs Θ Ξ Δ ρ ->
     head_propositional Θ Ξ e Δ ρ ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ ⋆ᵈ.
+    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ substituted_type.
 Proof.
-  intros; apply eval_sub_extend_proof; [ apply eval_sub_id; assumption | assumption ].
+  intros; apply eval_sub_extend_proof; [ apply eval_sub_id | assumption ].
 Qed.
 
 Corollary eval_sub_single_mod : forall {Θ Ξ} U Δ ρ H h,
-    env_proofs Θ Ξ Δ ρ ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
     ⟦ Id ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵐ h.
 Proof.
-  intros; apply eval_sub_extend_mod; [ apply eval_sub_id; assumption | assumption ].
+  intros; apply eval_sub_extend_mod; [ apply eval_sub_id | assumption ].
 Qed.
 
 (** The variables of a term and of a module expression read the entry their
@@ -1645,9 +1681,9 @@ Proof.
   intros Θ Ξ Δ σ σ' Hσ ρ ρ0 <- ρσ ρσ' Hρσ.
   assert (Hρσ' : env_eq ρσ' ρσ) by (intros y; symmetry; apply Hρσ).
   split; intros H x Hx; (split; [ intros Hp | intros Hn ]).
-  - rewrite <- (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
+  - rewrite <- (Hσ x), <- (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
   - rewrite <- (Hσ x), <- (Hρσ x); apply (proj2 (H x Hx)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
+  - rewrite (Hσ x), (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
   - rewrite (Hσ x), (Hρσ x); apply (proj2 (H x Hx)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
 Qed.
 
@@ -1660,21 +1696,18 @@ Qed.
     - weakened extensions and lifts;
     - precomposition by a weakening. *)
 (** A substitution of variables evaluates to the environment its
-    variables read, when the entries that are propositions read proofs. *)
+    variables read. *)
 Lemma eval_sub_of_vars : forall {Θ Ξ} Δ σ ρ ρσ,
     (forall x, exists y, σ x = se_var y /\ env_entry ρσ x = env_entry ρ y) ->
-    env_proofs Θ Ξ Δ ρσ ->
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ.
 Proof.
-  intros * Hv Hp x _; split; [ apply Hp | intros _ ].
-  destruct (Hv x) as (y & -> & ->); reflexivity.
+  intros * Hv x _; destruct (Hv x) as (y & Hσ & Hy); rewrite Hσ; cbn; split; intros _; exact Hy.
 Qed.
 
 Lemma eval_sub_of_wk : forall {Θ Ξ} Δ φ ρ `{Hφ : WkMono φ},
-    env_proofs Θ Ξ Δ (⟪φ⟫ ρ) ->
     ⟦ ι φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ⟪φ⟫ ρ.
 Proof.
-  intros Θ Ξ Δ φ ρ Hφ Hp; apply eval_sub_of_vars; [| exact Hp ].
+  intros Θ Ξ Δ φ ρ Hφ; apply eval_sub_of_vars.
   intros x; exists (φ x); split; [ reflexivity | apply (eval_wk_entry _ _ Hφ x) ].
 Qed.
 
@@ -1683,7 +1716,7 @@ Lemma eval_sub_wk_extend : forall {Θ Ξ} e Δ σ M φ ρ ρσ m,
     ⟦ sb_wk σ φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ M[φ]ʷ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
+    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ substituted_type.
 Proof.
   intros * H Hn HM [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
@@ -1697,11 +1730,10 @@ Qed.
     variable [0], so its head is the entry already in [ρ]. *)
 Lemma eval_sub_q : forall {Θ Ξ} e Δ σ ρ ρσ,
     ⟦ sb_wk σ ↑ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    (head_propositional Θ Ξ e Δ ρσ -> env_entry ρ 0 = de_term ⋆ᵈ) ->
     ⟦ q σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρ 0 :: ρσ.
 Proof.
-  intros * H Hp [| x] Hx.
-  - split; [ intros Hp'; exact (Hp (proj1 (entry_propositional_head _ _ _ _) Hp')) | intros _; reflexivity ].
+  intros * H [| x] Hx.
+  - split; intros _; reflexivity.
   - cbn [List.length] in Hx; split.
     + intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
     + intros Hn; exact (proj2 (H x ltac:(lia)) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
@@ -1709,12 +1741,10 @@ Qed.
 
 Lemma eval_sub_wk_q : forall {Θ Ξ} e Δ σ φ ρ ρσ,
     ⟦ sb_wk (sb_wk σ ↑) φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    (head_propositional Θ Ξ e Δ ρσ -> env_entry ρ (φ 0) = de_term ⋆ᵈ) ->
     ⟦ sb_wk (q σ) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρ (φ 0) :: ρσ.
 Proof.
-  intros * H Hp [| x] Hx.
-  - split; [ intros Hp'; exact (Hp (proj1 (entry_propositional_head _ _ _ _) Hp'))
-           | intros _; cbn [sb_wk]; rewrite sb_q_zero; reflexivity ].
+  intros * H [| x] Hx.
+  - split; intros _; cbn [sb_wk]; rewrite sb_q_zero; reflexivity.
   - cbn [List.length] in Hx; split.
     + intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
     + intros Hn; exact (proj2 (H x ltac:(lia)) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).

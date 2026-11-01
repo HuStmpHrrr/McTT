@@ -142,10 +142,8 @@ Fact exp_sub_llit : forall σ o, (𝕃ᵒ o)[σ] = 𝕃ᵒ o.        Proof. refl
 Fact exp_sub_succl : forall σ M, (succl M)[σ] = succl M[σ]. Proof. reflexivity. Qed.
 Fact exp_sub_maxl : forall σ M N, (maxl M N)[σ] = maxl M[σ] N[σ]. Proof. reflexivity. Qed.
 Fact exp_wk_True : forall φ, ⊤[φ]ʷ = ⊤.                  Proof. reflexivity. Qed.
-Fact exp_wk_true : forall φ, ⋆[φ]ʷ = ⋆.                  Proof. reflexivity. Qed.
 Fact exp_wk_False : forall φ, ⊥[φ]ʷ = ⊥.                 Proof. reflexivity. Qed.
 Fact exp_sub_True : forall σ, ⊤[σ] = ⊤.                 Proof. reflexivity. Qed.
-Fact exp_sub_true : forall σ, ⋆[σ] = ⋆.                 Proof. reflexivity. Qed.
 Fact exp_sub_False : forall σ, ⊥[σ] = ⊥.                Proof. reflexivity. Qed.
 
 (** The heads that do meet a binder.  Kept out of the databases above: pushing
@@ -1633,8 +1631,8 @@ Hint Rewrite -> wk_id_var wk_shift_var wk_q_zero wk_q_succ
                 exp_wk_var exp_sub_var
                 exp_wk_typ
                 exp_sub_typ
-                exp_wk_True exp_wk_true exp_wk_False
-                exp_sub_True exp_sub_true exp_sub_False
+                exp_wk_True exp_wk_False
+                exp_sub_True exp_sub_False
                 exp_wk_level exp_wk_llit exp_wk_succl exp_wk_maxl
                 exp_sub_level exp_sub_llit exp_sub_succl exp_sub_maxl
                 exp_wk_id exp_sub_id exp_wk_wk exp_sub_sub

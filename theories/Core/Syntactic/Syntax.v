@@ -2098,6 +2098,43 @@ with ne_erase (M : ne) : ne :=
   | ne_proj f M => ne_proj f (ne_erase M)
   end.
 
+(** Erasing twice is erasing once. *)
+Lemma nf_ne_erase_idem :
+  (forall W, nf_erase (nf_erase W) = nf_erase W) /\ (forall M, ne_erase (ne_erase M) = ne_erase M).
+Proof.
+  apply nf_ne_ind; intros; cbn [nf_erase ne_erase]; f_equal; try assumption; rewrite ?List.map_map;
+    try (eapply list_all_map_ext; [ eassumption |]);
+    first [ intros x Hx; exact Hx
+          | intros x Hx; destruct Hx; unfold map_level_atom; cbn; f_equal; assumption
+          | intros x Hx; destruct Hx as [n' A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ assumption |];
+            rewrite List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
+            intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; assumption
+          | reflexivity ].
+Qed.
+
+Lemma ne_erase_idem : forall M, ne_erase (ne_erase M) = ne_erase M.
+Proof. apply nf_ne_erase_idem. Qed.
+
+Lemma nf_erase_idem : forall W, nf_erase (nf_erase W) = nf_erase W.
+Proof. apply nf_ne_erase_idem. Qed.
+
+(** Erasure keeps a normal form clean: cleanness does not look at proofs. *)
+Lemma nf_ne_clean_erase : (forall W, nf_clean W -> nf_clean (nf_erase W)) /\ (forall M, ne_clean M -> ne_clean (ne_erase M)).
+Proof.
+  apply nf_ne_ind; intros; cbn [nf_erase ne_erase nf_clean ne_clean] in *; intuition auto;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end;
+    rewrite ?all_list_map; try split; auto;
+    try (eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy;
+         first [ solve [ destruct Hx as [n' A HA brs Hbrs]; cbn in *; destruct Hy as [HyA Hybrs]; split; auto;
+                         rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
+                         intros br Hbr Hy'; destruct Hbr; cbn in *; auto ]
+               | solve [ destruct Hx; cbn in *; auto ]
+               | auto ]).
+Qed.
+
+Lemma ne_clean_erase : forall M, ne_clean M -> ne_clean (ne_erase M).
+Proof. apply nf_ne_clean_erase. Qed.
+
 (** Two normal forms are equal up to their proofs. *)
 Definition nf_equal_up_to_proofs (W W' : nf) : Prop := nf_erase W = nf_erase W'.
 

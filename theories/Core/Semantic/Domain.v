@@ -101,21 +101,20 @@ Inductive domain : Set :=
     with the blocks [Bks] in [ρ], at the group's uniform parameters
     [ups]. *)
 | d_ihfn : list dentry -> list eblock -> qname -> list domain -> ptyp -> nat -> domain -> domain
-(** [d_shfam p ups ρ t]: the codomain of the type of an argument of a
-    function shape, whose shape after the first domain is [t]: applied to
-    [c], the type of shape [t] in [ρ] extended by [c], at the uniform
-    parameters [ups] of the group at [p].  A [Π] whose codomain is
-    [#1 $ #0] in the environment of this family is the type of such an
-    argument. *)
-| d_shfam : qname -> list domain -> list dentry -> ptyp -> domain
-(** [d_ihfam ρm As p ups ρ t i f]: the codomain of the type of the [i]-th
-    recursive result of an argument [f] of a function shape, whose shape
-    after the first domain is [t]: applied to [c], the type of the [i]-th
-    recursive result of shape [t] at [f c], the motives [As] of the members
-    in [ρm], the shape's components in [ρ] extended by [c], the group at
-    [p] at the uniform parameters [ups] (whose record views' components are
-    over them). *)
-| d_ihfam : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> nat -> domain -> domain
+(** [d_shfam p ups ρ B t]: the codomain of the type of an argument of a
+    function shape [pt_pi B t]: applied to [c], the type of shape [t] in
+    [ρ] extended by [c], of the type [B] in [ρ], at the uniform parameters
+    [ups] of the group at [p].  A [Π] whose codomain is [#1 $ #0] in the
+    environment of this family is the type of such an argument. *)
+| d_shfam : qname -> list domain -> list dentry -> exp -> ptyp -> domain
+(** [d_ihfam ρm As p ups ρ B t i f]: the codomain of the type of the
+    [i]-th recursive result of an argument [f] of a function shape
+    [pt_pi B t]: applied to [c], the type of the [i]-th recursive result of
+    shape [t] at [f c], the motives [As] of the members in [ρm], the
+    shape's components in [ρ] extended by [c], of the type [B] in [ρ], the
+    group at [p] at the uniform parameters [ups] (whose record views'
+    components are over them). *)
+| d_ihfam : list dentry -> list exp -> qname -> list domain -> list dentry -> exp -> ptyp -> nat -> domain -> domain
 (** [d_record p ns]: the type former of the record at [p] applied to
     [ns]; a type once [ns] holds all its parameters, a function before *)
 | d_record : qname -> list domain -> domain
@@ -165,7 +164,14 @@ with dtype : Set :=
 (** A type value *)
 | dt_value : domain -> dtype
 (** [dt_closure A ρ]: the type [A] in [ρ], not yet evaluated *)
-| dt_closure : exp -> list dentry -> dtype.
+| dt_closure : exp -> list dentry -> dtype
+(** [dt_shape p ups ρ t]: the type of a recursive argument of shape [t] in
+    [ρ], at the uniform parameters [ups] of the group at [p] *)
+| dt_shape : qname -> list domain -> list dentry -> ptyp -> dtype
+(** [dt_ihty ρm As p ups ρ t v i]: the type of the [i]-th recursive result
+    of an argument [v] of shape [t], its components in [ρ], the motives [As]
+    in [ρm], the group at [p] at [ups] *)
+| dt_ihty : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> domain -> nat -> dtype.
 
 Abbreviation env := (list dentry).
 
@@ -175,12 +181,16 @@ Derive NoConfusion for domain domain_ne domain_nf dmod dentry.
     and their entries under a selection, which needs these. *)
 Derive NoConfusion for gmod gentry.
 
+(** The entry past the end of an environment: the placeholder, at its
+    type. *)
+Definition placeholder_entry : dentry := de_term d_placeholder (dt_value d_placeholder_type).
+
 (** The entry of the variable [#x], or the placeholder past the end of the
     list.  [env_entry] is [nth], but defined by recursion on the index so that
     [ρ↯ x] is [ρ (S x)] by conversion. *)
 Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
   match x with
-  | 0 => List.hd (de_term d_placeholder) ρ
+  | 0 => List.hd placeholder_entry ρ
   | S x' => env_entry (List.tl ρ) x'
   end.
 
@@ -193,44 +203,82 @@ Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
 
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
-  | de_term d => d
+  | de_term d _ => d
   | de_mod _ => d_placeholder
-  | de_dm d _ => d
+  | de_dm d _ _ => d
   end.
 #[warning="-uniform-inheritance"]
 Coercion env_var : list >-> Funclass.
 
+(** The type the entry of [#x] is stored at. *)
+Definition env_type (ρ : env) (x : nat) : dtype :=
+  match env_entry ρ x with
+  | de_term _ t => t
+  | de_mod _ => dt_value d_placeholder_type
+  | de_dm _ t _ => t
+  end.
+
 Definition env_mod (ρ : env) (x : nat) : dmod :=
   match env_entry ρ x with
   | de_mod m => m
-  | de_term _ => dm_default
-  | de_dm _ m => m
+  | de_term _ _ => dm_default
+  | de_dm _ _ m => m
   end.
 
-Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ (de_term d_placeholder).
+Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ placeholder_entry.
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
 Lemma env_var_nth : forall ρ x,
-    env_var ρ x = match List.nth x ρ (de_term d_placeholder) with de_term d | de_dm d _ => d | de_mod _ => d_placeholder end.
+    env_var ρ x = match List.nth x ρ placeholder_entry with de_term d _ | de_dm d _ _ => d | de_mod _ => d_placeholder end.
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
-Definition extend_env (ρ : env) (d : domain) : env := de_term d :: ρ.
-Arguments extend_env _ _ /.
+(** The environment extended by a value [d] of the type [t]. *)
+Definition extend_env (ρ : env) (d : domain) (t : dtype) : env := de_term d t :: ρ.
+Arguments extend_env _ _ _ /.
 
 Definition extend_env_mod (ρ : env) (m : dmod) : env := de_mod m :: ρ.
 Arguments extend_env_mod _ _ /.
 
 (** The environment extended by a definition with a module part. *)
-Definition extend_env_dm (ρ : env) (d : domain) (m : dmod) : env := de_dm d m :: ρ.
-Arguments extend_env_dm _ _ _ /.
+Definition extend_env_dm (ρ : env) (d : domain) (t : dtype) (m : dmod) : env := de_dm d t m :: ρ.
+Arguments extend_env_dm _ _ _ _ /.
 
-(** The environment extended by arguments, outermost first, as a unit's
-    parameters are. *)
-Definition env_args (ρ : env) (args : list domain) : env :=
-  List.fold_left extend_env args ρ.
+(** The environment extended by values at their types, outermost first. *)
+Definition env_typed (ρ : env) (vts : list (domain * dtype)) : env :=
+  List.fold_left (fun ρ vt => extend_env ρ (fst vt) (snd vt)) vts ρ.
 
-Lemma env_args_app : forall ρ vs ws, env_args ρ (vs ++ ws) = env_args (env_args ρ vs) ws.
-Proof. intros; unfold env_args; rewrite List.fold_left_app; reflexivity. Qed.
+Lemma env_typed_app : forall ρ vs ws, env_typed ρ (vs ++ ws) = env_typed (env_typed ρ vs) ws.
+Proof. intros; unfold env_typed; rewrite List.fold_left_app; reflexivity. Qed.
+
+(** The type an entry of a telescope gives its variable. *)
+Definition centry_type (e : centry) : exp :=
+  match e with
+  | ce_ass A | ce_def A _ | ce_dm A _ _ => A
+  | ce_mod _ => a_placeholder_type
+  end.
+
+(** The type the head of a telescope gives a variable over [ρ], and the
+    placeholder type past its end. *)
+Definition tele_head_type (ρ : env) (T : list centry) : dtype :=
+  match T with
+  | e :: _ => dt_closure (centry_type e) ρ
+  | nil => dt_value d_placeholder_type
+  end.
+
+(** The values [vs] at the telescope [T], outermost first, with their
+    types: each the type its entry gives, as a closure in [ρ] extended by
+    the values before it.  Every value is kept: one past the end of [T] is
+    at the placeholder type. *)
+Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (domain * dtype) :=
+  match vs with
+  | nil => nil
+  | v :: vs' => (v, tele_head_type ρ T) :: tele_entries (extend_env ρ v (tele_head_type ρ T)) (List.tl T) vs'
+  end.
+
+(** The environment [ρ] extended by the values [vs] at the telescope [T],
+    outermost first, as a unit's parameters are: the types are closures in
+    the environment extended so far. *)
+Definition env_tele (ρ : env) (T : list centry) (vs : list domain) : env := env_typed ρ (tele_entries ρ T vs).
 
 Definition drop_env (ρ : env) : env := List.tl ρ.
 Arguments drop_env _ /.
@@ -258,7 +306,7 @@ Module Domain_Notations.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
   Notation "'Propᵈ'" := d_prop : mctt_scope.
   Notation "'⊤ᵈ'" := d_True : mctt_scope.
-  Notation "'⋆ᵈ'" := d_true : mctt_scope.
+  Notation "'⋆ᵈ⟨' M ',' ρ '⟩'" := (d_proof M ρ) (at level 1, M at level 200, ρ at level 200, format "'⋆ᵈ⟨' M ,  ρ '⟩'") : mctt_scope.
   Notation "'⊥ᵈ'" := d_False : mctt_scope.
   Notation "'λᵈ' a ρ M" := (d_fn a ρ M) (at level 2, a at level 1, ρ at level 1, M at level 9) : mctt_scope.
   Notation "'∀ₚᵈ' a ρ P" := (d_pi propositional a ρ P) (at level 2, a at level 1, ρ at level 0, P at level 9) : mctt_scope.
@@ -268,11 +316,11 @@ Module Domain_Notations.
   Notation "'⇓' a m" := (d_dom a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇑!' a n" := (d_neut a (d_var n)) (at level 2, a at level 1, n at level 0) : mctt_scope.
   Notation "m '$ᵈ' n" := (d_app m n) (at level 10, left associativity, format "m  $ᵈ  n") : mctt_scope.
-  Notation "'efqᵈ' c" := (d_absurd c) (at level 2, c at level 60) : mctt_scope.
+  Notation "'efqᵈ' p 'return' c" := (d_absurd c p) (at level 2, p at level 60, c at level 60) : mctt_scope.
 
-  Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
+  Notation "ρ ↦ m ⦂ t" := (extend_env ρ m t) (at level 20, left associativity, m at next level, t at next level) : mctt_scope.
   Notation "ρ '↦ᵐ' m" := (extend_env_mod ρ m) (at level 20, left associativity) : mctt_scope.
-  Notation "ρ '↦ᵈ' d ‖ m" := (extend_env_dm ρ d m) (at level 20, left associativity, d at next level) : mctt_scope.
+  Notation "ρ '↦ᵈ' d ⦂ t ‖ m" := (extend_env_dm ρ d t m) (at level 20, left associativity, d at next level, t at next level) : mctt_scope.
 End Domain_Notations.
 
 (** The value of the universe at an index, at either tier. *)
@@ -386,16 +434,20 @@ Qed.
 Import Domain_Notations.
 
 (** The two projections of an extended environment. *)
-Proposition drop_env_extend_env_cancel : forall ρ a,
-    (ρ ↦ a)↯ = ρ.
+Proposition drop_env_extend_env_cancel : forall ρ a t,
+    (ρ ↦ a ⦂ t)↯ = ρ.
 Proof. reflexivity. Qed.
 
-Proposition extend_env_zero_cancel : forall ρ a,
-    env_var (ρ ↦ a) 0 = a.
+Proposition extend_env_zero_cancel : forall ρ a t,
+    env_var (ρ ↦ a ⦂ t) 0 = a.
 Proof. reflexivity. Qed.
 
-Proposition extend_env_succ : forall ρ a x,
-    env_var (ρ ↦ a) (S x) = env_var ρ x.
+Proposition extend_env_zero_type : forall ρ a t,
+    env_type (ρ ↦ a ⦂ t) 0 = t.
+Proof. reflexivity. Qed.
+
+Proposition extend_env_succ : forall ρ a t x,
+    env_var (ρ ↦ a ⦂ t) (S x) = env_var ρ x.
 Proof. reflexivity. Qed.
 
 Proposition env_var_drop : forall ρ x, env_var ρ↯ x = env_var ρ (S x).
@@ -439,8 +491,8 @@ Instance env_eq_Equivalence : Equivalence env_eq.
 Proof. split; [ intros ? ? | intros ? ? ? ? | intros ? ? ? ? ? ? ]; congruence. Qed.
 
 #[export]
-Instance extend_env_Proper : Proper (env_eq ==> eq ==> env_eq) extend_env.
-Proof. intros ρ ρ' Hρ d d' <- [| n]; [ reflexivity | apply Hρ ]. Qed.
+Instance extend_env_Proper : Proper (env_eq ==> eq ==> eq ==> env_eq) extend_env.
+Proof. intros ρ ρ' Hρ d d' <- t t' <- [| n]; [ reflexivity | apply Hρ ]. Qed.
 
 (** ** Agreement on a Prefix
 
@@ -588,7 +640,7 @@ Proof.
   rewrite List.seq_nth, env_entry_nth by assumption; reflexivity.
 Qed.
 
-Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = de_term d_placeholder.
+Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = placeholder_entry.
 Proof.
   intros; rewrite env_entry_nth; apply List.nth_overflow; assumption.
 Qed.
@@ -613,7 +665,7 @@ Proof. intros * Hφ x; unfold env_mod; rewrite eval_wk_entry by assumption; refl
 Lemma env_ext : forall ρ ρ', List.length ρ = List.length ρ' ->
     (forall x, x < List.length ρ -> env_entry ρ x = env_entry ρ' x) -> ρ = ρ'.
 Proof.
-  intros * Hl H; apply (List.nth_ext _ _ (de_term d_placeholder) (de_term d_placeholder)); [ assumption |].
+  intros * Hl H; apply (List.nth_ext _ _ placeholder_entry placeholder_entry); [ assumption |].
   intros; rewrite <- !env_entry_nth; auto.
 Qed.
 

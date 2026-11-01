@@ -1216,7 +1216,7 @@ Definition ind_sort_lvl (S : typ) : exp :=
     above it. *)
 Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_true | a_tt | a_False
+  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False
   | a_placeholder_type | a_placeholder => True
   | a_succl M | a_univ M | a_left M | a_right M => exp_mvc n M
   | a_maxl M N | a_absurd M N => exp_mvc n M /\ exp_mvc n N
@@ -1245,7 +1245,7 @@ with modexp_mvc (n : nat) (H : modexp) : Prop :=
   end
 with binding_mvc (n : nat) (b : binding) : Prop :=
   match b with
-  | b_def oA M => match oA with Some A => exp_mvc n A | None => True end /\ exp_mvc n M
+  | b_def A M => exp_mvc n A /\ exp_mvc n M
   | b_mod U => gunit_mvc n U
   end
 with gunit_mvc (n : nat) (U : gunit) : Prop :=
