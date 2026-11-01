@@ -58,6 +58,9 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ ⊤ p )
 | eval_exp_order_true :
   `( eval_exp_order Θ Ξ ⋆ p )
+(** The introduction of [⊤] evaluates at once. *)
+| eval_exp_order_tt :
+  `( eval_exp_order Θ Ξ a_tt p )
 | eval_exp_order_False :
   `( eval_exp_order Θ Ξ ⊥ p )
 (** [efq]: its type only; its proof is not evaluated *)
@@ -1196,6 +1199,7 @@ Section EvalImpl.
   | Propₘ , p, H => exist _ Propᵈ _
   | ⊤     , p, H => exist _ ⊤ᵈ _
   | ⋆     , p, H => exist _ ⋆ᵈ _
+  | a_tt  , p, H => exist _ ⋆ᵈ _
   | ⊥     , p, H => exist _ ⊥ᵈ _
   (** [efq]: stuck at its type, its proof not evaluated *)
   | efq M return C, p, H =>

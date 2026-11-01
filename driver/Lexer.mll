@@ -63,9 +63,14 @@
     | OMEGA2 _ -> "\xcf\x89^2"
     | NAT _ -> "\xe2\x84\x95"
     | TRUE_TY _ -> "\xe2\x8a\xa4"
-    | TRUE _ -> "\xe2\x8b\x86"
+    | TRUE _ -> "true"
     | FALSE_TY _ -> "\xe2\x8a\xa5"
     | EXFALSO _ -> "exfalso"
+    | PROP _ -> "Prop"
+    | AND_TY _ -> "\xe2\x88\xa7"
+    | CONJ _ -> "conj"
+    | LEFT _ -> "left"
+    | RIGHT _ -> "right"
     | INT (_, i) -> string_of_int i
     | TYPE _ -> "Type"
     | VAR (_, s) -> s
@@ -131,6 +136,11 @@
     | TRUE r
     | FALSE_TY r
     | EXFALSO r
+    | PROP r
+    | AND_TY r
+    | CONJ r
+    | LEFT r
+    | RIGHT r
     | TYPE r
     | EOF r
     | INT (r, _)
@@ -190,8 +200,9 @@ let utf8 = ['\xc0'-'\xf7'] ['\x80'-'\xbf']*
 (* Each Unicode spelling below is an alternative to an ASCII one and lexes to
    the same token, as its UTF-8 bytes:
      →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ›  ::
-     ⊤  True    ⊥  False   ⋆  true       ω  omega
+     ⊤  True    ⊥  False   ∧  /\         ω  omega
      ·  *       ω^2  omega^2
+   [⋆], the proof normal forms print, is no token: [true] is written.
    [ℕ], the type bound as [builtin natural], has no ASCII spelling: [Nat] is
    an ordinary name.  Identifiers are ASCII, so [λx] is [λ] then [x], and no symbol needs a
    space around it. *)
@@ -243,10 +254,20 @@ rule read =
   | "True" { TRUE_TY (get_range lexbuf) }
   | "\xe2\x8a\xa4" { TRUE_TY (wide lexbuf 3) }
   | "true" { TRUE (get_range lexbuf) }
-  | "\xe2\x8b\x86" { TRUE (wide lexbuf 3) }
+  (* [⋆] is the proof that normal forms print, not a term a program writes. *)
+  | "\xe2\x8b\x86"
+    { raise (Error (Format.asprintf
+                      "\"\xe2\x8b\x86\" at %a is the proof a normal form prints and cannot be written: the proof of True is \"true\""
+                      format_position lexbuf.lex_start_p)) }
   | "False" { FALSE_TY (get_range lexbuf) }
   | "\xe2\x8a\xa5" { FALSE_TY (wide lexbuf 3) }
   | "exfalso" { EXFALSO (get_range lexbuf) }
+  | "Prop" { PROP (get_range lexbuf) }
+  | "/\\" { AND_TY (get_range lexbuf) }
+  | "\xe2\x88\xa7" { AND_TY (wide lexbuf 3) }
+  | "conj" { CONJ (get_range lexbuf) }
+  | "left" { LEFT (get_range lexbuf) }
+  | "right" { RIGHT (get_range lexbuf) }
   | ['0'-'9']+ as lxm { INT (get_range lexbuf, int_of_string lxm) }
   | "Type" { TYPE (get_range lexbuf) }
   | eof { EOF (get_range lexbuf) }

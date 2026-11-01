@@ -535,6 +535,8 @@ Section type_check.
   | type_infer_order_prop : type_infer_order Propₘ
   | type_infer_order_True : type_infer_order ⊤
   | type_infer_order_true : type_infer_order ⋆
+  (** The introduction of [⊤] recurses on nothing *)
+  | type_infer_order_tt : type_infer_order a_tt
   | type_infer_order_False : type_infer_order ⊥
   (** Ex falso infers its target and checks its proof *)
   | type_infer_order_absurd : forall {C M}, type_infer_order C -> type_check_order M -> type_infer_order (efq M return C)

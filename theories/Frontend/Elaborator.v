@@ -260,12 +260,30 @@ Fixpoint elab (S : list scope_entry) (o : Cst.expression) {struct o} : elab_resu
   | Cst.nat => elab_success ℕ
   | Cst.num n => elab_success (a_nlit n)
   | Cst.true_ty => elab_success ⊤
-  | Cst.true_tm => elab_success ⋆
+  | Cst.true_tm => elab_success a_tt
   | Cst.false_ty => elab_success ⊥
-  | Cst.exfalso om mx oA =>
+  | Cst.exfalso om oA =>
       let* M := elab S om in
       let* A := elab S oA in
       elab_success (efq M return A)
+  | Cst.prop => elab_success Propₘ
+  | Cst.and_ty x oP oQ =>
+      let* P := elab S oP in
+      let* Q := elab (scope_entry_tvar x :: S) oQ in
+      elab_success (Σₚ P Q)
+  (* The second proposition is the placeholder, which the typed pass
+     fills with the type the second component infers. *)
+  | Cst.and_intro om oP on =>
+      let* M := elab S om in
+      let* P := elab S oP in
+      let* N := elab S on in
+      elab_success (a_conj (Σₚ P a_placeholder) M N)
+  | Cst.and_left om =>
+      let* M := elab S om in
+      elab_success (a_left M)
+  | Cst.and_right om =>
+      let* M := elab S om in
+      elab_success (a_right M)
   | Cst.pi x oA oB =>
       let* A := elab S oA in
       let* B := elab (scope_entry_tvar x :: S) oB in

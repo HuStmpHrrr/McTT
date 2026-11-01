@@ -65,7 +65,7 @@ Fixpoint all_blocksb {A : Set} (f : nat -> option A -> A -> list (string * nat *
 Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   match M with
   | a_typ _ | a_level _ | a_llit _
-  | a_prop | a_True | a_true | a_False | a_placeholder_type | a_placeholder => true
+  | a_prop | a_True | a_true | a_tt | a_False | a_placeholder_type | a_placeholder => true
   | a_univ M | a_succl M | a_left M | a_right M => exp_freshb k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_freshb k M && exp_freshb k N
   | a_conj T M N => exp_freshb k T && exp_freshb k M && exp_freshb k N
@@ -181,7 +181,7 @@ Proof.
            (fun e => forall k, centry_freshb k e = true -> centry_fresh k e)).
   (** An eliminator: its uniform parameters, then its blocks, part by
       part, then its scrutinee. *)
-  22: { intros r oq Us m Bks M HUs HBks HM k Hb; cbn [exp_freshb] in Hb.
+  23: { intros r oq Us m Bks M HUs HBks HM k Hb; cbn [exp_freshb] in Hb.
         apply Bool.andb_true_iff in Hb as [Hb HbM]; apply Bool.andb_true_iff in Hb as [HbU HbB].
         apply (proj2 (exp_fresh_elim k r oq Us m Bks M)); split; [| split; [| auto ] ].
         - eapply all_listb_sound; [| exact HbU ].
@@ -301,6 +301,9 @@ Inductive fast_eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Pro
 (** So is [⋆]. *)
 | fast_eval_exp_true :
   `( ⟦ ⋆ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+(** The introduction of [⊤] is the proof [⋆ᵈ]. *)
+| fast_eval_exp_tt :
+  `( ⟦ a_tt ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
 (** [⊥] is a value. *)
 | fast_eval_exp_False :
   `( ⟦ ⊥ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )

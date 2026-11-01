@@ -183,22 +183,35 @@ Example main_spec :
                                $ (a_nlit 5))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
-(** ** [examples/TrueFalse.mctt]: the unit type and the empty type
+(** ** [examples/TrueFalse.mctt]: the true and the false proposition
 
-    The motive of [exfalso] binds [x], so [ℕ] is elaborated under one more
-    binder. *)
+    [true] is the introduction of [True]; [exfalso] takes its target
+    type as written. *)
 Definition true_false : Cst.prog :=
   (nil, ("TrueFalse" :: nil, nil,
          c_eval true_tm None ::
          c_eval (fn "u" true_ty (var "u")) None ::
-         c_eval (fn "f" false_ty (exfalso (var "f") "x" nat)) None :: nil)).
+         c_eval (fn "f" false_ty (exfalso (var "f") nat)) None :: nil)).
 
 Example true_false_spec :
   elab_spec true_false
     (nil, ⋅,
-     core_cmd_eval ⋆ None ::
+     core_cmd_eval a_tt None ::
      core_cmd_eval (λ ⊤ #0) None ::
      core_cmd_eval (λ ⊥ (efq #0 return ℕ)) None :: nil).
+Proof. elab_ok. Qed.
+
+(** ** Conjunctions: the type binds its first proof; [conj] leaves its
+    second proposition to the typed pass, as the placeholder *)
+Definition conjunctions : Cst.prog :=
+  (nil, ("Conjunctions" :: nil, nil,
+         c_eval (fn "P" prop (fn "Q" prop (fn "h" (and_ty "p" (var "P") (var "Q"))
+                   (and_intro (and_left (var "h")) (var "P") (and_right (var "h")))))) None :: nil)).
+
+Example conjunctions_spec :
+  elab_spec conjunctions
+    (nil, ⋅,
+     core_cmd_eval (λ Propₘ (λ Propₘ (λ (Σₚ #1 #1) (a_conj (Σₚ #2 a_placeholder) (a_left #0) (a_right #0))))) None :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Scoping Rules, Positive and Negative *)

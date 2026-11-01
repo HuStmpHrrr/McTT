@@ -263,10 +263,24 @@ Inductive spec_exp : list scope_entry -> Cst.expression -> exp -> Prop :=
 | spec_exp_nat : forall S, spec_exp S Cst.nat ℕ
 | spec_exp_num : forall S n, spec_exp S (Cst.num n) (a_nlit n)
 | spec_exp_true_ty : forall S, spec_exp S Cst.true_ty ⊤
-| spec_exp_true_tm : forall S, spec_exp S Cst.true_tm ⋆
+| spec_exp_true_tm : forall S, spec_exp S Cst.true_tm a_tt
 | spec_exp_false_ty : forall S, spec_exp S Cst.false_ty ⊥
-| spec_exp_exfalso : forall S om mx oA M A,
-    spec_exp S om M -> spec_exp S oA A -> spec_exp S (Cst.exfalso om mx oA) (efq M return A)
+| spec_exp_exfalso : forall S om oA M A,
+    spec_exp S om M -> spec_exp S oA A -> spec_exp S (Cst.exfalso om oA) (efq M return A)
+(** [Prop] *)
+| spec_exp_prop : forall S, spec_exp S Cst.prop Propₘ
+(** A conjunction, its second proposition under the first's binder *)
+| spec_exp_and_ty : forall S x oP oQ P Q,
+    spec_exp S oP P -> spec_exp (scope_entry_tvar x :: S) oQ Q -> spec_exp S (Cst.and_ty x oP oQ) (Σₚ P Q)
+(** A proof of a conjunction: its type's second proposition is the
+    placeholder, which the typed pass fills ([fill_exp_conj_right_inferred]) *)
+| spec_exp_and_intro : forall S om oP on M P N,
+    spec_exp S om M -> spec_exp S oP P -> spec_exp S on N ->
+    spec_exp S (Cst.and_intro om oP on) (a_conj (Σₚ P a_placeholder) M N)
+(** The first component of a proof of a conjunction *)
+| spec_exp_and_left : forall S om M, spec_exp S om M -> spec_exp S (Cst.and_left om) (a_left M)
+(** Its second component *)
+| spec_exp_and_right : forall S om M, spec_exp S om M -> spec_exp S (Cst.and_right om) (a_right M)
 | spec_exp_pi : forall S x oA oB A B,
     spec_exp S oA A -> spec_exp (scope_entry_tvar x :: S) oB B -> spec_exp S (Cst.pi x oA oB) (Π A B)
 | spec_exp_fn : forall S x oA oM A M,

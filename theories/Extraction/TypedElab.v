@@ -341,7 +341,7 @@ Section Decide.
 
   Fixpoint fill_exp_fn (Γ : ctx) (M : exp) {struct M} : fill_result exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_tt | a_False
     | a_placeholder_type | a_placeholder
     | a_ind _ _ | a_con _ _ _ | a_var _ | a_record _ => fill_ok M
     | a_nlit n =>

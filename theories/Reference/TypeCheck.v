@@ -69,6 +69,8 @@ Section type_check.
         pureo (exist _ Propⁿ _)
     | ⋆ =>
         pureo (exist _ ⊤ⁿ _)
+    | a_tt =>
+        pureo (exist _ ⊤ⁿ _)
     | ⊥ =>
         pureo (exist _ Propⁿ _)
     (** Ex falso: the target is a type of either sort, the proof is checked

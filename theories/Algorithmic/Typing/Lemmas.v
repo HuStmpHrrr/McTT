@@ -784,9 +784,10 @@ Proof.
                          | apply (wf_exp_level_up (m := n)); [ lia | exact HNl ] ] end end
     end.
   - apply wf_prop; assumption.
-  (** The propositions [⊤], [⊥] and the proof [⋆] *)
+  (** The propositions [⊤], [⊥], the proof [⋆] and the introduction of [⊤] *)
   - apply wf_True; assumption.
   - apply wf_true; assumption.
+  - apply wf_tt; assumption.
   - apply wf_False; assumption.
   (** Ex falso: the target at its sort, the proof at [⊥] *)
   - match goal with
@@ -2612,6 +2613,15 @@ Proof.
   inversion HW; subst; directed_inversion_by_head eval_exp; subst; directed_inversion_by_head read_typ; subst; reflexivity.
 Qed.
 
+(** The introduction of [⊤] checks against [⊤]. *)
+Lemma alg_tt_complete : forall Γ, ⊢ Γ -> Γ ⊢a a_tt ⟸ ⊤.
+Proof.
+  intros * HΓ.
+  apply (alg_type_check_of_infer_nbe type_sort_prop (wf_True _ _ _ HΓ)); intros W HW.
+  replace W with ⊤ⁿ; [ constructor |].
+  inversion HW; subst; directed_inversion_by_head eval_exp; subst; directed_inversion_by_head read_typ; subst; reflexivity.
+Qed.
+
 (** The placeholder checks against its type. *)
 Lemma alg_placeholder_complete : forall Γ, ⊢ Γ -> Γ ⊢a a_placeholder ⟸ a_placeholder_type.
 Proof.
@@ -2923,6 +2933,8 @@ Proof.
     end.
   (** [⋆] at [⊤]. *)
   - apply alg_true_complete; assumption.
+  (** The introduction of [⊤] at [⊤]. *)
+  - apply alg_tt_complete; assumption.
   (** [⋆] at another proposition. *)
   - (* PENDING design: [⋆] at a proposition other than [⊤] ([wf_star]) infers only [⊤]. *)
     admit.

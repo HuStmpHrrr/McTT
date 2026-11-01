@@ -59,7 +59,7 @@ Proof.
     | eapply sem_ctx_extend_dm
     | (** terms *)
       eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_llit | eapply sem_succl | eapply sem_maxl
-    | eapply sem_prop | eapply sem_True | eapply sem_true | eapply sem_star | eapply sem_False | eapply sem_absurd
+    | eapply sem_prop | eapply sem_True | eapply sem_true | eapply sem_tt | eapply sem_star | eapply sem_False | eapply sem_absurd
     | eapply sem_and | eapply sem_conj | eapply sem_left | eapply sem_right
     | eapply sem_placeholder_type | eapply sem_placeholder | eapply sem_ind | eapply sem_con
     | eapply sem_elim | eapply sem_pi | eapply sem_fn | eapply sem_app | eapply sem_let | eapply sem_let_mod

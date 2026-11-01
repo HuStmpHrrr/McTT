@@ -105,8 +105,19 @@ Inductive expression : Set :=
 | true_tm : expression
 (** [False] *)
 | false_ty : expression
-(** [exfalso M return x . A] *)
-| exfalso : expression -> string -> expression -> expression
+(** [exfalso M return A]: the proof [M] of [False], eliminated into [A] *)
+| exfalso : expression -> expression -> expression
+(** [Prop], the universe of propositions *)
+| prop : expression
+(** [/\ (h : P) -> Q]: the conjunction of [P] and [Q], [Q] seeing [h] *)
+| and_ty : string -> expression -> expression -> expression
+(** [conj (m : P) q]: a proof of a conjunction, its first component [m]
+    at [P], then its second [q] *)
+| and_intro : expression -> expression -> expression -> expression
+(** [left M]: the first component of a proof of a conjunction *)
+| and_left : expression -> expression
+(** [right M]: its second component *)
+| and_right : expression -> expression
 (** [forall (x : A) -> B] *)
 | pi : string -> expression -> expression -> expression
 (** [fun (x : A) -> M] *)
@@ -664,6 +675,9 @@ Inductive exp : Set :=
 (** The proof [⋆]: the one proof of [⊤], and of every proposition that
     has a proof (definitional proof irrelevance) *)
 | a_true : exp
+(** The introduction of [⊤]: the proof a program writes.  It evaluates
+    to the proof [⋆ᵈ] and is equal to [⋆] by proof irrelevance. *)
+| a_tt : exp
 (** The false proposition [⊥] *)
 | a_False : exp
 (** [a_absurd C M]: ex falso, the proof [M] of [⊥] eliminated into the
@@ -893,6 +907,7 @@ Section syn_mut_ind.
     (case_prop : Pe a_prop)
     (case_True : Pe a_True)
     (case_true : Pe a_true)
+    (case_tt : Pe a_tt)
     (case_False : Pe a_False)
     (case_absurd : forall A M, Pe A -> Pe M -> Pe (a_absurd A M))
     (case_and : forall P Q, Pe P -> Pe Q -> Pe (a_and P Q))
@@ -955,6 +970,7 @@ Section syn_mut_ind.
     | a_prop => case_prop
     | a_True => case_True
     | a_true => case_true
+    | a_tt => case_tt
     | a_False => case_False
     | a_absurd A M => case_absurd A M (exp_mut A) (exp_mut M)
     | a_and P Q => case_and P Q (exp_mut P) (exp_mut Q)
@@ -1987,6 +2003,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_prop => a_prop
   | a_True => a_True
   | a_true => a_true
+  | a_tt => a_tt
   | a_False => a_False
   | a_absurd A M => a_absurd (exp_wk A φ) (exp_wk M φ)
   | a_and P Q => a_and (exp_wk P φ) (exp_wk Q (wk_q φ))
@@ -2187,6 +2204,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_prop => a_prop
   | a_True => a_True
   | a_true => a_true
+  | a_tt => a_tt
   | a_False => a_False
   | a_absurd A M => a_absurd (exp_sub A σ) (exp_sub M σ)
   | a_and P Q => a_and (exp_sub P σ) (exp_sub Q (sb_q σ))

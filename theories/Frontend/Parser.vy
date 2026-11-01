@@ -26,6 +26,7 @@ Definition path_list (p : string * list string) : list string := List.rev' (fst 
 %token <loc> OMEGA (* the ordinal ω, written [ω] or [omega] *)
 %token <loc> OMEGA2 (* [ω^2], written [ω^2] or [omega^2]; not a level *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
+%token <loc> PROP AND_TY CONJ LEFT RIGHT (* propositions: [Prop], conjunctions, their proofs and components *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> INDUCTIVE ELIM BUILTIN (* inductive types *)
 %token <loc> RECORD (* record types and their values *)
@@ -309,8 +310,18 @@ let expression :=
   | SUCCL; m = atomic_expression; { Cst.succl m }
   | MAXL; m = atomic_expression; n = atomic_expression; { Cst.maxl m n }
 
-  | EXFALSO; escr = expression; RETURN; mx = VAR; "."; em = expression;
-    { Cst.exfalso escr (snd mx) em }
+  (* [exfalso e return A]: the proof [e] of [False], at the type [A] *)
+  | EXFALSO; escr = expression; RETURN; a = expression; { Cst.exfalso escr a }
+
+  (* [/\ (h : P) (k : Q) -> R]: nested conjunctions, each binder seen by
+     the ones after it; there is no infix form. *)
+  | AND_TY; ~ = params; "->"; ~ = expression; { fold_params Cst.and_ty params expression }
+  (* [conj (m : P) q]: the first component with its proposition, which
+     is required; the second at argument level. *)
+  | CONJ; "("; m = expression; ":"; p = expression; ")"; q = atomic_expression; { Cst.and_intro m p q }
+  (* The components of a proof of a conjunction, at argument level *)
+  | LEFT; m = atomic_expression; { Cst.and_left m }
+  | RIGHT; m = atomic_expression; { Cst.and_right m }
 
   (* [elim M at ys (z : Z) -> A | c xs, hs ⇒ B … with … end]: one block
      per member of the group, in member order, the one marked [at] the
@@ -373,6 +384,7 @@ let atomic_expression :=
   | TRUE_TY; { Cst.true_ty }
   | TRUE; { Cst.true_tm }
   | FALSE_TY; { Cst.false_ty }
+  | PROP; { Cst.prop }
 
   | x = VAR; { Cst.var (snd x) }
 

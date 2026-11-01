@@ -368,6 +368,16 @@ Proof.
   exact (rel_exp_under_ctx_proof (rel_exp_of_prop_True HΓ)).
 Qed.
 
+(** The introduction of [⊤] is related at [⊤], as every proof of it. *)
+Lemma sem_tt :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_tt : ⊤ ).
+Proof.
+  intros * H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H; destruct H as [env_relΓ HΓ].
+  exact (rel_exp_under_ctx_proof (rel_exp_of_prop_True HΓ)).
+Qed.
+
 Lemma sem_star :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ M : P ->
      Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->

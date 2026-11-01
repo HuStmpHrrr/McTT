@@ -107,11 +107,16 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** [Prop] is a small type at the least level. *)
 | alg_type_infer_prop :
   `( Γ ⊢a Propₘ ⟹ Typeⁿ@0 )
-(** [⊤] and [⊥] are propositions, and [⋆] proves [⊤]. *)
+(** [⊤] is a proposition. *)
 | alg_type_infer_True :
   `( Γ ⊢a ⊤ ⟹ Propⁿ )
+(** [⋆] proves [⊤]. *)
 | alg_type_infer_true :
   `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
+(** The introduction of [⊤] proves it. *)
+| alg_type_infer_tt :
+  `( Γ ⊢a a_tt ⟹ ⊤ⁿ )
+(** [⊥] is a proposition. *)
 | alg_type_infer_False :
   `( Γ ⊢a ⊥ ⟹ Propⁿ )
 (** Ex falso: the target is a type of either sort, the proof is checked
@@ -550,6 +555,9 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp a_True )
 | user_exp_true :
   `( user_exp a_true )
+(** The introduction of [⊤] *)
+| user_exp_tt :
+  `( user_exp a_tt )
 | user_exp_False :
   `( user_exp a_False )
 (** Ex falso: its target and its proof *)

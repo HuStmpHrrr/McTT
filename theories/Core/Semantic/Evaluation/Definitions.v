@@ -470,6 +470,9 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** So is [⋆]. *)
 | eval_exp_true :
   `( ⟦ ⋆ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+(** The introduction of [⊤] is the proof [⋆ᵈ]. *)
+| eval_exp_tt :
+  `( ⟦ a_tt ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
 (** [⊥] is a value. *)
 | eval_exp_False :
   `( ⟦ ⊥ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )

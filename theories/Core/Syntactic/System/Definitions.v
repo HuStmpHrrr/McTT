@@ -342,6 +342,10 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_true :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤ )
+(** The introduction of [⊤], the proof a program writes. *)
+| wf_tt :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_tt : ⊤ )
 (** The proof [⋆] proves every proposition that has a proof: proofs are
     irrelevant, and [⋆] is the normal form of every proof. *)
 | wf_star :

@@ -76,7 +76,7 @@ Section Fill.
       literals are filled by their own rules. *)
   Definition exp_leaf (M : exp) : bool :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_False
+    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_tt | a_False
     | a_placeholder_type | a_placeholder
     | a_ind _ _ | a_con _ _ _ | a_var _ | a_record _ => true
     | _ => false
