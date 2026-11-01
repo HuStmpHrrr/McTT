@@ -998,12 +998,13 @@ Proof.
 Qed.
 
 (** [gc_sub Θ1 Ξ1 Θ2 Ξ2]: what [Θ1 ⍮ Ξ1] resolves, [Θ2 ⍮ Ξ2] resolves the
-    same way, its bodies perhaps grown, its open frames perhaps closed. *)
+    same way, its filed bodies as they are, its open frames perhaps grown
+    or closed. *)
 Record gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop := mk_gc_sub
   { gc_sub_resolve_field : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E
   ; gc_sub_module_field : forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r
-  ; gc_sub_body_field : forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) ->
-      exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'
+    (** A filed body stays exactly as it is: only open frames grow *)
+  ; gc_sub_body_field : forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) -> gc_body Θ2 Ξ2 p = Some (T, Φ)
   ; gc_sub_frame_field : forall p T Φ, gc_frame Ξ1 p = Some (T, Φ) ->
       exists Φ', (gc_frame Ξ2 p = Some (T, Φ') /\ gs_find_ind Ξ2 p = gs_find_ind Ξ1 p /\
                   gs_find_record Ξ2 p = gs_find_record Ξ1 p) \/
@@ -1050,6 +1051,11 @@ Qed.
 Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) ->
     exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'.
+Proof. intros * H Hb; exists Φ; split; [ exact (gc_sub_body_field _ _ _ _ H _ _ _ Hb) | constructor ]. Qed.
+
+(** A filed body is the same in a context [gc_sub] grows into. *)
+Lemma gc_sub_body_eq : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) -> gc_body Θ2 Ξ2 p = Some (T, Φ).
 Proof. intros * H; apply (gc_sub_body_field _ _ _ _ H). Qed.
 
 (** An open frame is still one, of the same kind, or has been closed into
@@ -1199,7 +1205,7 @@ Qed.
 
 Lemma gc_sub_refl : forall Θ Ξ, gc_sub Θ Ξ Θ Ξ.
 Proof.
-  constructor; intros * H; [ exact H | exact H | exists Φ; split; [ exact H | constructor ]
+  constructor; intros * H; [ exact H | exact H | exact H
     | exists Φ; left; split; [ exact H | split; reflexivity ] | exists E; split; [ exact H | apply entry_grows_refl ]
     | rewrite ind_mlookup_unfold, H; reflexivity | unfold record_lookup; rewrite H; reflexivity ].
 Qed.
@@ -1209,12 +1215,10 @@ Lemma gc_sub_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
 Proof.
   intros * Hs12 Hs23; pose proof Hs23 as Hs23'.
   destruct Hs12 as [H12 M12 B12 F12 E12 K12 R12], Hs23 as [H23 M23 B23 F23 E23 K23 R23]; constructor; intros * H;
-    [ apply H23, H12, H | apply M23, M12, H | | | | | ].
-  - destruct (B12 _ _ _ H) as (Φ2 & H2 & G12); destruct (B23 _ _ _ H2) as (Φ3 & H3 & G23).
-    exists Φ3; split; [ exact H3 | exact (gm_grows_trans _ _ _ G12 G23) ].
+    [ apply H23, H12, H | apply M23, M12, H | apply B23, B12, H | | | | ].
   - destruct (F12 _ _ _ H) as (Φ2 & [(H2 & Hk2 & Hr2) | (H2 & Hm2 & Hr2)]).
     + rewrite <- Hk2, <- Hr2; exact (F23 _ _ _ H2).
-    + destruct (B23 _ _ _ H2) as (Φ3 & H3 & _); exists Φ3; right; split; [ exact H3 | split; [ exact (M23 _ _ Hm2) |] ].
+    + exists Φ2; right; split; [ exact (B23 _ _ _ H2) | split; [ exact (M23 _ _ Hm2) |] ].
       destruct (gs_find_record Ξ1 p) as [R |] eqn:Hf.
       * exact (record_lookup_gc_sub _ _ _ _ _ _ Hs23' (R12 _ _ Hf)).
       * exact (record_lookup_none_gc_sub _ _ _ _ _ _ _ Hs23' H2 Hr2).
@@ -1254,7 +1258,7 @@ Record gm_sub (Φ1 Φ2 : gmod) : Prop := mk_gm_sub
   { gm_sub_resolve : forall ip E, gm_resolve Φ1 ip = Some E -> gm_resolve Φ2 ip = Some E
   ; gm_sub_submodule : forall T z ip r, gm_submodule T Φ1 z ip = Some r -> gm_submodule T Φ2 z ip = Some r
   ; gm_sub_subbody : forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
-      exists Φ', gm_subbody T Φ2 z ip = Some (T', Φ') /\ gm_grows Φ Φ'
+      gm_subbody T Φ2 z ip = Some (T', Φ)
   ; gm_sub_entry : forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E' }.
 
 Lemma gm_sub_refl : forall Φ, gm_sub Φ Φ.
@@ -1263,9 +1267,7 @@ Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
 Lemma gm_sub_trans : forall Φ1 Φ2 Φ3, gm_sub Φ1 Φ2 -> gm_sub Φ2 Φ3 -> gm_sub Φ1 Φ3.
 Proof.
   intros * [H12 M12 B12 E12] [H23 M23 B23 E23]; constructor; intros * H;
-    [ apply H23, H12, H | apply M23, M12, H | | ].
-  - destruct (B12 _ _ _ _ _ H) as (Φ2' & H2 & G12); destruct (B23 _ _ _ _ _ H2) as (Φ3' & H3 & G23).
-    exists Φ3'; split; [ exact H3 | exact (gm_grows_trans _ _ _ G12 G23) ].
+    [ apply H23, H12, H | apply M23, M12, H | apply B23, B12, H | ].
   - destruct (E12 _ _ H) as (E2 & H2 & G12); destruct (E23 _ _ H2) as (E3 & H3 & G23).
     exists E3; split; [ exact H3 | exact (entry_grows_trans _ _ _ G12 G23) ].
 Qed.
@@ -1276,7 +1278,7 @@ Proof.
   intros * Hf; repeat split; intros * H.
   - exact (gm_resolve_ext_fresh _ _ _ _ _ Hf H).
   - exact (gm_submodule_ext_fresh _ _ _ _ _ _ _ Hf H).
-  - eexists; split; [ exact (gm_subbody_ext_fresh _ _ _ _ _ _ _ Hf H) | constructor ].
+  - exact (gm_subbody_ext_fresh _ _ _ _ _ _ _ Hf H).
   - eexists; split; [ exact (gm_entry_ext_fresh _ _ _ _ _ Hf H) | apply entry_grows_refl ].
 Qed.
 
@@ -1292,7 +1294,7 @@ Proof.
     destruct (qname_strip mp p) as [[| y ip] |]; [ discriminate | | exact Hr ].
     apply HM; exact Hr.
   - intros p T Φ Hr; unfold gc_body in *; cbn in *.
-    destruct (qname_strip mp p) as [[| y ip] |]; [ discriminate | | eexists; split; [ exact Hr | constructor ] ].
+    destruct (qname_strip mp p) as [[| y ip] |]; [ discriminate | | exact Hr ].
     apply HB; exact Hr.
   - intros p T Φ Hr; unfold gc_frame in *; cbn in *.
     destruct (qname_strip mp p) as [[| y ip] |]; [ | discriminate | eexists; left; split; [ exact Hr | split; reflexivity ] ].
@@ -1346,7 +1348,7 @@ Proof.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
       exact (Hx (gm_submodule_head _ _ _ _ _ Hr)).
   - intros p T Φ Hr; unfold gc_body in *; cbn.
-    destruct (qname_strip mp p) as [ip |] eqn:Hs; [| eexists; split; [ exact Hr | constructor ] ].
+    destruct (qname_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
     exfalso; unfold qname_strip in Hs.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
     apply path_beq_true in Hb.
@@ -1425,7 +1427,7 @@ Proof.
       destruct (q_chain p) as [| x ip] eqn:Hp; [ discriminate |].
       cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
     + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
-  - intros p T Φ Hr; exists Φ; split; [| constructor ]; unfold gc_body in *; cbn [gs_find_tele] in *.
+  - intros p T Φ Hr; unfold gc_body in *; cbn [gs_find_tele] in *.
     unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb.
     + apply path_beq_true in Hb; subst; rewrite path_beq_refl.
@@ -1488,7 +1490,7 @@ Proof.
     destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
-  - intros p T Φ Hr; exists Φ; split; [| constructor ]; unfold gc_body in *.
+  - intros p T Φ Hr; unfold gc_body in *.
     destruct (gs_find_tele Ξ p) as [[[U ip] T'] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.

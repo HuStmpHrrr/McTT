@@ -1572,13 +1572,14 @@ with wf_no_level_members : gdeps -> gstack -> ctx -> mdesc -> Prop :=
     there; every other entry, read as it is stored ([ge_read]), denotes
     ([member_descs]) a description with no member of a type of levels;
     stored entries are closed, so they are read at [⋅].  The location is
-    no open frame: an open frame grows, and an entry filed later is read
-    through every description of the frame.  In [module F where module A
-    (n : ℕ) ≔ F; def w : Level ≔ 0l end] the member [w] of [A] would be of
-    [Π (n : ℕ) Level], so an alias with a parameter of a universe of a
-    still open frame is rejected. *)
+    a filed body ([gc_body]: a loaded unit or a finished submodule) with
+    exactly these entries, no open frame: an open frame grows, and an
+    entry filed later is read through every description of the frame.  In
+    [module F where module A (n : ℕ) ≔ F; def w : Level ≔ 0l end] the
+    member [w] of [A] would be of [Π (n : ℕ) Level], so an alias with a
+    parameter of a universe of a still open frame is rejected. *)
 | wf_no_level_closed :
-  `( gc_frame Ξ p = None ->
+  `( gc_body Θ Ξ p = Some (T, Φ) ->
      (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
         A = ctx_pi_at r T (member_types y)) ->
      (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
