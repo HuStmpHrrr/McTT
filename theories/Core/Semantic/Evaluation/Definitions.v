@@ -102,8 +102,8 @@ Definition arg_relevance (Θ : gdeps) (Ξ : gstack) (f : domain) : relevance :=
   end.
 (** The proof a member [x] of a saturated module is, kept as its
     selection from the module bound at [#0]: a proof member is never
-    evaluated, so its value is this proof in the environment holding the
-    module alone. *)
+    evaluated, so its value is this proof in an environment holding the
+    module at [#0]. *)
 Definition member_proof (x : string) : exp := a_mem (me_var 0) x.
 
 (** ** The Types of the Variables an Eliminator Binds
@@ -165,12 +165,16 @@ Definition branch_entries (D : ind_decl) (Mj : imember) (p : qname) (ups : list 
   let ρa := env_typed (decl_env D ups) nts in
   nts ++ cargs_entries p ups ρa gs vs ++ typed_values ihs (ihs_types D p ups ρm As ρa gs vs).
 
-(** The environment of a motive of the member [Mk] of [D] over [ρ], at a
-    scrutinee [m] of the type [a] at all the member's parameters [as']:
-    the non-uniform parameters and the scrutinee. *)
+(** The variables of a motive of the member [Mk] of [D] at the uniform
+    parameters [ups]: the non-uniform parameters [ns], and a scrutinee [m]
+    of the type [a]. *)
+Definition motive_entries (D : ind_decl) (Mk : imember) (ups ns : list domain) (a m : domain) : list (domain * dtype) :=
+  tele_entries (decl_env D ups) (List.rev (im_nparams Mk)) ns ++ (m, dt_value a) :: nil.
+
+(** The environment of a motive over [ρ], at a scrutinee [m] of the type
+    [a] at all the member's parameters [as']. *)
 Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domain) (a m : domain) : env :=
-  env_typed ρ (tele_entries (decl_env D (List.firstn (ind_nu D) as')) (List.rev (im_nparams Mk)) (List.skipn (ind_nu D) as')
-               ++ (m, dt_value a) :: nil).
+  env_typed ρ (motive_entries D Mk (List.firstn (ind_nu D) as') (List.skipn (ind_nu D) as') a m).
 
 (** The group an eliminator eliminates by: the one written, or else that
     of the value, a constructor or a neutral of a member. *)
@@ -716,7 +720,7 @@ with eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : domain_ne -> env -> list (
 (** The next field's projection, at its type, then the rest after it *)
 | eval_neutral_fields_cons :
   `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     eval_neutral_fields Θ Ξ m (ρ ↦ ⇑ a (d_proj g m) ⦂ dt_value a) fl rs ->
+     eval_neutral_fields Θ Ξ m (ρ ↦ ⇑ a (d_proj g m) ⦂ dt_closure T ρ) fl rs ->
      eval_neutral_fields Θ Ξ m ρ ((g, T) :: fl) (⇑ a (d_proj g m) :: rs) )
 (** The eliminator of the group at [p] at its member [j], on a value.  The
     member is the declared member [k] of the group at [q] ([im_ref]): the
@@ -1198,14 +1202,16 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A definition of a saturated body tagged a proposition: a proof, kept
-    as the selection of the member from the body, its body not
-    evaluated. *)
+    as the selection of the member from the body, its body not evaluated;
+    the environment of the proof is the body's environment extended by the
+    body's closure, so that readback binds the body as its unit over the
+    entries it closes over. *)
 | eval_sel_body_proof :
   `( kinds_body_xp Θ Ξ ρ Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = propositional ->
-     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, de_mod (dm_local nil (md_body sm Φ) ρ) :: nil⟩ )
+     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, de_mod (dm_local nil (md_body sm Φ) ρ) :: ρ⟩ )
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )

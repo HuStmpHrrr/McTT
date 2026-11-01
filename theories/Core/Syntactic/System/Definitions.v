@@ -194,13 +194,6 @@ Inductive pi_domain_sort (U : exp) : exp -> Prop :=
 | pi_domain_prop : pi_domain_sort U Propₘ
 (** The domain is a type of levels. *)
 | pi_domain_level : pi_domain_sort U LevelSort.
-(** The annotation of a local definition, if any, is the type it is checked
-    at, of the sort [S]; without one, the type is any its body has, and it
-    is a type of a universe: evaluation, which cannot see types, evaluates
-    an unannotated definition, and evaluates no proof.  The typed fill
-    annotates every local definition, so a proof is always annotated. *)
-Definition let_ann (oA : option typ) (A : typ) (S : typ) : Prop :=
-  (oA = None /\ exists i, S = Typeω@i) \/ oA = Some A.
 (** A rank [rk] of the members of a group [D]: [0] at a declared member,
     and below a view's at every member the view nests through in any block
     the eliminator at the view reads (one per member [i'] of the
@@ -381,20 +374,10 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_True :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Propₘ )
-(** Its proof. *)
-| wf_true :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤ )
-(** The introduction of [⊤], the proof a program writes. *)
+(** The introduction of [⊤]. *)
 | wf_tt :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_tt : ⊤ )
-(** The proof [⋆] proves every proposition that has a proof: proofs are
-    irrelevant, and [⋆] is the normal form of every proof. *)
-| wf_star :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : P )
 (** The false proposition. *)
 | wf_False :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -565,15 +548,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
-(** A local definition, of its annotated type or of a type of a universe
-    its body has. *)
+(** A local definition, of its annotated type. *)
 | wf_let :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
-     let_ann oA A Srt ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : C[Id,,M] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M] )
 (** A local module occupies one index, a slot holding its unit.  The body's
     type is premised to be a type, as the canonical type of [wf_mem] is:
     equivalent substitutions are moved through the body by [ζ], and the two
@@ -861,9 +842,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
-     let_ann oA A Srt ->
-     let_ann oA' A' Srt ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ a_let (b_def oA' M') B' : C[Id,,M] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M] )
 (** The right-hand side is typed in its own context, which differs from the
     left's by the unit. *)
 | wf_exp_eq_let_mod_cong :
@@ -1017,8 +996,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
-     let_ann oA A Srt ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : C[Id,,M] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M] )
 (** [ζ] for local modules: the slot is replaced by the unit. *)
 | wf_exp_eq_let_mod_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
@@ -1115,10 +1093,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** Field-β: the field of a record element is its first field so named.
     Both sides are premised to be of the type: the field's type at the
     element's projections and at its fields are equal only by the field-β
-    of the fields before it.  The field is relevant: a tuple's value stores
-    the proof [⋆ᵈ] at a propositional field, which is equal to the field
-    only at a proposition; there the two sides are equal by
-    [wf_exp_eq_irrelevant] (see [tuple_proj_eq]).  The record type and the
+    of the fields before it.  The field is relevant: at a proposition the
+    two sides are equal by [wf_exp_eq_irrelevant] (see [tuple_proj_eq]).
+    The record type and the
     field's position name its sort. *)
 | wf_exp_eq_field_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T ->
@@ -2123,20 +2100,6 @@ Proof. intros * H; exact (mk_wf_type _ (type_sort_relevance r _ (type_sort_unive
 #[export]
 Hint Resolve wf_type_univ wf_type_prop : mctt.
 
-Lemma let_ann_none : forall A i, let_ann None A (Typeω@i).
-Proof. intros; left; split; [ reflexivity | eexists; reflexivity ]. Qed.
-
-Lemma let_ann_some : forall A S, let_ann (Some A) A S.
-Proof. intros; right; reflexivity. Qed.
-
-#[export]
-Hint Resolve let_ann_none let_ann_some : mctt.
-
-Ltac solve_let_ann := first [ apply let_ann_some | eassumption | apply let_ann_none ].
-
-(** The annotations of the local definitions in context, as the two cases. *)
-Ltac destruct_let_ann :=
-  repeat match goal with H : let_ann _ _ _ |- _ => destruct H as [[-> [? ?]] | ->] end; cbv beta iota in *.
 
 (** Make the sorts of a rule concrete: a type sort is a large universe,
     [Prop] or [LevelSort], a [Π]'s domain is of its universe, a proposition

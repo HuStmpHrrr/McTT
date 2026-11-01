@@ -306,7 +306,7 @@ Module Domain_Notations.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
   Notation "'Propᵈ'" := d_prop : mctt_scope.
   Notation "'⊤ᵈ'" := d_True : mctt_scope.
-  Notation "'⋆ᵈ⟨' M ',' ρ '⟩'" := (d_proof M ρ) (at level 1, M at level 200, ρ at level 200, format "'⋆ᵈ⟨' M ,  ρ '⟩'") : mctt_scope.
+  Notation "'⋆ᵈ⟨' M ',' ρ '⟩'" := (d_proof M ρ) (at level 0, M at level 200, ρ at level 200, format "'⋆ᵈ⟨' M ,  ρ '⟩'") : mctt_scope.
   Notation "'⊥ᵈ'" := d_False : mctt_scope.
   Notation "'λᵈ' a ρ M" := (d_fn a ρ M) (at level 2, a at level 1, ρ at level 1, M at level 9) : mctt_scope.
   Notation "'∀ₚᵈ' a ρ P" := (d_pi propositional a ρ P) (at level 2, a at level 1, ρ at level 0, P at level 9) : mctt_scope.

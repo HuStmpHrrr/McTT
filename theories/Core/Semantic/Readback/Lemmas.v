@@ -67,8 +67,16 @@ Import Domain_Notations.
     all: f_equal; auto.
   Qed.
 
+  (** The type value of an entry is one value. *)
+  Lemma functional_eval_dtype : forall {Θ Ξ} t a1 a2, eval_dtype Θ Ξ t a1 -> eval_dtype Θ Ξ t a2 -> a1 = a2.
+  Proof.
+    intros * H1 H2; destruct H1; inversion H2; subst; functional_eval_rewrite_clear; congruence.
+  Qed.
+
   Ltac functional_fresh_rewrite_clear :=
     repeat match goal with
+      | H1 : eval_dtype ?T ?X ?t ?a1, H2 : eval_dtype ?T ?X ?t ?a2 |- _ =>
+          pose proof (functional_eval_dtype _ _ _ H1 H2); subst; clear H2
       | H1 : fresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : fresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
           pose proof (functional_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
@@ -135,9 +143,31 @@ Import Domain_Notations.
          forall NBks2, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
       (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
          forall Bs2, Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2) /\
-      (forall s ρ fl v Fs1, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2).
+      (forall s ρ fl v Fs1, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2) /\
+      (forall s m M1, Rprf m in Θ ⍮ Ξ ⍮ s ↘ M1 -> forall M2, Rprf m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2) /\
+      (forall s ρ k bs1, Rlets ρ at k in Θ ⍮ Ξ ⍮ s ↘ bs1 -> forall bs2, Rlets ρ at k in Θ ⍮ Ξ ⍮ s ↘ bs2 -> bs1 = bs2) /\
+      (forall s τ e b1, Rent e after τ in Θ ⍮ Ξ ⍮ s ↘ b1 -> forall b2, Rent e after τ in Θ ⍮ Ξ ⍮ s ↘ b2 -> b1 = b2) /\
+      (forall s τ h H1, Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H1 -> forall H2, Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H2 -> H1 = H2).
   Proof.
-    intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
+    intros Θ Ξ; apply read_mut_ind; intros.
+    (** The readbacks of a proof, of the definitions around it and of the
+        modules it reads: the other derivation is inverted, the induction
+        hypotheses decide the parts. *)
+    all: try solve
+      [ match goal with
+        | H : read_proof _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
+        | H : read_lets _ _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
+        | H : read_entry _ _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
+        | H : read_mod _ _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
+        end;
+        try (exfalso; cbn [extend_env] in *; congruence);
+        functional_fresh_rewrite_clear; functional_eval_rewrite_clear;
+        repeat match goal with
+               | IH : forall x, _ -> ?a = x, H : _ |- _ =>
+                   let E := fresh "E" in pose proof (IH _ H) as E; clear IH; subst
+               end;
+        congruence ].
+    all: progressive_inversion; functional_eval_rewrite_clear;
       functional_fresh_rewrite_clear; functional_eval_rewrite_clear.
     (** A small universe takes the canonical level that its level reads
         back as, so its case is that equality under [nf_univ_of].  The other
@@ -156,6 +186,10 @@ Import Domain_Notations.
     all: try match goal with H : domain_relevance _ = _ |- _ => cbn in H; discriminate H end.
     all: functional_fresh_rewrite_clear; functional_eval_rewrite_clear; try congruence.
     all: try solve [ apply nf_univ_of_cong; eauto | repeat f_equal; solve [eauto] ].
+    (** A global module's two readbacks are at its one telescope. *)
+    all: try match goal with
+         | H1 : gc_loc ?T ?X ?p = Some _, H2 : gc_loc ?T ?X ?p = Some _ |- _ => rewrite H1 in H2; injection H2 as -> ->
+         end.
     all: repeat match goal with
         | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
             assert_fails (constr_eq a b); assert (a = b) by lia; subst b

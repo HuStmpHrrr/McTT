@@ -102,7 +102,7 @@ Import Domain_Notations.
       (forall p ups ρm As ρ t v a1, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 ->
           forall a2, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
       (forall f m r1, eval_proj Θ Ξ f m r1 -> forall r2, eval_proj Θ Ξ f m r2 -> r1 = r2) /\
-      (forall ns m fl pre rs1, eval_neutral_fields Θ Ξ ns m fl pre rs1 -> forall rs2, eval_neutral_fields Θ Ξ ns m fl pre rs2 -> rs1 = rs2) /\
+      (forall m ρ fl rs1, eval_neutral_fields Θ Ξ m ρ fl rs1 -> forall rs2, eval_neutral_fields Θ Ξ m ρ fl rs2 -> rs1 = rs2) /\
       (forall fl v ws1, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws1 -> forall ws2, ⟦projs fl of v ⟧ Θ ⍮ Ξ ↘ ws2 -> ws1 = ws2) /\
       (forall p ups ρm As ρ gs vs r1, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
@@ -289,8 +289,8 @@ Import Domain_Notations.
   Qed.
 
   (** So are the neutral projections of the fields of a neutral. *)
-  Corollary functional_eval_neutral_fields : forall {Θ Ξ} ns m fl pre rs1 rs2,
-      eval_neutral_fields Θ Ξ ns m fl pre rs1 -> eval_neutral_fields Θ Ξ ns m fl pre rs2 -> rs1 = rs2.
+  Corollary functional_eval_neutral_fields : forall {Θ Ξ} m ρ fl rs1 rs2,
+      eval_neutral_fields Θ Ξ m ρ fl rs1 -> eval_neutral_fields Θ Ξ m ρ fl rs2 -> rs1 = rs2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
@@ -317,7 +317,8 @@ Import Domain_Notations.
   with domain_ne_eq_dec (a b : domain_ne) {struct a} : {a = b} + {a <> b}
   with domain_nf_eq_dec (a b : domain_nf) {struct a} : {a = b} + {a <> b}
   with dmod_eq_dec (a b : dmod) {struct a} : {a = b} + {a <> b}
-  with dentry_eq_dec (a b : dentry) {struct a} : {a = b} + {a <> b}.
+  with dentry_eq_dec (a b : dentry) {struct a} : {a = b} + {a <> b}
+  with dtype_eq_dec (a b : dtype) {struct a} : {a = b} + {a <> b}.
   Proof.
     all: decide equality;
       first [ apply Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec
@@ -355,6 +356,11 @@ Import Domain_Notations.
         [ eapply functional_eval_exp | eapply functional_eval_modexp ]; eassumption.
   Qed.
 
+  (** So does a substitution entry at a proposition. *)
+  Lemma functional_eval_sentry_proof : forall e ρ d1 d2,
+      eval_sentry_proof e ρ d1 -> eval_sentry_proof e ρ d2 -> d1 = d2.
+  Proof. intros * H1 H2; destruct e; cbn in H1, H2; subst; tauto. Qed.
+
   (** Whether the head entry is a proposition depends only on the tail, on
       the entries of the context. *)
   Lemma entry_propositional_zero_tail : forall {Θ Ξ} e Δ ρσ1 ρσ2,
@@ -385,7 +391,8 @@ Import Domain_Notations.
       assert (Ht' : env_agree_upto (List.length Δ) (drop_env ρσ2) (drop_env ρσ1)) by (symmetry; exact Ht).
       assert (Hn1 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ1 0).
       { intros Hp; apply Hne.
-        rewrite (proj1 (H1 0 Hx) Hp), (proj1 (H2 0 Hx) (entry_propositional_zero_tail _ _ _ _ Ht Hp)); reflexivity. }
+        eapply functional_eval_sentry_proof;
+          [ exact (proj1 (H1 0 Hx) Hp) | exact (proj1 (H2 0 Hx) (entry_propositional_zero_tail _ _ _ _ Ht Hp)) ]. }
       assert (Hn2 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ2 0)
         by (intros Hp; apply Hn1, (entry_propositional_zero_tail _ _ _ _ Ht' Hp)).
       apply Hne; eapply functional_eval_sentry; [ apply (proj2 (H1 0 Hx) Hn1) | apply (proj2 (H2 0 Hx) Hn2) ].
@@ -463,7 +470,7 @@ Proof.
              (fun ρ p ups Bks t v r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
                 List.length r = List.length (shape_leaves (rview_leaves D) 0 t))
              (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True) (fun _ _ _ _ _ _ _ _ _ => True)
-             (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun _ _ _ _ _ _ _ _ _ => True)
              (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
@@ -520,7 +527,7 @@ Proof.
              (fun _ _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
              (fun p ups ρm As ρ t v r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
                 List.length r = List.length (shape_leaves (rview_leaves D) 0 t))
-             (fun _ _ _ _ => True) (fun _ _ _ _ _ _ => True)
+             (fun _ _ _ _ => True) (fun _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun p ups ρm As ρ gs vs r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
                 List.length vs = List.length gs /\ List.length r = cargs_nrec D gs)
