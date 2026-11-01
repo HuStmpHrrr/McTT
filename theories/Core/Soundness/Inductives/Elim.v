@@ -475,7 +475,7 @@ Qed.
 Lemma wrap_leaves_nth : forall D' t' ls ihs r' nr' idx l, List.length ihs = List.length ls -> List.nth_error ls idx = Some l ->
     List.nth_error (wrap_leaves D' t' ls ihs r' nr') idx
     = Some (if leaf_in D' t' l then a_var (nr' - 1 - (r' + leaves_in_count D' t' (List.firstn idx ls)))
-            else List.nth idx ihs a_True).
+            else List.nth idx ihs a_placeholder_type).
 Proof.
   intros D' t'; induction ls as [| l0 ls IH]; intros [| ih ihs] r' nr' idx l Hl Hn; cbn in Hl; try discriminate;
     [ destruct idx; discriminate |].
@@ -759,7 +759,7 @@ Qed.
 Lemma sb_exp_agree_of_list : forall σ σ' Ms, sb_exp_agree σ σ' -> sb_exp_agree (sb_of_list σ Ms) (sb_of_list σ' Ms).
 Proof.
   intros * H y; destruct (Nat.lt_ge_cases y (List.length Ms)) as [Hy | Hy].
-  - rewrite !(sb_of_list_nth Ms _ y a_True Hy); reflexivity.
+  - rewrite !(sb_of_list_nth Ms _ y a_placeholder_type Hy); reflexivity.
   - replace y with (List.length Ms + (y - List.length Ms)) by lia; rewrite !sb_of_list_ge; apply H.
 Qed.
 
@@ -1052,7 +1052,7 @@ Section ElimGlu.
       [ns]: the value of the eliminator at it, the value of the motive of
       [k]'s block at it, and the elimination of a term [M'] of it, at the
       instance of the blocks by [σ'], glued at the motive there.  The
-      motive is [List.nth k (blocks_motives Bks) a_True]: every member has
+      motive is [List.nth k (blocks_motives Bks) a_placeholder_type]: every member has
       its block ([blocks_typed_len]), so the default is never taken. *)
   #[warnings="-cannot-define-projection"]
   Record elim_out (k : nat) (Mk : imember) (Δ' : ctx) (σ' : sub) (oq' : option qname) (Ns' : list exp) (M' : exp)
@@ -1065,14 +1065,14 @@ Section ElimGlu.
     ; elim_out_eval : ⟦elim mv at k of p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ elim_out_val
       (** The motive of [k]'s block at [ns] and [mv] evaluates to
           [elim_out_motive] *)
-    ; elim_out_eval_motive : ⟦ List.nth k (blocks_motives Bks) a_True ⟧ env_args ρ (ns ++ mv :: nil) ↘ elim_out_motive
+    ; elim_out_eval_motive : ⟦ List.nth k (blocks_motives Bks) a_placeholder_type ⟧ env_args ρ (ns ++ mv :: nil) ↘ elim_out_motive
       (** The motive's value is a type of the universe *)
     ; elim_out_per : Dom elim_out_motive ≈ elim_out_motive ∈ per_univ iA
       (** At any gluing of the motive's value, the elimination of [M'] is
           glued to [elim_out_val] *)
     ; elim_out_glu : forall P El, DG elim_out_motive ∈ glu_univ_elem iA ↘ P ↘ El ->
         Δ' ⊢ a_elim oq' (List.map (fun U => U[σ']) Us) k (blocks_sub Bks σ') M'
-          : (List.nth k (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mk)) σ'][sb_of_list Id (Ns' ++ M' :: nil)] ® elim_out_val ∈ El }.
+          : (List.nth k (blocks_motives Bks) a_placeholder_type)[sb_qn (S (im_nn Mk)) σ'][sb_of_list Id (Ns' ++ M' :: nil)] ® elim_out_val ∈ El }.
 
   (** The motive of the induction on the gluing of an element of the member
       [k] at the uniform parameters [Us'] and non-uniform ones [Ns']: at a
@@ -1235,7 +1235,7 @@ Section ElimGlu.
   (** The record views' leaf paths agree with their fields' shapes. *)
   Let Hco : leaves_coherent D := leaves_coherent_of_order _ (rview_struct_order _ _ _ (decl_typed_record_struct _ _ _ Hdt)).
   #[local] Abbreviation Rel := (fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
       (env_args ρ (ns ++ m :: nil)) (env_args ρ (ns' ++ m' :: nil))).
 
   Lemma motive_rel : forall j Mj ba bb u u' ns ns' m m', ind_member D j = Some Mj -> im_is_rview Mj = false ->
@@ -1463,9 +1463,9 @@ Section ElimGlu.
       (forall (i : nat) P El, nb <= i -> DG d_ind hd k' (pre ++ ns) ∈ glu_univ_elem i ↘ P ↘ El ->
          Δ' ⊢ im_ty_at p j Mj (List.map (fun U => U[σ']) Us) Ns' ® P ->
          Δ' ⊢ M' : im_ty_at p j Mj (List.map (fun U => U[σ']) Us) Ns' ® m ∈ El) ->
-      exists a, ⟦ List.nth j (blocks_motives Bks) a_True ⟧ env_args ρ (ns ++ m :: nil) ↘ a /\ Dom a ≈ a ∈ per_univ iA /\
+      exists a, ⟦ List.nth j (blocks_motives Bks) a_placeholder_type ⟧ env_args ρ (ns ++ m :: nil) ↘ a /\ Dom a ≈ a ∈ per_univ iA /\
         forall P El, DG a ∈ glu_univ_elem iA ↘ P ↘ El ->
-          Δ' ⊢ (List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)] ® P.
+          Δ' ⊢ (List.nth j (blocks_motives Bks) a_placeholder_type)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)] ® P.
   Proof.
     intros * HMj Hrv Hσ' Hgn Hns Hr Hgl.
     destruct (HBks _ _ HMj Hrv) as [b Hb]; rewrite (blocks_motives_nth _ _ _ Hb).
@@ -1540,7 +1540,7 @@ Section ElimGlu.
         match goal with H1 : ind_member D j0 = Some ?M1, H2 : im_head ?M1 = mh_record _ _ _ |- _ =>
           rewrite HMj in H1; injection H1 as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv H2) end. }
     (** Its type: related to the motive at the shape's parameters. *)
-    assert (Hlt' : exists b (i0 : nat), ⟦ List.nth j0 (blocks_motives Bks) a_True ⟧ env_args ρ (bs ++ v :: nil) ↘ b /\
+    assert (Hlt' : exists b (i0 : nat), ⟦ List.nth j0 (blocks_motives Bks) a_placeholder_type ⟧ env_args ρ (bs ++ v :: nil) ↘ b /\
                      Dom a ≈ b ∈ per_univ i0).
     { inversion Hlt; subst.
       - match goal with H : ⟦ Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs1 |- _ => pose proof (functional_eval_exps' _ _ _ _ H Ebs) as -> end.
@@ -3419,7 +3419,7 @@ Section ElimGlu.
       (forall Mr, Rne e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ Mr -> Δ ⊢ M ≈ Mr : im_ty_at p j Mj (List.map (fun U => U[σ'']) Us) Ns) ->
       Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
       Δ ⊢ a_elim oq (List.map (fun U => U[σ'']) Us) j (blocks_sub Bks σ'') M ≈ M0
-        : (List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ''][sb_of_list Id (Ns ++ M :: nil)].
+        : (List.nth j (blocks_motives Bks) a_placeholder_type)[sb_qn (S (im_nn Mj)) σ''][sb_of_list Id (Ns ++ M :: nil)].
   Proof.
     intros j Mj pm HMj Hh as' e Δ σ'' Ns M oq M0 Hgrp Hσ'' HNl HPs HMr HR.
     inversion HR; subst.
@@ -3518,7 +3518,7 @@ Section ElimGlu.
       (forall Mr, Rne e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ Mr -> Δ ⊢ M ≈ Mr : im_ty_at p j Mj (List.map (fun U => U[σ'']) Us) Ns) ->
       Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
       Δ ⊢ a_elim oq (List.map (fun U => U[σ'']) Us) j (blocks_sub Bks σ'') M ≈ M0
-        : (List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ''][sb_of_list Id (Ns ++ M :: nil)].
+        : (List.nth j (blocks_motives Bks) a_placeholder_type)[sb_qn (S (im_nn Mj)) σ''][sb_of_list Id (Ns ++ M :: nil)].
 
   Lemma elim_readback_decl_ok : forall j Mj pm, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> elim_readback_ok j.
   Proof.
@@ -3547,7 +3547,7 @@ Section ElimGlu.
          Δ ⊢ M'[φ]ʷ ≈ M0 : (im_ty_at p j Mj (List.map (fun U => U[σ']) Us) Ns')[φ]ʷ) ->
       forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
         Δ ⊢ (a_elim oq' (List.map (fun U => U[σ']) Us) j (blocks_sub Bks σ') M')[φ]ʷ ≈ M0
-          : ((List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)])[φ]ʷ.
+          : ((List.nth j (blocks_motives Bks) a_placeholder_type)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)])[φ]ʷ.
   Proof.
     intros j Hok Mj as' e Δ' σ' oq' Ns' M' HMj Hg Hσ' HNl HPs HMr Δ φ M0 Hφ HR.
     pose proof (glu_ctx_env_sub_monotone _ _ HSbΓ _ _ _ _ _ Hσ' Hφ) as Hσ2.
@@ -3717,7 +3717,7 @@ Section ElimGlu.
     Lemma neut_case_out :
         (forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
            Δ ⊢ (a_elim oq' (List.map (fun U => U[σ']) Us) j (blocks_sub Bks σ') M')[φ]ʷ ≈ M0
-             : ((List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)])[φ]ʷ) ->
+             : ((List.nth j (blocks_motives Bks) a_placeholder_type)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)])[φ]ʷ) ->
         elim_out j Mj Δ' σ' oq' Ns' M' (⇑ (d_ind hd k' as') e) ns.
     Proof.
       intros Hrbe.
@@ -4237,10 +4237,10 @@ Section ElimGlu.
       { intros y Hy; unfold arg_shape_ctx; cbn [List.firstn]; rewrite (Xuc y Hy); cbn [sb_compose].
         rewrite <- !sentry_exp_sub.
         destruct (nth_error_lt_some Us y ltac:(lia)) as [U HU].
-        rewrite !(sb_of_list_nth _ _ y a_True) by (rewrite ?List.length_map; lia).
+        rewrite !(sb_of_list_nth _ _ y a_placeholder_type) by (rewrite ?List.length_map; lia).
         cbn [sentry_exp]; rewrite List.length_map.
         pose proof (nth_error_lt_length _ _ _ HU) as Hy'.
-        rewrite (List.nth_indep _ a_True (a_True[σ''])) by (rewrite List.length_map; lia).
+        rewrite (List.nth_indep _ a_placeholder_type (a_placeholder_type[σ''])) by (rewrite List.length_map; lia).
         rewrite (List.map_nth (fun U0 => U0[σ''])), exp_sub_sub; apply exp_sub_sb_eq; symmetry; apply sb_wk_compose. }
       pose proof (Hrp Mv ns c gs1 t gs2 nv 0 nil σw (Some p) Hctx σs N rs Xσt (wf_sub_eq_refl _ _ _ _ _ Xσt) Xuc'
                     ltac:(apply wf_exp_eq_refl; exact XN) Hsh Ers idx l' r a J Rv PJ ElJ Hl'' Hok' Hr Hlty HRaJ Hrr

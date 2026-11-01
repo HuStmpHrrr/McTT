@@ -676,8 +676,8 @@ Proof.
         intros x Hx.
         assert (HxI : x < List.length Is) by (unfold ind_nu in *; lia).
         assert (HlIsU' : List.length IsU = List.length Is) by (unfold IsU; apply List.length_map).
-        rewrite (sb_of_list_nth IsU _ x a_True) by lia.
-        unfold sb_compose; rewrite (sb_of_list_nth Is _ x a_True HxI).
+        rewrite (sb_of_list_nth IsU _ x a_placeholder_type) by lia.
+        unfold sb_compose; rewrite (sb_of_list_nth Is _ x a_placeholder_type HxI).
         rewrite HlIsU'.
         destruct (nth_error_lt_some' Is (List.length Is - 1 - x) ltac:(lia)) as [I HI'].
         assert (HIU : List.nth_error IsU (List.length Is - 1 - x) = Some I[sb_of_list Id Us])

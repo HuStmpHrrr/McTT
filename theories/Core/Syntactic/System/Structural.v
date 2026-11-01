@@ -2196,10 +2196,9 @@ Proof.
       gives. *)
   all: try solve [ push_closed; mauto 3 ].
   (** With the weakenings pushed in and the lifted ones in the context, most
-      cases are the corresponding rule applied to the induction hypotheses. *)
-  all: try solve [ mauto 4 ].
-  (** For the wider rules the rule application itself is what [eauto] does not
-      reach in time, so we take that step by hand. *)
+      cases are the corresponding rule applied to the induction hypotheses:
+      the rule application is taken by hand, which [eauto] does not reach in
+      time for the wider rules. *)
   all: try solve [ econstructor; mauto 3 ].
   (** The module rules. *)
   all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod;
@@ -3322,7 +3321,6 @@ Proof.
           | eapply wf_exp_eq_app_cong with (r := propositional) (i := 0)
           | eapply wf_exp_eq_pi_beta with (r := propositional) (i := 0) ]; mauto 4 ].
   all: try solve [ push_closed; mauto 3 ].
-  all: try solve [ mauto 4 ].
   all: try solve [ econstructor; mauto 3 ].
   (** The module rules.  A local module is lifted over by [q σ] at the
       transported unit. *)

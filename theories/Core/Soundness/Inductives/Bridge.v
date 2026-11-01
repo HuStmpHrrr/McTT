@@ -423,8 +423,8 @@ Section ViewSyn.
     pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ H Hσ) as H'.
     exists i; cbn [exp_sub] in H'.
     unfold ptyp_dom_at in H'.
-    assert (EB : List.nth kk (ptyp_doms t) a_True = B) by (apply List.nth_error_nth; exact HB).
-    assert (EB' : List.nth kk (ptyp_doms t') a_True = B') by (apply List.nth_error_nth; exact HB').
+    assert (EB : List.nth kk (ptyp_doms t) a_placeholder_type = B) by (apply List.nth_error_nth; exact HB).
+    assert (EB' : List.nth kk (ptyp_doms t') a_placeholder_type = B') by (apply List.nth_error_nth; exact HB').
     rewrite EB, EB' in H'.
     rewrite <- Hl1 in H'.
     rewrite (view_syntax_wk_inst B' c gs' gs1' t' gs2' kk τ Us Ns As1 Ds Hcon' Heq' HUl HNl ltac:(lia) HDl) in H'.

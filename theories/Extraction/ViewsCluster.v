@@ -251,7 +251,7 @@ Section Fixed_GCtx.
   Lemma apps_ind_not_pi : forall qi k Ms B C, apps (a_ind qi k) Ms <> a_pi relevant B C.
   Proof. intros * H; apply (f_equal app_head) in H; rewrite app_head_apps in H; discriminate. Qed.
 
-  Lemma nbe_ty_True_inv : forall Γ W, nbe_ty_f Γ a_True W -> W = nf_True.
+  Lemma nbe_ty_placeholder_type_inv : forall Γ W, nbe_ty_f Γ a_placeholder_type W -> W = nf_placeholder_type.
   Proof. intros * [ρ m Hinit Ea Hr]; inversion Ea; subst; inversion Hr; reflexivity. Qed.
 
   Lemma nbe_ty_ind_inv : forall Γ qi k Ms W, nbe_ty_f Γ (apps (a_ind qi k) Ms) W -> exists Rs, W = nf_indty qi k Rs.
@@ -374,8 +374,8 @@ Section Fixed_GCtx.
     set (K := List.length gs1 + List.length Bs + im_nn Mi) in *.
     destruct (nbe_ty_pis_inv _ _ _ _ HW) as (WBs & WE & HWe & HlWB & HWE).
     unfold ind_mty in HT, HWE; destruct (ind_member D (ptyp_mem t)) as [Mjm |] eqn:HMjm.
-    2:{ rewrite (nbe_ty_True_inv _ _ HWE) in HWe; cbn [nf_to_exp] in HWe.
-        assert (HT0 : forall B C, a_True <> a_pi relevant B C) by (intros B C H0; discriminate H0).
+    2:{ rewrite (nbe_ty_placeholder_type_inv _ _ HWE) in HWe; cbn [nf_to_exp] in HWe.
+        assert (HT0 : forall B C, a_placeholder_type <> a_pi relevant B C) by (intros B C H0; discriminate H0).
         destruct z as [qz kz Csz | qz Isz].
         - destruct (classify_arg_view _ _ _ _ _ _ _ _ _ _ _ Hcls Hin) as (Bs2 & E2 & mz & HWe2 & HE2 & Hh2 & _).
           rewrite HWe2 in HWe; destruct (pis_inj _ _ _ _ HE2 HT0 HWe) as [_ ->]; discriminate.

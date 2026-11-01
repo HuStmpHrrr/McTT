@@ -374,7 +374,7 @@ with fast_eval_ihty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> e
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      fast_eval_exps_order Θ Ξ Ps p ->
-     (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ bs -> fast_eval_exp_order Θ Ξ (List.nth j As a_True) (env_args pm (bs ++ v :: nil))) ->
+     (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ bs -> fast_eval_exp_order Θ Ξ (List.nth j As a_placeholder_type) (env_args pm (bs ++ v :: nil))) ->
      fast_eval_ihty_order Θ Ξ pq ups pm As p (pt_self j Ps) v )
 (** At the end, at a record view: the projections, then their recursive
     results' types *)
@@ -1639,7 +1639,7 @@ Section EvalImpl.
           | exist _ _ Ec => False_rect _ _ }
         | exist _ _ Eh =>
             let (bs, Hbs) := fast_eval_exps_impl Ps p Hp _ in
-            let (a, Ha) := fast_eval_exp_impl (List.nth j As a_True) (fenv_args pm (bs ++ v :: nil)) _ _ in
+            let (a, Ha) := fast_eval_exp_impl (List.nth j As a_placeholder_type) (fenv_args pm (bs ++ v :: nil)) _ _ in
             exist _ (a :: nil) _ }
       | exist _ None Em => False_rect _ _ }
     | inright Ed => False_rect _ _ }

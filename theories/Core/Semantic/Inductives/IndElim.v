@@ -119,7 +119,7 @@ Section Fixed_GCtx.
   Qed.
 
   Lemma nth_blocks_motives : forall Bks j b, List.nth_error Bks j = Some b ->
-      List.nth j (blocks_motives Bks) a_True = eb_motive b.
+      List.nth j (blocks_motives Bks) a_placeholder_type = eb_motive b.
   Proof.
     intros * H; unfold blocks_motives.
     apply List.nth_error_nth; rewrite List.nth_error_map, H; reflexivity.

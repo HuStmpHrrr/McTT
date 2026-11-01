@@ -427,7 +427,7 @@ Import Sub_Notations Wk_Notations.
 Definition ind_mty (pq : qname) (D : ind_decl) (j : nat) (Us Ns : list exp) : typ :=
   match ind_member D j with
   | Some M => im_ty_at pq j M Us Ns
-  | None => a_True
+  | None => a_placeholder_type
   end.
 
 (** The parameters of the member [M], and the uniform ones, as variables,
@@ -584,7 +584,7 @@ Definition self_mty (D : ind_decl) (IsS : nat -> list exp) (j d : nat) (Ns : lis
       | mh_view qc kc _ _ => apps_exp (a_ind qc kc) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
       | mh_record qr _ _ => apps_exp (a_record qr) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
       end
-  | None => a_True
+  | None => a_placeholder_type
   end.
 
 (** [ptyp_ty] and [cargs_ctx] with the members as variables. *)
@@ -668,7 +668,7 @@ Definition projections_of (ns : list string) (x : exp) : list exp := List.map (f
 Fixpoint leaf_ihty (r : relevance) (As : list exp) (β σ : sub) (x : exp) (l : leaf_path) : typ :=
   match l with
   | leaf_pi B l => a_pi r B[σ] (leaf_ihty r As (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) l)
-  | leaf_self j Ps => (List.nth j As a_True)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
+  | leaf_self j Ps => (List.nth j As a_placeholder_type)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
   | leaf_proj f ns l => leaf_ihty r As β (sb_of_list σ (projections_of ns x)) (a_proj f x) l
   end.
 
@@ -790,7 +790,7 @@ Definition elim_src (sel : option (list nat)) (i : nat) : nat :=
 Definition motives_sel (sel : option (list nat)) (As : list exp) : list exp :=
   match sel with
   | None => As
-  | Some vm => List.map (fun v => List.nth v As a_True) vm
+  | Some vm => List.map (fun v => List.nth v As a_placeholder_type) vm
   end.
 
 (** The motive of each block read binds the non-uniform parameters of the
@@ -848,7 +848,7 @@ Definition elim_grp (D : ind_decl) (oq : option qname) (pq : qname) (m : nat) : 
     and the domains before it, and the non-uniform parameters of the member
     the shape ends in, under all its domains ([ptyp_ty]). *)
 Definition ptyp_dom_at (pat : list bool) (d : nat) (t : ptyp) : typ :=
-  (List.nth d (ptyp_doms t) a_True)[wk_pat (List.repeat false d ++ pat)]ʷ.
+  (List.nth d (ptyp_doms t) a_placeholder_type)[wk_pat (List.repeat false d ++ pat)]ʷ.
 
 (** The non-uniform parameters a shape ends in, under the arguments
     before ([pat]) and all its domains. *)
@@ -1112,7 +1112,7 @@ Definition wrap_branch (r : relevance) (pq : qname) (D D' : ind_decl) (Us : list
   let nr' := cargs_nrec D' gs' in
   let n' := (nn + na + nr')%nat in
   let gs := match ind_con Mv c with Some gs => gs | None => gs' end in
-  let B := match brs_lookup Bs c with Some (_, B) => B | None => a_True end in
+  let B := match brs_lookup Bs c with Some (_, B) => B | None => a_placeholder_type end in
   let Us' := List.map (fun U => U[wk_shiftn n']ʷ) Us in
   let nvars := vars_from (nr' + na) nn in
   let avars := vars_from nr' na in
@@ -1143,7 +1143,7 @@ Definition view_wrap_block (r : relevance) (pq : qname) (D D' : ind_decl) (vm : 
   match List.nth_error Bks v, ind_member D v with
   | Some (eb_mk nm _ A Bs), Some Mv =>
       eb_mk nm None A (List.map (fun cg => wrap_branch r pq D D' Us Bks Mv Bs (fst cg) (snd cg)) (im_cons Mi'))
-  | _, _ => eb_mk 0 None a_True nil
+  | _, _ => eb_mk 0 None a_placeholder_type nil
   end.
 
 (** The container's blocks for its members [ms], from the member [i'] on. *)

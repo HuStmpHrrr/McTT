@@ -20,6 +20,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core.Syntactic.System.Inductives Require Import Runs GrecTyped.
 From Mctt.Algorithmic.Typing Require Import Definitions Lemmas.
+From Mctt.Core.Completeness.Consequences Require Import Types.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -289,6 +290,23 @@ Section IndRuns.
     exists r, (universe_nf_large_index u); split;
       [ exact (@sort_typed_of_is_sort_nf (gc_mk Θ Ξ) _ _ _ _ _ (@alg_type_infer_sound (gc_mk Θ Ξ) _ _ _ HAi HΓ) Hs)
       | exists UA, u; split; assumption ].
+  Qed.
+
+  (** The premise [type_relevance] of the command rules follows from the
+      typing of the type at its sort: the relevance the algorithm infers is
+      the one of any sort the type has ([subtyp_same_relevance]). *)
+  Corollary type_relevance_of_sort : forall Θ Ξ Γ A r (i : nat),
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i -> type_relevance Θ Ξ Γ A r.
+  Proof.
+    intros * HA.
+    assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
+    pose proof (@alg_type_check_complete (gc_mk Θ Ξ) _ _ _ (user_exp_all A) HA) as HAc.
+    destruct (@alg_type_check_sort_infer (gc_mk Θ Ξ) _ _ _ HΓ (type_sort_relevance_universe r i) HAc)
+      as (UA & r' & u & HAi & Hs).
+    pose proof (@sort_typed_of_is_sort_nf (gc_mk Θ Ξ) _ _ _ _ _ (@alg_type_infer_sound (gc_mk Θ Ξ) _ _ _ HAi HΓ) Hs) as HA'.
+    replace r with r'; [ exists UA, u; split; assumption |].
+    exact (@subtyp_same_relevance (gc_mk Θ Ξ) _ _ _ _ _ _ _
+             (wf_subtyp_refl_typ _ _ _ _ _ HA' (type_sort_relevance_universe r' _)) HA' HA).
   Qed.
 
   (** Generated definitions [ds], their names distinct and fresh in the

@@ -232,7 +232,7 @@ Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
     out): the relation of a domain is the one [doms_rel] gives its type after
     them and the values of the domains before it. *)
 Definition shape_doms_rel (doms_rel : list domain -> exp -> relation domain) (ms ws : list domain) (Bs : list exp) : nat -> list domain -> relation domain :=
-  fun k ys => doms_rel (ms ++ ws ++ ys) (List.nth k Bs a_True).
+  fun k ys => doms_rel (ms ++ ws ++ ys) (List.nth k Bs a_placeholder_type).
 
 (** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
 #[warnings="-cannot-define-projection"]

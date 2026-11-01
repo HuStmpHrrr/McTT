@@ -373,7 +373,7 @@ with kinds_body_xp (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
     kinds_body_xp Θ Ξ ρ (gm_open Φ H its) (gens_append Φx 0 gs)
 (** What the items of an open of [H] generate, by the kinds of the members
     they name, in [ρ]; a generated definition carries no type: its type
-    [⊤] and its tag [propositional] are placeholders. *)
+    is the placeholder, and its tag the sort of the member it names. *)
 with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_item -> list generated_item -> Prop :=
 (** No items generate nothing *)
 | kinds_items_gen_nil : forall ρ H, kinds_items_gen Θ Ξ ρ H nil nil
@@ -824,7 +824,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ List.nth j As a_True ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
+     ⟦ List.nth j As a_placeholder_type ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
      ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
 (** At the end, at a record view: those of its fields at [v]'s
     projections *)

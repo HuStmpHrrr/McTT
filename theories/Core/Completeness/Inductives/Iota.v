@@ -298,7 +298,7 @@ Section Blocks.
          List.nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (List.map (fun U => U[β]) Us)) Ns) k = Some T -> Ψ ⊨ N : T) ->
       Ψ ⊨ M : ind_mty p D j (List.map (fun U => U[β]) Us) Ns ->
       Ψ ⊨ elim_at relevant p D oq (List.map (fun U => U[β]) Us) (blocks_sub Bks β) j M
-        : (List.nth j (blocks_motives Bks) a_True)[sb_of_list β (Ns ++ M :: nil)].
+        : (List.nth j (blocks_motives Bks) a_placeholder_type)[sb_of_list β (Ns ++ M :: nil)].
   Proof.
     intros * Hβ HMj Hrv HNl HNs HM.
     set (Us0 := List.map (fun U => U[β]) Us) in *.
@@ -560,7 +560,7 @@ Section LeafVals.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
       (env_args C (ns ++ m :: nil)) (env_args C (ns' ++ m' :: nil)).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C u0 HUC).
   #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C u0 HCC HUC).
@@ -1502,7 +1502,7 @@ Section Iota.
     Let dr := canon_doms_rel u0.
     Let G := grp_rel p D u0 nr ar dr.
     Let Rel := fun j ns m ns' m' =>
-      per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+      per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
         (env_args C (ns ++ m :: nil)) (env_args C (ns' ++ m' :: nil)).
     #[local] Abbreviation u0_len' := (u0_len D Us iota_case_HUl C u0 HUC).
     #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs C u0 HCC HUC).

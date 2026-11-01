@@ -225,7 +225,7 @@ Section GrecTyped.
   Qed.
 
   Lemma nth_recursor_motives : forall k j Mj, List.nth_error (ind_block_members D) j = Some Mj ->
-      List.nth j (recursor_motives D k) a_True = recursor_motive N j Mj k.
+      List.nth j (recursor_motives D k) a_placeholder_type = recursor_motive N j Mj k.
   Proof.
     intros * HMj; unfold recursor_motives.
     replace (List.seq 0 (ind_nblk D)) with (List.seq 0 (List.length (ind_block_members D))) by (rewrite length_ind_block_members; reflexivity).
@@ -234,7 +234,7 @@ Section GrecTyped.
 
   (** Past the members with a block, the motives are [True], as
       [List.nth]'s default. *)
-  Lemma nth_recursor_motives_ge : forall k j, N <= j -> List.nth j (recursor_motives D k) a_True = a_True.
+  Lemma nth_recursor_motives_ge : forall k j, N <= j -> List.nth j (recursor_motives D k) a_placeholder_type = a_placeholder_type.
   Proof.
     intros * Hj; apply List.nth_overflow; unfold recursor_motives.
     rewrite List.length_map, List.length_combine, List.length_seq, length_ind_block_members; lia.

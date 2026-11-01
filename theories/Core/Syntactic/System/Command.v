@@ -609,7 +609,7 @@ Qed.
 (** The type of a context entry; a module slot counts as [True], a
     definition with a module part as its term part's type. *)
 Definition centry_ty (e : centry) : typ :=
-  match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_True | ce_dm A _ _ => A end.
+  match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_placeholder_type | ce_dm A _ _ => A end.
 
 (** A telescope, innermost first, as arguments, outermost first. *)
 Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.map (fun e => (""%string, centry_ty e)) Δ).

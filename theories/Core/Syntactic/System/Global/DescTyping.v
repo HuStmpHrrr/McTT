@@ -2114,7 +2114,7 @@ Section DescOk.
       (sb_of_list Id Ns ⨟ τ) x = sb_of_list Id (List.map (fun M => M[τ]) Ns) x.
   Proof.
     intros * Hx; unfold sb_compose.
-    rewrite (sb_of_list_nth _ _ _ a_True Hx), (sb_of_list_nth _ _ _ a_True[τ]) by (rewrite length_map; exact Hx).
+    rewrite (sb_of_list_nth _ _ _ a_placeholder_type Hx), (sb_of_list_nth _ _ _ a_placeholder_type[τ]) by (rewrite length_map; exact Hx).
     rewrite length_map, (List.map_nth (fun M => M[τ])); reflexivity.
   Qed.
 

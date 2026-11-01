@@ -355,7 +355,7 @@ Section ElimViewRule.
       by (apply eval_exps_app; [ exact Ens3 | econstructor; [ exact Em3 | constructor ] ]).
     pose proof (functional_eval_exps' _ _ _ _ Eq3 Eq3') as ->.
     pose proof (per_head_inst _ _ _ _ _ _ _ _ _ _ (HAv _ _ _ HMm Hbm) HRΓ (gsub_valid Hg) HC22 Hτ3 Hτ3) as ER2.
-    assert (Hfin : forall a b, per_head (List.nth m (blocks_motives Bks) a_True) (List.nth m (blocks_motives Bks) a_True)
+    assert (Hfin : forall a b, per_head (List.nth m (blocks_motives Bks) a_placeholder_type) (List.nth m (blocks_motives Bks) a_placeholder_type)
                      (env_args C2 (ns3 ++ m3 :: nil)) (env_args C2 (ns3 ++ m3 :: nil)) a b -> RT a b).
     { intros a b H; apply ER1, ER2; rewrite (blocks_motives_nth _ _ _ Hbm) in H; exact H. }
     pose proof (rel_resp VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 C2 HC22 Bks iA HBks HMall HAv

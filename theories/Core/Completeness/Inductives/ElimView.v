@@ -151,7 +151,7 @@ Combined Scheme cross_result_rel_mut_ind_all from cross_result_rel_mut_ind, cros
 Fixpoint leaf_skeleton (l : leaf_path) : leaf_path :=
   match l with
   | leaf_self _ _ => leaf_self 0 nil
-  | leaf_pi _ l1 => leaf_pi a_True (leaf_skeleton l1)
+  | leaf_pi _ l1 => leaf_pi a_placeholder_type (leaf_skeleton l1)
   | leaf_proj f _ l1 => leaf_proj f nil (leaf_skeleton l1)
   end.
 
@@ -310,10 +310,10 @@ Section ViewCount.
         cbn [shape_leaves]; rewrite (rview_leaves_not_rview _ _ _ HMj Hrv), (rview_leaves_not_rview _ _ _ HMj' Hrv').
         cbn [List.filter leaf_in]; rewrite HMj', Hrv'; reflexivity.
     - cbn [shape_leaves]; rewrite filter_map_pi, !List.map_map.
-      transitivity (List.map (fun l => leaf_pi a_True (leaf_skeleton l)) (List.filter (leaf_in D' t1') (shape_leaves (rview_leaves D) (S m) t1)));
+      transitivity (List.map (fun l => leaf_pi a_placeholder_type (leaf_skeleton l)) (List.filter (leaf_in D' t1') (shape_leaves (rview_leaves D) (S m) t1)));
         [ reflexivity |].
-      transitivity (List.map (fun l => leaf_pi a_True (leaf_skeleton l)) (shape_leaves (rview_leaves D') (S m') t1')); [| reflexivity ].
-      rewrite <- !(List.map_map leaf_skeleton (leaf_pi a_True)), (IHt t1 (S m) (S m') Hrk Hsc); reflexivity.
+      transitivity (List.map (fun l => leaf_pi a_placeholder_type (leaf_skeleton l)) (shape_leaves (rview_leaves D') (S m') t1')); [| reflexivity ].
+      rewrite <- !(List.map_map leaf_skeleton (leaf_pi a_placeholder_type)), (IHt t1 (S m) (S m') Hrk Hsc); reflexivity.
   Qed.
 
   (** A path of the container's ([leaf_in]) is one of the group's: the
@@ -692,7 +692,7 @@ Proof.
   - rewrite sb_qn_ge by exact Hz.
     assert (HU : forall x, (exists M, sb_of_list Id Us x = se_exp M) \/ sb_of_list Id Us x = se_var (x - List.length Us)).
     { intros x; destruct (Nat.lt_ge_cases x (List.length Us)) as [Hx | Hx].
-      - left; rewrite (sb_of_list_nth _ _ _ a_True) by exact Hx; eexists; reflexivity.
+      - left; rewrite (sb_of_list_nth _ _ _ a_placeholder_type) by exact Hx; eexists; reflexivity.
       - right; replace x with (List.length Us + (x - List.length Us)) at 1 by lia; rewrite sb_of_list_ge; reflexivity. }
     destruct (HU (z - (List.length pat + nn))) as [[M EM] | EM]; rewrite EM; cbn [sentry_wk sentry_sub sentry_exp].
     + right; exists M; rewrite exp_sub_of_wk, exp_wk_wk, <- exp_sub_of_wk; apply exp_sub_sb_eq.
@@ -964,7 +964,7 @@ Section SelfElim.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
       (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
   #[local] Abbreviation EM f := (EB f C1 HC11 Bks iA HBks HMall HAv).
@@ -2037,7 +2037,7 @@ Section CrossElim.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
       (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
   #[local] Abbreviation EM f := (EB f C1 HC11 Bks iA HBks HMall HAv).
@@ -2401,7 +2401,7 @@ Section WrappedBlocks.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
       (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
   #[local] Abbreviation WR f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC Bks iA HBk).

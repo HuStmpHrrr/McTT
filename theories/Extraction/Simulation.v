@@ -186,7 +186,7 @@ with ends_agree : qname -> list exp -> env -> env -> ptyp -> Prop :=
 (** The end, at a member with a block: its motive *)
 | ends_agree_self : forall p As ρm ρm' D j Mj Ps,
     ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    (forall x, ~ exp_fresh (S (List.length Ps) + x) (List.nth j As a_True) -> dentry_simulation (env_entry ρm x) (env_entry ρm' x)) ->
+    (forall x, ~ exp_fresh (S (List.length Ps) + x) (List.nth j As a_placeholder_type) -> dentry_simulation (env_entry ρm x) (env_entry ρm' x)) ->
     ends_agree p As ρm ρm' (pt_self j Ps)
 (** The end, at a record view: along each of its recursive fields *)
 | ends_agree_rview : forall p As ρm ρm' D j Mj qr Is fl Ps,

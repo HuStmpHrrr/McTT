@@ -91,7 +91,7 @@ Inductive ends_fresh (p : qname) (Km : option nat) (As : list exp) : ptyp -> Pro
 (** At a member with a block: its motive, under the end's parameters and
     the argument *)
 | ends_fresh_self : forall D j Mj Ps, ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    optional_exp_fresh (optional_shift (S (List.length Ps)) Km) (List.nth j As a_True) -> ends_fresh p Km As (pt_self j Ps)
+    optional_exp_fresh (optional_shift (S (List.length Ps)) Km) (List.nth j As a_placeholder_type) -> ends_fresh p Km As (pt_self j Ps)
 (** At a record view: every recursive field's shape, of its one
     constructor *)
 | ends_fresh_rview : forall D j Mj qr Is fl Ps, ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj ->
@@ -1152,22 +1152,22 @@ Qed.
 (** The motive of the member [j] of the group read, among the blocks'
     motives: a block's, the one [elim_src] gives, or the default. *)
 Lemma nth_motives_sel : forall sel Bks j,
-    List.nth j (motives_sel sel (blocks_motives Bks)) a_True = a_True \/
-    exists b, List.nth_error Bks (elim_src sel j) = Some b /\ List.nth j (motives_sel sel (blocks_motives Bks)) a_True = eb_motive b.
+    List.nth j (motives_sel sel (blocks_motives Bks)) a_placeholder_type = a_placeholder_type \/
+    exists b, List.nth_error Bks (elim_src sel j) = Some b /\ List.nth j (motives_sel sel (blocks_motives Bks)) a_placeholder_type = eb_motive b.
 Proof.
-  assert (Hb : forall (Bks : list eblock) i, List.nth i (blocks_motives Bks) a_True = a_True \/
-             exists b, List.nth_error Bks i = Some b /\ List.nth i (blocks_motives Bks) a_True = eb_motive b).
+  assert (Hb : forall (Bks : list eblock) i, List.nth i (blocks_motives Bks) a_placeholder_type = a_placeholder_type \/
+             exists b, List.nth_error Bks i = Some b /\ List.nth i (blocks_motives Bks) a_placeholder_type = eb_motive b).
   { intros Bks i; destruct (List.nth_error Bks i) as [b |] eqn:E.
     - right; exists b; split; [ reflexivity |].
       unfold blocks_motives; apply List.nth_error_nth; rewrite List.nth_error_map, E; reflexivity.
     - left; apply List.nth_overflow; unfold blocks_motives; rewrite List.length_map; apply List.nth_error_None; exact E. }
   intros [vm |] Bks j; cbn [motives_sel elim_src]; [| apply Hb ].
   destruct (Nat.lt_ge_cases j (List.length vm)) as [Hj | Hj].
-  - assert (E : List.nth j (List.map (fun v => List.nth v (blocks_motives Bks) a_True) vm) a_True
-                 = List.nth (List.nth j vm 0) (blocks_motives Bks) a_True).
-    { rewrite (List.nth_indep _ a_True ((fun v => List.nth v (blocks_motives Bks) a_True) 0))
+  - assert (E : List.nth j (List.map (fun v => List.nth v (blocks_motives Bks) a_placeholder_type) vm) a_placeholder_type
+                 = List.nth (List.nth j vm 0) (blocks_motives Bks) a_placeholder_type).
+    { rewrite (List.nth_indep _ a_placeholder_type ((fun v => List.nth v (blocks_motives Bks) a_placeholder_type) 0))
         by (rewrite List.length_map; exact Hj).
-      apply (List.map_nth (fun v => List.nth v (blocks_motives Bks) a_True)). }
+      apply (List.map_nth (fun v => List.nth v (blocks_motives Bks) a_placeholder_type)). }
     rewrite E; apply Hb.
   - left; apply List.nth_overflow; rewrite List.length_map; exact Hj.
 Qed.

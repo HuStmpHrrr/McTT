@@ -840,7 +840,7 @@ Inductive leaf_type_at (D : ind_decl) (u : list domain) (ρm : env) (As : list e
 | leaf_type_self : forall env j Mj Ps v bs b a (i : nat),
     ind_member D j = Some Mj -> im_is_rview Mj = false ->
     ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil env ↘ bs ->
-    ⟦ List.nth j As a_True ⟧ env_args ρm (bs ++ v :: nil) ↘ b ->
+    ⟦ List.nth j As a_placeholder_type ⟧ env_args ρm (bs ++ v :: nil) ↘ b ->
     Dom a ≈ b ∈ per_univ i ->
     leaf_type_at D u ρm As env (pt_self j Ps) v 0 a
 (** At the end, at a record view: the type along the path [idx] of its
@@ -1946,6 +1946,8 @@ Proof.
   - intros y Hy; apply HE; rewrite !List.length_skipn, List.length_app in *; lia.
 Qed.
 
+(** The identity weakening from [C ++ Γ] to a closed telescope [C] of
+    assumptions is valid: it reads the front of an environment. *)
 Lemma rel_wk_under_ctx_closed_drop : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ -> C ++ Γ ⊨ʷ wk_id : C.
 Proof.
   intros * Ha HC HΓ.
@@ -1958,6 +1960,9 @@ Proof.
   - intros ρ ρ' _ x Hx Hp; rewrite eval_wk_id; exact (entry_propositional_app_front C Γ ρ x Hx Hp).
 Qed.
 
+(** A closed telescope [C] of assumptions in front of a valid context [Γ]:
+    the identity is a valid substitution from [C ++ Γ] to [C], the entries
+    of [Γ] dropped, since [C]'s types mention none of them. *)
 Lemma gsub_closed_drop : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ -> gsub (C ++ Γ) Id C.
 Proof.
   intros * Ha HC HΓ.
@@ -2713,14 +2718,14 @@ Section GroupElim.
         replace (y + (im_nn Mk + K + L) - L) with (y + List.length (cargs_strat gs1 ++ im_nparams Mk)) by lia.
         rewrite EN.
         destruct (Nat.lt_ge_cases y (ind_nu D)) as [Hy | Hy].
-        - rewrite !(sb_of_list_nth _ _ _ a_True) by (rewrite List.length_map; lia).
+        - rewrite !(sb_of_list_nth _ _ _ a_placeholder_type) by (rewrite List.length_map; lia).
           cbn [sentry_wk]; f_equal.
           rewrite !List.length_map.
-          rewrite (List.nth_indep (List.map (fun U => U[β0]) Us) _ (a_True[β0])),
-            (List.nth_indep (List.map (fun U => U[sb_shift_iter L β0]) Us) _ (a_True[sb_shift_iter L β0]))
+          rewrite (List.nth_indep (List.map (fun U => U[β0]) Us) _ (a_placeholder_type[β0])),
+            (List.nth_indep (List.map (fun U => U[sb_shift_iter L β0]) Us) _ (a_placeholder_type[sb_shift_iter L β0]))
             by (rewrite List.length_map; lia).
-          pose proof (List.map_nth (fun U => U[β0]) Us a_True (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
-          pose proof (List.map_nth (fun U => U[sb_shift_iter L β0]) Us a_True (List.length Us - 1 - y)) as E2;
+          pose proof (List.map_nth (fun U => U[β0]) Us a_placeholder_type (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
+          pose proof (List.map_nth (fun U => U[sb_shift_iter L β0]) Us a_placeholder_type (List.length Us - 1 - y)) as E2;
             cbn beta in E2; rewrite E2.
           rewrite <- exp_sub_of_wk, exp_sub_sub; apply exp_sub_sb_eq; symmetry; apply sb_shift_iter_eq.
         - replace y with (List.length (List.map (fun U => U[β0]) Us) + (y - ind_nu D)) at 1 by (rewrite List.length_map; lia).
@@ -3441,7 +3446,7 @@ Section GroupElim.
       Hypothesis (HAv : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
                     elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@iA).
       Let Rel := fun j ns m ns' m' =>
-        per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+        per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
           (env_args C1 (ns ++ m :: nil)) (env_args C2 (ns' ++ m' :: nil)).
 
       Lemma mctx_at : forall j Mj, ind_member D j = Some Mj -> forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
@@ -5104,10 +5109,10 @@ Section GroupElim.
             replace (List.length pat + (im_nn Mk + y) - (List.length pat + im_nn Mk)) with y by lia.
             rewrite sentry_sub_of_wk, sentry_wk_wk.
             destruct (Nat.lt_ge_cases y (ind_nu D)) as [Hy | Hy].
-            - rewrite !(sb_of_list_nth _ _ _ a_True) by (rewrite ?List.length_map; lia); cbn [sentry_wk]; f_equal.
+            - rewrite !(sb_of_list_nth _ _ _ a_placeholder_type) by (rewrite ?List.length_map; lia); cbn [sentry_wk]; f_equal.
               rewrite List.length_map.
-              rewrite (List.nth_indep (List.map (fun U => U[β]) Us) _ (a_True[β])) by (rewrite List.length_map; lia).
-              pose proof (List.map_nth (fun U => U[β]) Us a_True (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
+              rewrite (List.nth_indep (List.map (fun U => U[β]) Us) _ (a_placeholder_type[β])) by (rewrite List.length_map; lia).
+              pose proof (List.map_nth (fun U => U[β]) Us a_placeholder_type (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
               unfold β; rewrite exp_sub_of_wk; apply exp_wk_wk_eq; intros z; cbn; unfold m; rewrite branch_entry_Lna, branch_entry_Lpat; lia.
             - replace y with (List.length Us + (y - ind_nu D)) at 1 by lia.
               replace y with (List.length (List.map (fun U => U[β]) Us) + (y - ind_nu D)) at 2 by (rewrite List.length_map; lia).

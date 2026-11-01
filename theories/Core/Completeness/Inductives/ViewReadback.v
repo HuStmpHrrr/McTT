@@ -1930,7 +1930,7 @@ Section CrossBot.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
       (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C1 u0 HUC).

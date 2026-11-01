@@ -385,7 +385,7 @@ End ModBlame.
 
 (** A binder of a term a message is read in, whose type the message does
     not read: only the depth matters, for the printer to name the binders. *)
-Definition unread_binder : centry := ce_ass a_True.
+Definition unread_binder : centry := ce_ass a_placeholder_type.
 
 (** [n] such binders. *)
 Definition unread_binders (n : nat) : ctx := List.repeat unread_binder n.

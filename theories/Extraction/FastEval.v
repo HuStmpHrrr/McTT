@@ -669,7 +669,7 @@ with fast_eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> 
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ List.nth j As a_True ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
+     ⟦ List.nth j As a_placeholder_type ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
      ⟦ihtyᶠ v of pt_self j Ps at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
 (** At the end, at a record view: those of its fields at [v]'s
     projections *)
