@@ -1098,6 +1098,15 @@ Section syn_mut_ind.
   Qed.
 End syn_mut_ind.
 
+(** A body with no local open: every stored body is one, and so is every
+    expanded body. *)
+Fixpoint gm_noopen (Φ : gmod) : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ' _ _ => gm_noopen Φ'
+  | gm_open _ _ _ => False
+  end.
+
 (** ** Chains of Selections *)
 
 (** [H.y1. … .yn], the submodules [pre] selected from [H] in order. *)

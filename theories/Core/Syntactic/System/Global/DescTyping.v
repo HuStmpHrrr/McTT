@@ -285,6 +285,70 @@ Proof.
     + eapply sub_preserves_exp; eassumption.
 Qed.
 
+(** The [Π] over a telescope whose assumptions are types of levels into a
+    type of levels is a type of levels ([wf_pi_level]); a [let] over a type
+    of levels is one. *)
+Lemma ctx_pi_level_wf : forall Θ Ξ Δ Γ A,
+    ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+    level_sorted_parameters Θ Ξ Γ Δ ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : LevelSort ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : LevelSort.
+Proof.
+  intros Θ Ξ.
+  induction Δ as [| [B | B N | U | B N U] Δ IH]; intros * HΔ HL HA; cbn in *; [ assumption | | | |];
+    inversion HΔ; subst;
+    (assert (HL' : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort)
+      by (intros Δ1 T Δ2 ->; exact (HL (_ :: Δ1) T Δ2 eq_refl))).
+  - eapply IH; [ eauto using presup_exp_ctx | exact HL' |].
+    eapply wf_pi_level; [ exact (HL nil B Δ eq_refl) | exact HA ].
+  - eapply IH; [ eauto using presup_exp_ctx | exact HL' |].
+    match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S, HN : _ ⍮ _ ⍮ _ ⊢ N : B |- _ =>
+      eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | constructor ] end.
+  - eapply IH; [ eauto using presup_unit_eq_ctx | exact HL' |].
+    eapply wf_let_mod_sort; [ eassumption | exact HA | constructor ].
+  - eapply IH; [ eauto using presup_exp_ctx | exact HL' |].
+    rewrite <- (type_sort_sub _ (Id ,,ᵈ N ‖ me_lit U) type_sort_level).
+    eapply sub_preserves_exp; [ eassumption | eapply wf_sub_single_dm; eassumption ].
+Qed.
+
+(** The [λ] over such a telescope of a term of a type of levels is of the
+    [Π]. *)
+Lemma ctx_fn_level_wf : forall Θ Ξ Δ Γ A M,
+    ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+    level_sorted_parameters Θ Ξ Γ Δ ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : LevelSort ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A.
+Proof.
+  intros Θ Ξ.
+  induction Δ as [| [B | B N | U | B N U] Δ IH]; intros * HΔ HL HA HM; cbn in *; [ assumption | | | |];
+    inversion HΔ; subst;
+    (assert (HL' : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort)
+      by (intros Δ1 T Δ2 ->; exact (HL (_ :: Δ1) T Δ2 eq_refl))).
+  - pose proof (HL nil B Δ eq_refl) as HB.
+    eapply IH; [ eauto using presup_exp_ctx | exact HL' | eapply wf_pi_level; [ exact HB | exact HA ] |].
+    change LevelSort with (relevance_sort relevant LevelSort) in HA.
+    eapply wf_fn; [ exact HB | exact type_sort_level | exact HA | constructor | exact HM ].
+  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S, HN : _ ⍮ _ ⍮ _ ⊢ N : B |- _ =>
+      assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : LevelSort)
+        by (eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | constructor ]);
+      eapply IH; [ eauto using presup_exp_ctx | exact HL' | eassumption |];
+      eapply wf_exp_subtyp'; [ eapply wf_let with (A := B) (Srt := S); [ exact HB | exact HS | exact HN | exact HM ] |];
+      eapply wf_subtyp_refl; [ eassumption | constructor |];
+      eapply wf_exp_eq_sym, (wf_exp_eq_let_zeta_sort _ _ _ B N A S);
+        [ exact HB | exact HS | exact HN | exact HA | constructor ]
+    end.
+  - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : LevelSort) by (eapply wf_let_mod_sort; [ eassumption | exact HA | constructor ]).
+    eapply IH; [ eauto using presup_unit_eq_ctx | exact HL' | eassumption |].
+    eapply wf_exp_subtyp'; [ eapply wf_let_mod; [ eassumption | exact HA | constructor | exact HM ] |].
+    eapply wf_subtyp_refl; [ eassumption | constructor |].
+    eapply wf_exp_eq_sym, wf_exp_eq_let_mod_zeta_sort; [ eassumption | exact HA | constructor ].
+  - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ˢ Id ,,ᵈ N ‖ me_lit U : (Δ ++ Γ) ▸ₘ B ≔ N ‖ U) by (eapply wf_sub_single_dm; eassumption).
+    eapply IH; [ eauto using presup_exp_ctx | exact HL' | |].
+    + rewrite <- (type_sort_sub _ (Id ,,ᵈ N ‖ me_lit U) type_sort_level); eapply sub_preserves_exp; eassumption.
+    + eapply sub_preserves_exp; eassumption.
+Qed.
+
 (** At [relevant], into a type of a large universe. *)
 Corollary ctx_pi_wf : forall Θ Ξ Δ Γ A i,
     ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
@@ -325,6 +389,29 @@ Lemma ctx_pi_type : forall Θ Ξ r Δ Γ A i,
 Proof.
   intros * HΔ HA; split; [ eapply ctx_pi_at_wf; eassumption |].
   intros M HM; eapply ctx_fn_at_wf; eassumption.
+Qed.
+
+(** The same for the type of a definition at any relevant sort: a large
+    universe, or the types of levels when the telescope's assumptions are
+    types of levels (as [wf_gentry_def] asks). *)
+Lemma ctx_pi_type_sort : forall Θ Ξ r Δ Γ A Srt,
+    ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+    relevant_sort Srt ->
+    (Srt = LevelSort -> level_sorted_parameters Θ Ξ Γ Δ) ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : relevance_sort r Srt ->
+    (exists Srt', relevant_sort Srt' /\ Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi_at r Δ A : relevance_sort r Srt') /\
+    forall M, Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi_at r Δ A.
+Proof.
+  intros * HΔ HS HL HA; destruct HS as [i |].
+  - destruct (ctx_pi_type _ _ _ _ _ _ _ HΔ HA) as [[j Hj] Hfn].
+    split; [ exists (Typeω@j); split; [ constructor | exact Hj ] | exact Hfn ].
+  - destruct r; cbn [relevance_sort] in HA |- *.
+    + specialize (HL eq_refl).
+      split; [ exists LevelSort; split; [ constructor | eapply ctx_pi_level_wf; eassumption ] |].
+      intros M HM; eapply ctx_fn_level_wf; eassumption.
+    + change Propₘ with (relevance_sort propositional Typeω@0) in HA.
+      destruct (ctx_pi_type _ _ _ _ _ _ _ HΔ HA) as [[j Hj] Hfn].
+      split; [ exists (Typeω@j); split; [ constructor | exact Hj ] | exact Hfn ].
 Qed.
 
 (** A closed judgment holds in any context. *)
@@ -835,17 +922,6 @@ Proof.
   intros * HΔ; rewrite (tele_scoped_sub_agree _ _ σ Id HΔ) by lia; apply tele_sub_id.
 Qed.
 
-Lemma gm_noopen_sub : forall Φ σ, gm_noopen Φ -> gm_noopen (gmod_sub Φ σ).
-Proof. induction Φ; intros * H; cbn in *; auto. Qed.
-
-Lemma gm_prefix_body_ctx : forall Φ y Φ1, gm_noopen Φ -> gm_prefix_upto Φ y = Some Φ1 ->
-    exists Ψ, body_ctx Φ = Ψ ++ body_ctx Φ1.
-Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros * Hn Hp; cbn in Hn, Hp; [ discriminate | | contradiction ].
-  destruct (String.eqb y x); [ injection Hp as <-; exists nil; reflexivity |].
-  destruct (IH _ _ Hn Hp) as (Ψ & HΨ).
-  destruct E as [? ? ? ? [] | ? ? | ? ? ? ? | ? ? ? ? | ? ? ?]; cbn; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
-Qed.
 
 Lemma gens_append_noopen : forall gs Φ k, gm_noopen Φ -> gm_noopen (gens_append Φ k gs).
 Proof.
@@ -1963,10 +2039,12 @@ Section DescOk.
       typed arguments: so a description stays typed as the global context
       grows. *)
   Inductive desc_ok : ctx -> mdesc -> Prop :=
-  (** A term at the tag [r]: its type is of the sort at [r] (a type of a
-      large universe or a proposition), its δ-reduct of that type *)
-  | desc_ok_term : forall Γ r A om i,
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i ->
+  (** A term at the tag [r]: its type is of the sort at [r] of a relevant
+      sort (a type of a large universe or of levels, or a proposition), its
+      δ-reduct of that type *)
+  | desc_ok_term : forall Γ r A om Srt,
+      relevant_sort Srt ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Srt ->
       (forall M, om = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
       desc_ok Γ (mdesc_term r A om)
   (** An open module: a well-formed expanded body whose module parts of
@@ -2039,7 +2117,7 @@ Section DescOk.
       forall Γ' σ, Θ ⍮ Ξ ⍮ Γ' ⊢ˢ σ : Γ -> desc_ok Γ' (mdesc_sub R σ).
   Proof.
     intros Hg.
-    induction 1 as [Γ r A om i HA HM
+    induction 1 as [Γ r A om Srt HS HA HM
                    | Γ Δ Φw Φ lΔ HΦ Hn Hent IH HaΔ Hsh Hnd HUw HRΔ Htg
                    | Γ Θ' T Φ Ns Θ0 Ξ0 p lΘ Hg0 Hsub0 Hloc Ha Hs HT HΘ' Hargs HaΘ HRΘ
                    | Γ Θd A M Rm lΘ iA HΘd HaΘ HAt HM HRm IH HRΘd];
@@ -2056,9 +2134,9 @@ Section DescOk.
          - exact (IH _ _ Hσq).
          - exact (params_relevant_sub _ _ _ _ _ _ _ HRΘd Hσ HΘd HΘ''). }
     all: cbn [mdesc_sub].
-    - econstructor.
+    - econstructor; [ exact HS | |].
       + pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ) as HAσ.
-        rewrite type_sort_sub in HAσ by (apply type_sort_relevance; constructor); exact HAσ.
+        rewrite type_sort_sub in HAσ by (apply type_sort_relevance, relevant_sort_type_sort, HS); exact HAσ.
       + intros M HM'; destruct om as [M0 |]; cbn in HM'; [ injection HM' as <- | discriminate ].
         exact (sub_preserves_exp _ _ _ _ _ _ _ (HM M0 eq_refl) Hσ).
     - econstructor.
@@ -2269,7 +2347,7 @@ Section DescOk.
       Θ ⍮ Ξ ⍮ Γ ⊢ N : B -> mdesc_at R N = Some R' -> desc_ok Γ R'.
   Proof.
     intros Hg Γ R T B T1 N R' HR; revert T B T1 N R'.
-    induction HR as [Γ r A om i HA HM
+    induction HR as [Γ r A om Srt HS HA HM
                     | Γ Δ Φw Φ lΔ HΦ Hn Hent IHent HaΔ Hsh Hnd HUw HRΔ Htg
                     | Γ Θ' T0 Φ Ns Θ0 Ξ0 p lΘ Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ HRΘ
                     | Γ Θd A M Rm lΘ iA HΘd HaΘd HBt HMt HRm IH HRΘd];

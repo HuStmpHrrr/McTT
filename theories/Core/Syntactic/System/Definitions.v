@@ -47,6 +47,7 @@ Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U" (at level 70, Ξ at level 69, Γ a
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" (at level 70, Ξ at level 69, Γ at level 69, Ψ at level 69, Ψ' at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'" (at level 70, Ξ at level 69, Γ at level 69, U at level 69, U' at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" (at level 70, Ξ at level 69, Γ at level 69, H at level 69, H' at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R" (at level 70, Ξ at level 69, Γ at level 69, R at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ʷ φ : Δ" (at level 70, Ξ at level 69, Γ at level 69, φ constr at level 60, Δ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, Δ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, σ' at level 69, Δ at level 69).
@@ -1378,6 +1379,18 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
      (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
+     (** No member of a type of levels, nested ones too, over a parameter of
+         a universe ([levels_abstractable]), on both sides: every parameter
+         is a type of levels ([lv]), or the body denotes ([Rt]) a
+         description with no member of a type of levels.  In [module N (n :
+         ℕ) where module K (u : Level) where def w : Level ≔ u end end] the
+         member [w] of [K] would be of [Π (n : ℕ) (u : Level) Level] *)
+     (lv = true -> forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+     (lv = false -> mdenote Θ Ξ (Δ ++ Γ) (me_lit (gu_open nil Φ)) Rt) ->
+     (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt) ->
+     (lv' = true -> forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+     (lv' = false -> mdenote Θ Ξ (Δ' ++ Γ) (me_lit (gu_open nil Φ')) Rt') ->
+     (lv' = false -> Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ⁿˡ Rt') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' )
 | wf_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
@@ -1392,6 +1405,15 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
      (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
+     (** No member of a type of levels over a parameter of a universe, as
+         for [wf_unit_eq_body], on both sides: [module A (n : ℕ) ≔ M], where
+         [M] has [def v : Level], is rejected *)
+     (lv = true -> forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+     (lv = false -> mdenote Θ Ξ (Δ ++ Γ) E Rt) ->
+     (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt) ->
+     (lv' = true -> forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+     (lv' = false -> mdenote Θ Ξ (Δ' ++ Γ) E' Rt') ->
+     (lv' = false -> Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ⁿˡ Rt') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
 (** An alias of a literal is the literal over both telescopes, the alias's
     outermost: the merge lookup performs ([udenote_alias], [mdesc_up]).  The
@@ -1405,6 +1427,11 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
          as for [wf_unit_eq_body]: [param_sorts] gives their sorts *)
      (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
+     (** No member of a type of levels over an outer parameter of a
+         universe, as for [wf_unit_eq_alias] *)
+     (lv = true -> forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+     (lv = false -> mdenote Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) Rt) ->
+     (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D )
 | wf_unit_eq_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
@@ -1500,6 +1527,63 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_scope
 
+(** ** Descriptions With No Member of a Type of Levels
+
+    [Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R]: no member of the module description [R], read in
+    [Γ], has a type of levels: every term it holds, directly or in a module
+    it holds, is of a type of a large universe or a proposition.  A
+    description is abstracted over the parameters of an alias ([mdesc_up]),
+    which turns a member of type [A] into one of type [Π Δ. A]; over a
+    parameter of a universe that is no type when [A] is a type of levels,
+    so an alias or a body with such a parameter asks this of its target
+    ([no_level_members], [levels_abstractable]).  The judgment walks the
+    description as member lookup reads it; the descriptions of module
+    entries and the levels are arguments of the rules, so that every
+    premise is positive. *)
+with wf_no_level_members : gdeps -> gstack -> ctx -> mdesc -> Prop :=
+(** A term: of a type of a large universe or a proposition *)
+| wf_no_level_term :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_term r A om )
+(** An open body module, by its expansion: each definition, filled in, is
+    of a type of a large universe ([member_levels]) or a proposition, and
+    the unit of each module entry denotes ([member_descs]) a description
+    with no member of a type of levels, read where the entry is; the
+    expanded body has no open left and is an extension of the parameters,
+    so that it can be moved *)
+| wf_no_level_open :
+  `( gm_noopen Φx ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
+     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_fill Φ0 = Some σ ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : relevance_sort (entry_relevance E) Typeω@(member_levels y)) ->
+     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        udenote Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) None U (member_descs y)) ->
+     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ⁿˡ member_descs y) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_open Δ Φw Φx )
+(** A closed module, by its stored entries: each, read as it is stored
+    ([ge_read]), denotes ([member_descs]) a description with no member of
+    a type of levels; stored entries are closed, so they are read at [⋅].
+    The location is no open frame: an open frame grows, and an entry
+    filed later is read through every description of the frame.  In
+    [module F where module A (n : ℕ) ≔ F; def w : Level ≔ 0l end] the
+    member [w] of [A] would be of [Π (n : ℕ) Level], so an alias with a
+    parameter of a universe of a still open frame is rejected. *)
+| wf_no_level_closed :
+  `( gc_frame Ξ p = None ->
+     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
+        edenote Θ Ξ ⋅ (Some (qname_in p y)) (ge_read T E) (member_descs y)) ->
+     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
+        Θ ⍮ Ξ ⍮ ⋅ ⊢ⁿˡ member_descs y) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_closed Θ' p T Φ Ns )
+(** A definition with a module part, or a type former: by its module part;
+    its term part is of a type of a large universe *)
+| wf_no_level_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rm ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_dm Θd A M Rm )
+where "Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R" := (wf_no_level_members Θ Ξ Γ R) : type_scope
+
 (** ** Well-formedness of the Global Context
 
     Part of the same mutual definition: an entry's type and body are checked by
@@ -1557,6 +1641,13 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
          unit's are: [param_sorts] gives their sorts *)
      (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
+     (** No member of a type of levels over a parameter of a universe, of
+         the alias or of a frame: a filed alias is read over its full
+         telescope, so [module N (n : ℕ) where module A ≔ M end], where [M]
+         has [def v : Level], is rejected *)
+     (lv = true -> forall Δ1 T Δ2, Δ ++ gs_tele Ξ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ T : LevelSort) ->
+     (lv = false -> mdenote Θ Ξ (Δ ++ gs_tele Ξ) E Rt) ->
+     (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ⁿˡ Rt) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A group of inductive types, at its first member, before the members of
     its module: its declaration, with uniform parameters [Δ] over the
@@ -1798,6 +1889,11 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
          levels, as an alias's are ([wf_gentry_alias]) *)
      (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
+     (** No member of a type of levels over a parameter of a universe, as
+         for [wf_gentry_alias] *)
+     (lv = true -> forall Δ1 T Δ2, Δ ++ gs_tele Ξ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ T : LevelSort) ->
+     (lv = false -> mdenote Θ Ξ (Δ ++ gs_tele Ξ) E Rt) ->
+     (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ⁿˡ Rt) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def_mod pv (ctx_pi (gs_tele Ξ) A) (ctx_fn (gs_tele Ξ) M) (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A record type, with parameters [Δ] over the frames' parameters, before
     the members of its module: its sort is a universe over the parameters,
@@ -1951,7 +2047,8 @@ with wf_subtyp_mind := Minimality for wf_subtyp Sort Prop
 with wf_is_univ_mind := Minimality for wf_is_univ Sort Prop
 with wf_ext_eq_mind := Minimality for wf_ext_eq Sort Prop
 with wf_unit_eq_mind := Minimality for wf_unit_eq Sort Prop
-with wf_modexp_eq_mind := Minimality for wf_modexp_eq Sort Prop.
+with wf_modexp_eq_mind := Minimality for wf_modexp_eq Sort Prop
+with wf_no_level_members_mind := Minimality for wf_no_level_members Sort Prop.
 Combined Scheme syntactic_wf_mut_ind' from
   wf_exp_mind,
   wf_exp_eq_mind,
@@ -1959,7 +2056,8 @@ Combined Scheme syntactic_wf_mut_ind' from
   wf_is_univ_mind,
   wf_ext_eq_mind,
   wf_unit_eq_mind,
-  wf_modexp_eq_mind.
+  wf_modexp_eq_mind,
+  wf_no_level_members_mind.
 
 (** The two-way scheme is the shape of the soundness fundamental theorem: the
     gluing model relates contexts and terms, and its
@@ -1995,6 +2093,7 @@ with wf_is_univ_mut_ind_all := Minimality for wf_is_univ Sort Prop
 with wf_ext_eq_mut_ind_all := Minimality for wf_ext_eq Sort Prop
 with wf_unit_eq_mut_ind_all := Minimality for wf_unit_eq Sort Prop
 with wf_modexp_eq_mut_ind_all := Minimality for wf_modexp_eq Sort Prop
+with wf_no_level_members_mut_ind_all := Minimality for wf_no_level_members Sort Prop
 with wf_gentry_mut_ind_all := Minimality for wf_gentry Sort Prop
 with wf_gmod_mut_ind_all := Minimality for wf_gmod Sort Prop
 with wf_gstack_mut_ind_all := Minimality for wf_gstack Sort Prop.
@@ -2007,9 +2106,68 @@ Combined Scheme wf_mut_ind_all from
   wf_ext_eq_mut_ind_all,
   wf_unit_eq_mut_ind_all,
   wf_modexp_eq_mut_ind_all,
+  wf_no_level_members_mut_ind_all,
   wf_gentry_mut_ind_all,
   wf_gmod_mut_ind_all,
   wf_gstack_mut_ind_all.
+
+(** ** Parameters of Types of Levels, and Members of No Type of Levels *)
+
+(** [level_sorted_parameters Θ Ξ Γ Δ]: every assumption of the telescope
+    [Δ] over [Γ] is a type of levels, in the context of the entries outside
+    it.  A definition whose type is a type of levels is only allowed over
+    such parameters ([wf_gentry_def]): in [module N (n : ℕ) where def v :
+    Level], [v] would be a level computed from the number [n], and is
+    rejected. *)
+Definition level_sorted_parameters (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) : Prop :=
+  forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort.
+
+(** [no_level_members Θ Ξ Γ E]: the module expression [E], read in [Γ],
+    denotes a description with no member of a type of levels
+    ([wf_no_level_members]). *)
+Definition no_level_members (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (E : modexp) : Prop :=
+  exists R, mdenote Θ Ξ Γ E R /\ Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R.
+
+(** [levels_abstractable Θ Ξ Γ Δ E]: what [E] denotes under the parameters
+    [Δ] can be abstracted over them ([mdesc_up]): every parameter is a type
+    of levels, or no member of [E] has a type of levels.  A member of type
+    [A] abstracted over [Δ] is of [Π Δ. A], which is no type when [A] is a
+    type of levels and a parameter is a type of a universe ([wf_pi_level]).
+    The alias, flatten and body rules ask it of their targets and bodies
+    (the premise with the flag [lv]), local ones over their parameters and
+    filed ones over their full telescopes.  Where [M] has [def v : Level ≔
+    0l]:
+    - [module A (n : ℕ) ≔ M] is rejected;
+    - [module A (u : Level) ≔ M] is accepted;
+    - [module L (B : Type) ≔ List B] is accepted: [List] has no member of
+      a type of levels;
+    - [module N (n : ℕ) where module A ≔ M end] is rejected: the filed
+      alias is read over [N]'s parameter;
+    - [module N (n : ℕ) where module K (u : Level) where def w : Level ≔ u
+      end end] is rejected: [w] is read over [n] and [u]. *)
+Definition levels_abstractable (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (E : modexp) : Prop :=
+  level_sorted_parameters Θ Ξ Γ Δ \/ no_level_members Θ Ξ (Δ ++ Γ) E.
+
+(** The flag premise of the alias, flatten and body rules over the
+    parameters [Δ] of a target [E], as one record: the form the structural
+    lemmas move it in. *)
+Record levels_flag (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (E : modexp) (lv : bool) (Rt : mdesc) : Prop := mk_levels_flag
+  { (** With the flag set, every parameter is a type of levels *)
+    levels_flag_sorted : lv = true -> level_sorted_parameters Θ Ξ Γ Δ
+    (** Without it, [Rt] is what the target denotes *)
+  ; levels_flag_denotes : lv = false -> mdenote Θ Ξ (Δ ++ Γ) E Rt
+    (** and it has no member of a type of levels *)
+  ; levels_flag_no_level : lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt }.
+
+(** The flag premise of the rules is [levels_abstractable]. *)
+Lemma levels_abstractable_of_flag : forall Θ Ξ Γ Δ E (lv : bool) Rt,
+    (lv = true -> level_sorted_parameters Θ Ξ Γ Δ) ->
+    (lv = false -> mdenote Θ Ξ (Δ ++ Γ) E Rt) ->
+    (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt) ->
+    levels_abstractable Θ Ξ Γ Δ E.
+Proof.
+  intros * Ht Hm Hn; destruct lv; [ left; exact (Ht eq_refl) | right; exists Rt; split; [ exact (Hm eq_refl) | exact (Hn eq_refl) ] ].
+Qed.
 
 (** ** Units
 

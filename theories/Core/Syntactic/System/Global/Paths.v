@@ -942,14 +942,6 @@ Proof. intros; rewrite <- (qname_app_nil (qname_in p y)), qname_app_in; reflexiv
 
 (** ** Entries of Stored Bodies *)
 
-(** A body with no local open: every stored body is one. *)
-Fixpoint gm_noopen (Φ : gmod) : Prop :=
-  match Φ with
-  | gm_nil => True
-  | gm_ext Φ' _ _ => gm_noopen Φ'
-  | gm_open _ _ _ => False
-  end.
-
 Lemma body_closed_noopen : forall Φ k, body_closed k Φ -> gm_noopen Φ.
 Proof. induction Φ as [| Φ IH x E | Φ IH H its]; intros k HΦ; cbn in *; [ exact I | exact (IH _ (proj1 HΦ)) | exact HΦ ]. Qed.
 

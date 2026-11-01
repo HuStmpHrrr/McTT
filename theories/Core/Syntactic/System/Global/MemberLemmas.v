@@ -1601,6 +1601,7 @@ Theorem wf_scoped :
       ctx_ok Θ Ξ Γ /\ gunit_scoped (length Γ) U /\ gunit_scoped (length Γ) U') /\
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       ctx_ok Θ Ξ Γ /\ modexp_scoped (length Γ) H /\ modexp_scoped (length Γ) H') /\
+  (forall Θ Ξ Γ R, Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R -> True) /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> entry_ok (gs_tele Ξ) E) /\
   (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> unit_closed (Δ ++ gs_tele Ξ) Φ /\ kind_closed K) /\
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gctx_closed Θ Ξ).
@@ -1814,6 +1815,31 @@ Proof. intros; rewrite List.map_map; apply List.map_ext; intros; apply exp_sub_s
 Lemma map_sub_sb_eq : forall Ns σ τ, sb_eq σ τ -> List.map (fun M => M[σ]) Ns = List.map (fun M => M[τ]) Ns.
 Proof. intros; apply List.map_ext; intros; apply exp_sub_sb_eq; assumption. Qed.
 
+
+(** The context of a body with no open ends in the context of a prefix of
+    it. *)
+Lemma gm_prefix_body_ctx : forall Φ y Φ1, gm_noopen Φ -> gm_prefix_upto Φ y = Some Φ1 ->
+    exists Ψ, body_ctx Φ = Ψ ++ body_ctx Φ1.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its]; intros * Hn Hp; cbn in Hn, Hp; [ discriminate | | contradiction ].
+  destruct (String.eqb y x); [ injection Hp as <-; exists nil; reflexivity |].
+  destruct (IH _ _ Hn Hp) as (Ψ & HΨ).
+  destruct E as [? ? ? ? [] | ? ? | ? ? ? ? | ? ? ? ? | ? ? ?]; cbn; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
+Qed.
+
+(** A body with no open, substituted, has none. *)
+Lemma gm_noopen_sub : forall Φ σ, gm_noopen Φ -> gm_noopen (gmod_sub Φ σ).
+Proof. induction Φ; intros * H; cbn in *; auto. Qed.
+
+(** A description substituted by pointwise equal substitutions. *)
+Lemma mdesc_sub_sb_eq : forall R σ τ, sb_eq σ τ -> mdesc_sub R σ = mdesc_sub R τ.
+Proof.
+  induction R as [r A om | Δ Φ Φx | Θ ? T Φ Ns | Θ A M Rm IH]; intros * Heq; cbn.
+  - rewrite (exp_sub_sb_eq _ _ _ Heq); f_equal; destruct om; cbn; [ rewrite (exp_sub_sb_eq _ _ _ Heq) |]; reflexivity.
+  - rewrite (tele_sub_sb_eq _ _ _ Heq); f_equal; apply gmod_sub_sb_eq; rewrite Heq; reflexivity.
+  - rewrite (tele_sub_sb_eq _ _ _ Heq); f_equal; apply List.map_ext; intros; apply exp_sub_sb_eq; rewrite Heq; reflexivity.
+  - rewrite (tele_sub_sb_eq _ _ _ Heq), (IH _ _ Heq); f_equal; apply exp_sub_sb_eq; rewrite Heq; reflexivity.
+Qed.
 
 (** Substituting a description twice. *)
 Lemma mdesc_sub_sub_ext : forall R σ τ δ, sb_eq (σ ⨟ τ) δ -> mdesc_sub (mdesc_sub R σ) τ = mdesc_sub R δ.
@@ -2763,6 +2789,14 @@ Corollary body_xp_sub : forall Θ Ξ, gctx_closed Θ Ξ ->
 Proof.
   intros * Hc * Hx HΔ HΦ * Hσ.
   exact (proj1 (proj2 (proj2 (proj2 (mdenote_sub_all _ _ Hc)))) _ _ _ Hx _ (slots_ok_ctx _ HΔ) HΦ _ _ Hσ).
+Qed.
+
+Corollary udenote_sub : forall Θ Ξ, gctx_closed Θ Ξ ->
+    forall Δ o U R, udenote Θ Ξ Δ o U R -> ctx_scoped 0 Δ -> gunit_scoped (length Δ) U ->
+    forall Γ σ, sub_mod_compat σ Γ Δ -> udenote Θ Ξ Γ o U[σ]ᵘ (mdesc_sub R σ).
+Proof.
+  intros * Hc * Hu HΔ HU * Hσ.
+  exact (proj1 (proj2 (mdenote_sub_all _ _ Hc)) _ _ _ _ Hu _ (slots_ok_ctx _ HΔ) (or_introl HU) _ _ Hσ).
 Qed.
 
 Corollary body_xp_wk : forall Θ Ξ, gctx_closed Θ Ξ ->

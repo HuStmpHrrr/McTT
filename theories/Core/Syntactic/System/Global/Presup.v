@@ -2596,12 +2596,18 @@ Qed.
     module's value is not among them ([frame_params]). *)
 Lemma wf_gmod_params_relevant : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
     exists l, params_relevant Θ Ξ (gs_tele Ξ) (frame_params K Δ) l.
-Proof. induction 1; cbn [frame_params List.tl]; first [ eexists; eassumption | assumption ]. Qed.
+Proof.
+  induction 1; cbn [frame_params List.tl];
+    first [ eexists; eapply params_relevant_of_sorts; eassumption | eexists; eassumption | assumption ].
+Qed.
 
 (** Relevant parameters stay so along an embedding. *)
 Lemma params_relevant_embed : forall Θ1 Ξ1 Θ2 Ξ2 Γ Δ l,
     gctx_embedding Θ1 Ξ1 Θ2 Ξ2 -> params_relevant Θ1 Ξ1 Γ Δ l -> params_relevant Θ2 Ξ2 Γ Δ l.
-Proof. intros * He HR Δ1 T Δ2 E; exact (proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ He)) _ _ _ (HR _ _ _ E)). Qed.
+Proof.
+  intros * He HR Δ1 T Δ2 E; destruct (HR _ _ _ E) as [H | H]; [ left | right ];
+    exact (proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ He)) _ _ _ H).
+Qed.
 
 (** The type of a record's value, over its parameters, is a type of a large
     universe. *)
@@ -2653,7 +2659,7 @@ Proof.
       rewrite <- List.app_assoc.
       apply params_relevant_app; [| apply params_relevant_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ] ].
       intros Δ1 T Δ2 E; destruct Δ1 as [| e Δ1]; cbn in E; [| destruct Δ1; discriminate ].
-      injection E as <- <-; rewrite List.app_nil_r, <- HPR; exact Hj.
+      injection E as <- <-; left; rewrite List.app_nil_r, <- HPR; exact Hj.
 Qed.
 
 (** Relevant parameters over the frames' parameters, with these: relevant
@@ -2675,7 +2681,7 @@ Proof.
   intros * HE; inversion HE; subst.
   - match goal with HS : _ ⍮ _ ⍮ record_params R ⊢ᵤ _ |- _ => pose proof (ctx_wf_gctx _ _ _ (presup_is_univ_ctx HS)) as Hg end.
     match goal with HU : record_params R = _ ++ gs_tele Ξ |- _ => rewrite HU end.
-    eapply params_relevant_over_stack; [ exact Hg | eassumption ].
+    eapply params_relevant_over_stack; [ exact Hg | first [ eassumption | eapply params_relevant_of_sorts; eassumption ] ].
   - match goal with HΦ : _ ⍮ _ ⍮ _ ⍮ fk_record R ⍮ _ ⊢ᵍᵐ _ |- _ =>
       destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l Hl]; pose proof (ctx_wf_gctx _ _ _ (wf_gmod_ctx _ _ _ _ _ _ HΦ)) as Hg end.
     cbn [frame_params List.tl] in Hl.
@@ -2712,12 +2718,17 @@ Section Induction.
       is checked in a closed telescope [T]: the frames' parameters, or the
       uniform parameters of the inductive type whose module it is a member
       of. *)
-  Hypothesis Hdef : forall Θ Ξ T r A M i b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Typeω@i ->
+  Hypothesis Hdef : forall Θ Ξ T r A M Srt b pv Θ2 Ξ2,
+      Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt ->
+      relevant_sort Srt ->
+      (Srt = LevelSort -> forall Δ1 U Δ2, T = Δ1 ++ ce_ass U :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ U : LevelSort) ->
       Θ ⍮ Ξ ⍮ T ⊢ M : A -> globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
-  Hypothesis Hax : forall Θ Ξ r A i b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i -> globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
+  Hypothesis Hax : forall Θ Ξ r A Srt b pv Θ2 Ξ2,
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt ->
+      relevant_sort Srt ->
+      (Srt = LevelSort -> forall Δ1 U Δ2, gs_tele Ξ = Δ1 ++ ce_ass U :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ U : LevelSort) ->
+      globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
   (** And a declaration of an inductive type. *)
   Hypothesis Hind : forall Θ Ξ D Θ2 Ξ2,
@@ -2831,7 +2842,7 @@ Section Induction.
       constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? Hx; cbn in Hx; discriminate
                    | intros ? ? ? ? ? Hx; cbn in Hx; discriminate |].
       intros [| ? ?] ? ? ? ? Hx; [| discriminate ]; cbn in Hx; injection Hx as <- <- <- <-.
-      unfold dm_def; eapply (Hdef _ _ _ relevant); [ eassumption | eassumption | | exact He ].
+      unfold dm_def; eapply (Hdef _ _ _ relevant); [ eassumption | constructor | discriminate | eassumption | | exact He ].
       match goal with H : globals_valid_along_embeddings _ _ |- _ => exact H end.
     - (* a record: it contributes no entry and no declaration *)
       intros ? ? _; split; [ intros ? ? ? ? Heq; discriminate Heq |]; intros _; constructor;
@@ -3053,14 +3064,19 @@ Section ModInduction.
       module it is a member of.  It is valid wherever what the context it is
       checked in files and has open is valid, read from there, along any
       growth; it is so read from anywhere. *)
-  Hypothesis Hdef : forall Θ Ξ T r A M i b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Typeω@i ->
+  Hypothesis Hdef : forall Θ Ξ T r A M Srt b pv Θ2 Ξ2,
+      Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt ->
+      relevant_sort Srt ->
+      (Srt = LevelSort -> forall Δ1 U Δ2, T = Δ1 ++ ce_ass U :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ U : LevelSort) ->
       Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> gds_valid Θ Ξ Θ2 Ξ2 Θ -> gs_valid Θ Ξ Θ2 Ξ2 Ξ ->
       forall Θs Ξs, V Θs Ξs Θ2 Ξ2 T (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
   (** The other entries are valid read from any context that has what the
       context they are checked in has. *)
-  Hypothesis Hax : forall Θ Ξ r A i b pv Θ2 Ξ2 Θs Ξs,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+  Hypothesis Hax : forall Θ Ξ r A Srt b pv Θ2 Ξ2 Θs Ξs,
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt ->
+      relevant_sort Srt ->
+      (Srt = LevelSort -> forall Δ1 U Δ2, gs_tele Ξ = Δ1 ++ ce_ass U :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ U : LevelSort) ->
+      bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
   Hypothesis Halias : forall Θ Ξ pv Δ E l Θ2 Ξ2 Θs Ξs,
       tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
@@ -3127,7 +3143,7 @@ Section ModInduction.
       | HM : forall M, ?o = Some M -> _ ⍮ _ ⍮ _ ⊢ M : _, IHM : forall M, ?o = Some M -> bodies_valid_along_embeddings _ _ |- _ =>
           destruct o as [M0 |]; cbn;
           [ destruct (IHM M0 eq_refl _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ];
-            eapply Hdef; [ eassumption | exact (HM M0 eq_refl) | exact (IHM M0 eq_refl) | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ]
+            eapply Hdef; [ eassumption | eassumption | eassumption | exact (HM M0 eq_refl) | exact (IHM M0 eq_refl) | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ]
           | eapply Hax; eassumption ]
       end.
     - (* a body module: valid as its frame, pushed, is *)
@@ -3175,7 +3191,7 @@ Section ModInduction.
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn; split; [ eapply Halias; eassumption |].
       match goal with HG : bodies_valid_along_embeddings _ _ |- _ => destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ] end.
-      eapply (Hdef _ _ _ relevant); [ eassumption | eassumption | eassumption | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He)
+      eapply (Hdef _ _ _ relevant); [ eassumption | constructor | discriminate | eassumption | eassumption | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He)
                                    | exact HΘ | exact HΞ ].
     - (* a record, before the members of its module: valid as its
          declaration, over its parameters and a value *)
