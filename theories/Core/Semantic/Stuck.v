@@ -20,7 +20,7 @@ Import Domain_Notations.
     mutually, in the neutral [M]. *)
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False | nf_placeholder_type | nf_placeholder => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_true | nf_False | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
@@ -85,6 +85,8 @@ Inductive domain_stuck : domain -> Prop :=
 | domain_stuck_suniv : forall l, domain_stuck l -> domain_stuck 𝕌@l
 (** A type of levels *)
 | domain_stuck_level : forall n, domain_stuck (Levelᵈ@n)
+(** The sort of the types of levels *)
+| domain_stuck_level_sort : domain_stuck LevelSortᵈ
 (** A level: its atoms *)
 | domain_stuck_lvl : forall c xs, level_atoms_stuck xs -> domain_stuck (lvᵈ c xs)
 (** [Prop] *)

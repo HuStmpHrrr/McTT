@@ -40,7 +40,7 @@ Definition unwk (k : nat) : wk := wk_qn k pred.
     module body by its binders, exactly as the weakenings do. *)
 Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_llit _
+  | a_typ _ | a_level _ | a_level_sort | a_llit _
   | a_prop | a_True | a_true | a_tt | a_False | a_placeholder_type | a_placeholder => True
   | a_univ M | a_succl M | a_left M | a_right M => exp_fresh k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_fresh k M /\ exp_fresh k N
@@ -333,7 +333,7 @@ Proof. induction Ms; intros * HM HF; inversion HF; subst; cbn; [ assumption | ap
     [W]; mutually, in the neutral [u]. *)
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_true | nf_False
   | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
@@ -361,6 +361,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_typ i => nf_typ i
   | nf_univ c xs => nf_univ c (List.map (map_level_atom (ne_unwk k)) xs)
   | nf_level n => nf_level n
+  | nf_level_sort => nf_level_sort
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_unwk k)) xs)
   | nf_prop => nf_prop
   | nf_True => nf_True
@@ -542,7 +543,7 @@ Qed.
     reflection. *)
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_true | nf_False
   | nf_placeholder_type | nf_placeholder => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
@@ -595,7 +596,7 @@ Qed.
 Fixpoint nf_proof_free (W : nf) {struct W} : Prop :=
   match W with
   | nf_true => False
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_False
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
   | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
@@ -618,7 +619,7 @@ with ne_proof_free (u : ne) {struct u} : Prop :=
 Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   match W with
   | nf_true => false
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_False
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
   | nf_placeholder_type | nf_placeholder => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B

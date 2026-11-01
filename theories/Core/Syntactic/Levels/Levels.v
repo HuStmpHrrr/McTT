@@ -167,6 +167,7 @@ Fixpoint nf_code (M : nf) (t : code_tree) : code_tree :=
   | nf_univ (a, b) xs =>
       code_tree_node 1 (code_tree_node a (code_tree_node b (list_code (atom_code (fun m => ne_code m code_tree_nil)) xs code_tree_nil) code_tree_nil) code_tree_nil) t
   | nf_level n => code_tree_node 2 (code_tree_node n code_tree_nil code_tree_nil) t
+  | nf_level_sort => code_tree_node 22 code_tree_nil t
   | nf_lvl (a, b) xs =>
       code_tree_node 3 (code_tree_node a (code_tree_node b (list_code (atom_code (fun m => ne_code m code_tree_nil)) xs code_tree_nil) code_tree_nil) code_tree_nil) t
   | nf_True => code_tree_node 7 code_tree_nil t

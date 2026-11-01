@@ -64,7 +64,7 @@ Fixpoint all_blocksb {A : Set} (f : nat -> option A -> A -> list (string * nat *
     term it evaluates next never reads. *)
 Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   match M with
-  | a_typ _ | a_level _ | a_llit _
+  | a_typ _ | a_level _ | a_level_sort | a_llit _
   | a_prop | a_True | a_true | a_tt | a_False | a_placeholder_type | a_placeholder => true
   | a_univ M | a_succl M | a_left M | a_right M => exp_freshb k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_freshb k M && exp_freshb k N

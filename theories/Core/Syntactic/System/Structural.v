@@ -75,7 +75,7 @@ Lemma wf_exp_eq_is_univ_large : forall {Θ Ξ Γ U A A'},
 Proof. intros * HU HA; inversion HU; subst; [ eexists; exact HA | exists 0; eapply wf_exp_eq_suniv_large; eassumption ]. Qed.
 
 (** Equal domains of a [Π] in the universe [U] are equal types of one
-    sort of types: a large universe, or [Prop]. *)
+    sort of types: a large universe, [Prop] or [LevelSort]. *)
 Lemma pi_domain_eq_sort : forall {Θ Ξ Γ U Srt A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> pi_domain_sort U Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
@@ -88,6 +88,7 @@ Proof.
         [ constructor | eapply wf_exp_suniv_large; eassumption | eapply wf_exp_suniv_large; eassumption
         | eapply wf_exp_eq_suniv_large; eassumption ].
   - exists Propₘ; repeat split; [ constructor | assumption .. ].
+  - exists LevelSort; repeat split; [ constructor | assumption .. ].
 Qed.
 
 (** The small [Π] and its congruence at a literal level, whose weakening is
@@ -1539,21 +1540,24 @@ Qed.
 
 (** The relevant-only parameters of a unit or a declaration, moved along
     an operation [R] that lifts over a well-formed extension: each
-    assumption of the moved telescope is a type of the universe, from the
-    induction hypothesis about the telescope's own. *)
+    assumption of the moved telescope is a type of its sort [ps], the
+    universe or [LevelSort], from the induction hypothesis about the
+    telescope's own. *)
 Section ParamsMove.
   Variables (Θ : gdeps) (Ξ : gstack) (R : ctx -> sub -> ctx -> Prop).
   Hypothesis R_ext : forall Ψ Γ Δ σ, R Δ σ Γ -> ⊢ Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Δ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
       R (tele_sub Ψ σ ++ Δ) (sb_qn (length Ψ) σ) (Ψ ++ Γ).
 
-  Lemma move_params_case : forall Γ Δ Δu σ l,
+  Lemma move_params_case : forall Γ Δ Δu σ l ps,
       R Δ σ Γ -> ⊢ Θ ⍮ Ξ ⍮ Δu ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ ->
+      (forall k, parameter_sort l (ps k)) ->
       (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
-         forall Δ0 σ0, R Δ0 σ0 (Δ2 ++ Γ) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : Typeω@l) ->
-      forall Δ1 T Δ2, tele_sub Δu σ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : Typeω@l.
+         forall Δ0 σ0, R Δ0 σ0 (Δ2 ++ Γ) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : (ps (length Δ2))[σ0]) ->
+      forall Δ1 T Δ2, tele_sub Δu σ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : ps (length Δ2).
   Proof.
-    intros * HR HΓ HΔ IH Δ1' T' Δ2' E.
+    intros * HR HΓ HΔ Hps IH Δ1' T' Δ2' E.
     destruct (tele_sub_split_ass _ _ _ _ _ E) as (Δ1 & T & Δ2 & -> & -> & ->).
+    rewrite length_tele_sub, <- (parameter_sort_sub _ _ (sb_qn (length Δ2) σ) (Hps (length Δ2))).
     apply (IH Δ1 T Δ2 eq_refl); apply R_ext; [ exact HR | |].
     - rewrite E, <- List.app_assoc in HΔ; cbn in HΔ.
       exact (ctx_decomp_tail (ctx_app_wf_tail _ _ _ _ HΔ)).
@@ -1615,8 +1619,9 @@ Ltac wk_params_case Hφ :=
       [ exact (wk_as_sub_of _ _ _ _ _ Hφ)
       | eauto using ext_eq_ctx_left, ext_eq_ctx_right
       | rewrite tele_sub_of_wk; eauto using ext_eq_ctx_left, ext_eq_ctx_right
+      | eassumption
       | let E := fresh "E" in let φ0 := fresh "φ0" in let Heq := fresh "Heq" in let Hφ0 := fresh "Hφ0" in
-        intros ? ? ? E ? ? (φ0 & Heq & Hφ0); rewrite (exp_sub_wk_as _ _ _ Heq); eauto ]
+        intros ? ? ? E ? ? (φ0 & Heq & Hφ0); rewrite !(exp_sub_wk_as _ _ _ Heq); eauto ]
   end.
 
 (** The eliminator's cases of [wk_preserves_wf]: seen through
@@ -1678,7 +1683,7 @@ Qed.
 (** A body unit moved along a substitution, from the moved premises: the
     entries of the moved body, filled in, are the filled-in entries moved
     under the parameters. *)
-Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Δ σ σ',
+Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ σ σ',
     body_xp Θ Ξ (tele_sub Δu σ ++ Δ) (gmod_sub Φ (sb_qn (length Δu) σ)) (gmod_sub Φx (sb_qn (length Δu) σ)) ->
     body_xp Θ Ξ (tele_sub Δu' σ' ++ Δ) (gmod_sub Φ' (sb_qn (length Δu') σ')) (gmod_sub Φx' (sb_qn (length Δu') σ')) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub Δu σ ≈ tele_sub Δu' σ' ->
@@ -1725,16 +1730,18 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Δ
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
-    (forall Δ1 T Δ2, tele_sub Δu σ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : Typeω@l) ->
-    (forall Δ1 T Δ2, tele_sub Δu' σ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : Typeω@l) ->
+       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
+    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
+    (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 T Δ2, tele_sub Δu σ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : ps (List.length Δ2)) ->
+    (forall Δ1 T Δ2, tele_sub Δu' σ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : ps (List.length Δ2)) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ']ᵘ.
 Proof.
-  intros * Hbσ Hbσ' HΔσ Hxσ Hxσ' HD HU HDr HUr Ho Ho' HOo HOr Hb Hb' Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' HRp HRp'.
+  intros * Hbσ Hbσ' HΔσ Hxσ Hxσ' HD HU HDr HUr Ho Ho' HOo HOr Hb Hb' Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps HRp HRp'.
   rewrite !gunit_sub_mk; cbn [moddef_sub].
-  eapply wf_unit_eq_body with (entry_sort := entry_sort) (param_level := l); [ exact Hbσ | exact Hbσ' | .. ].
+  eapply wf_unit_eq_body with (entry_sort := entry_sort) (param_level := l) (param_sorts := ps); [ exact Hbσ | exact Hbσ' | .. ].
   (* the definitions, each filled in, then substituted *)
   all: try (intros y Φ0w Ew Aw Mw Φ0w' Ew' Aw' Mw' σw σw' Hp HEw Hp' HEw' Hfw Hfw';
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->);
@@ -1764,6 +1771,8 @@ Proof.
     destruct (entry_tm_sub_inv _ _ _ _ HEw) as (A & M & HE & -> & ->).
     replace (entry_relevance (gentry_sub E _)) with (entry_relevance E) by (destruct E; reflexivity).
     exact (Htg' _ _ _ _ _ Hp0 HE).
+  - (* the parameters of an entry of a type of levels, unmoved *)
+    intros * Hy; rewrite length_tele_sub; exact (Hlv _ _ Hy).
   - (* the modules, each filled in, then substituted *)
     intros y Φ0w Ew Uw Φ0w' Ew' Uw' σw σw' Hp HEw Hp' HEw' Hfw Hfw'.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
@@ -1834,13 +1843,14 @@ Proof.
   - apply body_shape_sub; assumption.
   - apply body_shape_sub; assumption.
   - rewrite gm_names_sub; assumption.
+  - exact Hps.
   - exact HRp.
   - exact HRp'.
 Qed.
 
 (** The case of a body unit under a weakening, with the induction
     hypotheses as premises. *)
-Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Δ φ,
+Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ φ,
     body_xp Θ Ξ (Δu ++ Γ) Φ Φx ->
     body_xp Θ Ξ (Δu' ++ Γ) Φ' Φx' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δu ≈ Δu' ->
@@ -1909,22 +1919,24 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l 
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
-    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
+       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
+    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
+    (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
-       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[φ0]ʷ : Typeω@l) ->
-    (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
+       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[φ0]ʷ : (ps (List.length Δ2))[φ0]ʷ) ->
+    (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 ->
-       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[φ0]ʷ : Typeω@l) ->
+       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[φ0]ʷ : (ps (List.length Δ2))[φ0]ʷ) ->
     (* the premises as the rule takes them, for the scoping of the unit *)
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu' Φ' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gunit_wk (gu_open Δu Φ) φ ≈ gunit_wk (gu_open Δu' Φ') φ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
-           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' _ IHp _ IHp' HU0 Hφ.
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps _ IHp _ IHp' HU0 Hφ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & HUs').
   rewrite gunit_scoped_mk in HUs, HUs'; destruct HUs as [HΔs [_ HΦs]]; destruct HUs' as [HΔs' [_ HΦs']].
@@ -1935,15 +1947,16 @@ Proof.
     by (apply wf_wk_ext; [ exact Hφ | exact (ext_eq_ctx_right _ _ _ _ _ HΔφ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔ) ]).
   assert (Hqn : forall n, sb_eq (ι (wk_qn n φ)) (sb_qn n (ι φ))) by (intros; apply sb_qn_of_wk_ext; reflexivity).
   rewrite <- !gunit_sub_of_wk.
-  eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Δ (ι φ) (ι φ));
+  eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ (ι φ) (ι φ));
     [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
-    | exact Hes | exact Htg | exact Htg' | | ].
+    | exact Hes | exact Htg | exact Htg' | exact Hlv | exact Hps | | ].
   (* the relevant-only parameters of both sides, moved *)
   all: try solve [ eapply (move_params_case Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_ext Θ Ξ));
             [ exact (wk_as_sub_of _ _ _ _ _ Hφ)
             | first [ exact (ext_eq_ctx_left _ _ _ _ _ HΔ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔ) ]
             | rewrite tele_sub_of_wk; first [ exact (ext_eq_ctx_left _ _ _ _ _ HΔφ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔφ) ]
-            | intros * E Δ0 σ0 (φ0 & Heq & Hφ0); rewrite (exp_sub_wk_as _ _ _ Heq);
+            | exact Hps
+            | intros * E Δ0 σ0 (φ0 & Heq & Hφ0); rewrite !(exp_sub_wk_as _ _ _ Heq);
               first [ exact (IHp _ _ _ E _ _ Hφ0) | exact (IHp' _ _ _ E _ _ Hφ0) ] ] ].
   all: rewrite ?tele_sub_of_wk.
   - rewrite !(gmod_sub_of_wk_ext _ _ _ (Hqn _)).
@@ -2185,12 +2198,12 @@ Proof.
   (** The rules of functions into propositions: their codomain is at [Prop],
       so the level they quantify over is not determined; any one does. *)
   all: try solve [
-    first [ eapply wf_fn with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_fn_cong with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_fn_eta with (r := propositional) (i := 0)
-          | eapply wf_app with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_app_cong with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_pi_beta with (r := propositional) (i := 0) ]; mauto 4 ].
+    first [ eapply wf_fn with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_fn_cong with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_fn_eta with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_app with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_app_cong with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_pi_beta with (r := propositional) (Srt' := Typeω@0) ]; mauto 4 ].
   (** The cases of globals: the recorded type is closed, so the operation on it
       disappears, and the rule applies at the type the induction hypothesis
       gives. *)
@@ -3024,13 +3037,14 @@ Ltac sub_params_case Hσ :=
   [ exact Hσ
   | eauto using ext_eq_ctx_left, ext_eq_ctx_right
   | eauto using ext_eq_ctx_left, ext_eq_ctx_right
+  | eassumption
   | let E := fresh "E" in let Hσ0 := fresh "Hσ0" in intros ? ? ? E ? ? Hσ0; eauto ].
 
 (** ** Substitution Preserves the Judgments ([sub_preserves_wf]) *)
 
 (** The case of a body unit under a substitution, with the induction
     hypotheses as premises. *)
-Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Δ σ,
+Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ σ,
     body_xp Θ Ξ (Δu ++ Γ) Φ Φx ->
     body_xp Θ Ξ (Δu' ++ Γ) Φ' Φx' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δu ≈ Δu' ->
@@ -3099,22 +3113,24 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
-    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
+       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
+    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
+    (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
-       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : Typeω@l) ->
-    (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : (ps (List.length Δ2))[σ0]) ->
+    (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 ->
-       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : Typeω@l) ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : (ps (List.length Δ2))[σ0]) ->
     (* the premises as the rule takes them, for the scoping of the unit *)
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu' Φ' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ]ᵘ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
-           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' _ IHp _ IHp' HU0 Hσ.
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps _ IHp _ IHp' HU0 Hσ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & HUs').
   rewrite gunit_scoped_mk in HUs, HUs'; destruct HUs as [HΔs [_ HΦs]]; destruct HUs' as [HΔs' [_ HΦs']].
@@ -3123,14 +3139,15 @@ Proof.
     by (apply wf_sub_ext; [ exact Hσ | exact (ext_eq_ctx_left _ _ _ _ _ HΔσ) | exact (ext_eq_ctx_left _ _ _ _ _ HΔ) ]).
   assert (Hq' : Θ ⍮ Ξ ⍮ tele_sub Δu' σ ++ Δ ⊢ˢ sb_qn (length Δu') σ : Δu' ++ Γ)
     by (apply wf_sub_ext; [ exact Hσ | exact (ext_eq_ctx_right _ _ _ _ _ HΔσ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔ) ]).
-  eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l Δ σ σ);
+  eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ σ σ);
     [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
-    | exact Hes | exact Htg | exact Htg' | | ].
+    | exact Hes | exact Htg | exact Htg' | exact Hlv | exact Hps | | ].
   (* the relevant-only parameters of both sides, moved *)
   all: try solve [ eapply (move_params_case Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_ext Θ Ξ));
             [ exact Hσ
             | first [ exact (ext_eq_ctx_left _ _ _ _ _ HΔ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔ) ]
             | first [ exact (ext_eq_ctx_left _ _ _ _ _ HΔσ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔσ) ]
+            | exact Hps
             | intros * E Δ0 σ0 Hσ0; first [ exact (IHp _ _ _ E _ _ Hσ0) | exact (IHp' _ _ _ E _ _ Hσ0) ] ] ].
   - eapply body_xp_sub; [ exact Hc | exact Hb | apply ctx_scoped_app_iff; split; assumption | rewrite List.length_app; exact HΦs
                         | apply sub_mod_compat_ext; eauto using wf_sub_mod_compat ].
@@ -3314,12 +3331,12 @@ Proof.
     destruct_type_sort; try discriminate; saturate_sub; push_sub; lift_sub.
   (** The rules of functions into propositions, as for weakening. *)
   all: try solve [
-    first [ eapply wf_fn with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_fn_cong with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_fn_eta with (r := propositional) (i := 0)
-          | eapply wf_app with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_app_cong with (r := propositional) (i := 0)
-          | eapply wf_exp_eq_pi_beta with (r := propositional) (i := 0) ]; mauto 4 ].
+    first [ eapply wf_fn with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_fn_cong with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_fn_eta with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_app with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_app_cong with (r := propositional) (Srt' := Typeω@0)
+          | eapply wf_exp_eq_pi_beta with (r := propositional) (Srt' := Typeω@0) ]; mauto 4 ].
   all: try solve [ push_closed; mauto 3 ].
   all: try solve [ econstructor; mauto 3 ].
   (** The module rules.  A local module is lifted over by [q σ] at the

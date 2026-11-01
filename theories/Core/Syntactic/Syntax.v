@@ -654,6 +654,10 @@ Inductive exp : Set :=
     a function may take and return them, so universe polymorphism is plain
     [Π]. *)
 | a_level : nat -> exp
+(** The sort of the types of levels, [LevelSort], a type of [Typeω@0].  Its
+    types are the types of levels and the [Π]s between them; no universe
+    contains it or them, so a level is built only from levels. *)
+| a_level_sort : exp
 (** A level literal: [a_llit (a, b)] is the ordinal [ω·a + b].  The finite
     level [n], [a_llit (0, n)], is written [<n>l] in the surface syntax. *)
 | a_llit : o2 -> exp
@@ -897,6 +901,7 @@ Section syn_mut_ind.
     (case_typ : forall i, Pe (a_typ i))
     (case_univ : forall t, Pe t -> Pe (a_univ t))
     (case_level : forall n, Pe (a_level n))
+    (case_level_sort : Pe a_level_sort)
     (case_llit : forall n, Pe (a_llit n))
     (case_succl : forall M, Pe M -> Pe (a_succl M))
     (case_maxl : forall M N, Pe M -> Pe N -> Pe (a_maxl M N))
@@ -959,6 +964,7 @@ Section syn_mut_ind.
     | a_typ i => case_typ i
     | a_univ t => case_univ t (exp_mut t)
     | a_level n => case_level n
+    | a_level_sort => case_level_sort
     | a_llit n => case_llit n
     | a_succl M => case_succl M (exp_mut M)
     | a_maxl M N => case_maxl M N (exp_mut M) (exp_mut N)
@@ -1236,6 +1242,7 @@ Module Exp_Notations.
       spelling a level type of sort [0] prints with. *)
   Notation "'Level' @ n" := (a_level n) (at level 1, n at level 0, format "'Level' @ n") : mctt_scope.
   Notation "'Level'" := (a_level 0) : mctt_scope.
+  Notation "'LevelSort'" := a_level_sort : mctt_scope.
   (** The level literals: [𝕃ᵒ o] is the ordinal [o], and [𝕃@n] the finite
       level [n], the surface syntax's [<n>l].  The token is not a word: [lv]
       would make every identifier of that name a keyword. *)
@@ -1629,6 +1636,8 @@ Inductive nf : Set :=
 | nf_univ : o2 -> list (level_atom_g ne) -> nf
 (** The type [Level@n] *)
 | nf_level : nat -> nf
+(** The sort of the types of levels *)
+| nf_level_sort : nf
 (** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
     their neutral and their sort (see [Core.Syntactic.Levels.Levels]) with no
     repetition, no atom is of a sort below the constant's tier (the constant
@@ -1713,6 +1722,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_typ i => a_typ i
   | nf_univ c xs => a_univ (lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs))
   | nf_level n => a_level n
+  | nf_level_sort => a_level_sort
   | nf_lvl c xs => lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs)
   | nf_prop => a_prop
   | nf_True => a_True
@@ -1843,7 +1853,7 @@ Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
     not inspected. *)
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_proof _ | nf_False
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False
   | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
@@ -2061,6 +2071,7 @@ Fixpoint nf_erase (W : nf) : nf :=
   | nf_typ i => nf_typ i
   | nf_univ c xs => nf_univ c (List.map (map_level_atom ne_erase) xs)
   | nf_level n => nf_level n
+  | nf_level_sort => nf_level_sort
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom ne_erase) xs)
   | nf_prop => nf_prop
   | nf_True => nf_True
@@ -2109,6 +2120,7 @@ Module Nf_Notations.
   Notation "'Typeⁿ' @ n" := (nf_univ (ordinal_of_nat n) nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ' @ n" := (nf_level n) (at level 1, n at level 0, format "'Levelⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ'" := (nf_level 0) : mctt_scope.
+  Notation "'LevelSortⁿ'" := nf_level_sort : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Πⁿ' A B" := (nf_pi relevant A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
@@ -2174,6 +2186,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_typ i => a_typ i
   | a_univ t => a_univ (exp_wk t φ)
   | a_level n => a_level n
+  | a_level_sort => a_level_sort
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_wk M φ)
   | a_maxl M N => a_maxl (exp_wk M φ) (exp_wk N φ)
@@ -2271,7 +2284,7 @@ with centry_wk (e : centry) (φ : wk) : centry :=
     [n] binders has the bound of its body less [n]. *)
 Fixpoint exp_free_bound (M : exp) : nat :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_ntok | a_prop | a_True | a_tt | a_False
+  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_ntok | a_prop | a_True | a_tt | a_False
   | a_placeholder_type | a_placeholder | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_record _ => 0
   | a_univ t => exp_free_bound t
   | a_succl M | a_left M | a_right M | a_proj _ M => exp_free_bound M
@@ -2454,6 +2467,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_typ i => a_typ i
   | a_univ t => a_univ (exp_sub t σ)
   | a_level n => a_level n
+  | a_level_sort => a_level_sort
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_sub M σ)
   | a_maxl M N => a_maxl (exp_sub M σ) (exp_sub N σ)

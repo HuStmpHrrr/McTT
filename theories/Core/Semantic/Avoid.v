@@ -121,6 +121,8 @@ Section Avoid.
   | domain_avoids_suniv : forall l, domain_avoids l -> domain_avoids 𝕌@l
   (** A type of levels *)
   | domain_avoids_level : forall n, domain_avoids (Levelᵈ@n)
+  (** The sort of the types of levels *)
+  | domain_avoids_level_sort : domain_avoids LevelSortᵈ
   (** A level of avoiding atoms *)
   | domain_avoids_lvl : forall c xs, level_atoms_avoid xs -> domain_avoids (lvᵈ c xs)
   (** [Prop] *)

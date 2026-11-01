@@ -201,6 +201,10 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_prop :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ Propᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
+(** So does a type of levels, as an element of [LevelSort]. *)
+| read_nf_level_sort :
+  `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
+     Rnf ⇓ LevelSortᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
 (** η for the placeholder type: its only value is the placeholder. *)
 | read_nf_placeholder :
   `( Rnf ⇓ d_placeholder_type m in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder )
@@ -337,6 +341,9 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
 | read_typ_level :
   `( Rtyp Levelᵈ@n in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ@n )
+(** The sort of the types of levels *)
+| read_typ_level_sort :
+  `( Rtyp LevelSortᵈ in Θ ⍮ Ξ ⍮ s ↘ LevelSortⁿ )
 (** The universe of propositions *)
 | read_typ_prop :
   `( Rtyp Propᵈ in Θ ⍮ Ξ ⍮ s ↘ Propⁿ )

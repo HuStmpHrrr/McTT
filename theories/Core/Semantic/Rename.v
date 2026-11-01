@@ -49,6 +49,7 @@ Section Rename.
     | d_univ i => d_univ i
     | d_suniv l => d_suniv (domain_rename l)
     | d_level n => d_level n
+    | d_level_sort => d_level_sort
     | d_lvl c xs => d_lvl c (List.map (fun ka => match ka with (k, n, m) => (k, n, domain_ne_rename m) end) xs)
     | d_prop => d_prop
     | d_True => d_True

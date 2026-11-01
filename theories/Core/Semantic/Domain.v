@@ -45,6 +45,8 @@ Inductive domain : Set :=
 | d_suniv : domain -> domain
 (** The type [Level@n] *)
 | d_level : nat -> domain
+(** The sort of the types of levels, [LevelSort] *)
+| d_level_sort : domain
 (** A flat level [max (c, k₁ + a₁, …)], each atom with its offset and its
     sort: evaluation of [succl] and [maxl] only flattens, so the same level
     has many values; readback canonicalises.  A neutral level is not of this
@@ -251,6 +253,7 @@ Module Domain_Notations.
   Notation "'𝕌' @ l" := (d_suniv l) (at level 1, l at level 0, format "'𝕌' @ l") : mctt_scope.
   Notation "'Levelᵈ' @ n" := (d_level n) (at level 1, n at level 0, format "'Levelᵈ' @ n") : mctt_scope.
   Notation "'Levelᵈ'" := (d_level 0) : mctt_scope.
+  Notation "'LevelSortᵈ'" := d_level_sort : mctt_scope.
   Notation "'lvᵈ' c xs" := (d_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvᵈ' c  xs") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
   Notation "'Propᵈ'" := d_prop : mctt_scope.

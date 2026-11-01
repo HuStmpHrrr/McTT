@@ -277,7 +277,7 @@ Section OpenError.
 
   Fixpoint open_expand_exp (S : skeleton) (M : exp) {struct M} : open_result exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_prop | a_True | a_true | a_tt | a_False
+    | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_true | a_tt | a_False
     | a_placeholder_type | a_placeholder | a_var _ => open_success M
     | a_univ M => let+ M' := open_expand_exp S M in open_success (a_univ M')
     | a_succl M => let+ M' := open_expand_exp S M in open_success (a_succl M')

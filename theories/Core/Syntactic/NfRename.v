@@ -29,6 +29,7 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_typ i => nf_typ i
   | nf_univ c xs => nf_univ c (List.map (map_level_atom (ne_wk φ)) xs)
   | nf_level n => nf_level n
+  | nf_level_sort => nf_level_sort
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_wk φ)) xs)
   | nf_prop => nf_prop
   | nf_True => nf_True

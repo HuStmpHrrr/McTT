@@ -2909,7 +2909,7 @@ Proof.
       assert (HMs : ((Δ ++ Γ) ▹ A')%list ⊢ M' : D)
         by (eapply (IHM' (ce_ass A' :: Δ) _ Propₘ); [ exact Hass' | exact HΓf' | constructor | exact HDs | exact HMf ]).
       assert (HWs : (Δ ++ Γ)%list ⊢ λ A' M' : ∀ₚ A' D)
-        by (eapply wf_fn with (r := propositional) (i := 0); [ exact HAs | exact HSA | exact HDs | exact HMs ]).
+        by (eapply wf_fn with (r := propositional) (Srt' := Typeω@0); [ exact HAs | exact HSA | exact HDs | exact HMs ]).
       pose proof (all_cong_sort HSx HAx HACs (wf_exp_eq_refl HDs)) as Hall.
       assert (HE : (Δ ++ Γ)%list ⊢ ∀ₚ A' D ≈ T : Propₘ) by (etransitivity; [ exact Hall | symmetry; exact HTCD ]).
       eapply wf_exp_subtyp; [ exact HWs | exact HT | constructor |].

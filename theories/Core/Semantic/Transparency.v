@@ -25,6 +25,8 @@ Inductive domain_clean : domain -> Prop :=
 | domain_clean_suniv : forall l, domain_clean l -> domain_clean 𝕌@l
 (** A type of levels *)
 | domain_clean_level : forall n, domain_clean (Levelᵈ@n)
+(** The sort of the types of levels *)
+| domain_clean_level_sort : domain_clean LevelSortᵈ
 (** A level: its atoms *)
 | domain_clean_lvl : forall c xs, level_atoms_clean xs -> domain_clean (lvᵈ c xs)
 (** [Prop] *)

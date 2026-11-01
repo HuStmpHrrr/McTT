@@ -117,17 +117,50 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   | _, _ => False
   end.
 
-(** The sorts of the types: a type is in a large universe, or is a
-    proposition, in [Prop].  [type_sort S] says that [S] is one of them, so
-    [Θ ⍮ Ξ ⍮ Γ ⊢ A : S] with [type_sort S] says that [A] is a type.  A
-    proposition is in no universe ([Prop] sits beside the cumulative
-    hierarchy), so a rule that takes a type of either sort takes its sort
-    as a premise. *)
+(** The sorts of the types: a type is in a large universe, is a
+    proposition, in [Prop], or is a type of levels, in [LevelSort].
+    [type_sort S] says that [S] is one of them, so [Θ ⍮ Ξ ⍮ Γ ⊢ A : S] with
+    [type_sort S] says that [A] is a type.  Neither a proposition nor a type
+    of levels is in a universe ([Prop] and [LevelSort] sit beside the
+    cumulative hierarchy), so a rule that takes a type of any sort takes its
+    sort as a premise. *)
 Inductive type_sort : exp -> Prop :=
 (** A large universe: the types of the universes *)
 | type_sort_universe : forall i, type_sort (Typeω@i)
 (** [Prop]: the propositions *)
-| type_sort_prop : type_sort Propₘ.
+| type_sort_prop : type_sort Propₘ
+(** [LevelSort]: the types of levels, and the [Π]s between them *)
+| type_sort_level : type_sort LevelSort.
+
+(** The sorts of the relevant types a definition or a codomain may have: a
+    large universe, or [LevelSort]. *)
+Inductive relevant_sort : exp -> Prop :=
+(** A large universe *)
+| relevant_sort_universe : forall i, relevant_sort (Typeω@i)
+(** The types of levels *)
+| relevant_sort_level : relevant_sort LevelSort.
+
+(** [parameter_sort l S]: a parameter of a unit, a frame or a declaration
+    may be a type of the sort [S], the universe at [l] or [LevelSort].  The
+    rules give every parameter its sort by its position from the outside
+    ([param_sorts (List.length Δ2)] for the parameter [T] of
+    [Δ1 ++ ce_ass T :: Δ2]). *)
+Inductive parameter_sort (l : nat) : exp -> Prop :=
+(** A type of the universe at [l] *)
+| parameter_sort_universe : parameter_sort l (Typeω@l)
+(** A type of levels *)
+| parameter_sort_level : parameter_sort l LevelSort.
+
+(** [pi_codomain_sort Srt S']: a function over a domain of the sort [Srt]
+    may have a codomain of the relevant sort [S'].  A codomain in a
+    universe is allowed over every domain; a type of levels only over a
+    type of levels, so that a level is built only from levels: [λ (n : ℕ) →
+    0l] has no type. *)
+Inductive pi_codomain_sort : exp -> exp -> Prop :=
+(** A codomain in a large universe, over a domain of any sort *)
+| pi_codomain_universe : forall Srt i, pi_codomain_sort Srt (Typeω@i)
+(** A type of levels, over a type of levels *)
+| pi_codomain_level : pi_codomain_sort LevelSort LevelSort.
 
 (** The sort a declaration's part of the relevance [r] is checked at: the
     declaration's own sort [S] when it is relevant, [Prop] when it is a
@@ -150,13 +183,17 @@ Proof. intros [] * HS; [ exact HS | constructor ]. Qed.
 Hint Resolve type_sort_relevance : mctt.
 
 (** The sorts the domain of a [Π] in the universe [U] may have: [U]
-    itself, or [Prop], a [Π] out of a proposition.  The [Π]'s own sort is
-    [U] or [Prop] by its relevance tag, independently of the domain's. *)
+    itself, [Prop], a [Π] out of a proposition, or [LevelSort], a [Π] out
+    of a type of levels, as in [∀ (u : Level) → Type@{u}].  The [Π]'s own
+    sort is [U] or [Prop] by its relevance tag, independently of the
+    domain's. *)
 Inductive pi_domain_sort (U : exp) : exp -> Prop :=
 (** The domain is in the universe [U]. *)
 | pi_domain_universe : pi_domain_sort U U
 (** The domain is a proposition. *)
-| pi_domain_prop : pi_domain_sort U Propₘ.
+| pi_domain_prop : pi_domain_sort U Propₘ
+(** The domain is a type of levels. *)
+| pi_domain_level : pi_domain_sort U LevelSort.
 (** The annotation of a local definition, if any, is the type it is checked
     at, of the sort [S]; without one, the type is any its body has, and it
     is a type of a universe: evaluation, which cannot see types, evaluates
@@ -309,10 +346,16 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_univ :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ : Type⟨succl M⟩ )
-(** Every type of levels is small, at the least level. *)
+(** Every type of levels is of the sort of the types of levels, and in no
+    universe. *)
 | wf_level :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : LevelSort )
+(** The sort of the types of levels is a type of the least large universe,
+    so that a type of levels has a type. *)
+| wf_level_sort :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort : Typeω@0 )
 (** A level is a literal, a successor, or a join.  [Level@n] is the type of
     the levels below ω·(n+1), so a literal is of the sorts at least its
     tier. *)
@@ -495,12 +538,21 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      pi_domain_sort U Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : (relevance_sort r U)[↑]ʷ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B : relevance_sort r U )
-(** A λ-abstraction, over a type of either sort, into a type of the sort
-    [r]: a function, or a proof of a [∀]. *)
+(** A [Π] between types of levels is a type of levels.  It is the only
+    [Π] in [LevelSort]: a type of levels is a function of levels only. *)
+| wf_pi_level :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : LevelSort )
+(** A λ-abstraction, over a type of any sort, into a type of the sort
+    [r]: a function, or a proof of a [∀].  A relevant codomain is in a
+    universe, or is a type of levels over a type of levels
+    ([pi_codomain_sort]). *)
 | wf_fn :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : a_pi r A B )
 (** An application, at the codomain instantiated by the argument: of a
@@ -508,7 +560,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
@@ -625,7 +678,10 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩ )
 | wf_exp_eq_level_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : LevelSort )
+| wf_exp_eq_level_sort_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort ≈ LevelSort : Typeω@0 )
 | wf_exp_eq_llit_cong :
   `( fst o <= n ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -777,17 +833,24 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : (relevance_sort r U)[↑]ʷ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B ≈ a_pi r A' B' : relevance_sort r U )
+| wf_exp_eq_pi_cong_level :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : LevelSort )
 | wf_exp_eq_fn_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : a_pi r A B )
 | wf_exp_eq_app_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
@@ -828,7 +891,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_pi_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] )
@@ -981,7 +1045,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_fn_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : a_pi r A B )
 (** η for the placeholder type: its element is the only one. *)
@@ -1142,6 +1207,17 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ Π A' B' )
+(** A [Π] between types of levels is covariant in its codomain, out of
+    equal domains, as types of levels are ordered by their sorts
+    ([wf_subtyp_level]). *)
+| wf_subtyp_pi_level :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ Π A' B' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Θ Ξ Γ A A') : type_scope
 
 (** *** Universes
@@ -1248,9 +1324,14 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' ->
      (forall y, type_sort (entry_sort y)) ->
      (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-        exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
      (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-        exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
+        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
+     (** An entry of a type of levels has only types of levels as the
+         parameters of both sides, whose sorts [param_sorts] gives
+         ([level_sorted_parameters]): a level is built only from levels,
+         and [module N (n : ℕ) where def v : Level ≔ 0l end] is rejected *)
+     (forall y k, entry_sort y = LevelSort -> k < List.length Δ -> param_sorts k = LevelSort) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -1309,11 +1390,17 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      body_shape Φ Φ' ->
      body_shape Φx Φx' ->
      List.NoDup (gm_names Φ) ->
-     (** The parameters of both sides are types of a universe, not
-         propositions: [param_level] is a level containing every parameter
-         type; by cumulativity any common upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
-     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
+     (** The parameters of both sides are types of a universe or types of
+         levels, not propositions: [param_sorts k] is the sort of the
+         parameter at the position [k] from the outside, the universe at
+         [param_level], a level containing every parameter type of a
+         universe (by cumulativity any common upper bound works), or
+         [LevelSort].  For [module M (u : Level) (A : Type@{u})],
+         [param_sorts 0] is [LevelSort] and [param_sorts 1] is
+         [Typeω@param_level] *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
+     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' )
 | wf_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
@@ -1321,11 +1408,13 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      tele_ass Δ' ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E' ->
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ E' ≈ E' ->
-     (** The parameters of both sides are types of a universe:
-         [param_level] is a level containing every parameter type; by
-         cumulativity any common upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
-     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
+     (** The parameters of both sides are types of a universe or types of
+         levels, as for [wf_unit_eq_body]: [param_sorts] gives their sorts,
+         and [param_level] is a level containing every parameter type of a
+         universe *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
+     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
 (** An alias of a literal is the literal over both telescopes, the alias's
     outermost: the merge lookup performs ([udenote_alias], [mdesc_up]).  The
@@ -1335,10 +1424,10 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ ->
      tele_ass Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
-     (** The outer parameters are types of a universe: [param_level] is a
-         level containing every parameter type; by cumulativity any common
-         upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
+     (** The outer parameters are types of a universe or types of levels,
+         as for [wf_unit_eq_body]: [param_sorts] gives their sorts *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D )
 | wf_unit_eq_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
@@ -1465,9 +1554,15 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     the tag [r] is [propositional], and its body, if it has one, carries
     the type.  It is filed generalized over the parameters by Π types at
     the tag ([ctx_pi_at r]), so that a propositional member stays a
-    proposition. *)
+    proposition.  A relevant type is of a universe or a type of levels;
+    a definition of a type of levels has only types of levels as the
+    frames' parameters ([level_sorted_parameters]), so that what is filed
+    is a type: [def ofNat (n : ℕ) : Level] is rejected. *)
 | wf_gentry_def :
-  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt ->
+     relevant_sort Srt ->
+     (Srt = LevelSort ->
+        forall Δ1 T Δ2, gs_tele Ξ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ T : LevelSort) ->
      (forall M, oM = Some M -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (option_map (ctx_fn (gs_tele Ξ)) oM) )
 (** An internal module, under the parameters [Δ'] it declares. *)
@@ -1481,10 +1576,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
   `( tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-     (** The parameters are types of a universe, as a unit's are:
-         [param_level] is a level containing every parameter type; by
-         cumulativity any common upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
+     (** The parameters are types of a universe or types of levels, as a
+         unit's are: [param_sorts] gives their sorts *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A group of inductive types, at its first member, before the members of
     its module: its declaration, with uniform parameters [Δ] over the
@@ -1677,10 +1772,11 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         exists D', ind_lookup Θ Ξ qc = Some D' /\ view_wrap_ok D D' vm) ->
      (** the views agree on their maps *)
      view_maps_coherent Θ Ξ D ->
-     (** the group's own uniform parameters are types of a universe, not
-         propositions: [param_level] is a level containing every parameter
-         type; by cumulativity any common upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
+     (** the group's own uniform parameters are types of a universe or types of
+         levels, not propositions, as a unit's are: [param_sorts] gives
+         their sorts *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp 0 D ⋄ )
 (** A later declared member of a group, before the members of its module:
     the group is filed at its first member, [y0], an entry of the same
@@ -1695,11 +1791,11 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      0 < k ->
      k < ind_ndecl D ->
      im_head Mk = mh_decl (qname_in mq y) ->
-     (** the group's own uniform parameters are types of a universe, as for
-         [wf_gentry_ind_nil]: [param_level] is a level containing every
-         parameter type; by cumulativity any common upper bound works *)
+     (** the group's own uniform parameters are types of a universe or
+         types of levels, as for [wf_gentry_ind_nil] *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
-        Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, gu_body Δ Φ0) :: Ξ) ⊢ T : Typeω@param_level) ->
+        Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, gu_body Δ Φ0) :: Ξ) ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y0) k D ⋄ )
 (** A declared member of a group with the body of its module: the body
     is checked as an ordinary module over the uniform parameters, in the
@@ -1721,9 +1817,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-     (** The module part's parameters are types of a universe, as an
-         alias's are ([wf_gentry_alias]) *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
+     (** The module part's parameters are types of a universe or types of
+         levels, as an alias's are ([wf_gentry_alias]) *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def_mod pv (ctx_pi (gs_tele Ξ) A) (ctx_fn (gs_tele Ξ) M) (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A record type, with parameters [Δ] over the frames' parameters, before
     the members of its module: its sort is a universe over the parameters,
@@ -1741,10 +1838,11 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
         Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
      List.length (record_field_relevance R) = List.length (record_fields R) ->
-     (** the record's own parameters are types of a universe, not
-         propositions: [param_level] is a level containing every parameter
-         type; by cumulativity any common upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
+     (** the record's own parameters are types of a universe or types of
+         levels, not propositions, as a unit's are: [param_sorts] gives
+         their sorts *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv mp R ⋄ )
 (** A record type with the body of its module: the body is checked as an
     ordinary module over the record's own parameters and then a value of
@@ -1765,10 +1863,10 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 | wf_gmod_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
-     (** The parameters are types of a universe, as a unit's are:
-         [param_level] is a level containing every parameter type; by
-         cumulativity any common upper bound works *)
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : Typeω@param_level) ->
+     (** The parameters are types of a universe or types of levels, as a
+         unit's are: [param_sorts] gives their sorts *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ mp ⍮ fk_module ⍮ Δ ⊢ᵍᵐ ⋄ )
 (** The module of the declared member [k] of the group [D] at [pq], before
     its members: the member's declaration, checked as an entry with an
@@ -1779,9 +1877,11 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 | wf_gmod_ind_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
-     (** The parameters are types of a universe, as for [wf_gmod_nil] *)
+     (** The parameters are types of a universe or types of levels, as for
+         [wf_gmod_nil] *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
-        Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, Uq) :: Ξ) ⊢ T : Typeω@param_level) ->
+        Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, Uq) :: Ξ) ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ ->
      ind_uparams D = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δ ⊢ᵍᵐ ⋄ )
@@ -1796,10 +1896,12 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 | wf_gmod_record_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
-     (** The parameters are types of a universe, as for [wf_gmod_nil]; so
-         is the value's type, a record type, where it is typed *)
+     (** The parameters are types of a universe or types of levels, as for
+         [wf_gmod_nil]; the value's type is a record type, of a universe,
+         where it is typed *)
+     (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
-        Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, Uq) :: Ξ) ⊢ T : Typeω@param_level) ->
+        Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ2 ++ gs_tele ((mq, Kq, Uq) :: Ξ) ⊢ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_record pv mp R ⋄ ->
      record_params R = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_record R ⍮ ce_ass (record_self mp R) :: Δ ⊢ᵍᵐ ⋄ )
@@ -1986,8 +2088,8 @@ Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp wf_is_univ ctx_lookup ctx_lo
 
 (** ** Types of Either Sort
 
-    [Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A]: [A] is a type, of a large universe or a
-    proposition.  (A trailing word [type] would make [type] a keyword,
+    [Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A]: [A] is a type, of a large universe, a
+    proposition or a type of levels.  (A trailing word [type] would make [type] a keyword,
     which breaks every [%type] scope delimiter.)  It is a record outside the mutual block, so no mutual
     induction has a motive for it; the rules state its two parts as
     premises, [Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt] and [type_sort Srt]. *)
@@ -1995,7 +2097,7 @@ Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp wf_is_univ ctx_lookup ctx_lo
 Record wf_type (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A : typ) : Prop := mk_wf_type
   { (** The sort [A] is of *)
     wf_type_sort : exp
-    (** It is a sort: a large universe or [Prop] *)
+    (** It is a sort: a large universe, [Prop] or [LevelSort] *)
   ; wf_type_sort_ok : type_sort wf_type_sort
     (** [A] is of it *)
   ; wf_type_typed : Θ ⍮ Ξ ⍮ Γ ⊢ A : wf_type_sort }.
@@ -2036,20 +2138,53 @@ Ltac solve_let_ann := first [ apply let_ann_some | eassumption | apply let_ann_n
 Ltac destruct_let_ann :=
   repeat match goal with H : let_ann _ _ _ |- _ => destruct H as [[-> [? ?]] | ->] end; cbv beta iota in *.
 
-(** The sort of a type, in its two cases. *)
-(** Make the sorts of a rule concrete: a type sort is a large universe or
-    [Prop], a [Π]'s domain is of its universe or a proposition, and a
-    relevance tag is one of the two, so that [relevance_sort] computes. *)
+(** Make the sorts of a rule concrete: a type sort is a large universe,
+    [Prop] or [LevelSort], a [Π]'s domain is of its universe, a proposition
+    or a type of levels, a relevant sort and a codomain's sort are a large
+    universe or [LevelSort], and a relevance tag is one of the two, so that
+    [relevance_sort] computes. *)
 Ltac destruct_type_sort :=
   repeat match goal with
          | H : type_sort _ |- _ => destruct H
          | H : pi_domain_sort _ _ |- _ => destruct H
+         | H : relevant_sort _ |- _ => inversion H; subst; clear H
+         | H : pi_codomain_sort _ _ |- _ => inversion H; subst; clear H
          | r : relevance |- _ => destruct r
          end;
   cbn [relevance_sort] in *.
 
+(** A parameter's sort is closed: no operation moves it. *)
+Lemma parameter_sort_sub : forall l S σ, parameter_sort l S -> S[σ] = S.
+Proof. intros * []; reflexivity. Qed.
+
+Lemma parameter_sort_wk : forall l S φ, parameter_sort l S -> S[φ]ʷ = S.
+Proof. intros * []; reflexivity. Qed.
+
+(** A parameter's sort is a type sort. *)
+Lemma parameter_sort_type_sort : forall l S, parameter_sort l S -> type_sort S.
+Proof. intros * []; constructor. Qed.
+
+(** A relevant sort is a type sort. *)
+Lemma relevant_sort_type_sort : forall S, relevant_sort S -> type_sort S.
+Proof. intros S []; constructor. Qed.
+
+(** So is a codomain's sort. *)
+Lemma pi_codomain_sort_type_sort : forall Srt S, pi_codomain_sort Srt S -> type_sort S.
+Proof. intros * []; constructor. Qed.
+
+(** A codomain's sort is relevant. *)
+Lemma pi_codomain_sort_relevant : forall Srt S, pi_codomain_sort Srt S -> relevant_sort S.
+Proof. intros * []; constructor. Qed.
+
+(** A type of levels is a type. *)
+Lemma wf_type_level : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+Proof. intros * H; exact (mk_wf_type _ type_sort_level H). Qed.
+
 #[export]
-Hint Constructors type_sort pi_domain_sort : mctt.
+Hint Resolve relevant_sort_type_sort pi_codomain_sort_type_sort pi_codomain_sort_relevant parameter_sort_type_sort wf_type_level : mctt.
+
+#[export]
+Hint Constructors type_sort pi_domain_sort relevant_sort pi_codomain_sort parameter_sort : mctt.
 
 #[export]
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.
@@ -2062,7 +2197,7 @@ Lemma wf_gentry_def_body : forall Θ Ξ mp b pv r A M i,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
 Proof.
   intros * HA HM; change (Some (ctx_fn (gs_tele Ξ) M)) with (option_map (ctx_fn (gs_tele Ξ)) (Some M)).
-  eapply wf_gentry_def; [ exact HA | intros ? [= <-]; exact HM ].
+  eapply wf_gentry_def; [ exact HA | constructor | discriminate | intros ? [= <-]; exact HM ].
 Qed.
 
 Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv r A i,
@@ -2070,7 +2205,7 @@ Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv r A i,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None.
 Proof.
   intros * HA; change (@None exp) with (option_map (ctx_fn (gs_tele Ξ)) None).
-  eapply wf_gentry_def; [ exact HA | discriminate ].
+  eapply wf_gentry_def; [ exact HA | constructor | discriminate | discriminate ].
 Qed.
 
 #[export]
@@ -2214,14 +2349,21 @@ Lemma wf_univ_large : forall {Θ Ξ Γ o i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ : Typeω@i.
 Proof. intros; eapply wf_univ_large_tm; [ assumption | apply wf_llit_ordinal; assumption ]. Qed.
 
-(** The base types are types of every large universe. *)
-Lemma wf_level_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
+(** [LevelSort] is a type of every large universe. *)
+Lemma wf_level_sort_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort : Typeω@i.
+Proof.
+  intros * HΓ; destruct i as [| i]; [ apply wf_level_sort, HΓ |].
+  eapply wf_exp_subtyp; [ apply wf_level_sort, HΓ | apply wf_typ, HΓ | constructor | apply wf_subtyp_univ; [ exact HΓ | lia ] ].
+Qed.
 
-Lemma wf_exp_eq_level_cong_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
+Lemma wf_exp_eq_level_sort_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort ≈ LevelSort : Typeω@i.
+Proof.
+  intros * HΓ; destruct i as [| i]; [ apply wf_exp_eq_level_sort_cong, HΓ |].
+  eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_sort_cong, HΓ | apply wf_typ, HΓ | constructor | apply wf_subtyp_univ; [ exact HΓ | lia ] ].
+Qed.
 
-(** So are [Prop] and the placeholder type. *)
+(** The base types are types of every large universe: [Prop] and the
+    placeholder type. *)
 Lemma wf_prop_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Typeω@i.
 Proof. intros; eapply wf_exp_subtyp; [ apply wf_prop | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
@@ -2355,7 +2497,7 @@ Proof.
   destruct a' as [| m]; [ lia |].
   eapply wf_exp_eq_subtyp;
     [ apply wf_exp_eq_maxl_absorb, wf_llit; [ cbn; lia | exact HΓ ]
-    | apply (wf_level_large (i := 0)), HΓ | constructor
+    | apply wf_level, HΓ | constructor
     | apply wf_subtyp_level; [ exact Hn | exact HΓ ] ].
 Qed.
 
@@ -2477,9 +2619,9 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨_⟩ : Typeω@?i) => fix_open_level i; e
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ : Typeω@?i) => fix_open_level i; apply wf_univ_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ : Typeω@?i) => fix_open_level i; apply wf_level_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ LevelSort : Typeω@?i) => fix_open_level i; apply wf_level_sort_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ ≈ Level@_ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_level_cong_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ LevelSort ≈ LevelSort : Typeω@?i) => fix_open_level i; apply wf_exp_eq_level_sort_cong_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ : Typeω@?i) => fix_open_level i; apply wf_prop_large : mctt.
 #[export]

@@ -1574,7 +1574,7 @@ Proof.
   all: try solve [ mauto 3 ].
   (** Applications at a tag: the rule at the tag of the function's [Π]. *)
   all: try solve [ eapply wf_exp_eq_app_cong with (r := relevant); mauto 3 ].
-  all: try solve [ eapply wf_exp_eq_app_cong with (r := propositional) (i := 0);
+  all: try solve [ eapply wf_exp_eq_app_cong with (r := propositional) (Srt' := Typeω@0);
                    first [ solve [ eassumption | constructor ] | mauto 3 ] ].
   (** [Π] at a tag: the domain is of the universe or a proposition, the
       codomain's sort commutes with the lifted substitution. *)

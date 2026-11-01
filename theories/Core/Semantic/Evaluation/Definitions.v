@@ -445,6 +445,9 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** [Level] is a value. *)
 | eval_exp_level :
   `( ⟦ Level@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ@n )
+(** So is the sort of the types of levels. *)
+| eval_exp_level_sort :
+  `( ⟦ LevelSort ⟧ Θ ⍮ Ξ ⍮ ρ ↘ LevelSortᵈ )
 (** A level literal is the flat level with that constant and no atom. *)
 | eval_exp_llit :
   `( ⟦ 𝕃ᵒ o ⟧ Θ ⍮ Ξ ⍮ ρ ↘ domain_level_lit o )
