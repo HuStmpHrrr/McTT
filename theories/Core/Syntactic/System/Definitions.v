@@ -1571,7 +1571,8 @@ with wf_no_level_members : gdeps -> gstack -> ctx -> mdesc -> Prop :=
     ([member_types]) of a large universe ([member_levels]) or a proposition
     there; every other entry, read as it is stored ([ge_read]), denotes
     ([member_descs]) a description with no member of a type of levels;
-    stored entries are closed, so they are read at [⋅].  The location is
+    stored entries are closed, so they are read at [⋅], in a well-formed
+    global context.  The location is
     a filed body ([gc_body]: a loaded unit or a finished submodule) with
     exactly these entries, no open frame: an open frame grows, and an
     entry filed later is read through every description of the frame.  In
@@ -1579,7 +1580,8 @@ with wf_no_level_members : gdeps -> gstack -> ctx -> mdesc -> Prop :=
     member [w] of [A] would be of [Π (n : ℕ) Level], so an alias with a
     parameter of a universe of a still open frame is rejected. *)
 | wf_no_level_closed :
-  `( gc_body Θ Ξ p = Some (T, Φ) ->
+  `( ⊢ᵍ Θ ⍮ Ξ ->
+     gc_body Θ Ξ p = Some (T, Φ) ->
      (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
         A = ctx_pi_at r T (member_types y)) ->
      (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
@@ -2045,6 +2047,32 @@ Combined Scheme syntactic_wf_mut_ind from
   wf_ext_eq_mut_ind,
   wf_unit_eq_mut_ind,
   wf_modexp_eq_mut_ind.
+
+(** The same with [⊢ⁿˡ]: the shape of moving the judgments along a growth
+    of the global context ([gctx_embedding_preserves_wf]).  The flag
+    premise of the alias, flatten and body rules asks [⊢ⁿˡ] of a
+    description, which has to move along with the rest; the fundamental
+    theorems keep [syntactic_wf_mut_ind], where it is a plain hypothesis. *)
+
+Scheme wf_ctx_no_level_mind := Minimality for wf_ctx Sort Prop
+with wf_exp_no_level_mind := Minimality for wf_exp Sort Prop
+with wf_exp_eq_no_level_mind := Minimality for wf_exp_eq Sort Prop
+with wf_subtyp_no_level_mind := Minimality for wf_subtyp Sort Prop
+with wf_is_univ_no_level_mind := Minimality for wf_is_univ Sort Prop
+with wf_ext_eq_no_level_mind := Minimality for wf_ext_eq Sort Prop
+with wf_unit_eq_no_level_mind := Minimality for wf_unit_eq Sort Prop
+with wf_modexp_eq_no_level_mind := Minimality for wf_modexp_eq Sort Prop
+with wf_no_level_members_no_level_mind := Minimality for wf_no_level_members Sort Prop.
+Combined Scheme syntactic_wf_no_level_mut_ind from
+  wf_ctx_no_level_mind,
+  wf_exp_no_level_mind,
+  wf_exp_eq_no_level_mind,
+  wf_subtyp_no_level_mind,
+  wf_is_univ_no_level_mind,
+  wf_ext_eq_no_level_mind,
+  wf_unit_eq_no_level_mind,
+  wf_modexp_eq_no_level_mind,
+  wf_no_level_members_no_level_mind.
 
 (** The three-way scheme is the shape of [wk_preserves_wf], [sub_preserves_wf]
     and [sub_eq_preserves_exp]: each of them
