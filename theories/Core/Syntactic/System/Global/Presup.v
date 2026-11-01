@@ -4733,6 +4733,15 @@ Proof.
     exists Typeω@j; split; [ constructor | exact Hty ].
 Qed.
 
+(** Its type is of a large universe at the tag, or of the types of
+    levels. *)
+Corollary desc_ok_ty_at_universe_or_levels : forall Θ Ξ Γ R A, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A ->
+    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort (mdesc_relevance R) Typeω@i) \/
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort (mdesc_relevance R) LevelSort.
+Proof.
+  intros * HR HA; destruct (desc_ok_ty_at _ _ _ _ _ HR HA) as (Srt & [i |] & HAi); [ left; exists i | right ]; exact HAi.
+Qed.
+
 (** ** What a Member Looks Up is Typed *)
 
 (** A module part of typed descriptions, read under the parameters it is
@@ -5405,6 +5414,17 @@ Proof.
     destruct (globals_valid_entries _ _ _ _ _ _ (gctx_resolved_globals_typed _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl) as [(Srt & HS & HA) _].
   exists Srt; split; [ exact HS |]; eapply closed_weaken_exp;
     [ assumption | exact HA | eapply wf_gc_resolve_type_closed; eassumption | destruct r, HS; exact I ].
+Qed.
+
+(** Its type is of a large universe at the tag, or of the types of
+    levels. *)
+Corollary wf_glob_typ_at_universe_or_levels : forall Θ Ξ Γ p b pv r A B,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    gc_resolve Θ Ξ p = Some (ge_def b pv r A B) ->
+    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i) \/ Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r LevelSort.
+Proof.
+  intros * HΓ Hl; destruct (wf_glob_typ_at _ _ _ _ _ _ _ _ _ HΓ Hl) as (Srt & [i |] & HA);
+    [ left; exists i | right ]; exact HA.
 Qed.
 
 Corollary wf_glob_typ : forall Θ Ξ Γ p b pv r A B,
