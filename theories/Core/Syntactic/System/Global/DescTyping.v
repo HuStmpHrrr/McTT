@@ -2082,6 +2082,81 @@ Proof.
   inversion H; subst; eauto.
 Qed.
 
+(** An open description, read with its parameters split differently
+    between itself and the context. *)
+Lemma no_level_open_shift : forall Θ Ξ Γ1 Δ1 Γ2 Δ2 Φw Φx, Δ1 ++ Γ1 = Δ2 ++ Γ2 ->
+    Θ ⍮ Ξ ⍮ Γ1 ⊢ⁿˡ mdesc_open Δ1 Φw Φx -> Θ ⍮ Ξ ⍮ Γ2 ⊢ⁿˡ mdesc_open Δ2 Φw Φx.
+Proof.
+  intros * E H; inversion H; subst.
+  eapply wf_no_level_open; [ eassumption | | rewrite <- E; eassumption .. ].
+  match goal with Hx : _ ⍮ _ ⍮ _ ⊢ˣ _ ≈ _ |- _ => pose proof (ext_eq_ctx_left _ _ _ _ _ Hx) as HC end.
+  apply ext_of_ctx'; rewrite <- List.app_assoc, <- E, List.app_assoc; exact HC.
+Qed.
+
+(** A closed description, at any outer parameters, arguments and
+    context. *)
+Lemma no_level_closed_any : forall Θ Ξ Γ1 Θ1 Ns1 Γ2 Θ2 Ns2 p T Φ,
+    Θ ⍮ Ξ ⍮ Γ1 ⊢ⁿˡ mdesc_closed Θ1 p T Φ Ns1 -> Θ ⍮ Ξ ⍮ Γ2 ⊢ⁿˡ mdesc_closed Θ2 p T Φ Ns2.
+Proof. intros * H; inversion H; subst; eapply wf_no_level_closed; eassumption. Qed.
+
+(** A module description has no member of a type of levels abstracted
+    exactly when it has none under the parameters. *)
+Lemma no_level_up_mod : forall Θ Ξ Γ Δ R, mdesc_is_mod R ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_up Δ R <-> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ R.
+Proof.
+  intros * HR; destruct R; cbn in HR |- *; try contradiction; split; intros H.
+  - eapply no_level_open_shift; [| exact H ]; rewrite List.app_assoc; reflexivity.
+  - eapply no_level_open_shift; [| exact H ]; rewrite List.app_assoc; reflexivity.
+  - eapply no_level_closed_any; exact H.
+  - eapply no_level_closed_any; exact H.
+Qed.
+
+(** A description with no member of a type of levels, abstracted over
+    any telescope: a term's type becomes a [Π] into a universe, which is
+    still a type of a universe. *)
+Lemma no_level_up : forall Θ Ξ Γ Δ R, ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ R -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_up Δ R.
+Proof.
+  intros * HΔ HN; destruct R as [r A om | | | Θd A M Rm]; cbn [mdesc_up].
+  - inversion HN; subst.
+    match goal with HA : _ ⍮ _ ⍮ _ ⊢ A : relevance_sort r Typeω@_ |- _ =>
+      destruct (ctx_pi_at_wf _ _ _ _ _ _ _ HΔ HA) as [j Hj] end.
+    eapply wf_no_level_term; exact Hj.
+  - exact (proj2 (no_level_up_mod _ _ _ _ (mdesc_open _ _ _) I) HN).
+  - exact (proj2 (no_level_up_mod _ _ _ _ (mdesc_closed _ _ _ _ _) I) HN).
+  - inversion HN; subst; constructor; intros Rw HRw.
+    rewrite mdesc_mod_up in HRw; destruct (mdesc_mod Rm) as [R0 |] eqn:HR0; cbn in HRw; [ injection HRw as <- | discriminate ].
+    match goal with Hm : forall _, Some R0 = Some _ -> _ |- _ => pose proof (Hm _ eq_refl) as HN0 end.
+    exact (proj2 (no_level_up_mod _ _ _ _ _ (mdesc_mod_is_mod _ _ HR0)) HN0).
+Qed.
+
+(** A description with no member of a type of levels, abstracted over
+    [Δa] and given arguments for its outermost parameters, has none. *)
+Lemma no_level_ats_up : forall Θ Ξ Ns Γ Δa R R',
+    ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> tele_ass Δa -> length Ns <= length Δa ->
+    (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
+    Θ ⍮ Ξ ⍮ Δa ++ Γ ⊢ⁿˡ R -> mdesc_ats (mdesc_up Δa R) Ns = Some R' -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R'.
+Proof.
+  intros Θ Ξ; induction Ns as [| N Ns IH]; intros * HΔ Ha Hl HNs HN Hats.
+  - injection Hats as <-; exact (no_level_up _ _ _ _ _ HΔ HN).
+  - destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
+    unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? [C ->] _]; subst.
+    rewrite tele_insts_snoc in HNs.
+    pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN0; rewrite exp_sub_id in HN0.
+    rewrite <- List.app_assoc in HΔ, HN; cbn [List.app] in HΔ, HN.
+    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [Srt HS HC]].
+    pose proof (wf_sub_single _ _ _ _ _ _ HC HS HN0) as Hs1.
+    assert (HΔN : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ) by (eapply ctx_sub_wf_gen; eassumption).
+    assert (Hσ : Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ ⊢ˢ sb_qn (length Δ1) (Id,,N) : Δ1 ++ ce_ass C :: Γ)
+      by (apply wf_sub_ext; assumption).
+    cbn [mdesc_ats] in Hats; rewrite mdesc_at_up in Hats.
+    eapply (IH _ _ _ _ HΔN); [ apply tele_ass_sub; exact Ha1 | rewrite length_tele_sub; rewrite List.length_app in Hl; cbn in Hl; lia
+                             | | exact (sub_preserves_no_level _ _ _ _ _ _ HN Hσ) | exact Hats ].
+    intros k N1 A HN1 HA.
+    rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.
+    exact (HNs (S k) N1 A HN1 HA).
+Qed.
+
 (** Parameters of types of levels, apart. *)
 Lemma level_sorted_app_inv : forall Θ Ξ Γ Δy Δ,
     level_sorted_parameters Θ Ξ Γ (Δy ++ Δ) ->
@@ -2129,34 +2204,6 @@ Proof.
   intros * [HL | HN] Hm; [ left; exact HL | right; eapply no_level_mod; [ exact HN | cbn; exact Hm ] ].
 Qed.
 
-(** An open description, read with its parameters split differently
-    between itself and the context. *)
-Lemma no_level_open_shift : forall Θ Ξ Γ1 Δ1 Γ2 Δ2 Φw Φx, Δ1 ++ Γ1 = Δ2 ++ Γ2 ->
-    Θ ⍮ Ξ ⍮ Γ1 ⊢ⁿˡ mdesc_open Δ1 Φw Φx -> Θ ⍮ Ξ ⍮ Γ2 ⊢ⁿˡ mdesc_open Δ2 Φw Φx.
-Proof.
-  intros * E H; inversion H; subst.
-  eapply wf_no_level_open; [ eassumption | | rewrite <- E; eassumption .. ].
-  match goal with Hx : _ ⍮ _ ⍮ _ ⊢ˣ _ ≈ _ |- _ => pose proof (ext_eq_ctx_left _ _ _ _ _ Hx) as HC end.
-  apply ext_of_ctx'; rewrite <- List.app_assoc, <- E, List.app_assoc; exact HC.
-Qed.
-
-(** A closed description, at any outer parameters, arguments and
-    context. *)
-Lemma no_level_closed_any : forall Θ Ξ Γ1 Θ1 Ns1 Γ2 Θ2 Ns2 p T Φ,
-    Θ ⍮ Ξ ⍮ Γ1 ⊢ⁿˡ mdesc_closed Θ1 p T Φ Ns1 -> Θ ⍮ Ξ ⍮ Γ2 ⊢ⁿˡ mdesc_closed Θ2 p T Φ Ns2.
-Proof. intros * H; inversion H; subst; eapply wf_no_level_closed; eassumption. Qed.
-
-(** A module description has no member of a type of levels abstracted
-    exactly when it has none under the parameters. *)
-Lemma no_level_up_mod : forall Θ Ξ Γ Δ R, mdesc_is_mod R ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_up Δ R <-> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ R.
-Proof.
-  intros * HR; destruct R; cbn in HR |- *; try contradiction; split; intros H.
-  - eapply no_level_open_shift; [| exact H ]; rewrite List.app_assoc; reflexivity.
-  - eapply no_level_open_shift; [| exact H ]; rewrite List.app_assoc; reflexivity.
-  - eapply no_level_closed_any; exact H.
-  - eapply no_level_closed_any; exact H.
-Qed.
 (** Closed relevant parameters, read over a context. *)
 Lemma params_relevant_closed : forall Θ Ξ Γ Δ l,
     ctx_scoped 0 Δ -> params_relevant Θ Ξ nil Δ l -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> params_relevant Θ Ξ Γ Δ l.
@@ -2169,6 +2216,40 @@ Proof.
   pose proof (proj1 (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ))) as HΔ2.
   destruct HT as [HT | HT]; [ left | right ]; exact (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HT HΔ2).
 Qed.
+
+(** Closed parameters of types of levels, read over a context. *)
+Lemma level_sorted_closed : forall Θ Ξ Γ Δ,
+    ctx_scoped 0 Δ -> level_sorted_parameters Θ Ξ nil Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> level_sorted_parameters Θ Ξ Γ Δ.
+Proof.
+  intros * Hs HL HΔ Δ1 T Δ2 E; subst Δ.
+  pose proof (HL _ _ _ eq_refl) as HT; rewrite List.app_nil_r in HT.
+  apply ctx_scoped_app_iff in Hs as [_ Hs].
+  change (ce_ass T :: Δ2) with ((ce_ass T :: nil) ++ Δ2) in Hs; apply ctx_scoped_app_iff in Hs as [_ Hs2].
+  rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
+  pose proof (proj1 (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ))) as HΔ2.
+  exact (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HT HΔ2).
+Qed.
+
+(** A term over a closed telescope [T], whose type is of a relevant sort,
+    of the types of levels only over parameters of types of levels (a
+    stored definition's): it can be abstracted over [T] read over any
+    context. *)
+Lemma closed_term_levels_abstractable : forall Θ Ξ Γ T r A Srt om,
+    ctx_scoped 0 T -> ⊢ Θ ⍮ Ξ ⍮ T ++ Γ -> relevant_sort Srt ->
+    (Srt = LevelSort -> level_sorted_parameters Θ Ξ nil T) ->
+    Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt ->
+    desc_levels_abstractable Θ Ξ Γ T (mdesc_term r A om).
+Proof.
+  intros * Hs HTΓ HS HL HA; destruct HS as [i |].
+  - right; eapply wf_no_level_term; exact (closed_tele_weaken_exp _ _ _ _ _ _ Hs HA HTΓ).
+  - left; exact (level_sorted_closed _ _ _ _ Hs (HL eq_refl) HTΓ).
+Qed.
+
+(** A term with no member of a type of levels has none whatever its
+    δ-reduct. *)
+Lemma no_level_term_any : forall Θ Ξ Γ r A om om',
+    Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_term r A om -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_term r A om'.
+Proof. intros * H; inversion H; subst; eapply wf_no_level_term; eassumption. Qed.
 
 Section DescOk.
   Variables (Θ : gdeps) (Ξ : gstack).

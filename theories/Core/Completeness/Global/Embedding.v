@@ -57,7 +57,7 @@ Section Grow.
     (forall Γ K, valid_unit Θ1 Ξ1 Γ K -> valid_unit Θ2 Ξ2 Γ K) /\ (forall Γ H, valid_modexp Θ1 Ξ1 Γ H -> valid_modexp Θ2 Ξ2 Γ H).
   Proof.
     pose proof He as [Hg2 Hs].
-    destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & _ & _ & _ & _ & _ & Hwm).
+    destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & _ & _ & _ & _ & _ & Hwm & _).
     apply valid_unit_modexp_ind.
     - intros Γ p T Φ Ns Hw Hgl HΓ Hsa.
       destruct (gc_loc_grow _ _ _ _ Hg2 Hs _ _ _ Hgl) as (Φ2 & Hgl2 & _).

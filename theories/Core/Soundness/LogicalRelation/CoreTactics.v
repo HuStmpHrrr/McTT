@@ -98,4 +98,4 @@ Ltac glu_gctx_embedding_wf :=
     let Hwc := fresh "Hwc" in let Hwe := fresh "Hwe" in let Hweq := fresh "Hweq" in
     let Hwst := fresh "Hwst" in let Hwx := fresh "Hwx" in let Hwu := fresh "Hwu" in
     let Hwm := fresh "Hwm" in
-    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (Hwc & Hwe & Hweq & Hwst & Hwx & Hwu & Hwm) end.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (Hwc & Hwe & Hweq & Hwst & Hwx & Hwu & Hwm & _) end.
