@@ -2119,6 +2119,14 @@ Proof.
   - injection Hr as <-; rewrite ctx_fn_sub; reflexivity.
 Qed.
 
+(** The module of a substituted description is the module, substituted. *)
+Lemma mdesc_mod_sub_inv : forall R σ Rw, mdesc_mod (mdesc_sub R σ) = Some Rw ->
+    exists R', mdesc_mod R = Some R' /\ Rw = mdesc_sub R' σ.
+Proof.
+  induction R as [r A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 A M Rm IH]; intros * Hm; cbn in Hm |- *;
+    [ discriminate | injection Hm as <-; eauto | injection Hm as <-; eauto | exact (IH _ _ Hm) ].
+Qed.
+
 Lemma mdesc_mod_sub : forall R R' σ, mdesc_mod R = Some R' -> mdesc_mod (mdesc_sub R σ) = Some (mdesc_sub R' σ).
 Proof.
   intros R; induction R as [r A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 A M Rm IH]; intros R' σ Hm;

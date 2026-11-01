@@ -2450,7 +2450,7 @@ Ltac wk_pose_flags Hφ :=
   end.
 
 (** A flag premise, from the moved [levels_flag] it is part of. *)
-Ltac flag_slot :=
+Ltac flag_premise_from_levels_flag :=
   match goal with
   | F : levels_flag _ _ _ _ _ _ _ |- _ =>
       first [ exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
@@ -2489,7 +2489,8 @@ Proof.
     (** Descriptions with no member of a type of levels. *)
     try solve [ eapply wk_no_level_open_case; eassumption
               | cbn [mdesc_sub]; eapply wf_no_level_closed; eassumption
-              | cbn [mdesc_sub]; eapply wf_no_level_dm; eauto
+              | cbn [mdesc_sub]; eapply wf_no_level_dm; intros Rw HRw;
+                destruct (mdesc_mod_sub_inv _ _ _ HRw) as (R' & HR' & ->); eauto
               | cbn [mdesc_sub]; eapply wf_no_level_term; rewrite exp_sub_of_wk;
                 match goal with IH : forall _ _, wf_wk _ _ _ _ _ -> wf_exp _ _ _ _ _, Hφ : wf_wk _ _ _ _ _ |- _ =>
                   pose proof (IH _ _ Hφ) as HA; rewrite type_sort_wk in HA by (apply type_sort_relevance; constructor);
@@ -2539,10 +2540,10 @@ Proof.
   all: try solve [ eapply wf_me_app;
                    [ eauto
                    | eapply wf_wk_mdenote; eassumption | eapply wf_wk_mdesc_mod_tele; eassumption
-                   | eapply tele_view_wk_some; eassumption | eauto | eauto | eauto
+                   | eapply tele_view_wk_some; eassumption | eauto | constructor | eauto | eauto
                    | eapply wf_wk_mdenote; [ apply wf_me_sym | ..]; eassumption
                    | eapply wf_wk_mdesc_mod_tele; [ apply wf_me_sym | ..]; eassumption
-                   | eapply tele_view_wk_some; eassumption | eauto | eauto ] ].
+                   | eapply tele_view_wk_some; eassumption | eauto | constructor | eauto ] ].
   (** Extensions: the entry is moved by the weakening lifted over the
       extension before it. *)
   all: try solve [ cbn [tele_wk];
@@ -2577,7 +2578,7 @@ Proof.
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         wk_pose_flags Hφ;
         eapply wf_unit_eq_alias; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption | eauto | rewrite <- ?Hlen in *; eauto
-                                 | eassumption | wk_params_case Hφ | wk_params_case Hφ | flag_slot .. ]
+                                 | eassumption | wk_params_case Hφ | wk_params_case Hφ | flag_premise_from_levels_flag .. ]
     end ].
   all: try solve [ eapply wk_unit_body_case; (eassumption || (eapply wf_unit_eq_body; eassumption)) ].
   (** An alias of a literal, flattened: the literal moves by the weakening
@@ -2596,7 +2597,7 @@ Proof.
         destruct (gunit_wk (gu_mk Δ' D) (wk_qn (length Δ) φ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
         cbn [modexp_wk] in F; rewrite EU in F;
         eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | exact HU' | eassumption | wk_params_case Hφ
-                                   | flag_slot .. ]
+                                   | flag_premise_from_levels_flag .. ]
     end ].
   (** The remaining cases name their induction hypotheses by shape. *)
   all: try solve [ rewrite !gunit_wk_mk; cbn [moddef_wk];
@@ -2613,7 +2614,7 @@ Proof.
         eapply wf_unit_eq_alias;
         [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption
         | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | wk_params_case Hφ | wk_params_case Hφ
-        | flag_slot .. ]
+        | flag_premise_from_levels_flag .. ]
     end ].
   all: try solve [
     match goal with
@@ -3718,7 +3719,8 @@ Proof.
     (** Descriptions with no member of a type of levels. *)
     try solve [ eapply sub_no_level_open_case; eassumption
               | cbn [mdesc_sub]; eapply wf_no_level_closed; eassumption
-              | cbn [mdesc_sub]; eapply wf_no_level_dm; eauto
+              | cbn [mdesc_sub]; eapply wf_no_level_dm; intros Rw HRw;
+                destruct (mdesc_mod_sub_inv _ _ _ HRw) as (R' & HR' & ->); eauto
               | cbn [mdesc_sub]; eapply wf_no_level_term;
                 match goal with IH : forall _ _, wf_sub _ _ _ _ _ -> wf_exp _ _ _ _ _, Hσ : wf_sub _ _ _ _ _ |- _ =>
                   pose proof (IH _ _ Hσ) as HA; rewrite type_sort_sub in HA by (apply type_sort_relevance; constructor);
@@ -3797,7 +3799,7 @@ Proof.
         eapply wf_unit_eq_alias;
         [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
         | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | sub_params_case Hσ | sub_params_case Hσ
-        | flag_slot .. ]
+        | flag_premise_from_levels_flag .. ]
     end ].
   all: try solve [ eapply sub_unit_body_case; (eassumption || (eapply wf_unit_eq_body; eassumption)) ].
   (** An alias of a literal, flattened: the literal moves by the
@@ -3816,7 +3818,7 @@ Proof.
         destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
         cbn [modexp_sub] in F; rewrite EU in F;
         eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | exact HU' | eassumption | sub_params_case Hσ
-                                   | flag_slot .. ]
+                                   | flag_premise_from_levels_flag .. ]
     end ].
   (** Module expressions. *)
   all: try solve [
@@ -3833,10 +3835,10 @@ Proof.
   all: try solve [ eapply wf_me_app;
                    [ eauto
                    | eapply wf_sub_mdenote; eassumption | eapply wf_sub_mdesc_mod_tele; eassumption
-                   | eapply tele_view_sub_some; eassumption | eauto | eauto | eauto
+                   | eapply tele_view_sub_some; eassumption | eauto | constructor | eauto | eauto
                    | eapply wf_sub_mdenote; [ apply wf_me_sym | ..]; eassumption
                    | eapply wf_sub_mdesc_mod_tele; [ apply wf_me_sym | ..]; eassumption
-                   | eapply tele_view_sub_some; eassumption | eauto | eauto ] ].
+                   | eapply tele_view_sub_some; eassumption | eauto | constructor | eauto ] ].
   (** [Π], as for weakening. *)
   all: try solve [
     match goal with

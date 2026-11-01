@@ -1472,19 +1472,23 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      mdesc_mod_tele R' = Some T' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H' y )
 (** An application: the argument is checked against the outermost
-    parameter of the telescope of what the module expression denotes. *)
+    parameter of the telescope of what the module expression denotes, a
+    type of a universe or a type of levels ([relevant_sort]), as a unit's
+    parameters are. *)
 | wf_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ H R ->
      mdesc_mod_tele R = Some T ->
      tele_view T = Some (B, T1) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ B : Srt ->
+     relevant_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
      mdesc_mod_tele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ B' : Typeω@j ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ B' : Srt' ->
+     relevant_sort Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H' N' )
 (** *** [δ] *)
@@ -1562,25 +1566,33 @@ with wf_no_level_members : gdeps -> gstack -> ctx -> mdesc -> Prop :=
      (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
         Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ⁿˡ member_descs y) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_open Δ Φw Φx )
-(** A closed module, by its stored entries: each, read as it is stored
-    ([ge_read]), denotes ([member_descs]) a description with no member of
-    a type of levels; stored entries are closed, so they are read at [⋅].
-    The location is no open frame: an open frame grows, and an entry
-    filed later is read through every description of the frame.  In
-    [module F where module A (n : ℕ) ≔ F; def w : Level ≔ 0l end] the
-    member [w] of [A] would be of [Π (n : ℕ) Level], so an alias with a
-    parameter of a universe of a still open frame is rejected. *)
+(** A closed module, by its stored entries: each definition is stored
+    generalized over the telescope [T] ([ctx_pi_at]), of a type
+    ([member_types]) of a large universe ([member_levels]) or a proposition
+    there; every other entry, read as it is stored ([ge_read]), denotes
+    ([member_descs]) a description with no member of a type of levels;
+    stored entries are closed, so they are read at [⋅].  The location is
+    no open frame: an open frame grows, and an entry filed later is read
+    through every description of the frame.  In [module F where module A
+    (n : ℕ) ≔ F; def w : Level ≔ 0l end] the member [w] of [A] would be of
+    [Π (n : ℕ) Level], so an alias with a parameter of a universe of a
+    still open frame is rejected. *)
 | wf_no_level_closed :
   `( gc_frame Ξ p = None ->
-     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
+     (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
+        A = ctx_pi_at r T (member_types y)) ->
+     (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
+        Θ ⍮ Ξ ⍮ T ⊢ member_types y : relevance_sort r Typeω@(member_levels y)) ->
+     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
         edenote Θ Ξ ⋅ (Some (qname_in p y)) (ge_read T E) (member_descs y)) ->
-     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
+     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
         Θ ⍮ Ξ ⍮ ⋅ ⊢ⁿˡ member_descs y) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_closed Θ' p T Φ Ns )
-(** A definition with a module part, or a type former: by its module part;
-    its term part is of a type of a large universe *)
+(** A definition with a module part, or a type former: by the module its
+    module part is read as ([mdesc_mod]); its term part is of a type of a
+    large universe *)
 | wf_no_level_dm :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rm ->
+  `( (forall Rm', mdesc_mod Rm = Some Rm' -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rm') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_dm Θd A M Rm )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R" := (wf_no_level_members Θ Ξ Γ R) : type_scope
 

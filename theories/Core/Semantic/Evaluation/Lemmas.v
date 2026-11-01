@@ -318,7 +318,7 @@ Import Domain_Notations.
   with domain_nf_eq_dec (a b : domain_nf) {struct a} : {a = b} + {a <> b}
   with dmod_eq_dec (a b : dmod) {struct a} : {a = b} + {a <> b}
   with dentry_eq_dec (a b : dentry) {struct a} : {a = b} + {a <> b}
-  with dtype_eq_dec (a b : dtype) {struct a} : {a = b} + {a <> b}.
+  with entry_type_eq_dec (a b : entry_type) {struct a} : {a = b} + {a <> b}.
   Proof.
     all: decide equality;
       first [ apply Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec

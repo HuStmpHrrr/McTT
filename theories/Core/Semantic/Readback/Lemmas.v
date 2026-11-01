@@ -68,15 +68,15 @@ Import Domain_Notations.
   Qed.
 
   (** The type value of an entry is one value. *)
-  Lemma functional_eval_dtype : forall {Θ Ξ} t a1 a2, eval_dtype Θ Ξ t a1 -> eval_dtype Θ Ξ t a2 -> a1 = a2.
+  Lemma functional_eval_entry_type : forall {Θ Ξ} t a1 a2, eval_entry_type Θ Ξ t a1 -> eval_entry_type Θ Ξ t a2 -> a1 = a2.
   Proof.
     intros * H1 H2; destruct H1; inversion H2; subst; functional_eval_rewrite_clear; congruence.
   Qed.
 
   Ltac functional_fresh_rewrite_clear :=
     repeat match goal with
-      | H1 : eval_dtype ?T ?X ?t ?a1, H2 : eval_dtype ?T ?X ?t ?a2 |- _ =>
-          pose proof (functional_eval_dtype _ _ _ H1 H2); subst; clear H2
+      | H1 : eval_entry_type ?T ?X ?t ?a1, H2 : eval_entry_type ?T ?X ?t ?a2 |- _ =>
+          pose proof (functional_eval_entry_type _ _ _ H1 H2); subst; clear H2
       | H1 : fresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : fresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
           pose proof (functional_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>

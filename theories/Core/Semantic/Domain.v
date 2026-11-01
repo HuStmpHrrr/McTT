@@ -152,26 +152,26 @@ with dmod : Set :=
 | dm_member : dmod -> list string -> dmod
 with dentry : Set :=
 (** A term variable's value and its type *)
-| de_term : domain -> dtype -> dentry
+| de_term : domain -> entry_type -> dentry
 (** A module slot's value *)
 | de_mod : dmod -> dentry
 (** The value of a definition with a module part: its term part's value
     and type, and its module part's value *)
-| de_dm : domain -> dtype -> dmod -> dentry
+| de_dm : domain -> entry_type -> dmod -> dentry
 (** The type of a term variable in an environment, which the readback of
     a kept proof reads it at.  It is evaluated only there. *)
-with dtype : Set :=
+with entry_type : Set :=
 (** A type value *)
-| dt_value : domain -> dtype
-(** [dt_closure A ρ]: the type [A] in [ρ], not yet evaluated *)
-| dt_closure : exp -> list dentry -> dtype
-(** [dt_shape p ups ρ t]: the type of a recursive argument of shape [t] in
+| entry_type_value : domain -> entry_type
+(** [entry_type_closure A ρ]: the type [A] in [ρ], not yet evaluated *)
+| entry_type_closure : exp -> list dentry -> entry_type
+(** [entry_type_shape p ups ρ t]: the type of a recursive argument of shape [t] in
     [ρ], at the uniform parameters [ups] of the group at [p] *)
-| dt_shape : qname -> list domain -> list dentry -> ptyp -> dtype
-(** [dt_ihty ρm As p ups ρ t v i]: the type of the [i]-th recursive result
+| entry_type_shape : qname -> list domain -> list dentry -> ptyp -> entry_type
+(** [entry_type_induction_hypothesis ρm As p ups ρ t v i]: the type of the [i]-th recursive result
     of an argument [v] of shape [t], its components in [ρ], the motives [As]
     in [ρm], the group at [p] at [ups] *)
-| dt_ihty : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> domain -> nat -> dtype.
+| entry_type_induction_hypothesis : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> domain -> nat -> entry_type.
 
 Abbreviation env := (list dentry).
 
@@ -183,7 +183,7 @@ Derive NoConfusion for gmod gentry.
 
 (** The entry past the end of an environment: the placeholder, at its
     type. *)
-Definition placeholder_entry : dentry := de_term d_placeholder (dt_value d_placeholder_type).
+Definition placeholder_entry : dentry := de_term d_placeholder (entry_type_value d_placeholder_type).
 
 (** The entry of the variable [#x], or the placeholder past the end of the
     list.  [env_entry] is [nth], but defined by recursion on the index so that
@@ -211,10 +211,10 @@ Definition env_var (ρ : env) (x : nat) : domain :=
 Coercion env_var : list >-> Funclass.
 
 (** The type the entry of [#x] is stored at. *)
-Definition env_type (ρ : env) (x : nat) : dtype :=
+Definition env_type (ρ : env) (x : nat) : entry_type :=
   match env_entry ρ x with
   | de_term _ t => t
-  | de_mod _ => dt_value d_placeholder_type
+  | de_mod _ => entry_type_value d_placeholder_type
   | de_dm _ t _ => t
   end.
 
@@ -233,22 +233,23 @@ Lemma env_var_nth : forall ρ x,
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
 (** The environment extended by a value [d] of the type [t]. *)
-Definition extend_env (ρ : env) (d : domain) (t : dtype) : env := de_term d t :: ρ.
+Definition extend_env (ρ : env) (d : domain) (t : entry_type) : env := de_term d t :: ρ.
 Arguments extend_env _ _ _ /.
 
 Definition extend_env_mod (ρ : env) (m : dmod) : env := de_mod m :: ρ.
 Arguments extend_env_mod _ _ /.
 
 (** The environment extended by a definition with a module part. *)
-Definition extend_env_dm (ρ : env) (d : domain) (t : dtype) (m : dmod) : env := de_dm d t m :: ρ.
+Definition extend_env_dm (ρ : env) (d : domain) (t : entry_type) (m : dmod) : env := de_dm d t m :: ρ.
 Arguments extend_env_dm _ _ _ _ /.
 
-(** The environment extended by values at their types, outermost first. *)
-Definition env_typed (ρ : env) (vts : list (domain * dtype)) : env :=
+(** [env_extend_typed ρ vts]: the environment [ρ] extended by the values
+    of [vts], each at the type paired with it, outermost first. *)
+Definition env_extend_typed (ρ : env) (vts : list (domain * entry_type)) : env :=
   List.fold_left (fun ρ vt => extend_env ρ (fst vt) (snd vt)) vts ρ.
 
-Lemma env_typed_app : forall ρ vs ws, env_typed ρ (vs ++ ws) = env_typed (env_typed ρ vs) ws.
-Proof. intros; unfold env_typed; rewrite List.fold_left_app; reflexivity. Qed.
+Lemma env_extend_typed_app : forall ρ vs ws, env_extend_typed ρ (vs ++ ws) = env_extend_typed (env_extend_typed ρ vs) ws.
+Proof. intros; unfold env_extend_typed; rewrite List.fold_left_app; reflexivity. Qed.
 
 (** The type an entry of a telescope gives its variable. *)
 Definition centry_type (e : centry) : exp :=
@@ -259,17 +260,17 @@ Definition centry_type (e : centry) : exp :=
 
 (** The type the head of a telescope gives a variable over [ρ], and the
     placeholder type past its end. *)
-Definition tele_head_type (ρ : env) (T : list centry) : dtype :=
+Definition tele_head_type (ρ : env) (T : list centry) : entry_type :=
   match T with
-  | e :: _ => dt_closure (centry_type e) ρ
-  | nil => dt_value d_placeholder_type
+  | e :: _ => entry_type_closure (centry_type e) ρ
+  | nil => entry_type_value d_placeholder_type
   end.
 
 (** The values [vs] at the telescope [T], outermost first, with their
     types: each the type its entry gives, as a closure in [ρ] extended by
     the values before it.  Every value is kept: one past the end of [T] is
     at the placeholder type. *)
-Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (domain * dtype) :=
+Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (domain * entry_type) :=
   match vs with
   | nil => nil
   | v :: vs' => (v, tele_head_type ρ T) :: tele_entries (extend_env ρ v (tele_head_type ρ T)) (List.tl T) vs'
@@ -278,7 +279,7 @@ Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (do
 (** The environment [ρ] extended by the values [vs] at the telescope [T],
     outermost first, as a unit's parameters are: the types are closures in
     the environment extended so far. *)
-Definition env_tele (ρ : env) (T : list centry) (vs : list domain) : env := env_typed ρ (tele_entries ρ T vs).
+Definition env_tele (ρ : env) (T : list centry) (vs : list domain) : env := env_extend_typed ρ (tele_entries ρ T vs).
 
 Definition drop_env (ρ : env) : env := List.tl ρ.
 Arguments drop_env _ /.

@@ -53,7 +53,7 @@ Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
     definition and an entry of a module body (their types), and a
     substitution's entry (its target context's type, [eval_sub]).
 
-    Every variable an environment binds carries its type ([dtype]), which
+    Every variable an environment binds carries its type ([entry_type]), which
     the readback of a kept proof reads the variable at; the type is a
     closure, evaluated only there. *)
 
@@ -123,14 +123,14 @@ Definition decl_env (D : ind_decl) (ups : list domain) : env := env_tele nil (Li
     non-recursive one the type its declaration gives, in [ρ] extended by
     the non-recursive arguments before it; a recursive one the type of its
     shape there, at the uniform parameters [ups] of the group at [p]. *)
-Fixpoint cargs_entries (p : qname) (ups : list domain) (ρ : env) (gs : list carg) (vs : list domain) : list (domain * dtype) :=
+Fixpoint cargs_entries (p : qname) (ups : list domain) (ρ : env) (gs : list carg) (vs : list domain) : list (domain * entry_type) :=
   match vs with
   | nil => nil
   | v :: vs' =>
       match gs with
-      | ca_arg _ A :: gs' => (v, dt_closure A ρ) :: cargs_entries p ups (ρ ↦ v ⦂ dt_closure A ρ) gs' vs'
-      | ca_rec t :: gs' => (v, dt_shape p ups ρ t) :: cargs_entries p ups ρ gs' vs'
-      | nil => (v, dt_value d_placeholder_type) :: cargs_entries p ups ρ nil vs'
+      | ca_arg _ A :: gs' => (v, entry_type_closure A ρ) :: cargs_entries p ups (ρ ↦ v ⦂ entry_type_closure A ρ) gs' vs'
+      | ca_rec t :: gs' => (v, entry_type_shape p ups ρ t) :: cargs_entries p ups ρ gs' vs'
+      | nil => (v, entry_type_value d_placeholder_type) :: cargs_entries p ups ρ nil vs'
       end
   end.
 
@@ -139,20 +139,22 @@ Fixpoint cargs_entries (p : qname) (ups : list domain) (ρ : env) (gs : list car
     in [ρm], the shape's components in [ρ], which a non-recursive argument
     extends. *)
 Fixpoint ihs_types (D : ind_decl) (p : qname) (ups : list domain) (ρm : env) (As : list exp)
-    (ρ : env) (gs : list carg) (vs : list domain) : list dtype :=
+    (ρ : env) (gs : list carg) (vs : list domain) : list entry_type :=
   match gs, vs with
-  | ca_arg _ A :: gs', v :: vs' => ihs_types D p ups ρm As (ρ ↦ v ⦂ dt_closure A ρ) gs' vs'
+  | ca_arg _ A :: gs', v :: vs' => ihs_types D p ups ρm As (ρ ↦ v ⦂ entry_type_closure A ρ) gs' vs'
   | ca_rec t :: gs', v :: vs' =>
-      List.map (fun i => dt_ihty ρm As p ups ρ t v i) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))
+      List.map (fun i => entry_type_induction_hypothesis ρm As p ups ρ t v i) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))
         ++ ihs_types D p ups ρm As ρ gs' vs'
   | _, _ => nil
   end.
 
-(** Values with types, a value past the types at the placeholder type. *)
-Fixpoint typed_values (vs : list domain) (ts : list dtype) : list (domain * dtype) :=
+(** [pair_values_with_types vs ts]: each value of [vs] paired with the type
+    at its position in [ts]; a value past the end of [ts] is paired with the
+    placeholder type. *)
+Fixpoint pair_values_with_types (vs : list domain) (ts : list entry_type) : list (domain * entry_type) :=
   match vs with
   | nil => nil
-  | v :: vs' => (v, List.hd (dt_value d_placeholder_type) ts) :: typed_values vs' (List.tl ts)
+  | v :: vs' => (v, List.hd (entry_type_value d_placeholder_type) ts) :: pair_values_with_types vs' (List.tl ts)
   end.
 
 (** The variables of a branch of the member [Mj] of the group [D] at
@@ -160,21 +162,21 @@ Fixpoint typed_values (vs : list domain) (ts : list dtype) : list (domain * dtyp
     non-uniform parameters [ns], the arguments [vs] of kinds [gs] and the
     recursive results [ihs], with their types. *)
 Definition branch_entries (D : ind_decl) (Mj : imember) (p : qname) (ups : list domain) (As : list exp) (ρm : env)
-    (gs : list carg) (ns vs ihs : list domain) : list (domain * dtype) :=
+    (gs : list carg) (ns vs ihs : list domain) : list (domain * entry_type) :=
   let nts := tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) ns in
-  let ρa := env_typed (decl_env D ups) nts in
-  nts ++ cargs_entries p ups ρa gs vs ++ typed_values ihs (ihs_types D p ups ρm As ρa gs vs).
+  let ρa := env_extend_typed (decl_env D ups) nts in
+  nts ++ cargs_entries p ups ρa gs vs ++ pair_values_with_types ihs (ihs_types D p ups ρm As ρa gs vs).
 
 (** The variables of a motive of the member [Mk] of [D] at the uniform
     parameters [ups]: the non-uniform parameters [ns], and a scrutinee [m]
     of the type [a]. *)
-Definition motive_entries (D : ind_decl) (Mk : imember) (ups ns : list domain) (a m : domain) : list (domain * dtype) :=
-  tele_entries (decl_env D ups) (List.rev (im_nparams Mk)) ns ++ (m, dt_value a) :: nil.
+Definition motive_entries (D : ind_decl) (Mk : imember) (ups ns : list domain) (a m : domain) : list (domain * entry_type) :=
+  tele_entries (decl_env D ups) (List.rev (im_nparams Mk)) ns ++ (m, entry_type_value a) :: nil.
 
 (** The environment of a motive over [ρ], at a scrutinee [m] of the type
     [a] at all the member's parameters [as']. *)
 Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domain) (a m : domain) : env :=
-  env_typed ρ (motive_entries D Mk (List.firstn (ind_nu D) as') (List.skipn (ind_nu D) as') a m).
+  env_extend_typed ρ (motive_entries D Mk (List.firstn (ind_nu D) as') (List.skipn (ind_nu D) as') a m).
 
 (** The group an eliminator eliminates by: the one written, or else that
     of the value, a constructor or a neutral of a member. *)
@@ -213,7 +215,7 @@ Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat placehol
 Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
   match E with
   | ge_mod _ U => de_mod (dm_clo U ρ)
-  | ge_def_mod _ _ _ U => de_dm d_placeholder (dt_value d_placeholder_type) (dm_clo U ρ)
+  | ge_def_mod _ _ _ U => de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_clo U ρ)
   | _ => placeholder_entry
   end.
 
@@ -224,7 +226,7 @@ Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
 Definition kinds_generated_entry (ρ : env) (k : nat) (g : generated_item) : dentry :=
   match g with
   | generated_item_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | generated_item_def_mod _ _ _ _ E => de_dm d_placeholder (dt_value d_placeholder_type) (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | generated_item_def_mod _ _ _ _ E => de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
   | _ => placeholder_entry
   end.
 
@@ -650,13 +652,13 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_relevance a = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ dt_value a ↘ r ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** One at a proposition binds its body, a proof, kept as it is. *)
 | eval_exp_let_proof :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_relevance a = propositional ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ dt_value a ↘ r ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local module extends it by the unit's closure. *)
 | eval_exp_let_mod :
@@ -720,7 +722,7 @@ with eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : domain_ne -> env -> list (
 (** The next field's projection, at its type, then the rest after it *)
 | eval_neutral_fields_cons :
   `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     eval_neutral_fields Θ Ξ m (ρ ↦ ⇑ a (d_proj g m) ⦂ dt_closure T ρ) fl rs ->
+     eval_neutral_fields Θ Ξ m (ρ ↦ ⇑ a (d_proj g m) ⦂ entry_type_closure T ρ) fl rs ->
      eval_neutral_fields Θ Ξ m ρ ((g, T) :: fl) (⇑ a (d_proj g m) :: rs) )
 (** The eliminator of the group at [p] at its member [j], on a value.  The
     member is the declared member [k] of the group at [q] ([im_ref]): the
@@ -753,7 +755,7 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat ->
      leaves_coherent D ->
      ⟦ihs skipn (im_np Dq Mk) vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_typed ρ (branch_entries D Mj p ups (blocks_motives Bks) ρ gs
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (branch_entries D Mj p ups (blocks_motives Bks) ρ gs
                                     (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs)) (skipn (im_np Dq Mk) vs) ihs) ↘ r ->
      ⟦elim d_con pc k c vs at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** On a neutral: a stuck eliminator, at the motive's instance *)
@@ -871,7 +873,7 @@ with eval_shape_type (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env ->
     so its entry is at the placeholder type. *)
 | eval_shape_type_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ B t ⦂ dt_value d_placeholder_type) fam_cod )
+     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_value d_placeholder_type) fam_cod )
 where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shape_type Θ Ξ p ups ρ t r)
 (** The types of the recursive results of an argument [v] of shape [t],
     one per leaf path, its components in [ρ], of the group at [p] at the
@@ -888,7 +890,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      im_is_rview Mj = false ->
      ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦ List.nth j As a_placeholder_type ⟧ Θ ⍮ Ξ ⍮
-       env_typed ρm (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs ++ (v, dt_shape p ups ρ (pt_self j Ps)) :: nil) ↘ a ->
+       env_extend_typed ρm (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs ++ (v, entry_type_shape p ups ρ (pt_self j Ps)) :: nil) ↘ a ->
      ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
 (** At the end, at a record view: those of its fields at [v]'s
     projections *)
@@ -905,7 +907,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ
-       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ dt_value d_placeholder_type) fam_cod)
+       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ entry_type_value d_placeholder_type) fam_cod)
            (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ p ups ρm As ρ t v r)
 (** The types of the recursive results of the fields [vs] of a record
@@ -918,7 +920,7 @@ with eval_ihtys (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list
 (** A non-recursive field has none, and extends the components'
     environment *)
 | eval_ihtys_arg :
-  `( ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ dt_closure T ρ ↘ rs ->
+  `( ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ entry_type_closure T ρ ↘ rs ->
      ⟦ihtys v :: vs of ca_arg r T :: gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs )
 (** A recursive field has those of its shape *)
 | eval_ihtys_rec :
@@ -929,13 +931,13 @@ where "'⟦ihtys' vs 'of' gs 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' �
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
-  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_value a ↘ m ->
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ m ->
      $| λᵈ a ρ M & n | Θ ⍮ Ξ ↘ m )
 (** A neutral applied, at the codomain's instance.  No rule applies a
     proof: an application whose function is a proof is at a [∀], hence
     itself a proof, which relevance-directed evaluation never evaluates. *)
 | eval_app_neut :
-  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_value a ↘ b ->
+  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ b ->
      $| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
 (** The type former takes a parameter it still lacks. *)
 | eval_app_indty :
@@ -999,12 +1001,12 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** The families of the types of an argument of a function shape and of its
     recursive result. *)
 | eval_app_shfam :
-  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_closure B ρ ↘ a ->
+  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure B ρ ↘ a ->
      $| d_shfam p ups ρ B t & n | Θ ⍮ Ξ ↘ a )
 (** The [i]-th recursive result's family, at the argument's value *)
 | eval_app_ihfam :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ihty fn of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_closure B ρ ↘ as' ->
+     ⟦ihty fn of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure B ρ ↘ as' ->
      List.nth_error as' i = Some a ->
      $| d_ihfam ρm As p ups ρ B t i f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
@@ -1121,7 +1123,7 @@ with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 (** A closure takes it as its outermost missing parameter, in its
     environment. *)
 | eval_appm_local :
-  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ dt_closure A ρ ↘ r ->
+  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure A ρ ↘ r ->
      $ᵐ| dm_local (Δ ++ ce_ass A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
 (** A submodule of an unsaturated module passes it to the module, then selects again. *)
 | eval_appm_member :
@@ -1295,12 +1297,12 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 | eval_body_env_def :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ dt_closure A ρ1 )
+     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ entry_type_closure A ρ1 )
 (** A definition tagged a proposition, a proof, adds it kept as it is,
     unevaluated. *)
 | eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ dt_closure A ρ1 )
+     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ entry_type_closure A ρ1 )
 (** A submodule adds its unit's closure. *)
 | eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
@@ -1312,7 +1314,7 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
-     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ dt_closure A ρ1 ‖ h )
+     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ entry_type_closure A ρ1 ‖ h )
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_body_env Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
@@ -1394,7 +1396,7 @@ Proof. intros * <-; apply eval_exp_var. Qed.
     a substitution stays functional.  REVISIT: the readback of a kept
     proof in such an environment reads those entries at the placeholder
     type. *)
-Definition substituted_type : dtype := dt_value d_placeholder_type.
+Definition substituted_type : entry_type := entry_type_value d_placeholder_type.
 
 Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (e : sentry) (ρ : env) (d : dentry) : Prop :=
   match e with

@@ -50,7 +50,7 @@ Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> l
     environment *)
 | fresh_tele_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Ftele T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ dt_closure A ρ ⍮ S s ↘ vs ->
+     Ftele T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ ⍮ S s ↘ vs ->
      Ftele ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
 where "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fresh_tele Θ Ξ ρ T s vs) : type_scope.
 
@@ -66,7 +66,7 @@ Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain)
 (** A non-recursive argument: its variable at its declared type *)
 | fresh_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ dt_closure A ρ ⍮ S s ↘ vs ->
+     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ ⍮ S s ↘ vs ->
      Fcargs ca_arg r A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
 (** A recursive argument: its variable at its shape's type, which is
     relevant *)
@@ -106,7 +106,7 @@ Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : q
   `( Fihs nil at nil nil of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ nil )
 (** A non-recursive argument: none, the argument entering [ρa] *)
 | fresh_ihs_arg :
-  `( Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ↦ v ⦂ dt_closure T ρa ⍮ s ↘ ihs ->
+  `( Fihs vs at gs' gs of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ↦ v ⦂ entry_type_closure T ρa ⍮ s ↘ ihs ->
      Fihs v :: vs at (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) of Dc under ρ As at p ups in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 (** An argument recursive in both: a fresh variable at each recursive
     result's type, along the paths of the container's *)
@@ -176,26 +176,26 @@ Hint Constructors fresh_tele fresh_cargs fresh_leaf_vars fresh_ihs wrap_leaf_val
 
 (** The type value an environment's entry is stored at: the type itself, or
     its closure evaluated. *)
-Inductive eval_dtype (Θ : gdeps) (Ξ : gstack) : dtype -> domain -> Prop :=
+Inductive eval_entry_type (Θ : gdeps) (Ξ : gstack) : entry_type -> domain -> Prop :=
 (** A type value *)
-| eval_dtype_value :
-  `( eval_dtype Θ Ξ (dt_value a) a )
+| eval_entry_type_value :
+  `( eval_entry_type Θ Ξ (entry_type_value a) a )
 (** A type in an environment *)
-| eval_dtype_closure :
+| eval_entry_type_closure :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     eval_dtype Θ Ξ (dt_closure A ρ) a )
+     eval_entry_type Θ Ξ (entry_type_closure A ρ) a )
 (** The type of a recursive argument of a shape *)
-| eval_dtype_shape :
+| eval_entry_type_shape :
   `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     eval_dtype Θ Ξ (dt_shape p ups ρ t) a )
+     eval_entry_type Θ Ξ (entry_type_shape p ups ρ t) a )
 (** The type of a recursive result *)
-| eval_dtype_ihty :
+| eval_entry_type_induction_hypothesis :
   `( ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
      List.nth_error as' i = Some a ->
-     eval_dtype Θ Ξ (dt_ihty ρm As p ups ρ t v i) a ).
+     eval_entry_type Θ Ξ (entry_type_induction_hypothesis ρm As p ups ρ t v i) a ).
 
 #[export]
-Hint Constructors eval_dtype : mctt.
+Hint Constructors eval_entry_type : mctt.
 
 (** The local definitions the readback of a kept proof binds, outermost
     first, around the proof term [M]. *)
@@ -262,7 +262,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      (** The normal form of the η-expanded body. *)
      $| m & ⇑! a s | Θ ⍮ Ξ ↘ m' ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ dt_value a ↘ b ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
      Rnf ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
 
      Rnf ⇓ (Πᵈ a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
@@ -414,13 +414,13 @@ where "'Rlets' ρ 'at' k 'in' Θ '⍮' Ξ '⍮' s ↘ bs" := (read_lets Θ Ξ s 
 with read_entry (Θ : gdeps) (Ξ : gstack) : nat -> env -> dentry -> binding -> Prop :=
 (** A term *)
 | read_entry_term :
-  `( eval_dtype Θ Ξ t a ->
+  `( eval_entry_type Θ Ξ t a ->
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ W ->
      Rent de_term v t after τ in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
 (** The term part of a definition with a module part *)
 | read_entry_dm :
-  `( eval_dtype Θ Ξ t a ->
+  `( eval_entry_type Θ Ξ t a ->
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ W ->
      Rent de_dm v t h after τ in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
@@ -445,11 +445,11 @@ with read_mod (Θ : gdeps) (Ξ : gstack) : nat -> env -> dmod -> modexp -> Prop 
   `( Rmod dm_local Δ D τ after τ in Θ ⍮ Ξ ⍮ s ↘ me_lit (gu_mk Δ D) )
 (** A closure that took an argument, at its parameter's type *)
 | read_mod_arg :
-  `( (ρ ↦ n ⦂ dt_closure A ρ) <> τ ->
+  `( (ρ ↦ n ⦂ entry_type_closure A ρ) <> τ ->
      Rmod dm_local (Δ ++ ce_ass A :: nil) D ρ after τ in Θ ⍮ Ξ ⍮ s ↘ H ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a n in Θ ⍮ Ξ ⍮ s ↘ W ->
-     Rmod dm_local Δ D (ρ ↦ n ⦂ dt_closure A ρ) after τ in Θ ⍮ Ξ ⍮ s ↘ me_app H W )
+     Rmod dm_local Δ D (ρ ↦ n ⦂ entry_type_closure A ρ) after τ in Θ ⍮ Ξ ⍮ s ↘ me_app H W )
 (** A submodule *)
 | read_mod_member :
   `( Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H ->
@@ -488,7 +488,7 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
 
      (** The normal form of the return type. *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ dt_value a ↘ b ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 
      Rtyp Πᵈ a ρ B in Θ ⍮ Ξ ⍮ s ↘ Πⁿ A B')
@@ -499,7 +499,7 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
 
      (** The normal form of the body. *)
-     ⟦ P ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ dt_value a ↘ b ->
+     ⟦ P ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ P' ->
 
      Rtyp ∀ₚᵈ a ρ P in Θ ⍮ Ξ ⍮ s ↘ ∀ₚⁿ A P')
@@ -510,7 +510,7 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ P' ->
 
      (** The normal form of the second component. *)
-     ⟦ Q ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ dt_value a ↘ b ->
+     ⟦ Q ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ Q' ->
 
      Rtyp Σₚᵈ a ρ Q in Θ ⍮ Ξ ⍮ s ↘ Σₚⁿ P' Q')
@@ -554,7 +554,7 @@ with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list doma
 | read_ps_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     Rps vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ dt_closure A ρ ⍮ s ↘ Vs ->
+     Rps vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ entry_type_closure A ρ ⍮ s ↘ Vs ->
      Rps v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ Ξ s ρ T vs Ms) : type_scope
 (** The fields [fl] of a record value [v], each at its type in [ρ] (the
@@ -570,7 +570,7 @@ with read_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) 
   `( eval_proj Θ Ξ f v r ->
      ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ t ->
      Rnf ⇓ t r in Θ ⍮ Ξ ⍮ s ↘ F ->
-     Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ↦ r ⦂ dt_closure T ρ ⍮ s ↘ Fs ->
+     Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ↦ r ⦂ entry_type_closure T ρ ⍮ s ↘ Fs ->
      Rflds v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ F :: Fs )
 where "'Rflds' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" := (read_fields Θ Ξ s ρ fl v Fs) : type_scope
 (** The arguments of a constructor of [p] at the uniform parameters [ups],
@@ -584,7 +584,7 @@ with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env 
 | read_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ dt_closure A ρ ⍮ s ↘ Vs ->
+     Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ entry_type_closure A ρ ⍮ s ↘ Vs ->
      Rcargs v :: vs at ca_arg r A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 (** A recursive argument, along its shape *)
 | read_cargs_rec :
@@ -609,7 +609,7 @@ with read_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env 
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ s ↘ A ->
      $| v & ⇑! b s | Θ ⍮ Ξ ↘ r ->
-     Rsh r at t of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! b s ⦂ dt_closure B ρ ⍮ S s ↘ V ->
+     Rsh r at t of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! b s ⦂ entry_type_closure B ρ ⍮ S s ↘ V ->
      Rsh v at pt_pi B t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ λⁿ A V )
 where "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (read_shape Θ Ξ s p ups ρ t v V) : type_scope
 (** The blocks of a stuck eliminator of the group at [p], its blocks [Bks]
@@ -636,7 +636,7 @@ with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain
      eb_binder_count b = S (im_nn Mi) ->
      ⟦mref elim_src sel i of p ups ⟧ Θ ⍮ Ξ ↘ (hd, k, pre) ->
      Ftele List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ decl_env D ups ⍮ s ↘ ns ->
-     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_typed ρ (motive_entries D Mv ups ns (d_ind hd k (pre ++ ns))
+     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (motive_entries D Mv ups ns (d_ind hd k (pre ++ ns))
                                           (⇑! (d_ind hd k (pre ++ ns)) ((s + im_nn Mi)%nat))) ↘ a ->
      Rtyp a in Θ ⍮ Ξ ⍮ S (s + im_nn Mi)%nat ↘ A' ->
      Rbrs eb_brs b at im_cons Mi of Mi (hd, k, pre) of Dc from p ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
@@ -676,8 +676,8 @@ with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain ->
      Fihs vs at gs' gs of Dc under ρ (blocks_motives Bks) at p ups in Θ ⍮ Ξ ⍮ env_tele (decl_env D ups) (List.rev (im_nparams Mv)) ns
        ⍮ (s + im_nn Mi + List.length gs')%nat ↘ ihs ->
      ⟦wihs vs of gs' gs of Dc with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_typed ρ (branch_entries D Mv p ups (blocks_motives Bks) ρ gs ns vs wihs) ↘ b ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_typed ρ (motive_entries D Mv ups ns (d_ind hd k (pre ++ ns)) (d_con hd k c (pre ++ ns ++ vs))) ↘ t ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (branch_entries D Mv p ups (blocks_motives Bks) ρ gs ns vs wihs) ↘ b ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (motive_entries D Mv ups ns (d_ind hd k (pre ++ ns)) (d_con hd k c (pre ++ ns ++ vs))) ↘ t ->
      Rnf ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
      Rbrs Bs at cs of Mi (hd, k, pre) of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
      Rbrs (c, n0, B) :: Bs at (c, gs') :: cs of Mi (hd, k, pre) of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_branch c n B' :: Bs' )
