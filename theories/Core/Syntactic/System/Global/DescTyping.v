@@ -63,37 +63,36 @@ Qed.
 
 (** [wf_let] and its [ζ] at a sort [C], which [C[Id,,M]] is by
     computation only. *)
-Lemma wf_let_sort : forall Θ Ξ Γ oA A M B Srt C,
+Lemma wf_let_sort : forall Θ Ξ Γ A M B Srt C,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
     type_sort C ->
-    let_ann oA A Srt ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : C.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C.
 Proof.
-  intros * HA HS HM HB HC Hann; rewrite <- (type_sort_sub C (Id,,M) HC).
-  eapply wf_let; [ exact HA | exact HS | exact HM | exact HB | exact Hann ].
+  intros * HA HS HM HB HC; rewrite <- (type_sort_sub C (Id,,M) HC).
+  eapply wf_let; [ exact HA | exact HS | exact HM | exact HB ].
 Qed.
 
-Lemma wf_exp_eq_let_zeta_sort : forall Θ Ξ Γ oA A M B Srt C,
+Lemma wf_exp_eq_let_zeta_sort : forall Θ Ξ Γ A M B Srt C,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
     type_sort C ->
-    let_ann oA A Srt ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : C.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C.
 Proof.
-  intros * HA HS HM HB HC Hann; rewrite <- (type_sort_sub C (Id,,M) HC).
-  eapply wf_exp_eq_let_zeta; [ exact HA | exact HS | exact HM | exact HB | exact Hann ].
+  intros * HA HS HM HB HC; rewrite <- (type_sort_sub C (Id,,M) HC).
+  eapply wf_exp_eq_let_zeta; [ exact HA | exact HS | exact HM | exact HB ].
 Qed.
 
 (** A sort is a term of a large universe. *)
 Lemma type_sort_typed : forall Θ Ξ Γ C, ⊢ Θ ⍮ Ξ ⍮ Γ -> type_sort C -> exists S, Θ ⍮ Ξ ⍮ Γ ⊢ C : S /\ type_sort S.
 Proof.
-  intros * HΓ []; [ exists (Typeω@(S i)); split; [ apply wf_typ; exact HΓ | constructor ] |].
-  exists (Typeω@0); split; [ apply wf_prop_large; exact HΓ | constructor ].
+  intros * HΓ []; [ exists (Typeω@(S i)); split; [ apply wf_typ; exact HΓ | constructor ] | |].
+  - exists (Typeω@0); split; [ apply wf_prop_large; exact HΓ | constructor ].
+  - exists (Typeω@0); split; [ apply wf_level_sort; exact HΓ | constructor ].
 Qed.
 
 (** The same for a local module. *)
@@ -118,29 +117,27 @@ Proof.
 Qed.
 
 (** [wf_let] at a universe, which [Typeω@j[Id,,M]] is by computation only. *)
-Lemma wf_let_typ : forall Θ Ξ Γ oA A M B Srt j,
+Lemma wf_let_typ : forall Θ Ξ Γ A M B Srt j,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Typeω@j ->
-    let_ann oA A Srt ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Typeω@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Typeω@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Typeω@j[Id,,M]) as Hl by (eapply wf_let with (Srt := Srt); eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Typeω@j[Id,,M]) as Hl by (eapply wf_let with (Srt := Srt); eassumption).
   exact Hl.
 Qed.
 
-Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ oA A M B Srt j,
+Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ A M B Srt j,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Typeω@j ->
-    let_ann oA A Srt ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Typeω@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Typeω@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Typeω@j[Id,,M]) as Hl
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Typeω@j[Id,,M]) as Hl
       by (eapply wf_exp_eq_let_zeta with (Srt := Srt); eassumption).
   exact Hl.
 Qed.
@@ -180,11 +177,15 @@ Lemma wf_pi_sort_at : forall Θ Ξ Γ r B A Srt i,
     Θ ⍮ Ξ ⍮ Γ ▹ B ⊢ A : relevance_sort r Typeω@i ->
     exists j, Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r B A : relevance_sort r Typeω@j.
 Proof.
-  intros * HB HS HA; destruct r, HS as [k |]; cbn [relevance_sort] in HA |- *.
+  intros * HB HS HA; destruct r, HS as [k | |]; cbn [relevance_sort] in HA |- *.
   - exists (max k i); eapply wf_pi_max; eassumption.
   - exists i; eapply wf_pi with (r := relevant) (U := Typeω@i);
       [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HA ].
+  - exists i; eapply wf_pi with (r := relevant) (U := Typeω@i);
+      [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HA ].
   - exists k; eapply wf_pi with (r := propositional) (U := Typeω@k);
+      [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HA ].
+  - exists 0; eapply wf_pi with (r := propositional) (U := Typeω@0);
       [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HA ].
   - exists 0; eapply wf_pi with (r := propositional) (U := Typeω@0);
       [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HA ].
@@ -198,13 +199,13 @@ Lemma wf_exp_eq_pi_sort_at : forall Θ Ξ Γ r B B' A A' Srt i,
     Θ ⍮ Ξ ⍮ Γ ▹ B ⊢ A ≈ A' : relevance_sort r Typeω@i ->
     exists j, Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r B A ≈ a_pi r B' A' : relevance_sort r Typeω@j.
 Proof.
-  intros * HB HS HBB HA; destruct HS as [k |].
-  - exists (max k i); eapply wf_exp_eq_pi_cong_at_max; eassumption.
-  - destruct r; cbn [relevance_sort] in HA |- *.
-    + exists i; eapply wf_exp_eq_pi_cong with (r := relevant) (U := Typeω@i);
-        [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HBB | exact HA ].
-    + exists 0; eapply wf_exp_eq_pi_cong with (r := propositional) (U := Typeω@0);
-        [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HBB | exact HA ].
+  intros * HB HS HBB HA; destruct HS as [k | |].
+  1: exists (max k i); eapply wf_exp_eq_pi_cong_at_max; eassumption.
+  all: destruct r; cbn [relevance_sort] in HA |- *.
+  1, 3: exists i; eapply wf_exp_eq_pi_cong with (r := relevant) (U := Typeω@i);
+          [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HBB | exact HA ].
+  all: exists 0; eapply wf_exp_eq_pi_cong with (r := propositional) (U := Typeω@0);
+         [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | constructor | exact HBB | exact HA ].
 Qed.
 
 (** At [relevant], into a type of a large universe. *)
@@ -234,7 +235,7 @@ Proof.
         sort. *)
     eapply IH; [ eauto using presup_exp_ctx |].
     match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S, HN : _ ⍮ _ ⍮ _ ⊢ N : B |- _ =>
-      eapply (wf_let_sort _ _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC | apply let_ann_some ] end.
+      eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC ] end.
   - (** So is a module slot, as a [let module]. *)
     eapply IH; [ eauto using presup_unit_eq_ctx |].
     eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC ].
@@ -258,18 +259,18 @@ Proof.
   - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S |- _ =>
       destruct (wf_pi_sort_at _ _ _ _ _ _ _ _ HB HS HA) as [j Hj];
       eapply IH with (i := j); [ eauto using presup_exp_ctx | exact Hj |];
-      eapply wf_fn; [ exact HB | exact HS | exact HA | exact HM ]
+      eapply wf_fn; [ exact HB | exact HS | exact HA | constructor | exact HM ]
     end.
   - (** The body's [let] has the type [A[Id,,N]], which is the type's [let] by
         ζ. *)
     match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S, HN : _ ⍮ _ ⍮ _ ⊢ N : B |- _ =>
       assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : relevance_sort r Typeω@i)
-        by (eapply (wf_let_sort _ _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC | apply let_ann_some ]);
+        by (eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC ]);
       eapply IH with (i := i); [ eauto using presup_exp_ctx | eassumption |];
-      eapply wf_exp_subtyp'; [ eapply wf_let with (A := B) (Srt := S); [ exact HB | exact HS | exact HN | exact HM | apply let_ann_some ] |];
+      eapply wf_exp_subtyp'; [ eapply wf_let with (A := B) (Srt := S); [ exact HB | exact HS | exact HN | exact HM ] |];
       eapply wf_subtyp_refl; [ eassumption | apply HC |];
-      eapply wf_exp_eq_sym, (wf_exp_eq_let_zeta_sort _ _ _ _ B N A S);
-        [ exact HB | exact HS | exact HN | exact HA | apply HC | apply let_ann_some ]
+      eapply wf_exp_eq_sym, (wf_exp_eq_let_zeta_sort _ _ _ B N A S);
+        [ exact HB | exact HS | exact HN | exact HA | apply HC ]
     end.
   - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : relevance_sort r Typeω@i) by (eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC ]).
     eapply IH with (i := i); [ eauto using presup_unit_eq_ctx | eassumption |].
@@ -410,7 +411,7 @@ Proof.
     assert (HM0 : Θ ⍮ Ξ ⍮ Γ ⊢ M0 : A0)
       by (rewrite <- (exp_sub_id A0); apply (HMs 0); [ reflexivity | rewrite tele_insts_snoc; reflexivity ]).
     assert (Happ : Θ ⍮ Ξ ⍮ Γ ⊢ M $ M0 : (ctx_pi_at r Δ B)[Id,,M0])
-      by (eapply wf_app with (Srt := Srt) (i := j); [ exact HA0 | exact HS | exact HPi | exact HM | exact HM0 ]).
+      by (eapply wf_app with (Srt := Srt) (Srt' := Typeω@j); [ exact HA0 | exact HS | exact HPi | constructor | exact HM | exact HM0 ]).
     rewrite ctx_pi_sub in Happ.
     pose proof (wf_sub_single _ _ _ _ _ _ HA0 HS HM0) as Hs.
     assert (HΔ' : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ (Id,,M0) ++ Γ) by (eapply ctx_sub_wf; eassumption).
@@ -1665,18 +1666,26 @@ Record unit_body_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (Φ : gmod) : Pro
     unit_body_expansion : gmod
     (** The sort of the type of each definition, by its name *)
   ; unit_body_entry_sort : String.string -> exp
-    (** A level containing every parameter type *)
+    (** A level containing every parameter type of a universe *)
   ; unit_body_param_level : nat
+    (** The sort of each parameter, by its position from the outside *)
+  ; unit_body_param_sorts : nat -> exp
+    (** Each is the universe at the level or [LevelSort] *)
+  ; unit_body_param_sorts_ok : forall k, parameter_sort unit_body_param_level (unit_body_param_sorts k)
     (** The expansion is the body's *)
   ; unit_body_xp : body_xp Θ Ξ (Δ ++ Γ) Φ unit_body_expansion
     (** Its entries extend a well-formed context *)
   ; unit_body_ctx : ⊢ Θ ⍮ Ξ ⍮ body_ctx unit_body_expansion ++ Δ ++ Γ
-    (** Each entry sort is a large universe or [Prop] *)
+    (** Each entry sort is a type sort *)
   ; unit_body_sorts : forall y, type_sort (unit_body_entry_sort y)
-    (** Each definition's sort is the sort at its relevance tag *)
+    (** Each definition's sort is a relevant sort at its relevance tag *)
   ; unit_body_tags : forall y Φ0 E A M,
       gm_prefix_upto unit_body_expansion y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-      exists i, unit_body_entry_sort y = relevance_sort (entry_relevance E) Typeω@i
+      exists Srt, relevant_sort Srt /\ unit_body_entry_sort y = relevance_sort (entry_relevance E) Srt
+    (** A definition of a type of levels has types of levels as its
+        parameters *)
+  ; unit_body_level_params : forall y k, unit_body_entry_sort y = LevelSort -> k < List.length Δ ->
+      unit_body_param_sorts k = LevelSort
     (** Each definition, filled in, is typed at its sort, its body at its
         type *)
   ; unit_body_defs : forall y Φ0 E A M σ,
@@ -1693,26 +1702,32 @@ Record unit_body_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (Φ : gmod) : Pro
   ; unit_body_xshape : body_shape unit_body_expansion unit_body_expansion
     (** The names of the body are distinct *)
   ; unit_body_nodup : List.NoDup (gm_names Φ)
-    (** The parameters are types of the universe at the level *)
-  ; unit_body_params : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@unit_body_param_level }.
+    (** The parameters are types of their sorts *)
+  ; unit_body_params : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
+      Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : unit_body_param_sorts (List.length Δ2) }.
 
 (** The parts of a well-formed alias unit [gu_mk Δ (md_alias E)] over [Γ]. *)
 #[warnings="-cannot-define-projection"]
 Record unit_alias_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (E : modexp) : Prop := mk_unit_alias_full
-  { (** A level containing every parameter type *)
+  { (** A level containing every parameter type of a universe *)
     unit_alias_param_level : nat
+    (** The sort of each parameter, by its position from the outside *)
+  ; unit_alias_param_sorts : nat -> exp
+    (** Each is the universe at the level or [LevelSort] *)
+  ; unit_alias_param_sorts_ok : forall k, parameter_sort unit_alias_param_level (unit_alias_param_sorts k)
     (** The parameters extend a well-formed context *)
   ; unit_alias_ctx : ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ
     (** The parameters are assumptions *)
   ; unit_alias_ass : tele_ass Δ
     (** The target is a module under them *)
   ; unit_alias_target : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E
-    (** The parameters are types of the universe at the level *)
-  ; unit_alias_params : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@unit_alias_param_level }.
+    (** The parameters are types of their sorts *)
+  ; unit_alias_params : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
+      Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : unit_alias_param_sorts (List.length Δ2) }.
 
 (** The parts of a well-formed literal unit.  The parameters of a body or
-    an alias are types of a universe, at one level ([param_level] of the
-    unit rules). *)
+    an alias are types of a universe at one level or types of levels
+    ([param_level] and [param_sorts] of the unit rules). *)
 Definition unit_full (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
   match U with
   | gu_mk Δ (md_body sm_open Φ) => unit_body_full Θ Ξ Γ Δ Φ
@@ -1745,12 +1760,12 @@ Qed.
 Lemma unit_eq_of_full : forall Θ Ξ Γ U, unit_full Θ Ξ Γ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
 Proof.
   intros * HU; destruct U as [Δ [[] Φ | E]]; cbn in HU; try contradiction.
-  - destruct HU as [Φx es l Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp].
+  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hlv Hd Ho Ha Hs Hsx Hn Hp].
     assert (HΔ : ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ) by exact (ctx_app_wf_tail _ _ _ _ HC).
     assert (Hsame : forall y Φ0 E Φ0' E', gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) ->
               gm_prefix_upto Φx y = Some (gm_ext Φ0' y E') -> Φ0' = Φ0 /\ E' = E)
       by (intros * H1 H2; rewrite H1 in H2; injection H2 as -> ->; split; reflexivity).
-    eapply wf_unit_eq_body with (entry_sort := es) (param_level := l); try eassumption; try reflexivity.
+    eapply wf_unit_eq_body with (entry_sort := es) (param_level := l) (param_sorts := ps); try eassumption; try reflexivity.
     (* the term parts and the module parts, both sides the same *)
     all: try solve [ intros * H1 HE1 H2 HE2 Hf1 Hf2;
                      destruct (Hsame _ _ _ _ _ H1 H2) as [-> ->]; rewrite HE1 in HE2;
@@ -1777,8 +1792,8 @@ Proof.
       pose proof (Ho _ _ _ (body_opens_at_nth _ _ _ _ _ Hk)) as HH.
       eapply sub_preserves_modexp; [ exact HH |].
       apply wf_gm_fill; [ exact (presup_modexp_eq_ctx HH) | exact Hf ].
-  - destruct HU as [l HΔ Ha HE Hp].
-    eapply wf_unit_eq_alias with (param_level := l); try eassumption; apply ext_of_ctx'; exact HΔ.
+  - destruct HU as [l ps Hps HΔ Ha HE Hp].
+    eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps); try eassumption; apply ext_of_ctx'; exact HΔ.
 Qed.
 
 (** A well-formed body extension with well-formed open targets, whose
@@ -1788,17 +1803,19 @@ Lemma unit_full_body : forall Θ Ξ Γ Δ Φ Φx,
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H) ->
     tele_ass Δ -> body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
-    forall l, (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l) ->
+    forall l ps, (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     forall es, (forall y, type_sort (es y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, es y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists Srt, relevant_sort Srt /\ es y = relevance_sort (entry_relevance E) Srt) ->
+    (forall y k, es y = LevelSort -> k < List.length Δ -> ps k = LevelSort) ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : es y) ->
     unit_full Θ Ξ Γ (gu_open Δ Φ).
 Proof.
-  intros * Hx HC Ho Ha Hs Hsx Hn l Hp es Hes Htg HA.
+  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg Hlv HA.
   destruct (body_defs_wf _ _ _ _ _ HC (body_xp_result_noopen _ _ _ _ _ Hx)) as (es0 & _ & Hd).
-  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l Hx HC Hes Htg _ Ho Ha Hs Hsx Hn Hp).
+  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg Hlv _ Ho Ha Hs Hsx Hn Hp).
   intros * Hp0 HE Hf; split; [ exact (HA _ _ _ _ _ _ Hp0 HE Hf) | exact (proj2 (Hd _ _ _ _ _ _ Hp0 HE Hf)) ].
 Qed.
 
@@ -1861,7 +1878,8 @@ Lemma params_relevant_sub : forall Θ Ξ Γ Γ' Δ σ l,
     params_relevant Θ Ξ Γ' (tele_sub Δ σ) l.
 Proof.
   intros * HR Hσ HΔ HΔ'; unfold params_relevant in *.
-  eapply (move_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _)); [ exact Hσ | exact HΔ | exact HΔ' |].
+  eapply (move_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _) _ _ _ _ l (fun _ => Typeω@l));
+    [ exact Hσ | exact HΔ | exact HΔ' | intros; constructor |].
   intros Δ1 T Δ2 E Δ0 σ0 Hσ0; exact (sub_preserves_typ _ _ _ _ _ _ _ (HR _ _ _ E) Hσ0).
 Qed.
 
@@ -2424,7 +2442,7 @@ Section DescOk.
       rewrite ctx_pi_snoc in HM.
       destruct (ctx_pi_at_wf _ _ _ _ _ _ _ HΔ HA) as [j HPi].
       assert (Happ : Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : (ctx_pi_at r Δ1 A)[Id,,N])
-        by (eapply wf_app with (Srt := Srt) (i := j); [ exact HC | exact HS | exact HPi | exact HM | exact HN ]).
+        by (eapply wf_app with (Srt := Srt) (Srt' := Typeω@j); [ exact HC | exact HS | exact HPi | constructor | exact HM | exact HN ]).
       rewrite ctx_pi_sub in Happ.
       cbn [mdesc_ats]; rewrite mdesc_at_up; cbn [mdesc_sub option_map].
       apply (IH _ _ _ _ (M $ N)).
