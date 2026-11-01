@@ -13,6 +13,8 @@
    argument's own value.  [Climb] at the end has one. *)
 module Inductives where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (zero; succ)
 
 (* Lists: one uniform parameter, [A], one recursive argument, at [A]
@@ -245,26 +247,26 @@ end
 
 def Arity (l : Label) : Type@0 :=
   elim l at z -> Type@0
-  | zr ⇒ ⊥
-  | sc ⇒ ⊤
+  | zr ⇒ Void
+  | sc ⇒ Unit
   end
 end
 
 def WNat : Type@0 := W Label Arity end
 
 def wzero : WNat :=
-  W.sup Label Arity Label.zr (λ (x : ⊥) → exfalso x return z . WNat)
+  W.sup Label Arity Label.zr (λ (x : Void) → elim x at (z : Void) -> WNat end)
 end
 
-def wsucc (n : WNat) : WNat := W.sup Label Arity Label.sc (λ (x : ⊤) → n) end
+def wsucc (n : WNat) : WNat := W.sup Label Arity Label.sc (λ (x : Unit) → n) end
 
 (* The number a tree stands for: at [sc], one more than at its child. *)
 def toNat (w : WNat) : ℕ :=
   elim w at (z : W Label Arity) -> ℕ
   | sup a f, h ⇒
       (elim a at y -> ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
-       | zr ⇒ λ (h : ∀ (b : ⊥) → ℕ) → 0
-       | sc ⇒ λ (h : ∀ (b : ⊤) → ℕ) → succ (h ⋆)
+       | zr ⇒ λ (h : ∀ (b : Void) → ℕ) → 0
+       | sc ⇒ λ (h : ∀ (b : Unit) → ℕ) → succ (h unit)
        end) h
   end
 end
@@ -277,8 +279,8 @@ def wsize (w : WNat) : ℕ :=
     (λ (a : Label) (f : ∀ (b : Arity a) → WNat) (h : ∀ (b : Arity a) → ℕ) →
        succ
          ((elim a at y -> ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
-           | zr ⇒ λ (h : ∀ (b : ⊥) → ℕ) → 0
-           | sc ⇒ λ (h : ∀ (b : ⊤) → ℕ) → h ⋆
+           | zr ⇒ λ (h : ∀ (b : Void) → ℕ) → 0
+           | sc ⇒ λ (h : ∀ (b : Unit) → ℕ) → h unit
            end) h)) w
 end
 

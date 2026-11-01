@@ -180,7 +180,7 @@ theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x �
     end
 end
 
-(* Closed instances normalize to [⋆]. *)
+(* Closed instances normalize to [unit]. *)
 eval Unfold.additivePow 3 4
 
 eval Scaling.multPlusRight 2 3 2

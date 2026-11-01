@@ -5,6 +5,8 @@
    bounds. *)
 module Prelude›Arith›Lattice where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
@@ -21,16 +23,16 @@ theorem minAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) (c : ℕ) →
                          Eq (min (min x b) c) (min x (min b c)))
-    | zero ⇒ λ (b : ℕ) (c : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) (c : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> (∀ (c : ℕ) →
                              Eq (min (min (succ p) y) c)
                                 (min (succ p) (min y c)))
-        | zero ⇒ λ (c : ℕ) → ⋆
+        | zero ⇒ λ (c : ℕ) → unit
         | succ q, s ⇒ λ (c : ℕ) →
             elim c at z -> Eq (min (min (succ p) (succ q)) z)
                                  (min (succ p) (min (succ q) z))
-            | zero ⇒ ⋆
+            | zero ⇒ unit
             | succ r, t ⇒ ih q r
             end
         end
@@ -62,7 +64,7 @@ end
 theorem minMaxAbsorb : ∀ (a : ℕ) (b : ℕ) → Eq (min a (max a b)) a ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) → Eq (min x (max x b)) x)
-    | zero ⇒ λ (b : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Eq (min (succ p) (max (succ p) y)) (succ p)
         | zero ⇒ minIdem p
@@ -75,7 +77,7 @@ end
 theorem maxMinAbsorb : ∀ (a : ℕ) (b : ℕ) → Eq (max a (min a b)) a ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) → Eq (max x (min x b)) x)
-    | zero ⇒ λ (b : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Eq (max (succ p) (min (succ p) y)) (succ p)
         | zero ⇒ refl p
@@ -90,7 +92,7 @@ theorem minMaxDistrib : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) (c : ℕ) →
                          Eq (min x (max b c)) (max (min x b) (min x c)))
-    | zero ⇒ λ (b : ℕ) (c : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) (c : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> (∀ (c : ℕ) →
                              Eq (min (succ p) (max y c))
@@ -144,10 +146,10 @@ module Bounds where
 theorem minLe : ∀ (a : ℕ) (b : ℕ) → Le (min a b) a ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) → Le (min x b) x)
-    | zero ⇒ λ (b : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Le (min (succ p) y) (succ p)
-        | zero ⇒ ⋆
+        | zero ⇒ unit
         | succ q, s ⇒ ih q
         end
     end
@@ -157,10 +159,10 @@ end
 theorem minLeRight : ∀ (a : ℕ) (b : ℕ) → Le (min a b) b ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) → Le (min x b) b)
-    | zero ⇒ λ (b : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Le (min (succ p) y) y
-        | zero ⇒ ⋆
+        | zero ⇒ unit
         | succ q, s ⇒ ih q
         end
     end
@@ -170,7 +172,7 @@ end
 theorem leMax : ∀ (a : ℕ) (b : ℕ) → Le a (max a b) ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) → Le x (max x b))
-    | zero ⇒ λ (b : ℕ) → ⋆
+    | zero ⇒ λ (b : ℕ) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Le (succ p) (max (succ p) y)
         | zero ⇒ leRefl p
@@ -186,7 +188,7 @@ theorem leMaxRight : ∀ (a : ℕ) (b : ℕ) → Le b (max a b) ≔
     | zero ⇒ λ (b : ℕ) → leRefl b
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Le y (max (succ p) y)
-        | zero ⇒ ⋆
+        | zero ⇒ unit
         | succ q, s ⇒ ih q
         end
     end
@@ -203,17 +205,17 @@ theorem leMin : ∀ (c : ℕ) (a : ℕ) (b : ℕ) (hca : Le c a) (hcb : Le c b) 
   λ (c : ℕ) →
     elim c at w -> (∀ (a : ℕ) (b : ℕ) (hca : Le w a) (hcb : Le w b) →
                          Le w (min a b))
-    | zero ⇒ λ (a : ℕ) (b : ℕ) (hca : ⊤) (hcb : ⊤) → ⋆
+    | zero ⇒ λ (a : ℕ) (b : ℕ) (hca : Unit) (hcb : Unit) → unit
     | succ p, ih ⇒ λ (a : ℕ) →
         elim a at x -> (∀ (b : ℕ) (hca : Le (succ p) x)
                              (hcb : Le (succ p) b) →
                              Le (succ p) (min x b))
-        | zero ⇒ λ (b : ℕ) (hca : ⊥) (hcb : Le (succ p) b) →
+        | zero ⇒ λ (b : ℕ) (hca : Void) (hcb : Le (succ p) b) →
             absurd (Le (succ p) 0) hca
         | succ q, s ⇒ λ (b : ℕ) →
             elim b at y -> (∀ (hca : Le p q) (hcb : Le (succ p) y) →
                                  Le (succ p) (min (succ q) y))
-            | zero ⇒ λ (hca : Le p q) (hcb : ⊥) → absurd (Le (succ p) 0) hcb
+            | zero ⇒ λ (hca : Le p q) (hcb : Void) → absurd (Le (succ p) 0) hcb
             | succ r, t ⇒ λ (hca : Le p q) (hcb : Le p r) → ih q r hca hcb
             end
         end
@@ -239,15 +241,15 @@ theorem maxLe : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hac : Le a c) (hbc : Le b c) 
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) (c : ℕ) (hac : Le x c) (hbc : Le b c) →
                          Le (max x b) c)
-    | zero ⇒ λ (b : ℕ) (c : ℕ) (hac : ⊤) (hbc : Le b c) → hbc
+    | zero ⇒ λ (b : ℕ) (c : ℕ) (hac : Unit) (hbc : Le b c) → hbc
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> (∀ (c : ℕ) (hac : Le (succ p) c) (hbc : Le y c) →
                              Le (max (succ p) y) c)
-        | zero ⇒ λ (c : ℕ) (hac : Le (succ p) c) (hbc : ⊤) → hac
+        | zero ⇒ λ (c : ℕ) (hac : Le (succ p) c) (hbc : Unit) → hac
         | succ q, s ⇒ λ (c : ℕ) →
             elim c at w -> (∀ (hac : Le (succ p) w) (hbc : Le (succ q) w) →
                                  Le (max (succ p) (succ q)) w)
-            | zero ⇒ λ (hac : ⊥) (hbc : ⊥) → absurd (Le (succ (max p q)) 0) hac
+            | zero ⇒ λ (hac : Void) (hbc : Void) → absurd (Le (succ (max p q)) 0) hac
             | succ r, t ⇒ λ (hac : Le p r) (hbc : Le q r) → ih q r hac hbc
             end
         end
@@ -270,10 +272,10 @@ end
 theorem minEqLeft : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → Eq (min a b) a ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) (h : Le x b) → Eq (min x b) x)
-    | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
+    | zero ⇒ λ (b : ℕ) (h : Unit) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> (∀ (h : Le (succ p) y) → Eq (min (succ p) y) (succ p))
-        | zero ⇒ λ (h : ⊥) → absurd (Eq 0 (succ p)) h
+        | zero ⇒ λ (h : Void) → absurd (Eq 0 (succ p)) h
         | succ q, s ⇒ λ (h : Le p q) → ih q h
         end
     end
@@ -283,10 +285,10 @@ end
 theorem maxEqRight : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → Eq (max a b) b ≔
   λ (a : ℕ) →
     elim a at x -> (∀ (b : ℕ) (h : Le x b) → Eq (max x b) b)
-    | zero ⇒ λ (b : ℕ) (h : ⊤) → refl b
+    | zero ⇒ λ (b : ℕ) (h : Unit) → refl b
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> (∀ (h : Le (succ p) y) → Eq (max (succ p) y) y)
-        | zero ⇒ λ (h : ⊥) → absurd (Eq (succ p) 0) h
+        | zero ⇒ λ (h : Void) → absurd (Eq (succ p) 0) h
         | succ q, s ⇒ λ (h : Le p q) → ih q h
         end
     end

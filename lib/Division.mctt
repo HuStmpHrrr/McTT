@@ -4,6 +4,7 @@
    is the division equation for 17 by 5. *)
 module Division where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Arith›Div use (div; mod; divSucc; modSucc)
 open Prelude›Arith›Div.Zero
   use (divZeroDivisor; modZeroDivisor; divZero; modZero)
@@ -48,9 +49,9 @@ eval divModSpec 17 4
 
 eval modLt 17 4
 
-eval modSmall 3 4 ⋆
+eval modSmall 3 4 unit
 
-eval divSmall 3 4 ⋆
+eval divSmall 3 4 unit
 
 eval modSelf 6
 
@@ -70,7 +71,7 @@ eval Divides 0 0
 
 eval Divides 0 5
 
-eval zeroDivides 0 ⋆
+eval zeroDivides 0 unit
 
 eval dividesRefl 5
 
@@ -78,12 +79,12 @@ eval dividesZero 4
 
 eval oneDivides 9
 
-eval dividesPlus 3 6 9 ⋆ ⋆
+eval dividesPlus 3 6 9 unit unit
 
 eval dividesMult 3 4
 
-eval evenDividesTwo 8 ⋆
+eval evenDividesTwo 8 unit
 
-eval dividesTwoEven 10 ⋆
+eval dividesTwoEven 10 unit
 
 end

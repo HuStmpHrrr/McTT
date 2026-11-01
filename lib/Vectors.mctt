@@ -1,9 +1,10 @@
 (* A client of [Prelude›Data›Vec] and [Prelude›Data›Vec›Properties]: small
    vectors of numbers are built, mapped, zipped, appended, split, reversed,
-   folded, read and summed, and closed instances of the laws normalize to [⋆].
-   Index bounds on closed numbers compute to [⊤], so [⋆] proves them. *)
+   folded, read and summed, and closed instances of the laws normalize to [unit].
+   Index bounds on closed numbers compute to [Unit], so [unit] proves them. *)
 module Vectors where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
@@ -44,13 +45,13 @@ eval sumVec 3 oneTwoThree
 
 eval NV.head 2 oneTwoThree
 
-eval NV.nth 3 oneTwoThree 2 ⋆
+eval NV.nth 3 oneTwoThree 2 unit
 
 eval sumVec 2 (NV.tail 2 oneTwoThree)
 
 eval sumVec 3 (NV.map ℕ square 3 oneTwoThree)
 
-eval NV.nth 5 (NV.append 3 2 oneTwoThree fourFive) 3 ⋆
+eval NV.nth 5 (NV.append 3 2 oneTwoThree fourFive) 3 unit
 
 eval sumVec 5 (NV.append 3 2 oneTwoThree fourFive)
 
@@ -60,24 +61,24 @@ eval sumVec 4 (NV.replicate 4 6)
 eval NV.foldr ℕ (λ (a : ℕ) (b : ℕ) → succ b) 0 5
        (NV.append 3 2 oneTwoThree fourFive)
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
+(* A proof of a closed equation normalizes to [unit], of type [Unit]. *)
 eval sumReplicate 4 6
 
 eval sumAppend 3 2 oneTwoThree fourFive
 
-eval nthMap 0l ℕ square 3 oneTwoThree 1 ⋆
+eval nthMap 0l ℕ square 3 oneTwoThree 1 unit
 
-eval nthReplicate 4 6 3 ⋆
+eval nthReplicate 4 6 3 unit
 
-eval nthAppendLeft 3 2 oneTwoThree fourFive 1 ⋆ ⋆
+eval nthAppendLeft 3 2 oneTwoThree fourFive 1 unit unit
 
-eval nthAppendRight 3 2 oneTwoThree fourFive 1 ⋆
+eval nthAppendRight 3 2 oneTwoThree fourFive 1 unit
 
 (* The vector [1, 2, 3, 4, 5]. *)
 def oneToFive : NV.Vec 5 ≔ NV.append 3 2 oneTwoThree fourFive end
 
 (* [0, 1, 4, 9], tabulated. *)
-eval NV.nth 4 (NV.tabulate square 4) 3 ⋆
+eval NV.nth 4 (NV.tabulate square 4) 3 unit
 
 eval sumVec 4 (NV.tabulate square 4)
 
@@ -98,9 +99,9 @@ eval NV.head 4 (NV.reverse 5 oneToFive)
 
 eval NV.last 4 (NV.reverse 5 oneToFive)
 
-eval NV.nth 3 (NV.take 3 2 oneToFive) 2 ⋆
+eval NV.nth 3 (NV.take 3 2 oneToFive) 2 unit
 
-eval NV.nth 2 (NV.drop 3 2 oneToFive) 0 ⋆
+eval NV.nth 2 (NV.drop 3 2 oneToFive) 0 unit
 
 (* Tests with [positive]: [allb] is [tt] on [1, ..., 5] and [ff] on
    [0, 1, 2, 3]; [anyb] is [tt] on [0, 0, 9] and [ff] on [0, 0, 0]. *)
@@ -113,17 +114,17 @@ eval NV.anyb positive 3 (NV.snoc 2 (NV.replicate 2 0) 9)
 eval NV.anyb positive 3 (NV.replicate 3 0)
 
 (* Closed instances of the new laws. *)
-eval nthTabulate square 4 3 ⋆
+eval nthTabulate square 4 3 unit
 
-eval nthZipWith 0l ℕ ℕ mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 ⋆
+eval nthZipWith 0l ℕ ℕ mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 unit
 
-eval nthReverse 5 oneToFive 1 ⋆ ⋆
+eval nthReverse 5 oneToFive 1 unit unit
 
-eval takeAppend 3 2 oneTwoThree fourFive 2 ⋆
+eval takeAppend 3 2 oneTwoThree fourFive 2 unit
 
-eval dropAppend 3 2 oneTwoThree fourFive 1 ⋆
+eval dropAppend 3 2 oneTwoThree fourFive 1 unit
 
-eval appendTakeDrop 3 2 oneToFive 4 ⋆
+eval appendTakeDrop 3 2 oneToFive 4 unit
 
 eval lastSnoc 3 oneTwoThree 7
 
@@ -144,16 +145,16 @@ eval sumReverse 5 oneToFive
 eval sumTabulate square 4
 
 (* [allbSound] gives, at index 2, a proof of [IsTrue (positive 3)], which
-   is [⋆]. *)
-eval allbSound 0l ℕ positive 5 oneToFive ⋆ 2 ⋆
+   is [unit]. *)
+eval allbSound 0l ℕ positive 5 oneToFive unit 2 unit
 
 (* Every element of [replicate 4 3] is 3, so [IsTrue (positive 3)], that is
-   [⊤], holds at every index. *)
+   [Unit], holds at every index. *)
 eval allbComplete 0l ℕ positive 4 (NV.replicate 4 3)
-       (λ (i : ℕ) (h : Lt i 4) → ⋆)
+       (λ (i : ℕ) (h : Lt i 4) → unit)
 
 (* [anybSound] is eliminated into [ℕ] to recover the index it found. *)
-eval anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
+eval anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) unit ℕ
        (λ (i : ℕ) (h : Lt i 3)
           (q : IsTrue (positive (NV.snoc 2 (NV.replicate 2 0) 9 i h))) → i)
 

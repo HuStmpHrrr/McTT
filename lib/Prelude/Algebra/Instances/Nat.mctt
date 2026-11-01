@@ -1,6 +1,6 @@
 (* The numbers as instances of the structures of [Prelude›Algebra], up to
    the equality of numbers [Eq] of [Prelude›Arith›Equality], which
-   computes, so a closed law between numbers normalizes to [⋆]: commutative
+   computes, so a closed law between numbers normalizes to [unit]: commutative
    monoids under addition ([additive]), multiplication ([multiplicative])
    and maximum ([maximum]), the semiring of addition and multiplication
    ([semiring]), and the lattice of [min] and [max] ([minMax]).  [Eq] is a
@@ -11,6 +11,7 @@
    multiplication are named, so that the semiring reuses them. *)
 module Prelude›Algebra›Instances›Nat where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight)
@@ -131,7 +132,7 @@ def semiring : Semiring ≔
         mulIsMonoid ≔ multIsCommutativeMonoid.isMonoid;
         distribLeft ≔ multDistribLeft;
         distribRight ≔ multDistribRight;
-        zeroLeft ≔ λ (a : ℕ) → ⋆;
+        zeroLeft ≔ λ (a : ℕ) → unit;
         zeroRight ≔ multZeroRight
       end
   end

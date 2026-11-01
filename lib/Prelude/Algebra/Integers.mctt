@@ -7,7 +7,7 @@
    [additiveGroup], an instance of [Prelude›Algebra›AbelianGroup]; its laws
    are [Additive], and its powers are the multiples of an integer.
 
-   [Same] computes, so a closed instance is [⊤] or [⊥].  [magnitude] and
+   [Same] computes, so a closed instance is [Unit] or [Void].  [magnitude] and
    [negative] read a pair back as a sign and a number. *)
 module Prelude›Algebra›Integers where
 

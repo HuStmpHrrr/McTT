@@ -3,6 +3,7 @@
    loaded once each. *)
 module NatTheory where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; zeroNeSucc)
 import Prelude›Arith›Plus use (plus)
@@ -20,7 +21,7 @@ def iterSucc : ∀ (n : ℕ) (m : ℕ) →
     end
 end
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
+(* A proof of a closed equation normalizes to [unit], of type [Unit]. *)
 eval plusComm 2 3
 
 eval sym 4 4 (refl 4)
@@ -32,11 +33,11 @@ eval iterSucc 3 4
 (* The same unit, instantiated with doubling. *)
 eval Iter.iter 0l ℕ (λ (x : ℕ) → plus x x) 3 1
 
-(* A let-bound number is known in the body, so [⋆] proves the equation;
+(* A let-bound number is known in the body, so [unit] proves the equation;
    [Doubling] names an instance of [Prelude›Function›Iter]. *)
 eval let module Doubling ≔ Iter 0l ℕ (λ (x : ℕ) → plus x x);
          n ≔ 2;
-         p : Eq (Doubling.iter n 1) 4 ≔ ⋆
+         p : Eq (Doubling.iter n 1) 4 ≔ unit
      in p
      end
 

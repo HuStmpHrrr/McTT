@@ -2,6 +2,7 @@
    of constants, and the closed forms of Gauss and of the odd numbers. *)
 module Prelude›Arith›Sum where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -26,7 +27,7 @@ end
 module Basic where
 
 theorem sumToZero : ∀ (f : ∀ (i : ℕ) → ℕ) → Eq (sumTo f 0) 0 ≔
-  λ (f : ∀ (i : ℕ) → ℕ) → ⋆
+  λ (f : ∀ (i : ℕ) → ℕ) → unit
 end
 
 theorem sumToSucc : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
@@ -40,7 +41,7 @@ theorem sumToExt : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ)
   λ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ)
     (h : ∀ (i : ℕ) → Eq (f i) (g i)) (n : ℕ) →
     elim n at x -> Eq (sumTo f x) (sumTo g x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let sf ≔ sumTo f p;
             sg ≔ sumTo g p
@@ -81,7 +82,7 @@ theorem sumToPlus : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) 
   λ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     elim n at x -> Eq (sumTo (λ (i : ℕ) → plus (f i) (g i)) x)
                          (plus (sumTo f x) (sumTo g x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let fg ≔ plus (f p) (g p);
             sfg ≔ sumTo (λ (i : ℕ) → plus (f i) (g i)) p;
@@ -121,7 +122,7 @@ theorem sumToConst : ∀ (c : ℕ) (n : ℕ) →
     Eq (sumTo (Generic.const 0l ℕ ℕ c) n) (mult n c) ≔
   λ (c : ℕ) (n : ℕ) →
     elim n at x -> Eq (sumTo (Generic.const 0l ℕ ℕ c) x) (mult x c)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         cong (λ (y : ℕ) → plus c y)
           (sumTo (Generic.const 0l ℕ ℕ c) p) (mult p c) ih
@@ -141,7 +142,7 @@ theorem gauss : ∀ (n : ℕ) →
   λ (n : ℕ) →
     elim n at x -> Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ x)))
                          (mult x (succ x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let s ≔ sumTo (Generic.id 0l ℕ) (succ p);
             q ≔ succ p;
@@ -168,7 +169,7 @@ theorem sumOdd : ∀ (n : ℕ) →
     Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) n) (mult n n) ≔
   λ (n : ℕ) →
     elim n at x -> Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) x) (mult x x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let s ≔ sumTo (λ (i : ℕ) → succ (mult 2 i)) p;
             pp ≔ mult p p;

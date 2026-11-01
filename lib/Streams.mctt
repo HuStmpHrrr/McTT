@@ -1,9 +1,10 @@
 (* A client of [Prelude›Data›Stream] and its laws: the natural numbers, the even
    and odd numbers, the squares and two Fibonacci-like streams are read with
    [nth] and summed through [take], and closed instances of the laws normalize
-   to [⋆]. *)
+   to [unit]. *)
 module Streams where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
@@ -76,7 +77,7 @@ def lucas : S.Stream ≔ FibLike.stream 2 1 end
 (* [0 + 1 + ... + 5]. *)
 eval sumVec 6 (S.take 6 nats)
 
-eval V.nth 0l ℕ 5 (S.take 5 evens) 4 ⋆
+eval V.nth 0l ℕ 5 (S.take 5 evens) 4 unit
 
 eval S.nth odds 6
 
@@ -103,7 +104,7 @@ eval S.head (S.tail (S.cons 9 nats))
 
 eval S.nth (S.const 3) 100
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
+(* A proof of a closed equation normalizes to [unit], of type [Unit]. *)
 eval headCons 9 nats
 
 eval tailCons 9 squares 3
@@ -122,7 +123,7 @@ eval nthNats 12
 
 eval nthDrop 3 squares 1
 
-eval nthTake 5 squares 3 ⋆
+eval nthTake 5 squares 3 unit
 
 eval scanSum squares 4
 

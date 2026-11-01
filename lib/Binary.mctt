@@ -104,7 +104,7 @@ theorem powFastDouble : ∀ (x : ℕ) (n : ℕ) →
     end
 end
 
-(* Closed instances normalize to [⋆]. *)
+(* Closed instances normalize to [unit]. *)
 eval fromBitsDouble 6 3
 
 eval powFastDouble 2 2

@@ -21,6 +21,7 @@
    [Type@{maxl u v}]. *)
 module Prelude›Data›Vec (u : Level) (A : Type@{u}) where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic.Negation u use (absurd)
 import Prelude›Arith›Plus use (plus)
@@ -33,7 +34,7 @@ import Prelude›Data›Bool use (Bool; tt; ff; and; or)
 
 def Vec (n : ℕ) : Type@{u} ≔ ∀ (i : ℕ) (h : Lt i n) → A end
 
-(* The empty vector; [Lt i 0] computes to [⊥]. *)
+(* The empty vector; [Lt i 0] computes to [Void]. *)
 def nil : Vec 0 ≔ λ (i : ℕ) (h : Lt i 0) → absurd A h end
 
 (* [cons n a v] puts [a] in front of [v], by cases on the index. *)
@@ -48,8 +49,8 @@ end
 (* The [i]-th element, given a proof that [i] is in bounds. *)
 def nth (n : ℕ) (v : Vec n) (i : ℕ) (h : Lt i n) : A ≔ v i h end
 
-(* The first element; [Lt 0 (succ n)] computes to [⊤]. *)
-def head (n : ℕ) (v : Vec (succ n)) : A ≔ v 0 ⋆ end
+(* The first element; [Lt 0 (succ n)] computes to [Unit]. *)
+def head (n : ℕ) (v : Vec (succ n)) : A ≔ v 0 unit end
 
 (* All elements but the first; [Lt (succ i) (succ n)] computes to [Lt i n]. *)
 def tail (n : ℕ) (v : Vec (succ n)) : Vec n ≔

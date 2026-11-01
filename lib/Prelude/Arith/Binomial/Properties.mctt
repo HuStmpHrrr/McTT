@@ -3,6 +3,8 @@
    [sumTo (choose n) (succ n) = pow 2 n]. *)
 module Prelude›Arith›Binomial›Properties where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -22,8 +24,8 @@ module Basic where
 theorem chooseZero : ∀ (n : ℕ) → Eq (choose n 0) 1 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (choose x 0) 1
-    | zero ⇒ ⋆
-    | succ p, ih ⇒ ⋆
+    | zero ⇒ unit
+    | succ p, ih ⇒ unit
     end
 end
 
@@ -41,12 +43,12 @@ theorem chooseOver : ∀ (n : ℕ) (k : ℕ) (h : Lt n k) → Eq (choose n k) 0 
     elim n at x -> (∀ (k : ℕ) (h : Lt x k) → Eq (choose x k) 0)
     | zero ⇒ λ (k : ℕ) →
         elim k at z -> (∀ (h : Lt 0 z) → Eq (choose 0 z) 0)
-        | zero ⇒ λ (h : ⊥) → h
-        | succ q, s ⇒ λ (h : ⊤) → ⋆
+        | zero ⇒ λ (h : Void) → h
+        | succ q, s ⇒ λ (h : Unit) → unit
         end
     | succ p, ih ⇒ λ (k : ℕ) →
         elim k at z -> (∀ (h : Lt (succ p) z) → Eq (choose (succ p) z) 0)
-        | zero ⇒ λ (h : ⊥) → h
+        | zero ⇒ λ (h : Void) → h
         | succ q, s ⇒ λ (h : Lt p q) →
             plusCongBoth (choose p q) (choose p (succ q)) 0 0
               (ih q h) (ih (succ q) (leStep (succ p) q h))
@@ -58,7 +60,7 @@ end
 theorem chooseSelf : ∀ (n : ℕ) → Eq (choose n n) 1 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (choose x x) 1
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         plusCongBoth (choose p p) (choose p (succ p)) 1 0
           ih (chooseOver p (succ p) (leRefl p))
@@ -68,7 +70,7 @@ end
 theorem chooseOne : ∀ (n : ℕ) → Eq (choose n 1) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (choose x 1) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         plusCongBoth (choose p 0) (choose p 1) 1 p (chooseZero p) ih
     end
@@ -217,7 +219,7 @@ end
 theorem rowSum : ∀ (n : ℕ) → Eq (sumTo (choose n) (succ n)) (pow 2 n) ≔
   λ (n : ℕ) →
     elim n at x -> Eq (sumTo (choose x) (succ x)) (pow 2 x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let s ≔ sumTo (choose p) (succ p);
             P ≔ pow 2 p;

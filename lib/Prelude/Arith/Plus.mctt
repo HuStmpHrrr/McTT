@@ -1,6 +1,8 @@
 (* Addition and its laws, stated with [Prelude›Arith›Equality]. *)
 module Prelude›Arith›Plus where
 
+import Prelude›Data›Unit use (unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
@@ -18,7 +20,7 @@ module Basic where
 theorem plusIdentityRight : ∀ (n : ℕ) → Eq (plus n 0) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (plus x 0) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -150,8 +152,8 @@ end
 theorem plusEqZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (plus a b) 0) → Eq a 0 ≔
   λ (a : ℕ) (b : ℕ) →
     elim a at x -> (∀ (h : Eq (plus x b) 0) → Eq x 0)
-    | zero ⇒ λ (h : Eq b 0) → ⋆
-    | succ p, ih ⇒ λ (h : ⊥) → h
+    | zero ⇒ λ (h : Eq b 0) → unit
+    | succ p, ih ⇒ λ (h : Void) → h
     end
 end
 
@@ -160,7 +162,7 @@ theorem plusEqZeroRight : ∀ (a : ℕ) (b : ℕ) (h : Eq (plus a b) 0) → Eq b
   λ (a : ℕ) (b : ℕ) →
     elim a at x -> (∀ (h : Eq (plus x b) 0) → Eq b 0)
     | zero ⇒ λ (h : Eq b 0) → h
-    | succ p, ih ⇒ λ (h : ⊥) → absurd (Eq b 0) h
+    | succ p, ih ⇒ λ (h : Void) → absurd (Eq b 0) h
     end
 end
 

@@ -28,7 +28,7 @@ open Base.Power use (powSuccRight)
 private module Solve where
 
 (* With [ia] the inverse of [a]: [x ~ e x ~ (ia a) x ~ ia (a x) ~ ia b]. *)
-lemma left : ∀ (a : C) (x : C) (b : C) (h : R (op a x) b) →
+lemma onLeft : ∀ (a : C) (x : C) (b : C) (h : R (op a x) b) →
     R x (op (inv a) b) ≔
   λ (a : C) (x : C) (b : C) (h : R (op a x) b) →
     let ia ≔ inv a
@@ -41,7 +41,7 @@ lemma left : ∀ (a : C) (x : C) (b : C) (h : R (op a x) b) →
 end
 
 (* With [ia] the inverse of [a]: [x ~ x e ~ x (a ia) ~ (x a) ia ~ b ia]. *)
-lemma right : ∀ (x : C) (a : C) (b : C) (h : R (op x a) b) →
+lemma onRight : ∀ (x : C) (a : C) (b : C) (h : R (op x a) b) →
     R x (op b (inv a)) ≔
   λ (x : C) (a : C) (b : C) (h : R (op x a) b) →
     let ia ≔ inv a
@@ -88,8 +88,8 @@ theorem leftCancel : ∀ (a : C) (b : C) (c : C) (h : R (op a b) (op a c)) →
     R b c ≔
   λ (a : C) (b : C) (c : C) (h : R (op a b) (op a c)) →
     let ia ≔ inv a
-    in rTrans b (op ia (op a c)) c (Solve.left a b (op a c) h)
-         (rSym c (op ia (op a c)) (Solve.left a c (op a c) (rRefl (op a c))))
+    in rTrans b (op ia (op a c)) c (Solve.onLeft a b (op a c) h)
+         (rSym c (op ia (op a c)) (Solve.onLeft a c (op a c) (rRefl (op a c))))
     end
 end
 
@@ -97,15 +97,15 @@ theorem rightCancel : ∀ (a : C) (b : C) (c : C) (h : R (op b a) (op c a)) →
     R b c ≔
   λ (a : C) (b : C) (c : C) (h : R (op b a) (op c a)) →
     let ia ≔ inv a
-    in rTrans b (op (op c a) ia) c (Solve.right b a (op c a) h)
-         (rSym c (op (op c a) ia) (Solve.right c a (op c a) (rRefl (op c a))))
+    in rTrans b (op (op c a) ia) c (Solve.onRight b a (op c a) h)
+         (rSym c (op (op c a) ia) (Solve.onRight c a (op c a) (rRefl (op c a))))
     end
 end
 
 (* An element whose product with [a] is [e] is the inverse of [a]. *)
 theorem invUnique : ∀ (a : C) (b : C) (h : R (op a b) e) → R b (inv a) ≔
   λ (a : C) (b : C) (h : R (op a b) e) →
-    rTrans b (op (inv a) e) (inv a) (Solve.left a b e h) (rightId (inv a))
+    rTrans b (op (inv a) e) (inv a) (Solve.onLeft a b e h) (rightId (inv a))
 end
 
 theorem invE : R (inv e) e ≔

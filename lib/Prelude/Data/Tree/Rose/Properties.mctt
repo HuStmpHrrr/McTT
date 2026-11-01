@@ -11,6 +11,7 @@
    [Prelude›Logic›Leibniz], equalities of numbers [Prelude›Arith›Equality]. *)
 module Prelude›Data›Tree›Rose›Properties (u : Level) (A : Type@{u}) where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong;
   idCongTwo)
 import Prelude›Arith›Equality use (Eq; trans)
@@ -53,7 +54,7 @@ abstract mutual def (B : Type@{u}) (f : ∀ (x : A) → B)
   | node x ts, h ⇒ h
   with sizeMapForest (ts : F) :
       Eq (RO.sizeForest u B (Op.mapForest B f ts)) (Op.sizeForest ts) ≔
-  | nil ⇒ ⋆
+  | nil ⇒ unit
   | cons t ts, ht hts ⇒
       plusCongBoth (RO.size u B (Op.map B f t))
         (RO.sizeForest u B (Op.mapForest B f ts))
@@ -110,7 +111,7 @@ abstract mutual def
   | node x ts, h ⇒ h
   with lengthFlattenForest (ts : F) :
       Eq (LO.length u A (Op.flattenForest ts)) (Op.sizeForest ts) ≔
-  | nil ⇒ ⋆
+  | nil ⇒ unit
   | cons t ts, ht hts ⇒
       trans (LO.length u A (LO.append u A (Op.flatten t)
                               (Op.flattenForest ts)))

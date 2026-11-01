@@ -9,6 +9,7 @@
    than [theorem], [fact] and [let], for comparison. *)
 module Prelude›Arith›Div where
 
+import Prelude›Data›Unit use (Unit; unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude›Arith›Plus use (plus)
@@ -67,7 +68,7 @@ end
 module Zero where
 
 abstract def divZeroDivisor : ∀ (n : ℕ) → Eq (div n 0) 0 ≔
-  λ (n : ℕ) → ⋆
+  λ (n : ℕ) → unit
 end
 
 abstract def modZeroDivisor : ∀ (n : ℕ) → Eq (mod n 0) n ≔
@@ -78,8 +79,8 @@ end
 abstract def divZero : ∀ (k : ℕ) → Eq (div 0 k) 0 ≔
   λ (k : ℕ) →
     elim k at x -> Eq (div 0 x) 0
-    | zero ⇒ ⋆
-    | succ d, ih ⇒ ⋆
+    | zero ⇒ unit
+    | succ d, ih ⇒ unit
     end
 end
 
@@ -87,8 +88,8 @@ end
 abstract def modZero : ∀ (k : ℕ) → Eq (mod 0 k) 0 ≔
   λ (k : ℕ) →
     elim k at x -> Eq (mod 0 x) 0
-    | zero ⇒ ⋆
-    | succ d, ih ⇒ ⋆
+    | zero ⇒ unit
+    | succ d, ih ⇒ unit
     end
 end
 
@@ -106,7 +107,7 @@ abstract def divModSpec : ∀ (n : ℕ) (d : ℕ) →
   λ (n : ℕ) (d : ℕ) →
     elim n at x ->
       Eq (plus (mult (div x (succ d)) (succ d)) (mod x (succ d))) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let r ≔ mod p (succ d);
             q ≔ div p (succ d);
@@ -139,13 +140,13 @@ end
 abstract def modLt : ∀ (n : ℕ) (d : ℕ) → Lt (mod n (succ d)) (succ d) ≔
   λ (n : ℕ) (d : ℕ) →
     elim n at x -> Lt (mod x (succ d)) (succ d)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let r ≔ mod p (succ d)
         in eqbCases r d
              (λ (b : Bool) → Le (if ℕ b 0 (succ r)) d)
              (λ (h : IsFalse (eqb r d)) → leEqbFalse r d ih h)
-             (λ (h : Eq r d) → ⋆)
+             (λ (h : Eq r d) → unit)
         end
     end
 end
@@ -155,7 +156,7 @@ abstract def modSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
     Eq (mod n (succ d)) n ≔
   λ (n : ℕ) (d : ℕ) →
     elim n at x -> (∀ (h : Lt x (succ d)) → Eq (mod x (succ d)) x)
-    | zero ⇒ λ (h : ⊤) → ⋆
+    | zero ⇒ λ (h : Unit) → unit
     | succ p, ih ⇒ λ (h : Le (succ p) d) →
         let hp : Eq (mod p (succ d)) p ≔
               ih (leTrans p (succ p) d (leSucc p) h);
@@ -175,7 +176,7 @@ abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
     Eq (div n (succ d)) 0 ≔
   λ (n : ℕ) (d : ℕ) →
     elim n at x -> (∀ (h : Lt x (succ d)) → Eq (div x (succ d)) 0)
-    | zero ⇒ λ (h : ⊤) → ⋆
+    | zero ⇒ λ (h : Unit) → unit
     | succ p, ih ⇒ λ (h : Le (succ p) d) →
         let hp : Le p d ≔ leTrans p (succ p) d (leSucc p) h;
             hq : Eq (div p (succ d)) 0 ≔ ih hp;
@@ -183,7 +184,7 @@ abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
             atZero : Eq (carry p d 0) 0 ≔
               eqbCases p d
                 (λ (b : Bool) → Eq (if ℕ b 1 0) 0)
-                (λ (e : IsFalse (eqb p d)) → ⋆)
+                (λ (e : IsFalse (eqb p d)) → unit)
                 (λ (e : Eq p d) → ltNotEq p d h e);
             atP : Eq (carry p d (div p (succ d))) 0 ≔
               transport (λ (y : ℕ) → Eq (carry p d y) 0) 0 (div p (succ d))
@@ -209,7 +210,7 @@ abstract def modSelf : ∀ (d : ℕ) → Eq (mod (succ d) (succ d)) 0 ≔
           eqbCases d d
             (λ (b : Bool) → Eq (if ℕ b 0 (succ d)) 0)
             (λ (e : IsFalse (eqb d d)) → eqbFalse d d e (refl d))
-            (λ (e : Eq d d) → ⋆)
+            (λ (e : Eq d d) → unit)
     in transport (λ (x : ℕ) → Eq (wrap x d) 0) d (mod d (succ d))
          (sym (mod d (succ d)) d hd) atD
     end
@@ -283,10 +284,10 @@ module One where
 abstract def modOne : ∀ (n : ℕ) → Eq (mod n 1) 0 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (mod x 1) 0
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         transport (λ (x : ℕ) → Eq (wrap x 0) 0) 0 (mod p 1)
-          (sym (mod p 1) 0 ih) ⋆
+          (sym (mod p 1) 0 ih) unit
     end
 end
 

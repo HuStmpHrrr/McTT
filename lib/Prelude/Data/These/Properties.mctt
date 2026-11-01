@@ -5,11 +5,13 @@
    is a functor, and [fold] after [swap] or [fromSum].
 
    Injectivity is congruence through a projection that is the identity on
-   the constructor at hand; distinctness transports [⋆] along a predicate
-   that is [⊤] on one constructor and [⊥] on the other. *)
+   the constructor at hand; distinctness transports [unit] along a predicate
+   that is [Unit] on one constructor and [Void] on the other. *)
 module Prelude›Data›These›Properties (u : Level) (A : Type@{u})
     (B : Type@{u}) where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Data›Sum use (Sum)
 open Prelude›Data›Sum.Ops as S
 import Prelude›Data›These use (These)
@@ -34,11 +36,11 @@ end
 
 (* The proposition that [t] is built by [this], [that] or [these]. *)
 private def IsThis (t : TAB) : Type@{u} ≔
-  elim t at z -> Type@{u} | this a ⇒ ⊤ | that b ⇒ ⊥ | these a b ⇒ ⊥ end
+  elim t at z -> Type@{u} | this a ⇒ Unit | that b ⇒ Void | these a b ⇒ Void end
 end
 
 private def IsThat (t : TAB) : Type@{u} ≔
-  elim t at z -> Type@{u} | this a ⇒ ⊥ | that b ⇒ ⊤ | these a b ⇒ ⊥ end
+  elim t at z -> Type@{u} | this a ⇒ Void | that b ⇒ Unit | these a b ⇒ Void end
 end
 
 (* The constructors are injective. *)
@@ -79,19 +81,19 @@ module Distinct where
 
 theorem thisNeThat : ∀ (a : A) (b : B) →
     Not (Id TAB (TAB.this a) (TAB.that b)) ≔
-  λ (a : A) (b : B) (h : Id TAB (TAB.this a) (TAB.that b)) → h IsThis ⋆
+  λ (a : A) (b : B) (h : Id TAB (TAB.this a) (TAB.that b)) → h IsThis unit
 end
 
 theorem thisNeThese : ∀ (a : A) (x : A) (b : B) →
     Not (Id TAB (TAB.this a) (TAB.these x b)) ≔
   λ (a : A) (x : A) (b : B) (h : Id TAB (TAB.this a) (TAB.these x b)) →
-    h IsThis ⋆
+    h IsThis unit
 end
 
 theorem thatNeThese : ∀ (b : B) (x : A) (y : B) →
     Not (Id TAB (TAB.that b) (TAB.these x y)) ≔
   λ (b : B) (x : A) (y : B) (h : Id TAB (TAB.that b) (TAB.these x y)) →
-    h IsThat ⋆
+    h IsThat unit
 end
 
 end

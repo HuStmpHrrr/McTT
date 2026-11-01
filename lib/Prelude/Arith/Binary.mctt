@@ -10,6 +10,8 @@
    public laws read them at enough fuel ([Laws]). *)
 module Prelude›Arith›Binary where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong)
@@ -53,27 +55,27 @@ end
 module Halving where
 
 theorem bitLe : ∀ (n : ℕ) → Le (bit n) 1 ≔
-  twoStepInd (λ (n : ℕ) → Le (bit n) 1) ⋆ ⋆
+  twoStepInd (λ (n : ℕ) → Le (bit n) 1) unit unit
     (λ (n : ℕ) (h : Le (bit n) 1) → h)
 end
 
 (* Division by 2: [n] is twice its half, plus its low bit.  Both sides of
    the step are [succ (succ ...)] of the hypothesis. *)
 theorem halfSpec : ∀ (n : ℕ) → Eq (plus (double (half n)) (bit n)) n ≔
-  twoStepInd (λ (n : ℕ) → Eq (plus (double (half n)) (bit n)) n) ⋆ ⋆
+  twoStepInd (λ (n : ℕ) → Eq (plus (double (half n)) (bit n)) n) unit unit
     (λ (n : ℕ) (h : Eq (plus (double (half n)) (bit n)) n) → h)
 end
 
 (* Halving a positive number makes it smaller. *)
 theorem halfLe : ∀ (n : ℕ) → Le (half (succ n)) n ≔
-  twoStepInd (λ (n : ℕ) → Le (half (succ n)) n) ⋆ ⋆
+  twoStepInd (λ (n : ℕ) → Le (half (succ n)) n) unit unit
     (λ (n : ℕ) (h : Le (half (succ n)) n) → leStep (half (succ n)) n h)
 end
 
 theorem halfDouble : ∀ (n : ℕ) → Eq (half (double n)) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (half (double x)) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -81,7 +83,7 @@ end
 theorem bitDouble : ∀ (n : ℕ) → Eq (bit (double n)) 0 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (bit (double x)) 0
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -89,7 +91,7 @@ end
 theorem halfSuccDouble : ∀ (n : ℕ) → Eq (half (succ (double n))) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (half (succ (double x))) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -97,7 +99,7 @@ end
 theorem bitSuccDouble : ∀ (n : ℕ) → Eq (bit (succ (double n))) 1 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (bit (succ (double x))) 1
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -166,7 +168,7 @@ end
 lemma halfFuel : ∀ (n : ℕ) (p : ℕ) (h : Le n (succ p)) → Le (half n) p ≔
   λ (n : ℕ) (p : ℕ) →
     elim n at x -> (∀ (h : Le x (succ p)) → Le (half x) p)
-    | zero ⇒ λ (h : ⊤) → ⋆
+    | zero ⇒ λ (h : Unit) → unit
     | succ m, s ⇒ λ (h : Le m p) → leTrans (half (succ m)) m p (halfLe m) h
     end
 end
@@ -188,8 +190,8 @@ lemma readDigits : ∀ (k : ℕ) (n : ℕ) (h : Le n k) →
                          Eq (readFrom x (λ (i : ℕ) → digitAt i n)) n)
     | zero ⇒ λ (n : ℕ) →
         elim n at m -> (∀ (h : Le m 0) → Eq 0 m)
-        | zero ⇒ λ (h : ⊤) → ⋆
-        | succ m, s ⇒ λ (h : ⊥) → h
+        | zero ⇒ λ (h : Unit) → unit
+        | succ m, s ⇒ λ (h : Void) → h
         end
     | succ p, ih ⇒ λ (n : ℕ) (h : Le n (succ p)) →
         let rest ≔ readFrom p (λ (i : ℕ) → digitAt i (half n));
@@ -206,7 +208,7 @@ lemma countLe : ∀ (n : ℕ) (k : ℕ) →
     Le (sumTo (λ (i : ℕ) → digitAt i n) k) k ≔
   λ (n : ℕ) (k : ℕ) →
     elim k at x -> Le (sumTo (λ (i : ℕ) → digitAt i n) x) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         lePlusMono (digitAt p n) 1 (sumTo (λ (i : ℕ) → digitAt i n) p) p
           (digitLe p n) ih
@@ -219,14 +221,14 @@ lemma timesPow : ∀ (b : ℕ) (h : Le b 1) (x : ℕ) (y : ℕ) →
   λ (b : ℕ) →
     elim b at k -> (∀ (h : Le k 1) (x : ℕ) (y : ℕ) →
                          Eq (times k x y) (mult (pow x k) y))
-    | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) → sym (mult 1 y) y (multIdentityLeft y)
+    | zero ⇒ λ (h : Unit) (x : ℕ) (y : ℕ) → sym (mult 1 y) y (multIdentityLeft y)
     | succ c, ih ⇒
         elim c at k -> (∀ (h : Le (succ k) 1) (x : ℕ) (y : ℕ) →
                              Eq (times (succ k) x y) (mult (pow x (succ k)) y))
-        | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) →
+        | zero ⇒ λ (h : Unit) (x : ℕ) (y : ℕ) →
             cong (λ (z : ℕ) → mult z y) x (mult x 1)
               (sym (mult x 1) x (multIdentityRight x))
-        | succ e, s ⇒ λ (h : ⊥) (x : ℕ) (y : ℕ) →
+        | succ e, s ⇒ λ (h : Void) (x : ℕ) (y : ℕ) →
             absurd (Eq (times (succ (succ e)) x y)
                        (mult (pow x (succ (succ e))) y)) h
         end
@@ -243,13 +245,13 @@ lemma powFromPow : ∀ (x : ℕ) (f : ℕ) (n : ℕ) (h : Le n f) →
     elim f at g -> (∀ (n : ℕ) (h : Le n g) → Eq (powFrom g x n) (pow x n))
     | zero ⇒ λ (n : ℕ) →
         elim n at m -> (∀ (h : Le m 0) → Eq 1 (pow x m))
-        | zero ⇒ λ (h : ⊤) → ⋆
-        | succ m, s ⇒ λ (h : ⊥) → absurd (Eq 1 (pow x (succ m))) h
+        | zero ⇒ λ (h : Unit) → unit
+        | succ m, s ⇒ λ (h : Void) → absurd (Eq 1 (pow x (succ m))) h
         end
     | succ g, ih ⇒ λ (n : ℕ) →
         elim n at m -> (∀ (h : Le m (succ g)) →
                              Eq (powFrom (succ g) x m) (pow x m))
-        | zero ⇒ λ (h : ⊤) → ⋆
+        | zero ⇒ λ (h : Unit) → unit
         | succ m, s ⇒ λ (h : Le m g) →
             let k ≔ succ m;
                 b ≔ bit k;

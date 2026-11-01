@@ -2,6 +2,8 @@
    basic laws and its link to [Prelude›Arith›Parity]. *)
 module Prelude›Arith›Divides where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 open Prelude›Logic.Conj 0l use (And; andIntro; andFst; andSnd)
@@ -24,7 +26,7 @@ import Prelude›Function›Combinators use (Generic)
 
 (* [Divides k n] says that [k] divides [n]: the remainder of [n] by [k] is
    [0].  Since [mod n 0] is [n], [Divides 0 n] computes to [Eq n 0].  It
-   computes, so a closed instance is [⊤] or [⊥]. *)
+   computes, so a closed instance is [Unit] or [Void]. *)
 def Divides (k : ℕ) (n : ℕ) : Type@0 ≔ Eq (mod n k) 0 end
 
 (* Divisibility by and of zero and one, and reflexivity. *)
@@ -38,7 +40,7 @@ end
 theorem dividesRefl : ∀ (n : ℕ) → Divides n n ≔
   λ (n : ℕ) →
     elim n at x -> Divides x x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ d, ih ⇒ modSelf d
     end
 end
@@ -164,8 +166,8 @@ let modTwoParity : ∀ (n : ℕ) →
   λ (n : ℕ) →
     elim n at x -> And (∀ (h : Even x) → Eq (mod x 2) 0)
                           (∀ (h : Odd x) → Eq (mod x 2) 1)
-    | zero ⇒ andIntro (∀ (h : ⊤) → ⊤) (∀ (h : ⊥) → ⊥)
-                (λ (h : ⊤) → ⋆) (λ (h : ⊥) → h)
+    | zero ⇒ andIntro (∀ (h : Unit) → Unit) (∀ (h : Void) → Void)
+                (λ (h : Unit) → unit) (λ (h : Void) → h)
     | succ p, ih ⇒
         let r ≔ mod p 2;
             fromOdd : ∀ (h : Odd p) → Eq (wrap r 1) 0 ≔
@@ -174,14 +176,14 @@ let modTwoParity : ∀ (n : ℕ) →
                   (sym r 1
                      (andSnd (∀ (h : Even p) → Eq r 0) (∀ (h : Odd p) → Eq r 1)
                         ih h))
-                  ⋆;
+                  unit;
             fromEven : ∀ (h : Even p) → Eq (wrap r 1) 1 ≔
               λ (h : Even p) →
                 transport (λ (y : ℕ) → Eq (wrap y 1) 1) 0 r
                   (sym r 0
                      (andFst (∀ (h : Even p) → Eq r 0) (∀ (h : Odd p) → Eq r 1)
                         ih h))
-                  ⋆
+                  unit
         in andIntro (∀ (h : Odd p) → Eq (wrap r 1) 0)
              (∀ (h : Even p) → Eq (wrap r 1) 1) fromOdd fromEven
         end

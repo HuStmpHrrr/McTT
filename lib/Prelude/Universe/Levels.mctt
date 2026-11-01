@@ -14,6 +14,8 @@
    cumulativity, which only follows the normal forms of levels. *)
 module Prelude›Universe›Levels where
 
+import Prelude›Data›Unit use (Unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic
 open Prelude›Logic.Negation as Neg
@@ -199,11 +201,11 @@ end
 theorem ofNatLe : ∀ (m : ℕ) (n : ℕ) (h : Le m n) → LLe (ofNat m) (ofNat n) ≔
   λ (m : ℕ) →
     elim m at x -> (∀ (n : ℕ) (h : Le x n) → LLe (ofNat x) (ofNat n))
-    | zero ⇒ λ (n : ℕ) (h : ⊤) → lrefl (ofNat n)
+    | zero ⇒ λ (n : ℕ) (h : Unit) → lrefl (ofNat n)
     | succ p, ih ⇒ λ (n : ℕ) →
         elim n at y -> (∀ (h : Le (succ p) y) →
                              LLe (succl (ofNat p)) (ofNat y))
-        | zero ⇒ λ (h : ⊥) → Neg.absurd 1l (LLe (succl (ofNat p)) 0l) h
+        | zero ⇒ λ (h : Void) → Neg.absurd 1l (LLe (succl (ofNat p)) 0l) h
         | succ q, s ⇒ λ (h : Le p q) → lleSucclCong (ofNat p) (ofNat q) (ih q h)
         end
     end

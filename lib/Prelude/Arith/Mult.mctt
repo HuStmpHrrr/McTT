@@ -2,6 +2,8 @@
    proved from the laws of [Prelude›Arith›Plus]. *)
 module Prelude›Arith›Mult where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
@@ -25,7 +27,7 @@ module Basic where
 theorem multZeroRight : ∀ (n : ℕ) → Eq (mult n 0) 0 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (mult x 0) 0
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -34,7 +36,7 @@ theorem multSucc : ∀ (n : ℕ) (m : ℕ) →
     Eq (mult n (succ m)) (plus n (mult n m)) ≔
   λ (n : ℕ) (m : ℕ) →
     elim n at x -> Eq (mult x (succ m)) (plus x (mult x m))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         (* After the successors cancel, the goal is
            [Eq (plus m (mult p (succ m))) (plus p (plus m (mult p m)))]. *)
@@ -54,7 +56,7 @@ end
 theorem multIdentityRight : ∀ (n : ℕ) → Eq (mult n 1) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (mult x 1) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -111,7 +113,7 @@ theorem multDistribLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (mult a (plus b c)) (plus (mult a b) (mult a c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
     elim a at x -> Eq (mult x (plus b c)) (plus (mult x b) (mult x c))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         (* [plus (plus b c) (mult p (plus b c))] is rearranged, through
            [plus b (plus c (plus X Y))], into [plus (plus b X) (plus c Y)]. *)
@@ -145,7 +147,7 @@ theorem multAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (mult (mult a b) c) (mult a (mult b c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
     elim a at x -> Eq (mult (mult x b) c) (mult x (mult b c))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let distrib : Eq (mult (plus b (mult p b)) c)
                          (plus (mult b c) (mult (mult p b) c)) ≔
@@ -165,13 +167,13 @@ end
 theorem multLeftComm : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (mult a (mult b c)) (mult b (mult a c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    let left : Eq (mult a (mult b c)) (mult (mult a b) c) ≔
+    let reassoc : Eq (mult a (mult b c)) (mult (mult a b) c) ≔
           sym (mult (mult a b) c) (mult a (mult b c)) (multAssoc a b c);
         swap : Eq (mult (mult a b) c) (mult (mult b a) c) ≔
           cong (λ (y : ℕ) → mult y c) (mult a b) (mult b a) (multComm a b)
     in trans (mult a (mult b c)) (mult (mult b a) c) (mult b (mult a c))
          (trans (mult a (mult b c)) (mult (mult a b) c) (mult (mult b a) c)
-            left swap)
+            reassoc swap)
          (multAssoc b a c)
     end
 end
@@ -204,8 +206,8 @@ theorem multEqZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (mult a b) 0)
     (ha : Not (Eq a 0)) → Eq b 0 ≔
   λ (a : ℕ) (b : ℕ) →
     elim a at x -> (∀ (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) → Eq b 0)
-    | zero ⇒ λ (h : ⊤) (ha : Not ⊤) → absurd (Eq b 0) (ha ⋆)
-    | succ p, ih ⇒ λ (h : Eq (plus b (mult p b)) 0) (ha : Not ⊥) →
+    | zero ⇒ λ (h : Unit) (ha : Not Unit) → absurd (Eq b 0) (ha unit)
+    | succ p, ih ⇒ λ (h : Eq (plus b (mult p b)) 0) (ha : Not Void) →
         plusEqZero b (mult p b) h
     end
 end

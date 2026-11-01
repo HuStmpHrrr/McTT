@@ -9,6 +9,7 @@
    [toNat]. *)
 module Prelude›Data›Binary›Properties where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong;
   eqToId)
@@ -48,7 +49,7 @@ end
 theorem toNatDouble : ∀ (x : Bin) → Eq (toNat (B.double x)) (double (toNat x)) ≔
   λ (x : Bin) →
     elim x at z -> Eq (toNat (B.double z)) (double (toNat z))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | doubleSucc y, ih ⇒ refl (toNat (B.double (doubleSucc y)))
     | succDouble y, ih ⇒
         cong (λ (n : ℕ) → double (succ n)) (toNat (B.double y))
@@ -60,7 +61,7 @@ end
 theorem toNatFromNat : ∀ (n : ℕ) → Eq (toNat (fromNat n)) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (toNat (fromNat x)) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         trans (toNat (suc (fromNat p))) (succ (toNat (fromNat p))) (succ p)
           (toNatSuc (fromNat p)) ih

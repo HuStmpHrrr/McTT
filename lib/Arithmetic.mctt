@@ -2,6 +2,8 @@
    addition and multiplication, and a few computations. *)
 module Arithmetic where
 
+import Prelude›Data›Unit use (unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Arith›Equality use (refl; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Algebra use (plusAssoc)
@@ -15,7 +17,7 @@ eval mult 6 7
 
 eval plus (mult 3 4) (mult 2 5)
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
+(* A proof of a closed equation normalizes to [unit], of type [Unit]. *)
 eval plusAssoc 1 2 3
 
 eval multComm 3 4
@@ -28,13 +30,13 @@ eval multDistribRight 2 3 4
 
 eval cong (λ (x : ℕ) → mult x x) 3 3 (refl 3)
 
-eval plusCancelLeft 2 3 3 ⋆
+eval plusCancelLeft 2 3 3 unit
 
-eval plusCancelRight 4 4 1 ⋆
+eval plusCancelRight 4 4 1 unit
 
-eval plusEqZero 0 0 ⋆
+eval plusEqZero 0 0 unit
 
-(* [Not (Eq 2 0)] computes to [⊥ → ⊥]. *)
-eval multEqZero 2 0 ⋆ (λ (h : ⊥) → h)
+(* [Not (Eq 2 0)] computes to [Void → Void]. *)
+eval multEqZero 2 0 unit (λ (h : Void) → h)
 
 end

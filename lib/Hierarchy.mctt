@@ -11,6 +11,7 @@
    lives one level up, are at [1l]. *)
 module Hierarchy where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq)
 import Prelude›Logic›Leibniz 0l use (Id)
@@ -102,13 +103,13 @@ theorem negSum : Id Int (Integer.additive.inv (add (pos 2) (pos 3)))
 end
 
 (* The order of the [min]-semilattice of numbers: [Le 2 5] is
-   [Eq (min 2 5) 2], which computes to [⊤], and in the lattice it gives
+   [Eq (min 2 5) 2], which computes to [Unit], and in the lattice it gives
    [max 2 5 = 5]. *)
 import Prelude›Algebra›Semilattice›Properties 0l minMax.meetSemilattice
   as MinOrder
 import Prelude›Algebra›Lattice›Properties 0l minMax as MinMax
 
-def twoLeFive : MinOrder.Le 2 5 ≔ ⋆ end
+def twoLeFive : MinOrder.Le 2 5 ≔ unit end
 
 theorem maxTwoFive : Eq (minMax.join 2 5) 5 ≔
   MinMax.meetToJoin 2 5 twoLeFive

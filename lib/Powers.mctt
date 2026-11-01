@@ -1,6 +1,6 @@
 (* A client of [Prelude›Arith›Pow], [Prelude›Arith›Sum] and
    [Prelude›Arith›Factorial]: a few computations, and closed instances of
-   their theorems, which normalize to [⋆]. *)
+   their theorems, which normalize to [unit]. *)
 module Powers where
 
 import Prelude›Arith›Mult use (mult)
@@ -34,7 +34,7 @@ eval factorial 5
 
 eval factorial 0
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤].  The numbers
+(* A proof of a closed equation normalizes to [unit], of type [Unit].  The numbers
    stay at most about 20: checking [Eq n n] takes time exponential in [n] (about
    6s at [n = 27]). *)
 eval powZero 7

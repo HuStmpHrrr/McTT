@@ -90,6 +90,6 @@ end
 
 eval length (ω + 1) Type@ω ts
 
-eval headOr (ω + 1) Type@ω ⊤ ts
+eval headOr (ω + 1) Type@ω Type@0 ts
 
 end

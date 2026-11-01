@@ -3,6 +3,8 @@
    the interaction of [Prelude›Arith›Sub.sub] with the order. *)
 module Prelude›Arith›Monotone where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; refl; trans)
@@ -26,13 +28,13 @@ theorem lePlusMono : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
     elim a at x -> (∀ (b : ℕ) (c : ℕ) (d : ℕ)
                          (hab : Le x b) (hcd : Le c d) →
                          Le (plus x c) (plus b d))
-    | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : ⊤) (hcd : Le c d) →
+    | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : Unit) (hcd : Le c d) →
         leTrans c d (plus b d) hcd (lePlusLeft b d)
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at z -> (∀ (c : ℕ) (d : ℕ)
                              (hab : Le (succ p) z) (hcd : Le c d) →
                              Le (plus (succ p) c) (plus z d))
-        | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : ⊥) (hcd : Le c d) →
+        | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : Void) (hcd : Le c d) →
             absurd (Le (succ (plus p c)) d) hab
         | succ q, s ⇒ λ (c : ℕ) (d : ℕ) (hab : Le p q) (hcd : Le c d) →
             ih q c d hab hcd
@@ -71,12 +73,12 @@ theorem leMultMono : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
     elim a at x -> (∀ (b : ℕ) (c : ℕ) (d : ℕ)
                          (hab : Le x b) (hcd : Le c d) →
                          Le (mult x c) (mult b d))
-    | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : ⊤) (hcd : Le c d) → ⋆
+    | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : Unit) (hcd : Le c d) → unit
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at z -> (∀ (c : ℕ) (d : ℕ)
                              (hab : Le (succ p) z) (hcd : Le c d) →
                              Le (mult (succ p) c) (mult z d))
-        | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : ⊥) (hcd : Le c d) →
+        | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : Void) (hcd : Le c d) →
             absurd (Le (plus c (mult p c)) 0) hab
         | succ q, s ⇒ λ (c : ℕ) (d : ℕ) (hab : Le p q) (hcd : Le c d) →
             lePlusMono c d (mult p c) (mult q d) hcd (ih q c d hab hcd)
@@ -120,7 +122,7 @@ end
 theorem ltPlus : ∀ (a : ℕ) (b : ℕ) → Lt a (plus a (succ b)) ≔
   λ (a : ℕ) (b : ℕ) →
     elim a at x -> Lt x (plus x (succ b))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -147,7 +149,7 @@ def subLe : ∀ (a : ℕ) (b : ℕ) → Le (sub a b) a ≔
      | zero ⇒ λ (x : ℕ) → leRefl x
      | succ q, ih ⇒ λ (x : ℕ) →
          elim x at z -> Le (sub z (succ q)) z
-         | zero ⇒ ⋆
+         | zero ⇒ unit
          | succ p, s ⇒ leStep (sub p q) p (ih p)
          end
      end) a
@@ -163,11 +165,11 @@ theorem subMonoLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) →
      | succ r, ih ⇒ λ (x : ℕ) →
          elim x at u -> (∀ (y : ℕ) (h : Le u y) →
                               Le (sub u (succ r)) (sub y (succ r)))
-         | zero ⇒ λ (y : ℕ) (h : ⊤) → ⋆
+         | zero ⇒ λ (y : ℕ) (h : Unit) → unit
          | succ p, s ⇒ λ (y : ℕ) →
              elim y at v -> (∀ (h : Le (succ p) v) →
                                   Le (sub (succ p) (succ r)) (sub v (succ r)))
-             | zero ⇒ λ (h : ⊥) → absurd (Le (sub p r) 0) h
+             | zero ⇒ λ (h : Void) → absurd (Le (sub p r) 0) h
              | succ q, t ⇒ λ (h : Le p q) → ih p q h
              end
          end
@@ -180,14 +182,14 @@ theorem subMonoRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) →
   λ (a : ℕ) (b : ℕ) →
     (elim b at y -> (∀ (x : ℕ) (c : ℕ) (h : Le y c) →
                           Le (sub x c) (sub x y))
-     | zero ⇒ λ (x : ℕ) (c : ℕ) (h : ⊤) → subLe x c
+     | zero ⇒ λ (x : ℕ) (c : ℕ) (h : Unit) → subLe x c
      | succ q, ih ⇒ λ (x : ℕ) (c : ℕ) →
          elim c at w -> (∀ (h : Le (succ q) w) →
                               Le (sub x w) (sub x (succ q)))
-         | zero ⇒ λ (h : ⊥) → absurd (Le x (sub x (succ q))) h
+         | zero ⇒ λ (h : Void) → absurd (Le x (sub x (succ q))) h
          | succ r, t ⇒ λ (h : Le q r) →
              elim x at u -> Le (sub u (succ r)) (sub u (succ q))
-             | zero ⇒ ⋆
+             | zero ⇒ unit
              | succ p, s ⇒ ih p r h
              end
          end
@@ -199,11 +201,11 @@ theorem plusSubCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) →
     Eq (plus (sub a b) b) a ≔
   λ (a : ℕ) (b : ℕ) →
     (elim b at y -> (∀ (x : ℕ) (h : Le y x) → Eq (plus (sub x y) y) x)
-     | zero ⇒ λ (x : ℕ) (h : ⊤) → plusIdentityRight x
+     | zero ⇒ λ (x : ℕ) (h : Unit) → plusIdentityRight x
      | succ q, ih ⇒ λ (x : ℕ) →
          elim x at z -> (∀ (h : Le (succ q) z) →
                               Eq (plus (sub z (succ q)) (succ q)) z)
-         | zero ⇒ λ (h : ⊥) → absurd (Eq (plus 0 (succ q)) 0) h
+         | zero ⇒ λ (h : Void) → absurd (Eq (plus 0 (succ q)) 0) h
          | succ p, s ⇒ λ (h : Le q p) →
              trans (plus (sub p q) (succ q)) (succ (plus (sub p q) q)) (succ p)
                (plusSucc (sub p q) q) (ih p h)
@@ -216,11 +218,11 @@ theorem subPlusCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) →
     Eq (plus b (sub a b)) a ≔
   λ (a : ℕ) (b : ℕ) →
     (elim b at y -> (∀ (x : ℕ) (h : Le y x) → Eq (plus y (sub x y)) x)
-     | zero ⇒ λ (x : ℕ) (h : ⊤) → refl x
+     | zero ⇒ λ (x : ℕ) (h : Unit) → refl x
      | succ q, ih ⇒ λ (x : ℕ) →
          elim x at z -> (∀ (h : Le (succ q) z) →
                               Eq (plus (succ q) (sub z (succ q))) z)
-         | zero ⇒ λ (h : ⊥) → absurd (Eq (succ (plus q 0)) 0) h
+         | zero ⇒ λ (h : Void) → absurd (Eq (succ (plus q 0)) 0) h
          | succ p, s ⇒ λ (h : Le q p) → ih p h
          end
      end) a
@@ -233,7 +235,7 @@ theorem subPos : ∀ (a : ℕ) (b : ℕ) (h : Lt b a) → Lt 0 (sub a b) ≔
      | zero ⇒ λ (x : ℕ) (h : Lt 0 x) → h
      | succ q, ih ⇒ λ (x : ℕ) →
          elim x at z -> (∀ (h : Lt (succ q) z) → Lt 0 (sub z (succ q)))
-         | zero ⇒ λ (h : ⊥) → absurd (Lt 0 0) h
+         | zero ⇒ λ (h : Void) → absurd (Lt 0 0) h
          | succ p, s ⇒ λ (h : Lt q p) → ih p h
          end
      end) a

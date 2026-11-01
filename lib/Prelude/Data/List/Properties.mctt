@@ -14,6 +14,7 @@
    for lengths. *)
 module Prelude›Data›List›Properties (u : Level) (A : Type@{u}) where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; trans)
 import Prelude›Arith›Plus use (plus)
@@ -97,7 +98,7 @@ theorem lengthMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : L) →
     Eq (Ops.length u B (Op.map B f l)) (Op.length l) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : L) →
     elim l at z -> Eq (Ops.length u B (Op.map B f z)) (Op.length z)
-    | nil ⇒ ⋆
+    | nil ⇒ unit
     | cons x xs, ih ⇒ ih
     end
 end
@@ -224,7 +225,7 @@ theorem lengthReverse : ∀ (l : L) →
     Eq (Op.length (Op.reverse l)) (Op.length l) ≔
   λ (l : L) →
     elim l at z -> Eq (Op.length (Op.reverse z)) (Op.length z)
-    | nil ⇒ ⋆
+    | nil ⇒ unit
     | cons x xs, ih ⇒
         trans (Op.length (Op.append (Op.reverse xs) (one x)))
           (plus (Op.length (Op.reverse xs)) 1)

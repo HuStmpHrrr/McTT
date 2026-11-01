@@ -2,6 +2,7 @@
    [Prelude›Arith›Equality] and proved from those of [Prelude›Arith›Mult]. *)
 module Prelude›Arith›Pow where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -23,7 +24,7 @@ end
 module Basic where
 
 theorem powZero : ∀ (a : ℕ) → Eq (pow a 0) 1 ≔
-  λ (a : ℕ) → ⋆
+  λ (a : ℕ) → unit
 end
 
 theorem powSucc : ∀ (a : ℕ) (n : ℕ) → Eq (pow a (succ n)) (mult a (pow a n)) ≔
@@ -38,7 +39,7 @@ end
 theorem onePow : ∀ (n : ℕ) → Eq (pow 1 n) 1 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (pow 1 x) 1
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusIdentityRight (pow 1 p)) ih
     end
 end
@@ -75,7 +76,7 @@ theorem powMultBase : ∀ (a : ℕ) (b : ℕ) (n : ℕ) →
     Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) ≔
   λ (a : ℕ) (b : ℕ) (n : ℕ) →
     elim n at x -> Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let lhs ≔ mult (mult a b) (pow (mult a b) p);
             mid ≔ mult (mult a b) (mult (pow a p) (pow b p));

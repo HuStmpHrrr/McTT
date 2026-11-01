@@ -75,7 +75,7 @@ end
 
 eval largest example
 
-(* Closed instances of the laws: each normalizes to [⋆]. *)
+(* Closed instances of the laws: each normalizes to [unit]. *)
 eval P.Maps.sizeMapTree ℕ succ example
 eval P.Flatten.lengthFlattenTree example
 eval P.Flatten.lengthFlattenForest pair

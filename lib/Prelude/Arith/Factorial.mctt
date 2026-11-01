@@ -2,6 +2,7 @@
    one step, and the bound [pow 2 n <= factorial (succ n)]. *)
 module Prelude›Arith›Factorial where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl)
 import Prelude›Arith›Plus use (plus)
@@ -23,7 +24,7 @@ end
 (* The defining equations. *)
 module Laws where
 
-theorem factZero : Eq (factorial 0) 1 ≔ ⋆ end
+theorem factZero : Eq (factorial 0) 1 ≔ unit end
 
 theorem factSucc : ∀ (n : ℕ) →
     Eq (factorial (succ n)) (mult (succ n) (factorial n)) ≔
@@ -41,7 +42,7 @@ module Bounds where
 theorem factPos : ∀ (n : ℕ) → Lt 0 (factorial n) ≔
   λ (n : ℕ) →
     elim n at x -> Lt 0 (factorial x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         leTrans 1 (factorial p) (factorial (succ p)) ih
           (lePlusRight (factorial p) (mult p (factorial p)))
@@ -60,12 +61,12 @@ end
 theorem lePowFact : ∀ (n : ℕ) → Le (pow 2 n) (factorial (succ n)) ≔
   λ (n : ℕ) →
     elim n at x -> Le (pow 2 x) (factorial (succ x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let P ≔ pow 2 p;
             F ≔ factorial (succ p);
             inner : Le (plus P 0) (plus F (mult p F)) ≔
-              lePlusMono P F 0 (mult p F) ih ⋆
+              lePlusMono P F 0 (mult p F) ih unit
         in lePlusMono P F (plus P 0) (plus F (mult p F)) ih inner
         end
     end

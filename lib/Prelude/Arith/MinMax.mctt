@@ -2,6 +2,7 @@
    stated with [Prelude›Arith›Equality]. *)
 module Prelude›Arith›MinMax where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
@@ -37,12 +38,12 @@ theorem minComm : ∀ (a : ℕ) (b : ℕ) → Eq (min a b) (min b a) ≔
     elim a at x -> (∀ (b : ℕ) → Eq (min x b) (min b x))
     | zero ⇒ λ (b : ℕ) →
         elim b at y -> Eq (min 0 y) (min y 0)
-        | zero ⇒ ⋆
-        | succ q, s ⇒ ⋆
+        | zero ⇒ unit
+        | succ q, s ⇒ unit
         end
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b at y -> Eq (min (succ p) y) (min y (succ p))
-        | zero ⇒ ⋆
+        | zero ⇒ unit
         | succ q, s ⇒ ih q
         end
     end
@@ -53,7 +54,7 @@ theorem maxComm : ∀ (a : ℕ) (b : ℕ) → Eq (max a b) (max b a) ≔
     elim a at x -> (∀ (b : ℕ) → Eq (max x b) (max b x))
     | zero ⇒ λ (b : ℕ) →
         elim b at y -> Eq (max 0 y) (max y 0)
-        | zero ⇒ ⋆
+        | zero ⇒ unit
         | succ q, s ⇒ refl q
         end
     | succ p, ih ⇒ λ (b : ℕ) →
@@ -67,7 +68,7 @@ end
 theorem minIdem : ∀ (n : ℕ) → Eq (min n n) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (min x x) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -75,15 +76,15 @@ end
 theorem minZeroRight : ∀ (n : ℕ) → Eq (min n 0) 0 ≔
   λ (n : ℕ) →
     elim n at x -> Eq (min x 0) 0
-    | zero ⇒ ⋆
-    | succ p, ih ⇒ ⋆
+    | zero ⇒ unit
+    | succ p, ih ⇒ unit
     end
 end
 
 theorem maxIdem : ∀ (n : ℕ) → Eq (max n n) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (max x x) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -91,7 +92,7 @@ end
 theorem maxIdentityRight : ∀ (n : ℕ) → Eq (max n 0) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (max x 0) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ refl p
     end
 end
@@ -110,13 +111,13 @@ theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) →
         | succ q, s ⇒
             let m ≔ min p q;
                 M ≔ max p q;
-                left : Eq (plus m (succ M)) (succ (plus m M)) ≔ plusSucc m M;
-                right : Eq (succ (plus p q)) (plus p (succ q)) ≔
+                leftStep : Eq (plus m (succ M)) (succ (plus m M)) ≔ plusSucc m M;
+                rightStep : Eq (succ (plus p q)) (plus p (succ q)) ≔
                   sym (plus p (succ q)) (succ (plus p q)) (plusSucc p q)
             in trans (plus m (succ M)) (succ (plus p q)) (plus p (succ q))
                  (trans (plus m (succ M)) (succ (plus m M)) (succ (plus p q))
-                    left (ih q))
-                 right
+                    leftStep (ih q))
+                 rightStep
             end
         end
     end

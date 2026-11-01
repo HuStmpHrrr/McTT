@@ -91,7 +91,7 @@ import Prelude›Data›Sigma 0l Bool Payload as Tagged
 eval Tagged.snd (Tagged.pair tt 3)
 eval (Tagged.pair ff ff).snd
 
-(* Closed instances of laws.  A law between numbers computes to [⋆]; a
+(* Closed instances of laws.  A law between numbers computes to [unit]; a
    Leibniz equality is a function of the predicate. *)
 eval lengthAppend oneTwoThree oneTwoThree
 eval sumReverse oneTwoThree

@@ -5,6 +5,8 @@
    inverse.  Each law is proved by cases. *)
 module Prelude›Data›Sign›Properties where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
 import Prelude›Logic.Negation 1l use (Not)
 import Prelude›Data›Sign use (Sign; opposite; mul)
@@ -12,7 +14,7 @@ open Sign use (negative; positive)
 
 (* The proposition that a sign is [positive]. *)
 private def IsPositive (s : Sign) : Type@0 ≔
-  elim s at z -> Type@0 | negative ⇒ ⊥ | positive ⇒ ⊤ end
+  elim s at z -> Type@0 | negative ⇒ Void | positive ⇒ Unit end
 end
 
 (* [opposite]. *)
@@ -41,8 +43,8 @@ theorem signNeOpposite : ∀ (s : Sign) → Not (Id Sign s (opposite s)) ≔
   λ (s : Sign) →
     elim s at z -> Not (Id Sign z (opposite z))
     | negative ⇒ λ (h : Id Sign negative positive) →
-        h (λ (z : Sign) → IsPositive (opposite z)) ⋆
-    | positive ⇒ λ (h : Id Sign positive negative) → h IsPositive ⋆
+        h (λ (z : Sign) → IsPositive (opposite z)) unit
+    | positive ⇒ λ (h : Id Sign positive negative) → h IsPositive unit
     end
 end
 

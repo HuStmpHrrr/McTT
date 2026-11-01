@@ -10,6 +10,7 @@
 module Prelude›Data›Church›Properties (u : Level) where
 
 (* [S] is the successor, the function [toNat] iterates. *)
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ; succ as S)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -24,7 +25,7 @@ module Numerals where
 theorem toNatFromNat : ∀ (n : ℕ) → Eq (C.toNat (C.fromNat n)) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (C.toNat (C.fromNat x)) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -102,7 +103,7 @@ theorem lengthReplicate : ∀ (A : Type@{u}) (n : ℕ) (a : A) →
     Eq (C.length A (C.replicate A n a)) n ≔
   λ (A : Type@{u}) (n : ℕ) (a : A) →
     elim n at x -> Eq (C.length A (C.replicate A x a)) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -124,7 +125,7 @@ theorem sumReplicate : ∀ (n : ℕ) (c : ℕ) →
     Eq (C.sum (C.replicate ℕ n c)) (mult n c) ≔
   λ (n : ℕ) (c : ℕ) →
     elim n at x -> Eq (C.sum (C.replicate ℕ x c)) (mult x c)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         cong (λ (k : ℕ) → plus c k) (C.sum (C.replicate ℕ p c)) (mult p c)
           ih

@@ -1,11 +1,14 @@
 (* The booleans, an inductive type with the constructors [tt] and [ff], and
    their connectives.  The names [true] and [True] are taken: they are the
-   tokens of [⋆] and [⊤].
+   tokens of [unit] and [Unit].
 
    Each connective is defined by cases on its first argument, so it computes
    as soon as that argument is a constructor: [and tt b] is [b], [or ff b]
    is [b].  The laws are in [Prelude›Data›Bool›Properties]. *)
 module Prelude›Data›Bool where
+
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 
 inductive Bool : Type@0 where
 | tt
@@ -37,15 +40,15 @@ def eqb (a : Bool) (b : Bool) : Bool ≔
   elim a at z -> Bool | tt ⇒ b | ff ⇒ not b end
 end
 
-(* The proposition that a boolean is [tt]: [IsTrue tt] is [⊤] and
-   [IsTrue ff] is [⊥]. *)
+(* The proposition that a boolean is [tt]: [IsTrue tt] is [Unit] and
+   [IsTrue ff] is [Void]. *)
 def IsTrue (b : Bool) : Type@0 ≔
-  elim b at z -> Type@0 | tt ⇒ ⊤ | ff ⇒ ⊥ end
+  elim b at z -> Type@0 | tt ⇒ Unit | ff ⇒ Void end
 end
 
 (* The proposition that a boolean is [ff]. *)
 def IsFalse (b : Bool) : Type@0 ≔
-  elim b at z -> Type@0 | tt ⇒ ⊥ | ff ⇒ ⊤ end
+  elim b at z -> Type@0 | tt ⇒ Void | ff ⇒ Unit end
 end
 
 (* The conditional, into a type of any level [u]. *)
@@ -56,13 +59,13 @@ def if (A : Type@{u}) (b : Bool) (t : A) (e : A) : A ≔
   elim b at z -> A | tt ⇒ t | ff ⇒ e end
 end
 
-(* The conditional with delayed branches: [cond A b t e] is [t ⋆] when [b]
-   is [tt], and [e ⋆] when it is [ff].  The branches are functions of [⊤],
+(* The conditional with delayed branches: [cond A b t e] is [t unit] when [b]
+   is [tt], and [e unit] when it is [ff].  The branches are functions of [Unit],
    so only the chosen one is computed; a recursive program branches with
    [cond], since [if] would compute the recursive call in both cases. *)
-def cond (A : Type@{u}) (b : Bool) (t : ∀ (x : ⊤) → A) (e : ∀ (x : ⊤) → A) :
+def cond (A : Type@{u}) (b : Bool) (t : ∀ (x : Unit) → A) (e : ∀ (x : Unit) → A) :
     A ≔
-  (elim b at z -> (∀ (x : ⊤) → A) | tt ⇒ t | ff ⇒ e end) ⋆
+  (elim b at z -> (∀ (x : Unit) → A) | tt ⇒ t | ff ⇒ e end) unit
 end
 
 end

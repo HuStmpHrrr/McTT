@@ -1,0 +1,17 @@
+(* The empty type: an inductive type with no constructor, so it has no
+   element.  Eliminating an element of [Void] gives an element of any type:
+   [absurd], at every level [u], with its level-0 instance exported. *)
+module Prelude›Data›Void where
+
+inductive Void : Type@0 where end
+
+(* From an element of [Void], an element of any type [A] of [Type@{u}]. *)
+module Absurd (u : Level) where
+
+def absurd (A : Type@{u}) (e : Void) : A ≔ elim e at (z : Void) -> A end end
+
+end
+
+open Absurd 0l export (absurd)
+
+end

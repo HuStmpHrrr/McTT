@@ -11,6 +11,7 @@
 module Prelude›Data›W›Properties (u : Level) (A : Type@{u})
     (B : ∀ (a : A) → Type@{u}) where
 
+import Prelude›Data›Void use (Void)
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 import Prelude›Data›W use (W)
 open Prelude›Data›W.Ops as WO
@@ -75,10 +76,10 @@ module Emptiness where
 
 (* If every shape has a position, there is no tree: every node has a
    subtree, so a tree would
-   have an infinite descent, which [foldr] turns into a proof of [⊥]. *)
-theorem inhabitedEmpty : ∀ (b : ∀ (x : A) → B x) (w : T) → ⊥ ≔
+   have an infinite descent, which [foldr] turns into a proof of [Void]. *)
+theorem inhabitedEmpty : ∀ (b : ∀ (x : A) → B x) (w : T) → Void ≔
   λ (b : ∀ (x : A) → B x) (w : T) →
-    Op.foldr ⊥ (λ (x : A) (r : ∀ (p : B x) → ⊥) → r (b x)) w
+    Op.foldr Void (λ (x : A) (r : ∀ (p : B x) → Void) → r (b x)) w
 end
 
 end

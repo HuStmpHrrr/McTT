@@ -2,9 +2,10 @@
    integers of [Prelude›Algebra›Integers], up to [Same].  Integers are evaluated as a sign and a
    magnitude.  The laws proved once for every group solve equations,
    negate differences and multiples, and closed instances normalize to
-   [⋆]. *)
+   [unit]. *)
 module Groups where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Algebra›Integers
   use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative;
        Additive; AdditiveComm)
@@ -87,11 +88,11 @@ end
 
 end
 
-(* Closed instances normalize to [⋆].  The hypothesis of [solve] is
-   itself a closed instance of [Same], and [⋆] proves it. *)
-eval solve (ofNat 2) (ofNat 5) (ofNat 3) ⋆
+(* Closed instances normalize to [unit].  The hypothesis of [solve] is
+   itself a closed instance of [Same], and [unit] proves it. *)
+eval solve (ofNat 2) (ofNat 5) (ofNat 3) unit
 
-eval solve minusThree (ofNat 1) (pair 4 0) ⋆
+eval solve minusThree (ofNat 1) (pair 4 0) unit
 
 eval negateMinus (ofNat 3) minusThree
 

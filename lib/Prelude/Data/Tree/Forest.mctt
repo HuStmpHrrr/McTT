@@ -16,6 +16,7 @@
    laws are in [Prelude›Data›Tree›Forest›Properties]. *)
 module Prelude›Data›Tree›Forest where
 
+import Prelude›Data›Unit use (Unit; unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›MinMax use (max)
@@ -113,8 +114,8 @@ end
    block, marked [at]; the tree block comes first, as [Tree] is the first
    member, and its motive is unused. *)
 def toList (ts : F) : List u T ≔
-  elim ts with (z : T) -> ⊤
-  | node x us, h ⇒ ⋆
+  elim ts with (z : T) -> Unit
+  | node x us, h ⇒ unit
   at (z : F) -> List u T
   | nil ⇒ List.nil u T
   | cons t us, ht hus ⇒ List.cons u T t hus

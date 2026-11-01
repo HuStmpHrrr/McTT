@@ -2,6 +2,8 @@
    basic laws. *)
 module Prelude›Arith›Equality where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 
@@ -9,16 +11,16 @@ def Eq : ∀ (n : ℕ) (m : ℕ) → Type@0 ≔
   λ (n : ℕ) →
     elim n at y -> (∀ (m : ℕ) → Type@0)
     | zero ⇒ λ (m : ℕ) →
-        elim m at z -> Type@0 | zero ⇒ ⊤ | succ q, s ⇒ ⊥ end
+        elim m at z -> Type@0 | zero ⇒ Unit | succ q, s ⇒ Void end
     | succ p, r ⇒ λ (m : ℕ) →
-        elim m at z -> Type@0 | zero ⇒ ⊥ | succ q, s ⇒ r q end
+        elim m at z -> Type@0 | zero ⇒ Void | succ q, s ⇒ r q end
     end
 end
 
 theorem refl : ∀ (n : ℕ) → Eq n n ≔
   λ (n : ℕ) →
     elim n at x -> Eq x x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -32,7 +34,7 @@ theorem sym : ∀ (a : ℕ) (b : ℕ) (h : Eq a b) → Eq b a ≔
     elim a at x -> (∀ (b : ℕ) (h : Eq x b) → Eq b x)
     | zero ⇒ λ (b : ℕ) →
         elim b at z -> (∀ (h : Eq 0 z) → Eq z 0)
-        | zero ⇒ λ (h : ⊤) → h
+        | zero ⇒ λ (h : Unit) → h
         | succ q, s ⇒ λ (h : Eq 0 (succ q)) → absurd (Eq (succ q) 0) h
         end
     | succ p, ih ⇒ λ (b : ℕ) →
@@ -49,7 +51,7 @@ theorem trans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Eq a b) (hbc : Eq b c) 
     elim a at x -> (∀ (b : ℕ) (c : ℕ) (hab : Eq x b) (hbc : Eq b c) → Eq x c)
     | zero ⇒ λ (b : ℕ) →
         elim b at z -> (∀ (c : ℕ) (hab : Eq 0 z) (hbc : Eq z c) → Eq 0 c)
-        | zero ⇒ λ (c : ℕ) (hab : ⊤) (hbc : Eq 0 c) → hbc
+        | zero ⇒ λ (c : ℕ) (hab : Unit) (hbc : Eq 0 c) → hbc
         | succ q, s ⇒ λ (c : ℕ) (hab : Eq 0 (succ q)) (hbc : Eq (succ q) c) →
             absurd (Eq 0 c) hab
         end
@@ -80,7 +82,7 @@ theorem cong : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (b : ℕ) (h : Eq a b) 
                           Eq (g x) (g b))
      | zero ⇒ λ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) →
          elim b at z -> (∀ (h : Eq 0 z) → Eq (g 0) (g z))
-         | zero ⇒ λ (h : ⊤) → refl (g 0)
+         | zero ⇒ λ (h : Unit) → refl (g 0)
          | succ q, s ⇒ λ (h : Eq 0 (succ q)) → absurd (Eq (g 0) (g (succ q))) h
          end
      | succ p, ih ⇒ λ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) →
@@ -103,7 +105,7 @@ def transport : ∀ (P : ∀ (n : ℕ) → Type@{u}) (x : ℕ) (y : ℕ)
                           (h : Eq v y) (pv : Q v) → Q y)
      | zero ⇒ λ (Q : ∀ (n : ℕ) → Type@{u}) (y : ℕ) →
          elim y at w -> (∀ (h : Eq 0 w) (pv : Q 0) → Q w)
-         | zero ⇒ λ (h : ⊤) (pv : Q 0) → pv
+         | zero ⇒ λ (h : Unit) (pv : Q 0) → pv
          | succ q, s ⇒ λ (h : Eq 0 (succ q)) (pv : Q 0) → absurd (Q (succ q)) h
          end
      | succ p, ih ⇒ λ (Q : ∀ (n : ℕ) → Type@{u}) (y : ℕ) →

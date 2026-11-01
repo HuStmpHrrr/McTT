@@ -3,6 +3,7 @@
    proved by induction on a list, with a step case through [plus x]. *)
 module Prelude›Data›List›Nat›Properties where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -41,7 +42,7 @@ end
 theorem sumReverse : ∀ (l : NL) → Eq (sum (Op.reverse l)) (sum l) ≔
   λ (l : NL) →
     elim l at z -> Eq (sum (Op.reverse z)) (sum z)
-    | nil ⇒ ⋆
+    | nil ⇒ unit
     | cons x xs, ih ⇒
         let r : ℕ ≔ sum (Op.reverse xs) in
         trans (sum (Op.append (Op.reverse xs) (NL.cons x NL.nil)))

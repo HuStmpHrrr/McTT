@@ -25,6 +25,8 @@ module Tutorial where
    which binds it as the builtin natural numbers: the token ℕ and the
    numerals denote it. Its constructors zero and succ are members of Nat,
    and the unit exports them, so they are imported by name. *)
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (zero; succ)
 import Prelude›Arith›Equality use (Eq; refl)
 import Prelude›Function›Iter as Iter
@@ -38,7 +40,7 @@ import Prelude›Function›Iter as Iter
    anywhere; this file uses the Unicode ones, which the checker also prints:
      →  ->      ⇒  =>      ≔  :=      ›  ::
      λ  fun     ∀  forall (or Π)
-     ⊤  True    ⊥  False   ⋆  true    ω  omega
+     Unit  True    Void  False   unit  true    ω  omega
    Identifiers are ASCII letters, so the symbols need no spaces around
    them: [λ(x:ℕ)→x] is [fun (x : ℕ) -> x]. *)
 
@@ -77,22 +79,22 @@ eval elim 2 at y → Type@0
      | succ p, r ⇒ ∀ (x : ℕ) → r
      end
 
-(* 5. Unit and empty types. ⊤ has the one element ⋆; ⊥ has none.
-   [exfalso h return x . P] eliminates h : ⊥ into any type P. *)
+(* 5. The unit and empty types, from the library: [Unit] has the one element
+   [unit]; [Void] has none, and eliminating an h : Void gives any type. *)
 
-eval ⋆ : ⊤
+eval unit : Unit
 
-eval λ (h : ⊥) → exfalso h return x . ℕ
+eval λ (h : Void) → elim h at (z : Void) -> ℕ end
 
 (* 6. Local definitions. [let x : A ≔ a; y ≔ b in M end] binds each name
    in the later bindings and in M. A binding is transparent, so its value
    is known while checking the rest; an unannotated one has its type
-   inferred. [Eq n m], imported above, computes to ⊤ exactly when n and
-   m are equal, so [⋆] proves [Eq 3 3]. *)
+   inferred. [Eq n m], imported above, computes to Unit exactly when n and
+   m are equal, so [unit] proves [Eq 3 3]. *)
 
 eval let n : ℕ ≔ 2;
          f ≔ λ (x : ℕ) → succ x;
-         p : Eq (f n) 3 ≔ ⋆
+         p : Eq (f n) 3 ≔ unit
      in f (f n)
      end
 
@@ -130,9 +132,9 @@ theorem doubleTwo : Eq (double 2) 4 ≔ refl 4 end
 
 lemma twoDouble : Eq 4 (double 2) ≔ refl 4 end
 
-fact factTrue : ⊤ ≔ ⋆ end
+fact factTrue : Unit ≔ unit end
 
-remark remarkTrue : ⊤ ≔ ⋆ end
+remark remarkTrue : Unit ≔ unit end
 
 let one : ℕ ≔ 1 end
 
@@ -142,7 +144,7 @@ eval double two
 
 (* A keyword takes only the modifiers it does not imply: [private theorem]
    and [abstract let] are allowed; fact and remark take none. *)
-private theorem privateThm : Eq 1 1 ≔ ⋆ end
+private theorem privateThm : Eq 1 1 ≔ unit end
 
 abstract let opaqueLet : ℕ ≔ 3 end
 
@@ -653,7 +655,7 @@ eval square NatAlgebra.multiplicative.monoid 7
 eval square pointwise succ 0
 
 (* The numbers are compared by [Eq], which computes, so a law at closed
-   numbers is [⊤] and its proof normalizes to [⋆]. *)
+   numbers is [Unit] and its proof normalizes to [unit]. *)
 eval NatAlgebra.additive.comm 2 3
 
 (* The laws derived once for every monoid are a unit over the monoid:

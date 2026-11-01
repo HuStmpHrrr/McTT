@@ -1,8 +1,9 @@
 (* A client of [Prelude›Arith›Binomial] and [Prelude›Arith›Fibonacci]: the first
    rows of Pascal's triangle and of the Fibonacci numbers, and closed instances
-   of their laws, which normalize to [⋆]. *)
+   of their laws, which normalize to [unit]. *)
 module Combinatorics where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Arith›Binomial use (choose)
 import Prelude›Arith›Binomial›Properties.Basic
   use (chooseZero; chooseSelf; chooseOne; chooseOver; pascal)
@@ -66,7 +67,7 @@ eval fib 10
 (* [fib 0 + ... + fib 9], which is [fib 11] minus one. *)
 eval sumTo fib 10
 
-(* A proof of a closed proposition normalizes to [⋆], of type [⊤]. The numbers
+(* A proof of a closed proposition normalizes to [unit], of type [Unit]. The numbers
    stay small: checking [Eq n n] takes time exponential in [n]. *)
 eval chooseZero 5
 
@@ -74,13 +75,13 @@ eval chooseSelf 5
 
 eval chooseOne 5
 
-eval chooseOver 3 5 ⋆
+eval chooseOver 3 5 unit
 
 eval pascal 4 2
 
 eval chooseSymm 2 3
 
-eval chooseSymmSub 5 2 ⋆
+eval chooseSymmSub 5 2 unit
 
 eval rowSum 4
 

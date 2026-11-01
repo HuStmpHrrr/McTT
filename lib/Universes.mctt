@@ -5,6 +5,8 @@
    [0l], where its old [Type@0] version could not go. *)
 module Universes where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Logic
 open Prelude›Logic.Conj as Cj
 open Prelude›Logic.Exist as Ex
@@ -58,7 +60,7 @@ eval Arrow 0l 1l ℕ Type@0
 
 eval Pi 1l 1l Type@0 (λ (A : Type@0) → Endo 0l A)
 
-eval Fun 0l 3 ℕ ⊤
+eval Fun 0l 3 ℕ Unit
 
 (* The binary type operators, and an element: the function type. *)
 eval Fun 1l 2 Type@0 Type@0
@@ -76,7 +78,7 @@ eval up 0l 2l ℕ 3
 (* 3. Pairs and existence one level up.  A pair of types is a conjunction
    at [1l]; it lives in [Type@2]. *)
 
-def natAndTrue : Cj.And 1l Type@0 Type@0 ≔ Cj.andIntro 1l Type@0 Type@0 ℕ ⊤ end
+def natAndTrue : Cj.And 1l Type@0 Type@0 ≔ Cj.andIntro 1l Type@0 Type@0 ℕ Unit end
 
 eval Cj.andFst 1l Type@0 Type@0 natAndTrue
 
@@ -94,7 +96,7 @@ eval first 1l Type@0 (λ (A : Type@0) → A) pointedNat
 def Sums (m : ℕ) : Type@1 ≔ Ex.Exists 0l (λ (n : ℕ) → Eq (plus m n) 5) end
 
 def twoThree : Ex.Exists 1l Sums ≔
-  Ex.existsIntro 1l Sums 2 (Ex.existsIntro 0l (λ (n : ℕ) → Eq (plus 2 n) 5) 3 ⋆)
+  Ex.existsIntro 1l Sums 2 (Ex.existsIntro 0l (λ (n : ℕ) → Eq (plus 2 n) 5) 3 unit)
 end
 
 (* The outer witness, then the inner one. *)
@@ -111,14 +113,14 @@ eval Ex.existsElim 1l Sums ℕ twoThree
 module Types ≔ V 1l Type@0
 
 def threeTypes : Types.Vec 3 ≔
-  Types.cons 2 ℕ (Types.cons 1 ⊤ (Types.cons 0 ⊥ Types.nil))
+  Types.cons 2 ℕ (Types.cons 1 Unit (Types.cons 0 Void Types.nil))
 end
 
-eval Types.nth 3 threeTypes 1 ⋆
+eval Types.nth 3 threeTypes 1 unit
 
 eval Types.last 2 threeTypes
 
-eval Types.map Type@0 (λ (A : Type@0) → ∀ (a : A) → A) 3 threeTypes 0 ⋆
+eval Types.map Type@0 (λ (A : Type@0) → ∀ (a : A) → A) 3 threeTypes 0 unit
 
 (* The type former [A → A], iterated twice from [ℕ]. *)
 eval Iter.iter 1l Type@0 (λ (A : Type@0) → ∀ (a : A) → A) 2 ℕ
@@ -136,7 +138,7 @@ eval C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 3))
 
 (* A Church list of types, at [1l]. *)
 eval C.length 1l Type@0
-       (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 ⊤ (C.nil 1l Type@0)))
+       (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 Unit (C.nil 1l Type@0)))
 
 eval C.sum 0l
        (C.append 0l ℕ (C.replicate 0l ℕ 3 4) (C.cons 0l ℕ 5 (C.nil 0l ℕ)))

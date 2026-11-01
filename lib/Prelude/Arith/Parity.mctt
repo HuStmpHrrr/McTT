@@ -3,6 +3,8 @@
    distribution of [double] over [plus]. *)
 module Prelude›Arith›Parity where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 open Prelude›Logic.Negation as Neg
@@ -42,7 +44,7 @@ module Laws where
 theorem evenDouble : ∀ (n : ℕ) → Even (double n) ≔
   λ (n : ℕ) →
     elim n at x -> Even (double x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -59,7 +61,7 @@ end
 def evenOrOdd : ∀ (n : ℕ) → Or (Even n) (Odd n) ≔
   λ (n : ℕ) →
     elim n at x -> Or (Even x) (Odd x)
-    | zero ⇒ orInl (Even 0) (Odd 0) ⋆
+    | zero ⇒ orInl (Even 0) (Odd 0) unit
     | succ p, ih ⇒ orSwap (Even p) (Odd p) ih
     end
 end
@@ -68,8 +70,8 @@ end
    negation is the one at level [1l]. *)
 theorem notEvenAndOdd : ∀ (n : ℕ) → Neg.Not 1l (And (Even n) (Odd n)) ≔
   λ (n : ℕ) →
-    elim n at x -> (∀ (h : And (Even x) (Odd x)) → ⊥)
-    | zero ⇒ λ (h : And ⊤ ⊥) → h ⊥ (λ (a : ⊤) (b : ⊥) → b)
+    elim n at x -> (∀ (h : And (Even x) (Odd x)) → Void)
+    | zero ⇒ λ (h : And Unit Void) → h Void (λ (a : Unit) (b : Void) → b)
     | succ p, ih ⇒ λ (h : And (Odd p) (Even p)) →
         ih (andSwap (Odd p) (Even p) h)
     end
@@ -85,9 +87,9 @@ theorem evenPlus : ∀ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
                    (∀ (h : Odd a) → Odd (plus a b)) ≔
           elim a at x -> And (∀ (h : Even x) → Even (plus x b))
                                 (∀ (h : Odd x) → Odd (plus x b))
-          | zero ⇒ andIntro (∀ (h : ⊤) → Even b) (∀ (h : ⊥) → Odd b)
-                      (λ (h : ⊤) → hb)
-                      (λ (h : ⊥) → absurd (Odd b) h)
+          | zero ⇒ andIntro (∀ (h : Unit) → Even b) (∀ (h : Void) → Odd b)
+                      (λ (h : Unit) → hb)
+                      (λ (h : Void) → absurd (Odd b) h)
           | succ p, ih ⇒ andSwap (∀ (h : Even p) → Even (plus p b))
                                  (∀ (h : Odd p) → Odd (plus p b)) ih
           end
@@ -100,7 +102,7 @@ end
 theorem doublePlus : ∀ (n : ℕ) → Eq (double n) (plus n n) ≔
   λ (n : ℕ) →
     elim n at x -> Eq (double x) (plus x x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         trans (succ (double p)) (succ (plus p p)) (plus p (succ p)) ih
           (sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p))

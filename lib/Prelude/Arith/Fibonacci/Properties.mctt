@@ -2,6 +2,7 @@
    positivity, monotonicity, the sum identity and the addition formula. *)
 module Prelude›Arith›Fibonacci›Properties where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong; transport)
 import Prelude›Arith›Plus use (plus)
@@ -53,9 +54,9 @@ end
 (* The first values and the recurrence. *)
 module Basic where
 
-theorem fibZero : Eq (fib 0) 0 ≔ ⋆ end
+theorem fibZero : Eq (fib 0) 0 ≔ unit end
 
-theorem fibOne : Eq (fib 1) 1 ≔ ⋆ end
+theorem fibOne : Eq (fib 1) 1 ≔ unit end
 
 (* The Fibonacci recurrence. *)
 theorem fibSucc : ∀ (n : ℕ) →
@@ -72,14 +73,14 @@ module Growth where
 
 (* Every Fibonacci number after [fib 0] is positive. *)
 theorem fibPos : ∀ (n : ℕ) → Lt 0 (fib (succ n)) ≔
-  λ (n : ℕ) → FibFrom.positive n 0 1 ⋆
+  λ (n : ℕ) → FibFrom.positive n 0 1 unit
 end
 
 (* The Fibonacci numbers do not decrease. *)
 theorem fibMono : ∀ (n : ℕ) → Le (fib n) (fib (succ n)) ≔
   λ (n : ℕ) →
     elim n at x -> Le (fib x) (fib (succ x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         transport (λ (y : ℕ) → Le (fib (succ p)) y)
           (plus (fib (succ p)) (fib p)) (fib (succ (succ p)))
@@ -108,7 +109,7 @@ module Identities where
 theorem fibSum : ∀ (n : ℕ) → Eq (plus (sumTo fib n) 1) (fib (succ n)) ≔
   λ (n : ℕ) →
     elim n at x -> Eq (plus (sumTo fib x) 1) (fib (succ x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let f ≔ fib p;
             g ≔ fib (succ p);

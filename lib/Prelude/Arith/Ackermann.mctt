@@ -2,6 +2,7 @@
    defining equations and closed forms for [ack 1] and [ack 2]. *)
 module Prelude›Arith›Ackermann where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
@@ -43,7 +44,7 @@ module Rows where
 theorem ackOne : ∀ (n : ℕ) → Eq (ack 1 n) (succ (succ n)) ≔
   λ (n : ℕ) →
     elim n at x -> Eq (ack 1 x) (succ (succ x))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -53,7 +54,7 @@ end
 theorem ackTwo : ∀ (n : ℕ) → Eq (ack 2 n) (succ (succ (succ (plus n n)))) ≔
   λ (n : ℕ) →
     elim n at x -> Eq (ack 2 x) (succ (succ (succ (plus x x))))
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let prev ≔ ack 2 p;
             step : Eq (ack 1 prev) (succ (succ prev)) ≔ ackOne prev;

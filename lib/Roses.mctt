@@ -71,7 +71,7 @@ end
 
 eval leaves example
 
-(* Closed instances of the laws: each normalizes to [⋆]. *)
+(* Closed instances of the laws: each normalizes to [unit]. *)
 eval P.Maps.sizeMap ℕ succ example
 eval P.Flatten.lengthFlatten example
 eval P.Flatten.lengthFlattenForest (children example)

@@ -73,28 +73,36 @@ let%expect_test "an unascribed eval infers its type" =
 let%expect_test "the ASCII spellings parse and print in Unicode" =
   let _ = main_of_body
     "def t : True := true end \
-     def f : forall (b : False) -> Nat := fun (b : False) -> exfalso b return y . Nat end \
+     def f : forall (b : False) -> Nat := fun (b : False) -> exfalso b return Nat end \
+     def c : forall (P : Prop) (p : P) -> /\\ (x : P) -> P := fun (P : Prop) (p : P) -> conj (p : P) p end \
      eval elim 2 at y -> Nat | zero => 0 | succ n, r => succ r end \
-     eval t eval f" in
+     eval t eval f eval c" in
   [%expect {|
     Evaluate elim 2 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
     Evaluate t --> ⋆ : ⊤
-    Evaluate f --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
+    Evaluate f --> λ (x1 : ⊥) → exfalso ⋆ return ℕ : ∀ (x1 : ⊥) → ℕ
+    Evaluate c --> ⋆ : ∀ (x1 : Prop)
+                         (x2 : x1)
+                         → ∧ (x3 : x1) → x1
     |}]
 
 let%expect_test "each Unicode spelling parses" =
   let _ = main_of_body
-    "def t : ⊤ ≔ ⋆ end \
-     def f : ∀ (b : ⊥) → ℕ ≔ λ (b : ⊥) → exfalso b return y . ℕ end \
+    "def t : ⊤ ≔ true end \
+     def f : ∀ (b : ⊥) → ℕ ≔ λ (b : ⊥) → exfalso b return ℕ end \
      def g : Π (x : ℕ) → ℕ ≔ λ (x : ℕ) → x end \
      def u : Type@ω ≔ Type@0 end \
+     def c : ∀ (P : Prop) (p : P) → ∧ (x : P) → P ≔ λ (P : Prop) (p : P) → conj (p : P) p end \
      eval elim 2 at y -> ℕ | zero ⇒ 0 | succ n, r ⇒ succ r end \
-     eval t eval f eval g" in
+     eval t eval f eval g eval c" in
   [%expect {|
     Evaluate elim 2 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
     Evaluate t --> ⋆ : ⊤
-    Evaluate f --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
+    Evaluate f --> λ (x1 : ⊥) → exfalso ⋆ return ℕ : ∀ (x1 : ⊥) → ℕ
     Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ
+    Evaluate c --> ⋆ : ∀ (x1 : Prop)
+                         (x2 : x1)
+                         → ∧ (x3 : x1) → x1
     |}]
 
 (* Identifiers are ASCII, so no Unicode symbol needs a space. *)
@@ -175,17 +183,17 @@ let%expect_test "SimpleRec.mctt works" =
 let%expect_test "TrueFalse.mctt works" =
   let _ = main_of_example "TrueFalse.mctt" in
   [%expect {|
-    Evaluate ⋆ --> ⋆ : ⊤
-    Evaluate λ (x1 : ⊤) → x1 --> λ (x1 : ⊤) → ⋆ : ∀ (x1 : ⊤) → ⊤
-    Evaluate λ (x1 : ⊥) → exfalso x1 return x2 . ℕ
-      --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
+    Evaluate true --> ⋆ : ⊤
+    Evaluate λ (x1 : ⊤) → x1 --> ⋆ : ∀ (x1 : ⊤) → ⊤
+    Evaluate λ (x1 : ⊥) → exfalso x1 return ℕ --> λ (x1 : ⊥) → exfalso ⋆ return ℕ
+      : ∀ (x1 : ⊥) → ℕ
     |}]
 
 let%expect_test "LetTrueFalse.mctt works" =
   let _ = main_of_example "LetTrueFalse.mctt" in
   [%expect {|
-    Evaluate let x1 : ⊤ ≔ ⋆;
-                 x2 : ∀ (x3 : ⊥) → ℕ ≔ λ (x4 : ⊥) → exfalso x4 return x5 . ℕ
+    Evaluate let x1 : ⊤ ≔ true;
+                 x2 : ∀ (x3 : ⊥) → ℕ ≔ λ (x4 : ⊥) → exfalso x4 return ℕ
              in x1
              end --> ⋆ : ⊤
     |}]
@@ -193,24 +201,142 @@ let%expect_test "LetTrueFalse.mctt works" =
 let%expect_test "lib/NatTheory.mctt" =
   let _ = main_of_lib "NatTheory.mctt" in
   [%expect {|
-    Evaluate plusComm 2 3 --> ⋆ : ⊤
-    Evaluate sym 4 4 (refl 4) --> ⋆ : ⊤
-    Evaluate zeroNeSucc 5 --> λ (x1 : ⊥) → Prelude›Arith›Equality.zeroNeSucc 5 x1
-      : ∀ (x1 : ⊥) → ⊥
-    Evaluate iterSucc 3 4 --> ⋆ : ⊤
+    Evaluate plusComm 2 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sym 4 4 (refl 4) --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate zeroNeSucc 5
+      --> λ (x1 : Prelude›Data›Void.Void)
+            → Prelude›Arith›Equality.zeroNeSucc 5 x1
+      : ∀ (x1 : Prelude›Data›Void.Void) → Prelude›Data›Void.Void
+    Evaluate iterSucc 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate Iter.iter 0l ℕ (λ (x1 : ℕ) → plus x1 x1) 3 1 --> 8 : ℕ
     Evaluate let module M1 ≔ Iter 0l ℕ (λ (x1 : ℕ) → plus x1 x1);
-                 x2 ≔ 2;
-                 x3 : Eq (M1.iter x2 1) 4 ≔ ⋆
+                 x2 : ℕ ≔ 2;
+                 x3 : Eq (M1.iter x2 1) 4 ≔ unit
              in x3
-             end --> ⋆ : ⊤
+             end --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "zero is not of True" =
   let _ = main_of_body "eval zero : True" in
   [%expect {| Error: 0 is not of type ⊤ |}]
 
-let%expect_test "exfalso needs a motive" =
+(* The surface forms of propositions: [Prop], [∧], [conj], [left],
+   [right], [true] and [exfalso], each accepted and rejected once. *)
+let%expect_test "Prop is a type of Type@0" =
+  let _ = main_of_body "eval Prop eval (forall (n : Nat) -> True) : Prop" in
+  [%expect {|
+    Evaluate Prop --> Prop : Type@0
+    Evaluate ∀ (x1 : ℕ) → ⊤ --> ∀ (x1 : ℕ) → ⊤ : Prop
+    |}]
+
+let%expect_test "a type of a universe is not a proposition" =
+  let _ = main_of_body "def P : Prop := Nat end" in
+  [%expect {| Error: the body of P, ℕ, is not of type Prop |}]
+
+let%expect_test "a forall into Prop is a proposition, into a universe a type" =
+  let _ = main_of_body "eval (forall (P : Prop) (p : P) -> P) : Prop eval (forall (n : Nat) -> Nat) : Type@0" in
+  [%expect {|
+    Evaluate ∀ (x1 : Prop)
+               (x2 : x1)
+               → x1 --> ∀ (x1 : Prop)
+                          (x2 : x1)
+                          → x1 : Prop
+    Evaluate ∀ (x1 : ℕ) → ℕ --> ∀ (x1 : ℕ) → ℕ : Type@0
+    |}]
+
+let%expect_test "a forall into a proposition is no type of a universe" =
+  let _ = main_of_body "eval (forall (n : Nat) -> True) : Type@0" in
+  [%expect {| Error: ∀ (x1 : ℕ) → ⊤ is not of type Type@0 |}]
+
+let%expect_test "a conjunction and its proofs" =
+  let _ = main_of_body
+    "def swap (P : Prop) (Q : Prop) (h : /\\ (p : P) -> Q) : /\\ (q : Q) -> P := conj (right h : Q) (left h) end \
+     eval swap True True (conj (true : True) true)" in
+  [%expect {| Evaluate swap ⊤ ⊤ (conj (true : ⊤) true) --> ⋆ : ∧ (x1 : ⊤) → ⊤ |}]
+
+let%expect_test "the sides of a conjunction are propositions" =
+  let _ = main_of_body "eval /\\ (n : Nat) -> True" in
+  [%expect {| Error: ∧ (x1 : ℕ) → ⊤ has no inferable type |}]
+
+let%expect_test "a conjunction's parameter is in parentheses" =
+  let _ = main_of_body "eval /\\ p -> True" in
+  [%expect {|
+    Error: on "p" (at line 2, column 27 - line 2, column 28): A conjunction is
+      written "/\ (h : P) -> Q": a parameter in parentheses is expected.
+    |}]
+
+let%expect_test "conj needs the proposition of its first component" =
+  let _ = main_of_body "def f (P : Prop) (p : P) : /\\ (x : P) -> P := conj p p end" in
+  [%expect {|
+    Error: on "p" (at line 2, column 70 - line 2, column 71): A proof of a
+      conjunction gives its first component with its proposition: "conj (m : P)
+      q".
+    |}]
+
+let%expect_test "conj checks its components" =
+  let _ = main_of_body "def f (P : Prop) (Q : Prop) (p : P) : /\\ (x : P) -> Q := conj (p : P) p end" in
+  [%expect {|
+    Error: the body of f, λ (x1 : Prop)
+                            (x2 : Prop)
+                            (x3 : x1)
+                            → conj (x3 : x1) x3, is not of type
+      ∀ (x1 : Prop)
+        (x2 : Prop)
+        (x3 : x1)
+        → ∧ (x4 : x1) → x2
+    |}]
+
+let%expect_test "left and right need a proof of a conjunction" =
+  let _ = main_of_body "eval left 3" in
+  [%expect {| Error: left 3 has no inferable type |}];
+  let _ = main_of_body "eval right 3" in
+  [%expect {| Error: right 3 has no inferable type |}]
+
+let%expect_test "true proves True" =
+  let _ = main_of_body "def t : True := true end eval t" in
+  [%expect {| Evaluate t --> ⋆ : ⊤ |}]
+
+let%expect_test "true proves only True" =
+  let _ = main_of_body "def f (P : Prop) (h : P) : P := true end" in
+  [%expect {|
+    Error: the body of f, λ (x1 : Prop)
+                            (x2 : x1)
+                            → true, is not of type ∀ (x1 : Prop)
+                                                     (x2 : x1)
+                                                     → x1
+    |}]
+
+let%expect_test "the proof a normal form prints cannot be written" =
+  let _ = main_of_body "eval \xe2\x8b\x86" in
+  [%expect {| Error: "⋆" at line 2, column 24 is the proof a normal form prints and cannot be written: the proof of True is "true" |}]
+
+let%expect_test "exfalso eliminates a proof of False into any type" =
+  let _ = main_of_body "eval fun (f : False) -> exfalso f return Nat" in
+  [%expect {|
+    Evaluate λ (x1 : ⊥) → exfalso x1 return ℕ --> λ (x1 : ⊥) → exfalso ⋆ return ℕ
+      : ∀ (x1 : ⊥) → ℕ
+    |}]
+
+let%expect_test "exfalso needs a proof of False" =
+  let _ = main_of_body "eval exfalso true return Nat" in
+  [%expect {| Error: exfalso true return ℕ has no inferable type |}]
+
+let%expect_test "a module parameter is no proposition" =
+  let _ = main_of_body "module M (P : Prop) (h : P) where end" in
+  [%expect {| Error: a parameter of M is a proposition: the parameters of a module must be types of a universe |}]
+
+let%expect_test "a nested occurrence at an instance holding a proof is rejected" =
+  let _ = main_of_body
+    "record Pos : Type@0 where n : Nat; pos : True end \
+     inductive V (p : Pos) (X : Type@0) : Type@0 where | v (x : X) end \
+     inductive T : Type@0 where | leaf | node (h : True) (c : V (record Pos where n := 0; pos := h end) T) end" in
+  [%expect {| Error: the argument c of node nests T at an instance that holds a proof, which is not supported |}]
+
+let%expect_test "exfalso needs its target type" =
   let _ = main_of_body "eval exfalso f end" in
   [%expect {|
     Error: on "end" (at line 2, column 34 - line 2, column 37): Either an
@@ -395,26 +521,29 @@ let%expect_test "SimpleLet.mctt works" =
 
 let%expect_test "an unannotated let infers the type of its definiens" =
   let _ = main_of_body "eval let x := 0 in succ x end" in
-  [%expect {| Evaluate let x1 ≔ 0 in succ x1 end --> 1 : ℕ |}]
+  [%expect {| Evaluate let x1 : ℕ ≔ 0 in succ x1 end --> 1 : ℕ |}]
 
 let%expect_test "annotated and unannotated bindings mix in one let" =
   let _ = main_of_body
     "eval let A : Type@0 := Nat; z := 0; f := fun (n : A) -> succ z in f z end" in
   [%expect {|
-    Evaluate let A1 : Type@0 ≔ ℕ; x1 ≔ 0; x2 ≔ λ (x3 : A1) → succ x1 in x2 x1 end
-      --> 1 : ℕ
+    Evaluate let A1 : Type@0 ≔ ℕ;
+                 x1 : ℕ ≔ 0;
+                 x2 : ∀ (x3 : ℕ) → ℕ ≔ λ (x4 : A1) → succ x1
+             in x2 x1
+             end --> 1 : ℕ
     |}]
 
 let%expect_test "an unannotated let's body may need its delta-equation" =
   let _ = main_of_body "eval let A := Nat in fun (a : A) -> succ a end" in
   [%expect {|
-    Evaluate let x1 ≔ ℕ in λ (x2 : x1) → succ x2 end --> λ (x1 : ℕ) → succ x1
-      : ∀ (x1 : ℕ) → ℕ
+    Evaluate let A1 : Type@0 ≔ ℕ in λ (x1 : A1) → succ x1 end
+      --> λ (x1 : ℕ) → succ x1 : ∀ (x1 : ℕ) → ℕ
     |}]
 
 let%expect_test "an unannotated let with an ill-typed body is rejected" =
   let _ = main_of_body "eval let A := Nat in succ A end" in
-  [%expect {| Error: let x1 ≔ ℕ in succ x1 end has no inferable type |}]
+  [%expect {| Error: let A1 : Type@0 ≔ ℕ in succ A1 end has no inferable type |}]
 
 let%expect_test "an unannotated local definition needs its body" =
   let _ = main_of_body "eval let x := in x end" in
@@ -635,7 +764,7 @@ let%expect_test "SortedLevels.mctt works" =
     Evaluate length ω PolyId fs --> 2 : ℕ
     Evaluate headOr ω PolyId twice fs 0l ℕ 5 --> 5 : ℕ
     Evaluate length ω+1 Type@ω ts --> 4 : ℕ
-    Evaluate headOr ω+1 Type@ω ⊤ ts --> ℕ : Type@ω
+    Evaluate headOr ω+1 Type@ω Type@0 ts --> ℕ : Type@ω
     |}]
 
 let%expect_test "Universes.mctt works" =
@@ -982,7 +1111,7 @@ let%expect_test "the level of a universe is a level: eval" =
       write 5l for the level 5
     |}];
   let _ = main_of_body "eval Nat : Type@{true}" in
-  [%expect {| Error: ⋆ is not of type Level@n for any n (the level of Type@{⋆}) |}];
+  [%expect {| Error: true is not of type Level@n for any n (the level of Type@{true}) |}];
   let _ = main_of_body "eval Nat : Type@{Nat}" in
   [%expect {| Error: ℕ is not of type Level@n for any n (the level of Type@{ℕ}) |}]
 
@@ -1345,8 +1474,10 @@ let%expect_test "lib/Lists.mctt" =
     Evaluate Tagged.snd (Tagged.pair tt 3) --> 3 : ℕ
     Evaluate (Tagged.pair ff ff).snd --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
-    Evaluate lengthAppend oneTwoThree oneTwoThree --> ⋆ : ⊤
-    Evaluate sumReverse oneTwoThree --> ⋆ : ⊤
+    Evaluate lengthAppend oneTwoThree oneTwoThree
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate sumReverse oneTwoThree --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate reverseReverse oneTwoThree
       --> λ (x1 : ∀ (x2 : Prelude›Data›List.List 0l ℕ) → Type@0)
             (x3 : x1
@@ -1392,7 +1523,8 @@ let%expect_test "lib/DataTypes.mctt" =
       : Prelude›Data›Ordering.Ordering
     Evaluate thenCmp (compare 2 2) (flip (compare 1 4))
       --> Prelude›Data›Ordering.Ordering.greater : Prelude›Data›Ordering.Ordering
-    Evaluate compareSpec 3 5 --> ⋆ : ⊤
+    Evaluate compareSpec 3 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate total (Th.swap 0l ℕ ℕ (These.these 0l ℕ ℕ 2 3)) --> 5 : ℕ
     Evaluate total (These.that 0l ℕ ℕ 4) --> 4 : ℕ
     Evaluate N.last oneToFour --> 4 : ℕ
@@ -1405,7 +1537,8 @@ let%expect_test "lib/DataTypes.mctt" =
       --> Prelude›Data›List.List.cons 0l ℕ 2
             (Prelude›Data›List.List.cons 0l ℕ 1
               (Prelude›Data›List.List.nil 0l ℕ)) : Prelude›Data›List.List 0l ℕ
-    Evaluate TP.Counts.leavesNodes sample --> ⋆ : ⊤
+    Evaluate TP.Counts.leavesNodes sample
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate parity 7 --> Prelude›Data›Parity.Parity.odd
       : Prelude›Data›Parity.Parity
     Evaluate toSign (parity 4) --> Prelude›Data›Sign.Sign.positive
@@ -1417,13 +1550,15 @@ let%expect_test "lib/DataTypes.mctt" =
     Evaluate mul (negsuc 1) (negsuc 2) --> Prelude›Data›Integer.Int.pos 6
       : Prelude›Data›Integer.Int
     Evaluate abs (mul (pos 3) (negsuc 3)) --> 12 : ℕ
-    Evaluate absMul (pos 2) (negsuc 2) --> ⋆ : ⊤
+    Evaluate absMul (pos 2) (negsuc 2)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate fromNat 6
       --> Prelude›Data›Binary.Bin.doubleSucc
             (Prelude›Data›Binary.Bin.doubleSucc Prelude›Data›Binary.Bin.zero)
       : Prelude›Data›Binary.Bin
     Evaluate toNat (Bn.add (fromNat 13) (fromNat 22)) --> 35 : ℕ
-    Evaluate toNatAdd (fromNat 6) (fromNat 7) --> ⋆ : ⊤
+    Evaluate toNatAdd (fromNat 6) (fromNat 7)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate wToNat (wsucc (wsucc (wsucc wzero))) --> 3 : ℕ
     Evaluate WO.head 0l Bool Arity (wsucc wzero) --> Prelude›Data›Bool.Bool.tt
       : Prelude›Data›Bool.Bool
@@ -1434,41 +1569,64 @@ let%expect_test "lib/Arithmetic.mctt" =
   [%expect {|
     Evaluate mult 6 7 --> 42 : ℕ
     Evaluate plus (mult 3 4) (mult 2 5) --> 22 : ℕ
-    Evaluate plusAssoc 1 2 3 --> ⋆ : ⊤
-    Evaluate multComm 3 4 --> ⋆ : ⊤
-    Evaluate multAssoc 2 3 4 --> ⋆ : ⊤
-    Evaluate multDistribLeft 2 3 4 --> ⋆ : ⊤
-    Evaluate multDistribRight 2 3 4 --> ⋆ : ⊤
-    Evaluate cong (λ (x1 : ℕ) → mult x1 x1) 3 3 (refl 3) --> ⋆ : ⊤
-    Evaluate plusCancelLeft 2 3 3 ⋆ --> ⋆ : ⊤
-    Evaluate plusCancelRight 4 4 1 ⋆ --> ⋆ : ⊤
-    Evaluate plusEqZero 0 0 ⋆ --> ⋆ : ⊤
-    Evaluate multEqZero 2 0 ⋆ (λ (x1 : ⊥) → x1) --> ⋆ : ⊤
+    Evaluate plusAssoc 1 2 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate multComm 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate multAssoc 2 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate multDistribLeft 2 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate multDistribRight 2 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate cong (λ (x1 : ℕ) → mult x1 x1) 3 3 (refl 3)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate plusCancelLeft 2 3 3 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate plusCancelRight 4 4 1 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate plusEqZero 0 0 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate multEqZero 2 0 unit (λ (x1 : Void) → x1)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/OrderParity.mctt" =
   let _ = main_of_lib "OrderParity.mctt" in
   [%expect {|
-    Evaluate leTrans 1 2 5 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate leAntisym 3 3 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate leSucc 4 --> ⋆ : ⊤
-    Evaluate lePlusRight 2 3 --> ⋆ : ⊤
+    Evaluate leTrans 1 2 5 unit unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate leAntisym 3 3 unit unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate leSucc 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate lePlusRight 2 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate orElim (Le 5 2) (Le 2 5) ℕ (leTotal 5 2) (λ (x1 : Le 5 2) → 0)
                (λ (x2 : Le 2 5) → 1) --> 1 : ℕ
-    Evaluate ltIrrefl 3 --> λ (x1 : ⊥) → Prelude›Arith›Order.LtLaws.ltIrrefl 3 x1
-      : ∀ (x1 : ⊥) → ⊥
+    Evaluate ltIrrefl 3
+      --> λ (x1 : Prelude›Data›Void.Void)
+            → Prelude›Arith›Order.LtLaws.ltIrrefl 3 x1
+      : ∀ (x1 : Prelude›Data›Void.Void) → Prelude›Data›Void.Void
     Evaluate notLtZero 2
-      --> λ (x1 : ⊥) → Prelude›Arith›Order.LtLaws.notLtZero 2 x1 : ∀ (x1 : ⊥) → ⊥
+      --> λ (x1 : Prelude›Data›Void.Void)
+            → Prelude›Arith›Order.LtLaws.notLtZero 2 x1
+      : ∀ (x1 : Prelude›Data›Void.Void) → Prelude›Data›Void.Void
     Evaluate leb 2 5 --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
     Evaluate leb 5 2 --> Prelude›Data›Bool.Bool.ff : Prelude›Data›Bool.Bool
-    Evaluate lebComplete 2 5 ⋆ --> ⋆ : ⊤
-    Evaluate lebFalse 5 2 ⋆ --> ⋆ : ⊤
+    Evaluate lebComplete 2 5 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate lebFalse 5 2 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate double 7 --> 14 : ℕ
-    Evaluate evenDouble 7 --> ⋆ : ⊤
+    Evaluate evenDouble 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate orElim (Even 7) (Odd 7) ℕ (evenOrOdd 7) (λ (x1 : Even 7) → 0)
                (λ (x2 : Odd 7) → 1) --> 1 : ℕ
-    Evaluate evenSuccOdd 4 ⋆ --> ⋆ : ⊤
-    Evaluate evenPlus 4 6 ⋆ ⋆ --> ⋆ : ⊤
+    Evaluate evenSuccOdd 4 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate evenPlus 4 6 unit unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "a missing input file is reported" =
@@ -1508,16 +1666,26 @@ let%expect_test "lib/Programs.mctt" =
     Evaluate max 4 9 --> 9 : ℕ
     Evaluate ack 2 3 --> 9 : ℕ
     Evaluate ack 3 3 --> 61 : ℕ
-    Evaluate plusSub 6 4 --> ⋆ : ⊤
-    Evaluate subSelf 7 --> ⋆ : ⊤
-    Evaluate subSuccRight 9 4 --> ⋆ : ⊤
-    Evaluate plusMinMax 3 8 --> ⋆ : ⊤
-    Evaluate minComm 2 5 --> ⋆ : ⊤
-    Evaluate maxComm 6 1 --> ⋆ : ⊤
-    Evaluate ackZero 4 --> ⋆ : ⊤
-    Evaluate ackTwo 5 --> ⋆ : ⊤
-    Evaluate iteratePlus (λ (x1 : ℕ) → plus x1 3) 2 3 1 --> ⋆ : ⊤
-    Evaluate iterateComm (λ (x1 : ℕ) → succ (succ x1)) 3 4 0 --> ⋆ : ⊤
+    Evaluate plusSub 6 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subSelf 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subSuccRight 9 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate plusMinMax 3 8 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minComm 2 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate maxComm 6 1 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate ackZero 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate ackTwo 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate iteratePlus (λ (x1 : ℕ) → plus x1 3) 2 3 1
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate iterateComm (λ (x1 : ℕ) → succ (succ x1)) 3 4 0
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate Generic.compose 0l ℕ ℕ ℕ (sub 20) (λ (x1 : ℕ) → max x1 5) 2 --> 15
       : ℕ
     Evaluate Generic.const 0l ℕ ℕ 7 100 --> 7 : ℕ
@@ -1531,11 +1699,12 @@ let%expect_test "lib/Induction.mctt" =
     Evaluate half 20 --> 10 : ℕ
     Evaluate halfTwo 7 --> 3 : ℕ
     Evaluate halfTwo 20 --> 10 : ℕ
-    Evaluate twoStepInd (λ (x1 : ℕ) → Even (double x1)) ⋆ ⋆
+    Evaluate twoStepInd (λ (x1 : ℕ) → Even (double x1)) unit unit
                (λ (x2 : ℕ)
                   (x3 : Even (double x2))
                  → x3)
-               5 --> ⋆ : ⊤
+               5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate caseNat (λ (x1 : ℕ) → ℕ) 0 (λ (x2 : ℕ) → x2) 9 --> 8 : ℕ
     Evaluate orElim (Eq 3 3) (Not (Eq 3 3)) Bool (decEq 3 3)
                (λ (x1 : Eq 3 3) → tt)
@@ -1553,17 +1722,21 @@ let%expect_test "lib/Induction.mctt" =
                (λ (x1 : Lt 5 5) → tt)
                (λ (x2 : Not (Lt 5 5)) → ff) --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
-    Evaluate decStable (Eq 4 4) (decEq 4 4) (λ (x1 : Not (Eq 4 4)) → x1 ⋆) --> ⋆
-      : ⊤
+    Evaluate decStable (Eq 4 4) (decEq 4 4) (λ (x1 : Not (Eq 4 4)) → x1 unit)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate eqb 6 6 --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
     Evaluate eqb 6 2 --> Prelude›Data›Bool.Bool.ff : Prelude›Data›Bool.Bool
-    Evaluate iffFwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
-    Evaluate iffBwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
-    Evaluate eqbFalse 2 3 ⋆
-      --> λ (x1 : ⊥) → Prelude›Arith›Decide.EqbLaws.eqbFalse 2 3 ⋆ x1
-      : ∀ (x1 : ⊥) → ⊥
+    Evaluate iffFwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate iffBwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate eqbFalse 2 3 unit
+      --> λ (x1 : Prelude›Data›Void.Void)
+            → Prelude›Arith›Decide.EqbLaws.eqbFalse 2 3
+                (record Prelude›Data›Unit.Unit where end)
+                x1 : ∀ (x1 : Prelude›Data›Void.Void) → Prelude›Data›Void.Void
     Evaluate existsElim (λ (x1 : ℕ) → Eq (plus x1 x1) 6) ℕ
-               (existsIntro (λ (x2 : ℕ) → Eq (plus x2 x2) 6) 3 ⋆)
+               (existsIntro (λ (x2 : ℕ) → Eq (plus x2 x2) 6) 3 unit)
                (λ (x3 : ℕ)
                   (x4 : Eq (plus x3 x3) 6)
                  → x3) --> 3 : ℕ
@@ -1575,34 +1748,62 @@ let%expect_test "lib/Lattice.mctt" =
     Evaluate min (max 2 7) (max 5 3) --> 5 : ℕ
     Evaluate max (min 9 4) (min 6 8) --> 6 : ℕ
     Evaluate plus (sub 9 4) 4 --> 9 : ℕ
-    Evaluate lePlusMono 1 2 3 4 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate lePlusCancel 3 2 5 ⋆ --> ⋆ : ⊤
-    Evaluate leMultMono 2 3 2 4 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate ltTrans 1 2 4 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate ltLeTrans 1 3 3 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate leLtTrans 2 2 5 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate ltSucc 6 --> ⋆ : ⊤
-    Evaluate ltPlus 4 2 --> ⋆ : ⊤
-    Evaluate subLe 7 3 --> ⋆ : ⊤
-    Evaluate subMonoLeft 4 6 2 ⋆ --> ⋆ : ⊤
-    Evaluate subMonoRight 8 2 5 ⋆ --> ⋆ : ⊤
-    Evaluate plusSubCancel 9 4 ⋆ --> ⋆ : ⊤
-    Evaluate subPlusCancel 9 4 ⋆ --> ⋆ : ⊤
-    Evaluate subPos 5 2 ⋆ --> ⋆ : ⊤
-    Evaluate minAssoc 4 2 7 --> ⋆ : ⊤
-    Evaluate maxAssoc 4 2 7 --> ⋆ : ⊤
-    Evaluate minMaxAbsorb 5 3 --> ⋆ : ⊤
-    Evaluate maxMinAbsorb 3 5 --> ⋆ : ⊤
-    Evaluate minMaxDistrib 4 2 6 --> ⋆ : ⊤
-    Evaluate maxMinDistrib 4 2 6 --> ⋆ : ⊤
-    Evaluate minLe 3 8 --> ⋆ : ⊤
-    Evaluate leMax 8 3 --> ⋆ : ⊤
-    Evaluate leMin 2 4 5 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate maxLe 3 4 6 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate minEqLeft 3 5 ⋆ --> ⋆ : ⊤
-    Evaluate maxEqRight 3 5 ⋆ --> ⋆ : ⊤
-    Evaluate minMono 2 3 4 6 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate maxMono 2 3 6 7 ⋆ ⋆ --> ⋆ : ⊤
+    Evaluate lePlusMono 1 2 3 4 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate lePlusCancel 3 2 5 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate leMultMono 2 3 2 4 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate ltTrans 1 2 4 unit unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate ltLeTrans 1 3 3 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate leLtTrans 2 2 5 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate ltSucc 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate ltPlus 4 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subLe 7 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subMonoLeft 4 6 2 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subMonoRight 8 2 5 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate plusSubCancel 9 4 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subPlusCancel 9 4 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate subPos 5 2 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minAssoc 4 2 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate maxAssoc 4 2 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minMaxAbsorb 5 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate maxMinAbsorb 3 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minMaxDistrib 4 2 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate maxMinDistrib 4 2 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minLe 3 8 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate leMax 8 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate leMin 2 4 5 unit unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate maxLe 3 4 6 unit unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minEqLeft 3 5 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate maxEqRight 3 5 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate minMono 2 3 4 6 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate maxMono 2 3 6 7 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Division.mctt" =
@@ -1616,30 +1817,50 @@ let%expect_test "lib/Division.mctt" =
     Evaluate mod 20 4 --> 0 : ℕ
     Evaluate divSucc 17 3 --> 4 : ℕ
     Evaluate modSucc 17 3 --> 1 : ℕ
-    Evaluate divZeroDivisor 17 --> ⋆ : ⊤
-    Evaluate modZeroDivisor 17 --> ⋆ : ⊤
-    Evaluate divZero 4 --> ⋆ : ⊤
-    Evaluate modZero 0 --> ⋆ : ⊤
-    Evaluate divModSpec 17 4 --> ⋆ : ⊤
-    Evaluate modLt 17 4 --> ⋆ : ⊤
-    Evaluate modSmall 3 4 ⋆ --> ⋆ : ⊤
-    Evaluate divSmall 3 4 ⋆ --> ⋆ : ⊤
-    Evaluate modSelf 6 --> ⋆ : ⊤
-    Evaluate modPlusDivisor 9 4 --> ⋆ : ⊤
-    Evaluate modOne 7 --> ⋆ : ⊤
-    Evaluate divOne 7 --> ⋆ : ⊤
-    Evaluate Divides 3 12 --> ⊤ : Type@0
-    Evaluate Divides 3 13 --> ⊥ : Type@0
-    Evaluate Divides 0 0 --> ⊤ : Type@0
-    Evaluate Divides 0 5 --> ⊥ : Type@0
-    Evaluate zeroDivides 0 ⋆ --> ⋆ : ⊤
-    Evaluate dividesRefl 5 --> ⋆ : ⊤
-    Evaluate dividesZero 4 --> ⋆ : ⊤
-    Evaluate oneDivides 9 --> ⋆ : ⊤
-    Evaluate dividesPlus 3 6 9 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate dividesMult 3 4 --> ⋆ : ⊤
-    Evaluate evenDividesTwo 8 ⋆ --> ⋆ : ⊤
-    Evaluate dividesTwoEven 10 ⋆ --> ⋆ : ⊤
+    Evaluate divZeroDivisor 17 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modZeroDivisor 17 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate divZero 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modZero 0 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate divModSpec 17 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modLt 17 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modSmall 3 4 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate divSmall 3 4 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modSelf 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modPlusDivisor 9 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate modOne 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate divOne 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate Divides 3 12 --> Prelude›Data›Unit.Unit : Type@0
+    Evaluate Divides 3 13 --> Prelude›Data›Void.Void : Type@0
+    Evaluate Divides 0 0 --> Prelude›Data›Unit.Unit : Type@0
+    Evaluate Divides 0 5 --> Prelude›Data›Void.Void : Type@0
+    Evaluate zeroDivides 0 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate dividesRefl 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate dividesZero 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate oneDivides 9 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate dividesPlus 3 6 9 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate dividesMult 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate evenDividesTwo 8 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate dividesTwoEven 10 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Vectors.mctt" =
@@ -1647,23 +1868,29 @@ let%expect_test "lib/Vectors.mctt" =
   [%expect {|
     Evaluate sumVec 3 oneTwoThree --> 6 : ℕ
     Evaluate NV.head 2 oneTwoThree --> 1 : ℕ
-    Evaluate NV.nth 3 oneTwoThree 2 ⋆ --> 3 : ℕ
+    Evaluate NV.nth 3 oneTwoThree 2 unit --> 3 : ℕ
     Evaluate sumVec 2 (NV.tail 2 oneTwoThree) --> 5 : ℕ
     Evaluate sumVec 3 (NV.map ℕ square 3 oneTwoThree) --> 14 : ℕ
-    Evaluate NV.nth 5 (NV.append 3 2 oneTwoThree fourFive) 3 ⋆ --> 4 : ℕ
+    Evaluate NV.nth 5 (NV.append 3 2 oneTwoThree fourFive) 3 unit --> 4 : ℕ
     Evaluate sumVec 5 (NV.append 3 2 oneTwoThree fourFive) --> 15 : ℕ
     Evaluate sumVec 4 (NV.replicate 4 6) --> 24 : ℕ
     Evaluate NV.foldr ℕ (λ (x1 : ℕ)
                            (x2 : ℕ)
                           → succ x2) 0 5
                (NV.append 3 2 oneTwoThree fourFive) --> 5 : ℕ
-    Evaluate sumReplicate 4 6 --> ⋆ : ⊤
-    Evaluate sumAppend 3 2 oneTwoThree fourFive --> ⋆ : ⊤
-    Evaluate nthMap 0l ℕ square 3 oneTwoThree 1 ⋆ --> ⋆ : ⊤
-    Evaluate nthReplicate 4 6 3 ⋆ --> ⋆ : ⊤
-    Evaluate nthAppendLeft 3 2 oneTwoThree fourFive 1 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate nthAppendRight 3 2 oneTwoThree fourFive 1 ⋆ --> ⋆ : ⊤
-    Evaluate NV.nth 4 (NV.tabulate square 4) 3 ⋆ --> 9 : ℕ
+    Evaluate sumReplicate 4 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumAppend 3 2 oneTwoThree fourFive
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthMap 0l ℕ square 3 oneTwoThree 1 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthReplicate 4 6 3 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthAppendLeft 3 2 oneTwoThree fourFive 1 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthAppendRight 3 2 oneTwoThree fourFive 1 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate NV.nth 4 (NV.tabulate square 4) 3 unit --> 9 : ℕ
     Evaluate sumVec 4 (NV.tabulate square 4) --> 14 : ℕ
     Evaluate sumVec 2 (NV.zipWith ℕ ℕ mult 2 (NV.take 2 1 oneTwoThree) fourFive)
       --> 14 : ℕ
@@ -1676,8 +1903,8 @@ let%expect_test "lib/Vectors.mctt" =
     Evaluate sumVec 4 (NV.init 4 oneToFive) --> 10 : ℕ
     Evaluate NV.head 4 (NV.reverse 5 oneToFive) --> 5 : ℕ
     Evaluate NV.last 4 (NV.reverse 5 oneToFive) --> 1 : ℕ
-    Evaluate NV.nth 3 (NV.take 3 2 oneToFive) 2 ⋆ --> 3 : ℕ
-    Evaluate NV.nth 2 (NV.drop 3 2 oneToFive) 0 ⋆ --> 4 : ℕ
+    Evaluate NV.nth 3 (NV.take 3 2 oneToFive) 2 unit --> 3 : ℕ
+    Evaluate NV.nth 2 (NV.drop 3 2 oneToFive) 0 unit --> 4 : ℕ
     Evaluate NV.allb positive 5 oneToFive --> Prelude›Data›Bool.Bool.tt
       : Prelude›Data›Bool.Bool
     Evaluate NV.allb positive 4 (NV.cons 3 0 oneTwoThree)
@@ -1686,28 +1913,44 @@ let%expect_test "lib/Vectors.mctt" =
       --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
     Evaluate NV.anyb positive 3 (NV.replicate 3 0) --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
-    Evaluate nthTabulate square 4 3 ⋆ --> ⋆ : ⊤
-    Evaluate nthZipWith 0l ℕ ℕ mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 ⋆
-      --> ⋆ : ⊤
-    Evaluate nthReverse 5 oneToFive 1 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate takeAppend 3 2 oneTwoThree fourFive 2 ⋆ --> ⋆ : ⊤
-    Evaluate dropAppend 3 2 oneTwoThree fourFive 1 ⋆ --> ⋆ : ⊤
-    Evaluate appendTakeDrop 3 2 oneToFive 4 ⋆ --> ⋆ : ⊤
-    Evaluate lastSnoc 3 oneTwoThree 7 --> ⋆ : ⊤
-    Evaluate sumMapPlus 2 3 oneTwoThree --> ⋆ : ⊤
-    Evaluate sumMapScale 3 3 oneTwoThree --> ⋆ : ⊤
-    Evaluate sumZipWithPlus 2 fourFive (NV.tail 2 oneTwoThree) --> ⋆ : ⊤
-    Evaluate foldlPlus 4 3 oneTwoThree --> ⋆ : ⊤
-    Evaluate sumSnoc 3 oneTwoThree 7 --> ⋆ : ⊤
-    Evaluate sumInitLast 4 oneToFive --> ⋆ : ⊤
-    Evaluate sumReverse 5 oneToFive --> ⋆ : ⊤
-    Evaluate sumTabulate square 4 --> ⋆ : ⊤
-    Evaluate allbSound 0l ℕ positive 5 oneToFive ⋆ 2 ⋆ --> ⋆ : ⊤
+    Evaluate nthTabulate square 4 3 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthZipWith 0l ℕ ℕ mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthReverse 5 oneToFive 1 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate takeAppend 3 2 oneTwoThree fourFive 2 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate dropAppend 3 2 oneTwoThree fourFive 1 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate appendTakeDrop 3 2 oneToFive 4 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate lastSnoc 3 oneTwoThree 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumMapPlus 2 3 oneTwoThree
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate sumMapScale 3 3 oneTwoThree
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate sumZipWithPlus 2 fourFive (NV.tail 2 oneTwoThree)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate foldlPlus 4 3 oneTwoThree
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate sumSnoc 3 oneTwoThree 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumInitLast 4 oneToFive --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumReverse 5 oneToFive --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumTabulate square 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate allbSound 0l ℕ positive 5 oneToFive unit 2 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate allbComplete 0l ℕ positive 4 (NV.replicate 4 3)
                (λ (x1 : ℕ)
                   (x2 : Lt x1 4)
-                 → ⋆) --> ⋆ : ⊤
-    Evaluate anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
+                 → unit) --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) unit ℕ
                (λ (x1 : ℕ)
                   (x2 : Lt x1 3)
                   (x3 : IsTrue (positive (NV.snoc 2 (NV.replicate 2 0) 9 x1 x2)))
@@ -1727,28 +1970,43 @@ let%expect_test "lib/Powers.mctt" =
     Evaluate sumTo (λ (x1 : ℕ) → mult x1 x1) 6 --> 55 : ℕ
     Evaluate factorial 5 --> 120 : ℕ
     Evaluate factorial 0 --> 1 : ℕ
-    Evaluate powZero 7 --> ⋆ : ⊤
-    Evaluate powOne 9 --> ⋆ : ⊤
-    Evaluate onePow 6 --> ⋆ : ⊤
-    Evaluate powPlus 2 1 3 --> ⋆ : ⊤
-    Evaluate powMult 2 2 2 --> ⋆ : ⊤
-    Evaluate powMultBase 2 2 2 --> ⋆ : ⊤
-    Evaluate sumToPlus NatFun.id (λ (x1 : ℕ) → mult x1 x1) 4 --> ⋆ : ⊤
-    Evaluate sumToScale 3 NatFun.id 4 --> ⋆ : ⊤
-    Evaluate sumToConst 4 5 --> ⋆ : ⊤
-    Evaluate gauss 4 --> ⋆ : ⊤
-    Evaluate sumOdd 4 --> ⋆ : ⊤
-    Evaluate factSucc 3 --> ⋆ : ⊤
-    Evaluate factPos 4 --> ⋆ : ⊤
-    Evaluate factLeSucc 3 --> ⋆ : ⊤
-    Evaluate lePowFact 3 --> ⋆ : ⊤
+    Evaluate powZero 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate powOne 9 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate onePow 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate powPlus 2 1 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate powMult 2 2 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate powMultBase 2 2 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumToPlus NatFun.id (λ (x1 : ℕ) → mult x1 x1) 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate sumToScale 3 NatFun.id 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumToConst 4 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gauss 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumOdd 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate factSucc 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate factPos 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate factLeSucc 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate lePowFact 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Streams.mctt" =
   let _ = main_of_lib "Streams.mctt" in
   [%expect {|
     Evaluate sumVec 6 (S.take 6 nats) --> 15 : ℕ
-    Evaluate V.nth 0l ℕ 5 (S.take 5 evens) 4 ⋆ --> 8 : ℕ
+    Evaluate V.nth 0l ℕ 5 (S.take 5 evens) 4 unit --> 8 : ℕ
     Evaluate S.nth odds 6 --> 13 : ℕ
     Evaluate sumVec 5 (S.take 5 squares) --> 30 : ℕ
     Evaluate S.nth fibs 10 --> 55 : ℕ
@@ -1760,22 +2018,38 @@ let%expect_test "lib/Streams.mctt" =
     Evaluate S.nth (S.zipWith ℕ ℕ plus evens odds) 4 --> 17 : ℕ
     Evaluate S.head (S.tail (S.cons 9 nats)) --> 0 : ℕ
     Evaluate S.nth (S.const 3) 100 --> 3 : ℕ
-    Evaluate headCons 9 nats --> ⋆ : ⊤
-    Evaluate tailCons 9 squares 3 --> ⋆ : ⊤
-    Evaluate nthConst 3 100 --> ⋆ : ⊤
-    Evaluate nthMap square nats 4 --> ⋆ : ⊤
-    Evaluate nthZipWith plus evens odds 3 --> ⋆ : ⊤
-    Evaluate nthIterate (λ (x1 : ℕ) → succ (succ x1)) 1 4 --> ⋆ : ⊤
-    Evaluate tailIterate (λ (x1 : ℕ) → succ (succ x1)) 1 4 --> ⋆ : ⊤
-    Evaluate nthNats 12 --> ⋆ : ⊤
-    Evaluate nthDrop 3 squares 1 --> ⋆ : ⊤
-    Evaluate nthTake 5 squares 3 ⋆ --> ⋆ : ⊤
-    Evaluate scanSum squares 4 --> ⋆ : ⊤
-    Evaluate scanSum fibs 6 --> ⋆ : ⊤
-    Evaluate nthInterleaveEven 3 evens odds --> ⋆ : ⊤
-    Evaluate nthInterleaveOdd 3 evens odds --> ⋆ : ⊤
-    Evaluate sumToShift squares 3 --> ⋆ : ⊤
-    Evaluate sumTake 5 nats --> ⋆ : ⊤
+    Evaluate headCons 9 nats --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate tailCons 9 squares 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthConst 3 100 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthMap square nats 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthZipWith plus evens odds 3
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthIterate (λ (x1 : ℕ) → succ (succ x1)) 1 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate tailIterate (λ (x1 : ℕ) → succ (succ x1)) 1 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthNats 12 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthDrop 3 squares 1 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthTake 5 squares 3 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate scanSum squares 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate scanSum fibs 6 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate nthInterleaveEven 3 evens odds
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate nthInterleaveOdd 3 evens odds
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate sumToShift squares 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sumTake 5 nats --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Combinatorics.mctt" =
@@ -1815,20 +2089,34 @@ let%expect_test "lib/Combinatorics.mctt" =
     Evaluate fib 1 --> 1 : ℕ
     Evaluate fib 10 --> 55 : ℕ
     Evaluate sumTo fib 10 --> 88 : ℕ
-    Evaluate chooseZero 5 --> ⋆ : ⊤
-    Evaluate chooseSelf 5 --> ⋆ : ⊤
-    Evaluate chooseOne 5 --> ⋆ : ⊤
-    Evaluate chooseOver 3 5 ⋆ --> ⋆ : ⊤
-    Evaluate pascal 4 2 --> ⋆ : ⊤
-    Evaluate chooseSymm 2 3 --> ⋆ : ⊤
-    Evaluate chooseSymmSub 5 2 ⋆ --> ⋆ : ⊤
-    Evaluate rowSum 4 --> ⋆ : ⊤
-    Evaluate fibSucc 5 --> ⋆ : ⊤
-    Evaluate fibPos 5 --> ⋆ : ⊤
-    Evaluate fibMono 5 --> ⋆ : ⊤
-    Evaluate fibMonoPlus 2 4 --> ⋆ : ⊤
-    Evaluate fibSum 5 --> ⋆ : ⊤
-    Evaluate fibPlus 3 2 --> ⋆ : ⊤
+    Evaluate chooseZero 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate chooseSelf 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate chooseOne 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate chooseOver 3 5 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate pascal 4 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate chooseSymm 2 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate chooseSymmSub 5 2 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate rowSum 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate fibSucc 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate fibPos 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate fibMono 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate fibMonoPlus 2 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate fibSum 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate fibPlus 3 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/NumberTheory.mctt" =
@@ -1853,25 +2141,42 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate sumTo (λ (x1 : ℕ) → if ℕ (isPrime x1) x1 0) 30 --> 129 : ℕ
     Evaluate smallestDivisor 91 --> 7 : ℕ
     Evaluate smallestDivisor 29 --> 29 : ℕ
-    Evaluate Prime 29 --> ⊤ : Type@0
-    Evaluate Prime 27 --> ⊥ : Type@0
-    Evaluate gcdZeroLeft 5 --> ⋆ : ⊤
-    Evaluate gcdZeroRight 5 --> ⋆ : ⊤
-    Evaluate gcdSelf 7 --> ⋆ : ⊤
-    Evaluate gcdOneRight 9 --> ⋆ : ⊤
-    Evaluate gcdDividesLeft 6 9 --> ⋆ : ⊤
-    Evaluate gcdDividesRight 6 9 --> ⋆ : ⊤
-    Evaluate gcdGreatest 2 8 12 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate gcdComm 6 9 --> ⋆ : ⊤
-    Evaluate dividesMultLeft 3 6 2 ⋆ --> ⋆ : ⊤
-    Evaluate dividesPlusCancel 3 6 9 ⋆ ⋆ --> ⋆ : ⊤
-    Evaluate twoPrime --> ⋆ : ⊤
-    Evaluate sevenPrime --> ⋆ : ⊤
+    Evaluate Prime 29 --> Prelude›Data›Unit.Unit : Type@0
+    Evaluate Prime 27 --> Prelude›Data›Void.Void : Type@0
+    Evaluate gcdZeroLeft 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gcdZeroRight 5 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gcdSelf 7 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gcdOneRight 9 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gcdDividesLeft 6 9 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gcdDividesRight 6 9 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate gcdGreatest 2 8 12 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate gcdComm 6 9 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate dividesMultLeft 3 6 2 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate dividesPlusCancel 3 6 9 unit unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate twoPrime --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate sevenPrime --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate nineNotPrime
-      --> λ (x1 : ⊥) → Prelude›Arith›Prime.Facts.nineNotPrime x1 : ∀ (x1 : ⊥) → ⊥
-    Evaluate smallestDivisorDivides 15 --> ⋆ : ⊤
-    Evaluate primeGeTwo 13 ⋆ --> ⋆ : ⊤
-    Evaluate primeSmallestDivisor 13 ⋆ --> ⋆ : ⊤
+      --> λ (x1 : Prelude›Data›Void.Void)
+            → Prelude›Arith›Prime.Facts.nineNotPrime x1
+      : ∀ (x1 : Prelude›Data›Void.Void) → Prelude›Data›Void.Void
+    Evaluate smallestDivisorDivides 15
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate primeGeTwo 13 unit --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate primeSmallestDivisor 13 unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     |}]
 
 (** Module forms *)
@@ -2657,16 +2962,26 @@ let%expect_test "lib/Algebra.mctt" =
     Evaluate Maximum.pow 7 3 --> 7 : ℕ
     Evaluate Composition.pow (λ (x1 : ℕ) → succ (succ x1)) 5 0 --> 10 : ℕ
     Evaluate Sums.pow 6 3 --> 18 : ℕ
-    Evaluate Unfold.additivePow 3 4 --> ⋆ : ⊤
-    Evaluate Scaling.multPlusRight 2 3 2 --> ⋆ : ⊤
-    Evaluate Scaling.multAssocPow 2 3 2 --> ⋆ : ⊤
-    Evaluate Scaling.multPlusLeft 2 3 4 --> ⋆ : ⊤
-    Evaluate Exponents.powPlus 2 1 3 --> ⋆ : ⊤
-    Evaluate Exponents.powMult 2 2 2 --> ⋆ : ⊤
-    Evaluate Exponents.powOfProduct 2 2 2 --> ⋆ : ⊤
-    Evaluate Exponents.fourthPower 2 --> ⋆ : ⊤
-    Evaluate Iteration.iterPlus (λ (x1 : ℕ) → succ x1) 2 3 4 --> ⋆ : ⊤
-    Evaluate maxPowSucc 5 3 --> ⋆ : ⊤
+    Evaluate Unfold.additivePow 3 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate Scaling.multPlusRight 2 3 2
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Scaling.multAssocPow 2 3 2
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Scaling.multPlusLeft 2 3 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Exponents.powPlus 2 1 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate Exponents.powMult 2 2 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate Exponents.powOfProduct 2 2 2
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Exponents.fourthPower 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate Iteration.iterPlus (λ (x1 : ℕ) → succ x1) 2 3 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate maxPowSucc 5 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Polynomials.mctt" =
@@ -2693,9 +3008,12 @@ let%expect_test "lib/Polynomials.mctt" =
                  end
              in plus (M1.total (cubic 1 1 0 0) 4) (M1.peak (cubic 0 0 1 0) 5)
              end --> 26 : ℕ
-    Evaluate At.hornerNaive 2 (cubic 1 0 1 0) 4 --> ⋆ : ⊤
-    Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4 --> ⋆ : ⊤
-    Evaluate hornerAtOne (cubic 3 1 4 1) 4 --> ⋆ : ⊤
+    Evaluate At.hornerNaive 2 (cubic 1 0 1 0) 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate hornerAtOne (cubic 3 1 4 1) 4
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Binary.mctt" =
@@ -2714,9 +3032,12 @@ let%expect_test "lib/Binary.mctt" =
     Evaluate fromBits oneZeroOneOne 4 --> 13 : ℕ
     Evaluate powFast 3 5 --> 243 : ℕ
     Evaluate powFast 2 10 --> 1024 : ℕ
-    Evaluate fromBitsDouble 6 3 --> ⋆ : ⊤
-    Evaluate powFastDouble 2 2 --> ⋆ : ⊤
-    Evaluate powFastDouble 3 1 --> ⋆ : ⊤
+    Evaluate fromBitsDouble 6 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate powFastDouble 2 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate powFastDouble 3 1 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/Groups.mctt" =
@@ -2731,12 +3052,18 @@ let%expect_test "lib/Groups.mctt" =
     Evaluate negative (minus (ofNat 4) (ofNat 9)) --> Prelude›Data›Bool.Bool.tt
       : Prelude›Data›Bool.Bool
     Evaluate magnitude (minus (ofNat 4) (ofNat 9)) --> 5 : ℕ
-    Evaluate solve (ofNat 2) (ofNat 5) (ofNat 3) ⋆ --> ⋆ : ⊤
-    Evaluate solve minusThree (ofNat 1) (pair 4 0) ⋆ --> ⋆ : ⊤
-    Evaluate negateMinus (ofNat 3) minusThree --> ⋆ : ⊤
-    Evaluate Multiples.multipleNegate minusThree 3 --> ⋆ : ⊤
-    Evaluate Multiples.multipleAdd minusThree (ofNat 5) 2 --> ⋆ : ⊤
-    Evaluate Additive.Laws.invOp (ofNat 1) minusThree --> ⋆ : ⊤
+    Evaluate solve (ofNat 2) (ofNat 5) (ofNat 3) unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate solve minusThree (ofNat 1) (pair 4 0) unit
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate negateMinus (ofNat 3) minusThree
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Multiples.multipleNegate minusThree 3
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Multiples.multipleAdd minusThree (ofNat 5) 2
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate Additive.Laws.invOp (ofNat 1) minusThree
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     |}]
 
 (** Definition keywords *)
@@ -2850,7 +3177,7 @@ let%expect_test "an unparenthesised binder: the message names the binder" =
 let%expect_test "a command let and a term let" =
   let _ = main_of_body "let x : Nat := 1 end eval let y := succ x in y end let z : Nat := x end eval z" in
   [%expect {|
-    Evaluate let x1 ≔ succ x in x1 end --> 2 : ℕ
+    Evaluate let x1 : ℕ ≔ succ x in x1 end --> 2 : ℕ
     Evaluate z --> 1 : ℕ
     |}]
 
@@ -3029,13 +3356,13 @@ let%expect_test "a name imported into a unit with parameters prints as written" 
   [%expect {| Error: the body of bad, 0, is not of type Eq 1 1 |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "module Prelude›Y (A : Type@0) where def foo : ⊤ ≔ ⋆ end \
+      "module Prelude›Y (A : Type@0) where def foo : ⊤ ≔ true end \
        module N (B : Type@0) where def bar : ⊤ ≔ foo end def bad : ⊥ ≔ bar end end end"
   in
   [%expect {| Error: the body of bad, bar, is not of type ⊥ |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "module Prelude›Z (A : Type@0) where module S where def y : ⊤ ≔ ⋆ end end \
+      "module Prelude›Z (A : Type@0) where module S where def y : ⊤ ≔ true end end \
        def bad : ⊥ ≔ S.y end end"
   in
   [%expect {| Error: the body of bad, S.y, is not of type ⊥ |}]
@@ -3046,13 +3373,19 @@ let%expect_test "a leading open in a parameter type" =
       "import Prelude›Builtin›Nat import Prelude::Arith::Equality open Prelude::Arith::Equality use (Eq) \
        module ScratchP (p : Eq 1 1) where def q : Eq 1 1 := p end eval q end"
   in
-  [%expect {| Evaluate q --> ⋆ : ⊤ |}];
+  [%expect {|
+    Evaluate q --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
       "import Prelude›Builtin›Nat import Prelude::Arith::Equality as E use (Eq) \
        module ScratchP (p : Eq 1 1) (q : E.Eq 2 2) where def r : Eq 2 2 := q end eval r end"
   in
-  [%expect {| Evaluate r --> ⋆ : ⊤ |}]
+  [%expect {|
+    Evaluate r --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    |}]
 
 let%expect_test "an error names the parameters of the modules around it" =
   let _ =
@@ -3089,7 +3422,10 @@ let%expect_test "an open in a module names the unit that is not imported" =
       "import Prelude›Builtin›Nat import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusIdentityRight) \
        eval plusIdentityRight 0 end"
   in
-  [%expect {| Evaluate plusIdentityRight 0 --> ⋆ : ⊤ |}]
+  [%expect {|
+    Evaluate plusIdentityRight 0 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    |}]
 
 let%expect_test "a leading open may not export" =
   let _ =
@@ -3137,7 +3473,7 @@ let%expect_test "an axiom of another unit" =
 
 let%expect_test "an axiom of False makes False inhabited" =
   let _ = main_of_body "axiom bad : False def oops : False := bad end eval oops" in
-  [%expect {| Evaluate oops --> bad : ⊥ |}]
+  [%expect {| Evaluate oops --> ⋆ : ⊥ |}]
 
 let%expect_test "an axiom takes no modifiers" =
   let _ = main_of_body "private axiom x : Nat" in
@@ -3187,10 +3523,13 @@ let%expect_test "lib/Tutorial.mctt" =
       --> ∀ (x1 : ℕ)
             (x2 : ℕ)
             → ℕ : Type@0
-    Evaluate ⋆ --> ⋆ : ⊤
-    Evaluate λ (x1 : ⊥) → exfalso x1 return x2 . ℕ
-      --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
-    Evaluate let x1 : ℕ ≔ 2; x2 ≔ λ (x3 : ℕ) → succ x3; x4 : Eq (x2 x1) 3 ≔ ⋆
+    Evaluate unit --> record Prelude›Data›Unit.Unit where end : Unit
+    Evaluate λ (x1 : Void) → elim x1 at (x2 : Void) → ℕ end
+      --> λ (x1 : Prelude›Data›Void.Void) → elim x1 at x2 → ℕ end
+      : ∀ (x1 : Prelude›Data›Void.Void) → ℕ
+    Evaluate let x1 : ℕ ≔ 2;
+                 x2 : ∀ (x3 : ℕ) → ℕ ≔ λ (x4 : ℕ) → succ x4;
+                 x5 : Eq (x2 x1) 3 ≔ unit
              in x2 (x2 x1)
              end --> 4 : ℕ
     Evaluate double 3 --> 6 : ℕ
@@ -3212,7 +3551,8 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate Vault.Inside.peek --> 7 : ℕ
     Evaluate Prelude›Arith›Plus.plus 2 3 --> 5 : ℕ
     Evaluate Adding.five --> 5 : ℕ
-    Evaluate Adding.Algebra.plusComm 1 2 --> ⋆ : ⊤
+    Evaluate Adding.Algebra.plusComm 1 2
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate Counting.seven --> 7 : ℕ
     Evaluate let module M1 (x1 : ℕ) where
                    open Twice ℕ double use (twice)
@@ -3233,7 +3573,8 @@ let%expect_test "lib/Tutorial.mctt" =
                    end
                  end
              in M1.addIter M1.eight
-             end --> ⋆ : ⊤
+             end --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate maxl 1l (succl 2l) --> 3l : Level
     Evaluate Type@{maxl 1l 2l} --> Type@2 : Type@3
     Evaluate applyTwice 0l ℕ double 1 --> 4 : ℕ
@@ -3289,7 +3630,10 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate nodes tree --> 3 : ℕ
     Evaluate origin.x --> 0 : ℕ
     Evaluate (onDiagonal 3).sum --> 6 : ℕ
-    Evaluate let x1 ≔ let x2 ≔ record Point where x ≔ 1; y ≔ 2 end in x2.flip end
+    Evaluate let x1 : Point ≔
+                   let x2 : Point ≔ record Point where x ≔ 1; y ≔ 2 end
+                   in x2.flip
+                   end
              in x1.x
              end --> 2 : ℕ
     Evaluate Point.flip corner --> record Point where x ≔ 5; y ≔ 3 end : Point
@@ -3302,7 +3646,8 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate square NatAlgebra.additive.monoid 7 --> 14 : ℕ
     Evaluate square NatAlgebra.multiplicative.monoid 7 --> 49 : ℕ
     Evaluate square pointwise succ 0 --> 2 : ℕ
-    Evaluate NatAlgebra.additive.comm 2 3 --> ⋆ : ⊤
+    Evaluate NatAlgebra.additive.comm 2 3
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     Evaluate Times.pow 3 4 --> 81 : ℕ
     |}]
 
@@ -3326,12 +3671,12 @@ let%expect_test "mctt-doc: a mutual group's recursor module and its functions ha
   Sys.remove dir;
   Sys.mkdir dir 0o700;
   Out_channel.with_open_bin (Filename.concat dir "T.mctt") (fun oc -> output_string oc
-    "module T where\n\
+    "module T where inductive One : Type@0 where | one end\n\
      inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end\n\
      mutual R where inductive Rose : Type@0 where | node (ts : List Rose) end end\n\
-     def f : ⊤ ≔ R.Rec.rec_List_Rose 0l (fun (z : R.Rose) -> ⊤) (fun (z : List R.Rose) -> ⊤)\n\
-     \  (fun (ts : List R.Rose) (h : ⊤) -> h) ⋆\n\
-     \  (fun (t : R.Rose) (ts : List R.Rose) (ht : ⊤) (hts : ⊤) -> hts) (List.nil R.Rose) end\n\
+     def f : One ≔ R.Rec.rec_List_Rose 0l (fun (z : R.Rose) -> One) (fun (z : List R.Rose) -> One)\n\
+     \  (fun (ts : List R.Rose) (h : One) -> h) One.one\n\
+     \  (fun (t : R.Rose) (ts : List R.Rose) (ht : One) (hts : One) -> hts) (List.nil R.Rose) end\n\
      end\n");
   let t = Doc.load dir in
   List.iter print_endline (Doc.problems t);
@@ -3339,7 +3684,7 @@ let%expect_test "mctt-doc: a mutual group's recursor module and its functions ha
   [%expect {|
     Rec 1: line 69: Prelude›Data›Tree›Forest#TreeForest.Rec
     rec_Tree 1: line 69: Prelude›Data›Tree›Forest#TreeForest.Rec.rec_Tree
-    rec_Forest 1: line 105: Prelude›Data›Tree›Forest#TreeForest.Rec.rec_Forest
+    rec_Forest 1: line 106: Prelude›Data›Tree›Forest#TreeForest.Rec.rec_Forest
     line 4: T#R.Rec.rec_List_Rose
     |}]
 
@@ -3435,11 +3780,11 @@ let%expect_test "mctt-doc: a with-member selected from a term links to its defin
 
 let%expect_test "mctt-doc: a chain of selections from a record value links member by member" =
   doc_links
-    "module U where\n\
+    "module U where inductive One : Type@0 where | one end\n\
      record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B\n\
      \  with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end\n\
-     def c : ⊤ := (record Pair ⊤ ⊤ where fst := ⋆; snd := ⋆ end).swap.fst end\n\
-     eval (record Pair ⊤ ⊤ where fst := ⋆; snd := ⋆ end).swap.snd\n\
+     def c : One := (record Pair One One where fst := One.one; snd := One.one end).swap.fst end\n\
+     eval (record Pair One One where fst := One.one; snd := One.one end).swap.snd\n\
      end\n" [ "swap"; "fst"; "snd" ];
   [%expect {|
     line 3 snd: U#Pair.snd
@@ -3454,7 +3799,7 @@ let%expect_test "mctt-doc: a member selected from a function's result or a modul
   doc_links
     "module U where\n\
      record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end\n\
-     module M where def k : P := record P where a := ⋆; b := ⋆ end end end\n\
+     module M where def k : P := record P where a := true; b := true end end end\n\
      def l (x : ⊤) : P := M.k end\n\
      def m (y : ⊤) : ⊤ := (l y).sw end\n\
      def j : ⊤ := M.k.a end\n\
@@ -3474,7 +3819,7 @@ let%expect_test "mctt-doc: selections from terms link in every kind of declarati
      and clauses; in local definitions and modules; in an eval and its
      type. *)
   doc_links
-    "module U where\n\
+    "module U where inductive One : Type@0 where | one end\n\
      record T : Type@1 where ty : Type@0 end\n\
      record S : Type@1 where ty : Type@0 end\n\
      module K (r : T) (q : S) (x : r.ty) where\n\
@@ -3487,7 +3832,7 @@ let%expect_test "mctt-doc: selections from terms link in every kind of declarati
      mutual def (r : T) (q : S) (x : r.ty) (y : q.ty) fn (n : N) : r.ty := | z => x | s k, hk => hk end\n\
      def lt (r : T) (q : S) (x : r.ty) (y : q.ty) : r.ty :=\n\
      \  let v : r.ty := x; w : q.ty := y; module X (u : r.ty) where def o : q.ty := y end end in v end end\n\
-     eval ⋆ : (record T where ty := ⊤ end).ty\n\
+     eval One.one : (record T where ty := One end).ty\n\
      end\n" [ "ty" ];
   [%expect {|
     line 4 ty: U#T.ty
@@ -3515,13 +3860,13 @@ let%expect_test "mctt-doc: selections from terms link in every kind of declarati
     |}]
 
 let%expect_test "mctt-doc: a record value's module, its parameters written out" =
-  (* [Pair r.ty ⊤ v] is the module of the value [v]: the [ty] in its
+  (* [Pair r.ty One v] is the module of the value [v]: the [ty] in its
      parameters links as the others do. *)
   doc_links
-    "module U where\n\
+    "module U where inductive One : Type@0 where | one end\n\
      record T : Type@1 where ty : Type@0 end\n\
      record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B end\n\
-     def f (r : T) (v : Pair r.ty ⊤) : r.ty := (Pair r.ty ⊤ v).fst end\n\
+     def f (r : T) (v : Pair r.ty One) : r.ty := (Pair r.ty One v).fst end\n\
      end\n" [ "ty"; "fst" ];
   [%expect {|
     line 4 ty: U#T.ty
@@ -3539,7 +3884,7 @@ let%expect_test "mctt-doc: a selection the members of two records could be does 
                record P : Type@0 where a : ⊤ end\n\
                record Q : Type@0 where a : ⊤ end\n" in
   let filed = decls ^ "def f (p : P) (q : Q) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h p.a q.a end\nend\n" in
-  let walked = decls ^ "def f (p : P) (q : Q) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h ⋆ p.a end\nend\n" in
+  let walked = decls ^ "def f (p : P) (q : Q) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h true p.a end\nend\n" in
   let dir = fresh_dir () in
   write_file (Filename.concat dir "U.mctt") filed;
   (match McttExtracted.Entrypoint.main (Main.load_path_in [ dir ]) Main.read_unit Main.parser_log_fuel
@@ -3562,13 +3907,13 @@ let%expect_test "mctt-doc: selections from terms link in aliases and in the argu
   (* In an inductive and a record alias, a module alias, an import's and
      an open's arguments, in a module with a parameter of its own. *)
   doc_links ~units:[ ("A", "module A (X : Type@1) (x : X) where def y : X := x end end\n") ]
-    "module U where\n\
+    "module U where inductive One : Type@0 where | one end\n\
      record T : Type@1 where ty : Type@0 end\n\
      record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B end\n\
      inductive Id (A : Type@0) : Type@0 where | refl end\n\
      module F (r : T) where\n\
      \  record PT (s : T) := Pair r.ty s.ty\n\
-     \  inductive IT := Id (record T where ty := ⊤ end).ty\n\
+     \  inductive IT := Id (record T where ty := One end).ty\n\
      \  import A Type@0 r.ty as B\n\
      \  open A Type@0 r.ty use (y)\n\
      \  module C := A Type@0 r.ty\n\
@@ -3656,9 +4001,9 @@ let%expect_test "mctt-doc: a selection from a term the checker does not file doe
      arguments is matched with nothing the checker found, so it has a note
      and no link. *)
   doc_links ~units:[ ("A", "module A (X : Type@1) (x : X) where def y : X := x end end\n") ]
-    "module U where\n\
+    "module U where inductive One : Type@0 where | one end\n\
      record T : Type@1 where ty : Type@0 end\n\
-     import A Type@0 (record T where ty := ⊤ end).ty\n\
+     import A Type@0 (record T where ty := One end).ty\n\
      end\n" [ "ty" ];
   [%expect {|
     U: ty, line 3, a member of no record the checker found
@@ -3848,15 +4193,15 @@ let%expect_test "mctt-doc: links" =
     Additive line 36: Algebra#Additive
     pow line 36: Prelude›Algebra›Monoid›Properties#pow
     powPlus line 90: Prelude›Algebra›Monoid›Properties#Power.powPlus
-    plus line 230: Prelude›Arith›Plus#plus
-    plus line 231: Prelude›Arith›Plus#plus
-    add line 230: declares #Adding.add
-    add line 231: Prelude›Arith›Plus#plus
-    P line 230: declares #Adding.P
-    P line 231: Tutorial#Adding.P
-    addIter line 308: Tutorial#Adder.addIter
-    x line 63: declares #l20
-    x line 63: Tutorial#l20
+    plus line 232: Prelude›Arith›Plus#plus
+    plus line 233: Prelude›Arith›Plus#plus
+    add line 232: declares #Adding.add
+    add line 233: Prelude›Arith›Plus#plus
+    P line 232: declares #Adding.P
+    P line 233: Tutorial#Adding.P
+    addIter line 310: Tutorial#Adder.addIter
+    x line 65: declares #l29
+    x line 65: Tutorial#l29
     |}]
 
 let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
@@ -3998,10 +4343,11 @@ let%expect_test "lib/Universes.mctt" =
       --> ∀ (A1 : Type@0)
             (x1 : A1)
             → A1 : Type@1
-    Evaluate Fun 0l 3 ℕ ⊤ --> ∀ (x1 : ℕ)
-                                (x2 : ℕ)
-                                (x3 : ℕ)
-                                → ⊤ : Type@0
+    Evaluate Fun 0l 3 ℕ Unit
+      --> ∀ (x1 : ℕ)
+            (x2 : ℕ)
+            (x3 : ℕ)
+            → Prelude›Data›Unit.Unit : Type@0
     Evaluate Fun 1l 2 Type@0 Type@0 --> ∀ (A1 : Type@0)
                                           (A2 : Type@0)
                                           → Type@0 : Type@1
@@ -4028,10 +4374,10 @@ let%expect_test "lib/Universes.mctt" =
                      (λ (x4 : ℕ)
                         (x5 : Eq (plus x1 x4) 5)
                        → x4)) --> 3 : ℕ
-    Evaluate Types.nth 3 threeTypes 1 ⋆ --> ⊤ : Type@0
-    Evaluate Types.last 2 threeTypes --> ⊥ : Type@0
+    Evaluate Types.nth 3 threeTypes 1 unit --> Prelude›Data›Unit.Unit : Type@0
+    Evaluate Types.last 2 threeTypes --> Prelude›Data›Void.Void : Type@0
     Evaluate Types.map Type@0 (λ (A1 : Type@0) → ∀ (x1 : A1) → A1) 3 threeTypes 0
-               ⋆ --> ∀ (x1 : ℕ) → ℕ : Type@0
+               unit --> ∀ (x1 : ℕ) → ℕ : Type@0
     Evaluate Iter.iter 1l Type@0 (λ (A1 : Type@0) → ∀ (x1 : A1) → A1) 2 ℕ
       --> ∀ (x1 : ∀ (x2 : ℕ) → ℕ)
             (x3 : ℕ)
@@ -4041,15 +4387,19 @@ let%expect_test "lib/Universes.mctt" =
     Evaluate C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 0)) --> 1 : ℕ
     Evaluate C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 3)) --> 0 : ℕ
     Evaluate C.length 1l Type@0
-               (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 ⊤ (C.nil 1l Type@0))) --> 2
-      : ℕ
+               (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 Unit (C.nil 1l Type@0)))
+      --> 2 : ℕ
     Evaluate C.sum 0l
                (C.append 0l ℕ (C.replicate 0l ℕ 3 4)
                  (C.cons 0l ℕ 5 (C.nil 0l ℕ))) --> 17 : ℕ
-    Evaluate toNatPlus 0l 2 3 --> ⋆ : ⊤
-    Evaluate toNatPow 0l 2 3 --> ⋆ : ⊤
-    Evaluate toNatPow 3l 3 2 --> ⋆ : ⊤
-    Evaluate toNatLower 2l 4 --> ⋆ : ⊤
+    Evaluate toNatPlus 0l 2 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate toNatPow 0l 2 3 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate toNatPow 3l 3 2 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
+    Evaluate toNatLower 2l 4 --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     Evaluate C.toNat 0l (churchHalf 9) --> 4 : ℕ
     Evaluate ω+1 --> ω+1 : Level@1
     Evaluate maxl 3l ω·2+1 --> ω·2+1 : Level@2
@@ -4437,10 +4787,10 @@ let%expect_test "the recursor of a type under module parameters takes them first
 
 let%expect_test "the recursor of the empty type" =
   let _ = main_of_body "inductive E : Type@0 where end \
-                        eval fun (e : E) -> E.rec 0l (fun (z : E) -> False) e" in
+                        eval fun (e : E) -> E.rec 0l (fun (z : E) -> Nat) e" in
   [%expect {|
-    Evaluate λ (x1 : E) → E.rec 0l (λ (x2 : E) → ⊥) x1
-      --> λ (x1 : E) → elim x1 at x2 → ⊥ end : ∀ (x1 : E) → ⊥
+    Evaluate λ (x1 : E) → E.rec 0l (λ (x2 : E) → ℕ) x1
+      --> λ (x1 : E) → elim x1 at x2 → ℕ end : ∀ (x1 : E) → ℕ
     |}]
 
 let%expect_test "an argument is classified as its normal form" =
@@ -4461,7 +4811,7 @@ let%expect_test "a let or a transparent member in an argument is unfolded" =
   [%expect {| Evaluate N.t (N.s N.z) --> N.t (N.s N.z) : N |}]
 
 let%expect_test "a negative occurrence behind a definition is rejected" =
-  let _ = main_of_body "def Neg (X : Type@0) : Type@0 := forall (x : X) -> False end \
+  let _ = main_of_body "def Neg (X : Type@0) : Type@0 := forall (x : X) -> Nat end \
                         inductive Bad : Type@0 where | mk (f : Neg Bad) end" in
   [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
 
@@ -4724,8 +5074,8 @@ let%expect_test "an inductive type through a unit alias" =
     |}]
 
 let%expect_test "an inductive type used from an applied unit" =
-  let _ = main_of_multi_string "import Lib›Boxed ⊤ use (Box) module X where eval Box end" in
-  [%expect {| Evaluate Box --> Lib›Boxed.Box ⊤ : Type@0 |}]
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat use (Nat) import Lib›Boxed Nat use (Box) module X where eval Box end" in
+  [%expect {| Evaluate Box --> Lib›Boxed.Box ℕ : Type@0 |}]
 
 let%expect_test "an inductive alias of an inductive alias" =
   let _ =
@@ -4834,16 +5184,16 @@ let group_tree_forest =
    with Forest : Type@0 where | nil | cons (t : Tree A) (ts : Forest A) end end "
 
 let%expect_test "an eliminator missing a block gets the eliminator it needs" =
-  let _ = main_of_bare_body (group_tree_forest ^
-    "def f (z : G.Forest ⊤) : ⊤ := elim z at (z : G.Forest ⊤) -> ⊤ \
-       | nil => ⋆ | cons t us, ht hus => ⋆ end end") in
+  let _ = main_of_body (group_tree_forest ^
+    "def f (z : G.Forest Nat) : ⊤ := elim z at (z : G.Forest Nat) -> ⊤ \
+       | nil => true | cons t us, ht hus => true end end") in
   [%expect {|
     Error: an eliminator has one block per member of its group, in member order:
       Tree, Forest; the block for Tree is missing.
       The eliminator should read:
-      elim x1 with (z : G.Tree ⊤) → …
+      elim x1 with (z : G.Tree ℕ) → …
       | node x ts, h ⇒ …
-      at (z : G.Forest ⊤) → …
+      at (z : G.Forest ℕ) → …
       | nil ⇒ …
       | cons t ts, ht hts ⇒ …
       end
@@ -4853,9 +5203,9 @@ let%expect_test "an eliminator with a block too many gets the eliminator it need
   let _ = main_of_bare_body
     "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
      inductive Rose : Type@0 where | node (ts : List Rose) end \
-     def f (t : Rose) : ⊤ := elim t at (z : Rose) -> ⊤ | node ts, h => ⋆ \
-       with (z : List Rose) -> ⊤ | nil => ⋆ | cons t ts, ht hts => ⋆ \
-       with (z : List Rose) -> ⊤ | nil => ⋆ | cons t ts, ht hts => ⋆ end end" in
+     def f (t : Rose) : ⊤ := elim t at (z : Rose) -> ⊤ | node ts, h => true \
+       with (z : List Rose) -> ⊤ | nil => true | cons t ts, ht hts => true \
+       with (z : List Rose) -> ⊤ | nil => true | cons t ts, ht hts => true end end" in
   [%expect {|
     Error: an eliminator has one block per member of its group, in member order:
       Rose, List Rose; block 3 (branches nil, cons) is for no member left.
@@ -4869,17 +5219,17 @@ let%expect_test "an eliminator with a block too many gets the eliminator it need
     |}]
 
 let%expect_test "an eliminator's blocks follow the order of the members" =
-  let _ = main_of_bare_body (group_tree_forest ^
-    "def f (z : G.Forest ⊤) : ⊤ := elim z at (z : G.Forest ⊤) -> ⊤ \
-       | nil => ⋆ | cons t us, ht hus => ⋆ \
-       with (z : G.Tree ⊤) -> ⊤ | node x ts, h => ⋆ end end") in
+  let _ = main_of_body (group_tree_forest ^
+    "def f (z : G.Forest Nat) : ⊤ := elim z at (z : G.Forest Nat) -> ⊤ \
+       | nil => true | cons t us, ht hus => true \
+       with (z : G.Tree Nat) -> ⊤ | node x ts, h => true end end") in
   [%expect {|
     Error: an eliminator has one block per member of its group, in member order:
       Tree, Forest; the blocks are not in member order.
       The eliminator should read:
-      elim x1 with (z : G.Tree ⊤) → …
+      elim x1 with (z : G.Tree ℕ) → …
       | node x ts, h ⇒ …
-      at (z : G.Forest ⊤) → …
+      at (z : G.Forest ℕ) → …
       | nil ⇒ …
       | cons t ts, ht hts ⇒ …
       end
@@ -4905,7 +5255,7 @@ let%expect_test "an eliminator with no binder type missing a block" =
   let _ = main_of_bare_body
     "mutual G where inductive Tree : Type@0 where | node (ts : Forest) \
      with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
-     def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => ⋆ | cons t us, ht hus => ⋆ end end" in
+     def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => true | cons t us, ht hus => true end end" in
   [%expect {|
     Error: an eliminator has one block per member of its group, in member order:
       Tree, Forest; the block for Tree is missing.
@@ -4926,7 +5276,7 @@ let%expect_test "a block for no member at its place prints its induction hypothe
      with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
      mutual H where inductive Tree : Type@0 where | node (ts : Forest) \
      with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
-     def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => ⋆ | cons t us, ht hus => ⋆ end end" in
+     def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => true | cons t us, ht hus => true end end" in
   [%expect {|
     Error: an eliminator has one block per member of its group, in member order:
       Tree, Forest; the block for Tree is missing.
@@ -5254,10 +5604,14 @@ let%expect_test "lib/Forests.mctt" =
       : Prelude›Data›List.List 0l ℕ
     Evaluate leaves example --> 2 : ℕ
     Evaluate largest example --> 4 : ℕ
-    Evaluate P.Maps.sizeMapTree ℕ succ example --> ⋆ : ⊤
-    Evaluate P.Flatten.lengthFlattenTree example --> ⋆ : ⊤
-    Evaluate P.Flatten.lengthFlattenForest pair --> ⋆ : ⊤
-    Evaluate P.Folds.sizeFold example --> ⋆ : ⊤
+    Evaluate P.Maps.sizeMapTree ℕ succ example
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate P.Flatten.lengthFlattenTree example
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate P.Flatten.lengthFlattenForest pair
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate P.Folds.sizeFold example --> record Prelude›Data›Unit.Unit where end
+      : Prelude›Data›Unit.Unit
     |}]
 
 let%expect_test "lib/PairedTrees.mctt" =
@@ -5316,9 +5670,12 @@ let%expect_test "lib/Roses.mctt" =
                   (Prelude›Data›List.List.nil 0l ℕ))))
       : Prelude›Data›List.List 0l ℕ
     Evaluate leaves example --> 3 : ℕ
-    Evaluate P.Maps.sizeMap ℕ succ example --> ⋆ : ⊤
-    Evaluate P.Flatten.lengthFlatten example --> ⋆ : ⊤
-    Evaluate P.Flatten.lengthFlattenForest (children example) --> ⋆ : ⊤
+    Evaluate P.Maps.sizeMap ℕ succ example
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate P.Flatten.lengthFlatten example
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
+    Evaluate P.Flatten.lengthFlattenForest (children example)
+      --> record Prelude›Data›Unit.Unit where end : Prelude›Data›Unit.Unit
     |}]
 
 (** The end of a record type: one [end] closes the record, with or
@@ -5334,8 +5691,9 @@ let%expect_test "a record type with a with-area closes with one end" =
      end \
      eval (record Prod 0l Nat Nat where fst := 1; snd := 2 end).swap.fst" in
   [%expect {|
-    Evaluate let x1 ≔
-                   let x2 ≔ record Prod 0l ℕ ℕ where fst ≔ 1; snd ≔ 2 end
+    Evaluate let x1 : Prod 0l ℕ ℕ ≔
+                   let x2 : Prod 0l ℕ ℕ ≔
+                         record Prod 0l ℕ ℕ where fst ≔ 1; snd ≔ 2 end
                    in x2.swap
                    end
              in x1.fst
@@ -5346,7 +5704,7 @@ let%expect_test "a record type without a with-area closes with one end" =
   let _ = main_of_body
     "record Pt : Type@0 where x : Nat; y : Nat end \
      eval (record Pt where x := 1; y := 2 end).y" in
-  [%expect {| Evaluate let x1 ≔ record Pt where x ≔ 1; y ≔ 2 end in x1.y end --> 2 : ℕ |}]
+  [%expect {| Evaluate let x1 : Pt ≔ record Pt where x ≔ 1; y ≔ 2 end in x1.y end --> 2 : ℕ |}]
 
 let%expect_test "an extra end after a record type's with-area" =
   let _ = main_of_body
@@ -5384,9 +5742,10 @@ let%expect_test "a field through a head that is no path, let-bound" =
   let _ = main_of_body (pair_decl ^ "eval (record Pair Nat Nat where fst := 5; snd := 6 end).snd \
                                      eval ((λ (q : Pair Nat Nat) → q) (record Pair Nat Nat where fst := 3; snd := 4 end)).fst") in
   [%expect {|
-    Evaluate let x1 ≔ record Pair ℕ ℕ where fst ≔ 5; snd ≔ 6 end in x1.snd end
-      --> 6 : ℕ
-    Evaluate let x1 ≔
+    Evaluate let x1 : Pair ℕ ℕ ≔ record Pair ℕ ℕ where fst ≔ 5; snd ≔ 6 end
+             in x1.snd
+             end --> 6 : ℕ
+    Evaluate let x1 : Pair ℕ ℕ ≔
                    (λ (x2 : Pair ℕ ℕ) → x2)
                      (record Pair ℕ ℕ where fst ≔ 3; snd ≔ 4 end)
              in x1.fst

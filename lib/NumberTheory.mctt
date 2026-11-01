@@ -1,9 +1,10 @@
 (* A client of [Prelude›Arith›Gcd], its laws, and [Prelude›Arith›Prime]:
    greatest common divisors, the primes below 30, and closed instances of
-   the theorems, which normalize to [⋆].  The numbers in the proofs stay
+   the theorems, which normalize to [unit].  The numbers in the proofs stay
    small, since they compute with remainders and equalities of numbers. *)
 module NumberTheory where
 
+import Prelude›Data›Unit use (Unit; unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Sum use (sumTo)
 import Prelude›Data›Bool use (if; cond)
@@ -35,9 +36,9 @@ module Primes where
    [2 n + 2], which contain one by Bertrand's postulate. *)
 let nextPrime (n : ℕ) : ℕ ≔
   (elim n at y -> (∀ (c : ℕ) → ℕ)
-   | zero ⇒ λ (c : ℕ) → cond ℕ (isPrime c) (λ (u : ⊤) → c) (λ (u : ⊤) → succ c)
+   | zero ⇒ λ (c : ℕ) → cond ℕ (isPrime c) (λ (u : Unit) → c) (λ (u : Unit) → succ c)
    | succ p, r ⇒ λ (c : ℕ) →
-       cond ℕ (isPrime c) (λ (u : ⊤) → c) (λ (u : ⊤) → r (succ c))
+       cond ℕ (isPrime c) (λ (u : Unit) → c) (λ (u : Unit) → r (succ c))
    end) (succ n)
 end
 
@@ -81,12 +82,12 @@ eval smallestDivisor 91
 
 eval smallestDivisor 29
 
-(* Primality computes to [⊤] or [⊥]. *)
+(* Primality computes to [Unit] or [Void]. *)
 eval Prime 29
 
 eval Prime 27
 
-(* A proof of a closed proposition normalizes to [⋆], of type [⊤]. *)
+(* A proof of a closed proposition normalizes to [unit], of type [Unit]. *)
 eval gcdZeroLeft 5
 
 eval gcdZeroRight 5
@@ -99,13 +100,13 @@ eval gcdDividesLeft 6 9
 
 eval gcdDividesRight 6 9
 
-eval gcdGreatest 2 8 12 ⋆ ⋆
+eval gcdGreatest 2 8 12 unit unit
 
 eval gcdComm 6 9
 
-eval dividesMultLeft 3 6 2 ⋆
+eval dividesMultLeft 3 6 2 unit
 
-eval dividesPlusCancel 3 6 9 ⋆ ⋆
+eval dividesPlusCancel 3 6 9 unit unit
 
 eval twoPrime
 
@@ -115,8 +116,8 @@ eval nineNotPrime
 
 eval smallestDivisorDivides 15
 
-eval primeGeTwo 13 ⋆
+eval primeGeTwo 13 unit
 
-eval primeSmallestDivisor 13 ⋆
+eval primeSmallestDivisor 13 unit
 
 end

@@ -16,6 +16,7 @@
    whatever the sign ([signedSignLeft], [signedSignRight]). *)
 module Prelude›Data›Integer›Properties where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong;
   idCongTwo; eqToId)
@@ -370,7 +371,7 @@ module Mul where
 theorem absSigned : ∀ (s : Sign) (n : ℕ) → Eq (abs (signed s n)) n ≔
   λ (s : Sign) (n : ℕ) →
     elim n at x -> Eq (abs (signed s x)) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ k, r ⇒
         elim s at w -> Eq (abs (signed w (succ k))) (succ k)
         | negative ⇒ refl k

@@ -31,7 +31,7 @@ eval ack 2 3
 
 eval ack 3 3
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
+(* A proof of a closed equation normalizes to [unit], of type [Unit]. *)
 eval plusSub 6 4
 
 eval subSelf 7

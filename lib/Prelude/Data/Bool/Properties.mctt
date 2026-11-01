@@ -10,6 +10,8 @@
    one only where it occurs first on the other side (commutativity). *)
 module Prelude›Data›Bool›Properties where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
 import Prelude›Logic.Negation 1l use (Not)
 import Prelude›Data›Bool use (Bool; tt; ff; not; and; or; xor; eqb; IsTrue)
@@ -28,7 +30,7 @@ end
 
 (* The constructors differ: [IsTrue] holds of [tt] and not of [ff]. *)
 theorem ttNeFf : Not (Id Bool tt ff) ≔
-  λ (h : Id Bool tt ff) → h IsTrue ⋆
+  λ (h : Id Bool tt ff) → h IsTrue unit
 end
 
 (* Negation is injective. *)
@@ -46,8 +48,8 @@ end
 theorem notNeSelf : ∀ (b : Bool) → Not (Id Bool (not b) b) ≔
   λ (b : Bool) →
     elim b at z -> Not (Id Bool (not z) z)
-    | tt ⇒ λ (h : Id Bool ff tt) → h (λ (z : Bool) → IsTrue (not z)) ⋆
-    | ff ⇒ λ (h : Id Bool tt ff) → h IsTrue ⋆
+    | tt ⇒ λ (h : Id Bool ff tt) → h (λ (z : Bool) → IsTrue (not z)) unit
+    | ff ⇒ λ (h : Id Bool tt ff) → h IsTrue unit
     end
 end
 
@@ -363,22 +365,22 @@ module Decide where
 
 theorem eqbRefl : ∀ (b : Bool) → IsTrue (eqb b b) ≔
   λ (b : Bool) →
-    elim b at z -> IsTrue (eqb z z) | tt ⇒ ⋆ | ff ⇒ ⋆ end
+    elim b at z -> IsTrue (eqb z z) | tt ⇒ unit | ff ⇒ unit end
 end
 
 (* From [IsTrue (eqb a b)] to [Id Bool a b]; the cases where [a] and [b]
-   differ have a hypothesis of type [⊥]. *)
+   differ have a hypothesis of type [Void]. *)
 theorem eqbSound : ∀ (a : Bool) (b : Bool) (h : IsTrue (eqb a b)) →
     Id Bool a b ≔
   λ (a : Bool) (b : Bool) →
     elim a at x -> (∀ (h : IsTrue (eqb x b)) → Id Bool x b)
     | tt ⇒ elim b at y -> (∀ (h : IsTrue y) → Id Bool tt y)
-           | tt ⇒ λ (h : ⊤) → idRefl Bool tt
-           | ff ⇒ λ (h : ⊥) → exfalso h return w . Id Bool tt ff
+           | tt ⇒ λ (h : Unit) → idRefl Bool tt
+           | ff ⇒ λ (h : Void) → elim h at (z : Void) -> Id Bool tt ff end
            end
     | ff ⇒ elim b at y -> (∀ (h : IsTrue (not y)) → Id Bool ff y)
-           | tt ⇒ λ (h : ⊥) → exfalso h return w . Id Bool ff tt
-           | ff ⇒ λ (h : ⊤) → idRefl Bool ff
+           | tt ⇒ λ (h : Void) → elim h at (z : Void) -> Id Bool ff tt end
+           | ff ⇒ λ (h : Unit) → idRefl Bool ff
            end
     end
 end

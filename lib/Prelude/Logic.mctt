@@ -1,6 +1,7 @@
-(* Propositions as types, at every universe level: [⊤] holds, [⊥] has no proof;
-   negation, Church-encoded conjunction, disjunction, equivalence and existence
-   over numbers, and decidability.
+(* Propositions as types, at every universe level: [Unit] holds, [Void] has no
+   proof; negation, Church-encoded conjunction, disjunction, equivalence and
+   existence over numbers, and decidability.  The connectives of [Prop], the
+   universe of propositions, are in [Propositions].
 
    Each submodule takes the level [u] of the propositions it combines, so
    [Conj.And 0l A B] is the conjunction of two propositions of [Type@0] and
@@ -11,14 +12,15 @@
 module Prelude›Logic where
 
 import Prelude›Builtin›Nat
+import Prelude›Data›Void use (Void)
 
 (* Negation and ex falso quodlibet for the propositions of [Type@{u}]. *)
 module Negation (u : Level) where
 
-def Not (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → ⊥ end
+def Not (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → Void end
 
-(* From a proof of [⊥], anything follows. *)
-def absurd (A : Type@{u}) (f : ⊥) : A ≔ exfalso f return x . A end
+(* From a proof of [Void], anything follows. *)
+open Prelude›Data›Void.Absurd u export (absurd)
 
 end
 
@@ -168,6 +170,81 @@ def decNot (A : Type@{u}) (d : Dec A) : Dec (Not A) ≔
   λ (C : Type@{u}) (f : ∀ (n : Not A) → C) (g : ∀ (nn : Not (Not A)) → C) →
     d C (λ (a : A) → g (λ (n : Not A) → n a)) (λ (n : Not A) → f n)
 end
+
+end
+
+(* The connectives of [Prop], the universe of propositions.  A proposition
+   has at most one proof up to conversion, and every connective below is
+   itself a proposition: conjunction is the primitive [∧], disjunction and
+   existence are encoded impredicatively, quantifying over [Prop].  Used as
+   [Propositions.And P Q]. *)
+module Propositions where
+
+(* Conjunction: the primitive [∧ (p : P) → Q], whose second proposition
+   does not depend on the proof of the first. *)
+def And (P : Prop) (Q : Prop) : Prop ≔ ∧ (p : P) → Q end
+
+(* A proof of a conjunction from proofs of both sides. *)
+def andIntro (P : Prop) (Q : Prop) (p : P) (q : Q) : And P Q ≔ conj (p : P) q end
+
+(* The first side of a conjunction. *)
+def andFst (P : Prop) (Q : Prop) (h : And P Q) : P ≔ left h end
+
+(* The second side of a conjunction. *)
+def andSnd (P : Prop) (Q : Prop) (h : And P Q) : Q ≔ right h end
+
+(* Equivalence: implications both ways, as a conjunction. *)
+def Iff (P : Prop) (Q : Prop) : Prop ≔ And (∀ (p : P) → Q) (∀ (q : Q) → P) end
+
+(* An equivalence from implications both ways. *)
+def iffIntro (P : Prop) (Q : Prop) (f : ∀ (p : P) → Q) (g : ∀ (q : Q) → P) : Iff P Q ≔
+  andIntro (∀ (p : P) → Q) (∀ (q : Q) → P) f g
+end
+
+(* Disjunction, encoded impredicatively: a proof eliminates into any
+   proposition [C] that follows from either side. *)
+def Or (P : Prop) (Q : Prop) : Prop ≔
+  ∀ (C : Prop) (f : ∀ (p : P) → C) (g : ∀ (q : Q) → C) → C
+end
+
+(* A proof of a disjunction from its first side. *)
+def orInl (P : Prop) (Q : Prop) (p : P) : Or P Q ≔
+  λ (C : Prop) (f : ∀ (x : P) → C) (g : ∀ (y : Q) → C) → f p
+end
+
+(* A proof of a disjunction from its second side. *)
+def orInr (P : Prop) (Q : Prop) (q : Q) : Or P Q ≔
+  λ (C : Prop) (f : ∀ (x : P) → C) (g : ∀ (y : Q) → C) → g q
+end
+
+(* Case analysis on a disjunction, into a proposition [C]. *)
+def orElim (P : Prop) (Q : Prop) (C : Prop) (h : Or P Q) (f : ∀ (p : P) → C) (g : ∀ (q : Q) → C) : C ≔
+  h C f g
+end
+
+(* Existence of an element of [A] satisfying [P], encoded impredicatively:
+   a proof eliminates into any proposition [C] that follows from some
+   witness and its proof. *)
+def Exists (A : Type@0) (P : ∀ (a : A) → Prop) : Prop ≔
+  ∀ (C : Prop) (f : ∀ (a : A) (p : P a) → C) → C
+end
+
+(* A proof of existence from a witness and its proof. *)
+def existsIntro (A : Type@0) (P : ∀ (a : A) → Prop) (a : A) (p : P a) : Exists A P ≔
+  λ (C : Prop) (f : ∀ (b : A) (q : P b) → C) → f a p
+end
+
+(* Elimination of an existence proof into a proposition [C]. *)
+def existsElim (A : Type@0) (P : ∀ (a : A) → Prop) (C : Prop) (h : Exists A P)
+    (f : ∀ (a : A) (p : P a) → C) : C ≔
+  h C f
+end
+
+(* Negation: a proof of [Not P] turns a proof of [P] into one of [⊥]. *)
+def Not (P : Prop) : Prop ≔ ∀ (p : P) → ⊥ end
+
+(* From a proof of [⊥], an element of any type [A] of [Type@0]. *)
+def absurd (A : Type@0) (h : ⊥) : A ≔ exfalso h return A end
 
 end
 

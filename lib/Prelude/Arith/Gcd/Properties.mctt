@@ -5,6 +5,8 @@
    than [theorem], [fact] and [let], for comparison. *)
 module Prelude›Arith›Gcd›Properties where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 open Prelude›Logic.Negation as Neg
@@ -39,14 +41,14 @@ def divides : ∀ (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f) →
     elim f at x -> (∀ (a : ℕ) (b : ℕ) (h : Lt b x) →
                          And (Divides (gcdFuel x a b) a)
                              (Divides (gcdFuel x a b) b))
-    | zero ⇒ λ (a : ℕ) (b : ℕ) (h : ⊥) →
+    | zero ⇒ λ (a : ℕ) (b : ℕ) (h : Void) →
         Neg.absurd 1l
           (And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)) h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) →
         elim b at z -> (∀ (h : Lt z (succ p)) →
                              And (Divides (gcdFuel (succ p) a z) a)
                                  (Divides (gcdFuel (succ p) a z) z))
-        | zero ⇒ λ (h : ⊤) →
+        | zero ⇒ λ (h : Unit) →
             andIntro (Divides a a) (Divides a 0) (dividesRefl a) (dividesZero a)
         | succ d, s ⇒ λ (h : Le (succ d) p) →
             let e ≔ succ d;
@@ -76,13 +78,13 @@ abstract def greatest : ∀ (k : ℕ) (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f)
     elim f at x -> (∀ (a : ℕ) (b : ℕ) (h : Lt b x)
                          (ha : Divides k a) (hb : Divides k b) →
                          Divides k (gcdFuel x a b))
-    | zero ⇒ λ (a : ℕ) (b : ℕ) (h : ⊥) (ha : Divides k a) (hb : Divides k b) →
+    | zero ⇒ λ (a : ℕ) (b : ℕ) (h : Void) (ha : Divides k a) (hb : Divides k b) →
         absurd (Divides k (gcdFuel 0 a b)) h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) →
         elim b at z -> (∀ (h : Lt z (succ p)) (ha : Divides k a)
                              (hb : Divides k z) →
                              Divides k (gcdFuel (succ p) a z))
-        | zero ⇒ λ (h : ⊤) (ha : Divides k a) (hb : Divides k 0) → ha
+        | zero ⇒ λ (h : Unit) (ha : Divides k a) (hb : Divides k 0) → ha
         | succ d, s ⇒ λ (h : Le (succ d) p) (ha : Divides k a)
                         (hb : Divides k (succ d)) →
             let e ≔ succ d;
@@ -138,19 +140,19 @@ abstract def gcdFuelEnough : ∀ (f : ℕ) (g : ℕ) (a : ℕ) (b : ℕ)
     elim f at x -> (∀ (g : ℕ) (a : ℕ) (b : ℕ) (hf : Lt b x)
                          (hg : Lt b g) →
                          Eq (gcdFuel x a b) (gcdFuel g a b))
-    | zero ⇒ λ (g : ℕ) (a : ℕ) (b : ℕ) (hf : ⊥) (hg : Lt b g) →
+    | zero ⇒ λ (g : ℕ) (a : ℕ) (b : ℕ) (hf : Void) (hg : Lt b g) →
         absurd (Eq (gcdFuel 0 a b) (gcdFuel g a b)) hf
     | succ p, ih ⇒ λ (g : ℕ) →
         elim g at y -> (∀ (a : ℕ) (b : ℕ) (hf : Lt b (succ p))
                              (hg : Lt b y) →
                              Eq (gcdFuel (succ p) a b) (gcdFuel y a b))
-        | zero ⇒ λ (a : ℕ) (b : ℕ) (hf : Lt b (succ p)) (hg : ⊥) →
+        | zero ⇒ λ (a : ℕ) (b : ℕ) (hf : Lt b (succ p)) (hg : Void) →
             absurd (Eq (gcdFuel (succ p) a b) (gcdFuel 0 a b)) hg
         | succ q, t ⇒ λ (a : ℕ) (b : ℕ) →
             elim b at z -> (∀ (hf : Lt z (succ p)) (hg : Lt z (succ q)) →
                                  Eq (gcdFuel (succ p) a z)
                                     (gcdFuel (succ q) a z))
-            | zero ⇒ λ (hf : ⊤) (hg : ⊤) → refl a
+            | zero ⇒ λ (hf : Unit) (hg : Unit) → refl a
             | succ d, s ⇒ λ (hf : Le (succ d) p) (hg : Le (succ d) q) →
                 let e ≔ succ d;
                     r ≔ mod a e;
@@ -188,7 +190,7 @@ module Values where
 abstract def gcdZeroLeft : ∀ (b : ℕ) → Eq (gcd 0 b) b ≔
   λ (b : ℕ) →
     elim b at x -> Eq (gcd 0 x) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ d, ih ⇒ refl (succ d)
     end
 end
@@ -202,7 +204,7 @@ end
 abstract def gcdSelf : ∀ (n : ℕ) → Eq (gcd n n) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (gcd x x) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ d, ih ⇒
         cong (λ (y : ℕ) → gcdFuel (succ d) (succ d) y)
           (mod (succ d) (succ d)) 0 (modSelf d)

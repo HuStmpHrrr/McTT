@@ -4,6 +4,8 @@
    values, and closed instances of their laws. *)
 module DataTypes where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Data›Bool use (Bool; tt; ff)
@@ -28,7 +30,7 @@ import Prelude›Data›W use (W)
 open Prelude›Data›W.Ops as WO
 
 (* Comparisons: [Spec] holds of every outcome, so its closed instances
-   compute to [⋆]. *)
+   compute to [unit]. *)
 eval compare 3 5
 eval thenCmp (compare 2 2) (flip (compare 1 4))
 eval compareSpec 3 5
@@ -88,13 +90,13 @@ eval toNatAdd (fromNat 6) (fromNat 7)
 
 (* W-types: the natural numbers as the W-type of two shapes, [ff] with no
    subtree and [tt] with one. *)
-def Arity (b : Bool) : Type@0 ≔ Cond.if 1l Type@0 b ⊤ ⊥ end
+def Arity (b : Bool) : Type@0 ≔ Cond.if 1l Type@0 b Unit Void end
 
 inductive WNat ≔ W 0l Bool Arity
 
-def wzero : WNat ≔ WNat.sup ff (λ (p : ⊥) → exfalso p return z . WNat) end
+def wzero : WNat ≔ WNat.sup ff (λ (p : Void) → elim p at (z : Void) -> WNat end) end
 
-def wsucc (w : WNat) : WNat ≔ WNat.sup tt (λ (p : ⊤) → w) end
+def wsucc (w : WNat) : WNat ≔ WNat.sup tt (λ (p : Unit) → w) end
 
 (* The number a tree stands for, by [foldr]: one more than its subtree at
    a [tt] node. *)
@@ -102,8 +104,8 @@ def wToNat (w : WNat) : ℕ ≔
   WO.foldr 0l Bool Arity ℕ
     (λ (b : Bool) →
        elim b at z -> (∀ (r : ∀ (p : Arity z) → ℕ) → ℕ)
-       | tt ⇒ λ (r : ∀ (p : ⊤) → ℕ) → succ (r ⋆)
-       | ff ⇒ λ (r : ∀ (p : ⊥) → ℕ) → 0
+       | tt ⇒ λ (r : ∀ (p : Unit) → ℕ) → succ (r unit)
+       | ff ⇒ λ (r : ∀ (p : Void) → ℕ) → 0
        end)
     w
 end

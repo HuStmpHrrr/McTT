@@ -11,6 +11,8 @@
    [mulInvLeft] for [mult]. *)
 module Prelude›Data›Parity›Properties where
 
+import Prelude›Data›Unit use (Unit; unit)
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
 import Prelude›Logic.Negation 1l use (Not)
@@ -24,7 +26,7 @@ open Parity use (even; odd)
 
 (* The proposition that a parity is [even]. *)
 private def IsEven (p : Parity) : Type@0 ≔
-  elim p at z -> Type@0 | even ⇒ ⊤ | odd ⇒ ⊥ end
+  elim p at z -> Type@0 | even ⇒ Unit | odd ⇒ Void end
 end
 
 (* [inv]. *)
@@ -52,9 +54,9 @@ end
 theorem parityNeInv : ∀ (p : Parity) → Not (Id Parity p (inv p)) ≔
   λ (p : Parity) →
     elim p at z -> Not (Id Parity z (inv z))
-    | even ⇒ λ (h : Id Parity even odd) → h IsEven ⋆
+    | even ⇒ λ (h : Id Parity even odd) → h IsEven unit
     | odd ⇒ λ (h : Id Parity odd even) →
-        h (λ (z : Parity) → IsEven (inv z)) ⋆
+        h (λ (z : Parity) → IsEven (inv z)) unit
     end
 end
 

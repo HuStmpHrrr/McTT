@@ -8,6 +8,7 @@
    coefficients ([hornerAtOne]). *)
 module Polynomials where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -75,7 +76,7 @@ end
 theorem hornerNaive : ∀ (c : Coeffs) (n : ℕ) → Eq (horner c n) (naive c n) ≔
   λ (c : Coeffs) (n : ℕ) →
     (elim n at k -> (∀ (d : Coeffs) → Eq (hornerFrom k d) (sumTo (term d) k))
-     | zero ⇒ λ (d : Coeffs) → ⋆
+     | zero ⇒ λ (d : Coeffs) → unit
      | succ p, ih ⇒ λ (d : Coeffs) →
          let rest ≔ hornerFrom p (shift d);
              tail ≔ sumTo (term (shift d)) p;
@@ -145,7 +146,7 @@ eval let module Table (c : Coeffs) where
      in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)
      end
 
-(* Closed instances of the theorems normalize to [⋆]. *)
+(* Closed instances of the theorems normalize to [unit]. *)
 eval At.hornerNaive 2 (cubic 1 0 1 0) 4
 
 eval At.hornerNaive 3 (cubic 2 1 0 0) 4

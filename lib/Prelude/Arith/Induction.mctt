@@ -4,6 +4,7 @@
    [Type@{u}]; the unit exports them at [0l]. *)
 module Prelude›Arith›Induction where
 
+import Prelude›Data›Void use (Void)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic
 import Prelude›Arith›Equality use (Eq; sym)
@@ -56,7 +57,7 @@ def strongInd (P : ∀ (n : ℕ) → Type@{u})
   λ (n : ℕ) →
     step n
       (elim n at x -> (∀ (m : ℕ) (lt : Lt m x) → P m)
-       | zero ⇒ λ (m : ℕ) (lt : ⊥) → absurd (P m) lt
+       | zero ⇒ λ (m : ℕ) (lt : Void) → absurd (P m) lt
        | succ p, ih ⇒ λ (m : ℕ) (lt : Le m p) →
            orElim (Lt m p) (Eq m p) (P m) (leCases m p lt)
              (λ (h : Lt m p) → ih m h)

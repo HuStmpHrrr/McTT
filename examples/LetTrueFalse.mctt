@@ -4,9 +4,9 @@ module LetTrueFalse where
 import Prelude›Builtin›Nat
 
 (* A local definition of each of [⊤] and [⊥ → ℕ]; the body only
-   uses the first, which by η normalizes to [⋆]. *)
-eval let t : ⊤ ≔ ⋆;
-         f : ∀ (x : ⊥) → ℕ ≔ λ (x : ⊥) → exfalso x return y. ℕ
+   uses the first, a proof, which normalizes to [⋆]. *)
+eval let t : ⊤ ≔ true;
+         f : ∀ (x : ⊥) → ℕ ≔ λ (x : ⊥) → exfalso x return ℕ
      in t
      end
 

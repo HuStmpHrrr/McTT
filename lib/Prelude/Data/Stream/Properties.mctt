@@ -6,6 +6,7 @@
    prefixes. *)
 module Prelude›Data›Stream›Properties where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -75,7 +76,7 @@ module Nats where
 theorem nthNats : ∀ (n : ℕ) → Eq (S.nth nats n) n ≔
   λ (n : ℕ) →
     elim n at x -> Eq (S.nth nats x) x
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒ ih
     end
 end
@@ -111,7 +112,7 @@ theorem scanSum : ∀ (s : S.Stream) (n : ℕ) →
     Eq (S.nth (S.scan ℕ plus 0 s) n) (sumTo (S.nth s) n) ≔
   λ (s : S.Stream) (n : ℕ) →
     elim n at x -> Eq (S.nth (S.scan ℕ plus 0 s) x) (sumTo (S.nth s) x)
-    | zero ⇒ ⋆
+    | zero ⇒ unit
     | succ p, ih ⇒
         let l ≔ S.nth (S.scan ℕ plus 0 s) p;
             r ≔ sumTo (S.nth s) p;
@@ -150,7 +151,7 @@ theorem sumTake : ∀ (n : ℕ) (s : S.Stream) →
   λ (n : ℕ) (s : S.Stream) →
     (elim n at x -> (∀ (u : S.Stream) →
                           Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
-     | zero ⇒ λ (u : S.Stream) → ⋆
+     | zero ⇒ λ (u : S.Stream) → unit
      | succ p, ih ⇒ λ (u : S.Stream) →
          let vs ≔ sumVec p (S.take p (S.tail u));
              ts ≔ sumTo (S.tail u) p

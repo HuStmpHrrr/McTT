@@ -1,14 +1,14 @@
-(* The unit type [⊤], with its element [⋆] and eta, and the empty type [⊥]
-   with [exfalso]. *)
+(* The true proposition [⊤], with its proof [true], and the false
+   proposition [⊥] with [exfalso].  A proof normalizes to [⋆]. *)
 module TrueFalse where
 
 import Prelude›Builtin›Nat
 
-eval ⋆
+eval true
 
-(* By eta for ⊤, the body normalizes to ⋆. *)
+(* A function into a proposition is a proof, so it normalizes to ⋆. *)
 eval λ (u : ⊤) → u
 
-eval λ (f : ⊥) → exfalso f return x. ℕ
+eval λ (f : ⊥) → exfalso f return ℕ
 
 end

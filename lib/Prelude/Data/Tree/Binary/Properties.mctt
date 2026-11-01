@@ -9,6 +9,7 @@
 module Prelude›Data›Tree›Binary›Properties (u : Level) (N : Type@{u})
     (L : Type@{u}) where
 
+import Prelude›Data›Unit use (unit)
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong;
   idCongTwo)
@@ -37,7 +38,7 @@ theorem nodesMap : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
   λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
     (t : T) →
     elim t at z -> Eq (TO.nodes u M K (Op.map M K f g z)) (Op.nodes z)
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         plusCongBoth (TO.nodes u M K (Op.map M K f g l))
           (succ (TO.nodes u M K (Op.map M K f g r)))
@@ -51,7 +52,7 @@ theorem leavesMap : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
   λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
     (t : T) →
     elim t at z -> Eq (TO.leaves u M K (Op.map M K f g z)) (Op.leaves z)
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         plusCongBoth (TO.leaves u M K (Op.map M K f g l))
           (TO.leaves u M K (Op.map M K f g r))
@@ -133,7 +134,7 @@ module Counts where
 theorem leavesNodes : ∀ (t : T) → Eq (Op.leaves t) (succ (Op.nodes t)) ≔
   λ (t : T) →
     elim t at z -> Eq (Op.leaves z) (succ (Op.nodes z))
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         plusCongBoth (Op.leaves l) (Op.leaves r) (succ (Op.nodes l))
           (succ (Op.nodes r)) hl hr
@@ -144,7 +145,7 @@ theorem lengthInfix : ∀ (t : T) →
     Eq (LO.length u N (Op.toListInfix t)) (Op.nodes t) ≔
   λ (t : T) →
     elim t at z -> Eq (LO.length u N (Op.toListInfix z)) (Op.nodes z)
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         trans (LO.length u N (LO.append u N (Op.toListInfix l)
                                 (List.cons u N m (Op.toListInfix r))))
@@ -163,7 +164,7 @@ theorem lengthLeaves : ∀ (t : T) →
     Eq (LO.length u L (Op.toListLeaves t)) (Op.leaves t) ≔
   λ (t : T) →
     elim t at z -> Eq (LO.length u L (Op.toListLeaves z)) (Op.leaves z)
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         trans (LO.length u L
             (LO.append u L (Op.toListLeaves l) (Op.toListLeaves r)))
@@ -195,7 +196,7 @@ end
 theorem leavesMirror : ∀ (t : T) → Eq (Op.leaves (Op.mirror t)) (Op.leaves t) ≔
   λ (t : T) →
     elim t at z -> Eq (Op.leaves (Op.mirror z)) (Op.leaves z)
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         trans (plus (Op.leaves (Op.mirror r)) (Op.leaves (Op.mirror l)))
           (plus (Op.leaves r) (Op.leaves l))
@@ -211,7 +212,7 @@ end
 theorem nodesMirror : ∀ (t : T) → Eq (Op.nodes (Op.mirror t)) (Op.nodes t) ≔
   λ (t : T) →
     elim t at z -> Eq (Op.nodes (Op.mirror z)) (Op.nodes z)
-    | leaf x ⇒ ⋆
+    | leaf x ⇒ unit
     | node l m r, hl hr ⇒
         let a : ℕ ≔ Op.nodes l; b : ℕ ≔ Op.nodes r in
         trans (plus (Op.nodes (Op.mirror r)) (succ (Op.nodes (Op.mirror l))))

@@ -1,0 +1,10 @@
+(* The unit type: a record with no fields.  By eta every element of [Unit]
+   is [unit], so a proof that computes to [Unit] is [unit]. *)
+module Prelude›Data›Unit where
+
+record Unit : Type@0 where end
+
+(* The one element of [Unit]. *)
+def unit : Unit ≔ record Unit where end end
+
+end
