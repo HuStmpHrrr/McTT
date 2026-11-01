@@ -1821,20 +1821,41 @@ Qed.
 
 (** ** Relevant Parameters *)
 
-(** The parameters [Δ] over [Γ] are types of the universe at level [l],
-    each in the context of the parameters outside it: the premise (R) of the
-    unit rules. *)
+(** A parameter type [T] over [Γ] is a type of the universe at level [l]
+    or a type of levels. *)
+Definition param_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (T : typ) (l : nat) : Prop :=
+  Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@l \/ Θ ⍮ Ξ ⍮ Γ ⊢ T : LevelSort.
+
+(** The parameters [Δ] over [Γ] are types of the universe at level [l] or
+    types of levels, each in the context of the parameters outside it: the
+    premise (R) of the unit rules, of which [param_sorts] tells which. *)
 Definition params_relevant (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (l : nat) : Prop :=
-  forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@l.
+  forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> param_typed Θ Ξ (Δ2 ++ Γ) T l.
+
+(** The premise (R) of a rule gives relevant parameters. *)
+Lemma params_relevant_of_sorts : forall Θ Ξ Γ Δ l ps,
+    (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
+    params_relevant Θ Ξ Γ Δ l.
+Proof.
+  intros * Hps HT Δ1 T Δ2 E; pose proof (HT _ _ _ E) as H.
+  destruct (Hps (List.length Δ2)) as [|]; [ left | right ]; congruence.
+Qed.
 
 (** No parameters are relevant at every level. *)
 Lemma params_relevant_nil : forall Θ Ξ Γ l, params_relevant Θ Ξ Γ nil l.
 Proof. intros * Δ1 T Δ2 E; destruct Δ1; discriminate. Qed.
 
 (** A larger level contains every parameter type too. *)
+Lemma param_typed_max_left : forall Θ Ξ Γ T l j, param_typed Θ Ξ Γ T l -> param_typed Θ Ξ Γ T (max l j).
+Proof. intros * [H | H]; [ left; apply lift_exp_max_left; exact H | right; exact H ]. Qed.
+
+Lemma param_typed_max_right : forall Θ Ξ Γ T l j, param_typed Θ Ξ Γ T l -> param_typed Θ Ξ Γ T (max j l).
+Proof. intros * [H | H]; [ left; apply lift_exp_max_right; exact H | right; exact H ]. Qed.
+
 Lemma params_relevant_max : forall Θ Ξ Γ Δ l j,
     params_relevant Θ Ξ Γ Δ l -> params_relevant Θ Ξ Γ Δ (max l j).
-Proof. intros * H Δ1 T Δ2 E; apply lift_exp_max_left; exact (H _ _ _ E). Qed.
+Proof. intros * H Δ1 T Δ2 E; apply param_typed_max_left; exact (H _ _ _ E). Qed.
 
 (** Inner parameters [Δy] over outer ones [Δ]: together, at a common
     level. *)
@@ -1845,14 +1866,14 @@ Proof.
   intros * Hy HΔ Δ1 T Δ2 E.
   destruct (List.app_eq_app _ _ _ _ E) as (Δc & [[E1 E2] | [E1 E2]]).
   - destruct Δc as [| e Δc]; cbn in E2.
-    + apply lift_exp_max_right; apply HΔ with (Δ1 := nil); rewrite E2; reflexivity.
-    + injection E2 as <- ->; apply lift_exp_max_left; rewrite <- List.app_assoc; exact (Hy _ _ _ E1).
-  - apply lift_exp_max_right; exact (HΔ _ _ _ E2).
+    + apply param_typed_max_right; apply HΔ with (Δ1 := nil); rewrite E2; reflexivity.
+    + injection E2 as <- ->; apply param_typed_max_left; rewrite <- List.app_assoc; exact (Hy _ _ _ E1).
+  - apply param_typed_max_right; exact (HΔ _ _ _ E2).
 Qed.
 
-(** One more parameter, of a type of a universe. *)
+(** One more parameter, of a type of a universe or a type of levels. *)
 Lemma params_relevant_snoc : forall Θ Ξ Γ Δ T l (j : nat),
-    params_relevant Θ Ξ Γ Δ l -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ T : Typeω@j ->
+    params_relevant Θ Ξ Γ Δ l -> param_typed Θ Ξ (Δ ++ Γ) T j ->
     params_relevant Θ Ξ Γ (ce_ass T :: Δ) (max j l).
 Proof.
   intros * HΔ HT.
@@ -1877,10 +1898,17 @@ Lemma params_relevant_sub : forall Θ Ξ Γ Γ' Δ σ l,
     ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ σ ++ Γ' ->
     params_relevant Θ Ξ Γ' (tele_sub Δ σ) l.
 Proof.
-  intros * HR Hσ HΔ HΔ'; unfold params_relevant in *.
-  eapply (move_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _) _ _ _ _ l (fun _ => Typeω@l));
-    [ exact Hσ | exact HΔ | exact HΔ' | intros; constructor |].
-  intros Δ1 T Δ2 E Δ0 σ0 Hσ0; exact (sub_preserves_typ _ _ _ _ _ _ _ (HR _ _ _ E) Hσ0).
+  intros * HR Hσ HΔ HΔ' Δ1' T' Δ2' E.
+  pose proof E as E0.
+  destruct (tele_sub_split_ass _ _ _ _ _ E) as (Δ1 & T & Δ2 & -> & -> & ->).
+  assert (Hs : Θ ⍮ Ξ ⍮ tele_sub Δ2 σ ++ Γ' ⊢ˢ sb_qn (List.length Δ2) σ : Δ2 ++ Γ).
+  { apply wf_sub_ext; [ exact Hσ | |].
+    - rewrite E0, <- List.app_assoc in HΔ'; cbn in HΔ'.
+      exact (ctx_decomp_tail (ctx_app_wf_tail _ _ _ _ HΔ')).
+    - rewrite <- List.app_assoc in HΔ; cbn in HΔ.
+      exact (ctx_decomp_tail (ctx_app_wf_tail _ _ _ _ HΔ)). }
+  destruct (HR Δ1 T Δ2 eq_refl) as [H | H]; [ left | right ];
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ H Hs) as H'; cbn in H'; exact H'.
 Qed.
 
 (** What abstracting the description [R] over [Δ] needs of [Δ]: nothing
@@ -1906,7 +1934,7 @@ Proof.
   change (ce_ass T :: Δ2) with ((ce_ass T :: nil) ++ Δ2) in Hs; apply ctx_scoped_app_iff in Hs as [_ Hs2].
   rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
   pose proof (proj1 (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ))) as HΔ2.
-  exact (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HT HΔ2).
+  destruct HT as [HT | HT]; [ left | right ]; exact (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HT HΔ2).
 Qed.
 
 Section DescOk.
@@ -2215,7 +2243,7 @@ Section DescOk.
   Lemma desc_ok_open_root : forall Γ Δ Φw Φ, tele_ass Δ -> desc_ok Γ (mdesc_open Δ Φw Φ) -> desc_ok (Δ ++ Γ) (mdesc_open nil Φw Φ).
   Proof.
     intros * Ha H; inversion H; subst; eapply desc_ok_open with (param_level := 0); cbn [List.app] in *;
-      first [ eassumption | constructor | apply params_relevant_nil ].
+      first [ eassumption | apply params_relevant_nil | constructor ].
   Qed.
 
   (** Back, the parameters being relevant. *)
@@ -2228,7 +2256,7 @@ Section DescOk.
   Lemma desc_ok_closed_root : forall Γ Θ' p T Φ Ns, tele_ass Θ' -> desc_ok Γ (mdesc_closed Θ' p T Φ Ns) -> desc_ok (Θ' ++ Γ) (mdesc_closed nil p T Φ Ns).
   Proof.
     intros * Ha H; inversion H; subst; eapply desc_ok_closed with (param_level := 0); cbn [List.app] in *;
-      first [ eassumption | constructor | apply params_relevant_nil ].
+      first [ eassumption | apply params_relevant_nil | constructor ].
   Qed.
 
   Lemma desc_ok_closed_unroot : forall Γ Θ' p T Φ Ns l, tele_ass Θ' -> params_relevant Θ Ξ Γ Θ' l ->
