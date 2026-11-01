@@ -897,7 +897,7 @@ Proof.
 Qed.
 
 Corollary wf_gstack_closed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gctx_closed Θ Ξ.
-Proof. intros * Hg; destruct wf_scoped as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H); exact (H _ _ Hg). Qed.
+Proof. intros * Hg; destruct wf_scoped as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H); exact (H _ _ Hg). Qed.
 
 (** What is stored below where a body is stored is what the body says. *)
 Lemma loc_read : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ, loc Θ Ξ p T Φ ->

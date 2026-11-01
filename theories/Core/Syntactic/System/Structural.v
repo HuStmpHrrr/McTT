@@ -2427,10 +2427,11 @@ End WkMem.
 (** The scoping of a module expression, from a judgment about it or about
     the unit it is the literal of. *)
 Ltac modexp_scoped_tac :=
-  first [ exact (proj1 (proj2 (wf_modexp_eq_scoped _ _ _ _ _ ltac:(eassumption))))
-        | exact (proj2 (proj2 (wf_modexp_eq_scoped _ _ _ _ _ ltac:(eassumption))))
-        | exact (proj1 (proj2 (wf_unit_eq_scoped _ _ _ _ _ ltac:(eassumption))))
-        | exact (proj2 (proj2 (wf_unit_eq_scoped _ _ _ _ _ ltac:(eassumption)))) ].
+  try cbn [modexp_scoped];
+  first [ eapply (fun X => proj1 (proj2 (wf_modexp_eq_scoped _ _ _ _ _ X))); eassumption
+        | eapply (fun X => proj2 (proj2 (wf_modexp_eq_scoped _ _ _ _ _ X))); eassumption
+        | eapply (fun X => proj1 (proj2 (wf_unit_eq_scoped _ _ _ _ _ X))); eassumption
+        | eapply (fun X => proj2 (proj2 (wf_unit_eq_scoped _ _ _ _ _ X))); eassumption ].
 
 (** The flag premises of an alias or a flatten, weakened by [Hφ]: each
     side's, as a [levels_flag], from its induction hypotheses. *)
@@ -2443,7 +2444,7 @@ Ltac wk_pose_flags Hφ :=
       pose proof (wk_levels_flag T X Γ D E lv Rt _ _ Hφ
                     ltac:(eauto using ext_eq_ctx_left, ext_eq_ctx_right)
                     ltac:(eauto using ext_eq_ctx_left, ext_eq_ctx_right)
-                    ltac:(rewrite ?List.length_app; modexp_scoped_tac)
+                    ltac:(modexp_scoped_tac)
                     IH1 Hm IH3) as F;
       clear Hm
   end.
@@ -3328,6 +3329,61 @@ Lemma sub_as_sub_ext : forall Θ Ξ Ψ Γ Δ σ, sub_as_sub Θ Ξ Δ σ Γ -> �
     sub_as_sub Θ Ξ (tele_sub Ψ σ ++ Δ) (sb_qn (length Ψ) σ) (Ψ ++ Γ).
 Proof. intros; apply wf_sub_ext; assumption. Qed.
 
+Lemma sub_as_sub_compat : forall Θ Ξ Δ σ Γ, sub_as_sub Θ Ξ Δ σ Γ -> sub_mod_compat σ Δ Γ.
+Proof. intros * Hσ; exact (wf_sub_mod_compat _ _ _ _ _ Hσ). Qed.
+
+(** The flag premise of an alias, a flatten or a body, substituted, from
+    the induction hypotheses about its parts. *)
+Lemma sub_levels_flag : forall Θ Ξ Γ Δu E (lv : bool) Rt Δ σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ -> ⊢ Θ ⍮ Ξ ⍮ Δu ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ -> modexp_scoped (length (Δu ++ Γ)) E ->
+    (lv = true -> forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : LevelSort[σ0]) ->
+    (lv = false -> mdenote Θ Ξ (Δu ++ Γ) E Rt) ->
+    (lv = false -> forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ⁿˡ mdesc_sub Rt σ0) ->
+    levels_flag Θ Ξ Δ (tele_sub Δu σ) E[sb_qn (length Δu) σ]ᵐ lv (mdesc_sub Rt (sb_qn (length Δu) σ)).
+Proof.
+  intros * Hσ HΓ HΔ HE IH1 Hm IH3.
+  exact (move_levels_flag Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_ext Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ _ _
+           Hσ HΓ HΔ HE IH1 Hm IH3).
+Qed.
+
+(** An open description with no member of a type of levels, substituted,
+    from the induction hypotheses about its parts. *)
+Lemma sub_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_levels : String.string -> nat) (member_descs : String.string -> mdesc) Δ σ,
+    gm_noopen Φx ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δo ≈ body_ctx Φx ++ Δo ->
+    (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (body_ctx Φx ++ Δo) σ0 ≈ tele_sub (body_ctx Φx ++ Δo) σ0) ->
+    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_fill Φ0 = Some σf ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δo ++ Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][σ0] : (relevance_sort (entry_relevance E) Typeω@(member_levels y))[σ0]) ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       udenote Θ Ξ (body_ctx Φ0 ++ Δo ++ Γ) None U (member_descs y)) ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : body_ctx Φ0 ++ Δo ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ⁿˡ mdesc_sub (member_descs y) σ0) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ⁿˡ mdesc_sub (mdesc_open Δo Φw Φx) σ.
+Proof.
+  intros * Hn Hx IHx IHA HU IHn Hσ.
+  exact (move_no_level_open Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_ext Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ _ _ _
+           Hσ Hn Hx (IHx _ _ Hσ) IHA HU IHn).
+Qed.
+
+(** The flag premises of an alias or a flatten, substituted by [Hσ]. *)
+Ltac sub_pose_flags Hσ :=
+  repeat match goal with
+  | Hm : ?lv = false -> mdenote ?T ?X (?D ++ ?Γ) ?E ?Rt,
+    IH1 : ?lv = true -> forall _ _ _, ?D = _ -> forall _ _, wf_sub _ _ _ _ _ -> _,
+    IH3 : ?lv = false -> forall _ _, wf_sub _ _ _ (?D ++ ?Γ) _ -> wf_no_level_members _ _ _ _ |- _ =>
+      let F := fresh "F" in
+      pose proof (sub_levels_flag T X Γ D E lv Rt _ _ Hσ
+                    ltac:(eauto using ext_eq_ctx_left, ext_eq_ctx_right)
+                    ltac:(eauto using ext_eq_ctx_left, ext_eq_ctx_right)
+                    ltac:(modexp_scoped_tac)
+                    IH1 Hm IH3) as F;
+      clear Hm
+  end.
+
 Ltac sub_elim_case :=
   first [ eapply (move_elim_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
         | eapply (move_elim_cong_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
@@ -3437,13 +3493,27 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
     (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 ->
        forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : (ps (List.length Δ2))[σ0]) ->
+    forall (lv lv' : bool) Rt Rt',
+    (lv = true -> forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+    (lv = true -> forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : LevelSort[σ0]) ->
+    (lv = false -> mdenote Θ Ξ (Δu ++ Γ) (me_lit (gu_open nil Φ)) Rt) ->
+    (lv = false -> Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ⁿˡ Rt) ->
+    (lv = false -> forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ⁿˡ mdesc_sub Rt σ0) ->
+    (lv' = true -> forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : LevelSort) ->
+    (lv' = true -> forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 ->
+       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δ2 ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : LevelSort[σ0]) ->
+    (lv' = false -> mdenote Θ Ξ (Δu' ++ Γ) (me_lit (gu_open nil Φ')) Rt') ->
+    (lv' = false -> Θ ⍮ Ξ ⍮ Δu' ++ Γ ⊢ⁿˡ Rt') ->
+    (lv' = false -> forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ⁿˡ mdesc_sub Rt' σ0) ->
     (* the premises as the rule takes them, for the scoping of the unit *)
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu' Φ' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ]ᵘ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
-           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps _ IHp _ IHp' HU0 Hσ.
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps _ IHp _ IHp'
+           lv lv' Rt Rt' _ IHf1 Hf2 _ IHf3 _ IHf1' Hf2' _ IHf3' HU0 Hσ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & HUs').
   rewrite gunit_scoped_mk in HUs, HUs'; destruct HUs as [HΔs [_ HΦs]]; destruct HUs' as [HΔs' [_ HΦs']].
@@ -3452,9 +3522,17 @@ Proof.
     by (apply wf_sub_ext; [ exact Hσ | exact (ext_eq_ctx_left _ _ _ _ _ HΔσ) | exact (ext_eq_ctx_left _ _ _ _ _ HΔ) ]).
   assert (Hq' : Θ ⍮ Ξ ⍮ tele_sub Δu' σ ++ Δ ⊢ˢ sb_qn (length Δu') σ : Δu' ++ Γ)
     by (apply wf_sub_ext; [ exact Hσ | exact (ext_eq_ctx_right _ _ _ _ _ HΔσ) | exact (ext_eq_ctx_right _ _ _ _ _ HΔ) ]).
+  pose proof (sub_levels_flag _ _ _ _ (me_lit (gu_open nil Φ)) lv Rt _ _ Hσ (ext_eq_ctx_left _ _ _ _ _ HΔ)
+                (ext_eq_ctx_left _ _ _ _ _ HΔσ) ltac:(open_lit_scoped HΦs) IHf1 Hf2 IHf3) as F.
+  pose proof (sub_levels_flag _ _ _ _ (me_lit (gu_open nil Φ')) lv' Rt' _ _ Hσ (ext_eq_ctx_right _ _ _ _ _ HΔ)
+                (ext_eq_ctx_right _ _ _ _ _ HΔσ) ltac:(open_lit_scoped HΦs') IHf1' Hf2' IHf3') as F'.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ σ σ);
     [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
-    | exact Hes | exact Htg | exact Htg' | exact Hlv | exact Hps | | ].
+    | exact Hes | exact Htg | exact Htg' | exact Hlv | exact Hps | |
+    | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ F)
+    | exact (levels_flag_sorted _ _ _ _ _ _ _ F') | exact (levels_flag_denotes _ _ _ _ _ _ _ F')
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ F') ].
   (* the relevant-only parameters of both sides, moved *)
   all: try solve [ eapply (move_params_case Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_ext Θ Ξ));
             [ exact Hσ
@@ -3631,9 +3709,20 @@ Lemma sub_preserves_wf :
       forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U'[σ]ᵘ) /\
   (forall Θ Ξ Δ H H',
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ H ≈ H' ->
-      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ]ᵐ).
+      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ]ᵐ) /\
+  (forall Θ Ξ Δ R,
+      Θ ⍮ Ξ ⍮ Δ ⊢ⁿˡ R ->
+      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_sub R σ).
 Proof.
   apply syntactic_wf_mut_ind'; intros;
+    (** Descriptions with no member of a type of levels. *)
+    try solve [ eapply sub_no_level_open_case; eassumption
+              | cbn [mdesc_sub]; eapply wf_no_level_closed; eassumption
+              | cbn [mdesc_sub]; eapply wf_no_level_dm; eauto
+              | cbn [mdesc_sub]; eapply wf_no_level_term;
+                match goal with IH : forall _ _, wf_sub _ _ _ _ _ -> wf_exp _ _ _ _ _, Hσ : wf_sub _ _ _ _ _ |- _ =>
+                  pose proof (IH _ _ Hσ) as HA; rewrite type_sort_sub in HA by (apply type_sort_relevance; constructor);
+                  exact HA end ];
     try solve [ sub_elim_case ];
     try solve [ first [ eapply sub_mem_case; eassumption | eapply sub_mem_cong_case; eassumption
                       | eapply sub_mem_delta_case; eassumption
@@ -3704,9 +3793,11 @@ Proof.
         let Hr := fresh "Hr" in
         destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        sub_pose_flags Hσ;
         eapply wf_unit_eq_alias;
         [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
-        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | sub_params_case Hσ | sub_params_case Hσ ]
+        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | sub_params_case Hσ | sub_params_case Hσ
+        | flag_slot .. ]
     end ].
   all: try solve [ eapply sub_unit_body_case; (eassumption || (eapply wf_unit_eq_body; eassumption)) ].
   (** An alias of a literal, flattened: the literal moves by the
@@ -3720,8 +3811,12 @@ Proof.
         change (gu_mk (Δ' ++ Δ) D) with (gunit_abs Δ (gu_mk Δ' D)); rewrite gunit_abs_sub, gunit_sub_mk;
         cbn [moddef_sub modexp_sub];
         pose proof (IHU _ _ Hl) as HU'; revert HU';
-        destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw]; intros HU'; cbn [gunit_abs];
-        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | exact HU' | eassumption | sub_params_case Hσ ]
+        sub_pose_flags Hσ;
+        match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end;
+        destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
+        cbn [modexp_sub] in F; rewrite EU in F;
+        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | exact HU' | eassumption | sub_params_case Hσ
+                                   | flag_slot .. ]
     end ].
   (** Module expressions. *)
   all: try solve [

@@ -1780,7 +1780,14 @@ Record unit_body_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (Φ : gmod) : Pro
   ; unit_body_nodup : List.NoDup (gm_names Φ)
     (** The parameters are types of their sorts *)
   ; unit_body_params : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
-      Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : unit_body_param_sorts (List.length Δ2) }.
+      Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : unit_body_param_sorts (List.length Δ2)
+    (** Whether every parameter is a type of levels *)
+  ; unit_body_level_flag : bool
+    (** What the body denotes under the parameters, as a literal with none *)
+  ; unit_body_target : mdesc
+    (** The flag premise of [wf_unit_eq_body]: the parameters are types of
+        levels, or the body has no member of a type of levels *)
+  ; unit_body_levels : levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) unit_body_level_flag unit_body_target }.
 
 (** The parts of a well-formed alias unit [gu_mk Δ (md_alias E)] over [Γ]. *)
 #[warnings="-cannot-define-projection"]
@@ -1799,7 +1806,14 @@ Record unit_alias_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (E : modexp) : P
   ; unit_alias_target : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E
     (** The parameters are types of their sorts *)
   ; unit_alias_params : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 ->
-      Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : unit_alias_param_sorts (List.length Δ2) }.
+      Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : unit_alias_param_sorts (List.length Δ2)
+    (** Whether every parameter is a type of levels *)
+  ; unit_alias_level_flag : bool
+    (** What the target denotes under the parameters *)
+  ; unit_alias_target_desc : mdesc
+    (** The flag premise of [wf_unit_eq_alias]: the parameters are types of
+        levels, or the target has no member of a type of levels *)
+  ; unit_alias_levels : levels_flag Θ Ξ Γ Δ E unit_alias_level_flag unit_alias_target_desc }.
 
 (** The parts of a well-formed literal unit.  The parameters of a body or
     an alias are types of a universe at one level or types of levels
@@ -1836,12 +1850,15 @@ Qed.
 Lemma unit_eq_of_full : forall Θ Ξ Γ U, unit_full Θ Ξ Γ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
 Proof.
   intros * HU; destruct U as [Δ [[] Φ | E]]; cbn in HU; try contradiction.
-  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hlv Hd Ho Ha Hs Hsx Hn Hp].
+  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hlv Hd Ho Ha Hs Hsx Hn Hp lv Rt HF].
     assert (HΔ : ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ) by exact (ctx_app_wf_tail _ _ _ _ HC).
     assert (Hsame : forall y Φ0 E Φ0' E', gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) ->
               gm_prefix_upto Φx y = Some (gm_ext Φ0' y E') -> Φ0' = Φ0 /\ E' = E)
       by (intros * H1 H2; rewrite H1 in H2; injection H2 as -> ->; split; reflexivity).
-    eapply wf_unit_eq_body with (entry_sort := es) (param_level := l) (param_sorts := ps); try eassumption; try reflexivity.
+    eapply wf_unit_eq_body with (entry_sort := es) (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt)
+                                (lv' := lv) (Rt' := Rt); try eassumption; try reflexivity;
+      try exact (levels_flag_sorted _ _ _ _ _ _ _ HF); try exact (levels_flag_denotes _ _ _ _ _ _ _ HF);
+      try exact (levels_flag_no_level _ _ _ _ _ _ _ HF).
     (* the term parts and the module parts, both sides the same *)
     all: try solve [ intros * H1 HE1 H2 HE2 Hf1 Hf2;
                      destruct (Hsame _ _ _ _ _ H1 H2) as [-> ->]; rewrite HE1 in HE2;
@@ -1868,8 +1885,12 @@ Proof.
       pose proof (Ho _ _ _ (body_opens_at_nth _ _ _ _ _ Hk)) as HH.
       eapply sub_preserves_modexp; [ exact HH |].
       apply wf_gm_fill; [ exact (presup_modexp_eq_ctx HH) | exact Hf ].
-  - destruct HU as [l ps Hps HΔ Ha HE Hp].
-    eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps); try eassumption; apply ext_of_ctx'; exact HΔ.
+  - destruct HU as [l ps Hps HΔ Ha HE Hp lv Rt HF].
+    eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
+      try eassumption;
+      try exact (levels_flag_sorted _ _ _ _ _ _ _ HF); try exact (levels_flag_denotes _ _ _ _ _ _ _ HF);
+      try exact (levels_flag_no_level _ _ _ _ _ _ _ HF).
+    apply ext_of_ctx'; exact HΔ.
 Qed.
 
 (** A well-formed body extension with well-formed open targets, whose
@@ -1887,11 +1908,12 @@ Lemma unit_full_body : forall Θ Ξ Γ Δ Φ Φx,
     (forall y k, es y = LevelSort -> k < List.length Δ -> ps k = LevelSort) ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : es y) ->
+    forall lv Rt, levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) lv Rt ->
     unit_full Θ Ξ Γ (gu_open Δ Φ).
 Proof.
-  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg Hlv HA.
+  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg Hlv HA lv Rt HF.
   destruct (body_defs_wf _ _ _ _ _ HC (body_xp_result_noopen _ _ _ _ _ Hx)) as (es0 & _ & Hd).
-  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg Hlv _ Ho Ha Hs Hsx Hn Hp).
+  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg Hlv _ Ho Ha Hs Hsx Hn Hp lv Rt HF).
   intros * Hp0 HE Hf; split; [ exact (HA _ _ _ _ _ _ Hp0 HE Hf) | exact (proj2 (Hd _ _ _ _ _ _ Hp0 HE Hf)) ].
 Qed.
 
