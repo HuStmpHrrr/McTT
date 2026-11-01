@@ -703,7 +703,8 @@ Proof.
   assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ▹ B[↑]ʷ ⊢ C[wk_q ↑]ʷ : Typeω@i)
     by (eapply wk_preserves_typ; [ eassumption | eapply (wf_wk_q' _ _ _ _ _ _ (Typeω@i)); [ eassumption | eassumption | constructor ] ]).
   assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ x[↑]ʷ $ #0 : C[wk_q ↑]ʷ[Id,,#0])
-    by (eapply wf_app with (r := relevant); [ exact HBw | constructor | eassumption | eassumption | eassumption ]).
+    by (eapply wf_app with (r := relevant) (Srt := Typeω@i) (Srt' := Typeω@i);
+        [ exact HBw | constructor | eassumption | constructor | eassumption | eassumption ]).
   assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ C[wk_q ↑]ʷ[Id,,#0] ≈ C : Typeω@i).
   { rewrite <- (exp_wk_q_shift_single C) at 2.
     eapply (sub_eq_preserves_typ _ _ _ _ _ _ _ i); [ eassumption | eapply wf_sub_eq_var_zero; [ exact HB2 | constructor ] ]. }
@@ -2274,7 +2275,7 @@ Section IhTm.
         by (rewrite List.map_map; apply List.map_ext; intros; rewrite <- exp_sub_of_wk, exp_sub_sub; reflexivity).
       rewrite Hus, <- blocks_sub_of_wk, blocks_sub_sub.
       split; [| exists (max j j2); eapply wf_pi_at_max; [ exact Hj1 | exact Hty ] ].
-      eapply wf_fn; [ exact Hj1 | constructor | exact Hty | exact Hbody ].
+      eapply wf_fn with (Srt' := Typeω@j2); [ exact Hj1 | constructor | exact Hty | constructor | exact Hbody ].
     - intros * H; exact H.
     - intros * H; rewrite leaf_ih_wk, leaf_ihty_wk; exact H.
     - intros * E H; rewrite <- (leaf_ih_sb_eq _ _ _ _ _ _ _ _ _ _ E), <- (leaf_ihty_sb_eq _ l0 _ β0 β0 σ0 σ' x);
