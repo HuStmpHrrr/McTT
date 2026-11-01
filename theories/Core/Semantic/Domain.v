@@ -56,8 +56,11 @@ Inductive domain : Set :=
 | d_prop : domain
 (** [⊤] *)
 | d_True : domain
-(** The proof [⋆]: the value of every proof *)
-| d_true : domain
+(** [d_proof M ρ], [⋆ᵈ⟨M, ρ⟩]: a proof kept as the proof term [M] as
+    written, with the environment [ρ] of its free variables.  A proof is
+    never evaluated; readback copies [M] under definitions binding its
+    free variables to the readbacks of their values in [ρ]. *)
+| d_proof : exp -> list dentry -> domain
 (** [⊥] *)
 | d_False : domain
 (** [d_and p ρ Q]: a [Σₚ] with first component [p], its second [Q] a
@@ -123,9 +126,9 @@ with domain_ne : Set :=
 | d_var : forall (x : nat), domain_ne
 (** A neutral applied to a normal argument *)
 | d_app : domain_ne -> domain_nf -> domain_ne
-(** Ex falso at the type [c]: it holds no proof, so it is stuck on
-    nothing, a closed neutral. *)
-| d_absurd : domain -> domain_ne
+(** [d_absurd c p]: ex falso at the type [c], from the proof [p] of [⊥].
+    A proof is never evaluated, so it is stuck on nothing. *)
+| d_absurd : domain -> domain -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : qname -> domain_ne
 (** [d_elim ρ Bks p ups m as m']: the eliminator of the group at [p] at
@@ -147,13 +150,20 @@ with dmod : Set :=
 (** A submodule of a local module still lacking arguments *)
 | dm_member : dmod -> list string -> dmod
 with dentry : Set :=
-(** A term variable's value *)
-| de_term : domain -> dentry
+(** A term variable's value and its type *)
+| de_term : domain -> dtype -> dentry
 (** A module slot's value *)
 | de_mod : dmod -> dentry
 (** The value of a definition with a module part: its term part's value
-    and its module part's *)
-| de_dm : domain -> dmod -> dentry.
+    and type, and its module part's value *)
+| de_dm : domain -> dtype -> dmod -> dentry
+(** The type of a term variable in an environment, which the readback of
+    a kept proof reads it at.  It is evaluated only there. *)
+with dtype : Set :=
+(** A type value *)
+| dt_value : domain -> dtype
+(** [dt_closure A ρ]: the type [A] in [ρ], not yet evaluated *)
+| dt_closure : exp -> list dentry -> dtype.
 
 Abbreviation env := (list dentry).
 

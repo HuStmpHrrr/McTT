@@ -672,11 +672,7 @@ Inductive exp : Set :=
 | a_prop : exp
 (** The true proposition [⊤] *)
 | a_True : exp
-(** The proof [⋆]: the one proof of [⊤], and of every proposition that
-    has a proof (definitional proof irrelevance) *)
-| a_true : exp
-(** The introduction of [⊤]: the proof a program writes.  It evaluates
-    to the proof [⋆ᵈ] and is equal to [⋆] by proof irrelevance. *)
+(** The introduction of [⊤] *)
 | a_tt : exp
 (** The false proposition [⊥] *)
 | a_False : exp
@@ -757,9 +753,10 @@ with modexp : Set :=
 (** A unit given literally; only substitution produces one *)
 | me_lit : gunit -> modexp
 with binding : Set :=
-(** [b_def oA M]: a definition, of the type [A] when [oA = Some A], and of
-    a type it infers when [oA = None] *)
-| b_def : option exp -> exp -> binding
+(** [b_def A M]: a definition [M] of the type [A].  Every local definition
+    is annotated: evaluation keeps the type of each variable it binds, and
+    the typed fill annotates a definition written without one. *)
+| b_def : exp -> exp -> binding
 (** [b_mod U]: a local module *)
 | b_mod : gunit -> binding
 with gunit : Set :=
@@ -906,7 +903,6 @@ Section syn_mut_ind.
     (case_ntok : Pe a_ntok)
     (case_prop : Pe a_prop)
     (case_True : Pe a_True)
-    (case_true : Pe a_true)
     (case_tt : Pe a_tt)
     (case_False : Pe a_False)
     (case_absurd : forall A M, Pe A -> Pe M -> Pe (a_absurd A M))
@@ -938,7 +934,7 @@ Section syn_mut_ind.
     (case_me_mem : forall H y, Pm H -> Pm (me_mem H y))
     (case_me_app : forall H N, Pm H -> Pe N -> Pm (me_app H N))
     (case_me_lit : forall U, Pu U -> Pm (me_lit U))
-    (case_b_def : forall oA M, (forall A, oA = Some A -> Pe A) -> Pe M -> Pb (b_def oA M))
+    (case_b_def : forall A M, Pe A -> Pe M -> Pb (b_def A M))
     (case_b_mod : forall U, Pu U -> Pb (b_mod U))
     (case_gu_mk : forall Δ D, List.Forall Pc Δ -> Pd D -> Pu (gu_mk Δ D))
     (case_md_body : forall s Φ, Pg Φ -> Pd (md_body s Φ))
@@ -969,7 +965,6 @@ Section syn_mut_ind.
     | a_ntok => case_ntok
     | a_prop => case_prop
     | a_True => case_True
-    | a_true => case_true
     | a_tt => case_tt
     | a_False => case_False
     | a_absurd A M => case_absurd A M (exp_mut A) (exp_mut M)
@@ -1038,15 +1033,7 @@ Section syn_mut_ind.
     end
   with binding_mut (b : binding) : Pb b :=
     match b with
-    | b_def oA M =>
-        case_b_def oA M
-          (match oA as o return (forall A, o = Some A -> Pe A) with
-           | Some A0 => fun A e => match e in _ = o' return match o' with Some A => Pe A | None => True end with
-                                  | eq_refl => exp_mut A0 end
-           | None => fun A e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
-                                | eq_refl => I end)
-           end)
-          (exp_mut M)
+    | b_def A M => case_b_def A M (exp_mut A) (exp_mut M)
     | b_mod U => case_b_mod U (gunit_mut U)
     end
   with gunit_mut (U : gunit) : Pu U :=
@@ -1260,13 +1247,11 @@ Module Exp_Notations.
   Notation "'ℕ'" := a_ntok : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi relevant A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
-  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def (Some A) M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
-  Notation "'ℓ' ≔ M 'in' B" := (a_let (b_def None M) B) (at level 2, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
   Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
   (** A bare [Prop] would be Rocq's own sort, so the notation is decorated. *)
   Notation "'Propₘ'" := a_prop : mctt_scope.
   Notation "'⊤'" := a_True : mctt_scope.
-  Notation "'⋆'" := a_true : mctt_scope.
   Notation "'⊥'" := a_False : mctt_scope.
   Notation "'efq' M 'return' C" := (a_absurd C M) (at level 2, M at level 60, C at level 60) : mctt_scope.
   Notation "'∀ₚ' A P" := (a_pi propositional A P) (at level 2, A at level 1, P at level 60) : mctt_scope.
@@ -1655,8 +1640,12 @@ Inductive nf : Set :=
 | nf_prop : nf
 (** [⊤] *)
 | nf_True : nf
-(** The proof [⋆]: the normal form of every proof *)
-| nf_true : nf
+(** A proof, as a term.  Proofs are never evaluated, so the term is not
+    normal: it is the proof as written, its free variables bound by local
+    definitions to the readbacks of their values ([Core.Semantic.Readback]).
+    Normal forms are compared up to their proofs
+    ([nf_equal_up_to_proofs]). *)
+| nf_proof : exp -> nf
 (** [⊥] *)
 | nf_False : nf
 (** A [Σₚ] of normal forms *)
@@ -1681,8 +1670,9 @@ Inductive nf : Set :=
     the field names and the fields *)
 | nf_tuple : qname -> list nf -> list string -> list nf -> nf
 with ne : Set :=
-(** Ex falso at a type: it holds no proof, so it is stuck on nothing *)
-| ne_absurd : nf -> ne
+(** Ex falso at a type, with its proof of [⊥] as a term: a proof is not
+    evaluated, so it is stuck on nothing *)
+| ne_absurd : nf -> exp -> ne
 (** The eliminator of the group [pq], at its declared member [m], stuck
     on a neutral, at the group's uniform parameters; its blocks carry no
     annotation.  (An eliminator at a view is stuck as the eliminator of the
@@ -1726,7 +1716,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_lvl c xs => lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs)
   | nf_prop => a_prop
   | nf_True => a_True
-  | nf_true => a_true
+  | nf_proof M => M
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
   | nf_placeholder_type => a_placeholder_type
@@ -1741,7 +1731,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   end
 with ne_to_exp (M : ne) : exp :=
   match M with
-  | ne_absurd A => a_absurd (nf_to_exp A) a_true
+  | ne_absurd A M => a_absurd (nf_to_exp A) M
   | ne_elim p Us m Bks M =>
       a_elim relevant (Some p) (List.map nf_to_exp Us) m
         (List.map (fun b => eb_mk (block_arity b) None (nf_to_exp (block_motive b))
@@ -1849,10 +1839,11 @@ Proof. intros ? ? H; destruct H; reflexivity. Qed.
 Lemma is_univ_nf_functional : forall W u v, is_univ_nf W u -> is_univ_nf W v -> u = v.
 Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
 
-(** A normal form with no global at the head of a neutral. *)
+(** A normal form with no global at the head of a neutral.  Its proofs are
+    not inspected. *)
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_true | nf_False
+  | nf_typ _ | nf_level _ | nf_prop | nf_True | nf_proof _ | nf_False
   | nf_placeholder_type | nf_placeholder => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
@@ -1863,7 +1854,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
   end
 with ne_clean (M : ne) : Prop :=
   match M with
-  | ne_absurd A => nf_clean A
+  | ne_absurd A _ => nf_clean A
   | ne_elim _ Us _ Bks M =>
       all_list nf_clean Us /\
       all_list (fun b => nf_clean (block_motive b) /\ all_list (fun br => nf_clean (branch_body br)) (block_branches b)) Bks /\
@@ -1873,6 +1864,147 @@ with ne_clean (M : ne) : Prop :=
   | ne_glob _ => False
   | ne_proj _ M => ne_clean M
   end.
+
+(** ** Decidable Equality of Terms
+
+    The pieces of syntax generic in the sorts of terms and entries are
+    decided given deciders for those; the terms then by a mutual
+    recursion that passes itself to them.  Normal forms hold proofs as
+    terms, so their equality is decided after. *)
+
+Section GenericDec.
+  Context {E C : Set} (de : forall x y : E, {x = y} + {x <> y}) (dc : forall x y : C, {x = y} + {x <> y}).
+
+  (** Equality of shapes is decidable. *)
+  Fixpoint ptyp_eq_dec_g (t t' : ptyp_g E) {struct t} : {t = t'} + {t <> t'}.
+  Proof.
+    destruct t as [k Ps | A t], t' as [k' Ps' | A' t']; try (right; discriminate).
+    - destruct (PeanoNat.Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec de Ps Ps') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (de A A') as [<- |]; [| right; congruence ].
+      destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of constructor arguments is decidable. *)
+  Definition carg_eq_dec_g (g g' : carg_g E) : {g = g'} + {g <> g'}.
+  Proof.
+    destruct g as [r A | t], g' as [r' A' | t']; try (right; discriminate).
+    - destruct (relevance_eq_dec r r') as [<- |]; [| right; congruence ].
+      destruct (de A A') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of lists of constructors is decidable. *)
+  Definition cons_eq_dec_g (cs cs' : list (string * list (carg_g E))) : {cs = cs'} + {cs <> cs'}.
+  Proof.
+    revert cs'; induction cs as [| [c gs] cs IH]; intros [| [c' gs'] cs']; try (right; discriminate);
+      [ left; reflexivity |].
+    destruct (String.string_dec c c') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec carg_eq_dec_g gs gs') as [<- |]; [| right; congruence ].
+    destruct (IH cs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of member heads is decidable. *)
+  Definition mhead_eq_dec_g (h h' : mhead_g E) : {h = h'} + {h <> h'}.
+  Proof.
+    destruct h as [p | qc k Is vm | qr Is fl], h' as [p' | qc' k' Is' vm' | qr' Is' fl']; try (right; discriminate).
+    - destruct (qname_eq_dec p p') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (qname_eq_dec qc qc') as [<- |]; [| right; congruence ].
+      destruct (PeanoNat.Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec de Is Is') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec PeanoNat.Nat.eq_dec vm vm') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (qname_eq_dec qr qr') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec de Is Is') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec String.string_dec fl fl') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of members is decidable. *)
+  Definition imember_eq_dec_g (M M' : imember_g E C) : {M = M'} + {M <> M'}.
+  Proof.
+    destruct M as [h ps cs], M' as [h' ps' cs'].
+    destruct (mhead_eq_dec_g h h') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec dc ps ps') as [<- |]; [| right; congruence ].
+    destruct (cons_eq_dec_g cs cs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of groups is decidable. *)
+  Definition ind_decl_eq_dec_g (D D' : ind_decl_g E C) : {D = D'} + {D <> D'}.
+  Proof.
+    destruct D as [us S ms], D' as [us' S' ms'].
+    destruct (list_eq_dec dc us us') as [<- |]; [| right; congruence ].
+    destruct (de S S') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec imember_eq_dec_g ms ms') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of lists of branches is decidable. *)
+  Definition brs_eq_dec_g (Bs Bs' : list (string * nat * E)) : {Bs = Bs'} + {Bs <> Bs'}.
+  Proof.
+    revert Bs'; induction Bs as [| [[c n] B] Bs IH]; intros [| [[c' n'] B'] Bs']; try (right; discriminate);
+      [ left; reflexivity |].
+    destruct (String.string_dec c c') as [<- |]; [| right; congruence ].
+    destruct (PeanoNat.Nat.eq_dec n n') as [<- |]; [| right; congruence ].
+    destruct (de B B') as [<- |]; [| right; congruence ].
+    destruct (IH Bs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of lists of eliminator blocks is decidable. *)
+  Definition eblocks_eq_dec_g (Bks Bks' : list (eblock_g E)) : {Bks = Bks'} + {Bks <> Bks'}.
+  Proof.
+    revert Bks'; induction Bks as [| [nm oZ A Bs] Bks IH]; intros [| [nm' oZ' A' Bs'] Bks']; try (right; discriminate);
+      [ left; reflexivity |].
+    destruct (PeanoNat.Nat.eq_dec nm nm') as [<- |]; [| right; congruence ].
+    assert (HZ : {oZ = oZ'} + {oZ <> oZ'})
+      by (destruct oZ as [Z |], oZ' as [Z' |]; try (right; discriminate); [| left; reflexivity ];
+          destruct (de Z Z') as [<- |]; [ left; reflexivity | right; congruence ]).
+    destruct HZ as [<- |]; [| right; congruence ].
+    destruct (de A A') as [<- |]; [| right; congruence ].
+    destruct (brs_eq_dec_g Bs Bs') as [<- |]; [| right; congruence ].
+    destruct (IH Bks') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of named terms (the fields of a record) is decidable. *)
+  Definition named_eq_dec_g (x y : (string * E)%type) : {x = y} + {x <> y}.
+  Proof.
+    destruct x as [a x], y as [b y].
+    destruct (String.string_dec a b) as [<- |]; [| right; congruence ].
+    destruct (de x y) as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of record declarations is decidable. *)
+  Definition record_decl_eq_dec_g (R R' : record_decl_g E C) : {R = R'} + {R <> R'}.
+  Proof.
+    destruct R as [Δ S fs rs], R' as [Δ' S' fs' rs'].
+    destruct (list_eq_dec dc Δ Δ') as [<- |]; [| right; congruence ].
+    destruct (de S S') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec named_eq_dec_g fs fs') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec relevance_eq_dec rs rs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+End GenericDec.
+
+(** Equality of terms, and of the module syntax nested in them, is
+    decidable. *)
+Fixpoint exp_eq_dec (M N : exp) {struct M} : {M = N} + {M <> N}
+with modexp_eq_dec (M N : modexp) {struct M} : {M = N} + {M <> N}
+with binding_eq_dec (M N : binding) {struct M} : {M = N} + {M <> N}
+with gunit_eq_dec (M N : gunit) {struct M} : {M = N} + {M <> N}
+with moddef_eq_dec (M N : moddef) {struct M} : {M = N} + {M <> N}
+with gmod_eq_dec (M N : gmod) {struct M} : {M = N} + {M <> N}
+with gentry_eq_dec (M N : gentry) {struct M} : {M = N} + {M <> N}
+with centry_eq_dec (M N : centry) {struct M} : {M = N} + {M <> N}.
+Proof.
+  all: decide equality;
+    first [ apply PeanoNat.Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply Bool.bool_dec
+          | apply list_eq_dec, String.string_dec | apply o2_eq_dec | apply (list_eq_dec exp_eq_dec)
+          | apply (list_eq_dec centry_eq_dec) | apply (eblocks_eq_dec_g exp_eq_dec)
+          | apply (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec)
+          | apply (record_decl_eq_dec_g exp_eq_dec centry_eq_dec)
+          | apply (list_eq_dec (named_eq_dec_g exp_eq_dec))
+          | (decide equality; apply (list_eq_dec exp_eq_dec)) | idtac ].
+  all: try (decide equality; fail).
+  all: try (decide equality; apply qname_eq_dec).
+  (* the items of an open *)
+  apply list_eq_dec; intros; repeat (decide equality || apply String.string_dec || apply Bool.bool_dec).
+Defined.
 
 (** Decidable equality of the records of normal forms, given that of what
     they hold. *)
@@ -1912,11 +2044,58 @@ Proof.
       take a string apart character by character. *)
   all: decide equality;
     first [ apply PeanoNat.Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec
-          | apply relevance_eq_dec
+          | apply relevance_eq_dec | apply exp_eq_dec
           | apply (List.list_eq_dec String.string_dec) | apply (List.list_eq_dec nf_eq_dec)
           | apply (List.list_eq_dec (level_atom_eq_dec_g ne_eq_dec))
           | apply (List.list_eq_dec (normal_block_eq_dec_g nf_eq_dec)) | idtac ].
 Defined.
+
+(** ** Equality up to Proofs
+
+    Proofs are irrelevant: two normal forms that differ only in their
+    proofs stand for equal terms.  [nf_erase] replaces every proof by the
+    marker [a_placeholder], which is never a proof; two normal forms are
+    equal up to proofs when their erasures are equal. *)
+Fixpoint nf_erase (W : nf) : nf :=
+  match W with
+  | nf_typ i => nf_typ i
+  | nf_univ c xs => nf_univ c (List.map (map_level_atom ne_erase) xs)
+  | nf_level n => nf_level n
+  | nf_lvl c xs => nf_lvl c (List.map (map_level_atom ne_erase) xs)
+  | nf_prop => nf_prop
+  | nf_True => nf_True
+  | nf_proof _ => nf_proof a_placeholder
+  | nf_False => nf_False
+  | nf_and P Q => nf_and (nf_erase P) (nf_erase Q)
+  | nf_placeholder_type => nf_placeholder_type
+  | nf_placeholder => nf_placeholder
+  | nf_pi r A B => nf_pi r (nf_erase A) (nf_erase B)
+  | nf_fn A M => nf_fn (nf_erase A) (nf_erase M)
+  | nf_indty p k Ms => nf_indty p k (List.map nf_erase Ms)
+  | nf_con p k c Ms => nf_con p k c (List.map nf_erase Ms)
+  | nf_neut M => nf_neut (ne_erase M)
+  | nf_record p Ms => nf_record p (List.map nf_erase Ms)
+  | nf_tuple p Ms fs Ns => nf_tuple p (List.map nf_erase Ms) fs (List.map nf_erase Ns)
+  end
+with ne_erase (M : ne) : ne :=
+  match M with
+  | ne_absurd A _ => ne_absurd (nf_erase A) a_placeholder
+  | ne_elim p Us m Bks M => ne_elim p (List.map nf_erase Us) m (List.map (map_normal_block (fun _ => nf_erase)) Bks) (ne_erase M)
+  | ne_app M N => ne_app (ne_erase M) (nf_erase N)
+  | ne_var x => ne_var x
+  | ne_glob p => ne_glob p
+  | ne_proj f M => ne_proj f (ne_erase M)
+  end.
+
+(** Two normal forms are equal up to their proofs. *)
+Definition nf_equal_up_to_proofs (W W' : nf) : Prop := nf_erase W = nf_erase W'.
+
+(** Two neutrals are equal up to their proofs. *)
+Definition ne_equal_up_to_proofs (M M' : ne) : Prop := ne_erase M = ne_erase M'.
+
+(** Equality up to proofs is decidable. *)
+Definition nf_equal_up_to_proofs_dec (W W' : nf) : {nf_equal_up_to_proofs W W'} + {~ nf_equal_up_to_proofs W W'} :=
+  nf_eq_dec (nf_erase W) (nf_erase W').
 
 (** ** Notations *)
 Module Nf_Notations.
@@ -1924,7 +2103,6 @@ Module Nf_Notations.
   Notation "'∀ₚⁿ' A P" := (nf_pi propositional A P) (at level 2, A at level 1, P at level 60) : mctt_scope.
   Notation "'Σₚⁿ' P Q" := (nf_and P Q) (at level 2, P at level 1, Q at level 60) : mctt_scope.
   Notation "'⊤ⁿ'" := nf_True : mctt_scope.
-  Notation "'⋆ⁿ'" := nf_true : mctt_scope.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
   Notation "'Typeωⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeωⁿ' @ n") : mctt_scope.
   Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
@@ -1937,7 +2115,7 @@ Module Nf_Notations.
   Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
   Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
   Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
-  Notation "'efqⁿ' A" := (ne_absurd A) (at level 2, A at level 60) : mctt_scope.
+  Notation "'efqⁿ' M 'return' A" := (ne_absurd A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
 End Nf_Notations.
 
 (** * Weakenings and Substitutions *)
@@ -2002,7 +2180,6 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_ntok => a_ntok
   | a_prop => a_prop
   | a_True => a_True
-  | a_true => a_true
   | a_tt => a_tt
   | a_False => a_False
   | a_absurd A M => a_absurd (exp_wk A φ) (exp_wk M φ)
@@ -2044,7 +2221,7 @@ with modexp_wk (H : modexp) (φ : wk) : modexp :=
   end
 with binding_wk (b : binding) (φ : wk) : binding :=
   match b with
-  | b_def oA M => b_def (match oA with Some A => Some (exp_wk A φ) | None => None end) (exp_wk M φ)
+  | b_def A M => b_def (exp_wk A φ) (exp_wk M φ)
   | b_mod U => b_mod (gunit_wk U φ)
   end
 (** The entry of a telescope at position [i] from the outermost is under [i]
@@ -2084,6 +2261,86 @@ with centry_wk (e : centry) (φ : wk) : centry :=
   | ce_def A M => ce_def (exp_wk A φ) (exp_wk M φ)
   | ce_mod U => ce_mod (gunit_wk U φ)
   | ce_dm A M U => ce_dm (exp_wk A φ) (exp_wk M φ) (gunit_wk U φ)
+  end.
+
+(** ** The Scope of a Term
+
+    [exp_free_bound M] is the least [k] such that every free index of [M]
+    is below [k]: the number of environment positions the readback of a
+    proof must bind so that the proof is copied as written.  A term under
+    [n] binders has the bound of its body less [n]. *)
+Fixpoint exp_free_bound (M : exp) : nat :=
+  match M with
+  | a_typ _ | a_level _ | a_llit _ | a_ntok | a_prop | a_True | a_tt | a_False
+  | a_placeholder_type | a_placeholder | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_record _ => 0
+  | a_univ t => exp_free_bound t
+  | a_succl M | a_left M | a_right M | a_proj _ M => exp_free_bound M
+  | a_maxl M N | a_absurd M N | a_app M N => Nat.max (exp_free_bound M) (exp_free_bound N)
+  | a_and A B | a_pi _ A B | a_fn A B => Nat.max (exp_free_bound A) (exp_free_bound B - 1)
+  | a_conj T M N => Nat.max (exp_free_bound T) (Nat.max (exp_free_bound M) (exp_free_bound N))
+  | a_elim _ _ Us _ Bks M =>
+      Nat.max (List.list_max (List.map exp_free_bound Us))
+        (Nat.max (List.list_max (List.map (fun b =>
+           match b with
+           | eb_mk nm oZ A Bs =>
+               Nat.max (match oZ with Some Z => exp_free_bound Z - (nm - 1) | None => 0 end)
+                 (Nat.max (exp_free_bound A - nm)
+                    (List.list_max (List.map (fun br => exp_free_bound (snd br) - snd (fst br)) Bs)))
+           end) Bks))
+           (exp_free_bound M))
+  | a_var x => S x
+  | a_let b B => Nat.max (binding_free_bound b) (exp_free_bound B - 1)
+  | a_mem H _ => modexp_free_bound H
+  | a_tuple T fs => Nat.max (exp_free_bound T) (List.list_max (List.map (fun f => exp_free_bound (snd f)) fs))
+  end
+with modexp_free_bound (H : modexp) : nat :=
+  match H with
+  | me_unit _ => 0
+  | me_var k => S k
+  | me_mem H _ => modexp_free_bound H
+  | me_app H N => Nat.max (modexp_free_bound H) (exp_free_bound N)
+  | me_lit U => gunit_free_bound U
+  end
+with binding_free_bound (b : binding) : nat :=
+  match b with
+  | b_def A M => Nat.max (exp_free_bound A) (exp_free_bound M)
+  | b_mod U => gunit_free_bound U
+  end
+with gunit_free_bound (U : gunit) : nat :=
+  match U with
+  | gu_mk Δ D =>
+      Nat.max ((fix tele_free_bound (Δ : list centry) : nat :=
+                  match Δ with
+                  | nil => 0
+                  | cons e Δ' => Nat.max (centry_free_bound e - List.length Δ') (tele_free_bound Δ')
+                  end) Δ)
+        (moddef_free_bound D - List.length Δ)
+  end
+with moddef_free_bound (D : moddef) : nat :=
+  match D with
+  | md_body _ Φ => gmod_free_bound Φ
+  | md_alias E => modexp_free_bound E
+  end
+with gmod_free_bound (Φ : gmod) : nat :=
+  match Φ with
+  | gm_nil => 0
+  | gm_ext Φ _ E => Nat.max (gmod_free_bound Φ) (gentry_free_bound E - gm_binders Φ)
+  | gm_open Φ H _ => Nat.max (gmod_free_bound Φ) (modexp_free_bound H - gm_binders Φ)
+  end
+with gentry_free_bound (E : gentry) : nat :=
+  match E with
+  | ge_def _ _ _ A B => Nat.max (exp_free_bound A) (match B with Some M => exp_free_bound M | None => 0 end)
+  | ge_mod _ U => gunit_free_bound U
+  | ge_ind _ _ _ D Φ => gmod_free_bound Φ - ind_nu D
+  | ge_def_mod _ A M U => Nat.max (exp_free_bound A) (Nat.max (exp_free_bound M) (gunit_free_bound U))
+  | ge_record _ _ R Φ => gmod_free_bound Φ - S (List.length (record_params R))
+  end
+with centry_free_bound (e : centry) : nat :=
+  match e with
+  | ce_ass A => exp_free_bound A
+  | ce_def A M => Nat.max (exp_free_bound A) (exp_free_bound M)
+  | ce_mod U => gunit_free_bound U
+  | ce_dm A M U => Nat.max (exp_free_bound A) (Nat.max (exp_free_bound M) (gunit_free_bound U))
   end.
 
 (** A telescope under [φ], each entry under the binders of the entries outside
@@ -2203,7 +2460,6 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_ntok => a_ntok
   | a_prop => a_prop
   | a_True => a_True
-  | a_true => a_true
   | a_tt => a_tt
   | a_False => a_False
   | a_absurd A M => a_absurd (exp_sub A σ) (exp_sub M σ)
@@ -2245,7 +2501,7 @@ with modexp_sub (H : modexp) (σ : sub) : modexp :=
   end
 with binding_sub (b : binding) (σ : sub) : binding :=
   match b with
-  | b_def oA M => b_def (match oA with Some A => Some (exp_sub A σ) | None => None end) (exp_sub M σ)
+  | b_def A M => b_def (exp_sub A σ) (exp_sub M σ)
   | b_mod U => b_mod (gunit_sub U σ)
   end
 with gunit_sub (U : gunit) (σ : sub) : gunit :=
@@ -2380,7 +2636,7 @@ Fixpoint ctx_pi_at (r : relevance) (Δ : ctx) (A : typ) : typ :=
   match Δ with
   | nil => A
   | cons (ce_ass B) Δ' => ctx_pi_at r Δ' (a_pi r B A)
-  | cons (ce_def B N) Δ' => ctx_pi_at r Δ' (a_let (b_def (Some B) N) A)
+  | cons (ce_def B N) Δ' => ctx_pi_at r Δ' (a_let (b_def B N) A)
   | cons (ce_mod U) Δ' => ctx_pi_at r Δ' (a_let (b_mod U) A)
   | cons (ce_dm _ N U) Δ' => ctx_pi_at r Δ' (exp_sub A (sb_extend sb_id (se_dm N (me_lit U))))
   end.
@@ -2395,7 +2651,7 @@ Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
   match Δ with
   | nil => M
   | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
-  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def (Some B) N) M)
+  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def B N) M)
   | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
   | cons (ce_dm _ N U) Δ' => ctx_fn Δ' (exp_sub M (sb_extend sb_id (se_dm N (me_lit U))))
   end.
