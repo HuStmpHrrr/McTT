@@ -30,7 +30,8 @@ let s_coloncolon = "\u{203A}" (* › for :: *)
 let s_nat = "\u{2115}" (* ℕ for Nat *)
 let s_true_ty = "\u{22A4}" (* ⊤ for True *)
 let s_false_ty = "\u{22A5}" (* ⊥ for False *)
-let s_true_tm = "\u{22C6}" (* ⋆ for true *)
+let s_star = "\u{22C6}" (* ⋆, the proof normal forms hold; no token spells it *)
+let s_and = "\u{2227}" (* ∧ for /\ *)
 let s_omega = "\u{03C9}" (* ω for omega *)
 let s_cdot = "\u{00B7}" (* · for * *)
 
@@ -190,14 +191,47 @@ let rec format_expression_prec (p : int) (f : Format.formatter) : Cst.expression
      in
      pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_true_ty -> pp_sym f s_true_ty
-  | Cst.Coq_true_tm -> pp_sym f s_true_tm
+  | Cst.Coq_true_tm -> pp_print_string f "true"
   | Cst.Coq_false_ty -> pp_sym f s_false_ty
-  | Cst.Coq_exfalso (escr, mx, em) ->
+  | Cst.Coq_exfalso (escr, em) ->
      let impl f () =
-       fprintf f "@[<hov 2>exfalso %a@ return %s .@ %a@]" format_expression escr mx
-         format_expression em
+       fprintf f "@[<hov 2>exfalso %a@ return@ %a@]" format_expression escr format_expression em
      in
      pp_print_paren_if (p >= 1) impl f ()
+  | Cst.Coq_prop -> pp_print_string f "Prop"
+  (* [∧ (h : P) (k : Q) → R]: a run of conjunctions as one telescope, as
+     [∀] prints one. *)
+  | Cst.Coq_and_ty (px, ep, eq) ->
+     let rec params = function
+       | Cst.Coq_and_ty (qx, eq0, er) -> let ps, er' = params er in ((qx, eq0) :: ps, er')
+       | er -> ([], er)
+     in
+     let ps, eq' = params eq in
+     let impl f () =
+       pp_sym f s_and; pp_print_char f ' ';
+       pp_print_list ~pp_sep:pp_print_space format_expression_param f ((px, ep) :: ps);
+       fprintf f "@ @<1>%s @[<hov 2>%a@]" s_arrow format_expression eq'
+     in
+     pp_open_hvbox f 2;
+     pp_print_paren_if (p >= 1) impl f ();
+     pp_close_box f ()
+  | Cst.Coq_and_intro (em, ep, eq) ->
+     let impl f () =
+       fprintf f "conj@ (%a :@ %a)@ %a" format_expression em format_expression ep (format_expression_prec 2) eq
+     in
+     pp_open_hovbox f 2;
+     pp_print_paren_if (p >= 1) impl f ();
+     pp_close_box f ()
+  | Cst.Coq_and_left e ->
+     let impl f () = fprintf f "left@ %a" (format_expression_prec 2) e in
+     pp_open_hovbox f 2;
+     pp_print_paren_if (p >= 1) impl f ();
+     pp_close_box f ()
+  | Cst.Coq_and_right e ->
+     let impl f () = fprintf f "right@ %a" (format_expression_prec 2) e in
+     pp_open_hovbox f 2;
+     pp_print_paren_if (p >= 1) impl f ();
+     pp_close_box f ()
   | Cst.Coq_app (ef, ea) ->
      let impl f () =
        fprintf f "%a@ %a" (format_expression_prec 1) ef (format_expression_prec 2) ea
@@ -241,7 +275,7 @@ let rec format_expression_prec (p : int) (f : Format.formatter) : Cst.expression
      pp_open_hvbox f 2;
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
-  | Cst.Coq_var x -> pp_print_string f x
+  | Cst.Coq_var x -> pp_utf8 f x
   | Cst.Coq_glob path -> pp_unit_path f path
   (* Dot binds tighter than application, so the target prints at the precedence
      of an application argument. *)
@@ -556,10 +590,10 @@ let con_of : exp -> (qname * string) option =
            (match Lk.gc_resolve_f !current_fctx { q_unit = fp; q_chain = ms @ [ c ] } with
             (* A definition naming a constructor, as an [open] declares one,
                not one whose body is a value. *)
-            | Some (Coq_ge_def (_, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
+            | Some (Coq_ge_def (_, _, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
             (* The member of an inductive type's module that is its
                constructor. *)
-            | Some (Coq_ge_def (_, _, _, Some (Coq_a_con (p, 0, c'))))
+            | Some (Coq_ge_def (_, _, _, _, Some (Coq_a_con (p, 0, c'))))
               when c' = c && p.q_unit = fp && p.q_chain = ms -> Some (p, c)
             | Some (Coq_ge_def _) -> None
             | _ -> Some ({ q_unit = fp; q_chain = ms }, c)))
@@ -759,14 +793,28 @@ let exp_to_expression =
     | Coq_a_llit o -> Cst.Coq_llit o
     | Coq_a_succl e -> Cst.Coq_succl (impl ctx e)
     | Coq_a_maxl (e1, e2) -> Cst.Coq_maxl (impl ctx e1, impl ctx e2)
+    | Coq_a_prop -> Cst.Coq_prop
     | Coq_a_True -> Cst.Coq_true_ty
-    | Coq_a_true -> Cst.Coq_true_tm
+    (* [⋆], which normal forms hold for every proof, prints as a symbol no
+       token spells, so that it cannot be pasted back as [true]. *)
+    | Coq_a_true -> Cst.Coq_var s_star
+    | Coq_a_tt -> Cst.Coq_true_tm
     | Coq_a_False -> Cst.Coq_false_ty
-    | Coq_a_exfalso (em, escr) ->
-       let mx = new_var () in
-       let escr' = impl ctx escr in
-       let em' = impl (mx :: ctx) em in
-       Cst.Coq_exfalso (escr', mx, em')
+    | Coq_a_absurd (ec, em) -> Cst.Coq_exfalso (impl ctx em, impl ctx ec)
+    | Coq_a_and (ep, eq) ->
+       let px = new_var () in
+       let ep' = impl ctx ep in
+       Cst.Coq_and_ty (px, ep', impl (px :: ctx) eq)
+    (* [conj (m : P) n]: the first proposition of its annotation; the
+       second, which the typed pass inferred, is not written. *)
+    | Coq_a_conj (et, em, en) ->
+       let ep = match et with Coq_a_and (ep, _) -> ep | _ -> et in
+       Cst.Coq_and_intro (impl ctx em, impl ctx ep, impl ctx en)
+    | Coq_a_left em -> Cst.Coq_and_left (impl ctx em)
+    | Coq_a_right em -> Cst.Coq_and_right (impl ctx em)
+    (* The placeholders stand where the typed pass fills a term; a message
+       may still show one, as the reserved [_]. *)
+    | Coq_a_placeholder_type | Coq_a_placeholder -> Cst.Coq_var "_"
     | Coq_a_typ i -> Cst.Coq_typ i
     | Coq_a_univ e -> Cst.Coq_suniv (impl ctx e)
     (* A variable past the local binders is a parameter of an open module,
@@ -781,7 +829,7 @@ let exp_to_expression =
        let ef' = impl ctx ef in
        let ea' = impl ctx ea in
        Cst.Coq_app (ef', ea')
-    | Coq_a_pi (ep, eret) ->
+    | Coq_a_pi (_, ep, eret) ->
        let px = match ep with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
@@ -827,7 +875,7 @@ let exp_to_expression =
     | Coq_a_con (p, k, c) -> let q = member_path p k in path_to_expression q.q_unit (q.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
-    | Coq_a_elim (oq, _, m, bks, escr) ->
+    | Coq_a_elim (_, oq, _, m, bks, escr) ->
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
        let escr' = impl ctx escr in
        let block j (Coq_eb_mk (nm, oz, em, bs)) =
@@ -955,7 +1003,7 @@ let exp_to_expression =
     | Coq_gm_ext (phi, x, ge) ->
        let cs, ctx' = impl_body ctx phi in
        let c = match ge with
-         | Coq_ge_def (transp, priv, a, om) ->
+         | Coq_ge_def (transp, priv, _, a, om) ->
             let m = { Cst.modifiers_private = priv; Cst.modifiers_abstract = not transp } in
             let a' = impl ctx' a in
             (match om with
@@ -1370,18 +1418,18 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        (format_exp_named ox delta) m (format_exp_named ox delta) a
   (* An eliminator no reading of which fits its blocks. *)
   | Coq_run_error_elim_no_group (_, delta, e) ->
-     let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
+     let scr = match e with Coq_a_elim (_, _, _, _, _, s) -> s | s -> s in
      fprintf f "@[<hov 2>Error: no group fits the blocks of the eliminator of@ %a@]" (format_exp_in delta) scr
   (* An eliminator several readings of which fit its blocks, each named by
      its group's type former at its uniform parameters. *)
   | Coq_run_error_elim_ambiguous (_, delta, e, rs) ->
-     let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
+     let scr = match e with Coq_a_elim (_, _, _, _, _, s) -> s | s -> s in
      let reading (q, us) = Format.asprintf "%a" (format_exp_in delta) (McttExtracted.Syntax.apps_exp (Coq_a_ind (q, 0)) us) in
      fprintf f "@[<hov 2>Error: the eliminator of@ %a@ is ambiguous:@ its blocks fit the eliminators of@ %a@]"
        (format_exp_in delta) scr pp_utf8 (String.concat " and of " (List.map reading rs))
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
-  | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
+  | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (_, Some p, us, _, bks, scr), missing, extra, j) ->
      let ms = match Lk.fc_ind !current_fctx p with
        | Some d -> McttExtracted.Inductives.ind_block_members d
        | None -> [] in

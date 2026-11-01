@@ -324,11 +324,11 @@ let unit_path st fq =
 let rec term st env (o : C.expression) : unit =
   match o with
   | C.Coq_typ _ | C.Coq_level _ | C.Coq_llit _
-  | C.Coq_nat | C.Coq_num _ | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
-  | C.Coq_suniv o | C.Coq_succl o -> term st env o
-  | C.Coq_maxl (o1, o2) -> term st env o1; term st env o2
-  | C.Coq_exfalso (m, x, a) -> term st env m; let v = bind st x in term st (push x v env) a
-  | C.Coq_pi (x, a, b) | C.Coq_fn (x, a, b) ->
+  | C.Coq_nat | C.Coq_num _ | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty | C.Coq_prop -> ()
+  | C.Coq_suniv o | C.Coq_succl o | C.Coq_and_left o | C.Coq_and_right o -> term st env o
+  | C.Coq_maxl (o1, o2) | C.Coq_exfalso (o1, o2) -> term st env o1; term st env o2
+  | C.Coq_and_intro (m, p, q) -> term st env m; term st env p; term st env q
+  | C.Coq_pi (x, a, b) | C.Coq_fn (x, a, b) | C.Coq_and_ty (x, a, b) ->
       let v = bind st x in term st env a; term st (push x v env) b
   | C.Coq_app (f, a) -> term st env f; term st env a
   | C.Coq_var x -> ignore (head st env (next st x) x)
@@ -834,15 +834,20 @@ let record_value th (h : S.modexp) : (S.qname * S.exp list) option =
    skipped. *)
 let rec record_selections_exp th (e : S.exp) : (string * S.qname) list =
   match e with
-  | S.Coq_a_univ m | S.Coq_a_succl m | S.Coq_a_proj (_, m) -> record_selections_exp th m
-  | S.Coq_a_maxl (a, b) | S.Coq_a_pi (a, b) | S.Coq_a_fn (a, b) | S.Coq_a_app (a, b) ->
+  | S.Coq_a_univ m | S.Coq_a_succl m | S.Coq_a_proj (_, m) | S.Coq_a_left m | S.Coq_a_right m -> record_selections_exp th m
+  | S.Coq_a_maxl (a, b) | S.Coq_a_pi (_, a, b) | S.Coq_a_fn (a, b) | S.Coq_a_app (a, b) | S.Coq_a_and (a, b) ->
       record_selections_exp th a @ record_selections_exp th b
-  | S.Coq_a_exfalso (a, m) -> record_selections_exp th m @ record_selections_exp th a
+  | S.Coq_a_absurd (a, m) -> record_selections_exp th m @ record_selections_exp th a
+  (* [conj (m : P) n]: its first component, its first proposition, its
+     second component, in source order *)
+  | S.Coq_a_conj (t, m, n) ->
+      let p = match t with S.Coq_a_and (p, _) -> p | _ -> t in
+      record_selections_exp th m @ record_selections_exp th p @ record_selections_exp th n
   | S.Coq_a_let (S.Coq_b_def (oa, m), b) -> record_selections_opt th oa @ record_selections_exp th m @ record_selections_exp th b
   | S.Coq_a_let (S.Coq_b_mod u, b) -> record_selections_unit th u @ record_selections_exp th b
   | S.Coq_a_mem (h, y) -> record_selections_sel th h y
   | S.Coq_a_tuple (t, fs) -> record_selections_exp th t @ List.concat_map (fun (_, m) -> record_selections_exp th m) fs
-  | S.Coq_a_elim (_, _, _, bks, m) ->
+  | S.Coq_a_elim (_, _, _, _, bks, m) ->
       record_selections_exp th m
       @ List.concat_map (fun (S.Coq_eb_mk (_, oz, a, bs)) ->
           record_selections_opt th oz @ record_selections_exp th a @ List.concat_map (fun (_, b) -> record_selections_exp th b) bs) bks
@@ -885,7 +890,7 @@ and record_selections_gmod th = function
           | None -> [])
 
 and record_selections_gentry th = function
-  | S.Coq_ge_def (_, _, a, om) -> record_selections_exp th a @ record_selections_opt th om
+  | S.Coq_ge_def (_, _, _, a, om) -> record_selections_exp th a @ record_selections_opt th om
   | S.Coq_ge_mod (_, u) -> record_selections_unit th u
   | S.Coq_ge_def_mod (_, a, m, u) -> record_selections_exp th a @ record_selections_exp th m @ record_selections_unit th u
   | S.Coq_ge_record (_, _, d, _) -> record_selections_record th 0 d
@@ -902,7 +907,7 @@ and record_selections_ftrie th (t : FG.ftrie) =
   List.concat_map (fun x -> match FG.ft_find t x with Some e -> record_selections_fentry th e | None -> []) (List.rev (match t with FG.Coq_ft_mk (_, xs) -> xs))
 
 and record_selections_fentry th = function
-  | FG.Coq_fe_def (_, _, a, om, _) -> record_selections_exp th a @ record_selections_opt th om
+  | FG.Coq_fe_def (_, _, _, a, om, _) -> record_selections_exp th a @ record_selections_opt th om
   | FG.Coq_fe_mod (_, u) -> record_selections_funit th u
   | FG.Coq_fe_def_mod (_, a, m, u, _) -> record_selections_exp th a @ record_selections_exp th m @ record_selections_funit th u
   | FG.Coq_fe_record (_, _, d, _) -> record_selections_record th 0 d
@@ -928,7 +933,7 @@ and record_selections_ind th k (d : (S.exp, S.centry) S.ind_decl_g) =
   @ List.concat (List.mapi (fun j (m : (S.exp, S.centry) S.imember_g) ->
       record_selections_ctx th m.S.im_nparams @ (if j = 0 then record_selections_exp th d.S.ind_sort else [])
       @ List.concat_map (fun (_, args) ->
-          List.concat_map (function S.Coq_ca_arg a -> record_selections_exp th a | S.Coq_ca_rec r -> pt r) args) m.S.im_cons)
+          List.concat_map (function S.Coq_ca_arg (_, a) -> record_selections_exp th a | S.Coq_ca_rec r -> pt r) args) m.S.im_cons)
       d.S.ind_members)
 
 (* The entry [x] of the frame at the member chain [ch] of a unit, as filed,
@@ -954,13 +959,13 @@ let rec strip_fns n (e : S.exp) = match n, e with
    frames it is filed over ([cmd_loc]). *)
 let rec skip_pis n (e : S.exp) = match n, e with
   | 0, _ -> e
-  | _, S.Coq_a_pi (_, b) -> skip_pis (n - 1) b
+  | _, S.Coq_a_pi (_, _, b) -> skip_pis (n - 1) b
   | _, _ -> e
 
 (* The selections through record values of what a command declares. *)
 let record_cands th (gu : FG.funit) (log : McttExtracted.Command1.eval_entry list) (l : cmd_loc) =
   let def k n = function
-    | Some (FG.Coq_fe_def (_, _, a, om, _)) -> record_selections_exp th (skip_pis k a) @ record_selections_opt th (Option.map (strip_fns (k + n)) om)
+    | Some (FG.Coq_fe_def (_, _, _, a, om, _)) -> record_selections_exp th (skip_pis k a) @ record_selections_opt th (Option.map (strip_fns (k + n)) om)
     | Some (FG.Coq_fe_def_mod (_, a, m, u, _)) ->
         record_selections_exp th (skip_pis k a) @ record_selections_exp th (strip_fns (k + n) m) @ record_selections_funit th u
     | _ -> [] in
@@ -988,7 +993,7 @@ let record_cands th (gu : FG.funit) (log : McttExtracted.Command1.eval_entry lis
       List.concat_map (fun d ->
           match entry_at gu ch d with
           | Some (FG.Coq_fe_mod (_, u)) -> (match funit_alias u with (_, Some h) -> record_selections_mod th h | _ -> [])
-          | Some (FG.Coq_fe_def (_, _, _, Some m, _)) -> record_selections_exp th (strip_fns k m)
+          | Some (FG.Coq_fe_def (_, _, _, _, Some m, _)) -> record_selections_exp th (strip_fns k m)
           | _ -> []) ds
   (* Each function is filed as [λ Δ ys z. a_elim … Bks z] at the type
      [Π Δ ys z. A], with the blocks [Bks] of all the functions: the common
@@ -997,17 +1002,17 @@ let record_cands th (gu : FG.funit) (log : McttExtracted.Command1.eval_entry lis
      clauses off the block of the first function's eliminator whose
      branches are of its clauses' constructors. *)
   | L_mdef (ch, k, n, gs) ->
-      let ty g = match entry_at gu ch g with Some (FG.Coq_fe_def (_, _, a, _, _)) -> Some a | _ -> None in
+      let ty g = match entry_at gu ch g with Some (FG.Coq_fe_def (_, _, _, a, _, _)) -> Some a | _ -> None in
       let rec doms k e = match k, e with
         | 0, _ -> ([], e)
-        | _, S.Coq_a_pi (a, b) -> let ds, r = doms (k - 1) b in (a :: ds, r)
+        | _, S.Coq_a_pi (_, a, b) -> let ds, r = doms (k - 1) b in (a :: ds, r)
         | _, _ -> ([], e) in
       (match gs with
        | [] -> []
        | (g1, k1, _) :: _ ->
            let bks = match entry_at gu ch g1 with
-             | Some (FG.Coq_fe_def (_, _, _, Some m, _)) ->
-                 (match strip_fns (k + n + k1) m with S.Coq_a_elim (_, _, _, bks, _) -> bks | _ -> [])
+             | Some (FG.Coq_fe_def (_, _, _, _, Some m, _)) ->
+                 (match strip_fns (k + n + k1) m with S.Coq_a_elim (_, _, _, _, bks, _) -> bks | _ -> [])
              | _ -> [] in
            (match ty g1 with
             | Some a -> List.concat_map (record_selections_exp th) (fst (doms n (snd (doms k a)))) | None -> [])
