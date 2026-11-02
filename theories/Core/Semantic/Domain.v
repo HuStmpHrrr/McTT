@@ -281,6 +281,36 @@ Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (do
     the environment extended so far. *)
 Definition env_tele (ρ : env) (T : list centry) (vs : list domain) : env := env_extend_typed ρ (tele_entries ρ T vs).
 
+(** A telescope's entries read only as many of its types as there are
+    values. *)
+Lemma tele_entries_firstn : forall vs T ρ, tele_entries ρ T vs = tele_entries ρ (List.firstn (List.length vs) T) vs.
+Proof.
+  induction vs as [| v vs IH]; intros [| e T] ρ; cbn [tele_entries List.length List.firstn]; try reflexivity;
+    f_equal; apply IH.
+Qed.
+
+Lemma env_tele_firstn : forall ρ T vs, env_tele ρ T vs = env_tele ρ (List.firstn (List.length vs) T) vs.
+Proof. intros; unfold env_tele; rewrite tele_entries_firstn; reflexivity. Qed.
+
+(** Two telescopes one after the other, the first one's values all
+    given. *)
+Lemma tele_entries_app : forall T1 T2 vs1 vs2 ρ, List.length vs1 = List.length T1 ->
+    tele_entries ρ (T1 ++ T2) (vs1 ++ vs2) = tele_entries ρ T1 vs1 ++ tele_entries (env_tele ρ T1 vs1) T2 vs2.
+Proof.
+  induction T1 as [| e T1 IH]; intros T2 [| v vs1] vs2 ρ Hl; cbn in Hl; try discriminate; [ reflexivity |].
+  cbn [List.app tele_entries tele_head_type List.tl]; f_equal.
+  injection Hl as Hl; rewrite (IH _ _ _ _ Hl); reflexivity.
+Qed.
+
+Lemma env_tele_app : forall ρ T1 T2 vs1 vs2, List.length vs1 = List.length T1 ->
+    env_tele ρ (T1 ++ T2) (vs1 ++ vs2) = env_tele (env_tele ρ T1 vs1) T2 vs2.
+Proof. intros * Hl; unfold env_tele at 1; rewrite tele_entries_app, env_extend_typed_app by exact Hl; reflexivity. Qed.
+
+(** One more value, at the closure of its type. *)
+Lemma env_tele_snoc : forall ρ T vs A v, List.length vs = List.length T ->
+    env_tele ρ (T ++ ce_ass A :: nil) (vs ++ v :: nil) = extend_env (env_tele ρ T vs) v (entry_type_closure A (env_tele ρ T vs)).
+Proof. intros * Hl; rewrite env_tele_app by exact Hl; reflexivity. Qed.
+
 Definition drop_env (ρ : env) : env := List.tl ρ.
 Arguments drop_env _ /.
 

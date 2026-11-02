@@ -260,7 +260,24 @@ Import Domain_Notations.
       rewrite lvl_real_canon.
       unfold lvl_real, domain_level_real; cbn.
       erewrite read_level_atoms_max by eassumption; reflexivity.
-    - exists (ordinal_zero, (mk_level_atom 0 (domain_level_sort a) M :: nil)%list); split; [ reflexivity | reflexivity ].
+    - exists (ordinal_zero, (mk_level_atom 0 (domain_level_sort a) (ne_erase M) :: nil)%list); split; [ reflexivity | reflexivity ].
+  Qed.
+
+(** A level reads back with its atoms erased: [lvl_canon] stores them so,
+    and so does the readback of a neutral level. *)
+  Lemma read_nf_level_erased : forall {Θ Ξ} s n l W,
+      Rnf ⇓ (Levelᵈ@n) l in Θ ⍮ Ξ ⍮ s ↘ W ->
+      nf_erase W = W.
+  Proof.
+    assert (Hmap : forall zs, level_atoms_erased zs -> List.map (map_level_atom ne_erase) zs = zs).
+    { induction zs as [| [j t a] r IH]; cbn; intros HE; [ reflexivity |].
+      destruct HE as [Ha Hr]; unfold map_level_atom at 1; cbn; rewrite Ha, (IH Hr); reflexivity. }
+    inversion 1; subst; try discriminate.
+    - destruct (lvl_canon_canonical (c, ys)) as [_ _ _ HE].
+      destruct (lvl_canon (c, ys)) as [c' zs]; cbn [snd] in HE; cbn [nf_lvl_of nf_erase fst snd].
+      rewrite (Hmap _ HE); reflexivity.
+    - cbn [nf_erase List.map]; unfold map_level_atom; cbn [atom_offset atom_sort atom_level].
+      rewrite ne_erase_idem; reflexivity.
   Qed.
 
 #[export]
