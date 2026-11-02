@@ -151,7 +151,7 @@ Qed.
     universe at [i]. *)
 Lemma rel_chain_pi_relevant : forall {i R a1 a2 a3 a4 ρ1 ρ2 ρ3 ρ4 B1 B2 B3 B4},
     rel_chain (per_univ_elem i R) ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2; Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]) ->
-    rel_chain (per_relevant (per_univ i)) ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2; Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]).
+    rel_chain (per_relevant_nonlevel (per_univ i)) ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2; Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]).
 Proof.
   intros * (H12 & H23 & H34).
   apply rel_chain_4; (constructor; [ eexists; eassumption | reflexivity | reflexivity ]).
@@ -253,7 +253,7 @@ Proof.
     as [t0 [Ht0 [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain]]].
   assert (Hrel : rel_typ_sort B[q σ] (ρ ↦ c) relevant)
     by (exists b1; split; [ exact Hb1 | destruct Hbchain as [[_ Hr _] _]; exact Hr ]).
-  eapply rel_chain_mono in Hbchain; [| intros ? ? Hx; exact (per_relevant_univ_rel Hx) ].
+  eapply rel_chain_mono in Hbchain; [| intros ? ? Hx; exact (per_relevant_nonlevel_univ_rel Hx) ].
   assert (P1 : Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA) by pairwise.
   assert (P2 : Dom ρσ ↦ c ≈ s ↦ c ∈ env_relΔA) by pairwise.
   assert (P3 : Dom s' ↦ c' ≈ ρ'σ' ↦ c' ∈ env_relΔA) by pairwise.
@@ -322,7 +322,7 @@ Proof.
     destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [t' [Ht' [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hc]]].
     assert (t' = t) as -> by (eapply functional_eval_exp; eassumption).
     econstructor; try eassumption.
-    eapply rel_chain_mono; [| exact Hc ]; intros ? ? Hx; exact (per_relevant_univ_rel Hx).
+    eapply rel_chain_mono; [| exact Hc ]; intros ? ? Hx; exact (per_relevant_nonlevel_univ_rel Hx).
   - pose proof (rel_exp_of_prop_inversion HA) as [env_relΓ [HΓ HAgen]].
     eexists; eexists; [ eassumption |].
     intros * HΓ' * Hσj * Hρ Hev Hev' Ht.

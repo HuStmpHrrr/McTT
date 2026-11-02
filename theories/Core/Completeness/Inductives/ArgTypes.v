@@ -426,7 +426,7 @@ Lemma rel_exp_of_typ_wk_relevant : forall {Γ Δ φ A} {i : nat},
     Γ ⊨ʷ φ : Δ -> Δ ⊨ A : Typeω@i ->
     exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ),
     forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
-      exists a a', ⟦ A[φ]ʷ ⟧ ρ ↘ a /\ ⟦ A ⟧ ⟪φ⟫ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_relevant (per_univ i).
+      exists a a', ⟦ A[φ]ʷ ⟧ ρ ↘ a /\ ⟦ A ⟧ ⟪φ⟫ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ i).
 Proof.
   intros * Hw HA.
   destruct (rel_exp_under_ctx_wk_simple Hw HA) as (RΓ & HΓ & i0 & Hwk).
@@ -458,7 +458,7 @@ Proof.
   pose proof (rel_ctx_wf_per_ctx_env H) as [env_relΓ HΓ].
   eexists_rel_exp_of_typ.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_relevant (per_univ (S i)) 𝕌ω@i 𝕌ω@i)
+  assert (Hu : per_relevant_nonlevel (per_univ (S i)) 𝕌ω@i 𝕌ω@i)
     by (constructor; [| reflexivity | reflexivity ];
         eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.

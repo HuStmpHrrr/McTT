@@ -308,7 +308,7 @@ Definition univ_idx (a : domain) : universe_index :=
 Definition is_univ (a : domain) : Prop := (exists j, a = d_univ j) \/ (exists l, a = d_suniv l).
 
 Lemma per_univ_elem_univ : forall (i : universe_index) R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R -> is_univ a ->
-    univ_idx a' = univ_idx a /\ (R <~> per_relevant (per_univ (univ_idx a))).
+    univ_idx a' = univ_idx a /\ (R <~> per_relevant_nonlevel (per_univ (univ_idx a))).
 Proof.
   intros * H [[j ->] | [l ->]]; basic_invert_per_univ_elem H; cbn [univ_idx].
   - split; [ reflexivity | assumption ].

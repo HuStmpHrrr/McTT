@@ -47,7 +47,7 @@ Lemma rel_exp_under_ctx_shift : forall {Γ e A M M' env_relΓC},
 Proof.
   intros * HΓCper HM.
   destruct HM as [env_relΓ HΓ i HMgen].
-  pose proof (rel_sub_of_wk_rel HΓCper HΓ (rel_wk_shift HΓ HΓCper)) as HWk.
+  pose proof (rel_sub_of_wk_rel HΓCper HΓ (rel_wk_shift HΓ HΓCper) (fun x Hx => ltac:(cbn; lia))) as HWk.
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   (** The substituted environments are related in [Γ ▹ C] — needed to instantiate
@@ -141,7 +141,7 @@ Proof.
   destruct (HAwkgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [v1 v2 v3 v4 Hv1 Hv2 Hv3 Hv4 Hvchain].
   destruct (eval_sub_shift_rel HR Hρσ) as [Hs Hs'].
-  destruct (HAgen _ _ HR _ _ (rel_sub_of_wk_rel HR HΓ (rel_wk_shift HΓ HR)) _ _ _ _ Hρσ Hs Hs')
+  destruct (HAgen _ _ HR _ _ (rel_sub_of_wk_rel HR HΓ (rel_wk_shift HΓ HR) (fun x Hx => ltac:(cbn; lia))) _ _ _ _ Hρσ Hs Hs')
     as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Huchain].
   rewrite exp_sub_of_shift in Hu1, Hu4.
   destruct (Hsplit _ _ Hρσ) as [Hteq Hhead].
@@ -238,19 +238,22 @@ Section Fixed_GCtx.
     of the environment, the value of [M[↑]ʷ] is related to the value of [M] in
     the tail, and the tie relates those two.  A deeper lookup is again a
     weakened one. *)
-Lemma rel_exp_under_ctx_var_delta_here_any_entry : forall {Γ e A M R} {i : nat},
+Lemma rel_exp_under_ctx_var_delta_here_any_entry : forall {Γ e A M R S},
     (e = ce_def A M \/ exists U, e = ce_dm A M U) ->
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
-    Γ ⊨ A : Typeω@i ->
+    type_sort S ->
+    Γ ⊨ A : S ->
+    rel_type_relevant Γ A ->
     Γ ⊨ M : A ->
     (e :: Γ)%list ⊨ #0 ≈ M[↑]ʷ : A[↑]ʷ.
 Proof.
-  intros * He HR HA HM.
+  intros * He HR HS HA HArel HM.
   assert (Hent : ctx_entry_type (e :: nil) 0 = Some A) by (destruct He as [-> | [? ->]]; reflexivity).
   pose proof (per_ctx_env_head_split Hent HR) as [T [HT Hsplit]].
-  pose proof (per_ctx_env_def_tie_split He HA HR) as Htie.
+  pose proof (per_ctx_env_def_tie_split He HArel HR) as Htie.
+  destruct (rel_type_of_sort HS HA) as [iA HAt].
   eapply rel_exp_under_ctx_of_simple; [ exact HR | | | ].
-  - exact (valid_exp_under_ctx_var_here_any_entry Hent HR (type_sort_universe i) HA).
+  - exact (valid_exp_under_ctx_var_here_any_entry Hent HR HS HA).
   - exact (rel_exp_under_ctx_shift HR HM).
   - intros ρ ρ' Hρ; right.
     (** [M[↑]ʷ] against [M] in the tail, along the weakening [↑]. *)
@@ -260,17 +263,17 @@ Proof.
     assert (PER R) by (eapply per_env_PER; eassumption).
     assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ R) by solve_per.
     destruct (Hws _ _ (proj1 (E _ _) Hρ'ρ')) as [a1 [a1' [R1 [Ha1 [Ha1' [HR1 [Hp1 | [m1 [m1' [Hm1 [Hm1' Hmm1]]]]]]]]]]].
-    { (** [A] is a type of a universe, so its weakening is no proposition. *)
+    { (** [A] is relevant, so its weakening is no proposition. *)
       exfalso.
       destruct (Hsplit _ _ Hρ'ρ') as [Ht' _].
-      destruct (rel_exp_of_typ_relevant_at HT HA _ _ Ht') as (b0 & Eb0 & Hr0).
+      destruct (HArel _ HT _ _ Ht') as (b0 & Eb0 & Hr0).
       rewrite eval_wk_shift in Ha1'.
       functional_eval_rewrite_clear.
       pose proof (per_univ_elem_relevance _ _ _ _ HR1); congruence. }
     destruct (Hws _ _ (proj1 (E _ _) Hρ)) as [a0 [a0' [R2 [Ha0 [Ha0' [HR2 _]]]]]].
     destruct (Hsplit _ _ Hρ) as [Ht Hh].
     destruct (Htie _ _ Hρ) as [_ [m' [Hm' Htie']]].
-    destruct (rel_exp_of_typ_inversion_simple_at HT HA _ _ Ht) as [b [b' [Hb [Hb' [R3 HR3]]]]].
+    destruct (rel_type_inversion_simple_at HT HAt _ _ Ht) as [b [b' [Hb [Hb' [R3 HR3]]]]].
     rewrite eval_wk_shift in *.
     (** The tie, read at the element PER. *)
     assert (Ha11 : DF a1' ≈ a1' ∈ per_univ_elem j ↘ R1) by (etransitivity; [ symmetry |]; eassumption).
@@ -294,7 +297,7 @@ Proof.
   pose proof HΓ as HΓd.
   inversion HΓd as [| | ? ? ? Srt ? HΓ0 HΓdper HS HA HM | |]; subst.
   pose proof (rel_ctx_wf_per_ctx_env HΓ0) as [env_relΓ HΓper].
-  destruct HS as [i |].
+  destruct HS as [i | |].
   2:{ (** At a proposition both sides are proofs: the weakened type is a
         proposition at every environment. *)
       eapply rel_exp_under_ctx_of_simple; [ exact HΓdper | | | ].
@@ -304,7 +307,10 @@ Proof.
         pose proof (rel_exp_under_ctx_shift HΓdper HA) as HAwk; cbn [exp_wk] in HAwk.
         destruct (rel_exp_of_prop_inversion_simple_at HΓdper HAwk _ _ Hρ) as (a & a' & Ha & Ha' & [Hl _ _]).
         exists a; split; assumption. }
-  exact (rel_exp_under_ctx_var_delta_here_any_entry (or_introl eq_refl) HΓdper HA HM).
+  - exact (rel_exp_under_ctx_var_delta_here_any_entry (or_introl eq_refl) HΓdper (type_sort_universe i) HA
+             (rel_type_relevant_of_typ HA) HM).
+  - exact (rel_exp_under_ctx_var_delta_here_any_entry (or_introl eq_refl) HΓdper type_sort_level HA
+             (rel_type_relevant_of_level_sort HA) HM).
 Qed.
 
 (** δ at a definition with a module part: the same, read off its term
@@ -315,7 +321,8 @@ Lemma rel_exp_under_ctx_var_delta_here_dm : forall {Γ A M U},
 Proof.
   intros * HΓ.
   inversion HΓ as [| | | | ? ? ? ? i ? HΓ0 HΓdper HA HM _ _]; subst.
-  exact (rel_exp_under_ctx_var_delta_here_any_entry (or_intror (ex_intro _ U eq_refl)) HΓdper HA HM).
+  exact (rel_exp_under_ctx_var_delta_here_any_entry (or_intror (ex_intro _ U eq_refl)) HΓdper (type_sort_universe i) HA
+           (rel_type_relevant_of_typ HA) HM).
 Qed.
 
 End Fixed_GCtx.

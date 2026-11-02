@@ -810,7 +810,7 @@ Section Sort.
         per_gargs (List.rev (Pre ++ ind_uparams D)) nil nil (ups ++ zs) (ups' ++ zs') ->
         forall a, ⟦ ind_sort D ⟧ env_args nil ups ↘ a ->
         exists t t', ⟦ T ⟧ env_args nil (ups ++ zs) ↘ t /\ ⟦ T ⟧ env_args nil (ups' ++ zs') ↘ t' /\
-          Dom t ≈ t' ∈ per_relevant (per_univ (univ_idx a)).
+          Dom t ≈ t' ∈ per_relevant_nonlevel (per_univ (univ_idx a)).
   Proof.
     intros * HC HT * Hz Hz' Hu Hu' Hg a Ha.
     destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
@@ -854,7 +854,7 @@ Section Sort.
   Proof.
     intros * HC HT * Hz Hz' Hu Hu' Hg a Ha.
     destruct (sort_typ_rel_relevant _ _ HC HT _ _ _ _ Hz Hz' Hu Hu' Hg a Ha) as (t & t' & Et & Et' & Htt).
-    exists t, t'; split; [ exact Et | split; [ exact Et' | exact (per_relevant_rel _ _ _ Htt) ] ].
+    exists t, t'; split; [ exact Et | split; [ exact Et' | exact (per_relevant_nonlevel_rel _ _ _ Htt) ] ].
   Qed.
 
   (** The same at either sort: a proposition evaluates to related

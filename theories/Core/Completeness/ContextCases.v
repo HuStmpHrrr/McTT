@@ -15,6 +15,7 @@ From Stdlib Require Import Morphisms_Relations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
 Import Domain_Notations Fixed_Notations.
 
@@ -84,7 +85,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** At a relevant type, a term judgment relates the values. *)
-Lemma rel_exp_under_ctx_simple_at_relevant : forall {Γ A M M' env_relΓ},
+Lemma rel_exp_under_ctx_simple_at_of_relevant : forall {Γ A M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant) ->
     Γ ⊨ M ≈ M' : A ->
@@ -107,7 +108,7 @@ Corollary rel_exp_under_ctx_simple_at_rel : forall {Γ A M M' env_relΓ} {i : na
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head A A ρ ρ'.
-Proof. intros * HΓ HA HM; exact (rel_exp_under_ctx_simple_at_relevant HΓ (rel_exp_of_typ_relevant_at HΓ HA) HM). Qed.
+Proof. intros * HΓ HA HM; exact (rel_exp_under_ctx_simple_at_of_relevant HΓ (rel_exp_of_typ_relevant_at HΓ HA) HM). Qed.
 
 (** ** Definition Entries
 
@@ -126,18 +127,30 @@ Proof.
   - exact (rel_exp_under_ctx_simple_at_rel HΓ HA HM).
 Qed.
 
+(** The same for a definition of any relevant type. *)
+Lemma per_ctx_env_of_def_relevant : forall {Γ A} {i : nat} {M env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ᵗ A ≈ A at i ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant) ->
+    Γ ⊨ M : A ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend_def A M env_relΓ.
+Proof.
+  intros * HΓ HA HArel HM.
+  eapply (per_ctx_env_extend_def (i := i)); [ eassumption | | |].
+  - exact (rel_type_inversion_simple_at HΓ HA).
+  - exact HArel.
+  - exact (rel_exp_under_ctx_simple_at_of_relevant HΓ HArel HM).
+Qed.
+
 (** The same for a definition of a type of levels. *)
-Lemma per_ctx_env_of_def_level : forall {Γ A M env_relΓ},
+Corollary per_ctx_env_of_def_level : forall {Γ A M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A : LevelSort ->
     Γ ⊨ M : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend_def A M env_relΓ.
 Proof.
   intros * HΓ HA HM.
-  eapply (per_ctx_env_extend_def (i := 0)); [ eassumption | | |].
-  - exact (rel_type_inversion_simple_at HΓ (rel_type_of_level_sort 0 HA)).
-  - exact (rel_exp_of_level_sort_relevant_at HΓ HA).
-  - exact (rel_exp_under_ctx_simple_at_relevant HΓ (rel_exp_of_level_sort_relevant_at HΓ HA) HM).
+  exact (per_ctx_env_of_def_relevant HΓ (rel_type_of_level_sort 0 HA) (rel_exp_of_level_sort_relevant_at HΓ HA) HM).
 Qed.
 
 (** At a proposition, the canonical context PER of [Γ ▸ A ≔ M] is that of
@@ -259,20 +272,63 @@ Proof.
     eapply per_head_of; eassumption.
 Qed.
 
-(** The environments the context PER of a definition of a type of a
-    universe relates, with or without a module part, hold the body's value
-    at both heads: what δ reads. *)
-Lemma per_ctx_env_def_tie_split : forall {e Γ R A M} {i : nat},
+(** A type is relevant at every environment of every context PER of its
+    context: a type of a universe or of [LevelSort] is. *)
+Definition rel_type_relevant (Γ : ctx) (A : typ) : Prop :=
+  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> rel_typ_sort A ρ relevant.
+
+Lemma rel_type_relevant_of_typ : forall {Γ A} {i : nat}, Γ ⊨ A : Typeω@i -> rel_type_relevant Γ A.
+Proof. intros * HA R HR ρ ρ' Hρ; exact (rel_exp_of_typ_relevant_at HR HA _ _ Hρ). Qed.
+
+Lemma rel_type_relevant_of_level_sort : forall {Γ A}, Γ ⊨ A : LevelSort -> rel_type_relevant Γ A.
+Proof. intros * HA R HR ρ ρ' Hρ; exact (rel_exp_of_level_sort_relevant_at HR HA _ _ Hρ). Qed.
+
+(** An entry of a relevant type is no proposition, at either environment
+    of a related pair. *)
+Lemma head_not_propositional_of_relevant : forall {Γ e A} {i : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    ctx_entry_type (e :: nil) 0 = Some A ->
+    Γ ⊨ᵗ A ≈ A at i ->
+    rel_type_relevant Γ A ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
+      ~ head_propositional gc_deps gc_stack e Γ ρ /\ ~ head_propositional gc_deps gc_stack e Γ ρ'.
+Proof.
+  intros * HΓ He HA HArel ρ ρ' Hρ.
+  pose proof (rel_type_inversion_simple_at HΓ HA) as HAs.
+  assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
+  assert (Hnp : forall ρ1 ρ1', Dom ρ1 ≈ ρ1' ∈ env_relΓ -> ~ head_propositional gc_deps gc_stack e Γ ρ1).
+  { intros ρ1 ρ1' Hρ1 Hp.
+    destruct (HArel _ HΓ _ _ Hρ1) as (a0 & Ea0 & Er0).
+    apply (head_propositional_iff HΓ He HAs Hρ1 Ea0) in Hp; congruence. }
+  split; [ exact (Hnp _ _ Hρ) | apply (Hnp ρ' ρ'); etransitivity; [ symmetry |]; exact Hρ ].
+Qed.
+
+(** Readability of the heads a head relation relates, at the stored types
+    the values of the type at the two tails. *)
+Lemma per_head_entry_readable : forall {S ρ ρ' a a' c c'} {i : nat} {R},
+    ⟦ S ⟧ ρ ↘ a -> ⟦ S ⟧ ρ' ↘ a' ->
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    Dom c ≈ c' ∈ per_head S S ρ ρ' ->
+    entry_readable (de_term c (entry_type_value a)) /\ entry_readable (de_term c' (entry_type_value a')).
+Proof.
+  intros * Ha Ha' HR Hc.
+  exact (entry_readable_of_elem HR (Hc _ _ _ _ Ha Ha' HR)).
+Qed.
+
+(** The environments the context PER of a definition of a relevant type
+    relates, with or without a module part, hold the body's value at both
+    heads: what δ reads. *)
+Lemma per_ctx_env_def_tie_split : forall {e Γ R A M},
     (e = ce_def A M \/ exists U, e = ce_dm A M U) ->
-    Γ ⊨ A : Typeω@i ->
+    rel_type_relevant Γ A ->
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
     forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> def_tie A M ρ /\ def_tie A M ρ'.
 Proof.
   intros * He HA HR ρ ρ' Hρ.
   destruct He as [-> | [U ->]]; inversion HR; subst; apply_relation_equivalence.
   - destruct Hρ as [Ht Hh Hterms _ _].
-    (** The sort of the entry is relevant: its type is of a universe. *)
-    destruct (rel_exp_of_typ_relevant_at equiv_Γ_Γ' HA _ _ Ht) as (b0 & Eb0 & Hr0).
+    (** The sort of the entry is relevant: its type is. *)
+    destruct (HA _ equiv_Γ_Γ' _ _ Ht) as (b0 & Eb0 & Hr0).
     match goal with
     | Hs : forall ρ ρ' (_ : _ ρ ρ'), rel_typ_sort _ _ _ |- _ => destruct (Hs _ _ Ht) as (b1 & Eb1 & Hr1)
     end.
@@ -334,18 +390,20 @@ Qed.
     are ([per_ctx_env_cons_rel]).  Its variable is read directly
     ([valid_exp_under_ctx_var_here_dm]). *)
 
-(** Definition entries with related bodies relate the same environments. *)
-Lemma per_ctx_env_def_conv : forall {Γ A} {i : nat} {M M' R R'},
-    Γ ⊨ A : Typeω@i ->
+(** Definition entries of a relevant type with related bodies relate the
+    same environments. *)
+Lemma per_ctx_env_def_conv_relevant : forall {Γ A} {i : nat} {M M' R R'},
+    Γ ⊨ᵗ A ≈ A at i ->
+    rel_type_relevant Γ A ->
     Γ ⊨ M ≈ M' : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
     EF Γ ▸ A ≔ M' ≈ Γ ▸ A ≔ M' ∈ per_ctx_env ↘ R' ->
     forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
 Proof.
-  intros * HA HM HR HR' ρ ρ' Hρ.
-  pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΓ [HΓ HAs]].
-  pose proof (per_ctx_env_of_def HΓ HA (rel_exp_under_ctx_refl_left HM)) as Hd.
-  pose proof (per_ctx_env_of_def HΓ HA (rel_exp_under_ctx_refl_right HM)) as Hd'.
+  intros * HA HArel HM HR HR' ρ ρ' Hρ.
+  pose proof (rel_type_inversion_simple HA) as [env_relΓ [HΓ HAs]].
+  pose proof (per_ctx_env_of_def_relevant HΓ HA (HArel _ HΓ) (rel_exp_under_ctx_refl_left HM)) as Hd.
+  pose proof (per_ctx_env_of_def_relevant HΓ HA (HArel _ HΓ) (rel_exp_under_ctx_refl_right HM)) as Hd'.
   pose proof (per_ctx_env_extend HΓ HAs) as Ha.
   assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (E2 : R' <~> per_env_extend_def A M' env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
@@ -355,12 +413,21 @@ Proof.
   destruct Hρ as [Hρ Ht Ht'].
   assert (Hρρ : Dom ρ ≈ ρ ∈ per_env_extend A A env_relΓ) by solve_per.
   assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ per_env_extend A A env_relΓ) by solve_per.
-  pose proof (rel_exp_of_typ_inversion_simple_at HΓ HA) as HAat.
-  pose proof (rel_exp_under_ctx_simple_at_rel HΓ HA HM) as HMat.
+  pose proof (rel_type_inversion_simple_at HΓ HA) as HAat.
+  pose proof (rel_exp_under_ctx_simple_at_of_relevant HΓ (HArel _ HΓ) HM) as HMat.
   constructor; [ exact Hρ | |].
   - exact (def_tie_resp _ HAat HMat Hρρ Ht).
   - exact (def_tie_resp _ HAat HMat Hρ'ρ' Ht').
 Qed.
+
+(** Definition entries with related bodies relate the same environments. *)
+Corollary per_ctx_env_def_conv : forall {Γ A} {i : nat} {M M' R R'},
+    Γ ⊨ A : Typeω@i ->
+    Γ ⊨ M ≈ M' : A ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
+    EF Γ ▸ A ≔ M' ≈ Γ ▸ A ≔ M' ∈ per_ctx_env ↘ R' ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
+Proof. intros * HA; exact (per_ctx_env_def_conv_relevant (rel_type_of_typ HA) (rel_type_relevant_of_typ HA)). Qed.
 
 (** A definition with a module part does not refine the definition entry
     of its term part either, for the same reason; its δ is read directly

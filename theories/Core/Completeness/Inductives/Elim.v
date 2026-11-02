@@ -1698,7 +1698,7 @@ Proof.
     by exact (head_not_propositional (e := ce_ass B) HΔ eq_refl HBs He1e1 Eb Hrb).
   (** [B[τ]] is relevant at [ρσ]: its value is [B]'s at [τ]'s. *)
   destruct (HBgen _ _ HΓ _ _ Hτj _ _ _ _ Hρσ Eτ Eτ') as [x1 c0 x30 x40 Hx1 Hc0 Hx30 Hx40 Hxc0].
-  assert (Hrx1 : domain_relevance x1 = relevant) by (destruct Hxc0 as [Hx _]; exact (per_relevant_left _ _ _ Hx)).
+  assert (Hrx1 : domain_relevance x1 = relevant) by (destruct Hxc0 as [Hx _]; exact (per_relevant_nonlevel_left _ _ _ Hx)).
   pose proof HN as [RΓ2 HΓ2 j HNgen].
   destruct (HNgen _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev) as [R1 [HTy Hor]].
   destruct (rel_exp_or_prop_relevant HTy (ex_intro _ x1 (conj Hx1 Hrx1)) Hor) as [n1 n2 n3 n4 Hn1e Hn2e Hn3e Hn4e Hnc].

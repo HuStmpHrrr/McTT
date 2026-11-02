@@ -50,7 +50,7 @@ Lemma per_elem_con_prefix : forall i R a b, DF a ≈ b ∈ per_univ_elem i ↘ R
     R (d_con hd kq c (cs ++ ms)) y -> R (d_con hd kq c (cs' ++ ms)) y.
 Proof.
   intros * H; per_univ_elem_induction H; intros * Hq HMq Hh Lc Lc' Hx.
-  1-2: match goal with HE : _ <~> per_relevant (per_univ _) |- _ => apply HE in Hx end;
+  1-2: match goal with HE : _ <~> per_relevant_nonlevel (per_univ _) |- _ => apply HE in Hx end;
        destruct Hx as [[R0 HR0] _ _]; exfalso; exact (per_univ_elem_not_con _ _ _ _ HR0 _ _ _ _ eq_refl).
   - match goal with HE : _ <~> per_lvl_at _ |- _ => apply HE in Hx end.
     destruct (Hx 0) as [L0 HL0 _ _]; inversion HL0.
