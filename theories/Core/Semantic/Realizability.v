@@ -928,6 +928,19 @@ Proof.
     eexists; econstructor; solve [ constructor | eassumption ].
 Qed.
 
+(** And as term entries stored at the types as closures, in the
+    environments they evaluate in: the arguments of a telescope. *)
+Lemma entry_readable_of_elem_closure : forall {i A A' ρ ρ' a a' R v v'},
+    ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' ->
+    DF a ≈ a' ∈ per_univ_elem i ↘ R -> Dom v ≈ v' ∈ R ->
+    entry_readable (de_term v (entry_type_closure A ρ)) /\ entry_readable (de_term v' (entry_type_closure A' ρ')).
+Proof.
+  intros * Ea Ea' HR Hv; split; intros s;
+    destruct (per_univ_then_per_top_typ HR s) as [T T' HT HT' _];
+    destruct (per_elem_then_per_top HR Hv s) as [W W' HW HW' _];
+    eexists; eapply read_entry_term; solve [ eapply eval_entry_type_closure; eassumption | eassumption ].
+Qed.
+
 (** ** Readability of Environments
 
     A kept proof reads back once every entry of its environment does: the

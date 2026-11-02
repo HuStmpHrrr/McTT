@@ -63,7 +63,7 @@ Proof. intros * Hl; destruct D; [ apply eval_close_body | apply eval_close_alias
 (** A closure given fewer arguments than it lacks parameters. *)
 Lemma appms_local : forall args Δ D ρ, tele_ass Δ -> List.length args < List.length Δ ->
     $ᵐ*| dm_local Δ D ρ & args | gc_deps ⍮ gc_stack ↘
-      dm_local (List.firstn (List.length Δ - List.length args) Δ) D (env_args ρ args).
+      dm_local (List.firstn (List.length Δ - List.length args) Δ) D (env_tele ρ (List.rev Δ) args).
 Proof.
   induction args as [| c args IH]; intros * Ha Hl; cbn [List.length] in *.
   - rewrite Nat.sub_0_r, List.firstn_all; constructor.
@@ -74,6 +74,9 @@ Proof.
     replace (List.length Δ0 + 1 - S (List.length args)) with (List.length Δ0 - List.length args) by lia.
     rewrite List.firstn_app, (proj2 (Nat.sub_0_le (List.length Δ0 - List.length args) (List.length Δ0)) ltac:(lia)).
     cbn [List.firstn]; rewrite List.app_nil_r.
+    (** The argument extends the environment at its parameter's type, as a
+        closure there: the head of the telescope, outermost first. *)
+    rewrite List.rev_app_distr; cbn [List.rev List.app].
     exact (IH _ _ _ Ha0 ltac:(lia)).
 Qed.
 
@@ -117,6 +120,15 @@ Lemma nth_rev_app_lt : forall (Δ T : list centry) k, k < List.length T ->
     List.nth_error (List.rev (Δ ++ T)) k = List.nth_error (List.rev T) k.
 Proof. intros * Hk; rewrite List.rev_app_distr, List.nth_error_app1 by (rewrite List.length_rev; lia); reflexivity. Qed.
 
+(** Values at a telescope read only as many of its types as there are
+    values: entries past them do not matter. *)
+Lemma env_tele_app_long : forall ρ T1 T2 vs, List.length vs <= List.length T1 ->
+    env_tele ρ (T1 ++ T2) vs = env_tele ρ T1 vs.
+Proof.
+  intros * Hl; rewrite env_tele_firstn, (env_tele_firstn ρ T1), List.firstn_app.
+  replace (List.length vs - List.length T1) with 0 by lia; rewrite List.app_nil_r; reflexivity.
+Qed.
+
 Lemma next_param_global_lt : forall p args a, next_param (dm_global p args) a ->
     exists T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) /\ List.length args < List.length T.
 Proof.
@@ -135,11 +147,13 @@ Proof.
     inversion Hn; subst.
     match goal with Hm : gc_loc _ _ p = Some _, Hl : gc_loc _ _ (qname_app p _) = Some _ |- _ =>
       destruct (gc_child_body _ _ _ _ _ Hm Hl) as (Δy & Φy & Hm') end.
-    econstructor; [ exact Hm' | | eassumption ].
-    rewrite nth_rev_app_lt; [ eassumption |].
     match goal with Hx : nth_error (rev T) _ = Some _ |- _ =>
       assert (Hx' : nth_error (rev T) (length args) <> None) by congruence end.
-    apply nth_error_Some in Hx'; rewrite length_rev in Hx'; exact Hx'.
+    apply nth_error_Some in Hx'; rewrite length_rev in Hx'.
+    econstructor; [ exact Hm' | rewrite nth_rev_app_lt; [ eassumption | exact Hx' ] |].
+    (** The parent's parameters come first, outermost first: the
+        arguments are at them. *)
+    rewrite List.rev_app_distr, env_tele_app_long by (rewrite List.length_rev; lia); eassumption.
   - (* an alias submodule of a global module: its closure at the arguments *)
     destruct (next_param_global_lt _ _ _ Hn) as (T & Φ & Hm & Hlt).
     match goal with Ha : gc_module _ _ (qname_app p _) = Some (mr_alias _) |- _ =>
@@ -157,7 +171,8 @@ Proof.
     match goal with Hx : nth_error (rev T) _ = Some ?e |- _ =>
       rewrite <- (nth_rev_app_lt Δy) in Hx by exact Hlt;
       destruct (firstn_rev_nth _ _ _ Hx) as (L0 & HL0) end.
-    rewrite HL0; constructor; assumption.
+    rewrite HL0; constructor.
+    rewrite List.rev_app_distr, env_tele_app_long by (rewrite List.length_rev; lia); assumption.
   - (* a closure lacking a parameter *)
     constructor; exact Hn.
   - (* a saturated body lacks none *)

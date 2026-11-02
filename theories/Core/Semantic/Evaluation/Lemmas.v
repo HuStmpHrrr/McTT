@@ -185,6 +185,8 @@ Import Domain_Notations.
         | H1 : module_saturated Θ Ξ ?p ?args, H2 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ),
           H3 : List.length ?args < List.length ?T |- _ =>
             exfalso; specialize (H1 _ _ H2); lia
+        | H1 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ), H2 : Members.gc_loc Θ Ξ ?p = Some (?T', ?Φ') |- _ =>
+            assert_fails (constr_eq H1 H2); rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H : _ ++ ce_ass _ :: nil = _ ++ ce_ass _ :: nil |- _ =>
             apply List.app_inj_tail in H as [? [= ?]]; subst
         | H : 0 < List.length (_ ++ _ :: nil) -> False |- _ =>

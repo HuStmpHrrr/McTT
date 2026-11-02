@@ -149,18 +149,20 @@ Section Members.
 
   (** A member selected from a saturated global module: a relevant one, its
       stored value applied to the arguments, or one tagged a proposition,
-      kept as its selection from the module. *)
+      kept as its selection from the module, which has exactly its
+      parameters. *)
   Lemma eval_sel_global_inv : forall p x args r,
       module_saturated Θ Ξ p args ->
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r ->
       (exists f, global_member_value p x f /\ $*| f & args | Θ ⍮ Ξ ↘ r) \/
       ((exists b pv A B, gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B)) /\
-       exists T Φ, gc_loc Θ Ξ p = Some (T, Φ) /\ r = ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩).
+       exists T Φ, gc_loc Θ Ξ p = Some (T, Φ) /\ List.length args = List.length T /\
+         r = ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩).
   Proof.
     intros * Hs H; inversion H; subst;
       [ left; eexists; split; [ eapply global_member_value_term | ]; eassumption
       | left; eexists; split; [ eapply global_member_value_neut | ]; eassumption
-      | right; split; [ do 4 eexists; eassumption | do 2 eexists; split; [ eassumption | reflexivity ] ]
+      | right; split; [ do 4 eexists; eassumption | do 2 eexists; split; [ eassumption | split; [ eassumption | reflexivity ] ] ]
       | left; eexists; split; [ eapply global_member_value_indty |]; eassumption
       | exfalso; match goal with Hl : gc_loc _ _ _ = Some _ |- _ => specialize (Hs _ _ Hl) end; lia
       | left; eexists; split; [ eapply global_member_value_record | ]; eassumption ].
@@ -173,7 +175,9 @@ Section Members.
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r -> r = d_member (dm_global p args) (x :: nil).
   Proof.
     intros * Hl Hlt H; inversion H; subst; try reflexivity;
-      match goal with Hs : module_saturated _ _ _ _ |- _ => specialize (Hs _ _ Hl) end; lia.
+      first [ match goal with Hs : module_saturated _ _ _ _ |- _ => specialize (Hs _ _ Hl) end; lia
+            | (** a proof, at exactly the parameters *)
+              match goal with Hl' : gc_loc _ _ _ = Some _ |- _ => rewrite Hl in Hl'; injection Hl' as <- <- end; lia ].
   Qed.
 
   (** Whether a global module at [args] is saturated is decided by its

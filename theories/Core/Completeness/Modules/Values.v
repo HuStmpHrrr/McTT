@@ -85,7 +85,11 @@ Proof.
          the arguments; of one lacking a parameter, its member closure *)
       destruct (module_saturated_dec gc_deps gc_stack p args) as [Hsat | (T & Φ & Hl & Hlt)].
       * match goal with Hs : eval_sel _ _ _ _ _ |- _ =>
-          apply (eval_sel_global_inv _ _ _ _ _ _ (module_saturated_app _ _ _ _ (n :: nil) Hsat)) in Hs as (f0 & Hf0 & Ha) end.
+          apply (eval_sel_global_inv _ _ _ _ _ _ (module_saturated_app _ _ _ _ (n :: nil) Hsat)) in Hs
+            as [(f0 & Hf0 & Ha) | (_ & T & Φ & Hl & Hlen & _)] end;
+          (** A proof is selected only at exactly the parameters, which the
+              module had before this argument. *)
+          [| exfalso; specialize (Hsat _ _ Hl); rewrite List.length_app in Hlen; cbn in Hlen; lia ].
         apply eval_apps_app in Ha as (f1 & Hf1 & Ha1).
         exists f1; split; [ constructor; eapply eval_sel_global_apps; eassumption | apply eval_app_apps1; exact Ha1 ].
       * exists (d_member (dm_global p args) (y :: nil)); split; [ constructor; eapply eval_sel_global_unsat; eassumption |].
@@ -438,7 +442,8 @@ Lemma per_univ_elem_pi_inv : forall {j E a ρ B a' ρ' B'},
     per_univ_elem j E (Πᵈ a ρ B) (Πᵈ a' ρ' B') ->
     exists in_rel (out_rel : forall c c', in_rel c c' -> relation domain),
       per_univ_elem j in_rel a a' /\
-      (forall c c' (H : in_rel c c'), rel_mod_eval (per_univ_elem j) B (ρ ↦ c) B' (ρ' ↦ c') (out_rel c c' H)) /\
+      (forall c c' (H : in_rel c c'),
+          rel_mod_eval (per_univ_elem j) B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel c c' H)) /\
       (E <~> pi_elements a a' in_rel out_rel).
 Proof.
   intros * H.
@@ -456,7 +461,7 @@ Lemma dmod_has_mem_fun : forall k a0 x i E a ρB B,
     (exists j R0, per_univ_elem j R0 a0 a) ->
     domain_relevance a = relevant ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
-       ⟦ B ⟧ ρB ↦ c ↘ b -> exists l Rb, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb) ->
+       ⟦ B ⟧ ρB ↦ c ⦂ entry_type_value a ↘ b -> exists l Rb, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb) ->
     (exists f, k ·ₜ x gc_deps ⍮ gc_stack ↘ f) ->
     dmod_has_mem k x E.
 Proof.
@@ -516,7 +521,7 @@ Lemma red_fun : forall k a0 x i E a ρB B f fk,
     (exists j R0, per_univ_elem j R0 a0 a) -> per_dmod k k -> k ·ₜ x gc_deps ⍮ gc_stack ↘ fk ->
     domain_relevance a = relevant -> arg_relevance gc_deps gc_stack f = relevant ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
-       ⟦ B ⟧ ρB ↦ c ↘ b -> exists l Rb fc r, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb /\
+       ⟦ B ⟧ ρB ↦ c ⦂ entry_type_value a ↘ b -> exists l Rb fc r, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb /\
          $| f & c |↘ fc /\ kc ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Rb fc r) ->
     E f fk.
 Proof.

@@ -30,6 +30,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import FunctionCases.
+From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 #[local] Generalizable All Variables.
@@ -311,10 +312,11 @@ Proof.
       (** [in_rel] and [in2] share the value [q3] on the right. *)
       assert (Hii : in_rel <~> in2)
         by (eapply per_univ_elem_left_irrel; [ exact Hin_rel | exact Hmid2 ]).
+      pose proof (entry_readable_of_elem Hin_rel Hc) as [Rc Rc'].
       rewrite Hii in Hc.
-      assert (Hext : Dom ρσ ↦ c ≈ ρ'σ' ↦ c' ∈ env_relΓA')
-        by (rewrite HiffA'; apply per_env_extend_intro'; [ exact Hρσ |];
-            eapply per_head_of; [ exact Hq2 | exact Hq3 | exact Hmid2 | exact Hc ]).
+      assert (Hext : Dom ρσ ↦ c ⦂ entry_type_value p2 ≈ ρ'σ' ↦ c' ⦂ entry_type_value q3 ∈ env_relΓA')
+        by (rewrite HiffA'; apply per_env_extend_intro';
+            [ exact Hρσ | eapply per_head_of; [ exact Hq2 | exact Hq3 | exact Hmid2 | exact Hc ] | exact Rc | exact Rc' ]).
       destruct (Hsubgen _ _ Hext) as [b0 [b0' [Hb0 [Hb0' Hsubb]]]].
       assert (b0 = b) as -> by (eapply functional_eval_exp; [ exact Hb0 | exact Hb ]).
       assert (b0' = b') as -> by (eapply functional_eval_exp; [ exact Hb0' | exact Hb' ]).

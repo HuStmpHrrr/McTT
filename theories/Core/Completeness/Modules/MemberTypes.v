@@ -110,24 +110,10 @@ Proof.
     injection HE as <-; eexists; split; reflexivity.
 Qed.
 
-(** The instance of a judgment of a context ending in a definition with a
-    module part at the identity extended by its parts. *)
-Lemma rel_exp_under_ctx_dm_inst : forall {Γ A M U X T},
-    ⊨ Γ ▸ₘ A ≔ M ‖ U -> Γ ▸ₘ A ≔ M ‖ U ⊨ X : T ->
-    Γ ⊨ X[Id ,,ᵈ M ‖ me_lit U] : T[Id ,,ᵈ M ‖ me_lit U].
-Proof.
-  intros * HC HX.
-  destruct (rel_ctx_wf_dm_inv HC) as ([i HA] & HM & HU).
-  assert (Hg : gsub Γ (Id ,,ᵈ M ‖ me_lit U) (Γ ▸ₘ A ≔ M ‖ U)).
-  { eapply gsub_eq; [ eapply gsub_dm; [ apply gsub_id, (rel_ctx_wf_tail HC) | exact HA | exact HM | exact HU ] |].
-    intros [| x]; cbn; [ rewrite exp_sub_id, gunit_sub_id; reflexivity | reflexivity ]. }
-  exact (rel_exp_under_ctx_gsub Hg HX).
-Qed.
-
 Lemma gsub_sem : forall {Γ τ Δ}, gsub Γ τ Δ -> ⊨ Γ /\ ⊨ Δ.
 Proof.
-  induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HS HB HN | ? ? ? ? ? ? ? [IH1 IH2] HS HB HM
-                 | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU
+  induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HS HB HN _ | ? ? ? ? ? ? ? [IH1 IH2] HS HB HM _
+                 | ? ? ? ? ? [IH1 IH2] HU _ | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU _ _
                  | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? HG [IH1 IH2] HS HB
                  | ? ? ? ? ? ? HG [IH1 IH2] HS HB HM | ? ? ? ? HG [IH1 IH2] HU HU'
                  | ? ? ? ? ? ? ? HG [IH1 IH2] HB HM HU HU'
@@ -151,35 +137,26 @@ Qed.
 
 (** ** Generalizing over a Telescope *)
 
-(** A type of a universe, or a proposition, generalized over a context: a
-    [Π] into a type of a universe, or a [∀] into a proposition. *)
-Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : relevance_sort r Typeω@i ->
+(** A type of a universe, or a proposition, generalized over a telescope
+    of assumptions: a [Π] into a type of a universe, or a [∀] into a
+    proposition. *)
+Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, tele_ass Ψ -> ⊨ Ψ ++ D ->
+    Ψ ++ D ⊨ X : relevance_sort r Typeω@i ->
     exists j, D ⊨ ctx_pi_at r Ψ X : relevance_sort r Typeω@j.
 Proof.
-  induction Ψ as [| e Ψ IH]; intros * HΨ HX; cbn in *; [ eauto |].
-  destruct e as [B | B M | U | B M U].
-  - destruct (rel_ctx_wf_ass_type HΨ) as [k HB].
-    eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    destruct r; cbn [relevance_sort] in *.
-    + apply (rel_exp_under_ctx_pi_cong (i := max i k));
-        [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
-    + exact (rel_exp_under_ctx_all (HB k (le_n k)) (HB k (le_n k)) HX).
-  - destruct (rel_ctx_wf_def_inv HΨ) as [(Srt & HS & HB) HM].
-    eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    pose proof (valid_exp_under_ctx_let (oA := Some B) HS HB HM HX (or_intror eq_refl)) as H.
-    rewrite (type_sort_sub _ _ (type_sort_relevance r _ (type_sort_universe i))) in H; exact H.
-  - pose proof (rel_ctx_wf_mod_inv HΨ) as HU.
-    eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    pose proof (valid_exp_under_ctx_let_mod HU HX) as H.
-    rewrite (type_sort_sub _ _ (type_sort_relevance r _ (type_sort_universe i))) in H; exact H.
-  - eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
-    pose proof (rel_exp_under_ctx_dm_inst HΨ HX) as H.
-    rewrite (type_sort_sub _ _ (type_sort_relevance r _ (type_sort_universe i))) in H; exact H.
+  induction Ψ as [| e Ψ IH]; intros * HΨa HΨ HX; cbn in *; [ eauto |].
+  inversion HΨa as [| ? ? [B ->] HΨa']; subst.
+  destruct (rel_ctx_wf_ass_type HΨ) as [k HB].
+  eapply IH; [ exact HΨa' | exact (rel_ctx_wf_tail HΨ) |].
+  destruct r; cbn [relevance_sort] in *.
+  - apply (rel_exp_under_ctx_pi_cong (i := max i k));
+      [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
+  - exact (rel_exp_under_ctx_all (HB k (le_n k)) (HB k (le_n k)) HX).
 Qed.
 
-Corollary valid_exp_under_ctx_ctx_pi : forall Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
+Corollary valid_exp_under_ctx_ctx_pi : forall Ψ D X i, tele_ass Ψ -> ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
     exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
-Proof. intros * HΨ HX; exact (valid_exp_under_ctx_ctx_pi_at relevant _ _ _ _ HΨ HX). Qed.
+Proof. intros * HΨa HΨ HX; exact (valid_exp_under_ctx_ctx_pi_at relevant _ _ _ _ HΨa HΨ HX). Qed.
 
 (** ** Telescopes of Parameters *)
 

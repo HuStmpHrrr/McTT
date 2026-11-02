@@ -24,16 +24,18 @@ Section Fixed_GCtx.
 Lemma gargs_rel : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' ->
     forall Tb Rb, EF Tb ≈ Tb ∈ per_ctx_env ↘ Rb -> Rb ρ ρ' -> ⊨ rev ts ++ Tb ->
     exists R, EF rev (firstn (List.length args) ts) ++ Tb ≈ rev (firstn (List.length args) ts) ++ Tb ∈ per_ctx_env ↘ R /\
-      R (env_args ρ args) (env_args ρ' args').
+      R (env_tele ρ ts args) (env_tele ρ' ts args').
 Proof.
   induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' R1 HA Ha Hg IH]; intros Tb Rb HTb Hρ HC; cbn [firstn List.length rev app].
   - exists Rb; split; assumption.
   - cbn [rev] in HC; rewrite <- app_assoc in HC; cbn [app] in HC.
     destruct (rel_ctx_wf_ass_type (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
     pose proof (per_ctx_env_of_typ HTb (HAv j (le_n j))) as HTb'.
-    assert (Hρ' : per_env_extend A A Rb (ρ ↦ a) (ρ' ↦ a')).
-    { apply per_env_extend_intro'; [ exact Hρ |].
-      destruct HA as [x x' Hx Hx' Hxx]; eapply per_head_of; [ exact Hx | exact Hx' | exact Hxx | exact Ha ]. }
+    assert (Hρ' : per_env_extend A A Rb (ρ ↦ a ⦂ entry_type_closure A ρ) (ρ' ↦ a' ⦂ entry_type_closure A ρ')).
+    { destruct HA as [x x' Hx Hx' Hxx].
+      pose proof (entry_readable_of_elem_closure Hx Hx' Hxx Ha) as [Ra Ra'].
+      apply per_env_extend_intro'; [ exact Hρ | eapply per_head_of; [ exact Hx | exact Hx' | exact Hxx | exact Ha ]
+                                   | exact Ra | exact Ra' ]. }
     destruct (IH _ _ HTb' Hρ' HC) as (R & HR & HRρ).
     exists R; rewrite <- app_assoc; cbn [app]; split; [ exact HR | exact HRρ ].
 Qed.

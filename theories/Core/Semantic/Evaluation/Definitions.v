@@ -1192,13 +1192,20 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A definition of a saturated global module tagged a proposition,
-    transparent or not: a proof, kept as the selection of the member from
-    the module, over the module's arguments ([global_proof_env]).
-    Neither its body nor its type is evaluated. *)
+(** A definition of a global module given exactly its parameters, tagged a
+    proposition, transparent or not: a proof, kept as the selection of the
+    member from the module, over the module's arguments
+    ([global_proof_env]).  Neither its body nor its type is evaluated.
+    Unlike a relevant member, it is not selected from a module given more
+    arguments than it has parameters: a kept proof takes no argument, so
+    there the member of the over-applied module would have a value its
+    spine does not.  For example, for [module M (a : ℕ)] with a theorem
+    [h], the ill-typed [(M 3) 4] evaluates to [dm_global M [3; 4]], but
+    [a_mem ((M 3) 4) h] has no value: its spine reaches the proof at [3]
+    and cannot apply it to [4].  So [h] is not selected from it either. *)
 | eval_sel_global_proof :
-  `( module_saturated Θ Ξ p args ->
-     gc_loc Θ Ξ p = Some (T, Φ) ->
+  `( gc_loc Θ Ξ p = Some (T, Φ) ->
+     List.length args = List.length T ->
      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩ )
 (** The module of a member of a group of inductive types, as a term, in a
