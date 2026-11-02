@@ -1944,7 +1944,6 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
-    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 T Δ2, tele_sub Δu σ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, tele_sub Δu' σ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ⊢ T : ps (List.length Δ2)) ->
@@ -1957,7 +1956,7 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps
     (lv' = false -> Θ ⍮ Ξ ⍮ tele_sub Δu' σ' ++ Δ ⊢ⁿˡ Rt') ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ']ᵘ.
 Proof.
-  intros * Hbσ Hbσ' HΔσ Hxσ Hxσ' HD HU HDr HUr Ho Ho' HOo HOr Hb Hb' Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps HRp HRp'
+  intros * Hbσ Hbσ' HΔσ Hxσ Hxσ' HD HU HDr HUr Ho Ho' HOo HOr Hb Hb' Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps HRp HRp'
     lv lv' Rt Rt' Hnl1 Hnl2 Hnl3 Hnl1' Hnl2' Hnl3'.
   rewrite !gunit_sub_mk; cbn [moddef_sub].
   eapply wf_unit_eq_body with (entry_sort := entry_sort) (param_level := l) (param_sorts := ps); [ exact Hbσ | exact Hbσ' | .. ].
@@ -1990,8 +1989,6 @@ Proof.
     destruct (entry_tm_sub_inv _ _ _ _ HEw) as (A & M & HE & -> & ->).
     replace (entry_relevance (gentry_sub E _)) with (entry_relevance E) by (destruct E; reflexivity).
     exact (Htg' _ _ _ _ _ Hp0 HE).
-  - (* the parameters of an entry of a type of levels, unmoved *)
-    intros * Hy; rewrite length_tele_sub; exact (Hlv _ _ Hy).
   - (* the modules, each filled in, then substituted *)
     intros y Φ0w Ew Uw Φ0w' Ew' Uw' σw σw' Hp HEw Hp' HEw' Hfw Hfw'.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
@@ -2147,7 +2144,6 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l 
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
-    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
@@ -2174,7 +2170,7 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l 
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gunit_wk (gu_open Δu Φ) φ ≈ gunit_wk (gu_open Δu' Φ') φ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
-           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps _ IHp _ IHp'
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps _ IHp _ IHp'
            lv lv' Rt Rt' _ IHf1 Hf2 _ IHf3 _ IHf1' Hf2' _ IHf3' HU0 Hφ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & HUs').
@@ -2188,7 +2184,7 @@ Proof.
   rewrite <- !gunit_sub_of_wk.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ (ι φ) (ι φ));
     [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
-    | exact Hes | exact Htg | exact Htg' | exact Hlv | exact Hps | |
+    | exact Hes | exact Htg | exact Htg' | exact Hps | |
     | intros Hlv1; eapply (move_flag_level_sorted Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_ext Θ Ξ) _ _ _ _ lv);
         [ exact (wk_as_sub_of _ _ _ _ _ Hφ) | exact (ext_eq_ctx_left _ _ _ _ _ HΔ)
         | rewrite tele_sub_of_wk; exact (ext_eq_ctx_left _ _ _ _ _ HΔφ)
@@ -3486,7 +3482,6 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
-    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 ->
@@ -3513,7 +3508,7 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ]ᵘ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
-           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps _ IHp _ IHp'
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps _ IHp _ IHp'
            lv lv' Rt Rt' _ IHf1 Hf2 _ IHf3 _ IHf1' Hf2' _ IHf3' HU0 Hσ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & HUs').
@@ -3529,7 +3524,7 @@ Proof.
                 (ext_eq_ctx_right _ _ _ _ _ HΔσ) ltac:(open_lit_scoped HΦs') IHf1' Hf2' IHf3') as F'.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ σ σ);
     [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
-    | exact Hes | exact Htg | exact Htg' | exact Hlv | exact Hps | |
+    | exact Hes | exact Htg | exact Htg' | exact Hps | |
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
     | exact (levels_flag_no_level _ _ _ _ _ _ _ F)
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F') | exact (levels_flag_denotes _ _ _ _ _ _ _ F')

@@ -745,7 +745,6 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx entry_sort l ps Γ0 σ σ',
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
-    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
@@ -768,7 +767,7 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx entry_sort l ps Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu Φ)[σ']ᵘ.
 Proof.
-  intros * Hb Hσ L HΔσ Hx Hes Htg Hlv Hps HRp HA IHA HM IHM HU IHU Ho IHo Ha Hs Hsx Hn lv Rt Hf HU0.
+  intros * Hb Hσ L HΔσ Hx Hes Htg Hps HRp HA IHA HM IHM HU IHU Ho IHo Ha Hs Hsx Hn lv Rt Hf HU0.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs0; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs1.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact Hx).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & _).
@@ -788,7 +787,7 @@ Proof.
                 ltac:(open_lit_scoped HΦs) Hf) as F'.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu Φ Φ Φx Φx entry_sort l ps Γ0 σ σ');
     [ | | exact HΔσ | exact Hxσ | exact Hxσ' | | | | | | | | | exact Hb | exact Hb | exact Ha | exact Ha
-    | reflexivity | exact Hs | exact Hsx | exact Hn | exact Hes | exact Htg | exact Htg | exact Hlv | exact Hps | |
+    | reflexivity | exact Hs | exact Hsx | exact Hn | exact Hes | exact Htg | exact Htg | exact Hps | |
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
     | exact (levels_flag_no_level _ _ _ _ _ _ _ F)
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F') | exact (levels_flag_denotes _ _ _ _ _ _ _ F')
@@ -1047,7 +1046,6 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
-    (forall y k, entry_sort y = LevelSort -> k < List.length Δu -> ps k = LevelSort) ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
@@ -1059,7 +1057,7 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu' Φ')[σ]ᵘ ≈ (gu_open Δu' Φ')[σ']ᵘ.
 Proof.
   intros * Hb Hb' HΔ IHΔ Hx Hx' HA IHA HAA HM IHM HMM HU IHU HAr IHAr HMr IHMr HUr IHUr Ho Ho' HOO IHOO HOR IHOR
-           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hlv Hps HRp HRp' lv lv' Rt Rt' HFl HFr Hσ.
+           Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps HRp HRp' lv lv' Rt Rt' HFl HFr Hσ.
   (* an open of one side has its counterpart on the other, filled in *)
   assert (Hopair : forall k Φ0 H σf, List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> gm_fill Φ0 = Some σf ->
             exists Φ0' H' σf', List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') /\ gm_fill Φ0' = Some σf').
@@ -1098,10 +1096,8 @@ Proof.
               | exact (levels_flag_sorted _ _ _ _ _ _ _ HFl) | exact (levels_flag_denotes _ _ _ _ _ _ _ HFl)
               | exact (levels_flag_no_level _ _ _ _ _ _ _ HFl) | exact (levels_flag_sorted _ _ _ _ _ _ _ HFr)
               | exact (levels_flag_denotes _ _ _ _ _ _ _ HFr) | exact (levels_flag_no_level _ _ _ _ _ _ _ HFr) ]).
-  assert (Hlv' : forall y k, entry_sort y = LevelSort -> k < List.length Δu' -> ps k = LevelSort)
-    by (intros * Hy Hk; rewrite <- Hl in Hk; exact (Hlv _ _ Hy Hk)).
   split.
-  - eapply sub_eq_unit_self; [ exact Hb | exact Hσ | exact L | exact HΔσ | exact Hx | exact Hes | exact Htg | exact Hlv | exact Hps
+  - eapply sub_eq_unit_self; [ exact Hb | exact Hσ | exact L | exact HΔσ | exact Hx | exact Hes | exact Htg | exact Hps
                              | exact HRp | | | | | | | exact Ho |
                              | exact Ha | exact Hs1 | exact Hsx1 | exact Hn | exact HFl
                              | eapply wf_unit_eq_trans; [ exact HU0 | apply wf_unit_eq_sym; exact HU0 ] ].
@@ -1120,7 +1116,7 @@ Proof.
         eapply wf_unit_eq_trans; [ eapply HU; eassumption | apply wf_unit_eq_sym; eapply HU; eassumption ].
     + intros y Φ0 E U σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
         destruct (entry_shape_unit _ _ _ HS HE) as (U' & HE'); intros; eapply proj1; eapply IHU; eassumption.
-  - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | exact Hes | exact Htg' | exact Hlv'
+  - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | exact Hes | exact Htg'
                              | exact Hps | exact HRp' | | | | | | | exact Ho' |
                              | exact Ha' | exact Hs2 | exact Hsx2 | rewrite <- Hnames; exact Hn | exact HFr
                              | eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; exact HU0 | exact HU0 ] ].

@@ -3648,18 +3648,38 @@ Definition syn_VD : gdeps -> gstack -> ind_decl -> Prop := decl_typed.
 
 Definition syn_VR : gdeps -> gstack -> record_decl -> Prop := record_typed.
 
+(** [relevant_type_at Θ Ξ Δ L r A]: the type [A], in [Δ], of a relevant
+    sort at the tag [r]; of the types of levels only for a relevant term
+    and when [L] holds (its parameters are types of levels).  A
+    proposition is at [Prop] whatever the sort, so it is stated at a
+    universe. *)
+Record relevant_type_at (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (L : Prop) (r : relevance) (A : typ) : Prop :=
+  mk_relevant_type_at
+  { (** The sort of the type *)
+    relevant_type_at_sort : exp
+    (** It is a large universe or the types of levels *)
+  ; relevant_type_at_sort_relevant : relevant_sort relevant_type_at_sort
+    (** The types of levels only for a relevant term, when [L] holds *)
+  ; relevant_type_at_levels : relevant_type_at_sort = LevelSort -> r = relevant /\ L
+    (** The type is of the sort at the tag *)
+  ; relevant_type_at_typed : Θ ⍮ Ξ ⍮ Δ ⊢ A : relevance_sort r relevant_type_at_sort }.
+
 (** The type [A0] of a definition stored over the telescope [T]: of a
     relevant sort at its tag, a type of levels only over parameters of
     types of levels ([wf_gentry_def]). *)
-Record stored_def_typed (Θ : gdeps) (Ξ : gstack) (T : ctx) (r : relevance) (A0 : typ) : Prop := mk_stored_def_typed
-  { (** The sort of the type *)
-    stored_def_sort : exp
-    (** It is a large universe or the types of levels *)
-  ; stored_def_sort_relevant : relevant_sort stored_def_sort
-    (** The types of levels only over parameters of types of levels *)
-  ; stored_def_sort_levels : stored_def_sort = LevelSort -> level_sorted_parameters Θ Ξ ⋅ T
-    (** The type is of the sort at the tag *)
-  ; stored_def_typed_at : Θ ⍮ Ξ ⍮ T ⊢ A0 : relevance_sort r stored_def_sort }.
+Definition stored_def_typed (Θ : gdeps) (Ξ : gstack) (T : ctx) (r : relevance) (A0 : typ) : Prop :=
+  relevant_type_at Θ Ξ T (level_sorted_parameters Θ Ξ ⋅ T) r A0.
+
+(** A type of a relevant sort at the tag, of the types of levels only when
+    [L] holds: a [relevant_type_at]. *)
+Lemma relevant_type_at_of : forall Θ Ξ Δ (L : Prop) r A Srt,
+    relevant_sort Srt -> (Srt = LevelSort -> L) -> Θ ⍮ Ξ ⍮ Δ ⊢ A : relevance_sort r Srt ->
+    relevant_type_at Θ Ξ Δ L r A.
+Proof.
+  intros * HS HL HA; destruct r.
+  - exists Srt; [ exact HS | intros E; exact (conj eq_refl (HL E)) | exact HA ].
+  - exists Typeω@0; [ constructor | discriminate | exact HA ].
+Qed.
 
 (** The syntactic validity of a stored entry, filed over [T]: a definition
     is closed over [T] by [Π]s at its tag, from a type of the sort at its
@@ -4004,12 +4024,30 @@ Proof.
     [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
 Qed.
 
-(** An entry of a typed closed description, read with the arguments recorded
-    and abstracted over the outside parameters, is typed. *)
-Lemma desc_ok_entry_closed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ ->
+(** [closed_entry_read Θ Ξ Γ Θ' p T Φ Ns M R R' R0]: the entry [R] of the
+    closed module at [p], read at the arguments [Ns] under the outside
+    parameters [Θ'] as the name [M], is [R'], from the description [R0] at
+    the arguments. *)
+Record closed_entry_read (Θ : gdeps) (Ξ : gstack) (Γ Θ' : ctx) (p : qname) (T : ctx) (Φ : gmod) (Ns : list exp)
+  (M : exp) (R R' R0 : mdesc) : Prop := mk_closed_entry_read
+  { (** The entry read: [R0] named, abstracted over [Θ'] *)
+    closed_entry_read_result : R' = mdesc_up Θ' (mdesc_named Θ' Ns M R0)
+    (** [R0] is [R] at the arguments *)
+  ; closed_entry_read_args : mdesc_ats_read R Ns = Some R0
+    (** Named, it is typed under the outside parameters *)
+  ; closed_entry_read_typed : desc_ok Θ Ξ (Θ' ++ Γ) (mdesc_named Θ' Ns M R0)
+    (** It has no member of a type of levels where the module has none *)
+  ; closed_entry_read_no_level : Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_closed nil p T Φ Ns ->
+      Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns M R0 }.
+
+(** An entry of a typed closed description, read with the arguments
+    recorded, under the outside parameters: typed, and with no member of a
+    type of levels where the module has none. *)
+Lemma desc_ok_entry_closed_read : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ ->
     forall Γ Θ' p T Φ Ns y Γy E rd R R',
     desc_ok Θ Ξ Γ (mdesc_closed Θ' p T Φ Ns) -> mdesc_entry (mdesc_closed Θ' p T Φ Ns) y = Some (Γy, E, rd) ->
-    edenote Θ Ξ (Γy ++ Γ) (Some (qname_in p y)) E R -> mdesc_read rd R = Some R' -> desc_ok Θ Ξ Γ R'.
+    edenote Θ Ξ (Γy ++ Γ) (Some (qname_in p y)) E R -> mdesc_read rd R = Some R' ->
+    exists R0, closed_entry_read Θ Ξ Γ Θ' p T Φ Ns (apps (a_mem (qname_mod p) y) Ns) R R' R0.
 Proof.
   intros Θ Ξ Hg Hv * HR He Hed Hr.
   inversion HR as [| | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 lΘ Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs HaΘ' HRΘ' HLΘ' |]; subst.
@@ -4034,14 +4072,11 @@ Proof.
   pose proof (loc_closed _ _ Hg0 _ _ _ Hloc) as [_ HcΦ].
   pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
   pose proof (closed_tele_wf _ _ _ _ HsT HT HΘ') as HTΘ.
-  (* typed, and with no member of a type of levels where the module has
-     none: so it can be abstracted over the outer parameters *)
-  enough (Hgoal : desc_ok Θ Ξ (Θ' ++ Γ) (mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0) /\
-     (Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_closed nil p T Φ Ns ->
-      Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0)).
-  { destruct Hgoal as [Hok HN].
-    apply (desc_ok_up _ _ _ _ _ lΘ); [ exact Hok | exact HΘ' | exact HaΘ' | apply up_relevant_of; [ exact HRΘ' |] ].
-    destruct HLΘ' as [HL | HL]; [ left; exact HL | right; exact (HN HL) ]. }
+  exists R0.
+  enough (Hparts : desc_ok Θ Ξ (Θ' ++ Γ) (mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0) /\
+                   (Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_closed nil p T Φ Ns ->
+                    Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0))
+    by (destruct Hparts; constructor; first [ reflexivity | exact Hats | assumption ]).
   (* an entry other than a definition, where the module has no member of
      a type of levels, denotes a description with none *)
   assert (HNo : (forall b pv r A oM, E0 <> ge_def b pv r A oM) ->
@@ -4070,7 +4105,7 @@ Proof.
                                 | eapply wf_no_level_term; exact (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA1t HTΘ) | exact Hats ]. }
     pose proof (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA0 HTΘ) as HA0Θ.
     assert (HLA : forall om, desc_levels_abstractable Θ Ξ (Θ' ++ Γ) T (mdesc_term r A0 om))
-      by (intros; eapply closed_term_levels_abstractable; [ exact HsT | exact HTΘ | exact HSrt | exact HLsrt | exact HA0 ]).
+      by (intros; eapply closed_term_levels_abstractable; [ exact HsT | exact HTΘ | exact HSrt | intros E; exact (proj2 (HLsrt E)) | exact HA0 ]).
     destruct om0 as [M0 |].
     + (* transparent: its body *)
       destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) T (mdesc_term r A0 (Some M0)) 0 HTΘ Ha (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs)) as (R1 & HR1 & Hok1).
@@ -4080,7 +4115,7 @@ Proof.
       destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A' & M' & ->); apply mdesc_named_cases; exact Hok1.
     + (* an axiom or abstract: its name, at the arguments *)
       destruct (proj1 (ctx_pi_type_sort _ _ r T (Θ' ++ Γ) A0 Srt HTΘ HSrt
-                         ltac:(intros E; exact (level_sorted_closed _ _ _ _ HsT (HLsrt E) HTΘ)) HA0Θ)) as (Srt' & HSrt' & Hj).
+                         ltac:(intros E; exact (level_sorted_closed _ _ _ _ HsT (proj2 (HLsrt E)) HTΘ)) HA0Θ)) as (Srt' & HSrt' & Hj).
       pose proof (filed_def_wf _ _ Hg _ _ _ _ _ _ _ _ _ _ _ HΘ' Hloc' Hp1 Hom
                     (mk_wf_type _ (type_sort_relevance r Srt' ltac:(destruct HSrt'; constructor)) Hj)) as Hname.
       destruct (ats_up_self_ok _ _ Hg Ns (Θ' ++ Γ) T r A0 _ HTΘ Ha (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs)
@@ -4265,6 +4300,21 @@ Proof.
     split; [| intros HNl; apply no_level_named; exact (no_level_former_read _ _ _ _ _ _ _ _ _ _ _ (HNo ltac:(intros; discriminate) HNl) Hats) ].
     unfold record_former_desc in Hats; cbn [mdesc_ats_read] in Hats; mdesc_dm_read_shape Hats.
     rewrite mdesc_named_fix by reflexivity; exact Hok1.
+Qed.
+
+(** An entry of a typed closed description, read with the arguments recorded
+    and abstracted over the outside parameters, is typed: it can be
+    abstracted over them, as the module can ([desc_ok_closed]). *)
+Lemma desc_ok_entry_closed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ ->
+    forall Γ Θ' p T Φ Ns y Γy E rd R R',
+    desc_ok Θ Ξ Γ (mdesc_closed Θ' p T Φ Ns) -> mdesc_entry (mdesc_closed Θ' p T Φ Ns) y = Some (Γy, E, rd) ->
+    edenote Θ Ξ (Γy ++ Γ) (Some (qname_in p y)) E R -> mdesc_read rd R = Some R' -> desc_ok Θ Ξ Γ R'.
+Proof.
+  intros Θ Ξ Hg Hv * HR He Hed Hr.
+  destruct (desc_ok_entry_closed_read _ _ Hg Hv _ _ _ _ _ _ _ _ _ _ _ _ HR He Hed Hr) as (R0 & [-> _ Hok HN]).
+  inversion HR as [| | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 lΘ Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs HaΘ' HRΘ' HLΘ' |]; subst.
+  apply (desc_ok_up _ _ _ _ _ lΘ); [ exact Hok | exact HΘ' | exact HaΘ' | apply up_relevant_of; [ exact HRΘ' |] ].
+  destruct HLΘ' as [HL | HL]; [ left; exact HL | right; exact (HN HL) ].
 Qed.
 
 (** ** Well-formed Module Expressions Denote Typed Descriptions *)
@@ -5125,7 +5175,8 @@ Lemma syn_def : forall Θ Ξ T r A M Srt b pv Θ2 Ξ2,
 Proof.
   intros * HA HS HL HM HG He _ _ Θs Ξs.
   destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
-  exists A; split; [ reflexivity |]; split; [ exists Srt; [ exact HS | intros HE Δ1 U Δ2 EU; exact (Ht _ _ _ (HL HE _ _ _ EU)) | exact (Ht _ _ _ HA) ] |].
+  exists A; split; [ reflexivity |]; split;
+    [ apply (relevant_type_at_of _ _ _ _ _ _ Srt HS); [ intros HE Δ1 U Δ2 EU; exact (Ht _ _ _ (HL HE _ _ _ EU)) | exact (Ht _ _ _ HA) ] |].
   intros ? [= <-]; exists M; split; [ reflexivity | apply Ht, HM ].
 Qed.
 
@@ -5139,7 +5190,7 @@ Lemma syn_ax : forall Θ Ξ r A Srt b pv Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
 Proof.
   intros * HA HS HL _ He _; destruct (gctx_embedding_preserves_wf _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as (_ & Ht & _).
   exists A; split; [ reflexivity |]; split; [| discriminate ].
-  exists Srt; [ exact HS | intros HE Δ1 U Δ2 EU; exact (Ht _ _ _ (HL HE _ _ _ EU)) | exact (Ht _ _ _ HA) ].
+  apply (relevant_type_at_of _ _ _ _ _ _ Srt HS); [ intros HE Δ1 U Δ2 EU; exact (Ht _ _ _ (HL HE _ _ _ EU)) | exact (Ht _ _ _ HA) ].
 Qed.
 
 (** An alias: what its target denotes, wherever it is read, is typed. *)

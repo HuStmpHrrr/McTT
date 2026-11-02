@@ -1758,10 +1758,6 @@ Record unit_body_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (Φ : gmod) : Pro
   ; unit_body_tags : forall y Φ0 E A M,
       gm_prefix_upto unit_body_expansion y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
       exists Srt, relevant_sort Srt /\ unit_body_entry_sort y = relevance_sort (entry_relevance E) Srt
-    (** A definition of a type of levels has types of levels as its
-        parameters *)
-  ; unit_body_level_params : forall y k, unit_body_entry_sort y = LevelSort -> k < List.length Δ ->
-      unit_body_param_sorts k = LevelSort
     (** Each definition, filled in, is typed at its sort, its body at its
         type *)
   ; unit_body_defs : forall y Φ0 E A M σ,
@@ -1850,7 +1846,7 @@ Qed.
 Lemma unit_eq_of_full : forall Θ Ξ Γ U, unit_full Θ Ξ Γ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
 Proof.
   intros * HU; destruct U as [Δ [[] Φ | E]]; cbn in HU; try contradiction.
-  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hlv Hd Ho Ha Hs Hsx Hn Hp lv Rt HF].
+  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HF].
     assert (HΔ : ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ) by exact (ctx_app_wf_tail _ _ _ _ HC).
     assert (Hsame : forall y Φ0 E Φ0' E', gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) ->
               gm_prefix_upto Φx y = Some (gm_ext Φ0' y E') -> Φ0' = Φ0 /\ E' = E)
@@ -1905,15 +1901,14 @@ Lemma unit_full_body : forall Θ Ξ Γ Δ Φ Φx,
     forall es, (forall y, type_sort (es y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        exists Srt, relevant_sort Srt /\ es y = relevance_sort (entry_relevance E) Srt) ->
-    (forall y k, es y = LevelSort -> k < List.length Δ -> ps k = LevelSort) ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : es y) ->
     forall lv Rt, levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) lv Rt ->
     unit_full Θ Ξ Γ (gu_open Δ Φ).
 Proof.
-  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg Hlv HA lv Rt HF.
+  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg HA lv Rt HF.
   destruct (body_defs_wf _ _ _ _ _ HC (body_xp_result_noopen _ _ _ _ _ Hx)) as (es0 & _ & Hd).
-  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg Hlv _ Ho Ha Hs Hsx Hn Hp lv Rt HF).
+  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg _ Ho Ha Hs Hsx Hn Hp lv Rt HF).
   intros * Hp0 HE Hf; split; [ exact (HA _ _ _ _ _ _ Hp0 HE Hf) | exact (proj2 (Hd _ _ _ _ _ _ Hp0 HE Hf)) ].
 Qed.
 

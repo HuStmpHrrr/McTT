@@ -1292,7 +1292,14 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_
     a local body has no bodiless definition and no inductive type.
     [entry_sort y] is the sort of definition [y]'s type: a large universe
     or [Prop] by the entry's relevance tag ([entry_relevance]) on either
-    side, as for a global definition. *)
+    side, as for a global definition, or [LevelSort].  Entries of a type of
+    levels are governed by the flag premise alone: with [lv = true] every
+    parameter is a type of levels ([level_sorted_parameters]); with
+    [lv = false] the body has no member of a type of levels ([⊢ⁿˡ]: every
+    definition of the expanded body, private ones included, has a type of
+    a universe).  So [module M (n : ℕ) where def v : Level ≔ 0l end] is
+    rejected, and [module K (u : Level) where def w : Level ≔ u end] is
+    accepted. *)
 with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
 | wf_unit_eq_body :
   `( body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
@@ -1305,11 +1312,6 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
         exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
      (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
-     (** An entry of a type of levels has only types of levels as the
-         parameters of both sides, whose sorts [param_sorts] gives
-         ([level_sorted_parameters]): a level is built only from levels,
-         and [module N (n : ℕ) where def v : Level ≔ 0l end] is rejected *)
-     (forall y k, entry_sort y = LevelSort -> k < List.length Δ -> param_sorts k = LevelSort) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
