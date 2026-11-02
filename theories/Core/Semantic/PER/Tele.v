@@ -535,6 +535,53 @@ Section Tele.
     exact (mk_normal_reads_alike _ _ _ _ _ HL1 HL3 (eq_trans HE HE')).
   Qed.
 
+  Lemma per_top_typ_sym' : forall a b, per_top_typ a b -> per_top_typ b a.
+  Proof. intros * H s; destruct (H s) as [L L' H1 H2 HE]; exact (mk_type_reads_alike _ _ _ _ _ H2 H1 (eq_sym HE)). Qed.
+
+  Lemma per_top_typ_trans' : forall a b d, per_top_typ a b -> per_top_typ b d -> per_top_typ a d.
+  Proof.
+    intros * H1 H2 s; destruct (H1 s) as [L L1 HL1 HL2 HE]; destruct (H2 s) as [L2 L' HL2' HL3 HE'].
+    pose proof (functional_read_typ _ _ _ _ HL2 HL2') as <-.
+    exact (mk_type_reads_alike _ _ _ _ _ HL1 HL3 (eq_trans HE HE')).
+  Qed.
+
+  (** *** Component Types at Two Bases *)
+
+  (** A component's type at a base and at two others, related to it:
+      related at the two others. *)
+  Lemma rel_component_types_base : forall A ρ ρ1 ρ2 R, PER R ->
+      rel_component_types A ρ ρ1 R -> rel_component_types A ρ ρ2 R -> rel_component_types A ρ1 ρ2 R.
+  Proof.
+    intros * HP [a a1 E E1 T1 H1 V1] [a' a2 E' E2 T2 H2 V2].
+    pose proof (functional_eval_exp _ _ _ _ E E') as <-.
+    exists a1 a2; [ exact E1 | exact E2 | exact (per_top_typ_trans' _ _ _ (per_top_typ_sym' _ _ T1) T2) | |].
+    - intros x x' Hx.
+      assert (Hxx : R x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
+      exact (per_top_trans' _ _ _ (per_top_sym' _ _ (H1 _ _ Hxx)) (H2 _ _ Hx)).
+    - intros s; etransitivity; [ symmetry; exact (V1 s) | exact (V2 s) ].
+  Qed.
+
+  (** Related through a middle base. *)
+  Lemma rel_component_types_compose : forall A ρ ρ1 ρ2 R, PER R ->
+      rel_component_types A ρ ρ1 R -> rel_component_types A ρ1 ρ2 R -> rel_component_types A ρ ρ2 R.
+  Proof.
+    intros * HP [a a1 E E1 T1 H1 V1] [a1' a2 E1' E2 T2 H2 V2].
+    pose proof (functional_eval_exp _ _ _ _ E1 E1') as <-.
+    exists a a2; [ exact E | exact E2 | exact (per_top_typ_trans' _ _ _ T1 T2) | |].
+    - intros x x' Hx.
+      assert (Hxx : R x' x') by (etransitivity; [ symmetry; exact Hx | exact Hx ]).
+      exact (per_top_trans' _ _ _ (H1 _ _ Hx) (H2 _ _ Hxx)).
+    - intros s; etransitivity; [ exact (V1 s) | exact (V2 s) ].
+  Qed.
+
+  (** At an equivalent relation. *)
+  Lemma rel_component_types_resp : forall A ρ ρ' R R',
+      (R <~> R') -> rel_component_types A ρ ρ' R -> rel_component_types A ρ ρ' R'.
+  Proof.
+    intros * HE [a a' E E' T H V].
+    exists a a'; [ exact E | exact E' | exact T | intros x x' Hx; apply H, HE, Hx | intros s; apply HE, V ].
+  Qed.
+
   Lemma functional_fresh_tele' : forall ρ T s vs vs', Ftele T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
       Ftele T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs' -> vs = vs'.
   Proof.
@@ -817,24 +864,16 @@ Section Tele.
         adm_uparams D ups nparams_rel args_rel doms_rel u2 -> adm_uparams D u1 nparams_rel args_rel doms_rel u2.
     Proof.
       intros u1 u2 [H1n H1a H1c H1d] [H2n H2a H2c H2d]; constructor.
-      - intros m Mm k A vs vs' s HM Hk Hp.
+      - intros m Mm k A vs vs' HM Hk Hp.
         assert (Hkl : k < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
-        destruct (H1n _ _ _ _ _ _ s HM Hk (nparams_prefix_rel_refl_l _ _ HM k vs vs' ltac:(lia) Hp)) as [a0 a1 E0 E1 R1].
-        destruct (H2n _ _ _ _ _ _ s HM Hk Hp) as [b0 a2 F0 E2 R2].
-        functional_eval_rewrite_clear.
-        pose proof (HnP _ _ _ _ _ _ HM Hk Hp) as HP.
-        exists a1 a2; [ exact E1 | exact E2 |].
-        etransitivity; [ symmetry; exact R1 | exact R2 ].
-      - intros m Mm ms ms' c gs k A vs vs' s HM Hm Hc Hk Hp.
+        exact (rel_component_types_base _ _ _ _ _ (HnP _ _ _ _ _ _ HM Hk Hp)
+                 (H1n _ _ _ _ _ _ HM Hk (nparams_prefix_rel_refl_l _ _ HM k vs vs' ltac:(lia) Hp)) (H2n _ _ _ _ _ _ HM Hk Hp)).
+      - intros m Mm ms ms' c gs k A vs vs' HM Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hm) as Hmm.
-        destruct (H1a _ _ _ _ _ _ _ _ _ _ s HM Hmm Hc Hk (args_rel_pre_refl_l _ _ HM ms c gs Hmm Hc k vs vs' ltac:(lia) Hp))
-          as [a0 a1 E0 E1 R1].
-        destruct (H2a _ _ _ _ _ _ _ _ _ _ s HM Hm Hc Hk Hp) as [b0 a2 F0 E2 R2].
-        functional_eval_rewrite_clear.
-        pose proof (HaP _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as HP.
-        exists a1 a2; [ exact E1 | exact E2 |].
-        etransitivity; [ symmetry; exact R1 | exact R2 ].
+        exact (rel_component_types_base _ _ _ _ _ (HaP _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp)
+                 (H1a _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Hk (args_rel_pre_refl_l _ _ HM ms c gs Hmm Hc k vs vs' ltac:(lia) Hp))
+                 (H2a _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp)).
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys' HM Hm Hc Heq Hp Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hm) as Hmm.
@@ -867,26 +906,17 @@ Section Tele.
         adm_uparams D u1 nparams_rel args_rel doms_rel u2 -> adm_uparams D ups nparams_rel args_rel doms_rel u2.
     Proof.
       intros u1 u2 [H1n H1a H1c H1d] [H2n H2a H2c H2d]; constructor.
-      - intros m Mm k A vs vs' s HM Hk Hp.
+      - intros m Mm k A vs vs' HM Hk Hp.
         assert (Hkl : k < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
-        destruct (H1n _ _ _ _ _ _ s HM Hk Hp) as [a0 a1 E0 E1 R1].
-        destruct (H2n _ _ _ _ _ _ s HM Hk (nparams_prefix_rel_refl_r _ _ HM k vs vs' ltac:(lia) Hp)) as [b1 a2 F1 E2 R2].
-        functional_eval_rewrite_clear.
-        pose proof (HnP _ _ _ _ _ _ HM Hk Hp) as HP.
-        apply (HnI _ _ _ _ _ _ HM Hk Hp) in R2.
-        exists a0 a2; [ exact E0 | exact E2 |].
-        etransitivity; [ exact R1 | exact R2 ].
-      - intros m Mm ms ms' c gs k A vs vs' s HM Hm Hc Hk Hp.
+        pose proof (H2n _ _ _ _ _ _ HM Hk (nparams_prefix_rel_refl_r _ _ HM k vs vs' ltac:(lia) Hp)) as R2.
+        apply (rel_component_types_resp _ _ _ _ _ (symmetry (HnI _ _ _ _ _ _ HM Hk Hp))) in R2.
+        exact (rel_component_types_compose _ _ _ _ _ (HnP _ _ _ _ _ _ HM Hk Hp) (H1n _ _ _ _ _ _ HM Hk Hp) R2).
+      - intros m Mm ms ms' c gs k A vs vs' HM Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
-        destruct (H1a _ _ _ _ _ _ _ _ _ _ s HM Hm Hc Hk Hp) as [a0 a1 E0 E1 R1].
-        destruct (H2a _ _ _ _ _ _ _ _ _ _ s HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Hk
-                    (args_prefix_rel_refl_r _ _ HM ms ms' c gs k vs vs' Hm Hc ltac:(lia) Hp))
-          as [b1 a2 F1 E2 R2].
-        functional_eval_rewrite_clear.
-        pose proof (HaP _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as HP.
-        apply (HaI _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) in R2.
-        exists a0 a2; [ exact E0 | exact E2 |].
-        etransitivity; [ exact R1 | exact R2 ].
+        pose proof (H2a _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Hk
+                      (args_prefix_rel_refl_r _ _ HM ms ms' c gs k vs vs' Hm Hc ltac:(lia) Hp)) as R2.
+        apply (rel_component_types_resp _ _ _ _ _ (symmetry (HaI _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp))) in R2.
+        exact (rel_component_types_compose _ _ _ _ _ (HaP _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) (H1a _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) R2).
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys' HM Hm Hc Heq Hp Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
         pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hm Hc Hk Hp) as Hw'.
@@ -1293,7 +1323,8 @@ Section Tele.
         - inversion F as [| A ρ0 a T' s0 vs Ea F' ]; subst; inversion F0 as [| A0 ρ1 a0 T'' s1 vs0 Ea0 F0' ]; subst.
           assert (HA : List.nth_error (List.rev (im_nparams Mm)) (List.length T0) = Some (ce_ass A))
             by (rewrite HT, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-          destruct (adm_nparam_vars _ _ _ _ _ _ Hcl m Mm (List.length T0) A pre pre0 s HM HA Hp) as [b b0 Eb Eb0 Rb].
+          destruct (adm_nparam_types _ _ _ _ _ _ Hcl m Mm (List.length T0) A pre pre0 HM HA Hp) as [b b0 Eb Eb0 _ _ Vb].
+          pose proof (Vb s) as Rb.
           pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hp) as (Hl & Hl' & _).
           rewrite HT in Eb, Eb0; rewrite (components_env_prefix _ ups T0) in Eb by lia.
           rewrite (components_env_prefix _ ups' T0) in Eb0 by lia.
@@ -1322,7 +1353,8 @@ Section Tele.
         assert (HA' : List.nth_error (List.rev (im_nparams Mm)) (List.length T0) = Some (ce_ass A))
           by (rewrite HT, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
         pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hp) as (Hl & Hl' & _).
-        destruct (adm_nparam_vars _ _ _ _ _ _ Hcl m Mm (List.length T0) A pre pre0 s HM HA' Hp) as [a a0 Ea Ea0 Ra].
+        destruct (adm_nparam_types _ _ _ _ _ _ Hcl m Mm (List.length T0) A pre pre0 HM HA' Hp) as [a a0 Ea Ea0 _ _ Va].
+        pose proof (Va s) as Ra.
         rewrite HT in Ea, Ea0; rewrite (components_env_prefix _ ups T0) in Ea by lia.
         rewrite (components_env_prefix _ ups' T0) in Ea0 by lia.
         econstructor; [ exact Ea | exact Ea0 | exact Ra |].
@@ -1348,7 +1380,8 @@ Section Tele.
         all: assert (Hlen : List.length (cargs_nonrec_tele gs1) = k) by (unfold cargs_nonrec_tele; rewrite List.length_map; exact Hk).
         - assert (HA : List.nth_error (cargs_nonrec gsf) k = Some A)
             by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Hk, Nat.sub_diag by lia; reflexivity).
-          destruct (adm_arg_vars _ _ _ _ _ _ Hcl m Mm ns ns' c gsf k A ws ws' s HM Hn Hc HA Hp) as [a a' Ea Ea' Ra].
+          destruct (adm_arg_types _ _ _ _ _ _ Hcl m Mm ns ns' c gsf k A ws ws' HM Hn Hc HA Hp) as [a a' Ea Ea' _ _ Va].
+          pose proof (Va s) as Ra.
           rewrite Heq in Ea, Ea'; unfold cargs_nonrec_tele in Ea, Ea'; rewrite cargs_nonrec_app, List.map_app in Ea, Ea'.
           fold (cargs_nonrec_tele gs1) in Ea, Ea'.
           rewrite List.app_assoc in Ea, Ea'.
@@ -1970,19 +2003,16 @@ Section Tele.
     Lemma adm_change : forall ua, adm_uparams D ups nparams_rel1 args_rel1 doms_rel1 ua -> adm_uparams D ups nparams_rel2 args_rel2 doms_rel2 ua.
     Proof.
       intros ua [H1 H2 H3 H4]; constructor.
-      - intros m Mm k A vs vs' s HM Hk Hp.
+      - intros m Mm k A vs vs' HM Hk Hp.
         assert (Hkl : k < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
         pose proof (tele_prefix_rel_nr_change' _ _ HM k vs vs' ltac:(lia) Hp) as Hp1.
-        destruct (H1 _ _ _ _ _ _ s HM Hk Hp1) as [a a' E E' R].
-        exists a a'; [ exact E | exact E' |].
-        eapply Hn; [ exact HM | exact Hkl | exact Hp1 | exact Hp | exact R ].
-      - intros m Mm ms ms' c gs k A vs vs' s HM Hm Hc Hk Hp.
+        exact (rel_component_types_resp _ _ _ _ _ (Hn _ _ _ _ _ _ HM Hkl Hp1 Hp) (H1 _ _ _ _ _ _ HM Hk Hp1)).
+      - intros m Mm ms ms' c gs k A vs vs' HM Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
         pose proof (tele_rel_nr_change' _ _ HM _ _ Hm) as Hm1.
         pose proof (tele_prefix_rel_ar_change' _ _ HM ms ms' ms' c gs k vs vs' Hm1 Hm Hc ltac:(lia) Hp) as Hp1.
-        destruct (H2 _ _ _ _ _ _ _ _ _ _ s HM Hm1 Hc Hk Hp1) as [a a' E E' R].
-        exists a a'; [ exact E | exact E' |].
-        eapply Ha; [ exact HM | exact Hm1 | exact Hm | exact Hc | exact Hkl | exact Hp1 | exact Hp | exact R ].
+        exact (rel_component_types_resp _ _ _ _ _ (Ha _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hm Hc Hkl Hp1 Hp)
+                 (H2 _ _ _ _ _ _ _ _ _ _ HM Hm1 Hc Hk Hp1)).
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys' HM Hm Hc Heq Hp Hy.
         assert (Hk : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
           by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).

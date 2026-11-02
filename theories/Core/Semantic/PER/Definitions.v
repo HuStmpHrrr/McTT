@@ -361,21 +361,30 @@ Definition nparams_tele_rel (D : ind_decl) (nr : nat -> nat -> list domain -> re
   | None => False
   end.
 
-(** A type at two environments: its two values, whose variables at [s]
-    are related by [R]; a variable of a proposition is a neutral proof, as
-    readback has it ([fresh_tele]). *)
+(** The type of a component (a non-uniform parameter or a non-recursive
+    argument) at two environments, [R] the relation of its elements at the
+    left one: its two values read back alike; elements related by [R] read
+    back alike at them, so an element of the left type reads back at the
+    right one; and their variables at every length are related by [R], a
+    variable of a proposition a neutral proof, as readback has it
+    ([fresh_tele]). *)
 #[warnings="-cannot-define-projection"]
-Record rel_fresh_vars (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop := mk_rel_fresh_vars
+Record rel_component_types (A : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_rel_component_types
   { (** The left value of the type *)
-    rel_fresh_vars_left : domain
+    rel_component_types_left : domain
     (** The right one *)
-  ; rel_fresh_vars_right : domain
+  ; rel_component_types_right : domain
     (** The type evaluates to the left one at the left environment *)
-  ; rel_fresh_vars_eval_left : ⟦ A ⟧ ρ ↘ rel_fresh_vars_left
+  ; rel_component_types_eval_left : ⟦ A ⟧ ρ ↘ rel_component_types_left
     (** and to the right one at the right *)
-  ; rel_fresh_vars_eval_right : ⟦ A ⟧ ρ' ↘ rel_fresh_vars_right
-    (** Their variables at [s] are related *)
-  ; rel_fresh_vars_rel : R (⇑! rel_fresh_vars_left s) (⇑! rel_fresh_vars_right s) }.
+  ; rel_component_types_eval_right : ⟦ A ⟧ ρ' ↘ rel_component_types_right
+    (** The two values read back alike *)
+  ; rel_component_types_types : Dom rel_component_types_left ≈ rel_component_types_right ∈ per_top_typ
+    (** Elements related by [R] read back alike at them *)
+  ; rel_component_types_elems : forall x x', R x x' ->
+      Dom ⇓ rel_component_types_left x ≈ ⇓ rel_component_types_right x' ∈ per_top
+    (** Their variables at every length are related *)
+  ; rel_component_types_vars : forall s, R (⇑! rel_component_types_left s) (⇑! rel_component_types_right s) }.
 
 (** A domain of a shape at two environments: its two values, whose
     applications to arguments related by [R] read back alike. *)
@@ -396,30 +405,33 @@ Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_
 
     Uniform parameters [ua] admissible beside [ups], at every related
     prefix: what each member's telescopes evaluate from them is related to
-    what they evaluate from [ups].  A fresh variable of a non-uniform
-    parameter's or an argument's type at [ua] is related to one of the type
-    at [ups], the parameters of a recursive argument at [ua] to those at
-    [ups], and an element of a function shape's domain at [ups] reads back
-    alike at the domain at [ua].  This is a condition on the two parameters
-    of a pair of types ([per_univ_elem_core_indty]); the relations are those
-    of the components, never the group's own. *)
+    what they evaluate from [ups].  A non-uniform parameter's or an
+    argument's type at [ua] and at [ups] read back alike, their elements
+    related at [ups] read back alike at the two, and their fresh variables
+    are related ([rel_component_types]); the parameters of a recursive
+    argument at [ua] are related to those at [ups], and an element of a
+    function shape's domain at [ups] reads back alike at the domain at
+    [ua].  This is a condition on the two parameters of a pair of types
+    ([per_univ_elem_core_indty]); the relations are those of the
+    components, never the group's own. *)
 Record adm_uparams (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> list centry -> exp -> relation domain)
     (ua : list domain) : Prop := mk_adm_uparams
-  { (** A fresh variable of a non-uniform parameter's type at [ua] is
-        related to one at [ups] *)
-    adm_nparam_vars : forall m Mm k A vs vs' s, ind_member D m = Some Mm ->
+  { (** A non-uniform parameter's type at [ua] is related to the one at
+        [ups], at related prefixes: they read back alike, their elements
+        at [ups] read back alike at both, and so do their fresh variables *)
+    adm_nparam_types : forall m Mm k A vs vs', ind_member D m = Some Mm ->
       List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nparams_rel m) k vs vs' ->
-      rel_fresh_vars A (components_env D ups (List.rev (im_nparams Mm)) vs) (components_env D ua (List.rev (im_nparams Mm)) vs')
-        (nparams_rel m k vs) s
-    (** So is one of a non-recursive argument's type *)
-  ; adm_arg_vars : forall m Mm ms ms' c gs k A vs vs' s, ind_member D m = Some Mm ->
+      rel_component_types A (components_env D ups (List.rev (im_nparams Mm)) vs)
+        (components_env D ua (List.rev (im_nparams Mm)) vs') (nparams_rel m k vs)
+    (** So is a non-recursive argument's type *)
+  ; adm_arg_types : forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
       tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ms ms' -> ind_con Mm c = Some gs ->
       List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (args_rel m ms c) k vs vs' ->
-      rel_fresh_vars A (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms ++ vs))
-        (components_env D ua (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms' ++ vs')) (args_rel m ms c k vs) s
+      rel_component_types A (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms ++ vs))
+        (components_env D ua (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms' ++ vs')) (args_rel m ms c k vs)
     (** A recursive argument's parameters at [ua] are related to those at
         [ups], at the member its shape ends in *)
   ; adm_rec_params : forall m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys', ind_member D m = Some Mm ->

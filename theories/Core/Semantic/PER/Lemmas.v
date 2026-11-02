@@ -419,6 +419,26 @@ Hint Resolve per_proof_sym per_proof_trans per_proof_refl : mctt.
 #[local] Instance per_proof_PER : PER per_proof.
 Proof. split; [ exact per_proof_sym | exact per_proof_trans ]. Qed.
 
+(** An element of a component's type at one base reads back at the type
+    evaluated at another base admissible beside it ([adm_nparam_types],
+    [adm_arg_types]), as an entry stored at the type there. *)
+Lemma component_elem_readable_at_admissible_base : forall A ρ ρ' R x x',
+    rel_component_types A ρ ρ' R -> R x x' -> entry_readable (de_term x' (entry_type_closure A ρ')).
+Proof.
+  intros * [a a' Ea Ea' Ht He _] Hx s.
+  destruct (Ht s) as [T T' _ HT' _]; destruct (He _ _ Hx s) as [W W' _ HW' _].
+  eexists; eapply read_entry_term; [ eapply eval_entry_type_closure; exact Ea' | exact HT' | exact HW' ].
+Qed.
+
+(** And at the type at the first base. *)
+Lemma component_elem_readable_at_base : forall A ρ ρ' R x x',
+    rel_component_types A ρ ρ' R -> R x x' -> entry_readable (de_term x (entry_type_closure A ρ)).
+Proof.
+  intros * [a a' Ea Ea' Ht He _] Hx s.
+  destruct (Ht s) as [T T' HT _ _]; destruct (He _ _ Hx s) as [W W' HW _ _].
+  eexists; eapply read_entry_term; [ eapply eval_entry_type_closure; exact Ea | exact HT | exact HW ].
+Qed.
+
 (** The elements of a [Π] read the domains only through their sorts. *)
 Lemma pi_elements_relevance_irrel : forall a a' b b' in_rel out_rel,
     domain_relevance a = domain_relevance b ->

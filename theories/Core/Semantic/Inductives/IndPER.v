@@ -376,16 +376,20 @@ Section Fixed_GCtx.
         adm_uparams D ups nr ar dr u2.
     Proof.
       intros u2 Hn2 Ha2 Hc2 Hd2; constructor; [ | | exact Hc2 | ].
-      - intros m Mm k A vs vs' s HM Hk Hp; destruct (Hn2 _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
-        exists a a'; [ exact Ea | exact Ea' |].
+      - intros m Mm k A vs vs' HM Hk Hp; destruct (Hn2 _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
         unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM Hk), (member_nparams_eq _ _ _ HM).
+        pose proof (per_head_diag Ea HR) as HR'.
+        exists a a'; [ exact Ea | exact Ea' | exact (per_univ_then_per_top_typ HR)
+                     | intros x x' Hx; exact (per_elem_then_per_top HR' Hx) | intros s ].
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
-      - intros m Mm ms ms' c gs k A vs vs' s HM Hm Hc Hk Hp.
+      - intros m Mm ms ms' c gs k A vs vs' HM Hm Hc Hk Hp.
         destruct (Ha2 _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
-        exists a a'; [ exact Ea | exact Ea' |].
         unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk), (member_nparams_eq _ _ _ HM),
           (member_con_tele_eq _ _ _ _ _ HM Hc).
+        pose proof (per_head_diag Ea HR) as HR'.
+        exists a a'; [ exact Ea | exact Ea' | exact (per_univ_then_per_top_typ HR)
+                     | intros x x' Hx; exact (per_elem_then_per_top HR' Hx) | intros s ].
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys' HM Hm Hc Heq Hw HB Hy.
