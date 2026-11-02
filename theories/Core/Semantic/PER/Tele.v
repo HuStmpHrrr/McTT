@@ -892,13 +892,14 @@ Section Tele.
         pose proof (args_rel_pre_refl_l _ _ HM ms c gs Hmm Hc _ ws ws' Hk Hp) as Hww.
         pose proof (doms_rel_refl_l _ _ HM ms c gs gs1 t gs2 ws Hmm Hc Heq Hww k ys ys' ltac:(lia) Hy) as Hyy.
         pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww HB Hyy) as HPd.
-        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww HB Hyy) as [a0 a1 E0 E1 T1 _ Hr1].
-        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0' a2 E0' E2 T2 _ Hr2].
+        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww HB Hyy) as [a0 a1 E0 E1 T1 _ Hr1 Ty1 V1].
+        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0' a2 E0' E2 T2 _ Hr2 Ty2 V2].
         functional_eval_rewrite_clear.
-        exists a1 a2; [ exact E1 | exact E2 | | exact Hr1 | exact Hr2 ].
-        intros x x' Hx.
-        assert (Hxx : doms_rel m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
-        exact (per_top_trans' _ _ _ (per_top_sym' _ _ (T1 _ _ Hxx)) (T2 _ _ Hx)).
+        exists a1 a2; [ exact E1 | exact E2 | | exact Hr1 | exact Hr2 | exact (per_top_typ_trans' _ _ _ (per_top_typ_sym' _ _ Ty1) Ty2) |].
+        + intros x x' Hx.
+          assert (Hxx : doms_rel m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
+          exact (per_top_trans' _ _ _ (per_top_sym' _ _ (T1 _ _ Hxx)) (T2 _ _ Hx)).
+        + intros s; etransitivity; [ symmetry; exact (V1 s) | exact (V2 s) ].
     Qed.
 
     (** Admissibility composes. *)
@@ -933,15 +934,16 @@ Section Tele.
         pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hm Hc Hk Hp) as Hw'.
         pose proof (doms_rel_refl_inst _ _ HM ms ms' c gs gs1 t gs2 ws ws' k ys ys' Hm Hc Heq Hp ltac:(lia) Hy) as Hy'.
         pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Heq Hw' HB Hy') as HPd.
-        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0 a1 E0 E1 T1 Hr0 _].
-        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Heq Hw' HB Hy') as [a1' a2 E1' E2 T2 _ Hr2].
+        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as [a0 a1 E0 E1 T1 Hr0 _ Ty1 V1].
+        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_r _ _ HM _ _ Hm) Hc Heq Hw' HB Hy') as [a1' a2 E1' E2 T2 _ Hr2 Ty2 V2].
         pose proof (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp HB Hy) as HdIe.
         functional_eval_rewrite_clear.
-        exists a0 a2; [ exact E0 | exact E2 | | exact Hr0 | exact Hr2 ].
-        intros x x' Hx.
-        pose proof (proj1 (HdIe _ _) Hx) as Hx'.
-        assert (Hxx : doms_rel m (ms' ++ ws' ++ ys') (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B x' x') by (etransitivity; [ symmetry; exact Hx' | exact Hx' ]).
-        exact (per_top_trans' _ _ _ (T1 _ _ Hx) (T2 _ _ Hxx)).
+        exists a0 a2; [ exact E0 | exact E2 | | exact Hr0 | exact Hr2 | exact (per_top_typ_trans' _ _ _ Ty1 Ty2) |].
+        + intros x x' Hx.
+          pose proof (proj1 (HdIe _ _) Hx) as Hx'.
+          assert (Hxx : doms_rel m (ms' ++ ws' ++ ys') (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B x' x') by (etransitivity; [ symmetry; exact Hx' | exact Hx' ]).
+          exact (per_top_trans' _ _ _ (T1 _ _ Hx) (T2 _ _ Hxx)).
+        + intros s; apply (proj2 (HdIe _ _)); etransitivity; [ exact (proj1 (HdIe _ _) (V1 s)) | exact (V2 s) ].
     Qed.
 
     Lemma nonrec_prefix : forall m Mm ns c gsf gs1 gs vp vp' vs vs', ind_member D m = Some Mm ->
@@ -2032,9 +2034,10 @@ Section Tele.
         pose proof (tele_prefix_rel_sh_change' _ _ HM ms ms' ms' c gs gs1 t gs2 ws ws' ws' k ys ys' Hm1 Hm Hc Heq Hp1 Hp ltac:(lia) Hy) as Hy1.
         pose proof (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hm Hc Heq Hp1 Hp Hkl Hy1 Hy) as Hdd.
         unfold shape_doms_rel in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd.
-        destruct (H4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hc Heq Hp1 HB Hy1) as [a a' E E' Ht Hr Hr'].
-        exists a a'; [ exact E | exact E' | | exact Hr | exact Hr' ].
-        intros x x' Hx; exact (Ht _ _ (proj2 (Hdd _ _) Hx)).
+        destruct (H4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hc Heq Hp1 HB Hy1) as [a a' E E' Ht Hr Hr' Ty V].
+        exists a a'; [ exact E | exact E' | | exact Hr | exact Hr' | exact Ty |].
+        + intros x x' Hx; exact (Ht _ _ (proj2 (Hdd _ _) Hx)).
+        + intros s; exact (proj1 (Hdd _ _) (V s)).
     Qed.
 
     (** Changing the relations and the admissible bases; [Hr1] is the

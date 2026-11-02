@@ -390,16 +390,28 @@ Record rel_component_types (A : exp) (ρ ρ' : env) (R : relation domain) : Prop
     applications to arguments related by [R] read back alike. *)
 #[warnings="-cannot-define-projection"]
 Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_rel_dom_apps
-  { rel_dom_apps_left : domain
+  { (** The left value of the domain *)
+    rel_dom_apps_left : domain
+    (** The right one *)
   ; rel_dom_apps_right : domain
+    (** The domain evaluates to the left one at the left environment *)
   ; rel_dom_apps_eval_left : ⟦ B ⟧ ρ ↘ rel_dom_apps_left
+    (** and to the right one at the right *)
   ; rel_dom_apps_eval_right : ⟦ B ⟧ ρ' ↘ rel_dom_apps_right
+    (** Elements related by [R] read back alike at them *)
   ; rel_dom_apps_top : forall x x', R x x' -> per_top (d_dom rel_dom_apps_left x) (d_dom rel_dom_apps_right x')
     (** The domain's left value is a relevant type, as a shape's domain, a
         type of a universe, is *)
   ; rel_dom_apps_left_relevant : domain_relevance rel_dom_apps_left = relevant
     (** So is its right value *)
-  ; rel_dom_apps_right_relevant : domain_relevance rel_dom_apps_right = relevant }.
+  ; rel_dom_apps_right_relevant : domain_relevance rel_dom_apps_right = relevant
+    (** The two values read back alike, as types: η-directed readback
+        reads the domain of a function shape's type *)
+  ; rel_dom_apps_types : Dom rel_dom_apps_left ≈ rel_dom_apps_right ∈ per_top_typ
+    (** Its variables at every length are related: a function shape's
+        element applied to a fresh variable of the domain is again an
+        element, as η-directed readback reads it *)
+  ; rel_dom_apps_vars : forall s, R (⇑! rel_dom_apps_left s) (⇑! rel_dom_apps_right s) }.
 
 (** ** Admissible Uniform Parameters
 

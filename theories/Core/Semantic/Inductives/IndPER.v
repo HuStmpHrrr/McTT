@@ -394,12 +394,15 @@ Section Fixed_GCtx.
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys' HM Hm Hc Heq Hw HB Hy.
         destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] Hra Hra']).
-        exists a a'; [ exact Ea | exact Ea' | | exact Hra | exact Hra' ].
-        rewrite (canon_doms_rel_at _ _ _ _ _ _ _ _ _ _ _ _ B Hm Hw Hy
-                   ltac:(assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia)).
-        pose proof (per_head_diag Ea HR) as HR'.
-        destruct (realize_per_univ_elem_gen HR') as (_ & _ & Hrb).
-        intros x x' Hx; apply Hrb; exact Hx.
+        exists a a'; [ exact Ea | exact Ea' | | exact Hra | exact Hra' | exact (per_univ_then_per_top_typ HR) |];
+          rewrite (canon_doms_rel_at _ _ _ _ _ _ _ _ _ _ _ _ B Hm Hw Hy
+                     ltac:(assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia));
+          pose proof (per_head_diag Ea HR) as HR'.
+        + destruct (realize_per_univ_elem_gen HR') as (_ & _ & Hrb).
+          intros x x' Hx; apply Hrb; exact Hx.
+        + (** The domain's variables, as for the arguments' *)
+          intros s; eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
+          eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
     Qed.
 
     (** The clause, at a declared member. *)
