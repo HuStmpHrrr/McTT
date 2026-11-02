@@ -103,22 +103,16 @@ Section Members.
 
   (** ** Members of Global Modules
 
-      A member of a global module applied to [args] is the member of the
-      module with no argument, applied to [args]. *)
+      A relevant member of a global module applied to [args] is the member
+      of the module with no argument, applied to [args].  A member tagged a
+      proposition is kept as the selection of the member from the module at
+      [args] ([eval_sel_global_proof]): it is not a value applied to the
+      arguments. *)
 
-  (** The proof [⋆ᵈ] applied to arguments is [⋆ᵈ]. *)
-  Lemma eval_apps_proof : forall args, $*| ⋆ᵈ & args | Θ ⍮ Ξ ↘ ⋆ᵈ.
-  Proof. induction args; econstructor; [ apply eval_app_proof | assumption ]. Qed.
-
-  Lemma eval_apps_proof_inv : forall args r, $*| ⋆ᵈ & args | Θ ⍮ Ξ ↘ r -> r = ⋆ᵈ.
-  Proof.
-    induction args as [| n args IH]; intros r H; inversion H; subst; [ reflexivity |].
-    match goal with Ha : eval_app _ _ _ _ _ |- _ => inversion Ha; subst end; auto.
-  Qed.
-
-  (** The value of the term member [x] of the global module at [p], stored
-      closed over the module's parameters, before any argument: the cases
-      of selection from a saturated global module, without the arguments. *)
+  (** The value of the relevant term member [x] of the global module at
+      [p], stored closed over the module's parameters, before any argument:
+      the relevant cases of selection from a saturated global module,
+      without the arguments. *)
   Inductive global_member_value (p : qname) (x : String.string) : domain -> Prop :=
   (** A term part ([gc_term]): its value in the empty environment *)
   | global_member_value_term : forall M f,
@@ -131,10 +125,6 @@ Section Members.
       b = false \/ B = None ->
       ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
       global_member_value p x (⇑ a (d_glob (qname_app p (x :: nil))))
-  (** A definition tagged a proposition: the proof *)
-  | global_member_value_proof : forall b pv A B,
-      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
-      global_member_value p x ⋆ᵈ
   (** The module of a member of a group of inductive types: its type former *)
   | global_member_value_indty : forall pq k D,
       gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
@@ -154,22 +144,26 @@ Section Members.
   Proof.
     intros * Hs Hf Ha; inversion Hf; subst;
       first [ eapply eval_sel_global; eassumption | eapply eval_sel_global_neut; eassumption
-            | eapply eval_sel_global_ind; eassumption | eapply eval_sel_global_record; eassumption
-            | rewrite (eval_apps_proof_inv _ _ Ha); eapply eval_sel_global_proof; eassumption ].
+            | eapply eval_sel_global_ind; eassumption | eapply eval_sel_global_record; eassumption ].
   Qed.
 
+  (** A member selected from a saturated global module: a relevant one, its
+      stored value applied to the arguments, or one tagged a proposition,
+      kept as its selection from the module. *)
   Lemma eval_sel_global_inv : forall p x args r,
       module_saturated Θ Ξ p args ->
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r ->
-      exists f, global_member_value p x f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
+      (exists f, global_member_value p x f /\ $*| f & args | Θ ⍮ Ξ ↘ r) \/
+      ((exists b pv A B, gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B)) /\
+       r = ⋆ᵈ⟨member_proof x, de_mod (dm_global p args) :: nil⟩).
   Proof.
     intros * Hs H; inversion H; subst;
-      [ eexists; split; [ eapply global_member_value_term | ]; eassumption
-      | eexists; split; [ eapply global_member_value_neut | ]; eassumption
-      | eexists; split; [ eapply global_member_value_proof; eassumption | apply eval_apps_proof ]
-      | eexists; split; [ eapply global_member_value_indty |]; eassumption
+      [ left; eexists; split; [ eapply global_member_value_term | ]; eassumption
+      | left; eexists; split; [ eapply global_member_value_neut | ]; eassumption
+      | right; split; [ do 4 eexists; eassumption | reflexivity ]
+      | left; eexists; split; [ eapply global_member_value_indty |]; eassumption
       | exfalso; match goal with Hl : gc_loc _ _ _ = Some _ |- _ => specialize (Hs _ _ Hl) end; lia
-      | eexists; split; [ eapply global_member_value_record | ]; eassumption ].
+      | left; eexists; split; [ eapply global_member_value_record | ]; eassumption ].
   Qed.
 
   (** A member of a global module lacking a parameter is its member

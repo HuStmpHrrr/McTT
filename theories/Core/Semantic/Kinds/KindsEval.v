@@ -49,9 +49,9 @@ Section KindsEval.
       a term with a module part ([2]). *)
   Definition dentry_tag (e : dentry) : nat :=
     match e with
-    | de_term _ => 0
+    | de_term _ _ => 0
     | de_mod _ => 1
-    | de_dm _ _ => 2
+    | de_dm _ _ _ => 2
     end.
 
   (** Two environments with the same kinds, and entries of the same sorts
@@ -59,21 +59,24 @@ Section KindsEval.
   Definition kinds_shape (ρ ρ' : env) : Prop :=
     kinds_rename Θ Ξ wk_id ρ ρ' /\ forall x, dentry_tag (env_entry ρ x) = dentry_tag (env_entry ρ' x).
 
-  Lemma kinds_shape_cons_term : forall ρ ρ' a a', kinds_shape ρ ρ' -> kinds_shape (de_term a :: ρ) (de_term a' :: ρ').
+  Lemma kinds_shape_cons_term : forall ρ ρ' a a' t t', kinds_shape ρ ρ' -> kinds_shape (de_term a t :: ρ) (de_term a' t' :: ρ').
   Proof. intros * [K S]; split; intros [| x]; first [ apply kinds_equiv_refl | apply K | reflexivity | apply S ]. Qed.
 
   Lemma kinds_shape_cons_mod : forall ρ ρ' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' -> kinds_shape (de_mod h :: ρ) (de_mod h' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
   (** A term with a module part, by the kinds of its module part. *)
-  Lemma kinds_shape_cons_dm : forall ρ ρ' a a' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
-      kinds_shape (de_dm a h :: ρ) (de_dm a' h' :: ρ').
+  Lemma kinds_shape_cons_dm : forall ρ ρ' a a' t t' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
+      kinds_shape (de_dm a t h :: ρ) (de_dm a' t' h' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
-  Lemma env_args_rev_args : forall args ρ, env_args ρ args = List.rev (List.map de_term args) ++ ρ.
+  (** An environment extended by typed values is their entries, innermost
+      first, over it. *)
+  Lemma env_extend_typed_rev : forall vts ρ,
+      env_extend_typed ρ vts = List.rev (List.map (fun vt => de_term (fst vt) (snd vt)) vts) ++ ρ.
   Proof.
-    induction args as [| a args IH]; intros; [ reflexivity |].
-    unfold env_args in *; cbn [List.fold_left List.map List.rev]; rewrite IH, <- app_assoc; reflexivity.
+    induction vts as [| vt vts IH]; intros; [ reflexivity |].
+    unfold env_extend_typed in *; cbn [List.fold_left List.map List.rev]; rewrite IH, <- app_assoc; reflexivity.
   Qed.
 
   Lemma kinds_shape_terms : forall X Y ρ ρ', List.length X = List.length Y ->
@@ -82,7 +85,7 @@ Section KindsEval.
   Proof.
     induction X as [| e X IH]; intros [| e' Y] * Hl HX HY Hs; cbn in Hl; try discriminate; [ exact Hs |].
     inversion HX; inversion HY; subst.
-    destruct e as [a | h | a h], e' as [a' | h' | a' h']; cbn in *; try discriminate.
+    destruct e as [a t | h | a t h], e' as [a' t' | h' | a' t' h']; cbn in *; try discriminate.
     apply kinds_shape_cons_term, IH; auto.
   Qed.
 
@@ -90,14 +93,14 @@ Section KindsEval.
   Proof. intros ρ; split; [ intros x; apply kinds_equiv_refl | reflexivity ]. Qed.
 
   (** An argument pushed under placeholders is one more placeholder. *)
-  Lemma kinds_shape_pad_push : forall m ρ n, kinds_shape (kinds_placeholders m (de_term n :: ρ)) (kinds_placeholders (S m) ρ).
+  Lemma kinds_shape_pad_push : forall m ρ n t, kinds_shape (kinds_placeholders m (de_term n t :: ρ)) (kinds_placeholders (S m) ρ).
   Proof.
     intros; unfold kinds_placeholders.
-    replace (List.repeat (de_term d_placeholder) m ++ de_term n :: ρ)
-      with ((List.repeat (de_term d_placeholder) m ++ de_term n :: nil) ++ ρ)
+    replace (List.repeat placeholder_entry m ++ de_term n t :: ρ)
+      with ((List.repeat placeholder_entry m ++ de_term n t :: nil) ++ ρ)
       by (rewrite <- app_assoc; reflexivity).
-    replace (List.repeat (de_term d_placeholder) (S m) ++ ρ)
-      with ((List.repeat (de_term d_placeholder) m ++ de_term d_placeholder :: nil) ++ ρ)
+    replace (List.repeat placeholder_entry (S m) ++ ρ)
+      with ((List.repeat placeholder_entry m ++ placeholder_entry :: nil) ++ ρ)
       by (cbn [List.repeat]; rewrite List.repeat_cons, <- app_assoc; reflexivity).
     apply kinds_shape_terms.
     - rewrite !length_app, !repeat_length; reflexivity.
@@ -106,9 +109,9 @@ Section KindsEval.
     - apply kinds_shape_refl.
   Qed.
 
-  Lemma kinds_shape_args_pad : forall ρ args n, List.length args = n -> kinds_shape (env_args ρ args) (kinds_placeholders n ρ).
+  Lemma kinds_shape_args_pad : forall ρ vts n, List.length vts = n -> kinds_shape (env_extend_typed ρ vts) (kinds_placeholders n ρ).
   Proof.
-    intros * <-; rewrite env_args_rev_args; unfold kinds_placeholders; apply kinds_shape_terms.
+    intros * <-; rewrite env_extend_typed_rev; unfold kinds_placeholders; apply kinds_shape_terms.
     - rewrite length_rev, length_map, repeat_length; reflexivity.
     - apply Forall_rev, Forall_map, Forall_forall; reflexivity.
     - apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity.
@@ -522,7 +525,7 @@ Section KindsEval.
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
     (forall p ups ρm As ρ t v a, ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
     (forall f m r, eval_proj Θ Ξ f m r -> True) /\
-    (forall ns m fl pre rs, eval_neutral_fields Θ Ξ ns m fl pre rs -> True) /\
+    (forall m ρ fl rs, eval_neutral_fields Θ Ξ m ρ fl rs -> True) /\
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> True) /\
     (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> True) /\
     (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> True) /\
@@ -541,7 +544,7 @@ Section KindsEval.
     - rewrite H, gunit_member_kind_alias_iff; reflexivity.
     (* application: the arguments of a module are no part of its kinds *)
     - split; apply dmod_member_kind_global_args.
-    - rewrite H, dmod_member_kind_local_iff, (gunit_member_kind_pad _ _ (ρ ↦ n)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass A :: nil)), length_app, Nat.add_1_r.
+    - rewrite H, dmod_member_kind_local_iff, (gunit_member_kind_pad _ _ (ρ ↦ n ⦂ entry_type_closure A ρ)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass A :: nil)), length_app, Nat.add_1_r.
       apply gunit_member_kind_id, kinds_shape_pad_push.
     - (* a submodule closure: its parent applied, then the chain *)
       rewrite H0, (dmod_member_kind_member_iff Θ Ξ h'), (dmod_member_kind_member_iff Θ Ξ h), (H (ch ++ ch0)), (H ch); reflexivity.

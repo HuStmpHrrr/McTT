@@ -10,42 +10,42 @@ Generalizable All Variables.
     neutral at its own de Bruijn level, each definition is the value of its
     body, each module slot is the closure of its unit, and each definition
     with a module part is both.  The level of a definition or a slot is
-    never given to a neutral.  An assumption or a definition of a
-    proposition is the proof [⋆ᵈ], as relevance-directed evaluation has
-    it. *)
+    never given to a neutral.  Every term entry is stored at the value of
+    its type.  A definition of a proposition is its body kept as it is
+    written, [⋆ᵈ⟨M, ρ⟩], as relevance-directed evaluation has it; an
+    assumption of a proposition is a neutral proof. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
-(** An assumption: a fresh variable of its type, the proof [⋆ᵈ] at a
-    proposition *)
+(** An assumption: a fresh variable of its type *)
 | initial_env_cons :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     initial_env Θ Ξ (Γ ▹ A) (ρ ↦ relevant_value a (⇑! a (length Γ))))
+     initial_env Θ Ξ (Γ ▹ A) (ρ ↦ ⇑! a (length Γ) ⦂ entry_type_value a))
 (** A definition of a relevant type: the value of its body *)
 | initial_env_cons_def :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_relevance a = relevant ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m))
-(** A definition of a proposition: the proof [⋆ᵈ], its body not
-    evaluated *)
+     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m ⦂ entry_type_value a))
+(** A definition of a proposition: its body kept, not evaluated *)
 | initial_env_cons_def_proof :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_relevance a = propositional ->
-     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ ⋆ᵈ))
+     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a))
 | initial_env_cons_mod :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ h))
-(** A definition with a module part: the value of its term and the closure
-    of its unit *)
+(** A definition with a module part: the value of its term, at its type,
+    and the closure of its unit *)
 | initial_env_cons_dm :
   `( initial_env Θ Ξ Γ ρ ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     initial_env Θ Ξ (Γ ▸ₘ A ≔ M ‖ U) (ρ ↦ᵈ m ‖ h)).
+     initial_env Θ Ξ (Γ ▸ₘ A ≔ M ‖ U) (ρ ↦ᵈ m ⦂ entry_type_value a ‖ h)).
 
 #[export]
 Hint Constructors initial_env : mctt.
@@ -66,12 +66,12 @@ Qed.
 #[export]
 Hint Resolve functional_initial_env : mctt.
 
-(** Only an assumption is a neutral in the initial environment, the proof
-    [⋆ᵈ] at a proposition; a definition is the value of its body. *)
+(** An assumption is a neutral in the initial environment, at its own
+    level; a definition is the value of its body. *)
 Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ A,
     initial_env Θ Ξ Γ ρ ->
     List.nth_error Γ x = Some (ce_ass A) ->
-    exists a, ρ x = relevant_value a (⇑! a (length Γ - x - 1)).
+    exists a, ρ x = ⇑! a (length Γ - x - 1).
 Proof.
   induction x; intros * Hinit Hlookup;
     dependent destruction Hinit; simpl in *; try discriminate.
@@ -95,10 +95,12 @@ Ltac functional_initial_env_rewrite_clear := repeat functional_initial_env_rewri
     environment [ρ] of [s] variables, relevance-directed: a proof is never
     evaluated. *)
 Inductive nbe_term (Θ : gdeps) (Ξ : gstack) (s : nat) (ρ : env) (M : exp) (a : domain) : nf -> Prop :=
-(** At a proposition: the proof [⋆ⁿ], the term not evaluated *)
-| nbe_term_proof :
+(** At a proposition: the term kept as it is, [⋆ᵈ⟨M, ρ⟩], read back
+    ([read_nf_proof]): [M] under the definitions of the variables it reads *)
+| nbe_term_proof : forall w,
     domain_relevance a = propositional ->
-    nbe_term Θ Ξ s ρ M a ⋆ⁿ
+    Rnf ⇓ a ⋆ᵈ⟨M, ρ⟩ in Θ ⍮ Ξ ⍮ s ↘ w ->
+    nbe_term Θ Ξ s ρ M a w
 (** At a relevant type: the value of the term, read back at the type *)
 | nbe_term_relevant : forall m w,
     domain_relevance a = relevant ->
@@ -133,8 +135,8 @@ Lemma functional_nbe_term : forall {Θ Ξ} s ρ M a w w',
     nbe_term Θ Ξ s ρ M a w' ->
     w = w'.
 Proof.
-  intros * H H'; destruct H; destruct H'; try congruence.
-  functional_eval_rewrite_clear; functional_read_rewrite_clear; reflexivity.
+  intros * H H'; destruct H; destruct H'; try congruence;
+    functional_eval_rewrite_clear; functional_read_rewrite_clear; reflexivity.
 Qed.
 
 #[export]
@@ -158,7 +160,7 @@ Lemma nbe_relevant_inv : forall {Θ Ξ Γ M A w},
 Proof.
   intros * [ρ0 a0 Hi Ha Hw] ρ a Hi' Ha' Hr.
   functional_initial_env_rewrite_clear; functional_eval_rewrite_clear.
-  destruct Hw as [Hp | m w Hr' Hm Hw]; [ congruence | exists m; split; assumption ].
+  destruct Hw as [w Hp _ | m w Hr' Hm Hw]; [ congruence | exists m; split; assumption ].
 Qed.
 
 (** NbE at a relevant type, from its steps: the environment, the type's
@@ -175,7 +177,7 @@ Ltac invert_nbe_term :=
   repeat match goal with
     | H : nbe_term _ _ _ _ _ _ _ |- _ =>
         let Hp := fresh "Hp" in
-        inversion H as [Hp | ? ? Hp ? ?]; subst; clear H; try (cbn in Hp; discriminate)
+        inversion H as [? Hp ? | ? ? Hp ? ?]; subst; clear H; try (cbn in Hp; discriminate)
     end.
 
 #[export]
@@ -188,7 +190,7 @@ Proof.
   intros * [ρ a Hi Ha Hw].
   simplify_evals.
   (** A universe is no proposition: only the case of a type is left. *)
-  destruct Hw as [Hp | m w Hr Hm Hw]; [ cbn in Hp; discriminate |].
+  destruct Hw as [w Hp _ | m w Hr Hm Hw]; [ cbn in Hp; discriminate |].
   inversion_clear_by_head read_nf; try (cbn in *; discriminate).
   all: econstructor; [ eassumption | mauto | eapply nbe_term_relevant; [ reflexivity | eassumption | mauto ] ].
 Qed.
@@ -264,7 +266,7 @@ Lemma nbe_type_to_nbe_ty : forall {Θ Ξ} Γ M i w,
 Proof.
   intros * [ρ a Hi Ha Hw].
   simplify_evals.
-  destruct Hw as [Hp | m w' Hr Hm Hw]; [ cbn in Hp; discriminate |].
+  destruct Hw as [w' Hp _ | m w' Hr Hm Hw]; [ cbn in Hp; discriminate |].
   inversion_clear_by_head read_nf; try (cbn in *; discriminate); mauto.
 Qed.
 

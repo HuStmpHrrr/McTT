@@ -156,8 +156,8 @@ Section Match.
   Qed.
 
   (** A definition with a module part, matched by its module part. *)
-  Lemma kinds_match_cons_dm : forall Γ ρ A M U d h, kinds_match Γ ρ -> kinds_equiv Θ Ξ h (dm_clo U ρ) ->
-      kinds_match (ce_dm A M U :: Γ) (de_dm d h :: ρ).
+  Lemma kinds_match_cons_dm : forall Γ ρ A M U d t h, kinds_match Γ ρ -> kinds_equiv Θ Ξ h (dm_clo U ρ) ->
+      kinds_match (ce_dm A M U :: Γ) (de_dm d t h :: ρ).
   Proof.
     intros * HΓ Hh x U' Hl; inversion Hl; subst.
     - eapply kinds_equiv_trans; [ exact Hh |].
@@ -219,16 +219,16 @@ Section Match.
     apply kinds_match_cons_term; [ auto | discriminate | discriminate ].
   Qed.
 
-  (** The same, for the arguments of a unit. *)
-  Lemma kinds_match_env_args : forall Δ Γ ρ args, tele_ass Δ -> kinds_match Γ ρ -> List.length args = List.length Δ ->
-      kinds_match (Δ ++ Γ) (env_args ρ args).
+  (** The same, for the arguments of a unit, at any types. *)
+  Lemma kinds_match_env_args : forall Δ Γ ρ vts, tele_ass Δ -> kinds_match Γ ρ -> List.length vts = List.length Δ ->
+      kinds_match (Δ ++ Γ) (env_extend_typed ρ vts).
   Proof.
     induction Δ as [| e Δ IH]; intros * HΔ HΓ Hl.
-    - destruct args; [ exact HΓ | discriminate ].
+    - destruct vts; [ exact HΓ | discriminate ].
     - inversion HΔ as [| ? ? [A ->] HΔ']; subst.
-      destruct (List.exists_last (l := args) ltac:(destruct args; [ discriminate | discriminate ])) as (args' & c & ->).
+      destruct (List.exists_last (l := vts) ltac:(destruct vts; [ discriminate | discriminate ])) as (vts' & c & ->).
       rewrite length_app in Hl; cbn in Hl.
-      unfold env_args; rewrite fold_left_app; cbn [fold_left app].
+      unfold env_extend_typed; rewrite fold_left_app; cbn [fold_left app].
       apply kinds_match_cons_term; [ apply IH; [ exact HΔ' | exact HΓ | lia ] | discriminate | discriminate ].
   Qed.
 
