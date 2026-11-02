@@ -42,15 +42,15 @@ Section Fixed_GCtx.
       (** and invariant along related prefixes *)
     ; ind_canon_props_arg_iff : args_inv D (canon_nparams_rel D ups) (canon_args_rel D ups)
       (** The shapes' domains' relations are PERs *)
-    ; ind_canon_props_dom_per : doms_per D (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+    ; ind_canon_props_dom_per : doms_per D (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups)
       (** and invariant along related prefixes *)
-    ; ind_canon_props_dom_iff : doms_inv D (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) }.
+    ; ind_canon_props_dom_iff : doms_inv D (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) }.
 
   (** Two families of relations agree where both are defined, as the
       section [FamChange] of [Core.Semantic.PER.Tele] needs. *)
   Record ind_fam_agree (D : ind_decl) (nr1 nr2 : nat -> nat -> list domain -> relation domain)
       (ar1 ar2 : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-      (dr1 dr2 : nat -> list domain -> exp -> relation domain) : Prop := mk_ind_fam_agree
+      (dr1 dr2 : nat -> list domain -> list centry -> exp -> relation domain) : Prop := mk_ind_fam_agree
     { (** The non-uniform parameters' relations agree *)
       ind_fam_agree_np : forall m Mm k vs vs1 vs2, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
         tele_prefix_rel (nr1 m) k vs vs1 -> tele_prefix_rel (nr2 m) k vs vs2 -> (nr1 m k vs <~> nr2 m k vs)
@@ -67,9 +67,10 @@ Section Fixed_GCtx.
         tele_prefix_rel (ar1 m ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
         tele_prefix_rel (ar2 m ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
         k < List.length (ptyp_doms t) ->
-        tele_prefix_rel (shape_doms_rel (dr1 m) ms ws (ptyp_doms t)) k ys ys1 ->
-        tele_prefix_rel (shape_doms_rel (dr2 m) ms ws (ptyp_doms t)) k ys ys2 ->
-        (shape_doms_rel (dr1 m) ms ws (ptyp_doms t) k ys <~> shape_doms_rel (dr2 m) ms ws (ptyp_doms t) k ys) }.
+        tele_prefix_rel (shape_doms_rel (dr1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys1 ->
+        tele_prefix_rel (shape_doms_rel (dr2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys2 ->
+        (shape_doms_rel (dr1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys
+         <~> shape_doms_rel (dr2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys) }.
 
   Lemma ind_fam_agree_sym : forall D nr1 nr2 ar1 ar2 dr1 dr2,
       ind_fam_agree D nr1 nr2 ar1 ar2 dr1 dr2 -> ind_fam_agree D nr2 nr1 ar2 ar1 dr2 dr1.
@@ -84,23 +85,28 @@ Section Fixed_GCtx.
       nparams_evals (per_univ_elem i) D ups ups' nr ->
       args_evals (per_univ_elem i) D ups ups' nr ar ->
       doms_evals (per_univ_elem i) D ups ups' nr ar dr ->
-      ind_fam_agree D nr (canon_nparams_rel D ups) ar (canon_args_rel D ups) dr (canon_doms_rel ups).
+      ind_fam_agree D nr (canon_nparams_rel D ups) ar (canon_args_rel D ups) dr (canon_doms_rel D ups).
   Proof.
     intros * Hass Hn Ha Hd; constructor.
     - intros m Mm k vs vs1 vs2 HM Hk Hp _.
       destruct (nparams_lt_ass D m Mm k Hass HM Hk) as [A HA].
       destruct (Hn _ _ _ _ _ _ HM HA Hp) as [a a' Ea Ea' HR].
-      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM HA).
+      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM).
       exact (per_head_left Ea Ea' HR).
     - intros m Mm ms ms1 ms2 c gs k vs vs1 vs2 HM Hm _ Hc Hk Hp _.
       destruct (nth_error_lt_some' _ _ Hk) as [A HA].
       destruct (Ha _ _ _ _ _ _ _ _ _ _ HM Hm Hc HA Hp) as [a a' Ea Ea' HR].
-      unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc HA).
+      unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc HA), (member_nparams_eq _ _ _ HM),
+        (member_con_tele_eq _ _ _ _ _ HM Hc).
       exact (per_head_left Ea Ea' HR).
     - intros m Mm ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2 HM Hm _ Hc Heq Hw _ Hk Hy _.
       destruct (nth_error_lt_some' _ _ Hk) as [B HB].
       destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as [b b' Eb Eb' HR].
-      unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB); unfold canon_doms_rel.
+      pose proof (proj1 (tele_rel_iff _ _ _ _) Hm) as (Hlm & _ & _); rewrite List.length_rev in Hlm.
+      pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hw) as (Hlw & _ & _).
+      pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hy) as (Hly & _ & _).
+      unfold shape_doms_rel at 2; rewrite (List.nth_error_nth _ _ _ HB), (canon_doms_rel_full D ups m Mm gs1 t ms ws ys k B Hlm Hlw Hly (Nat.lt_le_incl _ _ Hk)).
+      unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB).
       exact (per_head_left Eb Eb' HR).
   Qed.
 
@@ -117,15 +123,15 @@ Section Fixed_GCtx.
     ; ind_canon_clause_props : ind_canon_props D ups
       (** They agree with those at [ups'] *)
     ; ind_canon_clause_agree : ind_fam_agree D (canon_nparams_rel D ups) (canon_nparams_rel D ups') (canon_args_rel D ups)
-        (canon_args_rel D ups') (canon_doms_rel ups) (canon_doms_rel ups')
+        (canon_args_rel D ups') (canon_doms_rel D ups) (canon_doms_rel D ups')
       (** [ups'] is admissible beside [ups] *)
-    ; ind_canon_clause_adm : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups'
+    ; ind_canon_clause_adm : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) ups'
       (** So is [ups] itself *)
-    ; ind_canon_clause_adm_diag : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups
+    ; ind_canon_clause_adm_diag : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) ups
       (** The non-uniform parameters are related *)
     ; ind_canon_clause_ns : tele_rel (canon_nparams_rel D ups k) (List.rev (member_nparams D k)) ns ns'
       (** The element relation is the group's at the canonical relations *)
-    ; ind_canon_clause_elems : R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) k ups ups' ns ns' }.
+    ; ind_canon_clause_elems : R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) k ups ups' ns ns' }.
 
   Lemma per_univ_elem_ind_canon : forall i R p D k ups ups' ns ns',
       DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_univ_elem i ↘ R ->
@@ -182,8 +188,9 @@ Section Fixed_GCtx.
               tele_rel (nr m) (rev (im_nparams Mm)) ms ms' ->
               ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
               tele_prefix_rel (ar m ms c) (length (cargs_nonrec gs1)) ws ws' -> List.nth_error (ptyp_doms t) k = Some B ->
-              tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
-              (dr m (ms ++ ws ++ ys) B <~> canon_doms_rel ups m (ms ++ ws ++ ys) B)).
+              tele_prefix_rel (shape_doms_rel (dr m) (rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+              (dr m (ms ++ ws ++ ys) (rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ firstn k (shape_doms_tele t)) B
+               <~> canon_doms_rel D ups m (ms ++ ws ++ ys) (rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ firstn k (shape_doms_tele t)) B)).
     { intros m Mm ms ms' c gs gs1 t gs2 ws ws' k0 B ys ys' HM0 Hm Hc Heq Hw HB Hy.
       assert (Hkl : k0 < length (ptyp_doms t)) by (apply nth_error_Some; congruence).
       assert (HK : length (cargs_nonrec gs1) <= length (cargs_nonrec gs)) by (rewrite Heq, cargs_nonrec_app, length_app; lia).
@@ -250,7 +257,7 @@ Section Fixed_GCtx.
       destruct (nparams_lt_ass D m Mm k0 Hass HM0 Hk) as [A HA].
       destruct (Hn _ _ _ _ _ _ HM0 HA Hdg) as [a a' Ea Ea' HR].
       rewrite <- (Hn0 _ _ _ _ _ _ HM0 Hk Hp' Hp1).
-      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM0 HA).
+      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM0 HA), (member_nparams_eq _ _ _ HM0).
       exact (per_head_right Ea Ea' HR).
     - intros m Mm ms ms1 ms2 c gs k0 vs vs1 vs2 HM0 Hm1 Hm2 Hc Hk Hp1 Hp2.
       pose proof (F2 _ _ HM0 _ _ Hm1) as Hm'.
@@ -261,7 +268,8 @@ Section Fixed_GCtx.
       destruct (nth_error_lt_some' _ _ Hk) as [A HA].
       destruct (Ha _ _ _ _ _ _ _ _ _ _ HM0 Hmm Hc HA Hpp) as [a a' Ea Ea' HR].
       rewrite <- (Ha0 _ _ _ _ _ _ _ _ _ _ _ HM0 Hm' Hm1 Hc Hk Hp' Hp1).
-      unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM0 Hc HA).
+      unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM0 Hc HA), (member_nparams_eq _ _ _ HM0),
+        (member_con_tele_eq _ _ _ _ _ HM0 Hc).
       exact (per_head_right Ea Ea' HR).
     - intros m Mm ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k0 ys ys1 ys2 HM0 Hm1 Hm2 Hc Heq Hw1 Hw2 Hk Hy1 Hy2.
       assert (HK : length (cargs_nonrec gs1) <= length (cargs_nonrec gs)) by (rewrite Heq, cargs_nonrec_app, length_app; lia).
@@ -276,7 +284,11 @@ Section Fixed_GCtx.
       destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM0 Hmm Hc Heq Hww HB Hyy) as [b b' Eb Eb' HR].
       unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB).
       rewrite <- (HDr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM0 Hm' Hc Heq Hw' HB Hy').
-      unfold canon_doms_rel; exact (per_head_right Eb Eb' HR).
+      pose proof (proj1 (tele_rel_iff _ _ _ _) Hm1) as (Hlm & _ & _); rewrite length_rev in Hlm.
+      pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hw1) as (Hlw & _ & _).
+      pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hy1) as (Hly & _ & _).
+      rewrite (canon_doms_rel_full D ups' m Mm gs1 t ms ws ys k0 B Hlm Hlw Hly (Nat.lt_le_incl _ _ Hk)).
+      exact (per_head_right Eb Eb' HR).
     - exact (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ Hcl).
     - exact (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ Hcd).
     - unfold member_nparams; rewrite HM; exact (F1 _ _ HM _ _ Hns).
@@ -295,7 +307,7 @@ Section Fixed_GCtx.
       ind_lookup gc_deps gc_stack p = Some D -> List.length ups = ind_nu D -> List.length ups' = ind_nu D ->
       nparams_evals (per_univ_elem i) D ups ups' (canon_nparams_rel D ups) /\
       args_evals (per_univ_elem i) D ups ups' (canon_nparams_rel D ups) (canon_args_rel D ups) /\
-      doms_evals (per_univ_elem i) D ups ups' (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups).
+      doms_evals (per_univ_elem i) D ups ups' (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups).
   Proof.
     intros * H Hl Hu Hu'.
     basic_invert_per_univ_elem H.
@@ -368,7 +380,7 @@ Section Fixed_GCtx.
     Hypothesis (Hass : grp_tele_ass D) (Hcp : ind_canon_props D ups).
     Let nr := canon_nparams_rel D ups.
     Let ar := canon_args_rel D ups.
-    Let dr := canon_doms_rel ups.
+    Let dr := canon_doms_rel D ups.
 
     Lemma canon_nparams_rel_sym : forall m Mm a b, ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) a b -> tele_rel (nr m) (List.rev (im_nparams Mm)) b a.

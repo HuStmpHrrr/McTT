@@ -39,23 +39,35 @@ Section Fixed_GCtx.
     | None => a_placeholder_type
     end.
 
+  (** The telescope of the non-recursive arguments of the constructor [c]
+      of the member [m], empty if there is no such constructor. *)
+  Definition member_con_tele (D : ind_decl) (m : nat) (c : String.string) : list centry :=
+    match ind_member D m with
+    | Some Mm => match ind_con Mm c with Some gs => cargs_nonrec_tele gs | None => nil end
+    | None => nil
+    end.
+
   (** The relation of a non-uniform parameter, after the values [vs] of
-      those before it: the head PER of its type there. *)
+      those before it: the head PER of its type there, in the environment
+      of the components ([components_env]). *)
   Definition canon_nparams_rel (D : ind_decl) (ups : list domain) : nat -> nat -> list domain -> relation domain :=
     fun m k vs => per_head (nth_ctyp (List.rev (member_nparams D m)) k) (nth_ctyp (List.rev (member_nparams D m)) k)
-                    (env_args nil (ups ++ vs)) (env_args nil (ups ++ vs)).
+                    (components_env D ups (List.rev (member_nparams D m)) vs)
+                    (components_env D ups (List.rev (member_nparams D m)) vs).
 
   (** The relation of a non-recursive argument, after the non-uniform
       parameters [ms] and the arguments [vs] before it: the head PER of its
       type there. *)
   Definition canon_args_rel (D : ind_decl) (ups : list domain) : nat -> list domain -> String.string -> nat -> list domain -> relation domain :=
     fun m ms c k vs => per_head (nth_atyp D m c k) (nth_atyp D m c k)
-                         (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs)).
+                         (components_env D ups (List.rev (member_nparams D m) ++ member_con_tele D m c) (ms ++ vs))
+                         (components_env D ups (List.rev (member_nparams D m) ++ member_con_tele D m c) (ms ++ vs)).
 
   (** The relation of a domain of a shape, after the values [pre] of its
-      components: the head PER of the domain there. *)
-  Definition canon_doms_rel (ups : list domain) : nat -> list domain -> exp -> relation domain :=
-    fun _ pre B => per_head B B (env_args nil (ups ++ pre)) (env_args nil (ups ++ pre)).
+      components, of the telescope [Ts]: the head PER of the domain
+      there. *)
+  Definition canon_doms_rel (D : ind_decl) (ups : list domain) : nat -> list domain -> list centry -> exp -> relation domain :=
+    fun _ pre Ts B => per_head B B (components_env D ups Ts pre) (components_env D ups Ts pre).
 
   Lemma nth_ctyp_eq : forall D m Mm k A, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) ->
       nth_ctyp (List.rev (member_nparams D m)) k = A.
@@ -64,6 +76,25 @@ Section Fixed_GCtx.
   Lemma nth_atyp_eq : forall D m Mm c gs k A, ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
       List.nth_error (cargs_nonrec gs) k = Some A -> nth_atyp D m c k = A.
   Proof. intros * HM Hc H; unfold nth_atyp; rewrite HM, Hc; apply List.nth_error_nth; exact H. Qed.
+
+  Lemma member_nparams_eq : forall D m Mm, ind_member D m = Some Mm -> member_nparams D m = im_nparams Mm.
+  Proof. intros * HM; unfold member_nparams; rewrite HM; reflexivity. Qed.
+
+  Lemma member_con_tele_eq : forall D m Mm c gs, ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
+      member_con_tele D m c = cargs_nonrec_tele gs.
+  Proof. intros * HM Hc; unfold member_con_tele; rewrite HM, Hc; reflexivity. Qed.
+
+  (** The relation of a domain at the components before it is the head
+      PER of the domain in the environment of all of a shape's components:
+      the environment reads only as many entries of the telescope as there
+      are values ([components_env_shape_prefix]). *)
+  Lemma canon_doms_rel_full : forall D ups m (Mm : imember) gs1 t (ms ws ys : list domain) k B,
+      List.length ms = List.length (im_nparams Mm) -> List.length ws = List.length (cargs_nonrec gs1) ->
+      List.length ys = k -> k <= List.length (ptyp_doms t) ->
+      canon_doms_rel D ups m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B
+      = per_head B B (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys))
+                     (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys)).
+  Proof. intros * Hm Hw Hy Hk; unfold canon_doms_rel; rewrite <- Hy, <- components_env_shape_prefix by lia; reflexivity. Qed.
 
   (** The head PER on the diagonal is the relation of a type related to any
       other. *)
@@ -81,7 +112,7 @@ Section Fixed_GCtx.
     Variable (u : universe_index) (p : qname) (D : ind_decl) (ups ups' : list domain).
     Let nr := canon_nparams_rel D ups.
     Let ar := canon_args_rel D ups.
-    Let dr := canon_doms_rel ups.
+    Let dr := canon_doms_rel D ups.
     Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (Hass : grp_tele_ass D).
     Hypothesis (Hu : List.length ups = ind_nu D) (Hu' : List.length ups' = ind_nu D).
     Hypothesis (Hps : per_top_ps (List.rev (ind_uparams D)) ups ups').
@@ -90,13 +121,15 @@ Section Fixed_GCtx.
     Definition nparams_related (u2 : list domain) : Prop :=
       forall m Mm k A vs vs', ind_member D m = Some Mm ->
         List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
-        exists a a', ⟦ A ⟧ env_args nil (ups ++ vs) ↘ a /\ ⟦ A ⟧ env_args nil (u2 ++ vs') ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
+        exists a a', ⟦ A ⟧ components_env D ups (List.rev (im_nparams Mm)) vs ↘ a /\
+          ⟦ A ⟧ components_env D u2 (List.rev (im_nparams Mm)) vs' ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
     (** The same for the non-recursive arguments' types. *)
     Definition args_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' -> ind_con Mm c = Some gs ->
         List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
-        exists a a', ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ a /\ ⟦ A ⟧ env_args nil (u2 ++ ms' ++ vs') ↘ a' /\
+        exists a a', ⟦ A ⟧ components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms ++ vs) ↘ a /\
+          ⟦ A ⟧ components_env D u2 (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms' ++ vs') ↘ a' /\
           Dom a ≈ a' ∈ per_univ u.
     (** The same for the shapes' domains, relevant types. *)
     Definition doms_related (u2 : list domain) : Prop :=
@@ -104,9 +137,11 @@ Section Fixed_GCtx.
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
         ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-        List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
-        exists a a', ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ a /\
-          ⟦ B ⟧ env_args nil (u2 ++ ms' ++ ws' ++ ys') ↘ a' /\ Dom a ≈ a' ∈ per_relevant (per_univ u).
+        List.nth_error (ptyp_doms t) k = Some B ->
+        tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+        exists a a', ⟦ B ⟧ components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys) ↘ a /\
+          ⟦ B ⟧ components_env D u2 (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys') ↘ a' /\
+          Dom a ≈ a' ∈ per_relevant (per_univ u).
     (** The recursive arguments' parameters at [ups] and at [u2] are
         related at the member each shape ends in. *)
     Definition recs_related (u2 : list domain) : Prop :=
@@ -114,8 +149,10 @@ Section Fixed_GCtx.
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
         ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-        tele_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-        rel_evals (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (u2 ++ ms' ++ ws' ++ ys'))
+        tele_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) (ptyp_doms t) ys ys' ->
+        rel_evals (ptyp_ps t)
+          (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys))
+          (components_env D u2 (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys'))
           (nparams_tele_rel D nr (ptyp_mem t)).
     Hypothesis (Hn : nparams_related ups') (Hnd : nparams_related ups).
     Hypothesis (Ha : args_related ups') (Had : args_related ups).
@@ -125,11 +162,13 @@ Section Fixed_GCtx.
     (** The evidence at a position, at the head PER. *)
     Lemma canon_nparams_evals : forall m Mm k A vs vs', ind_member D m = Some Mm ->
         List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
-        rel_mod_eval (per_univ_elem u) A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr m k vs).
+        rel_mod_eval (per_univ_elem u) A (components_env D ups (List.rev (im_nparams Mm)) vs)
+          A (components_env D ups' (List.rev (im_nparams Mm)) vs') (nr m k vs).
     Proof.
       intros * HM Hk Hp; destruct (Hn _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
       econstructor; [ exact Ea | exact Ea' |].
-      unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM Hk); exact (per_head_diag Ea HR).
+      unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM Hk), (member_nparams_eq _ _ _ HM).
+      exact (per_head_diag Ea HR).
     Qed.
 
     Lemma canon_nparams_per : nparams_per D nr.
@@ -184,11 +223,14 @@ Section Fixed_GCtx.
     Lemma canon_args_evals : forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' -> ind_con Mm c = Some gs ->
         List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
-        rel_mod_eval (per_univ_elem u) A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs')) (ar m ms c k vs).
+        rel_mod_eval (per_univ_elem u) A (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms ++ vs))
+          A (components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms' ++ vs')) (ar m ms c k vs).
     Proof.
       intros * HM Hm Hc Hk Hp; destruct (Ha _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
       econstructor; [ exact Ea | exact Ea' |].
-      unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk); exact (per_head_diag Ea HR).
+      unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk), (member_nparams_eq _ _ _ HM),
+        (member_con_tele_eq _ _ _ _ _ HM Hc).
+      exact (per_head_diag Ea HR).
     Qed.
 
     Lemma canon_args_per : args_per D nr ar.
@@ -239,18 +281,43 @@ Section Fixed_GCtx.
         eapply canon_args_per; [ exact HM | exact Hm' | exact Hc | exact HA0 | exact Hp0 ].
     Qed.
 
+    (** The relation of a domain at the components before it is the head
+        PER of the domain in the environment of all of a shape's
+        components: the environment reads only as many entries of the
+        telescope as there are values ([components_env_shape_prefix]). *)
+    Lemma canon_doms_rel_at : forall m (Mm : imember) (ns : list domain) c gs1 t (ms ws ws' ys ys' : list domain) k B,
+        tele_rel (nr m) (List.rev (im_nparams Mm)) ms ns ->
+        tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+        tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+        k <= List.length (ptyp_doms t) ->
+        dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B
+        = per_head B B (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys))
+                       (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys)).
+    Proof.
+      intros * Hm Hw Hy Hk.
+      pose proof (proj1 (tele_rel_iff _ _ _ _) Hm) as (Hlm & _ & _).
+      pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hw) as (Hlw & _ & _).
+      pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hy) as (Hly & _ & _).
+      rewrite List.length_rev in Hlm.
+      exact (canon_doms_rel_full D ups m Mm gs1 t ms ws ys k B Hlm Hlw Hly Hk).
+    Qed.
+
     (** The domains of the shapes, likewise. *)
     Lemma canon_doms_evals : forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
         ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-        List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
-        rel_mod_eval (per_univ_elem u) B (env_args nil (ups ++ ms ++ ws ++ ys)) B (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
-          (dr m (ms ++ ws ++ ys) B).
+        List.nth_error (ptyp_doms t) k = Some B ->
+        tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+        rel_mod_eval (per_univ_elem u) B
+          (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys))
+          B (components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys'))
+          (dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B).
     Proof.
       intros * HM Hm Hc Heq Hw HB Hy; destruct (Hdm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] _ _]).
       econstructor; [ exact Ea | exact Ea' |].
-      unfold dr, canon_doms_rel; exact (per_head_diag Ea HR).
+      rewrite (canon_doms_rel_at _ _ _ _ _ _ _ _ _ _ _ _ B Hm Hw Hy ltac:(assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia)).
+      exact (per_head_diag Ea HR).
     Qed.
 
     Lemma canon_doms_per : doms_per D nr ar dr.
@@ -266,8 +333,9 @@ Section Fixed_GCtx.
         tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
         forall k, k <= List.length (ptyp_doms t) ->
         forall j B ys ys', j < k -> List.nth_error (ptyp_doms t) j = Some B ->
-          tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) j ys ys' ->
-          (dr m (ms ++ ws ++ ys) B <~> dr m (ms' ++ ws' ++ ys') B).
+          tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) j ys ys' ->
+          (dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn j (shape_doms_tele t)) B
+           <~> dr m (ms' ++ ws' ++ ys') (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn j (shape_doms_tele t)) B).
     Proof.
       intros m Mm ms ms' c gs gs1 t gs2 ws ws' HM Hm Hc Heq Hw.
       pose proof (canon_nparams_rel_refl_r _ _ _ _ HM Hm) as Hm'.
@@ -277,8 +345,9 @@ Section Fixed_GCtx.
       induction k as [| k IH]; intros Hk j B ys ys' Hj HB Hp; [ lia |].
       destruct (Nat.lt_ge_cases j k) as [Hjk | Hjk]; [ eapply IH; [ lia | exact Hjk | exact HB | exact Hp ] |].
       assert (j = k) as -> by lia.
-      assert (Hp' : tele_prefix_rel (shape_doms_rel (dr m) ms' ws' (ptyp_doms t)) k ys' ys').
-      { eapply (tele_prefix_rel_cross_refl (shape_doms_rel (dr m) ms ws (ptyp_doms t)) (shape_doms_rel (dr m) ms' ws' (ptyp_doms t)) k k);
+      assert (Hp' : tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms' ws' t) k ys' ys').
+      { eapply (tele_prefix_rel_cross_refl (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t)
+                  (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms' ws' t) k k);
           [ lia | | | exact Hp ].
         - intros j0 pa pb Hj0 Hp1 _.
           destruct (nth_error_lt_some' (ptyp_doms t) j0 ltac:(lia)) as [B0 HB0].
@@ -309,18 +378,21 @@ Section Fixed_GCtx.
       intros u2 Hn2 Ha2 Hc2 Hd2; constructor; [ | | exact Hc2 | ].
       - intros m Mm k A vs vs' s HM Hk Hp; destruct (Hn2 _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
         exists a a'; [ exact Ea | exact Ea' |].
-        unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM Hk).
+        unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM Hk), (member_nparams_eq _ _ _ HM).
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs k A vs vs' s HM Hm Hc Hk Hp.
         destruct (Ha2 _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
         exists a a'; [ exact Ea | exact Ea' |].
-        unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk).
+        unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk), (member_nparams_eq _ _ _ HM),
+          (member_con_tele_eq _ _ _ _ _ HM Hc).
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys' HM Hm Hc Heq Hw HB Hy.
         destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] Hra Hra']).
         exists a a'; [ exact Ea | exact Ea' | | exact Hra | exact Hra' ].
+        rewrite (canon_doms_rel_at _ _ _ _ _ _ _ _ _ _ _ _ B Hm Hw Hy
+                   ltac:(assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia)).
         pose proof (per_head_diag Ea HR) as HR'.
         destruct (realize_per_univ_elem_gen HR') as (_ & _ & Hrb).
         intros x x' Hx; apply Hrb; exact Hx.
@@ -344,27 +416,27 @@ Section Fixed_GCtx.
   End Canon.
 
   (** Inverting the relation of a recursive argument by its shape. *)
-  Lemma rec_arg_self_inv : forall p D okr nr ar dr k u u' pre pre' j Ps v v',
-      rec_arg_rel p D okr nr ar dr k u u' pre pre' (pt_self j Ps) v v' ->
-      exists bs bs', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs /\
-        ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' /\ okr j pre Ps bs /\ okr j pre' Ps bs' /\
+  Lemma rec_arg_self_inv : forall p D okr nr ar dr k u u' pre pre' Ts j Ps v v',
+      rec_arg_rel p D okr nr ar dr k u u' pre pre' Ts (pt_self j Ps) v v' ->
+      exists bs bs', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u Ts pre ↘ bs /\
+        ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u' Ts pre' ↘ bs' /\ okr j pre Ts Ps bs /\ okr j pre' Ts Ps bs' /\
         ind_rel p D okr nr ar dr j u u' bs bs' v v'.
   Proof. intros * H; inversion H; subst; eauto 8. Qed.
 
-  Lemma rec_arg_pi_inv : forall p D okr nr ar dr k u u' pre pre' B t f f',
-      rec_arg_rel p D okr nr ar dr k u u' pre pre' (pt_pi B t) f f' ->
-      forall c c', dr k pre B c c' ->
+  Lemma rec_arg_pi_inv : forall p D okr nr ar dr k u u' pre pre' Ts B t f f',
+      rec_arg_rel p D okr nr ar dr k u u' pre pre' Ts (pt_pi B t) f f' ->
+      forall c c', dr k pre Ts B c c' ->
         exists r r', $| f & c | gc_deps ⍮ gc_stack ↘ r /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ r' /\
-          rec_arg_rel p D okr nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t r r'.
+          rec_arg_rel p D okr nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t r r'.
   Proof.
     intros * H c c' Hc; inversion H; subst.
-    match goal with Hf : forall c c', dr _ _ _ c c' -> _ |- _ => pose proof (Hf c c' Hc) as Happ end.
+    match goal with Hf : forall c c', dr _ _ _ _ c c' -> _ |- _ => pose proof (Hf c c' Hc) as Happ end.
     inversion Happ; subst; eauto.
   Qed.
 
   (** The two functions take relevant arguments. *)
-  Lemma rec_arg_pi_relevance : forall p D okr nr ar dr k u u' pre pre' B t f f',
-      rec_arg_rel p D okr nr ar dr k u u' pre pre' (pt_pi B t) f f' ->
+  Lemma rec_arg_pi_relevance : forall p D okr nr ar dr k u u' pre pre' Ts B t f f',
+      rec_arg_rel p D okr nr ar dr k u u' pre pre' Ts (pt_pi B t) f f' ->
       arg_relevance gc_deps gc_stack f = relevant /\ arg_relevance gc_deps gc_stack f' = relevant.
   Proof. intros * H; inversion H; subst; split; assumption. Qed.
 End Fixed_GCtx.
