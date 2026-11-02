@@ -809,8 +809,8 @@ Proof.
   - split.
     + apply per_univ_elem_core_univ'; firstorder.
     + intros m m' Hm.
-      match goal with HE : _ <~> per_relevant _ |- _ => apply HE in Hm; apply HE end.
-      destruct Hm as [[R' HR] Hl Hr]; constructor; [| exact Hr | exact Hl ].
+      match goal with HE : _ <~> per_relevant_nonlevel _ |- _ => apply HE in Hm; apply HE end.
+      destruct Hm as [[R' HR] Hl Hr Hnl Hnr]; constructor; [| exact Hr | exact Hl | exact Hnr | exact Hnl ].
       eexists.
       eapply proj1; mautosolve.
   - (** The two levels are related, hence have the same realiser, so the
@@ -820,12 +820,20 @@ Proof.
     + apply per_univ_elem_core_suniv';
         [ apply per_lvl_sym; assumption | rewrite <- Heq | rewrite <- Heq ]; assumption.
     + intros m m' Hm.
-      match goal with HE : _ <~> per_relevant _ |- _ => apply HE in Hm; apply HE end.
-      destruct Hm as [[R' HR] Hl Hr]; constructor; [| exact Hr | exact Hl ].
+      match goal with HE : _ <~> per_relevant_nonlevel _ |- _ => apply HE in Hm; apply HE end.
+      destruct Hm as [[R' HR] Hl Hr Hnl Hnr]; constructor; [| exact Hr | exact Hl | exact Hnr | exact Hnl ].
       eexists.
       eapply proj1; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
+  - (** [LevelSort]: its elements are symmetric as types of the least
+        small index. *)
+    split.
+    + basic_per_univ_elem_econstructor; eassumption.
+    + intros m m' Hm; apply_relation_equivalence; unfold per_level_sort, per_level_sort_at in *.
+      destruct Hm as [Hl [Hr HR]]; destruct HR as [R HR].
+      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ /\ _ |- _ => destruct (IH _ _ _ HR) as [HR' _] end.
+      split; [ exact Hr | split; [ exact Hl | eexists; exact HR' ] ].
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - destruct_conjs.
@@ -1061,7 +1069,7 @@ Proof.
      | intros * HTR1 HTR2; apply_relation_equivalence ] ..]; mauto.
   - (** The univ case. *)
     subst.
-    destruct HTR1 as [HTR1 ? ?], HTR2 as [HTR2 ? ?]; constructor; [| assumption | assumption ].
+    destruct HTR1 as [HTR1 ? ? ? ?], HTR2 as [HTR2 ? ? ? ?]; constructor; [| assumption .. ].
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
     handle_per_univ_elem_irrel.
@@ -1071,7 +1079,7 @@ Proof.
   - (** The small univ case.  Unlike the large one there is no equation
         between the two levels to substitute, so the transitivity of the
         elements is taken from the first of the two derivations. *)
-    destruct HTR1 as [HTR1 ? ?], HTR2 as [HTR2 ? ?]; constructor; [| assumption | assumption ].
+    destruct HTR1 as [HTR1 ? ? ? ?], HTR2 as [HTR2 ? ? ? ?]; constructor; [| assumption .. ].
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
     handle_per_univ_elem_irrel.
@@ -1085,6 +1093,19 @@ Proof.
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The [Prop] case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
+  - (** The [LevelSort] case. *)
+    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
+  - (** The elements of [LevelSort]: transitive as types of the least
+        small index, the two relations identified by irrelevance. *)
+    unfold per_level_sort, per_level_sort_at in *.
+    destruct HTR1 as [Hl1 [_ [R1 Hm12]]], HTR2 as [_ [Hl3 [R2 Hm23]]].
+    assert (E : R2 <~> R1)
+      by (eapply per_univ_elem_right_irrel; [ exact Hm23 | apply per_univ_sym; exact Hm12 ]).
+    assert (Hm23' : DF m2 ≈ m3 ∈ per_univ_elem (us (0, 0)) ↘ R1)
+      by (eapply per_univ_elem_resp_iff; [ exact Hm23 | exact E ]).
+    match goal with IH : forall A B R, per_univ_elem _ R A B -> (forall j a3, _) /\ _ |- _ =>
+      destruct (IH _ _ _ Hm12) as [IH1 _] end.
+    split; [ exact Hl1 | split; [ exact Hl3 | eexists; exact (IH1 _ _ Hm23') ] ].
   - (** A proposition. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The placeholder type. *)
@@ -1524,7 +1545,109 @@ Proof.
   typeclasses eauto.
 Qed.
 
+(** ** Types of Levels *)
+
+(** A type of levels is relevant. *)
+Lemma per_level_code_relevant : forall R a a', per_level_code R a a' ->
+    domain_relevance a = relevant /\ domain_relevance a' = relevant.
+Proof. intros * H; destruct H; split; reflexivity. Qed.
+
+Lemma level_code_relevant : forall a, level_code a -> domain_relevance a = relevant.
+Proof. intros a (R & a' & [H | H]); apply per_level_code_relevant in H; destruct H; assumption. Qed.
+
+(** The heads of a type of levels: [Level@n], a [Π] or a neutral of
+    [LevelSort]. *)
+Lemma level_code_head : forall a, level_code a ->
+    (exists n, a = Levelᵈ@n) \/ (exists b, a = ⇑ LevelSortᵈ b) \/ (exists a0 ρ B, a = Πᵈ a0 ρ B).
+Proof.
+  intros a (R & a' & [H | H]); destruct H;
+    first [ left; eexists; reflexivity | right; left; eexists; reflexivity | right; right; do 3 eexists; reflexivity ].
+Qed.
+
+(** Every type of levels is a type of every universe index. *)
+Lemma per_level_code_univ_elem : forall R a a', per_level_code R a a' ->
+    forall i, DF a ≈ a' ∈ per_univ_elem i ↘ R.
+Proof.
+  apply (per_level_code_strong_ind (fun R a a' => forall i, DF a ≈ a' ∈ per_univ_elem i ↘ R)).
+  - intros n elem_rel HE i; basic_per_univ_elem_econstructor; exact HE.
+  - intros a a' ρ ρ' B B' in_rel out_rel elem_rel Ha IHa Hper HT HE i.
+    eapply (per_univ_elem_pi' _ _ _ _ _ _ _ in_rel (@out_rel)); [ apply IHa | | | exact HE ].
+    + intros c c' Hc; destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb IHb]].
+      econstructor; [ exact Eb | exact Eb' | apply IHb ].
+    + intros c c' Hc; destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb _]].
+      exists b; split; [ exact Eb | exact (proj1 (per_level_code_relevant _ _ _ Hb)) ].
+  - intros b b' elem_rel Hb HE i; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact Hb | exact HE ].
+Qed.
+
+(** The domain of a [Π] type of levels is one. *)
+Lemma level_code_pi_domain : forall a ρ B, level_code (Πᵈ a ρ B) -> level_code a.
+Proof.
+  intros * (R & z & [H | H]); inversion H; subst; do 2 eexists; [ left | right ]; eassumption.
+Qed.
+
+(** Its codomain is one at every argument its domain's PER relates to
+    itself, whatever type the PER is read at. *)
+Lemma level_code_pi_codomain : forall a ρ B i in_rel a2,
+    level_code (Πᵈ a ρ B) ->
+    DF a ≈ a2 ∈ per_univ_elem i ↘ in_rel ->
+    forall c b, Dom c ≈ c ∈ in_rel -> ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b -> level_code b.
+Proof.
+  intros * (R & z & [H | H]) Ha c b Hc Eb; inversion H; subst.
+  - match goal with Hd : per_level_code ?in0 a ?a0 |- _ =>
+      assert (E : in_rel <~> in0) by (eapply per_univ_elem_right_irrel; [ exact Ha | exact (per_level_code_univ_elem _ _ _ Hd i) ])
+    end.
+    match goal with HT : forall c c' (_ : ?in0 c c'), rel_mod_eval per_level_code B _ _ _ _ |- _ =>
+      destruct (HT c c (proj1 (E c c) Hc)) as [b1 b1' Eb1 _ Hb1]
+    end.
+    assert (b1 = b) as -> by (eapply functional_eval_exp; eassumption).
+    do 2 eexists; left; exact Hb1.
+  - match goal with Hd : per_level_code ?in0 ?a0 a |- _ =>
+      assert (E : in_rel <~> in0) by (eapply per_univ_elem_cross_irrel; [ exact Ha | exact (per_level_code_univ_elem _ _ _ Hd i) ])
+    end.
+    match goal with HT : forall c c' (_ : ?in0 c c'), rel_mod_eval per_level_code _ _ B _ _ |- _ =>
+      destruct (HT c c (proj1 (E c c) Hc)) as [b1 b1' _ Eb1' Hb1]
+    end.
+    assert (b1' = b) as -> by (eapply functional_eval_exp; eassumption).
+    do 2 eexists; right; exact Hb1.
+Qed.
+
+(** Two related types of a universe index that are types of levels are
+    related types of levels, at the same relation. *)
+Lemma per_univ_elem_level_code : forall i R a a',
+    DF a ≈ a' ∈ per_univ_elem i ↘ R -> level_code a -> level_code a' -> per_level_code R a a'.
+Proof.
+  intros * H; per_univ_elem_induction H; intros Hl Hl'.
+  all: try (destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]]; fail).
+  - econstructor; eassumption.
+  - exfalso; match goal with Hp : per_prop _ _ |- _ =>
+      destruct Hp as [Hpl _ _]; rewrite (level_code_relevant _ Hl) in Hpl; discriminate Hpl end.
+  - (** A [Π]: the domains and the codomains are types of levels. *)
+    destruct_conjs.
+    econstructor; [ apply IHH; [ eapply level_code_pi_domain; exact Hl | eapply level_code_pi_domain; exact Hl' ]
+                  | eassumption | | eassumption ].
+    intros c c' Hc.
+    assert (Hcc : Dom c ≈ c ∈ in_rel) by (etransitivity; [ exact Hc | symmetry; exact Hc ]).
+    assert (Hc'c' : Dom c' ≈ c' ∈ in_rel) by (etransitivity; [ symmetry; exact Hc | exact Hc ]).
+    match goal with HT : forall c c' (_ : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
+      destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb IHb]]
+    end.
+    econstructor; [ exact Eb | exact Eb' |].
+    apply IHb.
+    + eapply level_code_pi_codomain; [ exact Hl | eassumption | exact Hcc | exact Eb ].
+    + eapply level_code_pi_codomain; [ exact Hl' | apply per_univ_sym; eassumption | exact Hc'c' | exact Eb' ].
+  - (** A neutral: of [LevelSort] on both sides. *)
+    destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [= -> ->]) | (? & ? & ? & [=])]].
+    destruct (level_code_head _ Hl') as [(? & [=]) | [(? & [= -> ->]) | (? & ? & ? & [=])]].
+    econstructor; eassumption.
+Qed.
+
 End Fixed_GCtx.
+
+(** A type of a head other than those of the types of levels is none of
+    them ([level_code_head]). *)
+Ltac solve_not_level_code :=
+  let Hlc := fresh "Hlc" in
+  intro Hlc; destruct (level_code_head _ Hlc) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]].
 
 Ltac per_univ_elem_econstructor :=
   (repeat intro; hnf; eapply per_univ_elem_pi') + basic_per_univ_elem_econstructor.
@@ -1667,8 +1790,8 @@ Proof.
       to the larger: inside the large tier along the order on levels, inside
       the small one along the order on the realisers, which [per_sublvl]
       bounds, and across the tiers immediately. *)
-  1-3: match goal with H : per_relevant _ ?a ?b |- per_relevant _ ?a ?b => destruct H as [[R0 HR0] Hl Hr] end;
-    constructor; [| exact Hl | exact Hr ];
+  1-3: match goal with H : per_relevant_nonlevel _ ?a ?b |- per_relevant_nonlevel _ ?a ?b => destruct H as [[R0 HR0] Hl Hr Hnl Hnr] end;
+    constructor; [| exact Hl | exact Hr | exact Hnl | exact Hnr ];
     eexists; eapply per_univ_elem_cumu_universe_index;
       [ eassumption
       | cbn; first [ apply per_sublvl_real; assumption | exact I | lia ] ].
@@ -1750,7 +1873,7 @@ Proof.
        apply per_subtyp_neut; [ assumption | assumption | etransitivity; eassumption ]. }
   (** The closed types and the universes, a small universe below a small
       one composing by the transitivity of the order on levels. *)
-  1-6: dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ]; simpl in *; mauto.
+  1-7: dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ]; simpl in *; mauto.
   all: try solve [ econstructor; solve [ lia | solve_universe_index ] ].
   - dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
     handle_per_univ_elem_irrel.
@@ -3911,7 +4034,7 @@ Proof. intros * ? [R ?]; eexists; eapply per_univ_elem_cumu_universe_index; eass
     with its own relevant elements as the relation. *)
 Lemma per_univ_elem_universe_index_value : forall u i,
     universe_index_lt u i ->
-    DF universe_index_value u ≈ universe_index_value u ∈ per_univ_elem i ↘ per_relevant (per_univ u).
+    DF universe_index_value u ≈ universe_index_value u ∈ per_univ_elem i ↘ per_relevant_nonlevel (per_univ u).
 Proof.
   intros [n | n] * Hlt; cbn.
   - (** The small universe at [n] is the one at the literal level [n], whose

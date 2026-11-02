@@ -738,9 +738,9 @@ Proof.
     subst; repeat split.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
     + intros c c' Hc; apply_relation_equivalence.
-      constructor; [| reflexivity | reflexivity ].
+      constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ].
       eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact Hc | reflexivity ].
-    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ constructor; exact HC | constructor; exact HC' | exact HE ].
@@ -754,9 +754,9 @@ Proof.
       destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
       exists (nf_univ_of L); split; apply read_typ_suniv; assumption.
     + intros c c' Hc; apply_relation_equivalence.
-      constructor; [| reflexivity | reflexivity ].
+      constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ].
       eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact Hc | reflexivity ].
-    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ constructor; exact HC | constructor; exact HC' | exact HE ].
@@ -780,6 +780,19 @@ Proof.
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [_ _ Ht].
       intro s; destruct (Ht s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ apply read_nf_prop; assumption | apply read_nf_prop; assumption | exact HE ].
+  - (** [LevelSort]: its neutrals are neutral types of levels; its
+        elements read back as types, as types of the least small index. *)
+    repeat split.
+    + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
+    + intros c c' Hc; apply_relation_equivalence.
+      assert (Hcode : per_level_code per_ne (⇑ LevelSortᵈ c) (⇑ LevelSortᵈ c')) by (econstructor; [ exact Hc | reflexivity ]).
+      split; [ do 2 eexists; left; exact Hcode
+             | split; [ do 2 eexists; right; exact Hcode | eexists; exact (per_level_code_univ_elem _ _ _ Hcode _) ] ].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [_ [_ [R' HR']]].
+      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
+      intro s; destruct (Htt s) as [C C' HC HC' HE].
+      apply (mk_normal_reads_alike _ _ _ C C');
+        [ apply read_nf_at_level_sort; exact HC | apply read_nf_at_level_sort; exact HC' | exact HE ].
   - (** A proposition: its elements are the proofs that read back, each as
         a proof term, which erasure ignores; its neutrals are neutral
         proofs. *)

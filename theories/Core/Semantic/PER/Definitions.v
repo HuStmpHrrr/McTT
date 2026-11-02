@@ -210,19 +210,6 @@ Record per_prop (a a' : domain) : Prop := mk_per_prop
     (** They read back equally at every length *)
   ; per_prop_top : per_top_typ a a' }.
 
-(** The relevant types among those [R] relates: the elements of a universe.
-    Propositions are types of every universe index, but not elements of a
-    universe, as [Prop] is not below [Type]: the declarations classify
-    their constructors' arguments and record fields by their sorts, and an
-    argument whose type is an element of a universe is relevant. *)
-Record per_relevant (R : relation domain) (a a' : domain) : Prop := mk_per_relevant
-  { (** [R] relates them *)
-    per_relevant_rel : R a a'
-    (** The left one is relevant *)
-  ; per_relevant_left : domain_relevance a = relevant
-    (** So is the right one *)
-  ; per_relevant_right : domain_relevance a' = relevant }.
-
 (** The value of the type [A] in [ρ] is of the sort [r]. *)
 Definition rel_typ_sort (A : exp) (ρ : env) (r : relevance) : Prop :=
   exists a, ⟦ A ⟧ ρ ↘ a /\ domain_relevance a = r.
@@ -249,6 +236,121 @@ Inductive per_ne : relation domain :=
      Dom ⇑ a m ≈ ⇑ a' m' ∈ per_ne }
 .
 Hint Constructors per_ne : mctt.
+
+(** ** Types of Levels
+
+    [per_level_code R a a']: [a] and [a'] are related types of levels, the
+    elements of [LevelSort], and [R] is the relation of their elements.
+    They are [Level@n], the [Π]s between types of levels, and the neutral
+    types of levels.  For example, the value of [Level@0 → Level@1] is
+    one, so [⋅ ⊨ Level@0 → Level@1 : LevelSort] holds; the value of
+    [∀ (u : Level) → Type@{u}] is none, as its codomain is a universe.
+    Every type of levels is also a type of every universe index
+    ([per_level_code_univ_elem]), but no element of a universe
+    ([per_relevant_nonlevel]). *)
+Inductive per_level_code : relation domain -> domain -> domain -> Prop :=
+(** [Level@n], its elements the related levels of sort [n] *)
+| per_level_code_level :
+    forall n (elem_rel : relation domain),
+      (elem_rel <~> per_lvl_at n) ->
+      per_level_code elem_rel Levelᵈ@n Levelᵈ@n
+(** A [Π] between types of levels, its elements related pointwise *)
+| per_level_code_pi :
+  `{ forall (in_rel : relation domain)
+       (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
+       (elem_rel : relation domain),
+       per_level_code in_rel a a' ->
+       PER in_rel ->
+       (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
+           rel_mod_eval per_level_code B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
+       (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
+       per_level_code elem_rel (Πᵈ a ρ B) (Πᵈ a' ρ' B') }
+(** A neutral type of levels, its elements the neutrals *)
+| per_level_code_neut :
+  `{ forall (elem_rel : relation domain),
+       Dom b ≈ b' ∈ per_bot ->
+       (elem_rel <~> per_ne) ->
+       per_level_code elem_rel (⇑ LevelSortᵈ b) (⇑ LevelSortᵈ b') }
+.
+
+(** The induction principle of [per_level_code], with the induction
+    hypothesis at the codomains of a [Π]. *)
+Section Per_level_code_ind_def.
+  Hypothesis
+    (motive : relation domain -> domain -> domain -> Prop)
+      (case_level : forall n {elem_rel},
+          (elem_rel <~> per_lvl_at n) ->
+          motive elem_rel Levelᵈ@n Levelᵈ@n)
+      (case_pi : forall {a a' ρ ρ' B B' in_rel}
+          (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
+          {elem_rel},
+          per_level_code in_rel a a' ->
+          motive in_rel a a' ->
+          PER in_rel ->
+          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
+              rel_mod_eval (fun R x y => per_level_code R x y /\ motive R x y)
+                B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
+          (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
+          motive elem_rel (Πᵈ a ρ B) (Πᵈ a' ρ' B'))
+      (case_neut : forall {b b' elem_rel},
+          Dom b ≈ b' ∈ per_bot ->
+          (elem_rel <~> per_ne) ->
+          motive elem_rel (⇑ LevelSortᵈ b) (⇑ LevelSortᵈ b')).
+
+  #[derive(equations=no, eliminator=no)]
+  Equations per_level_code_strong_ind R a b (H : per_level_code R a b) : motive R a b :=
+  | R, a, b, (per_level_code_level n _ HE) => case_level n HE;
+  | R, a, b, (per_level_code_pi _ out_rel _ Ha per HT HE) =>
+      case_pi out_rel Ha (per_level_code_strong_ind _ _ _ Ha) per
+        (fun _ _ equiv_c_c' => match HT _ _ equiv_c_c' with
+                              | mk_rel_mod_eval b b' evb evb' Rel =>
+                                  mk_rel_mod_eval b b' evb evb' (conj Rel (per_level_code_strong_ind _ _ _ Rel))
+                              end)
+        HE;
+  | R, a, b, (per_level_code_neut _ Hb HE) => case_neut Hb HE.
+End Per_level_code_ind_def.
+
+(** [a] is a type of levels: a side of a pair [per_level_code] relates. *)
+Definition level_code (a : domain) : Prop := exists R a', per_level_code R a a' \/ per_level_code R a' a.
+
+(** The elements of [LevelSort], given the types [U] of the least small
+    index: the types of levels [U] relates.  Reading the relation off [U]
+    rather than off [per_level_code] gives its PER laws by those of the
+    universe at that index; [per_level_code] is recovered from it
+    ([per_univ_elem_level_code]). *)
+Definition per_level_sort_at (U : relation domain) : relation domain :=
+  fun a a' => level_code a /\ level_code a' /\ U a a'.
+
+(** A large universe index, the indices of the types of [Typeω@i]. *)
+Definition universe_index_large (u : universe_index) : Prop :=
+  match u with ul _ => True | us _ => False end.
+
+(** A large index is above every small one. *)
+Lemma universe_index_large_above_small : forall u o, universe_index_large u -> universe_index_lt (us o) u.
+Proof. intros [] ? H; cbn in *; [ contradiction | exact I ]. Qed.
+
+(** The relevant types among those [R] relates that are no types of
+    levels: the elements of a universe.  Propositions are types of every
+    universe index, but not elements of a universe, as [Prop] is not below
+    [Type]: the declarations classify their constructors' arguments and
+    record fields by their sorts, and an argument whose type is an element
+    of a universe is relevant.  The types of levels are the elements of
+    [LevelSort] only, so that the sorts are disjoint: [⋅ ⊨ Level@0 :
+    Type@0] fails in the model, as it does in the syntax.  [LevelSort]
+    itself is an element of [Typeω@0] ([wf_level_sort]), and so is
+    [∀ (u : Level) → Type@{u}] of a universe large enough: neither is a
+    type of levels. *)
+Record per_relevant_nonlevel (R : relation domain) (a a' : domain) : Prop := mk_per_relevant_nonlevel
+  { (** [R] relates them *)
+    per_relevant_nonlevel_rel : R a a'
+    (** The left one is relevant *)
+  ; per_relevant_nonlevel_left : domain_relevance a = relevant
+    (** So is the right one *)
+  ; per_relevant_nonlevel_right : domain_relevance a' = relevant
+    (** The left one is no type of levels *)
+  ; per_relevant_nonlevel_left_nonlevel : ~ level_code a
+    (** Nor is the right one *)
+  ; per_relevant_nonlevel_right_nonlevel : ~ level_code a' }.
 
 (** ** Telescopes of Inductive Types
 
@@ -1019,7 +1121,7 @@ Section Per_univ_elem_core_def.
     `{ forall (elem_rel : relation domain)
           (lt_j_i : universe_index_lt (ul j) i),
           j = j' ->
-          (elem_rel <~> per_relevant (per_univ_rec (ul j))) ->
+          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (ul j))) ->
           DF 𝕌ω@j ≈ 𝕌ω@j' ∈ per_univ_elem_core ↘ elem_rel }
   (** A smaller small universe, its elements the relevant types of that
       universe.  Two small universes are the same when their levels are
@@ -1030,7 +1132,7 @@ Section Per_univ_elem_core_def.
     `{ forall (elem_rel : relation domain)
           (lt_j_i : universe_index_lt (us (domain_level_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant (per_univ_rec (us (domain_level_real l)))) ->
+          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (us (domain_level_real l)))) ->
           DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
   (** [Level@n], its elements the related levels of sort [n]. *)
   | per_univ_elem_core_level :
@@ -1042,6 +1144,15 @@ Section Per_univ_elem_core_def.
     forall (elem_rel : relation domain),
       (elem_rel <~> per_prop) ->
       DF Propᵈ ≈ Propᵈ ∈ per_univ_elem_core ↘ elem_rel
+  (** [LevelSort], at every large index, as it is a type of [Typeω@0]
+      ([wf_level_sort]): its elements the types of levels.  The types of
+      levels are types of the small indices too, which the PER laws of
+      its elements are read at. *)
+  | per_univ_elem_core_level_sort :
+    forall (elem_rel : relation domain)
+      (large_i : universe_index_large i),
+      (elem_rel <~> per_level_sort_at (per_univ_rec (us (0, 0)))) ->
+      DF LevelSortᵈ ≈ LevelSortᵈ ∈ per_univ_elem_core ↘ elem_rel
   (** The placeholder type, all of its elements related. *)
   | per_univ_elem_core_placeholder :
     forall (elem_rel : relation domain),
@@ -1139,11 +1250,11 @@ Section Per_univ_elem_core_def.
     (motive : relation domain -> domain -> domain -> Prop)
       (case_U : forall {j j' elem_rel} (lt_j_i : universe_index_lt (ul j) i),
           j = j' ->
-          (elem_rel <~> per_relevant (per_univ_rec (ul j))) ->
+          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (ul j))) ->
           motive elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall {l l' elem_rel} (lt_j_i : universe_index_lt (us (domain_level_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant (per_univ_rec (us (domain_level_real l)))) ->
+          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (us (domain_level_real l)))) ->
           motive elem_rel 𝕌@l 𝕌@l')
       (case_level : forall {n elem_rel},
           (elem_rel <~> per_lvl_at n) ->
@@ -1151,6 +1262,10 @@ Section Per_univ_elem_core_def.
       (case_prop_univ : forall {elem_rel},
           (elem_rel <~> per_prop) ->
           motive elem_rel Propᵈ Propᵈ)
+      (case_level_sort : forall {elem_rel},
+          universe_index_large i ->
+          (elem_rel <~> per_level_sort_at (per_univ_rec (us (0, 0)))) ->
+          motive elem_rel LevelSortᵈ LevelSortᵈ)
       (case_prop : forall {a a' elem_rel},
           Dom a ≈ a' ∈ per_prop ->
           (elem_rel <~> per_proof) ->
@@ -1221,6 +1336,7 @@ Section Per_univ_elem_core_def.
   | R, a, b, (per_univ_elem_core_suniv _ lt_j_i HE eq)                => case_SU lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_level _ _ HE)                        => case_level HE;
   | R, a, b, (per_univ_elem_core_prop_univ _ HE)                      => case_prop_univ HE;
+  | R, a, b, (per_univ_elem_core_level_sort _ Hlarge HE)              => case_level_sort Hlarge HE;
   | R, a, b, (per_univ_elem_core_prop _ Hp HE)                        => case_prop Hp HE;
   | R, a, b, (per_univ_elem_core_placeholder _ HE)                    => case_placeholder HE;
   | R, a, b, (per_univ_elem_core_pi _ out_rel _ equiv_a_a' per HT HB HE) =>
@@ -1378,9 +1494,13 @@ Definition per_univ (i : universe_index) : relation domain := fun a a' => exists
 Hint Transparent per_univ : mctt.
 Hint Unfold per_univ : mctt.
 
+(** The elements of [LevelSort]: the types of levels that are related
+    types of the least small index. *)
+Definition per_level_sort : relation domain := per_level_sort_at (per_univ (us (0, 0))).
+
 Lemma per_univ_elem_core_univ' : forall j i elem_rel,
     universe_index_lt (ul j) i ->
-    (elem_rel <~> per_relevant (per_univ j)) ->
+    (elem_rel <~> per_relevant_nonlevel (per_univ j)) ->
     DF 𝕌ω@j ≈ 𝕌ω@j ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
@@ -1393,7 +1513,7 @@ Qed.
 Lemma per_univ_elem_core_suniv' : forall l l' i elem_rel,
     Dom l ≈ l' ∈ per_lvl ->
     universe_index_lt (us (domain_level_real l)) i ->
-    (elem_rel <~> per_relevant (per_univ (us (domain_level_real l)))) ->
+    (elem_rel <~> per_relevant_nonlevel (per_univ (us (domain_level_real l)))) ->
     DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
@@ -1412,13 +1532,13 @@ Section Per_univ_elem_ind_def.
     (motive : universe_index -> relation domain -> domain -> domain -> Prop)
       (case_U : forall i {j j' elem_rel},
           universe_index_lt (ul j) i -> j = j' ->
-          (elem_rel <~> per_relevant (per_univ j)) ->
+          (elem_rel <~> per_relevant_nonlevel (per_univ j)) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
           motive i elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall i {l l' elem_rel},
           universe_index_lt (us (domain_level_real l)) i ->
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant (per_univ (us (domain_level_real l)))) ->
+          (elem_rel <~> per_relevant_nonlevel (per_univ (us (domain_level_real l)))) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem (us (domain_level_real l)) ↘ R ->
                          motive (us (domain_level_real l)) R A B) ->
           motive i elem_rel 𝕌@l 𝕌@l')
@@ -1428,6 +1548,13 @@ Section Per_univ_elem_ind_def.
       (case_prop_univ : forall i {elem_rel},
           (elem_rel <~> per_prop) ->
           motive i elem_rel Propᵈ Propᵈ)
+      (case_level_sort : forall i {elem_rel},
+          universe_index_large i ->
+          (elem_rel <~> per_level_sort) ->
+          (** The types of the least small index, where the types of levels
+              are read *)
+          (forall A B R, DF A ≈ B ∈ per_univ_elem (us (0, 0)) ↘ R -> motive (us (0, 0)) R A B) ->
+          motive i elem_rel LevelSortᵈ LevelSortᵈ)
       (case_prop : forall i {a a' elem_rel},
           Dom a ≈ a' ∈ per_prop ->
           (elem_rel <~> per_proof) ->
@@ -1498,7 +1625,7 @@ Section Per_univ_elem_ind_def.
     induction i as [i IHi] using (well_founded_ind universe_index_wf).
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
-              (fun _ _ => case_L i) (fun _ => case_prop_univ i) (fun _ _ _ => case_prop i)
+              (fun _ _ => case_L i) (fun _ => case_prop_univ i) _ (fun _ _ _ => case_prop i)
               (fun _ => case_placeholder i)
               _ (fun _ _ _ _ _ => case_ne i) _ (fun _ _ _ _ fr _ => case_Rec i fr) R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
@@ -1507,6 +1634,10 @@ Section Per_univ_elem_ind_def.
     - intros l l' elem_rel lt_j_i Hper HE.
       rewrite per_univ_below_spec in HE by assumption.
       eapply case_SU; eauto.
+    - intros elem_rel Hlarge HE.
+      rewrite per_univ_below_spec in HE by (apply universe_index_large_above_small; exact Hlarge).
+      eapply case_level_sort; [ exact Hlarge | exact HE |].
+      intros; apply IHi; [ apply universe_index_large_above_small; exact Hlarge | assumption ].
     - intros * Ha IHa Hper HT HB HE.
       eapply case_Pi; eassumption.
     - intros * Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hns HE.
@@ -1533,6 +1664,9 @@ Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
 (** [Prop] below itself. *)
 | per_subtyp_prop_univ :
   `( Sub Propᵈ <: Propᵈ at i )
+(** [LevelSort] below itself. *)
+| per_subtyp_level_sort :
+  `( Sub LevelSortᵈ <: LevelSortᵈ at i )
 (** The placeholder type below itself. *)
 | per_subtyp_placeholder :
   `( Sub d_placeholder_type <: d_placeholder_type at i )
@@ -2101,11 +2235,11 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _ _);
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels; the proposition case has the two
           propositions and their relation. *)
-      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 6 intro | do 3 intro | do 11 intro; ih; do 4 intro
+      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 5 intro | do 6 intro | do 3 intro | do 11 intro; ih; do 4 intro
       | do 10 intro | do 34 intro | do 17 intro ]; cbv beta
   end.
 

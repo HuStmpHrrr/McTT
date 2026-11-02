@@ -141,7 +141,7 @@ Section Fixed_GCtx.
         tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
         exists a a', ⟦ B ⟧ components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys) ↘ a /\
           ⟦ B ⟧ components_env D u2 (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys') ↘ a' /\
-          Dom a ≈ a' ∈ per_relevant (per_univ u).
+          Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ u).
     (** The recursive arguments' parameters at [ups] and at [u2] are
         related at the member each shape ends in. *)
     Definition recs_related (u2 : list domain) : Prop :=

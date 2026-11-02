@@ -274,7 +274,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ Propᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
 (** So does a type of levels, as an element of [LevelSort]. *)
-| read_nf_level_sort :
+| read_nf_at_level_sort :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ LevelSortᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
 (** η for the placeholder type: its only value is the placeholder. *)

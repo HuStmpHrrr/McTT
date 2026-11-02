@@ -64,13 +64,16 @@ Ltac destruct_rel_typ :=
 (** Helper tactics for the universe/element PER. *)
 
 (** State the universes below a level, [per_univ_below i j], by
-    [per_univ_below_spec], wherever [universe_index_lt j i] is known. *)
+    [per_univ_below_spec], wherever [universe_index_lt j i] is known, or
+    [j] is small and [i] large ([universe_index_large]). *)
 Ltac rewrite_per_univ_below :=
   repeat match goal with
     | H : context [per_univ_below ?i ?j] |- _ =>
-        rewrite (per_univ_below_spec i j) in H by solve_universe_index
+        rewrite (per_univ_below_spec i j) in H
+          by first [ solve_universe_index | apply universe_index_large_above_small; assumption ]
     | |- context [per_univ_below ?i ?j] =>
-        rewrite (per_univ_below_spec i j) by solve_universe_index
+        rewrite (per_univ_below_spec i j)
+          by first [ solve_universe_index | apply universe_index_large_above_small; assumption ]
     end.
 
 (** A case of an inversion whose relevance premise is false of a value
