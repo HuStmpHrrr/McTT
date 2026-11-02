@@ -315,7 +315,7 @@ Fixpoint chain_refs (H : modexp) (ch : list string) : list (privacy_table * stri
     the target, not written, so they are not checked. *)
 Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * string)%type :=
   match M with
-  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_true | a_tt | a_False | a_var _
+  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False | a_var _
   | a_placeholder_type | a_placeholder => nil
   | a_succl M | a_univ M | a_left M | a_right M => exp_refs S M
   | a_maxl M N | a_absurd M N => exp_refs S M ++ exp_refs S N
@@ -363,7 +363,7 @@ with modexp_refs (S : list privacy_table) (H : modexp) : list (privacy_table * s
   end
 with binding_refs (S : list privacy_table) (b : binding) : list (privacy_table * string)%type :=
   match b with
-  | b_def oA M => match oA with Some A => exp_refs S A | None => nil end ++ exp_refs S M
+  | b_def A M => exp_refs S A ++ exp_refs S M
   | b_mod U => gunit_refs S U
   end
 with gunit_refs (S : list privacy_table) (U : gunit) : list (privacy_table * string)%type :=
