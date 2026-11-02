@@ -187,14 +187,16 @@ Proof. intros *; rewrite eval_wk_id; reflexivity. Qed.
 
 (** ** Evaluating the Identity and the Weakenings at a Context
 
-    The identity evaluates to any environment, and a weakening to its
-    image: a propositional entry of the target is the corresponding entry
-    of the environment, which carries its proof. *)
+    The identity evaluates to the environment restamped, and a weakening
+    to its image restamped ([restamp_env]): a propositional entry of the
+    target is the corresponding entry of the environment, which carries
+    its proof.  A context PER relates the restamped environments as it
+    relates the environments ([per_ctx_env_restamp]). *)
 
 Lemma eval_sub_id_rel : forall {Γ R ρ ρ'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Dom ρ ≈ ρ' ∈ R ->
-    ⟦ Id : Γ ⟧s ρ ↘ ρ /\ ⟦ Id : Γ ⟧s ρ' ↘ ρ'.
+    ⟦ Id : Γ ⟧s ρ ↘ restamp_env ρ /\ ⟦ Id : Γ ⟧s ρ' ↘ restamp_env ρ'.
 Proof.
   intros * HΓ Hρ; split; apply eval_sub_id.
 Qed.
@@ -202,7 +204,7 @@ Qed.
 Lemma eval_sub_of_wk_rel : forall {Γ R φ ρ ρ'} `{Hφ : WkMono φ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Dom ⟪φ⟫ ρ ≈ ρ' ∈ R ->
-    ⟦ ι φ : Γ ⟧s ρ ↘ ⟪φ⟫ ρ.
+    ⟦ ι φ : Γ ⟧s ρ ↘ restamp_env (⟪φ⟫ ρ).
 Proof.
   intros Γ R φ ρ ρ' Hφ HΓ Hρ; exact (eval_sub_of_wk _ _ _ (Hφ := Hφ)).
 Qed.
@@ -213,7 +215,7 @@ Lemma eval_sub_of_wk_pair : forall {Γ φ R R' ρ ρ'},
     rel_wk φ R R' ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R' ->
     Dom ρ ≈ ρ' ∈ R ->
-    ⟦ ι φ : Γ ⟧s ρ ↘ ⟪φ⟫ ρ /\ ⟦ ι φ : Γ ⟧s ρ' ↘ ⟪φ⟫ ρ'.
+    ⟦ ι φ : Γ ⟧s ρ ↘ restamp_env (⟪φ⟫ ρ) /\ ⟦ ι φ : Γ ⟧s ρ' ↘ restamp_env (⟪φ⟫ ρ').
 Proof.
   intros * Hφ HΓ Hρ; pose proof (rel_wk_mono _ _ _ Hφ) as Hm.
   split; exact (eval_sub_of_wk _ _ _ (Hφ := Hm)).
@@ -224,7 +226,7 @@ Qed.
 Lemma eval_sub_shift_rel : forall {e Γ R ρ ρ'},
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
     Dom ρ ≈ ρ' ∈ R ->
-    ⟦ Wk : Γ ⟧s ρ ↘ ρ↯ /\ ⟦ Wk : Γ ⟧s ρ' ↘ ρ'↯.
+    ⟦ Wk : Γ ⟧s ρ ↘ restamp_env ρ↯ /\ ⟦ Wk : Γ ⟧s ρ' ↘ restamp_env ρ'↯.
 Proof.
   intros * HΓ Hρ; split; apply eval_sub_shift.
 Qed.
@@ -302,7 +304,7 @@ Qed.
 Lemma eval_sub_q_inv : forall e Δ σ ρ ρq,
     ⟦ q σ : e :: Δ ⟧s ρ ↘ ρq ->
     ⟦ sb_wk σ ↑ : Δ ⟧s ρ ↘ ρq↯ /\
-      (~ entry_propositional gc_deps gc_stack (e :: Δ)%list ρq 0 -> env_entry ρq 0 = env_entry ρ 0).
+      (~ entry_propositional gc_deps gc_stack (e :: Δ)%list ρq 0 -> env_entry ρq 0 = restamp_entry (env_entry ρ 0)).
 Proof.
   intros * H; split.
   - intros x Hx; rewrite env_entry_drop; split.
@@ -512,14 +514,15 @@ Proof.
   assert (Hψ' : WkMono ψ) by exact Hψm.
   assert (H1 : Dom ⟪ψ⟫ (⟪φ⟫ ρ) ≈ ⟪ψ⟫ (⟪φ⟫ ρ') ∈ env_relΓ) by exact (Hψ _ _ (Hφ _ _ Hρ)).
   assert (H2 : Dom ⟪ψ⟫ (⟪φ⟫ ρ') ≈ ⟪ψ⟫ (⟪φ⟫ ρ) ∈ env_relΓ) by (symmetry; exact H1).
-  apply mk_rel_sub with (ρσφ := ⟪ψ ⊙ φ⟫ ρ) (ρσ := ⟪ψ⟫ (⟪φ⟫ ρ)) (ρ'σ' := ⟪ψ⟫ (⟪φ⟫ ρ')) (ρ'σ'φ := ⟪ψ ⊙ φ⟫ ρ').
+  apply mk_rel_sub with (ρσφ := restamp_env (⟪ψ ⊙ φ⟫ ρ)) (ρσ := restamp_env (⟪ψ⟫ (⟪φ⟫ ρ)))
+                        (ρ'σ' := restamp_env (⟪ψ⟫ (⟪φ⟫ ρ'))) (ρ'σ'φ := restamp_env (⟪ψ ⊙ φ⟫ ρ')).
   - eapply (eval_sub_of_wk_rel (φ := ψ ⊙ φ)); [ exact HΓ | rewrite eval_wk_compose by assumption; exact H1 ].
   - eapply eval_sub_of_wk_rel; [ exact HΓ | exact H1 ].
   - eapply eval_sub_of_wk_rel; [ exact HΓ | exact H2 ].
   - eapply (eval_sub_of_wk_rel (φ := ψ ⊙ φ)); [ exact HΓ | rewrite eval_wk_compose by assumption; exact H2 ].
   - rewrite !eval_wk_compose by assumption.
     apply rel_chain_4_of_2; [ solve_chain_PER |].
-    exact H1.
+    exact (per_ctx_env_restamp HΓ _ _ H1).
 Qed.
 
 Corollary rel_sub_of_wk : forall {Δ ψ Γ},
@@ -712,18 +715,107 @@ Proof.
   destruct (eval_sub_id_rel HΓ Hρ) as [Hid Hid'].
   destruct (HM _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid')
     as [R [Htyp Hexp]].
-  destruct Htyp as [aσ a a' a'σ' Haσ ? ? ? Htychain].
-  exists a, a', R.
-  assert (DF a ≈ a' ∈ per_univ_elem i ↘ R) by pairwise.
+  (** The outer values: [A[Id]] is [A], at the environments themselves.
+      The inner ones are at their restampings. *)
+  destruct Htyp as [aσ a a' a'σ' Haσ ? ? Ha'σ' Htychain].
+  rewrite exp_sub_id in Haσ, Ha'σ'.
+  exists aσ, a'σ', R.
+  assert (DF aσ ≈ a'σ' ∈ per_univ_elem i ↘ R) by pairwise.
   repeat split; try eassumption.
-  destruct Hexp as [(a0 & Ha0 & Hp) | [mσ m m' m'σ' ? ? ? ? Hmchain]].
+  destruct Hexp as [(a0 & Ha0 & Hp) | [mσ m m' m'σ' Hmσ ? ? Hm'σ' Hmchain]].
   - left.
+    rewrite exp_sub_id in Ha0.
     assert (a0 = aσ) as -> by (eapply functional_eval_exp; eassumption).
-    assert (Hr : DF aσ ≈ a ∈ per_univ_elem i ↘ R) by pairwise.
-    rewrite <- (per_univ_elem_relevance _ _ _ _ Hr); exact Hp.
-  - right; exists m, m'.
+    exact Hp.
+  - right; exists mσ, m'σ'.
+    rewrite exp_sub_id in Hmσ, Hm'σ'.
     repeat split; try eassumption.
     pairwise.
+Qed.
+
+(** ** Instances at Unrestamped Environments
+
+    A substitution of variables ([Id], a weakening, [Wk]) evaluates to the
+    environment it reads restamped ([eval_sub_id]): an instance of a
+    judgment along it has its inner values at the restampings.  The [Id]
+    instance at the environments themselves has the same inner values,
+    and its outer values are at the environments, so the two chains merge
+    there.  These two lemmas read a judgment's body at a substitution
+    whose results are restampings, with the inner values at the
+    environments restamped, for example [⟪φ⟫ ρ] for [ι φ] at [ρ]. *)
+Lemma rel_exp_body_unrestamp : forall {Γ T M M' RΓ} {i : nat},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+    (forall Γ' R' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R') σ σ',
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
+        forall ρ ρ' ρσ ρ'σ',
+          Dom ρ ≈ ρ' ∈ R' -> ⟦ σ : Γ ⟧s ρ ↘ ρσ -> ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+          exists R, rel_typ i T σ ρ ρσ T σ' ρ' ρ'σ' R /\
+            (type_propositional T σ ρ \/ rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' R)) ->
+    forall Γ' R' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R') σ σ',
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ R' ->
+        ⟦ σ : Γ ⟧s ρ ↘ restamp_env ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ restamp_env ρ'σ' ->
+        Dom ρσ ≈ ρ'σ' ∈ RΓ ->
+        exists R, rel_typ i T σ ρ ρσ T σ' ρ' ρ'σ' R /\
+          (type_propositional T σ ρ \/ rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' R).
+Proof.
+  intros * HΓ HM * HΓ' * Hσ * Hρ Hev Hev' Hρσ.
+  destruct (HM _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R1 [Ht1 He1]].
+  destruct (eval_sub_id_rel HΓ Hρσ) as [Hid Hid'].
+  destruct (HM _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρσ Hid Hid') as [R2 [Ht2 He2]].
+  destruct Ht1 as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hac].
+  destruct Ht2 as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbc].
+  rewrite exp_sub_id in Hb1, Hb4.
+  assert (b2 = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (b3 = a3) as -> by (eapply functional_eval_exp; eassumption).
+  assert (Hmid1 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ R1) by pairwise.
+  assert (Hmid2 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ R2) by pairwise.
+  handle_per_univ_elem_irrel.
+  assert (Hty : rel_chain (per_univ_elem i R1) ([a1; b1; b4; a4])) by merge_rel_chain Hac Hbc a2.
+  exists R1; split; [ apply (mk_rel_exp a1 b1 b4 a4); assumption |].
+  destruct He1 as [Hp | [v1 v2 v3 v4 Hv1 Hv2 Hv3 Hv4 Hc1]]; [ left; exact Hp |].
+  destruct He2 as [(c & Hc & Hp) | [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hc2]].
+  { left; exists a1; split; [ exact Ha1 |].
+    rewrite exp_sub_id in Hc.
+    assert (c = b1) as -> by (eapply functional_eval_exp; eassumption).
+    assert (Hab : DF a1 ≈ b1 ∈ per_univ_elem i ↘ R1) by pairwise.
+    rewrite (per_univ_elem_relevance _ _ _ _ Hab); exact Hp. }
+  rewrite exp_sub_id in Hw1, Hw4.
+  assert (w2 = v2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (w3 = v3) as -> by (eapply functional_eval_exp; eassumption).
+  right; apply (mk_rel_exp v1 w1 w4 v4); try eassumption.
+  merge_rel_chain Hc1 Hc2 v2.
+Qed.
+
+(** For type judgments, at any PER of type values ([per_univ i], or the
+    elements of a universe). *)
+Lemma rel_type_body_unrestamp : forall {Γ T T' RΓ} {P : relation domain} `{HP : PER domain P},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+    (forall Γ' R' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R') σ σ',
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
+        forall ρ ρ' ρσ ρ'σ',
+          Dom ρ ≈ ρ' ∈ R' -> ⟦ σ : Γ ⟧s ρ ↘ ρσ -> ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+          rel_exp T σ ρ ρσ T' σ' ρ' ρ'σ' P) ->
+    forall Γ' R' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R') σ σ',
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ R' ->
+        ⟦ σ : Γ ⟧s ρ ↘ restamp_env ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ restamp_env ρ'σ' ->
+        Dom ρσ ≈ ρ'σ' ∈ RΓ ->
+        rel_exp T σ ρ ρσ T' σ' ρ' ρ'σ' P.
+Proof.
+  intros * HP HΓ HT * HΓ' * Hσ * Hρ Hev Hev' Hρσ.
+  destruct (HT _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hac].
+  destruct (eval_sub_id_rel HΓ Hρσ) as [Hid Hid'].
+  destruct (HT _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρσ Hid Hid') as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbc].
+  rewrite exp_sub_id in Hb1, Hb4.
+  assert (b2 = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (b3 = a3) as -> by (eapply functional_eval_exp; eassumption).
+  apply (mk_rel_exp a1 b1 b4 a4); try eassumption.
+  merge_rel_chain Hac Hbc a2.
 Qed.
 
 (** The same with the element PER replaced by the canonical head PER of the
@@ -775,11 +867,14 @@ Proof.
   destruct (eval_sub_id_rel HΓ Hρ) as [Hid Hid'].
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid')
     as [aσ a a'σ' a' HaσI ? Ha'σ'I ? Hl Hr Hsub].
-  (** Both commutation obligations of [rel_subtyp_under_ctx] compare a value with
-    itself, so the subtyping need not be transported. *)
+  (** The inner values are at the restamped environments; the subtyping is
+    transported to the outer ones, the values of [A[Id]] and [A'[Id]] at
+    the environments themselves. *)
   rewrite exp_sub_id in HaσI, Ha'σ'I.
-  exists a, a'.
-  repeat split; eassumption.
+  exists aσ, a'σ'.
+  destruct Hl as [Rl Hl], Hr as [Rr Hr].
+  repeat split; try eassumption.
+  eapply per_subtyp_transp; [ exact Hsub | symmetry; exact Hl | symmetry; exact Hr ].
 Qed.
 
 (** * Precomposition with a Weakening
@@ -904,8 +999,11 @@ Proof.
   assert (Hρτl : Dom ρτ ≈ ρτ ∈ env_relΓ) by (etransitivity; [ exact Hρτ | exact Hρτ' ]).
   assert (Hρτr : Dom ρ'τ' ≈ ρ'τ' ∈ env_relΓ) by (etransitivity; [ exact Hρτ' | exact Hρτ ]).
   pose proof (rel_wk_mono _ _ _ Hφ) as Hφm.
+  (** The first instantiation is read at the restampings of the inner
+      environments, which the second one names ([eval_sub_restamp]). *)
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk_pre Hτj Hφj) _ _ _ _ Hρ
-              (eval_sub_wk_pre_rel Hφj _ HΓ Hρτl Hev) (eval_sub_wk_pre_rel Hφj _ HΓ Hρτr Hev'))
+              (eval_sub_restamp _ _ _ _ (eval_sub_wk_pre_rel Hφj _ HΓ Hρτl Hev))
+              (eval_sub_restamp _ _ _ _ (eval_sub_wk_pre_rel Hφj _ HΓ Hρτr Hev')))
     as [R1 [Htyp1 Hexp1]].
   destruct (HMgen _ _ HΓ _ _ (rel_sub_of_wk Hφj) _ _ _ _ Hρτ
               ltac:(eval_wk_at (Hφ _ _ Hρτ)) ltac:(eval_wk_at (Hφ _ _ Hρτ')))
@@ -978,16 +1076,38 @@ Proof.
   (** The type pair first: it puts [per_univ_elem i R] in context, which is what
       resolves the [PER R] obligation of the element pair. *)
   assert (Hmid : DF a1 ≈ a3 ∈ per_univ_elem i ↘ R) by pairwise.
-  exists a1, a3, R.
+  (** The inner values are at the restampings of [⟪φ⟫ ρ] and [⟪φ⟫ ρ'].
+      The judgment read at the restamping of [⟪φ⟫ ρ] against [⟪φ⟫ ρ']
+      itself, related by [per_ctx_env_restamp_left], bridges the first
+      inner values to the values wanted. *)
+  assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
+  pose proof (per_ctx_env_restamp_left HΔk _ _ (Hφ _ _ Hρ)) as Hrφρ.
+  destruct (rel_exp_under_ctx_simple HM) as [env_relΔ3 [HΔ3 [i3 HMs]]].
+  assert (E3 : env_relΔ <~> env_relΔ3) by (eapply per_ctx_env_right_irrel; [ exact HΔk | exact HΔ3 ]).
+  destruct (HMs _ _ (proj1 (E3 _ _) Hrφρ)) as (b & b' & R3 & Hb & Hb' & HR3 & Hbr).
+  assert (b = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem i ↘ R) by pairwise.
+  assert (H22 : DF a2 ≈ a2 ∈ per_univ_elem i ↘ R) by pairwise.
+  assert (E : R3 <~> R) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR3 H22).
+  exists a1, b', R.
+  assert (Hab' : DF a1 ≈ b' ∈ per_univ_elem i ↘ R).
+  { eapply per_univ_trans; [ exact H12 | eapply per_univ_elem_resp_iff; [ exact HR3 | exact E ] ]. }
   repeat split; try eassumption.
-  destruct Hexp as [(c & Hc & Hp) | [v1 v2 v3 v4 Hv1 ? Hv3 ? Hc]].
+  destruct Hexp as [(c & Hc & Hp) | [v1 v2 v3 v4 Hv1 Hv2 Hv3 ? Hc]].
   - left; rewrite exp_sub_of_wk in Hc.
     assert (c = a1) as -> by (eapply functional_eval_exp; eassumption).
     exact Hp.
-  - right; rewrite exp_sub_of_wk in Hv1.
-    exists v1, v3.
+  - rewrite exp_sub_of_wk in Hv1.
+    destruct Hbr as [Hp | (w & w' & Hw & Hw' & Hww')].
+    { left; rewrite (per_univ_elem_relevance _ _ _ _ H12); exact Hp. }
+    right.
+    assert (w = v2) as -> by (eapply functional_eval_exp; eassumption).
+    exists v1, w'.
     repeat split; try eassumption.
-    pairwise.
+    assert (PER R) by (eapply per_elem_PER; exact Hmid).
+    apply E in Hww'.
+    assert (Hv12 : Dom v1 ≈ v2 ∈ R) by pairwise.
+    etransitivity; eassumption.
 Qed.
 
 (** * Precomposition by [⇑]

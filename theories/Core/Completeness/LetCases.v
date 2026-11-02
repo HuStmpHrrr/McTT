@@ -401,7 +401,8 @@ Proof.
         proposition. *)
     destruct (head_not_propositional_of_relevant (e := ce_ass A) HΔ eq_refl HA HArel _ _ Hqu) as [Hnp _].
     assert (Hev0 : ρq 0 = ρ 0)
-      by (unfold env_var; rewrite (Hev0' ltac:(rewrite entry_propositional_zero_head; exact Hnp)); reflexivity).
+      by (unfold env_var; rewrite (Hev0' ltac:(rewrite entry_propositional_zero_head; exact Hnp));
+          destruct (env_entry ρ 0); reflexivity).
     (** [M] along [σ] at the tail. *)
     pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
     pose proof HM as [env_relΔ' HΔ' j HMgen].
@@ -569,9 +570,21 @@ Proof.
   rewrite <- exp_sub_extend_sub in Hc1, Hc4.
   pose proof (rel_sub_under_ctx_extend_sub_def_relevant (rel_sub_id (ex_intro _ _ HΓ)) HA HArel HMl HMs HMs) as HidM.
   rewrite exp_sub_id in HidM.
-  destruct (HBlgen _ _ HΓ _ _ HidM _ _ _ _ Hρσ
-              (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2 Hn2)
-              (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3 Hn3m))
+  (** [Id,,M] evaluates to the extensions of the restamped environments;
+      the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
+      ([rel_exp_body_unrestamp]). *)
+  destruct (head_not_propositional_of_relevant (e := ce_def A M) HΓ eq_refl HA HArel _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
+    as [Hnp2r Hnp3r].
+  assert (PER RNl) by (eapply per_elem_PER; exact Ha23l).
+  assert (HId2 : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3m ⦂ substituted_type ∈ per_env_extend_def A M env_relΓ).
+  { eapply (per_env_extend_def_intro _ HAat HMlat Hρσ);
+      [ | apply substituted_entry_readable | apply substituted_entry_readable | exact Hn2 | ].
+    - eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ].
+    - eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ]. }
+  destruct (rel_exp_body_unrestamp HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
+              (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3m ⦂ substituted_type) Hρσ
+              (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2)
+              (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3m) HId2)
     as [R2 [HI2t HI2e]].
   pose proof HI2t as [c2 cB2 cB3 c3 Hc2 HcB2 HcB3 Hc3 Hc2chain].
   (** *** The Bridges at the Substituted Environments
@@ -834,8 +847,24 @@ Proof.
   pose proof (rel_sub_under_ctx_into_def_prop (M := M) HA
                 (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HMl HMs HMs)) as HidM.
   rewrite exp_sub_id in HidM.
-  destruct (HBlgen _ _ HΓ _ _ HidM _ _ _ _ Hρσ
-              (eval_sub_extend_proof _ _ _ _ _ _ Hid2 Hh2) (eval_sub_extend_proof _ _ _ _ _ _ Hid3 Hh3))
+  (** [Id,,M] evaluates to the extensions of the restamped environments;
+      the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
+      ([rel_exp_body_unrestamp]). *)
+  pose proof (per_ctx_env_restamp HΓ _ _ Hρσ) as Hρσr.
+  destruct (rel_exp_of_prop_inversion_simple_at HΓ HA _ _ Hρσr) as (a2r & a3r & Ha2r & Ha3r & [Hl2r Hr3r _]).
+  assert (Hh2r : head_propositional gc_deps gc_stack (ce_def A M) Γ (restamp_env ρσ))
+    by (apply (proj2 (head_propositional_iff (e := ce_def A M) HΓ eq_refl HAs Hρσr Ha2r)); exact Hl2r).
+  assert (Hh3r : head_propositional gc_deps gc_stack (ce_def A M) Γ (restamp_env ρ'σ'))
+    by (apply (proj2 (head_propositional_iff_right (e := ce_def A M) HΓ eq_refl HAs Hρσr Ha3r)); exact Hr3r).
+  destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HMs) _ _ Hρσ) as [_ Rp2'].
+  assert (HId2 : Dom ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ substituted_type ≈ ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ substituted_type
+                   ∈ per_env_extend A A env_relΓ)
+    by (apply per_env_extend_intro';
+        [ exact Hρσ | eapply per_head_proof; [ exact Ha2 | exact Hl2 | exact Rp2 | exact Rp2' ]
+        | apply substituted_entry_readable | apply substituted_entry_readable ]).
+  destruct (rel_exp_body_unrestamp HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
+              (ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ substituted_type) (ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ substituted_type) Hρσ
+              (eval_sub_extend_proof _ _ _ _ _ _ Hid2 Hh2r) (eval_sub_extend_proof _ _ _ _ _ _ Hid3 Hh3r) HId2)
     as [R2 [HI2t HI2e]].
   pose proof HI2t as [c2 cB2 cB3 c3 Hc2 HcB2 HcB3 Hc3 Hc2chain].
   (** *** The Bridges at the Substituted Environments

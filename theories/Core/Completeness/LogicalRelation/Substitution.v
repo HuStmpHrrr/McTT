@@ -214,22 +214,42 @@ Proof.
   pose proof (rel_sub_of_wk_rel HΓA HΓ (rel_wk_shift HΓ HΓA) (fun x Hx => ltac:(cbn; lia))) as HWk.
   destruct HM as [env_relΓ2 HΓ2 j HMgen].
   assert (Hρt : Dom ρ ≈ ρ' ∈ env_relΓ) by (destruct Hρ as [Ht _ _ _ _ _]; exact Ht).
-  (** [(ρ ↦ c)↯] is [ρ] up to conversion, so the two substituted environments
-    that [rel_exp_under_ctx] asks to be named are the tails themselves.  This makes
-    the inner pair of both chains a statement about [ρ] and [ρ'] rather than about
-    environments reached through [σ]. *)
+  (** The two substituted environments of [Wk] at [ρ ↦ c] and [ρ' ↦ c'] are
+    the restamped tails ([eval_sub_shift]).  The [Id] instance at the
+    tails has the same inner environments, and its outer values are the
+    values at the tails themselves: the two chains merge there. *)
   destruct (eval_sub_shift_rel HΓA Hρ) as [Hs Hs'].
   destruct (HMgen _ _ HΓA _ _ HWk _ _ _ _ Hρ Hs Hs') as [R [Htyp Hexp]].
-  apply (rel_exp_or_prop_relevant Htyp (HBr _ _ Hρt)) in Hexp.
+  pose proof (HBr _ _ (per_ctx_env_restamp_left HΓ _ _ Hρt)) as HBrr.
+  apply (rel_exp_or_prop_relevant Htyp HBrr) in Hexp.
   destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct Hexp as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hwchain].
   rewrite exp_sub_of_shift in Hb1, Hb4, Hw1, Hw4.
-  exists j, R, b1, b2, b3, b4, w1, w2, w3, w4.
+  assert (HΓk : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ2) by exact HΓ2.
+  assert (E2 : env_relΓ <~> env_relΓ2) by (eapply per_ctx_env_right_irrel; [ exact HΓ | exact HΓ2 ]).
+  destruct (eval_sub_id_rel HΓk (proj1 (E2 _ _) Hρt)) as [Hid Hid'].
+  destruct (HMgen _ _ HΓk _ _ (rel_sub_id (ex_intro _ _ HΓk)) _ _ _ _ (proj1 (E2 _ _) Hρt) Hid Hid')
+    as [R' [Htyp' Hexp']].
+  apply (rel_exp_or_prop_relevant Htyp' HBrr) in Hexp'.
+  destruct Htyp' as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
+  destruct Hexp' as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Huchain].
+  rewrite exp_sub_id in Hc1, Hc4, Hu1, Hu4.
+  cbn [drop_env List.tl] in *.
+  functional_eval_rewrite_clear.
+  assert (Hm1 : DF b2 ≈ b3 ∈ per_univ_elem j ↘ R) by pairwise.
+  assert (Hm2 : DF b2 ≈ b3 ∈ per_univ_elem j ↘ R') by pairwise.
+  assert (ER : R' <~> R) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hm2 Hm1).
+  assert (PER R) by (eapply per_elem_PER; exact Hm1).
+  apply (rel_chain_mono _ _ (fun a b Hab => proj1 (ER a b) Hab)) in Huchain.
+  apply (fun Hx => per_univ_elem_resp_iff Hx ER) in Hm2.
+  assert (Hcc : rel_chain (per_univ_elem j R) ([c1; b2; b3; c4])).
+  { eapply rel_chain_mono; [| exact Hcchain ]; intros a b Hab; eapply per_univ_elem_resp_iff; [ exact Hab | exact ER ]. }
+  exists j, R, b1, c1, c4, b4, w1, u1, u4, w4.
   do 4 (split; [ eassumption |]).
   split; [ pairwise |].
   split; [ pairwise |].
   do 4 (split; [ eassumption |]).
-  eassumption.
+  merge_rel_chain Hwchain Huchain w2.
 Qed.
 
 (** ** [q] Preserves Semantic Weakening
@@ -252,14 +272,28 @@ Proof.
   (** The commutation obligation of [A] along [ι ψ].  It is used three times,
     to build the context PER of [Γ ▹ A[ψ]ʷ], to bridge the head PERs and to
     carry a propositional head across, so it is named, at an environment
-    pair the caller supplies. *)
+    pair the caller supplies.  Its inner values are at [⟪ψ⟫ ρ] and
+    [⟪ψ⟫ ρ'] themselves, read off [rel_type_inversion_wk] at three pairs
+    (the instance along [ι ψ] has them at the restampings). *)
   assert (Hcom : forall ρ ρ',
              Dom ρ ≈ ρ' ∈ env_relΓ ->
              rel_exp A (ι ψ) ρ ⟪ψ⟫ ρ
-                     A (ι ψ) ρ' ⟪ψ⟫ ρ' (per_univ i))
-    by (intros ρ ρ' Hρ;
-        destruct (eval_sub_of_wk_pair (Γ := Δ) Hψ ltac:(eassumption) Hρ) as [Hw Hw'];
-        exact (HAgen _ _ HΓ _ _ (rel_sub_of_wk Hψj) _ _ _ _ Hρ Hw Hw')).
+                     A (ι ψ) ρ' ⟪ψ⟫ ρ' (per_univ i)).
+  { intros ρ ρ' Hρ.
+    destruct (rel_type_inversion_wk Hψj HA) as [R0 [HR0 Hw]].
+    assert (E0 : env_relΓ <~> R0) by (eapply per_ctx_env_right_irrel; eassumption).
+    assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
+    assert (Hρρ : Dom ρ ≈ ρ ∈ env_relΓ) by solve_per.
+    assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ env_relΓ) by solve_per.
+    destruct (Hw _ _ (proj1 (E0 _ _) Hρ)) as (a1 & a3 & Ha1 & Ha3 & H13).
+    destruct (Hw _ _ (proj1 (E0 _ _) Hρρ)) as (a1' & a2 & Ha1' & Ha2 & H12).
+    destruct (Hw _ _ (proj1 (E0 _ _) Hρ'ρ')) as (a4 & a3' & Ha4 & Ha3' & H43).
+    assert (a1' = a1) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a3' = a3) as -> by (eapply functional_eval_exp; eassumption).
+    rewrite <- exp_sub_of_wk in Ha1, Ha4.
+    apply (mk_rel_exp a1 a2 a3 a4); try eassumption.
+    apply rel_chain_4;
+      [ exact H12 | etransitivity; [ symmetry; exact H12 | exact H13 ] | symmetry; exact H43 ]. }
   pose proof (per_ctx_env_of_typ HΔ' HA) as HΔA.
   assert (HΓA : EF Γ ▹ A[ψ]ʷ ≈ Γ ▹ A[ψ]ʷ ∈ per_ctx_env
                      ↘ (per_env_extend A[ψ]ʷ A[ψ]ʷ env_relΓ)).
@@ -410,7 +444,8 @@ Proof.
   assert (Hd12 : Dom d1 ≈ d2 ∈ per_univ i) by pairwise.
   destruct Hd12 as [R12 Hd12]; pose proof (per_univ_elem_relevance _ _ _ _ Hd12) as Er12.
   destruct (eval_sub_of_wk_pair Hφ HΓ Hρ) as [Hw Hw'].
-  destruct (HMgen _ _ HΓ' _ _ (rel_sub_of_wk_rel HΓ' HΓ Hφ Hφb) _ _ _ _ Hρ Hw Hw') as [Rt [Htyp Hexp]].
+  destruct (rel_exp_body_unrestamp HΓ HMgen _ _ HΓ' _ _ (rel_sub_of_wk_rel HΓ' HΓ Hφ Hφb) _ _ _ _ Hρ Hw Hw' (Hφ _ _ Hρ))
+    as [Rt [Htyp Hexp]].
   destruct (domain_relevance d2) eqn:Er2.
   - (** A relevant head: the heads are the term's four values, related in
       the head PER of [A] through the chains. *)
@@ -522,7 +557,8 @@ Proof.
   destruct (eval_sub_id_rel HΔk Ht12) as [Hid1 Hid2].
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk_rel Hσj HΓ' HΓ Hφ Hφb) _ _ _ _ Hρ Ht1 Ht4) as [R1 [Htyp1 Hexp1]].
   destruct (HMgen _ _ HΓ _ _ Hσj _ _ _ _ (Hφ _ _ Hρ) Ht2 Ht3) as [R2 [Htyp2 Hexp2]].
-  destruct (HMrgen _ _ HΔk _ _ (rel_sub_id (ex_intro _ _ HΔk)) _ _ _ _ Ht12 Hid1 Hid2) as [R3 [Htyp3 Hexp3]].
+  destruct (rel_exp_body_unrestamp HΔk HMrgen _ _ HΔk _ _ (rel_sub_id (ex_intro _ _ HΔk)) _ _ _ _ Ht12 Hid1 Hid2 Ht12)
+    as [R3 [Htyp3 Hexp3]].
   (** Whether the head is a proposition is decided by [T]'s value at an
     inner tail, and the four tails agree on it. *)
   pose proof (head_propositional_pair (e := ce_ass T) HΔk eq_refl HTs Ht12) as I12.
@@ -705,7 +741,7 @@ Proof.
   destruct (HAgen _ _ HΓA' _ _ Hσwkj _ _ _ _ (Hψ _ _ Hρ) Hy1 Hy4)
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct (eval_sub_id_rel HΔ3 Hy12) as [Hid1 Hid2].
-  destruct (HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12 Hid1 Hid2)
+  destruct (rel_type_body_unrestamp HΔ3 HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12 Hid1 Hid2 Hy12)
     as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   rewrite exp_sub_id in Hd1, Hd4.
   (** The heads are proofs when [A] is a proposition at the tails, which
@@ -727,8 +763,10 @@ Proof.
     by (apply (Hhead i R c1 c4); first [ eassumption | pairwise ]).
   assert (Hheads : rel_chain R ([ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)]))
     by (apply rel_chain_4_of_2; [ solve_chain_PER | rewrite <- !(eval_wk_app ψ); exact Hh ]).
-  apply (mk_rel_sub (env_entry ρ (ψ 0) :: x1) (env_entry ρ (ψ 0) :: y1)
-                    (env_entry ρ' (ψ 0) :: y4) (env_entry ρ' (ψ 0) :: x4));
+  (** The heads are restamped ([eval_sub_q]); the context PER relates the
+      environments as it relates those with the heads themselves. *)
+  apply (mk_rel_sub (restamp_entry (env_entry ρ (ψ 0)) :: x1) (restamp_entry (env_entry ρ (ψ 0)) :: y1)
+                    (restamp_entry (env_entry ρ' (ψ 0)) :: y4) (restamp_entry (env_entry ρ' (ψ 0)) :: x4));
     [ apply eval_sub_wk_q; exact Hx1
     | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q; exact Hy1
     | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q; exact Hy4
@@ -764,6 +802,11 @@ Proof.
     match goal with
     | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
     | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
+    end;
+    lazymatch goal with
+    | |- per_env_extend _ _ _ _ _ =>
+        eapply (per_ctx_env_resp_restamped HΔA); [ apply env_agree_restamped_head | apply env_agree_restamped_head |]
+    | _ => idtac
     end;
     apply per_env_extend_intro;
     first
@@ -1215,9 +1258,20 @@ Proof.
     as [t1 tA2 tA3 t4 Ht1 HtA2 HtA3 Ht4 HtAchain].
   apply rel_chain_relevant_univ in HtAchain.
   rewrite <- exp_sub_extend_sub in Ht1, Ht4.
-  destruct (HBgen _ _ HΓ _ _ HidN _ _ _ _ Hρσ
-                  ltac:(apply eval_sub_extend; eassumption)
-                  ltac:(apply eval_sub_extend; eassumption))
+  (** The second along [Id,,N], whose results are the extensions of the
+      restamped environments; read at the extensions of the environments
+      themselves ([rel_type_body_unrestamp]). *)
+  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
+    as [Hnp2r Hnp3r].
+  pose proof (per_ctx_env_of_typ HΓ (rel_type_of_typ HA)) as HΓA0.
+  assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (Hext : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3 ⦂ substituted_type ∈ env_relΓA).
+  { apply EA; apply per_env_extend_intro';
+      [ exact Hρσ | eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | pairwise ]
+      | apply substituted_entry_readable | apply substituted_entry_readable ]. }
+  destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρσ ρ'σ'
+              (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3 ⦂ substituted_type) Hρσ
+              (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2) (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3) Hext)
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
   apply rel_chain_relevant_univ in HtBchain.
   (** The bridge, at the pair of arguments that crosses from the one
@@ -1276,11 +1330,22 @@ Proof.
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
-  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ Hρ) as [Hnp _].
+  (** [Id,,N] evaluates to the extension of the restamped environment; the
+      instance is read at the extension of [ρ] itself
+      ([rel_type_body_unrestamp]). *)
+  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ (per_ctx_env_restamp HΓ _ _ Hρ)) as [Hnp _].
   destruct (eval_sub_id_rel HΓ Hρ) as [Hid _].
-  destruct (HBgen _ _ HΓ _ _ HidN _ _ _ _ Hρ
-                  (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn)
-                  (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn))
+  destruct (rel_exp_under_ctx_simple_at_rel HΓ HA HN _ _ Hρ) as (m & m' & Hm & Hm' & Hmm).
+  assert (m = n) as -> by (eapply functional_eval_exp; eassumption).
+  assert (m' = n) as -> by (eapply functional_eval_exp; eassumption).
+  pose proof (per_ctx_env_of_typ HΓ (rel_type_of_typ HA)) as HΓA0.
+  assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (Hext : Dom ρ ↦ n ⦂ substituted_type ≈ ρ ↦ n ⦂ substituted_type ∈ env_relΓA)
+    by (apply EA; apply per_env_extend_intro';
+        [ exact Hρ | exact Hmm | apply substituted_entry_readable | apply substituted_entry_readable ]).
+  destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρ ρ
+              (ρ ↦ n ⦂ substituted_type) (ρ ↦ n ⦂ substituted_type) Hρ
+              (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) Hext)
     as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
   apply rel_chain_relevant_univ in Hchain.
   destruct Hchain as [Ht12 _].

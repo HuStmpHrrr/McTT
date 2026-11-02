@@ -3907,13 +3907,75 @@ Proof.
   eauto using per_ctx_subtyp_trans.
 Qed.
 
+(** ** Agreement up to Restamping
+
+    [env_agree_restamped n ρ1 ρ2]: below [n], each entry of [ρ2] is that of
+    [ρ1], or that of [ρ1] restamped ([restamp_entry]).  The values, the
+    modules and the term entries are the same; only the units stored in
+    module entries may be [substituted_unit] instead.  Agreement
+    ([env_agree_upto]) is an instance, and so is an environment against
+    its restamping ([env_agree_restamped_env]), as the evaluation of a
+    variable of a substitution yields ([eval_sub_id]). *)
+Definition env_agree_restamped (n : nat) (ρ1 ρ2 : env) : Prop :=
+  forall x, x < n -> env_entry ρ2 x = env_entry ρ1 x \/ env_entry ρ2 x = restamp_entry (env_entry ρ1 x).
+
+Lemma env_agree_upto_restamped : forall n ρ1 ρ2, env_agree_upto n ρ1 ρ2 -> env_agree_restamped n ρ1 ρ2.
+Proof. intros * H x Hx; left; symmetry; exact (H x Hx). Qed.
+
+#[export]
+Instance env_agree_restamped_Reflexive n : Reflexive (env_agree_restamped n).
+Proof. intros ρ x _; left; reflexivity. Qed.
+
+Lemma env_agree_restamped_env : forall n ρ, env_agree_restamped n ρ (restamp_env ρ).
+Proof. intros * x _; right; apply env_entry_restamp. Qed.
+
+(** An environment against its head restamped, as [q σ] keeps it
+    ([eval_sub_q]). *)
+Lemma env_agree_restamped_head : forall n e ρ, env_agree_restamped n (e :: ρ) (restamp_entry e :: ρ).
+Proof. intros n e ρ [| x] _; [ right | left ]; reflexivity. Qed.
+
+Lemma env_agree_restamped_drop : forall n ρ1 ρ2, env_agree_restamped (S n) ρ1 ρ2 -> env_agree_restamped n ρ1↯ ρ2↯.
+Proof. intros * H x Hx; rewrite !env_entry_drop; apply H; lia. Qed.
+
+Lemma env_agree_restamped_var : forall n ρ1 ρ2, env_agree_restamped n ρ1 ρ2 -> forall x, x < n -> env_var ρ1 x = env_var ρ2 x.
+Proof. intros * H x Hx; unfold env_var; destruct (H x Hx) as [E | E]; rewrite E; [| destruct (env_entry ρ1 x) ]; reflexivity. Qed.
+
+Lemma env_agree_restamped_mod : forall n ρ1 ρ2, env_agree_restamped n ρ1 ρ2 -> forall x, x < n -> env_mod ρ1 x = env_mod ρ2 x.
+Proof. intros * H x Hx; unfold env_mod; destruct (H x Hx) as [E | E]; rewrite E; [| destruct (env_entry ρ1 x) ]; reflexivity. Qed.
+
+(** A head that is a term entry is the same. *)
+Lemma env_agree_restamped_term_head : forall n ρ1 ρ2, env_agree_restamped (S n) ρ1 ρ2 ->
+    (exists t, env_entry ρ1 0 = de_term (ρ1 0) t) -> exists t, env_entry ρ2 0 = de_term (ρ2 0) t.
+Proof.
+  intros * H [t Ht]; exists t.
+  rewrite <- (env_agree_restamped_var _ _ _ H 0 ltac:(lia)).
+  destruct (H 0 ltac:(lia)) as [E | E]; rewrite E, Ht; reflexivity.
+Qed.
+
+(** Restamping keeps an entry readable, and its stored unit, if any, is
+    closed. *)
+Lemma restamp_entry_readable : forall e, entry_readable e -> entry_readable (restamp_entry e).
+Proof.
+  intros [v t | h U | v t h U] H s; cbn [restamp_entry]; [ exact (H s) | eexists; constructor |].
+  destruct (H s) as [b Hb]; inversion Hb; subst; eexists; eapply read_entry_dm; eassumption.
+Qed.
+
+Lemma restamp_entry_unit_bound : forall e, entry_unit_bound (restamp_entry e) <= entry_unit_bound e.
+Proof. intros []; cbn; lia. Qed.
+
+Lemma env_agree_restamped_readable : forall n k ρ1 ρ2, env_agree_restamped (S n) ρ1 ρ2 ->
+    head_readable k (env_entry ρ1 0) -> head_readable k (env_entry ρ2 0).
+Proof.
+  intros * H [Hr Hb]; destruct (H 0 ltac:(lia)) as [E | E]; rewrite E; [ split; assumption |].
+  split; [ exact (restamp_entry_readable _ Hr) | pose proof (restamp_entry_unit_bound (env_entry ρ1 0)); lia ].
+Qed.
+
 (** The readability of a head at an environment agreeing with one whose
-    head reads back: the head entry is the same ([env_agree_upto] at
-    [0]). *)
+    head reads back, up to restamping. *)
 Ltac readable_resp_agree :=
   match goal with
-  | Heq : env_agree_upto _ ?ρ1 ?ρ2, H : head_readable ?n (env_entry ?ρ1 0) |- head_readable ?n (env_entry ?ρ2 0) =>
-      rewrite <- (Heq 0 ltac:(cbn; lia)); exact H
+  | Heq : env_agree_restamped _ ?ρ1 ?ρ2, H : head_readable ?n (env_entry ?ρ1 0) |- head_readable ?n (env_entry ?ρ2 0) =>
+      exact (env_agree_restamped_readable _ _ _ _ Heq H)
   end.
 
 (** * Context PERs Respect Agreement of Environments
@@ -3924,12 +3986,14 @@ Ltac readable_resp_agree :=
     respecting [env_eq], which is false because a closure captures its
     environment.  It holds because a context PER inspects an environment
     only pointwise, on the entries of its context, and its head relations at
-    agreeing environments coincide up to [<~>] by irrelevance. *)
-Lemma per_ctx_env_resp_agree : forall {Γ Δ R},
+    agreeing environments coincide up to [<~>] by irrelevance.  The units
+    stored in module entries may be restamped: the PER reads a slot's
+    module and its readability only, and a restamped unit is closed. *)
+Lemma per_ctx_env_resp_restamped : forall {Γ Δ R},
     EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
     forall ρ1 ρ2 ρ1' ρ2',
-      env_agree_upto (List.length Γ) ρ1 ρ2 ->
-      env_agree_upto (List.length Γ) ρ1' ρ2' ->
+      env_agree_restamped (List.length Γ) ρ1 ρ2 ->
+      env_agree_restamped (List.length Γ) ρ1' ρ2' ->
       Dom ρ1 ≈ ρ1' ∈ R ->
       Dom ρ2 ≈ ρ2' ∈ R.
 Proof.
@@ -3938,8 +4002,8 @@ Proof.
   4: { (** A definition with a module part: the term part as a definition,
          the unit as a slot. *)
     destruct HR as [Dtail1 Hh Hterms T1 T2 T3 T4].
-    assert (Hd : env_agree_upto (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_upto_drop _ _ _ Heq).
-    assert (Hd' : env_agree_upto (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_upto_drop _ _ _ Heq').
+    assert (Hd : env_agree_restamped (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_restamped_drop _ _ _ Heq).
+    assert (Hd' : env_agree_restamped (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_restamped_drop _ _ _ Heq').
     assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption ]).
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption).
     assert (D11 : Dom ρ1↯ ≈ ρ1↯ ∈ tail_rel) by solve_per.
@@ -3959,15 +4023,15 @@ Proof.
     all: solve_def_heads_pre.
     all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Dtail2);
       try (match goal with |- def_heads_at _ _ _ _ _ _ => cbn [def_heads_at]; constructor end);
-      try rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia));
-      try rewrite <- (env_agree_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_mod _ _ _ Heq' 0 ltac:(cbn; lia));
+      try rewrite <- (env_agree_restamped_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_restamped_var _ _ _ Heq' 0 ltac:(cbn; lia));
+      try rewrite <- (env_agree_restamped_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_restamped_mod _ _ _ Heq' 0 ltac:(cbn; lia));
       try solve [ readable_resp_agree ];
       try solve [ solve_tie ]; solve_def_heads_post. }
   3: { (** A slot: the heads are the same, and the closures over the new
          tails are related to those over the old ones. *)
     destruct HR as [Dtail1 T1 T2 T3 T4 Hrl Hrr].
-    assert (Hd : env_agree_upto (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_upto_drop _ _ _ Heq).
-    assert (Hd' : env_agree_upto (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_upto_drop _ _ _ Heq').
+    assert (Hd : env_agree_restamped (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_restamped_drop _ _ _ Heq).
+    assert (Hd' : env_agree_restamped (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_restamped_drop _ _ _ Heq').
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption).
     assert (D11 : Dom ρ1↯ ≈ ρ1↯ ∈ tail_rel) by solve_per.
     assert (D11' : Dom ρ1'↯ ≈ ρ1'↯ ∈ tail_rel) by solve_per.
@@ -3976,20 +4040,20 @@ Proof.
     destruct (rel_modexp_evals_move _ _ _ _ _ _ D12 H0) as (M1 & M2 & M3 & M4).
     destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' H0) as (M1' & M2' & M3' & M4').
     constructor; [ exact Dtail2 | .. ];
-      try rewrite <- (env_agree_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_mod _ _ _ Heq' 0 ltac:(cbn; lia));
+      try rewrite <- (env_agree_restamped_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_restamped_mod _ _ _ Heq' 0 ltac:(cbn; lia));
       try solve [ readable_resp_agree ]; solve_tie. }
   all: destruct HR as [Dtail1 Hhead1];
-    assert (Hd : env_agree_upto (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_upto_drop _ _ _ Heq);
-    assert (Hd' : env_agree_upto (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_upto_drop _ _ _ Heq');
+    assert (Hd : env_agree_restamped (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_restamped_drop _ _ _ Heq);
+    assert (Hd' : env_agree_restamped (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_restamped_drop _ _ _ Heq');
     assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption ]);
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption);
     first [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Dtail2) | apply (mk_per_ctx_env_def_rel' _ _ _ _ _ _ _ _ _ Dtail2) ];
     (** The term-head fields: the new tails' types are propositions exactly
         when the old ones' are, through the mixed pair. *)
-    try (let Hp := fresh "Hp" in intros Hp; rewrite <- (Heq 0 ltac:(cbn; lia)), <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); revert Hp; solve_prop_head);
-    try (let Hp := fresh "Hp" in intros Hp; rewrite <- (Heq' 0 ltac:(cbn; lia)), <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia)); revert Hp; solve_prop_head);
+    try (let Hp := fresh "Hp" in intros Hp; apply (env_agree_restamped_term_head _ _ _ Heq); revert Hp; solve_prop_head);
+    try (let Hp := fresh "Hp" in intros Hp; apply (env_agree_restamped_term_head _ _ _ Heq'); revert Hp; solve_prop_head);
     try solve [ readable_resp_agree ];
-    rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)), <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia)).
+    rewrite <- (env_agree_restamped_var _ _ _ Heq 0 ltac:(cbn; lia)), <- (env_agree_restamped_var _ _ _ Heq' 0 ltac:(cbn; lia)).
   - pose proof (H0 _ _ Dtail1).
     pose proof (H0 _ _ Dmix).
     pose proof (H0 _ _ Dtail2).
@@ -4007,8 +4071,44 @@ Proof.
       [| split; [ solve_def_heads | exact I ] ].
     solve_def_heads_pre.
     split; [ solve_def_heads_post |].
-    constructor; try rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia));
+    constructor; try rewrite <- (env_agree_restamped_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_restamped_var _ _ _ Heq' 0 ltac:(cbn; lia));
       solve_def_heads_post.
+Qed.
+
+(** In particular, context PERs respect agreement. *)
+Corollary per_ctx_env_resp_agree : forall {Γ Δ R},
+    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
+    forall ρ1 ρ2 ρ1' ρ2',
+      env_agree_upto (List.length Γ) ρ1 ρ2 ->
+      env_agree_upto (List.length Γ) ρ1' ρ2' ->
+      Dom ρ1 ≈ ρ1' ∈ R ->
+      Dom ρ2 ≈ ρ2' ∈ R.
+Proof.
+  intros * H * Heq Heq'; apply (per_ctx_env_resp_restamped H); apply env_agree_upto_restamped; assumption.
+Qed.
+
+(** And restamping: an environment a context PER relates is related as
+    its restamping, the result of [Id] and of every substitution of
+    variables at it ([eval_sub_id]). *)
+Corollary per_ctx_env_restamp : forall {Γ Δ R},
+    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom restamp_env ρ ≈ restamp_env ρ' ∈ R.
+Proof. intros * H * Hρ; exact (per_ctx_env_resp_restamped H _ _ _ _ (env_agree_restamped_env _ _) (env_agree_restamped_env _ _) Hρ). Qed.
+
+Corollary per_ctx_env_restamp_left : forall {Γ Δ R},
+    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom restamp_env ρ ≈ ρ' ∈ R.
+Proof.
+  intros * H * Hρ.
+  exact (per_ctx_env_resp_restamped H _ _ _ _ (env_agree_restamped_env _ _) (env_agree_upto_restamped _ _ _ (reflexivity _)) Hρ).
+Qed.
+
+Corollary per_ctx_env_restamp_right : forall {Γ Δ R},
+    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ restamp_env ρ' ∈ R.
+Proof.
+  intros * H * Hρ.
+  exact (per_ctx_env_resp_restamped H _ _ _ _ (env_agree_upto_restamped _ _ _ (reflexivity _)) (env_agree_restamped_env _ _) Hρ).
 Qed.
 
 (** In particular, context PERs respect pointwise equality. *)

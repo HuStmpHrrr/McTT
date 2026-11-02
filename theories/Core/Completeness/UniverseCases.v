@@ -90,7 +90,7 @@ Proof.
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid')
     as [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hchain].
   rewrite exp_sub_id in HaσI, Ha'σ'I.
-  exists a, a'.
+  exists aσ, a'σ'.
   repeat split; try eassumption.
   apply per_relevant_nonlevel_univ_rel; pairwise.
 Qed.
@@ -245,7 +245,7 @@ Proof.
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid')
     as [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hchain].
   rewrite exp_sub_id in HaσI, Ha'σ'I.
-  exists a, a'.
+  exists aσ, a'σ'.
   repeat split; try eassumption.
   pairwise.
 Qed.
@@ -298,8 +298,9 @@ Proof.
   destruct (eval_sub_id_rel HΓ' Hρ) as [Hid Hid'].
   destruct (HA _ _ HΓ' _ _ (rel_sub_id (ex_intro _ _ HΓ')) _ _ _ _ Hρ Hid Hid')
     as [aσ a a' a'σ' HaσI Ha Ha' Ha'σ'I Hchain].
-  assert (Hr : Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ i)) by pairwise.
-  exists a; split; [ exact Ha | exact (per_relevant_nonlevel_left _ _ _ Hr) ].
+  rewrite exp_sub_id in HaσI.
+  assert (Hr : Dom aσ ≈ a ∈ per_relevant_nonlevel (per_univ i)) by pairwise.
+  exists aσ; split; [ exact HaσI | exact (per_relevant_nonlevel_left _ _ _ Hr) ].
 Qed.
 
 (** A type of a universe is no proposition at an environment a context PER
@@ -354,7 +355,8 @@ Corollary rel_type_inversion_wk : forall {Γ Δ φ A A'} {i : nat},
         ⟦ A' ⟧ ⟪φ⟫ ρ' ↘ a' /\
         Dom a ≈ a' ∈ per_univ i.
 Proof.
-  intros * Hφ [env_relΔ HΔ HA].
+  intros * Hφ HAj.
+  pose proof HAj as [env_relΔ HΔ HA].
   pose proof Hφ as [env_relΓ HΓ env_relΔ2 HΔ2 Hφw _].
   handle_per_ctx_env_irrel.
   eexists; eexists; [eassumption |].
@@ -363,10 +365,19 @@ Proof.
   assert (Hρ' : Dom ρ' ≈ ρ ∈ env_relΓ) by (symmetry; exact Hρ).
   destruct (HA _ _ HΓ _ _ (rel_sub_of_wk Hφ) _ _ _ _ Hρ
               ltac:(eval_wk_at (Hφw _ _ Hρ)) ltac:(eval_wk_at (Hφw _ _ Hρ')))
-    as [a1 a2 a3 a4 Ha1 ? Ha3 ? Hchain].
+    as [a1 a2 a3 a4 Ha1 Ha2 Ha3 ? Hchain].
   rewrite exp_sub_of_wk in Ha1.
-  exists a1, a3.
+  (** The inner values are at the restampings; the judgment at the
+      restamping of [⟪φ⟫ ρ] against [⟪φ⟫ ρ'] bridges them. *)
+  assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
+  pose proof (per_ctx_env_restamp_left HΔk _ _ (Hφw _ _ Hρ)) as Hrφρ.
+  destruct (rel_type_inversion_simple HAj) as [env_relΔ3 [HΔ3 HAs]].
+  assert (E3 : env_relΔ <~> env_relΔ3) by (eapply per_ctx_env_right_irrel; [ exact HΔk | exact HΔ3 ]).
+  destruct (HAs _ _ (proj1 (E3 _ _) Hrφρ)) as (b & b' & Hb & Hb' & Hbb').
+  assert (b = a2) as -> by (eapply functional_eval_exp; eassumption).
+  exists a1, b'.
   repeat split; try eassumption.
+  etransitivity; [| exact Hbb' ].
   pairwise.
 Qed.
 
@@ -634,8 +645,9 @@ Proof.
   destruct (eval_sub_id_rel HΓ' Hρ) as [Hid Hid'].
   destruct (HA _ _ HΓ' _ _ (rel_sub_id (ex_intro _ _ HΓ')) _ _ _ _ Hρ Hid Hid')
     as [aσ a a' a'σ' HaσI Ha Ha' Ha'σ'I Hchain].
-  exists a, a'.
-  split; [ exact Ha | split; [ exact Ha' | pairwise ] ].
+  rewrite exp_sub_id in HaσI, Ha'σ'I.
+  exists aσ, a'σ'.
+  split; [ exact HaσI | split; [ exact Ha'σ'I | pairwise ] ].
 Qed.
 
 (** The same for a proposition moved along a semantic substitution, at
@@ -783,8 +795,9 @@ Proof.
   destruct (eval_sub_id_rel HΓ' Hρ) as [Hid Hid'].
   destruct (HA _ _ HΓ' _ _ (rel_sub_id (ex_intro _ _ HΓ')) _ _ _ _ Hρ Hid Hid')
     as [aσ a a' a'σ' HaσI Ha Ha' Ha'σ'I Hchain].
-  exists a, a'.
-  split; [ exact Ha | split; [ exact Ha' | pairwise ] ].
+  rewrite exp_sub_id in HaσI, Ha'σ'I.
+  exists aσ, a'σ'.
+  split; [ exact HaσI | split; [ exact Ha'σ'I | pairwise ] ].
 Qed.
 
 (** A type of levels is relevant at every environment of its context. *)

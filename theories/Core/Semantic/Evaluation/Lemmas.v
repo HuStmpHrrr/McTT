@@ -399,6 +399,54 @@ Import Domain_Notations.
       apply Hne; eapply functional_eval_sentry; [ apply (proj2 (H1 0 Hx) Hn1) | apply (proj2 (H2 0 Hx) Hn2) ].
   Qed.
 
+  (** The entries a substitution entry denotes are restamped: a module
+      entry stores [substituted_unit]. *)
+  Lemma eval_sentry_restamped : forall {Θ Ξ} e ρ d, ⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d -> restamp_entry d = d.
+  Proof.
+    intros * H; destruct e; cbn in H; destruct_all; subst; [ apply restamp_entry_idem | reflexivity .. ].
+  Qed.
+
+  Lemma eval_sentry_proof_restamped : forall e ρ d, eval_sentry_proof e ρ d -> restamp_entry d = d.
+  Proof. intros * H; destruct e; cbn in H; subst; [ apply restamp_entry_idem | reflexivity | contradiction .. ]. Qed.
+
+  (** So are the entries of an evaluated substitution, on its target; no
+      case analysis on a proposition is needed, as entries are decidably
+      equal. *)
+  Lemma eval_sub_entry_restamped : forall {Θ Ξ} Δ σ ρ ρσ,
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+      forall x, x < List.length Δ -> restamp_entry (env_entry ρσ x) = env_entry ρσ x.
+  Proof.
+    intros * H x Hx.
+    destruct (dentry_eq_dec (restamp_entry (env_entry ρσ x)) (env_entry ρσ x)) as [| Hne]; [ assumption | exfalso ].
+    destruct (H x Hx) as [Hp Hn].
+    apply (fun Hnp : ~ entry_propositional Θ Ξ Δ ρσ x => Hne (eval_sentry_restamped _ _ _ (Hn Hnp))).
+    intros Hpp; exact (Hne (eval_sentry_proof_restamped _ _ _ (Hp Hpp))).
+  Qed.
+
+  (** An evaluated substitution evaluates to its restamping, which agrees
+      with it on the target. *)
+  Corollary eval_sub_agree_restamp : forall {Θ Ξ} Δ σ ρ ρσ,
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> env_agree_upto (List.length Δ) ρσ (restamp_env ρσ).
+  Proof. intros * H x Hx; rewrite env_entry_restamp; symmetry; exact (eval_sub_entry_restamped _ _ _ _ H x Hx). Qed.
+
+  #[local] Transparent eval_sub.
+  (** The result of an evaluation of a substitution may be replaced by an
+      environment agreeing with it on the target. *)
+  Lemma eval_sub_resp_agree : forall {Θ Ξ} Δ σ ρ ρσ ρσ',
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> env_agree_upto (List.length Δ) ρσ ρσ' -> ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ'.
+  Proof.
+    intros * H Ha x Hx.
+    assert (Ha' : env_agree_upto (List.length Δ) ρσ' ρσ) by (symmetry; exact Ha).
+    rewrite <- (Ha x Hx); split.
+    - intros Hp; apply (H x Hx); exact (entry_propositional_resp_agree _ _ _ _ Ha' Hp).
+    - intros Hn; apply (H x Hx); intros Hp; exact (Hn (entry_propositional_resp_agree _ _ _ _ Ha Hp)).
+  Qed.
+  #[local] Opaque eval_sub.
+
+  Corollary eval_sub_restamp : forall {Θ Ξ} Δ σ ρ ρσ,
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρσ.
+  Proof. intros * H; exact (eval_sub_resp_agree _ _ _ _ _ H (eval_sub_agree_restamp _ _ _ _ H)). Qed.
+
 #[export]
 Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shape_type functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_neutral_fields functional_eval_projs functional_eval_ihtys : mctt.
 

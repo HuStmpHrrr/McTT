@@ -602,17 +602,31 @@ Corollary rel_exp_of_suniv_tm_inversion_simple : forall {Γ T A A'},
       exists a a' t,
         ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\ Dom a ≈ a' ∈ per_univ (us (domain_level_real t)).
 Proof.
-  intros * H%rel_exp_of_suniv_tm_inversion.
-  destruct H as [env_relΓ [HΓ HA]].
+  intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
   intros ρ ρ' Hρ.
   destruct (eval_sub_id_rel HΓ Hρ) as [Hi Hi'].
-  destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hi Hi')
-    as [t [Ht [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hchain]]].
+  (** The [Id] instance, read at its outer values, which are at [ρ] and
+      [ρ'] themselves; its inner ones are at the restampings.  The first
+      link names the element PER, at the outer level. *)
+  destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hi Hi') as [R [Htyp Hexp]].
+  assert (Hr : rel_typ_sort Type⟨T⟩ (restamp_env ρ) relevant).
+  { pose proof Htyp as [u1 u2 u3 u4 _ Hu2 _ _ _]; exists u2; split; [ exact Hu2 |].
+    cbn [exp_sub] in Hu2; inversion Hu2; subst; reflexivity. }
+  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
+  destruct Htyp as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Hchain].
+  rewrite exp_sub_id in Hu1, Hu4.
+  inversion Hu1; inversion Hu2; subst.
+  destruct Hexp as [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hc].
   rewrite exp_sub_id in HaσI, Ha'σ'I.
-  exists a, a', t.
-  repeat split; try eassumption.
-  apply per_relevant_nonlevel_univ_rel; pairwise.
+  assert (PER R) by (eapply per_elem_PER; destruct Hchain as [Hl _]; exact Hl).
+  assert (Hx : Dom aσ ≈ a'σ' ∈ R) by pairwise.
+  destruct Hchain as [Hl12 _].
+  invert_per_univ_elem Hl12.
+  match goal with HT : ⟦ T ⟧ ρ ↘ ?t |- _ => exists aσ, a'σ', t; repeat split; [ exact HaσI | exact Ha'σ'I | exact HT |] end.
+  match goal with
+  | Heq : _ <~> per_relevant_nonlevel _ |- _ => apply Heq in Hx; apply per_relevant_nonlevel_univ_rel; exact Hx
+  end.
 Qed.
 
 (** A type of a small universe is a type of every large one. *)
