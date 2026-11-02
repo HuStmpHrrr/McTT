@@ -325,9 +325,9 @@ Import Domain_Notations.
   (** Whether an entry is a proposition depends only on the substitution
       and its source environment, so two evaluations agree on it. *)
   (** A substitution entry denotes one entry. *)
-  Corollary functional_eval_sentry : forall {Θ Ξ} e ρ d1 d2,
-      ⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d1 ->
-      ⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d2 ->
+  Corollary functional_eval_sentry : forall {Θ Ξ} t U e ρ d1 d2,
+      eval_sentry Θ Ξ t U e ρ d1 ->
+      eval_sentry Θ Ξ t U e ρ d2 ->
       d1 = d2.
   Proof.
     intros * H1 H2; destruct e; cbn in H1, H2.
@@ -339,8 +339,8 @@ Import Domain_Notations.
   Qed.
 
   (** So does a substitution entry at a proposition. *)
-  Lemma functional_eval_sentry_proof : forall e ρ d1 d2,
-      eval_sentry_proof e ρ d1 -> eval_sentry_proof e ρ d2 -> d1 = d2.
+  Lemma functional_eval_sentry_proof : forall t U e ρ d1 d2,
+      eval_sentry_proof t U e ρ d1 -> eval_sentry_proof t U e ρ d2 -> d1 = d2.
   Proof. intros * H1 H2; destruct e; cbn in H1, H2; subst; tauto. Qed.
 
   (** Whether the head entry is a proposition depends only on the tail, on
@@ -371,58 +371,89 @@ Import Domain_Notations.
       intros [| x] Hx; [| rewrite <- !env_entry_drop; apply Ht; cbn in Hx; lia ].
       destruct (dentry_eq_dec (env_entry ρσ1 0) (env_entry ρσ2 0)) as [| Hne]; [ assumption | exfalso ].
       assert (Ht' : env_agree_upto (List.length Δ) (drop_env ρσ2) (drop_env ρσ1)) by (symmetry; exact Ht).
+      assert (Etag : ctx_entry_tag (e :: Δ) 0 ρσ2 = ctx_entry_tag (e :: Δ) 0 ρσ1)
+        by (rewrite !ctx_entry_tag_head; unfold centry_tag; rewrite (env_upto_agree _ _ _ Ht'); reflexivity).
+      destruct (H1 0 Hx) as [Hp1 Hn1'], (H2 0 Hx) as [Hp2 Hn2']; rewrite Etag in Hp2, Hn2'.
       assert (Hn1 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ1 0).
       { intros Hp; apply Hne.
         eapply functional_eval_sentry_proof;
-          [ exact (proj1 (H1 0 Hx) Hp) | exact (proj1 (H2 0 Hx) (entry_propositional_zero_tail _ _ _ _ Ht Hp)) ]. }
+          [ exact (Hp1 Hp) | exact (Hp2 (entry_propositional_zero_tail _ _ _ _ Ht Hp)) ]. }
       assert (Hn2 : ~ entry_propositional Θ Ξ (e :: Δ) ρσ2 0)
         by (intros Hp; apply Hn1, (entry_propositional_zero_tail _ _ _ _ Ht' Hp)).
-      apply Hne; eapply functional_eval_sentry; [ apply (proj2 (H1 0 Hx) Hn1) | apply (proj2 (H2 0 Hx) Hn2) ].
+      apply Hne; eapply functional_eval_sentry; [ apply (Hn1' Hn1) | apply (Hn2' Hn2) ].
   Qed.
 
-  (** The entries a substitution entry denotes are restamped: a module
-      entry stores [substituted_unit]. *)
-  Lemma eval_sentry_restamped : forall {Θ Ξ} e ρ d, ⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d -> restamp_entry d = d.
+  (** The entries a substitution entry denotes are stored at the tag and
+      unit it is evaluated at. *)
+  Lemma eval_sentry_tagged : forall {Θ Ξ} t U e ρ d, eval_sentry Θ Ξ t U e ρ d -> retag_entry t U d = d.
   Proof.
-    intros * H; destruct e; cbn in H; destruct_all; subst; [ apply restamp_entry_idem | reflexivity .. ].
+    intros * H; destruct e; cbn in H; destruct_all; subst; [ apply retag_entry_twice | reflexivity .. ].
   Qed.
 
-  Lemma eval_sentry_proof_restamped : forall e ρ d, eval_sentry_proof e ρ d -> restamp_entry d = d.
-  Proof. intros * H; destruct e; cbn in H; subst; [ apply restamp_entry_idem | reflexivity | contradiction .. ]. Qed.
+  Lemma eval_sentry_proof_tagged : forall t U e ρ d, eval_sentry_proof t U e ρ d -> retag_entry t U d = d.
+  Proof. intros * H; destruct e; cbn in H; subst; [ apply retag_entry_twice | reflexivity | contradiction .. ]. Qed.
 
-  (** So are the entries of an evaluated substitution, on its target; no
-      case analysis on a proposition is needed, as entries are decidably
-      equal. *)
-  Lemma eval_sub_entry_restamped : forall {Θ Ξ} Δ σ ρ ρσ,
+  (** So are the entries of an evaluated substitution, at the declarations
+      of its target; no case analysis on a proposition is needed, as
+      entries are decidably equal. *)
+  Lemma eval_sub_entry_tagged : forall {Θ Ξ} Δ σ ρ ρσ,
       ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-      forall x, x < List.length Δ -> restamp_entry (env_entry ρσ x) = env_entry ρσ x.
+      forall x, x < List.length Δ ->
+        retag_entry (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (env_entry ρσ x) = env_entry ρσ x.
   Proof.
     intros * H x Hx.
-    destruct (dentry_eq_dec (restamp_entry (env_entry ρσ x)) (env_entry ρσ x)) as [| Hne]; [ assumption | exfalso ].
+    destruct (dentry_eq_dec (retag_entry (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (env_entry ρσ x)) (env_entry ρσ x))
+      as [| Hne]; [ assumption | exfalso ].
     destruct (H x Hx) as [Hp Hn].
-    apply (fun Hnp : ~ entry_propositional Θ Ξ Δ ρσ x => Hne (eval_sentry_restamped _ _ _ (Hn Hnp))).
-    intros Hpp; exact (Hne (eval_sentry_proof_restamped _ _ _ (Hp Hpp))).
+    apply (fun Hnp : ~ entry_propositional Θ Ξ Δ ρσ x => Hne (eval_sentry_tagged _ _ _ _ _ (Hn Hnp))).
+    intros Hpp; exact (Hne (eval_sentry_proof_tagged _ _ _ _ _ (Hp Hpp))).
   Qed.
 
-  (** The head an extension by a term stores: a term entry at
-      [substituted_type], its value or the term kept. *)
+  (** The tags of an environment of [Δ] read it on the entries of [Δ]
+      only. *)
+  Lemma ctx_entry_tag_agree : forall Δ x ρ ρ',
+      env_agree_upto (List.length Δ) ρ ρ' -> ctx_entry_tag Δ x ρ = ctx_entry_tag Δ x ρ'.
+  Proof.
+    intros * H; unfold ctx_entry_tag; destruct (ctx_entry_type Δ x); [| reflexivity ].
+    f_equal; apply env_upto_agree; intros y Hy; rewrite !env_entry_skipn; apply H.
+    rewrite List.length_skipn in Hy; lia.
+  Qed.
+
+  (** An environment stored at the declarations of [Δ] already is its own
+      retagging, on the entries of [Δ]. *)
+  Lemma ctx_retag_agree : forall Δ ρ,
+      (forall x, x < List.length Δ -> retag_entry (ctx_entry_tag Δ x ρ) (ctx_entry_unit Δ x) (env_entry ρ x) = env_entry ρ x) ->
+      env_agree_upto (List.length Δ) (ctx_retag Δ ρ) ρ.
+  Proof.
+    induction Δ as [| e Δ IH]; intros ρ H x Hx; cbn [List.length] in Hx; [ lia |].
+    assert (IH' : env_agree_upto (List.length Δ) (ctx_retag Δ ρ↯) ρ↯).
+    { apply IH; intros y Hy; rewrite (ctx_entry_tag_drop e), env_entry_drop; exact (H (S y) ltac:(cbn; lia)). }
+    destruct x as [| x].
+    - rewrite env_entry_ctx_retag by (cbn; lia).
+      rewrite <- (H 0) at 2 by (cbn; lia).
+      f_equal; rewrite !ctx_entry_tag_head; cbn [ctx_retag drop_env List.tl] in IH' |- *; unfold centry_tag.
+      rewrite (env_upto_agree _ _ _ IH'); reflexivity.
+    - change (env_entry (ctx_retag Δ ρ↯) x = env_entry ρ (S x)); rewrite (IH' x ltac:(lia)), env_entry_drop; reflexivity.
+  Qed.
+
+  (** The head an extension by a term stores: a term entry at its
+      declared type, its value or the term kept. *)
   Lemma eval_sub_head_exp : forall {Θ Ξ} e Δ σ ρ ρτ N,
       ⟦ σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρτ -> σ 0 = se_exp N ->
-      env_entry ρτ 0 = de_term (ρτ 0) substituted_type.
+      env_entry ρτ 0 = de_term (ρτ 0) (ctx_entry_tag (e :: Δ) 0 ρτ).
   Proof.
     intros * H HN.
-    destruct (dentry_eq_dec (env_entry ρτ 0) (de_term (ρτ 0) substituted_type)) as [| Hne]; [ assumption | exfalso ].
+    destruct (dentry_eq_dec (env_entry ρτ 0) (de_term (ρτ 0) (ctx_entry_tag (e :: Δ) 0 ρτ))) as [| Hne]; [ assumption | exfalso ].
     destruct (H 0 ltac:(cbn; lia)) as [Hp Hn]; rewrite HN in Hp, Hn; cbn [eval_sentry eval_sentry_proof] in Hp, Hn.
     assert (Hnp : ~ entry_propositional Θ Ξ (e :: Δ) ρτ 0).
     { intros Hpp; apply Hne; unfold env_var; rewrite (Hp Hpp); reflexivity. }
     destruct (Hn Hnp) as (m & Em & _); apply Hne; unfold env_var; rewrite Em; reflexivity.
   Qed.
 
-  (** An evaluated substitution evaluates to its restamping, which agrees
-      with it on the target. *)
-  Corollary eval_sub_agree_restamp : forall {Θ Ξ} Δ σ ρ ρσ,
-      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> env_agree_upto (List.length Δ) ρσ (restamp_env ρσ).
-  Proof. intros * H x Hx; rewrite env_entry_restamp; symmetry; exact (eval_sub_entry_restamped _ _ _ _ H x Hx). Qed.
+  (** An evaluated substitution agrees with its retagging on the target. *)
+  Corollary eval_sub_agree_retag : forall {Θ Ξ} Δ σ ρ ρσ,
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> env_agree_upto (List.length Δ) ρσ (ctx_retag Δ ρσ).
+  Proof. intros * H; symmetry; apply ctx_retag_agree, (eval_sub_entry_tagged _ _ _ _ H). Qed.
 
   #[local] Transparent eval_sub.
   (** The result of an evaluation of a substitution may be replaced by an
@@ -432,25 +463,27 @@ Import Domain_Notations.
   Proof.
     intros * H Ha x Hx.
     assert (Ha' : env_agree_upto (List.length Δ) ρσ' ρσ) by (symmetry; exact Ha).
-    rewrite <- (Ha x Hx); split.
+    rewrite <- (Ha x Hx), <- (ctx_entry_tag_agree _ x _ _ Ha); split.
     - intros Hp; apply (H x Hx); exact (entry_propositional_resp_agree _ _ _ _ Ha' Hp).
     - intros Hn; apply (H x Hx); intros Hp; exact (Hn (entry_propositional_resp_agree _ _ _ _ Ha Hp)).
   Qed.
   #[local] Opaque eval_sub.
 
-  Corollary eval_sub_restamp : forall {Θ Ξ} Δ σ ρ ρσ,
-      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρσ.
-  Proof. intros * H; exact (eval_sub_resp_agree _ _ _ _ _ H (eval_sub_agree_restamp _ _ _ _ H)). Qed.
+  Corollary eval_sub_retag : forall {Θ Ξ} Δ σ ρ ρσ,
+      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρσ.
+  Proof. intros * H; exact (eval_sub_resp_agree _ _ _ _ _ H (eval_sub_agree_retag _ _ _ _ H)). Qed.
 
   (** At an environment an evaluated substitution yields, [Wk] evaluates to
-      the tail itself: its entries are restamped already. *)
+      the tail itself: its entries are stored at their declarations
+      already. *)
   Corollary eval_sub_shift_of_eval : forall {Θ Ξ} e Δ σ ρ ρσ,
       ⟦ σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρσ ↘ ρσ↯.
   Proof.
     intros * H.
     apply (eval_sub_resp_agree _ _ _ _ _ (eval_sub_shift Δ ρσ)).
-    intros x Hx; rewrite env_entry_restamp, env_entry_drop.
-    exact (eval_sub_entry_restamped _ _ _ _ H (S x) ltac:(cbn; lia)).
+    apply ctx_retag_agree; intros x Hx.
+    rewrite (ctx_entry_tag_drop e), env_entry_drop.
+    exact (eval_sub_entry_tagged _ _ _ _ H (S x) ltac:(cbn; lia)).
   Qed.
 
 #[export]

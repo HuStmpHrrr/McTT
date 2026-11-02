@@ -18,7 +18,6 @@ Reserved Notation "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' �
 Reserved Notation "'⟦ihtys' vs 'of' gs 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦projs' fl 'of' v '⟧' Θ '⍮' Ξ '↘' ws" (at level 70, fl at level 69, v at level 69, Θ at level 69, Ξ at level 69, ws at level 69).
 Reserved Notation "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" (at level 70, j at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, r at level 69).
-Reserved Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" (at level 70, e at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, d at level 69).
 Reserved Notation "'⟦' σ ':' Δ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Δ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
@@ -1313,81 +1312,13 @@ Proof. intros * <-; apply eval_exp_var. Qed.
     [absent_entry], so a result exists only when, from some index on, every
     [σ x] denotes it, for example as a variable past the end of [ρ].
 
-    Only the metatheory evaluates substitutions; NbE never does.  An
-    entry that is a term is stored at [substituted_type]: the type of a
-    term is not known to evaluation, and the entry's type must not depend
-    on the result environment, so that evaluation of a substitution stays
-    functional.  REVISIT (P4): a substitution's term entries are to carry
-    their type on the source side; until then they are at no type. *)
-Definition substituted_type : entry_type := entry_type_none.
-
-(** The unit a module entry of a substitution's result is stored at, for
-    the same reason: the placeholder, an alias of the module at the dummy
-    path [q_abs nil nil], which names no module, as in [dm_default].  The unit
-    declared by the target context would change under precomposition by a
-    weakening ([eval_sub_wk_pre]), which reindexes the entries but not the
-    units stored in them.  REVISIT: the readback of a kept proof in such an
-    environment binds those entries at the placeholder unit. *)
-Definition substituted_unit : gunit := gu_mk nil (md_alias (qname_mod (q_abs nil nil))).
-
-(** The entry a variable of a substitution denotes: the entry of the
-    environment, with the unit of a module part replaced by
-    [substituted_unit], as for any module entry a substitution stores.
-    The stored unit is written over the tail the entry had in the
-    environment, which the result of the substitution does not have.  For
-    example [q σ] from [Γ' ▹ₘ U[σ]] into [Γ ▹ₘ U] keeps the head of its
-    argument, which stores [U[σ]], scoped by [Γ'] but not by [Γ].  Values,
-    modules and term entries are unchanged ([env_var_restamp],
-    [env_mod_restamp]). *)
-Definition restamp_entry (e : dentry) : dentry :=
-  match e with
-  | de_mod h _ => de_mod h substituted_unit
-  | de_dm n t h _ => de_dm n t h substituted_unit
-  | e => e
-  end.
-
-(** An environment with every entry restamped. *)
-Definition restamp_env (ρ : env) : env := List.map restamp_entry ρ.
-
-Lemma restamp_entry_idem : forall e, restamp_entry (restamp_entry e) = restamp_entry e.
-Proof. intros []; reflexivity. Qed.
-
-Lemma env_entry_restamp : forall ρ x, env_entry (restamp_env ρ) x = restamp_entry (env_entry ρ x).
-Proof.
-  intros ρ x; revert ρ; induction x as [| x IH]; intros [| e ρ]; cbn; try reflexivity;
-    [ exact (IH nil) | exact (IH ρ) ].
-Qed.
-
-Lemma env_var_restamp : forall ρ x, env_var (restamp_env ρ) x = env_var ρ x.
-Proof. intros; unfold env_var; rewrite env_entry_restamp; destruct (env_entry ρ x); reflexivity. Qed.
-
-Lemma env_mod_restamp : forall ρ x, env_mod (restamp_env ρ) x = env_mod ρ x.
-Proof. intros; unfold env_mod; rewrite env_entry_restamp; destruct (env_entry ρ x); reflexivity. Qed.
-
-Lemma env_type_restamp : forall ρ x, env_type (restamp_env ρ) x = env_type ρ x.
-Proof. intros; unfold env_type; rewrite env_entry_restamp; destruct (env_entry ρ x); reflexivity. Qed.
-
-Lemma restamp_env_drop : forall ρ, restamp_env ρ↯ = (restamp_env ρ)↯.
-Proof. intros []; reflexivity. Qed.
-
-Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (e : sentry) (ρ : env) (d : dentry) : Prop :=
-  match e with
-  | se_var y => d = restamp_entry (env_entry ρ y)
-  | se_exp M => exists m, d = de_term m substituted_type /\ ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
-  | se_mod H => exists h, d = de_mod h substituted_unit /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
-  | se_dm N H => exists n h, d = de_dm n substituted_type h substituted_unit /\ ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
-  end.
-
-Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" := (eval_sentry Θ Ξ e ρ d) : mctt_scope.
-
-(** The entry a substitution entry [e] denotes in [ρ] at a proposition:
-    the proof kept as it is, or the entry of a variable. *)
-Definition eval_sentry_proof (e : sentry) (ρ : env) (d : dentry) : Prop :=
-  match e with
-  | se_var y => d = restamp_entry (env_entry ρ y)
-  | se_exp M => d = de_term ⋆ᵈ⟨M, ρ⟩ substituted_type
-  | _ => False
-  end.
+    Only the metatheory evaluates substitutions; NbE never does.  The
+    entries of [ρσ] are typed by the target context [Δ], as every entry of
+    an environment of [Δ] is: the term part of the entry [x] is stored at
+    [Δ]'s declared type at [x], a closure in the tail of [ρσ] after [x]
+    ([ctx_entry_tag]), and the module part at [Δ]'s declared unit at [x]
+    ([ctx_entry_unit]).  The tags are read off [Δ] and [ρσ], so evaluation
+    of a substitution stays functional. *)
 
 (** The type of the entry [x] of a context, a term's: of an assumption, a
     definition or a definition with a module part; a module slot has
@@ -1396,6 +1327,90 @@ Definition ctx_entry_type (Δ : ctx) (x : nat) : option typ :=
   match List.nth_error Δ x with
   | Some (ce_ass A) | Some (ce_def A _) | Some (ce_dm A _ _) => Some A
   | _ => None
+  end.
+
+(** The first [n] entries of [ρ], [absent_entry] past its end: what an
+    environment of a context of length [n] holds of [ρ]. *)
+Definition env_upto (n : nat) (ρ : env) : env := List.map (env_entry ρ) (List.seq 0 n).
+
+Lemma length_env_upto : forall n ρ, List.length (env_upto n ρ) = n.
+Proof. intros; unfold env_upto; rewrite List.length_map, List.length_seq; reflexivity. Qed.
+
+Lemma env_entry_env_upto : forall n ρ x, x < n -> env_entry (env_upto n ρ) x = env_entry ρ x.
+Proof.
+  intros * Hx; unfold env_upto; rewrite (env_entry_nth (List.map _ _)).
+  rewrite (List.nth_indep _ _ (env_entry ρ 0)) by (rewrite List.length_map, List.length_seq; assumption).
+  rewrite (List.map_nth (env_entry ρ) (List.seq 0 n) 0 x), List.seq_nth by assumption; reflexivity.
+Qed.
+
+(** It reads [ρ] below [n] only. *)
+Lemma env_upto_agree : forall n ρ ρ', env_agree_upto n ρ ρ' -> env_upto n ρ = env_upto n ρ'.
+Proof.
+  intros * H; unfold env_upto; apply List.map_ext_in; intros y Hy.
+  apply List.in_seq in Hy; apply H; lia.
+Qed.
+
+(** The type the entry [x] of an environment [ρσ] of [Δ] is stored at:
+    [Δ]'s declared type at [x], over the entries of [ρσ] after [x] that
+    [Δ] has; none at a module slot.  It reads [ρσ] on the entries of [Δ]
+    only, as an evaluation of a substitution into [Δ] determines no more. *)
+Definition ctx_entry_tag (Δ : ctx) (x : nat) (ρσ : env) : entry_type :=
+  match ctx_entry_type Δ x with
+  | Some A => entry_type_closure A (env_upto (List.length (List.skipn (S x) Δ)) (List.skipn (S x) ρσ))
+  | None => entry_type_none
+  end.
+
+(** The unit a context entry declares: that of a module slot or of a
+    definition with a module part.  [gunit_default] arises only at the
+    other entries, assumptions and definitions, whose environment entries
+    are terms: there [retag_entry] stores no unit.  The one entry that
+    stores it is a definition with a module part substituted for a variable
+    at such an entry; its unit is never read back ([read_entry_dm] reads the
+    term part), and it reaches no position ([entry_unit_bound]).  A module
+    entry stores it only at an ill-typed substitution, a module where the
+    target declares a term. *)
+Definition centry_slot_unit (e : centry) : gunit :=
+  match centry_unit e with
+  | Some U => U
+  | None => gunit_default
+  end.
+
+(** The unit [Δ] declares at [x] ([centry_slot_unit]). *)
+Definition ctx_entry_unit (Δ : ctx) (x : nat) : gunit :=
+  match List.nth_error Δ x with
+  | Some e => centry_slot_unit e
+  | None => gunit_default
+  end.
+
+(** An entry stored at the type [t] and the unit [U]: its values
+    unchanged. *)
+Definition retag_entry (t : entry_type) (U : gunit) (e : dentry) : dentry :=
+  match e with
+  | de_term v _ => de_term v t
+  | de_mod h _ => de_mod h U
+  | de_dm v _ h _ => de_dm v t h U
+  end.
+
+(** [eval_sentry t U e ρ d]: the substitution entry [e] denotes the
+    environment entry [d] in [ρ], stored at the type [t] and the unit [U]:
+    a variable, the entry it reads; a term, its value; a module
+    expression, its value; both, at a definition with a module part. *)
+Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (t : entry_type) (U : gunit) (e : sentry) (ρ : env) (d : dentry) : Prop :=
+  match e with
+  | se_var y => d = retag_entry t U (env_entry ρ y)
+  | se_exp M => exists m, d = de_term m t /\ ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
+  | se_mod H => exists h, d = de_mod h U /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
+  | se_dm N H => exists n h, d = de_dm n t h U /\ ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
+  end.
+
+(** The entry a substitution entry [e] denotes in [ρ] at a proposition,
+    stored at the type [t] and the unit [U]: the proof kept as it is, or
+    the entry of a variable. *)
+Definition eval_sentry_proof (t : entry_type) (U : gunit) (e : sentry) (ρ : env) (d : dentry) : Prop :=
+  match e with
+  | se_var y => d = retag_entry t U (env_entry ρ y)
+  | se_exp M => d = de_term ⋆ᵈ⟨M, ρ⟩ t
+  | _ => False
   end.
 (** The entry [x] of [Δ] is a proposition in the environment [ρσ] of [Δ]:
     its type, over the entries after it, evaluates in the tail of [ρσ]
@@ -1428,11 +1443,111 @@ Record entry_propositional (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρσ : env) (x
     is said: a substitution into [Δ] says nothing of the indices past it.
     The two cases are stated as implications, so that building an
     evaluation needs no case analysis on whether an entry is a
-    proposition. *)
+    proposition.  Each entry is stored at [Δ]'s declarations at [x]
+    ([ctx_entry_tag], [ctx_entry_unit]). *)
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (σ : sub) (ρ ρσ : env) : Prop :=
   forall x, x < List.length Δ ->
-    (entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof (σ x) ρ (env_entry ρσ x))
-    /\ (~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x).
+    (entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x))
+    /\ (~ entry_propositional Θ Ξ Δ ρσ x ->
+         eval_sentry Θ Ξ (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x)).
+
+(** The tag a context entry [e] after [Δ] gives the head of an environment
+    over an environment [ρσ] of [Δ]: its declared type, a closure in the
+    entries of [ρσ] that [Δ] has; none for a module slot. *)
+Definition centry_tag (e : centry) (Δ : ctx) (ρσ : env) : entry_type :=
+  match centry_type e with
+  | Some A => entry_type_closure A (env_upto (List.length Δ) ρσ)
+  | None => entry_type_none
+  end.
+
+Lemma ctx_entry_tag_head : forall e Δ ρσ, ctx_entry_tag (e :: Δ) 0 ρσ = centry_tag e Δ ρσ↯.
+Proof. intros [] Δ []; reflexivity. Qed.
+
+Lemma ctx_entry_tag_succ : forall e Δ d ρσ x, ctx_entry_tag (e :: Δ) (S x) (d :: ρσ) = ctx_entry_tag Δ x ρσ.
+Proof. reflexivity. Qed.
+
+(** The tags of the tail of an environment are those after its head. *)
+Lemma ctx_entry_tag_drop : forall e Δ x ρσ, ctx_entry_tag Δ x ρσ↯ = ctx_entry_tag (e :: Δ) (S x) ρσ.
+Proof. intros; destruct ρσ; reflexivity. Qed.
+
+Lemma ctx_entry_unit_head : forall e Δ, ctx_entry_unit (e :: Δ) 0 = centry_slot_unit e.
+Proof. reflexivity. Qed.
+
+Lemma ctx_entry_unit_succ : forall e Δ x, ctx_entry_unit (e :: Δ) (S x) = ctx_entry_unit Δ x.
+Proof. reflexivity. Qed.
+
+(** An environment [ρ] stored at the declarations of [Δ]: each of its
+    first [|Δ|] entries retagged ([retag_entry]) by [Δ]'s entry there, over
+    the retagged tail; past [Δ] it is [ρ].  The identity and the
+    weakenings evaluate to it. *)
+Fixpoint ctx_retag (Δ : ctx) (ρ : env) : env :=
+  match Δ with
+  | nil => ρ
+  | e :: Δ' =>
+      let ρ1 := ctx_retag Δ' (List.tl ρ) in
+      retag_entry (centry_tag e Δ' ρ1) (centry_slot_unit e) (List.hd absent_entry ρ) :: ρ1
+  end.
+
+Lemma env_entry_ctx_retag : forall Δ ρ x, x < List.length Δ ->
+    env_entry (ctx_retag Δ ρ) x = retag_entry (ctx_entry_tag Δ x (ctx_retag Δ ρ)) (ctx_entry_unit Δ x) (env_entry ρ x).
+Proof.
+  induction Δ as [| e Δ IH]; intros ρ [| x] Hx; cbn [List.length] in Hx; try lia; cbn [ctx_retag].
+  - rewrite ctx_entry_tag_head, ctx_entry_unit_head; reflexivity.
+  - rewrite ctx_entry_tag_succ, ctx_entry_unit_succ; cbn [env_entry List.tl]; rewrite IH by lia.
+    destruct ρ; cbn [List.tl]; [ rewrite !env_entry_nth, List.nth_overflow by (cbn; lia); cbn; destruct x; reflexivity | reflexivity ].
+Qed.
+
+Lemma env_entry_ctx_retag_ge : forall Δ ρ x, List.length Δ <= x -> env_entry (ctx_retag Δ ρ) x = env_entry ρ x.
+Proof.
+  induction Δ as [| e Δ IH]; intros ρ x Hx; cbn [List.length] in Hx; [ reflexivity |].
+  destruct x as [| x]; [ lia |]; cbn [ctx_retag env_entry List.tl]; rewrite IH by lia.
+  destruct ρ; cbn [List.tl]; [ rewrite !env_entry_nth, !List.nth_overflow by (cbn; lia); reflexivity | reflexivity ].
+Qed.
+
+(** Retagging keeps the values. *)
+Lemma env_var_retag_entry : forall t ou e, match retag_entry t ou e with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end =
+    match e with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end.
+Proof. intros t ou []; reflexivity. Qed.
+
+Lemma env_mod_retag_entry : forall t ou e, match retag_entry t ou e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_default end =
+    match e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_default end.
+Proof. intros t ou []; reflexivity. Qed.
+
+Lemma env_var_ctx_retag : forall Δ ρ x, env_var (ctx_retag Δ ρ) x = env_var ρ x.
+Proof.
+  intros; unfold env_var; destruct (Compare_dec.le_lt_dec (List.length Δ) x) as [Hx | Hx];
+    [ rewrite env_entry_ctx_retag_ge by exact Hx; reflexivity | rewrite env_entry_ctx_retag by exact Hx; apply env_var_retag_entry ].
+Qed.
+
+Lemma env_mod_ctx_retag : forall Δ ρ x, env_mod (ctx_retag Δ ρ) x = env_mod ρ x.
+Proof.
+  intros; unfold env_mod; destruct (Compare_dec.le_lt_dec (List.length Δ) x) as [Hx | Hx];
+    [ rewrite env_entry_ctx_retag_ge by exact Hx; reflexivity | rewrite env_entry_ctx_retag by exact Hx; apply env_mod_retag_entry ].
+Qed.
+
+(** Retagging forgets the tags before. *)
+Lemma retag_entry_twice : forall t U t' U' e, retag_entry t U (retag_entry t' U' e) = retag_entry t U e.
+Proof. intros t U t' U' []; reflexivity. Qed.
+
+(** What a substitution entry denotes at one tag it denotes, retagged, at
+    any other. *)
+Lemma eval_sentry_retag : forall {Θ Ξ} t U t' U' e ρ d,
+    eval_sentry Θ Ξ t U e ρ d -> eval_sentry Θ Ξ t' U' e ρ (retag_entry t' U' d).
+Proof.
+  intros * H; destruct e as [y | M | H0 | N H0]; cbn [eval_sentry] in H |- *.
+  - subst d; apply retag_entry_twice.
+  - destruct H as (m & -> & Hm); exists m; split; [ reflexivity | exact Hm ].
+  - destruct H as (h & -> & Hh); exists h; split; [ reflexivity | exact Hh ].
+  - destruct H as (n & h & -> & Hn & Hh); exists n, h; split; [ reflexivity | split; assumption ].
+Qed.
+
+Lemma eval_sentry_proof_retag : forall t U t' U' e ρ d,
+    eval_sentry_proof t U e ρ d -> eval_sentry_proof t' U' e ρ (retag_entry t' U' d).
+Proof.
+  intros * H; destruct e as [y | M | H0 | N H0]; cbn [eval_sentry_proof] in H |- *; try contradiction.
+  - subst d; apply retag_entry_twice.
+  - subst d; reflexivity.
+Qed.
 Arguments eval_sub : simpl never.
 
 Notation "'⟦' σ ':' Δ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" := (eval_sub Θ Ξ Δ σ ρ ρσ) : mctt_scope.
@@ -1502,22 +1617,24 @@ Qed.
 
 (** The two cases of an evaluation of a substitution at an index. *)
 Lemma eval_sub_at_prop : forall {Θ Ξ} Δ σ ρ ρσ x,
-    ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof (σ x) ρ (env_entry ρσ x).
+    ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> entry_propositional Θ Ξ Δ ρσ x ->
+    eval_sentry_proof (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x).
 Proof. intros * H Hp; exact (proj1 (H x (entry_propositional_lt _ _ _ Hp)) Hp). Qed.
 
 Proposition eval_sub_index : forall {Θ Ξ} Δ σ (ρ ρσ : env),
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    forall x, x < List.length Δ -> ~ entry_propositional Θ Ξ Δ ρσ x -> ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x.
+    forall x, x < List.length Δ -> ~ entry_propositional Θ Ξ Δ ρσ x ->
+    eval_sentry Θ Ξ (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x).
 Proof. intros * H x Hx; apply (H x Hx). Qed.
 
-(** The identity evaluates to the environment itself, restamped: its
-    module entries store [substituted_unit] ([restamp_entry]). *)
-Lemma eval_sub_id : forall {Θ Ξ} Δ ρ, ⟦ Id : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρ.
-Proof. intros * x _; split; intros _; cbn; rewrite env_entry_restamp; reflexivity. Qed.
+(** The identity evaluates to the environment itself, stored at the
+    declarations of [Δ] ([ctx_retag]). *)
+Lemma eval_sub_id : forall {Θ Ξ} Δ ρ, ⟦ Id : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ.
+Proof. intros * x Hx; rewrite (env_entry_ctx_retag _ _ _ Hx); split; intros _; reflexivity. Qed.
 
-(** The shift evaluates to the tail, restamped. *)
-Lemma eval_sub_shift : forall {Θ Ξ} Δ ρ, ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρ↯.
-Proof. intros * x _; split; intros _; cbn; rewrite env_entry_restamp; reflexivity. Qed.
+(** The shift evaluates to the tail, likewise. *)
+Lemma eval_sub_shift : forall {Θ Ξ} Δ ρ, ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ↯.
+Proof. intros * x Hx; rewrite (env_entry_ctx_retag _ _ _ Hx); split; intros _; reflexivity. Qed.
 
 (** The head entry of [e :: Δ] is a proposition over the tail [ρσ] of
     [Δ]: its type evaluates there, up to agreement on the entries of [Δ], to
@@ -1535,11 +1652,11 @@ Lemma eval_sub_extend : forall {Θ Ξ} e Δ σ ρ ρσ M m,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ substituted_type.
+    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ centry_tag e Δ ρσ.
 Proof.
   intros * H Hn HM [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
-           | intros _; exists m; split; [ reflexivity | assumption ] ].
+           | intros _; exists m; split; [ rewrite ctx_entry_tag_head; reflexivity | assumption ] ].
   - cbn [List.length] in Hx.
     split; [ intros Hp; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
            | intros Hp; apply (H x ltac:(lia)); intros Hp'; exact (Hp (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
@@ -1550,10 +1667,10 @@ Qed.
 Lemma eval_sub_extend_proof : forall {Θ Ξ} e Δ σ ρ ρσ M,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     head_propositional Θ Ξ e Δ ρσ ->
-    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ substituted_type.
+    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ ρσ.
 Proof.
   intros * H Hp [| x] Hx.
-  - split; [ reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
+  - split; [ intros _; cbn [eval_sentry_proof]; rewrite ctx_entry_tag_head; reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
   - cbn [List.length] in Hx.
     split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
@@ -1563,7 +1680,7 @@ Qed.
 Lemma eval_sub_extend_mod : forall {Θ Ξ} U Δ σ ρ ρσ H h,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ σ ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵐ h ⦂ substituted_unit.
+    ⟦ σ ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵐ h ⦂ U.
 Proof.
   intros * Hσ HH [| x] Hx.
   - split; [ intros []; discriminate | intros _; exists h; split; [ reflexivity | assumption ] ].
@@ -1579,43 +1696,43 @@ Lemma eval_sub_extend_dm : forall {Θ Ξ} e Δ σ ρ ρσ N H n h,
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ⦂ substituted_type ‖ h ⦂ substituted_unit.
+    ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ⦂ centry_tag e Δ ρσ ‖ h ⦂ centry_slot_unit e.
 Proof.
   intros * Hσ Hn HN HH [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
-           | intros _; exists n, h; split; [ reflexivity | split; assumption ] ].
+           | intros _; exists n, h; split; [ rewrite ctx_entry_tag_head; reflexivity | split; assumption ] ].
   - cbn [List.length] in Hx.
     split; [ intros Hp; apply (Hσ x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
            | intros Hm; apply (Hσ x ltac:(lia)); intros Hp'; exact (Hm (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 Corollary eval_sub_single_dm : forall {Θ Ξ} e Δ ρ N H n h,
-    ~ head_propositional Θ Ξ e Δ (restamp_env ρ) ->
+    ~ head_propositional Θ Ξ e Δ (ctx_retag Δ ρ) ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρ ↦ᵈ n ⦂ substituted_type ‖ h ⦂ substituted_unit.
+    ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ᵈ n ⦂ centry_tag e Δ (ctx_retag Δ ρ) ‖ h ⦂ centry_slot_unit e.
 Proof.
   intros; apply eval_sub_extend_dm; [ apply eval_sub_id | assumption .. ].
 Qed.
 
 Corollary eval_sub_single : forall {Θ Ξ} e Δ ρ M m,
-    ~ head_propositional Θ Ξ e Δ (restamp_env ρ) ->
+    ~ head_propositional Θ Ξ e Δ (ctx_retag Δ ρ) ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρ ↦ m ⦂ substituted_type.
+    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ m ⦂ centry_tag e Δ (ctx_retag Δ ρ).
 Proof.
   intros; apply eval_sub_extend; [ apply eval_sub_id | assumption .. ].
 Qed.
 
 Corollary eval_sub_single_proof : forall {Θ Ξ} e Δ ρ M,
-    head_propositional Θ Ξ e Δ (restamp_env ρ) ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ substituted_type.
+    head_propositional Θ Ξ e Δ (ctx_retag Δ ρ) ->
+    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ (ctx_retag Δ ρ).
 Proof.
   intros; apply eval_sub_extend_proof; [ apply eval_sub_id | assumption ].
 Qed.
 
 Corollary eval_sub_single_mod : forall {Θ Ξ} U Δ ρ H h,
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ Id ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρ ↦ᵐ h ⦂ substituted_unit.
+    ⟦ Id ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ᵐ h ⦂ U.
 Proof.
   intros; apply eval_sub_extend_mod; [ apply eval_sub_id | assumption ].
 Qed.
@@ -1640,6 +1757,7 @@ Proof.
   - destruct Hσ as (n & h & -> & Hn & _); exact Hn.
 Qed.
 
+
 Lemma eval_sub_mvar : forall {Θ Ξ} Δ σ ρ ρσ x,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     x < List.length Δ ->
@@ -1656,19 +1774,14 @@ Proof.
   - destruct Hσ as (n & h & -> & _ & Hh); exact Hh.
 Qed.
 
-(** The substitution and the result environment may be replaced by
-    pointwise-equal ones.  The input environment may not, since a closure
-    captures it. *)
+(** The substitution may be replaced by a pointwise-equal one.  The
+    environments may not: a closure captures the input one, and the
+    result's tags are closures over its own tails. *)
 #[export]
-Instance eval_sub_Proper : forall {Θ Ξ} Δ, Proper (sb_eq ==> eq ==> env_eq ==> iff) (eval_sub Θ Ξ Δ).
+Instance eval_sub_Proper : forall {Θ Ξ} Δ, Proper (sb_eq ==> eq ==> eq ==> iff) (eval_sub Θ Ξ Δ).
 Proof.
-  intros Θ Ξ Δ σ σ' Hσ ρ ρ0 <- ρσ ρσ' Hρσ.
-  assert (Hρσ' : env_eq ρσ' ρσ) by (intros y; symmetry; apply Hρσ).
-  split; intros H x Hx; (split; [ intros Hp | intros Hn ]).
-  - rewrite <- (Hσ x), <- (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite <- (Hσ x), <- (Hρσ x); apply (proj2 (H x Hx)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite (Hσ x), (Hρσ x); apply (proj1 (H x Hx)); eapply entry_propositional_resp_env_eq; eassumption.
-  - rewrite (Hσ x), (Hρσ x); apply (proj2 (H x Hx)); intros Hp; apply Hn; eapply entry_propositional_resp_env_eq; eassumption.
+  intros Θ Ξ Δ σ σ' Hσ ρ ρ0 <- ρσ ρσ0 <-.
+  split; intros H x Hx; [ rewrite <- (Hσ x) | rewrite (Hσ x) ]; exact (H x Hx).
 Qed.
 
 (** ** The Substitutions that Compute
@@ -1680,19 +1793,20 @@ Qed.
     - weakened extensions and lifts;
     - precomposition by a weakening. *)
 (** A substitution of variables evaluates to the environment its
-    variables read, restamped. *)
+    variables read, stored at the declarations of [Δ]. *)
 Lemma eval_sub_of_vars : forall {Θ Ξ} Δ σ ρ ρσ,
-    (forall x, exists y, σ x = se_var y /\ env_entry ρσ x = restamp_entry (env_entry ρ y)) ->
+    (forall x, x < List.length Δ -> exists y, σ x = se_var y /\
+       env_entry ρσ x = retag_entry (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (env_entry ρ y)) ->
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ.
 Proof.
-  intros * Hv x _; destruct (Hv x) as (y & Hσ & Hy); rewrite Hσ; cbn; split; intros _; exact Hy.
+  intros * Hv x Hx; destruct (Hv x Hx) as (y & Hσ & Hy); rewrite Hσ; split; intros _; exact Hy.
 Qed.
 
 Lemma eval_sub_of_wk : forall {Θ Ξ} Δ φ ρ `{Hφ : WkMono φ},
-    ⟦ ι φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env (⟪φ⟫ ρ).
+    ⟦ ι φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ (⟪φ⟫ ρ).
 Proof.
   intros Θ Ξ Δ φ ρ Hφ; apply eval_sub_of_vars.
-  intros x; exists (φ x); split; [ reflexivity | rewrite env_entry_restamp, (eval_wk_entry _ _ Hφ x); reflexivity ].
+  intros x Hx; exists (φ x); split; [ reflexivity | rewrite (env_entry_ctx_retag _ _ _ Hx), (eval_wk_entry _ _ Hφ x); reflexivity ].
 Qed.
 
 (** A weakened extension. *)
@@ -1700,24 +1814,24 @@ Lemma eval_sub_wk_extend : forall {Θ Ξ} e Δ σ M φ ρ ρσ m,
     ⟦ sb_wk σ φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ M[φ]ʷ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ substituted_type.
+    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ centry_tag e Δ ρσ.
 Proof.
   intros * H Hn HM [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
-           | intros _; exists m; split; [ reflexivity | assumption ] ].
+           | intros _; exists m; split; [ rewrite ctx_entry_tag_head; reflexivity | assumption ] ].
   - cbn [List.length] in Hx.
     split; [ intros Hp; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp)
            | intros Hm; apply (H x ltac:(lia)); intros Hp'; exact (Hm (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
 (** A lifted substitution, plain and weakened.  [q σ] extends [σ[↑]] by the
-    variable [0], so its head is the entry already in [ρ], restamped. *)
+    variable [0], so its head is the entry already in [ρ], stored at [e]. *)
 Lemma eval_sub_q : forall {Θ Ξ} e Δ σ ρ ρσ,
     ⟦ sb_wk σ ↑ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    ⟦ q σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_entry (env_entry ρ 0) :: ρσ.
+    ⟦ q σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ retag_entry (centry_tag e Δ ρσ) (centry_slot_unit e) (env_entry ρ 0) :: ρσ.
 Proof.
   intros * H [| x] Hx.
-  - split; intros _; reflexivity.
+  - split; intros _; rewrite ctx_entry_tag_head; reflexivity.
   - cbn [List.length] in Hx; split.
     + intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
     + intros Hn; exact (proj2 (H x ltac:(lia)) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
@@ -1725,27 +1839,32 @@ Qed.
 
 Lemma eval_sub_wk_q : forall {Θ Ξ} e Δ σ φ ρ ρσ,
     ⟦ sb_wk (sb_wk σ ↑) φ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    ⟦ sb_wk (q σ) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_entry (env_entry ρ (φ 0)) :: ρσ.
+    ⟦ sb_wk (q σ) φ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ retag_entry (centry_tag e Δ ρσ) (centry_slot_unit e) (env_entry ρ (φ 0)) :: ρσ.
 Proof.
   intros * H [| x] Hx.
-  - split; intros _; cbn [sb_wk]; rewrite sb_q_zero; reflexivity.
+  - split; intros _; cbn [sb_wk]; rewrite sb_q_zero, ctx_entry_tag_head; reflexivity.
   - cbn [List.length] in Hx; split.
     + intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp').
     + intros Hn; exact (proj2 (H x ltac:(lia)) (fun Hp' => Hn (entry_propositional_extend_intro _ _ _ _ _ Hp'))).
 Qed.
 
 (** Precomposition by a weakening reindexes the environment [σ] evaluates
-    to, when the weakening takes the propositional entries of its target
-    exactly to those of [σ]'s. *)
+    to, stored at the declarations of the target [Δ'], when the weakening
+    takes the propositional entries of its target exactly to those of
+    [σ]'s. *)
 Lemma eval_sub_wk_pre : forall {Θ Ξ} Δ Δ' φ σ ρ ρσ `{Hφ : WkMono φ},
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     (forall x, x < List.length Δ' -> φ x < List.length Δ) ->
-    (forall x, entry_propositional Θ Ξ Δ' (⟪φ⟫ ρσ) x <-> entry_propositional Θ Ξ Δ ρσ (φ x)) ->
-    ⟦ (ι φ) ⨟ σ : Δ' ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ⟪φ⟫ ρσ.
+    (forall x, x < List.length Δ' ->
+       entry_propositional Θ Ξ Δ' (ctx_retag Δ' (⟪φ⟫ ρσ)) x <-> entry_propositional Θ Ξ Δ ρσ (φ x)) ->
+    ⟦ (ι φ) ⨟ σ : Δ' ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ' (⟪φ⟫ ρσ).
 Proof.
-  intros Θ Ξ Δ Δ' φ σ ρ ρσ Hφ H Hl Hiff x Hx; rewrite (eval_wk_entry _ _ Hφ x); split.
-  - intros Hp; apply (H (φ x) (Hl _ Hx)), Hiff, Hp.
-  - intros Hn; apply (H (φ x) (Hl _ Hx)); intros Hp; apply Hn, Hiff, Hp.
+  intros Θ Ξ Δ Δ' φ σ ρ ρσ Hφ H Hl Hiff x Hx.
+  rewrite (env_entry_ctx_retag _ _ _ Hx), (eval_wk_entry _ _ Hφ x); split.
+  - intros Hp; apply eval_sentry_proof_retag with (t := ctx_entry_tag Δ (φ x) ρσ) (U := ctx_entry_unit Δ (φ x)).
+    apply (H (φ x) (Hl _ Hx)), (Hiff _ Hx), Hp.
+  - intros Hn; apply eval_sentry_retag with (t := ctx_entry_tag Δ (φ x) ρσ) (U := ctx_entry_unit Δ (φ x)).
+    apply (H (φ x) (Hl _ Hx)); intros Hp; apply Hn, (Hiff _ Hx), Hp.
 Qed.
 
 (** The tail of an evaluated substitution is that of its result. *)
@@ -1753,7 +1872,7 @@ Corollary eval_sub_shift_pre : forall {Θ Ξ} e Δ σ ρ ρσ,
     ⟦ σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ Wk ⨟ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ↯.
 Proof.
-  intros * H x Hx; rewrite env_entry_drop; split.
+  intros * H x Hx; rewrite env_entry_drop, (ctx_entry_tag_drop e); split.
   - intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
   - intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
 Qed.

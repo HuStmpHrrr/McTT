@@ -1905,7 +1905,12 @@ Record per_ctx_env_dm_rel (tail_rel : relation env)
     (** The left head reads back at its stored type, and stores no unit *)
   ; per_ctx_env_dm_rel_left_readable : head_readable 0 (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_dm_rel_right_readable : head_readable 0 (env_entry ρ' 0) }.
+  ; per_ctx_env_dm_rel_right_readable : head_readable 0 (env_entry ρ' 0)
+    (** The left head is a definition with a module part, so that it may be
+        stored at the declared type and unit ([ctx_retag]) *)
+  ; per_ctx_env_dm_rel_left_kind : exists t U0, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U0
+    (** So is the right one *)
+  ; per_ctx_env_dm_rel_right_kind : exists t U0, env_entry ρ' 0 = de_dm (ρ' 0) t (env_mod ρ' 0) U0 }.
 
 (** The environments an assumption of the types [A], [A'] relates, given
     the PER of the tails and the head relation at related tails: related
@@ -1969,7 +1974,7 @@ Record per_ctx_env_def_rel (tail_rel : relation env)
     scoped by the tail, so that the readback of a proof binds no entry
     past the context.  For example, at [⋅ ▹ ℕ ▹ₘ U] the head
     [de_mod h U0] is related only if the free bound of [U0] is at most
-    [1]; the declared unit [U] and [substituted_unit] are. *)
+    [1]; the declared unit [U] is ([per_ctx_env_cons_mod]). *)
 Record per_ctx_env_mod_rel (tail_rel : relation env) (n : nat) (U U' : gunit) (ρ ρ' : env) : Prop := mk_per_ctx_env_mod_rel
   { (** The tails are related *)
     per_ctx_env_mod_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
@@ -1984,7 +1989,12 @@ Record per_ctx_env_mod_rel (tail_rel : relation env) (n : nat) (U U' : gunit) (�
     (** The left head reads back, its stored unit scoped by the tail *)
   ; per_ctx_env_mod_rel_left_readable : head_readable n (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_mod_rel_right_readable : head_readable n (env_entry ρ' 0) }.
+  ; per_ctx_env_mod_rel_right_readable : head_readable n (env_entry ρ' 0)
+    (** The left head is a module entry, so that it may be stored at the
+        slot's declared unit ([ctx_retag]) *)
+  ; per_ctx_env_mod_rel_left_kind : exists U0, env_entry ρ 0 = de_mod (env_mod ρ 0) U0
+    (** So is the right one *)
+  ; per_ctx_env_mod_rel_right_kind : exists U0, env_entry ρ' 0 = de_mod (env_mod ρ' 0) U0 }.
 
 Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
 (** The empty context, all environments related. *)
@@ -2023,13 +2033,17 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             def_bodies_at r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M') ->
         EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
-(** A module slot: the two units, as literals, evaluate to related values
-    over related tails, and each head of the environment is related to the
-    values of both units over its own tail. *)
+(** A module slot: the two units are scoped by their tail contexts, so an
+    environment may store them at the slot ([ctx_retag]); as literals they
+    evaluate to related values over related tails, and each head of the
+    environment is related to the values of both units over its own
+    tail. *)
 | per_ctx_env_cons_mod :
   `{ forall tail_rel env_rel
         (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel),
         PER tail_rel ->
+        gunit_free_bound U <= List.length Γ ->
+        gunit_free_bound U' <= List.length Γ' ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') ->
         (env_rel <~> per_ctx_env_mod_rel tail_rel (List.length Γ) U U') ->

@@ -1112,6 +1112,11 @@ Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
     [Propₘ] only so that it is closed and evaluates. *)
 Definition exp_default : exp := a_prop.
 
+(** The unit a total function returns where its input has none: at an
+    entry of a context that is no module slot.  Never a user unit, and
+    never read where a unit exists; it is the empty closed body. *)
+Definition gunit_default : gunit := gu_mk nil (md_body sm_closed gm_nil).
+
 (** [H.y1. … .yn.x] as a term: submodule selections, then a member.  The
     empty chain names no member ([exp_default]). *)
 Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
