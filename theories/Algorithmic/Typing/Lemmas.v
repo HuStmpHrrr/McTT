@@ -248,7 +248,9 @@ Proof.
     assert (HLA : Γ ⊢ LA : Level@N) by (eapply wf_exp_level_up; [| exact HLA0 ]; lia).
     assert (HLBs : Γ ⊢ LBs : Level@N).
     { refine (level_nf_strengthen Γ A _ (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) _ HΓA HLBl).
-      (* PENDING design: a level whose atoms hold proofs need not strengthen (level_nf_strengthen asks nf_proof_free). *)
+      (* PENDING design: a level whose atoms hold proofs need not strengthen (level_nf_strengthen asks nf_proof_free).
+       Closed by the 𝕃 invariant (typed level normal forms hold no proofs, mandatory), which also gives the
+       erased-atoms hypotheses (level_atoms_erased) of lvl_le_bound and lvl_le_bound_wk. *)
       admit. }
     assert (Ht : Γ ⊢ maxl LA LBs : Level@N) by mauto 3.
     assert (Hw : Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
@@ -269,7 +271,8 @@ Proof.
       (apply wf_pi_at_domain; [ exact HAl | eapply lift_exp_ge; [| exact HBl ]; lia ]).
   - apply wf_pi_at_domain; [ destruct HAl as [HAl | HAl]; [ left; eapply lift_exp_ge; [| exact HAl ]; lia | right; exact HAl ]
                            | eapply lift_exp_ge; [| exact HBl ]; lia ].
-Admitted. (* PENDING design: level_nf_strengthen at a level whose atoms hold proofs *)
+Admitted. (* PENDING design: level_nf_strengthen at a level whose atoms hold proofs; closed by the 𝕃 invariant
+             (typed level normal forms hold no proofs), which implies the erased-atoms hypotheses *)
 
 (** The universe of a [Π] is a type. *)
 Lemma wf_universe_nf_pi_tm : forall {Γ A B} {u v : universe_nf},
@@ -1875,7 +1878,9 @@ Proof.
     by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply level_atoms_well_scoped_wf; exact HfpN ]).
   assert (HLBs : Γ ⊢ LBs : Level@N).
   { refine (level_nf_strengthen Γ A N (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) _ HΓA HLBl).
-    (* PENDING design: a level whose atoms hold proofs need not strengthen (level_nf_strengthen asks nf_proof_free). *)
+    (* PENDING design: a level whose atoms hold proofs need not strengthen (level_nf_strengthen asks nf_proof_free).
+       Closed by the 𝕃 invariant (typed level normal forms hold no proofs, mandatory), which also gives the
+       erased-atoms hypotheses (level_atoms_erased) of lvl_le_bound and lvl_le_bound_wk. *)
     admit. }
   eapply wf_subtyp_suniv; [ exact HΓ | apply wf_maxl; eassumption | exact HL |].
   apply lvl_sub_maxl_lub; [ exact HLAe | exact HLBs | exact HL | |].
@@ -1897,7 +1902,8 @@ Proof.
         [ apply wf_exp_eq_maxl_cong; [ mauto 3 | exact HTt' ] |].
       transitivity (lvl_exp_of f (List.map atom_exp ws)); [ exact Hle | symmetry; exact HTt' ]. }
     exact (exp_eq_strengthen nil Γ A (maxl LBs L) L Level@N ltac:(constructor) HΓA ltac:(mauto 3) HL Hlong).
-Admitted. (* PENDING design: level_nf_strengthen at a level whose atoms hold proofs *)
+Admitted. (* PENDING design: level_nf_strengthen at a level whose atoms hold proofs; closed by the 𝕃 invariant
+             (typed level normal forms hold no proofs), which implies the erased-atoms hypotheses *)
 
 (** The small [Π] over a type of the small universe. *)
 Lemma alg_pi_small_complete : forall Γ L A B n,
