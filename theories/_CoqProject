@@ -131,6 +131,7 @@
 ./Core/Syntactic/Levels/LevelEq.v
 ./Core/Syntactic/Levels/Ordinals.v
 ./Core/Syntactic/Syntax.v
+./Core/Syntactic/UserSyntax.v
 ./Core/Syntactic/System.v
 ./Core/Syntactic/System/Translations.v
 ./Core/TypedElab.v
