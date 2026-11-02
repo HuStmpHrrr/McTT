@@ -84,15 +84,19 @@ Section Fixed_GCtx.
         (** The right ones too *)
       ; branch_read_pair_count_b : cargs_container_count Db Dc gs' branch_read_pair_gsb = cargs_nrec Dc gs'
         (** The left arguments are fresh at [ua] *)
-      ; branch_read_pair_args_a : Fcargs branch_read_pair_gsa of pa ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi)%nat ↘ branch_read_pair_vsa
+      ; branch_read_pair_args_a : Fcargs branch_read_pair_gsa of pa ua in gc_deps ⍮ gc_stack
+          ⍮ components_env Da ua (List.rev (im_nparams Mva)) nsa ⍮ (s + im_nn Mi)%nat ↘ branch_read_pair_vsa
         (** The right arguments are fresh at [ub] *)
-      ; branch_read_pair_args_b : Fcargs branch_read_pair_gsb of pb ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi)%nat ↘ branch_read_pair_vsb
+      ; branch_read_pair_args_b : Fcargs branch_read_pair_gsb of pb ub in gc_deps ⍮ gc_stack
+          ⍮ components_env Db ub (List.rev (im_nparams Mvb)) nsb ⍮ (s + im_nn Mi)%nat ↘ branch_read_pair_vsb
         (** The left fresh recursive results *)
       ; branch_read_pair_ihs_a : Fihs branch_read_pair_vsa at gs' branch_read_pair_gsa of Dc under ρa (blocks_motives Bksa) at pa ua
-          in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ branch_read_pair_ihsa
+          in gc_deps ⍮ gc_stack ⍮ components_env Da ua (List.rev (im_nparams Mva)) nsa ⍮ (s + im_nn Mi + List.length gs')%nat
+          ↘ branch_read_pair_ihsa
         (** The right fresh recursive results *)
       ; branch_read_pair_ihs_b : Fihs branch_read_pair_vsb at gs' branch_read_pair_gsb of Dc under ρb (blocks_motives Bksb) at pb ub
-          in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ branch_read_pair_ihsb
+          in gc_deps ⍮ gc_stack ⍮ components_env Db ub (List.rev (im_nparams Mvb)) nsb ⍮ (s + im_nn Mi + List.length gs')%nat
+          ↘ branch_read_pair_ihsb
         (** The left results, the nested-through ones by the eliminator *)
       ; branch_read_pair_wrap_a : ⟦wihs branch_read_pair_vsa of gs' branch_read_pair_gsa of Dc with branch_read_pair_ihsa under pa ua Bksa ⟧
           gc_deps ⍮ gc_stack ⍮ ρa ↘ branch_read_pair_wa
@@ -100,43 +104,50 @@ Section Fixed_GCtx.
       ; branch_read_pair_wrap_b : ⟦wihs branch_read_pair_vsb of gs' branch_read_pair_gsb of Dc with branch_read_pair_ihsb under pb ub Bksb ⟧
           gc_deps ⍮ gc_stack ⍮ ρb ↘ branch_read_pair_wb
         (** The left branch evaluated there *)
-      ; branch_read_pair_branch_a : ⟦ Ba ⟧ env_args ρa (nsa ++ branch_read_pair_vsa ++ branch_read_pair_wa) ↘ branch_read_pair_ra
+      ; branch_read_pair_branch_a : ⟦ Ba ⟧ env_extend_typed ρa (branch_entries Da Mva pa ua (blocks_motives Bksa) ρa branch_read_pair_gsa
+                                       nsa branch_read_pair_vsa branch_read_pair_wa) ↘ branch_read_pair_ra
         (** The right branch evaluated there *)
-      ; branch_read_pair_branch_b : ⟦ Bb ⟧ env_args ρb (nsb ++ branch_read_pair_vsb ++ branch_read_pair_wb) ↘ branch_read_pair_rb
+      ; branch_read_pair_branch_b : ⟦ Bb ⟧ env_extend_typed ρb (branch_entries Db Mvb pb ub (blocks_motives Bksb) ρb branch_read_pair_gsb
+                                       nsb branch_read_pair_vsb branch_read_pair_wb) ↘ branch_read_pair_rb
         (** The left motive at the constructor *)
-      ; branch_read_pair_type_a : ⟦ Aa ⟧ env_args ρa (nsa ++ d_con hd k c (prea ++ nsa ++ branch_read_pair_vsa) :: nil) ↘ branch_read_pair_ta
+      ; branch_read_pair_type_a : ⟦ Aa ⟧ env_extend_typed ρa (motive_entries Da Mva ua nsa (d_ind hd k (prea ++ nsa))
+                                     (d_con hd k c (prea ++ nsa ++ branch_read_pair_vsa))) ↘ branch_read_pair_ta
         (** The right motive at the constructor *)
-      ; branch_read_pair_type_b : ⟦ Ab ⟧ env_args ρb (nsb ++ d_con hd k c (preb ++ nsb ++ branch_read_pair_vsb) :: nil) ↘ branch_read_pair_tb
+      ; branch_read_pair_type_b : ⟦ Ab ⟧ env_extend_typed ρb (motive_entries Db Mvb ub nsb (d_ind hd k (preb ++ nsb))
+                                     (d_con hd k c (preb ++ nsb ++ branch_read_pair_vsb))) ↘ branch_read_pair_tb
         (** The two branches read back alike at their types *)
       ; branch_read_pair_read : per_top (⇓ branch_read_pair_ta branch_read_pair_ra) (⇓ branch_read_pair_tb branch_read_pair_rb) }.
 
     Lemma read_brs_pair : forall s Dc Mi hd k prea preb Mva Mvb Aa Ab nsa nsb,
-        Ftele List.rev (im_nparams Mva) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ nsa ->
-        Ftele List.rev (im_nparams Mvb) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ nsb ->
+        Ftele List.rev (im_nparams Mva) in gc_deps ⍮ gc_stack ⍮ decl_env Da ua ⍮ s ↘ nsa ->
+        Ftele List.rev (im_nparams Mvb) in gc_deps ⍮ gc_stack ⍮ decl_env Db ub ⍮ s ↘ nsb ->
         forall cs Bs1 Bs2,
         (forall c gs' na Ba nb Bb, In (c, gs') cs -> In (c, na, Ba) Bs1 -> In (c, nb, Bb) Bs2 ->
            branch_read_pair s Dc Mi hd k prea preb Mva Mvb Aa Ab nsa nsb c gs' na nb Ba Bb) ->
         brs_names cs Bs1 -> brs_names cs Bs2 ->
-        exists Bs', Rbrs Bs1 at cs of Mi (hd, k, prea) of Dc from pa ua Bksa Mva Aa in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ Bs' /\
-          Rbrs Bs2 at cs of Mi (hd, k, preb) of Dc from pb ub Bksb Mvb Ab in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ Bs'.
+        exists Bs' Bs'', Rbrs Bs1 at cs of Mi (hd, k, prea) of Dc from pa ua Bksa Mva Aa in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ Bs' /\
+          Rbrs Bs2 at cs of Mi (hd, k, preb) of Dc from pb ub Bksb Mvb Ab in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ Bs'' /\
+          List.map (map_normal_branch (fun _ => nf_erase)) Bs' = List.map (map_normal_branch (fun _ => nf_erase)) Bs''.
     Proof.
       intros s Dc Mi hd k prea preb Mva Mvb Aa Ab nsa nsb Fa Fb.
       induction cs as [| [c gs'] cs IH]; intros [| [[c1 n1] B1] Bs1] [| [[c2 n2] B2] Bs2] Hcs Hn1 Hn2;
         cbn in Hn1, Hn2; try discriminate.
-      - exists nil; split; constructor.
+      - exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
       - injection Hn1 as <- Hn1; injection Hn2 as <- Hn2.
         destruct (Hcs c gs' n1 B1 n2 B2 ltac:(left; reflexivity) ltac:(left; reflexivity) ltac:(left; reflexivity))
           as [gsa gsb vsa vsb ihsa ihsb wa wb ra rb ta tb Ca Cb Ara Arb Pa Pb Na Nb Ga Gb Ia Ib Wa Wb Ea Eb Ta Tb Hrd].
-        destruct (Hrd (s + (im_nn Mi + List.length gs' + cargs_nrec Dc gs'))) as (B' & RB1 & RB2).
-        destruct (IH Bs1 Bs2) as (Bs' & RBs1 & RBs2).
+        destruct (Hrd (s + (im_nn Mi + List.length gs' + cargs_nrec Dc gs'))) as [B' B'' RB1 RB2 HE].
+        destruct (IH Bs1 Bs2) as (Bs' & Bs'' & RBs1 & RBs2 & HEs).
         { intros c' g' na Ba nb Bb Hin H1 H2; apply Hcs; right; assumption. }
         { exact Hn1. }
         { exact Hn2. }
-        exists (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec Dc gs') B') Bs'); split.
+        exists (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec Dc gs') B') Bs'),
+               (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec Dc gs') B'') Bs''); split; [| split ].
         + eapply read_brs_cons; [ exact Ca | exact Hla | exact Ara | reflexivity | exact Na | exact Pa | exact Fa | exact Ga
                                 | exact Ia | exact Wa | exact Ea | exact Ta | exact RB1 | exact RBs1 ].
         + eapply read_brs_cons; [ exact Cb | exact Hlb | exact Arb | reflexivity | exact Nb | exact Pb | exact Fb | exact Gb
                                 | exact Ib | exact Wb | exact Eb | exact Tb | exact RB2 | exact RBs2 ].
+        + exact (f_equal2 (fun b l => b :: l) (f_equal (mk_normal_branch c _) HE) HEs).
     Qed.
 
     (** What the two readbacks need of a block: the one of the member [Mi]
@@ -188,15 +199,21 @@ Section Fixed_GCtx.
         (** The right member's type at [ub] *)
       ; block_read_pair_ref_b : ⟦mref elim_src selb i of pb ub ⟧ gc_deps ⍮ gc_stack ↘ (block_read_pair_hd, block_read_pair_k, block_read_pair_preb)
         (** The left fresh non-uniform parameters *)
-      ; block_read_pair_params_a : Ftele List.rev (im_nparams block_read_pair_Mva) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ block_read_pair_nsa
+      ; block_read_pair_params_a : Ftele List.rev (im_nparams block_read_pair_Mva) in gc_deps ⍮ gc_stack ⍮ decl_env Da ua ⍮ s ↘ block_read_pair_nsa
         (** The right fresh non-uniform parameters *)
-      ; block_read_pair_params_b : Ftele List.rev (im_nparams block_read_pair_Mvb) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ block_read_pair_nsb
+      ; block_read_pair_params_b : Ftele List.rev (im_nparams block_read_pair_Mvb) in gc_deps ⍮ gc_stack ⍮ decl_env Db ub ⍮ s ↘ block_read_pair_nsb
         (** The left motive at a fresh scrutinee *)
       ; block_read_pair_motive_a : ⟦ eb_motive block_read_pair_ba ⟧
-          env_args ρa (block_read_pair_nsa ++ ⇑! (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_prea ++ block_read_pair_nsa)) ((s + im_nn Mi)%nat) :: nil) ↘ block_read_pair_aa
+          env_extend_typed ρa (motive_entries Da block_read_pair_Mva ua block_read_pair_nsa
+            (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_prea ++ block_read_pair_nsa))
+            (⇑! (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_prea ++ block_read_pair_nsa)) ((s + im_nn Mi)%nat)))
+          ↘ block_read_pair_aa
         (** The right motive at a fresh scrutinee *)
       ; block_read_pair_motive_b : ⟦ eb_motive block_read_pair_bb ⟧
-          env_args ρb (block_read_pair_nsb ++ ⇑! (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_preb ++ block_read_pair_nsb)) ((s + im_nn Mi)%nat) :: nil) ↘ block_read_pair_ab
+          env_extend_typed ρb (motive_entries Db block_read_pair_Mvb ub block_read_pair_nsb
+            (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_preb ++ block_read_pair_nsb))
+            (⇑! (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_preb ++ block_read_pair_nsb)) ((s + im_nn Mi)%nat)))
+          ↘ block_read_pair_ab
         (** The two motives read back alike *)
       ; block_read_pair_motive_read : per_top_typ block_read_pair_aa block_read_pair_ab
         (** The left block has one branch per constructor of [Mi] *)
@@ -211,24 +228,27 @@ Section Fixed_GCtx.
 
     Lemma read_blocks_pair : forall s Dc sela selb Ms i,
         (forall n Mi, List.nth_error Ms n = Some Mi -> block_read_pair s Dc sela selb (i + n) Mi) ->
-        exists NBks, Rblks i Ms of Dc from pa ua Bksa sela in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ NBks /\
-          Rblks i Ms of Dc from pb ub Bksb selb in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks.
+        exists NBks NBks', Rblks i Ms of Dc from pa ua Bksa sela in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ NBks /\
+          Rblks i Ms of Dc from pb ub Bksb selb in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks' /\
+          List.map (map_normal_block (fun _ => nf_erase)) NBks = List.map (map_normal_block (fun _ => nf_erase)) NBks'.
     Proof.
       intros s Dc sela selb Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
-      - exists nil; split; constructor.
+      - exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
       - destruct (HMs 0 Mi eq_refl) as [Mva Mvb ba bb hd k prea preb nsa nsb aa ab HMa HMb Hba Hbb Hnma Hnmb Ra Rb Fa Fb Ea Eb
                                         Hrd Hna Hnb Hbrs].
         rewrite Nat.add_0_r in *.
-        destruct (Hrd (S (s + im_nn Mi))) as (A' & RA1 & RA2).
+        destruct (Hrd (S (s + im_nn Mi))) as [A' A'' RA1 RA2 HEA].
         destruct (read_brs_pair s Dc Mi hd k prea preb Mva Mvb (eb_motive ba) (eb_motive bb) nsa nsb Fa Fb
-                    (im_cons Mi) (eb_brs ba) (eb_brs bb) Hbrs Hna Hnb) as (Bs' & RB1 & RB2).
-        destruct (IH (S i0)) as (NBks & RN1 & RN2).
+                    (im_cons Mi) (eb_brs ba) (eb_brs bb) Hbrs Hna Hnb) as (Bs' & Bs'' & RB1 & RB2 & HEb).
+        destruct (IH (S i0)) as (NBks & NBks' & RN1 & RN2 & HEn).
         { intros n Mi' Hn; replace (S i0 + n) with (i0 + S n) by lia; exact (HMs (S n) Mi' Hn). }
-        exists (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks); split.
+        exists (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks), (cons (mk_normal_block (S (im_nn Mi)) A'' Bs'') NBks');
+          split; [| split ].
         + eapply read_blocks_cons; [ exact Hla | exact HMa | exact Hba | exact Hnma | exact Ra | exact Fa | exact Ea
                                    | exact RA1 | exact RB1 | exact RN1 ].
         + eapply read_blocks_cons; [ exact Hlb | exact HMb | exact Hbb | exact Hnmb | exact Rb | exact Fb | exact Eb
                                    | exact RA2 | exact RB2 | exact RN2 ].
+        + exact (f_equal2 (fun b l => b :: l) (f_equal2 (mk_normal_block _) HEA HEb) HEn).
     Qed.
 
     (** Two stuck eliminators read as the eliminator of the member [k] of
@@ -249,15 +269,16 @@ Section Fixed_GCtx.
         Dom d_elim ρa Bksa pa ua ja asa ea ≈ d_elim ρb Bksb pb ub jb asb eb ∈ per_bot.
     Proof.
       intros * HMa HMb Hra Hrb Hq HMk La Lb Hnma Hnmb Hara Harb Ra Rb Hps He Hblk s.
-      destruct (He s) as (M & RM1 & RM2).
-      destruct (Hps s) as (Us & RU1 & RU2).
-      destruct (read_blocks_pair s Dq (im_sel Mja) (im_sel Mjb) (ind_block_members Dq) 0) as (NBks & RB1 & RB2).
+      destruct (He s) as [M M' RM1 RM2 HEM].
+      destruct (Hps s) as [Us Us' RU1 RU2 HEU].
+      destruct (read_blocks_pair s Dq (im_sel Mja) (im_sel Mjb) (ind_block_members Dq) 0) as (NBks & NBks' & RB1 & RB2 & HEB).
       { intros n Mn Hn; exact (Hblk s (0 + n) Mn Hn). }
-      exists (ne_elim pc Us k NBks M); split.
+      apply (mk_neutral_reads_alike _ _ _ (ne_elim pc Us k NBks M) (ne_elim pc Us' k NBks' M')).
       - eapply read_ne_elim; [ exact Hla | exact HMa | exact Hra | exact Hq | exact HMk | exact La | exact Hnma | exact Hara
                              | exact Ra | exact RU1 | exact RB1 | exact RM1 ].
       - eapply read_ne_elim; [ exact Hlb | exact HMb | exact Hrb | exact Hq | exact HMk | exact Lb | exact Hnmb | exact Harb
                              | exact Rb | exact RU2 | exact RB2 | exact RM2 ].
+      - cbn [ne_erase]; rewrite HEU, HEB, HEM; reflexivity.
     Qed.
   End ReadPairs.
 End Fixed_GCtx.
