@@ -108,11 +108,6 @@ Hint Resolve wf_exp_eq_conv' : mctt.
 #[export]
 Remove Hints wf_exp_eq_conv : mctt.
 
-Corollary wf_level_small : forall Θ Ξ Γ o,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ordinal_solve | apply wf_level; assumption ]. Qed.
-
 (** [Prop] is in every small universe. *)
 Corollary wf_prop_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -127,11 +122,6 @@ Proof.
   intros * ? Hlt; destruct o as [a b].
   eapply (lift_exp_universe_index _ _ _ _ (us (a, S b)) (us o')); [ cbn; ordinal_solve | apply wf_univ_lit; assumption ].
 Qed.
-
-Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ o,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero) (us o)); [ cbn; ordinal_solve | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_prop_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -152,10 +142,6 @@ Qed.
     fix an open level to [0], exactly as the large forms are: an unguarded
     [Hint Resolve] would make every search in the database try to solve an
     arithmetic side condition. *)
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Type⟨𝕃ᵒ ?n⟩) =>
-  fix_open_level n; (apply wf_level_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Type⟨𝕃ᵒ ?n⟩) =>
-  fix_open_level n; (apply wf_exp_eq_level_cong_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_prop_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ ≈ Propₘ : Type⟨𝕃ᵒ ?n⟩) =>
@@ -195,7 +181,7 @@ Corollary wf_fn_at' : forall Θ Ξ Γ r A B M i,
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : a_pi r A B.
 Proof.
   intros * HB HM; destruct (proj2 (ctx_decomp (presup_exp_ctx HB))) as [S HS HA].
-  eapply wf_fn; [ exact HA | exact HS | exact HB | exact HM ].
+  eapply wf_fn; [ exact HA | exact HS | exact HB | apply pi_codomain_universe | exact HM ].
 Qed.
 
 (** A function. *)
@@ -220,30 +206,33 @@ Hint Resolve wf_fn' : mctt.
 #[export]
 Remove Hints wf_fn : mctt.
 
-(** Whenever a [Π]-type is the type of a term, [wf_pi_inversion'] recovers its
-    two components at the level the [Π]-type itself is a type at — which is the
-    level the elimination rules want them at. *)
-(** The parts of a [Π] typed at anything: a domain of a large universe or
-    a proposition, and a codomain of the large universe. *)
-Lemma wf_pi_parts : forall Θ Ξ Γ A B C,
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
-    exists i, (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i \/ Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ) /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i.
-Proof.
-  intros * H; destruct (wf_pi_inversion H) as [(i & HA & HB & _) | (L & n & HL & HA & HB & _)]; [ eauto |].
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by (destruct HA; mauto 3).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ (Level@n)); eassumption).
-  exists 0; split; [ destruct HA; [ left; eapply wf_exp_suniv_large; eassumption | right; assumption ] |].
-  eapply wf_exp_suniv_large; eassumption.
-Qed.
+(** The parts of a [Π] of the tag [r]: the premises [wf_fn] and [wf_app]
+    ask of its domain and codomain. *)
+#[warnings="-cannot-define-projection"]
+Record pi_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (A B : typ) : Prop := mk_pi_parts
+  { (** The sort of the domain *)
+    pi_parts_domain_sort : exp
+    (** The sort of the codomain, at the tag *)
+  ; pi_parts_codomain_sort : exp
+    (** The domain's sort is a sort of types *)
+  ; pi_parts_domain_sort_is_type : type_sort pi_parts_domain_sort
+    (** The domain is of it *)
+  ; pi_parts_domain : Θ ⍮ Ξ ⍮ Γ ⊢ A : pi_parts_domain_sort
+    (** The codomain is of the codomain's sort at the tag *)
+  ; pi_parts_codomain : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r pi_parts_codomain_sort
+    (** A codomain of a universe, or of the types of levels over a type of
+        levels ([pi_codomain_sort]) *)
+  ; pi_parts_codomain_allowed : pi_codomain_sort pi_parts_domain_sort pi_parts_codomain_sort }.
 
-(** The parts of a [Π] of the tag [r] typed at anything: a domain of a
-    sort of types, and a codomain of the tag's sort. *)
+(** The parts of a [Π] of the tag [r] typed at anything.  Whenever a
+    [Π]-type is the type of a term this recovers the premises the
+    elimination and introduction rules want. *)
 Lemma wf_pi_parts_at : forall Θ Ξ Γ r A B C,
     Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B : C ->
-    exists S i, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : S /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i.
+    pi_parts Θ Ξ Γ r A B.
 Proof.
-  intros * H; destruct (wf_pi_inversion_at H) as [U S HU HA HD HB _].
+  intros * H; destruct (wf_pi_inversion_at H) as [[U S HU HA HD HB _] | [-> HA HB _]].
+  2: exact (mk_pi_parts _ _ _ relevant _ _ LevelSort LevelSort type_sort_level HA HB pi_codomain_level).
   assert (HΓA : ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A).
   { destruct HD; inversion HU; subst; try (eapply wf_ctx_extend; [ exact HA | constructor ]).
     eapply wf_ctx_extend; [ eapply (@wf_exp_suniv_large _ _ _ _ _ 0); eassumption | constructor ]. }
@@ -251,13 +240,15 @@ Proof.
   { destruct HD; inversion HU; subst; try (eexists; split; [ constructor | exact HA ]).
     exists Typeω@0; split; [ constructor | eapply wf_exp_suniv_large; eassumption ]. }
   destruct HS as (S' & HS' & HA').
-  exists S'; destruct r; cbn [relevance_sort exp_wk] in HB |- *.
-  - inversion HU; subst; cbn [exp_wk] in HB; [ eexists; repeat split; eassumption |].
+  enough (exists i, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i) as [i HBi]
+    by exact (mk_pi_parts _ _ _ _ _ _ S' Typeω@i HS' HA' HBi (pi_codomain_universe _ _)).
+  destruct r; cbn [relevance_sort exp_wk] in HB |- *.
+  - inversion HU; subst; cbn [exp_wk] in HB; [ eexists; eassumption |].
     assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
     match goal with HL : _ ⍮ _ ⍮ _ ⊢ ?L : Level@?n |- _ =>
       assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ (Level@n)); eassumption) end.
-    exists 0; repeat split; [ exact HS' | exact HA' | eapply wf_exp_suniv_large; eassumption ].
-  - exists 0; repeat split; [ exact HS' | exact HA' | exact HB ].
+    exists 0; eapply wf_exp_suniv_large; eassumption.
+  - exists 0; exact HB.
 Qed.
 
 (** An application at the tag of the [Π] applied. *)
@@ -268,8 +259,8 @@ Corollary wf_app_at' : forall Θ Ξ Γ r A B M N,
 Proof.
   intros * HM HN.
   destruct (presup_exp_typ HM) as [S HS HΠ].
-  destruct (wf_pi_parts_at _ _ _ _ _ _ _ HΠ) as (S' & i & HS' & HA & HB).
-  eapply wf_app; [ exact HA | exact HS' | exact HB | exact HM | exact HN ].
+  destruct (wf_pi_parts_at _ _ _ _ _ _ _ HΠ) as [S' S'' HS' HA HB Hc].
+  eapply wf_app; [ exact HA | exact HS' | exact HB | exact Hc | exact HM | exact HN ].
 Qed.
 
 Corollary wf_app' : forall Θ Ξ Γ A B M N,
@@ -339,7 +330,8 @@ Corollary wf_exp_eq_fn_cong' : forall Θ Ξ Γ r A A' B M M' Srt j,
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : a_pi r A B.
 Proof.
-  intros * HA HS HB HM; eapply wf_exp_eq_fn_cong; [ exact (presup_exp_eq_left HA) | exact HS | exact HA | exact HB | exact HM ].
+  intros * HA HS HB HM; eapply wf_exp_eq_fn_cong;
+    [ exact (presup_exp_eq_left HA) | exact HS | exact HA | exact HB | apply pi_codomain_universe | exact HM ].
 Qed.
 
 #[export]
@@ -354,8 +346,8 @@ Corollary wf_exp_eq_app_cong' : forall Θ Ξ Γ r A B M M' N N',
 Proof.
   intros * HM HN.
   destruct (presup_exp_typ (presup_exp_eq_left HM)) as [S HS HΠ].
-  destruct (wf_pi_parts_at _ _ _ _ _ _ _ HΠ) as (S' & i & HS' & HA & HB).
-  eapply wf_exp_eq_app_cong; [ exact HA | exact HS' | exact HB | exact HM | exact HN ].
+  destruct (wf_pi_parts_at _ _ _ _ _ _ _ HΠ) as [S' S'' HS' HA HB Hc].
+  eapply wf_exp_eq_app_cong; [ exact HA | exact HS' | exact HB | exact Hc | exact HM | exact HN ].
 Qed.
 
 #[export]
@@ -373,7 +365,7 @@ Corollary wf_exp_eq_pi_beta' : forall Θ Ξ Γ r A B M N i,
 Proof.
   intros * HB HM HN.
   destruct (proj2 (ctx_decomp (presup_exp_ctx HB))) as [S HS HA].
-  eapply wf_exp_eq_pi_beta; [ exact HA | exact HS | exact HB | exact HM | exact HN ].
+  eapply wf_exp_eq_pi_beta; [ exact HA | exact HS | exact HB | apply pi_codomain_universe | exact HM | exact HN ].
 Qed.
 
 #[export]
@@ -387,8 +379,8 @@ Corollary wf_exp_eq_fn_eta' : forall Θ Ξ Γ r A B M,
 Proof.
   intros * HM.
   destruct (presup_exp_typ HM) as [S HS HΠ].
-  destruct (wf_pi_parts_at _ _ _ _ _ _ _ HΠ) as (S' & i & HS' & HA & HB).
-  eapply wf_exp_eq_fn_eta; [ exact HA | exact HS' | exact HB | exact HM ].
+  destruct (wf_pi_parts_at _ _ _ _ _ _ _ HΠ) as [S' S'' HS' HA HB Hc].
+  eapply wf_exp_eq_fn_eta; [ exact HA | exact HS' | exact HB | exact Hc | exact HM ].
 Qed.
 
 #[export]
