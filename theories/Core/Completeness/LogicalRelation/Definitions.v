@@ -75,20 +75,25 @@ Record rel_wk_under_ctx Γ φ Δ : Prop := mk_rel_wk_under_ctx
   ; rel_wk_under_ctx_wk : rel_wk φ rel_wk_under_ctx_rel rel_wk_under_ctx_rel'
     (** It takes the entries of the target to entries of the source *)
   ; rel_wk_under_ctx_bound : forall x, x < List.length Δ -> φ x < List.length Γ
-    (** An entry of the target whose image in the source is a proposition
-        is one.  Context-directed evaluation needs this to evaluate the
-        substitution [ι φ ⨟ τ] at [Δ] to [⟪φ⟫ ρτ] when [τ] evaluates at
-        [Γ] to [ρτ]: at a target entry that is no proposition it asks for
-        the value of [τ (φ x)], which [ρτ] holds only when the source
-        entry [φ x] is no proposition either.  It is a condition on
-        semantic weakenings that their relations do not imply: the
-        identity from [⋅ ▹ ⊤] to [⋅ ▹ a_placeholder_type] takes related
-        environments to related ones, since the placeholder type relates
-        all values, the proof [⋆ᵈ] among them, but the source entry is a
-        proposition and the target entry is not. *)
+    (** An entry of the target is a proposition exactly when its image in
+        the source is one.  Context-directed evaluation needs this to
+        evaluate the substitution [ι φ ⨟ τ] at [Δ] to [⟪φ⟫ ρτ] when [τ]
+        evaluates at [Γ] to [ρτ].  At a target entry that is no
+        proposition it asks for the value of [τ (φ x)], which [ρτ] holds
+        only when the source entry [φ x] is no proposition either; at a
+        target entry that is a proposition it asks for the kept proof of
+        [τ (φ x)], which [ρτ] holds only when the source entry is a
+        proposition too.  It is a condition on semantic weakenings that
+        their relations do not imply: the identity from [⋅ ▹ ⊤] to
+        [⋅ ▹ a_placeholder_type] takes related environments to related
+        ones, since the placeholder type relates all values, the proof
+        among them, but the source entry is a proposition and the target
+        entry is not; and a weakening from [⋅ ▹ B] to [⋅ ▹ P], [P] a
+        proposition and [B] none, would ask the composite for a kept proof
+        where [ρτ] holds [τ 0]'s value. *)
   ; rel_wk_under_ctx_props : forall ρ ρ', Dom ρ ≈ ρ' ∈ rel_wk_under_ctx_rel ->
       forall x, x < List.length Δ ->
-      entry_propositional gc_deps gc_stack Γ ρ (φ x) -> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x }.
+      entry_propositional gc_deps gc_stack Γ ρ (φ x) <-> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x }.
 
 Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
@@ -121,17 +126,38 @@ Record rel_sub (Δ : ctx) (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env
 #[global] Arguments mk_rel_sub {_ _ _ _ _ _ _}.
 Hint Constructors rel_sub : mctt.
 
+(** The entries of the two substitutions are scoped by the source [Γ],
+    and the weakenings the body is taken under are bounded on [Γ]: a
+    proof is kept as written ([⋆ᵈ⟨M, ρ⟩]), so its readback binds the
+    entries of [ρ] up to its free bound ([proof_scope]), which the model
+    knows to read back only inside the context.  For example:
+    - [Δ ▹ P ⊨ˢ Id,, h : Δ ▹ P ▹ P] with [h = #0]: the head is kept as
+      [⋆ᵈ⟨#0[φ]ʷ, ρ⟩], which reads [ρ] at [φ 0] only, inside the context
+      [ρ] is related at because [φ] is bounded;
+    - at [Γ = ⋅ ▹ ℕ], [Id,, #5] is not scoped: a proof [h #0] substituted
+      by it is kept as [h #5], whose readback would read the sixth entry
+      of an environment of a one-entry context. *)
 #[warnings="-cannot-define-projection"]
 Record rel_sub_under_ctx Γ Δ σ σ' : Prop := mk_rel_sub_under_ctx
-  { rel_sub_under_ctx_rel : relation env
+  { (** The source's environment relation *)
+    rel_sub_under_ctx_rel : relation env
+    (** The source's context PER *)
   ; rel_sub_under_ctx_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rel_sub_under_ctx_rel
+    (** The target's environment relation *)
   ; rel_sub_under_ctx_rel_o : relation env
+    (** The target's context PER *)
   ; rel_sub_under_ctx_per_o : EF Δ ≈ Δ ∈ per_ctx_env ↘ rel_sub_under_ctx_rel_o
+    (** The two substitutions related, under every bounded semantic
+        weakening into [Γ] *)
   ; rel_sub_under_ctx_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') φ,
       rel_wk φ env_rel' rel_sub_under_ctx_rel ->
+      (forall x, x < List.length Γ -> φ x < List.length Γ') ->
       forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
-        rel_sub Δ σ φ ρ σ' ρ' rel_sub_under_ctx_rel_o }.
+        rel_sub Δ σ φ ρ σ' ρ' rel_sub_under_ctx_rel_o
+    (** The entries of both substitutions are scoped by the source *)
+  ; rel_sub_under_ctx_scoped : forall x, x < List.length Δ ->
+      sentry_scoped (List.length Γ) (σ x) /\ sentry_scoped (List.length Γ) (σ' x) }.
 
 Definition valid_sub_under_ctx Γ Δ σ := rel_sub_under_ctx Γ Δ σ σ.
 #[global] Arguments valid_sub_under_ctx _ _ _ /.
@@ -613,7 +639,7 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
       (mdesc_reduct R1 = None \/
        exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ /\
          forall ns m, mdesc_relevance R0 = relevant ->
-           List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
+           List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
            $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ m)
     (** The value is the member's stored value, closed over the telescope,
         which selection at arguments for all of it applies to them

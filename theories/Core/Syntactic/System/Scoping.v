@@ -209,6 +209,49 @@ Proof. exact (proj1 (proj2 syn_scoped_mono)). Qed.
 Lemma gunit_scoped_mono : forall U n m, n <= m -> gunit_scoped n U -> gunit_scoped m U.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_scoped_mono)))). Qed.
 
+(** A term scoped by [n] has its free bound ([exp_free_bound]) at most
+    [n]: the readback of a proof kept over an environment binds only
+    entries below [n]. *)
+Lemma syn_scoped_free_bound :
+  (forall M n, exp_scoped n M -> exp_free_bound M <= n) /\
+  (forall H n, modexp_scoped n H -> modexp_free_bound H <= n) /\
+  (forall b n, binding_scoped n b -> binding_free_bound b <= n) /\
+  (forall U n, gunit_scoped n U -> gunit_free_bound U <= n) /\
+  (forall D n, moddef_scoped n D -> moddef_free_bound D <= n) /\
+  (forall Φ n, gmod_scoped n Φ -> gmod_free_bound Φ <= n) /\
+  (forall E n, gentry_scoped n E -> gentry_free_bound E <= n) /\
+  (forall e n, centry_scoped n e -> centry_free_bound e <= n).
+Proof.
+  syn_mut_ind; scoped_case;
+    repeat match goal with
+           | B : option exp |- _ => destruct B
+           end; cbn in *; destruct_all.
+  all: repeat match goal with IH : forall M, Some ?e = Some M -> _ |- _ => specialize (IH _ eq_refl) end.
+  all: try (repeat match goal with IH : forall n, _ -> _ <= n, Hs : _ |- _ => specialize (IH _ Hs) end; lia).
+  - apply Nat.max_lub; [| apply Nat.max_lub ].
+    + apply List.list_max_le, List.Forall_map; clear - H H2; induction H; cbn in *; destruct_all; constructor; auto.
+    + apply List.list_max_le, List.Forall_map; clear - H0 H3; induction H0 as [| [nm oZ A Bs] Bks [HZ [HA HB]] _ IH];
+        cbn in *; destruct_all; constructor; auto.
+      cbn [eb_ann eb_motive eb_brs] in *.
+      apply Nat.max_lub; [ destruct oZ as [Z |]; cbn in *; [ specialize (HZ _ eq_refl _ H); lia | lia ] | apply Nat.max_lub ].
+      * specialize (HA _ H1); lia.
+      * apply List.list_max_le, List.Forall_map; clear - HB H2; induction HB as [| [[c k] B] Bs HB _ IH]; cbn in *;
+          [ exact (List.Forall_nil _) |].
+        destruct H2 as [Hs H2]; apply List.Forall_cons; [ cbn; specialize (HB _ Hs); lia | auto ].
+    + auto.
+  - apply Nat.max_lub; [ auto |].
+    apply List.list_max_le, List.Forall_map; clear - H0 H2; induction H0; cbn in *; destruct_all; constructor; auto.
+  - apply Nat.max_lub; [| specialize (H0 _ H2); lia ].
+    clear - H H1; induction H as [| e Δ He _ IH]; cbn in *; destruct_all; [ lia |].
+    apply Nat.max_lub; [ specialize (He _ H); lia | auto ].
+Qed.
+
+Lemma exp_scoped_free_bound : forall M n, exp_scoped n M -> exp_free_bound M <= n.
+Proof. exact (proj1 syn_scoped_free_bound). Qed.
+
+Lemma gunit_scoped_free_bound : forall U n, gunit_scoped n U -> gunit_free_bound U <= n.
+Proof. exact (proj1 (proj2 (proj2 (proj2 syn_scoped_free_bound)))). Qed.
+
 Lemma sentry_exp_scoped : forall n e, sentry_scoped n e -> exp_scoped n (sentry_exp e).
 Proof. intros n [] H; cbn in *; first [ exact (proj1 H) | auto ]. Qed.
 
@@ -276,6 +319,19 @@ Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk)))))
 
 Corollary exp_scoped_shift : forall M n, exp_scoped n M -> exp_scoped (S n) M[↑]ʷ.
 Proof. intros; eapply exp_scoped_wk; [ eassumption |]; cbn; lia. Qed.
+
+Lemma sentry_scoped_mono : forall e n m, n <= m -> sentry_scoped n e -> sentry_scoped m e.
+Proof.
+  intros [] * Hle H; cbn in *; [ lia | eapply exp_scoped_mono | eapply modexp_scoped_mono | destruct H; split;
+    [ eapply exp_scoped_mono | eapply modexp_scoped_mono ] ]; eassumption.
+Qed.
+
+Lemma sentry_scoped_wk : forall e n m φ,
+    (forall x, x < n -> φ x < m) -> sentry_scoped n e -> sentry_scoped m (sentry_wk e φ).
+Proof.
+  intros [] * Hφ H; cbn in *; [ auto | eapply exp_scoped_wk | eapply modexp_scoped_wk | destruct H; split;
+    [ eapply exp_scoped_wk | eapply modexp_scoped_wk ] ]; eassumption.
+Qed.
 
 Lemma sentry_scoped_shift : forall e n, sentry_scoped n e -> sentry_scoped (S n) (sentry_wk e ↑).
 Proof.

@@ -2267,8 +2267,10 @@ Ltac solve_def_heads_pre :=
   match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
   move_by_relation_equivalence.
 
+(** A field that a hypothesis states, such as a [head_readable] one, is
+    taken before it is split. *)
 Ltac solve_def_heads_post :=
-  repeat split; try (move_goal_by_relation_equivalence; solve_per);
+  repeat (first [ assumption | split ]); try (move_goal_by_relation_equivalence; solve_per);
   try (eexists; split; [ eassumption | move_goal_by_relation_equivalence; solve_per ]).
 
 Ltac solve_def_heads := solve_def_heads_pre; solve_def_heads_post.
@@ -2356,10 +2358,14 @@ Lemma mk_per_ctx_env_def_rel' : forall tail_rel
     Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel Ht /\ def_heads_at r (head_rel Ht) M M' ρ ρ' ->
     (rel_typ_propositional A ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t) ->
     (rel_typ_propositional A' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t) ->
-    entry_readable (env_entry ρ 0) ->
-    entry_readable (env_entry ρ' 0) ->
+    head_readable 0 (env_entry ρ 0) ->
+    head_readable 0 (env_entry ρ' 0) ->
     per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M' ρ ρ'.
 Proof. intros * [Hh Hd] Hl Hr Hrl Hrr; exact (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht Hh Hd Hl Hr Hrl Hrr). Qed.
+
+(** Related contexts have as many entries. *)
+Lemma per_ctx_env_length : forall {Γ Δ R}, EF Γ ≈ Δ ∈ per_ctx_env ↘ R -> List.length Γ = List.length Δ.
+Proof. induction 1; cbn [List.length]; congruence. Qed.
 
 Lemma per_ctx_env_right_irrel : forall Γ Δ Δ' R R',
     DF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
@@ -2407,7 +2413,7 @@ Proof.
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [symmetry |]; intuition);
       assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [| symmetry]; intuition);
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [symmetry |]; intuition);
-      repeat split; try assumption; solve_tie.
+      repeat (first [ assumption | split ]); solve_tie.
   - (** A definition with a module part: the term part as a definition, the
         unit as a slot.  In each direction the tails the heads are read at
         are the target's: its related pair and each side against itself.
@@ -2519,11 +2525,15 @@ Proof.
     simpl in *; destruct_conjs.
     match goal with
     | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _,
-      HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ |- _ =>
+      HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ,
+      Hc : per_ctx_env tail_rel ?Γ1 ?Γ2 |- _ =>
+        (** The swapped context's tail has as many entries. *)
+        pose proof (per_ctx_env_length Hc) as Hlen;
         split;
         [ eapply per_ctx_env_cons_mod; [ eassumption | eassumption | | ];
           [ intros ρ ρ' Hρ; apply rel_modexp_evals_sym, HU, Hs, Hρ
-          | intros ρ ρ'; split; intros Hρ; [ apply HE in Hρ | apply HE ]; destruct Hρ; constructor; assumption ]
+          | intros ρ ρ'; split; intros Hρ; [ apply HE in Hρ | apply HE ]; destruct Hρ;
+            constructor; first [ assumption | rewrite Hlen in *; assumption | rewrite <- Hlen in *; assumption ] ]
         | intros ρ ρ' Hρ; apply HE in Hρ; apply HE; destruct Hρ; constructor; eauto ]
     end.
   - (** A definition with a module part: the term part as a definition, the
@@ -2633,6 +2643,10 @@ Ltac destruct_cons_rels :=
 
 Ltac destruct_def_rels :=
   repeat match goal with H : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ |- _ => destruct H end.
+
+(** Those a module entry relates, likewise. *)
+Ltac destruct_mod_rels :=
+  repeat match goal with H : per_ctx_env_mod_rel _ _ _ _ _ _ |- _ => destruct H end.
 
 Ltac do_per_ctx_env_irrel_assert1 :=
   let tactic_error o1 o2 := fail 3 "per_ctx_env_irrel equality between" o1 "and" o2 "cannot be solved" in
@@ -2807,11 +2821,11 @@ Proof with solve [eauto using per_univ_trans].
           | destruct Hρ as [Ht ? ? ? ? ? ?];
             assert (T ρ↯ ρ↯) by (etransitivity; [| symmetry ]; exact Ht);
             assert (T ρ'↯ ρ'↯) by (etransitivity; [ symmetry |]; exact Ht);
-            repeat split; try assumption; solve_tie ] ]
+            repeat (first [ assumption | split ]); solve_tie ] ]
     end.
   - (** A slot's environments: the outer ones' ties and readable heads, the
         tails by the tails' transitivity. *)
-    match goal with H1 : per_ctx_env_mod_rel _ _ _ ?ρ1 ?ρ2, H2 : per_ctx_env_mod_rel _ _ _ ?ρ2 ?ρ3 |- _ =>
+    match goal with H1 : per_ctx_env_mod_rel _ _ _ _ ?ρ1 ?ρ2, H2 : per_ctx_env_mod_rel _ _ _ _ ?ρ2 ?ρ3 |- _ =>
       destruct H1, H2 end.
     constructor; try assumption; eauto.
   - (** A definition with a module part: the right term part as a
@@ -3152,8 +3166,8 @@ Lemma per_env_extend_intro : forall {S S' R ρ ρ'},
     Dom (ρ 0) ≈ (ρ' 0) ∈ per_head S S' ρ↯ ρ'↯ ->
     (rel_typ_propositional S ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t) ->
     (rel_typ_propositional S' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t) ->
-    entry_readable (env_entry ρ 0) ->
-    entry_readable (env_entry ρ' 0) ->
+    head_readable 0 (env_entry ρ 0) ->
+    head_readable 0 (env_entry ρ' 0) ->
     Dom ρ ≈ ρ' ∈ per_env_extend S S' R.
 Proof.
   intros * Ht Hh Hl Hr Hrl Hrr.
@@ -3171,7 +3185,8 @@ Corollary per_env_extend_intro' : forall {S S' R ρ ρ' m m' t t'},
     entry_readable (de_term m' t') ->
     Dom ρ ↦ m ⦂ t ≈ ρ' ↦ m' ⦂ t' ∈ per_env_extend S S' R.
 Proof.
-  intros * ? ? ? ?; apply per_env_extend_intro; first [ assumption | intros _; eexists; reflexivity ].
+  intros * ? ? ? ?; apply per_env_extend_intro;
+    first [ assumption | intros _; eexists; reflexivity | split; [ assumption | cbn; lia ] ].
 Qed.
 
 (** ** A Canonical Context PER for a Definition Entry
@@ -3286,10 +3301,10 @@ Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (R : relation env) (ρ 
   ; per_env_extend_dm_tie_left : tie_mod (env_mod ρ 0) (me_lit U) ρ↯
     (** The right head's module tied likewise *)
   ; per_env_extend_dm_tie_right : tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯
-    (** The left head reads back at its stored type *)
-  ; per_env_extend_dm_left_readable : entry_readable (env_entry ρ 0)
+    (** The left head reads back at its stored type, and stores no unit *)
+  ; per_env_extend_dm_left_readable : head_readable 0 (env_entry ρ 0)
     (** So does the right one *)
-  ; per_env_extend_dm_right_readable : entry_readable (env_entry ρ' 0) }.
+  ; per_env_extend_dm_right_readable : head_readable 0 (env_entry ρ' 0) }.
 
 (** The premise [per_ctx_env_cons_dm] asks for, at the canonical relation. *)
 Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
@@ -3600,7 +3615,7 @@ Ltac solve_per_env_extend_chain :=
     | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
     | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
     end;
-  apply per_env_extend_intro'; first [ pairwise | solve_per_head ].
+  apply per_env_extend_intro'; first [ pairwise | solve_per_head | assumption ].
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -3766,7 +3781,7 @@ Qed.
     [0]). *)
 Ltac readable_resp_agree :=
   match goal with
-  | Heq : env_agree_upto _ ?ρ1 ?ρ2, H : entry_readable (env_entry ?ρ1 0) |- entry_readable (env_entry ?ρ2 0) =>
+  | Heq : env_agree_upto _ ?ρ1 ?ρ2, H : head_readable ?n (env_entry ?ρ1 0) |- head_readable ?n (env_entry ?ρ2 0) =>
       rewrite <- (Heq 0 ltac:(cbn; lia)); exact H
   end.
 
@@ -3864,10 +3879,6 @@ Proof.
     constructor; try rewrite <- (env_agree_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_var _ _ _ Heq' 0 ltac:(cbn; lia));
       solve_def_heads_post.
 Qed.
-
-(** Related contexts have as many entries. *)
-Lemma per_ctx_env_length : forall {Γ Δ R}, EF Γ ≈ Δ ∈ per_ctx_env ↘ R -> List.length Γ = List.length Δ.
-Proof. induction 1; cbn [List.length]; congruence. Qed.
 
 (** In particular, context PERs respect pointwise equality. *)
 Corollary per_ctx_env_resp_env_eq : forall {Γ Δ R},
@@ -4032,6 +4043,84 @@ Proof.
     destruct x as [| x]; [ destruct Hx as [T HT]; discriminate HT |].
     apply (proj2 (entry_propositional_succ _ _ _ _)).
     exact (IHper_ctx_env _ _ Ht x (proj1 (entry_propositional_succ _ _ _ _) Hx)).
+Qed.
+
+(** * Readability of Kept Proofs over Related Environments *)
+
+(** Any term entry an evaluated substitution stores ([substituted_type])
+    reads back, at the placeholder type. *)
+Lemma substituted_entry_readable : forall v, entry_readable (de_term v substituted_type).
+Proof.
+  intros v s; eexists; eapply read_entry_term;
+    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
+Qed.
+
+(** The entries of the environments a context PER relates read back, on
+    the context's entries: each head does ([head_readable] fields). *)
+Lemma per_ctx_env_entries_readable : forall Γ Γ' R, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> forall x, x < List.length Γ ->
+      entry_readable (env_entry ρ x) /\ entry_readable (env_entry ρ' x).
+Proof.
+  induction 1; intros ρ ρ' Hρ x Hx; cbn [List.length] in Hx; [ lia | .. ].
+  all: apply_relation_equivalence; destruct Hρ; unfold head_readable in *; destruct_all;
+    destruct x as [| x]; [ split; assumption |].
+  all: change (env_entry ρ (S x)) with (env_entry ρ↯ x); change (env_entry ρ' (S x)) with (env_entry ρ'↯ x).
+  all: apply IHper_ctx_env; [ assumption | lia ].
+Qed.
+
+(** The lets of an environment whose entries below [k] read back, at [k]
+    positions and any length. *)
+Lemma read_lets_of_entries_readable : forall ρ k, (forall x, x < k -> entry_readable (env_entry ρ x)) ->
+    forall s, exists bs, Rlets ρ at k in gc_deps ⍮ gc_stack ⍮ s ↘ bs.
+Proof.
+  intros ρ k; induction k as [| k IH]; intros H s; [ eexists; constructor |].
+  destruct (H k ltac:(lia) s) as [b Hb]; destruct (IH ltac:(intros x Hx; apply H; lia) (S s)) as [bs Hbs].
+  eexists; econstructor; eassumption.
+Qed.
+
+(** The scope of a kept proof over an environment a context PER relates
+    stays inside the context when the proof's free bound does: the stored
+    units of the heads are scoped by their tails ([head_readable] fields).
+    Stated from the position [j] on, for the recursion of
+    [proof_scope_from]. *)
+Lemma per_ctx_env_proof_scope_from : forall Γ Γ' R, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> forall j n, n <= j + List.length Γ ->
+      proof_scope_from ρ j n <= j + List.length Γ /\ proof_scope_from ρ' j n <= j + List.length Γ.
+Proof.
+  induction 1; intros ρ ρ' Hρ j n Hn; cbn [List.length] in *.
+  1: split; [ destruct ρ | destruct ρ' ]; cbn [proof_scope_from]; try lia;
+      destruct (Nat.ltb_spec j n); lia.
+  all: apply_relation_equivalence.
+  all: destruct Hρ;
+    match goal with
+    | Ht : Dom (drop_env ?r) ≈ (drop_env ?r') ∈ _ |- _ => rename Ht into Htail
+    end.
+  all: unfold head_readable in *; destruct_all.
+  all: split; [ destruct ρ as [| e ρ0] | destruct ρ' as [| e ρ0] ]; cbn [proof_scope_from]; try lia;
+    destruct (Nat.ltb_spec j n); try lia;
+    cbn [drop_env List.tl] in *; rewrite ?env_entry_nth in *; cbn [List.nth] in *.
+  (** The head widens the scope by its stored unit, scoped by the tail. *)
+  all: match goal with
+    | IH : forall ρ ρ', _ -> forall j n, _ -> _ /\ _ |- _ =>
+        destruct (IH _ _ Htail (S j) (Nat.max n (S j + entry_unit_bound e)) ltac:(lia)) as [IH1 IH2]; lia
+    end.
+Qed.
+
+(** A proof kept over an environment a context PER relates, with a free
+    bound inside the context, reads back. *)
+Lemma per_ctx_env_kept_proof_readable : forall Γ Γ' R M, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
+    exp_free_bound M <= List.length Γ ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> proof_readable ⋆ᵈ⟨M, ρ⟩ /\ proof_readable ⋆ᵈ⟨M, ρ'⟩.
+Proof.
+  intros * HΓ HM ρ ρ' Hρ.
+  destruct (per_ctx_env_proof_scope_from _ _ _ HΓ _ _ Hρ 0 (exp_free_bound M) HM) as [S1 S2].
+  split; intros s; unfold proof_scope.
+  - destruct (read_lets_of_entries_readable ρ (proof_scope_from ρ 0 (exp_free_bound M))
+                (fun x Hx => proj1 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x ltac:(lia))) s) as [bs Hbs].
+    eexists; constructor; exact Hbs.
+  - destruct (read_lets_of_entries_readable ρ' (proof_scope_from ρ' 0 (exp_free_bound M))
+                (fun x Hx => proj2 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x ltac:(lia))) s) as [bs Hbs].
+    eexists; constructor; exact Hbs.
 Qed.
 
 End Fixed_GCtx.

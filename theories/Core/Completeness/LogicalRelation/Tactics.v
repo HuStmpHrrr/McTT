@@ -31,8 +31,9 @@ Ltac eexists_rel_exp :=
 Ltac eexists_rel_exp_with i :=
   first [ eapply mk_rel_exp_under_ctx with (rel_exp_under_ctx_lvl := i); [eassumption |] | eexists_ctx_level_with i ].
 
+(** [rel_sub_under_ctx] leaves its body and then its scoping field. *)
 Ltac eexists_rel_sub :=
-  first [ eapply mk_rel_sub_under_ctx; [eassumption | eassumption |] | eexists_ctx_pair ].
+  first [ eapply mk_rel_sub_under_ctx; [eassumption | eassumption | |] | eexists_ctx_pair ].
 
 (** [rel_wk_under_ctx] has the same outer shape as [rel_sub_under_ctx] — two
     environment PERs, each with its context witness read off the goal —

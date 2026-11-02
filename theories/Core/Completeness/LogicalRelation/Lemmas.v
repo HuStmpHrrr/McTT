@@ -123,7 +123,8 @@ Lemma rel_wk_shift : forall {Γ e R R'},
 Proof.
   intros * HΓ HΓA; split; [ apply wk_mono_shift |]; intros ρ ρ' H; rewrite !eval_wk_shift.
   inversion HΓA; subst; handle_per_ctx_env_irrel;
-    apply_relation_equivalence; destruct_conjs; destruct_cons_rels; destruct_def_rels; destruct_dm_rels; eassumption.
+    apply_relation_equivalence; destruct_conjs; destruct_cons_rels; destruct_def_rels; destruct_dm_rels; destruct_mod_rels;
+    eassumption.
 Qed.
 
 (** The tail of an extended context, with [rel_wk_shift] for it.  Inverting
@@ -149,7 +150,7 @@ Lemma rel_wk_under_ctx_intro : forall {Γ Δ φ R R'},
     rel_wk φ R R' ->
     (forall x, x < List.length Δ -> φ x < List.length Γ) ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> forall x, x < List.length Δ ->
-        entry_propositional gc_deps gc_stack Γ ρ (φ x) -> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x) ->
+        entry_propositional gc_deps gc_stack Γ ρ (φ x) <-> entry_propositional gc_deps gc_stack Δ (⟪φ⟫ ρ) x) ->
     Γ ⊨ʷ φ : Δ.
 Proof.
   intros * ? ? ? ? ?.
@@ -165,38 +166,37 @@ Proof.
   assert (Hφ' : rel_wk φ R2 R4) by (destruct Hφ as [Hm Hφ]; split; [ exact Hm | intros; apply Hφ, E; assumption ]).
   eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 | eapply rel_wk_compose; [ exact Hψ | exact Hφ' ]
                                  | intros x Hx; exact (Bψ _ (Bφ x Hx)) |].
-  (** A proposition of [Γ] at [ψ (φ x)] is one of [Δ] at [φ x], and so one
-      of [Θ'] at [x]. *)
-  intros ρ ρ' Hρ x Hx Hp.
+  (** [Γ] at [ψ (φ x)] is propositional exactly when [Δ] is at [φ x], and
+      so exactly when [Θ'] is at [x]. *)
+  intros ρ ρ' Hρ x Hx.
   pose proof Hψ as [Hψm Hψr]; pose proof Hφ' as [Hφm _].
   pose proof (Hψr _ _ Hρ) as Hρψ.
   rewrite eval_wk_compose by (first [ exact Hψm | exact Hφm ]).
-  exact (Pφ _ _ (proj1 (E _ _) Hρψ) x Hx (Pψ _ _ Hρ (φ x) (Bφ x Hx) Hp)).
+  exact (iff_trans (Pψ _ _ Hρ (φ x) (Bφ x Hx)) (Pφ _ _ (proj1 (E _ _) Hρψ) x Hx)).
 Qed.
 
 (** The propositional entries of an extended context's tail are those of
     the context, one index up: [↑] and [wk_id] take them along. *)
 Lemma entry_propositional_shift_wk : forall e Γ ρ x,
-    entry_propositional gc_deps gc_stack (e :: Γ) ρ (↑ x) -> entry_propositional gc_deps gc_stack Γ (⟪↑⟫ ρ) x.
-Proof. intros * H; rewrite eval_wk_shift; exact (proj1 (entry_propositional_succ _ _ _ _) H). Qed.
+    entry_propositional gc_deps gc_stack (e :: Γ) ρ (↑ x) <-> entry_propositional gc_deps gc_stack Γ (⟪↑⟫ ρ) x.
+Proof. intros *; rewrite eval_wk_shift; exact (entry_propositional_succ _ _ _ _). Qed.
 
 Lemma entry_propositional_id_wk : forall Γ ρ x,
-    entry_propositional gc_deps gc_stack Γ ρ (wk_id x) -> entry_propositional gc_deps gc_stack Γ (⟪wk_id⟫ ρ) x.
-Proof. intros * H; rewrite eval_wk_id; exact H. Qed.
+    entry_propositional gc_deps gc_stack Γ ρ (wk_id x) <-> entry_propositional gc_deps gc_stack Γ (⟪wk_id⟫ ρ) x.
+Proof. intros *; rewrite eval_wk_id; reflexivity. Qed.
 
 (** ** Evaluating the Identity and the Weakenings at a Context
 
-    An environment a context PER relates holds its proofs
-    ([per_ctx_env_proofs]), so the identity evaluates to it and a
-    weakening to its image. *)
+    The identity evaluates to any environment, and a weakening to its
+    image: a propositional entry of the target is the corresponding entry
+    of the environment, which carries its proof. *)
 
 Lemma eval_sub_id_rel : forall {Γ R ρ ρ'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Dom ρ ≈ ρ' ∈ R ->
     ⟦ Id : Γ ⟧s ρ ↘ ρ /\ ⟦ Id : Γ ⟧s ρ' ↘ ρ'.
 Proof.
-  intros * HΓ Hρ; destruct (per_ctx_env_proofs _ _ _ HΓ _ _ Hρ) as [Hl Hr].
-  split; apply eval_sub_id; assumption.
+  intros * HΓ Hρ; split; apply eval_sub_id.
 Qed.
 
 Lemma eval_sub_of_wk_rel : forall {Γ R φ ρ ρ'} `{Hφ : WkMono φ},
@@ -204,7 +204,7 @@ Lemma eval_sub_of_wk_rel : forall {Γ R φ ρ ρ'} `{Hφ : WkMono φ},
     Dom ⟪φ⟫ ρ ≈ ρ' ∈ R ->
     ⟦ ι φ : Γ ⟧s ρ ↘ ⟪φ⟫ ρ.
 Proof.
-  intros Γ R φ ρ ρ' Hφ HΓ Hρ; exact (eval_sub_of_wk _ _ _ (proj1 (per_ctx_env_proofs _ _ _ HΓ _ _ Hρ))).
+  intros Γ R φ ρ ρ' Hφ HΓ Hρ; exact (eval_sub_of_wk _ _ _ (Hφ := Hφ)).
 Qed.
 
 (** A semantic weakening at both environments of a pair its source
@@ -216,8 +216,7 @@ Lemma eval_sub_of_wk_pair : forall {Γ φ R R' ρ ρ'},
     ⟦ ι φ : Γ ⟧s ρ ↘ ⟪φ⟫ ρ /\ ⟦ ι φ : Γ ⟧s ρ' ↘ ⟪φ⟫ ρ'.
 Proof.
   intros * Hφ HΓ Hρ; pose proof (rel_wk_mono _ _ _ Hφ) as Hm.
-  destruct (per_ctx_env_proofs _ _ _ HΓ _ _ (Hφ _ _ Hρ)) as [Hl Hr].
-  split; apply eval_sub_of_wk; assumption.
+  split; exact (eval_sub_of_wk _ _ _ (Hφ := Hm)).
 Qed.
 
 (** The weakening [Wk] at both environments of a pair an extended context's
@@ -227,8 +226,7 @@ Lemma eval_sub_shift_rel : forall {e Γ R ρ ρ'},
     Dom ρ ≈ ρ' ∈ R ->
     ⟦ Wk : Γ ⟧s ρ ↘ ρ↯ /\ ⟦ Wk : Γ ⟧s ρ' ↘ ρ'↯.
 Proof.
-  intros * HΓ Hρ; destruct (per_ctx_env_proofs _ _ _ HΓ _ _ Hρ) as [Hl Hr].
-  split; eapply eval_sub_shift; eassumption.
+  intros * HΓ Hρ; split; apply eval_sub_shift.
 Qed.
 
 (** [eval_sub_of_wk_rel] at the relation of a given relatedness [H] of the
@@ -245,24 +243,25 @@ Ltac eval_wk_at H :=
 Lemma eval_sub_wk_pre_props : forall {Δ Δ' φ σ ρ ρσ} `{Hφ : WkMono φ},
     ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
     (forall x, x < List.length Δ' -> φ x < List.length Δ) ->
-    env_proofs gc_deps gc_stack Δ' (⟪φ⟫ ρσ) ->
     (forall x, x < List.length Δ' ->
-       entry_propositional gc_deps gc_stack Δ ρσ (φ x) -> entry_propositional gc_deps gc_stack Δ' (⟪φ⟫ ρσ) x) ->
+       entry_propositional gc_deps gc_stack Δ ρσ (φ x) <-> entry_propositional gc_deps gc_stack Δ' (⟪φ⟫ ρσ) x) ->
     ⟦ (ι φ) ⨟ σ : Δ' ⟧s ρ ↘ ⟪φ⟫ ρσ.
 Proof.
-  intros Δ Δ' φ σ ρ ρσ Hφ H Hl Hp Hc x Hx; split; [ apply Hp |].
-  intros Hn; rewrite (eval_wk_entry _ _ Hφ x); apply (H (φ x) (Hl x Hx)).
-  intros Hp'; exact (Hn (Hc _ Hx Hp')).
+  intros Δ Δ' φ σ ρ ρσ Hφ H Hl Hc x Hx; split.
+  - intros Hp'; rewrite (eval_wk_entry _ _ Hφ x); apply (H (φ x) (Hl x Hx)); exact (proj2 (Hc _ Hx) Hp').
+  - intros Hn; rewrite (eval_wk_entry _ _ Hφ x); apply (H (φ x) (Hl x Hx)).
+    intros Hp'; exact (Hn (proj1 (Hc _ Hx) Hp')).
 Qed.
 
-(** A weakened extension at a propositional head: the head is the proof. *)
+(** A weakened extension at a propositional head: the head is the proof,
+    weakened, kept over [ρ]. *)
 Lemma eval_sub_wk_extend_proof : forall e Δ σ M φ ρ ρσ,
     ⟦ sb_wk σ φ : Δ ⟧s ρ ↘ ρσ ->
     head_propositional gc_deps gc_stack e Δ ρσ ->
-    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s ρ ↘ ρσ ↦ ⋆ᵈ.
+    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s ρ ↘ ρσ ↦ ⋆ᵈ⟨M[φ]ʷ, ρ⟩ ⦂ substituted_type.
 Proof.
   intros * H Hp [| x] Hx.
-  - split; [ reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
+  - split; [ intros _; reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
   - cbn [List.length] in Hx.
     split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
@@ -313,16 +312,17 @@ Proof.
 Qed.
 #[local] Opaque eval_sub.
 
-(** The head relation of a type whose value is a proposition relates the
-    proofs. *)
-Lemma per_head_proof : forall {S S' ρ ρ' a},
+(** The head relation of a type whose value is a proposition relates any
+    two proofs that read back. *)
+Lemma per_head_proof : forall {S S' ρ ρ' a v v'},
     ⟦ S ⟧ ρ ↘ a ->
     domain_relevance a = propositional ->
-    Dom ⋆ᵈ ≈ ⋆ᵈ ∈ per_head S S' ρ ρ'.
+    proof_readable v -> proof_readable v' ->
+    Dom v ≈ v' ∈ per_head S S' ρ ρ'.
 Proof.
-  intros * Ha Hr; hnf; intros i R a0 a0' Ha0 Ha0' HR.
+  intros * Ha Hr Hv Hv'; hnf; intros i R a0 a0' Ha0 Ha0' HR.
   functional_eval_rewrite_clear.
-  apply (per_univ_elem_propositional _ _ _ _ HR Hr); split; reflexivity.
+  apply (per_univ_elem_propositional _ _ _ _ HR Hr); split; assumption.
 Qed.
 
 (** At an environment a context PER relates, an entry of a type whose
@@ -408,34 +408,43 @@ Proof.
     intros y Hy; rewrite (HE y Hy); cbn [List.skipn]; rewrite ?skipn_one_drop; reflexivity.
 Qed.
 
-(** An environment of an extended context whose head's type is a
-    proposition in the tail holds the proof there, on either side. *)
-Lemma per_ctx_env_head_proof_left : forall {e Γ R T ρ ρ' v},
-    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
-    ctx_entry_type (e :: Γ)%list 0 = Some T ->
-    Dom ρ ≈ ρ' ∈ R ->
-    ⟦ T ⟧ ρ↯ ↘ v ->
-    domain_relevance v = propositional ->
-    env_entry ρ 0 = de_term ⋆ᵈ.
+(** A head of a type that a context PER's type premise relates is a
+    proposition exactly when the type's value in the tail is one. *)
+Lemma head_propositional_of_rel_typ : forall {Δ R e A i} (hr : forall ρ ρ', R ρ ρ' -> relation domain) ρ ρ',
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ R -> ctx_entry_type (e :: nil) 0 = Some A ->
+    (forall ρ0 ρ'0 (H0 : R ρ0 ρ'0), PER.Definitions.rel_typ i A ρ0 A ρ'0 (hr ρ0 ρ'0 H0)) ->
+    R ρ ρ' ->
+    head_propositional gc_deps gc_stack e Δ ρ <-> rel_typ_propositional A ρ.
 Proof.
-  intros * HΓ He Hρ Ev Hv.
-  apply (proj1 (per_ctx_env_proofs _ _ _ HΓ _ _ Hρ)).
-  eapply mk_entry_propositional with (entry_propositional_env := ρ↯);
-    [ exact He | intros y _; rewrite ?skipn_one_drop; reflexivity | exact Ev | exact Hv ].
+  intros * HΔ He Hrt Hρ.
+  assert (HAs : forall ρ0 ρ'0, R ρ0 ρ'0 ->
+            exists a a', ⟦ A ⟧ ρ0 ↘ a /\ ⟦ A ⟧ ρ'0 ↘ a' /\ Dom a ≈ a' ∈ per_univ i)
+    by (intros ρ0 ρ'0 H0; destruct (Hrt _ _ H0) as [b b' Eb Eb' Hb];
+        exists b, b'; repeat split; [ exact Eb | exact Eb' | eexists; exact Hb ]).
+  destruct (Hrt _ _ Hρ) as [a a' Ea Ea' Ha].
+  rewrite (head_propositional_iff HΔ He HAs Hρ Ea).
+  split; [ intros Hp; exists a; split; assumption | intros (a0 & Ea0 & Hp); functional_eval_rewrite_clear; exact Hp ].
 Qed.
 
-Lemma per_ctx_env_head_proof_right : forall {e Γ R T ρ ρ' v},
-    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
-    ctx_entry_type (e :: Γ)%list 0 = Some T ->
-    Dom ρ ≈ ρ' ∈ R ->
-    ⟦ T ⟧ ρ'↯ ↘ v ->
-    domain_relevance v = propositional ->
-    env_entry ρ' 0 = de_term ⋆ᵈ.
+(** At an environment a context PER relates, an entry is a proposition
+    exactly when its type is one in the environment's tail after it: the
+    entry reads its type up to pointwise equality of environments, which
+    the context PER respects. *)
+Lemma entry_propositional_local : forall Γ R ρ ρ' x T,
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R -> ctx_entry_type Γ x = Some T ->
+    entry_propositional gc_deps gc_stack Γ ρ x <-> rel_typ_propositional T (List.skipn (S x) ρ).
 Proof.
-  intros * HΓ He Hρ Ev Hv.
-  apply (proj2 (per_ctx_env_proofs _ _ _ HΓ _ _ Hρ)).
-  eapply mk_entry_propositional with (entry_propositional_env := ρ'↯);
-    [ exact He | intros y _; rewrite ?skipn_one_drop; reflexivity | exact Ev | exact Hv ].
+  induction Γ as [| e Γ IH]; intros * HΓ Hρ HT; [ destruct x; discriminate HT |].
+  inversion HΓ; subst; handle_per_ctx_env_irrel; apply_relation_equivalence; destruct_conjs;
+    destruct_cons_rels; destruct_def_rels; destruct_dm_rels; destruct_mod_rels.
+  all: destruct x as [| y].
+  all: try (cbn in HT; discriminate HT).
+  all: try (rewrite entry_propositional_succ; cbn [ctx_entry_type List.nth_error] in HT;
+            replace (List.skipn (S (S y)) ρ) with (List.skipn (S y) ρ↯) by (destruct ρ; reflexivity);
+            eapply IH; eassumption).
+  all: cbn in HT; injection HT as <-; rewrite entry_propositional_zero_head.
+  all: change (List.skipn 1 ρ) with ρ↯.
+  all: eapply head_propositional_of_rel_typ; [ eassumption | reflexivity | eassumption | eassumption ].
 Qed.
 
 (** The same at a semantic weakening, at an environment its source PER
@@ -451,7 +460,7 @@ Proof.
   assert (E : R <~> R1) by (eapply per_ctx_env_right_irrel; eassumption).
   apply E in Hρ.
   pose proof (rel_wk_mono _ _ _ Hφ) as Hm.
-  exact (eval_sub_wk_pre_props (Δ := Δ) H Hl (proj1 (per_ctx_env_proofs _ _ _ HΔ' _ _ (Hφ _ _ Hρ))) (Hc _ _ Hρ)).
+  exact (eval_sub_wk_pre_props (Δ := Δ) H Hl (Hc _ _ Hρ)).
 Qed.
 
 (** * Reading a Context PER off [⊨ Γ]
@@ -487,18 +496,18 @@ Hint Resolve rel_ctx_wf_per_ctx : mctt.
     closure.  So the four values are the same two, and [rel_chain_4_of_2]
     finishes. *)
 
-(** Only the weakening's two context PERs and its relation are used: the
-    weakening is evaluated at environments of its target, which hold their
-    proofs ([per_ctx_env_proofs]). *)
+(** Only the weakening's two context PERs, its relation and its bound are
+    used: the weakening evaluates at any environment ([eval_sub_of_wk]). *)
 Lemma rel_sub_of_wk_rel : forall {Δ ψ Γ env_relΔ env_relΓ},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     rel_wk ψ env_relΔ env_relΓ ->
+    (forall x, x < List.length Γ -> ψ x < List.length Δ) ->
     Δ ⊨ˢ (ι ψ) ≈ (ι ψ) : Γ.
 Proof.
-  intros * HΔ HΓ [Hψm Hψ].
-  eexists_rel_sub.
-  intros Γ' env_rel' HΓ' φ [Hφm Hφ] ρ ρ' Hρ.
+  intros * HΔ HΓ [Hψm Hψ] Hψb.
+  eexists_rel_sub; [| intros x Hx; cbn; split; apply Hψb; exact Hx ].
+  intros Γ' env_rel' HΓ' φ [Hφm Hφ] Hφb ρ ρ' Hρ.
   assert (Hc : WkMono (ψ ⊙ φ)) by (apply wk_mono_compose; assumption).
   assert (Hψ' : WkMono ψ) by exact Hψm.
   assert (H1 : Dom ⟪ψ⟫ (⟪φ⟫ ρ) ≈ ⟪ψ⟫ (⟪φ⟫ ρ') ∈ env_relΓ) by exact (Hψ _ _ (Hφ _ _ Hρ)).
@@ -516,14 +525,14 @@ Qed.
 Corollary rel_sub_of_wk : forall {Δ ψ Γ},
     Δ ⊨ʷ ψ : Γ ->
     Δ ⊨ˢ (ι ψ) ≈ (ι ψ) : Γ.
-Proof. intros * [env_relΔ HΔ env_relΓ HΓ Hψ _]; exact (rel_sub_of_wk_rel HΔ HΓ Hψ). Qed.
+Proof. intros * [env_relΔ HΔ env_relΓ HΓ Hψ Hb _]; exact (rel_sub_of_wk_rel HΔ HΓ Hψ Hb). Qed.
 
 Corollary rel_sub_id : forall {Γ},
     ⊨ Γ ≈ Γ ->
     Γ ⊨ˢ Id ≈ Id : Γ.
 Proof.
   intros * [env_relΓ HΓ].
-  exact (rel_sub_of_wk_rel (ψ := wk_id) HΓ HΓ (rel_wk_id _)).
+  exact (rel_sub_of_wk_rel (ψ := wk_id) HΓ HΓ (rel_wk_id _) (fun x Hx => Hx)).
 Qed.
 
 Hint Resolve rel_sub_id : mctt.
@@ -606,10 +615,10 @@ Lemma rel_sub_under_ctx_simple : forall {Γ Δ σ σ'},
         ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' /\
         Dom ρσ ≈ ρ'σ' ∈ env_relΔ.
 Proof.
-  intros * [env_relΓ HΓ env_relΔ HΔ Hσ].
+  intros * [env_relΓ HΓ env_relΔ HΔ Hσ _].
   eexists_rel_sub.
   intros ρ ρ' Hρ.
-  destruct (Hσ _ _ HΓ wk_id (rel_wk_id _) _ _ Hρ) as [? ρσ ρ'σ' ? ? ? ? ? Hchain].
+  destruct (Hσ _ _ HΓ wk_id (rel_wk_id _) (fun x Hx => Hx) _ _ Hρ) as [? ρσ ρ'σ' ? ? ? ? ? Hchain].
   rewrite !eval_wk_id in *.
   exists ρσ, ρ'σ'.
   repeat split; try eassumption.
@@ -788,21 +797,25 @@ Qed.
     chains then merge, up to [env_eq] as in transitivity, because
     [functional_eval_sub] is all that identifies two evaluations of [σ]. *)
 
-(** Only the weakening's two context PERs and its relation are used. *)
+(** Only the weakening's two context PERs, its relation and its bound are
+    used. *)
 Lemma rel_sub_under_ctx_wk_rel : forall {Γ ψ Δ σ σ' Δ' env_relΓ env_relΔ2},
     Δ ⊨ˢ σ ≈ σ' : Δ' ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ2 ->
     rel_wk ψ env_relΓ env_relΔ2 ->
+    (forall x, x < List.length Δ -> ψ x < List.length Γ) ->
     Γ ⊨ˢ (sb_wk σ ψ) ≈ (sb_wk σ' ψ) : Δ'.
 Proof.
-  intros * [env_relΔ HΔ env_relΔ' HΔ' Hσ] HΓ HΔ2 Hψ.
+  intros * [env_relΔ HΔ env_relΔ' HΔ' Hσ Hσs] HΓ HΔ2 Hψ Hψb.
   handle_per_ctx_env_irrel.
-  eexists_rel_sub.
-  intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
-  destruct (Hσ _ _ HΓ' _ (rel_wk_compose Hφ Hψ) _ _ Hρ) as [a1 a2 ? a4 Ha1 Ha2 ? Ha4 Ha].
+  eexists_rel_sub;
+    [| intros x Hx; destruct (Hσs x Hx); cbn; split; eapply sentry_scoped_wk; eassumption ].
+  intros Γ' env_rel' HΓ' φ Hφ Hφb ρ ρ' Hρ.
+  destruct (Hσ _ _ HΓ' _ (rel_wk_compose Hφ Hψ) (fun x Hx => Hφb _ (Hψb x Hx)) _ _ Hρ)
+    as [a1 a2 ? a4 Ha1 Ha2 ? Ha4 Ha].
   rewrite eval_wk_compose in Ha2 by (eapply rel_wk_mono; eassumption).
-  destruct (Hσ _ _ HΓ _ Hψ _ _ (Hφ _ _ Hρ)) as [b1 b2 ? b4 Hb1 Hb2 ? Hb4 Hb].
+  destruct (Hσ _ _ HΓ _ Hψ Hψb _ _ (Hφ _ _ Hρ)) as [b1 b2 ? b4 Hb1 Hb2 ? Hb4 Hb].
   apply (mk_rel_sub a1 b1 b4 a4);
     [ rewrite sb_wk_wk; exact Ha1 | exact Hb1 | exact Hb4 | rewrite sb_wk_wk; exact Ha4 |].
   assert (Hlink : Dom a2 ≈ b2 ∈ env_relΔ').
@@ -819,8 +832,8 @@ Corollary rel_sub_under_ctx_wk : forall {Γ ψ Δ σ σ' Δ'},
     Γ ⊨ʷ ψ : Δ ->
     Γ ⊨ˢ (sb_wk σ ψ) ≈ (sb_wk σ' ψ) : Δ'.
 Proof.
-  intros * Hσ [env_relΓ HΓ env_relΔ2 HΔ2 Hψ _].
-  exact (rel_sub_under_ctx_wk_rel Hσ HΓ HΔ2 Hψ).
+  intros * Hσ [env_relΓ HΓ env_relΔ2 HΔ2 Hψ Hψb _].
+  exact (rel_sub_under_ctx_wk_rel Hσ HΓ HΔ2 Hψ Hψb).
 Qed.
 
 (** Precomposition by a weakening, which, unlike general composition of two
@@ -840,12 +853,12 @@ Lemma rel_sub_under_ctx_wk_pre : forall {Γ Δ Δ' φ σ σ'},
     Δ ⊨ʷ φ : Δ' ->
     Γ ⊨ˢ (ι φ) ⨟ σ ≈ (ι φ) ⨟ σ' : Δ'.
 Proof.
-  intros * [env_relΓ HΓ env_relΔ HΔ Hσ] Hφj.
-  pose proof Hφj as [env_relΔ2 HΔ2 env_relΔ' HΔ' Hφ _].
+  intros * [env_relΓ HΓ env_relΔ HΔ Hσ Hσs] Hφj.
+  pose proof Hφj as [env_relΔ2 HΔ2 env_relΔ' HΔ' Hφ Hφb _].
   handle_per_ctx_env_irrel.
-  eexists_rel_sub.
-  intros Γ' env_rel' HΓ' ψ Hψ ρ ρ' Hρ.
-  destruct (Hσ _ _ HΓ' _ Hψ _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
+  eexists_rel_sub; [| intros x Hx; cbn; exact (Hσs _ (Hφb x Hx)) ].
+  intros Γ' env_rel' HΓ' ψ Hψ Hψb ρ ρ' Hρ.
+  destruct (Hσ _ _ HΓ' _ Hψ Hψb _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
   pose proof (rel_chain_map _ _ (eval_wk φ) (rel_wk_app _ _ _ Hφ) _ Hchain) as Hchain'.
   simpl in Hchain'.
   (** Each of the four is an environment of [Δ], related to itself. *)
@@ -996,11 +1009,11 @@ Lemma rel_sub_under_ctx_shift : forall {Γ Δ e σ σ'},
     Γ ⊨ˢ σ ≈ σ' : (e :: Δ)%list ->
     Γ ⊨ˢ Wk ⨟ σ ≈ Wk ⨟ σ' : Δ.
 Proof.
-  intros * [env_relΓ HΓ env_relΔA HΔA Hσ].
+  intros * [env_relΓ HΓ env_relΔA HΔA Hσ Hσs].
   pose proof (rel_wk_shift_tail HΔA) as [env_relΔ [HΔ Hdrop]].
-  eexists_rel_sub.
-  intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
-  destruct (Hσ _ _ HΓ' _ Hφ _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
+  eexists_rel_sub; [| intros x Hx; cbn; apply Hσs; cbn; lia ].
+  intros Γ' env_rel' HΓ' φ Hφ Hφb ρ ρ' Hρ.
+  destruct (Hσ _ _ HΓ' _ Hφ Hφb _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
   assert (Hdrop' : forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔA -> Dom ρ↯ ≈ ρ'↯ ∈ env_relΔ)
     by (intros; rewrite <- !eval_wk_shift; apply Hdrop; assumption).
   pose proof (rel_chain_map _ _ drop_env Hdrop' _ Hchain) as Hchain'.
@@ -1087,11 +1100,11 @@ Lemma rel_sub_under_ctx_sym : forall {Γ Δ σ σ'},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Γ ⊨ˢ σ' ≈ σ : Δ.
 Proof.
-  intros * [env_relΓ HΓ env_relΔ HΔ Hσ].
-  eexists_rel_sub.
-  intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
+  intros * [env_relΓ HΓ env_relΔ HΔ Hσ Hσs].
+  eexists_rel_sub; [| intros x Hx; destruct (Hσs x Hx); split; assumption ].
+  intros Γ' env_rel' HΓ' φ Hφ Hφb ρ ρ' Hρ.
   apply rel_sub_sym; [ solve_chain_PER |].
-  apply (Hσ _ _ HΓ' _ Hφ).
+  apply (Hσ _ _ HΓ' _ Hφ Hφb).
   symmetry; eassumption.
 Qed.
 
@@ -1126,15 +1139,15 @@ Lemma rel_sub_under_ctx_trans : forall {Γ Δ σ1 σ2 σ3},
     Γ ⊨ˢ σ2 ≈ σ3 : Δ ->
     Γ ⊨ˢ σ1 ≈ σ3 : Δ.
 Proof.
-  intros * [env_relΓ HΓ env_relΔ HΔ H12] H23'.
-  pose proof H23' as [env_relΓ2 HΓ2 env_relΔ2 HΔ2 H23].
+  intros * [env_relΓ HΓ env_relΔ HΔ H12 H12s] H23'.
+  pose proof H23' as [env_relΓ2 HΓ2 env_relΔ2 HΔ2 H23 H23s].
   handle_per_ctx_env_irrel.
-  eexists_rel_sub.
-  intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
+  eexists_rel_sub; [| intros x Hx; destruct (H12s x Hx), (H23s x Hx); split; assumption ].
+  intros Γ' env_rel' HΓ' φ Hφ Hφb ρ ρ' Hρ.
   assert (Hρ' : Dom ρ' ≈ ρ' ∈ env_rel')
     by (etransitivity; [ symmetry | ]; eassumption).
-  destruct (H12 _ _ HΓ' _ Hφ _ _ Hρ) as [ρσ1φ ρσ1 ρ'σ2 ρ'σ2φ ? ? ? Hev2 Ha].
-  destruct (H23 _ _ HΓ' _ Hφ _ _ Hρ') as [ρ'σ2φb ρ'σ2b ρ'σ3 ρ'σ3φ Hev2b ? ? ? Hb].
+  destruct (H12 _ _ HΓ' _ Hφ Hφb _ _ Hρ) as [ρσ1φ ρσ1 ρ'σ2 ρ'σ2φ ? ? ? Hev2 Ha].
+  destruct (H23 _ _ HΓ' _ Hφ Hφb _ _ Hρ') as [ρ'σ2φb ρ'σ2b ρ'σ3 ρ'σ3φ Hev2b ? ? ? Hb].
   econstructor; try eassumption.
   assert (Hlink : Dom ρ'σ2φ ≈ ρ'σ2φb ∈ env_relΔ)
     by (eapply per_ctx_env_eval_sub_link; [ eassumption | eassumption | eassumption | pairwise ]).
@@ -1241,35 +1254,45 @@ Qed.
     relation is included in that of its own context.  This is how a judgment
     about [Γ ▹ A] serves for [Γ ▸ A ≔ M], and a judgment about [Γ ▸ A ≔ M] for
     [Γ ▸ A ≔ M'] when [M] and [M'] are related.  As evaluation is directed by
-    the target, the propositional entries of the larger codomain, among the
-    entries of the smaller one, are to be among the smaller one's
-    ([ctx_props_incl]): each is, in practice, a context of the same entry
+    the target, the larger codomain and the smaller one are to agree on
+    which of the smaller one's entries are propositional
+    ([ctx_props_agree]): each is, in practice, a context of the same entry
     types, or a prefix of it. *)
 
-(** The propositional entries of [Δ1] that are entries of [Δ2], at the
-    environments [S] relates, are propositional entries of [Δ2]. *)
-Definition ctx_props_incl (S : relation env) (Δ1 Δ2 : ctx) : Prop :=
+(** The entries of [Δ2], at the environments [S] relates, are propositional
+    entries of [Δ1] exactly when they are of [Δ2]: an evaluation at [Δ1]
+    holds a kept proof at the one and a value at the other, as an
+    evaluation at [Δ2] asks. *)
+Definition ctx_props_agree (S : relation env) (Δ1 Δ2 : ctx) : Prop :=
   forall ρ ρ', Dom ρ ≈ ρ' ∈ S -> forall x, x < List.length Δ2 ->
-    entry_propositional gc_deps gc_stack Δ1 ρ x -> entry_propositional gc_deps gc_stack Δ2 ρ x.
+    entry_propositional gc_deps gc_stack Δ1 ρ x <-> entry_propositional gc_deps gc_stack Δ2 ρ x.
 
 (** Contexts of the same entry types have the same propositional entries. *)
-Lemma ctx_props_incl_same_types : forall S Δ1 Δ2,
+Lemma ctx_props_agree_same_types : forall S Δ1 Δ2,
     List.length Δ1 = List.length Δ2 ->
-    (forall x, ctx_entry_type Δ1 x = ctx_entry_type Δ2 x) -> ctx_props_incl S Δ1 Δ2.
+    (forall x, ctx_entry_type Δ1 x = ctx_entry_type Δ2 x) -> ctx_props_agree S Δ1 Δ2.
 Proof.
-  intros * Hl Ht ρ ρ' _ x _ [T HT E HE a Ea Hp].
-  econstructor; [ rewrite <- Ht; exact HT | | exact Ea | exact Hp ].
-  rewrite List.length_skipn, <- Hl, <- List.length_skipn; exact HE.
+  intros * Hl Ht ρ ρ' _ x _; split; intros [T HT E HE a Ea Hp].
+  - econstructor; [ rewrite <- Ht; exact HT | | exact Ea | exact Hp ].
+    rewrite List.length_skipn, <- Hl, <- List.length_skipn; exact HE.
+  - econstructor; [ rewrite Ht; exact HT | | exact Ea | exact Hp ].
+    rewrite List.length_skipn, Hl, <- List.length_skipn; exact HE.
 Qed.
 
 (** A context's propositional entries among the first ones are those of the
-    prefix. *)
-Lemma ctx_props_incl_app : forall S Δ Γ, ctx_props_incl S (Δ ++ Γ) Δ.
+    prefix, at the environments both context PERs relate: each reads its
+    type at the environment's tail ([entry_propositional_local]). *)
+Lemma ctx_props_agree_app : forall S S' Δ Γ,
+    EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ S -> EF Δ ≈ Δ ∈ per_ctx_env ↘ S' ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ S -> Dom ρ ≈ ρ' ∈ S') -> ctx_props_agree S (Δ ++ Γ) Δ.
 Proof.
-  intros * ρ ρ' _ x Hx [T HT E HE a Ea Hp].
-  econstructor; [ | | exact Ea | exact Hp ].
-  - unfold ctx_entry_type in *; rewrite List.nth_error_app1 in HT by exact Hx; exact HT.
-  - intros y Hy; apply HE; rewrite List.length_skipn, List.length_app; rewrite List.length_skipn in Hy; lia.
+  intros * HS HS' Hsub ρ ρ' Hρ x Hx.
+  assert (Hlk : ctx_entry_type (Δ ++ Γ) x = ctx_entry_type Δ x)
+    by (unfold ctx_entry_type; rewrite List.nth_error_app1 by exact Hx; reflexivity).
+  destruct (ctx_entry_type Δ x) as [T |] eqn:HT.
+  - rewrite (entry_propositional_local _ _ _ _ _ _ HS Hρ Hlk), (entry_propositional_local _ _ _ _ _ _ HS' (Hsub _ _ Hρ) HT).
+    reflexivity.
+  - split; intros [T' HT' _ _ _ _ _]; congruence.
 Qed.
 
 (** The identity from a context to a prefix of it, when the context's
@@ -1285,23 +1308,22 @@ Proof.
   eapply rel_wk_under_ctx_intro;
     [ exact HR | exact HR' | split; [ typeclasses eauto | intros ρ ρ' Hρ; rewrite !eval_wk_id; exact (Hsub _ _ Hρ) ] | |].
   - intros x Hx; rewrite List.length_app; unfold wk_id; lia.
-  - intros ρ ρ' Hρ x Hx Hp; rewrite eval_wk_id; exact (ctx_props_incl_app _ Δ Γ ρ ρ' Hρ x Hx Hp).
+  - intros ρ ρ' Hρ x Hx; rewrite eval_wk_id; exact (ctx_props_agree_app _ _ Δ Γ HR HR' Hsub ρ ρ' Hρ x Hx).
 Qed.
 
-(** An evaluation at [Δ1] is one at [Δ2] when the propositional entries of
-    [Δ1] among those of [Δ2] are [Δ2]'s and the result holds [Δ2]'s
-    proofs. *)
+(** An evaluation at [Δ1] is one at [Δ2] when the entries of [Δ2] are
+    propositional in [Δ1] exactly when they are in [Δ2]. *)
 #[local] Transparent eval_sub.
 Lemma eval_sub_change_target : forall {Δ1 Δ2 σ ρ ρσ},
     ⟦ σ : Δ1 ⟧s ρ ↘ ρσ ->
     List.length Δ2 <= List.length Δ1 ->
-    env_proofs gc_deps gc_stack Δ2 ρσ ->
     (forall x, x < List.length Δ2 ->
-       entry_propositional gc_deps gc_stack Δ1 ρσ x -> entry_propositional gc_deps gc_stack Δ2 ρσ x) ->
+       entry_propositional gc_deps gc_stack Δ1 ρσ x <-> entry_propositional gc_deps gc_stack Δ2 ρσ x) ->
     ⟦ σ : Δ2 ⟧s ρ ↘ ρσ.
 Proof.
-  intros * H Hl Hp Hc x Hx; split; [ apply Hp |].
-  intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (Hc _ Hx Hp')).
+  intros * H Hl Hc x Hx; split.
+  - intros Hp; apply (H x ltac:(lia)); exact (proj2 (Hc _ Hx) Hp).
+  - intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (proj1 (Hc _ Hx) Hp')).
 Qed.
 #[local] Opaque eval_sub.
 
@@ -1313,25 +1335,26 @@ Lemma rel_sub_under_ctx_restrict : forall {Γ1 Γ2 Δ1 Δ2 σ σ' R1 R2 S1 S2},
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ S1 -> Dom ρ ≈ ρ' ∈ S2) ->
     List.length Δ2 <= List.length Δ1 ->
-    ctx_props_incl S1 Δ1 Δ2 ->
+    List.length Γ2 <= List.length Γ1 ->
+    ctx_props_agree S1 Δ1 Δ2 ->
     Γ2 ⊨ˢ σ ≈ σ' : Δ1 ->
     Γ1 ⊨ˢ σ ≈ σ' : Δ2.
 Proof.
-  intros * HΓ1 HΓ2 HΔ1 HΔ2 HR HS Hl Hc [R2' HΓ2' S1' HΔ1' Hσ].
+  intros * HΓ1 HΓ2 HΔ1 HΔ2 HR HS Hl HlΓ Hc [R2' HΓ2' S1' HΔ1' Hσ Hσs].
   assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (ES : S1' <~> S1) by (eapply per_ctx_env_right_irrel; eassumption).
-  refine (mk_rel_sub_under_ctx _ _ _ _ R1 HΓ1 S2 HΔ2 _).
-  intros Γ' env_rel' HΓ' φ [Hφm Hφ] ρ ρ' Hρ.
+  refine (mk_rel_sub_under_ctx _ _ _ _ R1 HΓ1 S2 HΔ2 _ _);
+    [| intros x Hx; destruct (Hσs x ltac:(lia)); split; eapply sentry_scoped_mono; eassumption ].
+  intros Γ' env_rel' HΓ' φ [Hφm Hφ] Hφb ρ ρ' Hρ.
   assert (Hφ' : rel_wk φ env_rel' R2')
     by (split; [ assumption | intros; apply ER, HR, Hφ; assumption ]).
-  destruct (Hσ _ _ HΓ' _ Hφ' _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
+  destruct (Hσ _ _ HΓ' _ Hφ' (fun x Hx => Hφb x ltac:(lia)) _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
   (** Each of the four is an environment of [Δ1], hence of [Δ2]. *)
   assert (Hch : rel_chain S1 ([v1; v2; v3; v4]))
     by (eapply rel_chain_mono; [| eassumption ]; intros; apply ES; assumption).
   assert (Hchange : forall v w, Dom v ≈ w ∈ S1 -> forall τ ρ0, ⟦ τ : Δ1 ⟧s ρ0 ↘ v -> ⟦ τ : Δ2 ⟧s ρ0 ↘ v).
   { intros v w Hv τ ρ0 Hτ.
-    apply (eval_sub_change_target Hτ Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΔ2 _ _ (HS _ _ Hv))) |].
-    intros x; exact (Hc _ _ Hv x). }
+    apply (eval_sub_change_target Hτ Hl); intros x; exact (Hc _ _ Hv x). }
   apply (mk_rel_sub v1 v2 v3 v4);
     [ eapply Hchange; [| exact H1 ]
     | eapply Hchange; [| exact H2 ]
@@ -1346,7 +1369,7 @@ Lemma rel_exp_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A M M'},
     EF Γ2 ≈ Γ2 ∈ per_ctx_env ↘ R2 ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
     List.length Γ2 <= List.length Γ1 ->
-    ctx_props_incl R1 Γ1 Γ2 ->
+    ctx_props_agree R1 Γ1 Γ2 ->
     Γ2 ⊨ M ≈ M' : A ->
     Γ1 ⊨ M ≈ M' : A.
 Proof.
@@ -1356,13 +1379,11 @@ Proof.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
   apply (HM _ _ HΓ').
-  - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact Hc | exact Hσ ].
+  - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact (le_n _) | exact Hc | exact Hσ ].
     auto.
   - exact Hρ.
-  - apply (eval_sub_change_target Hev Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΓ2 _ _ (HR _ _ Hρσ))) |].
-    intros x; exact (Hc _ _ Hρσ x).
-  - apply (eval_sub_change_target Hev' Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΓ2 _ _ (HR _ _ Hρσ'))) |].
-    intros x; exact (Hc _ _ Hρσ' x).
+  - apply (eval_sub_change_target Hev Hl); intros x; exact (Hc _ _ Hρσ x).
+  - apply (eval_sub_change_target Hev' Hl); intros x; exact (Hc _ _ Hρσ' x).
 Qed.
 
 (** Type judgments likewise. *)
@@ -1371,7 +1392,7 @@ Lemma rel_type_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A A'} {i : nat},
     EF Γ2 ≈ Γ2 ∈ per_ctx_env ↘ R2 ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
     List.length Γ2 <= List.length Γ1 ->
-    ctx_props_incl R1 Γ1 Γ2 ->
+    ctx_props_agree R1 Γ1 Γ2 ->
     Γ2 ⊨ᵗ A ≈ A' at i ->
     Γ1 ⊨ᵗ A ≈ A' at i.
 Proof.
@@ -1381,13 +1402,11 @@ Proof.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
   apply (HA _ _ HΓ').
-  - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact Hc | exact Hσ ].
+  - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact (le_n _) | exact Hc | exact Hσ ].
     auto.
   - exact Hρ.
-  - apply (eval_sub_change_target Hev Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΓ2 _ _ (HR _ _ Hρσ))) |].
-    intros x; exact (Hc _ _ Hρσ x).
-  - apply (eval_sub_change_target Hev' Hl); [ exact (proj1 (per_ctx_env_proofs _ _ _ HΓ2 _ _ (HR _ _ Hρσ'))) |].
-    intros x; exact (Hc _ _ Hρσ' x).
+  - apply (eval_sub_change_target Hev Hl); intros x; exact (Hc _ _ Hρσ x).
+  - apply (eval_sub_change_target Hev' Hl); intros x; exact (Hc _ _ Hρσ' x).
 Qed.
 
 (** * Equality from Pointwise Relatedness

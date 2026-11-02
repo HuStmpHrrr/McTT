@@ -4,6 +4,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export NbE PER.
+From Mctt.Core.Syntactic.System Require Import Scoping.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
@@ -920,9 +921,6 @@ Qed.
     lets bind entries only ([read_lets]).  The entries past the end of an
     environment are the placeholder, which reads back at its type. *)
 
-(** Every entry of an environment reads back, past its end too. *)
-Definition env_readable (ρ : env) : Prop := forall x, entry_readable (env_entry ρ x).
-
 (** The placeholder entry reads back, at the placeholder type. *)
 Lemma placeholder_entry_readable : entry_readable placeholder_entry.
 Proof.
@@ -950,18 +948,6 @@ Proof.
   eexists; constructor; exact Hbs.
 Qed.
 
-(** The entries of the environments a context PER relates read back, on
-    the context's entries: each head does ([entry_readable] fields). *)
-Lemma per_ctx_env_entries_readable : forall Γ Γ' R, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
-    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> forall x, x < List.length Γ ->
-      entry_readable (env_entry ρ x) /\ entry_readable (env_entry ρ' x).
-Proof.
-  induction 1; intros ρ ρ' Hρ x Hx; cbn [List.length] in Hx; [ lia | .. ].
-  all: apply_relation_equivalence; destruct Hρ; destruct x as [| x]; [ split; assumption |].
-  all: change (env_entry ρ (S x)) with (env_entry ρ↯ x); change (env_entry ρ' (S x)) with (env_entry ρ'↯ x).
-  all: apply IHper_ctx_env; [ assumption | lia ].
-Qed.
-
 (** An initial environment has an entry for each entry of its context. *)
 Lemma initial_env_length : forall Γ ρ, initial_env_f Γ ρ -> List.length ρ = List.length Γ.
 Proof. induction 1; cbn; congruence. Qed.
@@ -983,11 +969,18 @@ Qed.
 Lemma mod_entry_readable : forall h U, entry_readable (de_mod h U).
 Proof. intros * s; eexists; constructor. Qed.
 
+(** The initial environments of two related contexts are related.  The
+    contexts are scoped: the initial environment of a module slot stores
+    the slot's unit, which the context PER asks to be scoped by the slot's
+    tail ([head_readable]). *)
 Lemma per_ctx_then_per_env_initial_env : forall {Γ Γ' env_rel},
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ env_rel ->
+    ctx_scoped 0 Γ -> ctx_scoped 0 Γ' ->
     exists ρ ρ', initial_env_f Γ ρ /\ initial_env_f Γ' ρ' /\ Dom ρ ≈ ρ' ∈ env_rel.
 Proof.
-  induction 1.
+  induction 1; intros HsΓ HsΓ'.
+  2-5: cbn [ctx_scoped] in HsΓ, HsΓ'; destruct HsΓ as [HeΓ HsΓ]; destruct HsΓ' as [HeΓ' HsΓ'];
+         specialize (IHper_ctx_env HsΓ HsΓ').
   - do 2 eexists; intuition.
   - destruct_conjs.
     (on_all_hyp: destruct_rel_by_assumption tail_rel).
@@ -1001,7 +994,8 @@ Proof.
         pose proof (per_bot_then_per_elem HR (var_per_bot (n := List.length Γ))) as Hv;
         unshelve eapply mk_per_ctx_env_cons_rel;
           [ exact Ht | exact Hv | intros _; eexists; reflexivity | intros _; eexists; reflexivity
-          | exact (proj1 (entry_readable_of_elem HR Hv)) | exact (proj2 (entry_readable_of_elem HR Hv)) ]
+          | exact (conj (proj1 (entry_readable_of_elem HR Hv)) (le_n 0))
+          | exact (conj (proj2 (entry_readable_of_elem HR Hv)) (le_n 0)) ]
     end.
   - (** A definition slot holds the value of the body at a relevant type,
         the proof at a proposition. *)
@@ -1024,7 +1018,8 @@ Proof.
       apply_relation_equivalence.
       unshelve eapply mk_per_ctx_env_def_rel';
         [ exact Hρ | solve_def_heads | intros _; eexists; reflexivity | intros _; eexists; reflexivity
-        | exact (proj1 (entry_readable_of_elem HR Hmm)) | exact (proj2 (entry_readable_of_elem HR Hmm)) ].
+        | exact (conj (proj1 (entry_readable_of_elem HR Hmm)) (le_n 0))
+        | exact (conj (proj2 (entry_readable_of_elem HR Hmm)) (le_n 0)) ].
     + (** The kept bodies read back over the initial environments, whose
           entries all do. *)
       destruct (initial_env_readable _ _ _ _ _ equiv_Γ_Γ' Hi Hi' Hρ) as [Hρr Hρr'].
@@ -1041,8 +1036,10 @@ Proof.
         [ exact Hρ | split; [ apply (per_univ_elem_propositional _ _ _ _ HR ltac:(congruence));
                               split; apply kept_proof_readable; assumption | exact I ]
         | intros _; eexists; reflexivity | intros _; eexists; reflexivity
-        | apply Hkept; [ exact Hρr | congruence | intros s; destruct (per_univ_then_per_top_typ HR s) as [? ? ? ? _]; eexists; eassumption ]
-        | apply Hkept; [ exact Hρr' | exact Hp' | intros s; destruct (per_univ_then_per_top_typ HR s) as [? ? ? ? _]; eexists; eassumption ] ].
+        | split; [| cbn; lia ];
+          apply Hkept; [ exact Hρr | congruence | intros s; destruct (per_univ_then_per_top_typ HR s) as [? ? ? ? _]; eexists; eassumption ]
+        | split; [| cbn; lia ];
+          apply Hkept; [ exact Hρr' | exact Hp' | intros s; destruct (per_univ_then_per_top_typ HR s) as [? ? ? ? _]; eexists; eassumption ] ].
   - (** A slot holds the closure of its unit, which the premise relates to
         the other unit's. *)
     destruct IHper_ctx_env as [ρ [ρ' [? [? Hρ]]]].
@@ -1056,8 +1053,13 @@ Proof.
       by (exists h'; split; [ exact Hh' | eapply per_dmod_trans; [ apply per_dmod_sym, Hr | exact Hr ] ]).
     exists (ρ ↦ᵐ h ⦂ U), (ρ' ↦ᵐ h' ⦂ U'); repeat split; only 1-2: econstructor; eauto.
     apply_relation_equivalence.
+    (** The stored units are the slots' own, scoped by their tails. *)
+    pose proof (per_ctx_env_length equiv_Γ_Γ') as Hlen.
+    pose proof (gunit_scoped_free_bound _ _ HeΓ) as HbU; pose proof (gunit_scoped_free_bound _ _ HeΓ') as HbU'.
+    rewrite Nat.add_0_r in HbU, HbU'.
     constructor; cbn [drop_env List.tl]; [ exact Hρ | .. ]; unfold env_mod; cbn [env_entry List.hd];
-      try solve [ solve_tie ]; try apply mod_entry_readable.
+      try solve [ solve_tie ];
+      try (split; [ apply mod_entry_readable | cbn; lia ]).
     (** The ties across: each side's head against the other unit over its
         own tail, by the premise at the diagonal tails. *)
     all: cbn [List.tl List.hd].
@@ -1097,6 +1099,8 @@ Proof.
     apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ (ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U) (ρ' ↦ᵈ m' ⦂ entry_type_value a' ‖ h' ⦂ U') Hρ);
       unfold env_mod; cbn [env_entry List.hd extend_env_dm]; cbn;
       try solve [ solve_tie ]; try solve_def_heads_post.
+    all: try match goal with |- head_readable _ _ => split end.
+    all: try (cbn; lia).
     all: intros s; first [ solve [ destruct (Hrl s) as [b Hb]; inversion Hb; subst; eexists; eapply read_entry_dm; eassumption ]
                          | solve [ destruct (Hrr s) as [b Hb]; inversion Hb; subst; eexists; eapply read_entry_dm; eassumption ] ].
 Qed.
