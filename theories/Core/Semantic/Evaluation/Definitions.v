@@ -770,7 +770,15 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (branch_entries D Mj p ups (blocks_motives Bks) ρ gs
                                     (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs)) (skipn (im_np Dq Mk) vs) ihs) ↘ r ->
      ⟦elim d_con pc k c vs at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** On a neutral: a stuck eliminator, at the motive's instance *)
+(** On a neutral: a stuck eliminator, at the motive's instance.  The
+    motive's non-uniform parameters are the neutral's, typed by the
+    eliminator's own telescope: the member [j] of [D] at the eliminator's
+    uniform parameters [ups], as the eliminator's typing rule checks the
+    motive, as [eval_ihty_self] types it, and as readback reads it.  So its
+    entries read back at that admissible base whatever the neutral's
+    annotation is, which the model does not constrain: for [W (A : Type) :
+    A → Type] eliminated at [ups = [ℕ]], a neutral annotated [W Bool x]
+    still binds [x] at [ℕ], where it reads back, not at [Bool]. *)
 | eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -780,7 +788,7 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      List.length as' = im_np Dq Mk ->
      List.nth_error Bks j = Some b ->
      eb_binder_count b = S (im_nn Mk) ->
-     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ motive_env Dq Mk ρ as' (d_ind pc k as') (⇑ (d_ind pc k as') m) ↘ a ->
+     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ motive_env D Mj ρ (ups ++ List.skipn (ind_nu Dq) as') (d_ind pc k as') (⇑ (d_ind pc k as') m) ↘ a ->
      ⟦elim ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p ups j as' m) )
 where "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p ups Bks j m r)
 (** The recursive results of the arguments [vs], one per leaf path of each
