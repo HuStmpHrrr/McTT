@@ -83,11 +83,10 @@ Qed.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** At a type of a universe, a term judgment relates the values: the type
-    is relevant, never a proposition. *)
-Lemma rel_exp_under_ctx_simple_at_rel : forall {Γ A M M' env_relΓ} {i : nat},
+(** At a relevant type, a term judgment relates the values. *)
+Lemma rel_exp_under_ctx_simple_at_relevant : forall {Γ A M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A : Typeω@i ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant) ->
     Γ ⊨ M ≈ M' : A ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
@@ -95,9 +94,20 @@ Lemma rel_exp_under_ctx_simple_at_rel : forall {Γ A M M' env_relΓ} {i : nat},
 Proof.
   intros * HΓ HA HM ρ ρ' Hρ.
   destruct (rel_exp_under_ctx_simple_at HΓ HM _ _ Hρ) as [(a & Ha & Hp) | H]; [| exact H ].
-  exfalso; destruct (rel_exp_of_typ_relevant_at HΓ HA _ _ Hρ) as (a0 & Ha0 & Hr).
+  exfalso; destruct (HA _ _ Hρ) as (a0 & Ha0 & Hr).
   functional_eval_rewrite_clear; congruence.
 Qed.
+
+(** At a type of a universe, a term judgment relates the values: the type
+    is relevant, never a proposition. *)
+Corollary rel_exp_under_ctx_simple_at_rel : forall {Γ A M M' env_relΓ} {i : nat},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A : Typeω@i ->
+    Γ ⊨ M ≈ M' : A ->
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head A A ρ ρ'.
+Proof. intros * HΓ HA HM; exact (rel_exp_under_ctx_simple_at_relevant HΓ (rel_exp_of_typ_relevant_at HΓ HA) HM). Qed.
 
 (** ** Definition Entries
 
@@ -114,6 +124,20 @@ Proof.
   - exact (rel_exp_of_typ_inversion_simple_at HΓ HA).
   - exact (rel_exp_of_typ_relevant_at HΓ HA).
   - exact (rel_exp_under_ctx_simple_at_rel HΓ HA HM).
+Qed.
+
+(** The same for a definition of a type of levels. *)
+Lemma per_ctx_env_of_def_level : forall {Γ A M env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A : LevelSort ->
+    Γ ⊨ M : A ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend_def A M env_relΓ.
+Proof.
+  intros * HΓ HA HM.
+  eapply (per_ctx_env_extend_def (i := 0)); [ eassumption | | |].
+  - exact (rel_type_inversion_simple_at HΓ (rel_type_of_level_sort 0 HA)).
+  - exact (rel_exp_of_level_sort_relevant_at HΓ HA).
+  - exact (rel_exp_under_ctx_simple_at_relevant HΓ (rel_exp_of_level_sort_relevant_at HΓ HA) HM).
 Qed.
 
 (** At a proposition, the canonical context PER of [Γ ▸ A ≔ M] is that of
@@ -142,8 +166,9 @@ Proof.
     exists a; split; assumption.
   - intros; exact I.
   - intros ρ ρ'; split.
-    + intros [Ht Hh Hl Hr]; apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); [ exact Hh | exact I | exact Hl | exact Hr ].
-    + intros [Ht Hh _ Hl Hr]; exact (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht Hh Hl Hr).
+    + intros [Ht Hh Hl Hr Hrl Hrr]; apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht);
+        [ exact Hh | exact I | exact Hl | exact Hr | exact Hrl | exact Hrr ].
+    + intros [Ht Hh _ Hl Hr Hrl Hrr]; exact (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht Hh Hl Hr Hrl Hrr).
 Qed.
 
 Corollary per_ctx_env_of_def_prop : forall {Γ A M env_relΓ},
@@ -162,9 +187,10 @@ Lemma rel_ctx_wf_extend_def_sort : forall {Γ A S M},
 Proof.
   intros * HΓ HS HA HM.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [env_relΓ HΓ'].
-  destruct HS as [i |].
+  destruct HS as [i | |].
   - econstructor; [ eassumption | eapply per_ctx_env_of_def; eassumption | constructor | eassumption | eassumption ].
   - econstructor; [ eassumption | eapply per_ctx_env_of_def_prop; eassumption | constructor | eassumption | eassumption ].
+  - econstructor; [ eassumption | eapply per_ctx_env_of_def_level; eassumption | constructor | eassumption | eassumption ].
 Qed.
 
 Corollary rel_ctx_wf_extend_def : forall {Γ A} {i : nat} {M},
@@ -283,14 +309,24 @@ Lemma per_ctx_env_def_forget_sort : forall {Γ A S M R R'},
     EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R' ->
     forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
 Proof.
-  intros * [i |] HA HM HR HR'; [ eapply per_ctx_env_def_forget; eassumption |].
-  intros ρ ρ' Hρ.
-  pose proof (rel_type_inversion_simple (rel_type_of_prop 0 HA)) as [env_relΓ [HΓ HAs]].
-  pose proof (per_ctx_env_of_def_prop (M := M) HΓ HA) as Hd.
-  pose proof (per_ctx_env_extend HΓ HAs) as Ha.
-  assert (E1 : R <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-  apply E2, E1, Hρ.
+  intros * [i | |] HA HM HR HR'; [ eapply per_ctx_env_def_forget; eassumption | |].
+  - intros ρ ρ' Hρ.
+    pose proof (rel_type_inversion_simple (rel_type_of_prop 0 HA)) as [env_relΓ [HΓ HAs]].
+    pose proof (per_ctx_env_of_def_prop (M := M) HΓ HA) as Hd.
+    pose proof (per_ctx_env_extend HΓ HAs) as Ha.
+    assert (E1 : R <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+    assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+    apply E2, E1, Hρ.
+  - (** A type of levels: as at a type of a universe, the heads tied to
+        the body are heads of the assumption. *)
+    intros ρ ρ' Hρ.
+    pose proof (rel_type_inversion_simple (rel_type_of_level_sort 0 HA)) as [env_relΓ [HΓ HAs]].
+    pose proof (per_ctx_env_of_def_level HΓ HA HM) as Hd.
+    pose proof (per_ctx_env_extend HΓ HAs) as Ha.
+    assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+    assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+    apply E2; apply E1 in Hρ.
+    destruct Hρ as [? _]; assumption.
 Qed.
 
 (** A definition with a module part does not refine an assumption entry:

@@ -28,16 +28,17 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** The relevant pairs of a PER form a PER. *)
-#[export] Instance per_relevant_PER {R : relation domain} `{HR : PER domain R} : PER (per_relevant R).
+#[export] Instance per_relevant_nonlevel_PER {R : relation domain} `{HR : PER domain R} : PER (per_relevant_nonlevel R).
 Proof.
   split.
-  - intros a b [Hab Ha Hb]; constructor; [ symmetry; exact Hab | exact Hb | exact Ha ].
-  - intros a b c [Hab Ha _] [Hbc _ Hc]; constructor; [ etransitivity; eassumption | exact Ha | exact Hc ].
+  - intros a b [Hab Ha Hb Hna Hnb]; constructor; [ symmetry; exact Hab | exact Hb | exact Ha | exact Hnb | exact Hna ].
+  - intros a b c [Hab Ha _ Hna _] [Hbc _ Hc _ Hnc]; constructor;
+      [ etransitivity; eassumption | exact Ha | exact Hc | exact Hna | exact Hnc ].
 Qed.
 
 (** The elements of a universe are its relevant types: a related pair of
     them is a related pair of types. *)
-Lemma per_relevant_univ_rel : forall {u a a'}, Dom a ≈ a' ∈ per_relevant (per_univ u) -> Dom a ≈ a' ∈ per_univ u.
+Lemma per_relevant_nonlevel_univ_rel : forall {u a a'}, Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ u) -> Dom a ≈ a' ∈ per_univ u.
 Proof. intros * []; assumption. Qed.
 
 (** A sort is closed: weakening leaves it unchanged. *)
@@ -46,28 +47,8 @@ Proof. intros * []; reflexivity. Qed.
 
 (** The same for a chain. *)
 Corollary rel_chain_relevant_univ : forall {u l},
-    rel_chain (per_relevant (per_univ u)) l -> rel_chain (per_univ u) l.
-Proof. intros u; apply rel_chain_mono; intros; apply per_relevant_univ_rel; assumption. Qed.
-
-(** A chain of types of a universe is a chain of relevant types once one of
-    its values is relevant: related types are of one sort. *)
-Lemma rel_exp_univ_relevant : forall {A σ ρ ρσ A' σ' ρ' ρ'σ' u},
-    rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ u) ->
-    (forall a, ⟦ A[σ] ⟧ ρ ↘ a -> domain_relevance a = relevant) ->
-    rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ u)).
-Proof.
-  intros * [a1 a2 a3 a4 E1 E2 E3 E4 Hc] Hr.
-  pose proof (Hr _ E1) as Hr1.
-  econstructor; try eassumption.
-  assert (H12 : Dom a1 ≈ a2 ∈ per_univ u) by pairwise.
-  assert (H23 : Dom a2 ≈ a3 ∈ per_univ u) by pairwise.
-  assert (H34 : Dom a3 ≈ a4 ∈ per_univ u) by pairwise.
-  destruct H12 as [? H12'], H23 as [? H23'], H34 as [? H34'].
-  pose proof (per_univ_elem_relevance _ _ _ _ H12').
-  pose proof (per_univ_elem_relevance _ _ _ _ H23').
-  pose proof (per_univ_elem_relevance _ _ _ _ H34').
-  apply rel_chain_4; constructor; first [ eexists; eassumption | congruence ].
-Qed.
+    rel_chain (per_relevant_nonlevel (per_univ u)) l -> rel_chain (per_univ u) l.
+Proof. intros u; apply rel_chain_mono; intros; apply per_relevant_nonlevel_univ_rel; assumption. Qed.
 
 Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
     Γ ⊨ A ≈ A' : universe_index_term u ->
@@ -78,7 +59,7 @@ Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
         ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ u)).
+        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant_nonlevel (per_univ u)).
 Proof.
   intros * [env_relΓ HΓ j HA].
   eexists; eexists; [eassumption |].
@@ -111,7 +92,7 @@ Proof.
   rewrite exp_sub_id in HaσI, Ha'σ'I.
   exists a, a'.
   repeat split; try eassumption.
-  apply per_relevant_univ_rel; pairwise.
+  apply per_relevant_nonlevel_univ_rel; pairwise.
 Qed.
 
 Lemma rel_exp_of_univ : forall {Γ A A' u},
@@ -122,13 +103,13 @@ Lemma rel_exp_of_univ : forall {Γ A A' u},
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
           ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ u))) ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant_nonlevel (per_univ u))) ->
     Γ ⊨ A ≈ A' : universe_index_term u.
 Proof.
   intros * [env_relΓ [HΓ H]].
   eexists_rel_exp_with (large_level_above u).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists (per_relevant (per_univ u)).
+  exists (per_relevant_nonlevel (per_univ u)).
   split; [| right; eapply H; eassumption].
   pose proof (per_univ_elem_universe_index_value u _ (universe_index_lt_large_level_above u)) as Hu.
   destruct u; econstructor; try apply (eval_universe_index_term _ _ (us _)); try apply (eval_universe_index_term _ _ (ul _));
@@ -151,7 +132,8 @@ Proof.
     as [? ? ? ? ? ? ? ? Hchain].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption].
-  intros ? ? [[R HR] Hl Hr]; constructor; [ exists R; eapply per_univ_elem_cumu_universe_index; eassumption | assumption | assumption ].
+  intros ? ? [[R HR] Hl Hr Hnl Hnr]; constructor;
+    [ exists R; eapply per_univ_elem_cumu_universe_index; eassumption | assumption .. ].
 Qed.
 
 Corollary rel_exp_under_ctx_small_large : forall {Γ A A' n} {i : nat},
@@ -168,8 +150,8 @@ Proof.
   apply (rel_exp_of_univ (u := us (a, S n))).
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_relevant (per_univ (us (a, S n))) 𝕌@(domain_level_lit (a, n)) 𝕌@(domain_level_lit (a, n)))
-    by (constructor; [| reflexivity | reflexivity ];
+  assert (Hu : per_relevant_nonlevel (per_univ (us (a, S n))) 𝕌@(domain_level_lit (a, n)) 𝕌@(domain_level_lit (a, n)))
+    by (constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ];
         eexists; apply per_univ_elem_core_suniv';
         [ apply per_lvl_lit | cbn; ordinal_solve | reflexivity ]).
   econstructor; try (apply eval_exp_univ, eval_exp_llit).
@@ -185,7 +167,7 @@ Lemma rel_exp_of_typ_inversion : forall {Γ A A'} {i : nat},
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
         ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ i)).
+        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant_nonlevel (per_univ i)).
 Proof.
   intros * [env_relΓ HΓ j HA].
   eexists; eexists; [eassumption |].
@@ -316,8 +298,8 @@ Proof.
   destruct (eval_sub_id_rel HΓ' Hρ) as [Hid Hid'].
   destruct (HA _ _ HΓ' _ _ (rel_sub_id (ex_intro _ _ HΓ')) _ _ _ _ Hρ Hid Hid')
     as [aσ a a' a'σ' HaσI Ha Ha' Ha'σ'I Hchain].
-  assert (Hr : Dom a ≈ a' ∈ per_relevant (per_univ i)) by pairwise.
-  exists a; split; [ exact Ha | exact (per_relevant_left _ _ _ Hr) ].
+  assert (Hr : Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ i)) by pairwise.
+  exists a; split; [ exact Ha | exact (per_relevant_nonlevel_left _ _ _ Hr) ].
 Qed.
 
 (** A type of a universe is no proposition at an environment a context PER
@@ -450,15 +432,15 @@ Lemma rel_exp_of_typ : forall {Γ A A'} {i : nat},
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
           ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant (per_univ i))) ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant_nonlevel (per_univ i))) ->
     Γ ⊨ A ≈ A' : Typeω@i.
 Proof.
   intros * [env_relΓ [HΓ H]].
   eexists_rel_exp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists (per_relevant (per_univ i)).
+  exists (per_relevant_nonlevel (per_univ i)).
   split; [| right; eapply H; eassumption].
-  assert (Hu : per_univ_elem (S i) (per_relevant (per_univ i)) 𝕌ω@i 𝕌ω@i)
+  assert (Hu : per_univ_elem (S i) (per_relevant_nonlevel (per_univ i)) 𝕌ω@i 𝕌ω@i)
     by (apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
@@ -505,8 +487,8 @@ Proof.
   (** [Typeω@i] ignores the environment, so the two substituted environments
     named by the caller are unused. *)
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_relevant (per_univ (S i)) 𝕌ω@i 𝕌ω@i)
-    by (constructor; [| reflexivity | reflexivity ];
+  assert (Hu : per_relevant_nonlevel (per_univ (S i)) 𝕌ω@i 𝕌ω@i)
+    by (constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ];
         eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
@@ -536,7 +518,7 @@ Proof.
     as [? ? ? ? ? ? ? ? Hchain].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption].
-  intros ? ? [[R HR] Hl Hr]; constructor; [ exists R; now apply per_univ_elem_cumu | assumption | assumption ].
+  intros ? ? [[R HR] Hl Hr Hnl Hnr]; constructor; [ exists R; now apply per_univ_elem_cumu | assumption .. ].
 Qed.
 
 Hint Resolve rel_exp_cumu : mctt.
@@ -725,13 +707,120 @@ Proof.
   eapply per_univ_elem_cumu_ge; [ exact Hij | exact HR ].
 Qed.
 
-(** A type of either sort is a type of an index. *)
+(** [LevelSort] is a type of every large index, its elements the types of
+    levels. *)
+Lemma per_univ_elem_level_sort_univ : forall i, universe_index_large i ->
+    DF LevelSortᵈ ≈ LevelSortᵈ ∈ per_univ_elem i ↘ per_level_sort.
+Proof. intros * Hi; basic_per_univ_elem_econstructor; [ exact Hi | reflexivity ]. Qed.
+
+(** The elements of [LevelSort] form a PER, as the elements of a type do. *)
+#[export] Instance per_level_sort_PER : PER per_level_sort.
+Proof. exact (per_elem_PER (per_univ_elem_level_sort_univ 0 I)). Qed.
+
+(** Related types of levels are types of every index. *)
+Lemma per_univ_elem_of_level_sort : forall i a a', Dom a ≈ a' ∈ per_level_sort ->
+    exists R, DF a ≈ a' ∈ per_univ_elem i ↘ R.
+Proof.
+  intros * (Hl & Hl' & [R HR]).
+  exists R; exact (per_level_code_univ_elem _ _ _ (per_univ_elem_level_code _ _ _ _ HR Hl Hl') i).
+Qed.
+
+Lemma rel_exp_of_level_sort_inversion : forall {Γ A A'},
+    Γ ⊨ A ≈ A' : LevelSort ->
+    exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+    forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' per_level_sort.
+Proof.
+  intros * [env_relΓ HΓ j HA].
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
+  destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
+  simpl in Hchain; destruct Hchain as [? [? ?]].
+  destruct Hexp as [(? & ? & Hp) | Hexp]; [ simplify_evals; discriminate Hp |].
+  invert_rel_typ_body.
+  eassumption.
+Qed.
+
+Lemma rel_exp_of_level_sort : forall {Γ A A'},
+    (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+      forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
+        forall ρ ρ' ρσ ρ'σ',
+          Dom ρ ≈ ρ' ∈ env_rel' ->
+          ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+          ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' per_level_sort) ->
+    Γ ⊨ A ≈ A' : LevelSort.
+Proof.
+  intros * [env_relΓ [HΓ H]].
+  eexists_rel_exp_with 0.
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  exists per_level_sort.
+  split; [| right; eapply H; eassumption].
+  pose proof (per_univ_elem_level_sort_univ 0 I) as Hu.
+  econstructor; try apply eval_exp_level_sort.
+  apply rel_chain_4; assumption.
+Qed.
+
+(** The instance at [Id], at any context PER of [Γ]. *)
+Lemma rel_exp_of_level_sort_inversion_simple_at : forall {Γ A A' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A' : LevelSort ->
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_level_sort.
+Proof.
+  intros * HΓ H%rel_exp_of_level_sort_inversion.
+  destruct H as [env_relΓ' [HΓ' HA]].
+  assert (E : env_relΓ <~> env_relΓ') by (eapply per_ctx_env_right_irrel; eassumption).
+  intros ρ ρ' Hρ%E.
+  destruct (eval_sub_id_rel HΓ' Hρ) as [Hid Hid'].
+  destruct (HA _ _ HΓ' _ _ (rel_sub_id (ex_intro _ _ HΓ')) _ _ _ _ Hρ Hid Hid')
+    as [aσ a a' a'σ' HaσI Ha Ha' Ha'σ'I Hchain].
+  exists a, a'.
+  split; [ exact Ha | split; [ exact Ha' | pairwise ] ].
+Qed.
+
+(** A type of levels is relevant at every environment of its context. *)
+Corollary rel_exp_of_level_sort_relevant_at : forall {Γ A A' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A' : LevelSort ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant.
+Proof.
+  intros * HΓ HA ρ ρ' Hρ.
+  destruct (rel_exp_of_level_sort_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ea & _ & (Hl & _)).
+  exists a; split; [ exact Ea | exact (level_code_relevant _ Hl) ].
+Qed.
+
+(** A type of levels is a type of every index. *)
+Lemma rel_type_of_level_sort : forall {Γ A A'} (i : nat),
+    Γ ⊨ A ≈ A' : LevelSort ->
+    Γ ⊨ᵗ A ≈ A' at i.
+Proof.
+  intros * H%rel_exp_of_level_sort_inversion.
+  destruct H as [env_relΓ [HΓ HA]].
+  econstructor; [ exact HΓ |].
+  intros * HΓ' * Hσ * Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [? ? ? ? ? ? ? ? Hc].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| exact Hc ]; intros ? ? Hp; exact (per_univ_elem_of_level_sort _ _ _ Hp).
+Qed.
+
+(** A type of a sort is a type of an index. *)
 Lemma rel_type_of_sort : forall {Γ A A' S},
     type_sort S ->
     Γ ⊨ A ≈ A' : S ->
     exists i, Γ ⊨ᵗ A ≈ A' at i.
 Proof.
-  intros * [i | ] H; [ exists i; exact (rel_type_of_typ H) | exists 0; exact (rel_type_of_prop 0 H) ].
+  intros * [i | | ] H;
+    [ exists i; exact (rel_type_of_typ H) | exists 0; exact (rel_type_of_prop 0 H)
+    | exists 0; exact (rel_type_of_level_sort 0 H) ].
 Qed.
 
 (** A type keeps its sort along a semantic substitution: the value of
@@ -755,17 +844,21 @@ Qed.
 Lemma rel_type_of_sort_at : forall {S}, type_sort S ->
     exists i, forall Γ A A', Γ ⊨ A ≈ A' : S -> Γ ⊨ᵗ A ≈ A' at i.
 Proof.
-  intros * [i | ]; [ exists i; intros; apply rel_type_of_typ; assumption | exists 0; intros; apply rel_type_of_prop; assumption ].
+  intros * [i | | ];
+    [ exists i; intros; apply rel_type_of_typ; assumption | exists 0; intros; apply rel_type_of_prop; assumption
+    | exists 0; intros; apply rel_type_of_level_sort; assumption ].
 Qed.
 
 (** A type of a sort whose values at every environment are of the
     relevance [r] is a type of the sort at [r]: at an environment, a value
-    of the other relevance contradicts the sort. *)
-Lemma rel_exp_sort_of_relevance : forall Γ A S r, type_sort S -> Γ ⊨ A : S ->
+    of the other relevance contradicts the sort.  Not at [LevelSort]: a
+    type of levels is no element of a universe. *)
+Lemma rel_exp_sort_of_relevance : forall Γ A S r, type_sort S -> S <> LevelSort -> Γ ⊨ A : S ->
     (forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> rel_typ_sort A ρ r) ->
     exists i : nat, Γ ⊨ A : relevance_sort r Typeω@i.
 Proof.
-  intros * [i |] HA Hr; destruct r; cbn [relevance_sort]; [ exists i; exact HA | | | exists 0; exact HA ].
+  intros * [i | |] Hnl HA Hr; [| | contradiction ];
+    destruct r; cbn [relevance_sort]; [ exists i; exact HA | | | exists 0; exact HA ].
   - exists 0; apply rel_exp_of_prop.
     destruct (rel_exp_of_typ_inversion HA) as [R [HR H]].
     exists R, HR; intros Γ' R' HR' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'; exfalso.
@@ -850,6 +943,7 @@ Proof.
     + split; [ intros * Hin; cbn in Hin; first [ contradiction | inversion Hin ] | exact I ].
     + intros * Hin; cbn; lia.
     + left; reflexivity.
+    + split; [ apply ne_erase_idem | exact I ].
 Qed.
 
 (** Two levels each below the other are related: at every length their
@@ -864,7 +958,7 @@ Proof.
   pose proof (lvl_le_antisym _ _ Hle Hle') as Hc.
   rewrite (lvl_canonical_canon _ (read_nf_level_canonical _ _ _ _ HL)),
     (lvl_canonical_canon _ (read_nf_level_canonical _ _ _ _ HL')) in Hc.
-  subst; exists (nf_lvl_of L'); split; assumption.
+  subst; apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L') (nf_lvl_of L')); [ assumption | assumption | reflexivity ].
 Qed.
 
 (** Two types each below the other are related types.  The second
@@ -888,6 +982,7 @@ Proof.
   - eexists; per_univ_elem_econstructor; [ assumption | assumption | assumption | reflexivity ].
   - assert (m = n) as -> by lia; eexists; per_univ_elem_econstructor; reflexivity.
   - eexists; per_univ_elem_econstructor; reflexivity.
+  - eexists; per_univ_elem_econstructor; [ assumption | reflexivity ].
   - eexists; per_univ_elem_econstructor; reflexivity.
   - assert (i = j) as -> by lia; eexists; per_univ_elem_econstructor; [ eassumption | reflexivity | reflexivity ].
   - eexists; per_univ_elem_econstructor; [ eassumption | apply per_sublvl_antisym; assumption | reflexivity ].

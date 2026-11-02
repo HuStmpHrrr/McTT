@@ -3741,7 +3741,12 @@ Ltac solve_per_env_extend_chain :=
     | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
     | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
     end;
-  apply per_env_extend_intro'; first [ pairwise | solve_per_head | assumption ].
+  apply per_env_extend_intro';
+    first [ pairwise | solve_per_head | assumption
+          (** A head an evaluated substitution stores reads back, at the
+              placeholder type ([substituted_entry_readable]). *)
+          | solve [ intros ?s; eexists; eapply read_entry_term;
+                    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ] ] ].
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
