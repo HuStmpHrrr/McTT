@@ -1186,8 +1186,9 @@ Qed.
     it needs the codomain at an arbitrary related pair, which is therefore
     reported too, as are [N]'s four values and their domain PER, from which every
     consumer draws its argument pairs. *)
-Lemma rel_typ_of_instance : forall {Γ A} {i : nat} {B N},
-    Γ ⊨ A ≈ A : Typeω@i ->
+Lemma rel_typ_of_instance : forall {Γ A} {i k : nat} {B N},
+    Γ ⊨ᵗ A ≈ A at k ->
+    rel_type_relevant Γ A ->
     Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ N ≈ N : A ->
     exp_scoped (List.length Γ) N ->
@@ -1218,8 +1219,8 @@ Lemma rel_typ_of_instance : forall {Γ A} {i : nat} {B N},
           rel_typ i B[Id,,N] σ ρ ρσ B[Id,,N] σ' ρ' ρ'σ'
             (per_head B B (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3 ⦂ substituted_type)).
 Proof.
-  intros * HA HB HN HNs * HΓ' * Hσj Hρ Hev Hev'.
-  pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
+  intros * HA HArel' HB HN HNs * HΓ' * Hσj Hρ Hev Hev'.
+  pose proof (rel_type_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
@@ -1230,11 +1231,11 @@ Proof.
       at. *)
   pose proof HN as [? ? j HNgen].
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN [HNtyp HNexp]].
-  (** [A] is a type of a universe, so the argument has values and the
+  (** [A] is a relevant type, so the argument has values and the
     extended environments are literal extensions by them. *)
-  pose proof (rel_exp_of_typ_relevant_at HΓ HA) as HArel.
+  pose proof (HArel' _ HΓ) as HArel.
   apply (rel_exp_or_prop_relevant HNtyp (HArel _ _ Hρσ)) in HNexp.
-  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ Hρσ) as [Hnp2 Hnp3].
+  destruct (head_not_propositional_of_relevant (e := ce_ass A) HΓ eq_refl HA HArel' _ _ Hρσ) as [Hnp2 Hnp3].
   destruct (eval_sub_id_rel HΓ Hρσ) as [Hid2 Hid3].
   destruct HNtyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
@@ -1247,7 +1248,7 @@ Proof.
                ⟦ B ⟧ ρσ ↦ w ⦂ substituted_type ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ⦂ substituted_type ↘ b' /\
                  Dom b ≈ b' ∈ per_univ i).
   { intros w z Hwz.
-    eapply (rel_exp_of_typ_extend_simple HΓ (rel_type_of_typ HA) HB).
+    eapply (rel_exp_of_typ_extend_simple HΓ HA HB).
     apply per_env_extend_intro'; [ exact Hρσ | | apply substituted_entry_readable | apply substituted_entry_readable ].
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | exact Hwz ]. }
   (** The two instantiations, their outer values rewritten into the goal's
@@ -1261,9 +1262,9 @@ Proof.
   (** The second along [Id,,N], whose results are the extensions of the
       restamped environments; read at the extensions of the environments
       themselves ([rel_type_body_unrestamp]). *)
-  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
+  destruct (head_not_propositional_of_relevant (e := ce_ass A) HΓ eq_refl HA HArel' _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
     as [Hnp2r Hnp3r].
-  pose proof (per_ctx_env_of_typ HΓ (rel_type_of_typ HA)) as HΓA0.
+  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA0.
   assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (Hext : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3 ⦂ substituted_type ∈ env_relΓA).
   { apply EA; apply per_env_extend_intro';

@@ -303,6 +303,25 @@ Proof.
   exists aσ; split; [ exact HaσI | exact (per_relevant_nonlevel_left _ _ _ Hr) ].
 Qed.
 
+(** Nor a type of levels ([per_relevant_nonlevel]). *)
+Corollary rel_exp_of_typ_nonlevel_at : forall {Γ A A'} {i : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> forall a, ⟦ A ⟧ ρ ↘ a -> ~ level_code a.
+Proof.
+  intros * HΓ H%rel_exp_of_typ_inversion.
+  destruct H as [env_relΓ' [HΓ' HA]].
+  assert (E : env_relΓ <~> env_relΓ') by (eapply per_ctx_env_right_irrel; eassumption).
+  intros ρ ρ' Hρ%E a Ea.
+  destruct (eval_sub_id_rel HΓ' Hρ) as [Hid Hid'].
+  destruct (HA _ _ HΓ' _ _ (rel_sub_id (ex_intro _ _ HΓ')) _ _ _ _ Hρ Hid Hid')
+    as [aσ a0 a' a'σ' HaσI Ha Ha' Ha'σ'I Hchain].
+  rewrite exp_sub_id in HaσI.
+  assert (aσ = a) as -> by (eapply functional_eval_exp; eassumption).
+  assert (Hr : Dom a ≈ a0 ∈ per_relevant_nonlevel (per_univ i)) by pairwise.
+  exact (per_relevant_nonlevel_left_nonlevel _ _ _ Hr).
+Qed.
+
 (** A type of a universe is no proposition at an environment a context PER
     relates. *)
 Corollary not_rel_typ_propositional_of_typ : forall {Γ A A'} {i : nat} {env_relΓ},

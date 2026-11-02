@@ -594,13 +594,16 @@ Proof.
   end.
 Qed.
 
+(** At a pair of related environments: two relevant types of the small
+    universe at the realiser of [T], neither a type of levels. *)
 Corollary rel_exp_of_suniv_tm_inversion_simple : forall {Γ T A A'},
     Γ ⊨ A ≈ A' : Type⟨T⟩ ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_rel ->
       exists a a' t,
-        ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\ Dom a ≈ a' ∈ per_univ (us (domain_level_real t)).
+        ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\
+        Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ (us (domain_level_real t))).
 Proof.
   intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
@@ -623,9 +626,9 @@ Proof.
   assert (Hx : Dom aσ ≈ a'σ' ∈ R) by pairwise.
   destruct Hchain as [Hl12 _].
   invert_per_univ_elem Hl12.
-  match goal with HT : ⟦ T ⟧ ρ ↘ ?t |- _ => exists aσ, a'σ', t; repeat split; [ exact HaσI | exact Ha'σ'I | exact HT |] end.
+  match goal with HT : ⟦ T ⟧ ρ ↘ ?t |- _ => exists aσ, a'σ', t; split; [ exact HaσI |]; split; [ exact Ha'σ'I |]; split; [ exact HT |] end.
   match goal with
-  | Heq : _ <~> per_relevant_nonlevel _ |- _ => apply Heq in Hx; apply per_relevant_nonlevel_univ_rel; exact Hx
+  | Heq : _ <~> per_relevant_nonlevel _ |- _ => apply Heq in Hx; exact Hx
   end.
 Qed.
 
