@@ -153,11 +153,15 @@ with dmod : Set :=
 with dentry : Set :=
 (** A term variable's value and its type *)
 | de_term : domain -> entry_type -> dentry
-(** A module slot's value *)
-| de_mod : dmod -> dentry
+(** A module slot's value, and the unit declared for the entry, written
+    over its own tail; readback's let; the value may be any related
+    closure ([q σ]) *)
+| de_mod : dmod -> gunit -> dentry
 (** The value of a definition with a module part: its term part's value
-    and type, and its module part's value *)
-| de_dm : domain -> entry_type -> dmod -> dentry
+    and type, its module part's value, and the unit declared for the
+    entry, written over its own tail; readback's let; the value may be
+    any related closure ([q σ]) *)
+| de_dm : domain -> entry_type -> dmod -> gunit -> dentry
 (** The type of a term variable in an environment, which the readback of
     a kept proof reads it at.  It is evaluated only there. *)
 with entry_type : Set :=
@@ -204,8 +208,8 @@ Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
   | de_term d _ => d
-  | de_mod _ => d_placeholder
-  | de_dm d _ _ => d
+  | de_mod _ _ => d_placeholder
+  | de_dm d _ _ _ => d
   end.
 #[warning="-uniform-inheritance"]
 Coercion env_var : list >-> Funclass.
@@ -214,34 +218,37 @@ Coercion env_var : list >-> Funclass.
 Definition env_type (ρ : env) (x : nat) : entry_type :=
   match env_entry ρ x with
   | de_term _ t => t
-  | de_mod _ => entry_type_value d_placeholder_type
-  | de_dm _ t _ => t
+  | de_mod _ _ => entry_type_value d_placeholder_type
+  | de_dm _ t _ _ => t
   end.
 
 Definition env_mod (ρ : env) (x : nat) : dmod :=
   match env_entry ρ x with
-  | de_mod m => m
+  | de_mod m _ => m
   | de_term _ _ => dm_default
-  | de_dm _ _ m => m
+  | de_dm _ _ m _ => m
   end.
 
 Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ placeholder_entry.
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
 Lemma env_var_nth : forall ρ x,
-    env_var ρ x = match List.nth x ρ placeholder_entry with de_term d _ | de_dm d _ _ => d | de_mod _ => d_placeholder end.
+    env_var ρ x = match List.nth x ρ placeholder_entry with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_placeholder end.
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
 (** The environment extended by a value [d] of the type [t]. *)
 Definition extend_env (ρ : env) (d : domain) (t : entry_type) : env := de_term d t :: ρ.
 Arguments extend_env _ _ _ /.
 
-Definition extend_env_mod (ρ : env) (m : dmod) : env := de_mod m :: ρ.
-Arguments extend_env_mod _ _ /.
+(** The environment extended by a module value [m] of the declared unit
+    [U], written over [ρ]. *)
+Definition extend_env_mod (ρ : env) (m : dmod) (U : gunit) : env := de_mod m U :: ρ.
+Arguments extend_env_mod _ _ _ /.
 
-(** The environment extended by a definition with a module part. *)
-Definition extend_env_dm (ρ : env) (d : domain) (t : entry_type) (m : dmod) : env := de_dm d t m :: ρ.
-Arguments extend_env_dm _ _ _ _ /.
+(** The environment extended by a definition with a module part, its unit
+    [U] written over [ρ]. *)
+Definition extend_env_dm (ρ : env) (d : domain) (t : entry_type) (m : dmod) (U : gunit) : env := de_dm d t m U :: ρ.
+Arguments extend_env_dm _ _ _ _ _ /.
 
 (** [env_extend_typed ρ vts]: the environment [ρ] extended by the values
     of [vts], each at the type paired with it, outermost first. *)
@@ -350,8 +357,9 @@ Module Domain_Notations.
   Notation "'efqᵈ' p 'return' c" := (d_absurd c p) (at level 2, p at level 60, c at level 60) : mctt_scope.
 
   Notation "ρ ↦ m ⦂ t" := (extend_env ρ m t) (at level 20, left associativity, m at next level, t at next level) : mctt_scope.
-  Notation "ρ '↦ᵐ' m" := (extend_env_mod ρ m) (at level 20, left associativity) : mctt_scope.
-  Notation "ρ '↦ᵈ' d ⦂ t ‖ m" := (extend_env_dm ρ d t m) (at level 20, left associativity, d at next level, t at next level) : mctt_scope.
+  Notation "ρ '↦ᵐ' m ⦂ U" := (extend_env_mod ρ m U) (at level 20, left associativity, m at next level, U at next level) : mctt_scope.
+  Notation "ρ '↦ᵈ' d ⦂ t ‖ m ⦂ U" := (extend_env_dm ρ d t m U)
+    (at level 20, left associativity, d at next level, t at next level, m at next level, U at next level) : mctt_scope.
 End Domain_Notations.
 
 (** The value of the universe at an index, at either tier. *)
@@ -496,10 +504,10 @@ Proof. reflexivity. Qed.
 Proposition env_mod_drop : forall ρ x, env_mod ρ↯ x = env_mod ρ (S x).
 Proof. reflexivity. Qed.
 
-Proposition extend_env_mod_zero : forall ρ m, env_mod (ρ ↦ᵐ m) 0 = m.
+Proposition extend_env_mod_zero : forall ρ m U, env_mod (ρ ↦ᵐ m ⦂ U) 0 = m.
 Proof. reflexivity. Qed.
 
-Proposition extend_env_mod_succ : forall ρ m x, env_entry (ρ ↦ᵐ m) (S x) = env_entry ρ x.
+Proposition extend_env_mod_succ : forall ρ m U x, env_entry (ρ ↦ᵐ m ⦂ U) (S x) = env_entry ρ x.
 Proof. reflexivity. Qed.
 
 (** ** Pointwise Equality
@@ -555,8 +563,8 @@ Lemma env_agree_mod : forall n ρ ρ', env_agree_upto n ρ ρ' -> forall x, x < 
 Proof. intros * H x Hx; unfold env_mod; rewrite (H x Hx); reflexivity. Qed.
 
 #[export]
-Instance extend_env_mod_Proper : Proper (env_eq ==> eq ==> env_eq) extend_env_mod.
-Proof. intros ρ ρ' Hρ d d' <- [| n]; [ reflexivity | apply Hρ ]. Qed.
+Instance extend_env_mod_Proper : Proper (env_eq ==> eq ==> eq ==> env_eq) extend_env_mod.
+Proof. intros ρ ρ' Hρ d d' <- U U' <- [| n]; [ reflexivity | apply Hρ ]. Qed.
 
 #[export]
 Instance drop_env_Proper : Proper (env_eq ==> env_eq) drop_env.

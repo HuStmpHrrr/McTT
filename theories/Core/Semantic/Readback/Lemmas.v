@@ -146,8 +146,7 @@ Import Domain_Notations.
       (forall s ρ fl v Fs1, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2) /\
       (forall s m M1, Rprf m in Θ ⍮ Ξ ⍮ s ↘ M1 -> forall M2, Rprf m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2) /\
       (forall s ρ k bs1, Rlets ρ at k in Θ ⍮ Ξ ⍮ s ↘ bs1 -> forall bs2, Rlets ρ at k in Θ ⍮ Ξ ⍮ s ↘ bs2 -> bs1 = bs2) /\
-      (forall s τ e b1, Rent e after τ in Θ ⍮ Ξ ⍮ s ↘ b1 -> forall b2, Rent e after τ in Θ ⍮ Ξ ⍮ s ↘ b2 -> b1 = b2) /\
-      (forall s τ h H1, Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H1 -> forall H2, Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H2 -> H1 = H2).
+      (forall s e b1, Rent e in Θ ⍮ Ξ ⍮ s ↘ b1 -> forall b2, Rent e in Θ ⍮ Ξ ⍮ s ↘ b2 -> b1 = b2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros.
     (** The readbacks of a proof, of the definitions around it and of the
@@ -157,8 +156,7 @@ Import Domain_Notations.
       [ match goal with
         | H : read_proof _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
         | H : read_lets _ _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
-        | H : read_entry _ _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
-        | H : read_mod _ _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
+        | H : read_entry _ _ _ _ ?X |- _ = ?X => inversion H; subst; clear H
         end;
         try (exfalso; cbn [extend_env] in *; congruence);
         functional_fresh_rewrite_clear; functional_eval_rewrite_clear;

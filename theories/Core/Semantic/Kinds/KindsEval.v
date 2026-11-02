@@ -50,8 +50,8 @@ Section KindsEval.
   Definition dentry_tag (e : dentry) : nat :=
     match e with
     | de_term _ _ => 0
-    | de_mod _ => 1
-    | de_dm _ _ _ => 2
+    | de_mod _ _ => 1
+    | de_dm _ _ _ _ => 2
     end.
 
   (** Two environments with the same kinds, and entries of the same sorts
@@ -62,12 +62,13 @@ Section KindsEval.
   Lemma kinds_shape_cons_term : forall ρ ρ' a a' t t', kinds_shape ρ ρ' -> kinds_shape (de_term a t :: ρ) (de_term a' t' :: ρ').
   Proof. intros * [K S]; split; intros [| x]; first [ apply kinds_equiv_refl | apply K | reflexivity | apply S ]. Qed.
 
-  Lemma kinds_shape_cons_mod : forall ρ ρ' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' -> kinds_shape (de_mod h :: ρ) (de_mod h' :: ρ').
+  Lemma kinds_shape_cons_mod : forall ρ ρ' h h' U U', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
+      kinds_shape (de_mod h U :: ρ) (de_mod h' U' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
   (** A term with a module part, by the kinds of its module part. *)
-  Lemma kinds_shape_cons_dm : forall ρ ρ' a a' t t' h h', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
-      kinds_shape (de_dm a t h :: ρ) (de_dm a' t' h' :: ρ').
+  Lemma kinds_shape_cons_dm : forall ρ ρ' a a' t t' h h' U U', kinds_shape ρ ρ' -> kinds_equiv Θ Ξ h h' ->
+      kinds_shape (de_dm a t h U :: ρ) (de_dm a' t' h' U' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
   (** An environment extended by typed values is their entries, innermost

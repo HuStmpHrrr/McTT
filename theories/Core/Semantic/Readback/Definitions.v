@@ -13,8 +13,7 @@ Reserved Notation "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at l
 Reserved Notation "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
 Reserved Notation "'Rprf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rlets' ρ 'at' k 'in' Θ '⍮' Ξ '⍮' s ↘ bs" (at level 70, ρ at level 69, k at level 69, Θ at level 69, Ξ at level 69, s constr, bs at level 69).
-Reserved Notation "'Rent' e 'after' τ 'in' Θ '⍮' Ξ '⍮' s ↘ b" (at level 70, e at level 69, τ at level 69, Θ at level 69, Ξ at level 69, s constr, b at level 69).
-Reserved Notation "'Rmod' h 'after' τ 'in' Θ '⍮' Ξ '⍮' s ↘ H" (at level 70, h at level 69, τ at level 69, Θ at level 69, Ξ at level 69, s constr, H at level 69).
+Reserved Notation "'Rent' e 'in' Θ '⍮' Ξ '⍮' s ↘ b" (at level 70, e at level 69, Θ at level 69, Ξ at level 69, s constr, b at level 69).
 
 Reserved Notation "'Rflds' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" (at level 70, v at level 69, fl at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Fs at level 69).
 Reserved Notation "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
@@ -201,20 +200,44 @@ Hint Constructors eval_entry_type : mctt.
     first, around the proof term [M]. *)
 Definition lets_exp (bs : list binding) (M : exp) : exp := List.fold_right a_let M bs.
 
-(** Whether one of the first [k] entries of an environment is a module. *)
-Fixpoint env_has_module (ρ : env) (k : nat) : bool :=
-  match k, ρ with
-  | S k', de_term _ _ :: ρ' => env_has_module ρ' k'
-  | S _, _ :: _ => true
-  | _, _ => false
+(** How far past an entry the definition binding it reaches: a module
+    entry is bound by its stored unit ([read_entry_mod]), written over the
+    entry's tail, so it reaches the free variables of the unit; a term
+    entry is bound by the readback of its value, which names no position
+    of the environment.  A definition with a module part is bound by its
+    term part only ([read_entry_dm]). *)
+Definition entry_unit_bound (e : dentry) : nat :=
+  match e with
+  | de_mod _ U => gunit_free_bound U
+  | _ => 0
+  end.
+
+(** [proof_scope_from ρ j n]: the least scope at least [n] that is closed
+    under the stored units of the entries from [j] on, [ρ] the environment
+    from [j] on: the entry at [j], if inside the scope, widens it to the
+    positions its unit reaches past it.  A unit reaches only into its own
+    tail, so one walk outwards from the innermost entry reaches the
+    closure; the recursion is on [ρ]. *)
+Fixpoint proof_scope_from (ρ : env) (j n : nat) : nat :=
+  match ρ with
+  | nil => n
+  | e :: ρ' => if Nat.ltb j n then proof_scope_from ρ' (S j) (Nat.max n (S j + entry_unit_bound e)) else n
   end.
 
 (** The environment positions the readback of a kept proof [⋆ᵈ⟨M, ρ⟩]
     binds: those up to the largest free index of [M], so that [M] is
-    copied as written; all of [ρ] when one of them is a module, whose unit
-    is copied too and may reach further into [ρ]. *)
-Definition proof_scope (M : exp) (ρ : env) : nat :=
-  if env_has_module ρ (exp_free_bound M) then List.length ρ else exp_free_bound M.
+    copied as written, closed under the stored units of the module
+    entries among them, which are copied too and may reach further into
+    [ρ].  For example:
+    - a proof [#0.h] selected from a global module [p] at the argument
+      [3] is kept over [ρ = (3 at its parameter's type) ↦ᵐ (p 3) ⦂ p #0]
+      ([eval_sel_global_proof]): the scope is [1] by [#0.h], widened to
+      [2] by the unit [p #0], and the proof reads back as
+      [let n : ℕ ≔ 3 in let module y ≔ p #0 in y.h];
+    - under [λ x], a proof [#0.h] in [ℓₘ (F #0) in …] is kept over
+      [ρ ↦ x ⦂ … ↦ᵐ h ⦂ F #0]: the scope is widened from [1] to [2], so
+      that [x] is bound too. *)
+Definition proof_scope (M : exp) (ρ : env) : nat := proof_scope_from ρ 0 (exp_free_bound M).
 
 (** Readback of values into normal and neutral forms in a context with [s]
     variables.  The global context is needed to evaluate closures. *)
@@ -405,58 +428,31 @@ with read_lets (Θ : gdeps) (Ξ : gstack) : nat -> env -> nat -> list binding ->
   `( Rlets ρ at 0 in Θ ⍮ Ξ ⍮ s ↘ nil )
 (** The outermost position, then the rest under it *)
 | read_lets_cons :
-  `( Rent env_entry ρ k after List.skipn (S k) ρ in Θ ⍮ Ξ ⍮ s ↘ b ->
+  `( Rent env_entry ρ k in Θ ⍮ Ξ ⍮ s ↘ b ->
      Rlets ρ at k in Θ ⍮ Ξ ⍮ S s ↘ bs ->
      Rlets ρ at S k in Θ ⍮ Ξ ⍮ s ↘ b :: bs )
 where "'Rlets' ρ 'at' k 'in' Θ '⍮' Ξ '⍮' s ↘ bs" := (read_lets Θ Ξ s ρ k bs) : type_scope
-(** [Rent e after τ in s ↘ b]: the definition an entry [e] is bound by, the
-    entries [τ] after it already bound: a term at its type, read back; a
-    module as an alias of its module expression (REVISIT: a definition
-    with a module part is bound by its term part only). *)
-with read_entry (Θ : gdeps) (Ξ : gstack) : nat -> env -> dentry -> binding -> Prop :=
+(** [Rent e in s ↘ b]: the definition an entry [e] is bound by: a term at
+    its type, read back; a module by the unit stored for it, written over
+    its tail, whatever its value (REVISIT: a definition with a module
+    part is bound by its term part only). *)
+with read_entry (Θ : gdeps) (Ξ : gstack) : nat -> dentry -> binding -> Prop :=
 (** A term *)
 | read_entry_term :
   `( eval_entry_type Θ Ξ t a ->
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ W ->
-     Rent de_term v t after τ in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
+     Rent de_term v t in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
 (** The term part of a definition with a module part *)
 | read_entry_dm :
   `( eval_entry_type Θ Ξ t a ->
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ W ->
-     Rent de_dm v t h after τ in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
-(** A module, as an alias of its module expression *)
+     Rent de_dm v t h U in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
+(** A module, by its stored unit *)
 | read_entry_mod :
-  `( Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H ->
-     Rent de_mod h after τ in Θ ⍮ Ξ ⍮ s ↘ b_mod (gu_mk nil (md_alias H)) )
-where "'Rent' e 'after' τ 'in' Θ '⍮' Ξ '⍮' s ↘ b" := (read_entry Θ Ξ s τ e b) : type_scope
-(** [Rmod h after τ in s ↘ H]: a module value as a module expression, the
-    entries [τ] already bound: a global module at its arguments, read at
-    its parameters' types; a closure over [τ] as its unit; a closure over
-    [τ] extended by arguments as its unit applied to them; a submodule as
-    its selection. *)
-with read_mod (Θ : gdeps) (Ξ : gstack) : nat -> env -> dmod -> modexp -> Prop :=
-(** A global module at its arguments *)
-| read_mod_global :
-  `( gc_loc Θ Ξ p = Some (T, Φ) ->
-     Rps args at List.rev T in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ws ->
-     Rmod dm_global p args after τ in Θ ⍮ Ξ ⍮ s ↘ me_apps (qname_mod p) (List.map nf_to_exp Ws) )
-(** A closure over [τ] *)
-| read_mod_unit :
-  `( Rmod dm_local Δ D τ after τ in Θ ⍮ Ξ ⍮ s ↘ me_lit (gu_mk Δ D) )
-(** A closure that took an argument, at its parameter's type *)
-| read_mod_arg :
-  `( (ρ ↦ n ⦂ entry_type_closure A ρ) <> τ ->
-     Rmod dm_local (Δ ++ ce_ass A :: nil) D ρ after τ in Θ ⍮ Ξ ⍮ s ↘ H ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Rnf ⇓ a n in Θ ⍮ Ξ ⍮ s ↘ W ->
-     Rmod dm_local Δ D (ρ ↦ n ⦂ entry_type_closure A ρ) after τ in Θ ⍮ Ξ ⍮ s ↘ me_app H W )
-(** A submodule *)
-| read_mod_member :
-  `( Rmod h after τ in Θ ⍮ Ξ ⍮ s ↘ H ->
-     Rmod dm_member h ch after τ in Θ ⍮ Ξ ⍮ s ↘ me_mems H ch )
-where "'Rmod' h 'after' τ 'in' Θ '⍮' Ξ '⍮' s ↘ H" := (read_mod Θ Ξ s τ h H) : type_scope
+  `( Rent de_mod h U in Θ ⍮ Ξ ⍮ s ↘ b_mod U )
+where "'Rent' e 'in' Θ '⍮' Ξ '⍮' s ↘ b" := (read_entry Θ Ξ s e b) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
   `( Rtyp 𝕌ω@i in Θ ⍮ Ξ ⍮ s ↘ Typeωⁿ@i )
@@ -698,8 +694,7 @@ with read_brs_mut_ind := Induction for read_brs Sort Prop
 with read_fields_mut_ind := Induction for read_fields Sort Prop
 with read_proof_mut_ind := Induction for read_proof Sort Prop
 with read_lets_mut_ind := Induction for read_lets Sort Prop
-with read_entry_mut_ind := Induction for read_entry Sort Prop
-with read_mod_mut_ind := Induction for read_mod Sort Prop.
+with read_entry_mut_ind := Induction for read_entry Sort Prop.
 Combined Scheme read_mut_ind from
   read_nf_mut_ind,
   read_ne_mut_ind,
@@ -713,9 +708,8 @@ Combined Scheme read_mut_ind from
   read_fields_mut_ind,
   read_proof_mut_ind,
   read_lets_mut_ind,
-  read_entry_mut_ind,
-  read_mod_mut_ind.
+  read_entry_mut_ind.
 
 #[export]
 Hint Constructors read_nf read_ne read_typ read_level_atoms read_ps read_fields read_cargs read_shape read_blocks read_brs
-  read_proof read_lets read_entry read_mod : mctt.
+  read_proof read_lets read_entry : mctt.

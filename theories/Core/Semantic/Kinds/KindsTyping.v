@@ -156,8 +156,8 @@ Section Match.
   Qed.
 
   (** A definition with a module part, matched by its module part. *)
-  Lemma kinds_match_cons_dm : forall Γ ρ A M U d t h, kinds_match Γ ρ -> kinds_equiv Θ Ξ h (dm_clo U ρ) ->
-      kinds_match (ce_dm A M U :: Γ) (de_dm d t h :: ρ).
+  Lemma kinds_match_cons_dm : forall Γ ρ A M U d t h V, kinds_match Γ ρ -> kinds_equiv Θ Ξ h (dm_clo U ρ) ->
+      kinds_match (ce_dm A M U :: Γ) (de_dm d t h V :: ρ).
   Proof.
     intros * HΓ Hh x U' Hl; inversion Hl; subst.
     - eapply kinds_equiv_trans; [ exact Hh |].
@@ -166,8 +166,8 @@ Section Match.
       intros ch k; rewrite !dmod_member_kind_clo_iff, gunit_member_kind_shift; reflexivity.
   Qed.
 
-  Lemma kinds_match_cons_mod : forall Γ ρ U h, kinds_match Γ ρ -> kinds_equiv Θ Ξ h (dm_clo U ρ) ->
-      kinds_match (ce_mod U :: Γ) (de_mod h :: ρ).
+  Lemma kinds_match_cons_mod : forall Γ ρ U h V, kinds_match Γ ρ -> kinds_equiv Θ Ξ h (dm_clo U ρ) ->
+      kinds_match (ce_mod U :: Γ) (de_mod h V :: ρ).
   Proof.
     intros * HΓ Hh x U' Hl; inversion Hl; subst.
     - eapply kinds_equiv_trans; [ exact Hh |].

@@ -155,12 +155,12 @@ Section Members.
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r ->
       (exists f, global_member_value p x f /\ $*| f & args | Θ ⍮ Ξ ↘ r) \/
       ((exists b pv A B, gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B)) /\
-       r = ⋆ᵈ⟨member_proof x, de_mod (dm_global p args) :: nil⟩).
+       exists T Φ, gc_loc Θ Ξ p = Some (T, Φ) /\ r = ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩).
   Proof.
     intros * Hs H; inversion H; subst;
       [ left; eexists; split; [ eapply global_member_value_term | ]; eassumption
       | left; eexists; split; [ eapply global_member_value_neut | ]; eassumption
-      | right; split; [ do 4 eexists; eassumption | reflexivity ]
+      | right; split; [ do 4 eexists; eassumption | do 2 eexists; split; [ eassumption | reflexivity ] ]
       | left; eexists; split; [ eapply global_member_value_indty |]; eassumption
       | exfalso; match goal with Hl : gc_loc _ _ _ = Some _ |- _ => specialize (Hs _ _ Hl) end; lia
       | left; eexists; split; [ eapply global_member_value_record | ]; eassumption ].

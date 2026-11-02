@@ -106,6 +106,15 @@ Definition arg_relevance (Θ : gdeps) (Ξ : gstack) (f : domain) : relevance :=
     module at [#0]. *)
 Definition member_proof (x : string) : exp := a_mem (me_var 0) x.
 
+(** The environment a proof member of a global module [p] at the
+    arguments [args] is kept over ([eval_sel_global_proof]): the arguments,
+    at [p]'s parameter telescope [T] (innermost first, as [gc_loc] gives
+    it), then the module at [#0], stored at its alias applied to them, a
+    unit written over the arguments.  So every entry is written over its
+    own tail, and readback binds the arguments, then the module. *)
+Definition global_proof_env (p : qname) (T : list centry) (args : list domain) : env :=
+  env_tele nil (List.rev T) args ↦ᵐ dm_global p args ⦂ gu_mk nil (md_alias (me_apps (qname_mod p) (vars_from 0 (List.length args)))).
+
 (** ** The Types of the Variables an Eliminator Binds
 
     A branch binds the non-uniform parameters of its member, the arguments
@@ -214,8 +223,8 @@ Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat placehol
     closure of its unit; any other, a placeholder, as in [body_ctx]. *)
 Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
   match E with
-  | ge_mod _ U => de_mod (dm_clo U ρ)
-  | ge_def_mod _ _ _ U => de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_clo U ρ)
+  | ge_mod _ U => de_mod (dm_clo U ρ) U
+  | ge_def_mod _ _ _ U => de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_clo U ρ) U
   | _ => placeholder_entry
   end.
 
@@ -225,8 +234,11 @@ Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
     module part's unit; a definition, a placeholder. *)
 Definition kinds_generated_entry (ρ : env) (k : nat) (g : generated_item) : dentry :=
   match g with
-  | generated_item_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | generated_item_def_mod _ _ _ _ E => de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | generated_item_alias _ _ E =>
+      de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ) (gu_mk nil (md_alias (modexp_wk E (wk_shiftn k))))
+  | generated_item_def_mod _ _ _ _ E =>
+      de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+        (gu_mk nil (md_alias (modexp_wk E (wk_shiftn k))))
   | _ => placeholder_entry
   end.
 
@@ -660,10 +672,10 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      domain_relevance a = propositional ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** A local module extends it by the unit's closure. *)
+(** A local module extends it by the unit's closure, at the unit. *)
 | eval_exp_let_mod :
   `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ↘ r ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ⦂ gu_mk Δ D ↘ r ->
      ⟦ ℓₘ (gu_mk Δ D) in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A member is read off the root of its module expression, then applied to
     the module's arguments: arguments commute with selection.  Without
@@ -1168,11 +1180,13 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A definition of a saturated global module tagged a proposition,
     transparent or not: a proof, kept as the selection of the member from
-    the module.  Neither its body nor its type is evaluated. *)
+    the module, over the module's arguments ([global_proof_env]).
+    Neither its body nor its type is evaluated. *)
 | eval_sel_global_proof :
   `( module_saturated Θ Ξ p args ->
+     gc_loc Θ Ξ p = Some (T, Φ) ->
      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
-     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, de_mod (dm_global p args) :: nil⟩ )
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩ )
 (** The module of a member of a group of inductive types, as a term, in a
     saturated global module: the member's type former, applied to the
     module's arguments. *)
@@ -1213,7 +1227,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = propositional ->
-     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, de_mod (dm_local nil (md_body sm Φ) ρ) :: ρ⟩ )
+     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
@@ -1303,18 +1317,18 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 | eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ entry_type_closure A ρ1 )
-(** A submodule adds its unit's closure. *)
+(** A submodule adds its unit's closure, at the unit. *)
 | eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
-     ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h )
+     ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h ⦂ gu_mk Δy Dy )
 (** A definition with a module part adds its term's value and its unit's
-    closure. *)
+    closure, at the unit. *)
 | eval_body_env_dm :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
-     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ entry_type_closure A ρ1 ‖ h )
+     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ entry_type_closure A ρ1 ‖ h ⦂ gu_mk Δy Dy )
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_body_env Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
@@ -1398,12 +1412,21 @@ Proof. intros * <-; apply eval_exp_var. Qed.
     type. *)
 Definition substituted_type : entry_type := entry_type_value d_placeholder_type.
 
+(** The unit a module entry of a substitution's result is stored at, for
+    the same reason: the placeholder, an alias of the module at the dummy
+    path [q_abs nil nil], which names no module, as in [dm_default].  The unit
+    declared by the target context would change under precomposition by a
+    weakening ([eval_sub_wk_pre]), which reindexes the entries but not the
+    units stored in them.  REVISIT: the readback of a kept proof in such an
+    environment binds those entries at the placeholder unit. *)
+Definition substituted_unit : gunit := gu_mk nil (md_alias (qname_mod (q_abs nil nil))).
+
 Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (e : sentry) (ρ : env) (d : dentry) : Prop :=
   match e with
   | se_var y => d = env_entry ρ y
   | se_exp M => exists m, d = de_term m substituted_type /\ ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
-  | se_mod H => exists h, d = de_mod h /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
-  | se_dm N H => exists n h, d = de_dm n substituted_type h /\ ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
+  | se_mod H => exists h, d = de_mod h substituted_unit /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
+  | se_dm N H => exists n h, d = de_dm n substituted_type h substituted_unit /\ ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
   end.
 
 Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" := (eval_sentry Θ Ξ e ρ d) : mctt_scope.
@@ -1425,7 +1448,6 @@ Definition ctx_entry_type (Δ : ctx) (x : nat) : option typ :=
   | Some (ce_ass A) | Some (ce_def A _) | Some (ce_dm A _ _) => Some A
   | _ => None
   end.
-
 (** The entry [x] of [Δ] is a proposition in the environment [ρσ] of [Δ]:
     its type, over the entries after it, evaluates in the tail of [ρσ]
     after [x] to a propositional value.  The tail is taken up to agreement
@@ -1591,7 +1613,7 @@ Qed.
 Lemma eval_sub_extend_mod : forall {Θ Ξ} U Δ σ ρ ρσ H h,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ σ ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵐ h.
+    ⟦ σ ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵐ h ⦂ substituted_unit.
 Proof.
   intros * Hσ HH [| x] Hx.
   - split; [ intros []; discriminate | intros _; exists h; split; [ reflexivity | assumption ] ].
@@ -1607,7 +1629,7 @@ Lemma eval_sub_extend_dm : forall {Θ Ξ} e Δ σ ρ ρσ N H n h,
     ~ head_propositional Θ Ξ e Δ ρσ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ⦂ substituted_type ‖ h.
+    ⟦ σ ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ᵈ n ⦂ substituted_type ‖ h ⦂ substituted_unit.
 Proof.
   intros * Hσ Hn HN HH [| x] Hx.
   - split; [ intros Hp; apply entry_propositional_head in Hp; contradiction
@@ -1621,7 +1643,7 @@ Corollary eval_sub_single_dm : forall {Θ Ξ} e Δ ρ N H n h,
     ~ head_propositional Θ Ξ e Δ ρ ->
     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵈ n ⦂ substituted_type ‖ h.
+    ⟦ Id ,,ᵈ N ‖ H : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵈ n ⦂ substituted_type ‖ h ⦂ substituted_unit.
 Proof.
   intros; apply eval_sub_extend_dm; [ apply eval_sub_id | assumption .. ].
 Qed.
@@ -1643,7 +1665,7 @@ Qed.
 
 Corollary eval_sub_single_mod : forall {Θ Ξ} U Δ ρ H h,
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-    ⟦ Id ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵐ h.
+    ⟦ Id ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ᵐ h ⦂ substituted_unit.
 Proof.
   intros; apply eval_sub_extend_mod; [ apply eval_sub_id | assumption ].
 Qed.

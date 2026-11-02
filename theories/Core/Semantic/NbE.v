@@ -37,15 +37,15 @@ Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_cons_mod :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ h))
+     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ h ⦂ U))
 (** A definition with a module part: the value of its term, at its type,
-    and the closure of its unit *)
+    and the closure of its unit, at the unit *)
 | initial_env_cons_dm :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     initial_env Θ Ξ (Γ ▸ₘ A ≔ M ‖ U) (ρ ↦ᵈ m ⦂ entry_type_value a ‖ h)).
+     initial_env Θ Ξ (Γ ▸ₘ A ≔ M ‖ U) (ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U)).
 
 #[export]
 Hint Constructors initial_env : mctt.

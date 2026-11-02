@@ -61,11 +61,12 @@ Section Kinds.
   Lemma kinds_rename_q_term : forall φ ρ ρ' d d' t t', kinds_rename φ ρ ρ' -> kinds_rename (wk_q φ) (de_term d t :: ρ) (de_term d' t' :: ρ').
   Proof. intros * H [| x]; cbn [wk_q]; [ apply kinds_equiv_refl | apply H ]. Qed.
 
-  Lemma kinds_rename_q_mod : forall φ ρ ρ' h h', kinds_rename φ ρ ρ' -> kinds_equiv h h' -> kinds_rename (wk_q φ) (de_mod h :: ρ) (de_mod h' :: ρ').
+  Lemma kinds_rename_q_mod : forall φ ρ ρ' h h' U U', kinds_rename φ ρ ρ' -> kinds_equiv h h' ->
+      kinds_rename (wk_q φ) (de_mod h U :: ρ) (de_mod h' U' :: ρ').
   Proof. intros * H Hh [| x]; cbn [wk_q]; [ exact Hh | apply H ]. Qed.
 
-  Lemma kinds_rename_q_dm : forall φ ρ ρ' d d' t t' h h', kinds_rename φ ρ ρ' -> kinds_equiv h h' ->
-      kinds_rename (wk_q φ) (de_dm d t h :: ρ) (de_dm d' t' h' :: ρ').
+  Lemma kinds_rename_q_dm : forall φ ρ ρ' d d' t t' h h' U U', kinds_rename φ ρ ρ' -> kinds_equiv h h' ->
+      kinds_rename (wk_q φ) (de_dm d t h U :: ρ) (de_dm d' t' h' U' :: ρ').
   Proof. intros * H Hh [| x]; cbn [wk_q]; [ exact Hh | apply H ]. Qed.
 
   Lemma kinds_rename_pad : forall n φ ρ ρ', kinds_rename φ ρ ρ' -> kinds_rename (wk_qn n φ) (kinds_placeholders n ρ) (kinds_placeholders n ρ').
@@ -316,15 +317,20 @@ Section Kinds.
       cbn [kinds_generated_entry generated_item_wk].
     - specialize (IH (placeholder_entry :: A) (placeholder_entry :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [wk_qn]; apply kinds_rename_q_term; exact HAB | intros; apply Hin; right; assumption ].
-    - set (h := dm_local nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A)))) (A ++ ρ1)).
+    - set (U := gu_mk nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A))))).
+      set (U' := gu_mk nil (md_alias (modexp_wk E (wk_shiftn (List.length A))))).
+      set (h := dm_local nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A)))) (A ++ ρ1)).
       set (h' := dm_local nil (md_alias (modexp_wk E (wk_shiftn (List.length A)))) (B ++ ρ1')).
-      specialize (IH (de_mod h :: A) (de_mod h' :: B)); cbn [List.length app] in IH.
+      specialize (IH (de_mod h U :: A) (de_mod h' U' :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [wk_qn]; apply kinds_rename_q_mod; [ exact HAB |] | intros; apply Hin; right; assumption ].
       apply kinds_generated_entry_alias_kinds_equiv with (H := H); [ exact HH | exact Hφ | exact Hl |].
       eapply kinds_items_gen_alias_target; [ exact Hg | apply Hin; left; reflexivity ].
-    - set (h := dm_local nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A)))) (A ++ ρ1)).
+    - set (U := gu_mk nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A))))).
+      set (U' := gu_mk nil (md_alias (modexp_wk E (wk_shiftn (List.length A))))).
+      set (h := dm_local nil (md_alias (modexp_wk (modexp_wk E φ) (wk_shiftn (List.length A)))) (A ++ ρ1)).
       set (h' := dm_local nil (md_alias (modexp_wk E (wk_shiftn (List.length A)))) (B ++ ρ1')).
-      specialize (IH (de_dm d_placeholder (entry_type_value d_placeholder_type) h :: A) (de_dm d_placeholder (entry_type_value d_placeholder_type) h' :: B)); cbn [List.length app] in IH.
+      specialize (IH (de_dm d_placeholder (entry_type_value d_placeholder_type) h U :: A)
+                     (de_dm d_placeholder (entry_type_value d_placeholder_type) h' U' :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [wk_qn]; apply kinds_rename_q_dm; [ exact HAB |] | intros; apply Hin; right; assumption ].
       apply kinds_generated_entry_alias_kinds_equiv with (H := H); [ exact HH | exact Hφ | exact Hl |].
       right; eapply kinds_items_gen_dm_target; [ exact Hg | apply Hin; left; reflexivity ].
@@ -519,20 +525,21 @@ Section Kinds.
       apply H.
   Qed.
 
-  Lemma kinds_sub_q_mod : forall σ ρ ρ' h h', kinds_sub σ ρ ρ' -> kinds_equiv h h' -> kinds_sub (sb_q σ) (de_mod h :: ρ) (de_mod h' :: ρ').
+  Lemma kinds_sub_q_mod : forall σ ρ ρ' h h' U U', kinds_sub σ ρ ρ' -> kinds_equiv h h' ->
+      kinds_sub (sb_q σ) (de_mod h U :: ρ) (de_mod h' U' :: ρ').
   Proof.
     intros * H Hh [| x] ch k; rewrite ?sb_q_zero, ?sb_q_succ; cbn [sentry_modexp].
     - rewrite modexp_member_kind_var_iff; apply Hh.
-    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_mod h :: ρ) ρ (fun x => kinds_equiv_refl _)).
+    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_mod h U :: ρ) ρ (fun x => kinds_equiv_refl _)).
       apply H.
   Qed.
 
-  Lemma kinds_sub_q_dm : forall σ ρ ρ' d d' t t' h h', kinds_sub σ ρ ρ' -> kinds_equiv h h' ->
-      kinds_sub (sb_q σ) (de_dm d t h :: ρ) (de_dm d' t' h' :: ρ').
+  Lemma kinds_sub_q_dm : forall σ ρ ρ' d d' t t' h h' U U', kinds_sub σ ρ ρ' -> kinds_equiv h h' ->
+      kinds_sub (sb_q σ) (de_dm d t h U :: ρ) (de_dm d' t' h' U' :: ρ').
   Proof.
     intros * H Hh [| x] ch k; rewrite ?sb_q_zero, ?sb_q_succ; cbn [sentry_modexp].
     - rewrite modexp_member_kind_var_iff; apply Hh.
-    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_dm d t h :: ρ) ρ (fun x => kinds_equiv_refl _)).
+    - rewrite <- sentry_modexp_wk, (proj1 kind_rename _ wk_shift (de_dm d t h U :: ρ) ρ (fun x => kinds_equiv_refl _)).
       apply H.
   Qed.
 
@@ -625,15 +632,20 @@ Section Kinds.
       cbn [kinds_generated_entry generated_item_sub].
     - specialize (IH (placeholder_entry :: A) (placeholder_entry :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [sb_qn]; apply kinds_sub_q_term; exact HAB | intros; apply Hin; right; assumption ].
-    - set (h := dm_local nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A)))) (A ++ ρ1)).
+    - set (U := gu_mk nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A))))).
+      set (U' := gu_mk nil (md_alias (modexp_wk E (wk_shiftn (List.length A))))).
+      set (h := dm_local nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A)))) (A ++ ρ1)).
       set (h' := dm_local nil (md_alias (modexp_wk E (wk_shiftn (List.length A)))) (B ++ ρ1')).
-      specialize (IH (de_mod h :: A) (de_mod h' :: B)); cbn [List.length app] in IH.
+      specialize (IH (de_mod h U :: A) (de_mod h' U' :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [sb_qn]; apply kinds_sub_q_mod; [ exact HAB |] | intros; apply Hin; right; assumption ].
       apply kinds_generated_entry_alias_kinds_sub with (H := H); [ exact HH | exact Hσ | exact Hl |].
       eapply kinds_items_gen_alias_target; [ exact Hg | apply Hin; left; reflexivity ].
-    - set (h := dm_local nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A)))) (A ++ ρ1)).
+    - set (U := gu_mk nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A))))).
+      set (U' := gu_mk nil (md_alias (modexp_wk E (wk_shiftn (List.length A))))).
+      set (h := dm_local nil (md_alias (modexp_wk E[σ]ᵐ (wk_shiftn (List.length A)))) (A ++ ρ1)).
       set (h' := dm_local nil (md_alias (modexp_wk E (wk_shiftn (List.length A)))) (B ++ ρ1')).
-      specialize (IH (de_dm d_placeholder (entry_type_value d_placeholder_type) h :: A) (de_dm d_placeholder (entry_type_value d_placeholder_type) h' :: B)); cbn [List.length app] in IH.
+      specialize (IH (de_dm d_placeholder (entry_type_value d_placeholder_type) h U :: A)
+                     (de_dm d_placeholder (entry_type_value d_placeholder_type) h' U' :: B)); cbn [List.length app] in IH.
       apply IH; [ congruence | cbn [sb_qn]; apply kinds_sub_q_dm; [ exact HAB |] | intros; apply Hin; right; assumption ].
       apply kinds_generated_entry_alias_kinds_sub with (H := H); [ exact HH | exact Hσ | exact Hl |].
       right; eapply kinds_items_gen_dm_target; [ exact Hg | apply Hin; left; reflexivity ].
