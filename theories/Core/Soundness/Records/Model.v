@@ -23,7 +23,7 @@ From Mctt.Core.Completeness Require Import RecordCases.
 From Mctt.Core.Semantic Require Import Realizability RecordPER Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Syntactic Require Import Substitution Records.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Soundness Require Import

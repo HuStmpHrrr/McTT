@@ -16,7 +16,7 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Global Require Import
   MemberLemmas MemberWf Modules Paths DescTyping LookupSound.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.

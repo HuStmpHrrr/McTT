@@ -8,7 +8,7 @@ From Mctt.Core.Semantic.Inductives Require Import IndCanon.
 From Mctt.Core.Soundness.LogicalRelation Require Export Realizability.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Semantic Require Import RecordPER.
 Import Domain_Notations Wk_Notations Fixed_Notations.

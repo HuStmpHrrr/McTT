@@ -15,7 +15,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Syntactic Require Import CoreInversions.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Records Require Export Syntax.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.

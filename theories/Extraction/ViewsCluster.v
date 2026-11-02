@@ -37,7 +37,7 @@ From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim E
 From Mctt.Core.Completeness Require Import LogicalRelation UnitCases UniverseCases.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams Views.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.

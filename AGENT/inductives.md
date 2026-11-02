@@ -239,7 +239,7 @@ step to be proved never to fail at the user's type, beyond
 | `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_def_mod pv A M U` | `Core/Syntactic/Syntax.v` |
 | telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_branch_type`, `elim_ihs` | `Core/Syntactic/Inductives/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
-| declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/Inductives/IndCong.v`, `Syntactic/Inductives/IndConv.v` |
+| declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/System/Inductives/IndCong.v`, `Syntactic/System/Inductives/IndConv.v` |
 | values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
 | PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
@@ -508,7 +508,7 @@ through the `fk_ind` frame. So `A.Rec.rec_B` types `a_ind pq 1` through
 * `alg_type_infer_ind_case`, `alg_type_infer_con`, `alg_type_infer_elim` (`Algorithmic/Typing/Definitions.v`); the
   eliminator's scrutinee infers `nf_indty p Rs`, and the motive and branches
   are checked at the parameters' normal forms `Rs`, related to the
-  derivation's by `wf_elim_params_conv` (`Core/Syntactic/Inductives/IndConv.v`).
+  derivation's by `wf_elim_params_conv` (`Core/Syntactic/System/Inductives/IndConv.v`).
 * Completeness is by induction on the derivation with an outer induction on
   `exp_lets`; an eliminator counts `+1` there, since its motive and branches
   are re-derived at `Rs` and are no longer subderivations; its head counts

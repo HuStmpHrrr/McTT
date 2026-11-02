@@ -27,7 +27,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
 From Mctt.Core.Syntactic Require Import CoreInversions Fresh.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong IndConv.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong IndConv.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas MemberWf.
 From Mctt.Core.Syntactic.System Require Import Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import DescTyping LookupSound Presup.

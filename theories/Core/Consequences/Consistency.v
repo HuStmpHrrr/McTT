@@ -28,7 +28,7 @@ From Mctt.Core.Completeness Require Import UniverseCases ContextCases.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
 From Mctt.Core.Syntactic Require Import Builtin.
 Import Domain_Notations Fixed_Notations.

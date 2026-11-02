@@ -120,8 +120,8 @@
 ./Core/Syntactic/Inductives/Group.v
 ./Core/Syntactic/Inductives/Inductives.v
 ./Core/Syntactic/Builtin.v
-./Core/Syntactic/Inductives/IndCong.v
-./Core/Syntactic/Inductives/IndConv.v
+./Core/Syntactic/System/Inductives/IndCong.v
+./Core/Syntactic/System/Inductives/IndConv.v
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v

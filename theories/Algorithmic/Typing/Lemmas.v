@@ -9,7 +9,7 @@ From Mctt.Core.Completeness.Modules Require Import ValidUnit.
 From Mctt.Core.Consequences Require Import Consistency.
 From Mctt.Core.Syntactic Require Import CoreInversions Corollaries Fresh.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
-From Mctt.Core.Syntactic.Inductives Require Import IndCong IndConv.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndCong IndConv.
 From Mctt.Core.Syntactic.Levels Require Levels.
 From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Core.Syntactic.System.Global Require Import Modules Paths DescTyping LookupSound MemberWf.
