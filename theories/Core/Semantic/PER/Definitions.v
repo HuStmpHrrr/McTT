@@ -183,11 +183,10 @@ Definition proof_readable (v : domain) : Prop := forall s, exists M, Rprf v in g
     by proof irrelevance. *)
 Definition per_proof : relation domain := fun v v' => proof_readable v /\ proof_readable v'.
 
-(** An environment entry reads back at every length, the entries [τ]
-    after it bound: a term at its stored type ([read_entry]).  An entry
-    stored at the placeholder type ([substituted_type]) always does. *)
-Definition entry_readable (e : dentry) (τ : env) : Prop :=
-  forall s, exists b, Rent e after τ in gc_deps ⍮ gc_stack ⍮ s ↘ b.
+(** An environment entry reads back at every length ([read_entry]): a
+    term at its stored type; a module always does, by its stored unit. *)
+Definition entry_readable (e : dentry) : Prop :=
+  forall s, exists b, Rent e in gc_deps ⍮ gc_stack ⍮ s ↘ b.
 
 (** The elements of [Prop]: two propositions by their heads, read back
     equally at every length.  The relation does not recurse into the model,
@@ -331,13 +330,15 @@ Record params_read_alike (T : list centry) (vs vs' : list domain) (s : nat) : Pr
 Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
   forall s, params_read_alike T vs vs' s.
 
-(** The domains [Bs] of a shape as a telescope of relations, after the
+(** The domains of a shape [t] as a telescope of relations, after the
     values of the shape's components, the non-uniform parameters [ms] and
     the non-recursive arguments [ws] before it (the uniform parameters left
-    out): the relation of a domain is the one [doms_rel] gives its type after
-    them and the values of the domains before it. *)
-Definition shape_doms_rel (doms_rel : list domain -> exp -> relation domain) (ms ws : list domain) (Bs : list exp) : nat -> list domain -> relation domain :=
-  fun k ys => doms_rel (ms ++ ws ++ ys) (List.nth k Bs a_placeholder_type).
+    out), of the telescopes [Tn] and [Ta]: the relation of a domain is the
+    one [doms_rel] gives its type after them and the values of the domains
+    before it, at the telescope of all of them ([components_env]). *)
+Definition shape_doms_rel (doms_rel : list domain -> list centry -> exp -> relation domain)
+    (Tn Ta : list centry) (ms ws : list domain) (t : ptyp) : nat -> list domain -> relation domain :=
+  fun k ys => doms_rel (ms ++ ws ++ ys) (Tn ++ Ta ++ List.firstn k (shape_doms_tele t)) (List.nth k (ptyp_doms t) a_placeholder_type).
 
 (** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
 #[warnings="-cannot-define-projection"]
@@ -405,7 +406,7 @@ Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_
 Record adm_uparams (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (doms_rel : nat -> list domain -> list centry -> exp -> relation domain)
     (ua : list domain) : Prop := mk_adm_uparams
   { (** A fresh variable of a non-uniform parameter's type at [ua] is
         related to one at [ups] *)
@@ -425,7 +426,7 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
       tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ms ms' ->
       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
       tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-      tele_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
+      tele_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) (ptyp_doms t) ys ys' ->
       rel_evals (ptyp_ps t)
         (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys))
         (components_env D ua (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys'))
@@ -437,11 +438,11 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
       tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
       List.nth_error (ptyp_doms t) k = Some B ->
-      tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k ys ys' ->
+      tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
       rel_dom_apps B
         (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys))
         (components_env D ua (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys'))
-        (doms_rel m (ms ++ ws ++ ys) B) }.
+        (doms_rel m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B) }.
 
 (** ** Admissibility at the Fresh Variables
 
@@ -472,38 +473,39 @@ Inductive fresh_tele_rel (tr : nat -> list domain -> relation domain) :
       (ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ) (ρ' ↦ ⇑! a' s ⦂ entry_type_closure A ρ') (S s) T ->
     fresh_tele_rel tr k pre pre' ρ ρ' s (ce_ass A :: T).
 
-(** The arguments, after the fresh non-uniform parameters [ns] and [ns'];
-    [ws] and [ws'] the fresh non-recursive arguments before, [k] of them,
-    [ρ] and [ρ'] the environments after both. *)
+(** The arguments, after the fresh non-uniform parameters [ns] and [ns'],
+    of the telescope [Tn]; [ws] and [ws'] the fresh non-recursive arguments
+    before, [k] of them, of the telescope [Ta], [ρ] and [ρ'] the
+    environments after both. *)
 Inductive fresh_cargs_rel (D : ind_decl)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> relation domain)
-    (doms_rel : list domain -> exp -> relation domain) (ns ns' : list domain) :
-    nat -> list domain -> list domain -> env -> env -> nat -> list carg -> Prop :=
+    (doms_rel : list domain -> list centry -> exp -> relation domain) (Tn : list centry) (ns ns' : list domain) :
+    nat -> list centry -> list domain -> list domain -> env -> env -> nat -> list carg -> Prop :=
 (** No argument left *)
-| fresh_cargs_rel_nil : forall k ws ws' ρ ρ' s, fresh_cargs_rel D nparams_rel args_rel doms_rel ns ns' k ws ws' ρ ρ' s nil
+| fresh_cargs_rel_nil : forall k Ta ws ws' ρ ρ' s, fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' k Ta ws ws' ρ ρ' s nil
 (** A non-recursive argument: its fresh variables are related, then the
     rest after them; a variable of a proposition is a neutral proof *)
-| fresh_cargs_rel_arg : forall k ws ws' ρ ρ' s r A gs a a',
+| fresh_cargs_rel_arg : forall k Ta ws ws' ρ ρ' s r A gs a a',
     ⟦ A ⟧ ρ ↘ a ->
     ⟦ A ⟧ ρ' ↘ a' ->
     args_rel k ws (⇑! a s) (⇑! a' s) ->
-    fresh_cargs_rel D nparams_rel args_rel doms_rel ns ns' (S k)
+    fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' (S k) (Ta ++ ce_ass A :: nil)
       (ws ++ ⇑! a s :: nil) (ws' ++ ⇑! a' s :: nil)
       (ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ) (ρ' ↦ ⇑! a' s ⦂ entry_type_closure A ρ') (S s) gs ->
-    fresh_cargs_rel D nparams_rel args_rel doms_rel ns ns' k ws ws' ρ ρ' s (ca_arg r A :: gs)
+    fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' k Ta ws ws' ρ ρ' s (ca_arg r A :: gs)
 (** A recursive argument: its shape's parameters related, its domains read
     back alike, then the rest *)
-| fresh_cargs_rel_rec : forall k ws ws' ρ ρ' s t gs,
-    (forall ys ys', tele_rel (shape_doms_rel doms_rel ns ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
+| fresh_cargs_rel_rec : forall k Ta ws ws' ρ ρ' s t gs,
+    (forall ys ys', tele_rel (shape_doms_rel doms_rel Tn Ta ns ws t) (ptyp_doms t) ys ys' ->
        rel_evals (ptyp_ps t) (env_tele ρ (shape_doms_tele t) ys) (env_tele ρ' (shape_doms_tele t) ys')
          (nparams_tele_rel D nparams_rel (ptyp_mem t))) ->
     (forall j B ys ys', List.nth_error (ptyp_doms t) j = Some B ->
-       tele_prefix_rel (shape_doms_rel doms_rel ns ws (ptyp_doms t)) j ys ys' ->
+       tele_prefix_rel (shape_doms_rel doms_rel Tn Ta ns ws t) j ys ys' ->
        rel_dom_apps B (env_tele ρ (shape_doms_tele t) ys) (env_tele ρ' (shape_doms_tele t) ys')
-         (doms_rel (ns ++ ws ++ ys) B)) ->
-    fresh_cargs_rel D nparams_rel args_rel doms_rel ns ns' k ws ws' ρ ρ' (S s) gs ->
-    fresh_cargs_rel D nparams_rel args_rel doms_rel ns ns' k ws ws' ρ ρ' s (ca_rec t :: gs).
+         (doms_rel (ns ++ ws ++ ys) (Tn ++ Ta ++ List.firstn j (shape_doms_tele t)) B)) ->
+    fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' k Ta ws ws' ρ ρ' (S s) gs ->
+    fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' k Ta ws ws' ρ ρ' s (ca_rec t :: gs).
 
 (** A member's type at the uniform parameters [X] of the group, as the
     end of a shape that nests through a view at [X] has it. *)
@@ -520,7 +522,7 @@ Definition mref_at (p : qname) (X : list domain) : nat -> qname -> nat -> list d
 Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) (ua : list domain) : Prop := mk_adm_fresh
+    (doms_rel : nat -> list domain -> list centry -> exp -> relation domain) (ua : list domain) : Prop := mk_adm_fresh
   { (** The fresh variables of each member's non-uniform parameters *)
     adm_fresh_nparams : forall m Mm s, ind_member D m = Some Mm ->
       fresh_tele_rel (nparams_rel m) 0 nil nil (decl_env D ups) (decl_env D ua) s (List.rev (im_nparams Mm))
@@ -528,7 +530,7 @@ Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
   ; adm_fresh_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ decl_env D ups ⍮ s ↘ ns ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ decl_env D ua ⍮ s ↘ ns' ->
-      fresh_cargs_rel D nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil
+      fresh_cargs_rel D nparams_rel (args_rel m ns c) (doms_rel m) (List.rev (im_nparams Mm)) ns ns' 0 nil nil nil
         (components_env D ups (List.rev (im_nparams Mm)) ns) (components_env D ua (List.rev (im_nparams Mm)) ns')
         (s + im_nn Mm) gs }.
 
@@ -588,7 +590,7 @@ Inductive ind_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list centry -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (doms_rel : nat -> list domain -> list centry -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
 (** Two saturated constructors of the member, not a record view (whose
     elements are only [ind_rel_record]'s) *)
@@ -643,7 +645,7 @@ with con_args_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list centry -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (doms_rel : nat -> list domain -> list centry -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> list centry -> list carg -> list domain -> list domain -> Prop :=
 (** No argument left *)
 | con_args_nil :
@@ -669,7 +671,7 @@ with rec_arg_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list centry -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (doms_rel : nat -> list domain -> list centry -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> list centry -> ptyp -> domain -> domain -> Prop :=
 (** At the end: elements of the member [j] at admissible parameters *)
 | rec_arg_self :
@@ -683,7 +685,7 @@ with rec_arg_rel (p : qname) (D : ind_decl)
     functions take relevant arguments, as the elements of a [Π] over the
     domain, a type of a universe, do ([pi_elements]) *)
 | rec_arg_pi :
-  `{ (forall c c', doms_rel k pre B c c' ->
+  `{ (forall c c', doms_rel k pre Ts B c c' ->
         rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t f c f' c') ->
      arg_relevance gc_deps gc_stack f = relevant ->
      arg_relevance gc_deps gc_stack f' = relevant ->
@@ -694,7 +696,7 @@ with rec_arg_app_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list centry -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (doms_rel : nat -> list domain -> list centry -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> list centry -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
 (** The only rule *)
 | rec_arg_app_mk :
@@ -862,50 +864,51 @@ Definition args_evals (R : relation domain -> domain -> domain -> Prop) (D : ind
 (** The shapes' domains' relations are PERs at related prefixes. *)
 Definition doms_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : nat -> list domain -> exp -> relation domain) : Prop :=
+    (dr : nat -> list domain -> list centry -> exp -> relation domain) : Prop :=
   forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
     tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
     ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
     tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
     List.nth_error (ptyp_doms t) k = Some B ->
-    tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
-    PER (dr m (ms ++ ws ++ ys) B).
+    tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+    PER (dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B).
 
 (** They do not depend on which of two related prefixes they are read
     at. *)
 Definition doms_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : nat -> list domain -> exp -> relation domain) : Prop :=
+    (dr : nat -> list domain -> list centry -> exp -> relation domain) : Prop :=
   forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
     tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
     ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
     tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
     List.nth_error (ptyp_doms t) k = Some B ->
-    tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
-    (dr m (ms ++ ws ++ ys) B <~> dr m (ms' ++ ws' ++ ys') B).
+    tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+    (dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B
+     <~> dr m (ms' ++ ws' ++ ys') (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B).
 
 (** Each is [R] of its domain at the two sides' parameters. *)
 Definition doms_evals (R : relation domain -> domain -> domain -> Prop) (D : ind_decl) (ups ups' : list domain)
     (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : nat -> list domain -> exp -> relation domain) : Prop :=
+    (dr : nat -> list domain -> list centry -> exp -> relation domain) : Prop :=
   forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
     tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
     ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
     tele_prefix_rel (ar m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
     List.nth_error (ptyp_doms t) k = Some B ->
-    tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
+    tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
     rel_mod_eval R B
       (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys)) B
       (components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys'))
-      (dr m (ms ++ ws ++ ys) B).
+      (dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B).
 
 (** The elements of the member [k] of a group whose type is at the
     uniform parameters [ups]: the recursive indices admissible at [ups]. *)
 Definition grp_rel (p : qname) (D : ind_decl) (ups : list domain)
     (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : nat -> list domain -> exp -> relation domain) :
+    (dr : nat -> list domain -> list centry -> exp -> relation domain) :
     nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
   ind_rel p D (admissible_index_at D ups nr) nr ar dr.
 
@@ -1036,7 +1039,7 @@ Section Per_univ_elem_core_def.
   | per_univ_elem_core_indty :
     `{ forall (nr : nat -> nat -> list domain -> relation domain)
          (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-         (dr : nat -> list domain -> exp -> relation domain)
+         (dr : nat -> list domain -> list centry -> exp -> relation domain)
          (elem_rel : relation domain),
          ind_lookup gc_deps gc_stack p = Some D ->
          grp_tele_ass D ->
@@ -1141,7 +1144,7 @@ Section Per_univ_elem_core_def.
       (case_Ind : forall {p D k M pm ups ups' ns ns'}
           (nr : nat -> nat -> list domain -> relation domain)
           (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-          (dr : nat -> list domain -> exp -> relation domain)
+          (dr : nat -> list domain -> list centry -> exp -> relation domain)
           {elem_rel},
           ind_lookup gc_deps gc_stack p = Some D ->
           grp_tele_ass D ->
@@ -1418,7 +1421,7 @@ Section Per_univ_elem_ind_def.
       (case_Ind : forall i {p D k M pm ups ups' ns ns'}
           (nr : nat -> nat -> list domain -> relation domain)
           (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-          (dr : nat -> list domain -> exp -> relation domain)
+          (dr : nat -> list domain -> list centry -> exp -> relation domain)
           {elem_rel},
           ind_lookup gc_deps gc_stack p = Some D ->
           grp_tele_ass D ->
@@ -1749,11 +1752,6 @@ Record def_heads (head_rel : relation domain) (M M' : exp) (ρ ρ' : env) : Prop
     (** and to that of [M'] *)
   ; def_heads_right' : exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel }.
 
-(** The bodies of a definition of the sort [r]: related at a relevant
-    type; at a proposition proofs, neither evaluated nor related. *)
-Definition def_bodies_rel (r : relevance) (M : exp) (ρ : env) (M' : exp) (ρ' : env) (R : relation domain) : Prop :=
-  match r with relevant => rel_elem M ρ M' ρ' R | propositional => True end.
-
 (** The heads at a definition of the sort [r]: tied to the bodies at a
     relevant type ([def_heads]); at a proposition nothing, as evaluation
     binds such a definition to its body kept, [⋆ᵈ⟨M, ρ⟩], without
@@ -1783,9 +1781,9 @@ Record per_ctx_env_dm_rel (tail_rel : relation env)
     (** and to that of [U'] *)
   ; per_ctx_env_dm_rel_right_unit' : tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯
     (** The left head reads back at its stored type *)
-  ; per_ctx_env_dm_rel_left_readable : entry_readable (env_entry ρ 0) ρ↯
+  ; per_ctx_env_dm_rel_left_readable : entry_readable (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_dm_rel_right_readable : entry_readable (env_entry ρ' 0) ρ'↯ }.
+  ; per_ctx_env_dm_rel_right_readable : entry_readable (env_entry ρ' 0) }.
 
 (** The environments an assumption of the types [A], [A'] relates, given
     the PER of the tails and the head relation at related tails: related
@@ -1793,10 +1791,10 @@ Record per_ctx_env_dm_rel (tail_rel : relation env)
     tail a term entry, and heads that read back at their stored types.  A
     term entry at a proposition is what evaluating a substitution at the
     context puts there ([eval_sub]).  The value [ρ 0] of an entry does not
-    say so by itself: for [T : Prop], the environment [de_dm m t h :: ρ0]
+    say so by itself: for [T : Prop], the environment [de_dm m t h U :: ρ0]
     has a proof at [0] but is no environment of [Γ ▹ T].  At a relevant
     type nothing is asked of the entry's kind, so the environment
-    [de_dm 0ᵈ t h :: ρ0] of [Γ ▸ₘ ℕ ≔ 0 ‖ U] is one of [Γ ▸ ℕ ≔ 0] and of
+    [de_dm 0ᵈ t h U :: ρ0] of [Γ ▸ₘ ℕ ≔ 0 ‖ U] is one of [Γ ▸ ℕ ≔ 0] and of
     [Γ ▹ ℕ].  The readback of a kept proof reads the entries of its
     environment at their stored types ([read_lets]): so an environment the
     model relates has entries that read back ([entry_readable]). *)
@@ -1813,9 +1811,9 @@ Record per_ctx_env_cons_rel (tail_rel : relation env)
     (** So is the right one, when [A'] is one in its tail *)
   ; per_ctx_env_cons_rel_right : rel_typ_propositional A' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t
     (** The left head reads back at its stored type *)
-  ; per_ctx_env_cons_rel_left_readable : entry_readable (env_entry ρ 0) ρ↯
+  ; per_ctx_env_cons_rel_left_readable : entry_readable (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_cons_rel_right_readable : entry_readable (env_entry ρ' 0) ρ'↯ }.
+  ; per_ctx_env_cons_rel_right_readable : entry_readable (env_entry ρ' 0) }.
 
 (** The environments a definition entry of the sort [r] relates: those of
     an assumption, whose heads, at a relevant type, hold the values of the
@@ -1836,9 +1834,9 @@ Record per_ctx_env_def_rel (tail_rel : relation env)
     (** So is the right one, when [A'] is one in its tail *)
   ; per_ctx_env_def_rel_right : rel_typ_propositional A' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t
     (** The left head reads back at its stored type *)
-  ; per_ctx_env_def_rel_left_readable : entry_readable (env_entry ρ 0) ρ↯
+  ; per_ctx_env_def_rel_left_readable : entry_readable (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_def_rel_right_readable : entry_readable (env_entry ρ' 0) ρ'↯ }.
+  ; per_ctx_env_def_rel_right_readable : entry_readable (env_entry ρ' 0) }.
 
 (** The environments a module slot of the units [U], [U'] relates, given
     the PER of the tails: related tails, each head's module tied to the
@@ -1855,9 +1853,9 @@ Record per_ctx_env_mod_rel (tail_rel : relation env) (U U' : gunit) (ρ ρ' : en
     (** and to that of [U'] *)
   ; per_ctx_env_mod_rel_right_unit' : tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯
     (** The left head reads back *)
-  ; per_ctx_env_mod_rel_left_readable : entry_readable (env_entry ρ 0) ρ↯
+  ; per_ctx_env_mod_rel_left_readable : entry_readable (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_mod_rel_right_readable : entry_readable (env_entry ρ' 0) ρ'↯ }.
+  ; per_ctx_env_mod_rel_right_readable : entry_readable (env_entry ρ' 0) }.
 
 Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
 (** The empty context, all environments related. *)
@@ -1877,11 +1875,11 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
         EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel }
-(** A definition entry of the sort [r]: at a relevant type the bodies are
-    related, and each head of the environment is related to the value of
-    both bodies in that head's tail; at a proposition the bodies are
-    proofs, neither evaluated nor related.  The type is of the sort [r]
-    at every related tail. *)
+(** A definition entry of the sort [r]: the bodies' values are related,
+    at a proposition as kept proofs that read back ([per_proof]); at a
+    relevant type each head of the environment is related to the value of
+    both bodies in that head's tail.  The type is of the sort [r] at every
+    related tail. *)
 | per_ctx_env_cons_def :
   `{ forall tail_rel
         (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
@@ -1893,7 +1891,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_sort A ρ r) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
-            def_bodies_rel r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
+            rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M') ->
         EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
 (** A module slot: the two units, as literals, evaluate to related values
@@ -1922,7 +1920,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_sort A ρ r) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
-            def_bodies_rel r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
+            rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') ->
         (env_rel <~> per_ctx_env_dm_rel tail_rel (@head_rel) r M M' U U') ->

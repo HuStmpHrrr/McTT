@@ -269,6 +269,32 @@ Section Tele.
       List.firstn k (shape_doms_tele t) = shape_doms_tele t.
   Proof. intros * H; apply List.firstn_all2; unfold shape_doms_tele; rewrite List.length_map; exact H. Qed.
 
+  (** The telescope of a recursive argument's components, one domain
+      more. *)
+  Lemma prefix_tele_snoc_dom : forall (Tn Ta : list centry) t k B, List.nth_error (ptyp_doms t) k = Some B ->
+      (Tn ++ Ta ++ List.firstn k (shape_doms_tele t)) ++ ce_ass B :: nil = Tn ++ Ta ++ List.firstn (S k) (shape_doms_tele t).
+  Proof. intros * H; rewrite (shape_doms_tele_firstn_S _ _ _ H), !List.app_assoc; reflexivity. Qed.
+
+  (** The telescope of a constructor's components, one non-recursive
+      argument more. *)
+  Lemma prefix_tele_snoc_arg : forall (Tn : list centry) gs1 r A,
+      (Tn ++ cargs_nonrec_tele gs1) ++ ce_ass A :: nil = Tn ++ cargs_nonrec_tele (gs1 ++ ca_arg r A :: nil).
+  Proof. intros; rewrite cargs_nonrec_tele_snoc_arg, List.app_assoc; reflexivity. Qed.
+
+  (** One recursive argument more: nothing joins the telescope. *)
+  Lemma prefix_tele_snoc_rec : forall (Tn : list centry) gs1 t,
+      Tn ++ cargs_nonrec_tele gs1 = Tn ++ cargs_nonrec_tele (gs1 ++ ca_rec t :: nil).
+  Proof. intros; rewrite cargs_nonrec_tele_snoc_rec; reflexivity. Qed.
+
+  (** A shape before its first domain. *)
+  Lemma prefix_tele_shape_start : forall (Tn Ta : list centry) t,
+      Tn ++ Ta = Tn ++ Ta ++ List.firstn 0 (shape_doms_tele t).
+  Proof. intros; cbn [List.firstn]; rewrite List.app_nil_r; reflexivity. Qed.
+
+  (** A constructor before its first argument. *)
+  Lemma prefix_tele_con_start : forall (Tn : list centry), Tn = Tn ++ cargs_nonrec_tele nil.
+  Proof. intros; cbn; rewrite List.app_nil_r; reflexivity. Qed.
+
   Lemma nonrec_arg_vals_app : forall gs gs' vs vs', List.length vs = List.length gs ->
       nonrec_arg_vals (gs ++ gs') (vs ++ vs') = nonrec_arg_vals gs vs ++ nonrec_arg_vals gs' vs'.
   Proof.
@@ -555,7 +581,7 @@ Section Tele.
     Variable (p : qname) (D : ind_decl) (ups : list domain).
     Variable (nparams_rel : nat -> nat -> list domain -> relation domain).
     Variable (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
-    Variable (doms_rel : nat -> list domain -> exp -> relation domain).
+    Variable (doms_rel : nat -> list domain -> list centry -> exp -> relation domain).
     Hypothesis (Hass : grp_tele_ass D).
     Hypothesis (HnP : nparams_per D nparams_rel) (HnI : nparams_inv D nparams_rel).
     Hypothesis (HaP : args_per D nparams_rel args_rel) (HaI : args_inv D nparams_rel args_rel).
@@ -679,34 +705,34 @@ Section Tele.
                  (Hws : tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws).
 
       Lemma doms_rel_per : forall k ys ys', k < List.length (ptyp_doms t) ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k ys ys' ->
-          PER (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t) k ys).
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+          PER (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys).
       Proof.
         intros * Hk H; destruct (nth_error_lt_some' _ _ Hk) as [B HB]; unfold shape_doms_rel at 1.
         rewrite (List.nth_error_nth _ _ _ HB); eapply HdP; eassumption.
       Qed.
 
       Lemma doms_rel_invariant : forall k ys ys', k < List.length (ptyp_doms t) ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k ys ys' ->
-          (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t) k ys <~> shape_doms_rel (doms_rel m) ms ws (ptyp_doms t) k ys').
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys' ->
+          (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys <~> shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys').
       Proof.
         intros * Hk H; destruct (nth_error_lt_some' _ _ Hk) as [B HB]; unfold shape_doms_rel.
         rewrite (List.nth_error_nth _ _ _ HB); eapply HdI; eassumption.
       Qed.
 
       Lemma doms_rel_sym : forall k a b, k <= List.length (ptyp_doms t) ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k a b ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k b a.
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k b a.
       Proof. intros; eapply (tele_prefix_rel_sym (List.length (ptyp_doms t)) _ doms_rel_per doms_rel_invariant); eassumption. Qed.
 
       Lemma doms_rel_refl_l : forall k a b, k <= List.length (ptyp_doms t) ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k a b ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k a a.
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a a.
       Proof. intros; eapply (tele_prefix_rel_refl_l (List.length (ptyp_doms t)) _ doms_rel_per doms_rel_invariant); eassumption. Qed.
 
       Lemma doms_rel_refl_r : forall k a b, k <= List.length (ptyp_doms t) ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k a b ->
-          tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k b b.
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+          tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k b b.
       Proof. intros; eapply (tele_prefix_rel_refl_r (List.length (ptyp_doms t)) _ doms_rel_per doms_rel_invariant); eassumption. Qed.
     End Shape.
 
@@ -715,18 +741,18 @@ Section Tele.
     Lemma doms_rel_inst : forall ms ms' c gs gs1 t gs2 ws ws' k a b, tele_rel (nparams_rel m) T ms ms' -> ind_con Mm c = Some gs ->
         gs = gs1 ++ ca_rec t :: gs2 -> tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
         k <= List.length (ptyp_doms t) ->
-        tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k a b ->
-        tele_prefix_rel (shape_doms_rel (doms_rel m) ms' ws' (ptyp_doms t)) k a b.
+        tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+        tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms' ws' t) k a b.
     Proof.
       intros * Hm Hc Heq Hw Hk H.
       assert (Hww : tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws).
       { eapply (args_rel_pre_refl_l ms c gs (nparams_rel_refl_l _ _ Hm) Hc); [| exact Hw ].
         rewrite Heq, cargs_nonrec_app, List.length_app; lia. }
       rewrite tele_prefix_rel_full_iff in H |- *.
-      apply (tele_rel_map _ (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t))); [| exact H ].
+      apply (tele_rel_map _ (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t)); [| exact H ].
       intros j pa pb x y Hj Hp1 _ Hr; rewrite List.repeat_length in Hj.
       destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
-      assert (Hrefl : tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) j pa pa)
+      assert (Hrefl : tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) j pa pa)
         by (eapply (doms_rel_refl_l ms c gs gs1 t gs2 ws (nparams_rel_refl_l _ _ Hm) Hc Heq Hww); [ lia | exact Hp1 ]).
       unfold shape_doms_rel in Hr |- *; rewrite (List.nth_error_nth _ _ _ HB) in Hr |- *.
       apply (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hrefl); exact Hr.
@@ -735,8 +761,8 @@ Section Tele.
     Lemma doms_rel_refl_inst : forall ms ms' c gs gs1 t gs2 ws ws' k a b, tele_rel (nparams_rel m) T ms ms' -> ind_con Mm c = Some gs ->
         gs = gs1 ++ ca_rec t :: gs2 -> tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
         k <= List.length (ptyp_doms t) ->
-        tele_prefix_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) k a b ->
-        tele_prefix_rel (shape_doms_rel (doms_rel m) ms' ws' (ptyp_doms t)) k b b.
+        tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+        tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms' ws' t) k b b.
     Proof.
       intros * Hm Hc Heq Hw Hk H.
       assert (Hk1 : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
@@ -813,7 +839,7 @@ Section Tele.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hm) as Hmm.
         pose proof (args_rel_pre_refl_l _ _ HM ms c gs Hmm Hc _ ws ws' Hk Hp) as Hww.
-        assert (Hyy : tele_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys)
+        assert (Hyy : tele_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) (ptyp_doms t) ys ys)
           by (apply tele_rel_of_pre; eapply (doms_rel_refl_l _ _ HM ms c gs gs1 t gs2 ws Hmm Hc Heq Hww);
               [ lia | apply tele_rel_pre; exact Hy ]).
         destruct (H1c _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmm Hc Heq Hww Hyy) as [b0 b1 E0 E1 H01].
@@ -832,7 +858,7 @@ Section Tele.
         functional_eval_rewrite_clear.
         exists a1 a2; [ exact E1 | exact E2 | | exact Hr1 | exact Hr2 ].
         intros x x' Hx.
-        assert (Hxx : doms_rel m (ms ++ ws ++ ys) B x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
+        assert (Hxx : doms_rel m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
         exact (per_top_trans' _ _ _ (per_top_sym' _ _ (T1 _ _ Hxx)) (T2 _ _ Hx)).
     Qed.
 
@@ -864,7 +890,7 @@ Section Tele.
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys' HM Hm Hc Heq Hp Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
         pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hm Hc Hk Hp) as Hw'.
-        assert (Hy' : tele_rel (shape_doms_rel (doms_rel m) ms' ws' (ptyp_doms t)) (ptyp_doms t) ys' ys')
+        assert (Hy' : tele_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms' ws' t) (ptyp_doms t) ys' ys')
           by (apply tele_rel_of_pre; eapply doms_rel_refl_inst;
               [ exact HM | exact Hm | exact Hc | exact Heq | exact Hp | lia | apply tele_rel_pre; exact Hy ]).
         destruct (H1c _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hp Hy) as [b0 b1 E0 E1 H01].
@@ -884,7 +910,7 @@ Section Tele.
         exists a0 a2; [ exact E0 | exact E2 | | exact Hr0 | exact Hr2 ].
         intros x x' Hx.
         pose proof (proj1 (HdIe _ _) Hx) as Hx'.
-        assert (Hxx : doms_rel m (ms' ++ ws' ++ ys') B x' x') by (etransitivity; [ symmetry; exact Hx' | exact Hx' ]).
+        assert (Hxx : doms_rel m (ms' ++ ws' ++ ys') (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B x' x') by (etransitivity; [ symmetry; exact Hx' | exact Hx' ]).
         exact (per_top_trans' _ _ _ (T1 _ _ Hx) (T2 _ _ Hxx)).
     Qed.
 
@@ -919,11 +945,11 @@ Section Tele.
     Lemma shape_pi_step : forall m Mm ns c gs1 t0 gs2 ws ws' k ys ys' B t, ind_member D m = Some Mm ->
         tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ns ns -> ind_con Mm c = Some (gs1 ++ ca_rec t0 :: gs2) ->
         tele_prefix_rel (args_rel m ns c) (List.length (cargs_nonrec gs1)) ws ws' ->
-        ptyp_skip k t0 = pt_pi B t -> tele_prefix_rel (shape_doms_rel (doms_rel m) ns ws (ptyp_doms t0)) k ys ys' ->
+        ptyp_skip k t0 = pt_pi B t -> tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ns ws t0) k ys ys' ->
         List.nth_error (ptyp_doms t0) k = Some B /\ ptyp_skip (S k) t0 = t /\ S k <= List.length (ptyp_doms t0) /\
-        PER (doms_rel m (ns ++ ws ++ ys) B) /\
-        (forall a a', doms_rel m (ns ++ ws ++ ys) B a a' ->
-           tele_prefix_rel (shape_doms_rel (doms_rel m) ns ws (ptyp_doms t0)) (S k) (ys ++ a :: nil) (ys' ++ a' :: nil)).
+        PER (doms_rel m (ns ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t0)) B) /\
+        (forall a a', doms_rel m (ns ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t0)) B a a' ->
+           tele_prefix_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ns ws t0) (S k) (ys ++ a :: nil) (ys' ++ a' :: nil)).
     Proof.
       intros * HM Hns Hc Hw Hs Hy.
       destruct (ptyp_skip_pi _ _ _ _ Hs) as [HB Hs'].
@@ -960,6 +986,7 @@ Section Tele.
         (forall k u u' pre pre' Ts gs vs vs', con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' Ts gs vs vs' ->
            forall Mk ms ms' c gsf gs1 vp vp', ind_member D k = Some Mk ->
              pre = ms ++ nonrec_arg_vals gs1 vp -> pre' = ms' ++ nonrec_arg_vals gs1 vp' ->
+             Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ->
              List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
              tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some gsf -> gsf = gs1 ++ gs ->
              tele_rel (args_rel k ms c) (cargs_nonrec gsf) (nonrec_arg_vals gsf (vp ++ vs)) (nonrec_arg_vals gsf (vp' ++ vs')) ->
@@ -967,18 +994,20 @@ Section Tele.
         (forall k u u' pre pre' Ts t v v', rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' Ts t v v' ->
            forall Mk ms ms' c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk ->
              pre = ms ++ ws ++ ys -> pre' = ms' ++ ws' ++ ys' ->
+             Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
              tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
              tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-             tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+             tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
              rec_arg_rel p D okr nparams_rel args_rel doms_rel k u' u pre' pre Ts t v' v) /\
         (forall k u u' pre pre' Ts t f a f' a', rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' Ts t f a f' a' ->
            forall Mk ms ms' c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk ->
              pre = ms ++ ws ++ ys -> pre' = ms' ++ ws' ++ ys' ->
+             Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
              tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
              tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-             tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+             tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
              rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u' u pre' pre Ts t f' a' f a).
     Proof.
       intros okr; apply ind_rel_mut_ind_all.
@@ -998,38 +1027,43 @@ Section Tele.
         pose proof (ind_con_single _ _ _ Hcs) as Hc.
         eapply ind_rel_record; [ exact HM | exact Hh | exact Hnp | exact Hcs | exact Hp' | exact Hp
                                | exact (args_rel_sym _ _ HM _ _ _ Hn Hc _ _ Ha) |].
-        apply (IH Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
+        apply (IH Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; try (rewrite Hnp; reflexivity); assumption.
       - intros; constructor.
-      - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
+      - intros * Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' HTs Hl Hl' Hn Hc Heq Ha.
         constructor.
         apply (IH Mk ms ms' c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
           [ rewrite Hρ, nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
           | rewrite Hρ', nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
+          | rewrite HTs; apply prefix_tele_snoc_arg
           | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
           | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Ha ].
-      - intros * Hsh IHs Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' Hl Hl' Hn Hc Heq Ha.
+      - intros * Hsh IHs Hia IH Mk ms ms' c gsf gs1 vp vp' HM Hρ Hρ' HTs Hl Hl' Hn Hc Heq Ha.
         pose proof (nonrec_prefix _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_l _ _ HM _ _ Hn) Hc Heq Hl Hl' Ha) as Hpre.
         constructor.
         + apply (IHs Mk ms ms' c gs1 t gs (nonrec_arg_vals gs1 vp) (nonrec_arg_vals gs1 vp') 0 nil nil HM);
-            [ rewrite List.app_nil_r; exact Hρ | rewrite List.app_nil_r; exact Hρ' | exact Hn | rewrite <- Heq; exact Hc
+            [ rewrite List.app_nil_r; exact Hρ | rewrite List.app_nil_r; exact Hρ'
+            | rewrite HTs; apply prefix_tele_shape_start | exact Hn | rewrite <- Heq; exact Hc
             | exact Hpre | reflexivity | lia | apply tele_prefix_rel_nil ].
         + apply (IH Mk ms ms' c gsf (gs1 ++ ca_rec t :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
             [ rewrite Hρ, nonrec_arg_vals_snoc_rec by assumption; reflexivity
             | rewrite Hρ', nonrec_arg_vals_snoc_rec by assumption; reflexivity
+            | rewrite HTs; apply prefix_tele_snoc_rec
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
             | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Ha ].
       - (** The recursive argument: the two evaluations are swapped. *)
         intros * E E' O O' Hr IHr.
         intros; econstructor; [ exact E' | exact E | exact O' | exact O | exact IHr ].
-      - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy.
+      - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' HTs Hn Hc Hw Hs Hk Hy.
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
         destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
-        subst pre pre'.
+        subst pre pre' Ts.
         constructor; [| exact Hfr' | exact Hfr ]; intros a a' Haa.
         pose proof (proj2 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn Hc eq_refl Hw HB Hy _ _) Haa) as Haa0.
-        assert (Hsym : doms_rel k (ms ++ ws ++ ys) B a' a) by (symmetry; exact Haa0).
+        assert (Hsym : doms_rel k (ms ++ ws ++ ys) (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn k0 (shape_doms_tele t0)) B a' a)
+          by (symmetry; exact Haa0).
         apply (IH a' a Hsym Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a' :: nil) (ys' ++ a :: nil) HM);
           [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
+          | apply prefix_tele_snoc_dom; exact HB
           | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' |].
         apply Hstep; exact Hsym.
       - intros * Ef Ef' Hsh IH; intros.
@@ -1067,6 +1101,7 @@ Section Tele.
         (forall k u1 u2 pre1 pre2 Ts gs vs1 vs2, con_args_rel p D okr nparams_rel args_rel doms_rel k u1 u2 pre1 pre2 Ts gs vs1 vs2 ->
            forall u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2, ind_member D k = Some Mk ->
              pre1 = ms1 ++ nonrec_arg_vals gs1 vp1 -> pre2 = ms2 ++ nonrec_arg_vals gs1 vp2 ->
+             Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ->
              List.length vp1 = List.length gs1 -> List.length vp2 = List.length gs1 ->
              tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms1 ms2 -> ind_con Mk c = Some gsf -> gsf = gs1 ++ gs ->
              tele_rel (args_rel k ms1 c) (cargs_nonrec gsf) (nonrec_arg_vals gsf (vp1 ++ vs1)) (nonrec_arg_vals gsf (vp2 ++ vs2)) ->
@@ -1075,19 +1110,21 @@ Section Tele.
         (forall k u1 u2 pre1 pre2 Ts t v1 v2, rec_arg_rel p D okr nparams_rel args_rel doms_rel k u1 u2 pre1 pre2 Ts t v1 v2 ->
            forall u3 pre3 v3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 kk ys1 ys2, ind_member D k = Some Mk ->
              pre1 = ms1 ++ ws1 ++ ys1 -> pre2 = ms2 ++ ws2 ++ ys2 ->
+             Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
              tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms1 ms2 -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
              tele_prefix_rel (args_rel k ms1 c) (List.length (cargs_nonrec gs1)) ws1 ws2 ->
              ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-             tele_prefix_rel (shape_doms_rel (doms_rel k) ms1 ws1 (ptyp_doms t0)) kk ys1 ys2 ->
+             tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms1 ws1 t0) kk ys1 ys2 ->
              rec_arg_rel p D okr nparams_rel args_rel doms_rel k u2 u3 pre2 pre3 Ts t v2 v3 ->
              rec_arg_rel p D okr nparams_rel args_rel doms_rel k u1 u3 pre1 pre3 Ts t v1 v3) /\
         (forall k u1 u2 pre1 pre2 Ts t f1 a1 f2 a2, rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u1 u2 pre1 pre2 Ts t f1 a1 f2 a2 ->
            forall u3 pre3 f3 a3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 kk ys1 ys2, ind_member D k = Some Mk ->
              pre1 = ms1 ++ ws1 ++ ys1 -> pre2 = ms2 ++ ws2 ++ ys2 ->
+             Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
              tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms1 ms2 -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
              tele_prefix_rel (args_rel k ms1 c) (List.length (cargs_nonrec gs1)) ws1 ws2 ->
              ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-             tele_prefix_rel (shape_doms_rel (doms_rel k) ms1 ws1 (ptyp_doms t0)) kk ys1 ys2 ->
+             tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms1 ws1 t0) kk ys1 ys2 ->
              rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u2 u3 pre2 pre3 Ts t f2 a2 f3 a3 ->
              rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u1 u3 pre1 pre3 Ts t f1 a1 f3 a3).
     Proof.
@@ -1128,55 +1165,60 @@ Section Tele.
           pose proof (functional_eval_projs _ _ _ _ Hp2 H1) as <- end.
         eapply ind_rel_record; [ exact HM | exact Hh | exact Hnp | exact Hcs | exact Hp1 | eassumption
                                | eapply (args_rel_trans _ _ HM _ _ _ Hn Hc); eassumption |].
-        apply (IH _ _ _ Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; assumption.
-      - intros * _ _ _ _ _ _ _ _ _ Hz; inversion Hz; subst; constructor.
-      - intros k u1 u2 pre1 v1 pre2 v2 Ts A gs vs1 vs2 r Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 Hl1 Hl2 Hn Hc Heq Ha Hz.
-        inversion Hz; subst.
+        apply (IH _ _ _ Mk nil nil c gs nil nil nil HM); cbn; try reflexivity; try (rewrite Hnp; reflexivity); assumption.
+      - intros * _ _ _ _ _ _ _ _ _ _ Hz; inversion Hz; subst; constructor.
+      - intros k u1 u2 pre1 v1 pre2 v2 Ts A gs vs1 vs2 r Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 HTs Hl1 Hl2 Hn Hc Heq Ha Hz.
+        subst Ts; inversion Hz; subst.
         constructor.
         eapply (IH _ _ _ Mk ms1 ms2 c (gs1 ++ ca_arg r A :: gs) (gs1 ++ ca_arg r A :: nil) (vp1 ++ v1 :: nil) (vp2 ++ v2 :: nil) HM);
           [ rewrite nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
           | rewrite nonrec_arg_vals_snoc_arg, List.app_assoc by assumption; reflexivity
+          | apply prefix_tele_snoc_arg
           | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
           | rewrite <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Ha | eassumption ].
-      - intros k u1 u2 pre1 pre2 Ts t v1 v2 gs vs1 vs2 Hsh IHs Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 Hl1 Hl2 Hn Hc Heq Ha Hz.
-        subst pre1 pre2 gsf.
+      - intros k u1 u2 pre1 pre2 Ts t v1 v2 gs vs1 vs2 Hsh IHs Hia IH u3 pre3 vs3 Mk ms1 ms2 c gsf gs1 vp1 vp2 HM Hρ1 Hρ2 HTs Hl1 Hl2 Hn Hc Heq Ha Hz.
+        subst pre1 pre2 gsf Ts.
         inversion Hz; subst.
         pose proof (nonrec_prefix _ _ _ _ _ _ _ _ _ _ _ HM (nparams_rel_refl_l _ _ HM _ _ Hn) Hc eq_refl Hl1 Hl2 Ha) as Hpre.
         constructor.
         + eapply (IHs _ _ _ Mk ms1 ms2 c gs1 t gs (nonrec_arg_vals gs1 vp1) (nonrec_arg_vals gs1 vp2) 0 nil nil HM);
-            [ rewrite List.app_nil_r; reflexivity | rewrite List.app_nil_r; reflexivity | exact Hn | exact Hc
+            [ rewrite List.app_nil_r; reflexivity | rewrite List.app_nil_r; reflexivity | apply prefix_tele_shape_start
+            | exact Hn | exact Hc
             | exact Hpre | reflexivity | lia | apply tele_prefix_rel_nil | eassumption ].
         + eapply (IH _ _ _ Mk ms1 ms2 c (gs1 ++ ca_rec t :: gs) (gs1 ++ ca_rec t :: nil) (vp1 ++ v1 :: nil) (vp2 ++ v2 :: nil) HM);
             [ rewrite nonrec_arg_vals_snoc_rec by assumption; reflexivity
             | rewrite nonrec_arg_vals_snoc_rec by assumption; reflexivity
+            | apply prefix_tele_snoc_rec
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
             | rewrite <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Ha | eassumption ].
       - (** The recursive argument: no evaluation fact is used. *)
         intros Ps u1 Ts pre1 bs1 u2 pre2 bs2 j v1 v2 k E1 E2 O1 O2 Hr IHr u3 pre3 v3; intros.
         match goal with Hz : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => inversion Hz; subst end.
         econstructor; [ exact E1 | eassumption | exact O1 | eassumption | eapply IHr; eassumption ].
-      - intros k pre1 B u1 u2 pre2 Ts t f1 f2 Hf IH Hfr1 Hfr2 u3 pre3 f3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 k0 ys1 ys2 HM Hρ1 Hρ2 Hn Hc Hw Hs Hk Hy Hz.
-        subst pre1 pre2; inversion Hz; subst.
+      - intros k pre1 Ts B u1 u2 pre2 t f1 f2 Hf IH Hfr1 Hfr2 u3 pre3 f3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 k0 ys1 ys2 HM Hρ1 Hρ2 HTs Hn Hc Hw Hs Hk Hy Hz.
+        subst pre1 pre2 Ts; inversion Hz; subst.
         match goal with Hx : arg_relevance _ _ f3 = relevant |- _ => rename Hx into Hfr3 end.
-        match goal with Hz0 : forall c c', doms_rel _ _ _ c c' -> _ |- _ => rename Hz0 into Hz' end.
+        match goal with Hz0 : forall c c', doms_rel _ _ _ _ c c' -> _ |- _ => rename Hz0 into Hz' end.
         pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
         destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
         constructor; [| exact Hfr1 | exact Hfr3 ]; intros a a3 Haa.
-        assert (H33 : doms_rel k (ms1 ++ ws1 ++ ys1) B a3 a3) by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
+        assert (H33 : doms_rel k (ms1 ++ ws1 ++ ys1) (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn k0 (shape_doms_tele t0)) B a3 a3)
+          by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
         pose proof (proj1 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn Hc eq_refl Hw HB Hy _ _) H33) as H33'.
         specialize (Hz' _ _ H33').
         eapply (IH a a3 Haa _ _ _ _ Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 (S k0) (ys1 ++ a :: nil) (ys2 ++ a3 :: nil) HM);
           [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
+          | apply prefix_tele_snoc_dom; exact HB
           | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' | apply Hstep; exact Haa | exact Hz' ].
       - intros f1 a1 r1 f2 a2 r2 k u1 u2 pre1 pre2 Ts t E1 E2 Hsh IH u3 pre3 f3 a3 Mk ms1 ms2 c gs1 t0 gs2 ws1 ws2 kk ys1 ys2
-          HM Hρ1 Hρ2 Hn Hc Hw Hs Hk Hy Hz.
+          HM Hρ1 Hρ2 HTs Hn Hc Hw Hs Hk Hy Hz.
         inversion Hz; subst.
         match goal with
         | E : eval_app _ _ f2 a2 ?R, E' : eval_app _ _ f2 a2 ?R' |- _ =>
             assert_fails (unify R R'); pose proof (functional_eval_app _ _ _ _ E E') as <-
         end.
         econstructor; [ exact E1 | eassumption |].
-        eapply IH; [ exact HM | reflexivity | reflexivity | exact Hn | exact Hc | exact Hw | reflexivity | exact Hk | exact Hy | eassumption ].
+        eapply IH; [ exact HM | reflexivity | reflexivity | reflexivity | exact Hn | exact Hc | exact Hw | reflexivity | exact Hk | exact Hy | eassumption ].
     Qed.
 
     (** Moving the indices: the top-level telescope facts only. *)
@@ -1294,7 +1336,8 @@ Section Tele.
           ind_con Mm c = Some gsf -> gsf = gs1 ++ gs -> List.length (cargs_nonrec gs1) = k ->
           tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ns ns' ->
           tele_prefix_rel (args_rel m ns c) k ws ws' ->
-          fresh_cargs_rel D nparams_rel (args_rel m ns c) (doms_rel m) ns ns' k ws ws'
+          fresh_cargs_rel D nparams_rel (args_rel m ns c) (doms_rel m) (List.rev (im_nparams Mm)) ns ns' k
+            (cargs_nonrec_tele gs1) ws ws'
             (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) (ns ++ ws))
             (components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) (ns' ++ ws')) s gs.
       Proof.
@@ -1355,7 +1398,7 @@ Section Tele.
       Lemma admissible_index_at_base : forall m Mm ms c gs1 t0 gs2 ws ys bs, ind_member D m = Some Mm ->
           tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ms ms -> ind_con Mm c = Some (gs1 ++ ca_rec t0 :: gs2) ->
           tele_prefix_rel (args_rel m ms c) (List.length (cargs_nonrec gs1)) ws ws ->
-          tele_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys ->
+          tele_rel (shape_doms_rel (doms_rel m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t0) (ptyp_doms t0) ys ys ->
           admissible_index_at D ups nparams_rel (ptyp_mem t0) (ms ++ ws ++ ys)
             (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t0) (ptyp_ps t0) bs ->
           admissible_index_at D ups' nparams_rel (ptyp_mem t0) (ms ++ ws ++ ys)
@@ -1386,7 +1429,7 @@ Section Tele.
                tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_rel p D (admissible_index_at D ups' nparams_rel) nparams_rel args_rel doms_rel k u u' pre pre' Ts t v v') /\
           (forall k u u' pre pre' Ts t f a f' a',
@@ -1396,7 +1439,7 @@ Section Tele.
                tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_app_rel p D (admissible_index_at D ups' nparams_rel) nparams_rel args_rel doms_rel k u u' pre pre' Ts t f a f' a').
       Proof.
@@ -1436,7 +1479,7 @@ Section Tele.
           intros * E E' O O' Hr IHr Mk ms ms' c gs1 t0 gs2 ws ws' kk ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy HTs.
           destruct (ptyp_skip_self _ _ _ _ Hs) as (Hkd & Hj & HPs).
           rewrite shape_doms_tele_firstn_all in HTs by exact Hkd; subst Ts.
-          assert (Hyf : tele_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
+          assert (Hyf : tele_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) (ptyp_doms t0) ys ys')
             by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           pose proof (nparams_rel_refl_r _ _ HM _ _ Hn) as Hnn'.
@@ -1444,10 +1487,10 @@ Section Tele.
             by (rewrite cargs_nonrec_app, List.length_app; lia).
           pose proof (args_rel_pre_refl_l _ _ HM _ _ _ Hnn Hc _ _ _ HK Hw) as Hww.
           pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hn Hc HK Hw) as Hww'.
-          assert (Hyy : tele_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys)
+          assert (Hyy : tele_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) (ptyp_doms t0) ys ys)
             by (apply tele_rel_of_pre; eapply (doms_rel_refl_l _ _ HM ms c _ gs1 t0 gs2 ws Hnn Hc eq_refl Hww);
                 [ lia | apply tele_rel_pre; exact Hyf ]).
-          assert (Hyy' : tele_rel (shape_doms_rel (doms_rel k) ms' ws' (ptyp_doms t0)) (ptyp_doms t0) ys' ys')
+          assert (Hyy' : tele_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms' ws' t0) (ptyp_doms t0) ys' ys')
             by (apply tele_rel_of_pre; eapply (doms_rel_refl_inst _ _ HM);
                 [ exact Hn | exact Hc | reflexivity | exact Hw | lia | apply tele_rel_pre; exact Hyf ]).
           subst pre pre' j Ps.
@@ -1457,12 +1500,12 @@ Section Tele.
         - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy HTs.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
-          subst pre pre'.
+          subst pre pre' Ts.
           constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           apply (IH a a' Haa Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) HM);
             [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
             | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' | apply Hstep; exact Haa
-            | rewrite HTs, (shape_doms_tele_firstn_S _ _ _ HB), <- !List.app_assoc; reflexivity ].
+            | apply prefix_tele_snoc_dom; exact HB ].
         - intros * Ef Ef' Hsh IH; intros.
           econstructor; [ exact Ef | exact Ef' | eapply IH; eassumption ].
       Qed.
@@ -1489,7 +1532,7 @@ Section Tele.
                tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_rel p D (admissible_index_at D ups nparams_rel) nparams_rel args_rel doms_rel k u ups' pre pre' Ts t v v') /\
           (forall k u u' pre pre' Ts t f a f' a',
@@ -1499,7 +1542,7 @@ Section Tele.
                tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_app_rel p D (admissible_index_at D ups nparams_rel) nparams_rel args_rel doms_rel k u ups' pre pre' Ts t f a f' a').
       Proof.
@@ -1541,7 +1584,7 @@ Section Tele.
           subst u'.
           destruct (ptyp_skip_self _ _ _ _ Hs) as (Hkd & Hj & HPs).
           rewrite shape_doms_tele_firstn_all in HTs by exact Hkd; subst Ts.
-          assert (Hyf : tele_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
+          assert (Hyf : tele_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) (ptyp_doms t0) ys ys')
             by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
           subst pre pre' j Ps.
           destruct (adm_rec_params _ _ _ _ _ _ Hu1 k Mk ms ms' c _ gs1 t0 gs2 ws ws' ys ys' HM Hn Hc eq_refl Hw Hyf)
@@ -1563,12 +1606,12 @@ Section Tele.
         - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' Hu HM Hρ Hρ' Hn Hc Hw Hs Hk Hy HTs.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
-          subst pre pre'.
+          subst pre pre' Ts.
           constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           apply (IH a a' Haa Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) Hu HM);
             [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
             | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' | apply Hstep; exact Haa
-            | rewrite HTs, (shape_doms_tele_firstn_S _ _ _ HB), <- !List.app_assoc; reflexivity ].
+            | apply prefix_tele_snoc_dom; exact HB ].
         - intros * Ef Ef' Hsh IH; intros.
           econstructor; [ exact Ef | exact Ef' | eapply IH; eassumption ].
       Qed.
@@ -1598,7 +1641,7 @@ Section Tele.
                tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_rel p D (admissible_index_at D ups nparams_rel) nparams_rel args_rel doms_rel k u ups' pre pre' Ts t v v') /\
           (forall k u u' pre pre' Ts t f a f' a',
@@ -1608,7 +1651,7 @@ Section Tele.
                tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ms ms' -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_app_rel p D (admissible_index_at D ups nparams_rel) nparams_rel args_rel doms_rel k u ups' pre pre' Ts t f a f' a').
       Proof.
@@ -1648,7 +1691,7 @@ Section Tele.
           intros * E E' O O' Hr IHr Mk ms ms' c gs1 t0 gs2 ws ws' kk ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy HTs.
           destruct (ptyp_skip_self _ _ _ _ Hs) as (Hkd & Hj & HPs).
           rewrite shape_doms_tele_firstn_all in HTs by exact Hkd; subst Ts.
-          assert (Hyf : tele_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
+          assert (Hyf : tele_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) (ptyp_doms t0) ys ys')
             by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
           subst pre pre' j Ps.
           destruct (adm_rec_params _ _ _ _ _ _ Hcd k Mk ms ms' c _ gs1 t0 gs2 ws ws' ys ys' HM Hn Hc eq_refl Hw Hyf)
@@ -1669,12 +1712,12 @@ Section Tele.
         - intros * Hf IH Hfr Hfr' Mk ms ms' c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hρ' Hn Hc Hw Hs Hk Hy HTs.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn) as Hnn.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
-          subst pre pre'.
+          subst pre pre' Ts.
           constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
           apply (IH a a' Haa Mk ms ms' c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) HM);
             [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
             | exact Hn | exact Hc | exact Hw | exact Hs' | exact Hk' | apply Hstep; exact Haa
-            | rewrite HTs, (shape_doms_tele_firstn_S _ _ _ HB), <- !List.app_assoc; reflexivity ].
+            | apply prefix_tele_snoc_dom; exact HB ].
         - intros * Ef Ef' Hsh IH; intros.
           econstructor; [ exact Ef | exact Ef' | eapply IH; eassumption ].
       Qed.
@@ -1698,8 +1741,8 @@ Section Tele.
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                tele_prefix_rel (args_rel k ms' c) (List.length (cargs_nonrec gs1)) ws' ws'' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms' ws' (ptyp_doms t0)) kk ys' ys'' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms' ws' t0) kk ys' ys'' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_rel p D (admissible_index_at D ups nparams_rel) nparams_rel args_rel doms_rel k u u' pre (ms'' ++ ws'' ++ ys'') Ts t v v') /\
           (forall k u u' pre pre' Ts t f a f' a',
@@ -1712,8 +1755,8 @@ Section Tele.
                tele_prefix_rel (args_rel k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                tele_prefix_rel (args_rel k ms' c) (List.length (cargs_nonrec gs1)) ws' ws'' ->
                ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms ws (ptyp_doms t0)) kk ys ys' ->
-               tele_prefix_rel (shape_doms_rel (doms_rel k) ms' ws' (ptyp_doms t0)) kk ys' ys'' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
+               tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms' ws' t0) kk ys' ys'' ->
                Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
                rec_arg_app_rel p D (admissible_index_at D ups nparams_rel) nparams_rel args_rel doms_rel k u u' pre (ms'' ++ ws'' ++ ys'') Ts t f a f' a').
       Proof.
@@ -1725,16 +1768,16 @@ Section Tele.
           rewrite shape_doms_tele_firstn_all in HTs by exact Hkd; subst Ts.
           assert (HK : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec (gs1 ++ ca_rec t0 :: gs2)))
             by (rewrite cargs_nonrec_app, List.length_app; lia).
-          assert (Hfull : forall a b ma wa, tele_prefix_rel (shape_doms_rel (doms_rel k) ma wa (ptyp_doms t0)) kk a b ->
-                     tele_rel (shape_doms_rel (doms_rel k) ma wa (ptyp_doms t0)) (ptyp_doms t0) a b)
+          assert (Hfull : forall a b ma wa, tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ma wa t0) kk a b ->
+                     tele_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ma wa t0) (ptyp_doms t0) a b)
             by (intros * H; destruct H as [Hyl Hya]; split; [ lia | exact Hya ]).
           pose proof (nparams_rel_refl_r _ _ HM _ _ Hn) as Hn1.
           pose proof (nparams_rel_refl_r _ _ HM _ _ Hn') as Hn2.
           pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hn Hc HK Hw) as Hw1.
           pose proof (args_prefix_rel_refl_r _ _ HM _ _ _ _ _ _ _ Hn' Hc HK Hw') as Hw2.
-          assert (Hy1 : tele_prefix_rel (shape_doms_rel (doms_rel k) ms' ws' (ptyp_doms t0)) kk ys' ys')
+          assert (Hy1 : tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms' ws' t0) kk ys' ys')
             by (eapply (doms_rel_refl_inst _ _ HM); [ exact Hn | exact Hc | reflexivity | exact Hw | exact Hk | exact Hy ]).
-          assert (Hy2 : tele_prefix_rel (shape_doms_rel (doms_rel k) ms'' ws'' (ptyp_doms t0)) kk ys'' ys'')
+          assert (Hy2 : tele_prefix_rel (shape_doms_rel (doms_rel k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms'' ws'' t0) kk ys'' ys'')
             by (eapply (doms_rel_refl_inst _ _ HM); [ exact Hn' | exact Hc | reflexivity | exact Hw' | exact Hk | exact Hy' ]).
           subst pre pre' j Ps.
           (** The old and the new right parameters, through those at [ups]. *)
@@ -1762,16 +1805,16 @@ Section Tele.
           pose proof (nparams_rel_refl_l _ _ HM _ _ Hn') as Hnn'.
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn Hc Hw Hs Hy) as (HB & Hs' & Hk' & HP & Hstep).
           destruct (shape_pi_step _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hnn' Hc Hw' Hs Hy') as (_ & _ & _ & HP' & Hstep').
-          subst pre pre'.
+          subst pre pre' Ts.
           constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
-          assert (Ha'a' : doms_rel k (ms ++ ws ++ ys) B a' a') by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
+          assert (Ha'a' : doms_rel k (ms ++ ws ++ ys) (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn k0 (shape_doms_tele t0)) B a' a') by (etransitivity; [ symmetry; exact Haa | exact Haa ]).
           pose proof (proj1 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hn Hc eq_refl Hw HB Hy _ _) Ha'a') as Ha'.
           replace ((ms'' ++ ws'' ++ ys'') ++ a' :: nil) with (ms'' ++ ws'' ++ ys'' ++ a' :: nil)
             by (rewrite <- !List.app_assoc; reflexivity).
           apply (IH a a' Haa Mk ms ms' ms'' c gs1 t0 gs2 ws ws' ws'' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil)
                    (ys'' ++ a' :: nil) Hu HM); [ rewrite <- !List.app_assoc; reflexivity | rewrite <- !List.app_assoc; reflexivity
                    | exact Hn | exact Hn' | exact Hc | exact Hw | exact Hw' | exact Hs' | exact Hk' | apply Hstep; exact Haa
-                   | apply Hstep'; exact Ha' | rewrite HTs, (shape_doms_tele_firstn_S _ _ _ HB), <- !List.app_assoc; reflexivity ].
+                   | apply Hstep'; exact Ha' | apply prefix_tele_snoc_dom; exact HB ].
         - intros * Ef Ef' Hsh IH; intros.
           econstructor; [ exact Ef | exact Ef' | eapply IH; eassumption ].
       Qed.
@@ -1817,7 +1860,7 @@ Section Tele.
     Variable (p : qname) (D : ind_decl) (ups : list domain).
     Variable (nparams_rel1 nparams_rel2 : nat -> nat -> list domain -> relation domain).
     Variable (args_rel1 args_rel2 : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
-    Variable (doms_rel1 doms_rel2 : nat -> list domain -> exp -> relation domain).
+    Variable (doms_rel1 doms_rel2 : nat -> list domain -> list centry -> exp -> relation domain).
     Hypothesis (Hn : forall m Mm k vs vs1 vs2, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
                      tele_prefix_rel (nparams_rel1 m) k vs vs1 -> tele_prefix_rel (nparams_rel2 m) k vs vs2 ->
                      (nparams_rel1 m k vs <~> nparams_rel2 m k vs)).
@@ -1832,9 +1875,9 @@ Section Tele.
                      tele_prefix_rel (args_rel1 m ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
                      tele_prefix_rel (args_rel2 m ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
                      k < List.length (ptyp_doms t) ->
-                     tele_prefix_rel (shape_doms_rel (doms_rel1 m) ms ws (ptyp_doms t)) k ys ys1 ->
-                     tele_prefix_rel (shape_doms_rel (doms_rel2 m) ms ws (ptyp_doms t)) k ys ys2 ->
-                     (shape_doms_rel (doms_rel1 m) ms ws (ptyp_doms t) k ys <~> shape_doms_rel (doms_rel2 m) ms ws (ptyp_doms t) k ys)).
+                     tele_prefix_rel (shape_doms_rel (doms_rel1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys1 ->
+                     tele_prefix_rel (shape_doms_rel (doms_rel2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k ys ys2 ->
+                     (shape_doms_rel (doms_rel1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys <~> shape_doms_rel (doms_rel2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t k ys)).
 
     Section Member.
       Variable (m : nat) (Mm : imember).
@@ -1891,11 +1934,11 @@ Section Tele.
         tele_rel (nparams_rel1 m) T ms ms1 -> tele_rel (nparams_rel2 m) T ms ms2 -> ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         tele_prefix_rel (args_rel1 m ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
         tele_prefix_rel (args_rel2 m ms c) (List.length (cargs_nonrec gs1)) ws ws2 -> k <= List.length (ptyp_doms t) ->
-        tele_prefix_rel (shape_doms_rel (doms_rel1 m) ms ws (ptyp_doms t)) k a b ->
-        tele_prefix_rel (shape_doms_rel (doms_rel2 m) ms ws (ptyp_doms t)) k a b.
+        tele_prefix_rel (shape_doms_rel (doms_rel1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+        tele_prefix_rel (shape_doms_rel (doms_rel2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b.
     Proof.
       intros * Hm1 Hm2 Hc Heq Hw1 Hw2 Hk H; rewrite tele_prefix_rel_full_iff in H |- *.
-      apply (tele_rel_map _ (shape_doms_rel (doms_rel1 m) ms ws (ptyp_doms t))); [| exact H ].
+      apply (tele_rel_map _ (shape_doms_rel (doms_rel1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t)); [| exact H ].
       intros j pa pb x y Hj Hp1 Hp2 Hr; rewrite List.repeat_length in Hj.
       eapply Hd; [ exact HM | exact Hm1 | exact Hm2 | exact Hc | exact Heq | exact Hw1 | exact Hw2 | lia | exact Hp1 | exact Hp2 | exact Hr ].
     Qed.
@@ -1904,11 +1947,11 @@ Section Tele.
         tele_rel (nparams_rel1 m) T ms ms1 -> tele_rel (nparams_rel2 m) T ms ms2 -> ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         tele_prefix_rel (args_rel1 m ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
         tele_prefix_rel (args_rel2 m ms c) (List.length (cargs_nonrec gs1)) ws ws2 -> k <= List.length (ptyp_doms t) ->
-        tele_prefix_rel (shape_doms_rel (doms_rel2 m) ms ws (ptyp_doms t)) k a b ->
-        tele_prefix_rel (shape_doms_rel (doms_rel1 m) ms ws (ptyp_doms t)) k a b.
+        tele_prefix_rel (shape_doms_rel (doms_rel2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b ->
+        tele_prefix_rel (shape_doms_rel (doms_rel1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k a b.
     Proof.
       intros * Hm1 Hm2 Hc Heq Hw1 Hw2 Hk H; rewrite tele_prefix_rel_full_iff in H |- *.
-      apply (tele_rel_map _ (shape_doms_rel (doms_rel2 m) ms ws (ptyp_doms t))); [| exact H ].
+      apply (tele_rel_map _ (shape_doms_rel (doms_rel2 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t)); [| exact H ].
       intros j pa pb x y Hj Hp1 Hp2 Hr; rewrite List.repeat_length in Hj.
       eapply Hd; [ exact HM | exact Hm1 | exact Hm2 | exact Hc | exact Heq | exact Hw1 | exact Hw2 | lia | exact Hp2 | exact Hp1 | exact Hr ].
     Qed.
@@ -1945,7 +1988,7 @@ Section Tele.
           by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).
         pose proof (tele_rel_nr_change' _ _ HM _ _ Hm) as Hm1.
         pose proof (tele_prefix_rel_ar_change' _ _ HM _ _ _ _ _ _ _ _ Hm1 Hm Hc Hk Hp) as Hp1.
-        assert (Hy1 : tele_rel (shape_doms_rel (doms_rel1 m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys').
+        assert (Hy1 : tele_rel (shape_doms_rel (doms_rel1 m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) (ptyp_doms t) ys ys').
         { apply tele_rel_of_pre; eapply (tele_prefix_rel_sh_change' _ _ HM);
             [ exact Hm1 | exact Hm | exact Hc | exact Heq | exact Hp1 | exact Hp | lia | apply tele_rel_pre; exact Hy ]. }
         destruct (H3 _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm1 Hc Heq Hp1 Hy1) as [bs bs' E E' R].
@@ -1978,20 +2021,23 @@ Section Tele.
            List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
            tele_rel (nparams_rel1 k) (List.rev (im_nparams Mk)) ms ms -> ind_con Mk c = Some gsf -> gsf = gs1 ++ gs ->
            tele_rel (args_rel1 k ms c) (cargs_nonrec gsf) (nonrec_arg_vals gsf (vp ++ vs)) (nonrec_arg_vals gsf (vp' ++ vs')) ->
+           Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ->
            con_args_rel p D okr2 nparams_rel2 args_rel2 doms_rel2 k u u' pre pre' Ts gs vs vs') /\
       (forall k u u' pre pre' Ts t v v', rec_arg_rel p D okr1 nparams_rel1 args_rel1 doms_rel1 k u u' pre pre' Ts t v v' ->
          forall Mk ms c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk -> pre = ms ++ ws ++ ys ->
            tele_rel (nparams_rel1 k) (List.rev (im_nparams Mk)) ms ms -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
            tele_prefix_rel (args_rel1 k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
            ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-           tele_prefix_rel (shape_doms_rel (doms_rel1 k) ms ws (ptyp_doms t0)) kk ys ys' ->
+           tele_prefix_rel (shape_doms_rel (doms_rel1 k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
+           Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
            rec_arg_rel p D okr2 nparams_rel2 args_rel2 doms_rel2 k u u' pre pre' Ts t v v') /\
       (forall k u u' pre pre' Ts t f a f' a', rec_arg_app_rel p D okr1 nparams_rel1 args_rel1 doms_rel1 k u u' pre pre' Ts t f a f' a' ->
          forall Mk ms c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk -> pre = ms ++ ws ++ ys ->
            tele_rel (nparams_rel1 k) (List.rev (im_nparams Mk)) ms ms -> ind_con Mk c = Some (gs1 ++ ca_rec t0 :: gs2) ->
            tele_prefix_rel (args_rel1 k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
            ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
-           tele_prefix_rel (shape_doms_rel (doms_rel1 k) ms ws (ptyp_doms t0)) kk ys ys' ->
+           tele_prefix_rel (shape_doms_rel (doms_rel1 k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
+           Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn kk (shape_doms_tele t0) ->
            rec_arg_app_rel p D okr2 nparams_rel2 args_rel2 doms_rel2 k u u' pre pre' Ts t f a f' a').
     Proof.
       intros okr1 okr2 HK Hr1; apply ind_rel_mut_ind_all.
@@ -2001,7 +2047,8 @@ Section Tele.
         + apply (tele_rel_map _ (args_rel1 k (List.skipn (im_unu D Mk) bs) c)); [| eassumption ].
           intros; eapply Ha; try eassumption; apply (tele_rel_nr_change _ _ HM); eassumption.
         + apply (IH Mk (List.skipn (im_unu D Mk) bs) c gs nil nil nil HM);
-            [ cbn; rewrite List.app_nil_r; reflexivity | reflexivity | reflexivity | exact Hss | exact Hc | reflexivity | exact Har ].
+            [ cbn; rewrite List.app_nil_r; reflexivity | reflexivity | reflexivity | exact Hss | exact Hc | reflexivity | exact Har
+            | apply prefix_tele_con_start ].
       - intros * HM Hrv Hh Hn1 L1 L2 H1 H2 Hm.
         eapply ind_rel_neut; try eassumption; try (apply (tele_rel_nr_change _ _ HM); eassumption); apply HO; eassumption.
       - intros * HM Hh Hnp Hcs Hp Hp' Har Hia IH.
@@ -2011,26 +2058,30 @@ Section Tele.
         + apply (tele_rel_map _ (args_rel1 k nil c)); [| eassumption ].
           intros; eapply Ha; try eassumption; apply (tele_rel_nr_change _ _ HM); eassumption.
         + apply (IH Mk nil c gs nil nil nil HM);
-            [ reflexivity | reflexivity | reflexivity | exact Hn1 | exact Hc | reflexivity | exact Har ].
+            [ reflexivity | reflexivity | reflexivity | exact Hn1 | exact Hc | reflexivity | exact Har
+            | rewrite Hnp; reflexivity ].
       - intros; constructor.
-      - intros * Hia IH Mk ms c gsf gs1 vp vp' HM Hρ Hl Hl' Hn' Hc Heq Har.
+      - intros * Hia IH Mk ms c gsf gs1 vp vp' HM Hρ Hl Hl' Hn' Hc Heq Har HTs.
         constructor.
         apply (IH Mk ms c gsf (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
           [ rewrite Hρ, nonrec_arg_vals_app, <- List.app_assoc by assumption; reflexivity
           | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
-          | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Har ].
-      - intros * Hsh IHs Hia IH Mk ms c gsf gs1 vp vp' HM Hρ Hl Hl' Hn' Hc Heq Har.
+          | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Har
+          | rewrite HTs; apply prefix_tele_snoc_arg ].
+      - intros * Hsh IHs Hia IH Mk ms c gsf gs1 vp vp' HM Hρ Hl Hl' Hn' Hc Heq Har HTs.
         pose proof (nonrec_prefix_gen _ _ _ _ _ _ _ _ Heq Hl Hl' Har) as Hpre.
         constructor.
         + apply (IHs Mk ms c gs1 t gs (nonrec_arg_vals gs1 vp) (nonrec_arg_vals gs1 vp') 0 nil nil HM);
             [ rewrite List.app_nil_r; exact Hρ | exact Hn' | rewrite <- Heq; exact Hc | exact Hpre | reflexivity | lia
-            | apply tele_prefix_rel_nil ].
+            | apply tele_prefix_rel_nil | rewrite HTs; apply prefix_tele_shape_start ].
         + apply (IH Mk ms c gsf (gs1 ++ ca_rec t :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil) HM);
             [ rewrite Hρ, nonrec_arg_vals_app by assumption; cbn; rewrite List.app_nil_r; reflexivity
             | rewrite !List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | assumption | assumption
-            | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Har ].
+            | rewrite Heq, <- List.app_assoc; reflexivity | rewrite <- !List.app_assoc; exact Har
+            | rewrite HTs; apply prefix_tele_snoc_rec ].
       - intros * Hb Hb' O O' Hr IHr; intros; econstructor; [ exact Hb | exact Hb' | exact (HK _ _ _ _ _ O) | exact (HK _ _ _ _ _ O') | exact IHr ].
-      - intros * Hf IH Hfr Hfr' Mk ns c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hn' Hc Hw Hs Hk Hy.
+      - intros * Hf IH Hfr Hfr' Mk ns c gs1 t0 gs2 ws ws' k0 ys ys' HM Hρ Hn' Hc Hw Hs Hk Hy HTs.
+        subst Ts.
         destruct (ptyp_skip_pi _ _ _ _ Hs) as [HB Hs'].
         assert (Hkl : k0 < List.length (ptyp_doms t0)) by (apply List.nth_error_Some; congruence).
         pose proof (tele_rel_nr_change _ _ HM _ _ Hn') as Hn2.
@@ -2043,7 +2094,8 @@ Section Tele.
         constructor; [| exact Hfr | exact Hfr' ]; intros a a' Haa.
         subst pre; pose proof (proj2 (Hdd _ _) Haa) as Haa1.
         apply (IH a a' Haa1 Mk ns c gs1 t0 gs2 ws ws' (S k0) (ys ++ a :: nil) (ys' ++ a' :: nil) HM);
-          [ rewrite <- !List.app_assoc; reflexivity | exact Hn' | exact Hc | exact Hw | exact Hs' | lia |].
+          [ rewrite <- !List.app_assoc; reflexivity | exact Hn' | exact Hc | exact Hw | exact Hs' | lia
+          | | apply prefix_tele_snoc_dom; exact HB ].
         apply tele_prefix_rel_snoc; [ exact Hy |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB); exact Haa1.
       - intros * Ef Ef' Hsh IH; intros; econstructor; [ exact Ef | exact Ef' | eapply IH; eassumption ].
     Qed.
