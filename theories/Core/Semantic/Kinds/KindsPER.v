@@ -129,7 +129,7 @@ Section Fixed_GCtx.
     - apply H3 in Hρ as [Ht _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kinds_match_drop_term; first [ assumption | discriminate ].
-    - apply H1 in Hρ as (Ht & P1 & P2 & P3 & P4).
+    - apply H1 in Hρ as [Ht P1 P2 P3 P4 _ _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kinds_match_drop_mod; try assumption.
       + destruct P1 as (h & Hh & Hr).
