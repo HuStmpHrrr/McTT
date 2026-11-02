@@ -3653,6 +3653,7 @@ Definition syn_VR : gdeps -> gstack -> record_decl -> Prop := record_typed.
     and when [L] holds (its parameters are types of levels).  A
     proposition is at [Prop] whatever the sort, so it is stated at a
     universe. *)
+#[warnings="-cannot-define-projection"]
 Record relevant_type_at (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (L : Prop) (r : relevance) (A : typ) : Prop :=
   mk_relevant_type_at
   { (** The sort of the type *)

@@ -1930,15 +1930,20 @@ Proof.
   - intros x U Hlk; inversion Hlk; subst; cbn; eapply wf_me_var; [ mauto 2 | eassumption ].
 Qed.
 
-Lemma wf_fn_eta_expand : forall Θ Ξ Γ r A B M Srt i,
+(** The η-expansion of a function, at the sort of its codomain
+    ([pi_codomain_sort]): a universe, or the types of levels over a type of
+    levels. *)
+Lemma wf_fn_eta_expand : forall Θ Ξ Γ r A B M Srt Srt',
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     type_sort Srt ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
+    pi_codomain_sort Srt Srt' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : a_pi r A B.
 Proof.
-  intros * HA HS HB HM.
-  assert (HSr : type_sort (relevance_sort r Typeω@i)) by (destruct r; constructor).
+  intros * HA HS HB Hc HM.
+  assert (HSr : type_sort (relevance_sort r Srt'))
+    by (apply type_sort_relevance, (pi_codomain_sort_type_sort _ _ Hc)).
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (a_pi r A B) ↑) as H'
@@ -1946,17 +1951,17 @@ Proof.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : a_pi r A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
   assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : relevance_sort r Typeω@i)
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : relevance_sort r Srt')
       by (eapply wk_preserves_sort; [ eassumption | exact HSr | eapply (wf_wk_q' _ _ _ _ _ _ Srt); eassumption ]).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0])
-    by (eapply wf_app with (Srt' := Typeω@i); [ exact HA' | exact HS | eassumption | constructor | eassumption | eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : relevance_sort r Typeω@i).
+    by (eapply wf_app with (Srt' := Srt'); [ exact HA' | exact HS | eassumption | exact Hc | eassumption | eassumption ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : relevance_sort r Srt').
   { rewrite <- (exp_wk_q_shift_single B) at 2.
     eapply sub_eq_preserves_sort; [ eassumption | exact HSr | eapply wf_sub_eq_var_zero; eassumption ]. }
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B).
   { eapply wf_exp_subtyp'; [ eassumption |].
     eapply wf_subtyp_refl; [ eassumption | exact HSr | eassumption ]. }
-  eapply wf_fn with (Srt' := Typeω@i); [ exact HA | exact HS | exact HB | constructor | eassumption ].
+  eapply wf_fn with (Srt' := Srt'); [ exact HA | exact HS | exact HB | exact Hc | eassumption ].
 Qed.
 
 #[export]
