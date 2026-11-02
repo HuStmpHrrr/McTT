@@ -345,21 +345,24 @@ Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H 
 (** *** The Sorts of a Body's Definitions
 
     Each term part of the body [Φ] over [D] is of the sort its relevance tag
-    says ([entry_relevance]): a type of a universe when it is tagged
-    relevant, a proposition when it is tagged propositional, in the context
-    the entries before it make.  A body's environment is read by the tags
-    ([eval_body_env]), while the context PER of its context ([body_ctx])
-    reads the sorts of the types, so the two agree only under this.  For
-    example, in a body [def h : P := p] with [P : Prop] tagged relevant,
-    [eval_body_env] stores the value of [p] at [h], while the context PER
-    relates only the proof [⋆ᵈ] there. *)
+    says ([entry_relevance]): a relevant type, of a universe or of
+    [LevelSort] ([relevant_sort]), when it is tagged relevant, a
+    proposition when it is tagged propositional, in the context the
+    entries before it make, as [wf_gentry_def] asks.  A body's environment
+    is read by the tags ([eval_body_env]), while the context PER of its
+    context ([body_ctx]) reads the sorts of the types, so the two agree
+    only under this.  For example, in a body [def h : P := p] with
+    [P : Prop] tagged relevant, [eval_body_env] stores the value of [p] at
+    [h], while the context PER relates only kept proofs there.  And in
+    [module K (u : Level) where def w : Level ≔ u end], the type of [w] is
+    a type of levels, of no universe. *)
 Fixpoint body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ0 _ E =>
       body_sorts_valid Φ0 D /\
       forall A M, entry_tm E = Some (A, M) ->
-        exists i : nat, body_ctx Φ0 ++ D ⊨ A : relevance_sort (entry_relevance E) Typeω@i
+        exists Srt, relevant_sort Srt /\ body_ctx Φ0 ++ D ⊨ A : relevance_sort (entry_relevance E) Srt
   | gm_open Φ0 _ _ => body_sorts_valid Φ0 D
   end.
 
