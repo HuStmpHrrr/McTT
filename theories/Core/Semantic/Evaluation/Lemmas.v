@@ -423,6 +423,20 @@ Import Domain_Notations.
     intros Hpp; exact (Hne (eval_sentry_proof_restamped _ _ _ (Hp Hpp))).
   Qed.
 
+  (** The head an extension by a term stores: a term entry at
+      [substituted_type], its value or the term kept. *)
+  Lemma eval_sub_head_exp : forall {Θ Ξ} e Δ σ ρ ρτ N,
+      ⟦ σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρτ -> σ 0 = se_exp N ->
+      env_entry ρτ 0 = de_term (ρτ 0) substituted_type.
+  Proof.
+    intros * H HN.
+    destruct (dentry_eq_dec (env_entry ρτ 0) (de_term (ρτ 0) substituted_type)) as [| Hne]; [ assumption | exfalso ].
+    destruct (H 0 ltac:(cbn; lia)) as [Hp Hn]; rewrite HN in Hp, Hn; cbn [eval_sentry eval_sentry_proof] in Hp, Hn.
+    assert (Hnp : ~ entry_propositional Θ Ξ (e :: Δ) ρτ 0).
+    { intros Hpp; apply Hne; unfold env_var; rewrite (Hp Hpp); reflexivity. }
+    destruct (Hn Hnp) as (m & Em & _); apply Hne; unfold env_var; rewrite Em; reflexivity.
+  Qed.
+
   (** An evaluated substitution evaluates to its restamping, which agrees
       with it on the target. *)
   Corollary eval_sub_agree_restamp : forall {Θ Ξ} Δ σ ρ ρσ,
@@ -446,6 +460,17 @@ Import Domain_Notations.
   Corollary eval_sub_restamp : forall {Θ Ξ} Δ σ ρ ρσ,
       ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ restamp_env ρσ.
   Proof. intros * H; exact (eval_sub_resp_agree _ _ _ _ _ H (eval_sub_agree_restamp _ _ _ _ H)). Qed.
+
+  (** At an environment an evaluated substitution yields, [Wk] evaluates to
+      the tail itself: its entries are restamped already. *)
+  Corollary eval_sub_shift_of_eval : forall {Θ Ξ} e Δ σ ρ ρσ,
+      ⟦ σ : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ Wk : Δ ⟧s Θ ⍮ Ξ ⍮ ρσ ↘ ρσ↯.
+  Proof.
+    intros * H.
+    apply (eval_sub_resp_agree _ _ _ _ _ (eval_sub_shift Δ ρσ)).
+    intros x Hx; rewrite env_entry_restamp, env_entry_drop.
+    exact (eval_sub_entry_restamped _ _ _ _ H (S x) ltac:(cbn; lia)).
+  Qed.
 
 #[export]
 Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shape_type functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_neutral_fields functional_eval_projs functional_eval_ihtys : mctt.

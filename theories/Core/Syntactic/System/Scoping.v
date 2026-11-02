@@ -391,6 +391,16 @@ Lemma gunit_scoped_sub : forall U n m σ,
     gunit_scoped n U -> (forall x, x < n -> sentry_scoped m (σ x)) -> gunit_scoped m U[σ]ᵘ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_scoped_sub)))). Qed.
 
+(** A substitution entry substituted, as the entries of a composite
+    substitution are ([sb_compose]). *)
+Lemma sentry_scoped_sub : forall e n m σ,
+    sentry_scoped n e -> (forall x, x < n -> sentry_scoped m (σ x)) -> sentry_scoped m (sentry_sub e σ).
+Proof.
+  intros [y | M | H | M H] * He Hσ; cbn in He |- *;
+    [ exact (Hσ _ He) | exact (exp_scoped_sub _ _ _ _ He Hσ) | exact (modexp_scoped_sub _ _ _ _ He Hσ)
+    | destruct He; split; [ exact (exp_scoped_sub _ _ _ _ ltac:(eassumption) Hσ) | exact (modexp_scoped_sub _ _ _ _ ltac:(eassumption) Hσ) ] ].
+Qed.
+
 Lemma tele_wk_id_gen : forall Δ,
     List.Forall (fun e => forall n φ, ce_scoped n e -> (forall x, x < n -> φ x = x) -> centry_wk e φ = e) Δ ->
     forall n φ, ctx_scoped n Δ -> (forall x, x < n -> φ x = x) -> tele_wk Δ φ = Δ.

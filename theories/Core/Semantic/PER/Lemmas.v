@@ -3929,6 +3929,11 @@ Proof. intros ρ x _; left; reflexivity. Qed.
 Lemma env_agree_restamped_env : forall n ρ, env_agree_restamped n ρ (restamp_env ρ).
 Proof. intros * x _; right; apply env_entry_restamp. Qed.
 
+(** An environment agreeing with the restamping of [ρ], as an evaluation
+    of [Id] at [ρ] is ([eval_sub_id], [functional_eval_sub]). *)
+Lemma env_agree_restamped_of_upto : forall n ρ e, env_agree_upto n e (restamp_env ρ) -> env_agree_restamped n ρ e.
+Proof. intros * H x Hx; right; rewrite (H x Hx); apply env_entry_restamp. Qed.
+
 (** An environment against its head restamped, as [q σ] keeps it
     ([eval_sub_q]). *)
 Lemma env_agree_restamped_head : forall n e ρ, env_agree_restamped n (e :: ρ) (restamp_entry e :: ρ).
