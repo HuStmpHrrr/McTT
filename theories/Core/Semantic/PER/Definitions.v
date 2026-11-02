@@ -1664,9 +1664,10 @@ Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
 (** [Prop] below itself. *)
 | per_subtyp_prop_univ :
   `( Sub Propᵈ <: Propᵈ at i )
-(** [LevelSort] below itself. *)
+(** [LevelSort] below itself, at the large indices it is a type of. *)
 | per_subtyp_level_sort :
-  `( Sub LevelSortᵈ <: LevelSortᵈ at i )
+  `( universe_index_large i ->
+     Sub LevelSortᵈ <: LevelSortᵈ at i )
 (** The placeholder type below itself. *)
 | per_subtyp_placeholder :
   `( Sub d_placeholder_type <: d_placeholder_type at i )
@@ -1921,6 +1922,16 @@ Record def_heads (head_rel : relation domain) (M M' : exp) (ρ ρ' : env) : Prop
     (** and to that of [M'] *)
   ; def_heads_right' : exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel }.
 
+(** The bodies of a definition of the sort [r]: their values related at a
+    relevant type; at a proposition nothing.  A proof is not evaluated:
+    the environments hold it kept, [⋆ᵈ⟨M, ρ⟩], whose readback comes from
+    its scope ([per_ctx_env_kept_proof_readable]), not from the PER.  For
+    example, at [⋅ ▹ (f : ℕ → P) ▸ (h : P ≔ f 0)] nothing is asked of
+    [f 0], and [⋆ᵈ⟨f 0, ρ⟩] reads back as [f 0] is scoped by the
+    context. *)
+Definition def_bodies_at (r : relevance) (M : exp) (ρ : env) (M' : exp) (ρ' : env) (R : relation domain) : Prop :=
+  match r with relevant => rel_elem M ρ M' ρ' R | propositional => True end.
+
 (** The heads at a definition of the sort [r]: tied to the bodies at a
     relevant type ([def_heads]); at a proposition nothing, as evaluation
     binds such a definition to its body kept, [⋆ᵈ⟨M, ρ⟩], without
@@ -2051,11 +2062,11 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
         EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel }
-(** A definition entry of the sort [r]: the bodies' values are related,
-    at a proposition as kept proofs that read back ([per_proof]); at a
-    relevant type each head of the environment is related to the value of
-    both bodies in that head's tail.  The type is of the sort [r] at every
-    related tail. *)
+(** A definition entry of the sort [r]: at a relevant type the bodies'
+    values are related, and each head of the environment is related to the
+    value of both bodies in that head's tail; at a proposition nothing is
+    asked of the bodies ([def_bodies_at]).  The type is of the sort [r] at
+    every related tail. *)
 | per_ctx_env_cons_def :
   `{ forall tail_rel
         (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
@@ -2067,7 +2078,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_sort A ρ r) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
-            rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
+            def_bodies_at r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M') ->
         EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
 (** A module slot: the two units, as literals, evaluate to related values

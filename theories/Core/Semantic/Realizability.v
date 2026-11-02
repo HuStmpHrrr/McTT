@@ -1021,7 +1021,7 @@ Proof.
     destruct (HS0 _ _ Hρ) as (a0 & Ha0 & Hr0).
     assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
     pose proof (per_univ_elem_relevance _ _ _ _ HR) as Hr0'.
-    destruct r; cbn [def_heads_at] in *.
+    destruct r; cbn [def_heads_at def_bodies_at] in *.
     + match goal with
       | Hbody : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_elem _ _ _ _ _ |- _ =>
           destruct (Hbody _ _ Hρ) as [m m' Hm Hm' Hmm]

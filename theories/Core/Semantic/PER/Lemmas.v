@@ -2416,7 +2416,7 @@ Ltac same_def_sort :=
   (** The sort is a variable unless it is fixed, as a definition with a
       module part's is, at [relevant]. *)
   try match goal with H : context [rel_typ_sort _ _ ?r] |- _ => is_var r; destruct r end;
-  cbn [def_heads_at] in *;
+  cbn [def_heads_at def_bodies_at] in *;
   repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end;
   destruct_conjs.
 
@@ -2614,8 +2614,9 @@ Proof.
           HS : forall ρ ρ' (e : tail_rel ρ ρ'), rel_typ_sort _ ρ _ |- _ =>
             exact (rel_typ_sort_right (HT _ _ Hρ') (HS _ _ Hρ'))
         end.
-      * cbn [rel_elem] in *.
-        intros ρ ρ' Hρ.
+      * intros ρ ρ' Hρ.
+        (** At a proposition nothing is asked of the bodies. *)
+        destruct r; cbn [def_bodies_at rel_elem] in *; [| exact I ].
         assert (tail_rel ρ' ρ) by eauto.
         assert (tail_rel ρ ρ) by (etransitivity; eassumption).
         destruct_rel_mod_eval.
@@ -2636,7 +2637,7 @@ Proof.
       assert (Ht : tail_rel ρ'↯ ρ↯) by eauto.
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
-      destruct r; cbn [def_heads_at rel_elem] in *; [ destruct Hd; destruct_conjs |].
+      destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs |].
       all: apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try exact Hrl; try exact Hrr; try solve_prop_head; cbn [def_heads_at].
       all: destruct_rel_mod_eval.
       all: handle_per_univ_elem_irrel.
@@ -2703,7 +2704,7 @@ Proof.
       assert (Ht : tail_rel ρ'↯ ρ↯) by eauto.
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
-      destruct r; cbn [def_heads_at rel_elem] in *; [ destruct Hd; destruct_conjs |].
+      destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs |].
       (** Saturated once, before the relation is split into its fields. *)
       all: destruct_rel_mod_eval.
       all: handle_per_univ_elem_irrel.
@@ -2902,6 +2903,8 @@ Proof with solve [eauto using per_univ_trans].
       assert (tail_rel0 ρ ρ) by intuition.
       assert (tail_rel0 ρ' ρ') by intuition.
       trans_def_sort.
+      (** At a proposition nothing is asked of the bodies. *)
+      destruct r; cbn [def_bodies_at] in *; [| exact I ].
       destruct_rel_typ; handle_per_univ_elem_irrel.
       econstructor; try eassumption.
       solve_def_heads.
@@ -2915,7 +2918,7 @@ Proof with solve [eauto using per_univ_trans].
           assert (T0 ρ'↯ ρ'↯) by (apply HE; assumption)
         end;
         trans_def_sort;
-        destruct r; cbn [def_heads_at] in *;
+        destruct r; cbn [def_heads_at def_bodies_at] in *;
         repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
         apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try exact Hl; try exact Hr; try exact Hrl; try exact Hrr;
         try solve_prop_head; cbn [def_heads_at]; first [ exact I | solve_def_heads ].
@@ -2924,7 +2927,7 @@ Proof with solve [eauto using per_univ_trans].
     assert (tail_rel ρ1↯ ρ1↯) by (etransitivity; [| symmetry]; eassumption).
     assert (tail_rel ρ3↯ ρ3↯) by (etransitivity; [symmetry |]; eassumption).
     apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try assumption; try solve_prop_head.
-    all: destruct r; cbn [def_heads_at] in *;
+    all: destruct r; cbn [def_heads_at def_bodies_at] in *;
       repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
       first [ exact I | solve_def_heads ].
   - (** A slot: the closures of the first unit are related to those of the
@@ -2985,14 +2988,14 @@ Proof with solve [eauto using per_univ_trans].
           assert (T0 ρ↯ ρ↯) by (apply HE; assumption);
           assert (T0 ρ'↯ ρ'↯) by (apply HE; assumption)
         end;
-        cbn [def_heads_at] in *;
+        cbn [def_heads_at def_bodies_at] in *;
         repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
         solve_def_heads_pre; exists Ht; try assumption; solve_def_heads_post; solve_tie.
   - cbn beta in *; destruct_conjs; destruct_dm_rels.
     assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
     assert (tail_rel ρ1↯ ρ1↯) by (etransitivity; [| symmetry]; eassumption).
     assert (tail_rel ρ3↯ ρ3↯) by (etransitivity; [symmetry |]; eassumption).
-    cbn [def_heads_at] in *;
+    cbn [def_heads_at def_bodies_at] in *;
       repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
       solve_def_heads_pre; exists Ht; solve_def_heads_post; assumption.
 Qed.
@@ -3947,7 +3950,7 @@ Proof.
         side against itself.  The self-relations of the old sides are not
         needed, and would only enlarge the saturation. *)
     clear D11 D11'.
-    destruct r; cbn [def_heads_at] in *; [ destruct Hterms; destruct_conjs |].
+    destruct r; cbn [def_heads_at def_bodies_at] in *; [ destruct Hterms; destruct_conjs |].
     all: solve_def_heads_pre.
     all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Dtail2);
       try (match goal with |- def_heads_at _ _ _ _ _ _ => cbn [def_heads_at]; constructor end);
@@ -3994,7 +3997,7 @@ Proof.
     assert (Dom ρ2↯ ≈ ρ2↯ ∈ tail_rel) by solve_per.
     assert (Dom ρ2'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
     assert (Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
-    destruct r; cbn [def_heads_at] in *;
+    destruct r; cbn [def_heads_at def_bodies_at] in *;
       repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
       [| split; [ solve_def_heads | exact I ] ].
     solve_def_heads_pre.
