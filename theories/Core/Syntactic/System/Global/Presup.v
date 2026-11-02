@@ -2805,12 +2805,17 @@ Section Induction.
       Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt ->
       relevant_sort Srt ->
       (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ T) ->
+      (** The telescope is of assumptions, so that the definition's filed
+          body has no [let] at a type of levels ([ctx_pi_type_sort]) *)
+      tele_ass T ->
       Θ ⍮ Ξ ⍮ T ⊢ M : A -> globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
   Hypothesis Hax : forall Θ Ξ r A Srt b pv Θ2 Ξ2,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt ->
       relevant_sort Srt ->
       (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ (gs_tele Ξ)) ->
+      (** The frames' parameters are assumptions ([wf_gstack_tele_ass]) *)
+      tele_ass (gs_tele Ξ) ->
       globals_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
   (** And a declaration of an inductive type. *)
@@ -2884,6 +2889,9 @@ Section Induction.
       intros Θ2 Ξ2 He; split; [ intros ? ? ? ? Heq; discriminate Heq |]; intros _.
       constructor; [| discriminate | intros ? ? ? ? Hx; discriminate | intros [| ? ?] ? ? ? ? Hx; discriminate ].
       intros [| ? ?] E0 HE; cbn in HE; inversion HE; subst.
+      (* the frames' parameters are assumptions *)
+      match goal with HA : _ ⍮ _ ⍮ gs_tele _ ⊢ _ : _ |- _ =>
+        pose proof (wf_gstack_tele_ass _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA))) as Hta end.
       match goal with HM : forall M, ?o = Some M -> _ |- _ =>
         destruct o as [M0 |]; cbn; [ specialize (HM M0 eq_refl) | clear HM ] end; eauto.
     - (* a nested module *)
@@ -2926,7 +2934,9 @@ Section Induction.
       constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? Hx; cbn in Hx; discriminate
                    | intros ? ? ? ? ? Hx; cbn in Hx; discriminate |].
       intros [| ? ?] ? ? ? ? Hx; [| discriminate ]; cbn in Hx; injection Hx as <- <- <- <-.
-      unfold dm_def; eapply (Hdef _ _ _ relevant); [ eassumption | constructor | discriminate | eassumption | | exact He ].
+      match goal with HA : _ ⍮ _ ⍮ gs_tele _ ⊢ _ : _ |- _ =>
+        pose proof (wf_gstack_tele_ass _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA))) as Hta end.
+      unfold dm_def; eapply (Hdef _ _ _ relevant); [ eassumption | constructor | discriminate | exact Hta | eassumption | | exact He ].
       match goal with H : globals_valid_along_embeddings _ _ |- _ => exact H end.
     - (* a record: it contributes no entry and no declaration *)
       intros ? ? _; split; [ intros ? ? ? ? Heq; discriminate Heq |]; intros _; constructor;
@@ -3167,6 +3177,9 @@ Section ModInduction.
       Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt ->
       relevant_sort Srt ->
       (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ T) ->
+      (** The telescope is of assumptions, so that the definition's filed
+          body has no [let] at a type of levels ([ctx_pi_type_sort]) *)
+      tele_ass T ->
       Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> gds_valid Θ Ξ Θ2 Ξ2 Θ -> gs_valid Θ Ξ Θ2 Ξ2 Ξ ->
       forall Θs Ξs, V Θs Ξs Θ2 Ξ2 T (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
   (** The other entries are valid read from any context that has what the
@@ -3175,6 +3188,8 @@ Section ModInduction.
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt ->
       relevant_sort Srt ->
       (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ (gs_tele Ξ)) ->
+      (** The frames' parameters are assumptions ([wf_gstack_tele_ass]) *)
+      tele_ass (gs_tele Ξ) ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
   Hypothesis Halias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
@@ -3240,11 +3255,15 @@ Section ModInduction.
     - (* a definition or an axiom *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn.
+      (* the frames' parameters are assumptions *)
+      match goal with HA : _ ⍮ _ ⍮ gs_tele _ ⊢ _ : _ |- _ =>
+        pose proof (wf_gstack_tele_ass _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA))) as Hta end.
       match goal with
       | HM : forall M, ?o = Some M -> _ ⍮ _ ⍮ _ ⊢ M : _, IHM : forall M, ?o = Some M -> bodies_valid_along_embeddings _ _ |- _ =>
           destruct o as [M0 |]; cbn;
           [ destruct (IHM M0 eq_refl _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ];
-            eapply Hdef; [ eassumption | eassumption | eassumption | exact (HM M0 eq_refl) | exact (IHM M0 eq_refl) | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ]
+            eapply Hdef; [ eassumption | eassumption | eassumption | exact Hta | exact (HM M0 eq_refl) | exact (IHM M0 eq_refl)
+                         | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ]
           | eapply Hax; eassumption ]
       end.
     - (* a body module: valid as its frame, pushed, is *)
@@ -3301,8 +3320,10 @@ Section ModInduction.
       2:{ (* its term part's type is of a universe, moved along the embedding *)
           destruct (gctx_embedding_preserves_wf _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as (_ & Ht & _).
           do 2 eexists; split; [ reflexivity | apply Ht; eassumption ]. }
-      eapply (Hdef _ _ _ relevant); [ eassumption | constructor | discriminate | eassumption | eassumption | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He)
-                                   | exact HΘ | exact HΞ ].
+      match goal with HA : _ ⍮ _ ⍮ gs_tele _ ⊢ _ : _ |- _ =>
+        pose proof (wf_gstack_tele_ass _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA))) as Hta end.
+      eapply (Hdef _ _ _ relevant); [ eassumption | constructor | discriminate | exact Hta | eassumption | eassumption
+                                   | exact (gctx_embedding_with_bodies_embedding _ _ _ _ He) | exact HΘ | exact HΞ ].
     - (* a record, before the members of its module: valid as its
          declaration, over its parameters and a value *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
@@ -4115,7 +4136,7 @@ Proof.
       rewrite Hats in HR1; injection HR1 as <-.
       destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A' & M' & ->); apply mdesc_named_cases; exact Hok1.
     + (* an axiom or abstract: its name, at the arguments *)
-      destruct (proj1 (ctx_pi_type_sort _ _ r T (Θ' ++ Γ) A0 Srt HTΘ HSrt
+      destruct (proj1 (ctx_pi_type_sort _ _ r T (Θ' ++ Γ) A0 Srt HTΘ HSrt (fun _ => Ha)
                          ltac:(intros E; exact (level_sorted_closed _ _ _ _ HsT (proj2 (HLsrt E)) HTΘ)) HA0Θ)) as (Srt' & HSrt' & Hj).
       pose proof (filed_def_wf _ _ Hg _ _ _ _ _ _ _ _ _ _ _ HΘ' Hloc' Hp1 Hom
                     (mk_wf_type _ (type_sort_relevance r Srt' ltac:(destruct HSrt'; constructor)) Hj)) as Hname.
@@ -5170,11 +5191,14 @@ Lemma syn_def : forall Θ Ξ T r A M Srt b pv Θ2 Ξ2,
     Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt ->
     relevant_sort Srt ->
     (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ T) ->
+      (** The telescope is of assumptions, so that the definition's filed
+          body has no [let] at a type of levels ([ctx_pi_type_sort]) *)
+      tele_ass T ->
     Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ2 Ξ2 Θ -> gs_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ2 Ξ2 Ξ ->
     forall (Θs : gdeps) (Ξs : gstack), syn_V Θ2 Ξ2 T (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
 Proof.
-  intros * HA HS HL HM HG He _ _ Θs Ξs.
+  intros * HA HS HL _ HM HG He _ _ Θs Ξs.
   destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
   exists A; split; [ reflexivity |]; split;
     [ apply (relevant_type_at_of _ _ _ _ _ _ Srt HS); [ intros HE Δ1 U Δ2 EU; exact (Ht _ _ _ (HL HE _ _ _ EU)) | exact (Ht _ _ _ HA) ] |].
@@ -5185,11 +5209,13 @@ Lemma syn_ax : forall Θ Ξ r A Srt b pv Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt ->
     relevant_sort Srt ->
     (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ (gs_tele Ξ)) ->
+      (** The frames' parameters are assumptions ([wf_gstack_tele_ass]) *)
+      tele_ass (gs_tele Ξ) ->
     bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ ->
     gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
 Proof.
-  intros * HA HS HL _ He _; destruct (gctx_embedding_preserves_wf _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as (_ & Ht & _).
+  intros * HA HS HL _ _ He _; destruct (gctx_embedding_preserves_wf _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as (_ & Ht & _).
   exists A; split; [ reflexivity |]; split; [| discriminate ].
   apply (relevant_type_at_of _ _ _ _ _ _ Srt HS); [ intros HE Δ1 U Δ2 EU; exact (Ht _ _ _ (HL HE _ _ _ EU)) | exact (Ht _ _ _ HA) ].
 Qed.
@@ -5403,29 +5429,34 @@ Qed.
 Lemma entry_typed_def : forall Θ Ξ T r A M Srt b pv Θ2 Ξ2,
     Θ ⍮ Ξ ⍮ T ⊢ A : relevance_sort r Srt -> relevant_sort Srt ->
     (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ T) ->
+      (** The telescope is of assumptions, so that the definition's filed
+          body has no [let] at a type of levels ([ctx_pi_type_sort]) *)
+      tele_ass T ->
     Θ ⍮ Ξ ⍮ T ⊢ M : A -> globals_valid_along_embeddings entry_typed decl_typed Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     entry_typed Θ2 Ξ2 (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
 Proof.
-  intros * HA HS HL HM HG He.
+  intros * HA HS HL Ha HM HG He.
   destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
   assert (HT : ⊢ Θ ⍮ Ξ ⍮ T ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HM)).
   rewrite <- (List.app_nil_r T) in HA, HM.
-  destruct (ctx_pi_type_sort _ _ _ _ _ _ _ HT HS HL HA) as [(Srt' & HS' & Hty) Hfn].
+  destruct (ctx_pi_type_sort _ _ _ _ _ _ _ HT HS (fun _ => Ha) HL HA) as [(Srt' & HS' & Hty) Hfn].
   split; [ exists Srt'; split; [ exact HS' | exact (Ht _ _ _ Hty) ] | intros ? [= <-]; apply Ht, Hfn, HM ].
 Qed.
 
 Lemma entry_typed_ax : forall Θ Ξ r A Srt b pv Θ2 Ξ2,
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Srt -> relevant_sort Srt ->
     (Srt = LevelSort -> level_sorted_parameters Θ Ξ ⋅ (gs_tele Ξ)) ->
+      (** The frames' parameters are assumptions ([wf_gstack_tele_ass]) *)
+      tele_ass (gs_tele Ξ) ->
     globals_valid_along_embeddings entry_typed decl_typed Θ Ξ ->
     gctx_embedding Θ Ξ Θ2 Ξ2 ->
     entry_typed Θ2 Ξ2 (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
 Proof.
-  intros * HA HS HL HG He.
+  intros * HA HS HL Ha HG He.
   destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
   assert (HT : ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
   rewrite <- (List.app_nil_r (gs_tele Ξ)) in HA.
-  destruct (ctx_pi_type_sort _ _ _ _ _ _ _ HT HS HL HA) as [(Srt' & HS' & Hty) _].
+  destruct (ctx_pi_type_sort _ _ _ _ _ _ _ HT HS (fun _ => Ha) HL HA) as [(Srt' & HS' & Hty) _].
   split; [ exists Srt'; split; [ exact HS' | exact (Ht _ _ _ Hty) ] | discriminate ].
 Qed.
 

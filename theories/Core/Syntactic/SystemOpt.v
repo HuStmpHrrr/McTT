@@ -280,11 +280,12 @@ Remove Hints wf_app : mctt.
 Corollary wf_exp_eq_absurd_cong' : forall Θ Ξ Γ C C' Srt M M',
     Θ ⍮ Ξ ⍮ Γ ⊢ C ≈ C' : Srt ->
     type_sort Srt ->
+    level_closed_sort Propₘ Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : ⊥ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return C ≈ efq M' return C' : C.
 Proof.
-  intros * HC HS HM HM'; eapply wf_exp_eq_absurd_cong; [ exact (presup_exp_eq_left HC) | exact HS | exact HC | exact HM | exact HM' ].
+  intros * HC HS Hl HM HM'; eapply wf_exp_eq_absurd_cong; [ exact (presup_exp_eq_left HC) | exact HS | exact Hl | exact HC | exact HM | exact HM' ].
 Qed.
 
 #[export]
@@ -388,13 +389,20 @@ Hint Resolve wf_exp_eq_fn_eta' : mctt.
 #[export]
 Remove Hints wf_exp_eq_fn_eta : mctt.
 
-(** A let presupposes its context, which carries the type of its annotation and
-    of its body. *)
-Corollary wf_let' : forall Θ Ξ Γ A M B C,
+(** A let presupposes its context, which carries the typing of its body; the
+    sorts of the annotation and of the body's type stay premises, as they are
+    related by [level_closed_sort]. *)
+Corollary wf_let' : forall Θ Ξ Γ A M B C Srt SrtC,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+    level_closed_sort Srt SrtC ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M].
 Proof.
-  intros; gen_presups; mautosolve 2.
+  intros * HA HS HC Hl HB; gen_presups.
+  match goal with H : ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M |- _ => inversion_clear H end.
+  eapply wf_let; [ exact HA | exact HS | eassumption | exact HC | exact Hl | exact HB ].
 Qed.
 
 #[export]
@@ -414,13 +422,19 @@ Hint Resolve wf_ctx_extend_def' : mctt.
 #[export]
 Remove Hints wf_ctx_extend_def : mctt.
 
-Corollary wf_exp_eq_let_cong' : forall Θ Ξ Γ A A' M M' B B' C i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+(** Congruence for a let, with the sort premises of [wf_let']. *)
+Corollary wf_exp_eq_let_cong' : forall Θ Ξ Γ A A' M M' B B' C Srt SrtC,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+    type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+    level_closed_sort Srt SrtC ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M].
 Proof.
-  intros; gen_presups; mautosolve 2.
+  intros * HAA HS HMM HC Hl HBB.
+  eapply wf_exp_eq_let_cong; [ exact (presup_exp_eq_left HAA) | exact HS | exact HAA
+                             | exact (presup_exp_eq_left HMM) | exact HMM | exact HC | exact Hl | exact HBB ].
 Qed.
 
 #[export]
@@ -428,11 +442,18 @@ Hint Resolve wf_exp_eq_let_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_let_cong : mctt.
 
-Corollary wf_exp_eq_let_zeta' : forall Θ Ξ Γ A M B C,
+(** [ζ] for a let, with the sort premises of [wf_let']. *)
+Corollary wf_exp_eq_let_zeta' : forall Θ Ξ Γ A M B C Srt SrtC,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+    level_closed_sort Srt SrtC ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M].
 Proof.
-  intros; gen_presups; mautosolve 2.
+  intros * HA HS HC Hl HB; gen_presups.
+  match goal with H : ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M |- _ => inversion_clear H end.
+  eapply wf_exp_eq_let_zeta; [ exact HA | exact HS | eassumption | exact HC | exact Hl | exact HB ].
 Qed.
 
 #[export]

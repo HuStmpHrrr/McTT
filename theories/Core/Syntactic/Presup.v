@@ -224,16 +224,17 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ˢ Id : Γ ▸ A ≔ M) by mauto 3.
     match goal with HB : _ ⍮ _ ⍮ _ ▸ A ≔ M ⊢ B : C |- _ => destruct (presup_exp_typ HB) as [SC HSC HC] end.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def A' M') B' : C[Id,,M'])
-      by (eapply wf_let; eassumption).
+    match goal with HCS : _ ⍮ _ ⍮ _ ▸ A ≔ M ⊢ C : ?SrtC, Hlc : level_closed_sort _ ?SrtC |- _ =>
+      assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ C : SrtC) by mauto 2;
+      assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def A' M') B' : C[Id,,M'])
+        by (eapply wf_let; [ | | | eassumption | exact Hlc | ]; eassumption) end.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : SC) by (eapply sub_eq_preserves_sort; eassumption).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : SC) by (eapply sub_preserves_sort; [ eassumption | eassumption | mauto 3 ]).
     eapply wf_conv_sort; [ eassumption | eassumption | eassumption | apply wf_exp_eq_sym; eassumption ].
 
   (** [let module], left: the body's type is a type, by presupposition. *)
-  - match goal with HB : _ ⍮ _ ⍮ _ ▹ₘ _ ⊢ B : C |- _ => destruct (presup_exp_typ HB) as [SC HSC HC] end.
-    eapply wf_let_mod; eauto using wf_unit_eq_refl_left.
+  - eapply wf_let_mod; eauto using wf_unit_eq_refl_left, module_body_sort_type_sort.
 
 Qed.
 

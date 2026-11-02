@@ -740,8 +740,8 @@ Proof.
         destruct (level_sorted_app_inv _ _ _ _ _ HLΔ) as [HL1 HLC].
         pose proof (HLC nil C nil eq_refl) as HCl; cbn [List.app] in HCl.
         exists LevelSort, LevelSort; repeat split; [ constructor | exact HCl | | constructor | ].
-        + exact (ctx_pi_level_wf _ _ _ _ _ HΔ HL1 HA0).
-        + exact (ctx_fn_level_wf _ _ _ _ _ _ HΔ HL1 HA0 HM0). }
+        + exact (ctx_pi_level_wf _ _ _ _ _ HΔ Ha1 HL1 HA0).
+        + exact (ctx_fn_level_wf _ _ _ _ _ _ HΔ Ha1 HL1 HA0 HM0). }
     destruct Hstep as (SC0 & Srt0 & HSC0 & HC0 & HB & Hcod & HF).
     set (r := mdesc_relevance R) in *.
     rewrite ctx_pi_app, ctx_fn_app in HM; cbn [ctx_pi_at ctx_fn] in HM.

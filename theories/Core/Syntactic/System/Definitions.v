@@ -152,16 +152,49 @@ Inductive parameter_sort (l : nat) : exp -> Prop :=
 (** A type of levels *)
 | parameter_sort_level : parameter_sort l LevelSort.
 
+(** [level_closed_sort Sc Sr]: a former whose result is of the sort [Sr]
+    may take a component of the sort [Sc].  A result of a type of levels is
+    built only from levels (the 𝕃 invariant): its components are of
+    [LevelSort].  A result in a universe or in [Prop] takes components of
+    any sort.  [λ (n : ℕ) → 0l], [let n : ℕ ≔ 5 in 0l] and
+    [efq h return Level@0] have no type. *)
+Inductive level_closed_sort : exp -> exp -> Prop :=
+(** A result in a large universe, from components of any sort *)
+| level_closed_universe : forall Sc i, level_closed_sort Sc (Typeω@i)
+(** A proposition, from components of any sort *)
+| level_closed_prop : forall Sc, level_closed_sort Sc Propₘ
+(** A level, from levels *)
+| level_closed_level : level_closed_sort LevelSort LevelSort.
+
 (** [pi_codomain_sort Srt S']: a function over a domain of the sort [Srt]
-    may have a codomain of the relevant sort [S'].  A codomain in a
-    universe is allowed over every domain; a type of levels only over a
+    may have a codomain of the relevant sort [S']: the [Π] instance of
+    [level_closed_sort], restricted to relevant codomains
+    ([pi_codomain_level_closed]).  A codomain in
+    a universe is allowed over every domain; a type of levels only over a
     type of levels, so that a level is built only from levels: [λ (n : ℕ) →
-    0l] has no type. *)
+    0l] has no type.  A function into propositions is a proof of a [∀],
+    whose codomain's sort is given by its tag ([relevance_sort]). *)
 Inductive pi_codomain_sort : exp -> exp -> Prop :=
 (** A codomain in a large universe, over a domain of any sort *)
 | pi_codomain_universe : forall Srt i, pi_codomain_sort Srt (Typeω@i)
 (** A type of levels, over a type of levels *)
 | pi_codomain_level : pi_codomain_sort LevelSort LevelSort.
+
+(** It is [level_closed_sort] at a relevant result sort. *)
+Lemma pi_codomain_level_closed : forall Srt S', pi_codomain_sort Srt S' <-> relevant_sort S' /\ level_closed_sort Srt S'.
+Proof.
+  intros; split; [ intros []; split; constructor |].
+  intros [Hr Hc]; destruct Hr; inversion Hc; subst; constructor.
+Qed.
+
+(** The component sort a module counts as, for a former that binds one
+    ([ℓₘ]): never a type of levels, so that a local module is never at a
+    body of a type of levels. *)
+Inductive module_body_sort : exp -> Prop :=
+(** A body in a large universe *)
+| module_body_universe : forall i, module_body_sort (Typeω@i)
+(** A proposition *)
+| module_body_prop : module_body_sort Propₘ.
 
 (** The sort a declaration's part of the relevance [r] is checked at: the
     declaration's own sort [S] when it is relevant, [Prop] when it is a
@@ -383,10 +416,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_False :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Propₘ )
-(** Ex falso: a proof of [⊥] is a term of every type, of either sort. *)
+(** Ex falso: a proof of [⊥] is a term of every type, of either sort,
+    whose result may come from a proof ([level_closed_sort]): never a
+    level, as it would put a proof inside a level. *)
 | wf_absurd :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ C : Srt ->
      type_sort Srt ->
+     level_closed_sort Propₘ Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ efq M return C : C )
 (** The dependent conjunction of propositions. *)
@@ -549,11 +585,15 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
-(** A local definition, of its annotated type. *)
+(** A local definition, of its annotated type.  The body's type is of a
+    sort the binding's sort may build ([level_closed_sort]): a level only
+    under a definition of a level. *)
 | wf_let :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+     level_closed_sort Srt SrtC ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M] )
 (** A local module occupies one index, a slot holding its unit.  The body's
@@ -564,6 +604,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
      type_sort Srt ->
+     module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C[Id ,,ₘ me_lit U] )
 (** A member: the module expression is well formed and looks the member up
@@ -724,10 +765,12 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_False_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Propₘ )
-(** Ex falso at equal types, its proofs typed and otherwise irrelevant. *)
+(** Ex falso at equal types, its proofs typed and otherwise irrelevant;
+    never into a type of levels, as [wf_absurd]. *)
 | wf_exp_eq_absurd_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ C : Srt ->
      type_sort Srt ->
+     level_closed_sort Propₘ Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ C ≈ C' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M' : ⊥ ->
@@ -842,12 +885,16 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+     level_closed_sort Srt SrtC ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M] )
 (** The right-hand side is typed in its own context, which differs from the
     left's by the unit. *)
 | wf_exp_eq_let_mod_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
+     module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B ≈ B' : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] )
@@ -996,6 +1043,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+     level_closed_sort Srt SrtC ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M] )
 (** [ζ] for local modules: the slot is replaced by the unit. *)
@@ -1003,6 +1052,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
      type_sort Srt ->
+     module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
@@ -1642,6 +1692,8 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (Srt = LevelSort ->
         forall Δ1 T Δ2, gs_tele Ξ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ T : LevelSort) ->
      (forall M, oM = Some M -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A) ->
+     (** No axiom of a type of levels: a level is never assumed *)
+     (oM = None -> exists i, Srt = Typeω@i) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (option_map (ctx_fn (gs_tele Ξ)) oM) )
 (** An internal module, under the parameters [Δ'] it declares. *)
 | wf_gentry_mod :
@@ -2313,6 +2365,8 @@ Ltac destruct_type_sort :=
          | H : pi_domain_sort _ _ |- _ => destruct H
          | H : relevant_sort _ |- _ => inversion H; subst; clear H
          | H : pi_codomain_sort _ _ |- _ => inversion H; subst; clear H
+         | H : level_closed_sort _ _ |- _ => inversion H; subst; clear H
+         | H : module_body_sort _ |- _ => inversion H; subst; clear H
          | r : relevance |- _ => destruct r
          end;
   cbn [relevance_sort] in *.
@@ -2340,15 +2394,33 @@ Proof. intros * []; constructor. Qed.
 Lemma pi_codomain_sort_relevant : forall Srt S, pi_codomain_sort Srt S -> relevant_sort S.
 Proof. intros * []; constructor. Qed.
 
+(** The result sort of a former that keeps levels closed is a type sort. *)
+Lemma level_closed_sort_type_sort : forall Sc S, level_closed_sort Sc S -> type_sort S.
+Proof. intros * []; constructor. Qed.
+
+(** The sort of a motive, a universe or [Prop], is built from components
+    of any sort. *)
+Lemma level_closed_relevance : forall Sc r i, level_closed_sort Sc (relevance_sort r Typeω@i).
+Proof. intros Sc [] i; constructor. Qed.
+
+(** A local module may be at it. *)
+Lemma module_body_relevance : forall r i, module_body_sort (relevance_sort r Typeω@i).
+Proof. intros [] i; constructor. Qed.
+
+(** The sort a local module's body is at is a type sort. *)
+Lemma module_body_sort_type_sort : forall S, module_body_sort S -> type_sort S.
+Proof. intros * []; constructor. Qed.
+
 (** A type of levels is a type. *)
 Lemma wf_type_level : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof. intros * H; exact (mk_wf_type _ type_sort_level H). Qed.
 
 #[export]
-Hint Resolve relevant_sort_type_sort pi_codomain_sort_type_sort pi_codomain_sort_relevant parameter_sort_type_sort wf_type_level : mctt.
+Hint Resolve relevant_sort_type_sort pi_codomain_sort_type_sort pi_codomain_sort_relevant level_closed_sort_type_sort
+  level_closed_relevance module_body_relevance module_body_sort_type_sort parameter_sort_type_sort wf_type_level : mctt.
 
 #[export]
-Hint Constructors type_sort pi_domain_sort relevant_sort pi_codomain_sort parameter_sort : mctt.
+Hint Constructors type_sort pi_domain_sort relevant_sort pi_codomain_sort level_closed_sort module_body_sort parameter_sort : mctt.
 
 #[export]
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.
@@ -2361,7 +2433,7 @@ Lemma wf_gentry_def_body : forall Θ Ξ mp b pv r A M i,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
 Proof.
   intros * HA HM; change (Some (ctx_fn (gs_tele Ξ) M)) with (option_map (ctx_fn (gs_tele Ξ)) (Some M)).
-  eapply wf_gentry_def; [ exact HA | constructor | discriminate | intros ? [= <-]; exact HM ].
+  eapply wf_gentry_def; [ exact HA | constructor | discriminate | intros ? [= <-]; exact HM | discriminate ].
 Qed.
 
 Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv r A i,
@@ -2369,7 +2441,7 @@ Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv r A i,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None.
 Proof.
   intros * HA; change (@None exp) with (option_map (ctx_fn (gs_tele Ξ)) None).
-  eapply wf_gentry_def; [ exact HA | constructor | discriminate | discriminate ].
+  eapply wf_gentry_def; [ exact HA | constructor | discriminate | discriminate | intros _; eexists; reflexivity ].
 Qed.
 
 #[export]

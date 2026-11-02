@@ -1322,6 +1322,7 @@ Ltac sub_eq_let_mod_case :=
             [ exact HUs
             | eapply sub_preserves_sort; [ exact HC | exact HS | apply wf_sub_q_mod; assumption ]
             | exact HS
+            | constructor
             | eapply sub_preserves_exp; [ exact HB | apply wf_sub_q_mod; assumption ] ]);
       rewrite exp_sub_extend_mod_sub;
       pose proof (IHC _ _ _ Hτ) as HCτ; try rewrite (type_sort_sub S _) in HCτ by exact HS;
@@ -1682,7 +1683,7 @@ Proof.
     | HM : wf_exp _ _ ?Γ a_False ?M, Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hr : wf_sub _ _ ?Γ0 ?Γ ?σ'
       |- wf_exp_eq _ _ ?Γ0 _ (a_absurd _ (exp_sub ?M ?σ)) (a_absurd _ (exp_sub ?M ?σ')) =>
         eapply wf_exp_eq_absurd_cong;
-        [ eassumption | constructor | eassumption
+        [ eassumption | constructor | constructor | eassumption
         | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hl) | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hr) ]
     end ].
   (** Ex falso at a target of any sort: the target moved by the left
@@ -1695,7 +1696,7 @@ Proof.
         let HCl := fresh "HCl" in
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HC Hl) as HCl; rewrite (type_sort_sub S σ) in HCl by constructor;
         eapply wf_exp_eq_absurd_cong;
-        [ exact HCl | constructor | exact HCe
+        [ exact HCl | constructor | constructor | exact HCe
         | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hl) | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hr) ]
     end ].
   (** A λ or an application at a [Π] whose domain or codomain is of the
@@ -1718,12 +1719,15 @@ Proof.
       moved annotation and definiens. *)
   all: try solve [
     match goal with
-    | HA : wf_exp _ _ ?Γ ?S ?A, HM : wf_exp _ _ ?Γ ?A ?M, Hl : wf_sub _ _ ?Γ0 ?Γ ?σ
+    | HA : wf_exp _ _ ?Γ ?S ?A, HM : wf_exp _ _ ?Γ ?A ?M, HC : wf_exp _ _ (ce_def ?A ?M :: ?Γ) ?SC ?C,
+      Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hq : wf_sub _ _ _ (ce_def ?A ?M :: ?Γ) (sb_q ?σ)
       |- wf_exp_eq _ _ ?Γ0 _ (a_let (b_def (exp_sub ?A ?σ) (exp_sub ?M ?σ)) _) _ =>
-        let HAl := fresh "HAl" in
+        let HAl := fresh "HAl" in let HCq := fresh "HCq" in
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hl) as HAl; rewrite (type_sort_sub S σ) in HAl by constructor;
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HC Hq) as HCq; rewrite (type_sort_sub SC (sb_q σ)) in HCq by constructor;
         eapply wf_exp_eq_let_cong;
-        [ exact HAl | constructor | eassumption | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hl) | eassumption | eassumption ]
+        [ exact HAl | constructor | eassumption | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hl) | eassumption
+        | exact HCq | constructor | eassumption ]
     end ].
   (** A local module: both sides are reduced by [ζ] and meet at the body
       under the two extended substitutions, at the body's type. *)

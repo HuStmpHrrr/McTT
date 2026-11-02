@@ -2519,11 +2519,12 @@ Proof.
   all: try solve [ econstructor; mauto 3 ].
   (** The module rules. *)
   all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod;
-                   eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level ].
+                   eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level, module_body_universe, module_body_prop ].
   all: try solve [ rewrite !exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta;
-                   eauto using wf_wk_q_mod, type_sort_universe, type_sort_prop, type_sort_level ].
+                   eauto using wf_wk_q_mod, type_sort_universe, type_sort_prop, type_sort_level, module_body_universe, module_body_prop ].
   all: try solve [ rewrite exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_cong;
-                   [ eauto | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | rewrite <- exp_wk_sub_extend_mod; eauto ] ].
+                   [ eauto | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | eauto using module_body_universe, module_body_prop
+                   | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | rewrite <- exp_wk_sub_extend_mod; eauto ] ].
   all: try solve [ cbn [tele_wk]; first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
                    eauto 7 using wf_wk_ext, ext_eq_ctx_left, ext_eq_ctx_right, presup_exp_ctx, presup_exp_eq_ctx, presup_unit_eq_ctx ].
   all: try solve [ eapply wf_me_var; [ eauto | eapply wf_wk_lookup_mod; eauto ] ].
@@ -2622,6 +2623,8 @@ Proof.
         pose proof (IHL _ _ Hφ) as HL; rewrite exp_wk_sub_extend_mod in HL |- *;
         eapply wf_exp_eq_let_mod_cong;
         [ exact HUφ
+        | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left
+        | eauto using module_body_universe, module_body_prop
         | apply IHB; apply wf_wk_q_mod; eauto using wf_unit_eq_refl_left
         | exact HL ]
     end ].
@@ -3741,9 +3744,9 @@ Proof.
   (** The module rules.  A local module is lifted over by [q σ] at the
       transported unit. *)
   all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod;
-                   eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level ].
+                   eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level, module_body_universe, module_body_prop ].
   all: try solve [ rewrite !exp_sub_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta;
-                   eauto using wf_sub_q_mod, type_sort_universe, type_sort_prop, type_sort_level ].
+                   eauto using wf_sub_q_mod, type_sort_universe, type_sort_prop, type_sort_level, module_body_universe, module_body_prop ].
   all: try solve [
     match goal with
     | HU : wf_unit_eq _ _ ?Γ ?U ?U', IHU : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_unit_eq _ _ _ _ _,
@@ -3754,6 +3757,8 @@ Proof.
         pose proof (IHL _ _ Hσ) as HL; rewrite exp_sub_sub_extend_mod in HL |- *;
         eapply wf_exp_eq_let_mod_cong;
         [ exact HUσ
+        | eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left
+        | eauto using module_body_universe, module_body_prop
         | apply IHB; apply wf_sub_q_mod; eauto using wf_unit_eq_refl_left
         | exact HL ]
     end ].
