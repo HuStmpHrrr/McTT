@@ -49,8 +49,8 @@ Section Fixed_GCtx.
   Lemma nparams_nil_of_nn : forall M, im_nn M = 0 -> im_nparams M = nil.
   Proof. intros M H; unfold im_nn in H; destruct (im_nparams M); [ reflexivity | discriminate ]. Qed.
 
-  Lemma con_args_rel_len : forall p D okr nr ar dr k u u' pre pre' gs vs vs',
-      con_args_rel p D okr nr ar dr k u u' pre pre' gs vs vs' -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
+  Lemma con_args_rel_len : forall p D okr nr ar dr k u u' pre pre' Ts gs vs vs',
+      con_args_rel p D okr nr ar dr k u u' pre pre' Ts gs vs vs' -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
   Proof. induction 1; cbn; lia. Qed.
 
   Section ViewCoh.
@@ -58,7 +58,7 @@ Section Fixed_GCtx.
     Variables (p : qname) (D : ind_decl) (ups ups' : list domain).
     Variable (nr : nat -> nat -> list domain -> relation domain).
     Variable (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
-    Variable (dr : nat -> list domain -> exp -> relation domain).
+    Variable (dr : nat -> list domain -> list centry -> exp -> relation domain).
     Hypothesis (Hass : grp_tele_ass D).
     Hypothesis (HnP : nparams_per D nr) (HnI : nparams_inv D nr).
     Hypothesis (HaP : args_per D nr ar) (HaI : args_inv D nr ar).
@@ -68,7 +68,7 @@ Section Fixed_GCtx.
     Variables (qc : qname) (Dq : ind_decl) (cups cups' : list domain).
     Variable (nr' : nat -> nat -> list domain -> relation domain).
     Variable (ar' : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
-    Variable (dr' : nat -> list domain -> exp -> relation domain).
+    Variable (dr' : nat -> list domain -> list centry -> exp -> relation domain).
     Hypothesis (Hass' : grp_tele_ass Dq).
     Hypothesis (HnP' : nparams_per Dq nr') (HnI' : nparams_inv Dq nr').
     Hypothesis (HaP' : args_per Dq nr' ar') (HaI' : args_inv Dq nr' ar').
@@ -161,7 +161,8 @@ Section Fixed_GCtx.
       tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
       (ar' i' ms c (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) x y <->
-       GR v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp') t x y)
+       GR v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp')
+         (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) t x y)
     (** An argument recursive in both: the domains of the shapes, after
         [ys] of them. *)
     ; agree_shape_doms_rel : forall i' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d B' B ys ys',
@@ -171,8 +172,9 @@ Section Fixed_GCtx.
       List.nth_error (ptyp_doms t') d = Some B' -> List.nth_error (ptyp_doms t) d = Some B ->
       tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-      tele_prefix_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
-      (dr' i' (ms ++ nonrec_arg_vals gs1' vp ++ ys) B' <~> dr v (ms ++ nonrec_arg_vals gs1 vp ++ ys) B)
+      tele_prefix_rel (shape_doms_rel (dr' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t') d ys ys' ->
+      (dr' i' (ms ++ nonrec_arg_vals gs1' vp ++ ys) (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ List.firstn d (shape_doms_tele t')) B'
+       <~> dr v (ms ++ nonrec_arg_vals gs1 vp ++ ys) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t)) B)
     (** An argument recursive in both: the parameters the shapes end in. *)
     ; agree_shape_params : forall i' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' ys ys',
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
@@ -180,13 +182,16 @@ Section Fixed_GCtx.
       cargs_correspond vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
       tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-      tele_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) (ptyp_doms t') ys ys' ->
+      tele_rel (shape_doms_rel (dr' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t') (ptyp_doms t') ys ys' ->
       ps_link (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups ++ ms ++ nonrec_arg_vals gs1' vp ++ ys)) (env_args nil (ups ++ ms ++ nonrec_arg_vals gs1 vp ++ ys)) /\
+        (components_env Dq cups (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms ++ nonrec_arg_vals gs1' vp ++ ys))
+        (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ nonrec_arg_vals gs1 vp ++ ys)) /\
       ps_link (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups' ++ ms' ++ nonrec_arg_vals gs1' vp' ++ ys')) (env_args nil (ups' ++ ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) /\
+        (components_env Dq cups' (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms' ++ nonrec_arg_vals gs1' vp' ++ ys'))
+        (components_env D ups' (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) /\
       ps_link (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups ++ ms' ++ nonrec_arg_vals gs1' vp' ++ ys')) (env_args nil (ups ++ ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) }.
+        (components_env Dq cups (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms' ++ nonrec_arg_vals gs1' vp' ++ ys'))
+        (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) }.
 
     Hypothesis (Hvc : view_agreement).
     #[local] Abbreviation Hmem := (agree_members Hvc).
@@ -298,19 +303,21 @@ Section Fixed_GCtx.
     Theorem view_container_to_group_all :
       (forall i' u u' ns ns' x y, C i' u u' ns ns' x y -> u = cups -> u' = cups' ->
          forall v, List.nth_error vm i' = Some v -> G v ups ups' ns ns' x y) /\
-      (forall i' u u' pre pre' gs' vs vs', CA i' u u' pre pre' gs' vs vs' -> u = cups -> u' = cups' ->
+      (forall i' u u' pre pre' Ts gs' vs vs', CA i' u u' pre pre' Ts gs' vs vs' -> u = cups -> u' = cups' ->
          forall Mi' v Mv c gs1' gs1 gs ms ms' vp vp',
            ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
            ind_con Mi' c = Some (gs1' ++ gs') -> ind_con Mv c = Some (gs1 ++ gs) ->
            cargs_correspond vm gs1' gs1 -> cargs_correspond vm gs' gs ->
            List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
            pre = ms ++ nonrec_arg_vals gs1' vp -> pre' = ms' ++ nonrec_arg_vals gs1' vp' ->
+           Ts = List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ->
            tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
            tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
            tele_rel_from (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp)
              (nonrec_arg_vals gs' vs) (nonrec_arg_vals gs' vs') ->
-           GA v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp') gs vs vs') /\
-      (forall i' u u' pre pre' t'' x y, CR i' u u' pre pre' t'' x y -> u = cups -> u' = cups' ->
+           GA v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp')
+             (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) gs vs vs') /\
+      (forall i' u u' pre pre' Ts t'' x y, CR i' u u' pre pre' Ts t'' x y -> u = cups -> u' = cups' ->
          forall Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys',
            ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
            ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
@@ -318,11 +325,13 @@ Section Fixed_GCtx.
            List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
            t'' = ptyp_skip d t' -> List.length ys = d -> List.length ys' = d -> d <= ptyp_depth t' ->
            pre = ms ++ nonrec_arg_vals gs1' vp ++ ys -> pre' = ms' ++ nonrec_arg_vals gs1' vp' ++ ys' ->
+           Ts = List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ List.firstn d (shape_doms_tele t') ->
            tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
            tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-           tele_prefix_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
-           GR v ups ups' (ms ++ nonrec_arg_vals gs1 vp ++ ys) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys') (ptyp_skip d t) x y) /\
-      (forall i' u u' pre pre' t'' f a f' a', CP i' u u' pre pre' t'' f a f' a' -> u = cups -> u' = cups' ->
+           tele_prefix_rel (shape_doms_rel (dr' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t') d ys ys' ->
+           GR v ups ups' (ms ++ nonrec_arg_vals gs1 vp ++ ys) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys')
+             (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t)) (ptyp_skip d t) x y) /\
+      (forall i' u u' pre pre' Ts t'' f a f' a', CP i' u u' pre pre' Ts t'' f a f' a' -> u = cups -> u' = cups' ->
          forall Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys',
            ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
            ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
@@ -330,10 +339,12 @@ Section Fixed_GCtx.
            List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
            t'' = ptyp_skip d t' -> List.length ys = d -> List.length ys' = d -> d <= ptyp_depth t' ->
            pre = ms ++ nonrec_arg_vals gs1' vp ++ ys -> pre' = ms' ++ nonrec_arg_vals gs1' vp' ++ ys' ->
+           Ts = List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ List.firstn d (shape_doms_tele t') ->
            tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
            tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-           tele_prefix_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
-           GP v ups ups' (ms ++ nonrec_arg_vals gs1 vp ++ ys) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys') (ptyp_skip d t) f a f' a').
+           tele_prefix_rel (shape_doms_rel (dr' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t') d ys ys' ->
+           GP v ups ups' (ms ++ nonrec_arg_vals gs1 vp ++ ys) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys')
+             (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t)) (ptyp_skip d t) f a f' a').
     Proof.
       apply ind_rel_mut_ind_all.
       - (* a constructor *)
@@ -343,7 +354,7 @@ Section Fixed_GCtx.
         pose proof (view_member_unu _ _ _ _ Hv Hrv) as Hunu; pose proof (view_member_ref _ _ _ _ Hv Hrv) as Hrefv.
         pose proof (eq_trans (view_member_is_rview _ _ _ _ Hv) Hrv) as Hrvv.
         destruct (view_member_cons _ _ _ _ Hv c gs' Hcon) as (gs & Hc & Hcorr).
-        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
+        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
         pose proof (cargs_correspond_len _ _ _ Hcorr) as Hlg.
         assert (Hms : tele_rel (nr' k) (List.rev (im_nparams Mk)) (List.skipn (im_unu Dq Mk) bs) (List.skipn (im_unu Dq Mk) bs')).
         { eapply (nparams_rel_trans qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk);
@@ -361,8 +372,9 @@ Section Fixed_GCtx.
         + rewrite Hunu in Hca, Hms, Hnr |- *.
           pose proof (IH Hu Hu' Mk v Mv c nil nil gs (List.skipn (im_unu Dq Mk) bs) (List.skipn (im_unu Dq Mk) bs') nil nil
                         HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
-                        ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms (tele_prefix_rel_nil _) (proj2 Hnr)) as H.
-          cbn [nonrec_arg_vals] in H; rewrite !List.app_nil_r in H; exact H.
+                        ltac:(cbn; rewrite List.app_nil_r; reflexivity) (prefix_tele_con_start _)
+                        Hms (tele_prefix_rel_nil _) (proj2 Hnr)) as H.
+          cbn [nonrec_arg_vals cargs_nonrec_tele cargs_nonrec List.map] in H; rewrite !List.app_nil_r in H; exact H.
       - (* a neutral *)
         intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Hrv Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' v Hvm.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
@@ -386,7 +398,7 @@ Section Fixed_GCtx.
         assert (Hnpv : im_nparams Mv = nil)
           by (apply nparams_nil_of_nn; rewrite (view_member_nn _ _ _ _ Hv); unfold im_nn; rewrite Hnp; reflexivity).
         assert (Hns : tele_rel (nr' k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
-        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
+        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
         pose proof (cargs_correspond_len _ _ _ Hcorr) as Hlg.
         destruct Hnr as [_ Hnr].
         eapply ind_rel_record with (Mk := Mv) (gs := gs);
@@ -394,14 +406,15 @@ Section Fixed_GCtx.
         + split; [ rewrite length_nonrec_arg_vals by lia; reflexivity |].
           exact (nonrec_to _ _ _ _ c _ _ gs' gs nil nil nil nil ws ws' HMk Hv Hcon Hc I Hcorr eq_refl eq_refl ltac:(lia) ltac:(lia)
                    Hns (tele_prefix_rel_nil _) Hnr).
-        + exact (IH Hu Hu' Mk v Mv c nil nil gs nil nil nil nil HMk Hv Hcon Hc I Hcorr eq_refl eq_refl eq_refl eq_refl
-                   Hns (tele_prefix_rel_nil _) Hnr).
+        + pose proof (IH Hu Hu' Mk v Mv c nil nil gs nil nil nil nil HMk Hv Hcon Hc I Hcorr eq_refl eq_refl eq_refl eq_refl
+                        ltac:(rewrite Hnp; reflexivity) Hns (tele_prefix_rel_nil _) Hnr) as H.
+          rewrite Hnpv in H; exact H.
       - (* no argument *)
-        intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
+        intros k u u' pre pre' Ts Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _ _.
         destruct gs; cbn in Hcorr; [ constructor | contradiction ].
       - (* a non-recursive argument of the container's *)
-        intros k u u' pre x pre' x' gs' vs vs' rA' A' Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
-          HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
+        intros k u u' pre x pre' x' Ts A' gs' vs vs' rA' Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
+          HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' HTs Hms Hpw Hfr.
         assert (Hlc : List.length vp = List.length gs1') by (rewrite Hlp; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
         assert (Hlc' : List.length vp' = List.length gs1') by (rewrite Hlp'; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
         assert (Hk' : List.length (nonrec_arg_vals gs1' vp) = List.length (cargs_nonrec gs1'))
@@ -431,21 +444,23 @@ Section Fixed_GCtx.
           pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_arg rA A :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                         HM Hv Hc1' Hc1 (cargs_correspond_app _ _ _ (ca_arg rA' A' :: nil) (ca_arg rA A :: nil) Hcorr1 ltac:(cbn; tauto)) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
-                        Hpre1 Hpre1' Hms Hpw1 Hfr1) as H.
+                        Hpre1 Hpre1' ltac:(rewrite HTs; apply prefix_tele_snoc_arg) Hms Hpw1 Hfr1) as H.
           rewrite !nonrec_arg_vals_app in H by lia; cbn [nonrec_arg_vals] in H.
-          apply con_args_arg; rewrite <- !List.app_assoc; exact H.
+          rewrite <- prefix_tele_snoc_arg in H.
+          apply con_args_arg; rewrite <- !List.app_assoc in H; repeat rewrite <- List.app_assoc; exact H.
         + (* recursive in the group: the view nests through it *)
           assert (Hc1 : ind_con Mv c = Some ((gs1 ++ ca_rec t :: nil) ++ gs0)) by (rewrite <- List.app_assoc; exact Hc).
           pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_rec t :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                         HM Hv Hc1' Hc1 (cargs_correspond_app _ _ _ (ca_arg rA' A' :: nil) (ca_rec t :: nil) Hcorr1 ltac:(cbn; tauto)) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
-                        Hpre1 Hpre1' Hms Hpw1 Hfr1) as H.
+                        Hpre1 Hpre1' ltac:(rewrite HTs; apply prefix_tele_snoc_arg) Hms Hpw1 Hfr1) as H.
           rewrite !nonrec_arg_vals_app in H by lia; cbn [nonrec_arg_vals] in H; rewrite !List.app_nil_r in H.
+          rewrite <- prefix_tele_snoc_rec in H.
           apply con_args_rec; [| exact H ].
           exact (proj1 (HR _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hx).
       - (* a recursive argument of the container's *)
-        intros k u u' pre pre' t' x x' gs' vs vs' Hr IHr Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
-          HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
+        intros k u u' pre pre' Ts t' x x' gs' vs vs' Hr IHr Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
+          HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' HTs Hms Hpw Hfr.
         destruct gs as [| [rA A | t] gs0]; cbn in Hcorr; try contradiction;
           try (match type of Hcorr with _ = _ /\ cargs_correspond _ _ _ => destruct Hcorr as [Hrr Hcorr] end).
         destruct Hcorr as (Hm & Hd & Hcorr).
@@ -464,23 +479,28 @@ Section Fixed_GCtx.
         apply con_args_rec.
         + pose proof (IHr Hu Hu' Mi' v Mv c gs1' t' gs' gs1 t gs0 ms ms' vp vp' 0 nil nil HM Hv Hc' Hc Hcorr1 Hm Hd Hlp Hlp'
                         eq_refl eq_refl eq_refl ltac:(lia) ltac:(rewrite Hpre, List.app_nil_r; reflexivity)
-                        ltac:(rewrite Hpre', List.app_nil_r; reflexivity) Hms Hpw (tele_prefix_rel_nil _)) as H.
-          rewrite !List.app_nil_r in H; exact H.
+                        ltac:(rewrite Hpre', List.app_nil_r; reflexivity) ltac:(rewrite HTs; apply prefix_tele_shape_start)
+                        Hms Hpw (tele_prefix_rel_nil _)) as H.
+          cbn [List.firstn] in H; rewrite !List.app_nil_r in H; exact H.
         + pose proof (IH Hu Hu' Mi' v Mv c (gs1' ++ ca_rec t' :: nil) (gs1 ++ ca_rec t :: nil) gs0 ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                         HM Hv Hc1' Hc1 (cargs_correspond_app _ _ _ (ca_rec t' :: nil) (ca_rec t :: nil) Hcorr1 (conj Hm (conj Hd I))) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
-                        ltac:(rewrite Hnv' by lia; exact Hpre) ltac:(rewrite Hnv' by lia; exact Hpre') Hms
+                        ltac:(rewrite Hnv' by lia; exact Hpre) ltac:(rewrite Hnv' by lia; exact Hpre')
+                        ltac:(rewrite HTs; apply prefix_tele_snoc_rec) Hms
                         ltac:(rewrite Hln, !Hnv' by lia; exact Hpw) ltac:(rewrite Hln, Hnv' by lia; exact Hfr)) as H.
-          rewrite !(Hnv _ _ (ca_rec t)) in H by lia; exact H.
+          rewrite !(Hnv _ _ (ca_rec t)) in H by lia; rewrite <- prefix_tele_snoc_rec in H; exact H.
       - (* the end of a shape *)
-        intros Ps u pre bs u' pre' bs' j x x' k Ebs Ebs' Ho Ho' Hi IH Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
-          HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
+        intros Ps u Ts pre bs u' pre' bs' j x x' k Ebs Ebs' Ho Ho' Hi IH Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
+          HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' HTs Hms Hpw Hpy.
         subst u u'.
         destruct (ptyp_skip_self _ _ _ _ (eq_sym Hsk)) as (Hle & Hj & HPs); subst j Ps.
         unfold ptyp_depth in Hd, Hdep.
         assert (Hdd : d = List.length (ptyp_doms t')) by lia.
         assert (Hskt : ptyp_skip d t = pt_self (ptyp_mem t) (ptyp_ps t))
           by (rewrite Hdd, Hdep; apply ptyp_skip_end).
+        (** At the end of the shapes, the telescopes are all of their domains. *)
+        subst Ts; rewrite shape_doms_tele_firstn_all in Ebs, Ebs', Ho, Ho' by lia.
+        rewrite shape_doms_tele_firstn_all by lia.
         rewrite Hskt; rewrite Hdd in Hpy.
         pose proof (tele_rel_of_pre _ (ptyp_doms t') _ _ Hpy) as Hpy'.
         destruct (HP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw Hpy') as (HL & HRt & HX).
@@ -492,7 +512,7 @@ Section Fixed_GCtx.
         destruct (nparams_tele_rel_member p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Hbg') as (Mj0 & HMj0 & Hbgt').
         rewrite HMj in HMj0; injection HMj0 as <-.
         eapply rec_arg_self; [ exact Ebsg | exact Ebsg' | | | ].
-        + exact (mk_admissible_index_at _ _ _ _ _ _ _ _ Ebsg (nparams_tele_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Hbg)).
+        + exact (mk_admissible_index_at _ _ _ _ _ _ _ _ _ Ebsg (nparams_tele_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Hbg)).
         + destruct Ho' as [idx' Eidx' Hidx'].
           destruct HX as [e1 e2 Ee1 Ee2 He2]; pose proof (functional_eval_exps' _ _ _ _ Ee1 Eidx') as ->.
           unfold nparams_tele_rel in Hidx'; destruct (ind_member Dq (ptyp_mem t')) as [Mj' |] eqn:HMj'; [| contradiction ].
@@ -500,32 +520,33 @@ Section Fixed_GCtx.
           assert (v' = ptyp_mem t) as -> by (rewrite (view_member_v _ _ _ _ Hv') in Hm; congruence).
           pose proof (nr_to _ _ _ _ _ _ HMj' Hv' Hidx') as Hidx.
           rewrite (view_member_mem _ _ _ _ Hv') in HMj; injection HMj as <-.
-          apply (mk_admissible_index_at _ _ _ _ _ _ _ _ Ee2).
+          apply (mk_admissible_index_at _ _ _ _ _ _ _ _ _ Ee2).
           eapply (nparams_tele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI);
             [ exact (nparams_tele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ He2) |].
           eapply (nparams_tele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [| exact Hbg' ].
           exact (nparams_tele_rel_of p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ (view_member_mem _ _ _ _ Hv') Hidx).
         + exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HMj Hg Hbgt Hbgt').
       - (* a domain of a shape *)
-        intros k pre B' u u' pre' t3 f f' Hr IH Hrl Hrl' Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
-          HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
+        intros k pre Ts B' u u' pre' t3 f f' Hr IH Hrl Hrl' Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
+          HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' HTs Hms Hpw Hpy.
         destruct (ptyp_skip_pi _ _ _ _ (eq_sym Hsk)) as (HB' & Hsk3).
         assert (Hdl : d < List.length (ptyp_doms t)) by (unfold ptyp_depth in Hdep; rewrite <- Hdep; apply List.nth_error_Some; congruence).
         destruct (ptyp_skip_lt d t Hdl) as (B & HB & Hskt).
         rewrite Hskt; apply rec_arg_pi; [| exact Hrl | exact Hrl' ]; intros c0 c0' Hcc.
         pose proof (HD _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' HB' HB Hms Hpw Hpy) as E.
         apply (proj2 (E _ _)) in Hcc.
-        subst pre pre'.
+        subst pre pre' Ts.
         pose proof (IH _ _ Hcc Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' (S d) (ys ++ c0 :: nil) (ys' ++ c0' :: nil)
                       HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' (eq_sym Hsk3)
                       ltac:(rewrite List.length_app; cbn; lia) ltac:(rewrite List.length_app; cbn; lia)
                       ltac:(unfold ptyp_depth; assert (d < List.length (ptyp_doms t')) by (apply List.nth_error_Some; congruence); lia)
-                      ltac:(rewrite <- !List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; reflexivity) Hms Hpw) as H.
-        rewrite !app_assoc_3; apply H.
+                      ltac:(rewrite <- !List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; reflexivity)
+                      ltac:(apply prefix_tele_snoc_dom; exact HB') Hms Hpw) as H.
+        rewrite !app_assoc_3, (prefix_tele_snoc_dom _ _ _ _ _ HB); apply H.
         apply tele_prefix_rel_snoc; [ exact Hpy |].
         unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB'); exact Hcc.
       - (* an application of a shape *)
-        intros f a r f' a' r' k u u' pre pre' t'' Ef Ef' Hr IH Hu Hu' * HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
+        intros f a r f' a' r' k u u' pre pre' Ts t'' Ef Ef' Hr IH Hu Hu' * HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' HTs Hms Hpw Hpy.
         econstructor; [ exact Ef | exact Ef' |].
         eapply IH; eassumption.
     Qed.
@@ -544,21 +565,23 @@ Section Fixed_GCtx.
       Theorem view_group_to_container_all :
         (forall w u u' ns ns' x y, G w u u' ns ns' x y -> u = ups -> u' = ups' ->
            forall i' Mi' Mw, ind_member Dq i' = Some Mi' -> view_member i' Mi' w Mw -> C i' cups cups' ns ns' x y) /\
-        (forall w u u' pre pre' gs vs vs', GA w u u' pre pre' gs vs vs' -> u = ups -> u' = ups' ->
+        (forall w u u' pre pre' Ts gs vs vs', GA w u u' pre pre' Ts gs vs vs' -> u = ups -> u' = ups' ->
            forall i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp',
              ind_member Dq i' = Some Mi' -> view_member i' Mi' w Mw ->
              ind_con Mi' c = Some (gs1' ++ gs') -> ind_con Mw c = Some (gs1 ++ gs) ->
              cargs_correspond vm gs1' gs1 -> cargs_correspond vm gs' gs ->
              List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
              pre = ms ++ nonrec_arg_vals gs1 vp -> pre' = ms' ++ nonrec_arg_vals gs1 vp' ->
+             Ts = List.rev (im_nparams Mw) ++ cargs_nonrec_tele gs1 ->
              tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
              tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
              tele_rel_from (ar w ms c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp)
                (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
-             CA i' cups cups' (ms ++ nonrec_arg_vals gs1' vp) (ms' ++ nonrec_arg_vals gs1' vp') gs' vs vs' /\
+             CA i' cups cups' (ms ++ nonrec_arg_vals gs1' vp) (ms' ++ nonrec_arg_vals gs1' vp')
+               (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1') gs' vs vs' /\
              tele_rel_from (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp)
                (nonrec_arg_vals gs' vs) (nonrec_arg_vals gs' vs')) /\
-        (forall w u u' pre pre' t'' x y, GR w u u' pre pre' t'' x y -> u = ups -> u' = ups' ->
+        (forall w u u' pre pre' Ts t'' x y, GR w u u' pre pre' Ts t'' x y -> u = ups -> u' = ups' ->
            forall i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys',
              ind_member Dq i' = Some Mi' -> view_member i' Mi' w Mw ->
              ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') -> ind_con Mw c = Some (gs1 ++ ca_rec t :: gs2) ->
@@ -566,11 +589,13 @@ Section Fixed_GCtx.
              List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
              t'' = ptyp_skip d t -> List.length ys = d -> List.length ys' = d -> d <= ptyp_depth t' ->
              pre = ms ++ nonrec_arg_vals gs1 vp ++ ys -> pre' = ms' ++ nonrec_arg_vals gs1 vp' ++ ys' ->
+             Ts = List.rev (im_nparams Mw) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t) ->
              tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
              tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-             tele_prefix_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
-             CR i' cups cups' (ms ++ nonrec_arg_vals gs1' vp ++ ys) (ms' ++ nonrec_arg_vals gs1' vp' ++ ys') (ptyp_skip d t') x y) /\
-        (forall w u u' pre pre' t'' f a f' a', GP w u u' pre pre' t'' f a f' a' -> u = ups -> u' = ups' ->
+             tele_prefix_rel (shape_doms_rel (dr' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t') d ys ys' ->
+             CR i' cups cups' (ms ++ nonrec_arg_vals gs1' vp ++ ys) (ms' ++ nonrec_arg_vals gs1' vp' ++ ys')
+               (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ List.firstn d (shape_doms_tele t')) (ptyp_skip d t') x y) /\
+        (forall w u u' pre pre' Ts t'' f a f' a', GP w u u' pre pre' Ts t'' f a f' a' -> u = ups -> u' = ups' ->
            forall i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys',
              ind_member Dq i' = Some Mi' -> view_member i' Mi' w Mw ->
              ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') -> ind_con Mw c = Some (gs1 ++ ca_rec t :: gs2) ->
@@ -578,10 +603,12 @@ Section Fixed_GCtx.
              List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
              t'' = ptyp_skip d t -> List.length ys = d -> List.length ys' = d -> d <= ptyp_depth t' ->
              pre = ms ++ nonrec_arg_vals gs1 vp ++ ys -> pre' = ms' ++ nonrec_arg_vals gs1 vp' ++ ys' ->
+             Ts = List.rev (im_nparams Mw) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t) ->
              tele_rel (nr' i') (List.rev (im_nparams Mi')) ms ms' ->
              tele_prefix_rel (ar' i' ms c) (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-             tele_prefix_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
-             CP i' cups cups' (ms ++ nonrec_arg_vals gs1' vp ++ ys) (ms' ++ nonrec_arg_vals gs1' vp' ++ ys') (ptyp_skip d t') f a f' a').
+             tele_prefix_rel (shape_doms_rel (dr' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t') d ys ys' ->
+             CP i' cups cups' (ms ++ nonrec_arg_vals gs1' vp ++ ys) (ms' ++ nonrec_arg_vals gs1' vp' ++ ys')
+               (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ List.firstn d (shape_doms_tele t')) (ptyp_skip d t') f a f' a').
       Proof.
         apply ind_rel_mut_ind_all.
         - (* a constructor *)
@@ -590,7 +617,7 @@ Section Fixed_GCtx.
           pose proof (eq_trans (eq_sym (view_member_is_rview _ _ _ _ Hv)) Hrv) as Hrvc.
           pose proof (view_member_unu _ _ _ _ Hv Hrvc) as Hunu; pose proof (view_member_ref _ _ _ _ Hv Hrvc) as Hrefv.
           destruct (view_member_cons' _ _ _ _ Hv c gs Hcon) as (gs' & Hc' & Hcorr).
-          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
+          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
           pose proof (cargs_correspond_len _ _ _ Hcorr) as Hlg.
           assert (Hms : tele_rel (nr k) (List.rev (im_nparams Mw)) (List.skipn (im_unu D Mw) bs) (List.skipn (im_unu D Mw) bs')).
           { eapply (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (view_member_mem _ _ _ _ Hv));
@@ -602,8 +629,9 @@ Section Fixed_GCtx.
           destruct Hnr as [_ Hnr].
           pose proof (IH Hu Hu' i' Mi' Mw c nil nil gs' (List.skipn (im_unu Dq Mi') bs) (List.skipn (im_unu Dq Mi') bs') nil nil
                         HMi Hv Hc' Hcon I Hcorr eq_refl eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
-                        ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
-          cbn [nonrec_arg_vals] in Hca'; rewrite !List.app_nil_r in Hca'.
+                        ltac:(cbn; rewrite List.app_nil_r; reflexivity) (prefix_tele_con_start _)
+                        Hms' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
+          cbn [nonrec_arg_vals cargs_nonrec_tele cargs_nonrec List.map] in Hca'; rewrite !List.app_nil_r in Hca'.
           rewrite Hrefv in Href.
           eapply ind_rel_con with (Mk := Mi') (gs := gs');
             [ exact HMi | exact Hrvc | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns) | exact Hc' | exact Hlb | exact Hlb'
@@ -636,17 +664,18 @@ Section Fixed_GCtx.
           assert (Hns' : tele_rel (nr' i') (List.rev (im_nparams Mi')) nil nil) by (rewrite Hnpi; split; reflexivity + exact I).
           destruct Hnr as [_ Hnr].
           destruct (IH Hu Hu' i' Mi' Mw c nil nil gs' nil nil nil nil HMi Hv Hc' Hcon I Hcorr eq_refl eq_refl eq_refl eq_refl
-                      Hns' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
-          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca') as [Hlv Hlv'].
+                      ltac:(rewrite Hnp; reflexivity) Hns' (tele_prefix_rel_nil _) Hnr) as [Hca' Hnr'].
+          rewrite Hnpi in Hca'.
+          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca') as [Hlv Hlv'].
           eapply ind_rel_record with (Mk := Mi') (gs := gs');
             [ exact HMi | exact Hhi | exact Hnpi | exact Hcsi | exact Hp | exact Hp' | | exact Hca' ].
           split; [ rewrite length_nonrec_arg_vals by lia; reflexivity | exact Hnr' ].
         - (* no argument *)
-          intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
+          intros k u u' pre pre' Ts Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _ _.
           destruct gs'; [ split; [ constructor | exact I ] | destruct c0; contradiction ].
         - (* a non-recursive argument of the group's *)
-          intros k u u' pre x pre' x' gs vs vs' rA A Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
-            HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
+          intros k u u' pre x pre' x' Ts A gs vs vs' rA Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
+            HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' HTs Hms Hpw Hfr.
           destruct gs' as [| [rA' A' | t'] gs0']; cbn in Hcorr; try contradiction;
             try (match type of Hcorr with _ = _ /\ cargs_correspond _ _ _ => destruct Hcorr as [Hrr Hcorr] end).
           assert (Hlc : List.length vp = List.length gs1') by (rewrite Hlp; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
@@ -665,14 +694,17 @@ Section Fixed_GCtx.
                         (cargs_correspond_app _ _ _ (ca_arg rA' A' :: nil) (ca_arg rA A :: nil) Hcorr1 ltac:(cbn; tauto)) Hcorr
                         ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                         ltac:(rewrite Hnv, Hpre, <- List.app_assoc by lia; reflexivity)
-                        ltac:(rewrite Hnv, Hpre', <- List.app_assoc by lia; reflexivity) Hms
+                        ltac:(rewrite Hnv, Hpre', <- List.app_assoc by lia; reflexivity)
+                        ltac:(rewrite HTs; apply prefix_tele_snoc_arg) Hms
                         ltac:(rewrite Hln, !Hnv by lia; apply tele_prefix_rel_snoc; [ exact Hpw | exact Hx' ])
                         ltac:(rewrite Hln, Hnv by lia; exact Hfr)) as [Hca Hfr'].
           rewrite !Hnv in Hca by lia; rewrite Hln, !Hnv in Hfr' by lia.
-          split; [ apply con_args_arg; rewrite <- !List.app_assoc; exact Hca | split; [ exact Hx' | exact Hfr' ] ].
+          rewrite <- prefix_tele_snoc_arg in Hca.
+          split; [ apply con_args_arg; rewrite <- !List.app_assoc in Hca; repeat rewrite <- List.app_assoc; exact Hca
+                 | split; [ exact Hx' | exact Hfr' ] ].
         - (* a recursive argument of the group's *)
-          intros k u u' pre pre' t x x' gs vs vs' Hr IHr Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
-            HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' Hms Hpw Hfr.
+          intros k u u' pre pre' Ts t x x' gs vs vs' Hr IHr Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
+            HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' HTs Hms Hpw Hfr.
           assert (Hlc : List.length vp = List.length gs1') by (rewrite Hlp; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
           assert (Hlc' : List.length vp' = List.length gs1') by (rewrite Hlp'; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
           assert (Hk' : List.length (nonrec_arg_vals gs1' vp) = List.length (cargs_nonrec gs1'))
@@ -691,38 +723,47 @@ Section Fixed_GCtx.
           destruct gs' as [| [rA' A' | t'] gs0']; cbn in Hcorr; try contradiction;
             try (match type of Hcorr with _ = _ /\ cargs_correspond _ _ _ => destruct Hcorr as [Hrr Hcorr] end).
           + (* the view nests through it *)
-            subst pre pre' u u'.
+            subst pre pre' u u' Ts.
             pose proof (proj2 (HR _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' Hms Hpw) Hr) as Hx'.
             pose proof (IH eq_refl eq_refl i' Mi' Mw c (gs1' ++ ca_arg rA' A' :: nil) (gs1 ++ ca_rec t :: nil) gs0' ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                           HM Hv ltac:(rewrite <- List.app_assoc; exact Hc') ltac:(rewrite <- List.app_assoc; exact Hc)
                           (cargs_correspond_app _ _ _ (ca_arg rA' A' :: nil) (ca_rec t :: nil) Hcorr1 ltac:(cbn; tauto)) Hcorr
                           ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
-                          ltac:(rewrite HnvR by lia; reflexivity) ltac:(rewrite HnvR by lia; reflexivity) Hms
+                          ltac:(rewrite HnvR by lia; reflexivity) ltac:(rewrite HnvR by lia; reflexivity)
+                          (prefix_tele_snoc_rec _ _ _) Hms
                           ltac:(rewrite Hln, !Hnv by lia; apply tele_prefix_rel_snoc; [ exact Hpw | exact Hx' ])
                           ltac:(rewrite HlnR, HnvR by lia; exact Hfr)) as [Hca Hfr'].
             rewrite !Hnv in Hca by lia; rewrite Hln, !Hnv in Hfr' by lia.
-            split; [ apply con_args_arg; rewrite <- !List.app_assoc; exact Hca | split; [ exact Hx' | exact Hfr' ] ].
+            rewrite <- prefix_tele_snoc_arg in Hca.
+            split; [ apply con_args_arg; rewrite <- !List.app_assoc in Hca; repeat rewrite <- List.app_assoc; exact Hca
+                   | split; [ exact Hx' | exact Hfr' ] ].
           + (* recursive in the container too *)
             destruct Hcorr as (Hm & Hd & Hcorr).
             pose proof (IHr Hu Hu' i' Mi' Mw c gs1' t' gs0' gs1 t gs ms ms' vp vp' 0 nil nil HM Hv Hc' Hc Hcorr1 Hm Hd Hlp Hlp'
                           eq_refl eq_refl eq_refl ltac:(lia) ltac:(rewrite Hpre, List.app_nil_r; reflexivity)
-                          ltac:(rewrite Hpre', List.app_nil_r; reflexivity) Hms Hpw (tele_prefix_rel_nil _)) as Hr'.
-            rewrite !List.app_nil_r in Hr'.
+                          ltac:(rewrite Hpre', List.app_nil_r; reflexivity) ltac:(rewrite HTs; apply prefix_tele_shape_start)
+                          Hms Hpw (tele_prefix_rel_nil _)) as Hr'.
+            cbn [List.firstn] in Hr'; rewrite !List.app_nil_r in Hr'.
             pose proof (IH Hu Hu' i' Mi' Mw c (gs1' ++ ca_rec t' :: nil) (gs1 ++ ca_rec t :: nil) gs0' ms ms' (vp ++ x :: nil) (vp' ++ x' :: nil)
                           HM Hv ltac:(rewrite <- List.app_assoc; exact Hc') ltac:(rewrite <- List.app_assoc; exact Hc)
                           (cargs_correspond_app _ _ _ (ca_rec t' :: nil) (ca_rec t :: nil) Hcorr1 (conj Hm (conj Hd I))) Hcorr
                           ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
-                          ltac:(rewrite HnvR by lia; exact Hpre) ltac:(rewrite HnvR by lia; exact Hpre') Hms
+                          ltac:(rewrite HnvR by lia; exact Hpre) ltac:(rewrite HnvR by lia; exact Hpre')
+                          ltac:(rewrite HTs; apply prefix_tele_snoc_rec) Hms
                           ltac:(rewrite HlnR, !HnvR by lia; exact Hpw) ltac:(rewrite HlnR, HnvR by lia; exact Hfr)) as [Hca Hfr'].
             rewrite !HnvR in Hca by lia; rewrite HlnR, !HnvR in Hfr' by lia.
+            rewrite <- prefix_tele_snoc_rec in Hca.
             split; [ apply con_args_rec; [ exact Hr' | exact Hca ] | exact Hfr' ].
         - (* the end of a shape *)
-          intros Ps u pre bs u' pre' bs' j x x' k Ebs Ebs' Ho Ho' Hi IH Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
-            HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
+          intros Ps u Ts pre bs u' pre' bs' j x x' k Ebs Ebs' Ho Ho' Hi IH Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
+            HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' HTs Hms Hpw Hpy.
           subst u u'.
           destruct (ptyp_skip_self _ _ _ _ (eq_sym Hsk)) as (Hle & Hj & HPs); subst j Ps.
           unfold ptyp_depth in Hd, Hdep.
           assert (Hdd : d = List.length (ptyp_doms t')) by lia.
+          (** At the end of the shapes, the telescopes are all of their domains. *)
+          subst Ts; rewrite shape_doms_tele_firstn_all in Ebs, Ebs', Ho, Ho' by lia.
+          rewrite shape_doms_tele_firstn_all by lia.
           assert (Hskt : ptyp_skip d t' = pt_self (ptyp_mem t') (ptyp_ps t')) by (rewrite Hdd; apply ptyp_skip_end).
           rewrite Hskt; rewrite Hdd in Hpy.
           pose proof (tele_rel_of_pre _ (ptyp_doms t') _ _ Hpy) as Hpy'.
@@ -739,11 +780,11 @@ Section Fixed_GCtx.
             pose proof (nparams_tele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ H) as H'.
             unfold nparams_tele_rel in H'; rewrite (view_member_mem _ _ _ _ Hv') in H'; exact H'. }
           eapply rec_arg_self; [ exact Ebsc | exact Ebsc' | | | ].
-          + apply (mk_admissible_index_at _ _ _ _ _ _ _ _ Ebsc); unfold nparams_tele_rel; rewrite HMj'.
+          + apply (mk_admissible_index_at _ _ _ _ _ _ _ _ _ Ebsc); unfold nparams_tele_rel; rewrite HMj'.
             exact (nparams_rel_refl_r qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' _ _ HMj' _ _ (Hsym _ _ Hbg)).
           + destruct HX as [e1 e2 Ee1 Ee2 He2].
             destruct Ho' as [idx Eidx Hidx]; pose proof (functional_eval_exps' _ _ _ _ Eidx Ee2) as <-.
-            apply (mk_admissible_index_at _ _ _ _ _ _ _ _ Ee1); unfold nparams_tele_rel; rewrite HMj'.
+            apply (mk_admissible_index_at _ _ _ _ _ _ _ _ _ Ee1); unfold nparams_tele_rel; rewrite HMj'.
             apply Hsym.
             eapply (nparams_tele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hbg' |].
             eapply (nparams_tele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact (nparams_tele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Hidx) |].
@@ -751,25 +792,26 @@ Section Fixed_GCtx.
           + exact (ind_rel_idx qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' _ _ _ _ _ _ _ _ _ _ _ HMj' Hg
                      (Hsym _ _ Hbg) (Hsym _ _ Hbg')).
         - (* a domain of a shape *)
-          intros k pre B u u' pre' t3 f f' Hr IH Hrl Hrl' Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
-            HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
+          intros k pre Ts B u u' pre' t3 f f' Hr IH Hrl Hrl' Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
+            HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' HTs Hms Hpw Hpy.
           destruct (ptyp_skip_pi _ _ _ _ (eq_sym Hsk)) as (HB & Hsk3).
           assert (Hdl : d < List.length (ptyp_doms t')) by (unfold ptyp_depth in Hdep; rewrite Hdep; apply List.nth_error_Some; congruence).
           destruct (ptyp_skip_lt d t' Hdl) as (B' & HB' & Hskt).
           rewrite Hskt; apply rec_arg_pi; [| exact Hrl | exact Hrl' ]; intros c0 c0' Hcc.
           pose proof (HD _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hv Hc' Hc Hcorr1 Hlp Hlp' HB' HB Hms Hpw Hpy) as E.
           pose proof (proj1 (E _ _) Hcc) as Hcc'.
-          subst pre pre'.
+          subst pre pre' Ts.
           pose proof (IH _ _ Hcc' Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' (S d) (ys ++ c0 :: nil) (ys' ++ c0' :: nil)
                         HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' (eq_sym Hsk3)
                         ltac:(rewrite List.length_app; cbn; lia) ltac:(rewrite List.length_app; cbn; lia)
                         ltac:(unfold ptyp_depth; lia)
-                        ltac:(rewrite <- !List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; reflexivity) Hms Hpw) as H.
-          rewrite !app_assoc_3; apply H.
+                        ltac:(rewrite <- !List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; reflexivity)
+                        ltac:(apply prefix_tele_snoc_dom; exact HB) Hms Hpw) as H.
+          rewrite !app_assoc_3, (prefix_tele_snoc_dom _ _ _ _ _ HB'); apply H.
           apply tele_prefix_rel_snoc; [ exact Hpy |].
           unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB'); exact Hcc.
         - (* an application of a shape *)
-          intros f a r f' a' r' k u u' pre pre' t'' Ef Ef' Hr IH Hu Hu' * HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
+          intros f a r f' a' r' k u u' pre pre' Ts t'' Ef Ef' Hr IH Hu Hu' * HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' HTs Hms Hpw Hpy.
           econstructor; [ exact Ef | exact Ef' |].
           eapply IH; eassumption.
       Qed.
