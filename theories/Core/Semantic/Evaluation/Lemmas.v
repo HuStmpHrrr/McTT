@@ -195,6 +195,7 @@ Import Domain_Notations.
             assert_fails (constr_eq a b); specialize (IH _ H); subst
         | H : d_neut _ _ = d_neut _ _ |- _ => injection H; intros; subst; clear H
         | H : d_record _ _ = d_record _ _ |- _ => injection H; intros; subst; clear H
+        | H : (_, _, _) = (_, _, _) |- _ => injection H; intros; subst; clear H
         | H : eval_selc _ _ _ nil _ |- _ => inversion H
         end;
       cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
