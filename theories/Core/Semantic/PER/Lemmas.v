@@ -3963,6 +3963,21 @@ Qed.
 Lemma restamp_entry_unit_bound : forall e, entry_unit_bound (restamp_entry e) <= entry_unit_bound e.
 Proof. intros []; cbn; lia. Qed.
 
+(** A restamped entry stores no unit past its position: it is a head of
+    any context PER that reads back. *)
+Lemma restamp_entry_unit_bound_zero : forall e, entry_unit_bound (restamp_entry e) = 0.
+Proof. intros []; reflexivity. Qed.
+
+Lemma head_readable_restamp : forall n e, entry_readable e -> head_readable n (restamp_entry e).
+Proof. intros * H; split; [ exact (restamp_entry_readable _ H) | rewrite restamp_entry_unit_bound_zero; lia ]. Qed.
+
+(** A restamped head has the module and the value of the head. *)
+Lemma env_mod_restamp_entry : forall e ρ, env_mod (restamp_entry e :: ρ) 0 = env_mod (e :: ρ) 0.
+Proof. intros []; reflexivity. Qed.
+
+Lemma env_var_restamp_entry : forall e ρ, env_var (restamp_entry e :: ρ) 0 = env_var (e :: ρ) 0.
+Proof. intros []; reflexivity. Qed.
+
 Lemma env_agree_restamped_readable : forall n k ρ1 ρ2, env_agree_restamped (S n) ρ1 ρ2 ->
     head_readable k (env_entry ρ1 0) -> head_readable k (env_entry ρ2 0).
 Proof.
@@ -4283,6 +4298,16 @@ Qed.
 Lemma substituted_entry_readable : forall v, entry_readable (de_term v substituted_type).
 Proof.
   intros v s; eexists; eapply read_entry_term;
+    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
+Qed.
+
+(** So does a definition with a module part a substitution stores, its
+    term part at [substituted_type]; it stores no unit past its position
+    ([entry_unit_bound]). *)
+Lemma substituted_dm_readable : forall n v h U, head_readable n (de_dm v substituted_type h U).
+Proof.
+  intros n v h U; split; [| cbn; lia ].
+  intros s; eexists; eapply read_entry_dm;
     [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
 Qed.
 
