@@ -958,16 +958,12 @@ Qed.
     [k] is not an atom of the larger, and the assignment that makes it alone
     large, at [ω·s + N] for its sort [s], is below the larger level only if
     that level's constant is at least [ω·(s+1)]. *)
-(** The atoms [xs] hold no proofs: each is its own erasure.  Atoms are
+(** An erased atom of a fresh list, up to erasure, is fresh.  Atoms are
     compared up to erasure ([level_atoms_In]), and an atom that holds a
     proof may mention a variable that its erasure does not; the atoms of a
-    canonical level are erased ([lvl_canonical_erased]), and by the 𝕃
-    invariant (typed level normal forms hold no proofs) so are those of
-    every typed level normal form. *)
-Definition level_atoms_erased (xs : list level_atom) : Prop :=
-  all_list (fun a => ne_erase (atom_level a) = atom_level a) xs.
-
-(** An erased atom of a fresh list, up to erasure, is fresh. *)
+    canonical level are erased ([lvl_canonical_erased],
+    [level_atoms_erased]), and by the 𝕃 invariant (typed level normal forms
+    hold no proofs) so are those of every typed level normal form. *)
 Lemma level_atoms_fresh_In : forall k ys j s a, all_list (fun a => ne_fresh k (atom_level a)) ys -> level_atoms_In j s a ys ->
     ne_erase a = a -> ne_fresh k a.
 Proof.
@@ -1071,7 +1067,7 @@ Lemma level_atoms_open_bound_le : forall k xs d, level_atoms_erased xs ->
     ordinal_le (level_atoms_open_bound k xs) d.
 Proof.
   intros k xs d; induction xs as [| [j s a] r IH]; cbn [level_atoms_open_bound]; intros HE H; [ apply ordinal_le_zero |].
-  unfold level_atoms_erased in HE; cbn [all_list] in HE; destruct HE as [Ha Hr].
+  cbn [level_atoms_erased] in HE; destruct HE as [Ha Hr].
   assert (IH' : ordinal_le (level_atoms_open_bound k r) d) by (apply IH; [ exact Hr | intros; eapply H; [ right | |]; eassumption ]).
   destruct (ne_freshb k a) eqn:E; [ exact IH' |].
   assert (Hs : s < fst d).

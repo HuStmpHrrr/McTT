@@ -380,7 +380,8 @@ Section Fixed_GCtx.
 
   Lemma ctx_pi_split_typed : forall Δt Γ B j, tele_ass Δt -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δt B : Typeω@j ->
       (forall Δ1 Δ2, Δt = Δ1 ++ Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ ctx_pi Δ1 B : Typeω@j) /\
-      (forall Δ1 A Δ2, Δt = Δ1 ++ ce_ass A :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Typeω@j \/ Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Propₘ).
+      (forall Δ1 A Δ2, Δt = Δ1 ++ ce_ass A :: Δ2 ->
+         Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Typeω@j \/ Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : Propₘ \/ Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : LevelSort).
   Proof.
     intros * Hass H; split.
     - intros Δ1 Δ2 ->; rewrite ctx_pi_app in H.
