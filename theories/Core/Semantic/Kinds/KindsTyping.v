@@ -20,16 +20,6 @@ Import Domain_Notations Syntax_Notations Wk_Notations.
 
 (** ** Generated Entries *)
 
-(** A generated item without its type, as kinds read it
-    ([kinds_items_gen]): its sort tag is kept, its type is the
-    placeholder. *)
-Definition generated_item_erase (g : generated_item) : generated_item :=
-  match g with
-  | generated_item_def d pv r _ M => generated_item_def d pv r a_placeholder_type M
-  | generated_item_def_mod d pv _ M E => generated_item_def_mod d pv a_placeholder_type M E
-  | _ => g
-  end.
-
 Lemma gens_append_app : forall gs1 gs2 Φ k,
     gens_append Φ k (gs1 ++ gs2) = gens_append (gens_append Φ k gs1) (k + List.length gs1) gs2.
 Proof.
@@ -85,46 +75,12 @@ Proof.
          cbn [gm_prefix_upto import_item_name] in *; rewrite Ey; reflexivity.
 Qed.
 
-(** The same for the items kinds read. *)
-Lemma kinds_items_gen_names : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs -> List.map generated_item_name gs = List.map import_item_name its.
-Proof. induction 1; cbn; f_equal; auto. Qed.
-
-Lemma kinds_items_gen_prefix_some : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs ->
-    forall y its1 it, items_upto y its = Some (its1, it) ->
-    exists gs0 g, kinds_items_gen Θ Ξ ρ H (it :: nil) (g :: nil) /\
-      forall Φ k, gm_prefix_upto (gens_append Φ k gs) y = Some (gens_append Φ k (gs0 ++ g :: nil)).
-Proof.
-  intros * Hg; induction Hg as [| | | | ]; intros y its1 it0 Hu; cbn [items_upto] in Hu; try discriminate.
-  all: destruct (items_upto y its) as [[its1' it1] |] eqn:Eu.
-  all: try (injection Hu as <- <-;
-            destruct (IHHg _ _ _ Eu) as (gs0 & g0 & Hg1 & Hp);
-            match goal with |- exists _ _, _ /\ forall _ _, gm_prefix_upto (gens_append _ _ (?g :: _)) _ = _ =>
-              exists (g :: gs0), g0 end; split; [ exact Hg1 |];
-            intros Φ k; cbn [gens_append app generated_item_entry]; apply Hp).
-  all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
-  all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (kinds_items_gen_names _ _ _ _ _ _ Hg) in Hn.
-  all: eexists nil, _; split; [ solve [ econstructor; eauto using kinds_items_gen_nil ] |].
-  all: intros Φ k; cbn [gens_append app generated_item_entry]; rewrite gens_prefix_none by exact Hn;
-         cbn [gm_prefix_upto import_item_name] in *; rewrite Ey; reflexivity.
-Qed.
-
 Lemma app_length_inv : forall {A} (l1 l2 l3 l4 : list A),
     List.length l1 = List.length l3 -> l1 ++ l2 = l3 ++ l4 -> l1 = l3 /\ l2 = l4.
 Proof.
   induction l1 as [| a l1 IH]; intros l2 [| b l3] l4 Hl E; cbn in *; try discriminate.
   - split; [ reflexivity | exact E ].
   - injection E as -> E; injection Hl as Hl; destruct (IH _ _ _ Hl E) as [-> ->]; split; reflexivity.
-Qed.
-
-Lemma kinds_items_gen_app_inv : forall Θ Ξ ρ H its1 its2 gs, kinds_items_gen Θ Ξ ρ H (its1 ++ its2) gs ->
-    exists gs1 gs2, gs = gs1 ++ gs2 /\ kinds_items_gen Θ Ξ ρ H its1 gs1 /\ kinds_items_gen Θ Ξ ρ H its2 gs2.
-Proof.
-  induction its1 as [| it its1 IH]; intros * Hg; cbn [app] in Hg.
-  - exists nil, gs; split; [ reflexivity |]; split; [ constructor | exact Hg ].
-  - inversion Hg; subst;
-      match goal with Hr : kinds_items_gen _ _ _ _ (its1 ++ its2) _ |- _ =>
-        destruct (IH _ _ Hr) as (gs1 & gs2 & -> & H1 & H2) end;
-      eexists (_ :: gs1), gs2; (split; [ reflexivity |]); (split; [| exact H2 ]); econstructor; eassumption.
 Qed.
 
 (** ** Matching Environments
@@ -212,10 +168,10 @@ Section Match.
       intros ch k; rewrite !dmod_member_kind_clo_iff, gunit_member_kind_drop; reflexivity.
   Qed.
 
-  Lemma kinds_match_kinds_placeholders : forall Δ Γ ρ, tele_ass Δ -> kinds_match Γ ρ -> kinds_match (Δ ++ Γ) (kinds_placeholders (List.length Δ) ρ).
+  Lemma kinds_match_kinds_pads : forall Δ Γ ρ, tele_ass Δ -> kinds_match Γ ρ -> kinds_match (Δ ++ Γ) (kinds_pads (List.length Δ) ρ).
   Proof.
     induction 1 as [| e Δ [A ->] HΔ IH]; intros HΓ; cbn [app List.length]; [ exact HΓ |].
-    unfold kinds_placeholders in *; cbn [List.repeat app].
+    unfold kinds_pads in *; cbn [List.repeat app].
     apply kinds_match_cons_term; [ auto | discriminate | discriminate ].
   Qed.
 
@@ -233,39 +189,12 @@ Section Match.
   Qed.
 
   Lemma kinds_match_ext : forall Φ y E Γ ρ1, kinds_match (body_ctx Φ ++ Γ) ρ1 ->
-      kinds_match (body_ctx (gm_ext Φ y E) ++ Γ) (kinds_body_entry ρ1 E :: ρ1).
+      kinds_match (body_ctx (gm_ext Φ y E) ++ Γ) (kinds_body_entry ρ1 y E :: ρ1).
   Proof.
     intros * H; destruct E as [b pv ra A [M |] | pm U | pv pq k D Φd | pv A M U | pv pr Rr Φr]; cbn [body_ctx kinds_body_entry app];
       first [ apply kinds_match_cons_mod; [ exact H | apply kinds_equiv_refl ]
             | apply kinds_match_cons_dm; [ exact H | apply kinds_equiv_refl ]
             | apply kinds_match_cons_term; [ exact H | discriminate | discriminate ] ].
-  Qed.
-
-  Lemma kinds_generated_entry_erase : forall ρ k g,
-      kinds_generated_entry ρ k (generated_item_erase g) = kinds_body_entry ρ (gentry_wk (snd (generated_item_entry g)) (wk_shiftn k)).
-  Proof. intros ρ k []; reflexivity. Qed.
-
-  Lemma kinds_match_gens : forall gs Φ k Γ ρ1, kinds_match (body_ctx Φ ++ Γ) ρ1 ->
-      kinds_match (body_ctx (gens_append Φ k gs) ++ Γ) (kinds_items_gen_env ρ1 k (map generated_item_erase gs)).
-  Proof.
-    induction gs as [| g gs IH]; intros * H; cbn [gens_append map kinds_items_gen_env]; [ exact H |].
-    rewrite kinds_generated_entry_erase.
-    destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [snd].
-    apply IH, kinds_match_ext, H.
-  Qed.
-
-  Lemma kinds_items_gen_env_app : forall gs1 gs2 ρ k,
-      kinds_items_gen_env ρ k (gs1 ++ gs2) = kinds_items_gen_env (kinds_items_gen_env ρ k gs1) (k + List.length gs1) gs2.
-  Proof.
-    induction gs1 as [| g gs1 IH]; intros; cbn [app kinds_items_gen_env List.length]; [ rewrite Nat.add_0_r; reflexivity |].
-    rewrite IH, Nat.add_succ_r; reflexivity.
-  Qed.
-
-  Lemma kinds_items_gen_env_split : forall gs ρ k, exists X, kinds_items_gen_env ρ k gs = X ++ ρ /\ List.length X = List.length gs.
-  Proof.
-    induction gs as [| g gs IH]; intros; cbn [kinds_items_gen_env]; [ exists nil; auto |].
-    destruct (IH (kinds_generated_entry ρ k g :: ρ) (S k)) as (X & -> & Hl).
-    exists (X ++ kinds_generated_entry ρ k g :: nil); rewrite <- app_assoc, length_app; cbn; split; [ reflexivity | lia ].
   Qed.
 
 End Match.

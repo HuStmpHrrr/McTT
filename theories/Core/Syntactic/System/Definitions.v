@@ -456,15 +456,6 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Q[Id,,a_left M] : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_right M : Q[Id,,a_left M] )
-(** The placeholder type, small at the least level, the type of a slot no
-    term reads. *)
-| wf_placeholder_type :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : Type@0 )
-(** Its element. *)
-| wf_placeholder :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder : a_placeholder_type )
 (** The type former of a declared member of a group of inductive types, of
     the type the declaration gives: a [Π] over its parameters of the
     sort. *)
@@ -780,13 +771,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q ≈ Q' : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q ≈ Σₚ P' Q' : Propₘ )
-(** The placeholder type and its element, each equal to itself. *)
-| wf_exp_eq_placeholder_type_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ≈ a_placeholder_type : Type@0 )
-| wf_exp_eq_placeholder_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder ≈ a_placeholder : a_placeholder_type )
 | wf_exp_eq_ind_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
@@ -1078,10 +1062,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : a_pi r A B )
-(** η for the placeholder type: its element is the only one. *)
-| wf_exp_eq_placeholder_eta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : a_placeholder_type ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ a_placeholder : a_placeholder_type )
 (** Proof irrelevance: two proofs of a proposition are equal. *)
 | wf_exp_eq_irrelevant :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
@@ -2598,20 +2578,12 @@ Proof.
   eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_sort_cong, HΓ | apply wf_typ, HΓ | constructor | apply wf_subtyp_univ; [ exact HΓ | lia ] ].
 Qed.
 
-(** The base types are types of every large universe: [Prop] and the
-    placeholder type. *)
+(** [Prop] is a type of every large universe. *)
 Lemma wf_prop_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Typeω@i.
 Proof. intros; eapply wf_exp_subtyp; [ apply wf_prop | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_exp_eq_prop_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ ≈ Propₘ : Typeω@i.
 Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_prop_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
-
-Lemma wf_placeholder_type_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_placeholder_type | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
-
-Lemma wf_exp_eq_placeholder_type_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ≈ a_placeholder_type : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_placeholder_type_cong | apply wf_typ | constructor | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_of_nat; eassumption ]. Qed.
 
 Lemma wf_exp_eq_univ_cong_large_tm : forall {Θ Ξ Γ M M' i n},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -2862,11 +2834,6 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ LevelSort ≈ LevelSort : Typeω@?i) => fix_ope
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ : Typeω@?i) => fix_open_level i; apply wf_prop_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ ≈ Propₘ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_prop_cong_large : mctt.
-#[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ a_placeholder_type : Typeω@?i) => fix_open_level i; apply wf_placeholder_type_large : mctt.
-#[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ a_placeholder_type ≈ a_placeholder_type : Typeω@?i) =>
-  fix_open_level i; apply wf_exp_eq_placeholder_type_cong_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨_⟩ ≈ Type⟨_⟩ : Typeω@?i) => fix_open_level i; eapply wf_exp_eq_univ_cong_large_tm : mctt.
 #[export]

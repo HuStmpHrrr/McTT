@@ -606,13 +606,17 @@ Qed.
     ([siblings_from]): a declared one at [Cs], a view of it at its own uniform
     arguments at [Cs], normalized. *)
 
-(** The type of a context entry; a module slot counts as [True], a
-    definition with a module part as its term part's type. *)
-Definition centry_ty (e : centry) : typ :=
-  match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_placeholder_type | ce_dm A _ _ => A end.
+(** The argument a context entry gives: its type, a definition with a
+    module part's term part's type; a module slot gives none. *)
+Definition centry_arg (e : centry) : list (string * exp) :=
+  match e with
+  | ce_ass A | ce_def A _ | ce_dm A _ _ => (""%string, A) :: nil
+  | ce_mod _ => nil
+  end.
 
-(** A telescope, innermost first, as arguments, outermost first. *)
-Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.map (fun e => (""%string, centry_ty e)) Δ).
+(** A telescope, innermost first, as arguments, outermost first.  The
+    telescopes read so are of assumptions ([cargs_ctx], [record_fctx]). *)
+Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.flat_map centry_arg Δ).
 
 (** The constructors of a view, classified.  An inductive view
     [(qc, k, Cs)]: the container's member's, each argument its type at

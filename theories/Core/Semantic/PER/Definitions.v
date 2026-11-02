@@ -167,13 +167,6 @@ Record sublvl_reads (l l' : domain) (s : nat) : Prop := mk_sublvl_reads
 Definition per_sublvl (l l' : domain) : Prop :=
   forall s, sublvl_reads l l' s.
 
-(** Every pair of values is related at the placeholder type: its elements
-    are equal by η. *)
-Definition per_placeholder : relation domain := fun _ _ => True.
-#[global] Arguments per_placeholder /.
-Hint Transparent per_placeholder : mctt.
-Hint Unfold per_placeholder : mctt.
-
 (** A proof value reads back as a proof term at every length: a neutral
     proof by its neutral, a kept proof [⋆ᵈ⟨M, ρ⟩] by [M] under the
     definitions of the entries of [ρ] it reads ([read_proof]). *)
@@ -188,9 +181,10 @@ Definition per_proof : relation domain := fun v v' => proof_readable v /\ proof_
 Definition entry_readable (e : dentry) : Prop :=
   forall s, exists b, Rent e in gc_deps ⍮ gc_stack ⍮ s ↘ b.
 
-(** Every entry of an environment reads back, past its end too (where
-    the entries are the placeholder). *)
-Definition env_readable (ρ : env) : Prop := forall x, entry_readable (env_entry ρ x).
+(** Every entry of an environment reads back.  Past its end an
+    environment has no entry ([absent_entry]), so only the positions below
+    its length are asked. *)
+Definition env_readable (ρ : env) : Prop := forall x, x < List.length ρ -> entry_readable (env_entry ρ x).
 
 (** A head of an environment a context PER relates: it reads back, and
     the unit it stores, if any, is scoped by the [n] entries of its tail
@@ -451,7 +445,7 @@ Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
     before it, at the telescope of all of them ([components_env]). *)
 Definition shape_doms_rel (doms_rel : list domain -> list centry -> exp -> relation domain)
     (Tn Ta : list centry) (ms ws : list domain) (t : ptyp) : nat -> list domain -> relation domain :=
-  fun k ys => doms_rel (ms ++ ws ++ ys) (Tn ++ Ta ++ List.firstn k (shape_doms_tele t)) (List.nth k (ptyp_doms t) a_placeholder_type).
+  fun k ys => doms_rel (ms ++ ws ++ ys) (Tn ++ Ta ++ List.firstn k (shape_doms_tele t)) (List.nth k (ptyp_doms t) exp_default).
 
 (** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
 #[warnings="-cannot-define-projection"]
@@ -1153,11 +1147,6 @@ Section Per_univ_elem_core_def.
       (large_i : universe_index_large i),
       (elem_rel <~> per_level_sort_at (per_univ_rec (us (0, 0)))) ->
       DF LevelSortᵈ ≈ LevelSortᵈ ∈ per_univ_elem_core ↘ elem_rel
-  (** The placeholder type, all of its elements related. *)
-  | per_univ_elem_core_placeholder :
-    forall (elem_rel : relation domain),
-      (elem_rel <~> per_placeholder) ->
-      DF d_placeholder_type ≈ d_placeholder_type ∈ per_univ_elem_core ↘ elem_rel
   (** A [Π]: related domains, relevant codomains related at related
       arguments, and functions of the domains' sorts related pointwise.  A
       function into propositions is a proof of a [∀], not a [Π]. *)
@@ -1270,9 +1259,6 @@ Section Per_univ_elem_core_def.
           Dom a ≈ a' ∈ per_prop ->
           (elem_rel <~> per_proof) ->
           motive elem_rel a a')
-      (case_placeholder : forall {elem_rel},
-          (elem_rel <~> per_placeholder) ->
-          motive elem_rel d_placeholder_type d_placeholder_type)
       (case_Pi :
         forall {a ρ B a' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -1338,7 +1324,6 @@ Section Per_univ_elem_core_def.
   | R, a, b, (per_univ_elem_core_prop_univ _ HE)                      => case_prop_univ HE;
   | R, a, b, (per_univ_elem_core_level_sort _ Hlarge HE)              => case_level_sort Hlarge HE;
   | R, a, b, (per_univ_elem_core_prop _ Hp HE)                        => case_prop Hp HE;
-  | R, a, b, (per_univ_elem_core_placeholder _ HE)                    => case_placeholder HE;
   | R, a, b, (per_univ_elem_core_pi _ out_rel _ equiv_a_a' per HT HB HE) =>
       case_Pi out_rel equiv_a_a' (per_univ_elem_core_strong_ind _ _ _ equiv_a_a') per
         (fun _ _ equiv_c_c' => match HT _ _ equiv_c_c' with
@@ -1559,9 +1544,6 @@ Section Per_univ_elem_ind_def.
           Dom a ≈ a' ∈ per_prop ->
           (elem_rel <~> per_proof) ->
           motive i elem_rel a a')
-      (case_placeholder : forall i {elem_rel},
-          (elem_rel <~> per_placeholder) ->
-          motive i elem_rel d_placeholder_type d_placeholder_type)
       (case_Pi :
         forall i {a ρ B a' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -1626,7 +1608,6 @@ Section Per_univ_elem_ind_def.
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
               (fun _ _ => case_L i) (fun _ => case_prop_univ i) _ (fun _ _ _ => case_prop i)
-              (fun _ => case_placeholder i)
               _ (fun _ _ _ _ _ => case_ne i) _ (fun _ _ _ _ fr _ => case_Rec i fr) R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
@@ -1668,9 +1649,6 @@ Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
 | per_subtyp_level_sort :
   `( universe_index_large i ->
      Sub LevelSortᵈ <: LevelSortᵈ at i )
-(** The placeholder type below itself. *)
-| per_subtyp_placeholder :
-  `( Sub d_placeholder_type <: d_placeholder_type at i )
 (** A universe below a larger one. *)
 | per_subtyp_univ :
   `( i <= j ->
@@ -1806,9 +1784,9 @@ with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop
        R a a' ->
        per_gargs ts (ρ ↦ a ⦂ entry_type_closure A ρ) (ρ' ↦ a' ⦂ entry_type_closure A ρ') args args' ->
        per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
-(** Two bodies as written, each entry seen in the environment its
-    predecessors make, read through the entries their local opens generate
-    ([kinds_body_xp], [eval_body_env]). *)
+(** Two expanded bodies (the core open phase has replaced their local
+    opens), each entry seen in the environment its predecessors make
+    ([eval_body_env]). *)
 with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** Two empty bodies. *)
 | per_body_nil :
@@ -1818,10 +1796,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 | per_body_def :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
-       kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
-       kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
-       ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
-       ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
+       ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+       ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
        rel_typ_sort A ρ1 r ->
        rel_typ_sort A' ρ1' r ->
@@ -1830,10 +1806,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** A submodule each, with related closures. *)
 | per_body_mod :
   `{ per_body ρ Φ ρ' Φ' ->
-     kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
-     kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
-     ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
-     ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
+     ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+     ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
      ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
      ⟦ Δy' ⊢ Dy' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
      per_dmod h h' ->
@@ -1843,46 +1817,14 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 | per_body_dm :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
-       kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
-       kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
-       ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
-       ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
+       ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+       ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
        rel_typ_propositional A ρ1 \/ rel_elem M ρ1 M' ρ1' R ->
        ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
        ⟦ Δy' ⊢ Dy' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
        per_dmod h h' ->
        per_body ρ (gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy))) ρ' (gm_ext Φ' y (ge_def_mod pv' A' M' (gu_mk Δy' Dy'))) }
-(** A local open each, of the same items, with related targets, the
-    entries each generates evaluating.  Each side's target, read again after
-    the first [k] entries it generates (as the [k+1]-th entry reads it), has
-    a value related to its value before them. *)
-| per_body_open :
-  `{ per_body ρ Φ ρ' Φ' ->
-     kinds_body_xp gc_deps gc_stack ρ Φ Φx ->
-     kinds_body_xp gc_deps gc_stack ρ' Φ' Φx' ->
-     ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
-     ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
-     ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
-     ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
-     per_dmod h h' ->
-     kinds_body_xp gc_deps gc_stack ρ (gm_open Φ H its) Φo ->
-     kinds_body_xp gc_deps gc_stack ρ' (gm_open Φ' H' its) Φo' ->
-     ⟦ Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρo ->
-     ⟦ Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρo' ->
-     (forall k ρk, k < List.length its ->
-        ⟦ gm_dropn (List.length its - k) Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρk ->
-        exists hk, ⟦ modexp_wk H (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk ↘ hk) ->
-     (forall k ρk', k < List.length its ->
-        ⟦ gm_dropn (List.length its - k) Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρk' ->
-        exists hk', ⟦ modexp_wk H' (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk' ↘ hk') ->
-     (forall k ρk hk, k < List.length its ->
-        ⟦ gm_dropn (List.length its - k) Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρk ->
-        ⟦ modexp_wk H (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk ↘ hk -> per_dmod hk h) ->
-     (forall k ρk' hk', k < List.length its ->
-        ⟦ gm_dropn (List.length its - k) Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρk' ->
-        ⟦ modexp_wk H' (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk' ↘ hk' -> per_dmod hk' h') ->
-     per_body ρ (gm_open Φ H its) ρ' (gm_open Φ' H' its) }
 .
 
 Scheme per_dmod_mut_ind := Induction for per_dmod Sort Prop
@@ -2195,10 +2137,6 @@ Hint Transparent per_top_typ : mctt.
 #[export]
 Hint Unfold per_top_typ : mctt.
 #[export]
-Hint Transparent per_placeholder : mctt.
-#[export]
-Hint Unfold per_placeholder : mctt.
-#[export]
 Hint Constructors per_ne : mctt.
 #[export]
 Hint Constructors per_univ_elem_core : mctt.
@@ -2246,11 +2184,11 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _ _ _);
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels; the proposition case has the two
           propositions and their relation. *)
-      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 5 intro | do 6 intro | do 3 intro | do 11 intro; ih; do 4 intro
+      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 5 intro | do 6 intro | do 11 intro; ih; do 4 intro
       | do 10 intro | do 34 intro | do 17 intro ]; cbv beta
   end.
 

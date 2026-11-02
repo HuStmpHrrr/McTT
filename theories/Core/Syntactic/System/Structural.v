@@ -1677,10 +1677,13 @@ Section NoLevelMove.
       Θ ⍮ Ξ ⍮ Δ ⊢ⁿˡ mdesc_sub (mdesc_open Δo Φw Φx) σ.
   Proof.
     intros * HR Hn Hx Hxσ IHA HU IHn; cbn [mdesc_sub].
+    pose proof (gm_noopen_nopens _ Hn) as Hnx.
+    assert (Hpn : forall y Φ0 E, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> gm_nopens Φ0 = 0)
+      by (intros * Hp; exact (gm_prefix_upto_nopens _ _ _ Hp Hnx)).
     set (τ := sb_qn (length Δo) σ).
     pose proof (ext_eq_ctx_left _ _ _ _ _ Hx) as HΦΓ; rewrite <- List.app_assoc in HΦΓ.
     pose proof (ext_eq_ctx_left _ _ _ _ _ Hxσ) as HΦΔ.
-    rewrite tele_sub_app, <- List.app_assoc, <- body_ctx_sub in HΦΔ; fold τ in HΦΔ.
+    rewrite tele_sub_app, <- List.app_assoc, <- (body_ctx_sub _ _ Hnx) in HΦΔ; fold τ in HΦΔ.
     assert (HRo : R (tele_sub Δo σ ++ Δ) τ (Δo ++ Γ))
       by (apply R_ext; [ exact HR | exact (ctx_app_wf_tail _ _ _ _ HΦΔ) | exact (ctx_app_wf_tail _ _ _ _ HΦΓ) ]).
     assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; exact HΦΓ).
@@ -1690,7 +1693,7 @@ Section NoLevelMove.
                                 | _ => member_descs y
                                 end).
     - apply gm_noopen_sub; exact Hn.
-    - unfold τ; rewrite body_ctx_sub, <- tele_sub_app; exact Hxσ.
+    - unfold τ; rewrite (body_ctx_sub _ _ Hnx), <- tele_sub_app; exact Hxσ.
     - (* the definitions, each filled in, then moved *)
       intros y Φ0w Ew Aw Mw σw Hp HEw Hfw.
       destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
@@ -1705,7 +1708,7 @@ Section NoLevelMove.
       intros y Φ0w Ew Uw Hp HEw.
       destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
       destruct (entry_unit_sub_inv _ _ _ HEw) as (U & HE & ->).
-      rewrite Hp0, body_ctx_sub, <- length_body_ctx.
+      rewrite Hp0, (body_ctx_sub _ _ (Hpn _ _ _ Hp0)), <- (length_body_ctx _ (Hpn _ _ _ Hp0)).
       pose proof (body_prefix_unit_wf _ _ _ _ _ _ _ _ Hn HΦΓ Hp0 HE) as HUw.
       destruct (wf_unit_eq_scoped _ _ _ _ _ HUw) as (HΓs & HUs & _).
       eapply udenote_sub; [ exact Hc | exact (HU _ _ _ _ Hp0 HE) | exact HΓs | exact HUs |].
@@ -1714,11 +1717,11 @@ Section NoLevelMove.
       intros y Φ0w Ew Uw Hp HEw.
       destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
       destruct (entry_unit_sub_inv _ _ _ HEw) as (U & HE & ->).
-      rewrite Hp0, body_ctx_sub.
+      rewrite Hp0, (body_ctx_sub _ _ (Hpn _ _ _ Hp0)).
       pose proof (body_prefix_wf _ _ _ _ _ _ _ Hn HΦΓ Hp0) as HΦ0Γ.
       pose proof (body_prefix_wf _ _ _ _ _ _ _ (gm_noopen_sub _ _ Hn) HΦΔ
                     ltac:(rewrite gm_prefix_upto_sub, Hp0; reflexivity)) as HΦ0Δ.
-      rewrite body_ctx_sub in HΦ0Δ.
+      rewrite (body_ctx_sub _ _ (Hpn _ _ _ Hp0)) in HΦ0Δ.
       eapply IHn; [ exact Hp0 | exact HE |].
       apply R_ext; [ exact HRo | exact HΦ0Δ | exact HΦ0Γ ].
   Qed.
@@ -1886,7 +1889,7 @@ Proof.
     match goal with Hg' : items_gen _ _ _ _ its _ |- _ => rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg') in Hk' end.
     destruct k as [| k]; cbn in Hk, Hk'; [| eauto ].
     injection Hk as <- <-; injection Hk' as <- <-.
-    rewrite !length_body_ctx, (body_xp_binders _ _ _ _ _ Hx).
+    rewrite !length_body_ctx by (eapply body_xp_nopens; eassumption); rewrite (body_xp_binders _ _ _ _ _ Hx).
     match goal with Hx1 : body_xp _ _ _ Φ1 _ |- _ => rewrite (body_xp_binders _ _ _ _ _ Hx1) end.
     apply body_shape_binders; assumption.
 Qed.
@@ -1975,8 +1978,8 @@ Proof.
     destruct (HDr _ _ _ _ _ _ _ _ _ _ _ Hp0 HE Hp0' HE' Hf0 Hf0') as (H5 & H6);
     first [ exact H5 | exact H6 | rewrite <- ?Hl; first [ exact H1 | exact H2 | exact H3 | exact H4 ] ]).
   - exact HΔσ.
-  - rewrite body_ctx_sub, <- tele_sub_app; exact Hxσ.
-  - rewrite body_ctx_sub, <- tele_sub_app; exact Hxσ'.
+  - rewrite body_ctx_sub by (eapply body_xp_nopens; eassumption); rewrite <- tele_sub_app; exact Hxσ.
+  - rewrite body_ctx_sub by (eapply body_xp_nopens; eassumption); rewrite <- tele_sub_app; exact Hxσ'.
   - exact Hes.
   - (* the tags of the definitions, unmoved *)
     intros y Φ0w Ew Aw Mw Hp HEw.
@@ -4539,17 +4542,6 @@ Qed.
 #[export]
 Hint Resolve lift_exp_universe_index lift_exp_eq_universe_index : mctt.
 
-(** The placeholder type is a closed small type: a type of every universe,
-    small or large, its rule giving it [Type@0], which
-    [universe_index_le_least] lifts anywhere. *)
-Lemma wf_placeholder_type_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : universe_index_term u.
-Proof. intros; eapply (lift_exp_universe_index _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_placeholder_type; assumption ]. Qed.
-
-Lemma wf_exp_eq_placeholder_type_cong_univ : forall {Θ Ξ Γ} {u : universe_index}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ≈ a_placeholder_type : universe_index_term u.
-Proof. intros; eapply (lift_exp_eq_universe_index _ _ _ _ _ (us ordinal_zero)); [ apply universe_index_le_least | apply wf_exp_eq_placeholder_type_cong; assumption ]. Qed.
-
-(** Not hints: they would fire on a goal whose type is still an evar and
-    leave the index open.  Apply them by name. *)
 
 (** The order on indices is subtyping of the universes. *)
 Lemma wf_subtyp_universe_index : forall {Θ Ξ Γ} {u v : universe_index},

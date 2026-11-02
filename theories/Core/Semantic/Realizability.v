@@ -805,11 +805,6 @@ Proof.
       destruct (Hb s) as [M HM], (Hb' s) as [M' HM'].
       apply (mk_normal_reads_alike _ _ _ (nf_proof M) (nf_proof M'));
         [ apply read_nf_proof; assumption | apply read_nf_proof; assumption | reflexivity ].
-  - (** The placeholder type, by η. *)
-    repeat split.
-    + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
-    + intros c c' Hc; apply_relation_equivalence; exact I.
-    + intros b b' _; apply per_top_of_reads; intro s; exists nf_placeholder; split; constructor.
   - (** A [Π]: read back under a fresh variable of the domain, a neutral
         proof at a proposition; its neutrals applied are neutrals of the
         relevant codomain. *)
@@ -943,34 +938,41 @@ Qed.
 
 (** ** Readability of Environments
 
-    A kept proof reads back once every entry of its environment does: the
-    lets bind entries only ([read_lets]).  The entries past the end of an
-    environment are the placeholder, which reads back at its type. *)
+    A kept proof reads back once every entry of its environment its scope
+    reaches does: the lets bind entries only ([read_lets]).  Past its end
+    an environment has no entry ([absent_entry]), which never reads back,
+    so the scope must stay within the environment. *)
 
-(** The placeholder entry reads back, at the placeholder type. *)
-Lemma placeholder_entry_readable : entry_readable placeholder_entry.
-Proof.
-  intros s; eexists; eapply read_entry_term;
-    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
-Qed.
-
-(** The entries of an environment past its end are the placeholder. *)
-Lemma env_entry_past_end : forall ρ x, List.length ρ <= x -> env_entry ρ x = placeholder_entry.
+(** The entries of an environment past its end are [absent_entry]. *)
+Lemma env_entry_past_end : forall ρ x, List.length ρ <= x -> env_entry ρ x = absent_entry.
 Proof. intros * H; rewrite env_entry_nth; apply List.nth_overflow; exact H. Qed.
 
-(** The lets of an environment whose entries read back, at any number of
-    positions and any length. *)
-Lemma read_lets_of_env_readable : forall ρ, env_readable ρ ->
-    forall k s, exists bs, Rlets ρ at k in gc_deps ⍮ gc_stack ⍮ s ↘ bs.
+(** The entry past the end of an environment does not read back: it has
+    no type. *)
+Lemma absent_entry_unreadable : forall s b, ~ Rent absent_entry in gc_deps ⍮ gc_stack ⍮ s ↘ b.
+Proof. intros * H; inversion H; subst; match goal with He : eval_entry_type _ _ entry_type_none _ |- _ => inversion He end. Qed.
+
+(** An entry that reads back is inside its environment. *)
+Lemma entry_readable_inside : forall ρ x, entry_readable (env_entry ρ x) -> x < List.length ρ.
 Proof.
-  intros ρ H k; induction k as [| k IH]; intros s; [ eexists; constructor |].
-  destruct (H k s) as [b Hb]; destruct (IH (S s)) as [bs Hbs]; eexists; econstructor; eassumption.
+  intros * H; destruct (Nat.lt_ge_cases x (List.length ρ)) as [Hx | Hx]; [ exact Hx | exfalso ].
+  rewrite env_entry_past_end in H by exact Hx; destruct (H 0) as [b Hb]; exact (absent_entry_unreadable _ _ Hb).
 Qed.
 
-(** A proof kept over an environment whose entries read back reads back. *)
-Lemma kept_proof_readable : forall M ρ, env_readable ρ -> proof_readable ⋆ᵈ⟨M, ρ⟩.
+(** The lets of an environment whose entries read back, at any number of
+    positions within its length. *)
+Lemma read_lets_of_env_readable : forall ρ, env_readable ρ ->
+    forall k s, k <= List.length ρ -> exists bs, Rlets ρ at k in gc_deps ⍮ gc_stack ⍮ s ↘ bs.
 Proof.
-  intros * H s; destruct (read_lets_of_env_readable _ H (proof_scope M ρ) s) as [bs Hbs].
+  intros ρ H k; induction k as [| k IH]; intros s Hk; [ eexists; constructor |].
+  destruct (H k ltac:(lia) s) as [b Hb]; destruct (IH (S s) ltac:(lia)) as [bs Hbs]; eexists; econstructor; eassumption.
+Qed.
+
+(** A proof kept over an environment whose entries read back reads back,
+    when its scope stays within the environment. *)
+Lemma kept_proof_readable : forall M ρ, env_readable ρ -> proof_scope M ρ <= List.length ρ -> proof_readable ⋆ᵈ⟨M, ρ⟩.
+Proof.
+  intros * H Hk s; destruct (read_lets_of_env_readable _ H (proof_scope M ρ) s Hk) as [bs Hbs].
   eexists; constructor; exact Hbs.
 Qed.
 
@@ -985,10 +987,9 @@ Proof.
   intros * HΓ Hi Hi' Hρ.
   pose proof (per_ctx_env_length HΓ) as Hl.
   pose proof (initial_env_length _ _ Hi) as Hl1; pose proof (initial_env_length _ _ Hi') as Hl2.
-  split; intros x; destruct (Nat.lt_ge_cases x (List.length Γ)) as [Hx | Hx];
-    first [ exact (proj1 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x Hx))
-          | exact (proj2 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x Hx))
-          | rewrite env_entry_past_end by lia; exact placeholder_entry_readable ].
+  split; intros x Hx'; [ rewrite Hl1 in Hx' | rewrite Hl2 in Hx'; rewrite <- Hl in Hx' ];
+    first [ exact (proj1 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x Hx'))
+          | exact (proj2 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x Hx')) ].
 Qed.
 
 (** A module entry reads back, by its stored unit. *)
@@ -1046,21 +1047,27 @@ Proof.
         [ exact Hρ | solve_def_heads | intros _; eexists; reflexivity | intros _; eexists; reflexivity
         | exact (conj (proj1 (entry_readable_of_elem HR Hmm)) (le_n 0))
         | exact (conj (proj2 (entry_readable_of_elem HR Hmm)) (le_n 0)) ].
-    + (** The kept bodies read back over the initial environments, whose
-          entries all do. *)
-      destruct (initial_env_readable _ _ _ _ _ equiv_Γ_Γ' Hi Hi' Hρ) as [Hρr Hρr'].
+    + (** The kept bodies read back over the initial environments: they
+          are scoped by the contexts. *)
       assert (Hp' : domain_relevance a' = propositional) by congruence.
-      assert (Hkept : forall b M0 ρ0, env_readable ρ0 -> domain_relevance b = propositional ->
+      assert (HMb : exp_free_bound M <= List.length Γ)
+        by (destruct HeΓ as [_ HMs]; rewrite Nat.add_0_r in HMs; exact (exp_scoped_free_bound _ _ HMs)).
+      assert (HM'b : exp_free_bound M' <= List.length Γ)
+        by (destruct HeΓ' as [_ HMs]; rewrite Nat.add_0_r, <- (per_ctx_env_length equiv_Γ_Γ') in HMs;
+            exact (exp_scoped_free_bound _ _ HMs)).
+      destruct (per_ctx_env_kept_proof_readable _ _ _ M equiv_Γ_Γ' HMb _ _ Hρ) as [Hρr _].
+      destruct (per_ctx_env_kept_proof_readable _ _ _ M' equiv_Γ_Γ' HM'b _ _ Hρ) as [_ Hρr'].
+      assert (Hkept : forall b M0 ρ0, proof_readable ⋆ᵈ⟨M0, ρ0⟩ -> domain_relevance b = propositional ->
                 (forall s, exists B, Rtyp b in gc_deps ⍮ gc_stack ⍮ s ↘ B) ->
                 entry_readable (de_term ⋆ᵈ⟨M0, ρ0⟩ (entry_type_value b))).
-      { intros * Hr Hb Hty s; destruct (Hty s) as [B HB]; destruct (kept_proof_readable M0 ρ0 Hr s) as [P HP].
+      { intros * Hr Hb Hty s; destruct (Hty s) as [B HB]; destruct (Hr s) as [P HP].
         eexists; econstructor; [ constructor | exact HB | apply read_nf_proof; [ exact Hb | exact HP ] ]. }
       do 2 eexists; repeat split;
         only 1-2: (eapply initial_env_cons_def_proof; [ eassumption | eassumption | congruence ]).
       apply_relation_equivalence.
       unshelve eapply mk_per_ctx_env_def_rel';
         [ exact Hρ | split; [ apply (per_univ_elem_propositional _ _ _ _ HR ltac:(congruence));
-                              split; apply kept_proof_readable; assumption | exact I ]
+                              split; assumption | exact I ]
         | intros _; eexists; reflexivity | intros _; eexists; reflexivity
         | split; [| cbn; lia ];
           apply Hkept; [ exact Hρr | congruence | intros s; destruct (per_univ_then_per_top_typ HR s) as [? ? ? ? _]; eexists; eassumption ]

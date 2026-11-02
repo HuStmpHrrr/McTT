@@ -121,7 +121,7 @@ Section Fixed_GCtx.
   Qed.
 
   Lemma nth_blocks_motives : forall Bks j b, List.nth_error Bks j = Some b ->
-      List.nth j (blocks_motives Bks) a_placeholder_type = eb_motive b.
+      List.nth j (blocks_motives Bks) exp_default = eb_motive b.
   Proof.
     intros * H; unfold blocks_motives.
     apply List.nth_error_nth; rewrite List.nth_error_map, H; reflexivity.
@@ -195,13 +195,6 @@ Section Fixed_GCtx.
     rewrite List.nth_error_map, HB; reflexivity.
   Qed.
 
-  (** Any value reads back at the placeholder type. *)
-  Lemma placeholder_typed_entry_readable : forall v, entry_readable (de_term v (entry_type_value d_placeholder_type)).
-  Proof.
-    intros v s; eexists; eapply read_entry_term;
-      [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
-  Qed.
-
   (** A term reads back at a type that evaluates to a type it reads back
       at. *)
   Lemma entry_readable_at_evaluated : forall v t a, eval_entry_type gc_deps gc_stack t a ->
@@ -222,11 +215,6 @@ Section Fixed_GCtx.
     do 3 eexists; split; [ eassumption | split; eassumption ].
   Qed.
 
-  (** So do any values, each at the placeholder type. *)
-  Lemma placeholder_types_readable : forall vs,
-      List.Forall2 (fun v t => entry_readable (de_term v t)) vs (List.repeat (entry_type_value d_placeholder_type) (List.length vs)).
-  Proof. induction vs as [| v vs IH]; cbn; constructor; [ apply placeholder_typed_entry_readable | exact IH ]. Qed.
-
   (** The values of a telescope's entries are the values given. *)
   Lemma tele_entries_values : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
   Proof. induction vs as [| v vs IH]; intros ρ T; cbn; [ reflexivity | f_equal; apply IH ]. Qed.
@@ -240,12 +228,13 @@ Section Fixed_GCtx.
       it. *)
   Lemma tele_entries_readable : forall vs ρ T,
       (forall i e v, List.nth_error T i = Some e -> List.nth_error vs i = Some v ->
-         entry_readable (de_term v (entry_type_closure (centry_type e) (env_tele ρ T (List.firstn i vs))))) ->
+         exists A, centry_type e = Some A /\
+           entry_readable (de_term v (entry_type_closure A (env_tele ρ T (List.firstn i vs))))) ->
       List.length vs <= List.length T ->
       List.Forall2 (fun v t => entry_readable (de_term v t)) vs (List.map snd (tele_entries ρ T vs)).
   Proof.
     induction vs as [| v vs IH]; intros ρ [| e T] H Hl; cbn in Hl |- *; try lia; constructor.
-    - exact (H 0 e v eq_refl eq_refl).
+    - destruct (H 0 e v eq_refl eq_refl) as (A & HA & Hr); cbn [tele_head_type]; rewrite HA; exact Hr.
     - apply IH; [| lia ].
       intros i e0 v0 He Hv; exact (H (S i) e0 v0 He Hv).
   Qed.
@@ -295,7 +284,7 @@ Section Fixed_GCtx.
     destruct (nth_error_lt_some' ns i Hi) as [x Hx].
     pose proof (tele_prefix_rel_of_full _ _ _ _ i Hn ltac:(lia)) as Hp.
     pose proof (adm_nparam_types _ _ _ _ _ _ Ha j Mj i A _ _ HM He Hp) as Hc.
-    exact (component_elem_readable_at_admissible_base _ _ _ _ _ _ Hc (Hr _ _ _ Hx Hv)).
+    exists A; split; [ reflexivity | exact (component_elem_readable_at_admissible_base _ _ _ _ _ _ Hc (Hr _ _ _ Hx Hv)) ].
   Qed.
 
   (** ** The Members the Leaf Paths End In *)
@@ -1224,6 +1213,12 @@ Section Fixed_GCtx.
                     exists a a', ⟦ eb_motive ba ⟧ env_extend_typed ρa (List.combine (ns ++ m :: nil) ts) ↘ a /\
                       ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
                       DF a ≈ a' ∈ per_univ_elem i ↘ Rel j ns m ns' m').
+      (** Related indices and elements read back at some types, on each
+          side (the model gives them their types in the motive's context). *)
+      Hypothesis (Hidx : forall j Mj u u' ns ns' m m', ind_member D j = Some Mj -> im_is_rview Mj = false ->
+                    grp_rel p D ups nr ar dr j u u' ns ns' m m' ->
+                    (exists ts, List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts) /\
+                    (exists ts', List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts')).
       (** Neutrals of a record view's record, at its instances at [ua] and
           [ub], are related by its record clause: their projections are
           related as its fields (S1-V's counterpart of the record shape;
@@ -1337,11 +1332,11 @@ Section Fixed_GCtx.
       Proof.
         intros * HM Hrv Hm1 Hm2.
         destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb].
-        (** Each side's motive at the placeholder types, which always read back. *)
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 (placeholder_types_readable _) (placeholder_types_readable _))
-          as (a & a1 & Ea & Ea1 & HR1).
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 (placeholder_types_readable _) (placeholder_types_readable _))
-          as (b & a2 & Eb & Ea2 & HR2).
+        (** Each side's motive at types its indices read back at. *)
+        destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm1) as [(ts1 & T1) (ts1' & T1')].
+        destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm2) as [_ (ts2' & T2')].
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 T1 T1') as (a & a1 & Ea & Ea1 & HR1).
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 T1 T2') as (b & a2 & Eb & Ea2 & HR2).
         pose proof (functional_eval_exp _ _ _ _ Ea Eb) as <-.
         eapply per_univ_elem_right_irrel; eassumption.
       Qed.
@@ -1352,10 +1347,10 @@ Section Fixed_GCtx.
       Proof.
         intros * HM Hrv Hm1 Hm2.
         destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb].
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 (placeholder_types_readable _) (placeholder_types_readable _))
-          as (a1 & a & Ea1 & Ea & HR1).
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 (placeholder_types_readable _) (placeholder_types_readable _))
-          as (a2 & b & Ea2 & Eb & HR2).
+        destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm1) as [(ts1 & T1) (ts1' & T1')].
+        destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm2) as [(ts2 & T2) _].
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 T1 T1') as (a1 & a & Ea1 & Ea & HR1).
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 T2 T1') as (a2 & b & Ea2 & Eb & HR2).
         pose proof (functional_eval_exp _ _ _ _ Ea Eb) as <-.
         eapply per_univ_elem_left_irrel; eassumption.
       Qed.
@@ -1605,8 +1600,8 @@ Section Fixed_GCtx.
           the domain, or the eliminator's result function. *)
       Lemma leaf_results_pi_relevant : forall (l : list nat) bs out out' b b' f f' ρ ρ' B t,
           leaf_results bs
-            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_value d_placeholder_type) fam_cod) l)
-            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_value d_placeholder_type) fam_cod) l)
+            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_none) fam_cod) l)
+            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_none) fam_cod) l)
             (List.map (fun i => d_ihfn ρa Bksa p ua t i f) l) (List.map (fun i => d_ihfn ρb Bksb p ub t i f') l) out out' ->
           domain_relevance b = relevant -> domain_relevance b' = relevant ->
           List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) out /\
@@ -1626,8 +1621,8 @@ Section Fixed_GCtx.
           rest at the function's values there. *)
       Lemma leaf_results_apply : forall (l : list nat) bs out out' b b' f f' fc fc' c c' ρ ρ' B t tc tc' rc rc',
           leaf_results bs
-            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_value d_placeholder_type) fam_cod) l)
-            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_value d_placeholder_type) fam_cod) l)
+            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_none) fam_cod) l)
+            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_none) fam_cod) l)
             (List.map (fun i => d_ihfn ρa Bksa p ua t i f) l) (List.map (fun i => d_ihfn ρb Bksb p ub t i f') l) out out' ->
           $| f & c | gc_deps ⍮ gc_stack ↘ fc -> $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' ->
           ⟦ihty fc of t at p ua under ρa (blocks_motives Bksa) ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ⦂ entry_type_closure B ρ ↘ tc ->
@@ -1802,10 +1797,10 @@ Section Fixed_GCtx.
           set (N := List.length (shape_leaves (rview_leaves D) 0 t)) in *.
           refine (mk_ih_pair _ _ _ _ _ _ _
                     (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua (components_env D ua Ts pre) B t i f
-                                                 ⦂ entry_type_value d_placeholder_type) fam_cod)
+                                                 ⦂ entry_type_none) fam_cod)
                        (List.seq 0 N))
                     (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub (components_env D ub Ts pre') B t i f'
-                                                  ⦂ entry_type_value d_placeholder_type) fam_cod)
+                                                  ⦂ entry_type_none) fam_cod)
                        (List.seq 0 N))
                     (List.map (fun i => d_ihfn ρa Bksa p ua t i f) (List.seq 0 N))
                     (List.map (fun i => d_ihfn ρb Bksb p ub t i f') (List.seq 0 N)) _ _ _ _ _ _ _ _ _);
@@ -2141,9 +2136,9 @@ Section Fixed_GCtx.
             unfold N; split; congruence. }
           destruct LN as [LN LN'].
           exists (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua (components_env D ua Ts pre) B t i v
-                                             ⦂ entry_type_value d_placeholder_type) fam_cod) (List.seq 0 N)),
+                                             ⦂ entry_type_none) fam_cod) (List.seq 0 N)),
                  (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub (components_env D ub Ts pre') B t i v'
-                                             ⦂ entry_type_value d_placeholder_type) fam_cod) (List.seq 0 N)).
+                                             ⦂ entry_type_none) fam_cod) (List.seq 0 N)).
           split; [ eapply eval_ihty_pi; [ exact Hl | exact Eb ] | split; [ eapply eval_ihty_pi; [ exact Hl | exact Eb' ] | split ] ].
           + rewrite <- LN; apply forall2_map_seq; intros n r Hri s; cbn [Nat.add].
             destruct (Hext s) as (fc & fc' & rcs & rcs' & as1 & as2 & Ef & _ & F1 & _ & T1 & _ & R1 & _).

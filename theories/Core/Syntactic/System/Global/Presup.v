@@ -1324,7 +1324,7 @@ Proof.
   - rewrite !sb_qn_lt by assumption; cbn; rewrite sb_qn_lt by assumption; reflexivity.
   - rewrite !sb_qn_ge by assumption.
     rewrite <- (sb_of_list_lt_compose L τ (x - n)) by lia.
-    rewrite (sb_of_list_nth L Id (x - n) a_placeholder_type) by lia; cbn [sentry_wk sentry_sub].
+    rewrite (sb_of_list_nth L Id (x - n) exp_default) by lia; cbn [sentry_wk sentry_sub].
     f_equal; apply exp_shiftn_sub_qn0.
 Qed.
 
@@ -1455,9 +1455,9 @@ Proof.
   - assert (Hlt : j < ind_ndecl D) by (apply (Ho _ _ Hj); unfold im_is_decl; rewrite Hh; reflexivity).
     rewrite apps_exp_app; f_equal; cbn [exp_sub].
     rewrite sb_qn_ge by lia; replace (d + (ind_ndecl D - 1 - j) - d) with (ind_ndecl D - 1 - j) by lia.
-    unfold grp_sb; rewrite (sb_of_list_nth _ _ _ a_placeholder_type) by (rewrite length_grp_sb_list; lia).
+    unfold grp_sb; rewrite (sb_of_list_nth _ _ _ exp_default) by (rewrite length_grp_sb_list; lia).
     rewrite length_grp_sb_list; replace (ind_ndecl D - 1 - (ind_ndecl D - 1 - j)) with j by lia.
-    rewrite (List.nth_indep _ a_placeholder_type (apps (a_ind p 0) (vars_from 0 (ind_nu D)))) by (rewrite length_grp_sb_list; lia).
+    rewrite (List.nth_indep _ exp_default (apps (a_ind p 0) (vars_from 0 (ind_nu D)))) by (rewrite length_grp_sb_list; lia).
     rewrite (List.map_nth (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D)))), List.seq_nth by lia.
     cbn [sentry_wk sentry_exp]; rewrite apps_exp_wk, vars_from_wk_shiftn; reflexivity.
   - rewrite List.map_app; f_equal; f_equal.
@@ -2228,7 +2228,7 @@ Proof.
   apply List.Forall_app; split; [ apply IH | repeat constructor; eexists; reflexivity ].
 Qed.
 
-Lemma ptyp_scoped_dom : forall t n d, ptyp_scoped n t -> exp_scoped (d + n) (List.nth d (ptyp_doms t) a_placeholder_type).
+Lemma ptyp_scoped_dom : forall t n d, ptyp_scoped n t -> exp_scoped (d + n) (List.nth d (ptyp_doms t) exp_default).
 Proof.
   induction t as [j Ps | B t IH]; intros * Ht; cbn in Ht |- *; [ destruct d; exact I |].
   destruct Ht as [HB Ht]; destruct d as [| d]; [ exact HB |].

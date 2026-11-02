@@ -1015,7 +1015,6 @@ Proof.
   - assert (m = n) as -> by lia; eexists; per_univ_elem_econstructor; reflexivity.
   - eexists; per_univ_elem_econstructor; reflexivity.
   - eexists; per_univ_elem_econstructor; [ assumption | reflexivity ].
-  - eexists; per_univ_elem_econstructor; reflexivity.
   - assert (i = j) as -> by lia; eexists; per_univ_elem_econstructor; [ eassumption | reflexivity | reflexivity ].
   - eexists; per_univ_elem_econstructor; [ eassumption | apply per_sublvl_antisym; assumption | reflexivity ].
   - rename H into Haa', H0 into Hsub_cod, H1 into IHcod, H2 into HΠ, H3 into HΠ', H4 into Ha'a, H5 into Hsub_cod'.

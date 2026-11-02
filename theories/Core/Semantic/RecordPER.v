@@ -23,7 +23,7 @@ Section Fixed_GCtx.
 
   (** The type of the field [k] of [R], [⊤] if there is no such field. *)
   Definition nth_ftyp (R : record_decl) (k : nat) : typ :=
-    match List.nth_error (record_fields R) k with Some (_, T) => T | None => a_placeholder_type end.
+    match List.nth_error (record_fields R) k with Some (_, T) => T | None => exp_default end.
 
   (** The relation of a field, after the values [vs] of the fields before
       it: the head PER of its type there, at the parameters [ns]

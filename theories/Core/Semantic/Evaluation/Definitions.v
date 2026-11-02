@@ -139,7 +139,7 @@ Fixpoint cargs_entries (p : qname) (ups : list domain) (ρ : env) (gs : list car
       match gs with
       | ca_arg _ A :: gs' => (v, entry_type_closure A ρ) :: cargs_entries p ups (ρ ↦ v ⦂ entry_type_closure A ρ) gs' vs'
       | ca_rec t :: gs' => (v, entry_type_shape p ups ρ t) :: cargs_entries p ups ρ gs' vs'
-      | nil => (v, entry_type_value d_placeholder_type) :: cargs_entries p ups ρ nil vs'
+      | nil => (v, entry_type_none) :: cargs_entries p ups ρ nil vs'
       end
   end.
 
@@ -158,12 +158,12 @@ Fixpoint ihs_types (D : ind_decl) (p : qname) (ups : list domain) (ρm : env) (A
   end.
 
 (** [pair_values_with_types vs ts]: each value of [vs] paired with the type
-    at its position in [ts]; a value past the end of [ts] is paired with the
-    placeholder type. *)
+    at its position in [ts]; a value past the end of [ts] is paired with no
+    type ([entry_type_none]). *)
 Fixpoint pair_values_with_types (vs : list domain) (ts : list entry_type) : list (domain * entry_type) :=
   match vs with
   | nil => nil
-  | v :: vs' => (v, List.hd (entry_type_value d_placeholder_type) ts) :: pair_values_with_types vs' (List.tl ts)
+  | v :: vs' => (v, List.hd entry_type_none ts) :: pair_values_with_types vs' (List.tl ts)
   end.
 
 (** The variables of a branch of the member [Mj] of the group [D] at
@@ -199,15 +199,15 @@ Definition elim_grp_of (oq : option qname) (m : domain) : option qname :=
 
 (** * The Kinds of Members of Module Values
 
-    A local open declares, for each item, a definition or an alias, by the
-    kind of the member it names ([items_gen]).  Evaluation must tell them
-    apart without a type: the kind of a member is read off the module value
-    and the syntax of the units it closes over.  A body is read through the
-    entries it makes ([kinds_env]), as evaluation would but with a placeholder
-    for every definition, so that no term is evaluated: a kind does not
+    Selection tells a member's kind (a term of a sort, a module, or both)
+    without a type: the kind of a member is read off the module value and
+    the syntax of the units it closes over.  A body is read through the
+    entries it makes ([kinds_env]), as evaluation would but with no value
+    for any definition, so that no term is evaluated: a kind does not
     depend on the values of terms, nor on a module's arguments, which are
-    terms ([kinds_placeholders]).  The relations mirror [member_type] with the types left
-    out, and read a closure or a submodule closure as selection on module
+    terms ([kinds_pads]).  The bodies read are expanded: the core open
+    phase has replaced every local open by the entries it generates.  The
+    relations read a closure or a submodule closure as selection on module
     values does ([eval_selm]). *)
 
 (** The closure of a unit over [ρ], as kinds read it: a saturated alias is
@@ -215,37 +215,23 @@ Definition elim_grp_of (oq : option qname) (m : domain) : option qname :=
 Definition dm_clo (U : gunit) (ρ : env) : dmod :=
   match U with gu_mk Δ D => dm_local Δ D ρ end.
 
-(** [n] placeholders for parameters, terms, over [ρ]. *)
-Definition kinds_placeholders (n : nat) (ρ : env) : env := List.repeat placeholder_entry n ++ ρ.
+(** [n] pads for parameters, terms whose values kinds never read, over
+    [ρ]. *)
+Definition kinds_pads (n : nat) (ρ : env) : env := List.repeat absent_entry n ++ ρ.
 
-(** The entry a body's entry adds over [ρ], as kinds read it: a module, its
-    closure; a definition with a module part, a placeholder and the
-    closure of its unit; any other, a placeholder, as in [body_ctx]. *)
-Definition kinds_body_entry (ρ : env) (E : gentry) : dentry :=
+(** The entry a body's entry [y] adds over [ρ], as kinds read it, as
+    [body_ctx] binds it: a module, its closure; an inductive or a record
+    type, the closure of the alias of its module; a definition with a
+    module part, the closure of its unit with no term value; a definition,
+    a pad ([absent_entry]). *)
+Definition kinds_body_entry (ρ : env) (y : string) (E : gentry) : dentry :=
   match E with
   | ge_mod _ U => de_mod (dm_clo U ρ) U
-  | ge_def_mod _ _ _ U => de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_clo U ρ) U
-  | _ => placeholder_entry
-  end.
-
-(** The entries generated items add over [ρ], as kinds read them, the
-    [k]-th under the [k] before it: an alias, the closure of its unit; a
-    definition with a module part, a placeholder and the closure of its
-    module part's unit; a definition, a placeholder. *)
-Definition kinds_generated_entry (ρ : env) (k : nat) (g : generated_item) : dentry :=
-  match g with
-  | generated_item_alias _ _ E =>
-      de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ) (gu_mk nil (md_alias (modexp_wk E (wk_shiftn k))))
-  | generated_item_def_mod _ _ _ _ E =>
-      de_dm d_placeholder (entry_type_value d_placeholder_type) (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-        (gu_mk nil (md_alias (modexp_wk E (wk_shiftn k))))
-  | _ => placeholder_entry
-  end.
-
-Fixpoint kinds_items_gen_env (ρ : env) (k : nat) (gs : list generated_item) : env :=
-  match gs with
-  | nil => ρ
-  | g :: gs' => kinds_items_gen_env (kinds_generated_entry ρ k g :: ρ) (S k) gs'
+  | ge_ind _ pq _ _ _ =>
+      let U := gu_mk nil (md_alias (qname_mod (qname_sibling pq y))) in de_mod (dm_clo U ρ) U
+  | ge_record _ p _ _ => let U := gu_mk nil (md_alias (qname_mod p)) in de_mod (dm_clo U ρ) U
+  | ge_def_mod _ _ _ U => de_dm d_prop entry_type_none (dm_clo U ρ) U
+  | _ => absent_entry
   end.
 
 (** The kind of a member with a term part and a module part, by its module
@@ -334,7 +320,7 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
     environment of the entries before it *)
 | gunit_member_kind_mod : forall ρ Δ sm Φ Φ' y pm Uy ρ1 ch k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ' ρ1 ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
     gunit_member_kind Θ Ξ ρ1 Uy ch k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
 (** A definition with a module part is one ([dm_of] its module part's
@@ -344,7 +330,7 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
     [dm_of] the kind of its module part *)
 | gunit_member_kind_dm_here : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ' ρ1 ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
     gunit_member_kind Θ Ξ ρ1 Uy nil k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: nil) (dm_of k)
 (** A definition with a module part of the body, the chain going on: the
@@ -353,45 +339,12 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
 | gunit_member_kind_dm_step : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 ch k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
     ch <> nil ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ' ρ1 ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
     gunit_member_kind Θ Ξ ρ1 Uy ch k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
-(** A name a local open declares, by the kind of the member it names in the
-    open's target, as the open generates it ([kinds_items_gen]): a definition of a term
-    member, an alias of a module member or of the target itself, and a
-    definition with a module part of a member with both parts. *)
-(** The item names a term member of the target: a term of its sort *)
-| gunit_member_kind_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x r,
-    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
-    modexp_member_kind Θ Ξ ρ0 H (n :: nil) (member_kind_term r) ->
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) (member_kind_term r)
-(** The item names a module member of the target: the chain is read in
-    that member *)
-| gunit_member_kind_item_mod : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
-    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
-    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_mod ->
-    modexp_member_kind Θ Ξ ρ0 H (n :: ch) k ->
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
-(** The item names a member of the target with a term part and a module
-    part: the chain is read in that member, so at the empty chain it is a
-    definition with a module part *)
-| gunit_member_kind_item_dm : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
-    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
-    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_dm ->
-    modexp_member_kind Θ Ξ ρ0 H (n :: ch) k ->
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
-(** The item names the target itself: the chain is read in the target *)
-| gunit_member_kind_item_self : forall ρ Δ sm Φ Φ0 H its1 d pv ρ0 x ch k,
-    gm_item_upto Φ x = Some (Φ0, H, its1, (None, d, pv)) ->
-    kinds_env Θ Ξ (kinds_placeholders (List.length Δ) ρ) Φ0 ρ0 ->
-    modexp_member_kind Θ Ξ ρ0 H ch k ->
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
 (** An alias unit: the chain is read in its target *)
 | gunit_member_kind_alias : forall ρ Δ E ch k,
-    modexp_member_kind Θ Ξ (kinds_placeholders (List.length Δ) ρ) E ch k ->
+    modexp_member_kind Θ Ξ (kinds_pads (List.length Δ) ρ) E ch k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_alias E)) ch k
 with modexp_member_kind (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list string -> member_kind -> Prop :=
 (** A unit: the chain read in the global module of the unit *)
@@ -423,77 +376,24 @@ with modexp_member_kind (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list strin
 | modexp_member_kind_app : forall ρ H N ch k,
     modexp_member_kind Θ Ξ ρ H ch k ->
     modexp_member_kind Θ Ξ ρ (me_app H N) ch k
-(** The environment a body makes, as kinds read it: an entry each body
-    entry adds ([kinds_body_entry]), and the entries an open generates. *)
+(** The environment an expanded body makes, as kinds read it: an entry
+    each body entry adds ([kinds_body_entry]). *)
 with kinds_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** The empty body adds nothing *)
 | kinds_env_nil : forall ρ, kinds_env Θ Ξ ρ gm_nil ρ
 (** An entry adds its [kinds_body_entry] *)
 | kinds_env_ext : forall ρ Φ ρ1 y E,
     kinds_env Θ Ξ ρ Φ ρ1 ->
-    kinds_env Θ Ξ ρ (gm_ext Φ y E) (kinds_body_entry ρ1 E :: ρ1)
-(** An open adds the entries its items generate *)
-| kinds_env_open : forall ρ Φ ρ1 H its gs,
-    kinds_env Θ Ξ ρ Φ ρ1 ->
-    kinds_items_gen Θ Ξ ρ1 H its gs ->
-    kinds_env Θ Ξ ρ (gm_open Φ H its) (kinds_items_gen_env ρ1 0 gs)
-(** A body read through the entries its local opens generate, as kinds read
-    them: [body_xp] with the types left out.  Each open's items are read in
-    the environment of the expanded body before it. *)
-with kinds_body_xp (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
-(** The empty body is its own expansion *)
-| kinds_body_xp_nil : forall ρ, kinds_body_xp Θ Ξ ρ gm_nil gm_nil
-(** An entry stays as it is *)
-| kinds_body_xp_ext : forall ρ Φ Φx x E,
-    kinds_body_xp Θ Ξ ρ Φ Φx ->
-    kinds_body_xp Θ Ξ ρ (gm_ext Φ x E) (gm_ext Φx x E)
-(** An open is replaced by the entries its items generate *)
-| kinds_body_xp_open : forall ρ Φ Φx ρ1 H its gs,
-    kinds_body_xp Θ Ξ ρ Φ Φx ->
-    kinds_env Θ Ξ ρ Φx ρ1 ->
-    kinds_items_gen Θ Ξ ρ1 H its gs ->
-    kinds_body_xp Θ Ξ ρ (gm_open Φ H its) (gens_append Φx 0 gs)
-(** What the items of an open of [H] generate, by the kinds of the members
-    they name, in [ρ]; a generated definition carries no type: its type
-    is the placeholder, and its tag the sort of the member it names. *)
-with kinds_items_gen (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_item -> list generated_item -> Prop :=
-(** No items generate nothing *)
-| kinds_items_gen_nil : forall ρ H, kinds_items_gen Θ Ξ ρ H nil nil
-(** An item naming the target itself: an alias of the target *)
-| kinds_items_gen_self : forall ρ H d pv its gs,
-    kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((None, d, pv) :: its) (generated_item_alias d pv H :: gs)
-(** An item naming a term member: a definition of the member, of its
-    sort.  Kinds do not read types, so its type is a placeholder; a body
-    is read by the sorts its definitions are tagged with
-    ([eval_body_env]). *)
-| kinds_items_gen_def : forall ρ H n d pv r its gs,
-    modexp_member_kind Θ Ξ ρ H (n :: nil) (member_kind_term r) ->
-    kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def d pv r a_placeholder_type (a_mem H n) :: gs)
-(** An item naming a module member: an alias of the member *)
-| kinds_items_gen_mod : forall ρ H n d pv its gs,
-    modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_mod ->
-    kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_alias d pv (me_mem H n) :: gs)
-(** An item naming a member with a term part and a module part: a
-    definition with a module part, the member as its term part and as the
-    target of its module part *)
-| kinds_items_gen_dm : forall ρ H n d pv its gs,
-    modexp_member_kind Θ Ξ ρ H (n :: nil) member_kind_dm ->
-    kinds_items_gen Θ Ξ ρ H its gs ->
-    kinds_items_gen Θ Ξ ρ H ((Some n, d, pv) :: its) (generated_item_def_mod d pv a_placeholder_type (a_mem H n) (me_mem H n) :: gs).
+    kinds_env Θ Ξ ρ (gm_ext Φ y E) (kinds_body_entry ρ1 y E :: ρ1).
 
 Scheme dmod_member_kind_mut_ind := Induction for dmod_member_kind Sort Prop
 with gunit_member_kind_mut_ind := Induction for gunit_member_kind Sort Prop
 with modexp_member_kind_mut_ind := Induction for modexp_member_kind Sort Prop
-with kinds_env_mut_ind := Induction for kinds_env Sort Prop
-with kinds_body_xp_mut_ind := Induction for kinds_body_xp Sort Prop
-with kinds_items_gen_mut_ind := Induction for kinds_items_gen Sort Prop.
-Combined Scheme kind_mut_ind from dmod_member_kind_mut_ind, gunit_member_kind_mut_ind, modexp_member_kind_mut_ind, kinds_env_mut_ind, kinds_body_xp_mut_ind, kinds_items_gen_mut_ind.
+with kinds_env_mut_ind := Induction for kinds_env Sort Prop.
+Combined Scheme kind_mut_ind from dmod_member_kind_mut_ind, gunit_member_kind_mut_ind, modexp_member_kind_mut_ind, kinds_env_mut_ind.
 
 #[export]
-Hint Constructors dmod_member_kind gunit_member_kind modexp_member_kind kinds_env kinds_body_xp kinds_items_gen : mctt.
+Hint Constructors dmod_member_kind gunit_member_kind modexp_member_kind kinds_env : mctt.
 
 (** * Evaluation of Expressions
 
@@ -577,12 +477,6 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** And that of its second. *)
 | eval_exp_right :
   `( ⟦ a_right M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_right M, ρ⟩ )
-(** The placeholder type is a value. *)
-| eval_exp_placeholder_type :
-  `( ⟦ a_placeholder_type ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_placeholder_type )
-(** So is its element. *)
-| eval_exp_placeholder :
-  `( ⟦ a_placeholder ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_placeholder )
 (** The type former and a constructor of a member of a group of inductive
     types are values, with no argument yet. *)
 | eval_exp_indty :
@@ -896,10 +790,10 @@ with eval_shape_type (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env ->
      ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record qr cups )
 (** At a domain: a [Π] over it, of the shape family.  The environment of
     the codomain [fam_cod] binds the family alone; it never holds a proof,
-    so its entry is at the placeholder type. *)
+    so its entry is at no type ([entry_type_none]). *)
 | eval_shape_type_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_value d_placeholder_type) fam_cod )
+     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_none) fam_cod )
 where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shape_type Θ Ξ p ups ρ t r)
 (** The types of the recursive results of an argument [v] of shape [t],
     one per leaf path, its components in [ρ], of the group at [p] at the
@@ -915,7 +809,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ List.nth j As a_placeholder_type ⟧ Θ ⍮ Ξ ⍮
+     ⟦ List.nth j As exp_default ⟧ Θ ⍮ Ξ ⍮
        env_extend_typed ρm (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs ++ (v, entry_type_shape p ups ρ (pt_self j Ps)) :: nil) ↘ a ->
      ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
 (** At the end, at a record view: those of its fields at [v]'s
@@ -933,7 +827,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ
-       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ entry_type_value d_placeholder_type) fam_cod)
+       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ entry_type_none) fam_cod)
            (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ p ups ρm As ρ t v r)
 (** The types of the recursive results of the fields [vs] of a record
@@ -1227,12 +1121,10 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
   `( 0 < List.length Δ ->
      dm_local Δ D ρ ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_local Δ D ρ) (x :: nil) )
 (** A term part of a saturated body ([entry_tm]: a definition's body or a
-    definition with a module part's term), found in the body read through
-    the entries its local opens generate: it, in the environment of the
+    definition with a module part's term): it, in the environment of the
     body before it, when the entry is relevant. *)
 | eval_sel_body :
-  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+  `( gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = relevant ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
@@ -1244,8 +1136,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
     body's closure, so that readback binds the body as its unit over the
     entries it closes over. *)
 | eval_sel_body_proof :
-  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+  `( gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = propositional ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
@@ -1282,12 +1173,10 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
   `( 0 < List.length Δ ->
      dm_local Δ D ρ ·ₘ y Θ ⍮ Ξ ↘ dm_member (dm_local Δ D ρ) (y :: nil) )
 (** A module part of a saturated body ([entry_unit]: a submodule, or a
-    definition with a module part's), found in the body read through the
-    entries its local opens generate: its unit's closure, in the
+    definition with a module part's): its unit's closure, in the
     environment of the body before it. *)
 | eval_selm_body :
-  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
+  `( gm_prefix_upto Φ y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
@@ -1327,8 +1216,8 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** A definition tagged relevant adds its value.  A body is read by the
     sorts its definitions are tagged with, as selection reads it
     ([eval_sel_body]): typing makes a definition's tag the sort of its
-    type, and a definition an open generates is tagged with the sort of
-    the member it names, where its type is not known ([kinds_items_gen]). *)
+    type, a definition an open generates included: the core open phase
+    gives it the type of the member it names ([items_gen]). *)
 | eval_body_env_def :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
@@ -1420,18 +1309,17 @@ Proof. intros * <-; apply eval_exp_var. Qed.
 
     Evaluation of a substitution is pointwise: at every variable [x], [ρσ x]
     is the entry [σ x] denotes in [ρ]: the entry of a variable, the value of a
-    term, the value of a module expression, or the values of both.  Past its end [ρσ] reads the
-    placeholder, so a result exists only when, from some index on, every
+    term, the value of a module expression, or the values of both.  Past its end [ρσ] reads
+    [absent_entry], so a result exists only when, from some index on, every
     [σ x] denotes it, for example as a variable past the end of [ρ].
 
     Only the metatheory evaluates substitutions; NbE never does.  An
-    entry that is a term is stored at [substituted_type], the placeholder
-    type: the type of a term is not known to evaluation, and the entry's
-    type must not depend on the result environment, so that evaluation of
-    a substitution stays functional.  REVISIT: the readback of a kept
-    proof in such an environment reads those entries at the placeholder
-    type. *)
-Definition substituted_type : entry_type := entry_type_value d_placeholder_type.
+    entry that is a term is stored at [substituted_type]: the type of a
+    term is not known to evaluation, and the entry's type must not depend
+    on the result environment, so that evaluation of a substitution stays
+    functional.  REVISIT (P4): a substitution's term entries are to carry
+    their type on the source side; until then they are at no type. *)
+Definition substituted_type : entry_type := entry_type_none.
 
 (** The unit a module entry of a substitution's result is stored at, for
     the same reason: the placeholder, an alias of the module at the dummy
@@ -1635,7 +1523,7 @@ Proof. intros * x _; split; intros _; cbn; rewrite env_entry_restamp; reflexivit
     [Δ]: its type evaluates there, up to agreement on the entries of [Δ], to
     a proposition.  It does not depend on the head of the environment. *)
 Definition head_propositional (Θ : gdeps) (Ξ : gstack) (e : centry) (Δ : ctx) (ρσ : env) : Prop :=
-  entry_propositional Θ Ξ (e :: Δ) (placeholder_entry :: ρσ) 0.
+  entry_propositional Θ Ξ (e :: Δ) (absent_entry :: ρσ) 0.
 
 Lemma entry_propositional_head : forall {Θ Ξ} e Δ d ρσ,
     entry_propositional Θ Ξ (e :: Δ) (d :: ρσ) 0 <-> head_propositional Θ Ξ e Δ ρσ.

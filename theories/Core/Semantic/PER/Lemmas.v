@@ -835,7 +835,6 @@ Proof.
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ /\ _ |- _ => destruct (IH _ _ _ HR) as [HR' _] end.
       split; [ exact Hr | split; [ exact Hl | eexists; exact HR' ] ].
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
-  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - destruct_conjs.
     match goal with H1 : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_relevance _ _ _ _ H1) as Ea end.
     split.
@@ -1107,8 +1106,6 @@ Proof.
       destruct (IH _ _ _ Hm12) as [IH1 _] end.
     split; [ exact Hl1 | split; [ exact Hl3 | eexists; exact (IH1 _ _ Hm23') ] ].
   - (** A proposition. *)
-    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
-  - (** The placeholder type. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The pi case. *)
     destruct_conjs.
@@ -1873,7 +1870,7 @@ Proof.
        apply per_subtyp_neut; [ assumption | assumption | etransitivity; eassumption ]. }
   (** The closed types and the universes, a small universe below a small
       one composing by the transitivity of the order on levels. *)
-  1-7: dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ]; simpl in *; mauto.
+  1-6: dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ]; simpl in *; mauto.
   all: try solve [ econstructor; solve [ lia | solve_universe_index ] ].
   - dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
     handle_per_univ_elem_irrel.
@@ -2132,11 +2129,9 @@ Proof. intros * Hn; inversion Hn; subst; destruct Δ; discriminate. Qed.
 Lemma per_gargs_len_eq : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> length args = length args'.
 Proof. induction 1; cbn; congruence. Qed.
 
-(** The expansion and environment of one body read twice are one. *)
+(** The environment of one body read twice is one. *)
 Ltac solve_mid_body :=
   repeat match goal with
-    | H1 : kinds_body_xp _ _ ?ρ ?Φ ?Φ1, H2 : kinds_body_xp _ _ ?ρ ?Φ ?Φ2 |- _ =>
-        assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
     | H1 : eval_body_env _ _ ?ρ ?Φ ?r1, H2 : eval_body_env _ _ ?ρ ?Φ ?r2 |- _ =>
         assert_fails (constr_eq r1 r2); assert (r1 = r2) by (eapply functional_eval_body_env; eassumption); subst r2
     end.
@@ -2243,12 +2238,6 @@ Proof.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
     econstructor; eauto using rel_elem_at_trans.
-  - (* an open: the middle target is one value *)
-    match goal with H : per_body _ (gm_open _ _ _) _ _ |- _ => inversion H; subst; clear H end.
-    solve_mid_body.
-    match goal with H1 : eval_modexp _ _ ?H ?ρ ?h1, H2 : eval_modexp _ _ ?H ?ρ ?h2 |- _ =>
-      assert_fails (constr_eq h1 h2); assert (h1 = h2) by (eapply functional_eval_modexp; eassumption); subst end.
-    econstructor; eauto.
 Qed.
 
 Corollary per_dmod_trans : forall m1 m2 m3, per_dmod m1 m2 -> per_dmod m2 m3 -> per_dmod m1 m3.
@@ -3742,11 +3731,7 @@ Ltac solve_per_env_extend_chain :=
     | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
     end;
   apply per_env_extend_intro';
-    first [ pairwise | solve_per_head | assumption
-          (** A head an evaluated substitution stores reads back, at the
-              placeholder type ([substituted_entry_readable]). *)
-          | solve [ intros ?s; eexists; eapply read_entry_term;
-                    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ] ] ].
+    first [ pairwise | solve_per_head | assumption ].
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -4297,24 +4282,6 @@ Proof.
 Qed.
 
 (** * Readability of Kept Proofs over Related Environments *)
-
-(** Any term entry an evaluated substitution stores ([substituted_type])
-    reads back, at the placeholder type. *)
-Lemma substituted_entry_readable : forall v, entry_readable (de_term v substituted_type).
-Proof.
-  intros v s; eexists; eapply read_entry_term;
-    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
-Qed.
-
-(** So does a definition with a module part a substitution stores, its
-    term part at [substituted_type]; it stores no unit past its position
-    ([entry_unit_bound]). *)
-Lemma substituted_dm_readable : forall n v h U, head_readable n (de_dm v substituted_type h U).
-Proof.
-  intros n v h U; split; [| cbn; lia ].
-  intros s; eexists; eapply read_entry_dm;
-    [ apply eval_entry_type_value | apply read_typ_placeholder_type | apply read_nf_placeholder ].
-Qed.
 
 (** The entries of the environments a context PER relates read back, on
     the context's entries: each head does ([head_readable] fields). *)

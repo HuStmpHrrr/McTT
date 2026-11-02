@@ -693,12 +693,6 @@ Inductive exp : Set :=
 | a_left : exp -> exp
 (** The proof of the second component of a conjunction *)
 | a_right : exp -> exp
-(** The type of a slot no term reads (a binder a body's entry occupies
-    without a term, a placeholder of the kinds); a relevant type with one
-    element.  No surface syntax produces it. *)
-| a_placeholder_type : exp
-(** The element of [a_placeholder_type] *)
-| a_placeholder : exp
 (** The type former of the member [k] of the group [pq] of inductive types,
     to be applied to its parameters: [pq] names the group, the path of its
     first member's entry ([ge_ind]). *)
@@ -915,8 +909,6 @@ Section syn_mut_ind.
     (case_conj : forall T M N, Pe T -> Pe M -> Pe N -> Pe (a_conj T M N))
     (case_left : forall M, Pe M -> Pe (a_left M))
     (case_right : forall M, Pe M -> Pe (a_right M))
-    (case_placeholder_type : Pe a_placeholder_type)
-    (case_placeholder : Pe a_placeholder)
     (case_ind : forall p k, Pe (a_ind p k))
     (case_con : forall p k c, Pe (a_con p k c))
     (case_nlit : forall n, Pe (a_nlit n))
@@ -978,8 +970,6 @@ Section syn_mut_ind.
     | a_conj T M N => case_conj T M N (exp_mut T) (exp_mut M) (exp_mut N)
     | a_left M => case_left M (exp_mut M)
     | a_right M => case_right M (exp_mut M)
-    | a_placeholder_type => case_placeholder_type
-    | a_placeholder => case_placeholder
     | a_ind p k => case_ind p k
     | a_con p k c => case_con p k c
     | a_nlit n => case_nlit n
@@ -1116,10 +1106,17 @@ Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
   | y :: pre' => me_mems (me_mem H y) pre'
   end.
 
-(** [H.y1. … .yn.x] as a term: submodule selections, then a member. *)
+(** The closed term a total function returns where its input has no
+    answer: an index past the end of a list, a chain naming no member.
+    Never a user term, and never read where an answer exists; it is
+    [Propₘ] only so that it is closed and evaluates. *)
+Definition exp_default : exp := a_prop.
+
+(** [H.y1. … .yn.x] as a term: submodule selections, then a member.  The
+    empty chain names no member ([exp_default]). *)
 Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
   match ch with
-  | nil => a_placeholder
+  | nil => exp_default
   | x :: nil => a_mem H x
   | y :: ch' => member_ref (me_mem H y) ch'
   end.
@@ -1290,19 +1287,36 @@ End GlobalCtx_Notations.
     assumption, a definition or a module slot. *)
 Abbreviation ctx := (list centry).
 
-(** A body as the context entries it binds, innermost first.  A local open
-    binds one placeholder per item: a pre-form is never typed.  So does an
-    inductive type, which only a filed module declares. *)
+(** The path of the sibling [y] of the member [p]: the member [y] of the
+    module [p] is in. *)
+Definition qname_sibling (p : qname) (y : string) : qname :=
+  {| q_unit := q_unit p ; q_chain := List.removelast (q_chain p) ++ y :: nil |}.
+
+(** A body as the context entries it binds, innermost first.
+
+    An inductive type or a record type, which only a filed module
+    declares, binds its module: the inductive type [y] of the group [pq]
+    is the member [y] of the module [pq] is in, and a record type is
+    filed at its path [p].  Its term part, the type former, is named by
+    its path ([a_ind], [a_record]), never by the index.
+
+    [body_ctx] reads expanded bodies: an open is expanded first, into the
+    entries its items generate ([body_xp]), and an unexpanded open binds no
+    entry here.  For example, [Φ = [open M use (n); def r : #0 = #0 ≔ …]]
+    has two binders ([gm_binders]) but [body_ctx Φ] holds only [r]'s entry;
+    no reader reads it, every one reads the expansion
+    [[private def n : ℕ ≔ M.n; def r : … ≔ …]], whose context has an entry
+    per binder. *)
 Fixpoint body_ctx (Φ : gmod) : ctx :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' _ (ge_def _ _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind _ _ _ _ _) => cons (ce_ass a_placeholder_type) (body_ctx Φ')
+  | gm_ext Φ' y (ge_ind _ pq _ _ _) => cons (ce_mod (gu_mk nil (md_alias (qname_mod (qname_sibling pq y))))) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def_mod _ A M U) => cons (ce_dm A M U) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_record _ _ _ _) => cons (ce_ass a_placeholder_type) (body_ctx Φ')
-  | gm_open Φ' _ its => List.repeat (ce_ass a_placeholder_type) (List.length its) ++ body_ctx Φ'
+  | gm_ext Φ' _ (ge_record _ p _ _) => cons (ce_mod (gu_mk nil (md_alias (qname_mod p)))) (body_ctx Φ')
+  | gm_open Φ' _ _ => body_ctx Φ'
   end.
 
 (** The term part of a body's entry, its type and its body: a definition
@@ -1668,10 +1682,9 @@ Inductive nf : Set :=
 | nf_False : nf
 (** A [Σₚ] of normal forms *)
 | nf_and : nf -> nf -> nf
-(** The placeholder type *)
-| nf_placeholder_type : nf
-(** Its element *)
-| nf_placeholder : nf
+(** A proof erased ([nf_erase]): normal forms are compared up to their
+    proofs.  Only an erasure builds it. *)
+| nf_proof_erased : nf
 (** A [Π] of normal forms of the sort [r]: a [∀] at [propositional] *)
 | nf_pi : relevance -> nf -> nf -> nf
 (** A function, its domain and body normal *)
@@ -1691,6 +1704,9 @@ with ne : Set :=
 (** Ex falso at a type, with its proof of [⊥] as a term: a proof is not
     evaluated, so it is stuck on nothing *)
 | ne_absurd : nf -> exp -> ne
+(** Ex falso at a type with its proof erased ([ne_erase]).  Only an
+    erasure builds it. *)
+| ne_absurd_erased : nf -> ne
 (** The eliminator of the group [pq], at its declared member [m], stuck
     on a neutral, at the group's uniform parameters; its blocks carry no
     annotation.  (An eliminator at a view is stuck as the eliminator of the
@@ -1725,7 +1741,8 @@ Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
   end.
 
 (** The term a normal form stands for (normal forms are a subset of
-    terms). *)
+    terms).  An erased proof stands for none: erasures are only compared
+    ([nf_erase]), so its term is [exp_default], never read. *)
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
@@ -1738,8 +1755,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_proof M => M
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
-  | nf_placeholder_type => a_placeholder_type
-  | nf_placeholder => a_placeholder
+  | nf_proof_erased => exp_default
   | nf_pi r A B => a_pi r (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
   | nf_indty p k Ms => apps_exp (a_ind p k) (List.map nf_to_exp Ms)
@@ -1751,6 +1767,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_absurd A M => a_absurd (nf_to_exp A) M
+  | ne_absurd_erased A => a_absurd (nf_to_exp A) exp_default
   | ne_elim p Us m Bks M =>
       a_elim relevant (Some p) (List.map nf_to_exp Us) m
         (List.map (fun b => eb_mk (block_arity b) None (nf_to_exp (block_motive b))
@@ -1863,7 +1880,7 @@ Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False
-  | nf_placeholder_type | nf_placeholder => True
+  | nf_proof_erased => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_clean Ms
@@ -1873,7 +1890,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
   end
 with ne_clean (M : ne) : Prop :=
   match M with
-  | ne_absurd A _ => nf_clean A
+  | ne_absurd A _ | ne_absurd_erased A => nf_clean A
   | ne_elim _ Us _ Bks M =>
       all_list nf_clean Us /\
       all_list (fun b => nf_clean (block_motive b) /\ all_list (fun br => nf_clean (branch_body br)) (block_branches b)) Bks /\
@@ -2073,8 +2090,9 @@ Defined.
 
     Proofs are irrelevant: two normal forms that differ only in their
     proofs stand for equal terms.  [nf_erase] replaces every proof by the
-    marker [a_placeholder], which is never a proof; two normal forms are
-    equal up to proofs when their erasures are equal. *)
+    marker [nf_proof_erased] (in a stuck ex falso, [ne_absurd_erased]);
+    two normal forms are equal up to proofs when their erasures are
+    equal. *)
 Fixpoint nf_erase (W : nf) : nf :=
   match W with
   | nf_typ i => nf_typ i
@@ -2084,11 +2102,9 @@ Fixpoint nf_erase (W : nf) : nf :=
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom ne_erase) xs)
   | nf_prop => nf_prop
   | nf_True => nf_True
-  | nf_proof _ => nf_proof a_placeholder
+  | nf_proof _ | nf_proof_erased => nf_proof_erased
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_erase P) (nf_erase Q)
-  | nf_placeholder_type => nf_placeholder_type
-  | nf_placeholder => nf_placeholder
   | nf_pi r A B => nf_pi r (nf_erase A) (nf_erase B)
   | nf_fn A M => nf_fn (nf_erase A) (nf_erase M)
   | nf_indty p k Ms => nf_indty p k (List.map nf_erase Ms)
@@ -2099,7 +2115,7 @@ Fixpoint nf_erase (W : nf) : nf :=
   end
 with ne_erase (M : ne) : ne :=
   match M with
-  | ne_absurd A _ => ne_absurd (nf_erase A) a_placeholder
+  | ne_absurd A _ | ne_absurd_erased A => ne_absurd_erased (nf_erase A)
   | ne_elim p Us m Bks M => ne_elim p (List.map nf_erase Us) m (List.map (map_normal_block (fun _ => nf_erase)) Bks) (ne_erase M)
   | ne_app M N => ne_app (ne_erase M) (nf_erase N)
   | ne_var x => ne_var x
@@ -2246,8 +2262,6 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_conj T M N => a_conj (exp_wk T φ) (exp_wk M φ) (exp_wk N φ)
   | a_left M => a_left (exp_wk M φ)
   | a_right M => a_right (exp_wk M φ)
-  | a_placeholder_type => a_placeholder_type
-  | a_placeholder => a_placeholder
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
   | a_nlit n => a_nlit n
@@ -2331,7 +2345,7 @@ with centry_wk (e : centry) (φ : wk) : centry :=
 Fixpoint exp_free_bound (M : exp) : nat :=
   match M with
   | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_ntok | a_prop | a_True | a_tt | a_False
-  | a_placeholder_type | a_placeholder | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_record _ => 0
+  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_record _ => 0
   | a_univ t => exp_free_bound t
   | a_succl M | a_left M | a_right M | a_proj _ M => exp_free_bound M
   | a_maxl M N | a_absurd M N | a_app M N => Nat.max (exp_free_bound M) (exp_free_bound N)
@@ -2418,7 +2432,7 @@ Fixpoint tele_wk (Δ : ctx) (φ : wk) : ctx :=
     are not part of the object syntax: applying one is a meta-level recursion
     on the expression.
 
-    An entry of the wrong sort reads as a closed default, [a_placeholder] or the
+    An entry of the wrong sort reads as a closed default, [exp_junk] or the
     module [me_unit nil], which every operation fixes.  The
     defaults are the semantic projections of an entry of the other sort, so
     evaluation commutes with every substitution. *)
@@ -2435,7 +2449,13 @@ Inductive sentry : Set :=
 
 Definition sub : Set := nat -> sentry.
 
-Definition exp_junk : exp := a_placeholder.
+(** The term a module entry gives a term variable.  Never a user term:
+    only for totality of the read ([sentry_exp]); it evaluates to what a
+    module entry of an environment gives a term variable ([env_var]). *)
+Definition exp_junk : exp := exp_default.
+(** The module expression a term entry gives a module variable.  Never a
+    user module expression: only for totality of the read
+    ([sentry_modexp]). *)
 Definition modexp_junk : modexp := me_unit nil.
 
 (** The term an entry gives a term variable. *)
@@ -2527,8 +2547,6 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_conj T M N => a_conj (exp_sub T σ) (exp_sub M σ) (exp_sub N σ)
   | a_left M => a_left (exp_sub M σ)
   | a_right M => a_right (exp_sub M σ)
-  | a_placeholder_type => a_placeholder_type
-  | a_placeholder => a_placeholder
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
   | a_nlit n => a_nlit n

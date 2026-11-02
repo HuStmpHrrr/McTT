@@ -171,12 +171,10 @@ Fixpoint nf_code (M : nf) (t : code_tree) : code_tree :=
   | nf_lvl (a, b) xs =>
       code_tree_node 3 (code_tree_node a (code_tree_node b (list_code (atom_code (fun m => ne_code m code_tree_nil)) xs code_tree_nil) code_tree_nil) code_tree_nil) t
   | nf_True => code_tree_node 7 code_tree_nil t
-  | nf_proof _ => code_tree_node 8 code_tree_nil t
+  | nf_proof _ | nf_proof_erased => code_tree_node 8 code_tree_nil t
   | nf_False => code_tree_node 9 code_tree_nil t
   | nf_prop => code_tree_node 17 code_tree_nil t
   | nf_and P Q => code_tree_node 19 (nf_code P (nf_code Q code_tree_nil)) t
-  | nf_placeholder_type => code_tree_node 20 code_tree_nil t
-  | nf_placeholder => code_tree_node 21 code_tree_nil t
   | nf_pi r A B =>
       code_tree_node (match r with relevant => 10 | propositional => 18 end) (nf_code A (nf_code B code_tree_nil)) t
   | nf_fn A M' => code_tree_node 11 (nf_code A (nf_code M' code_tree_nil)) t
@@ -201,7 +199,7 @@ with ne_code (m : ne) (t : code_tree) : code_tree :=
   | ne_var x => code_tree_node 0 (code_tree_node x code_tree_nil code_tree_nil) t
   | ne_glob p => code_tree_node 1 (strings_code (q_unit p) (strings_code (q_chain p) code_tree_nil)) t
   | ne_app m' N => code_tree_node 2 (ne_code m' (nf_code N code_tree_nil)) t
-  | ne_absurd A _ => code_tree_node 4 (nf_code A code_tree_nil) t
+  | ne_absurd A _ | ne_absurd_erased A => code_tree_node 4 (nf_code A code_tree_nil) t
   | ne_elim p Us m Bks m' =>
       code_tree_node 5 (code_tree_node m (strings_code (q_unit p) (strings_code (q_chain p) code_tree_nil))
                    (list_code (block_code (fun A => nf_code A code_tree_nil)) Bks

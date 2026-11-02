@@ -24,7 +24,7 @@ Section Fixed_GCtx.
   (** The type at a position of a telescope, and of a constructor's
       non-recursive arguments, of the member [m]. *)
   Definition nth_ctyp (T : list centry) (k : nat) : typ :=
-    match List.nth_error T k with Some (ce_ass A) => A | _ => a_placeholder_type end.
+    match List.nth_error T k with Some (ce_ass A) => A | _ => exp_default end.
 
   (** The non-uniform parameters of the member [m], none if there is no
       such member. *)
@@ -35,8 +35,8 @@ Section Fixed_GCtx.
       of the member [m]. *)
   Definition nth_atyp (D : ind_decl) (m : nat) (c : String.string) (k : nat) : typ :=
     match ind_member D m with
-    | Some Mm => match ind_con Mm c with Some gs => List.nth k (cargs_nonrec gs) a_placeholder_type | None => a_placeholder_type end
-    | None => a_placeholder_type
+    | Some Mm => match ind_con Mm c with Some gs => List.nth k (cargs_nonrec gs) exp_default | None => exp_default end
+    | None => exp_default
     end.
 
   (** The telescope of the non-recursive arguments of the constructor [c]

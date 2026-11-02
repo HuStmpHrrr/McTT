@@ -27,8 +27,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 (** [exp_scoped n M], with its mutual parts for the subterms' sorts. *)
 Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False
-  | a_placeholder_type | a_placeholder => True
+  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False => True
   | a_succl M | a_univ M | a_left M | a_right M => exp_scoped n M
   | a_maxl M N | a_absurd M N => exp_scoped n M /\ exp_scoped n N
   | a_conj T M N => exp_scoped n T /\ exp_scoped n M /\ exp_scoped n N
@@ -868,8 +867,17 @@ Hint Resolve exp_scoped_sub1 exp_scoped_sub2 exp_scoped_shift exp_scoped_sub1_mo
 Lemma ctx_lookup_mod_length : forall Γ x U, Γ ∋ #x ≔ₘ U -> x < length Γ.
 Proof. induction 1; cbn; lia. Qed.
 
-Lemma length_body_ctx : forall Φ, length (body_ctx Φ) = gm_binders Φ.
-Proof. induction Φ as [| Φ IH x [? ? ? ? [] | | | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
+(** An expanded body binds an index per entry of its context; an
+    unexpanded open binds its items' indices but no context entry
+    ([body_ctx]). *)
+Lemma length_body_ctx : forall Φ, gm_nopens Φ = 0 -> length (body_ctx Φ) = gm_binders Φ.
+Proof. induction Φ as [| Φ IH x [? ? ? ? [] | | | | ] | Φ IH c]; cbn; intros Hn; try discriminate; auto. Qed.
+
+Lemma body_shape_nopens : forall Φ Φ', body_shape Φ Φ' -> gm_nopens Φ = gm_nopens Φ'.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto;
+    destruct_all; auto.
+Qed.
 
 (** A typed body, with no local open, is scoped when the context it binds
     is. *)
@@ -881,9 +889,10 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Ho Hs; cbn in Hs, Ho; try contradiction; try discriminate.
   - split; intros; exact I.
   - destruct Hs as (Hs & -> & HE); destruct (IH _ n Ho Hs) as [IH1 IH2].
+    assert (Ho' : gm_nopens Φ' = 0) by (rewrite <- (body_shape_nopens _ _ Hs); exact Ho).
     destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in HE; try contradiction;
       split; intros HΦ; cbn in *; destruct_all; repeat split; auto;
-      first [ rewrite <- length_body_ctx; assumption | rewrite <- (length_body_ctx Φ'); assumption ].
+      first [ rewrite <- (length_body_ctx _ Ho); assumption | rewrite <- (length_body_ctx Φ' Ho'); assumption ].
 Qed.
 
 Lemma gens_append_scoped_prefix : forall gs Φ k n, gmod_scoped n (gens_append Φ k gs) -> gmod_scoped n Φ.
@@ -906,7 +915,7 @@ Proof.
     split.
     + apply IH; [ eapply gens_append_scoped_prefix; eassumption |].
       intros k Ψ H' Hk; exact (Ho (S k) _ _ Hk).
-    + rewrite <- (body_xp_binders _ _ _ _ _ Hx), <- length_body_ctx; exact (Ho 0 _ _ eq_refl).
+    + rewrite <- (body_xp_binders _ _ _ _ _ Hx), <- (length_body_ctx _ (body_xp_nopens _ _ _ _ _ Hx)); exact (Ho 0 _ _ eq_refl).
 Qed.
 
 Lemma body_shape_sym : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ.
@@ -966,12 +975,6 @@ Proof.
   destruct Hs as (Hs & _ & HE); destruct (IH _ Ho Hs) as [H1 H2].
   destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in HE |- *; try contradiction;
     (split; [ destruct (gm_fill Φ) | destruct (gm_fill Φ') ]; cbn; congruence).
-Qed.
-
-Lemma body_shape_nopens : forall Φ Φ', body_shape Φ Φ' -> gm_nopens Φ = gm_nopens Φ'.
-Proof.
-  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto;
-    destruct_all; auto.
 Qed.
 
 (** The opens of two bodies of the same shape correspond. *)

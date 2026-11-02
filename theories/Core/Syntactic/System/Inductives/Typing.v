@@ -718,14 +718,14 @@ Qed.
 Definition motives_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us As : list exp)
     (r : relevance) (i : nat) : Prop :=
   forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As a_placeholder_type : relevance_sort r Typeω@i.
+    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As exp_default : relevance_sort r Typeω@i.
 
 (** The motives [As] and [As'] are equal, member by member, in their
     contexts, at the sort of the tag [r]. *)
 Definition motives_eq (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us As As' : list exp)
     (r : relevance) (i : nat) : Prop :=
   forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As a_placeholder_type ≈ List.nth j As' a_placeholder_type : relevance_sort r Typeω@i.
+    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As exp_default ≈ List.nth j As' exp_default : relevance_sort r Typeω@i.
 
 (** *** A Recursive Argument in a Branch's Context
 
@@ -1043,14 +1043,14 @@ Lemma uvars_inst : forall D nn i Us τ β, List.length Us = ind_nu D ->
     (forall y, y < ind_nu D -> sentry_exp (τ (y + (i + nn))) = sentry_exp ((sb_of_list Id Us ⨟ β) y)) ->
     List.map (fun U => U[τ]) (ind_uvars D nn i) = List.map (fun U => U[β]) Us.
 Proof.
-  intros * HUl H; apply (List.nth_ext _ _ (a_placeholder_type[τ]) (a_placeholder_type[β])); rewrite !List.length_map; [ rewrite length_ind_uvars; lia |].
+  intros * HUl H; apply (List.nth_ext _ _ (exp_default[τ]) (exp_default[β])); rewrite !List.length_map; [ rewrite length_ind_uvars; lia |].
   intros k Hk; rewrite length_ind_uvars in Hk.
   rewrite (List.map_nth (fun U => U[τ])), (List.map_nth (fun U => U[β])).
   unfold ind_uvars; replace k with (ind_nu D - 1 - (ind_nu D - 1 - k)) at 1 by lia.
   rewrite vars_from_nth by lia; cbn [exp_sub].
   replace (i + nn + (ind_nu D - 1 - k)) with ((ind_nu D - 1 - k) + (i + nn)) by lia.
   rewrite H by lia; cbn [sb_compose].
-  rewrite (sb_of_list_nth _ _ _ a_placeholder_type) by lia; cbn [sentry_sub sentry_exp].
+  rewrite (sb_of_list_nth _ _ _ exp_default) by lia; cbn [sentry_sub sentry_exp].
   replace (List.length Us - 1 - (ind_nu D - 1 - k)) with k by lia; reflexivity.
 Qed.
 
@@ -2033,7 +2033,7 @@ Proof.
   apply (Hs _ _ Hk) in Hr; assert (k < List.length Bks) by (apply List.nth_error_Some; congruence); lia.
 Qed.
 
-Lemma blocks_motives_nth : forall Bks k b, List.nth_error Bks k = Some b -> List.nth k (blocks_motives Bks) a_placeholder_type = eb_motive b.
+Lemma blocks_motives_nth : forall Bks k b, List.nth_error Bks k = Some b -> List.nth k (blocks_motives Bks) exp_default = eb_motive b.
 Proof. intros * Hb; apply List.nth_error_nth; unfold blocks_motives; rewrite List.nth_error_map, Hb; reflexivity. Qed.
 
 Lemma blocks_motives_typed : forall Θ Ξ Γ p D Us Bks r i, rview_suffix_ok D ->
@@ -2211,7 +2211,7 @@ Lemma wf_elim_at_typed : forall Θ Ξ Γ Ψ β p D oq Us Bks r i j Mj Ns M,
     Θ ⍮ Ξ ⍮ Ψ ⊢ˢ β : Γ ->
     Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list β (Ns ++ M :: nil) : elim_mctx p D j Mj Us ++ Γ ->
     Θ ⍮ Ξ ⍮ Ψ ⊢ elim_at r p D oq (List.map (fun U => U[β]) Us) (blocks_sub Bks β) j M
-      : (List.nth j (blocks_motives Bks) a_placeholder_type)[sb_of_list β (Ns ++ M :: nil)].
+      : (List.nth j (blocks_motives Bks) exp_default)[sb_of_list β (Ns ++ M :: nil)].
 Proof.
   intros * Hl Hoq HBt HUl HUs Hj Hr HNl Hβ Hδ.
   pose proof (wf_sub_dom _ _ _ _ _ Hβ) as HΨ.

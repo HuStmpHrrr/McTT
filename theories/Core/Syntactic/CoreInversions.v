@@ -164,30 +164,6 @@ Qed.
 #[export]
 Hint Resolve wf_False_inversion : mctt.
 
-(** The placeholder type is a small type of the least level. *)
-Lemma wf_placeholder_type_inversion : forall Θ Ξ Γ A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H; mautosolve 4.
-Qed.
-
-#[export]
-Hint Resolve wf_placeholder_type_inversion : mctt.
-
-(** The placeholder is of the placeholder type. *)
-Lemma wf_placeholder_inversion : forall Θ Ξ Γ A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_placeholder_type ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H; mautosolve 4.
-Qed.
-
-#[export]
-Hint Resolve wf_placeholder_inversion : mctt.
-
 (** What ex falso [efq M return C] is typed by. *)
 #[warnings="-cannot-define-projection"]
 Record absurd_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C A : typ) : Prop := mk_absurd_inv

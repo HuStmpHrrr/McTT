@@ -14,9 +14,7 @@ Import Domain_Notations.
     (forall h ch k1, dmod_member_kind Θ Ξ h ch k1 -> forall k2, dmod_member_kind Θ Ξ h ch k2 -> k1 = k2) /\
     (forall ρ U ch k1, gunit_member_kind Θ Ξ ρ U ch k1 -> forall k2, gunit_member_kind Θ Ξ ρ U ch k2 -> k1 = k2) /\
     (forall ρ H ch k1, modexp_member_kind Θ Ξ ρ H ch k1 -> forall k2, modexp_member_kind Θ Ξ ρ H ch k2 -> k1 = k2) /\
-    (forall ρ Φ ρ1, kinds_env Θ Ξ ρ Φ ρ1 -> forall ρ2, kinds_env Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2) /\
-    (forall ρ Φ Φx1, kinds_body_xp Θ Ξ ρ Φ Φx1 -> forall Φx2, kinds_body_xp Θ Ξ ρ Φ Φx2 -> Φx1 = Φx2) /\
-    (forall ρ H its gs1, kinds_items_gen Θ Ξ ρ H its gs1 -> forall gs2, kinds_items_gen Θ Ξ ρ H its gs2 -> gs1 = gs2).
+    (forall ρ Φ ρ1, kinds_env Θ Ξ ρ Φ ρ1 -> forall ρ2, kinds_env Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2).
   Proof.
     intros Θ Ξ; apply kind_mut_ind; intros;
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
@@ -26,10 +24,6 @@ Import Domain_Notations.
         | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
-            rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-            rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
-        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _),
           H2 : (exists TΦ, Members.gc_loc Θ Ξ ?p = Some TΦ) \/ (exists b pv ra A B, Members.gc_resolve Θ Ξ ?p = Some (ge_def b pv ra A B)) |- _ =>
@@ -55,17 +49,6 @@ Import Domain_Notations.
             assert_fails (constr_eq a b); specialize (IH _ H); subst
         end; try congruence.
   Qed.
-
-  Corollary functional_kinds_items_gen : forall {Θ Ξ} ρ H its gs1 gs2,
-      kinds_items_gen Θ Ξ ρ H its gs1 -> kinds_items_gen Θ Ξ ρ H its gs2 -> gs1 = gs2.
-  Proof. intros Θ Ξ; pose proof (@functional_kind Θ Ξ) as Hf; destruct_all; eauto. Qed.
-
-  Corollary functional_kinds_body_xp : forall {Θ Ξ} ρ Φ Φx1 Φx2,
-      kinds_body_xp Θ Ξ ρ Φ Φx1 -> kinds_body_xp Θ Ξ ρ Φ Φx2 -> Φx1 = Φx2.
-  Proof. intros Θ Ξ; pose proof (@functional_kind Θ Ξ) as Hf; destruct_all; eauto. Qed.
-
-  Lemma kinds_items_gen_length : forall Θ Ξ ρ H its gs, kinds_items_gen Θ Ξ ρ H its gs -> List.length gs = List.length its.
-  Proof. induction 1; cbn; auto. Qed.
 
   Lemma functional_eval : forall {Θ Ξ},
     (forall M ρ m1,
@@ -176,10 +159,6 @@ Import Domain_Notations.
             exfalso; exact (H2 _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : kinds_items_gen Θ Ξ ?ρ ?H ?its ?g1, H2 : kinds_items_gen Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
-            assert_fails (constr_eq g1 g2); pose proof (functional_kinds_items_gen _ _ _ _ _ H1 H2); subst g2
-        | H1 : kinds_body_xp Θ Ξ ?ρ ?Φ ?Φ1, H2 : kinds_body_xp Θ Ξ ?ρ ?Φ ?Φ2 |- _ =>
-            assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
         | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
             exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
         | H1 : module_saturated Θ Ξ ?p ?args, H2 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ),

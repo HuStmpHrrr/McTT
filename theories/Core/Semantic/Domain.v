@@ -68,10 +68,6 @@ Inductive domain : Set :=
 (** [d_and p ρ Q]: a [Σₚ] with first component [p], its second [Q] a
     closure in [ρ] *)
 | d_and : domain -> list dentry -> exp -> domain
-(** The placeholder type *)
-| d_placeholder_type : domain
-(** Its element, and the value read past the end of an environment *)
-| d_placeholder : domain
 (** [d_fn a ρ M]: a function with domain [a], its body a closure in
     [ρ].  It keeps its domain so that an application can tell whether its
     argument is a proof, which is never evaluated. *)
@@ -175,7 +171,12 @@ with entry_type : Set :=
 (** [entry_type_induction_hypothesis ρm As p ups ρ t v i]: the type of the [i]-th recursive result
     of an argument [v] of shape [t], its components in [ρ], the motives [As]
     in [ρm], the group at [p] at [ups] *)
-| entry_type_induction_hypothesis : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> domain -> nat -> entry_type.
+| entry_type_induction_hypothesis : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> domain -> nat -> entry_type
+(** No type: the term part of a module slot, an entry past the end of an
+    environment, an entry evaluation never reads the type of (the pads of
+    the kinds).  It has no value ([eval_entry_type]), so an entry at it
+    never reads back. *)
+| entry_type_none : entry_type.
 
 Abbreviation env := (list dentry).
 
@@ -185,16 +186,17 @@ Derive NoConfusion for domain domain_ne domain_nf dmod dentry.
     and their entries under a selection, which needs these. *)
 Derive NoConfusion for gmod gentry.
 
-(** The entry past the end of an environment: the placeholder, at its
-    type. *)
-Definition placeholder_entry : dentry := de_term d_placeholder (entry_type_value d_placeholder_type).
+(** The entry past the end of an environment: the value [env_var] gives
+    a variable no entry binds, at no type ([entry_type_none]).  Never read
+    by a well-scoped term; only for totality of the read. *)
+Definition absent_entry : dentry := de_term d_prop entry_type_none.
 
-(** The entry of the variable [#x], or the placeholder past the end of the
+(** The entry of the variable [#x], or [absent_entry] past the end of the
     list.  [env_entry] is [nth], but defined by recursion on the index so that
     [ρ↯ x] is [ρ (S x)] by conversion. *)
 Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
   match x with
-  | 0 => List.hd placeholder_entry ρ
+  | 0 => List.hd absent_entry ρ
   | S x' => env_entry (List.tl ρ) x'
   end.
 
@@ -208,7 +210,9 @@ Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
   | de_term d _ => d
-  | de_mod _ _ => d_placeholder
+  (** never a user value: the value of [exp_junk], only for totality of
+      the read *)
+  | de_mod _ _ => d_prop
   | de_dm d _ _ _ => d
   end.
 #[warning="-uniform-inheritance"]
@@ -218,7 +222,7 @@ Coercion env_var : list >-> Funclass.
 Definition env_type (ρ : env) (x : nat) : entry_type :=
   match env_entry ρ x with
   | de_term _ t => t
-  | de_mod _ _ => entry_type_value d_placeholder_type
+  | de_mod _ _ => entry_type_none
   | de_dm _ t _ _ => t
   end.
 
@@ -229,11 +233,11 @@ Definition env_mod (ρ : env) (x : nat) : dmod :=
   | de_dm _ _ m _ => m
   end.
 
-Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ placeholder_entry.
+Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ absent_entry.
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
 Lemma env_var_nth : forall ρ x,
-    env_var ρ x = match List.nth x ρ placeholder_entry with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_placeholder end.
+    env_var ρ x = match List.nth x ρ absent_entry with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end.
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
 (** The environment extended by a value [d] of the type [t]. *)
@@ -258,25 +262,26 @@ Definition env_extend_typed (ρ : env) (vts : list (domain * entry_type)) : env 
 Lemma env_extend_typed_app : forall ρ vs ws, env_extend_typed ρ (vs ++ ws) = env_extend_typed (env_extend_typed ρ vs) ws.
 Proof. intros; unfold env_extend_typed; rewrite List.fold_left_app; reflexivity. Qed.
 
-(** The type an entry of a telescope gives its variable. *)
-Definition centry_type (e : centry) : exp :=
+(** The type an entry of a telescope gives its term variable; a module slot
+    binds no term variable. *)
+Definition centry_type (e : centry) : option exp :=
   match e with
-  | ce_ass A | ce_def A _ | ce_dm A _ _ => A
-  | ce_mod _ => a_placeholder_type
+  | ce_ass A | ce_def A _ | ce_dm A _ _ => Some A
+  | ce_mod _ => None
   end.
 
-(** The type the head of a telescope gives a variable over [ρ], and the
-    placeholder type past its end. *)
+(** The type the head of a telescope gives a variable over [ρ]: none at a
+    module slot and past its end. *)
 Definition tele_head_type (ρ : env) (T : list centry) : entry_type :=
   match T with
-  | e :: _ => entry_type_closure (centry_type e) ρ
-  | nil => entry_type_value d_placeholder_type
+  | e :: _ => match centry_type e with Some A => entry_type_closure A ρ | None => entry_type_none end
+  | nil => entry_type_none
   end.
 
 (** The values [vs] at the telescope [T], outermost first, with their
     types: each the type its entry gives, as a closure in [ρ] extended by
     the values before it.  Every value is kept: one past the end of [T] is
-    at the placeholder type. *)
+    at no type. *)
 Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (domain * entry_type) :=
   match vs with
   | nil => nil
@@ -514,7 +519,7 @@ Proof. reflexivity. Qed.
 
     Two environments are equal when they agree at every index, entry by entry.  Evaluating a
     substitution determines its result only up to this equality, since a list
-    can end in any number of placeholders.  Evaluation does not respect it, because
+    can end in any number of [absent_entry]s.  Evaluation does not respect it, because
     [λᵈ a ρ M] carries its environment; values from pointwise-equal environments
     are related by the PER model instead. *)
 Definition env_eq : relation env := fun ρ ρ' => forall x, env_entry ρ x = env_entry ρ' x.
@@ -679,7 +684,7 @@ Proof.
   rewrite List.seq_nth, env_entry_nth by assumption; reflexivity.
 Qed.
 
-Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = placeholder_entry.
+Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = absent_entry.
 Proof.
   intros; rewrite env_entry_nth; apply List.nth_overflow; assumption.
 Qed.
@@ -704,7 +709,7 @@ Proof. intros * Hφ x; unfold env_mod; rewrite eval_wk_entry by assumption; refl
 Lemma env_ext : forall ρ ρ', List.length ρ = List.length ρ' ->
     (forall x, x < List.length ρ -> env_entry ρ x = env_entry ρ' x) -> ρ = ρ'.
 Proof.
-  intros * Hl H; apply (List.nth_ext _ _ placeholder_entry placeholder_entry); [ assumption |].
+  intros * Hl H; apply (List.nth_ext _ _ absent_entry absent_entry); [ assumption |].
   intros; rewrite <- !env_entry_nth; auto.
 Qed.
 

@@ -277,9 +277,6 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_at_level_sort :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ LevelSortᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
-(** η for the placeholder type: its only value is the placeholder. *)
-| read_nf_placeholder :
-  `( Rnf ⇓ d_placeholder_type m in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder )
 (** A function, η-long: its body applied to a fresh variable of its
     domain. *)
 | read_nf_fn :
@@ -477,9 +474,6 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 (** The false proposition *)
 | read_typ_False :
   `( Rtyp ⊥ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊥ⁿ )
-(** The placeholder type *)
-| read_typ_placeholder_type :
-  `( Rtyp d_placeholder_type in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder_type )
 (** A Π type: its codomain under a fresh variable of its domain *)
 | read_typ_pi :
   `( (** The normal form of the argument type. *)

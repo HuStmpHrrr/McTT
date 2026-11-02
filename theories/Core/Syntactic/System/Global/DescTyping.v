@@ -1533,7 +1533,7 @@ Proof.
                 | eapply (proj1 syn_scoped_sub_id); [ exact HM | apply sb_qn_fix; exact Hσ ] ]. }
   - destruct HR as [HA Hom]; rewrite (proj1 syn_scoped_sub_id _ _ _ HA Hσ).
     destruct om as [M |]; cbn in *; [ rewrite (proj1 syn_scoped_sub_id _ _ _ Hom Hσ) |]; reflexivity.
-  - destruct HR as [HR1 HR2].
+  - destruct HR as [HR1 [HR2 _]].
     pose proof (proj1 (proj2 (proj2 (proj2 syn_scoped_sub_id))) _ _ _ HR1 Hσ) as HU.
     pose proof (proj1 (proj2 (proj2 (proj2 syn_scoped_sub_id))) _ _ _ HR2 Hσ) as HU2.
     rewrite gunit_sub_mk in HU, HU2; injection HU as HΔ HΦ; injection HU2 as _ HΦx; rewrite HΔ, HΦ, HΦx; reflexivity.
@@ -2405,7 +2405,7 @@ Section DescOk.
                             (ctx_sub_wf_gen _ _ _ _ _ _ Hσ (ctx_app_wf_tail _ _ _ _ HΦ))
                             (ctx_app_wf_tail _ _ _ _ HΦ))) as HU'.
            rewrite gunit_sub_mk in HU'; exact HU'. }
-      + rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
+      + rewrite (body_ctx_sub _ _ (gm_noopen_nopens _ Hn)), List.app_assoc, <- tele_sub_app.
         eapply ctx_sub_wf_gen; [ exact Hσ | rewrite <- List.app_assoc; exact HΦ ].
       + apply gm_noopen_sub; exact Hn.
       + intros y Φ0' E' U' Hp' HE' R2 Hu2.
@@ -2415,6 +2415,7 @@ Section DescOk.
         cbn in Hp'; injection Hp' as <- <-.
         destruct (entry_unit_sub_inv _ _ _ HE') as (U & HE & ->).
         destruct (gm_prefix_body_ctx _ _ _ Hn Hp) as (Ψ & HΨ).
+        pose proof (gm_prefix_upto_nopens _ _ _ Hp (gm_noopen_nopens _ Hn)) as Hn0; cbn [gm_nopens] in Hn0.
         rewrite HΨ in HΦ.
         pose proof (ctx_app_wf_tail _ _ _ _ ltac:(rewrite <- List.app_assoc in HΦ; exact HΦ)) as HΦ0.
         destruct (body_ext_unit_wf _ _ _ _ _ _ _ HΦ0 HE) as [HΓ0 HU].
@@ -2430,11 +2431,11 @@ Section DescOk.
                       (wf_sub_mod_compat _ _ _ _ _ ltac:(rewrite <- List.app_assoc in Hσy; exact Hσy))) as HRs.
         rewrite tele_sub_app, <- List.app_assoc in HRs.
         replace (U[σy]ᵘ) with (gunit_sub U (sb_qn (gm_binders Φ0) (sb_qn (length Δ) σ))) in HRs
-          by (unfold σy; rewrite List.length_app, length_body_ctx, sb_qn_plus; reflexivity).
-        rewrite <- body_ctx_sub in HRs.
+          by (unfold σy; rewrite List.length_app, (length_body_ctx _ Hn0), sb_qn_plus; reflexivity).
+        rewrite <- (body_ctx_sub _ _ Hn0) in HRs.
         pose proof (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ HRs _ Hu2) as <-.
         eapply (IH y Φ0 E U ltac:(exact Hp) HE R HR).
-        rewrite body_ctx_sub; rewrite tele_sub_app in Hσy; rewrite <- !List.app_assoc in Hσy; exact Hσy.
+        rewrite (body_ctx_sub _ _ Hn0); rewrite tele_sub_app in Hσy; rewrite <- !List.app_assoc in Hσy; exact Hσy.
       + (* the definitions, filled in, at the sorts of their tags *)
         intros y Φ0w Ew Aw Mw σw Hpw HEw Hfw.
         destruct (gm_prefix_sub_inv _ _ _ _ _ Hpw) as (Φ0 & E & Hp0 & -> & ->).
@@ -2494,7 +2495,7 @@ Section DescOk.
       (sb_of_list Id Ns ⨟ τ) x = sb_of_list Id (List.map (fun M => M[τ]) Ns) x.
   Proof.
     intros * Hx; unfold sb_compose.
-    rewrite (sb_of_list_nth _ _ _ a_placeholder_type Hx), (sb_of_list_nth _ _ _ a_placeholder_type[τ]) by (rewrite length_map; exact Hx).
+    rewrite (sb_of_list_nth _ _ _ exp_default Hx), (sb_of_list_nth _ _ _ exp_default[τ]) by (rewrite length_map; exact Hx).
     rewrite length_map, (List.map_nth (fun M => M[τ])); reflexivity.
   Qed.
 

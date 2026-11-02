@@ -41,7 +41,7 @@ Definition unwk (k : nat) : wk := wk_qn k pred.
 Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   match M with
   | a_typ _ | a_level _ | a_level_sort | a_llit _
-  | a_prop | a_True | a_tt | a_False | a_placeholder_type | a_placeholder => True
+  | a_prop | a_True | a_tt | a_False => True
   | a_univ M | a_succl M | a_left M | a_right M => exp_fresh k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_fresh k M /\ exp_fresh k N
   | a_conj T M N => exp_fresh k T /\ exp_fresh k M /\ exp_fresh k N
@@ -368,7 +368,7 @@ Fixpoint all_blocksb {A : Set} (f : nat -> option A -> A -> list (String.string 
 Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   match M with
   | a_typ _ | a_level _ | a_level_sort | a_llit _
-  | a_prop | a_True | a_tt | a_False | a_placeholder_type | a_placeholder => true
+  | a_prop | a_True | a_tt | a_False => true
   | a_univ M | a_succl M | a_left M | a_right M => exp_freshb k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_freshb k M && exp_freshb k N
   | a_conj T M N => exp_freshb k T && exp_freshb k M && exp_freshb k N
@@ -608,7 +608,7 @@ Proof. intros; split; [ apply exp_freshb_sound | apply (proj1 freshb_complete) ]
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_placeholder_type | nf_placeholder => True
+  | nf_proof_erased => True
   | nf_proof M => exp_fresh k M
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
@@ -620,6 +620,7 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
   | ne_absurd A M => nf_fresh k A /\ exp_fresh k M
+  | ne_absurd_erased A => nf_fresh k A
   | ne_elim _ Us _ Bks u =>
       all_list (nf_fresh k) Us /\ all_list (normal_block_forall (fun n => nf_fresh (n + k))) Bks /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
@@ -643,8 +644,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_proof M => nf_proof M[unwk k]ʷ
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_unwk k P) (nf_unwk (S k) Q)
-  | nf_placeholder_type => nf_placeholder_type
-  | nf_placeholder => nf_placeholder
+  | nf_proof_erased => nf_proof_erased
   | nf_pi r A B => nf_pi r (nf_unwk k A) (nf_unwk (S k) B)
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
   | nf_indty p j Ms => nf_indty p j (List.map (nf_unwk k) Ms)
@@ -656,6 +656,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
   | ne_absurd A M => ne_absurd (nf_unwk k A) M[unwk k]ʷ
+  | ne_absurd_erased A => ne_absurd_erased (nf_unwk k A)
   | ne_elim p Us m Bks u =>
       ne_elim p (List.map (nf_unwk k) Us) m (List.map (map_normal_block (fun n => nf_unwk (n + k))) Bks) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
@@ -819,7 +820,7 @@ Qed.
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_placeholder_type | nf_placeholder => true
+  | nf_proof_erased => true
   | nf_proof M => exp_freshb k M
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
@@ -831,6 +832,7 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
   | ne_absurd A M => nf_freshb k A && exp_freshb k M
+  | ne_absurd_erased A => nf_freshb k A
   | ne_elim _ Us _ Bks u =>
       List.forallb (nf_freshb k) Us && (List.forallb (normal_block_forallb (fun n => nf_freshb (n + k))) Bks
                                          && ne_freshb k u)
@@ -894,9 +896,8 @@ Proof. intros; apply nf_ne_fresh_erase; assumption. Qed.
     ask for proof-free ones. *)
 Fixpoint nf_proof_free (W : nf) {struct W} : Prop :=
   match W with
-  | nf_proof _ => False
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_placeholder_type | nf_placeholder => True
+  | nf_proof _ | nf_proof_erased => False
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_proof_free Ms
@@ -906,7 +907,7 @@ Fixpoint nf_proof_free (W : nf) {struct W} : Prop :=
   end
 with ne_proof_free (u : ne) {struct u} : Prop :=
   match u with
-  | ne_absurd _ _ => False
+  | ne_absurd _ _ | ne_absurd_erased _ => False
   | ne_elim _ Us _ Bks u =>
       all_list nf_proof_free Us /\ all_list (normal_block_forall (fun _ => nf_proof_free)) Bks /\ ne_proof_free u
   | ne_app u W => ne_proof_free u /\ nf_proof_free W
@@ -917,9 +918,8 @@ with ne_proof_free (u : ne) {struct u} : Prop :=
 (** Proof-freedom is decided by a boolean function with the same clauses. *)
 Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   match W with
-  | nf_proof _ => false
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_placeholder_type | nf_placeholder => true
+  | nf_proof _ | nf_proof_erased => false
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
   | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb nf_proof_freeb Ms
@@ -929,7 +929,7 @@ Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   end
 with ne_proof_freeb (u : ne) {struct u} : bool :=
   match u with
-  | ne_absurd _ _ => false
+  | ne_absurd _ _ | ne_absurd_erased _ => false
   | ne_elim _ Us _ Bks u =>
       List.forallb nf_proof_freeb Us && (List.forallb (normal_block_forallb (fun _ => nf_proof_freeb)) Bks
                                          && ne_proof_freeb u)
