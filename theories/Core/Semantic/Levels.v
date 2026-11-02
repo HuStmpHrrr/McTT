@@ -109,8 +109,11 @@ Proof.
     eexists (lvl_canon (_, _)); split; [ reflexivity |].
     eexists; split; [ eassumption | reflexivity ].
   - split; [ constructor |].
-    exists (ordinal_zero, cons (mk_level_atom 0 (domain_level_sort a) M) nil); split; [ reflexivity |].
-    eexists; split; [ repeat constructor; eassumption | reflexivity ].
+    (** The atom is stored erased, as [lvl_canon] stores atoms. *)
+    exists (lvl_canon (ordinal_zero, cons (mk_level_atom 0 (domain_level_sort a) M) nil)); split.
+    + unfold lvl_canon, nf_lvl_of; cbn [fst snd level_atoms_sort level_atoms_insert].
+      destruct (o2_dominated _ _); reflexivity.
+    + eexists; split; [ repeat constructor; eassumption | reflexivity ].
 Qed.
 
 Lemma domain_level_canon_functional : forall s l L L',
@@ -158,6 +161,25 @@ Qed.
 
 Hint Resolve domain_level_canon_lit domain_level_canon_suc domain_level_canon_max : mctt.
 
+(** Erased atoms are their own erasure. *)
+Lemma level_atoms_map_erase_erased : forall ys, level_atoms_erased ys -> List.map (map_level_atom ne_erase) ys = ys.
+Proof.
+  induction ys as [| [k s a] ys IH]; cbn [level_atoms_erased List.map]; intros H; [ reflexivity |].
+  destruct H as [Ha Hr]; f_equal; [ unfold map_level_atom; cbn; rewrite Ha; reflexivity | exact (IH Hr) ].
+Qed.
+
+(** A canonical level holds no proof: it is its own erasure. *)
+Lemma nf_erase_lvl_canon : forall l, nf_erase (nf_lvl_of (lvl_canon l)) = nf_lvl_of (lvl_canon l).
+Proof.
+  intros l; unfold nf_lvl_of; cbn [nf_erase]; f_equal.
+  apply level_atoms_map_erase_erased; unfold lvl_canon; cbn [snd].
+  apply level_atoms_keep_erased, level_atoms_sort_erased.
+Qed.
+
+(** The canonical forms of [domain_level_canon] are canonical levels. *)
+Lemma nf_erase_domain_level_canon : forall s l L, domain_level_canon s l L -> nf_erase (nf_lvl_of L) = nf_lvl_of L.
+Proof. intros * [ys [_ ->]]; apply nf_erase_lvl_canon. Qed.
+
 (** ** The Level PER through Canonical Forms
 
     Two levels are related exactly when their canonical forms agree at every
@@ -173,7 +195,7 @@ Lemma per_lvl_of : forall l l',
 Proof.
   intros * Hl Hl' Hex Hex' Heq s.
   destruct (Hex s) as [L HL]; destruct (Hex' s) as [L' HL'].
-  exists (nf_lvl_of L); split; [ apply domain_level_canon_read; assumption |].
+  apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L) (nf_lvl_of L)); [ apply domain_level_canon_read; assumption | | reflexivity ].
   rewrite (Heq _ _ _ HL HL'); apply domain_level_canon_read; assumption.
 Qed.
 
@@ -182,7 +204,7 @@ Lemma per_lvl_shape : forall l l',
     domain_level_shape l /\ domain_level_shape l'.
 Proof.
   intros * H.
-  destruct (H 0) as [L [HL HL']].
+  destruct (H 0) as [L L' HL HL' _].
   apply domain_level_canon_of_read in HL as [? _]; apply domain_level_canon_of_read in HL' as [? _].
   split; assumption.
 Qed.
@@ -192,7 +214,7 @@ Lemma per_lvl_ex : forall l l',
     forall s, exists L, domain_level_canon s l L.
 Proof.
   intros * H s.
-  destruct (H s) as [L [HL _]]; apply domain_level_canon_of_read in HL as [_ [L' [_ ?]]]; eauto.
+  destruct (H s) as [L L1 HL _ _]; apply domain_level_canon_of_read in HL as [_ [L' [_ ?]]]; eauto.
 Qed.
 
 Lemma per_lvl_ex_right : forall l l',
@@ -210,12 +232,13 @@ Lemma per_lvl_eq : forall l l',
       L = L'.
 Proof.
   intros * H * HL HL'.
-  destruct (H s) as [W [HW HW']].
+  destruct (H s) as [W W' HW HW' HE].
   apply domain_level_canon_of_read in HW as [_ [L1 [-> HL1]]].
-  apply domain_level_canon_of_read in HW' as [_ [L2 [Heq HL2]]].
+  apply domain_level_canon_of_read in HW' as [_ [L2 [-> HL2]]].
   assert (L1 = L) as <- by (eapply domain_level_canon_functional; eassumption).
   assert (L2 = L') as <- by (eapply domain_level_canon_functional; eassumption).
-  apply nf_lvl_of_inj; exact Heq.
+  rewrite (nf_erase_domain_level_canon _ _ _ HL1), (nf_erase_domain_level_canon _ _ _ HL2) in HE.
+  apply nf_lvl_of_inj; exact HE.
 Qed.
 
 (** ** The Level Operations Respect the PER
@@ -299,8 +322,11 @@ Lemma per_lvl_at_intro : forall n l l',
     Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
   intros * H Hb s.
-  destruct (H s) as (W & HW & HW').
+  destruct (H s) as [W W' HW HW' HE].
   pose proof HW as HW0; apply domain_level_canon_of_read in HW0 as [_ [L [-> HL]]].
+  pose proof HW' as HW1; apply domain_level_canon_of_read in HW1 as [_ [L' [-> HL']]].
+  rewrite (nf_erase_domain_level_canon _ _ _ HL), (nf_erase_domain_level_canon _ _ _ HL') in HE.
+  apply nf_lvl_of_inj in HE; subst L'.
   exists L; [ exact HW | exact HW' | eapply Hb; exact HL ].
 Qed.
 
