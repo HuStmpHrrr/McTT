@@ -765,6 +765,16 @@ Proof.
   rewrite length_rev, Hlns, Hlen, Nat.sub_diag; reflexivity.
 Qed.
 
+(** The arguments of a well formed module application are scoped by its
+    context. *)
+Lemma wf_me_apps_args_scoped : forall Γ H Ns, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_apps H Ns ≈ me_apps H Ns ->
+    List.Forall (exp_scoped (List.length Γ)) Ns.
+Proof.
+  intros * Hw.
+  destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 wf_scoped))))))) _ _ _ _ _ Hw) as (_ & HU & _).
+  exact (proj2 (proj1 (me_apps_scoped_iff _ _ _) HU)).
+Qed.
+
 (** A filed module at arguments valid against its telescope is valid. *)
 Lemma filed_valid : forall Γ p T Φ Ns, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
     List.Forall (exp_scoped (List.length Γ)) Ns ->
