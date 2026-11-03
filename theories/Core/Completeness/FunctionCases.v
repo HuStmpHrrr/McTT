@@ -360,6 +360,165 @@ Qed.
 
 Hint Resolve rel_exp_under_ctx_pi_cong : mctt.
 
+(** ** Π over a Relevant Codomain of Either Sort
+
+    A relevant type of either sort, a type of a universe or a type of
+    levels, along the lifting [q σ] of a semantic substitution: the three
+    links of its chain, as [rel_exp_of_univ_under_ctx_q] gives for a type
+    of a universe, and the relevance of its value at the extended
+    environment. *)
+Lemma rel_type_under_ctx_q : forall {Γ Δ σ σ' A} {i j : nat} {B env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ᵗ A ≈ A at i ->
+    Δ ▹ A ⊨ᵗ B ≈ B at j ->
+    rel_type_relevant (Δ ▹ A) B ->
+    forall ρ ρ' ρσ ρ'σ' c c' t1 t2 t3 t4,
+      Dom ρ ↦ c ⦂ t1 ≈ ρ' ↦ c' ⦂ t4 ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      args_readable_at c c' ([t1; t2; t3; t4]) ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
+      (exists b b', ⟦ B[q σ] ⟧ ρ ↦ c ⦂ t1 ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ⦂ t2 ↘ b' /\ Dom b ≈ b' ∈ per_univ j) /\
+      (exists b b', ⟦ B ⟧ ρσ ↦ c ⦂ t2 ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ c' ⦂ t3 ↘ b' /\ Dom b ≈ b' ∈ per_univ j) /\
+      (exists b b', ⟦ B ⟧ ρ'σ' ↦ c ⦂ t3 ↘ b /\ ⟦ B[q σ'] ⟧ ρ' ↦ c' ⦂ t4 ↘ b' /\ Dom b ≈ b' ∈ per_univ j) /\
+      rel_typ_sort B[q σ] (ρ ↦ c ⦂ t1) relevant.
+Proof.
+  intros * HΓ Hσj HA HB HBr * Hpair Hts Hev Hev'.
+  pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
+  pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
+  pose proof (rel_type_inversion HB) as [env_relΔA [HΔA HBgen]].
+  destruct (rel_sub_under_ctx_q_at HΓ HΔA Hσj HA _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+    as [s [s' [Hq [Hq' Hchain]]]].
+  destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
+    as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
+  pose proof (rel_type_inversion_simple_at HΔA HB) as HBl.
+  (** The four bridges, at four pairs the chain above relates, and the
+      lifted environment against itself, for the relevance. *)
+  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ centry_tag (ce_ass A) Δ s ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ∈ env_relΔA) by pairwise.
+  assert (P0 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ s ↦ c ⦂ centry_tag (ce_ass A) Δ s ∈ env_relΔA) by pairwise.
+  destruct (HBl _ _ P1) as [x1 [x2 [Hx1 [Hx2 Hx]]]].
+  destruct (HBl _ _ P2) as [y1 [y2 [Hy1 [Hy2 Hy]]]].
+  destruct (HBl _ _ P3) as [z1 [z2 [Hz1 [Hz2 Hz]]]].
+  destruct (HBl _ _ P4) as [u1 [u2 [Hu1 [Hu2 Hu]]]].
+  destruct (HBr _ HΔA _ _ P0) as (w & Ew & Hrw).
+  assert (x1 = b2) by (eapply functional_eval_exp; eassumption).
+  assert (y2 = b2) by (eapply functional_eval_exp; eassumption).
+  assert (z1 = b3) by (eapply functional_eval_exp; eassumption).
+  assert (u2 = b3) by (eapply functional_eval_exp; eassumption).
+  assert (w = b2) by (eapply functional_eval_exp; eassumption).
+  subst.
+  apply rel_chain_of_pair in Hx, Hy, Hz, Hu.
+  assert (M1 : rel_chain (per_univ j) ([b1; b2; b3; b4; x2]))
+    by (merge_rel_chain Hbchain Hx b2).
+  assert (M2 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2]))
+    by (merge_rel_chain M1 Hy b2).
+  assert (M3 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2; z2]))
+    by (merge_rel_chain M2 Hz b3).
+  assert (M4 : rel_chain (per_univ j) ([u1; y1; b1; b2; b3; b4; x2; z2]))
+    by (merge_rel_chain M3 Hu b3).
+  repeat split.
+  - exists b1, x2; repeat split; try eassumption.
+    pairwise.
+  - exists y1, z2; repeat split; try eassumption.
+    pairwise.
+  - exists u1, b4; repeat split; try eassumption.
+    pairwise.
+  - exists b1; split; [ exact Hb1 |].
+    assert (H12 : Dom b1 ≈ b2 ∈ per_univ j) by pairwise.
+    destruct H12 as [R12 H12]; rewrite (per_univ_elem_relevance _ _ _ _ H12); exact Hrw.
+Qed.
+
+(** A [Π] into a relevant type of either sort is a type of the domain's
+    index.  The PER model relates its values whatever the codomain's sort:
+    for example [Π (n : ℕ) Level], which no rule types, still has related
+    values; the sort discipline is the typing's ([wf_pi], [wf_pi_level]).
+    Generalizing a member of a type of levels over the parameters of a
+    unit reads such [Π]s. *)
+Lemma rel_type_under_ctx_pi : forall {Γ A} {i : nat} {B},
+    Γ ⊨ᵗ A ≈ A at i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
+    rel_type_relevant (Γ ▹ A) B ->
+    Γ ⊨ᵗ Π A B ≈ Π A B at i.
+Proof.
+  intros * HA HB HBr.
+  pose proof (rel_type_inversion HA) as [env_relΓ [HΓ HAgen]].
+  econstructor; [ exact HΓ |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
+  functionalize_per_univ_chain Hachain in_rel.
+  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B Πᵈ a3 ρ'σ' B Πᵈ a4 ρ' B[q σ']);
+    [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
+    | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
+  eapply rel_chain_mono; [ intros ? ? Hp; eexists; exact Hp |].
+  eapply per_univ_elem_pi_chain; [ exact Hachain | | | |];
+    intros c c' Hc;
+    pose proof (args_readable_of_chain Hachain Hc) as Hts;
+    inversion Hts as [| ? ? [Hr1 Hr1'] Hts2]; subst; inversion Hts2 as [| ? ? [Hr2 Hr2'] Hts3]; subst;
+      inversion Hts3 as [| ? ? [Hr3 Hr3'] Hts4]; subst; inversion Hts4 as [| ? ? [Hr4 Hr4'] _]; subst;
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HA _ _ _ _ _ _ _ _ _ _ Hρ Ha1
+                  ltac:(pairwise) Hc Hr1 Hr4') as Hpair;
+    destruct (rel_type_under_ctx_q HΓ' Hσj HA HB HBr _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+      as [O1 [O2 [O3 O4]]]; eassumption.
+Qed.
+
+(** The four values of a [Π] into a relevant type of either sort, as
+    [rel_typ_of_pi] gives them for a codomain in a universe. *)
+Lemma rel_typ_of_pi_relevant : forall {Γ A A'} {i : nat} {B},
+    Γ ⊨ᵗ A ≈ A at i ->
+    Γ ⊨ᵗ A ≈ A' at i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
+    rel_type_relevant (Γ ▹ A) B ->
+    forall Γ' env_rel',
+      EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
+      forall σ σ' ρ ρ' ρσ ρ'σ',
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+        exists in_rel a1 a2 a3 a4,
+          ⟦ A[σ] ⟧ ρ ↘ a1 /\
+          ⟦ A ⟧ ρσ ↘ a2 /\
+          ⟦ A' ⟧ ρ'σ' ↘ a3 /\
+          ⟦ A'[σ'] ⟧ ρ' ↘ a4 /\
+          DF a1 ≈ a4 ∈ per_univ_elem i ↘ in_rel /\
+          DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel /\
+          Definitions.rel_typ i (Π A B) σ ρ ρσ (Π A' B) σ' ρ' ρ'σ'
+            (per_pi a2 a3 in_rel B ρσ B ρ'σ').
+Proof.
+  intros * HAself HA HB HBr * HΓ' * Hσj Hρ Hev Hev'.
+  pose proof (rel_type_inversion HA) as [env_relΓ [HΓ HAgen]].
+  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
+    as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
+  functionalize_per_univ_chain Hachain in_rel.
+  exists in_rel, a1, a2, a3, a4.
+  do 4 (split; [ eassumption |]).
+  do 2 (split; [ pairwise |]).
+  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B
+                    Πᵈ a3 ρ'σ' B Πᵈ a4 ρ' B[q σ']);
+    [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
+    | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
+  eapply per_univ_elem_pi_chain; [ exact Hachain | | | |];
+    intros c c' Hc;
+    pose proof (args_readable_of_chain Hachain Hc) as Hts;
+    inversion Hts as [| ? ? [Hr1 Hr1'] Hts2]; subst; inversion Hts2 as [| ? ? [Hr2 Hr2'] Hts3]; subst;
+      inversion Hts3 as [| ? ? [Hr3 Hr3'] Hts4]; subst; inversion Hts4 as [| ? ? [Hr4 Hr4'] _]; subst;
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ _ _ Hρ Ha1
+                  ltac:(pairwise) Hc Hr1 Hr4') as Hpair;
+    destruct (rel_type_under_ctx_q HΓ' Hσj HAself HB HBr _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+      as [O1 [O2 [O3 O4]]]; eassumption.
+Qed.
+
+(** A [Π] is relevant. *)
+Lemma rel_type_relevant_pi : forall {Γ A} {i : nat} {B}, Γ ⊨ᵗ A ≈ A at i -> rel_type_relevant Γ (Π A B).
+Proof.
+  intros * HA R HR ρ ρ' Hρ.
+  destruct (rel_type_inversion_simple_at HR HA _ _ Hρ) as (a & _ & Ha & _ & _).
+  exists (Πᵈ a ρ B); split; [ apply eval_exp_pi; exact Ha | reflexivity ].
+Qed.
+
 (** ** The Small [Π] at a Level Term
 
     The codomain is at the weakened level [L[↑]ʷ], whose value at an extended
@@ -784,6 +943,69 @@ Proof.
 Qed.
 
 Hint Resolve rel_exp_under_ctx_fn_cong : mctt.
+
+(** λ-congruence into a relevant type of either sort, a type of a universe
+    or a type of levels, as [rel_exp_under_ctx_fn_cong] is for a codomain
+    in a universe: generalizing a member of a type of levels over the
+    parameters of a unit reads such λs. *)
+Lemma rel_exp_under_ctx_fn_cong_relevant : forall {Γ A A'} {i : nat} {B M M'},
+    Γ ⊨ᵗ A ≈ A at i ->
+    Γ ⊨ᵗ A ≈ A' at i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
+    rel_type_relevant (Γ ▹ A) B ->
+    Γ ▹ A ⊨ M ≈ M' : B ->
+    Γ ⊨ λ A M ≈ λ A' M' : Π A B.
+Proof.
+  intros * HAself HA HB HBr HM.
+  pose proof (rel_type_inversion HA) as [env_relΓ [HΓ HAgen]].
+  assert (HBrel : forall ρ ρ' R, EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R -> rel_typ_sort B ρ relevant)
+    by (intros * HR Hρ; exact (HBr _ HR _ _ Hρ)).
+  eexists_rel_exp_with i.
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (rel_typ_of_pi_relevant HAself HAself HB HBr _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
+    as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid Htyp]]]]]]]]]]].
+  exists (per_pi a2 a3 in_rel B ρσ B ρ'σ').
+  split; [ exact Htyp |]; right.
+  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbc].
+  functional_eval_rewrite_clear.
+  assert (H12 : Dom a1 ≈ a2 ∈ per_univ i) by pairwise.
+  destruct H12 as [R12 H12].
+  assert (H21 : DF a2 ≈ a1 ∈ per_univ_elem i ↘ R12) by (symmetry; exact H12).
+  assert (H41 : DF a4 ≈ a1 ∈ per_univ_elem i ↘ in_rel) by (symmetry; exact Houter).
+  assert (E12 : R12 <~> in_rel) by exact (per_univ_elem_left_irrel _ _ _ _ _ _ _ H21 H41).
+  assert (Hbc' : rel_chain (per_univ_elem i in_rel) ([a1; a2; b3; b4]))
+    by (eapply per_univ_chain_at_in; [ exact Hbc | | | exact (per_univ_elem_resp_iff H12 E12) ]; solve_in).
+  assert (H1b4 : DF a1 ≈ b4 ∈ per_univ_elem i ↘ in_rel) by pairwise.
+  assert (H2b3 : DF a2 ≈ b3 ∈ per_univ_elem i ↘ in_rel) by pairwise.
+  pose proof (per_univ_elem_relevance _ _ _ _ (per_univ_elem_resp_iff H12 E12)) as Er12.
+  pose proof (per_univ_elem_relevance _ _ _ _ H2b3) as Er23.
+  assert (H34 : DF b3 ≈ b4 ∈ per_univ_elem i ↘ in_rel) by pairwise.
+  pose proof (per_univ_elem_relevance _ _ _ _ H34) as Er34.
+  pose proof (per_univ_elem_relevance _ _ _ _ Hmid) as Er23'.
+  assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ) by (eapply rel_sub_under_ctx_at'; eassumption).
+  assert (Hmove : forall c c', Dom c ≈ c' ∈ in_rel ->
+             per_head B B (ρσ ↦ c ⦂ entry_type_value a2) (ρ'σ' ↦ c' ⦂ entry_type_value b3) <~>
+             per_head B B (ρσ ↦ c ⦂ entry_type_value a2) (ρ'σ' ↦ c' ⦂ entry_type_value a3)).
+  { intros c c' Hc.
+    pose proof (entry_readable_of_elem Hmid Hc) as [Hr2 Hr3].
+    pose proof (entry_readable_of_elem H2b3 Hc) as [_ Hr3b].
+    exact (per_head_codomain_resp HΓ HAself HB _ _ _ _ _ _ _ _ _ _ _ _ _ _
+             Hρσ Ha2 Ha3 Hmid Hc Hc Hc Hr2 Hr3b Hr2 Hr3). }
+  apply (mk_rel_exp λᵈ a1 ρ M[q σ] λᵈ a2 ρσ M λᵈ b3 ρ'σ' M' λᵈ b4 ρ' M'[q σ']);
+    [ apply eval_exp_fn; exact Ha1 | apply eval_exp_fn; exact Ha2 | apply eval_exp_fn; exact Hb3 | apply eval_exp_fn; exact Hb4 |].
+  apply rel_chain_4; (constructor; [ cbn; congruence | cbn; congruence |]); intros c c' Hc;
+    pose proof (args_readable_of_chain Hbc' Hc) as Hts;
+    pose proof (entry_readable_of_elem H1b4 Hc) as [Hr1 Hr4];
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ _ _ Hρ Ha1 H1b4 Hc Hr1 Hr4)
+      as Hpair;
+    destruct (rel_exp_under_ctx_q HΓ' Hσj HAself HM HBrel _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+      as [[m1 [m2 [Hm1 [Hm2 Hm]]]]
+            [[n1 [n2 [Hn1 [Hn2 Hn]]]] [p1 [p2 [Hp1 [Hp2 Hp]]]]]].
+  - econstructor; [ apply eval_app_fn; exact Hm1 | apply eval_app_fn; exact Hm2 | apply (Hmove _ _ Hc); exact Hm ].
+  - econstructor; [ apply eval_app_fn; exact Hn1 | apply eval_app_fn; exact Hn2 | apply (Hmove _ _ Hc); exact Hn ].
+  - econstructor; [ apply eval_app_fn; exact Hp1 | apply eval_app_fn; exact Hp2 | apply (Hmove _ _ Hc); exact Hp ].
+Qed.
 
 (** The domain and the codomain of a [Π] the rules of λ and of
     application name, at one index: the domain's from its sort, lifted, and

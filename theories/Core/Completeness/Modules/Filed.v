@@ -375,7 +375,7 @@ Qed.
     [A]'s closure (as a telescope's arguments are): the two values are
     related. *)
 Lemma extension_value_closure_type : forall Γ RΓ A B (k : nat) X c a i Ra b b',
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> Γ ⊨ᵗ A ≈ A at i -> Γ ▹ A ⊨ B : Typeω@k -> RΓ X X ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> Γ ⊨ᵗ A ≈ A at i -> Γ ▹ A ⊨ᵗ B ≈ B at k -> RΓ X X ->
     ⟦ A ⟧ X ↘ a -> per_univ_elem i Ra a a -> Ra c c ->
     ⟦ B ⟧ X ↦ c ⦂ entry_type_value a ↘ b -> ⟦ B ⟧ X ↦ c ⦂ entry_type_closure A X ↘ b' ->
     Dom b ≈ b' ∈ per_univ k.
@@ -388,7 +388,7 @@ Proof.
   { apply (mk_per_ctx_env_cons_rel _ _ _ _ (X ↦ c ⦂ entry_type_value a) (X ↦ c ⦂ entry_type_closure A X) HX);
       [ eapply per_head_of; [ exact Ha | exact Ha | exact HRa | exact Hc ] | intros _; eexists; reflexivity
       | intros _; eexists; reflexivity | split; [ exact R1 | cbn; lia ] | split; [ exact R2 | cbn; lia ] ]. }
-  destruct (rel_type_inversion_simple_at HΓA (rel_type_of_typ HB) _ _ Hext) as (b0 & b0' & Hb0 & Hb0' & U).
+  destruct (rel_type_inversion_simple_at HΓA HB _ _ Hext) as (b0 & b0' & Hb0 & Hb0' & U).
   functional_eval_rewrite_clear; exact U.
 Qed.
 
@@ -550,7 +550,7 @@ Proof.
       (** the IH's type, at the argument stored at its parameter's
           closure, against the codomain at it stored at its value *)
       cbn [rev] in Hb'; rewrite env_tele_snoc in Hb' by (rewrite length_rev; lia).
-      destruct (extension_value_closure_type _ _ _ _ _ _ _ _ _ _ _ _ HRo HA1t HcodT Hρ Ha1 HRa
+      destruct (extension_value_closure_type _ _ _ _ _ _ _ _ _ _ _ _ HRo HA1t (rel_type_of_typ HcodT) Hρ Ha1 HRa
                   (proj1 (HRa' c c) Hc) Hb Hb') as [Q HQ].
       destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HQ (proj1 (per_univ_elem_sym _ _ _ _ HQ))) as (Rb0 & HRb0 & _).
       assert (ERb : Rb0 <~> Rb) by (eapply per_univ_irrel_rel; [ exact HRb0 | eexists; exact HQ | exact HRb ]).
@@ -874,6 +874,18 @@ Qed.
 (** A term member of a filed module at arguments, read off its stored
     entry, or the open frame of a member's module or of a record type's
     module under it, read as its type former. *)
+(** [valid_member_type Γ A r]: [A] is a valid type of a member of the sort
+    [r].  At [relevant] it is a relevant type of either sort, a type of a
+    universe or a type of levels, at some index; at [propositional] it is
+    a proposition.  For example, the member [v] of
+    [module M (l : Level) ≔ { def v : Level ≔ l }] is read at
+    [Π (l : Level) Level], a relevant type of levels. *)
+Definition valid_member_type (Γ : ctx) (A : typ) (r : relevance) : Prop :=
+  match r with
+  | relevant => (exists i : nat, Γ ⊨ᵗ A ≈ A at i) /\ rel_type_relevant Γ A
+  | propositional => Γ ⊨ A : Propₘ
+  end.
+
 Lemma filed_mem_desc : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> mdesc_type R = Some A ->
     exists R0 R1,
@@ -934,8 +946,7 @@ Qed.
 Lemma filed_mem : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
     List.Forall (exp_scoped (List.length Γ)) Ns ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> mdesc_type R = Some A ->
-    valid_mem Γ (me_apps (qname_mod p) Ns) x A (mdesc_reduct R) /\
-    exists i : nat, Γ ⊨ A : relevance_sort (mdesc_relevance R) Typeω@i.
+    valid_mem Γ (me_apps (qname_mod p) Ns) x A (mdesc_reduct R) /\ valid_member_type Γ A (mdesc_relevance R).
 Proof.
   intros * Hl HΓ Hs HNss Hm Ht.
   destruct (filed_mem_desc _ _ _ _ _ _ _ _ Hl Hm Ht) as (R0 & R1 & HR0 & Ha & HrelR & HtR & HrR).
@@ -974,13 +985,13 @@ Proof.
     destruct (valid_exp_under_ctx_ctx_pi_at propositional T1 T2 A0 i HTa1 HT HA0) as [iX HX]; cbn [relevance_sort] in HX.
     assert (HXΓ : Γ ⊨ (ctx_pi_at propositional T1 A0)[sb_of_list Id Ns] : Propₘ)
       by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
-    split; [| exists 0; exact HXΓ ].
+    split; [| exact HXΓ ].
     apply valid_mem_of_prop; [ exact HXΓ | intros M _; exact (rel_exp_under_ctx_proof HXΓ) | exact HK ]. }
   cbn [relevance_sort] in HA0.
   destruct (rel_exp_ctx_pi _ _ _ _ HTa1 HT HA0) as [iX HX].
   assert (HXΓ : Γ ⊨ (ctx_pi T1 A0)[sb_of_list Id Ns] : Typeω@iX)
     by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
-  split; [| exists iX; exact HXΓ ].
+  split; [| split; [ exists iX; exact (rel_type_of_typ HXΓ) | exact (rel_type_relevant_of_typ HXΓ) ] ].
   (* the member, pointwise *)
   assert (Hpt : forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
              exists ns a k RX, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\ ⟦ (ctx_pi T1 A0)[sb_of_list Id Ns] ⟧ ρ ↘ a /\

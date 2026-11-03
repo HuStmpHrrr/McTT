@@ -677,6 +677,45 @@ Proof.
   apply rel_exp_under_ctx_pi_cong; [ exact HA' | exact HA' | eapply rel_exp_cumu_ge; [| exact HB ]; lia ].
 Qed.
 
+(** A relevant type of either sort generalized over relevant parameters
+    ([rel_params_relevant]): a relevant type of an index.  For example,
+    the member [v : Level] of [module M (l : Level) ≔ …] is read at
+    [Π (l : Level) Level]. *)
+Lemma rel_type_ctx_pi : forall Δ Γ B l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_relevant Γ Δ l ->
+    Δ ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_relevant (Δ ++ Γ) B ->
+    Γ ⊨ᵗ ctx_pi Δ B ≈ ctx_pi Δ B at max l k /\ rel_type_relevant Γ (ctx_pi Δ B).
+Proof.
+  induction Δ as [| e Δ IH]; intros * HΔa HΔ HΔr HB HBr.
+  - split; [ eapply rel_type_cumu_ge; [| exact HB ]; lia | exact HBr ].
+  - assert (He : exists A, e = ce_ass A) by (inversion HΔa as [| ? ? He _]; exact He).
+    destruct He as [A ->].
+    assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+    apply rel_params_relevant_cons_iff in HΔr as [Hh HΔr'].
+    pose proof (rel_type_cumu_ge (i := l) (j := max l k) ltac:(lia) (rel_param_typed_type _ _ _ (Hh A eq_refl))) as HA.
+    cbn [ctx_pi_at List.app] in *.
+    destruct (IH _ _ l (max l k) HΔa' (rel_ctx_wf_tail HΔ) HΔr'
+                (rel_type_under_ctx_pi HA (rel_type_cumu_ge (i := k) (j := max l k) ltac:(lia) HB) HBr) (rel_type_relevant_pi HA)) as [H1 H2].
+    split; [ eapply rel_type_cumu_ge; [| exact H1 ]; lia | exact H2 ].
+Qed.
+
+(** A term of a relevant type of either sort generalized over relevant
+    parameters: the λ over them, at the [Π] over them ([rel_type_ctx_pi]). *)
+Lemma rel_exp_ctx_fn : forall Δ Γ B M l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_relevant Γ Δ l ->
+    Δ ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_relevant (Δ ++ Γ) B -> Δ ++ Γ ⊨ M : B ->
+    Γ ⊨ ctx_fn Δ M : ctx_pi Δ B.
+Proof.
+  induction Δ as [| e Δ IH]; intros * HΔa HΔ HΔr HB HBr HM; [ exact HM |].
+  assert (He : exists A, e = ce_ass A) by (inversion HΔa as [| ? ? He _]; exact He).
+  destruct He as [A ->].
+  assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+  apply rel_params_relevant_cons_iff in HΔr as [Hh HΔr'].
+  pose proof (rel_type_cumu_ge (i := l) (j := max l k) ltac:(lia) (rel_param_typed_type _ _ _ (Hh A eq_refl))) as HA.
+  pose proof (rel_type_cumu_ge (i := k) (j := max l k) ltac:(lia) HB) as HB'.
+  cbn [ctx_fn ctx_pi_at List.app] in *.
+  exact (IH _ _ _ l (max l k) HΔa' (rel_ctx_wf_tail HΔ) HΔr' (rel_type_under_ctx_pi HA HB' HBr) (rel_type_relevant_pi HA)
+           (rel_exp_under_ctx_fn_cong_relevant HA HA HB' HBr HM)).
+Qed.
+
 Lemma rel_exp_apps_ctx_pi_n : forall n Δ Γ B (i : nat) M Ms,
     List.length Δ = n -> tele_ass Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ B : Typeω@i ->
     Γ ⊨ M : ctx_pi Δ B ->
