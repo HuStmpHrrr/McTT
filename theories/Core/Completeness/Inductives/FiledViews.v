@@ -731,6 +731,20 @@ Section ValidGroupViews.
           ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups (List.rev Z) zs ↘ cs /\
           per_gargs (List.rev (record_params R)) nil nil cups cs.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (rview_args_wk p D IsS Hg Hvsv). Qed.
+
+  Lemma valid_group_views_rview_args_sub_eval : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      valid_rview_record qr R ->
+      forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ sb_of_list Id Is : record_params R ++ ind_uparams D ⟧s decl_env D ups ↘ components_env D ups (List.rev (record_params R)) cups.
+  Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (rview_args_sub_eval p D IsS Hg Hvsv). Qed.
+
+  Lemma valid_group_views_view_args_sub_eval : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq ->
+      forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ sb_of_list Id Is : ind_uparams Dq ++ ind_uparams D ⟧s decl_env D ups ↘ components_env D ups (List.rev (ind_uparams Dq)) cups.
+  Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (view_args_sub_eval p D IsS Hg Hcv Hvsv). Qed.
 End ValidGroupViews.
 
 End Fixed_GCtx.

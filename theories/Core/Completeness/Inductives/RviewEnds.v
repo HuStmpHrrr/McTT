@@ -52,24 +52,22 @@ Proof.
   rewrite !List.map_app, !List.rev_app_distr; cbn [List.map List.rev List.app snd]; reflexivity.
 Qed.
 
-(** The entry of an argument. *)
-(** The instance of a closed telescope of relevant entries, over an
-    evaluated substitution: no entry of the telescope is a proposition. *)
-Lemma eval_sb_of_list_relevant : forall C Γ σ ρ ρσ Ms ms RC, tele_ass C -> ⊨ C -> EF C ≈ C ∈ per_ctx_env ↘ RC ->
-    (exists l, forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l) ->
-    ⟦ σ : Γ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length Ms = List.length C ->
-    RC (env_args nil ms) (env_args nil ms) ->
-    ⟦ sb_of_list σ Ms : C ++ Γ ⟧s ρ ↘ env_args ρσ ms.
+(** A closed telescope's arguments, related to themselves, over no base
+    and over any other: related environments of the telescope's context,
+    and arguments over the other base. *)
+Lemma closed_tele_base_rel : forall C RC ρ ρ' xs, tele_ass C -> ⊨ C -> EF C ≈ C ∈ per_ctx_env ↘ RC ->
+    per_gargs (List.rev C) nil nil xs xs -> List.length xs = List.length C ->
+    RC (env_tele nil (List.rev C) xs) (env_tele ρ (List.rev C) xs) /\ per_gargs (List.rev C) ρ ρ' xs xs.
 Proof.
-  intros * Ha HC HRC [l Hl] Hσ Hms Hlen Hρ.
-  rewrite <- (List.rev_involutive C).
-  apply eval_sb_of_list; [ exact Hσ | exact Hms | rewrite List.length_rev; lia |].
-  intros x Hx Hp; exfalso; rewrite List.rev_involutive in Hp; rewrite List.length_rev in Hx.
-  assert (Hlm : List.length ms = List.length C) by (rewrite (eval_exps_length _ _ _ Hms); exact Hlen).
-  pose proof (entry_propositional_args_base C Γ ρσ nil ms x Hlm Hx Hp) as Hp0.
-  rewrite <- (List.app_nil_r C) in Hp0, HRC.
-  eapply (relevant_entries_not_propositional C nil RC Ha); [ | exact HRC | exact Hρ | exact Hx | exact Hp0 ].
-  intros * E; exists l; rewrite List.app_nil_r; exact (Hl _ _ _ E).
+  intros * Ha HC HRC Hg Hl.
+  assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
+  assert (Ha' : tele_ass (List.rev C)) by (apply List.Forall_rev; exact Ha).
+  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' Ha' nil nil nil ρ xs xs I I I Hg) as Hg1.
+  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' Ha' nil nil ρ ρ' xs xs I I I Hg) as Hg2.
+  split; [| exact Hg2 ].
+  assert (HRC' : EF C ++ ⋅ ≈ C ++ ⋅ ∈ per_ctx_env ↘ RC) by (rewrite List.app_nil_r; exact HRC).
+  assert (HC0 : ⊨ C ++ ⋅) by (rewrite List.app_nil_r; exact HC).
+  exact (gargs_env_rel_gen _ _ _ _ _ _ _ _ per_ctx_env_nil_true HRC' HC0 I Hl Hg1).
 Qed.
 
 Lemma cargs_ctx_single : forall pq D nn pat g, exists G, cargs_ctx_aux pq D nn pat (g :: nil) = ce_ass G :: nil.
@@ -91,7 +89,7 @@ Qed.
     telescope, and the last at the type's relation there. *)
 Lemma per_gargs_snoc_inv : forall ts A E E' zs zs' x x', List.length zs = List.length ts ->
     per_gargs (ts ++ ce_ass A :: nil) E E' (zs ++ x :: nil) (zs' ++ x' :: nil) ->
-    per_gargs ts E E' zs zs' /\ exists (i : nat) R, rel_typ i A (env_args E zs) A (env_args E' zs') R /\ R x x'.
+    per_gargs ts E E' zs zs' /\ exists (i : nat) R, rel_typ i A (env_tele E ts zs) A (env_tele E' ts zs') R /\ R x x'.
 Proof.
   intros * Hl H.
   assert (Hl' : List.length zs' = List.length ts).
@@ -107,10 +105,10 @@ Qed.
 Lemma per_gargs_snoc_transfer : forall ts1 A1 E1 E1' ts2 A2 E2 E2' zs zs' x x',
     List.length zs = List.length ts1 -> List.length zs = List.length ts2 ->
     (per_gargs ts1 E1 E1' zs zs' <-> per_gargs ts2 E2 E2' zs zs') ->
-    (per_gargs ts1 E1 E1' zs zs' -> exists (i : nat) R, rel_typ i A1 (env_args E1 zs) A1 (env_args E1' zs') R) ->
-    (per_gargs ts2 E2 E2' zs zs' -> exists (i : nat) R, rel_typ i A2 (env_args E2 zs) A2 (env_args E2' zs') R) ->
+    (per_gargs ts1 E1 E1' zs zs' -> exists (i : nat) R, rel_typ i A1 (env_tele E1 ts1 zs) A1 (env_tele E1' ts1 zs') R) ->
+    (per_gargs ts2 E2 E2' zs zs' -> exists (i : nat) R, rel_typ i A2 (env_tele E2 ts2 zs) A2 (env_tele E2' ts2 zs') R) ->
     (per_gargs ts1 E1 E1' zs zs' -> forall (i1 : nat) R1 (i2 : nat) R2,
-       rel_typ i1 A1 (env_args E1 zs) A1 (env_args E1' zs') R1 -> rel_typ i2 A2 (env_args E2 zs) A2 (env_args E2' zs') R2 ->
+       rel_typ i1 A1 (env_tele E1 ts1 zs) A1 (env_tele E1' ts1 zs') R1 -> rel_typ i2 A2 (env_tele E2 ts2 zs) A2 (env_tele E2' ts2 zs') R2 ->
        (R1 <~> R2)) ->
     (per_gargs (ts1 ++ ce_ass A1 :: nil) E1 E1' (zs ++ x :: nil) (zs' ++ x' :: nil) <->
      per_gargs (ts2 ++ ce_ass A2 :: nil) E2 E2' (zs ++ x :: nil) (zs' ++ x' :: nil)).
@@ -141,7 +139,7 @@ Section RviewArgs.
     (Hcs : im_cons Mj = (c, gs) :: nil).
   Variables (ups cups : list domain).
   Hypotheses (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil ups ups) (Hu : List.length ups = ind_nu D)
-    (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups).
+    (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups).
   Let HlR := valid_rview_record_lookup _ _ HR.
   Let HaR := typed_params_ass _ _ _ (valid_rview_record_typed _ _ HR).
   Let HWR := params_valid _ (valid_rview_record_valid _ _ HR).
@@ -202,9 +200,13 @@ Section RviewArgs.
       cargs_ctx p D Mj (gsA ++ g :: nil) = ce_ass G :: cargs_ctx p D Mj gsA ->
       per_gargs (List.rev (cargs_ctx p D Mj gsA ++ ind_uparams D)) nil nil (ups ++ zs) (ups ++ zs) ->
       per_gargs (List.rev (record_fctx R k ++ record_params R)) nil nil (cups ++ zs) (cups ++ zs) ->
-      rview_type_link A G (env_args nil (cups ++ zs)) (env_args nil (ups ++ zs)).
+      rview_type_link A G (env_tele (env_tele nil (List.rev (record_params R)) cups) (List.firstn k (Records.Model.field_tele R)) zs)
+        (env_tele (decl_env D ups) (List.rev (cargs_ctx p D Mj gsA)) zs).
   Proof.
     intros * Hk Heq Hlk Hlz HG Hg1 Hg2.
+    set (EU := decl_env D ups).
+    set (Pc := env_tele nil (List.rev (record_params R)) cups).
+    pose proof rview_args_container_uparams_len as Hlc.
     (** The record view equation, cut at the position. *)
     destruct (valid_group_views_rview_fields p D Hg _ _ _ _ _ _ _ _ HMj Hh HlR Hcs) as [_ _ [Rx HRx]].
     destruct (record_fctx_split _ _ _ _ Hk) as [X EF0].
@@ -233,12 +235,24 @@ Section RviewArgs.
     destruct (valid_group_cargs_sem_all p D Hg Hcv j Mj c gs HMj rview_args_con gsA (g :: gsB) Heq) as [HWg _].
     rewrite rview_args_params in HWg.
     destruct (rel_ctx_wf_per_ctx_env HWg) as [RG HRG].
-    assert (HρG : RG (env_args nil (ups ++ zs)) (env_args nil (ups ++ zs))).
-    { apply (gargs_env_rel _ _ _ _ _ _ HRG HWg); [| exact Hg1 ].
+    assert (HlU : List.length ups = List.length (ind_uparams D)) by (unfold ind_nu in Hu; exact Hu).
+    set (EG := env_tele EU (List.rev (cargs_ctx p D Mj gsA)) zs).
+    assert (HEgc : env_tele nil (List.rev (cargs_ctx p D Mj gsA ++ ind_uparams D)) (ups ++ zs) = EG)
+      by (unfold EG, EU, decl_env; apply env_tele_closed_app; exact HlU).
+    assert (HρG : RG EG EG).
+    { rewrite <- HEgc; apply (gargs_env_rel _ _ _ _ _ _ HRG HWg); [| exact Hg1 ].
       rewrite !List.length_app, length_cargs_ctx; unfold ind_nu in *; lia. }
     assert (E0 : RG <~> RT0)
       by (destruct (per_ctx_env_sym _ _ _ HRT0) as [HRT0' _]; eapply per_ctx_env_right_irrel; [ exact HRG | exact HRT0' ]).
     destruct (Hty _ _ (proj1 (E0 _ _) HρG)) as (i0 & R0 & [a1 b Ea1 Eb HR0]).
+    (** The group's arguments, with their types. *)
+    rewrite List.rev_app_distr in Hg1.
+    destruct (per_gargs_app (List.rev (ind_uparams D)) (List.rev (cargs_ctx p D Mj gsA)) nil nil ups ups zs zs
+                ltac:(rewrite List.length_rev; exact HlU) Hg1 ltac:(rewrite List.length_rev; exact HlU)) as [_ Hgz].
+    fold (decl_env D ups) EU in Hgz.
+    pose proof (per_gargs_entries_readable _ _ _ _ _ Hgz) as [Rvg _].
+    set (vtsg := tele_entries EU (List.rev (cargs_ctx p D Mj gsA)) zs) in *.
+    assert (Hvg : List.map fst vtsg = zs) by apply tele_entries_fst.
     (** The field's type, over [cups]. *)
     pose proof (valid_rview_record_valid _ _ HR) as [_ HPr [is HS] HF HT].
     pose proof (record_typed_sort_univ _ _ _ (valid_rview_record_typed _ _ HR)) as Hsu.
@@ -256,43 +270,57 @@ Section RviewArgs.
     assert (HaΔc : tele_ass Δc) by apply record_fctx_ass.
     destruct (gsub_props (valid_group_views_rview_args_gsub p D Hg _ _ _ _ _ _ HMj Hh HR)) as [Hτ _].
     destruct (rel_ctx_wf_per_ctx_env HUD) as [RU HRU].
-    pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRU) as HρU.
-    destruct (rel_ctx_wf_per_ctx_env HWR) as [RQ0 HRQ0].
-    assert (HQ00 : RQ0 (env_args nil cups) (env_args nil cups))
-      by exact (gargs_env_rel _ _ _ _ _ _ HRQ0 HWR rview_args_container_uparams_len rview_args_container_uparams_rel).
-    pose proof (eval_sb_of_list_relevant _ _ _ _ _ _ _ _ HaR HWR HRQ0 HPr
-                  (eval_sub_id _ _ (proj1 (per_ctx_env_proofs _ _ _ HRU _ _ HρU))) Ecups
-                  ltac:(rewrite <- (eval_exps_length _ _ _ Ecups); exact rview_args_container_uparams_len) HQ00) as Eτ.
+    pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRU) as HρU; fold EU in HρU.
+    (** The instance's value: the record's parameters at [cups], over the
+        uniform parameters. *)
+    destruct (valid_group_views_rview_args_sub_eval p D Hg _ _ _ _ _ _ HMj Hh HR _ _ Hgu Hu) as (cups0 & Ecups0 & Eτ).
+    pose proof (functional_eval_exps' _ _ _ _ Ecups0 Ecups) as ->; fold EU in Eτ.
+    set (Ec := components_env D ups (List.rev (record_params R)) cups) in *.
     destruct (rel_ctx_wf_per_ctx_env HWR) as [RQ HRQ].
-    pose proof rview_args_container_uparams_len as Hlc.
-    assert (HQ0 : RQ (env_args nil cups) (env_args nil cups)) by exact (gargs_env_rel _ _ _ _ _ _ HRQ HWR Hlc rview_args_container_uparams_rel).
-    assert (HQ1 : RQ (env_args nil cups) (env_args (env_args nil ups) cups))
-      by exact (closed_env_base _ _ _ _ _ _ _ _ HaR HWR HRQ Hlc Hlc HQ0).
-    assert (Hgc0 : per_gargs (List.rev Δc) (env_args nil cups) (env_args nil cups) zs zs).
+    destruct (closed_tele_base_rel (record_params R) RQ EU EU cups HaR HWR HRQ rview_args_container_uparams_rel Hlc) as [HQ1 HgcU].
+    fold Pc in HQ1; change (env_tele EU (List.rev (record_params R)) cups) with Ec in HQ1.
+    assert (HPQ : PER RQ) by (eapply per_env_PER; exact HRQ).
+    assert (HQ0 : RQ Pc Pc) by (etransitivity; [ exact HQ1 | symmetry; exact HQ1 ]).
+    assert (HQ2 : RQ Ec Ec) by (etransitivity; [ symmetry; exact HQ1 | exact HQ1 ]).
+    assert (Hgc0 : per_gargs (List.rev Δc) Pc Pc zs zs).
     { rewrite List.rev_app_distr in Hg2.
       assert (Hlr : List.length cups = List.length (List.rev (record_params R))) by (rewrite List.length_rev; exact Hlc).
       destruct (per_gargs_app (List.rev (record_params R)) (List.rev Δc) nil nil cups cups zs zs Hlr Hg2 Hlr) as [_ H]; exact H. }
     assert (HWΔ : ⊨ List.rev (List.rev Δc) ++ record_params R) by (rewrite List.rev_involutive; exact HWc).
     pose proof (per_gargs_base _ _ _ HRQ HWΔ (List.Forall_rev HaΔc) _ _ _ _ _ _ HQ0 HQ1 HQ1 Hgc0) as Hgc1.
     assert (Hlx : List.length zs = List.length Δc) by (unfold Δc; rewrite length_record_fctx by exact Hkl; exact Hlz).
-    destruct (outer_type_link Δc (record_params R ++ ind_uparams D) (ind_uparams D) RU (sb_of_list Id Is) (env_args nil ups)
-                (env_args (env_args nil ups) cups) A ic HaΔc HWcU (Hic _ _ _ HCvU) HRU Hτ HρU Eτ zs Hgc1 Hlx)
+    (** The field's type under the instance, at the group's arguments, is
+        the field's type at the instance's value extended by them. *)
+    rewrite <- Hvg in Hgc1.
+    destruct (outer_type_link Δc (record_params R ++ ind_uparams D) (ind_uparams D) RU (sb_of_list Id Is) EU Ec A ic
+                HaΔc HWcU (Hic _ _ _ HCvU) HRU Hτ HρU Eτ vtsg Hgc1
+                ltac:(unfold vtsg; rewrite tele_entries_length; exact Hlx) Rvg)
       as (a2 & b2 & Ea2 & Eb2 & [R2 HR2]).
-    rewrite <- env_args_app in Ea2.
+    change (env_extend_typed EU vtsg) with EG in Ea2.
     pose proof (functional_eval_exp _ _ _ _ Ea2 Ea1) as ->.
     (** From the instance's base to none: the record's telescope is
         closed. *)
     destruct (rel_ctx_wf_per_ctx_env HWc) as [RK HRK].
     assert (Hl3 : List.length (cups ++ zs) = List.length (Δc ++ record_params R))
       by (rewrite !List.length_app, Hlc, Hlx; lia).
-    assert (HKF : RK (env_args nil (cups ++ zs)) (env_args nil (cups ++ zs)))
-      by exact (gargs_env_rel _ _ _ _ _ _ HRK HWc Hl3 Hg2).
-    assert (HKF' : RK (env_args (env_args nil ups) (cups ++ zs)) (env_args nil (cups ++ zs)))
-      by exact (closed_env_base _ _ _ _ nil nil (env_args nil ups) nil HaC HWc HRK Hl3 Hl3 HKF).
+    set (Kc := env_tele nil (List.rev (Δc ++ record_params R)) (cups ++ zs)).
+    assert (HKF : RK Kc Kc) by exact (gargs_env_rel _ _ _ _ _ _ HRK HWc Hl3 Hg2).
+    pose proof (per_gargs_entries_readable _ _ _ _ _ HgcU) as [Rvc _].
+    assert (HKF' : RK (env_extend_typed EU (tele_entries EU (List.rev (record_params R)) cups ++ vtsg)) Kc).
+    { set (vtsK := tele_entries nil (List.rev (Δc ++ record_params R)) (cups ++ zs)).
+      assert (HKl : List.length vtsK = List.length (Δc ++ record_params R)) by (unfold vtsK; rewrite tele_entries_length; exact Hl3).
+      pose proof (per_gargs_entries_readable _ _ _ _ _ Hg2) as [Rvk _]; fold vtsK in Rvk.
+      apply (closed_env_base (Δc ++ record_params R) RK vtsK vtsK (tele_entries EU (List.rev (record_params R)) cups ++ vtsg) vtsK
+               nil nil EU nil HaC HWc HRK HKl HKl); [ | reflexivity | | exact Rvk | exact HKF ].
+      - unfold vtsK; rewrite List.map_app, !tele_entries_fst, Hvg; reflexivity.
+      - apply List.Forall_app; split; assumption. }
     destruct (rel_type_inversion_simple_at HRK (Hic _ _ _ HCv) _ _ HKF') as (c1 & c2 & Ec1 & Ec2 & [Rk HRk]).
-    replace (env_args (env_args (env_args nil ups) cups) zs) with (env_args (env_args nil ups) (cups ++ zs))
-      in Eb2 by (rewrite env_args_app; reflexivity).
+    rewrite env_extend_typed_app in Ec1; change (env_extend_typed EU (tele_entries EU (List.rev (record_params R)) cups)) with Ec in Ec1.
     pose proof (functional_eval_exp _ _ _ _ Eb2 Ec1) as ->.
+    assert (HKc : Kc = env_tele Pc (List.firstn k (Records.Model.field_tele R)) zs).
+    { unfold Kc, Pc; rewrite (env_tele_closed_app (record_params R) Δc cups zs Hlc).
+      unfold Δc; rewrite Records.Model.rev_record_fctx; reflexivity. }
+    rewrite HKc in Ec2.
     constructor.
     - etransitivity; [ symmetry; exact (per_head_right Ec1 Ec2 HRk) |].
       etransitivity; [ symmetry; exact (per_univ_elem_chain_iff _ _ _ _ _ _ _ HR2 HRk) |].
@@ -318,15 +346,18 @@ Section RviewArgs.
       The record's fields at [cups] and the record view's constructor's
       arguments at [ups], position by position. *)
   Lemma rview_tele_link : forall n zs zs', n <= List.length gs -> List.length zs = n -> List.length zs' = n ->
-      (per_gargs (List.firstn n (Records.Model.field_tele R)) (env_args nil cups) (env_args nil cups) zs zs' <->
-       per_gargs (List.rev (cargs_ctx p D Mj (List.firstn n gs))) (env_args nil ups) (env_args nil ups) zs zs').
+      (per_gargs (List.firstn n (Records.Model.field_tele R)) (env_tele nil (List.rev (record_params R)) cups)
+         (env_tele nil (List.rev (record_params R)) cups) zs zs' <->
+       per_gargs (List.rev (cargs_ctx p D Mj (List.firstn n gs))) (decl_env D ups) (decl_env D ups) zs zs').
   Proof.
     pose proof rview_args_len as Hlg.
     pose proof (valid_rview_record_valid _ _ HR) as [_ HPr [is HS] HF HT].
     pose proof (record_typed_sort_univ _ _ _ (valid_rview_record_typed _ _ HR)) as Hsu.
     pose proof rview_args_container_uparams_len as Hlc.
     destruct (rel_ctx_wf_per_ctx_env HWR) as [RQ HRQ].
-    assert (HQ0 : RQ (env_args nil cups) (env_args nil cups)) by exact (gargs_env_rel _ _ _ _ _ _ HRQ HWR Hlc rview_args_container_uparams_rel).
+    assert (HQ0 : RQ (env_tele nil (List.rev (record_params R)) cups) (env_tele nil (List.rev (record_params R)) cups))
+      by exact (gargs_env_rel _ _ _ _ _ _ HRQ HWR Hlc rview_args_container_uparams_rel).
+    assert (HlU : List.length ups = List.length (ind_uparams D)) by (unfold ind_nu in Hu; exact Hu).
     pose proof (valid_ind_decl_uparams _ HD) as HUD.
     destruct (rel_ctx_wf_per_ctx_env HUD) as [RU HRU].
     pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRU) as HρU.
@@ -375,23 +406,26 @@ Section RviewArgs.
       apply per_gargs_snoc_transfer; [ lia | lia | exact (IH zs0 zs0' ltac:(lia) Lz Lz') | | |].
       + (** The field's types are related. *)
         intros Hp.
-        assert (HE : RK (env_args nil (cups ++ zs0)) (env_args nil (cups ++ zs0'))).
+        assert (HE : RK (env_tele nil (List.rev (record_fctx R n ++ record_params R)) (cups ++ zs0))
+                        (env_tele nil (List.rev (record_fctx R n ++ record_params R)) (cups ++ zs0'))).
         { apply (gargs_env_rel _ _ _ _ _ _ HRK HWc); [ rewrite !List.length_app, length_record_fctx by lia; lia |].
           rewrite EF0; apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hlc | exact rview_args_container_uparams_rel | exact Hp ]. }
         destruct (rel_type_inversion_simple_at HRK HAv _ _ HE) as (a & a' & Ea & Ea' & [R0 HR0]).
-        rewrite env_args_app in Ea, Ea'.
+        rewrite !env_tele_closed_app, Records.Model.rev_record_fctx in Ea, Ea' by exact Hlc.
         exists iA, R0; exact (mk_rel_mod_eval _ _ Ea Ea' HR0).
       + (** The constructor's argument types are related. *)
         intros Hp.
-        assert (HE : RG (env_args nil (ups ++ zs0)) (env_args nil (ups ++ zs0'))).
+        assert (HE : RG (env_tele nil (List.rev (cargs_ctx p D Mj (List.firstn n gs) ++ ind_uparams D)) (ups ++ zs0))
+                        (env_tele nil (List.rev (cargs_ctx p D Mj (List.firstn n gs) ++ ind_uparams D)) (ups ++ zs0'))).
         { apply (gargs_env_rel _ _ _ _ _ _ HRG HWg); [ rewrite !List.length_app, length_cargs_ctx; unfold ind_nu in *; lia |].
           rewrite List.rev_app_distr; apply per_gargs_app_intro; [ rewrite List.length_rev; unfold ind_nu in *; lia | exact Hgu | exact Hp ]. }
         destruct (rel_type_inversion_simple_at HRG HGv _ _ HE) as (b & b' & Eb & Eb' & [R0 HR0]).
-        rewrite env_args_app in Eb, Eb'.
+        rewrite !env_tele_closed_app in Eb, Eb' by exact HlU.
         exists iG, R0; exact (mk_rel_mod_eval _ _ Eb Eb' HR0).
       + (** Their relations agree: the heads at the left prefix. *)
         intros Hp i1 R1 i2 R2 [a a' Ea Ea' HR1] [b b' Eb Eb' HR2].
-        assert (HpL : per_gargs (List.firstn n (Records.Model.field_tele R)) (env_args nil cups) (env_args nil cups) zs0 zs0).
+        assert (HpL : per_gargs (List.firstn n (Records.Model.field_tele R)) (env_tele nil (List.rev (record_params R)) cups)
+                        (env_tele nil (List.rev (record_params R)) cups) zs0 zs0).
         { assert (HWr : ⊨ List.rev (List.firstn n (Records.Model.field_tele R)) ++ record_params R)
             by (rewrite <- Records.Model.rev_record_fctx, List.rev_involutive; exact HWc).
           exact (per_gargs_refl_l _ _ _ HRQ HWr HtaC _ _ _ _ HQ0 Hp). }
@@ -401,7 +435,6 @@ Section RviewArgs.
         assert (Hg2 : per_gargs (List.rev (record_fctx R n ++ record_params R)) nil nil (cups ++ zs0) (cups ++ zs0)).
         { rewrite EF0; apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hlc | exact rview_args_container_uparams_rel | exact HpL ]. }
         pose proof (rview_arg_link n f A (List.firstn n gs) g (List.skipn (S n) gs) G zs0 Hf Heq Lk Lz HG Hg1 Hg2) as Hlk.
-        rewrite <- !env_args_app in Ea, Eb.
         etransitivity; [ exact (per_head_left Ea Ea' HR1) |].
         etransitivity; [ exact (rtl_heads _ _ _ _ Hlk) |].
         symmetry; exact (per_head_left Eb Eb' HR2).
@@ -415,7 +448,7 @@ Section RviewArgs.
   Lemma rview_elems : (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
         view_end_rel p D ups ups (ptyp_mem t) /\ rview_end_rel p D ups ups (ptyp_mem t)) ->
       forall x y, record_rel R (canon_fields_rel R cups) x y <->
-        grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) j ups ups nil nil x y.
+        grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) j ups ups nil nil x y.
   Proof.
     intros Hends x y.
     pose proof rview_args_len as Hlg.
@@ -442,8 +475,9 @@ Section RviewArgs.
                     (List.length (record_fields R)) ws ws' (le_n _) (tele_rel_pre _ _ _ _ Hrel)) as HgF.
       pose proof (proj1 (rview_tele_link (List.length (record_fields R)) ws ws' ltac:(lia) Lw Lw') HgF) as HgC.
       rewrite EN in HgC.
-      destruct (con_args_canon p D Hg Hcv j Mj c gs HMj rview_args_con ups ups ws ws' Hgp Hlp HgC ltac:(lia) Hends') as [Hnr Hia].
-      rewrite Hf, Hs in Hnr, Hia.
+      destruct (con_args_canon p D Hg Hcv j Mj c gs HMj rview_args_con ups ups ws ws' Hgp Hlp
+                  ltac:(rewrite rview_args_params; exact HgC) ltac:(lia) Hends') as [Hnr Hia].
+      rewrite Hf, Hs in Hnr, Hia; rewrite rview_args_nparams in Hia.
       eapply ind_rel_record; [ exact HMj | exact Hh | exact rview_args_nparams | exact Hcs
                              | apply (record_projs_iff R fl); [ exact rview_args_names | exact Hp ]
                              | apply (record_projs_iff R fl); [ exact rview_args_names | exact Hp' ]
@@ -453,21 +487,24 @@ Section RviewArgs.
         rewrite HMj in H0; injection H0 as <-; rewrite Hh in H0'; injection H0' as <- <- <-;
         rewrite Hcs in H0''; injection H0'' as <- <- end.
       match goal with Hq1 : ⟦projs fl of x ⟧ _ ⍮ _ ↘ ?ws, Hq2 : ⟦projs fl of y ⟧ _ ⍮ _ ↘ ?ws',
-                      Ha1 : tele_rel _ _ _ _, Ha2 : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+                      Ha1 : tele_rel _ _ _ _, Ha2 : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
         rename Hq1 into Hp; rename Hq2 into Hp'; rename Ha1 into Hnr; rename Ha2 into Hia end.
       apply (record_projs_iff R fl _ _ rview_args_names) in Hp, Hp'.
       pose proof (record_projs_length _ _ _ Hp) as Lw.
       pose proof (record_projs_length _ _ _ Hp') as Lw'.
-      pose proof (cargs_gargs p D Hg Hcv ups Hgu Hu j Mj c gs HMj rview_args_con Hends nil nil _ _ Hn0 Hnr Hia
+      pose proof (cargs_gargs p D Hg Hcv ups Hgu Hu j Mj c gs HMj rview_args_con Hends nil nil _ _ Hn0 Hnr
+                    ltac:(rewrite rview_args_nparams; exact Hia)
                     (List.length (record_fields R)) ltac:(lia)) as HgC.
-      rewrite EN, List.app_nil_r, !List.firstn_all2 in HgC by lia.
+      rewrite EN, List.app_nil_r, !List.firstn_all2, rview_args_params in HgC by lia.
       pose proof (proj2 (rview_tele_link (List.length (record_fields R)) _ _ ltac:(lia) Lw Lw') ltac:(rewrite EN; exact HgC)) as HgF.
       assert (Htr : forall k0 A0 pre, List.nth_error (List.firstn (List.length (record_fields R)) (Records.Model.field_tele R)) k0 = Some (ce_ass A0) ->
-                (canon_fields_rel R cups k0 pre <~> per_head A0 A0 (env_args (env_args nil cups) pre) (env_args (env_args nil cups) pre))).
+                (canon_fields_rel R cups k0 pre <~>
+                 per_head A0 A0 (env_tele (env_tele nil (List.rev (record_params R)) cups) (List.firstn (List.length (record_fields R)) (Records.Model.field_tele R)) pre)
+                   (env_tele (env_tele nil (List.rev (record_params R)) cups) (List.firstn (List.length (record_fields R)) (Records.Model.field_tele R)) pre))).
       { intros k0 A0 pre Hk0.
-        rewrite List.firstn_all2 in Hk0 by (rewrite Records.Model.length_field_tele; lia).
+        rewrite List.firstn_all2 in Hk0 |- * by (rewrite Records.Model.length_field_tele; lia).
         destruct (Records.Model.field_tele_nth _ _ _ Hk0) as [f0 Hf0].
-        unfold canon_fields_rel; rewrite (nth_ftyp_eq _ _ _ _ Hf0), <- !env_args_app; reflexivity. }
+        unfold canon_fields_rel, record_fields_env; rewrite (nth_ftyp_eq _ _ _ _ Hf0); reflexivity. }
       pose proof (gargs_tele_canon _ _ _ Htr _ _ _ HgF ltac:(rewrite List.length_firstn, Records.Model.length_field_tele; lia)) as Htl.
       econstructor; [ exact Hp | exact Hp' |].
       destruct Htl as [_ Htl]; split; [ exact Lw | exact Htl ].
@@ -482,13 +519,14 @@ End RviewArgs.
 Lemma con_rel_rview : forall p D, valid_group p D -> containers_valid D ->
     forall k Mk qr Is fl c gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl -> im_cons Mk = (c, gs) :: nil ->
     forall ps ps' as1 as1', per_gargs (List.rev (im_params D Mk)) nil nil ps ps' -> List.length ps = im_np D Mk ->
-      per_gargs (List.rev (cargs_ctx p D Mk gs)) (env_args nil ps) (env_args nil ps') as1 as1' -> List.length as1 = List.length gs ->
+      per_gargs (List.rev (cargs_ctx p D Mk gs)) (env_tele nil (List.rev (im_params D Mk)) ps) (env_tele nil (List.rev (im_params D Mk)) ps') as1 as1' ->
+      List.length as1 = List.length gs ->
       (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
          view_end_rel p D (List.firstn (ind_nu D) ps) (List.firstn (ind_nu D) ps) (ptyp_mem t) /\
          rview_end_rel p D (List.firstn (ind_nu D) ps) (List.firstn (ind_nu D) ps) (ptyp_mem t)) ->
       ind_rel p D (admissible_index_at D (List.firstn (ind_nu D) ps) (canon_nparams_rel D (List.firstn (ind_nu D) ps)))
         (canon_nparams_rel D (List.firstn (ind_nu D) ps)) (canon_args_rel D (List.firstn (ind_nu D) ps))
-        (canon_doms_rel (List.firstn (ind_nu D) ps)) k (List.firstn (ind_nu D) ps) (List.firstn (ind_nu D) ps') nil nil
+        (canon_doms_rel D (List.firstn (ind_nu D) ps)) k (List.firstn (ind_nu D) ps) (List.firstn (ind_nu D) ps') nil nil
         (d_tuple (List.combine fl as1)) (d_tuple (List.combine fl as1')).
 Proof.
   intros p D Hg Hcv k Mk qr Is fl c gs HM Hh Hcs ps ps' as1 as1' Hgp Hlp Hga Hla Hends.
@@ -510,6 +548,7 @@ Proof.
   { intros vs Lv; apply (record_projs_iff R fl _ _ Hfl).
     pose proof (Records.Model.tuple_projs R Hnd (record_fields R) vs eq_refl ltac:(lia)) as H.
     rewrite <- Hfl in H; exact H. }
+  rewrite Hnp in Hia.
   eapply ind_rel_record; [ exact HM | exact Hh | exact Hnp | exact Hcs | exact (Hpj as1 Hla) | exact (Hpj as1' ltac:(lia)) | exact Hnr | exact Hia ].
 Qed.
 
