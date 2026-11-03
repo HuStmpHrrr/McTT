@@ -91,6 +91,18 @@ Fixpoint nat_index (m : nat) (ms : list nat) : option nat :=
   | m' :: ms' => if Nat.eqb m m' then Some 0 else option_map S (nat_index m ms')
   end.
 
+(** The scrutinee's type of a block of the member [j], [M], of the group
+    [D] at [pq], at the uniform parameters [Us]: the member at [Us] and at
+    the block's non-uniform parameters, the type [elim_mctx] gives the
+    scrutinee ([elim_mctx_scrutinee_type]).  The fill writes it when the
+    user omits it, and the generated eliminators carry it. *)
+Definition member_scrutinee_type (pq : qname) (D : ind_decl) (j : nat) (M : imember) (Us : list exp) : typ :=
+  ind_mty pq D j (List.map (fun U => U[wk_shiftn (im_nn M)]ʷ) Us) (vars_from 0 (im_nn M)).
+
+Lemma elim_mctx_scrutinee_type : forall pq D j M Us,
+    elim_mctx pq D j M Us = ce_ass (member_scrutinee_type pq D j M Us) :: tele_sub (im_nparams M) (sb_of_list Id Us).
+Proof. reflexivity. Qed.
+
 (** The block a function makes, under [k] more binders of the function it
     is the eliminator of. *)
 Definition rf_block (k : nat) (f : raw_fun) : eblock :=
@@ -127,38 +139,40 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
     parameters, among the members with a block (a record view has none,
     so no function). *)
 Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) :
-    raw_fun -> nat -> Prop :=
+    raw_fun_head -> nat -> Prop :=
 (** The only rule: the scrutinee's type and the members' types are types
     before they are normalized, as normalizing an untyped term need not
     terminate *)
 | mdef_member_intro : forall f W Ws m Mm,
-    (exists i, Θ ⍮ Ξ ⍮ raw_fun_nparams f ++ Δ ++ gs_tele Ξ ⊢ raw_fun_scrut f : Typeω@i) ->
-    nbe_ty Θ Ξ (raw_fun_nparams f ++ Δ ++ gs_tele Ξ) (raw_fun_scrut f) W ->
+    (exists i, Θ ⍮ Ξ ⍮ raw_fun_head_nparams f ++ Δ ++ gs_tele Ξ ⊢ raw_fun_head_scrut f : Typeω@i) ->
+    nbe_ty Θ Ξ (raw_fun_head_nparams f ++ Δ ++ gs_tele Ξ) (raw_fun_head_scrut f) W ->
     Forall2 (fun jM Wj =>
-               (exists i, Θ ⍮ Ξ ⍮ raw_fun_nparams f ++ Δ ++ gs_tele Ξ
-                  ⊢ im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (raw_fun_nparams f))]ʷ) Us)
-                      (vars_from 0 (List.length (raw_fun_nparams f))) : Typeω@i) /\
-               nbe_ty Θ Ξ (raw_fun_nparams f ++ Δ ++ gs_tele Ξ)
-                 (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (raw_fun_nparams f))]ʷ) Us)
-                    (vars_from 0 (List.length (raw_fun_nparams f)))) Wj)
+               (exists i, Θ ⍮ Ξ ⍮ raw_fun_head_nparams f ++ Δ ++ gs_tele Ξ
+                  ⊢ im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (raw_fun_head_nparams f))]ʷ) Us)
+                      (vars_from 0 (List.length (raw_fun_head_nparams f))) : Typeω@i) /\
+               nbe_ty Θ Ξ (raw_fun_head_nparams f ++ Δ ++ gs_tele Ξ)
+                 (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (raw_fun_head_nparams f))]ʷ) Us)
+                    (vars_from 0 (List.length (raw_fun_head_nparams f)))) Wj)
       (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) Ws ->
     nf_index W Ws = Some m ->
     ind_member D m = Some Mm ->
-    im_nn Mm = List.length (raw_fun_nparams f) ->
+    im_nn Mm = List.length (raw_fun_head_nparams f) ->
     mdef_member Θ Ξ pq D Us Δ f m.
 
-(** [mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms]: the functions [f0 :: fs] of
-    a mutual definition over [Δ] are of the group [D] at [pq], at the
-    uniform parameters [Us], over [Δ] and the frames, read off the first
-    function's scrutinee, whose normal form is the member [m0] at [Ps]; the
-    function [i] is of the member [ms_i], each member of one function. *)
-Record mdef_group (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (f0 : raw_fun) (fs : list raw_fun) (pq : qname) (m0 : nat)
+(** [mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms]: the functions of a mutual
+    definition over [Δ], with the heads [f0 :: fs], are of the group [D]
+    at [pq], at the uniform parameters [Us], over [Δ] and the frames, read
+    off the first function's scrutinee, whose normal form is the member
+    [m0] at [Ps]; the function [i] is of the member [ms_i], each member of
+    one function.  It reads the heads only, so the fill reads it before it
+    fills the functions' results and clauses. *)
+Record mdef_group (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (f0 : raw_fun_head) (fs : list raw_fun_head) (pq : qname) (m0 : nat)
     (Ps : list nf) (D : ind_decl) (Us : list exp) (ms : list nat) : Prop := mk_mdef_group
   { (** The first function's scrutinee is a type, before it is normalized,
         as normalizing an untyped term need not terminate *)
-    mdef_group_scrut_typed : exists i, Θ ⍮ Ξ ⍮ raw_fun_nparams f0 ++ Δ ++ gs_tele Ξ ⊢ raw_fun_scrut f0 : Typeω@i
+    mdef_group_scrut_typed : exists i, Θ ⍮ Ξ ⍮ raw_fun_head_nparams f0 ++ Δ ++ gs_tele Ξ ⊢ raw_fun_head_scrut f0 : Typeω@i
     (** Its normal form is the member [m0] of the group at [pq], at [Ps] *)
-  ; mdef_group_scrut_nf : nbe_ty Θ Ξ (raw_fun_nparams f0 ++ Δ ++ gs_tele Ξ) (raw_fun_scrut f0) (nf_indty pq m0 Ps)
+  ; mdef_group_scrut_nf : nbe_ty Θ Ξ (raw_fun_head_nparams f0 ++ Δ ++ gs_tele Ξ) (raw_fun_head_scrut f0) (nf_indty pq m0 Ps)
     (** The group at [pq] is [D] *)
   ; mdef_group_lookup : ind_lookup Θ Ξ pq = Some D
     (** The member [m0] is a declared one *)
@@ -166,7 +180,7 @@ Record mdef_group (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (f0 : raw_fun) (fs : lis
     (** The uniform parameters, free of the first function's own
         parameters *)
   ; mdef_group_uparams :
-      image_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us
+      image_pats (List.repeat true (List.length (raw_fun_head_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us
     (** Each function's member *)
   ; mdef_group_members : Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms
     (** One function per member with a block: all but the record views *)

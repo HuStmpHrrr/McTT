@@ -81,6 +81,8 @@ Ltac fill_functional_step Hg :=
       | IH : forall _, fill_field_vals _ _ _ _ _ _ -> _, Hp : fill_field_vals _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
       | IH : forall _ _ _, fill_blocks _ _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_blocks _ _ _ ?R _ _ _ _ ?Y _ _ ?X |- _ =>
           feed_nontrivial3 IH Y R X Hp
+      | IH : forall _, fill_scrutinee_type _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_scrutinee_type _ _ _ _ _ _ _ _ _ _ ?X |- _ =>
+          feed_nontrivial IH X Hp
       | IH : forall _, fill_brs _ _ _ _ _ _ _ _ _ _ _ _ -> _, Hp : fill_brs _ _ _ _ _ _ _ _ _ _ _ ?X |- _ =>
           feed_nontrivial IH X Hp
       | IH : forall _, fill_optional_exp _ _ _ _ _ _ -> _, Hp : fill_optional_exp _ _ _ _ _ ?X |- _ => feed_nontrivial IH X Hp
@@ -103,6 +105,8 @@ Section Functional.
     (forall r Γ p D Us As j Bks Bks1, fill_blocks Θ Ξ B r Γ p D Us As j Bks Bks1 ->
        forall As' r' Bks2, fill_blocks Θ Ξ B r' Γ p D Us As' j Bks Bks2 ->
        blocks_motives Bks1 = blocks_motives Bks2 /\ (r = r' -> As = As' -> Bks1 = Bks2)) /\
+    (forall Γ p D j Mj Us Z Z1, fill_scrutinee_type Θ Ξ B Γ p D j Mj Us Z Z1 ->
+       forall Z2, fill_scrutinee_type Θ Ξ B Γ p D j Mj Us Z Z2 -> Z1 = Z2) /\
     (forall r Γ p D Mj Us As Bs Bs1, fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs1 ->
        forall Bs2, fill_brs Θ Ξ B r Γ p D Mj Us As Bs Bs2 -> Bs1 = Bs2) /\
     (forall Γ oM oM1, fill_optional_exp Θ Ξ B Γ oM oM1 -> forall oM2, fill_optional_exp Θ Ξ B Γ oM oM2 -> oM1 = oM2) /\
@@ -118,12 +122,12 @@ Section Functional.
       try discriminate;
       repeat fill_functional_step Hg;
       try reflexivity; try (split; reflexivity);
-      (** A binder or a member read as a module and as a term *)
+      (** A binder or a member read as a module and as a term; an
+          annotation written and omitted *)
       try solve [ exfalso; match goal with
         | Hn : ~ term_binder ?G ?k, Hl : term_binder ?G ?k |- _ => exact (Hn Hl)
         | Hn : forall r A oM, ~ mdenote _ _ ?G ?E _, Hm : mdenote _ _ ?G ?E _ |- _ => eapply Hn; exact Hm
-        (** A conjunction annotated with its right part omitted, and not *)
-        | Hn : ~ and_ann_right_omitted _ |- _ => apply Hn; exact I
+        | Hn : ?a <> ?a |- _ => exact (Hn eq_refl)
         end ].
     (** An eliminator: the blocks' motives are filled alike at any
         relevance, so the motive of the member infers one sort, and the
@@ -144,10 +148,11 @@ Section Functional.
       subst; reflexivity.
     (** A block: its motive first, then, at one relevance and one set of
         motives, its branches *)
-    - split; [ cbn; f_equal; assumption | intros <- <-; f_equal; f_equal; [ auto | apply H2; reflexivity ] ].
+    - split; [ cbn; f_equal; assumption | intros <- <-; f_equal; f_equal; [ auto |] ].
+      match goal with IH : _ = _ -> _ = _ -> _ = _ |- _ => apply IH; reflexivity end.
   Qed.
 
-  (** A record's fields have one fill. *)
+  (** Named types have one fill. *)
   Lemma fill_fields_functional : forall Γ fs fs1, fill_fields Θ Ξ B Γ fs fs1 ->
       forall fs2, fill_fields Θ Ξ B Γ fs fs2 -> fs1 = fs2.
   Proof.
@@ -162,22 +167,21 @@ Section Functional.
       Forall2 (fill_raw_member Θ Ξ B R1) ms ms1 -> Forall2 (fill_raw_member Θ Ξ B R2) ms ms2 ->
       Forall2 (fun M1 M2 => raw_member_nparams M1 = raw_member_nparams M2 /\ raw_member_sort M1 = raw_member_sort M2) ms1 ms2.
   Proof.
-    pose proof fill_functional_all as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    pose proof fill_functional_all as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
     intros * Eu H1; revert ms2; induction H1 as [| Mr M1 ms ms1 [_ Hn1 Hs1 _] _ IH]; intros ms2 H2;
       inversion H2 as [| ? M2 ? ms2' [_ Hn2 Hs2 _] H2']; subst; constructor; [| exact (IH _ H2') ].
     rewrite Eu in Hn1, Hs1; split; [ exact (Ft _ _ _ Hn1 _ Hn2) | exact (Fe _ _ _ Hs1 _ Hs2) ].
   Qed.
 
   (** A constructor's arguments have one fill. *)
-  Lemma fill_raw_cons_functional : forall Γ (cs cs1 cs2 : list (string * list (string * exp))),
-      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B Γ (snd rc) (snd rc')) cs cs1 ->
-      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B Γ (snd rc) (snd rc')) cs cs2 -> cs1 = cs2.
+  Lemma fill_raw_cons_functional : forall Γ (cs : list (string * list (string * uexp))) (cs1 cs2 : list (string * list (string * exp))),
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs1 ->
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs2 -> cs1 = cs2.
   Proof.
-    pose proof fill_functional_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
-    intros * H1; revert cs2; induction H1 as [| [c args] [c1 a1] cs cs1 [Ef1 [Hn1 Ht1]] _ IH]; intros cs2 H2;
-      inversion H2 as [| ? [c2 a2] ? cs2' [Ef2 [Hn2 Ht2]] H2']; subst; [ reflexivity |].
+    intros * H1; revert cs2; induction H1 as [| [c args] [c1 a1] cs cs1 [Ef1 Ht1] _ IH]; intros cs2 H2;
+      inversion H2 as [| ? [c2 a2] ? cs2' [Ef2 Ht2] H2']; subst; [ reflexivity |].
     cbn in *; subst.
-    rewrite (IH _ H2'), (raw_args_tele_names_eq a2 a1 (eq_trans Hn1 (eq_sym Hn2)) (Ft _ _ _ Ht1 _ Ht2)); reflexivity.
+    rewrite (IH _ H2'), (fill_fields_functional _ _ _ Ht1 _ Ht2); reflexivity.
   Qed.
 
   (** A group's members have one fill, in groups that agree on the
@@ -198,7 +202,7 @@ Section Functional.
   (** A group has one fill. *)
   Lemma fill_raw_decl_functional : forall R R1 R2, fill_raw_decl Θ Ξ B R R1 -> fill_raw_decl Θ Ξ B R R2 -> R1 = R2.
   Proof.
-    pose proof fill_functional_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    pose proof fill_functional_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
     intros R R1 R2 [Hu1 Hr1 Hm1] [Hu2 Hr2 Hm2].
     pose proof (Ft _ _ _ Hu1 _ Hu2) as Eu.
     pose proof (fill_raw_members_heads_functional _ _ _ _ _ Eu Hm1 Hm2) as Hh.
@@ -206,45 +210,51 @@ Section Functional.
   Qed.
 
   (** The heads of functions have one fill. *)
-  Lemma fill_raw_fun_heads_functional : forall Γ fs fs1 fs2,
-      Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs fs1 -> Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs fs2 -> fs1 = fs2.
+  Lemma fill_raw_fun_heads_functional : forall Γ fs hs1 hs2,
+      Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs1 -> Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs2 -> hs1 = hs2.
   Proof.
-    pose proof fill_functional_all as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
-    intros * H1; revert fs2; induction H1 as [| f f1 fs fs1 [En1 Ep1 Es1 Er1 Ec1] _ IH]; intros fs2 H2;
-      inversion H2 as [| ? f2 ? fs2' [En2 Ep2 Es2 Er2 Ec2] H2']; subst; [ reflexivity |].
-    pose proof (Ft _ _ _ Ep1 _ Ep2) as Ep; rewrite <- Ep in Es2; pose proof (Fe _ _ _ Es1 _ Es2) as Es.
-    rewrite (raw_fun_parts_eq f2 f1 (eq_trans En1 (eq_sym En2)) Ep Es (eq_trans Er1 (eq_sym Er2))
-               (eq_trans Ec1 (eq_sym Ec2))), (IH _ H2'); reflexivity.
+    pose proof fill_functional_all as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * H1; revert hs2; induction H1 as [| f [n1 p1 s1] fs hs1 [En1 Ep1 Es1] _ IH]; intros hs2 H2;
+      inversion H2 as [| ? [n2 p2] ? hs2' [En2 Ep2 Es2] H2']; subst; [ reflexivity |].
+    cbn in *; pose proof (Ft _ _ _ Ep1 _ Ep2) as <-; pose proof (Fe _ _ _ Es1 _ Es2) as <-.
+    rewrite (IH _ H2'); subst; reflexivity.
   Qed.
+
+  (** A function of a mutual definition is its head, its result and its
+      clauses. *)
+  Lemma raw_fun_head_parts_eq : forall f f',
+      raw_fun_head_of f' = raw_fun_head_of f -> raw_fun_res f' = raw_fun_res f -> raw_fun_clauses f' = raw_fun_clauses f -> f' = f.
+  Proof. intros [] []; cbn; intros E; injection E; intros; subst; reflexivity. Qed.
 
   (** The bodies of functions have one fill: first their results, which fix
       the motives, then their clauses. *)
-  Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 hs ms fs1 fs2,
-      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As1 (fst fm) (snd fm) f') (List.combine hs ms) fs1 ->
-      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As2 (fst fm) (snd fm) f') (List.combine hs ms) fs2 ->
+  Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 (l : list (uraw_fun * raw_fun_head * nat)) fs1 fs2,
+      Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As1 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs1 ->
+      Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As2 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs2 ->
       Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs1 fs2 /\
       (As1 = As2 -> fs1 = fs2).
   Proof.
-    pose proof fill_functional_all as (Fe & _ & _ & Fb & _).
-    intros Γ pq D Us As1 As2 hs ms; generalize (List.combine hs ms); clear hs ms.
-    intros l fs1 fs2 H1; revert fs2; induction H1 as [| [h m] f1 l fs1 [En1 Ep1 Es1 Hm1 Hr1 Hc1] _ IH];
-      intros fs2 H2; inversion H2 as [| ? f2 ? fs2' [En2 Ep2 Es2 _ Hr2 Hc2] H2']; subst; [ split; [ constructor | reflexivity ] |].
+    pose proof fill_functional_all as (Fe & _ & _ & _ & Fb & _).
+    intros Γ pq D Us As1 As2 l fs1 fs2 H1; revert fs2; induction H1 as [| [[f h] m] f1 l fs1 [Eh1 Hm1 Hr1 Hc1] _ IH];
+      intros fs2 H2; inversion H2 as [| ? f2 ? fs2' [Eh2 _ Hr2 Hc2] H2']; subst; [ split; [ constructor | reflexivity ] |].
     cbn [fst snd] in *.
     destruct (ind_member D m) as [Mm |] eqn:Hj; [| contradiction ].
     pose proof (Fe _ _ _ (Hr1 Mm eq_refl) _ (Hr2 Mm eq_refl)) as Er.
     destruct (IH _ H2') as [Hrs IHe].
-    split; [ constructor; [ split; [ congruence | exact Er ] | exact Hrs ] |].
+    assert (Ep : raw_fun_nparams f1 = raw_fun_nparams f2)
+      by (apply (f_equal raw_fun_head_nparams) in Eh1, Eh2; cbn in Eh1, Eh2; congruence).
+    split; [ constructor; [ split; [ exact Ep | exact Er ] | exact Hrs ] |].
     intros <-; pose proof (Fb _ _ _ _ _ _ _ _ _ (Hc1 Mm eq_refl) _ (Hc2 Mm eq_refl)) as Ec.
-    rewrite (raw_fun_parts_eq f2 f1 (eq_trans En1 (eq_sym En2)) (eq_trans Ep1 (eq_sym Ep2)) (eq_trans Es1 (eq_sym Es2))
-               Er Ec), (IHe eq_refl); reflexivity.
+    rewrite (raw_fun_head_parts_eq f1 f2 (eq_trans Eh2 (eq_sym Eh1)) (eq_sym Er) (eq_sym Ec)), (IHe eq_refl); reflexivity.
   Qed.
 
   (** A command has one fill. *)
-  Theorem fill_cmd_functional : forall c c1 c2, fill_cmd Θ Ξ B c c1 -> fill_cmd Θ Ξ B c c2 -> c1 = c2.
+  Theorem fill_cmd_functional : forall c its1 its2, fill_cmd Θ Ξ B c its1 -> fill_cmd Θ Ξ B c its2 -> its1 = its2.
   Proof.
-    pose proof fill_functional_all as (Fe & _ & _ & _ & Fo & _ & Fm & _ & _ & Ft & _).
+    pose proof fill_functional_all as (Fe & _ & _ & _ & _ & Fo & _ & Fm & _ & _ & Ft & _).
     intros c c1 c2 H1 H2.
-    inversion H1; subst; inversion H2; subst.
+    inversion H1; subst; inversion H2; subst;
+      try solve [ exfalso; match goal with Hn : ?a <> ?a |- _ => exact (Hn eq_refl) end ].
     (** Two fills of one kind: part by part, in order *)
     all: repeat match goal with
       | Ha : fill_tele _ _ _ ?G ?D ?X, Hb : fill_tele _ _ _ ?G ?D ?Y |- _ =>
@@ -259,6 +269,9 @@ Section Functional.
           assert_fails constr_eq X Y; pose proof (fill_fields_functional _ _ _ Ha _ Hb); subst X
       | Ha : fill_raw_decl _ _ _ ?R ?X, Hb : fill_raw_decl _ _ _ ?R ?Y |- _ =>
           assert_fails constr_eq X Y; pose proof (fill_raw_decl_functional _ _ _ Ha Hb); subst X
+      | Ha : _ ⊢a ?M ⟹ ?W1, Hb : _ ⊢a ?M ⟹ ?W2 |- _ =>
+          assert_fails constr_eq W1 W2;
+          assert (W1 = W2) by (refine (@functional_alg_type_infer _ _ _ _ _ _ Ha Hb); exact Hg); subst W1
       | Ha : Forall2 (fill_raw_fun_head _ _ _ ?G) ?F ?X, Hb : Forall2 (fill_raw_fun_head _ _ _ ?G) ?F ?Y |- _ =>
           assert_fails constr_eq X Y; pose proof (fill_raw_fun_heads_functional _ _ _ _ Ha Hb) as E;
           injection E as <- <-
@@ -269,8 +282,8 @@ Section Functional.
     (** A mutual definition's bodies: their results, then their motives,
         then their clauses *)
     lazymatch goal with
-    | Ha : Forall2 _ (List.combine ?h ?m) (?a :: ?x), Hb : Forall2 _ (List.combine ?h ?m) (?b :: ?y) |- _ =>
-        destruct (fill_raw_fun_bodies_functional _ _ _ _ _ _ _ _ _ _ Ha Hb) as [Hrs He];
+    | Ha : Forall2 _ ?l (?a :: ?x), Hb : Forall2 _ ?l (?b :: ?y) |- _ =>
+        destruct (fill_raw_fun_bodies_functional _ _ _ _ _ _ _ _ _ Ha Hb) as [Hrs He];
         rewrite (He (mdef_blocks_motives_eq _ _ _ _ _ Hrs)) in *; reflexivity
     end.
   Qed.
@@ -278,29 +291,28 @@ Section Functional.
   (** A unit's parameter telescope has one fill. *)
   Theorem fill_params_functional : forall Δ Δ1 Δ2, fill_params Θ Ξ B Δ Δ1 -> fill_params Θ Ξ B Δ Δ2 -> Δ1 = Δ2.
   Proof.
-    pose proof fill_functional_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    pose proof fill_functional_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
     intros * H1 H2; exact (Ft _ _ _ H1 _ H2).
   Qed.
 End Functional.
 
 (** ** The Shape of a Filled Command *)
 
-(** Whether a command has terms of its own to fill: all but a load and a
-    generated command, whose fill is itself. *)
-Definition cmd_terms (c : core_cmd) : bool :=
+(** Whether a written command has terms to fill: all but a load, whose
+    fill is the load. *)
+Definition ucmd_terms (c : ucmd) : bool :=
   match c with
-  | core_cmd_load _ | core_cmd_gen _ => false
+  | u_cmd_load _ => false
   | _ => true
   end.
 
-(** The fill keeps whether a command has terms of its own. *)
-Lemma fill_cmd_terms : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> cmd_terms c' = cmd_terms c.
-Proof. intros * H; destruct H; reflexivity. Qed.
+(** A command without terms is filled to the load it is. *)
+Lemma fill_cmd_no_terms : forall Θ Ξ B c its, ucmd_terms c = false -> fill_cmd Θ Ξ B c its ->
+    exists fp, c = u_cmd_load fp /\ its = ci_core (core_cmd_load fp) :: nil.
+Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; eauto. Qed.
 
-(** A command without terms of its own is filled to itself. *)
-Lemma fill_cmd_no_terms : forall Θ Ξ B c c', cmd_terms c = false -> fill_cmd Θ Ξ B c c' -> c' = c.
-Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; reflexivity. Qed.
-
-(** A generated command is filled to itself. *)
-Lemma fill_cmd_generated : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> forall c0, c = core_cmd_gen c0 -> c' = c.
-Proof. intros * H; destruct H; intros ? Eg; try discriminate; reflexivity. Qed.
+(** A command with terms is filled to a core command that is neither a
+    load nor a close, then the rest. *)
+Lemma fill_cmd_head : forall Θ Ξ B c its, ucmd_terms c = true -> fill_cmd Θ Ξ B c its ->
+    exists c0 its', its = ci_core c0 :: its' /\ (forall fp, c0 <> core_cmd_load fp) /\ (forall x pv, c0 <> core_cmd_close x pv).
+Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; eexists _, _; (split; [ reflexivity | split; intros; discriminate ]). Qed.

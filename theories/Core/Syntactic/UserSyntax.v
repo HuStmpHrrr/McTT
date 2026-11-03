@@ -190,3 +190,7 @@ Inductive ucmd : Set :=
 | u_cmd_record_alias : string -> bool -> list uexp -> umodexp -> ucmd
 (** [record x (Δ) : S where f : T ; … with cs end] *)
 | u_cmd_record : string -> bool -> list uexp -> uexp -> list (string * uexp) -> list ucmd -> ucmd.
+
+(** A unit as written: its leading imports, its parameters (innermost
+    first), its body. *)
+Definition user_unit : Set := (list ucmd * list uexp * list ucmd)%type.

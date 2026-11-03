@@ -1,12 +1,12 @@
 (** * The Group of an Eliminator
 
     An eliminator as written carries no group and no uniform parameters
-    ([a_elim None nil m Bks M]).  The typed fill ([TypedElab.Fill]) reads
-    both off its scrutinee's inferred, normalised type [nf_indty pc k Rs]:
+    ([u_elim m Bks M]).  The typed fill ([TypedElab.Fill]) reads both off
+    its scrutinee's inferred, normalised type [nf_indty pc k Rs]:
     [elim_target] lists every reading of the eliminator that fits its
     blocks as written (their number, the block marked [at], each block's
-    constructor names), and the eliminator is filled when exactly one
-    reading fits.
+    constructor names [Bns]), and the eliminator is filled when exactly
+    one reading fits.
 
     - The own reading: the eliminator of the group [pc] of the scrutinee's
       type, at its declared member [k], the uniform parameters the first
@@ -60,23 +60,23 @@ Inductive elim_target_result : Set :=
 Section ElimTarget.
   Variables (Θ : gdeps) (Ξ : gstack).
 
-  (** Whether the blocks as written are those of the group [D]: one per
-      member before the record views ([ind_nblk]), each with one branch
-      per constructor of its member, by name, in order. *)
-  Definition blocks_fit (D : ind_decl) (Bks : list eblock) : bool :=
-    Nat.eqb (List.length Bks) (ind_nblk D) &&
-    List.forallb (fun Mb : prod imember eblock =>
-      if list_eq_dec string_dec (List.map fst (im_cons (fst Mb))) (List.map (fun b => fst (fst b)) (eb_brs (snd Mb)))
-      then true else false)
-      (List.combine (ind_members D) Bks).
+  (** Whether the blocks as written, each given by its branches'
+      constructor names, are those of the group [D]: one per member before
+      the record views ([ind_nblk]), each with one branch per constructor
+      of its member, by name, in order. *)
+  Definition blocks_fit (D : ind_decl) (Bns : list (list string)) : bool :=
+    Nat.eqb (List.length Bns) (ind_nblk D) &&
+    List.forallb (fun Mb : prod imember (list string) =>
+      if list_eq_dec string_dec (List.map fst (im_cons (fst Mb))) (snd Mb) then true else false)
+      (List.combine (ind_members D) Bns).
 
   (** The own reading: the eliminator of the scrutinee type's own group
       [pc], at its declared member [k], which is the block marked [at]
       ([m]); its uniform parameters are the first [ind_nu] arguments. *)
-  Definition own_target (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bks : list eblock) : option (qname * list exp) :=
+  Definition own_target (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bns : list (list string)) : option (qname * list exp) :=
     match ind_lookup Θ Ξ pc with
     | Some D =>
-        if Nat.eqb m k && Nat.ltb k (ind_ndecl D) && blocks_fit D Bks
+        if Nat.eqb m k && Nat.ltb k (ind_ndecl D) && blocks_fit D Bns
         then Some (pc, List.firstn (ind_nu D) (List.map nf_to_exp Rs))
         else None
     | None => None
@@ -103,18 +103,18 @@ Section ElimTarget.
       suffices: a view's type has the group's uniform arguments the same
       at every occurrence, so if any occurrence gives a reading that
       type-checks, the first one gives the same [Us]. *)
-  Fixpoint view_targets (pc : qname) (k m : nat) (Bks : list eblock) (seen : list qname)
+  Fixpoint view_targets (pc : qname) (k m : nat) (Bns : list (list string)) (seen : list qname)
       (os : list (qname * nat * list exp)) : list (qname * list exp) :=
     match os with
     | nil => nil
     | (pq, d, As) :: os' =>
-        if qname_eq_dec pq pc then view_targets pc k m Bks seen os' else
+        if qname_eq_dec pq pc then view_targets pc k m Bns seen os' else
         if List.existsb (fun s => if qname_eq_dec s pq then true else false) seen
-        then view_targets pc k m Bks seen os' else
-        let rest := view_targets pc k m Bks (pq :: seen) os' in
+        then view_targets pc k m Bns seen os' else
+        let rest := view_targets pc k m Bns (pq :: seen) os' in
         match ind_lookup Θ Ξ pq with
         | Some D =>
-            if view_of D m pc k && blocks_fit D Bks
+            if view_of D m pc k && blocks_fit D Bns
             then match image_pats (List.repeat true d) (List.firstn (ind_nu D) As) with
                  | Some Us => (pq, Us) :: rest
                  | None => rest
@@ -124,38 +124,38 @@ Section ElimTarget.
         end
     end.
 
-  (** Every reading that fits the blocks [Bks], the block [m] marked
+  (** Every reading that fits the blocks [Bns], the block [m] marked
       [at], of an eliminator whose scrutinee's type normalises to
       [nf_indty pc k Rs]: the own one, then the view ones. *)
-  Definition elim_readings (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bks : list eblock) : list (qname * list exp) :=
-    let own := match own_target pc k Rs m Bks with Some r => r :: nil | None => nil end in
+  Definition elim_readings (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bns : list (list string)) : list (qname * list exp) :=
+    let own := match own_target pc k Rs m Bns with Some r => r :: nil | None => nil end in
     match ind_lookup Θ Ξ pc with
-    | Some Dc => own ++ view_targets pc k m Bks nil (List.flat_map (nf_formers 0) (List.firstn (ind_nu Dc) Rs))
+    | Some Dc => own ++ view_targets pc k m Bns nil (List.flat_map (nf_formers 0) (List.firstn (ind_nu Dc) Rs))
     | None => own
     end.
 
   (** The group and the uniform parameters of the eliminator: exactly one
       reading fits, several do, or none does. *)
-  Definition elim_target (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bks : list eblock) : elim_target_result :=
-    match elim_readings pc k Rs m Bks with
+  Definition elim_target (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bns : list (list string)) : elim_target_result :=
+    match elim_readings pc k Rs m Bns with
     | nil => elim_target_none
     | (p, Us) :: nil => elim_target_one p Us
     | rs => elim_target_ambiguous rs
     end.
 
   (** One reading at most is the eliminator's. *)
-  Lemma elim_target_functional : forall pc k Rs m Bks p1 Us1 p2 Us2,
-      elim_target pc k Rs m Bks = elim_target_one p1 Us1 -> elim_target pc k Rs m Bks = elim_target_one p2 Us2 ->
+  Lemma elim_target_functional : forall pc k Rs m Bns p1 Us1 p2 Us2,
+      elim_target pc k Rs m Bns = elim_target_one p1 Us1 -> elim_target pc k Rs m Bns = elim_target_one p2 Us2 ->
       p1 = p2 /\ Us1 = Us2.
   Proof. intros * H1 H2; rewrite H1 in H2; injection H2; auto. Qed.
 End ElimTarget.
 
 (** [elim_target] reads the global context through [ind_lookup] alone. *)
 Lemma elim_target_lookup_ext : forall Θ Ξ Θ' Ξ', (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ' p) ->
-    forall pc k Rs m Bks, elim_target Θ Ξ pc k Rs m Bks = elim_target Θ' Ξ' pc k Rs m Bks.
+    forall pc k Rs m Bns, elim_target Θ Ξ pc k Rs m Bns = elim_target Θ' Ξ' pc k Rs m Bns.
 Proof.
-  intros * He pc k Rs m Bks.
-  assert (Hv : forall seen os, view_targets Θ Ξ pc k m Bks seen os = view_targets Θ' Ξ' pc k m Bks seen os).
+  intros * He pc k Rs m Bns.
+  assert (Hv : forall seen os, view_targets Θ Ξ pc k m Bns seen os = view_targets Θ' Ξ' pc k m Bns seen os).
   { intros seen os; revert seen; induction os as [| [[pq d] As] os IH]; intros seen; cbn; [ reflexivity |].
     rewrite !IH, He; reflexivity. }
   unfold elim_target, elim_readings, own_target; rewrite !He.
