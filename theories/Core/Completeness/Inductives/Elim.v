@@ -6449,54 +6449,49 @@ Section GroupElim.
           exact (rel_exp_of_typ_relevant_at HRB HTb _ _ Hρ).
         Qed.
 
-        Lemma eval_branch_type_args : forall B X vs ihs, List.length X = im_nn Mk -> List.length vs = List.length gs ->
-            List.length ihs = cargs_nrec D gs -> ⟦ Nb ++ Ab ⟧* gc_deps ⍮ gc_stack ⍮ env_args B (X ++ vs ++ ihs) ↘ X ++ vs.
+        Lemma eval_branch_type_args : forall B vX vvs vih, List.length vX = im_nn Mk -> List.length vvs = List.length gs ->
+            List.length vih = cargs_nrec D gs ->
+            ⟦ Nb ++ Ab ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed B (vX ++ vvs ++ vih) ↘ List.map fst vX ++ List.map fst vvs.
         Proof.
           intros * LX Lvs Lih.
           apply eval_exps_app.
-          - pose proof (eval_vars_from_args X B (vs ++ ihs)) as H.
+          - pose proof (eval_vars_from_args vX B (vvs ++ vih)) as H.
             rewrite List.length_app, LX, Lvs, Lih in H; unfold Nb; rewrite Nat.add_comm; exact H.
-          - pose proof (eval_vars_from_args vs (env_args B X) ihs) as H.
-            rewrite Lvs, Lih, <- env_args_app in H; exact H.
+          - pose proof (eval_vars_from_args vvs (env_extend_typed B vX) vih) as H.
+            rewrite Lvs, Lih, <- env_extend_typed_app in H; exact H.
         Qed.
 
-        Lemma eval_branch_type : forall B X vs ihs l RB,
+        Lemma eval_branch_type : forall B vX vvs vih l RB,
             EF elim_bctx relevant p D Mk gs As Us ++ Γ ≈ elim_bctx relevant p D Mk gs As Us ++ Γ ∈ per_ctx_env ↘ RB ->
-            RB (env_args B (X ++ vs ++ ihs)) (env_args B (X ++ vs ++ ihs)) ->
-            List.length X = im_nn Mk -> List.length vs = List.length gs -> List.length ihs = cargs_nrec D gs ->
-            ⟦ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Ub ++ Nb ++ Ab) ⟧ env_args B (X ++ vs ++ ihs) ↘ l ->
-            ⟦ τb : elim_mctx p D k Mk Us ++ Γ ⟧s env_args B (X ++ vs ++ ihs) ↘ env_args B (X ++ l :: nil).
+            RB (env_extend_typed B (vX ++ vvs ++ vih)) (env_extend_typed B (vX ++ vvs ++ vih)) ->
+            List.length vX = im_nn Mk -> List.length vvs = List.length gs -> List.length vih = cargs_nrec D gs ->
+            ⟦ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Ub ++ Nb ++ Ab) ⟧
+              env_extend_typed B (vX ++ vvs ++ vih) ↘ l ->
+            ⟦ τb : elim_mctx p D k Mk Us ++ Γ ⟧s env_extend_typed B (vX ++ vvs ++ vih)
+              ↘ env_extend_tagged Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B) (List.map fst vX ++ l :: nil).
         Proof.
           intros * HRB HE LX Lvs Lih El.
-          assert (Lall : List.length (X ++ vs ++ ihs) = nb) by (rewrite !List.length_app; unfold nb; lia).
-          (** The base: past the branch's context, [B], which holds its
-              proofs as the related environment does. *)
-          assert (Hβ : ⟦ sb_of_wk (wk_shiftn nb) : Γ ⟧s env_args B (X ++ vs ++ ihs) ↘ B).
-          { pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn nb) (env_args B (X ++ vs ++ ihs)) (wk_mono_shiftn _)) as H.
-            assert (Hw' : ⟪wk_shiftn nb⟫ (env_args B (X ++ vs ++ ihs)) = B) by (rewrite <- Lall; apply eval_wk_shiftn_args).
-            rewrite Hw' in H; apply H.
-            pose proof (proj1 (per_ctx_env_proofs _ _ _ HRB _ _ HE)) as Hpf.
-            intros x Hx.
-            assert (Hlb : List.length (elim_bctx relevant p D Mk gs As Us) = List.length (X ++ vs ++ ihs))
-              by (rewrite length_elim_bctx, Lall; unfold nb; lia).
-            pose proof (Hpf (List.length (X ++ vs ++ ihs) + x)) as H0.
-            rewrite env_entry_args_app in H0; apply H0.
-            rewrite <- Hlb; apply entry_propositional_shiftn_intro.
-            rewrite Hlb, skipn_env_args; exact Hx. }
+          assert (Lall : List.length (vX ++ vvs ++ vih) = nb) by (rewrite !List.length_app; unfold nb; lia).
+          (** The base: past the branch's context, [B] retagged. *)
+          assert (Hβ : ⟦ sb_of_wk (wk_shiftn nb) : Γ ⟧s env_extend_typed B (vX ++ vvs ++ vih) ↘ ctx_retag Γ B).
+          { pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn nb) (env_extend_typed B (vX ++ vvs ++ vih)) (wk_mono_shiftn _)) as H.
+            replace (⟪wk_shiftn nb⟫ (env_extend_typed B (vX ++ vvs ++ vih))) with B in H
+              by (rewrite <- Lall; symmetry; apply eval_wk_shiftn_extend_typed).
+            exact H. }
           (** The terms' values, the motive's context being relevant. *)
           destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMk)) as [RM HRM].
           assert (Lτ : List.length (Nb ++ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Ub ++ Nb ++ Ab) :: nil)
                        = List.length (elim_mctx p D k Mk Us))
             by (rewrite List.length_app, length_elim_mctx; unfold Nb; rewrite length_vars_from; cbn [List.length]; lia).
-          destruct (sb_of_list_values_of_sub (elim_mctx p D k Mk Us) Γ _ (sb_of_wk (wk_shiftn nb)) _ RB RM _ B
+          destruct (sb_of_list_values_of_sub (elim_mctx p D k Mk Us) Γ _ (sb_of_wk (wk_shiftn nb)) _ RB RM _ (ctx_retag Γ B)
                       (elim_mctx_ass p D k Mk Us Hc HMk) HRB HRM (mctx_relevant k Mk HMk (HMall _ _ HMk))
                       (gsub_valid gsub_branch_type) Lτ HE Hβ) as (ms & Ems & Hτ & _).
           assert (Ems' : ⟦ Nb ++ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Ub ++ Nb ++ Ab) :: nil ⟧*
-                           gc_deps ⍮ gc_stack ⍮ env_args B (X ++ vs ++ ihs) ↘ X ++ l :: nil).
-          { pose proof (eval_branch_type_args B X vs ihs LX Lvs Lih) as H.
+                           gc_deps ⍮ gc_stack ⍮ env_extend_typed B (vX ++ vvs ++ vih) ↘ List.map fst vX ++ l :: nil).
+          { pose proof (eval_branch_type_args B vX vvs vih LX Lvs Lih) as H.
             apply eval_exps_app_inv in H as (xs & ys & Exy & Exs & Eys).
-            assert (Lxs : List.length xs = List.length X)
-              by (rewrite (eval_exps_length _ _ _ Exs); unfold Nb; rewrite length_vars_from; lia).
+            assert (Lxs : List.length xs = List.length (List.map fst vX))
+              by (rewrite (eval_exps_length _ _ _ Exs), List.length_map; unfold Nb; rewrite length_vars_from; lia).
             destruct (app_split_eq _ _ _ _ (eq_sym Exy) Lxs) as [-> ->].
             apply eval_exps_app; [ exact Exs | econstructor; [ exact El | constructor ] ]. }
           pose proof (functional_eval_exps' _ _ _ _ Ems Ems') as ->; exact Hτ.
