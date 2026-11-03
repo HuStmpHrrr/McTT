@@ -1691,7 +1691,7 @@ Inductive cross_leaf_results : list bool -> list bool -> list domain -> list dom
 | cross_leaf_results_fresh : forall cs fs a a' as1 as2 r r' rs1 rs2 e e' o1 o2, Dom e ≈ e' ∈ per_bot ->
     cross_leaf_results cs fs as1 as2 rs1 rs2 o1 o2 ->
     cross_leaf_results (true :: cs) (true :: fs) (a :: as1) (a' :: as2) (r :: rs1) (r' :: rs2)
-      (relevant_value a (⇑ a e) :: o1) (relevant_value a' (⇑ a' e') :: o2)
+      (⇑ a e :: o1) (⇑ a' e' :: o2)
 (** The eliminator's result on each side *)
 | cross_leaf_results_nest : forall cs fs a a' as1 as2 r r' rs1 rs2 o1 o2,
     cross_leaf_results cs fs as1 as2 rs1 rs2 o1 o2 ->
@@ -1728,7 +1728,7 @@ Proof. induction 1; unfold marked in *; cbn; lia. Qed.
     the results on each side holds of what is taken from either side. *)
 Lemma cross_leaf_results_Forall : forall (P : domain -> Prop) cs fs as1 as2 rs1 rs2 o1 o2,
     cross_leaf_results cs fs as1 as2 rs1 rs2 o1 o2 ->
-    (forall a e, In a as1 -> P (relevant_value a (⇑ a e))) -> (forall a e, In a as2 -> P (relevant_value a (⇑ a e))) ->
+    (forall a e, In a as1 -> P (⇑ a e)) -> (forall a e, In a as2 -> P (⇑ a e)) ->
     List.Forall P rs1 -> List.Forall P rs2 -> List.Forall P o1 /\ List.Forall P o2.
 Proof.
   intros P; induction 1 as [| ? ? ? ? ? ? ? ? ? ? ? ? ? ? _ H IH | ? ? ? ? ? ? ? ? ? ? ? ? H IH | ? ? ? ? ? ? ? ? ? ? H IH];
@@ -1762,7 +1762,7 @@ Proof.
       inversion H as [| ? ? ? ? ? ? ? ? ? ? e e' ? ? He H0 | ? ? ? ? ? ? ? ? ? ? ? ? H0 |]; subst;
         destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ _ H0 ltac:(lia) ltac:(unfold marked; lia) ltac:(unfold marked; lia) ltac:(lia) ltac:(lia))
           as (o11 & o12 & o21 & o22 & -> & -> & H1 & H2).
-      * exists (relevant_value a (⇑ a e) :: o11), o12, (relevant_value b (⇑ b e') :: o21), o22; split; [ reflexivity | split; [ reflexivity | split; [ constructor; assumption | exact H2 ] ] ].
+      * exists (⇑ a e :: o11), o12, (⇑ b e' :: o21), o22; split; [ reflexivity | split; [ reflexivity | split; [ constructor; assumption | exact H2 ] ] ].
       * exists (r :: o11), o12, (x :: o21), o22; split; [ reflexivity | split; [ reflexivity | split; [ constructor; assumption | exact H2 ] ] ].
     + cbn [List.app] in H.
       inversion H as [| | | ? ? ? ? ? ? ? ? ? ? H0]; subst;
@@ -1775,15 +1775,15 @@ Qed.
     paths [l1] (the container's) and [l2] (the group's), applied to
     arguments [c1] and [c2] read back alike: those of the rest at the
     functions' values there. *)
-Lemma cross_leaf_results_apply : forall cs fs (l1 l2 : list nat) o1 o2 b1 b2 ρm1 ρm2 As1 As2 p1 p2 u1 u2 ρ1 ρ2 t1 t2
+Lemma cross_leaf_results_apply : forall cs fs (l1 l2 : list nat) o1 o2 b1 b2 ρm1 ρm2 As1 As2 p1 p2 u1 u2 ρ1 ρ2 B1 B2 t1 t2
     f1 f2 Bk1 Bk2 c1 c2 fc1 fc2 tc1 tc2 rc1 rc2,
     cross_leaf_results cs fs
-      (List.map (fun i => Πᵈ b1 (nil ↦ d_ihfam ρm1 As1 p1 u1 ρ1 t1 i f1) fam_cod) l1)
-      (List.map (fun i => Πᵈ b2 (nil ↦ d_ihfam ρm2 As2 p2 u2 ρ2 t2 i f2) fam_cod) l2)
+      (List.map (fun i => Πᵈ b1 (nil ↦ d_ihfam ρm1 As1 p1 u1 ρ1 B1 t1 i f1 ⦂ entry_type_none) fam_cod) l1)
+      (List.map (fun i => Πᵈ b2 (nil ↦ d_ihfam ρm2 As2 p2 u2 ρ2 B2 t2 i f2 ⦂ entry_type_none) fam_cod) l2)
       (List.map (fun i => d_ihfn ρm1 Bk1 p1 u1 t1 i f1) l1) (List.map (fun i => d_ihfn ρm2 Bk2 p2 u2 t2 i f2) l2) o1 o2 ->
     $| f1 & c1 | gc_deps ⍮ gc_stack ↘ fc1 -> $| f2 & c2 | gc_deps ⍮ gc_stack ↘ fc2 ->
-    ⟦ihty fc1 of t1 at p1 u1 under ρm1 As1 ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↦ c1 ↘ tc1 ->
-    ⟦ihty fc2 of t2 at p2 u2 under ρm2 As2 ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↦ c2 ↘ tc2 ->
+    ⟦ihty fc1 of t1 at p1 u1 under ρm1 As1 ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↦ c1 ⦂ entry_type_closure B1 ρ1 ↘ tc1 ->
+    ⟦ihty fc2 of t2 at p2 u2 under ρm2 As2 ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↦ c2 ⦂ entry_type_closure B2 ρ2 ↘ tc2 ->
     ⟦ih fc1 of t1 under p1 u1 Bk1 ⟧ gc_deps ⍮ gc_stack ⍮ ρm1 ↘ rc1 -> ⟦ih fc2 of t2 under p2 u2 Bk2 ⟧ gc_deps ⍮ gc_stack ⍮ ρm2 ↘ rc2 ->
     (forall i, In i l1 -> i < List.length tc1 /\ i < List.length rc1) ->
     (forall i, In i l2 -> i < List.length tc2 /\ i < List.length rc2) ->
@@ -1799,12 +1799,11 @@ Proof.
     + destruct l1 as [| x1 l1], l2 as [| x2 l2]; cbn [List.map] in H; inversion H; subst; clear H.
       all: destruct (Hi1 x1 ltac:(left; reflexivity)) as [L1 L3]; destruct (Hi2 x2 ltac:(left; reflexivity)) as [L2 L4].
       all: match goal with H0 : cross_leaf_results _ _ _ _ _ _ _ _ |- _ =>
-             destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 Ef1 Ef2 T1 T2 R1 R2
+             destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 Ef1 Ef2 T1 T2 R1 R2
                          ltac:(intros i0 Hi0; apply Hi1; right; exact Hi0) ltac:(intros i0 Hi0; apply Hi2; right; exact Hi0) Htop)
                as (oc1 & oc2 & F1 & F2 & Hr) end.
       * match goal with He : per_bot ?e ?e' |- _ =>
-          exists (relevant_value (List.nth x1 tc1 d_True) (⇑ (List.nth x1 tc1 d_True) (e $ᵈ ⇓ b1 c1)) :: oc1),
-            (relevant_value (List.nth x2 tc2 d_True) (⇑ (List.nth x2 tc2 d_True) (e' $ᵈ ⇓ b2 c2)) :: oc2);
+          exists (⇑ (List.nth x1 tc1 d_True) (e $ᵈ ⇓ b1 c1) :: oc1), (⇑ (List.nth x2 tc2 d_True) (e' $ᵈ ⇓ b2 c2) :: oc2);
           split; [| split ]; [ constructor; [| exact F1 ] | constructor; [| exact F2 ] | cbn [List.map]; constructor; [| exact Hr ] ];
           [ apply eval_app_neut; eapply eval_fam_cod_ihfam; [ exact Ef1 | exact T1 | apply List.nth_error_nth'; exact L1 ]
           | apply eval_app_neut; eapply eval_fam_cod_ihfam; [ exact Ef2 | exact T2 | apply List.nth_error_nth'; exact L2 ]
@@ -1816,7 +1815,7 @@ Proof.
     + destruct l2 as [| x2 l2]; cbn [List.map] in H; inversion H; subst; clear H.
       destruct (Hi2 x2 ltac:(left; reflexivity)) as [L2 L4].
       match goal with H0 : cross_leaf_results _ _ _ _ _ _ _ _ |- _ =>
-        destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 Ef1 Ef2 T1 T2 R1 R2
+        destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 Ef1 Ef2 T1 T2 R1 R2
                     Hi1 ltac:(intros i0 Hi0; apply Hi2; right; exact Hi0) Htop)
           as (oc1 & oc2 & F1 & F2 & Hr) end.
       exists oc1, (List.nth x2 rc2 d_True :: oc2).
@@ -1861,8 +1860,7 @@ Proof.
   - destruct as1 as [| a as1], as2 as [| a' as2], rs1 as [| r rs1], rs2 as [| r' rs2]; cbn in L1, L2, L3, L4; try discriminate.
     destruct (IH as1 as2 rs1 rs2 (S s) ltac:(unfold marked; lia) ltac:(unfold marked; lia) ltac:(lia) ltac:(lia))
       as [i1 i2 o1 o2 F1 F2 Li W1 W2 Hr].
-    apply (mk_fresh_cross_out _ _ _ _ _ _ _ (relevant_value a (⇑! a s) :: i1) (relevant_value a' (⇑! a' s) :: i2)
-             (relevant_value a (⇑! a s) :: o1) (relevant_value a' (⇑! a' s) :: o2)).
+    apply (mk_fresh_cross_out _ _ _ _ _ _ _ (⇑! a s :: i1) (⇑! a' s :: i2) (⇑! a s :: o1) (⇑! a' s :: o2)).
     + constructor; exact F1.
     + constructor; exact F2.
     + cbn; lia.
@@ -1927,7 +1925,7 @@ Proof.
   pose proof (nparams_prefix_rel_refl_l pq G ups _ _ _ (valid_group_ass _ _ Hg) CnP CnI CaP CaI CdP CdI j Mj HM k pa pb
                 ltac:(lia) Hp1) as Hpa.
   destruct (Hn j Mj k A pa pa HM He Hpa) as (a1 & a2 & E1 & E2 & [R HR]).
-  unfold canon_nparams_rel in *; rewrite (nth_ctyp_eq _ _ _ _ _ HM He) in Hxy |- *.
+  unfold canon_nparams_rel in *; rewrite (nth_ctyp_eq _ _ _ _ _ HM He), (member_nparams_eq _ _ _ HM) in Hxy |- *.
   intros i R' b1 b1' Eb Eb' HR'.
   pose proof (functional_eval_exp _ _ _ _ Eb E2) as ->; pose proof (functional_eval_exp _ _ _ _ Eb' E2) as ->.
   pose proof (per_univ_trans _ _ _ _ _ _ HR (per_univ_sym _ _ _ _ HR)) as H11.
