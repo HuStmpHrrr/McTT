@@ -931,6 +931,15 @@ Proof.
     + rewrite List.skipn_skipn; apply IH; [ exact Hk | rewrite List.length_skipn; lia | exact Eb | lia ].
 Qed.
 
+(** A propositional entry of a branch's context is an argument's. *)
+Lemma bctx_rf_propositional_range : forall D gs x, bctx_rf D gs x = propositional ->
+    cargs_nrec D gs <= x /\ x < cargs_nrec D gs + List.length gs.
+Proof.
+  intros * H; unfold bctx_rf, inst_rf in H.
+  destruct (Nat.ltb_spec x (cargs_nrec D gs)); [ discriminate H |].
+  destruct (Nat.ltb_spec (x - cargs_nrec D gs) (List.length gs)); [ lia | discriminate H ].
+Qed.
+
 (** ** The Container's Eliminator against the Group's
 
     The eliminator of the container's group [D'] at [qc], at the blocks
@@ -1904,6 +1913,142 @@ Section SelfElim.
       unfold ViewBranch.wrap_branch_sub; cbv zeta; rewrite HR, Hna; change (im_nn Mv) with nn.
       replace (nn + na + Rw) with nw by (unfold nw; lia).
       reflexivity.
+    Qed.
+
+    (** The sorts of the group's branch's context ([BranchSorts]). *)
+    #[local] Abbreviation BSv f := (f VP p D HP HPD Γ Us Bks iA HΓ HUl HUs HUss (valid_blocks_len _ _ _ _ _ _ HBk)
+       (valid_blocks_binder_count _ _ _ _ _ _ HBk) HMall HAv (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_bctx _ _ _ _ _ _ HBk)
+       (valid_blocks_arity _ _ _ _ _ _ HBk) (valid_blocks_branch _ _ _ _ _ _ HBk) v Mv c gs HMv Hcon).
+
+    (** The value of the instance [wrap_branch_sub] at an environment of the
+        wrapped branch's context over [C1] of the container's arguments
+        [vs] and results [w]: over [C1], the values the group's branch's
+        context takes there, the non-uniform parameters, the arguments and
+        the group's results merged with the container's ([merge_ihs]), up
+        to the proofs at the propositional arguments, kept there. *)
+    Lemma wrap_sub_value : forall X vs w vtsW ihsE, List.map fst vtsW = X ++ vs ++ w ->
+        List.length X = nn -> List.length vs = na -> List.length w = Rw ->
+        forall RW, EF wrap_bctx p D D' Mv gs' gs As Us ++ Γ ≈ wrap_bctx p D D' Mv gs' gs As Us ++ Γ ∈ per_ctx_env ↘ RW ->
+        RW (env_extend_typed C1 vtsW) (env_extend_typed C1 vtsW) ->
+        ⟦ elim_ihs relevant p D Uw Bw σw nn gs Aw ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C1 vtsW ↘ ihsE ->
+        exists wts, ⟦ ViewBranch.wrap_branch_sub p D D' Us Bks Mv gs' gs : elim_bctx relevant p D Mv gs As Us ++ Γ ⟧s
+                      env_extend_typed C1 vtsW ↘ env_extend_typed C1 wts /\
+          List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) wts /\
+          List.length wts = List.length (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) /\
+          forall j x y, List.nth_error (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) j = Some x -> List.nth_error (List.map fst wts) j = Some y ->
+            x = y \/ (bctx_rf D gs (List.length (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) - 1 - j) = propositional /\ proof_readable y).
+    Proof.
+      intros X vs w vtsW ihsE Hvw LX Lv LwR RW HRW HEb EE.
+      assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
+      set (Eb := env_extend_typed C1 vtsW) in *.
+      set (K0 := elim_bctx relevant p D Mv gs As Us).
+      set (Ihs := elim_ihs relevant p D Uw Bw σw nn gs Aw) in *.
+      set (ihsT := merge_ihs D' D gs' gs ihsE w).
+      set (Ms := vars_from (Rw + na) nn ++ Aw ++ wrap_ihs D' D gs' gs Ihs 0 Rw).
+      assert (LK0 : List.length K0 = cargs_nrec D gs + List.length gs + im_nn Mv) by apply length_elim_bctx.
+      assert (LIhs : List.length Ihs = cargs_nrec D gs) by (apply length_elim_ihs; unfold Aw; rewrite length_vars_from; reflexivity).
+      assert (LE : List.length ihsE = cargs_nrec D gs) by (rewrite (eval_exps_length _ _ _ EE); exact LIhs).
+      assert (LT : List.length ihsT = cargs_nrec D gs) by (apply length_merge_ihs; [ exact Hk | exact LE ]).
+      assert (Lvw : List.length vtsW = nw) by (rewrite <- (List.length_map fst), Hvw, !List.length_app, LX, Lv, LwR; unfold nw; lia).
+      (** The values of the instance's terms. *)
+      assert (EMs : ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ Eb ↘ X ++ vs ++ ihsT).
+      { set (vX := List.firstn nn vtsW); set (vV := List.firstn na (List.skipn nn vtsW)); set (vW := List.skipn na (List.skipn nn vtsW)).
+        assert (Esp : vtsW = vX ++ vV ++ vW) by (unfold vX, vV, vW; rewrite !List.firstn_skipn; reflexivity).
+        assert (FX : List.map fst vX = X) by (unfold vX; rewrite <- List.firstn_map, Hvw, <- LX; apply firstn_app_exact; reflexivity).
+        assert (FV : List.map fst vV = vs)
+          by (unfold vV; rewrite <- List.firstn_map, <- List.skipn_map, Hvw, <- LX, skipn_app_exact, <- Lv by reflexivity;
+              apply firstn_app_exact; reflexivity).
+        assert (FW : List.map fst vW = w)
+          by (unfold vW; rewrite <- !List.skipn_map, Hvw, <- LX, skipn_app_exact, <- Lv, skipn_app_exact by reflexivity; reflexivity).
+        assert (LvX : List.length vX = nn) by (rewrite <- (List.length_map fst), FX; exact LX).
+        assert (LvV : List.length vV = na) by (rewrite <- (List.length_map fst), FV; exact Lv).
+        assert (LvW : List.length vW = Rw) by (rewrite <- (List.length_map fst), FW; exact LwR).
+        pose proof EE as EE'; unfold Eb in EE' |- *; rewrite Esp in EE' |- *.
+        apply eval_exps_app; [| apply eval_exps_app ].
+        - pose proof (eval_vars_from_args vX C1 (vV ++ vW)) as H; rewrite List.length_app, LvV, LvW, LvX, FX in H.
+          replace (Rw + na) with (na + Rw) by lia; exact H.
+        - pose proof (eval_vars_from_args vV (env_extend_typed C1 vX) vW) as H; rewrite LvV, LvW, FV, <- env_extend_typed_app in H.
+          exact H.
+        - pose proof (eval_wrap_ihs D' D gs' gs Ihs ihsE C1 (vX ++ vV) vW 0 Hk LIhs ltac:(rewrite <- List.app_assoc; exact EE')
+                        ltac:(rewrite LvW; unfold Rw, Ew; rewrite length_wrap_ihs_ctx by exact Hk; lia)) as H.
+          rewrite <- List.app_assoc, LvW, FW in H; exact H. }
+      (** The substitution's value. *)
+      destruct (rel_sub_under_ctx_simple (gsub_valid (WB gsub_wrap_branch Hcnt))) as (R1 & HR1 & RT & HRT & Hs).
+      assert (E1 : RW <~> R1) by (eapply per_ctx_env_right_irrel; [ exact HRW | exact HR1 ]).
+      destruct (Hs _ _ (proj1 (E1 _ _) HEb)) as (e1 & e1' & Ee1 & _ & He1).
+      assert (HPT : PER RT) by (eapply per_env_PER; exact HRT).
+      assert (He11 : RT e1 e1) by (etransitivity; [ exact He1 | symmetry; exact He1 ]).
+      pose proof (elim_bctx_ass relevant p D v Mv gs As Us Hc HMv) as HK0a; fold K0 in HK0a.
+      (** The entries' propositionality is decided by their sorts. *)
+      assert (Hdec : forall x, x < List.length K0 -> bctx_rf D gs x = relevant -> ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
+      { intros x Hx Hr.
+        refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
+        intros Δ1 T0 Δ2 E0 HΔ1.
+        destruct (BSv bctx_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
+        rewrite HΔ1, Hr in HT0; exists i0; exact HT0. }
+      assert (Hpr : forall x, x < List.length K0 -> bctx_rf D gs x = propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
+      { intros x Hx Hr.
+        refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
+        intros Δ1 T0 Δ2 E0 HΔ1.
+        destruct (BSv bctx_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
+        rewrite HΔ1, Hr in HT0; exact HT0. }
+      assert (LMs : List.length Ms = List.length K0)
+        by (pose proof (eval_exps_length _ _ _ EMs) as H; rewrite !List.length_app, LX, Lv, LT in H; unfold Ms in H |- *; lia).
+      assert (ETg : K0 ++ Γ = List.rev (List.rev K0) ++ Γ) by (rewrite List.rev_involutive; reflexivity).
+      rewrite wrap_branch_sub_eq in Ee1; fold Ms in Ee1.
+      change (elim_bctx relevant p D Mv gs (blocks_motives Bks) Us) with K0 in Ee1, HRT.
+      rewrite ETg in Ee1, Hdec, Hpr.
+      destruct (eval_sb_of_list_sorted_split Ms (List.rev K0) (sb_of_wk (wk_shiftn nw)) Γ Eb e1 (bctx_rf D gs)
+                  ltac:(rewrite List.length_rev; lia) Ee1
+                  ltac:(rewrite List.length_rev; exact Hdec) ltac:(rewrite List.length_rev; exact Hpr))
+        as (ms & Lms & Hms & Hagr).
+      (** The value past the entries: [C1]. *)
+      assert (Lpj : List.length (List.rev K0) = List.length Ms) by (rewrite List.length_rev; lia).
+      pose proof (eval_sb_of_list_tail _ _ _ _ _ _ Lpj Ee1) as Htail.
+      assert (Hwk : ⟦ sb_of_wk (wk_shiftn nw) : Γ ⟧s Eb ↘ C1).
+      { pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn (List.length vtsW)) Eb (wk_mono_shiftn _)) as H.
+        unfold Eb in H; rewrite eval_wk_shiftn_extend_typed, HCt, Lvw in H; exact H. }
+      pose proof (functional_eval_sub _ _ _ _ _ Htail Hwk) as Hag.
+      set (wts := tagged_entries Γ (List.rev K0) C1 ms).
+      assert (HagT : env_agree_upto (List.length (List.rev (List.rev K0) ++ Γ)) e1 (env_extend_typed C1 wts)).
+      { unfold wts; rewrite <- env_extend_tagged_typed, List.length_app, !List.length_rev.
+        intros x Hx; rewrite Hagr.
+        exact (env_extend_tagged_agree (List.rev K0) Γ _ _ ms ltac:(rewrite List.length_rev; lia) Hag x
+                 ltac:(rewrite List.length_rev; lia)). }
+      assert (Fw : List.map fst wts = ms) by (unfold wts; rewrite tagged_entries_fst by (rewrite List.length_rev; lia); reflexivity).
+      exists wts; split; [ rewrite wrap_branch_sub_eq; fold Ms K0; rewrite ETg; exact (eval_sub_resp_agree _ _ _ _ _ Ee1 HagT)
+                         | split; [| split ] ].
+      - rewrite <- ETg in HagT; pose proof (per_ctx_env_resp_agree HRT _ _ _ _ HagT HagT He11) as HEσ.
+        assert (HKr : ⊨ List.rev (List.rev K0) ++ Γ) by (rewrite List.rev_involutive; exact HB).
+        assert (HRTr : EF List.rev (List.rev K0) ++ Γ ≈ List.rev (List.rev K0) ++ Γ ∈ per_ctx_env ↘ RT)
+          by (rewrite List.rev_involutive; exact HRT).
+        assert (Lw' : List.length wts = List.length (List.rev K0))
+          by (unfold wts; rewrite tagged_entries_length by (rewrite List.length_rev; lia); rewrite List.length_rev; lia).
+        exact (proj1 (rel_gargs_readable _ _ _ _ HRΓ HKr (List.Forall_rev HK0a) HRTr _ _ _ _ Lw' Lw' HEσ)).
+      - rewrite <- (List.length_map fst), Fw, Lms, LMs, LK0, !List.length_app, LX, Lv, LT; unfold nn, na; lia.
+      - intros j x y Hx Hy; rewrite Fw in Hy.
+        assert (Lxs : List.length (X ++ vs ++ ihsT) = List.length Ms) by (rewrite (eval_exps_length _ _ _ EMs); reflexivity).
+        destruct (nth_error_lt_some' Ms j ltac:(rewrite <- Lxs; apply List.nth_error_Some; congruence)) as [M HM].
+        destruct (Hms j M y HM Hy) as [HmR HmP].
+        destruct (eval_exps_nth _ _ _ _ _ EMs HM) as (x' & Hx' & Ex').
+        rewrite Hx in Hx'; injection Hx' as <-.
+        rewrite Lxs; destruct (bctx_rf D gs (List.length Ms - 1 - j)) eqn:Er.
+        + left; exact (functional_eval_exp _ _ _ _ Ex' (HmR eq_refl)).
+        + right; split; [ reflexivity |].
+          rewrite (HmP eq_refl).
+          (** A propositional entry is an argument's, a variable. *)
+          pose proof (nth_error_lt_length _ _ _ HM) as Hj.
+          destruct (bctx_rf_propositional_range _ _ _ Er) as [Hr1 Hr2].
+          rewrite LMs, LK0 in Hr1, Hr2, Hj.
+          assert (HM' : List.nth_error Aw (j - nn) = Some M).
+          { unfold Ms in HM; rewrite List.nth_error_app2 in HM by (rewrite length_vars_from; unfold nn; lia).
+            rewrite length_vars_from, List.nth_error_app1 in HM by (unfold Aw; rewrite length_vars_from; unfold nn, na; lia).
+            exact HM. }
+          unfold Aw in HM'; destruct (vars_from_nth_error _ _ _ _ HM') as [_ ->].
+          refine (proj1 (per_ctx_env_kept_proof_readable _ _ _ _ HRW _ _ _ HEb)).
+          cbn [exp_free_bound]; rewrite List.length_app, length_wrap_bctx by exact Hk.
+          assert (HRw : Rw = cargs_container_count D D' gs' gs) by (unfold Rw, Ew; apply length_wrap_ihs_ctx; exact Hk).
+          unfold na, nn in *; lia.
     Qed.
 
     (** What a wrapped branch [Ba] moved by [wrap_branch_sub] gives against the
