@@ -853,9 +853,11 @@ Section ViewAgreementParts.
       gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> cargs_correspond vm gs1' gs1 -> List.length vp = List.length gs1 ->
       tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
         (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp) ->
-      tele_rel (shape_doms_rel (canon_doms_rel cups i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) (ptyp_doms t') ys ys ->
+      tele_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1') ms (nonrec_arg_vals gs1' vp) t')
+        (ptyp_doms t') ys ys ->
       ps_link D (canon_nparams_rel D ups) (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups ++ ms ++ nonrec_arg_vals gs1' vp ++ ys)) (env_args nil (ups ++ ms ++ nonrec_arg_vals gs1 vp ++ ys)).
+        (components_env Dq cups (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms ++ nonrec_arg_vals gs1' vp ++ ys))
+        (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ nonrec_arg_vals gs1 vp ++ ys)).
   Proof.
     intros gs1' t' gs2' gs1 t gs2 vp ys Heq' Heq Hc Hlp Hpre Hys.
     pose proof (view_nn p D Hg k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv) as Hnn.
@@ -870,7 +872,8 @@ Section ViewAgreementParts.
                 c gs' gs Hcon' Hcon Hcorr ms Hlms Hms_g Hms_c gs1 gs1' (ca_rec t' :: gs2') (ca_rec t :: gs2) vp Heq' Heq Hc Hlp Hpre)
       as (vs & Hinv).
     pose proof Hinv as [Hl Hn Hng Hg1 Hcn Ha].
-    assert (Hy : tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t'))
+    assert (Hy : tele_prefix_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                                    ms (nonrec_arg_vals gs1' vp) t')
                    (List.length (ptyp_doms t)) ys ys)
       by (rewrite <- HlD; apply tele_rel_pre; exact Hys).
     destruct (view_shape_walk p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv
@@ -882,12 +885,13 @@ Section ViewAgreementParts.
                   gs1' t' vs _ ys ltac:(lia) Hcn Hcd) as Hctxc.
     rewrite <- HlD, List.firstn_all in Hctxc.
     rewrite <- HlD in Eac.
-    rewrite ptyp_skip_end in Eag, Eac.
+    rewrite ptyp_skip_end, List.firstn_all in Eag, Eac.
     cbn [ptyp_ty] in Eag, Eac.
     pose proof (view_container_uparams_rel p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hgu Hu Ecups) as Hcr.
     pose proof (length_container_uparams p D Hg k Mk qc kc Is vm Dq HMk Hh Hq ups cups Ecups) as Hlc.
     (** The domains, related at the group's shape. *)
-    assert (Hyg : tele_prefix_rel (shape_doms_rel (canon_doms_rel ups v) ms (nonrec_arg_vals gs1 vs) (ptyp_doms t))
+    assert (Hyg : tele_prefix_rel (shape_doms_rel (canon_doms_rel D ups v) (List.rev (im_nparams Mv)) (cargs_nonrec_tele gs1)
+                                     ms (nonrec_arg_vals gs1 vs) t)
                     (List.length (ptyp_doms t)) ys ys).
     { pose proof Hy as Hy0; rewrite tele_prefix_rel_iff in Hy0 |- *; destruct Hy0 as (Hly & _ & Hyr).
       split; [ exact Hly | split; [ exact Hly |] ].
@@ -901,7 +905,8 @@ Section ViewAgreementParts.
                c gs' gs Hcon' Hcon Hcorr ms Hlms Hms_g Hms_c gs1' t' gs2' gs1 t gs2 vp j B' B (List.firstn j ys)
                Heq' Heq Hc Hlp Hpre HB' HB (tele_prefix_rel_of_pre _ _ _ _ j Hy ltac:(lia))).
       exact Hxy. }
-    assert (Hyc : tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ms (nonrec_arg_vals gs1' vs) (ptyp_doms t'))
+    assert (Hyc : tele_prefix_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                                     ms (nonrec_arg_vals gs1' vs) t')
                     (List.length (ptyp_doms t')) ys ys)
       by (rewrite Hn, HlD; exact Hy).
     assert (Hprec : tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
@@ -943,6 +948,17 @@ Section ViewAgreementParts.
     pose proof HtG as HlbG; destruct HlbG as [HlbG _]; rewrite List.length_rev, length_im_nparams in HlbG.
     assert (HlbC1 : List.length bsC1 = im_nn Mj') by (rewrite (eval_exps_length _ _ _ EbsC1), List.length_map; exact HlPs').
     clear Eag Eac HR Ebsg Ebsc.
+    (** The container's environment of all the arguments, as the
+        components after its uniform parameters. *)
+    assert (HEZc : env_tele nil (List.rev (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_params Dq Mi'))
+                     (cups ++ ms ++ vs ++ ys)
+                   = components_env Dq cups (List.rev (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_nparams Mi'))
+                       (ms ++ vs ++ ys)).
+    { unfold components_env, decl_env, im_params.
+      rewrite <- (env_tele_closed_app (ind_uparams Dq) (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_nparams Mi')
+                    cups (ms ++ vs ++ ys)) by (rewrite Hlc; reflexivity).
+      rewrite <- !List.app_assoc; reflexivity. }
+    rewrite HEZc in Ecsc.
     (** The container's canonical relation at its member [j'] is the
         group's at [j], the member the view takes it to. *)
     assert (Hconv : forall a b, tele_rel (canon_nparams_rel Dq cups (ptyp_mem t')) (List.rev (im_nparams Mj')) a b ->
@@ -964,11 +980,11 @@ Section ViewAgreementParts.
         destruct Hhead as [vm' Hhj].
         unfold im_ref, im_pre in HRs, Ecsg, Ecsc; rewrite Hhj in HRs, Ecsg; rewrite Hh' in HRs, Ecsc; cbn [fst snd] in HRs.
         assert (HU : ⟦ ind_uvars Dq (im_nn Mi') (List.length (List.repeat false (List.length (ptyp_doms t')) ++ cargs_pat gs1')) ⟧*
-                       gc_deps ⍮ gc_stack ⍮ env_args nil (cups ++ ms ++ vs ++ ys) ↘ cups).
-        { unfold ind_uvars.
-          replace (List.length (List.repeat false (List.length (ptyp_doms t')) ++ cargs_pat gs1') + im_nn Mi')
-            with (List.length (ms ++ vs ++ ys)) by (rewrite !List.length_app, List.repeat_length, length_cargs_pat; lia).
-          rewrite <- Hlc; apply eval_vars_from_args. }
+                       gc_deps ⍮ gc_stack
+                       ⍮ components_env Dq cups (List.rev (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_nparams Mi'))
+                           (ms ++ vs ++ ys) ↘ cups).
+        { apply eval_uvars_components; [ exact Hlc |].
+          rewrite !List.length_app, List.repeat_length, length_cargs_pat; lia. }
         pose proof (functional_eval_exps' _ _ _ _ Ecsc HU) as ->.
         assert (Hlcsg : List.length csg = ind_nu Dq)
           by (rewrite (eval_exps_length _ _ _ Ecsg), List.length_map, <- Hlc, (eval_exps_length _ _ _ Ecups); reflexivity).
@@ -995,10 +1011,18 @@ Section ViewAgreementParts.
         destruct (rel_ctx_wf_per_ctx_env HZ) as [RZ HRZ].
         assert (Hlz : List.length (ms ++ vs ++ ys) = List.length (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_nparams Mi'))
           by (rewrite !List.length_app, length_shape_domains_ctx, length_cargs_ctx, length_im_nparams; lia).
-        assert (HE : RZ (env_args nil (cups ++ ms ++ vs ++ ys)) (env_args nil (cups ++ ms ++ vs ++ ys))).
-        { apply (gargs_env_rel _ _ _ _ _ _ HRZ HZ).
-          - rewrite (List.length_app _ (ind_uparams Dq)), <- Hlz, !List.length_app; unfold ind_nu in Hlc; lia.
-          - rewrite <- !List.app_assoc; unfold im_params in Hctxc; exact Hctxc. }
+        assert (HE : RZ (components_env Dq cups (List.rev (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_nparams Mi'))
+                           (ms ++ vs ++ ys))
+                        (components_env Dq cups (List.rev (shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_nparams Mi'))
+                           (ms ++ vs ++ ys))).
+        { rewrite <- HEZc.
+          assert (HZ' : ⊨ shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_params Dq Mi')
+            by (unfold im_params; rewrite !List.app_assoc; rewrite !List.app_assoc in HZ; exact HZ).
+          assert (HRZ' : EF shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_params Dq Mi'
+                         ≈ shape_domains_ctx (cargs_pat gs1') (ptyp_doms t') ++ cargs_ctx qc Dq Mi' gs1' ++ im_params Dq Mi' ∈ per_ctx_env ↘ RZ)
+            by (unfold im_params; rewrite !List.app_assoc; rewrite !List.app_assoc in HRZ; exact HRZ).
+          apply (gargs_env_rel _ _ _ _ _ _ HRZ' HZ'); [| exact Hctxc ].
+          rewrite !List.length_app, length_shape_domains_ctx, length_cargs_ctx, length_im_params in *; unfold im_np, ind_nu in *; lia. }
         destruct (view_pre_values qc Dq HgQ HcvQ _ _ _ _ _ _ _ cups _ RZ (ms ++ vs ++ ys) (im_nn Mi')
                     (List.length (List.repeat false (List.length (ptyp_doms t')) ++ cargs_pat gs1')) csc HMj' Hh' HqX Hlc Hcr HZ HRZ Hlz
                     ltac:(rewrite !List.length_app, List.repeat_length, length_cargs_pat; lia) HE Ecsc) as (xc0 & Exc0 & Hgx).
@@ -1173,8 +1197,8 @@ Section ViewAgreementCanonical.
   Let HcvQ := containers_valid_of_groups P HP qc Dq (valid_groups_containers P HP p D k Mk qc kc Is vm Dq HPD HMk Hh Hq).
   Variables (ups ups' cups cups' : list domain).
   Hypotheses (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil ups ups') (Hu : List.length ups = ind_nu D)
-    (Ec : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups)
-    (Ec' : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups').
+    (Ec : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups)
+    (Ec' : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups' ↘ cups').
   Let Hgd := uparams_refl_l D (valid_group_valid _ _ Hg) (valid_group_closed _ _ Hg) _ _ Hgu.
   Let Hu' := length_ups_gargs D _ _ Hgu Hu.
   Let Hgd' := uparams_refl_l D (valid_group_valid _ _ Hg) (valid_group_closed _ _ Hg) _ _
@@ -1238,7 +1262,8 @@ Section ViewAgreementCanonical.
       view_end_rel p D ups ups (ptyp_mem t) -> rview_end_rel p D ups ups (ptyp_mem t) ->
       (canon_args_rel Dq cups i' ms c (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp) x y <->
        rec_arg_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups)
-         (canon_doms_rel ups) v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp') t x y).
+         (canon_doms_rel D ups) v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp')
+         (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) t x y).
   Proof.
     intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre Hend Hrend.
     pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv; pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) as HMv.
@@ -1271,8 +1296,12 @@ Section ViewAgreementCanonical.
       tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
         (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-      tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
-      (canon_doms_rel cups i' (ms ++ nonrec_arg_vals gs1' vp ++ ys) B' <~> canon_doms_rel ups v (ms ++ nonrec_arg_vals gs1 vp ++ ys) B).
+      tele_prefix_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                         ms (nonrec_arg_vals gs1' vp) t') d ys ys' ->
+      (canon_doms_rel Dq cups i' (ms ++ nonrec_arg_vals gs1' vp ++ ys)
+         (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ List.firstn d (shape_doms_tele t')) B'
+       <~> canon_doms_rel D ups v (ms ++ nonrec_arg_vals gs1 vp ++ ys)
+             (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t)) B).
   Proof.
     intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' HB' HB Hms Hpre Hys.
     pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv; pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) as HMv.
@@ -1301,13 +1330,17 @@ Section ViewAgreementCanonical.
       tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ms ms' ->
       tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
         (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') ->
-      tele_rel (shape_doms_rel (canon_doms_rel cups i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) (ptyp_doms t') ys ys' ->
+      tele_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                  ms (nonrec_arg_vals gs1' vp) t') (ptyp_doms t') ys ys' ->
       ps_link D (canon_nparams_rel D ups) (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups ++ ms ++ nonrec_arg_vals gs1' vp ++ ys)) (env_args nil (ups ++ ms ++ nonrec_arg_vals gs1 vp ++ ys)) /\
+        (components_env Dq cups (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms ++ nonrec_arg_vals gs1' vp ++ ys))
+        (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ nonrec_arg_vals gs1 vp ++ ys)) /\
       ps_link D (canon_nparams_rel D ups) (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups' ++ ms' ++ nonrec_arg_vals gs1' vp' ++ ys')) (env_args nil (ups' ++ ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) /\
+        (components_env Dq cups' (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms' ++ nonrec_arg_vals gs1' vp' ++ ys'))
+        (components_env D ups' (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) /\
       ps_link D (canon_nparams_rel D ups) (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
-        (env_args nil (cups ++ ms' ++ nonrec_arg_vals gs1' vp' ++ ys')) (env_args nil (ups ++ ms' ++ nonrec_arg_vals gs1 vp' ++ ys')).
+        (components_env Dq cups (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1' ++ shape_doms_tele t') (ms' ++ nonrec_arg_vals gs1' vp' ++ ys'))
+        (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ nonrec_arg_vals gs1 vp' ++ ys')).
   Proof.
     intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre Hys.
     pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvm) as Hv; pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) as HMv.
@@ -1325,11 +1358,13 @@ Section ViewAgreementCanonical.
     pose proof (args_prefix_rel_refl_r qc Dq cups _ _ _ (valid_group_ass _ _ HgQ) CnP CnI CaP CaI CdP CdI i' Mi' HMi' ms ms' c _ _ _ _
                   Hms Hc' HK Hpre) as Hpre'.
     pose proof (tele_rel_pre _ _ _ _ Hys) as Hysp.
-    assert (Hyy : tele_rel (shape_doms_rel (canon_doms_rel cups i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) (ptyp_doms t') ys ys)
+    assert (Hyy : tele_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                              ms (nonrec_arg_vals gs1' vp) t') (ptyp_doms t') ys ys)
       by (apply tele_rel_of_pre;
           exact (doms_rel_refl_l qc Dq cups _ _ _ (valid_group_ass _ _ HgQ) CnP CnI CaP CaI CdP CdI i' Mi' HMi' ms c _ gs1' t' gs2'
                    (nonrec_arg_vals gs1' vp) Hns_c Hc' eq_refl Hpre_d _ ys ys' (le_n _) Hysp)).
-    assert (Hyy' : tele_rel (shape_doms_rel (canon_doms_rel cups i') ms' (nonrec_arg_vals gs1' vp') (ptyp_doms t')) (ptyp_doms t') ys' ys')
+    assert (Hyy' : tele_rel (shape_doms_rel (canon_doms_rel Dq cups i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                               ms' (nonrec_arg_vals gs1' vp') t') (ptyp_doms t') ys' ys')
       by (apply tele_rel_of_pre;
           exact (doms_rel_refl_inst qc Dq cups _ _ _ (valid_group_ass _ _ HgQ) CnP CnI CaP CaI CdP CdI i' Mi' HMi' ms ms' c _ gs1' t' gs2'
                    (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp') _ ys ys' Hms Hc' eq_refl Hpre (le_n _) Hysp)).
@@ -1342,7 +1377,8 @@ Section ViewAgreementCanonical.
       pose proof (tele_rel_nr_change qc Dq cups _ _ _ _ _ _ Hn Ha Hd i' Mi' HMi' _ _ Hns_c') as Hns_c2.
       pose proof (tele_prefix_rel_ar_change qc Dq cups _ _ _ _ _ _ Hn Ha Hd i' Mi' HMi' ms' ms' ms' c _ _ _ _ Hns_c' Hns_c2 Hc' HK Hpre')
         as Hpre2.
-      assert (Hyy2 : tele_rel (shape_doms_rel (canon_doms_rel cups' i') ms' (nonrec_arg_vals gs1' vp') (ptyp_doms t')) (ptyp_doms t') ys' ys')
+      assert (Hyy2 : tele_rel (shape_doms_rel (canon_doms_rel Dq cups' i') (List.rev (im_nparams Mi')) (cargs_nonrec_tele gs1')
+                                 ms' (nonrec_arg_vals gs1' vp') t') (ptyp_doms t') ys' ys')
         by (apply tele_rel_of_pre;
             exact (tele_prefix_rel_sh_change qc Dq cups _ _ _ _ _ _ Hn Ha Hd i' Mi' HMi' ms' ms' ms' c _ gs1' t' gs2'
                      (nonrec_arg_vals gs1' vp') (nonrec_arg_vals gs1' vp') (nonrec_arg_vals gs1' vp') _ _ _
