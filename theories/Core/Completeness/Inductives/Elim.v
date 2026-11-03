@@ -3344,13 +3344,13 @@ Section GroupElim.
       Lemma mctx_head_rel : forall B1 B2 u1, RΓ B1 B2 ->
           ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ B1 ↘ u1 -> RU (decl_env D u1) (decl_env D u0) ->
           forall RS, EF tele_sub (im_nparams Mk) τU ++ Γ ≈ tele_sub (im_nparams Mk) τU ++ Γ ∈ per_ctx_env ↘ RS ->
-          forall ns ns', tele_rel (nr k) T ns ns' ->
-          RS (env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns) (env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns) ->
-          forall t1 t2 (i : universe_index) R, ⟦ IT ⟧ env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns ↘ t1 ->
-          ⟦ IT ⟧ env_tele B2 (List.rev (tele_sub (im_nparams Mk) τU)) ns' ↘ t2 ->
+          forall ns ns' vts1 vts2, tele_rel (nr k) T ns ns' -> List.map fst vts1 = ns -> List.map fst vts2 = ns' ->
+          RS (env_extend_typed B1 vts1) (env_extend_typed B1 vts1) ->
+          forall t1 t2 (i : universe_index) R, ⟦ IT ⟧ env_extend_typed B1 vts1 ↘ t1 ->
+          ⟦ IT ⟧ env_extend_typed B2 vts2 ↘ t2 ->
           DF t1 ≈ t2 ∈ per_univ_elem i ↘ R -> (R <~> G k u0 u0 ns ns').
       Proof.
-        intros * HB Hu1 H10 RS HRS * Hns HEE * Et1 Et2 HR.
+        intros * HB Hu1 H10 RS HRS * Hns Hv1 Hv2 HEE * Et1 Et2 HR.
         destruct (sort_value D HD u0 u0_gargs u0_len) as [a0 Ha0].
         assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
         pose proof (eval_exps_length _ _ _ Hu1) as Lu1; rewrite HUl in Lu1.
@@ -3384,15 +3384,15 @@ Section GroupElim.
         assert (HNr : ⊨ List.rev (List.rev (tele_sub (im_nparams Mk) τU)) ++ Γ) by (rewrite List.rev_involutive; exact base_member_HNt).
         assert (HRSr : EF List.rev (List.rev (tele_sub (im_nparams Mk) τU)) ++ Γ ≈ List.rev (List.rev (tele_sub (im_nparams Mk) τU)) ++ Γ
                          ∈ per_ctx_env ↘ RS) by (rewrite List.rev_involutive; exact HRS).
-        assert (Lt : List.length (tele_entries B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns)
-                     = List.length (List.rev (tele_sub (im_nparams Mk) τU)))
-          by (rewrite tele_entries_length, List.length_rev, length_tele_sub; exact Ln).
+        assert (Lt : List.length vts1 = List.length (List.rev (tele_sub (im_nparams Mk) τU)))
+          by (rewrite <- (List.length_map fst), Hv1, List.length_rev, length_tele_sub; exact Ln).
         destruct (rel_gargs_readable _ _ _ _ HRΓ HNr Hta HRSr _ _ _ _ Lt Lt HEE) as [Hr1 _].
         pose proof (closed_pre_base (im_nparams Mk) RK base_member_Pa base_member_Ps HRK B1 u1 _ ns HB11 Hu1 H10 Hg00
-                      ltac:(rewrite length_im_nparams; exact Ln) (tele_entries_fst _ _ _) Hr1) as HK1.
+                      ltac:(rewrite length_im_nparams; exact Ln) Hv1 Hr1) as HK1.
         destruct (closed_typ_inst (im_nparams Mk) (ind_uparams D) Γ _ Typeω@jx τU RΓ RK RS B1 _ _ _
                     base_member_Pa base_member_Ps Ua Usem HΓ HRΓ HRK HRS ltac:(constructor) HX
-                    (gsub_valid gsub_U) HEE ltac:(rewrite tele_entries_length; exact Ln) (uniform_params_sub_eval B1 B2 u1 HB Hu1) HK1)
+                    (gsub_valid gsub_U) HEE ltac:(rewrite Lt, List.length_rev, length_tele_sub; reflexivity)
+                    (uniform_params_sub_eval B1 B2 u1 HB Hu1) HK1)
           as (jc & a & c & Ea & Ec & [R1c HR1c]).
         unfold τU in Ea; rewrite length_im_nparams, (mty_vars_inst p D k Mk Us Hc HUl) in Ea; fold IT in Ea.
         assert (a = t1) as -> by (eapply functional_eval_exp; eassumption).
@@ -3430,7 +3430,8 @@ Section GroupElim.
         assert (HEE : RN (env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns) (env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns))
           by (etransitivity; [ exact HE | symmetry; exact HE ]).
         destruct (rel_exp_of_typ_inversion_simple_at HRN HIT _ _ HE) as (t1 & t2 & Et1 & Et2 & [R12 HR12]).
-        pose proof (mctx_head_rel B1 B2 u1 HB Hu1 H10 RN HRN ns ns' Hns HEE t1 t2 j R12 Et1 Et2 HR12) as ER.
+        pose proof (mctx_head_rel B1 B2 u1 HB Hu1 H10 RN HRN ns ns' _ _ Hns (tele_entries_fst _ _ _) (tele_entries_fst _ _ _)
+                      HEE t1 t2 j R12 Et1 Et2 HR12) as ER.
         eapply gargs_env_rel_gen; [ exact HRΓ | exact HRM | exact HMm | exact HB | rewrite List.length_app, length_elim_mctx; cbn; lia |].
         unfold elim_mctx; cbn [List.rev].
         destruct (per_univ_elem_to_nat _ _ _ _ HR12) as [n Hn].
@@ -3638,23 +3639,35 @@ Section GroupElim.
       destruct (instance_values_of_sub _ _ _ _ _ Hta HRΓ HRS (nparams_sub_relevant m Mm HMm) (gsub_valid HgN)
                   ltac:(rewrite length_tele_sub; exact HNl) C1 C2' HC2) as [n1 n2 En1 En2 HE Eτ1 Eτ2].
       pose proof (functional_eval_exps' _ _ _ _ En1 Ens) as ->; pose proof (functional_eval_exps' _ _ _ _ En2 Ens') as ->.
-      assert (HE11 : RS (env_args C1 ns) (env_args C1 ns)) by (etransitivity; [ exact HE | symmetry; exact HE ]).
       assert (Ln : List.length ns = im_nn Mm) by (rewrite (eval_exps_length _ _ _ Ens); exact HNl).
       assert (Ln' : List.length ns' = im_nn Mm) by (rewrite (eval_exps_length _ _ _ Ens'); exact HNl).
+      assert (LT : List.length (List.rev (tele_sub (im_nparams Mm) τU)) = im_nn Mm)
+        by (rewrite List.length_rev, length_tele_sub; reflexivity).
+      rewrite !env_extend_tagged_typed in HE.
+      set (vts1 := tagged_entries Γ (List.rev (tele_sub (im_nparams Mm) τU)) (ctx_retag Γ C1) ns) in *.
+      set (vts2 := tagged_entries Γ (List.rev (tele_sub (im_nparams Mm) τU)) (ctx_retag Γ C2') ns') in *.
+      assert (Hv1 : List.map fst vts1 = ns) by (apply tagged_entries_fst; rewrite LT; symmetry; exact Ln).
+      assert (Hv2 : List.map fst vts2 = ns') by (apply tagged_entries_fst; rewrite LT; symmetry; exact Ln').
+      assert (Lv1 : List.length vts1 = im_nn Mm) by (rewrite <- (List.length_map fst), Hv1; exact Ln).
+      assert (Lv2 : List.length vts2 = im_nn Mm) by (rewrite <- (List.length_map fst), Hv2; exact Ln').
+      assert (HE11 : RS (env_extend_typed (ctx_retag Γ C1) vts1) (env_extend_typed (ctx_retag Γ C1) vts1))
+        by (etransitivity; [ exact HE | symmetry; exact HE ]).
+      assert (HB : RΓ (ctx_retag Γ C1) (ctx_retag Γ C2')) by exact (per_ctx_env_retag HRΓ _ _ HC2).
+      destruct (us_class (ctx_retag Γ C1) (per_ctx_env_retag_left HRΓ _ _ HC11)) as (u1 & Hu1 & H10).
       assert (HNr : ⊨ List.rev (List.rev (tele_sub (im_nparams Mm) τU)) ++ Γ) by (rewrite List.rev_involutive; exact HNt).
       assert (HRSr : EF List.rev (List.rev (tele_sub (im_nparams Mm) τU)) ++ Γ ≈ List.rev (List.rev (tele_sub (im_nparams Mm) τU)) ++ Γ
                        ∈ per_ctx_env ↘ RS) by (rewrite List.rev_involutive; exact HRS).
-      assert (Lt : List.length (List.rev (tele_sub (im_nparams Mm) τU)) = im_nn Mm)
-        by (rewrite List.length_rev, length_tele_sub; reflexivity).
-      destruct (rel_gargs _ _ _ _ HRΓ HNr (List.Forall_rev Hta) HRSr _ _ _ _ ltac:(rewrite Lt; exact Ln) ltac:(rewrite Lt; exact Ln') HE)
+      destruct (rel_gargs _ _ _ _ HRΓ HNr (List.Forall_rev Hta) HRSr _ _ _ _ ltac:(rewrite LT; exact Lv1) ltac:(rewrite LT; exact Lv2) HE)
         as [_ Hg].
-      pose proof (canonical_nparams_rev m Mm HMm HMa C1 C2' u0 HC2 HUC u0_env ns ns' Ln Hg) as Hns.
+      rewrite Hv1, Hv2 in Hg.
+      pose proof (canonical_nparams_rev m Mm HMm HMa _ _ u1 HB Hu1 H10 ns ns' Ln Hg) as Hns.
       destruct (rel_exp_of_typ_inversion_simple_at HRS HIT _ _ HE) as (b1 & b2 & Eb1 & Eb2 & [R12 HR12]).
-      pose proof (mctx_head_rel m Mm HMm C1 C2' u0 HC2 HUC u0_env RS HRS ns ns' Hns HE11 b1 b2 _ R12 Eb1 Eb2 HR12) as HG.
+      pose proof (mctx_head_rel m Mm HMm HMa _ _ u1 HB Hu1 H10 RS HRS ns ns' vts1 vts2 Hns Hv1 Hv2 HE11 b1 b2 _ R12 Eb1 Eb2 HR12) as HG.
       destruct (typ_inst_link _ _ _ _ _ _ _ _ _ (rel_type_of_typ HIT) HRΓ (gsub_valid HgN) HC22 Eτ2) as (a & b & Ea & Eb & [R2 HR2]).
       rewrite ind_head_inst in Ea by (try exact Hc; try exact HUl; exact HNl).
       rewrite (List.map_ext (fun U => U[Id]) (fun U => U)), List.map_id in Ea by (intros; apply exp_sub_id).
       assert (a = t') as -> by (eapply functional_eval_exp; eassumption).
+      rewrite env_extend_tagged_typed in Eb.
       assert (b = b2) as -> by (eapply functional_eval_exp; eassumption).
       destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR HR2) as (R'' & HR'' & ER).
       assert (E2 : R'' <~> R12) by (eapply per_univ_elem_left_irrel; [ exact HR'' | exact HR12 ]).
