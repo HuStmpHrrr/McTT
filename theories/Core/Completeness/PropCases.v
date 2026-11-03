@@ -219,10 +219,10 @@ Proof.
   destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   (** The four bridges, at four pairs the chain above relates. *)
-  assert (P1 : Dom s ↦ c ⦂ t1 ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
-  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ t1 ∈ env_relΔA) by pairwise.
-  assert (P3 : Dom s' ↦ c' ⦂ t4 ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
-  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ t4 ∈ env_relΔA) by pairwise.
+  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ centry_tag (ce_ass A) Δ s ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ∈ env_relΔA) by pairwise.
   destruct (HBl _ _ P1) as [x1 [x2 [Hx1 [Hx2 Hx]]]].
   destruct (HBl _ _ P2) as [y1 [y2 [Hy1 [Hy2 Hy]]]].
   destruct (HBr _ _ P3) as [z1 [z2 [Hz1 [Hz2 Hz]]]].
@@ -365,43 +365,6 @@ Proof.
     | apply per_univ_elem_prop_univ ].
 Qed.
 
-Lemma per_univ_elem_placeholder : forall i,
-    DF d_placeholder_type ≈ d_placeholder_type ∈ per_univ_elem i ↘ per_placeholder.
-Proof. intros; basic_per_univ_elem_econstructor; reflexivity. Qed.
-
-Lemma rel_exp_of_univ_placeholder_type : forall {Γ u env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ a_placeholder_type ≈ a_placeholder_type : universe_index_term u.
-Proof.
-  intros * HΓ; eapply rel_exp_of_univ_const;
-    [ exact HΓ | intros; apply eval_exp_placeholder_type | reflexivity | reflexivity | solve_not_level_code
-    | apply per_univ_elem_placeholder ].
-Qed.
-
-(** Every pair of terms is related at the placeholder type, as soon as they
-    have values: its elements are equal by η. *)
-Lemma rel_exp_under_ctx_placeholder : forall {Γ M M' env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    (forall σ ρ, exists m, ⟦ M[σ] ⟧ ρ ↘ m) ->
-    (forall ρ, exists m, ⟦ M ⟧ ρ ↘ m) ->
-    (forall σ ρ, exists m, ⟦ M'[σ] ⟧ ρ ↘ m) ->
-    (forall ρ, exists m, ⟦ M' ⟧ ρ ↘ m) ->
-    Γ ⊨ M ≈ M' : a_placeholder_type.
-Proof.
-  intros * HΓ H1 H2 H3 H4.
-  eexists_rel_exp_with 0.
-  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists per_placeholder; split.
-  - apply (mk_rel_exp d_placeholder_type d_placeholder_type d_placeholder_type d_placeholder_type);
-      try apply eval_exp_placeholder_type.
-    apply rel_chain_4; apply per_univ_elem_placeholder.
-  - right.
-    destruct (H1 σ ρ) as [m1 Hm1]; destruct (H2 ρσ) as [m2 Hm2];
-      destruct (H4 ρ'σ') as [m3 Hm3]; destruct (H3 σ' ρ') as [m4 Hm4].
-    apply (mk_rel_exp m1 m2 m3 m4); try assumption.
-    apply rel_chain_4; exact I.
-Qed.
-
 End Fixed_GCtx.
 
 (** ** The Rules *)
@@ -496,16 +459,17 @@ Lemma sem_and :
      Θ ⍮ Ξ ⍮ Γ ⊨ Σₚ P Q : Propₘ ).
 Proof. intros; eapply sem_exp_eq_and_cong; eassumption. Qed.
 
+(** A proof of a conjunction, at its components' propositions. *)
 Lemma sem_conj :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ T : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ T ≈ Σₚ P Q : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : P ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N : Q[Id,,M] ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_conj T M N : T ).
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_conj P Q M N : Σₚ P Q ).
 Proof.
-  intros * HT _ _ _ _ _; sem_intro; [ assumption |].
+  intros * HP HQ _ _.
+  assert (HT : Θ ⍮ Ξ ⍮ Γ ⊨ Σₚ P Q : Propₘ) by (eapply sem_and; eassumption).
+  sem_intro; [ assumption |].
   exact (rel_exp_under_ctx_proof HT).
 Qed.
 
@@ -538,55 +502,4 @@ Lemma sem_exp_eq_irrelevant :
 Proof.
   intros * HP _ _; sem_intro; [ assumption |].
   exact (rel_exp_under_ctx_proof HP).
-Qed.
-
-Lemma sem_placeholder_type :
-  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_placeholder_type : Type@0 ).
-Proof.
-  intros * H; sem_intro; [ assumption |].
-  apply rel_ctx_wf_per_ctx_env in H; destruct H as [env_relΓ HΓ].
-  exact (rel_exp_of_univ_placeholder_type (u := us (0, 0)) HΓ).
-Qed.
-
-Lemma sem_exp_eq_placeholder_type_cong :
-  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_placeholder_type ≈ a_placeholder_type : Type@0 ).
-Proof. intros; eapply sem_placeholder_type; eassumption. Qed.
-
-Lemma sem_placeholder :
-  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_placeholder : a_placeholder_type ).
-Proof.
-  intros * H; sem_intro; [ assumption |].
-  apply rel_ctx_wf_per_ctx_env in H; destruct H as [env_relΓ HΓ].
-  apply (rel_exp_under_ctx_placeholder HΓ); intros; eexists; apply eval_exp_placeholder.
-Qed.
-
-Lemma sem_exp_eq_placeholder_cong :
-  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_placeholder ≈ a_placeholder : a_placeholder_type ).
-Proof. intros; eapply sem_placeholder; eassumption. Qed.
-
-(** η at the placeholder type: the term's values against the placeholder's,
-    all related. *)
-Lemma sem_exp_eq_placeholder_eta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : a_placeholder_type ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ a_placeholder : a_placeholder_type ).
-Proof.
-  intros * HM; sem_intro; [ assumption |].
-  destruct HM as [env_relΓ HΓ i HMgen].
-  refine (mk_rel_exp_under_ctx _ _ _ _ env_relΓ HΓ 0 _).
-  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
-  assert (Hr : rel_typ_sort a_placeholder_type ρσ relevant)
-    by (exists d_placeholder_type; split; [ apply eval_exp_placeholder_type | reflexivity ]).
-  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
-  destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 _].
-  exists per_placeholder; split.
-  - apply (mk_rel_exp d_placeholder_type d_placeholder_type d_placeholder_type d_placeholder_type);
-      try apply eval_exp_placeholder_type.
-    apply rel_chain_4; apply per_univ_elem_placeholder.
-  - right; apply (mk_rel_exp m1 m2 d_placeholder d_placeholder); try assumption; try apply eval_exp_placeholder.
-    apply rel_chain_4; exact I.
 Qed.
