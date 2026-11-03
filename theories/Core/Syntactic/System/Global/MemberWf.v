@@ -87,6 +87,11 @@ Proof.
   - (* an alias of a literal, and the literal over both telescopes *)
     split; [ repeat split; [ exact (ext_eq_ctx_left _ _ _ _ _ H) | assumption | apply wf_me_lit; assumption ] |].
     exact (unit_parts_abs _ _ _ _ _ (proj1 IHwf_unit_eq) H0).
+  - (* a body and its expansion: the expansion is its own *)
+    destruct IHwf_unit_eq as [HP _]; split; [ exact HP |].
+    destruct HP as (Φx & Hx & HC & Hy & Hs); exists Φx.
+    pose proof (body_xp_expand _ _ _ _ _ Hx) as ->.
+    repeat split; try assumption; apply body_xp_noopen, gm_noopen_expand.
 Qed.
 
 Corollary unit_parts_of_wf : forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U -> unit_parts Θ Ξ Γ U.
@@ -107,6 +112,10 @@ Proof.
     split; intros Δ0 Φ0 Φx0 Heq; [ discriminate Heq |].
     injection Heq as <- ->; intros Hx0 k Ψ Hk0 Hk.
     rewrite <- app_assoc in Hx0 |- *; exact (proj1 IHwf_unit_eq _ _ _ eq_refl Hx0 _ _ _ Hk). }
+  2: { (* a body and its expansion: the expansion has no opens *)
+    split; [ exact (proj1 IHwf_unit_eq) |].
+    intros Δ0 Φ0 Φx0 Heq _ k Ψ H0 Hk; injection Heq as <- <-.
+    rewrite (body_opens_noopen _ (gm_noopen_expand _)), nth_error_nil in Hk; discriminate Hk. }
   match goal with Hc : _ ⍮ _ ⍮ _ ⊢ˣ _ ≈ _ |- _ => pose proof (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx Hc)) as Hg end.
   split; intros Δ0 Φ0 Φx0 Heq Hx0 k Ψ Hk0 Hk; injection Heq as <- <-.
   - match goal with Hx0 : body_xp _ _ _ ?P Φx0, Hx : body_xp _ _ _ ?P ?Φx1, Ho : forall k Ψ H, nth_error (body_opens ?P ?Φx1) k = _ -> _ |- _ =>

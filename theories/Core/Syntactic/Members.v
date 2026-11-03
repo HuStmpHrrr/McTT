@@ -2533,12 +2533,19 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; cbn; [ exact I | exact IH | apply gm_noopen_graft; assumption ].
 Qed.
 
+(** Expanding twice is expanding once. *)
+Corollary gm_expand_idem : forall Φ, gm_expand (gm_expand Φ) = gm_expand Φ.
+Proof. intros; apply gm_expand_noopen, gm_noopen_expand. Qed.
+
 (** A unit with its body expanded ([gm_expand]); an alias is its own. *)
 Definition gunit_expand (U : gunit) : gunit :=
   match U with
   | gu_mk Δ (md_body sm Φ) => gu_mk Δ (md_body sm (gm_expand Φ))
   | gu_mk Δ (md_alias E) => gu_mk Δ (md_alias E)
   end.
+
+Lemma gunit_expand_idem : forall U, gunit_expand (gunit_expand U) = gunit_expand U.
+Proof. intros [Δ [sm Φ | E]]; cbn [gunit_expand]; [ rewrite gm_expand_idem |]; reflexivity. Qed.
 
 Lemma gm_binders_graft : forall Φ Φg, gm_binders (gm_graft Φ Φg) = gm_binders Φg + gm_binders Φ.
 Proof. intros Φ Φg; induction Φg; cbn; lia. Qed.
@@ -2857,6 +2864,10 @@ Fixpoint body_opens (Φ Φx : gmod) : list (ctx * modexp) :=
       let Φ0x := gm_dropn (List.length its) Φx in
       (body_ctx Φ0x, H) :: body_opens Φ0 Φ0x
   end.
+
+(** A body with no open has no open targets. *)
+Lemma body_opens_noopen : forall Φ, gm_noopen Φ -> forall Φx, body_opens Φ Φx = nil.
+Proof. induction Φ as [| Φ IH x E | Φ IH H its]; intros Hn Φx; cbn in Hn |- *; [ reflexivity | apply IH, Hn | contradiction ]. Qed.
 
 (** The same, each target with the expanded prefix itself. *)
 Fixpoint body_opens_at (Φ Φx : gmod) : list (gmod * modexp) :=

@@ -2881,6 +2881,14 @@ Proof. intros; eapply wf_unit_eq_trans; [ eassumption | apply wf_unit_eq_sym; ea
 Lemma wf_unit_eq_refl_right : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U' ≈ U'.
 Proof. intros; eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; eassumption | eassumption ]. Qed.
 
+(** Equivalent body units have equivalent expansions. *)
+Lemma wf_unit_eq_expand_cong : forall {Θ Ξ Γ Δ Φ Δ' Φ'},
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ (gm_expand Φ) ≈ gu_open Δ' (gm_expand Φ').
+Proof.
+  intros * HU; eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym, wf_unit_eq_expand, (wf_unit_eq_refl_left HU) |].
+  eapply wf_unit_eq_trans; [ exact HU | apply wf_unit_eq_expand, (wf_unit_eq_refl_right HU) ].
+Qed.
+
 Lemma wf_modexp_eq_refl_left : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H.
 Proof. intros; eapply wf_me_trans; [ eassumption | apply wf_me_sym; eassumption ]. Qed.
 

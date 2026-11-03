@@ -200,11 +200,11 @@ Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domai
     closes them ([eval_close_body]).  The relations read a closure or a
     submodule closure as selection on module values does ([eval_selm]). *)
 
-(** The closure of a unit over [ρ], as kinds read it: its body expanded,
-    as evaluation closes it; a saturated alias is left as a closure, which
-    kinds read through. *)
+(** The closure of a unit over [ρ], as kinds read it (through its
+    expansion, [dmod_member_kind_local]): a saturated alias is left as a
+    closure, which kinds read through. *)
 Definition dm_clo (U : gunit) (ρ : env) : dmod :=
-  match gunit_expand U with gu_mk Δ D => dm_local Δ D ρ end.
+  match U with gu_mk Δ D => dm_local Δ D ρ end.
 
 (** [n] pads for parameters, terms whose values kinds never read, over
     [ρ]. *)
@@ -261,18 +261,19 @@ Inductive dmod_member_kind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> m
     gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ ->
     dmod_member_kind Θ Ξ (dm_global p args) (y :: nil) member_kind_dm
 (** The member [y] is an alias, other than the module part of a definition
-    at the end of the chain: the chain after [y] is read in the alias *)
+    at the end of the chain: the chain after [y] is read in the alias,
+    expanded *)
 | dmod_member_kind_global_alias_case : forall p args y ch U k,
     gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U) ->
     ch <> nil \/ ~ dm_path Θ Ξ (qname_app p (y :: nil)) ->
-    gunit_member_kind Θ Ξ nil U ch k ->
+    gunit_member_kind Θ Ξ nil (gunit_expand U) ch k ->
     dmod_member_kind Θ Ξ (dm_global p args) (y :: ch) k
 (** A definition with a module part stored as an alias: [dm_of] its alias's
-    kind *)
+    kind, expanded *)
 | dmod_member_kind_global_alias_dm : forall p args y U k,
     gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U) ->
     dm_path Θ Ξ (qname_app p (y :: nil)) ->
-    gunit_member_kind Θ Ξ nil U nil k ->
+    gunit_member_kind Θ Ξ nil (gunit_expand U) nil k ->
     dmod_member_kind Θ Ξ (dm_global p args) (y :: nil) (dm_of k)
 (** The member [y] is located in place (a body, a frame or a definition),
     and the chain does not stop at the module part of a definition: the
@@ -283,9 +284,9 @@ Inductive dmod_member_kind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> m
     ch <> nil \/ ~ dm_path Θ Ξ (qname_app p (y :: nil)) ->
     dmod_member_kind Θ Ξ (dm_global (qname_app p (y :: nil)) args) ch k ->
     dmod_member_kind Θ Ξ (dm_global p args) (y :: ch) k
-(** A closure, by its unit. *)
+(** A closure, by its unit, expanded. *)
 | dmod_member_kind_local : forall Δ D ρ ch k,
-    gunit_member_kind Θ Ξ ρ (gu_mk Δ D) ch k ->
+    gunit_member_kind Θ Ξ ρ (gunit_expand (gu_mk Δ D)) ch k ->
     dmod_member_kind Θ Ξ (dm_local Δ D ρ) ch k
 (** A submodule closure, by the longer chain; at the empty chain it is a
     module, its member's module part when that member has a term part too. *)
@@ -1113,9 +1114,12 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      dm_local Δ D ρ ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_local Δ D ρ) (x :: nil) )
 (** A term part of a saturated body ([entry_tm]: a definition's body or a
     definition with a module part's term): it, in the environment of the
-    body before it, when the entry is relevant. *)
+    body before it, when the entry is relevant.  The body is read expanded:
+    evaluated closures are already expanded ([eval_close_body]), so the
+    expansion here only aligns the relation with kinds
+    ([dmod_member_kind_local]). *)
 | eval_sel_body :
-  `( gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
+  `( gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = relevant ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
@@ -1125,9 +1129,11 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
     as the selection of the member from the body, its body not evaluated;
     the environment of the proof is the body's environment extended by the
     body's closure, so that readback binds the body as its unit over the
-    entries it closes over. *)
+    entries it closes over.  The body is read expanded: evaluated closures
+    are already expanded ([eval_close_body]), so the expansion here only
+    aligns the relation with kinds. *)
 | eval_sel_body_proof :
-  `( gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
+  `( gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
      entry_relevance E = propositional ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
@@ -1165,9 +1171,11 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
      dm_local Δ D ρ ·ₘ y Θ ⍮ Ξ ↘ dm_member (dm_local Δ D ρ) (y :: nil) )
 (** A module part of a saturated body ([entry_unit]: a submodule, or a
     definition with a module part's): its unit's closure, in the
-    environment of the body before it. *)
+    environment of the body before it.  The body is read expanded:
+    evaluated closures are already expanded ([eval_close_body]), so the
+    expansion here only aligns the relation with kinds. *)
 | eval_selm_body :
-  `( gm_prefix_upto Φ y = Some (gm_ext Φ' y E) ->
+  `( gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ' ↘ r ->

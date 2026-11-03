@@ -200,12 +200,23 @@ Section Kinds.
       modexp_member_kind Θ Ξ ρ (me_lit U) ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand U) ch k.
   Proof. intros; split; intros Hk; [ inversion Hk; subst; assumption | constructor; assumption ]. Qed.
 
-  Lemma dmod_member_kind_local_iff : forall Δ D ρ ch k, dmod_member_kind Θ Ξ (dm_local Δ D ρ) ch k <-> gunit_member_kind Θ Ξ ρ (gu_mk Δ D) ch k.
+  Lemma dmod_member_kind_local_iff : forall Δ D ρ ch k,
+      dmod_member_kind Θ Ξ (dm_local Δ D ρ) ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand (gu_mk Δ D)) ch k.
   Proof. intros; split; intros Hk; [ inversion Hk; subst; assumption | constructor; assumption ]. Qed.
 
   Lemma dmod_member_kind_clo_iff : forall U ρ ch k,
       dmod_member_kind Θ Ξ (dm_clo U ρ) ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand U) ch k.
-  Proof. intros [Δ [sm Φ | E]] *; apply dmod_member_kind_local_iff. Qed.
+  Proof. intros [Δ D] *; apply dmod_member_kind_local_iff. Qed.
+
+  (** A body closure and the closure of its expansion have the same kinds,
+      along any chain of submodules. *)
+  Lemma dmod_member_kind_member_local_expand : forall Δ sm Φ ρ ch0 ch k,
+      dmod_member_kind Θ Ξ (dm_member (dm_local Δ (md_body sm Φ) ρ) ch0) ch k <->
+      dmod_member_kind Θ Ξ (dm_member (dm_local Δ (md_body sm (gm_expand Φ)) ρ) ch0) ch k.
+  Proof.
+    intros; rewrite !dmod_member_kind_member_iff, !dmod_member_kind_local_iff; cbn [gunit_expand].
+    rewrite gm_expand_idem; reflexivity.
+  Qed.
 
   Lemma gunit_member_kind_alias_iff : forall ρ E ch k, gunit_member_kind Θ Ξ ρ (gu_mk nil (md_alias E)) ch k <-> modexp_member_kind Θ Ξ ρ E ch k.
   Proof. intros; split; intros Hk; [ inversion Hk; subst; assumption | constructor; assumption ]. Qed.

@@ -1353,6 +1353,16 @@ Proof.
   apply syntactic_wf_mut_ind'; intros; try exact I.
   (** Units: a body by its filled-in entries, an alias by its target. *)
   all: try solve [ eapply sub_eq_unit_body_case; first [ eassumption | eapply mk_levels_flag; eassumption ] ].
+  (** A body unit and its expansion: expansion commutes with substitution. *)
+  all: try solve [
+    match goal with
+    | IH : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_open ?Δ ?Φ) _) _ /\ _,
+      Hσ : wf_sub_eq _ _ _ _ _ _
+      |- _ /\ wf_unit_eq _ _ _ (gunit_sub (gu_open ?Δ (gm_expand ?Φ)) _) _ =>
+        destruct (IH _ _ _ Hσ) as [HU _]; split; [ exact HU |];
+        rewrite !gunit_sub_mk in HU |- *; cbn [moddef_sub] in HU |- *; rewrite <- !gm_expand_sub;
+        apply wf_unit_eq_expand_cong; exact HU
+    end ].
   all: try solve [
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HΔ : wf_ext_eq _ _ _ ?Δu ?Δu',

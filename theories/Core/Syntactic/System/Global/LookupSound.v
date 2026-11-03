@@ -95,6 +95,25 @@ Proof.
     all: rewrite <- ?List.app_assoc; first [ assumption | apply List.Forall_app; split; assumption ].
 Qed.
 
+(** The flag premise of a body holds of its expansion: the expansion
+    denotes the description with the same expansion, and having no member of
+    a type of levels reads the expansion only. *)
+Lemma levels_flag_expand : forall Θ Ξ Γ Δ Φ lv Rt,
+    levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) lv Rt ->
+    exists Rt', levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil (gm_expand Φ))) lv Rt'.
+Proof.
+  intros * [Hs Hd Hn]; destruct lv.
+  - exists Rt; constructor; [ exact Hs | discriminate | discriminate ].
+  - specialize (Hd eq_refl); specialize (Hn eq_refl).
+    inversion Hd; subst; try (cbn in *; discriminate).
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+    match goal with HR : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in HR; injection HR as <- end.
+    match goal with Hx : body_xp _ _ _ Φ _ |- _ => pose proof (body_xp_expand _ _ _ _ _ Hx) as -> end.
+    exists (mdesc_open nil (gm_expand Φ) (gm_expand Φ)); constructor; [ discriminate | intros _ | intros _ ].
+    + apply mdenote_lit; eapply udenote_body; [ apply body_xp_noopen, gm_noopen_expand | reflexivity ].
+    + inversion Hn; subst; econstructor; eassumption.
+Qed.
+
 Lemma unit_full_of_eq : forall Θ Ξ Γ U U',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> unit_full Θ Ξ Γ U /\ unit_full Θ Ξ Γ U'.
 Proof.
@@ -138,6 +157,15 @@ Proof.
     pose proof (ctx_wf_gctx _ _ _ (ext_eq_ctx_left _ _ _ _ _ H)) as Hg.
     assert (HmR : mdenote Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) R) by (apply mdenote_lit; exact HR).
     rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ (H5 eq_refl)); exact (H6 eq_refl).
+  - (* a body and its expansion: the expansion is its own, with no opens *)
+    destruct IHwf_unit_eq as [HF _]; split; [ exact HF |].
+    destruct HF as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HL].
+    pose proof (body_xp_expand _ _ _ _ _ Hx) as ->.
+    destruct (levels_flag_expand _ _ _ _ _ _ _ HL) as (Rt' & HL').
+    refine (mk_unit_body_full _ _ _ _ _ (gm_expand Φ) es lp ps Hps _ HC Hes Htg Hd _ Ha Hsx Hsx _ Hp lv Rt' HL').
+    + apply body_xp_noopen, gm_noopen_expand.
+    + intros k Ψ H0 Hk; rewrite (body_opens_noopen _ (gm_noopen_expand _)), nth_error_nil in Hk; discriminate Hk.
+    + rewrite (body_xp_names _ _ _ _ _ Hx); exact Hn.
 Qed.
 
 Lemma unit_full_ctx : forall Θ Ξ Γ Δ D, unit_full Θ Ξ Γ (gu_mk Δ D) -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ tele_ass Δ.
@@ -370,11 +398,6 @@ Proof.
     + cbn [gen_m]; split; [ exact HW |]; do 5 eexists; repeat split;
         [ exact Hm | exact Ht | exact Hv | exact HB | exact HSrt | exact HN ].
 Qed.
-
-(** A body all of whose definitions are typed in its context is typed
-    level by level. *)
-Lemma body_opens_noopen : forall Φ, gm_noopen Φ -> forall Φx, body_opens Φ Φx = nil.
-Proof. induction Φ as [| Φ IH x E | Φ IH H its]; intros Hn Φx; cbn in Hn |- *; [ reflexivity | apply IH, Hn | contradiction ]. Qed.
 
 (** The unit a typed module part read where it is ([mdesc_xp]) stands for
     is well formed.  The hypothesis [mdesc_xp] is there because the level

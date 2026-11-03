@@ -31,13 +31,14 @@ Section KindsEval.
     reflexivity.
   Qed.
 
-  Lemma gunit_member_kind_id : forall ρ ρ', kinds_rename Θ Ξ wk_id ρ ρ' -> forall U ch k, gunit_member_kind Θ Ξ ρ U ch k <-> gunit_member_kind Θ Ξ ρ' U ch k.
+  (** Of an expanded unit, as kinds read units ([gunit_expand]). *)
+  Lemma gunit_member_kind_id : forall ρ ρ', kinds_rename Θ Ξ wk_id ρ ρ' -> forall U ch k,
+      gunit_member_kind Θ Ξ ρ (gunit_expand U) ch k <-> gunit_member_kind Θ Ξ ρ' (gunit_expand U) ch k.
   Proof.
     intros * K U ch k.
     rewrite <- (proj1 (proj2 (kind_rename Θ Ξ)) U wk_id ρ ρ' K), gunit_wk_id_ext by (intros x; reflexivity).
     reflexivity.
   Qed.
-
   (** *** Environments with the Same Kinds and Shape *)
 
   (** The sort of an environment entry: a term ([0]), a module ([1]), or
@@ -162,7 +163,7 @@ Section KindsEval.
       past the empty chain those of its unit, and at it a module. *)
   Lemma dmod_member_kind_global_alias : forall p args y U ch k,
       gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U) ->
-      gunit_member_kind Θ Ξ nil U ch k <-> dmod_member_kind Θ Ξ (dm_member (dm_global p args) (y :: nil)) ch k.
+      gunit_member_kind Θ Ξ nil (gunit_expand U) ch k <-> dmod_member_kind Θ Ξ (dm_member (dm_global p args) (y :: nil)) ch k.
   Proof.
     intros * Ha.
     assert (Hst : (exists TΦ, gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ) \/
@@ -184,14 +185,14 @@ Section KindsEval.
             try (match goal with Ha' : gc_module _ _ _ = Some (mr_alias _) |- _ => rewrite Ha in Ha'; injection Ha' as <- end).
           -- exfalso; eapply gc_loc_not_alias; eassumption.
           -- assumption.
-          -- match goal with Hk0 : gunit_member_kind _ _ nil U nil ?k0 |- _ =>
+          -- match goal with Hk0 : gunit_member_kind _ _ nil (gunit_expand U) nil ?k0 |- _ =>
                destruct (dm_of_cases k0) as [(-> & ->) | (_ & ->)]; [ destruct Hc as [Hc | Hc]; exfalso; exact (Hc eq_refl) | exact Hk0 ] end.
           -- exfalso; eapply Hst; eassumption.
         * inversion Hk; subst;
             try (match goal with Ha' : gc_module _ _ _ = Some (mr_alias _) |- _ => rewrite Ha in Ha'; injection Ha' as <- end).
           -- exfalso; eapply gc_loc_not_alias; eassumption.
           -- exfalso; eapply Nd; [ eassumption | reflexivity | reflexivity ].
-          -- match goal with Hk0 : gunit_member_kind _ _ nil U nil ?k0, Ek : dm_of ?k0 = member_kind_dm |- _ =>
+          -- match goal with Hk0 : gunit_member_kind _ _ nil (gunit_expand U) nil ?k0, Ek : dm_of ?k0 = member_kind_dm |- _ =>
                destruct (dm_of_cases k0) as [(-> & _) | (Hm & Ek')]; [ exact Hk0 |];
                rewrite Ek' in Ek; subst; exfalso; exact (Nd _ _ _ _ Hk0 eq_refl eq_refl) end.
           -- exfalso; eapply Hst; eassumption.
@@ -227,9 +228,11 @@ Section KindsEval.
       gm_prefix_upto Φ y = Some (gm_ext Φ' y E) ->
       gunit_member_kind Θ Ξ ρ (gu_mk nil (md_body sm Φ)) (y :: ch) k <->
       (exists b pv ra A B, E = ge_def b pv ra A B /\ ch = nil /\ k = member_kind_term ra) \/
-      (exists pm U ρ1, E = ge_mod pm U /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 U ch k) \/
-      (exists pv A M U ρ1 k0, E = ge_def_mod pv A M U /\ ch = nil /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 U nil k0 /\ k = dm_of k0) \/
-      (exists pv A M U ρ1, E = ge_def_mod pv A M U /\ ch <> nil /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 U ch k).
+      (exists pm U ρ1, E = ge_mod pm U /\ kinds_env Θ Ξ ρ Φ' ρ1 /\ gunit_member_kind Θ Ξ ρ1 (gunit_expand U) ch k) \/
+      (exists pv A M U ρ1 k0, E = ge_def_mod pv A M U /\ ch = nil /\ kinds_env Θ Ξ ρ Φ' ρ1 /\
+         gunit_member_kind Θ Ξ ρ1 (gunit_expand U) nil k0 /\ k = dm_of k0) \/
+      (exists pv A M U ρ1, E = ge_def_mod pv A M U /\ ch <> nil /\ kinds_env Θ Ξ ρ Φ' ρ1 /\
+         gunit_member_kind Θ Ξ ρ1 (gunit_expand U) ch k).
   Proof.
     intros * Hp; split; intros Hu.
     - inversion Hu; subst;
@@ -250,17 +253,21 @@ Section KindsEval.
   (** The module part of a body's entry (of a submodule, or of a definition
       with a module part) has the kinds of the body's submodule closure at
       its name. *)
-  Lemma gunit_member_kind_body_mod : forall ρ Φ,
+  Lemma gunit_member_kind_body_mod : forall ρ Φ, gm_noopen Φ ->
       forall y Φ' E U ρ1, gm_prefix_upto Φ y = Some (gm_ext Φ' y E) -> entry_unit E = Some U -> kinds_env Θ Ξ ρ Φ' ρ1 ->
-      forall sm ch k, gunit_member_kind Θ Ξ ρ1 U ch k <-> dmod_member_kind Θ Ξ (dm_member (dm_local nil (md_body sm Φ) ρ) (y :: nil)) ch k.
+      forall sm ch k, gunit_member_kind Θ Ξ ρ1 (gunit_expand U) ch k <->
+        dmod_member_kind Θ Ξ (dm_member (dm_local nil (md_body sm Φ) ρ) (y :: nil)) ch k.
   Proof.
-    intros * Hp HE Hk1 sm ch k.
+    intros * Hno * Hp HE Hk1 sm ch k.
+    assert (Hloc : forall ch0 k0, dmod_member_kind Θ Ξ (dm_local nil (md_body sm Φ) ρ) ch0 k0 <->
+                               gunit_member_kind Θ Ξ ρ (gu_mk nil (md_body sm Φ)) ch0 k0)
+      by (intros; rewrite dmod_member_kind_local_iff; cbn [gunit_expand]; rewrite (gm_expand_noopen _ Hno); reflexivity).
     pose proof (proj2 (proj2 (proj2 (@functional_kind Θ Ξ)))) as Fk.
     pose proof (proj1 (proj2 (kind_nil_not_dm Θ Ξ))) as Nd.
     destruct E as [| pm U0 | | pv A M U0 |]; cbn in HE; try discriminate; injection HE as ->.
     all: destruct ch as [| c ch].
     all: rewrite ?dmod_member_kind_member_cons_iff, ?dmod_member_kind_member_iff; cbn [app];
-           rewrite ?dmod_member_kind_local_iff, ?(gunit_member_kind_body_entry _ _ _ _ _ _ _ _ Hp).
+           rewrite ?Hloc, ?(gunit_member_kind_body_entry _ _ _ _ _ _ _ _ Hp).
     - (* a submodule, itself: its unit, no member of anything *)
       split.
       + intros Hu; pose proof (Nd _ _ _ _ Hu eq_refl) as Hn.
@@ -325,7 +332,7 @@ Section KindsEval.
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> True) /\
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> True) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall ch k, dmod_member_kind Θ Ξ h ch k <-> modexp_member_kind Θ Ξ ρ H ch k) /\
-    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall ch k, dmod_member_kind Θ Ξ h ch k <-> gunit_member_kind Θ Ξ ρ (gu_mk Δ D) ch k) /\
+    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall ch k, dmod_member_kind Θ Ξ h ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand (gu_mk Δ D)) ch k) /\
     (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> forall ch k, dmod_member_kind Θ Ξ r ch k <-> dmod_member_kind Θ Ξ h ch k) /\
     (forall h ns r, $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r -> forall ch k, dmod_member_kind Θ Ξ r ch k <-> dmod_member_kind Θ Ξ h ch k) /\
     (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> True) /\
@@ -353,14 +360,18 @@ Section KindsEval.
     - rewrite H, modexp_member_kind_lit_iff; reflexivity.
     - rewrite H1, dmod_member_kind_member_iff, modexp_member_kind_mem_iff; cbn [app]; rewrite (H0 (y :: ch)), (H0 (y :: nil)); reflexivity.
     - rewrite modexp_member_kind_app_iff; etransitivity; [ apply H2 | apply H0 ].
-    (* closures *)
+    (* closures: a body closed expanded *)
+    - rewrite dmod_member_kind_local_iff; cbn [gunit_expand]; rewrite gm_expand_idem; reflexivity.
     - apply dmod_member_kind_local_iff.
-    - apply dmod_member_kind_local_iff.
-    - rewrite H, gunit_member_kind_alias_iff; reflexivity.
+    - cbn [gunit_expand]; rewrite H, gunit_member_kind_alias_iff; reflexivity.
     (* application: the arguments of a module are no part of its kinds *)
     - split; apply dmod_member_kind_global_args.
-    - rewrite H, dmod_member_kind_local_iff, (gunit_member_kind_pad _ _ (ρ ↦ n ⦂ entry_type_closure A ρ)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass A :: nil)), length_app, Nat.add_1_r.
-      apply gunit_member_kind_id, kinds_shape_pad_push.
+    - rewrite H, dmod_member_kind_local_iff.
+      destruct D as [sm Φ | E]; cbn [gunit_expand];
+        rewrite (gunit_member_kind_pad _ _ (ρ ↦ n ⦂ entry_type_closure A ρ)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass A :: nil)),
+          length_app, Nat.add_1_r;
+        [ apply (gunit_member_kind_id _ _ (proj1 (kinds_shape_pad_push _ _ _ _)) (gu_mk nil (md_body sm Φ)))
+        | apply (gunit_member_kind_id _ _ (proj1 (kinds_shape_pad_push _ _ _ _)) (gu_mk nil (md_alias E))) ].
     - (* a submodule closure: its parent applied, then the chain *)
       rewrite H0, (dmod_member_kind_member_iff Θ Ξ h'), (dmod_member_kind_member_iff Θ Ξ h), (H (ch ++ ch0)), (H ch); reflexivity.
     - reflexivity.
@@ -371,8 +382,8 @@ Section KindsEval.
     - reflexivity.
     - (* a body's submodule *)
       destruct (H _ (kinds_shape_refl ρ)) as (σ & Hk & Hs).
-      rewrite H0, (gunit_member_kind_id _ _ (proj1 Hs)).
-      eapply gunit_member_kind_body_mod; eassumption.
+      rewrite H0, (gunit_member_kind_id _ _ (proj1 Hs)), dmod_member_kind_member_local_expand.
+      eapply gunit_member_kind_body_mod; [ apply gm_noopen_expand | eassumption.. ].
     - (* a submodule closure: a longer chain *)
       rewrite (dmod_member_kind_member_iff Θ Ξ h), (dmod_member_kind_member_iff Θ Ξ (dm_member h ch)); cbn [app].
       rewrite !dmod_member_kind_member_cons_iff, <- !app_assoc; reflexivity.
@@ -408,7 +419,7 @@ Section KindsEval.
   Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
 
   Corollary kind_eval_close : forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-      forall ch k, dmod_member_kind Θ Ξ h ch k <-> gunit_member_kind Θ Ξ ρ (gu_mk Δ D) ch k.
+      forall ch k, dmod_member_kind Θ Ξ h ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand (gu_mk Δ D)) ch k.
   Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
 
   Corollary kind_eval_appm : forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r ->
