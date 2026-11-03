@@ -2258,6 +2258,118 @@ Section Iota.
         exact (proj1 (rel_gargs_readable _ _ _ _ HRΓ HKr (List.Forall_rev HK0a) HRTr _ _ _ _ Lv Lv HEσ)).
     Qed.
 
+    (** *** The Two Sides at [C]
+
+        The eliminator at the constructor and the branch at its instance
+        have related values at [C]: the eliminator's own branch
+        environment and the instance's value are related at the branch's
+        context, their recursive results by [iota_sem_ihs]. *)
+    Lemma iota_sem_core : forall n B, brs_lookup (eb_brs bm) c = Some (n, B) ->
+        exists l r, ⟦ a_elim relevant p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As)) ⟧ C ↘ l /\
+          ⟦ B[sb_of_list Id (Ns ++ As ++ elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As)] ⟧ C ↘ r /\
+          Dom l ≈ r ∈ per_head ((eb_motive bm)[sb_of_list Id (Ns ++ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                                                           (im_pre Mm Us ++ Ns ++ As) :: nil)])
+                               ((eb_motive bm)[sb_of_list Id (Ns ++ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                                                           (im_pre Mm Us ++ Ns ++ As) :: nil)]) C C.
+    Proof.
+      intros n B Hlk.
+      assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
+      set (Mc := apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As)).
+      destruct iota_sem_Mc as (cs & Lcs & EMc).
+      destruct (iota_sem_self cs Lcs EMc) as (Hself & Har & Hia).
+      destruct (iota_sem_ihs gs nil eq_refl) as (ihe & ihc & Ee & Ec & Hir).
+      cbn [List.length List.skipn List.firstn nonrec_arg_vals cargs_sub cargs_nonrec cargs_nonrec_tele List.map] in Ee, Ec, Hir.
+      rewrite !List.app_nil_r in Hir; rewrite Nat.add_0_r in Ec.
+      assert (Hsk : List.skipn (im_unu D Mm) (cs ++ ns) = ns) by exact (skipn_app_exact cs ns _ Lcs).
+      rewrite (List.app_assoc cs ns avs) in Hself, EMc.
+      (** The branch's context. *)
+      pose proof (HBc _ _ _ _ HMm Hcon) as HBm.
+      destruct (rel_ctx_wf_per_ctx_env HBm) as [RB HRB].
+      assert (HPB : PER RB) by (eapply per_env_PER; exact HRB).
+      (** The instance's value. *)
+      destruct (iota_tau_value ihc Ec) as (wts1 & Hτ & Hv1 & Hr1).
+      (** The eliminator's own branch environment, its entries reading
+          back. *)
+      set (vts2 := branch_entries D Mm p u0 (blocks_motives Bks) C gs ns avs ihe).
+      assert (HAA : forall j Mj b b', ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> List.nth_error Bks j = Some b' ->
+                 elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ eb_motive b' : Typeω@i)
+        by (intros * HMj Hb Hb'; rewrite Hb in Hb'; injection Hb' as <-; exact (HAv _ _ _ HMj Hb)).
+      assert (HBB : forall j Mj ba bb c0 gs0 n0 Ba Bb, ind_member D j = Some Mj -> List.nth_error Bks j = Some ba ->
+                 List.nth_error Bks j = Some bb -> ind_con Mj c0 = Some gs0 ->
+                 brs_lookup (eb_brs ba) c0 = Some (n0, Ba) -> brs_lookup (eb_brs bb) c0 = Some (n0, Bb) ->
+                 elim_bctx relevant p D Mj gs0 (blocks_motives Bks) Us ++ Γ ⊨ Ba ≈ Bb : elim_branch_type p D j Mj c0 gs0 (eb_motive ba) Us)
+        by (intros * HMj Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
+            exact (HBv _ _ _ _ _ _ _ HMj Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
+      pose proof (ups_ok VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC u0 u0
+                    u0_env' u0_env' u0_len' u0_len') as Hok.
+      pose proof (fun j Mj ba bb u u' ns0 ns0' x x' ts ts' HMj (_ : im_is_rview Mj = false) Hba Hbb Hm Ht Ht' =>
+                    EB motive_mid C HCC Bks i HMall j Mj ba (eb_motive bb) HMj Hba (HAA _ _ _ _ HMj Hba Hbb) u u' ns0 ns0' x x'
+                      ts ts' Hm Ht Ht') as Hmot.
+      pose proof (fun j Mj u u' ns0 ns0' x x' HMj (_ : im_is_rview Mj = false) Hm =>
+                    EB mctx_idx_readable HMall j Mj u u' ns0 ns0' x x' HMj Hm) as Hidx.
+      pose proof (EB rneut_rel u0 u0 u0_env' u0_env' u0_len' u0_len') as Hrneut.
+      pose proof (EP branch_mid HBc Bks HBB) as Hbrm.
+      assert (Hv2 : List.map fst vts2 = ns ++ avs ++ ihe)
+        by exact (branch_entries_values p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i C C Bks Bks u0 u0 Hok Rel
+                    HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hidx Hrneut Hbrm
+                    Mm u0 (blocks_motives Bks) C gs ns avs ihe).
+      destruct (branch_entries_readable p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i C C Bks Bks u0 u0 Hok Rel
+                  HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hidx Hrneut Hbrm
+                  m Mm c gs u0 u0 ns ns avs avs ihc ihe Had Had HMm Hcon iota_sem_Hns Har Hia Hir) as [_ Hrd2].
+      assert (Hr2 : List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts2).
+      { rewrite <- Hv2 in Hrd2; pose proof (Forall_combine_of_Forall2 _ _ _ Hrd2) as H0.
+        rewrite combine_map_fst_snd in H0; exact H0. }
+      (** The two environments, related at the branch's context. *)
+      pose proof (EP canonical_bctx_elem m Mm c gs HMm Hcon HBm HrvM C C HCC HCC u0 u0 _ _ (cs ++ ns) (cs ++ ns) avs avs ihc ihe
+                    ltac:(rewrite Hsk; exact Hself) ltac:(rewrite Hsk; exact Hir) RB HRB wts1 vts2
+                    ltac:(rewrite Hsk; exact Hv1) ltac:(rewrite Hsk; exact Hv2) Hr1 Hr2) as Hec.
+      assert (HE11 : RB (env_extend_typed C wts1) (env_extend_typed C wts1)) by (etransitivity; [ exact Hec | symmetry; exact Hec ]).
+      pose proof (fun E E' (HE : RB E E') =>
+                    branch_type_relevant_at VP p D HP HPD Γ HΓ Us iota_case_HUl iota_case_HUs iota_case_HUss Bks i HMall HAv
+                      m Mm c gs HMm Hcon HBm HrvM bm Hbm RB HRB E E' HE) as Hbr.
+      pose proof (HBv _ _ _ _ _ _ _ HMm Hbm Hcon (brs_lookup_in _ _ _ _ Hlk)) as HBv'.
+      destruct (rel_exp_under_ctx_simple_at_relevant HRB HBv' _ _ Hec (Hbr _ _ Hec)) as (r2 & r1 & Er2 & Er1 & Hr21).
+      (** The eliminator's own value. *)
+      destruct ref_target as (Dq & Mk & HDq & HMk & Hunu & Hnn).
+      assert (Enp : im_np Dq Mk = List.length (cs ++ ns))
+        by (unfold im_np; rewrite List.length_app, Lcs, iota_sem_Ln, Hunu, Hnn; lia).
+      assert (Eel : ⟦elim d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c ((cs ++ ns) ++ avs) at m of p u0 Bks ⟧
+                      gc_deps ⍮ gc_stack ⍮ C ↘ r1).
+      { eapply eval_elim_con; [ exact Hl | exact HMm | apply surjective_pairing | exact HDq | exact HMk | exact Hcon | | exact Hbm
+                              | exact Hlk | | exact (leaves_coherent_of_order _ (rview_struct_order _ _ _ (decl_typed_record_struct _ _ _ Hdt)))
+                              | |].
+        - rewrite Enp, List.length_app, iota_sem_La; reflexivity.
+        - rewrite (HarA _ _ _ _ _ _ _ HMm Hbm Hcon (brs_lookup_in _ _ _ _ Hlk)), Hnn; reflexivity.
+        - rewrite Enp, skipn_app_exact by reflexivity; exact Ee.
+        - rewrite Enp, skipn_app_exact, firstn_app_exact by reflexivity; rewrite <- Hunu, Hsk; exact Er1. }
+      (** The instance's value. *)
+      destruct (exp_inst_link _ _ _ _ _ _ _ _ _ HBv' HRΓ (gsub_valid gsub_iota) HCC Hτ (Hbr _ _ HE11)) as (r & n0 & Er & En0 & Hrn).
+      assert (n0 = r2) as -> by (eapply functional_eval_exp; eassumption).
+      exists r1, r; split; [ eapply eval_exp_elim; [ exact HUC | exact EMc | exact Eel ] | split; [ exact Er |] ].
+      (** The relations, at the motive's instance. *)
+      destruct (presup_rel_exp_under_ctx HBv') as [iB HTb].
+      pose proof (per_head_inst_type _ _ _ _ _ _ _ _ _ _ HTb HRΓ (gsub_valid gsub_iota) HCC Hτ Hτ) as ER.
+      assert (Lih : List.length (elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As) = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
+      rewrite (elim_branch_type_iota p D m Mm c gs (eb_motive bm) Us Ns As _ Hc HMm iota_case_HUl iota_case_HNl HAl Lih) in ER.
+      assert (EC1 : per_head (elim_branch_type p D m Mm c gs (eb_motive bm) Us) (elim_branch_type p D m Mm c gs (eb_motive bm) Us)
+                      (env_extend_typed C wts1) (env_extend_typed C vts2)
+                    <~> per_head (elim_branch_type p D m Mm c gs (eb_motive bm) Us) (elim_branch_type p D m Mm c gs (eb_motive bm) Us)
+                          (env_extend_typed C wts1) (env_extend_typed C wts1)).
+      { apply (per_head_of_type_resp HRB HTb).
+        apply rel_chain_cons; [ exact Hec |]. apply rel_chain_cons; [ symmetry; exact Hec |]. apply rel_chain_of_pair; exact HE11. }
+      pose proof (rel_exp_under_ctx_gsub (gsub_tau VP p D HP HPD Γ HΓ Us iota_case_HUl m Mm HMm (HMall _ _ HMm) Ns Mc
+                                            iota_case_HNl iota_case_HNs iota_Mc_valid
+                                            (proj2 (List.Forall_app _ _ _) (conj iota_case_HNss (List.Forall_cons _ iota_Mc_scoped (List.Forall_nil _)))))
+                    (HAv _ _ _ HMm Hbm)) as HTm; cbn [exp_sub] in HTm.
+      pose proof (rel_type_of_typ HTm) as HT.
+      assert (H21 : per_head ((eb_motive bm)[sb_of_list Id (Ns ++ Mc :: nil)]) ((eb_motive bm)[sb_of_list Id (Ns ++ Mc :: nil)]) C C r2 r1)
+        by (apply ER, EC1; exact Hr21).
+      assert (Hr2' : per_head ((eb_motive bm)[sb_of_list Id (Ns ++ Mc :: nil)]) ((eb_motive bm)[sb_of_list Id (Ns ++ Mc :: nil)]) C C r r2)
+        by (apply ER; exact Hrn).
+      pose proof (per_head_trans _ _ _ _ _ _ HRΓ HT HCC _ _ _ Hr2' H21) as Hrr1.
+      exact (per_head_sym _ _ _ _ _ _ HRΓ HT HCC _ _ Hrr1).
+    Qed.
+
   End IotaSem.
 
   (** *** The Rule *)
