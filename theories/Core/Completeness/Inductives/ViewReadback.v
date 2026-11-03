@@ -1404,15 +1404,17 @@ Section CrossFresh.
           (nonrec_arg_vals gA1 vA1) (nonrec_arg_vals gA1 vA1) ->
         tele_prefix_rel (ar v nsB c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (nonrec_arg_vals gB1 vB1) ->
         con_args_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1) (nsB ++ nonrec_arg_vals gB1 vB1)
-          gB2 xsA xsB ->
+          (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) gB2 xsA xsB ->
         tele_rel_from (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1)
           (nonrec_arg_vals gB2 xsA) (nonrec_arg_vals gB2 xsB) ->
         con_args_rel qc D' (admissible_index_at D' ub (canon_nparams_rel D' ub)) (canon_nparams_rel D' ub) (canon_args_rel D' ub)
-          (canon_doms_rel ub) i' ub ub (nsA ++ nonrec_arg_vals gA1 vA1) (nsA ++ nonrec_arg_vals gA1 vA1) gA2 xsA xsA ->
+          (canon_doms_rel D' ub) i' ub ub (nsA ++ nonrec_arg_vals gA1 vA1) (nsA ++ nonrec_arg_vals gA1 vA1)
+          (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1) gA2 xsA xsA ->
         tele_rel_from (canon_args_rel D' ub i' nsA c) (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1)
           (nonrec_arg_vals gA2 xsA) (nonrec_arg_vals gA2 xsA) ->
-        List.Forall is_neut_or_proof xsA -> List.Forall is_neut_or_proof xsB ->
-        cross_tops qc D' ub u0 dr i' v (nsA ++ nonrec_arg_vals gB1 vA1) (nsA ++ nonrec_arg_vals gA1 vA1)
+        List.Forall is_neut xsA -> List.Forall is_neut xsB ->
+        cross_tops qc D D' ub u0 dr i' v (nsA ++ nonrec_arg_vals gB1 vA1) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1)
+          (nsA ++ nonrec_arg_vals gA1 vA1) (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1)
           (nsB ++ nonrec_arg_vals gB1 vB1) gA2 gB2 xsA xsB.
     Proof.
       induction gA2 as [| gA gA2 IH];
@@ -1525,8 +1527,8 @@ Section CrossFresh.
           try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [Hsort Hco] end).
         + (** Non-recursive in both. *)
           destruct xsA as [| x xsA], xsB as [| x' xsB]; try (inversion Hga; fail).
-          pose proof (con_args_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hga) as Hga0.
-          pose proof (con_args_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as Hca0.
+          pose proof Hga as Hga0; apply con_args_arg_inv in Hga0.
+          pose proof Hca as Hca0; apply con_args_arg_inv in Hca0.
           cbn [nonrec_arg_vals tele_rel_from] in Hnf, Hnq.
           destruct Hnf as [HarA Hnf0]; destruct Hnq as [HaaA Hnq0].
           apply List.Forall_cons_iff in HnA as [HnA0 HnA1]; apply List.Forall_cons_iff in HnB as [HnB0 HnB1].
@@ -1547,6 +1549,7 @@ Section CrossFresh.
           pose proof (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_arg rA A :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
                         HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)) as IH'.
           rewrite !cargs_nonrec_app, !nonrec_arg_vals_app in IH' by lia.
+          rewrite ?cargs_nonrec_tele_snoc_arg, ?cargs_nonrec_tele_snoc_rec in IH'.
           cbn [cargs_nonrec nonrec_arg_vals List.app List.length] in IH'.
           rewrite !List.length_app in IH'; cbn [List.length] in IH'; rewrite !Nat.add_1_r in IH'.
           rewrite <- !List.app_assoc; rewrite <- !List.app_assoc in Hga0; rewrite <- !List.app_assoc in Hca0.
@@ -1555,8 +1558,8 @@ Section CrossFresh.
           all: rewrite List.app_assoc; assumption.
         + (** Non-recursive in the container, recursive in the group. *)
           destruct xsA as [| x xsA], xsB as [| x' xsB]; try (inversion Hga; fail).
-          destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hga) as [Hrr Hga0].
-          pose proof (con_args_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as Hca0.
+          pose proof Hga as Hga0; apply con_args_rec_inv in Hga0 as [Hrr Hga0].
+          pose proof Hca as Hca0; apply con_args_arg_inv in Hca0.
           cbn [nonrec_arg_vals tele_rel_from] in Hnf, Hnq.
           destruct Hnq as [HaaA Hnq0].
           apply List.Forall_cons_iff in HnA as [HnA0 HnA1]; apply List.Forall_cons_iff in HnB as [HnB0 HnB1].
@@ -1570,6 +1573,7 @@ Section CrossFresh.
           pose proof (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
                         HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)) as IH'.
           rewrite !cargs_nonrec_app, !nonrec_arg_vals_app in IH' by lia.
+          rewrite ?cargs_nonrec_tele_snoc_arg, ?cargs_nonrec_tele_snoc_rec in IH'.
           cbn [cargs_nonrec nonrec_arg_vals List.app List.length] in IH'.
           rewrite !List.length_app in IH'; cbn [List.length] in IH'; rewrite !Nat.add_1_r, !Nat.add_0_r, !List.app_nil_r in IH'.
           rewrite <- !List.app_assoc; rewrite <- !List.app_assoc in Hca0.
@@ -1578,8 +1582,8 @@ Section CrossFresh.
           all: rewrite List.app_assoc; assumption.
         + (** Recursive in both. *)
           destruct xsA as [| x xsA], xsB as [| x' xsB]; try (inversion Hga; fail).
-          destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hga) as [Hrr Hga0].
-          destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [HrrQ Hca0].
+          pose proof Hga as Hga0; apply con_args_rec_inv in Hga0 as [Hrr Hga0].
+          pose proof Hca as Hca0; apply con_args_rec_inv in Hca0 as [HrrQ Hca0].
           cbn [nonrec_arg_vals] in Hnf, Hnq.
           apply List.Forall_cons_iff in HnA as [HnA0 HnA1]; apply List.Forall_cons_iff in HnB as [HnB0 HnB1].
           destruct Hco as (Hmt & Hdp & Hco).
@@ -1593,9 +1597,9 @@ Section CrossFresh.
           assert (cA' = cA) as -> by (eapply functional_eval_exp; eassumption).
           destruct (shape_type_link qc D' HgQ HcvQ i' Mi' c gsA HMi' HconA HΨA gA1 t' gA2 HeA ub nsA vA1 Hlb ltac:(lia) LA Hubub HnsA K5 RenvA
                       (view_end_type VP HP qc D' HVQ ub Hubub Hlb (ptyp_mem t')) (List.length (ptyp_doms t')) 0 nil cA iC RCC
-                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) ltac:(rewrite List.app_nil_r; exact EcA) HCC)
+                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) EcA HCC)
             as (aA & EaA & [RA HcaA]).
-          rewrite List.app_nil_r in EaA; cbn [ptyp_skip] in EaA.
+          rewrite List.app_nil_r, List.app_assoc, components_env_prefix in EaA by exact LTA; cbn [ptyp_skip] in EaA.
           (** The group's, and the values at it. *)
           destruct (Hglink t eq_refl) as (aB & iG & RGG & gB0 & EaB & EgB & HGG & (iB & RB & HgaB) & ERG).
           pose proof (cross_rec_move_back gB1 t gB2 vA1 vB1 x x' HeB K4 K6 Hrr) as Hrr'.
@@ -1609,15 +1613,16 @@ Section CrossFresh.
           destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (per_univ_sym _ _ _ _ HcaA) Hcg) as (R1 & H1 & _).
           destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ H1 HgaB) as (Rx & Hx & _).
           pose proof (cross_doms_fresh p D Hg u0 Hgu Hu v Mv c gsB gB1 t gB2 nsA nsB (nonrec_arg_vals gB1 vA1)
-                        (nonrec_arg_vals gB1 vB1) HMv HconB HeB Hns K4 qc ub (List.length (ptyp_doms t)) 0 t'
-                        (nsA ++ nonrec_arg_vals gA1 vA1) nil nil aA aB iC Rx
-                        eq_refl ltac:(unfold ptyp_depth in *; lia) (tele_prefix_rel_nil _) EaA
-                        ltac:(rewrite List.app_nil_r; exact EaB) Hx) as Hts.
-          cbn [ptyp_skip] in Hts; rewrite !List.app_nil_r in Hts.
+                        (nonrec_arg_vals gB1 vB1) HMv HconB HeB Hns K4 D' qc ub (List.length (ptyp_doms t)) 0 t'
+                        (nsA ++ nonrec_arg_vals gA1 vA1) (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1) nil nil aA aB iC Rx
+                        eq_refl ltac:(unfold ptyp_depth in *; lia) LTA (tele_prefix_rel_nil _) EaA
+                        ltac:(cbn [List.firstn ptyp_skip]; rewrite !List.app_nil_r; exact EaB) Hx) as Hts.
+          cbn [ptyp_skip List.firstn] in Hts; rewrite !List.app_nil_r in Hts.
           apply cross_tops_rec; [ exact HnA0 | exact HnB0 | exact HrrQ | exact Hts |].
           pose proof (IH gB2 (gA1 ++ ca_rec t' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ x :: nil) (vB1 ++ x' :: nil) xsA xsB
                         HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)) as IH'.
           rewrite !cargs_nonrec_app, !nonrec_arg_vals_app in IH' by lia.
+          rewrite ?cargs_nonrec_tele_snoc_arg, ?cargs_nonrec_tele_snoc_rec in IH'.
           cbn [cargs_nonrec nonrec_arg_vals List.app List.length] in IH'.
           rewrite !List.app_nil_r in IH'.
           apply IH'; assumption.
@@ -2265,7 +2270,7 @@ Section CrossBot.
       + (** Non-recursive in both. *)
         inversion Ht; subst.
         match goal with Ht' : cross_tops _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Ht' into Ht0 end.
-        pose proof (con_args_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as Hca0.
+        pose proof Hca as Hca0; apply con_args_arg_inv in Hca0.
         inversion Tb; subst.
         match goal with T0 : eval_ihtys _ _ _ _ _ _ _ _ _ _ |- _ => rename T0 into Tb0 end.
         inversion Rb; subst.
@@ -2282,7 +2287,7 @@ Section CrossBot.
       + (** Nested through by the group only: its eliminator's results. *)
         inversion Ht; subst.
         match goal with Ht' : cross_tops _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Ht' into Ht0 end.
-        destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hrr Hca0].
+        pose proof Hca as Hca0; apply con_args_rec_inv in Hca0 as [Hrr Hca0].
         inversion Tb; subst.
         match goal with T1 : eval_ihty _ _ _ _ _ _ _ _ _ _, T2 : eval_ihtys _ _ _ _ _ _ _ _ _ _ |- _ =>
           rename T1 into Tb1; rename T2 into Tb2 end.
@@ -2318,7 +2323,7 @@ Section CrossBot.
                         Hd' : cross_doms _ _ _ _ _ _ _ _ |- _ =>
           rename Ht' into Ht0; rename HrQ' into HrQ; rename Hd' into Hdoms end.
         match goal with Hn1 : is_neut_or_proof ?a1, Hn2 : is_neut_or_proof ?a2 |- _ => rename Hn1 into HnA; rename Hn2 into HnB end.
-        destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hrr Hca0].
+        pose proof Hca as Hca0; apply con_args_rec_inv in Hca0 as [Hrr Hca0].
         inversion Tb; subst.
         match goal with T1 : eval_ihty _ _ _ _ _ _ _ _ _ _, T2 : eval_ihtys _ _ _ _ _ _ _ _ _ _ |- _ =>
           rename T1 into Tb1; rename T2 into Tb2 end.
