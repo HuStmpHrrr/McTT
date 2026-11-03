@@ -466,6 +466,18 @@ Lemma rec_result_pi_relevant : forall D dr Rel k u u' pre pre' Ts B t v v' rs rs
     List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs'.
 Proof. intros * H; inversion H; subst; split; assumption. Qed.
 
+(** ** Values Paired with their Entry Types *)
+
+(** Values related pointwise to types, paired with them. *)
+Lemma Forall_combine_of_Forall2 : forall {X Y : Type} (P : X -> Y -> Prop) xs ys,
+    List.Forall2 P xs ys -> List.Forall (fun xy => P (fst xy) (snd xy)) (List.combine xs ys).
+Proof. induction 1; cbn; constructor; auto. Qed.
+
+(** Pairs satisfying a relation, split apart. *)
+Lemma Forall2_of_Forall_pairs : forall {X Y : Type} (P : X -> Y -> Prop) l,
+    List.Forall (fun xy => P (fst xy) (snd xy)) l -> List.Forall2 P (List.map fst l) (List.map snd l).
+Proof. induction 1; cbn; constructor; auto. Qed.
+
 (** ** Relations of Types along Chains *)
 
 (** A type related to the left of a pair is related to anything related
@@ -3689,12 +3701,13 @@ Section GroupElim.
       Lemma cargs_gargs : forall X X' vs vs',
           tele_rel (nr k) T X X' ->
           tele_rel (ar k X c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
-          con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 X X' gs vs vs' ->
+          con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 X X' T gs vs vs' ->
           forall n, n <= List.length gs ->
-          per_gargs (List.rev (cargs_ctx p D Mk (List.firstn n gs))) (env_args nil (u0 ++ X)) (env_args nil (u0 ++ X'))
+          per_gargs (List.rev (cargs_ctx p D Mk (List.firstn n gs))) (components_env D u0 T X) (components_env D u0 T X')
             (List.firstn n vs) (List.firstn n vs').
       Proof.
         intros * Hab Har Hia.
+        unfold T; rewrite <- !(env_tele_uparams D (im_nparams Mk) u0 _ u0_len).
         apply (CargsRel.cargs_gargs p D Hvg Hcv u0 u0_gargs u0_len k Mk c gs HMk Hcon); [| exact Hab | exact Har | exact Hia ].
         intros gs1 t gs2 _; split; [ exact (view_end_rel_all P p D HP HPD u0 u0 u0_gargs u0_len _)
                                     | exact (rview_end_rel_all P p D HP HPD u0 u0 u0_gargs u0_len _) ].
@@ -3704,7 +3717,7 @@ Section GroupElim.
       Lemma closed_args_gargs : forall X X' vs vs',
           tele_rel (nr k) T X X' ->
           tele_rel (ar k X c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
-          con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 X X' gs vs vs' ->
+          con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 X X' T gs vs vs' ->
           forall n, n <= List.length gs ->
           per_gargs (List.rev (cargs_ctx p D Mk (List.firstn n gs) ++ im_nparams Mk)) (decl_env D u0) (decl_env D u0)
             (X ++ List.firstn n vs) (X' ++ List.firstn n vs').
@@ -3715,7 +3728,7 @@ Section GroupElim.
         unfold T in LX, LX'; rewrite List.length_rev, length_im_nparams in LX, LX'.
         rewrite List.rev_app_distr; apply per_gargs_app_intro;
           [ rewrite List.length_rev, length_im_nparams; exact LX | exact (nparams_closed_of_canon k Mk HMk _ _ HX) |].
-        rewrite <- !env_args_app; exact Hc1.
+        exact Hc1.
       Qed.
     End ConCanon.
 
@@ -3724,7 +3737,8 @@ Section GroupElim.
         The motives of the blocks [Bks], each in its member's context, and
         their family [Rel] between [C1] and an environment [C2] related to
         it: the head relation of the motive at the two extended
-        environments. *)
+        environments, the motive's context's telescope giving the types
+        of the indices and the element. *)
     Section Motives.
       Variable (C2 : env).
       Hypothesis (HC12 : RΓ C1 C2).
@@ -3733,17 +3747,93 @@ Section GroupElim.
       Hypothesis (HMall : forall j Mj, ind_member D j = Some Mj -> ⊨ elim_mctx p D j Mj Us ++ Γ).
       Hypothesis (HAv : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
                     elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@iA).
+      (** The telescope of the motive's context of the member [j]. *)
+      Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
       Let Rel := fun j ns m ns' m' =>
         per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
-          (env_args C1 (ns ++ m :: nil)) (env_args C2 (ns' ++ m' :: nil)).
+          (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C2 (mctx_tele j) (ns' ++ m' :: nil)).
+
+      Lemma mctx_tele_at : forall j Mj, ind_member D j = Some Mj -> mctx_tele j = List.rev (elim_mctx p D j Mj Us).
+      Proof. intros * HMj; unfold mctx_tele; rewrite HMj; reflexivity. Qed.
 
       Lemma mctx_at : forall j Mj, ind_member D j = Some Mj -> forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
           forall RM, EF elim_mctx p D j Mj Us ++ Γ ≈ elim_mctx p D j Mj Us ++ Γ ∈ per_ctx_env ↘ RM ->
           forall u u' ns ns' m m', G j u u' ns ns' m m' ->
-            RM (env_args B1 (ns ++ m :: nil)) (env_args B2 (ns' ++ m' :: nil)).
+            RM (env_tele B1 (List.rev (elim_mctx p D j Mj Us)) (ns ++ m :: nil))
+               (env_tele B2 (List.rev (elim_mctx p D j Mj Us)) (ns' ++ m' :: nil)).
       Proof.
         intros * HMj * HB1 HB2 RM HRM * Hm.
         exact (canonical_mctx j Mj HMj (HMall _ _ HMj) B1 B2 HB1 HB2 RM HRM ns ns' u u' m m' (ins _ _ _ _ _ _ _ _ HMj Hm) Hm).
+      Qed.
+
+      (** As many indices and elements as the motive's context has
+          entries. *)
+      Lemma mctx_len : forall j Mj, ind_member D j = Some Mj -> forall u u' ns ns' m m', G j u u' ns ns' m m' ->
+          List.length (ns ++ m :: nil) = List.length (List.rev (elim_mctx p D j Mj Us)) /\
+          List.length (ns' ++ m' :: nil) = List.length (List.rev (elim_mctx p D j Mj Us)).
+      Proof.
+        intros * HMj * Hm.
+        pose proof (ins _ _ _ _ _ _ _ _ HMj Hm) as H; rewrite tele_rel_iff in H; destruct H as (H & H' & _).
+        rewrite List.length_rev, length_im_nparams in H, H'.
+        rewrite List.length_rev, length_elim_mctx, !List.length_app; cbn [List.length]; lia.
+      Qed.
+
+      (** The motive's context at its telescope's entries, reversed back. *)
+      Lemma mctx_rev_sem : forall j Mj, ind_member D j = Some Mj ->
+          forall RM, EF elim_mctx p D j Mj Us ++ Γ ≈ elim_mctx p D j Mj Us ++ Γ ∈ per_ctx_env ↘ RM ->
+          ⊨ List.rev (List.rev (elim_mctx p D j Mj Us)) ++ Γ /\
+          EF List.rev (List.rev (elim_mctx p D j Mj Us)) ++ Γ ≈ List.rev (List.rev (elim_mctx p D j Mj Us)) ++ Γ ∈ per_ctx_env ↘ RM /\
+          tele_ass (List.rev (elim_mctx p D j Mj Us)).
+      Proof.
+        intros * HMj RM HRM; rewrite !List.rev_involutive.
+        split; [ exact (HMall _ _ HMj) | split; [ exact HRM | exact (List.Forall_rev (elim_mctx_ass p D j Mj Us Hc HMj)) ] ].
+      Qed.
+
+      (** The canonical entries of related elements read back. *)
+      Lemma mctx_readable : forall j Mj, ind_member D j = Some Mj -> forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
+          forall u u' ns ns' m m', G j u u' ns ns' m m' ->
+          List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) (tele_entries B1 (List.rev (elim_mctx p D j Mj Us)) (ns ++ m :: nil)) /\
+          List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) (tele_entries B2 (List.rev (elim_mctx p D j Mj Us)) (ns' ++ m' :: nil)).
+      Proof.
+        intros * HMj * HB1 HB2 * Hm.
+        destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMj)) as [RM HRM].
+        destruct (mctx_rev_sem j Mj HMj RM HRM) as (HMr & HRMr & Hta).
+        destruct (mctx_len j Mj HMj _ _ _ _ _ _ Hm) as [L L'].
+        exact (rel_gargs_readable _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ ltac:(rewrite tele_entries_length; exact L)
+                 ltac:(rewrite tele_entries_length; exact L') (mctx_at j Mj HMj B1 B2 HB1 HB2 RM HRM _ _ _ _ _ _ Hm)).
+      Qed.
+
+      (** Related elements at any entry types they read back at. *)
+      Lemma mctx_at_typed : forall j Mj, ind_member D j = Some Mj -> forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
+          forall RM, EF elim_mctx p D j Mj Us ++ Γ ≈ elim_mctx p D j Mj Us ++ Γ ∈ per_ctx_env ↘ RM ->
+          forall u u' ns ns' m m', G j u u' ns ns' m m' ->
+          forall vts vts', List.map fst vts = ns ++ m :: nil -> List.map fst vts' = ns' ++ m' :: nil ->
+          List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
+          List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts' ->
+          RM (env_extend_typed B1 vts) (env_extend_typed B2 vts').
+      Proof.
+        intros * HMj * HB1 HB2 RM HRM * Hm * Hv Hv' Hr Hr'.
+        destruct (mctx_rev_sem j Mj HMj RM HRM) as (HMr & HRMr & Hta).
+        destruct (mctx_len j Mj HMj _ _ _ _ _ _ Hm) as [L L'].
+        pose proof (mctx_at j Mj HMj B1 B2 HB1 HB2 RM HRM _ _ _ _ _ _ Hm) as E; unfold env_tele in E.
+        destruct (rel_gargs _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ ltac:(rewrite tele_entries_length; exact L)
+                    ltac:(rewrite tele_entries_length; exact L') E) as [HB Hg].
+        rewrite !tele_entries_fst, <- Hv, <- Hv' in Hg.
+        apply (gargs_env_rel_typed _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ HB); [| | exact Hg | exact Hr | exact Hr' ].
+        - rewrite <- (List.length_map fst), Hv; exact L.
+        - rewrite <- (List.length_map fst), Hv'; exact L'.
+      Qed.
+
+      (** Related elements read back at some types, on each side. *)
+      Lemma mctx_idx_readable : forall j Mj u u' ns ns' m m', ind_member D j = Some Mj -> G j u u' ns ns' m m' ->
+          (exists ts, List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts) /\
+          (exists ts', List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts').
+      Proof.
+        intros * HMj Hm.
+        destruct (mctx_readable j Mj HMj C1 C1 HC11 HC11 _ _ _ _ _ _ Hm) as [Hr Hr'].
+        apply (Forall2_of_Forall_pairs (fun v t => entry_readable (de_term v t))) in Hr, Hr'.
+        rewrite tele_entries_fst in Hr, Hr'.
+        split; eexists; eassumption.
       Qed.
 
       (** The family at related elements does not depend on their
@@ -3763,7 +3853,7 @@ Section GroupElim.
         pose proof (ind_rel_idx_u0 _ _ _ _ _ _ _ _ _ _ HMj Hms Hn'n' H1) as Hm2.
         pose proof (ind_rel_idx_u0 _ _ _ _ _ _ _ _ _ _ HMj Hm H1 H1') as Hm3.
         destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMj)) as [RM HRM].
-        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb).
+        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb), (mctx_tele_at _ _ HMj).
         apply (per_head_of_typ_resp HRM (HAv _ _ _ HMj Hb)).
         apply rel_chain_cons; [ exact (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm) |].
         apply rel_chain_cons; [ exact (mctx_at j Mj HMj C2 C1 HC21 HC11 RM HRM _ _ _ _ _ _ Hm2) |].
@@ -3780,22 +3870,39 @@ Section GroupElim.
           [C2], at related elements: related at the family. *)
       Lemma motive_mid : forall j Mj b A0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
           elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
-          forall u u' ns ns' m m', G j u u' ns ns' m m' ->
-          exists a a', ⟦ eb_motive b ⟧ env_args C1 (ns ++ m :: nil) ↘ a /\ ⟦ A0 ⟧ env_args C2 (ns' ++ m' :: nil) ↘ a' /\
+          forall u u' ns ns' m m' ts ts', G j u u' ns ns' m m' ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts' ->
+          exists a a', ⟦ eb_motive b ⟧ env_extend_typed C1 (List.combine (ns ++ m :: nil) ts) ↘ a /\
+            ⟦ A0 ⟧ env_extend_typed C2 (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
             DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m'.
       Proof.
-        intros * HMj Hb HA * Hm.
+        intros * HMj Hb HA * Hm Ht Ht'.
+        assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
         assert (HC21 : RΓ C2 C1) by (symmetry; exact HC12).
+        assert (HC22 : RΓ C2 C2) by (etransitivity; [ exact HC21 | exact HC12 ]).
         destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMj)) as [RM HRM].
-        pose proof (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm) as HE.
+        pose proof (ind_rel_refl_l _ _ _ _ _ _ _ Hm) as Hmm.
+        pose proof (ind_rel_refl_r _ _ _ _ _ _ _ Hm) as Hmm'.
+        destruct (mctx_readable j Mj HMj C1 C2 HC11 HC21 _ _ _ _ _ _ Hm) as [Hc1 Hc2].
+        pose proof (Forall_combine_of_Forall2 _ _ _ Ht) as Hr; pose proof (Forall_combine_of_Forall2 _ _ _ Ht') as Hr'.
+        pose proof (combine_fst_eq _ _ (List.Forall2_length Ht)) as Hv; pose proof (combine_fst_eq _ _ (List.Forall2_length Ht')) as Hv'.
+        pose proof (mctx_at_typed j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm _ _ Hv Hv' Hr Hr') as HE.
+        pose proof (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm) as HEc.
+        pose proof (mctx_at_typed j Mj HMj C1 C1 HC11 HC11 RM HRM _ _ _ _ _ _ Hmm _ _ Hv (tele_entries_fst _ _ _) Hr Hc1) as HE1.
+        pose proof (mctx_at_typed j Mj HMj C2 C2 HC21 HC21 RM HRM _ _ _ _ _ _ Hmm' _ _ (tele_entries_fst _ _ _) Hv' Hc2 Hr') as HE2.
         pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
-        destruct (rel_exp_of_typ_inversion_simple_at HRM HA _ _ HE) as (a & a' & Ea & Ea' & Haa).
-        destruct (rel_exp_of_typ_inversion_simple_at HRM HAl _ _ HE) as (b0 & d & Eb & Ed & Hbd).
-        assert (b0 = a) as -> by (eapply functional_eval_exp; eassumption).
+        destruct (rel_exp_of_typ_inversion_simple_at HRM HA _ _ HE) as (a & a' & Ea & Ea' & _).
+        destruct (rel_exp_of_typ_inversion_simple_at HRM HAl _ _ HEc) as (b1 & c1 & Eb1 & Ec1 & Hbc).
+        destruct (rel_exp_of_typ_inversion_simple_at HRM HAl _ _ HE1) as (a0 & b0 & Ea0 & Eb0 & Hab).
+        destruct (rel_exp_of_typ_inversion_simple_at HRM HA _ _ HE2) as (c0 & d & Ec0 & Ed & Hcd).
+        assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+        assert (b0 = b1) as -> by (eapply functional_eval_exp; eassumption).
+        assert (c0 = c1) as -> by (eapply functional_eval_exp; eassumption).
+        assert (d = a') as -> by (eapply functional_eval_exp; eassumption).
         exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
-        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb).
-        eapply univ_connect; [ etransitivity; [ exact Hbd | symmetry; exact Hbd ] | exact (per_univ_elem_at_head Ea Ed Hbd) |].
-        etransitivity; [ symmetry; exact Haa | exact Hbd ].
+        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb), (mctx_tele_at _ _ HMj).
+        eapply univ_connect; [ exact Hab | exact (per_univ_elem_at_head Eb1 Ec1 Hbc) | symmetry; exact Hcd ].
       Qed.
 
       (** The motive moved by a semantic substitution [σ0] from [Γ'] at
@@ -3805,44 +3912,45 @@ Section GroupElim.
           forall Γ' RΓ' σ0 ρ0 ρ0σ0 A0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
           RΓ' ρ0 ρ0 -> ⟦ σ0 : Γ ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
           elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
-          forall u u' ns ns' m m', G j u u' ns ns' m m' ->
-            exists a a', ⟦ A0[sb_qn (S (im_nn Mj)) σ0] ⟧ env_args ρ0 (ns ++ m :: nil) ↘ a /\
-              ⟦ A0 ⟧ env_args ρ0σ0 (ns' ++ m' :: nil) ↘ a' /\ DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m'.
+          forall u u' ns ns' m m' ts ts', G j u u' ns ns' m m' ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts' ->
+            exists a a', ⟦ A0[sb_qn (S (im_nn Mj)) σ0] ⟧ env_extend_typed ρ0 (List.combine (ns ++ m :: nil) ts) ↘ a /\
+              ⟦ A0 ⟧ env_extend_typed ρ0σ0 (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
+              DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m'.
       Proof.
-        intros * HMj Hb * HRΓ' Hσ0 Hρ0 Hev0 HρC HA0 * Hm.
+        intros * HMj Hb * HRΓ' Hσ0 Hρ0 Hev0 HρC HA0 * Hm Ht Ht'.
         assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
         assert (HC21 : RΓ C2 C1) by (symmetry; exact HC12).
         pose proof (HMall _ _ HMj) as HM.
         destruct (rel_ctx_wf_per_ctx_env HM) as [RM HRM].
-        pose proof (ins _ _ _ _ _ _ _ _ HMj Hm) as Hns.
-        pose proof (trefl_l _ _ HMj _ _ Hns) as Hnn.
+        destruct (mctx_rev_sem j Mj HMj RM HRM) as (HMr & HRMr & Hta).
         pose proof (ind_rel_refl_l _ _ _ _ _ _ _ Hm) as Hmm.
         pose proof (ind_rel_refl_r _ _ _ _ _ _ _ Hm) as Hmm'.
         pose proof (HAv _ _ _ HMj Hb) as HAl.
-        pose proof (mctx_at j Mj HMj ρ0σ0 ρ0σ0 HρC HρC RM HRM _ _ _ _ _ _ Hmm) as El.
-        assert (Ll : List.length (ns ++ m :: nil) = List.length (List.rev (elim_mctx p D j Mj Us))).
-        { pose proof Hnn as H; rewrite tele_rel_iff in H; destruct H as (H & _).
-          rewrite List.length_rev, length_elim_mctx, List.length_app; rewrite List.length_rev, length_im_nparams in H; cbn; lia. }
-        assert (HMr : ⊨ List.rev (List.rev (elim_mctx p D j Mj Us)) ++ Γ) by (rewrite List.rev_involutive; exact HM).
-        assert (HRMr : EF List.rev (List.rev (elim_mctx p D j Mj Us)) ++ Γ ≈ List.rev (List.rev (elim_mctx p D j Mj Us)) ++ Γ
-                         ∈ per_ctx_env ↘ RM)
-          by (rewrite List.rev_involutive; exact HRM).
-        pose proof (proj2 (rel_gargs _ _ _ _ HRΓ HMr (List.Forall_rev (elim_mctx_ass p D j Mj Us Hc HMj)) HRMr _ _ _ _ Ll Ll El)) as Hg.
+        destruct (mctx_readable j Mj HMj C1 C2 HC11 HC21 _ _ _ _ _ _ Hm) as [Hc1 Hc2].
+        pose proof (Forall_combine_of_Forall2 _ _ _ Ht) as Hr; pose proof (Forall_combine_of_Forall2 _ _ _ Ht') as Hr'.
+        pose proof (combine_fst_eq _ _ (List.Forall2_length Ht)) as Hv; pose proof (combine_fst_eq _ _ (List.Forall2_length Ht')) as Hv'.
+        pose proof (mctx_at_typed j Mj HMj ρ0σ0 ρ0σ0 HρC HρC RM HRM _ _ _ _ _ _ Hmm _ _ Hv Hv Hr Hr) as El.
+        destruct (mctx_len j Mj HMj _ _ _ _ _ _ Hm) as [Ll _].
+        assert (Lv : List.length (List.combine (ns ++ m :: nil) ts) = List.length (List.rev (elim_mctx p D j Mj Us)))
+          by (rewrite <- (List.length_map fst), Hv; exact Ll).
+        pose proof (proj2 (rel_gargs _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ Lv Lv El)) as Hg.
         destruct (outer_universe_type_link (elim_mctx p D j Mj Us) Γ Γ' RΓ' σ0 ρ0 ρ0σ0 A0 A0 iA (elim_mctx_ass p D j Mj Us Hc HMj) HM
-                    (rel_exp_under_ctx_refl_right HA0) HRΓ' Hσ0 Hρ0 Hev0 _ Hg ltac:(rewrite List.length_rev in Ll; exact Ll))
+                    (rel_exp_under_ctx_refl_right HA0) HRΓ' Hσ0 Hρ0 Hev0 _ Hg ltac:(rewrite List.length_rev in Lv; exact Lv) Hr)
           as (a & b0 & Ea & Eb0 & Hab0).
         rewrite length_elim_mctx in Ea.
         pose proof (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm) as Ebc.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HAl _ _ Ebc) as (b1 & c0 & Eb & Ec & Hbc).
-        pose proof (mctx_at j Mj HMj C1 ρ0σ0 HC11 HρC RM HRM _ _ _ _ _ _ Hmm) as E1.
+        pose proof (mctx_at_typed j Mj HMj C1 ρ0σ0 HC11 HρC RM HRM _ _ _ _ _ _ Hmm _ _ (tele_entries_fst _ _ _) Hv Hc1 Hr) as E1.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HA0 _ _ E1) as (b' & b0' & Eb' & Eb0' & Hbb0).
         assert (b' = b1) as -> by (eapply functional_eval_exp; eassumption).
         assert (b0' = b0) as -> by (eapply functional_eval_exp; eassumption).
-        pose proof (mctx_at j Mj HMj C2 ρ0σ0 HC21 HρC RM HRM _ _ _ _ _ _ Hmm') as E2.
+        pose proof (mctx_at_typed j Mj HMj C2 ρ0σ0 HC21 HρC RM HRM _ _ _ _ _ _ Hmm' _ _ (tele_entries_fst _ _ _) Hv' Hc2 Hr') as E2.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HA0 _ _ E2) as (c' & d & Ec' & Ed & Hcd).
         assert (c' = c0) as -> by (eapply functional_eval_exp; eassumption).
         exists a, d; split; [ exact Ea | split; [ exact Ed |] ].
-        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb).
+        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb), (mctx_tele_at _ _ HMj).
         eapply univ_connect; [ etransitivity; [ exact Hab0 | symmetry; exact Hbb0 ] | exact (per_univ_elem_at_head Eb Ec Hbc) |].
         symmetry; exact Hcd.
       Qed.
@@ -3857,7 +3965,7 @@ Section GroupElim.
         assert (HC21 : RΓ C2 C1) by (symmetry; exact HC12).
         destruct (HBks j Mj HMj Hrv) as [b Hb].
         destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMj)) as [RM HRM].
-        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb).
+        unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb), (mctx_tele_at _ _ HMj).
         apply (per_head_of_typ_resp HRM (HAv _ _ _ HMj Hb)).
         apply rel_chain_cons; [ exact (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ M12) |].
         apply rel_chain_cons; [ exact (mctx_at j Mj HMj C2 C1 HC21 HC11 RM HRM _ _ _ _ _ _ M23) |].
@@ -3869,7 +3977,8 @@ Section GroupElim.
       Proof.
         intros * HMj Hrv * Hm.
         destruct (HBks j Mj HMj Hrv) as [b Hb].
-        destruct (motive_mid j Mj b (eb_motive b) HMj Hb (HAv _ _ _ HMj Hb) _ _ _ _ _ _ Hm) as (a & a' & _ & _ & H).
+        destruct (mctx_idx_readable j Mj _ _ _ _ _ _ HMj Hm) as [(ts & Ht) (ts' & Ht')].
+        destruct (motive_mid j Mj b (eb_motive b) HMj Hb (HAv _ _ _ HMj Hb) _ _ _ _ _ _ _ _ Hm Ht Ht') as (a & a' & _ & _ & H).
         eapply per_elem_PER; exact H.
       Qed.
 
@@ -3877,33 +3986,33 @@ Section GroupElim.
           end's parameters at [u0] are related to the ones at the bases
           ([admissible_index_at]), and the family does not depend on them. *)
       Lemma rec_rebase_all : forall kr u u',
-        (forall pre pre' t v v' rs rs', rec_result_rel D dr Rel kr u u' pre pre' t v v' rs rs' ->
-           rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' t v v' ->
-           rec_result_rel D dr Rel kr u0 u0 pre pre' t v v' rs rs') /\
-        (forall pre pre' t v c v' c' rs rs', rec_result_app_rel D dr Rel kr u u' pre pre' t v c v' c' rs rs' ->
-           rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' t v c v' c' ->
-           rec_result_app_rel D dr Rel kr u0 u0 pre pre' t v c v' c' rs rs') /\
-        (forall pre pre' gs vs vs' ihs ihs', rec_results_rel D dr Rel kr u u' pre pre' gs vs vs' ihs ihs' ->
-           con_args_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' gs vs vs' ->
-           rec_results_rel D dr Rel kr u0 u0 pre pre' gs vs vs' ihs ihs').
+        (forall pre pre' Ts t v v' rs rs', rec_result_rel D dr Rel kr u u' pre pre' Ts t v v' rs rs' ->
+           rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts t v v' ->
+           rec_result_rel D dr Rel kr u0 u0 pre pre' Ts t v v' rs rs') /\
+        (forall pre pre' Ts t v c v' c' rs rs', rec_result_app_rel D dr Rel kr u u' pre pre' Ts t v c v' c' rs rs' ->
+           rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts t v c v' c' ->
+           rec_result_app_rel D dr Rel kr u0 u0 pre pre' Ts t v c v' c' rs rs') /\
+        (forall pre pre' Ts gs vs vs' ihs ihs', rec_results_rel D dr Rel kr u u' pre pre' Ts gs vs vs' ihs ihs' ->
+           con_args_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts gs vs vs' ->
+           rec_results_rel D dr Rel kr u0 u0 pre pre' Ts gs vs vs' ihs ihs').
       Proof.
         apply (rec_result_rel_mut_ind_all _ D dr Rel
-                 (fun kr u u' pre pre' t v v' rs rs' _ => rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' t v v' ->
-                    rec_result_rel D dr Rel kr u0 u0 pre pre' t v v' rs rs')
-                 (fun kr u u' pre pre' t v c v' c' rs rs' _ => rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' t v c v' c' ->
-                    rec_result_app_rel D dr Rel kr u0 u0 pre pre' t v c v' c' rs rs')
-                 (fun kr u u' pre pre' gs vs vs' ihs ihs' _ => con_args_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' gs vs vs' ->
-                    rec_results_rel D dr Rel kr u0 u0 pre pre' gs vs vs' ihs ihs')).
+                 (fun kr u u' pre pre' Ts t v v' rs rs' _ => rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts t v v' ->
+                    rec_result_rel D dr Rel kr u0 u0 pre pre' Ts t v v' rs rs')
+                 (fun kr u u' pre pre' Ts t v c v' c' rs rs' _ => rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts t v c v' c' ->
+                    rec_result_app_rel D dr Rel kr u0 u0 pre pre' Ts t v c v' c' rs rs')
+                 (fun kr u u' pre pre' Ts gs vs vs' ihs ihs' _ => con_args_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts gs vs vs' ->
+                    rec_results_rel D dr Rel kr u0 u0 pre pre' Ts gs vs vs' ihs ihs')).
         - (** At a member with a block: the motive at [u0]'s indices. *)
-          intros kr u u' pre pre' j Mj Ps bs bs' v v' ih ih' HMj Hrv Ebs Ebs' Hrr Ha.
-          destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs0 & bs0' & Eb0 & Eb0' & [o Eo Ho] & [o' Eo' Ho'] & Hir).
+          intros kr u u' pre pre' Ts j Mj Ps bs bs' v v' ih ih' HMj Hrv Ebs Ebs' Hrr Ha.
+          destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs0 & bs0' & Eb0 & Eb0' & [o Eo Ho] & [o' Eo' Ho'] & Hir).
           pose proof (functional_eval_exps' _ _ _ _ Eb0 Ebs) as ->; pose proof (functional_eval_exps' _ _ _ _ Eb0' Ebs') as ->.
           unfold nparams_tele_rel in Ho, Ho'; rewrite HMj in Ho, Ho'.
           eapply rec_result_self; [ exact HMj | exact Hrv | exact Eo | exact Eo' |].
           exact (proj1 (rel_move j Mj HMj Hrv _ _ _ _ _ _ _ _ Hir (tsym _ _ HMj _ _ Ho) (tsym _ _ HMj _ _ Ho') ih ih') Hrr).
         - (** At a record view: its fields'. *)
-          intros kr u u' pre pre' j Mj qr Is fl c gs Ps v v' ws ws' rs rs' HMj Hh Hcs Ew Ew' Hr IH Ha.
-          destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs0 & bs0' & _ & _ & _ & _ & Hir).
+          intros kr u u' pre pre' Ts j Mj qr Is fl c gs Ps v v' ws ws' rs rs' HMj Hh Hcs Ew Ew' Hr IH Ha.
+          destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs0 & bs0' & _ & _ & _ & _ & Hir).
           inversion Hir; subst;
             match goal with H1 : ind_member D j = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end;
             try (exfalso; match goal with H2 : im_is_rview Mj = false |- _ => exact (not_rview_record _ _ _ _ H2 Hh) end).
@@ -3913,24 +4022,25 @@ Section GroupElim.
             pose proof (functional_eval_projs _ _ _ _ E1 Ew) as ->; pose proof (functional_eval_projs _ _ _ _ E2 Ew') as -> end.
           eapply rec_result_rview; [ exact HMj | exact Hh | exact Hcs | exact Ew | exact Ew' | apply IH; eassumption ].
         - (** At a domain: at related arguments. *)
-          intros kr u u' pre pre' B t v v' rs rs' Hr IH Hfr Hfr' Ha.
-          inversion Ha as [| ? ? ? ? ? ? ? ? ? Hf _ _]; subst.
-          constructor; [ intros c0 c0' Hc0; exact (IH c0 c0' Hc0 (Hf c0 c0' Hc0)) | exact Hfr | exact Hfr' ].
-        - intros kr u u' pre pre' t v c v' c' rs rs' fc fc' rcs rcs' Ef Ef' F1 F2 Hr IH Ha.
-          inversion Ha as [? ? r r' ? ? ? ? ? ? ? ? Er Er' Ha']; subst.
-          pose proof (functional_eval_app _ _ _ _ Er Ef) as ->; pose proof (functional_eval_app _ _ _ _ Er' Ef') as ->.
-          econstructor; [ exact Ef | exact Ef' | exact F1 | exact F2 | exact (IH Ha') ].
+          intros kr u u' pre pre' Ts B t v v' rs rs' Hr IH Hfr Hfr' Ha.
+          inversion Ha; subst.
+          constructor; [ intros c0 c0' Hc0; apply (IH c0 c0' Hc0); eauto | exact Hfr | exact Hfr' ].
+        - intros kr u u' pre pre' Ts t v c v' c' rs rs' fc fc' rcs rcs' Ef Ef' F1 F2 Hr IH Ha.
+          inversion Ha; subst.
+          match goal with Er : _ |- _ => pose proof (functional_eval_app _ _ _ _ Er Ef) as -> end.
+          match goal with Er : _ |- _ => pose proof (functional_eval_app _ _ _ _ Er Ef') as -> end.
+          econstructor; [ exact Ef | exact Ef' | exact F1 | exact F2 | apply IH; assumption ].
         - intros; constructor.
         - intros * Hr IH Ha; inversion Ha; subst; constructor; apply IH; assumption.
         - intros * L1 L2 Hr IH1 Hrs IH2 Ha; inversion Ha; subst.
           constructor; [ exact L1 | exact L2 | apply IH1; assumption | apply IH2; assumption ].
       Qed.
 
-      Lemma rec_results_rebase : forall kr u u' pre pre' gs vs vs' ihs ihs',
-          con_args_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' gs vs vs' ->
-          rec_results_rel D dr Rel kr u u' pre pre' gs vs vs' ihs ihs' ->
-          rec_results_rel D dr Rel kr u0 u0 pre pre' gs vs vs' ihs ihs'.
-      Proof. intros * Ha Hr; exact (proj2 (proj2 (rec_rebase_all kr u u')) _ _ _ _ _ _ _ Hr Ha). Qed.
+      Lemma rec_results_rebase : forall kr u u' pre pre' Ts gs vs vs' ihs ihs',
+          con_args_rel p D (admissible_index_at D u0 nr) nr ar dr kr u u' pre pre' Ts gs vs vs' ->
+          rec_results_rel D dr Rel kr u u' pre pre' Ts gs vs vs' ihs ihs' ->
+          rec_results_rel D dr Rel kr u0 u0 pre pre' Ts gs vs vs' ihs ihs'.
+      Proof. intros * Ha Hr; exact (proj2 (proj2 (rec_rebase_all kr u u')) _ _ _ _ _ _ _ _ Hr Ha). Qed.
 
       (** ** The Frames of a Leaf Path
 
