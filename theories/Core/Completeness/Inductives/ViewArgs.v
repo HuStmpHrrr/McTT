@@ -764,18 +764,19 @@ Section ViewArgs.
     pose proof (valid_ind_decl_uparams _ HDQ) as HUQ.
     destruct (rel_ctx_wf_per_ctx_env HUQ) as [RQ HRQ].
     assert (Hlc : List.length cups = List.length (ind_uparams Dq)) by (rewrite length_container_uparams; reflexivity).
-    assert (HQ0 : RQ (env_args nil cups) (env_args nil cups)).
-    { assert (HUQ' : ⊨ List.rev (List.rev (ind_uparams Dq)) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HUQ).
-      apply (gargs_env_rel _ _ _ _ _ _ HRQ HUQ Hlc view_container_uparams_rel). }
-    assert (HQ1 : RQ (env_args nil cups) (env_args (env_args nil ups) cups))
-      by exact (closed_env_base _ _ _ _ _ _ _ _ (decl_closed_ass _ HcQ) HUQ HRQ Hlc Hlc HQ0).
+    set (EU := decl_env D ups).
+    set (Ecq := components_env D ups (List.rev (ind_uparams Dq)) cups).
+    destruct (closed_tele_base_rel (ind_uparams Dq) RQ EU EU cups (decl_closed_ass _ HcQ) HUQ HRQ view_container_uparams_rel Hlc)
+      as [HQ1 _].
+    change (env_tele EU (List.rev (ind_uparams Dq)) cups) with Ecq in HQ1.
+    change (env_tele nil (List.rev (ind_uparams Dq)) cups) with (decl_env Dq cups) in HQ1.
     assert (Hac : tele_ass tc) by exact (List.Forall_rev (member_nparams_ass Dq HcQ _ _ HMi')).
     assert (Hag : tele_ass tg) by exact (List.Forall_rev (member_nparams_ass D Hc _ _ HMv)).
     assert (HWc0 : ⊨ List.rev tc ++ ind_uparams Dq) by (unfold tc; rewrite List.rev_involutive; exact (valid_ind_decl_params _ HDQ _ _ HMi')).
     assert (HTc0 : forall j0 A, List.nth_error tc j0 = Some (ce_ass A) ->
                      exists i : nat, List.rev (List.firstn j0 tc) ++ ind_uparams Dq ⊨ A : Typeω@i)
       by (intros j0 A HA; exact (proj2 (valid_ind_decl_nparams _ HDQ _ _ _ _ HMi' HA))).
-    destruct (tele_base_change tc (ind_uparams Dq) RQ (env_args nil cups) (env_args (env_args nil ups) cups)
+    destruct (tele_base_change tc (ind_uparams Dq) RQ (decl_env Dq cups) Ecq
                 Hac HWc0 HTc0 HRQ HQ1 j vs Hlv Hlr Hg0) as [Hg1 Hhd].
     (** The two telescopes, equal under the view's instance. *)
     pose proof (valid_ind_decl_uparams _ HD) as HUD.
@@ -799,18 +800,20 @@ Section ViewArgs.
       exact (valid_group_views_view_nparams p D Hg Hcv _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' Hv HMv). }
     assert (Hlen : List.length tg = List.length tc) by (unfold tg, tc; rewrite !List.length_rev, !length_im_nparams; exact Hnn).
     destruct (gsub_props (valid_group_views_view_args_gsub p D Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq)) as [Hτ _].
-    pose proof (eval_container_uparams_instance D Dq Is ups cups HD HDQ (decl_closed_ass _ HcQ) Hgu Hu Ecups
-                  view_container_uparams_rel Hlc) as Eτ.
+    destruct (valid_group_views_view_args_sub_eval p D Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq _ _ Hgu Hu) as (cups0 & Ecups0 & Eτ).
+    pose proof (functional_eval_exps' _ _ _ _ Ecups0 Ecups) as ->; fold EU Ecq in Eτ.
+    pose proof (@eval_sub_id gc_deps gc_stack (ind_uparams D) EU) as EId.
+    unfold EU in EId; rewrite (ctx_retag_decl_env D ups Hu) in EId; fold EU in EId.
     destruct (nth_error_lt_some' tc j ltac:(unfold tc in *; rewrite List.length_rev, length_im_nparams; lia)) as [eC HeC].
     destruct (proj1 (List.Forall_forall _ _) Hac eC (List.nth_error_In _ _ HeC)) as [C ->].
     destruct (nth_error_lt_some' tg j ltac:(unfold tg in *; rewrite List.length_rev, length_im_nparams; lia)) as [eG HeG].
     destruct (proj1 (List.Forall_forall _ _) Hag eG (List.nth_error_In _ _ HeG)) as [G ->].
-    pose proof (tele_link (ind_uparams D) RU (env_args nil ups) HRU HρU (ind_uparams D) (ind_uparams Dq ++ ind_uparams D)
-                  Id (sb_of_list Id Is) (env_args nil ups) (env_args (env_args nil ups) cups)
-                  (rel_sub_id (ex_intro _ _ HRU)) Hτ (eval_sub_id _ _ (proj1 (per_ctx_env_proofs _ _ _ HRU _ _ HρU))) Eτ tg tc Hag Hac Hlen HWg HWc HTg HTc Heq
+    pose proof (tele_link (ind_uparams D) RU EU HRU HρU (ind_uparams D) (ind_uparams Dq ++ ind_uparams D)
+                  Id (sb_of_list Id Is) EU Ecq
+                  (rel_sub_id (ex_intro _ _ HRU)) Hτ EId Eτ tg tc Hag Hac Hlen HWg HWc HTg HTc Heq
                   j vs G C Hlv HeG HeC Hg1) as EL.
     unfold canon_nparams_rel, member_nparams; rewrite HMi', HMv; fold tc tg; unfold nth_ctyp; rewrite HeC, HeG.
-    rewrite !env_args_app.
+    unfold components_env; rewrite (env_tele_firstn _ tc vs), (env_tele_firstn _ tg vs), Hlv.
     etransitivity; [ exact (Hhd _ HeC) | exact EL ].
   Qed.
 End ViewArgs.
