@@ -194,7 +194,7 @@ Proof.
   - injection Hf as <-; constructor; exact HC.
   - cbn [gmod_scoped] in Hs; destruct Hs as [Hs HsE].
     (** The entry is scoped by the body before it and [D]. *)
-    rewrite <- length_body_ctx, <- List.length_app in HsE.
+    rewrite <- (length_body_ctx _ Hn), <- List.length_app in HsE.
     destruct E as [b pv ra A [M |] | pv U | ? ? ? ? ? | ? ? ? ? | ? ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
       cbn [body_ctx app] in HC; cbn [gentry_scoped] in HsE.
@@ -227,13 +227,13 @@ Lemma fill_rel : forall Φ D σ, gm_nopens Φ = 0 -> gm_fill Φ = Some σ -> ⊨
     forall ρ, RD ρ ρ -> exists ρσ ρ1, ⟦ σ : body_ctx Φ ++ D ⟧s ρ ↘ ρσ /\ ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ R ρσ ρ1.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hn Hf HC Hsv Hs R RD HD HR ρ Hρ; cbn in Hn, Hf; [| | discriminate ].
-  - (** The identity evaluates to the restamped environment. *)
+  - (** The identity evaluates to the retagged environment. *)
     injection Hf as <-.
     assert (E : R <~> RD) by (eapply per_ctx_env_right_irrel; eassumption).
-    exists (restamp_env ρ), ρ; split; [ exact (proj1 (eval_sub_id_rel HD Hρ)) | split; [ constructor |] ].
-    apply E; exact (per_ctx_env_restamp_left HD _ _ Hρ).
+    exists (ctx_retag D ρ), ρ; split; [ exact (proj1 (eval_sub_id_rel HD Hρ)) | split; [ constructor |] ].
+    apply E; exact (per_ctx_env_retag_left HD _ _ Hρ).
   - cbn [gmod_scoped] in Hs; destruct Hs as [Hs HsE].
-    rewrite <- length_body_ctx, <- List.length_app in HsE.
+    rewrite <- (length_body_ctx _ Hn), <- List.length_app in HsE.
     destruct E as [b pv ra A [M |] | pv U | ? ? ? ? ? | pv A M [Δy Dy] | ? ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
       cbn [body_ctx app] in HC, HR; cbn [body_sorts_valid entry_tm entry_relevance] in Hsv;
@@ -262,13 +262,15 @@ Proof.
         destruct (per_ctx_env_kept_proof_readable _ _ _ M HR0 (exp_scoped_free_bound _ _ (proj2 HsE)) _ _ H0) as [_ Rp2].
         assert (Ha'a' : per_prop a' a') by (etransitivity; [ symmetry; exact Haa' | exact Haa' ]).
         pose proof (entry_readable_of_elem_closure Ha' Ha' (per_univ_elem_of_prop 0 _ _ Ha'a') (conj Rp2 Rp2)) as [Rc _].
-        exists (ρσ0 ↦ ⋆ᵈ⟨M[σ0], ρ⟩ ⦂ substituted_type), (ρ10 ↦ ⋆ᵈ⟨M, ρ10⟩ ⦂ entry_type_closure A ρ10); split.
+        pose proof (per_head_proof (S' := A) (ρ' := ρ10) Ha Hl Rp1 Rp2) as Hhd.
+        (** The substitution's head is stored at [A] over its tail. *)
+        destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 (rel_type_of_prop 0 HA)) HR0 H0 Hhd) as [Rl _].
+        exists (ρσ0 ↦ ⋆ᵈ⟨M[σ0], ρ⟩ ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0),
+          (ρ10 ↦ ⋆ᵈ⟨M, ρ10⟩ ⦂ entry_type_closure A ρ10); split.
         { apply eval_sub_extend_proof; [ exact Hσ0 |].
-          econstructor; [ reflexivity | intros y'; reflexivity | exact Ha | exact Hl ]. }
+          econstructor; [ reflexivity | intros y' _; reflexivity | exact Ha | exact Hl ]. }
         split; [ eapply eval_body_env_def_proof; exact Hb0 |].
-        apply EQ; apply per_env_extend_intro';
-          [ exact H0 | eapply per_head_proof; [ exact Ha | exact Hl | exact Rp1 | exact Rp2 ]
-          | apply substituted_entry_readable | exact Rc ]. }
+        apply EQ; apply per_env_extend_intro'; [ exact H0 | exact Hhd | exact Rl | exact Rc ]. }
       destruct (rel_type_of_relevant_sort HSrt HA) as [[k HAt] HArel].
       destruct (valid_inst _ _ _ _ _ _ HM HArel Hτ HD _ _ Hρ Hσ0) as (m1 & m2 & a2 & j & Ra & Hm1 & Hm2 & Ha2 & HRa & Hm12).
       destruct (valid_at _ _ _ _ _ HM HAt HArel HR0 _ _ H0) as (m2' & m3 & a2' & j' & Ra' & Hm2' & Hm3 & Ha2' & HRa' & Hm23).
@@ -284,17 +286,19 @@ Proof.
       pose proof (entry_readable_of_elem_closure Ha2 Hx' Hxx Hm13) as [_ Rm3].
       pose proof (per_ctx_env_of_def_relevant HR0 HAt (HArel _ HR0) HM) as HR'.
       assert (EQ : R <~> per_env_extend_def A M R0) by (eapply per_ctx_env_right_irrel; eassumption).
-      exists (ρσ0 ↦ m1 ⦂ substituted_type), (ρ10 ↦ m3 ⦂ entry_type_closure A ρ10); split;
+      assert (Hhd : per_head A A ρσ0 ρ10 m1 m3) by (eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | exact Hm13 ]).
+      (** The substitution's head is stored at [A] over its tail. *)
+      destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 HAt) HR0 H0 Hhd) as [Rm1 _].
+      exists (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0), (ρ10 ↦ m3 ⦂ entry_type_closure A ρ10); split;
         [ apply eval_sub_extend;
           [ exact Hσ0 | exact (proj1 (head_not_propositional_of_relevant (e := ce_def A M) HR0 eq_refl HAt HArel _ _ H0))
           | exact Hm1 ] |].
       split; [ eapply eval_body_env_def; [ exact Hb0 | exact Hm3 ] |].
       apply EQ.
       eapply per_env_extend_def_intro;
-        [ exact HP0 | | | exact H0 | | apply substituted_entry_readable | exact Rm3 | exact Hm2 | ].
+        [ exact HP0 | | | exact H0 | exact Hhd | exact Rm1 | exact Rm3 | exact Hm2 | ].
       * exact (rel_type_inversion_simple_at HR0 HAt).
       * exact (rel_exp_under_ctx_simple_at_of_relevant HR0 (HArel _ HR0) HM).
-      * eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | exact Hm13 ].
       * eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | symmetry; exact Hm12 ].
     + (* a submodule: the closure of its filled-in unit, against its closure in the body's *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
@@ -303,24 +307,23 @@ Proof.
       destruct (IH _ _ Hn eq_refl HC0 (proj1 Hsv) Hs _ _ HD HR0 _ Hρ) as (ρσ0 & ρ10 & Hσ0 & Hb0 & H0).
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0 Hs)) as Hτ.
       assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
-      pose proof (per_ctx_env_of_mod HR0 HU) as HR'.
+      pose proof (per_ctx_env_of_mod HR0 HU HsE HsE) as HR'.
       assert (EQ : R <~> per_ctx_env_mod_rel R0 (List.length (body_ctx Φ ++ D)) U U)
         by (eapply per_ctx_env_right_irrel; eassumption).
       destruct (unit_sub_chain HD Hτ HU _ _ _ _ Hρ Hσ0 Hσ0) as ([g1 g2 Hg1 Hg2 G12] & _).
       destruct (unit_chain_at HU HR0 _ _ H0) as [k2 k3 Hk2 Hk3 K23].
       pose proof (functional_eval_modexp _ _ _ _ Hg2 Hk2) as <-.
       assert (K33 : per_dmod k3 k3) by (etransitivity; [ symmetry; exact K23 | exact K23 ]).
-      (** The substitution's head stores [substituted_unit], the body's the
-          unit written, scoped by the body's context. *)
-      assert (HrU : head_readable (List.length (body_ctx Φ ++ D)) (de_mod k3 U))
-        by (split; [ apply mod_entry_readable | exact (gunit_scoped_free_bound _ _ HsE) ]).
+      (** Both heads store the unit written, scoped by the body's context. *)
+      assert (HrU : forall h, head_readable (List.length (body_ctx Φ ++ D)) (de_mod h U))
+        by (intros h; split; [ apply mod_entry_readable | exact (gunit_scoped_free_bound _ _ HsE) ]).
       destruct U as [Δy Dy].
-      exists (ρσ0 ↦ᵐ g1 ⦂ substituted_unit), (ρ10 ↦ᵐ k3 ⦂ gu_mk Δy Dy).
+      exists (ρσ0 ↦ᵐ g1 ⦂ gu_mk Δy Dy), (ρ10 ↦ᵐ k3 ⦂ gu_mk Δy Dy).
       split; [ apply eval_sub_extend_mod; [ exact Hσ0 | exact Hg1 ] |].
       split; [ econstructor; [ exact Hb0 | apply eval_me_lit_iff; exact Hk3 ] |].
       apply EQ.
-      constructor; cbn [drop_env tl env_mod env_entry hd];
-        first [ exact H0 | exact HrU | split; [ apply mod_entry_readable | cbn; lia ]
+      constructor; cbn [drop_env tl env_mod env_entry hd extend_env_mod];
+        first [ exact H0 | apply HrU | eexists; reflexivity
               | exists g2; split; [ exact Hg2 | exact G12 ] | exists k3; split; [ exact Hk3 | exact K33 ] ].
     + (* a definition with a module part: its term as a definition's, its
          unit as a submodule's *)
@@ -344,20 +347,26 @@ Proof.
       assert (Hm13 : Rx m1 m3) by (etransitivity; eassumption).
       pose proof (entry_readable_of_elem_closure Ha2 Hx' Hxx Hm13) as [_ Rm3].
       assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
-      assert (Hdef : per_env_extend_def A M R0 (ρσ0 ↦ m1 ⦂ substituted_type) (ρ10 ↦ m3 ⦂ entry_type_closure A ρ10)).
+      assert (Hhd : per_head A A ρσ0 ρ10 m1 m3) by (eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | exact Hm13 ]).
+      (** The substitution's head is stored at [A] over its tail. *)
+      pose proof (per_ctx_env_of_typ HR0 HAt) as HRA.
+      destruct (per_head_closure_readable HRA HR0 H0 Hhd) as [Rm1 _].
+      assert (Hdef : per_env_extend_def A M R0 (ρσ0 ↦ m1 ⦂ centry_tag (ce_ass A) (body_ctx Φ ++ D) ρσ0)
+                       (ρ10 ↦ m3 ⦂ entry_type_closure A ρ10)).
       { eapply per_env_extend_def_intro;
-          [ exact HP0 | | | exact H0 | | apply substituted_entry_readable | exact Rm3 | exact Hm2 | ].
+          [ exact HP0 | | | exact H0 | exact Hhd | exact Rm1 | exact Rm3 | exact Hm2 | ].
         - exact (rel_type_inversion_simple_at HR0 HAt).
         - exact (rel_exp_under_ctx_simple_at_of_relevant HR0 (HArel _ HR0) HM).
-        - eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | exact Hm13 ].
         - eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | symmetry; exact Hm12 ]. }
       destruct (unit_sub_chain HD Hτ HU _ _ _ _ Hρ Hσ0 Hσ0) as ([g1 g2 Hg1 Hg2 G12] & _).
       destruct (unit_chain_at HU HR0 _ _ H0) as [k2 k3 Hk2 Hk3 K23].
       pose proof (functional_eval_modexp _ _ _ _ Hg2 Hk2) as <-.
       assert (EQ : R <~> per_env_extend_dm A M (gu_mk Δy Dy) R0)
         by (eapply per_ctx_env_right_irrel; [ exact HR | exact (per_ctx_env_of_dm HR0 HA HM HU) ]).
-      pose proof (dm_entry_readable_of_elem_closure Ha2 Hx' Hxx Hm13 g1 k3 substituted_unit (gu_mk Δy Dy)) as [_ Rdm3].
-      exists (ρσ0 ↦ᵈ m1 ⦂ substituted_type ‖ g1 ⦂ substituted_unit), (ρ10 ↦ᵈ m3 ⦂ entry_type_closure A ρ10 ‖ k3 ⦂ gu_mk Δy Dy).
+      pose proof (dm_entry_readable_of_elem_closure Ha2 Hx' Hxx Hm13 g1 k3 (gu_mk Δy Dy) (gu_mk Δy Dy)) as [_ Rdm3].
+      destruct (per_head_dm_readable (h := g1) (h' := k3) (U := gu_mk Δy Dy) HRA HR0 H0 Hhd) as [Rdm1 _].
+      exists (ρσ0 ↦ᵈ m1 ⦂ centry_tag (ce_dm A M (gu_mk Δy Dy)) (body_ctx Φ ++ D) ρσ0 ‖ g1 ⦂ gu_mk Δy Dy),
+        (ρ10 ↦ᵈ m3 ⦂ entry_type_closure A ρ10 ‖ k3 ⦂ gu_mk Δy Dy).
       split; [ apply eval_sub_extend_dm;
                [ exact Hσ0 | exact (proj1 (head_not_propositional_of_typ (e := ce_dm A M (gu_mk Δy Dy)) HR0 eq_refl HA _ _ H0))
                | exact Hm1 | exact Hg1 ] |].
@@ -365,7 +374,8 @@ Proof.
       apply EQ.
       assert (K33 : per_dmod k3 k3) by (etransitivity; [ symmetry; exact K23 | exact K23 ]).
       destruct Hdef as [[Hd1 Hd2 _ _ _ _] Hd3 Hd4].
-      constructor; [ exact Hd1 | exact Hd2 | exact Hd3 | exact Hd4 | | | apply substituted_dm_readable | split; [ exact Rdm3 | cbn; lia ] ];
+      constructor; [ exact Hd1 | exact Hd2 | exact Hd3 | exact Hd4 | | | exact Rdm1 | split; [ exact Rdm3 | cbn; lia ]
+                   | do 2 eexists; reflexivity | do 2 eexists; reflexivity ];
         unfold env_mod; cbn [drop_env tl env_entry hd];
         solve [ exists g2; split; [ exact Hg2 | exact G12 ] | exists k3; split; [ exact Hk3 | exact K33 ] ].
 Qed.
@@ -386,14 +396,14 @@ Lemma fill_rel_back : forall Φ D σ, gm_nopens Φ = 0 -> gm_fill Φ = Some σ -
       exists ρσ, ⟦ σ : body_ctx Φ ++ D ⟧s List.skipn (List.length (body_ctx Φ)) ρ1 ↘ ρσ /\ R ρ1 ρσ.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hn Hf HC Hs R RD HD HR ρ1 Hρ1; cbn in Hn, Hf; [| | discriminate ].
-  - (** The identity evaluates to the restamped environment. *)
+  - (** The identity evaluates to the retagged environment. *)
     injection Hf as <-; cbn [body_ctx List.length List.skipn app] in *.
     assert (E : R <~> RD) by (eapply per_ctx_env_right_irrel; eassumption).
     split; [ apply E, Hρ1 |].
-    exists (restamp_env ρ1); split; [ exact (proj1 (eval_sub_id_rel HD (proj1 (E _ _) Hρ1))) |].
-    exact (per_ctx_env_restamp_right HR _ _ Hρ1).
+    exists (ctx_retag D ρ1); split; [ exact (proj1 (eval_sub_id_rel HD (proj1 (E _ _) Hρ1))) |].
+    exact (per_ctx_env_retag_right HR _ _ Hρ1).
   - cbn [gmod_scoped] in Hs; destruct Hs as [Hs HsE].
-    rewrite <- length_body_ctx, <- List.length_app in HsE.
+    rewrite <- (length_body_ctx _ Hn), <- List.length_app in HsE.
     destruct E as [b pv ra A [M |] | pv U | ? ? ? ? ? | pv A M [Δy Dy] | ? ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
       cbn [body_ctx app List.length] in HC, HR |- *; rewrite skipn_succ_drop; cbn [gentry_scoped] in HsE.
@@ -422,14 +432,16 @@ Proof.
         assert (HMσ : exp_scoped (List.length D) M[σ0])
           by (eapply exp_scoped_sub; [ exact (proj2 HsE) | intros x Hx; exact (proj1 (Hτs x Hx)) ]).
         destruct (per_ctx_env_kept_proof_readable _ _ _ M[σ0] HD (exp_scoped_free_bound _ _ HMσ) _ _ Htail) as [Rp2 _].
-        exists (ρσ0 ↦ ⋆ᵈ⟨M[σ0], List.skipn (List.length (body_ctx Φ)) ρ1↯⟩ ⦂ substituted_type); split.
+        pose proof (per_head_proof (S' := A) (ρ' := ρσ0) Ea Hpl Rp1 Rp2) as Hph.
+        (** The substitution's head is stored at [A] over its tail. *)
+        destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 (rel_type_of_prop 0 HA)) HR0 H0 Hph) as [_ Rr].
+        exists (ρσ0 ↦ ⋆ᵈ⟨M[σ0], List.skipn (List.length (body_ctx Φ)) ρ1↯⟩ ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0); split.
         { apply eval_sub_extend_proof; [ exact Hσ0 |].
-          econstructor; [ reflexivity | intros y'; reflexivity | exact Ea' | exact Hpr ]. }
+          econstructor; [ reflexivity | intros y' _; reflexivity | exact Ea' | exact Hpr ]. }
         apply EQ.
         apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1
-                 (ρσ0 ↦ ⋆ᵈ⟨M[σ0], List.skipn (List.length (body_ctx Φ)) ρ1↯⟩ ⦂ substituted_type) H0);
-          [ eapply per_head_proof; [ exact Ea | exact Hpl | exact Rp1 | exact Rp2 ] | exact Hl | intros _; eexists; reflexivity
-          | exact Hrl | split; [ apply substituted_entry_readable | cbn; lia ] ]. }
+                 (ρσ0 ↦ ⋆ᵈ⟨M[σ0], List.skipn (List.length (body_ctx Φ)) ρ1↯⟩ ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0) H0);
+          [ exact Hph | exact Hl | intros _; eexists; reflexivity | exact Hrl | split; [ exact Rr | cbn; lia ] ]. }
       (* at a relevant type: the value of the body filled in *)
       destruct (rel_type_of_relevant_sort HSr HA) as [[i HAt] HArel].
       pose proof (per_ctx_env_of_def_relevant HR0 HAt (HArel _ HR0) HM) as HR'.
@@ -454,13 +466,16 @@ Proof.
       assert (Hnp : forall r r', R0 r r' -> ~ rel_typ_propositional A r).
       { intros r r' Hr (c & Ec & Hc); destruct (HArel _ HR0 _ _ Hr) as (c' & Ec' & Hc').
         pose proof (functional_eval_exp _ _ _ _ Ec Ec') as <-; congruence. }
-      assert (Hext : per_env_extend A A R0 ρ1 (ρσ0 ↦ m1 ⦂ substituted_type)).
-      { apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1 (ρσ0 ↦ m1 ⦂ substituted_type) H0);
-          [ eapply per_head_of; [ exact Ea | exact Ha2 | exact HRX | exact Hhd ]
+      assert (Hph : per_head A A ρ1↯ ρσ0 (ρ1 0) m1) by (eapply per_head_of; [ exact Ea | exact Ha2 | exact HRX | exact Hhd ]).
+      (** The substitution's head is stored at [A] over its tail. *)
+      destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 HAt) HR0 H0 Hph) as [_ Rr].
+      assert (Hext : per_env_extend A A R0 ρ1 (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0)).
+      { apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1 (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0) H0);
+          [ exact Hph
           | intros Hp; exfalso; exact (Hnp _ _ Ht Hp)
           | intros Hp; exfalso; exact (Hnp _ _ ltac:(etransitivity; [ symmetry; exact H0 | exact H0 ]) Hp)
-          | exact Hrl | split; [ apply substituted_entry_readable | cbn; lia ] ]. }
-      exists (ρσ0 ↦ m1 ⦂ substituted_type); split;
+          | exact Hrl | split; [ exact Rr | cbn; lia ] ]. }
+      exists (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0); split;
         [ apply eval_sub_extend;
           [ exact Hσ0 | exact (proj2 (head_not_propositional_of_relevant (e := ce_def A M) HR0 eq_refl HAt HArel _ _ H0))
           | exact Hm1 ] |].
@@ -472,16 +487,17 @@ Proof.
       pose proof (rel_unit_under_ctx_lit _ _ _ (rel_ctx_wf_mod_inv HC)) as HU.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0 Hs)) as Hτ.
-      pose proof (per_ctx_env_of_mod HR0 HU) as HR'.
+      pose proof (per_ctx_env_of_mod HR0 HU HsE HsE) as HR'.
       assert (EQ : R <~> per_ctx_env_mod_rel R0 (List.length (body_ctx Φ ++ D)) U U)
         by (eapply per_ctx_env_right_irrel; eassumption).
       pose proof (proj1 (EQ _ _) Hρ1) as [Ht Hll Hll' _ _ Hrl _].
       destruct (IH _ _ Hn eq_refl HC0 Hs _ _ HD HR0 _ Ht) as (Htail & ρσ0 & Hσ0 & H0).
       split; [ exact Htail |].
       destruct (unit_sub_chain HD Hτ HU _ _ _ _ Htail Hσ0 Hσ0) as ([g1 g2 Hg1 Hg2 G12] & _).
-      exists (ρσ0 ↦ᵐ g1 ⦂ substituted_unit); split; [ apply eval_sub_extend_mod; [ exact Hσ0 | exact Hg1 ] |].
-      apply EQ; constructor; cbn [drop_env tl env_mod env_entry hd];
-        first [ exact H0 | exact Hll | exact Hll' | exact Hrl | split; [ apply mod_entry_readable | cbn; lia ]
+      exists (ρσ0 ↦ᵐ g1 ⦂ U); split; [ apply eval_sub_extend_mod; [ exact Hσ0 | exact Hg1 ] |].
+      apply EQ; constructor; cbn [drop_env tl env_mod env_entry hd extend_env_mod];
+        first [ exact H0 | exact Hll | exact Hll' | exact Hrl | exact per_ctx_env_mod_rel_left_kind | eexists; reflexivity
+              | split; [ apply mod_entry_readable | exact (gunit_scoped_free_bound _ _ HsE) ]
               | exists g2; split; [ exact Hg2 | exact G12 ] ].
     + (* a definition with a module part: both *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
@@ -510,18 +526,26 @@ Proof.
         pose proof (proj1 (E1 _ _) Hm12) as H3.
         etransitivity; [ symmetry; exact H1 |]; etransitivity; [ exact H2 | symmetry; exact H3 ]. }
       destruct (unit_sub_chain HD Hτ HU _ _ _ _ Htail Hσ0 Hσ0) as ([g1 g2 Hg1 Hg2 G12] & _).
-      assert (Hext : per_env_extend A A R0 ρ1 (ρσ0 ↦ᵈ m1 ⦂ substituted_type ‖ g1 ⦂ substituted_unit)).
-      { apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1 (ρσ0 ↦ᵈ m1 ⦂ substituted_type ‖ g1 ⦂ substituted_unit) H0);
-          [ eapply per_head_of; [ exact Ea | exact Ha2 | exact HRX | exact Hhd ]
+      assert (Hph : per_head A A ρ1↯ ρσ0 (ρ1 0) m1) by (eapply per_head_of; [ exact Ea | exact Ha2 | exact HRX | exact Hhd ]).
+      (** The substitution's head is stored at [A] over its tail, at the
+          unit written. *)
+      destruct (per_head_dm_readable (h := env_mod ρ1 0) (h' := g1) (U := gu_mk Δy Dy)
+                  (per_ctx_env_of_typ HR0 (rel_type_of_typ HA)) HR0 H0 Hph) as [_ Rr].
+      assert (Hext : per_env_extend A A R0 ρ1
+                       (ρσ0 ↦ᵈ m1 ⦂ centry_tag (ce_dm A M (gu_mk Δy Dy)) (body_ctx Φ ++ D) ρσ0 ‖ g1 ⦂ gu_mk Δy Dy)).
+      { apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1
+                 (ρσ0 ↦ᵈ m1 ⦂ centry_tag (ce_dm A M (gu_mk Δy Dy)) (body_ctx Φ ++ D) ρσ0 ‖ g1 ⦂ gu_mk Δy Dy) H0);
+          [ exact Hph
           | intros Hp; exfalso; exact (not_rel_typ_propositional_of_typ HR0 HA _ _ Ht Hp)
           | intros Hp; exfalso; exact (not_rel_typ_propositional_of_typ HR0 HA _ _ ltac:(etransitivity; [ symmetry; exact H0 | exact H0 ]) Hp)
-          | exact Hrl | apply substituted_dm_readable ]. }
-      exists (ρσ0 ↦ᵈ m1 ⦂ substituted_type ‖ g1 ⦂ substituted_unit); split;
+          | exact Hrl | exact Rr ]. }
+      exists (ρσ0 ↦ᵈ m1 ⦂ centry_tag (ce_dm A M (gu_mk Δy Dy)) (body_ctx Φ ++ D) ρσ0 ‖ g1 ⦂ gu_mk Δy Dy); split;
         [ apply eval_sub_extend_dm;
           [ exact Hσ0 | exact (proj2 (head_not_propositional_of_typ (e := ce_dm A M (gu_mk Δy Dy)) HR0 eq_refl HA _ _ H0))
           | exact Hm1 | exact Hg1 ] |].
-      apply EQ; constructor; [ exact H0 | eapply per_head_of; [ exact Ea | exact Ha2 | exact HRX | exact Hhd ]
-                             | exists ma; split; assumption | | exact Hml | | exact Hrl | apply substituted_dm_readable ].
+      apply EQ; constructor; [ exact H0 | exact Hph
+                             | exists ma; split; assumption | | exact Hml | | exact Hrl | exact Rr
+                             | exact per_env_extend_dm_left_kind | do 2 eexists; reflexivity ].
       * eapply (def_tie_resp HP0 (rel_exp_of_typ_inversion_simple_at HR0 HA) (rel_exp_under_ctx_simple_at_rel HR0 HA HM) Hext).
         exists ma; split; assumption.
       * unfold env_mod; cbn [drop_env tl env_entry hd]; exists g2; split; [ exact Hg2 | exact G12 ].
