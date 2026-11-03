@@ -979,7 +979,7 @@ Qed.
 
 (** The closed environment of the non-recursive arguments after the
     parameters: the components after the uniform parameters. *)
-Lemma env_tele_cargs_strat : forall G Mk gs1 U ms nv, List.length U = ind_nu G ->
+Lemma closed_env_nonrec_args_components : forall G Mk gs1 U ms nv, List.length U = ind_nu G ->
     env_tele nil (List.rev (cargs_strat gs1 ++ im_params G Mk)) (U ++ ms ++ nv)
     = components_env G U (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) (ms ++ nv).
 Proof.
@@ -1001,7 +1001,7 @@ Proof.
 Qed.
 
 (** The same after the first domains of a recursive argument's shape. *)
-Lemma env_tele_doms_strat : forall G Mk gs1 Bs U ms nv ys, List.length U = ind_nu G ->
+Lemma closed_env_shape_doms_components : forall G Mk gs1 Bs U ms nv ys, List.length U = ind_nu G ->
     env_tele nil (List.rev (doms_ctx Bs ++ cargs_strat gs1 ++ im_params G Mk)) (U ++ ms ++ nv ++ ys)
     = components_env G U (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.map ce_ass Bs) (ms ++ nv ++ ys).
 Proof.
@@ -1109,7 +1109,7 @@ Proof.
     rewrite !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia. }
   destruct (wk_type_retag_link _ _ _ _ _ _ _ Hw (rel_type_of_relevance HAv) HΓ Hρ) as (i0 & Rm & m & m' & Em & Em' & HRm).
   rewrite (ctx_retag_wk_cargs_args pq G Mk gs1 U ms vs) in Em' by (try exact Hlv; rewrite length_im_params; unfold im_np, ind_nu in *; lia).
-  rewrite (env_tele_cargs_strat G Mk gs1 U ms) in Em' by assumption.
+  rewrite (closed_env_nonrec_args_components G Mk gs1 U ms) in Em' by assumption.
   rewrite <- (components_env_con_prefix G U (List.rev (im_nparams Mk)) gs gs1 (ca_arg r A :: gs2) ms) in Em'
     by (first [ exact Heq | rewrite List.length_rev, Hlm; reflexivity | apply length_nonrec_arg_vals; exact Hlv ]).
   pose proof (per_univ_trans _ _ _ _ _ _ HRm (per_univ_sym _ _ _ _ HRm)) as HRmm.
@@ -1145,7 +1145,7 @@ Proof.
     rewrite !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia. }
   destruct (wk_type_retag_link _ _ _ _ _ _ _ Hw (rel_type_of_relevance HAv) HΓ Hρ) as (i0 & Rm & m & m' & Em & Em' & HRm).
   rewrite (ctx_retag_wk_cargs_args pq G Mk gs1 U ms vs) in Em' by (try exact Hlv; rewrite length_im_params; unfold im_np, ind_nu in *; lia).
-  rewrite (env_tele_cargs_strat G Mk gs1 U ms) in Em' by assumption.
+  rewrite (closed_env_nonrec_args_components G Mk gs1 U ms) in Em' by assumption.
   exists i0, Rm, m, m'; split; [ exact Em | split; [ exact Em' | exact HRm ] ].
 Qed.
 
@@ -1190,7 +1190,7 @@ Proof.
     rewrite (List.app_assoc U ms (vs ++ ys)).
     rewrite (ctx_retag_wk_cargs_doms pq G Mk gs1 (cargs_pat gs1) (List.firstn d (ptyp_doms t)) (U ++ ms) vs ys eq_refl)
       by (first [ rewrite List.length_app, length_im_params; unfold im_np, ind_nu in *; lia | exact Hlv | lia ]).
-    rewrite <- (List.app_assoc U ms), env_tele_doms_strat by exact HlU.
+    rewrite <- (List.app_assoc U ms), closed_env_shape_doms_components by exact HlU.
     unfold shape_doms_tele; rewrite List.firstn_map; reflexivity. }
   rewrite HE in Em'.
   pose proof (per_univ_trans _ _ _ _ _ _ HRm (per_univ_sym _ _ _ _ HRm)) as HRmm.
@@ -1612,7 +1612,7 @@ Section ShapeChar.
         rewrite (List.app_assoc ups ns (fa ++ ys)).
         rewrite (ctx_retag_wk_cargs_doms p D Mk gs1 pat (ptyp_doms t) (ups ++ ns) fa ys eq_refl)
           by (first [ rewrite List.length_app, length_im_params; unfold im_np, ind_nu in *; lia | exact Hlk | exact Hly ]).
-        rewrite <- (List.app_assoc ups ns), env_tele_doms_strat by exact Hlu; reflexivity. }
+        rewrite <- (List.app_assoc ups ns), closed_env_shape_doms_components by exact Hlu; reflexivity. }
       destruct (length_rec_ps D HD k Mk HM c gs gs1 t gs2 Hcon Heq) as (Mj & HMj & HlPs).
       pose proof (rec_prefix_gargs D HD Hc Hsu k Mk HM c gs gs1 t gs2 ups ups a0 ns ns nv nv ys ys Hcon Heq Hgu0 Hlu Ha0 Hnsd INV L (le_n _) Hy)
         as Hgall.
@@ -1739,7 +1739,7 @@ Section ShapeChar.
         rewrite (List.app_assoc ups ns (fa ++ ys)).
         rewrite (ctx_retag_wk_cargs_doms p D Mk gs1 pat (List.firstn kk (ptyp_doms t)) (ups ++ ns) fa ys eq_refl)
           by (first [ rewrite List.length_app, length_im_params; unfold im_np, ind_nu in *; lia | exact Hlk | lia ]).
-        rewrite <- (List.app_assoc ups ns), env_tele_doms_strat by exact Hlu.
+        rewrite <- (List.app_assoc ups ns), closed_env_shape_doms_components by exact Hlu.
         unfold shape_doms_tele; rewrite List.firstn_map; reflexivity. }
       (** The arguments before, as arguments of their telescope. *)
       assert (Hgpf : per_gargs (List.rev C) nil nil (ups ++ ns ++ fa) (ups ++ ns ++ fa)).
@@ -2036,7 +2036,7 @@ Section ShapeChar.
         rewrite (List.app_assoc ups ns (fa ++ ys)).
         rewrite (ctx_retag_wk_cargs_doms p D Mk gs1 pat (List.firstn kk (ptyp_doms t)) (ups ++ ns) fa ys eq_refl)
           by (first [ rewrite List.length_app, length_im_params; unfold im_np, ind_nu in *; lia | exact Hlk | lia ]).
-        rewrite <- (List.app_assoc ups ns), env_tele_doms_strat by exact Hlu.
+        rewrite <- (List.app_assoc ups ns), closed_env_shape_doms_components by exact Hlu.
         unfold TsF, shape_doms_tele; rewrite <- List.firstn_map.
         apply eq_sym; rewrite (List.app_assoc ns nv ys).
         rewrite (List.app_assoc (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) (List.map ce_ass (ptyp_doms t))).
