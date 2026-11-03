@@ -95,9 +95,11 @@ Lemma sem_tuple :
      List.map fst fs = List.map fst (record_fields R) ->
      (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
         Θ ⍮ Ξ ⍮ Γ ⊨ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
+     List.Forall (exp_scoped (List.length Γ)) Ns ->
+     List.Forall (exp_scoped (List.length Γ)) (List.map snd fs) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T fs : T ).
 Proof.
-  intros * HT Hl Hn HNs Hnames HMs; sem_intro; [ assumption |].
+  intros * HT Hl Hn HNs Hnames HMs HNss HFss; sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply valid_exp_under_ctx_tuple; try eassumption.
@@ -112,9 +114,11 @@ Lemma sem_proj :
      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
         Θ ⍮ Ξ ⍮ Γ ⊨ N : A) ->
      List.nth_error (record_fields R) k = Some (f, U) ->
+     List.Forall (exp_scoped (List.length Γ)) Ns ->
+     exp_scoped (List.length Γ) M ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)] ).
 Proof.
-  intros * HM Hl Hn HNs Hk; sem_intro; [ assumption |].
+  intros * HM Hl Hn HNs Hk HNss HMs; sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply valid_exp_under_ctx_proj; try eassumption.
@@ -135,9 +139,12 @@ Lemma sem_exp_eq_tuple_cong :
         List.nth_error (record_fields R) k = Some (f, U) ->
         Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T' fs' : T ->
+     List.Forall (exp_scoped (List.length Γ)) Ns ->
+     List.Forall (exp_scoped (List.length Γ)) (List.map snd fs) ->
+     List.Forall (exp_scoped (List.length Γ)) (List.map snd fs') ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_tuple T fs ≈ a_tuple T' fs' : T ).
 Proof.
-  intros * Ht HTT HT Hl Hn HNs Hnames Hnames' HMs Ht'; sem_intro; [ assumption |].
+  intros * Ht HTT HT Hl Hn HNs Hnames Hnames' HMs Ht' HNss HFss HFss'; sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_tuple_cong; try eassumption.
@@ -152,9 +159,11 @@ Lemma sem_exp_eq_proj_cong :
      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
         Θ ⍮ Ξ ⍮ Γ ⊨ N : A) ->
      List.nth_error (record_fields R) k = Some (f, U) ->
+     List.Forall (exp_scoped (List.length Γ)) Ns ->
+     exp_scoped (List.length Γ) M ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f M ≈ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)] ).
 Proof.
-  intros * HMM Hl Hn HNs Hk; sem_intro; [ assumption |].
+  intros * HMM Hl Hn HNs Hk HNss HMs; sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   record_model_intro Hl.
   eapply rel_exp_under_ctx_proj_cong; try eassumption.
