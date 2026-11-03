@@ -45,14 +45,14 @@ Section Fixed_GCtx.
 
 (** ** The Head Variable as a Term
 
-    [B[wk_q ↑]ʷ[Id ,, #0]] is [B] up to the sort of the entry at index [0]:
-    [Id ,, #0] substitutes the term [#0] where [Id] has the variable [0].  On a
-    context whose head is a term the two denote the same, because the
-    environment relation reads only the head's term value and the tail. *)
+    [B[wk_q ↑]ʷ[Id ,, #0]] is [B] up to the entry at index [0]: [Id ,, #0]
+    substitutes the term [#0] where [Id] has the variable [0].  At a
+    relevant head the term evaluates to the head's value, stored at the
+    declared type; at a propositional one it is kept, [⋆ᵈ⟨#0, ρ⟩], a proof
+    that reads back as the head does.  The context PER reads only the
+    head's value, its readability and the tail, so the two are related. *)
 
 Definition sb_head_term (σ : sub) : sub := sb_extend (Wk ⨟ σ) (se_exp (sentry_exp (σ 0))).
-
-Definition env_head_term (ρ : env) : env := de_term (ρ 0) :: ρ↯.
 
 Lemma exp_sub_wk_q_var0 : forall B σ, B[wk_q ↑]ʷ[Id ,, #0][σ] = B[sb_head_term σ].
 Proof.
@@ -68,120 +68,141 @@ Proof.
   intros σ φ [| x]; cbn; [ rewrite sentry_exp_wk; reflexivity | reflexivity ].
 Qed.
 
-(** The head entry as a term: the entries' sorts are read off the tails,
-    which are unchanged. *)
-#[local] Transparent eval_sub.
-Lemma eval_sub_head_term : forall Γ A σ ρ ρσ,
-    ⟦ σ : Γ ▹ A ⟧s ρ ↘ ρσ -> ⟦ sb_head_term σ : Γ ▹ A ⟧s ρ ↘ env_head_term ρσ.
+(** The head as a term, in the evaluation of a substitution into [Γ ▹ A]
+    at an environment the context PER relates to [ρ']: at a relevant head
+    the head's value, at a propositional one the term kept, which reads
+    back by the premise; either way related to [ρ'] as the evaluation
+    of the substitution is. *)
+Lemma eval_sub_head_term_rel : forall Γ A (i : nat) RΓ σ ρ ρσ ρ',
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> Γ ⊨ᵗ A ≈ A at i ->
+    ⟦ σ : Γ ▹ A ⟧s ρ ↘ ρσ -> Dom ρσ ≈ ρ' ∈ per_env_extend A A RΓ ->
+    proof_readable ⋆ᵈ⟨sentry_exp (σ 0), ρ⟩ ->
+    exists ρh, ⟦ sb_head_term σ : Γ ▹ A ⟧s ρ ↘ ρh /\ Dom ρh ≈ ρ' ∈ per_env_extend A A RΓ.
 Proof.
-  intros * H.
-  assert (Hsk : forall x, List.skipn (S x) (env_head_term ρσ) = List.skipn (S x) ρσ)
-    by (intros x; destruct ρσ; cbn; [ destruct x; reflexivity | reflexivity ]).
-  assert (Hiff : forall x, entry_propositional gc_deps gc_stack (Γ ▹ A) (env_head_term ρσ) x <->
-                      entry_propositional gc_deps gc_stack (Γ ▹ A) ρσ x)
-    by (intros x; split; intros [T HT E HE v Ev Hv]; (econstructor; [ exact HT | | exact Ev | exact Hv ]);
-        [ rewrite <- Hsk | rewrite Hsk ]; exact HE).
-  intros [| x] Hx.
-  - split.
-    + intros Hp; apply Hiff in Hp; cbn [env_head_term env_entry List.hd]; unfold env_var.
-      rewrite (proj1 (H 0 Hx) Hp); reflexivity.
-    + intros Hn; cbn [sb_head_term sb_extend].
-      assert (Hn' : ~ entry_propositional gc_deps gc_stack (Γ ▹ A) ρσ 0) by (intros Hp; apply Hn, Hiff, Hp).
-      exists (ρσ 0); split; [ reflexivity |].
-      exact (eval_sub_var (Γ ▹ A) σ ρ ρσ 0 H Hx Hn').
-  - split.
-    + intros Hp; apply Hiff in Hp; exact (proj1 (H (S x) Hx) Hp).
-    + intros Hn; apply (proj2 (H (S x) Hx)); intros Hp; apply Hn, Hiff, Hp.
+  intros * HΓ HA Hσ Hρ Hpr.
+  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
+  pose proof (rel_type_inversion_simple_at HΓ HA) as HAs.
+  assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
+  pose proof Hρ as [Ht Hh _ Hr _ Rr].
+  assert (Htt : Dom ρσ↯ ≈ ρσ↯ ∈ RΓ) by (etransitivity; [ exact Ht | symmetry; exact Ht ]).
+  pose proof (eval_sub_tail (ce_ass A) Γ σ (fun x => σ (S x)) ρ ρσ (fun _ => eq_refl) Hσ) as Hσt.
+  destruct (HAs _ _ Htt) as (a & a0 & Ea & Ea0 & [Ra HRa]).
+  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+  pose proof (head_propositional_iff (e := ce_ass A) HΓ eq_refl HAs Htt Ea) as Ip.
+  destruct (HAs _ _ Ht) as (b & b' & Eb & Eb' & [Rb HRb]).
+  assert (b = a) as -> by (eapply functional_eval_exp; eassumption).
+  destruct (domain_relevance a) eqn:Er.
+  - (** A relevant head: its value, stored at the declared type. *)
+    assert (Hn : ~ head_propositional gc_deps gc_stack (ce_ass A) Γ ρσ↯) by (rewrite Ip; discriminate).
+    assert (Hn0 : ~ entry_propositional gc_deps gc_stack (Γ ▹ A) ρσ 0)
+      by (intros Hp; apply Hn; exact (proj1 (entry_propositional_zero_head _ _ _) Hp)).
+    pose proof (eval_sub_var (Γ ▹ A) σ ρ ρσ 0 Hσ ltac:(cbn; lia) Hn0) as Ev; cbn [exp_sub] in Ev.
+    exists (ρσ↯ ↦ ρσ 0 ⦂ centry_tag (ce_ass A) Γ ρσ↯); split.
+    + apply (eval_sub_cons_intro (ce_ass A) Γ (sb_head_term σ) (fun x => σ (S x)) _ _ _ (fun _ => eq_refl) Hσt);
+        [ intros Hp; contradiction | intros _; cbn; exists (ρσ 0); split; [ reflexivity | exact Ev ] ].
+    + destruct (per_head_closure_readable HΓA HΓ Ht Hh) as [Rl _].
+      apply per_env_extend_intro; cbn [drop_env List.tl env_entry List.hd]; try assumption.
+      * intros _; eexists; reflexivity.
+      * split; [ exact Rl | cbn; lia ].
+  - (** A propositional head: the term kept. *)
+    assert (Hp : head_propositional gc_deps gc_stack (ce_ass A) Γ ρσ↯) by (rewrite Ip; reflexivity).
+    exists (ρσ↯ ↦ ⋆ᵈ⟨sentry_exp (σ 0), ρ⟩ ⦂ centry_tag (ce_ass A) Γ ρσ↯); split.
+    + apply (eval_sub_cons_intro (ce_ass A) Γ (sb_head_term σ) (fun x => σ (S x)) _ _ _ (fun _ => eq_refl) Hσt);
+        [ intros _; cbn; reflexivity | intros Hn; contradiction ].
+    + pose proof (Hh _ _ _ _ Ea Eb' HRb) as Hh'.
+      pose proof (proj1 (per_univ_elem_propositional _ _ _ _ HRb Er _ _) Hh') as [_ Rp'].
+      assert (Hm : Dom ⋆ᵈ⟨sentry_exp (σ 0), ρ⟩ ≈ ρ' 0 ∈ per_head A A ρσ↯ ρ'↯)
+        by exact (per_head_proof Ea Er Hpr Rp').
+      destruct (per_head_closure_readable HΓA HΓ Ht Hm) as [Rl _].
+      apply per_env_extend_intro; cbn [drop_env List.tl env_entry List.hd]; try assumption.
+      * intros _; eexists; reflexivity.
+      * split; [ exact Rl | cbn; lia ].
 Qed.
 
-(** A substitution whose entries all evaluate to the entries of [ρσ],
-    which holds the proof at the propositions of [Δ], evaluates to it. *)
-Lemma eval_sub_of_entries : forall Δ σ ρ ρσ,
-    (forall x, x < List.length Δ -> ⟦ σ x ⟧ᵉ gc_deps ⍮ gc_stack ⍮ ρ ↘ env_entry ρσ x) ->
-    env_proofs gc_deps gc_stack Δ ρσ -> ⟦ σ : Δ ⟧s ρ ↘ ρσ.
-Proof. intros * Hv Hp x Hx; split; [ apply Hp | intros _; exact (Hv x Hx) ]. Qed.
-#[local] Opaque eval_sub.
-
-(** Arguments of a closed telescope holding its proofs, over an
-    environment holding those of [Γ], hold those of the telescope over
-    [Γ]. *)
-Lemma env_proofs_args_app : forall C Γ B zs, List.length zs = List.length C ->
-    env_proofs gc_deps gc_stack C (env_args B zs) -> env_proofs gc_deps gc_stack Γ B ->
-    env_proofs gc_deps gc_stack (C ++ Γ) (env_args B zs).
-Proof.
-  intros * Hl HC HΓ x Hp.
-  destruct (Nat.lt_ge_cases x (List.length C)) as [Hx | Hx].
-  - exact (HC x (entry_propositional_args_base C Γ B B zs x Hl Hx Hp)).
-  - replace x with (List.length C + (x - List.length C)) in Hp |- * by lia.
-    apply entry_propositional_shiftn in Hp; rewrite <- Hl, skipn_env_args in Hp.
-    rewrite <- Hl, env_entry_args_app; exact (HΓ _ Hp).
-Qed.
-
-(** An environment relation of a context with a term at its head reads only the
-    head's value and the tail: the head as a term entry is related as the
-    head is. *)
-Lemma per_ctx_env_head_term_l : forall {Γ A Γ' A' R},
-    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
-    forall ρ ρ', R ρ ρ' -> R (env_head_term ρ) ρ'.
-Proof.
-  intros * H; inversion H; subst; intros ρ ρ' Hρ.
-  apply_relation_equivalence.
-  destruct Hρ as [Ht Hh Hl Hr]; refine (mk_per_ctx_env_cons_rel _ _ _ _ (env_head_term ρ) ρ' Ht Hh _ Hr); intros _; reflexivity.
-Qed.
-
-Lemma per_ctx_env_head_term_r : forall {Γ A Γ' A' R},
-    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
-    forall ρ ρ', R ρ ρ' -> R ρ (env_head_term ρ').
-Proof.
-  intros * H; inversion H; subst; intros ρ ρ' Hρ.
-  apply_relation_equivalence.
-  destruct Hρ as [Ht Hh Hl Hr]; refine (mk_per_ctx_env_cons_rel _ _ _ _ ρ (env_head_term ρ') Ht Hh Hl _); intros _; reflexivity.
-Qed.
-
-Lemma rel_chain_head_term4 : forall {Γ A R a b c d},
-    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R ->
-    rel_chain R (a :: b :: c :: d :: nil) ->
-    rel_chain R (env_head_term a :: env_head_term b :: c :: d :: nil).
-Proof.
-  intros * HΓ (Hab & Hbc & Hcd).
-  repeat split; [ | | exact Hcd ].
-  - apply (per_ctx_env_head_term_l HΓ), (per_ctx_env_head_term_r HΓ), Hab.
-  - apply (per_ctx_env_head_term_l HΓ), Hbc.
-Qed.
-
-Lemma rel_sub_under_ctx_head_term : forall {Γ' Γ A σ σ'},
+(** A substitution with its head as a term is related to every
+    substitution the original is related to. *)
+Lemma rel_sub_under_ctx_head_term : forall {Γ' Γ A σ σ'} {i : nat},
+    Γ ⊨ᵗ A ≈ A at i ->
     Γ' ⊨ˢ σ ≈ σ' : Γ ▹ A ->
     Γ' ⊨ˢ sb_head_term σ ≈ σ' : Γ ▹ A.
 Proof.
-  intros * [env_rel HΓ' env_relo HΓA Hσ].
-  refine (mk_rel_sub_under_ctx _ _ _ _ env_rel HΓ' env_relo HΓA _).
-  intros Γ'' env_rel' HΓ'' φ Hφ ρ ρ' Hρ.
-  destruct (Hσ _ _ HΓ'' _ Hφ _ _ Hρ) as [a b c d Ha Hb Hc Hd Hchain].
-  apply (mk_rel_sub (env_head_term a) (env_head_term b) c d);
-    [ rewrite sb_wk_head_term; apply eval_sub_head_term; exact Ha
-    | apply eval_sub_head_term; exact Hb | exact Hc | exact Hd |].
-  exact (rel_chain_head_term4 HΓA Hchain).
+  intros * HA [env_rel HΓ' env_relo HΓA Hσ Hσs].
+  pose proof (rel_type_inversion HA) as [RΓ [HΓ _]].
+  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA'.
+  assert (E : env_relo <~> per_env_extend A A RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (HPo : PER env_relo) by (eapply per_env_PER; exact HΓA).
+  assert (Hs0 : sentry_scoped (List.length Γ') (σ 0)) by exact (proj1 (Hσs 0 ltac:(cbn; lia))).
+  refine (mk_rel_sub_under_ctx _ _ _ _ env_rel HΓ' env_relo HΓA _ _).
+  - intros Γ'' env_rel' HΓ'' φ Hφ Hφb ρ ρ' Hρ.
+    destruct (Hσ _ _ HΓ'' _ Hφ Hφb _ _ Hρ) as [a b c d Ha Hb Hc Hd Hchain].
+    pose proof (rel_chain_4_commut_left _ _ _ _ _ Hchain) as Hab.
+    pose proof (rel_chain_4_related _ _ _ _ _ Hchain) as Hbc.
+    pose proof (rel_chain_4_commut_right _ _ _ _ _ Hchain) as Hcd.
+    (** The kept heads read back: their free bounds are inside the
+        contexts the environments are related at. *)
+    assert (Hs0w : exp_scoped (List.length Γ'') (sentry_exp (sb_wk σ φ 0))).
+    { unfold sb_wk; rewrite <- sentry_exp_wk.
+      exact (exp_scoped_wk _ _ _ _ (sentry_exp_scoped _ _ Hs0) Hφb). }
+    pose proof (per_ctx_env_kept_proof_readable _ _ _ _ HΓ'' (exp_scoped_free_bound _ _ Hs0w) _ _ Hρ) as [Rpa _].
+    pose proof (per_ctx_env_kept_proof_readable _ _ _ _ HΓ' (exp_scoped_free_bound _ _ (sentry_exp_scoped _ _ Hs0))
+                  _ _ (Hφ _ _ Hρ)) as [Rpb _].
+    destruct (eval_sub_head_term_rel Γ A i RΓ (sb_wk σ φ) ρ a b HΓ HA Ha (proj1 (E _ _) Hab) Rpa) as (ah & Eah & Hah).
+    destruct (eval_sub_head_term_rel Γ A i RΓ σ (⟪φ⟫ ρ) b c HΓ HA Hb (proj1 (E _ _) Hbc) Rpb) as (bh & Ebh & Hbh).
+    apply E in Hah, Hbh.
+    apply (mk_rel_sub ah bh c d);
+      [ eapply eval_sub_sb_eq; [ symmetry; apply sb_wk_head_term | exact Eah ] | exact Ebh | exact Hc | exact Hd |].
+    apply rel_chain_4; [| exact Hbh | exact Hcd ].
+    etransitivity; [ exact Hah |]; etransitivity; [ exact Hbc | symmetry; exact Hbh ].
+  - intros [| x] Hx; [| exact (Hσs (S x) Hx) ].
+    split; [ exact (sentry_exp_scoped _ _ Hs0) | exact (proj2 (Hσs 0 Hx)) ].
 Qed.
 
-Lemma rel_exp_typ_var0 : forall {Γ A B} {i : nat},
+Lemma rel_exp_typ_var0 : forall {Γ A B} {i j : nat},
+    Γ ⊨ᵗ A ≈ A at j ->
     Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ▹ A ⊨ B[wk_q ↑]ʷ[Id ,, #0] ≈ B : Typeω@i.
 Proof.
-  intros * HB.
+  intros * HA HB.
   pose proof (rel_exp_of_typ_inversion HB) as [env_rel [HΓA HBgen]].
+  pose proof (rel_type_inversion HA) as [RΓ [HΓ _]].
+  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA'.
+  assert (E : env_rel <~> per_env_extend A A RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (HPo : PER env_rel) by (eapply per_env_PER; exact HΓA).
+  destruct (rel_exp_of_typ_inversion_simple HB) as (Rs & HRs & Hsimp).
+  assert (Es : env_rel <~> Rs) by (eapply per_ctx_env_right_irrel; eassumption).
   apply rel_exp_of_typ; exists env_rel, HΓA.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_head_term Hσ) _ _ _ _ Hρ
-              (eval_sub_head_term _ _ _ _ _ Hev) Hev') as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hc].
+  pose proof Hσ as [_ _ _ _ _ Hσs].
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_rel) by (eapply rel_sub_under_ctx_at'; eassumption).
-  assert (Hρσ' : Dom ρσ ≈ ρσ ∈ env_rel) by solve_per.
-  pose proof (eval_sub_id _ _ (proj1 (per_ctx_env_proofs _ _ _ HΓA _ _ Hρσ'))) as Hid.
-  destruct (HBgen _ _ HΓA _ _ (rel_sub_under_ctx_head_term (rel_sub_id (ex_intro _ _ HΓA))) _ _ _ _ Hρσ'
-              (eval_sub_head_term _ _ _ _ _ Hid) Hid) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hd].
+  assert (Hρσ' : Dom ρσ ≈ ρσ ∈ env_rel) by (etransitivity; [ exact Hρσ | symmetry; exact Hρσ ]).
+  (** The head as a term, at [σ]'s evaluation and at the identity's. *)
+  pose proof (per_ctx_env_kept_proof_readable _ _ _ _ HΓ'
+                (exp_scoped_free_bound _ _ (sentry_exp_scoped _ _ (proj1 (Hσs 0 ltac:(cbn; lia))))) _ _ Hρ) as [Rp _].
+  destruct (eval_sub_head_term_rel Γ A j RΓ σ ρ ρσ ρ'σ' HΓ HA Hev (proj1 (E _ _) Hρσ) Rp) as (ρh & Eh & Hh).
+  pose proof (@eval_sub_id gc_deps gc_stack (Γ ▹ A) ρσ) as Hid.
+  assert (Hρσr : Dom ctx_retag (Γ ▹ A) ρσ ≈ ρσ ∈ env_rel) by exact (per_ctx_env_retag_left HΓA _ _ Hρσ').
+  assert (Rpi : proof_readable ⋆ᵈ⟨sentry_exp (Id 0), ρσ⟩).
+  { assert (Hs : exp_scoped (List.length (Γ ▹ A)) #0) by (cbn; lia).
+    pose proof (per_ctx_env_kept_proof_readable _ _ _ _ HΓA (exp_scoped_free_bound _ _ Hs) _ _ Hρσ') as [Rp0 _]; exact Rp0. }
+  destruct (eval_sub_head_term_rel Γ A j RΓ Id ρσ (ctx_retag (Γ ▹ A) ρσ) ρσ HΓ HA Hid (proj1 (E _ _) Hρσr) Rpi)
+    as (ρσh & Eσh & Hσh).
+  apply E in Hh, Hσh.
+  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_head_term HA Hσ) _ _ _ _ Hρ Eh Hev') as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hc].
+  destruct (HBgen _ _ HΓA _ _ (rel_sub_under_ctx_head_term HA (rel_sub_id (ex_intro _ _ HΓA))) _ _ _ _ Hρσ' Eσh Hid)
+    as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hd].
+  (** [B] at the two heads as terms, environments related through [ρσ]. *)
+  assert (Hhh : Dom ρh ≈ ρσh ∈ env_rel)
+    by (etransitivity; [ exact Hh |]; etransitivity; [ symmetry; exact Hρσ | symmetry; exact Hσh ]).
+  destruct (Hsimp _ _ (proj1 (Es _ _) Hhh)) as (e1 & e2 & Ee1 & Ee2 & He12).
+  functional_eval_rewrite_clear.
   apply (mk_rel_exp c1 d1 c3 c4);
     [ rewrite exp_sub_wk_q_var0; exact Hc1 | rewrite exp_wk_q_var0; exact Hd1 | exact Hc3 | exact Hc4 |].
-  functional_eval_rewrite_clear.
-  merge_rel_chain Hc Hd c2.
+  destruct Hc as (C12 & C23 & C34); destruct Hd as (D12 & _ & _).
+  assert (Hcd : per_relevant_nonlevel (per_univ i) c2 d2)
+    by (destruct C12, D12; constructor; first [ exact He12 | assumption ]).
+  apply rel_chain_4; [| | exact C34 ].
+  - etransitivity; [ exact C12 |]; etransitivity; [ exact Hcd | symmetry; exact D12 ].
+  - etransitivity; [ exact D12 |]; etransitivity; [ symmetry; exact Hcd | exact C23 ].
 Qed.
 
 (** ** Substitutions Weakened *)
@@ -575,7 +596,7 @@ Proof.
                (rel_exp_cumu_ge (i := i) (j := max i j) ltac:(lia) HCw) HMw Hv).
     - exact (rel_exp_under_ctx_app_cong_prop (i := i) HAw HCw HMw Hv). }
   eapply rel_exp_under_ctx_subtyp; [ exact H | exact (rel_type_of_typ HC) |].
-  eapply rel_subtyp_under_ctx_refl; exact (rel_type_of_typ (rel_exp_typ_var0 HC)).
+  eapply rel_subtyp_under_ctx_refl; exact (rel_type_of_typ (rel_exp_typ_var0 HAt HC)).
 Qed.
 
 (** The type of a member is a relevant type: an inductive or a record
@@ -976,35 +997,9 @@ Proof.
   rewrite !List.skipn_app, (List.skipn_all2 cs'), (List.skipn_all2 cs) by lia; rewrite Hl', Hl, Nat.sub_diag; reflexivity.
 Qed.
 
-(** ** The Parameters of a Member, Split at the Uniform Ones *)
-Lemma params_valid_split : forall D k Mk Γ Ps, decl_closed D -> ind_member D k = Some Mk ->
-    List.length Ps = im_np D Mk ->
-    (forall j P T, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ps) j = Some T -> Γ ⊨ P : T) ->
-    (forall j U T, List.nth_error (List.firstn (ind_nu D) Ps) j = Some U ->
-       List.nth_error (tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)) j = Some T -> Γ ⊨ U : T) /\
-    (forall j N T, List.nth_error (List.skipn (ind_nu D) Ps) j = Some N ->
-       List.nth_error (tele_insts (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) (List.skipn (ind_nu D) Ps)) j
-         = Some T ->
-       Γ ⊨ N : T).
-Proof.
-  intros * Hc HM Hl HPs.
-  assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in Hl; lia).
-  assert (Hti : tele_insts (im_params D Mk) Id Ps
-                = tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)
-                  ++ tele_insts (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) (List.skipn (ind_nu D) Ps)).
-  { rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; unfold im_params; apply tele_insts_app;
-      [ exact (decl_uparams_ass D Hc) | rewrite HUl; reflexivity ]. }
-  assert (Hl2 : List.length (tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)) = ind_nu D)
-    by (rewrite length_tele_insts by exact (decl_uparams_ass D Hc); rewrite HUl; unfold ind_nu; lia).
-  split; intros j N T HN HT.
-  - apply (HPs j); [ rewrite <- (List.firstn_skipn (ind_nu D) Ps), List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact HN |].
-    rewrite Hti, List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact HT.
-  - apply (HPs (ind_nu D + j)).
-    + rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; rewrite List.nth_error_app2 by lia.
-      rewrite HUl; replace (ind_nu D + j - ind_nu D) with j by lia; exact HN.
-    + rewrite Hti, List.nth_error_app2 by lia; rewrite Hl2; replace (ind_nu D + j - ind_nu D) with j by lia; exact HT.
-Qed.
+(** ** The Parameters of a Member, Joined at the Uniform Ones
 
+    The converse of [params_valid_split]. *)
 Lemma params_valid_join : forall D k Mk Γ Us Ns, decl_closed D -> ind_member D k = Some Mk -> List.length Us = ind_nu D ->
     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Γ ⊨ U : T) ->
     (forall j N T, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (im_nparams Mk) (sb_of_list Id Us) Ns) j = Some T ->
@@ -1033,36 +1028,6 @@ Proof.
   rewrite ind_mty_sub by (try exact Hc; apply length_ind_uvars); f_equal.
   - unfold ind_uvars; rewrite <- HUl; cbn [Nat.add]; apply vars_from_sb_qn.
   - apply vars_from_sub; lia.
-Qed.
-
-Lemma mty_vars_valid_at : forall p D, valid_group p D -> containers_valid D ->
-    forall k Mk Φ, ind_member D k = Some Mk -> ⊨ Φ ++ im_params D Mk ->
-    exists i : nat, Φ ++ im_params D Mk
-      ⊨ ind_mty p D k (ind_uvars D (im_nn Mk) (List.length Φ)) (vars_from (List.length Φ) (im_nn Mk)) : Typeω@i.
-Proof.
-  intros p D Hg Hcv k Mk Φ HM HP.
-  pose proof (valid_group_valid _ _ Hg) as HD; pose proof (valid_group_closed _ _ Hg) as Hc.
-  assert (Hvars : forall j N T, List.nth_error (vars_from (List.length Φ) (im_np D Mk)) j = Some N ->
-             List.nth_error (tele_insts (im_params D Mk) Id (vars_from (List.length Φ) (im_np D Mk))) j = Some T ->
-             Φ ++ im_params D Mk ⊨ N : T).
-  { intros j N T HN HT.
-    rewrite <- length_im_params in HN, HT.
-    exact (valid_vars_tele Φ (im_params D Mk) (member_params_ass D Hc _ _ HM) (decl_closed_params D _ _ Hc HM)
-             (decl_params_mvc _ _ _ (valid_group_typed _ _ Hg) _ _ HM) HP _ _ _ HN HT). }
-  destruct (params_valid_split D k Mk (Φ ++ im_params D Mk) (vars_from (List.length Φ) (im_np D Mk)) Hc HM (length_vars_from _ _) Hvars)
-    as [_ HNs].
-  assert (Hsk : List.skipn (ind_nu D) (vars_from (List.length Φ) (im_np D Mk)) = vars_from (List.length Φ) (im_nn Mk)).
-  { unfold im_np; rewrite Nat.add_comm, <- vars_from_app.
-    rewrite skipn_app_len by (rewrite length_vars_from; reflexivity); reflexivity. }
-  assert (Hfs : List.firstn (ind_nu D) (vars_from (List.length Φ) (im_np D Mk)) = ind_uvars D (im_nn Mk) (List.length Φ)).
-  { unfold im_np, ind_uvars; rewrite Nat.add_comm, <- vars_from_app.
-    rewrite firstn_app_len by (rewrite length_vars_from; reflexivity); reflexivity. }
-  rewrite Hsk, Hfs in HNs.
-  assert (HZ : ⊨ (Φ ++ im_nparams Mk) ++ ind_uparams D) by (rewrite <- List.app_assoc; exact HP).
-  destruct (valid_group_mty_valid p D Hg Hcv k Mk (Φ ++ im_nparams Mk) (im_nn Mk) (List.length Φ) (vars_from (List.length Φ) (im_nn Mk)) HM HZ
-              ltac:(rewrite List.length_app, length_im_nparams; lia) (length_vars_from _ _)
-              ltac:(intros * HN HT; rewrite <- List.app_assoc; exact (HNs _ _ _ HN HT))) as [i Hi].
-  exists i; rewrite <- List.app_assoc in Hi; exact Hi.
 Qed.
 
 Lemma mty_vars_valid : forall p D, valid_group p D -> containers_valid D ->
