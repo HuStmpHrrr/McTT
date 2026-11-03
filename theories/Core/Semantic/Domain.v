@@ -172,6 +172,10 @@ with entry_type : Set :=
     of an argument [v] of shape [t], its components in [ρ], the motives [As]
     in [ρm], the group at [p] at [ups] *)
 | entry_type_induction_hypothesis : list dentry -> list exp -> qname -> list domain -> list dentry -> ptyp -> domain -> nat -> entry_type
+(** [entry_type_member h n]: the declared type of the term member [n] of
+    the module value [h], as the open of a local body adds it.  It is
+    resolved only at readback ([dmod_member_type]). *)
+| entry_type_member : dmod -> string -> entry_type
 (** No type: the term part of a module slot, an entry past the end of an
     environment, an entry evaluation never reads the type of (the pads of
     the kinds).  It has no value ([eval_entry_type]), so an entry at it

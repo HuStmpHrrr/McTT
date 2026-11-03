@@ -195,10 +195,11 @@ Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domai
     entries it makes ([kinds_env]), as evaluation would but with no value
     for any definition, so that no term is evaluated: a kind does not
     depend on the values of terms, nor on a module's arguments, which are
-    terms ([kinds_pads]).  The bodies read are expanded: the core open
-    phase has replaced every local open by the entries it generates.  The
-    relations read a closure or a submodule closure as selection on module
-    values does ([eval_selm]). *)
+    terms ([kinds_pads]).  A local open of a body is read through the
+    kinds of the members its items name in its target ([kinds_items_env],
+    the [gunit_member_kind_item_*] cases), as its expansion would be read.
+    The relations read a closure or a submodule closure as selection on
+    module values does ([eval_selm]). *)
 
 (** The closure of a unit over [ρ], as kinds read it: a saturated alias is
     left as a closure, which kinds read through. *)
@@ -222,6 +223,19 @@ Definition kinds_body_entry (ρ : env) (y : string) (E : gentry) : dentry :=
   | ge_record _ p _ _ => let U := gu_mk nil (md_alias (qname_mod p)) in de_mod (dm_clo U ρ) U
   | ge_def_mod _ _ _ U => de_dm d_prop entry_type_none (dm_clo U ρ) U
   | _ => absent_entry
+  end.
+
+(** The entry an item of a local open adds over [ρ], as kinds read it, by
+    the kind [k] of the member it names, its module part the closure of the
+    alias [U] the open generates for it ([items_gen]): a term, a pad
+    ([absent_entry]), as no term is evaluated; a module, the closure of
+    [U]; a member with a term part and a module part, a pad term part and
+    the closure of [U]. *)
+Definition kinds_item_entry (ρ : env) (U : gunit) (k : member_kind) : dentry :=
+  match k with
+  | member_kind_term _ => absent_entry
+  | member_kind_mod => de_mod (dm_clo U ρ) U
+  | member_kind_dm => de_dm d_prop entry_type_none (dm_clo U ρ) U
   end.
 
 (** The kind of a member with a term part and a module part, by its module
@@ -332,6 +346,40 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
     kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
     gunit_member_kind Θ Ξ ρ1 Uy ch k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
+(** A name a local open declares, by the kind of the member it names in
+    the open's target, read in the environment of the body before the open
+    ([gm_item_upto]), as the open generates it ([items_gen]): a definition
+    of a term member, an alias of a module member or of the target itself,
+    and a definition with a module part of a member with both parts. *)
+(** The item names a term member of the target: a term of its sort *)
+| gunit_member_kind_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x r,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) (member_kind_term r) ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) (member_kind_term r)
+(** The item names a module member of the target: the chain is read in
+    that member *)
+| gunit_member_kind_item_mod : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_mod ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: ch) k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
+(** The item names a member of the target with a term part and a module
+    part: the chain is read in that member, so at the empty chain it is a
+    definition with a module part *)
+| gunit_member_kind_item_dm : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_dm ->
+    modexp_member_kind Θ Ξ ρ0 H (n :: ch) k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
+(** The item names the target itself: the chain is read in the target *)
+| gunit_member_kind_item_self : forall ρ Δ sm Φ Φ0 H its1 d pv ρ0 x ch k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (None, d, pv)) ->
+    kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ0 ρ0 ->
+    modexp_member_kind Θ Ξ ρ0 H ch k ->
+    gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
 (** An alias unit: the chain is read in its target *)
 | gunit_member_kind_alias : forall ρ Δ E ch k,
     modexp_member_kind Θ Ξ (kinds_pads (List.length Δ) ρ) E ch k ->
@@ -374,16 +422,44 @@ with kinds_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** An entry adds its [kinds_body_entry] *)
 | kinds_env_ext : forall ρ Φ ρ1 y E,
     kinds_env Θ Ξ ρ Φ ρ1 ->
-    kinds_env Θ Ξ ρ (gm_ext Φ y E) (kinds_body_entry ρ1 y E :: ρ1).
+    kinds_env Θ Ξ ρ (gm_ext Φ y E) (kinds_body_entry ρ1 y E :: ρ1)
+(** An open adds the entries of its items, over the environment of the
+    body before it ([kinds_items_env]) *)
+| kinds_env_open : forall ρ Φ ρ1 H its ρ2,
+    kinds_env Θ Ξ ρ Φ ρ1 ->
+    kinds_items_env Θ Ξ ρ1 H 0 ρ1 its ρ2 ->
+    kinds_env Θ Ξ ρ (gm_open Φ H its) ρ2
+(** [kinds_items_env Θ Ξ ρ0 H k ρ its ρ']: the entries the items [its] of
+    an open of [H] add over [ρ], as kinds read them, [ρ0] the environment
+    of the body before the open and [k] the number of items before [its].
+    Each is the entry of the alias the open generates for it, under the
+    [k] entries before it ([gens_append]), by the kind of the member it
+    names in [H] at [ρ0] ([kinds_item_entry]); no term is evaluated. *)
+with kinds_items_env (Θ : gdeps) (Ξ : gstack) : env -> modexp -> nat -> env -> list import_item -> env -> Prop :=
+(** No item adds nothing *)
+| kinds_items_env_nil : forall ρ0 H k ρ, kinds_items_env Θ Ξ ρ0 H k ρ nil ρ
+(** An item naming no member: the alias of [H] itself, a module *)
+| kinds_items_env_self : forall ρ0 H k ρ d pv its ρ',
+    kinds_items_env Θ Ξ ρ0 H (S k)
+      (kinds_item_entry ρ (gu_mk nil (md_alias (modexp_wk H (wk_shiftn k)))) member_kind_mod :: ρ) its ρ' ->
+    kinds_items_env Θ Ξ ρ0 H k ρ ((None, d, pv) :: its) ρ'
+(** An item naming the member [n] of [H], of the kind [kd] *)
+| kinds_items_env_member : forall ρ0 H k ρ n d pv kd its ρ',
+    modexp_member_kind Θ Ξ ρ0 H (n :: nil) kd ->
+    kinds_items_env Θ Ξ ρ0 H (S k)
+      (kinds_item_entry ρ (gu_mk nil (md_alias (modexp_wk (me_mem H n) (wk_shiftn k)))) kd :: ρ) its ρ' ->
+    kinds_items_env Θ Ξ ρ0 H k ρ ((Some n, d, pv) :: its) ρ'.
 
 Scheme dmod_member_kind_mut_ind := Induction for dmod_member_kind Sort Prop
 with gunit_member_kind_mut_ind := Induction for gunit_member_kind Sort Prop
 with modexp_member_kind_mut_ind := Induction for modexp_member_kind Sort Prop
-with kinds_env_mut_ind := Induction for kinds_env Sort Prop.
-Combined Scheme kind_mut_ind from dmod_member_kind_mut_ind, gunit_member_kind_mut_ind, modexp_member_kind_mut_ind, kinds_env_mut_ind.
+with kinds_env_mut_ind := Induction for kinds_env Sort Prop
+with kinds_items_env_mut_ind := Induction for kinds_items_env Sort Prop.
+Combined Scheme kind_mut_ind from dmod_member_kind_mut_ind, gunit_member_kind_mut_ind, modexp_member_kind_mut_ind,
+  kinds_env_mut_ind, kinds_items_env_mut_ind.
 
 #[export]
-Hint Constructors dmod_member_kind gunit_member_kind modexp_member_kind kinds_env : mctt.
+Hint Constructors dmod_member_kind gunit_member_kind modexp_member_kind kinds_env kinds_items_env : mctt.
 
 (** * Evaluation of Expressions
 
@@ -1129,6 +1205,27 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      entry_tm E = Some (A, M) ->
      entry_relevance E = propositional ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
+(** A name a local open of a saturated body declares for a relevant term
+    member, or for the term part of a member with a module part, of its
+    target: the member of the target's value, the target read in the
+    environment of the body before the open ([gm_item_upto]).  For
+    example, [x] of [module where open A (x) end] is [A]'s [x]. *)
+| eval_sel_body_item :
+  `( gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ0 ->
+     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ g ->
+     modexp_member_kind Θ Ξ ρ0 H (n :: nil) k ->
+     k = member_kind_term relevant \/ k = member_kind_dm ->
+     g ·ₜ n Θ ⍮ Ξ ↘ r ->
+     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ r )
+(** A name a local open of a saturated body declares for a proof member of
+    its target: a proof, kept as the selection of the name from the body,
+    as for a written proof ([eval_sel_body_proof]). *)
+| eval_sel_body_item_proof :
+  `( gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ0 ->
+     modexp_member_kind Θ Ξ ρ0 H (n :: nil) (member_kind_term propositional) ->
+     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
@@ -1170,6 +1267,22 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₘ y Θ ⍮ Ξ ↘ r )
+(** A name a local open of a saturated body declares for a member of its
+    target with a module part: the submodule of the target's value, the
+    target read in the environment of the body before the open. *)
+| eval_selm_body_item :
+  `( gm_item_upto Φ y = Some (Φ0, H, its1, (Some n, d, pv)) ->
+     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ0 ->
+     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ g ->
+     g ·ₘ n Θ ⍮ Ξ ↘ r ->
+     dm_local nil (md_body sm Φ) ρ ·ₘ y Θ ⍮ Ξ ↘ r )
+(** A name a local open of a saturated body declares for its target
+    itself ([open E as y]): the target's value. *)
+| eval_selm_body_item_self :
+  `( gm_item_upto Φ y = Some (Φ0, H, its1, (None, d, pv)) ->
+     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ0 ->
+     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ r ->
+     dm_local nil (md_body sm Φ) ρ ·ₘ y Θ ⍮ Ξ ↘ r )
 (** A submodule of a submodule closure extends the chain. *)
 | eval_selm_member :
   `( dm_member h ch ·ₘ y Θ ⍮ Ξ ↘ dm_member h (ch ++ y :: nil) )
@@ -1205,8 +1318,7 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** A definition tagged relevant adds its value.  A body is read by the
     sorts its definitions are tagged with, as selection reads it
     ([eval_sel_body]): typing makes a definition's tag the sort of its
-    type, a definition an open generates included: the core open phase
-    gives it the type of the member it names ([items_gen]). *)
+    type. *)
 | eval_body_env_def :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
@@ -1228,7 +1340,59 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
      ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ entry_type_closure A ρ1 ‖ h ⦂ gu_mk Δy Dy )
-where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_body_env Θ Ξ ρ Φ ρ').
+(** A local open adds the entries of its items, built on the value of its
+    target in the environment of the body before it ([eval_items_env]).
+    For example, in [module where open A (x) end ; def y : ℕ ≔ x end] the
+    open adds [x] as [A]'s [x], which [y]'s body [#0] then reads. *)
+| eval_body_env_open :
+  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
+     eval_items_env Θ Ξ ρ1 H h 0 ρ1 its ρ2 ->
+     ⟦ gm_open Φ H its ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 )
+where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_body_env Θ Ξ ρ Φ ρ')
+(** [eval_items_env Θ Ξ ρ0 H h k ρ its ρ']: the entries the items [its] of
+    an open of [H] add over [ρ], [ρ0] the environment of the body before the
+    open, [h] the value of [H] there and [k] the number of items before
+    [its].  Each is the entry the body the open generates ([items_gen],
+    [gens_append]) adds there ([eval_body_env]), but for its type, the
+    declared type of the member it names ([entry_type_member]), resolved at
+    readback; the kind of that member in [H] at [ρ0] says which
+    ([modexp_member_kind]). *)
+with eval_items_env (Θ : gdeps) (Ξ : gstack) : env -> modexp -> dmod -> nat -> env -> list import_item -> env -> Prop :=
+(** No item adds nothing. *)
+| eval_items_env_nil :
+  `( eval_items_env Θ Ξ ρ0 H h k ρ nil ρ )
+(** An item naming no member: the alias of [H] itself, its value [h]. *)
+| eval_items_env_self :
+  `( eval_items_env Θ Ξ ρ0 H h (S k) (ρ ↦ᵐ h ⦂ gu_mk nil (md_alias (modexp_wk H (wk_shiftn k)))) its ρ' ->
+     eval_items_env Θ Ξ ρ0 H h k ρ ((None, d, pv) :: its) ρ' )
+(** An item naming a relevant term member: its value. *)
+| eval_items_env_term :
+  `( modexp_member_kind Θ Ξ ρ0 H (n :: nil) (member_kind_term relevant) ->
+     h ·ₜ n Θ ⍮ Ξ ↘ v ->
+     eval_items_env Θ Ξ ρ0 H h (S k) (ρ ↦ v ⦂ entry_type_member h n) its ρ' ->
+     eval_items_env Θ Ξ ρ0 H h k ρ ((Some n, d, pv) :: its) ρ' )
+(** An item naming a proof member: the selection, kept, as the generated
+    definition adds it ([eval_body_env_def_proof]). *)
+| eval_items_env_proof :
+  `( modexp_member_kind Θ Ξ ρ0 H (n :: nil) (member_kind_term propositional) ->
+     eval_items_env Θ Ξ ρ0 H h (S k) (ρ ↦ ⋆ᵈ⟨(a_mem H n)[wk_shiftn k]ʷ, ρ⟩ ⦂ entry_type_member h n) its ρ' ->
+     eval_items_env Θ Ξ ρ0 H h k ρ ((Some n, d, pv) :: its) ρ' )
+(** An item naming a module member: the submodule, at the alias of the
+    selection. *)
+| eval_items_env_mod :
+  `( modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_mod ->
+     h ·ₘ n Θ ⍮ Ξ ↘ g ->
+     eval_items_env Θ Ξ ρ0 H h (S k) (ρ ↦ᵐ g ⦂ gu_mk nil (md_alias (modexp_wk (me_mem H n) (wk_shiftn k)))) its ρ' ->
+     eval_items_env Θ Ξ ρ0 H h k ρ ((Some n, d, pv) :: its) ρ' )
+(** An item naming a member with a term part and a module part: both. *)
+| eval_items_env_dm :
+  `( modexp_member_kind Θ Ξ ρ0 H (n :: nil) member_kind_dm ->
+     h ·ₜ n Θ ⍮ Ξ ↘ v ->
+     h ·ₘ n Θ ⍮ Ξ ↘ g ->
+     eval_items_env Θ Ξ ρ0 H h (S k)
+       (ρ ↦ᵈ v ⦂ entry_type_member h n ‖ g ⦂ gu_mk nil (md_alias (modexp_wk (me_mem H n) (wk_shiftn k)))) its ρ' ->
+     eval_items_env Θ Ξ ρ0 H h k ρ ((Some n, d, pv) :: its) ρ' ).
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
 with eval_app_mut_ind := Induction for eval_app Sort Prop
@@ -1254,7 +1418,8 @@ with eval_neutral_fields_mut_ind := Induction for eval_neutral_fields Sort Prop
 with eval_projs_mut_ind := Induction for eval_projs Sort Prop
 with eval_ihtys_mut_ind := Induction for eval_ihtys Sort Prop
 with eval_field_vals_mut_ind := Induction for eval_field_vals Sort Prop
-with eval_app_args_mut_ind := Induction for eval_app_args Sort Prop.
+with eval_app_args_mut_ind := Induction for eval_app_args Sort Prop
+with eval_items_env_mut_ind := Induction for eval_items_env Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_app_mut_ind,
@@ -1280,11 +1445,12 @@ Combined Scheme eval_mut_ind from
   eval_projs_mut_ind,
   eval_ihtys_mut_ind,
   eval_field_vals_mut_ind,
-  eval_app_args_mut_ind.
+  eval_app_args_mut_ind,
+  eval_items_env_mut_ind.
 
 #[export]
 Hint Constructors eval_exp eval_proj eval_neutral_fields eval_projs eval_elim eval_ihs eval_ih eval_mref eval_shape_type eval_ihty eval_ihtys eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
-  eval_selc eval_selmc eval_body_env eval_field_vals eval_app_args : mctt.
+  eval_selc eval_selmc eval_body_env eval_field_vals eval_app_args eval_items_env : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
     application, so unifying against it directly can pick the wrong [ρ] and

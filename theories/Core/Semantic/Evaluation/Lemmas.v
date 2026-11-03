@@ -14,7 +14,8 @@ Import Domain_Notations.
     (forall h ch k1, dmod_member_kind Θ Ξ h ch k1 -> forall k2, dmod_member_kind Θ Ξ h ch k2 -> k1 = k2) /\
     (forall ρ U ch k1, gunit_member_kind Θ Ξ ρ U ch k1 -> forall k2, gunit_member_kind Θ Ξ ρ U ch k2 -> k1 = k2) /\
     (forall ρ H ch k1, modexp_member_kind Θ Ξ ρ H ch k1 -> forall k2, modexp_member_kind Θ Ξ ρ H ch k2 -> k1 = k2) /\
-    (forall ρ Φ ρ1, kinds_env Θ Ξ ρ Φ ρ1 -> forall ρ2, kinds_env Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2).
+    (forall ρ Φ ρ1, kinds_env Θ Ξ ρ Φ ρ1 -> forall ρ2, kinds_env Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2) /\
+    (forall ρ0 H k ρ its ρ1, kinds_items_env Θ Ξ ρ0 H k ρ its ρ1 -> forall ρ2, kinds_items_env Θ Ξ ρ0 H k ρ its ρ2 -> ρ1 = ρ2).
   Proof.
     intros Θ Ξ; apply kind_mut_ind; intros;
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
@@ -24,6 +25,10 @@ Import Domain_Notations.
         | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
+        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _),
           H2 : (exists TΦ, Members.gc_loc Θ Ξ ?p = Some TΦ) \/ (exists b pv ra A B, Members.gc_resolve Θ Ξ ?p = Some (ge_def b pv ra A B)) |- _ =>
