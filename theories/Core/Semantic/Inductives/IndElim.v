@@ -1183,7 +1183,16 @@ Section Fixed_GCtx.
       ; elim_ups_ok_rview_elements_readable_at_ub : forall j Mj qr Is fl cups u u' v v', ind_member D j = Some Mj ->
           im_head Mj = mh_record qr Is fl -> adm_uparams D ups nr ar dr u -> adm_uparams D ups nr ar dr u' ->
           ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ub ↘ cups ->
-          grp_rel p D ups nr ar dr j u u' nil nil v v' -> entry_readable (de_term v' (entry_type_value (d_record qr cups))) }.
+          grp_rel p D ups nr ar dr j u u' nil nil v v' -> entry_readable (de_term v' (entry_type_value (d_record qr cups)))
+        (** A member's types at [ua] and at [ub], at related non-uniform
+            parameters, read back alike: the scrutinee type a block is
+            read back at.  For [Vec (A : Type) : ℕ → Type] at [ua] and
+            [ub] the same [A], [Vec A n] and [Vec A n'] read back alike for
+            related [n] and [n'] *)
+      ; elim_ups_ok_member_types_alike : forall j Mj hd k pa pb bs bs', ind_member D j = Some Mj -> im_is_rview Mj = false ->
+          ⟦mref j of p ua ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pa) -> ⟦mref j of p ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pb) ->
+          tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs' ->
+          Dom d_ind hd k (pa ++ bs) ≈ d_ind hd k (pb ++ bs') ∈ per_top_typ }.
 
     Section ElimRel.
       Variable (i : universe_index) (ρa ρb : env) (Bksa Bksb : list eblock) (ua ub : list domain).
@@ -1446,7 +1455,7 @@ Section Fixed_GCtx.
         destruct (im_ref_target _ _ _ _ HM Hr) as (Dq & Mk & Hq & HMk & Hnn & Hnu).
         destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb'].
         pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm Hs1 Hs2) as Hm1.
-        destruct Hups as [La Lb Aa Ab Ma Mb _ Ra Rb _ _].
+        destruct Hups as [La Lb Aa Ab Ma Mb _ Ra Rb _ _ _].
         destruct (mref_at_ref _ _ _ _ _ Ma HM Hrv Hr) as [cupsa Hca].
         destruct (mref_at_ref _ _ _ _ _ Mb HM Hrv Hr) as [cupsb Hcb].
         pose proof (grp_rel_neut_rebase _ _ _ _ ua ub _ _ _ _ _ _ _ _ HM Hrv Hm1) as Hm2.
@@ -1705,7 +1714,7 @@ Section Fixed_GCtx.
           rewrite Hcs in Hcs'; injection Hcs' as <- <-.
           pose proof (functional_eval_projs _ _ _ _ Ep Ew) as <-; pose proof (functional_eval_projs _ _ _ _ Ep' Ew') as <-.
           destruct (con_args_rel_length _ _ _ _ _ _ _ _ _ _ Hc) as [L1 L2].
-          destruct Hups as [_ _ Ca Cb _ _ _ _ _ _ _].
+          destruct Hups as [_ _ Ca Cb _ _ _ _ _ _ _ _].
           pose proof (rview_fields_doms ua ub Ca Cb k Mk qr Is fl c gs vs vs' HM Hh Hcs L1 L2 Hn) as Hd.
           exact (IH eq_refl eq_refl eq_refl eq_refl (is_neut_projs _ _ _ Ep Hv) (is_neut_projs _ _ _ Ep' Hv') Hd bs Hbs).
         - (** No argument. *)
@@ -1942,7 +1951,7 @@ Section Fixed_GCtx.
         induction t as [j Ps | B t IH]; intros * Hau Hau' Lp Lp' Hr Hd.
         - inversion Hr as [? ? ? ? bs ? ? bs' ? ? ? ? _ _ Hk Hk' Hi |]; subst.
           inversion Hd as [? ? ? ? ? bsX bsY EX EY AX AY |]; subst.
-          pose proof Hups as [_ _ _ _ Ma Mb _ Ra Rb Va Vb].
+          pose proof Hups as [_ _ _ _ Ma Mb _ Ra Rb Va Vb _].
           destruct (grp_rel_member _ _ _ _ _ _ _ Hi) as [Mj HM].
           destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
           1-2: assert (Hrv : im_is_rview Mj = false) by (unfold im_is_rview; rewrite Hh; reflexivity);
@@ -2054,7 +2063,7 @@ Section Fixed_GCtx.
           inversion Hr as [? ? ? ? bs0 ? ? bs0' ? ? ? ? Eb0 Eb0' Hk Hk' Hi |]; subst.
           pose proof (functional_eval_exps' _ _ _ _ Eb Eb0) as <-; pose proof (functional_eval_exps' _ _ _ _ Eb' Eb0') as <-.
           inversion Hd as [? ? ? ? ? bsX bsY EX EY AX AY |]; subst.
-          pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _].
+          pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _ _].
           (** The motive is at the parameters at [ua] and [ub], related to
               the element's own. *)
           pose proof (admissible_indices_rel _ _ _ _ _ _ _ HM Hk AX) as HbX.
@@ -2092,7 +2101,7 @@ Section Fixed_GCtx.
           rewrite Hcs in Hcs0; injection Hcs0 as <- <-.
           pose proof (functional_eval_projs _ _ _ _ Ew Ew0) as <-; pose proof (functional_eval_projs _ _ _ _ Ew' Ew0') as <-.
           destruct (con_args_rel_length _ _ _ _ _ _ _ _ _ _ Hca) as [L1 L2].
-          pose proof Hups as [_ _ Ca Cb _ _ _ _ _ _ _].
+          pose proof Hups as [_ _ Ca Cb _ _ _ _ _ _ _ _].
           pose proof (rview_fields_doms ua ub Ca Cb j Mj qr Is fl c gs ws ws' HM Hh Hcs L1 L2 Hn) as Hds.
           destruct (IH Hau Hau' eq_refl eq_refl Hca Hds) as (as1 & as2 & T1 & T2 & R1 & R2).
           exists as1, as2; split; [| split; [| split; assumption ] ].
@@ -2255,7 +2264,7 @@ Section Fixed_GCtx.
             (List.map snd (cargs_entries p ub (components_env D ub (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) (ns' ++ pre')) gs2 vs')).
       Proof.
         intros k Mk c gs u u' ns ns' Hau Hau' HM Hc Hn.
-        pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _].
+        pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _ _].
         pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mk HM _ _ Hn) as Hnn.
         pose proof (proj1 (tele_rel_iff _ _ _ _) Hn) as (Ln & Ln' & _).
         induction gs2 as [| [rA A | t] gs2 IH]; intros gs1 pre pre' [| v vs] [| v' vs'] Heq Hp Hr Hc' Hd;
@@ -2326,7 +2335,7 @@ Section Fixed_GCtx.
             (List.map snd (branch_entries D Mv p ub (blocks_motives Bksb) ρb gs ns' vs' ihs')).
       Proof.
         intros * Hau Hau' HM Hc Hn Hr Hca Hrr.
-        pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _].
+        pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _ _].
         pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI v Mv HM _ _ Hn) as Hnn.
         pose proof (proj1 (tele_rel_iff _ _ _ _) Hn) as (Ln & Ln' & _).
         destruct (con_args_rel_length _ _ _ _ _ _ _ _ _ _ Hca) as [Lv Lv'].
@@ -2468,7 +2477,7 @@ Section Fixed_GCtx.
             List.map (map_normal_branch (fun _ => nf_erase)) Bs' = List.map (map_normal_branch (fun _ => nf_erase)) Bs''.
       Proof.
         intros s v Mv Mi hd Dh k prea preb nsa nsb ba bb HM Hrv Ha Hb Hnn La Lb Hra Hrb Fa Fb.
-        pose proof Hups as [_ _ Aa Ab _ _ _ Ra Rb _ _].
+        pose proof Hups as [_ _ Aa Ab _ _ _ Ra Rb _ _ _].
         pose proof (fresh_tele_length _ _ _ _ Fa) as Lna; pose proof (fresh_tele_length _ _ _ _ Fb) as Lnb.
         rewrite List.length_rev in Lna, Lnb.
         induction cs as [| [c gs'] cs IH]; intros [| [[c1 n1] B1] Bs1] [| [[c2 n2] B2] Bs2] Hcs HB1 HB2 Hn1 Hn2;
@@ -2595,7 +2604,7 @@ Section Fixed_GCtx.
           destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb].
           (** The motive's entries, the fresh parameters and the fresh
               neutral at the member's type, read back. *)
-          pose proof Hups as [_ _ Aa Ab _ _ _ Rda Rdb _ _].
+          pose proof Hups as [_ _ Aa Ab _ _ _ Rda Rdb _ _ Tya].
           assert (Hnn0 : tele_rel (nr (elim_src sel i0)) (List.rev (im_nparams Mv)) nsa nsb)
             by (inversion Hne; subst;
                 [ match goal with H0 : ind_member D _ = Some ?M0 |- _ => rewrite HM in H0; injection H0 as <- end; assumption
@@ -2631,13 +2640,16 @@ Section Fixed_GCtx.
           { unfold brs_names; rewrite Hnames; exact (HnaB _ _ _ HM Hb). }
           destruct (IH (S i0)) as (NBks & NBks' & RN1 & RN2 & HEn).
           { intros n Mi' Hn; replace (S i0 + n) with (i0 + S n) by lia; exact (HMs (S n) Mi' Hn). }
-          exists (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks), (cons (mk_normal_block (S (im_nn Mi)) A'' Bs'') NBks');
+          (** The block's scrutinee type: the member's type at the fresh
+              parameters, read back alike on the two sides. *)
+          destruct (Tya _ _ _ _ _ _ _ _ HM Hrv Ra Rb Hnn0 (s + im_nn Mi)) as [Z' Z'' RZ1 RZ2 HEZ].
+          exists (cons (mk_normal_block (S (im_nn Mi)) Z' A' Bs') NBks), (cons (mk_normal_block (S (im_nn Mi)) Z'' A'' Bs'') NBks');
             split; [| split ].
           + eapply read_blocks_cons; [ exact Hl | exact HM | exact Ha | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity
-                                     | exact Ra | exact Fa | exact Ea1 | exact RA1 | exact RB1 | exact RN1 ].
+                                     | exact Ra | exact Fa | exact RZ1 | exact Ea1 | exact RA1 | exact RB1 | exact RN1 ].
           + eapply read_blocks_cons; [ exact Hl | exact HM | exact Hb | rewrite (HnmB _ _ _ HM Hb), Hnn; reflexivity
-                                     | exact Rb | exact Fb | exact Ea2 | exact RA2 | exact RB2 | exact RN2 ].
-          + exact (f_equal2 (fun b l => b :: l) (f_equal2 (mk_normal_block _) HEA HEb) HEn).
+                                     | exact Rb | exact Fb | exact RZ2 | exact Ea2 | exact RA2 | exact RB2 | exact RN2 ].
+          + cbn [List.map]; f_equal; [ unfold map_normal_block; cbn; f_equal; assumption | exact HEn ].
       Qed.
 
       (** *** The Fresh Arguments of a Branch
@@ -2732,7 +2744,7 @@ Section Fixed_GCtx.
           args_pair v nsu c gsf Dh (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) nsa nsb wsa wsb gs' gs s s2.
       Proof.
         intros v Mv c gsf nsu nsa nsb Dh rk r Ha Hb La Lb Hma Hmb HM Hc Hpl Hn1 Hn2 Hrk HIH.
-        pose proof Hups as [_ _ HAa HAb _ _ _ _ _ _ _].
+        pose proof Hups as [_ _ HAa HAb _ _ _ _ _ _ _ _].
         pose proof (proj1 (tele_rel_iff _ _ _ _) Hn1) as (Lnu & Ln1 & _).
         pose proof (proj1 (tele_rel_iff _ _ _ _) Hn2) as (_ & Ln2 & _).
         induction gs' as [| g' gs' IH]; intros [| g gs] gs1 wsu wsa wsb s s2 Heq Hk Hno C1 C2 Hw1 Hw2;
@@ -3032,7 +3044,7 @@ Section Fixed_GCtx.
           Dom d_elim ρa Bksa p ua j as1 e ≈ d_elim ρb Bksb p ub j as2 e' ∈ per_bot.
       Proof.
         intros * HM Hrvj Hrk HIH Hm.
-        destruct Hups as [La Lb Ca Cb Ma Mb Hcu _ _ _ _].
+        destruct Hups as [La Lb Ca Cb Ma Mb Hcu _ _ _ _ _].
         pose proof (adm_fresh_of_uparams p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ua Ca) as Ha.
         pose proof (adm_fresh_of_uparams p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ub Cb) as Hb.
         inversion Hm as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hrv0 Hr Hn L1 L2 Hs1 Hs2 He |]; subst;

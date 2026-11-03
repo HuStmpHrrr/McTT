@@ -216,6 +216,10 @@ Section Fixed_GCtx.
           ↘ block_read_pair_ab
         (** The two motives read back alike *)
       ; block_read_pair_motive_read : per_top_typ block_read_pair_aa block_read_pair_ab
+        (** The two scrutinee types read back alike *)
+      ; block_read_pair_scrutinee_type_read :
+          per_top_typ (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_prea ++ block_read_pair_nsa))
+            (d_ind block_read_pair_hd block_read_pair_k (block_read_pair_preb ++ block_read_pair_nsb))
         (** The left block has one branch per constructor of [Mi] *)
       ; block_read_pair_names_a : brs_names (im_cons Mi) (eb_brs block_read_pair_ba)
         (** So has the right one *)
@@ -235,20 +239,21 @@ Section Fixed_GCtx.
       intros s Dc sela selb Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
       - exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
       - destruct (HMs 0 Mi eq_refl) as [Mva Mvb ba bb hd k prea preb nsa nsb aa ab HMa HMb Hba Hbb Hnma Hnmb Ra Rb Fa Fb Ea Eb
-                                        Hrd Hna Hnb Hbrs].
+                                        Hrd Hrz Hna Hnb Hbrs].
         rewrite Nat.add_0_r in *.
         destruct (Hrd (S (s + im_nn Mi))) as [A' A'' RA1 RA2 HEA].
+        destruct (Hrz (s + im_nn Mi)) as [Z' Z'' RZ1 RZ2 HEZ].
         destruct (read_brs_pair s Dc Mi hd k prea preb Mva Mvb (eb_motive ba) (eb_motive bb) nsa nsb Fa Fb
                     (im_cons Mi) (eb_brs ba) (eb_brs bb) Hbrs Hna Hnb) as (Bs' & Bs'' & RB1 & RB2 & HEb).
         destruct (IH (S i0)) as (NBks & NBks' & RN1 & RN2 & HEn).
         { intros n Mi' Hn; replace (S i0 + n) with (i0 + S n) by lia; exact (HMs (S n) Mi' Hn). }
-        exists (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks), (cons (mk_normal_block (S (im_nn Mi)) A'' Bs'') NBks');
+        exists (cons (mk_normal_block (S (im_nn Mi)) Z' A' Bs') NBks), (cons (mk_normal_block (S (im_nn Mi)) Z'' A'' Bs'') NBks');
           split; [| split ].
-        + eapply read_blocks_cons; [ exact Hla | exact HMa | exact Hba | exact Hnma | exact Ra | exact Fa | exact Ea
+        + eapply read_blocks_cons; [ exact Hla | exact HMa | exact Hba | exact Hnma | exact Ra | exact Fa | exact RZ1 | exact Ea
                                    | exact RA1 | exact RB1 | exact RN1 ].
-        + eapply read_blocks_cons; [ exact Hlb | exact HMb | exact Hbb | exact Hnmb | exact Rb | exact Fb | exact Eb
+        + eapply read_blocks_cons; [ exact Hlb | exact HMb | exact Hbb | exact Hnmb | exact Rb | exact Fb | exact RZ2 | exact Eb
                                    | exact RA2 | exact RB2 | exact RN2 ].
-        + exact (f_equal2 (fun b l => b :: l) (f_equal2 (mk_normal_block _) HEA HEb) HEn).
+        + cbn [List.map]; f_equal; [ unfold map_normal_block; cbn; f_equal; assumption | exact HEn ].
     Qed.
 
     (** Two stuck eliminators read as the eliminator of the member [k] of
