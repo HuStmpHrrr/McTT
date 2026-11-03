@@ -57,27 +57,39 @@ Qed.
 
 (** ** Closures and Global Telescopes *)
 
-Lemma close_unsat : forall Δ D ρ, 0 < List.length Δ -> ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_local Δ D ρ.
+Lemma close_unsat : forall Δ D ρ, 0 < List.length Δ -> ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_local Δ (moddef_expand D) ρ.
 Proof. intros * Hl; destruct D; [ apply eval_close_body | apply eval_close_alias; exact Hl ]. Qed.
 
-(** A closure given fewer arguments than it lacks parameters. *)
-Lemma appms_local : forall args Δ D ρ, tele_ass Δ -> List.length args < List.length Δ ->
+(** Closing a definition and closing its expansion give the same value:
+    a closure stores the expansion ([eval_close_body]), and expanding
+    twice is expanding once. *)
+Lemma eval_close_expand_iff : forall Δ D ρ h,
+    ⟦ Δ ⊢ moddef_expand D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ h <-> ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ h.
+Proof.
+  intros Δ [sm Φ | E] ρ h; cbn [moddef_expand]; [| reflexivity ].
+  split; intros Hc; inversion Hc; subst; [ rewrite gm_expand_idem | rewrite <- (gm_expand_idem Φ) at 2 ]; apply eval_close_body.
+Qed.
+
+(** A closure of an expanded definition given fewer arguments than it
+    lacks parameters. *)
+Lemma appms_local : forall args Δ D ρ, moddef_expand D = D -> tele_ass Δ -> List.length args < List.length Δ ->
     $ᵐ*| dm_local Δ D ρ & args | gc_deps ⍮ gc_stack ↘
       dm_local (List.firstn (List.length Δ - List.length args) Δ) D (env_tele ρ (List.rev Δ) args).
 Proof.
-  induction args as [| c args IH]; intros * Ha Hl; cbn [List.length] in *.
+  induction args as [| c args IH]; intros * HD Ha Hl; cbn [List.length] in *.
   - rewrite Nat.sub_0_r, List.firstn_all; constructor.
   - destruct (tele_ass_last _ Ha ltac:(destruct Δ; cbn in Hl; [ lia | discriminate ])) as (Δ0 & A & ->).
     rewrite List.length_app in Hl |- *; cbn [List.length] in Hl |- *.
     apply List.Forall_app in Ha as [Ha0 _].
-    econstructor; [ apply eval_appm_local, close_unsat; lia |].
+    econstructor; [ apply eval_appm_local; apply close_unsat; lia |].
+    rewrite HD.
     replace (List.length Δ0 + 1 - S (List.length args)) with (List.length Δ0 - List.length args) by lia.
     rewrite List.firstn_app, (proj2 (Nat.sub_0_le (List.length Δ0 - List.length args) (List.length Δ0)) ltac:(lia)).
     cbn [List.firstn]; rewrite List.app_nil_r.
     (** The argument extends the environment at its parameter's type, as a
         closure there: the head of the telescope, outermost first. *)
     rewrite List.rev_app_distr; cbn [List.rev List.app].
-    exact (IH _ _ _ Ha0 ltac:(lia)).
+    exact (IH _ _ _ HD Ha0 ltac:(lia)).
 Qed.
 
 Lemma appms_snoc : forall args h c r,
@@ -165,7 +177,7 @@ Proof.
     match goal with Hc : eval_close _ _ _ ?D nil ?h0 |- _ =>
       pose proof (functional_eval_close _ _ _ _ _ Hc (close_unsat (Δy ++ T) D nil ltac:(rewrite List.length_app; lia))) as -> end.
     match goal with Ha' : eval_appms _ _ (dm_local _ ?D _) args r |- _ =>
-      pose proof (functional_eval_appms _ _ _ _ Ha' (appms_local args (Δy ++ T) D nil Ha ltac:(rewrite List.length_app; lia))) as -> end.
+      pose proof (functional_eval_appms _ _ _ _ Ha' (appms_local args (Δy ++ T) D nil (moddef_expand_idem _) Ha ltac:(rewrite List.length_app; lia))) as -> end.
     inversion Hn; subst.
     match goal with Hm0 : gc_loc _ _ p = Some _ |- _ => rewrite Hm in Hm0; injection Hm0 as <- <- end.
     match goal with Hx : nth_error (rev T) _ = Some ?e |- _ =>

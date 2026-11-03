@@ -363,7 +363,8 @@ Fixpoint body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
       body_sorts_valid Φ0 D /\
       forall A M, entry_tm E = Some (A, M) ->
         exists Srt, relevant_sort Srt /\ body_ctx Φ0 ++ D ⊨ A : relevance_sort (entry_relevance E) Srt
-  | gm_open Φ0 _ _ => body_sorts_valid Φ0 D
+  (* read on expansions only ([body_xp]), which have no open *)
+  | gm_open Φ0 _ _ _ => body_sorts_valid Φ0 D
   end.
 
 (** *** Contexts

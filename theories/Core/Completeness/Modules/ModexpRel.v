@@ -329,7 +329,7 @@ Proof.
 Qed.
 
 Lemma lit_params_val : forall ρ Δ X D,
-    ⟦ me_lit (gu_mk (Δ ++ ce_ass X :: nil) D) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_local (Δ ++ ce_ass X :: nil) D ρ.
+    ⟦ me_lit (gu_mk (Δ ++ ce_ass X :: nil) D) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_local (Δ ++ ce_ass X :: nil) (moddef_expand D) ρ.
 Proof. intros; apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia. Qed.
 
 Lemma lit_params_lacks : forall Γ Δ X D i, Γ ⊨ X : Typeω@i -> modexp_next_param Γ (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) X.
@@ -337,7 +337,7 @@ Proof.
   intros * HX R HR ρ Hρ.
   destruct (rel_exp_of_typ_inversion_simple_at HR HX _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
   pose proof (functional_eval_exp _ _ _ _ Ha Ha') as <-.
-  exists (dm_local (Δ ++ ce_ass X :: nil) D ρ) a a i Ra; [ apply lit_params_val | constructor; exact Ha | exact Ha | exact HRa ].
+  exists (dm_local (Δ ++ ce_ass X :: nil) (moddef_expand D) ρ) a a i Ra; [ apply lit_params_val | constructor; exact Ha | exact Ha | exact HRa ].
 Qed.
 
 (** The closures of related literals with an outermost parameter, given
@@ -360,7 +360,7 @@ Proof.
   destruct (Hap c c' (Hc _ _ _ _ Ha Ha' HRX)) as (hc & hc' & Hc1 & Hc2 & Hcc).
   inversion Hc1; subst; inversion Hc2; subst.
   repeat match goal with Hl : _ ++ _ = _ ++ _ |- _ => apply app_inj_tail in Hl as [-> [= ->]] end.
-  exists hc hc'; [ apply eval_me_lit; assumption | apply eval_me_lit; assumption | exact Hcc ].
+  exists hc hc'; [ apply eval_me_lit, eval_close_expand_iff; assumption | apply eval_me_lit, eval_close_expand_iff; assumption | exact Hcc ].
 Qed.
 
 Section Beta.
@@ -518,7 +518,7 @@ Section Beta.
       destruct (beta_link _ _ _ HR Hρ'ρ' Hn') as [g hc'' Hg Hc'' Hgc].
       pose proof (functional_eval_modexp _ _ _ _ Hc'' Hc') as ->.
       exists hc, g; split; [| split; [ exact Hg | exact (per_dmod_trans _ _ _ Hcc (per_dmod_sym _ _ Hgc)) ] ].
-      econstructor; [ apply lit_params_val | exact Hn | apply eval_appm_local, eval_me_lit_iff; exact Hc ].
+      econstructor; [ apply lit_params_val | exact Hn | apply eval_appm_local, eval_close_expand_iff, eval_me_lit_iff; exact Hc ].
   Qed.
 End Beta.
 

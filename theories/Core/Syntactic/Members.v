@@ -2547,6 +2547,20 @@ Definition gunit_expand (U : gunit) : gunit :=
 Lemma gunit_expand_idem : forall U, gunit_expand (gunit_expand U) = gunit_expand U.
 Proof. intros [Δ [sm Φ | E]]; cbn [gunit_expand]; [ rewrite gm_expand_idem |]; reflexivity. Qed.
 
+(** A module definition with its body expanded: what a closure of it
+    stores ([eval_close]). *)
+Definition moddef_expand (D : moddef) : moddef :=
+  match D with
+  | md_body sm Φ => md_body sm (gm_expand Φ)
+  | md_alias E => md_alias E
+  end.
+
+Lemma gunit_expand_mk : forall Δ D, gunit_expand (gu_mk Δ D) = gu_mk Δ (moddef_expand D).
+Proof. intros Δ [sm Φ | E]; reflexivity. Qed.
+
+Lemma moddef_expand_idem : forall D, moddef_expand (moddef_expand D) = moddef_expand D.
+Proof. intros [sm Φ | E]; cbn [moddef_expand]; [ rewrite gm_expand_idem |]; reflexivity. Qed.
+
 Lemma gm_binders_graft : forall Φ Φg, gm_binders (gm_graft Φ Φg) = gm_binders Φg + gm_binders Φ.
 Proof. intros Φ Φg; induction Φg; cbn; lia. Qed.
 

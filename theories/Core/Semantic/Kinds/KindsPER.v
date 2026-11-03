@@ -28,6 +28,10 @@ Section Fixed_GCtx.
       exists σ, kinds_env gc_deps gc_stack ρ Φ σ /\ kinds_shape gc_deps gc_stack ρ1 σ.
   Proof. intros * He; exact (kind_eval_body_env _ _ _ _ _ He ρ (kinds_shape_refl _ _ ρ)). Qed.
 
+  (** Related bodies are expanded: they have no open. *)
+  Lemma per_body_noopen : forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> gm_noopen Φ /\ gm_noopen Φ'.
+  Proof. induction 1; cbn; tauto. Qed.
+
   Lemma per_dmod_kinds_equiv_all :
     (forall h h', per_dmod h h' -> kinds_equiv gc_deps gc_stack h h') /\
     (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> True) /\
@@ -39,7 +43,9 @@ Section Fixed_GCtx.
     - (* global *)
       intros ch0 k0; split; apply dmod_member_kind_global_args.
     - (* bodies *)
-      intros [| y ch] kk; rewrite !dmod_member_kind_local_iff; [ split; intros Hu; inversion Hu; subst; apply gunit_member_kind_self | apply H ].
+      destruct (per_body_noopen _ _ _ _ p) as [Hn Hn'].
+      intros [| y ch] kk; rewrite !dmod_member_kind_local_iff; cbn [gunit_expand];
+        rewrite (gm_expand_noopen _ Hn), (gm_expand_noopen _ Hn'); [ split; intros Hu; inversion Hu; subst; apply gunit_member_kind_self | apply H ].
     - (* a missing parameter: at the reflection of a variable *)
       match goal with Hu : per_univ_elem _ _ _ _ |- _ => pose proof (var_per_elem 0 Hu) as Hv end.
       match goal with E1 : forall c c', _ -> exists hc, $ᵐ| h & c | _ ⍮ _ ↘ hc,
@@ -62,7 +68,8 @@ Section Fixed_GCtx.
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
       destruct (body_kinds_env _ _ _ e) as (σ & Hk & Hs).
       destruct (body_kinds_env _ _ _ e0) as (σ' & Hk' & Hs').
-      assert (HUy : forall ch k, gunit_member_kind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> gunit_member_kind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
+      assert (HUy : forall ch k, gunit_member_kind gc_deps gc_stack σ (gunit_expand (gu_mk Δy Dy)) ch k <->
+                                     gunit_member_kind gc_deps gc_stack σ' (gunit_expand (gu_mk Δy' Dy')) ch k).
       { intros chx kx; rewrite <- (gunit_member_kind_id _ _ _ _ (proj1 Hs)), <- (gunit_member_kind_id _ _ _ _ (proj1 Hs')),
           <- (kind_eval_close _ _ _ _ _ _ e1), <- (kind_eval_close _ _ _ _ _ _ e2); apply H0. }
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
@@ -79,7 +86,8 @@ Section Fixed_GCtx.
       assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
       destruct (body_kinds_env _ _ _ e) as (σ & Hk & Hs).
       destruct (body_kinds_env _ _ _ e0) as (σ' & Hk' & Hs').
-      assert (HUy : forall ch k, gunit_member_kind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> gunit_member_kind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
+      assert (HUy : forall ch k, gunit_member_kind gc_deps gc_stack σ (gunit_expand (gu_mk Δy Dy)) ch k <->
+                                     gunit_member_kind gc_deps gc_stack σ' (gunit_expand (gu_mk Δy' Dy')) ch k).
       { intros chx kx; rewrite <- (gunit_member_kind_id _ _ _ _ (proj1 Hs)), <- (gunit_member_kind_id _ _ _ _ (proj1 Hs')),
           <- (kind_eval_close _ _ _ _ _ _ e1), <- (kind_eval_close _ _ _ _ _ _ e2); apply H0. }
       split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
