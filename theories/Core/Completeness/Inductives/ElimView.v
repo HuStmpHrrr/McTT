@@ -57,85 +57,92 @@ Section Fixed_GCtx.
     has none. *)
 Section CrossRel.
   Variables (D D' : ind_decl).
-  Variable (dr : nat -> list domain -> exp -> relation domain).
+  Variable (dr : nat -> list domain -> list centry -> exp -> relation domain).
   Variable (Rel : nat -> list domain -> domain -> list domain -> domain -> relation domain).
   Variables (ρa : env) (pq : qname) (ua : list domain) (Bksa : list eblock).
 
   (** The recursive results [rs] of the container's argument [v] of shape
       [t'], along the container's leaf paths, against [rs'] of the
       group's argument [v'] of shape [t], along the group's, after the
-      values [pre] and [pre'] of the shapes' components: at the end at
-      members with a block, related at [Rel] of the group's member; at
+      values [pre] and [pre'] of the shapes' components, of the group's
+      telescope [Ts] on both sides: at the end at members with a block,
+      related at [Rel] of the group's member at the group's parameters; at
       record views, those of their fields at the projections; at a domain,
       pointwise. *)
   Inductive cross_result_rel (k : nat) (u u' : list domain) :
-      list domain -> list domain -> ptyp -> ptyp -> domain -> domain -> list domain -> list domain -> Prop :=
+      list domain -> list domain -> list centry -> ptyp -> ptyp -> domain -> domain -> list domain -> list domain -> Prop :=
   (** At the end, at members with a block: related at [Rel] of the
-      group's member [j] *)
-  | cross_result_self : forall pre pre' j' Mj' Ps' j Mj Ps bs bs' v v' ih ih',
+      group's member [j], the group's parameters evaluated in the
+      environment of the components *)
+  | cross_result_self : forall pre pre' Ts j' Mj' Ps' j Mj Ps bs bs' v v' ih ih',
       ind_member D' j' = Some Mj' -> im_is_rview Mj' = false ->
       ind_member D j = Some Mj -> im_is_rview Mj = false ->
-      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs ->
-      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' ->
+      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u Ts pre ↘ bs ->
+      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u' Ts pre' ↘ bs' ->
       Rel j bs v bs' v' ih ih' ->
-      cross_result_rel k u u' pre pre' (pt_self j' Ps') (pt_self j Ps) v v' (ih :: nil) (ih' :: nil)
+      cross_result_rel k u u' pre pre' Ts (pt_self j' Ps') (pt_self j Ps) v v' (ih :: nil) (ih' :: nil)
   (** At the end, at record views of one record and fields: the results of
       their fields at the projections *)
-  | cross_result_rview : forall pre pre' j' Mj' qr Is' fl c' gs' Ps' j Mj Is c gs Ps v v' ws ws' rs rs',
+  | cross_result_rview : forall pre pre' Ts j' Mj' qr Is' fl c' gs' Ps' j Mj Is c gs Ps v v' ws ws' rs rs',
       ind_member D' j' = Some Mj' -> im_head Mj' = mh_record qr Is' fl -> im_cons Mj' = (c', gs') :: nil ->
       ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl -> im_cons Mj = (c, gs) :: nil ->
       ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> ⟦projs fl of v' ⟧ gc_deps ⍮ gc_stack ↘ ws' ->
-      cross_fields_rel j u u' nil nil gs' gs ws ws' rs rs' ->
-      cross_result_rel k u u' pre pre' (pt_self j' Ps') (pt_self j Ps) v v' rs rs'
+      cross_fields_rel j u u' nil nil nil gs' gs ws ws' rs rs' ->
+      cross_result_rel k u u' pre pre' Ts (pt_self j' Ps') (pt_self j Ps) v v' rs rs'
   (** At a domain: pointwise at related arguments, the results on both
       sides taking relevant arguments, as at [rec_result_pi] *)
-  | cross_result_pi : forall pre pre' B' t' B t v v' rs rs',
-      (forall c c', dr k pre B c c' -> cross_result_app_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t' t v c v' c' rs rs') ->
+  | cross_result_pi : forall pre pre' Ts B' t' B t v v' rs rs',
+      (forall c c', dr k pre Ts B c c' ->
+         cross_result_app_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t' t v c v' c' rs rs') ->
       List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs ->
       List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs' ->
-      cross_result_rel k u u' pre pre' (pt_pi B' t') (pt_pi B t) v v' rs rs'
+      cross_result_rel k u u' pre pre' Ts (pt_pi B' t') (pt_pi B t) v v' rs rs'
   with cross_result_app_rel (k : nat) (u u' : list domain) :
-      list domain -> list domain -> ptyp -> ptyp -> domain -> domain -> domain -> domain -> list domain -> list domain -> Prop :=
+      list domain -> list domain -> list centry -> ptyp -> ptyp -> domain -> domain -> domain -> domain -> list domain -> list domain
+      -> Prop :=
   (** The arguments and each result applied, related at the rest *)
-  | cross_result_app_mk : forall pre pre' t' t v c v' c' rs rs' fc fc' rcs rcs',
+  | cross_result_app_mk : forall pre pre' Ts t' t v c v' c' rs rs' fc fc' rcs rcs',
       $| v & c | gc_deps ⍮ gc_stack ↘ fc -> $| v' & c' | gc_deps ⍮ gc_stack ↘ fc' ->
       List.Forall2 (fun f r => $| f & c | gc_deps ⍮ gc_stack ↘ r) rs rcs ->
       List.Forall2 (fun f r => $| f & c' | gc_deps ⍮ gc_stack ↘ r) rs' rcs' ->
-      cross_result_rel k u u' pre pre' t' t fc fc' rcs rcs' ->
-      cross_result_app_rel k u u' pre pre' t' t v c v' c' rs rs'
+      cross_result_rel k u u' pre pre' Ts t' t fc fc' rcs rcs' ->
+      cross_result_app_rel k u u' pre pre' Ts t' t v c v' c' rs rs'
   (** The recursive results [w] of the container's arguments [vs] of kinds
       [gs'] against [ihs] of the group's arguments [vs'] of kinds [gs],
       after the values [pre] and [pre'] of the non-uniform parameters and
-      the non-recursive arguments before them. *)
+      the non-recursive arguments before them, of the group's telescope
+      [Ts]. *)
   with cross_fields_rel (k : nat) (u u' : list domain) :
-      list domain -> list domain -> list carg -> list carg -> list domain -> list domain -> list domain -> list domain -> Prop :=
+      list domain -> list domain -> list centry -> list carg -> list carg -> list domain -> list domain -> list domain -> list domain
+      -> Prop :=
   (** No argument *)
-  | cross_fields_nil : forall pre pre', cross_fields_rel k u u' pre pre' nil nil nil nil nil nil
-  (** Non-recursive in both: no result, the argument joins the prefixes *)
-  | cross_fields_arg : forall pre pre' rA' A' rA A gs' gs v v' vs vs' w ihs,
-      cross_fields_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs' gs vs vs' w ihs ->
-      cross_fields_rel k u u' pre pre' (ca_arg rA' A' :: gs') (ca_arg rA A :: gs) (v :: vs) (v' :: vs') w ihs
+  | cross_fields_nil : forall pre pre' Ts, cross_fields_rel k u u' pre pre' Ts nil nil nil nil nil nil
+  (** Non-recursive in both: no result, the argument joins the prefixes, at
+      the group's type *)
+  | cross_fields_arg : forall pre pre' Ts rA' A' rA A gs' gs v v' vs vs' w ihs,
+      cross_fields_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs' gs vs vs' w ihs ->
+      cross_fields_rel k u u' pre pre' Ts (ca_arg rA' A' :: gs') (ca_arg rA A :: gs) (v :: vs) (v' :: vs') w ihs
   (** Nested through: no result of the container's; the group's are its
       eliminator's *)
-  | cross_fields_nest : forall pre pre' rA' A' t gs' gs v v' vs vs' w rs' ihs,
+  | cross_fields_nest : forall pre pre' Ts rA' A' t gs' gs v v' vs vs' w rs' ihs,
       ⟦ih v' of t under pq ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ rs' ->
-      cross_fields_rel k u u' pre pre' gs' gs vs vs' w ihs ->
-      cross_fields_rel k u u' pre pre' (ca_arg rA' A' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') w (rs' ++ ihs)
+      cross_fields_rel k u u' pre pre' Ts gs' gs vs vs' w ihs ->
+      cross_fields_rel k u u' pre pre' Ts (ca_arg rA' A' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') w (rs' ++ ihs)
   (** Recursive in both: the results along each side's leaf paths, the
       container's one per path of the group's it has *)
-  | cross_fields_rec : forall pre pre' t' t gs' gs v v' vs vs' rs rs' w ihs,
+  | cross_fields_rec : forall pre pre' Ts t' t gs' gs v v' vs vs' rs rs' w ihs,
       List.length rs = leaves_in_count D' t' (shape_leaves (rview_leaves D) 0 t) ->
       List.length rs' = List.length (shape_leaves (rview_leaves D) 0 t) ->
-      cross_result_rel k u u' pre pre' t' t v v' rs rs' ->
-      cross_fields_rel k u u' pre pre' gs' gs vs vs' w ihs ->
-      cross_fields_rel k u u' pre pre' (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') (rs ++ w) (rs' ++ ihs).
+      cross_result_rel k u u' pre pre' Ts t' t v v' rs rs' ->
+      cross_fields_rel k u u' pre pre' Ts gs' gs vs vs' w ihs ->
+      cross_fields_rel k u u' pre pre' Ts (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') (rs ++ w) (rs' ++ ihs).
 
-  Lemma cross_fields_rel_vs_len : forall k u u' pre pre' gs' gs vs vs' w ihs,
-      cross_fields_rel k u u' pre pre' gs' gs vs vs' w ihs -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
+  Lemma cross_fields_rel_vs_len : forall k u u' pre pre' Ts gs' gs vs vs' w ihs,
+      cross_fields_rel k u u' pre pre' Ts gs' gs vs vs' w ihs -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
   Proof. induction 1; cbn; lia. Qed.
 
-  Lemma cross_fields_rel_w_len : forall k u u' pre pre' gs' gs vs vs' w ihs,
-      cross_fields_rel k u u' pre pre' gs' gs vs vs' w ihs -> List.length w = cargs_container_count D D' gs' gs.
+  Lemma cross_fields_rel_w_len : forall k u u' pre pre' Ts gs' gs vs vs' w ihs,
+      cross_fields_rel k u u' pre pre' Ts gs' gs vs vs' w ihs -> List.length w = cargs_container_count D D' gs' gs.
   Proof. induction 1; cbn [cargs_container_count List.length]; rewrite ?List.length_app; lia. Qed.
 End CrossRel.
 
@@ -151,7 +158,7 @@ Combined Scheme cross_result_rel_mut_ind_all from cross_result_rel_mut_ind, cros
 Fixpoint leaf_skeleton (l : leaf_path) : leaf_path :=
   match l with
   | leaf_self _ _ => leaf_self 0 nil
-  | leaf_pi _ l1 => leaf_pi a_placeholder_type (leaf_skeleton l1)
+  | leaf_pi _ l1 => leaf_pi exp_default (leaf_skeleton l1)
   | leaf_proj f _ l1 => leaf_proj f nil (leaf_skeleton l1)
   end.
 
@@ -310,10 +317,10 @@ Section ViewCount.
         cbn [shape_leaves]; rewrite (rview_leaves_not_rview _ _ _ HMj Hrv), (rview_leaves_not_rview _ _ _ HMj' Hrv').
         cbn [List.filter leaf_in]; rewrite HMj', Hrv'; reflexivity.
     - cbn [shape_leaves]; rewrite filter_map_pi, !List.map_map.
-      transitivity (List.map (fun l => leaf_pi a_placeholder_type (leaf_skeleton l)) (List.filter (leaf_in D' t1') (shape_leaves (rview_leaves D) (S m) t1)));
+      transitivity (List.map (fun l => leaf_pi exp_default (leaf_skeleton l)) (List.filter (leaf_in D' t1') (shape_leaves (rview_leaves D) (S m) t1)));
         [ reflexivity |].
-      transitivity (List.map (fun l => leaf_pi a_placeholder_type (leaf_skeleton l)) (shape_leaves (rview_leaves D') (S m') t1')); [| reflexivity ].
-      rewrite <- !(List.map_map leaf_skeleton (leaf_pi a_placeholder_type)), (IHt t1 (S m) (S m') Hrk Hsc); reflexivity.
+      transitivity (List.map (fun l => leaf_pi exp_default (leaf_skeleton l)) (shape_leaves (rview_leaves D') (S m') t1')); [| reflexivity ].
+      rewrite <- !(List.map_map leaf_skeleton (leaf_pi exp_default)), (IHt t1 (S m) (S m') Hrk Hsc); reflexivity.
   Qed.
 
   (** A path of the container's ([leaf_in]) is one of the group's: the
@@ -692,7 +699,7 @@ Proof.
   - rewrite sb_qn_ge by exact Hz.
     assert (HU : forall x, (exists M, sb_of_list Id Us x = se_exp M) \/ sb_of_list Id Us x = se_var (x - List.length Us)).
     { intros x; destruct (Nat.lt_ge_cases x (List.length Us)) as [Hx | Hx].
-      - left; rewrite (sb_of_list_nth _ _ _ a_placeholder_type) by exact Hx; eexists; reflexivity.
+      - left; rewrite (sb_of_list_nth _ _ _ exp_default) by exact Hx; eexists; reflexivity.
       - right; replace x with (List.length Us + (x - List.length Us)) at 1 by lia; rewrite sb_of_list_ge; reflexivity. }
     destruct (HU (z - (List.length pat + nn))) as [[M EM] | EM]; rewrite EM; cbn [sentry_wk sentry_sub sentry_exp].
     + right; exists M; rewrite exp_sub_of_wk, exp_wk_wk, <- exp_sub_of_wk; apply exp_sub_sb_eq.
@@ -870,12 +877,13 @@ Qed.
 (** The value of the wrapped branch's recursive results: the container's,
     variables of the last [|w|] entries of the environment, where the
     paths are its, the values of the group's [ihsE] elsewhere
-    ([merge_leaves], [merge_ihs]). *)
-Lemma eval_wrap_leaves : forall D' t' ls ihs ihsE C Y w r',
-    List.length ihs = List.length ls -> ⟦ ihs ⟧* gc_deps ⍮ gc_stack ⍮ env_args C (Y ++ w) ↘ ihsE ->
+    ([merge_leaves], [merge_ihs]), whatever the types the entries are
+    stored at. *)
+Lemma eval_wrap_leaves : forall D' t' ls ihs ihsE C (Y w : list (domain * entry_type)) r',
+    List.length ihs = List.length ls -> ⟦ ihs ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (Y ++ w) ↘ ihsE ->
     r' + leaves_in_count D' t' ls <= List.length w ->
-    ⟦ wrap_leaves D' t' ls ihs r' (List.length w) ⟧* gc_deps ⍮ gc_stack ⍮ env_args C (Y ++ w)
-      ↘ merge_leaves D' t' ls ihsE (List.skipn r' w).
+    ⟦ wrap_leaves D' t' ls ihs r' (List.length w) ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (Y ++ w)
+      ↘ merge_leaves D' t' ls ihsE (List.skipn r' (List.map fst w)).
 Proof.
   intros D' t'; induction ls as [| l ls IH]; intros [| ih ihs] ihsE C Y w r' Lh Ev Lw; cbn in Lh; try discriminate.
   - inversion Ev; subst; cbn; constructor.
@@ -884,21 +892,23 @@ Proof.
       by (unfold leaves_in_count; cbn; destruct (leaf_in D' t' l); reflexivity).
     rewrite Hc in Lw; cbn [wrap_leaves merge_leaves].
     destruct (leaf_in D' t' l).
-    + destruct (nth_error_lt_some' w r' ltac:(lia)) as [a Ha].
+    + destruct (nth_error_lt_some' (List.map fst w) r' ltac:(rewrite List.length_map; lia)) as [a Ha].
       rewrite (skipn_nth_cons _ _ _ Ha); cbn [List.hd List.tl].
       constructor; [| apply IH; [ lia | exact Ees | lia ] ].
-      pose proof (eval_var_args C (Y ++ w) (List.length w - 1 - r') ltac:(rewrite List.length_app; lia)) as HV.
-      replace (List.nth (List.length (Y ++ w) - 1 - (List.length w - 1 - r')) (Y ++ w) d_placeholder) with a in HV; [ exact HV |].
-      rewrite List.length_app, List.app_nth2 by lia.
+      replace a with (env_var (env_extend_typed C (Y ++ w)) (List.length w - 1 - r')); [ constructor |].
+      rewrite env_var_extend_typed by (rewrite List.length_app; lia).
+      rewrite List.map_app, List.length_app, List.app_nth2 by (rewrite List.length_map; lia).
+      rewrite List.length_map.
       replace (List.length Y + List.length w - 1 - (List.length w - 1 - r') - List.length Y) with r' by lia.
-      symmetry; apply List.nth_error_nth; exact Ha.
+      apply List.nth_error_nth; exact Ha.
     + constructor; [ exact Ee | apply IH; [ lia | exact Ees | lia ] ].
 Qed.
 
-Lemma eval_wrap_ihs : forall D' D gs' gs ihs ihsE C Y w r', cargs_kinds gs' gs -> List.length ihs = cargs_nrec D gs ->
-    ⟦ ihs ⟧* gc_deps ⍮ gc_stack ⍮ env_args C (Y ++ w) ↘ ihsE -> r' + cargs_container_count D D' gs' gs <= List.length w ->
-    ⟦ wrap_ihs D' D gs' gs ihs r' (List.length w) ⟧* gc_deps ⍮ gc_stack ⍮ env_args C (Y ++ w)
-      ↘ merge_ihs D' D gs' gs ihsE (List.skipn r' w).
+Lemma eval_wrap_ihs : forall D' D gs' gs ihs ihsE C (Y w : list (domain * entry_type)) r', cargs_kinds gs' gs ->
+    List.length ihs = cargs_nrec D gs ->
+    ⟦ ihs ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (Y ++ w) ↘ ihsE -> r' + cargs_container_count D D' gs' gs <= List.length w ->
+    ⟦ wrap_ihs D' D gs' gs ihs r' (List.length w) ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (Y ++ w)
+      ↘ merge_ihs D' D gs' gs ihsE (List.skipn r' (List.map fst w)).
 Proof.
   intros D' D; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] ihs ihsE C Y w r' Hk Lh Ev Lw;
     cbn in Hk; try contradiction; cbn [wrap_ihs merge_ihs cargs_nrec cargs_container_count] in Lh, Lw |- *.
@@ -951,7 +961,8 @@ Section SelfElim.
   Variable (Us : list exp).
   Hypotheses (HUl : List.length Us = ind_nu D)
     (HUs : forall k N T, List.nth_error Us k = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
-             Γ ⊨ N : T).
+             Γ ⊨ N : T)
+    (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
   Variable (C1 : env) (u0 : list domain).
   Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0).
   Variable (Bks : list eblock) (iA : nat).
@@ -961,12 +972,14 @@ Section SelfElim.
   Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
-  Let dr := canon_doms_rel u0.
+  Let dr := canon_doms_rel D u0.
   Let G := grp_rel p D u0 nr ar dr.
+  (** The family of the motives at [C1], as [Elim.v] has it. *)
+  Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
-      (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
-  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
+    per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
+      (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C1 (mctx_tele j) (ns' ++ m' :: nil)).
+  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC).
   #[local] Abbreviation EM f := (EB f C1 HC11 Bks iA HBks HMall HAv).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C1 u0 HUC).
   #[local] Abbreviation u0_env' := (EB u0_env).
@@ -984,22 +997,35 @@ Section SelfElim.
   Lemma self_ups_ok : elim_ups_ok p D u0 nr ar dr u0 u0.
   Proof. exact (EB ups_ok u0 u0 u0_env' u0_env' u0_len' u0_len'). Qed.
 
-  Lemma self_motive : forall j Mj ba bb u u' ns ns' x x', ind_member D j = Some Mj -> im_is_rview Mj = false ->
+  Lemma self_motive : forall j Mj ba bb u u' ns ns' x x' ts ts', ind_member D j = Some Mj -> im_is_rview Mj = false ->
       List.nth_error Bks j = Some ba -> List.nth_error Bks j = Some bb -> G j u u' ns ns' x x' ->
-      exists a a', ⟦ eb_motive ba ⟧ env_args C1 (ns ++ x :: nil) ↘ a /\ ⟦ eb_motive bb ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ x :: nil) ts ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
+      exists a a', ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns ++ x :: nil) ts) ↘ a /\
+        ⟦ eb_motive bb ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
         DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns x ns' x'.
   Proof.
-    intros * HMj _ Hba Hbb Hm; rewrite Hba in Hbb; injection Hbb as <-.
-    exact (EB motive_mid C1 HC11 Bks iA HMall j Mj ba (eb_motive ba) HMj Hba (HAv _ _ _ HMj Hba) u u' ns ns' x x' Hm).
+    intros * HMj _ Hba Hbb Hm Ht Ht'; rewrite Hba in Hbb; injection Hbb as <-.
+    exact (EB motive_mid C1 HC11 Bks iA HMall j Mj ba (eb_motive ba) HMj Hba (HAv _ _ _ HMj Hba) u u' ns ns' x x' ts ts' Hm Ht Ht').
   Qed.
 
-  Lemma self_branch : forall j Mj ba bb c gs n Ba Bb u u' bs bs' vs vs' ihs ihs' hd k0, ind_member D j = Some Mj ->
+  (** Related indices and elements read back on each side. *)
+  Lemma self_index_readable : forall j Mj u u' ns ns' x x', ind_member D j = Some Mj -> im_is_rview Mj = false ->
+      G j u u' ns ns' x x' ->
+      (exists ts, List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ x :: nil) ts) /\
+      (exists ts', List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts').
+  Proof. intros * HMj _ Hm; exact (EB mctx_idx_readable HMall j Mj u u' ns ns' x x' HMj Hm). Qed.
+
+  Lemma self_branch : forall j Mj ba bb c gs n Ba Bb u u' bs bs' vs vs' ihs ihs' hd k0 ts ts', ind_member D j = Some Mj ->
       im_is_rview Mj = false -> List.nth_error Bks j = Some ba -> List.nth_error Bks j = Some bb -> ind_con Mj c = Some gs ->
       brs_lookup (eb_brs ba) c = Some (n, Ba) -> brs_lookup (eb_brs bb) c = Some (n, Bb) ->
       G j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') (d_con hd k0 c (bs ++ vs)) (d_con hd k0 c (bs' ++ vs')) ->
-      rec_results_rel D dr Rel j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') gs vs vs' ihs ihs' ->
-      exists r r', ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mj) bs ++ vs ++ ihs) ↘ r /\
-        ⟦ Bb ⟧ env_args C1 (List.skipn (im_unu D Mj) bs' ++ vs' ++ ihs') ↘ r' /\
+      rec_results_rel D dr Rel j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') (List.rev (im_nparams Mj)) gs
+        vs vs' ihs ihs' ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mj) bs ++ vs ++ ihs) ts ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mj) bs' ++ vs' ++ ihs') ts' ->
+      exists r r', ⟦ Ba ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mj) bs ++ vs ++ ihs) ts) ↘ r /\
+        ⟦ Bb ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mj) bs' ++ vs' ++ ihs') ts') ↘ r' /\
         Rel j (List.skipn (im_unu D Mj) bs) (d_con hd k0 c (bs ++ vs)) (List.skipn (im_unu D Mj) bs') (d_con hd k0 c (bs' ++ vs')) r r'.
   Proof.
     assert (HBB : forall j Mj b b' c gs n B B', ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
@@ -1015,27 +1041,31 @@ Section SelfElim.
   #[local] Abbreviation XS f := (f p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA C1 C1 Bks Bks u0 u0 self_ups_ok Rel
      HBks HBks (valid_blocks_binder_count _ _ _ _ _ _ HBk) (valid_blocks_binder_count _ _ _ _ _ _ HBk)
      (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_arity _ _ _ _ _ _ HBk)
-     (valid_blocks_arity _ _ _ _ _ _ HBk) (decl_typed_nodup _ _ _ Hdt) self_motive
+     (valid_blocks_arity _ _ _ _ _ _ HBk) (decl_typed_nodup _ _ _ Hdt) self_motive self_index_readable
      (EB rneut_rel u0 u0 u0_env' u0_env' u0_len' u0_len') self_branch).
 
   Lemma self_elim_all :
-      (forall j u u' ns ns' x x', G j u u' ns ns' x x' -> member_results p D dr C1 C1 Bks Bks u0 u0 Rel j u u' ns ns' x x') /\
-      (forall k u u' pre pre' gs vs vs',
-        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
+      (forall j u u' ns ns' x x', G j u u' ns ns' x x' -> adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
+        member_results p D dr C1 C1 Bks Bks u0 u0 Rel j u u' ns ns' x x') /\
+      (forall k u u' pre pre' Ts gs vs vs',
+        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts gs vs vs' ->
+        adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
         exists ihs ihs', ⟦ihs vs of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ihs /\
           ⟦ihs vs' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ihs' /\
-          rec_results_rel D dr Rel k u u' pre pre' gs vs vs' ihs ihs') /\
-      (forall k u u' pre pre' t x x',
-        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t x x' ->
+          rec_results_rel D dr Rel k u u' pre pre' Ts gs vs vs' ihs ihs') /\
+      (forall k u u' pre pre' Ts t x x',
+        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t x x' ->
+        adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
         exists rs rs', ⟦ih x of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ rs /\
           ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ rs' /\
-          rec_result_rel D dr Rel k u u' pre pre' t x x' rs rs') /\
-      (forall k u u' pre pre' t f c f' c',
-        rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t f c f' c' ->
+          rec_result_rel D dr Rel k u u' pre pre' Ts t x x' rs rs') /\
+      (forall k u u' pre pre' Ts t f c f' c',
+        rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t f c f' c' ->
+        adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
         exists fc fc' rcs rcs', $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' /\
           ⟦ih fc of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ rcs /\
           ⟦ih fc' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ rcs' /\
-          rec_result_rel D dr Rel k u u' pre pre' t fc fc' rcs rcs').
+          rec_result_rel D dr Rel k u u' pre pre' Ts t fc fc' rcs rcs').
   Proof. exact (XS per_ind_elim_all). Qed.
 
   (** The recursive results of related neutrals of a record view, and their
@@ -1051,16 +1081,16 @@ Section SelfElim.
       (** The right results *)
     ; self_rview_rs' : list domain
       (** The left types, over the uniform parameters *)
-    ; self_rview_Ta : ⟦ihtys ws of gs at p u0 under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil u0 ↘ self_rview_tys
+    ; self_rview_Ta : ⟦ihtys ws of gs at p u0 under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ decl_env D u0 ↘ self_rview_tys
       (** The right types *)
-    ; self_rview_Tb : ⟦ihtys ws' of gs at p u0 under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil u0 ↘ self_rview_tys'
+    ; self_rview_Tb : ⟦ihtys ws' of gs at p u0 under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ decl_env D u0 ↘ self_rview_tys'
       (** The left results *)
     ; self_rview_Ra : ⟦ihs ws of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ self_rview_rs
       (** The right results *)
     ; self_rview_Rb : ⟦ihs ws' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ self_rview_rs' }.
 
   Lemma self_rview_ihs : forall k ns ns' v v' Mk qr Is fl c gs ws ws', G k u0 u0 ns ns' v v' ->
-      is_neut_or_proof v -> is_neut_or_proof v' ->
+      is_neut v -> is_neut v' ->
       ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl -> im_cons Mk = (c, gs) :: nil ->
       ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> ⟦projs fl of v' ⟧ gc_deps ⍮ gc_stack ↘ ws' ->
       self_rview_results gs ws ws'.
@@ -1096,63 +1126,74 @@ Section SelfElim.
     Hypothesis (HrsQ : rview_struct_ok gc_deps gc_stack D').
     Let HrsD := grp_tele_ass_record_struct _ Hass.
 
+    (** The cross relation's results merged into the group's, at bases [u]
+        and [u'] admissible beside [u0]. *)
+    #[local] Abbreviation adm := (adm_uparams D u0 nr ar dr).
+
     Lemma cross_merge_all : forall k u u',
-      (forall pre pre' t' t v v' rs rs', cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' t' t v v' rs rs' ->
-         forall ihsG ownR, rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v v' ->
+      (forall pre pre' Ts t' t v v' rs rs', cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t v v' rs rs' ->
+         forall ihsG ownR, rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v v' ->
+         adm u -> adm u' ->
          ⟦ih v' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ownR ->
          List.length ihsG = List.length (shape_leaves (rview_leaves D) 0 t) ->
          List.length rs = leaves_in_count D' t' (shape_leaves (rview_leaves D) 0 t) ->
-         rec_result_rel D dr Rel k u u' pre pre' t v v' ihsG ownR ->
-         rec_result_rel D dr Rel k u u' pre pre' t v v' (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs') /\
-      (forall pre pre' t' t v c v' c' rs rs',
-         cross_result_app_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' t' t v c v' c' rs rs' ->
-         forall ihsG, rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v c v' c' ->
+         rec_result_rel D dr Rel k u u' pre pre' Ts t v v' ihsG ownR ->
+         rec_result_rel D dr Rel k u u' pre pre' Ts t v v' (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs') /\
+      (forall pre pre' Ts t' t v c v' c' rs rs',
+         cross_result_app_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t v c v' c' rs rs' ->
+         forall ihsG, rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v c v' c' ->
+         adm u -> adm u' ->
          List.length ihsG = List.length (shape_leaves (rview_leaves D) 0 t) ->
          List.length rs = leaves_in_count D' t' (shape_leaves (rview_leaves D) 0 t) ->
-         rec_result_app_rel D dr Rel k u u' pre pre' t v c v' c' ihsG
+         rec_result_app_rel D dr Rel k u u' pre pre' Ts t v c v' c' ihsG
            (List.map (fun i => d_ihfn C1 Bks p u0 t i v') (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))) ->
-         rec_result_app_rel D dr Rel k u u' pre pre' t v c v' c' (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs') /\
-      (forall pre pre' gs' gs vs vs' w ihs, cross_fields_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' gs' gs vs vs' w ihs ->
-         forall ihsG ownR, con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
+         rec_result_app_rel D dr Rel k u u' pre pre' Ts t v c v' c' (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs')
+      /\
+      (forall pre pre' Ts gs' gs vs vs' w ihs, cross_fields_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts gs' gs vs vs' w ihs ->
+         forall ihsG ownR, con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts gs vs vs' ->
+         adm u -> adm u' ->
          ⟦ihs vs' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ownR ->
          List.length ihsG = cargs_nrec D gs ->
-         rec_results_rel D dr Rel k u u' pre pre' gs vs vs' ihsG ownR ->
-         rec_results_rel D dr Rel k u u' pre pre' gs vs vs' (merge_ihs D' D gs' gs ihsG w) ihs).
+         rec_results_rel D dr Rel k u u' pre pre' Ts gs vs vs' ihsG ownR ->
+         rec_results_rel D dr Rel k u u' pre pre' Ts gs vs vs' (merge_ihs D' D gs' gs ihsG w) ihs).
     Proof.
       apply (cross_result_rel_mut_ind_all D D' dr Rel C1 p u0 Bks
-               (fun k u u' pre pre' t' t v v' rs rs' _ =>
-                  forall ihsG ownR, rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v v' ->
+               (fun k u u' pre pre' Ts t' t v v' rs rs' _ =>
+                  forall ihsG ownR, rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v v' ->
+                  adm u -> adm u' ->
                   ⟦ih v' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ownR ->
                   List.length ihsG = List.length (shape_leaves (rview_leaves D) 0 t) ->
                   List.length rs = leaves_in_count D' t' (shape_leaves (rview_leaves D) 0 t) ->
-                  rec_result_rel D dr Rel k u u' pre pre' t v v' ihsG ownR ->
-                  rec_result_rel D dr Rel k u u' pre pre' t v v' (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs')
-               (fun k u u' pre pre' t' t v c v' c' rs rs' _ =>
-                  forall ihsG, rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v c v' c' ->
+                  rec_result_rel D dr Rel k u u' pre pre' Ts t v v' ihsG ownR ->
+                  rec_result_rel D dr Rel k u u' pre pre' Ts t v v' (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs')
+               (fun k u u' pre pre' Ts t' t v c v' c' rs rs' _ =>
+                  forall ihsG, rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v c v' c' ->
+                  adm u -> adm u' ->
                   List.length ihsG = List.length (shape_leaves (rview_leaves D) 0 t) ->
                   List.length rs = leaves_in_count D' t' (shape_leaves (rview_leaves D) 0 t) ->
-                  rec_result_app_rel D dr Rel k u u' pre pre' t v c v' c' ihsG
+                  rec_result_app_rel D dr Rel k u u' pre pre' Ts t v c v' c' ihsG
                     (List.map (fun i => d_ihfn C1 Bks p u0 t i v') (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))) ->
-                  rec_result_app_rel D dr Rel k u u' pre pre' t v c v' c'
+                  rec_result_app_rel D dr Rel k u u' pre pre' Ts t v c v' c'
                     (merge_leaves D' t' (shape_leaves (rview_leaves D) 0 t) ihsG rs) rs')
-               (fun k u u' pre pre' gs' gs vs vs' w ihs _ =>
-                  forall ihsG ownR, con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
+               (fun k u u' pre pre' Ts gs' gs vs vs' w ihs _ =>
+                  forall ihsG ownR, con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts gs vs vs' ->
+                  adm u -> adm u' ->
                   ⟦ihs vs' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ownR ->
                   List.length ihsG = cargs_nrec D gs ->
-                  rec_results_rel D dr Rel k u u' pre pre' gs vs vs' ihsG ownR ->
-                  rec_results_rel D dr Rel k u u' pre pre' gs vs vs' (merge_ihs D' D gs' gs ihsG w) ihs)).
+                  rec_results_rel D dr Rel k u u' pre pre' Ts gs vs vs' ihsG ownR ->
+                  rec_results_rel D dr Rel k u u' pre pre' Ts gs vs vs' (merge_ihs D' D gs' gs ihsG w) ihs)).
       - (** At members with a block: the container's result. *)
-        intros k u u' pre pre' j' Mj' Ps' j Mj Ps bs bs' v v' ih ih' HMj' Hrv' HMj Hrv Ebs Ebs' Hrr ihsG ownR _ _ Lg _ _.
+        intros k u u' pre pre' Ts j' Mj' Ps' j Mj Ps bs bs' v v' ih ih' HMj' Hrv' HMj Hrv Ebs Ebs' Hrr ihsG ownR _ _ _ _ Lg _ _.
         cbn [shape_leaves] in Lg |- *; rewrite (rview_leaves_not_rview _ _ _ HMj Hrv) in Lg |- *.
         destruct ihsG as [| g [| ? ?]]; cbn in Lg; try lia.
         cbn [merge_leaves leaf_in]; rewrite HMj', Hrv'; cbn [negb List.hd List.tl merge_leaves].
         eapply rec_result_self; [ exact HMj | exact Hrv | exact Ebs | exact Ebs' | exact Hrr ].
       - (** At record views: their fields'. *)
-        intros k u u' pre pre' j' Mj' qr Is' fl c' gs' Ps' j Mj Is0 c gs Ps v v' ws ws' rs rs' HMj' Hh' Hcs' HMj Hh Hcs Ew Ew' Hcf IH
-          ihsG ownR Ha Eown Lg _ Hrel.
-        destruct (rec_result_rview_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs Hrel) as (ws0 & ws0' & Ew0 & Ew0' & Hrr).
+        intros k u u' pre pre' Ts j' Mj' qr Is' fl c' gs' Ps' j Mj Is0 c gs Ps v v' ws ws' rs rs' HMj' Hh' Hcs' HMj Hh Hcs Ew Ew' Hcf
+          IH ihsG ownR Ha Hau Hau' Eown Lg _ Hrel.
+        destruct (rec_result_rview_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs Hrel) as (ws0 & ws0' & Ew0 & Ew0' & Hrr).
         pose proof (functional_eval_projs _ _ _ _ Ew0 Ew) as ->; pose proof (functional_eval_projs _ _ _ _ Ew0' Ew') as ->.
-        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bq & bq' & _ & _ & _ & _ & Hff).
+        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bq & bq' & _ & _ & _ & _ & Hff).
         destruct (ind_rel_rview_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs Hff) as (ws1 & ws1' & Ew1 & Ew1' & _ & Hca).
         pose proof (functional_eval_projs _ _ _ _ Ew1 Ew) as ->; pose proof (functional_eval_projs _ _ _ _ Ew1' Ew') as ->.
         inversion Eown; subst;
@@ -1171,47 +1212,47 @@ Section SelfElim.
         assert (Lg' : List.length ihsG = cargs_nrec D gs)
           by (rewrite Lg; exact (length_shape_leaves_rview _ _ _ _ _ _ _ _ _ 0 Hlc HMj Hh Hcs (eq_sym Hlen))).
         match goal with E1 : ⟦ihs ws' of gs under p u0 Bks ⟧ _ ⍮ _ ⍮ C1 ↘ ownR |- _ =>
-          pose proof (IH ihsG ownR Hca E1 Lg' Hrr) as Hm end.
+          pose proof (IH ihsG ownR Hca Hau Hau' E1 Lg' Hrr) as Hm end.
         cbn [shape_leaves]; rewrite (Hlc _ _ _ _ _ _ _ HMj Hh Hcs), merge_leaves_map_wk.
         rewrite (merge_leaves_fields D D' j' Mj' qr Is' fl c' gs' Ps' gs HMj' Hh' Hcs' Hnd (eq_sym Hlen') (eq_sym Hlen) ihsG rs Lg').
         eapply rec_result_rview; [ exact HMj | exact Hh | exact Hcs | exact Ew | exact Ew' | exact Hm ].
       - (** At a domain: pointwise. *)
-        intros k u u' pre pre' B' t' B t v v' rs rs' Hf IH Fr Fr' ihsG ownR Ha Eown Lg Lrs Hrel.
+        intros k u u' pre pre' Ts B' t' B t v v' rs rs' Hf IH Fr Fr' ihsG ownR Ha Hau Hau' Eown Lg Lrs Hrel.
         inversion Eown; subst.
         match goal with H1 : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H1; injection H1 as <- end.
-        inversion Hrel as [| | ? ? ? ? ? ? ? ? Hfr Fg _]; subst.
+        inversion Hrel as [| | ? ? ? ? ? ? ? ? ? Hfr Fg _]; subst.
         cbn [shape_leaves] in Lg, Lrs |- *.
         rewrite merge_leaves_map_pi, (merge_leaves_ext _ _ _ (shape_leaves (rview_leaves D) 0 t) _ _ (leaf_in_shape_leaves _ _ _ _ _ _)).
         rewrite List.length_map, (length_shape_leaves _ _ _ 0) in Lg.
         rewrite leaves_in_count_map_pi, (leaves_in_count_shift D D' t' t) in Lrs.
         apply rec_result_pi; [| apply merge_leaves_Forall; [ exact Fg | exact Fr | exact Lrs ] | exact Fr' ].
         intros c c' Hcc.
-        inversion Ha as [| ? ? ? ? ? ? ? ? ? Hfa]; subst.
-        exact (IH c c' Hcc ihsG (Hfa c c' Hcc) Lg Lrs (Hfr c c' Hcc)).
+        inversion Ha as [| ? ? ? ? ? ? ? ? ? ? Hfa]; subst.
+        exact (IH c c' Hcc ihsG (Hfa c c' Hcc) Hau Hau' Lg Lrs (Hfr c c' Hcc)).
       - (** The arguments applied. *)
-        intros k u u' pre pre' t' t v c v' c' rs rs' fc fc' rcs rcs' Ef Ef' F1 F2 Hcr IH ihsG Ha Lg Lrs Happ.
-        inversion Happ as [? ? ? ? ? ? ? ? ? fcG fcG' rcsG rcsG' EfG EfG' F1G F2G HrG]; subst.
+        intros k u u' pre pre' Ts t' t v c v' c' rs rs' fc fc' rcs rcs' Ef Ef' F1 F2 Hcr IH ihsG Ha Hau Hau' Lg Lrs Happ.
+        inversion Happ as [? ? ? ? ? ? ? ? ? ? fcG fcG' rcsG rcsG' EfG EfG' F1G F2G HrG]; subst.
         pose proof (functional_eval_app _ _ _ _ EfG Ef) as ->; pose proof (functional_eval_app _ _ _ _ EfG' Ef') as ->.
-        inversion Ha as [? ? ? ? ? ? ? ? ? ? ? ? Er Er' Ha0]; subst.
+        inversion Ha as [? ? ? ? ? ? ? ? ? ? ? ? ? Er Er' Ha0]; subst.
         pose proof (functional_eval_app _ _ _ _ Er Ef) as ->; pose proof (functional_eval_app _ _ _ _ Er' Ef') as ->.
-        destruct (proj1 (proj2 (proj2 self_elim_all)) _ _ _ _ _ _ _ _ Ha0) as (rsL & rsR & _ & ER & _).
+        destruct (proj1 (proj2 (proj2 self_elim_all)) _ _ _ _ _ _ _ _ _ Ha0 Hau Hau') as (rsL & rsR & _ & ER & _).
         assert (LR : List.length rsR = List.length (shape_leaves (rview_leaves D) 0 t))
           by exact (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ ER D Hl Hlc).
         pose proof (ihfn_apps_inv _ _ _ _ _ _ _ _ _ _ _ Ef' ER LR F2G) as ->.
         pose proof (List.Forall2_length F1G) as LG; pose proof (List.Forall2_length F1) as LC.
         econstructor; [ exact Ef | exact Ef' | | exact F2 |].
         + apply merge_leaves_Forall2; [ exact F1G | exact F1 | exact Lg | exact Lrs ].
-        + apply (IH rcsG rsR); [ exact Ha0 | exact ER | lia | lia | exact HrG ].
+        + apply (IH rcsG rsR); [ exact Ha0 | exact Hau | exact Hau' | exact ER | lia | lia | exact HrG ].
       - (** No argument. *)
-        intros k u u' pre pre' ihsG ownR _ _ _ Hrel; inversion Hrel; subst; cbn; constructor.
+        intros k u u' pre pre' Ts ihsG ownR _ _ _ _ _ Hrel; inversion Hrel; subst; cbn; constructor.
       - (** Non-recursive in both. *)
-        intros k u u' pre pre' rA' A' rA A gs' gs v v' vs vs' w ihs Hcf IH ihsG ownR Ha Eown Lg Hrel.
+        intros k u u' pre pre' Ts rA' A' rA A gs' gs v v' vs vs' w ihs Hcf IH ihsG ownR Ha Hau Hau' Eown Lg Hrel.
         inversion Ha; subst; inversion Eown; subst; inversion Hrel; subst.
         cbn [merge_ihs]; apply rec_results_arg; eapply IH; eassumption.
       - (** Nested through: the group's own. *)
-        intros k u u' pre pre' rA' A' t gs' gs v v' vs vs' w rs' ihs Ers Hcf IH ihsG ownR Ha Eown Lg Hrel.
+        intros k u u' pre pre' Ts rA' A' t gs' gs v v' vs vs' w rs' ihs Ers Hcf IH ihsG ownR Ha Hau Hau' Eown Lg Hrel.
         inversion Ha; subst.
-        match goal with Hr : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ t v v', Hc : con_args_rel _ _ _ _ _ _ _ _ _ _ _ gs vs vs' |- _ =>
+        match goal with Hr : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ t v v', Hc : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ gs vs vs' |- _ =>
           rename Hr into Hra, Hc into Ha' end.
         inversion Eown; subst.
         match goal with E1 : ⟦ih v' of t under p u0 Bks ⟧ _ ⍮ _ ⍮ C1 ↘ _, E2 : ⟦ihs vs' of gs under p u0 Bks ⟧ _ ⍮ _ ⍮ C1 ↘ _ |- _ =>
@@ -1220,17 +1261,17 @@ Section SelfElim.
         assert (L0 : List.length rs' = List.length (shape_leaves (rview_leaves D) 0 t))
           by exact (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Ers D Hl Hlc).
         inversion Hrel; subst.
-        match goal with Hr : rec_result_rel _ _ _ _ _ _ _ _ t v v' ?a ?b, Hr2 : rec_results_rel _ _ _ _ _ _ _ _ gs vs vs' ?c ?d,
+        match goal with Hr : rec_result_rel _ _ _ _ _ _ _ _ _ t v v' ?a ?b, Hr2 : rec_results_rel _ _ _ _ _ _ _ _ _ gs vs vs' ?c ?d,
                         L1 : List.length ?a = _, L2 : List.length ?b = _, E : ?b ++ ?d = rs' ++ _ |- _ =>
           destruct (app_split_eq _ _ _ _ E ltac:(lia)) as [-> ->];
           cbn [merge_ihs]; rewrite firstn_app_exact, skipn_app_exact by exact L1;
           rewrite List.length_app, L1 in Lg; cbn [cargs_nrec] in Lg;
-          apply rec_results_rec; [ exact L1 | exact L0 | exact Hr | eapply IH; [ exact Ha' | exact Eo2 | lia | exact Hr2 ] ]
+          apply rec_results_rec; [ exact L1 | exact L0 | exact Hr | eapply IH; [ exact Ha' | exact Hau | exact Hau' | exact Eo2 | lia | exact Hr2 ] ]
         end.
       - (** Recursive in both. *)
-        intros k u u' pre pre' t' t gs' gs v v' vs vs' rs rs' w ihs Lrs Lrs' Hcr IHr Hcf IHf ihsG ownR Ha Eown Lg Hrel.
+        intros k u u' pre pre' Ts t' t gs' gs v v' vs vs' rs rs' w ihs Lrs Lrs' Hcr IHr Hcf IHf ihsG ownR Ha Hau Hau' Eown Lg Hrel.
         inversion Ha; subst.
-        match goal with Hr : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ t v v', Hc : con_args_rel _ _ _ _ _ _ _ _ _ _ _ gs vs vs' |- _ =>
+        match goal with Hr : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ t v v', Hc : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ gs vs vs' |- _ =>
           rename Hr into Hra, Hc into Ha' end.
         inversion Eown; subst.
         match goal with E1 : ⟦ih v' of t under p u0 Bks ⟧ _ ⍮ _ ⍮ C1 ↘ ?r1, E2 : ⟦ihs vs' of gs under p u0 Bks ⟧ _ ⍮ _ ⍮ C1 ↘ _ |- _ =>
@@ -1238,40 +1279,44 @@ Section SelfElim.
           assert (L0 : List.length r1 = List.length (shape_leaves (rview_leaves D) 0 t))
             by exact (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Er1 D Hl Hlc) end.
         inversion Hrel; subst.
-        match goal with Hr : rec_result_rel _ _ _ _ _ _ _ _ t v v' ?a ?b, Hr2 : rec_results_rel _ _ _ _ _ _ _ _ gs vs vs' ?c ?d,
+        match goal with Hr : rec_result_rel _ _ _ _ _ _ _ _ _ t v v' ?a ?b, Hr2 : rec_results_rel _ _ _ _ _ _ _ _ _ gs vs vs' ?c ?d,
                         L1 : List.length ?a = _, L2 : List.length ?b = _, E : ?b ++ ?d = _ ++ _ |- _ =>
           destruct (app_split_eq _ _ _ _ E ltac:(lia)) as [-> ->];
           cbn [merge_ihs]; rewrite firstn_app_exact, skipn_app_exact by exact L1;
           rewrite skipn_app_exact by exact Lrs; rewrite merge_leaves_app_tail by exact Lrs;
           rewrite List.length_app, L1 in Lg; cbn [cargs_nrec] in Lg;
           apply rec_results_rec; [ rewrite length_merge_leaves by exact L1; reflexivity | exact Lrs'
-                                 | exact (IHr _ _ Hra Er1 L1 Lrs Hr) | eapply IHf; [ exact Ha' | exact Eo2 | lia | exact Hr2 ] ]
+                                 | exact (IHr _ _ Hra Hau Hau' Er1 L1 Lrs Hr)
+                                 | eapply IHf; [ exact Ha' | exact Hau | exact Hau' | exact Eo2 | lia | exact Hr2 ] ]
         end.
     Qed.
 
     (** The cross relation at the arguments' bases is that at [u0]: the
         group's motives at the parameters' values at [u0] ([Elim.rel_move]). *)
     Lemma cross_rebase_all : forall k u u',
-      (forall pre pre' t' t v v' rs rs', cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' t' t v v' rs rs' ->
-         rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v v' ->
-         cross_result_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' t' t v v' rs rs') /\
-      (forall pre pre' t' t v c v' c' rs rs', cross_result_app_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' t' t v c v' c' rs rs' ->
-         rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v c v' c' ->
-         cross_result_app_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' t' t v c v' c' rs rs') /\
-      (forall pre pre' gs' gs vs vs' w ihs, cross_fields_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' gs' gs vs vs' w ihs ->
-         con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
-         cross_fields_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' gs' gs vs vs' w ihs).
+      (forall pre pre' Ts t' t v v' rs rs', cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t v v' rs rs' ->
+         rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v v' ->
+         cross_result_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts t' t v v' rs rs') /\
+      (forall pre pre' Ts t' t v c v' c' rs rs', cross_result_app_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t v c v' c' rs rs' ->
+         rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v c v' c' ->
+         cross_result_app_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts t' t v c v' c' rs rs') /\
+      (forall pre pre' Ts gs' gs vs vs' w ihs, cross_fields_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts gs' gs vs vs' w ihs ->
+         con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts gs vs vs' ->
+         cross_fields_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts gs' gs vs vs' w ihs).
     Proof.
       apply (cross_result_rel_mut_ind_all D D' dr Rel C1 p u0 Bks
-               (fun k u u' pre pre' t' t v v' rs rs' _ => rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v v' ->
-                  cross_result_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' t' t v v' rs rs')
-               (fun k u u' pre pre' t' t v c v' c' rs rs' _ => rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t v c v' c' ->
-                  cross_result_app_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' t' t v c v' c' rs rs')
-               (fun k u u' pre pre' gs' gs vs vs' w ihs _ => con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
-                  cross_fields_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' gs' gs vs vs' w ihs)).
+               (fun k u u' pre pre' Ts t' t v v' rs rs' _ =>
+                  rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v v' ->
+                  cross_result_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts t' t v v' rs rs')
+               (fun k u u' pre pre' Ts t' t v c v' c' rs rs' _ =>
+                  rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t v c v' c' ->
+                  cross_result_app_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts t' t v c v' c' rs rs')
+               (fun k u u' pre pre' Ts gs' gs vs vs' w ihs _ =>
+                  con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts gs vs vs' ->
+                  cross_fields_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts gs' gs vs vs' w ihs)).
       - (** At members with a block: the motive at [u0]'s parameters. *)
-        intros k u u' pre pre' j' Mj' Ps' j Mj Ps bs bs' v v' ih ih' HMj' Hrv' HMj Hrv Ebs Ebs' Hrr Ha.
-        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs0 & bs0' & Eb0 & Eb0' & [o Eo Ho] & [o' Eo' Ho'] & Hir).
+        intros k u u' pre pre' Ts j' Mj' Ps' j Mj Ps bs bs' v v' ih ih' HMj' Hrv' HMj Hrv Ebs Ebs' Hrr Ha.
+        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs0 & bs0' & Eb0 & Eb0' & [o Eo Ho] & [o' Eo' Ho'] & Hir).
         pose proof (functional_eval_exps' _ _ _ _ Eb0 Ebs) as ->; pose proof (functional_eval_exps' _ _ _ _ Eb0' Ebs') as ->.
         unfold nparams_tele_rel in Ho, Ho'; rewrite HMj in Ho, Ho'.
         eapply cross_result_self; [ exact HMj' | exact Hrv' | exact HMj | exact Hrv | exact Eo | exact Eo' |].
@@ -1279,20 +1324,21 @@ Section SelfElim.
                         (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HMj _ _ Ho)
                         (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HMj _ _ Ho') ih ih') Hrr).
       - (** At record views: their fields'. *)
-        intros k u u' pre pre' j' Mj' qr Is' fl c' gs' Ps' j Mj Is0 c gs Ps v v' ws ws' rs rs' HMj' Hh' Hcs' HMj Hh Hcs Ew Ew' Hcf IH Ha.
-        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bq & bq' & _ & _ & _ & _ & Hff).
+        intros k u u' pre pre' Ts j' Mj' qr Is' fl c' gs' Ps' j Mj Is0 c gs Ps v v' ws ws' rs rs' HMj' Hh' Hcs' HMj Hh Hcs Ew Ew' Hcf
+          IH Ha.
+        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bq & bq' & _ & _ & _ & _ & Hff).
         destruct (ind_rel_rview_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hcs Hff) as (ws1 & ws1' & Ew1 & Ew1' & _ & Hca).
         pose proof (functional_eval_projs _ _ _ _ Ew1 Ew) as ->; pose proof (functional_eval_projs _ _ _ _ Ew1' Ew') as ->.
         eapply cross_result_rview; [ exact HMj' | exact Hh' | exact Hcs' | exact HMj | exact Hh | exact Hcs | exact Ew | exact Ew'
                                    | exact (IH Hca) ].
       - (** At a domain: at related arguments. *)
-        intros k u u' pre pre' B' t' B t v v' rs rs' Hf IH Fr Fr' Ha.
-        inversion Ha as [| ? ? ? ? ? ? ? ? ? Hfa]; subst.
+        intros k u u' pre pre' Ts B' t' B t v v' rs rs' Hf IH Fr Fr' Ha.
+        inversion Ha as [| ? ? ? ? ? ? ? ? ? ? Hfa]; subst.
         constructor; [| exact Fr | exact Fr' ]; intros c0 c0' Hc0; exact (IH c0 c0' Hc0 (Hfa c0 c0' Hc0)).
-      - intros k u u' pre pre' t' t v c v' c' rs rs' fc fc' rcs rcs' Ef Ef' F1 F2 Hcr IH Ha.
+      - intros k u u' pre pre' Ts t' t v c v' c' rs rs' fc fc' rcs rcs' Ef Ef' F1 F2 Hcr IH Ha.
         inversion Ha; subst.
         match goal with Er : $| v & c | gc_deps ⍮ gc_stack ↘ ?r, Er' : $| v' & c' | gc_deps ⍮ gc_stack ↘ ?r',
-                        Ha' : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ ?r ?r' |- _ =>
+                        Ha' : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ _ ?r ?r' |- _ =>
           pose proof (functional_eval_app _ _ _ _ Er Ef) as ->; pose proof (functional_eval_app _ _ _ _ Er' Ef') as ->;
           econstructor; [ exact Ef | exact Ef' | exact F1 | exact F2 | exact (IH Ha') ]
         end.
@@ -1782,7 +1828,7 @@ Section SelfElim.
                   unfold na; lia).
             pose proof (eval_var_args C1 (L ++ zs) (Rw + na - 1 - List.length (cargs_pat gs1) + List.length zs)
                           ltac:(rewrite List.length_app, LL, length_cargs_pat; unfold na in *; lia)) as HV.
-            replace (List.nth _ (L ++ zs) d_placeholder) with x in HV; [ exact HV |].
+            replace (List.nth _ (L ++ zs) d_True) with x in HV; [ exact HV |].
             rewrite List.length_app, LL, length_cargs_pat, List.app_nth1 by (rewrite LL; unfold na in *; lia).
             unfold L; rewrite List.app_nth2 by lia; rewrite List.app_nth2 by lia.
             rewrite LX, Lf.
@@ -2037,7 +2083,7 @@ Section CrossElim.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
+    per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
       (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
   #[local] Abbreviation EM f := (EB f C1 HC11 Bks iA HBks HMall HAv).
@@ -2401,7 +2447,7 @@ Section WrappedBlocks.
   Let dr := canon_doms_rel u0.
   Let G := grp_rel p D u0 nr ar dr.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
+    per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
       (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
   #[local] Abbreviation WR f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC Bks iA HBk).
