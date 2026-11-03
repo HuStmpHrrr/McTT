@@ -951,10 +951,10 @@ Lemma branch_entries_combine : forall ρ D Mj p X As ρm gs ns vs ihs,
 Proof. intros; rewrite <- (branch_entries_fst D Mj p X As ρm gs ns vs ihs) at 1; rewrite combine_map_fst_snd; reflexivity. Qed.
 
 (** A propositional entry of a branch's context is an argument's. *)
-Lemma branch_entry_sort_propositional_range : forall D gs x, bctx_rf D gs x = propositional ->
+Lemma branch_entry_sort_propositional_range : forall D gs x, branch_context_entry_relevance D gs x = propositional ->
     cargs_nrec D gs <= x /\ x < cargs_nrec D gs + List.length gs.
 Proof.
-  intros * H; unfold bctx_rf, inst_rf in H.
+  intros * H; unfold branch_context_entry_relevance, instance_entry_relevance in H.
   destruct (Nat.ltb_spec x (cargs_nrec D gs)); [ discriminate H |].
   destruct (Nat.ltb_spec (x - cargs_nrec D gs) (List.length gs)); [ lia | discriminate H ].
 Qed.
@@ -1955,7 +1955,7 @@ Section SelfElim.
           List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) wts /\
           List.length wts = List.length (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) /\
           forall j x y, List.nth_error (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) j = Some x -> List.nth_error (List.map fst wts) j = Some y ->
-            x = y \/ (bctx_rf D gs (List.length (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) - 1 - j) = propositional /\ proof_readable y).
+            x = y \/ (branch_context_entry_relevance D gs (List.length (X ++ vs ++ merge_ihs D' D gs' gs ihsE w) - 1 - j) = propositional /\ proof_readable y).
     Proof.
       intros X vs w vtsW ihsE Hvw LX Lv LwR RW HRW HEb EE.
       assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
@@ -1999,17 +1999,17 @@ Section SelfElim.
       assert (He11 : RT e1 e1) by (etransitivity; [ exact He1 | symmetry; exact He1 ]).
       pose proof (elim_bctx_ass relevant p D v Mv gs As Us Hc HMv) as HK0a; fold K0 in HK0a.
       (** The entries' propositionality is decided by their sorts. *)
-      assert (Hdec : forall x, x < List.length K0 -> bctx_rf D gs x = relevant -> ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
+      assert (Hdec : forall x, x < List.length K0 -> branch_context_entry_relevance D gs x = relevant -> ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
         refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
         intros Δ1 T0 Δ2 E0 HΔ1.
-        destruct (BSv bctx_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
+        destruct (BSv branch_context_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
         rewrite HΔ1, Hr in HT0; exists i0; exact HT0. }
-      assert (Hpr : forall x, x < List.length K0 -> bctx_rf D gs x = propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
+      assert (Hpr : forall x, x < List.length K0 -> branch_context_entry_relevance D gs x = propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
         refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
         intros Δ1 T0 Δ2 E0 HΔ1.
-        destruct (BSv bctx_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
+        destruct (BSv branch_context_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
         rewrite HΔ1, Hr in HT0; exact HT0. }
       assert (LMs : List.length Ms = List.length K0)
         by (pose proof (eval_exps_length _ _ _ EMs) as H; rewrite !List.length_app, LX, Lv, LT in H; unfold Ms in H |- *; lia).
@@ -2017,7 +2017,7 @@ Section SelfElim.
       rewrite wrap_branch_sub_eq in Ee1; fold Ms in Ee1.
       change (elim_bctx relevant p D Mv gs (blocks_motives Bks) Us) with K0 in Ee1, HRT.
       rewrite ETg in Ee1, Hdec, Hpr.
-      destruct (eval_sb_of_list_sorted_split Ms (List.rev K0) (sb_of_wk (wk_shiftn nw)) Γ Eb e1 (bctx_rf D gs)
+      destruct (eval_sb_of_list_sorted_split Ms (List.rev K0) (sb_of_wk (wk_shiftn nw)) Γ Eb e1 (branch_context_entry_relevance D gs)
                   ltac:(rewrite List.length_rev; lia) Ee1
                   ltac:(rewrite List.length_rev; exact Hdec) ltac:(rewrite List.length_rev; exact Hpr))
         as (ms & Lms & Hms & Hagr).
@@ -2051,7 +2051,7 @@ Section SelfElim.
         destruct (Hms j M y HM Hy) as [HmR HmP].
         destruct (eval_exps_nth _ _ _ _ _ EMs HM) as (x' & Hx' & Ex').
         rewrite Hx in Hx'; injection Hx' as <-.
-        rewrite Lxs; destruct (bctx_rf D gs (List.length Ms - 1 - j)) eqn:Er.
+        rewrite Lxs; destruct (branch_context_entry_relevance D gs (List.length Ms - 1 - j)) eqn:Er.
         + left; exact (functional_eval_exp _ _ _ _ Ex' (HmR eq_refl)).
         + right; split; [ reflexivity |].
           rewrite (HmP eq_refl).
@@ -2216,7 +2216,7 @@ Section SelfElim.
         assert (Lt2 : List.length (List.rev ts2) = List.length xsT - 1 - j).
         { pose proof (f_equal (@List.length _) Eq) as L0; rewrite List.length_app in L0; cbn [List.length] in L0.
           rewrite List.length_rev; lia. }
-        destruct (BSv bctx_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv _ _ _ EK) as [i0 HA].
+        destruct (BSv branch_context_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv _ _ _ EK) as [i0 HA].
         change (List.length (X ++ vs ++ merge_ihs D' D gs' gs ihsE w)) with (List.length xsT) in Hr.
         rewrite Lt2, Hr in HA.
         (** The prefix's environment, related to itself. *)
