@@ -2949,6 +2949,49 @@ Section CrossBot.
       (** [b]'s type at [u0] is at the reference *)
     ; cross_block_site_ref_b : ⟦mref cross_block_site_b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (cross_block_site_hd, cross_block_site_k, cross_block_site_preb) }.
 
+  (** The scrutinee types of the two stuck eliminators' blocks, at related
+      non-uniform parameters: the group's view's type at its instance at
+      [u0] against the container's member's at [ub], related by the view's
+      clause ([view_end_type]); so they read back alike. *)
+  Lemma cross_scrutinee_types : forall i' Mi' j Mj hd k prea preb nsA nsB, List.nth_error vm i' = Some j ->
+      ind_member D' i' = Some Mi' -> ind_member D j = Some Mj -> im_is_rview Mi' = false ->
+      ⟦mref i' of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, prea) -> ⟦mref j of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, preb) ->
+      tele_rel (nr j) (List.rev (im_nparams Mj)) nsA nsB ->
+      Dom d_ind hd k (prea ++ nsA) ≈ d_ind hd k (preb ++ nsB) ∈ per_top_typ.
+  Proof.
+    intros i' Mi' j Mj hd k prea preb nsA nsB Hvi HMi' HMj HrvI Ra Rb Hns.
+    pose proof (length_container_uparams p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlcu.
+    assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
+    assert (Hnb : nparams_tele_rel D nr j nsB nsA) by (unfold nparams_tele_rel; rewrite HMj; exact (tsym _ _ HMj _ _ Hns)).
+    destruct (grp_tele_ass_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
+    rewrite Hvi in Hvj; injection Hvj as <-; rewrite HMj in HMjj; injection HMjj as <-.
+    unfold im_is_rview in HrvI; destruct (im_head Mi') as [pm | qv kv Iv vmv | qr Ir fl] eqn:Hh'; [| | discriminate HrvI ].
+    - destruct Hhm as [vm' Hhj].
+      pose proof (mref_decl_inv _ _ _ _ _ _ _ Hq HMi' Hh' Ra) as Heq; injection Heq as -> -> ->.
+      destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hhj Rb) as (py & Heq & Epy); injection Heq as ->.
+      pose proof (functional_eval_exps' _ _ _ _ Epy Ecups) as ->.
+      pose proof (uparams_sym D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ Hub Hlb) as Hcu.
+      destruct (view_end_type VP HP p D HPD u0 u0_gargs' u0_len' j Mj qc i' Is vm' D' cups ub nsB nsA HMj Hhj Hq Ecups Hcu Hnb)
+        as (i0 & R0 & HR0).
+      destruct (per_univ_elem_sym _ _ _ _ HR0) as [HR1 _].
+      exact (per_univ_then_per_top_typ HR1).
+    - destruct Hhm as (Is' & vm' & Hhj & _).
+      destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hq HMi' Hh' Ra) as (pa & Heq & Epa); injection Heq as -> -> ->.
+      destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hhj Rb) as (pb & Heq & Epb); injection Heq as ->.
+      destruct (grp_tele_ass_views _ (valid_group_ass _ _ HgQ) _ _ _ _ _ _ HMi' Hh') as (D3 & Mc3 & Hq3 & _ & _ & HlIv).
+      pose proof (valid_groups_containers VP HP qc D' i' Mi' hd k Iv vmv D3 HVQ HMi' Hh' Hq3) as HVQ3.
+      pose proof (valid_groups_valid VP HP hd D3 HVQ3) as HgQ3.
+      destruct (view_view_values VP HP p D HPD m Mm qc k' Is vm D' i' Mi' j hd k Iv vmv D3 Mj Is' vm'
+                  HMm Hh Hq HMi' Hh' Hq3 Hvi HMj Hhj u0 cups ub u0_gargs' u0_len' Ecups Hub) as (pa' & pb' & Epa' & Epb' & Hgp).
+      pose proof (functional_eval_exps' _ _ _ _ Epa' Epa) as ->; pose proof (functional_eval_exps' _ _ _ _ Epb' Epb) as ->.
+      pose proof (uparams_sym D3 (valid_group_valid _ _ HgQ3) (valid_group_closed _ _ HgQ3) _ _ Hgp
+                    ltac:(rewrite (eval_exps_length _ _ _ Epa); exact HlIv)) as Hcu.
+      destruct (view_end_type VP HP p D HPD u0 u0_gargs' u0_len' j Mj hd k Is' vm' D3 pb pa nsB nsA HMj Hhj Hq3 Epb Hcu Hnb)
+        as (i0 & R0 & HR0).
+      destruct (per_univ_elem_sym _ _ _ _ HR0) as [HR1 _].
+      exact (per_univ_then_per_top_typ HR1).
+  Qed.
+
   Lemma cross_block_read : forall (rk : nat -> nat) r, view_rank_ok gc_deps gc_stack D rk -> (forall j', rk j' < r -> cross_bot j') ->
       forall s Dc sela selb n Mn, cross_block_site rk r Dc sela selb n Mn ->
         block_read_pair qc D' ub VBb ρb p D u0 Bks C1 s Dc sela selb n Mn.
