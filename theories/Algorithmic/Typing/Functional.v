@@ -112,16 +112,9 @@ Proof.
   - match goal with IH : forall A'0, _ -> nf_pi _ _ _ = A'0, H : _ ⊢a _ ⟹ nf_pi _ _ _ |- _ =>
       specialize (IH _ H); injection IH as -> -> -> end.
     functional_nbe_rewrite_clear; reflexivity.
-  (** [let]: both derivations read the same annotation; without one, the
-      body's type, then the type of the rest. *)
-  - match goal with
-    | Ha : alg_let_ann ?oA ?A1, Hb : alg_let_ann ?oA ?A2 |- _ =>
-        assert_fails constr_eq A1 A2; destruct Ha as [-> | ->]; destruct Hb as [[=] | [= <-]]
-    end; simpl_let_guards.
-    + assert (W = W0) as <- by eauto. assert (C = C0) as <- by eauto.
-      functional_nbe_rewrite_clear. reflexivity.
-    + assert (C = C0) as <- by eauto.
-      functional_nbe_rewrite_clear. reflexivity.
+  (** [let]: the same type of the rest. *)
+  - assert (C = C0) as <- by eauto.
+    functional_nbe_rewrite_clear. reflexivity.
   (** A module [let]: the same type of the rest. *)
   - assert (C = C0) as <- by eauto.
     functional_nbe_rewrite_clear.

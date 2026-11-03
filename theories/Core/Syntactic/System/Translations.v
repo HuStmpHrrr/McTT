@@ -72,9 +72,9 @@ Definition raw_args_tele (args : list (string * exp)) : ctx := List.rev (List.ma
     function's, a declared member.  A function's member is the first one
     whose type at [Us] and at the function's non-uniform parameters has
     the scrutinee's normal form; every member has exactly one function.
-    Each is filed as the definition [λ Δ ys z. a_elim (Some pq) m Bks z]:
+    Each is filed as the definition [λ Δ ys z. a_elim pq m Bks z]:
     a block per member, the function's of that member, its scrutinee's
-    type the annotation, its result type the motive, its clauses the
+    type the scrutinee type, its result type the motive, its clauses the
     branches, moved under [ys] and [z]. *)
 
 (** The first position of [W] among [Ws], of [m] among [ms]. *)
@@ -95,14 +95,14 @@ Fixpoint nat_index (m : nat) (ms : list nat) : option nat :=
     is the eliminator of. *)
 Definition rf_block (k : nat) (f : raw_fun) : eblock :=
   let nn := List.length (raw_fun_nparams f) in
-  eb_mk (S nn) (Some (raw_fun_scrut f)[wk_qn nn (wk_shiftn k)]ʷ) (raw_fun_res f)[wk_qn (S nn) (wk_shiftn k)]ʷ
+  eb_mk (S nn) (raw_fun_scrut f)[wk_qn nn (wk_shiftn k)]ʷ (raw_fun_res f)[wk_qn (S nn) (wk_shiftn k)]ʷ
     (List.map (fun b => (fst (fst b), snd (fst b), (snd b)[wk_qn (snd (fst b)) (wk_shiftn k)]ʷ)) (raw_fun_clauses f)).
 
 (** The blocks, one per member [j < nm], of the function of member [j]. *)
 Definition mdef_blocks (k nm : nat) (fs : list raw_fun) (ms : list nat) : list eblock :=
   List.map (fun j => match nat_index j ms with
-                     | Some i => match List.nth_error fs i with Some g => rf_block k g | None => eb_mk 0 None exp_default nil end
-                     | None => eb_mk 0 None exp_default nil
+                     | Some i => match List.nth_error fs i with Some g => rf_block k g | None => eb_mk 0 exp_default exp_default nil end
+                     | None => eb_mk 0 exp_default exp_default nil
                      end)
     (List.seq 0 nm).
 
@@ -118,7 +118,7 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
               (raw_fun_name f, ctx_pi Δ (ctx_pi (raw_fun_nparams f) (a_pi relevant (raw_fun_scrut f) (raw_fun_res f))),
                ctx_fn Δ (ctx_fn (raw_fun_nparams f)
                            (a_fn (raw_fun_scrut f)
-                              (a_elim relevant (Some pq) (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
+                              (a_elim relevant pq (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
                                  (mdef_blocks k (ind_nblk D) fs ms) (a_var 0))))))
     (List.combine fs ms).
 

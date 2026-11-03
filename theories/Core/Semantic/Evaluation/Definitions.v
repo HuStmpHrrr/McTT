@@ -186,15 +186,6 @@ Definition motive_entries (D : ind_decl) (Mk : imember) (ups ns : list domain) (
 Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domain) (a m : domain) : env :=
   env_extend_typed ρ (motive_entries D Mk (List.firstn (ind_nu D) as') (List.skipn (ind_nu D) as') a m).
 
-(** The group an eliminator eliminates by: the one written, or else that
-    of the value, a constructor or a neutral of a member. *)
-Definition elim_grp_of (oq : option qname) (m : domain) : option qname :=
-  match oq, m with
-  | Some p, _ => Some p
-  | None, d_con p _ _ _ => Some p
-  | None, d_neut (d_ind p _ _) _ => Some p
-  | None, _ => None
-  end.
 
 (** * The Kinds of Members of Module Values
 
@@ -469,7 +460,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** The proof of a conjunction is kept as it is; its parts are not
     evaluated. *)
 | eval_exp_conj :
-  `( ⟦ a_conj T M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_conj T M N, ρ⟩ )
+  `( ⟦ a_conj P Q M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_conj P Q M N, ρ⟩ )
 (** So is the proof of its first component. *)
 | eval_exp_left :
   `( ⟦ a_left M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_left M, ρ⟩ )
@@ -515,17 +506,16 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ind_nu D = 0 ->
      ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple nil )
 (** The eliminator evaluates its scrutinee, then eliminates the value, by
-    the blocks of its group: the one written, or the group of the value,
-    at the group's uniform parameters it carries. *)
+    the blocks of its group, at the group's uniform parameters it
+    carries. *)
 | eval_exp_elim :
   `( ⟦ Us ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ups ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     elim_grp_of oq m = Some p ->
      ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim relevant oq Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ a_elim relevant p Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** An eliminator into propositions is a proof, kept as it is. *)
 | eval_exp_elim_proof :
-  `( ⟦ a_elim propositional oq Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_elim propositional oq Us j Bks M, ρ⟩ )
+  `( ⟦ a_elim propositional p Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_elim propositional p Us j Bks M, ρ⟩ )
 (** A [Π] evaluates its domain and closes over its codomain, at its
     relevance tag. *)
 | eval_exp_pi :

@@ -619,8 +619,9 @@ with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain
 (** No member left *)
 | read_blocks_nil :
   `( Rblks i nil of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** The block for the member [Mi]: the motive, then the branches, then
-    the rest *)
+(** The block for the member [Mi]: the scrutinee's type, the member of
+    the group read at the parameters, under the fresh variables of the
+    non-uniform parameters; the motive; the branches; then the rest *)
 | read_blocks_cons :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
@@ -628,12 +629,13 @@ with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain
      eb_binder_count b = S (im_nn Mi) ->
      ⟦mref elim_src sel i of p ups ⟧ Θ ⍮ Ξ ↘ (hd, k, pre) ->
      Ftele List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ decl_env D ups ⍮ s ↘ ns ->
+     Rtyp d_ind hd k (pre ++ ns) in Θ ⍮ Ξ ⍮ (s + im_nn Mi)%nat ↘ Z' ->
      ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (motive_entries D Mv ups ns (d_ind hd k (pre ++ ns))
                                           (⇑! (d_ind hd k (pre ++ ns)) ((s + im_nn Mi)%nat))) ↘ a ->
      Rtyp a in Θ ⍮ Ξ ⍮ S (s + im_nn Mi)%nat ↘ A' ->
      Rbrs eb_brs b at im_cons Mi of Mi (hd, k, pre) of Dc from p ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
      Rblks (S i) Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rblks i (Mi :: Ms) of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_block (S (im_nn Mi)) A' Bs' :: NBks )
+     Rblks i (Mi :: Ms) of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_block (S (im_nn Mi)) Z' A' Bs' :: NBks )
 where "'Rblks' i Ms 'of' Dc 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (read_blocks Θ Ξ s ρ p ups Bks Dc sel i Ms NBks) : type_scope
 (** The branches of a block, one per constructor [cs] of the member [Mi]
     of the group read in order, of kinds [gs'], the block's motive [A] and

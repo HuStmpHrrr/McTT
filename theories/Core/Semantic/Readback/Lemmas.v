@@ -188,6 +188,12 @@ Import Domain_Notations.
     all: try match goal with
          | H1 : gc_loc ?T ?X ?p = Some _, H2 : gc_loc ?T ?X ?p = Some _ |- _ => rewrite H1 in H2; injection H2 as -> ->
          end.
+    (** A block's scrutinee type: both readbacks of the same type value, the
+        one the induction hypothesis decides. *)
+    all: repeat match goal with
+        | IH : forall M2 : nf, read_typ _ _ ?n ?v M2 -> ?X = M2, H : read_typ _ _ ?n ?v ?Y |- _ =>
+            lazymatch X with Y => fail | _ => rewrite <- (IH _ H) in * end
+        end.
     all: repeat match goal with
         | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
             assert_fails (constr_eq a b); assert (a = b) by lia; subst b
