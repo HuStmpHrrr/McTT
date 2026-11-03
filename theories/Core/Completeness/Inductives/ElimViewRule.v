@@ -38,24 +38,20 @@ Section Fixed_GCtx.
 
 (** The value of an eliminator. *)
 #[warnings="-cannot-define-projection"]
-Record elim_exp_value (oq : option qname) (Us : list exp) (j : nat) (Bks : list eblock) (M : exp) (ρ : env) (r : domain) : Prop :=
+Record elim_exp_value (p : qname) (Us : list exp) (j : nat) (Bks : list eblock) (M : exp) (ρ : env) (r : domain) : Prop :=
   mk_elim_exp_value
   { (** The uniform parameters' values *)
     elim_exp_value_ups : list domain
     (** The scrutinee's value *)
   ; elim_exp_value_scrut : domain
-    (** The group eliminated *)
-  ; elim_exp_value_grp : qname
     (** [Us] evaluate to [elim_exp_value_ups] *)
   ; elim_exp_value_ups_eval : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ elim_exp_value_ups
     (** [M] evaluates to [elim_exp_value_scrut] *)
   ; elim_exp_value_scrut_eval : ⟦ M ⟧ ρ ↘ elim_exp_value_scrut
-    (** The group is the annotation's, or the scrutinee's *)
-  ; elim_exp_value_grp_of : elim_grp_of oq elim_exp_value_scrut = Some elim_exp_value_grp
     (** The eliminator on the scrutinee's value gives [r] *)
-  ; elim_exp_value_elim : ⟦elim elim_exp_value_scrut at j of elim_exp_value_grp elim_exp_value_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
+  ; elim_exp_value_elim : ⟦elim elim_exp_value_scrut at j of p elim_exp_value_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
 
-Lemma elim_exp_value_of : forall oq Us j Bks M ρ r, ⟦ a_elim relevant oq Us j Bks M ⟧ ρ ↘ r -> elim_exp_value oq Us j Bks M ρ r.
+Lemma elim_exp_value_of : forall p Us j Bks M ρ r, ⟦ a_elim relevant p Us j Bks M ⟧ ρ ↘ r -> elim_exp_value p Us j Bks M ρ r.
 Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
 
 Section ElimViewRule.
@@ -78,9 +74,10 @@ Section ElimViewRule.
   Variable (Us : list exp).
   Hypotheses (HUl : List.length Us = ind_nu D)
     (HUs : forall k N T, List.nth_error Us k = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
-             Γ ⊨ N : T).
+             Γ ⊨ N : T)
+    (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
   Variable (Bks : list eblock) (iA : nat).
-  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
+  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA) (HBss : blocks_scoped (List.length Γ) Bks).
   Let HBks := valid_blocks_has _ _ _ _ _ _ Hdt HBk.
   Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
   Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
@@ -92,7 +89,7 @@ Section ElimViewRule.
   Let HgQ := valid_groups_valid VP HP qc D' HVQ.
   Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
   Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
-  Let VB := view_wrap relevant p D D' vm Us Bks.
+  Let VB := view_wrap relevant p qc D D' vm Us (im_pre Mm Us) Bks.
   Let HUr := valid_ind_decl_uparams_relevant _ HD.
   Let HQr := valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ).
 
@@ -122,54 +119,84 @@ Section ElimViewRule.
   Section Pre.
     Variable (C2 : env) (u3 cups : list domain).
     Hypotheses (HC22 : RΓ C2 C2) (HUC2 : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C2 ↘ u3)
-      (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil u3 ↘ cups).
+      (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D u3 ↘ cups).
 
-    (** The instance at [C2], related to it at [u3]. *)
-    Lemma pre_base : forall RQ, EF ind_uparams D' ≈ ind_uparams D' ∈ per_ctx_env ↘ RQ ->
-        exists uB, ⟦ im_pre Mm Us ⟧* gc_deps ⍮ gc_stack ⍮ C2 ↘ uB /\ RQ (env_args nil uB) (env_args nil cups).
+    (** The view's instance is scoped over the group's uniform parameters. *)
+    Lemma pre_scoped : List.Forall (exp_scoped (List.length (ind_uparams D))) Is.
+    Proof. exact (member_closed_head _ _ (decl_closed_members _ Hc _ _ HMm) _ _ _ _ Hh). Qed.
+
+    (** The instance at [C2], related to it at [u3]: [Is] moved by [τU] at
+        [C2] against [Is] at [τU]'s value, and that value against the
+        uniform parameters' own environment. *)
+    Lemma pre_base : exists uB, ⟦ im_pre Mm Us ⟧* gc_deps ⍮ gc_stack ⍮ C2 ↘ uB /\
+        per_gargs (List.rev (ind_uparams D')) nil nil uB cups.
     Proof.
-      intros RQ HRQ.
       pose proof pre_length as HlIs.
-      assert (HPQ : PER RQ) by (eapply per_env_PER; exact HRQ).
-      pose proof (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2) as Hgu3.
+      pose proof (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2) as Hgu3.
       pose proof (u0_len D Us HUl C2 u3 HUC2) as Hlu3.
-      assert (HU3 : RU (env_args nil u3) (env_args nil u3)) by exact (uparams_rel_env D HD u3 u3 Hgu3 Hlu3 RU HRU).
-      assert (HU33 : RU (env_args C2 u3) (env_args nil u3))
-        by (eapply closed_env_base; [ exact Ua | exact Usem | exact HRU | exact Hlu3 | exact Hlu3 | exact HU3 ]).
-      (** [Is] at the two bases of [u3]. *)
-      pose proof (gsub_valid (valid_group_views_view_args_gsub p D Hvg Hcv _ _ _ _ _ _ _ HMm Hh Hq)) as HσI.
-      destruct (sb_of_list_vals_rel _ _ _ _ RQ RU HaQ HWQ Usem HRQ HRU HQr HσI HlIs HlIs _ _ HU33)
-        as (cs0 & cups' & Ecs0 & Ecups' & H2).
-      pose proof (functional_eval_exps' _ _ _ _ Ecups' Ecups) as ->.
-      (** [Is] moved by [τU] at [C2], against at its value. *)
       destruct (closed_app_sem _ _ Ua Usem HΓ) as [HUΓ _].
-      destruct (closed_inst_cross _ (ind_uparams D ++ Γ) Is Is HaQ HWQ HUΓ HQr HlIs HlIs) as [HsI Hlk].
-      { intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-.
-        exact (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HN HT)). }
-      pose proof (gsub_valid (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs)) as HτU.
-      (** The uniform parameters' substitution at [C2]: their values. *)
-      assert (EτU : ⟦ τU : ind_uparams D ++ Γ ⟧s C2 ↘ env_args C2 u3).
-      { destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
-        destruct (instance_values_of_sub _ _ Us RΓ RUΓ Ua HRΓ HRUΓ (closed_relevant_over _ _ Ua Usem HΓ HUr) HτU
-                    ltac:(rewrite HUl; reflexivity) C2 C2 HC22) as [u1 u2 Eu1 _ _ Hsu1 _].
-        pose proof (functional_eval_exps' _ _ _ _ Eu1 HUC2) as ->; exact Hsu1. }
-      destruct (closed_vals_sub_link _ _ Is RQ HaQ HWQ HUΓ HRQ HQr HlIs HsI Hlk _ _ τU C2 (env_args C2 u3) cs0
-                  HRΓ HτU HC22 EτU Ecs0) as (w & Ew & H1).
+      destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
+      pose proof (gsub_valid (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs HUss)) as HτU.
+      (** The value of [τU] at [C2]. *)
+      destruct (instance_values_of_sub _ _ Us RΓ RUΓ Ua HRΓ HRUΓ (closed_relevant_over _ _ Ua Usem HΓ HUr) HτU
+                  ltac:(rewrite HUl; reflexivity) C2 C2 HC22) as [u1 u2 Eu1 Eu2 HE12 EτU _].
+      pose proof (functional_eval_exps' _ _ _ _ Eu1 HUC2) as ->; pose proof (functional_eval_exps' _ _ _ _ Eu2 HUC2) as ->.
+      set (E := env_extend_tagged Γ (List.rev (ind_uparams D)) (ctx_retag Γ C2) u3) in *.
+      (** [Is] at [E], and moved by [τU] at [C2] against it. *)
+      assert (HsIs : List.Forall (exp_scoped (List.length (ind_uparams D ++ Γ))) Is)
+        by (eapply List.Forall_impl; [| exact pre_scoped ]; intros I0 HI0; eapply exp_scoped_mono; [| exact HI0 ];
+            rewrite List.length_app; lia).
+      destruct (closed_inst_cross _ (ind_uparams D ++ Γ) Is Is HaQ HWQ HUΓ HQr HlIs HlIs) as [HsI Hlk];
+        [ intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-;
+          exact (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HN HT))
+        | exact HsIs | exact HsIs |].
+      destruct (closed_instance_gargs _ _ _ _ RUΓ HaQ HWQ HUΓ HRUΓ HQr HsI HlIs HlIs E E HE12) as (u & _ & Eu & _ & _).
+      destruct (closed_instance_moved_gargs _ _ Is HaQ HWQ HUΓ HQr HlIs HsI Hlk _ _ τU C2 E u HRΓ HτU HC22 EτU Eu)
+        as (w & Ew & H1).
+      (** [E] against the uniform parameters' own environment: their values
+          stored at readable types on each side. *)
+      assert (HWU' : ⊨ List.rev (List.rev (ind_uparams D)) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact Usem).
+      assert (HRU' : EF List.rev (List.rev (ind_uparams D)) ++ ⋅ ≈ List.rev (List.rev (ind_uparams D)) ++ ⋅ ∈ per_ctx_env ↘ RU)
+        by (rewrite List.rev_involutive, List.app_nil_r; exact HRU).
+      assert (HaU' : tele_ass (List.rev (ind_uparams D))) by exact (List.Forall_rev Ua).
+      assert (HUΓ' : ⊨ List.rev (List.rev (ind_uparams D)) ++ Γ) by (rewrite List.rev_involutive; exact HUΓ).
+      assert (HRUΓ' : EF List.rev (List.rev (ind_uparams D)) ++ Γ ≈ List.rev (List.rev (ind_uparams D)) ++ Γ ∈ per_ctx_env ↘ RUΓ)
+        by (rewrite List.rev_involutive; exact HRUΓ).
+      assert (Lv : List.length (tagged_entries Γ (List.rev (ind_uparams D)) (ctx_retag Γ C2) u3) = List.length (List.rev (ind_uparams D)))
+        by (rewrite tagged_entries_length, List.length_rev by (rewrite List.length_rev; unfold ind_nu in Hlu3; lia);
+            unfold ind_nu in Hlu3; lia).
+      assert (HE12' := HE12); unfold E in HE12'; rewrite env_extend_tagged_typed in HE12'.
+      destruct (rel_gargs_readable _ _ _ _ HRΓ HUΓ' HaU' HRUΓ' _ _ _ _ Lv Lv HE12') as [Rv _].
+      pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HWU' HaU' nil nil (ctx_retag Γ C2) nil _ _ I I I Hgu3) as Hgu3'.
+      assert (HE : RU E (decl_env D u3)).
+      { unfold E, decl_env, env_tele; rewrite env_extend_tagged_typed.
+        assert (Lv' : List.length (tele_entries nil (List.rev (ind_uparams D)) u3) = List.length (List.rev (ind_uparams D)))
+          by (rewrite tele_entries_length, List.length_rev; unfold ind_nu in Hlu3; lia).
+        apply (gargs_env_rel_typed _ _ _ _ per_ctx_env_nil_true HWU' HaU' HRU' (ctx_retag Γ C2) nil
+                 (tagged_entries Γ (List.rev (ind_uparams D)) (ctx_retag Γ C2) u3) (tele_entries nil (List.rev (ind_uparams D)) u3)
+                 I Lv Lv').
+        - rewrite tagged_entries_fst, tele_entries_fst by (rewrite List.length_rev; unfold ind_nu in Hlu3; lia); exact Hgu3'.
+        - exact Rv.
+        - exact (proj2 (per_gargs_entries_readable _ _ _ _ _ Hgu3')). }
+      pose proof (gsub_valid (valid_group_views_view_args_gsub p D Hvg Hcv _ _ _ _ _ _ _ HMm Hh Hq)) as HσI.
+      destruct (closed_instance_gargs _ _ _ _ RU HaQ HWQ Usem HRU HQr HσI HlIs HlIs E (decl_env D u3) HE)
+        as (u' & cs & Eu' & Ecs & H2).
+      pose proof (functional_eval_exps' _ _ _ _ Eu' Eu) as ->; pose proof (functional_eval_exps' _ _ _ _ Ecs Ecups) as ->.
       exists w; split; [ unfold im_pre; rewrite Hh; exact Ew |].
-      etransitivity; [ exact H1 | exact H2 ].
+      exact (uparams_trans D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ _ H1
+               ltac:(rewrite (eval_exps_length _ _ _ Ew), List.length_map; exact pre_length) H2).
     Qed.
 
     (** Moved by a semantic substitution of value [C2]. *)
-    Lemma pre_moved : forall Γ' RΓ' σ0 ρ0 RQ, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ -> RΓ' ρ0 ρ0 ->
-        ⟦ σ0 : Γ ⟧s ρ0 ↘ C2 -> EF ind_uparams D' ≈ ind_uparams D' ∈ per_ctx_env ↘ RQ ->
+    Lemma pre_moved : forall Γ' RΓ' σ0 ρ0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ -> RΓ' ρ0 ρ0 ->
+        ⟦ σ0 : Γ ⟧s ρ0 ↘ C2 ->
         exists ub, ⟦ List.map (fun U => U[σ0]) (im_pre Mm Us) ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ ub /\
-          RQ (env_args nil ub) (env_args nil cups).
+          per_gargs (List.rev (ind_uparams D')) nil nil ub cups.
     Proof.
-      intros Γ' RΓ' σ0 ρ0 RQ HRΓ' Hσ0 Hρ0 Hev0 HRQ.
+      intros Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0.
       pose proof pre_length as HlIs.
-      assert (HPQ : PER RQ) by (eapply per_env_PER; exact HRQ).
-      destruct (pre_base RQ HRQ) as (uB & EuB & HB).
-      pose proof (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs) as HgU.
+      destruct pre_base as (uB & EuB & HB).
+      pose proof (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs HUss) as HgU.
       assert (Hlp : List.length (im_pre Mm Us) = List.length (ind_uparams D'))
         by (unfold im_pre; rewrite Hh, List.length_map; exact HlIs).
       assert (Hpt : forall j N T, List.nth_error (im_pre Mm Us) j = Some N ->
@@ -181,26 +208,16 @@ Section ElimViewRule.
         rewrite HT in HT0'; injection HT0' as ->.
         pose proof (rel_exp_under_ctx_gsub HgU (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HI HT0))) as H.
         exact H. }
-      destruct (closed_inst_cross _ Γ (im_pre Mm Us) (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp Hlp) as [HsP Hlk].
-      { intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; exact (Hpt _ _ _ HN HT). }
-      destruct (closed_vals_sub_link _ _ (im_pre Mm Us) RQ HaQ HWQ HΓ HRQ HQr Hlp HsP Hlk _ _ σ0 ρ0 C2 uB
+      pose proof (im_pre_scoped D m Mm Us _ Hc HMm HUl HUss) as HsP0.
+      destruct (closed_inst_cross _ Γ (im_pre Mm Us) (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp Hlp) as [HsP Hlk];
+        [ intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; exact (Hpt _ _ _ HN HT) | exact HsP0 | exact HsP0 |].
+      destruct (closed_instance_moved_gargs _ _ (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp HsP Hlk _ _ σ0 ρ0 C2 uB
                   HRΓ' Hσ0 Hρ0 Hev0 EuB) as (ub & Eub & H3).
-      exists ub; split; [ exact Eub | etransitivity; [ exact H3 | exact HB ] ].
+      exists ub; split; [ exact Eub |].
+      exact (uparams_trans D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ _ H3
+               ltac:(rewrite (eval_exps_length _ _ _ Eub), !List.length_map; exact Hlp) HB).
     Qed.
   End Pre.
-
-  Lemma gargs_of_rq : forall RQ xs ys, EF ind_uparams D' ≈ ind_uparams D' ∈ per_ctx_env ↘ RQ ->
-      List.length xs = List.length (ind_uparams D') -> List.length ys = List.length (ind_uparams D') ->
-      RQ (env_args nil xs) (env_args nil ys) -> per_gargs (List.rev (ind_uparams D')) nil nil xs ys.
-  Proof.
-    intros * HRQ Hx Hy H.
-    assert (HWQ' : ⊨ List.rev (List.rev (ind_uparams D')) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HWQ).
-    assert (HRQ' : EF List.rev (List.rev (ind_uparams D')) ++ ⋅ ≈ List.rev (List.rev (ind_uparams D')) ++ ⋅ ∈ per_ctx_env ↘ RQ)
-      by (rewrite List.rev_involutive, List.app_nil_r; exact HRQ).
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) HRQ' nil nil xs ys
-                ltac:(rewrite List.length_rev; exact Hx) ltac:(rewrite List.length_rev; exact Hy) H) as [_ Hg].
-    exact Hg.
-  Qed.
 
   (** *** The Chain *)
   Variable (oq : option qname) (bm : eblock) (Ns : list exp) (M : exp).
