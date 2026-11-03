@@ -127,19 +127,6 @@ Lemma cargs_nonrec_relevance_app : forall gs1 gs2,
     cargs_nonrec_relevance (gs1 ++ gs2) = cargs_nonrec_relevance gs1 ++ cargs_nonrec_relevance gs2.
 Proof. induction gs1 as [| [r A | t] gs1 IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
-(** An entry of a telescope over [Γ] that is a proposition over the
-    entries after it is a proposition at an environment the context PER
-    relates. *)
-Lemma prop_entry_at : forall Δ1 T Δ2 Γ R ρ ρ', tele_ass (Δ1 ++ ce_ass T :: Δ2) -> Δ2 ++ Γ ⊨ T : Propₘ ->
-    EF (Δ1 ++ ce_ass T :: Δ2) ++ Γ ≈ (Δ1 ++ ce_ass T :: Δ2) ++ Γ ∈ per_ctx_env ↘ R -> R ρ ρ' ->
-    entry_propositional gc_deps gc_stack ((Δ1 ++ ce_ass T :: Δ2) ++ Γ) ρ (List.length Δ1).
-Proof.
-  intros * Ha HT HR Hρ.
-  refine (prop_entry_propositional _ _ _ _ Ha _ _ HR ρ ρ' Hρ); [ rewrite List.length_app; cbn [List.length]; lia |].
-  intros Δ1' T' Δ2' Heq Hl.
-  destruct (app_split_eq _ _ _ _ Heq (eq_sym Hl)) as [_ He]; injection He as -> <-; exact HT.
-Qed.
-
 (** The substitution extended by the non-recursive arguments of [gs] is
     scoped where the arguments and the substitution are. *)
 Lemma cargs_sub_bound : forall gs σ As n m, (forall x, x < n -> sentry_scoped m (σ x)) ->
@@ -200,16 +187,6 @@ Lemma ctx_retag_idempotent : forall Δ ρ, ctx_retag Δ (ctx_retag Δ ρ) = ctx_
 Proof.
   induction Δ as [| e Δ IH]; intros ρ; [ reflexivity |].
   cbn [ctx_retag List.tl List.hd]; rewrite IH, retag_entry_twice; reflexivity.
-Qed.
-
-(** Sorts past the fields are not read. *)
-Lemma eval_field_vals_app_sorts : forall rs Ms ρ ms rs', eval_field_vals gc_deps gc_stack rs Ms ρ ms ->
-    List.length rs = List.length Ms -> eval_field_vals gc_deps gc_stack (rs ++ rs') Ms ρ ms.
-Proof.
-  induction 1 as [rs ρ | rs M ρ m Ms ms Hr Hm Hms IH | rs M ρ Ms ms Hr Hms IH]; intros Hl; [ constructor | |];
-    (destruct rs as [| r rs]; [ discriminate Hl |]); cbn [List.length List.hd List.tl List.app] in *.
-  - eapply eval_field_vals_relevant; [ exact Hr | exact Hm | apply IH; lia ].
-  - eapply eval_field_vals_proof; [ exact Hr | apply IH; lia ].
 Qed.
 
 (** [per_head_inst] for a type at a level: the head relation of the
@@ -1185,68 +1162,6 @@ Section Iota.
     eapply gsub_eq; [ exact (gsub_comp _ _ _ _ _ G0 HΓ Hgv Hgl) |].
     rewrite <- (cargs_sub_firstn gs1 σP As).
     apply cargs_sub_pat; rewrite List.length_firstn; lia.
-  Qed.
-
-  (** The entry of the branch's context at a propositional argument of the
-      constructor is a proposition at every environment its context PER
-      relates: the argument's type is a proposition of the declaration. *)
-  Lemma branch_context_prop_entry : forall RB,
-      EF elim_bctx relevant p D Mm gs (blocks_motives Bks) Us ++ Γ ≈ elim_bctx relevant p D Mm gs (blocks_motives Bks) Us ++ Γ
-        ∈ per_ctx_env ↘ RB ->
-      forall E E', RB E E' -> forall j A, List.nth_error gs j = Some (ca_arg propositional A) ->
-      entry_propositional gc_deps gc_stack (elim_bctx relevant p D Mm gs (blocks_motives Bks) Us ++ Γ) E
-        (cargs_nrec D gs + (List.length gs - 1 - j)).
-  Proof.
-    intros RB HRB E E' HE j A Hj.
-    destruct (List.nth_error_split _ _ Hj) as (a & b & Hga & Ha).
-    set (τU := sb_of_list Id Us).
-    set (IHs := ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs).
-    set (Pre := cargs_ctx p D Mm a ++ im_nparams Mm).
-    set (Δ1 := IHs ++ tele_sub (cargs_ctx_aux p D (im_nn Mm) (false :: cargs_pat a) b) (sb_qn (S (List.length Pre)) τU)).
-    set (T := A[wk_pat (cargs_pat a)]ʷ[sb_qn (List.length Pre) τU]).
-    assert (Hbc : elim_bctx relevant p D Mm gs (blocks_motives Bks) Us = Δ1 ++ ce_ass T :: tele_sub Pre τU).
-    { unfold elim_bctx, Δ1, T; fold IHs τU; rewrite <- List.app_assoc; f_equal.
-      rewrite <- (length_im_nparams Mm), <- tele_sub_app.
-      rewrite Hga; unfold cargs_ctx; rewrite cargs_ctx_aux_app, List.app_nil_r; cbn [cargs_ctx_aux].
-      rewrite <- !List.app_assoc; cbn [List.app]; rewrite tele_sub_app; reflexivity. }
-    assert (Hlx : cargs_nrec D gs + (List.length gs - 1 - j) = List.length Δ1).
-    { unfold Δ1, IHs; rewrite List.length_app, length_ihs_ctx_aux, length_tele_sub, length_cargs_ctx_aux.
-      rewrite Hga, List.length_app; cbn [List.length]; lia. }
-    rewrite Hbc in HRB |- *; rewrite Hlx.
-    assert (Hbass : tele_ass (Δ1 ++ ce_ass T :: tele_sub Pre τU))
-      by (rewrite <- Hbc; exact (elim_bctx_ass _ _ _ _ _ _ _ _ Hc HMm)).
-    apply (fun HT => prop_entry_at _ _ _ _ _ _ _ Hbass HT HRB HE).
-    (** The argument's type, a proposition over the arguments before it. *)
-    assert (HAj : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec a)) = Some A)
-      by (rewrite Hga, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-    pose proof (nonrec_relevance_at a b propositional A) as Hr; rewrite <- Hga in Hr.
-    destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HMm Hcon HAj Hr) as [HAp _]; cbn [relevance_sort] in HAp.
-    rewrite Hga, <- nonrec_args_prefix_cargs_strat in HAp.
-    assert (HSa : tele_ass (cargs_strat a ++ im_params D Mm))
-      by (apply List.Forall_app; split; [ rewrite cargs_strat_nonrec; apply List.Forall_rev, tele_ass_map_ass
-                                       | exact (member_params_ass D Hc _ _ HMm) ]).
-    assert (HSs : ⊨ cargs_strat a ++ im_params D Mm)
-      by (rewrite (nonrec_args_prefix_cargs_strat a (ca_arg propositional A :: b)), <- Hga;
-          apply (valid_ind_decl_strat _ HD _ _ _ _ _ HMm Hcon); rewrite Hga, cargs_nonrec_app, List.length_app; lia).
-    pose proof (closed_app_valid _ _ _ _ _ HSa HSs HΓ HAp) as HAΓ; rewrite <- List.app_assoc in HAΓ.
-    (** Along the arguments before it, then at the uniform parameters. *)
-    pose proof (rel_exp_under_ctx_wk (cargs_wk_ext VP p D HP HPD Γ HΓ Us iota_case_HUl m Mm c gs HMm Hcon a _ Hga) HAΓ) as HAw.
-    cbn [exp_wk] in HAw.
-    assert (HPa : tele_ass Pre)
-      by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_nparams_ass D Hc _ _ HMm) ]).
-    pose proof (cargs_prefix_sem D p Mm gs HΨ _ _ Hga) as HCa.
-    assert (HCa' : tele_ass (cargs_ctx p D Mm a ++ im_params D Mm))
-      by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc _ _ HMm) ]).
-    destruct (closed_app_sem _ _ HCa' HCa HΓ) as [HCΓ _].
-    assert (HPΓ : ⊨ Pre ++ ind_uparams D ++ Γ) by (unfold Pre, im_params in *; rewrite <- !List.app_assoc in *; exact HCΓ).
-    pose proof (gsub_qn Pre Γ τU (ind_uparams D ++ Γ)
-                  (gsub_closed_inst _ _ _ (uparams_ass D Hc) (valid_ind_decl_uparams _ HD) HΓ iota_case_HUl iota_case_HUs
-                     iota_case_HUss)
-                  HPa HPΓ) as Hg.
-    assert (HAw' : Pre ++ ind_uparams D ++ Γ ⊨ A[wk_pat (cargs_pat a)]ʷ : Propₘ)
-      by (unfold Pre, im_params in *; rewrite <- !List.app_assoc in *; exact HAw).
-    pose proof (rel_exp_under_ctx_gsub Hg HAw') as HT; cbn [exp_sub] in HT.
-    exact HT.
   Qed.
 
   (** *** The Sorts of the Entries of the Branch's Context
