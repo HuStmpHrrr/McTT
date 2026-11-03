@@ -2720,8 +2720,8 @@ Section CrossBot.
       has, the wrapped results the branches are read under, and those
       related as [cross_fields_rel] has them. *)
   #[warnings="-cannot-define-projection"]
-  Record cross_wrapped (Dc : ind_decl) (k : nat) (pre pre' preQ : list domain) (gq gA gB : list carg) (vA vB : list domain)
-      (s2 : nat) : Prop := mk_cross_wrapped
+  Record cross_wrapped (Dc : ind_decl) (k : nat) (pre : list domain) (Ts : list centry) (pre' preQ : list domain)
+      (TsQ : list centry) (gq gA gB : list carg) (vA vB : list domain) (s2 : nat) : Prop := mk_cross_wrapped
     { (** The container's fresh recursive results *)
       cross_wrapped_ihsA : list domain
       (** The group's fresh recursive results *)
@@ -2731,10 +2731,10 @@ Section CrossBot.
       (** The group's wrapped results *)
     ; cross_wrapped_wB : list domain
       (** The container's fresh results *)
-    ; cross_wrapped_fresh_a : Fihs vA at gq gA of Dc under ρb AsA at qc ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ preQ)
+    ; cross_wrapped_fresh_a : Fihs vA at gq gA of Dc under ρb AsA at qc ub in gc_deps ⍮ gc_stack ⍮ components_env D' ub TsQ preQ
         ⍮ s2 ↘ cross_wrapped_ihsA
       (** The group's fresh results *)
-    ; cross_wrapped_fresh_b : Fihs vB at gq gB of Dc under C1 AsB at p u0 in gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ pre')
+    ; cross_wrapped_fresh_b : Fihs vB at gq gB of Dc under C1 AsB at p u0 in gc_deps ⍮ gc_stack ⍮ components_env D u0 Ts pre'
         ⍮ s2 ↘ cross_wrapped_ihsB
       (** As many on each side *)
     ; cross_wrapped_len : List.length cross_wrapped_ihsA = List.length cross_wrapped_ihsB
@@ -2745,34 +2745,45 @@ Section CrossBot.
     ; cross_wrapped_wrap_b : ⟦wihs vB of gq gB of Dc with cross_wrapped_ihsB under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1
         ↘ cross_wrapped_wB
       (** The wrapped results are related *)
-    ; cross_wrapped_related : cross_fields_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' gA gB vA vB
+    ; cross_wrapped_related : cross_fields_rel D D' dr Rel C1 p u0 Bks k u0 u0 pre pre' Ts gA gB vA vB
         cross_wrapped_wA cross_wrapped_wB }.
+
+  (** The lengths of the components after one more argument, read off the
+      relation of the rest. *)
+  Ltac cross_tops_lengths Ht0 :=
+    match type of Ht0 with
+    | cross_tops _ _ _ _ _ _ _ _ _ ?Tr ?pq ?Tq ?pr' _ _ _ _ =>
+        assert (L'1 : List.length pr' = List.length Tr) by (rewrite ?List.length_app; cbn [List.length]; lia);
+        assert (LQ1 : List.length pq = List.length Tq) by (rewrite ?List.length_app; cbn [List.length]; lia)
+    end.
 
   Lemma cross_wrapped_results : forall (rk : nat -> nat) r, view_rank_ok gc_deps gc_stack D rk ->
       (forall j', rk j' < r -> cross_bot j') ->
-      forall Dc k kQ gq gA gB vA vB pre pre' preQ s2,
+      forall Dc k kQ gq gA gB vA vB pre Ts pre' preQ TsQ s2,
         cargs_kinds gq gA -> cargs_correspond vm gA gB -> cargs_nest_ok D Dc rk r gq gB -> cargs_leaf_mono Dc D' gq gA ->
-        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 pre pre' gB vA vB ->
-        cross_tops qc D' ub u0 dr kQ k pre preQ pre' gA gB vA vB ->
-        cross_wrapped Dc k pre pre' preQ gq gA gB vA vB s2.
+        List.length pre' = List.length Ts -> List.length preQ = List.length TsQ ->
+        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 pre pre' Ts gB vA vB ->
+        cross_tops qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' gA gB vA vB ->
+        cross_wrapped Dc k pre Ts pre' preQ TsQ gq gA gB vA vB s2.
   Proof.
     intros rk r Hrk HIH Dc k kQ.
-    induction gq as [| g' gq IH]; intros [| gA0 gA] [| gB0 gB] vA vB pre pre' preQ s2 Hk Hco Hno Hmo Hca Ht;
+    induction gq as [| g' gq IH]; intros [| gA0 gA] [| gB0 gB] vA vB pre Ts pre' preQ TsQ s2 Hk Hco Hno Hmo L' LQ Hca Ht;
       cbn in Hk, Hco; try contradiction;
       try (destruct g'; cbn in Hk; contradiction); try (destruct gA0; cbn in Hk, Hco; contradiction).
     - inversion Ht; subst.
-      apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ nil nil nil nil); first [ reflexivity | constructor ].
+      apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ _ _ nil nil nil nil); first [ reflexivity | constructor ].
     - destruct g' as [rT' T' | t''], gA0 as [rA' A' | t'], gB0 as [rA A | t]; cbn in Hk, Hco, Hno, Hmo; try contradiction;
         try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
       + (** Non-recursive throughout. *)
         inversion Ht; subst.
-        match goal with Ht' : cross_tops _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Ht' into Ht0 end.
+        match goal with Ht' : cross_tops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Ht' into Ht0 end.
         inversion Hca; subst.
-        match goal with Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Hc' into Hca0 end.
-        destruct (IH gA gB _ _ _ _ _ s2 Hk Hco Hno Hmo Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
-        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB wA wB).
-        * apply fresh_ihs_arg; rewrite <- env_args_snoc, <- List.app_assoc; exact IA.
-        * apply fresh_ihs_arg; rewrite <- env_args_snoc, <- List.app_assoc; exact IB.
+        match goal with Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Hc' into Hca0 end.
+        cross_tops_lengths Ht0.
+        destruct (IH gA gB _ _ _ _ _ _ _ s2 Hk Hco Hno Hmo L'1 LQ1 Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB wA wB).
+        * apply fresh_ihs_arg; rewrite <- (components_env_snoc _ _ _ _ _ _ LQ); exact IA.
+        * apply fresh_ihs_arg; rewrite <- (components_env_snoc _ _ _ _ _ _ L'); exact IB.
         * exact Li.
         * apply wrap_ihs_eval_arg; exact WA.
         * apply wrap_ihs_eval_arg; exact WB.
@@ -2780,15 +2791,16 @@ Section CrossBot.
       + (** Nested through by the group only: the group's eliminator at
             its argument. *)
         inversion Ht; subst.
-        match goal with Ht' : cross_tops _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Ht' into Ht0 end.
+        match goal with Ht' : cross_tops _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => rename Ht' into Ht0 end.
         inversion Hca; subst.
-        match goal with Hr' : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _, Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+        match goal with Hr' : rec_arg_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _, Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
           rename Hr' into Hrr; rename Hc' into Hca0 end.
-        destruct (proj1 (proj2 (proj2 (SE self_elim_all))) _ _ _ _ _ _ _ _ Hrr) as (ih0 & ih & _ & Ih & _).
+        destruct (proj1 (proj2 (proj2 (SE self_elim_all))) _ _ _ _ _ _ _ _ _ Hrr Had Had) as (ih0 & ih & _ & Ih & _).
         destruct Hno as [_ Hno].
-        destruct (IH gA gB _ _ _ _ _ s2 Hk Hco Hno Hmo Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
-        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB wA (ih ++ wB)).
-        * apply fresh_ihs_arg; rewrite <- env_args_snoc, <- List.app_assoc; exact IA.
+        cross_tops_lengths Ht0.
+        destruct (IH gA gB _ _ _ _ _ _ _ s2 Hk Hco Hno Hmo L'1 LQ1 Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB wA (ih ++ wB)).
+        * apply fresh_ihs_arg; rewrite <- (components_env_snoc _ _ _ _ _ _ LQ); exact IA.
         * apply fresh_ihs_nest; exact IB.
         * exact Li.
         * apply wrap_ihs_eval_arg; exact WA.
@@ -2802,7 +2814,7 @@ Section CrossBot.
           rename Ht' into Ht0; rename HrQ' into HrQ; rename Hd' into Hdoms end.
         match goal with Hn1 : is_neut ?a1, Hn2 : is_neut ?a2 |- _ => rename Hn1 into HnA; rename Hn2 into HnB end.
         inversion Hca; subst.
-        match goal with Hr' : rec_arg_rel p _ _ _ _ _ _ _ _ _ _ _ _ _, Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+        match goal with Hr' : rec_arg_rel p _ _ _ _ _ _ _ _ _ _ _ _ _ _, Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
           rename Hr' into Hrr; rename Hc' into Hca0 end.
         destruct Hco as (Hmt & Hdp & Hco); destruct Hno as [Hlt Hno].
         pose proof (shape_correspond_of _ _ _ Hmt Hdp) as Hsc.
@@ -2814,10 +2826,10 @@ Section CrossBot.
           intros l Hin _ _; apply HIH.
           pose proof (leaf_mem_rank p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI
                         (valid_group_adm p D Hvg u0 u0 u0_gargs' u0_len' u0_gargs') rk Hrk t 0 l Hin) as Hle; lia. }
-        destruct (cross_leaves (S (ptyp_mem t)) t' t ltac:(intros; lia) k kQ pre pre' preQ _ _ _ Hsc Hrr HrQ Hdoms HnA HnB Hfl)
+        destruct (cross_leaves (S (ptyp_mem t)) t' t ltac:(intros; lia) k kQ pre Ts pre' preQ TsQ _ _ _ Hsc L' LQ Hrr HrQ Hdoms HnA HnB Hfl)
           as [tyA tyB resA resB Ta Tb Ra Rb Lta Ltb Lra Lrb Hrel].
-        destruct (IH gA gB _ _ _ _ _ s2 Hk Hco Hno Hmo Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
-        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB (resA ++ wA) (resB ++ wB)).
+        destruct (IH gA gB _ _ _ _ _ _ _ s2 Hk Hco Hno Hmo L' LQ Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB (resA ++ wA) (resB ++ wB)).
         * apply fresh_ihs_nest; exact IA.
         * apply fresh_ihs_nest; exact IB.
         * exact Li.
@@ -2838,7 +2850,7 @@ Section CrossBot.
           rename Ht' into Ht0; rename HrQ' into HrQ; rename Hd' into Hdoms end.
         match goal with Hn1 : is_neut ?a1, Hn2 : is_neut ?a2 |- _ => rename Hn1 into HnA; rename Hn2 into HnB end.
         inversion Hca; subst.
-        match goal with Hr' : rec_arg_rel p _ _ _ _ _ _ _ _ _ _ _ _ _, Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+        match goal with Hr' : rec_arg_rel p _ _ _ _ _ _ _ _ _ _ _ _ _ _, Hc' : con_args_rel _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
           rename Hr' into Hrr; rename Hc' into Hca0 end.
         destruct Hco as (Hmt & Hdp & Hco); destruct Hno as [Hnl Hno]; destruct Hmo as [Hmono Hmo].
         pose proof (shape_correspond_of _ _ _ Hmt Hdp) as Hsc.
@@ -2848,17 +2860,17 @@ Section CrossBot.
         { apply (cross_flags_ok_of cross_bot (leaf_in D' t') (leaf_in Dc t'') ls).
           - intros l _ Hf; exact (Hmono l Hf).
           - intros l Hin _ Hf; apply HIH; exact (Hnl l Hin Hf). }
-        destruct (cross_leaves (S (ptyp_mem t)) t' t ltac:(intros; lia) k kQ pre pre' preQ _ _ _ Hsc Hrr HrQ Hdoms HnA HnB Hfl)
+        destruct (cross_leaves (S (ptyp_mem t)) t' t ltac:(intros; lia) k kQ pre Ts pre' preQ TsQ _ _ _ Hsc L' LQ Hrr HrQ Hdoms HnA HnB Hfl)
           as [tyA tyB resA resB Ta Tb Ra Rb Lta Ltb Lra Lrb Hrel].
         destruct (fresh_cross_results _ _ _ _ Hfl tyA tyB resA resB s2
                     ltac:(rewrite Lta; symmetry; exact (cross_marked _ _ Hsc)) ltac:(rewrite Lra; symmetry; exact (cross_marked _ _ Hsc))
                     ltac:(rewrite Ltb, List.length_map; reflexivity) ltac:(rewrite Lrb, List.length_map; reflexivity))
           as [i1 i2 o1 o2 F1 F2 Li12 W1 W2 Ho].
-        destruct (IH gA gB _ _ _ _ _ (List.length i1 + s2) Hk Hco Hno Hmo Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
+        destruct (IH gA gB _ _ _ _ _ _ _ (List.length i1 + s2) Hk Hco Hno Hmo L' LQ Hca0 Ht0) as [ihsA ihsB wA wB IA IB Li WA WB HR].
         assert (Hfeq : sel_flags (List.map (leaf_in D' t') ls) fs = List.map (leaf_in Dc t'') (shape_leaves (rview_leaves D') 0 t'))
           by (unfold fs, ls; symmetry; exact (cross_container_flags Dc t'' t' t Hsc)).
         rewrite Hfeq in F1, W1.
-        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ (i1 ++ ihsA) (i2 ++ ihsB) (o1 ++ wA) (o2 ++ wB)).
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ _ _ (i1 ++ ihsA) (i2 ++ ihsB) (o1 ++ wA) (o2 ++ wB)).
         * eapply fresh_ihs_rec; [ exact Hq | exact Ta | exact F1 | exact IA ].
         * eapply fresh_ihs_rec; [ exact Hl | exact Tb | exact F2 | rewrite <- Li12; exact IB ].
         * rewrite !List.length_app; lia.
