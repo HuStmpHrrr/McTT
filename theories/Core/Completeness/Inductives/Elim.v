@@ -478,6 +478,51 @@ Lemma Forall2_of_Forall_pairs : forall {X Y : Type} (P : X -> Y -> Prop) l,
     List.Forall (fun xy => P (fst xy) (snd xy)) l -> List.Forall2 P (List.map fst l) (List.map snd l).
 Proof. induction 1; cbn; constructor; auto. Qed.
 
+(** Arguments related to themselves, some of them replaced by other proofs
+    that read back at entries whose types are propositions there: related
+    to the replaced ones over related bases. *)
+Lemma per_gargs_replace_proofs : forall ts Tb RTb,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+    forall ρ ρ' xs ys, RTb ρ ρ' -> per_gargs ts ρ ρ xs xs -> List.length xs = List.length ys ->
+    (forall j x y, List.nth_error xs j = Some x -> List.nth_error ys j = Some y -> x = y \/
+       (proof_readable y /\ forall ts1 A ts2 a, ts = ts1 ++ ce_ass A :: ts2 -> List.length ts1 = j ->
+          ⟦ A ⟧ env_tele ρ ts1 (List.firstn j xs) ↘ a -> domain_relevance a = propositional)) ->
+    per_gargs ts ρ ρ' xs ys.
+Proof.
+  induction ts as [| e ts IH]; intros * HTb HC Hts * Hρ Hgx Hl Hmix.
+  - inversion Hgx; subst; destruct ys; cbn in Hl; [ constructor | discriminate ].
+  - assert (He : exists A, e = ce_ass A) by (inversion Hts as [| ? ? He _]; exact He).
+    destruct He as [A ->].
+    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    destruct xs as [| x xs], ys as [| y ys]; cbn [List.length] in Hl; try discriminate; [ constructor |].
+    inversion Hgx as [| ? ? ? ? ? ? ? ? ? Rx HAx Hxx Hgx']; subst.
+    cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
+    destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
+    pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
+    destruct (rel_type_inversion_simple_at HTb HAv _ _ Hρ) as (a & a' & Ea & Ea' & [R HR]).
+    destruct HAx as [a1 a2 Ea1 Ea2 HRx].
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (Ex : R <~> Rx) by (eapply per_univ_elem_right_irrel; [ exact HR | exact HRx ]).
+    (** The heads: equal, or proofs of a proposition. *)
+    assert (Hxy : R x y).
+    { destruct (Hmix 0 x y eq_refl eq_refl) as [<- | (Hry & Hp)]; [ apply Ex; exact Hxx |].
+      pose proof (Hp nil A ts a eq_refl eq_refl Ea) as Hra.
+      pose proof (per_univ_elem_propositional _ _ _ _ HR Hra) as EP.
+      pose proof (per_univ_elem_propositional _ _ _ _ HRx Hra) as EPx.
+      apply EP; split; [ exact (proj1 (proj1 (EPx _ _) Hxx)) | exact Hry ]. }
+    econstructor; [ exact (mk_rel_mod_eval a a' Ea Ea' HR) | exact Hxy |].
+    pose proof (entry_readable_of_elem_closure Ea Ea' HR Hxy) as [Rx' Ry'].
+    apply (IH _ _ HTb' HC Hts' (ρ ↦ x ⦂ entry_type_closure A ρ) (ρ' ↦ y ⦂ entry_type_closure A ρ')); [ | exact Hgx' | lia | ].
+    + apply per_env_extend_intro'; [ exact Hρ | exact (per_head_of Ea Ea' HR Hxy) | exact Rx' | exact Ry' ].
+    + intros k x' y' Hx' Hy'.
+      destruct (Hmix (S k) x' y' Hx' Hy') as [-> | (Hry' & Hp')]; [ left; reflexivity |].
+      right; split; [ exact Hry' |].
+      intros ts1 A' ts2 a0 Eq Lt1 Ea0.
+      apply (Hp' (ce_ass A :: ts1) A' ts2 a0 ltac:(rewrite Eq; reflexivity) ltac:(cbn; lia)).
+      exact Ea0.
+Qed.
+
 (** The context of the non-recursive arguments is the reverse of their
     telescope. *)
 Lemma rev_nonrec_args_context : forall gs, List.rev (cargs_strat gs) = cargs_nonrec_tele gs.
