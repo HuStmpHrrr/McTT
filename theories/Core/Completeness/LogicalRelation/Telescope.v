@@ -146,13 +146,6 @@ Proof.
   apply E; exact Hρ'.
 Qed.
 
-(** The values of a telescope's entries are the values given. *)
-Lemma tele_entries_fst : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
-Proof. induction vs as [| v vs IH]; intros ρ T; cbn; [ reflexivity | f_equal; apply IH ]. Qed.
-
-Lemma tele_entries_length : forall vs ρ T, List.length (tele_entries ρ T vs) = List.length vs.
-Proof. intros; rewrite <- (List.length_map fst), tele_entries_fst; reflexivity. Qed.
-
 (** Arguments related at a telescope read back at the closures of its
     types, as the telescope's entries store them. *)
 Lemma per_gargs_entries_readable : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' ->
@@ -496,6 +489,27 @@ Proof.
   assert (Hlw' : List.length wts' = List.length (List.rev C))
     by (rewrite <- (List.length_map fst), Hw', List.length_map, List.length_rev; exact Hl').
   exact (gargs_env_rel_typed _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' _ _ _ _ I Hlw Hlw' Hg' Hr Hr').
+Qed.
+
+(** The same into the telescope's own extensions, at the closures of its
+    types: those read back by the relation itself. *)
+Corollary closed_env_tele : forall C RC vts vts' B1 B2 B3 B4, tele_ass C -> ⊨ C ->
+    EF C ≈ C ∈ per_ctx_env ↘ RC -> List.length vts = List.length C -> List.length vts' = List.length C ->
+    RC (env_extend_typed B1 vts) (env_extend_typed B2 vts') ->
+    RC (env_tele B3 (List.rev C) (List.map fst vts)) (env_tele B4 (List.rev C) (List.map fst vts')).
+Proof.
+  intros * HCa HC HRC Hl Hl' H.
+  assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
+  assert (HRC' : EF List.rev (List.rev C) ++ ⋅ ≈ List.rev (List.rev C) ++ ⋅ ∈ per_ctx_env ↘ RC)
+    by (rewrite List.rev_involutive, List.app_nil_r; exact HRC).
+  assert (HCr : tele_ass (List.rev C)) by (apply List.Forall_rev; exact HCa).
+  destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' B1 B2 vts vts'
+              ltac:(rewrite List.length_rev; exact Hl) ltac:(rewrite List.length_rev; exact Hl') H) as [_ Hg].
+  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B3 B4 _ _ I I I Hg) as Hg'.
+  pose proof (per_gargs_entries_readable _ _ _ _ _ Hg') as [Hr Hr'].
+  unfold env_tele; eapply closed_env_base; [ exact HCa | exact HC | exact HRC | exact Hl | exact Hl'
+                                            | rewrite tele_entries_fst; reflexivity | rewrite tele_entries_fst; reflexivity
+                                            | exact Hr | exact Hr' | exact H ].
 Qed.
 
 (** ** Instances of a Closed Type

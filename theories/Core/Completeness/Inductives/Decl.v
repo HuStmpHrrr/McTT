@@ -53,6 +53,44 @@ Lemma env_tele_cons : forall ρ A T x xs,
     env_tele ρ (ce_ass A :: T) (x :: xs) = env_tele (ρ ↦ x ⦂ entry_type_closure A ρ) T xs.
 Proof. reflexivity. Qed.
 
+(** One more argument of a telescope, at the type of its entry. *)
+Lemma env_tele_snoc_at : forall ρ T vs A v, List.nth_error T (List.length vs) = Some (ce_ass A) ->
+    env_tele ρ T (vs ++ v :: nil) = env_tele ρ T vs ↦ v ⦂ entry_type_closure A (env_tele ρ T vs).
+Proof.
+  intros * HA.
+  assert (Hlt : List.length vs < List.length T) by (apply List.nth_error_Some; congruence).
+  rewrite env_tele_firstn, List.length_app, Nat.add_1_r.
+  rewrite (firstn_S_snoc _ _ _ HA), env_tele_snoc by (rewrite List.length_firstn; lia).
+  rewrite <- env_tele_firstn; reflexivity.
+Qed.
+
+(** The values of a telescope's entries are the values given. *)
+Lemma tele_entries_fst : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
+Proof. induction vs as [| v vs IH]; intros ρ T; cbn; [ reflexivity | f_equal; apply IH ]. Qed.
+
+Lemma tele_entries_length : forall vs ρ T, List.length (tele_entries ρ T vs) = List.length vs.
+Proof. intros; rewrite <- (List.length_map fst), tele_entries_fst; reflexivity. Qed.
+
+(** Arguments of a telescope [Pre] after a group's uniform parameters,
+    from the empty environment: the components after the parameters. *)
+Lemma env_tele_uparams : forall D Pre ups zs, List.length ups = ind_nu D ->
+    env_tele nil (List.rev (Pre ++ ind_uparams D)) (ups ++ zs) = components_env D ups (List.rev Pre) zs.
+Proof.
+  intros * Hl; rewrite List.rev_app_distr, env_tele_app by (rewrite List.length_rev; exact Hl); reflexivity.
+Qed.
+
+(** The uniform parameters alone. *)
+Lemma env_tele_uparams_nil : forall D ups, env_tele nil (List.rev (ind_uparams D)) ups = decl_env D ups.
+Proof. reflexivity. Qed.
+
+(** The shift past the components gives the parameters' environment. *)
+Lemma eval_wk_shiftn_components_env : forall D ups T zs,
+    ⟪wk_shiftn (List.length zs)⟫ (components_env D ups T zs) = decl_env D ups.
+Proof.
+  intros; unfold components_env, env_tele.
+  rewrite <- (tele_entries_length zs (decl_env D ups) T) at 1; apply eval_wk_shiftn_extend_typed.
+Qed.
+
 (** One more typed value. *)
 Lemma env_extend_typed_cons : forall ρ x t vts,
     env_extend_typed ρ ((x, t) :: vts) = env_extend_typed (ρ ↦ x ⦂ t) vts.
@@ -67,6 +105,97 @@ Fixpoint env_extend_tagged (Δ ts : ctx) (ρ : env) (ms : list domain) : env :=
   | e :: ts', m :: ms' => env_extend_tagged (e :: Δ) ts' (ρ ↦ m ⦂ centry_tag e Δ ρ) ms'
   | _, _ => ρ
   end.
+
+(** The values and tags [env_extend_tagged] enters, as a list. *)
+Fixpoint tagged_entries (Δ ts : ctx) (ρ : env) (ms : list domain) : list (domain * entry_type) :=
+  match ts, ms with
+  | e :: ts', m :: ms' => (m, centry_tag e Δ ρ) :: tagged_entries (e :: Δ) ts' (ρ ↦ m ⦂ centry_tag e Δ ρ) ms'
+  | _, _ => nil
+  end.
+
+(** The extension at the tags is the typed extension by them. *)
+Lemma env_extend_tagged_typed : forall ts Δ ρ ms, env_extend_tagged Δ ts ρ ms = env_extend_typed ρ (tagged_entries Δ ts ρ ms).
+Proof. induction ts as [| e ts IH]; intros Δ ρ [| m ms]; cbn [env_extend_tagged tagged_entries]; try reflexivity; apply IH. Qed.
+
+(** Its values are the values given, as many as the entries. *)
+Lemma tagged_entries_fst : forall ts Δ ρ ms, List.length ts = List.length ms -> List.map fst (tagged_entries Δ ts ρ ms) = ms.
+Proof.
+  induction ts as [| e ts IH]; intros Δ ρ [| m ms] Hl; cbn [List.length] in Hl; try discriminate; [ reflexivity |].
+  cbn [tagged_entries List.map fst]; f_equal; apply IH; lia.
+Qed.
+
+Lemma tagged_entries_length : forall ts Δ ρ ms, List.length ts = List.length ms -> List.length (tagged_entries Δ ts ρ ms) = List.length ms.
+Proof. intros * Hl; rewrite <- (List.length_map fst), tagged_entries_fst by exact Hl; reflexivity. Qed.
+
+(** ** Environments of Exactly their Context's Length
+
+    An environment with one entry per entry of its context is its own
+    prefix of that length ([env_upto]): the tags a substitution's value
+    stores ([centry_tag]) are then the closures a telescope's arguments
+    have ([env_tele]), and the identity's retagging ([ctx_retag]) changes
+    nothing. *)
+
+Lemma length_env_extend_typed : forall vts ρ, List.length (env_extend_typed ρ vts) = List.length vts + List.length ρ.
+Proof.
+  induction vts as [| [v t] vts IH]; intros ρ; [ reflexivity |].
+  rewrite env_extend_typed_cons, IH; cbn [extend_env List.length]; lia.
+Qed.
+
+Lemma env_upto_exact : forall ρ, env_upto (List.length ρ) ρ = ρ.
+Proof.
+  induction ρ as [| d ρ IH]; [ reflexivity |].
+  unfold env_upto in *; cbn [List.length List.seq List.map].
+  rewrite <- List.seq_shift, List.map_map; cbn [env_entry List.nth]; f_equal; exact IH.
+Qed.
+
+(** Extensions at the tags of [ts] over an environment of [Δ]'s length
+    are the telescope's arguments. *)
+Lemma env_extend_tagged_exact : forall ts Δ ρ ms, List.length ρ = List.length Δ -> List.length ms = List.length ts ->
+    env_extend_tagged Δ ts ρ ms = env_tele ρ ts ms.
+Proof.
+  induction ts as [| e ts IH]; intros Δ ρ [| m ms] Hρ Hl; cbn [List.length] in Hl; try discriminate; [ reflexivity |].
+  cbn [env_extend_tagged]; unfold env_tele; cbn [tele_entries tele_head_type List.tl]; rewrite env_extend_typed_cons.
+  assert (Ht : centry_tag e Δ ρ = match centry_type e with Some A => entry_type_closure A ρ | None => entry_type_none end)
+    by (unfold centry_tag; rewrite <- Hρ, env_upto_exact; reflexivity).
+  rewrite Ht; apply IH; [ cbn [extend_env List.length]; lia | lia ].
+Qed.
+
+(** The identity's retagging of a telescope's arguments over an
+    environment it does not change, of its context's length, changes
+    nothing either. *)
+Lemma ctx_retag_env_tele : forall T Δ ρ vs, ctx_retag Δ ρ = ρ -> List.length ρ = List.length Δ ->
+    List.length vs = List.length T -> ctx_retag (List.rev T ++ Δ) (env_tele ρ T vs) = env_tele ρ T vs.
+Proof.
+  induction T as [| e T IH] using List.rev_ind; intros Δ ρ vs HΔ Hρ Hl.
+  - destruct vs; [ exact HΔ | discriminate ].
+  - rewrite List.length_app in Hl; cbn [List.length] in Hl.
+    destruct vs as [| v vs _] using List.rev_ind; [ cbn in Hl; lia |].
+    rewrite List.length_app in Hl; cbn [List.length] in Hl.
+    rewrite List.rev_app_distr; cbn [List.rev List.app].
+    unfold env_tele; rewrite tele_entries_app by lia; fold (env_tele ρ T vs).
+    cbn [tele_entries tele_head_type List.tl]; rewrite env_extend_typed_app; cbn [env_extend_typed List.fold_left fst snd].
+    cbn [ctx_retag extend_env List.tl List.hd].
+    pose proof (IH Δ ρ vs HΔ Hρ ltac:(lia)) as IH'; unfold env_tele in IH'; rewrite IH'.
+    assert (HlT : List.length (env_extend_typed ρ (tele_entries ρ T vs)) = List.length (List.rev T ++ Δ)).
+    { rewrite length_env_extend_typed, tele_entries_length, List.length_app, List.length_rev; lia. }
+    unfold centry_tag; rewrite <- HlT, env_upto_exact.
+    destruct e; reflexivity.
+Qed.
+
+Lemma length_env_tele : forall ρ T vs, List.length (env_tele ρ T vs) = List.length vs + List.length ρ.
+Proof. intros; unfold env_tele; rewrite length_env_extend_typed, tele_entries_length; reflexivity. Qed.
+
+Lemma length_decl_env : forall D ups, List.length (decl_env D ups) = List.length ups.
+Proof. intros; unfold decl_env; rewrite length_env_tele; cbn; lia. Qed.
+
+(** In particular the uniform parameters' environment. *)
+Corollary ctx_retag_decl_env : forall D ups, List.length ups = ind_nu D ->
+    ctx_retag (ind_uparams D) (decl_env D ups) = decl_env D ups.
+Proof.
+  intros * Hl; unfold decl_env.
+  rewrite <- (List.rev_involutive (ind_uparams D)) at 1; rewrite <- (List.app_nil_r (List.rev (List.rev (ind_uparams D)))).
+  apply ctx_retag_env_tele; [ reflexivity | reflexivity | rewrite List.length_rev; exact Hl ].
+Qed.
 
 (** ** Arguments at a Telescope *)
 

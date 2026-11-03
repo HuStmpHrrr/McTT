@@ -1439,6 +1439,17 @@ Proof.
   - split; intros [T' HT' _ _ _ _ _]; congruence.
 Qed.
 
+(** Two contexts a context PER relates have the same propositional
+    entries at the environments it relates. *)
+Lemma ctx_props_agree_of_per : forall Γ1 Γ2 R, EF Γ1 ≈ Γ2 ∈ per_ctx_env ↘ R -> ctx_props_agree R Γ1 Γ2.
+Proof.
+  intros * HR ρ ρ' Hρ x _.
+  assert (HP : PER R) by (eapply per_env_PER; exact HR).
+  assert (Hρρ : Dom ρ ≈ ρ ∈ R) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  destruct (per_ctx_env_sym _ _ _ HR) as [HR' _].
+  split; [ exact (per_ctx_env_props_cross _ _ _ HR _ _ Hρρ x) | exact (per_ctx_env_props_cross _ _ _ HR' _ _ Hρρ x) ].
+Qed.
+
 (** The identity from a context to a prefix of it, when the context's
     relation is included in the prefix's: past the prefix nothing is asked
     of the environments. *)
