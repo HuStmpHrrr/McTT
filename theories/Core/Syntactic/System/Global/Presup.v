@@ -4470,25 +4470,25 @@ Qed.
 
 Lemma body_shape_names : forall Φ Φ', body_shape Φ Φ' -> gm_names Φ = gm_names Φ'.
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros [| Φ' x' E' | Φ' H' its'] Hs; cbn in Hs |- *; try contradiction; [ reflexivity | |].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros [| Φ' x' E' | Φ' H' its' Φg'] Hs; cbn in Hs |- *; try contradiction; [ reflexivity | |].
   - destruct Hs as (Hs & <- & _); f_equal; apply IH; exact Hs.
-  - destruct Hs as [Hs <-]; f_equal; apply IH; exact Hs.
+  - destruct Hs as (Hs & <- & _); f_equal; apply IH; exact Hs.
 Qed.
 
 Lemma body_shape_l : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ Φ.
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros [| Φ' x' E' | Φ' H' its'] Hs; cbn in Hs |- *; try contradiction; [ exact I | |].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros [| Φ' x' E' | Φ' H' its' Φg'] Hs; cbn in Hs |- *; try contradiction; [ exact I | |].
   - destruct Hs as (Hs & _ & HE); split; [ exact (IH _ Hs) | split; [ reflexivity |] ].
     destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in HE |- *; try contradiction; destruct_all; auto.
-  - destruct Hs as [Hs _]; split; [ exact (IH _ Hs) | reflexivity ].
+  - destruct Hs as (Hs & _ & Hg); split; [ exact (IH _ Hs) | split; [ reflexivity | exact (IHg _ Hg) ] ].
 Qed.
 
 Lemma body_shape_r : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ'.
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros [| Φ' x' E' | Φ' H' its'] Hs; cbn in Hs |- *; try contradiction; [ exact I | |].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros [| Φ' x' E' | Φ' H' its' Φg'] Hs; cbn in Hs |- *; try contradiction; [ exact I | |].
   - destruct Hs as (Hs & _ & HE); split; [ exact (IH _ Hs) | split; [ reflexivity |] ].
     destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in HE |- *; try contradiction; destruct_all; auto.
-  - destruct Hs as [Hs _]; split; [ exact (IH _ Hs) | reflexivity ].
+  - destruct Hs as (Hs & _ & Hg); split; [ exact (IH _ Hs) | split; [ reflexivity | exact (IHg _ Hg) ] ].
 Qed.
 
 (** An open body unit, whose expanded body extends its context well. *)
@@ -4635,6 +4635,23 @@ Proof.
     exact Hok.
 Qed.
 
+(** The description of a body unit read as its expansion is typed when
+    the body's is: only the written body, which only typing and levels
+    read, changes, and the expansion is a unit too ([wf_unit_eq_expand]). *)
+Lemma desc_ok_open_expand : forall Θ Ξ Γ Δ Φ, desc_ok Θ Ξ Γ (mdesc_open Δ Φ (gm_expand Φ)) ->
+    desc_ok Θ Ξ Γ (mdesc_open Δ (gm_expand Φ) (gm_expand Φ)).
+Proof.
+  intros * Hd; inversion Hd; subst.
+  eapply desc_ok_open; try eassumption.
+  (* the expansion is a unit *)
+  all: try match goal with Hw : wf_unit_eq _ _ _ (gu_open nil ?Φw) _ |- wf_unit_eq _ _ _ (gu_open nil (gm_expand ?Φw)) _ =>
+             pose proof (wf_unit_eq_expand _ _ _ _ _ Hw) as He;
+             exact (wf_unit_eq_trans _ _ _ _ _ _ (wf_unit_eq_sym _ _ _ _ _ He) He) end.
+  (* the levels premise reads the expansion only *)
+  all: match goal with Hl : desc_levels_abstractable _ _ _ _ _ |- _ =>
+         destruct Hl as [Hl | Hl]; [ left; exact Hl | right; inversion Hl; subst; econstructor; eassumption ] end.
+Qed.
+
 (** Over valid storage, every unit and module expression of a judgment
     denotes typed descriptions only, and so do the slots of its context. *)
 Theorem desc_typed :
@@ -4716,6 +4733,19 @@ Proof.
         [ eapply params_relevant_of_sorts; eassumption
         | eapply levels_flag_here; [ exact Hg | eapply mk_levels_flag; eassumption | constructor; exact HR0 ] ] ]
     end.
+  - (* a body unit and its expansion *)
+    match goal with HU : wf_unit_eq _ _ _ (gu_open _ _) _, IH : forall R, udenote _ _ _ None (gu_open _ _) R -> _ |- _ =>
+      split; [ exact IH |]; intros R HR;
+      destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R0 & HR0) & _);
+      pose proof (IH _ HR0) as Hok
+    end.
+    inversion HR0; subst.
+    match goal with Hx : body_xp _ _ _ Φ _, Hb : mdesc_body _ _ _ _ _ = Some R0 |- _ =>
+      cbn in Hb; injection Hb as <-; rewrite (body_xp_expand _ _ _ _ _ Hx) in Hok end.
+    inversion HR; subst.
+    match goal with Hx : body_xp _ _ _ (gm_expand Φ) _, Hb : mdesc_body _ _ _ _ _ = Some R |- _ =>
+      cbn in Hb; injection Hb as <-; rewrite (body_xp_noopen_id _ _ _ _ _ (gm_noopen_expand _) Hx) end.
+    exact (desc_ok_open_expand _ _ _ _ _ Hok).
   - (* a loaded unit or an open frame; a unit is the module of no member *)
     split; intros R0 HR0; inversion HR0; subst;
       [ eapply desc_ok_unit; eassumption | exfalso | exfalso | eapply desc_ok_unit; eassumption | exfalso | exfalso ];

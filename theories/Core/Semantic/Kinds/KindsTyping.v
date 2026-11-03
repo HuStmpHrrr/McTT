@@ -94,7 +94,8 @@ Section Match.
   Definition kinds_match (Γ : ctx) (ρ : env) : Prop :=
     forall x U, Γ ∋ #x ≔ₘ U -> kinds_equiv Θ Ξ (env_mod ρ x) (dm_clo U ρ).
 
-  Lemma gunit_member_kind_shift : forall d ρ U ch k, gunit_member_kind Θ Ξ (d :: ρ) (gunit_wk U wk_shift) ch k <-> gunit_member_kind Θ Ξ ρ U ch k.
+  Lemma gunit_member_kind_shift : forall d ρ U ch k,
+      gunit_member_kind Θ Ξ (d :: ρ) (gunit_expand (gunit_wk U wk_shift)) ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand U) ch k.
   Proof.
     intros; apply (proj1 (proj2 (kind_rename Θ Ξ)) U wk_shift (d :: ρ) ρ).
     intros x; apply kinds_equiv_refl.
@@ -133,7 +134,8 @@ Section Match.
   Qed.
 
   (** The same, for an environment read past its first entry. *)
-  Lemma gunit_member_kind_drop : forall ρ U ch k, gunit_member_kind Θ Ξ ρ (gunit_wk U wk_shift) ch k <-> gunit_member_kind Θ Ξ ρ↯ U ch k.
+  Lemma gunit_member_kind_drop : forall ρ U ch k,
+      gunit_member_kind Θ Ξ ρ (gunit_expand (gunit_wk U wk_shift)) ch k <-> gunit_member_kind Θ Ξ ρ↯ (gunit_expand U) ch k.
   Proof.
     intros; apply (proj1 (proj2 (kind_rename Θ Ξ)) U wk_shift ρ ρ↯).
     intros x; cbn [wk_shift]; rewrite env_mod_drop; apply kinds_equiv_refl.

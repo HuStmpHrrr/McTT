@@ -1484,6 +1484,12 @@ Proof.
           as (R' & HR' & HR'm);
         split; [ exists R, Rm | exists R', Rm ]; split; assumption
     end ].
+  (* a body unit's expansion: its own expansion *)
+  all: match goal with |- (exists _, udenote _ _ _ None (gu_open _ ?Φ) _) /\
+                          (exists _, udenote _ _ _ None (gu_open _ (gm_expand ?Φ)) _) =>
+         split; [ eexists; eassumption |];
+         eexists; econstructor; [ apply body_xp_noopen_refl, gm_noopen_expand | reflexivity ]
+       end.
 Qed.
 
 (** A stored module is a well-formed module expression: its root is a
@@ -1691,7 +1697,7 @@ Proof.
   - destruct Hs as (Hs & <- & HE).
     destruct (String.eqb y x); [ injection Hp as ? ? ?; subst; do 2 eexists; split; [ reflexivity | split; assumption ] |].
     exact (IH _ _ _ _ Hs Hp).
-  - destruct Hs as (Hs & <-); destruct (List.existsb _ _); [ discriminate | exact (IH _ _ _ _ Hs Hp) ].
+  - destruct Hs as (Hs & <- & _); destruct (List.existsb _ _); [ discriminate | exact (IH _ _ _ _ Hs Hp) ].
 Qed.
 
 Lemma fill_prefix : forall Φ y Φ0 E, gm_fill Φ <> None -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->

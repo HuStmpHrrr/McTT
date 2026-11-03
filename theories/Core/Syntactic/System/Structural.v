@@ -1879,14 +1879,14 @@ Lemma body_opens_lengths : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
     List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
     length Ψ = length Ψ'.
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its R T gs Hx IH _ _ Hg]; intros * Hx' Hs Hk Hk'.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its Φg R T gs Hx IH _ _ Hg _ _]; intros * Hx' Hs Hk Hk'.
   - destruct k; discriminate.
-  - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1]; cbn in Hs; try contradiction; destruct Hs as (Hs & _ & _).
+  - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & _ & _).
     inversion Hx'; subst; cbn [body_opens gm_dropn] in Hk, Hk'; eauto.
-  - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <-).
+  - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <- & _).
     inversion Hx'; subst.
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg) in Hk.
-    match goal with Hg' : items_gen _ _ _ _ its _ |- _ => rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg') in Hk' end.
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Hk.
+    match goal with Hg' : items_gen _ _ _ _ its _ |- _ => rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg') in Hk' end.
     destruct k as [| k]; cbn in Hk, Hk'; [| eauto ].
     injection Hk as <- <-; injection Hk' as <- <-.
     rewrite !length_body_ctx by (eapply body_xp_nopens; eassumption); rewrite (body_xp_binders _ _ _ _ _ Hx).
@@ -2716,6 +2716,11 @@ Proof.
         eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                     | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
+  (** A body unit is its expansion: expansion commutes with weakening. *)
+  all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_wk (gu_open _ _) _) _, H1 : wf_wk _ _ _ _ _ |- _ =>
+         pose proof (H0 _ _ H1) as HU' end.
+  all: rewrite !gunit_wk_mk in HU'; rewrite !gunit_wk_mk; cbn [moddef_wk] in HU' |- *.
+  all: rewrite <- gm_expand_wk; apply wf_unit_eq_expand; exact HU'.
 Qed.
 
 Corollary wk_preserves_exp : forall Θ Ξ Γ Δ A M φ,
@@ -3907,6 +3912,11 @@ Proof.
         eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                     | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
+  (** A body unit is its expansion: expansion commutes with substitution. *)
+  all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_sub (gu_open _ _) _) _, H1 : wf_sub _ _ _ _ _ |- _ =>
+         pose proof (H0 _ _ H1) as HU' end.
+  all: rewrite !gunit_sub_mk in HU'; rewrite !gunit_sub_mk; cbn [moddef_sub] in HU' |- *.
+  all: rewrite <- gm_expand_sub; apply wf_unit_eq_expand; exact HU'.
 Qed.
 
 Corollary sub_preserves_exp : forall Θ Ξ Γ Δ A M σ,
