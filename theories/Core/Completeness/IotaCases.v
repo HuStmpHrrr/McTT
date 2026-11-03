@@ -42,7 +42,6 @@ Import Domain_Notations Fixed_Notations.
 Lemma sem_exp_eq_elim_iota :
   `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
-     elim_grp D oq p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
      ind_con Mm c = Some gs ->
@@ -55,8 +54,8 @@ Lemma sem_exp_eq_elim_iota :
         Θ ⍮ Ξ ⍮ Γ ⊨ N : T) ->
      Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        Θ ⍮ Ξ ⍮ Γ ⊨ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : relevance_sort r Typeω@i) ->
@@ -74,15 +73,19 @@ Lemma sem_exp_eq_elim_iota :
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
           : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim r oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+     Forall (exp_scoped (List.length Γ)) Ps ->
+     Forall (exp_scoped (List.length Γ)) As ->
+     blocks_scoped (List.length Γ) Bks ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim r p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
-                          elim_ihs r p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
+                          elim_ihs r p D (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                           apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                             (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] ).
 Proof.
-  intros * HΓ Hl Hgr HMm Hbm Hcon HLb HPl HPs HAl HAs -> Hnm _ HA HMx HBn HBc Har HB Hlk; sem_intro; [ assumption |].
+  intros * HΓ Hl HMm Hbm Hcon HLb HPl HPs HAl HAs -> Hnm _ HA HMx HBn HBc Har HB Hlk HPss HAss HBss;
+    sem_intro; [ assumption |].
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ => rename He into Hμ end.
   destruct r.
   2:{ (** Into propositions: proofs, related to each other at the motive
@@ -103,11 +106,22 @@ Proof.
                     Hcon HUl HUs
                     HNl HNs HAl ltac:(rewrite List.firstn_skipn; intros * HN HT; exact (sem_exp_eq_at_rel (HAs _ _ _ HN HT _ _ Hμ))))
         as HMc.
-      refine (rel_exp_motive_instance_prop _ _ _ HVP Hl Γ m Mm bm Ps _ ltac:(assumption) HMm HPl HPs' HMc _ _).
+      (** The constructor applied is scoped by [Γ]. *)
+      assert (HMcs : exp_scoped (List.length Γ) (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                                                  (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))).
+      { apply exp_scoped_apps; split; [ constructor |].
+        assert (HPs0 : forall P, In P Ps -> exp_scoped (List.length Γ) P) by (apply Forall_forall; exact HPss).
+        apply Forall_app; split;
+          [ apply (im_pre_scoped D m Mm _ _ (valid_group_closed _ _ Hvg) HMm HUl), Forall_forall;
+            intros P HP; apply HPs0; rewrite <- (List.firstn_skipn (ind_nu D) Ps); apply in_or_app; left; exact HP
+          | apply Forall_app; split; [ apply Forall_forall; intros P HP; apply HPs0;
+                                         rewrite <- (List.firstn_skipn (ind_nu D) Ps); apply in_or_app; right; exact HP
+                                     | exact HAss ] ]. }
+      refine (rel_exp_motive_instance_prop _ _ _ HVP Hl Γ m Mm bm Ps _ ltac:(assumption) HMm HPl HPs' (HMc ltac:(rewrite app_assoc, List.firstn_skipn; apply Forall_app; split; assumption)) HPss HMcs _ _).
       - exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMm _ _ Hμ))).
       - exact (sem_exp_eq_at_rel (HA _ _ _ HMm Hbm _ _ Hμ)). }
-  refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_embedding _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks c gs Ps As i
-            ltac:(assumption) Hgr HMm Hbm Hcon HPl _ HAl _ HLb Hnm _ _ HBn _ Har _ n B Hlk).
+  refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_embedding _ _ _ _ Hμ) Hl Γ m Mm bm Bks c gs Ps As i
+            ltac:(assumption) HMm Hbm Hcon HPl _ HPss HAl _ HAss HBss HLb Hnm _ _ HBn _ Har _ n B Hlk).
   - intros * HP HT; exact (sem_exp_eq_at_rel (HPs _ _ _ HP HT _ _ Hμ)).
   - intros * HN HT; exact (sem_exp_eq_at_rel (HAs _ _ _ HN HT _ _ Hμ)).
   - intros * HMk; exact (valid_ctx_rel_ctx_wf (sem_ext_eq_at_ext (HMx _ _ HMk _ _ Hμ))).
