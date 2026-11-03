@@ -1504,6 +1504,74 @@ Section ShapeChar.
       exact (rel_exp_ctx_pi _ _ _ _ (shape_domains_ctx_ass _ _) HΦ Hleaf).
     Qed.
 
+    (** ** One Step Through a Shape's Domains
+
+        The rest of a shape after [kk + 1] domains, at the extension by an
+        argument of the closure of the [kk]-th domain (stored at the
+        domain's value, as a [Π]'s codomain is), against it at the
+        telescope's extension (stored at the domain's type): related
+        types. *)
+    Lemma shape_codomain_tele : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+        forall zs ys kk B, List.length zs = List.length (cargs_ctx p D Mk gs1 ++ im_params D Mk) -> List.length ys = kk ->
+        List.nth_error (ptyp_doms t) kk = Some B ->
+        per_gargs (List.rev (shape_domains_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk))
+          nil nil (zs ++ ys) (zs ++ ys) ->
+        forall (i : nat) a1 R1,
+          ⟦ B[wk_pat (List.repeat false kk ++ cargs_pat gs1)]ʷ ⟧
+            env_tele nil (List.rev (shape_domains_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk))
+              (zs ++ ys) ↘ a1 ->
+          DF a1 ≈ a1 ∈ per_univ_elem i ↘ R1 ->
+          forall x b, R1 x x ->
+          ⟦ ptyp_ty p D (im_nn Mk) (false :: List.repeat false kk ++ cargs_pat gs1) (ptyp_skip (S kk) t) ⟧
+            env_tele nil (List.rev (shape_domains_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk))
+              (zs ++ ys) ↦ x ⦂ entry_type_value a1 ↘ b ->
+          exists (j : nat) Rb b',
+            ⟦ ptyp_ty p D (im_nn Mk) (List.repeat false (S kk) ++ cargs_pat gs1) (ptyp_skip (S kk) t) ⟧
+              env_tele nil (List.rev (shape_domains_ctx (cargs_pat gs1) (List.firstn (S kk) (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk))
+                (zs ++ ys ++ x :: nil) ↘ b' /\
+            DF b ≈ b' ∈ per_univ_elem j ↘ Rb.
+    Proof.
+      intros gs1 t gs2 Heq zs ys kk B Hlz Hly HB Hgz i a1 R1 Eb HR1 x b Hx Eb2.
+      assert (Hk : kk < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
+      set (pat' := List.repeat false kk ++ cargs_pat gs1).
+      set (Γk := shape_domains_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk) in *.
+      set (Et := env_tele nil (List.rev Γk) (zs ++ ys)) in *.
+      pose proof (shape_domains_ctx_sem D p k Mk c gs HD HM Hcon HΨ _ _ _ Heq kk ltac:(lia)) as HWk; fold Γk in HWk.
+      destruct (rel_ctx_wf_per_ctx_env HWk) as [RΓ HΓ].
+      assert (HlΓ : List.length (zs ++ ys) = List.length Γk)
+        by (unfold Γk; rewrite !List.length_app, length_shape_domains_ctx, List.length_firstn in *; lia).
+      assert (Hρ : RΓ Et Et) by exact (gargs_env_rel _ _ _ _ _ _ HΓ HWk HlΓ Hgz).
+      (** The domain, weakened, is a type there. *)
+      pose proof (shape_domains_ctx_wk D p k Mk c gs HD HM Hcon HΨ _ _ _ Heq kk ltac:(lia)) as Hw; fold Γk pat' in Hw.
+      destruct (valid_ind_decl_dom _ HD _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as (_ & jB & HBv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
+      pose proof (rel_exp_under_ctx_wk Hw HBv) as HBw; cbn [exp_wk] in HBw.
+      pose proof (per_ctx_env_of_typ HΓ (rel_type_of_typ HBw)) as HΓB.
+      (** The two extensions are related. *)
+      pose proof (per_head_of Eb Eb HR1 Hx) as Hh.
+      destruct (per_head_closure_readable HΓB HΓ Hρ Hh) as [Rt _].
+      pose proof (entry_readable_of_elem HR1 Hx) as [Rv _].
+      assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
+      assert (Htag : per_env_extend B[wk_pat pat']ʷ B[wk_pat pat']ʷ RΓ (Et ↦ x ⦂ entry_type_value a1)
+                       (Et ↦ x ⦂ entry_type_closure B[wk_pat pat']ʷ Et)).
+      { apply per_env_extend_intro'; [ exact Hρ | exact Hh | exact Rv |].
+        assert (HlEt : List.length Et = List.length Γk) by (unfold Et; rewrite length_env_tele; cbn; lia).
+        unfold centry_tag in Rt; cbn [centry_type] in Rt.
+        rewrite <- HlEt, env_upto_exact in Rt; exact Rt. }
+      (** The rest of the shape is a type after one more domain. *)
+      assert (HSk : shape_domains_ctx (cargs_pat gs1) (List.firstn (S kk) (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
+                    = Γk ▹ B[wk_pat pat']ʷ)
+        by (rewrite (firstn_S_snoc _ _ _ HB), shape_domains_ctx_snoc, List.length_firstn, Nat.min_l by lia; reflexivity).
+      destruct (shape_prefix_valid gs1 t gs2 Heq (S kk) ltac:(lia)) as [jT HT'].
+      rewrite HSk in HT'; cbn [List.repeat List.app] in HT'.
+      destruct (rel_exp_of_typ_inversion_simple_at HΓB HT' _ _ Htag) as (b0 & b' & Eb0 & Eb' & [Rb HRb]).
+      assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
+      exists jT, Rb, b'; split; [| exact HRb ].
+      rewrite HSk, List.app_assoc; cbn [List.rev].
+      rewrite env_tele_snoc by (rewrite List.length_rev; exact HlΓ).
+      exact Eb'.
+    Qed.
+
     (** ** The Parameters a Shape Ends In
 
         After all the domains [ys] of a recursive argument's shape, related
