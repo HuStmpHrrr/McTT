@@ -5,8 +5,8 @@
     ([Syntax]).  It holds what a user writes and nothing else: names are
     resolved to de Bruijn indices and paths, but no relevance tag, no
     eliminator group, no inferred annotation is present.  Where a user may
-    omit an annotation the syntax has a hole ([u_hole]), which the typed
-    pass fills; a term followed by a field name ([u_proj_term]) is resolved
+    omit an annotation the syntax has a hole ([surface_hole]), which the typed
+    pass fills; a term followed by a field name ([surface_proj_term]) is resolved
     there too, once the term's type is known.
 
     The core syntax keeps every annotation explicit; the typed pass maps
@@ -19,178 +19,178 @@ From Mctt.Core.Syntactic Require Import Syntax.
 
 (** ** Terms, Module Expressions and Units *)
 
-Inductive uexp : Set :=
+Inductive surface_exp : Set :=
 (** A large universe [Typeω@n] *)
-| u_typ : nat -> uexp
+| surface_typ : nat -> surface_exp
 (** A small universe at a level, [Type@{t}] *)
-| u_univ : uexp -> uexp
+| surface_univ : surface_exp -> surface_exp
 (** The type of levels [Level@n] *)
-| u_level : nat -> uexp
+| surface_level : nat -> surface_exp
 (** A level literal [ω·a + b] *)
-| u_llit : o2 -> uexp
+| surface_llit : o2 -> surface_exp
 (** The successor of a level *)
-| u_succl : uexp -> uexp
+| surface_succl : surface_exp -> surface_exp
 (** The join of two levels *)
-| u_maxl : uexp -> uexp -> uexp
+| surface_maxl : surface_exp -> surface_exp -> surface_exp
 (** The token [ℕ], the type bound by [builtin natural]; the typed pass
     replaces it by the bound type's former *)
-| u_ntok : uexp
+| surface_ntok : surface_exp
 (** A numeral; the typed pass replaces it by the chain of the bound type's
     constructors *)
-| u_nlit : nat -> uexp
+| surface_nlit : nat -> surface_exp
 (** [Prop] *)
-| u_prop : uexp
+| surface_prop : surface_exp
 (** [⊤] *)
-| u_True : uexp
+| surface_True : surface_exp
 (** The introduction of [⊤] *)
-| u_tt : uexp
+| surface_tt : surface_exp
 (** [⊥] *)
-| u_False : uexp
-(** [u_absurd C M]: ex falso, the proof [M] of [⊥] into [C] *)
-| u_absurd : uexp -> uexp -> uexp
-(** [u_and P Q]: the conjunction, [Q] binding a proof of [P] *)
-| u_and : uexp -> uexp -> uexp
-(** [u_conj P Q M N]: the proof of the conjunction of [P] and [Q] (under
-    a binder of [P]) from [M] and [N]; [Q] is [u_hole] when omitted, as in
+| surface_False : surface_exp
+(** [surface_absurd C M]: ex falso, the proof [M] of [⊥] into [C] *)
+| surface_absurd : surface_exp -> surface_exp -> surface_exp
+(** [surface_and P Q]: the conjunction, [Q] binding a proof of [P] *)
+| surface_and : surface_exp -> surface_exp -> surface_exp
+(** [surface_conj P Q M N]: the proof of the conjunction of [P] and [Q] (under
+    a binder of [P]) from [M] and [N]; [Q] is [surface_hole] when omitted, as in
     [conj (m : P) n] *)
-| u_conj : uexp -> uexp -> uexp -> uexp -> uexp
+| surface_conj : surface_exp -> surface_exp -> surface_exp -> surface_exp -> surface_exp
 (** The first component of a proof of a conjunction *)
-| u_left : uexp -> uexp
+| surface_left : surface_exp -> surface_exp
 (** Its second component *)
-| u_right : uexp -> uexp
-(** [u_pi A B], [B] binding the argument; its sort is not written *)
-| u_pi : uexp -> uexp -> uexp
-(** [u_fn A M], [M] binding the argument *)
-| u_fn : uexp -> uexp -> uexp
+| surface_right : surface_exp -> surface_exp
+(** [surface_pi A B], [B] binding the argument; its sort is not written *)
+| surface_pi : surface_exp -> surface_exp -> surface_exp
+(** [surface_fn A M], [M] binding the argument *)
+| surface_fn : surface_exp -> surface_exp -> surface_exp
 (** Application *)
-| u_app : uexp -> uexp -> uexp
+| surface_app : surface_exp -> surface_exp -> surface_exp
 (** A variable *)
-| u_var : nat -> uexp
-(** [u_let b B]: [B] under the local binding [b] *)
-| u_let : ubinding -> uexp -> uexp
+| surface_var : nat -> surface_exp
+(** [surface_let b B]: [B] under the local binding [b] *)
+| surface_let : surface_binding -> surface_exp -> surface_exp
 (** The member [x] of the module [H] *)
-| u_mem : umodexp -> string -> uexp
+| surface_mem : surface_modexp -> string -> surface_exp
 (** [t.x] for a term [t]: the field or member [x] of [t]'s record type,
     resolved by the typed pass once [t]'s type is inferred *)
-| u_proj_term : uexp -> string -> uexp
-(** [u_elim m Bks M]: the eliminator of [M], of the member [m] of its
+| surface_proj_term : surface_exp -> string -> surface_exp
+(** [surface_elim m Bks M]: the eliminator of [M], of the member [m] of its
     group, by the blocks [Bks], one per member in order; the group, its
     uniform parameters and the motives' sort are not written *)
-| u_elim : nat -> list ublock -> uexp -> uexp
-(** [u_tuple T fs]: the element of the record type [T] with the fields
+| surface_elim : nat -> list surface_block -> surface_exp -> surface_exp
+(** [surface_tuple T fs]: the element of the record type [T] with the fields
     [fs], by name *)
-| u_tuple : uexp -> list (string * uexp) -> uexp
+| surface_tuple : surface_exp -> list (string * surface_exp) -> surface_exp
 (** An omitted annotation, which the typed pass fills *)
-| u_hole : uexp
-with ublock : Set :=
-(** [u_eb_mk nm Z A Bs]: an eliminator block whose motive [A] binds [nm]
+| surface_hole : surface_exp
+with surface_block : Set :=
+(** [surface_eb_mk nm Z A Bs]: an eliminator block whose motive [A] binds [nm]
     variables (the non-uniform parameters and the scrutinee), the
-    scrutinee's type [Z] as written ([u_hole] if omitted), and the
+    scrutinee's type [Z] as written ([surface_hole] if omitted), and the
     branches, each a constructor, its number of binders and its body *)
-| u_eb_mk : nat -> uexp -> uexp -> list (string * nat * uexp) -> ublock
-with umodexp : Set :=
+| surface_eb_mk : nat -> surface_exp -> surface_exp -> list (string * nat * surface_exp) -> surface_block
+with surface_modexp : Set :=
 (** A unit, by its path *)
-| u_me_unit : path -> umodexp
+| surface_me_unit : path -> surface_modexp
 (** A local module slot *)
-| u_me_var : nat -> umodexp
+| surface_me_var : nat -> surface_modexp
 (** A submodule *)
-| u_me_mem : umodexp -> string -> umodexp
+| surface_me_mem : surface_modexp -> string -> surface_modexp
 (** A module applied to an argument *)
-| u_me_app : umodexp -> uexp -> umodexp
-with ubinding : Set :=
-(** [u_b_def A M]: a local definition of [M], at [A] ([u_hole] when the
+| surface_me_app : surface_modexp -> surface_exp -> surface_modexp
+with surface_binding : Set :=
+(** [surface_b_def A M]: a local definition of [M], at [A] ([surface_hole] when the
     type is not written) *)
-| u_b_def : uexp -> uexp -> ubinding
-(** [u_b_mod U]: a local module *)
-| u_b_mod : uunit -> ubinding
-with uunit : Set :=
-(** [u_gu_mk Δ D]: the parameters, assumptions, innermost first, and the
+| surface_b_def : surface_exp -> surface_exp -> surface_binding
+(** [surface_b_mod U]: a local module *)
+| surface_b_mod : surface_unit -> surface_binding
+with surface_unit : Set :=
+(** [surface_gu_mk Δ D]: the parameters, assumptions, innermost first, and the
     definition under them *)
-| u_gu_mk : list uexp -> umoddef -> uunit
-with umoddef : Set :=
+| surface_gu_mk : list surface_exp -> surface_moddef -> surface_unit
+with surface_moddef : Set :=
 (** A body *)
-| u_md_body : ubody -> umoddef
+| surface_md_body : surface_body -> surface_moddef
 (** An alias of a module expression *)
-| u_md_alias : umodexp -> umoddef
-with ubody : Set :=
+| surface_md_alias : surface_modexp -> surface_moddef
+with surface_body : Set :=
 (** The empty body *)
-| u_gm_nil : ubody
+| surface_gm_nil : surface_body
 (** A named entry after the body before it *)
-| u_gm_ext : ubody -> string -> uentry -> ubody
-(** [u_gm_open Φ H its]: an open of [H] declaring the items [its]; the
+| surface_gm_ext : surface_body -> string -> surface_entry -> surface_body
+(** [surface_gm_open Φ H its]: an open of [H] declaring the items [its]; the
     core's open phase expands it *)
-| u_gm_open : ubody -> umodexp -> list import_item -> ubody
-with uentry : Set :=
-(** [u_ge_def b pv A oM]: a definition, transparent when [b], private when
+| surface_gm_open : surface_body -> surface_modexp -> list import_item -> surface_body
+with surface_entry : Set :=
+(** [surface_ge_def b pv A oM]: a definition, transparent when [b], private when
     [pv], of the type [A], with the body [oM] ([None] for an axiom); its
     sort is not written *)
-| u_ge_def : bool -> bool -> uexp -> option uexp -> uentry
-(** [u_ge_mod pv U]: a submodule *)
-| u_ge_mod : bool -> uunit -> uentry.
+| surface_ge_def : bool -> bool -> surface_exp -> option surface_exp -> surface_entry
+(** [surface_ge_mod pv U]: a submodule *)
+| surface_ge_mod : bool -> surface_unit -> surface_entry.
 
 (** ** Commands *)
 
 (** A member of a group of inductive types as written: its name, its
     non-uniform parameters (assumptions, innermost first), its sort, and
     its constructors, each with its named arguments, outermost first. *)
-Record uraw_member : Set := mk_urmem
+Record surface_raw_member : Set := mk_surface_raw_member
   { (** The member's name *)
-    uraw_member_name : string
+    surface_raw_member_name : string
     (** Its non-uniform parameters, innermost first *)
-  ; uraw_member_nparams : list uexp
+  ; surface_raw_member_nparams : list surface_exp
     (** Its sort, over the uniform parameters *)
-  ; uraw_member_sort : uexp
+  ; surface_raw_member_sort : surface_exp
     (** Its constructors, each with its named arguments *)
-  ; uraw_member_cons : list (string * list (string * uexp)) }.
+  ; surface_raw_member_cons : list (string * list (string * surface_exp)) }.
 
 (** A group as written. *)
-Record uraw_decl : Set := mk_uraw
+Record surface_raw_decl : Set := mk_surface_raw_decl
   { (** The group's own uniform parameters, innermost first *)
-    uraw_decl_uparams : list uexp
+    surface_raw_decl_uparams : list surface_exp
     (** The declared members, in order *)
-  ; uraw_decl_members : list uraw_member
+  ; surface_raw_decl_members : list surface_raw_member
     (** Whether the group files its recursor module [Rec] *)
-  ; uraw_decl_rec_field : bool }.
+  ; surface_raw_decl_rec_field : bool }.
 
 (** A function of a [mutual def] as written. *)
-Record uraw_fun : Set := mk_urfun
+Record surface_raw_fun : Set := mk_surface_raw_fun
   { (** The function's name *)
-    uraw_fun_name : string
+    surface_raw_fun_name : string
     (** Its non-uniform parameters, innermost first *)
-  ; uraw_fun_nparams : list uexp
+  ; surface_raw_fun_nparams : list surface_exp
     (** The scrutinee's type *)
-  ; uraw_fun_scrut : uexp
+  ; surface_raw_fun_scrut : surface_exp
     (** The result type *)
-  ; uraw_fun_res : uexp
+  ; surface_raw_fun_res : surface_exp
     (** The clauses: constructor name, number of binders, body *)
-  ; uraw_fun_clauses : list (string * nat * uexp) }.
+  ; surface_raw_fun_clauses : list (string * nat * surface_exp) }.
 
-Inductive ucmd : Set :=
+Inductive surface_cmd : Set :=
 (** [def x : A := M] or [axiom x : A]: transparency, privacy, type, body *)
-| u_cmd_def : string -> bool -> bool -> uexp -> option uexp -> ucmd
+| surface_cmd_def : string -> bool -> bool -> surface_exp -> option surface_exp -> surface_cmd
 (** [module x (Δ) where cs end] *)
-| u_cmd_mod : string -> bool -> list uexp -> list ucmd -> ucmd
+| surface_cmd_mod : string -> bool -> list surface_exp -> list surface_cmd -> surface_cmd
 (** [module x (Δ) := E] *)
-| u_cmd_alias : string -> bool -> list uexp -> umodexp -> ucmd
+| surface_cmd_alias : string -> bool -> list surface_exp -> surface_modexp -> surface_cmd
 (** [import fp]: load the unit [fp] *)
-| u_cmd_load : path -> ucmd
+| surface_cmd_load : path -> surface_cmd
 (** [open E its] *)
-| u_cmd_open : umodexp -> list import_item -> ucmd
-(** [eval M : A], [A] being [u_hole] when not written *)
-| u_cmd_eval : uexp -> uexp -> ucmd
+| surface_cmd_open : surface_modexp -> list import_item -> surface_cmd
+(** [eval M : A], [A] being [surface_hole] when not written *)
+| surface_cmd_eval : surface_exp -> surface_exp -> surface_cmd
 (** [inductive …] *)
-| u_cmd_inductive : bool -> uraw_decl -> ucmd
+| surface_cmd_inductive : bool -> surface_raw_decl -> surface_cmd
 (** [mutual def (Δ) f … with g … end], abstract and private or not *)
-| u_cmd_mdef : bool -> bool -> list uexp -> list uraw_fun -> ucmd
+| surface_cmd_mdef : bool -> bool -> list surface_exp -> list surface_raw_fun -> surface_cmd
 (** [builtin k := X] *)
-| u_cmd_builtin : string -> umodexp -> ucmd
+| surface_cmd_builtin : string -> surface_modexp -> surface_cmd
 (** [inductive x (Δ) := X] *)
-| u_cmd_inductive_alias : string -> bool -> list uexp -> umodexp -> ucmd
+| surface_cmd_inductive_alias : string -> bool -> list surface_exp -> surface_modexp -> surface_cmd
 (** [record x (Δ) := X] *)
-| u_cmd_record_alias : string -> bool -> list uexp -> umodexp -> ucmd
+| surface_cmd_record_alias : string -> bool -> list surface_exp -> surface_modexp -> surface_cmd
 (** [record x (Δ) : S where f : T ; … with cs end] *)
-| u_cmd_record : string -> bool -> list uexp -> uexp -> list (string * uexp) -> list ucmd -> ucmd.
+| surface_cmd_record : string -> bool -> list surface_exp -> surface_exp -> list (string * surface_exp) -> list surface_cmd -> surface_cmd.
 
 (** A unit as written: its leading imports, its parameters (innermost
     first), its body. *)
-Definition user_unit : Set := (list ucmd * list uexp * list ucmd)%type.
+Definition surface_compilation_unit : Set := (list surface_cmd * list surface_exp * list surface_cmd)%type.

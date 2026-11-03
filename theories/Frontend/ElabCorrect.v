@@ -156,18 +156,18 @@ Qed.
 
 (** ** Open Targets *)
 
-(** A projection chain is a module expression's spine of [u_me_mem]s. *)
+(** A projection chain is a module expression's spine of [surface_me_mem]s. *)
 Lemma spec_modexp_proj_chain : forall S ip o E,
-    spec_modexp S (fold_left Cst.proj ip o) E <-> exists H, spec_modexp S o H /\ E = fold_left u_me_mem ip H.
+    spec_modexp S (fold_left Cst.proj ip o) E <-> exists H, spec_modexp S o H /\ E = fold_left surface_me_mem ip H.
 Proof.
   intros S; induction ip as [| y ip IH]; intros o E; cbn [fold_left].
   - split; [ eauto | intros (H & HH & ->); assumption ].
   - rewrite IH; split.
     + intros (H' & Hs & ->); inversion Hs; subst; eauto.
-    + intros (H & Hs & ->); exists (u_me_mem H y); split; [ constructor; assumption | reflexivity ].
+    + intros (H & Hs & ->); exists (surface_me_mem H y); split; [ constructor; assumption | reflexivity ].
 Qed.
 
-(** And the arguments of a module are its spine of [u_me_app]s. *)
+(** And the arguments of a module are its spine of [surface_me_app]s. *)
 Lemma spec_modexp_app_chain : forall S args o E,
     spec_modexp S (fold_left Cst.app args o) E <->
     exists H Ns, spec_modexp S o H /\ Forall2 (spec_exp S) args Ns /\ E = modexp_apps H Ns.
@@ -178,7 +178,7 @@ Proof.
     + intros (H' & Ns & Hs & HN & ->); inversion Hs; subst.
       do 2 eexists; split; [ eassumption | split; [ constructor; eassumption | reflexivity ] ].
     + intros (H & Ns & Hs & HN & ->); inversion HN; subst.
-      exists (u_me_app H y), l'; split; [ constructor; assumption | split; [ assumption | reflexivity ] ].
+      exists (surface_me_app H y), l'; split; [ constructor; assumption | split; [ assumption | reflexivity ] ].
 Qed.
 
 (** A name in module position, as [elab_mod] reads it. *)
@@ -222,21 +222,21 @@ Qed.
 (** ** Objects *)
 
 (** The loop of [elab_mdef], stated on its own. *)
-Fixpoint elab_body (S : list scope_entry) (Φ : ubody) (cs : list Cst.cmd) : elab_result ubody :=
+Fixpoint elab_body (S : list scope_entry) (Φ : surface_body) (cs : list Cst.cmd) : elab_result surface_body :=
   match cs with
   | nil => elab_success Φ
   | Cst.c_def m x oA oM :: cs' =>
       let* A := elab S oA in
       let* M := elab S oM in
-      elab_body (scope_entry_var x :: S) (u_gm_ext Φ x (u_ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) A (Some M))) cs'
+      elab_body (scope_entry_var x :: S) (surface_gm_ext Φ x (surface_ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) A (Some M))) cs'
   | Cst.c_mod pv x ps md' :: cs' =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
       let* D := elab_mdef (param_scope_entries ps ++ S) md' in
-      elab_body (scope_entry_var x :: S) (u_gm_ext Φ x (u_ge_mod pv (u_gu_mk (params_tele tys) D))) cs'
+      elab_body (scope_entry_var x :: S) (surface_gm_ext Φ x (surface_ge_mod pv (surface_gu_mk (params_tele tys) D))) cs'
   | Cst.c_open fq ip args its :: cs' =>
       let* E := elab_target_with elab S fq ip args in
-      elab_body (item_scope_entries its ++ S) (u_gm_open Φ E its) cs'
+      elab_body (item_scope_entries its ++ S) (surface_gm_open Φ E its) cs'
   | Cst.c_axiom _ _ :: _ => elab_failure "axioms are not allowed in a local module"
   | Cst.c_import _ :: _ => elab_failure "import is not allowed in a local module; use open"
   | Cst.c_error e :: _ => elab_failure e
@@ -249,7 +249,7 @@ Fixpoint elab_body (S : list scope_entry) (Φ : ubody) (cs : list Cst.cmd) : ela
   | Cst.c_record _ _ _ _ _ _ :: _ => elab_failure "a record type is not allowed in a local module"
   end.
 
-Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S u_gm_nil cs in elab_success (u_md_body Φ).
+Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S surface_gm_nil cs in elab_success (surface_md_body Φ).
 Proof. reflexivity. Qed.
 
 Definition Pterm (o : Cst.expression) : Prop := forall S M, elab S o = elab_success M <-> spec_exp S o M.
@@ -400,7 +400,7 @@ Lemma spec_unit_iff : forall S ps md U,
     (let* _ := check_params ps in
      let* tys := elab_params_with elab S ps in
      let* D := elab_mdef (param_scope_entries ps ++ S) md in
-     elab_success (u_gu_mk (params_tele tys) D)) = elab_success U <-> spec_unit S ps md U.
+     elab_success (surface_gu_mk (params_tele tys) D)) = elab_success U <-> spec_unit S ps md U.
 Proof.
   intros * Hps Hmd. pose proof (params_iff _ Hps) as IHps. unfold Pmdef in Hmd. iff_case.
 Qed.
@@ -854,7 +854,7 @@ End Commands.
     A member's entry records the binders outside it when it is declared
     ([scope_entry_mem]).  The count stays right: a scope only grows at its front, so
     in every scope a command reads, each member's count is the number of
-    binders outside its entry, which is what [vars_desc] needs. *)
+    binders outside its entry, which is what [outer_param_vars] needs. *)
 
 (** In [S], each member's count is the binders outside its entry. *)
 Definition mems_counted (S : list scope_entry) : Prop :=

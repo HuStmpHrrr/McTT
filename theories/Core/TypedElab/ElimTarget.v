@@ -1,7 +1,7 @@
 (** * The Group of an Eliminator
 
     An eliminator as written carries no group and no uniform parameters
-    ([u_elim m Bks M]).  The typed fill ([TypedElab.Fill]) reads both off
+    ([surface_elim m Bks M]).  The typed fill ([TypedElab.Fill]) reads both off
     its scrutinee's inferred, normalised type [nf_indty pc k Rs]:
     [elim_target] lists every reading of the eliminator that fits its
     blocks as written (their number, the block marked [at], each block's

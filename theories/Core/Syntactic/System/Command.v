@@ -1214,7 +1214,7 @@ Section Semantics.
   (** Lexing and parsing.  The lexer is OCaml, so this is a parameter too. *)
   Variable read : string -> option Cst.prog.
   (** Elaboration into core commands, which needs no filed unit. *)
-  Variable to_core : Cst.prog -> option user_unit.
+  Variable to_core : Cst.prog -> option surface_compilation_unit.
 
   (** ** Running
 
@@ -1459,7 +1459,7 @@ Section Semantics.
       filled ([fill_params]) and checked against what they filed, then its
       body runs in its own frame, named [fp]; [Θ] is what it filed, [Rb]
       their records, [U] the unit, [B] its own record. *)
-  with run_unit : list path -> user_unit -> builtins -> builtins_map -> gdeps -> gunit -> Prop :=
+  with run_unit : list path -> surface_compilation_unit -> builtins -> builtins_map -> gdeps -> gunit -> Prop :=
   | run_unit_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P' l cs Θ1 Θ2 mp K U,
       nil ⍮ nil ⍮ builtins_empty ⍮ nil ⊢[fp :: ch] List.map ci_written imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       fill_params Θ1 nil B1 P P' ->
@@ -1499,7 +1499,7 @@ Section Semantics.
       itself as the whole chain; [B] is the record it ends with. *)
   #[warnings="-cannot-define-projection"]
   Record prog_sem (prg : Cst.prog) (B : builtins) (Θ : gdeps) (U : gunit) : Prop := mk_prog_sem
-    { prog_sem_unit : user_unit
+    { prog_sem_unit : surface_compilation_unit
     ; prog_sem_record : builtins_map
     ; prog_sem_core : to_core prg = Some prog_sem_unit
     ; prog_sem_run : run_unit (prog_path prg :: nil) prog_sem_unit B prog_sem_record Θ U }.
@@ -1685,7 +1685,7 @@ Definition core_cmd_terms (c : core_cmd) : bool :=
 
 Section Determinism.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
-            (to_core : Cst.prog -> option user_unit).
+            (to_core : Cst.prog -> option surface_compilation_unit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
@@ -1712,7 +1712,7 @@ Section Determinism.
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ its2 ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> its1 = its2.
   Proof.
     intros * F1 F2 Hr.
-    destruct (ucmd_terms c) eqn:Ht.
+    destruct (surface_cmd_terms c) eqn:Ht.
     - destruct (fill_cmd_head _ _ _ _ _ Ht F2) as (c0 & its' & -> & Hl & Hc).
       inversion Hr as [| | ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? Hr0 _]; subst.
       assert (Ht0 : core_cmd_terms c0 = true)
@@ -2643,7 +2643,7 @@ Qed.
 
 Section WellFormed.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
-            (to_core : Cst.prog -> option user_unit).
+            (to_core : Cst.prog -> option surface_compilation_unit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
@@ -2701,7 +2701,7 @@ Section WellFormed.
     { canon_entry_record : builtins
     ; canon_entry_src : string
     ; canon_entry_prog : Cst.prog
-    ; canon_entry_unit : user_unit
+    ; canon_entry_unit : surface_compilation_unit
     ; canon_entry_chain : list path
     ; canon_entry_builtin_records : builtins_map
     ; canon_entry_deps : gdeps
@@ -3557,7 +3557,7 @@ Qed.
 
 Section Runs.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
-            (to_core : Cst.prog -> option user_unit).
+            (to_core : Cst.prog -> option surface_compilation_unit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).

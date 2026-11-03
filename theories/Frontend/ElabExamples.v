@@ -9,27 +9,27 @@ From Mctt.Frontend Require Import Elaborator ElabSpec ElabCorrect.
     type, [ℓ ≔ M in B], and a [conj] are written with the hole. *)
 Declare Scope user_scope.
 Module User_Notations.
-  Notation "'Typeω' @ n" := (u_typ n) (at level 1, n at level 0, format "'Typeω' @ n") : user_scope.
-  Notation "'Type' ⟨ t ⟩" := (u_univ t) (at level 0, t at level 99, format "'Type' ⟨ t ⟩") : user_scope.
-  Notation "'Level' @ n" := (u_level n) (at level 1, n at level 0, format "'Level' @ n") : user_scope.
-  Notation "'𝕃ᵒ' o" := (u_llit o) (at level 1, o at level 0, format "'𝕃ᵒ' o") : user_scope.
-  Notation "'succl' M" := (u_succl M) (at level 2, M at level 1) : user_scope.
-  Notation "'maxl' M N" := (u_maxl M N) (at level 2, M at level 1, N at level 1) : user_scope.
-  Notation "'#' n" := (u_var n) (at level 1, n at level 0, format "'#' n") : user_scope.
-  Notation "'λ' A M" := (u_fn A M) (at level 2, A at level 1, M at level 60) : user_scope.
-  Notation "'Π' A B" := (u_pi A B) (at level 2, A at level 1, B at level 60) : user_scope.
-  Notation "'ℓ' A ≔ M 'in' B" := (u_let (u_b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : user_scope.
-  Notation "'ℓ' ≔ M 'in' B" := (u_let (u_b_def u_hole M) B) (at level 2, M at level 60, B at level 60) : user_scope.
-  Notation "'ℓₘ' U 'in' B" := (u_let (u_b_mod U) B) (at level 2, U at level 1, B at level 60) : user_scope.
-  Notation "'Propₘ'" := u_prop : user_scope.
-  Notation "'⊤'" := u_True : user_scope.
-  Notation "'⊥'" := u_False : user_scope.
-  Notation "'ℕ'" := u_ntok : user_scope.
-  Notation "'efq' M 'return' C" := (u_absurd C M) (at level 2, M at level 60, C at level 60) : user_scope.
-  Notation "'Σₚ' P Q" := (u_and P Q) (at level 2, P at level 1, Q at level 60) : user_scope.
-  Notation "M $ N" := (u_app M N) (at level 10, left associativity) : user_scope.
-  Notation "⋅" := (@nil uexp) : user_scope.
-  Notation "Γ ▹ A" := (@cons uexp A Γ) (at level 50, left associativity) : user_scope.
+  Notation "'Typeω' @ n" := (surface_typ n) (at level 1, n at level 0, format "'Typeω' @ n") : user_scope.
+  Notation "'Type' ⟨ t ⟩" := (surface_univ t) (at level 0, t at level 99, format "'Type' ⟨ t ⟩") : user_scope.
+  Notation "'Level' @ n" := (surface_level n) (at level 1, n at level 0, format "'Level' @ n") : user_scope.
+  Notation "'𝕃ᵒ' o" := (surface_llit o) (at level 1, o at level 0, format "'𝕃ᵒ' o") : user_scope.
+  Notation "'succl' M" := (surface_succl M) (at level 2, M at level 1) : user_scope.
+  Notation "'maxl' M N" := (surface_maxl M N) (at level 2, M at level 1, N at level 1) : user_scope.
+  Notation "'#' n" := (surface_var n) (at level 1, n at level 0, format "'#' n") : user_scope.
+  Notation "'λ' A M" := (surface_fn A M) (at level 2, A at level 1, M at level 60) : user_scope.
+  Notation "'Π' A B" := (surface_pi A B) (at level 2, A at level 1, B at level 60) : user_scope.
+  Notation "'ℓ' A ≔ M 'in' B" := (surface_let (surface_b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : user_scope.
+  Notation "'ℓ' ≔ M 'in' B" := (surface_let (surface_b_def surface_hole M) B) (at level 2, M at level 60, B at level 60) : user_scope.
+  Notation "'ℓₘ' U 'in' B" := (surface_let (surface_b_mod U) B) (at level 2, U at level 1, B at level 60) : user_scope.
+  Notation "'Propₘ'" := surface_prop : user_scope.
+  Notation "'⊤'" := surface_True : user_scope.
+  Notation "'⊥'" := surface_False : user_scope.
+  Notation "'ℕ'" := surface_ntok : user_scope.
+  Notation "'efq' M 'return' C" := (surface_absurd C M) (at level 2, M at level 60, C at level 60) : user_scope.
+  Notation "'Σₚ' P Q" := (surface_and P Q) (at level 2, P at level 1, Q at level 60) : user_scope.
+  Notation "M $ N" := (surface_app M N) (at level 10, left associativity) : user_scope.
+  Notation "⋅" := (@nil surface_exp) : user_scope.
+  Notation "Γ ▹ A" := (@cons surface_exp A Γ) (at level 50, left associativity) : user_scope.
 End User_Notations.
 Import User_Notations.
 Open Scope user_scope.
@@ -39,8 +39,8 @@ Open Scope list_scope.
 Import Cst.
 
 (** An evaluation as the examples write it, the type written or not. *)
-Definition eval_as_written (M : uexp) (oA : option uexp) : ucmd :=
-  u_cmd_eval M (match oA with Some A => A | None => u_hole end).
+Definition eval_as_written (M : surface_exp) (oA : option surface_exp) : surface_cmd :=
+  surface_cmd_eval M (match oA with Some A => A | None => surface_hole end).
 
 (** * The Specification on Concrete Programs
 
@@ -51,9 +51,9 @@ Definition eval_as_written (M : uexp) (oA : option uexp) : ucmd :=
     are related to nothing, by [elaborate_core_fails].
 
     [⟨U.M⟩] below abbreviates the module expression
-    [user_qname_mod (q_abs ["U"] ["M"])]. *)
+    [surface_qname_mod (q_abs ["U"] ["M"])]. *)
 
-Definition mpath (fq ch : list string) : umodexp := user_qname_mod (q_abs fq ch).
+Definition mpath (fq ch : list string) : surface_modexp := surface_qname_mod (q_abs fq ch).
 
 Ltac elab_ok := apply elaborate_core_sound; vm_compute; reflexivity.
 
@@ -92,19 +92,19 @@ Definition nested : Cst.prog :=
               c_eval (fn "x" nat (var "b")) None :: nil)) ::
          c_eval (app (proj (var "M") "b") nat) None :: nil)).
 
-Definition U_a : uexp := user_qname_term (q_abs ("U" :: nil) ("a" :: nil)).
-Definition U_M_b : uexp := user_qname_term (q_abs ("U" :: nil) ("M" :: "b" :: nil)).
+Definition U_a : surface_exp := surface_qname_term (q_abs ("U" :: nil) ("a" :: nil)).
+Definition U_M_b : surface_exp := surface_qname_term (q_abs ("U" :: nil) ("M" :: "b" :: nil)).
 
 Example nested_spec :
   elab_spec nested
     (nil, ⋅ ▹ Typeω@0,
-     u_cmd_def "a" true false Typeω@0 (Some #0) ::
-     u_cmd_mod "M" false (⋅ ▹ Typeω@0)
-       (u_cmd_def "b" true false Typeω@0 (Some #0) ::
+     surface_cmd_def "a" true false Typeω@0 (Some #0) ::
+     surface_cmd_mod "M" false (⋅ ▹ Typeω@0)
+       (surface_cmd_def "b" true false Typeω@0 (Some #0) ::
         eval_as_written (U_a $ #1) None ::
         eval_as_written (U_M_b $ #1 $ #0) None ::
         eval_as_written (λ ℕ (U_M_b $ #2 $ #1)) None :: nil) ::
-     eval_as_written (u_mem (u_me_app (mpath ("U" :: nil) ("M" :: nil)) #0) "b" $ ℕ) None :: nil).
+     eval_as_written (surface_mem (surface_me_app (mpath ("U" :: nil) ("M" :: nil)) #0) "b" $ ℕ) None :: nil).
 Proof. elab_ok. Qed.
 
 (** The first [eval] of [M], derived from the rules.  It is read in the
@@ -133,18 +133,18 @@ Definition church : Cst.prog :=
                    (app (app (proj (var "C") "two") (num 0)) (fn "x" nat (var "x"))))
            (Some nat) :: nil)).
 
-Definition Church_t : uexp := user_qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "t" :: nil)).
+Definition Church_t : surface_exp := surface_qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "t" :: nil)).
 
 (** Inside [Church], [t] is [Church.t A].  [let module C := Church ℕ]
     binds a local module slot, so [C.two] selects [two] of [#0]. *)
 Example church_spec :
   elab_spec church
     (nil, ⋅,
-     u_cmd_mod "Church" false (⋅ ▹ Typeω@0)
-       (u_cmd_def "t" true false Typeω@0 (Some (Π #0 (Π (Π #1 #2) #2))) ::
-        u_cmd_def "two" true false (Church_t $ #0) (Some (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1))))) :: nil) ::
-     eval_as_written (ℓₘ (u_gu_mk ⋅ (u_md_alias (u_me_app (mpath ("ModuleParam" :: nil) ("Church" :: nil)) ℕ)))
-              in (u_mem (u_me_var 0) "two" $ (u_nlit 0) $ λ ℕ #0)) (Some ℕ) :: nil).
+     surface_cmd_mod "Church" false (⋅ ▹ Typeω@0)
+       (surface_cmd_def "t" true false Typeω@0 (Some (Π #0 (Π (Π #1 #2) #2))) ::
+        surface_cmd_def "two" true false (Church_t $ #0) (Some (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1))))) :: nil) ::
+     eval_as_written (ℓₘ (surface_gu_mk ⋅ (surface_md_alias (surface_me_app (mpath ("ModuleParam" :: nil) ("Church" :: nil)) ℕ)))
+              in (surface_mem (surface_me_var 0) "two" $ (surface_nlit 0) $ λ ℕ #0)) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** [examples/ImportUse.mctt]: privacy, [open … as], [open … use] *)
@@ -158,9 +158,9 @@ Definition import_use : Cst.prog :=
          c_open nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) ::
          c_eval (app (proj (var "I") "exposed") (var "exposed")) None :: nil)).
 
-Definition Impl_ : string -> uexp := fun x => user_qname_term (q_abs ("ImportUse" :: nil) ("Impl" :: x :: nil)).
+Definition Impl_ : string -> surface_exp := fun x => surface_qname_term (q_abs ("ImportUse" :: nil) ("Impl" :: x :: nil)).
 
-Definition Impl : umodexp := mpath ("ImportUse" :: nil) ("Impl" :: nil).
+Definition Impl : surface_modexp := mpath ("ImportUse" :: nil) ("Impl" :: nil).
 
 (** A private member is visible in its own frame.  An open is a command
     whose items the core declares as members of the frame: [I] and
@@ -171,12 +171,12 @@ Definition ImportUse_ (ch : list string) : qname := q_abs ("ImportUse" :: nil) c
 Example import_use_spec :
   elab_spec import_use
     (nil, ⋅,
-     u_cmd_mod "Impl" false ⋅
-       (u_cmd_def "secret" true true ℕ (Some ((u_nlit 3))) ::
-        u_cmd_def "exposed" true false ℕ (Some (Impl_ "secret")) :: nil) ::
-     u_cmd_open Impl ((None, "I", true) :: nil) ::
-     u_cmd_open Impl ((Some "exposed", "exposed", true) :: nil) ::
-     eval_as_written (u_mem (user_qname_mod (ImportUse_ ("I" :: nil))) "exposed" $ (user_qname_term (ImportUse_ ("exposed" :: nil))))
+     surface_cmd_mod "Impl" false ⋅
+       (surface_cmd_def "secret" true true ℕ (Some ((surface_nlit 3))) ::
+        surface_cmd_def "exposed" true false ℕ (Some (Impl_ "secret")) :: nil) ::
+     surface_cmd_open Impl ((None, "I", true) :: nil) ::
+     surface_cmd_open Impl ((Some "exposed", "exposed", true) :: nil) ::
+     eval_as_written (surface_mem (surface_qname_mod (ImportUse_ ("I" :: nil))) "exposed" $ (surface_qname_term (ImportUse_ ("exposed" :: nil))))
        None :: nil).
 Proof. elab_ok. Qed.
 
@@ -198,22 +198,22 @@ Definition main_mctt : Cst.prog :=
     as the first commands of the unit's body, where loading an already
     loaded unit does nothing; a leading open declares its items there, as
     members of the unit. *)
-Definition Arith : umodexp := mpath ("Lib" :: "Arith" :: nil) nil.
-Definition Num : umodexp := mpath ("Lib" :: "Num" :: nil) nil.
-Definition Ops : umodexp := mpath ("Lib" :: "Num" :: nil) ("Ops" :: nil).
-Definition Main_ (x : string) : uexp := user_qname_term (q_abs ("Main" :: nil) (x :: nil)).
+Definition Arith : surface_modexp := mpath ("Lib" :: "Arith" :: nil) nil.
+Definition Num : surface_modexp := mpath ("Lib" :: "Num" :: nil) nil.
+Definition Ops : surface_modexp := mpath ("Lib" :: "Num" :: nil) ("Ops" :: nil).
+Definition Main_ (x : string) : surface_exp := surface_qname_term (q_abs ("Main" :: nil) (x :: nil)).
 
 Example main_spec :
   elab_spec main_mctt
-    (u_cmd_load ("Lib" :: "Arith" :: nil) :: u_cmd_load ("Lib" :: "Num" :: nil) :: u_cmd_load ("Lib" :: "Num" :: nil) :: nil,
+    (surface_cmd_load ("Lib" :: "Arith" :: nil) :: surface_cmd_load ("Lib" :: "Num" :: nil) :: surface_cmd_load ("Lib" :: "Num" :: nil) :: nil,
      ⋅,
-     u_cmd_load ("Lib" :: "Arith" :: nil) :: u_cmd_open Arith ((Some "quadruple", "quadruple", true) :: nil) ::
-     u_cmd_load ("Lib" :: "Num" :: nil) :: u_cmd_open Num ((None, "N", true) :: nil) ::
-     u_cmd_load ("Lib" :: "Num" :: nil) :: u_cmd_open Ops ((Some "pred", "pred", true) :: nil) ::
-     eval_as_written (Main_ "quadruple" $ (u_nlit 2)) (Some ℕ) ::
-     eval_as_written (u_mem (mpath ("Main" :: nil) ("N" :: nil)) "double" $ (u_nlit 3)) None ::
-     eval_as_written (Main_ "pred" $ (u_mem (mpath ("Main" :: nil) ("N" :: nil)) "double"
-                               $ (u_nlit 5))) (Some ℕ) :: nil).
+     surface_cmd_load ("Lib" :: "Arith" :: nil) :: surface_cmd_open Arith ((Some "quadruple", "quadruple", true) :: nil) ::
+     surface_cmd_load ("Lib" :: "Num" :: nil) :: surface_cmd_open Num ((None, "N", true) :: nil) ::
+     surface_cmd_load ("Lib" :: "Num" :: nil) :: surface_cmd_open Ops ((Some "pred", "pred", true) :: nil) ::
+     eval_as_written (Main_ "quadruple" $ (surface_nlit 2)) (Some ℕ) ::
+     eval_as_written (surface_mem (mpath ("Main" :: nil) ("N" :: nil)) "double" $ (surface_nlit 3)) None ::
+     eval_as_written (Main_ "pred" $ (surface_mem (mpath ("Main" :: nil) ("N" :: nil)) "double"
+                               $ (surface_nlit 5))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** [examples/TrueFalse.mctt]: the true and the false proposition
@@ -229,7 +229,7 @@ Definition true_false : Cst.prog :=
 Example true_false_spec :
   elab_spec true_false
     (nil, ⋅,
-     eval_as_written u_tt None ::
+     eval_as_written surface_tt None ::
      eval_as_written (λ ⊤ #0) None ::
      eval_as_written (λ ⊥ (efq #0 return ℕ)) None :: nil).
 Proof. elab_ok. Qed.
@@ -244,7 +244,7 @@ Definition conjunctions : Cst.prog :=
 Example conjunctions_spec :
   elab_spec conjunctions
     (nil, ⋅,
-     eval_as_written (λ Propₘ (λ Propₘ (λ (Σₚ #1 #1) (u_conj #2 u_hole (u_left #0) (u_right #0))))) None :: nil).
+     eval_as_written (λ Propₘ (λ Propₘ (λ (Σₚ #1 #1) (surface_conj #2 surface_hole (surface_left #0) (surface_right #0))))) None :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Scoping Rules, Positive and Negative *)
@@ -258,8 +258,8 @@ Example private_sibling :
     (c_mod false "I" nil (md_where (c_def private_modifiers "s" nat (num 0) :: nil)) ::
      c_eval (proj (var "I") "s") None :: nil))
     (nil, ⋅,
-     u_cmd_mod "I" false ⋅ (u_cmd_def "s" true true ℕ (Some (u_nlit 0)) :: nil) ::
-     eval_as_written (u_mem (mpath ("T" :: nil) ("I" :: nil)) "s") None :: nil).
+     surface_cmd_mod "I" false ⋅ (surface_cmd_def "s" true true ℕ (Some (surface_nlit 0)) :: nil) ::
+     eval_as_written (surface_mem (mpath ("T" :: nil) ("I" :: nil)) "s") None :: nil).
 Proof. elab_ok. Qed.
 
 (** A frame nested in a member's own frame names it directly. *)
@@ -273,7 +273,7 @@ Proof. eexists; elab_ok. Qed.
     definitions … *)
 Example redeclare_same : elab_spec (unit_of
   (c_def public_modifiers "x" nat (num 0) :: c_def public_modifiers "x" nat (num 0) :: nil))
-  (nil, ⋅, u_cmd_def "x" true false ℕ (Some (u_nlit 0)) :: u_cmd_def "x" true false ℕ (Some (u_nlit 0)) :: nil).
+  (nil, ⋅, surface_cmd_def "x" true false ℕ (Some (surface_nlit 0)) :: surface_cmd_def "x" true false ℕ (Some (surface_nlit 0)) :: nil).
 Proof. elab_ok. Qed.
 
 (** … also over an alias … *)
@@ -289,9 +289,9 @@ Example shadow_parent :
      c_mod false "I" nil
        (md_where (c_def public_modifiers "x" nat ((num 1)) :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅,
-     u_cmd_def "x" true false ℕ (Some (u_nlit 0)) ::
-     u_cmd_mod "I" false ⋅ (u_cmd_def "x" true false ℕ (Some ((u_nlit 1))) ::
-                   eval_as_written (user_qname_term (q_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
+     surface_cmd_def "x" true false ℕ (Some (surface_nlit 0)) ::
+     surface_cmd_mod "I" false ⋅ (surface_cmd_def "x" true false ℕ (Some ((surface_nlit 1))) ::
+                   eval_as_written (surface_qname_term (q_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** A definition does not see itself. *)
@@ -305,8 +305,8 @@ Example partial_args :
     (c_mod false "M" (("A", typ 0) :: nil) (md_where (c_def public_modifiers "f" (typ 0) (var "A") :: nil)) ::
      c_eval (proj (var "M") "f") None :: nil))
     (nil, ⋅,
-     u_cmd_mod "M" false (⋅ ▹ Typeω@0) (u_cmd_def "f" true false Typeω@0 (Some #0) :: nil) ::
-     eval_as_written (u_mem (mpath ("T" :: nil) ("M" :: nil)) "f") None :: nil).
+     surface_cmd_mod "M" false (⋅ ▹ Typeω@0) (surface_cmd_def "f" true false Typeω@0 (Some #0) :: nil) ::
+     eval_as_written (surface_mem (mpath ("T" :: nil) ("M" :: nil)) "f") None :: nil).
 Proof. elab_ok. Qed.
 
 (** [module A.B] is [A], without parameters, holding [B]. *)
@@ -315,8 +315,8 @@ Example dotted_module :
     (c_mod_dotted false "B" ("A" :: nil) (("X", typ 0) :: nil) (md_where (c_def abstract_modifiers "y" (typ 0) (var "X") :: nil)) ::
      c_eval (app (proj (proj (var "A") "B") "y") nat) None :: nil))
     (nil, ⋅,
-     u_cmd_mod "A" false ⋅ (u_cmd_mod "B" false (⋅ ▹ Typeω@0) (u_cmd_def "y" false false Typeω@0 (Some #0) :: nil) :: nil) ::
-     eval_as_written (u_mem (u_me_mem (mpath ("T" :: nil) ("A" :: nil)) "B") "y" $ ℕ) None :: nil).
+     surface_cmd_mod "A" false ⋅ (surface_cmd_mod "B" false (⋅ ▹ Typeω@0) (surface_cmd_def "y" false false Typeω@0 (Some #0) :: nil) :: nil) ::
+     eval_as_written (surface_mem (surface_me_mem (mpath ("T" :: nil) ("A" :: nil)) "B") "y" $ ℕ) None :: nil).
 Proof. elab_ok. Qed.
 
 (** A unit is named by its full path only once imported. *)
@@ -337,7 +337,7 @@ Proof. vm_compute; reflexivity. Qed.
     with the message shown.  [theorem foo (n : ℕ) : ℕ := n end] is: *)
 Example keyword_theorem :
   elab_spec (unit_of (def_cmd definition_keyword_theorem public_modifiers "foo" (pi "n" nat nat) (fn "n" nat (var "n")) :: nil))
-    (nil, ⋅, u_cmd_def "foo" false false (Π ℕ ℕ) (Some (λ ℕ #0)) :: nil).
+    (nil, ⋅, surface_cmd_def "foo" false false (Π ℕ ℕ) (Some (λ ℕ #0)) :: nil).
 Proof. elab_ok. Qed.
 
 (** A term variable in module position is the binder: [B.Id], under a [λ]
@@ -346,14 +346,14 @@ Proof. elab_ok. Qed.
     to say ([fill_mod_term]). *)
 Example var_module_position :
   elab_spec (unit_of (def_cmd definition_keyword_def public_modifiers "f" (pi "B" nat nat) (fn "B" nat (proj (var "B") "Id")) :: nil))
-    (nil, ⋅, u_cmd_def "f" true false (Π ℕ ℕ) (Some (λ ℕ (u_mem (u_me_var 0) "Id"))) :: nil).
+    (nil, ⋅, surface_cmd_def "f" true false (Π ℕ ℕ) (Some (λ ℕ (surface_mem (surface_me_var 0) "Id"))) :: nil).
 Proof. elab_ok. Qed.
 
 (** A projection from a head that is no path, a term, is the member of
     the term's record type, which the core reads off the term's type:
-    [(λ (x : ℕ) → x).f] is [u_proj_term (λ ℕ #0) "f"]. *)
+    [(λ (x : ℕ) → x).f] is [surface_proj_term (λ ℕ #0) "f"]. *)
 Example proj_of_term :
-  elab (nil) (proj (fn "x" nat (var "x")) "f") = elab_success (u_proj_term (λ ℕ #0) "f").
+  elab (nil) (proj (fn "x" nat (var "x")) "f") = elab_success (surface_proj_term (λ ℕ #0) "f").
 Proof. vm_compute; reflexivity. Qed.
 
 (** A projection from a path, a term applied, is a member of a module
@@ -361,7 +361,7 @@ Proof. vm_compute; reflexivity. Qed.
     of the module expression [g 3], which the core fills
     ([fill_mod_term]). *)
 Example proj_of_path :
-  elab (scope_entry_tvar "g" :: nil) (proj (app (var "g") (num 3)) "fst") = elab_success (u_mem (u_me_app (u_me_var 0) (u_nlit 3)) "fst").
+  elab (scope_entry_tvar "g" :: nil) (proj (app (var "g") (num 3)) "fst") = elab_success (surface_mem (surface_me_app (surface_me_var 0) (surface_nlit 3)) "fst").
 Proof. vm_compute; reflexivity. Qed.
 
 (** [private lemma], [fact], [remark], [let], [abstract given]: *)
@@ -371,8 +371,8 @@ Example keyword_others :
      def_cmd definition_keyword_remark public_modifiers "c" nat (num 0) :: def_cmd definition_keyword_let public_modifiers "d" nat (num 0) ::
      def_cmd definition_keyword_given abstract_modifiers "e" nat (num 0) :: def_cmd definition_keyword_def private_abstract_modifiers "f" nat (num 0) :: nil))
     (nil, ⋅,
-     u_cmd_def "a" false true ℕ (Some (u_nlit 0)) :: u_cmd_def "b" false true ℕ (Some (u_nlit 0)) :: u_cmd_def "c" false true ℕ (Some (u_nlit 0)) ::
-     u_cmd_def "d" true true ℕ (Some (u_nlit 0)) :: u_cmd_def "e" false true ℕ (Some (u_nlit 0)) :: u_cmd_def "f" false true ℕ (Some (u_nlit 0)) :: nil).
+     surface_cmd_def "a" false true ℕ (Some (surface_nlit 0)) :: surface_cmd_def "b" false true ℕ (Some (surface_nlit 0)) :: surface_cmd_def "c" false true ℕ (Some (surface_nlit 0)) ::
+     surface_cmd_def "d" true true ℕ (Some (surface_nlit 0)) :: surface_cmd_def "e" false true ℕ (Some (surface_nlit 0)) :: surface_cmd_def "f" false true ℕ (Some (surface_nlit 0)) :: nil).
 Proof. elab_ok. Qed.
 
 Example keyword_theorem_abstract :
@@ -402,8 +402,8 @@ Proof. vm_compute; reflexivity. Qed.
 Example axiom_member :
   elab_spec (unit_of (axiom_cmd public_modifiers "f" (pi "n" nat nat) ::
                       def_cmd definition_keyword_def public_modifiers "g" nat (app (var "f") (num 0)) :: nil))
-    (nil, ⋅, u_cmd_def "f" false false (Π ℕ ℕ) None ::
-             u_cmd_def "g" true false ℕ (Some (u_mem (mpath ("T" :: nil) nil) "f" $ (u_nlit 0))) :: nil).
+    (nil, ⋅, surface_cmd_def "f" false false (Π ℕ ℕ) None ::
+             surface_cmd_def "g" true false ℕ (Some (surface_mem (mpath ("T" :: nil) nil) "f" $ (surface_nlit 0))) :: nil).
 Proof. elab_ok. Qed.
 
 Example axiom_private :
@@ -433,7 +433,7 @@ Example keyword_local_theorem :
   elab_spec (unit_of
     (c_eval (let_in (d_mod "L" nil (md_where (def_cmd definition_keyword_theorem public_modifiers "a" nat (num 0) :: nil))) (num 0)) None :: nil))
     (nil, ⋅,
-     eval_as_written (ℓₘ (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "a" (u_ge_def false false ℕ (Some (u_nlit 0)))))) in (u_nlit 0)) None :: nil).
+     eval_as_written (ℓₘ (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "a" (surface_ge_def false false ℕ (Some (surface_nlit 0)))))) in (surface_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 (** ** One Binding per Name per Frame
@@ -456,8 +456,8 @@ Definition alias_after_member : Cst.prog := unit_of
 Example alias_after_member_spec :
   elab_spec alias_after_member
     (nil, ⋅,
-     u_cmd_mod "M" false ⋅ nil :: u_cmd_def "x" true false ℕ (Some (u_nlit 0)) ::
-     u_cmd_open (mpath ("T" :: nil) ("M" :: nil)) ((None, "x", true) :: nil) :: nil).
+     surface_cmd_mod "M" false ⋅ nil :: surface_cmd_def "x" true false ℕ (Some (surface_nlit 0)) ::
+     surface_cmd_open (mpath ("T" :: nil) ("M" :: nil)) ((None, "x", true) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** [open M as x ; def x …]: a member takes an alias's name; the core
@@ -540,10 +540,10 @@ Example shadow_param :
                    c_mod false "M" (("y", nat) :: nil)
                      (md_where (c_def public_modifiers "x" nat (var "y") :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅ ▹ ℕ,
-     u_cmd_def "y" true false ℕ (Some (u_nlit 0)) ::
-     u_cmd_mod "M" false (⋅ ▹ ℕ)
-       (u_cmd_def "x" true false ℕ (Some #0) ::
-        eval_as_written (user_qname_term (q_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
+     surface_cmd_def "y" true false ℕ (Some (surface_nlit 0)) ::
+     surface_cmd_mod "M" false (⋅ ▹ ℕ)
+       (surface_cmd_def "x" true false ℕ (Some #0) ::
+        eval_as_written (surface_qname_term (q_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Local Definitions
@@ -578,7 +578,7 @@ Example let_multi :
                   (let_in (d_def "f" (Some (pi "n" (var "A") (var "A"))) (fn "n" (var "A") (var "z")))
                      (app (var "f") (var "z"))))) None :: nil))
     (nil, ⋅,
-     eval_as_written (ℓ Typeω@0 ≔ ℕ in ℓ #0 ≔ (u_nlit 0) in ℓ (Π #1 #2) ≔ λ #1 #1 in #0 $ #1) None :: nil).
+     eval_as_written (ℓ Typeω@0 ≔ ℕ in ℓ #0 ≔ (surface_nlit 0) in ℓ (Π #1 #2) ≔ λ #1 #1 in #0 $ #1) None :: nil).
 Proof. elab_ok. Qed.
 
 (** Without an annotation the elaborator emits none; the core infers the
@@ -595,7 +595,7 @@ Example let_mixed :
                   (let_in (d_def "f" None (fn "n" (var "A") (var "z")))
                      (app (var "f") (var "z"))))) None :: nil))
     (nil, ⋅,
-     eval_as_written (ℓ Typeω@0 ≔ ℕ in ℓ ≔ (u_nlit 0) in ℓ ≔ λ #1 #1 in #0 $ #1) None :: nil).
+     eval_as_written (ℓ Typeω@0 ≔ ℕ in ℓ ≔ (surface_nlit 0) in ℓ ≔ λ #1 #1 in #0 $ #1) None :: nil).
 Proof. elab_ok. Qed.
 
 (** A [let] may shadow a member of the frame.  The definiens still sees the
@@ -609,7 +609,7 @@ module M (A : Typeω@0) where
 end
 >>
 *)
-Definition T_M_y : uexp := user_qname_term (q_abs ("T" :: nil) ("M" :: "y" :: nil)).
+Definition T_M_y : surface_exp := surface_qname_term (q_abs ("T" :: nil) ("M" :: "y" :: nil)).
 
 Example let_shadow :
   elab_spec (unit_of
@@ -618,14 +618,14 @@ Example let_shadow :
          (c_def public_modifiers "y" nat (num 0) ::
           c_eval (let_in (d_def "y" (Some nat) (var "y")) (fn "a" (var "A") (var "y"))) None :: nil)) :: nil))
     (nil, ⋅,
-     u_cmd_mod "M" false (⋅ ▹ Typeω@0)
-       (u_cmd_def "y" true false ℕ (Some (u_nlit 0)) ::
+     surface_cmd_mod "M" false (⋅ ▹ Typeω@0)
+       (surface_cmd_def "y" true false ℕ (Some (surface_nlit 0)) ::
         eval_as_written (ℓ ℕ ≔ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Module Forms *)
 
-Definition T_ (ch : list string) : umodexp := mpath ("T" :: nil) ch.
+Definition T_ (ch : list string) : surface_modexp := mpath ("T" :: nil) ch.
 
 (** [module P (A : Typeω@0) := M A] is an alias, read under its
     parameters. *)
@@ -635,9 +635,9 @@ Example alias_module :
      c_mod false "P" (("A", typ 0) :: nil) (md_alias (app (var "M") (var "A"))) ::
      c_eval (proj (app (var "P") nat) "f") None :: nil))
     (nil, ⋅,
-     u_cmd_mod "M" false (⋅ ▹ Typeω@0) (u_cmd_def "f" true false Typeω@0 (Some #0) :: nil) ::
-     u_cmd_alias "P" false (⋅ ▹ Typeω@0) (u_me_app (T_ ("M" :: nil)) #0) ::
-     eval_as_written (u_mem (u_me_app (T_ ("P" :: nil)) ℕ) "f") None :: nil).
+     surface_cmd_mod "M" false (⋅ ▹ Typeω@0) (surface_cmd_def "f" true false Typeω@0 (Some #0) :: nil) ::
+     surface_cmd_alias "P" false (⋅ ▹ Typeω@0) (surface_me_app (T_ ("M" :: nil)) #0) ::
+     eval_as_written (surface_mem (surface_me_app (T_ ("P" :: nil)) ℕ) "f") None :: nil).
 Proof. elab_ok. Qed.
 
 (** A local module with a body: each entry binds a core variable for the
@@ -662,14 +662,14 @@ Example local_body :
           (proj (var "L") "x")) None :: nil))
     (nil, ⋅,
      eval_as_written
-       (ℓₘ (u_gu_mk (⋅ ▹ Typeω@0)
-              (u_md_body
-                 (u_gm_ext
-                    (u_gm_ext
-                       (u_gm_ext u_gm_nil "x" (u_ge_def true false (Π #0 #1) (Some (λ #0 #0))))
-                       "N" (u_ge_mod false (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "y" (u_ge_def true false ℕ (Some (u_nlit 0))))))))
-                    "z" (u_ge_def true false ℕ (Some (u_mem (u_me_var 0) "y"))))))
-        in u_mem (u_me_var 0) "x") None :: nil).
+       (ℓₘ (surface_gu_mk (⋅ ▹ Typeω@0)
+              (surface_md_body
+                 (surface_gm_ext
+                    (surface_gm_ext
+                       (surface_gm_ext surface_gm_nil "x" (surface_ge_def true false (Π #0 #1) (Some (λ #0 #0))))
+                       "N" (surface_ge_mod false (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "y" (surface_ge_def true false ℕ (Some (surface_nlit 0))))))))
+                    "z" (surface_ge_def true false ℕ (Some (surface_mem (surface_me_var 0) "y"))))))
+        in surface_mem (surface_me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
 
 (** An open in a local body is a pre-form the core expands; each of its
@@ -685,8 +685,8 @@ let module L where
 in L.w end
 >>
 
-    [N] is [u_me_var 0] at the first open and [u_me_var 1] at the second;
-    under [z], [y] is [#1], and under [w], [K] is [u_me_var 1]. *)
+    [N] is [surface_me_var 0] at the first open and [surface_me_var 1] at the second;
+    under [z], [y] is [#1], and under [w], [K] is [surface_me_var 1]. *)
 Example local_open :
   elab_spec (unit_of
     (c_eval
@@ -700,18 +700,18 @@ Example local_open :
           (proj (var "L") "w")) None :: nil))
     (nil, ⋅,
      eval_as_written
-       (ℓₘ (u_gu_mk ⋅
-              (u_md_body
-                 (u_gm_ext
-                    (u_gm_ext
-                       (u_gm_open
-                          (u_gm_open
-                             (u_gm_ext u_gm_nil "N" (u_ge_mod false (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "y" (u_ge_def true false ℕ (Some (u_nlit 0))))))))
-                             (u_me_var 0) ((Some "y", "y", true) :: nil))
-                          (u_me_var 1) ((None, "K", true) :: nil))
-                       "z" (u_ge_def true false ℕ (Some #1)))
-                    "w" (u_ge_def true false ℕ (Some (u_mem (u_me_var 1) "y"))))))
-        in u_mem (u_me_var 0) "w") None :: nil).
+       (ℓₘ (surface_gu_mk ⋅
+              (surface_md_body
+                 (surface_gm_ext
+                    (surface_gm_ext
+                       (surface_gm_open
+                          (surface_gm_open
+                             (surface_gm_ext surface_gm_nil "N" (surface_ge_mod false (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "y" (surface_ge_def true false ℕ (Some (surface_nlit 0))))))))
+                             (surface_me_var 0) ((Some "y", "y", true) :: nil))
+                          (surface_me_var 1) ((None, "K", true) :: nil))
+                       "z" (surface_ge_def true false ℕ (Some #1)))
+                    "w" (surface_ge_def true false ℕ (Some (surface_mem (surface_me_var 1) "y"))))))
+        in surface_mem (surface_me_var 0) "w") None :: nil).
 Proof. elab_ok. Qed.
 
 (** An open of a unit in a local body loads nothing: the unit must be
@@ -723,10 +723,10 @@ Definition local_unit_import (leading : list Cst.cmd) : Cst.prog :=
 
 Example local_unit_loaded :
   elab_spec (local_unit_import (c_import ("X" :: nil) :: nil))
-    (u_cmd_load ("X" :: nil) :: nil, ⋅,
-     u_cmd_load ("X" :: nil) ::
-     eval_as_written (ℓₘ (u_gu_mk ⋅ (u_md_body (u_gm_open u_gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
-              in (u_nlit 0)) None :: nil).
+    (surface_cmd_load ("X" :: nil) :: nil, ⋅,
+     surface_cmd_load ("X" :: nil) ::
+     eval_as_written (ℓₘ (surface_gu_mk ⋅ (surface_md_body (surface_gm_open surface_gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
+              in (surface_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 Example local_unit_not_loaded :
@@ -736,11 +736,11 @@ Proof. vm_compute; reflexivity. Qed.
 (** A unit of one segment is named like a module in scope; a binding of the
     same name shadows it. *)
 Example one_segment_unit :
-  elab_mod (scope_entry_unit ("X" :: nil) :: nil) (proj (var "X") "f") = elab_success (u_me_mem (u_me_unit ("X" :: nil)) "f").
+  elab_mod (scope_entry_unit ("X" :: nil) :: nil) (proj (var "X") "f") = elab_success (surface_me_mem (surface_me_unit ("X" :: nil)) "f").
 Proof. vm_compute; reflexivity. Qed.
 
 Example one_segment_unit_shadowed :
-  elab_mod (scope_entry_tvar "X" :: scope_entry_unit ("X" :: nil) :: nil) (proj (var "X") "f") = elab_success (u_me_mem (u_me_var 0) "f").
+  elab_mod (scope_entry_tvar "X" :: scope_entry_unit ("X" :: nil) :: nil) (proj (var "X") "f") = elab_success (surface_me_mem (surface_me_var 0) "f").
 Proof. vm_compute; reflexivity. Qed.
 
 (** A local body has no [import]s: it opens what is loaded already. *)
@@ -776,11 +776,11 @@ Example local_private :
                                             c_def public_modifiers "t" nat (var "s") :: nil)))
                (proj (var "L") "t")) None :: nil))
     (nil, ⋅,
-     eval_as_written (ℓₘ (u_gu_mk ⋅ (u_md_body (u_gm_ext (u_gm_ext (u_gm_ext u_gm_nil
-                                      "s" (u_ge_def true true ℕ (Some (u_nlit 0))))
-                                      "N" (u_ge_mod true (u_gu_mk ⋅ (u_md_body u_gm_nil))))
-                                      "t" (u_ge_def true false ℕ (Some #1)))))
-              in u_mem (u_me_var 0) "t") None :: nil).
+     eval_as_written (ℓₘ (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext (surface_gm_ext (surface_gm_ext surface_gm_nil
+                                      "s" (surface_ge_def true true ℕ (Some (surface_nlit 0))))
+                                      "N" (surface_ge_mod true (surface_gu_mk ⋅ (surface_md_body surface_gm_nil))))
+                                      "t" (surface_ge_def true false ℕ (Some #1)))))
+              in surface_mem (surface_me_var 0) "t") None :: nil).
 Proof. elab_ok. Qed.
 
 (** A local open that [use]s a name twice is the core's to reject: the
@@ -794,12 +794,12 @@ Example local_use_dup :
           (num 0)) None :: nil))
     (nil, ⋅,
      eval_as_written
-       (ℓₘ (u_gu_mk ⋅
-              (u_md_body
-                 (u_gm_open
-                    (u_gm_ext u_gm_nil "N" (u_ge_mod false (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "y" (u_ge_def true false ℕ (Some (u_nlit 0))))))))
-                    (u_me_var 0) ((Some "y", "y", true) :: (Some "y", "y", true) :: nil))))
-        in (u_nlit 0)) None :: nil).
+       (ℓₘ (surface_gu_mk ⋅
+              (surface_md_body
+                 (surface_gm_open
+                    (surface_gm_ext surface_gm_nil "N" (surface_ge_mod false (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "y" (surface_ge_def true false ℕ (Some (surface_nlit 0))))))))
+                    (surface_me_var 0) ((Some "y", "y", true) :: (Some "y", "y", true) :: nil))))
+        in (surface_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 (** [module A.B] in a local body is [A], without parameters, holding [B]. *)
@@ -811,10 +811,10 @@ Example local_path :
           (proj (proj (proj (var "L") "A") "B") "y")) None :: nil))
     (nil, ⋅,
      eval_as_written
-       (ℓₘ (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "A"
-               (u_ge_mod false (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "B"
-                  (u_ge_mod false (u_gu_mk ⋅ (u_md_body (u_gm_ext u_gm_nil "y" (u_ge_def true false ℕ (Some (u_nlit 0))))))))))))))
-        in u_mem (u_me_mem (u_me_mem(u_me_var 0) "A") "B") "y") None :: nil).
+       (ℓₘ (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "A"
+               (surface_ge_mod false (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "B"
+                  (surface_ge_mod false (surface_gu_mk ⋅ (surface_md_body (surface_gm_ext surface_gm_nil "y" (surface_ge_def true false ℕ (Some (surface_nlit 0))))))))))))))
+        in surface_mem (surface_me_mem (surface_me_mem(surface_me_var 0) "A") "B") "y") None :: nil).
 Proof. elab_ok. Qed.
 
 (** An open [as] alias is a member like any other: whether it is a term
@@ -824,8 +824,8 @@ Example alias_term :
     (c_mod false "M" nil (md_where nil) :: c_open nil ("M" :: nil) nil (i_as "N") ::
      c_eval (var "N") None :: nil))
     (nil, ⋅,
-     u_cmd_mod "M" false ⋅ nil :: u_cmd_open (T_ ("M" :: nil)) ((None, "N", true) :: nil) ::
-     eval_as_written (user_qname_term (q_abs ("T" :: nil) ("N" :: nil))) None :: nil).
+     surface_cmd_mod "M" false ⋅ nil :: surface_cmd_open (T_ ("M" :: nil)) ((None, "N", true) :: nil) ::
+     eval_as_written (surface_qname_term (q_abs ("T" :: nil) ("N" :: nil))) None :: nil).
 Proof. elab_ok. Qed.
 
 (** A term is not a module. *)
@@ -838,7 +838,7 @@ Proof. elab_err. Qed.
 Example alias_redeclared :
   elab_spec (unit_of
     (c_mod false "M" nil (md_where nil) :: c_mod false "M" nil (md_alias (var "M")) :: nil))
-    (nil, ⋅, u_cmd_mod "M" false ⋅ nil :: u_cmd_alias "M" false ⋅ (mpath ("T" :: nil) ("M" :: nil)) :: nil).
+    (nil, ⋅, surface_cmd_mod "M" false ⋅ nil :: surface_cmd_alias "M" false ⋅ (mpath ("T" :: nil) ("M" :: nil)) :: nil).
 Proof. elab_ok. Qed.
 
 (** A local module's telescope may not repeat a name. *)
@@ -877,11 +877,11 @@ Example import_items :
     c_open nil ("M" :: nil) (var "A" :: nil) (i_items (("c", "d") :: nil) (("e", "e") :: nil)) ::
     c_eval (var "d") None :: c_eval (var "e") None :: nil))
     (nil, ⋅ ▹ Typeω@0,
-     u_cmd_mod "M" false (⋅ ▹ Typeω@0) (u_cmd_def "c" true false Typeω@0 (Some #0) :: u_cmd_def "e" true false Typeω@0 (Some #0) :: nil) ::
-     u_cmd_open (u_me_app (u_me_app (T_ ("M" :: nil)) #0) #0)
+     surface_cmd_mod "M" false (⋅ ▹ Typeω@0) (surface_cmd_def "c" true false Typeω@0 (Some #0) :: surface_cmd_def "e" true false Typeω@0 (Some #0) :: nil) ::
+     surface_cmd_open (surface_me_app (surface_me_app (T_ ("M" :: nil)) #0) #0)
        ((Some "c", "d", true) :: (Some "e", "e", false) :: nil) ::
-     eval_as_written (user_qname_term (q_abs ("T" :: nil) ("d" :: nil)) $ #0) None ::
-     eval_as_written (user_qname_term (q_abs ("T" :: nil) ("e" :: nil)) $ #0) None :: nil).
+     eval_as_written (surface_qname_term (q_abs ("T" :: nil) ("d" :: nil)) $ #0) None ::
+     eval_as_written (surface_qname_term (q_abs ("T" :: nil) ("e" :: nil)) $ #0) None :: nil).
 Proof. elab_ok. Qed.
 
 (** An item's name must not be a parameter's (the unit's [d] here); *)
@@ -907,8 +907,8 @@ Example import_items_dup :
     (c_mod false "M" nil (md_where (c_def public_modifiers "c" nat (num 0) :: nil)) ::
      c_open nil ("M" :: nil) nil (i_items (("c", "c") :: nil) (("c", "c") :: nil)) :: nil))
     (nil, ⋅,
-     u_cmd_mod "M" false ⋅ (u_cmd_def "c" true false ℕ (Some (u_nlit 0)) :: nil) ::
-     u_cmd_open (T_ ("M" :: nil)) ((Some "c", "c", true) :: (Some "c", "c", false) :: nil) :: nil).
+     surface_cmd_mod "M" false ⋅ (surface_cmd_def "c" true false ℕ (Some (surface_nlit 0)) :: nil) ::
+     surface_cmd_open (T_ ("M" :: nil)) ((Some "c", "c", true) :: (Some "c", "c", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** The arguments of an open are read where it stands. *)
@@ -963,19 +963,19 @@ end
 
     The [open … as W use (Eq)] is [open P::E as W] then [open W use (Eq)]
     ([Cst.open_cmds]): the item refers to the alias. *)
-Definition PE : umodexp := mpath ("P" :: "E" :: nil) nil.
+Definition PE : surface_modexp := mpath ("P" :: "E" :: nil) nil.
 
 Example leading_scope :
   elab_spec (c_import ("P" :: "E" :: nil) ::
              open_cmds ("P" :: "E" :: nil) nil nil (Some "W") (i_items (("Eq", "Eq") :: nil) nil),
              ("T" :: nil, ("p", app (app (var "Eq") ((num 1))) ((num 1))) :: nil,
               c_eval (proj (var "W") "refl") None :: nil))
-    (u_cmd_load ("P" :: "E" :: nil) :: nil,
-     ⋅ ▹ (u_mem PE "Eq" $ (u_nlit 1) $ (u_nlit 1)),
-     u_cmd_load ("P" :: "E" :: nil) ::
-     u_cmd_open PE ((None, "W", true) :: nil) ::
-     u_cmd_open (u_me_app (T_ ("W" :: nil)) #0) ((Some "Eq", "Eq", true) :: nil) ::
-     eval_as_written (u_mem (u_me_app (T_ ("W" :: nil)) #0) "refl") None :: nil).
+    (surface_cmd_load ("P" :: "E" :: nil) :: nil,
+     ⋅ ▹ (surface_mem PE "Eq" $ (surface_nlit 1) $ (surface_nlit 1)),
+     surface_cmd_load ("P" :: "E" :: nil) ::
+     surface_cmd_open PE ((None, "W", true) :: nil) ::
+     surface_cmd_open (surface_me_app (T_ ("W" :: nil)) #0) ((Some "Eq", "Eq", true) :: nil) ::
+     eval_as_written (surface_mem (surface_me_app (T_ ("W" :: nil)) #0) "refl") None :: nil).
 Proof. elab_ok. Qed.
 
 (** A name a leading open declares as a module is not a term. *)
@@ -1019,8 +1019,8 @@ Proof. elab_err. Qed.
 Example frame_export :
   elab_spec (c_import ("P" :: "E" :: nil) :: nil,
              ("T" :: nil, nil, c_open ("P" :: "E" :: nil) nil nil (i_items nil (("refl", "refl") :: nil)) :: nil))
-    (u_cmd_load ("P" :: "E" :: nil) :: nil, ⋅,
-     u_cmd_load ("P" :: "E" :: nil) :: u_cmd_open PE ((Some "refl", "refl", false) :: nil) :: nil).
+    (surface_cmd_load ("P" :: "E" :: nil) :: nil, ⋅,
+     surface_cmd_load ("P" :: "E" :: nil) :: surface_cmd_open PE ((Some "refl", "refl", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** A bare import only loads, and importing a unit twice is two loads, the
@@ -1028,8 +1028,8 @@ Proof. elab_ok. Qed.
 Example import_twice :
   elab_spec (c_import ("P" :: "E" :: nil) :: nil,
              ("T" :: nil, nil, c_import ("P" :: "E" :: nil) :: nil))
-    (u_cmd_load ("P" :: "E" :: nil) :: nil, ⋅,
-     u_cmd_load ("P" :: "E" :: nil) :: u_cmd_load ("P" :: "E" :: nil) :: nil).
+    (surface_cmd_load ("P" :: "E" :: nil) :: nil, ⋅,
+     surface_cmd_load ("P" :: "E" :: nil) :: surface_cmd_load ("P" :: "E" :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** [use] and [export] lists come in any order and any number, as one list
@@ -1047,9 +1047,9 @@ Example open_lists :
      c_open nil ("M" :: nil) nil ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) ::
      nil))
     (nil, ⋅,
-     u_cmd_mod "M" false ⋅ (u_cmd_def "a" true false ℕ (Some (u_nlit 0)) :: u_cmd_def "b" true false ℕ (Some ((u_nlit 1))) ::
-                         u_cmd_def "c" true false ℕ (Some ((u_nlit 2))) :: nil) ::
-     u_cmd_open (T_ ("M" :: nil)) ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) :: nil).
+     surface_cmd_mod "M" false ⋅ (surface_cmd_def "a" true false ℕ (Some (surface_nlit 0)) :: surface_cmd_def "b" true false ℕ (Some ((surface_nlit 1))) ::
+                         surface_cmd_def "c" true false ℕ (Some ((surface_nlit 2))) :: nil) ::
+     surface_cmd_open (T_ ("M" :: nil)) ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** In a local body, an open's items are binders of the body, [use]d or
@@ -1072,13 +1072,13 @@ Example local_items :
           (proj (var "L") "y")) None :: nil))
     (nil, ⋅,
      eval_as_written
-       (ℓₘ (u_gu_mk ⋅
-              (u_md_body
-                 (u_gm_open
-                    (u_gm_ext u_gm_nil "N" (u_ge_mod false (u_gu_mk (⋅ ▹ Typeω@0)
-                                         (u_md_body (u_gm_ext u_gm_nil "y" (u_ge_def true false Typeω@0 (Some #0)))))))
-                    (u_me_app (u_me_var 0) ℕ) ((Some "y", "u", true) :: (Some "y", "y", false) :: nil))))
-        in u_mem (u_me_var 0) "y") None :: nil).
+       (ℓₘ (surface_gu_mk ⋅
+              (surface_md_body
+                 (surface_gm_open
+                    (surface_gm_ext surface_gm_nil "N" (surface_ge_mod false (surface_gu_mk (⋅ ▹ Typeω@0)
+                                         (surface_md_body (surface_gm_ext surface_gm_nil "y" (surface_ge_def true false Typeω@0 (Some #0)))))))
+                    (surface_me_app (surface_me_var 0) ℕ) ((Some "y", "u", true) :: (Some "y", "y", false) :: nil))))
+        in surface_mem (surface_me_var 0) "y") None :: nil).
 Proof. elab_ok. Qed.
 
 (** ** The Running Example of [ElabSpec]
@@ -1105,17 +1105,17 @@ Definition running : Cst.prog := (nil, ("Main" :: nil, nil,
               (fn "x" (var "A") (fn "y" (var "B") (app (var "id") (var "x")))) :: nil)) :: nil)) ::
   c_def public_modifiers "j" (pi "x" nat nat) (app (proj (var "M") "id") nat) :: nil)).
 
-Definition Main_M_id : uexp := user_qname_term (q_abs ("Main" :: nil) ("M" :: "id" :: nil)).
+Definition Main_M_id : surface_exp := surface_qname_term (q_abs ("Main" :: nil) ("M" :: "id" :: nil)).
 
 Example running_spec :
   elab_spec running
     (nil, ⋅,
-     u_cmd_mod "M" false (⋅ ▹ Typeω@0)
-       (u_cmd_def "id" true false (Π #0 #1) (Some (λ #0 #0)) ::
-        u_cmd_mod "N" false (⋅ ▹ Typeω@0)
-          (u_cmd_def "k" true false (Π #1 (Π #1 #3)) (Some (λ #1 (λ #1 (Main_M_id $ #3 $ #1))))
+     surface_cmd_mod "M" false (⋅ ▹ Typeω@0)
+       (surface_cmd_def "id" true false (Π #0 #1) (Some (λ #0 #0)) ::
+        surface_cmd_mod "N" false (⋅ ▹ Typeω@0)
+          (surface_cmd_def "k" true false (Π #1 (Π #1 #3)) (Some (λ #1 (λ #1 (Main_M_id $ #3 $ #1))))
              :: nil) :: nil) ::
-     u_cmd_def "j" true false (Π ℕ ℕ) (Some (u_mem (mpath ("Main" :: nil) ("M" :: nil)) "id" $ ℕ)) :: nil).
+     surface_cmd_def "j" true false (Π ℕ ℕ) (Some (surface_mem (mpath ("Main" :: nil) ("M" :: nil)) "id" $ ℕ)) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Inductive Types
@@ -1155,17 +1155,17 @@ Definition list_len : Cst.prog :=
                  ((true, ("z", Some (app (var "List") nat)) :: nil, nat,
                    ("nil", nil, (num 0)) :: ("cons", "x" :: "xs" :: "r" :: nil, var "r") :: nil) :: nil))) :: nil)).
 
-Definition U_List : uexp := user_qname_term (q_abs ("U" :: nil) ("List" :: nil)).
+Definition U_List : surface_exp := surface_qname_term (q_abs ("U" :: nil) ("List" :: nil)).
 
 Example list_len_spec :
   elab_spec list_len
     (nil, ⋅,
-     u_cmd_inductive false
-       (mk_uraw (⋅ ▹ Typeω@0)
-          (mk_urmem "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil) false) ::
-     u_cmd_def "len" true false (Π (U_List $ ℕ) ℕ)
+     surface_cmd_inductive false
+       (mk_surface_raw_decl (⋅ ▹ Typeω@0)
+          (mk_surface_raw_member "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil) false) ::
+     surface_cmd_def "len" true false (Π (U_List $ ℕ) ℕ)
        (Some (λ (U_List $ ℕ)
-                (u_elim 0 (u_eb_mk 1 (U_List $ ℕ) ℕ (("nil", 0, u_nlit 0) :: ("cons", 3, #0) :: nil) :: nil)
+                (surface_elim 0 (surface_eb_mk 1 (U_List $ ℕ) ℕ (("nil", 0, surface_nlit 0) :: ("cons", 3, #0) :: nil) :: nil)
                    #0))) :: nil).
 Proof. elab_ok. Qed.
 
@@ -1194,10 +1194,10 @@ Example group_spec :
        (("Tm", typ 0, ("app", ("f", var "Tm") :: ("s", var "Sp") :: nil) :: nil) ::
         ("Sp", typ 0, ("nil", nil) :: ("cons", ("t", var "Tm") :: ("s", var "Sp") :: nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
-     u_cmd_inductive false
-       (mk_uraw ⋅
-          (mk_urmem "Tm" ⋅ Typeω@0 (("app", ("f", #1) :: ("s", #1) :: nil) :: nil) ::
-           mk_urmem "Sp" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("t", #1) :: ("s", #1) :: nil) :: nil) :: nil) false) :: nil).
+     surface_cmd_inductive false
+       (mk_surface_raw_decl ⋅
+          (mk_surface_raw_member "Tm" ⋅ Typeω@0 (("app", ("f", #1) :: ("s", #1) :: nil) :: nil) ::
+           mk_surface_raw_member "Sp" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("t", #1) :: ("s", #1) :: nil) :: nil) :: nil) false) :: nil).
 Proof. elab_ok. Qed.
 
 (** [mutual S where inductive E : Type@0 where | e end end]: the module
@@ -1205,8 +1205,8 @@ Proof. elab_ok. Qed.
 Example mutual_spec :
   elab_spec (unit_of (mutual_cmd public_modifiers "S" nil (("E", typ 0, ("e", nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
-     u_cmd_mod "S" false ⋅
-       (u_cmd_inductive false (mk_uraw ⋅ (mk_urmem "E" ⋅ Typeω@0 (("e", nil) :: nil) :: nil) true) :: nil) :: nil).
+     surface_cmd_mod "S" false ⋅
+       (surface_cmd_inductive false (mk_surface_raw_decl ⋅ (mk_surface_raw_member "E" ⋅ Typeω@0 (("e", nil) :: nil) :: nil) true) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** Two members of a group may not share a name. *)
@@ -1226,12 +1226,12 @@ Example mdef_spec :
        (("len", ("z", app (var "List") (var "A")) :: nil, nat,
          ("nil", nil, num 0) :: ("cons", "x" :: "xs" :: "r" :: nil, var "r") :: nil) :: nil) :: nil))
     (nil, ⋅,
-     u_cmd_inductive false
-       (mk_uraw (⋅ ▹ Typeω@0)
-          (mk_urmem "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil) false) ::
-     u_cmd_mdef true false (⋅ ▹ Typeω@0)
-       (mk_urfun "len" ⋅ (user_qname_term (q_abs ("T" :: nil) ("List" :: nil)) $ #0) ℕ
-          (("nil", 0, u_nlit 0) :: ("cons", 3, #0) :: nil) :: nil) :: nil).
+     surface_cmd_inductive false
+       (mk_surface_raw_decl (⋅ ▹ Typeω@0)
+          (mk_surface_raw_member "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil) false) ::
+     surface_cmd_mdef true false (⋅ ▹ Typeω@0)
+       (mk_surface_raw_fun "len" ⋅ (surface_qname_term (q_abs ("T" :: nil) ("List" :: nil)) $ #0) ℕ
+          (("nil", 0, surface_nlit 0) :: ("cons", 3, #0) :: nil) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** A function of a mutual definition needs a scrutinee. *)
@@ -1258,8 +1258,8 @@ Example climb_spec :
                      (("Climb", pi "n" nat (typ 0),
                        ("stop", nil) :: ("step", ("r", app (var "Climb") (var "n")) :: nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
-     u_cmd_inductive false
-       (mk_uraw ⋅ (mk_urmem "Climb" (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ #0) :: nil) :: nil) :: nil) false) :: nil).
+     surface_cmd_inductive false
+       (mk_surface_raw_decl ⋅ (mk_surface_raw_member "Climb" (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ #0) :: nil) :: nil) :: nil) false) :: nil).
 Proof. elab_ok. Qed.
 
 (** The elaborator classifies nothing: [List] without its parameter is
@@ -1269,8 +1269,8 @@ Example list_self_app :
                    c_ind false false (("A", typ 0) :: nil)
                      (("List", typ 0, ("cons", ("x", var "A") :: ("xs", var "List") :: nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
-     u_cmd_inductive false
-       (mk_uraw (⋅ ▹ Typeω@0) (mk_urmem "List" ⋅ Typeω@0 (("cons", ("x", #0) :: ("xs", #2) :: nil) :: nil) :: nil) false) :: nil).
+     surface_cmd_inductive false
+       (mk_surface_raw_decl (⋅ ▹ Typeω@0) (mk_surface_raw_member "List" ⋅ Typeω@0 (("cons", ("x", #0) :: ("xs", #2) :: nil) :: nil) :: nil) false) :: nil).
 Proof. elab_ok. Qed.
 
 (** A declaration in a local body is rejected. *)
@@ -1298,9 +1298,9 @@ Example ind_alias_spec :
      c_ind_alias false "L" (("B", typ 0) :: nil) (app (var "List") (var "B")) ::
      c_ind_alias true "LN" nil (app (var "L") nat) :: nil))
     (nil, ⋅,
-     u_cmd_inductive false (mk_uraw (⋅ ▹ Typeω@0) (mk_urmem "List" ⋅ Typeω@0 (("nil", nil) :: nil) :: nil) false) ::
-     u_cmd_inductive_alias "L" false (⋅ ▹ Typeω@0) (u_me_app (T_ ("List" :: nil)) #0) ::
-     u_cmd_inductive_alias "LN" true ⋅ (u_me_app (T_ ("L" :: nil)) ℕ) :: nil).
+     surface_cmd_inductive false (mk_surface_raw_decl (⋅ ▹ Typeω@0) (mk_surface_raw_member "List" ⋅ Typeω@0 (("nil", nil) :: nil) :: nil) false) ::
+     surface_cmd_inductive_alias "L" false (⋅ ▹ Typeω@0) (surface_me_app (T_ ("List" :: nil)) #0) ::
+     surface_cmd_inductive_alias "LN" true ⋅ (surface_me_app (T_ ("L" :: nil)) ℕ) :: nil).
 Proof. elab_ok. Qed.
 
 (** An inductive alias in a local body is rejected. *)
@@ -1325,8 +1325,8 @@ Example record_alias_spec :
     (c_record false "P" (("A", typ 0) :: nil) (typ 0) (("fst", var "A") :: nil) nil ::
      c_record_alias false "Q" (("B", typ 0) :: nil) (app (var "P") (var "B")) :: nil))
     (nil, ⋅,
-     u_cmd_record "P" false (⋅ ▹ Typeω@0) Typeω@0 (("fst", #0) :: nil) nil ::
-     u_cmd_record_alias "Q" false (⋅ ▹ Typeω@0) (u_me_app (T_ ("P" :: nil)) #0) :: nil).
+     surface_cmd_record "P" false (⋅ ▹ Typeω@0) Typeω@0 (("fst", #0) :: nil) nil ::
+     surface_cmd_record_alias "Q" false (⋅ ▹ Typeω@0) (surface_me_app (T_ ("P" :: nil)) #0) :: nil).
 Proof. elab_ok. Qed.
 
 (** A numeral is a core literal; what it stands for, the bound natural
@@ -1350,9 +1350,9 @@ Example builtin_spec :
                    c_builtin "natural" (var "Nat") ::
                    c_eval (num 2) None :: nil))
     (nil, ⋅,
-     u_cmd_inductive false (mk_uraw ⋅ (mk_urmem "Nat" ⋅ Typeω@0 (("z", nil) :: ("s", ("n", #0) :: nil) :: nil) :: nil) false) ::
-     u_cmd_builtin "natural" (user_qname_mod (q_abs ("U" :: nil) ("Nat" :: nil))) ::
-     eval_as_written (u_nlit 2) None :: nil).
+     surface_cmd_inductive false (mk_surface_raw_decl ⋅ (mk_surface_raw_member "Nat" ⋅ Typeω@0 (("z", nil) :: ("s", ("n", #0) :: nil) :: nil) :: nil) false) ::
+     surface_cmd_builtin "natural" (surface_qname_mod (q_abs ("U" :: nil) ("Nat" :: nil))) ::
+     eval_as_written (surface_nlit 2) None :: nil).
 Proof. elab_ok. Qed.
 
 (** A builtin binding in a local body is rejected. *)

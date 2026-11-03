@@ -252,51 +252,51 @@ Definition item_refs (t : privacy_table) (its : list import_item) : list (privac
                       end) its.
 
 (** Whether an entry of a body as written is private. *)
-Definition uentry_private (E : uentry) : bool :=
+Definition surface_entry_private (E : surface_entry) : bool :=
   match E with
-  | u_ge_def _ pv _ _ | u_ge_mod pv _ => pv
+  | surface_ge_def _ pv _ _ | surface_ge_mod pv _ => pv
   end.
 
 (** The privacy table of the module a module expression as written names,
     the tables of the module variables in scope being [S].  Privacy is
     checked on what the user writes, before the fill. *)
-Fixpoint modexp_privacy_table (S : list privacy_table) (H : umodexp) : privacy_table :=
+Fixpoint modexp_privacy_table (S : list privacy_table) (H : surface_modexp) : privacy_table :=
   match H with
-  | u_me_unit fp => privacy_table_global (me_unit fp)
-  | u_me_var k => nth k S privacy_table_none
-  | u_me_mem H y => privacy_table_select (modexp_privacy_table S H) y
-  | u_me_app H _ => modexp_privacy_table S H
+  | surface_me_unit fp => privacy_table_global (me_unit fp)
+  | surface_me_var k => nth k S privacy_table_none
+  | surface_me_mem H y => privacy_table_select (modexp_privacy_table S H) y
+  | surface_me_app H _ => modexp_privacy_table S H
   end.
 
-Fixpoint gunit_privacy_table (S : list privacy_table) (U : uunit) : privacy_table :=
+Fixpoint gunit_privacy_table (S : list privacy_table) (U : surface_unit) : privacy_table :=
   match U with
-  | u_gu_mk Δ D => moddef_privacy_table (repeat privacy_table_none (List.length Δ) ++ S) D
+  | surface_gu_mk Δ D => moddef_privacy_table (repeat privacy_table_none (List.length Δ) ++ S) D
   end
-with moddef_privacy_table (S : list privacy_table) (D : umoddef) : privacy_table :=
+with moddef_privacy_table (S : list privacy_table) (D : surface_moddef) : privacy_table :=
   match D with
-  | u_md_body Φ => privacy_table_body nil (gmod_privacy_tables S Φ)
-  | u_md_alias E => modexp_privacy_table S E
+  | surface_md_body Φ => privacy_table_body nil (gmod_privacy_tables S Φ)
+  | surface_md_alias E => modexp_privacy_table S E
   end
-with gmod_privacy_tables (S : list privacy_table) (Φ : ubody) : list (string * bool * privacy_table) :=
+with gmod_privacy_tables (S : list privacy_table) (Φ : surface_body) : list (string * bool * privacy_table) :=
   match Φ with
-  | u_gm_nil => nil
-  | u_gm_ext Φ x E => let es := gmod_privacy_tables S Φ in (x, uentry_private E, gentry_privacy_table (privacy_table_scope es ++ S) E) :: es
-  | u_gm_open Φ H its =>
+  | surface_gm_nil => nil
+  | surface_gm_ext Φ x E => let es := gmod_privacy_tables S Φ in (x, surface_entry_private E, gentry_privacy_table (privacy_table_scope es ++ S) E) :: es
+  | surface_gm_open Φ H its =>
       let es := gmod_privacy_tables S Φ in
       let t := modexp_privacy_table (privacy_table_scope es ++ S) H in
       rev (map (fun it => (import_item_name it, import_item_private it, item_privacy_table t it)) its) ++ es
   end
-with gentry_privacy_table (S : list privacy_table) (E : uentry) : privacy_table :=
+with gentry_privacy_table (S : list privacy_table) (E : surface_entry) : privacy_table :=
   match E with
-  | u_ge_def _ _ _ _ => privacy_table_none
-  | u_ge_mod _ U => gunit_privacy_table S U
+  | surface_ge_def _ _ _ _ => privacy_table_none
+  | surface_ge_mod _ U => gunit_privacy_table S U
   end.
 
 (** The table a local binding gives its index. *)
-Definition binding_privacy_table (S : list privacy_table) (b : ubinding) : privacy_table :=
+Definition binding_privacy_table (S : list privacy_table) (b : surface_binding) : privacy_table :=
   match b with
-  | u_b_def _ _ => privacy_table_none
-  | u_b_mod U => gunit_privacy_table S U
+  | surface_b_def _ _ => privacy_table_none
+  | surface_b_mod U => gunit_privacy_table S U
   end.
 
 (** ** Member References *)
@@ -309,92 +309,92 @@ Fixpoint chain_refs (H : modexp) (ch : list string) : list (privacy_table * stri
   | y :: ch' => (privacy_table_global H, y) :: chain_refs (me_mem H y) ch'
   end.
 
-(** The member references a term is written with ([uexp], before the
+(** The member references a term is written with ([surface_exp], before the
     fill), each with the table of the module it selects from: every
-    [u_mem H x] and every submodule [u_me_mem H y].  A member selected
-    from a term ([u_proj_term]) is checked by the fill, once the term's
+    [surface_mem H x] and every submodule [surface_me_mem H y].  A member selected
+    from a term ([surface_proj_term]) is checked by the fill, once the term's
     record type is known ([Fill.sel_ok]). *)
-Fixpoint exp_refs (S : list privacy_table) (M : uexp) : list (privacy_table * string)%type :=
+Fixpoint exp_refs (S : list privacy_table) (M : surface_exp) : list (privacy_table * string)%type :=
   match M with
-  | u_typ _ | u_level _ | u_llit _ | u_ntok | u_nlit _ | u_prop | u_True | u_tt | u_False | u_var _ | u_hole => nil
-  | u_succl M | u_univ M | u_left M | u_right M => exp_refs S M
-  | u_maxl M N | u_absurd M N => exp_refs S M ++ exp_refs S N
-  | u_and A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
-  | u_conj P Q M N => exp_refs S P ++ exp_refs (privacy_table_none :: S) Q ++ exp_refs S M ++ exp_refs S N
-  | u_elim _ Bks M =>
-      (fix blks_refs (Bks : list ublock) : list (privacy_table * string)%type :=
+  | surface_typ _ | surface_level _ | surface_llit _ | surface_ntok | surface_nlit _ | surface_prop | surface_True | surface_tt | surface_False | surface_var _ | surface_hole => nil
+  | surface_succl M | surface_univ M | surface_left M | surface_right M => exp_refs S M
+  | surface_maxl M N | surface_absurd M N => exp_refs S M ++ exp_refs S N
+  | surface_and A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
+  | surface_conj P Q M N => exp_refs S P ++ exp_refs (privacy_table_none :: S) Q ++ exp_refs S M ++ exp_refs S N
+  | surface_elim _ Bks M =>
+      (fix blks_refs (Bks : list surface_block) : list (privacy_table * string)%type :=
          match Bks with
          | nil => nil
          | b :: Bks' => block_refs S b ++ blks_refs Bks'
          end) Bks ++ exp_refs S M
-  | u_pi A M | u_fn A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
-  | u_app M N => exp_refs S M ++ exp_refs S N
-  | u_let b B => binding_refs S b ++ exp_refs (binding_privacy_table S b :: S) B
-  | u_mem H x => (modexp_privacy_table S H, x) :: modexp_refs S H
+  | surface_pi A M | surface_fn A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
+  | surface_app M N => exp_refs S M ++ exp_refs S N
+  | surface_let b B => binding_refs S b ++ exp_refs (binding_privacy_table S b :: S) B
+  | surface_mem H x => (modexp_privacy_table S H, x) :: modexp_refs S H
   (* the member of a term's record type: checked by the fill, once the
      record is known ([sel_ok]) *)
-  | u_proj_term M _ => exp_refs S M
-  | u_tuple T fs =>
+  | surface_proj_term M _ => exp_refs S M
+  | surface_tuple T fs =>
       exp_refs S T ++
-      (fix fields_refs (fs : list (string * uexp)) : list (privacy_table * string)%type :=
+      (fix fields_refs (fs : list (string * surface_exp)) : list (privacy_table * string)%type :=
          match fs with
          | nil => nil
          | f :: fs' => exp_refs S (snd f) ++ fields_refs fs'
          end) fs
   end
-with block_refs (S : list privacy_table) (b : ublock) : list (privacy_table * string)%type :=
+with block_refs (S : list privacy_table) (b : surface_block) : list (privacy_table * string)%type :=
   match b with
-  | u_eb_mk nm Z A Bs =>
+  | surface_eb_mk nm Z A Bs =>
       exp_refs (repeat privacy_table_none (nm - 1) ++ S) Z ++
       exp_refs (repeat privacy_table_none nm ++ S) A ++
-      (fix brs_refs (Bs : list (string * nat * uexp)) : list (privacy_table * string)%type :=
+      (fix brs_refs (Bs : list (string * nat * surface_exp)) : list (privacy_table * string)%type :=
          match Bs with
          | nil => nil
          | b :: Bs' => exp_refs (repeat privacy_table_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
          end) Bs
   end
-with modexp_refs (S : list privacy_table) (H : umodexp) : list (privacy_table * string)%type :=
+with modexp_refs (S : list privacy_table) (H : surface_modexp) : list (privacy_table * string)%type :=
   match H with
-  | u_me_unit _ | u_me_var _ => nil
-  | u_me_mem H y => (modexp_privacy_table S H, y) :: modexp_refs S H
-  | u_me_app H N => modexp_refs S H ++ exp_refs S N
+  | surface_me_unit _ | surface_me_var _ => nil
+  | surface_me_mem H y => (modexp_privacy_table S H, y) :: modexp_refs S H
+  | surface_me_app H N => modexp_refs S H ++ exp_refs S N
   end
-with binding_refs (S : list privacy_table) (b : ubinding) : list (privacy_table * string)%type :=
+with binding_refs (S : list privacy_table) (b : surface_binding) : list (privacy_table * string)%type :=
   match b with
-  | u_b_def A M => exp_refs S A ++ exp_refs S M
-  | u_b_mod U => gunit_refs S U
+  | surface_b_def A M => exp_refs S A ++ exp_refs S M
+  | surface_b_mod U => gunit_refs S U
   end
-with gunit_refs (S : list privacy_table) (U : uunit) : list (privacy_table * string)%type :=
+with gunit_refs (S : list privacy_table) (U : surface_unit) : list (privacy_table * string)%type :=
   match U with
-  | u_gu_mk Δ D =>
-      (fix tele_refs (Δ : list uexp) : list (privacy_table * string)%type :=
+  | surface_gu_mk Δ D =>
+      (fix tele_refs (Δ : list surface_exp) : list (privacy_table * string)%type :=
          match Δ with
          | nil => nil
          | A :: Δ' => exp_refs (repeat privacy_table_none (List.length Δ') ++ S) A ++ tele_refs Δ'
          end) Δ ++ moddef_refs (repeat privacy_table_none (List.length Δ) ++ S) D
   end
-with moddef_refs (S : list privacy_table) (D : umoddef) : list (privacy_table * string)%type :=
+with moddef_refs (S : list privacy_table) (D : surface_moddef) : list (privacy_table * string)%type :=
   match D with
-  | u_md_body Φ => gmod_refs S Φ
-  | u_md_alias E => modexp_refs S E
+  | surface_md_body Φ => gmod_refs S Φ
+  | surface_md_alias E => modexp_refs S E
   end
-with gmod_refs (S : list privacy_table) (Φ : ubody) : list (privacy_table * string)%type :=
+with gmod_refs (S : list privacy_table) (Φ : surface_body) : list (privacy_table * string)%type :=
   match Φ with
-  | u_gm_nil => nil
-  | u_gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) E
-  | u_gm_open Φ H its =>
+  | surface_gm_nil => nil
+  | surface_gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) E
+  | surface_gm_open Φ H its =>
       gmod_refs S Φ ++ modexp_refs (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) H ++
         item_refs (modexp_privacy_table (privacy_table_scope (gmod_privacy_tables S Φ) ++ S) H) its
   end
-with gentry_refs (S : list privacy_table) (E : uentry) : list (privacy_table * string)%type :=
+with gentry_refs (S : list privacy_table) (E : surface_entry) : list (privacy_table * string)%type :=
   match E with
-  | u_ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
-  | u_ge_mod _ U => gunit_refs S U
+  | surface_ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
+  | surface_ge_mod _ U => gunit_refs S U
   end.
 
 (** The references of a telescope of assumptions as written, innermost
     first, each over the ones after it. *)
-Fixpoint tele_refs (S : list privacy_table) (Δ : list uexp) : list (privacy_table * string)%type :=
+Fixpoint tele_refs (S : list privacy_table) (Δ : list surface_exp) : list (privacy_table * string)%type :=
   match Δ with
   | nil => nil
   | A :: Δ' => exp_refs (repeat privacy_table_none (List.length Δ') ++ S) A ++ tele_refs S Δ'
@@ -405,7 +405,7 @@ Fixpoint tele_refs (S : list privacy_table) (Δ : list uexp) : list (privacy_tab
     and its constructors' arguments over the declared types and all the
     member's parameters, each argument binding a variable for the ones after
     it. *)
-Fixpoint raw_args_refs (S : list privacy_table) (args : list (string * uexp)) : list (privacy_table * string)%type :=
+Fixpoint raw_args_refs (S : list privacy_table) (args : list (string * surface_exp)) : list (privacy_table * string)%type :=
   match args with
   | nil => nil
   | (_, T) :: args' => exp_refs S T ++ raw_args_refs (privacy_table_none :: S) args'
@@ -414,46 +414,46 @@ Fixpoint raw_args_refs (S : list privacy_table) (args : list (string * uexp)) : 
 (** The references a declared member makes as written: its non-uniform
     parameters, its sort and its constructors' arguments, under the [nu]
     uniform parameters and the [nself] [Self]s. *)
-Definition rmem_refs (nu nself : nat) (Mr : uraw_member) : list (privacy_table * string)%type :=
-  tele_refs (repeat privacy_table_none nu) (uraw_member_nparams Mr) ++
-  exp_refs (repeat privacy_table_none nu) (uraw_member_sort Mr) ++
-  flat_map (fun cg => raw_args_refs (repeat privacy_table_none (List.length (uraw_member_nparams Mr) + nu + nself)) (snd cg)) (uraw_member_cons Mr).
+Definition raw_member_refs (nu nself : nat) (Mr : surface_raw_member) : list (privacy_table * string)%type :=
+  tele_refs (repeat privacy_table_none nu) (surface_raw_member_nparams Mr) ++
+  exp_refs (repeat privacy_table_none nu) (surface_raw_member_sort Mr) ++
+  flat_map (fun cg => raw_args_refs (repeat privacy_table_none (List.length (surface_raw_member_nparams Mr) + nu + nself)) (snd cg)) (surface_raw_member_cons Mr).
 
 (** The references a group declaration makes as written: its uniform
     parameters, then each member's. *)
-Definition decl_refs (R : uraw_decl) : list (privacy_table * string)%type :=
-  tele_refs nil (uraw_decl_uparams R) ++
-  flat_map (rmem_refs (List.length (uraw_decl_uparams R)) (List.length (uraw_decl_members R))) (uraw_decl_members R).
+Definition decl_refs (R : surface_raw_decl) : list (privacy_table * string)%type :=
+  tele_refs nil (surface_raw_decl_uparams R) ++
+  flat_map (raw_member_refs (List.length (surface_raw_decl_uparams R)) (List.length (surface_raw_decl_members R))) (surface_raw_decl_members R).
 
 (** The references of a function of a [mutual def] as written, under the
     block's parameters: its non-uniform parameters, its scrutinee's type,
     its result type and its clauses. *)
-Definition raw_fun_refs (np : nat) (f : uraw_fun) : list (privacy_table * string)%type :=
-  tele_refs (repeat privacy_table_none np) (uraw_fun_nparams f) ++
-  exp_refs (repeat privacy_table_none (List.length (uraw_fun_nparams f) + np)) (uraw_fun_scrut f) ++
-  exp_refs (repeat privacy_table_none (S (List.length (uraw_fun_nparams f) + np))) (uraw_fun_res f) ++
-  flat_map (fun cl => exp_refs (repeat privacy_table_none (snd (fst cl) + np)) (snd cl)) (uraw_fun_clauses f).
+Definition raw_fun_refs (np : nat) (f : surface_raw_fun) : list (privacy_table * string)%type :=
+  tele_refs (repeat privacy_table_none np) (surface_raw_fun_nparams f) ++
+  exp_refs (repeat privacy_table_none (List.length (surface_raw_fun_nparams f) + np)) (surface_raw_fun_scrut f) ++
+  exp_refs (repeat privacy_table_none (S (List.length (surface_raw_fun_nparams f) + np))) (surface_raw_fun_res f) ++
+  flat_map (fun cl => exp_refs (repeat privacy_table_none (snd (fst cl) + np)) (snd cl)) (surface_raw_fun_clauses f).
 
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's and a
     record's nested commands are checked when they run.  A core command,
     filled or generated, is not written, and is not checked. *)
-Definition cmd_refs (c : ucmd) : list (privacy_table * string)%type :=
+Definition cmd_refs (c : surface_cmd) : list (privacy_table * string)%type :=
   match c with
-  | u_cmd_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
-  | u_cmd_mod _ _ Δ _ => tele_refs nil Δ
-  | u_cmd_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
-  | u_cmd_load _ => nil
-  | u_cmd_open E its => modexp_refs nil E ++ item_refs (modexp_privacy_table nil E) its
-  | u_cmd_eval M A => exp_refs nil M ++ exp_refs nil A
-  | u_cmd_inductive _ D => decl_refs D
-  | u_cmd_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (raw_fun_refs (List.length Δ)) fs
-  | u_cmd_builtin _ H => modexp_refs nil H
-  | u_cmd_inductive_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
-  | u_cmd_record_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
+  | surface_cmd_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
+  | surface_cmd_mod _ _ Δ _ => tele_refs nil Δ
+  | surface_cmd_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
+  | surface_cmd_load _ => nil
+  | surface_cmd_open E its => modexp_refs nil E ++ item_refs (modexp_privacy_table nil E) its
+  | surface_cmd_eval M A => exp_refs nil M ++ exp_refs nil A
+  | surface_cmd_inductive _ D => decl_refs D
+  | surface_cmd_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (raw_fun_refs (List.length Δ)) fs
+  | surface_cmd_builtin _ H => modexp_refs nil H
+  | surface_cmd_inductive_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
+  | surface_cmd_record_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   (** A record's parameters, sort and fields, each field binding a variable
       for the ones after it; its with-area is checked when it runs *)
-  | u_cmd_record _ _ Δ Srt fs _ =>
+  | surface_cmd_record _ _ Δ Srt fs _ =>
       tele_refs nil Δ ++ exp_refs (repeat privacy_table_none (List.length Δ)) Srt ++ raw_args_refs (repeat privacy_table_none (List.length Δ)) fs
   end.
 

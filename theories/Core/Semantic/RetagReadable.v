@@ -69,7 +69,7 @@ Section Fixed_GCtx.
            by exact (per_ctx_env_resp_agree equiv_Γ_Γ' _ _ _ _ (env_agree_upto_env_upto _ _) (reflexivity _) Hl1).
     all: intros [| x] e0 Hx; cbn [List.nth_error] in Hx;
       [ injection Hx as <- | cbn [ctx_retag skipn]; rewrite <- (env_entry_drop (_ :: _) x); exact (Hr1 x e0 Hx) ].
-    all: cbn [ctx_retag skipn List.length centry_unit_room centry_tag centry_type centry_slot_unit centry_unit].
+    all: cbn [ctx_retag skipn List.length centry_unit_bound centry_tag centry_type centry_slot_unit centry_unit].
     all: change (env_entry (?d :: ?ρ0) 0) with d; rewrite env_entry_head.
     (* a slot: a module head, by its kind, stored at its unit, scoped by
        its tail *)

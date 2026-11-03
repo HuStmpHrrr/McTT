@@ -9,9 +9,9 @@
     record of the unit being run, and keeps the record each filed unit ended
     with ([Core.Syntactic.System.Command]).
 
-    Where a binding is made, a numeral of the user syntax ([u_nlit])
+    Where a binding is made, a numeral of the user syntax ([surface_nlit])
     stands for the chain of the bound type's constructors and the token
-    [ℕ] ([u_ntok]) for its type former ([nat_view], [nat_chain]): when a
+    [ℕ] ([surface_ntok]) for its type former ([nat_view], [nat_chain]): when a
     command runs, its literals are filled from the binding
     ([Core.TypedElab.Fill]).  Without a binding a literal has no fill.  The
     core syntax has no literal. *)

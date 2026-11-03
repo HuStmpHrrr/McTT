@@ -137,7 +137,7 @@ Inductive core_cmd : Set :=
     which runs as it is. *)
 Inductive cmd_item : Set :=
 (** A command as written *)
-| ci_written : ucmd -> cmd_item
+| ci_written : surface_cmd -> cmd_item
 (** A core command *)
 | ci_core : core_cmd -> cmd_item.
 

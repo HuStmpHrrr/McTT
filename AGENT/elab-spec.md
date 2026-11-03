@@ -30,7 +30,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   its innermost entry (`bound`), with `k` binders inside the entry.  A member's
   entry `scope_entry_mem x q n` records the `n` binders outside it, `binders S` of the
   scope it is declared in: exactly the parameters it is generalized over.  A
-  use is pre-applied to `vars_desc k n`.  A scope only grows at its front, so
+  use is pre-applied to `outer_param_vars k n`.  A scope only grows at its front, so
   the count stays right (`mems_counted`, `spec_cmd_mems_counted`,
   `bound_mem_counted` in `ElabCorrect.v`), and a lookup never reads past the
   entry it finds.
@@ -181,7 +181,7 @@ core_cmd_def "j" (Π ℕ ℕ) (a_mem ⟨Main.M⟩ "id" $ ℕ)
 ```
 
 In the body of `k` the scope is `y, x, B, id ↦ Main.M.id, A`.  `id` has three
-binders inside, and its entry records one outside, so it is `Main.M.id $ vars_desc 3 1 =
+binders inside, and its entry records one outside, so it is `Main.M.id $ outer_param_vars 3 1 =
 Main.M.id $ #3`.  In `j`, `M` is closed, so `M` in module position is
 `⟨Main.M⟩`.
 

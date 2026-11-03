@@ -174,7 +174,7 @@ Section Functional.
   Qed.
 
   (** A constructor's arguments have one fill. *)
-  Lemma fill_raw_cons_functional : forall Γ (cs : list (string * list (string * uexp))) (cs1 cs2 : list (string * list (string * exp))),
+  Lemma fill_raw_cons_functional : forall Γ (cs : list (string * list (string * surface_exp))) (cs1 cs2 : list (string * list (string * exp))),
       Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs1 ->
       Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs2 -> cs1 = cs2.
   Proof.
@@ -228,7 +228,7 @@ Section Functional.
 
   (** The bodies of functions have one fill: first their results, which fix
       the motives, then their clauses. *)
-  Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 (l : list (uraw_fun * raw_fun_head * nat)) fs1 fs2,
+  Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 (l : list (surface_raw_fun * raw_fun_head * nat)) fs1 fs2,
       Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As1 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs1 ->
       Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As2 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs2 ->
       Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs1 fs2 /\
@@ -300,19 +300,19 @@ End Functional.
 
 (** Whether a written command has terms to fill: all but a load, whose
     fill is the load. *)
-Definition ucmd_terms (c : ucmd) : bool :=
+Definition surface_cmd_terms (c : surface_cmd) : bool :=
   match c with
-  | u_cmd_load _ => false
+  | surface_cmd_load _ => false
   | _ => true
   end.
 
 (** A command without terms is filled to the load it is. *)
-Lemma fill_cmd_no_terms : forall Θ Ξ B c its, ucmd_terms c = false -> fill_cmd Θ Ξ B c its ->
-    exists fp, c = u_cmd_load fp /\ its = ci_core (core_cmd_load fp) :: nil.
+Lemma fill_cmd_no_terms : forall Θ Ξ B c its, surface_cmd_terms c = false -> fill_cmd Θ Ξ B c its ->
+    exists fp, c = surface_cmd_load fp /\ its = ci_core (core_cmd_load fp) :: nil.
 Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; eauto. Qed.
 
 (** A command with terms is filled to a core command that is neither a
     load nor a close, then the rest. *)
-Lemma fill_cmd_head : forall Θ Ξ B c its, ucmd_terms c = true -> fill_cmd Θ Ξ B c its ->
+Lemma fill_cmd_head : forall Θ Ξ B c its, surface_cmd_terms c = true -> fill_cmd Θ Ξ B c its ->
     exists c0 its', its = ci_core c0 :: its' /\ (forall fp, c0 <> core_cmd_load fp) /\ (forall x pv, c0 <> core_cmd_close x pv).
 Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; eexists _, _; (split; [ reflexivity | split; intros; discriminate ]). Qed.

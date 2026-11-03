@@ -35,7 +35,7 @@ Two facts make this enough:
   under no local binder, so the binders *outside* a member's entry are exactly
   the parameters of its frame and the frames enclosing it, i.e. the telescope
   it is generalized over. A use with `k` binders inside the entry and `n`
-  outside is `apps (a_glob p) (vars_desc k n)`. `preapp`, `tele`, the `off`
+  outside is `apps (a_glob p) (outer_param_vars k n)`. `preapp`, `tele`, the `off`
   bookkeeping of `fbind` and `fr_binds` all disappear.
 * **No frame stack.** `elab_cmd` elaborates the body of `module x … where body
   end` by recursion where it stands, then binds `x`. Frames are just the
@@ -56,7 +56,7 @@ property the proof must preserve.
 |---|---|---|---|
 | Names → de Bruijn | `lb_lookup`, `fr_lookup`, `alias_lookup`; three searches, unordered, need `sf_wf` | one `lookup` over `list ent`, first match (`bound`) | 0 |
 | Term vs module by position | `spec_exp`/`spec_modexp` | same | 0 |
-| Pre-application of open-frame members | `preapp`, `tele`, `vars_desc off (tele …)`, offsets in `fbind` | `vars_desc k n` read off the entry's position | 0 (removal: option O6, large) |
+| Pre-application of open-frame members | `preapp`, `tele`, `outer_param_vars off (tele …)`, offsets in `fbind` | `outer_param_vars k n` read off the entry's position | 0 (removal: option O6, large) |
 | Open frames | `sframe` stack in `unit_result`, open/close | none; body elaborated by structural recursion | 0 |
 | `import … as y` / `use (n)` | `sscope`, `starget`, `wk_starget`, `ss_add`, `ibinds`, `use_binds` over a separate alias list | entries `en_as`/`en_use`, weakened by `k` at use (`mwk E k`) | 0 (move: options O2/O3) |
 | Unit reachability | `ss_units` in every frame scope + leading scope, `unit_in` | `en_unit fq` entry, `In (en_unit fq) S` | 0 (move: option O5) |
@@ -117,7 +117,7 @@ core_cmd_mod M (⋅ ▹ Type@0)
 core_cmd_eval (a_mem (me_app ⟨U.M⟩ #0) b $ ℕ)
 ```
 Prototype derivation of `eval a`: the scope is `B, a ↦ U.a, A`; `a` has one
-binder inside (`B`) and one outside (`A`), so `U.a $ vars_desc 1 1 = U.a $ #1`
+binder inside (`B`) and one outside (`A`), so `U.a $ outer_param_vars 1 1 = U.a $ #1`
 (`ElabExamples.a_preapplied`).
 
 **`import X as Y`** and **`import X use (n)`**, leading and in a frame:
@@ -253,11 +253,11 @@ Line estimates are for the current core; the core is being refactored on
   read under the frame's telescope. That makes the meaning of a path depend on
   the stack position, against the "a path denotes the same everywhere" rule
   of `Syntax.v`, and touches typing, semantics and completeness of `a_glob`.
-  The prototype's gain from it would be small (`vars_desc k n` is one line).
+  The prototype's gain from it would be small (`outer_param_vars k n` is one line).
   **Not recommended.**
 * **O7. `a_glob` → `a_mem` chains** (being built elsewhere). In the
   prototype it is a change of two lines, `entry_denotes_term`/`entry_denotes_mod` of `en_mem`,
-  e.g. `apps (a_mem (me_path (p_abs fp ch)) x) (vars_desc k n)`, once the core
+  e.g. `apps (a_mem (me_path (p_abs fp ch)) x) (outer_param_vars k n)`, once the core
   types `me_path` of an open frame.
 
 ## 6. Proof shape

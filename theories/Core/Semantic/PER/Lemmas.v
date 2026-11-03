@@ -4033,7 +4033,7 @@ Ltac solve_retagged_kind :=
     [n] entries may reach: [n] at a module slot, which stores its unit over
     its tail; nothing at any other entry, which stores no unit the
     readback of a proof would bind. *)
-Definition centry_unit_room (e : centry) (n : nat) : nat :=
+Definition centry_unit_bound (e : centry) (n : nat) : nat :=
   match e with
   | ce_mod _ => n
   | _ => 0
@@ -4044,7 +4044,7 @@ Definition centry_unit_room (e : centry) (n : nat) : nat :=
     ([per_ctx_env_heads_readable]). *)
 Definition env_heads_readable (Γ : ctx) (ρ : env) : Prop :=
   forall x e, List.nth_error Γ x = Some e ->
-    head_readable (centry_unit_room e (List.length (List.skipn (S x) Γ))) (env_entry ρ x).
+    head_readable (centry_unit_bound e (List.length (List.skipn (S x) Γ))) (env_entry ρ x).
 
 Lemma env_heads_readable_drop : forall e Γ ρ, env_heads_readable (e :: Γ) ρ -> env_heads_readable Γ ρ↯.
 Proof. intros * H x e' Hx; rewrite env_entry_drop; exact (H (S x) e' Hx). Qed.
