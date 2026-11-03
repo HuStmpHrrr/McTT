@@ -1687,7 +1687,7 @@ Section SelfElim.
             [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc v Mv HMv) ]).
       assert (HK : ⊨ (cargs_ctx p D Mv gs ++ im_nparams Mv) ++ ind_uparams D)
         by (rewrite <- List.app_assoc; fold (im_params D Mv); exact (valid_group_cargs_sem p D Hvg Hcv v Mv c gs HMv Hcon)).
-      pose proof (ihs_pre_sem p D Γ Us Bks Mv gs HB nil gs eq_refl) as HC0; cbn [ihs_ctx_aux List.app] in HC0; rewrite con_inst_ctx_eq in HC0.
+      pose proof (branch_context_recursive_results_prefix_valid p D Γ Us Bks Mv gs HB nil gs eq_refl) as HC0; cbn [ihs_ctx_aux List.app] in HC0; rewrite con_inst_ctx_eq in HC0.
       pose proof (EB canonical_gen _ HKa HK HC0 B1 B2 u1 u2 HB12 Hu1 Hu2 H10 H20 _ _ Hcg
                     ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia)) as Hci.
       rewrite tele_sub_app, length_im_nparams in Hci; fold τU nn Cs Ns TB in Hci.

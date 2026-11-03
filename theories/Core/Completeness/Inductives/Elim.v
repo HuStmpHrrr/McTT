@@ -5646,14 +5646,19 @@ Section GroupElim.
         Let As := blocks_motives Bks.
         Let T := List.rev (im_nparams Mk).
 
-        Lemma bctx_split : elim_bctx relevant p D Mk gs As Us ++ Γ
+        (** The branch's context: the recursive results over the instance
+            of the arguments and the non-uniform parameters. *)
+        Lemma branch_context_split : elim_bctx relevant p D Mk gs As Us ++ Γ
                            = ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs ++ con_inst_ctx Γ p D Mk Us gs.
         Proof. unfold elim_bctx, con_inst_ctx; rewrite <- !List.app_assoc; reflexivity. Qed.
 
-        Lemma ihs_pre_sem : forall gs1 gs2, gs = gs1 ++ gs2 ->
+        (** The recursive results of the arguments [gs1] before the others,
+            over the instance of the arguments and the non-uniform
+            parameters, form a valid context. *)
+        Lemma branch_context_recursive_results_prefix_valid : forall gs1 gs2, gs = gs1 ++ gs2 ->
             ⊨ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mk Us gs.
         Proof.
-          intros * Heq; pose proof HB as H; fold As in H; rewrite bctx_split in H.
+          intros * Heq; pose proof HB as H; fold As in H; rewrite branch_context_split in H.
           replace (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs)
             with (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) (cargs_pat gs1 ++ nil) (0 + cargs_nrec D gs1) gs2
                   ++ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs1) in H
@@ -5665,7 +5670,7 @@ Section GroupElim.
             of its shape: after those of the arguments before it ([E0]), the
             entry of the leaf path [n] over the entries of the paths before
             it. *)
-        Lemma ihs_rec_split : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+        Lemma branch_context_recursive_results_at_recursive_argument : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
             ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 (gs1 ++ ca_rec t :: nil)
             = leaves_ctx relevant (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1)
                 (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t)
@@ -5697,8 +5702,8 @@ Section GroupElim.
               ++ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mk Us gs.
         Proof.
           intros * Heq n l Hn.
-          pose proof (ihs_pre_sem (gs1 ++ ca_rec t :: nil) gs2 ltac:(rewrite <- List.app_assoc; exact Heq)) as H.
-          rewrite (ihs_rec_split _ _ _ Heq) in H.
+          pose proof (branch_context_recursive_results_prefix_valid (gs1 ++ ca_rec t :: nil) gs2 ltac:(rewrite <- List.app_assoc; exact Heq)) as H.
+          rewrite (branch_context_recursive_results_at_recursive_argument _ _ _ Heq) in H.
           set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) in *.
           rewrite <- (List.firstn_skipn (S n) ls) in H.
           assert (Hsk : forall j0 ls1 ls2, leaves_ctx relevant (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) j0 (ls1 ++ ls2)
@@ -6095,7 +6100,7 @@ Section GroupElim.
           - rewrite cargs_nrec_snoc; cbv beta iota; rewrite Nat.add_0_r.
             rewrite ihs_ctx_aux_app; cbn [ihs_ctx_aux List.app]; exact IHk.
           - set (gs2 := List.skipn (S kk) gs) in *.
-            rewrite (ihs_rec_split gs1 t gs2 Heq0), cargs_nrec_snoc; cbv beta iota.
+            rewrite (branch_context_recursive_results_at_recursive_argument gs1 t gs2 Heq0), cargs_nrec_snoc; cbv beta iota.
             set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) in *.
             set (jr := cargs_nrec D gs1) in *.
             destruct (rec_results_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir gs1 t gs2 Heq0)
@@ -6255,7 +6260,7 @@ Section GroupElim.
           assert (Eb : elim_bctx relevant p D Mk gs As Us
                        = ihs_ctx_aux relevant (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs
                          ++ tele_sub (cargs_ctx p D Mk gs ++ im_nparams Mk) τU)
-            by (apply (List.app_inv_tail Γ); rewrite bctx_split, con_inst_ctx_eq, List.app_assoc; reflexivity).
+            by (apply (List.app_inv_tail Γ); rewrite branch_context_split, con_inst_ctx_eq, List.app_assoc; reflexivity).
           pose proof HX as HX0; rewrite tele_rel_iff in HX0; destruct HX0 as (LX & LX' & _).
           unfold T in LX, LX'; rewrite List.length_rev, length_im_nparams in LX, LX'.
           destruct (us_class B1 HB1) as (u1 & Hu1 & H10); destruct (us_class B2 HB2) as (u2 & Hu2 & H20).
@@ -6266,13 +6271,13 @@ Section GroupElim.
                 [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc k Mk HMk) ]).
           assert (HK : ⊨ (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D)
             by (rewrite <- List.app_assoc; fold (im_params D Mk); exact HΨ).
-          pose proof (ihs_pre_sem nil gs eq_refl) as HC0; cbn [ihs_ctx_aux List.app] in HC0; rewrite con_inst_ctx_eq in HC0.
+          pose proof (branch_context_recursive_results_prefix_valid nil gs eq_refl) as HC0; cbn [ihs_ctx_aux List.app] in HC0; rewrite con_inst_ctx_eq in HC0.
           pose proof (canonical_gen _ HKa HK HC0 B1 B2 u1 u2 HB12 Hu1 Hu2 H10 H20 _ _ Hcg
                         ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia)) as Hci.
           pose proof (canonical_ihs B1 B2 HB1 HB2 _ _ _ _ _ _ HX Har Hia Hir Hci (List.length gs) (le_n _)) as Hih.
           rewrite List.firstn_all, !List.firstn_all2 in Hih by lia.
-          rewrite bctx_split, con_inst_ctx_eq, List.app_assoc in HRB.
-          pose proof HB as HB'; fold As in HB'; rewrite bctx_split, con_inst_ctx_eq, List.app_assoc in HB'.
+          rewrite branch_context_split, con_inst_ctx_eq, List.app_assoc in HRB.
+          pose proof HB as HB'; fold As in HB'; rewrite branch_context_split, con_inst_ctx_eq, List.app_assoc in HB'.
           rewrite Eb, (List.app_assoc X), (List.app_assoc X').
           eapply (gargs_env_rel_gen _ _ _ _ _ _ _ _ HRΓ HRB HB' HB12);
             [ rewrite !List.length_app, length_ihs_ctx_aux, length_tele_sub, List.length_app, length_cargs_ctx, length_im_nparams; lia |].
