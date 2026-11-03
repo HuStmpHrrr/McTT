@@ -156,18 +156,18 @@ Qed.
 
 (** ** Open Targets *)
 
-(** A projection chain is a module expression's spine of [me_mem]s. *)
+(** A projection chain is a module expression's spine of [u_me_mem]s. *)
 Lemma spec_modexp_proj_chain : forall S ip o E,
-    spec_modexp S (fold_left Cst.proj ip o) E <-> exists H, spec_modexp S o H /\ E = fold_left me_mem ip H.
+    spec_modexp S (fold_left Cst.proj ip o) E <-> exists H, spec_modexp S o H /\ E = fold_left u_me_mem ip H.
 Proof.
   intros S; induction ip as [| y ip IH]; intros o E; cbn [fold_left].
   - split; [ eauto | intros (H & HH & ->); assumption ].
   - rewrite IH; split.
     + intros (H' & Hs & ->); inversion Hs; subst; eauto.
-    + intros (H & Hs & ->); exists (me_mem H y); split; [ constructor; assumption | reflexivity ].
+    + intros (H & Hs & ->); exists (u_me_mem H y); split; [ constructor; assumption | reflexivity ].
 Qed.
 
-(** And the arguments of a module are its spine of [me_app]s. *)
+(** And the arguments of a module are its spine of [u_me_app]s. *)
 Lemma spec_modexp_app_chain : forall S args o E,
     spec_modexp S (fold_left Cst.app args o) E <->
     exists H Ns, spec_modexp S o H /\ Forall2 (spec_exp S) args Ns /\ E = modexp_apps H Ns.
@@ -178,7 +178,7 @@ Proof.
     + intros (H' & Ns & Hs & HN & ->); inversion Hs; subst.
       do 2 eexists; split; [ eassumption | split; [ constructor; eassumption | reflexivity ] ].
     + intros (H & Ns & Hs & HN & ->); inversion HN; subst.
-      exists (me_app H y), l'; split; [ constructor; assumption | split; [ assumption | reflexivity ] ].
+      exists (u_me_app H y), l'; split; [ constructor; assumption | split; [ assumption | reflexivity ] ].
 Qed.
 
 (** A name in module position, as [elab_mod] reads it. *)
@@ -222,21 +222,21 @@ Qed.
 (** ** Objects *)
 
 (** The loop of [elab_mdef], stated on its own. *)
-Fixpoint elab_body (S : list scope_entry) (Φ : gmod) (cs : list Cst.cmd) : elab_result gmod :=
+Fixpoint elab_body (S : list scope_entry) (Φ : ubody) (cs : list Cst.cmd) : elab_result ubody :=
   match cs with
   | nil => elab_success Φ
   | Cst.c_def m x oA oM :: cs' =>
       let* A := elab S oA in
       let* M := elab S oM in
-      elab_body (scope_entry_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) relevant A (Some M))) cs'
+      elab_body (scope_entry_var x :: S) (u_gm_ext Φ x (u_ge_def (negb (Cst.modifiers_abstract m)) (Cst.modifiers_private m) A (Some M))) cs'
   | Cst.c_mod pv x ps md' :: cs' =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
       let* D := elab_mdef (param_scope_entries ps ++ S) md' in
-      elab_body (scope_entry_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (params_tele tys) D))) cs'
+      elab_body (scope_entry_var x :: S) (u_gm_ext Φ x (u_ge_mod pv (u_gu_mk (params_tele tys) D))) cs'
   | Cst.c_open fq ip args its :: cs' =>
       let* E := elab_target_with elab S fq ip args in
-      elab_body (item_scope_entries its ++ S) (gm_open Φ E its) cs'
+      elab_body (item_scope_entries its ++ S) (u_gm_open Φ E its) cs'
   | Cst.c_axiom _ _ :: _ => elab_failure "axioms are not allowed in a local module"
   | Cst.c_import _ :: _ => elab_failure "import is not allowed in a local module; use open"
   | Cst.c_error e :: _ => elab_failure e
@@ -249,7 +249,7 @@ Fixpoint elab_body (S : list scope_entry) (Φ : gmod) (cs : list Cst.cmd) : elab
   | Cst.c_record _ _ _ _ _ _ :: _ => elab_failure "a record type is not allowed in a local module"
   end.
 
-Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S gm_nil cs in elab_success (md_body sm_open Φ).
+Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S u_gm_nil cs in elab_success (u_md_body Φ).
 Proof. reflexivity. Qed.
 
 Definition Pterm (o : Cst.expression) : Prop := forall S M, elab S o = elab_success M <-> spec_exp S o M.
@@ -400,7 +400,7 @@ Lemma spec_unit_iff : forall S ps md U,
     (let* _ := check_params ps in
      let* tys := elab_params_with elab S ps in
      let* D := elab_mdef (param_scope_entries ps ++ S) md in
-     elab_success (gu_mk (params_tele tys) D)) = elab_success U <-> spec_unit S ps md U.
+     elab_success (u_gu_mk (params_tele tys) D)) = elab_success U <-> spec_unit S ps md U.
 Proof.
   intros * Hps Hmd. pose proof (params_iff _ Hps) as IHps. unfold Pmdef in Hmd. iff_case.
 Qed.
@@ -447,12 +447,12 @@ Proof.
     + inversion H.
     + dest_elab_success; constructor; apply unit_in_b_iff; assumption.
     + inversion H; subst. rewrite (proj2 (unit_in_b_iff _ _)) by assumption. reflexivity.
-  - (* proj: a member of a path's module, or of a term's, let-bound *)
+  - (* proj: a member of a path's module, or of a term's record type *)
     intros o [IHt IHm] x; split; intros S M; cbn [elab elab_mod].
     + destruct (expression_path o) eqn:Ep; split; intros Hg.
       * apply elab_bind_elab_success in Hg as (H & HH & Hg); inv_elab_success; constructor; [ exact Ep | apply IHm; exact HH ].
       * inversion Hg; subst; [ rewrite (proj2 (IHm _ _)) by eassumption; reflexivity | congruence ].
-      * apply elab_bind_elab_success in Hg as (M' & HM & Hg); inv_elab_success; apply spec_exp_proj_let; [ exact Ep | apply IHt; exact HM ].
+      * apply elab_bind_elab_success in Hg as (M' & HM & Hg); inv_elab_success; apply spec_exp_proj_term; [ exact Ep | apply IHt; exact HM ].
       * inversion Hg; subst; [ congruence | rewrite (proj2 (IHt _ _)) by eassumption; reflexivity ].
     + split; intros Hg.
       * apply elab_bind_elab_success in Hg as (H & HH & Hg); inv_elab_success; constructor; apply IHm; exact HH.
@@ -1042,12 +1042,4 @@ Proof.
   - intros (e & He) u Hs. apply elaborate_core_complete in Hs. congruence.
   - intros Hn. destruct (elaborate_core prg) as [u | e] eqn:E; [| eauto ].
     exfalso; apply (Hn u), elaborate_core_sound, E.
-Qed.
-
-(** The elaborator's units are written: no generated command in them
-    ([elab_spec_written]). *)
-Corollary to_core_written : forall prg u, to_core prg = Some u -> unit_written u.
-Proof.
-  intros * H; unfold to_core in H; destruct (elaborate_core prg) eqn:E; [| discriminate ].
-  injection H as <-; exact (elab_spec_written _ _ (elaborate_core_sound _ _ E)).
 Qed.

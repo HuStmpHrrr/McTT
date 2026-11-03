@@ -448,11 +448,11 @@ Definition gentry_unseal_precondition (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (o :
 Lemma gunit_unseal_precondition_full : forall Θ Ξ Γ U, unit_full Θ Ξ Γ U -> gunit_unseal_precondition Θ Ξ Γ None U.
 Proof.
   intros * Hf; destruct U as [Δ [[] Φ | E]]; cbn in Hf |- *; try contradiction.
-  - destruct Hf as [Φx es lv Hx HC _ _ _ Ho _ _ _ _ _].
+  - destruct Hf as [Φx es lv ps Hps Hx HC _ _ _ Ho].
     pose proof (ctx_wf_gctx _ _ _ HC) as Hg.
     intros Φx' Hx'; rewrite <- (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hx _ Hx').
     exact Ho.
-  - destruct Hf as [_ _ _ HE _]; exact HE.
+  - destruct Hf as [? ? ? ? ? HE]; exact HE.
 Qed.
 
 
