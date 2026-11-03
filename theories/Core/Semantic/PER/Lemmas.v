@@ -2352,6 +2352,15 @@ End Fixed_GCtx.
 
 (** A head tied to the value of one module expression is tied to the value
     of any expression related to it over the same tail. *)
+(** The kind of a head entry, a field of the context PERs' records: an
+    entry stored at some type and unit, as a hypothesis has it, possibly
+    with its witnesses taken apart. *)
+Ltac solve_entry_kind :=
+  match goal with
+  | |- exists t U0, env_entry _ _ = _ => first [ assumption | do 2 eexists; eassumption ]
+  | |- exists t, env_entry _ _ = _ => first [ assumption | eexists; eassumption ]
+  end.
+
 Ltac solve_tie :=
   match goal with
   | |- tie_mod ?m ?H2 ?r =>
@@ -2382,7 +2391,7 @@ Ltac solve_def_heads_pre :=
 (** A field that a hypothesis states, such as a [head_readable] one, is
     taken before it is split. *)
 Ltac solve_def_heads_post :=
-  repeat (first [ assumption | split ]); try (move_goal_by_relation_equivalence; solve_per);
+  repeat (first [ assumption | solve_entry_kind | split ]); try (move_goal_by_relation_equivalence; solve_per);
   try (eexists; split; [ eassumption | move_goal_by_relation_equivalence; solve_per ]).
 
 Ltac solve_def_heads := solve_def_heads_pre; solve_def_heads_post.
@@ -2700,7 +2709,7 @@ Proof.
       all: match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
       all: move_by_relation_equivalence.
       all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Ht);
-        try assumption; try (move_goal_by_relation_equivalence; solve_per); try exact I;
+        try assumption; try solve_entry_kind; try (move_goal_by_relation_equivalence; solve_per); try exact I;
         constructor; eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per.
 Qed.
 
@@ -3419,7 +3428,12 @@ Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (R : relation env) (ρ 
     (** The left head reads back at its stored type, and stores no unit *)
   ; per_env_extend_dm_left_readable : head_readable 0 (env_entry ρ 0)
     (** So does the right one *)
-  ; per_env_extend_dm_right_readable : head_readable 0 (env_entry ρ' 0) }.
+  ; per_env_extend_dm_right_readable : head_readable 0 (env_entry ρ' 0)
+    (** The left head is a definition with a module part, at some type and
+        unit *)
+  ; per_env_extend_dm_left_kind : exists t U0, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U0
+    (** So is the right one *)
+  ; per_env_extend_dm_right_kind : exists t U0, env_entry ρ' 0 = de_dm (ρ' 0) t (env_mod ρ' 0) U0 }.
 
 (** The premise [per_ctx_env_cons_dm] asks for, at the canonical relation. *)
 Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
@@ -3459,7 +3473,7 @@ Proof.
       assert (H22 : Dom ρ2 ≈ ρ2 ∈ env_relΔ) by solve_per.
       split; eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per. }
     split.
-    + intros [Ht Hh [m [Hm Htie]] [m' [Hm' Htie']] Tl Tr Hrl Hrr].
+    + intros [Ht Hh [m [Hm Htie]] [m' [Hm' Htie']] Tl Tr Hrl Hrr Hkl Hkr].
       destruct (Hmove _ _ Ht) as [H1 H2].
       exists Ht; try eassumption.
       constructor.
@@ -3467,7 +3481,7 @@ Proof.
       * eexists; split; [ eassumption | apply H1; eassumption ].
       * eexists; split; [ eassumption | apply H2; eassumption ].
       * eexists; split; [ eassumption | apply H2; eassumption ].
-    + intros [Ht Hh [[m [Hm Htie]] _ [m' [Hm' Htie']] _] Tl _ Tr _ Hrl Hrr].
+    + intros [Ht Hh [[m [Hm Htie]] _ [m' [Hm' Htie']] _] Tl _ Tr _ Hrl Hrr Hkl Hkr].
       destruct (Hmove _ _ Ht) as [H1 H2].
       apply (mk_per_env_extend_dm _ _ _ _ _ _ Ht Hh); try eassumption.
       * eexists; split; [ eassumption | apply H1; eassumption ].
@@ -3960,6 +3974,61 @@ Proof.
   rewrite <- (env_agree_retagged_var _ _ _ H 0 ltac:(lia)), E, Ht; reflexivity.
 Qed.
 
+(** A head that is a definition with a module part, or a module slot, is
+    one after retagging: the kind fields of the context PERs' records. *)
+Lemma env_agree_retagged_dm_kind_from : forall n ρ1 ρ2, env_agree_retagged (S n) ρ1 ρ2 ->
+    forall t1 U1, env_entry ρ1 0 = de_dm (ρ1 0) t1 (env_mod ρ1 0) U1 ->
+    exists t U0, env_entry ρ2 0 = de_dm (ρ1 0) t (env_mod ρ1 0) U0.
+Proof.
+  intros * H t1 U1 E1; destruct (H 0 ltac:(lia)) as (t & U & E).
+  rewrite E, E1; exists t, U; reflexivity.
+Qed.
+
+Lemma env_agree_retagged_dm_kind : forall n ρ1 ρ2, env_agree_retagged (S n) ρ1 ρ2 ->
+    forall t1 U1, env_entry ρ1 0 = de_dm (ρ1 0) t1 (env_mod ρ1 0) U1 ->
+    exists t U0, env_entry ρ2 0 = de_dm (ρ2 0) t (env_mod ρ2 0) U0.
+Proof.
+  intros * H t1 U1 E1.
+  rewrite <- (env_agree_retagged_var _ _ _ H 0 ltac:(lia)), <- (env_agree_retagged_mod _ _ _ H 0 ltac:(lia)).
+  exact (env_agree_retagged_dm_kind_from _ _ _ H _ _ E1).
+Qed.
+
+Lemma env_agree_retagged_mod_kind_from : forall n ρ1 ρ2, env_agree_retagged (S n) ρ1 ρ2 ->
+    forall U1, env_entry ρ1 0 = de_mod (env_mod ρ1 0) U1 ->
+    exists U0, env_entry ρ2 0 = de_mod (env_mod ρ1 0) U0.
+Proof.
+  intros * H U1 E1; destruct (H 0 ltac:(lia)) as (t & U & E).
+  rewrite E, E1; exists U; reflexivity.
+Qed.
+
+Lemma env_agree_retagged_mod_kind : forall n ρ1 ρ2, env_agree_retagged (S n) ρ1 ρ2 ->
+    forall U1, env_entry ρ1 0 = de_mod (env_mod ρ1 0) U1 ->
+    exists U0, env_entry ρ2 0 = de_mod (env_mod ρ2 0) U0.
+Proof.
+  intros * H U1 E1; rewrite <- (env_agree_retagged_mod _ _ _ H 0 ltac:(lia)).
+  exact (env_agree_retagged_mod_kind_from _ _ _ H _ E1).
+Qed.
+
+(** The kind of a retagged head, from the kind of the head it retags,
+    whether the goal reads the head's value and module on the new side or,
+    rewritten, on the old one. *)
+Ltac solve_retagged_kind :=
+  let close Heq Hk :=
+    first [ exact (env_agree_retagged_dm_kind _ _ _ Heq _ _ Hk) | exact (env_agree_retagged_dm_kind_from _ _ _ Heq _ _ Hk)
+          | exact (env_agree_retagged_mod_kind _ _ _ Heq _ Hk) | exact (env_agree_retagged_mod_kind_from _ _ _ Heq _ Hk) ] in
+  match goal with
+  | |- context [ env_entry ?ρ2 0 ] =>
+      match goal with
+      | Heq : env_agree_retagged _ ?ρ1 ρ2, Hk : env_entry ?ρ1 0 = _ |- _ => close Heq Hk
+      | Heq : env_agree_retagged _ ?ρ1 ρ2, Hk : exists t U0, env_entry ?ρ1 0 = _ |- _ =>
+          let t1 := fresh "t" in let U1 := fresh "U" in let Hk1 := fresh "Hk" in
+          destruct Hk as (t1 & U1 & Hk1); close Heq Hk1
+      | Heq : env_agree_retagged _ ?ρ1 ρ2, Hk : exists U0, env_entry ?ρ1 0 = _ |- _ =>
+          let U1 := fresh "U" in let Hk1 := fresh "Hk" in
+          destruct Hk as (U1 & Hk1); close Heq Hk1
+      end
+  end.
+
 (** How far the unit an environment of [Γ] stores at an entry [e] after
     [n] entries may reach: [n] at a module slot, which stores its unit over
     its tail; nothing at any other entry, which stores no unit the
@@ -4057,7 +4126,7 @@ Proof.
       try (match goal with |- def_heads_at _ _ _ _ _ _ => cbn [def_heads_at]; constructor end);
       try rewrite <- (env_agree_retagged_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_var _ _ _ Heq' 0 ltac:(cbn; lia));
       try rewrite <- (env_agree_retagged_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_mod _ _ _ Heq' 0 ltac:(cbn; lia));
-      try solve [ readable_head ];
+      try solve [ readable_head ]; try solve [ solve_retagged_kind ];
       try solve [ solve_tie ]; solve_def_heads_post. }
   3: { (** A slot: the heads are the same, and the closures over the new
          tails are related to those over the old ones. *)
@@ -4074,7 +4143,7 @@ Proof.
     destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' H2) as (M1' & M2' & M3' & M4').
     constructor; [ exact Dtail2 | .. ];
       try rewrite <- (env_agree_retagged_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_mod _ _ _ Heq' 0 ltac:(cbn; lia));
-      try solve [ readable_head ]; solve_tie. }
+      try solve [ readable_head ]; try solve [ solve_retagged_kind ]; solve_tie. }
   all: destruct HR as [Dtail1 Hhead1];
     destruct (per_ctx_env_heads_readable equiv_Γ_Γ' _ _ Dtail1) as [Hr1d Hr1d'];
     assert (Hd : env_agree_retagged (List.length Γ) ρ1↯ ρ2↯) by exact (env_agree_retagged_drop _ _ _ Heq);
