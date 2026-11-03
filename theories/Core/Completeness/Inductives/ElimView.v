@@ -2779,23 +2779,26 @@ Section WrappedBlocks.
   Variable (Us : list exp).
   Hypotheses (HUl : List.length Us = ind_nu D)
     (HUs : forall k N T, List.nth_error Us k = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
-             Γ ⊨ N : T).
+             Γ ⊨ N : T)
+    (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
   Variable (C1 : env) (u0 : list domain).
-  Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0).
+  Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0) (HCt : ctx_retag Γ C1 = C1).
   Variable (Bks : list eblock) (iA : nat).
-  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
+  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA) (HBss : blocks_scoped (List.length Γ) Bks).
   Let HBks := valid_blocks_has p D Γ Us Bks iA Hdt HBk.
   Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
   Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
-  Let dr := canon_doms_rel u0.
+  Let dr := canon_doms_rel D u0.
   Let G := grp_rel p D u0 nr ar dr.
+  (** The family of the motives at [C1], as [Elim.v] has it. *)
+  Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
   Let Rel := fun j ns m ns' m' =>
     per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
-      (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
-  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
-  #[local] Abbreviation WR f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC Bks iA HBk).
+      (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C1 (mctx_tele j) (ns' ++ m' :: nil)).
+  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC).
+  #[local] Abbreviation WR f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC Bks iA HBk HBss).
 
   Variable (qc : qname) (D' : ind_decl) (m : nat) (Mm : imember) (k' : nat) (Is : list exp) (vm : list nat).
   Hypotheses (Hq : ind_lookup gc_deps gc_stack qc = Some D') (HMm : ind_member D m = Some Mm)
@@ -2805,7 +2808,7 @@ Section WrappedBlocks.
   Let HrsQ : rview_struct_ok gc_deps gc_stack D' := decl_typed_record_struct _ _ _ HdtQ.
   Let HassQ := valid_group_ass _ _ HgQ.
   Let HlcQ : leaves_coherent D' := leaves_coherent_of_order D' (rview_struct_order _ _ _ (grp_tele_ass_record_struct _ HassQ)).
-  Let VB := view_wrap relevant p D D' vm Us Bks.
+  Let VB := view_wrap relevant p qc D D' vm Us (im_pre Mm Us) Bks.
 
   (** Each member of the container's group, the member of the group the
       view's map takes it to. *)
@@ -2850,7 +2853,9 @@ Section WrappedBlocks.
         cargs_correspond vm gs' gs
       (** The wrapped block of [i'] is its block, its branches wrapped *)
     ; wrapped_block_at_wrapped : List.nth_error VB i'
-        = Some (eb_mk (eb_binder_count wrapped_block_at_block) None (eb_motive wrapped_block_at_block)
+        = Some (eb_mk (eb_binder_count wrapped_block_at_block)
+                  (ind_mty qc D' i' (List.map (fun U => U[wk_shiftn (im_nn Mi')]ʷ) (im_pre Mm Us)) (vars_from 0 (im_nn Mi')))
+                  (eb_motive wrapped_block_at_block)
                   (List.map (fun cg => wrap_branch relevant p D D' Us Bks wrapped_block_at_member (eb_brs wrapped_block_at_block) (fst cg) (snd cg))
                      (im_cons Mi'))) }.
 
@@ -2866,8 +2871,8 @@ Section WrappedBlocks.
     - intros c gs' gs Hc' Hcn.
       destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvm c gs' Hc') as (gs0 & Hc0 & Hco).
       rewrite Hcn in Hc0; injection Hc0 as <-; exact Hco.
-    - unfold VB; rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ HrsQ) HMi' Hrv').
-      rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ Hv Hbv HMv); reflexivity.
+    - unfold VB; rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ HrsQ) HMi' Hrv').
+      rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hbv HMv); reflexivity.
   Qed.
 
   (** A block of the wrapped blocks is of a member that is not a record
@@ -2876,7 +2881,7 @@ Section WrappedBlocks.
       im_is_rview Mi' = false.
   Proof.
     intros * HMi' Hb; unfold VB, view_wrap in Hb.
-    destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ _ Hb) as (Mi'' & Hi & _).
+    destruct (nth_error_view_wrap_from _ _ _ _ _ _ _ _ _ _ _ _ _ Hb) as (Mi'' & Hi & _).
     destruct (ind_block_members_member _ _ _ Hi) as [HM Hlt].
     rewrite HMi' in HM; injection HM as <-.
     destruct (im_is_rview Mi') eqn:E; [| reflexivity ].
@@ -2916,16 +2921,18 @@ Section WrappedBlocks.
     unfold ind_con in Hc'; rewrite Hc0 in Hc'; injection Hc' as ->; rewrite Hnn; reflexivity.
   Qed.
 
-  Lemma wrapped_at_motive : forall i' Mi' v bb ba u u' ns ns' x x', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+  Lemma wrapped_at_motive : forall i' Mi' v bb ba u u' ns ns' x x' ts ts', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
       List.nth_error vm i' = Some v -> List.nth_error VB i' = Some bb -> List.nth_error Bks v = Some ba -> G v u u' ns ns' x x' ->
-      exists a a', ⟦ eb_motive bb ⟧ env_args C1 (ns ++ x :: nil) ↘ a /\
-        ⟦ eb_motive ba ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ x :: nil) ts ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
+      exists a a', ⟦ eb_motive bb ⟧ env_extend_typed C1 (List.combine (ns ++ x :: nil) ts) ↘ a /\
+        ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
         DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x'.
   Proof.
-    intros * HMi' Hrv' Hv Hb Hba Hm; destruct (wrapped_block _ _ HMi' Hrv') as [v0 Mv bv Hv0 HMv _ Hbv Hnn _ Hvb].
+    intros * HMi' Hrv' Hv Hb Hba Hm Ht Ht'; destruct (wrapped_block _ _ HMi' Hrv') as [v0 Mv bv Hv0 HMv _ Hbv Hnn _ Hvb].
     rewrite Hv in Hv0; injection Hv0 as <-; rewrite Hbv in Hba; injection Hba as <-.
     rewrite Hvb in Hb; injection Hb as <-; cbn [eb_motive].
-    exact (EB motive_mid C1 HC11 Bks iA HMall v Mv bv (eb_motive bv) HMv Hbv (HAv _ _ _ HMv Hbv) u u' ns ns' x x' Hm).
+    exact (EB motive_mid C1 HC11 Bks iA HMall v Mv bv (eb_motive bv) HMv Hbv (HAv _ _ _ HMv Hbv) u u' ns ns' x x' ts ts' Hm Ht Ht').
   Qed.
 
   (** The wrapped branch of [c] in the wrapped block of [i'], at the view's
@@ -2948,7 +2955,7 @@ Section WrappedBlocks.
     repeat split; [ exact Hrv | exact (Hcorr _ _ _ Hc' Hcn) ].
   Qed.
 
-  Lemma wrapped_at_branch : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k,
+  Lemma wrapped_at_branch : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k ts ts',
       ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
       List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
       List.nth_error VB i' = Some bb -> List.nth_error Bks v = Some ba ->
@@ -2956,16 +2963,19 @@ Section WrappedBlocks.
       brs_lookup (eb_brs bb) c = Some (nb, Bb) -> brs_lookup (eb_brs ba) c = Some (na, Ba) ->
       G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
       cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
-        (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
-      exists r r', ⟦ Bb ⟧ env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
-        ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
+        (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts' ->
+      exists r r', ⟦ Bb ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts) ↘ r /\
+        ⟦ Ba ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts') ↘ r' /\
         Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r'.
   Proof.
-    intros * HMi' _ Hv HMv Hb Hba Hc' Hcn HBb HBa Hm Hcr.
+    intros * HMi' _ Hv HMv Hb Hba Hc' Hcn HBb HBa Hm Hcr Ht Ht'.
     destruct (wrapped_branch_of _ _ _ _ _ _ _ _ _ _ _ _ _ HMi' Hv HMv Hb Hba Hc' Hcn HBb HBa) as (-> & _ & Hrv & Hco).
     pose proof (cargs_kinds_of_correspond _ _ _ Hco) as Hk.
     pose proof (cargs_container_count_view p qc D D' vm Hlc HlcQ (grp_tele_ass_record_struct _ Hass) HrsQ wrapped_view_members gs' gs Hco) as Hcnt.
-    destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k Hm Hcr)
+    destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCt ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
+                Hm Hcr Ht Ht')
       as [r r' Er Er' Hrr _].
     exists r, r'; split; [ exact Er | split; [ exact Er' | exact Hrr ] ].
   Qed.
@@ -3008,13 +3018,15 @@ Section WrappedBlocks.
       exact (wrapped_at_arity _ _ _ _ _ _ _ HMi' Hb0 Hc' Hin0).
     Qed.
 
-    Lemma moved_at_motive : forall i' Mi' v bb ba u u' ns ns' x x', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+    Lemma moved_at_motive : forall i' Mi' v bb ba u u' ns ns' x x' ts ts', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
         List.nth_error vm i' = Some v -> List.nth_error VBs i' = Some bb -> List.nth_error Bks v = Some ba -> G v u u' ns ns' x x' ->
-        exists a a', ⟦ eb_motive bb ⟧ env_args ρ0 (ns ++ x :: nil) ↘ a /\
-          ⟦ eb_motive ba ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+        List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ x :: nil) ts ->
+        List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
+        exists a a', ⟦ eb_motive bb ⟧ env_extend_typed ρ0 (List.combine (ns ++ x :: nil) ts) ↘ a /\
+          ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
           DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x'.
     Proof.
-      intros * HMi' Hrv' Hv Hb Hba Hm.
+      intros * HMi' Hrv' Hv Hb Hba Hm Ht Ht'.
       destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
       destruct (wrapped_block _ _ HMi' Hrv') as [v0 Mv bv Hv0 HMv _ Hbv Hnn _ Hvb].
       rewrite Hv in Hv0; injection Hv0 as <-; rewrite Hbv in Hba; injection Hba as <-.
@@ -3022,10 +3034,10 @@ Section WrappedBlocks.
       rewrite eb_motive_sub; cbn [eb_motive eb_binder_count].
       rewrite (valid_blocks_binder_count _ _ _ _ _ _ HBk _ _ _ HMv Hbv).
       exact (EB motive_out C1 HC11 Bks iA HMall HAv v Mv bv HMv Hbv Γ' RΓ' σ0 ρ0 C1 (eb_motive bv) HRΓ' Hσ0 Hρ0 Hev0 HC11
-               (HAv _ _ _ HMv Hbv) u u' ns ns' x x' Hm).
+               (HAv _ _ _ HMv Hbv) u u' ns ns' x x' ts ts' Hm Ht Ht').
     Qed.
 
-    Lemma moved_at_branch : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k,
+    Lemma moved_at_branch : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k ts ts',
         ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
         List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
         List.nth_error VBs i' = Some bb -> List.nth_error Bks v = Some ba ->
@@ -3033,18 +3045,21 @@ Section WrappedBlocks.
         brs_lookup (eb_brs bb) c = Some (nb, Bb) -> brs_lookup (eb_brs ba) c = Some (na, Ba) ->
         G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
         cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
-          (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
-        exists r r', ⟦ Bb ⟧ env_args ρ0 (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
-          ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
+          (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+        List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts ->
+        List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts' ->
+        exists r r', ⟦ Bb ⟧ env_extend_typed ρ0 (List.combine (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts) ↘ r /\
+          ⟦ Ba ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts') ↘ r' /\
           Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r'.
     Proof.
-      intros * HMi' _ Hv HMv Hb Hba Hc' Hcn HBb HBa Hm Hcr.
+      intros * HMi' _ Hv HMv Hb Hba Hc' Hcn HBb HBa Hm Hcr Ht Ht'.
       destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
       rewrite eb_brs_sub in HBb; destruct (brs_lookup_sub_inv _ _ _ _ _ HBb) as (B0 & HlB0 & ->).
       destruct (wrapped_branch_of _ _ _ _ _ _ _ _ _ _ _ _ _ HMi' Hv HMv Hb0 Hba Hc' Hcn HlB0 HBa) as (-> & -> & Hrv & Hco).
       pose proof (cargs_kinds_of_correspond _ _ _ Hco) as Hk.
       pose proof (cargs_container_count_view p qc D D' vm Hlc HlcQ (grp_tele_ass_record_struct _ Hass) HrsQ wrapped_view_members gs' gs Hco) as Hcnt.
-      destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k Hm Hcr)
+      destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCt ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
+                  Hm Hcr Ht Ht')
         as [r r' _ Er' _ Hout].
       destruct (Hout Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0) as (r0 & Er0 & Hrr).
       exists r0, r'; split; [| split; [ exact Er' | exact Hrr ] ].
