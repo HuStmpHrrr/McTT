@@ -173,74 +173,6 @@ where "'⟦wihs' vs 'of' gs' gs 'of' Dc 'with' ihs 'under' p ups Bks '⟧' Θ '�
 #[export]
 Hint Constructors fresh_tele fresh_cargs fresh_leaf_vars fresh_ihs wrap_leaf_vals wrap_ihs_eval : mctt.
 
-(** [dmod_member_type Θ Ξ h n a]: [a] is the declared type of the term
-    member [n] of the module value [h], the type the open that names [n]
-    gives the definition it generates ([items_gen], [mdesc_type]).  A
-    filed member's is stored generalized over its module's telescope [T]
-    ([ctx_pi_at]): it is the type under the generalization, in the
-    telescope at the module's arguments, over the parameters still
-    missing.  A local body's written member's is its annotation in the
-    environment of the body before it; a name a local open of the body
-    declares has the type of the member it names in the open's target. *)
-Inductive dmod_member_type (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
-(** A definition of a filed module *)
-| dmod_member_type_global_def :
-  `( gc_loc Θ Ξ p = Some (T, Φ) ->
-     gc_resolve Θ Ξ (qname_app p (n :: nil)) = Some (ge_def b pv r St oM) ->
-     St = ctx_pi_at r T A ->
-     ⟦ ctx_pi_at r (List.firstn (List.length T - List.length args) T) A ⟧ Θ ⍮ Ξ ⍮ env_tele nil (List.rev T) args ↘ a ->
-     dmod_member_type Θ Ξ (dm_global p args) n a )
-(** The term part of a definition with a module part of a filed module *)
-| dmod_member_type_global_def_mod :
-  `( gc_loc Θ Ξ p = Some (T, Φ) ->
-     gc_entry Θ Ξ (qname_app p (n :: nil)) = Some (ge_def_mod pv St M U) ->
-     St = ctx_pi_at relevant T A ->
-     ⟦ ctx_pi_at relevant (List.firstn (List.length T - List.length args) T) A ⟧ Θ ⍮ Ξ ⍮ env_tele nil (List.rev T) args ↘ a ->
-     dmod_member_type Θ Ξ (dm_global p args) n a )
-(** The type former of a member of a group of inductive types, as a member
-    of a filed module: the former's type ([ind_former_desc]), its first
-    parameters the module's arguments *)
-| dmod_member_type_global_ind :
-  `( gc_resolve Θ Ξ (qname_app p (n :: nil)) = None ->
-     ind_mlookup Θ Ξ (qname_app p (n :: nil)) = Some (pq, k, D) ->
-     ind_member D k = Some Mk ->
-     ⟦ ctx_pi (List.firstn (List.length (im_params D Mk) - List.length args) (im_params D Mk))
-         (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk))) ⟧ Θ ⍮ Ξ ⍮ env_tele nil (List.rev (im_params D Mk)) args ↘ a ->
-     dmod_member_type Θ Ξ (dm_global p args) n a )
-(** The type former of a record type, as a member of a filed module
-    ([record_former_desc]) *)
-| dmod_member_type_global_record :
-  `( gc_resolve Θ Ξ (qname_app p (n :: nil)) = None ->
-     record_lookup Θ Ξ (qname_app p (n :: nil)) = Some R ->
-     ⟦ ctx_pi (List.firstn (List.length (record_params R) - List.length args) (record_params R)) (record_sort R) ⟧
-       Θ ⍮ Ξ ⍮ env_tele nil (List.rev (record_params R)) args ↘ a ->
-     dmod_member_type Θ Ξ (dm_global p args) n a )
-(** A member of a submodule closure of a filed module: the member of the
-    submodule's path *)
-| dmod_member_type_global_member :
-  `( dmod_member_type Θ Ξ (dm_global (qname_app p ch) args) n a ->
-     dmod_member_type Θ Ξ (dm_member (dm_global p args) ch) n a )
-(** A written member of a saturated local body: its annotation, in the
-    environment of the body before it *)
-| dmod_member_type_body :
-  `( gm_prefix_upto Φ n = Some (gm_ext Φ' n E) ->
-     entry_tm E = Some (A, M) ->
-     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ a ->
-     dmod_member_type Θ Ξ (dm_local nil (md_body sm Φ) ρ) n a )
-(** A name a local open of a saturated local body declares for a member
-    of its target: that member's type, the target read in the
-    environment of the body before the open *)
-| dmod_member_type_body_item :
-  `( gm_item_upto Φ n = Some (Φ0, H, its1, (Some m, d, pv)) ->
-     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ0 ->
-     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ g ->
-     dmod_member_type Θ Ξ g m a ->
-     dmod_member_type Θ Ξ (dm_local nil (md_body sm Φ) ρ) n a ).
-
-#[export]
-Hint Constructors dmod_member_type : mctt.
-
 (** The type value an environment's entry is stored at: the type itself, or
     its closure evaluated. *)
 Inductive eval_entry_type (Θ : gdeps) (Ξ : gstack) : entry_type -> domain -> Prop :=
@@ -259,11 +191,7 @@ Inductive eval_entry_type (Θ : gdeps) (Ξ : gstack) : entry_type -> domain -> P
 | eval_entry_type_induction_hypothesis :
   `( ⟦ihty v of t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' ->
      List.nth_error as' i = Some a ->
-     eval_entry_type Θ Ξ (entry_type_induction_hypothesis ρm As p ups ρ t v i) a )
-(** The declared type of a member of a module value *)
-| eval_entry_type_member :
-  `( dmod_member_type Θ Ξ h n a ->
-     eval_entry_type Θ Ξ (entry_type_member h n) a ).
+     eval_entry_type Θ Ξ (entry_type_induction_hypothesis ρm As p ups ρ t v i) a ).
 
 #[export]
 Hint Constructors eval_entry_type : mctt.
