@@ -49,28 +49,27 @@ Lemma tele_sub_cons : forall e Ψ σ, tele_sub (e :: Ψ) σ = centry_sub e (sb_q
 Proof. reflexivity. Qed.
 
 (** The definitions of a body stay of their tagged sorts along a
-    substitution built from valid parts. *)
-Lemma body_sorts_valid_gsub : forall Φ D G τ, body_sorts_valid Φ D ->
+    substitution built from valid parts.  The body is an expansion, without
+    any open ([body_xp_nopens]). *)
+Lemma body_sorts_valid_gsub : forall Φ D G τ, gm_nopens Φ = 0 -> body_sorts_valid Φ D ->
     (forall X Ψ, body_ctx Φ = X ++ Ψ -> gsub (tele_sub Ψ τ ++ G) (sb_qn (List.length Ψ) τ) (Ψ ++ D)) ->
     body_sorts_valid (gmod_sub Φ τ) G.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hv Hg; cbn [gmod_sub body_sorts_valid] in Hv |- *; [ exact I | |].
-  2:{ apply (IH _ _ _ Hv); intros X Ψ HX; apply (Hg (List.repeat (ce_ass a_placeholder_type) (List.length its) ++ X)).
-      cbn [body_ctx]; rewrite HX, app_assoc; reflexivity. }
+  induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hn Hv Hg; cbn [gmod_sub body_sorts_valid gm_nopens] in Hn, Hv |- *;
+    [ exact I | | discriminate Hn ].
   assert (Hc : exists e, body_ctx (gm_ext Φ y E) = e :: body_ctx Φ) by (destruct E as [? ? ? ? [] | | | |]; eexists; reflexivity).
   destruct Hc as [e Hc].
-  split; [ apply (IH _ _ _ (proj1 Hv)); intros X Ψ HX; apply (Hg (e :: X)); rewrite Hc, HX; reflexivity |].
+  split; [ apply (IH _ _ _ Hn (proj1 Hv)); intros X Ψ HX; apply (Hg (e :: X)); rewrite Hc, HX; reflexivity |].
   intros A' M' He.
   destruct (entry_tm_sub_inv _ _ _ _ He) as (A & M & HeA & -> & ->).
-  destruct (proj2 Hv _ _ HeA) as [i Hi].
-  exists i.
+  destruct (proj2 Hv _ _ HeA) as (i & Hri & Hi).
+  exists i; split; [ exact Hri |].
   pose proof (rel_exp_under_ctx_gsub (Hg (e :: nil) (body_ctx Φ) Hc) Hi) as H'.
-  rewrite body_ctx_sub; rewrite length_body_ctx in H'.
+  rewrite (body_ctx_sub _ _ Hn); rewrite (length_body_ctx _ Hn) in H'.
   replace (entry_relevance (gentry_sub E (sb_qn (gm_binders Φ) τ))) with (entry_relevance E)
     by (destruct E; reflexivity).
-  destruct (entry_relevance E); cbn [relevance_sort] in H' |- *;
-    [ rewrite (type_sort_sub _ _ (type_sort_universe i)) in H' | rewrite (type_sort_sub _ _ type_sort_prop) in H' ];
-    exact H'.
+  rewrite relevance_sort_sub, (type_sort_sub _ _ (relevant_sort_type_sort _ Hri)) in H'.
+  exact H'.
 Qed.
 
 Lemma rel_ctx_wf_unit_gsub_all :
@@ -120,9 +119,15 @@ Proof.
         pose proof (IHU HwC _ _ Hg' (sub_mod_compat_ext Ψ _ _ _ Hc)) as HsU'.
         assert (HUU : tele_sub Ψ τ ++ Γ ⊨ᵘ U[sb_qn (length Ψ) τ]ᵘ ≈ U[sb_qn (length Ψ) τ]ᵘ)
           by (constructor; [ exact HU' | exact HsU' | exact HsU' ]).
+        assert (HUs : gunit_scoped (List.length (Ψ ++ Δ)) U)
+          by (pose proof (wf_ctx_scoped _ _ _ HwC) as Hs0; cbn in Hs0; destruct Hs0 as [Hs0 _];
+              rewrite Nat.add_0_r in Hs0; exact Hs0).
         rewrite tele_sub_cons; cbn [centry_sub List.app].
-        split; [ eapply rel_ctx_wf_extend_mod; eassumption
-               | eapply gsub_q_mod; [ exact Hg' | constructor; [ exact HU | exact HsU | exact HsU ] | exact HUU ] ].
+        split; [ eapply rel_ctx_wf_extend_mod;
+                 [ eassumption | eassumption
+                 | eapply gunit_scoped_sub;
+                   [ exact HUs | intros x Hx; exact (proj1 (rel_sub_under_ctx_scoped _ _ _ _ (gsub_valid Hg') x Hx)) ] ]
+               | eapply gsub_q_mod; [ exact Hg' | constructor; [ exact HU | exact HsU | exact HsU ] | exact HUU | exact HUs ] ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
   - (* a definition with a module part: as a definition and as a slot *)
@@ -148,7 +153,8 @@ Proof.
   - (* a body unit *)
     intros C Δu Φ Φx HΔu Hx Hs Hsx HCx IHCx Hsv Ho HwU Γ τ Hg Hc.
     destruct (ctx_decomp_mod HwU) as [HwC HUU].
-    destruct (proj1 (unit_full_of_eq _ _ _ _ _ HUU)) as [Φx0 _ lv Hx0 HwCx _ _ _ _ _ _ _ _ _].
+    pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HUU)) as Hfull; cbn [unit_full] in Hfull.
+    destruct Hfull as [Φx0 _ _ _ _ Hx0 HwCx _ _ _ _ _ _ _ _ _ _ _ _].
     pose proof (body_xp_src_tgt _ _ _ _ Hx0 Hx) as ->.
     destruct (wf_unit_eq_scoped _ _ _ _ _ HUU) as (_ & HUs & _).
     rewrite gunit_scoped_mk in HUs; destruct HUs as [HΔs HDs]; cbn in HDs.
@@ -165,8 +171,8 @@ Proof.
     + exact Hxσ.
     + apply body_shape_sub; exact Hs.
     + apply body_shape_sub; exact Hsx.
-    + rewrite body_ctx_sub, app_assoc, <- tele_sub_app; exact HCxσ.
-    + apply (body_sorts_valid_gsub _ _ _ _ Hsv); intros X Ψ HX.
+    + rewrite (body_ctx_sub _ _ (body_xp_nopens _ _ _ _ _ Hx)), app_assoc, <- tele_sub_app; exact HCxσ.
+    + apply (body_sorts_valid_gsub _ _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsv); intros X Ψ HX.
       destruct (IHCx X (Ψ ++ Δu) C ltac:(rewrite HX, <- !app_assoc; reflexivity) HwCx _ _ Hg Hc) as [_ HgΨ].
       rewrite tele_sub_app, <- !app_assoc, length_app in HgΨ.
       exact (gsub_eq _ _ _ _ HgΨ (symmetry (sb_qn_add _ _ _))).
@@ -183,7 +189,7 @@ Proof.
   - (* an alias unit *)
     intros C Δu E HΔu HC IHC HE HwU Γ τ Hg Hc.
     destruct (ctx_decomp_mod HwU) as [HwC HUU].
-    destruct (proj1 (unit_full_of_eq _ _ _ _ _ HUU)) as [_ HwΔ _ _ _].
+    destruct (proj1 (unit_full_of_eq _ _ _ _ _ HUU)) as [_ _ _ HwΔ _ _ _ _ _ _].
     destruct (IHC nil Δu C eq_refl HwΔ _ _ Hg Hc) as [HΔσ Hgx].
     rewrite gunit_sub_mk; cbn [moddef_sub].
     apply rel_unit_wf_alias; [ apply tele_ass_sub; exact HΔu | exact HΔσ |].

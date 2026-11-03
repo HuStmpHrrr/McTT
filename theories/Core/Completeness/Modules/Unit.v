@@ -155,7 +155,7 @@ Lemma valid_unit_body_sub : forall Δ Δu Φ Φx Γ τ,
     valid_unit Γ (me_lit (gu_open Δu Φ))[τ]ᵐ.
 Proof.
   intros Δ Δu Φ Φx Γ τ HU Hx HΔu HΔur HC Hsv Hs Hsx IHmods Hopv IHops Hg Hτ Hw' HK'.
-  destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [Φx0 _ lv Hx0 HwCx _ _ _ _ _ _ _ _ _].
+  destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [Φx0 _ _ _ _ Hx0 HwCx _ _ _ _ _ _ _ _ _ _ _ _].
   pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hgm)))) _ _ _ Hx _ Hx0) as <-.
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU) as (HΔs & HUs & _).
   rewrite gunit_scoped_mk in HUs; destruct HUs as [_ HDs]; cbn in HDs.
@@ -164,6 +164,7 @@ Proof.
   pose proof (wf_sub_mod_compat _ _ _ _ _ Hτ) as Hc.
   pose proof (body_xp_sub _ _ (wf_gstack_closed _ _ Hgm) _ _ _ Hx HΔCs
                 ltac:(rewrite length_app; exact (proj2 HDs)) _ _ (sub_mod_compat_ext Δu _ _ _ Hc)) as Hxσ.
+  pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
   pose proof (ctx_app_wf_tail _ _ _ _ HwCx) as HwΔ.
   destruct (ext_gsub Δu Δ Γ τ (rel_ctx_wf_app_r _ _ HC) HwΔ Hg Hτ) as (HΔσ & HgΔ & HwΔσ & HτΔ).
   cbn [modexp_sub] in Hw', HK' |- *; rewrite gunit_sub_mk in Hw', HK' |- *; cbn [moddef_sub] in Hw', HK' |- *.
@@ -175,9 +176,9 @@ Proof.
   1: exact (proj1 (gsub_sem Hg)).
   1: { rewrite app_assoc in HC, HwCx.
        destruct (ext_gsub _ _ Γ τ HC HwCx Hg Hτ) as (HCσ & _).
-       rewrite body_ctx_sub, app_assoc, <- tele_sub_app; exact HCσ. }
+       rewrite (body_ctx_sub _ _ Hn), app_assoc, <- tele_sub_app; exact HCσ. }
   1: { (* the definitions keep their tagged sorts *)
-    apply (body_sorts_valid_gsub _ _ _ _ Hsv); intros X Ψ HX.
+    apply (body_sorts_valid_gsub _ _ _ _ Hn Hsv); intros X Ψ HX.
     rewrite HX, <- !app_assoc, (app_assoc Ψ) in HC, HwCx.
     destruct (ext_gsub (Ψ ++ Δu) Δ Γ τ (rel_ctx_wf_app_r _ _ HC) (ctx_app_wf_tail _ _ _ _ HwCx) Hg Hτ) as (_ & HgΨ & _).
     rewrite tele_sub_app, <- !app_assoc, length_app in HgΨ.
@@ -186,7 +187,8 @@ Proof.
     intros y Φ0w Ew Uw Hp HEu.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE); subst Ew.
     destruct E as [| pv0 U | | pv0 A0 M0 U |]; cbn in HEu; try discriminate; injection HEu as <-.
-    all: destruct (prefix_body_ctx _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hp0) as (X & HX); cbn [body_ctx] in HX;
+    all: pose proof (gm_prefix_upto_nopens _ _ _ Hp0 Hn) as Hn0; cbn [gm_nopens] in Hn0;
+      destruct (prefix_body_ctx _ _ _ Hn Hp0) as (X & HX); cbn [body_ctx] in HX;
       rewrite HX, <- !app_assoc in HC, HwCx; cbn [List.app] in HC, HwCx;
       pose proof (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC)) as HC0;
       pose proof (ctx_app_wf_tail _ _ (_ :: nil) _ (ctx_app_wf_tail _ _ _ _ HwCx)) as HwC0;
@@ -194,9 +196,9 @@ Proof.
       destruct (ext_gsub _ _ Γ τ HC0 HwC0 Hg Hτ) as (_ & Hg0 & _ & Hτ0);
       rewrite <- app_assoc in Hg0, Hτ0;
       pose proof (IHmods _ _ _ _ Hp0 eq_refl _ _ Hg0 Hτ0) as HK0;
-      rewrite body_ctx_sub, app_assoc, <- tele_sub_app;
+      rewrite (body_ctx_sub _ _ Hn0), app_assoc, <- tele_sub_app;
       cbn [modexp_sub] in HK0;
-      rewrite (gunit_sub_sb_eq U _ _ (sb_qn_add _ _ _)), <- length_body_ctx, <- length_app;
+      rewrite (gunit_sub_sb_eq U _ _ (sb_qn_add _ _ _)), <- (length_body_ctx _ Hn0), <- length_app;
       exact HK0. }
   1, 2: apply body_shape_sub; assumption.
   1: exact HK'.
@@ -224,7 +226,7 @@ Lemma valid_unit_alias_sub : forall Δ Δu E Γ τ,
     valid_unit Γ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ.
 Proof.
   intros Δ Δu E Γ τ HU HΔu [l HΔur] HΔΔ HE IHE Hg Hτ Hw' HK'.
-  destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [_ HwΔ _ _ _].
+  destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [_ _ _ HwΔ _ _ _ _ _ _].
   destruct (ext_gsub Δu Δ Γ τ HΔΔ HwΔ Hg Hτ) as (HΔσ & HgΔ & HwΔσ & HτΔ).
   cbn [modexp_sub] in Hw', HK' |- *; rewrite gunit_sub_mk in Hw', HK' |- *; cbn [moddef_sub] in Hw', HK' |- *.
   apply valid_unit_alias; [ exact Hw' | apply tele_ass_sub; exact HΔu
