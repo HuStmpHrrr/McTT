@@ -792,7 +792,7 @@ Section CrossFresh.
     Hypothesis (Hcp : cross_params nsA nsB).
     Hypothesis (HnsA : tele_rel (canon_nparams_rel D' ub i') (List.rev (im_nparams Mi')) nsA nsA).
     Let ar := canon_args_rel D u0.
-    Let dr := canon_doms_rel u0.
+    Let dr := canon_doms_rel D u0.
 
     (** The invariant past one position, the container's variable [aA] and
         the group's [aB] there, at the group's type [CG]: the container's
@@ -802,16 +802,17 @@ Section CrossFresh.
         (CG : exp) (aA aB : domain) (s : nat) : Prop := mk_cross_position_step
       { (** The container's prefixes related across *)
         container_prefix_rel : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
-          (ub ++ nsA ++ vA1 ++ relevant_value aA (⇑! aA s) :: nil) (cups ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil)
+          (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
         (** The group's side related to itself at the container's
             telescope *)
       ; container_right_prefix : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
-          (cups ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil) (cups ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil)
+          (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
         (** The group's side related to itself at the group's telescope *)
       ; group_right_prefix : per_gargs (List.rev (cargs_ctx p D Mv (gB1 ++ gB :: nil) ++ im_params D Mv)) nil nil
-          (u0 ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil) (u0 ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil)
+          (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
         (** The two variables related at [CG] *)
-      ; fresh_heads_agree : per_head CG CG (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)) (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s))
+      ; fresh_heads_agree : per_head CG CG (env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1))
+          (env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1)) (⇑! aA s) (⇑! aB s)
         (** Their types related *)
       ; fresh_types_related : exists (i : universe_index) R, DF aA ≈ aB ∈ per_univ_elem i ↘ R }.
 
@@ -827,8 +828,10 @@ Section CrossFresh.
         per_gargs (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) nil nil (u0 ++ nsB ++ vB1) (u0 ++ nsB ++ vB1) ->
         cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) = ce_ass CA :: cargs_ctx qc D' Mi' gA1 ->
         cargs_ctx p D Mv (gB1 ++ gB :: nil) = ce_ass CG :: cargs_ctx p D Mv gB1 ->
-        (exists (i : nat) R cA, ⟦ CA ⟧ env_args nil (ub ++ nsA ++ vA1) ↘ cA /\ DF cA ≈ aA ∈ per_univ_elem i ↘ R) ->
-        (exists (i : nat) R gB0, ⟦ CG ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\ DF gB0 ≈ aB ∈ per_univ_elem i ↘ R) ->
+        (exists (i : nat) R cA, ⟦ CA ⟧ env_tele nil (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) (ub ++ nsA ++ vA1) ↘ cA /\
+           DF cA ≈ aA ∈ per_univ_elem i ↘ R) ->
+        (exists (i : nat) R gB0, ⟦ CG ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1) ↘ gB0 /\
+           DF gB0 ≈ aB ∈ per_univ_elem i ↘ R) ->
         cross_position_step gA1 gA gB1 gB vA1 vB1 CG aA aB s.
     Proof.
       intros * HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg [iA [RA [cA' [EcA' HcaA]]]] [iB [RB [gB' [EgB' HgaB]]]].
@@ -867,11 +870,11 @@ Section CrossFresh.
       pose proof (fresh_var_rel _ _ _ _ s Hbb) as Hxb.
       pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRC) HRC) as HCC.
       pose proof (per_univ_trans _ _ _ _ _ _ HgcL (per_univ_sym _ _ _ _ HgcL)) as HGG.
-      assert (HRCx : RC (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s)))
+      assert (HRCx : RC (⇑! aA s) (⇑! aB s))
         by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HRC (per_univ_sym _ _ _ _ H1) Hx); exact Hxx).
-      assert (HCCx : RC (relevant_value aB (⇑! aB s)) (relevant_value aB (⇑! aB s))) by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HCC H3 Hbb); exact Hxb).
-      assert (HGGx : RL (relevant_value aB (⇑! aB s)) (relevant_value aB (⇑! aB s))) by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HGG HgaB Hbb); exact Hxb).
-      assert (HGAx : RL (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s)))
+      assert (HCCx : RC (⇑! aB s) (⇑! aB s)) by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HCC H3 Hbb); exact Hxb).
+      assert (HGGx : RL (⇑! aB s) (⇑! aB s)) by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HGG HgaB Hbb); exact Hxb).
+      assert (HGAx : RL (⇑! aA s) (⇑! aB s))
         by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HGG (per_univ_sym _ _ _ _ H2) Hx); exact Hxx).
       assert (LW' : List.length (ub ++ nsA ++ vA1) = List.length (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')))
         by (rewrite List.length_rev; exact LW).
@@ -881,13 +884,13 @@ Section CrossFresh.
         by (rewrite List.length_rev, !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia).
       constructor; [ rewrite ECc | rewrite ECc | rewrite ECg | idtac | idtac ];
         cbn [List.app List.rev];
-        [ replace (ub ++ nsA ++ vA1 ++ relevant_value aA (⇑! aA s) :: nil) with ((ub ++ nsA ++ vA1) ++ relevant_value aA (⇑! aA s) :: nil)
+        [ replace (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) with ((ub ++ nsA ++ vA1) ++ ⇑! aA s :: nil)
             by (rewrite <- !List.app_assoc; reflexivity);
-          replace (cups ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil) with ((cups ++ nsB ++ vB1) ++ relevant_value aB (⇑! aB s) :: nil)
+          replace (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((cups ++ nsB ++ vB1) ++ ⇑! aB s :: nil)
             by (rewrite <- !List.app_assoc; reflexivity)
-        | replace (cups ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil) with ((cups ++ nsB ++ vB1) ++ relevant_value aB (⇑! aB s) :: nil)
+        | replace (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((cups ++ nsB ++ vB1) ++ ⇑! aB s :: nil)
             by (rewrite <- !List.app_assoc; reflexivity)
-        | replace (u0 ++ nsB ++ vB1 ++ relevant_value aB (⇑! aB s) :: nil) with ((u0 ++ nsB ++ vB1) ++ relevant_value aB (⇑! aB s) :: nil)
+        | replace (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((u0 ++ nsB ++ vB1) ++ ⇑! aB s :: nil)
             by (rewrite <- !List.app_assoc; reflexivity)
         | idtac | idtac ].
       - apply (per_gargs_snoc _ CA _ _ _ _ _ _ ic RC LW' K1); [ econstructor; [ exact EcA | exact EcB | exact HRC ] | exact HRCx ].
@@ -915,8 +918,10 @@ Section CrossFresh.
           (u0 ++ nsB ++ vB1 ++ x' :: nil) (u0 ++ nsB ++ vB1 ++ x' :: nil)
         (** The container's type at its side and the group's at its,
             related *)
-      ; vals_types_related : exists (i : nat) R cA gB0, ⟦ CA ⟧ env_args nil (ub ++ nsA ++ vA1) ↘ cA /\
-          ⟦ CG ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\ DF cA ≈ gB0 ∈ per_univ_elem i ↘ R }.
+      ; vals_types_related : exists (i : nat) R cA gB0,
+          ⟦ CA ⟧ env_tele nil (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) (ub ++ nsA ++ vA1) ↘ cA /\
+          ⟦ CG ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1) ↘ gB0 /\
+          DF cA ≈ gB0 ∈ per_univ_elem i ↘ R }.
 
     Lemma cross_position_vals : forall gA1 gA gA2 gB1 gB gB2 vA1 vB1 CA CG x x',
         gsA = gA1 ++ gA :: gA2 -> gsB = gB1 ++ gB :: gB2 -> cargs_correspond vm gA1 gB1 ->
@@ -926,7 +931,8 @@ Section CrossFresh.
         per_gargs (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) nil nil (u0 ++ nsB ++ vB1) (u0 ++ nsB ++ vB1) ->
         cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) = ce_ass CA :: cargs_ctx qc D' Mi' gA1 ->
         cargs_ctx p D Mv (gB1 ++ gB :: nil) = ce_ass CG :: cargs_ctx p D Mv gB1 ->
-        (exists (i : nat) R gB0, ⟦ CG ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\ DF gB0 ≈ gB0 ∈ per_univ_elem i ↘ R /\ R x x') ->
+        (exists (i : nat) R gB0, ⟦ CG ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1) ↘ gB0 /\
+           DF gB0 ≈ gB0 ∈ per_univ_elem i ↘ R /\ R x x') ->
         cross_vals_step gA1 gA gB1 gB vA1 vB1 CA CG x x'.
     Proof.
       intros * HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg [iB [RB [gB' [EgB' [HgB Hxx]]]]].
@@ -991,8 +997,10 @@ Section CrossFresh.
     Lemma cross_rec_move : forall gB1 t gB2 vA1 vB1 x y, gsB = gB1 ++ ca_rec t :: gB2 ->
         tele_prefix_rel (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1) (nonrec_arg_vals gB1 vB1) ->
         tele_prefix_rel (ar v nsB c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (nonrec_arg_vals gB1 vB1) ->
-        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1) (nsB ++ nonrec_arg_vals gB1 vB1) t x y ->
-        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1) (nsB ++ nonrec_arg_vals gB1 vB1) t x y.
+        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1) (nsB ++ nonrec_arg_vals gB1 vB1)
+          (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t x y ->
+        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1) (nsB ++ nonrec_arg_vals gB1 vB1)
+          (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t x y.
     Proof.
       intros * HeB K4 K6 H.
       destruct Hcp as [Hns _ _ _].
@@ -1007,12 +1015,14 @@ Section CrossFresh.
       pose proof (args_prefix_rel_sym p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv nsA c gsB _ _ _ HAA HconB HK K4) as K4A.
       pose proof (args_prefix_rel_inst p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv nsA nsB c gsB _ _ _ Hns HconB HK K4A) as K4s.
       destruct (ind_rel_sym_all p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI (admissible_index_at D u0 nr)) as (_ & _ & Hsym & _).
-      pose proof (Hsym _ _ _ _ _ _ _ _ H Mv nsB nsB c gB1 t gB2 _ _ 0 nil nil HMv
-                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity) HBB HconB' K6
+      pose proof (Hsym _ _ _ _ _ _ _ _ _ H Mv nsB nsB c gB1 t gB2 _ _ 0 nil nil HMv
+                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                    ltac:(cbn [List.firstn]; rewrite List.app_nil_r; reflexivity) HBB HconB' K6
                     eq_refl ltac:(lia) (tele_prefix_rel_nil _)) as H1.
       pose proof (proj1 (valid_group_rec_arg_move_right p D Hg v Mv c gB1 t gB2 u0 u0 nsB nsA _ _ _ _ HMv HconB' Hgu Hu Hsn K4s) H1) as H2.
-      exact (Hsym _ _ _ _ _ _ _ _ H2 Mv nsB nsA c gB1 t gB2 _ _ 0 nil nil HMv
-               ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity) Hsn HconB' K4s
+      exact (Hsym _ _ _ _ _ _ _ _ _ H2 Mv nsB nsA c gB1 t gB2 _ _ 0 nil nil HMv
+               ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+               ltac:(cbn [List.firstn]; rewrite List.app_nil_r; reflexivity) Hsn HconB' K4s
                eq_refl ltac:(lia) (tele_prefix_rel_nil _)).
     Qed.
 
@@ -1021,8 +1031,10 @@ Section CrossFresh.
     Lemma cross_rec_move_back : forall gB1 t gB2 vA1 vB1 x y, gsB = gB1 ++ ca_rec t :: gB2 ->
         tele_prefix_rel (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1) (nonrec_arg_vals gB1 vB1) ->
         tele_prefix_rel (ar v nsB c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (nonrec_arg_vals gB1 vB1) ->
-        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1) (nsB ++ nonrec_arg_vals gB1 vB1) t x y ->
-        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1) (nsB ++ nonrec_arg_vals gB1 vB1) t x y.
+        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1) (nsB ++ nonrec_arg_vals gB1 vB1)
+          (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t x y ->
+        rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1) (nsB ++ nonrec_arg_vals gB1 vB1)
+          (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t x y.
     Proof.
       intros * HeB K4 K6 H.
       destruct Hcp as [Hns _ _ _].
@@ -1037,12 +1049,14 @@ Section CrossFresh.
       pose proof (args_prefix_rel_sym p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv nsA c gsB _ _ _ HAA HconB HK K4) as K4A.
       pose proof (args_prefix_rel_inst p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ HMv nsA nsB c gsB _ _ _ Hns HconB HK K4A) as K4s.
       destruct (ind_rel_sym_all p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI (admissible_index_at D u0 nr)) as (_ & _ & Hsym & _).
-      pose proof (Hsym _ _ _ _ _ _ _ _ H Mv nsA nsB c gB1 t gB2 _ _ 0 nil nil HMv
-                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity) Hns HconB' K4
+      pose proof (Hsym _ _ _ _ _ _ _ _ _ H Mv nsA nsB c gB1 t gB2 _ _ 0 nil nil HMv
+                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                    ltac:(cbn [List.firstn]; rewrite List.app_nil_r; reflexivity) Hns HconB' K4
                     eq_refl ltac:(lia) (tele_prefix_rel_nil _)) as H1.
       pose proof (proj2 (valid_group_rec_arg_move_right p D Hg v Mv c gB1 t gB2 u0 u0 nsB nsA _ _ _ _ HMv HconB' Hgu Hu Hsn K4s) H1) as H2.
-      exact (Hsym _ _ _ _ _ _ _ _ H2 Mv nsB nsB c gB1 t gB2 _ _ 0 nil nil HMv
-               ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity) HBB HconB' K6
+      exact (Hsym _ _ _ _ _ _ _ _ _ H2 Mv nsB nsB c gB1 t gB2 _ _ 0 nil nil HMv
+               ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+               ltac:(cbn [List.firstn]; rewrite List.app_nil_r; reflexivity) HBB HconB' K6
                eq_refl ltac:(lia) (tele_prefix_rel_nil _)).
     Qed.
 
@@ -1058,19 +1072,26 @@ Section CrossFresh.
         (** The group's fresh arguments *)
       ; cross_fresh_tail_vsB : list domain
         (** The container's are fresh at [ub] *)
-      ; cross_fresh_tail_args_a : Fcargs gA2 of qc ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsA ++ nonrec_arg_vals gA1 vA1) ⍮ s ↘ cross_fresh_tail_vsA
+      ; cross_fresh_tail_args_a : Fcargs gA2 of qc ub in gc_deps ⍮ gc_stack
+          ⍮ components_env D' ub (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1) (nsA ++ nonrec_arg_vals gA1 vA1) ⍮ s
+          ↘ cross_fresh_tail_vsA
         (** The group's are fresh at [u0] *)
-      ; cross_fresh_tail_args_b : Fcargs gB2 of p u0 in gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ⍮ s ↘ cross_fresh_tail_vsB
+      ; cross_fresh_tail_args_b : Fcargs gB2 of p u0 in gc_deps ⍮ gc_stack
+          ⍮ components_env D u0 (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) (nsB ++ nonrec_arg_vals gB1 vB1) ⍮ s
+          ↘ cross_fresh_tail_vsB
         (** They are related at the group's relation *)
       ; cross_fresh_tail_related : con_args_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1)
-          (nsB ++ nonrec_arg_vals gB1 vB1) gB2 cross_fresh_tail_vsA cross_fresh_tail_vsB
+          (nsB ++ nonrec_arg_vals gB1 vB1) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) gB2
+          cross_fresh_tail_vsA cross_fresh_tail_vsB
         (** The non-recursive ones are related at their types *)
       ; cross_fresh_tail_nonrec : tele_rel_from (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1)
           (nonrec_arg_vals gB2 cross_fresh_tail_vsA) (nonrec_arg_vals gB2 cross_fresh_tail_vsB)
         (** The types of the ones recursive in both read alike at their
             domains *)
-      ; cross_fresh_tail_tops : cross_tops qc D' ub u0 dr i' v (nsA ++ nonrec_arg_vals gB1 vA1) (nsA ++ nonrec_arg_vals gA1 vA1)
-          (nsB ++ nonrec_arg_vals gB1 vB1) gA2 gB2 cross_fresh_tail_vsA cross_fresh_tail_vsB }.
+      ; cross_fresh_tail_tops : cross_tops qc D D' ub u0 dr i' v (nsA ++ nonrec_arg_vals gB1 vA1)
+          (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) (nsA ++ nonrec_arg_vals gA1 vA1)
+          (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1) (nsB ++ nonrec_arg_vals gB1 vB1) gA2 gB2
+          cross_fresh_tail_vsA cross_fresh_tail_vsB }.
 
     Lemma cross_fresh_cargs : forall gA2 gB2 gA1 gB1 vA1 vB1, gsA = gA1 ++ gA2 -> gsB = gB1 ++ gB2 -> cargs_correspond vm gA1 gB1 ->
         List.length vA1 = List.length gA1 -> List.length vB1 = List.length gB1 ->
@@ -1125,18 +1146,33 @@ Section CrossFresh.
             by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D' (valid_group_closed _ _ HgQ) i' Mi' HMi') ]).
           exact (per_gargs_refl_l _ _ _ per_ctx_env_nil_true HW' Hta _ _ _ _ I K1). }
         assert (RenvA : forall R, EF cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi' ≈ cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi' ∈ per_ctx_env ↘ R ->
-                          R (env_args nil (ub ++ nsA ++ vA1)) (env_args nil (ub ++ nsA ++ vA1)))
+                          R (env_tele nil (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) (ub ++ nsA ++ vA1))
+                            (env_tele nil (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) (ub ++ nsA ++ vA1)))
           by (intros R HR; exact (gargs_env_rel _ _ _ _ _ _ HR HWA0 LWA K1A)).
         assert (RenvB : forall R, EF cargs_ctx p D Mv gB1 ++ im_params D Mv ≈ cargs_ctx p D Mv gB1 ++ im_params D Mv ∈ per_ctx_env ↘ R ->
-                          R (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)))
+                          R (env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1))
+                            (env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1)))
           by (intros R HR; exact (gargs_env_rel _ _ _ _ _ _ HR HWB0 LWB K3)).
+        (** The group's and the container's components before the
+            position, as the constructor's telescopes have them. *)
+        assert (LcA : List.length (nonrec_arg_vals gA1 vA1) = List.length (cargs_nonrec gA1))
+          by exact (length_nonrec_arg_vals _ _ LA).
+        assert (LcB : List.length (nonrec_arg_vals gB1 vB1) = List.length (cargs_nonrec gB1))
+          by exact (length_nonrec_arg_vals _ _ LB).
+        assert (LcAB : List.length (nonrec_arg_vals gB1 vA1) = List.length (cargs_nonrec gB1))
+          by (apply length_nonrec_arg_vals; lia).
+        assert (LTA : List.length (nsA ++ nonrec_arg_vals gA1 vA1) = List.length (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1))
+          by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, List.length_map, length_im_nparams; lia).
+        assert (LTB : List.length (nsB ++ nonrec_arg_vals gB1 vB1) = List.length (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1))
+          by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, List.length_map, length_im_nparams; lia).
         pose proof (cargs_ctx_snoc qc D' Mi' gA1 gA) as ECc; pose proof (cargs_ctx_snoc p D Mv gB1 gB) as ECg.
         cbn [cargs_ctx_aux List.app] in ECc, ECg.
         assert (LAB : List.length vA1 = List.length gB1) by lia.
         assert (LBA : List.length vB1 = List.length gA1) by lia.
         (** The group's type at a recursive position, at its side. *)
         assert (Hgrec : forall t, gB = ca_rec t -> exists (iG : nat) RGG gB0,
-                   ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\
+                   ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv))
+                     (u0 ++ nsB ++ vB1) ↘ gB0 /\
                    DF gB0 ≈ gB0 ∈ per_univ_elem iG ↘ RGG).
         { intros t ->.
           destruct (valid_group_cargs_sem_all p D Hg Hcv v Mv c gsB HMv HconB (gB1 ++ ca_rec t :: nil) gB2 HeB'') as [HWB1 _].
@@ -1151,25 +1187,27 @@ Section CrossFresh.
             relation of its type, the recursive argument's. *)
         assert (Hglink : forall t, gB = ca_rec t ->
                    exists aB (iG : nat) RGG gB0,
-                     ⟦shty t of p u0 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ↘ aB /\
-                     ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\
+                     ⟦shty t of p u0 ⟧ gc_deps ⍮ gc_stack
+                       ⍮ components_env D u0 (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) (nsB ++ nonrec_arg_vals gB1 vB1) ↘ aB /\
+                     ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv))
+                       (u0 ++ nsB ++ vB1) ↘ gB0 /\
                      DF gB0 ≈ gB0 ∈ per_univ_elem iG ↘ RGG /\
                      (exists (i : nat) R, DF gB0 ≈ aB ∈ per_univ_elem i ↘ R) /\
                      (RGG <~> rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1)
-                                (nsB ++ nonrec_arg_vals gB1 vB1) t)).
+                                (nsB ++ nonrec_arg_vals gB1 vB1) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t)).
         { intros t ->.
           destruct (Hgrec t eq_refl) as (iG & RGG & gB0 & EgB & HGG).
           destruct (shape_type_link p D Hg Hcv v Mv c gsB HMv HconB HΨB gB1 t gB2 HeB u0 nsB vB1 Hu LnB LB Hgu HnsB K6 RenvB
                       (view_end_type VP HP p D HPD u0 Hgu Hu (ptyp_mem t)) (List.length (ptyp_doms t)) 0 nil gB0 iG RGG
-                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) ltac:(rewrite List.app_nil_r; exact EgB) HGG)
+                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) EgB HGG)
             as (aB & EaB & [RB HgaB]).
-          rewrite List.app_nil_r in EaB; cbn [ptyp_skip] in EaB.
+          rewrite List.app_nil_r, List.app_assoc, components_env_prefix in EaB by exact LTB; cbn [ptyp_skip] in EaB.
           pose proof (view_end_rel_of_agreement p D Hg Hcv u0 u0 Hgu Hu (ptyp_mem t)
                         (view_agreement_canonical_all VP p D HP HPD u0 u0 Hgu Hu (ptyp_mem t))) as Hendr.
           pose proof (shape_char p D Hg Hcv v Mv c gsB HMv HconB HΨB gB1 t gB2 HeB u0 nsB vB1 Hu LnB LB Hgu HnsB K6 RenvB Hendr
-                        (rview_end_rel_all VP p D HP HPD u0 u0 Hgu Hu (ptyp_mem t)) (List.length (ptyp_doms t)) 0 nil gB0 iG RGG eq_refl (tele_prefix_rel_nil _) ltac:(constructor)
-                        ltac:(rewrite List.app_nil_r; exact EgB) HGG) as ERG.
-          rewrite List.app_nil_r in ERG; cbn [ptyp_skip] in ERG.
+                        (rview_end_rel_all VP p D HP HPD u0 u0 Hgu Hu (ptyp_mem t)) (List.length (ptyp_doms t)) 0 nil gB0 iG RGG eq_refl
+                        (tele_prefix_rel_nil _) ltac:(constructor) EgB HGG) as ERG.
+          cbn [List.firstn ptyp_skip] in ERG; rewrite !List.app_nil_r in ERG.
           exists aB, iG, RGG, gB0; split; [ exact EaB | split; [ exact EgB | split; [ exact HGG | split; [ exists iG, RB; exact HgaB | exact ERG ] ] ] ]. }
         destruct gA as [rA' A' | t'], gB as [rA A | t]; cbn [cargs_correspond] in Hco; try contradiction;
           try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [Hsort Hco] end).
@@ -1192,16 +1230,19 @@ Section CrossFresh.
           assert (a2 = gB0) as -> by (eapply functional_eval_exp; eassumption).
           pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ Hx) Hx) as Hbb.
           pose proof (per_univ_trans _ _ _ _ _ _ Hx (per_univ_sym _ _ _ _ Hx)) as Haa.
-          assert (HarB : ar v nsB c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s)))
+          assert (HarB : ar v nsB c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (⇑! aA s) (⇑! aB s))
             by (apply E2, (per_head_left Ea2 Ea2 HR2); exact Hrel).
-          assert (HarA : ar v nsA c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1) (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s)))
+          assert (HarA : ar v nsA c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1) (⇑! aA s) (⇑! aB s))
             by (apply (CaI v Mv nsA nsB c gsB _ A _ _ HMv Hns HconB HnthB K4); exact HarB).
-          assert (HbbB : ar v nsB c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (relevant_value aB (⇑! aB s)) (relevant_value aB (⇑! aB s))).
+          assert (HbbB : ar v nsB c (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vB1) (⇑! aB s) (⇑! aB s)).
           { apply E2, (rel_link _ _ _ _ _ _ _ _ _ _ HR2 HgaB Hbb); exact (fresh_var_rel _ _ _ _ s Hbb). }
-          assert (HaaA : canon_args_rel D' ub i' nsA c (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1) (relevant_value aA (⇑! aA s)) (relevant_value aA (⇑! aA s))).
-          { unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMi' HconA HnthA).
+          assert (HaaA : canon_args_rel D' ub i' nsA c (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1) (⇑! aA s) (⇑! aA s)).
+          { unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMi' HconA HnthA), (member_nparams_eq _ _ _ HMi'),
+              (member_con_tele_eq _ _ _ _ _ HMi' HconA).
+            rewrite (components_env_con_prefix D' ub (List.rev (im_nparams Mi')) gsA gA1 (ca_arg rA' A' :: gA2) nsA _ HeA
+                       ltac:(rewrite List.length_rev, length_im_nparams; lia) LcA).
             apply (per_head_left EaA EaA Haa); exact (fresh_var_rel _ _ _ _ s Haa). }
-          destruct (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_arg rA A :: nil) (vA1 ++ relevant_value aA (⇑! aA s) :: nil) (vB1 ++ relevant_value aB (⇑! aB s) :: nil)
+          destruct (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_arg rA A :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
                       HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                       K1' K2' K3') with (s := S s) as [vA2' vB2' FA' FB' IHc IHf IHt].
           * rewrite cargs_nonrec_app, !nonrec_arg_vals_app by lia; cbn [cargs_nonrec nonrec_arg_vals List.app].
@@ -1213,25 +1254,21 @@ Section CrossFresh.
           * rewrite cargs_nonrec_app, !nonrec_arg_vals_app by lia; cbn [cargs_nonrec nonrec_arg_vals List.app].
             rewrite List.length_app; cbn [List.length]; rewrite Nat.add_1_r.
             apply tele_prefix_rel_snoc; [ exact K6 | exact HbbB ].
-          * rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA) in FA'; cbn [nonrec_arg_vals] in FA'.
-            replace (ub ++ nsA ++ nonrec_arg_vals gA1 vA1 ++ relevant_value aA (⇑! aA s) :: nil)
-              with ((ub ++ nsA ++ nonrec_arg_vals gA1 vA1) ++ relevant_value aA (⇑! aA s) :: nil) in FA' by (rewrite <- !List.app_assoc; reflexivity).
-            rewrite env_args_snoc in FA'.
-            rewrite (nonrec_arg_vals_app gB1 _ vB1 _ LB) in FB'; cbn [nonrec_arg_vals] in FB'.
-            replace (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1 ++ relevant_value aB (⇑! aB s) :: nil)
-              with ((u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ++ relevant_value aB (⇑! aB s) :: nil) in FB' by (rewrite <- !List.app_assoc; reflexivity).
-            rewrite env_args_snoc in FB'.
-            rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHc;
+          * rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), cargs_nonrec_tele_snoc_arg in FA'; cbn [nonrec_arg_vals] in FA'.
+            rewrite !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTA) in FA'.
+            rewrite (nonrec_arg_vals_app gB1 _ vB1 _ LB), cargs_nonrec_tele_snoc_arg in FB'; cbn [nonrec_arg_vals] in FB'.
+            rewrite !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTB) in FB'.
+            rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB), cargs_nonrec_tele_snoc_arg in IHc;
               cbn [nonrec_arg_vals] in IHc.
             rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB) in IHf, IHt; cbn [nonrec_arg_vals] in IHf, IHt.
             rewrite cargs_nonrec_app, List.length_app in IHf; cbn [cargs_nonrec List.length] in IHf; rewrite Nat.add_1_r in IHf.
-            apply (mk_cross_fresh_tail _ _ _ _ _ _ _ (relevant_value aA (⇑! aA s) :: vA2') (relevant_value aB (⇑! aB s) :: vB2')).
+            apply (mk_cross_fresh_tail _ _ _ _ _ _ _ (⇑! aA s :: vA2') (⇑! aB s :: vB2')).
             -- econstructor; [ exact EaA | exact FA' ].
             -- econstructor; [ exact EaB | exact FB' ].
             -- apply con_args_arg; rewrite <- !List.app_assoc; exact IHc.
             -- cbn [nonrec_arg_vals tele_rel_from]; split; [ exact HarA | exact IHf ].
             -- apply cross_tops_arg.
-               rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), (nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHt;
+               rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), (nonrec_arg_vals_app gB1 _ vB1 _ LB), !cargs_nonrec_tele_snoc_arg in IHt;
                  cbn [nonrec_arg_vals] in IHt; rewrite <- !List.app_assoc; exact IHt.
         + (** Non-recursive in the container, recursive in the group. *)
           destruct (valid_group_arg_types qc D' HgQ HcvQ i' Mi' c gsA gA1 rA' A' gA2 ub nsA vA1 HMi' HconA HeA Hlb ltac:(lia) LA K1A)
@@ -1242,16 +1279,19 @@ Section CrossFresh.
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
             as [K1' K2' K3' Hrel [ix [Rx Hx]]].
           assert (Hrr : rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1)
-                          (nsB ++ nonrec_arg_vals gB1 vB1) t (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s)))
+                          (nsB ++ nonrec_arg_vals gB1 vB1) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t (⇑! aA s) (⇑! aB s))
             by (apply ERG, (per_head_left EgB EgB HGG); exact Hrel).
           pose proof (cross_rec_move gB1 t gB2 vA1 vB1 _ _ HeB K4 K6 Hrr) as HrrA.
           assert (HnthA : List.nth_error (cargs_nonrec gsA) (List.length (cargs_nonrec gA1)) = Some A')
             by (rewrite HeA, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
           pose proof (per_univ_trans _ _ _ _ _ _ Hx (per_univ_sym _ _ _ _ Hx)) as Haa.
-          assert (HaaA : canon_args_rel D' ub i' nsA c (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1) (relevant_value aA (⇑! aA s)) (relevant_value aA (⇑! aA s))).
-          { unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMi' HconA HnthA).
+          assert (HaaA : canon_args_rel D' ub i' nsA c (List.length (cargs_nonrec gA1)) (nonrec_arg_vals gA1 vA1) (⇑! aA s) (⇑! aA s)).
+          { unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMi' HconA HnthA), (member_nparams_eq _ _ _ HMi'),
+              (member_con_tele_eq _ _ _ _ _ HMi' HconA).
+            rewrite (components_env_con_prefix D' ub (List.rev (im_nparams Mi')) gsA gA1 (ca_arg rA' A' :: gA2) nsA _ HeA
+                       ltac:(rewrite List.length_rev, length_im_nparams; lia) LcA).
             apply (per_head_left EaA EaA Haa); exact (fresh_var_rel _ _ _ _ s Haa). }
-          destruct (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ relevant_value aA (⇑! aA s) :: nil) (vB1 ++ relevant_value aB (⇑! aB s) :: nil)
+          destruct (IH gB2 (gA1 ++ ca_arg rA' A' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
                       HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                       K1' K2' K3') with (s := S s) as [vA2' vB2' FA' FB' IHc IHf IHt].
           * rewrite cargs_nonrec_app, (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB).
@@ -1260,25 +1300,23 @@ Section CrossFresh.
             rewrite List.length_app; cbn [List.length]; rewrite Nat.add_1_r.
             apply tele_prefix_rel_snoc; [ exact K5 | exact HaaA ].
           * rewrite cargs_nonrec_app, (nonrec_arg_vals_app gB1 _ vB1 _ LB); cbn [cargs_nonrec nonrec_arg_vals]; rewrite !List.app_nil_r; exact K6.
-          * rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA) in FA'; cbn [nonrec_arg_vals] in FA'.
-            replace (ub ++ nsA ++ nonrec_arg_vals gA1 vA1 ++ relevant_value aA (⇑! aA s) :: nil)
-              with ((ub ++ nsA ++ nonrec_arg_vals gA1 vA1) ++ relevant_value aA (⇑! aA s) :: nil) in FA' by (rewrite <- !List.app_assoc; reflexivity).
-            rewrite env_args_snoc in FA'.
-            rewrite (nonrec_arg_vals_app gB1 _ vB1 _ LB) in FB'; cbn [nonrec_arg_vals] in FB'; rewrite List.app_nil_r in FB'.
-            rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHc;
+          * rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), cargs_nonrec_tele_snoc_arg in FA'; cbn [nonrec_arg_vals] in FA'.
+            rewrite !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTA) in FA'.
+            rewrite (nonrec_arg_vals_app gB1 _ vB1 _ LB), cargs_nonrec_tele_snoc_rec in FB'; cbn [nonrec_arg_vals] in FB';
+              rewrite List.app_nil_r in FB'.
+            rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB), cargs_nonrec_tele_snoc_rec in IHc;
               cbn [nonrec_arg_vals] in IHc; rewrite !List.app_nil_r in IHc.
             rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB) in IHf, IHt; cbn [nonrec_arg_vals] in IHf, IHt;
               rewrite List.app_nil_r in IHf, IHt.
             rewrite cargs_nonrec_app in IHf; cbn [cargs_nonrec] in IHf; rewrite List.app_nil_r in IHf.
-            apply (mk_cross_fresh_tail _ _ _ _ _ _ _ (relevant_value aA (⇑! aA s) :: vA2') (relevant_value aB (⇑! aB s) :: vB2')).
+            apply (mk_cross_fresh_tail _ _ _ _ _ _ _ (⇑! aA s :: vA2') (⇑! aB s :: vB2')).
             -- econstructor; [ exact EaA | exact FA' ].
-            -- (** The group's variable at a shape is relevant. *)
-               rewrite (relevant_value_relevant aB (⇑! aB s) (eval_shape_type_relevant _ _ _ _ _ EaB)).
-               econstructor; [ exact EaB | exact FB' ].
+            -- econstructor; [ exact EaB | exact FB' ].
             -- eapply con_args_rec; [ exact HrrA | exact IHc ].
             -- cbn [nonrec_arg_vals]; exact IHf.
             -- apply cross_tops_nest.
                rewrite ?(nonrec_arg_vals_app gA1 _ vA1 _ LA), ?(nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHt;
+                 rewrite ?cargs_nonrec_tele_snoc_arg, ?cargs_nonrec_tele_snoc_rec in IHt;
                  cbn [nonrec_arg_vals] in IHt; rewrite ?List.app_nil_r in IHt; rewrite <- ?List.app_assoc; exact IHt.
         + (** Recursive in both. *)
           destruct Hco as (Hmt & Hdp & Hco).
@@ -1292,63 +1330,62 @@ Section CrossFresh.
           assert (cA' = cA) as -> by (eapply functional_eval_exp; eassumption).
           destruct (shape_type_link qc D' HgQ HcvQ i' Mi' c gsA HMi' HconA HΨA gA1 t' gA2 HeA ub nsA vA1 Hlb ltac:(lia) LA Hubub HnsA K5 RenvA
                       (view_end_type VP HP qc D' HVQ ub Hubub Hlb (ptyp_mem t')) (List.length (ptyp_doms t')) 0 nil cA iC RCC
-                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) ltac:(rewrite List.app_nil_r; exact EcA) HCC)
+                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) EcA HCC)
             as (aA & EaA & [RA HcaA]).
-          rewrite List.app_nil_r in EaA; cbn [ptyp_skip] in EaA.
+          rewrite List.app_nil_r, List.app_assoc, components_env_prefix in EaA by exact LTA; cbn [ptyp_skip] in EaA.
           destruct (Hglink t eq_refl) as (aB & iG & RGG & gB0 & EaB & EgB & HGG & (iB & RB & HgaB) & ERG).
           destruct (cross_position gA1 (ca_rec t') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iC, RA, cA; split; [ exact EcA | exact HcaA ])
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
             as [K1' K2' K3' Hrel [ix [Rx Hx]]].
           assert (Hrr : rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1)
-                          (nsB ++ nonrec_arg_vals gB1 vB1) t (relevant_value aA (⇑! aA s)) (relevant_value aB (⇑! aB s)))
+                          (nsB ++ nonrec_arg_vals gB1 vB1) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t (⇑! aA s) (⇑! aB s))
             by (apply ERG, (per_head_left EgB EgB HGG); exact Hrel).
           pose proof (cross_rec_move gB1 t gB2 vA1 vB1 _ _ HeB K4 K6 Hrr) as HrrA.
           (** The domains of the two types read alike. *)
           pose proof (cross_doms_fresh p D Hg u0 Hgu Hu v Mv c gsB gB1 t gB2 nsA nsB (nonrec_arg_vals gB1 vA1)
-                        (nonrec_arg_vals gB1 vB1) HMv HconB HeB Hns K4 qc ub (List.length (ptyp_doms t)) 0 t'
-                        (nsA ++ nonrec_arg_vals gA1 vA1) nil nil aA aB ix Rx
-                        eq_refl ltac:(unfold ptyp_depth in *; lia) (tele_prefix_rel_nil _) EaA
-                        ltac:(rewrite List.app_nil_r; exact EaB) Hx) as Hts.
-          cbn [ptyp_skip] in Hts; rewrite !List.app_nil_r in Hts.
+                        (nonrec_arg_vals gB1 vB1) HMv HconB HeB Hns K4 D' qc ub (List.length (ptyp_doms t)) 0 t'
+                        (nsA ++ nonrec_arg_vals gA1 vA1) (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1) nil nil aA aB ix Rx
+                        eq_refl ltac:(unfold ptyp_depth in *; lia) LTA (tele_prefix_rel_nil _) EaA
+                        ltac:(cbn [List.firstn ptyp_skip]; rewrite !List.app_nil_r; exact EaB) Hx) as Hts.
+          cbn [ptyp_skip List.firstn] in Hts; rewrite !List.app_nil_r in Hts.
           (** The container's variable at its own relation. *)
           pose proof (shape_char qc D' HgQ HcvQ i' Mi' c gsA HMi' HconA HΨA gA1 t' gA2 HeA ub nsA vA1 Hlb ltac:(lia) LA Hubub HnsA K5
                         RenvA (view_end_rel_all VP qc D' HP HVQ ub ub Hubub Hlb (ptyp_mem t'))
                         (rview_end_rel_all VP qc D' HP HVQ ub ub Hubub Hlb (ptyp_mem t')) (List.length (ptyp_doms t')) 0 nil
-                        cA iC RCC eq_refl (tele_prefix_rel_nil _) ltac:(constructor) ltac:(rewrite List.app_nil_r; exact EcA) HCC)
+                        cA iC RCC eq_refl (tele_prefix_rel_nil _) ltac:(constructor) EcA HCC)
             as ERC.
-          rewrite !List.app_nil_r in ERC; cbn [ptyp_skip] in ERC.
+          cbn [List.firstn ptyp_skip] in ERC; rewrite !List.app_nil_r in ERC.
           assert (HrrQ : rec_arg_rel qc D' (admissible_index_at D' ub (canon_nparams_rel D' ub)) (canon_nparams_rel D' ub) (canon_args_rel D' ub)
-                           (canon_doms_rel ub) i' ub ub (nsA ++ nonrec_arg_vals gA1 vA1) (nsA ++ nonrec_arg_vals gA1 vA1) t'
-                           (relevant_value aA (⇑! aA s)) (relevant_value aA (⇑! aA s))).
+                           (canon_doms_rel D' ub) i' ub ub (nsA ++ nonrec_arg_vals gA1 vA1) (nsA ++ nonrec_arg_vals gA1 vA1)
+                           (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1) t' (⇑! aA s) (⇑! aA s)).
           { apply ERC.
             pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HcaA) HcaA) as Haa.
             apply (rel_link _ _ _ _ _ _ _ _ _ _ HCC HcaA Haa); exact (fresh_var_rel _ _ _ _ s Haa). }
-          destruct (IH gB2 (gA1 ++ ca_rec t' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ relevant_value aA (⇑! aA s) :: nil) (vB1 ++ relevant_value aB (⇑! aB s) :: nil)
+          destruct (IH gB2 (gA1 ++ ca_rec t' :: nil) (gB1 ++ ca_rec t :: nil) (vA1 ++ ⇑! aA s :: nil) (vB1 ++ ⇑! aB s :: nil)
                       HeA'' HeB'' Hc1' ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                       K1' K2' K3') with (s := S s) as [vA2' vB2' FA' FB' IHc IHf IHt].
           * rewrite cargs_nonrec_app, (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB).
             cbn [cargs_nonrec nonrec_arg_vals]; rewrite !List.app_nil_r; exact K4.
           * rewrite cargs_nonrec_app, (nonrec_arg_vals_app gA1 _ vA1 _ LA); cbn [cargs_nonrec nonrec_arg_vals]; rewrite !List.app_nil_r; exact K5.
           * rewrite cargs_nonrec_app, (nonrec_arg_vals_app gB1 _ vB1 _ LB); cbn [cargs_nonrec nonrec_arg_vals]; rewrite !List.app_nil_r; exact K6.
-          * rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA) in FA'; cbn [nonrec_arg_vals] in FA'; rewrite List.app_nil_r in FA'.
-            rewrite (nonrec_arg_vals_app gB1 _ vB1 _ LB) in FB'; cbn [nonrec_arg_vals] in FB'; rewrite List.app_nil_r in FB'.
-            rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHc;
+          * rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), cargs_nonrec_tele_snoc_rec in FA'; cbn [nonrec_arg_vals] in FA';
+              rewrite List.app_nil_r in FA'.
+            rewrite (nonrec_arg_vals_app gB1 _ vB1 _ LB), cargs_nonrec_tele_snoc_rec in FB'; cbn [nonrec_arg_vals] in FB';
+              rewrite List.app_nil_r in FB'.
+            rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB), (nonrec_arg_vals_app gB1 _ vB1 _ LB), cargs_nonrec_tele_snoc_rec in IHc;
               cbn [nonrec_arg_vals] in IHc; rewrite !List.app_nil_r in IHc.
             rewrite (nonrec_arg_vals_app gB1 _ vA1 _ LAB) in IHf, IHt; cbn [nonrec_arg_vals] in IHf, IHt;
               rewrite List.app_nil_r in IHf, IHt.
             rewrite cargs_nonrec_app in IHf; cbn [cargs_nonrec] in IHf; rewrite List.app_nil_r in IHf.
-            apply (mk_cross_fresh_tail _ _ _ _ _ _ _ (relevant_value aA (⇑! aA s) :: vA2') (relevant_value aB (⇑! aB s) :: vB2')).
-            -- (** The variables at shapes are relevant. *)
-               rewrite (relevant_value_relevant aA (⇑! aA s) (eval_shape_type_relevant _ _ _ _ _ EaA)).
-               econstructor; [ exact EaA | exact FA' ].
-            -- rewrite (relevant_value_relevant aB (⇑! aB s) (eval_shape_type_relevant _ _ _ _ _ EaB)).
-               econstructor; [ exact EaB | exact FB' ].
+            apply (mk_cross_fresh_tail _ _ _ _ _ _ _ (⇑! aA s :: vA2') (⇑! aB s :: vB2')).
+            -- econstructor; [ exact EaA | exact FA' ].
+            -- econstructor; [ exact EaB | exact FB' ].
             -- eapply con_args_rec; [ exact HrrA | exact IHc ].
             -- cbn [nonrec_arg_vals]; exact IHf.
-            -- apply cross_tops_rec;
-[ apply relevant_value_neut | apply relevant_value_neut | exact HrrQ | exact Hts |].
-               rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), (nonrec_arg_vals_app gB1 _ vB1 _ LB) in IHt;
+            -- apply cross_tops_rec; [ exact (ex_intro _ _ (ex_intro _ _ eq_refl)) | exact (ex_intro _ _ (ex_intro _ _ eq_refl))
+                                    | exact HrrQ | exact Hts |].
+               rewrite (nonrec_arg_vals_app gA1 _ vA1 _ LA), (nonrec_arg_vals_app gB1 _ vB1 _ LB), !cargs_nonrec_tele_snoc_rec in IHt;
                  cbn [nonrec_arg_vals] in IHt; rewrite !List.app_nil_r in IHt; exact IHt.
     Qed.
 
@@ -1421,18 +1458,33 @@ Section CrossFresh.
             by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D' (valid_group_closed _ _ HgQ) i' Mi' HMi') ]).
           exact (per_gargs_refl_l _ _ _ per_ctx_env_nil_true HW' Hta _ _ _ _ I K1). }
         assert (RenvA : forall R, EF cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi' ≈ cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi' ∈ per_ctx_env ↘ R ->
-                          R (env_args nil (ub ++ nsA ++ vA1)) (env_args nil (ub ++ nsA ++ vA1)))
+                          R (env_tele nil (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) (ub ++ nsA ++ vA1))
+                            (env_tele nil (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')) (ub ++ nsA ++ vA1)))
           by (intros R HR; exact (gargs_env_rel _ _ _ _ _ _ HR HWA0 LWA K1A)).
         assert (RenvB : forall R, EF cargs_ctx p D Mv gB1 ++ im_params D Mv ≈ cargs_ctx p D Mv gB1 ++ im_params D Mv ∈ per_ctx_env ↘ R ->
-                          R (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)))
+                          R (env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1))
+                            (env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)) (u0 ++ nsB ++ vB1)))
           by (intros R HR; exact (gargs_env_rel _ _ _ _ _ _ HR HWB0 LWB K3)).
+        (** The group's and the container's components before the
+            position, as the constructor's telescopes have them. *)
+        assert (LcA : List.length (nonrec_arg_vals gA1 vA1) = List.length (cargs_nonrec gA1))
+          by exact (length_nonrec_arg_vals _ _ LA).
+        assert (LcB : List.length (nonrec_arg_vals gB1 vB1) = List.length (cargs_nonrec gB1))
+          by exact (length_nonrec_arg_vals _ _ LB).
+        assert (LcAB : List.length (nonrec_arg_vals gB1 vA1) = List.length (cargs_nonrec gB1))
+          by (apply length_nonrec_arg_vals; lia).
+        assert (LTA : List.length (nsA ++ nonrec_arg_vals gA1 vA1) = List.length (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gA1))
+          by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, List.length_map, length_im_nparams; lia).
+        assert (LTB : List.length (nsB ++ nonrec_arg_vals gB1 vB1) = List.length (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1))
+          by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, List.length_map, length_im_nparams; lia).
         pose proof (cargs_ctx_snoc qc D' Mi' gA1 gA) as ECc; pose proof (cargs_ctx_snoc p D Mv gB1 gB) as ECg.
         cbn [cargs_ctx_aux List.app] in ECc, ECg.
         assert (LAB : List.length vA1 = List.length gB1) by lia.
         assert (LBA : List.length vB1 = List.length gA1) by lia.
         (** The group's type at a recursive position, at its side. *)
         assert (Hgrec : forall t, gB = ca_rec t -> exists (iG : nat) RGG gB0,
-                   ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\
+                   ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv))
+                     (u0 ++ nsB ++ vB1) ↘ gB0 /\
                    DF gB0 ≈ gB0 ∈ per_univ_elem iG ↘ RGG).
         { intros t ->.
           destruct (valid_group_cargs_sem_all p D Hg Hcv v Mv c gsB HMv HconB (gB1 ++ ca_rec t :: nil) gB2 HeB'') as [HWB1 _].
@@ -1447,25 +1499,27 @@ Section CrossFresh.
             relation of its type, the recursive argument's. *)
         assert (Hglink : forall t, gB = ca_rec t ->
                    exists aB (iG : nat) RGG gB0,
-                     ⟦shty t of p u0 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ↘ aB /\
-                     ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\
+                     ⟦shty t of p u0 ⟧ gc_deps ⍮ gc_stack
+                       ⍮ components_env D u0 (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) (nsB ++ nonrec_arg_vals gB1 vB1) ↘ aB /\
+                     ⟦ ptyp_ty p D (im_nn Mv) (cargs_pat gB1) t ⟧ env_tele nil (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv))
+                       (u0 ++ nsB ++ vB1) ↘ gB0 /\
                      DF gB0 ≈ gB0 ∈ per_univ_elem iG ↘ RGG /\
                      (exists (i : nat) R, DF gB0 ≈ aB ∈ per_univ_elem i ↘ R) /\
                      (RGG <~> rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1)
-                                (nsB ++ nonrec_arg_vals gB1 vB1) t)).
+                                (nsB ++ nonrec_arg_vals gB1 vB1) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gB1) t)).
         { intros t ->.
           destruct (Hgrec t eq_refl) as (iG & RGG & gB0 & EgB & HGG).
           destruct (shape_type_link p D Hg Hcv v Mv c gsB HMv HconB HΨB gB1 t gB2 HeB u0 nsB vB1 Hu LnB LB Hgu HnsB K6 RenvB
                       (view_end_type VP HP p D HPD u0 Hgu Hu (ptyp_mem t)) (List.length (ptyp_doms t)) 0 nil gB0 iG RGG
-                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) ltac:(rewrite List.app_nil_r; exact EgB) HGG)
+                      eq_refl (tele_prefix_rel_nil _) ltac:(constructor) EgB HGG)
             as (aB & EaB & [RB HgaB]).
-          rewrite List.app_nil_r in EaB; cbn [ptyp_skip] in EaB.
+          rewrite List.app_nil_r, List.app_assoc, components_env_prefix in EaB by exact LTB; cbn [ptyp_skip] in EaB.
           pose proof (view_end_rel_of_agreement p D Hg Hcv u0 u0 Hgu Hu (ptyp_mem t)
                         (view_agreement_canonical_all VP p D HP HPD u0 u0 Hgu Hu (ptyp_mem t))) as Hendr.
           pose proof (shape_char p D Hg Hcv v Mv c gsB HMv HconB HΨB gB1 t gB2 HeB u0 nsB vB1 Hu LnB LB Hgu HnsB K6 RenvB Hendr
-                        (rview_end_rel_all VP p D HP HPD u0 u0 Hgu Hu (ptyp_mem t)) (List.length (ptyp_doms t)) 0 nil gB0 iG RGG eq_refl (tele_prefix_rel_nil _) ltac:(constructor)
-                        ltac:(rewrite List.app_nil_r; exact EgB) HGG) as ERG.
-          rewrite List.app_nil_r in ERG; cbn [ptyp_skip] in ERG.
+                        (rview_end_rel_all VP p D HP HPD u0 u0 Hgu Hu (ptyp_mem t)) (List.length (ptyp_doms t)) 0 nil gB0 iG RGG eq_refl
+                        (tele_prefix_rel_nil _) ltac:(constructor) EgB HGG) as ERG.
+          cbn [List.firstn ptyp_skip] in ERG; rewrite !List.app_nil_r in ERG.
           exists aB, iG, RGG, gB0; split; [ exact EaB | split; [ exact EgB | split; [ exact HGG | split; [ exists iG, RB; exact HgaB | exact ERG ] ] ] ]. }
         destruct gA as [rA' A' | t'], gB as [rA A | t]; cbn [cargs_correspond] in Hco; try contradiction;
           try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [Hsort Hco] end).
