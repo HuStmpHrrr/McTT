@@ -597,10 +597,11 @@ Section LeafVals.
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).
   Variable (C : env) (u0 : list domain).
   Hypotheses (HCC : RΓ C C) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u0).
-  (** [C] is tagged at [Γ]: a weakening into [Γ] past its extensions
-      evaluates to [C] itself, the environment of the eliminator's own
-      recursive results. *)
-  Hypothesis (HCt : ctx_retag Γ C = C).
+  (** [C]'s entries of [Γ] are tagged at [Γ], as a substitution's value's
+      are ([eval_sub_agree_retag]): a weakening into [Γ] past its
+      extensions evaluates to [C] itself, the environment of the
+      eliminator's own recursive results. *)
+  Hypothesis (HCa : env_agree_upto (List.length Γ) C (ctx_retag Γ C)).
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
   Let dr := canon_doms_rel D u0.
@@ -889,7 +890,7 @@ Section LeafVals.
       + (** A member with a block: the eliminators, at the end's outer
             link. *)
         (** The base past the domains, [C] retagged at [Γ], is [C]. *)
-        rewrite HCt in Hev.
+        pose proof (eval_sub_resp_agree _ _ _ _ _ Hev ltac:(symmetry; exact HCa)) as Hev0; clear Hev; rename Hev0 into Hev.
         destruct (vals_sub_link VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl (proj1 (gsub_props (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs HUss)))
                     (proj2 (gsub_props (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs HUss))) _ RSL σL _ C u0 HRSL HwL HEL Hev HUC)
           as (wL & EwL & HwL0).
@@ -1827,7 +1828,8 @@ Section Iota.
 
     (** The walk along the leaf paths ([LeafVals]), at [C]. *)
     #[local] Abbreviation LV f := (f VP p D HP HPD Γ Us Bks i HΓ iota_case_HUl iota_case_HUs iota_case_HUss HBks HnmA HMall HAv HnaA
-                                     HBc HarA HBv RΓ RU HRΓ HRU C u0 HCC HUC HCt).
+                                     HBc HarA HBv RΓ RU HRΓ HRU C u0 HCC HUC (eq_ind_r (fun X => env_agree_upto (List.length Γ) C X)
+                                                                                 (reflexivity C) HCt)).
     #[local] Abbreviation iota_arg_link := (iota_arg_link p D Γ C u0).
 
     (** A recursive argument of the constructor: the scrutinee, moved

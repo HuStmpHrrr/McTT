@@ -1726,13 +1726,14 @@ Section SelfElim.
     Let Bw := blocks_wk Bks (wk_shiftn nw).
     Let Aw := vars_from Rw na.
     Let σw := wrap_base Us nn na Rw.
-    (** [C1] is tagged at [Γ]: a weakening into [Γ] past its extensions
-        evaluates to [C1] itself ([Iota.leaf_ihs_vals]). *)
-    Hypothesis (HCt : ctx_retag Γ C1 = C1).
+    (** [C1]'s entries of [Γ] are tagged at [Γ], as a substitution's
+        value's are: a weakening into [Γ] past its extensions evaluates to
+        [C1] itself ([Iota.leaf_ihs_vals]). *)
+    Hypothesis (HCa : env_agree_upto (List.length Γ) C1 (ctx_retag Γ C1)).
     #[local] Abbreviation LV f := (f VP p D HP HPD Γ Us Bks iA HΓ HUl HUs HUss
        (valid_blocks_len _ _ _ _ _ _ HBk) (valid_blocks_binder_count _ _ _ _ _ _ HBk) HMall HAv (valid_blocks_names _ _ _ _ _ _ HBk)
        (valid_blocks_bctx _ _ _ _ _ _ HBk) (valid_blocks_arity _ _ _ _ _ _ HBk) (valid_blocks_branch _ _ _ _ _ _ HBk)
-       RΓ RU HRΓ HRU C1 u0 HC11 HUC HCt).
+       RΓ RU HRΓ HRU C1 u0 HC11 HUC HCa).
 
     (** The group's eliminator along the leaf paths of a recursive argument,
         as the wrapped branch's instance has it, is that of the argument's
@@ -2026,7 +2027,8 @@ Section SelfElim.
       pose proof (eval_sb_of_list_tail _ _ _ _ _ _ Lpj Ee1) as Htail.
       assert (Hwk : ⟦ sb_of_wk (wk_shiftn nw) : Γ ⟧s Eb ↘ C1).
       { pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn (List.length vtsW)) Eb (wk_mono_shiftn _)) as H.
-        unfold Eb in H; rewrite eval_wk_shiftn_extend_typed, HCt, Lvw in H; exact H. }
+        unfold Eb in H; rewrite eval_wk_shiftn_extend_typed, Lvw in H.
+        exact (eval_sub_resp_agree _ _ _ _ _ H ltac:(symmetry; exact HCa)). }
       pose proof (functional_eval_sub _ _ _ _ _ Htail Hwk) as Hag.
       set (wts := tagged_entries Γ (List.rev K0) C1 ms).
       assert (HagT : env_agree_upto (List.length (List.rev (List.rev K0) ++ Γ)) e1 (env_extend_typed C1 wts)).
@@ -2804,7 +2806,8 @@ Section WrappedBlocks.
              Γ ⊨ N : T)
     (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
   Variable (C1 : env) (u0 : list domain).
-  Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0) (HCt : ctx_retag Γ C1 = C1).
+  Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0)
+    (HCa : env_agree_upto (List.length Γ) C1 (ctx_retag Γ C1)).
   Variable (Bks : list eblock) (iA : nat).
   Hypothesis (HBk : valid_blocks p D Γ Us Bks iA) (HBss : blocks_scoped (List.length Γ) Bks).
   Let HBks := valid_blocks_has p D Γ Us Bks iA Hdt HBk.
@@ -2996,7 +2999,7 @@ Section WrappedBlocks.
     destruct (wrapped_branch_of _ _ _ _ _ _ _ _ _ _ _ _ _ HMi' Hv HMv Hb Hba Hc' Hcn HBb HBa) as (-> & _ & Hrv & Hco).
     pose proof (cargs_kinds_of_correspond _ _ _ Hco) as Hk.
     pose proof (cargs_container_count_view p qc D D' vm Hlc HlcQ (grp_tele_ass_record_struct _ Hass) HrsQ wrapped_view_members gs' gs Hco) as Hcnt.
-    destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCt ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
+    destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCa ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
                 Hm Hcr Ht Ht')
       as [r r' Er Er' Hrr _].
     exists r, r'; split; [ exact Er | split; [ exact Er' | exact Hrr ] ].
@@ -3080,7 +3083,7 @@ Section WrappedBlocks.
       destruct (wrapped_branch_of _ _ _ _ _ _ _ _ _ _ _ _ _ HMi' Hv HMv Hb0 Hba Hc' Hcn HlB0 HBa) as (-> & -> & Hrv & Hco).
       pose proof (cargs_kinds_of_correspond _ _ _ Hco) as Hk.
       pose proof (cargs_container_count_view p qc D D' vm Hlc HlcQ (grp_tele_ass_record_struct _ Hass) HrsQ wrapped_view_members gs' gs Hco) as Hcnt.
-      destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCt ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
+      destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCa ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
                   Hm Hcr Ht Ht')
         as [r r' _ Er' _ Hout].
       destruct (Hout Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0) as (r0 & Er0 & Hrr).
