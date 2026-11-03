@@ -1821,8 +1821,8 @@ Definition tele_inst (T : ctx) (N : exp) : option ctx :=
   end.
 
 (** A module [F (A : Typeω@0) (f : forall (x : A) -> A)] takes [⋅ ▹ Typeω@0 ▹
-    Π #0 #1]; applied to [ℕ], it takes [⋅ ▹ Π ℕ ℕ]. *)
-Example tele_inst_example : tele_inst (⋅ ▹ Typeω@0 ▹ Π #0 #1) ℕ = Some (⋅ ▹ Π ℕ ℕ).
+    Π #0 #1]; applied to [⊤], it takes [⋅ ▹ Π ⊤ ⊤]. *)
+Example tele_inst_example : tele_inst (⋅ ▹ Typeω@0 ▹ Π #0 #1) a_True = Some (⋅ ▹ Π a_True a_True).
 Proof. reflexivity. Qed.
 
 (** ** Descriptions

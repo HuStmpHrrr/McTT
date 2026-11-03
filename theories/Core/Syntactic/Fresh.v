@@ -44,12 +44,12 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   | a_prop | a_True | a_tt | a_False => True
   | a_univ M | a_succl M | a_left M | a_right M => exp_fresh k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_fresh k M /\ exp_fresh k N
-  | a_conj T M N => exp_fresh k T /\ exp_fresh k M /\ exp_fresh k N
-  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
+  | a_conj P Q M N => exp_fresh k P /\ exp_fresh (S k) Q /\ exp_fresh k M /\ exp_fresh k N
+  | a_ind _ _ | a_con _ _ _ => True
   | a_elim _ _ Us _ Bks M =>
       all_list (exp_fresh k) Us /\
-      all_blocks (fun nm oZ A Bs => opt_all (exp_fresh (nm - 1 + k)) oZ /\ exp_fresh (nm + k) A /\
-                                    all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
+      all_blocks (fun nm Z A Bs => exp_fresh (nm - 1 + k) Z /\ exp_fresh (nm + k) A /\
+                                   all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
   | a_pi _ A B | a_fn A B | a_and A B => exp_fresh k A /\ exp_fresh (S k) B
   | a_var x => x <> k
   | a_let b B => binding_fresh k b /\ exp_fresh (S k) B
@@ -117,8 +117,8 @@ Fixpoint tele_fresh (k : nat) (Δ : list centry) : Prop :=
 
 (** The blocks clause of [exp_fresh], as a definition of its own. *)
 Definition blocks_fresh (k : nat) (Bks : list eblock) : Prop :=
-  all_blocks (fun nm oZ A Bs => opt_all (exp_fresh (nm - 1 + k)) oZ /\ exp_fresh (nm + k) A /\
-                                all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks.
+  all_blocks (fun nm Z A Bs => exp_fresh (nm - 1 + k) Z /\ exp_fresh (nm + k) A /\
+                               all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks.
 
 (** ** Two Classes of Renaming
 
@@ -320,8 +320,8 @@ Proof. intros; exact (exp_wk_fresh 0 M). Qed.
     re-canonicalises ([lvl_canon]) after un-weakening a level. *)
 (** Freshness of an eliminator: of its uniform parameters, its blocks and
     its scrutinee. *)
-Lemma exp_fresh_elim : forall k r oq Us m Bks M,
-    exp_fresh k (a_elim r oq Us m Bks M) <->
+Lemma exp_fresh_elim : forall k r pq Us m Bks M,
+    exp_fresh k (a_elim r pq Us m Bks M) <->
       all_list (exp_fresh k) Us /\ blocks_fresh k Bks /\ exp_fresh k M.
 Proof. reflexivity. Qed.
 
@@ -331,18 +331,14 @@ Proof. induction Ms; intros * HM HF; inversion HF; subst; cbn; [ assumption | ap
 
 (** ** Deciding Freshness *)
 
-(** The boolean counterparts of [all_list], [opt_all], [all_brs] and
-    [all_blocks]: structural recursions on the lists, so that a recursive
-    function on terms may use them on an eliminator's parts. *)
+(** The boolean counterparts of [all_list], [all_brs] and [all_blocks]:
+    structural recursions on the lists, so that a recursive function on
+    terms may use them on an eliminator's parts. *)
 Fixpoint all_listb {A : Set} (f : A -> bool) (l : list A) : bool :=
   match l with
   | nil => true
   | x :: l' => (f x && all_listb f l')%bool
   end.
-
-(** An annotation, when there is one. *)
-Definition opt_allb {A : Set} (f : A -> bool) (o : option A) : bool :=
-  match o with Some a => f a | None => true end.
 
 (** Every branch, under its binders. *)
 Fixpoint all_brsb {A : Type} (f : nat -> A -> bool) (Bs : list (String.string * nat * A)) : bool :=
@@ -351,12 +347,12 @@ Fixpoint all_brsb {A : Type} (f : nat -> A -> bool) (Bs : list (String.string * 
   | b :: Bs' => (f (snd (fst b)) (snd b) && all_brsb f Bs')%bool
   end.
 
-(** Every block: its binder count, annotation, motive and branches. *)
-Fixpoint all_blocksb {A : Set} (f : nat -> option A -> A -> list (String.string * nat * A) -> bool)
+(** Every block: its binder count, scrutinee type, motive and branches. *)
+Fixpoint all_blocksb {A : Set} (f : nat -> A -> A -> list (String.string * nat * A) -> bool)
     (Bks : list (eblock_g A)) : bool :=
   match Bks with
   | nil => true
-  | eb_mk nm oZ M Bs :: Bks' => (f nm oZ M Bs && all_blocksb f Bks')%bool
+  | eb_mk nm Z M Bs :: Bks' => (f nm Z M Bs && all_blocksb f Bks')%bool
   end.
 
 #[local] Open Scope bool_scope.
@@ -371,11 +367,11 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   | a_prop | a_True | a_tt | a_False => true
   | a_univ M | a_succl M | a_left M | a_right M => exp_freshb k M
   | a_maxl M N | a_app M N | a_absurd M N => exp_freshb k M && exp_freshb k N
-  | a_conj T M N => exp_freshb k T && exp_freshb k M && exp_freshb k N
-  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => true
+  | a_conj P Q M N => exp_freshb k P && exp_freshb (S k) Q && exp_freshb k M && exp_freshb k N
+  | a_ind _ _ | a_con _ _ _ => true
   | a_elim _ _ Us _ Bks M =>
       all_listb (exp_freshb k) Us &&
-      all_blocksb (fun nm oZ A Bs => opt_allb (exp_freshb (nm - 1 + k)) oZ && exp_freshb (nm + k) A &&
+      all_blocksb (fun nm Z A Bs => exp_freshb (nm - 1 + k) Z && exp_freshb (nm + k) A &&
                                      all_brsb (fun n B => exp_freshb (n + k) B) Bs) Bks &&
       exp_freshb k M
   | a_pi _ A B | a_fn A B | a_and A B => exp_freshb k A && exp_freshb (S k) B
@@ -453,13 +449,13 @@ Proof.
   intros H; apply Bool.andb_true_iff in H as [H1 H2]; split; auto.
 Qed.
 
-Lemma all_blocksb_sound : forall {A : Set} (f : nat -> option A -> A -> list (String.string * nat * A) -> bool)
-    (P : nat -> option A -> A -> list (String.string * nat * A) -> Prop) Bks,
-    List.Forall (fun b => f (eb_binder_count b) (eb_ann b) (eb_motive b) (eb_brs b) = true ->
-                          P (eb_binder_count b) (eb_ann b) (eb_motive b) (eb_brs b)) Bks ->
+Lemma all_blocksb_sound : forall {A : Set} (f : nat -> A -> A -> list (String.string * nat * A) -> bool)
+    (P : nat -> A -> A -> list (String.string * nat * A) -> Prop) Bks,
+    List.Forall (fun b => f (eb_binder_count b) (eb_scrutinee_type b) (eb_motive b) (eb_brs b) = true ->
+                          P (eb_binder_count b) (eb_scrutinee_type b) (eb_motive b) (eb_brs b)) Bks ->
     all_blocksb f Bks = true -> all_blocks P Bks.
 Proof.
-  induction 1 as [| [nm oZ M Bs] Bks Hb HBks IH]; cbn; [ trivial |].
+  induction 1 as [| [nm Z M Bs] Bks Hb HBks IH]; cbn; [ trivial |].
   intros H; apply Bool.andb_true_iff in H as [H1 H2]; split; auto.
 Qed.
 
@@ -479,13 +475,13 @@ Proof.
   intros [H1 H2]; apply Bool.andb_true_iff; split; auto.
 Qed.
 
-Lemma all_blocksb_complete : forall {A : Set} (f : nat -> option A -> A -> list (String.string * nat * A) -> bool)
-    (P : nat -> option A -> A -> list (String.string * nat * A) -> Prop) Bks,
-    List.Forall (fun b => P (eb_binder_count b) (eb_ann b) (eb_motive b) (eb_brs b) ->
-                          f (eb_binder_count b) (eb_ann b) (eb_motive b) (eb_brs b) = true) Bks ->
+Lemma all_blocksb_complete : forall {A : Set} (f : nat -> A -> A -> list (String.string * nat * A) -> bool)
+    (P : nat -> A -> A -> list (String.string * nat * A) -> Prop) Bks,
+    List.Forall (fun b => P (eb_binder_count b) (eb_scrutinee_type b) (eb_motive b) (eb_brs b) ->
+                          f (eb_binder_count b) (eb_scrutinee_type b) (eb_motive b) (eb_brs b) = true) Bks ->
     all_blocks P Bks -> all_blocksb f Bks = true.
 Proof.
-  induction 1 as [| [nm oZ M Bs] Bks Hb HBks IH]; cbn; [ trivial |].
+  induction 1 as [| [nm Z M Bs] Bks Hb HBks IH]; cbn; [ trivial |].
   intros [H1 H2]; apply Bool.andb_true_iff; split; auto.
 Qed.
 
@@ -510,18 +506,18 @@ Proof.
            (fun e => forall k, centry_freshb k e = true -> centry_fresh k e)).
   (** An eliminator: its uniform parameters, then its blocks, part by
       part, then its scrutinee. *)
-  all: try match goal with |- forall r oq Us m Bks M, _ -> _ -> _ -> forall k, exp_freshb k (a_elim r oq Us m Bks M) = true -> _ =>
-        intros r oq Us m Bks M HUs HBks HM k Hb; cbn [exp_freshb] in Hb;
+  all: try match goal with |- forall r pq Us m Bks M, _ -> _ -> _ -> forall k, exp_freshb k (a_elim r pq Us m Bks M) = true -> _ =>
+        intros r pq Us m Bks M HUs HBks HM k Hb; cbn [exp_freshb] in Hb;
         apply Bool.andb_true_iff in Hb as [Hb HbM]; apply Bool.andb_true_iff in Hb as [HbU HbB];
-        apply (proj2 (exp_fresh_elim k r oq Us m Bks M)); split; [| split; [| auto ] ];
+        apply (proj2 (exp_fresh_elim k r pq Us m Bks M)); split; [| split; [| auto ] ];
         [ eapply all_listb_sound; [| exact HbU ];
           eapply List.Forall_impl; [| exact HUs ]; cbv beta; intros U HU; apply HU
         | eapply all_blocksb_sound; [| exact HbB ];
           eapply List.Forall_impl; [| exact HBks ]; cbv beta;
-          intros [nm oZ A Bs] (HZ & HA & HBs) Hbk; cbn [eb_binder_count eb_ann eb_motive eb_brs] in *;
+          intros [nm Z A Bs] (HZ & HA & HBs) Hbk; cbn [eb_binder_count eb_scrutinee_type eb_motive eb_brs] in *;
           apply Bool.andb_true_iff in Hbk as [Hbk Hbr]; apply Bool.andb_true_iff in Hbk as [HbZ HbA];
           split; [| split ];
-          [ destruct oZ as [Z |]; cbn in *; [ apply (HZ Z eq_refl); exact HbZ | exact I ]
+          [ apply HZ; exact HbZ
           | apply HA; exact HbA
           | eapply all_brsb_sound; [| exact Hbr ];
             eapply List.Forall_impl; [| exact HBs ]; cbv beta; intros br Hbr' Hbt; apply Hbr'; exact Hbt ] ] end.
@@ -563,17 +559,17 @@ Proof.
            (fun e => forall k, centry_fresh k e -> centry_freshb k e = true)).
   (** An eliminator: its uniform parameters, then its blocks, part by
       part, then its scrutinee. *)
-  all: try match goal with |- forall r oq Us m Bks M, _ -> _ -> _ -> forall k, exp_fresh k (a_elim r oq Us m Bks M) -> _ =>
-        intros r oq Us m Bks M HUs HBks HM k Hf;
-        apply (proj1 (exp_fresh_elim k r oq Us m Bks M)) in Hf as (HfU & HfB & HfM); cbn [exp_freshb];
+  all: try match goal with |- forall r pq Us m Bks M, _ -> _ -> _ -> forall k, exp_fresh k (a_elim r pq Us m Bks M) -> _ =>
+        intros r pq Us m Bks M HUs HBks HM k Hf;
+        apply (proj1 (exp_fresh_elim k r pq Us m Bks M)) in Hf as (HfU & HfB & HfM); cbn [exp_freshb];
         rewrite !Bool.andb_true_iff; split; [ split |];
         [ eapply all_listb_complete; [| exact HfU ];
           eapply List.Forall_impl; [| exact HUs ]; cbv beta; intros U HU; apply HU
         | eapply all_blocksb_complete; [| exact HfB ];
           eapply List.Forall_impl; [| exact HBks ]; cbv beta;
-          intros [nm oZ A Bs] (HZ & HA & HBs) (HfZ & HfA & HfBs); cbn [eb_binder_count eb_ann eb_motive eb_brs] in *;
+          intros [nm Z A Bs] (HZ & HA & HBs) (HfZ & HfA & HfBs); cbn [eb_binder_count eb_scrutinee_type eb_motive eb_brs] in *;
           rewrite !Bool.andb_true_iff; split; [ split |];
-          [ destruct oZ as [Z |]; cbn in *; [ apply (HZ Z eq_refl); exact HfZ | reflexivity ]
+          [ apply HZ; exact HfZ
           | apply HA; exact HfA
           | eapply all_brsb_complete; [| exact HfBs ];
             eapply List.Forall_impl; [| exact HBs ]; cbv beta; intros br Hbr' Hbt; apply Hbr'; exact Hbt ]
@@ -855,8 +851,9 @@ Proof.
               | eauto ].
   (** The lists, element by element. *)
   all: (eapply list_all_forallb; [ eassumption |]); intros x Hx; try destruct Hx; cbn; try solve [ eauto ].
-  (** A block: its motive and its branches. *)
-  all: unfold normal_block_forallb, normal_block_forall; cbn; rewrite Bool.andb_true_iff; apply Hand; [ eauto |].
+  (** A block: its scrutinee type, its motive and its branches. *)
+  all: unfold normal_block_forallb, normal_block_forall; cbn; rewrite <- Bool.andb_assoc, !Bool.andb_true_iff;
+    apply Hand; [ eauto | apply Hand; [ eauto |] ].
   all: (eapply list_all_forallb; [ eassumption |]); intros y Hy; destruct Hy; cbn; eauto.
 Qed.
 
@@ -870,8 +867,8 @@ Proof.
     rewrite ?all_list_map; try split; auto;
     try (eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy;
          first [ solve [ match type of Hx with normal_block_g_all _ _ _ =>
-                         destruct Hx as [n' A HA brs Hbrs]; unfold normal_block_forall in *; cbn in *;
-                         destruct Hy as [HyA Hybrs]; split; auto;
+                         destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold normal_block_forall in *; cbn in *;
+                         destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
                          rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
                          intros br Hbr Hy'; destruct Hbr; cbn in *; auto end ]
                | solve [ destruct Hx; cbn in *; auto ]
@@ -948,8 +945,9 @@ Proof.
     try solve [ split; [ intros _; exact I | reflexivity ] | split; [ discriminate | contradiction ] | eauto ].
   (** The lists, element by element. *)
   all: (eapply list_all_forallb; [ eassumption |]); intros x Hx; try destruct Hx; cbn; try solve [ tauto | eauto ].
-  (** A block: its motive and its branches. *)
-  all: unfold normal_block_forallb, normal_block_forall; cbn; rewrite Bool.andb_true_iff; apply Hand; [ tauto |].
+  (** A block: its scrutinee type, its motive and its branches. *)
+  all: unfold normal_block_forallb, normal_block_forall; cbn; rewrite <- Bool.andb_assoc, !Bool.andb_true_iff;
+    apply Hand; [ tauto | apply Hand; [ tauto |] ].
   all: (eapply list_all_forallb; [ eassumption |]); intros y Hy; destruct Hy; cbn; tauto.
 Qed.
 
@@ -1007,7 +1005,7 @@ Proof.
     (eapply list_all_map_ext; [ eassumption |]); intros x Hx;
     first [ apply Hx
           | solve [ destruct Hx; unfold map_level_atom; cbn; f_equal; eauto ]
-          | destruct Hx as [n' A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ apply HA |];
+          | destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ apply HZ | apply HA |];
             rewrite !List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
             intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; eauto ].
 Qed.

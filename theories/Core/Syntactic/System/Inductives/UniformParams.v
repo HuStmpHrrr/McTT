@@ -1045,8 +1045,8 @@ Section Fixed_GCtx.
       by (intros k Mk c gs Hk Hcon; exact (elim_bctx_us_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hcon)).
     destruct HBt as [HlB Hnm HZ HAb HΨ Hn HΨB Hk HB].
     constructor; try assumption.
-    - intros k Mk b Z Hk' Hb HZb.
-      pose proof (HZ _ _ _ _ Hk' Hb HZb) as HZ0; pose proof (HMc _ _ Hk') as HMk.
+    - intros k Mk b Hk' Hb.
+      pose proof (HZ _ _ _ Hk' Hb) as HZ0; pose proof (HMc _ _ Hk') as HMk.
       unfold elim_mctx in HZ0, HMk |- *.
       eapply ext_eq_ann_move; [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk')
                               | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk') | exact HZ0 | exact HMk ].
@@ -1078,9 +1078,8 @@ End Fixed_GCtx.
     moved to the equation's, at the left parameters and scrutinee.  The
     lemma takes the rule's premises, the right parameters typed at the
     instances at the left ones. *)
-Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' Us' m Mm (Bks Bks' : list eblock) bm Ps Ps' M M' r i,
+Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D Us' m Mm (Bks Bks' : list eblock) bm Ps Ps' M M' r i,
     ind_lookup Θ Ξ p = Some D ->
-    elim_grp D oq' p m ->
     ind_member D m = Some Mm ->
     List.nth_error Bks m = Some bm ->
     List.length Bks = ind_nblk D ->
@@ -1099,8 +1098,8 @@ Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' Us' m Mm (Bks Bks' : list ebloc
     Us' = List.firstn (ind_nu D) Ps' ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-    (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_ann b = Some Z ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
@@ -1122,9 +1121,9 @@ Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' Us' m Mm (Bks Bks' : list ebloc
        ind_con Mk c = Some gs ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B'
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros * Hl Hgr Hm Hbm HlB HlB' HPl HPs HPl' HPs'' HPP HM HM' HMM Hann' Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB.
+  intros * Hl Hm Hbm HlB HlB' HPl HPs HPl' HPs'' HPP HM HM' HMM Hann' Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB.
   subst Us'.
   pose proof (presup_exp_ctx HM) as HΓ.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
@@ -1190,7 +1189,7 @@ Proof.
   assert (HM2 : Θ ⍮ Ξ ⍮ Γ ⊢ M' : ind_mty p D m Us' Ns')
     by (eapply wf_conv_sort; [ exact HM1 | exact HT2t | exact HS | exact HT2 ]).
   destruct (blocks_nth_same Bks Bks' _ _ ltac:(congruence) Hbm) as [bm' Hbm'].
-  pose proof (wf_elim_blocks _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl Hgr Hm Hbm' HBt' HUl' HUs' HNl' HNs' HM2) as HE.
+  pose proof (wf_elim_blocks _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl Hm Hbm' HBt' HUl' HUs' HNl' HNs' HM2) as HE.
   (* the type: at the left parameters and scrutinee *)
   pose proof (fun j Mj Hj => ext_eq_ctx_left _ _ _ _ _ (HΨ j Mj Hj)) as HMx.
   pose proof (wf_elim_inst_sub _ _ _ _ _ _ _ _ _ Hc Hm HPl HPs HM (HMx _ _ Hm)) as Hτ; fold Us Ns in Hτ.

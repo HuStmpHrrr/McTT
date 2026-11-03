@@ -430,18 +430,14 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q : Propₘ )
-(** The proof of a conjunction [T] from proofs of its components; [T] is
-    the annotation, a conjunction.  [T] is premised to be a proposition,
-    as the type of [wf_tuple] is: reflexivity at a proof is proof
-    irrelevance, which needs its type typed before substitution is. *)
+(** The proof of the conjunction [Σₚ P Q] from proofs of its components;
+    the components' types are the annotation. *)
 | wf_conj :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ T : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ Σₚ P Q : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : Q[Id,,M] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_conj T M N : T )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_conj P Q M N : Σₚ P Q )
 (** The proof of the first component of a conjunction. *)
 | wf_left :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
@@ -449,7 +445,9 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_left M : P )
 (** The proof of the second component, at the first.  Its type is
-    premised to be a proposition, as for [wf_conj]. *)
+    premised to be a proposition, as the type of [wf_tuple] is:
+    reflexivity at a proof is proof irrelevance, which needs its type
+    typed before substitution is. *)
 | wf_right :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
@@ -489,14 +487,14 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     parameters [Ps] (the group's uniform ones, then the member's
     non-uniform ones): one block per member of the group, in order, each
     with its motive under the member's non-uniform parameters and the
-    scrutinee, an annotation, if any, the member's type there, and its
+    scrutinee, its scrutinee type, the member's type there, and its
     branches, one per constructor in order, under the non-uniform
     parameters, the constructor's arguments and the recursive results, the
     result of an argument recursive in the member [j] being at the motive
     of [j].  The parameters are typed one by one, at the instances of their
     telescope.  The eliminator carries the uniform parameters [Us], those
-    of the scrutinee's type: the scrutinee and each annotated block are at
-    the members' types at them.  The motives are all of one sort [S]: all
+    of the scrutinee's type: the scrutinee and each block's scrutinee type
+    are at the members' types at them.  The motives are all of one sort [S]: all
     types of a universe, or all propositions (then the eliminator is a
     proof, never evaluated); no elimination mixes the two.  The record views have no block (there are
     [ind_nblk D] blocks, for the members before them), and a recursive
@@ -508,7 +506,6 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     declaration, and no block reads them. *)
 | wf_elim :
   `( ind_lookup Θ Ξ p = Some D ->
-     elim_grp D oq p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
      List.length Bks = ind_nblk D ->
@@ -518,8 +515,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
      Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
@@ -535,7 +532,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A [Π] of the sort [r]: at [relevant] a type of functions, in a
     universe its domain and codomain are in, small or large, or out of a
     proposition (a function of a proof); at [propositional] the
@@ -786,13 +783,10 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D k M gs : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_con p k c ≈ a_con p k c : con_ty p D k M gs )
 (** The eliminator, its blocks and its scrutinee varying: the blocks are
-    compared position by position, their annotations each checked, their
-    branches position by position, at the left motives.  The groups as
-    written may differ (one of them taken from the scrutinee's type). *)
+    compared position by position, their scrutinee types each checked,
+    their branches position by position, at the left motives. *)
 | wf_exp_eq_elim_cong :
   `( ind_lookup Θ Ξ p = Some D ->
-     elim_grp D oq p m ->
-     elim_grp D oq' p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
      List.length Bks = ind_nblk D ->
@@ -808,11 +802,11 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Us' = List.firstn (ind_nu D) Ps' ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
@@ -834,7 +828,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
           : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M ≈ a_elim r oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M ≈ a_elim r p Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
@@ -915,7 +909,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_elim_iota :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
-     elim_grp D oq p m ->
      ind_member D m = Some Mm ->
      List.nth_error Bks m = Some bm ->
      ind_con Mm c = Some gs ->
@@ -928,8 +921,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
      Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
@@ -946,10 +939,10 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
-                          elim_ihs r p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
+                          elim_ihs r p D (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                           apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                             (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] )
@@ -958,13 +951,16 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     that are the container's group's members at the view's arguments
     ([view_wrap], E1′): a stuck eliminator at a view is a stuck one of the
     container, at the container's uniform parameters (the view's
-    arguments) when the container's group has views too. *)
+    arguments) when the container's group has views too.  The view's
+    arguments are as many as the container's uniform parameters, as the
+    declaration says; the premise lets the wrapped blocks' scrutinee
+    types, the container's member types at them, be read off the rule. *)
 | wf_exp_eq_elim_view :
   `( ind_lookup Θ Ξ p = Some D ->
-     elim_grp D oq p m ->
      ind_member D m = Some Mm ->
      im_head Mm = mh_view qc k' Is vm ->
      ind_lookup Θ Ξ qc = Some D' ->
+     List.length Is = ind_nu D' ->
      view_wrap_ok D D' vm ->
      List.nth_error Bks m = Some bm ->
      List.length Bks = ind_nblk D ->
@@ -974,8 +970,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
      Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                      ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
         Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
@@ -991,9 +987,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M
-       ≈ a_elim r (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-           (view_wrap r p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M
+       ≈ a_elim r qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
+           (view_wrap r p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A constructor of a view at the group's uniform parameters [Us] is the
     container's constructor at the view's arguments there, both sides at

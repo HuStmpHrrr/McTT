@@ -752,13 +752,13 @@ Definition brs_wk (Bs : list (string * nat * exp)) (φ : wk) : list (string * na
 Definition blocks_wk (Bks : list eblock) (φ : wk) : list eblock :=
   List.map (fun b =>
     match b with
-    | eb_mk nm oZ A Bs =>
-        eb_mk nm (option_map (fun Z => exp_wk Z (wk_qn (nm - 1) φ)) oZ) (exp_wk A (wk_qn nm φ))
+    | eb_mk nm Z A Bs =>
+        eb_mk nm (exp_wk Z (wk_qn (nm - 1) φ)) (exp_wk A (wk_qn nm φ))
           (List.map (fun br => (fst br, exp_wk (snd br) (wk_qn (snd (fst br)) φ))) Bs)
     end) Bks.
 
-Lemma exp_wk_elim : forall r oq Us m Bks M φ,
-    (a_elim r oq Us m Bks M)[φ]ʷ = a_elim r oq (List.map (fun U => U[φ]ʷ) Us) m (blocks_wk Bks φ) M[φ]ʷ.
+Lemma exp_wk_elim : forall r pq Us m Bks M φ,
+    (a_elim r pq Us m Bks M)[φ]ʷ = a_elim r pq (List.map (fun U => U[φ]ʷ) Us) m (blocks_wk Bks φ) M[φ]ʷ.
 Proof. reflexivity. Qed.
 
 (** The motives of the blocks, in order. *)
@@ -798,26 +798,20 @@ Definition motives_sel (sel : option (list nat)) (As : list exp) : list exp :=
 Definition blocks_binder_count_at (Dq : ind_decl) (sel : option (list nat)) (Bks : list eblock) : Prop :=
   forall i Mi b, ind_member Dq i = Some Mi -> List.nth_error Bks (elim_src sel i) = Some b -> eb_binder_count b = S (im_nn Mi).
 
-(** The eliminator a recursive result at the member [j] is, at the
-    group's uniform parameters [Us]: for a group with views the group's,
-    named; for one without, the eliminator itself.  It is of the sort [r]
-    of the eliminator's motives. *)
-Definition elim_at (r : relevance) (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock) (j : nat) (M : exp) : exp :=
-  a_elim r (if ind_has_views D then Some pq else oq) Us j Bks M.
-
 (** The recursive result of an argument [M] along a leaf path [l], as an
     elimination: under the domains the path passes, moved by [σ], the
-    eliminator at [M] applied to them and projected at the fields the path
-    passes; a projection extends [σ] by the projections of the
+    eliminator of the group [pq] at [M], of the sort [r] and at the
+    uniform parameters [Us], applied to them and projected at the fields
+    the path passes; a projection extends [σ] by the projections of the
     non-recursive fields before the field. *)
-Fixpoint leaf_ih (r : relevance) (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock)
+Fixpoint leaf_ih (r : relevance) (pq : qname) (Us : list exp) (Bks : list eblock)
     (σ : sub) (M : exp) (l : leaf_path) : exp :=
   match l with
   | leaf_pi B l =>
-      a_fn B[σ] (leaf_ih r pq D oq (List.map (fun U => U[wk_shift]ʷ) Us) (blocks_wk Bks wk_shift) (sb_q σ)
+      a_fn B[σ] (leaf_ih r pq (List.map (fun U => U[wk_shift]ʷ) Us) (blocks_wk Bks wk_shift) (sb_q σ)
                    (a_app M[wk_shift]ʷ (a_var 0)) l)
-  | leaf_self j _ => elim_at r pq D oq Us Bks j M
-  | leaf_proj f ns l => leaf_ih r pq D oq Us Bks (sb_of_list σ (projections_of ns M)) (a_proj f M) l
+  | leaf_self j _ => a_elim r pq Us j Bks M
+  | leaf_proj f ns l => leaf_ih r pq Us Bks (sb_of_list σ (projections_of ns M)) (a_proj f M) l
   end.
 
 (** The recursive results of the arguments [As] of a constructor, as
@@ -825,23 +819,18 @@ Fixpoint leaf_ih (r : relevance) (pq : qname) (D : ind_decl) (oq : option qname)
     instantiates the parameters and the non-recursive arguments before,
     [m] of them above the uniform parameters, which the shapes' components
     are over. *)
-Fixpoint elim_ihs (r : relevance) (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock)
+Fixpoint elim_ihs (r : relevance) (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock)
     (σ : sub) (m : nat) (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
-  | ca_arg _ _ :: gs', N :: As' => elim_ihs r pq D oq Us Bks (σ ,, N) (S m) gs' As'
+  | ca_arg _ _ :: gs', N :: As' => elim_ihs r pq D Us Bks (σ ,, N) (S m) gs' As'
   | ca_rec t :: gs', M :: As' =>
-      List.map (leaf_ih r pq D oq Us Bks σ M) (shape_leaves (rview_leaves D) m t) ++ elim_ihs r pq D oq Us Bks σ m gs' As'
+      List.map (leaf_ih r pq Us Bks σ M) (shape_leaves (rview_leaves D) m t) ++ elim_ihs r pq D Us Bks σ m gs' As'
   | _, _ => nil
   end.
 
 (** The branches are in the order of the constructors. *)
 Definition brs_names (cs : list (string * list carg)) (Bs : list (string * nat * exp)) : Prop :=
   List.map fst cs = List.map (fun b => fst (fst b)) Bs.
-
-(** The group of an eliminator: written, or that of the scrutinee's type,
-    at a declared member. *)
-Definition elim_grp (D : ind_decl) (oq : option qname) (pq : qname) (m : nat) : Prop :=
-  oq = Some pq \/ (oq = None /\ m < ind_ndecl D).
 
 (** The components of a recursive argument's shape as the type of the
     argument has them: the domain [d], under the arguments before it ([pat])
@@ -1116,7 +1105,7 @@ Definition wrap_branch (r : relevance) (pq : qname) (D D' : ind_decl) (Us : list
   let Us' := List.map (fun U => U[wk_shiftn n']ʷ) Us in
   let nvars := vars_from (nr' + na) nn in
   let avars := vars_from nr' na in
-  let ihs := elim_ihs r pq D (Some pq) Us' (blocks_wk Bks (wk_shiftn n')) (sb_of_list (sb_of_wk (wk_shiftn n')) (Us' ++ nvars)) nn gs avars in
+  let ihs := elim_ihs r pq D Us' (blocks_wk Bks (wk_shiftn n')) (sb_of_list (sb_of_wk (wk_shiftn n')) (Us' ++ nvars)) nn gs avars in
   (c, n', B[sb_of_list (sb_of_wk (wk_shiftn n')) (nvars ++ avars ++ wrap_ihs D' D gs' gs ihs 0 nr')]).
 
 (** The members [vm] lists of [D] are those of the container's group [D']
@@ -1136,22 +1125,26 @@ Record view_wrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_view_wrap_ok
         (forall c gs' gs, In (c, gs') (im_cons Mi') -> ind_con Mv c = Some gs -> cargs_correspond vm gs' gs) }.
 
 (** The container's blocks: one per member of the container's group [D']
-    that has a block. *)
-Definition view_wrap_block (r : relevance) (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
+    at [qc], at its uniform parameters [Uc], that has a block.  The block
+    of the member [i'] has the container's member type as its scrutinee
+    type, the motive of the view's block, and the view's branches
+    wrapped. *)
+Definition view_wrap_block (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock)
     (i' : nat) (Mi' : imember) : eblock :=
   let v := List.nth i' vm 0 in
   match List.nth_error Bks v, ind_member D v with
   | Some (eb_mk nm _ A Bs), Some Mv =>
-      eb_mk nm None A (List.map (fun cg => wrap_branch r pq D D' Us Bks Mv Bs (fst cg) (snd cg)) (im_cons Mi'))
-  | _, _ => eb_mk 0 None exp_default nil
+      eb_mk nm (ind_mty qc D' i' (List.map (fun U => U[wk_shiftn (im_nn Mi')]ʷ) Uc) (vars_from 0 (im_nn Mi'))) A
+        (List.map (fun cg => wrap_branch r pq D D' Us Bks Mv Bs (fst cg) (snd cg)) (im_cons Mi'))
+  | _, _ => eb_mk 0 exp_default exp_default nil
   end.
 
 (** The container's blocks for its members [ms], from the member [i'] on. *)
-Fixpoint view_wrap_from (r : relevance) (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
+Fixpoint view_wrap_from (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock)
     (i' : nat) (ms : list imember) : list eblock :=
   match ms with
   | nil => nil
-  | Mi' :: ms' => view_wrap_block r pq D D' vm Us Bks i' Mi' :: view_wrap_from r pq D D' vm Us Bks (S i') ms'
+  | Mi' :: ms' => view_wrap_block r pq qc D D' vm Us Uc Bks i' Mi' :: view_wrap_from r pq qc D D' vm Us Uc Bks (S i') ms'
   end.
 
 (** The members of a group that have a block: all but the record views,
@@ -1159,10 +1152,10 @@ Fixpoint view_wrap_from (r : relevance) (pq : qname) (D D' : ind_decl) (vm : lis
 Definition ind_block_members (D : ind_decl) : list imember := List.firstn (ind_nblk D) (ind_members D).
 
 (** The blocks of the container's eliminator that the eliminator at a view
-    reads as: one per member of the container's group [D'] that has a
-    block. *)
-Definition view_wrap (r : relevance) (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock) : list eblock :=
-  view_wrap_from r pq D D' vm Us Bks 0 (ind_block_members D').
+    reads as: one per member of the container's group [D'], at [qc] and at
+    the uniform parameters [Uc], that has a block. *)
+Definition view_wrap (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock) : list eblock :=
+  view_wrap_from r pq qc D D' vm Us Uc Bks 0 (ind_block_members D').
 
 (** There are at most as many members with a block as members. *)
 Lemma ind_nblk_le : forall D, ind_nblk D <= List.length (ind_members D).
@@ -1179,9 +1172,9 @@ Qed.
 Lemma length_ind_block_members : forall D, List.length (ind_block_members D) = ind_nblk D.
 Proof. intros; unfold ind_block_members; rewrite List.length_firstn; pose proof (ind_nblk_le D); lia. Qed.
 
-Lemma nth_error_view_wrap_from : forall r pq D D' vm Us Bks ms s k b,
-    List.nth_error (view_wrap_from r pq D D' vm Us Bks s ms) k = Some b ->
-    exists Mi', List.nth_error ms k = Some Mi' /\ b = view_wrap_block r pq D D' vm Us Bks (s + k) Mi'.
+Lemma nth_error_view_wrap_from : forall r pq qc D D' vm Us Uc Bks ms s k b,
+    List.nth_error (view_wrap_from r pq qc D D' vm Us Uc Bks s ms) k = Some b ->
+    exists Mi', List.nth_error ms k = Some Mi' /\ b = view_wrap_block r pq qc D D' vm Us Uc Bks (s + k) Mi'.
 Proof.
   induction ms as [| M ms IH]; intros * H; [ destruct k; discriminate |].
   destruct k as [| k]; cbn in H.
@@ -1189,7 +1182,7 @@ Proof.
   - destruct (IH _ _ _ H) as (Mi' & HM & ->); exists Mi'; split; [ exact HM | f_equal; lia ].
 Qed.
 
-Lemma length_view_wrap : forall r pq D D' vm Us Bks, List.length (view_wrap r pq D D' vm Us Bks) = List.length (ind_block_members D').
+Lemma length_view_wrap : forall r pq qc D D' vm Us Uc Bks, List.length (view_wrap r pq qc D D' vm Us Uc Bks) = List.length (ind_block_members D').
 Proof.
   intros; unfold view_wrap; generalize 0; induction (ind_block_members D'); intros; cbn; [ reflexivity | f_equal; apply IHl ].
 Qed.
@@ -1219,11 +1212,11 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False => True
   | a_succl M | a_univ M | a_left M | a_right M => exp_mvc n M
   | a_maxl M N | a_absurd M N => exp_mvc n M /\ exp_mvc n N
-  | a_conj T M N => exp_mvc n T /\ exp_mvc n M /\ exp_mvc n N
-  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
+  | a_conj P Q M N => exp_mvc n P /\ exp_mvc (S n) Q /\ exp_mvc n M /\ exp_mvc n N
+  | a_ind _ _ | a_con _ _ _ => True
   | a_elim _ _ Us _ Bks M =>
       all_list (exp_mvc n) Us /\
-      all_blocks (fun nm oZ A Bs => opt_all (exp_mvc (nm - 1 + n)) oZ /\ exp_mvc (nm + n) A /\
+      all_blocks (fun nm Z A Bs => exp_mvc (nm - 1 + n) Z /\ exp_mvc (nm + n) A /\
                                     all_brs (fun k B => exp_mvc (k + n) B) Bs) Bks /\ exp_mvc n M
   | a_pi _ A B | a_fn A B | a_and A B => exp_mvc n A /\ exp_mvc (S n) B
   | a_app M N => exp_mvc n M /\ exp_mvc n N
@@ -1391,10 +1384,10 @@ Proof.
   unfold im_nn; lia.
 Qed.
 
-Lemma length_elim_ihs : forall r pq D oq Us Bks σ m gs As,
-    List.length As = List.length gs -> List.length (elim_ihs r pq D oq Us Bks σ m gs As) = cargs_nrec D gs.
+Lemma length_elim_ihs : forall r pq D Us Bks σ m gs As,
+    List.length As = List.length gs -> List.length (elim_ihs r pq D Us Bks σ m gs As) = cargs_nrec D gs.
 Proof.
-  intros r pq D oq Us Bks σ m gs; revert σ m.
+  intros r pq D Us Bks σ m gs; revert σ m.
   induction gs as [| [] gs IH]; intros σ m [| N As] Hl; cbn in *; try discriminate; try reflexivity.
   - apply IH; lia.
   - rewrite length_app, length_map, (length_shape_leaves _ _ _ 0), IH by lia; reflexivity.

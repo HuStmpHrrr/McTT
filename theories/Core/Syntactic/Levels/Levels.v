@@ -156,7 +156,8 @@ Definition branch_code {E : Set} (f : E -> code_tree) (br : normal_branch_g E) :
 
 (** A block: its arity, its motive, then its branches. *)
 Definition block_code {E : Set} (f : E -> code_tree) (b : normal_block_g E) : code_tree :=
-  code_tree_node (block_arity b) (f (block_motive b)) (list_code (branch_code f) (block_branches b) code_tree_nil).
+  code_tree_node (block_arity b) (code_tree_node 0 (f (block_scrutinee_type b)) (f (block_motive b)))
+    (list_code (branch_code f) (block_branches b) code_tree_nil).
 
 (** The coding of normal forms.  The tags order the constructors; in a
     neutral, [ne_var] comes first, so variables precede every other atom and
@@ -246,8 +247,8 @@ Lemma block_code_inj {E F : Set} (P : E -> Set) (f : E -> code_tree) (g : E -> F
     normal_block_g_all E P b -> (forall x, P x -> forall y, f x = f y -> g x = g y) ->
     forall b', block_code f b = block_code f b' -> map_normal_block (fun _ => g) b = map_normal_block (fun _ => g) b'.
 Proof.
-  intros b [n x Hx brs Hbrs] Hf [n' y brs'] H; unfold block_code in H; cbn in H; injection H as -> H H'.
-  apply (Hf _ Hx) in H.
+  intros b [n z Hz x Hx brs Hbrs] Hf [n' z' y brs'] H; unfold block_code in H; cbn in H; injection H as -> Hzz H H'.
+  apply (Hf _ Hz) in Hzz; apply (Hf _ Hx) in H.
   eapply (list_code_inj _ _ (map_normal_branch (fun _ => g))) in H' as [Ebrs _]; [| exact Hbrs |].
   - unfold map_normal_block; cbn; congruence.
   - intros br Hbr br'; eapply branch_code_inj; eassumption.
@@ -324,8 +325,8 @@ Proof.
   all: first
     [ intros a Ha; destruct Ha as [k s x Hx]; unfold atom_code, map_level_atom; cbn; rewrite Hx; reflexivity
     | intros x Hx; apply Hx
-    | intros b Hb; destruct Hb as [n' x Hx brs Hbrs]; unfold block_code, map_normal_block; cbn;
-      rewrite Hx; f_equal; apply (list_code_map _ _ _ _ _ Hbrs);
+    | intros b Hb; destruct Hb as [n' z Hz x Hx brs Hbrs]; unfold block_code, map_normal_block; cbn;
+      rewrite Hz, Hx; f_equal; apply (list_code_map _ _ _ _ _ Hbrs);
       intros br Hbr; destruct Hbr as [c n'' y Hy]; unfold branch_code, map_normal_branch; cbn; rewrite Hy; reflexivity ].
 Qed.
 

@@ -445,9 +445,8 @@ Qed.
     contexts, which the induction hypotheses of the telescope premises
     give; the annotations of the second side by the equations of the
     annotated contexts. *)
-Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D oq Us m Mm Bks bm Ps M i,
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
     ind_lookup Θ Ξ p = Some D ->
-    elim_grp D oq p m ->
     ind_member D m = Some Mm ->
     List.nth_error Bks m = Some bm ->
     List.length Bks = ind_nblk D ->
@@ -460,18 +459,18 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D oq Us m Mm Bks bm Ps M 
        Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[τ]) ->
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-    (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-    (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) ->
-         Θ ⍮ Ξ ⍮ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) τ ++ Δ0
-           ⊢ˢ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z)) τ
-            ≈ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z)) τ'
-           : (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) ++ Γ /\
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) τ
-           ≈ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) τ') /\
+       (tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) ->
+         Θ ⍮ Ξ ⍮ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b)) τ
+            ≈ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b)) τ'
+           : (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) τ
+           ≈ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) τ') /\
        (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
@@ -534,10 +533,10 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D oq Us m Mm Bks bm Ps M 
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim r oq Us m Bks M)[σ] ≈ (a_elim r oq Us m Bks M)[σ']
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim r p Us m Bks M)[σ] ≈ (a_elim r p Us m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
-  intros * Hl Hg HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
+  intros * Hl HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
   pose proof (type_sort_relevance r _ (type_sort_universe i)) as HS.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
@@ -546,9 +545,9 @@ Proof.
   assert (HPs1 : forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
-  assert (HZ1 : forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
+  assert (HZ1 : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) σ0
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) σ0
                           ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0)
     by (intros; eapply sub_preserves_ext; eauto).
   assert (HA1 : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
@@ -572,7 +571,7 @@ Proof.
   pose proof (sub_as_sub_dom Θ Ξ) as Rd; pose proof (sub_as_sub_ext Θ Ξ) as Re.
   rewrite !exp_sub_elim, (elim_type_sub D Mm bm) by eauto.
   eapply wf_exp_eq_elim_cong;
-    [ exact Hl | exact Hg | exact Hg | exact HMm | rewrite nth_error_blocks_sub, Hbm; reflexivity
+    [ exact Hl | exact HMm | rewrite nth_error_blocks_sub, Hbm; reflexivity
     | rewrite length_blocks_sub; exact HlB | rewrite length_blocks_sub; exact HlB | rewrite List.length_map; exact HlP | .. ].
   - eapply move_elim_params with (R := sub_as_sub Θ Ξ); eassumption.
   - rewrite List.length_map; exact HlP.
@@ -588,20 +587,21 @@ Proof.
   - rewrite List.firstn_map; eapply move_blocks_ann with (R := sub_as_sub Θ Ξ); eassumption.
   - (* the annotations at the second substitution, at the parameters at the
        first: equal to those at the first *)
-    intros k Mk b Z HMk Hb HZb.
+    intros k Mk b HMk Hb.
     rewrite nth_error_blocks_sub in Hb; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb; [| discriminate ].
-    injection Hb as <-; destruct b0 as [nm oZ A0 Bs0]; cbn in HZb; destruct oZ as [Z0 |]; [| discriminate ].
-    injection HZb as <-.
+    injection Hb as <-; destruct b0 as [nm Z0 A0 Bs0]; cbn [eblock_sub eb_scrutinee_type].
     pose proof (Hnm _ _ _ HMk Hb0) as Enm; cbn in Enm; subst nm.
     replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia.
     assert (Hlft : Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps)))
                                   ▹ Z0[sb_qn (im_nn Mk) σ]
                                 ≈ elim_mctx p D k Mk (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps))).
-    { eapply move_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) (Some Z0) A0 Bs0) σ);
-        first [ eassumption | rewrite nth_error_blocks_sub, Hb0; reflexivity | cbn [eblock_sub eb_ann option_map]; replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia; reflexivity ]. }
+    { replace (Z0[sb_qn (im_nn Mk) σ]) with (eb_scrutinee_type (eblock_sub (eb_mk (S (im_nn Mk)) Z0 A0 Bs0) σ))
+        by (cbn [eblock_sub eb_scrutinee_type]; replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia; reflexivity).
+      eapply move_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) Z0 A0 Bs0) σ);
+        first [ eassumption | rewrite nth_error_blocks_sub, Hb0; reflexivity ]. }
     assert (HtZ : tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z0))
       by (constructor; [ eauto | apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption ]).
-    destruct (proj1 (IHZ _ _ _ _ HMk Hb0 eq_refl _ _ _ Hσ) HtZ) as [_ HZσ].
+    destruct (proj1 (IHZ _ _ _ HMk Hb0 _ _ _ Hσ) HtZ) as [_ HZσ].
     cbn [tele_sub centry_sub] in HZσ; rewrite length_tele_sub in HZσ; fold (im_nn Mk) in HZσ.
     erewrite !nparams_sub in HZσ by eassumption.
     rewrite List.firstn_map; unfold elim_mctx in Hlft |- *; eapply ann_ctx_trans; [ exact HZσ | exact Hlft |].
@@ -611,7 +611,7 @@ Proof.
     intros k Mk b b' HMk Hb Hb'.
     rewrite !nth_error_blocks_sub in Hb, Hb'; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb, Hb'; [| discriminate ].
     injection Hb as <-; injection Hb' as <-.
-    pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm oZ A0 Bs0]; cbn in Enm |- *; subst nm.
+    pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm Z0 A0 Bs0]; cbn in Enm |- *; subst nm.
     destruct (proj1 (IHΨ _ _ HMk _ _ _ Hσ) (elim_mctx_ass _ _ _ _ _ HD HMk)) as [Hlift _].
     rewrite length_elim_mctx in Hlift; erewrite elim_mctx_sub in Hlift by eassumption.
     rewrite List.firstn_map; pose proof (IHA _ _ _ HMk Hb0 _ _ _ Hlift) as HAσ.
@@ -619,7 +619,7 @@ Proof.
   - intros k Mk HMk; rewrite List.firstn_map; erewrite <- elim_mctx_sub by eassumption; exact (HΨ1 _ _ HMk _ _ Hs).
   - apply move_blocks_names; exact Hn.
   - intros k b b' Hb Hb'; rewrite !nth_error_blocks_sub in Hb, Hb'.
-    destruct (List.nth_error Bks k) as [[nm oZ A0 Bs0] |]; cbn in Hb, Hb'; [| discriminate ].
+    destruct (List.nth_error Bks k) as [[nm Z0 A0 Bs0] |]; cbn in Hb, Hb'; [| discriminate ].
     injection Hb as <-; injection Hb' as <-; cbn; unfold brs_sub; rewrite !brs_fst_map; reflexivity.
   - rewrite List.firstn_map; eapply move_blocks_bctx with (R := sub_as_sub Θ Ξ); eassumption.
   - apply move_blocks_counts; exact Hk.
@@ -627,7 +627,7 @@ Proof.
     intros k Mk b b' i0 c gs n B1 B2 HMk Hb Hb' Hi Hi' Hc.
     rewrite !nth_error_blocks_sub in Hb, Hb'; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb, Hb'; [| discriminate ].
     injection Hb as <-; injection Hb' as <-.
-    pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm oZ A0 Bs0]; cbn in Enm, Hi, Hi' |- *; subst nm.
+    pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm Z0 A0 Bs0]; cbn in Enm, Hi, Hi' |- *; subst nm.
     unfold brs_sub in Hi, Hi'.
     apply nth_error_map_inv in Hi as ([[c1 n1] B] & Hi & Heq1); cbn in Heq1; injection Heq1 as -> -> ->.
     apply nth_error_map_inv in Hi' as ([[c2 n2] B'] & Hi' & Heq2); cbn in Heq2; injection Heq2 as -> -> ->.
@@ -1597,7 +1597,7 @@ Proof.
         let HX := fresh "HX" in let HAP := fresh "HAP" in
         assert (HX : wf_exp _ _ Γ A X)
           by (solve [ eauto 2 using wf_conj, wf_left, wf_right ]);
-        assert (HAP : wf_exp _ _ Γ a_prop A) by (solve [ eauto 2 ])
+        assert (HAP : wf_exp _ _ Γ a_prop A) by (solve [ eauto 2 using wf_and ])
     end.
   (** Where the proposition is a premise, its induction hypothesis moves it
       to the other substitution, and both sides are proofs of it. *)

@@ -280,19 +280,18 @@ Ltac syn_ext_us lift liftn :=
       induction HU; cbn [List.map]; f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ]
   end.
 
-(** The blocks of an eliminator: each its annotation (under one binder
-    fewer than its motive), its motive and its branches. *)
+(** The blocks of an eliminator: each its scrutinee type (under one
+    binder fewer than its motive), its motive and its branches. *)
 Ltac syn_ext_blocks lift liftn :=
   match goal with
   | HF : List.Forall (fun b => _ /\ _) ?Bks |- _ =>
       lazymatch goal with |- List.map _ _ = _ => idtac | |- _ = List.map _ _ => idtac end;
       let HZ := fresh "HZ" in let HA := fresh "HA" in let HB := fresh "HB" in
-      induction HF as [| [? oZ ? ?] ? [HZ [HA HB]] ? ?]; cbn [List.map eb_ann eb_motive eb_brs option_map] in *;
+      induction HF as [| [? ? ? ?] ? [HZ [HA HB]] ? ?]; cbn [List.map eb_scrutinee_type eb_motive eb_brs] in *;
         [ reflexivity |];
       f_equal; [| assumption ];
       f_equal;
-        [ destruct oZ; cbn [option_map]; [ f_equal; specialize (HZ _ eq_refl); autorewrite with syn_ops;
-                                          solve [ eauto using lift, liftn ] | reflexivity ]
+        [ autorewrite with syn_ops; solve [ eauto using lift, liftn ]
         | autorewrite with syn_ops; solve [ eauto using lift, liftn ]
         | syn_ext_brs lift liftn ]
   end.
@@ -307,18 +306,18 @@ Ltac brs_case :=
       induction HF as [| [[? ?] ?] ? HB ? IH]; intros; cbn [all_brs List.map fst snd] in *; destruct_all
   end.
 
-(** The blocks of an eliminator, likewise: in each block the annotation,
-    the motive and the branches, each closed by [one] from its induction
-    hypothesis. *)
+(** The blocks of an eliminator, likewise: in each block the scrutinee
+    type, the motive and the branches, each closed by [one] from its
+    induction hypothesis. *)
 Ltac blocks_case one :=
   match goal with
-  | HF : List.Forall (fun b => (forall Z, eb_ann b = Some Z -> _) /\ _) ?Bks |- _ =>
+  | HF : List.Forall (fun b => _ /\ _ /\ List.Forall _ (eb_brs b)) ?Bks |- _ =>
       repeat match goal with H : context [Bks] |- _ => lazymatch H with HF => fail | _ => revert H end end;
       let HZ := fresh "HZ" in let HA := fresh "HA" in let HBs := fresh "HBs" in
-      induction HF as [| [? oZ ? ?] ? [HZ [HA HBs]] ? IHb]; intros;
-      cbn [all_blocks List.map eb_ann eb_motive eb_brs option_map opt_all] in *; destruct_all;
+      induction HF as [| [? ? ? ?] ? [HZ [HA HBs]] ? IHb]; intros;
+      cbn [all_blocks List.map eb_scrutinee_type eb_motive eb_brs] in *; destruct_all;
       [ solve [ auto ]
-      | split; [ split; [ destruct oZ; cbn [opt_all option_map] in *; [ specialize (HZ _ eq_refl); one HZ | exact I ]
+      | split; [ split; [ one HZ
                        | split; [ one HA | brs_case; [ solve [ auto ]
                                                      | split; [ match goal with H : _ |- _ => solve [ one H ] end | auto ] ] ] ]
                | solve [ eauto ] ] ]
@@ -357,14 +356,14 @@ Ltac ups_eq_case one :=
 (** The same for an equation between two lists of blocks. *)
 Ltac blocks_eq_case one :=
   match goal with
-  | HF : List.Forall (fun b => (forall Z, eb_ann b = Some Z -> _) /\ _) ?Bks |- _ =>
+  | HF : List.Forall (fun b => _ /\ _ /\ List.Forall _ (eb_brs b)) ?Bks |- _ =>
       repeat match goal with H : context [Bks] |- _ => lazymatch H with HF => fail | _ => revert H end end;
       let HZ := fresh "HZ" in let HA := fresh "HA" in let HBs := fresh "HBs" in
-      induction HF as [| [? oZ ? ?] ? [HZ [HA HBs]] ? IHb]; intros;
-      cbn [all_blocks List.map eb_ann eb_motive eb_brs option_map opt_all] in *; destruct_all;
+      induction HF as [| [? ? ? ?] ? [HZ [HA HBs]] ? IHb]; intros;
+      cbn [all_blocks List.map eb_scrutinee_type eb_motive eb_brs] in *; destruct_all;
       [ reflexivity
       | f_equal; [ f_equal;
-                   [ destruct oZ; cbn [option_map opt_all] in *; [ f_equal; specialize (HZ _ eq_refl); one HZ | reflexivity ]
+                   [ one HZ
                    | one HA
                    | brs_case; [ reflexivity
                                | f_equal; [ f_equal; match goal with H : _ |- _ => solve [ one H ] end | auto ] ] ]

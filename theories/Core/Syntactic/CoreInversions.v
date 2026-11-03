@@ -304,37 +304,29 @@ Qed.
 #[export]
 Hint Resolve wf_and_inversion : mctt.
 
-(** What a proof of a conjunction is typed by: its annotation [T], a
-    proposition equal to [Σₚ P Q], and its components. *)
+(** What a proof of the conjunction [Σₚ P Q] is typed by: its components'
+    propositions and its components. *)
 #[warnings="-cannot-define-projection"]
-Record conj_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (T M N C : typ) : Prop := mk_conj_inv
-  { (** The first component's proposition *)
-    conj_inv_left_prop : typ
-    (** The second component's, under the first *)
-  ; conj_inv_right_prop : typ
-    (** The annotation is a proposition *)
-  ; conj_inv_ann : Θ ⍮ Ξ ⍮ Γ ⊢ T : Propₘ
-    (** It is the conjunction *)
-  ; conj_inv_eq : Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ Σₚ conj_inv_left_prop conj_inv_right_prop : Propₘ
-    (** The first component's proposition is one *)
-  ; conj_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ conj_inv_left_prop : Propₘ
+Record conj_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (P Q M N C : typ) : Prop := mk_conj_inv
+  { (** The first component's proposition is one *)
+    conj_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ
     (** So is the second's, under the first *)
-  ; conj_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹ conj_inv_left_prop ⊢ conj_inv_right_prop : Propₘ
+  ; conj_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ
     (** The first component *)
-  ; conj_inv_left : Θ ⍮ Ξ ⍮ Γ ⊢ M : conj_inv_left_prop
+  ; conj_inv_left : Θ ⍮ Ξ ⍮ Γ ⊢ M : P
     (** The second component, at the first *)
-  ; conj_inv_right : Θ ⍮ Ξ ⍮ Γ ⊢ N : conj_inv_right_prop[Id,,M]
-    (** The annotation is below [C] *)
-  ; conj_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ T ⊆ C }.
+  ; conj_inv_right : Θ ⍮ Ξ ⍮ Γ ⊢ N : Q[Id,,M]
+    (** The conjunction is below [C] *)
+  ; conj_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q ⊆ C }.
 
-Lemma wf_conj_inversion : forall Θ Ξ Γ T M N C,
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_conj T M N : C ->
-    conj_inv Θ Ξ Γ T M N C.
+Lemma wf_conj_inversion : forall Θ Ξ Γ P Q M N C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_conj P Q M N : C ->
+    conj_inv Θ Ξ Γ P Q M N C.
 Proof.
   intros * H.
   dependent induction H.
   - econstructor; try eassumption; mautosolve 3.
-  - destruct (IHwf_exp1 _ _ _ eq_refl) as [P Q HT HTe HP HQ HM HN Hs].
+  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as [HP HQ HM HN Hs].
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 
@@ -673,17 +665,15 @@ Proof.
   eapply wf_exp_eq_con_rview; eassumption.
 Qed.
 
-(** What the eliminator [a_elim oq Us m Bks M] is typed by: the premises of
-    [wf_elim], and the type it gives below [T].  The stored uniform
+(** What the eliminator [a_elim r pq Us m Bks M] is typed by: the premises
+    of [wf_elim], and the type it gives below [T].  The stored uniform
     parameters are exactly those of the derivation ([elim_inv_ups]): convertible
     ones are reached only through the congruence rule. *)
 #[warnings="-cannot-define-projection"]
-Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (oq : option qname) (Us : list exp) (m : nat)
+Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (pq : qname) (Us : list exp) (m : nat)
     (Bks : list eblock) (M T : typ) : Prop := mk_elim_inv
-  { (** The group's path *)
-    elim_inv_grp : qname
-    (** The group *)
-  ; elim_inv_decl : ind_decl
+  { (** The group *)
+    elim_inv_decl : ind_decl
     (** The scrutinee's member *)
   ; elim_inv_mem : imember
     (** That member's block *)
@@ -693,9 +683,7 @@ Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (oq : opti
     (** The level of the motives' sort, [relevance_sort r Typeω@_] *)
   ; elim_inv_level : nat
     (** The group is found at its path *)
-  ; elim_inv_lookup : ind_lookup Θ Ξ elim_inv_grp = Some elim_inv_decl
-    (** The eliminator's group annotation names it *)
-  ; elim_inv_elim_grp : elim_grp elim_inv_decl oq elim_inv_grp m
+  ; elim_inv_lookup : ind_lookup Θ Ξ pq = Some elim_inv_decl
     (** The member is the group's [m]-th *)
   ; elim_inv_member : ind_member elim_inv_decl m = Some elim_inv_mem
     (** Its block is the [m]-th *)
@@ -706,22 +694,22 @@ Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (oq : opti
   ; elim_inv_ps : forall k P T, List.nth_error elim_inv_params k = Some P ->
       List.nth_error (tele_insts (im_params elim_inv_decl elim_inv_mem) Id elim_inv_params) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P : T
     (** The scrutinee is of the member's type at the parameters *)
-  ; elim_inv_scrut : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty elim_inv_grp elim_inv_decl m (List.firstn (ind_nu elim_inv_decl) elim_inv_params)
+  ; elim_inv_scrut : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty pq elim_inv_decl m (List.firstn (ind_nu elim_inv_decl) elim_inv_params)
                                  (List.skipn (ind_nu elim_inv_decl) elim_inv_params)
     (** The stored uniform parameters are the derivation's *)
   ; elim_inv_ups : Us = List.firstn (ind_nu elim_inv_decl) elim_inv_params
     (** The blocks are typed *)
-  ; elim_inv_blocks : blocks_typed Θ Ξ Γ elim_inv_grp elim_inv_decl (List.firstn (ind_nu elim_inv_decl) elim_inv_params) Bks r elim_inv_level
+  ; elim_inv_blocks : blocks_typed Θ Ξ Γ pq elim_inv_decl (List.firstn (ind_nu elim_inv_decl) elim_inv_params) Bks r elim_inv_level
     (** The block's motive at the non-uniform parameters and the scrutinee
         is below [T] *)
   ; elim_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ (eb_motive elim_inv_block)[sb_of_list Id (List.skipn (ind_nu elim_inv_decl) elim_inv_params ++ M :: nil)] ⊆ T }.
 
-Lemma wf_elim_inversion : forall {Θ Ξ Γ r oq Us m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r oq Us m Bks M : T ->
-    elim_inv Θ Ξ Γ r oq Us m Bks M T.
+Lemma wf_elim_inversion : forall {Θ Ξ Γ r pq Us m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r pq Us m Bks M : T ->
+    elim_inv Θ Ξ Γ r pq Us m Bks M T.
 Proof.
   intros * H; dependent induction H.
   - econstructor; try eassumption; try reflexivity; [ constructor; eassumption |].
     eapply wf_subtyp_of_typed; eapply wf_elim; try eassumption; reflexivity.
-  - destruct (IHwf_exp1 _ _ _ _ _ _ eq_refl) as [p D Mm bm Ps i0 Hl Hg Hm Hb HPl HPs HM HUs HBt Hs].
+  - destruct (IHwf_exp1 _ _ _ _ _ _ eq_refl) as [D Mm bm Ps i0 Hl Hm Hb HPl HPs HM HUs HBt Hs].
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.

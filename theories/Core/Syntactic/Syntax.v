@@ -581,17 +581,17 @@ Arguments record_fields {E C}.
 Arguments record_field_relevance {E C}.
 
 (** A block of an eliminator ([a_elim]), one per member of the group, in
-    the group's order: [eb_mk nm oZ A Bs].  The motive [A] binds [nm]
-    variables, the member's non-uniform parameters and the scrutinee; [oZ]
-    is the type of the scrutinee as written, if it is written, over the
-    non-uniform parameters; each branch [(c, n, B)] is the case of the
-    constructor [c], in order, and binds [n] variables: the non-uniform
-    parameters, the arguments, and one recursive result per recursive
-    argument. *)
+    the group's order: [eb_mk nm Z A Bs].  The motive [A] binds [nm]
+    variables, the member's non-uniform parameters and the scrutinee; [Z]
+    is the type of the scrutinee, over the non-uniform parameters (the
+    typed fill writes it where the user does not); each branch [(c, n, B)]
+    is the case of the constructor [c], in order, and binds [n] variables:
+    the non-uniform parameters, the arguments, and one recursive result per
+    recursive argument. *)
 Inductive eblock_g (E : Set) : Set :=
-(** The block of [nm] motive binders, the written scrutinee type [oZ], the
-    motive [A] and the branches [Bs]. *)
-| eb_mk : nat -> option E -> E -> list (string * nat * E) -> eblock_g E.
+(** The block of [nm] motive binders, the scrutinee type [Z], the motive
+    [A] and the branches [Bs]. *)
+| eb_mk : nat -> E -> E -> list (string * nat * E) -> eblock_g E.
 Arguments eb_mk {E}.
 (** [exp] nests through blocks: with this scheme registered, its generated
     induction principle carries the hypotheses for a block's parts. *)
@@ -599,8 +599,8 @@ Scheme All for eblock_g.
 
 (** The number of variables a block's motive binds. *)
 Definition eb_binder_count {E : Set} (b : eblock_g E) : nat := match b with eb_mk nm _ _ _ => nm end.
-(** A block's scrutinee type as written, if it is written. *)
-Definition eb_ann {E : Set} (b : eblock_g E) : option E := match b with eb_mk _ oZ _ _ => oZ end.
+(** A block's scrutinee type. *)
+Definition eb_scrutinee_type {E : Set} (b : eblock_g E) : E := match b with eb_mk _ Z _ _ => Z end.
 (** A block's motive. *)
 Definition eb_motive {E : Set} (b : eblock_g E) : E := match b with eb_mk _ _ A _ => A end.
 (** A block's branches, one per constructor of its member, in order. *)
@@ -665,11 +665,6 @@ Inductive exp : Set :=
 | a_succl : exp -> exp
 (** The join of two levels *)
 | a_maxl : exp -> exp -> exp
-(** The token [ℕ], written for the type bound by [builtin natural]: like
-    a numeral ([a_nlit]), it is not a term of the typing judgment, and
-    literal generation ([Builtin]) replaces it by the type former of the
-    bound type. *)
-| a_ntok : exp
 (** The universe of propositions [Prop], a type of [Type@0].  A proposition is
     a type, but no universe [Type@{L}] contains it: [Prop] sits beside the
     cumulative hierarchy. *)
@@ -686,9 +681,9 @@ Inductive exp : Set :=
 (** [a_and P Q]: the dependent conjunction of propositions [Σₚ P Q], a
     proposition; [Q] binds a proof of [P] *)
 | a_and : exp -> exp -> exp
-(** [a_conj T M N]: the proof of the conjunction [T] (a [Σₚ P Q])
-    from a proof [M] of [P] and a proof [N] of [Q] at [M] *)
-| a_conj : exp -> exp -> exp -> exp
+(** [a_conj P Q M N]: the proof of the conjunction [Σₚ P Q], [Q] binding a
+    proof of [P], from a proof [M] of [P] and a proof [N] of [Q] at [M] *)
+| a_conj : exp -> exp -> exp -> exp -> exp
 (** The proof of the first component of a conjunction *)
 | a_left : exp -> exp
 (** The proof of the second component of a conjunction *)
@@ -700,20 +695,16 @@ Inductive exp : Set :=
 (** The constructor [c] of the member [k] of the group [pq], to be applied
     to the parameters and the arguments. *)
 | a_con : qname -> nat -> string -> exp
-(** A numeral as written.  It is not a term of the typing judgment:
-    literal generation ([Builtin]) replaces it by the chain of constructors of the
-    inductive type bound as the natural numbers ([builtin natural]). *)
-| a_nlit : nat -> exp
-(** [a_elim r oq Us m Bks M] eliminates [M], of the member [m] of a group
-    of inductive types, by the blocks [Bks], one per member of the group in
-    its order ([eblock_g]); the result is the motive of block [m].  The
-    motives are of the sort [r]: types of a universe ([relevant]) or
+(** [a_elim r pq Us m Bks M] eliminates [M], of the member [m] of the group
+    [pq] of inductive types, by the blocks [Bks], one per member of the
+    group in its order ([eblock_g]); the result is the motive of block [m].
+    The motives are of the sort [r]: types of a universe ([relevant]) or
     propositions ([propositional]); an elimination into propositions is a
-    proof, which evaluation does not reach.  The group is [pq] when
-    [oq = Some pq]; when [oq = None] it is that of the scrutinee's type,
-    the member [m] a declared one.  The eliminator carries the group's
-    uniform parameters [Us]: a stuck one is read at them. *)
-| a_elim : relevance -> option qname -> list exp -> nat -> list (eblock_g exp) -> exp -> exp
+    proof, which evaluation does not reach.  The eliminator carries the
+    group's uniform parameters [Us]: a stuck one is read at them.  The
+    typed fill writes the group, the parameters and the sort, read off the
+    scrutinee's type. *)
+| a_elim : relevance -> qname -> list exp -> nat -> list (eblock_g exp) -> exp -> exp
 (** [a_pi r A B], [B] binding the argument: a type of functions at
     [relevant], the impredicative universal quantification, a proposition,
     at [propositional]; the domain [A] may be of either sort *)
@@ -837,16 +828,12 @@ Fixpoint all_brs {A : Type} (f : nat -> A -> Prop) (Bs : list (string * nat * A)
   end.
 
 (** A property of every block of an eliminator: of its binder count, its
-    annotation, its motive and its branches. *)
-Fixpoint all_blocks {A : Set} (f : nat -> option A -> A -> list (string * nat * A) -> Prop) (Bks : list (eblock_g A)) : Prop :=
+    scrutinee type, its motive and its branches. *)
+Fixpoint all_blocks {A : Set} (f : nat -> A -> A -> list (string * nat * A) -> Prop) (Bks : list (eblock_g A)) : Prop :=
   match Bks with
   | nil => True
-  | eb_mk nm oZ M Bs :: Bks' => f nm oZ M Bs /\ all_blocks f Bks'
+  | eb_mk nm Z M Bs :: Bks' => f nm Z M Bs /\ all_blocks f Bks'
   end.
-
-(** The annotation of a block, scoped as [f] says, when there is one. *)
-Definition opt_all {A : Set} (f : A -> Prop) (o : option A) : Prop :=
-  match o with Some a => f a | None => True end.
 
 (** Each element of a list as [f] says (the uniform parameters an
     eliminator carries). *)
@@ -869,8 +856,8 @@ Lemma all_brs_all_list : forall {A : Set} (f : nat -> A -> Prop) Bs,
     all_brs f Bs <-> all_list (fun b => f (snd (fst b)) (snd b)) Bs.
 Proof. induction Bs as [| b Bs IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-Lemma all_blocks_all_list : forall {A : Set} (f : nat -> option A -> A -> list (string * nat * A) -> Prop) Bks,
-    all_blocks f Bks <-> all_list (fun b => match b with eb_mk nm oZ M Bs => f nm oZ M Bs end) Bks.
+Lemma all_blocks_all_list : forall {A : Set} (f : nat -> A -> A -> list (string * nat * A) -> Prop) Bks,
+    all_blocks f Bks <-> all_list (fun b => match b with eb_mk nm Z M Bs => f nm Z M Bs end) Bks.
 Proof. induction Bks as [| [] Bks IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 Lemma all_list_Forall : forall {A : Set} (f : A -> Prop) l, all_list f l <-> List.Forall f l.
@@ -899,24 +886,22 @@ Section syn_mut_ind.
     (case_llit : forall n, Pe (a_llit n))
     (case_succl : forall M, Pe M -> Pe (a_succl M))
     (case_maxl : forall M N, Pe M -> Pe N -> Pe (a_maxl M N))
-    (case_ntok : Pe a_ntok)
     (case_prop : Pe a_prop)
     (case_True : Pe a_True)
     (case_tt : Pe a_tt)
     (case_False : Pe a_False)
     (case_absurd : forall A M, Pe A -> Pe M -> Pe (a_absurd A M))
     (case_and : forall P Q, Pe P -> Pe Q -> Pe (a_and P Q))
-    (case_conj : forall T M N, Pe T -> Pe M -> Pe N -> Pe (a_conj T M N))
+    (case_conj : forall P Q M N, Pe P -> Pe Q -> Pe M -> Pe N -> Pe (a_conj P Q M N))
     (case_left : forall M, Pe M -> Pe (a_left M))
     (case_right : forall M, Pe M -> Pe (a_right M))
     (case_ind : forall p k, Pe (a_ind p k))
     (case_con : forall p k c, Pe (a_con p k c))
-    (case_nlit : forall n, Pe (a_nlit n))
-    (case_elim : forall r oq Us m Bks M,
+    (case_elim : forall r pq Us m Bks M,
         List.Forall Pe Us ->
-        List.Forall (fun b => (forall Z, eb_ann b = Some Z -> Pe Z) /\ Pe (eb_motive b) /\
+        List.Forall (fun b => Pe (eb_scrutinee_type b) /\ Pe (eb_motive b) /\
                               List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks ->
-        Pe M -> Pe (a_elim r oq Us m Bks M))
+        Pe M -> Pe (a_elim r pq Us m Bks M))
     (case_pi : forall r A B, Pe A -> Pe B -> Pe (a_pi r A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
@@ -960,40 +945,32 @@ Section syn_mut_ind.
     | a_llit n => case_llit n
     | a_succl M => case_succl M (exp_mut M)
     | a_maxl M N => case_maxl M N (exp_mut M) (exp_mut N)
-    | a_ntok => case_ntok
     | a_prop => case_prop
     | a_True => case_True
     | a_tt => case_tt
     | a_False => case_False
     | a_absurd A M => case_absurd A M (exp_mut A) (exp_mut M)
     | a_and P Q => case_and P Q (exp_mut P) (exp_mut Q)
-    | a_conj T M N => case_conj T M N (exp_mut T) (exp_mut M) (exp_mut N)
+    | a_conj P Q M N => case_conj P Q M N (exp_mut P) (exp_mut Q) (exp_mut M) (exp_mut N)
     | a_left M => case_left M (exp_mut M)
     | a_right M => case_right M (exp_mut M)
     | a_ind p k => case_ind p k
     | a_con p k c => case_con p k c
-    | a_nlit n => case_nlit n
-    | a_elim r oq Us0 m Bks M =>
-        case_elim r oq Us0 m Bks M
+    | a_elim r pq Us0 m Bks M =>
+        case_elim r pq Us0 m Bks M
           ((fix us_mut (Us : list exp) : List.Forall Pe Us :=
               match Us with
               | nil => List.Forall_nil _
               | cons U Us' => List.Forall_cons U (exp_mut U) (us_mut Us')
               end) Us0)
           ((fix blocks_mut (Bks : list eblock) :
-              List.Forall (fun b => (forall Z, eb_ann b = Some Z -> Pe Z) /\ Pe (eb_motive b) /\
+              List.Forall (fun b => Pe (eb_scrutinee_type b) /\ Pe (eb_motive b) /\
                                     List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks :=
               match Bks with
               | nil => List.Forall_nil _
-              | cons (eb_mk nm oZ A Bs) Bks' =>
-                  List.Forall_cons (eb_mk nm oZ A Bs)
-                    (conj
-                       (match oZ as o return (forall Z, o = Some Z -> Pe Z) with
-                        | Some Z0 => fun Z e => match e in _ = o' return match o' with Some Z => Pe Z | None => True end with
-                                               | eq_refl => exp_mut Z0 end
-                        | None => fun Z e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
-                                             | eq_refl => I end)
-                        end)
+              | cons (eb_mk nm Z A Bs) Bks' =>
+                  List.Forall_cons (eb_mk nm Z A Bs)
+                    (conj (exp_mut Z)
                        (conj (exp_mut A)
                           ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
                               match Bs with
@@ -1262,7 +1239,6 @@ Module Exp_Notations.
   Notation "'succl' M" := (a_succl M) (at level 2, M at level 1) : mctt_scope.
   Notation "'maxl' M N" := (a_maxl M N) (at level 2, M at level 1, N at level 1) : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
-  Notation "'ℕ'" := a_ntok : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi relevant A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
@@ -1564,12 +1540,16 @@ Record normal_block_g (E : Set) : Set := mk_normal_block
   { (** The number of variables the motive binds: the member's
         non-uniform parameters and the scrutinee *)
     block_arity : nat
+    (** The scrutinee's type, under the non-uniform parameters: all those
+        variables but the last *)
+  ; block_scrutinee_type : E
     (** The motive, under those variables *)
   ; block_motive : E
     (** The branches, one per constructor of the member, in order *)
   ; block_branches : list (normal_branch_g E) }.
 Arguments mk_normal_block {E}.
 Arguments block_arity {E}.
+Arguments block_scrutinee_type {E}.
 Arguments block_motive {E}.
 Arguments block_branches {E}.
 Scheme All for normal_block_g.
@@ -1588,20 +1568,22 @@ Definition map_level_atom {E F : Set} (f : E -> F) (a : level_atom_g E) : level_
 Definition map_normal_branch {E F : Set} (f : nat -> E -> F) (br : normal_branch_g E) : normal_branch_g F :=
   mk_normal_branch (branch_constructor br) (branch_arity br) (f (branch_arity br) (branch_body br)).
 
-(** A block with its motive and its branches' bodies mapped, each at its
-    arity. *)
+(** A block with its scrutinee type, its motive and its branches' bodies
+    mapped, each at the number of variables it is under. *)
 Definition map_normal_block {E F : Set} (f : nat -> E -> F) (b : normal_block_g E) : normal_block_g F :=
-  mk_normal_block (block_arity b) (f (block_arity b) (block_motive b))
+  mk_normal_block (block_arity b) (f (block_arity b - 1) (block_scrutinee_type b)) (f (block_arity b) (block_motive b))
     (List.map (map_normal_branch f) (block_branches b)).
 
-(** [P] holds of a block's motive and of its branches' bodies, each at its
-    arity. *)
+(** [P] holds of a block's scrutinee type, its motive and its branches'
+    bodies, each at the number of variables it is under. *)
 Definition normal_block_forall {E : Set} (P : nat -> E -> Prop) (b : normal_block_g E) : Prop :=
-  P (block_arity b) (block_motive b) /\ all_list (fun br => P (branch_arity br) (branch_body br)) (block_branches b).
+  P (block_arity b - 1) (block_scrutinee_type b) /\ P (block_arity b) (block_motive b) /\
+    all_list (fun br => P (branch_arity br) (branch_body br)) (block_branches b).
 
 (** The boolean [normal_block_forall]. *)
 Definition normal_block_forallb {E : Set} (f : nat -> E -> bool) (b : normal_block_g E) : bool :=
-  f (block_arity b) (block_motive b) && List.forallb (fun br => f (branch_arity br) (branch_body br)) (block_branches b).
+  f (block_arity b - 1) (block_scrutinee_type b) && f (block_arity b) (block_motive b) &&
+    List.forallb (fun br => f (branch_arity br) (branch_body br)) (block_branches b).
 
 (** ** Using the Generated Hypotheses
 
@@ -1713,8 +1695,8 @@ with ne : Set :=
     erasure builds it. *)
 | ne_absurd_erased : nf -> ne
 (** The eliminator of the group [pq], at its declared member [m], stuck
-    on a neutral, at the group's uniform parameters; its blocks carry no
-    annotation.  (An eliminator at a view is stuck as the eliminator of the
+    on a neutral, at the group's uniform parameters; its blocks carry the
+    scrutinee types, motives and branches.  (An eliminator at a view is stuck as the eliminator of the
     view's container's group.) *)
 | ne_elim : qname -> list nf -> nat -> list (normal_block_g nf) -> ne -> ne
 (** A neutral applied *)
@@ -1774,8 +1756,8 @@ with ne_to_exp (M : ne) : exp :=
   | ne_absurd A M => a_absurd (nf_to_exp A) M
   | ne_absurd_erased A => a_absurd (nf_to_exp A) exp_default
   | ne_elim p Us m Bks M =>
-      a_elim relevant (Some p) (List.map nf_to_exp Us) m
-        (List.map (fun b => eb_mk (block_arity b) None (nf_to_exp (block_motive b))
+      a_elim relevant p (List.map nf_to_exp Us) m
+        (List.map (fun b => eb_mk (block_arity b) (nf_to_exp (block_scrutinee_type b)) (nf_to_exp (block_motive b))
                               (List.map (fun br => (branch_constructor br, branch_arity br, nf_to_exp (branch_body br)))
                                  (block_branches b))) Bks)
         (ne_to_exp M)
@@ -1796,10 +1778,9 @@ Definition atom_exp (a : level_atom) : (nat * exp)%type := (atom_offset a, ne_to
 Definition branch_exp (br : normal_branch) : (string * nat * exp)%type :=
   (branch_constructor br, branch_arity br, nf_to_exp (branch_body br)).
 
-(** A block of a stuck eliminator as a term's block: it carries no
-    annotation. *)
+(** A block of a stuck eliminator as a term's block. *)
 Definition block_exp (b : normal_block) : eblock :=
-  eb_mk (block_arity b) None (nf_to_exp (block_motive b)) (List.map branch_exp (block_branches b)).
+  eb_mk (block_arity b) (nf_to_exp (block_scrutinee_type b)) (nf_to_exp (block_motive b)) (List.map branch_exp (block_branches b)).
 
 (** The clauses of [nf_to_exp] at the levels and at a stuck eliminator,
     through the definitions above. *)
@@ -1810,7 +1791,7 @@ Lemma nf_to_exp_lvl : forall c xs, nf_to_exp (nf_lvl c xs) = lvl_exp_of c (List.
 Proof. reflexivity. Qed.
 
 Lemma ne_to_exp_elim : forall p Us m Bks M,
-    ne_to_exp (ne_elim p Us m Bks M) = a_elim relevant (Some p) (List.map nf_to_exp Us) m (List.map block_exp Bks) (ne_to_exp M).
+    ne_to_exp (ne_elim p Us m Bks M) = a_elim relevant p (List.map nf_to_exp Us) m (List.map block_exp Bks) (ne_to_exp M).
 Proof. reflexivity. Qed.
 
 (** * Canonical Levels
@@ -1898,7 +1879,8 @@ with ne_clean (M : ne) : Prop :=
   | ne_absurd A _ | ne_absurd_erased A => nf_clean A
   | ne_elim _ Us _ Bks M =>
       all_list nf_clean Us /\
-      all_list (fun b => nf_clean (block_motive b) /\ all_list (fun br => nf_clean (branch_body br)) (block_branches b)) Bks /\
+      all_list (fun b => nf_clean (block_scrutinee_type b) /\ nf_clean (block_motive b) /\
+                         all_list (fun br => nf_clean (branch_body br)) (block_branches b)) Bks /\
       ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
@@ -1991,13 +1973,10 @@ Section GenericDec.
   (** Equality of lists of eliminator blocks is decidable. *)
   Definition eblocks_eq_dec_g (Bks Bks' : list (eblock_g E)) : {Bks = Bks'} + {Bks <> Bks'}.
   Proof.
-    revert Bks'; induction Bks as [| [nm oZ A Bs] Bks IH]; intros [| [nm' oZ' A' Bs'] Bks']; try (right; discriminate);
+    revert Bks'; induction Bks as [| [nm Z A Bs] Bks IH]; intros [| [nm' Z' A' Bs'] Bks']; try (right; discriminate);
       [ left; reflexivity |].
     destruct (PeanoNat.Nat.eq_dec nm nm') as [<- |]; [| right; congruence ].
-    assert (HZ : {oZ = oZ'} + {oZ <> oZ'})
-      by (destruct oZ as [Z |], oZ' as [Z' |]; try (right; discriminate); [| left; reflexivity ];
-          destruct (de Z Z') as [<- |]; [ left; reflexivity | right; congruence ]).
-    destruct HZ as [<- |]; [| right; congruence ].
+    destruct (de Z Z') as [<- |]; [| right; congruence ].
     destruct (de A A') as [<- |]; [| right; congruence ].
     destruct (brs_eq_dec_g Bs Bs') as [<- |]; [| right; congruence ].
     destruct (IH Bks') as [<- |]; [ left; reflexivity | right; congruence ].
@@ -2070,8 +2049,9 @@ Section RecordDec.
 
   Definition normal_block_eq_dec_g (b b' : normal_block_g E) : {b = b'} + {b <> b'}.
   Proof.
-    destruct b as [nm A Bs], b' as [nm' A' Bs'].
+    destruct b as [nm Z A Bs], b' as [nm' Z' A' Bs'].
     destruct (PeanoNat.Nat.eq_dec nm nm') as [<- |]; [| right; congruence ].
+    destruct (de Z Z') as [<- |]; [| right; congruence ].
     destruct (de A A') as [<- |]; [| right; congruence ].
     destruct (List.list_eq_dec normal_branch_eq_dec_g Bs Bs') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
@@ -2136,7 +2116,7 @@ Proof.
     try (eapply list_all_map_ext; [ eassumption |]);
     first [ intros x Hx; exact Hx
           | intros x Hx; destruct Hx; unfold map_level_atom; cbn; f_equal; assumption
-          | intros x Hx; destruct Hx as [n' A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ assumption |];
+          | intros x Hx; destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ assumption | assumption |];
             rewrite List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
             intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; assumption
           | reflexivity ].
@@ -2155,7 +2135,7 @@ Proof.
     repeat match goal with H : _ /\ _ |- _ => destruct H end;
     rewrite ?all_list_map; try split; auto;
     try (eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy;
-         first [ solve [ destruct Hx as [n' A HA brs Hbrs]; cbn in *; destruct Hy as [HyA Hybrs]; split; auto;
+         first [ solve [ destruct Hx as [n' Z HZ A HA brs Hbrs]; cbn in *; destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
                          rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
                          intros br Hbr Hy'; destruct Hbr; cbn in *; auto ]
                | solve [ destruct Hx; cbn in *; auto ]
@@ -2257,25 +2237,23 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_wk M φ)
   | a_maxl M N => a_maxl (exp_wk M φ) (exp_wk N φ)
-  | a_ntok => a_ntok
   | a_prop => a_prop
   | a_True => a_True
   | a_tt => a_tt
   | a_False => a_False
   | a_absurd A M => a_absurd (exp_wk A φ) (exp_wk M φ)
   | a_and P Q => a_and (exp_wk P φ) (exp_wk Q (wk_q φ))
-  | a_conj T M N => a_conj (exp_wk T φ) (exp_wk M φ) (exp_wk N φ)
+  | a_conj P Q M N => a_conj (exp_wk P φ) (exp_wk Q (wk_q φ)) (exp_wk M φ) (exp_wk N φ)
   | a_left M => a_left (exp_wk M φ)
   | a_right M => a_right (exp_wk M φ)
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
-  | a_nlit n => a_nlit n
-  | a_elim r oq Us m Bks M =>
-      a_elim r oq (List.map (fun U => exp_wk U φ) Us) m
+  | a_elim r pq Us m Bks M =>
+      a_elim r pq (List.map (fun U => exp_wk U φ) Us) m
         (List.map (fun b =>
            match b with
-           | eb_mk nm oZ A Bs =>
-               eb_mk nm (option_map (fun Z => exp_wk Z (wk_qn (nm - 1) φ)) oZ) (exp_wk A (wk_qn nm φ))
+           | eb_mk nm Z A Bs =>
+               eb_mk nm (exp_wk Z (wk_qn (nm - 1) φ)) (exp_wk A (wk_qn nm φ))
                  (List.map (fun br => (fst br, exp_wk (snd br) (wk_qn (snd (fst br)) φ))) Bs)
            end) Bks)
         (exp_wk M φ)
@@ -2349,19 +2327,20 @@ with centry_wk (e : centry) (φ : wk) : centry :=
     [n] binders has the bound of its body less [n]. *)
 Fixpoint exp_free_bound (M : exp) : nat :=
   match M with
-  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_ntok | a_prop | a_True | a_tt | a_False
-  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_record _ => 0
+  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False
+  | a_ind _ _ | a_con _ _ _ | a_record _ => 0
   | a_univ t => exp_free_bound t
   | a_succl M | a_left M | a_right M | a_proj _ M => exp_free_bound M
   | a_maxl M N | a_absurd M N | a_app M N => Nat.max (exp_free_bound M) (exp_free_bound N)
   | a_and A B | a_pi _ A B | a_fn A B => Nat.max (exp_free_bound A) (exp_free_bound B - 1)
-  | a_conj T M N => Nat.max (exp_free_bound T) (Nat.max (exp_free_bound M) (exp_free_bound N))
+  | a_conj P Q M N =>
+      Nat.max (Nat.max (exp_free_bound P) (exp_free_bound Q - 1)) (Nat.max (exp_free_bound M) (exp_free_bound N))
   | a_elim _ _ Us _ Bks M =>
       Nat.max (List.list_max (List.map exp_free_bound Us))
         (Nat.max (List.list_max (List.map (fun b =>
            match b with
-           | eb_mk nm oZ A Bs =>
-               Nat.max (match oZ with Some Z => exp_free_bound Z - (nm - 1) | None => 0 end)
+           | eb_mk nm Z A Bs =>
+               Nat.max (exp_free_bound Z - (nm - 1))
                  (Nat.max (exp_free_bound A - nm)
                     (List.list_max (List.map (fun br => exp_free_bound (snd br) - snd (fst br)) Bs)))
            end) Bks))
@@ -2542,25 +2521,23 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_sub M σ)
   | a_maxl M N => a_maxl (exp_sub M σ) (exp_sub N σ)
-  | a_ntok => a_ntok
   | a_prop => a_prop
   | a_True => a_True
   | a_tt => a_tt
   | a_False => a_False
   | a_absurd A M => a_absurd (exp_sub A σ) (exp_sub M σ)
   | a_and P Q => a_and (exp_sub P σ) (exp_sub Q (sb_q σ))
-  | a_conj T M N => a_conj (exp_sub T σ) (exp_sub M σ) (exp_sub N σ)
+  | a_conj P Q M N => a_conj (exp_sub P σ) (exp_sub Q (sb_q σ)) (exp_sub M σ) (exp_sub N σ)
   | a_left M => a_left (exp_sub M σ)
   | a_right M => a_right (exp_sub M σ)
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
-  | a_nlit n => a_nlit n
-  | a_elim r oq Us m Bks M =>
-      a_elim r oq (List.map (fun U => exp_sub U σ) Us) m
+  | a_elim r pq Us m Bks M =>
+      a_elim r pq (List.map (fun U => exp_sub U σ) Us) m
         (List.map (fun b =>
            match b with
-           | eb_mk nm oZ A Bs =>
-               eb_mk nm (option_map (fun Z => exp_sub Z (sb_qn (nm - 1) σ)) oZ) (exp_sub A (sb_qn nm σ))
+           | eb_mk nm Z A Bs =>
+               eb_mk nm (exp_sub Z (sb_qn (nm - 1) σ)) (exp_sub A (sb_qn nm σ))
                  (List.map (fun br => (fst br, exp_sub (snd br) (sb_qn (snd (fst br)) σ))) Bs)
            end) Bks)
         (exp_sub M σ)

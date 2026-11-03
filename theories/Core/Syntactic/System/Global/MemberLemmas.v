@@ -1587,6 +1587,9 @@ Ltac ind_scoped :=
     | ind_motive_scoped
     | ind_blocks_scoped
     | eapply view_wrap_scoped; [ eassumption | eassumption | rewrite List.length_firstn; unfold im_np in *; lia
+                           | ind_list_scoped | eassumption
+                           | match goal with Hh : im_head _ = mh_view _ _ ?Is _, HIs : List.length ?Is = _ |- _ =>
+                               unfold im_pre; rewrite Hh, List.length_map; exact HIs end
                            | ind_list_scoped | eassumption | ind_blocks_scoped | eassumption | eassumption ]
     | apply exp_scoped_apps; split; [ exact I | ind_list_scoped ]
     | eapply ind_mty_scoped; [ eassumption | rewrite List.length_firstn; unfold im_np in *; lia | ind_list_scoped | ind_list_scoped ]

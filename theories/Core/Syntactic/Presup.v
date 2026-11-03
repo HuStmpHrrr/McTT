@@ -263,22 +263,6 @@ Qed.
 #[export]
 Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
 
-(** [wf_conj] without its first premise: the annotation is a
-    proposition, the left side of its equation to a conjunction. *)
-Corollary wf_conj' : forall Θ Ξ Γ T P Q M N,
-    Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ Σₚ P Q : Propₘ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
-    Θ ⍮ Ξ ⍮ Γ ▹ P ⊢ Q : Propₘ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ N : Q[Id,,M] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_conj T M N : T.
-Proof.
-  intros * HT HP HQ HM HN; eapply wf_conj; [ exact (presup_exp_eq_left HT) | exact HT | exact HP | exact HQ | exact HM | exact HN ].
-Qed.
-
-#[export]
-Hint Resolve wf_conj' : mctt.
-
 (** ** The Two Sides of a Refinement
 
     Each side of a refinement is a type, each of its own sort: that the two

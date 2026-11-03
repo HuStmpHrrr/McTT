@@ -319,8 +319,8 @@ Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * str
   | a_succl M | a_univ M | a_left M | a_right M => exp_refs S M
   | a_maxl M N | a_absurd M N => exp_refs S M ++ exp_refs S N
   | a_and A M => exp_refs S A ++ exp_refs (privacy_table_none :: S) M
-  | a_conj T M N => exp_refs S T ++ exp_refs S M ++ exp_refs S N
-  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => nil
+  | a_conj P Q M N => exp_refs S P ++ exp_refs (privacy_table_none :: S) Q ++ exp_refs S M ++ exp_refs S N
+  | a_ind _ _ | a_con _ _ _ => nil
   | a_elim _ _ Us _ Bks M =>
       (fix ups_refs (Us : list exp) : list (privacy_table * string)%type :=
          match Us with
@@ -330,8 +330,8 @@ Fixpoint exp_refs (S : list privacy_table) (M : exp) : list (privacy_table * str
       (fix blks_refs (Bks : list eblock) : list (privacy_table * string)%type :=
          match Bks with
          | nil => nil
-         | eb_mk nm oZ A Bs :: Bks' =>
-             match oZ with Some Z => exp_refs (repeat privacy_table_none (nm - 1) ++ S) Z | None => nil end ++
+         | eb_mk nm Z A Bs :: Bks' =>
+             exp_refs (repeat privacy_table_none (nm - 1) ++ S) Z ++
              exp_refs (repeat privacy_table_none nm ++ S) A ++
              (fix brs_refs (Bs : list (string * nat * exp)) : list (privacy_table * string)%type :=
                 match Bs with

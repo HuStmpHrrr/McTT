@@ -598,11 +598,11 @@ Proof.
 Qed.
 
 (** So does the recursive result along a leaf path. *)
-Lemma leaf_ih_mvc_agree : forall r pq D oq l Us Bks σ σ' M n,
+Lemma leaf_ih_mvc_agree : forall r pq l Us Bks σ σ' M n,
     leaf_scoped n l -> leaf_mvc l -> (forall y, y < n -> sentry_exp (σ y) = sentry_exp (σ' y)) ->
-    leaf_ih r pq D oq Us Bks σ M l = leaf_ih r pq D oq Us Bks σ' M l.
+    leaf_ih r pq Us Bks σ M l = leaf_ih r pq Us Bks σ' M l.
 Proof.
-  intros r pq D oq l; induction l as [j Ps | B l IH | f ns l IH]; intros * Hs Hm Hσ; cbn in *; [ reflexivity | |].
+  intros r pq l; induction l as [j Ps | B l IH | f ns l IH]; intros * Hs Hm Hσ; cbn in *; [ reflexivity | |].
   - destruct Hs as [HB Hs]; destruct Hm as [HmB Hm].
     f_equal; [ eapply exp_scoped_mvc_agree; eassumption |].
     eapply IH; [ exact Hs | exact Hm | apply sb_q_exp_agree_lt; exact Hσ ].
@@ -1324,9 +1324,9 @@ Qed.
 
 (** The container's blocks: the one of the container's member [i'] is the
     block of the group's member [vm] lists for it, its branches wrapped. *)
-Lemma nth_error_view_wrap : forall r pq D D' vm Us Bks i' Mi', rview_suffix_ok D' ->
+Lemma nth_error_view_wrap : forall r pq qc D D' vm Us Uc Bks i' Mi', rview_suffix_ok D' ->
     ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
-    List.nth_error (view_wrap r pq D D' vm Us Bks) i' = Some (view_wrap_block r pq D D' vm Us Bks i' Mi').
+    List.nth_error (view_wrap r pq qc D D' vm Us Uc Bks) i' = Some (view_wrap_block r pq qc D D' vm Us Uc Bks i' Mi').
 Proof.
   intros * Hs H Hr.
   assert (Hlt : i' < ind_nblk D') by (destruct (Nat.lt_ge_cases i' (ind_nblk D')) as [| Hge]; [ assumption |];
@@ -1335,29 +1335,30 @@ Proof.
     by (unfold ind_block_members; rewrite List.nth_error_firstn; destruct (Nat.ltb_spec i' (ind_nblk D')); [ exact H | lia ]).
   unfold view_wrap.
   enough (forall ms s k M, List.nth_error ms k = Some M ->
-            List.nth_error (view_wrap_from r pq D D' vm Us Bks s ms) k = Some (view_wrap_block r pq D D' vm Us Bks (s + k) M))
+            List.nth_error (view_wrap_from r pq qc D D' vm Us Uc Bks s ms) k = Some (view_wrap_block r pq qc D D' vm Us Uc Bks (s + k) M))
     by (rewrite <- (Nat.add_0_l i') at 2; auto).
   induction ms as [| M0 ms IH]; intros s [| k] M Hk; cbn in Hk |- *; try discriminate.
   - injection Hk as <-; rewrite Nat.add_0_r; reflexivity.
   - rewrite (IH (S s) k M Hk); do 2 f_equal; lia.
 Qed.
 
-Lemma view_wrap_block_eq : forall r pq D D' vm Us Bks i' Mi' v Mv b,
+Lemma view_wrap_block_eq : forall r pq qc D D' vm Us Uc Bks i' Mi' v Mv b,
     List.nth_error vm i' = Some v -> List.nth_error Bks v = Some b -> ind_member D v = Some Mv ->
-    view_wrap_block r pq D D' vm Us Bks i' Mi'
-    = eb_mk (eb_binder_count b) None (eb_motive b) (List.map (fun cg => wrap_branch r pq D D' Us Bks Mv (eb_brs b) (fst cg) (snd cg)) (im_cons Mi')).
+    view_wrap_block r pq qc D D' vm Us Uc Bks i' Mi'
+    = eb_mk (eb_binder_count b) (ind_mty qc D' i' (List.map (fun U => U[wk_shiftn (im_nn Mi')]ʷ) Uc) (vars_from 0 (im_nn Mi')))
+        (eb_motive b) (List.map (fun cg => wrap_branch r pq D D' Us Bks Mv (eb_brs b) (fst cg) (snd cg)) (im_cons Mi')).
 Proof.
   intros * Hv Hb Hm; unfold view_wrap_block; rewrite (List.nth_error_nth _ _ _ Hv), Hb, Hm; destruct b; reflexivity.
 Qed.
 
-Lemma view_wrap_motive_nth : forall r pq D D' vm Us Bks i' Mi' v b, rview_suffix_ok D' ->
+Lemma view_wrap_motive_nth : forall r pq qc D D' vm Us Uc Bks i' Mi' v b, rview_suffix_ok D' ->
     ind_member D' i' = Some Mi' -> im_is_rview Mi' = false -> List.nth_error vm i' = Some v -> List.nth_error Bks v = Some b ->
     (exists Mv, ind_member D v = Some Mv) ->
-    List.nth i' (blocks_motives (view_wrap r pq D D' vm Us Bks)) exp_default = eb_motive b.
+    List.nth i' (blocks_motives (view_wrap r pq qc D D' vm Us Uc Bks)) exp_default = eb_motive b.
 Proof.
   intros * Hs Hi Hr Hv Hb [Mv Hm].
-  rewrite (blocks_motives_nth _ _ _ (nth_error_view_wrap r pq D D' vm Us Bks _ _ Hs Hi Hr)).
-  rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ Hv Hb Hm); reflexivity.
+  rewrite (blocks_motives_nth _ _ _ (nth_error_view_wrap r pq qc D D' vm Us Uc Bks _ _ Hs Hi Hr)).
+  rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hb Hm); reflexivity.
 Qed.
 
 Lemma sb_of_list_id_wk : forall Us φ, sb_eq (sb_of_list Id Us ⨟ ι φ) (sb_of_list (ι φ) (List.map (fun U => U[φ]ʷ) Us)).
@@ -1534,7 +1535,7 @@ Section ViewBlocks.
     (HBt : blocks_typed Θ Ξ Γ p D Us Bks r i).
 
   Let Is' := List.map (fun I => I[sb_of_list Id Us]) Is.
-  Let Bks' := view_wrap r p D D' vm Us Bks.
+  Let Bks' := view_wrap r p qc D D' vm Us Is' Bks.
 
   (** A container's member with a block: the member the view lists for it
       has a block too. *)
@@ -1572,7 +1573,7 @@ Section ViewBlocks.
     intros j' Mj' Hj' Hrj'.
     destruct (view_blocks_member _ _ Hj' Hrj') as (v & Mv & b & Hv & Hmv & Hb & _).
     destruct view_blocks_facts as (HD & Hc & HD' & _).
-    unfold Bks'; rewrite (view_wrap_motive_nth _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD'))
+    unfold Bks'; rewrite (view_wrap_motive_nth _ _ _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD'))
                             Hj' Hrj' Hv Hb ltac:(eauto)).
     pose proof (view_mctx_ext _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hm Hh Hl' Hj' Hrj' Hv Hmv HΓ HUl HUs) as Hx.
     pose proof (ctxsub_ext _ _ _ _ _ Hx (elim_mctx_ass _ _ _ _ _ Hc Hmv)) as Hs.
@@ -1844,7 +1845,7 @@ Section ViewBlocks.
       { intros j' Mj' j Hj' Hrj' Hvj.
         destruct (view_blocks_member _ _ Hj' Hrj') as (v0 & Mv0 & b0 & Hv0 & Hmv0 & Hb0 & _).
         rewrite Hvj in Hv0; injection Hv0 as <-.
-        unfold Bks'; rewrite (view_wrap_motive_nth _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD'))
+        unfold Bks'; rewrite (view_wrap_motive_nth _ _ _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD'))
                                 Hj' Hrj' Hvj Hb0 ltac:(eauto)).
         symmetry; apply blocks_motives_nth; exact Hb0. }
       pose proof view_blocks_branch_wk as Hβ.
@@ -1962,7 +1963,7 @@ Section ViewBlocks.
         In l (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t) ->
         ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mv Us gs ->
         Θ ⍮ Ξ ⍮ Δc ⊢ˢ δ L : E ++ con_inst_ctx Γ p D Mv Us gs ->
-        Θ ⍮ Ξ ⍮ Δc ⊢ leaf_ih r p D (Some p) (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n'))
+        Θ ⍮ Ξ ⍮ Δc ⊢ leaf_ih r p (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n'))
                         (cargs_sub σ0 gs1 avars) (a_var (nr' + (na - 1 - List.length gs1))) l
           : leaf_ihty r (blocks_motives Bks) (ι (wk_shiftn n')) (cargs_sub σ0 gs1 avars) (a_var (nr' + (na - 1 - List.length gs1))) l.
     Proof.
@@ -1971,7 +1972,7 @@ Section ViewBlocks.
       pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
       destruct (view_blocks_branch_rec_arg _ _ _ _ _ Heq HL HΨ Hδ) as (Hσg & Huc & Hx).
       destruct (decl_shape_facts _ _ _ _ _ _ _ _ _ _ HD Hmv Hin Heq) as (Mj & HMj & HPl & HBt0 & HPt0).
-      pose proof (leaf_ih_typed _ _ _ _ _ _ _ _ _ _ Hg HDs Hl (or_introl eq_refl) HBt HUl HUs (S (ptyp_mem t)) Mv nil (cargs_strat gs1) t
+      pose proof (leaf_ih_typed _ _ _ _ _ _ _ _ _ Hg HDs Hl HBt HUl HUs (S (ptyp_mem t)) Mv nil (cargs_strat gs1) t
                     Δc _ _ _ Mj l ltac:(intros; lia) HMj HPl HBt0 HPt0 view_blocks_branch_wk Hσg Huc Hx
                     ltac:(cbn [List.length]; rewrite <- pat_nargs_cargs_pat; exact Hinl)) as H.
       rewrite blocks_sub_of_wk, map_sub_of_wk in H; exact H.
@@ -2060,7 +2061,7 @@ Section ViewBlocks.
         ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mv Us gs ->
         Θ ⍮ Ξ ⍮ Δc ⊢ˢ δ L : E ++ con_inst_ctx Γ p D Mv Us gs ->
         Θ ⍮ Ξ ⍮ Δc ⊢ˢ δ (L ++ wrap_ihs D' D rest' rest
-                              (elim_ihs r p D (Some p) (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n'))
+                              (elim_ihs r p D (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n'))
                                  (cargs_sub σ0 gs1 avars) (pat_nargs (cargs_pat gs1) + nn) rest (List.skipn (List.length gs1) avars))
                               (cargs_nrec D' gs1') nr')
           : ihs_ctx_aux r (rview_leaves D) nn (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) rest
@@ -2088,7 +2089,7 @@ Section ViewBlocks.
              group's eliminator along each path *)
           set (σg := cargs_sub σ0 gs1 avars).
           set (a := a_var (nr' + (na - 1 - List.length gs1))).
-          set (ih := leaf_ih r p D (Some p) (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n')) σg a).
+          set (ih := leaf_ih r p (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n')) σg a).
           set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t).
           assert (HLs : forall ls2 ls1 E0 L0, ls = ls1 ++ ls2 -> List.length L0 = List.length E0 ->
                      ⊢ Θ ⍮ Ξ ⍮ E0 ++ con_inst_ctx Γ p D Mv Us gs ->
@@ -2139,7 +2140,7 @@ Section ViewBlocks.
           destruct (view_blocks_branch_recrec _ _ _ _ _ _ _ _ Heq' Heq Hlen Hmt Hdt HL HΨ Hδ) as [Hcnt Hvars].
           set (σg := cargs_sub σ0 gs1 avars).
           set (a := a_var (nr' + (na - 1 - List.length gs1))).
-          set (ih := leaf_ih r p D (Some p) (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n')) σg a).
+          set (ih := leaf_ih r p (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n')) σg a).
           set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t) in *.
           set (r0 := cargs_nrec D' gs1') in *.
           assert (HLs : forall ls2 ls1 E0 L0, ls = ls1 ++ ls2 -> List.length L0 = List.length E0 ->
@@ -2210,7 +2211,7 @@ Section ViewBlocks.
     (** The view's branch's context, instantiated in the container's
         ([wrap_branch]). *)
     Lemma view_blocks_branch_sub : Θ ⍮ Ξ ⍮ Δc ⊢ˢ δ (wrap_ihs D' D gs' gs
-                                     (elim_ihs r p D (Some p) (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n'))
+                                     (elim_ihs r p D (List.map (fun U => U[wk_shiftn n']ʷ) Us) (blocks_wk Bks (wk_shiftn n'))
                                         σ0 nn gs avars) 0 nr')
                       : elim_bctx r p D Mv gs (blocks_motives Bks) Us ++ Γ.
     Proof.
@@ -2389,7 +2390,7 @@ Section ViewBlocks.
                                        apply length_elim_ihs; unfold avars; rewrite length_vars_from, view_blocks_branch_na; reflexivity).
       unfold wrap_branch; cbv zeta; rewrite Hcon, HBl; cbn [snd].
       rewrite view_blocks_branch_type_cont.
-      fold nn na nr' n' nvars avars; fold (σ0); fold (δ (wrap_ihs D' D gs' gs (elim_ihs r p D (Some p) (List.map (fun U => U[wk_shiftn n']ʷ) Us)
+      fold nn na nr' n' nvars avars; fold (σ0); fold (δ (wrap_ihs D' D gs' gs (elim_ihs r p D (List.map (fun U => U[wk_shiftn n']ʷ) Us)
                                                                  (blocks_wk Bks (wk_shiftn n')) σ0 nn gs avars) 0 nr')).
       pose proof Hri' as Hri0; unfold im_is_rview in Hri0.
       destruct (im_head Mi') as [pm | q'' k'' Is'' vm'' | q'' Is'' fl''] eqn:Hhi; [| | discriminate ].
@@ -2411,7 +2412,7 @@ Section ViewBlocks.
         set (conC := apps (a_con (fst (im_ref qc i' Mi')) (snd (im_ref qc i' Mi')) c)
                        (im_pre Mi' (List.map (fun U => U[wk_shiftn n']ʷ) Is') ++ nvars ++ avars)) in *.
         pose proof (view_blocks_motives_typed _ _ Hi' Hri') as HA.
-        unfold Bks' in HA; rewrite (view_wrap_motive_nth _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD'))
+        unfold Bks' in HA; rewrite (view_wrap_motive_nth _ _ _ _ _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD'))
                                       Hi' Hri' Hv Hb ltac:(eauto)) in HA.
         assert (HM : forall j Mj, ind_member D' j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx qc D' j Mj Is' ++ Γ)
           by (intros j Mj Hj; exact (elim_mctx_wf _ _ _ _ _ _ _ _ Hg HDs Hl' Hj HΓ HIl HIs)).
@@ -2489,21 +2490,26 @@ Section ViewBlocks.
                exists v Mv b, List.nth_error vm k = Some v /\ ind_member D v = Some Mv /\ List.nth_error Bks v = Some b /\
                  im_nn Mv = im_nn Mk /\ List.map fst (im_cons Mv) = List.map fst (im_cons Mk) /\
                  (forall c gs' gs, In (c, gs') (im_cons Mk) -> ind_con Mv c = Some gs -> cargs_correspond vm gs' gs) /\
-                 b' = eb_mk (eb_binder_count b) None (eb_motive b)
+                 b' = eb_mk (eb_binder_count b)
+                        (ind_mty qc D' k (List.map (fun U => U[wk_shiftn (im_nn Mk)]ʷ) Is') (vars_from 0 (im_nn Mk)))
+                        (eb_motive b)
                         (List.map (fun cg => wrap_branch r p D D' Us Bks Mv (eb_brs b) (fst cg) (snd cg)) (im_cons Mk))).
     { intros * Hk Hb'.
       pose proof (Hbr _ _ _ Hk Hb') as Hrk.
       destruct (view_blocks_member _ _ Hk Hrk) as (v & Mv & b & Hv & Hmv & Hb & Hnn & Hnames & Hcorr).
-      unfold Bks' in Hb'; rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ _ Hsf' Hk Hrk) in Hb'; injection Hb' as <-.
+      unfold Bks' in Hb'; rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ _ _ _ Hsf' Hk Hrk) in Hb'; injection Hb' as <-.
       exists v, Mv, b; repeat split; try assumption.
-      exact (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ Hv Hb Hmv). }
+      exact (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hb Hmv). }
     constructor.
     - exact HlB'.
     - intros k Mk b' Hk Hb'.
       destruct (Hblk _ _ _ Hk Hb') as (v & Mv & b & Hv & Hmv & Hb & Hnn & _ & _ & ->); cbn.
       rewrite (blocks_typed_binder_count _ _ _ _ _ _ _ _ _ HBt _ _ _ Hmv Hb), Hnn; reflexivity.
-    - intros k Mk b' Z Hk Hb' HZ.
-      destruct (Hblk _ _ _ Hk Hb') as (v & Mv & b & _ & _ & _ & _ & _ & _ & ->); discriminate.
+    - (** The scrutinee type is the container's member type there: the head
+          of the member's motive context. *)
+      intros k Mk b' Hk Hb'.
+      destruct (Hblk _ _ _ Hk Hb') as (v & Mv & b & _ & _ & _ & _ & _ & _ & ->); cbn [eb_scrutinee_type].
+      apply ctx_ext_refl; [ eapply elim_mctx_ass; eassumption | exact (HM _ _ Hk) ].
     - intros k Mk b' Hk Hb'.
       pose proof (view_blocks_motives_typed _ _ Hk (Hbr _ _ _ Hk Hb')) as H; rewrite (blocks_motives_nth _ _ _ Hb') in H; exact H.
     - intros k Mk Hk; apply ctx_ext_refl; [ eapply elim_mctx_ass; eassumption | exact (HM _ _ Hk) ].
@@ -2545,9 +2551,8 @@ End ViewBlocks.
     container's blocks are typed at the view's instance, and the block of
     the container's member is the view's block, whose motive the type is
     of.  The lemma takes the rule's premises. *)
-Lemma wf_elim_view_rhs : forall Θ Ξ Γ p D oq m Mm qc k' Is vm D' Bks bm Ps M r i,
+Lemma wf_elim_view_rhs : forall Θ Ξ Γ p D m Mm qc k' Is vm D' Bks bm Ps M r i,
     ind_lookup Θ Ξ p = Some D ->
-    elim_grp D oq p m ->
     ind_member D m = Some Mm ->
     im_head Mm = mh_view qc k' Is vm ->
     ind_lookup Θ Ξ qc = Some D' ->
@@ -2559,8 +2564,8 @@ Lemma wf_elim_view_rhs : forall Θ Ξ Γ p D oq m Mm qc k' Is vm D' Bks bm Ps M 
        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
-    (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
@@ -2577,11 +2582,11 @@ Lemma wf_elim_view_rhs : forall Θ Ξ Γ p D oq m Mm qc k' Is vm D' Bks bm Ps M 
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-                  (view_wrap r p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
+                  (view_wrap r p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros * Hl Hgr Hm Hh Hl' Hvw Hbm HlB HPl HPs HM Hnm HZ HA HΨ Hn HΨB Hk HB.
+  intros * Hl Hm Hh Hl' Hvw Hbm HlB HPl HPs HM Hnm HZ HA HΨ Hn HΨB Hk HB.
   pose proof (presup_exp_ctx HM) as HΓ.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
@@ -2607,14 +2612,14 @@ Proof.
   (* the container's block of its member: the view's *)
   assert (Hrk' : im_is_rview Mk' = false)
     by (destruct (member_lt_decl _ _ _ _ _ HD' Hk' Hlt') as [pm Hpm]; unfold im_is_rview; rewrite Hpm; reflexivity).
-  pose proof (nth_error_view_wrap r p D D' vm Us Bks _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD')) Hk' Hrk') as Hb'.
-  pose proof (view_wrap_block_eq r p D D' vm Us Bks k' Mk' _ _ _ Hself Hbm Hm) as Eb'.
+  pose proof (nth_error_view_wrap r p qc D D' vm Us Is' Bks _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD')) Hk' Hrk') as Hb'.
+  pose proof (view_wrap_block_eq r p qc D D' vm Us Is' Bks k' Mk' _ _ _ Hself Hbm Hm) as Eb'.
   (* the scrutinee, of the container's member's type *)
   assert (HM' : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty qc D' k' Is' Ns).
   { destruct (member_lt_decl _ _ _ _ _ HD' Hk' Hlt') as [pm Hpm].
     replace (ind_mty qc D' k' Is' Ns) with (ind_mty p D m Us Ns); [ exact HM |].
     unfold ind_mty; rewrite Hm, Hk'; unfold im_ty_at, im_ref, im_pre; rewrite Hh, Hpm; reflexivity. }
-  pose proof (wf_elim_blocks _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl' (or_introl eq_refl) Hk' Hb' HBt'
+  pose proof (wf_elim_blocks _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl' Hk' Hb' HBt'
                 HIl' HIs' HNl' HNs' HM') as H.
   rewrite Eb' in H; cbn [eb_motive] in H; exact H.
 Qed.
