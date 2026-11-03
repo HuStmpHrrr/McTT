@@ -2125,6 +2125,23 @@ Proof.
     rewrite List.nth_error_app1 by lia; replace (List.length vts + 1 - 1 - S x) with (List.length vts - 1 - x) by lia; exact Hn.
 Qed.
 
+(** An environment whose first [n] entries are terms: entry by entry, the
+    extension of its tail past them by those terms at their types. *)
+Lemma env_typed_prefix : forall n ρ, (forall x, x < n -> exists v t, env_entry ρ x = de_term v t) ->
+    exists vts, List.length vts = n /\ forall x, env_entry ρ x = env_entry (env_extend_typed (List.skipn n ρ) vts) x.
+Proof.
+  induction n as [| n IH]; intros ρ H.
+  - exists nil; split; [ reflexivity | intros x; reflexivity ].
+  - destruct (H 0 ltac:(lia)) as (v & t & Hv).
+    destruct (IH (List.tl ρ)) as (vts & Lv & Hag).
+    { intros x Hx; exact (H (S x) ltac:(lia)). }
+    exists (vts ++ (v, t) :: nil); split; [ rewrite List.length_app, Lv; cbn; lia |].
+    assert (Esk : List.skipn (S n) ρ = List.skipn n (List.tl ρ)) by (destruct ρ; cbn; [ destruct n; reflexivity | reflexivity ]).
+    intros [| x]; rewrite env_extend_typed_app, Esk; cbn [env_extend_typed List.fold_left fst snd extend_env env_entry List.tl].
+    + exact Hv.
+    + exact (Hag x).
+Qed.
+
 (** The heads of an extension of an environment of [Γ] by readable typed
     values of a telescope of assumptions [K] read back at [K ++ Γ]. *)
 Lemma env_heads_readable_tele_ext : forall K Γ ρ vts, tele_ass K -> List.length vts = List.length K ->
@@ -2594,6 +2611,52 @@ Section GroupElim.
     Lemma frame_target_valid : ⊨ Tg.
     Proof.
       destruct (closed_app_sem _ _ frame_strat_ass frame_strat_valid HΓ) as [H _]; unfold Tg; rewrite <- List.app_assoc in H; exact H.
+    Qed.
+
+    (** The relevance of the entry [x] of the components' context: a
+        non-recursive argument's own, a parameter's relevant. *)
+    Definition frame_rf (x : nat) : relevance :=
+      if x <? K then match List.nth_error (cargs_nonrec_relevance gs) (K - 1 - x) with Some r => r | None => relevant end
+      else relevant.
+
+    (** Each entry of the components' context is of the sort its relevance
+        gives, over [Γ]. *)
+    Lemma frame_entry_sort : forall x Δ1 T Δ2, cargs_strat gs1 ++ im_params D Mk = Δ1 ++ ce_ass T :: Δ2 -> List.length Δ1 = x ->
+        exists i : nat, Δ2 ++ Γ ⊨ T : relevance_sort (frame_rf x) Typeω@i.
+    Proof.
+      intros * E Hx; unfold frame_rf.
+      rewrite frame_strat in E; fold K in E.
+      destruct (Nat.ltb_spec x K) as [Hlt | Hge].
+      - unfold nonrec_args_prefix in E.
+        assert (LK : List.length (List.firstn K (List.map ce_ass (cargs_nonrec gs))) = K)
+          by (rewrite List.length_firstn, List.length_map; pose proof frame_nonrec_le; lia).
+        destruct (rev_app_entry_split (List.firstn K (List.map ce_ass (cargs_nonrec gs))) (im_params D Mk) Δ1 Δ2 (K - 1 - x) (ce_ass T)
+                    ltac:(lia) E ltac:(lia)) as [He ->].
+        rewrite List.nth_error_firstn in He; destruct (Nat.ltb_spec (K - 1 - x) K); [| discriminate ].
+        rewrite List.nth_error_map in He.
+        destruct (List.nth_error (cargs_nonrec gs) (K - 1 - x)) as [A0 |] eqn:HA0; cbn in He; [ injection He as -> | discriminate ].
+        destruct (nonrec_relevance_nth _ _ _ HA0) as [r Hr]; rewrite Hr.
+        destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HMk Hcon HA0 Hr) as (_ & i & HAi).
+        exists i.
+        assert (Hj' : K - 1 - x <= List.length (cargs_nonrec gs)) by (pose proof frame_nonrec_le; lia).
+        pose proof (valid_ind_decl_strat _ HD _ _ _ _ _ HMk Hcon Hj') as HSj.
+        assert (HSa : tele_ass (nonrec_args_prefix gs (K - 1 - x) ++ im_params D Mk))
+          by (apply List.Forall_app; split;
+              [ unfold nonrec_args_prefix; rewrite List.firstn_map; apply List.Forall_rev, tele_ass_map_ass
+              | exact (member_params_ass D Hc _ _ HMk) ]).
+        pose proof (closed_app_valid _ _ _ _ _ HSa HSj HΓ HAi) as HAΓ.
+        unfold nonrec_args_prefix in HAΓ; rewrite List.firstn_firstn, Nat.min_l by lia.
+        rewrite <- List.app_assoc in HAΓ |- *; exact HAΓ.
+      - cbn [relevance_sort].
+        assert (Lp : List.length (nonrec_args_prefix gs K) = K) by (apply length_nonrec_args_prefix; exact frame_nonrec_le).
+        destruct (app_split_prefix _ _ _ _ E ltac:(lia)) as (m1 & -> & Ep).
+        destruct (im_params_relevant D HD k Mk HMk m1 T Δ2 Ep) as [i HT].
+        exists i.
+        pose proof (member_params_ass D Hc _ _ HMk) as Ha; rewrite Ep in Ha.
+        apply List.Forall_app in Ha as [_ Ha]; pose proof (List.Forall_inv_tail Ha) as Ha2.
+        pose proof frame_strat_valid as HV; rewrite frame_strat, Ep in HV.
+        apply rel_ctx_wf_app_r, rel_ctx_wf_app_r, rel_ctx_wf_tail in HV.
+        exact (closed_app_valid _ _ _ _ _ Ha2 HV HΓ HT).
     Qed.
 
     Lemma frame_doms_valid : forall kd, kd <= L -> ⊨ doms_ctx (List.firstn kd (ptyp_doms t)) ++ cargs_strat gs1 ++ im_params D Mk.
