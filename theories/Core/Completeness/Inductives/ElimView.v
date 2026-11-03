@@ -2319,22 +2319,25 @@ Section CrossElim.
   Variable (Us : list exp).
   Hypotheses (HUl : List.length Us = ind_nu D)
     (HUs : forall k N T, List.nth_error Us k = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
-             Γ ⊨ N : T).
+             Γ ⊨ N : T)
+    (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
   Variable (C1 : env) (u0 : list domain).
   Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0).
   Variable (Bks : list eblock) (iA : nat).
-  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
+  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA) (HBss : blocks_scoped (List.length Γ) Bks).
   Let HBks := valid_blocks_has p D Γ Us Bks iA Hdt HBk.
   Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
   Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
-  Let dr := canon_doms_rel u0.
+  Let dr := canon_doms_rel D u0.
   Let G := grp_rel p D u0 nr ar dr.
+  (** The family of the motives at [C1], as [Elim.v] has it. *)
+  Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
   Let Rel := fun j ns m ns' m' =>
     per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
-      (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
-  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
+      (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C1 (mctx_tele j) (ns' ++ m' :: nil)).
+  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC).
   #[local] Abbreviation EM f := (EB f C1 HC11 Bks iA HBks HMall HAv).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C1 u0 HUC).
   #[local] Abbreviation u0_env' := (EB u0_env).
@@ -2348,10 +2351,18 @@ Section CrossElim.
   #[local] Abbreviation HdI := (ind_canon_props_dom_iff _ _ Hcp).
   #[local] Abbreviation Had := (valid_group_adm p D Hvg u0 u0 u0_gargs' u0_len' u0_gargs').
   (** The group's eliminator against itself at [C1] ([SelfElim]). *)
-  #[local] Abbreviation SE f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC Bks iA HBk).
+  #[local] Abbreviation SE f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC Bks iA HBk HBss).
   #[local] Abbreviation self_elim_all := (SE self_elim_all).
   #[local] Abbreviation self_motive_move := (SE self_motive_move).
   #[local] Abbreviation self_ref_target := (SE self_ref_target).
+  #[local] Abbreviation self_index_readable := (SE self_index_readable).
+  #[local] Abbreviation self_ups_ok := (SE self_ups_ok).
+  (** The group's eliminator's model at [C1] against itself ([IndElim]). *)
+  #[local] Abbreviation XS f := (f p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA C1 C1 Bks Bks u0 u0 self_ups_ok Rel
+     HBks HBks (valid_blocks_binder_count _ _ _ _ _ _ HBk) (valid_blocks_binder_count _ _ _ _ _ _ HBk)
+     (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_arity _ _ _ _ _ _ HBk)
+     (valid_blocks_arity _ _ _ _ _ _ HBk) (decl_typed_nodup _ _ _ Hdt) (SE self_motive) self_index_readable
+     (EB rneut_rel u0 u0 u0_env' u0_env' u0_len' u0_len') (SE self_branch)).
 
   (** The view [m] of the container's member [k'], its map [vm]. *)
   Variable (qc : qname) (D' : ind_decl) (m : nat) (Mm : imember) (k' : nat) (Is : list exp) (vm : list nat).
@@ -2363,18 +2374,26 @@ Section CrossElim.
 
   (** The container's eliminator: a block for each member with one. *)
   Variable (ρb : env) (VBb : list eblock) (ub : list domain).
-  Hypotheses (HbB : forall i' Mi', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false -> exists b, List.nth_error VBb i' = Some b)
+  Hypotheses (Lub : List.length ub = ind_nu D')
+    (HbB : forall i' Mi', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false -> exists b, List.nth_error VBb i' = Some b)
     (HnmB : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b -> eb_binder_count b = S (im_nn Mi'))
     (HnaB : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b -> brs_names (im_cons Mi') (eb_brs b))
     (HarB : forall i' Mi' b c gs' n B, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b ->
               ind_con Mi' c = Some gs' -> In (c, n, B) (eb_brs b) -> n = (im_nn Mi' + List.length gs' + cargs_nrec D' gs')%nat).
-  Hypothesis (Hmot_x : forall i' Mi' v bb ba u u' ns ns' x x', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+  (** The motives, at related indices and elements stored at any types they
+      read back at (as [IndElim]'s [Hmot]). *)
+  Hypothesis (Hmot_x : forall i' Mi' v bb ba u u' ns ns' x x' ts ts', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
                 List.nth_error vm i' = Some v -> List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba ->
                 G v u u' ns ns' x x' ->
-                exists a a', ⟦ eb_motive bb ⟧ env_args ρb (ns ++ x :: nil) ↘ a /\
-                  ⟦ eb_motive ba ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ x :: nil) ts ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
+                exists a a', ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns ++ x :: nil) ts) ↘ a /\
+                  ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
                   DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x').
-  Hypothesis (Hbr_x : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k,
+  (** The branches, at related constructors and related recursive results,
+      their variables stored at any types they read back at (as
+      [IndElim]'s [Hbr]). *)
+  Hypothesis (Hbr_x : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k ts ts',
                 ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
                 List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
                 List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba ->
@@ -2383,11 +2402,38 @@ Section CrossElim.
                 G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs')
                   (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
                 cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
-                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
-                exists r r', ⟦ Bb ⟧ env_args ρb (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
-                  ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
+                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts' ->
+                exists r r', ⟦ Bb ⟧ env_extend_typed ρb (List.combine (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts) ↘ r /\
+                  ⟦ Ba ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts') ↘ r' /\
                   Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs))
                     (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r').
+  (** The container's branch's variables read back at the types its
+      eliminator stores them at: the container's arguments' types at [ub]
+      and its recursive results' types at [VBb]'s motives. *)
+  Hypothesis (Hcbr_x : forall i' Mi' v Mv c gs' gs u u' bs bs' vs vs' w ihs hd k,
+                ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+                List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+                ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+                G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs')
+                  (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
+                cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
+                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w)
+                  (List.map snd (branch_entries D' Mi' qc ub (blocks_motives VBb) ρb gs' (List.skipn (im_unu D Mv) bs) vs w))).
+  (** The container's motive's variables at a neutral read back at the
+      types its stuck eliminator stores them at: the container's
+      non-uniform parameters' types at [ub] and its member's type there. *)
+  Hypothesis (Hcmot_x : forall i' Mi' v Mv hd k as1 as2 e e' u u' ns ns',
+                ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+                List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+                G v u u' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
+                exists cups, ⟦mref i' of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, cups) /\
+                  List.Forall2 (fun v t => entry_readable (de_term v t))
+                    (List.skipn (im_unu D Mv) as1 ++ ⇑ (d_ind hd k as1) e :: nil)
+                    (List.map snd (motive_entries D' Mi' ub (List.skipn (im_unu D Mv) as1)
+                                     (d_ind hd k (cups ++ List.skipn (im_unu D Mv) as1)) (⇑ (d_ind hd k as1) e)))).
 
   (** The members of the container's group and those of the group the
       view's map takes them to. *)
@@ -2423,13 +2469,13 @@ Section CrossElim.
       ⟦projs fl of x ⟧ gc_deps ⍮ gc_stack ↘ ws -> ⟦projs fl of x' ⟧ gc_deps ⍮ gc_stack ↘ ws' ->
       ⟦ihs ws of gs' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ rs ->
       ⟦ihs ws' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ rs' ->
-      cross_fields_rel D D' dr Rel C1 p u0 Bks j u u' nil nil gs' gs ws ws' rs rs' ->
+      cross_fields_rel D D' dr Rel C1 p u0 Bks j u u' nil nil nil gs' gs ws ws' rs rs' ->
       cross_member_results i' j u u' ns ns' x x'.
 
   (** The two eliminators' recursive results of related constructor
       arguments: the container's, the group's, and their relation. *)
   #[warnings="-cannot-define-projection"]
-  Record cross_args_vals (k : nat) (u u' pre pre' : list domain) (gs' gs : list carg) (vs vs' : list domain) : Prop :=
+  Record cross_args_vals (k : nat) (u u' pre pre' : list domain) (Ts : list centry) (gs' gs : list carg) (vs vs' : list domain) : Prop :=
     mk_cross_args_vals
     { (** The container's recursive results *)
       cross_args_vals_container : list domain
@@ -2441,12 +2487,12 @@ Section CrossElim.
       (** The group's, by its eliminator *)
     ; cross_args_vals_eval_group : ⟦ihs vs' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cross_args_vals_group
       (** Related *)
-    ; cross_args_vals_related : cross_fields_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' gs' gs vs vs'
+    ; cross_args_vals_related : cross_fields_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts gs' gs vs vs'
         cross_args_vals_container cross_args_vals_group }.
 
   (** Those of related recursive arguments of shapes [t'] and [t]. *)
   #[warnings="-cannot-define-projection"]
-  Record cross_arg_vals (k : nat) (u u' pre pre' : list domain) (t' t : ptyp) (x x' : domain) : Prop :=
+  Record cross_arg_vals (k : nat) (u u' pre pre' : list domain) (Ts : list centry) (t' t : ptyp) (x x' : domain) : Prop :=
     mk_cross_arg_vals
     { (** The container's recursive results *)
       cross_arg_vals_container : list domain
@@ -2457,12 +2503,12 @@ Section CrossElim.
       (** The group's, by its eliminator *)
     ; cross_arg_vals_eval_group : ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cross_arg_vals_group
       (** Related *)
-    ; cross_arg_vals_related : cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' t' t x x'
+    ; cross_arg_vals_related : cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t x x'
         cross_arg_vals_container cross_arg_vals_group }.
 
   (** Those of related recursive arguments applied to related values. *)
   #[warnings="-cannot-define-projection"]
-  Record cross_app_vals (k : nat) (u u' pre pre' : list domain) (t' t : ptyp) (f c f' c' : domain) : Prop :=
+  Record cross_app_vals (k : nat) (u u' pre pre' : list domain) (Ts : list centry) (t' t : ptyp) (f c f' c' : domain) : Prop :=
     mk_cross_app_vals
     { (** The container's argument applied *)
       cross_app_vals_fc : domain
@@ -2482,7 +2528,7 @@ Section CrossElim.
       (** The group's, by its eliminator *)
     ; cross_app_vals_eval_group : ⟦ih cross_app_vals_fc' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cross_app_vals_group
       (** Related *)
-    ; cross_app_vals_related : cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' t' t cross_app_vals_fc cross_app_vals_fc'
+    ; cross_app_vals_related : cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t cross_app_vals_fc cross_app_vals_fc'
         cross_app_vals_container cross_app_vals_group }.
 
   (** A stuck eliminator of each side at related neutrals, when the two
@@ -2507,14 +2553,32 @@ Section CrossElim.
     pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
     destruct (self_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
     destruct (HbB _ _ HMi' HrvI) as [bb Hbb]; destruct (HBks _ _ HM Hrv) as [ba Hba].
-    destruct (Hmot_x i' Mi' j bb ba w w' _ _ _ _ HMi' HrvI Hvi Hbb Hba Hm) as (a & a' & Ea & Ea' & HR).
-    apply (cross_member_elim _ _ _ _ _ _ _ _ Mi' Mj (relevant_value a (⇑ a (d_elim ρb VBb qc ub i' as1 e)))
-             (relevant_value a' (⇑ a' (d_elim C1 Bks p u0 j as2 e'))) HMi' HrvI HM Hrv).
+    (** The group's motive's variables read back at the types its stuck
+        eliminator stores them at, by its own uniform parameters. *)
+    pose proof self_ups_ok as [_ _ Aa _ _ Mb _ _ Rb _ _ _].
+    destruct (XS mref_at_ref _ _ _ _ _ Mb HM Hrv Href) as [cupsb Hcb].
+    pose proof (XS grp_rel_neut_rebase _ _ _ _ u0 u0 _ _ _ _ _ _ _ _ HM Hrv Hm) as Hm2.
+    assert (Hrb : List.Forall2 (fun v t => entry_readable (de_term v t))
+                    (List.skipn (im_unu D Mj) as2 ++ ⇑ (d_ind hd k as2) e' :: nil)
+                    (List.map snd (motive_entries D Mj u0 (List.skipn (im_unu D Mj) as2)
+                                     (d_ind hd k (cupsb ++ List.skipn (im_unu D Mj) as2)) (⇑ (d_ind hd k as2) e')))).
+    { unfold motive_entries; rewrite List.map_app; apply List.Forall2_app;
+        [ exact (nparams_entries_readable_at_admissible_base _ _ _ _ _ _ _ _ _ _ Hass Aa HM Hs2)
+        | constructor; [ exact (Rb _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Aa Aa Hcb Hm2
+                                   (nparams_rel_refl_r p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI j Mj HM _ _ Hs2))
+                       | constructor ] ]. }
+    (** The container's, by its own. *)
+    destruct (Hcmot_x i' Mi' j Mj hd k as1 as2 e e' w w' _ _ HMi' HrvI Hvi HM Hm) as (cupsa & Hca & Hra).
+    destruct (Hmot_x i' Mi' j bb ba w w' _ _ _ _ _ _ HMi' HrvI Hvi Hbb Hba Hm Hra Hrb) as (a & a' & Ea & Ea' & HR).
+    rewrite (motive_env_combine _ _ _ _ _ _ _ Lub) in Ea; rewrite (motive_env_combine _ _ _ _ _ _ _ u0_len') in Ea'.
+    apply (cross_member_elim _ _ _ _ _ _ _ _ Mi' Mj (⇑ a (d_elim ρb VBb qc ub i' as1 e)) (⇑ a' (d_elim C1 Bks p u0 j as2 e'))
+             HMi' HrvI HM Hrv).
     - eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb HrvI); exact Href | exact Hq'
                              | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity
-                             | rewrite Hnuq; exact Ea ].
+                             | exact Hca | rewrite Hnuq; exact Ea ].
     - eapply eval_elim_neut; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | unfold im_np; lia | exact Hba
-                             | rewrite (valid_blocks_binder_count _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity | rewrite Hnuq; exact Ea' ].
+                             | rewrite (valid_blocks_binder_count _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity
+                             | exact Hcb | rewrite Hnuq; exact Ea' ].
     - apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
       exact (per_bot_then_per_elem HR Hb).
   Qed.
