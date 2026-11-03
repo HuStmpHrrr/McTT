@@ -83,6 +83,18 @@ Qed.
 Lemma env_tele_uparams_nil : forall D ups, env_tele nil (List.rev (ind_uparams D)) ups = decl_env D ups.
 Proof. reflexivity. Qed.
 
+(** Components after a full prefix read only as many types of the rest
+    as there are components. *)
+Lemma components_env_app_firstn : forall D u T0 T pre0 pre, List.length pre0 = List.length T0 -> List.length pre <= List.length T ->
+    components_env D u (T0 ++ T) (pre0 ++ pre) = components_env D u (T0 ++ List.firstn (List.length pre) T) (pre0 ++ pre).
+Proof.
+  intros * Hl0 Hl.
+  rewrite (components_env_firstn D u (T0 ++ T)), (components_env_firstn D u (T0 ++ List.firstn (List.length pre) T))
+    by (rewrite !List.length_app, ?List.length_firstn; lia).
+  f_equal; rewrite List.length_app, !List.firstn_app, Hl0, Nat.add_comm, Nat.add_sub, List.firstn_firstn, Nat.min_id.
+  rewrite !List.firstn_all2 by lia; reflexivity.
+Qed.
+
 (** The shift past the components gives the parameters' environment. *)
 Lemma eval_wk_shiftn_components_env : forall D ups T zs,
     ⟪wk_shiftn (List.length zs)⟫ (components_env D ups T zs) = decl_env D ups.
@@ -451,6 +463,18 @@ Proof.
     eapply (per_gargs_base _ _ _ HTb' HC Hts' (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t')); [ exact Hext | | | exact Hg ].
     + apply per_env_extend_intro'; [ exact Hρρ | exact (per_head_of Ea Ea HR1 Hxx) | exact Rt | exact Rx ].
     + apply per_env_extend_intro'; [ exact Hρ'ρ' | exact (per_head_of Ea' Ea' HR2 Hx'x') | exact Rt' | exact Rx' ].
+Qed.
+
+(** The same at the telescope's own extensions. *)
+Corollary rel_gargs_tele : forall ts Tb RTb R,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+    EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
+    forall ρ ρ' xs xs', List.length xs = List.length ts -> List.length xs' = List.length ts ->
+      R (env_tele ρ ts xs) (env_tele ρ' ts xs') -> RTb ρ ρ' /\ per_gargs ts ρ ρ' xs xs'.
+Proof.
+  intros * HTb HC Hts HR * Hl Hl' H; unfold env_tele in H.
+  rewrite <- (tele_entries_fst xs ρ ts), <- (tele_entries_fst xs' ρ' ts).
+  apply (rel_gargs _ _ _ _ HTb HC Hts HR); [ rewrite tele_entries_length; exact Hl | rewrite tele_entries_length; exact Hl' | exact H ].
 Qed.
 
 (** Arguments related at a telescope read back alike, up to their
