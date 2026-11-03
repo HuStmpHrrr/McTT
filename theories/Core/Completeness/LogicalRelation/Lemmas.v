@@ -4,6 +4,7 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Semantic Require Import RetagReadable.
 From Mctt.Core.Completeness.LogicalRelation Require Import Definitions Tactics.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
@@ -187,16 +188,16 @@ Proof. intros *; rewrite eval_wk_id; reflexivity. Qed.
 
 (** ** Evaluating the Identity and the Weakenings at a Context
 
-    The identity evaluates to the environment restamped, and a weakening
-    to its image restamped ([restamp_env]): a propositional entry of the
-    target is the corresponding entry of the environment, which carries
-    its proof.  A context PER relates the restamped environments as it
-    relates the environments ([per_ctx_env_restamp]). *)
+    The identity evaluates to the environment retagged at the context,
+    and a weakening to its image retagged ([ctx_retag]): each entry is the
+    corresponding entry of the environment, stored at the context's type
+    and unit.  A context PER relates the retagged environments as it
+    relates the environments ([per_ctx_env_retag]). *)
 
 Lemma eval_sub_id_rel : forall {Γ R ρ ρ'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Dom ρ ≈ ρ' ∈ R ->
-    ⟦ Id : Γ ⟧s ρ ↘ restamp_env ρ /\ ⟦ Id : Γ ⟧s ρ' ↘ restamp_env ρ'.
+    ⟦ Id : Γ ⟧s ρ ↘ ctx_retag Γ ρ /\ ⟦ Id : Γ ⟧s ρ' ↘ ctx_retag Γ ρ'.
 Proof.
   intros * HΓ Hρ; split; apply eval_sub_id.
 Qed.
@@ -204,7 +205,7 @@ Qed.
 Lemma eval_sub_of_wk_rel : forall {Γ R φ ρ ρ'} `{Hφ : WkMono φ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Dom ⟪φ⟫ ρ ≈ ρ' ∈ R ->
-    ⟦ ι φ : Γ ⟧s ρ ↘ restamp_env (⟪φ⟫ ρ).
+    ⟦ ι φ : Γ ⟧s ρ ↘ ctx_retag Γ (⟪φ⟫ ρ).
 Proof.
   intros Γ R φ ρ ρ' Hφ HΓ Hρ; exact (eval_sub_of_wk _ _ _ (Hφ := Hφ)).
 Qed.
@@ -215,7 +216,7 @@ Lemma eval_sub_of_wk_pair : forall {Γ φ R R' ρ ρ'},
     rel_wk φ R R' ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R' ->
     Dom ρ ≈ ρ' ∈ R ->
-    ⟦ ι φ : Γ ⟧s ρ ↘ restamp_env (⟪φ⟫ ρ) /\ ⟦ ι φ : Γ ⟧s ρ' ↘ restamp_env (⟪φ⟫ ρ').
+    ⟦ ι φ : Γ ⟧s ρ ↘ ctx_retag Γ (⟪φ⟫ ρ) /\ ⟦ ι φ : Γ ⟧s ρ' ↘ ctx_retag Γ (⟪φ⟫ ρ').
 Proof.
   intros * Hφ HΓ Hρ; pose proof (rel_wk_mono _ _ _ Hφ) as Hm.
   split; exact (eval_sub_of_wk _ _ _ (Hφ := Hm)).
@@ -226,7 +227,7 @@ Qed.
 Lemma eval_sub_shift_rel : forall {e Γ R ρ ρ'},
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
     Dom ρ ≈ ρ' ∈ R ->
-    ⟦ Wk : Γ ⟧s ρ ↘ restamp_env ρ↯ /\ ⟦ Wk : Γ ⟧s ρ' ↘ restamp_env ρ'↯.
+    ⟦ Wk : Γ ⟧s ρ ↘ ctx_retag Γ ρ↯ /\ ⟦ Wk : Γ ⟧s ρ' ↘ ctx_retag Γ ρ'↯.
 Proof.
   intros * HΓ Hρ; split; apply eval_sub_shift.
 Qed.
@@ -237,37 +238,26 @@ Ltac eval_wk_at H :=
   let T := type of H in
   match T with ?R _ _ => eapply (eval_sub_of_wk_rel (R := R)); [ eassumption | exact H ] end.
 
-(** Precomposition by a weakening, when the weakening takes the
-    propositional entries of [σ]'s target to propositional entries of its
-    own target, and the image holds its proofs.  It reads the definition
-    of an evaluation of a substitution, as [eval_sub_wk_pre] does. *)
 #[local] Transparent eval_sub.
-Lemma eval_sub_wk_pre_props : forall {Δ Δ' φ σ ρ ρσ} `{Hφ : WkMono φ},
-    ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
-    (forall x, x < List.length Δ' -> φ x < List.length Δ) ->
-    (forall x, x < List.length Δ' ->
-       entry_propositional gc_deps gc_stack Δ ρσ (φ x) <-> entry_propositional gc_deps gc_stack Δ' (⟪φ⟫ ρσ) x) ->
-    ⟦ (ι φ) ⨟ σ : Δ' ⟧s ρ ↘ ⟪φ⟫ ρσ.
-Proof.
-  intros Δ Δ' φ σ ρ ρσ Hφ H Hl Hc x Hx; split.
-  - intros Hp'; rewrite (eval_wk_entry _ _ Hφ x); apply (H (φ x) (Hl x Hx)); exact (proj2 (Hc _ Hx) Hp').
-  - intros Hn; rewrite (eval_wk_entry _ _ Hφ x); apply (H (φ x) (Hl x Hx)).
-    intros Hp'; exact (Hn (proj1 (Hc _ Hx) Hp')).
-Qed.
 
 (** A weakened extension at a propositional head: the head is the proof,
     weakened, kept over [ρ]. *)
 Lemma eval_sub_wk_extend_proof : forall e Δ σ M φ ρ ρσ,
     ⟦ sb_wk σ φ : Δ ⟧s ρ ↘ ρσ ->
     head_propositional gc_deps gc_stack e Δ ρσ ->
-    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s ρ ↘ ρσ ↦ ⋆ᵈ⟨M[φ]ʷ, ρ⟩ ⦂ substituted_type.
+    ⟦ sb_wk (σ,,M) φ : e :: Δ ⟧s ρ ↘ ρσ ↦ ⋆ᵈ⟨M[φ]ʷ, ρ⟩ ⦂ centry_tag e Δ ρσ.
 Proof.
   intros * H Hp [| x] Hx.
-  - split; [ intros _; reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
+  - split; [ intros _; cbn; rewrite ctx_entry_tag_head; reflexivity
+           | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
   - cbn [List.length] in Hx.
     split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
+
+(** The tag of an entry after the head is the tail's. *)
+Lemma ctx_entry_tag_drop : forall e Δ x ρ, ctx_entry_tag (e :: Δ) (S x) ρ = ctx_entry_tag Δ x ρ↯.
+Proof. intros e Δ x [| d ρ]; [ reflexivity | apply ctx_entry_tag_succ ]. Qed.
 
 (** An evaluated extension: its tail is the tail's evaluation, and at a
     head that is no proposition the head is the term's value. *)
@@ -277,20 +267,24 @@ Lemma eval_sub_extend_inv : forall e Δ σ M ρ ρτ,
       (~ entry_propositional gc_deps gc_stack (e :: Δ)%list ρτ 0 -> ⟦ M ⟧ ρ ↘ ρτ 0).
 Proof.
   intros * H; split.
-  - intros x Hx; rewrite env_entry_drop; split.
+  - intros x Hx; rewrite env_entry_drop, <- (ctx_entry_tag_drop e); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e :: Δ) (S x)); split.
     + intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
     + intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
   - intros Hn; destruct (proj2 (H 0 ltac:(cbn; lia)) Hn) as (m0 & Hm0 & Hx); unfold env_var; rewrite Hm0; exact Hx.
 Qed.
 
-(** Evaluation at a target reads its entries' types only. *)
+(** Evaluation at a target reads its entries' types and units only. *)
 Lemma eval_sub_same_types : forall {Δ1 Δ2 σ ρ ρσ},
     (forall x, ctx_entry_type Δ1 x = ctx_entry_type Δ2 x) ->
     List.length Δ1 = List.length Δ2 ->
+    (forall x, ctx_entry_unit Δ1 x = ctx_entry_unit Δ2 x) ->
     ⟦ σ : Δ1 ⟧s ρ ↘ ρσ ->
     ⟦ σ : Δ2 ⟧s ρ ↘ ρσ.
 Proof.
-  intros * Ht Hl H x Hx.
+  intros * Ht Hl Hu H x Hx.
+  assert (Etag : ctx_entry_tag Δ1 x ρσ = ctx_entry_tag Δ2 x ρσ)
+    by (unfold ctx_entry_tag; rewrite Ht, !List.length_skipn, Hl; reflexivity).
+  rewrite <- Etag, <- (Hu x).
   assert (Hsk : forall n, List.length (List.skipn n Δ1) = List.length (List.skipn n Δ2))
     by (intros n; rewrite !List.length_skipn, Hl; reflexivity).
   assert (I : entry_propositional gc_deps gc_stack Δ2 ρσ x <-> entry_propositional gc_deps gc_stack Δ1 ρσ x).
@@ -304,10 +298,11 @@ Qed.
 Lemma eval_sub_q_inv : forall e Δ σ ρ ρq,
     ⟦ q σ : e :: Δ ⟧s ρ ↘ ρq ->
     ⟦ sb_wk σ ↑ : Δ ⟧s ρ ↘ ρq↯ /\
-      (~ entry_propositional gc_deps gc_stack (e :: Δ)%list ρq 0 -> env_entry ρq 0 = restamp_entry (env_entry ρ 0)).
+      (~ entry_propositional gc_deps gc_stack (e :: Δ)%list ρq 0 ->
+         env_entry ρq 0 = retag_entry (ctx_entry_tag (e :: Δ) 0 ρq) (ctx_entry_unit (e :: Δ) 0) (env_entry ρ 0)).
 Proof.
   intros * H; split.
-  - intros x Hx; rewrite env_entry_drop; split.
+  - intros x Hx; rewrite env_entry_drop, <- (ctx_entry_tag_drop e); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e :: Δ) (S x)); split.
     + intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
     + intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
   - intros Hn; exact (proj2 (H 0 ltac:(cbn; lia)) Hn).
@@ -449,6 +444,36 @@ Proof.
   all: eapply head_propositional_of_rel_typ; [ eassumption | reflexivity | eassumption | eassumption ].
 Qed.
 
+(** Environments a context PER relates agree on which entries are
+    propositions: the entries' types are related at their tails. *)
+Lemma entry_propositional_rel : forall Γ R ρ ρ' x,
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R ->
+    entry_propositional gc_deps gc_stack Γ ρ x <-> entry_propositional gc_deps gc_stack Γ ρ' x.
+Proof.
+  induction Γ as [| e Γ IH]; intros * HΓ Hρ.
+  { split; intros [T HT]; destruct x; discriminate HT. }
+  inversion HΓ; subst; handle_per_ctx_env_irrel; apply_relation_equivalence; destruct_conjs;
+    destruct_cons_rels; destruct_def_rels; destruct_dm_rels; destruct_mod_rels.
+  all: destruct x as [| y]; [| rewrite !entry_propositional_succ; eapply IH; eassumption ].
+  all: rewrite !entry_propositional_zero_head.
+  all: try solve [ split; intros [T HT]; discriminate HT ].
+  all: eapply head_propositional_pair; [ eassumption | reflexivity | | eassumption ].
+  all: intros ρ0 ρ0' H0'; match goal with Hrt : forall ρ ρ' (_ : _ ρ ρ'), PER.Definitions.rel_typ _ _ _ _ _ _ |- _ =>
+         destruct (Hrt _ _ H0') as [b b' Eb Eb' Hb]; exists b, b'; repeat split; [ exact Eb | exact Eb' | eexists; exact Hb ] end.
+Qed.
+
+(** An entry of the retagging of an environment a context PER relates is
+    a proposition exactly when the entry of the environment is. *)
+Corollary entry_propositional_ctx_retag : forall Γ R ρ ρ' x,
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R ->
+    entry_propositional gc_deps gc_stack Γ (ctx_retag Γ ρ) x <-> entry_propositional gc_deps gc_stack Γ ρ x.
+Proof.
+  intros * HΓ Hρ.
+  assert (PER R) by (eapply per_env_PER; eassumption).
+  assert (Hρρ : Dom ρ ≈ ρ ∈ R) by (etransitivity; [| symmetry ]; exact Hρ).
+  exact (entry_propositional_rel _ _ _ _ x HΓ (per_ctx_env_retag_left HΓ _ _ Hρρ)).
+Qed.
+
 (** The same at a semantic weakening, at an environment its source PER
     relates. *)
 Lemma eval_sub_wk_pre_rel : forall {Δ Δ' φ σ ρ ρσ ρσ'},
@@ -456,13 +481,14 @@ Lemma eval_sub_wk_pre_rel : forall {Δ Δ' φ σ ρ ρσ ρσ'},
     forall R, EF Δ ≈ Δ ∈ per_ctx_env ↘ R ->
     Dom ρσ ≈ ρσ' ∈ R ->
     ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
-    ⟦ (ι φ) ⨟ σ : Δ' ⟧s ρ ↘ ⟪φ⟫ ρσ.
+    ⟦ (ι φ) ⨟ σ : Δ' ⟧s ρ ↘ ctx_retag Δ' (⟪φ⟫ ρσ).
 Proof.
   intros * [R1 HΔ R2 HΔ' Hφ Hl Hc] R HR Hρ H.
   assert (E : R <~> R1) by (eapply per_ctx_env_right_irrel; eassumption).
   apply E in Hρ.
   pose proof (rel_wk_mono _ _ _ Hφ) as Hm.
-  exact (eval_sub_wk_pre_props (Δ := Δ) H Hl (Hc _ _ Hρ)).
+  apply (eval_sub_wk_pre _ _ _ _ _ _ H Hl); intros x Hx.
+  rewrite (entry_propositional_ctx_retag _ _ _ _ x HΔ' (Hφ _ _ Hρ)); symmetry; exact (Hc _ _ Hρ x Hx).
 Qed.
 
 (** * Reading a Context PER off [⊨ Γ]
@@ -514,15 +540,15 @@ Proof.
   assert (Hψ' : WkMono ψ) by exact Hψm.
   assert (H1 : Dom ⟪ψ⟫ (⟪φ⟫ ρ) ≈ ⟪ψ⟫ (⟪φ⟫ ρ') ∈ env_relΓ) by exact (Hψ _ _ (Hφ _ _ Hρ)).
   assert (H2 : Dom ⟪ψ⟫ (⟪φ⟫ ρ') ≈ ⟪ψ⟫ (⟪φ⟫ ρ) ∈ env_relΓ) by (symmetry; exact H1).
-  apply mk_rel_sub with (ρσφ := restamp_env (⟪ψ ⊙ φ⟫ ρ)) (ρσ := restamp_env (⟪ψ⟫ (⟪φ⟫ ρ)))
-                        (ρ'σ' := restamp_env (⟪ψ⟫ (⟪φ⟫ ρ'))) (ρ'σ'φ := restamp_env (⟪ψ ⊙ φ⟫ ρ')).
+  apply mk_rel_sub with (ρσφ := ctx_retag Γ (⟪ψ ⊙ φ⟫ ρ)) (ρσ := ctx_retag Γ (⟪ψ⟫ (⟪φ⟫ ρ)))
+                        (ρ'σ' := ctx_retag Γ (⟪ψ⟫ (⟪φ⟫ ρ'))) (ρ'σ'φ := ctx_retag Γ (⟪ψ ⊙ φ⟫ ρ')).
   - eapply (eval_sub_of_wk_rel (φ := ψ ⊙ φ)); [ exact HΓ | rewrite eval_wk_compose by assumption; exact H1 ].
   - eapply eval_sub_of_wk_rel; [ exact HΓ | exact H1 ].
   - eapply eval_sub_of_wk_rel; [ exact HΓ | exact H2 ].
   - eapply (eval_sub_of_wk_rel (φ := ψ ⊙ φ)); [ exact HΓ | rewrite eval_wk_compose by assumption; exact H2 ].
   - rewrite !eval_wk_compose by assumption.
     apply rel_chain_4_of_2; [ solve_chain_PER |].
-    exact (per_ctx_env_restamp HΓ _ _ H1).
+    exact (per_ctx_env_retag HΓ _ _ H1).
 Qed.
 
 Corollary rel_sub_of_wk : forall {Δ ψ Γ},
@@ -755,8 +781,8 @@ Lemma rel_exp_body_unrestamp : forall {Γ T M M' RΓ} {i : nat},
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ R' ->
-        ⟦ σ : Γ ⟧s ρ ↘ restamp_env ρσ ->
-        ⟦ σ' : Γ ⟧s ρ' ↘ restamp_env ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ctx_retag Γ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ctx_retag Γ ρ'σ' ->
         Dom ρσ ≈ ρ'σ' ∈ RΓ ->
         exists R, rel_typ i T σ ρ ρσ T σ' ρ' ρ'σ' R /\
           (type_propositional T σ ρ \/ rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' R).
@@ -802,8 +828,8 @@ Lemma rel_type_body_unrestamp : forall {Γ T T' RΓ} {P : relation domain} `{HP 
       Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ R' ->
-        ⟦ σ : Γ ⟧s ρ ↘ restamp_env ρσ ->
-        ⟦ σ' : Γ ⟧s ρ' ↘ restamp_env ρ'σ' ->
+        ⟦ σ : Γ ⟧s ρ ↘ ctx_retag Γ ρσ ->
+        ⟦ σ' : Γ ⟧s ρ' ↘ ctx_retag Γ ρ'σ' ->
         Dom ρσ ≈ ρ'σ' ∈ RΓ ->
         rel_exp T σ ρ ρσ T' σ' ρ' ρ'σ' P.
 Proof.
@@ -957,9 +983,10 @@ Proof.
   pose proof (rel_chain_map _ _ (eval_wk φ) (rel_wk_app _ _ _ Hφ) _ Hchain) as Hchain'.
   simpl in Hchain'.
   (** Each of the four is an environment of [Δ], related to itself. *)
-  apply (mk_rel_sub ⟪φ⟫ v1 ⟪φ⟫ v2
-                    ⟪φ⟫ v3 ⟪φ⟫ v4);
-    [ rewrite sb_wk_wk_pre | | | rewrite sb_wk_wk_pre | exact Hchain' ];
+  apply (mk_rel_sub (ctx_retag Δ' (⟪φ⟫ v1)) (ctx_retag Δ' (⟪φ⟫ v2))
+                    (ctx_retag Δ' (⟪φ⟫ v3)) (ctx_retag Δ' (⟪φ⟫ v4)));
+    [ rewrite sb_wk_wk_pre | | | rewrite sb_wk_wk_pre | ];
+    [ ..| destruct Hchain' as (C1 & C2 & C3); cbn; repeat split; apply (per_ctx_env_retag HΔ'); assumption ];
     (eapply (eval_sub_wk_pre_rel Hφj); [ eassumption | | eassumption ]); pairwise.
 Qed.
 
@@ -999,11 +1026,11 @@ Proof.
   assert (Hρτl : Dom ρτ ≈ ρτ ∈ env_relΓ) by (etransitivity; [ exact Hρτ | exact Hρτ' ]).
   assert (Hρτr : Dom ρ'τ' ≈ ρ'τ' ∈ env_relΓ) by (etransitivity; [ exact Hρτ' | exact Hρτ ]).
   pose proof (rel_wk_mono _ _ _ Hφ) as Hφm.
-  (** The first instantiation is read at the restampings of the inner
-      environments, which the second one names ([eval_sub_restamp]). *)
+  (** The first instantiation is read at the retaggings of the inner
+      environments, which the second one names ([eval_sub_wk_pre_rel]). *)
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk_pre Hτj Hφj) _ _ _ _ Hρ
-              (eval_sub_restamp _ _ _ _ (eval_sub_wk_pre_rel Hφj _ HΓ Hρτl Hev))
-              (eval_sub_restamp _ _ _ _ (eval_sub_wk_pre_rel Hφj _ HΓ Hρτr Hev')))
+              (eval_sub_wk_pre_rel Hφj _ HΓ Hρτl Hev)
+              (eval_sub_wk_pre_rel Hφj _ HΓ Hρτr Hev'))
     as [R1 [Htyp1 Hexp1]].
   destruct (HMgen _ _ HΓ _ _ (rel_sub_of_wk Hφj) _ _ _ _ Hρτ
               ltac:(eval_wk_at (Hφ _ _ Hρτ)) ltac:(eval_wk_at (Hφ _ _ Hρτ')))
@@ -1081,7 +1108,7 @@ Proof.
       itself, related by [per_ctx_env_restamp_left], bridges the first
       inner values to the values wanted. *)
   assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
-  pose proof (per_ctx_env_restamp_left HΔk _ _ (Hφ _ _ Hρ)) as Hrφρ.
+  pose proof (per_ctx_env_retag_left HΔk _ _ (Hφ _ _ Hρ)) as Hrφρ.
   destruct (rel_exp_under_ctx_simple HM) as [env_relΔ3 [HΔ3 [i3 HMs]]].
   assert (E3 : env_relΔ <~> env_relΔ3) by (eapply per_ctx_env_right_irrel; [ exact HΔk | exact HΔ3 ]).
   destruct (HMs _ _ (proj1 (E3 _ _) Hrφρ)) as (b & b' & R3 & Hb & Hb' & HR3 & Hbr).
