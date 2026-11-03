@@ -152,6 +152,48 @@ Proof.
   - inversion_clear HAs; apply (IH _ _ n); [ assumption | assumption | lia | lia ].
 Qed.
 
+(** An entry of a telescope moved by a substitution: the entry of the
+    telescope at the same position, moved past the entries after it. *)
+Lemma tele_sub_split_at : forall X σ Δ1 T Δ2, tele_ass X -> tele_sub X σ = Δ1 ++ ce_ass T :: Δ2 ->
+    exists X1 A X2, X = X1 ++ ce_ass A :: X2 /\ List.length X1 = List.length Δ1 /\ T = A[sb_qn (List.length X2) σ] /\
+      Δ2 = tele_sub X2 σ.
+Proof.
+  induction X as [| e X IH]; intros σ Δ1 T Δ2 Ha H; cbn [tele_sub] in H; [ destruct Δ1; discriminate |].
+  assert (He : exists A, e = ce_ass A) by (inversion Ha as [| ? ? He _]; exact He).
+  destruct He as [A ->].
+  assert (Ha' : tele_ass X) by (inversion Ha; assumption).
+  destruct Δ1 as [| d Δ1]; cbn [List.app] in H; injection H as H1 H2.
+  - exists nil, A, X; split; [ reflexivity | split; [ reflexivity | split; [ exact (eq_sym H1) | exact (eq_sym H2) ] ] ].
+  - destruct (IH σ Δ1 T Δ2 Ha' H2) as (X1 & A' & X2 & -> & L1 & -> & ->).
+    exists (ce_ass A :: X1), A', X2; split; [ reflexivity | split; [ cbn; lia | split; reflexivity ] ].
+Qed.
+
+(** An entry of the recursive results along the leaf paths [ls]: the
+    result along one of them, after those before it. *)
+Lemma leaves_ctx_split_at : forall r nn As Us na pat ls j Δ1 T Δ2,
+    leaves_ctx r nn As Us na pat j ls = Δ1 ++ ce_ass T :: Δ2 ->
+    exists n l, List.nth_error ls n = Some l /\
+      T = leaf_ihty r As (sb_of_wk (wk_shiftn ((j + n) + na + nn))) (ihs_sub nn Us na pat (j + n))
+            (a_var ((j + n) + na - 1 - List.length pat)) l /\
+      Δ2 = leaves_ctx r nn As Us na pat j (List.firstn n ls).
+Proof.
+  intros r nn As Us na pat; induction ls as [| l ls IH]; intros j Δ1 T Δ2 H; cbn [leaves_ctx] in H; [ destruct Δ1; discriminate |].
+  set (L := leaves_ctx r nn As Us na pat (S j) ls) in *.
+  destruct (Nat.lt_ge_cases (List.length Δ1) (List.length L)) as [Hlt | Hge].
+  - destruct (app_split_prefix Δ1 (ce_ass T :: Δ2) L _ (eq_sym H) ltac:(lia)) as (m1 & EL & Em).
+    destruct m1 as [| d m1]; [ rewrite List.app_nil_r in EL; subst L; rewrite <- EL in Hlt; lia |].
+    cbn [List.app] in Em; injection Em as <- ->.
+    destruct (IH (S j) Δ1 T m1 EL) as (n & l' & Hn & -> & ->).
+    exists (S n), l'; split; [ exact Hn | split ].
+    + replace (j + S n) with (S j + n) by lia; reflexivity.
+    + cbn [List.firstn leaves_ctx]; reflexivity.
+  - destruct (app_split_prefix L _ Δ1 (ce_ass T :: Δ2) H Hge) as (m1 & EΔ & Em).
+    destruct m1 as [| d m1]; cbn [List.app] in Em.
+    + injection Em as HT HΔ; subst Δ2.
+      exists 0, l; split; [ reflexivity | split; [ rewrite Nat.add_0_r; exact (eq_sym HT) | reflexivity ] ].
+    + injection Em as _ Em; destruct m1; discriminate.
+Qed.
+
 (** Retagging at a context twice is retagging once: the tags of the later
     entries are those of the retagged ones already. *)
 Lemma ctx_retag_idempotent : forall Δ ρ, ctx_retag Δ (ctx_retag Δ ρ) = ctx_retag Δ ρ.
@@ -1205,6 +1247,107 @@ Section Iota.
       by (unfold Pre, im_params in *; rewrite <- !List.app_assoc in *; exact HAw).
     pose proof (rel_exp_under_ctx_gsub Hg HAw') as HT; cbn [exp_sub] in HT.
     exact HT.
+  Qed.
+
+  (** *** The Sorts of the Entries of the Branch's Context
+
+      The sort of an entry of the arguments and the non-uniform parameters,
+      at [Us]: an argument's own, a recursive one's and a parameter's the
+      relevant one.  [y] counts the entries from the last argument. *)
+  Definition inst_rf (y : nat) : relevance :=
+    if y <? List.length gs then
+      match List.nth_error gs (List.length gs - 1 - y) with Some (ca_arg r _) => r | _ => relevant end
+    else relevant.
+
+  (** An entry over the uniform parameters, of a sort, moved by [Us]. *)
+  Lemma closed_entry_moved : forall X2 A (S : exp), tele_ass X2 -> ⊨ X2 ++ ind_uparams D ->
+      (forall σ, S[σ] = S) -> X2 ++ ind_uparams D ⊨ A : S ->
+      tele_sub X2 (sb_of_list Id Us) ++ Γ ⊨ A[sb_qn (List.length X2) (sb_of_list Id Us)] : S.
+  Proof.
+    intros * HXa HX HS HA.
+    assert (HXUa : tele_ass (X2 ++ ind_uparams D)) by (apply List.Forall_app; split; [ exact HXa | exact Ua ]).
+    pose proof (closed_app_valid _ _ _ _ _ HXUa HX HΓ HA) as HAΓ; rewrite <- List.app_assoc in HAΓ.
+    destruct (closed_app_sem _ _ HXUa HX HΓ) as [HXΓ _]; rewrite <- List.app_assoc in HXΓ.
+    pose proof (gsub_qn X2 Γ (sb_of_list Id Us) (ind_uparams D ++ Γ)
+                  (gsub_closed_inst _ _ _ Ua Usem HΓ iota_case_HUl iota_case_HUs iota_case_HUss) HXa HXΓ) as Hg.
+    pose proof (rel_exp_under_ctx_gsub Hg HAΓ) as H; rewrite HS in H; exact H.
+  Qed.
+
+  Lemma relevance_sort_universe_sub : forall r (j : nat) σ, (relevance_sort r Typeω@j)[σ] = relevance_sort r Typeω@j.
+  Proof. intros [] *; reflexivity. Qed.
+
+  Lemma inst_entry_sort : forall Δ1 T Δ2, tele_sub (cargs_ctx p D Mm gs ++ im_nparams Mm) (sb_of_list Id Us) = Δ1 ++ ce_ass T :: Δ2 ->
+      exists i : nat, Δ2 ++ Γ ⊨ T : relevance_sort (inst_rf (List.length Δ1)) Typeω@i.
+  Proof.
+    intros * H.
+    assert (HXa : tele_ass (cargs_ctx p D Mm gs ++ im_nparams Mm))
+      by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_nparams_ass D Hc _ _ HMm) ]).
+    destruct (tele_sub_split_at _ _ _ _ _ HXa H) as (X1 & A & X2 & EX & L1 & -> & ->).
+    rewrite <- L1.
+    assert (HX2a : tele_ass X2) by (rewrite EX in HXa; apply List.Forall_app in HXa as [_ HXa]; exact (List.Forall_inv_tail HXa)).
+    (** The entry's sort over the uniform parameters. *)
+    assert (Hsort : exists i : nat, ⊨ X2 ++ ind_uparams D /\ X2 ++ ind_uparams D ⊨ A : relevance_sort (inst_rf (List.length X1)) Typeω@i).
+    { destruct (Nat.lt_ge_cases (List.length X1) (List.length gs)) as [Hy | Hy].
+      - (** An argument. *)
+        destruct (nth_error_lt_some' gs (List.length gs - 1 - List.length X1) ltac:(lia)) as [g Hg].
+        destruct (List.nth_error_split _ _ Hg) as (a & b & Hgs & La).
+        assert (Lb : List.length b = List.length X1)
+          by (pose proof (f_equal (@List.length _) Hgs) as Lg; rewrite List.length_app in Lg; cbn [List.length] in Lg; lia).
+        destruct (valid_group_cargs_sem_all p D Hvg Hcv m Mm c gs HMm Hcon a (g :: b) Hgs) as [HΨa IHw].
+        assert (Hrf : inst_rf (List.length X1) = match g with ca_arg r _ => r | ca_rec _ => relevant end).
+        { unfold inst_rf; replace (List.length X1 <? List.length gs) with true by (symmetry; apply Nat.ltb_lt; exact Hy).
+          rewrite Hg; destruct g; reflexivity. }
+        rewrite Hrf.
+        assert (EX' : cargs_ctx p D Mm gs ++ im_nparams Mm
+                      = cargs_ctx_aux p D (im_nn Mm) (cargs_pat (g :: nil) ++ cargs_pat a) b
+                          ++ (cargs_ctx_aux p D (im_nn Mm) (cargs_pat a) (g :: nil)) ++ cargs_ctx p D Mm a ++ im_nparams Mm).
+        { unfold cargs_ctx; rewrite Hgs, cargs_ctx_aux_app, List.app_nil_r.
+          change (g :: b) with ((g :: nil) ++ b); rewrite cargs_ctx_aux_app, <- !List.app_assoc; reflexivity. }
+        assert (Lpre : List.length (cargs_ctx_aux p D (im_nn Mm) (cargs_pat (g :: nil) ++ cargs_pat a) b) = List.length X1)
+          by (rewrite length_cargs_ctx_aux; exact Lb).
+        destruct g as [r A0 | t].
+        + cbn [cargs_ctx_aux List.app] in EX'.
+          rewrite EX in EX'; destruct (app_split_eq _ _ _ _ EX' (eq_sym Lpre)) as [_ E2].
+          cbn [List.app] in E2; injection E2 as -> ->.
+          assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec a)) = Some A0)
+            by (rewrite Hgs, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
+          pose proof (nonrec_relevance_at a b r A0) as Hr; rewrite <- Hgs in Hr.
+          destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HMm Hcon HA Hr) as (_ & j & HA0).
+          rewrite Hgs, <- nonrec_args_prefix_cargs_strat in HA0.
+          pose proof (rel_exp_under_ctx_wk IHw HA0) as HAw; cbn [exp_wk] in HAw.
+          rewrite relevance_sort_wk in HAw; cbn [exp_wk] in HAw.
+          exists j; split; [ rewrite <- List.app_assoc; unfold im_params in HΨa; exact HΨa |].
+          rewrite <- List.app_assoc; unfold im_params in HAw; exact HAw.
+        + cbn [cargs_ctx_aux List.app] in EX'.
+          rewrite EX in EX'; destruct (app_split_eq _ _ _ _ EX' (eq_sym Lpre)) as [_ E2].
+          cbn [List.app] in E2; injection E2 as -> ->.
+          (** The recursive argument's type, the [Π] over its domains of the
+              end. *)
+          rewrite (ptyp_ty_ctx_pi p D (im_nn Mm) t (cargs_pat a)).
+          assert (HΦa : tele_ass (shape_domains_ctx (cargs_pat a) (ptyp_doms t))) by apply shape_domains_ctx_ass.
+          assert (HΦ : ⊨ shape_domains_ctx (cargs_pat a) (ptyp_doms t) ++ cargs_ctx p D Mm a ++ im_params D Mm).
+          { pose proof (shape_domains_ctx_sem_gen D p m Mm c gs HD HMm Hcon a t b Hgs HΨa IHw _ (le_n _)) as H0.
+            rewrite List.firstn_all in H0; exact H0. }
+          destruct (valid_group_shape_leaf p D Hvg Hcv m Mm c gs a t b HMm Hcon Hgs HΨa IHw) as [j0 Hleaf].
+          destruct (rel_exp_ctx_pi _ _ _ _ HΦa HΦ Hleaf) as [j Hj].
+          exists j; split; [ rewrite <- List.app_assoc; unfold im_params in HΨa; exact HΨa |].
+          rewrite <- List.app_assoc; unfold im_params in Hj; exact Hj.
+      - (** A non-uniform parameter. *)
+        assert (Lc : List.length (cargs_ctx p D Mm gs) <= List.length X1) by (rewrite length_cargs_ctx; exact Hy).
+        destruct (app_split_prefix _ _ _ _ EX Lc) as (X1' & -> & Enp).
+        assert (Hrf : inst_rf (List.length (cargs_ctx p D Mm gs ++ X1')) = relevant).
+        { unfold inst_rf; replace (List.length (cargs_ctx p D Mm gs ++ X1') <? List.length gs) with false
+            by (symmetry; apply Nat.ltb_ge; rewrite List.length_app, length_cargs_ctx; lia).
+          reflexivity. }
+        rewrite Hrf; cbn [relevance_sort].
+        assert (Ep : im_params D Mm = X1' ++ ce_ass A :: (X2 ++ ind_uparams D))
+          by (unfold im_params; rewrite Enp, <- List.app_assoc; reflexivity).
+        destruct (im_params_relevant D HD m Mm HMm X1' A (X2 ++ ind_uparams D) Ep) as [j Hj].
+        exists j; split; [| exact Hj ].
+        pose proof (valid_ind_decl_params _ HD _ _ HMm) as HP0; rewrite Ep in HP0.
+        exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HP0)). }
+    destruct Hsort as (j & HX & HAj).
+    exists j; exact (closed_entry_moved X2 A _ HX2a HX (relevance_sort_universe_sub _ _) HAj).
   Qed.
 
   (** *** The Frame of a Recursive Argument
