@@ -6354,6 +6354,19 @@ Section GroupElim.
           rewrite HBeq; apply valid_exp_under_ctx_vlookup; [ exact Hx | rewrite <- HBeq; exact branch_type_HB ].
         Qed.
 
+        (** The uniform parameters, the non-uniform ones and the arguments
+            the branch's type reads are scoped by the branch's context. *)
+        Lemma branch_type_terms_scoped : List.Forall (exp_scoped (List.length (elim_bctx relevant p D Mk gs As Us ++ Γ))) (Ub ++ Nb ++ Ab).
+        Proof.
+          assert (Lb : List.length (elim_bctx relevant p D Mk gs As Us ++ Γ) = nb + List.length Γ)
+            by (rewrite List.length_app, length_elim_bctx; unfold nb; lia).
+          rewrite Lb; apply List.Forall_app; split; [| apply List.Forall_app; split ].
+          - unfold Ub; apply List.Forall_map; eapply List.Forall_impl; [| exact HUss ].
+            intros U HU; apply (exp_scoped_wk _ _ _ _ HU); intros z Hz; cbn; lia.
+          - unfold Nb; apply vars_from_scoped; unfold nb; lia.
+          - unfold Ab; apply vars_from_scoped; unfold nb; lia.
+        Qed.
+
         (** The constructor of the branch's type, in the branch's context. *)
         Lemma branch_type_con_valid : elim_bctx relevant p D Mk gs As Us ++ Γ
             ⊨ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Ub ++ Nb ++ Ab) : ind_mty p D k Ub Nb.
@@ -6388,6 +6401,7 @@ Section GroupElim.
             * exact HN.
             * exact HT.
             * rewrite HBeq, <- List.app_assoc; apply valid_exp_under_ctx_vlookup; [ exact Hx | rewrite List.app_assoc, <- HBeq; exact branch_type_HB ].
+          + exact branch_type_terms_scoped.
         Qed.
 
         Lemma gsub_branch_type : gsub (elim_bctx relevant p D Mk gs As Us ++ Γ) τb (elim_mctx p D k Mk Us ++ Γ).
@@ -6396,7 +6410,12 @@ Section GroupElim.
           assert (HlN : List.length Ns = im_nn Mk) by (unfold Ns; rewrite length_tele_sub, length_im_nparams; reflexivity).
           pose proof (gsub_wk _ _ _ branch_type_wk branch_type_HB HΓ) as Hg0.
           apply gsub_of_list; [ exact Hg0 | apply elim_mctx_ass; [ exact Hc | exact HMk ] | exact (HMall _ _ HMk)
-                              | unfold Nb; rewrite List.length_app, length_vars_from, length_elim_mctx; cbn; lia |].
+                              | unfold Nb; rewrite List.length_app, length_vars_from, length_elim_mctx; cbn; lia | |].
+          2:{ pose proof branch_type_terms_scoped as Hs; apply List.Forall_app in Hs as [HsU Hs]; apply List.Forall_app in Hs as [HsN HsA].
+              apply List.Forall_app; split; [ exact HsN | constructor; [| constructor ] ].
+              apply exp_scoped_apps; split; [ cbn; exact I |].
+              apply List.Forall_app; split; [ exact (im_pre_scoped D k Mk Ub _ Hc HMk ltac:(unfold Ub; rewrite List.length_map; exact HUl) HsU) |].
+              apply List.Forall_app; split; assumption. }
           intros j N T0 HN HT.
           unfold elim_mctx in HT.
           change (ce_ass ?H0 :: ?R) with ((ce_ass H0 :: nil) ++ R) in HT.
