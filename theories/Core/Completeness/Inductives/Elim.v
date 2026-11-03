@@ -2021,6 +2021,54 @@ Proof.
   cbn [env_entry List.nth]; exact (IH H y ltac:(lia)).
 Qed.
 
+(** Two extensions by the same values, at any types, agree up to
+    retagging on the new entries. *)
+Lemma env_agree_retagged_typed : forall ρ1 ρ2 vts1 vts2, List.map fst vts1 = List.map fst vts2 ->
+    env_agree_retagged (List.length vts1) (env_extend_typed ρ1 vts1) (env_extend_typed ρ2 vts2).
+Proof.
+  intros ρ1 ρ2 vts1; induction vts1 as [| [v1 t1] vts1 IH] using List.rev_ind; intros vts2 Heq x Hx; [ cbn in Hx; lia |].
+  destruct vts2 as [| [v2 t2] vts2 _] using List.rev_ind.
+  { rewrite List.map_app in Heq; cbn in Heq; destruct (List.map fst vts1); discriminate. }
+  rewrite !List.map_app in Heq; cbn [List.map fst] in Heq; apply List.app_inj_tail in Heq as [Heq Hv]; subst v2.
+  rewrite !env_extend_typed_app; cbn [env_extend_typed List.fold_left extend_env fst snd].
+  rewrite List.length_app in Hx; cbn [List.length] in Hx.
+  destruct x as [| x]; [ exists t2, gunit_default; reflexivity |].
+  exact (IH vts2 Heq x ltac:(lia)).
+Qed.
+
+(** An entry of an extension by typed values, among the new ones. *)
+Lemma env_entry_extend_typed_lt : forall ρ vts x, x < List.length vts ->
+    exists v t, List.nth_error vts (List.length vts - 1 - x) = Some (v, t) /\ env_entry (env_extend_typed ρ vts) x = de_term v t.
+Proof.
+  intros ρ vts; induction vts as [| [v t] vts IH] using List.rev_ind; intros x Hx; [ cbn in Hx; lia |].
+  rewrite List.length_app in Hx |- *; cbn [List.length] in Hx |- *.
+  rewrite env_extend_typed_app; cbn [env_extend_typed List.fold_left extend_env fst snd].
+  destruct x as [| x].
+  - exists v, t; split; [| reflexivity ].
+    rewrite List.nth_error_app2 by lia; replace (List.length vts + 1 - 1 - 0 - List.length vts) with 0 by lia; reflexivity.
+  - destruct (IH x ltac:(lia)) as (v' & t' & Hn & He); exists v', t'; split; [| exact He ].
+    rewrite List.nth_error_app1 by lia; replace (List.length vts + 1 - 1 - S x) with (List.length vts - 1 - x) by lia; exact Hn.
+Qed.
+
+(** The heads of an extension of an environment of [Γ] by readable typed
+    values of a telescope of assumptions [K] read back at [K ++ Γ]. *)
+Lemma env_heads_readable_tele_ext : forall K Γ ρ vts, tele_ass K -> List.length vts = List.length K ->
+    List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts -> env_heads_readable Γ ρ ->
+    env_heads_readable (K ++ Γ) (env_extend_typed ρ vts).
+Proof.
+  intros * HK Hl Hr HΓ x e Hx.
+  destruct (Nat.lt_ge_cases x (List.length K)) as [Hlt | Hge].
+  - destruct (env_entry_extend_typed_lt ρ vts x ltac:(lia)) as (v & t & Hn & ->).
+    split; [| cbn; lia ].
+    pose proof (proj1 (List.Forall_forall _ _) Hr _ (List.nth_error_In _ _ Hn)) as H; exact H.
+  - pose proof (env_entry_extend_typed_app ρ vts (x - List.length K)) as E.
+    replace (List.length vts + (x - List.length K)) with x in E by lia; rewrite E.
+    rewrite List.nth_error_app2 in Hx by lia.
+    replace (List.length (List.skipn (S x) (K ++ Γ))) with (List.length (List.skipn (S (x - List.length K)) Γ))
+      by (rewrite !List.length_skipn, List.length_app; lia).
+    exact (HΓ _ _ Hx).
+Qed.
+
 (** The instance at [τ] of a telescope [Pre] of relevant types over
     [C0]: a telescope of relevant types over [Γ]. *)
 Lemma tele_sub_relevant_over : forall Pre C0 Γ τ, tele_ass Pre -> tele_ass C0 -> ⊨ Pre ++ C0 -> ⊨ Γ ->
@@ -2973,29 +3021,32 @@ Section GroupElim.
         exists cs; exact Ecs.
     Qed.
 
-    Lemma ups_ok : forall w1 w2, RU (decl_env D w1) (decl_env D u0) -> RU (decl_env D w2) (decl_env D u0) ->
+    (** The containers' uniform parameters at two uniform parameters of the
+        class of [u0] read back alike. *)
+    Lemma ups_container_uparams : forall w1 w2, RU (decl_env D w1) (decl_env D u0) -> RU (decl_env D w2) (decl_env D u0) ->
         List.length w1 = ind_nu D -> List.length w2 = ind_nu D ->
-        elim_ups_ok p D u0 (canon_nparams_rel D u0) (canon_args_rel D u0) (canon_doms_rel D u0) w1 w2.
+        forall j Mj hd k pa pb Dq, ind_member D j = Some Mj ->
+          ⟦mref j of p w1 ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pa) -> ⟦mref j of p w2 ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pb) ->
+          ind_lookup gc_deps gc_stack hd = Some Dq ->
+          per_top_ps (List.rev (ind_uparams Dq)) pa pb.
     Proof.
       intros * H1 H2 L1 L2.
       assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
       assert (H12 : RU (decl_env D w1) (decl_env D w2)) by (etransitivity; [ exact H1 | symmetry; exact H2 ]).
       pose proof (U_gargs _ _ H12 L1 L2) as Hg12.
-      constructor; [ exact L1 | exact L2 | exact (adm_of_ru w1 H1 L1) | exact (adm_of_ru w2 H2 L2)
-                   | exact (mrefs_of_ru w1 H1 L1) | exact (mrefs_of_ru w2 H2 L2) |].
       intros * HMj Ea Eb Hq.
       inversion Ea as [? ? ? D1 M1 pm1 Hl1 HM1 Hh1 | ? ? ? D1 M1 qc1 k1 Is1 vm1 cs1 Hl1 HM1 Hh1 Ec1]; subst;
         rewrite Hl in Hl1; injection Hl1 as <-; rewrite HMj in HM1; injection HM1 as <-;
         inversion Eb as [? ? ? D2 M2 pm2 Hl2 HM2 Hh2 | ? ? ? D2 M2 qc2 k2 Is2 vm2 cs2 Hl2 HM2 Hh2 Ec2]; subst;
         rewrite Hl in Hl2; injection Hl2 as <-; rewrite HMj in HM2; injection HM2 as <-; try congruence.
       - rewrite Hl in Hq; injection Hq as <-.
-        intros s; exact (per_gargs_top _ _ _ _ _ Hg12 ltac:(rewrite List.length_rev; exact L1) s).
+        exact (per_gargs_per_top_ps _ _ _ Hg12 ltac:(rewrite List.length_rev; exact L1)).
       - rewrite Hh1 in Hh2; injection Hh2; intros; subst.
         destruct (valid_group_views_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMj Hh1 Hq w1 w2 Hg12 L1) as (c0 & c0' & E0 & E0' & Hc0).
         pose proof (functional_eval_exps' _ _ _ _ E0 Ec1) as ->; pose proof (functional_eval_exps' _ _ _ _ E0' Ec2) as ->.
         destruct (view_target_decl P p D HP HPD j Mj HMj _ _ _ _ Hh1) as (Dq' & Mk' & pm & Hq' & _ & _ & HIl).
         rewrite Hq in Hq'; injection Hq' as <-.
-        intros s; exact (per_gargs_top _ _ _ _ _ Hc0 ltac:(rewrite List.length_rev, (eval_exps_length _ _ _ Ec1), HIl; reflexivity) s).
+        exact (per_gargs_per_top_ps _ _ _ Hc0 ltac:(rewrite List.length_rev, (eval_exps_length _ _ _ Ec1), HIl; reflexivity)).
     Qed.
 
     (** Two neutrals of a record view's record type, at the instances of two
@@ -3029,28 +3080,50 @@ Section GroupElim.
       exact (ind_rel_rebase p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ ua ub _ _ _ _ Had (adm_of_ru ua Ha La) (adm_of_ru ub Hb Lb) H00).
     Qed.
 
-    (** A closed telescope's environment over the values of the uniform
-        parameters at an environment, against the canonical one. *)
+    (** A closed telescope's environment over the value of the uniform
+        parameters' instance at an environment [B], extended by readable
+        values of the telescope at any types, against the canonical
+        one. *)
     Lemma closed_pre_base : forall Pre RK, tele_ass (Pre ++ ind_uparams D) -> ⊨ Pre ++ ind_uparams D ->
         EF Pre ++ ind_uparams D ≈ Pre ++ ind_uparams D ∈ per_ctx_env ↘ RK ->
-        forall B u zs, RU (decl_env D u) (decl_env D u0) -> List.length u = ind_nu D ->
+        forall B u vts zs, RΓ B B -> ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ B ↘ u -> RU (decl_env D u) (decl_env D u0) ->
         per_gargs (List.rev Pre) (decl_env D u0) (decl_env D u0) zs zs -> List.length zs = List.length Pre ->
-        RK (env_args (env_args B u) zs) (env_args nil (u0 ++ zs)).
+        List.map fst vts = zs -> List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
+        RK (env_extend_typed (env_extend_tagged Γ (List.rev (ind_uparams D)) (ctx_retag Γ B) u) vts)
+           (components_env D u0 (List.rev Pre) zs).
     Proof.
-      intros * HKa HK HRK * H10 Lu1 Hg00 Lz0.
+      intros * HKa HK HRK * HB Hu H10 Hg00 Lz0 Hvz Hvr.
       assert (HPa : tele_ass Pre) by (apply List.Forall_app in HKa as [H _]; exact H).
       assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+      pose proof (eval_exps_length _ _ _ Hu) as Lu1; rewrite HUl in Lu1.
       pose proof (U_gargs _ _ H10 Lu1 u0_len) as Hg10.
+      assert (Lv : List.length vts = List.length Pre) by (rewrite <- (List.length_map fst), Hvz; exact Lz0).
       assert (HKr : ⊨ List.rev (List.rev Pre) ++ ind_uparams D) by (rewrite List.rev_involutive; exact HK).
       pose proof (per_gargs_base _ _ _ HRU HKr (List.Forall_rev HPa) (decl_env D u0) (decl_env D u0)
                     (decl_env D u) (decl_env D u0) zs zs u0_env (symmetry H10) u0_env Hg00) as Hgb.
-      rewrite <- env_args_app.
-      eapply (closed_env_base _ _ _ _ nil nil); [ exact HKa | exact HK | exact HRK
-                                                | rewrite !List.length_app; unfold ind_nu in Lu1; lia
-                                                | rewrite !List.length_app; pose proof u0_len as L0; unfold ind_nu in L0; lia |].
-      apply (gargs_env_rel _ _ _ _ _ _ HRK HK); [ rewrite !List.length_app; unfold ind_nu in Lu1; lia |].
-      rewrite List.rev_app_distr; apply per_gargs_app_intro;
-        [ rewrite List.length_rev; exact Lu1 | exact Hg10 | exact Hgb ].
+      (** The closed environments of the values. *)
+      assert (H0 : RK (env_tele nil (List.rev (Pre ++ ind_uparams D)) (u ++ zs)) (components_env D u0 (List.rev Pre) zs)).
+      { rewrite <- (env_tele_uparams D Pre u0 zs u0_len).
+        apply (gargs_env_rel _ _ _ _ _ _ HRK HK); [ rewrite !List.length_app; unfold ind_nu in Lu1; lia |].
+        rewrite List.rev_app_distr; apply per_gargs_app_intro;
+          [ rewrite List.length_rev; exact Lu1 | exact Hg10 | rewrite env_tele_uparams_nil; exact Hgb ]. }
+      (** The instance's value holds the same values, which read back. *)
+      destruct (closed_app_sem _ _ Ua Usem HΓ) as [HUΓ _].
+      destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
+      pose proof (uniform_params_sub_eval B B u HB Hu) as Hev.
+      assert (HBτ : RUΓ (env_extend_tagged Γ (List.rev (ind_uparams D)) (ctx_retag Γ B) u)
+                        (env_extend_tagged Γ (List.rev (ind_uparams D)) (ctx_retag Γ B) u))
+        by (eapply (rel_sub_under_ctx_at' (gsub_valid gsub_U) HRΓ HRUΓ); eassumption).
+      pose proof (proj1 (per_ctx_env_heads_readable HRUΓ _ _ HBτ)) as HrU.
+      apply (env_heads_readable_app_tele _ _ _ Ua) in HrU.
+      assert (Lt : List.length (List.rev (ind_uparams D)) = List.length u) by (rewrite List.length_rev; exact (eq_sym Lu1)).
+      eapply (per_ctx_env_resp_retagged_left HRK _ _ _ _ _ H0). Unshelve.
+      - rewrite env_extend_tagged_typed, <- env_extend_typed_app; unfold env_tele.
+        replace (List.length (Pre ++ ind_uparams D)) with (List.length (tele_entries nil (List.rev (Pre ++ ind_uparams D)) (u ++ zs)))
+          by (rewrite tele_entries_length, !List.length_app; unfold ind_nu in Lu1; lia).
+        apply env_agree_retagged_typed.
+        rewrite tele_entries_fst, List.map_app, tagged_entries_fst by exact Lt; rewrite Hvz; reflexivity.
+      - exact (env_heads_readable_tele_ext Pre (ind_uparams D) _ _ HPa Lv Hvr HrU).
     Qed.
 
     (** ** Instances of a Closed Telescope
@@ -3094,22 +3167,25 @@ Section GroupElim.
         pose proof (rel_ctx_wf_tail HK) as HK'.
         pose proof (IH HKa' HK' HS' _ _ _ _ HB Hu1 Hu2 H10 H20 _ _ Hg0 Lz0) as IHz.
         destruct (rel_ctx_wf_per_ctx_env HS') as [RS HRS].
-        assert (HE : RS (env_args B1 zs0) (env_args B2 zs0'))
+        assert (HE : RS (env_tele B1 (List.rev (tele_sub Pre τU)) zs0) (env_tele B2 (List.rev (tele_sub Pre τU)) zs0'))
           by (eapply gargs_env_rel_gen; [ exact HRΓ | exact HRS | exact HS' | exact HB | rewrite length_tele_sub; exact Lz0 | exact IHz ]).
         destruct (rel_type_inversion_simple_at HRS (Hj _ _ _ HXi) _ _ HE) as (t1 & t2 & Et1 & Et2 & [R12 HR12]).
         assert (HPS : PER RS) by (eapply per_env_PER; exact HRS).
-        assert (HEE : RS (env_args B1 zs0) (env_args B1 zs0)) by (etransitivity; [ exact HE | symmetry; exact HE ]).
+        assert (HEE : RS (env_tele B1 (List.rev (tele_sub Pre τU)) zs0) (env_tele B1 (List.rev (tele_sub Pre τU)) zs0))
+          by (etransitivity; [ exact HE | symmetry; exact HE ]).
         destruct (rel_ctx_wf_per_ctx_env HK') as [RK HRK].
         assert (HKr : ⊨ List.rev (List.rev Pre) ++ ind_uparams D) by (rewrite List.rev_involutive; exact HK').
         pose proof (per_gargs_refl_l _ _ _ HRU HKr (List.Forall_rev HPa) (decl_env D u0) (decl_env D u0) zs0 zs0' u0_env Hg0) as Hg00.
-        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 zs0 H10 Lu1 Hg00 Lz0) as HK1.
-        destruct (closed_typ_inst Pre (ind_uparams D) Γ X Sc τU RΓ RK RS B1 zs0 (env_args B1 u1) (env_args nil (u0 ++ zs0))
-                    HKa' HK' Ua Usem HΓ HRΓ HRK HRS HSc HXc (gsub_valid gsub_U) HEE Lz0
+        assert (HB11 : RΓ B1 B1) by (etransitivity; [ exact HB | symmetry; exact HB ]).
+        pose proof (proj1 (per_gargs_entries_readable _ _ _ _ _ IHz)) as Hr1.
+        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 _ zs0 HB11 Hu1 H10 Hg00 Lz0 (tele_entries_fst _ _ _) Hr1) as HK1.
+        destruct (closed_typ_inst Pre (ind_uparams D) Γ X Sc τU RΓ RK RS B1 _ _ _
+                    HKa' HK' Ua Usem HΓ HRΓ HRK HRS HSc HXc (gsub_valid gsub_U) HEE
+                    ltac:(rewrite tele_entries_length; exact Lz0)
                     (uniform_params_sub_eval B1 B2 u1 HB Hu1) HK1)
           as (jc & a & c & Ea & Ec & [R1c HR1c]).
         assert (a = t1) as -> by (eapply functional_eval_exp; eassumption).
         destruct HX0 as [c0 c0' Ec0 Ec0' HR0].
-        rewrite <- env_args_app in Ec0.
         assert (c0 = c) as -> by (eapply functional_eval_exp; eassumption).
         assert (E1 : R12 <~> R1c) by (eapply per_univ_elem_right_irrel; [ exact HR12 | exact HR1c ]).
         assert (E2 : R1c <~> R0) by (eapply per_univ_elem_chain_iff; [ exact HR1c | exact HR0 ]).
@@ -3152,26 +3228,31 @@ Section GroupElim.
         pose proof (rel_ctx_wf_tail HK) as HK'.
         pose proof (IH HKa' HK' HS' _ _ _ HB Hu1 H10 _ _ Hg0 Lz0) as IHz.
         destruct (rel_ctx_wf_per_ctx_env HS') as [RS HRS].
-        assert (HE : RS (env_args B1 zs0) (env_args B2 zs0'))
+        assert (HE : RS (env_tele B1 (List.rev (tele_sub Pre τU)) zs0) (env_tele B2 (List.rev (tele_sub Pre τU)) zs0'))
           by (eapply gargs_env_rel_gen; [ exact HRΓ | exact HRS | exact HS' | exact HB | rewrite length_tele_sub; exact Lz0 | exact Hg0 ]).
         assert (HPS : PER RS) by (eapply per_env_PER; exact HRS).
-        assert (HEE : RS (env_args B1 zs0) (env_args B1 zs0)) by (etransitivity; [ exact HE | symmetry; exact HE ]).
+        assert (HEE : RS (env_tele B1 (List.rev (tele_sub Pre τU)) zs0) (env_tele B1 (List.rev (tele_sub Pre τU)) zs0))
+          by (etransitivity; [ exact HE | symmetry; exact HE ]).
         destruct (rel_ctx_wf_per_ctx_env HK') as [RK HRK].
         assert (HPK : PER RK) by (eapply per_env_PER; exact HRK).
         assert (HKr : ⊨ List.rev (List.rev Pre) ++ ind_uparams D) by (rewrite List.rev_involutive; exact HK').
         pose proof (per_gargs_refl_l _ _ _ HRU HKr (List.Forall_rev HPa) (decl_env D u0) (decl_env D u0) zs0 zs0' u0_env IHz) as Hg00.
-        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 zs0 H10 Lu1 Hg00 Lz0) as HK1.
-        destruct (closed_typ_inst Pre (ind_uparams D) Γ X Sc τU RΓ RK RS B1 zs0 (env_args B1 u1) (env_args nil (u0 ++ zs0))
-                    HKa' HK' Ua Usem HΓ HRΓ HRK HRS HSc HXc (gsub_valid gsub_U) HEE Lz0
+        assert (HB11 : RΓ B1 B1) by (etransitivity; [ exact HB | symmetry; exact HB ]).
+        pose proof (proj1 (per_gargs_entries_readable _ _ _ _ _ Hg0)) as Hr1.
+        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 _ zs0 HB11 Hu1 H10 Hg00 Lz0 (tele_entries_fst _ _ _) Hr1) as HK1.
+        destruct (closed_typ_inst Pre (ind_uparams D) Γ X Sc τU RΓ RK RS B1 _ _ _
+                    HKa' HK' Ua Usem HΓ HRΓ HRK HRS HSc HXc (gsub_valid gsub_U) HEE
+                    ltac:(rewrite tele_entries_length; exact Lz0)
                     (uniform_params_sub_eval B1 B2 u1 HB Hu1) HK1)
           as (jc & a & c & Ea & Ec & [R1c HR1c]).
         destruct HX0 as [a0 a0' Ea0 Ea0' HR0].
         assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
         (** The closed entry at the two canonical prefixes. *)
-        assert (HKK : RK (env_args nil (u0 ++ zs0)) (env_args nil (u0 ++ zs0'))).
-        { apply (gargs_env_rel _ _ _ _ _ _ HRK HK'); [ rewrite !List.length_app; pose proof u0_len as L0; unfold ind_nu in L0; lia |].
+        assert (HKK : RK (components_env D u0 (List.rev Pre) zs0) (components_env D u0 (List.rev Pre) zs0')).
+        { rewrite <- !(env_tele_uparams D Pre u0 _ u0_len).
+          apply (gargs_env_rel _ _ _ _ _ _ HRK HK'); [ rewrite !List.length_app; pose proof u0_len as L0; unfold ind_nu in L0; lia |].
           rewrite List.rev_app_distr; apply per_gargs_app_intro;
-            [ rewrite List.length_rev; exact u0_len | exact u0_gargs | exact IHz ]. }
+            [ rewrite List.length_rev; exact u0_len | exact u0_gargs | rewrite env_tele_uparams_nil; exact IHz ]. }
         destruct (rel_type_of_sort_at HSc) as [jc' Hjc].
         destruct (rel_type_inversion_simple_at HRK (Hjc _ _ _ HXc) _ _ HKK) as (c1 & c1' & Ec1 & Ec1' & [Rc HRc]).
         assert (c1 = c) as -> by (eapply functional_eval_exp; eassumption).
@@ -3181,7 +3262,7 @@ Section GroupElim.
         apply (per_gargs_snoc _ _ _ _ _ _ _ _ n Rc).
         + rewrite List.length_rev; exact Lz0.
         + exact IHz.
-        + rewrite env_args_app in Ec1, Ec1'; exact (mk_rel_mod_eval c c1' Ec1 Ec1' Hn).
+        + exact (mk_rel_mod_eval c c1' Ec1 Ec1' Hn).
         + apply E2, E1; exact Hx.
     Qed.
 
@@ -3352,6 +3433,159 @@ Section GroupElim.
     #[local] Abbreviation itrans := (proj1 (ind_rel_trans_all p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (admissible_index_at D u0 nr))).
     #[local] Abbreviation ind_rel_idx_u0 := (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (admissible_index_at D u0 nr)).
     #[local] Abbreviation ins := (ind_rel_ns p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (admissible_index_at D u0 nr)).
+
+    (** *** The Types of the Members at the Class of [u0]
+
+        A member's type at uniform parameters [w] of the class of [u0],
+        at indices related to others: related to its type at [u0], at the
+        group's relation from [u0] to [w].  At a declared member it is the
+        group's own type; at a view, the container's member's, whose
+        relation is the group's at the view ([view_end_rel_all]). *)
+    Lemma member_type_from_u0 : forall w j Mj hd0 k0 p0 hd k pw bs bs',
+        RU (decl_env D w) (decl_env D u0) -> List.length w = ind_nu D ->
+        ind_member D j = Some Mj -> im_is_rview Mj = false ->
+        ⟦mref j of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (hd0, k0, p0) -> ⟦mref j of p w ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pw) ->
+        tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs' ->
+        exists (i : universe_index) R, DF d_ind hd0 k0 (p0 ++ bs) ≈ d_ind hd k (pw ++ bs') ∈ per_univ_elem i ↘ R /\
+          (R <~> G j u0 w bs bs').
+    Proof.
+      intros * Hw Lw HMj Hrv E0 Ew Hbs.
+      assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+      pose proof (U_gargs _ _ (symmetry Hw) u0_len Lw) as Hg0w.
+      destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; [| | exfalso; exact (not_rview_record _ _ _ _ Hrv Hh) ].
+      - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMj Hh E0) as Er0; injection Er0 as -> -> ->.
+        pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMj Hh Ew) as Erw; injection Erw as -> -> ->.
+        destruct (valid_group_relate p D Hvg j Mj pm u0 w bs bs' HMj Hh Hg0w u0_len Hbs) as [i Hi].
+        exists i, (G j u0 w bs bs'); split; [ exact Hi | reflexivity ].
+      - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hh E0) as (c0 & Er0 & Ec0); injection Er0 as -> -> ->.
+        destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hh Ew) as (cw & Erw & Ecw); injection Erw as -> -> <-.
+        destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq & Mk' & Hq & HMk' & Hkd & HIl & _ & Hvm & _ & _).
+        pose proof (Hcv _ _ _ _ _ _ _ HMj Hh Hq) as HgQ.
+        assert (Hhd : exists pm, im_head Mk' = mh_decl pm).
+        { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
+          unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate | discriminate ]. }
+        destruct Hhd as [pm Hhd].
+        destruct (valid_group_views_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMj Hh Hq u0 w Hg0w u0_len)
+          as (c1 & c1' & E1 & E1' & Hc01).
+        pose proof (functional_eval_exps' _ _ _ _ E1 Ec0) as ->; pose proof (functional_eval_exps' _ _ _ _ E1' Ecw) as ->.
+        assert (Hlc : List.length c0 = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ Ec0); exact HIl).
+        pose proof (view_agreement_canonical_all P p D HP HPD u0 u0 u0_gargs u0_len j _ _ _ _ _ _ _ _ HMj Hh Hq Ec0 Ec0) as Hvc.
+        destruct (agree_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hvc _ _ HMk') as (v & Mv & Hvmb).
+        assert (v = j) as -> by (pose proof (view_member_v _ _ _ _ _ _ _ _ _ Hvmb) as Hv; rewrite Hvm in Hv; congruence).
+        assert (Mv = Mj) as -> by (pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMv; rewrite HMj in HMv; congruence).
+        pose proof (nr_from p D u0 u0 _ _ _ qc Dq c0 c0 _ _ _ vm Hvc kc Mk' j Mj bs bs' HMk' Hvmb Hbs) as Hbs'.
+        destruct (valid_group_relate qc Dq HgQ kc Mk' pm c0 cw bs bs' HMk' Hhd Hc01 Hlc Hbs') as [i W].
+        exists i; eexists; split; [ exact W |].
+        pose proof (valid_group_valid _ _ HgQ) as HDq; pose proof (valid_group_closed _ _ HgQ) as HcQ.
+        exact (view_end_rel_all P p D HP HPD u0 w Hg0w u0_len j Mj qc kc Is vm Dq c0 cw HMj Hh Hq Ec0 Ecw c0 cw bs bs' i _
+                 (uparams_refl_l Dq HDq HcQ _ _ Hc01)
+                 (uparams_refl_l Dq HDq HcQ _ _ (uparams_sym Dq HDq HcQ _ _ Hc01 Hlc)) W).
+    Qed.
+
+    (** The member's type at [u0] is defined. *)
+    Lemma member_mref_u0 : forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
+        exists hd0 k0 p0, ⟦mref j of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (hd0, k0, p0).
+    Proof.
+      intros * HMj Hrv.
+      destruct (proj1 (mrefs_of_ru u0 u0_env u0_len j Mj HMj) Hrv) as [[[hd0 k0] p0] E0].
+      exists hd0, k0, p0; exact E0.
+    Qed.
+
+    (** Two elements of a member at admissible bases, the left one at its
+        indices moved to related ones and at the class of [u0]: an element
+        at the bases [u0] and [w]. *)
+    Lemma member_element_at : forall w j Mj u u' bs bs' bs2 v v', RU (decl_env D w) (decl_env D u0) -> List.length w = ind_nu D ->
+        ind_member D j = Some Mj -> adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
+        G j u u' bs bs' v v' -> tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs2 -> G j u0 w bs2 bs2 v v.
+    Proof.
+      intros * Hw Lw HMj Hu Hu' Hv Hbs.
+      pose proof (itrans _ _ _ _ _ _ _ Hv _ _ _ _ (isym _ _ _ _ _ _ _ Hv)) as Hvv.
+      pose proof (ind_rel_rebase p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI j u u u0 w bs bs v v Had Had (adm_of_ru w Hw Lw) Hvv)
+        as Hvv'.
+      exact (ind_rel_idx_u0 _ _ _ _ _ _ _ _ _ _ HMj Hvv' Hbs Hbs).
+    Qed.
+
+    (** The left one of two elements of a member at admissible bases reads
+        back at the member's type at [w], at indices related to its own. *)
+    Lemma member_elements_readable : forall w j Mj hd k pw u u' bs bs' bs2 v v',
+        RU (decl_env D w) (decl_env D u0) -> List.length w = ind_nu D ->
+        ind_member D j = Some Mj -> im_is_rview Mj = false ->
+        adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
+        ⟦mref j of p w ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pw) -> G j u u' bs bs' v v' ->
+        tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs2 ->
+        entry_readable (de_term v (entry_type_value (d_ind hd k (pw ++ bs2)))).
+    Proof.
+      intros * Hw Lw HMj Hrv Hu Hu' Ew Hv Hbs.
+      destruct (member_mref_u0 j Mj HMj Hrv) as (hd0 & k0 & p0 & E0).
+      pose proof (trefl_r _ _ HMj _ _ Hbs) as Hbs2.
+      destruct (member_type_from_u0 w j Mj hd0 k0 p0 hd k pw bs2 bs2 Hw Lw HMj Hrv E0 Ew Hbs2) as (i & R & HR & ER).
+      pose proof (member_element_at w j Mj u u' bs bs' bs2 v v' Hw Lw HMj Hu Hu' Hv Hbs) as Hvv.
+      exact (proj2 (entry_readable_of_elem HR (proj2 (ER _ _) Hvv))).
+    Qed.
+
+    (** The left one of two elements of a record view at admissible bases
+        reads back at the record type at its instance at [w]. *)
+    Lemma rview_elements_readable : forall w j Mj qr Is fl cw u u' v v',
+        RU (decl_env D w) (decl_env D u0) -> List.length w = ind_nu D ->
+        ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+        adm_uparams D u0 nr ar dr u -> adm_uparams D u0 nr ar dr u' ->
+        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D w ↘ cw -> G j u u' nil nil v v' ->
+        entry_readable (de_term v (entry_type_value (d_record qr cw))).
+    Proof.
+      intros * Hw Lw HMj Hh Hu Hu' Ecw Hv.
+      assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+      pose proof (U_gargs _ _ (symmetry Hw) u0_len Lw) as Hg0w.
+      destruct (valid_group_records _ _ Hvg _ _ _ _ _ HMj Hh) as [R HR].
+      destruct (valid_group_views_rview_args_values p D Hvg _ _ _ _ _ _ HMj Hh HR u0 w Hg0w u0_len)
+        as (c0 & cw' & Ec0 & Ecw' & Hc0w).
+      pose proof (functional_eval_exps' _ _ _ _ Ecw' Ecw) as ->.
+      assert (Hlc : List.length c0 = List.length (record_params R)) by exact (per_gargs_length_l _ _ _ _ _ Hc0w).
+      destruct (vrr_type_rel qr R c0 cw HR Hc0w Hlc) as [i W].
+      assert (Hnil : tele_rel (nr j) (List.rev (im_nparams Mj)) nil nil)
+        by (rewrite (member_closed_rview_nn _ _ (decl_closed_members _ Hc _ _ HMj) _ _ _ Hh); split; [ reflexivity | exact I ]).
+      pose proof (member_element_at w j Mj u u' nil nil nil v v' Hw Lw HMj Hu Hu' Hv Hnil) as Hvv.
+      pose proof (rview_end_rel_all P p D HP HPD u0 w Hg0w u0_len j Mj qr Is fl R c0 cw HMj Hh (valid_rview_record_lookup _ _ HR)
+                    Ec0 Ecw c0 cw i _ (Records.Model.tele_gargs_refl_l _ _ _ _ _ Hc0w) (Records.Model.tele_gargs_refl_r _ _ _ _ _ Hc0w) W)
+        as ER.
+      exact (proj2 (entry_readable_of_elem W (proj2 (ER _ _) Hvv))).
+    Qed.
+
+    (** A member's types at two uniform parameters of the class of [u0],
+        at related indices, read back alike. *)
+    Lemma member_types_alike : forall w1 w2 j Mj hd k pa pb bs bs',
+        RU (decl_env D w1) (decl_env D u0) -> RU (decl_env D w2) (decl_env D u0) ->
+        List.length w1 = ind_nu D -> List.length w2 = ind_nu D ->
+        ind_member D j = Some Mj -> im_is_rview Mj = false ->
+        ⟦mref j of p w1 ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pa) -> ⟦mref j of p w2 ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pb) ->
+        tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs' ->
+        Dom d_ind hd k (pa ++ bs) ≈ d_ind hd k (pb ++ bs') ∈ per_top_typ.
+    Proof.
+      intros * H1 H2 L1 L2 HMj Hrv Ea Eb Hbs.
+      destruct (member_mref_u0 j Mj HMj Hrv) as (hd0 & k0 & p0 & E0).
+      pose proof (trefl_l _ _ HMj _ _ Hbs) as Hbb.
+      destruct (member_type_from_u0 w1 j Mj hd0 k0 p0 hd k pa bs bs H1 L1 HMj Hrv E0 Ea Hbb) as (i1 & R1 & HR1 & _).
+      destruct (member_type_from_u0 w2 j Mj hd0 k0 p0 hd k pb bs bs' H2 L2 HMj Hrv E0 Eb Hbs) as (i2 & R2 & HR2 & _).
+      destruct (per_univ_elem_sym _ _ _ _ HR1) as [HR1' _].
+      destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR1' HR2) as (R3 & HR3 & _).
+      exact (per_univ_then_per_top_typ HR3).
+    Qed.
+
+    Lemma ups_ok : forall w1 w2, RU (decl_env D w1) (decl_env D u0) -> RU (decl_env D w2) (decl_env D u0) ->
+        List.length w1 = ind_nu D -> List.length w2 = ind_nu D ->
+        elim_ups_ok p D u0 (canon_nparams_rel D u0) (canon_args_rel D u0) (canon_doms_rel D u0) w1 w2.
+    Proof.
+      intros * H1 H2 L1 L2.
+      constructor; [ exact L1 | exact L2 | exact (adm_of_ru w1 H1 L1) | exact (adm_of_ru w2 H2 L2)
+                   | exact (mrefs_of_ru w1 H1 L1) | exact (mrefs_of_ru w2 H2 L2)
+                   | exact (ups_container_uparams w1 w2 H1 H2 L1 L2) | | | | | ].
+      - intros * HMj Hrv Hu Hu' Ea Hv Hbs; exact (member_elements_readable w1 _ _ _ _ _ _ _ _ _ _ _ _ H1 L1 HMj Hrv Hu Hu' Ea Hv Hbs).
+      - intros * HMj Hrv Hu Hu' Eb Hv Hbs.
+        exact (member_elements_readable w2 _ _ _ _ _ _ _ _ _ _ _ _ H2 L2 HMj Hrv Hu' Hu Eb (isym _ _ _ _ _ _ _ Hv) Hbs).
+      - intros * HMj Hh Hu Hu' Ec Hv; exact (rview_elements_readable w1 _ _ _ _ _ _ _ _ _ _ H1 L1 HMj Hh Hu Hu' Ec Hv).
+      - intros * HMj Hh Hu Hu' Ec Hv.
+        exact (rview_elements_readable w2 _ _ _ _ _ _ _ _ _ _ H2 L2 HMj Hh Hu' Hu Ec (isym _ _ _ _ _ _ _ Hv)).
+      - intros * HMj Hrv Ea Eb Hbs; exact (member_types_alike w1 w2 _ _ _ _ _ _ _ _ H1 H2 L1 L2 HMj Hrv Ea Eb Hbs).
+    Qed.
 
     (** The type of a scrutinee of the member [m] at [C1] and an
         environment related to it: its relation is the group's at [m], at
