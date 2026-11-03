@@ -89,7 +89,7 @@ Proof.
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - eapply unit_sub_link_body; try eassumption.
-    intros k Ψ H Hk; split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ].
+    exact (body_xp_scoped_of_wf _ _ _ _ _ _ Hw Hx).
   - eapply unit_sub_link_alias; eassumption.
 Qed.
 
@@ -101,9 +101,9 @@ Proof.
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - rewrite <- app_assoc in Hx, HC, Hsv, Hov, Hos; cbn [List.app] in Hx, HC, Hsv, Hov, Hos.
+    pose proof (body_xp_scoped_of_wf _ _ _ _ _ _ Hw Hx) as Hsc; rewrite <- app_assoc in Hsc; cbn [List.app] in Hsc.
     eapply unit_sub_link_body; try eassumption.
-    + exact (proj1 (tele_ass_app_inv _ _ HΔ)).
-    + intros k Ψ H Hk; split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ].
+    exact (proj1 (tele_ass_app_inv _ _ HΔ)).
   - rewrite <- app_assoc in HΔΓ, HE; cbn [List.app] in HΔΓ, HE.
     eapply unit_sub_link_alias; [ exact (proj1 (tele_ass_app_inv _ _ HΔ)) | exact HΔΓ | exact HE | eassumption .. ].
 Qed.
@@ -400,10 +400,10 @@ Proof.
     assert (HΔyΔr : exists l', rel_params_relevant Γ (Δy ++ Δ) l') by (eexists; exact (rel_params_relevant_app _ _ _ _ _ HΔyr HΔr)).
   - assert (HL : modexp_sub_rel Γ (me_lit (gu_open (Δy ++ Δ) Φ))).
     { intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
-      eapply unit_sub_link_body; [ apply List.Forall_app; split; assumption | rewrite <- app_assoc; exact Hx | exact Hsh | exact Hsx
-                                 | rewrite <- app_assoc; exact HCx | rewrite <- app_assoc; exact Hsv | | eassumption .. ].
-      intros k Ψ H Hk; rewrite <- app_assoc.
-      split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ]. }
+      pose proof (body_xp_scoped_of_wf _ _ _ _ _ _ Hw0 Hx) as Hsc.
+      eapply unit_sub_link_body; [ apply List.Forall_app; split; assumption | rewrite <- app_assoc; exact Hx | exact Hsx
+                                 | rewrite <- app_assoc; exact HCx | rewrite <- app_assoc; exact Hsv
+                                 | rewrite <- app_assoc; exact Hsc | eassumption .. ]. }
     eapply valid_unit_body; [ exact Hw' | rewrite <- app_assoc; exact Hx | apply List.Forall_app; split; assumption | exact HΔyΔr | exact HΓ
                     | rewrite <- app_assoc; exact HCx | rewrite <- app_assoc; exact Hsv | rewrite <- app_assoc; exact Hsl | exact Hsh | exact Hsx
                     | exact (rel_modexp_of_links _ _ _ HΓ HL HL Hat)
