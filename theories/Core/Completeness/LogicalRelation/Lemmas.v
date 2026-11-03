@@ -1458,21 +1458,40 @@ Proof.
   - intros ρ ρ' Hρ x Hx; rewrite eval_wk_id; exact (ctx_props_agree_app _ _ Δ Γ HR HR' Hsub ρ ρ' Hρ x Hx).
 Qed.
 
-(** An evaluation at [Δ1] is one at [Δ2] when the entries of [Δ2] are
-    propositional in [Δ1] exactly when they are in [Δ2]. *)
+(** An evaluation at [Δ1] gives one at [Δ2], to the environment retagged
+    at [Δ2], when the entries of [Δ2] are propositional in [Δ1] exactly
+    when they are in [Δ2] at the retagging. *)
 #[local] Transparent eval_sub.
 Lemma eval_sub_change_target : forall {Δ1 Δ2 σ ρ ρσ},
     ⟦ σ : Δ1 ⟧s ρ ↘ ρσ ->
     List.length Δ2 <= List.length Δ1 ->
     (forall x, x < List.length Δ2 ->
-       entry_propositional gc_deps gc_stack Δ1 ρσ x <-> entry_propositional gc_deps gc_stack Δ2 ρσ x) ->
-    ⟦ σ : Δ2 ⟧s ρ ↘ ρσ.
+       entry_propositional gc_deps gc_stack Δ1 ρσ x <-> entry_propositional gc_deps gc_stack Δ2 (ctx_retag Δ2 ρσ) x) ->
+    ⟦ σ : Δ2 ⟧s ρ ↘ ctx_retag Δ2 ρσ.
 Proof.
-  intros * H Hl Hc x Hx; split.
-  - intros Hp; apply (H x ltac:(lia)); exact (proj2 (Hc _ Hx) Hp).
-  - intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (proj1 (Hc _ Hx) Hp')).
+  intros * H Hl Hc x Hx; rewrite (env_entry_ctx_retag _ _ _ Hx); split.
+  - intros Hp; apply eval_sentry_proof_retag with (t := ctx_entry_tag Δ1 x ρσ) (U := ctx_entry_unit Δ1 x).
+    apply (H x ltac:(lia)); exact (proj2 (Hc _ Hx) Hp).
+  - intros Hn; apply eval_sentry_retag with (t := ctx_entry_tag Δ1 x ρσ) (U := ctx_entry_unit Δ1 x).
+    apply (H x ltac:(lia)); intros Hp'; exact (Hn (proj1 (Hc _ Hx) Hp')).
 Qed.
 #[local] Opaque eval_sub.
+
+(** The same, at an environment the context PERs of [Δ1] and [Δ2] relate,
+    from [ctx_props_agree]. *)
+Corollary eval_sub_change_target_rel : forall {Δ1 Δ2 S1 S2 σ ρ ρσ ρσ'},
+    EF Δ2 ≈ Δ2 ∈ per_ctx_env ↘ S2 ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ S1 -> Dom ρ ≈ ρ' ∈ S2) ->
+    List.length Δ2 <= List.length Δ1 ->
+    ctx_props_agree S1 Δ1 Δ2 ->
+    Dom ρσ ≈ ρσ' ∈ S1 ->
+    ⟦ σ : Δ1 ⟧s ρ ↘ ρσ ->
+    ⟦ σ : Δ2 ⟧s ρ ↘ ctx_retag Δ2 ρσ.
+Proof.
+  intros * HΔ2 HS Hl Hc Hv Hτ.
+  apply (eval_sub_change_target Hτ Hl); intros x Hx.
+  rewrite (entry_propositional_ctx_retag _ _ _ _ x HΔ2 (HS _ _ Hv)); exact (Hc _ _ Hv x Hx).
+Qed.
 
 Lemma rel_sub_under_ctx_restrict : forall {Γ1 Γ2 Δ1 Δ2 σ σ' R1 R2 S1 S2},
     EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
@@ -1496,20 +1515,19 @@ Proof.
   assert (Hφ' : rel_wk φ env_rel' R2')
     by (split; [ assumption | intros; apply ER, HR, Hφ; assumption ]).
   destruct (Hσ _ _ HΓ' _ Hφ' (fun x Hx => Hφb x ltac:(lia)) _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
-  (** Each of the four is an environment of [Δ1], hence of [Δ2]. *)
+  (** Each of the four is an environment of [Δ1]; retagged, of [Δ2]. *)
   assert (Hch : rel_chain S1 ([v1; v2; v3; v4]))
     by (eapply rel_chain_mono; [| eassumption ]; intros; apply ES; assumption).
-  assert (Hchange : forall v w, Dom v ≈ w ∈ S1 -> forall τ ρ0, ⟦ τ : Δ1 ⟧s ρ0 ↘ v -> ⟦ τ : Δ2 ⟧s ρ0 ↘ v).
-  { intros v w Hv τ ρ0 Hτ.
-    apply (eval_sub_change_target Hτ Hl); intros x; exact (Hc _ _ Hv x). }
-  apply (mk_rel_sub v1 v2 v3 v4);
-    [ eapply Hchange; [| exact H1 ]
-    | eapply Hchange; [| exact H2 ]
-    | eapply Hchange; [| exact H3 ]
-    | eapply Hchange; [| exact H4 ]
-    | eapply rel_chain_mono; [| exact Hch ]; intros; apply HS; assumption ];
-    pairwise.
+  assert (Hch2 : rel_chain S2 ([v1; v2; v3; v4]))
+    by (eapply rel_chain_mono; [| exact Hch ]; intros; apply HS; assumption).
+  apply (mk_rel_sub (ctx_retag Δ2 v1) (ctx_retag Δ2 v2) (ctx_retag Δ2 v3) (ctx_retag Δ2 v4));
+    [ ..| destruct Hch2 as (C1 & C2 & C3); cbn; repeat split; apply (per_ctx_env_retag HΔ2); assumption ];
+    (eapply (eval_sub_change_target_rel HΔ2 HS Hl Hc); [| eassumption ]); pairwise.
 Qed.
+
+(** A term judgment at [Γ2] is one at a [Γ1] whose relation is included
+    in [Γ2]'s: its instance at the environments retagged at [Γ2] is read
+    at the environments themselves ([rel_exp_body_unrestamp]). *)
 
 Lemma rel_exp_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A M M'},
     EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
@@ -1521,16 +1539,18 @@ Lemma rel_exp_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A M M'},
     Γ1 ⊨ M ≈ M' : A.
 Proof.
   intros * HΓ1 HΓ2 HR Hl Hc [R2' HΓ2' i HM].
+  assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).
   refine (mk_rel_exp_under_ctx _ _ _ _ R1 HΓ1 i _).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
-  apply (HM _ _ HΓ').
+  apply (rel_exp_body_unrestamp HΓ2' HM _ _ HΓ').
   - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact (le_n _) | exact Hc | exact Hσ ].
     auto.
   - exact Hρ.
-  - apply (eval_sub_change_target Hev Hl); intros x; exact (Hc _ _ Hρσ x).
-  - apply (eval_sub_change_target Hev' Hl); intros x; exact (Hc _ _ Hρσ' x).
+  - exact (eval_sub_change_target_rel HΓ2 HR Hl Hc Hρσ Hev).
+  - exact (eval_sub_change_target_rel HΓ2 HR Hl Hc Hρσ' Hev').
+  - apply ER, HR; exact Hρσ.
 Qed.
 
 (** Type judgments likewise. *)
@@ -1544,16 +1564,18 @@ Lemma rel_type_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A A'} {i : nat},
     Γ1 ⊨ᵗ A ≈ A' at i.
 Proof.
   intros * HΓ1 HΓ2 HR Hl Hc [R2' HΓ2' HA].
+  assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).
   refine (mk_rel_type_under_ctx _ _ _ _ R1 HΓ1 _).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
-  apply (HA _ _ HΓ').
+  apply (rel_type_body_unrestamp HΓ2' HA _ _ HΓ').
   - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact (le_n _) | exact Hc | exact Hσ ].
     auto.
   - exact Hρ.
-  - apply (eval_sub_change_target Hev Hl); intros x; exact (Hc _ _ Hρσ x).
-  - apply (eval_sub_change_target Hev' Hl); intros x; exact (Hc _ _ Hρσ' x).
+  - exact (eval_sub_change_target_rel HΓ2 HR Hl Hc Hρσ Hev).
+  - exact (eval_sub_change_target_rel HΓ2 HR Hl Hc Hρσ' Hev').
+  - apply ER, HR; exact Hρσ.
 Qed.
 
 (** * Equality from Pointwise Relatedness

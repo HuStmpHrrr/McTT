@@ -754,10 +754,10 @@ Proof.
       cbn in Sd, Sd', Sm, Sm' |- *; split; split; assumption. }
   intros Γ'' R'' HΓ'' φ Hφ Hφb ρ ρ' Hρ.
   destruct (Hd _ _ HΓ'' _ (proj2 (rel_wk_morphism φ _ _ (reflexivity R'') _ _ E1) Hφ) Hφb _ _ Hρ)
-    as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Cd].
+    as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Dchain].
   destruct (Hm _ _ HΓ'' _ (proj2 (rel_wk_morphism φ _ _ (reflexivity R'') _ _ E2) Hφ) Hφb _ _ Hρ)
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Cm].
-  apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Cd.
+  apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Dchain.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Em a b) H)) in Cm.
   (** The tails of the two evaluations of each side have the same entries. *)
   assert (Q1 : env_agree_upto (List.length Γ) m1↯ d1↯)
@@ -775,7 +775,7 @@ Proof.
     by (intros t t' Ht; split;
         [ exact (proj1 (head_not_propositional_of_typ (e := ce_def A M) HΓ eq_refl HA _ _ Ht))
         | exact (proj1 (head_not_propositional_of_typ (e := ce_dm A M U) HΓ eq_refl HA _ _ Ht)) ]).
-  destruct Cd as (D12 & D23 & D34); destruct Cm as (M12 & M23 & M34).
+  destruct Dchain as (D12 & D23 & D34); destruct Cm as (M12 & M23 & M34).
   assert (T1 : Dom d1↯ ≈ d2↯ ∈ R) by (destruct D12 as [[? _ _ _ _ _] _ _]; assumption).
   assert (T2 : Dom d2↯ ≈ d3↯ ∈ R) by (destruct D23 as [[? _ _ _ _ _] _ _]; assumption).
   assert (T3 : Dom d3↯ ≈ d4↯ ∈ R) by (destruct D34 as [[? _ _ _ _ _] _ _]; assumption).
@@ -833,7 +833,7 @@ Proof.
   assert (E : Rm1 <~> Rd1) by (eapply per_ctx_env_right_irrel; eassumption).
   refine (mk_rel_sub_under_ctx _ _ _ _ Rd1 HΓd (per_env_extend_dm A M U R) (per_ctx_env_of_dm HΔ HA HM HU) _ Hds).
   intros Γ'' R'' HΓ'' φ Hφ Hφb ρ ρ' Hρ.
-  destruct (Hd _ _ HΓ'' _ Hφ Hφb _ _ Hρ) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Cd].
+  destruct (Hd _ _ HΓ'' _ Hφ Hφb _ _ Hρ) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Dchain].
   destruct (Hm _ _ HΓ'' _ (proj2 (rel_wk_morphism φ _ _ (reflexivity R'') _ _ E) Hφ) Hφb _ _ Hρ)
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Cm].
   (** The evaluations at the slot are evaluations at the definition entry:
@@ -859,9 +859,9 @@ Proof.
   assert (Q3 : env_agree_upto (List.length (Δ ▸ A ≔ M)) m3 d3) by (eapply functional_eval_sub; [ eapply Hmd; [ exact M34' | exact Hm3 ] | exact Hd3 ]).
   assert (Q4 : env_agree_upto (List.length (Δ ▸ A ≔ M)) m4 d4)
     by (eapply functional_eval_sub; [ eapply Hmd; [ symmetry; exact M34' | exact Hm4 ] | exact Hd4 ]).
-  apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Cd.
+  apply (rel_chain_mono _ _ (fun a b H => proj1 (Ed a b) H)) in Dchain.
   apply (rel_chain_mono _ _ (fun a b H => proj1 (Em a b) H)) in Cm.
-  destruct Cd as (D12 & D23 & D34); destruct Cm as (M12 & M23 & M34).
+  destruct Dchain as (D12 & D23 & D34); destruct Cm as (M12 & M23 & M34).
   apply (mk_rel_sub d1 d2 d3 d4); try (apply (eval_sub_same_types Htys eq_refl); assumption).
   apply rel_chain_4;
     [ apply (per_env_extend_dm_of_parts HΔ HU (ma := m1) (mb := m2))

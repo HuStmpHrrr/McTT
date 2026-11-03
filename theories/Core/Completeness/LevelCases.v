@@ -610,10 +610,10 @@ Proof.
   intros ρ ρ' Hρ.
   destruct (eval_sub_id_rel HΓ Hρ) as [Hi Hi'].
   (** The [Id] instance, read at its outer values, which are at [ρ] and
-      [ρ'] themselves; its inner ones are at the restampings.  The first
+      [ρ'] themselves; its inner ones are at the retaggings.  The first
       link names the element PER, at the outer level. *)
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hi Hi') as [R [Htyp Hexp]].
-  assert (Hr : rel_typ_sort Type⟨T⟩ (restamp_env ρ) relevant).
+  assert (Hr : rel_typ_sort Type⟨T⟩ (ctx_retag Γ ρ) relevant).
   { pose proof Htyp as [u1 u2 u3 u4 _ Hu2 _ _ _]; exists u2; split; [ exact Hu2 |].
     cbn [exp_sub] in Hu2; inversion Hu2; subst; reflexivity. }
   apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.

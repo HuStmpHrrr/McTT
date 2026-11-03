@@ -215,12 +215,12 @@ Proof.
   destruct HM as [env_relΓ2 HΓ2 j HMgen].
   assert (Hρt : Dom ρ ≈ ρ' ∈ env_relΓ) by (destruct Hρ as [Ht _ _ _ _ _]; exact Ht).
   (** The two substituted environments of [Wk] at [ρ ↦ c] and [ρ' ↦ c'] are
-    the restamped tails ([eval_sub_shift]).  The [Id] instance at the
+    the retagged tails ([eval_sub_shift]).  The [Id] instance at the
     tails has the same inner environments, and its outer values are the
     values at the tails themselves: the two chains merge there. *)
   destruct (eval_sub_shift_rel HΓA Hρ) as [Hs Hs'].
   destruct (HMgen _ _ HΓA _ _ HWk _ _ _ _ Hρ Hs Hs') as [R [Htyp Hexp]].
-  pose proof (HBr _ _ (per_ctx_env_restamp_left HΓ _ _ Hρt)) as HBrr.
+  pose proof (HBr _ _ (per_ctx_env_retag_left HΓ _ _ Hρt)) as HBrr.
   apply (rel_exp_or_prop_relevant Htyp HBrr) in Hexp.
   destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct Hexp as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hwchain].
@@ -274,7 +274,7 @@ Proof.
     carry a propositional head across, so it is named, at an environment
     pair the caller supplies.  Its inner values are at [⟪ψ⟫ ρ] and
     [⟪ψ⟫ ρ'] themselves, read off [rel_type_inversion_wk] at three pairs
-    (the instance along [ι ψ] has them at the restampings). *)
+    (the instance along [ι ψ] has them at the retaggings). *)
   assert (Hcom : forall ρ ρ',
              Dom ρ ≈ ρ' ∈ env_relΓ ->
              rel_exp A (ι ψ) ρ ⟪ψ⟫ ρ
@@ -456,8 +456,8 @@ Proof.
     apply (rel_exp_or_prop_relevant Htyp (ex_intro _ d1 (conj Hd1 Er12))) in Hexp.
     destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hheads].
     rewrite exp_sub_of_wk in Hm1, Hm4.
-    apply (mk_rel_sub (t1 ↦ m1 ⦂ substituted_type) (t2 ↦ m2 ⦂ substituted_type)
-             (t3 ↦ m3 ⦂ substituted_type) (t4 ↦ m4 ⦂ substituted_type));
+    apply (mk_rel_sub (t1 ↦ m1 ⦂ centry_tag (ce_ass A) Δ t1) (t2 ↦ m2 ⦂ centry_tag (ce_ass A) Δ t2)
+             (t3 ↦ m3 ⦂ centry_tag (ce_ass A) Δ t3) (t4 ↦ m4 ⦂ centry_tag (ce_ass A) Δ t4));
       [ apply eval_sub_wk_extend; eassumption
       | apply eval_sub_extend; eassumption
       | apply eval_sub_extend; eassumption
@@ -471,15 +471,15 @@ Proof.
     destruct Hbchain as [? [? ?]].
     destruct_per_univ_chain Hcchain.
     destruct_per_univ_chain Hdchain.
-    solve_per_env_extend_chain.
+    solve_per_env_extend_chain_tagged.
   - (** A propositional head: the heads are proofs, which the head PER of
       [A] relates at every link. *)
     assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass A) Δ t2) by (rewrite I2; reflexivity).
     assert (Hp1 : head_propositional gc_deps gc_stack (ce_ass A) Δ t1) by (rewrite I12; exact Hp2).
     assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass A) Δ t3) by (rewrite <- I23; exact Hp2).
     assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass A) Δ t4) by (rewrite <- I34; exact Hp3).
-    apply (mk_rel_sub (t1 ↦ ⋆ᵈ⟨M[φ]ʷ, ρ⟩ ⦂ substituted_type) (t2 ↦ ⋆ᵈ⟨M, ⟪φ⟫ ρ⟩ ⦂ substituted_type)
-             (t3 ↦ ⋆ᵈ⟨M', ⟪φ⟫ ρ'⟩ ⦂ substituted_type) (t4 ↦ ⋆ᵈ⟨M'[φ]ʷ, ρ'⟩ ⦂ substituted_type));
+    apply (mk_rel_sub (t1 ↦ ⋆ᵈ⟨M[φ]ʷ, ρ⟩ ⦂ centry_tag (ce_ass A) Δ t1) (t2 ↦ ⋆ᵈ⟨M, ⟪φ⟫ ρ⟩ ⦂ centry_tag (ce_ass A) Δ t2)
+             (t3 ↦ ⋆ᵈ⟨M', ⟪φ⟫ ρ'⟩ ⦂ centry_tag (ce_ass A) Δ t3) (t4 ↦ ⋆ᵈ⟨M'[φ]ʷ, ρ'⟩ ⦂ centry_tag (ce_ass A) Δ t4));
       [ apply eval_sub_wk_extend_proof; eassumption
       | apply eval_sub_extend_proof; eassumption
       | apply eval_sub_extend_proof; eassumption
@@ -500,8 +500,8 @@ Proof.
       | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
       | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
       end;
-      apply per_env_extend_intro';
-      first [ pairwise | eapply per_head_proof; eassumption | apply substituted_entry_readable ].
+      (eapply per_env_extend_intro_tagged; [ exact HΔA | exact HΔk | | ]);
+      first [ pairwise | eapply per_head_proof; eassumption ].
 Qed.
 
 (** ** Extension by a Precomposed Term
@@ -575,8 +575,8 @@ Proof.
     assert (Hp2 : head_propositional gc_deps gc_stack (ce_ass T) Δ t2) by (rewrite <- I12; exact Hp1).
     assert (Hp3 : head_propositional gc_deps gc_stack (ce_ass T) Δ t3) by (rewrite <- I23; exact Hp2).
     assert (Hp4 : head_propositional gc_deps gc_stack (ce_ass T) Δ t4) by (rewrite <- I34; exact Hp3).
-    apply (mk_rel_sub (t1 ↦ ⋆ᵈ⟨M[σ][φ]ʷ, ρ⟩ ⦂ substituted_type) (t2 ↦ ⋆ᵈ⟨M[σ], ⟪φ⟫ ρ⟩ ⦂ substituted_type)
-             (t3 ↦ ⋆ᵈ⟨M'[σ'], ⟪φ⟫ ρ'⟩ ⦂ substituted_type) (t4 ↦ ⋆ᵈ⟨M'[σ'][φ]ʷ, ρ'⟩ ⦂ substituted_type));
+    apply (mk_rel_sub (t1 ↦ ⋆ᵈ⟨M[σ][φ]ʷ, ρ⟩ ⦂ centry_tag (ce_ass T) Δ t1) (t2 ↦ ⋆ᵈ⟨M[σ], ⟪φ⟫ ρ⟩ ⦂ centry_tag (ce_ass T) Δ t2)
+             (t3 ↦ ⋆ᵈ⟨M'[σ'], ⟪φ⟫ ρ'⟩ ⦂ centry_tag (ce_ass T) Δ t3) (t4 ↦ ⋆ᵈ⟨M'[σ'][φ]ʷ, ρ'⟩ ⦂ centry_tag (ce_ass T) Δ t4));
       [ apply eval_sub_wk_extend_proof; eassumption
       | apply eval_sub_extend_proof; eassumption
       | apply eval_sub_extend_proof; eassumption
@@ -598,8 +598,8 @@ Proof.
       | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
       | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
       end;
-      apply per_env_extend_intro';
-      first [ pairwise | eapply per_head_proof; eassumption | apply substituted_entry_readable ].
+      (eapply per_env_extend_intro_tagged; [ exact HΔT | exact HΔk | | ]);
+      first [ pairwise | eapply per_head_proof; eassumption ].
   }
   (** A relevant head: the three term instantiations give values. *)
   assert (Hn1 : ~ head_propositional gc_deps gc_stack (ce_ass T) Δ t1) by (rewrite I1; discriminate).
@@ -624,8 +624,8 @@ Proof.
   destruct Htyp3 as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   rewrite exp_sub_id in Hc1, Hc4.
   functional_eval_rewrite_clear.
-  apply (mk_rel_sub (t1 ↦ f1 ⦂ substituted_type) (t2 ↦ g1 ⦂ substituted_type)
-           (t3 ↦ g4 ⦂ substituted_type) (t4 ↦ f4 ⦂ substituted_type));
+  apply (mk_rel_sub (t1 ↦ f1 ⦂ centry_tag (ce_ass T) Δ t1) (t2 ↦ g1 ⦂ centry_tag (ce_ass T) Δ t2)
+           (t3 ↦ g4 ⦂ centry_tag (ce_ass T) Δ t3) (t4 ↦ f4 ⦂ centry_tag (ce_ass T) Δ t4));
     [ apply eval_sub_wk_extend; eassumption
     | apply eval_sub_extend; eassumption
     | apply eval_sub_extend; eassumption
@@ -642,7 +642,7 @@ Proof.
   assert (Hm1 : rel_chain R1 ([f1; f4; f2; g2])) by (merge_rel_chain Hfchain Hhchain f2).
   assert (Hm2 : rel_chain R1 ([f1; g1; g4; f4])) by (merge_rel_chain Hm1 Hgchain g2).
   clear Hfchain Hgchain Hhchain Hm1.
-  solve_per_env_extend_chain.
+  solve_per_env_extend_chain_tagged.
 Qed.
 
 (** ** Double Extension by Precomposed Terms
@@ -763,10 +763,11 @@ Proof.
     by (apply (Hhead i R c1 c4); first [ eassumption | pairwise ]).
   assert (Hheads : rel_chain R ([ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)]))
     by (apply rel_chain_4_of_2; [ solve_chain_PER | rewrite <- !(eval_wk_app ψ); exact Hh ]).
-  (** The heads are restamped ([eval_sub_q]); the context PER relates the
-      environments as it relates those with the heads themselves. *)
-  apply (mk_rel_sub (restamp_entry (env_entry ρ (ψ 0)) :: x1) (restamp_entry (env_entry ρ (ψ 0)) :: y1)
-                    (restamp_entry (env_entry ρ' (ψ 0)) :: y4) (restamp_entry (env_entry ρ' (ψ 0)) :: x4));
+  (** The heads are retagged at [A] over the tails ([eval_sub_q]). *)
+  apply (mk_rel_sub (retag_entry (centry_tag (ce_ass A) Δ x1) (centry_slot_unit (ce_ass A)) (env_entry ρ (ψ 0)) :: x1)
+                    (retag_entry (centry_tag (ce_ass A) Δ y1) (centry_slot_unit (ce_ass A)) (env_entry ρ (ψ 0)) :: y1)
+                    (retag_entry (centry_tag (ce_ass A) Δ y4) (centry_slot_unit (ce_ass A)) (env_entry ρ' (ψ 0)) :: y4)
+                    (retag_entry (centry_tag (ce_ass A) Δ x4) (centry_slot_unit (ce_ass A)) (env_entry ρ' (ψ 0)) :: x4));
     [ apply eval_sub_wk_q; exact Hx1
     | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q; exact Hy1
     | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q; exact Hy4
@@ -803,18 +804,18 @@ Proof.
     | |- rel_chain _ ([_; _]) => apply rel_chain_of_pair
     | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
     end;
-    lazymatch goal with
-    | |- per_env_extend _ _ _ _ _ =>
-        eapply (per_ctx_env_resp_restamped HΔA); [ apply env_agree_restamped_head | apply env_agree_restamped_head |]
-    | _ => idtac
-    end;
-    apply per_env_extend_intro;
+    (eapply per_env_extend_intro_retagged; [ exact HΔA | exact HΔ3 | | | | ]);
     first
       [ pairwise
-      | solve_per_head
-      | exact Hrdl
-      | exact Hrdr
-      | (first [ apply Hlit_l | apply Hlit_r ]); first [ exact Hy12 | etransitivity; [| exact Hy12 ]; pairwise ] ].
+      | rewrite !env_var_head_entry; solve_per_head
+      | intros Hq;
+        match goal with
+        | Hq : rel_typ_propositional A ?t |- _ =>
+            assert (Ht : Dom t ≈ y2 ∈ env_relΔ) by (first [ exact Hy12 | etransitivity; [| exact Hy12 ]; pairwise ])
+        end;
+        first
+          [ destruct (Hlit_l _ Ht Hq) as [ty Hty]; exists (ρ (ψ 0)), ty; exact Hty
+          | destruct (Hlit_r _ Ht Hq) as [ty Hty]; exists (ρ' (ψ 0)), ty; exact Hty ] ].
 Qed.
 
 (** ** Instantiating a Premise in an Extended Context
@@ -846,11 +847,11 @@ Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ env_
       ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
       ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
       exists s s',
-        ⟦ q σ : Δ ▹ A ⟧s ρ ↦ c ⦂ t1 ↘ s ↦ c ⦂ t1 /\
-        ⟦ q σ' : Δ ▹ A ⟧s ρ' ↦ c' ⦂ t4 ↘ s' ↦ c' ⦂ t4 /\
+        ⟦ q σ : Δ ▹ A ⟧s ρ ↦ c ⦂ t1 ↘ s ↦ c ⦂ centry_tag (ce_ass A) Δ s /\
+        ⟦ q σ' : Δ ▹ A ⟧s ρ' ↦ c' ⦂ t4 ↘ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' /\
         rel_chain env_relΔA
-          ([s ↦ c ⦂ t1; s ↦ c' ⦂ t1; ρσ ↦ c ⦂ t2; ρσ ↦ c' ⦂ t2;
-           ρ'σ' ↦ c ⦂ t3; ρ'σ' ↦ c' ⦂ t3; s' ↦ c ⦂ t4; s' ↦ c' ⦂ t4]).
+          ([s ↦ c ⦂ centry_tag (ce_ass A) Δ s; s ↦ c' ⦂ centry_tag (ce_ass A) Δ s; ρσ ↦ c ⦂ t2; ρσ ↦ c' ⦂ t2;
+           ρ'σ' ↦ c ⦂ t3; ρ'σ' ↦ c' ⦂ t3; s' ↦ c ⦂ centry_tag (ce_ass A) Δ s'; s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s']).
 Proof.
   intros * HΓ HΔA Hσj HA * Hpair Hts Hev Hev'.
   pose proof Hpair as [Hρ Hhead _ _ _ _].
@@ -920,10 +921,19 @@ Proof.
     by (apply rel_chain_4; first [ eassumption | symmetry; eassumption ]).
   exists s, s'.
   (** Not [repeat split]: the third conjunct is itself a chain of conjunctions. *)
-  split; [ apply eval_sub_q; exact Hs | split; [ apply eval_sub_q; exact Hs' |]].
+  split; [ exact (eval_sub_q (ce_ass A) _ _ _ _ Hs) | split; [ exact (eval_sub_q (ce_ass A) _ _ _ _ Hs') |]].
   functional_eval_rewrite_clear.
   destruct Hechain as [? [? ?]].
   handle_per_univ_elem_irrel.
+  (** The heads [q σ] stores at [A] over the outer tails read back
+      ([per_head_closure_readable]). *)
+  assert (Hrd : forall t t' m m', Dom t ≈ t' ∈ env_relΔ -> Dom m ≈ m' ∈ per_head A A t t' ->
+                  entry_readable (de_term m (centry_tag (ce_ass A) Δ t)))
+    by (intros * Ht Hm; exact (proj1 (per_head_closure_readable HΔA' HΔk Ht Hm))).
+  assert (Hr1 : entry_readable (de_term c (centry_tag (ce_ass A) Δ s))) by (apply (Hrd s ρσ c c'); [ pairwise | solve_per_head ]).
+  assert (Hr2 : entry_readable (de_term c' (centry_tag (ce_ass A) Δ s))) by (apply (Hrd s ρσ c' c); [ pairwise | solve_per_head ]).
+  assert (Hr3 : entry_readable (de_term c (centry_tag (ce_ass A) Δ s'))) by (apply (Hrd s' ρ'σ' c c'); [ pairwise | solve_per_head ]).
+  assert (Hr4 : entry_readable (de_term c' (centry_tag (ce_ass A) Δ s'))) by (apply (Hrd s' ρ'σ' c' c); [ pairwise | solve_per_head ]).
   solve_per_env_extend_chain.
 Qed.
 
@@ -972,10 +982,10 @@ Proof.
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   apply rel_chain_relevant_univ in Hbchain.
   (** The four bridges, at four pairs the chain above relates. *)
-  assert (P1 : Dom s ↦ c ⦂ t1 ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
-  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ t1 ∈ env_relΔA) by pairwise.
-  assert (P3 : Dom s' ↦ c' ⦂ t4 ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
-  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ t4 ∈ env_relΔA) by pairwise.
+  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ centry_tag (ce_ass A) Δ s ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ∈ env_relΔA) by pairwise.
   destruct (HBl _ _ P1) as [x1 [x2 [Hx1 [Hx2 Hx]]]].
   destruct (HBl _ _ P2) as [y1 [y2 [Hy1 [Hy2 Hy]]]].
   destruct (HBr _ _ P3) as [z1 [z2 [Hz1 [Hz2 Hz]]]].
@@ -1094,11 +1104,11 @@ Proof.
   destruct (HMgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq') as [Rm [Htyp Hexp]].
   (** The four pairs the bridges are taken at, all related by the eight-value
       chain of [rel_sub_under_ctx_q], and the main one. *)
-  assert (Pq : Dom s ↦ c ⦂ t1 ≈ s' ↦ c' ⦂ t4 ∈ env_relΔA) by pairwise.
+  assert (Pq : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ∈ env_relΔA) by pairwise.
   assert (Pm : Dom ρσ ↦ c ⦂ t2 ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
-  assert (P1 : Dom s ↦ c ⦂ t1 ≈ ρσ ↦ c ⦂ t2 ∈ env_relΔA) by pairwise.
-  assert (P2 : Dom s ↦ c ⦂ t1 ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
-  assert (P3 : Dom s' ↦ c' ⦂ t4 ≈ ρ'σ' ↦ c ⦂ t3 ∈ env_relΔA) by pairwise.
+  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ≈ ρ'σ' ↦ c ⦂ t3 ∈ env_relΔA) by pairwise.
   (** [B] is relevant at all of them, so every judgment reports values. *)
   assert (HΔAk : EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA) by eassumption.
   apply (rel_exp_or_prop_relevant Htyp (HBrel _ _ _ HΔAk Pq)) in Hexp.
@@ -1214,10 +1224,10 @@ Lemma rel_typ_of_instance : forall {Γ A} {i k : nat} {B N},
           (forall w z,
               Dom w ≈ z ∈ RN ->
               exists b b',
-                ⟦ B ⟧ ρσ ↦ w ⦂ substituted_type ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ⦂ substituted_type ↘ b' /\
+                ⟦ B ⟧ ρσ ↦ w ⦂ centry_tag (ce_ass A) Γ ρσ ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ⦂ centry_tag (ce_ass A) Γ ρ'σ' ↘ b' /\
                   Dom b ≈ b' ∈ per_univ i) /\
           rel_typ i B[Id,,N] σ ρ ρσ B[Id,,N] σ' ρ' ρ'σ'
-            (per_head B B (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3 ⦂ substituted_type)).
+            (per_head B B (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ')).
 Proof.
   intros * HA HArel' HB HN HNs * HΓ' * Hσj Hρ Hev Hev'.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ _]].
@@ -1241,15 +1251,16 @@ Proof.
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
   assert (Houter : DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN) by pairwise.
   assert (Hmid : DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN) by pairwise.
+  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA0.
   (** The codomain at an arbitrary related pair of arguments. *)
   assert (Hcod : forall w z,
              Dom w ≈ z ∈ RN ->
              exists b b',
-               ⟦ B ⟧ ρσ ↦ w ⦂ substituted_type ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ⦂ substituted_type ↘ b' /\
+               ⟦ B ⟧ ρσ ↦ w ⦂ centry_tag (ce_ass A) Γ ρσ ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ⦂ centry_tag (ce_ass A) Γ ρ'σ' ↘ b' /\
                  Dom b ≈ b' ∈ per_univ i).
   { intros w z Hwz.
     eapply (rel_exp_of_typ_extend_simple HΓ HA HB).
-    apply per_env_extend_intro'; [ exact Hρσ | | apply substituted_entry_readable | apply substituted_entry_readable ].
+    apply (per_env_extend_intro_tagged HΓA0 HΓ Hρσ).
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | exact Hwz ]. }
   (** The two instantiations, their outer values rewritten into the goal's
       spelling. *)
@@ -1260,18 +1271,16 @@ Proof.
   apply rel_chain_relevant_univ in HtAchain.
   rewrite <- exp_sub_extend_sub in Ht1, Ht4.
   (** The second along [Id,,N], whose results are the extensions of the
-      restamped environments; read at the extensions of the environments
+      retagged environments; read at the extensions of the environments
       themselves ([rel_type_body_unrestamp]). *)
-  destruct (head_not_propositional_of_relevant (e := ce_ass A) HΓ eq_refl HA HArel' _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
+  destruct (head_not_propositional_of_relevant (e := ce_ass A) HΓ eq_refl HA HArel' _ _ (per_ctx_env_retag HΓ _ _ Hρσ))
     as [Hnp2r Hnp3r].
-  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA0.
   assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (Hext : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3 ⦂ substituted_type ∈ env_relΓA).
-  { apply EA; apply per_env_extend_intro';
-      [ exact Hρσ | eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | pairwise ]
-      | apply substituted_entry_readable | apply substituted_entry_readable ]. }
+  assert (Hext : Dom ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ ≈ ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ' ∈ env_relΓA).
+  { apply EA; apply (per_env_extend_intro_tagged HΓA0 HΓ Hρσ).
+    eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | pairwise ]. }
   destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρσ ρ'σ'
-              (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3 ⦂ substituted_type) Hρσ
+              (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ') Hρσ
               (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2) (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3) Hext)
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
   apply rel_chain_relevant_univ in HtBchain.
@@ -1297,7 +1306,7 @@ Proof.
   assert (He2e : e2 = tB3) by (eapply functional_eval_exp; [ exact He2 | exact HtB3 ]).
   subst e1 e2.
   assert (HallR : rel_chain (per_univ_elem i
-                               (per_head B B (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3 ⦂ substituted_type)))
+                               (per_head B B (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ')))
                     ([t1; t2; tB2; tB3; t3; t4]))
     by (eapply per_univ_chain_at_in; [ exact Hall | | | exact Hanchor ]; solve_in).
   exists j, RN, a1, a2, a3, a4, n1, n2, n3, n4.
@@ -1324,28 +1333,27 @@ Lemma per_univ_of_instance : forall {Γ A} {i j : nat} {B N env_relΓ},
       Dom ρ ≈ ρ ∈ env_relΓ ->
       ⟦ N ⟧ ρ ↘ n ->
       exists a b,
-        ⟦ B[Id,,N] ⟧ ρ ↘ a /\ ⟦ B ⟧ ρ ↦ n ⦂ substituted_type ↘ b /\
+        ⟦ B[Id,,N] ⟧ ρ ↘ a /\ ⟦ B ⟧ ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ ↘ b /\
           Dom a ≈ a ∈ per_univ i /\ Dom a ≈ b ∈ per_univ i.
 Proof.
   intros * HΓ HA HB HN HNs * Hρ Hn.
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
-  (** [Id,,N] evaluates to the extension of the restamped environment; the
+  (** [Id,,N] evaluates to the extension of the retagged environment; the
       instance is read at the extension of [ρ] itself
       ([rel_type_body_unrestamp]). *)
-  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ (per_ctx_env_restamp HΓ _ _ Hρ)) as [Hnp _].
+  destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ (per_ctx_env_retag HΓ _ _ Hρ)) as [Hnp _].
   destruct (eval_sub_id_rel HΓ Hρ) as [Hid _].
   destruct (rel_exp_under_ctx_simple_at_rel HΓ HA HN _ _ Hρ) as (m & m' & Hm & Hm' & Hmm).
   assert (m = n) as -> by (eapply functional_eval_exp; eassumption).
   assert (m' = n) as -> by (eapply functional_eval_exp; eassumption).
   pose proof (per_ctx_env_of_typ HΓ (rel_type_of_typ HA)) as HΓA0.
   assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (Hext : Dom ρ ↦ n ⦂ substituted_type ≈ ρ ↦ n ⦂ substituted_type ∈ env_relΓA)
-    by (apply EA; apply per_env_extend_intro';
-        [ exact Hρ | exact Hmm | apply substituted_entry_readable | apply substituted_entry_readable ]).
+  assert (Hext : Dom ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ ≈ ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ ∈ env_relΓA)
+    by (apply EA; exact (per_env_extend_intro_tagged HΓA0 HΓ Hρ Hmm)).
   destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρ ρ
-              (ρ ↦ n ⦂ substituted_type) (ρ ↦ n ⦂ substituted_type) Hρ
+              (ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ) (ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ) Hρ
               (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) Hext)
     as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
   apply rel_chain_relevant_univ in Hchain.

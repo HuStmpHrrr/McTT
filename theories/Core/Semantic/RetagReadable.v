@@ -43,6 +43,11 @@ Section Fixed_GCtx.
   Lemma env_entry_head : forall ρ, List.hd absent_entry ρ = env_entry ρ 0.
   Proof. intros [| d ρ]; reflexivity. Qed.
 
+  (** The value of an entry of [ρ] moved to the head of another
+      environment. *)
+  Lemma env_var_head_entry : forall ρ x ρ1, env_var (env_entry ρ x :: ρ1) 0 = env_var ρ x.
+  Proof. reflexivity. Qed.
+
   (** An environment agrees with its first [n] entries. *)
   Lemma env_agree_upto_env_upto : forall n ρ, env_agree_upto n ρ (env_upto n ρ).
   Proof. intros * x Hx; rewrite env_entry_env_upto by exact Hx; reflexivity. Qed.
@@ -106,4 +111,115 @@ Section Fixed_GCtx.
       EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
       forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ctx_retag Γ ρ ≈ ctx_retag Γ ρ' ∈ R.
   Proof. intros * H * Hρ; exact (per_ctx_env_retag_right H _ _ (per_ctx_env_retag_left H _ _ Hρ)). Qed.
+
+  (** The head PER of [A] at environments of [Δ] is included in the
+      element PER of [A]'s values over their first [|Δ|] entries, the
+      environment of the closure [centry_tag] stores. *)
+  Lemma per_head_at_env_upto : forall {Δ A R S ρ ρ'},
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S ->
+      exists i a a' Rh,
+        ⟦ A ⟧ env_upto (List.length Δ) ρ ↘ a /\ ⟦ A ⟧ env_upto (List.length Δ) ρ' ↘ a' /\
+        DF a ≈ a' ∈ per_univ_elem i ↘ Rh /\
+        (forall m m', Dom m ≈ m' ∈ per_head A A ρ ρ' -> Dom m ≈ m' ∈ Rh).
+  Proof.
+    intros * HΔA HΔ Hρ.
+    inversion HΔA as [| ? ? ? ? ? tail_rel head_rel ? HΔt Htail HA | | | ]; subst.
+    assert (ES : S <~> tail_rel) by (eapply per_ctx_env_right_irrel; eassumption).
+    apply ES in Hρ.
+    assert (Hu : Dom env_upto (List.length Δ) ρ ≈ env_upto (List.length Δ) ρ' ∈ tail_rel)
+      by exact (per_ctx_env_resp_agree HΔt _ _ _ _ (env_agree_upto_env_upto _ _) (env_agree_upto_env_upto _ _) Hρ).
+    assert (Hl : Dom env_upto (List.length Δ) ρ ≈ ρ' ∈ tail_rel)
+      by exact (per_ctx_env_resp_agree HΔt _ _ _ _ (env_agree_upto_env_upto _ _) (reflexivity _) Hρ).
+    destruct (HA _ _ Hu) as [a1 a1' Ea1 Ea1' HR1].
+    destruct (HA _ _ Hl) as [b1 b' Eb1 Eb' HR2].
+    destruct (HA _ _ Hρ) as [a a' Ea Ea' HR0].
+    functional_eval_rewrite_clear.
+    assert (E12 : _ <~> _) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR1 HR2).
+    assert (E20 : _ <~> _) by exact (per_univ_elem_left_irrel _ _ _ _ _ _ _ HR2 HR0).
+    exists i, a1, a1', (head_rel _ _ Hu); do 3 (split; [ assumption |]).
+    intros m m' Hm; apply E12, E20; exact (Hm _ _ _ _ Ea Eb' HR0).
+  Qed.
+
+  (** Values the head PER of [A] relates, at environments of [Δ], read
+      back stored at the tag an extension of the environments by [A]
+      gives them ([centry_tag]). *)
+  Lemma per_head_closure_readable : forall {Δ A R S ρ ρ' m m'},
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
+      entry_readable (de_term m (centry_tag (ce_ass A) Δ ρ)) /\ entry_readable (de_term m' (centry_tag (ce_ass A) Δ ρ')).
+  Proof.
+    intros * HΔA HΔ Hρ Hm.
+    destruct (per_head_at_env_upto HΔA HΔ Hρ) as (i & a & a' & Rh & Ea & Ea' & HR & Hincl).
+    unfold centry_tag; cbn [centry_type].
+    exact (entry_readable_of_elem_closure Ea Ea' HR (Hincl _ _ Hm)).
+  Qed.
+
+  (** Entries whose values the head PER of [A] relates, at environments of
+      [Δ], read back retagged at the tag of an extension by [A], when they
+      read back as they are. *)
+  Lemma per_head_retag_readable : forall {Δ A R S ρ ρ' e e'},
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
+      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ) (centry_slot_unit (ce_ass A)) e) /\
+      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ') (centry_slot_unit (ce_ass A)) e').
+  Proof.
+    intros * HΔA HΔ Hρ Hm.
+    destruct (per_head_at_env_upto HΔA HΔ Hρ) as (i & a & a' & Rh & Ea & Ea' & HR & Hincl).
+    pose proof (Hincl _ _ Hm) as Hh.
+    destruct (per_univ_elem_sym _ _ _ _ HR) as [HR' Hsym].
+    unfold centry_tag; cbn [centry_type]; split.
+    - exact (retag_head_readable 0 (centry_slot_unit (ce_ass A)) (e :: ρ) _ Ea HR Hh (fun _ _ _ => ltac:(cbn; lia))).
+    - exact (retag_head_readable 0 (centry_slot_unit (ce_ass A)) (e' :: ρ') _ Ea' HR' (Hsym _ _ Hh) (fun _ _ _ => ltac:(cbn; lia))).
+  Qed.
+
+  (** [per_env_extend_intro'] for the extensions a substitution
+      extension evaluates to ([eval_sub_extend]): the heads stored at
+      [centry_tag], which read back ([per_head_closure_readable]). *)
+  Corollary per_env_extend_intro_tagged : forall {Δ A R S ρ ρ' m m'},
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
+      Dom ρ ↦ m ⦂ centry_tag (ce_ass A) Δ ρ ≈ ρ' ↦ m' ⦂ centry_tag (ce_ass A) Δ ρ' ∈ per_env_extend A A S.
+  Proof.
+    intros * HΔA HΔ Hρ Hm.
+    destruct (per_head_closure_readable HΔA HΔ Hρ Hm) as [Hr Hr'].
+    exact (per_env_extend_intro' Hρ Hm Hr Hr').
+  Qed.
+
+  (** [per_env_extend_intro] for environments whose heads are retagged at
+      the tag of an extension by [A] ([eval_sub_q]): their values are
+      related in the head PER, and they read back as they are. *)
+  Corollary per_env_extend_intro_retagged : forall {Δ A R S ρ ρ' e e'},
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
+      (rel_typ_propositional A ρ -> exists v t, e = de_term v t) ->
+      (rel_typ_propositional A ρ' -> exists v t, e' = de_term v t) ->
+      Dom retag_entry (centry_tag (ce_ass A) Δ ρ) (centry_slot_unit (ce_ass A)) e :: ρ
+        ≈ retag_entry (centry_tag (ce_ass A) Δ ρ') (centry_slot_unit (ce_ass A)) e' :: ρ' ∈ per_env_extend A A S.
+  Proof.
+    intros * HΔA HΔ Hρ Hm Hp Hp'.
+    destruct (per_head_retag_readable HΔA HΔ Hρ Hm) as [Hr Hr'].
+    apply per_env_extend_intro; cbn [drop_env List.tl]; try assumption.
+    - destruct e, e'; exact Hm.
+    - intros Hq; destruct (Hp Hq) as (v & t & ->); eexists; reflexivity.
+    - intros Hq; destruct (Hp' Hq) as (v & t & ->); eexists; reflexivity.
+  Qed.
 End Fixed_GCtx.
+
+(** [solve_per_env_extend_chain] for a chain of extensions a substitution
+    extension evaluates to, its heads stored at [centry_tag]: each link by
+    [per_env_extend_intro_tagged], at the context PERs of [Δ ▹ A] and [Δ]
+    in the hypotheses. *)
+Ltac solve_per_env_extend_chain_tagged :=
+  repeat
+    match goal with
+    | |- rel_chain _ (_ :: _ :: nil) => apply rel_chain_of_pair
+    | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
+    end;
+  (eapply per_env_extend_intro_tagged; [ eassumption | eassumption | | ]);
+    first [ pairwise | solve_per_head | assumption ].

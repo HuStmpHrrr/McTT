@@ -386,10 +386,10 @@ Proof.
               ltac:(eval_wk_at (Hφw _ _ Hρ)) ltac:(eval_wk_at (Hφw _ _ Hρ')))
     as [a1 a2 a3 a4 Ha1 Ha2 Ha3 ? Hchain].
   rewrite exp_sub_of_wk in Ha1.
-  (** The inner values are at the restampings; the judgment at the
-      restamping of [⟪φ⟫ ρ] against [⟪φ⟫ ρ'] bridges them. *)
+  (** The inner values are at the retaggings; the judgment at the
+      retagging of [⟪φ⟫ ρ] against [⟪φ⟫ ρ'] bridges them. *)
   assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
-  pose proof (per_ctx_env_restamp_left HΔk _ _ (Hφw _ _ Hρ)) as Hrφρ.
+  pose proof (per_ctx_env_retag_left HΔk _ _ (Hφw _ _ Hρ)) as Hrφρ.
   destruct (rel_type_inversion_simple HAj) as [env_relΔ3 [HΔ3 HAs]].
   assert (E3 : env_relΔ <~> env_relΔ3) by (eapply per_ctx_env_right_irrel; [ exact HΔk | exact HΔ3 ]).
   destruct (HAs _ _ (proj1 (E3 _ _) Hrφρ)) as (b & b' & Hb & Hb' & Hbb').

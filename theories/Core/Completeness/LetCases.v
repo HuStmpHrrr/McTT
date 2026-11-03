@@ -314,7 +314,7 @@ Proof.
   assert (Hc' : rel_chain (per_env_extend_def A M env_relΔ) ([v1; v2; v3; v4]))
     by (apply rel_chain_4; (constructor; [ pairwise | assumption | assumption ])).
   apply (mk_rel_sub v1 v2 v3 v4); [ | | | | exact Hc' ];
-    (eapply eval_sub_change_target; [ eassumption | cbn; lia | exact (Hsame _) ]).
+    (eapply (eval_sub_same_types (Δ1 := Δ ▹ A)); [ intros [| x]; reflexivity | reflexivity | intros [| x]; reflexivity | eassumption ]).
 Qed.
 
 (** [σ,,M[σ]] into [Δ ▸ A ≔ M], at a relevant type: the tie is the left
@@ -570,19 +570,21 @@ Proof.
   rewrite <- exp_sub_extend_sub in Hc1, Hc4.
   pose proof (rel_sub_under_ctx_extend_sub_def_relevant (rel_sub_id (ex_intro _ _ HΓ)) HA HArel HMl HMs HMs) as HidM.
   rewrite exp_sub_id in HidM.
-  (** [Id,,M] evaluates to the extensions of the restamped environments;
+  (** [Id,,M] evaluates to the extensions of the retagged environments;
       the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
       ([rel_exp_body_unrestamp]). *)
-  destruct (head_not_propositional_of_relevant (e := ce_def A M) HΓ eq_refl HA HArel _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
+  destruct (head_not_propositional_of_relevant (e := ce_def A M) HΓ eq_refl HA HArel _ _ (per_ctx_env_retag HΓ _ _ Hρσ))
     as [Hnp2r Hnp3r].
   assert (PER RNl) by (eapply per_elem_PER; exact Ha23l).
-  assert (HId2 : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3m ⦂ substituted_type ∈ per_env_extend_def A M env_relΓ).
-  { eapply (per_env_extend_def_intro _ HAat HMlat Hρσ);
-      [ | apply substituted_entry_readable | apply substituted_entry_readable | exact Hn2 | ].
-    - eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ].
-    - eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ]. }
+  assert (HId2 : Dom ρσ ↦ n2 ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρ'σ' ↦ n3m ⦂ centry_tag (ce_def A M) Γ ρ'σ'
+                   ∈ per_env_extend_def A M env_relΓ).
+  { assert (Hh : Dom n2 ≈ n3m ∈ per_head A A ρσ ρ'σ')
+      by (eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ]).
+    destruct (per_head_closure_readable HΓA HΓ Hρσ Hh) as [Hr2 Hr3].
+    eapply (per_env_extend_def_intro _ HAat HMlat Hρσ); [ exact Hh | exact Hr2 | exact Hr3 | exact Hn2 | ].
+    eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ]. }
   destruct (rel_exp_body_unrestamp HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
-              (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3m ⦂ substituted_type) Hρσ
+              (ρσ ↦ n2 ⦂ centry_tag (ce_def A M) Γ ρσ) (ρ'σ' ↦ n3m ⦂ centry_tag (ce_def A M) Γ ρ'σ') Hρσ
               (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2)
               (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3m) HId2)
     as [R2 [HI2t HI2e]].
@@ -591,17 +593,21 @@ Proof.
 
       [B] at the two heads [⟦M[σ]⟧ρ] and [⟦M⟧ρσ], and [B ≈ B'] at the
       substituted pair. *)
-  assert (HY1 : Dom ρσ ↦ n1 ⦂ substituted_type ≈ ρσ ↦ n2 ⦂ substituted_type ∈ per_env_extend_def A M env_relΓ).
+  assert (HY1 : Dom ρσ ↦ n1 ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρσ ↦ n2 ⦂ centry_tag (ce_def A M) Γ ρσ
+                  ∈ per_env_extend_def A M env_relΓ).
   { assert (Hρσρσ : Dom ρσ ≈ ρσ ∈ env_relΓ) by solve_per.
-    eapply (per_env_extend_def_intro _ HAat HMlat Hρσρσ);
-      [ | apply substituted_entry_readable | apply substituted_entry_readable | exact Hn2 | ].
-    - eapply per_head_of; [ exact Ha2 | exact Ha2 | exact Ha22 | exact Hn12 ].
-    - eapply per_head_of; [ exact Ha2 | exact Ha2 | exact Ha22 | symmetry; exact Hn12 ]. }
-  assert (HX1 : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3 ⦂ entry_type_value b3' ∈ per_env_extend_def A M env_relΓ).
-  { eapply (per_env_extend_def_intro _ HAat HMlat Hρσ);
-      [ | apply substituted_entry_readable | exact Hrd3 | exact Hn2 | ].
-    - eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23 | exact Hn23 ].
-    - eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23 | solve_per ]. }
+    assert (Hh : Dom n1 ≈ n2 ∈ per_head A A ρσ ρσ)
+      by (eapply per_head_of; [ exact Ha2 | exact Ha2 | exact Ha22 | exact Hn12 ]).
+    destruct (per_head_closure_readable HΓA HΓ Hρσρσ Hh) as [Hr1 Hr2].
+    eapply (per_env_extend_def_intro _ HAat HMlat Hρσρσ); [ exact Hh | exact Hr1 | exact Hr2 | exact Hn2 | ].
+    eapply per_head_of; [ exact Ha2 | exact Ha2 | exact Ha22 | symmetry; exact Hn12 ]. }
+  assert (HX1 : Dom ρσ ↦ n2 ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρ'σ' ↦ n3 ⦂ entry_type_value b3'
+                  ∈ per_env_extend_def A M env_relΓ).
+  { assert (Hh : Dom n2 ≈ n3 ∈ per_head A A ρσ ρ'σ')
+      by (eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23 | exact Hn23 ]).
+    eapply (per_env_extend_def_intro _ HAat HMlat Hρσ);
+      [ exact Hh | exact (proj1 (per_head_closure_readable HΓA HΓ Hρσ Hh)) | exact Hrd3 | exact Hn2 | ].
+    eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23 | solve_per ]. }
   destruct (HY _ _ HY1) as [cy1 [cy2 [RY [Hcy1 [Hcy2 [HRY HYd]]]]]].
   destruct (HX _ _ HX1) as [cx1 [cx2 [RX [Hcx1 [Hcx2 [HRX HXd]]]]]].
   (** *** The Right Commutation
@@ -617,25 +623,27 @@ Proof.
   { eapply (per_env_extend_def_intro _ HAσ' HMσ' Hρ'ρ'); [ | exact Hrd4 | exact Hrd4 | exact Hn4 | ].
     - eapply per_head_of; [ exact Ha4 | exact Ha4 | exact Ha44 | exact Hn44 ].
     - eapply per_head_of; [ exact Ha4 | exact Ha4 | exact Ha44 | exact Hn44 ]. }
-  assert (Hts : args_readable_at n4 n4 ([entry_type_value b4'; substituted_type; substituted_type; entry_type_value b4']))
-    by (repeat constructor; first [ exact Hrd4 | apply substituted_entry_readable ]).
+  assert (Hts : args_readable_at n4 n4 ([entry_type_value b4'; entry_type_value b4'; entry_type_value b4'; entry_type_value b4']))
+    by (repeat constructor; exact Hrd4).
   destruct (rel_sub_under_ctx_q_at HΓ' HΓA Hσ'σ' HA _ _ _ _ _ _ _ _ _ _ (per_env_extend_def_ext _ _ _ _ _ Hpair) Hts Hev' Hev')
     as [s [s' [Hqs [Hqs' Hqchain]]]].
-  apply (eval_sub_same_types (Htya M') eq_refl) in Hqs.
+  apply (eval_sub_same_types (Htya M') eq_refl ltac:(intros [| x]; reflexivity)) in Hqs.
   destruct (HB'gen _ _ HΓ'd _ _ Hq _ _ _ _ Hpair Hqs Hqs) as [R3 [HI3t HI3e]].
   pose proof HI3t as [e1 e2 e3 e4 He1 He2 He3 He4 He1chain].
-  assert (Hsq : Dom ρ'σ' ↦ n4 ⦂ substituted_type ≈ s ↦ n4 ⦂ entry_type_value b4' ∈ per_env_extend A A env_relΓ)
+  assert (Hsq : Dom ρ'σ' ↦ n4 ⦂ entry_type_value b4' ≈ s ↦ n4 ⦂ centry_tag (ce_ass A) Γ s ∈ per_env_extend A A env_relΓ)
     by pairwise.
   destruct Hsq as [Hts' _ _ _ _ _].
   change (Dom ρ'σ' ≈ s ∈ env_relΓ) in Hts'.
   destruct (HAat _ _ Hts') as [b3x [bs [Hb3x [Hbs [Rs HRs]]]]].
   assert (b3x = a3) as -> by (eapply functional_eval_exp; eassumption).
   assert (ERs : RN <~> Rs) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ Ha33 HRs).
-  assert (HZ1 : Dom ρ'σ' ↦ n3 ⦂ entry_type_value b3' ≈ s ↦ n4 ⦂ entry_type_value b4'
+  assert (HZ1 : Dom ρ'σ' ↦ n3 ⦂ entry_type_value b3' ≈ s ↦ n4 ⦂ centry_tag (ce_ass A) Γ s
                   ∈ per_env_extend_def A M' env_relΓ).
-  { eapply (per_env_extend_def_intro _ HAat HMrat Hts'); [ | exact Hrd3 | exact Hrd4 | exact Hn3 | ].
-    - eapply per_head_of; [ exact Ha3 | exact Hbs | exact HRs | apply ERs; exact Hn34 ].
-    - eapply per_head_of; [ exact Ha3 | exact Hbs | exact HRs | apply ERs; solve_per ]. }
+  { assert (Hh : Dom n3 ≈ n4 ∈ per_head A A ρ'σ' s)
+      by (eapply per_head_of; [ exact Ha3 | exact Hbs | exact HRs | apply ERs; exact Hn34 ]).
+    eapply (per_env_extend_def_intro _ HAat HMrat Hts');
+      [ exact Hh | exact Hrd3 | exact (proj2 (per_head_closure_readable HΓA HΓ Hts' Hh)) | exact Hn3 | ].
+    eapply per_head_of; [ exact Ha3 | exact Hbs | exact HRs | apply ERs; solve_per ]. }
   destruct (HZ _ _ HZ1) as [cz1 [cz2 [RZ [Hcz1 [Hcz2 [HRZ HZd]]]]]].
   (** *** One Element PER
 
@@ -847,23 +855,21 @@ Proof.
   pose proof (rel_sub_under_ctx_into_def_prop (M := M) HA
                 (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HMl HMs HMs)) as HidM.
   rewrite exp_sub_id in HidM.
-  (** [Id,,M] evaluates to the extensions of the restamped environments;
+  (** [Id,,M] evaluates to the extensions of the retagged environments;
       the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
       ([rel_exp_body_unrestamp]). *)
-  pose proof (per_ctx_env_restamp HΓ _ _ Hρσ) as Hρσr.
+  pose proof (per_ctx_env_retag HΓ _ _ Hρσ) as Hρσr.
   destruct (rel_exp_of_prop_inversion_simple_at HΓ HA _ _ Hρσr) as (a2r & a3r & Ha2r & Ha3r & [Hl2r Hr3r _]).
-  assert (Hh2r : head_propositional gc_deps gc_stack (ce_def A M) Γ (restamp_env ρσ))
+  assert (Hh2r : head_propositional gc_deps gc_stack (ce_def A M) Γ (ctx_retag Γ ρσ))
     by (apply (proj2 (head_propositional_iff (e := ce_def A M) HΓ eq_refl HAs Hρσr Ha2r)); exact Hl2r).
-  assert (Hh3r : head_propositional gc_deps gc_stack (ce_def A M) Γ (restamp_env ρ'σ'))
+  assert (Hh3r : head_propositional gc_deps gc_stack (ce_def A M) Γ (ctx_retag Γ ρ'σ'))
     by (apply (proj2 (head_propositional_iff_right (e := ce_def A M) HΓ eq_refl HAs Hρσr Ha3r)); exact Hr3r).
   destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HMs) _ _ Hρσ) as [_ Rp2'].
-  assert (HId2 : Dom ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ substituted_type ≈ ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ substituted_type
+  assert (HId2 : Dom ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ centry_tag (ce_def A M) Γ ρ'σ'
                    ∈ per_env_extend A A env_relΓ)
-    by (apply per_env_extend_intro';
-        [ exact Hρσ | eapply per_head_proof; [ exact Ha2 | exact Hl2 | exact Rp2 | exact Rp2' ]
-        | apply substituted_entry_readable | apply substituted_entry_readable ]).
+    by exact (per_env_extend_intro_tagged HΓA HΓ Hρσ (per_head_proof Ha2 Hl2 Rp2 Rp2')).
   destruct (rel_exp_body_unrestamp HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
-              (ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ substituted_type) (ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ substituted_type) Hρσ
+              (ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ) (ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ centry_tag (ce_def A M) Γ ρ'σ') Hρσ
               (eval_sub_extend_proof _ _ _ _ _ _ Hid2 Hh2r) (eval_sub_extend_proof _ _ _ _ _ _ Hid3 Hh3r) HId2)
     as [R2 [HI2t HI2e]].
   pose proof HI2t as [c2 cB2 cB3 c3 Hc2 HcB2 HcB3 Hc3 Hc2chain].
@@ -871,16 +877,14 @@ Proof.
 
       [B] at the two kept proofs [⋆ᵈ⟨M[σ], ρ⟩] and [⋆ᵈ⟨M, ρσ⟩], and
       [B ≈ B'] at the substituted pair. *)
-  assert (HY1 : Dom ρσ ↦ ⋆ᵈ⟨M[σ], ρ⟩ ⦂ substituted_type ≈ ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ substituted_type
+  assert (Hρσρσ : Dom ρσ ≈ ρσ ∈ env_relΓ) by solve_per.
+  assert (HY1 : Dom ρσ ↦ ⋆ᵈ⟨M[σ], ρ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ
                   ∈ per_env_extend A A env_relΓ)
-    by (apply per_env_extend_intro';
-        [ solve_per | eapply per_head_proof; [ exact Ha2 | exact Hl2 | exact Rp1 | exact Rp2 ]
-        | apply substituted_entry_readable | apply substituted_entry_readable ]).
-  assert (HX1 : Dom ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ substituted_type ≈ ρ'σ' ↦ ⋆ᵈ⟨M', ρ'σ'⟩ ⦂ entry_type_value b3'
-                  ∈ per_env_extend A A env_relΓ)
-    by (apply per_env_extend_intro';
-        [ exact Hρσ | eapply per_head_proof; [ exact Ha2 | exact Hl2 | exact Rp2 | exact Rp3 ]
-        | apply substituted_entry_readable | exact Hrd3 ]).
+    by exact (per_env_extend_intro_tagged HΓA HΓ Hρσρσ (per_head_proof Ha2 Hl2 Rp1 Rp2)).
+  assert (HX1 : Dom ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρ'σ' ↦ ⋆ᵈ⟨M', ρ'σ'⟩ ⦂ entry_type_value b3'
+                  ∈ per_env_extend A A env_relΓ).
+  { pose proof (per_head_proof (S' := A) (ρ' := ρ'σ') Ha2 Hl2 Rp2 Rp3) as Hh.
+    exact (per_env_extend_intro' Hρσ Hh (proj1 (per_head_closure_readable HΓA HΓ Hρσ Hh)) Hrd3). }
   destruct (HY _ _ HY1) as [cy1 [cy2 [RY [Hcy1 [Hcy2 [HRY HYd]]]]]].
   destruct (HX _ _ HX1) as [cx1 [cx2 [RX [Hcx1 [Hcx2 [HRX HXd]]]]]].
   (** *** The Right Commutation
@@ -899,22 +903,21 @@ Proof.
         [ exact Hρ'ρ' | eapply per_head_proof; [ exact Ha4' | exact (per_prop_left _ _ Ha4p) | exact Rp4 | exact Rp4 ]
         | exact Hrd4 | exact Hrd4 ]).
   assert (Hts : args_readable_at ⋆ᵈ⟨M'[σ'], ρ'⟩ ⋆ᵈ⟨M'[σ'], ρ'⟩
-                  ([entry_type_value b4; substituted_type; substituted_type; entry_type_value b4]))
-    by (repeat constructor; first [ exact Hrd4 | apply substituted_entry_readable ]).
+                  ([entry_type_value b4; entry_type_value b4; entry_type_value b4; entry_type_value b4]))
+    by (repeat constructor; exact Hrd4).
   destruct (rel_sub_under_ctx_q_at HΓ' HΓA Hσ'σ' (rel_type_of_prop 0 HA) _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev' Hev')
     as [s [s' [Hqs [Hqs' Hqchain]]]].
-  apply (eval_sub_same_types (Htya M') eq_refl) in Hqs.
+  apply (eval_sub_same_types (Htya M') eq_refl ltac:(intros [| x]; reflexivity)) in Hqs.
   destruct (HB'gen _ _ HΓ'a _ _ Hq _ _ _ _ Hpair Hqs Hqs) as [R3 [HI3t HI3e]].
   pose proof HI3t as [e1 e2 e3 e4 He1 He2 He3 He4 He1chain].
-  assert (Hsq : Dom ρ'σ' ↦ ⋆ᵈ⟨M'[σ'], ρ'⟩ ⦂ substituted_type ≈ s ↦ ⋆ᵈ⟨M'[σ'], ρ'⟩ ⦂ entry_type_value b4
+  assert (Hsq : Dom ρ'σ' ↦ ⋆ᵈ⟨M'[σ'], ρ'⟩ ⦂ entry_type_value b4 ≈ s ↦ ⋆ᵈ⟨M'[σ'], ρ'⟩ ⦂ centry_tag (ce_ass A) Γ s
                   ∈ per_env_extend A A env_relΓ) by pairwise.
   destruct Hsq as [Hts' _ _ _ _ _].
   change (Dom ρ'σ' ≈ s ∈ env_relΓ) in Hts'.
-  assert (HZ1 : Dom ρ'σ' ↦ ⋆ᵈ⟨M', ρ'σ'⟩ ⦂ entry_type_value b3' ≈ s ↦ ⋆ᵈ⟨M'[σ'], ρ'⟩ ⦂ entry_type_value b4
-                  ∈ per_env_extend A A env_relΓ)
-    by (apply per_env_extend_intro';
-        [ exact Hts' | eapply per_head_proof; [ exact Ha3 | exact Hr3 | exact Rp3 | exact Rp4 ]
-        | exact Hrd3 | exact Hrd4 ]).
+  assert (HZ1 : Dom ρ'σ' ↦ ⋆ᵈ⟨M', ρ'σ'⟩ ⦂ entry_type_value b3' ≈ s ↦ ⋆ᵈ⟨M'[σ'], ρ'⟩ ⦂ centry_tag (ce_ass A) Γ s
+                  ∈ per_env_extend A A env_relΓ).
+  { pose proof (per_head_proof (S' := A) (ρ' := s) Ha3 Hr3 Rp3 Rp4) as Hh.
+    exact (per_env_extend_intro' Hts' Hh Hrd3 (proj2 (per_head_closure_readable HΓA HΓ Hts' Hh))). }
   destruct (HZ _ _ HZ1) as [cz1 [cz2 [RZ [Hcz1 [Hcz2 [HRZ HZd]]]]]].
   (** *** One Element PER
 
