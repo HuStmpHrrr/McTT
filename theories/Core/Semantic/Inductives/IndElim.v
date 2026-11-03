@@ -1863,12 +1863,12 @@ Section Fixed_GCtx.
       (** The member of two related elements. *)
       Lemma grp_rel_member : forall j u u' ns ns' v v', grp_rel p D ups nr ar dr j u u' ns ns' v v' ->
           exists Mj, ind_member D j = Some Mj.
-      Proof. intros * H; inversion H; subst; eexists; eassumption. Qed.
+      Proof using. intros * H; inversion H; subst; eexists; eassumption. Qed.
 
       (** A record view's elements have no non-uniform parameters. *)
       Lemma grp_rel_rview_nil : forall j Mj qr Is fl u u' ns ns' v v', ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
           grp_rel p D ups nr ar dr j u u' ns ns' v v' -> ns = nil /\ ns' = nil.
-      Proof.
+      Proof using.
         intros * HM Hh H; inversion H; subst; [ no_rview_rel | no_rview_rel | split; reflexivity ].
       Qed.
 
@@ -1877,7 +1877,7 @@ Section Fixed_GCtx.
           rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts (pt_pi B t) f f' ->
           forall c c', dr k pre Ts B c c' -> exists r r', $| f & c | gc_deps ⍮ gc_stack ↘ r /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ r' /\
             rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t r r'.
-      Proof.
+      Proof using.
         intros * H c c' Hc; inversion H as [| ? ? ? ? ? ? ? ? ? ? Hf _ _]; subst.
         destruct (Hf c c' Hc) as [? ? r ? ? r' ? ? ? ? ? ? ? Er Er' Hr]; exists r, r'; auto.
       Qed.
@@ -1887,31 +1887,31 @@ Section Fixed_GCtx.
           rec_arg_app_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts t f c f' c' ->
           exists r r', $| f & c | gc_deps ⍮ gc_stack ↘ r /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ r' /\
             rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts t r r'.
-      Proof. intros * H; destruct H as [? ? r ? ? r' ? ? ? ? ? ? ? Er Er' Hr]; exists r, r'; auto. Qed.
+      Proof using. intros * H; destruct H as [? ? r ? ? r' ? ? ? ? ? ? ? Er Er' Hr]; exists r, r'; auto. Qed.
 
       (** A non-recursive argument joins the prefixes. *)
       Lemma con_args_rel_arg_inv : forall k u u' pre pre' Ts r A gs v v' vs vs',
           con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts (ca_arg r A :: gs) (v :: vs) (v' :: vs') ->
           con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs'.
-      Proof. intros * H; inversion H; subst; assumption. Qed.
+      Proof using. intros * H; inversion H; subst; assumption. Qed.
 
       (** A recursive argument, by its shape, then the rest. *)
       Lemma con_args_rel_rec_inv : forall k u u' pre pre' Ts t gs v v' vs vs',
           con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts (ca_rec t :: gs) (v :: vs) (v' :: vs') ->
           rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts t v v' /\
           con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts gs vs vs'.
-      Proof. intros * H; inversion H; subst; split; assumption. Qed.
+      Proof using. intros * H; inversion H; subst; split; assumption. Qed.
 
       (** Likewise of the domains. *)
       Lemma cargs_doms_ok_arg_inv : forall X Y k pre pre' Ts r A gs v v' vs vs',
           cargs_doms_ok X Y k pre pre' Ts (ca_arg r A :: gs) (v :: vs) (v' :: vs') ->
           cargs_doms_ok X Y k (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs'.
-      Proof. intros * H; inversion H; subst; assumption. Qed.
+      Proof using. intros * H; inversion H; subst; assumption. Qed.
 
       Lemma cargs_doms_ok_rec_inv : forall X Y k pre pre' Ts t gs v v' vs vs',
           cargs_doms_ok X Y k pre pre' Ts (ca_rec t :: gs) (v :: vs) (v' :: vs') ->
           shape_doms_ok X Y k pre pre' Ts t /\ cargs_doms_ok X Y k pre pre' Ts gs vs vs'.
-      Proof. intros * H; inversion H; subst; split; assumption. Qed.
+      Proof using. intros * H; inversion H; subst; split; assumption. Qed.
 
       (** The domain of a function shape. *)
       Lemma shape_doms_ok_pi_inv : forall X Y k pre pre' Ts B t, shape_doms_ok X Y k pre pre' Ts (pt_pi B t) ->
@@ -1919,7 +1919,7 @@ Section Fixed_GCtx.
             ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ components_env D Y Ts pre' ↘ b' /\
             (forall c c', dr k pre Ts B c c' -> shape_doms_ok X Y k (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t) /\
             Dom b ≈ b' ∈ per_top_typ /\ (forall s, dr k pre Ts B (⇑! b s) (⇑! b' s)).
-      Proof.
+      Proof using.
         intros * H; inversion H as [| ? ? ? ? ? b b' Eb Eb' _ Hrest _ _ Hty Hvar]; subst.
         exists b, b'; auto.
       Qed.
@@ -1930,7 +1930,7 @@ Section Fixed_GCtx.
       Lemma admissible_indices_rel : forall j Mj pre Ts Ps bs1 bs2, ind_member D j = Some Mj ->
           admissible_index_at D ups nr j pre Ts Ps bs1 -> admissible_index_at D ups nr j pre Ts Ps bs2 ->
           tele_rel (nr j) (List.rev (im_nparams Mj)) bs1 bs2.
-      Proof.
+      Proof using p Hass HnP HnI HaP HaI HdP HdI.
         intros * HM [b1 E1 R1] [b2 E2 R2].
         pose proof (functional_eval_exps' _ _ _ _ E1 E2) as <-.
         unfold nparams_tele_rel in R1, R2; rewrite HM in R1, R2.
@@ -1947,7 +1947,7 @@ Section Fixed_GCtx.
           shape_doms_ok ua ub k pre pre' Ts t ->
           entry_readable (de_term v (entry_type_shape p ua (components_env D ua Ts pre) t)) /\
           entry_readable (de_term v' (entry_type_shape p ub (components_env D ub Ts pre') t)).
-      Proof.
+      Proof using Hl Hass HnP HnI HaP HaI HdP HdI Hups.
         induction t as [j Ps | B t IH]; intros * Hau Hau' Lp Lp' Hr Hd.
         - inversion Hr as [? ? ? ? bs ? ? bs' ? ? ? ? _ _ Hk Hk' Hi |]; subst.
           inversion Hd as [? ? ? ? ? bsX bsY EX EY AX AY |]; subst.
@@ -2202,7 +2202,7 @@ Section Fixed_GCtx.
       Lemma ihs_types_eval : forall ρm As X ρ gs vs as1,
           ⟦ihtys vs of gs at p X under ρm As ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ as1 ->
           List.Forall2 (fun t a => eval_entry_type gc_deps gc_stack t a) (ihs_types D p X ρm As ρ gs vs) as1.
-      Proof.
+      Proof using Hl Hass.
         intros ρm As X ρ gs; revert ρ; induction gs as [| [r A | t] gs IH]; intros ρ [| v vs] as1 H;
           inversion H; subst; cbn [ihs_types].
         - constructor.
@@ -2219,7 +2219,7 @@ Section Fixed_GCtx.
 
       Lemma pair_values_with_types_types : forall vs ts, List.length vs = List.length ts ->
           List.map snd (pair_values_with_types vs ts) = ts.
-      Proof. induction vs as [| v vs IH]; intros [| t ts] Lv; cbn in Lv |- *; try discriminate; [ reflexivity | f_equal; auto ]. Qed.
+      Proof using. induction vs as [| v vs IH]; intros [| t ts] Lv; cbn in Lv |- *; try discriminate; [ reflexivity | f_equal; auto ]. Qed.
 
       Lemma cargs_entries_values : forall X ρ gs vs, List.map fst (cargs_entries p X ρ gs vs) = vs.
       Proof. intros X ρ gs vs; revert ρ gs; induction vs as [| v vs IH]; intros ρ [| [] gs]; cbn; f_equal; auto. Qed.
@@ -2240,10 +2240,10 @@ Section Fixed_GCtx.
       (** The non-recursive argument after [gs1]. *)
       Lemma cargs_nonrec_nth_arg : forall gs1 r A gs2,
           List.nth_error (cargs_nonrec (gs1 ++ ca_arg r A :: gs2)) (List.length (cargs_nonrec gs1)) = Some A.
-      Proof. intros; rewrite cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity. Qed.
+      Proof using. intros; rewrite cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity. Qed.
 
       Lemma cargs_nonrec_tele_app : forall gs1 gs2, cargs_nonrec_tele (gs1 ++ gs2) = cargs_nonrec_tele gs1 ++ cargs_nonrec_tele gs2.
-      Proof. intros; unfold cargs_nonrec_tele; rewrite cargs_nonrec_app, List.map_app; reflexivity. Qed.
+      Proof using. intros; unfold cargs_nonrec_tele; rewrite cargs_nonrec_app, List.map_app; reflexivity. Qed.
 
       (** The arguments of a constructor at any admissible bases read back
           at the types the branch binds them at, at [ua] and [ub]: a
@@ -2262,7 +2262,7 @@ Section Fixed_GCtx.
             (List.map snd (cargs_entries p ua (components_env D ua (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) (ns ++ pre)) gs2 vs)) /\
           List.Forall2 (fun v t => entry_readable (de_term v t)) vs'
             (List.map snd (cargs_entries p ub (components_env D ub (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) (ns' ++ pre')) gs2 vs')).
-      Proof.
+      Proof using Hl Hass HnP HnI HaP HaI HdP HdI Hups.
         intros k Mk c gs u u' ns ns' Hau Hau' HM Hc Hn.
         pose proof Hups as [_ _ Aa Ab _ _ _ _ _ _ _ _].
         pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mk HM _ _ Hn) as Hnn.

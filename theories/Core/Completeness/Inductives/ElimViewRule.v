@@ -247,8 +247,8 @@ Section ElimViewRule.
   End Pre.
 
   (** *** The Chain *)
-  Variable (oq : option qname) (bm : eblock) (Ns : list exp) (M : exp).
-  Hypotheses (Hgr : elim_grp D oq p m) (Hbm : List.nth_error Bks m = Some bm) (HNl : List.length Ns = im_nn Mm)
+  Variable (bm : eblock) (Ns : list exp) (M : exp).
+  Hypotheses (Hbm : List.nth_error Bks m = Some bm) (HNl : List.length Ns = im_nn Mm)
     (HgN : gsub Γ (sb_of_list Id Ns) (tele_sub (im_nparams Mm) τU ++ Γ))
     (Hg : gsub Γ (sb_of_list Id (Ns ++ M :: nil)) (elim_mctx p D m Mm Us ++ Γ))
     (HM : Γ ⊨ M : ind_mty p D m Us Ns).
@@ -257,7 +257,7 @@ Section ElimViewRule.
       ⟦ σ : Γ ⟧s ρ ↘ C1 -> ⟦ σ' : Γ ⟧s ρ' ↘ C2 ->
       exists R, rel_exp ((eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)]) σ ρ C1
                   ((eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)]) σ' ρ' C2 (per_univ_elem iA R) /\
-        rel_exp (a_elim relevant oq Us m Bks M) σ ρ C1 (a_elim relevant (Some qc) (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
+        rel_exp (a_elim relevant p Us m Bks M) σ ρ C1 (a_elim relevant qc (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
   Proof.
     intros * HRΓ' Hσ Hρ Hev Hev'.
     pose proof HBk as [HLb0 HnmA _ _ HnaA HBc HarA HBv].
@@ -267,8 +267,8 @@ Section ElimViewRule.
     assert (HC11 : RΓ C1 C1) by (etransitivity; [ exact HC12 | symmetry; exact HC12 ]).
     assert (HC22 : RΓ C2 C2) by (etransitivity; [ symmetry; exact HC12 | exact HC12 ]).
     assert (Hρ'ρ' : RΓ' ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
-    destruct (us_vals VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 C1 HC11) as (u0 & _ & HUC1 & _ & _).
-    destruct (us_vals VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 C2 HC22) as (u3 & _ & HUC2 & _ & _).
+    destruct (us_vals VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 C1 HC11) as (u0 & _ & HUC1 & _ & _).
+    destruct (us_vals VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 C2 HC22) as (u3 & _ & HUC2 & _ & _).
     (** The group's eliminator against itself. *)
     assert (HUU : forall j U U' T, List.nth_error Us j = Some U -> List.nth_error Us j = Some U' ->
                List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Γ ⊨ U ≈ U' : T)
@@ -282,13 +282,13 @@ Section ElimViewRule.
                elim_bctx relevant p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
       by (intros * HMk Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
           exact (HBv _ _ _ _ _ _ _ HMk Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
-    destruct (elim_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC1 C2 HC12 Bks iA HBks HMall HAv
-                oq oq Us m Mm bm Bks Ns M M Hgr Hgr HMm Hbm HLb0 HLb0 HnmA HnmA HnaA
+    destruct (elim_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC1 C2 HC12 Bks iA HBks HMall HAv
+                Us m Mm bm Bks Ns M M HMm Hbm HLb0 HLb0 HnmA HnmA HnaA
                 (fun _ _ _ H1 H2 => ltac:(rewrite H1 in H2; injection H2 as <-; reflexivity)) HarA HBc HAA HBB HNl HgN Hg HM
-                HUl HUU Γ' RΓ' σ σ' ρ ρ' HRΓ' Hσ Hρ Hev Hev') as (RT & HTy & HLv).
+                HUl HUss HUU Γ' RΓ' σ σ' ρ ρ' HRΓ' Hσ Hρ Hev Hev') as (RT & HTy & HLv).
     exists RT; split; [ exact HTy |].
     destruct HLv as [r1 r2 r3 r4 Er1 Er2 Er3 Er4 Hch].
-    destruct (elim_exp_value_of _ _ _ _ _ _ _ Er3) as [u3' m3 pg Eu3 Em3 Egr3 Eel3].
+    destruct (elim_exp_value_of _ _ _ _ _ _ _ Er3) as [u3' m3 Eu3 Em3 Eel3].
     pose proof (functional_eval_exps' _ _ _ _ Eu3 HUC2) as ->.
     (** The scrutinee at [C2]. *)
     destruct (presup_rel_exp_under_ctx HM) as [iT HTM].
@@ -305,7 +305,7 @@ Section ElimViewRule.
     pose proof (Hmm _ _ _ _ Et3 Et3 Ht) as Hm33.
     assert (HrvM : im_is_rview Mm = false) by (unfold im_is_rview; rewrite Hh; reflexivity).
     destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMm HrvM Et3) as (cs3 & ns3 & _ & Ens3 & _).
-    destruct (scrut_rel VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C2 u3 HC22 HUC2 m Mm HMm (HMall _ _ HMm) Ns HNl HgN
+    destruct (scrut_rel VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2 m Mm HMm (HMall _ _ HMm) Ns HNl HgN
                 C2 HC22 ns3 ns3 Ens3 Ens3 t3 t3 _ Rt Et3 Et3 Ht) as [_ ERt].
     pose proof (proj1 (ERt _ _) Hm33) as G33.
     (** The scrutinee moved by [σ'] at [ρ']. *)
@@ -320,8 +320,6 @@ Section ElimViewRule.
     assert (ERM : Rt <~> RMe) by (eapply per_univ_elem_right_irrel; [ exact Ht | exact Ht23 ]).
     pose proof (proj1 (ERt _ _) (proj2 (ERM _ _) H12)) as G43.
     (** The group's eliminator at [C2]. *)
-    destruct (elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMm G33 (decl_typed_order _ _ _ Hdt) oq Hgr) as [Hgr3 _].
-    rewrite Hgr3 in Egr3; injection Egr3 as <-.
     destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (D2 & Mk' & Hl2 & HMk' & _ & _ & _ & Hvk & _).
     (** The view's instance at [C2] and moved. *)
     destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].

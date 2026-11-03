@@ -60,6 +60,7 @@
 ./Core/Completeness/Inductives/ViewBranch.v
 ./Core/Completeness/Inductives/ElimView.v
 ./Core/Completeness/Inductives/ViewReadback.v
+./Core/Completeness/Inductives/ContainerReadable.v
 ./Core/Completeness/Inductives/ElimViewRule.v
 ./Core/Completeness/Records/Model.v
 ./Core/Completeness/RecordCases.v
