@@ -95,8 +95,10 @@ Import Domain_Notations.
       (forall p ups ρm As ρ gs vs r1, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall rs Ms ρ ms1, eval_field_vals Θ Ξ rs Ms ρ ms1 -> forall ms2, eval_field_vals Θ Ξ rs Ms ρ ms2 -> ms1 = ms2) /\
-      (forall f Ms ρ r1, eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2).
+      (forall f Ms ρ r1, eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2) /\
+      (forall ρ0 H h k ρ its ρ1, eval_items_env Θ Ξ ρ0 H h k ρ its ρ1 -> forall ρ2, eval_items_env Θ Ξ ρ0 H h k ρ its ρ2 -> ρ1 = ρ2).
   Proof.
+    pose proof (@functional_kind) as Hfk.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
          two resolutions of a global or a module agree, and two neutral
@@ -162,6 +164,17 @@ Import Domain_Notations.
             exfalso; exact (H2 _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
+        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        (* the kind an item names is unique ([functional_kind]) *)
+        | H1 : modexp_member_kind Θ Ξ ?ρ ?H ?ch ?k1, H2 : modexp_member_kind Θ Ξ ?ρ ?H ?ch ?k2 |- _ =>
+            assert_fails (constr_eq k1 k2);
+            pose proof (proj1 (proj2 (proj2 (@Hfk Θ Ξ))) _ _ _ _ H1 _ H2); subst; clear H2
+        | H : member_kind_term _ = member_kind_term _ \/ member_kind_term _ = member_kind_dm |- _ =>
+            destruct H as [H | H]; [ injection H; intros; subst; clear H | discriminate H ]
+        | H : member_kind_dm = member_kind_term _ \/ _ |- _ => destruct H as [H | _]; [ discriminate H | clear H ]
         | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
             exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
         | H1 : module_saturated Θ Ξ ?p ?args, H2 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ),
@@ -564,8 +577,9 @@ Proof.
              (fun _ _ _ _ => True) (fun _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun _ _ _ _ _ _ _ _ _ => True)
-             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
-  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _ & _ & _);
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)
+             (fun _ _ _ _ _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _ & _ & _ & _);
     clear H; [ .. | split; [ exact Hihs | split; [ exact Hih | exact Hp ] ] ]; intros; try exact I.
   - (* no argument *) cbn; auto.
   - (* a non-recursive argument *)
@@ -622,8 +636,9 @@ Proof.
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun p ups ρm As ρ gs vs r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
                 List.length vs = List.length gs /\ List.length r = cargs_nrec D gs)
-             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
-  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys & _ & _);
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)
+             (fun _ _ _ _ _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys & _ & _ & _);
     clear H; [ .. | split; [ exact Hty | exact Htys ] ]; intros; try exact I.
   - (* at a member with a block *)
     match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
