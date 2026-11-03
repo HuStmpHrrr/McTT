@@ -91,6 +91,7 @@
 ./Core/Semantic/Readback/Definitions.v
 ./Core/Semantic/Readback/Lemmas.v
 ./Core/Semantic/Realizability.v
+./Core/Semantic/RetagReadable.v
 ./Core/Semantic/Inductives/IndPER.v
 ./Core/Semantic/RecordPER.v
 ./Core/Semantic/Inductives/IndCanon.v
