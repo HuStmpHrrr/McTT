@@ -764,10 +764,16 @@ with gmod : Set :=
 | gm_nil : gmod
 (** A named entry after the body before it *)
 | gm_ext : gmod -> string -> gentry -> gmod
-(** [gm_open Φ H items]: a local open.  It binds one index per item, the
-    entries its items generate ([items_gen]); every reader of the body reads
-    it as those entries ([body_xp]). *)
-| gm_open : gmod -> modexp -> list import_item -> gmod
+(** [gm_open Φ H items Φg]: a local open, as written, with the entries
+    its items generate, binding the indices [Φg] binds, one per item
+    once filled ([gens_body]).  [Φg] is those
+    generated private-or-public definitions, annotated with their types, a
+    fragment (entries over [gm_nil]) read over the expansion of [Φ], the
+    [k]-th under the [k] before it ([gens_body]).  The open phase of the
+    command semantics fills it ([items_gen]); typing pins it to the
+    generation ([body_xp]), and evaluation reads the body expanded
+    ([gm_expand]). *)
+| gm_open : gmod -> modexp -> list import_item -> gmod -> gmod
 with gentry : Set :=
 (** [ge_def b pv r A B]: [b] says whether the definition is transparent,
     [pv] whether it is private, [r] the sort of its type [A] (a proof at
@@ -923,7 +929,7 @@ Section syn_mut_ind.
     (case_md_alias : forall E, Pm E -> Pd (md_alias E))
     (case_gm_nil : Pg gm_nil)
     (case_gm_ext : forall Φ x E, Pg Φ -> Pn E -> Pg (gm_ext Φ x E))
-    (case_gm_open : forall Φ H its, Pg Φ -> Pm H -> Pg (gm_open Φ H its))
+    (case_gm_open : forall Φ H its Φg, Pg Φ -> Pm H -> Pg Φg -> Pg (gm_open Φ H its Φg))
     (case_ge_def : forall b pv r A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv r A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ge_ind : forall pv p k D Φ, Pg Φ -> Pn (ge_ind pv p k D Φ))
@@ -1029,7 +1035,7 @@ Section syn_mut_ind.
     match Φ with
     | gm_nil => case_gm_nil
     | gm_ext Φ x E => case_gm_ext Φ x E (gmod_mut Φ) (gentry_mut E)
-    | gm_open Φ H its => case_gm_open Φ H its (gmod_mut Φ) (modexp_mut H)
+    | gm_open Φ H its Φg => case_gm_open Φ H its Φg (gmod_mut Φ) (modexp_mut H) (gmod_mut Φg)
     end
   with gentry_mut (E : gentry) : Pn E :=
     match E with
@@ -1071,7 +1077,7 @@ Fixpoint gm_noopen (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ' _ _ => gm_noopen Φ'
-  | gm_open _ _ _ => False
+  | gm_open _ _ _ _ => False
   end.
 
 (** ** Chains of Selections *)
@@ -1186,7 +1192,7 @@ Fixpoint gm_binders (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ' _ _ => S (gm_binders Φ')
-  | gm_open Φ' _ its => List.length its + gm_binders Φ'
+  | gm_open Φ' _ _ Φg => gm_binders Φg + gm_binders Φ'
   end.
 
 (** The name an import item declares. *)
@@ -1197,7 +1203,7 @@ Fixpoint gm_names (Φ : gmod) : list string :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' x _ => x :: gm_names Φ'
-  | gm_open Φ' _ its => rev (map import_item_name its) ++ gm_names Φ'
+  | gm_open Φ' _ its _ => rev (map import_item_name its) ++ gm_names Φ'
   end.
 
 Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
@@ -1297,7 +1303,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' y (ge_ind _ pq _ _ _) => cons (ce_mod (gu_mk nil (md_alias (qname_mod (qname_sibling pq y))))) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def_mod _ A M U) => cons (ce_dm A M U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_record _ p _ _) => cons (ce_mod (gu_mk nil (md_alias (qname_mod p)))) (body_ctx Φ')
-  | gm_open Φ' _ _ => body_ctx Φ'
+  | gm_open Φ' _ _ _ => body_ctx Φ'
   end.
 
 (** The term part of a body's entry, its type and its body: a definition
@@ -2301,7 +2307,8 @@ with gmod_wk (Φ : gmod) (φ : wk) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ x E => gm_ext (gmod_wk Φ φ) x (gentry_wk E (wk_qn (gm_binders Φ) φ))
-  | gm_open Φ H its => gm_open (gmod_wk Φ φ) (modexp_wk H (wk_qn (gm_binders Φ) φ)) its
+  | gm_open Φ H its Φg =>
+      gm_open (gmod_wk Φ φ) (modexp_wk H (wk_qn (gm_binders Φ) φ)) its (gmod_wk Φg (wk_qn (gm_binders Φ) φ))
   end
 with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
@@ -2382,7 +2389,8 @@ with gmod_free_bound (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ E => Nat.max (gmod_free_bound Φ) (gentry_free_bound E - gm_binders Φ)
-  | gm_open Φ H _ => Nat.max (gmod_free_bound Φ) (modexp_free_bound H - gm_binders Φ)
+  | gm_open Φ H _ Φg =>
+      Nat.max (gmod_free_bound Φ) (Nat.max (modexp_free_bound H - gm_binders Φ) (gmod_free_bound Φg - gm_binders Φ))
   end
 with gentry_free_bound (E : gentry) : nat :=
   match E with
@@ -2583,7 +2591,8 @@ with gmod_sub (Φ : gmod) (σ : sub) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ x E => gm_ext (gmod_sub Φ σ) x (gentry_sub E (sb_qn (gm_binders Φ) σ))
-  | gm_open Φ H its => gm_open (gmod_sub Φ σ) (modexp_sub H (sb_qn (gm_binders Φ) σ)) its
+  | gm_open Φ H its Φg =>
+      gm_open (gmod_sub Φ σ) (modexp_sub H (sb_qn (gm_binders Φ) σ)) its (gmod_sub Φg (sb_qn (gm_binders Φ) σ))
   end
 with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with

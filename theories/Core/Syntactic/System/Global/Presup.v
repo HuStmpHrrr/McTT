@@ -3104,7 +3104,8 @@ Section ModInduction.
   Fixpoint gm_valid (Θs : gdeps) (Ξs : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (Φ : gmod) : Prop :=
     match Φ with
     | gm_nil => True
-    | gm_open Φ0 _ _ => gm_valid Θs Ξs Θ2 Ξ2 T Φ0
+    (* only filed bodies are read, and they have no local open *)
+    | gm_open Φ0 _ _ _ => gm_valid Θs Ξs Θ2 Ξ2 T Φ0
     | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body sm Φ'))) =>
         gm_valid Θs Ξs Θ2 Ξ2 T Φ0 /\ F Θ2 Ξ2 (Δ ++ T) /\ gm_valid Θs Ξs Θ2 Ξ2 (Δ ++ T) Φ'
     | gm_ext Φ0 _ (ge_ind _ _ k D Φ') =>

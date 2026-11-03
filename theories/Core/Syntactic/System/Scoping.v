@@ -77,7 +77,7 @@ with gmod_scoped (n : nat) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gmod_scoped n Φ /\ gentry_scoped (gm_binders Φ + n) E
-  | gm_open Φ H _ => gmod_scoped n Φ /\ modexp_scoped (gm_binders Φ + n) H
+  | gm_open Φ H _ Φg => gmod_scoped n Φ /\ modexp_scoped (gm_binders Φ + n) H /\ gmod_scoped (gm_binders Φ + n) Φg
   end
 with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with
@@ -901,6 +901,29 @@ Proof.
   destruct (generated_item_entry g); apply IH in H; destruct H; assumption.
 Qed.
 
+(** A body followed by a fragment is scoped when both are, the fragment
+    over the body. *)
+Lemma gmod_scoped_graft : forall Φg Φ n,
+    gmod_scoped n (gm_graft Φ Φg) <-> gmod_scoped n Φ /\ gmod_scoped (gm_binders Φ + n) Φg.
+Proof.
+  induction Φg as [| Φg IH x E | Φg IH H its Φgg _]; intros Φ n; cbn [gm_graft gmod_scoped];
+    [ tauto | rewrite IH, gm_binders_graft, Nat.add_assoc | rewrite IH, gm_binders_graft, Nat.add_assoc ]; tauto.
+Qed.
+
+(** A scoped body's expansion is scoped. *)
+Lemma gmod_scoped_expand : forall Φ n, gmod_scoped n Φ -> gmod_scoped n (gm_expand Φ).
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its Φg _]; intros n HΦ; cbn [gm_expand gmod_scoped] in HΦ |- *; [ exact I | |].
+  - rewrite gm_binders_expand; destruct HΦ as [HΦ HE]; split; [ apply IH |]; assumption.
+  - destruct HΦ as (HΦ & _ & HΦg); apply gmod_scoped_graft; split; [ apply IH; exact HΦ | rewrite gm_binders_expand; exact HΦg ].
+Qed.
+
+Lemma gunit_scoped_expand : forall U n, gunit_scoped n U -> gunit_scoped n (gunit_expand U).
+Proof.
+  intros [Δ [sm Φ | E]] n HU; cbn [gunit_expand] in *; [| exact HU ].
+  destruct HU as [HΔ [Hsm HΦ]]; split; [ exact HΔ | split; [ exact Hsm | apply gmod_scoped_expand; exact HΦ ] ].
+Qed.
+
 (** A body is scoped when its expansion is and the target of each of its
     opens is, where it stands. *)
 Lemma gmod_scoped_of_xp : forall Θ Ξ Γ Φ Φx n,
@@ -908,14 +931,17 @@ Lemma gmod_scoped_of_xp : forall Θ Ξ Γ Φ Φx n,
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> modexp_scoped (length Ψ + n) H) ->
     gmod_scoped n Φ.
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its R T gs Hx IH _ _ Hg]; intros HΦ Ho; cbn [gmod_scoped] in HΦ |- *; auto.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ HΦg]; intros HΦ Ho;
+    cbn [gmod_scoped] in HΦ |- *; auto.
   - destruct HΦ as [HΦ HE]; split; [ apply IH; assumption |].
     rewrite <- (body_xp_binders _ _ _ _ _ Hx); assumption.
-  - rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg) in Ho.
-    split.
-    + apply IH; [ eapply gens_append_scoped_prefix; eassumption |].
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Ho.
+    rewrite gens_append_body, gmod_scoped_graft in HΦ; destruct HΦ as [HΦx HΦg'].
+    split; [| split ].
+    + apply IH; [ exact HΦx |].
       intros k Ψ H' Hk; exact (Ho (S k) _ _ Hk).
     + rewrite <- (body_xp_binders _ _ _ _ _ Hx), <- (length_body_ctx _ (body_xp_nopens _ _ _ _ _ Hx)); exact (Ho 0 _ _ eq_refl).
+    + subst Φg; rewrite <- (body_xp_binders _ _ _ _ _ Hx); exact HΦg'.
 Qed.
 
 Lemma body_shape_sym : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ.
@@ -2052,7 +2078,7 @@ Fixpoint body_closed (k : nat) (Φ : gmod) {struct Φ} : Prop :=
            exp_scoped (List.length (record_params R)) (record_sort R)) /\
           body_closed (List.length (record_mod_tele p R)) Φ1
       end
-  | gm_open _ _ _ => False
+  | gm_open _ _ _ _ => False
   end.
 
 (** Every definition and every module a module resolves to is closed, the

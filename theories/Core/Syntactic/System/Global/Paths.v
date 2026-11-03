@@ -157,7 +157,8 @@ Qed.
 Fixpoint gm_coherent (T : ctx) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
-  | gm_open Φ0 _ _ => gm_coherent T Φ0
+  (* only filed bodies are coherent, and they have no local open *)
+  | gm_open Φ0 _ _ _ => gm_coherent T Φ0
   | gm_ext Φ0 _ (ge_def _ _ r A _) => gm_coherent T Φ0 /\ exists A0, A = ctx_pi_at r T A0
   | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body sm Φ'))) => gm_coherent T Φ0 /\ tele_ass Δ /\ gm_coherent (Δ ++ T) Φ'
   | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_alias _))) => gm_coherent T Φ0 /\ exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
@@ -520,7 +521,7 @@ Lemma gm_submodule_alias_decomp : forall Φ T x ip U,
     exists pre y T' Φ', x :: ip = pre ++ y :: nil /\ gm_body T Φ pre = Some (T', Φ') /\
       gm_submodule T' Φ' y nil = Some (mr_alias U).
 Proof.
-  fix IH 1; intros [| Φ z E0 | Φ c its] * H; cbn in H; [ discriminate | |].
+  fix IH 1; intros [| Φ z E0 | Φ c its Φg] * H; cbn in H; [ discriminate | |].
   - destruct (String.eqb x z) eqn:Exz.
     + destruct E0 as [? ? ? ? | pm [Δ [? Φ0 | E1]] | ? ? ? D0 Φ0 | pm Aa Ma [Δa [? Φa | Ea]] | pm Rr ΦR]; try discriminate.
       * destruct ip as [| w ip]; [ discriminate |].
@@ -555,7 +556,7 @@ Proof.
   - destruct (IH _ _ _ _ _ H) as (pre & y & T' & Φ' & Heq & Hb & Hs).
     destruct pre as [| v pre]; cbn in Heq, Hb.
     + injection Heq as <- ->; injection Hb as <- <-.
-      exists nil, x, T, (gm_open Φ c its); split; [ reflexivity |]; split; [ reflexivity | exact Hs ].
+      exists nil, x, T, (gm_open Φ c its Φg); split; [ reflexivity |]; split; [ reflexivity | exact Hs ].
     + exists (v :: pre), y, T', Φ'; split; [ exact Heq |]; split; [ exact Hb | exact Hs ].
 Qed.
 

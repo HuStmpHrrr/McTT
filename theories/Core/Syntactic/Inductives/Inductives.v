@@ -1259,7 +1259,7 @@ with gmod_mvc (n : nat) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gmod_mvc n Φ /\ gentry_mvc (gm_binders Φ + n) E
-  | gm_open Φ H _ => gmod_mvc n Φ /\ modexp_mvc (gm_binders Φ + n) H
+  | gm_open Φ H _ Φg => gmod_mvc n Φ /\ modexp_mvc (gm_binders Φ + n) H /\ gmod_mvc (gm_binders Φ + n) Φg
   end
 with gentry_mvc (n : nat) (E : gentry) : Prop :=
   match E with

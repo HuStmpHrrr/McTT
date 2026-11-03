@@ -195,15 +195,16 @@ Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domai
     entries it makes ([kinds_env]), as evaluation would but with no value
     for any definition, so that no term is evaluated: a kind does not
     depend on the values of terms, nor on a module's arguments, which are
-    terms ([kinds_pads]).  The bodies read are expanded: the core open
-    phase has replaced every local open by the entries it generates.  The
-    relations read a closure or a submodule closure as selection on module
-    values does ([eval_selm]). *)
+    terms ([kinds_pads]).  The bodies read are expanded, each local open
+    replaced by the definitions it stores ([gunit_expand]), as evaluation
+    closes them ([eval_close_body]).  The relations read a closure or a
+    submodule closure as selection on module values does ([eval_selm]). *)
 
-(** The closure of a unit over [ρ], as kinds read it: a saturated alias is
-    left as a closure, which kinds read through. *)
+(** The closure of a unit over [ρ], as kinds read it: its body expanded,
+    as evaluation closes it; a saturated alias is left as a closure, which
+    kinds read through. *)
 Definition dm_clo (U : gunit) (ρ : env) : dmod :=
-  match U with gu_mk Δ D => dm_local Δ D ρ end.
+  match gunit_expand U with gu_mk Δ D => dm_local Δ D ρ end.
 
 (** [n] pads for parameters, terms whose values kinds never read, over
     [ρ]. *)
@@ -311,7 +312,7 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
 | gunit_member_kind_mod : forall ρ Δ sm Φ Φ' y pm Uy ρ1 ch k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
-    gunit_member_kind Θ Ξ ρ1 Uy ch k ->
+    gunit_member_kind Θ Ξ ρ1 (gunit_expand Uy) ch k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
 (** A definition with a module part is one ([dm_of] its module part's
     kind), and a chain through it is read in its module part, as at the
@@ -321,7 +322,7 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
 | gunit_member_kind_dm_here : forall ρ Δ sm Φ Φ' y pv A M Uy ρ1 k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
     kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
-    gunit_member_kind Θ Ξ ρ1 Uy nil k ->
+    gunit_member_kind Θ Ξ ρ1 (gunit_expand Uy) nil k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: nil) (dm_of k)
 (** A definition with a module part of the body, the chain going on: the
     rest of the chain read in its module part, in the environment of the
@@ -330,7 +331,7 @@ with gunit_member_kind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string 
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
     ch <> nil ->
     kinds_env Θ Ξ (kinds_pads (List.length Δ) ρ) Φ' ρ1 ->
-    gunit_member_kind Θ Ξ ρ1 Uy ch k ->
+    gunit_member_kind Θ Ξ ρ1 (gunit_expand Uy) ch k ->
     gunit_member_kind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
 (** An alias unit: the chain is read in its target *)
 | gunit_member_kind_alias : forall ρ Δ E ch k,
@@ -345,9 +346,9 @@ with modexp_member_kind (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list strin
 | modexp_member_kind_var : forall ρ x ch k,
     dmod_member_kind Θ Ξ (env_mod ρ x) ch k ->
     modexp_member_kind Θ Ξ ρ (me_var x) ch k
-(** A literal unit: the chain read in the unit *)
+(** A literal unit: the chain read in the unit, expanded *)
 | modexp_member_kind_lit : forall ρ U ch k,
-    gunit_member_kind Θ Ξ ρ U ch k ->
+    gunit_member_kind Θ Ξ ρ (gunit_expand U) ch k ->
     modexp_member_kind Θ Ξ ρ (me_lit U) ch k
 (** A selection, by the longer chain; at the empty chain it is a module,
     its member's module part when that member has a term part too. *)
@@ -1012,9 +1013,10 @@ where "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_modexp Θ Ξ H ρ
     alias lacking none is its target's value.  So no value is a saturated
     alias. *)
 with eval_close (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> dmod -> Prop :=
-(** A body: its closure *)
+(** A body: the closure of its expansion, each local open replaced by the
+    definitions it stores ([gm_expand]) *)
 | eval_close_body :
-  `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm Φ) ρ )
+  `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm (gm_expand Φ)) ρ )
 (** An alias still lacking a parameter: its closure *)
 | eval_close_alias :
   `( 0 < List.length Δ ->

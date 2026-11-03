@@ -366,11 +366,16 @@ Section Fill.
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx -> fill_unit (body_ctx Φx ++ Γ) U U' ->
       fill_body Γ (surface_gm_ext Φ x (surface_ge_mod pv U)) (gm_ext Φ' x (ge_mod pv U'))
   (** A local open: its target, which may be a record value, whose
-      members its items name accessible *)
-  | fill_body_open : forall Γ Φ Φ' Φx H H' op its,
+      members its items name accessible, with the definitions its items
+      generate ([items_gen]), each private or public as its item says, at
+      the type of the member it names.  This is the open phase of the command
+      semantics: the open is stored with what it generates
+      ([gens_body]), as the filed opens are ([core_cmd_open]) *)
+  | fill_body_open : forall Γ Φ Φ' Φx H H' op its gs,
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx -> fill_mod (body_ctx Φx ++ Γ) H H' op ->
       Forall (sel_ok op) (items_members its) ->
-      fill_body Γ (surface_gm_open Φ H its) (gm_open Φ' H' its).
+      items_gen Θ Ξ (body_ctx Φx ++ Γ) H' its gs ->
+      fill_body Γ (surface_gm_open Φ H its) (gm_open Φ' H' its (gens_body gs)).
 
   Scheme fill_exp_mut_ind := Induction for fill_exp Sort Prop
   with fill_field_vals_mut_ind := Induction for fill_field_vals Sort Prop

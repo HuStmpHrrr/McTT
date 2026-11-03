@@ -90,7 +90,7 @@ with gmod_fresh (k : nat) (Φ : gmod) {struct Φ} : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gmod_fresh k Φ /\ gentry_fresh (gm_binders Φ + k) E
-  | gm_open Φ H _ => gmod_fresh k Φ /\ modexp_fresh (gm_binders Φ + k) H
+  | gm_open Φ H _ Φg => gmod_fresh k Φ /\ modexp_fresh (gm_binders Φ + k) H /\ gmod_fresh (gm_binders Φ + k) Φg
   end
 with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   match E with
@@ -414,7 +414,7 @@ with gmod_freshb (k : nat) (Φ : gmod) {struct Φ} : bool :=
   match Φ with
   | gm_nil => true
   | gm_ext Φ _ E => gmod_freshb k Φ && gentry_freshb (gm_binders Φ + k) E
-  | gm_open Φ H _ => gmod_freshb k Φ && modexp_freshb (gm_binders Φ + k) H
+  | gm_open Φ H _ Φg => gmod_freshb k Φ && modexp_freshb (gm_binders Φ + k) H && gmod_freshb (gm_binders Φ + k) Φg
   end
 with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   match E with

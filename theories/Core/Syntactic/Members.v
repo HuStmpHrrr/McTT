@@ -53,7 +53,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
                end
           else gm_resolve Φ ip
       end
-  | gm_open Φ _ _ => gm_resolve Φ ip
+  | gm_open Φ _ _ _ => gm_resolve Φ ip
   end.
 
 (** What resolves starts with a declared name. *)
@@ -119,7 +119,7 @@ Inductive modres : Set :=
 Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option modres :=
   match Φ with
   | gm_nil => None
-  | gm_open Φ0 _ _ => gm_submodule T Φ0 x ip
+  | gm_open Φ0 _ _ _ => gm_submodule T Φ0 x ip
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
@@ -189,7 +189,7 @@ Qed.
 Fixpoint gm_subbody (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option (ctx * gmod) :=
   match Φ with
   | gm_nil => None
-  | gm_open Φ0 _ _ => gm_subbody T Φ0 x ip
+  | gm_open Φ0 _ _ _ => gm_subbody T Φ0 x ip
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
@@ -579,7 +579,7 @@ Fixpoint gm_entry (Φ : gmod) (ip : list string) : option gentry :=
                end
           else gm_entry Φ ip
       end
-  | gm_open Φ _ _ => gm_entry Φ ip
+  | gm_open Φ _ _ _ => gm_entry Φ ip
   end.
 
 Definition gc_entry_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option gentry :=
@@ -1591,7 +1591,8 @@ with gm_transparent (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gm_transparent Φ /\ ge_transparent E
-  | gm_open Φ _ _ => gm_transparent Φ
+  (* the stored definitions ([gens_body]) are transparent, with bodies *)
+  | gm_open Φ _ _ _ => gm_transparent Φ
   end.
 
 Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=
@@ -1694,7 +1695,7 @@ Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y _ => if String.eqb x y then Some Φ else gm_prefix_upto Φ' x
-  | gm_open Φ' _ its => if existsb (String.eqb x) (map import_item_name its) then None else gm_prefix_upto Φ' x
+  | gm_open Φ' _ its _ => if existsb (String.eqb x) (map import_item_name its) then None else gm_prefix_upto Φ' x
   end.
 
 (** The local open that declares [x]: the body before it, its target, the
@@ -1704,7 +1705,7 @@ Fixpoint gm_item_upto (Φ : gmod) (x : string) : option (gmod * modexp * list im
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y _ => if String.eqb x y then None else gm_item_upto Φ' x
-  | gm_open Φ' H its =>
+  | gm_open Φ' H its _ =>
       match items_upto x its with
       | Some (its1, it) => Some (Φ', H, its1, it)
       | None => gm_item_upto Φ' x
@@ -2495,6 +2496,61 @@ Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list generated_item) : gmod :=
       gens_append (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k) gs'
   end.
 
+(** The entries an open generates, as the fragment it stores
+    ([gm_open]): appended to the empty body. *)
+Definition gens_body (gs : list generated_item) : gmod := gens_append gm_nil 0 gs.
+
+(** The body [Φ] followed by the entries of the body [Φg], read over
+    [Φ].  A fragment an open stores ([gens_body]) has no open, so for it
+    the [gm_open] case is never reached. *)
+Fixpoint gm_graft (Φ Φg : gmod) : gmod :=
+  match Φg with
+  | gm_nil => Φ
+  | gm_ext Φg' x E => gm_ext (gm_graft Φ Φg') x E
+  | gm_open Φg' H its Φgg => gm_open (gm_graft Φ Φg') H its Φgg
+  end.
+
+(** A body with each local open replaced by the entries it stores: the
+    body evaluation reads ([eval_close_body]).  For a well-formed body it
+    is the expansion typing reads ([body_xp_expand]). *)
+Fixpoint gm_expand (Φ : gmod) : gmod :=
+  match Φ with
+  | gm_nil => gm_nil
+  | gm_ext Φ' x E => gm_ext (gm_expand Φ') x E
+  | gm_open Φ' _ _ Φg => gm_graft (gm_expand Φ') Φg
+  end.
+
+(** A unit with its body expanded ([gm_expand]); an alias is its own. *)
+Definition gunit_expand (U : gunit) : gunit :=
+  match U with
+  | gu_mk Δ (md_body sm Φ) => gu_mk Δ (md_body sm (gm_expand Φ))
+  | gu_mk Δ (md_alias E) => gu_mk Δ (md_alias E)
+  end.
+
+Lemma gm_binders_graft : forall Φ Φg, gm_binders (gm_graft Φ Φg) = gm_binders Φg + gm_binders Φ.
+Proof. intros Φ Φg; induction Φg; cbn; lia. Qed.
+
+(** An expansion binds what the body binds. *)
+Lemma gm_binders_expand : forall Φ, gm_binders (gm_expand Φ) = gm_binders Φ.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its Φg _]; cbn [gm_expand gm_binders];
+    [ reflexivity | congruence | rewrite gm_binders_graft, IH; reflexivity ].
+Qed.
+
+Lemma gm_graft_assoc : forall Φ A B, gm_graft Φ (gm_graft A B) = gm_graft (gm_graft Φ A) B.
+Proof. intros Φ A B; induction B; cbn; congruence. Qed.
+
+(** Appending generated entries is grafting their fragment. *)
+Lemma gens_append_graft : forall gs Φ k, gens_append Φ k gs = gm_graft Φ (gens_append gm_nil k gs).
+Proof.
+  induction gs as [| g gs IH]; intros Φ k; cbn [gens_append]; [ reflexivity |].
+  destruct (generated_item_entry g) as [d E].
+  rewrite (IH (gm_ext Φ d _)), (IH (gm_ext gm_nil d _)), gm_graft_assoc; reflexivity.
+Qed.
+
+Corollary gens_append_body : forall gs Φ, gens_append Φ 0 gs = gm_graft Φ (gens_body gs).
+Proof. intros; apply gens_append_graft. Qed.
+
 (** The first member named both by a private and by a public item. *)
 Definition src_has (n : string) (pv : bool) (its : list import_item) : bool :=
   existsb (fun it => match it with
@@ -2664,14 +2720,15 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
     body_xp Θ Ξ Γ Φ Φx ->
     body_xp Θ Ξ Γ (gm_ext Φ x E) (gm_ext Φx x E)
 (** A local open of a module is replaced by the entries its items
-    generate *)
-| body_xp_open : forall Γ Φ Φx H its R Rm gs,
+    generate, the ones it stores ([gens_body]) *)
+| body_xp_open : forall Γ Φ Φx H its Φg R Rm gs,
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
     mdesc_mod R = Some Rm ->
     items_gen Θ Ξ (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
-    body_xp Θ Ξ Γ (gm_open Φ H its) (gens_append Φx 0 gs)
+    Φg = gens_body gs ->
+    body_xp Θ Ξ Γ (gm_open Φ H its Φg) (gens_append Φx 0 gs)
 (** [items_gen Θ Ξ Γ H its gs]: what the items [its] of an open of [H]
     declare, all read in [Γ], by what the member each names denotes: a term
     gives a definition of its type, a module an alias, and a member with
@@ -2754,7 +2811,7 @@ Fixpoint body_opens (Φ Φx : gmod) : list (ctx * modexp) :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ0 _ _ => body_opens Φ0 (gm_dropn 1 Φx)
-  | gm_open Φ0 H its =>
+  | gm_open Φ0 H its _ =>
       let Φ0x := gm_dropn (List.length its) Φx in
       (body_ctx Φ0x, H) :: body_opens Φ0 Φ0x
   end.
@@ -2764,7 +2821,7 @@ Fixpoint body_opens_at (Φ Φx : gmod) : list (gmod * modexp) :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ0 _ _ => body_opens_at Φ0 (gm_dropn 1 Φx)
-  | gm_open Φ0 H its =>
+  | gm_open Φ0 H its _ =>
       let Φ0x := gm_dropn (List.length its) Φx in
       (Φ0x, H) :: body_opens_at Φ0 Φ0x
   end.
@@ -2788,7 +2845,7 @@ Fixpoint gm_nopens (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ0 _ _ => gm_nopens Φ0
-  | gm_open Φ0 _ _ => S (gm_nopens Φ0)
+  | gm_open Φ0 _ _ _ => S (gm_nopens Φ0)
   end.
 
 (** *** The Shape of an Expansion *)
@@ -2829,8 +2886,8 @@ Qed.
 
 Lemma body_xp_binders : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_binders Φx = gm_binders Φ.
 Proof.
-  induction 1; cbn; auto.
-  rewrite gens_append_binders; erewrite items_gen_length by eassumption; lia.
+  induction 1; cbn; auto; subst.
+  unfold gens_body; rewrite !gens_append_binders; cbn; lia.
 Qed.
 
 Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
@@ -2851,24 +2908,24 @@ Qed.
 Lemma body_opens_ext : forall Φ Φx x E y E', body_opens (gm_ext Φ x E) (gm_ext Φx y E') = body_opens Φ Φx.
 Proof. reflexivity. Qed.
 
-Lemma body_opens_open_len : forall Φ Φx H its gs, List.length gs = List.length its ->
-    body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
+Lemma body_opens_open_len : forall Φ Φx H its Φg gs, List.length gs = List.length its ->
+    body_opens (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
 Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
 
-Lemma body_opens_open : forall Θ Ξ Γ Φ Φx H its gs,
+Lemma body_opens_open : forall Θ Ξ Γ Φ Φx H its Φg gs,
     items_gen Θ Ξ Γ H its gs ->
-    body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
+    body_opens (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
 Proof.
   intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
 Qed.
 
-Lemma body_opens_at_open_len : forall Φ Φx H its gs, List.length gs = List.length its ->
-    body_opens_at (gm_open Φ H its) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
+Lemma body_opens_at_open_len : forall Φ Φx H its Φg gs, List.length gs = List.length its ->
+    body_opens_at (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
 Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
 
-Lemma body_opens_at_open : forall Θ Ξ Γ Φ Φx H its gs,
+Lemma body_opens_at_open : forall Θ Ξ Γ Φ Φx H its Φg gs,
     items_gen Θ Ξ Γ H its gs ->
-    body_opens_at (gm_open Φ H its) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
+    body_opens_at (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
 Proof.
   intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
 Qed.
@@ -2879,7 +2936,7 @@ Qed.
 Fixpoint gm_item_xp (Φ Φx : gmod) (x : string) : gmod :=
   match Φ, Φx with
   | gm_ext Φ' _ _, gm_ext Φx' _ _ => gm_item_xp Φ' Φx' x
-  | gm_open Φ' _ its, _ =>
+  | gm_open Φ' _ its _, _ =>
       match items_upto x its with
       | Some _ => gm_dropn (List.length its) Φx
       | None => gm_item_xp Φ' (gm_dropn (List.length its) Φx) x
@@ -2887,10 +2944,17 @@ Fixpoint gm_item_xp (Φ Φx : gmod) (x : string) : gmod :=
   | _, _ => gm_nil
   end.
 
+(** The expansion of a body is the one its opens store. *)
+Lemma body_xp_expand : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> Φx = gm_expand Φ.
+Proof.
+  induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH HR HT Hg Hok HΦg]; cbn [gm_expand];
+    [ reflexivity | congruence | subst; rewrite gens_append_body; reflexivity ].
+Qed.
+
 Lemma body_xp_item : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
     forall x Φ0 H its1 it, gm_item_upto Φ x = Some (Φ0, H, its1, it) -> body_xp Θ Ξ Γ Φ0 (gm_item_xp Φ Φx x).
 Proof.
-  induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its R T gs Hx IH HR HT Hg Hok]; intros x Φ0 H0 its1 it Hi;
+  induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH HR HT Hg Hok HΦg]; intros x Φ0 H0 its1 it Hi;
     cbn [gm_item_upto gm_item_xp] in *; try discriminate.
   - destruct (String.eqb x y); [ discriminate | eauto ].
   - rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.

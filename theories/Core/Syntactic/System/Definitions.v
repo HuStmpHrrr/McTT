@@ -114,7 +114,8 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   match Φ, Φ' with
   | gm_nil, gm_nil => True
   | gm_ext Φ x E, gm_ext Φ' x' E' => body_shape Φ Φ' /\ x = x' /\ entry_shape E E'
-  | gm_open Φ _ its, gm_open Φ' _ its' => body_shape Φ Φ' /\ its = its'
+  (* the stored definitions are compared as the expansions ([body_xp]) *)
+  | gm_open Φ _ its _, gm_open Φ' _ its' _ => body_shape Φ Φ' /\ its = its'
   | _, _ => False
   end.
 
@@ -1461,6 +1462,14 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      (lv = false -> mdenote Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) Rt) ->
      (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D )
+(** A body unit is its expansion: each local open replaced by the
+    definitions it stores ([gm_expand]), as evaluation reads it.  For
+    example, [module where open A (x) end] is
+    [module where def x : A' ≔ A.x end], [A'] the type of [A]'s [x]: the
+    readback of a module closure reads the expanded body back. *)
+| wf_unit_eq_expand :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ (gm_expand Φ) )
 | wf_unit_eq_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U' ≈ U )
