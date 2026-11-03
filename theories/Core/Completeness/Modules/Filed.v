@@ -66,14 +66,15 @@ Proof.
     assert (Hg0 : per_gargs l1 nil nil args args').
     { rewrite Hrev in Hg; rewrite <- (app_nil_r args), <- (app_nil_r args') in Hg.
       exact (proj1 (per_gargs_app l1 (ce_ass A :: l2) nil nil args args' nil nil ltac:(lia) Hg ltac:(lia))). }
-    assert (Hρ : R0 (env_args nil args) (env_args nil args')).
+    assert (Hρ : R0 (env_tele nil l1 args) (env_tele nil l1 args')).
     { rewrite <- (app_nil_r (rev l1)) in HT0, HR0.
-      eapply (gargs_env_rel_gen _ _ _ _ _ _ _ _ per_ctx_env_nil_true HR0 HT0 I);
-        [ rewrite length_rev; lia | rewrite rev_involutive; exact Hg0 ]. }
+      pose proof (gargs_env_rel_gen (rev l1) ⋅ _ _ nil nil args args' per_ctx_env_nil_true HR0 HT0 I
+                    ltac:(rewrite length_rev; lia) ltac:(rewrite rev_involutive; exact Hg0)) as Hρ0.
+      rewrite rev_involutive in Hρ0; exact Hρ0. }
     destruct (rel_type_inversion_simple_at HR0 HA _ _ Hρ) as (a & a' & Ha0 & Ha0' & [RA HRA]).
     assert (Hne' : nth_error (rev T) (List.length args') = Some (ce_ass A)) by (rewrite <- Hl'; exact Hne).
-    eapply (per_dmod_fun RA); [ econstructor; [ exact Hm | exact Hne | exact Ha0 ]
-                              | econstructor; [ exact Hm | exact Hne' | exact Ha0' ] | exact HRA
+    eapply (per_dmod_fun RA); [ econstructor; [ exact Hm | exact Hne | rewrite Hrev, env_tele_app_long by lia; exact Ha0 ]
+                              | econstructor; [ exact Hm | exact Hne' | rewrite Hrev, env_tele_app_long by lia; exact Ha0' ] | exact HRA
                               | intros; eexists; constructor | intros; eexists; constructor |].
     intros c c' hc hc' Hc Hhc Hhc'; inversion Hhc; subst; inversion Hhc'; subst.
     apply IH; [ rewrite !length_app in *; cbn in *; lia | rewrite !length_app in *; cbn in *; rewrite !length_rev in *; lia |].
@@ -101,13 +102,24 @@ Proof. induction 1; cbn; congruence. Qed.
     over [Γ] to the environment of their values: no parameter is a
     proposition there, its type being relevant as its instance is
     ([rel_type_sub_relevance]). *)
+(** One more value at the end of an extension at tags. *)
+Lemma env_extend_tagged_snoc : forall ts Δ X ms e m, List.length ts = List.length ms ->
+    env_extend_tagged Δ (ts ++ e :: nil) X (ms ++ m :: nil) =
+    env_extend_tagged Δ ts X ms ↦ m ⦂ centry_tag e (List.rev ts ++ Δ) (env_extend_tagged Δ ts X ms).
+Proof.
+  induction ts as [| e0 ts IH]; intros Δ X [| m0 ms] e m Hl; cbn [List.length] in Hl; try discriminate; [ reflexivity |].
+  cbn [List.app env_extend_tagged List.rev]; rewrite IH by lia; rewrite <- app_assoc; reflexivity.
+Qed.
+
 Lemma closed_inst_eval : forall C Γ Ms RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    List.Forall (exp_scoped (List.length Γ)) Ms ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
-    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ sb_of_list Id Ms : C ++ Γ ⟧s ρ ↘ env_args ρ ms.
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\
+      ⟦ sb_of_list Id Ms : C ++ Γ ⟧s ρ ↘ env_extend_tagged Γ (rev C) (ctx_retag Γ ρ) ms.
 Proof.
-  induction C as [| e C IH]; intros Γ Ms RΓ HCa HC HΓ Hl HMs HTs HRΓ ρ Hρ.
+  induction C as [| e C IH]; intros Γ Ms RΓ HCa HC HΓ Hl HMs HTs HMss HRΓ ρ Hρ.
   - destruct Ms; cbn in Hl; [| discriminate ].
     exists nil; split; [ constructor | exact (proj1 (eval_sub_id_rel HRΓ Hρ)) ].
   - assert (He : exists A, e = ce_ass A) by (inversion HCa as [| ? ? He _]; exact He).
@@ -130,7 +142,8 @@ Proof.
     { intros k T HT.
       assert (Hk : k < List.length C) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
       apply (HTs k); rewrite Hti, List.nth_error_app1 by lia; exact HT. }
-    destruct (IH Γ Ms' RΓ HCa' HC' HΓ ltac:(lia) HMs' HTs' HRΓ _ Hρ) as (ms' & Hms' & Hev').
+    apply List.Forall_app in HMss as [HMss' _].
+    destruct (IH Γ Ms' RΓ HCa' HC' HΓ ltac:(lia) HMs' HTs' HMss' HRΓ _ Hρ) as (ms' & Hms' & Hev').
     (** The last argument, at its relevant instantiated type *)
     assert (HM : Γ ⊨ M : A[sb_of_list Id Ms']).
     { apply (HMs (List.length C)); [ rewrite List.nth_error_app2, Hl', Nat.sub_diag by lia; reflexivity |].
@@ -142,48 +155,86 @@ Proof.
     (** The parameter's type at the arguments before is relevant too *)
     destruct (closed_app_sem C Γ HCa' HC' HΓ) as [HCΓ _].
     destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
-    pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa' HC' HΓ Hl' HMs')) as Hσ.
+    pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa' HC' HΓ Hl' HMs' HMss')) as Hσ.
     pose proof (closed_app_valid _ _ _ _ _ HCa' HC' HΓ HA) as HAΓ.
     destruct (rel_type_of_sort HS HAΓ) as [j HAt].
     pose proof (rel_sub_under_ctx_at' Hσ HRΓ HRCΓ _ _ _ _ Hρ Hev' Hev') as Hρσ.
     destruct (rel_type_inversion_simple_at HRCΓ HAt _ _ Hρσ) as (a' & _ & Ea' & _ & _).
     pose proof (rel_type_sub_relevance HS HAΓ Hσ HRΓ Hρ Hev' Ea Ea') as Hrel.
     exists (ms' ++ m :: nil); split; [ eapply eval_exps_app; [ exact Hms' | econstructor; [ exact Hm | constructor ] ] |].
-    rewrite sb_of_list_app, env_args_snoc; cbn [sb_of_list List.app].
+    assert (Hlms : List.length ms' = List.length C) by (rewrite (eval_exps_length _ _ _ Hms'); exact Hl').
+    rewrite sb_of_list_app; cbn [sb_of_list List.app rev].
+    rewrite env_extend_tagged_snoc by (rewrite length_rev; lia); rewrite rev_involutive.
     apply eval_sub_extend; [ exact Hev' | | exact Hm ].
     intros Hp.
     apply (head_propositional_iff (e := ce_ass A) HRCΓ eq_refl (rel_type_inversion_simple_at HRCΓ HAt) Hρσ Ea') in Hp.
     congruence.
 Qed.
 
+(** An environment of a closed telescope at given entries is related to
+    the telescope's own extension, at the closures of its types, by the
+    values of the other side, over any base. *)
+Lemma closed_env_tele_right : forall C RC vts vts' B1 B2 B4, tele_ass C -> ⊨ C ->
+    EF C ≈ C ∈ per_ctx_env ↘ RC -> List.length vts = List.length C -> List.length vts' = List.length C ->
+    RC (env_extend_typed B1 vts) (env_extend_typed B2 vts') ->
+    RC (env_extend_typed B1 vts) (env_tele B4 (List.rev C) (List.map fst vts')).
+Proof.
+  intros * HCa HC HRC Hl Hl' H.
+  assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
+  assert (HRC' : EF List.rev (List.rev C) ++ ⋅ ≈ List.rev (List.rev C) ++ ⋅ ∈ per_ctx_env ↘ RC)
+    by (rewrite List.rev_involutive, List.app_nil_r; exact HRC).
+  assert (HCr : tele_ass (List.rev C)) by (apply List.Forall_rev; exact HCa).
+  destruct (rel_gargs_readable _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' _ _ vts vts'
+              ltac:(rewrite List.length_rev; exact Hl) ltac:(rewrite List.length_rev; exact Hl') H) as [Rv _].
+  destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' B1 B2 vts vts'
+              ltac:(rewrite List.length_rev; exact Hl) ltac:(rewrite List.length_rev; exact Hl') H) as [_ Hg].
+  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B1 B4 _ _ I I I Hg) as Hg'.
+  pose proof (per_gargs_entries_readable _ _ _ _ _ Hg') as [_ Hr'].
+  unfold env_tele; eapply closed_env_base; [ exact HCa | exact HC | exact HRC | exact Hl | exact Hl'
+                                            | reflexivity | rewrite tele_entries_fst; reflexivity
+                                            | exact Rv | exact Hr' | exact H ].
+Qed.
+
 (** Arguments valid at a closed telescope make environments of it, at
-    related environments, over any bases. *)
+    related environments, over any bases; the values of the substitution
+    they make is related to the telescope's own extension by them. *)
 Lemma closed_inst_env : forall C Γ Ms RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    List.Forall (exp_scoped (List.length Γ)) Ms ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ ρ', RΓ ρ ρ' ->
     exists ms ms' RC RCΓ, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ms' /\
       EF C ≈ C ∈ per_ctx_env ↘ RC /\ EF C ++ Γ ≈ C ++ Γ ∈ per_ctx_env ↘ RCΓ /\
-      RCΓ (env_args ρ ms) (env_args ρ' ms') /\ (forall B1 B2, RC (env_args B1 ms) (env_args B2 ms')) /\
+      RCΓ (env_extend_tagged Γ (rev C) (ctx_retag Γ ρ) ms) (env_extend_tagged Γ (rev C) (ctx_retag Γ ρ') ms') /\
+      (forall B1 B2, RC (env_tele B1 (rev C) ms) (env_tele B2 (rev C) ms')) /\
+      (forall B, RC (env_extend_tagged Γ (rev C) (ctx_retag Γ ρ) ms) (env_tele B (rev C) ms')) /\
       List.length ms = List.length C /\ List.length ms' = List.length C.
 Proof.
-  intros * HCa HC HΓ Hl HMs HTs HRΓ ρ ρ' Hρ.
+  intros * HCa HC HΓ Hl HMs HTs HMss HRΓ ρ ρ' Hρ.
   assert (HP : PER RΓ) by (eapply per_env_PER; exact HRΓ).
-  pose proof (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs) as Hg.
+  pose proof (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs HMss) as Hg.
   pose proof (gsub_valid Hg) as Hσ.
   destruct (closed_app_sem C Γ HCa HC HΓ) as [HCΓ Hres].
   destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
   destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
-  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HRΓ ρ ltac:(etransitivity; [ exact Hρ | symmetry; exact Hρ ]))
+  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ ρ ltac:(etransitivity; [ exact Hρ | symmetry; exact Hρ ]))
     as (ms & Hms & Hev).
-  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HRΓ ρ' ltac:(etransitivity; [ symmetry; exact Hρ | exact Hρ ]))
+  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ ρ' ltac:(etransitivity; [ symmetry; exact Hρ | exact Hρ ]))
     as (ms' & Hms' & Hev').
   pose proof (rel_sub_under_ctx_at' Hσ HRΓ HRCΓ _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (Hlm : List.length ms = List.length C) by (rewrite (eval_exps_length _ _ _ Hms); exact Hl).
   assert (Hlm' : List.length ms' = List.length C) by (rewrite (eval_exps_length _ _ _ Hms'); exact Hl).
+  pose proof (Hres _ _ HRC HRCΓ _ _ Hρσ) as HC0; rewrite !env_extend_tagged_typed in HC0.
   exists ms, ms', RC, RCΓ; repeat split; try assumption.
-  intros B1 B2; eapply closed_env_base; [ exact HCa | exact HC | exact HRC | exact Hlm | exact Hlm' |].
-  exact (Hres _ _ HRC HRCΓ _ _ Hρσ).
+  2:{ intros B; rewrite env_extend_tagged_typed.
+      rewrite <- (tagged_entries_fst (rev C) Γ (ctx_retag Γ ρ') ms') by (rewrite length_rev; lia).
+      eapply closed_env_tele_right; [ exact HCa | exact HC | exact HRC | rewrite tagged_entries_length by (rewrite length_rev; lia); lia
+                                    | rewrite tagged_entries_length by (rewrite length_rev; lia); lia | exact HC0 ]. }
+  intros B1 B2.
+  rewrite <- (tagged_entries_fst (rev C) Γ (ctx_retag Γ ρ) ms), <- (tagged_entries_fst (rev C) Γ (ctx_retag Γ ρ') ms')
+    by (rewrite length_rev; lia).
+  eapply closed_env_tele; [ exact HCa | exact HC | exact HRC | rewrite tagged_entries_length by (rewrite length_rev; lia); lia
+                          | rewrite tagged_entries_length by (rewrite length_rev; lia); lia | exact HC0 ].
 Qed.
 
 (** A type of either sort over a closed telescope, at valid arguments of
@@ -191,22 +242,24 @@ Qed.
 Lemma closed_inst_typ : forall C Γ Ms X S RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    List.Forall (exp_scoped (List.length Γ)) Ms ->
     type_sort S -> C ⊨ X : S -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms a b i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\
-      ⟦ X ⟧ env_args nil ms ↘ b /\ per_univ_elem i R a b.
+      ⟦ X ⟧ env_tele nil (rev C) ms ↘ b /\ per_univ_elem i R a b.
 Proof.
-  intros * HCa HC HΓ Hl HMs HTs HS HX HRΓ ρ Hρ.
-  destruct (closed_inst_env _ _ _ _ HCa HC HΓ Hl HMs HTs HRΓ _ _ Hρ) as (ms & ms' & RC & RCΓ & Hms & Hms' & HRC & HRCΓ & Hρσ & Hbase & _).
+  intros * HCa HC HΓ Hl HMs HTs HMss HS HX HRΓ ρ Hρ.
+  destruct (closed_inst_env _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ _ Hρ)
+    as (ms & ms' & RC & RCΓ & Hms & Hms' & HRC & HRCΓ & Hρσ & Hbase & Hmix & _).
   pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
   pose proof (Hfs _ _ _ Hms _ Hms') as <-.
-  pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs)) as Hσ.
-  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HRΓ _ Hρ) as (ms0 & Hms0 & Hev).
+  pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs HMss)) as Hσ.
+  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ Hρ) as (ms0 & Hms0 & Hev).
   pose proof (Hfs _ _ _ Hms0 _ Hms) as ->.
   destruct (rel_type_of_sort HS (closed_app_valid _ _ _ _ _ HCa HC HΓ HX)) as [i HXΓ].
   pose proof (rel_type_inversion HXΓ) as [R0 [HΔ0 HXgen]].
   destruct (HXgen _ _ HRΓ _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev) as [a a2 a3 a4 Ha Ha2 _ _ ([R1 HR1] & _)].
   destruct (rel_type_of_sort HS HX) as [i' HXt].
-  destruct (rel_type_inversion_simple_at HRC HXt _ _ (Hbase ρ nil)) as (a3' & b & Ha3 & Hb & [R2 HR2]).
+  destruct (rel_type_inversion_simple_at HRC HXt _ _ (Hmix nil)) as (a3' & b & Ha3 & Hb & [R2 HR2]).
   functional_eval_rewrite_clear.
   destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR1 HR2) as (R & HR & _).
   exists ms, a, b; eexists; exists R; repeat split; eassumption.
@@ -217,22 +270,25 @@ Qed.
 Lemma closed_inst_exp : forall C Γ Ms M X k RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    List.Forall (exp_scoped (List.length Γ)) Ms ->
     C ⊨ X : Typeω@k -> C ⊨ M : X -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms m n a i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ M[sb_of_list Id Ms] ⟧ ρ ↘ m /\
-      ⟦ M ⟧ env_args nil ms ↘ n /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\ per_univ_elem i R a a /\ R m n.
+      ⟦ M ⟧ env_tele nil (rev C) ms ↘ n /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\ per_univ_elem i R a a /\ R m n.
 Proof.
-  intros * HCa HC HΓ Hl HMs HTs HX HM HRΓ ρ Hρ.
-  destruct (closed_inst_env _ _ _ _ HCa HC HΓ Hl HMs HTs HRΓ _ _ Hρ) as (ms & ms' & RC & RCΓ & Hms & Hms' & HRC & HRCΓ & Hρσ & Hbase & _).
+  intros * HCa HC HΓ Hl HMs HTs HMss HX HM HRΓ ρ Hρ.
+  destruct (closed_inst_env _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ _ Hρ)
+    as (ms & ms' & RC & RCΓ & Hms & Hms' & HRC & HRCΓ & Hρσ & Hbase & Hmix & _).
   pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
   pose proof (Hfs _ _ _ Hms _ Hms') as <-.
-  pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs)) as Hσ.
-  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HRΓ _ Hρ) as (ms0 & Hms0 & Hev).
+  pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs HMss)) as Hσ.
+  destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ Hρ) as (ms0 & Hms0 & Hev).
   pose proof (Hfs _ _ _ Hms0 _ Hms) as ->.
   pose proof (closed_app_valid _ _ _ _ _ HCa HC HΓ HM) as HMΓ.
   pose proof (closed_app_valid _ _ _ _ _ HCa HC HΓ HX) as HXΓ.
-  destruct (valid_inst _ _ _ _ _ _ _ HMΓ HXΓ Hσ HRΓ _ _ Hρ Hev)
+  destruct (valid_inst _ _ _ _ _ _ HMΓ (rel_type_relevant_of_typ HXΓ) Hσ HRΓ _ _ Hρ Hev)
     as (m & m2 & a2 & i & R1 & Hm & Hm2 & Ha2 & HR1 & Hmm).
-  destruct (valid_at _ _ _ _ _ HM HX HRC _ _ (Hbase ρ nil)) as (m2' & n & a2' & i' & R2 & Hm2' & Hn & Ha2' & HR2 & Hmn).
+  destruct (valid_at _ _ _ _ _ HM (rel_type_of_typ HX) (rel_type_relevant_of_typ HX) HRC _ _ (Hmix nil))
+    as (m2' & n & a2' & i' & R2 & Hm2' & Hn & Ha2' & HR2 & Hmn).
   functional_eval_rewrite_clear.
   destruct (valid_typ_inst _ _ _ _ _ _ HXΓ Hσ HRΓ _ _ Hρ Hev)
     as (a & b2 & Ha & Hb2 & [R0 HR0]).
@@ -249,31 +305,91 @@ Qed.
 
 (** ** Members of Global Modules *)
 
-(** A function at a telescope's [Π]-type, applied to arguments related at
-    the telescope. *)
-Lemma apps_rel_gargs : forall ts ρ ρ' args args' A0 g g' j E a a',
-    per_gargs ts ρ ρ' args args' ->
-    ⟦ ctx_pi (rev ts) A0 ⟧ ρ ↘ a -> ⟦ ctx_pi (rev ts) A0 ⟧ ρ' ↘ a' -> per_univ_elem j E a a' -> E g g' ->
-    exists v v' b b' R,
-      $*| g & args | gc_deps ⍮ gc_stack ↘ v /\ $*| g' & args' | gc_deps ⍮ gc_stack ↘ v' /\
-      ⟦ ctx_pi (rev (skipn (List.length args) ts)) A0 ⟧ env_args ρ args ↘ b /\
-      ⟦ ctx_pi (rev (skipn (List.length args) ts)) A0 ⟧ env_args ρ' args' ↘ b' /\
-      per_univ_elem j R b b' /\ R v v'.
+(** An element of a [Π] over a telescope, applied to the values of
+    environments of the telescope related at its context PER over a
+    context [Γ]: the results are related at the codomain's head PER there.
+    The [Π] applies at the values of its domains ([entry_type_value]), the
+    environments store any types: the codomain, a type over the telescope,
+    is related at both. *)
+Lemma ctx_pi_apps_rel : forall ts Γ RΓ B k, tele_ass ts -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⊨ List.rev ts ++ Γ ->
+    List.rev ts ++ Γ ⊨ B : Typeω@k ->
+    forall E E' g g' a a' i R vts vts' R1,
+      RΓ E E' -> ⟦ ctx_pi (List.rev ts) B ⟧ E ↘ a -> ⟦ ctx_pi (List.rev ts) B ⟧ E' ↘ a' ->
+      per_univ_elem i R a a' -> R g g' ->
+      EF List.rev ts ++ Γ ≈ List.rev ts ++ Γ ∈ per_ctx_env ↘ R1 ->
+      List.length vts = List.length ts -> List.length vts' = List.length ts ->
+      R1 (env_extend_typed E vts) (env_extend_typed E' vts') ->
+      exists v v', $*| g & List.map fst vts | gc_deps ⍮ gc_stack ↘ v /\ $*| g' & List.map fst vts' | gc_deps ⍮ gc_stack ↘ v' /\
+        Dom v ≈ v' ∈ per_head B B (env_extend_typed E vts) (env_extend_typed E' vts').
 Proof.
-  intros * H; revert A0 g g' j E a a'; induction H; intros * Ha Ha' HE Hg.
-  - do 5 eexists; repeat split; [ constructor | constructor | exact Ha | exact Ha' | exact HE | exact Hg ].
-  - cbn [rev] in Ha, Ha'; rewrite ctx_pi_app in Ha, Ha'; cbn in Ha, Ha'.
+  induction ts as [| e ts IH]; intros * Hts HΓ HC HB * HE Ha Ha' HR Hg HR1 Hl Hl' H1.
+  - destruct vts, vts'; cbn in Hl, Hl'; try discriminate.
+    exists g, g'; split; [ constructor | split; [ constructor |] ].
+    intros j Q b b' Hb Hb' HQ; cbn [List.rev ctx_pi] in Ha, Ha'.
+    functional_eval_rewrite_clear.
+    assert (EQ : R <~> Q) by (eapply per_univ_elem_right_irrel; eassumption).
+    apply EQ; exact Hg.
+  - inversion Hts as [| ? ? [A ->] Hts']; subst.
+    destruct vts as [| [y t] vts]; [ cbn in Hl; discriminate |]; destruct vts' as [| [y' t'] vts']; [ cbn in Hl'; discriminate |].
+    cbn [List.length] in Hl, Hl'.
+    cbn [List.rev] in HC, HB, HR1, Ha, Ha'; rewrite <- app_assoc in HC, HB, HR1; cbn [List.app] in HC, HB, HR1.
+    rewrite ctx_pi_snoc in Ha, Ha'; cbn [ctx_pi_at] in Ha, Ha'.
     inversion Ha; subst; inversion Ha'; subst.
+    match goal with Hx : ⟦ A ⟧ E ↘ ?x, Hx' : ⟦ A ⟧ E' ↘ ?x' |- _ =>
+      rename Hx into HxA; rename Hx' into HxA'; rename x into xa; rename x' into xa' end.
+    destruct (per_univ_elem_pi_inv HR) as (in_rel & out_rel & Hin & Hout & HEq).
+    pose proof (rel_ctx_wf_app_r _ _ HC) as HΓA.
+    destruct (rel_ctx_wf_per_ctx_env HΓA) as [RA HRA].
+    destruct (rel_gargs ts (Γ ▹ A) RA R1 HRA HC Hts' HR1 (E ↦ y ⦂ t) (E' ↦ y' ⦂ t') vts vts' ltac:(lia) ltac:(lia) H1)
+      as [HyA _].
+    destruct (per_ctx_env_cons_clean_inversion HΓ HRA) as (i0 & head_rel & Hhead & HEA).
+    pose proof (proj1 (HEA _ _) HyA) as [Ht Hh Hlp Hrp Hlr Hrr].
+    cbn [drop_env tl] in Ht.
+    destruct (Hhead _ _ Ht) as [x0 x0' Hx0 Hx0' Hhr].
     functional_eval_rewrite_clear.
-    destruct (per_univ_elem_pi_inv HE) as (in_rel & out_rel & Hin & Hout & HEq).
-    match goal with Ht : PER.Definitions.rel_typ _ _ _ _ _ _ |- _ => destruct Ht as [x1 x2 Hx1 Hx2 HRx] end.
+    assert (Ein : head_rel E E' Ht <~> in_rel) by (eapply per_univ_elem_right_irrel; eassumption).
+    cbn [env_entry hd] in Hh.
+    assert (Hy : in_rel y y') by (apply Ein; exact Hh).
+    destruct (pi_elements_app _ _ _ _ _ _ (proj1 (HEq g g') Hg) _ _ Hy) as [g1 g1' Hg1 Hg1' Hgg].
+    destruct (Hout _ _ Hy) as [b1 b1' Hb1 Hb1' HRb1].
+    pose proof (entry_readable_of_elem Hin Hy) as [Ry Ry'].
+    (** the extensions at the domains' values are environments of the
+        context extended, related to the given ones *)
+    assert (HvL : RA (E ↦ y ⦂ entry_type_value xa) (E' ↦ y' ⦂ t')).
+    { apply HEA; apply (mk_per_ctx_env_cons_rel _ _ _ _ (E ↦ y ⦂ entry_type_value xa) (E' ↦ y' ⦂ t') Ht);
+        [ exact Hh | intros _; eexists; reflexivity | exact Hrp | split; [ exact Ry | cbn; lia ] | exact Hrr ]. }
+    (** the codomain at the given extensions *)
+    destruct (rel_exp_ctx_pi (rev ts) (Γ ▹ A) B k ltac:(apply Forall_rev; exact Hts') HC HB) as [j HcT].
+    destruct (rel_type_inversion_simple_at HRA (rel_type_of_typ HcT) _ _ HvL) as (b1x & c1' & Hb1x & Hc1' & U2).
+    destruct (rel_type_inversion_simple_at HRA (rel_type_of_typ HcT) _ _ HyA) as (c1 & c2' & Hc1 & Hc2' & [R2 HR2]).
     functional_eval_rewrite_clear.
-    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRx Hin) as ER.
-    assert (Hcc : in_rel a a') by (apply ER; assumption).
-    destruct (Hout _ _ Hcc) as [b1 b1' Hb1 Hb1' Hb].
-    destruct (pi_elements_app _ _ _ _ _ _ (proj1 (HEq g g') Hg) _ _ Hcc) as [g1 g1' Hg1 Hg1' Hgg].
-    destruct (IHper_gargs _ _ _ _ _ _ _ Hb1 Hb1' Hb Hgg) as (v & v' & b & b' & R1 & Hv & Hv' & Hb2 & Hb2' & HR1 & Hvv).
-    exists v, v', b, b', R1; repeat split; try assumption; econstructor; eassumption.
+    assert (Eo : out_rel y y' Hy <~> R2)
+      by exact (per_univ_irrel_rel _ _ _ _ _ _ _ _ _ HRb1 U2 (proj1 (per_univ_elem_sym _ _ _ _ HR2))).
+    destruct (IH (Γ ▹ A) RA B k Hts' HRA HC HB (E ↦ y ⦂ t) (E' ↦ y' ⦂ t') g1 g1' c1 c1' j R2 vts vts' R1
+                HyA Hc1 Hc1' HR2 (proj1 (Eo _ _) Hgg) HR1 ltac:(lia) ltac:(lia) H1) as (v & v' & Hv & Hv' & Hvv).
+    exists v, v'; split; [ econstructor; eassumption | split; [ econstructor; eassumption | exact Hvv ] ].
+Qed.
+
+(** A type over a context extended by [A], at the extension by an element
+    stored at the value of [A] (as a [Π] applies) and at the one stored at
+    [A]'s closure (as a telescope's arguments are): the two values are
+    related. *)
+Lemma ext_value_closure_typ : forall Γ RΓ A B (k : nat) X c a i Ra b b',
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> Γ ⊨ᵗ A ≈ A at i -> Γ ▹ A ⊨ B : Typeω@k -> RΓ X X ->
+    ⟦ A ⟧ X ↘ a -> per_univ_elem i Ra a a -> Ra c c ->
+    ⟦ B ⟧ X ↦ c ⦂ entry_type_value a ↘ b -> ⟦ B ⟧ X ↦ c ⦂ entry_type_closure A X ↘ b' ->
+    Dom b ≈ b' ∈ per_univ k.
+Proof.
+  intros * HΓ HA HB HX Ha HRa Hc Hb Hb'.
+  pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
+  pose proof (entry_readable_of_elem HRa Hc) as [R1 _].
+  pose proof (entry_readable_of_elem_closure Ha Ha HRa Hc) as [R2 _].
+  assert (Hext : per_env_extend A A RΓ (X ↦ c ⦂ entry_type_value a) (X ↦ c ⦂ entry_type_closure A X)).
+  { apply (mk_per_ctx_env_cons_rel _ _ _ _ (X ↦ c ⦂ entry_type_value a) (X ↦ c ⦂ entry_type_closure A X) HX);
+      [ eapply per_head_of; [ exact Ha | exact Ha | exact HRa | exact Hc ] | intros _; eexists; reflexivity
+      | intros _; eexists; reflexivity | split; [ exact R1 | cbn; lia ] | split; [ exact R2 | cbn; lia ] ]. }
+  destruct (rel_type_inversion_simple_at HΓA (rel_type_of_typ HB) _ _ Hext) as (b0 & b0' & Hb0 & Hb0' & U).
+  functional_eval_rewrite_clear; exact U.
 Qed.
 
 Lemma per_gargs_prefix : forall ts1 ts2 ρ ρ' xs xs', per_gargs (ts1 ++ ts2) ρ ρ' xs xs' -> List.length xs <= List.length ts1 ->
@@ -300,45 +416,82 @@ Lemma glob_dmod_has_mem : forall p T Φ x A0 g j E e,
     ⟦ ctx_pi T A0 ⟧ nil ↘ e -> per_univ_elem j E e e -> E g g -> global_member_value gc_deps gc_stack p x g ->
     forall Tin Tout args, T = Tin ++ Tout -> List.length args = List.length Tout ->
       per_gargs (rev T) nil nil args args ->
-      exists a i R, ⟦ ctx_pi Tin A0 ⟧ env_args nil args ↘ a /\ per_univ_elem i R a a /\ dmod_has_mem (dm_global p args) x R /\
+      exists a i R, ⟦ ctx_pi Tin A0 ⟧ env_tele nil (rev Tout) args ↘ a /\ per_univ_elem i R a a /\
+        dmod_has_mem (dm_global p args) x R /\
         (** the stored value applied to the arguments is related to the member *)
         forall v, $*| g & args | gc_deps ⍮ gc_stack ↘ v -> exists r, dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ R v r.
 Proof.
   intros * Hm HT HTs [iA HA0] [lT HTrel] He HE Hgg Hg Tin.
-  assert (HeT : ⟦ ctx_pi (rev (rev T)) A0 ⟧ nil ↘ e) by (rewrite rev_involutive; exact He).
+  (** the stored value applied to arguments related at the outer part of
+      the telescope: related at the type over the rest *)
+  assert (Happs : forall Tin' Tout' args0 args1, T = Tin' ++ Tout' ->
+             per_gargs (rev Tout') nil nil args0 args1 -> List.length args0 = List.length Tout' ->
+             exists RO v0 v1, EF Tout' ≈ Tout' ∈ per_ctx_env ↘ RO /\
+               RO (env_tele nil (rev Tout') args0) (env_tele nil (rev Tout') args1) /\
+               $*| g & args0 | gc_deps ⍮ gc_stack ↘ v0 /\ $*| g & args1 | gc_deps ⍮ gc_stack ↘ v1 /\
+               Dom v0 ≈ v1 ∈ per_head (ctx_pi Tin' A0) (ctx_pi Tin' A0)
+                                 (env_tele nil (rev Tout') args0) (env_tele nil (rev Tout') args1)).
+  { intros * ET Hg01 Hl0.
+    pose proof (per_gargs_len_eq _ _ _ _ _ Hg01) as Hl01.
+    pose proof HTs as HTs'; rewrite ET in HTs'.
+    pose proof (rel_ctx_wf_app_r _ _ HTs') as HTo.
+    destruct (rel_ctx_wf_per_ctx_env HTo) as [RO HRO].
+    assert (HTo' : ⊨ Tout' ++ ⋅) by (rewrite app_nil_r; exact HTo).
+    assert (HRO' : EF Tout' ++ ⋅ ≈ Tout' ++ ⋅ ∈ per_ctx_env ↘ RO) by (rewrite app_nil_r; exact HRO).
+    pose proof (gargs_env_rel_gen Tout' ⋅ _ _ nil nil args0 args1 per_ctx_env_nil_true HRO' HTo' I Hl0 Hg01) as Hρ.
+    rewrite ET in HA0, HT.
+    destruct (rel_exp_ctx_pi Tin' Tout' A0 iA (proj1 (tele_ass_app_inv _ _ HT)) HTs' HA0) as [ip HP].
+    assert (He' : ⟦ ctx_pi (rev (rev Tout')) (ctx_pi Tin' A0) ⟧ nil ↘ e)
+      by (rewrite rev_involutive, <- Evaluation.Modules.ctx_pi_app, <- ET; exact He).
+    destruct (ctx_pi_apps_rel (rev Tout') ⋅ _ (ctx_pi Tin' A0) ip
+                ltac:(apply Forall_rev; exact (proj2 (tele_ass_app_inv _ _ HT)))
+                per_ctx_env_nil_true ltac:(rewrite rev_involutive; exact HTo') ltac:(rewrite rev_involutive, app_nil_r; exact HP)
+                nil nil g g e e j E (tele_entries nil (rev Tout') args0) (tele_entries nil (rev Tout') args1) RO
+                I He' He' HE Hgg ltac:(rewrite rev_involutive, app_nil_r; exact HRO)
+                ltac:(rewrite tele_entries_length, length_rev; lia) ltac:(rewrite tele_entries_length, length_rev; lia) Hρ)
+      as (v0 & v1 & Hv0 & Hv1 & Hvv).
+    rewrite !tele_entries_fst in Hv0, Hv1.
+    exists RO, v0, v1; repeat split; assumption. }
   induction Tin as [| e1 Tin0 IH] using rev_ind; intros Tout args ET Hl Hargs; cbn [List.app] in ET.
   - subst Tout.
-    destruct (apps_rel_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hargs HeT HeT HE Hgg) as (v & v' & b & b' & R & Hv & Hv' & Hb & Hb' & HR & Hvv).
-    rewrite List.skipn_all2 in Hb, Hb' by (rewrite length_rev; lia); cbn [rev ctx_pi] in Hb, Hb'.
-    functional_eval_rewrite_clear.
+    destruct (Happs nil T args args eq_refl Hargs Hl) as (RO & v & v' & HRO & Hρ & Hv & Hv' & Hvv).
     pose proof (functional_eval_apps _ _ _ _ Hv Hv') as <-.
-    exists b, j, R; cbn [ctx_pi]; split; [ exact Hb | split; [ exact HR |] ].
+    destruct (rel_type_inversion_simple_at HRO (rel_type_of_typ HA0) _ _ Hρ) as (b & b' & Hb & Hb' & [R HR]).
+    functional_eval_rewrite_clear.
+    pose proof (Hvv _ _ _ _ Hb Hb HR) as Hvv'.
+    exists b, iA, R; cbn [ctx_pi]; split; [ exact Hb | split; [ exact HR |] ].
     (** the arguments fill the telescope *)
     assert (Hs1 : module_saturated gc_deps gc_stack p args)
       by (intros T' Φ' Hm'; rewrite Hm in Hm'; injection Hm' as <- <-; lia).
     split.
     2:{ intros v0 Hv0; pose proof (functional_eval_apps _ _ _ _ Hv0 Hv) as ->.
-        exists v; split; [ eapply eval_sel_global_apps; [ exact Hs1 | exact Hg | exact Hv ] | exact Hvv ]. }
+        exists v; split; [ eapply eval_sel_global_apps; [ exact Hs1 | exact Hg | exact Hv ] | exact Hvv' ]. }
     intros h Hh.
     inversion Hh as [p0 T0 oD0 args0 args0' Hm0 Hl0 Hg0 | | ? ? ? ? ? Rf Hpf Hpf' _ _ _ _]; subst.
     + rewrite Hm in Hm0; injection Hm0 as <- <-.
-      destruct (apps_rel_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hg0 HeT HeT HE Hgg) as (u & u' & c & c' & R1 & Hu & Hu' & Hc & Hc' & HR1 & Huu).
-      rewrite List.skipn_all2 in Hc, Hc' by (rewrite length_rev; lia); cbn [rev ctx_pi] in Hc, Hc'.
-      functional_eval_rewrite_clear.
+      destruct (Happs nil T args0 args eq_refl Hg0 Hl0) as (RO' & u & u' & HRO' & Hρ' & Hu & Hu' & Huu).
       pose proof (functional_eval_apps _ _ _ _ Hu' Hv) as ->.
-      assert (E1 : R1 <~> R) by (eapply per_univ_elem_left_irrel; [ exact HR1 | exact HR ]).
+      destruct (rel_type_inversion_simple_at HRO' (rel_type_of_typ HA0) _ _ Hρ') as (c & c' & Hc & Hc' & [R1 HR1]).
+      functional_eval_rewrite_clear.
+      assert (E1 : R1 <~> R).
+      { symmetry; eapply per_univ_irrel_rel; [ exact HR | eexists; exact HR | exact (proj1 (per_univ_elem_sym _ _ _ _ HR1)) ]. }
+      pose proof (Huu _ _ _ _ Hc Hb HR1) as Huu'.
       assert (Hs0 : module_saturated gc_deps gc_stack p args0)
         by (intros T' Φ' Hm'; rewrite Hm in Hm'; injection Hm' as <- <-; lia).
       exists u v; [ eapply eval_sel_global_apps; [ exact Hs0 | exact Hg | exact Hu ]
                   | eapply eval_sel_global_apps; [ exact Hs1 | exact Hg | exact Hv ]
-                  | apply E1; exact Huu ].
+                  | apply E1; exact Huu' ].
     + exfalso; destruct (next_param_global_lt _ _ _ Hpf') as (T1 & oT1 & Hm1 & Hlt).
       rewrite Hm in Hm1; injection Hm1 as <- <-; lia.
   - (* one more parameter missing *)
     pose proof HT as HT0; rewrite ET in HT0.
     destruct (tele_ass_app_inv _ _ HT0) as [HT1 _].
     destruct (tele_ass_app_inv _ _ HT1) as [_ He1]; inversion He1 as [| ? ? [A1 HA1e] _]; subst e1; subst T.
-    rewrite <- app_assoc in Hm, HTs, HA0, HeT, Hargs, IH, HT; cbn [List.app] in Hm, HTs, HA0, HeT, Hargs, IH, HT.
+    destruct (Happs (Tin0 ++ ce_ass A1 :: nil) Tout args args eq_refl
+                ltac:(eapply per_gargs_prefix; [ rewrite rev_app_distr in Hargs; exact Hargs | rewrite length_rev; lia ]) Hl)
+      as (RO & v & v' & HRO & HρO & Hv & Hv' & Hvv).
+    pose proof (functional_eval_apps _ _ _ _ Hv Hv') as <-.
+    rewrite <- app_assoc in Hm, HTs, HA0, Hargs, IH, HT; cbn [List.app] in Hm, HTs, HA0, Hargs, IH, HT.
     pose proof (rel_ctx_wf_app_r _ _ HTs) as HA1T.
     (** the missing parameter is relevant *)
     pose proof (HTrel Tin0 A1 Tout ltac:(rewrite <- app_assoc; reflexivity)) as HA1; rewrite app_nil_r in HA1.
@@ -356,25 +509,21 @@ Proof.
                 ltac:(rewrite <- app_assoc; exact HTs) ltac:(rewrite <- app_assoc; exact HA0)) as [ip HP].
     destruct (rel_exp_of_typ_inversion_simple_at HRo HP _ _ Hρ) as (pa & pa' & Hpa & Hpa' & [RP HRP]).
     functional_eval_rewrite_clear.
-    rewrite ctx_pi_app in Hpa |- *; cbn [ctx_pi] in Hpa |- *.
+    assert (EO : RO <~> Ro) by (eapply per_ctx_env_right_irrel; eassumption).
+    pose proof (Hvv _ _ _ _ Hpa Hpa HRP) as Hvv'.
+    rewrite Evaluation.Modules.ctx_pi_app in Hpa |- *; cbn [ctx_pi] in Hpa |- *.
     inversion Hpa; subst.
     match goal with H0 : ⟦ A1 ⟧ _ ↘ ?a0 |- _ => pose proof (functional_eval_exp _ _ _ _ H0 Ha1) as -> end.
-    exists (Πᵈ a1 (env_args nil args) (ctx_pi Tin0 A0)), ip, RP; split; [ exact Hpa | split; [ exact HRP |] ].
+    exists (Πᵈ a1 (env_tele nil (rev Tout) args) (ctx_pi Tin0 A0)), ip, RP; split; [ exact Hpa | split; [ exact HRP |] ].
     assert (Hn : nth_error (rev (Tin0 ++ ce_ass A1 :: Tout)) (List.length args) = Some (ce_ass A1)).
     { rewrite rev_app_distr; cbn [rev List.app].
       rewrite nth_error_app1 by (rewrite length_app, length_rev; cbn; lia).
       rewrite nth_error_app2 by (rewrite length_rev; lia).
       rewrite length_rev, Hl, Nat.sub_diag; reflexivity. }
-    assert (Hnp : next_param (dm_global p args) a1) by (econstructor; [ exact Hm | exact Hn | exact Ha1 ]).
-    destruct (apps_rel_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hargs HeT HeT HE Hgg) as (v & v' & b0 & b0' & R0 & Hv & Hv' & Hb0 & Hb0' & HR0 & Hvv).
-    assert (Hsk : rev (skipn (List.length args) (rev (Tin0 ++ ce_ass A1 :: Tout))) = Tin0 ++ ce_ass A1 :: nil).
-    { rewrite rev_app_distr; cbn [rev List.app]; rewrite <- app_assoc.
-      rewrite skipn_app, skipn_all2 by (rewrite length_rev; lia).
-      rewrite length_rev, Hl, Nat.sub_diag; cbn [skipn List.app].
-      cbn [rev]; rewrite rev_involutive; reflexivity. }
-    rewrite Hsk, ctx_pi_app in Hb0, Hb0'; cbn [ctx_pi] in Hb0, Hb0'.
-    functional_eval_rewrite_clear.
-    pose proof (functional_eval_apps _ _ _ _ Hv Hv') as <-.
+    assert (Hnp : next_param (dm_global p args) a1).
+    { econstructor; [ exact Hm | exact Hn |].
+      rewrite rev_app_distr; cbn [rev]; rewrite <- app_assoc, env_tele_app_long by (rewrite length_rev; lia); exact Ha1. }
+    destruct (rel_exp_ctx_pi Tin0 (Tout ▹ A1) A0 iA (proj1 (tele_ass_app_inv _ _ HT)) HTs HA0) as [kcod HcodT].
     assert (Hkk : per_dmod (dm_global p args) (dm_global p args))
       by (eapply gval_rel; [ exact Hm | exact HT | exact HTs | reflexivity | rewrite length_app; cbn; lia | exact Hargs ]).
     assert (Hra1 : domain_relevance a1 = relevant).
@@ -382,7 +531,8 @@ Proof.
       assert (a'' = a1) as -> by (eapply functional_eval_exp; eassumption); exact Hr''. }
     (** the step to one more argument *)
     assert (Hcodh : forall j1 Rc c, per_univ_elem j1 Rc a1 a1 -> Rc c c -> forall kc b,
-               $ᵐ| dm_global p args & c | gc_deps ⍮ gc_stack ↘ kc -> ⟦ ctx_pi Tin0 A0 ⟧ env_args nil args ↦ c ↘ b ->
+               $ᵐ| dm_global p args & c | gc_deps ⍮ gc_stack ↘ kc ->
+               ⟦ ctx_pi Tin0 A0 ⟧ env_tele nil (rev Tout) args ↦ c ⦂ entry_type_value a1 ↘ b ->
                exists i' Rb, per_univ_elem i' Rb b b /\ dmod_has_mem kc x Rb /\
                  forall v0, $*| g & args ++ c :: nil | gc_deps ⍮ gc_stack ↘ v0 ->
                    exists r, kc ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Rb v0 r).
@@ -396,9 +546,16 @@ Proof.
         apply per_gargs_app_intro; [ rewrite !length_app, length_rev; cbn; lia | | constructor ].
         eapply (per_gargs_snoc _ _ _ _ _ _ _ _ _ Ra); [ rewrite length_rev; exact Hl | exact Hargs0 | econstructor; eassumption |].
         apply HRa'; exact Hc. }
-      rewrite env_args_snoc in Hb'.
-      pose proof (functional_eval_exp _ _ _ _ Hb Hb') as <-.
-      exists i', Rb; split; [ exact HRb | split; [ exact Hmt | exact Hred ] ]. }
+      (** the IH's type, at the argument stored at its parameter's
+          closure, against the codomain at it stored at its value *)
+      cbn [rev] in Hb'; rewrite env_tele_snoc in Hb' by (rewrite length_rev; lia).
+      destruct (ext_value_closure_typ _ _ _ _ _ _ _ _ _ _ _ _ HRo (rel_type_of_typ HA1) HcodT Hρ Ha1 HRa
+                  (proj1 (HRa' c c) Hc) Hb Hb') as [Q HQ].
+      destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HQ (proj1 (per_univ_elem_sym _ _ _ _ HQ))) as (Rb0 & HRb0 & _).
+      assert (ERb : Rb0 <~> Rb) by (eapply per_univ_irrel_rel; [ exact HRb0 | eexists; exact HQ | exact HRb ]).
+      eexists _, Rb0; split; [ exact HRb0 |].
+      split; [ apply (dmod_has_mem_iff _ _ Rb); [ exact Hmt | symmetry; exact ERb ] |].
+      intros v0 Hv0; destruct (Hred _ Hv0) as (r & Hr & Hrr); exists r; split; [ exact Hr | apply ERb; exact Hrr ]. }
     assert (Hsel : dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ d_member (dm_global p args) (x :: nil))
       by (eapply eval_sel_global_unsat; [ exact Hm | rewrite length_app; cbn; lia ]).
     split.
@@ -409,9 +566,7 @@ Proof.
     + (** the stored value at the arguments, against the member closure *)
       intros v0 Hv0; pose proof (functional_eval_apps _ _ _ _ Hv0 Hv) as ->.
       exists (d_member (dm_global p args) (x :: nil)); split; [ exact Hsel |].
-      assert (ER : R0 <~> RP) by (eapply per_univ_elem_left_irrel; [ exact HR0 | exact HRP ]).
       destruct (per_univ_elem_pi_inv HRP) as (in_rel & out_rel & Hin & Hout & HEq).
-      assert (Hvv' : RP v v) by (apply ER; exact Hvv).
       pose proof (proj1 (HEq v v) Hvv') as Hpe.
       eapply red_fun; [ exact Hnp | exact HRP | eexists; eexists; exact HRa | exact Hkk | exact Hsel | exact Hra1
                       | rewrite (pi_elements_left _ _ _ _ _ _ Hpe); exact Hra1 |].
@@ -426,45 +581,26 @@ Proof.
       exists i', Rb, fc, r; repeat split; assumption.
 Qed.
 
-(** A term over a telescope, abstracted, applied to arguments related at
-    the telescope: the term at them.  The domains of the [λ]s are the
-    telescope's types, which evaluate there. *)
-Lemma eval_ctx_fn_apps : forall T ρ ρ' M ns ns' r, tele_ass T -> per_gargs (rev T) ρ ρ' ns ns' ->
-    List.length ns = List.length T ->
-    ⟦ M ⟧ env_args ρ ns ↘ r -> exists f, ⟦ ctx_fn T M ⟧ ρ ↘ f /\ $*| f & ns | gc_deps ⍮ gc_stack ↘ r.
-Proof.
-  induction T as [| e T0 IH] using rev_ind; intros * HT Hg Hl HM.
-  - destruct ns; cbn in Hl; [| discriminate ]; exists r; split; [ exact HM | constructor ].
-  - destruct (tele_ass_app_inv _ _ HT) as [HT0 He]; inversion He as [| ? ? [A ->] _]; subst.
-    destruct ns as [| n ns0]; [ rewrite length_app in Hl; cbn in Hl; lia |].
-    rewrite length_app in Hl; cbn in Hl.
-    rewrite rev_app_distr in Hg; cbn [rev List.app] in Hg.
-    inversion Hg; subst.
-    lazymatch goal with H : per_gargs (rev T0) _ _ _ _ |- _ => rename H into Hg0 end.
-    lazymatch goal with H : PER.Definitions.rel_typ _ _ _ _ _ _ |- _ => destruct H as [a a2 Ea _ _] end.
-    change (env_args ρ (n :: ns0)) with (env_args (ρ ↦ n) ns0) in HM.
-    destruct (IH _ _ _ ns0 _ _ HT0 Hg0 ltac:(lia) HM) as (f0 & Hf0 & Ha0).
-    rewrite ctx_fn_app; cbn [ctx_fn].
-    exists (λᵈ a ρ (ctx_fn T0 M)); split; [ constructor; exact Ea | econstructor; [ constructor; exact Hf0 | exact Ha0 ] ].
-Qed.
-
 (** The arguments of a filed module valid against its telescope are related
     to themselves at it, at any environment. *)
-Lemma valid_args_gargs : forall Γ T Ns RΓ, ⊨ T -> ⊨ Γ -> valid_args Γ T Ns -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+Lemma valid_args_gargs : forall Γ T Ns RΓ, ⊨ T -> ⊨ Γ -> valid_args Γ T Ns -> List.Forall (exp_scoped (List.length Γ)) Ns ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     forall ρ ρ', RΓ ρ ρ' -> exists ns ns', ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\ ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ns' /\
       per_gargs (rev T) nil nil ns ns'.
 Proof.
-  intros * HT HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs HNr] HR ρ ρ' Hρ.
+  intros * HT HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs HNr] HNss HR ρ ρ' Hρ.
   pose proof (rel_ctx_wf_app_r _ _ HT) as HT2.
-  destruct (closed_inst_env _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HR _ _ Hρ)
-    as (ns & ns' & RC & RCΓ & Hns & Hns' & HRC & _ & _ & Hbase & Hl1 & Hl2).
+  destruct (closed_inst_env _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HR _ _ Hρ)
+    as (ns & ns' & RC & RCΓ & Hns & Hns' & HRC & _ & _ & Hbase & _ & Hl1 & Hl2).
   exists ns, ns'; split; [ exact Hns |]; split; [ exact Hns' |].
   apply per_gargs_rev_app; [| exact Hl1 ].
   assert (HT2' : ⊨ rev (rev T2) ++ ⋅) by (rewrite rev_involutive, app_nil_r; exact HT2).
   assert (HRC' : EF rev (rev T2) ++ ⋅ ≈ rev (rev T2) ++ ⋅ ∈ per_ctx_env ↘ RC) by (rewrite rev_involutive, app_nil_r; exact HRC).
-  destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HT2' (List.Forall_rev HTa2) HRC' nil nil ns ns'
-              ltac:(rewrite length_rev; exact Hl1) ltac:(rewrite length_rev; exact Hl2) (Hbase nil nil)) as [_ Hg].
-  exact Hg.
+  destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HT2' (List.Forall_rev HTa2) HRC' nil nil
+              (tele_entries nil (rev T2) ns) (tele_entries nil (rev T2) ns')
+              ltac:(rewrite tele_entries_length, length_rev; exact Hl1) ltac:(rewrite tele_entries_length, length_rev; exact Hl2)
+              (Hbase nil nil)) as [_ Hg].
+  rewrite !tele_entries_fst in Hg; exact Hg.
 Qed.
 
 (** ** Terms Evaluating Alike *)
@@ -609,19 +745,21 @@ Lemma filed_lacks : forall Γ p T Φ L A T2 Ns, gc_loc Θm Ξm p = Some (T, Φ) 
     T = L ++ ce_ass A :: T2 -> List.length Ns = List.length T2 ->
     (forall k N B, nth_error Ns k = Some N -> nth_error (tele_insts T2 Id Ns) k = Some B -> Γ ⊨ N : B) ->
     (forall k B, nth_error (tele_insts T2 Id Ns) k = Some B -> exists i : nat, Γ ⊨ B : Typeω@i) ->
+    List.Forall (exp_scoped (List.length Γ)) Ns ->
     modexp_next_param Γ (me_apps (qname_mod p) Ns) A[sb_of_list Id Ns].
 Proof.
-  intros * Hl HΓ -> Hlen HNs HNr R HR ρ Hρ.
+  intros * Hl HΓ -> Hlen HNs HNr HNss R HR ρ Hρ.
   destruct (Hgf _ _ _ Hl) as [(oD & Hm) Hp HT HTa HTs _ _ _ _ _ _ HTrel].
   pose proof (rel_ctx_wf_app_r _ _ HT) as HAT2.
   destruct (rel_ctx_wf_ass_inv HAT2) as (Srt & HS & HA).
   pose proof (rel_ctx_wf_tail HAT2) as HT2.
   destruct (tele_ass_app_inv _ _ HTa) as [_ HTa2]; inversion HTa2 as [| ? ? _ HTa2']; subst.
-  destruct (closed_inst_typ _ _ _ _ _ _ HTa2' HT2 HΓ Hlen HNs HNr HS HA HR _ Hρ) as (ns & a & b & i & RA & Hns & Ha & Hb & HRA).
-  exists (dm_global p ns) b a i RA;
-    [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | econstructor; [ exact Hm | | exact Hb ] | exact Ha
-    | exact (proj1 (per_univ_elem_sym _ _ _ _ HRA)) ].
+  destruct (closed_inst_typ _ _ _ _ _ _ HTa2' HT2 HΓ Hlen HNs HNr HNss HS HA HR _ Hρ) as (ns & a & b & i & RA & Hns & Ha & Hb & HRA).
   pose proof (eval_exps_length _ _ _ Hns) as Hlns.
+  exists (dm_global p ns) b a i RA;
+    [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | econstructor; [ exact Hm | |] | exact Ha
+    | exact (proj1 (per_univ_elem_sym _ _ _ _ HRA)) ].
+  2:{ rewrite rev_app_distr; cbn [rev]; rewrite <- app_assoc, env_tele_app_long by (rewrite length_rev; lia); exact Hb. }
   rewrite rev_app_distr; cbn [rev List.app]; rewrite <- app_assoc; cbn [List.app].
   rewrite nth_error_app2 by (rewrite length_rev; lia).
   rewrite length_rev, Hlns, Hlen, Nat.sub_diag; reflexivity.
@@ -629,11 +767,12 @@ Qed.
 
 (** A filed module at arguments valid against its telescope is valid. *)
 Lemma filed_valid : forall Γ p T Φ Ns, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
+    List.Forall (exp_scoped (List.length Γ)) Ns ->
     Γ ⊨ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns.
 Proof.
-  intros * Hl HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs HNr].
-  revert T1 T2 Hl Hlen HTa2 HTs2 HNs HNr.
-  induction Ns as [| N Ns IH] using rev_ind; intros * Hl Hlen HTa2 HTs2 HNs HNr.
+  intros * Hl HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs HNr] HNss.
+  revert T1 T2 Hl Hlen HTa2 HTs2 HNs HNr HNss.
+  induction Ns as [| N Ns IH] using rev_ind; intros * Hl Hlen HTa2 HTs2 HNs HNr HNss.
   - destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _ _].
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
     pose proof (filed_gval _ _ _ Hl nil nil ltac:(cbn; lia) ltac:(constructor)) as Hd.
@@ -663,11 +802,12 @@ Proof.
     destruct (HNr (List.length Ns) (A[sb_of_list Id Ns]) ltac:(rewrite Hti, nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity))
       as [iA HAr].
     assert (Ex : T1 ++ ce_ass A :: T2' = (T1 ++ ce_ass A :: nil) ++ T2') by (rewrite <- app_assoc; reflexivity).
+    apply List.Forall_app in HNss as [HNss' HNs1]; inversion HNs1 as [| ? ? HNsc _]; subst.
     pose proof (IH (T1 ++ ce_ass A :: nil) T2' ltac:(rewrite <- Ex; exact Hl)
-                  ltac:(lia) HTa2' ltac:(cbn in HTs2; tauto) HNs' HNr') as HH.
+                  ltac:(lia) HTa2' ltac:(cbn in HTs2; tauto) HNs' HNr' HNss') as HH.
     rewrite me_apps_snoc.
     eapply rel_modexp_under_ctx_app; [ exact HH | exact HAr | exact HN |].
-    eapply filed_lacks; [ exact Hl | exact HΓ | reflexivity | lia | exact HNs' | exact HNr' ].
+    eapply filed_lacks; [ exact Hl | exact HΓ | reflexivity | lia | exact HNs' | exact HNr' | exact HNss' ].
 Qed.
 
 Lemma mdesc_type_named_m : forall Θ' Ns M R, mdesc_type (mdesc_named Θ' Ns M R) = mdesc_type R.
@@ -781,11 +921,12 @@ Qed.
     telescope are valid at the types they are looked up at, their reducts
     at them too. *)
 Lemma filed_mem : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
+    List.Forall (exp_scoped (List.length Γ)) Ns ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> mdesc_type R = Some A ->
     valid_mem Γ (me_apps (qname_mod p) Ns) x A (mdesc_reduct R) /\
     exists i : nat, Γ ⊨ A : relevance_sort (mdesc_relevance R) Typeω@i.
 Proof.
-  intros * Hl HΓ Hs Hm Ht.
+  intros * Hl HΓ Hs HNss Hm Ht.
   destruct (filed_mem_desc _ _ _ _ _ _ _ _ Hl Hm Ht) as (R0 & R1 & HR0 & Ha & HrelR & HtR & HrR).
   rewrite HtR in Ht; rewrite HrR, HrelR.
   rewrite mdesc_type_named_m in Ht.
@@ -811,15 +952,15 @@ Proof.
   set (Mn := apps (a_mem (qname_mod p) x) Ns).
   destruct (tele_ass_app_inv _ _ HTa) as [HTa1 _].
   pose proof (rel_ctx_wf_app_r _ _ HT) as HT2.
-  pose proof (gsub_closed_inst _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs) as Hg.
+  pose proof (gsub_closed_inst _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNss) as Hg.
   (** the arguments evaluate *)
   assert (HK : forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ -> exists h, ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h).
   { intros RΓ HR ρ Hρ.
-    destruct (closed_inst_eval _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HR _ Hρ) as (ns & Hns & _).
+    destruct (closed_inst_eval _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HR _ Hρ) as (ns & Hns & _).
     exists (dm_global p ns); exact (eval_apps_filed _ _ _ _ _ _ Hl Hns). }
   remember (mdesc_relevance R0) as r0 eqn:Er; destruct r0.
   2:{ (* a proof member: only its type and its module's value are asked for *)
-    destruct (valid_exp_under_ctx_ctx_pi_at propositional T1 T2 A0 i HT HA0) as [iX HX]; cbn [relevance_sort] in HX.
+    destruct (valid_exp_under_ctx_ctx_pi_at propositional T1 T2 A0 i HTa1 HT HA0) as [iX HX]; cbn [relevance_sort] in HX.
     assert (HXΓ : Γ ⊨ (ctx_pi_at propositional T1 A0)[sb_of_list Id Ns] : Propₘ)
       by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
     split; [| exists 0; exact HXΓ ].
@@ -836,9 +977,9 @@ Proof.
                per_gargs (rev T2) nil nil ns ns /\
                forall v, $*| g & ns | gc_deps ⍮ gc_stack ↘ v -> exists r, dm_global p ns ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ RX v r).
   { intros RΓ HR ρ Hρ.
-    destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr (type_sort_universe iX) HX HR _ Hρ)
+    destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss (type_sort_universe iX) HX HR _ Hρ)
       as (ns & a & b & k & RX & Hns & Ha1 & Hbb & HRX).
-    destruct (valid_args_gargs _ _ _ _ HT HΓ Hs HR _ _ Hρ) as (ns1 & ns2 & Hns1 & Hns2 & Hgs).
+    destruct (valid_args_gargs _ _ _ _ HT HΓ Hs HNss HR _ _ Hρ) as (ns1 & ns2 & Hns1 & Hns2 & Hgs).
     pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
     pose proof (Hfs _ _ _ Hns1 _ Hns) as ->; pose proof (Hfs _ _ _ Hns2 _ Hns) as ->.
     assert (Hlns : List.length ns = List.length T2) by (rewrite (eval_exps_length _ _ _ Hns); lia).
@@ -871,17 +1012,27 @@ Proof.
       apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX);
         [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |].
       intros _ M HM; injection HM as <-.
-      destruct (closed_inst_exp _ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HX HM1 HR _ Hρ)
+      destruct (closed_inst_exp _ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX HM1 HR _ Hρ)
         as (ns' & m & n & a2 & i2 & R2 & Hns' & Hm' & Hn & Ha2 & HR2 & Hmn).
       pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
       pose proof (Hfs _ _ _ Hns' _ Hns) as ->.
       functional_eval_rewrite_clear.
       assert (Hlns : List.length ns = List.length T2) by (rewrite (eval_exps_length _ _ _ Hns); lia).
-      destruct (Hred _ (HevM1 _ _ eq_refl Hlns Hgs2 Hn)) as (r & Hr & Hnr).
+      destruct (HevM1 _ _ eq_refl Hlns Hgs2 Hn) as (v & Hv & Hnv).
+      destruct (Hred _ Hv) as (r & Hr & Hvr).
       apply (mk_rel_mem_reduct _ _ _ _ _ m r); [ exact Hm' | exact Hr |].
       assert (E2 : R2 <~> RX) by (eapply per_univ_elem_right_irrel; [ exact HR2 | exact Haa ]).
       assert (HPX : PER RX) by (eapply per_elem_PER; exact Haa).
-      etransitivity; [ apply E2; exact Hmn | exact Hnr ]. }
+      (** the reduct's value, against the stored value applied, at the type
+          over the outer telescope *)
+      destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss (type_sort_universe iX) HX HR _ Hρ)
+        as (ns3 & a3 & b3 & k3 & RX3 & Hns3 & Ha3 & Hb3 & HRX3).
+      pose proof (Hfs _ _ _ Hns3 _ Hns) as ->.
+      functional_eval_rewrite_clear.
+      destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ HRX3)) HRX3) as (Rb3 & HRb3 & _).
+      assert (E3 : RX <~> Rb3) by (eapply per_univ_irrel_rel; [ exact Haa | eexists; exact HRX3 | exact HRb3 ]).
+      pose proof (proj2 (E3 _ _) (Hnv _ _ _ _ Hb3 Hb3 HRb3)) as Hnv'.
+      etransitivity; [ apply E2; exact Hmn | etransitivity; [ exact Hnv' | exact Hvr ] ]. }
   - (* an axiom or an abstract definition: its name at the arguments, or,
        read bare, none *)
     destruct R1 as [r1 A1 [?|] | | |]; cbn in HredR1, HtyR1; try discriminate.
@@ -891,7 +1042,7 @@ Proof.
     assert (Hiff : forall σ ρ r, ⟦ (a_mem K x)[σ] ⟧ ρ ↘ r <-> ⟦ Mn[σ] ⟧ ρ ↘ r).
     { intros σ ρ r; subst K Mn; cbn [exp_sub]; rewrite me_apps_sub, qname_mod_sub, apps_sub; cbn [exp_sub].
       rewrite qname_mod_sub; apply (eval_mem_filed _ _ _ _ _ _ _ Hmo Hpe); rewrite length_map; exact HlNs. }
-    pose proof (filed_valid _ _ _ _ _ Hl HΓ Hs) as HKv.
+    pose proof (filed_valid _ _ _ _ _ Hl HΓ Hs HNss) as HKv.
     pose proof (rel_mem_of_valid_mem _ _ _ _ _ _ HKv HS0) as HKx.
     constructor; [ exists iX; exact (rel_type_of_typ HXΓ) | |].
     + intros M HM; injection HM as <-; exact (valid_exp_eval_iff _ _ _ _ HKx Hiff).

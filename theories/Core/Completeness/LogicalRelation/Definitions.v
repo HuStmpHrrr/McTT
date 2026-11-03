@@ -622,7 +622,12 @@ Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_r
     its δ-reduct at arguments for the outer part of [T] (read as a filed
     entry's term part is, [mdesc_term_part_ats]), if it has one, a term over that
     part instantiated, valid there, whose value at arguments is, for a
-    relevant member, the member's value applied to them.  The type is of
+    relevant member, related at the type there to the member's value
+    applied to them: the value applied evaluates its body at its
+    arguments stored at the values of the domains ([eval_app_fn]), the
+    reduct at the telescope's closures ([env_tele]), and a proof kept in
+    the body keeps the environment it is met in, so the two values are
+    related, not equal.  The type is of
     the member's sort [mdesc_relevance R0], and so are the [Π]s over the
     telescope.  A member tagged propositional is the proof [⋆ᵈ]
     ([global_member_value_proof]), which its reduct's value is not: nothing
@@ -644,7 +649,10 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
        exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ /\
          forall ns m, mdesc_relevance R0 = relevant ->
            List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
-           $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ m)
+           exists v, $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ v /\
+             Dom m ≈ v ∈ per_head (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)
+                                  (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)
+                                  (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))
     (** The value is the member's stored value, closed over the telescope,
         which selection at arguments for all of it applies to them
         ([eval_sel_global_apps]); not the member closure that selection

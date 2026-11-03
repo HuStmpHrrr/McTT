@@ -100,18 +100,6 @@ Proof.
   apply (Hy Rr); [ exact HΓr | etransitivity; eassumption ].
 Qed.
 
-(** An element PER of a type related to [a] is the element PER [a] has. *)
-Lemma per_univ_irrel_rel : forall i R a a' j t k Q t',
-    per_univ_elem i R a a' -> Dom a ≈ t ∈ per_univ j -> per_univ_elem k Q t t' -> (R <~> Q).
-Proof.
-  intros * HR [S HS] HQ.
-  destruct (per_univ_elem_sym _ _ _ _ HS) as [HS' _].
-  destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HS' HR) as (T & HT & _).
-  pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HT HQ) as E1.
-  pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HR HT) as E2.
-  rewrite E2; exact E1.
-Qed.
-
 (** A type along the walk: its value moved along the substitution at the
     left environment, against its value at the right one; elements related
     there are related at its head PER over any environment of the right
