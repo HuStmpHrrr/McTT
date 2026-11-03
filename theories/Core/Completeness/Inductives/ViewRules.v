@@ -56,9 +56,12 @@ Proof.
     destruct (Hx 0) as [L0 HL0 _ _]; inversion HL0.
   - match goal with HE : _ <~> per_prop |- _ => apply HE in Hx end.
     exfalso; pose proof (per_prop_left _ _ Hx) as Hl; discriminate Hl.
-  - match goal with HE : _ <~> per_proof |- _ => apply HE in Hx end.
-    exfalso; destruct Hx as [Hx _]; discriminate Hx.
-  - match goal with HE : _ <~> per_placeholder |- _ => apply HE end; exact I.
+  - (** A type of levels is no constructor's type. *)
+    match goal with HE : _ <~> per_level_sort |- _ => apply HE in Hx end.
+    exfalso; unfold per_level_sort, per_level_sort_at in Hx; destruct Hx as [[R0 [a0 [Hp | Hp]]] _]; inversion Hp.
+  - (** A constructor's value is no proof: it does not read back as one. *)
+    match goal with HE : _ <~> per_proof |- _ => apply HE in Hx end.
+    exfalso; destruct Hx as [Hx _]; destruct (Hx 0) as [Mx HMx]; inversion HMx.
   - match goal with HE : _ <~> pi_elements _ _ _ _, HB : forall c c' (e : in_rel c c'), rel_mod_eval _ _ _ _ _ _ |- _ =>
       apply (proj2 (HE _ _)); pose proof (proj1 (HE _ _) Hx) as Hx'; cbn beta in Hx'; rename HB into HBo end.
     destruct Hx' as [Hra Hrb Hx'].
@@ -133,21 +136,21 @@ Proof.
         match goal with H1 : ind_lookup _ _ qh = Some ?D1 |- _ => rewrite Hq in H1; injection H1 as <- end;
         match goal with H1 : ind_member Dq kq = Some ?M1 |- _ => rewrite HM in H1; injection H1 as <- end;
         try congruence;
-      destruct (IH ρ (xs ++ n :: nil) (xs' ++ n :: nil) l Hq HM Hh ltac:(rewrite !List.length_app, HL; reflexivity) Er)
+      destruct (IH ρ (xs ++ n :: nil) (xs' ++ n :: nil) l Hq HM Hh ltac:(rewrite ?List.length_app, HL; reflexivity) Er)
         as (ms & Lms & -> & Er');
       exists (n :: ms); rewrite <- !List.app_assoc in *; split; [ cbn; lia | split; [ reflexivity |] ];
       eapply eval_app_args_relevant;
         [ cbn [arg_relevance] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har | exact En
         | eapply eval_app_con; [ exact Hq | exact HM | exact Hh | eassumption | lia ] | exact Er' ] end.
-  - match goal with Har : arg_relevance _ _ _ = propositional, Eg : eval_app _ _ _ ⋆ᵈ ?g,
+  - match goal with Har : arg_relevance _ _ _ = propositional, Eg : eval_app _ _ _ (⋆ᵈ⟨N, ρ⟩) ?g,
                     Er : eval_app_args _ _ ?g Ns ρ l |- _ =>
       inversion Eg; subst;
         match goal with H1 : ind_lookup _ _ qh = Some ?D1 |- _ => rewrite Hq in H1; injection H1 as <- end;
         match goal with H1 : ind_member Dq kq = Some ?M1 |- _ => rewrite HM in H1; injection H1 as <- end;
         try congruence;
-      destruct (IH ρ (xs ++ ⋆ᵈ :: nil) (xs' ++ ⋆ᵈ :: nil) l Hq HM Hh ltac:(rewrite !List.length_app, HL; reflexivity) Er)
+      destruct (IH ρ (xs ++ ⋆ᵈ⟨N, ρ⟩ :: nil) (xs' ++ ⋆ᵈ⟨N, ρ⟩ :: nil) l Hq HM Hh ltac:(rewrite ?List.length_app, HL; reflexivity) Er)
         as (ms & Lms & -> & Er');
-      exists (⋆ᵈ :: ms); rewrite <- !List.app_assoc in *; split; [ cbn; lia | split; [ reflexivity |] ];
+      exists (⋆ᵈ⟨N, ρ⟩ :: ms); rewrite <- !List.app_assoc in *; split; [ cbn; lia | split; [ reflexivity |] ];
       eapply eval_app_args_proof;
         [ cbn [arg_relevance] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har
         | eapply eval_app_con; [ exact Hq | exact HM | exact Hh | eassumption | lia ] | exact Er' ] end.
@@ -159,7 +162,7 @@ Lemma eval_app_args_con_view_uparams : forall p D j Mj qc kc Is vm c, ind_lookup
     ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
     forall Us xs ρ g, List.length xs + List.length Us = ind_nu D -> List.length xs < ind_nu D ->
     eval_app_args gc_deps gc_stack (d_con p j c xs) Us ρ g ->
-    exists us cs, ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ us /\ ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (xs ++ us) ↘ cs /\
+    exists us cs, ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ us /\ ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D (xs ++ us) ↘ cs /\
       g = d_con qc kc c cs.
 Proof.
   intros p D j Mj qc kc Is vm c Hl HM Hh; induction Us as [| U Us IH]; intros xs ρ g Hlen Hlt Ea; [ cbn in Hlen; lia |].
