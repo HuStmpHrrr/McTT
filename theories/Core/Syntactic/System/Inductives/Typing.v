@@ -129,6 +129,68 @@ Proof.
       apply exp_wk_wk_eq; intros z; cbn; unfold s; lia.
 Qed.
 
+(** The lookup behind [wf_vars_tele_gen]: each variable of the telescope
+    [Δ], after [Φ], is a variable of the context at its type there. *)
+Lemma tele_vars_lookup_gen : forall Φ Δ ρ τ Γ0 n,
+    tele_ass Δ -> ctx_mvc Δ -> ctx_scoped n Δ ->
+    (forall y, y < n -> sentry_exp (τ y) = (sentry_exp (ρ y))[wk_shiftn (List.length Φ + List.length Δ)]ʷ) ->
+    forall k N T, List.nth_error (vars_from (List.length Φ) (List.length Δ)) k = Some N ->
+      List.nth_error (tele_insts Δ τ (vars_from (List.length Φ) (List.length Δ))) k = Some T ->
+      exists x, N = #x /\ Φ ++ tele_sub Δ ρ ++ Γ0 ∋ #x : T.
+Proof.
+  intros * Hass Hmv Hs Hτ k N T HN HT.
+  apply vars_from_nth_error in HN as [Hk ->].
+  apply tele_insts_nth in HT as (A & HA & ->).
+  destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
+  assert (HΔeq : Δ = List.rev l2 ++ ce_ass A :: List.rev l1)
+    by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
+  assert (Hlen : List.length Δ = List.length l2 + S k)
+    by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
+  assert (HsA : exp_scoped (k + n) A).
+  { rewrite HΔeq in Hs; apply ctx_scoped_app in Hs as [_ Hs]; cbn in Hs; destruct Hs as [HsA _].
+    rewrite List.length_rev in HsA; congruence. }
+  assert (HmA : exp_mvc 0 A).
+  { unfold ctx_mvc in Hmv; rewrite HΔeq in Hmv; apply List.Forall_app in Hmv as [_ Hmv].
+    apply List.Forall_cons_iff in Hmv as [HmA _]; exact HmA. }
+  set (s := List.length Φ + List.length l2 + 1).
+  replace (A[sb_of_list τ (List.firstn k (vars_from (List.length Φ) (List.length Δ)))])
+    with (A[sb_qn k ρ][wk_shiftn s]ʷ).
+  - eexists; split; [ reflexivity |].
+    replace (List.length Φ + (List.length Δ - 1 - k)) with (0 + List.length (Φ ++ tele_sub (List.rev l2) (sb_qn (S k) ρ)))
+      by (rewrite List.length_app, length_tele_sub, List.length_rev; lia).
+    replace (A[sb_qn k ρ][wk_shiftn s]ʷ)
+      with (A[sb_qn k ρ][↑]ʷ[wk_shiftn (List.length (Φ ++ tele_sub (List.rev l2) (sb_qn (S k) ρ)))]ʷ)
+      by (rewrite exp_wk_wk; apply exp_wk_wk_eq; intros x; cbn; rewrite List.length_app, length_tele_sub, List.length_rev; unfold s; lia).
+    rewrite HΔeq, tele_sub_app; cbn [tele_sub centry_sub List.length]; rewrite List.length_rev, Hl1.
+    rewrite <- List.app_assoc; cbn [List.app]; rewrite List.app_assoc.
+    apply ctx_lookup_app_r; constructor.
+  - rewrite <- exp_sub_of_wk, exp_sub_sub; symmetry; eapply exp_scoped_mvc_agree; [ exact HsA | exact HmA |].
+    intros x Hx; cbn [sb_compose].
+    destruct (Nat.lt_ge_cases x k) as [Hxk | Hxk].
+    + rewrite sb_of_list_firstn_vars by lia; rewrite sb_qn_lt by exact Hxk; cbn; f_equal; unfold s; lia.
+    + replace x with (List.length (List.firstn k (vars_from (List.length Φ) (List.length Δ))) + (x - k)) at 1
+        by (rewrite List.length_firstn, length_vars_from; lia).
+      rewrite sb_of_list_ge, Hτ by lia.
+      rewrite sb_qn_ge by exact Hxk.
+      rewrite <- sentry_exp_sub, <- sentry_exp_wk, exp_sub_of_wk, exp_wk_wk.
+      apply exp_wk_wk_eq; intros z; cbn; unfold s; lia.
+Qed.
+
+(** The uniform parameters' own variables, at the parameters' types:
+    variables of the parameters' context ([vlookup]). *)
+Corollary uniform_param_vars_lookup : forall D, tele_ass (ind_uparams D) -> ctx_mvc (ind_uparams D) ->
+    ctx_scoped 0 (ind_uparams D) ->
+    forall k N T, List.nth_error (vars_from 0 (ind_nu D)) k = Some N ->
+      List.nth_error (tele_insts (ind_uparams D) Id (vars_from 0 (ind_nu D))) k = Some T ->
+      exists x, N = #x /\ ind_uparams D ∋ #x : T.
+Proof.
+  intros * Hass Hmv Hs k N T HN HT.
+  change 0 with (List.length (@nil centry)) in HN, HT; unfold ind_nu in HN, HT.
+  destruct (tele_vars_lookup_gen nil (ind_uparams D) Id Id nil 0 Hass Hmv Hs ltac:(intros; lia) k N T HN HT) as (x & -> & Hx).
+  rewrite tele_sub_id, List.app_nil_r in Hx; cbn [List.app] in Hx.
+  exists x; split; [ reflexivity | exact Hx ].
+Qed.
+
 (** The closed telescope, at the identity base. *)
 Corollary wf_vars_tele_closed : forall Θ Ξ Φ Δ,
     tele_ass Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> ⊢ Θ ⍮ Ξ ⍮ Φ ++ Δ ->

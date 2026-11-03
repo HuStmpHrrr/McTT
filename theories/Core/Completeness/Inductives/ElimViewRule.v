@@ -54,6 +54,33 @@ Record elim_exp_value (p : qname) (Us : list exp) (j : nat) (Bks : list eblock) 
 Lemma elim_exp_value_of : forall p Us j Bks M ρ r, ⟦ a_elim relevant p Us j Bks M ⟧ ρ ↘ r -> elim_exp_value p Us j Bks M ρ r.
 Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
 
+(** A valid group's uniform parameters related to themselves are an
+    eliminator's uniform parameters ([elim_ups_ok]) at their own canonical
+    relations: [ups_ok] at the parameters' own context, its variables at
+    the parameters' environment. *)
+Lemma group_ups_ok : forall VP q G, valid_groups VP -> VP q G ->
+    forall u, per_gargs (List.rev (ind_uparams G)) nil nil u u -> List.length u = ind_nu G ->
+    elim_ups_ok q G u (canon_nparams_rel G u) (canon_args_rel G u) (canon_doms_rel G u) u u.
+Proof.
+  intros VP q G HP HPG u Hgu Hu.
+  pose proof (valid_groups_valid VP HP q G HPG) as Hg.
+  pose proof (valid_group_valid _ _ Hg) as HD; pose proof (valid_group_closed _ _ Hg) as Hc.
+  pose proof (valid_ind_decl_uparams _ HD) as HUD.
+  destruct (rel_ctx_wf_per_ctx_env HUD) as [RU HRU].
+  assert (HVs : forall k N T, List.nth_error (vars_from 0 (ind_nu G)) k = Some N ->
+             List.nth_error (tele_insts (ind_uparams G) Id (vars_from 0 (ind_nu G))) k = Some T -> ind_uparams G ⊨ N : T).
+  { intros k N T HN HT.
+    destruct (uniform_param_vars_lookup G (decl_closed_ass _ Hc) (decl_mvc_uparams _ (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)))
+                (decl_closed_uparams _ Hc) k N T HN HT) as (x & -> & Hx).
+    exact (valid_exp_under_ctx_vlookup Hx HUD). }
+  pose proof (vars_from_scoped 0 (ind_nu G) (List.length (ind_uparams G)) ltac:(unfold ind_nu; lia)) as HVss.
+  pose proof (uparams_rel_env G HD u u Hgu Hu RU HRU) as HC.
+  pose proof (eval_uvars_components G u nil nil 0 0 Hu eq_refl) as HE.
+  unfold ind_uvars in HE; cbn [Nat.add components_env env_tele] in HE.
+  exact (ups_ok VP q G HP HPG (ind_uparams G) RU HRU HUD RU HRU (vars_from 0 (ind_nu G)) (length_vars_from _ _) HVs HVss
+           (decl_env G u) u HC HE u u HC HC Hu Hu).
+Qed.
+
 Section ElimViewRule.
   #[local] Set Default Proof Using "All".
   Variable (VP : qname -> ind_decl -> Prop) (p : qname) (D : ind_decl).
