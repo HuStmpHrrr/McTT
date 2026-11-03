@@ -931,6 +931,25 @@ Proof.
     + rewrite List.skipn_skipn; apply IH; [ exact Hk | rewrite List.length_skipn; lia | exact Eb | lia ].
 Qed.
 
+(** The values of a branch's variables, of any group's eliminator: its
+    non-uniform parameters, its arguments and its recursive results. *)
+Lemma branch_entries_fst : forall D Mj p X As ρm gs ns vs ihs,
+    List.map fst (branch_entries D Mj p X As ρm gs ns vs ihs) = ns ++ vs ++ ihs.
+Proof.
+  intros; unfold branch_entries; rewrite !List.map_app, tele_entries_fst; f_equal; f_equal.
+  - generalize (env_extend_typed (decl_env D X) (tele_entries (decl_env D X) (List.rev (im_nparams Mj)) ns)) as ρ.
+    revert gs; induction vs as [| v vs IH]; intros [| [] gs] ρ; cbn; f_equal; apply IH.
+  - generalize (ihs_types D p X ρm As (env_extend_typed (decl_env D X) (tele_entries (decl_env D X) (List.rev (im_nparams Mj)) ns)) gs vs)
+      as ts.
+    induction ihs as [| ih ihs IH]; intros ts; cbn; f_equal; apply IH.
+Qed.
+
+(** A branch's environment, as its values combined with their types. *)
+Lemma branch_entries_combine : forall ρ D Mj p X As ρm gs ns vs ihs,
+    env_extend_typed ρ (List.combine (ns ++ vs ++ ihs) (List.map snd (branch_entries D Mj p X As ρm gs ns vs ihs)))
+    = env_extend_typed ρ (branch_entries D Mj p X As ρm gs ns vs ihs).
+Proof. intros; rewrite <- (branch_entries_fst D Mj p X As ρm gs ns vs ihs) at 1; rewrite combine_map_fst_snd; reflexivity. Qed.
+
 (** A propositional entry of a branch's context is an argument's. *)
 Lemma branch_entry_sort_propositional_range : forall D gs x, bctx_rf D gs x = propositional ->
     cargs_nrec D gs <= x /\ x < cargs_nrec D gs + List.length gs.
@@ -2589,36 +2608,38 @@ Section CrossElim.
                 Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot).
 
   (** *** Related Elements Eliminate to Related Values *)
+  #[local] Abbreviation adm := (adm_uparams D u0 nr ar dr).
+
   Theorem cross_elim_all :
-    (forall j u u' ns ns' x x', G j u u' ns ns' x x' ->
+    (forall j u u' ns ns' x x', G j u u' ns ns' x x' -> adm u -> adm u' ->
        forall i', List.nth_error vm i' = Some j -> cross_member_results i' j u u' ns ns' x x') /\
-    (forall k u u' pre pre' gs vs vs',
-       con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
-       forall gs', cargs_correspond vm gs' gs -> cross_args_vals k u u' pre pre' gs' gs vs vs') /\
-    (forall k u u' pre pre' t x x',
-       rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t x x' ->
-       forall t', shape_correspond vm t' t -> cross_arg_vals k u u' pre pre' t' t x x') /\
-    (forall k u u' pre pre' t f c f' c',
-       rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' t f c f' c' ->
-       forall t', shape_correspond vm t' t -> cross_app_vals k u u' pre pre' t' t f c f' c').
+    (forall k u u' pre pre' Ts gs vs vs',
+       con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts gs vs vs' -> adm u -> adm u' ->
+       forall gs', cargs_correspond vm gs' gs -> cross_args_vals k u u' pre pre' Ts gs' gs vs vs') /\
+    (forall k u u' pre pre' Ts t x x',
+       rec_arg_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t x x' -> adm u -> adm u' ->
+       forall t', shape_correspond vm t' t -> cross_arg_vals k u u' pre pre' Ts t' t x x') /\
+    (forall k u u' pre pre' Ts t f c f' c',
+       rec_arg_app_rel p D (admissible_index_at D u0 nr) nr ar dr k u u' pre pre' Ts t f c f' c' -> adm u -> adm u' ->
+       forall t', shape_correspond vm t' t -> cross_app_vals k u u' pre pre' Ts t' t f c f' c').
   Proof.
     pose proof (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
     apply ind_rel_mut_ind_all.
     - (** A constructor: the container's wrapped branch against the
           group's, moved to the indices. *)
-      intros * HM Hrv Href Hn Hcn Lb Lb' Hs Hs' Ha Hia IH i' Hvi.
+      intros * HM Hrv Href Hn Hcn Lb Lb' Hs Hs' Ha Hia IH Hau Hau' i' Hvi.
       destruct (cross_member i' k Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
       pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
       assert (HrvI : im_is_rview Mi' = false) by (rewrite <- (view_member_is_rview _ _ _ _ _ _ _ _ _ Hvmb); exact Hrv).
       destruct (view_member_cons' _ _ _ _ _ _ _ _ _ Hvmb c gs Hcn) as (gs' & Hc' & Hcorr).
-      destruct (IH gs' Hcorr) as [w ihs Ew Ei Hcr].
+      destruct (IH Hau Hau' gs' Hcorr) as [w ihs Ew Ei Hcr].
       destruct (HbB _ _ HMi' HrvI) as [bb Hbb]; destruct (HBks _ _ HM Hrv) as [ba Hba].
       destruct (brs_names_lookup _ _ _ _ (HnaB _ _ _ HMi' Hbb) Hc') as (nb & Bb & HBb & HinB).
       destruct (brs_names_lookup _ _ _ _ (valid_blocks_names _ _ _ _ _ _ HBk _ _ _ HM Hba) Hcn) as (na & Ba & HBa & HinA).
       pose proof (HarB _ _ _ _ _ _ _ HMi' Hbb Hc' HinB) as Hnb.
       pose proof (valid_blocks_arity _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HM Hba Hcn HinA) as Hna.
       destruct (self_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
-      destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv Lv'].
+      destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv Lv'].
       pose proof (cargs_correspond_len _ _ _ Hcorr) as Lgs.
       pose proof (view_member_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
       match goal with |- cross_member_results _ _ _ _ _ _ (d_con _ _ _ (?bs ++ ?vs)) (d_con _ _ _ (?bs' ++ ?vs')) =>
@@ -2626,8 +2647,19 @@ Section CrossElim.
           by (eapply ind_rel_con; [ exact HM | exact Hrv | exact Href | exact Hn | exact Hcn | exact Lb | exact Lb' | exact Hs
                                  | exact Hs' | exact Ha | exact Hia ]) end.
       pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs Hs') as Hm.
-      destruct (Hbr_x i' Mi' k Mk bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k'0 HMi' HrvI Hvi HM Hbb Hba Hc' Hcn HBb HBa
-                  Hm Hcr) as (r & r' & Er & Er' & Hrr).
+      (** The branches' variables read back at the types each eliminator
+          stores them at: the container's by its own, the group's by the
+          group's own recursive results ([branch_entries_readable]). *)
+      pose proof (Hcbr_x i' Mi' k Mk c gs' gs u u' bs bs' vs vs' w ihs hd k'0 HMi' HrvI Hvi HM Hc' Hcn Hm Hcr) as Bc.
+      destruct (proj1 (proj2 self_elim_all) _ _ _ _ _ _ _ _ _ Hia Hau Hau') as (ihsL & ihsR & EL & ER & HLR).
+      assert (ihsR = ihs) as -> by (eapply functional_eval_ihs; eassumption).
+      pose proof (nparams_rel_trans p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ _
+                    (tsym _ _ HM _ _ Hs) (nparams_rel_trans p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ _ Hn Hs'))
+        as Hss.
+      destruct (XS branch_entries_readable _ _ _ _ _ _ _ _ _ _ _ _ Hau Hau' HM Hcn Hss Ha Hia HLR) as [_ Bg].
+      destruct (Hbr_x i' Mi' k Mk bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k'0 _ _ HMi' HrvI Hvi HM Hbb Hba Hc' Hcn HBb HBa
+                  Hm Hcr Bc Bg) as (r & r' & Er & Er' & Hrr).
+      rewrite branch_entries_combine in Er, Er'.
       apply (cross_member_elim _ _ _ _ _ _ _ _ Mi' Mk r r' HMi' HrvI HM Hrv).
       + eapply eval_elim_con; [ exact Hq | exact HMi' | rewrite <- (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb HrvI); exact Href | exact Hq'
                               | exact HMq | exact Hc' | rewrite List.length_app; unfold im_np; lia | exact Hbb | exact HBb
@@ -2641,7 +2673,7 @@ Section CrossElim.
         * rewrite firstn_app_exact, skipn_app_exact, Hnuq by (unfold im_np; lia); exact Er'.
       + apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hm (tsym _ _ HM _ _ Hs) (tsym _ _ HM _ _ Hs')); exact Hrr.
     - (** A neutral: both stuck, their readbacks agree. *)
-      intros * HM Hrv Href Hn L1 L2 Hs1 Hs2 He i' Hvi.
+      intros * HM Hrv Href Hn L1 L2 Hs1 Hs2 He _ _ i' Hvi.
       assert (Hcur : G k u u' ns ns' (⇑ (d_ind hd k'0 as1) m0) (⇑ (d_ind hd k'0 as2) m'))
         by (eapply ind_rel_neut; [ exact HM | exact Hrv | exact Href | exact Hn | exact L1 | exact L2 | exact Hs1 | exact Hs2
                                  | exact He ]).
@@ -2649,7 +2681,7 @@ Section CrossElim.
                (Hbot_x i' k Mk hd k'0 as1 as2 m0 m' u u' ns ns' Hvi HM Hrv Hcur)).
     - (** A record view: the container's is one of the same record and
           fields, its fields' results against the group's fields'. *)
-      intros * HM Hhr Hnp Hcs Hp Hp' Ha Hia IH i' Hvi.
+      intros * HM Hhr Hnp Hcs Hp Hp' Ha Hia IH Hau Hau' i' Hvi.
       destruct (cross_member i' k Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
       pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
       assert (HrvI : im_is_rview Mi' = true)
@@ -2663,28 +2695,28 @@ Section CrossElim.
       unfold ind_con in Hc'; rewrite Hcs' in Hc'; cbn in Hc'.
       destruct (String.eqb c rview_con) eqn:Ec; [| discriminate Hc' ]; apply String.eqb_eq in Ec; subst c.
       injection Hc' as ->.
-      destruct (IH gs' Hcorr) as [w ihs Ew Ei Hcr].
+      destruct (IH Hau Hau' gs' Hcorr) as [w ihs Ew Ei Hcr].
       exact (cross_member_rview _ _ _ _ _ _ _ _ Mi' Mk qr Is' Is0 fl rview_con gs' rview_con gs vs vs' w ihs
                HMi' Hh' Hcs' HM Hhr Hcs Hp Hp' Ew Ei Hcr).
-    - intros k0 u u' pre pre' [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
+    - intros k0 u u' pre pre' Ts _ _ [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
       try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
-      exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ nil nil ltac:(constructor) ltac:(constructor) ltac:(constructor)).
-    - intros * Hia IH [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
+      exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ _ nil nil ltac:(constructor) ltac:(constructor) ltac:(constructor)).
+    - intros * Hia IH Hau Hau' [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
       try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
-      destruct (IH gs' Hco) as [w ihs Ew Ei Hcr].
-      exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ w ihs ltac:(constructor; exact Ew) ltac:(constructor; exact Ei)
+      destruct (IH Hau Hau' gs' Hco) as [w ihs Ew Ei Hcr].
+      exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ _ w ihs ltac:(constructor; exact Ew) ltac:(constructor; exact Ei)
                ltac:(constructor; exact Hcr)).
-    - intros * Hsh IHsh Hia IHia [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
+    - intros * Hsh IHsh Hia IHia Hau Hau' [| [rA' A' | t'] gs'] Hco; cbn in Hco; try contradiction;
       try (match type of Hco with _ = _ /\ cargs_correspond _ _ _ => destruct Hco as [_ Hco] end).
       + (** Nested through: the group's own results. *)
-        destruct (IHia gs' Hco) as [w ihs Ew Ei Hcr].
-        destruct (proj1 (proj2 (proj2 self_elim_all)) _ _ _ _ _ _ _ _ Hsh) as (rs0 & rs & _ & Eh & _).
-        exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ w (rs ++ ihs) ltac:(constructor; exact Ew)
+        destruct (IHia Hau Hau' gs' Hco) as [w ihs Ew Ei Hcr].
+        destruct (proj1 (proj2 (proj2 self_elim_all)) _ _ _ _ _ _ _ _ _ Hsh Hau Hau') as (rs0 & rs & _ & Eh & _).
+        exact (mk_cross_args_vals _ _ _ _ _ _ _ _ _ _ w (rs ++ ihs) ltac:(constructor; exact Ew)
                  ltac:(econstructor; [ exact Eh | exact Ei ]) ltac:(econstructor; [ exact Eh | exact Hcr ])).
       + destruct Hco as (Hm & Hd & Hco).
-        destruct (IHia gs' Hco) as [w ihs Ew Ei Hcr].
-        destruct (IHsh t' (shape_correspond_of _ _ _ Hm Hd)) as [rs rs' Eh Eh' Hhh].
-        refine (mk_cross_args_vals _ _ _ _ _ _ _ _ _ (rs ++ w) (rs' ++ ihs) ltac:(econstructor; [ exact Eh | exact Ew ])
+        destruct (IHia Hau Hau' gs' Hco) as [w ihs Ew Ei Hcr].
+        destruct (IHsh Hau Hau' t' (shape_correspond_of _ _ _ Hm Hd)) as [rs rs' Eh Eh' Hhh].
+        refine (mk_cross_args_vals _ _ _ _ _ _ _ _ _ _ (rs ++ w) (rs' ++ ihs) ltac:(econstructor; [ exact Eh | exact Ew ])
                   ltac:(econstructor; [ exact Eh' | exact Ei ]) _).
         apply cross_fields_rec; [| | exact Hhh | exact Hcr ].
         * rewrite (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Eh D' Hq HlcQ).
@@ -2692,21 +2724,21 @@ Section CrossElim.
                              cross_member (S (ptyp_mem t)) t' t 0 (fun _ _ _ => Nat.lt_succ_diag_r _) (shape_correspond_of _ _ _ Hm Hd)).
         * exact (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Eh' D Hl Hlc).
     - (** The end of a shape. *)
-      intros * Hb Hb' Ok Ok' Hr IHr [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
-      destruct (IHr j' Hsc) as [Mi' Mj r r' HMi' HrvI HMj Hrv Er Er' Hrr
+      intros * Hb Hb' Ok Ok' Hr IHr Hau Hau' [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
+      destruct (IHr Hau Hau' j' Hsc) as [Mi' Mj r r' HMi' HrvI HMj Hrv Er Er' Hrr
                               | Mi' Mj qr Is' Is0 fl c' gs' c gs ws ws' rs rs' HMi' Hh' Hcs' HMj Hh0 Hcs Ep Ep' Ei Ei' Hcr].
-      + exact (mk_cross_arg_vals _ _ _ _ _ _ _ _ _ (r :: nil) (r' :: nil) ltac:(eapply eval_ih_self; eassumption)
+      + exact (mk_cross_arg_vals _ _ _ _ _ _ _ _ _ _ (r :: nil) (r' :: nil) ltac:(eapply eval_ih_self; eassumption)
                  ltac:(eapply eval_ih_self; eassumption)
                  ltac:(eapply cross_result_self; [ exact HMi' | exact HrvI | exact HMj | exact Hrv | exact Hb | exact Hb' | exact Hrr ])).
-      + refine (mk_cross_arg_vals _ _ _ _ _ _ _ _ _ rs rs' _ _ _).
+      + refine (mk_cross_arg_vals _ _ _ _ _ _ _ _ _ _ rs rs' _ _ _).
         * eapply eval_ih_rview; [ exact Hq | exact HMi' | exact Hh' | exact Hcs' | exact Ep | exact Ei ].
         * eapply eval_ih_rview; [ exact Hl | exact HMj | exact Hh0 | exact Hcs | exact Ep' | exact Ei' ].
         * eapply cross_result_rview; [ exact HMi' | exact Hh' | exact Hcs' | exact HMj | exact Hh0 | exact Hcs | exact Ep | exact Ep'
                                      | exact Hcr ].
     - (** A function shape: the families, at each leaf path. *)
-      intros * Hf IH _ _ [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
-      match goal with |- cross_arg_vals _ _ _ _ _ _ (pt_pi _ ?t) ?f ?f' =>
-        refine (mk_cross_arg_vals _ _ _ _ _ _ _ _ _
+      intros * Hf IH _ _ Hau Hau' [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
+      match goal with |- cross_arg_vals _ _ _ _ _ _ _ (pt_pi _ ?t) ?f ?f' =>
+        refine (mk_cross_arg_vals _ _ _ _ _ _ _ _ _ _
                   (List.map (fun i => d_ihfn ρb VBb qc ub t' i f) (List.seq 0 (List.length (shape_leaves (rview_leaves D') 0 t'))))
                   (List.map (fun i => d_ihfn C1 Bks p u0 t i f') (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))))
                   ltac:(eapply eval_ih_pi; exact Hq) ltac:(eapply eval_ih_pi; exact Hl) _) end.
@@ -2714,13 +2746,13 @@ Section CrossElim.
         [| apply List.Forall_forall; intros r0 Hr0; apply List.in_map_iff in Hr0 as (i0 & <- & _); reflexivity
          | apply List.Forall_forall; intros r0 Hr0; apply List.in_map_iff in Hr0 as (i0 & <- & _); reflexivity ].
       intros c c' Hcc.
-      destruct (IH c c' Hcc t' Hsc) as [fc fc' rcs rcs' Ef Ef' Er Er' Hrr].
+      destruct (IH c c' Hcc Hau Hau' t' Hsc) as [fc fc' rcs rcs' Ef Ef' Er Er' Hrr].
       econstructor; [ exact Ef | exact Ef' | | | exact Hrr ].
       + exact (ihfn_app _ _ _ _ _ _ _ _ _ _ Ef Er (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Er D' Hq HlcQ)).
       + exact (ihfn_app _ _ _ _ _ _ _ _ _ _ Ef' Er' (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Er' D Hl Hlc)).
-    - intros * Ef Ef' Hsh IHsh t' Hsc.
-      destruct (IHsh t' Hsc) as [rs rs' Eh Eh' Hhh].
-      exact (mk_cross_app_vals _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ef Ef' Eh Eh' Hhh).
+    - intros * Ef Ef' Hsh IHsh Hau Hau' t' Hsc.
+      destruct (IHsh Hau Hau' t' Hsc) as [rs rs' Eh Eh' Hhh].
+      exact (mk_cross_app_vals _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ef Ef' Eh Eh' Hhh).
   Qed.
 End CrossElim.
 
