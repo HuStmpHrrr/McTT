@@ -3262,7 +3262,8 @@ Section CrossBot.
       destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hhj Rb) as (py & Heq & Epy); injection Heq as ->.
       pose proof (functional_eval_exps' _ _ _ _ Epy Ecups) as ->.
       rewrite Hq in HDq; injection HDq as <-.
-      intros s; exact (per_gargs_top _ _ _ _ _ Hub ltac:(rewrite List.length_rev; unfold ind_nu in Hlb; exact Hlb) s).
+      intros s; destruct (per_gargs_top _ _ _ _ _ Hub ltac:(rewrite List.length_rev; unfold ind_nu in Hlb; exact Hlb) s)
+        as (Ms & Ms' & R1 & R2 & E); exact (mk_params_read_alike _ _ _ _ Ms Ms' R1 R2 E).
     - destruct Hhm as (Is' & vm' & Hhj & _).
       destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hq HMi' Hh' Ra) as (pa & Heq & Epa); injection Heq as -> -> ->.
       destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hhj Rb) as (pb & Heq & Epb); injection Heq as ->.
@@ -3273,7 +3274,8 @@ Section CrossBot.
       rewrite HDq in Hq3; injection Hq3 as <-.
       assert (Lp : List.length pa = List.length (List.rev (ind_uparams Dq)))
         by (rewrite List.length_rev, (eval_exps_length _ _ _ Epa); exact HlIv).
-      intros s; exact (per_gargs_top _ _ _ _ _ Hgp Lp s).
+      intros s; destruct (per_gargs_top _ _ _ _ _ Hgp Lp s) as (Ms & Ms' & R1 & R2 & E);
+        exact (mk_params_read_alike _ _ _ _ Ms Ms' R1 R2 E).
   Qed.
 
   (** The paths of a container's member's arguments the group read has,
