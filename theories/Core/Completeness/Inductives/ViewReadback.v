@@ -2023,22 +2023,25 @@ Section CrossBot.
   Variable (Us : list exp).
   Hypotheses (HUl : List.length Us = ind_nu D)
     (HUs : forall k N T, List.nth_error Us k = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
-             Γ ⊨ N : T).
+             Γ ⊨ N : T)
+    (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
   Variable (C1 : env) (u0 : list domain).
   Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0).
   Variable (Bks : list eblock) (iA : nat).
-  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
+  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA) (HBss : blocks_scoped (List.length Γ) Bks).
   Let HBks := valid_blocks_has p D Γ Us Bks iA Hdt HBk.
   Let HMall := valid_blocks_mctx _ _ _ _ _ _ HBk.
   Let HAv := valid_blocks_motive _ _ _ _ _ _ HBk.
   Let nr := canon_nparams_rel D u0.
   Let ar := canon_args_rel D u0.
-  Let dr := canon_doms_rel u0.
+  Let dr := canon_doms_rel D u0.
   Let G := grp_rel p D u0 nr ar dr.
+  (** The family of the motives at [C1], as [Elim.v] has it. *)
+  Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
-      (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
-  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
+    per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
+      (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C1 (mctx_tele j) (ns' ++ m' :: nil)).
+  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C1 u0 HUC).
   #[local] Abbreviation u0_gargs' := (EB u0_gargs).
   #[local] Abbreviation Hcp := (valid_group_canon p D Hvg u0 u0_gargs' u0_len').
@@ -2051,7 +2054,7 @@ Section CrossBot.
   #[local] Abbreviation tsym := (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI).
   #[local] Abbreviation ttrans := (nparams_rel_trans p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI).
   (** The group's eliminator against itself at [C1] ([ElimView.SelfElim]). *)
-  #[local] Abbreviation SE f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC Bks iA HBk).
+  #[local] Abbreviation SE f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC Bks iA HBk HBss).
 
   (** The view [m] of the container's member [k'], its map [vm]. *)
   Variable (qc : qname) (D' : ind_decl) (m : nat) (Mm : imember) (k' : nat) (Is : list exp) (vm : list nat).
@@ -2067,18 +2070,25 @@ Section CrossBot.
 
   (** The container's eliminator: a block for each member with one. *)
   Variable (ρb : env) (VBb : list eblock) (ub : list domain).
-  Hypotheses (HbB : forall i' Mi', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false -> exists b, List.nth_error VBb i' = Some b)
+  Hypotheses (Lub : List.length ub = ind_nu D')
+    (HbB : forall i' Mi', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false -> exists b, List.nth_error VBb i' = Some b)
     (HnmB : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b -> eb_binder_count b = S (im_nn Mi'))
     (HnaB : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b -> brs_names (im_cons Mi') (eb_brs b))
     (HarB : forall i' Mi' b c gs' n B, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b ->
               ind_con Mi' c = Some gs' -> In (c, n, B) (eb_brs b) -> n = (im_nn Mi' + List.length gs' + cargs_nrec D' gs')%nat).
-  Hypothesis (Hmot_x : forall i' Mi' v bb ba u u' ns ns' x x', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+  (** The motives, at related indices and elements stored at any types they
+      read back at ([ElimView.CrossElim]). *)
+  Hypothesis (Hmot_x : forall i' Mi' v bb ba u u' ns ns' x x' ts ts', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
                 List.nth_error vm i' = Some v -> List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba ->
                 G v u u' ns ns' x x' ->
-                exists a a', ⟦ eb_motive bb ⟧ env_args ρb (ns ++ x :: nil) ↘ a /\
-                  ⟦ eb_motive ba ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ x :: nil) ts ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
+                exists a a', ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns ++ x :: nil) ts) ↘ a /\
+                  ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
                   DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x').
-  Hypothesis (Hbr_x : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k,
+  (** The branches, at related constructors and related recursive results,
+      their variables stored at any types they read back at. *)
+  Hypothesis (Hbr_x : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k ts ts',
                 ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
                 List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
                 List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba ->
@@ -2087,21 +2097,46 @@ Section CrossBot.
                 G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs')
                   (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
                 cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
-                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
-                exists r r', ⟦ Bb ⟧ env_args ρb (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
-                  ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
+                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts' ->
+                exists r r', ⟦ Bb ⟧ env_extend_typed ρb (List.combine (List.skipn (im_unu D Mv) bs ++ vs ++ w) ts) ↘ r /\
+                  ⟦ Ba ⟧ env_extend_typed C1 (List.combine (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ts') ↘ r' /\
                   Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs))
                     (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r').
+  (** The container's branch's variables read back at the types its
+      eliminator stores them at. *)
+  Hypothesis (Hcbr_x : forall i' Mi' v Mv c gs' gs u u' bs bs' vs vs' w ihs hd k,
+                ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+                List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+                ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+                G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs')
+                  (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
+                cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
+                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+                List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w)
+                  (List.map snd (branch_entries D' Mi' qc ub (blocks_motives VBb) ρb gs' (List.skipn (im_unu D Mv) bs) vs w))).
+  (** The container's motive's variables at a neutral read back at the
+      types its stuck eliminator stores them at. *)
+  Hypothesis (Hcmot_x : forall i' Mi' v Mv hd k as1 as2 e e' u u' ns ns',
+                ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+                List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+                G v u u' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
+                exists cups, ⟦mref i' of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, cups) /\
+                  List.Forall2 (fun v t => entry_readable (de_term v t))
+                    (List.skipn (im_unu D Mv) as1 ++ ⇑ (d_ind hd k as1) e :: nil)
+                    (List.map snd (motive_entries D' Mi' ub (List.skipn (im_unu D Mv) as1)
+                                     (d_ind hd k (cups ++ List.skipn (im_unu D Mv) as1)) (⇑ (d_ind hd k as1) e)))).
   Variable (cups : list domain).
-  Hypotheses (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil u0 ↘ cups)
+  Hypotheses (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D u0 ↘ cups)
     (Hub : per_gargs (List.rev (ind_uparams D')) nil nil ub cups).
-  #[local] Abbreviation XE f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC Bks iA HBk qc D' m Mm k' Is vm
-     Hq HMm Hh ρb VBb ub HbB HnmB HnaB HarB Hmot_x Hbr_x).
+  #[local] Abbreviation XE f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC Bks iA HBk HBss qc D' m Mm k' Is vm
+     Hq HMm Hh ρb VBb ub Lub HbB HnmB HnaB HarB Hmot_x Hbr_x Hcbr_x Hcmot_x).
   #[local] Abbreviation CF f := (f VP p D HP HPD m Mm qc k' Is vm D' HMm Hh Hq u0 cups ub u0_gargs' u0_len' Ecups Hub).
   (** The container's canonical relations at [ub]. *)
   Let nrQ := canon_nparams_rel D' ub.
   Let arQ := canon_args_rel D' ub.
-  Let drQ := canon_doms_rel ub.
+  Let drQ := canon_doms_rel D' ub.
   Let AsA := blocks_motives VBb.
   Let AsB := blocks_motives Bks.
 
@@ -2125,25 +2160,8 @@ Section CrossBot.
         ⟦elim ⇑ (d_ind hd k as2) e' at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r'.
   Proof.
     intros * Hvi HM Hrv Hcur.
-    pose proof Hcur as Hcur0.
-    inversion Hcur0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' w0 w0' HM0 Hrv0 Href Hn L1 L2 Hs1 Hs2 He |]; subst;
-      [| rewrite HM in *; match goal with H : Some _ = Some _ |- _ => injection H as <- end;
-         exfalso; eapply not_rview_record; eassumption ].
-    rewrite HM in HM0; injection HM0 as <-.
-    destruct (cross_view_members i' j Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
-    pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
-    pose proof (view_member_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
-    assert (HrvI : im_is_rview Mi' = false) by (rewrite <- (view_member_is_rview _ _ _ _ _ _ _ _ _ Hvmb); exact Hrv).
-    pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
-    destruct (SE self_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
-    destruct (HbB _ _ HMi' HrvI) as [bb Hbb]; destruct (HBks _ _ HM Hrv) as [ba Hba].
-    destruct (Hmot_x i' Mi' j bb ba w w' _ _ _ _ HMi' HrvI Hvi Hbb Hba Hm) as (a & a' & Ea & Ea' & HR).
-    exists (relevant_value a (⇑ a (d_elim ρb VBb qc ub i' as1 e))), (relevant_value a' (⇑ a' (d_elim C1 Bks p u0 j as2 e'))); split.
-    - eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb HrvI); exact Href | exact Hq'
-                             | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity
-                             | rewrite Hnuq; exact Ea ].
-    - eapply eval_elim_neut; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | unfold im_np; lia | exact Hba
-                             | rewrite (valid_blocks_binder_count _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity | rewrite Hnuq; exact Ea' ].
+    destruct (XE cross_neut_values _ _ _ _ _ _ _ _ _ _ _ _ _ Hvi HM Hrv Hcur) as (Mi' & a & a' & _ & _ & Ea & Ea' & _).
+    exists (⇑ a (d_elim ρb VBb qc ub i' as1 e)), (⇑ a' (d_elim C1 Bks p u0 j as2 e')); split; [ exact Ea | exact Ea' ].
   Qed.
 
   (** The container's canonical relation of a member's non-uniform

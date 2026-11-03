@@ -2550,16 +2550,19 @@ Section CrossElim.
     ; cross_app_vals_related : cross_result_rel D D' dr Rel C1 p u0 Bks k u u' pre pre' Ts t' t cross_app_vals_fc cross_app_vals_fc'
         cross_app_vals_container cross_app_vals_group }.
 
-  (** A stuck eliminator of each side at related neutrals, when the two
-      read back alike: related at the family. *)
-  Lemma cross_neut_elim : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
+  (** The stuck eliminator of each side at related neutrals of a member
+      with a block: neutrals at the motives' values there, which are
+      related at the family at the neutrals' own indices. *)
+  Lemma cross_neut_values : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
       ind_member D j = Some Mj -> im_is_rview Mj = false ->
       G j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
-      Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot ->
-      cross_member_results i' j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e').
+      exists Mi' a a', ind_member D' i' = Some Mi' /\ im_is_rview Mi' = false /\
+        ⟦elim ⇑ (d_ind hd k as1) e at i' of qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ⇑ a (d_elim ρb VBb qc ub i' as1 e) /\
+        ⟦elim ⇑ (d_ind hd k as2) e' at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ⇑ a' (d_elim C1 Bks p u0 j as2 e') /\
+        DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j (List.skipn (im_unu D Mj) as1) (⇑ (d_ind hd k as1) e)
+                                            (List.skipn (im_unu D Mj) as2) (⇑ (d_ind hd k as2) e').
   Proof.
-    pose proof (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
-    intros * Hvi HM Hrv Hcur Hb.
+    intros * Hvi HM Hrv Hcur.
     pose proof Hcur as Hcur0.
     inversion Hcur0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' w0 w0' HM0 Hrv0 Href Hn L1 L2 Hs1 Hs2 He |]; subst;
       [| rewrite HM in *; match goal with H : Some _ = Some _ |- _ => injection H as <- end;
@@ -2590,16 +2593,35 @@ Section CrossElim.
     destruct (Hcmot_x i' Mi' j Mj hd k as1 as2 e e' w w' _ _ HMi' HrvI Hvi HM Hm) as (cupsa & Hca & Hra).
     destruct (Hmot_x i' Mi' j bb ba w w' _ _ _ _ _ _ HMi' HrvI Hvi Hbb Hba Hm Hra Hrb) as (a & a' & Ea & Ea' & HR).
     rewrite (motive_env_combine _ _ _ _ _ _ _ Lub) in Ea; rewrite (motive_env_combine _ _ _ _ _ _ _ u0_len') in Ea'.
-    apply (cross_member_elim _ _ _ _ _ _ _ _ Mi' Mj (⇑ a (d_elim ρb VBb qc ub i' as1 e)) (⇑ a' (d_elim C1 Bks p u0 j as2 e'))
-             HMi' HrvI HM Hrv).
+    exists Mi', a, a'; split; [ exact HMi' | split; [ exact HrvI | split; [| split; [| exact HR ] ] ] ].
     - eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb HrvI); exact Href | exact Hq'
                              | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity
                              | exact Hca | rewrite Hnuq; exact Ea ].
     - eapply eval_elim_neut; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | unfold im_np; lia | exact Hba
                              | rewrite (valid_blocks_binder_count _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity
                              | exact Hcb | rewrite Hnuq; exact Ea' ].
-    - apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
-      exact (per_bot_then_per_elem HR Hb).
+  Qed.
+
+  (** A stuck eliminator of each side at related neutrals, when the two
+      read back alike: related at the family. *)
+  Lemma cross_neut_elim : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
+      ind_member D j = Some Mj -> im_is_rview Mj = false ->
+      G j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
+      Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot ->
+      cross_member_results i' j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e').
+  Proof.
+    pose proof (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
+    intros * Hvi HM Hrv Hcur Hb.
+    pose proof Hcur as Hcur0.
+    inversion Hcur0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' w0 w0' HM0 Hrv0 Href Hn L1 L2 Hs1 Hs2 He |]; subst;
+      [| rewrite HM in *; match goal with H : Some _ = Some _ |- _ => injection H as <- end;
+         exfalso; eapply not_rview_record; eassumption ].
+    rewrite HM in HM0; injection HM0 as <-.
+    pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
+    destruct (cross_neut_values _ _ _ _ _ _ _ _ _ _ _ _ _ Hvi HM Hrv Hcur) as (Mi' & a & a' & HMi' & HrvI & Ea & Ea' & HR).
+    apply (cross_member_elim _ _ _ _ _ _ _ _ Mi' Mj _ _ HMi' HrvI HM Hrv Ea Ea').
+    apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
+    exact (per_bot_then_per_elem HR Hb).
   Qed.
 
   Hypothesis (Hbot_x : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
