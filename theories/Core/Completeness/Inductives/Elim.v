@@ -6670,23 +6670,98 @@ Section GroupElim.
           pose proof (functional_eval_exps' _ _ _ _ Ems Ems') as ->; exact Hτ.
         Qed.
 
+        (** The fields the branch's constructor term gives at an environment
+            of the branch's context: the non-uniform parameters, and the
+            arguments, a kept proof read back at each propositional one. *)
+        Lemma branch_con_fields : forall B vX vvs vih RB,
+            EF elim_bctx relevant p D Mk gs As Us ++ Γ ≈ elim_bctx relevant p D Mk gs As Us ++ Γ ∈ per_ctx_env ↘ RB ->
+            RB (env_extend_typed B (vX ++ vvs ++ vih)) (env_extend_typed B (vX ++ vvs ++ vih)) ->
+            List.length vX = im_nn Mk -> List.length vvs = List.length gs -> List.length vih = cargs_nrec D gs ->
+            exists vsp, List.length vsp = List.length gs /\
+              eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_relevances D Mk gs)) (Nb ++ Ab)
+                (env_extend_typed B (vX ++ vvs ++ vih)) (List.map fst vX ++ vsp) /\
+              (forall j v v', List.nth_error (List.map fst vvs) j = Some v -> List.nth_error vsp j = Some v' ->
+                 v = v' \/ (proof_readable v' /\ con_arg_relevance Mk c j = propositional)).
+        Proof.
+          intros * HRB HE LX Lvs Lih.
+          set (E := env_extend_typed B (vX ++ vvs ++ vih)) in *.
+          set (rs := List.skipn (ind_nu D) (con_relevances D Mk gs)).
+          pose proof (eval_branch_type_args B vX vvs vih LX Lvs Lih) as Hargs; fold E in Hargs.
+          assert (LNA : List.length (Nb ++ Ab) = (im_nn Mk + List.length gs)%nat)
+            by (unfold Nb, Ab; rewrite List.length_app, !length_vars_from; lia).
+          assert (Hsr : forall j, j < im_nn Mk + List.length gs -> List.nth j rs relevant = con_entry_relevance D Mk c (ind_nu D + j)).
+          { intros j Hj; unfold rs; rewrite List.nth_skipn, <- hd_skipn; apply (con_relevances_hd D Mk c gs Hcon); unfold im_np; lia. }
+          destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_each (Nb ++ Ab) rs E) as [zs Hzs].
+          { intros j M HM _; destruct (eval_exps_nth _ _ _ _ _ Hargs HM) as (m0 & _ & Em0); eauto. }
+          pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Hzs) as Lzs; rewrite LNA in Lzs.
+          (** Each field: the value of its variable, or a kept proof of it. *)
+          assert (Hfld : forall j M z, List.nth_error (Nb ++ Ab) j = Some M -> List.nth_error zs j = Some z ->
+                    (con_entry_relevance D Mk c (ind_nu D + j) = relevant -> List.nth_error (List.map fst vX ++ List.map fst vvs) j = Some z) /\
+                    (con_entry_relevance D Mk c (ind_nu D + j) = propositional -> proof_readable z)).
+          { intros j M z HM Hz.
+            pose proof (nth_error_lt_length _ _ _ HM) as Hj; rewrite LNA in Hj.
+            destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_nth _ _ _ _ Hzs j M HM) as (z0 & Hz0 & Hr0 & Hp0).
+            rewrite Hz in Hz0; injection Hz0 as <-.
+            rewrite (Hsr j Hj) in Hr0, Hp0.
+            split.
+            - intros Hr; destruct (eval_exps_nth _ _ _ _ _ Hargs HM) as (m0 & Hm0 & Em0).
+              pose proof (functional_eval_exp _ _ _ _ (Hr0 Hr) Em0) as ->; exact Hm0.
+            - intros Hp; rewrite (Hp0 Hp).
+              assert (HMs : exp_free_bound M <= List.length (elim_bctx relevant p D Mk gs As Us ++ Γ)).
+              { apply exp_scoped_free_bound.
+                pose proof branch_type_terms_scoped as Hs; apply List.Forall_app in Hs as [_ Hs].
+                exact (proj1 (List.Forall_forall _ _) Hs M (List.nth_error_In _ _ HM)). }
+              exact (proj1 (per_ctx_env_kept_proof_readable _ _ _ M HRB HMs _ _ HE)). }
+          exists (List.skipn (im_nn Mk) zs); split; [ rewrite List.length_skipn; lia | split ].
+          - replace (List.map fst vX ++ List.skipn (im_nn Mk) zs) with zs; [ exact Hzs |].
+            rewrite <- (List.firstn_skipn (im_nn Mk) zs) at 1; f_equal.
+            apply (List.nth_ext _ _ d_prop d_prop); [ rewrite List.length_firstn, List.length_map; lia |].
+            intros i Hi; rewrite List.length_firstn in Hi.
+            destruct (nth_error_lt_some' zs i ltac:(lia)) as [z Hz].
+            destruct (nth_error_lt_some' (Nb ++ Ab) i ltac:(lia)) as [M HM].
+            assert (Er : con_entry_relevance D Mk c (ind_nu D + i) = relevant)
+              by (unfold con_entry_relevance, im_np; destruct (Nat.ltb_spec (ind_nu D + i) (im_nn Mk + ind_nu D)); [ reflexivity | lia ]).
+            pose proof (proj1 (Hfld i M z HM Hz) Er) as Hn.
+            rewrite List.nth_error_app1 in Hn by (rewrite List.length_map; lia).
+            assert (Hzf : List.nth_error (List.firstn (im_nn Mk) zs) i = Some z)
+              by (rewrite List.nth_error_firstn; destruct (Nat.ltb_spec i (im_nn Mk)); [ exact Hz | lia ]).
+            rewrite (List.nth_error_nth _ _ d_prop Hzf), (List.nth_error_nth _ _ d_prop Hn); reflexivity.
+          - intros j v v' Hv Hv'.
+            rewrite List.nth_error_skipn in Hv'.
+            pose proof (nth_error_lt_length _ _ _ Hv) as Hjl; rewrite List.length_map in Hjl.
+            destruct (nth_error_lt_some' (Nb ++ Ab) (im_nn Mk + j) ltac:(lia)) as [M HM].
+            destruct (Hfld _ M v' HM Hv') as [Hrel Hprf].
+            unfold con_entry_relevance, im_np in Hrel, Hprf.
+            destruct (Nat.ltb_spec (ind_nu D + (im_nn Mk + j)) (im_nn Mk + ind_nu D)) as [Hlt | _]; [ lia |].
+            replace (ind_nu D + (im_nn Mk + j) - (im_nn Mk + ind_nu D)) with j in Hrel, Hprf by lia.
+            destruct (con_arg_relevance Mk c j) eqn:Er.
+            + left; pose proof (Hrel eq_refl) as Hn.
+              rewrite List.nth_error_app2 in Hn by (rewrite List.length_map; lia).
+              rewrite List.length_map, LX in Hn; replace (im_nn Mk + j - im_nn Mk) with j in Hn by lia; congruence.
+            + right; split; [ exact (Hprf eq_refl) | reflexivity ].
+        Qed.
+
         (** The branch type's head relation is the motive's family at the
             constructor. *)
         Lemma branch_type_rel : forall b, List.nth_error Bks k = Some b -> forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
-            forall u u' hd k' bs bs' vs vs' ihs ihs',
+            forall u u' hd k' bs bs' vs vs' ihs ihs' vts1 vts2,
             G k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs')
               (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) ->
-            rec_results_rel D dr Rel k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs' ihs ihs' ->
+            rec_results_rel D dr Rel k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') T gs vs vs' ihs ihs' ->
+            List.map fst vts1 = List.skipn (im_unu D Mk) bs ++ vs ++ ihs ->
+            List.map fst vts2 = List.skipn (im_unu D Mk) bs' ++ vs' ++ ihs' ->
+            List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts1 ->
+            List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts2 ->
             (per_head (elim_branch_type p D k Mk c gs (eb_motive b) Us) (elim_branch_type p D k Mk c gs (eb_motive b) Us)
-               (env_args B1 (List.skipn (im_unu D Mk) bs ++ vs ++ ihs)) (env_args B2 (List.skipn (im_unu D Mk) bs' ++ vs' ++ ihs'))
+               (env_extend_typed B1 vts1) (env_extend_typed B2 vts2)
              <~> Rel k (List.skipn (im_unu D Mk) bs) (d_con hd k' c (bs ++ vs))
                    (List.skipn (im_unu D Mk) bs') (d_con hd k' c (bs' ++ vs'))).
         Proof.
-          intros b Hb B1 B2 HB1 HB2 * Hm Hir.
+          intros b Hb B1 B2 HB1 HB2 * Hm Hir Hv1 Hv2 Hr1 Hr2.
           assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
           assert (HC21 : RΓ C2 C1) by (symmetry; exact HC12).
-          destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Lv Lv'].
-          destruct (rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li Li'].
+          destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Lv Lv'].
+          destruct (rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li Li'].
           destruct (ind_rel_con_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMk HrvK Hcon Lv Lv') as [Lbs Lbs'].
           set (X := List.skipn (im_unu D Mk) bs) in *; set (X' := List.skipn (im_unu D Mk) bs') in *.
           set (Y := List.firstn (im_unu D Mk) bs); set (Y' := List.firstn (im_unu D Mk) bs').
@@ -6703,86 +6778,105 @@ Section GroupElim.
           rewrite Hcon in Hcon0; injection Hcon0 as <-.
           injection Ez as Ez.
           destruct (app_split_eq _ _ _ _ Ez ltac:(congruence)) as [<- <-].
-          pose proof (rec_results_rebase _ _ _ _ _ _ _ _ _ _ Hia Hir) as Hir0.
+          pose proof (rec_results_rebase _ _ _ _ _ _ _ _ _ _ _ Hia Hir) as Hir0.
           destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 HMk HrvK Lbs)
             as (gs0 & bs2 & vs2 & Ez0 & _ & _ & Hcon0 & Lbs2 & _ & _ & Har0 & Hia0).
           rewrite Hcon in Hcon0; injection Hcon0 as <-.
           injection Ez0 as Ez0.
           destruct (app_split_eq _ _ _ _ Ez0 ltac:(congruence)) as [<- <-].
-          (** The branch's context and the substitution of its type. *)
+          (** The branch's context at the two extensions. *)
           destruct (rel_ctx_wf_per_ctx_env HB) as [RB HRB].
-          pose proof (canonical_bctx B1 B2 HB1 HB2 X X' vs vs' ihs ihs' HX Har0 Hia0 Hir0 RB HRB) as HE.
+          assert (HPB : PER RB) by (eapply per_env_PER; exact HRB).
+          pose proof (canonical_bctx B1 B2 HB1 HB2 X X' vs vs' ihs ihs' HX Har0 Hia0 Hir0 RB HRB) as HEc.
+          set (TB := List.rev (elim_bctx relevant p D Mk gs As Us)) in *.
+          assert (HBr : ⊨ List.rev TB ++ Γ) by (unfold TB; rewrite List.rev_involutive; exact HB).
+          assert (HRBr : EF List.rev TB ++ Γ ≈ List.rev TB ++ Γ ∈ per_ctx_env ↘ RB) by (unfold TB; rewrite List.rev_involutive; exact HRB).
+          assert (HtaB : tele_ass TB) by (apply List.Forall_rev; exact (elim_bctx_ass relevant p D k Mk gs As Us Hc HMk)).
+          assert (LTB : List.length TB = nb) by (unfold TB; rewrite List.length_rev, length_elim_bctx; unfold nb; lia).
+          assert (Lw1 : List.length (X ++ vs ++ ihs) = List.length TB) by (rewrite !List.length_app, LTB; unfold nb; lia).
+          assert (Lw2 : List.length (X' ++ vs' ++ ihs') = List.length TB) by (rewrite !List.length_app, LTB; unfold nb; lia).
+          unfold env_tele in HEc.
+          destruct (rel_gargs _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ ltac:(rewrite tele_entries_length; exact Lw1)
+                      ltac:(rewrite tele_entries_length; exact Lw2) HEc) as [HB12 Hg].
+          rewrite !tele_entries_fst, <- Hv1, <- Hv2 in Hg.
+          assert (Lv1 : List.length vts1 = List.length TB) by (rewrite <- (List.length_map fst), Hv1; exact Lw1).
+          assert (Lv2 : List.length vts2 = List.length TB) by (rewrite <- (List.length_map fst), Hv2; exact Lw2).
+          pose proof (gargs_env_rel_typed _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ HB12 Lv1 Lv2 Hg Hr1 Hr2) as HE.
+          (** Each side's values, split. *)
+          destruct (List.map_eq_app _ _ _ _ Hv1) as (vX1 & vr1 & -> & HvX1 & Hvr1).
+          destruct (List.map_eq_app _ _ _ _ Hvr1) as (vvs1 & vih1 & -> & Hvvs1 & Hvih1).
+          destruct (List.map_eq_app _ _ _ _ Hv2) as (vX2 & vr2 & -> & HvX2 & Hvr2).
+          destruct (List.map_eq_app _ _ _ _ Hvr2) as (vvs2 & vih2 & -> & Hvvs2 & Hvih2).
+          assert (LX1 : List.length vX1 = im_nn Mk) by (rewrite <- (List.length_map fst), HvX1; exact LX).
+          assert (LX2 : List.length vX2 = im_nn Mk) by (rewrite <- (List.length_map fst), HvX2; exact LX').
+          assert (Lvs1 : List.length vvs1 = List.length gs) by (rewrite <- (List.length_map fst), Hvvs1; exact Lv).
+          assert (Lvs2 : List.length vvs2 = List.length gs) by (rewrite <- (List.length_map fst), Hvvs2; exact Lv').
+          assert (Lih1 : List.length vih1 = cargs_nrec D gs) by (rewrite <- (List.length_map fst), Hvih1; exact Li).
+          assert (Lih2 : List.length vih2 = cargs_nrec D gs) by (rewrite <- (List.length_map fst), Hvih2; exact Li').
+          assert (HE11 : RB (env_extend_typed B1 (vX1 ++ vvs1 ++ vih1)) (env_extend_typed B1 (vX1 ++ vvs1 ++ vih1)))
+            by (etransitivity; [ exact HE | symmetry; exact HE ]).
+          assert (HE22 : RB (env_extend_typed B2 (vX2 ++ vvs2 ++ vih2)) (env_extend_typed B2 (vX2 ++ vvs2 ++ vih2)))
+            by (etransitivity; [ symmetry; exact HE | exact HE ]).
+          (** The constructor term's values and the type's substitution. *)
           destruct (rel_exp_under_ctx_simple_at_mty _ _ _ _ _ _ _ _ _ _ HMk HRB branch_type_con_valid _ _ HE) as (l1 & l2 & El1 & El2 & _).
           assert (HUb : List.length Ub = ind_nu D) by (unfold Ub; rewrite List.length_map; exact HUl).
           assert (LNA : List.length (Nb ++ Ab) = (im_nn Mk + List.length gs)%nat)
             by (unfold Nb, Ab; rewrite List.length_app, !length_vars_from; lia).
-          (** The arguments' values: the proof at each propositional one. *)
-          assert (Hpf : forall j z z', List.nth_error (X ++ vs) j = Some z -> List.nth_error (X' ++ vs') j = Some z' ->
-                     con_entry_relevance D Mk c (ind_nu D + j) = propositional -> z = ⋆ᵈ /\ z' = ⋆ᵈ).
-          { intros j z z' Hz Hz' Hr.
-            unfold con_entry_relevance, im_np in Hr.
-            destruct (Nat.ltb_spec (ind_nu D + j) (im_nn Mk + ind_nu D)) as [Hlt | Hge]; [ discriminate Hr |].
-            rewrite List.nth_error_app2 in Hz, Hz' by lia; rewrite LX in Hz; rewrite LX' in Hz'.
-            replace (ind_nu D + j - (im_nn Mk + ind_nu D)) with (j - im_nn Mk) in Hr by lia.
-            unfold con_arg_relevance in Hr; rewrite Hcon in Hr.
-            destruct (List.nth_error gs (j - im_nn Mk)) as [[r0 A0 | t0] |] eqn:Hg0; try discriminate Hr; subst r0.
-            exact (con_args_proofs k Mk c gs X vs vs' HMk Hcon (trefl_l _ _ HMk _ _ HX) Har Lv Lv' _ A0 z z' Hg0 Hz Hz'). }
-          assert (Hsr : forall j, j < im_nn Mk + List.length gs ->
-                     List.nth j (List.skipn (ind_nu D) (con_relevances D Mk gs)) relevant = con_entry_relevance D Mk c (ind_nu D + j)).
-          { intros j Hj; rewrite List.nth_skipn, <- hd_skipn; apply (con_relevances_hd D Mk c gs Hcon); unfold im_np; lia. }
-          destruct (con_ref_apps_value P p D HP HPD k Mk c gs _ Ub (Nb ++ Ab) (X ++ vs) l1 HMk HrvK Hcon HUb
-                      ltac:(apply Mctt.Core.Completeness.Records.Model.eval_field_vals_of_exps_proofs;
-                            [ exact (eval_branch_type_args B1 X vs ihs LX Lv Li) |];
-                            intros j z Hz Hr; pose proof (nth_error_lt_length _ _ _ Hz) as Hjl;
-                            rewrite List.length_app in Hjl; rewrite (Hsr j ltac:(lia)) in Hr;
-                            destruct (nth_error_lt_some' (X' ++ vs') j ltac:(rewrite !List.length_app in *; lia)) as [z' Hz'];
-                            exact (proj1 (Hpf _ _ _ Hz Hz' Hr)))
-                      LNA El1) as (cs1 & Lcs1 & El1v).
-          destruct (con_ref_apps_value P p D HP HPD k Mk c gs _ Ub (Nb ++ Ab) (X' ++ vs') l2 HMk HrvK Hcon HUb
-                      ltac:(apply Mctt.Core.Completeness.Records.Model.eval_field_vals_of_exps_proofs;
-                            [ exact (eval_branch_type_args B2 X' vs' ihs' LX' Lv' Li') |];
-                            intros j z' Hz' Hr; pose proof (nth_error_lt_length _ _ _ Hz') as Hjl;
-                            rewrite List.length_app in Hjl; rewrite (Hsr j ltac:(lia)) in Hr;
-                            destruct (nth_error_lt_some' (X ++ vs) j ltac:(rewrite !List.length_app in *; lia)) as [z Hz];
-                            exact (proj2 (Hpf _ _ _ Hz Hz' Hr)))
-                      LNA El2) as (cs2 & Lcs2 & El2v).
-          rewrite Href in El1v, El2v; cbn [fst snd] in El1v, El2v.
-          assert (HPB : PER RB) by (eapply per_env_PER; exact HRB).
-          pose proof (eval_branch_type B1 X vs ihs l1 RB HRB ltac:(etransitivity; [ exact HE | symmetry; exact HE ]) LX Lv Li El1) as Hev1.
-          pose proof (eval_branch_type B2 X' vs' ihs' l2 RB HRB ltac:(etransitivity; [ symmetry; exact HE | exact HE ]) LX' Lv' Li' El2)
-            as Hev2.
-          subst l1 l2.
-          (** The elements. *)
-          assert (Hll : G k u0 u0 X X' (d_con hd k' c (cs1 ++ X ++ vs)) (d_con hd k' c (cs2 ++ X' ++ vs'))).
-          { rewrite HbY, HbY', <- !List.app_assoc in Hm0.
-            eapply ind_rel_con_prefix_l; [ exact HMk | exact LY | lia |].
-            eapply ind_rel_con_prefix_r; [ exact HMk | exact LY' | lia | exact Hm0 ]. }
-          assert (Hml2 : G k u0 u0 X X' (d_con hd k' c (bs ++ vs)) (d_con hd k' c (cs2 ++ X' ++ vs'))).
-          { pose proof Hm0 as H; rewrite HbY' , <- !List.app_assoc in H.
-            eapply ind_rel_con_prefix_r; [ exact HMk | exact LY' | lia | exact H ]. }
+          destruct (branch_con_fields B1 vX1 vvs1 vih1 RB HRB HE11 LX1 Lvs1 Lih1) as (vsp & Lvsp & Ezs & Hmix).
+          destruct (con_ref_apps_value P p D HP HPD k Mk c gs _ Ub (Nb ++ Ab) _ l1 HMk HrvK Hcon HUb Ezs LNA El1) as (cs1 & Lcs1 & El1v).
+          rewrite Href in El1v; cbn [fst snd] in El1v.
+          pose proof (eval_branch_type B1 vX1 vvs1 vih1 l1 RB HRB HE11 LX1 Lvs1 Lih1 El1) as Hev1.
+          pose proof (eval_branch_type B2 vX2 vvs2 vih2 l2 RB HRB HE22 LX2 Lvs2 Lih2 El2) as Hev2.
+          rewrite HvX1 in Hev1, El1v; rewrite HvX2 in Hev2.
+          (** The element of the term, against the constructor's. *)
+          pose proof (ind_rel_refl_l _ _ _ _ _ _ _ Hm0) as Hm00.
+          rewrite HbY, <- List.app_assoc in Hm00.
+          assert (Hll : G k u0 u0 X X (d_con hd k' c (Y ++ X ++ vs)) (d_con hd k' c (cs1 ++ X ++ vsp))).
+          { apply (con_up_to_proofs k Mk c gs HMk Hcon HrvK hd k' Y cs1 X vs vsp Href LY Hm00 ltac:(lia) ltac:(lia)).
+            intros j v v' Hv Hv'; rewrite <- Hvvs1 in Hv; exact (Hmix j v v' Hv Hv'). }
+          subst l1.
           (** The chains. *)
           pose proof (HAv _ _ _ HMk Hb) as HAk.
           destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMk)) as [RM HRM].
+          assert (HPM : PER RM) by (eapply per_env_PER; exact HRM).
           pose proof (per_head_inst _ _ _ _ _ _ _ _ _ _ HAk HRB (gsub_valid gsub_branch_type) HE Hev1 Hev2) as ER1.
           pose proof (rel_sub_under_ctx_at' (gsub_valid gsub_branch_type) HRB HRM _ _ _ _ HE Hev1 Hev2) as L1.
-          pose proof (mctx_at _ _ HMk B2 C1 HB2 HC11 RM HRM _ _ _ _ _ _ (isym _ _ _ _ _ _ _ Hll)) as L2.
-          pose proof (mctx_at _ _ HMk C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hll) as L3.
-          assert (Ch1 : rel_chain RM (env_args B1 (X ++ d_con hd k' c (cs1 ++ X ++ vs) :: nil)
-                                      :: env_args B2 (X' ++ d_con hd k' c (cs2 ++ X' ++ vs') :: nil)
-                                      :: env_args C1 (X ++ d_con hd k' c (cs1 ++ X ++ vs) :: nil)
-                                      :: env_args C2 (X' ++ d_con hd k' c (cs2 ++ X' ++ vs') :: nil) :: nil)).
-          { apply rel_chain_cons; [ exact L1 |]. apply rel_chain_cons; [ exact L2 |]. apply rel_chain_of_pair; exact L3. }
-          pose proof (per_head_of_typ_resp HRM HAk _ _ _ _ Ch1) as ER2.
-          pose proof (mctx_at _ _ HMk C2 C1 HC21 HC11 RM HRM _ _ _ _ _ _ (isym _ _ _ _ _ _ _ Hml2)) as M2.
-          pose proof (mctx_at _ _ HMk C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm0) as M3.
-          assert (Ch2 : rel_chain RM (env_args C1 (X ++ d_con hd k' c (cs1 ++ X ++ vs) :: nil)
-                                      :: env_args C2 (X' ++ d_con hd k' c (cs2 ++ X' ++ vs') :: nil)
-                                      :: env_args C1 (X ++ d_con hd k' c (bs ++ vs) :: nil)
-                                      :: env_args C2 (X' ++ d_con hd k' c (bs' ++ vs') :: nil) :: nil)).
-          { apply rel_chain_cons; [ exact L3 |]. apply rel_chain_cons; [ exact M2 |]. apply rel_chain_of_pair; exact M3. }
-          pose proof (per_head_of_typ_resp HRM HAk _ _ _ _ Ch2) as ER3.
-          rewrite branch_type_eq; unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb).
-          etransitivity; [ exact ER1 | etransitivity; [ exact ER2 | exact ER3 ] ].
+          pose proof (L1 : RM _ _) as L1'.
+          rewrite !env_extend_tagged_typed in L1.
+          (** The term's environment of the motive, against the canonical one. *)
+          destruct (mctx_rev_sem _ _ HMk RM HRM) as (HMr & HRMr & Hta).
+          destruct (mctx_len _ _ HMk _ _ _ _ _ _ Hll) as [LXl _].
+          assert (L11 : RM (env_extend_typed (ctx_retag Γ B1) (tagged_entries Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B1)
+                                                                 (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil)))
+                           (env_extend_typed (ctx_retag Γ B1) (tagged_entries Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B1)
+                                                                 (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil))))
+            by (etransitivity; [ exact L1 | symmetry; exact L1 ]).
+          assert (Lq : List.length (List.rev (elim_mctx p D k Mk Us)) = List.length (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil))
+            by (rewrite List.length_app in LXl |- *; cbn [List.length] in LXl |- *; lia).
+          assert (Lt : List.length (tagged_entries Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B1) (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil))
+                       = List.length (List.rev (elim_mctx p D k Mk Us)))
+            by (rewrite tagged_entries_length by exact Lq; symmetry; exact Lq).
+          destruct (rel_gargs_readable _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ Lt Lt L11) as [Hrd _].
+          pose proof (isym _ _ _ _ _ _ _ Hll) as Hll'.
+          destruct (mctx_readable _ _ HMk C1 C1 HC11 HC11 _ _ _ _ _ _ Hm00) as [Hrc _].
+          pose proof (mctx_at_typed _ _ HMk _ _ (per_ctx_env_retag_left HRΓ _ _ HB1) HC11 RM HRM _ _ _ _ _ _ Hll' _ _
+                        (tagged_entries_fst _ Γ (ctx_retag Γ B1) (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil) Lq)
+                        (tele_entries_fst _ _ _) Hrd Hrc) as Lc.
+          pose proof (mctx_at _ _ HMk C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm0) as L3.
+          rewrite HbY, <- List.app_assoc in L3.
+          assert (Ch : rel_chain RM (env_extend_tagged Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B1)
+                                       (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil)
+                                     :: env_extend_tagged Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B2)
+                                          (X' ++ l2 :: nil)
+                                     :: env_tele C1 (List.rev (elim_mctx p D k Mk Us)) (X ++ d_con hd k' c (Y ++ X ++ vs) :: nil)
+                                     :: env_tele C2 (List.rev (elim_mctx p D k Mk Us)) (X' ++ d_con hd k' c (bs' ++ vs') :: nil) :: nil)).
+          { apply rel_chain_cons; [ exact L1' |].
+            apply rel_chain_cons; [ rewrite env_extend_tagged_typed; etransitivity; [ symmetry; exact L1 | exact Lc ] |].
+            apply rel_chain_of_pair; exact L3. }
+          pose proof (per_head_of_typ_resp HRM HAk _ _ _ _ Ch) as ER2.
+          rewrite branch_type_eq; unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb), (mctx_tele_at _ _ HMk).
+          rewrite HbY, <- List.app_assoc.
+          etransitivity; [ exact ER1 | exact ER2 ].
         Qed.
 
         (** The environments of the branch's context at a related
