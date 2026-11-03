@@ -42,7 +42,8 @@ Section Fixed_GCtx.
     Environments extended by values carry the types of their entries:
     the arguments of a telescope ([env_tele]) the closures of its types,
     the closures of a Π the values of their domains, the extensions a
-    substitution evaluates to [substituted_type].  The context PERs care
+    substitution evaluates to the tags of their context's entries
+    ([centry_tag]).  The context PERs care
     about these types only through their readability, so statements over
     a context PER take the extensions with any types. *)
 
@@ -58,9 +59,14 @@ Lemma env_extend_typed_cons : forall ρ x t vts,
 Proof. reflexivity. Qed.
 
 (** The environment the values [ms] of the terms of an extended
-    substitution are entered in: each at [substituted_type]. *)
-Definition env_extend_substituted (ρ : env) (ms : list domain) : env :=
-  env_extend_typed ρ (List.map (fun m => (m, substituted_type)) ms).
+    substitution are entered in, at the entries [ts] (innermost first)
+    over [Δ]: each at the tag of its entry over the environment before it
+    ([centry_tag]), as [eval_sub_extend] stores it. *)
+Fixpoint env_extend_tagged (Δ ts : ctx) (ρ : env) (ms : list domain) : env :=
+  match ts, ms with
+  | e :: ts', m :: ms' => env_extend_tagged (e :: Δ) ts' (ρ ↦ m ⦂ centry_tag e Δ ρ) ms'
+  | _, _ => ρ
+  end.
 
 (** ** Arguments at a Telescope *)
 
@@ -335,28 +341,31 @@ Qed.
 
 (** ** Environments of Arguments *)
 
-(** An environment extended at [substituted_type] past its extension: the
+(** An environment extended at the tags of [ts] past its extension: the
     environment. *)
-Lemma skipn_env_extend_substituted : forall ρ ms, List.skipn (List.length ms) (env_extend_substituted ρ ms) = ρ.
+Lemma skipn_env_extend_tagged : forall ts Δ ρ ms, List.length ts = List.length ms ->
+    List.skipn (List.length ms) (env_extend_tagged Δ ts ρ ms) = ρ.
 Proof.
-  intros; unfold env_extend_substituted.
-  rewrite <- (List.length_map (fun m => (m, substituted_type)) ms); apply skipn_env_extend_typed.
+  induction ts as [| e ts IH]; intros Δ ρ [| m ms] Hl; cbn [List.length] in Hl; try discriminate; [ reflexivity |].
+  cbn [env_extend_tagged List.length].
+  replace (S (List.length ms)) with (1 + List.length ms) by lia.
+  rewrite <- List.skipn_skipn, IH by lia; reflexivity.
 Qed.
 
 (** A substitution extended by terms, at a context extended by entries
     [ts] (outermost first) none of which is a proposition there: the
-    environment extended by the terms' values, at [substituted_type]. *)
+    environment extended by the terms' values, at the entries' tags. *)
 Lemma eval_sb_of_list : forall Ms ts σ Δ ρ ρσ ms,
     ⟦ σ : Δ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ts = List.length Ms ->
     (forall x, x < List.length ts ->
-       ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_extend_substituted ρσ ms) x) ->
-    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_extend_substituted ρσ ms.
+       ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_extend_tagged Δ ts ρσ ms) x) ->
+    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_extend_tagged Δ ts ρσ ms.
 Proof.
   assert (Hlen : forall Ns ρ0 ns, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ ns -> List.length ns = List.length Ns)
     by (induction 1; cbn; congruence).
   induction Ms as [| M Ms IH]; intros [| e ts] * Hσ HMs Hl Hnp; pose proof (Hlen _ _ _ HMs) as HlM;
     inversion HMs; subst; cbn [sb_of_list] in *; try discriminate; [ exact Hσ |].
-  change (env_extend_substituted ρσ (m :: ms0)) with (env_extend_substituted (ρσ ↦ m ⦂ substituted_type) ms0) in *.
+  cbn [env_extend_tagged] in *.
   cbn [List.rev List.length] in *; rewrite <- List.app_assoc in *; cbn [List.app] in *.
   assert (Hl0 : List.length ms0 = List.length ts) by lia.
   apply IH; [ | assumption | lia | intros x Hx; apply Hnp; lia ].
@@ -365,7 +374,7 @@ Proof.
   intros Hh; apply (Hnp (List.length ts) ltac:(lia)).
   rewrite <- (List.length_rev ts), <- (Nat.add_0_r (List.length (List.rev ts))).
   apply entry_propositional_shiftn_intro.
-  rewrite List.length_rev, <- Hl0, skipn_env_extend_substituted.
+  rewrite List.length_rev, <- Hl0, skipn_env_extend_tagged by lia.
   exact (proj2 (entry_propositional_head _ _ _ _) Hh).
 Qed.
 
@@ -526,18 +535,28 @@ Qed.
 Lemma env_entry_extend_typed_app : forall ρ vts i, env_entry (env_extend_typed ρ vts) (List.length vts + i) = env_entry ρ i.
 Proof. intros; rewrite <- env_entry_skipn, skipn_env_extend_typed; reflexivity. Qed.
 
-Corollary env_entry_extend_substituted_app : forall ρ ms i,
-    env_entry (env_extend_substituted ρ ms) (List.length ms + i) = env_entry ρ i.
-Proof.
-  intros; unfold env_extend_substituted.
-  rewrite <- (List.length_map (fun m => (m, substituted_type)) ms); apply env_entry_extend_typed_app.
-Qed.
+Corollary env_entry_extend_tagged_app : forall ts Δ ρ ms i, List.length ts = List.length ms ->
+    env_entry (env_extend_tagged Δ ts ρ ms) (List.length ms + i) = env_entry ρ i.
+Proof. intros * Hl; rewrite <- env_entry_skipn, skipn_env_extend_tagged by exact Hl; reflexivity. Qed.
 
 (** ** Environments of Arguments, Inverted *)
 
 (** Evaluated terms are as many as the terms. *)
 Lemma eval_exps_count : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
 Proof. induction 1; cbn; congruence. Qed.
+
+(** The tags and units of a context extended by [ts], past [ts]: those of
+    the context, over the environment's tail. *)
+Lemma ctx_entry_tag_app : forall ts Δ y E,
+    ctx_entry_tag (ts ++ Δ) (List.length ts + y) E = ctx_entry_tag Δ y (List.skipn (List.length ts) E).
+Proof.
+  induction ts as [| e ts IH]; intros; [ reflexivity |].
+  cbn [List.length List.app Nat.add]; rewrite <- (ctx_entry_tag_drop e), IH.
+  destruct E; cbn [List.skipn List.tl drop_env]; [ rewrite !List.skipn_nil |]; reflexivity.
+Qed.
+
+Lemma ctx_entry_unit_app : forall ts Δ y, ctx_entry_unit (ts ++ Δ) (List.length ts + y) = ctx_entry_unit Δ y.
+Proof. induction ts as [| e ts IH]; intros; [ reflexivity |]; cbn [List.length List.app Nat.add]; rewrite ctx_entry_unit_succ; apply IH. Qed.
 
 #[local] Transparent eval_sub.
 (** A substitution extended by terms, evaluated at a context extended by
@@ -549,21 +568,59 @@ Proof.
   assert (Hy' : List.length ts + y < List.length (List.rev ts ++ Δ)) by (rewrite List.length_app, List.length_rev; lia).
   destruct (H _ Hy') as [Hp Hn].
   assert (Hσy : sb_of_list σ Ms (List.length ts + y) = σ y) by (rewrite Hl; apply sb_of_list_ge).
-  rewrite Hσy in Hp, Hn; rewrite env_entry_skipn; split.
+  rewrite Hσy in Hp, Hn; rewrite env_entry_skipn.
+  rewrite <- (List.length_rev ts), ctx_entry_tag_app, ctx_entry_unit_app, List.length_rev in Hp, Hn; split.
   - intros Hpy; apply Hp.
     rewrite <- (List.length_rev ts); apply entry_propositional_shiftn_intro; rewrite List.length_rev; exact Hpy.
   - intros Hny; apply Hn; intros Hpx; apply Hny.
     pose proof (entry_propositional_shiftn (List.rev ts) Δ E y) as Hs; rewrite List.length_rev in Hs; exact (Hs Hpx).
 Qed.
 
-(** And at the new entries, none a proposition there: the terms' values. *)
+(** The tag of the entry of [ts ++ e :: Δ] at [e]: [e]'s over the
+    environment's entries past it. *)
+Lemma ctx_entry_tag_app_at : forall ts e Δ E,
+    ctx_entry_tag (ts ++ e :: Δ) (List.length ts) E = centry_tag e Δ (List.skipn (S (List.length ts)) E).
+Proof.
+  intros; unfold ctx_entry_tag, centry_tag, ctx_entry_type.
+  rewrite List.nth_error_app2, Nat.sub_diag by lia; cbn [List.nth_error].
+  assert (Hs : List.skipn (S (List.length ts)) (ts ++ e :: Δ) = Δ) by (induction ts; cbn in *; auto).
+  rewrite Hs; destruct e; reflexivity.
+Qed.
+
+(** Extensions at the tags of [ts] of environments with the same entries
+    have the same entries. *)
+Lemma env_extend_tagged_eq : forall ts Δ X X' ms, (forall x, env_entry X x = env_entry X' x) ->
+    forall x, env_entry (env_extend_tagged Δ ts X ms) x = env_entry (env_extend_tagged Δ ts X' ms) x.
+Proof.
+  induction ts as [| e ts IH]; intros Δ X X' [| m ms] HX; cbn [env_extend_tagged]; try exact HX.
+  apply IH; intros [| x]; cbn [env_entry]; [| apply HX ].
+  unfold centry_tag; rewrite (env_upto_agree (List.length Δ) X X' (fun y _ => HX y)); reflexivity.
+Qed.
+
+(** Extensions at the tags of [ts] over environments that agree on [Δ]
+    agree on the whole context: the tags read the first [|Δ|] entries. *)
+Lemma env_extend_tagged_agree : forall ts Δ X X' ms, List.length ts = List.length ms ->
+    env_agree_upto (List.length Δ) X X' ->
+    env_agree_upto (List.length ts + List.length Δ) (env_extend_tagged Δ ts X ms) (env_extend_tagged Δ ts X' ms).
+Proof.
+  induction ts as [| e ts IH]; intros Δ X X' [| m ms] Hl HX; cbn [List.length] in Hl; try discriminate; [ exact HX |].
+  cbn [env_extend_tagged List.length].
+  replace (S (List.length ts) + List.length Δ) with (List.length ts + List.length (e :: Δ)) by (cbn; lia).
+  apply IH; [ lia |].
+  intros [| x] Hx; cbn [List.length] in Hx; cbn [env_entry]; [ unfold centry_tag; rewrite (env_upto_agree _ _ _ HX); reflexivity |].
+  apply HX; lia.
+Qed.
+
+(** And at the new entries, none a proposition there: the terms' values,
+    stored at the entries' tags over the environment's tail. *)
 Lemma eval_sb_of_list_vals : forall Ms ts σ Δ ρ E, List.length ts = List.length Ms ->
     ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E ->
     (forall x, x < List.length ts -> ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
-    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ forall X, env_agree_upto (List.length ts) E (env_extend_substituted X ms).
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\
+      forall x, env_entry E x = env_entry (env_extend_tagged Δ ts (List.skipn (List.length ts) E) ms) x.
 Proof.
   induction Ms as [| M Ms IH]; intros [| e ts] * Hl H Hn; cbn [List.length] in Hl; try discriminate.
-  - exists nil; split; [ constructor | intros X x Hx; cbn in Hx; lia ].
+  - exists nil; split; [ constructor | intros x; reflexivity ].
   - assert (Hl' : List.length ts = List.length Ms) by lia.
     cbn [sb_of_list List.rev] in H, Hn; rewrite <- List.app_assoc in H, Hn; cbn [List.app] in H, Hn.
     destruct (IH ts _ (e :: Δ) _ _ Hl' H ltac:(intros x Hx; apply Hn; cbn [List.length]; lia)) as (ms & Hms & Hag).
@@ -575,13 +632,16 @@ Proof.
       by (rewrite Hl', <- (Nat.add_0_r (List.length Ms)), sb_of_list_ge; reflexivity).
     pose proof (Hev (Hn (List.length ts) ltac:(cbn [List.length]; lia))) as Hm; rewrite Hσx in Hm.
     destruct Hm as (m & Hme & Hm).
+    rewrite <- (List.length_rev ts), ctx_entry_tag_app_at, List.length_rev in Hme.
     pose proof (eval_exps_count _ _ _ Hms) as Hlms.
     exists (m :: ms); split; [ econstructor; eassumption |].
-    intros X x Hx'; cbn [List.length] in Hx'.
-    change (env_extend_substituted X (m :: ms)) with (env_extend_substituted (X ↦ m ⦂ substituted_type) ms).
-    destruct (Nat.lt_ge_cases x (List.length ts)) as [Hlt | Hge]; [ exact (Hag (X ↦ m ⦂ substituted_type) x Hlt) |].
-    assert (x = List.length ts) as -> by lia.
-    rewrite Hme, Hl', <- Hlms, <- (Nat.add_0_r (List.length ms)), env_entry_extend_substituted_app; reflexivity.
+    (** The tail past the later entries has the head term's value, at its
+        tag, before the rest. *)
+    intros x; rewrite Hag; cbn [List.length env_extend_tagged].
+    apply env_extend_tagged_eq; intros [| k]; rewrite env_entry_skipn.
+    + rewrite Nat.add_0_r, Hme; reflexivity.
+    + transitivity (env_entry (List.skipn (S (List.length ts)) E) k); [| reflexivity ].
+      rewrite env_entry_skipn; f_equal; lia.
 Qed.
 #[local] Opaque eval_sub.
 
@@ -592,74 +652,18 @@ Lemma eval_sb_of_list_inv : forall Ms ts σ Δ ρ E E0, List.length ts = List.le
     (forall x, x < List.length ts -> ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
     ⟦ σ : Δ ⟧s ρ ↘ E0 ->
     exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\
-      env_agree_upto (List.length ts + List.length Δ) E (env_extend_substituted E0 ms).
+      env_agree_upto (List.length ts + List.length Δ) E (env_extend_tagged Δ ts E0 ms).
 Proof.
   intros * Hl H Hn H0.
   destruct (eval_sb_of_list_vals _ _ _ _ _ _ Hl H Hn) as (ms & Hms & Hag).
   pose proof (eval_exps_count _ _ _ Hms) as Hlms.
   pose proof (functional_eval_sub _ _ _ _ _ (eval_sb_of_list_tail _ _ _ _ _ _ Hl H) H0) as Ht.
   exists ms; split; [ exact Hms |].
-  intros x Hx; destruct (Nat.lt_ge_cases x (List.length ts)) as [Hlt | Hge]; [ exact (Hag E0 x Hlt) |].
-  destruct (Nat.le_exists_sub _ _ Hge) as (y & -> & _); rewrite Nat.add_comm.
-  rewrite <- env_entry_skipn, (Ht y ltac:(lia)).
-  rewrite Hl, <- Hlms, env_entry_extend_substituted_app; reflexivity.
+  intros x Hx; rewrite Hag.
+  assert (Hlt : List.length ts = List.length ms) by lia.
+  exact (env_extend_tagged_agree _ _ _ _ _ Hlt Ht x Hx).
 Qed.
 
-(** The entry [x] of an environment extended by values [zs] at
-    [substituted_type], below their count: the value [|zs| - 1 - x]. *)
-Lemma env_entry_substituted_rev_nth : forall ρ zs j z, List.nth_error zs j = Some z ->
-    env_entry (env_extend_substituted ρ zs) (List.length zs - 1 - j) = de_term z substituted_type.
-Proof.
-  intros * Hz.
-  assert (Hj : j < List.length zs) by (apply List.nth_error_Some; congruence).
-  unfold env_extend_substituted.
-  rewrite env_extend_typed_rev, env_entry_nth, List.app_nth1 by (rewrite List.length_rev, !List.length_map; lia).
-  rewrite List.rev_nth by (rewrite !List.length_map; lia).
-  rewrite !List.length_map; replace (List.length zs - S (List.length zs - 1 - j)) with j by lia.
-  erewrite List.nth_error_nth; [ reflexivity | rewrite !List.nth_error_map, Hz; reflexivity ].
-Qed.
-
-#[local] Transparent eval_sub.
-(** A substitution extended by terms, at a context extended by entries
-    [ts], to the environment extended at [substituted_type] by values
-    [ms]: at each new entry the term kept as a proof where it is a
-    proposition, the term's value elsewhere. *)
-Lemma eval_sb_of_list_pointwise : forall Ms ts σ Δ ρ ρσ ms,
-    ⟦ σ : Δ ⟧s ρ ↘ ρσ -> List.length ts = List.length Ms -> List.length ms = List.length Ms ->
-    (forall j M m, List.nth_error Ms j = Some M -> List.nth_error ms j = Some m ->
-       (entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_extend_substituted ρσ ms) (List.length Ms - 1 - j) ->
-          m = ⋆ᵈ⟨M, ρ⟩) /\
-       (~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) (env_extend_substituted ρσ ms) (List.length Ms - 1 - j) ->
-          ⟦ M ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ m)) ->
-    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ env_extend_substituted ρσ ms.
-Proof.
-  intros * Hσ Hl Hlm Hv x Hx; rewrite List.length_app, List.length_rev in Hx.
-  destruct (Nat.lt_ge_cases x (List.length Ms)) as [Hlt | Hge].
-  - set (j := List.length Ms - 1 - x).
-    destruct (nth_error_lt_some' Ms j ltac:(unfold j; lia)) as [M HM].
-    destruct (nth_error_lt_some' ms j ltac:(unfold j; lia)) as [m Hm].
-    assert (Ex : List.length Ms - 1 - j = x) by (unfold j; lia).
-    pose proof (Hv _ _ _ HM Hm) as [Hp Hn]; rewrite Ex in Hp, Hn.
-    assert (Ee : env_entry (env_extend_substituted ρσ ms) x = de_term m substituted_type)
-      by (rewrite <- Ex, <- Hlm; exact (env_entry_substituted_rev_nth _ _ _ _ Hm)).
-    rewrite (sb_of_list_nth _ _ _ a_placeholder Hlt), Ee.
-    replace (List.nth (List.length Ms - 1 - x) Ms a_placeholder) with M by (symmetry; apply List.nth_error_nth; exact HM).
-    split; [ intros Hpx; rewrite (Hp Hpx); reflexivity | intros Hnx; exists m; split; [ reflexivity | exact (Hn Hnx) ] ].
-  - destruct (Nat.le_exists_sub _ _ Hge) as (y & -> & _); rewrite Nat.add_comm.
-    pose proof (Hσ y ltac:(lia)) as [Hp Hn].
-    assert (Hs : List.skipn (List.length (List.rev ts)) (env_extend_substituted ρσ ms) = ρσ)
-      by (rewrite List.length_rev, Hl, <- Hlm; apply skipn_env_extend_substituted).
-    assert (Ee : env_entry (env_extend_substituted ρσ ms) (List.length Ms + y) = env_entry ρσ y)
-      by (rewrite <- Hlm; apply env_entry_extend_substituted_app).
-    rewrite sb_of_list_ge, Ee; split.
-    + intros Hpx; apply Hp.
-      replace (List.length Ms + y) with (List.length (List.rev ts) + y) in Hpx by (rewrite List.length_rev; lia).
-      pose proof (entry_propositional_shiftn _ _ _ _ Hpx) as Hpx'; rewrite Hs in Hpx'; exact Hpx'.
-    + intros Hnx; apply Hn; intros Hp'; apply Hnx.
-      replace (List.length Ms + y) with (List.length (List.rev ts) + y) by (rewrite List.length_rev; lia).
-      apply entry_propositional_shiftn_intro; rewrite Hs; exact Hp'.
-Qed.
-#[local] Opaque eval_sub.
 
 (** The variables of the values [vxs] in an environment extended by them
     and then by [vys], whatever their types. *)
