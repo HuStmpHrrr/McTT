@@ -816,6 +816,117 @@ Section ContainerReadable.
       rewrite ETQ, EnQ in U1.
       exists (as1 ++ bs1); split; [ eapply eval_ihtys_rec; [ exact T1 | exact U1 ] | apply List.Forall2_app; assumption ].
   Qed.
+
+  #[local] Abbreviation isymQ := (proj1 (ind_rel_sym_all qc D' ub nrQ arQ drQ HassQ
+                                           (ind_canon_props_np_per _ _ HcpQ) (ind_canon_props_np_iff _ _ HcpQ)
+                                           (ind_canon_props_arg_per _ _ HcpQ) (ind_canon_props_arg_iff _ _ HcpQ)
+                                           (ind_canon_props_dom_per _ _ HcpQ) (ind_canon_props_dom_iff _ _ HcpQ)
+                                           (admissible_index_at D' ub nrQ))).
+  #[local] Abbreviation itransQ := (proj1 (ind_rel_trans_all qc D' ub nrQ arQ drQ HassQ
+                                             (ind_canon_props_np_per _ _ HcpQ) (ind_canon_props_np_iff _ _ HcpQ)
+                                             (ind_canon_props_arg_per _ _ HcpQ) (ind_canon_props_arg_iff _ _ HcpQ)
+                                             (ind_canon_props_dom_per _ _ HcpQ) (ind_canon_props_dom_iff _ _ HcpQ)
+                                             (admissible_index_at D' ub nrQ))).
+
+  (** [ElimView.CrossElim]'s [Hcbr_x]: the container's branch's variables
+      read back at the types its eliminator stores them at: the
+      constructor, the group's at the view, is the container's at [ub]
+      ([group_to_container_rel]), whose non-uniform parameters and
+      arguments read back at the container's types there ([elim_ups_ok]),
+      and the recursive results at the container's motives' instances
+      ([container_results_readable_all]). *)
+  Lemma container_branch_entries_readable : forall i' Mi' v Mv c gs' gs u u' bs bs' vs vs' w ihs hd k,
+      ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
+      List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+      ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+      G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs')
+        (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
+      cross_fields_rel D D' dr Rel C1 p u0 Bks v u u'
+        (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (List.rev (im_nparams Mv)) gs' gs vs vs' w ihs ->
+      List.Forall2 (fun v t => entry_readable (de_term v t)) (List.skipn (im_unu D Mv) bs ++ vs ++ w)
+        (List.map snd (branch_entries D' Mi' qc ub (blocks_motives VBb) ρb gs' (List.skipn (im_unu D Mv) bs) vs w)).
+  Proof.
+    intros * HMi' Hrv' Hv HMv Hc' Hcv0 HG Hcr.
+    destruct (container_view_member i' v Hv) as (Mi0 & Mv0 & HMi0 & Hvm).
+    rewrite HMi' in HMi0; injection HMi0 as <-.
+    pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) as HMv0; rewrite HMv in HMv0; injection HMv0 as <-.
+    assert (Hrv : im_is_rview Mv = false) by (rewrite (view_member_is_rview _ _ _ _ _ _ _ _ _ Hvm); exact Hrv').
+    pose proof (view_member_unu _ _ _ _ _ _ _ _ _ Hvm Hrv') as Hunu.
+    pose proof (view_member_nn _ _ _ _ _ _ _ _ _ Hvm) as Hnn.
+    pose proof HcpQ as [QnP QnI QaP QaI QdP QdI].
+    pose proof Hcups_x as [_ _ AaQ _ _ _ _ _ _ _ _ _].
+    pose proof (valid_group_adm qc D' HgQ ub ub Hubub Lub Hubub) as HadQ.
+    pose proof Hcr as Lvs; apply cross_fields_rel_vs_len in Lvs as [Lvs Lvs'].
+    (** The constructor's stored parameters, as many as the member's. *)
+    assert (Lb : List.length bs = (im_unu D Mv + im_nn Mv)%nat).
+    { inversion HG as [k0 Mk0 hd0 k1 ns0 ns0' c0 gs0 bs0 bs0' vs0 vs0' u2 u2' HM0 _ _ _ Hcn Hb _ _ _ _ Hia | | ]; subst.
+      - rewrite HMv in HM0; injection HM0 as <-; rewrite Hcv0 in Hcn; injection Hcn as <-.
+        pose proof Hia as Lv0; apply con_args_rel_len in Lv0 as [Lv0 _].
+        match goal with He : bs0 ++ vs0 = bs ++ vs |- _ =>
+          pose proof (f_equal (@List.length domain) He) as Le; rewrite !List.length_app in Le end.
+        lia.
+      - match goal with HM0 : ind_member D v = Some ?M0, Hh0 : im_head ?M0 = mh_record _ _ _ |- _ =>
+          rewrite HMv in HM0; injection HM0 as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv Hh0) end. }
+    destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ HG HMv Hrv Lb)
+      as (gs0 & bs0' & vs0' & Ez & _ & _ & Hcn & Lb' & _ & _ & _ & Hca).
+    rewrite Hcv0 in Hcn; injection Hcn as <-.
+    injection Ez as Ez.
+    pose proof Hca as Lv0; apply con_args_rel_len in Lv0 as [_ Lv0].
+    assert (Lbb : List.length bs' = List.length bs0')
+      by (pose proof (f_equal (@List.length domain) Ez) as Le; rewrite !List.length_app in Le; lia).
+    destruct (app_split_eq _ _ _ _ Ez Lbb) as [<- <-].
+    (** The constructor at the container, on its diagonal at [ub]. *)
+    pose proof (group_to_container_rel i' Mi' v Mv u u' _ _ _ _ HMi' Hrv' Hvm HG) as HQ0.
+    pose proof (itransQ _ _ _ _ _ _ _ HQ0 _ _ _ _ (isymQ _ _ _ _ _ _ _ HQ0)) as HQ.
+    assert (LbQ : List.length bs = (im_unu D' Mi' + im_nn Mi')%nat) by (rewrite <- Hunu, <- Hnn; exact Lb).
+    destruct (ind_rel_con_inv qc D' ub nrQ arQ drQ HassQ QnP QnI QaP QaI QdP QdI _ _ _ _ _ _ _ _ _ _ _ _ _ HQ HMi' Hrv' LbQ)
+      as (gsQ & bsQ & vsQ & EzQ & _ & HnQ & HcnQ & _ & _ & _ & HnrQ & HcaQ).
+    rewrite Hc' in HcnQ; injection HcnQ as <-.
+    injection EzQ as EzQ.
+    pose proof HcaQ as LvQ; apply con_args_rel_len in LvQ as [LvQa LvQ].
+    assert (LbbQ : List.length bs = List.length bsQ)
+      by (pose proof (f_equal (@List.length domain) EzQ) as Le; rewrite !List.length_app in Le; lia).
+    destruct (app_split_eq _ _ _ _ EzQ LbbQ) as [<- <-].
+    rewrite <- Hunu in HnrQ, HcaQ.
+    set (X := List.skipn (im_unu D Mv) bs) in *.
+    destruct HnrQ as [_ HnrQ].
+    (** The arguments at the container's types. *)
+    pose proof (cargs_doms_adm qc D' ub nrQ arQ drQ Hq HassQ QnP QnI QaP QaI QdP QdI HadQ ub ub AaQ AaQ i' Mi' c gs' X X
+                  HMi' Hc' HnQ gs' nil nil nil vs vs eq_refl LvQ LvQ (tele_prefix_rel_nil _) HnrQ) as HdQ.
+    cbn [cargs_nonrec_tele cargs_nonrec List.map] in HdQ; rewrite !List.app_nil_r in HdQ.
+    destruct (cargs_entries_readable qc D' ub nrQ arQ drQ Hq HassQ QnP QnI QaP QaI QdP QdI ub ub Hcups_x i' Mi' c gs' ub ub X X
+                AaQ AaQ HMi' Hc' HnQ gs' nil nil nil vs vs eq_refl (tele_prefix_rel_nil _) HnrQ
+                ltac:(rewrite ?List.app_nil_r; cbn [cargs_nonrec_tele List.map]; rewrite ?List.app_nil_r; exact HcaQ)
+                ltac:(rewrite ?List.app_nil_r; cbn [cargs_nonrec_tele List.map]; rewrite ?List.app_nil_r; exact HdQ))
+      as [Rargs _].
+    cbn [cargs_nonrec_tele List.map] in Rargs; rewrite !List.app_nil_r in Rargs.
+    (** The recursive results at the container's motives' instances. *)
+    destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvm c gs' Hc') as (g0 & Hc0 & Hcorr).
+    rewrite Hcv0 in Hc0; injection Hc0 as <-.
+    pose proof (proj1 (tele_rel_iff _ _ _ _) HnQ) as (LX & _ & _).
+    rewrite List.length_rev, length_im_nparams in LX.
+    destruct (proj2 (proj2 (container_results_readable_all v u u')) _ _ _ _ _ _ _ _ _ Hcr i' Mi' Mv c nil nil X nil HMi' Hvm
+                Hc' Hcv0 I Hcorr eq_refl ltac:(cbn; rewrite List.app_nil_r; reflexivity)
+                ltac:(cbn; rewrite List.app_nil_r; reflexivity) LX HnQ (tele_prefix_rel_nil _) HnrQ Hca
+                ltac:(cbn [nonrec_arg_vals cargs_nonrec_tele List.map]; rewrite ?List.app_nil_r; exact HcaQ)
+                ltac:(cbn [nonrec_arg_vals cargs_nonrec_tele List.map]; rewrite ?List.app_nil_r; exact HdQ))
+      as (as1 & T1 & R1).
+    cbn [nonrec_arg_vals cargs_nonrec_tele List.map] in T1; rewrite !List.app_nil_r in T1.
+    pose proof (ihs_types_eval qc D' Hq HassQ _ _ _ _ _ _ _ T1) as E1.
+    assert (Hit : forall ihs0 as0 ts, List.Forall2 (fun r a => entry_readable (de_term r (entry_type_value a))) ihs0 as0 ->
+               List.Forall2 (fun t a => eval_entry_type gc_deps gc_stack t a) ts as0 ->
+               List.Forall2 (fun v t => entry_readable (de_term v t)) ihs0 ts /\ List.length ihs0 = List.length ts).
+    { intros ihs0 as0 ts H1 H2; revert ts H2; induction H1 as [| r a ihs0 as0 Hra H1 IH1]; intros ts H2;
+        inversion H2 as [| t a' ts' as0' Ht H2']; subst; [ split; [ constructor | reflexivity ] |].
+      destruct (IH1 _ H2') as [F L]; split; [ constructor; [ exact (entry_readable_at_evaluated _ _ _ Ht Hra) | exact F ] | cbn; f_equal; exact L ]. }
+    destruct (Hit _ _ _ R1 E1) as [I1 L1].
+    assert (L1' : List.length w = List.length (ihs_types D' qc ub ρb (blocks_motives VBb)
+                    (env_extend_typed (decl_env D' ub) (tele_entries (decl_env D' ub) (List.rev (im_nparams Mi')) X)) gs' vs))
+      by exact L1.
+    unfold branch_entries; rewrite !List.map_app, (pair_values_with_types_types _ _ L1').
+    apply List.Forall2_app; [ exact (nparams_entries_readable_at_admissible_base _ _ _ _ _ _ _ _ _ _ HassQ AaQ HMi' HnQ) |].
+    apply List.Forall2_app; [ exact Rargs | exact I1 ].
+  Qed.
 End ContainerReadable.
 
 End Fixed_GCtx.
