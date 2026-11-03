@@ -209,6 +209,15 @@ Proof.
   apply ctx_retag_env_tele; [ reflexivity | reflexivity | rewrite List.length_rev; exact Hl ].
 Qed.
 
+(** In particular extensions of the uniform parameters' environment, as
+    the identity's value has it: the components after the parameters. *)
+Corollary env_extend_tagged_decl_env : forall D ups T ms, List.length ups = ind_nu D -> List.length ms = List.length T ->
+    env_extend_tagged (ind_uparams D) T (ctx_retag (ind_uparams D) (decl_env D ups)) ms = components_env D ups T ms.
+Proof.
+  intros * Hl Hm; rewrite ctx_retag_decl_env by exact Hl.
+  apply env_extend_tagged_exact; [ rewrite length_decl_env; exact Hl | exact Hm ].
+Qed.
+
 (** ** Arguments at a Telescope *)
 
 Lemma per_gargs_length : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' ->

@@ -58,7 +58,7 @@ Section ClosedTele.
     pose proof (gargs_env_rel _ _ _ _ _ _ HRU HW Hl Hg) as H.
     assert (HRU' : EF List.rev (List.rev Δ) ++ ⋅ ≈ List.rev (List.rev Δ) ++ ⋅ ∈ per_ctx_env ↘ RU)
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRU).
-    exact (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true ctele_rev_sem (List.Forall_rev Ha) HRU' nil nil ys xs
+    exact (proj2 (rel_gargs_tele _ _ _ _ per_ctx_env_nil_true ctele_rev_sem (List.Forall_rev Ha) HRU' nil nil ys xs
                     ltac:(rewrite List.length_rev; lia) ltac:(rewrite List.length_rev; lia) (symmetry H))).
   Qed.
 End ClosedTele.
@@ -278,15 +278,16 @@ Section FiledViews.
     pose proof (decl_closed_ass _ (valid_group_closed _ _ HgQ)) as HaQ.
     apply gsub_of_list;
       [ exact (gsub_id _ (valid_ind_decl_uparams _ HD)) | exact HaQ
-      | exact (proj1 (closed_app_sem _ _ HaQ (valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ)) (valid_ind_decl_uparams _ HD))) | exact HIl |].
+      | exact (proj1 (closed_app_sem _ _ HaQ (valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ)) (valid_ind_decl_uparams _ HD))) | exact HIl
+      | | exact (member_closed_head _ _ (decl_closed_members _ Hc _ _ Hk) _ _ _ _ Hh) ].
     intros j I T HI HT; exact (filed_view_is _ _ _ _ _ _ _ _ _ _ Hk Hh Hq HI HT).
   Qed.
 
   Lemma view_args_values : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' /\
+      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups' ↘ cups' /\
         per_gargs (List.rev (ind_uparams Dq)) nil nil cups cups'.
   Proof.
     intros * Hk Hh Hq ups ups' Hgu Hu.
@@ -314,12 +315,13 @@ Section FiledViews.
                 ~ entry_propositional gc_deps gc_stack (List.rev (List.rev (ind_uparams Dq)) ++ ind_uparams D) y x)
       by (intros y Hyy x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
           exact (relevant_entries_not_propositional _ _ _ HaQ Hrel HRΔ0 _ _ Hyy x Hx)).
-    destruct (per_ctx_env_proofs _ _ _ HRΓ0 _ _ Hρ) as [Hp1 Hp2].
     rewrite <- (List.rev_involutive (ind_uparams Dq)) in Ey1, Ey2.
-    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 (Hnp _ Hy11) (eval_sub_id _ _ Hp1)) as (cups & Ecups & A1).
-    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey2 (Hnp _ Hy22) (eval_sub_id _ _ Hp2)) as (cups' & Ecups' & A2).
+    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 (Hnp _ Hy11) (eval_sub_id _ _)) as (cups & Ecups & A1).
+    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey2 (Hnp _ Hy22) (eval_sub_id _ _)) as (cups' & Ecups' & A2).
     exists cups, cups'; split; [ exact Ecups | split; [ exact Ecups' |] ].
-    assert (HE : RΔ0 (env_args (env_args nil ups) cups) (env_args (env_args nil ups') cups')).
+    pose proof (eval_exps_length _ _ _ Ecups) as Hl1; pose proof (eval_exps_length _ _ _ Ecups') as Hl2.
+    rewrite env_extend_tagged_decl_env in A1, A2 by (rewrite ?List.length_rev; unfold ind_nu in *; lia).
+    assert (HE : RΔ0 (components_env D ups (List.rev (ind_uparams Dq)) cups) (components_env D ups' (List.rev (ind_uparams Dq)) cups')).
     { rewrite List.length_rev in A1, A2.
       eapply (per_ctx_env_resp_agree HRΔ0); [ rewrite List.length_app; exact A1 | rewrite List.length_app; exact A2 | exact Hy ]. }
     destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].
@@ -327,8 +329,7 @@ Section FiledViews.
     assert (HWQ' : ⊨ List.rev (List.rev (ind_uparams Dq)) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HWQ).
     assert (HRQ' : EF List.rev (List.rev (ind_uparams Dq)) ++ ⋅ ≈ List.rev (List.rev (ind_uparams Dq)) ++ ⋅ ∈ per_ctx_env ↘ RQ)
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRQ).
-    pose proof (eval_exps_length _ _ _ Ecups) as Hl1; pose proof (eval_exps_length _ _ _ Ecups') as Hl2.
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) HRQ' _ _ cups cups'
+    destruct (rel_gargs_tele _ _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) HRQ' _ _ cups cups'
                 ltac:(rewrite List.length_rev; unfold ind_nu in *; lia) ltac:(rewrite List.length_rev; unfold ind_nu in *; lia) HEQ)
       as [_ Hgc].
     exact (per_gargs_base _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) _ _ nil nil _ _ I I I Hgc).
@@ -339,8 +340,8 @@ Section FiledViews.
   Lemma view_args_sub_eval : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-        ⟦ sb_of_list Id Is : ind_uparams Dq ++ ind_uparams D ⟧s env_args nil ups ↘ env_args (env_args nil ups) cups.
+      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ sb_of_list Id Is : ind_uparams Dq ++ ind_uparams D ⟧s decl_env D ups ↘ components_env D ups (List.rev (ind_uparams Dq)) cups.
   Proof.
     intros * Hk Hh Hq ups ups' Hgu Hu.
     pose proof (Hcv _ _ _ _ _ _ _ Hk Hh Hq) as HgQ.
@@ -362,17 +363,23 @@ Section FiledViews.
                 ~ entry_propositional gc_deps gc_stack (List.rev (List.rev (ind_uparams Dq)) ++ ind_uparams D) y1 x)
       by (intros x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
           exact (relevant_entries_not_propositional _ _ _ HaQ Hrel HRΔ0 _ _ Hy11 x Hx)).
-    destruct (per_ctx_env_proofs _ _ _ HRΓ0 _ _ Hρ) as [Hp1 _].
-    rewrite <- (List.rev_involutive (ind_uparams Dq)) in Ey1 |- *.
-    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 Hnp (eval_sub_id _ _ Hp1)) as (cups & Ecups & A1).
+    rewrite <- (List.rev_involutive (ind_uparams Dq)) in Ey1.
+    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 Hnp (eval_sub_id _ _)) as (cups & Ecups & A1).
     exists cups; split; [ exact Ecups |].
-    apply eval_sb_of_list; [ exact (eval_sub_id _ _ Hp1) | exact Ecups | exact HlIs |].
-    (** The proofs: the environment agrees with the substitution's value. *)
-    intros x _ Hpx; rewrite List.rev_involutive in Hpx.
+    pose proof (eval_exps_length _ _ _ Ecups) as Hl1.
+    assert (HX : env_extend_tagged (ind_uparams D) (List.rev (ind_uparams Dq)) (ctx_retag (ind_uparams D) (decl_env D ups)) cups
+                 = components_env D ups (List.rev (ind_uparams Dq)) cups)
+      by (apply env_extend_tagged_decl_env; [ exact Hu | lia ]).
+    rewrite HX in A1; rewrite <- HX, <- (List.rev_involutive (ind_uparams Dq)) at 1.
+    apply eval_sb_of_list; [ exact (eval_sub_id _ _) | exact Ecups | exact HlIs |].
+    (** No entry of the container's parameters is a proposition there: the
+        environment agrees with the substitution's value. *)
+    rewrite HX; intros x Hx Hpx.
     rewrite List.length_rev in A1.
-    assert (HE : RΔ0 (env_args (env_args nil ups) cups) y1)
+    assert (HE : RΔ0 (components_env D ups (List.rev (ind_uparams Dq)) cups) y1)
       by (eapply (per_ctx_env_resp_agree HRΔ0); [ rewrite List.length_app; exact A1 | reflexivity | exact Hy11 ]).
-    exact (proj1 (per_ctx_env_proofs _ _ _ HRΔ0 _ _ HE) x Hpx).
+    rewrite List.rev_involutive in Hpx; rewrite List.length_rev in Hx.
+    exact (relevant_entries_not_propositional _ _ _ HaQ Hrel HRΔ0 _ _ HE x Hx Hpx).
   Qed.
 
   (** The view's instance weakened past more variables, at an environment
@@ -384,9 +391,9 @@ Section FiledViews.
       forall Z RZ ups zs, ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
         List.length zs = List.length Z -> List.length ups = ind_nu D ->
         per_gargs (List.rev (ind_uparams D)) nil nil ups ups ->
-        RZ (env_args (env_args nil ups) zs) (env_args (env_args nil ups) zs) ->
-        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args (env_args nil ups) zs ↘ cs /\
+        RZ (components_env D ups (List.rev Z) zs) (components_env D ups (List.rev Z) zs) ->
+        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups (List.rev Z) zs ↘ cs /\
           per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs.
   Proof.
     intros * Hk Hh Hq Z RZ ups zs HZ HRZ Hlz Hu Hgu HE.
@@ -403,12 +410,12 @@ Section FiledViews.
     pose proof (closed_app_sem _ _ HaQ HWQ HWD) as [HWQD HresQ].
     destruct (rel_ctx_wf_per_ctx_env HWQD) as [RΔ HRΔ].
     assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HRΔ).
-    set (E := env_args (env_args nil ups) zs) in *.
-    assert (HwE : ⟪wk_shiftn (List.length Z)⟫ E = env_args nil ups) by (unfold E; rewrite <- Hlz; apply eval_wk_shiftn_args).
-    assert (Hev0 : ⟦ sb_of_wk (wk_shiftn (List.length Z)) : ind_uparams D ⟧s E ↘ ⟪wk_shiftn (List.length Z)⟫ E)
-      by (apply eval_sub_of_wk; [ typeclasses eauto | rewrite HwE; exact (gargs_env_proofs _ _ _ _ _ HWD Hu Hgu) ]).
+    set (E := components_env D ups (List.rev Z) zs) in *.
+    assert (HwE : ⟪wk_shiftn (List.length Z)⟫ E = decl_env D ups)
+      by (unfold E; rewrite <- Hlz; apply eval_wk_shiftn_components_env).
+    assert (Hev0 : ⟦ sb_of_wk (wk_shiftn (List.length Z)) : ind_uparams D ⟧s E ↘ decl_env D ups).
+    { rewrite <- (ctx_retag_decl_env D ups Hu), <- HwE; apply eval_sub_of_wk; typeclasses eauto. }
     destruct (Hlink _ _ HRZ _ _ Hσ _ HRΔ E _ HE Hev0) as (e1 & Ee1 & He1).
-    rewrite HwE in He1.
     pose proof (He1 _ Ecupsσ) as HR1.
     (** The values of the weakened instance: the container's parameters are
         relevant, so the composite's values are the instance's. *)
@@ -425,9 +432,12 @@ Section FiledViews.
     assert (Hlm : List.length (List.rev (ind_uparams Dq)) = List.length (List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is))
       by (rewrite List.length_rev, List.length_map; unfold ind_nu in HIl; lia).
     destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ Hlm Ee1s Hnp Hev0) as (cs & Ecs & A).
-    rewrite HwE in A.
     exists cups, cs; split; [ exact Ecups | split; [ exact Ecs |] ].
-    assert (HR2 : RΔ (env_args (env_args nil ups) cs) (env_args (env_args nil ups) cups)).
+    pose proof (eval_exps_length _ _ _ Ecs) as Hlcs; rewrite List.length_map in Hlcs.
+    rewrite (env_extend_tagged_exact (List.rev (ind_uparams Dq)) (ind_uparams D) (decl_env D ups) cs
+               ltac:(rewrite length_decl_env; exact Hu) ltac:(rewrite List.length_rev; unfold ind_nu in *; lia)) in A.
+    fold (components_env D ups (List.rev (ind_uparams Dq)) cs) in A.
+    assert (HR2 : RΔ (components_env D ups (List.rev (ind_uparams Dq)) cs) (components_env D ups (List.rev (ind_uparams Dq)) cups)).
     { rewrite List.length_rev in A.
       eapply (per_ctx_env_resp_agree HRΔ); [ rewrite List.length_app; exact A | reflexivity | exact HR1 ]. }
     destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].
@@ -437,7 +447,7 @@ Section FiledViews.
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRQ).
     pose proof (eval_exps_length _ _ _ Ecups) as Hl1; pose proof (eval_exps_length _ _ _ Ecs) as Hl2.
     rewrite List.length_map in Hl2.
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) HRQ' _ _ cs cups
+    destruct (rel_gargs_tele _ _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) HRQ' _ _ cs cups
                 ltac:(rewrite List.length_rev; unfold ind_nu in *; lia) ltac:(rewrite List.length_rev; unfold ind_nu in *; lia) HEQ)
       as [_ Hgc].
     pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HWQ' (List.Forall_rev HaQ) _ _ nil nil _ _ I I I Hgc) as Hgc0.
@@ -465,15 +475,16 @@ Section FiledViews.
     pose proof (params_valid _ (valid_rview_record_valid _ _ HR)) as HWR.
     apply gsub_of_list;
       [ exact (gsub_id _ (valid_ind_decl_uparams _ HD)) | exact HaR
-      | exact (proj1 (closed_app_sem _ _ HaR HWR (valid_ind_decl_uparams _ HD))) | exact (rview_record_len _ _ _ _ _ _ Hk Hh HR) |].
+      | exact (proj1 (closed_app_sem _ _ HaR HWR (valid_ind_decl_uparams _ HD))) | exact (rview_record_len _ _ _ _ _ _ Hk Hh HR)
+      | | exact (member_closed_rhead _ _ (decl_closed_members _ Hc _ _ Hk) _ _ _ Hh) ].
     intros j I T HI HT; exact (filed_rview_is _ _ _ _ _ _ _ _ _ Hk Hh (valid_rview_record_lookup _ _ HR) HI HT).
   Qed.
 
   Lemma rview_args_values : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       valid_rview_record qr R ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' /\
+      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups' ↘ cups' /\
         per_gargs (List.rev (record_params R)) nil nil cups cups'.
   Proof.
     intros * Hk Hh HR ups ups' Hgu Hu.
@@ -498,20 +509,20 @@ Section FiledViews.
                 ~ entry_propositional gc_deps gc_stack (List.rev (List.rev (record_params R)) ++ ind_uparams D) y x)
       by (intros y Hyy x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
           exact (relevant_entries_not_propositional _ _ _ HaQ Hrel HRΔ0 _ _ Hyy x Hx)).
-    destruct (per_ctx_env_proofs _ _ _ HRΓ0 _ _ Hρ) as [Hp1 Hp2].
     rewrite <- (List.rev_involutive (record_params R)) in Ey1, Ey2.
-    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 (Hnp _ Hy11) (eval_sub_id _ _ Hp1)) as (cups & Ecups & A1).
-    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey2 (Hnp _ Hy22) (eval_sub_id _ _ Hp2)) as (cups' & Ecups' & A2).
+    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 (Hnp _ Hy11) (eval_sub_id _ _)) as (cups & Ecups & A1).
+    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey2 (Hnp _ Hy22) (eval_sub_id _ _)) as (cups' & Ecups' & A2).
     exists cups, cups'; split; [ exact Ecups | split; [ exact Ecups' |] ].
-    assert (HE : RΔ0 (env_args (env_args nil ups) cups) (env_args (env_args nil ups') cups')).
+    pose proof (eval_exps_length _ _ _ Ecups) as Hl1; pose proof (eval_exps_length _ _ _ Ecups') as Hl2.
+    rewrite env_extend_tagged_decl_env in A1, A2 by (rewrite ?List.length_rev; lia).
+    assert (HE : RΔ0 (components_env D ups (List.rev (record_params R)) cups) (components_env D ups' (List.rev (record_params R)) cups')).
     { rewrite List.length_rev in A1, A2.
       eapply (per_ctx_env_resp_agree HRΔ0); [ rewrite List.length_app; exact A1 | rewrite List.length_app; exact A2 | exact Hy ]. }
     destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].
     pose proof (proj2 (closed_app_sem _ _ HaQ HWQ HWD) RQ RΔ0 HRQ HRΔ0 _ _ HE) as HEQ.
     assert (HRQ' : EF List.rev (List.rev (record_params R)) ++ ⋅ ≈ List.rev (List.rev (record_params R)) ++ ⋅ ∈ per_ctx_env ↘ RQ)
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRQ).
-    pose proof (eval_exps_length _ _ _ Ecups) as Hl1; pose proof (eval_exps_length _ _ _ Ecups') as Hl2.
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true (ctele_rev_sem _ HWQ) (List.Forall_rev HaQ) HRQ' _ _ cups cups'
+    destruct (rel_gargs_tele _ _ _ _ per_ctx_env_nil_true (ctele_rev_sem _ HWQ) (List.Forall_rev HaQ) HRQ' _ _ cups cups'
                 ltac:(rewrite List.length_rev; lia) ltac:(rewrite List.length_rev; lia) HEQ)
       as [_ Hgc].
     exact (per_gargs_base _ _ _ per_ctx_env_nil_true (ctele_rev_sem _ HWQ) (List.Forall_rev HaQ) _ _ nil nil _ _ I I I Hgc).
@@ -521,8 +532,8 @@ Section FiledViews.
   Lemma rview_args_sub_eval : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       valid_rview_record qr R ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-        ⟦ sb_of_list Id Is : record_params R ++ ind_uparams D ⟧s env_args nil ups ↘ env_args (env_args nil ups) cups.
+      exists cups, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ sb_of_list Id Is : record_params R ++ ind_uparams D ⟧s decl_env D ups ↘ components_env D ups (List.rev (record_params R)) cups.
   Proof.
     intros * Hk Hh HR ups ups' Hgu Hu.
     pose proof (typed_params_ass _ _ _ (valid_rview_record_typed _ _ HR)) as HaQ.
@@ -542,16 +553,21 @@ Section FiledViews.
                 ~ entry_propositional gc_deps gc_stack (List.rev (List.rev (record_params R)) ++ ind_uparams D) y1 x)
       by (intros x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
           exact (relevant_entries_not_propositional _ _ _ HaQ Hrel HRΔ0 _ _ Hy11 x Hx)).
-    destruct (per_ctx_env_proofs _ _ _ HRΓ0 _ _ Hρ) as [Hp1 _].
-    rewrite <- (List.rev_involutive (record_params R)) in Ey1 |- *.
-    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 Hnp (eval_sub_id _ _ Hp1)) as (cups & Ecups & A1).
+    rewrite <- (List.rev_involutive (record_params R)) in Ey1.
+    destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlIs Ey1 Hnp (eval_sub_id _ _)) as (cups & Ecups & A1).
     exists cups; split; [ exact Ecups |].
-    apply eval_sb_of_list; [ exact (eval_sub_id _ _ Hp1) | exact Ecups | exact HlIs |].
-    intros x _ Hpx; rewrite List.rev_involutive in Hpx.
+    pose proof (eval_exps_length _ _ _ Ecups) as Hl1.
+    assert (HX : env_extend_tagged (ind_uparams D) (List.rev (record_params R)) (ctx_retag (ind_uparams D) (decl_env D ups)) cups
+                 = components_env D ups (List.rev (record_params R)) cups)
+      by (apply env_extend_tagged_decl_env; [ exact Hu | lia ]).
+    rewrite HX in A1; rewrite <- HX, <- (List.rev_involutive (record_params R)) at 1.
+    apply eval_sb_of_list; [ exact (eval_sub_id _ _) | exact Ecups | exact HlIs |].
+    rewrite HX; intros x Hx Hpx.
     rewrite List.length_rev in A1.
-    assert (HE : RΔ0 (env_args (env_args nil ups) cups) y1)
+    assert (HE : RΔ0 (components_env D ups (List.rev (record_params R)) cups) y1)
       by (eapply (per_ctx_env_resp_agree HRΔ0); [ rewrite List.length_app; exact A1 | reflexivity | exact Hy11 ]).
-    exact (proj1 (per_ctx_env_proofs _ _ _ HRΔ0 _ _ HE) x Hpx).
+    rewrite List.rev_involutive in Hpx; rewrite List.length_rev in Hx.
+    exact (relevant_entries_not_propositional _ _ _ HaQ Hrel HRΔ0 _ _ HE x Hx Hpx).
   Qed.
 
   (** A record view's instance weakened past more variables, at an
@@ -562,9 +578,9 @@ Section FiledViews.
       forall Z RZ ups zs, ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
         List.length zs = List.length Z -> List.length ups = ind_nu D ->
         per_gargs (List.rev (ind_uparams D)) nil nil ups ups ->
-        RZ (env_args (env_args nil ups) zs) (env_args (env_args nil ups) zs) ->
-        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args (env_args nil ups) zs ↘ cs /\
+        RZ (components_env D ups (List.rev Z) zs) (components_env D ups (List.rev Z) zs) ->
+        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups (List.rev Z) zs ↘ cs /\
           per_gargs (List.rev (record_params R)) nil nil cups cs.
   Proof.
     intros * Hk Hh HR Z RZ ups zs HZ HRZ Hlz Hu Hgu HE.
@@ -579,12 +595,12 @@ Section FiledViews.
     pose proof (closed_app_sem _ _ HaQ HWQ HWD) as [HWQD HresQ].
     destruct (rel_ctx_wf_per_ctx_env HWQD) as [RΔ HRΔ].
     assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HRΔ).
-    set (E := env_args (env_args nil ups) zs) in *.
-    assert (HwE : ⟪wk_shiftn (List.length Z)⟫ E = env_args nil ups) by (unfold E; rewrite <- Hlz; apply eval_wk_shiftn_args).
-    assert (Hev0 : ⟦ sb_of_wk (wk_shiftn (List.length Z)) : ind_uparams D ⟧s E ↘ ⟪wk_shiftn (List.length Z)⟫ E)
-      by (apply eval_sub_of_wk; [ typeclasses eauto | rewrite HwE; exact (gargs_env_proofs _ _ _ _ _ HWD Hu Hgu) ]).
+    set (E := components_env D ups (List.rev Z) zs) in *.
+    assert (HwE : ⟪wk_shiftn (List.length Z)⟫ E = decl_env D ups)
+      by (unfold E; rewrite <- Hlz; apply eval_wk_shiftn_components_env).
+    assert (Hev0 : ⟦ sb_of_wk (wk_shiftn (List.length Z)) : ind_uparams D ⟧s E ↘ decl_env D ups).
+    { rewrite <- (ctx_retag_decl_env D ups Hu), <- HwE; apply eval_sub_of_wk; typeclasses eauto. }
     destruct (Hlink _ _ HRZ _ _ Hσ _ HRΔ E _ HE Hev0) as (e1 & Ee1 & He1).
-    rewrite HwE in He1.
     pose proof (He1 _ Ecupsσ) as HR1.
     (** The values of the weakened instance: the record's parameters are
         relevant, so the composite's values are the instance's. *)
@@ -601,9 +617,12 @@ Section FiledViews.
     assert (Hlm : List.length (List.rev (record_params R)) = List.length (List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is))
       by (rewrite List.length_rev, List.length_map; lia).
     destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ Hlm Ee1s Hnp Hev0) as (cs & Ecs & A).
-    rewrite HwE in A.
     exists cups, cs; split; [ exact Ecups | split; [ exact Ecs |] ].
-    assert (HR2 : RΔ (env_args (env_args nil ups) cs) (env_args (env_args nil ups) cups)).
+    pose proof (eval_exps_length _ _ _ Ecs) as Hlcs; rewrite List.length_map in Hlcs.
+    rewrite (env_extend_tagged_exact (List.rev (record_params R)) (ind_uparams D) (decl_env D ups) cs
+               ltac:(rewrite length_decl_env; exact Hu) ltac:(rewrite List.length_rev; lia)) in A.
+    fold (components_env D ups (List.rev (record_params R)) cs) in A.
+    assert (HR2 : RΔ (components_env D ups (List.rev (record_params R)) cs) (components_env D ups (List.rev (record_params R)) cups)).
     { rewrite List.length_rev in A.
       eapply (per_ctx_env_resp_agree HRΔ); [ rewrite List.length_app; exact A | reflexivity | exact HR1 ]. }
     destruct (rel_ctx_wf_per_ctx_env HWQ) as [RQ HRQ].
@@ -612,7 +631,7 @@ Section FiledViews.
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRQ).
     pose proof (eval_exps_length _ _ _ Ecups) as Hl1; pose proof (eval_exps_length _ _ _ Ecs) as Hl2.
     rewrite List.length_map in Hl2.
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true (ctele_rev_sem _ HWQ) (List.Forall_rev HaQ) HRQ' _ _ cs cups
+    destruct (rel_gargs_tele _ _ _ _ per_ctx_env_nil_true (ctele_rev_sem _ HWQ) (List.Forall_rev HaQ) HRQ' _ _ cs cups
                 ltac:(rewrite List.length_rev; lia) ltac:(rewrite List.length_rev; lia) HEQ)
       as [_ Hgc].
     pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true (ctele_rev_sem _ HWQ) (List.Forall_rev HaQ) _ _ nil nil _ _ I I I Hgc) as Hgc0.
@@ -674,8 +693,8 @@ Section ValidGroupViews.
   Lemma valid_group_views_view_args_values : forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' /\
+      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups' ↘ cups' /\
         per_gargs (List.rev (ind_uparams Dq)) nil nil cups cups'.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (view_args_values p D IsS Hg Hcv Hvsv). Qed.
 
@@ -684,9 +703,9 @@ Section ValidGroupViews.
       forall Z RZ ups zs, ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
         List.length zs = List.length Z -> List.length ups = ind_nu D ->
         per_gargs (List.rev (ind_uparams D)) nil nil ups ups ->
-        RZ (env_args (env_args nil ups) zs) (env_args (env_args nil ups) zs) ->
-        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args (env_args nil ups) zs ↘ cs /\
+        RZ (components_env D ups (List.rev Z) zs) (components_env D ups (List.rev Z) zs) ->
+        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups (List.rev Z) zs ↘ cs /\
           per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (view_args_wk p D IsS Hg Hcv Hvsv). Qed.
 
@@ -697,8 +716,8 @@ Section ValidGroupViews.
   Lemma valid_group_views_rview_args_values : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       valid_rview_record qr R ->
       forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' /\
+      exists cups cups', ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+        ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups' ↘ cups' /\
         per_gargs (List.rev (record_params R)) nil nil cups cups'.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (rview_args_values p D IsS Hg Hvsv). Qed.
 
@@ -707,9 +726,9 @@ Section ValidGroupViews.
       forall Z RZ ups zs, ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
         List.length zs = List.length Z -> List.length ups = ind_nu D ->
         per_gargs (List.rev (ind_uparams D)) nil nil ups ups ->
-        RZ (env_args (env_args nil ups) zs) (env_args (env_args nil ups) zs) ->
-        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\
-          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args (env_args nil ups) zs ↘ cs /\
+        RZ (components_env D ups (List.rev Z) zs) (components_env D ups (List.rev Z) zs) ->
+        exists cups cs, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D ups ↘ cups /\
+          ⟦ List.map (fun I => I[wk_shiftn (List.length Z)]ʷ) Is ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups (List.rev Z) zs ↘ cs /\
           per_gargs (List.rev (record_params R)) nil nil cups cs.
   Proof. destruct (valid_ind_decl_views _ (valid_group_valid _ _ Hg)) as [IsS Hvsv]; exact (rview_args_wk p D IsS Hg Hvsv). Qed.
 End ValidGroupViews.
