@@ -235,6 +235,24 @@ Proof.
     split; constructor; cbn [fst snd]; assumption.
 Qed.
 
+(** Extensions related at the telescope stay related when one side's
+    values are stored at other readable types. *)
+Lemma per_ctx_env_retype_right : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+    EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
+    forall ρ ρ' vts vts' wts', List.length vts = List.length ts -> List.length vts' = List.length ts ->
+      R (env_extend_typed ρ vts) (env_extend_typed ρ' vts') ->
+      List.map fst wts' = List.map fst vts' ->
+      List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) wts' ->
+      R (env_extend_typed ρ vts) (env_extend_typed ρ' wts').
+Proof.
+  intros * HTb HC Hts HR * Hl Hl' H Hw Rw.
+  destruct (rel_gargs _ _ _ _ HTb HC Hts HR _ _ _ _ Hl Hl' H) as [Hρ Hg].
+  destruct (rel_gargs_readable _ _ _ _ HTb HC Hts HR _ _ _ _ Hl Hl' H) as [Rv _].
+  assert (Hlw : List.length wts' = List.length ts) by (rewrite <- (List.length_map fst), Hw, List.length_map; exact Hl').
+  rewrite <- Hw in Hg.
+  exact (gargs_env_rel_typed _ _ _ _ HTb HC Hts HR _ _ _ _ Hρ Hl Hlw Hg Rv Rw).
+Qed.
+
 (** ** [q^n] of a Semantic Substitution *)
 
 Lemma rel_sub_qn : forall Δ Γ Γ' σ σ', tele_ass Δ -> ⊨ Δ ++ Γ -> Γ' ⊨ˢ σ ≈ σ' : Γ ->
