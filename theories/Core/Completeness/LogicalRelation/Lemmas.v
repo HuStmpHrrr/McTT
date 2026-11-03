@@ -255,10 +255,6 @@ Proof.
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
-(** The tag of an entry after the head is the tail's. *)
-Lemma ctx_entry_tag_drop : forall e Δ x ρ, ctx_entry_tag (e :: Δ) (S x) ρ = ctx_entry_tag Δ x ρ↯.
-Proof. intros e Δ x [| d ρ]; [ reflexivity | apply ctx_entry_tag_succ ]. Qed.
-
 (** An evaluated extension: its tail is the tail's evaluation, and at a
     head that is no proposition the head is the term's value. *)
 Lemma eval_sub_extend_inv : forall e Δ σ M ρ ρτ,
@@ -267,7 +263,7 @@ Lemma eval_sub_extend_inv : forall e Δ σ M ρ ρτ,
       (~ entry_propositional gc_deps gc_stack (e :: Δ)%list ρτ 0 -> ⟦ M ⟧ ρ ↘ ρτ 0).
 Proof.
   intros * H; split.
-  - intros x Hx; rewrite env_entry_drop, <- (ctx_entry_tag_drop e); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e :: Δ) (S x)); split.
+  - intros x Hx; rewrite env_entry_drop, (ctx_entry_tag_drop e); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e :: Δ) (S x)); split.
     + intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
     + intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
   - intros Hn; destruct (proj2 (H 0 ltac:(cbn; lia)) Hn) as (m0 & Hm0 & Hx); unfold env_var; rewrite Hm0; exact Hx.
@@ -302,7 +298,7 @@ Lemma eval_sub_q_inv : forall e Δ σ ρ ρq,
          env_entry ρq 0 = retag_entry (ctx_entry_tag (e :: Δ) 0 ρq) (ctx_entry_unit (e :: Δ) 0) (env_entry ρ 0)).
 Proof.
   intros * H; split.
-  - intros x Hx; rewrite env_entry_drop, <- (ctx_entry_tag_drop e); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e :: Δ) (S x)); split.
+  - intros x Hx; rewrite env_entry_drop, (ctx_entry_tag_drop e); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e :: Δ) (S x)); split.
     + intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
     + intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
   - intros Hn; exact (proj2 (H 0 ltac:(cbn; lia)) Hn).

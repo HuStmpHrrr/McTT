@@ -158,9 +158,29 @@ Section Fixed_GCtx.
   Qed.
 
   (** Entries whose values the head PER of [A] relates, at environments of
-      [Δ], read back retagged at the tag of an extension by [A], when they
-      read back as they are. *)
-  Lemma per_head_retag_readable : forall {Δ A R S ρ ρ' e e'},
+      [Δ], read back retagged at [A] over the first [|Δ|] entries and at a
+      unit [U], when [U] is closed or the entries are no module entries:
+      a definition with a module part keeps its unit. *)
+  Lemma per_head_retag_readable_at : forall {Δ A R S ρ ρ' e e'} (U : gunit),
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
+      (forall h U0, e = de_mod h U0 -> gunit_free_bound U <= 0) ->
+      (forall h U0, e' = de_mod h U0 -> gunit_free_bound U <= 0) ->
+      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ) U e) /\
+      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ') U e').
+  Proof.
+    intros * HΔA HΔ Hρ Hm HU HU'.
+    destruct (per_head_at_env_upto HΔA HΔ Hρ) as (i & a & a' & Rh & Ea & Ea' & HR & Hincl).
+    pose proof (Hincl _ _ Hm) as Hh.
+    destruct (per_univ_elem_sym _ _ _ _ HR) as [HR' Hsym].
+    unfold centry_tag; cbn [centry_type]; split.
+    - exact (retag_head_readable 0 U (e :: ρ) _ Ea HR Hh HU).
+    - exact (retag_head_readable 0 U (e' :: ρ') _ Ea' HR' (Hsym _ _ Hh) HU').
+  Qed.
+
+  (** At the unit of an assumption, closed. *)
+  Corollary per_head_retag_readable : forall {Δ A R S ρ ρ' e e'},
       EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
@@ -168,12 +188,24 @@ Section Fixed_GCtx.
       head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ') (centry_slot_unit (ce_ass A)) e').
   Proof.
     intros * HΔA HΔ Hρ Hm.
-    destruct (per_head_at_env_upto HΔA HΔ Hρ) as (i & a & a' & Rh & Ea & Ea' & HR & Hincl).
-    pose proof (Hincl _ _ Hm) as Hh.
-    destruct (per_univ_elem_sym _ _ _ _ HR) as [HR' Hsym].
-    unfold centry_tag; cbn [centry_type]; split.
-    - exact (retag_head_readable 0 (centry_slot_unit (ce_ass A)) (e :: ρ) _ Ea HR Hh (fun _ _ _ => ltac:(cbn; lia))).
-    - exact (retag_head_readable 0 (centry_slot_unit (ce_ass A)) (e' :: ρ') _ Ea' HR' (Hsym _ _ Hh) (fun _ _ _ => ltac:(cbn; lia))).
+    exact (per_head_retag_readable_at (centry_slot_unit (ce_ass A)) HΔA HΔ Hρ Hm
+             (fun _ _ _ => ltac:(cbn; lia)) (fun _ _ _ => ltac:(cbn; lia))).
+  Qed.
+
+  (** A definition with a module part, its term related in the head PER
+      of [A] at environments of [Δ], reads back stored at [A] over the
+      first [|Δ|] entries, at any unit. *)
+  Corollary per_head_dm_readable : forall {Δ A R S ρ ρ' m m' h h' U},
+      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+      EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
+      Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
+      head_readable 0 (de_dm m (centry_tag (ce_ass A) Δ ρ) h U) /\
+      head_readable 0 (de_dm m' (centry_tag (ce_ass A) Δ ρ') h' U).
+  Proof.
+    intros * HΔA HΔ Hρ Hm.
+    exact (per_head_retag_readable_at (e := de_dm m (centry_tag (ce_ass A) Δ ρ) h U)
+             (e' := de_dm m' (centry_tag (ce_ass A) Δ ρ') h' U) U HΔA HΔ Hρ Hm
+             (fun _ _ E => ltac:(discriminate E)) (fun _ _ E => ltac:(discriminate E))).
   Qed.
 
   (** [per_env_extend_intro'] for the extensions a substitution
