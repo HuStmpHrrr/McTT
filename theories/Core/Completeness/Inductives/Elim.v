@@ -3990,6 +3990,134 @@ Section GroupElim.
           [ rewrite List.length_rev, length_im_nparams; exact LX | exact (nparams_closed_of_canon k Mk HMk _ _ HX) |].
         exact Hc1.
       Qed.
+
+      (** A constructor's element related to itself, its arguments replaced
+          at propositional ones by other proofs that read back and its
+          stored uniform parameters by others: related to it. *)
+      Lemma con_up_to_proofs : im_is_rview Mk = false ->
+          forall hd k' cs cs' X vs vs', im_ref p k Mk = (hd, k') -> List.length cs = im_unu D Mk ->
+          G k u0 u0 X X (d_con hd k' c (cs ++ X ++ vs)) (d_con hd k' c (cs ++ X ++ vs)) ->
+          List.length cs' = List.length cs -> List.length vs' = List.length vs ->
+          (forall j v v', List.nth_error vs j = Some v -> List.nth_error vs' j = Some v' -> v = v' \/
+             (proof_readable v' /\ con_arg_relevance Mk c j = propositional)) ->
+          G k u0 u0 X X (d_con hd k' c (cs ++ X ++ vs)) (d_con hd k' c (cs' ++ X ++ vs')).
+      Proof.
+        intros Hrv * Href Lcs Hm Lcs' Lvs Hmix.
+        rewrite List.app_assoc in Hm.
+        assert (Lb : List.length (cs ++ X) = (im_unu D Mk + im_nn Mk)%nat).
+        { pose proof (ins _ _ _ _ _ _ _ _ HMk Hm) as H0; rewrite tele_rel_iff in H0; destruct H0 as (H0 & _).
+          rewrite List.length_rev, length_im_nparams in H0; rewrite List.length_app, Lcs, H0; reflexivity. }
+        destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ (cs ++ X) vs _ Hm HMk Hrv Lb)
+          as (gs0 & bs' & vs0 & Ez & _ & HXX & Hcon0 & Lbs' & _ & _ & Har & Hia).
+        rewrite Hcon in Hcon0; injection Hcon0 as <-.
+        injection Ez as Ez; destruct (app_split_eq _ _ _ _ Ez ltac:(lia)) as [<- <-].
+        rewrite List.skipn_app, List.skipn_all2, Lcs, Nat.sub_diag in Har, Hia by lia; cbn [List.skipn List.app] in Har, Hia.
+        destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv _].
+        pose proof HXX as H0; rewrite tele_rel_iff in H0; destruct H0 as (LX & _).
+        unfold T in LX; rewrite List.length_rev, length_im_nparams in LX.
+        (** The arguments at the closed telescope of the constructor. *)
+        pose proof (closed_args_gargs X X vs vs HXX Har Hia (List.length gs) (le_n _)) as Hcg.
+        rewrite List.firstn_all, List.firstn_all2 in Hcg by lia.
+        set (ts := List.rev (cargs_ctx p D Mk gs ++ im_params D Mk)).
+        assert (Ets : ts = List.rev (ind_uparams D) ++ List.rev (cargs_ctx p D Mk gs ++ im_nparams Mk))
+          by (unfold ts, im_params; rewrite List.app_assoc, List.rev_app_distr; reflexivity).
+        assert (Hgx : per_gargs ts nil nil (u0 ++ X ++ vs) (u0 ++ X ++ vs)).
+        { rewrite Ets; apply per_gargs_app_intro; [ rewrite List.length_rev; exact u0_len | exact u0_gargs | exact Hcg ]. }
+        pose proof (valid_group_cargs_sem p D Hvg Hcv k Mk c gs HMk Hcon) as HΨ0.
+        assert (Hta : tele_ass ts)
+          by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc _ _ HMk) ]).
+        assert (HCr : ⊨ List.rev ts ++ ⋅) by (unfold ts; rewrite List.rev_involutive, List.app_nil_r; exact HΨ0).
+        assert (Lts : List.length ts = (ind_nu D + im_nn Mk + List.length gs)%nat)
+          by (unfold ts; rewrite List.length_rev, List.length_app, length_cargs_ctx, length_im_params; unfold im_np; lia).
+        (** The replaced arguments, related to the original ones. *)
+        assert (Hgy : per_gargs ts nil nil (u0 ++ X ++ vs) (u0 ++ X ++ vs')).
+        { apply (per_gargs_replace_proofs _ _ _ per_ctx_env_nil_true HCr Hta nil nil _ _ I Hgx);
+            [ rewrite !List.length_app; lia |].
+          intros j x y Hx Hy.
+          destruct (Nat.lt_ge_cases j (ind_nu D + im_nn Mk)) as [Hj | Hj].
+          - left; rewrite List.app_assoc in Hx, Hy.
+            rewrite List.nth_error_app1 in Hx, Hy by (rewrite List.length_app, u0_len; lia); congruence.
+          - rewrite List.app_assoc in Hx, Hy.
+            rewrite List.nth_error_app2 in Hx, Hy by (rewrite List.length_app, u0_len; lia).
+            rewrite List.length_app, u0_len, LX in Hx, Hy.
+            destruct (Hmix _ _ _ Hx Hy) as [-> | (Hry & Hr)]; [ left; reflexivity | right; split; [ exact Hry |] ].
+            intros ts1 A ts2 a Eq Lt1 Ea.
+            pose proof (nth_error_lt_length _ _ _ Hx) as Hjx.
+            assert (Lf : List.length (List.firstn j (u0 ++ X ++ vs)) = List.length ts1)
+              by (rewrite List.length_firstn, !List.length_app, u0_len, LX; lia).
+            assert (Hpre : per_gargs ts1 nil nil (List.firstn j (u0 ++ X ++ vs)) (List.firstn j (u0 ++ X ++ vs))).
+            { pose proof Hgx as Hgx0; rewrite Eq, <- (List.firstn_skipn j (u0 ++ X ++ vs)) in Hgx0.
+              exact (proj1 (per_gargs_app _ _ _ _ _ _ _ _ Lf Hgx0 Lf)). }
+            assert (HC1 : ⊨ List.rev ts1).
+            { pose proof HCr as H; rewrite Eq, List.rev_app_distr, List.app_nil_r in H; cbn [List.rev] in H.
+              rewrite <- List.app_assoc in H; cbn [List.app] in H.
+              exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ H)). }
+            destruct (rel_ctx_wf_per_ctx_env HC1) as [R1 HR1].
+            assert (Hz : R1 (env_tele nil ts1 (List.firstn j (u0 ++ X ++ vs))) (env_tele nil ts1 (List.firstn j (u0 ++ X ++ vs)))).
+            { rewrite <- (List.rev_involutive ts1).
+              apply (gargs_env_rel _ _ _ _ _ _ HR1 HC1); [ rewrite List.length_rev; first [ exact Lf | symmetry; exact Lf ] |].
+              rewrite List.rev_involutive; exact Hpre. }
+            rewrite (con_tele_dom_relevance P p D HP HPD k Mk c gs HMk Hcon ts1 A ts2 R1 _ a Eq HR1 Hz Ea).
+            destruct (Nat.ltb_spec (List.length ts1) (im_np D Mk)) as [Hlt | _]; [ unfold im_np in Hlt; lia |].
+            replace (List.length ts1 - im_np D Mk) with (j - (ind_nu D + im_nn Mk)) by (unfold im_np; lia); exact Hr. }
+        (** The constructor's values at both. *)
+        assert (Hcv0 : forall ys, List.length ys = List.length vs -> exists w, con_value p D k Mk c (u0 ++ X ++ ys) w).
+        { intros ys Lys.
+          destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
+          - exists (d_con p k c (u0 ++ X ++ ys)); apply (con_value_decl _ _ _ _ _ pm); exact Hh.
+          - destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mk' & Hq & _).
+            destruct (valid_group_views_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMk Hh Hq u0 u0 u0_gargs u0_len)
+              as (cups & _ & Ecups & _ & _).
+            eexists; apply (con_value_view _ _ _ _ _ qc kc Is vm _ cups Hh); [ rewrite List.length_app, u0_len; lia |].
+            rewrite List.firstn_app, u0_len, Nat.sub_diag, <- u0_len, List.firstn_all; cbn [List.firstn]; rewrite List.app_nil_r; exact Ecups.
+          - exfalso; exact (not_rview_record _ _ _ _ Hrv Hh). }
+        destruct (Hcv0 vs eq_refl) as [w Hw]; destruct (Hcv0 vs' Lvs) as [w' Hw'].
+        pose proof (con_at_args P p D HP HPD k Mk c gs HMk Hcon _ _ w w' Hgy
+                      ltac:(rewrite !List.length_app, u0_len, LX, Lv, length_cargs_ctx, length_im_params; unfold im_np; lia) Hw Hw') as Hh.
+        (** At the member's type: the group's relation. *)
+        destruct (mty_vars_valid_at p D Hvg Hcv k Mk (cargs_ctx p D Mk gs) HMk HΨ0) as [jt Hjt].
+        rewrite length_cargs_ctx in Hjt.
+        set (Z := cargs_ctx p D Mk gs ++ im_nparams Mk).
+        assert (HZ : ⊨ Z ++ ind_uparams D) by (unfold Z, im_params in *; rewrite <- List.app_assoc; exact HΨ0).
+        destruct (rel_ctx_wf_per_ctx_env HZ) as [RZ HRZ].
+        assert (EZ : forall zs, env_tele nil ts (u0 ++ zs) = components_env D u0 (List.rev Z) zs)
+          by (intros zs; unfold ts, Z, im_params; rewrite List.app_assoc; exact (env_tele_uparams D _ u0 zs u0_len)).
+        assert (HE : RZ (components_env D u0 (List.rev Z) (X ++ vs)) (components_env D u0 (List.rev Z) (X ++ vs'))).
+        { rewrite <- !EZ; unfold ts; rewrite <- (List.rev_involutive (List.rev (cargs_ctx p D Mk gs ++ im_params D Mk))).
+          rewrite List.rev_involutive.
+          replace (cargs_ctx p D Mk gs ++ im_params D Mk) with (Z ++ ind_uparams D) by (unfold Z, im_params; rewrite <- List.app_assoc; reflexivity).
+          apply (gargs_env_rel _ _ _ _ _ _ HRZ HZ); [ rewrite !List.length_app; unfold Z; rewrite List.length_app, length_cargs_ctx, length_im_nparams;
+                                                      pose proof u0_len; unfold ind_nu in *; lia |].
+          replace (List.rev (Z ++ ind_uparams D)) with ts by (unfold ts, Z, im_params; rewrite <- List.app_assoc; reflexivity).
+          exact Hgy. }
+        assert (HjtZ : Z ++ ind_uparams D ⊨ ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk))
+                         : Typeω@jt) by (unfold Z, im_params in *; rewrite <- List.app_assoc; exact Hjt).
+        destruct (rel_exp_of_typ_inversion_simple_at HRZ HjtZ _ _ HE) as (a & a' & Ea & Ea' & [R HR]).
+        assert (Ev : forall ys, List.length ys = List.length gs ->
+                       ⟦ vars_from (List.length gs) (im_nn Mk) ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u0 (List.rev Z) (X ++ ys) ↘ X).
+        { intros ys Lys; unfold Z; rewrite List.rev_app_distr.
+          pose proof (eval_nvars_components D u0 (List.rev (im_nparams Mk)) (List.rev (cargs_ctx p D Mk gs)) X ys
+                        ltac:(rewrite List.length_rev, length_im_nparams; exact LX)) as H; rewrite Lys, LX in H; exact H. }
+        pose proof (member_type_rel P p D HP HPD k Mk u0 u0 Z RZ (X ++ vs) (X ++ vs') (im_nn Mk) (List.length gs)
+                      (vars_from (List.length gs) (im_nn Mk)) X X a a' jt R HMk u0_len u0_gargs HZ HRZ
+                      ltac:(unfold Z; rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia)
+                      ltac:(unfold Z; rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia)
+                      ltac:(rewrite List.length_app; lia) HE (length_vars_from _ _) (Ev vs ltac:(lia)) (Ev vs' ltac:(lia)) Ea Ea' HR) as ER.
+        rewrite <- !EZ in Ea, Ea'.
+        pose proof (proj2 (per_head_iff Ea Ea' HR _ _) Hh) as Hww; apply ER in Hww.
+        (** The values, at the stored uniform parameters. *)
+        assert (Lz : List.length (u0 ++ X ++ vs) = (im_np D Mk + List.length gs)%nat)
+          by (rewrite !List.length_app, u0_len, LX, Lv; unfold im_np; lia).
+        assert (Lz' : List.length (u0 ++ X ++ vs') = (im_np D Mk + List.length gs)%nat)
+          by (rewrite !List.length_app, u0_len, LX, Lvs, Lv; unfold im_np; lia).
+        destruct (con_value_full p D k Mk c gs (u0 ++ X ++ vs) w Hrv Lz Hw) as (c1 & Lc1 & ->).
+        destruct (con_value_full p D k Mk c gs (u0 ++ X ++ vs') w' Hrv Lz' Hw') as (c2 & Lc2 & ->).
+        rewrite Href in Hww; cbn [fst snd] in Hww.
+        rewrite !(List.skipn_app (ind_nu D) u0) in Hww; rewrite <- u0_len, !List.skipn_all, Nat.sub_diag in Hww.
+        cbn [List.skipn List.app] in Hww.
+        exact (ind_rel_con_prefix_l _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ c1 cs (X ++ vs) Mk HMk Lc1 ltac:(lia)
+                 (ind_rel_con_prefix_r _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ c2 cs' (X ++ vs') Mk HMk Lc2 ltac:(lia) Hww)).
+      Qed.
     End ConCanon.
 
     (** ** The Motives
