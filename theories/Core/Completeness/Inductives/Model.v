@@ -421,6 +421,57 @@ Proof.
       rewrite env_entry_skipn; f_equal; lia.
 Qed.
 
+(** Any value of a substitution extended by terms [Ms] whose entries are
+    sorted by [rf] holds, at the entries, values [ms]: the terms' values
+    at the relevant ones, the terms kept as proofs at the propositional
+    ones, stored at the entries' tags over its tail. *)
+Lemma eval_sb_of_list_sorted_split : forall Ms ts σ Δ ρ E (rf : nat -> relevance),
+    List.length ts = List.length Ms -> ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E ->
+    (forall x, x < List.length ts -> rf x = relevant -> ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
+    (forall x, x < List.length ts -> rf x = propositional -> entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E x) ->
+    exists ms, List.length ms = List.length Ms /\
+      (forall j M m, List.nth_error Ms j = Some M -> List.nth_error ms j = Some m ->
+         (rf (List.length Ms - 1 - j) = relevant -> ⟦ M ⟧ ρ ↘ m) /\
+         (rf (List.length Ms - 1 - j) = propositional -> m = ⋆ᵈ⟨M, ρ⟩)) /\
+      forall x, env_entry E x = env_entry (env_extend_tagged Δ ts (List.skipn (List.length ts) E) ms) x.
+Proof.
+  #[local] Transparent eval_sub.
+  induction Ms as [| M Ms IH]; intros [| e ts] * Hl H Hr Hp; cbn [List.length] in Hl; try discriminate.
+  { exists nil; split; [ reflexivity | split; [ intros [] ? ? Hj; discriminate Hj | intros x; reflexivity ] ]. }
+  assert (Hl' : List.length ts = List.length Ms) by lia.
+  cbn [sb_of_list List.rev] in H, Hr, Hp; rewrite <- List.app_assoc in H, Hr, Hp; cbn [List.app] in H, Hr, Hp.
+  destruct (IH ts _ (e :: Δ) _ _ rf Hl' H ltac:(intros x Hx; apply Hr; cbn [List.length]; lia)
+              ltac:(intros x Hx; apply Hp; cbn [List.length]; lia)) as (ms & Hlm & Hms & Hag).
+  assert (Hx : List.length ts < List.length (List.rev ts ++ e :: Δ))
+    by (rewrite List.length_app, List.length_rev; cbn [List.length]; lia).
+  destruct (H _ Hx) as [HP HN].
+  assert (Hσx : sb_of_list (σ ,, M) Ms (List.length ts) = se_exp M)
+    by (rewrite Hl', <- (Nat.add_0_r (List.length Ms)), sb_of_list_ge; reflexivity).
+  rewrite Hσx in HP, HN.
+  (** The head term's value: its value or the term kept as a proof, by its
+      entry's sort. *)
+  assert (Hhead : exists m, env_entry E (List.length ts) = de_term m (ctx_entry_tag (List.rev ts ++ e :: Δ) (List.length ts) E) /\
+                    (rf (List.length ts) = relevant -> ⟦ M ⟧ ρ ↘ m) /\ (rf (List.length ts) = propositional -> m = ⋆ᵈ⟨M, ρ⟩)).
+  { destruct (rf (List.length ts)) eqn:Erf.
+    - destruct (HN (Hr (List.length ts) ltac:(cbn [List.length]; lia) Erf)) as (m & Hme & Hm).
+      exists m; split; [ exact Hme | split; [ intros _; exact Hm | discriminate ] ].
+    - exists ⋆ᵈ⟨M, ρ⟩; split; [ exact (HP (Hp (List.length ts) ltac:(cbn [List.length]; lia) Erf)) | split; [ discriminate | reflexivity ] ]. }
+  destruct Hhead as (m & Hme & Hm1 & Hm2).
+  rewrite <- (List.length_rev ts), ctx_entry_tag_app_at, List.length_rev in Hme.
+  exists (m :: ms); split; [ cbn; lia | split ].
+  - intros [| j] N n HN0 Hn0; cbn [List.nth_error] in HN0, Hn0.
+    + injection HN0 as <-; injection Hn0 as <-.
+      replace (List.length (M :: Ms) - 1 - 0) with (List.length ts) by (cbn [List.length]; lia).
+      split; assumption.
+    + replace (List.length (M :: Ms) - 1 - S j) with (List.length Ms - 1 - j) by (cbn [List.length]; lia).
+      exact (Hms _ _ _ HN0 Hn0).
+  - intros x; rewrite Hag; cbn [List.length env_extend_tagged].
+    apply env_extend_tagged_eq; intros [| k]; rewrite env_entry_skipn.
+    + rewrite Nat.add_0_r, Hme; reflexivity.
+    + transitivity (env_entry (List.skipn (S (List.length ts)) E) k); [| reflexivity ].
+      rewrite env_entry_skipn; f_equal; lia.
+Qed.
+
 (** The same over any base substitution [σ], at one environment of the
     substitution's context [Ψ]: the instance's value is [σ]'s, extended by
     the terms' values. *)
@@ -1610,8 +1661,7 @@ Section Sort.
       | (eapply canon_ha; eassumption) | (eapply canon_ha; eassumption)
       | (eapply canon_hd; eassumption) | (eapply canon_hd; eassumption)
       | (eapply canon_hc; eassumption) | (eapply canon_hc; eassumption) | exact HM | exact Hh | exact Hns ].
-    intros s; destruct (per_gargs_top _ _ _ _ _ Hg ltac:(rewrite List.length_rev; exact Hu) s) as (Ms & Ms' & RM & RM' & EM).
-    exact (mk_params_read_alike _ _ _ _ Ms Ms' RM RM' EM).
+    exact (per_gargs_per_top_ps _ _ _ Hg ltac:(rewrite List.length_rev; exact Hu)).
   Qed.
 
   Section DeclMember.

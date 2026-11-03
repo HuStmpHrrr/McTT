@@ -79,9 +79,31 @@ Proof.
   intros * Hl; rewrite List.rev_app_distr, env_tele_app by (rewrite List.length_rev; exact Hl); reflexivity.
 Qed.
 
+(** The same for any closed telescope [C] and its extension [Pre]. *)
+Lemma env_tele_closed_app : forall C Pre ns zs, List.length ns = List.length C ->
+    env_tele nil (List.rev (Pre ++ C)) (ns ++ zs) = env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs.
+Proof. intros * Hl; rewrite List.rev_app_distr, env_tele_app by (rewrite List.length_rev; exact Hl); reflexivity. Qed.
+
+(** The shift past a telescope's arguments gives their base. *)
+Lemma eval_wk_shiftn_env_tele : forall ρ T zs, ⟪wk_shiftn (List.length zs)⟫ (env_tele ρ T zs) = ρ.
+Proof.
+  intros; unfold env_tele; rewrite <- (tele_entries_length zs ρ T) at 1; apply eval_wk_shiftn_extend_typed.
+Qed.
+
 (** The uniform parameters alone. *)
 Lemma env_tele_uparams_nil : forall D ups, env_tele nil (List.rev (ind_uparams D)) ups = decl_env D ups.
 Proof. reflexivity. Qed.
+
+(** Arguments after a full prefix read only as many types of the rest as
+    there are arguments. *)
+Lemma env_tele_app_firstn : forall ρ T0 T pre0 pre, List.length pre0 = List.length T0 -> List.length pre <= List.length T ->
+    env_tele ρ (T0 ++ T) (pre0 ++ pre) = env_tele ρ (T0 ++ List.firstn (List.length pre) T) (pre0 ++ pre).
+Proof.
+  intros * Hl0 Hl.
+  rewrite (env_tele_firstn ρ (T0 ++ T)), (env_tele_firstn ρ (T0 ++ List.firstn (List.length pre) T)).
+  f_equal; rewrite List.length_app, !List.firstn_app, Hl0, Nat.add_comm, Nat.add_sub, List.firstn_firstn, Nat.min_id.
+  rewrite !List.firstn_all2 by lia; reflexivity.
+Qed.
 
 (** Components after a full prefix read only as many types of the rest
     as there are components. *)
@@ -423,6 +445,58 @@ Proof.
   apply per_env_extend_intro'; [ exact Hρ | exact (per_head_of Ea1 Ea2 HR Hx) | exact Rx | exact Rx' ].
 Qed.
 
+(** Arguments related to themselves over related bases, equal up to the
+    proofs at the telescope's propositions, are related: two proofs of a
+    proposition are. *)
+Lemma per_gargs_equal_up_to_proofs : forall ts Tb RTb,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+    forall ρ ρ' xs ys, RTb ρ ρ' -> per_gargs ts ρ ρ xs xs -> per_gargs ts ρ' ρ' ys ys -> List.length xs = List.length ys ->
+    (forall j x y, List.nth_error xs j = Some x -> List.nth_error ys j = Some y -> x = y \/
+       exists A, List.nth_error ts j = Some (ce_ass A) /\ List.rev (List.firstn j ts) ++ Tb ⊨ A : Propₘ) ->
+    per_gargs ts ρ ρ' xs ys.
+Proof.
+  induction ts as [| e ts IH]; intros * HTb HC Hts * Hρ Hgx Hgy Hl Hmix.
+  - inversion Hgx; subst; inversion Hgy; subst; constructor.
+  - assert (He : exists A, e = ce_ass A) by (inversion Hts as [| ? ? He _]; exact He).
+    destruct He as [A ->].
+    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    destruct xs as [| x xs], ys as [| y ys]; cbn [List.length] in Hl; try discriminate; [ constructor |].
+    inversion Hgx as [| ? ? ? ? ? ? ? ? ? Rx HAx Hxx Hgx']; subst.
+    inversion Hgy as [| ? ? ? ? ? ? ? ? ? Ry HAy Hyy Hgy']; subst.
+    cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
+    destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
+    pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
+    destruct (rel_type_inversion_simple_at HTb HAv _ _ Hρ) as (a & a' & Ea & Ea' & [R HR]).
+    destruct HAx as [a1 a2 Ea1 Ea2 HRx]; destruct HAy as [b1 b2 Eb1 Eb2 HRy].
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (b1 = a') as -> by (eapply functional_eval_exp; eassumption).
+    assert (b2 = a') as -> by (eapply functional_eval_exp; eassumption).
+    assert (Ex : R <~> Rx) by (eapply per_univ_elem_right_irrel; [ exact HR | exact HRx ]).
+    assert (Ey : R <~> Ry) by (eapply per_univ_elem_left_irrel; [ exact HR | exact HRy ]).
+    (** The heads: equal, or proofs of a proposition. *)
+    assert (Hxy : R x y).
+    { destruct (Hmix 0 x y eq_refl eq_refl) as [<- | (A0 & HA0 & HAp)]; [ apply Ex; exact Hxx |].
+      injection HA0 as <-; cbn [List.firstn List.rev List.app] in HAp.
+      destruct (rel_exp_of_prop_inversion_simple_at HTb HAp _ _ Hρ) as (a0 & a0' & Ea0 & _ & Hpp).
+      assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+      pose proof (per_prop_left _ _ Hpp) as Hp.
+      pose proof (per_univ_elem_relevance _ _ _ _ HR) as Hr'.
+      pose proof (per_univ_elem_propositional _ _ _ _ HR Hp) as EP.
+      pose proof (per_univ_elem_propositional _ _ _ _ HRx Hp) as EPx.
+      pose proof (per_univ_elem_propositional _ _ _ _ HRy ltac:(congruence)) as EPy.
+      apply EP; split; [ exact (proj1 (proj1 (EPx _ _) Hxx)) | exact (proj1 (proj1 (EPy _ _) Hyy)) ]. }
+    econstructor; [ exact (mk_rel_mod_eval a a' Ea Ea' HR) | exact Hxy |].
+    pose proof (entry_readable_of_elem_closure Ea Ea' HR Hxy) as [Rx' Ry'].
+    apply (IH _ _ HTb' HC Hts' (ρ ↦ x ⦂ entry_type_closure A ρ) (ρ' ↦ y ⦂ entry_type_closure A ρ'));
+      [ | exact Hgx' | exact Hgy' | lia | ].
+    + apply per_env_extend_intro'; [ exact Hρ | exact (per_head_of Ea Ea' HR Hxy) | exact Rx' | exact Ry' ].
+    + intros k x' y' Hx' Hy'.
+      destruct (Hmix (S k) x' y' Hx' Hy') as [-> | (A' & HA' & HAp')]; [ left; reflexivity |].
+      right; exists A'; split; [ exact HA' |].
+      cbn [List.firstn List.rev] in HAp'; rewrite <- List.app_assoc in HAp'; exact HAp'.
+Qed.
+
 (** Environments related at an extension are arguments related at its
     telescope, whatever the types the extensions store their values at. *)
 Lemma rel_gargs : forall ts Tb RTb R,
@@ -499,6 +573,14 @@ Proof.
     destruct (per_elem_then_per_top HR Ha s) as [V V' HV HV' HEV].
     exists (cons V Ms), (cons V' Ms'); split; [ econstructor; eassumption | split; [ econstructor; eassumption |] ].
     cbn [List.map]; congruence.
+Qed.
+
+(** Arguments of a closed telescope related at it read back alike. *)
+Corollary per_gargs_per_top_ps : forall ts xs xs', per_gargs ts nil nil xs xs' -> List.length xs = List.length ts ->
+    per_top_ps ts xs xs'.
+Proof.
+  intros * Hg Hl s; destruct (per_gargs_top _ _ _ _ _ Hg Hl s) as (Ms & Ms' & HM & HM' & HE).
+  exact (mk_params_read_alike _ _ _ _ Ms Ms' HM HM' HE).
 Qed.
 
 (** ** Environments of Arguments *)
