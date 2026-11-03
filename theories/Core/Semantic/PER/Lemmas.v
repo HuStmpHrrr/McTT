@@ -2357,8 +2357,8 @@ End Fixed_GCtx.
     with its witnesses taken apart. *)
 Ltac solve_entry_kind :=
   match goal with
-  | |- exists t U0, env_entry _ _ = _ => first [ assumption | do 2 eexists; eassumption ]
-  | |- exists t, env_entry _ _ = _ => first [ assumption | eexists; eassumption ]
+  | |- exists t U0, _ = de_dm _ _ _ _ => first [ assumption | do 2 eexists; eassumption | do 2 eexists; reflexivity ]
+  | |- exists U0, _ = de_mod _ _ => first [ assumption | eexists; eassumption | eexists; reflexivity ]
   end.
 
 Ltac solve_tie :=

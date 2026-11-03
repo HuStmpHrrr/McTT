@@ -1091,11 +1091,12 @@ Proof.
     pose proof (gunit_scoped_free_bound _ _ HeΓ) as HbU; pose proof (gunit_scoped_free_bound _ _ HeΓ') as HbU'.
     rewrite Nat.add_0_r in HbU, HbU'.
     constructor; cbn [drop_env List.tl]; [ exact Hρ | .. ]; unfold env_mod; cbn [env_entry List.hd];
-      try solve [ solve_tie ];
+      try solve [ solve_tie ]; try solve [ solve_entry_kind ];
       try (split; [ apply mod_entry_readable | cbn; lia ]).
     (** The ties across: each side's head against the other unit over its
         own tail, by the premise at the diagonal tails. *)
     all: cbn [List.tl List.hd].
+    all: try solve [ solve_entry_kind ].
     + match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _, Hd : tail_rel ρ ρ |- _ =>
         destruct (HU _ _ Hd) as [k k' Ek Ek' Rk] end.
       pose proof (functional_eval_modexp _ _ _ _ Hh Ek) as <-.
@@ -1134,6 +1135,7 @@ Proof.
       try solve [ solve_tie ]; try solve_def_heads_post.
     all: try match goal with |- head_readable _ _ => split end.
     all: try (cbn; lia).
+    all: try solve [ solve_entry_kind ].
     all: intros s; first [ solve [ destruct (Hrl s) as [b Hb]; inversion Hb; subst; eexists; eapply read_entry_dm; eassumption ]
                          | solve [ destruct (Hrr s) as [b Hb]; inversion Hb; subst; eexists; eapply read_entry_dm; eassumption ] ].
 Qed.
