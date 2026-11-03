@@ -56,11 +56,14 @@ Proof.
   intros * HΓ H; inversion H; subst.
   match goal with Ht : per_ctx_env ?T Γ Γ' |- _ =>
     assert (HT : T <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption) end.
-  split.
-  - intros ρ ρ' Hρ; apply H6, HT, Hρ.
-  - intros ρ ρ'; split; intros Hρ;
-      [ apply H7 in Hρ as [Ht ? ? ? ? ? ?]; constructor; [ apply HT; assumption | assumption .. ]
-      | apply H7; destruct Hρ as [Ht ? ? ? ? ? ?]; constructor; [ apply HT; assumption | assumption .. ] ].
+  match goal with
+  | Hu : forall ρ ρ', T ρ ρ' -> rel_modexp_evals _ _ _ _, He : R <~> _ |- _ =>
+      split;
+      [ intros ρ ρ' Hρ; apply Hu, HT, Hρ
+      | intros ρ ρ'; split; intros Hρ;
+        [ apply He in Hρ as [Ht ? ? ? ? ? ? ? ?]; constructor; [ apply HT; assumption | assumption .. ]
+        | apply He; destruct Hρ as [Ht ? ? ? ? ? ? ? ?]; constructor; [ apply HT; assumption | assumption .. ] ] ]
+  end.
 Qed.
 
 (** A valid module expression, at environments a context PER relates. *)
@@ -95,13 +98,17 @@ Lemma unit_chain_at : forall {Γ U U' R},
     forall ρ ρ', R ρ ρ' -> rel_modexp_evals (me_lit U) ρ (me_lit U') ρ'.
 Proof. intros * HU HΓ ρ ρ' Hρ; exact (rel_modexp_evals_at _ _ _ _ _ HU HΓ _ _ Hρ). Qed.
 
+(** The context PER of a slot, at units scoped by the tail. *)
 Lemma per_ctx_env_of_mod : forall {Γ U U' R},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U' ->
+    gunit_scoped (List.length Γ) U -> gunit_scoped (List.length Γ) U' ->
     EF Γ ▹ₘ U ≈ Γ ▹ₘ U' ∈ per_ctx_env ↘ per_ctx_env_mod_rel R (List.length Γ) U U'.
 Proof.
-  intros * HΓ HU.
-  eapply per_ctx_env_cons_mod; [ exact HΓ | eapply per_env_PER; exact HΓ | | reflexivity ].
+  intros * HΓ HU HsU HsU'.
+  eapply per_ctx_env_cons_mod;
+    [ exact HΓ | eapply per_env_PER; exact HΓ | exact (gunit_scoped_free_bound _ _ HsU)
+    | exact (gunit_scoped_free_bound _ _ HsU') | | reflexivity ].
   intros; eapply unit_chain_at; eassumption.
 Qed.
 
@@ -121,14 +128,24 @@ Proof.
   split; [| split ]; econstructor; eassumption.
 Qed.
 
+(** The scoping of a unit moved along a substitution. *)
+Lemma gunit_scoped_rel_sub : forall {Γ' Γ σ σ' U},
+    Γ' ⊨ˢ σ ≈ σ' : Γ -> gunit_scoped (List.length Γ) U -> gunit_scoped (List.length Γ') U[σ]ᵘ.
+Proof.
+  intros * [? _ ? _ _ Hσs] HsU.
+  exact (gunit_scoped_sub _ _ _ _ HsU (fun x Hx => proj1 (Hσs x Hx))).
+Qed.
+
 Lemma per_ctx_env_of_mod_sub : forall {Γ' Γ σ σ' U R'},
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R' ->
     Γ' ⊨ˢ σ ≈ σ' : Γ ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    gunit_scoped (List.length Γ) U ->
     EF Γ' ▹ₘ U[σ]ᵘ ≈ Γ' ▹ₘ U[σ]ᵘ ∈ per_ctx_env ↘ per_ctx_env_mod_rel R' (List.length Γ') U[σ]ᵘ U[σ]ᵘ.
 Proof.
-  intros * HΓ' Hσ HU.
-  eapply per_ctx_env_cons_mod; [ exact HΓ' | eapply per_env_PER; exact HΓ' | | reflexivity ].
+  intros * HΓ' Hσ HU HsU.
+  pose proof (gunit_scoped_free_bound _ _ (gunit_scoped_rel_sub Hσ HsU)) as Hb.
+  eapply per_ctx_env_cons_mod; [ exact HΓ' | eapply per_env_PER; exact HΓ' | exact Hb | exact Hb | | reflexivity ].
   intros ρ ρ' Hρ.
   pose proof (rel_sub_under_ctx_refl_left Hσ) as Hσσ.
   destruct (rel_sub_under_ctx_simple Hσσ) as [R1 [HΓ1 [RΓ [HΓ0 Hs]]]].
@@ -1002,7 +1019,7 @@ Proof.
     by (split; [ apply mod_entry_readable | exact (gunit_scoped_free_bound _ _ HU'σ's) ]).
   (** [Id,,ₘ⌜U⌝] evaluates to the extensions of the restamped environments;
       the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
-      ([rel_exp_body_unrestamp]). *)
+      ([rel_exp_body_of_retagged]). *)
   assert (Tu2 : tie_mod u2 (me_lit U) ρσ) by (exists u2; split; [ exact Hu2 | etransitivity; [ symmetry; exact Du12 | exact Du12 ] ]).
   assert (Tu2U' : tie_mod u2 (me_lit U') ρσ)
     by (exact (tie_mod_move _ _ _ _ _ Tu2 (unit_chain_at HU HΓ _ _ Hσσ'))).
@@ -1011,7 +1028,7 @@ Proof.
     by (exact (tie_mod_move _ _ _ _ _ Tu3 (unit_chain_at HU HΓ _ _ Hσ'σ''))).
   assert (HId2 : per_ctx_env_mod_rel R (List.length Γ) U U (ρσ ↦ᵐ u2 ⦂ substituted_unit) (ρ'σ' ↦ᵐ u3 ⦂ substituted_unit))
     by (constructor; cbn [drop_env tl env_mod env_entry hd]; first [ assumption | apply Hrs ]).
-  destruct (rel_exp_body_unrestamp HΓU HBlgen _ _ HΓ _ _ Hid ρσ ρ'σ'
+  destruct (rel_exp_body_of_retagged HΓU HBlgen _ _ HΓ _ _ Hid ρσ ρ'σ'
               (ρσ ↦ᵐ u2 ⦂ substituted_unit) (ρ'σ' ↦ᵐ u3 ⦂ substituted_unit) Hρσ
               (eval_sub_single_mod _ _ _ _ _ Hu2) (eval_sub_single_mod _ _ _ _ _ Hu3) HId2)
     as [R2 [HI2t HI2e]].

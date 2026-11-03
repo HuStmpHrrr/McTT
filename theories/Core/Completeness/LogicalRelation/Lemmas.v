@@ -742,7 +742,7 @@ Proof.
   destruct (HM _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid')
     as [R [Htyp Hexp]].
   (** The outer values: [A[Id]] is [A], at the environments themselves.
-      The inner ones are at their restampings. *)
+      The inner ones are at their retaggings. *)
   destruct Htyp as [aσ a a' a'σ' Haσ ? ? Ha'σ' Htychain].
   rewrite exp_sub_id in Haσ, Ha'σ'.
   exists aσ, a'σ', R.
@@ -759,17 +759,18 @@ Proof.
     pairwise.
 Qed.
 
-(** ** Instances at Unrestamped Environments
+(** ** Instances at Retagged Environments
 
     A substitution of variables ([Id], a weakening, [Wk]) evaluates to the
-    environment it reads restamped ([eval_sub_id]): an instance of a
-    judgment along it has its inner values at the restampings.  The [Id]
-    instance at the environments themselves has the same inner values,
-    and its outer values are at the environments, so the two chains merge
-    there.  These two lemmas read a judgment's body at a substitution
-    whose results are restampings, with the inner values at the
-    environments restamped, for example [⟪φ⟫ ρ] for [ι φ] at [ρ]. *)
-Lemma rel_exp_body_unrestamp : forall {Γ T M M' RΓ} {i : nat},
+    environment it reads retagged at its target ([eval_sub_id],
+    [ctx_retag]): an instance of a judgment along it has its inner values
+    at the retaggings.  The [Id] instance at the environments themselves
+    has the same inner values, and its outer values are at the
+    environments, so the two chains merge there.  These two lemmas read a
+    judgment's body at a substitution whose results are retaggings, with
+    the inner values at the environments retagged, for example [⟪φ⟫ ρ]
+    for [ι φ] at [ρ]. *)
+Lemma rel_exp_body_of_retagged : forall {Γ T M M' RΓ} {i : nat},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     (forall Γ' R' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R') σ σ',
         Γ' ⊨ˢ σ ≈ σ' : Γ ->
@@ -817,7 +818,7 @@ Qed.
 
 (** For type judgments, at any PER of type values ([per_univ i], or the
     elements of a universe). *)
-Lemma rel_type_body_unrestamp : forall {Γ T T' RΓ} {P : relation domain} `{HP : PER domain P},
+Lemma rel_type_body_of_retagged : forall {Γ T T' RΓ} {P : relation domain} `{HP : PER domain P},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     (forall Γ' R' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R') σ σ',
         Γ' ⊨ˢ σ ≈ σ' : Γ ->
@@ -893,7 +894,7 @@ Proof.
   destruct (eval_sub_id_rel HΓ Hρ) as [Hid Hid'].
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid')
     as [aσ a a'σ' a' HaσI ? Ha'σ'I ? Hl Hr Hsub].
-  (** The inner values are at the restamped environments; the subtyping is
+  (** The inner values are at the retagged environments; the subtyping is
     transported to the outer ones, the values of [A[Id]] and [A'[Id]] at
     the environments themselves. *)
   rewrite exp_sub_id in HaσI, Ha'σ'I.
@@ -1103,9 +1104,9 @@ Proof.
   (** The type pair first: it puts [per_univ_elem i R] in context, which is what
       resolves the [PER R] obligation of the element pair. *)
   assert (Hmid : DF a1 ≈ a3 ∈ per_univ_elem i ↘ R) by pairwise.
-  (** The inner values are at the restampings of [⟪φ⟫ ρ] and [⟪φ⟫ ρ'].
-      The judgment read at the restamping of [⟪φ⟫ ρ] against [⟪φ⟫ ρ']
-      itself, related by [per_ctx_env_restamp_left], bridges the first
+  (** The inner values are at the retaggings of [⟪φ⟫ ρ] and [⟪φ⟫ ρ'].
+      The judgment read at the retagging of [⟪φ⟫ ρ] against [⟪φ⟫ ρ']
+      itself, related by [per_ctx_env_retag_left], bridges the first
       inner values to the values wanted. *)
   assert (HΔk : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ) by eassumption.
   pose proof (per_ctx_env_retag_left HΔk _ _ (Hφ _ _ Hρ)) as Hrφρ.
@@ -1527,7 +1528,7 @@ Qed.
 
 (** A term judgment at [Γ2] is one at a [Γ1] whose relation is included
     in [Γ2]'s: its instance at the environments retagged at [Γ2] is read
-    at the environments themselves ([rel_exp_body_unrestamp]). *)
+    at the environments themselves ([rel_exp_body_of_retagged]). *)
 
 Lemma rel_exp_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A M M'},
     EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
@@ -1544,7 +1545,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
-  apply (rel_exp_body_unrestamp HΓ2' HM _ _ HΓ').
+  apply (rel_exp_body_of_retagged HΓ2' HM _ _ HΓ').
   - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact (le_n _) | exact Hc | exact Hσ ].
     auto.
   - exact Hρ.
@@ -1569,7 +1570,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
-  apply (rel_type_body_unrestamp HΓ2' HA _ _ HΓ').
+  apply (rel_type_body_of_retagged HΓ2' HA _ _ HΓ').
   - eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hl | exact (le_n _) | exact Hc | exact Hσ ].
     auto.
   - exact Hρ.

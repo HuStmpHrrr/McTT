@@ -572,7 +572,7 @@ Proof.
   rewrite exp_sub_id in HidM.
   (** [Id,,M] evaluates to the extensions of the retagged environments;
       the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
-      ([rel_exp_body_unrestamp]). *)
+      ([rel_exp_body_of_retagged]). *)
   destruct (head_not_propositional_of_relevant (e := ce_def A M) HΓ eq_refl HA HArel _ _ (per_ctx_env_retag HΓ _ _ Hρσ))
     as [Hnp2r Hnp3r].
   assert (PER RNl) by (eapply per_elem_PER; exact Ha23l).
@@ -583,7 +583,7 @@ Proof.
     destruct (per_head_closure_readable HΓA HΓ Hρσ Hh) as [Hr2 Hr3].
     eapply (per_env_extend_def_intro _ HAat HMlat Hρσ); [ exact Hh | exact Hr2 | exact Hr3 | exact Hn2 | ].
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Ha23l | pairwise ]. }
-  destruct (rel_exp_body_unrestamp HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
+  destruct (rel_exp_body_of_retagged HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
               (ρσ ↦ n2 ⦂ centry_tag (ce_def A M) Γ ρσ) (ρ'σ' ↦ n3m ⦂ centry_tag (ce_def A M) Γ ρ'σ') Hρσ
               (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2)
               (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3m) HId2)
@@ -857,7 +857,7 @@ Proof.
   rewrite exp_sub_id in HidM.
   (** [Id,,M] evaluates to the extensions of the retagged environments;
       the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves
-      ([rel_exp_body_unrestamp]). *)
+      ([rel_exp_body_of_retagged]). *)
   pose proof (per_ctx_env_retag HΓ _ _ Hρσ) as Hρσr.
   destruct (rel_exp_of_prop_inversion_simple_at HΓ HA _ _ Hρσr) as (a2r & a3r & Ha2r & Ha3r & [Hl2r Hr3r _]).
   assert (Hh2r : head_propositional gc_deps gc_stack (ce_def A M) Γ (ctx_retag Γ ρσ))
@@ -868,7 +868,7 @@ Proof.
   assert (HId2 : Dom ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ ≈ ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ centry_tag (ce_def A M) Γ ρ'σ'
                    ∈ per_env_extend A A env_relΓ)
     by exact (per_env_extend_intro_tagged HΓA HΓ Hρσ (per_head_proof Ha2 Hl2 Rp2 Rp2')).
-  destruct (rel_exp_body_unrestamp HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
+  destruct (rel_exp_body_of_retagged HΓd HBlgen _ _ HΓ _ _ HidM ρσ ρ'σ'
               (ρσ ↦ ⋆ᵈ⟨M, ρσ⟩ ⦂ centry_tag (ce_def A M) Γ ρσ) (ρ'σ' ↦ ⋆ᵈ⟨M, ρ'σ'⟩ ⦂ centry_tag (ce_def A M) Γ ρ'σ') Hρσ
               (eval_sub_extend_proof _ _ _ _ _ _ Hid2 Hh2r) (eval_sub_extend_proof _ _ _ _ _ _ Hid3 Hh3r) HId2)
     as [R2 [HI2t HI2e]].

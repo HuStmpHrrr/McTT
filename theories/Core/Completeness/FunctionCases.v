@@ -1040,7 +1040,7 @@ Proof.
   rewrite <- exp_sub_extend_sub in Ht1, Ht4.
   (** The second along [Id,,N], whose results are the extensions of the
       restamped environments; read at the extensions of the environments
-      themselves ([rel_type_body_unrestamp]). *)
+      themselves ([rel_type_body_of_retagged]). *)
   destruct (rel_exp_of_prop_inversion_simple_at HΓ HA _ _ (per_ctx_env_restamp HΓ _ _ Hρσ))
     as (a2r & a3r & Ha2r & Ha3r & [Hl2r Hr3r _]).
   pose proof (head_propositional_of_value (Γ := Γ) Ha2r Hl2r) as Hp2r.
@@ -1052,7 +1052,7 @@ Proof.
   { apply EA; apply per_env_extend_intro';
       [ exact Hρσ | eapply per_head_proof; [ exact Ha2 | exact Hr2 | exact Rp2 | exact Rp3 ]
       | apply substituted_entry_readable | apply substituted_entry_readable ]. }
-  destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρσ ρ'σ'
+  destruct (rel_type_body_of_retagged HΓA HBgen _ _ HΓ _ _ HidN ρσ ρ'σ'
               (ρσ ↦ ⋆ᵈ⟨N, ρσ⟩ ⦂ substituted_type) (ρ'σ' ↦ ⋆ᵈ⟨N, ρ'σ'⟩ ⦂ substituted_type) Hρσ
               (eval_sub_extend_proof _ _ _ _ _ _ Hid2 Hp2r) (eval_sub_extend_proof _ _ _ _ _ _ Hid3 Hp3r) Hext)
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
@@ -1336,14 +1336,14 @@ Proof.
 
       Along [Id ,, N ≈ Id ,, N] at the substituted environments, whose results
       are the extensions of the restamped environments; read at the
-      extensions of the environments themselves ([rel_exp_body_unrestamp]).
+      extensions of the environments themselves ([rel_exp_body_of_retagged]).
       Its second value is the goal's second and its right-hand outer value
       the goal's third. *)
   assert (Hext : Dom ρσ ↦ n2 ⦂ substituted_type ≈ ρ'σ' ↦ n3 ⦂ substituted_type ∈ per_env_extend A A env_relΓ)
     by (apply per_env_extend_intro';
         [ exact Hρσ | exact (per_head_of Ha2 Ha3 Hmid Hn23)
         | apply substituted_entry_readable | apply substituted_entry_readable ]).
-  destruct (rel_exp_body_unrestamp HΓAM HMgen _ _ HΓ _ _ HidN ρσ ρ'σ'
+  destruct (rel_exp_body_of_retagged HΓAM HMgen _ _ HΓ _ _ HidN ρσ ρ'σ'
               (ρσ ↦ n2 ⦂ substituted_type) (ρ'σ' ↦ n3 ⦂ substituted_type) Hρσ
               (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2) (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3)
               (proj2 (EAM _ _) Hext))
@@ -1536,8 +1536,8 @@ Proof.
 
       Along [Id ,, N ≈ Id ,, N] at the substituted environments, read at
       the extensions of the environments themselves
-      ([rel_exp_body_unrestamp]). *)
-  destruct (rel_exp_body_unrestamp HΓAM HMgen _ _ HΓ _ _ HidN ρσ ρ'σ'
+      ([rel_exp_body_of_retagged]). *)
+  destruct (rel_exp_body_of_retagged HΓAM HMgen _ _ HΓ _ _ HidN ρσ ρ'σ'
               (ρσ ↦ ⋆ᵈ⟨N, ρσ⟩ ⦂ substituted_type) (ρ'σ' ↦ ⋆ᵈ⟨N, ρ'σ'⟩ ⦂ substituted_type) Hρσ
               (eval_sub_extend_proof _ _ _ _ _ _ Hid2 Hp2r) (eval_sub_extend_proof _ _ _ _ _ _ Hid3 Hp3r)
               (proj2 (EAM _ _) Hext))

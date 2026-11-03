@@ -444,7 +444,7 @@ Proof.
   assert (Hd12 : Dom d1 ≈ d2 ∈ per_univ i) by pairwise.
   destruct Hd12 as [R12 Hd12]; pose proof (per_univ_elem_relevance _ _ _ _ Hd12) as Er12.
   destruct (eval_sub_of_wk_pair Hφ HΓ Hρ) as [Hw Hw'].
-  destruct (rel_exp_body_unrestamp HΓ HMgen _ _ HΓ' _ _ (rel_sub_of_wk_rel HΓ' HΓ Hφ Hφb) _ _ _ _ Hρ Hw Hw' (Hφ _ _ Hρ))
+  destruct (rel_exp_body_of_retagged HΓ HMgen _ _ HΓ' _ _ (rel_sub_of_wk_rel HΓ' HΓ Hφ Hφb) _ _ _ _ Hρ Hw Hw' (Hφ _ _ Hρ))
     as [Rt [Htyp Hexp]].
   destruct (domain_relevance d2) eqn:Er2.
   - (** A relevant head: the heads are the term's four values, related in
@@ -557,7 +557,7 @@ Proof.
   destruct (eval_sub_id_rel HΔk Ht12) as [Hid1 Hid2].
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk_rel Hσj HΓ' HΓ Hφ Hφb) _ _ _ _ Hρ Ht1 Ht4) as [R1 [Htyp1 Hexp1]].
   destruct (HMgen _ _ HΓ _ _ Hσj _ _ _ _ (Hφ _ _ Hρ) Ht2 Ht3) as [R2 [Htyp2 Hexp2]].
-  destruct (rel_exp_body_unrestamp HΔk HMrgen _ _ HΔk _ _ (rel_sub_id (ex_intro _ _ HΔk)) _ _ _ _ Ht12 Hid1 Hid2 Ht12)
+  destruct (rel_exp_body_of_retagged HΔk HMrgen _ _ HΔk _ _ (rel_sub_id (ex_intro _ _ HΔk)) _ _ _ _ Ht12 Hid1 Hid2 Ht12)
     as [R3 [Htyp3 Hexp3]].
   (** Whether the head is a proposition is decided by [T]'s value at an
     inner tail, and the four tails agree on it. *)
@@ -741,7 +741,7 @@ Proof.
   destruct (HAgen _ _ HΓA' _ _ Hσwkj _ _ _ _ (Hψ _ _ Hρ) Hy1 Hy4)
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct (eval_sub_id_rel HΔ3 Hy12) as [Hid1 Hid2].
-  destruct (rel_type_body_unrestamp HΔ3 HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12 Hid1 Hid2 Hy12)
+  destruct (rel_type_body_of_retagged HΔ3 HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12 Hid1 Hid2 Hy12)
     as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   rewrite exp_sub_id in Hd1, Hd4.
   (** The heads are proofs when [A] is a proposition at the tails, which
@@ -1272,14 +1272,14 @@ Proof.
   rewrite <- exp_sub_extend_sub in Ht1, Ht4.
   (** The second along [Id,,N], whose results are the extensions of the
       retagged environments; read at the extensions of the environments
-      themselves ([rel_type_body_unrestamp]). *)
+      themselves ([rel_type_body_of_retagged]). *)
   destruct (head_not_propositional_of_relevant (e := ce_ass A) HΓ eq_refl HA HArel' _ _ (per_ctx_env_retag HΓ _ _ Hρσ))
     as [Hnp2r Hnp3r].
   assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (Hext : Dom ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ ≈ ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ' ∈ env_relΓA).
   { apply EA; apply (per_env_extend_intro_tagged HΓA0 HΓ Hρσ).
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | pairwise ]. }
-  destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρσ ρ'σ'
+  destruct (rel_type_body_of_retagged HΓA HBgen _ _ HΓ _ _ HidN ρσ ρ'σ'
               (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ') Hρσ
               (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2) (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3) Hext)
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
@@ -1342,7 +1342,7 @@ Proof.
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
   (** [Id,,N] evaluates to the extension of the retagged environment; the
       instance is read at the extension of [ρ] itself
-      ([rel_type_body_unrestamp]). *)
+      ([rel_type_body_of_retagged]). *)
   destruct (head_not_propositional_of_typ (e := ce_ass A) HΓ eq_refl HA _ _ (per_ctx_env_retag HΓ _ _ Hρ)) as [Hnp _].
   destruct (eval_sub_id_rel HΓ Hρ) as [Hid _].
   destruct (rel_exp_under_ctx_simple_at_rel HΓ HA HN _ _ Hρ) as (m & m' & Hm & Hm' & Hmm).
@@ -1352,7 +1352,7 @@ Proof.
   assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (Hext : Dom ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ ≈ ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ ∈ env_relΓA)
     by (apply EA; exact (per_env_extend_intro_tagged HΓA0 HΓ Hρ Hmm)).
-  destruct (rel_type_body_unrestamp HΓA HBgen _ _ HΓ _ _ HidN ρ ρ
+  destruct (rel_type_body_of_retagged HΓA HBgen _ _ HΓ _ _ HidN ρ ρ
               (ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ) (ρ ↦ n ⦂ centry_tag (ce_ass A) Γ ρ) Hρ
               (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) Hext)
     as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].

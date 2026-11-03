@@ -59,12 +59,12 @@ Proof.
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_shift Hσj) _ _ _ _ Hρ
                   (eval_sub_shift_pre _ _ _ _ _ Hev) (eval_sub_shift_pre _ _ _ _ _ Hev'))
     as [R1 [Htyp1 Hexp1]].
-  (** [Wk] evaluates to the restamped tails; the instance is read at the
-      tails themselves ([rel_exp_body_unrestamp]), which the first one
+  (** [Wk] evaluates to the retagged tails; the instance is read at the
+      tails themselves ([rel_exp_body_of_retagged]), which the first one
       reaches. *)
   assert (Htl : Dom ρσ↯ ≈ ρ'σ'↯ ∈ env_relΓ).
   { pose proof (rel_wk_shift HΓ HΓCper) as Hsh; rewrite <- !eval_wk_shift; exact (Hsh _ _ Hρσ). }
-  destruct (rel_exp_body_unrestamp HΓ HMgen _ _ HΓCper _ _ HWk _ _ _ _ Hρσ Hs Hs' Htl)
+  destruct (rel_exp_body_of_retagged HΓ HMgen _ _ HΓCper _ _ HWk _ _ _ _ Hρσ Hs Hs' Htl)
     as [R2 [Htyp2 Hexp2]].
   pose proof Htyp1 as [v1 v2 v3 v4 Hv1 Hv2 Hv3 Hv4 Hvchain].
   pose proof Htyp2 as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Huchain].
@@ -148,7 +148,7 @@ Proof.
   destruct (eval_sub_shift_rel HR Hρσ) as [Hs Hs'].
   assert (Htl : Dom ρσ↯ ≈ ρ'σ'↯ ∈ env_relΓ).
   { pose proof (rel_wk_shift HΓ HR) as Hsh; rewrite <- !eval_wk_shift; exact (Hsh _ _ Hρσ). }
-  destruct (rel_type_body_unrestamp HΓ HAgen _ _ HR _ _ (rel_sub_of_wk_rel HR HΓ (rel_wk_shift HΓ HR) (fun x Hx => ltac:(cbn; lia)))
+  destruct (rel_type_body_of_retagged HΓ HAgen _ _ HR _ _ (rel_sub_of_wk_rel HR HΓ (rel_wk_shift HΓ HR) (fun x Hx => ltac:(cbn; lia)))
               _ _ _ _ Hρσ Hs Hs' Htl)
     as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Huchain].
   rewrite exp_sub_of_shift in Hu1, Hu4.
