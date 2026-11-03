@@ -88,6 +88,45 @@ Proof.
     exact Has.
 Qed.
 
+(** The terms of the non-recursive arguments among [As], of the kinds
+    [gs]. *)
+Fixpoint nonrec_arg_terms (gs : list carg) (As : list exp) : list exp :=
+  match gs, As with
+  | ca_arg _ _ :: gs, A :: As => A :: nonrec_arg_terms gs As
+  | ca_rec _ :: gs, _ :: As => nonrec_arg_terms gs As
+  | _, _ => nil
+  end.
+
+(** The substitution extended by the non-recursive arguments is the
+    substitution extended by their list. *)
+Lemma cargs_sub_of_list : forall gs σ As, cargs_sub σ gs As = sb_of_list σ (nonrec_arg_terms gs As).
+Proof. induction gs as [| [r A | t] gs IH]; intros σ [| N As]; cbn; try reflexivity; apply IH. Qed.
+
+Lemma length_nonrec_arg_terms : forall gs As, List.length As = List.length gs ->
+    List.length (nonrec_arg_terms gs As) = List.length (cargs_nonrec gs).
+Proof. induction gs as [| [r A | t] gs IH]; intros [| N As] Hl; cbn in *; try discriminate; try reflexivity; rewrite IH; lia. Qed.
+
+(** The values of the arguments of their sorts give those of the
+    non-recursive ones, of theirs. *)
+Lemma eval_field_vals_nonrec : forall gs rest As ρ avs,
+    eval_field_vals gc_deps gc_stack (cargs_relevance gs ++ rest) As ρ avs -> List.length As = List.length gs ->
+    eval_field_vals gc_deps gc_stack (cargs_nonrec_relevance gs) (nonrec_arg_terms gs As) ρ (nonrec_arg_vals gs avs).
+Proof.
+  induction gs as [| [r A | t] gs IH]; intros rest [| N As] ρ avs H Hl; cbn in Hl; try discriminate.
+  - inversion H; subst; cbn; constructor.
+  - cbn [cargs_relevance List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_relevance].
+    + eapply eval_field_vals_relevant; [ assumption | eassumption | apply (IH rest); [ eassumption | lia ] ].
+    + eapply eval_field_vals_proof; [ assumption | apply (IH rest); [ eassumption | lia ] ].
+  - cbn [cargs_relevance List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_relevance];
+      [ apply (IH rest); [ eassumption | lia ] | discriminate ].
+Qed.
+
+(** The sorts of the non-recursive arguments of [gs1 ++ gs2]: those of
+    [gs1], then those of [gs2]. *)
+Lemma cargs_nonrec_relevance_app : forall gs1 gs2,
+    cargs_nonrec_relevance (gs1 ++ gs2) = cargs_nonrec_relevance gs1 ++ cargs_nonrec_relevance gs2.
+Proof. induction gs1 as [| [r A | t] gs1 IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
+
 (** An entry of a telescope over [Γ] that is a proposition over the
     entries after it is a proposition at an environment the context PER
     relates. *)
@@ -1480,18 +1519,19 @@ Section Iota.
     Variable (RΓ RU : relation env).
     Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).
     Variable (C : env) (u0 ns avs : list domain).
-    Hypotheses (HCC : RΓ C C) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u0)
+    Hypotheses (HCC : RΓ C C) (HCt : ctx_retag Γ C = C) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u0)
       (HNC : ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ns) (HAC : eval_field_vals gc_deps gc_stack (cargs_relevance gs) As C avs).
     Let nr := canon_nparams_rel D u0.
     Let ar := canon_args_rel D u0.
-    Let dr := canon_doms_rel u0.
+    Let dr := canon_doms_rel D u0.
     Let G := grp_rel p D u0 nr ar dr.
+    Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
     Let Rel := fun j ns m ns' m' =>
-      per_head (List.nth j (blocks_motives Bks) a_placeholder_type) (List.nth j (blocks_motives Bks) a_placeholder_type)
-        (env_args C (ns ++ m :: nil)) (env_args C (ns' ++ m' :: nil)).
+      per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
+        (env_tele C (mctx_tele j) (ns ++ m :: nil)) (env_tele C (mctx_tele j) (ns' ++ m' :: nil)).
     #[local] Abbreviation u0_len' := (u0_len D Us iota_case_HUl C u0 HUC).
-    #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs C u0 HCC HUC).
-    #[local] Abbreviation u0_gargs' := (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs C u0 HCC HUC).
+    #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC).
+    #[local] Abbreviation u0_gargs' := (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC).
     #[local] Abbreviation Hcp := (valid_group_canon p D Hvg u0 u0_gargs' u0_len').
     #[local] Abbreviation HnP := (ind_canon_props_np_per _ _ Hcp).
     #[local] Abbreviation HnI := (ind_canon_props_np_iff _ _ Hcp).
@@ -1505,9 +1545,11 @@ Section Iota.
     #[local] Abbreviation itrans := (proj1 (ind_rel_trans_all p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (admissible_index_at D u0 nr))).
     (** The lemmas of [Elim.v]: of the frames, of the base at [C], and of
         the motives at [C] on both sides. *)
-    #[local] Abbreviation SF f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs HMall).
-    #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs C u0 HCC HUC).
-    #[local] Abbreviation EP f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs C u0 HCC HUC C HCC Bks i HBks' HMall HAv).
+    #[local] Abbreviation trefl_l := (nparams_rel_refl_l p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI).
+    #[local] Abbreviation SF f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss HMall).
+    #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC).
+    #[local] Abbreviation EP f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC C HCC
+                                     Bks i HBks' HMall HAv).
 
     Lemma iota_sem_Ln : List.length ns = im_nn Mm.
     Proof. rewrite (eval_exps_length _ _ _ HNC); exact iota_case_HNl. Qed.
@@ -1535,7 +1577,7 @@ Section Iota.
       intros x y Hxy.
       destruct (presup_rel_exp_under_ctx iota_Mc_valid) as [iT HIT].
       destruct (rel_type_inversion_simple_at HRΓ HIT _ _ HCC) as (t1 & t2 & Et1 & Et2 & [R HR]).
-      destruct (scrut_rel VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs C u0 HCC HUC m Mm HMm (HMall _ _ HMm) Ns iota_case_HNl
+      destruct (EB scrut_rel m Mm HMm (HMall _ _ HMm) Ns iota_case_HNl
                   iota_sem_HgN C HCC ns ns HNC HNC t1 t2 _ R Et1 Et2 HR) as [_ ERM].
       apply ERM, (per_head_iff Et1 Et2 HR); exact Hxy.
     Qed.
@@ -1546,7 +1588,7 @@ Section Iota.
         G m u0 u0 ns ns (d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs))
           (d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs)) /\
         tele_rel (ar m ns c) (cargs_nonrec gs) (nonrec_arg_vals gs avs) (nonrec_arg_vals gs avs) /\
-        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr m u0 u0 ns ns gs avs avs.
+        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr m u0 u0 ns ns (List.rev (im_nparams Mm)) gs avs avs.
     Proof.
       intros cs Lcs Emc.
       destruct (rel_exp_under_ctx_simple_at_mty _ _ _ _ _ _ _ _ _ _ HMm HRΓ iota_Mc_valid _ _ HCC) as (m1 & m2 & Em1 & Em2 & Hm12).
@@ -1566,7 +1608,7 @@ Section Iota.
     Qed.
 
     Lemma iota_sem_args : tele_rel (ar m ns c) (cargs_nonrec gs) (nonrec_arg_vals gs avs) (nonrec_arg_vals gs avs) /\
-        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr m u0 u0 ns ns gs avs avs.
+        con_args_rel p D (admissible_index_at D u0 nr) nr ar dr m u0 u0 ns ns (List.rev (im_nparams Mm)) gs avs avs.
     Proof. destruct iota_sem_Mc as (cs & Lcs & Emc); exact (proj2 (iota_sem_self cs Lcs Emc)). Qed.
 
     Lemma iota_sem_Hns : tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns.
@@ -1579,8 +1621,8 @@ Section Iota.
     Proof. rewrite iota_case_Ps; apply eval_exps_app; [ exact HUC | exact HNC ]. Qed.
 
     (** The walk along the leaf paths ([LeafVals]), at [C]. *)
-    #[local] Abbreviation LV f := (f VP p D HP HPD Γ oq Us Bks i HΓ Hoq iota_case_HUl iota_case_HUs HBks HnmA HMall HAv HnaA HBc HarA HBv
-                                     RΓ RU HRΓ HRU C u0 HCC HUC).
+    #[local] Abbreviation LV f := (f VP p D HP HPD Γ Us Bks i HΓ iota_case_HUl iota_case_HUs iota_case_HUss HBks HnmA HMall HAv HnaA
+                                     HBc HarA HBv RΓ RU HRΓ HRU C u0 HCC HUC HCt).
     #[local] Abbreviation iota_arg_link := (iota_arg_link p D Γ C u0).
 
     (** A recursive argument of the constructor: the scrutinee, moved
@@ -1588,18 +1630,16 @@ Section Iota.
         related to the scrutinee's. *)
     Lemma iota_arg_link_start : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
         forall a, List.nth_error avs (List.length gs1) = Some a ->
-        iota_arg_link m (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)) t a
-          (List.nth (List.length gs1) As (a_var 0)) nil.
+        iota_arg_link m (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs))
+          (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) t a (List.nth (List.length gs1) As (a_var 0)) nil.
     Proof.
       intros gs1 t gs2 Heq a Ha Δ RΔ zs HRΔ Hw HE.
-      change (List.length (@nil domain) + List.length zs) with (List.length zs) in Hw.
-      change (env_args C (nil ++ zs)) with (env_args C zs) in HE |- *.
+      change (List.length (@nil (domain * entry_type)) + List.length zs) with (List.length zs) in Hw.
+      change (env_extend_typed C (nil ++ zs)) with (env_extend_typed C zs) in HE |- *.
       set (σL := sb_of_wk (wk_shiftn (List.length zs))).
-      assert (Hev : ⟦ σL : Γ ⟧s env_args C zs ↘ C).
-      { pose proof (proj1 (per_ctx_env_proofs _ _ _ HRΓ _ _ HCC)) as Hp.
-        rewrite <- (eval_wk_shiftn_args C zs) in Hp.
-        pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn (List.length zs)) (env_args C zs) (wk_mono_shiftn _) Hp) as H.
-        rewrite eval_wk_shiftn_args in H; exact H. }
+      assert (Hev : ⟦ σL : Γ ⟧s env_extend_typed C zs ↘ C).
+      { pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn (List.length zs)) (env_extend_typed C zs) (wk_mono_shiftn _)) as H.
+        rewrite eval_wk_shiftn_extend_typed, HCt in H; exact H. }
       destruct (presup_rel_exp_under_ctx iota_Mc_valid) as [iT HIT].
       destruct (rel_type_inversion_simple_at HRΓ HIT _ _ HCC) as (t1 & _ & Et1 & _ & _).
       destruct (exp_inst_link _ _ _ _ _ _ _ _ _ iota_Mc_valid HRΔ Hw HE Hev
@@ -1612,12 +1652,12 @@ Section Iota.
       fold σL in Emw; rewrite !List.map_app, (im_pre_sub D m Mm Us σL Hc HMm iota_case_HUl) in Emw.
       assert (LNA : List.length (List.map (fun N => N[σL]) Ns ++ List.map (fun N => N[σL]) As) = (im_nn Mm + List.length gs)%nat)
         by (rewrite List.length_app, !List.length_map, iota_case_HNl, HAl; reflexivity).
-      destruct (con_ref_apps_sorted VP p D HP HPD m Mm c gs (env_args C zs) (List.map (fun U => U[σL]) Us) _ mw HMm HrvM Hcon
+      destruct (con_ref_apps_sorted VP p D HP HPD m Mm c gs (env_extend_typed C zs) (List.map (fun U => U[σL]) Us) _ mw HMm HrvM Hcon
                   ltac:(rewrite List.length_map; exact iota_case_HUl) LNA Emw) as (zs' & Ezs).
       destruct (con_ref_vals_split D Mm gs _ _ _ _ ltac:(rewrite List.length_map; exact iota_case_HNl) Ezs)
         as (ns1 & as1 & -> & Ens1 & Eas1).
       assert (Ln1 : List.length ns1 = im_nn Mm) by (rewrite (eval_exps_length _ _ _ Ens1), List.length_map; exact iota_case_HNl).
-      destruct (con_ref_apps_value VP p D HP HPD m Mm c gs (env_args C zs) (List.map (fun U => U[σL]) Us) _ _ mw HMm HrvM Hcon
+      destruct (con_ref_apps_value VP p D HP HPD m Mm c gs (env_extend_typed C zs) (List.map (fun U => U[σL]) Us) _ _ mw HMm HrvM Hcon
                   ltac:(rewrite List.length_map; exact iota_case_HUl) Ezs LNA Emw)
         as (cs' & Lcs' & ->).
       rewrite (List.app_assoc cs ns avs) in Hm.
@@ -1628,7 +1668,7 @@ Section Iota.
       injection Ez as Ez; rewrite List.app_assoc in Ez.
       destruct (app_split_eq _ _ _ _ Ez ltac:(rewrite Lbs', List.length_app, Lcs', Ln1; reflexivity)) as [<- <-].
       rewrite (skipn_app_exact cs ns _ Lcs), (skipn_app_exact cs' ns1 _ Lcs') in Hia.
-      destruct (con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t gs2 Heq) as (x & x' & Hx & Hx' & Hshw).
+      destruct (con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t gs2 Heq) as (x & x' & Hx & Hx' & Hshw).
       rewrite Ha in Hx; injection Hx as <-.
       assert (Hlt : List.length gs1 < List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
       destruct (nth_error_lt_some' As _ Hlt) as [M0 HM0].
@@ -1641,6 +1681,129 @@ Section Iota.
       unfold σL in Ev0; rewrite exp_sub_of_wk in Ev0; exact Ev0.
     Qed.
 
+    (** *** The Components of a Recursive Argument
+
+        The value at [C] of the components of the shape of a recursive
+        argument: over [C], the parameters' values and the non-recursive
+        arguments' before it, of their sorts, at types that read back. *)
+    Lemma iota_sigma_value : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+        exists wts, ⟦ cargs_sub σP gs1 As : cargs_strat gs1 ++ im_params D Mm ++ Γ ⟧s C ↘ env_extend_typed C wts /\
+          List.map fst wts = u0 ++ ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs) /\
+          List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) wts.
+    Proof.
+      intros gs1 t gs2 Heq.
+      assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
+      set (K := List.length (cargs_nonrec gs1)).
+      set (K0 := cargs_strat gs1 ++ im_params D Mm).
+      set (n := List.length K0).
+      assert (Lg1 : List.length (List.firstn (List.length gs1) As) = List.length gs1)
+        by (rewrite List.length_firstn, HAl, Heq, List.length_app; cbn; lia).
+      set (nt := nonrec_arg_terms gs1 (List.firstn (List.length gs1) As)).
+      set (Ms := Ps ++ nt).
+      assert (Lnt : List.length nt = K) by (unfold nt, K; apply length_nonrec_arg_terms; exact Lg1).
+      assert (Ln : n = K + List.length Ps)
+        by (unfold n, K0; rewrite List.length_app, cargs_strat_nonrec, List.length_rev, List.length_map, length_im_params, HPl;
+            fold K; lia).
+      assert (LMs : List.length Ms = n) by (unfold Ms; rewrite List.length_app, Lnt; lia).
+      assert (Eσ : cargs_sub σP gs1 As = sb_of_list Id Ms)
+        by (rewrite <- (cargs_sub_firstn gs1 σP As), cargs_sub_of_list; unfold σP, Ms; rewrite sb_of_list_app; reflexivity).
+      (** The semantic substitution's value. *)
+      destruct (rel_sub_under_ctx_simple (gsub_valid (gsub_sigt gs1 _ Heq))) as (R1 & HR1 & RT & HRT & Hs).
+      assert (E1 : RΓ <~> R1) by (eapply per_ctx_env_right_irrel; [ exact HRΓ | exact HR1 ]).
+      destruct (Hs _ _ (proj1 (E1 _ _) HCC)) as (e1 & e1' & Ee1 & _ & He1).
+      assert (HPT : PER RT) by (eapply per_env_PER; exact HRT).
+      assert (He11 : RT e1 e1) by (etransitivity; [ exact He1 | symmetry; exact He1 ]).
+      pose proof (SF frame_strat_ass m Mm c gs gs1 t gs2 HMm Hcon Heq) as HK0a; fold K0 in HK0a.
+      assert (HRT' : EF K0 ++ Γ ≈ K0 ++ Γ ∈ per_ctx_env ↘ RT) by (unfold K0; rewrite <- List.app_assoc; exact HRT).
+      set (rf := frame_rf gs gs1).
+      (** The entries' propositionality is decided by their relevance. *)
+      assert (Hdec : forall x, x < n -> rf x = relevant ->
+                       ~ entry_propositional gc_deps gc_stack (cargs_strat gs1 ++ im_params D Mm ++ Γ) e1 x).
+      { intros x Hx Hr; rewrite List.app_assoc.
+        refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
+        intros Δ1 T0 Δ2 E0 HΔ1.
+        destruct (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) as [i0 HT0].
+        unfold rf in Hr; rewrite Hr in HT0; exists i0; exact HT0. }
+      assert (Hpr : forall x, x < n -> rf x = propositional ->
+                      entry_propositional gc_deps gc_stack (cargs_strat gs1 ++ im_params D Mm ++ Γ) e1 x).
+      { intros x Hx Hr; rewrite List.app_assoc.
+        refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
+        intros Δ1 T0 Δ2 E0 HΔ1.
+        destruct (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) as [i0 HT0].
+        unfold rf in Hr; rewrite Hr in HT0; exact HT0. }
+      assert (ETg : cargs_strat gs1 ++ im_params D Mm ++ Γ = List.rev (List.rev K0) ++ Γ)
+        by (rewrite List.rev_involutive; unfold K0; rewrite <- List.app_assoc; reflexivity).
+      rewrite Eσ, ETg in Ee1; rewrite ETg in Hdec, Hpr.
+      destruct (eval_sb_of_list_sorted_split Ms (List.rev K0) Id Γ C e1 rf ltac:(rewrite List.length_rev; lia) Ee1
+                  ltac:(rewrite List.length_rev; exact Hdec) ltac:(rewrite List.length_rev; exact Hpr))
+        as (ms & Lms & Hms & Hagr).
+      (** The values: the parameters', then the non-recursive arguments'. *)
+      set (nv1 := nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)).
+      assert (Hnvf : eval_field_vals gc_deps gc_stack (cargs_nonrec_relevance gs1) nt C nv1).
+      { unfold nt, nv1; apply (eval_field_vals_nonrec gs1 (cargs_relevance (ca_rec t :: gs2))); [| exact Lg1 ].
+        unfold cargs_relevance; rewrite <- List.map_app, <- Heq; fold (cargs_relevance gs).
+        exact (Mctt.Core.Completeness.Records.Model.eval_field_vals_firstn _ _ _ _ HAC (List.length gs1)). }
+      assert (Hmsv : ms = u0 ++ ns ++ nv1).
+      { pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Hnvf) as Lnv1.
+        pose proof (eval_exps_length _ _ _ iota_sem_HPC) as LPC.
+        apply (List.nth_ext _ _ d_prop d_prop); [ rewrite !List.length_app in *; lia |].
+        intros j Hj.
+        destruct (nth_error_lt_some' Ms j ltac:(lia)) as [M HM].
+        destruct (nth_error_lt_some' ms j ltac:(lia)) as [v Hv].
+        destruct (Hms j M v HM Hv) as [HmR HmP].
+        rewrite (List.nth_error_nth _ _ _ Hv).
+        destruct (Nat.lt_ge_cases j (List.length Ps)) as [Hj1 | Hj1].
+        - (** A parameter: relevant. *)
+          assert (Erf : rf (List.length Ms - 1 - j) = relevant)
+            by (unfold rf, frame_rf; fold K; replace (List.length Ms - 1 - j <? K) with false by (symmetry; apply Nat.ltb_ge; lia);
+                reflexivity).
+          unfold Ms in HM; rewrite List.nth_error_app1 in HM by exact Hj1.
+          destruct (eval_exps_nth _ _ _ _ _ iota_sem_HPC HM) as (y & Hy & Ey).
+          rewrite List.app_assoc, List.app_nth1 by (rewrite LPC; exact Hj1).
+          rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR Erf) Ey).
+        - (** A non-recursive argument: of its sort. *)
+          set (k := j - List.length Ps).
+          unfold Ms in HM; rewrite List.nth_error_app2 in HM by exact Hj1; fold k in HM.
+          destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_nth _ _ _ _ Hnvf k M HM) as (y & Hy & Ey1 & Ey2).
+          rewrite List.app_assoc, List.app_nth2 by (rewrite LPC; exact Hj1).
+          replace (j - List.length (u0 ++ ns)) with k by (unfold k; rewrite <- LPC, List.length_app; reflexivity).
+          rewrite (List.nth_error_nth _ _ _ Hy).
+          assert (Hk : k < K) by (unfold k; rewrite Lms, LMs in Hj; lia).
+          destruct (nth_error_lt_some' (cargs_nonrec gs1) k Hk) as [A0 HA0].
+          destruct (nonrec_relevance_nth _ _ _ HA0) as [r Hr].
+          assert (Erf : rf (List.length Ms - 1 - j) = r).
+          { unfold rf, frame_rf; fold K.
+            replace (List.length Ms - 1 - j <? K) with true by (symmetry; apply Nat.ltb_lt; lia).
+            replace (K - 1 - (List.length Ms - 1 - j)) with k by (unfold k; lia).
+            rewrite Heq, cargs_nonrec_relevance_app, List.nth_error_app1 by (apply List.nth_error_Some; congruence).
+            rewrite Hr; reflexivity. }
+          rewrite (List.nth_error_nth _ _ relevant Hr) in Ey1, Ey2.
+          destruct r.
+          + exact (functional_eval_exp _ _ _ _ (HmR Erf) (Ey1 eq_refl)).
+          + rewrite (HmP Erf), (Ey2 eq_refl); reflexivity. }
+      (** The value past the entries: [C]. *)
+      assert (Lpj : List.length (List.rev K0) = List.length Ms) by (rewrite List.length_rev; lia).
+      pose proof (eval_sb_of_list_tail _ _ _ _ _ _ Lpj Ee1) as Htail.
+      pose proof (functional_eval_sub _ _ _ _ _ Htail (@eval_sub_id gc_deps gc_stack Γ C)) as Hag; rewrite HCt in Hag.
+      set (wts := tagged_entries Γ (List.rev K0) C ms).
+      assert (HagT : env_agree_upto (List.length (List.rev (List.rev K0) ++ Γ)) e1 (env_extend_typed C wts)).
+      { unfold wts; rewrite <- env_extend_tagged_typed, List.length_app, !List.length_rev.
+        intros x Hx; rewrite Hagr.
+        exact (env_extend_tagged_agree (List.rev K0) Γ _ _ ms ltac:(rewrite List.length_rev; lia) Hag x
+                 ltac:(rewrite List.length_rev; lia)). }
+      exists wts; split; [ rewrite ETg, Eσ; exact (eval_sub_resp_agree _ _ _ _ _ Ee1 HagT) | split ].
+      - unfold wts; rewrite tagged_entries_fst by (rewrite List.length_rev; lia); exact Hmsv.
+      - rewrite <- ETg in HagT; pose proof (per_ctx_env_resp_agree HRT _ _ _ _ HagT HagT He11) as HEσ.
+        assert (HKr : ⊨ List.rev (List.rev K0) ++ Γ)
+          by (rewrite List.rev_involutive; unfold K0; rewrite <- List.app_assoc;
+              exact (SF frame_target_valid m Mm c gs gs1 t gs2 HMm Hcon Heq)).
+        assert (HRTr : EF List.rev (List.rev K0) ++ Γ ≈ List.rev (List.rev K0) ++ Γ ∈ per_ctx_env ↘ RT)
+          by (rewrite List.rev_involutive; exact HRT').
+        assert (Lv : List.length wts = List.length (List.rev K0))
+          by (unfold wts; rewrite tagged_entries_length by (rewrite List.length_rev; lia); rewrite List.length_rev; lia).
+        exact (proj1 (rel_gargs_readable _ _ _ _ HRΓ HKr (List.Forall_rev HK0a) HRTr _ _ _ _ Lv Lv HEσ)).
+    Qed.
+
     (** *** The Recursive Results of the Arguments
 
         The recursive results of the arguments after [gs1]: the
@@ -1650,7 +1813,7 @@ Section Iota.
           ⟦ elim_ihs relevant p D Us Bks (cargs_sub σP gs1 As) (im_nn Mm + List.length (cargs_nonrec gs1)) rest
               (List.skipn (List.length gs1) As) ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ihc /\
           rec_results_rel D dr Rel m u0 u0 (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs))
-            (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)) rest
+            (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) rest
             (List.skipn (List.length gs1) avs) (List.skipn (List.length gs1) avs) ihc ihe.
     Proof.
       pose proof (leaves_coherent_of_order _ (rview_struct_order _ _ _ (decl_typed_record_struct _ _ _ Hdt))) as Hco.
@@ -1667,62 +1830,45 @@ Section Iota.
         destruct (IH _ Heq') as (ihe & ihc & Ee & Ec & Hr).
         rewrite List.length_app in Ee, Ec, Hr; cbn [List.length] in Ee, Ec, Hr; rewrite Nat.add_1_r in Ee, Ec, Hr.
         rewrite (firstn_S_nth _ _ _ Hv), nonrec_arg_vals_app in Hr by exact Lf.
+        unfold cargs_nonrec_tele in Hr; rewrite cargs_nonrec_app, List.map_app in Hr; fold (cargs_nonrec_tele gs1) in Hr.
         rewrite (skipn_nth_cons _ _ _ Hv), (skipn_nth_cons _ _ _ HM0).
         rewrite cargs_nonrec_app, List.length_app in Ec.
         destruct g as [rB B0 | t].
         + assert (Hcs : cargs_sub σP (gs1 ++ ca_arg rB B0 :: nil) As = (cargs_sub σP gs1 As ,, M0)).
           { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
             apply cargs_sub_snoc_arg; rewrite List.length_firstn; lia. }
-          rewrite Hcs in Ec; cbn [nonrec_arg_vals cargs_nonrec List.length] in Hr, Ec; rewrite List.app_assoc in Hr.
+          rewrite Hcs in Ec; cbn [nonrec_arg_vals cargs_nonrec List.length List.map] in Hr, Ec.
+          rewrite !List.app_assoc in Hr.
           replace (im_nn Mm + (List.length (cargs_nonrec gs1) + 1)) with (S (im_nn Mm + List.length (cargs_nonrec gs1))) in Ec by lia.
-          exists ihe, ihc; split; [ constructor; exact Ee | split; [ cbn [elim_ihs]; exact Ec | constructor; exact Hr ] ].
+          exists ihe, ihc; split; [ constructor; exact Ee | split; [ cbn [elim_ihs]; exact Ec |] ].
+          apply rec_results_arg; rewrite <- !List.app_assoc in Hr |- *; exact Hr.
         + assert (Hcs : cargs_sub σP (gs1 ++ ca_rec t :: nil) As = cargs_sub σP gs1 As).
           { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
             apply cargs_sub_snoc_rec; rewrite List.length_firstn; lia. }
-          rewrite Hcs in Ec; cbn [nonrec_arg_vals cargs_nonrec List.length] in Hr, Ec; rewrite List.app_nil_r in Hr.
+          rewrite Hcs in Ec; cbn [nonrec_arg_vals cargs_nonrec List.length List.map] in Hr, Ec.
+          rewrite !List.app_nil_r in Hr.
           rewrite Nat.add_0_r in Ec.
           destruct (length_rec_ps D HD m Mm HMm c gs gs1 t rest Hcon Heq) as (Mj & HMj & _).
           (** The argument at its frame, at [C]. *)
           set (nv1 := nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)) in *.
           destruct iota_sem_args as (Hnva & Hia).
-          destruct (con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t rest Heq) as (x & x' & Hx & Hx' & Hsh).
+          destruct (con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t rest Heq) as (x & x' & Hx & Hx' & Hsh).
           rewrite Hv in Hx, Hx'; injection Hx as <-; injection Hx' as <-.
           assert (Hnv : tele_prefix_rel (ar m ns c) (List.length (cargs_nonrec gs1)) nv1 nv1).
           { unfold nv1; rewrite <- (List.firstn_skipn (List.length gs1) avs) in Hnva.
             exact (nonrec_prefix_gen _ gs gs1 (ca_rec t :: rest) _ _ _ _ Heq Lf Lf Hnva). }
           assert (Lnv1 : List.length nv1 = List.length (cargs_nonrec gs1)) by (apply length_nonrec_arg_vals; exact Lf).
           assert (Hvals : sem_frame_vals D Γ RΓ RU C u0 Mm gs1 nil (cargs_sub σP gs1 As) (List.nth (List.length gs1) As (a_var 0))
-                            RΓ (env_args C nil) C nil u0 ns nv1 v).
-          { constructor; cbn [env_args List.fold_left List.length].
+                            RΓ (env_extend_typed C nil) C nil u0 ns nv1 v).
+          { constructor; cbn [env_extend_typed List.fold_left List.length].
             - exact HCC.
             - reflexivity.
             - reflexivity.
             - exact HCC.
-            - (** The target at the components' values, related to itself:
-                  the canonical arguments over [C]. *)
-              exists C.
-              assert (HSa : tele_ass (cargs_strat gs1 ++ im_params D Mm))
-                by (apply List.Forall_app; split; [ rewrite cargs_strat_nonrec; apply List.Forall_rev, tele_ass_map_ass
-                                                 | exact (member_params_ass D Hc _ _ HMm) ]).
-              assert (HSs : ⊨ cargs_strat gs1 ++ im_params D Mm)
-                by (rewrite (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: rest)), <- Heq;
-                    apply (valid_ind_decl_strat _ HD _ _ _ _ _ HMm Hcon); rewrite Heq, cargs_nonrec_app, List.length_app; lia).
-              destruct (closed_app_sem _ _ HSa HSs HΓ) as [HSΓ _].
-              destruct (rel_ctx_wf_per_ctx_env HSΓ) as [RT HRT].
-              pose proof (EP frame_canon_gargs m Mm c gs gs1 t rest HMm Hcon Heq 0 ns ns _ _ nil nil (Nat.le_0_l _) iota_sem_Hns Hnv
-                            (tele_prefix_rel_nil _)) as Hg0.
-              cbn [List.firstn doms_ctx List.map List.rev List.app] in Hg0; rewrite List.app_nil_r in Hg0.
-              assert (HE : RT (env_args C (u0 ++ ns ++ nv1)) (env_args C (u0 ++ ns ++ nv1))).
-              { apply (gargs_env_rel_gen _ Γ RΓ RT C C _ _ HRΓ HRT HSΓ HCC).
-                - rewrite !List.length_app, cargs_strat_nonrec, List.length_rev, List.length_map, length_im_params, u0_len', iota_sem_Ln, Lnv1.
-                  unfold im_np; lia.
-                - exact (per_gargs_base _ _ _ per_ctx_env_nil_true ltac:(rewrite List.rev_involutive, List.app_nil_r; exact HSs)
-                           (List.Forall_rev HSa) nil nil C C _ _ I I I Hg0). }
-              rewrite <- List.app_assoc in HRT.
-              destruct (components_target_entries gs1 _ Heq RT _ HRT HE) as [Hpf Hpr].
-              replace (u0 ++ ns ++ nv1) with ((u0 ++ ns) ++ nv1) in Hpf, Hpr by (symmetry; apply List.app_assoc).
-              pose proof (eval_sigt gs1 _ C (u0 ++ ns) avs Heq iota_sem_HPC HAC Hpf Hpr) as H.
-              rewrite <- List.app_assoc in H; exact H.
+            - (** The components' value: over [C], the parameters' and the
+                  non-recursive arguments' values. *)
+              destruct (iota_sigma_value gs1 t rest Heq) as (wts & Ew & Hwv & Hrw).
+              exists C, wts; split; [ exact Ew | split; [ exact Hwv | exact Hrw ] ].
             - rewrite (List.nth_error_nth _ _ _ HM0).
               destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_nth _ _ _ _ HAC (List.length gs1) M0 HM0)
                 as (v0 & Hv0 & Ev0 & _).
@@ -1733,12 +1879,15 @@ Section Iota.
             - exact iota_sem_Ln.
             - exact Lnv1. }
           destruct (LV leaf_ihs_vals (S (ptyp_mem t)) m Mm c gs gs1 t rest HMm Hcon Heq Mj HMj (fun _ => Nat.lt_succ_diag_r _)
-                      _ _ _ _ (iota_frame gs1 t rest Heq) RΓ HRΓ nil u0 ns nv1 v ns nv1 Hvals iota_sem_Hns Hnv 0 nil nil v v (ns ++ nv1 ++ nil)
-                      (Nat.le_0_l _) eq_refl (tele_prefix_rel_nil _) ltac:(cbn [ptyp_skip]; rewrite List.app_nil_r; exact Hsh)
-                      ltac:(cbn [ptyp_skip apps_vars_iter List.app]; rewrite List.app_nil_r; exact (iota_arg_link_start gs1 t rest Heq v Hv)))
+                      _ _ _ _ (iota_frame gs1 t rest Heq) RΓ HRΓ ns nv1 nil u0 ns nv1 v Hvals iota_sem_Hns Hnv 0 nil nil v v (ns ++ nv1)
+                      (Nat.le_0_l _) eq_refl (List.Forall_nil _) (tele_prefix_rel_nil _)
+                      ltac:(cbn [ptyp_skip List.map List.firstn]; rewrite !List.app_nil_r; exact Hsh)
+                      ltac:(cbn [ptyp_skip apps_vars_iter List.app List.map List.firstn]; rewrite !List.app_nil_r;
+                            exact (iota_arg_link_start gs1 t rest Heq v Hv)))
             as [rs' rs Ers' Ers Hrs].
-          cbn [ptyp_skip sb_shift_iter sb_qn apps_vars_iter List.app env_args List.fold_left] in Ers, Ers', Hrs.
-          rewrite List.app_nil_r in Hrs; rewrite Nat.add_0_r, iota_case_Us_id, blocks_sub_id, (List.nth_error_nth _ _ _ HM0) in Ers'.
+          cbn [ptyp_skip sb_shift_iter sb_qn apps_vars_iter List.app env_extend_typed List.fold_left List.map List.firstn]
+            in Ers, Ers', Hrs.
+          rewrite !List.app_nil_r in Hrs; rewrite Nat.add_0_r, iota_case_Us_id, blocks_sub_id, (List.nth_error_nth _ _ _ HM0) in Ers'.
           exists (rs ++ ihe), (rs' ++ ihc); split; [ constructor; [ exact Ers | exact Ee ] | split ].
           * cbn [elim_ihs]; apply eval_exps_app; [ exact Ers' | exact Ec ].
           * apply rec_results_rec; [| | exact Hrs | exact Hr ].
