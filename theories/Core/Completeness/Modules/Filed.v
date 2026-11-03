@@ -113,7 +113,7 @@ Qed.
 
 Lemma closed_inst_eval : forall C Γ Ms RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
-    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\
@@ -138,7 +138,7 @@ Proof.
     { intros k N T HN HT.
       assert (Hk : k < List.length C) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
       apply (HMs k); [ rewrite List.nth_error_app1 by lia; exact HN | rewrite Hti, List.nth_error_app1 by lia; exact HT ]. }
-    assert (HTs' : forall k T, nth_error (tele_insts C Id Ms') k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i).
+    assert (HTs' : forall k T, nth_error (tele_insts C Id Ms') k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt).
     { intros k T HT.
       assert (Hk : k < List.length C) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
       apply (HTs k); rewrite Hti, List.nth_error_app1 by lia; exact HT. }
@@ -149,8 +149,8 @@ Proof.
     { apply (HMs (List.length C)); [ rewrite List.nth_error_app2, Hl', Nat.sub_diag by lia; reflexivity |].
       rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity. }
     destruct (HTs (List.length C) (A[sb_of_list Id Ms']) ltac:(rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity))
-      as [i HAi].
-    pose proof (rel_exp_of_typ_relevant_at HRΓ HAi _ _ Hρ) as (a & Ea & Hra).
+      as (SrtA & HSA & HAi).
+    pose proof (rel_type_relevant_of_relevant_sort HSA HAi _ HRΓ _ _ Hρ) as (a & Ea & Hra).
     destruct (rel_exp_under_ctx_simple_at_relevant HRΓ HM _ _ Hρ (ex_intro _ a (conj Ea Hra))) as (m & _ & Hm & _ & _).
     (** The parameter's type at the arguments before is relevant too *)
     destruct (closed_app_sem C Γ HCa' HC' HΓ) as [HCΓ _].
@@ -200,7 +200,7 @@ Qed.
     they make is related to the telescope's own extension by them. *)
 Lemma closed_inst_env : forall C Γ Ms RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
-    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ ρ', RΓ ρ ρ' ->
     exists ms ms' RC RCΓ, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ms' /\
@@ -241,7 +241,7 @@ Qed.
     relevant instantiated types. *)
 Lemma closed_inst_typ : forall C Γ Ms X S RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
-    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
     type_sort S -> C ⊨ X : S -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms a b i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\
@@ -269,7 +269,7 @@ Qed.
     of relevant instantiated types. *)
 Lemma closed_inst_exp : forall C Γ Ms M X k RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
-    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists i : nat, Γ ⊨ T : Typeω@i) ->
+    (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
     C ⊨ X : Typeω@k -> C ⊨ M : X -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms m n a i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ M[sb_of_list Id Ms] ⟧ ρ ↘ m /\
@@ -374,7 +374,7 @@ Qed.
     stored at the value of [A] (as a [Π] applies) and at the one stored at
     [A]'s closure (as a telescope's arguments are): the two values are
     related. *)
-Lemma ext_value_closure_typ : forall Γ RΓ A B (k : nat) X c a i Ra b b',
+Lemma extension_value_closure_type : forall Γ RΓ A B (k : nat) X c a i Ra b b',
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> Γ ⊨ᵗ A ≈ A at i -> Γ ▹ A ⊨ B : Typeω@k -> RΓ X X ->
     ⟦ A ⟧ X ↘ a -> per_univ_elem i Ra a a -> Ra c c ->
     ⟦ B ⟧ X ↦ c ⦂ entry_type_value a ↘ b -> ⟦ B ⟧ X ↦ c ⦂ entry_type_closure A X ↘ b' ->
@@ -503,7 +503,8 @@ Proof.
     { rewrite rev_app_distr in Hargs; cbn [rev List.app] in Hargs.
       rewrite <- app_assoc in Hargs; eapply per_gargs_prefix; [ exact Hargs | rewrite length_rev; lia ]. }
     pose proof (gargs_env_rel_gen Tout ⋅ _ _ nil nil args args per_ctx_env_nil_true HRo' HTo' I Hl Hargs0) as Hρ.
-    destruct (rel_exp_of_typ_inversion_simple_at HRo HA1 _ _ Hρ) as (a1 & a1' & Ha1 & Ha1' & [Ra HRa]).
+    pose proof (rel_param_typed_type _ _ _ HA1) as HA1t.
+    destruct (rel_type_inversion_simple_at HRo HA1t _ _ Hρ) as (a1 & a1' & Ha1 & Ha1' & [Ra HRa]).
     functional_eval_rewrite_clear.
     destruct (rel_exp_ctx_pi (Tin0 ++ ce_ass A1 :: nil) Tout A0 iA ltac:(apply List.Forall_app; split; [ exact (proj1 (tele_ass_app_inv _ _ HT)) | repeat constructor; eauto ])
                 ltac:(rewrite <- app_assoc; exact HTs) ltac:(rewrite <- app_assoc; exact HA0)) as [ip HP].
@@ -527,7 +528,7 @@ Proof.
     assert (Hkk : per_dmod (dm_global p args) (dm_global p args))
       by (eapply gval_rel; [ exact Hm | exact HT | exact HTs | reflexivity | rewrite length_app; cbn; lia | exact Hargs ]).
     assert (Hra1 : domain_relevance a1 = relevant).
-    { destruct (rel_exp_of_typ_relevant_at HRo HA1 _ _ Hρ) as (a'' & Ea'' & Hr'').
+    { destruct (rel_param_typed_relevant HA1 _ HRo _ _ Hρ) as (a'' & Ea'' & Hr'').
       assert (a'' = a1) as -> by (eapply functional_eval_exp; eassumption); exact Hr''. }
     (** the step to one more argument *)
     assert (Hcodh : forall j1 Rc c, per_univ_elem j1 Rc a1 a1 -> Rc c c -> forall kc b,
@@ -549,7 +550,7 @@ Proof.
       (** the IH's type, at the argument stored at its parameter's
           closure, against the codomain at it stored at its value *)
       cbn [rev] in Hb'; rewrite env_tele_snoc in Hb' by (rewrite length_rev; lia).
-      destruct (ext_value_closure_typ _ _ _ _ _ _ _ _ _ _ _ _ HRo (rel_type_of_typ HA1) HcodT Hρ Ha1 HRa
+      destruct (extension_value_closure_type _ _ _ _ _ _ _ _ _ _ _ _ HRo HA1t HcodT Hρ Ha1 HRa
                   (proj1 (HRa' c c) Hc) Hb Hb') as [Q HQ].
       destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HQ (proj1 (per_univ_elem_sym _ _ _ _ HQ))) as (Rb0 & HRb0 & _).
       assert (ERb : Rb0 <~> Rb) by (eapply per_univ_irrel_rel; [ exact HRb0 | eexists; exact HQ | exact HRb ]).
@@ -744,7 +745,7 @@ Qed.
 Lemma filed_lacks : forall Γ p T Φ L A T2 Ns, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ ->
     T = L ++ ce_ass A :: T2 -> List.length Ns = List.length T2 ->
     (forall k N B, nth_error Ns k = Some N -> nth_error (tele_insts T2 Id Ns) k = Some B -> Γ ⊨ N : B) ->
-    (forall k B, nth_error (tele_insts T2 Id Ns) k = Some B -> exists i : nat, Γ ⊨ B : Typeω@i) ->
+    (forall k B, nth_error (tele_insts T2 Id Ns) k = Some B -> exists Srt, relevant_sort Srt /\ Γ ⊨ B : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ns ->
     modexp_next_param Γ (me_apps (qname_mod p) Ns) A[sb_of_list Id Ns].
 Proof.
@@ -802,7 +803,7 @@ Proof.
     { intros k N0 B HN0 HB.
       assert (Hk : k < List.length Ns) by (apply List.nth_error_Some; congruence).
       apply (HNs k); [ rewrite nth_error_app1 by lia; exact HN0 | rewrite Hti, nth_error_app1 by lia; exact HB ]. }
-    assert (HNr' : forall k B, nth_error (tele_insts T2' Id Ns) k = Some B -> exists i : nat, Γ ⊨ B : Typeω@i).
+    assert (HNr' : forall k B, nth_error (tele_insts T2' Id Ns) k = Some B -> exists Srt, relevant_sort Srt /\ Γ ⊨ B : Srt).
     { intros k B HB.
       assert (Hk : k < List.length Ns) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
       apply (HNr k); rewrite Hti, nth_error_app1 by lia; exact HB. }
@@ -810,13 +811,13 @@ Proof.
       by (apply (HNs (List.length Ns)); [ rewrite nth_error_app2, Nat.sub_diag by lia; reflexivity
                                         | rewrite Hti, nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity ]).
     destruct (HNr (List.length Ns) (A[sb_of_list Id Ns]) ltac:(rewrite Hti, nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity))
-      as [iA HAr].
+      as (SrtA & HSA & HAr).
     assert (Ex : T1 ++ ce_ass A :: T2' = (T1 ++ ce_ass A :: nil) ++ T2') by (rewrite <- app_assoc; reflexivity).
     apply List.Forall_app in HNss as [HNss' HNs1]; inversion HNs1 as [| ? ? HNsc _]; subst.
     pose proof (IH (T1 ++ ce_ass A :: nil) T2' ltac:(rewrite <- Ex; exact Hl)
                   ltac:(lia) HTa2' ltac:(cbn in HTs2; tauto) HNs' HNr' HNss') as HH.
     rewrite me_apps_snoc.
-    eapply rel_modexp_under_ctx_app; [ exact HH | exact HAr | exact HN |].
+    eapply rel_modexp_under_ctx_app; [ exact HH | exact (rel_type_relevant_of_relevant_sort HSA HAr) | exact HN |].
     eapply filed_lacks; [ exact Hl | exact HΓ | reflexivity | lia | exact HNs' | exact HNr' | exact HNss' ].
 Qed.
 

@@ -911,11 +911,27 @@ Proof.
     assert (a = a2) as -> by (eapply functional_eval_exp; eassumption); congruence.
 Qed.
 
+(** A parameter type at a level is one at a larger level. *)
+Lemma rel_param_typed_ge : forall Γ A l l', l <= l' -> rel_param_typed Γ A l -> rel_param_typed Γ A l'.
+Proof. intros * Hl [H | H]; [ left; exact (rel_exp_cumu_ge Hl H) | right; exact H ]. Qed.
+
+(** A parameter type is a type of its level. *)
+Lemma rel_param_typed_type : forall Γ A l, rel_param_typed Γ A l -> Γ ⊨ᵗ A ≈ A at l.
+Proof. intros * [H | H]; [ exact (rel_type_of_typ H) | exact (rel_type_of_level_sort l H) ]. Qed.
+
+(** A parameter type is of a relevant sort. *)
+Lemma rel_param_typed_sort : forall Γ A l, rel_param_typed Γ A l -> exists Srt, relevant_sort Srt /\ Γ ⊨ A : Srt.
+Proof. intros * [H | H]; eexists; (split; [ constructor | exact H ]). Qed.
+
+(** A type of a relevant sort is a parameter type at some level. *)
+Lemma rel_param_typed_of_sort : forall Γ A Srt, relevant_sort Srt -> Γ ⊨ A : Srt -> exists l, rel_param_typed Γ A l.
+Proof. intros * [i |] H; [ exists i; left; exact H | exists 0; right; exact H ]. Qed.
+
 (** The innermost parameter of relevant parameters is relevant, and the
     parameters before it are relevant over it. *)
 Lemma rel_params_relevant_snoc_inv : forall Γ Δ A l,
     rel_params_relevant Γ (Δ ++ ce_ass A :: nil) l ->
-    Γ ⊨ A : Typeω@l /\ rel_params_relevant (Γ ▹ A) Δ l.
+    rel_param_typed Γ A l /\ rel_params_relevant (Γ ▹ A) Δ l.
 Proof.
   intros * H; split; [ exact (H Δ A nil eq_refl) |].
   intros Δ1 B Δ2 ->.
@@ -927,7 +943,7 @@ Qed.
     an assumption, is relevant over the rest, and the rest are relevant. *)
 Lemma rel_params_relevant_cons_iff : forall Γ e Ψ l,
     rel_params_relevant Γ (e :: Ψ) l <->
-    (forall A, e = ce_ass A -> Ψ ++ Γ ⊨ A : Typeω@l) /\ rel_params_relevant Γ Ψ l.
+    (forall A, e = ce_ass A -> rel_param_typed (Ψ ++ Γ) A l) /\ rel_params_relevant Γ Ψ l.
 Proof.
   intros *; split.
   - intros H; split; [ intros A ->; exact (H nil A Ψ eq_refl) |].
@@ -942,7 +958,7 @@ Proof. intros * [| ? ?] ? ? HE; discriminate. Qed.
 
 (** Relevant parameters are relevant at a larger level. *)
 Lemma rel_params_relevant_ge : forall Γ Ψ l l', l <= l' -> rel_params_relevant Γ Ψ l -> rel_params_relevant Γ Ψ l'.
-Proof. intros * Hl H Δ1 A Δ2 HE; exact (rel_exp_cumu_ge Hl (H _ _ _ HE)). Qed.
+Proof. intros * Hl H Δ1 A Δ2 HE; exact (rel_param_typed_ge _ _ _ _ Hl (H _ _ _ HE)). Qed.
 
 (** Relevant parameters over relevant parameters are relevant, at the
     larger level. *)
@@ -954,7 +970,7 @@ Proof.
   - exact (rel_params_relevant_ge _ _ l' (max l l') ltac:(lia) HΔ).
   - apply rel_params_relevant_cons_iff in Hy as [Hh Ht].
     apply rel_params_relevant_cons_iff; split; [| exact (IH _ _ _ Ht HΔ) ].
-    intros A HA; rewrite <- app_assoc; exact (rel_exp_cumu_ge (i := l) (j := max l l') ltac:(lia) (Hh A HA)).
+    intros A HA; rewrite <- app_assoc; exact (rel_param_typed_ge _ _ l (max l l') ltac:(lia) (Hh A HA)).
 Qed.
 
 (** ** Antisymmetry

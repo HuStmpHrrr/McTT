@@ -464,16 +464,24 @@ Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H 
 Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
 Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).
 
+(** [rel_param_typed Γ A l]: the parameter type [A] over [Γ] is, in the
+    PER model, a type of the universe at [l] or a type of levels: the
+    counterpart of [param_typed].  For example, the parameter type [Level]
+    of [module M (l : Level) := ...] is a type of levels. *)
+Definition rel_param_typed {GC : GCtx} (Γ : ctx) (A : typ) (l : nat) : Prop :=
+  Γ ⊨ A : Typeω@l \/ Γ ⊨ A : LevelSort.
+
 (** [rel_params_relevant Γ Δ l]: every parameter of the telescope [Δ]
-    over [Γ] is, in the PER model, a type of the universe at [l], in the
-    context of the parameters after it.  It is the counterpart of
-    [params_relevant]: modules take relevant parameters, as the typing of
-    units and of module application asks.  For example, the parameter [X]
-    of [module M (X : Typeω@0) := ...] is a type of [Typeω@1], so
-    [rel_params_relevant Γ (ce_ass (Typeω@0) :: nil) 1] holds, while a
-    proposition [P : Prop] as a parameter is not of any universe. *)
+    over [Γ] is, in the PER model, a type of the universe at [l] or a type
+    of levels ([rel_param_typed]), in the context of the parameters after
+    it.  It is the counterpart of [params_relevant]: modules take relevant
+    parameters, as the typing of units and of module application asks.
+    For example, the parameter [X] of [module M (X : Typeω@0) := ...] is a
+    type of [Typeω@1], so [rel_params_relevant Γ (ce_ass (Typeω@0) :: nil) 1]
+    holds, while a proposition [P : Prop] as a parameter is not of any
+    universe. *)
 Definition rel_params_relevant {GC : GCtx} (Γ Δ : ctx) (l : nat) : Prop :=
-  forall Δ1 A Δ2, Δ = Δ1 ++ ce_ass A :: Δ2 -> Δ2 ++ Γ ⊨ A : Typeω@l.
+  forall Δ1 A Δ2, Δ = Δ1 ++ ce_ass A :: Δ2 -> rel_param_typed (Δ2 ++ Γ) A l.
 
 (** ** 2. Valid Units, and Contexts with Valid Slots
 
@@ -497,10 +505,11 @@ Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
   ; valid_args_scoped : ctx_scoped 0 valid_args_filled
   ; valid_args_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
       Γ ⊨ N : A
-    (** The types of the arguments are types of a universe: the parameters
-        of modules are relevant, as application asks ([wf_me_app]) *)
+    (** The types of the arguments are of a relevant sort, a universe or
+        the types of levels: the parameters of modules are relevant, as
+        application asks ([wf_me_app]) *)
   ; valid_args_relevant : forall k A, nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
-      exists i : nat, Γ ⊨ A : Typeω@i }.
+      exists Srt, relevant_sort Srt /\ Γ ⊨ A : Srt }.
 
 (** A unit is valid when its parts are ([valid_unit]): a filed module at
     arguments valid against its telescope ([valid_args]); a local body whose

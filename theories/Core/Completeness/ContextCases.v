@@ -283,6 +283,14 @@ Proof. intros * HA R HR ρ ρ' Hρ; exact (rel_exp_of_typ_relevant_at HR HA _ _ 
 Lemma rel_type_relevant_of_level_sort : forall {Γ A}, Γ ⊨ A : LevelSort -> rel_type_relevant Γ A.
 Proof. intros * HA R HR ρ ρ' Hρ; exact (rel_exp_of_level_sort_relevant_at HR HA _ _ Hρ). Qed.
 
+(** A type of a relevant sort is relevant. *)
+Lemma rel_type_relevant_of_relevant_sort : forall {Γ A Srt}, relevant_sort Srt -> Γ ⊨ A : Srt -> rel_type_relevant Γ A.
+Proof. intros * [i |] HA; [ exact (rel_type_relevant_of_typ HA) | exact (rel_type_relevant_of_level_sort HA) ]. Qed.
+
+(** A parameter type is relevant. *)
+Lemma rel_param_typed_relevant : forall {Γ A l}, rel_param_typed Γ A l -> rel_type_relevant Γ A.
+Proof. intros * [HA | HA]; [ exact (rel_type_relevant_of_typ HA) | exact (rel_type_relevant_of_level_sort HA) ]. Qed.
+
 (** An entry of a relevant type is no proposition, at either environment
     of a related pair. *)
 Lemma head_not_propositional_of_relevant : forall {Γ e A} {i : nat} {env_relΓ},

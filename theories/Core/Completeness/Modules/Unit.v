@@ -134,7 +134,7 @@ Proof.
   apply rel_params_relevant_cons_iff; split; [| exact (IH _ _ _ _ HC0 HwC0 Hg Hτ Ht) ].
   intros A HA; destruct e; cbn in HA; try discriminate; injection HA as <-.
   destruct (ext_gsub Ψ Δ Γ τ HC0 HwC0 Hg Hτ) as (_ & HgΨ & _).
-  exact (rel_exp_under_ctx_gsub HgΨ (Hh _ eq_refl)).
+  destruct (Hh _ eq_refl) as [Hp | Hp]; [ left | right ]; exact (rel_exp_under_ctx_gsub HgΨ Hp).
 Qed.
 
 (** The parts of a body, along a substitution built from valid parts, make
@@ -256,8 +256,8 @@ Proof.
     + intros k A HAk.
       rewrite <- (tele_insts_sub T2 0 Id Id τ Ns Ha Hsc ltac:(intros; lia)), List.nth_error_map in HAk.
       destruct (nth_error (tele_insts T2 Id Ns) k) as [A0 |] eqn:HA0; [| discriminate ]; injection HAk as <-.
-      destruct (HNr _ _ HA0) as [i Hi]; exists i.
-      exact (rel_exp_under_ctx_gsub Hg Hi).
+      destruct (HNr _ _ HA0) as (Srt & [i |] & Hi); eexists; (split; [ constructor |]);
+        exact (rel_exp_under_ctx_gsub Hg Hi).
   - (* a body *)
     intros Δ Δu Φ Φx Hw Hx HΔu HΔur HΔ HC Hsv Hsl IHsl Hs Hsx HK Hopv Hops IHops Γ τ Hg Hτ.
     pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
@@ -293,21 +293,22 @@ Proof. intros * HH Hg Hτ; exact (proj2 valid_unit_modexp_gsub _ _ HH _ _ Hg Hτ
 
 (** ** Valid Units Given an Argument *)
 
-Lemma valid_unit_beta : forall Γ T1 X D N i, valid_unit Γ (me_lit (gu_mk (T1 ++ ce_ass X :: nil) D)) ->
-    Θm ⍮ Ξm ⍮ Γ ⊢ X : Typeω@i -> Γ ⊨ X : Typeω@i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : X -> Γ ⊨ N : X ->
+Lemma valid_unit_beta : forall Γ T1 X D N Srt i, valid_unit Γ (me_lit (gu_mk (T1 ++ ce_ass X :: nil) D)) ->
+    relevant_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ X : Srt -> rel_param_typed Γ X i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : X -> Γ ⊨ N : X ->
     valid_unit Γ (me_lit (gu_mk T1 D)[Id,,N]ᵘ).
 Proof.
-  intros * HK HXw HX HNw HN.
+  intros * HK HSrt HXw HX HNw HN.
+  destruct (rel_param_typed_sort _ _ _ HX) as (Srt' & HSrt' & HXs).
   pose proof (valid_unit_ctx_wf _ _ _ _ HK) as HΓ.
   pose proof (valid_unit_wf _ _ _ _ HK) as Hw.
   pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
   pose proof (unit_full_unabs _ _ _ (ce_ass X :: nil) T1 D Hf) as Hf1; cbn [List.app] in Hf1.
   pose proof (unit_eq_of_full _ _ _ _ Hf1) as HU1.
   pose proof (unit_full_beta _ _ _ _ _ _ _ Hf HNw) as HUNw.
-  pose proof (wf_sub_single _ _ _ _ _ _ HXw (type_sort_universe i) HNw) as Hτ.
+  pose proof (wf_sub_single _ _ _ _ _ _ HXw (relevant_sort_type_sort _ HSrt) HNw) as Hτ.
   pose proof (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNw))) as HNs.
   assert (Hg : gsub Γ (Id,,N) (Γ ▹ X))
-    by (eapply gsub_ass; [ constructor; exact HΓ | apply type_sort_universe | exact HX | rewrite exp_sub_id; exact HN | exact HNs ]).
+    by (eapply gsub_ass; [ constructor; exact HΓ | exact (relevant_sort_type_sort _ HSrt') | exact HXs | rewrite exp_sub_id; exact HN | exact HNs ]).
   pose proof (rel_lit_beta Γ T1 X D N i HΓ (valid_unit_rel _ _ HK) (valid_unit_links_unabs1 _ _ _ _ HK) HX HN HNs) as HKN.
   pose proof (wf_me_lit _ _ _ _ _ HUNw) as HwN.
   inversion HK as [| ? Δ Φ Φx Hw0 Hx HΔ HΔr HΓ0 HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw0 HΔ HΔr HΓ0 HΔΓ HU HE Hsm];
@@ -385,15 +386,21 @@ Qed.
 
 Lemma valid_unit_abs : forall Δ Γ U l, valid_unit (Δ ++ Γ) (me_lit U) -> tele_ass Δ ->
     params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
-    (level_sorted_parameters Θm Ξm Γ Δ \/ forall R, udenote Θm Ξm (Δ ++ Γ) None U R -> Θm ⍮ Ξm ⍮ Δ ++ Γ ⊢ⁿˡ R) ->
+    (forall R, udenote Θm Ξm (Δ ++ Γ) None U R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit Γ (me_lit (gunit_abs Δ U)).
 Proof.
-  intros * HK HΔ HΔw HΔr HΔl.
+  intros * HK HΔ HΔw HΔr HΔa.
   pose proof (valid_unit_rel _ _ HK) as HU.
   pose proof (valid_unit_ctx_wf _ _ _ _ HK) as HC.
   pose proof (rel_ctx_wf_app_r _ _ HC) as HΓ.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
   pose proof (valid_unit_wf _ _ _ _ HK) as Hw.
+  (* the premise of [unit_full_abs], from what [U] denotes *)
+  assert (HΔl : level_sorted_parameters Θm Ξm Γ Δ \/ forall R, udenote Θm Ξm (Δ ++ Γ) None U R -> Θm ⍮ Ξm ⍮ Δ ++ Γ ⊢ⁿˡ R).
+  { destruct (me_denotes _ _ _ _ _ Hw) as (R0 & _ & HmR0 & _).
+    apply mdenote_lit_inv in HmR0.
+    destruct (HΔa _ HmR0) as [HL | HN]; [ left; exact HL | right; intros R HR ].
+    rewrite (proj1 (proj2 (mdenote_functional_all _ _ Hgm)) _ _ _ _ HR _ HmR0); exact HN. }
   pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
   pose proof (wf_me_lit _ _ _ _ _ (unit_eq_of_full _ _ _ _ (unit_full_abs _ _ _ _ _ _ Hf HΔ HΔw HΔl))) as Hw'.
   assert (Hat : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' ->

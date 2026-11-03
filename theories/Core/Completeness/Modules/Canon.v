@@ -64,10 +64,13 @@ Proof.
                   | apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia |].
     eapply per_dmod_closure_step; [ exact Ha | exact Ha' | exact HRa |].
     intros c c' Hc.
-    destruct (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU (ρ ↦ c) (ρ' ↦ c')) as [h h' Hh Hh' Hhh].
-    { apply (mk_per_ctx_env_cons_rel _ _ _ _ (ρ ↦ c) (ρ' ↦ c') Hρ);
-        [ eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] | intros _; reflexivity | intros _; reflexivity ]. }
-    apply eval_me_lit_iff in Hh, Hh'; exists h, h'; repeat split; assumption.
+    pose proof (entry_readable_of_elem_closure Ha Ha' HRa Hc) as [Rc Rc'].
+    destruct (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ'))
+      as [h h' Hh Hh' Hhh].
+    { apply (mk_per_ctx_env_cons_rel _ _ _ _ (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ') Hρ);
+        [ eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] | intros _; eexists; reflexivity
+        | intros _; eexists; reflexivity | split; [ exact Rc | cbn; lia ] | split; [ exact Rc' | cbn; lia ] ]. }
+    apply eval_me_lit_iff in Hh, Hh'; exists h, h'; rewrite !eval_close_expand_iff; repeat split; assumption.
 Qed.
 
 Lemma ext_refl : forall Γ Δ, ⊨ Δ ++ Γ -> Γ ⊨ˣ Δ ≈ Δ.
@@ -75,17 +78,19 @@ Proof. intros * HC; constructor; [ exact HC | exact HC | exact (rel_ctx_wf_per_c
 
 (** An alias of a literal is the literal over both telescopes. *)
 Lemma rel_lit_flatten : forall Γ Δ Δ' D l, tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
+    (forall R, mdenote Θm Ξm (Δ ++ Γ) (me_lit (gu_mk Δ' D)) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) ≈ me_lit (gu_mk (Δ' ++ Δ) D).
 Proof.
-  intros * HΔ HΔw HΔr HK.
+  intros * HΔ HΔw HΔr HΔa HK.
   pose proof (valid_unit_rel _ _ Hgf _ _ HK) as HU.
   pose proof (valid_unit_ctx_wf _ _ _ _ HK) as HC.
   pose proof (rel_ctx_wf_app_r _ _ HC) as HΓ.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
   apply rel_modexp_of_at.
   - exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HC) HΔ HΔ eq_refl HU HU).
-  - exact (valid_unit_rel _ _ Hgf _ _ (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ _ HK HΔ HΔw HΔr)).
+  - exact (valid_unit_rel _ _ Hgf _ _ (valid_unit_abs _ _ Hgm Hgf _ _ _ _ HK HΔ HΔw HΔr
+                                         (fun R HR => HΔa R (mdenote_lit _ _ _ _ _ HR)))).
   - intros R HR ρ ρ' Hρ.
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (flat_walk _ _ _ _ _ HΔ HC HRΓ HU _ _ (proj1 (E _ _) Hρ)) as [h h' Hh Hh' Hhh].
@@ -95,13 +100,17 @@ Qed.
 (** ** Aliases of Canonical Units *)
 
 Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
-    mdesc_is_mod X -> valid_unit (Δ ++ Γ) (mdesc_unit X) ->
+    mdesc_is_mod X ->
+    (forall R, mdenote Θm Ξm (Δ ++ Γ) (mdesc_unit X) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
+    valid_unit (Δ ++ Γ) (mdesc_unit X) ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (mdesc_unit X))) ≈ mdesc_unit (mdesc_up Δ X) /\ valid_unit Γ (mdesc_unit (mdesc_up Δ X)).
 Proof.
-  intros * Hne HΔ HΔw HΔr Hm HK.
-  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction; cbn [mdesc_up mdesc_unit] in HK |- *.
+  intros * Hne HΔ HΔw HΔr Hm HΔa HK.
+  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction;
+    cbn [mdesc_up mdesc_unit] in HK, HΔa |- *.
   - (* a local body *)
-    split; [ exact (rel_lit_flatten _ _ _ _ _ HΔ HΔw HΔr HK) | exact (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ _ HK HΔ HΔw HΔr) ].
+    split; [ exact (rel_lit_flatten _ _ _ _ _ HΔ HΔw HΔr HΔa HK)
+           | exact (valid_unit_abs _ _ Hgm Hgf _ _ _ _ HK HΔ HΔw HΔr (fun R HR => HΔa R (mdenote_lit _ _ _ _ _ HR))) ].
   - (* a filed module at arguments: the alias is the unit *)
     rewrite app_nil_l; destruct Δ as [| e Δ0]; [ contradiction |].
     pose proof (valid_unit_ctx_wf _ _ _ _ HK) as HC.
@@ -111,12 +120,26 @@ Proof.
     assert (HL : Γ ⊨ᵐ me_lit (gu_mk (e :: Δ0) (md_alias (me_apps (qname_mod p) Ns))) ≈ me_lit (gu_mk (e :: Δ0) (md_alias (me_apps (qname_mod p) Ns))))
       by exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HC) HΔ HΔ eq_refl HE HE).
     split; [ exact HL |].
-    apply valid_unit_alias; [ apply wf_me_lit, wf_unit_eq_alias with (param_level := l); [ exact (ext_of_ctx' _ _ _ _ HwC) | exact HΔ | exact HΔ | exact HwE | exact HwE | exact HΔw | exact HΔw ]
+    destruct (params_relevant_sorts _ _ _ _ _ HΔw) as (ps & Hps & HpΔ).
+    assert (HF : exists lv Rt, levels_flag Θm Ξm Γ (e :: Δ0) (me_apps (qname_mod p) Ns) lv Rt).
+    { destruct (me_denotes _ _ _ _ _ HwE) as (RE & _ & HmE & _).
+      destruct (HΔa _ HmE) as [HLs | HN];
+        [ exists true, RE; constructor; [ intros _; exact HLs | discriminate | discriminate ]
+        | exists false, RE; constructor; [ discriminate | intros _; exact HmE | intros _; exact HN ] ]. }
+    destruct HF as (lv & Rt & HF).
+    apply valid_unit_alias;
+      [ apply wf_me_lit; eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
+        [ exact (ext_of_ctx' _ _ _ _ HwC) | exact HΔ | exact HΔ | exact HwE | exact HwE | exact Hps | exact HpΔ | exact HpΔ
+        | exact (levels_flag_sorted _ _ _ _ _ _ _ HF) | exact (levels_flag_denotes _ _ _ _ _ _ _ HF)
+        | exact (levels_flag_no_level _ _ _ _ _ _ _ HF)
+        | exact (levels_flag_sorted _ _ _ _ _ _ _ HF) | exact (levels_flag_denotes _ _ _ _ _ _ _ HF)
+        | exact (levels_flag_no_level _ _ _ _ _ _ _ HF) ]
                     | exact HΔ | exists l; exact HΔr | exact (rel_ctx_wf_app_r _ _ HC) | exact HC | exact HL | exact HE | ].
     destruct (me_denotes _ _ _ _ _ HwE) as (R & Rm & HmR & HmdR).
     exact (valid_modexp_intro _ _ _ _ _ _ _ _ HwE HmR HmdR HE HK HmR HmdR).
   - (* an alias of a filed module at arguments *)
-    split; [ exact (rel_lit_flatten _ _ _ _ _ HΔ HΔw HΔr HK) | exact (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ _ HK HΔ HΔw HΔr) ].
+    split; [ exact (rel_lit_flatten _ _ _ _ _ HΔ HΔw HΔr HΔa HK)
+           | exact (valid_unit_abs _ _ Hgm Hgf _ _ _ _ HK HΔ HΔw HΔr (fun R HR => HΔa R (mdenote_lit _ _ _ _ _ HR))) ].
 Qed.
 
 (** ** Canonical Units *)
@@ -152,8 +175,17 @@ Proof.
     + pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
       destruct (proj1 (unit_eq_params_relevant _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf))) as [lw HΔw]; cbn [gu_params] in HΔw.
       destruct HΔr as [lr HΔr].
+      (* the alias's flag: what the unit of the target's module part
+         denotes has the module part the target's has *)
+      assert (HΔa : forall R, mdenote Θm Ξm ((e :: Δ0) ++ Γ) (mdesc_unit REm) R -> desc_levels_abstractable Θm Ξm Γ (e :: Δ0) R).
+      { destruct Hf as [_ _ _ _ _ HEE _ lv Rt [Hf1 Hf2 Hf3]]; intros R HR; destruct lv; [ left; exact (Hf1 eq_refl) | right ].
+        pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgm HmE) HmdE) as Hcan.
+        destruct (mdesc_unit_denote _ _ _ Hgm Hcan Him _ (wf_mdenote_mod_xp _ _ _ _ _ _ _ HEE HmE HmdE)) as (Ru & Hmu & Hmdu).
+        rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HR _ Hmu).
+        rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HmE _ (Hf2 eq_refl)) in HmdE.
+        exact (no_level_of_mod _ _ _ _ _ Hmdu (no_level_mod _ _ _ _ _ (Hf3 eq_refl) HmdE)). }
       destruct (rel_alias_unit_up Γ (e :: Δ0) REm (max lw lr) ltac:(discriminate) HΔ (params_relevant_max _ _ _ _ _ _ HΔw)
-                  (rel_params_relevant_ge _ _ lr (max lw lr) ltac:(lia) HΔr) Him HKu) as [Hup HKup].
+                  (rel_params_relevant_ge _ _ lr (max lw lr) ltac:(lia) HΔr) Him HΔa HKu) as [Hup HKup].
       split; [| exact HKup ].
       eapply rel_modexp_under_ctx_trans; [| exact Hup ].
       exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HΔΓ) HΔ HΔ eq_refl HEu (rel_modexp_refl_right HEu)).
