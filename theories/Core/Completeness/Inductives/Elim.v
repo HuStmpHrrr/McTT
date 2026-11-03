@@ -2871,11 +2871,11 @@ Section GroupElim.
     Qed.
 
     (** The canonical relation of a propositional non-recursive argument
-        relates the proofs only: its type is a proposition there. *)
+        relates proofs that read back: its type is a proposition there. *)
     Lemma canon_arg_proof : forall m Mm c gs ns j A pre pre', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns ->
         List.nth_error (cargs_nonrec gs) j = Some A -> List.nth_error (cargs_nonrec_relevance gs) j = Some propositional ->
-        tele_prefix_rel (ar m ns c) j pre pre' -> forall x x', ar m ns c j pre x x' -> x = ⋆ᵈ /\ x' = ⋆ᵈ.
+        tele_prefix_rel (ar m ns c) j pre pre' -> forall x x', ar m ns c j pre x x' -> proof_readable x /\ proof_readable x'.
     Proof.
       intros * HMm Hcon Hns HA Hr Hpre x x' Hx.
       destruct (sort_value D HD u0 u0_gargs u0_len) as [a0 Ha0].
@@ -2887,28 +2887,39 @@ Section GroupElim.
       destruct (rel_ctx_wf_per_ctx_env HS) as [RS HRS].
       assert (Lpre : List.length pre = j)
         by (pose proof Hpre as H0; rewrite tele_prefix_rel_iff in H0; destruct H0 as (H0 & _); exact H0).
-      assert (HE : RS (env_args nil (u0 ++ ns ++ pre)) (env_args nil (u0 ++ ns ++ pre))).
+      assert (HE : RS (env_tele nil (List.rev (nonrec_args_prefix gs j ++ im_params D Mm)) (u0 ++ ns ++ pre))
+                      (env_tele nil (List.rev (nonrec_args_prefix gs j ++ im_params D Mm)) (u0 ++ ns ++ pre))).
       { pose proof Hns as H0; rewrite tele_rel_iff in H0; destruct H0 as (Ln & _ & _).
         rewrite List.length_rev, length_im_nparams in Ln.
         apply (gargs_env_rel _ _ _ _ _ _ HRS HS).
         - rewrite !List.length_app, length_nonrec_args_prefix, length_im_params, u0_len, Ln, Lpre by exact Hj; unfold im_np; lia.
         - unfold nonrec_args_prefix; rewrite List.rev_app_distr, List.rev_involutive, List.app_assoc.
           apply per_gargs_app_intro; [ rewrite List.length_rev, length_im_params, List.length_app, u0_len, Ln; unfold im_np; lia
-                                     | exact Hgp | exact Hg ]. }
+                                     | exact Hgp | unfold im_params; rewrite env_tele_uparams by exact u0_len; exact Hg ]. }
       destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HMm Hcon HA Hr) as [HAp _]; cbn [relevance_sort] in HAp.
       destruct (rel_exp_of_prop_inversion_simple_at HRS HAp _ _ HE) as (a & a' & Ea & Ea' & Hpp).
       unfold ar, canon_args_rel in Hx; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HMm Hcon HA) in Hx.
+      assert (EE : env_tele nil (List.rev (nonrec_args_prefix gs j ++ im_params D Mm)) (u0 ++ ns ++ pre)
+                   = components_env D u0 (List.rev (member_nparams D m) ++ member_con_tele D m c) (ns ++ pre)).
+      { pose proof Hns as H0; rewrite tele_rel_iff in H0; destruct H0 as (Ln & _ & _).
+        rewrite (member_nparams_eq _ _ _ HMm), (member_con_tele_eq _ _ _ _ _ HMm Hcon).
+        rewrite (components_env_app_firstn D u0 (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs) ns pre Ln)
+          by (unfold cargs_nonrec_tele; rewrite List.length_map; lia).
+        unfold im_params; rewrite List.app_assoc, env_tele_uparams by exact u0_len.
+        unfold nonrec_args_prefix, cargs_nonrec_tele; rewrite List.rev_app_distr, List.rev_involutive, Lpre; reflexivity. }
+      rewrite EE in Ea, Ea'.
       exact (Hx 0 per_proof a a' Ea Ea' (per_univ_elem_of_prop 0 _ _ Hpp)).
     Qed.
 
     (** Arguments of a constructor whose non-recursive ones are related
-        canonically: the proof at each propositional argument. *)
+        canonically: a proof that reads back at each propositional
+        argument. *)
     Lemma con_args_proofs : forall m Mm c gs ns vs vs', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns ->
         tele_rel (ar m ns c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
         List.length vs = List.length gs -> List.length vs' = List.length gs ->
         forall a A v v', List.nth_error gs a = Some (ca_arg propositional A) ->
-        List.nth_error vs a = Some v -> List.nth_error vs' a = Some v' -> v = ⋆ᵈ /\ v' = ⋆ᵈ.
+        List.nth_error vs a = Some v -> List.nth_error vs' a = Some v' -> proof_readable v /\ proof_readable v'.
     Proof.
       intros * HMm Hcon Hns Har Lvs Lvs' * Ha Hv Hv'.
       destruct (List.nth_error_split _ _ Ha) as (gs1 & gs2 & -> & Lg1).
@@ -2964,7 +2975,7 @@ Section GroupElim.
 
     Lemma ups_ok : forall w1 w2, RU (decl_env D w1) (decl_env D u0) -> RU (decl_env D w2) (decl_env D u0) ->
         List.length w1 = ind_nu D -> List.length w2 = ind_nu D ->
-        elim_ups_ok p D u0 (canon_nparams_rel D u0) (canon_args_rel D u0) (canon_doms_rel u0) w1 w2.
+        elim_ups_ok p D u0 (canon_nparams_rel D u0) (canon_args_rel D u0) (canon_doms_rel D u0) w1 w2.
     Proof.
       intros * H1 H2 L1 L2.
       assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
