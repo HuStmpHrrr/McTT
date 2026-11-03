@@ -529,18 +529,18 @@ Proof. intros * H; inversion H; subst; assumption. Qed.
 
 Lemma body_shape_wk : forall Φ Φ' φ φ', body_shape Φ Φ' -> body_shape (gmod_wk Φ φ) (gmod_wk Φ' φ').
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] * Hs; cbn in *; try contradiction; auto.
+  induction Φ as [| Φ IH x E | Φ IH c its Φg IHg]; intros [| Φ' x' E' | Φ' c' its' Φg'] * Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); repeat split; auto.
     destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in *; auto.
-  - destruct Hs as (Hs & ->); split; auto.
+  - destruct Hs as (Hs & -> & Hg); repeat split; auto.
 Qed.
 
 Lemma body_shape_sub : forall Φ Φ' σ σ', body_shape Φ Φ' -> body_shape (gmod_sub Φ σ) (gmod_sub Φ' σ').
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] * Hs; cbn in *; try contradiction; auto.
+  induction Φ as [| Φ IH x E | Φ IH c its Φg IHg]; intros [| Φ' x' E' | Φ' c' its' Φg'] * Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); repeat split; auto.
     destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in *; auto.
-  - destruct Hs as (Hs & ->); split; auto.
+  - destruct Hs as (Hs & -> & Hg); repeat split; auto.
 Qed.
 
 Lemma exp_wk_sub_extend_mod : forall M H φ,
@@ -1867,9 +1867,9 @@ Proof. induction Ψ; intros * H; cbn in *; [ assumption | apply IHΨ; eapply ctx
 
 Lemma body_shape_binders : forall Φ Φ', body_shape Φ Φ' -> gm_binders Φ = gm_binders Φ'.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH c its]; intros [| Φ' y' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto.
+  induction Φ as [| Φ IH y E | Φ IH c its Φg IHg]; intros [| Φ' y' E' | Φ' c' its' Φg'] Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & _ & _); f_equal; auto.
-  - destruct Hs as (Hs & ->); f_equal; auto.
+  - destruct Hs as (Hs & -> & Hg); f_equal; auto.
 Qed.
 
 (** The opens of two bodies of the same shape stand after prefixes binding

@@ -913,9 +913,9 @@ Qed.
 (** A scoped body's expansion is scoped. *)
 Lemma gmod_scoped_expand : forall Φ n, gmod_scoped n Φ -> gmod_scoped n (gm_expand Φ).
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its Φg _]; intros n HΦ; cbn [gm_expand gmod_scoped] in HΦ |- *; [ exact I | |].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros n HΦ; cbn [gm_expand gmod_scoped] in HΦ |- *; [ exact I | |].
   - rewrite gm_binders_expand; destruct HΦ as [HΦ HE]; split; [ apply IH |]; assumption.
-  - destruct HΦ as (HΦ & _ & HΦg); apply gmod_scoped_graft; split; [ apply IH; exact HΦ | rewrite gm_binders_expand; exact HΦg ].
+  - destruct HΦ as (HΦ & _ & HΦg); apply gmod_scoped_graft; split; [ apply IH; exact HΦ | rewrite gm_binders_expand; apply IHg; exact HΦg ].
 Qed.
 
 Lemma gunit_scoped_expand : forall U n, gunit_scoped n U -> gunit_scoped n (gunit_expand U).
@@ -954,12 +954,13 @@ Qed.
 Lemma body_shape_refl : forall Φ Φ', body_shape Φ Φ' ->
     body_shape Φ Φ /\ body_shape Φ' Φ' /\ gm_names Φ = gm_names Φ'.
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] H; cbn in H |- *; try contradiction.
+  induction Φ as [| Φ IH x E | Φ IH c its Φg IHg]; intros [| Φ' x' E' | Φ' c' its' Φg'] H; cbn in H |- *; try contradiction.
   - auto.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
     destruct E as [b pv r A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?], E' as [b' pv' r' A' [M' |] | pm' U' | ? ? ? | ? ? ? ? | ? ? ?]; cbn in HE |- *; try contradiction;
       intuition congruence.
-  - destruct H as (HΦ & <-); destruct (IH _ HΦ) as (H1 & H2 & H3); intuition congruence.
+  - destruct H as (HΦ & <- & Hg); destruct (IH _ HΦ) as (H1 & H2 & H3); destruct (IHg _ Hg) as (G1 & G2 & _);
+      intuition congruence.
 Qed.
 
 (** The names of a body, read through its opens, are its own. *)
@@ -985,10 +986,18 @@ Proof.
   destruct g; cbn [gens_append generated_item_entry] in Hs; apply IH in Hs; exact (proj1 Hs).
 Qed.
 
+(** The shape of a grafted fragment, read off the whole. *)
+Lemma body_shape_graft_r : forall B A, body_shape (gm_graft A B) (gm_graft A B) -> body_shape B B.
+Proof.
+  induction B as [| B IH x E | B IH H its Bg _]; intros A Hs; cbn [gm_graft body_shape] in Hs |- *; [ exact I | |];
+    destruct Hs as (Hs & H1 & H2); repeat split; eauto.
+Qed.
+
 Lemma body_shape_of_xp : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_shape Φx Φx -> body_shape Φ Φ.
 Proof.
   induction 1; intros Hs; cbn in Hs |- *; [ exact I | destruct Hs as (Hs & _ & HE); repeat split; auto |].
-  split; [ apply IHbody_xp; eapply body_shape_gens_l; exact Hs | reflexivity ].
+  split; [ apply IHbody_xp; eapply body_shape_gens_l; exact Hs | split; [ reflexivity |] ].
+  subst; rewrite gens_append_body in Hs; exact (body_shape_graft_r _ _ Hs).
 Qed.
 
 

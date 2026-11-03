@@ -114,8 +114,8 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   match Φ, Φ' with
   | gm_nil, gm_nil => True
   | gm_ext Φ x E, gm_ext Φ' x' E' => body_shape Φ Φ' /\ x = x' /\ entry_shape E E'
-  (* the stored definitions are compared as the expansions ([body_xp]) *)
-  | gm_open Φ _ its _, gm_open Φ' _ its' _ => body_shape Φ Φ' /\ its = its'
+  (* the stored definitions too, as the expansions are ([body_xp]) *)
+  | gm_open Φ _ its Φg, gm_open Φ' _ its' Φg' => body_shape Φ Φ' /\ its = its' /\ body_shape Φg Φg'
   | _, _ => False
   end.
 

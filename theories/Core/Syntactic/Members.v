@@ -2517,8 +2517,21 @@ Fixpoint gm_expand (Φ : gmod) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ' x E => gm_ext (gm_expand Φ') x E
-  | gm_open Φ' _ _ Φg => gm_graft (gm_expand Φ') Φg
+  | gm_open Φ' _ _ Φg => gm_graft (gm_expand Φ') (gm_expand Φg)
   end.
+
+(** A body with no open is its own expansion. *)
+Lemma gm_expand_noopen : forall Φ, gm_noopen Φ -> gm_expand Φ = Φ.
+Proof. induction Φ as [| Φ IH x E | Φ IH H its Φg _]; cbn; intros Hn; [ reflexivity | rewrite IH by exact Hn; reflexivity | contradiction ]. Qed.
+
+Lemma gm_noopen_graft : forall Φg Φ, gm_noopen Φ -> gm_noopen Φg -> gm_noopen (gm_graft Φ Φg).
+Proof. induction Φg as [| Φg IH x E | Φg IH H its Φgg _]; cbn; intros; auto. Qed.
+
+(** An expansion has no open. *)
+Lemma gm_noopen_expand : forall Φ, gm_noopen (gm_expand Φ).
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; cbn; [ exact I | exact IH | apply gm_noopen_graft; assumption ].
+Qed.
 
 (** A unit with its body expanded ([gm_expand]); an alias is its own. *)
 Definition gunit_expand (U : gunit) : gunit :=
@@ -2533,8 +2546,37 @@ Proof. intros Φ Φg; induction Φg; cbn; lia. Qed.
 (** An expansion binds what the body binds. *)
 Lemma gm_binders_expand : forall Φ, gm_binders (gm_expand Φ) = gm_binders Φ.
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its Φg _]; cbn [gm_expand gm_binders];
-    [ reflexivity | congruence | rewrite gm_binders_graft, IH; reflexivity ].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; cbn [gm_expand gm_binders];
+    [ reflexivity | congruence | rewrite gm_binders_graft, IH, IHg; reflexivity ].
+Qed.
+
+Lemma gm_noopen_gens_append : forall gs Φ k, gm_noopen Φ -> gm_noopen (gens_append Φ k gs).
+Proof.
+  induction gs as [| g gs IH]; intros Φ k Hn; cbn [gens_append]; [ exact Hn |].
+  destruct (generated_item_entry g); apply IH; exact Hn.
+Qed.
+
+(** The fragment an open stores has no open. *)
+Corollary gens_body_noopen : forall gs, gm_noopen (gens_body gs).
+Proof. intros; apply gm_noopen_gens_append; exact I. Qed.
+
+(** A body up to an entry ends with the entry. *)
+Lemma gm_prefix_upto_ext : forall Φ x P, gm_prefix_upto Φ x = Some P -> exists P' E, P = gm_ext P' x E.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its Φg _]; intros x P Hp; cbn in Hp; [ discriminate | |].
+  - destruct (String.eqb_spec x y) as [-> | _]; [ injection Hp as <-; eauto | eauto ].
+  - destruct (existsb _ _); [ discriminate | eauto ].
+Qed.
+
+(** An entry of a body followed by a fragment with no open: the
+    fragment's, or else the body's. *)
+Lemma gm_prefix_upto_graft : forall B A x, gm_noopen B ->
+    gm_prefix_upto (gm_graft A B) x =
+    match gm_prefix_upto B x with Some P => Some (gm_graft A P) | None => gm_prefix_upto A x end.
+Proof.
+  induction B as [| B IH y E | B IH H its Bg _]; intros A x Hn; cbn [gm_graft gm_prefix_upto gm_noopen] in *;
+    [ reflexivity | | contradiction ].
+  destruct (String.eqb x y); [ reflexivity | apply IH; exact Hn ].
 Qed.
 
 Lemma gm_graft_assoc : forall Φ A B, gm_graft Φ (gm_graft A B) = gm_graft (gm_graft Φ A) B.
@@ -2948,7 +2990,7 @@ Fixpoint gm_item_xp (Φ Φx : gmod) (x : string) : gmod :=
 Lemma body_xp_expand : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> Φx = gm_expand Φ.
 Proof.
   induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH HR HT Hg Hok HΦg]; cbn [gm_expand];
-    [ reflexivity | congruence | subst; rewrite gens_append_body; reflexivity ].
+    [ reflexivity | congruence | subst; rewrite gens_append_body, (gm_expand_noopen _ (gens_body_noopen gs)); reflexivity ].
 Qed.
 
 Lemma body_xp_item : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->

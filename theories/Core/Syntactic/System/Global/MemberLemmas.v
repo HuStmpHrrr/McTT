@@ -178,6 +178,49 @@ Proof. intros; unfold gens_body; rewrite gens_append_wk by (cbn; lia); reflexivi
 Corollary gens_body_sub : forall gs σ, gmod_sub (gens_body gs) σ = gens_body (List.map (fun g => generated_item_sub g σ) gs).
 Proof. intros; unfold gens_body; rewrite gens_append_sub by (cbn; lia); reflexivity. Qed.
 
+(** A fragment grafted on a body, weakened or substituted, is the body
+    weakened or substituted with the fragment under it. *)
+Lemma gm_graft_wk : forall B A φ, gmod_wk (gm_graft A B) φ = gm_graft (gmod_wk A φ) (gmod_wk B (wk_qn (gm_binders A) φ)).
+Proof.
+  induction B as [| B IH x E | B IH H its Bg _]; intros A φ; cbn [gm_graft gmod_wk]; [ reflexivity | |];
+    rewrite IH, gm_binders_graft; f_equal;
+    first [ apply gentry_wk_wk_eq | apply modexp_wk_wk_eq | apply gmod_wk_wk_eq ]; symmetry; apply wk_qn_add.
+Qed.
+
+Lemma gm_graft_sub : forall B A σ, gmod_sub (gm_graft A B) σ = gm_graft (gmod_sub A σ) (gmod_sub B (sb_qn (gm_binders A) σ)).
+Proof.
+  induction B as [| B IH x E | B IH H its Bg _]; intros A σ; cbn [gm_graft gmod_sub]; [ reflexivity | |];
+    rewrite IH, gm_binders_graft; f_equal;
+    first [ apply gentry_sub_sb_eq | apply modexp_sub_sb_eq | apply gmod_sub_sb_eq ]; symmetry; apply sb_qn_add.
+Qed.
+
+(** Expansion commutes with weakening and substitution. *)
+Lemma gm_expand_wk : forall Φ φ, gm_expand (gmod_wk Φ φ) = gmod_wk (gm_expand Φ) φ.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros φ; cbn [gmod_wk gm_expand]; [ reflexivity | |].
+  - rewrite IH, gm_binders_expand; reflexivity.
+  - rewrite IH, IHg, gm_graft_wk, gm_binders_expand; reflexivity.
+Qed.
+
+Lemma gunit_expand_wk : forall U φ, gunit_expand (gunit_wk U φ) = gunit_wk (gunit_expand U) φ.
+Proof.
+  intros [Δ [sm Φ | E]] φ; rewrite !gunit_wk_mk; cbn [gunit_expand moddef_wk]; rewrite ?gunit_wk_mk; cbn [moddef_wk];
+    rewrite ?gm_expand_wk; reflexivity.
+Qed.
+
+Lemma gm_expand_sub : forall Φ σ, gm_expand (gmod_sub Φ σ) = gmod_sub (gm_expand Φ) σ.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros σ; cbn [gmod_sub gm_expand]; [ reflexivity | |].
+  - rewrite IH, gm_binders_expand; reflexivity.
+  - rewrite IH, IHg, gm_graft_sub, gm_binders_expand; reflexivity.
+Qed.
+
+Lemma gunit_expand_sub : forall U σ, gunit_expand (gunit_sub U σ) = gunit_sub (gunit_expand U) σ.
+Proof.
+  intros [Δ [sm Φ | E]] σ; rewrite !gunit_sub_mk; cbn [gunit_expand moddef_sub]; rewrite ?gunit_sub_mk; cbn [moddef_sub];
+    rewrite ?gm_expand_sub; reflexivity.
+Qed.
+
 Lemma mod_qname_wk_eq : forall H φ, mod_qname (modexp_wk H φ) = mod_qname H.
 Proof. induction H as [| | H IH y | H IH N |]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
@@ -1876,7 +1919,10 @@ Qed.
 
 (** A body with no open, substituted, has none. *)
 Lemma gm_noopen_sub : forall Φ σ, gm_noopen Φ -> gm_noopen (gmod_sub Φ σ).
-Proof. induction Φ; intros * H; cbn in *; auto. Qed.
+Proof. induction Φ as [| Φ IH ? ? | Φ IH ? ? ? ?]; intros * H; cbn in *; auto. Qed.
+
+Lemma gm_noopen_wk : forall Φ φ, gm_noopen Φ -> gm_noopen (gmod_wk Φ φ).
+Proof. induction Φ as [| Φ IH ? ? | Φ IH ? ? ? ?]; intros * H; cbn in *; auto. Qed.
 
 (** A description substituted by pointwise equal substitutions. *)
 Lemma mdesc_sub_sb_eq : forall R σ τ, sb_eq σ τ -> mdesc_sub R σ = mdesc_sub R τ.
