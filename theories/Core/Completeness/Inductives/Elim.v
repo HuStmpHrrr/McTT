@@ -6885,12 +6885,18 @@ Section GroupElim.
             forall u u' hd k' bs bs' vs vs' ihs ihs',
             G k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs')
               (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) ->
-            rec_results_rel D dr Rel k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs' ihs ihs' ->
+            rec_results_rel D dr Rel k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') T gs vs vs' ihs ihs' ->
             forall RB, EF elim_bctx relevant p D Mk gs As Us ++ Γ ≈ elim_bctx relevant p D Mk gs As Us ++ Γ ∈ per_ctx_env ↘ RB ->
-            RB (env_args B1 (List.skipn (im_unu D Mk) bs ++ vs ++ ihs)) (env_args B2 (List.skipn (im_unu D Mk) bs' ++ vs' ++ ihs')).
+            forall vts1 vts2,
+            List.map fst vts1 = List.skipn (im_unu D Mk) bs ++ vs ++ ihs ->
+            List.map fst vts2 = List.skipn (im_unu D Mk) bs' ++ vs' ++ ihs' ->
+            List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts1 ->
+            List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts2 ->
+            RB (env_extend_typed B1 vts1) (env_extend_typed B2 vts2).
         Proof.
-          intros B1 B2 HB1 HB2 * Hm Hir RB HRB.
-          destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Lv Lv'].
+          intros B1 B2 HB1 HB2 * Hm Hir RB HRB vts1 vts2 Hv1 Hv2 Hr1 Hr2.
+          destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Lv Lv'].
+          destruct (rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li Li'].
           destruct (ind_rel_con_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMk HrvK Hcon Lv Lv') as [Lbs Lbs'].
           pose proof (ind_rel_rebase p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ u0 u0 _ _ _ _ Had Had Had Hm) as Hm0.
           destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMk HrvK Lbs)
@@ -6898,13 +6904,33 @@ Section GroupElim.
           rewrite Hcon in Hcon0; injection Hcon0 as <-.
           injection Ez as Ez.
           destruct (app_split_eq _ _ _ _ Ez ltac:(congruence)) as [<- <-].
-          pose proof (rec_results_rebase _ _ _ _ _ _ _ _ _ _ Hia Hir) as Hir0.
+          pose proof (rec_results_rebase _ _ _ _ _ _ _ _ _ _ _ Hia Hir) as Hir0.
           destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 HMk HrvK Lbs)
             as (gs0 & bs2 & vs2 & Ez0 & _ & _ & Hcon0 & Lbs2 & _ & _ & Har0 & Hia0).
           rewrite Hcon in Hcon0; injection Hcon0 as <-.
           injection Ez0 as Ez0.
           destruct (app_split_eq _ _ _ _ Ez0 ltac:(congruence)) as [<- <-].
-          exact (canonical_bctx B1 B2 HB1 HB2 _ _ vs vs' ihs ihs' HX Har0 Hia0 Hir0 RB HRB).
+          pose proof (canonical_bctx B1 B2 HB1 HB2 _ _ vs vs' ihs ihs' HX Har0 Hia0 Hir0 RB HRB) as HEc.
+          (** At the typed extensions: the context's relation reads the
+              values only, the entries reading back. *)
+          set (TB := List.rev (elim_bctx relevant p D Mk gs As Us)) in *.
+          assert (HBr : ⊨ List.rev TB ++ Γ) by (unfold TB; rewrite List.rev_involutive; exact HB).
+          assert (HRBr : EF List.rev TB ++ Γ ≈ List.rev TB ++ Γ ∈ per_ctx_env ↘ RB) by (unfold TB; rewrite List.rev_involutive; exact HRB).
+          assert (HtaB : tele_ass TB) by (apply List.Forall_rev; exact (elim_bctx_ass relevant p D k Mk gs As Us Hc HMk)).
+          assert (LTB : List.length TB = nb) by (unfold TB; rewrite List.length_rev, length_elim_bctx; unfold nb; lia).
+          pose proof HX as H0; rewrite tele_rel_iff in H0; destruct H0 as (LX & LX' & _).
+          unfold T in LX, LX'; rewrite List.length_rev, length_im_nparams in LX, LX'.
+          assert (Lw1 : List.length (List.skipn (im_unu D Mk) bs ++ vs ++ ihs) = List.length TB)
+            by (rewrite !List.length_app, LTB, LX; unfold nb; lia).
+          assert (Lw2 : List.length (List.skipn (im_unu D Mk) bs' ++ vs' ++ ihs') = List.length TB)
+            by (rewrite !List.length_app, LTB, LX'; unfold nb; lia).
+          unfold env_tele in HEc.
+          destruct (rel_gargs _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ ltac:(rewrite tele_entries_length; exact Lw1)
+                      ltac:(rewrite tele_entries_length; exact Lw2) HEc) as [HB12 Hg].
+          rewrite !tele_entries_fst, <- Hv1, <- Hv2 in Hg.
+          assert (Lv1 : List.length vts1 = List.length TB) by (rewrite <- (List.length_map fst), Hv1; exact Lw1).
+          assert (Lv2 : List.length vts2 = List.length TB) by (rewrite <- (List.length_map fst), Hv2; exact Lw2).
+          exact (gargs_env_rel_typed _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ HB12 Lv1 Lv2 Hg Hr1 Hr2).
         Qed.
       End Branch.
 
