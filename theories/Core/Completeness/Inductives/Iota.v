@@ -2038,6 +2038,62 @@ Section Iota.
             -- exact (proj1 (proj2 eval_ih_length_all) _ _ _ _ _ _ _ Ers D Hl Hco).
     Qed.
 
+    (** *** The Sorts of the Recursive Results of the Branch's Context
+
+        Each entry of the recursive results is a type of a universe, over
+        the entries after it: the type of the result along its leaf path,
+        in the frame of its argument ([leaf_ih_valid]). *)
+    Lemma ihs_entry_sort : forall Δ1 T Δ2,
+        ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs = Δ1 ++ ce_ass T :: Δ2 ->
+        exists j0 : nat, Δ2 ++ con_inst_ctx Γ p D Mm Us gs ⊨ T : Typeω@j0.
+    Proof.
+      assert (Hgen : forall kk, kk <= List.length gs -> forall Δ1 T Δ2,
+                 ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (List.firstn kk gs)
+                 = Δ1 ++ ce_ass T :: Δ2 -> exists j0 : nat, Δ2 ++ con_inst_ctx Γ p D Mm Us gs ⊨ T : Typeω@j0).
+      { induction kk as [| kk IH]; intros Hk Δ1 T Δ2 H; [ cbn in H; destruct Δ1; discriminate |].
+        destruct (nth_error_lt_some' gs kk ltac:(lia)) as [g Hg].
+        rewrite (firstn_S_snoc _ _ _ Hg) in H.
+        assert (Heq0 : gs = List.firstn kk gs ++ g :: List.skipn (S kk) gs)
+          by (rewrite <- (skipn_nth_cons' _ _ _ Hg), List.firstn_skipn; reflexivity).
+        destruct g as [r B0 | t].
+        - rewrite ihs_ctx_aux_app in H; cbn [ihs_ctx_aux List.app] in H; exact (IH ltac:(lia) _ _ _ H).
+        - rewrite ihs_rec_split in H.
+          set (gs1 := List.firstn kk gs) in *; set (gs2 := List.skipn (S kk) gs) in *.
+          set (ls := shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1)) t) in *.
+          set (Lv := leaves_ctx relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1) ls) in *.
+          set (E0 := ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in *.
+          destruct (Nat.lt_ge_cases (List.length Δ1) (List.length Lv)) as [Hlt | Hge].
+          + destruct (app_split_prefix Δ1 (ce_ass T :: Δ2) Lv E0 (eq_sym H) ltac:(lia)) as (m1 & ELv & Em).
+            destruct m1 as [| d m1]; [ rewrite List.app_nil_r in ELv; rewrite ELv in Hlt; lia |].
+            cbn [List.app] in Em; injection Em as <- ->.
+            destruct (leaves_ctx_split_at _ _ _ _ _ _ _ _ _ _ _ ELv) as (n & l & Hn & -> & Em1).
+            set (Er := m1 ++ E0).
+            (** The context past the entry is valid. *)
+            assert (HCtx : ⊨ Er ++ con_inst_ctx Γ p D Mm Us gs).
+            { pose proof (ihs_pre (gs1 ++ ca_rec t :: nil) gs2 ltac:(rewrite <- List.app_assoc; exact Heq0)) as HC.
+              rewrite ihs_rec_split in HC; fold ls Lv E0 in HC.
+              rewrite ELv, <- !List.app_assoc in HC; cbn [List.app] in HC.
+              apply rel_ctx_wf_app_r in HC; unfold Er; rewrite <- List.app_assoc; exact (rel_ctx_wf_tail HC). }
+            assert (Hnl : n < List.length ls) by (apply List.nth_error_Some; congruence).
+            assert (LEr : List.length Er = cargs_nrec D gs1 + n)
+              by (unfold Er, E0; rewrite Em1, List.length_app, length_leaves_ctx, List.length_firstn, length_ihs_ctx_aux; lia).
+            (** The entry's argument, in its frame. *)
+            pose proof (EP branch_entry_frame m Mm c gs HMm Hcon (HBc _ _ _ _ HMm Hcon) HrvM gs1 t gs2 Heq0 Er HCtx) as Hf.
+            destruct (length_rec_ps D HD m Mm HMm c gs gs1 t gs2 Hcon Heq0) as (Mj & HMj & _).
+            assert (Hin : In l (shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1) + 0) (ptyp_skip 0 t)))
+              by (rewrite Nat.add_0_r; cbn [ptyp_skip]; exact (List.nth_error_In _ _ Hn)).
+            destruct (leaf_ih_valid VP p D HP HPD Γ Us Bks i HΓ iota_case_HUl iota_case_HUs iota_case_HUss HBks HnmA HMall HAv HnaA HBc
+                        HarA HBv (S (ptyp_mem t)) m Mm c gs gs1 t gs2 HMm Hcon Heq0 Mj HMj (fun _ => Nat.lt_succ_diag_r _)
+                        _ _ _ _ Hf 0 l (Nat.le_0_l _) Hin) as [_ (j0 & Hty)].
+            cbn [List.firstn doms_ctx List.map List.rev tele_sub List.app sb_shift_iter sb_qn apps_vars_iter] in Hty.
+            rewrite LEr in Hty.
+            exists j0; unfold Er in Hty; rewrite con_inst_ctx_eq, List.app_assoc; rewrite <- !List.app_assoc in Hty |- *.
+            exact Hty.
+          + destruct (app_split_prefix Lv E0 Δ1 (ce_ass T :: Δ2) H Hge) as (m1 & -> & Em).
+            exact (IH ltac:(lia) _ _ _ Em). }
+      intros Δ1 T Δ2 H; apply (Hgen (List.length gs) (le_n _) Δ1); rewrite List.firstn_all; exact H.
+    Qed.
+
   End IotaSem.
 
   (** *** The Rule *)
