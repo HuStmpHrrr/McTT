@@ -181,10 +181,6 @@ Definition branch_entries (D : ind_decl) (Mj : imember) (p : qname) (ups : list 
 Definition motive_entries (D : ind_decl) (Mk : imember) (ups ns : list domain) (a m : domain) : list (domain * entry_type) :=
   tele_entries (decl_env D ups) (List.rev (im_nparams Mk)) ns ++ (m, entry_type_value a) :: nil.
 
-(** The environment of a motive over [ρ], at a scrutinee [m] of the type
-    [a] at all the member's parameters [as']. *)
-Definition motive_env (D : ind_decl) (Mk : imember) (ρ : env) (as' : list domain) (a m : domain) : env :=
-  env_extend_typed ρ (motive_entries D Mk (List.firstn (ind_nu D) as') (List.skipn (ind_nu D) as') a m).
 
 
 (** * The Kinds of Members of Module Values
@@ -667,7 +663,10 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
     eliminated at [ups = [ℕ]], a neutral annotated [W Bool x] binds [x] at
     [ℕ] and itself at [W ℕ x], where they read back, not at [Bool] and
     [W Bool x].  In a well-typed program the annotation and this instance
-    agree, so only the model sees the difference. *)
+    agree, so only the model sees the difference.  The values are the
+    neutral's non-uniform parameters ([List.skipn (ind_nu Dq) as']) and
+    the types are read at [ups] ([motive_entries]), as [read_blocks_cons]
+    binds a block's motive. *)
 | eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -678,8 +677,8 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      List.nth_error Bks j = Some b ->
      eb_binder_count b = S (im_nn Mk) ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, cups) ->
-     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ motive_env D Mj ρ (ups ++ List.skipn (ind_nu Dq) as')
-                               (d_ind pc k (cups ++ List.skipn (ind_nu Dq) as')) (⇑ (d_ind pc k as') m) ↘ a ->
+     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ (motive_entries D Mj ups (List.skipn (ind_nu Dq) as')
+                                          (d_ind pc k (cups ++ List.skipn (ind_nu Dq) as')) (⇑ (d_ind pc k as') m)) ↘ a ->
      ⟦elim ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p ups j as' m) )
 where "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p ups Bks j m r)
 (** The recursive results of the arguments [vs], one per leaf path of each

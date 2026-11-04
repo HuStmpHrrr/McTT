@@ -206,11 +206,6 @@ Section Rename.
       = motive_entries D Mk (List.map domain_rename ups) (List.map domain_rename ns) (domain_rename a) (domain_rename m).
   Proof. intros; unfold motive_entries; rewrite List.map_app, tele_entries_rn, decl_env_rn; reflexivity. Qed.
 
-  Lemma motive_env_rn : forall D Mk ρ as' a m,
-      env_rename (motive_env D Mk ρ as' a m) = motive_env D Mk (env_rename ρ) (List.map domain_rename as') (domain_rename a) (domain_rename m).
-  Proof.
-    intros; unfold motive_env; rewrite env_extend_typed_rn, motive_entries_rn, List.firstn_map, List.skipn_map; reflexivity.
-  Qed.
 
   Lemma global_proof_env_rn : forall p T args,
       env_rename (global_proof_env p T args) = global_proof_env p T (List.map domain_rename args).
@@ -345,7 +340,7 @@ Section Eval.
       try solve [ econstructor; autorewrite with rn; eauto ].
     (* the typed entries a branch, a motive or a kept member proof is
        evaluated or kept over: their builders commute with the renaming *)
-    all: rewrite ?branch_entries_rn, ?motive_entries_rn, ?motive_env_rn, ?decl_env_rn, ?global_proof_env_rn,
+    all: rewrite ?branch_entries_rn, ?motive_entries_rn, ?decl_env_rn, ?global_proof_env_rn,
            ?List.skipn_map, ?List.firstn_map in *.
     all: try solve [ econstructor; eauto; rewrite ?List.length_map; eauto ].
     all: try solve [ econstructor; eauto; rewrite ?List.skipn_map, ?List.firstn_map; eauto ].
@@ -1212,7 +1207,7 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
            | _ => idtac
            end.
     all: rewrite <- ?List.skipn_map, <- ?List.firstn_map, ?List.map_app, ?env_tele_rn, ?env_extend_typed_rn, ?tele_entries_rn,
-      ?motive_entries_rn, ?branch_entries_rn, ?decl_env_rn, ?cargs_entries_rn, ?motive_env_rn, ?env_rename_extend_env in *.
+      ?motive_entries_rn, ?branch_entries_rn, ?decl_env_rn, ?cargs_entries_rn, ?env_rename_extend_env in *.
     all: unfold env_rename in *; cbn [domain_nf_rename domain_rename domain_ne_rename entry_type_rename dentry_rename List.map] in *.
     all: rewrite <- ?List.skipn_map, <- ?List.firstn_map, ?List.map_app in *.
     all: rewrite ?Hf0, ?Hf1 in *; clear Hf0 Hf1.

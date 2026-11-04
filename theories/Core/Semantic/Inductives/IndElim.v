@@ -245,13 +245,11 @@ Section Fixed_GCtx.
   Proof. intros; unfold motive_entries; rewrite List.map_app, tele_entries_values; reflexivity. Qed.
 
   (** A motive's environment, as the values combined with their types. *)
-  Lemma motive_env_combine : forall D Mj ρ ua ns a m, List.length ua = ind_nu D ->
+  Lemma motive_entries_combine : forall D Mj ρ ua ns a m,
       env_extend_typed ρ (List.combine (ns ++ m :: nil) (List.map snd (motive_entries D Mj ua ns a m)))
-      = motive_env D Mj ρ (ua ++ ns) a m.
+      = env_extend_typed ρ (motive_entries D Mj ua ns a m).
   Proof.
-    intros * Hl; unfold motive_env.
-    rewrite (firstn_app_exact ua ns _ Hl), (skipn_app_exact ua ns _ Hl).
-    rewrite <- (motive_entries_values D Mj ua ns a m) at 1; rewrite combine_map_fst_snd; reflexivity.
+    intros; rewrite <- (motive_entries_values D Mj ua ns a m) at 1; rewrite combine_map_fst_snd; reflexivity.
   Qed.
 
   (** A telescope's entries and one more, as the values combined with
@@ -1481,7 +1479,7 @@ Section Fixed_GCtx.
                                        (nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI j Mj HM _ _ Hs2))
                            | constructor ] ]. }
         destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb' Hm1 Hra Hrb) as (a & a' & Ea & Ea' & HR).
-        rewrite (motive_env_combine _ _ _ _ _ _ _ La) in Ea; rewrite (motive_env_combine _ _ _ _ _ _ _ Lb) in Ea'.
+        rewrite motive_entries_combine in Ea, Ea'.
         exists a, a'; split; [| split ]; [| | exact HR ].
         - eapply eval_elim_neut; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | | exact Ha
                                  | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity | exact Hca | rewrite Hnu; exact Ea ].

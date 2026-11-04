@@ -10,8 +10,10 @@
     - related values read back equally at every length ([per_top]), so the
       normal form of [M[↑]] in [Γ ▹ A] is the readback of [⟦M⟧ρΓ] at
       [|Γ| + 1];
-    - that is the weakening of its readback at [|Γ|], the normal form of [M]
-      in [Γ] ([Core.Semantic.Rename.read_shift]).
+    - that is, up to erasure, the weakening of its readback at [|Γ|], the
+      normal form of [M] in [Γ] ([Core.Semantic.Rename.read_shift]): a
+      proof is read back over the environment it is kept over, which the
+      weakening extends.
 
     Two consequences follow: the normal form of a weakened term is fresh at
     the new variable ([nbe_wk_fresh_sem], an alternative proof of
@@ -40,98 +42,139 @@ Proof.
   eapply nbe_relevant_intro; [ eassumption | constructor | eassumption | constructor; eassumption | reflexivity ].
 Qed.
 
-(** ** NbE Commutes with Weakening *)
+(** ** NbE Commutes with Weakening
+
+    Up to erasure: a proof of [Γ] is kept over the initial environment of
+    [Γ], and its weakening over that of [Γ ▹ A], whose readback binds one
+    more position.  For [Γ = (P : Prop) ▹ (h : P)], [A = ⊤] and [M = #0],
+    the normal form of [M] in [Γ] is [ℓ h : P ≔ #0 in #0], and that of
+    [M[↑]] in [Γ ▹ A] lets-binds both [h] and the new variable, so it is no
+    weakening of the first; erased, both are [⋆ⁿ]. *)
 Theorem nbe_wk : forall Γ A M T W,
     ⊢ Γ ▹ A ->
     Γ ⊢ M : T ->
     nbe_f Γ M T W ->
-    nbe_f (Γ ▹ A) M[↑]ʷ T[↑]ʷ (nf_wk ↑ W).
+    exists W', nbe_f (Γ ▹ A) M[↑]ʷ T[↑]ʷ W' /\ nf_erase W' = nf_erase (nf_wk ↑ W).
 Proof.
   intros * HΓA HM Hn.
   assert (HA : ⊨ Γ ▹ A) by (apply completeness_fundamental_ctx; exact HΓA).
   assert (exists R1, EF (Γ ▹ A) ≈ (Γ ▹ A) ∈ per_ctx_env ↘ R1) as [R1 HR1]
       by mauto 3 using rel_ctx_wf_per_ctx_env.
+  pose proof (wf_ctx_scoped _ _ _ HΓA) as Hs1.
+  destruct (proj1 (proj2 wf_scoped) _ _ _ _ _ HM) as (_ & HsM & _).
   apply completeness_fundamental_exp in HM as [R0 HR0 j HMg].
-  (** The initial environment of [Γ ▹ A], related to itself. *)
-  destruct (per_ctx_then_per_env_initial_env HR1) as (ρ1 & ρ1' & Hρ1 & Hρ1' & Hrel1).
+  (** The initial environment of [Γ ▹ A], related to itself, and its tail,
+      that of [Γ]. *)
+  destruct (per_ctx_then_per_env_initial_env HR1 Hs1 Hs1) as (ρ1 & ρ1' & Hρ1 & Hρ1' & Hrel1).
   assert (ρ1' = ρ1) as -> by (eapply functional_initial_env; eassumption).
-  (** The tail of [ρ1] is the initial environment of [Γ], whose proofs the
-      weakening evaluates at. *)
-  destruct (per_ctx_then_per_env_initial_env HR0) as (ρ0 & ρ0' & Hρ0 & Hρ0' & Hrel0).
+  pose proof Hs1 as Hs0; cbn [ctx_scoped] in Hs0; destruct Hs0 as [_ Hs0].
+  inversion Hρ1 as [| ? ρ0 ? a Hρ0 Ha0 | | | |]; subst.
+  destruct (per_ctx_then_per_env_initial_env HR0 Hs0 Hs0) as (ρ0' & ρ0'' & Hρ0' & Hρ0'' & Hrel0).
   assert (ρ0' = ρ0) as -> by (eapply functional_initial_env; eassumption).
-  pose proof (rel_sub_of_wk (rel_wk_under_ctx_shift HA)) as Hs.
-  inversion Hρ1 as [| ? ρ ? ? Hρ | | | |]; subst.
-  assert (ρ = ρ0) as -> by (eapply functional_initial_env; eassumption).
-  destruct (per_ctx_env_proofs _ _ _ HR0 _ _ Hrel0) as [Hpf _].
-  pose proof (@eval_sub_of_wk gc_deps gc_stack Γ ↑ (ρ0 ↦ relevant_value a ⇑! a (length Γ)) _) as Hev.
-  rewrite eval_wk_shift in Hev; change (drop_env (ρ0 ↦ ?x)) with ρ0 in Hev; specialize (Hev Hpf).
-  (** [M] along the weakening: its values at [ρ1] and at its tail. *)
-  destruct (HMg _ _ HR1 _ _ Hs _ _ _ _ Hrel1 Hev Hev) as [er [Ht He]].
-  destruct Ht as [aσ a0 ? ? Haσ Ha ? ? [Htc _]].
-  pose proof (per_univ_elem_relevance _ _ _ _ Htc) as Hrel.
-  rewrite !exp_sub_of_wk in *.
-  inversion_clear Hn as [? ? Hρ' Ha' Hnt].
-  functional_initial_env_rewrite_clear.
+  assert (ρ0'' = ρ0) as -> by (eapply functional_initial_env; eassumption).
+  destruct Hn as [ρ' aT Hρ' HaT Hres].
+  assert (ρ' = ρ0) as -> by (eapply functional_initial_env; eassumption).
+  (** [M] along the shift from [Γ ▹ A] and along the identity of [Γ]: both
+      reach the tail retagged ([eval_sub_shift], [eval_sub_id]). *)
+  pose proof (rel_sub_shift HA) as HWk.
+  destruct (eval_sub_shift_rel HR1 Hrel1) as [HevW _].
+  destruct (HMg _ _ HR1 _ _ HWk _ _ _ _ Hrel1 HevW HevW) as [Rb [HtB HeB]].
+  pose proof (rel_sub_id (ex_intro _ R0 HR0)) as HId.
+  destruct (eval_sub_id_rel HR0 Hrel0) as [HevI _].
+  destruct (HMg _ _ HR0 _ _ HId _ _ _ _ Hrel0 HevI HevI) as [Ra [HtA HeA]].
+  destruct HtB as [aσ aR aR' aσ' HaσE HaRE HaR'E Haσ'E HchB].
+  destruct HtA as [aI aR2 aR2' aI' HaIE HaR2E HaR2'E HaI'E HchA].
+  rewrite exp_sub_id in HaIE, HaI'E.
+  rewrite exp_sub_of_shift in HaσE, Haσ'E.
+  change (ctx_retag Γ (ρ0 ↦ ⇑! a (length Γ) ⦂ entry_type_value a) ↯) with (ctx_retag Γ ρ0) in *.
   functional_eval_rewrite_clear.
-  destruct Hnt as [Hp | m w Hr Hm HW].
-  - (** A proof: [⋆ⁿ], at the weakened type of the same relevance *)
-    cbn [nf_wk]; econstructor; [ exact Hρ1 | exact Haσ | apply nbe_term_proof; rewrite Hrel; exact Hp ].
-  - destruct He as [(x & Hx & Hxp) | He].
-    + exfalso; rewrite exp_sub_of_wk in Hx; functional_eval_rewrite_clear; congruence.
-    + destruct He as [mσ m0 ? ? Hmσ Hm0 ? ? [Hmc _]].
-      rewrite !exp_sub_of_wk in *.
-      functional_eval_rewrite_clear.
-      (** One variable further out, the short value reads back as the
-          weakening of [W] ([read_shift]), and the long value as the short
-          one. *)
-      pose proof (read_shift _ _ Γ ρ0 T M _ _ w Hρ ltac:(eassumption) ltac:(eassumption) HW) as HW1.
-      destruct (per_elem_then_per_top Htc Hmc (S (length Γ))) as [W' [HW' HW'']].
-      functional_read_rewrite_clear.
-      eapply nbe_relevant_intro; [ exact Hρ1 | exact Haσ | exact Hmσ | eassumption | congruence ].
+  (** The weakened type and the type are related through the retagged
+      tail: one element relation, [Rb]. *)
+  assert (HRσR : DF aσ ≈ aR ∈ per_univ_elem j ↘ Rb) by pairwise.
+  assert (HRTR : DF aT ≈ aR ∈ per_univ_elem j ↘ Ra) by pairwise.
+  destruct (per_univ_elem_sym _ _ _ _ HRσR) as [HRRσ HRbsym].
+  destruct (per_univ_elem_sym _ _ _ _ HRTR) as [HRRT HRasym].
+  assert (Eab : Rb <~> Ra) by (eapply per_univ_elem_right_irrel; eassumption).
+  assert (HRRT' : per_univ_elem j Rb aR aT) by (rewrite Eab; exact HRRT).
+  pose proof (proj1 (per_univ_elem_trans _ _ _ _ HRσR) _ _ HRRT') as HRσT.
+  pose proof (per_univ_elem_relevance _ _ _ _ HRσT) as Erel.
+  destruct Hres as [W0 Hp HW0 | m0 W0 Hr Hm0 HW0].
+  - (** A proof: both read back as proof terms, erased alike *)
+    assert (HsM1 : exp_scoped (length (Γ ▹ A)) M[↑]ʷ) by (eapply exp_scoped_wk; [ exact HsM | intros; cbn; lia ]).
+    destruct (per_ctx_env_kept_proof_readable _ _ _ M[↑]ʷ HR1 (exp_scoped_free_bound _ _ HsM1) _ _ Hrel1) as [HP _].
+    destruct (HP (length (Γ ▹ A))) as [P HPr].
+    exists (nf_proof P); split.
+    + econstructor; [ exact Hρ1 | exact HaσE | apply nbe_term_proof; [ congruence | apply read_nf_proof; [ congruence | exact HPr ] ] ].
+    + inversion HW0; subst; try (cbn in *; congruence); reflexivity.
+  - (** A relevant type: the value of [M[↑]] is related to that of [M],
+        so they read back alike one variable further out, where the value
+        of [M] reads back as the weakening of [W] ([read_shift]) *)
+    destruct HeB as [(a1 & Ea1 & Hp1) | HeB].
+    { exfalso; rewrite exp_sub_of_shift in Ea1; functional_eval_rewrite_clear; congruence. }
+    destruct HeA as [(a2 & Ea2 & Hp2) | HeA].
+    { exfalso; rewrite exp_sub_id in Ea2; functional_eval_rewrite_clear; congruence. }
+    destruct HeB as [mσ m1 m1' mσ' Hmσ Hm1 Hm1' Hmσ' HcB].
+    destruct HeA as [mI m2 m2' mI' HmI Hm2 Hm2' HmI' HcA].
+    rewrite exp_sub_of_shift in Hmσ, Hmσ'; rewrite exp_sub_id in HmI, HmI'.
+    functional_eval_rewrite_clear.
+    assert (H1 : Rb mσ m1) by pairwise.
+    assert (H2 : Ra m0 m1) by pairwise.
+    assert (H3 : Rb mσ m0)
+      by (apply (proj2 (per_univ_elem_trans _ _ _ _ HRσR)) with (m2 := m1); [ exact H1 | apply HRbsym; apply Eab; exact H2 ]).
+    destruct (per_elem_then_per_top HRσT H3 (S (length Γ))) as [W1 W2 HW1 HW2 HE].
+    pose proof (read_shift _ _ Γ ρ0 T M aT m0 W0 W2 Hρ' HaT Hm0 HW0 HW2) as Hs.
+    exists W1; split.
+    + eapply nbe_relevant_intro; [ exact Hρ1 | exact HaσE | exact Hmσ | exact HW1 | congruence ].
+    + congruence.
 Qed.
 
 Corollary nbe_ty_wk : forall Γ A T i W,
     ⊢ Γ ▹ A ->
     Γ ⊢ T : Typeω@i ->
     nbe_ty_f Γ T W ->
-    nbe_ty_f (Γ ▹ A) T[↑]ʷ (nf_wk ↑ W).
+    exists W', nbe_ty_f (Γ ▹ A) T[↑]ʷ W' /\ nf_erase W' = nf_erase (nf_wk ↑ W).
 Proof.
   intros * HΓA HT Hn.
-  eapply nbe_type_to_nbe_ty, (nbe_wk _ _ _ _ _ HΓA HT), nbe_ty_to_nbe_type; eassumption.
+  destruct (nbe_wk _ _ _ _ _ HΓA HT (nbe_ty_to_nbe_type _ _ i _ Hn)) as (W' & HW' & E).
+  exists W'; split; [ exact (nbe_type_to_nbe_ty _ _ _ _ HW') | exact E ].
 Qed.
 
-(** ** NbE Invents No Variables, Semantically *)
+(** ** NbE Invents No Variables, Semantically
+
+    Outside its proofs, which name the positions of the environment they
+    are kept over ([nbe_wk]). *)
 Corollary nbe_wk_fresh_sem : forall Γ A M T W,
     ⊢ Γ ▹ A ->
     Γ ⊢ M : T ->
     nbe_f (Γ ▹ A) M[↑]ʷ T[↑]ʷ W ->
-    nf_fresh 0 W.
+    nf_fresh 0 (nf_erase W).
 Proof.
   intros * HΓA HM Hn.
   destruct (soundness HM) as [W1 [Hn1 _]].
-  pose proof (nbe_wk _ _ _ _ _ HΓA HM Hn1) as Hn2.
+  destruct (nbe_wk _ _ _ _ _ HΓA HM Hn1) as (W2 & Hn2 & E).
   functional_nbe_rewrite_clear.
-  apply (proj1 nf_wk_fresh); intros x; cbn; lia.
+  rewrite E, nf_erase_wk; apply (proj1 nf_wk_fresh); intros x; cbn; lia.
 Qed.
 
 Corollary nbe_ty_wk_fresh_sem : forall Γ A T i W,
     ⊢ Γ ▹ A ->
     Γ ⊢ T : Typeω@i ->
     nbe_ty_f (Γ ▹ A) T[↑]ʷ W ->
-    nf_fresh 0 W.
+    nf_fresh 0 (nf_erase W).
 Proof.
   intros * HΓA HT Hn.
   destruct (soundness_ty HT) as [W1 [Hn1 _]].
-  pose proof (nbe_ty_wk _ _ _ _ _ HΓA HT Hn1) as Hn2.
+  destruct (nbe_ty_wk _ _ _ _ _ HΓA HT Hn1) as (W2 & Hn2 & E).
   functional_nbe_rewrite_clear.
-  apply (proj1 nf_wk_fresh); intros x; cbn; lia.
+  rewrite E, nf_erase_wk; apply (proj1 nf_wk_fresh); intros x; cbn; lia.
 Qed.
 
 (** ** Strengthening an Equation
 
-    Both ends are terms of [Γ]: their normal forms in [Γ ▹ A] are the
-    weakenings of their normal forms in [Γ], the long equation makes the
-    former equal, and the weakening is injective. *)
+    Both ends are terms of [Γ]: their normal forms in [Γ ▹ A] are, erased,
+    the weakenings of their erased normal forms in [Γ], the long equation
+    makes the former equal up to erasure, and the weakening is injective;
+    terms of [Γ] with normal forms equal up to erasure are equal. *)
 Theorem exp_eq_strengthen_sem : forall Γ A M N T,
     ⊢ Γ ▹ A ->
     Γ ⊢ M : T ->
@@ -142,13 +185,13 @@ Proof.
   intros * HΓA HM HN HMN.
   destruct (soundness HM) as [WM [HnM HeqM]].
   destruct (soundness HN) as [WN [HnN HeqN]].
-  destruct (completeness HMN) as [W [HnM' HnN']].
-  pose proof (nbe_wk _ _ _ _ _ HΓA HM HnM).
-  pose proof (nbe_wk _ _ _ _ _ HΓA HN HnN).
+  destruct (completeness HMN) as (W & W' & HnM' & HnN' & HE).
+  destruct (nbe_wk _ _ _ _ _ HΓA HM HnM) as (WM' & HnM'' & EM).
+  destruct (nbe_wk _ _ _ _ _ HΓA HN HnN) as (WN' & HnN'' & EN).
   functional_nbe_rewrite_clear.
-  assert (WM = WN) as <-
-      by (eapply (proj1 nf_wk_inj); [ apply wk_inj_shift | eassumption ]).
-  etransitivity; [ exact HeqM | symmetry; exact HeqN ].
+  assert (Eerase : nf_erase WM = nf_erase WN)
+    by (rewrite !nf_erase_wk in EM, EN; eapply (proj1 nf_wk_inj); [ apply wk_left_inverse_shift | congruence ]).
+  exact (soundness_erased HM HN HnM HnN Eerase).
 Qed.
 
 End Fixed_GCtx.

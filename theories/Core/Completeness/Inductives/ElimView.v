@@ -2594,7 +2594,7 @@ Section CrossElim.
     (** The container's, by its own. *)
     destruct (Hcmot_x i' Mi' j Mj hd k as1 as2 e e' w w' _ _ HMi' HrvI Hvi HM Hm) as (cupsa & Hca & Hra).
     destruct (Hmot_x i' Mi' j bb ba w w' _ _ _ _ _ _ HMi' HrvI Hvi Hbb Hba Hm Hra Hrb) as (a & a' & Ea & Ea' & HR).
-    rewrite (motive_env_combine _ _ _ _ _ _ _ Lub) in Ea; rewrite (motive_env_combine _ _ _ _ _ _ _ u0_len') in Ea'.
+    rewrite motive_entries_combine in Ea, Ea'.
     exists Mi', a, a'; split; [ exact HMi' | split; [ exact HrvI | split; [| split; [| exact HR ] ] ] ].
     - eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (view_member_ref _ _ _ _ _ _ _ _ _ Hvmb HrvI); exact Href | exact Hq'
                              | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity

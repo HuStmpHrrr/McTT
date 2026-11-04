@@ -358,7 +358,6 @@ Ltac stuck_go n :=
         | match goal with
           | |- env_stuck (env_tele _ _ _) => unfold env_tele; stuck_go n
           | |- env_stuck (decl_env _ _) => unfold decl_env; stuck_go n
-          | |- env_stuck (motive_env _ _ _ _ _ _) => unfold motive_env, motive_entries; stuck_go n
           | |- env_stuck (global_proof_env _ _ _) => unfold global_proof_env; stuck_go n
           | |- env_stuck (kinds_pads _ _) => apply env_stuck_kinds_pads; stuck_go n'
           | |- env_stuck (env_extend_typed _ _) =>
