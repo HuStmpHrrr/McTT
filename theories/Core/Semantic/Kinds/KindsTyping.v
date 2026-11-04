@@ -172,7 +172,7 @@ Section Match.
 
   Lemma kinds_match_kinds_pads : forall Δ Γ ρ, tele_ass Δ -> kinds_match Γ ρ -> kinds_match (Δ ++ Γ) (kinds_pads (List.length Δ) ρ).
   Proof.
-    induction 1 as [| e Δ [A ->] HΔ IH]; intros HΓ; cbn [app List.length]; [ exact HΓ |].
+    induction 1 as [| e Δ (κ & A & ->) HΔ IH]; intros HΓ; cbn [app List.length]; [ exact HΓ |].
     unfold kinds_pads in *; cbn [List.repeat app].
     apply kinds_match_cons_term; [ auto | discriminate | discriminate ].
   Qed.
@@ -183,7 +183,7 @@ Section Match.
   Proof.
     induction Δ as [| e Δ IH]; intros * HΔ HΓ Hl.
     - destruct vts; [ exact HΓ | discriminate ].
-    - inversion HΔ as [| ? ? [A ->] HΔ']; subst.
+    - inversion HΔ as [| ? ? (κ & A & ->) HΔ']; subst.
       destruct (List.exists_last (l := vts) ltac:(destruct vts; [ discriminate | discriminate ])) as (vts' & c & ->).
       rewrite length_app in Hl; cbn in Hl.
       unfold env_extend_typed; rewrite fold_left_app; cbn [fold_left app].

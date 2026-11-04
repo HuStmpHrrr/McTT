@@ -368,7 +368,7 @@ Section KindsEval.
     - split; apply dmod_member_kind_global_args.
     - rewrite H, dmod_member_kind_local_iff.
       destruct D as [sm Φ | E]; cbn [gunit_expand];
-        rewrite (gunit_member_kind_pad _ _ (ρ ↦ n ⦂ entry_type_closure A ρ)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass A :: nil)),
+        rewrite (gunit_member_kind_pad _ _ (ρ ↦ n ⦂ entry_type_closure A ρ)), (gunit_member_kind_pad _ _ ρ (Δ ++ ce_ass κ A :: nil)),
           length_app, Nat.add_1_r;
         [ apply (gunit_member_kind_id _ _ (proj1 (kinds_shape_pad_push _ _ _ _)) (gu_mk nil (md_body sm Φ)))
         | apply (gunit_member_kind_id _ _ (proj1 (kinds_shape_pad_push _ _ _ _)) (gu_mk nil (md_alias E))) ].

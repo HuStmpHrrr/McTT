@@ -45,7 +45,7 @@ Section Rename.
       environments included; mutually, for the other sorts of values. *)
   Fixpoint domain_rename (d : domain) : domain :=
     match d with
-    | d_pi r a ρ B => d_pi r (domain_rename a) (List.map dentry_rename ρ) B
+    | d_pi κd κc a ρ B => d_pi κd κc (domain_rename a) (List.map dentry_rename ρ) B
     | d_univ i => d_univ i
     | d_suniv l => d_suniv (domain_rename l)
     | d_level n => d_level n
@@ -240,22 +240,22 @@ Section Rename.
       List.map (fun ga => match ga with (g, a) => (g, domain_rename a) end) vs = List.map (fun p => (fst p, domain_rename (snd p))) vs.
   Proof. intros; apply List.map_ext; intros []; reflexivity. Qed.
 
-  (** The sort of a type value is read off its head, which the renaming
+  (** The kind of a type value is read off its head, which the renaming
       keeps. *)
-  Lemma domain_relevance_rn : forall d, domain_relevance (domain_rename d) = domain_relevance d.
+  Lemma domain_kind_rn : forall d, domain_kind (domain_rename d) = domain_kind d.
   Proof. intros []; try reflexivity; match goal with |- context [ d_neut ?a _ ] => destruct a; reflexivity end. Qed.
 
-  (** A neutral's sort is its type's head's, whatever the neutral. *)
-  Lemma domain_relevance_neut_rn : forall a m m', domain_relevance (d_neut (domain_rename a) m) = domain_relevance (d_neut a m').
+  (** A neutral's kind is its type's head's, whatever the neutral. *)
+  Lemma domain_kind_neut_rn : forall a m m', domain_kind (d_neut (domain_rename a) m) = domain_kind (d_neut a m').
   Proof. intros []; reflexivity. Qed.
 
-  (** So is the sort of a function's next argument. *)
-  Lemma arg_relevance_rn : forall Θ Ξ m, arg_relevance Θ Ξ (domain_rename m) = arg_relevance Θ Ξ m.
+  (** So is the kind of a function's next argument. *)
+  Lemma arg_kind_rn : forall Θ Ξ m, arg_kind Θ Ξ (domain_rename m) = arg_kind Θ Ξ m.
   Proof.
-    intros; destruct m; cbn [domain_rename]; unfold arg_relevance; rewrite ?domain_relevance_rn, ?List.length_map; try reflexivity.
+    intros; destruct m; cbn [domain_rename]; unfold arg_kind; rewrite ?domain_kind_rn, ?List.length_map; try reflexivity.
     (* a neutral, at the type its head reads *)
     match goal with |- match domain_rename ?m with _ => _ end = _ => destruct m end;
-      cbn [domain_rename]; rewrite ?domain_relevance_rn; reflexivity.
+      cbn [domain_rename]; rewrite ?domain_kind_rn; reflexivity.
   Qed.
 End Rename.
 
@@ -267,7 +267,7 @@ Section Eval.
   Variables (Θ : gdeps) (Ξ : gstack) (f : nat -> nat).
 
   #[local] Hint Rewrite env_var_rn env_mod_rn env_extend_typed_rn env_tele_rn domain_level_suc_rn domain_level_max_rn
-    domain_relevance_rn arg_relevance_rn List.map_app List.length_map List.firstn_map List.skipn_map : rn.
+    domain_kind_rn arg_kind_rn List.map_app List.length_map List.firstn_map List.skipn_map : rn.
 
   Lemma eval_rn :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↘ domain_rename f m) /\
@@ -363,13 +363,13 @@ Section Eval.
     (* at a function shape: one per leaf path of the rest *)
     all: try solve [ rewrite List.map_map; cbn [domain_rename List.map dentry_rename]; repeat change (List.map (dentry_rename f) ?ρ) with (env_rename f ρ);
                      first [ eapply eval_ih_pi; eassumption | eapply eval_ihty_pi; eassumption ] ].
-    (* the cases relevance directs: the sort read off a value, which the
+    (* the cases the kind directs: the kind read off a value, which the
        renaming keeps *)
     all: cbn [env_rename List.map dentry_rename domain_rename] in *.
-    all: try solve [ eapply eval_exp_app; [ eassumption | rewrite arg_relevance_rn; eassumption | eassumption | eassumption ] ].
-    all: try solve [ eapply eval_exp_app_proof; [ eassumption | rewrite arg_relevance_rn; eassumption | eassumption ] ].
-    all: try solve [ eapply eval_exp_let; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption | eassumption ] ].
-    all: try solve [ eapply eval_exp_let_proof; [ eassumption | rewrite domain_relevance_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_app; [ eassumption | rewrite arg_kind_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_app_proof; [ eassumption | rewrite arg_kind_rn; eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_let; [ eassumption | rewrite domain_kind_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply eval_exp_let_proof; [ eassumption | rewrite domain_kind_rn; eassumption | eassumption ] ].
     all: try solve [ eapply eval_body_env_def; eassumption ].
     all: try solve [ eapply eval_body_env_def_proof; eassumption ].
     all: try solve [ rewrite <- combine_map_r; eapply eval_exp_tuple; eassumption ].
@@ -467,7 +467,7 @@ Section Bound.
   Definition domain_bounded_clo (b : nat) (ρ : env) (B : exp) : Prop :=
     forall b' c t d, b <= b' -> domain_bounded b' c -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ⦂ t ↘ d -> domain_bounded b' d.
 
-  Lemma domain_bounded_pi_inv : forall b r a ρ B, domain_bounded b (d_pi r a ρ B) -> domain_bounded b a /\ domain_bounded_clo b ρ B.
+  Lemma domain_bounded_pi_inv : forall b κd κc a ρ B, domain_bounded b (d_pi κd κc a ρ B) -> domain_bounded b a /\ domain_bounded_clo b ρ B.
   Proof.
     intros * H; split; [ intros v Hv; specialize (H v Hv); inversion H; assumption |].
     intros b' c t d Hb Hc Hd v Hv.
@@ -1100,18 +1100,22 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
 
   Ltac rn_le_solve := match goal with Hok : rn_ok f _ _ _ |- _ => pose proof (rn_le _ _ _ _ Hok); lia end.
 
-  (** A renamed value's readback by a rule its type's relevance excludes:
-      the renaming keeps the relevance. *)
-  Ltac rn_relevance_contra :=
+  (** A renamed value's readback by a rule its type's kind excludes: the
+      renaming keeps the kind. *)
+  Ltac rn_kind_contra :=
     exfalso;
     repeat match goal with
-      | H : ?X = domain_rename f ?a, H' : context [ domain_relevance ?a ] |- _ =>
-          rewrite <- (domain_relevance_rn f a), <- H in H'
-      | H : context [ domain_relevance (d_neut (domain_rename f ?a) (domain_ne_rename f ?b)) ] |- _ =>
-          rewrite (domain_relevance_neut_rn f a (domain_ne_rename f b) b) in H
-      | H : context [ domain_relevance (domain_rename f ?a) ] |- _ => rewrite domain_relevance_rn in H
+      | H : ?X = domain_rename f ?a, H' : context [ domain_kind ?a ] |- _ =>
+          rewrite <- (domain_kind_rn f a), <- H in H'
+      | H : context [ domain_kind (d_neut (domain_rename f ?a) (domain_ne_rename f ?b)) ] |- _ =>
+          rewrite (domain_kind_neut_rn f a (domain_ne_rename f b) b) in H
+      | H : context [ domain_kind (domain_rename f ?a) ] |- _ => rewrite domain_kind_rn in H
       end;
-    cbn [domain_relevance] in *; congruence.
+    cbn [domain_kind] in *;
+    first [ congruence
+          | match goal with H : evaluated_kind ?k, H' : ?k = ak_propositional |- _ =>
+              exact (evaluated_kind_not_propositional _ H H') end
+          | match goal with H : evaluated_kind ak_propositional |- _ => inversion H end ].
 
   (** Readback is equivariant up to erasure: if a value and its renaming
       both read back, at the two lengths, the second readback is the
@@ -1192,7 +1196,7 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
     all: try solve [ cbn [nf_erase nf_wk]; reflexivity ].
     (** A rule the original's excludes by the relevance of the type, which
         the renaming keeps. *)
-    all: try solve [ rn_relevance_contra ].
+    all: try solve [ rn_kind_contra ].
     (** The renamings of the original's evaluations, with the renaming
         pushed to the values, as the inverted premises have it. *)
     all: pose proof (rn_ok_fresh _ _ _ _ Hok) as Hf0; pose proof (rn_ok_fresh _ _ _ _ (rn_ok_q _ _ _ _ Hok)) as Hf1.
@@ -1268,7 +1272,7 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
       | H : domain_bounded _ (d_neut _ _) |- _ => apply domain_bounded_neut_inv in H as [? ?]
       | H : domain_bounded _ (d_suniv _) |- _ => apply domain_bounded_suniv_inv in H
       | H : domain_bounded _ (d_lvl _ _) |- _ => apply domain_bounded_lvl_inv in H
-      | H : domain_bounded _ (d_pi _ _ _ _) |- _ => apply domain_bounded_pi_inv in H as [? ?]
+      | H : domain_bounded _ (d_pi _ _ _ _ _) |- _ => apply domain_bounded_pi_inv in H as [? ?]
       | H : level_atoms_bounded _ ((_, _) :: _) |- _ => apply level_atoms_bounded_inv in H as [? ?]
       | H : domain_ne_bounded _ (d_app _ _) |- _ => apply domain_bounded_app_inv in H as [? ?]
       | H : domain_bounded _ (d_and _ _ _) |- _ => apply domain_bounded_and_inv in H as [? ?]

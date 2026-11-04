@@ -61,10 +61,10 @@ Section Members.
         [ eapply eval_app_args_relevant | eapply eval_app_args_proof ]; try eassumption; apply IH; eauto.
   Qed.
 
-  (** Where every function along the way takes relevant arguments, the
-      arguments are all evaluated and then applied. *)
+  (** Where every function along the way takes arguments of an evaluated
+      kind, the arguments are all evaluated and then applied. *)
   Lemma eval_app_args_relevant_iff : forall (P : domain -> Prop),
-      (forall f, P f -> arg_relevance Θ Ξ f = relevant) ->
+      (forall f, P f -> evaluated_kind (arg_kind Θ Ξ f)) ->
       (forall f n g, P f -> $| f & n | Θ ⍮ Ξ ↘ g -> P g) ->
       forall Ns f ρ r, P f ->
       eval_app_args Θ Ξ f Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r.
@@ -72,7 +72,8 @@ Section Members.
     intros P HP HPa; induction Ns as [| N Ns IH]; intros f ρ r Hf; split.
     - intros H; inversion H; subst; exists nil; split; constructor.
     - intros (ns & Hns & Ha); inversion Hns; subst; inversion Ha; subst; constructor.
-    - intros H; inversion H; subst; [| pose proof (HP _ Hf); congruence ].
+    - intros H; inversion H; subst;
+        [| exfalso; eapply evaluated_kind_not_propositional; [ exact (HP _ Hf) | eassumption ] ].
       match goal with Hg : $| f & ?n | _ ⍮ _ ↘ ?g, Hr : eval_app_args _ _ ?g _ _ _ |- _ =>
         apply (IH g) in Hr as (ns & ? & ?); [| eapply HPa; eassumption ] end.
       eexists; split; econstructor; eassumption.
@@ -87,7 +88,7 @@ Section Members.
       eval_app_args Θ Ξ (d_ind p k vs) Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| d_ind p k vs & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros; apply (eval_app_args_relevant_iff (fun f => exists p k vs, f = d_ind p k vs));
-      [ intros ? (? & ? & ? & ->); reflexivity
+      [ intros ? (? & ? & ? & ->); constructor
       | intros ? ? ? (? & ? & ? & ->) Ha; inversion Ha; subst; eauto
       | eauto ].
   Qed.
@@ -96,7 +97,7 @@ Section Members.
       eval_app_args Θ Ξ (d_record p vs) Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| d_record p vs & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros; apply (eval_app_args_relevant_iff (fun f => exists p vs, f = d_record p vs));
-      [ intros ? (? & ? & ->); reflexivity
+      [ intros ? (? & ? & ->); constructor
       | intros ? ? ? (? & ? & ->) Ha; inversion Ha; subst; eauto
       | eauto ].
   Qed.
@@ -119,9 +120,11 @@ Section Members.
       gc_term Θ Ξ (qname_app p (x :: nil)) = Some M ->
       ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
       global_member_value p x f
-  (** A relevant opaque definition or axiom: a neutral at its closed type *)
-  | global_member_value_neut : forall b pv A B a,
-      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv relevant A B) ->
+  (** An opaque definition or axiom of an evaluated kind: a neutral at its
+      closed type *)
+  | global_member_value_neut : forall b pv κ A B a,
+      gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv κ A B) ->
+      evaluated_kind κ ->
       b = false \/ B = None ->
       ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
       global_member_value p x (⇑ a (d_glob (qname_app p (x :: nil))))
@@ -155,7 +158,7 @@ Section Members.
       module_saturated Θ Ξ p args ->
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r ->
       (exists f, global_member_value p x f /\ $*| f & args | Θ ⍮ Ξ ↘ r) \/
-      ((exists b pv A B, gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B)) /\
+      ((exists b pv A B, gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv ak_propositional A B)) /\
        exists T Φ, gc_loc Θ Ξ p = Some (T, Φ) /\ List.length args = List.length T /\
          r = ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩).
   Proof.
@@ -393,11 +396,11 @@ Section Members.
 
   (** [H.x] and [apps (member_ref R (pre ++ x)) args] evaluate alike where
       the member's value, and every value it is applied to the arguments
-      along the way, takes relevant arguments ([P]): the arguments of a
-      module are evaluated, those of an application only at a relevant
-      argument. *)
+      along the way, takes arguments of an evaluated kind ([P]): the
+      arguments of a module are evaluated, those of an application only at
+      an argument of an evaluated kind. *)
   Lemma eval_mem_apps : forall (P : domain -> Prop),
-      (forall f, P f -> arg_relevance Θ Ξ f = relevant) ->
+      (forall f, P f -> evaluated_kind (arg_kind Θ Ξ f)) ->
       (forall f n g, P f -> $| f & n | Θ ⍮ Ξ ↘ g -> P g) ->
       forall H x R args pre ρ r,
       modexp_spine H = (R, args, pre) ->

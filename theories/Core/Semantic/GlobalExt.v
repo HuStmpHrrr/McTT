@@ -52,9 +52,9 @@ Section GlobalExt.
   Lemma gc_term_ext : forall p, gc_term Θ1 Ξ1 p = gc_term Θ2 Ξ2 p.
   Proof. intros; unfold gc_term; rewrite Hres, Hent; reflexivity. Qed.
 
-  (** The sort of a function's next argument is read off the groups'
+  (** The kind of a function's next argument is read off the groups'
       declarations. *)
-  Lemma arg_relevance_ext : forall f, arg_relevance Θ1 Ξ1 f = arg_relevance Θ2 Ξ2 f.
+  Lemma arg_kind_ext : forall f, arg_kind Θ1 Ξ1 f = arg_kind Θ2 Ξ2 f.
   Proof. intros []; cbn; rewrite ?Hind; reflexivity. Qed.
 
   (** A member with a term part and a module part is one by its lookups. *)
@@ -144,7 +144,7 @@ Section GlobalExt.
              end;
       unfold module_saturated in *;
       rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec, ?gc_term_ext,
-        ?arg_relevance_ext in *.
+        ?arg_kind_ext in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 

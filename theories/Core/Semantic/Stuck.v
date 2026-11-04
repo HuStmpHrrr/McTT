@@ -26,7 +26,7 @@ Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False
   | nf_proof_erased => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
   | nf_neut M => ne_stuck G M
   | nf_record _ Ms => all_list (nf_stuck G) Ms
@@ -90,14 +90,14 @@ Record global_stuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop := mk_global_s
     global_stuck_transparent : bool
     (** Whether it is private *)
   ; global_stuck_private : bool
-    (** Its tag *)
-  ; global_stuck_relevance : relevance
+    (** The kind of its type *)
+  ; global_stuck_kind : abs_kind
     (** Its type *)
   ; global_stuck_typ : typ
     (** Its body, if any *)
   ; global_stuck_body : option exp
     (** It is what the global resolves to *)
-  ; global_stuck_resolve : gc_resolve Θ Ξ p = Some (ge_def global_stuck_transparent global_stuck_private global_stuck_relevance global_stuck_typ global_stuck_body)
+  ; global_stuck_resolve : gc_resolve Θ Ξ p = Some (ge_def global_stuck_transparent global_stuck_private global_stuck_kind global_stuck_typ global_stuck_body)
     (** It does not unfold *)
   ; global_stuck_opaque : global_stuck_transparent = false \/ global_stuck_body = None }.
 
@@ -115,8 +115,8 @@ Section Stuck.
     environments included, is stuck ([global_stuck]); mutually, for the other
     sorts of values. *)
 Inductive domain_stuck : domain -> Prop :=
-(** A [Π] of either tag: its domain and its closure's environment *)
-| domain_stuck_pi : forall r a (ρ : env) B, domain_stuck a -> (forall x, dentry_stuck (env_entry ρ x)) -> domain_stuck (d_pi r a ρ B)
+(** A [Π] at any kinds: its domain and its closure's environment *)
+| domain_stuck_pi : forall κd κc a (ρ : env) B, domain_stuck a -> (forall x, dentry_stuck (env_entry ρ x)) -> domain_stuck (d_pi κd κc a ρ B)
 (** A large universe *)
 | domain_stuck_univ : forall i, domain_stuck 𝕌ω@i
 (** A small universe: its level *)

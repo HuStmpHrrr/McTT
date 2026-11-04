@@ -47,8 +47,8 @@ Proof.
   replace (firstn (length (T1 ++ T2) - length Ns) (T1 ++ T2)) with T1 in Hv
     by (rewrite List.length_app, <- Hl, Nat.add_sub, List.firstn_app, Nat.sub_diag, List.firstn_O, List.app_nil_r, List.firstn_all; reflexivity).
   apply List.Forall_app in Ha as [Ha1 _].
-  pose proof (tele_view_ass _ _ _ Ha1 Hv) as ->.
-  pose proof (HR T1' C T2 ltac:(rewrite <- List.app_assoc; reflexivity)) as HC; rewrite List.app_nil_r in HC.
+  destruct (tele_view_ass _ _ _ Ha1 Hv) as [κ ->].
+  pose proof (HR T1' κ C T2 ltac:(rewrite <- List.app_assoc; reflexivity)) as HC; rewrite List.app_nil_r in HC.
   pose proof (wf_sub_of_list_id _ _ _ _ _ Ha2 HT2 (eq_sym Hl) HN) as Hσ.
   destruct HC as [HC | HC]; [ left | right ];
     pose proof (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HC HT2) as HC';
@@ -69,7 +69,7 @@ Proof.
     injection Ht as <-.
     unfold tele_view in Hv; destruct (tele_open_split _ _ _ Hv) as (τ & Es).
     destruct (tele_split_ass_eq _ _ _ _ HaΔ Es) as [EΔ _].
-    exact (param_typed_relevant _ _ _ _ _ (HRΔ _ _ nil EΔ)).
+    exact (param_typed_relevant _ _ _ _ _ (HRΔ _ _ _ nil EΔ)).
   - (* a closed module: its outside parameters, then the rest of its telescope *)
     destruct (Nat.leb (length Ns) (length T0)); [| discriminate ]; injection Ht as <-.
     unfold tele_view in Hv; rewrite List.rev_app_distr in Hv.
@@ -80,7 +80,7 @@ Proof.
         as (T' & Ho).
       rewrite Ho in Hv; injection Hv as <- _.
       destruct (tele_split_ass_eq _ _ _ _ HaΘ Es) as [EΘ _].
-      exact (param_typed_relevant _ _ _ _ _ (HRΘ _ _ nil EΘ)).
+      exact (param_typed_relevant _ _ _ _ _ (HRΘ _ _ _ nil EΘ)).
     + destruct (tele_open_app_inr _ _ _ _ _ Es Hv) as (B0 & T0' & Ho & ->).
       fold (tele_view (tele_sub (List.firstn (length T0 - length Ns) T0) (sb_of_list Id Ns))) in Ho.
       rewrite tele_view_sub in Ho.
@@ -128,10 +128,10 @@ Lemma wf_unit_eq_alias_nil : forall Γ E,
 Proof.
   intros * HE.
   eapply wf_unit_eq_alias with (param_level := 0) (param_sorts := fun _ => Typeω@0) (lv := true) (lv' := true)
-                               (Rt := mdesc_term relevant Typeω@0 None) (Rt' := mdesc_term relevant Typeω@0 None);
+                               (Rt := mdesc_term ak_relevant Typeω@0 None) (Rt' := mdesc_term ak_relevant Typeω@0 None);
     try first [ exact HE | constructor | intros [=]
-              | intros Δ1 ? ? Ex; destruct Δ1; discriminate | intros _ Δ1 ? ? Ex; destruct Δ1; discriminate ].
-  all: try (intros Δ1 ? ? Ex; destruct Δ1; discriminate).
+              | intros Δ1 ? ? ? Ex; destruct Δ1; discriminate | intros _ Δ1 ? ? ? Ex; destruct Δ1; discriminate ].
+  all: try (intros Δ1 ? ? ? Ex; destruct Δ1; discriminate).
   exact (presup_modexp_eq_ctx HE).
 Qed.
 
@@ -229,41 +229,35 @@ Qed.
 (** ** The Sorts of a Body's Definitions
 
     [body_tags Γ Φ L]: the type of every term part of the body [Φ] over [Γ]
-    is, in the context of the entries before it, of the sort its relevance
-    tag says ([entry_relevance]), if relevant a type of the universe at the
-    level [L] or a type of levels ([parameter_sort]).  This is what the
-    premises on [entry_sort] of the unit rules need. *)
+    is, in the context of the entries before it, of the sort of its kind
+    ([entry_kind]) at the universe at the level [L] ([abs_kind_sort]): a
+    type of that universe, a proposition, or a type of levels.  This is
+    what the premises on [entry_sort] of the unit rules need: that sort is
+    a sort of the entry's kind ([sort_kind_abs_kind_sort]). *)
 Definition body_tags (Γ : ctx) (Φ : gmod) (L : nat) : Prop :=
   forall y Φ0 E A M, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-    exists Srt, parameter_sort L Srt /\ (body_ctx Φ0 ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Srt.
+    (body_ctx Φ0 ++ Γ)%list ⊢ A : abs_kind_sort (entry_kind E) Typeω@L.
 
-(** A type of the sort at a tag is one at every larger level. *)
-Lemma relevance_sort_lift : forall Γ A r Srt i j,
-    parameter_sort i Srt -> Γ ⊢ A : relevance_sort r Srt -> i <= j ->
-    exists Srt', parameter_sort j Srt' /\ Γ ⊢ A : relevance_sort r Srt'.
-Proof.
-  intros * HS HA Hij; destruct HS; [ exists Typeω@j | exists LevelSort ]; (split; [ constructor |]);
-    destruct r; cbn [relevance_sort] in *; first [ exact HA | eapply lift_exp_ge; eassumption ].
-Qed.
-
-(** A relevant sort is a parameter sort at some level. *)
-Lemma relevant_sort_parameter_sort : forall Srt, relevant_sort Srt -> exists i, parameter_sort i Srt.
-Proof. intros * []; [ eexists; constructor | exists 0; constructor ]. Qed.
+(** A type of the sort of a kind at a universe is one at every larger
+    universe. *)
+Lemma abs_kind_sort_lift : forall Γ A κ i j,
+    Γ ⊢ A : abs_kind_sort κ Typeω@i -> i <= j -> Γ ⊢ A : abs_kind_sort κ Typeω@j.
+Proof. intros * HA Hij; destruct κ; cbn [abs_kind_sort] in *; [ eapply lift_exp_ge; eassumption | exact HA | exact HA ]. Qed.
 
 Lemma body_tags_mono : forall Γ Φ L L', body_tags Γ Φ L -> L <= L' -> body_tags Γ Φ L'.
 Proof.
-  intros * HT HL y Φ0 E A M Hp HE; destruct (HT _ _ _ _ _ Hp HE) as (Srt & HS & HA).
-  exact (relevance_sort_lift _ _ _ _ _ _ HS HA HL).
+  intros * HT HL y Φ0 E A M Hp HE.
+  exact (abs_kind_sort_lift _ _ _ _ _ (HT _ _ _ _ _ Hp HE) HL).
 Qed.
 
 Lemma body_tags_nil : forall Γ L, body_tags Γ gm_nil L.
 Proof. intros * y Φ0 E A M Hp; discriminate. Qed.
 
-(** An entry added, its term part, if any, of the sort at its tag. *)
+(** An entry added, its term part, if any, of the sort of its kind. *)
 Lemma body_tags_ext : forall Γ Φ x E L,
     body_tags Γ Φ L ->
     (forall A M, entry_tm E = Some (A, M) ->
-       exists Srt, parameter_sort L Srt /\ (body_ctx Φ ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Srt) ->
+       (body_ctx Φ ++ Γ)%list ⊢ A : abs_kind_sort (entry_kind E) Typeω@L) ->
     body_tags Γ (gm_ext Φ x E) L.
 Proof.
   intros * HT HE y Φ0 E0 A M Hp HE0; cbn [gm_prefix_upto] in Hp.
@@ -299,19 +293,17 @@ Proof.
   - (** A term member, at the sort of its tag. *)
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) eq_refl) as (Srt & HSrt & HAi);
-      cbn [mdesc_relevance] in HAi.
-    destruct (relevant_sort_parameter_sort _ HSrt) as [i Hi].
-    assert (HA1 : (body_ctx Φg ++ Γ)%list ⊢ A[wk_shiftn (List.length Ψk)]ʷ : relevance_sort ra Srt)
-      by (exact (wk_preserves_sort _ _ _ _ _ _ _ HAi
-                   ltac:(destruct ra; cbn [relevance_sort]; [ exact (relevant_type_sort _ HSrt) | exact type_sort_prop ]) Hw)).
+    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) eq_refl) as (i & HAi);
+      cbn [mdesc_kind] in HAi.
+    assert (HA1 : (body_ctx Φg ++ Γ)%list ⊢ A[wk_shiftn (List.length Ψk)]ʷ : abs_kind_sort ra Typeω@i)
+      by (exact (wk_preserves_sort _ _ _ _ _ _ _ HAi (type_sort_abs_kind _ _ (type_sort_universe i)) Hw)).
     set (E1 := gentry_wk (ge_def true pv ra A (Some (a_mem H n))) (wk_shiftn (List.length Ψk))) in *.
     change (S (List.length Ψk)) with (List.length (ce_def A[wk_shiftn (List.length Ψk)]ʷ (a_mem H n)[wk_shiftn (List.length Ψk)]ʷ :: Ψk)).
     eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk option_map]; rewrite HΦg; reflexivity | exact HC |].
     apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
     intros A' M' HE; unfold E1 in HE; cbn [gentry_wk option_map entry_tm] in HE; injection HE as <- <-.
-    unfold E1; cbn [entry_relevance gentry_wk].
-    exact (relevance_sort_lift _ _ _ _ _ _ Hi HA1 (Nat.le_max_r L i)).
+    unfold E1; cbn [entry_kind gentry_wk].
+    exact (abs_kind_sort_lift _ _ _ _ _ HA1 (Nat.le_max_r L i)).
   - (** A module member: no term part. *)
     change (S (List.length Ψk)) with (List.length (ce_mod (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (List.length Ψk))) :: Ψk)).
     eapply IH; [ reflexivity | exact HH | cbn [body_ctx]; rewrite HΦg; reflexivity | exact HC |].
@@ -328,8 +320,8 @@ Proof.
     eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk]; rewrite HΦg; reflexivity | exact HC |].
     apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
     intros A' M' HE; unfold E1 in HE; cbn [gentry_wk entry_tm] in HE; injection HE as <- <-.
-    unfold E1; cbn [entry_relevance gentry_wk relevance_sort].
-    exists Typeω@(max L i); split; [ constructor |]; eapply lift_exp_ge; [| exact HA1 ]; lia.
+    unfold E1; cbn [entry_kind gentry_wk abs_kind_sort].
+    eapply lift_exp_ge; [| exact HA1 ]; lia.
 Qed.
 
 End Fixed_GCtx.

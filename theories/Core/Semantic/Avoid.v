@@ -108,13 +108,13 @@ Section Avoid.
       [b] (see the file header); mutually, for neutrals, normal values,
       module values, level atoms and environment entries. *)
   Inductive domain_avoids : domain -> Prop :=
-  (** A [Π] of either tag: its domain avoids, and its closure avoids but at
+  (** A [Π] at any kinds: its domain avoids, and its closure avoids but at
       [K], where the codomain is fresh *)
-  | domain_avoids_pi : forall r a (ρ : env) B K,
+  | domain_avoids_pi : forall κd κc a (ρ : env) B K,
       domain_avoids a ->
       (forall x, K <> Some x -> dentry_avoids (env_entry ρ x)) ->
       optional_exp_fresh (optional_shift 1 K) B ->
-      domain_avoids (d_pi r a ρ B)
+      domain_avoids (d_pi κd κc a ρ B)
   (** A large universe *)
   | domain_avoids_univ : forall i, domain_avoids 𝕌ω@i
   (** A small universe at an avoiding level *)
@@ -455,19 +455,15 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_absurd_proof : forall C M, optional_exp_fresh K (efq M return C) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_all_domain : forall A P, optional_exp_fresh K (∀ₚ A P) -> optional_exp_fresh K A.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_all_body : forall A P, optional_exp_fresh K (∀ₚ A P) -> optional_exp_fresh (optional_shift 1 K) P.
-  Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_and_left : forall P Q, optional_exp_fresh K (Σₚ P Q) -> optional_exp_fresh K P.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_and_right : forall P Q, optional_exp_fresh K (Σₚ P Q) -> optional_exp_fresh (optional_shift 1 K) Q.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_fn_A : forall A M, optional_exp_fresh K (λ A M) -> optional_exp_fresh K A.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_pi_A : forall A B, optional_exp_fresh K (Π A B) -> optional_exp_fresh K A.
+  Lemma optional_exp_fresh_pi_A : forall κd κc A B, optional_exp_fresh K (a_pi κd κc A B) -> optional_exp_fresh K A.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_pi_B : forall A B, optional_exp_fresh K (Π A B) -> optional_exp_fresh (optional_shift 1 K) B.
+  Lemma optional_exp_fresh_pi_B : forall κd κc A B, optional_exp_fresh K (a_pi κd κc A B) -> optional_exp_fresh (optional_shift 1 K) B.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_fn_M : forall A M, optional_exp_fresh K (λ A M) -> optional_exp_fresh (optional_shift 1 K) M.
   Proof. destruct K; cbn; tauto. Qed.
@@ -577,7 +573,7 @@ Section OFresh.
 End OFresh.
 
 #[local] Hint Resolve optional_exp_fresh_univ optional_exp_fresh_succl optional_exp_fresh_maxl_l optional_exp_fresh_maxl_r
-  optional_exp_fresh_absurd_type optional_exp_fresh_absurd_proof optional_exp_fresh_all_domain optional_exp_fresh_all_body
+  optional_exp_fresh_absurd_type optional_exp_fresh_absurd_proof
   optional_exp_fresh_and_left optional_exp_fresh_and_right optional_exp_fresh_fn_A optional_exp_fresh_let_A optional_exp_fresh_tuple_T
   optional_exp_fresh_pi_A optional_exp_fresh_pi_B optional_exp_fresh_fn_M optional_exp_fresh_app_l optional_exp_fresh_app_r optional_exp_fresh_let_M optional_exp_fresh_let_B
   optional_exp_fresh_letmod_U optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_exp_fresh_proj optional_modexp_fresh_var optional_modexp_fresh_lit optional_modexp_fresh_mem optional_modexp_fresh_app_l optional_modexp_fresh_app_r
@@ -872,12 +868,12 @@ Section Eval.
         exact (IHM _ (IHb (optional_gmod_fresh_ext_prefix _ _ _ _ HΦ')) (optional_gmod_fresh_unit_unit _ _ _ _ _ HE HΦ')) end ].
     (** The types of a function shape's argument and recursive result: a
         [Π] over the family, in an environment that holds only the family *)
-    all: try solve [ lazymatch goal with |- domain_avoids _ _ (Πᵈ _ (_ ↦ d_shfam _ _ _ _ _ ⦂ _) _) => idtac end;
+    all: try solve [ lazymatch goal with |- domain_avoids _ _ (Πᵈ{_} _ (_ ↦ d_shfam _ _ _ _ _ ⦂ _) _) => idtac end;
       match goal with H1 : _ /\ _ |- _ => destruct H1 as [HB Ht] end;
       eapply domain_avoids_pi with (K := None); [ eauto | | exact I ];
       apply env_avoids_cons_none; [ apply env_avoids_nil | eapply domain_avoids_shfam; eassumption ] ].
     all: try solve [ match goal with
-      | Ha : In ?d0 (List.map (fun i => Πᵈ _ (nil ↦ d_ihfam _ _ _ _ _ _ _ i _ ⦂ _) _) _) |- domain_avoids _ _ ?d0 =>
+      | Ha : In ?d0 (List.map (fun i => Πᵈ{_} _ (nil ↦ d_ihfam _ _ _ _ _ _ _ i _ ⦂ _) _) _) |- domain_avoids _ _ ?d0 =>
           apply List.in_map_iff in Ha as (? & <- & _)
       end;
       match goal with H1 : _ /\ _ |- _ => destruct H1 as [HB Ht] end;
@@ -1194,7 +1190,7 @@ Fixpoint nf_fresh_outside_proofs (k : nat) (W : nf) {struct W} : Prop :=
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
   | nf_proof_erased | nf_proof _ => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh_outside_proofs k (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_fresh_outside_proofs k A /\ nf_fresh_outside_proofs (S k) B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh_outside_proofs k A /\ nf_fresh_outside_proofs (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh_outside_proofs k) Ms
   | nf_neut u => ne_fresh_outside_proofs k u
   | nf_record _ Ms => all_list (nf_fresh_outside_proofs k) Ms
@@ -1535,7 +1531,7 @@ Section Read.
       | H : domain_avoids _ _ (d_neut _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_lvl _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_suniv _) |- _ => inversion_clear H
-      | H : domain_avoids _ _ (d_pi _ _ _ _) |- _ => inversion_clear H
+      | H : domain_avoids _ _ (d_pi _ _ _ _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_ind _ _ _) |- _ => inversion_clear H
       | H : domain_avoids _ _ (d_con _ _ _ _) |- _ => inversion_clear H
       | H : domain_ne_avoids _ _ (d_app _ _) |- _ => inversion_clear H
@@ -1859,8 +1855,8 @@ Qed.
 
 (** The environment of [Γ ▹ A] avoids the new variable everywhere except at
     its own position. *)
-Lemma initial_env_wk_avoids : forall Θ Ξ Γ A ρ,
-    initial_env Θ Ξ (Γ ▹ A) ρ ->
+Lemma initial_env_wk_avoids : forall Θ Ξ Γ κ A ρ,
+    initial_env Θ Ξ (Γ ▹{κ} A) ρ ->
     env_avoids Θ Ξ (List.length Γ) (S (List.length Γ)) (Some 0) ρ.
 Proof.
   intros * Hρ; inversion_clear Hρ.
@@ -1876,12 +1872,12 @@ Qed.
     [Γ = (P : Prop) ▹ (h : P)] extended by [A = ⊤], the weakened proof
     [h[↑] = #1] of [P[↑] = #2] reads back as
     [let x : P ≔ h in let y : ⊤ ≔ #k in #1], [#k] the new variable. *)
-Theorem nbe_wk_fresh : forall Θ Ξ Γ A M T W,
-    nbe Θ Ξ (Γ ▹ A) M[↑]ʷ T[↑]ʷ W ->
+Theorem nbe_wk_fresh : forall Θ Ξ Γ κ A M T W,
+    nbe Θ Ξ (Γ ▹{κ} A) M[↑]ʷ T[↑]ʷ W ->
     nf_fresh 0 (nf_erase W).
 Proof.
   intros * Hn; destruct Hn as [? ? Hρ ? Hnt]; apply nf_fresh_outside_proofs_erase.
-  pose proof (initial_env_wk_avoids _ _ _ _ _ Hρ).
+  pose proof (initial_env_wk_avoids _ _ _ _ _ _ Hρ).
   replace 0 with (S (List.length Γ) - List.length Γ - 1) by lia.
   (** The value read back: a proof kept as it is, or the term's value *)
   destruct Hnt as [w _ Hw | m W' _ ? ?];
@@ -1891,12 +1887,12 @@ Qed.
 
 (** The same for the normal form of a weakened type: a type holds proofs
     at its indices. *)
-Theorem nbe_ty_wk_fresh : forall Θ Ξ Γ A T W,
-    nbe_ty Θ Ξ (Γ ▹ A) T[↑]ʷ W ->
+Theorem nbe_ty_wk_fresh : forall Θ Ξ Γ κ A T W,
+    nbe_ty Θ Ξ (Γ ▹{κ} A) T[↑]ʷ W ->
     nf_fresh 0 (nf_erase W).
 Proof.
   intros * Hn; inversion_clear Hn as [? ? Hρ]; apply nf_fresh_outside_proofs_erase.
-  pose proof (initial_env_wk_avoids _ _ _ _ _ Hρ).
+  pose proof (initial_env_wk_avoids _ _ _ _ _ _ Hρ).
   replace 0 with (S (List.length Γ) - List.length Γ - 1) by lia.
   eapply (proj1 (proj2 (proj2 (read_avoids Θ Ξ (List.length Γ))))); [ eassumption | cbn; lia | cbn; reflexivity |].
   eapply (proj1 (eval_avoids Θ Ξ _ _)); (eassumption || apply exp_shift_fresh).
