@@ -65,9 +65,7 @@ Section GlobalExt.
     (forall h ch k, dmod_member_kind Θ1 Ξ1 h ch k -> dmod_member_kind Θ2 Ξ2 h ch k) /\
     (forall ρ U ch k, gunit_member_kind Θ1 Ξ1 ρ U ch k -> gunit_member_kind Θ2 Ξ2 ρ U ch k) /\
     (forall ρ H ch k, modexp_member_kind Θ1 Ξ1 ρ H ch k -> modexp_member_kind Θ2 Ξ2 ρ H ch k) /\
-    (forall ρ Φ ρ', kinds_env Θ1 Ξ1 ρ Φ ρ' -> kinds_env Θ2 Ξ2 ρ Φ ρ') /\
-    (forall ρ Φ Φx, kinds_body_xp Θ1 Ξ1 ρ Φ Φx -> kinds_body_xp Θ2 Ξ2 ρ Φ Φx) /\
-    (forall ρ H its gs, kinds_items_gen Θ1 Ξ1 ρ H its gs -> kinds_items_gen Θ2 Ξ2 ρ H its gs).
+    (forall ρ Φ ρ', kinds_env Θ1 Ξ1 ρ Φ ρ' -> kinds_env Θ2 Ξ2 ρ Φ ρ').
   Proof.
     apply kind_mut_ind; intros;
       repeat match goal with
@@ -106,7 +104,7 @@ Section GlobalExt.
     (forall p ups ρm As ρ t v a, ⟦ihty v of t at p ups under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a ->
        ⟦ihty v of t at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
     (forall f m r, eval_proj Θ1 Ξ1 f m r -> eval_proj Θ2 Ξ2 f m r) /\
-    (forall ns m fl pre rs, eval_neutral_fields Θ1 Ξ1 ns m fl pre rs -> eval_neutral_fields Θ2 Ξ2 ns m fl pre rs) /\
+    (forall m ρ fl rs, eval_neutral_fields Θ1 Ξ1 m ρ fl rs -> eval_neutral_fields Θ2 Ξ2 m ρ fl rs) /\
     (forall fl v ws, ⟦projs fl of v ⟧ Θ1 ⍮ Ξ1 ↘ ws -> ⟦projs fl of v ⟧ Θ2 ⍮ Ξ2 ↘ ws) /\
     (forall p ups ρm As ρ gs vs a, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a ->
        ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
@@ -134,7 +132,7 @@ Section GlobalExt.
              (fun p ups ρ t a _ => eval_shape_type Θ2 Ξ2 p ups ρ t a)
              (fun p ups ρm As ρ t v a _ => eval_ihty Θ2 Ξ2 p ups ρm As ρ t v a)
              (fun f m r _ => eval_proj Θ2 Ξ2 f m r)
-             (fun ns m fl pre rs _ => eval_neutral_fields Θ2 Ξ2 ns m fl pre rs)
+             (fun m ρ fl rs _ => eval_neutral_fields Θ2 Ξ2 m ρ fl rs)
              (fun fl v ws _ => eval_projs Θ2 Ξ2 fl v ws)
              (fun p ups ρm As ρ gs vs a _ => eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs a)
              (fun rs Ms ρ vs _ => eval_field_vals Θ2 Ξ2 rs Ms ρ vs)
@@ -173,6 +171,10 @@ Section GlobalExt.
     rewrite <- ind_lookup_ext; eassumption.
   Qed.
 
+  (** The type an entry is stored at is evaluated alike. *)
+  Lemma eval_entry_type_ext : forall t a, eval_entry_type Θ1 Ξ1 t a -> eval_entry_type Θ2 Ξ2 t a.
+  Proof. pose proof eval_ext as He; destruct_all; intros * []; econstructor; eauto. Qed.
+
   Lemma read_ext :
     (forall s m M, Rnf m in Θ1 ⍮ Ξ1 ⍮ s ↘ M -> Rnf m in Θ2 ⍮ Ξ2 ⍮ s ↘ M) /\
     (forall s m M, Rne m in Θ1 ⍮ Ξ1 ⍮ s ↘ M -> Rne m in Θ2 ⍮ Ξ2 ⍮ s ↘ M) /\
@@ -185,7 +187,10 @@ Section GlobalExt.
        Rblks i Ms of Dc from p ups Bks sel in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ NBks) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' ->
        Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs') /\
-    (forall s ρ fl v Fs, Rflds v at fl in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Fs -> Rflds v at fl in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Fs).
+    (forall s ρ fl v Fs, Rflds v at fl in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Fs -> Rflds v at fl in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Fs) /\
+    (forall s m M, Rprf m in Θ1 ⍮ Ξ1 ⍮ s ↘ M -> Rprf m in Θ2 ⍮ Ξ2 ⍮ s ↘ M) /\
+    (forall s ρ k bs, Rlets ρ at k in Θ1 ⍮ Ξ1 ⍮ s ↘ bs -> Rlets ρ at k in Θ2 ⍮ Ξ2 ⍮ s ↘ bs) /\
+    (forall s e b, Rent e in Θ1 ⍮ Ξ1 ⍮ s ↘ b -> Rent e in Θ2 ⍮ Ξ2 ⍮ s ↘ b).
   Proof.
     pose proof eval_ext as He; destruct_all.
     apply (read_mut_ind Θ1 Ξ1
@@ -198,12 +203,15 @@ Section GlobalExt.
              (fun s p ups ρ t v V _ => read_shape Θ2 Ξ2 s p ups ρ t v V)
              (fun s ρ p ups Bks Dc sel i Ms NBks _ => read_blocks Θ2 Ξ2 s ρ p ups Bks Dc sel i Ms NBks)
              (fun s ρ p ups Bks Dc Mv A Mi r cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ p ups Bks Dc Mv A Mi r cs Bs Bs')
-             (fun s ρ fl v Fs _ => read_fields Θ2 Ξ2 s ρ fl v Fs)).
+             (fun s ρ fl v Fs _ => read_fields Θ2 Ξ2 s ρ fl v Fs)
+             (fun s m M _ => read_proof Θ2 Ξ2 s m M)
+             (fun s ρ k bs _ => read_lets Θ2 Ξ2 s ρ k bs)
+             (fun s e b _ => read_entry Θ2 Ξ2 s e b)).
     all: intros; econstructor;
       repeat match goal with
           | H : ind_lookup Θ1 Ξ1 _ = _ |- _ => rewrite ind_lookup_ext in H
           | H : record_lookup Θ1 Ξ1 _ = _ |- _ => rewrite Hrec in H
-          end; eauto using fresh_tele_ext, fresh_cargs_ext, fresh_ihs_ext, wrap_ihs_eval_ext.
+          end; eauto using fresh_tele_ext, fresh_cargs_ext, fresh_ihs_ext, wrap_ihs_eval_ext, eval_entry_type_ext.
   Qed.
 
   Lemma initial_env_ext : forall Γ ρ, initial_env Θ1 Ξ1 Γ ρ -> initial_env Θ2 Ξ2 Γ ρ.
