@@ -119,6 +119,10 @@ Qed.
     [TsQ] in the container's relation [drQ], against those of the group's
     shape [t] after [pre] of [Ts] in the group's [dr]: an element of the
     container's domain is one of the group's, and the rests after it. *)
+(** [container_doms_link] nests through a conjunction; its nested
+    induction principle needs the [All] scheme of [and]. *)
+Scheme All for and.
+
 Inductive container_doms_link (dr : nat -> list domain -> list centry -> exp -> relation domain) (k : nat)
     (drQ : nat -> list domain -> list centry -> exp -> relation domain) (kQ : nat) :
     list domain -> list centry -> list domain -> list centry -> ptyp -> ptyp -> Prop :=
