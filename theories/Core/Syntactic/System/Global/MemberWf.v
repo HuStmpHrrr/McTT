@@ -31,10 +31,10 @@ Qed.
 
 Lemma ext_of_ctx : forall Θ Ξ X Γ, ⊢ Θ ⍮ Ξ ⍮ X ++ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ X ≈ X.
 Proof.
-  induction X as [| [A | A M | U | A M U] X IH]; intros * H; cbn in H.
+  induction X as [| [κ A | A M | U | A M U] X IH]; intros * H; cbn in H.
   - constructor; exact H.
   - inversion H; subst.
-    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : ?S, HS : type_sort ?S |- _ =>
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : ?S, HS : sort_kind ?S _ |- _ =>
       eapply wf_ext_eq_ass_same;
         [ apply IH; eauto using presup_exp_ctx | exact HA | exact HS | exact HA ] end.
   - inversion H; subst.

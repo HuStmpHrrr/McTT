@@ -34,10 +34,11 @@ From Mctt.Core.Syntactic Require Export Syntax.
     ([Core.Base]), so [domain_ind] carries the hypotheses about the values
     they hold. *)
 Inductive domain : Set :=
-(** [d_pi r a ρ B]: a [Π] at the relevance [r] (a type when [relevant], a
-    proposition when [propositional]) with domain [a], its codomain [B] a
-    closure in [ρ] *)
-| d_pi : relevance -> domain -> list dentry -> exp -> domain
+(** [d_pi κd κc a ρ B]: a [Π] out of a domain [a] of the kind [κd] into
+    a codomain of the kind [κc] (a type at [ak_relevant], a proposition at
+    [ak_propositional], a type of levels at [ak_level]), its codomain [B]
+    a closure in [ρ] *)
+| d_pi : abs_kind -> abs_kind -> domain -> list dentry -> exp -> domain
 (** A large universe *)
 | d_univ : nat -> domain
 (** A small universe at a level value.  The level is a value of type [Level],
@@ -266,7 +267,7 @@ Proof. intros; unfold env_extend_typed; rewrite List.fold_left_app; reflexivity.
     binds no term variable. *)
 Definition centry_type (e : centry) : option exp :=
   match e with
-  | ce_ass A | ce_def A _ | ce_dm A _ _ => Some A
+  | ce_ass _ A | ce_def A _ | ce_dm A _ _ => Some A
   | ce_mod _ => None
   end.
 
@@ -323,8 +324,8 @@ Lemma env_tele_app : forall ρ T1 T2 vs1 vs2, List.length vs1 = List.length T1 -
 Proof. intros * Hl; unfold env_tele at 1; rewrite tele_entries_app, env_extend_typed_app by exact Hl; reflexivity. Qed.
 
 (** One more value, at the closure of its type. *)
-Lemma env_tele_snoc : forall ρ T vs A v, List.length vs = List.length T ->
-    env_tele ρ (T ++ ce_ass A :: nil) (vs ++ v :: nil) = extend_env (env_tele ρ T vs) v (entry_type_closure A (env_tele ρ T vs)).
+Lemma env_tele_snoc : forall ρ T vs κ A v, List.length vs = List.length T ->
+    env_tele ρ (T ++ ce_ass κ A :: nil) (vs ++ v :: nil) = extend_env (env_tele ρ T vs) v (entry_type_closure A (env_tele ρ T vs)).
 Proof. intros * Hl; rewrite env_tele_app by exact Hl; reflexivity. Qed.
 
 Definition drop_env (ρ : env) : env := List.tl ρ.
@@ -356,9 +357,10 @@ Module Domain_Notations.
   Notation "'⋆ᵈ⟨' M ',' ρ '⟩'" := (d_proof M ρ) (at level 0, M at level 200, ρ at level 200, format "'⋆ᵈ⟨' M ,  ρ '⟩'") : mctt_scope.
   Notation "'⊥ᵈ'" := d_False : mctt_scope.
   Notation "'λᵈ' a ρ M" := (d_fn a ρ M) (at level 2, a at level 1, ρ at level 1, M at level 9) : mctt_scope.
-  Notation "'∀ₚᵈ' a ρ P" := (d_pi propositional a ρ P) (at level 2, a at level 1, ρ at level 0, P at level 9) : mctt_scope.
+  Notation "'∀ₚᵈ' '{' κ '}' a ρ P" := (d_pi κ ak_propositional a ρ P) (at level 2, κ at level 0, a at level 1, ρ at level 0, P at level 9) : mctt_scope.
   Notation "'Σₚᵈ' p ρ Q" := (d_and p ρ Q) (at level 2, p at level 1, ρ at level 0, Q at level 9) : mctt_scope.
-  Notation "'Πᵈ' a ρ B" := (d_pi relevant a ρ B) (at level 2, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
+  Notation "'Πᵈ' '{' κ '}' a ρ B" := (d_pi κ ak_relevant a ρ B) (at level 2, κ at level 0, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
+  Notation "'Πₗᵈ' a ρ B" := (d_pi ak_level ak_level a ρ B) (at level 2, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
   Notation "'⇑' a m" := (d_neut a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇓' a m" := (d_dom a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇑!' a n" := (d_neut a (d_var n)) (at level 2, a at level 1, n at level 0) : mctt_scope.
@@ -383,26 +385,30 @@ Definition universe_index_value (u : universe_index) : domain :=
 Definition domain_level_sort (a : domain) : nat :=
   match a with d_level n => n | _ => 0 end.
 
-(** ** The Sort of a Type Value
+(** ** The Kind of a Type Value
 
-    The sort of a type value is read from its head, with no evaluation:
-    [⊤], [⊥], a [Σₚ] and a neutral at [Prop] are propositions, a [Π] is of
-    its tag's relevance; every other value is relevant.  Relevance-directed
-    evaluation never evaluates a term of a propositional type: it puts the
-    proof [⋆ᵈ] in its place. *)
-Definition domain_relevance (a : domain) : relevance :=
+    The kind of a type value is read from its head, with no evaluation:
+    [⊤], [⊥], a [Σₚ] and a neutral at [Prop] are propositions; [Level@n]
+    and a neutral at [LevelSort] are types of levels; a [Π] is of its
+    codomain's tag; every other value is a type of a universe.
+    Kind-directed evaluation never evaluates a term of a propositional
+    type: it keeps it ([⋆ᵈ]) in its place. *)
+Definition domain_kind (a : domain) : abs_kind :=
   match a with
-  | d_pi r _ _ _ => r
-  | d_True | d_False | d_and _ _ _ | d_neut d_prop _ => propositional
-  | _ => relevant
+  | d_pi _ κc _ _ _ => κc
+  | d_True | d_False | d_and _ _ _ | d_neut d_prop _ => ak_propositional
+  | d_level _ | d_neut d_level_sort _ => ak_level
+  | _ => ak_relevant
   end.
 
-(** A case whose premise gives a value with a known head the wrong
-    relevance is impossible: inversions leave such cases, and [mauto]
-    closes them. *)
+(** A case whose premise gives a value with a known head the wrong kind
+    is impossible: inversions leave such cases, and [mauto] closes them. *)
 #[export]
 Hint Extern 1 =>
-  match goal with H : domain_relevance _ = _ |- _ => progress cbn in H; discriminate H end : mctt.
+  match goal with
+  | H : domain_kind _ = _ |- _ => progress cbn in H; discriminate H
+  | H : evaluated_kind (domain_kind _) |- _ => progress cbn in H; inversion H
+  end : mctt.
 
 (** The flat view of a value of type [Level]: a flat level is its own view, and
     a neutral is the single atom [(0, n, m)] at the sort of its type.  No other

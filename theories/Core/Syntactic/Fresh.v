@@ -50,7 +50,7 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
       all_list (exp_fresh k) Us /\
       all_blocks (fun nm Z A Bs => exp_fresh (nm - 1 + k) Z /\ exp_fresh (nm + k) A /\
                                    all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
-  | a_pi _ A B | a_fn A B | a_and A B => exp_fresh k A /\ exp_fresh (S k) B
+  | a_pi _ _ A B | a_fn A B | a_and A B => exp_fresh k A /\ exp_fresh (S k) B
   | a_var x => x <> k
   | a_let b B => binding_fresh k b /\ exp_fresh (S k) B
   | a_mem H _ => modexp_fresh k H
@@ -102,7 +102,7 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   match e with
-  | ce_ass A => exp_fresh k A
+  | ce_ass _ A => exp_fresh k A
   | ce_def A M => exp_fresh k A /\ exp_fresh k M
   | ce_mod U => gunit_fresh k U
   | ce_dm A M U => exp_fresh k A /\ exp_fresh k M /\ gunit_fresh k U
@@ -374,7 +374,7 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
       all_blocksb (fun nm Z A Bs => exp_freshb (nm - 1 + k) Z && exp_freshb (nm + k) A &&
                                      all_brsb (fun n B => exp_freshb (n + k) B) Bs) Bks &&
       exp_freshb k M
-  | a_pi _ A B | a_fn A B | a_and A B => exp_freshb k A && exp_freshb (S k) B
+  | a_pi _ _ A B | a_fn A B | a_and A B => exp_freshb k A && exp_freshb (S k) B
   | a_var x => negb (Nat.eqb x k)
   | a_let b B => binding_freshb k b && exp_freshb (S k) B
   | a_mem H _ => modexp_freshb k H
@@ -426,7 +426,7 @@ with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   end
 with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
   match e with
-  | ce_ass A => exp_freshb k A
+  | ce_ass _ A => exp_freshb k A
   | ce_def A M => exp_freshb k A && exp_freshb k M
   | ce_mod U => gunit_freshb k U
   | ce_dm A M U => exp_freshb k A && exp_freshb k M && gunit_freshb k U
@@ -607,7 +607,7 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   | nf_proof_erased => True
   | nf_proof M => exp_fresh k M
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh k) Ms
   | nf_neut u => ne_fresh k u
   | nf_record _ Ms => all_list (nf_fresh k) Ms
@@ -641,7 +641,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_unwk k P) (nf_unwk (S k) Q)
   | nf_proof_erased => nf_proof_erased
-  | nf_pi r A B => nf_pi r (nf_unwk k A) (nf_unwk (S k) B)
+  | nf_pi κd κc A B => nf_pi κd κc (nf_unwk k A) (nf_unwk (S k) B)
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
   | nf_indty p j Ms => nf_indty p j (List.map (nf_unwk k) Ms)
   | nf_con p j c Ms => nf_con p j c (List.map (nf_unwk k) Ms)
@@ -819,7 +819,7 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   | nf_proof_erased => true
   | nf_proof M => exp_freshb k M
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb (nf_freshb k) Ms
   | nf_neut u => ne_freshb k u
   | nf_record _ Ms => List.forallb (nf_freshb k) Ms
@@ -896,7 +896,7 @@ Fixpoint nf_proof_free (W : nf) {struct W} : Prop :=
   | nf_proof _ | nf_proof_erased => False
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_proof_free Ms
   | nf_neut u => ne_proof_free u
   | nf_record _ Ms => all_list nf_proof_free Ms
@@ -918,7 +918,7 @@ Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   | nf_proof _ | nf_proof_erased => false
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb nf_proof_freeb Ms
   | nf_neut u => ne_proof_freeb u
   | nf_record _ Ms => List.forallb nf_proof_freeb Ms

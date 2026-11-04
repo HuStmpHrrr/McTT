@@ -449,7 +449,7 @@ Definition ind_ty (D : ind_decl) (M : imember) : typ := ctx_pi (im_params D M) (
 Fixpoint cargs_strat (gs : list carg) : ctx :=
   match gs with
   | nil => nil
-  | ca_arg _ A :: gs' => cargs_strat gs' ++ ce_ass A :: nil
+  | ca_arg κ A :: gs' => cargs_strat gs' ++ ce_ass κ A :: nil
   | ca_rec _ :: gs' => cargs_strat gs'
   end.
 
@@ -465,7 +465,7 @@ Fixpoint ptyp_doms {E : Set} (t : ptyp_g E) : list E :=
   | _ => nil
   end.
 
-Definition doms_ctx (Bs : list exp) : ctx := List.rev (List.map ce_ass Bs).
+Definition doms_ctx (Bs : list exp) : ctx := List.rev (List.map (ce_ass ak_relevant) Bs).
 Definition ptyp_tele (t : ptyp) : ctx := doms_ctx (ptyp_doms t).
 Definition ptyp_depth (t : ptyp) : nat := List.length (ptyp_doms t).
 
@@ -504,7 +504,7 @@ Fixpoint ptyp_skip (n : nat) (t : ptyp) : ptyp :=
 Fixpoint shape_domains_ctx (pat : list bool) (Bs : list exp) : ctx :=
   match Bs with
   | nil => nil
-  | B :: Bs => shape_domains_ctx (false :: pat) Bs ++ ce_ass B[wk_pat pat]ʷ :: nil
+  | B :: Bs => shape_domains_ctx (false :: pat) Bs ++ ce_ass ak_relevant B[wk_pat pat]ʷ :: nil
   end.
 
 (** The type of a recursive argument of shape [t], in the context of all
@@ -517,7 +517,7 @@ Fixpoint shape_domains_ctx (pat : list bool) (Bs : list exp) : ctx :=
     is no recursive argument. *)
 Fixpoint ptyp_ty (pq : qname) (D : ind_decl) (nn : nat) (pat : list bool) (t : ptyp) : typ :=
   match t with
-  | pt_pi A t => a_pi relevant A[wk_pat pat]ʷ (ptyp_ty pq D nn (false :: pat) t)
+  | pt_pi A t => a_pi ak_relevant ak_relevant A[wk_pat pat]ʷ (ptyp_ty pq D nn (false :: pat) t)
   | pt_self j Ps => ind_mty pq D j (ind_uvars D nn (List.length pat)) (List.map (fun P => P[wk_pat pat]ʷ) Ps)
   end.
 
@@ -526,8 +526,8 @@ Fixpoint ptyp_ty (pq : qname) (D : ind_decl) (nn : nat) (pat : list bool) (t : p
 Fixpoint cargs_ctx_aux (pq : qname) (D : ind_decl) (nn : nat) (pat : list bool) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
-  | ca_arg _ A :: gs' => cargs_ctx_aux pq D nn (false :: pat) gs' ++ ce_ass A[wk_pat pat]ʷ :: nil
-  | ca_rec t :: gs' => cargs_ctx_aux pq D nn (true :: pat) gs' ++ ce_ass (ptyp_ty pq D nn pat t) :: nil
+  | ca_arg κ A :: gs' => cargs_ctx_aux pq D nn (false :: pat) gs' ++ ce_ass κ A[wk_pat pat]ʷ :: nil
+  | ca_rec t :: gs' => cargs_ctx_aux pq D nn (true :: pat) gs' ++ ce_ass ak_relevant (ptyp_ty pq D nn pat t) :: nil
   end.
 
 (** The arguments of a constructor of the member [M] as a context over its
@@ -553,7 +553,7 @@ Definition self_ty (D : ind_decl) (M : imember) : typ := ctx_pi (im_nparams M) (
 Fixpoint grp_selfs_from (D : ind_decl) (j : nat) (ms : list imember) : ctx :=
   match ms with
   | nil => nil
-  | M :: ms' => grp_selfs_from D (S j) ms' ++ ce_ass (self_ty D M)[wk_shiftn j]ʷ :: nil
+  | M :: ms' => grp_selfs_from D (S j) ms' ++ ce_ass ak_relevant (self_ty D M)[wk_shiftn j]ʷ :: nil
   end.
 
 (** The variables of the declared members, [Self_0] outermost. *)
@@ -590,7 +590,7 @@ Definition self_mty (D : ind_decl) (IsS : nat -> list exp) (j d : nat) (Ns : lis
 (** [ptyp_ty] and [cargs_ctx] with the members as variables. *)
 Fixpoint self_ptyp_ty (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : list bool) (t : ptyp) : typ :=
   match t with
-  | pt_pi A t => a_pi relevant A[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ (self_ptyp_ty D IsS nn (false :: pat) t)
+  | pt_pi A t => a_pi ak_relevant ak_relevant A[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ (self_ptyp_ty D IsS nn (false :: pat) t)
   | pt_self j Ps => self_mty D IsS j (List.length pat + nn)
                       (List.map (fun P => P[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ) Ps)
   end.
@@ -599,8 +599,8 @@ Fixpoint self_ptyp_ty (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : l
 Fixpoint self_cargs_ctx_aux (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : list bool) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
-  | ca_arg _ A :: gs' => self_cargs_ctx_aux D IsS nn (false :: pat) gs' ++ ce_ass A[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ :: nil
-  | ca_rec t :: gs' => self_cargs_ctx_aux D IsS nn (true :: pat) gs' ++ ce_ass (self_ptyp_ty D IsS nn pat t) :: nil
+  | ca_arg κ A :: gs' => self_cargs_ctx_aux D IsS nn (false :: pat) gs' ++ ce_ass κ A[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ :: nil
+  | ca_rec t :: gs' => self_cargs_ctx_aux D IsS nn (true :: pat) gs' ++ ce_ass ak_relevant (self_ptyp_ty D IsS nn pat t) :: nil
   end.
 
 (** [cargs_ctx] with the members as variables. *)
@@ -621,7 +621,7 @@ Definition con_ty (pq : qname) (D : ind_decl) (k : nat) (M : imember) (gs : list
     does. *)
 Fixpoint tele_insts_aux (Δr : list centry) (σ : sub) (Ms : list exp) : list typ :=
   match Δr, Ms with
-  | ce_ass A :: Δr', M :: Ms' => A[σ] :: tele_insts_aux Δr' (σ ,, M) Ms'
+  | ce_ass _ A :: Δr', M :: Ms' => A[σ] :: tele_insts_aux Δr' (σ ,, M) Ms'
   | _, _ => nil
   end.
 
@@ -633,7 +633,7 @@ Definition tele_insts (Δ : ctx) (σ : sub) (Ms : list exp) : list typ := tele_i
     member's non-uniform parameters, at the group's uniform ones [Us], and
     of the scrutinee. *)
 Definition elim_mctx (pq : qname) (D : ind_decl) (k : nat) (M : imember) (Us : list exp) : ctx :=
-  ce_ass (ind_mty pq D k (List.map (fun U => U[wk_shiftn (im_nn M)]ʷ) Us) (vars_from 0 (im_nn M)))
+  ce_ass ak_relevant (ind_mty pq D k (List.map (fun U => U[wk_shiftn (im_nn M)]ʷ) Us) (vars_from 0 (im_nn M)))
   :: tele_sub (im_nparams M) (sb_of_list Id Us).
 
 (** The type of an argument of shape [t], its components moved by [σ], at
@@ -641,7 +641,7 @@ Definition elim_mctx (pq : qname) (D : ind_decl) (k : nat) (M : imember) (Us : l
     and the arguments before. *)
 Fixpoint ptyp_ty_at (pq : qname) (D : ind_decl) (Us : list exp) (σ : sub) (t : ptyp) : typ :=
   match t with
-  | pt_pi B t => a_pi relevant B[σ] (ptyp_ty_at pq D (List.map (fun U => U[wk_shift]ʷ) Us) (sb_q σ) t)
+  | pt_pi B t => a_pi ak_relevant ak_relevant B[σ] (ptyp_ty_at pq D (List.map (fun U => U[wk_shift]ʷ) Us) (sb_q σ) t)
   | pt_self j Ps => ind_mty pq D j Us (List.map (fun P => P[σ]) Ps)
   end.
 
@@ -662,12 +662,12 @@ Definition projections_of (ns : list string) (x : exp) : list exp := List.map (f
     projected at the fields it passes.  The motives' context, the
     eliminator's, is moved by [β], the path's components by [σ], which a
     projection extends by the projections of the non-recursive fields
-    before the field.  The motives are of the sort [r], and so is the
-    result: a [Π] of that sort over each domain, a [∀] into a
-    proposition. *)
-Fixpoint leaf_ihty (r : relevance) (As : list exp) (β σ : sub) (x : exp) (l : leaf_path) : typ :=
+    before the field.  The motives are of the kind [r], and so is the
+    result: a [Π] into that kind over each domain (of a universe), a [∀]
+    into a proposition. *)
+Fixpoint leaf_ihty (r : abs_kind) (As : list exp) (β σ : sub) (x : exp) (l : leaf_path) : typ :=
   match l with
-  | leaf_pi B l => a_pi r B[σ] (leaf_ihty r As (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) l)
+  | leaf_pi B l => a_pi ak_relevant r B[σ] (leaf_ihty r As (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) l)
   | leaf_self j Ps => (List.nth j As exp_default)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
   | leaf_proj f ns l => leaf_ihty r As β (sb_of_list σ (projections_of ns x)) (a_proj f x) l
   end.
@@ -697,13 +697,13 @@ Fixpoint pat_nargs (pat : list bool) : nat :=
     [ls], after [j] results, as a context: one per path, of its motive's
     type ([leaf_ihty]); [pat] tells which arguments before the argument
     are recursive. *)
-Fixpoint leaves_ctx (r : relevance) (nn : nat) (As : list exp) (Us : list exp) (na : nat)
+Fixpoint leaves_ctx (r : abs_kind) (nn : nat) (As : list exp) (Us : list exp) (na : nat)
     (pat : list bool) (j : nat) (ls : list leaf_path) : ctx :=
   match ls with
   | nil => nil
   | l :: ls' =>
       leaves_ctx r nn As Us na pat (S j) ls' ++
-        ce_ass (leaf_ihty r As (sb_of_wk (wk_shiftn (j + na + nn))) (ihs_sub nn Us na pat j)
+        ce_ass r (leaf_ihty r As (sb_of_wk (wk_shiftn (j + na + nn))) (ihs_sub nn Us na pat j)
                   (a_var (j + na - 1 - List.length pat)) l) :: nil
   end.
 
@@ -711,7 +711,7 @@ Fixpoint leaves_ctx (r : relevance) (nn : nat) (As : list exp) (Us : list exp) (
     one per leaf path of each recursive argument, of its motive's type;
     the leaf paths are read off the table [tbl] of the group's record
     views. *)
-Fixpoint ihs_ctx_aux (r : relevance) (tbl : nat -> option (list leaf_path)) (nn : nat) (As : list exp) (Us : list exp) (na : nat)
+Fixpoint ihs_ctx_aux (r : abs_kind) (tbl : nat -> option (list leaf_path)) (nn : nat) (As : list exp) (Us : list exp) (na : nat)
     (pat : list bool) (j : nat) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
@@ -725,7 +725,7 @@ Fixpoint ihs_ctx_aux (r : relevance) (tbl : nat -> option (list leaf_path)) (nn 
 (** The context of the branch of a constructor with arguments [gs] of the
     member [M]: the non-uniform parameters, the arguments and the recursive
     results, the motives being [As], of the sort [r]. *)
-Definition elim_bctx (r : relevance) (pq : qname) (D : ind_decl) (M : imember) (gs : list carg) (As : list exp) (Us : list exp) : ctx :=
+Definition elim_bctx (r : abs_kind) (pq : qname) (D : ind_decl) (M : imember) (gs : list carg) (As : list exp) (Us : list exp) : ctx :=
   ihs_ctx_aux r (rview_leaves D) (im_nn M) As Us (List.length gs) nil 0 gs ++
   tele_sub (cargs_ctx pq D M gs) (sb_qn (im_nn M) (sb_of_list Id Us)) ++
   tele_sub (im_nparams M) (sb_of_list Id Us).
@@ -804,7 +804,7 @@ Definition blocks_binder_count_at (Dq : ind_decl) (sel : option (list nat)) (Bks
     uniform parameters [Us], applied to them and projected at the fields
     the path passes; a projection extends [σ] by the projections of the
     non-recursive fields before the field. *)
-Fixpoint leaf_ih (r : relevance) (pq : qname) (Us : list exp) (Bks : list eblock)
+Fixpoint leaf_ih (r : abs_kind) (pq : qname) (Us : list exp) (Bks : list eblock)
     (σ : sub) (M : exp) (l : leaf_path) : exp :=
   match l with
   | leaf_pi B l =>
@@ -819,7 +819,7 @@ Fixpoint leaf_ih (r : relevance) (pq : qname) (Us : list exp) (Bks : list eblock
     instantiates the parameters and the non-recursive arguments before,
     [m] of them above the uniform parameters, which the shapes' components
     are over. *)
-Fixpoint elim_ihs (r : relevance) (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock)
+Fixpoint elim_ihs (r : abs_kind) (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock)
     (σ : sub) (m : nat) (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
   | ca_arg _ _ :: gs', N :: As' => elim_ihs r pq D Us Bks (σ ,, N) (S m) gs' As'
@@ -844,10 +844,10 @@ Definition ptyp_dom_at (pat : list bool) (d : nat) (t : ptyp) : typ :=
 Definition ptyp_ps_at (pat : list bool) (t : ptyp) : list exp :=
   List.map (fun P => P[wk_pat (List.repeat false (ptyp_depth t) ++ pat)]ʷ) (ptyp_ps t).
 
-(** The sorts of all of a constructor's arguments, in order; a recursive
-    argument is relevant. *)
-Definition cargs_relevance (gs : list carg) : list relevance :=
-  List.map (fun g => match g with ca_arg r _ => r | ca_rec _ => relevant end) gs.
+(** The kinds of all of a constructor's arguments, in order; a recursive
+    argument is of a universe. *)
+Definition cargs_kinds (gs : list carg) : list abs_kind :=
+  List.map (fun g => match g with ca_arg r _ => r | ca_rec _ => ak_relevant end) gs.
 
 (** The arguments [gs] of a view's constructor are those [gs'] of the
     container's at its arguments, as this group sees them: an argument
@@ -865,7 +865,7 @@ Fixpoint cargs_correspond (vm : list nat) (gs' gs : list carg) : Prop :=
   | ca_rec t' :: gs1', ca_rec t :: gs1 =>
       List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) /\ ptyp_depth t' = ptyp_depth t /\ cargs_correspond vm gs1' gs1
   | ca_arg r' _ :: gs1', ca_arg r _ :: gs1 => r' = r /\ cargs_correspond vm gs1' gs1
-  | ca_arg r' _ :: gs1', ca_rec _ :: gs1 => r' = relevant /\ cargs_correspond vm gs1' gs1
+  | ca_arg r' _ :: gs1', ca_rec _ :: gs1 => r' = ak_relevant /\ cargs_correspond vm gs1' gs1
   | _, _ => False
   end.
 
@@ -1094,7 +1094,7 @@ Fixpoint wrap_ihs (D' D : ind_decl) (gs' gs : list carg) (ihs : list exp) (r' nr
     the container's group [D'], the view's member [Mv] and its block's
     branches [Bs], under the context of the eliminator; [nn] non-uniform
     parameters; the motives of the sort [r]. *)
-Definition wrap_branch (r : relevance) (pq : qname) (D D' : ind_decl) (Us : list exp) (Bks : list eblock)
+Definition wrap_branch (r : abs_kind) (pq : qname) (D D' : ind_decl) (Us : list exp) (Bks : list eblock)
     (Mv : imember) (Bs : list (string * nat * exp)) (c : string) (gs' : list carg) : (string * nat * exp)%type :=
   let nn := im_nn Mv in
   let na := List.length gs' in
@@ -1129,7 +1129,7 @@ Record view_wrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_view_wrap_ok
     of the member [i'] has the container's member type as its scrutinee
     type, the motive of the view's block, and the view's branches
     wrapped. *)
-Definition view_wrap_block (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock)
+Definition view_wrap_block (r : abs_kind) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock)
     (i' : nat) (Mi' : imember) : eblock :=
   let v := List.nth i' vm 0 in
   match List.nth_error Bks v, ind_member D v with
@@ -1140,7 +1140,7 @@ Definition view_wrap_block (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm
   end.
 
 (** The container's blocks for its members [ms], from the member [i'] on. *)
-Fixpoint view_wrap_from (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock)
+Fixpoint view_wrap_from (r : abs_kind) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock)
     (i' : nat) (ms : list imember) : list eblock :=
   match ms with
   | nil => nil
@@ -1154,7 +1154,7 @@ Definition ind_block_members (D : ind_decl) : list imember := List.firstn (ind_n
 (** The blocks of the container's eliminator that the eliminator at a view
     reads as: one per member of the container's group [D'], at [qc] and at
     the uniform parameters [Uc], that has a block. *)
-Definition view_wrap (r : relevance) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock) : list eblock :=
+Definition view_wrap (r : abs_kind) (pq qc : qname) (D D' : ind_decl) (vm : list nat) (Us Uc : list exp) (Bks : list eblock) : list eblock :=
   view_wrap_from r pq qc D D' vm Us Uc Bks 0 (ind_block_members D').
 
 (** There are at most as many members with a block as members. *)
@@ -1218,7 +1218,7 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
       all_list (exp_mvc n) Us /\
       all_blocks (fun nm Z A Bs => exp_mvc (nm - 1 + n) Z /\ exp_mvc (nm + n) A /\
                                     all_brs (fun k B => exp_mvc (k + n) B) Bs) Bks /\ exp_mvc n M
-  | a_pi _ A B | a_fn A B | a_and A B => exp_mvc n A /\ exp_mvc (S n) B
+  | a_pi _ _ A B | a_fn A B | a_and A B => exp_mvc n A /\ exp_mvc (S n) B
   | a_app M N => exp_mvc n M /\ exp_mvc n N
   | a_var _ => True
   | a_let b B => binding_mvc n b /\ exp_mvc (S n) B
@@ -1271,7 +1271,7 @@ with gentry_mvc (n : nat) (E : gentry) : Prop :=
   end
 with centry_mvc (n : nat) (e : centry) : Prop :=
   match e with
-  | ce_ass A => exp_mvc n A
+  | ce_ass _ A => exp_mvc n A
   | ce_def A M => exp_mvc n A /\ exp_mvc n M
   | ce_mod U => gunit_mvc n U
   | ce_dm A M U => exp_mvc n A /\ exp_mvc n M /\ gunit_mvc n U
@@ -1397,23 +1397,23 @@ Lemma length_vars_from : forall k n, List.length (vars_from k n) = n.
 Proof. intros; unfold vars_from; rewrite length_map, length_rev, length_seq; reflexivity. Qed.
 
 Lemma length_tele_insts_aux : forall Δr σ Ms,
-    List.Forall (fun e => exists A, e = ce_ass A) Δr ->
+    List.Forall (fun e => exists κ A, e = ce_ass κ A) Δr ->
     List.length (tele_insts_aux Δr σ Ms) = Nat.min (List.length Δr) (List.length Ms).
 Proof.
   intros Δr σ Ms Hr; revert σ Ms.
-  induction Hr as [| e Δr [A ->] Hr IH]; intros σ [| M Ms]; cbn; try reflexivity.
+  induction Hr as [| e Δr (κ & A & ->) Hr IH]; intros σ [| M Ms]; cbn; try reflexivity.
   rewrite IH; reflexivity.
 Qed.
 
 Lemma length_tele_insts : forall Δ σ Ms,
-    List.Forall (fun e => exists A, e = ce_ass A) Δ ->
+    List.Forall (fun e => exists κ A, e = ce_ass κ A) Δ ->
     List.length (tele_insts Δ σ Ms) = Nat.min (List.length Δ) (List.length Ms).
 Proof.
   intros; unfold tele_insts; rewrite length_tele_insts_aux, length_rev; [ reflexivity |].
   apply Forall_rev; assumption.
 Qed.
 
-Lemma cargs_ctx_aux_ass : forall pq D nn gs pat, List.Forall (fun e => exists A, e = ce_ass A) (cargs_ctx_aux pq D nn pat gs).
+Lemma cargs_ctx_aux_ass : forall pq D nn gs pat, List.Forall (fun e => exists κ A, e = ce_ass κ A) (cargs_ctx_aux pq D nn pat gs).
 Proof.
   induction gs as [| [] gs IH]; intros; cbn; [ constructor | |]; apply List.Forall_app; split; eauto.
 Qed.

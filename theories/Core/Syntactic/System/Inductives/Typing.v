@@ -93,9 +93,9 @@ Lemma wf_vars_tele_gen : forall Θ Ξ Φ Δ ρ τ Γ0 n,
 Proof.
   intros * Hass Hmv Hs HΨ Hτ k N T HN HT.
   apply vars_from_nth_error in HN as [Hk ->].
-  apply tele_insts_nth in HT as (A & HA & ->).
+  apply tele_insts_nth in HT as (κ & A & HA & ->).
   destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
-  assert (HΔeq : Δ = List.rev l2 ++ ce_ass A :: List.rev l1)
+  assert (HΔeq : Δ = List.rev l2 ++ ce_ass κ A :: List.rev l1)
     by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
   assert (Hlen : List.length Δ = List.length l2 + S k)
     by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
@@ -140,9 +140,9 @@ Lemma tele_vars_lookup_gen : forall Φ Δ ρ τ Γ0 n,
 Proof.
   intros * Hass Hmv Hs Hτ k N T HN HT.
   apply vars_from_nth_error in HN as [Hk ->].
-  apply tele_insts_nth in HT as (A & HA & ->).
+  apply tele_insts_nth in HT as (κ & A & HA & ->).
   destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
-  assert (HΔeq : Δ = List.rev l2 ++ ce_ass A :: List.rev l1)
+  assert (HΔeq : Δ = List.rev l2 ++ ce_ass κ A :: List.rev l1)
     by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
   assert (Hlen : List.length Δ = List.length l2 + S k)
     by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
@@ -538,7 +538,7 @@ Lemma con_inst_ctx_split : forall Γ p D Mk Us gs1 t gs2,
     con_inst_ctx Γ p D Mk Us (gs1 ++ ca_rec t :: gs2)
     = (tele_sub (cargs_ctx_aux p D (im_nn Mk) (true :: cargs_pat gs1) gs2)
          (sb_qn (S (List.length gs1)) (sb_qn (im_nn Mk) (sb_of_list Id Us)))
-       ++ ce_ass (ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t)[sb_qn (List.length gs1) (sb_qn (im_nn Mk) (sb_of_list Id Us))] :: nil)
+       ++ ce_ass ak_relevant (ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t)[sb_qn (List.length gs1) (sb_qn (im_nn Mk) (sb_of_list Id Us))] :: nil)
       ++ con_inst_ctx Γ p D Mk Us gs1.
 Proof.
   intros; unfold con_inst_ctx, cargs_ctx; rewrite cargs_ctx_aux_app, List.app_nil_r; cbn [cargs_ctx_aux].
@@ -625,7 +625,8 @@ Lemma ih_leaf_sub : forall Θ Ξ Γ p D j Mj Us Ψ Tc β σ Ps x,
 Proof.
   intros * HD Hc Hj HUl HM Hβ Hσ Huc HPl HP Hx.
   pose proof (ih_leaf_nsub _ _ _ _ _ _ _ _ _ _ _ _ _ HD Hc Hj HUl HM Hβ Hσ Huc HPl HP) as Hn.
-  destruct (elim_mctx_head_typed _ _ _ _ _ _ _ _ HM) as [S HS Hi].
+  assert (HM' : ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) by exact HM.
+  unfold elim_mctx in HM'; cbn [List.app] in HM'; destruct (ctx_decomp_sort_kind HM') as [_ (S & HS & Hi)].
   rewrite sb_of_list_app; cbn [sb_of_list]; unfold elim_mctx; cbn [List.app].
   eapply wf_sub_extend; [ exact Hn | exact Hi | exact HS |].
   rewrite ind_head_inst by (try assumption; rewrite List.length_map; exact HPl); exact Hx.
@@ -654,7 +655,7 @@ Definition shape_leaf_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (Mk Mj : i
       = Some T ->
     Θ ⍮ Ξ ⍮ doms_ctx (Bs1 ++ ptyp_doms t) ++ Tb ++ im_params D Mk ⊢ P : T.
 
-Lemma doms_ctx_app_one : forall Bs B, doms_ctx (Bs ++ B :: nil) = ce_ass B :: doms_ctx Bs.
+Lemma doms_ctx_app_one : forall Bs B, doms_ctx (Bs ++ B :: nil) = ce_ass ak_relevant B :: doms_ctx Bs.
 Proof. intros; unfold doms_ctx; rewrite List.map_app, List.rev_app_distr; reflexivity. Qed.
 
 Lemma length_doms_ctx : forall Bs, List.length (doms_ctx Bs) = List.length Bs.
@@ -680,7 +681,7 @@ Qed.
 
 Lemma shape_uc_pi : forall D Us Tc σ β B,
     ind_nu D <= List.length Tc ->
-    shape_uc D Us Tc σ β -> shape_uc D Us (Tc ▹ B) (q σ) (β ⨟ ι ↑).
+    shape_uc D Us Tc σ β -> shape_uc D Us (Tc ▹{ak_relevant} B) (q σ) (β ⨟ ι ↑).
 Proof.
   intros * Hle H y Hy; cbn [List.length].
   replace (y + (S (List.length Tc) - ind_nu D)) with (S (y + (List.length Tc - ind_nu D))) by lia.
@@ -729,13 +730,13 @@ Proof.
              (shape_leaf_at _ _ _ _ _ _ _ _ HP eq_refl))).
   - destruct (HB nil B (ptyp_doms t) eq_refl) as [j1 Hj1]; rewrite List.app_nil_r in Hj1.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hj1 Hσ) as Hj1'; cbn [exp_sub] in Hj1'.
-    assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹ B[σ]) by (eapply wf_ctx_extend; [ exact Hj1' | constructor ]).
-    pose proof (wf_sub_q _ _ _ _ _ _ _ Hσ Hj1 (type_sort_universe _) Hj1') as Hσ'.
-    assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹ B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
+    assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B[σ]) by (eapply wf_ctx_extend; [ exact Hj1' | constructor ]).
+    pose proof (wf_sub_q _ _ _ _ _ _ _ _ Hσ Hj1 (sort_kind_universe _) Hj1') as Hσ'.
+    assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
       by (eapply wf_sub_compose; [ exact Hβ | apply wf_sub_of_wk, wf_wk_shift; exact HΨ' ]).
-    replace ((doms_ctx Bs1 ++ Tb ++ im_params D Mk) ▹ B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) in Hσ'
+    replace ((doms_ctx Bs1 ++ Tb ++ im_params D Mk) ▹{ak_relevant} B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) in Hσ'
       by (rewrite doms_ctx_app_one; reflexivity).
-    destruct (IH (Ψ ▹ B[σ]) (Bs1 ++ B :: nil) Tb (β ⨟ ι ↑) (q σ) Mj HD Hc HUl HM HMh Hβ' Hσ') as [j2 Hj2].
+    destruct (IH (Ψ ▹{ak_relevant} B[σ]) (Bs1 ++ B :: nil) Tb (β ⨟ ι ↑) (q σ) Mj HD Hc HUl HM HMh Hβ' Hσ') as [j2 Hj2].
     + rewrite doms_ctx_app_one; apply shape_uc_pi; [ exact (proj2 (length_shape_ctx D Mk Bs1 Tb)) | exact Huc ].
     + exact Hj.
     + exact HPl.
@@ -749,45 +750,50 @@ Qed.
 
 (** The argument of a shape applied to the shape's next domain. *)
 Lemma shape_arg_app : forall Θ Ξ Ψ B C x j1 j2,
-    Θ ⍮ Ξ ⍮ Ψ ⊢ B : Typeω@j1 -> Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ C : Typeω@j2 -> Θ ⍮ Ξ ⍮ Ψ ⊢ x : Π B C ->
-    Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ x[↑]ʷ $ #0 : C.
+    Θ ⍮ Ξ ⍮ Ψ ⊢ B : Typeω@j1 -> Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ C : Typeω@j2 -> Θ ⍮ Ξ ⍮ Ψ ⊢ x : Π{ak_relevant} B C ->
+    Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ x[↑]ʷ $ #0 : C.
 Proof.
   intros * HB HC Hx.
   pose proof (lift_exp_max_left _ _ _ _ _ j2 HB) as HB2.
   pose proof (lift_exp_max_right _ _ _ _ j1 _ HC) as HC2.
   set (i := max j1 j2) in *.
-  assert (⊢ Θ ⍮ Ξ ⍮ Ψ ▹ B) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ʷ ↑ : Ψ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ exp_wk x ↑ : exp_wk (Π B C) ↑) as H' by (eapply wk_preserves_exp; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ x[↑]ʷ : Π B[↑]ʷ C[wk_q ↑]ʷ) by exact H'.
-  assert (HBw : Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ B[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ #0 : B[↑]ʷ) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ▹ B[↑]ʷ ⊢ C[wk_q ↑]ʷ : Typeω@i)
-    by (eapply wk_preserves_typ; [ eassumption | eapply (wf_wk_q' _ _ _ _ _ _ (Typeω@i)); [ eassumption | eassumption | constructor ] ]).
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ x[↑]ʷ $ #0 : C[wk_q ↑]ʷ[Id,,#0])
-    by (eapply wf_app with (r := relevant) (Srt := Typeω@i) (Srt' := Typeω@i);
+  assert (⊢ Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ʷ ↑ : Ψ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ exp_wk x ↑ : exp_wk (Π{ak_relevant} B C) ↑) as H' by (eapply wk_preserves_exp; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ x[↑]ʷ : Π{ak_relevant} B[↑]ʷ C[wk_q ↑]ʷ) by exact H'.
+  assert (HBw : Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ B[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ #0 : B[↑]ʷ) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ▹{ak_relevant} B[↑]ʷ ⊢ C[wk_q ↑]ʷ : Typeω@i)
+    by (eapply wk_preserves_typ; [ eassumption | eapply (wf_wk_q' _ _ _ _ _ _ _ (Typeω@i)); [ eassumption | eassumption | constructor ] ]).
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ x[↑]ʷ $ #0 : C[wk_q ↑]ʷ[Id,,#0])
+    by (eapply wf_app with (κc := ak_relevant) (Srt := Typeω@i) (i := i);
         [ exact HBw | constructor | eassumption | constructor | eassumption | eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Ψ ▹ B ⊢ C[wk_q ↑]ʷ[Id,,#0] ≈ C : Typeω@i).
+  assert (Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B ⊢ C[wk_q ↑]ʷ[Id,,#0] ≈ C : Typeω@i).
   { rewrite <- (exp_wk_q_shift_single C) at 2.
     eapply (sub_eq_preserves_typ _ _ _ _ _ _ _ i); [ eassumption | eapply wf_sub_eq_var_zero; [ exact HB2 | constructor ] ]. }
   eapply wf_exp_subtyp'; [ eassumption |].
   eapply wf_subtyp_refl; [ eassumption | constructor | eassumption ].
 Qed.
 
+(** A motive's kind is the kind of the codomain of a [Π] over any domain:
+    the recursive results' types are [Π]s into the motives. *)
+Lemma motive_kind_pi_kinds : forall κd r, motive_kind r -> pi_kinds κd r.
+Proof. intros * []; constructor. Qed.
+
 (** The motives [As] of the members with a block, typed in their
     contexts at the sort of the tag [r].  A record view has no block, and
     no leaf path ends in one. *)
 Definition motives_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us As : list exp)
-    (r : relevance) (i : nat) : Prop :=
+    (r : abs_kind) (i : nat) : Prop :=
   forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As exp_default : relevance_sort r Typeω@i.
+    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As exp_default : abs_kind_sort r Typeω@i.
 
 (** The motives [As] and [As'] are equal, member by member, in their
     contexts, at the sort of the tag [r]. *)
 Definition motives_eq (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us As As' : list exp)
-    (r : relevance) (i : nat) : Prop :=
+    (r : abs_kind) (i : nat) : Prop :=
   forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As exp_default ≈ List.nth j As' exp_default : relevance_sort r Typeω@i.
+    Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As exp_default ≈ List.nth j As' exp_default : abs_kind_sort r Typeω@i.
 
 (** *** A Recursive Argument in a Branch's Context
 
@@ -842,7 +848,7 @@ Proof.
   { rewrite Heq in HΨ |- *; rewrite con_inst_ctx_split in HΨ |- *; rewrite List.app_assoc in HΨ |- *.
     replace s with (List.length (E ++ tele_sub (cargs_ctx_aux p D (im_nn Mk) (true :: cargs_pat gs1) gs2)
                                      (sb_qn (S (List.length gs1)) (sb_qn (im_nn Mk) (sb_of_list Id Us)))
-                                     ++ ce_ass (ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t)
+                                     ++ ce_ass ak_relevant (ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t)
                                           [sb_qn (List.length gs1) (sb_qn (im_nn Mk) (sb_of_list Id Us))] :: nil))
       by (rewrite !List.length_app, length_tele_sub, length_cargs_ctx_aux; cbn; unfold s, i, j, na; rewrite Heq, List.length_app; cbn; lia).
     apply wf_wk_shiftn_app'; exact HΨ. }
@@ -965,6 +971,14 @@ Proof.
   unfold im_params, im_nn; rewrite Hn; split; reflexivity.
 Qed.
 
+(** Every field of a record's fields' context is an assumption. *)
+Lemma record_fctx_ass : forall R k, tele_ass (record_fctx R k).
+Proof.
+  intros R k; unfold record_fctx; generalize (record_field_kinds R).
+  induction (List.firstn k (record_fields R)) as [| fT fs IH]; intros κs; cbn [fields_tele]; [ constructor |].
+  apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ].
+Qed.
+
 (** At a record view [Mj], an argument [x] of its type at [σ0]: the
     projections of its fields fill the view's constructor's arguments.
     Each projection is at the record's field type at the instance and the
@@ -1006,12 +1020,13 @@ Proof.
     pose proof (IH ltac:(lia)) as Hm'.
     assert (HlP : List.length (record_pre R m x) = m) by (apply length_record_pre; lia).
     assert (HFS : tele_sub (record_fctx R (S m)) (sb_of_list Id Is)
-                  = ce_ass U[sb_qn m (sb_of_list Id Is)] :: tele_sub (record_fctx R m) (sb_of_list Id Is))
+                  = ce_ass (record_field_kind R m) U[sb_qn m (sb_of_list Id Is)] :: tele_sub (record_fctx R m) (sb_of_list Id Is))
       by (rewrite (record_fctx_succ _ _ _ _ Ef); cbn [tele_sub centry_sub]; rewrite length_record_fctx by lia; reflexivity).
     assert (HwS : ⊢ Θ ⍮ Ξ ⍮ tele_sub (record_fctx R (S m)) (sb_of_list Id Is) ++ G).
     { destruct (record_fctx_split R (S m) Hm) as [X EX].
       rewrite EX, tele_sub_app, <- List.app_assoc in HFn; exact (ctx_app_wf_tail _ _ _ _ HFn). }
-    rewrite HFS in HwS; cbn [List.app] in HwS; destruct (ctx_decomp HwS) as [_ [iU HSU HU]].
+    rewrite HFS in HwS; cbn [List.app] in HwS; destruct (ctx_decomp_sort_kind HwS) as [_ (iU & HSUk & HU)].
+    pose proof (sort_kind_type_sort _ _ HSUk) as HSU.
     pose proof (sub_preserves_sort _ _ _ _ _ _ _ HU HSU Hm') as HU'.
     assert (EU : U[sb_qn m (sb_of_list Id Is)][sb_of_list σ0 (record_pre R m x)] = U[sb_of_list Id (Ns ++ record_pre R m x)]).
     { rewrite exp_sub_sub.
@@ -1027,10 +1042,10 @@ Proof.
                           | exact HNl | exact HNs | exact Ef | exact HU' | exact HSU ]).
     unfold record_pre; rewrite (firstn_succ_nth _ _ _ Ef), List.map_app; fold (record_pre R m x); cbn [List.map fst].
     rewrite sb_of_list_app; cbn [sb_of_list]; rewrite HFS.
-    eapply wf_sub_extend; [ exact Hm' | exact HU | exact HSU |]; rewrite EU; exact Hpr. }
+    eapply wf_sub_extend; [ exact Hm' | exact HU | exact HSUk |]; rewrite EU; exact Hpr. }
   pose proof (HP _ (le_n _)) as HPn.
   assert (Hass : tele_ass (tele_sub (record_fctx R (List.length (record_fields R))) (sb_of_list Id Is))).
-  { apply tele_ass_sub; unfold record_fctx, tele_ass; apply List.Forall_rev, List.Forall_map, List.Forall_forall; intros; eauto. }
+  { apply tele_ass_sub, record_fctx_ass. }
   pose proof (wf_sub_compose _ _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ HE Hass) HPn) as H.
   rewrite sb_compose_id_left in H.
   replace (projections_of fl x) with (record_pre R (List.length (record_fields R)) x); [ exact H |].
@@ -1078,23 +1093,23 @@ Proof.
     by (rewrite Efl; unfold Ms1, Ms2, projections_of; rewrite !List.map_app; cbn; rewrite <- List.app_assoc; reflexivity).
   assert (ECtx : cargs_ctx p D Mj gs ++ im_params D Mj
                  = cargs_ctx_aux p D (im_nn Mj) (cargs_pat (gs1 ++ ca_rec t :: nil)) gs2
-                   ++ (ce_ass (ptyp_ty p D (im_nn Mj) (cargs_pat gs1) t) :: cargs_ctx p D Mj gs1 ++ im_params D Mj)).
+                   ++ (ce_ass ak_relevant (ptyp_ty p D (im_nn Mj) (cargs_pat gs1) t) :: cargs_ctx p D Mj gs1 ++ im_params D Mj)).
   { rewrite Egs.
     replace (gs1 ++ ca_rec t :: gs2) with ((gs1 ++ ca_rec t :: nil) ++ gs2) by (rewrite <- List.app_assoc; reflexivity).
     rewrite cargs_ctx_app, cargs_ctx_snoc, <- !List.app_assoc; reflexivity. }
   rewrite EMs in HS; rewrite ECtx in HS, Hall.
   assert (H1 : Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list σ0 (Ms1 ++ a_proj f x :: nil)
-                 : ce_ass (ptyp_ty p D (im_nn Mj) (cargs_pat gs1) t) :: cargs_ctx p D Mj gs1 ++ im_params D Mj).
+                 : ce_ass ak_relevant (ptyp_ty p D (im_nn Mj) (cargs_pat gs1) t) :: cargs_ctx p D Mj gs1 ++ im_params D Mj).
   { eapply wf_sub_of_list_prefix; [ exact Hall | | exact HS ].
     unfold Ms2, projections_of, gs2; rewrite length_cargs_ctx_aux, !List.length_map; reflexivity. }
   split.
   - pose proof (ctx_app_wf_tail _ _ _ _ Hall) as HT1.
-    change (ce_ass ?T :: ?G) with ((ce_ass T :: nil) ++ G) in H1, HT1.
+    change (ce_ass ?κ0 ?T :: ?G) with ((ce_ass κ0 T :: nil) ++ G) in H1, HT1.
     exact (wf_sub_of_list_prefix _ _ _ _ Ms1 (a_proj f x :: nil) _ _ HT1 eq_refl H1).
   - rewrite sb_of_list_app in H1; cbn [sb_of_list] in H1.
-    change (ce_ass ?T :: ?G) with ((ce_ass T :: nil) ++ G) in H1.
-    assert (Ha1 : tele_ass (ce_ass (ptyp_ty p D (im_nn Mj) (cargs_pat gs1) t) :: nil))
-      by (constructor; [ eexists; reflexivity | constructor ]).
+    change (ce_ass ?κ0 ?T :: ?G) with ((ce_ass κ0 T :: nil) ++ G) in H1.
+    assert (Ha1 : tele_ass (ce_ass ak_relevant (ptyp_ty p D (im_nn Mj) (cargs_pat gs1) t) :: nil))
+      by (constructor; [ do 2 eexists; reflexivity | constructor ]).
     exact (wf_sub_of_list_inv _ _ _ _ _ _ (a_proj f x :: nil) Ha1 eq_refl H1 0 _ _ eq_refl eq_refl).
 Qed.
 
@@ -1155,7 +1170,7 @@ Section LeafWalk.
       P Ψ β σ x (leaf_self j Ps)).
   (** At a domain, a type, from the rest of the path under it *)
   Hypothesis (Ppi : forall Ψ β σ x B l j, Θ ⍮ Ξ ⍮ Ψ ⊢ B[σ] : Typeω@j ->
-      P (Ψ ▹ B[σ]) (β ⨟ ι ↑) (q σ) (x[↑]ʷ $ #0) l -> P Ψ β σ x (leaf_pi B l)).
+      P (Ψ ▹{ak_relevant} B[σ]) (β ⨟ ι ↑) (q σ) (x[↑]ʷ $ #0) l -> P Ψ β σ x (leaf_pi B l)).
   (** At a projection, from the rest of the path at the field *)
   Hypothesis (Pproj : forall Ψ β σ x f ns l,
       P Ψ β (sb_of_list σ (projections_of ns x)) (a_proj f x) l -> P Ψ β σ x (leaf_proj f ns l)).
@@ -1249,11 +1264,11 @@ Section LeafWalk.
       destruct (HB nil B (ptyp_doms t) eq_refl) as [j1 Hj1]; rewrite List.app_nil_r in Hj1.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hj1 Hσ) as Hj1'; cbn [exp_sub] in Hj1'.
       apply (Ppi _ _ _ _ _ _ _ Hj1').
-      assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹ B[σ]) by (eapply wf_ctx_extend; [ exact Hj1' | constructor ]).
-      pose proof (wf_sub_q _ _ _ _ _ _ _ Hσ Hj1 (type_sort_universe _) Hj1') as Hσ'.
-      assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹ B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
+      assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B[σ]) by (eapply wf_ctx_extend; [ exact Hj1' | constructor ]).
+      pose proof (wf_sub_q _ _ _ _ _ _ _ _ Hσ Hj1 (sort_kind_universe _) Hj1') as Hσ'.
+      assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
         by (eapply wf_sub_compose; [ exact Hβ | apply wf_sub_of_wk, wf_wk_shift; exact HΨ' ]).
-      replace ((doms_ctx Bs1 ++ Tb ++ im_params D Mk) ▹ B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) in Hσ'
+      replace ((doms_ctx Bs1 ++ Tb ++ im_params D Mk) ▹{ak_relevant} B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) in Hσ'
         by (rewrite doms_ctx_app_one; reflexivity).
       assert (Huc' : shape_uc D Us (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) (q σ) (β ⨟ ι ↑))
         by (rewrite doms_ctx_app_one; apply shape_uc_pi; [ exact (proj2 (length_shape_ctx D Mk Bs1 Tb)) | exact Huc ]).
@@ -1277,6 +1292,7 @@ Lemma leaf_ihty_typed : forall Θ Ξ Γ p D Us As As' r i,
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
     (forall j Mj, ind_member D j = Some Mj -> elim_mctx_head_large Θ Ξ Γ p D j Mj Us) ->
     motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us As' r i -> motives_eq Θ Ξ Γ p D Us As As' r i ->
+    motive_kind r ->
     forall n Mk Bs1 Tb t Ψ β σ x Mj l,
       (im_is_rview Mj = true -> ptyp_mem t < n) ->
       ind_member D (ptyp_mem t) = Some Mj -> List.length (ptyp_ps t) = im_nn Mj ->
@@ -1285,24 +1301,24 @@ Lemma leaf_ihty_typed : forall Θ Ξ Γ p D Us As As' r i,
       shape_uc D Us (doms_ctx Bs1 ++ Tb ++ im_params D Mk) σ β ->
       Θ ⍮ Ξ ⍮ Ψ ⊢ x : ptyp_ty_at p D (List.map (fun U => U[β]) Us) σ t ->
       In l (shape_leaves (rview_leaves D) (List.length Bs1 + List.length Tb + im_nn Mk) t) ->
-      exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l : relevance_sort r Typeω@j /\
-        Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As' β σ x l : relevance_sort r Typeω@j /\
-        Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l ≈ leaf_ihty r As' β σ x l : relevance_sort r Typeω@j.
+      exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l : abs_kind_sort r Typeω@j /\
+        Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As' β σ x l : abs_kind_sort r Typeω@j /\
+        Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l ≈ leaf_ihty r As' β σ x l : abs_kind_sort r Typeω@j.
 Proof.
-  intros * Hg HDs Hl HUl HM HMh HA HA' HAA.
+  intros * Hg HDs Hl HUl HM HMh HA HA' HAA Hmk.
   apply (leaf_walk Θ Ξ Γ p D Us Hg HDs Hl HUl HM HMh
-           (fun Ψ β σ x l => exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l : relevance_sort r Typeω@j /\
-                               Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As' β σ x l : relevance_sort r Typeω@j /\
-                               Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l ≈ leaf_ihty r As' β σ x l : relevance_sort r Typeω@j)).
+           (fun Ψ β σ x l => exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l : abs_kind_sort r Typeω@j /\
+                               Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As' β σ x l : abs_kind_sort r Typeω@j /\
+                               Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l ≈ leaf_ihty r As' β σ x l : abs_kind_sort r Typeω@j)).
   - intros * Hj Hr _ _ Hτ; exists i; cbn [leaf_ihty].
-    assert (HS : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+    assert (HS : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
     refine (conj (sub_preserves_sort _ _ _ _ _ _ _ (HA _ _ Hj Hr) HS Hτ)
               (conj (sub_preserves_sort _ _ _ _ _ _ _ (HA' _ _ Hj Hr) HS Hτ) _)).
     exact (sub_preserves_sort_eq _ _ _ _ _ _ _ _ (HAA _ _ Hj Hr) HS Hτ).
   - intros * Hj1 (j3 & H1 & H2 & H3); exists (max j j3); cbn [leaf_ihty]; split; [| split ].
-    + eapply wf_pi_at_max; [ exact Hj1 | exact H1 ].
-    + eapply wf_pi_at_max; [ exact Hj1 | exact H2 ].
-    + eapply wf_exp_eq_pi_cong_at_max; [ exact Hj1 | apply wf_exp_eq_refl; exact Hj1 | exact H3 ].
+    + eapply wf_pi_at_max; [ exact Hj1 | exact H1 | apply motive_kind_pi_kinds; exact Hmk ].
+    + eapply wf_pi_at_max; [ exact Hj1 | exact H2 | apply motive_kind_pi_kinds; exact Hmk ].
+    + eapply wf_exp_eq_pi_cong_at_max; [ exact Hj1 | apply wf_exp_eq_refl; exact Hj1 | exact H3 | apply motive_kind_pi_kinds; exact Hmk ].
   - intros * H; exact H.
   - intros * H; rewrite !leaf_ihty_wk; exact H.
   - intros * E H; rewrite !(leaf_ihty_sb_eq r l _ β β σ' σ x) by first [ reflexivity | symmetry; exact E ]; exact H.
@@ -1317,23 +1333,24 @@ Lemma rec_ih_typed : forall Θ Ξ Γ p D k Mk Us As As' r i c gs gs1 t gs2 E l,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
     motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us As' r i -> motives_eq Θ Ξ Γ p D Us As As' r i ->
+    motive_kind r ->
     List.In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
     In l (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) ->
     ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ->
     let T X := leaf_ihty r X (ι (wk_shiftn (List.length E + List.length gs + im_nn Mk)))
                  (ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E))
                  (a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1))) l in
-    exists j, Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T As : relevance_sort r Typeω@j /\
-      Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T As' : relevance_sort r Typeω@j /\
-      Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T As ≈ T As' : relevance_sort r Typeω@j.
+    exists j, Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T As : abs_kind_sort r Typeω@j /\
+      Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T As' : abs_kind_sort r Typeω@j /\
+      Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T As ≈ T As' : abs_kind_sort r Typeω@j.
 Proof.
-  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hin Heq Hlt HΨ T; unfold T.
+  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hmk Hin Heq Hlt HΨ T; unfold T.
   pose proof (HDs _ _ Hl) as HD.
   destruct (rec_arg_inst _ _ _ _ _ _ _ _ _ _ _ _ _ E Hg HDs Hl Hk HΓ HUl Hσ Hin Heq HΨ) as (Hb & Hθ & Huc & Hx).
   destruct (decl_shape_facts _ _ _ _ _ _ _ _ _ _ HD Hk Hin Heq) as (Mj & Hj & HPl & HBt & HPt).
   assert (HMh : forall j Mj, ind_member D j = Some Mj -> elim_mctx_head_large Θ Ξ Γ p D j Mj Us)
     by (intros; eapply elim_mctx_head_wf_sub; eassumption).
-  eapply (leaf_ihty_typed _ _ _ _ _ _ _ _ _ _ Hg HDs Hl HUl HM HMh HA HA' HAA (S (ptyp_mem t))); try eassumption.
+  eapply (leaf_ihty_typed _ _ _ _ _ _ _ _ _ _ Hg HDs Hl HUl HM HMh HA HA' HAA Hmk (S (ptyp_mem t))); try eassumption.
   - intros _; lia.
   - cbn [List.length]; rewrite <- pat_nargs_cargs_pat; exact Hlt.
 Qed.
@@ -1356,23 +1373,23 @@ Lemma leaves_ctx_wf : forall Θ Ξ Γ p D k Mk Us As r i c gs gs1 t gs2,
     List.length Us = ind_nu D ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
-    motives_typed Θ Ξ Γ p D Us As r i ->
+    motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
     List.In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
     forall ls E, List.incl ls (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) ->
       ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ->
       ⊢ Θ ⍮ Ξ ⍮ leaves_ctx r (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) (List.length E) ls ++ E ++ con_inst_ctx Γ p D Mk Us gs.
 Proof.
-  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA Hin Heq ls.
+  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hin Heq ls.
   assert (HAA : motives_eq Θ Ξ Γ p D Us As As r i) by (intros j Mj Hj Hr; apply wf_exp_eq_refl; exact (HA _ _ Hj Hr)).
   induction ls as [| l ls IH]; intros E Hls HΨ; cbn [leaves_ctx List.app]; [ exact HΨ |].
-  destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA HAA Hin Heq
+  destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA HAA Hmk Hin Heq
               (Hls l (or_introl eq_refl)) HΨ) as (j & HAj & _).
   rewrite <- List.app_assoc; cbn [List.app].
-  change (S (List.length E)) with (List.length (ce_ass (leaf_ihty r As (ι (wk_shiftn (List.length E + List.length gs + im_nn Mk)))
+  change (S (List.length E)) with (List.length (ce_ass r (leaf_ihty r As (ι (wk_shiftn (List.length E + List.length gs + im_nn Mk)))
                                        (ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E))
                                        (a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1))) l) :: E)).
   apply (IH (_ :: E)); [ intros l' Hl'; apply Hls; right; exact Hl' |].
-  cbn [List.app]; eapply wf_ctx_extend; [ exact HAj | apply type_sort_relevance; constructor ].
+  cbn [List.app]; eapply wf_ctx_extend; [ exact HAj | apply sort_kind_abs_kind_sort ].
 Qed.
 
 (** ** The Branches' Contexts *)
@@ -1383,19 +1400,19 @@ Lemma ihs_ctx_wf : forall Θ Ξ Γ p D k Mk Us As r i c gs,
     List.length Us = ind_nu D ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
-    motives_typed Θ Ξ Γ p D Us As r i ->
+    motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
     List.In (c, gs) (im_cons Mk) ->
     forall rest gs1 E, gs = gs1 ++ rest -> List.length E = cargs_nrec D gs1 ->
       ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ->
       ⊢ Θ ⍮ Ξ ⍮ ihs_ctx_aux r (rview_leaves D) (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) (List.length E) rest
                 ++ E ++ con_inst_ctx Γ p D Mk Us gs.
 Proof.
-  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA Hin rest.
+  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hin rest.
   induction rest as [| [rA A' | t] rest IH]; intros gs1 E Heq HE HΨ; cbn [ihs_ctx_aux List.app]; [ exact HΨ | |].
   - replace (false :: cargs_pat gs1) with (cargs_pat (gs1 ++ ca_arg rA A' :: nil)) by (rewrite cargs_pat_snoc; reflexivity).
     apply IH; [ rewrite Heq, <- List.app_assoc; reflexivity | rewrite cargs_nrec_snoc, HE; lia | exact HΨ ].
   - set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t).
-    pose proof (leaves_ctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hin Heq
+    pose proof (leaves_ctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hin Heq
                   ls E (List.incl_refl _) HΨ) as HL.
     rewrite <- List.app_assoc.
     replace (true :: cargs_pat gs1) with (cargs_pat (gs1 ++ ca_rec t :: nil)) by (rewrite cargs_pat_snoc; reflexivity).
@@ -1412,14 +1429,14 @@ Lemma elim_bctx_wf : forall Θ Ξ Γ p D k Mk Us As r i c gs,
     List.length Us = ind_nu D ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
-    motives_typed Θ Ξ Γ p D Us As r i ->
+    motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
     ind_con Mk c = Some gs ->
     ⊢ Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As Us ++ Γ.
 Proof.
-  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA Hcon.
+  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hcon.
   pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
   destruct (wf_sub_cinst _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ Hσ c gs gs nil Hin (eq_sym (List.app_nil_r gs))) as [Hi _].
-  pose proof (ihs_ctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hin gs nil nil eq_refl eq_refl Hi) as H.
+  pose proof (ihs_ctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hin gs nil nil eq_refl eq_refl Hi) as H.
   unfold elim_bctx; unfold con_inst_ctx in H; rewrite <- !List.app_assoc; exact H.
 Qed.
 
@@ -1819,7 +1836,7 @@ Lemma wf_branch_type_sub : forall Θ Ξ Γ p D k Mk Us As r i c gs,
     (forall k U T, List.nth_error Us k = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ U : T) ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
-    motives_typed Θ Ξ Γ p D Us As r i ->
+    motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
     ind_con Mk c = Some gs ->
     Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As Us ++ Γ
       ⊢ˢ sb_of_list (ι (wk_shiftn (im_nn Mk + List.length gs + cargs_nrec D gs)))
@@ -1830,11 +1847,11 @@ Lemma wf_branch_type_sub : forall Θ Ξ Γ p D k Mk Us As r i c gs,
             :: nil)
       : elim_mctx p D k Mk Us ++ Γ.
 Proof.
-  intros * Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hcon.
+  intros * Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hmk Hcon.
   pose proof (HDs _ _ Hl) as HD; pose proof (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl) as Hc.
   pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
   pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUs) as Hσ.
-  pose proof (elim_bctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hcon) as HB.
+  pose proof (elim_bctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hcon) as HB.
   set (nn := im_nn Mk) in *.
   set (n := nn + List.length gs + cargs_nrec D gs).
   set (IHs := ihs_ctx_aux r (rview_leaves D) nn As Us (List.length gs) nil 0 gs).
@@ -1899,7 +1916,7 @@ Proof.
                         | unfold nvars; rewrite List.length_app, length_vars_from, length_elim_mctx; cbn; lia |].
   intros k0 N T HN HT.
   unfold elim_mctx in HT.
-  change (ce_ass ?H0 :: ?R) with ((ce_ass H0 :: nil) ++ R) in HT.
+  change (ce_ass ?κ0 ?H0 :: ?R) with ((ce_ass κ0 H0 :: nil) ++ R) in HT.
   assert (Hrass : tele_ass Nc) by (apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption).
   fold Nc in HT.
   rewrite tele_insts_app in HT by (try exact Hrass; unfold nvars; rewrite length_vars_from; symmetry; exact HlN).
@@ -1936,13 +1953,14 @@ Lemma ihs_ctx_eq : forall Θ Ξ Γ p D k Mk Us As As' r i c gs,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
     motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us As' r i -> motives_eq Θ Ξ Γ p D Us As As' r i ->
+    motive_kind r ->
     List.In (c, gs) (im_cons Mk) ->
     forall rest gs1 E E', gs = gs1 ++ rest -> List.length E = cargs_nrec D gs1 -> List.length E' = cargs_nrec D gs1 ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ E ++ con_inst_tele p D Mk Us gs ≈ E' ++ con_inst_tele p D Mk Us gs ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ ihs_ctx_aux r (rview_leaves D) (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) (List.length E) rest ++ E ++ con_inst_tele p D Mk Us gs
                ≈ ihs_ctx_aux r (rview_leaves D) (im_nn Mk) As' Us (List.length gs) (cargs_pat gs1) (List.length E) rest ++ E' ++ con_inst_tele p D Mk Us gs.
 Proof.
-  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hin rest.
+  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hmk Hin rest.
   induction rest as [| [rB B | t] rest IH]; intros gs1 E E' Heq HE HE' HEE; cbn [ihs_ctx_aux List.app]; [ exact HEE | |].
   - replace (false :: cargs_pat gs1) with (cargs_pat (gs1 ++ ca_arg rB B :: nil)) by (rewrite cargs_pat_snoc; reflexivity).
     apply IH; [ rewrite Heq, <- List.app_assoc; reflexivity | rewrite cargs_nrec_snoc, HE; lia
@@ -1960,19 +1978,19 @@ Proof.
         by (rewrite con_inst_ctx_con_inst_tele, List.app_assoc; eapply ext_eq_ctx_left; exact HEE0).
       assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ E0' ++ con_inst_ctx Γ p D Mk Us gs)
         by (rewrite con_inst_ctx_con_inst_tele, List.app_assoc; eapply ext_eq_ctx_right; exact HEE0).
-      destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hin Heq
+      destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hmk Hin Heq
                   (Hls l (or_introl eq_refl)) HΨ) as (j & HAj & HA'j & HAAj).
-      destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0' l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hin Heq
+      destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0' l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hmk Hin Heq
                   (Hls l (or_introl eq_refl)) HΨ') as (j' & _ & HA'j' & _).
       rewrite <- HlE in HA'j'.
       rewrite con_inst_ctx_con_inst_tele, List.app_assoc in HAj, HA'j, HAAj, HA'j'.
       rewrite <- !List.app_assoc; cbn [List.app].
-      change (S (List.length E0)) with (List.length (ce_ass (leaf_ihty r As (ι (wk_shiftn (List.length E0 + List.length gs + im_nn Mk)))
+      change (S (List.length E0)) with (List.length (ce_ass r (leaf_ihty r As (ι (wk_shiftn (List.length E0 + List.length gs + im_nn Mk)))
                                           (ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E0))
                                           (a_var (List.length E0 + List.length gs - 1 - List.length (cargs_pat gs1))) l) :: E0)).
       rewrite !List.app_comm_cons, !List.app_assoc; apply IHl; [ intros l' Hl'; apply Hls; right; exact Hl' | cbn; lia |].
-      cbn [List.app]; eapply wf_ext_eq_ass_eq with (Srt := relevance_sort r Typeω@(max j j'));
-        [ exact HEE0 | eapply lift_rel_max_left; exact HAj | apply type_sort_relevance; constructor
+      cbn [List.app]; eapply wf_ext_eq_ass_eq with (Srt := abs_kind_sort r Typeω@(max j j'));
+        [ exact HEE0 | eapply lift_rel_max_left; exact HAj | apply sort_kind_abs_kind_sort
         | eapply lift_rel_eq_max_left; exact HAAj | eapply lift_rel_max_left; exact HA'j | eapply lift_rel_max_right; exact HA'j' ]. }
     pose proof (HL ls E E' (List.incl_refl _) ltac:(lia) HEE) as HL'.
     rewrite <- List.app_assoc.
@@ -1992,10 +2010,11 @@ Lemma elim_bctx_eq : forall Θ Ξ Γ p D k Mk Us As As' r i c gs,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
     motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us As' r i -> motives_eq Θ Ξ Γ p D Us As As' r i ->
+    motive_kind r ->
     ind_con Mk c = Some gs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs As Us ≈ elim_bctx r p D Mk gs As' Us.
 Proof.
-  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hcon.
+  intros * Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hmk Hcon.
   pose proof (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl) as Hc.
   pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
   destruct (wf_sub_cinst _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ Hσ c gs gs nil Hin (eq_sym (List.app_nil_r gs))) as [Hi _].
@@ -2003,7 +2022,7 @@ Proof.
   { apply ctx_ext_refl; [| cbn [List.app]; rewrite <- con_inst_ctx_con_inst_tele; exact Hi ].
     cbn [List.app]; unfold con_inst_tele; apply List.Forall_app; split; apply tele_ass_sub;
       [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]. }
-  exact (ihs_ctx_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hin gs nil nil nil eq_refl eq_refl eq_refl H0).
+  exact (ihs_ctx_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA HA' HAA Hmk Hin gs nil nil nil eq_refl eq_refl eq_refl H0).
 Qed.
 
 (** The type of a branch, the motive of its member varying, the others'
@@ -2015,17 +2034,17 @@ Lemma elim_branch_type_eq : forall Θ Ξ Γ p D k Mk Us As' A A' r i c gs,
     (forall k U T, List.nth_error Us k = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ U : T) ->
     (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
-    motives_typed Θ Ξ Γ p D Us As' r i ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ A' : relevance_sort r Typeω@i ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ A ≈ A' : relevance_sort r Typeω@i ->
+    motives_typed Θ Ξ Γ p D Us As' r i -> motive_kind r ->
+    Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ A' : abs_kind_sort r Typeω@i ->
+    Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ A ≈ A' : abs_kind_sort r Typeω@i ->
     ind_con Mk c = Some gs ->
-    Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As' Us ++ Γ ⊢ elim_branch_type p D k Mk c gs A' Us : relevance_sort r Typeω@i /\
+    Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As' Us ++ Γ ⊢ elim_branch_type p D k Mk c gs A' Us : abs_kind_sort r Typeω@i /\
     Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As' Us ++ Γ ⊢ elim_branch_type p D k Mk c gs A Us ≈ elim_branch_type p D k Mk c gs A' Us
-      : relevance_sort r Typeω@i.
+      : abs_kind_sort r Typeω@i.
 Proof.
-  intros * Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA HA' HAA Hcon.
-  pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hcon) as Hθ.
-  assert (HS : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+  intros * Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hmk HA' HAA Hcon.
+  pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hmk Hcon) as Hθ.
+  assert (HS : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
   split; [ exact (sub_preserves_sort _ _ _ _ _ _ _ HA' HS Hθ) | exact (sub_preserves_sort_eq _ _ _ _ _ _ _ _ HAA HS Hθ) ].
 Qed.
 
@@ -2036,20 +2055,20 @@ Qed.
 
 (** [blocks_typed Θ Ξ Γ p D Us Bks r i]: the blocks [Bks] are typed as the
     eliminator of the group [D] at [p] with the tag [r] asks, with motives
-    of the sort [relevance_sort r Typeω@i]: the large universe at
+    of the sort [abs_kind_sort r Typeω@i]: the large universe at
     [relevant], [Prop] at [propositional]. *)
 Record blocks_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us : list exp)
-    (Bks : list eblock) (r : relevance) (i : nat) : Prop := mk_blocks_typed
+    (Bks : list eblock) (r : abs_kind) (i : nat) : Prop := mk_blocks_typed
   { (** One block per member with a block: all but the record views *)
     blocks_typed_len : List.length Bks = ind_nblk D
     (** Each block binds as many variables as its member's motive *)
   ; blocks_typed_binder_count : blocks_binder_count_ok D Bks
     (** Each scrutinee type is the member's type at [Us] *)
   ; blocks_typed_scrutinee_type : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id Us) ▹ eb_scrutinee_type b ≈ elim_mctx p D k Mk Us
+      Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id Us) ▹{ak_relevant} eb_scrutinee_type b ≈ elim_mctx p D k Mk Us
     (** Each motive is a type in its member's motive context *)
   ; blocks_typed_motive : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-      Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i
+      Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i
     (** Each motive context is well formed *)
   ; blocks_typed_mctx : forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us
     (** Each block has one branch per constructor, in order *)
@@ -2064,7 +2083,9 @@ Record blocks_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_d
     (** Each branch is of the branch type at its block's motive *)
   ; blocks_typed_brs : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-      Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ ⊢ B : elim_branch_type p D k Mk c gs (eb_motive b) Us }.
+      Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ ⊢ B : elim_branch_type p D k Mk c gs (eb_motive b) Us
+    (** The motives are types of a universe or propositions *)
+  ; blocks_typed_kind : motive_kind r }.
 
 Lemma ind_member_lt : forall D k M, ind_member D k = Some M -> k < List.length (ind_members D).
 Proof. intros * H; apply List.nth_error_Some; unfold ind_member in H; rewrite H; discriminate. Qed.
@@ -2135,18 +2156,18 @@ Lemma blocks_typed_sub : forall Θ Ξ Γ Δ σ p D Us Bks r i,
     blocks_typed Θ Ξ Γ p D Us Bks r i -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
     blocks_typed Θ Ξ Δ p D (List.map (fun U => U[σ]) Us) (blocks_sub Bks σ) r i.
 Proof.
-  intros * Hl HUl [HlB Hnm HZ HA HΨ Hn HΨB Hk HB] Hσ.
-  assert (HSi : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+  intros * Hl HUl [HlB Hnm HZ HA HΨ Hn HΨB Hk HB Hr] Hσ.
+  assert (HSi : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
   pose proof (sub_as_sub_dom Θ Ξ) as Rd; pose proof (sub_as_sub_ext Θ Ξ) as Re.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]).
   assert (IHZ : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id Us) ▹ eb_scrutinee_type b) σ0
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id Us) ▹{ak_relevant} eb_scrutinee_type b) σ0
                           ≈ tele_sub (elim_mctx p D k Mk Us) σ0)
     by (intros; eapply sub_preserves_ext; eauto).
   assert (IHA : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_mctx p D k Mk Us ++ Γ) ->
-               Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : (relevance_sort r Typeω@i)[σ0])
+               Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : (abs_kind_sort r Typeω@i)[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
   assert (IHΨ : forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
              Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk Us) σ0 ≈ tele_sub (elim_mctx p D k Mk Us) σ0)
@@ -2171,6 +2192,7 @@ Proof.
   - eapply move_blocks_bctx with (R := sub_as_sub Θ Ξ); eassumption.
   - apply move_blocks_counts; exact Hk.
   - eapply move_blocks_brs with (R := sub_as_sub Θ Ξ); eassumption.
+  - exact Hr.
 Qed.
 
 (** In a group without views every member is declared. *)
@@ -2186,7 +2208,7 @@ Lemma wf_elim_blocks : forall Θ Ξ Γ p D m Mm Bks bm Us Ns M r i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m Us Ns ->
     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M : (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)].
 Proof.
-  intros * Hl Hm Hbm [HlB Hnm HZ HA HΨ Hn HΨB Hk HB] HUl HUs HNl HNs HM.
+  intros * Hl Hm Hbm [HlB Hnm HZ HA HΨ Hn HΨB Hk HB Hr] HUl HUs HNl HNs HM.
   assert (Hc : decl_closed D)
     by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (presup_exp_ctx HM) | exact Hl ]).
   pose proof (params_typed_join _ _ _ Hc _ _ _ _ _ Hm HUl HUs HNs) as HPs.
@@ -2226,7 +2248,7 @@ Proof.
                 = tele_insts (im_nparams Mm) (sb_of_list Id Us') Ns ++ ind_mty p D m Us' Ns :: nil).
   { rewrite (tele_insts_sb_eq _ _ (β ⨟ Id)) by (intros x; symmetry; apply sb_compose_id_right).
     rewrite <- tele_insts_tele_sub; erewrite elim_mctx_sub by eassumption; fold Us'.
-    unfold elim_mctx; change (ce_ass ?H0 :: ?R) with ((ce_ass H0 :: nil) ++ R).
+    unfold elim_mctx; change (ce_ass ?κ0 ?H0 :: ?R) with ((ce_ass κ0 H0 :: nil) ++ R).
     rewrite tele_insts_app by (try exact Hrass; rewrite length_tele_sub; exact HNl).
     rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (sb_of_list Id Us')) by apply sb_compose_id_right.
     f_equal; unfold tele_insts; cbn; f_equal.
@@ -2288,7 +2310,7 @@ Proof. intros * Hβ H y Hy; rewrite H by exact Hy; cbn [sb_compose]; rewrite (se
 
 Section IhTm.
   Context (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us : list exp)
-    (Bks : list eblock) (r : relevance) (i : nat).
+    (Bks : list eblock) (r : abs_kind) (i : nat).
   Hypothesis (Hg : ⊢ᵍ Θ ⍮ Ξ) (HDs : decls_typed Θ Ξ)
     (Hl : ind_lookup Θ Ξ p = Some D)
     (HBt : blocks_typed Θ Ξ Γ p D Us Bks r i)
@@ -2318,11 +2340,12 @@ Section IhTm.
     (** The walk carries that the result's type is a type of the motives'
         sort too, for the [λ] at a shape's domain. *)
     intros * Hrk Hj HPl HB HP Hβ Hσ Huc HM Hin.
-    assert (HS : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+    assert (HS : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
+    pose proof (blocks_typed_kind _ _ _ _ _ _ _ _ _ HBt) as Hmk.
     refine (proj1 (leaf_walk Θ Ξ Γ p D Us Hg HDs Hl HUl (blocks_mctx_wf _ _ _ _ _ _ _ _ _ HBt) HMh
              (fun Ψ β σ M l => Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ih r p (List.map (fun U => U[β]) Us) (blocks_sub Bks β) σ M l
                                  : leaf_ihty r (blocks_motives Bks) β σ M l /\
-                               exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r (blocks_motives Bks) β σ M l : relevance_sort r Typeω@j)
+                               exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r (blocks_motives Bks) β σ M l : abs_kind_sort r Typeω@j)
              _ _ _ _ _ n Mk Bs1 Tb t Ψ β σ M Mj l Hrk Hj HPl HB HP Hβ Hσ Huc HM Hin)).
     - intros * Hj0 Hr HPl0 Hβ0 Hτ; cbn [leaf_ih leaf_ihty]; split.
       + eapply wf_recursive_elim_typed; try eassumption; rewrite List.length_map; exact HPl0.
@@ -2331,8 +2354,8 @@ Section IhTm.
       assert (Hus : List.map (fun U => U[↑]ʷ) (List.map (fun U => U[β0]) Us) = List.map (fun U => U[β0 ⨟ ι ↑]) Us)
         by (rewrite List.map_map; apply List.map_ext; intros; rewrite <- exp_sub_of_wk, exp_sub_sub; reflexivity).
       rewrite Hus, <- blocks_sub_of_wk, blocks_sub_sub.
-      split; [| exists (max j j2); eapply wf_pi_at_max; [ exact Hj1 | exact Hty ] ].
-      eapply wf_fn with (Srt' := Typeω@j2); [ exact Hj1 | constructor | exact Hty | constructor | exact Hbody ].
+      split; [| exists (max j j2); eapply wf_pi_at_max; [ exact Hj1 | exact Hty | apply motive_kind_pi_kinds; exact Hmk ] ].
+      eapply wf_fn with (i := j2); [ exact Hj1 | constructor | exact Hty | apply motive_kind_pi_kinds; exact Hmk | exact Hbody ].
     - intros * H; exact H.
     - intros * H; rewrite leaf_ih_wk, leaf_ihty_wk; exact H.
     - intros * E H; rewrite <- (leaf_ih_sb_eq _ _ _ _ _ _ _ _ E), <- (leaf_ihty_sb_eq _ l0 _ β0 β0 σ0 σ' x);
@@ -2513,7 +2536,8 @@ Proof.
     { intros ls0; induction ls0 as [| l ls0 IHl]; intros E0 L0 Hls HL0 HΨ0 Hδ0; cbn [leaves_ctx List.map List.app];
         [ rewrite List.app_nil_r; exact Hδ0 |].
       assert (Hinl : In l ls) by (apply Hls; left; reflexivity).
-      destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA HAA Hin Heq Hinl HΨ0)
+      destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA HAA
+                  (blocks_typed_kind _ _ _ _ _ _ _ _ _ HBt) Hin Heq Hinl HΨ0)
         as (j & HAj & _).
       destruct (rec_arg_inst _ _ _ _ _ _ _ _ _ _ _ _ _ E0 Hg HDs Hl Hk HΓ HUl Hσ Hin Heq HΨ0) as (Hb & Hθ & Huc & Hx).
       set (θ := ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E0)) in *.
@@ -2555,18 +2579,18 @@ Proof.
       rewrite blocks_sub_id, (List.map_ext _ (fun U => U) exp_sub_id), List.map_id in Hih.
       set (X := leaf_ih r p Us Bks σg a l) in *.
       set (T := leaf_ihty r (blocks_motives Bks) (ι (wk_shiftn b)) θ (a_var x) l) in *.
-      assert (Hext : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id ((Ns ++ As ++ L0) ++ X :: nil) : (ce_ass T :: E0) ++ con_inst_ctx Γ p D Mk Us gs).
+      assert (Hext : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id ((Ns ++ As ++ L0) ++ X :: nil) : (ce_ass r T :: E0) ++ con_inst_ctx Γ p D Mk Us gs).
       { rewrite (sb_of_list_app (Ns ++ As ++ L0) (X :: nil) Id).
         change (sb_of_list (sb_of_list Id (Ns ++ As ++ L0)) (X :: nil)) with (sb_of_list Id (Ns ++ As ++ L0) ,, X).
-        cbn [List.app]; eapply wf_sub_extend; [ exact Hδ0 | exact HAj | apply type_sort_relevance; constructor |].
+        cbn [List.app]; eapply wf_sub_extend; [ exact Hδ0 | exact HAj | apply sort_kind_abs_kind_sort |].
         fold δ; unfold T; rewrite leaf_ihty_sub, Hidx.
         rewrite (leaf_ihty_sb_eq r l _ (ι wk_shiftn b ⨟ δ) Id (θ ⨟ δ) σg a); [ exact Hih | exact Hbδ | exact Hθδ ]. }
       rewrite <- List.app_assoc; cbn [List.app].
-      change (S (List.length E0)) with (List.length (ce_ass T :: E0)).
+      change (S (List.length E0)) with (List.length (ce_ass r T :: E0)).
       replace (Ns ++ As ++ L0 ++ X :: List.map (leaf_ih r p Us Bks σg a) ls0)
         with (Ns ++ As ++ (L0 ++ X :: nil) ++ List.map (leaf_ih r p Us Bks σg a) ls0)
         by (rewrite <- !List.app_assoc; reflexivity).
-      change (ce_ass T :: E0 ++ con_inst_ctx Γ p D Mk Us gs) with ((ce_ass T :: E0) ++ con_inst_ctx Γ p D Mk Us gs).
+      change (ce_ass r T :: E0 ++ con_inst_ctx Γ p D Mk Us gs) with ((ce_ass r T :: E0) ++ con_inst_ctx Γ p D Mk Us gs).
       apply IHl; [ intros l' Hl'; apply Hls; right; exact Hl' | rewrite List.length_app; cbn; lia
                  | exact (wf_sub_cod _ _ _ _ _ Hext) |].
       rewrite <- !List.app_assoc in Hext; exact Hext. }
@@ -2670,10 +2694,10 @@ Lemma wf_iota_lhs : forall Θ Ξ Γ p D Us m Mm Bks bm c gs Ps As r i,
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -2687,13 +2711,14 @@ Lemma wf_iota_lhs : forall Θ Ξ Γ p D Us m Mm Bks bm c gs Ps As r i,
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    motive_kind r ->
     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                    (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                          apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                            (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)].
 Proof.
-  intros * HΓ Hl Hm Hbm Hcon HlB HPl HPs HAl HAs Hann Hnm HZ HA HΨ Hn HΨB Hk HB.
+  intros * HΓ Hl Hm Hbm Hcon HlB HPl HPs HAl HAs Hann Hnm HZ HA HΨ Hn HΨB Hk HB Hmk.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   destruct (params_typed_split _ _ D Hc _ _ Γ Ps Hm HPl HPs) as [HUs HNs].
@@ -2721,10 +2746,10 @@ Lemma wf_iota_rhs : forall Θ Ξ Γ p D Us m Mm Bks bm c gs Ps As r i n B,
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -2738,6 +2763,7 @@ Lemma wf_iota_rhs : forall Θ Ξ Γ p D Us m Mm Bks bm c gs Ps As r i n B,
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    motive_kind r ->
     brs_lookup (eb_brs bm) c = Some (n, B) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
                                   elim_ihs r p D (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn Mm) gs As)]
@@ -2745,7 +2771,7 @@ Lemma wf_iota_rhs : forall Θ Ξ Γ p D Us m Mm Bks bm c gs Ps As r i n B,
                          apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                            (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)].
 Proof.
-  intros * HΓ Hl Hm Hbm Hcon HlB HPl HPs HAl HAs Hann Hnm HZ HA HΨ Hn HΨB Hk HB HBl.
+  intros * HΓ Hl Hm Hbm Hcon HlB HPl HPs HAl HAs Hann Hnm HZ HA HΨ Hn HΨB Hk HB Hmk HBl.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HPl; lia).
   assert (HNl : List.length (List.skipn (ind_nu D) Ps) = im_nn Mm) by (rewrite List.length_skipn; unfold im_np in HPl; lia).
@@ -2777,7 +2803,7 @@ Proof.
   pose proof (wf_sub_nparams_inst _ _ _ _ _ _ _ _ Hl Hm HΓ HPl HPs) as Hδ.
   rewrite !sb_of_list_app; cbn [sb_of_list].
   unfold elim_mctx in HΨ |- *; cbn [List.app] in HΨ |- *.
-  destruct (ctx_decomp HΨ) as [_ [j HSj Hj]].
+  destruct (ctx_decomp_sort_kind HΨ) as [_ (j & HSj & Hj)].
   eapply wf_sub_eq_extend; [ apply wf_sub_eq_refl; exact Hδ | exact Hj | exact HSj | | | ];
     rewrite ind_head_inst, (List.map_ext _ (fun U => U) exp_sub_id), List.map_id by assumption; assumption.
 Qed.
@@ -2819,10 +2845,10 @@ Lemma wf_elim_cong_lhs : forall Θ Ξ Γ p D Us m Mm (Bks Bks' : list eblock) bm
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -2840,9 +2866,10 @@ Lemma wf_elim_cong_lhs : forall Θ Ξ Γ p D Us m Mm (Bks Bks' : list eblock) bm
        ind_con Mk c = Some gs ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    motive_kind r ->
     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros * Hl Hm Hbm HlB HlB' HPl HPs HM Hann Hnm HZ HA HΨ Hn Hf HΨB Hk HB.
+  intros * Hl Hm Hbm HlB HlB' HPl HPs HM Hann Hnm HZ HA HΨ Hn Hf HΨB Hk HB Hmk.
   eapply wf_elim; try eassumption.
   intros k Mk b c gs n B HMk Hb Hcon Hin.
   destruct (blocks_nth_same Bks Bks' _ _ ltac:(congruence) Hb) as [b' Hb'].
@@ -2864,15 +2891,15 @@ Lemma wf_elim_cong_rhs_blocks : forall Θ Ξ Γ p D m Mm (Bks Bks' : list eblock
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : abs_kind_sort r Typeω@i) ->
     (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b'
-         : relevance_sort r Typeω@i) ->
+         : abs_kind_sort r Typeω@i) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -2887,11 +2914,12 @@ Lemma wf_elim_cong_rhs_blocks : forall Θ Ξ Γ p D m Mm (Bks Bks' : list eblock
        ind_con Mk c = Some gs ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B'
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    motive_kind r ->
     blocks_typed Θ Ξ Γ p D (List.firstn (ind_nu D) Ps) Bks' r i.
 Proof.
-  intros * HΓ Hl Hm HlB HlB' HPl HPs Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB.
+  intros * HΓ Hl Hm HlB HlB' HPl HPs Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB Hmk.
   assert (HA' : forall k Mk b', ind_member D k = Some Mk -> List.nth_error Bks' k = Some b' ->
-             Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : relevance_sort r Typeω@i)
+             Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : abs_kind_sort r Typeω@i)
     by (intros k Mk b' Hk' Hb'; destruct (blocks_nth_same Bks' Bks _ _ ltac:(congruence) Hb') as [b Hb]; eauto).
   clear HA''.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
@@ -2924,12 +2952,12 @@ Proof.
     - intros k Mk b' c gs n B' HMk Hb' Hcon Hin; destruct (blocks_nth_same Bks' Bks _ _ ltac:(congruence) Hb') as [b Hb].
       destruct (brs_in_fst _ _ _ _ _ (Hf _ _ _ Hb Hb') Hin) as (i0 & B & Hi & Hi' & _).
       pose proof (HB _ _ _ _ _ _ _ _ _ _ HMk Hb Hb' Hi Hi' Hcon) as HB'.
-      pose proof (elim_bctx_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl HMk HΓ HUl Hσ HMx HAs HAs' HAAs Hcon) as Hx.
+      pose proof (elim_bctx_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl HMk HΓ HUl Hσ HMx HAs HAs' HAAs Hmk Hcon) as Hx.
       pose proof (ctxsub_ext _ _ _ _ _ Hx (elim_bctx_ass _ _ _ _ _ _ _ _ Hc HMk)) as Hs.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' Hs) as HB''; rewrite !exp_sub_id in HB''.
       destruct (elim_branch_type_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl HMk (block_not_rview _ _ _ _ _ Hsf HlB HMk Hb) HΓ HUl HUs HMx
-                  HAs' (HA' _ _ _ HMk Hb')
+                  HAs' Hmk (HA' _ _ _ HMk Hb')
                   (HAA _ _ _ _ HMk Hb Hb') Hcon) as [Hty Heq].
       eapply wf_exp_subtyp'; [ exact HB'' |].
-      eapply wf_subtyp_refl; [ exact Hty | apply type_sort_relevance; constructor | exact Heq ]. }
+      eapply wf_subtyp_refl; [ exact Hty | apply type_sort_abs_kind; constructor | exact Heq ]. }
 Qed.

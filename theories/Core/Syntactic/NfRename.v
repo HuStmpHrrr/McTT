@@ -38,7 +38,7 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_wk φ P) (nf_wk (wk_q φ) Q)
   | nf_proof_erased => nf_proof_erased
-  | nf_pi r A B => nf_pi r (nf_wk φ A) (nf_wk (wk_q φ) B)
+  | nf_pi κd κc A B => nf_pi κd κc (nf_wk φ A) (nf_wk (wk_q φ) B)
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
   | nf_indty p k Ms => nf_indty p k (List.map (nf_wk φ) Ms)
   | nf_con p k c Ms => nf_con p k c (List.map (nf_wk φ) Ms)
@@ -260,7 +260,7 @@ Proof.
     | |- ne_cmp _ (ne_wk _ ?N) = _ => destruct N
     end;
     repeat match goal with p : o2 |- _ => destruct p end;
-    repeat match goal with r : relevance |- _ => destruct r end;
+    repeat match goal with κ : abs_kind |- _ => destruct κ end;
     cmp_norm; try reflexivity.
   (** The lists, element by element. *)
   all: repeat match goal with

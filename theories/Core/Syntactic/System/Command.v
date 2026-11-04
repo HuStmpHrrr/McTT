@@ -64,7 +64,7 @@ Definition gs_push_ind (mp pq : qname) (k : nat) (D : ind_decl) (Δ : ctx) (Ξ :
     the record's own parameters [Δ] and then a value of it
     ([record_self]), and no member yet. *)
 Definition gs_push_record (mp : qname) (R : record_decl) (Δ : ctx) (Ξ : gstack) : gstack :=
-  (mp, fk_record R, gu_body (ce_ass (record_self mp R) :: Δ) ⋄) :: Ξ.
+  (mp, fk_record R, gu_body (ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: Δ) ⋄) :: Ξ.
 
 Definition gs_add (x : string) (E : gentry) (Ξ : gstack) : gstack :=
   match Ξ with
@@ -78,33 +78,16 @@ Definition gs_fresh (x : string) (Ξ : gstack) : Prop :=
   | nil => False
   end.
 
-(** [type_relevance Θ Ξ Γ A r]: the type [A] infers a sort of relevance
-    [r] ([is_sort_nf]): a large universe, [relevant], or [Prop],
-    [propositional].  Inference is functional, so this fixes the relevance
-    a command files a definition at ([type_relevance_functional]).  For
-    example, in a frame with the parameter [n : ℕ], [def pos : n > 0 := …]
-    has a type that infers [Prop], so it is filed [propositional], closed by
-    a [∀] over [n].  The declarative premise beside it would fix the
-    relevance as well, but only the PER model shows that. *)
-Definition type_relevance (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A : typ) (r : relevance) : Prop :=
-  exists U u, @alg_type_infer (gc_mk Θ Ξ) Γ U A /\ is_sort_nf U r u.
-
-Lemma type_relevance_functional : forall Θ Ξ Γ A r r', ⊢ᵍ Θ ⍮ Ξ ->
-    type_relevance Θ Ξ Γ A r -> type_relevance Θ Ξ Γ A r' -> r = r'.
-Proof.
-  intros * Hg (U & u & HU & Hs) (U' & u' & HU' & Hs').
-  pose proof (@functional_alg_type_infer (gc_mk Θ Ξ) _ _ _ _ Hg HU HU') as <-.
-  exact (proj1 (is_sort_nf_functional _ _ _ _ _ Hs Hs')).
-Qed.
-
 (** A definition and an axiom as they are filed: closed over the frames'
-    parameters, at the relevance [r] of the sort of their type: a
-    proposition is filed closed by [∀]s ([ctx_pi_at]). *)
-Definition gs_def (b pv : bool) (r : relevance) (Ξ : gstack) (A M : exp) : gentry :=
-  ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
+    parameters, at the kind [κ] of the sort of their type, which the
+    command carries (the fill writes it, from the sort the type infers):
+    a proposition is filed closed by [∀]s ([ctx_pi_at]). *)
+Definition gs_def (b pv : bool) (κ : abs_kind) (Ξ : gstack) (A M : exp) : gentry :=
+  ge_def b pv κ (ctx_pi_at κ (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
 
-Definition gs_axiom (b pv : bool) (r : relevance) (Ξ : gstack) (A : exp) : gentry :=
-  ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None.
+(** An axiom as it is filed: as a definition, without a body. *)
+Definition gs_axiom (b pv : bool) (κ : abs_kind) (Ξ : gstack) (A : exp) : gentry :=
+  ge_def b pv κ (ctx_pi_at κ (gs_tele Ξ) A) None.
 
 (** A definition with a module part as it is filed, declared with the
     parameters [Δ] over the frames': its term part [M] of type [A], both
@@ -145,7 +128,8 @@ Inductive gens_run (Θ : gdeps) : gstack -> list generated_item -> gstack -> Pro
 | gens_run_nil : forall Ξ, gens_run Θ Ξ nil Ξ
 (** A generated definition, checked at its type as [run_cmd_def] does *)
 | gens_run_def : forall Ξ d pv r A M (i : nat) gs Ξ',
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i ->
+    (r = ak_level -> level_sorted_parameters (gs_tele Ξ)) ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (gs_def true pv r Ξ A M) Ξ) gs Ξ' ->
     gens_run Θ Ξ (generated_item_def d pv r A M :: gs) Ξ'
@@ -203,7 +187,7 @@ Fixpoint rec_branch_types (pq : qname) (D : ind_decl) (M : imember) (k : nat) (c
   match cs with
   | nil => nil
   | (c, gs) :: cs' =>
-      ce_ass (ctx_pi (elim_bctx relevant pq D M gs (rec_motive M k :: nil) (rec_uvars D k))
+      ce_ass ak_relevant (ctx_pi (elim_bctx ak_relevant pq D M gs (rec_motive M k :: nil) (rec_uvars D k))
                 (elim_branch_type pq D 0 M c gs (rec_motive M k) (rec_uvars D k)))
       :: rec_branch_types pq D M (S k) cs'
   end.
@@ -211,8 +195,8 @@ Fixpoint rec_branch_types (pq : qname) (D : ind_decl) (M : imember) (k : nat) (c
 (** The level, the motive and the branches, innermost first. *)
 Definition rec_tele (pq : qname) (D : ind_decl) (M : imember) : ctx :=
   List.rev (rec_branch_types pq D M 0 (im_cons M)) ++
-  ce_ass (ctx_pi (elim_mctx pq D 0 M (vars_from 1 (ind_nu D))) (a_univ (a_var (S (im_nn M))))) ::
-  ce_ass (a_level 0) :: nil.
+  ce_ass ak_relevant (ctx_pi (elim_mctx pq D 0 M (vars_from 1 (ind_nu D))) (a_univ (a_var (S (im_nn M))))) ::
+  ce_ass ak_level (a_level 0) :: nil.
 
 (** The type of the recursor: over its level, motive and branches, a
     function from the member's parameters and a scrutinee to the motive. *)
@@ -236,7 +220,7 @@ Definition rec_fn (pq : qname) (D : ind_decl) (M : imember) : exp :=
   let K := List.length (im_cons M) in
   ctx_fn (rec_tele pq D M)
     (ctx_fn (elim_mctx pq D 0 M (rec_uvars D K))
-       (a_elim relevant pq (rec_uvars D (K + S (im_nn M))) 0
+       (a_elim ak_relevant pq (rec_uvars D (K + S (im_nn M))) 0
           (eb_mk (S (im_nn M)) (member_scrutinee_type pq D 0 M (rec_uvars D (K + S (im_nn M))))
              (rec_motive M (K + S (im_nn M))) (rec_brs D M K 0 (im_cons M)) :: nil)
           (a_var 0))).
@@ -285,7 +269,7 @@ Definition recursor_motives (D : ind_decl) (k : nat) : list exp :=
 (** The motives' types, outermost first: the member [i]'s under the [i]
     motives before it and the level, for each member with a block. *)
 Definition recursor_motive_tys (pq : qname) (D : ind_decl) : list centry :=
-  List.map (fun iM => ce_ass (ctx_pi (elim_mctx pq D (fst iM) (snd iM) (vars_from (S (fst iM)) (ind_nu D)))
+  List.map (fun iM => ce_ass ak_relevant (ctx_pi (elim_mctx pq D (fst iM) (snd iM) (vars_from (S (fst iM)) (ind_nu D)))
                                      (a_univ (a_var (S (im_nn (snd iM)) + fst iM)))))
     (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)).
 
@@ -302,7 +286,7 @@ Fixpoint recursor_case_tys (pq : qname) (D : ind_decl) (i k : nat) (ms : list im
          match cs with
          | nil => nil
          | (c, gs) :: cs' =>
-             ce_ass (ctx_pi (elim_bctx relevant pq D Mi gs (recursor_motives D k) (recursor_uvars D N k))
+             ce_ass ak_relevant (ctx_pi (elim_bctx ak_relevant pq D Mi gs (recursor_motives D k) (recursor_uvars D N k))
                        (elim_branch_type pq D i Mi c gs (recursor_motive N i Mi k) (recursor_uvars D N k)))
              :: cases (S k) cs'
          end) k (im_cons Mi)
@@ -315,7 +299,7 @@ Definition recursor_ncases (D : ind_decl) : nat := List.fold_right (fun Mi n => 
 (** The parameters of the module, innermost first, over the frames'
     parameters, the group's own uniform parameters [Δu] outermost. *)
 Definition recursor_tele (pq : qname) (D : ind_decl) (Δu : ctx) : ctx :=
-  List.rev (recursor_case_tys pq D 0 0 (ind_block_members D)) ++ List.rev (recursor_motive_tys pq D) ++ ce_ass (a_level 0) :: Δu.
+  List.rev (recursor_case_tys pq D 0 0 (ind_block_members D)) ++ List.rev (recursor_motive_tys pq D) ++ ce_ass ak_level (a_level 0) :: Δu.
 
 (** The branches of the block of the member [Mi], whose cases start at
     [kc], in the function of a member of [nj] binders: each the case
@@ -352,7 +336,7 @@ Definition recursor_fn (pq : qname) (D : ind_decl) (j : nat) (Mj : imember) : ex
   let N := ind_nblk D in
   let K := recursor_ncases D in
   ctx_fn (elim_mctx pq D j Mj (recursor_uvars D N K))
-    (a_elim relevant pq (recursor_uvars D N (K + S (im_nn Mj))) j
+    (a_elim ak_relevant pq (recursor_uvars D N (K + S (im_nn Mj))) j
        (recursor_blocks pq D K (S (im_nn Mj)) 0 0 (ind_block_members D)) (a_var 0)).
 
 (** The last name of a path. *)
@@ -433,7 +417,7 @@ Definition recursor_names (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : list strin
     is closed; all are core commands, generated, not written. *)
 Definition recursor_mod_cmds (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Δu : ctx) : list core_cmd :=
   core_cmd_mod_open "Rec" false (recursor_tele pq D Δu) ::
-    List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_def x true false (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj)))
+    List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_def x true false ak_relevant (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj)))
        (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) (recursor_names Θ Ξ D)) ++
     core_cmd_close "Rec" false :: nil.
 
@@ -459,13 +443,13 @@ Definition rec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : 
     the member's non-uniform parameters and its arguments, its term the
     constructor at the module's parameters; generated. *)
 Definition ind_con_cmd (pq : qname) (D : ind_decl) (k : nat) (M : imember) (cg : (string * list carg)%type) : core_cmd :=
-  core_cmd_def (fst cg) true false
+  core_cmd_def (fst cg) true false ak_relevant
     (ctx_pi (im_nparams M) (ctx_pi (cargs_ctx pq D M (snd cg)) (apps (a_ind pq k) (ind_pvars D M (List.length (snd cg))))))
     (Some (apps (a_con pq k (fst cg)) (vars_from 0 (ind_nu D)))).
 
 (** The recursor [rec], when the group has one; generated. *)
 Definition ind_rec_cmds (pq : qname) (D : ind_decl) (M : imember) : list core_cmd :=
-  if ind_has_rec D then core_cmd_def "rec" true false (rec_ty pq D M) (Some (rec_fn pq D M)) :: nil else nil.
+  if ind_has_rec D then core_cmd_def "rec" true false ak_relevant (rec_ty pq D M) (Some (rec_fn pq D M)) :: nil else nil.
 
 (** The recursor module [Rec], in the first declared member's module of a
     group not declared by [mutual T where]. *)
@@ -548,19 +532,21 @@ Inductive classify_arg_in (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (nu np n : nat) 
     after [args1] (recursive as [pat] says), classify as [gs], each in the
     context of those before it over [Γp]. *)
 Inductive classify_args_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat) :
-    list bool -> list (string * exp) -> list (string * exp) -> list classified_carg -> Prop :=
+    list bool -> list (string * abs_kind * exp) -> list (string * abs_kind * exp) -> list classified_carg -> Prop :=
 (** No argument left *)
 | classify_args_in_nil : forall pat args1, classify_args_in Θ Ξ Γp nu np n pat args1 nil nil
-(** The next argument, classified, then the rest after it *)
-| classify_args_in_cons : forall pat args1 y T args g gs,
+(** The next argument, classified, then the rest after it.  A
+    non-recursive one is tagged with the kind [κ] the argument carries
+    ([classified_carg_tag]); the group's well-formedness checks it. *)
+| classify_args_in_cons : forall pat args1 y κ T args g gs,
     classify_arg_in Θ Ξ (raw_args_tele args1 ++ Γp) nu np n pat T g ->
-    classify_args_in Θ Ξ Γp nu np n (classified_carg_bit g :: pat) (args1 ++ (y, T) :: nil) args gs ->
-    classify_args_in Θ Ξ Γp nu np n pat args1 ((y, T) :: args) (g :: gs).
+    classify_args_in Θ Ξ Γp nu np n (classified_carg_bit g :: pat) (args1 ++ (y, κ, T) :: nil) args gs ->
+    classify_args_in Θ Ξ Γp nu np n pat args1 ((y, κ, T) :: args) (classified_carg_tag κ g :: gs).
 
 (** The raw constructors [rcs] classify as [cs], pointwise, keeping their
     names. *)
 Definition classify_cons_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat)
-    (rcs : list (string * list (string * exp))) (cs : list (string * list classified_carg)) : Prop :=
+    (rcs : list (string * list (string * abs_kind * exp))) (cs : list (string * list classified_carg)) : Prop :=
   Forall2 (fun rc c => fst rc = fst c /\ classify_args_in Θ Ξ Γp nu np n nil nil (snd rc) (snd c)) rcs cs.
 
 (** The constructors of a declared member. *)
@@ -580,7 +566,7 @@ Qed.
 Lemma classify_args_in_functional : forall Θ Ξ Γp nu np n pat args1 args gs gs',
     classify_args_in Θ Ξ Γp nu np n pat args1 args gs -> classify_args_in Θ Ξ Γp nu np n pat args1 args gs' -> gs = gs'.
 Proof.
-  intros * H; revert gs'; induction H as [| pat args1 y T args g gs Hg Hgs IH]; intros gs' H'; inversion H'; subst;
+  intros * H; revert gs'; induction H as [| pat args1 y κ T args g gs Hg Hgs IH]; intros gs' H'; inversion H'; subst;
     [ reflexivity |].
   match goal with Hg' : classify_arg_in _ _ _ _ _ _ _ _ ?g' |- _ =>
     pose proof (classify_arg_in_functional _ _ _ _ _ _ _ _ _ _ Hg Hg') as <- end.
@@ -611,17 +597,18 @@ Qed.
     ([siblings_from]): a declared one at [Cs], a view of it at its own uniform
     arguments at [Cs], normalized. *)
 
-(** The argument a context entry gives: its type, a definition with a
-    module part's term part's type; a module slot gives none. *)
-Definition centry_arg (e : centry) : list (string * exp) :=
+(** The argument a context entry gives: an assumption gives its type, at
+    its kind; any other entry gives none.  The telescopes read so are of
+    assumptions only ([ctx_args]). *)
+Definition centry_arg (e : centry) : list (string * abs_kind * exp) :=
   match e with
-  | ce_ass A | ce_def A _ | ce_dm A _ _ => (""%string, A) :: nil
-  | ce_mod _ => nil
+  | ce_ass κ A => (""%string, κ, A) :: nil
+  | ce_def _ _ | ce_dm _ _ _ | ce_mod _ => nil
   end.
 
 (** A telescope, innermost first, as arguments, outermost first.  The
     telescopes read so are of assumptions ([cargs_ctx], [record_fctx]). *)
-Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.flat_map centry_arg Δ).
+Definition ctx_args (Δ : ctx) : list (string * abs_kind * exp) := List.rev (List.flat_map centry_arg Δ).
 
 (** The constructors of a view, classified.  An inductive view
     [(qc, k, Cs)]: the container's member's, each argument its type at
@@ -647,26 +634,27 @@ Inductive view_classify (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : view_key -> 
     view_classify Θ Ξ R (vk_record qr Is) cs.
 
 (** A telescope of assumptions, innermost first, each normalized in the
-    ones before it, over [Γ]. *)
+    ones before it, over [Γ], each at its kind. *)
 Inductive nbe_tele (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : ctx -> ctx -> Prop :=
 (** The empty telescope *)
 | nbe_tele_nil : nbe_tele Θ Ξ Γ nil nil
 (** The innermost assumption, normalized in the ones before it; it is a
-    type there first, as normalizing an untyped term need not terminate *)
-| nbe_tele_cons : forall A Δ W Δ',
-    (exists i, Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i) ->
+    type of its kind there first, as normalizing an untyped term need not
+    terminate *)
+| nbe_tele_cons : forall κ A Δ W Δ',
+    (exists i, Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : abs_kind_sort κ Typeω@i) ->
     nbe_ty Θ Ξ (Δ ++ Γ) A W ->
     nbe_tele Θ Ξ Γ Δ Δ' ->
-    nbe_tele Θ Ξ Γ (ce_ass A :: Δ) (ce_ass (nf_to_exp W) :: Δ').
+    nbe_tele Θ Ξ Γ (ce_ass κ A :: Δ) (ce_ass κ (nf_to_exp W) :: Δ').
 
 (** The preimage of a telescope of assumptions under the pattern
     weakening [pat], each entry under those before it, if it has one. *)
 Fixpoint image_tele (pat : list bool) (Δ : ctx) : option ctx :=
   match Δ with
   | nil => Some nil
-  | ce_ass A :: Δ' =>
+  | ce_ass κ A :: Δ' =>
       match image_pat (List.repeat false (List.length Δ') ++ pat) A, image_tele pat Δ' with
-      | Some A0, Some Δ0 => Some (ce_ass A0 :: Δ0)
+      | Some A0, Some Δ0 => Some (ce_ass κ A0 :: Δ0)
       | _, _ => None
       end
   | _ :: _ => None
@@ -896,7 +884,7 @@ Fixpoint exp_self_form (pq : qname) (D : ind_decl) (d : nat) (M : exp) {struct M
                     :: blocks_self_form Bks'
                 end) Bks)
             (exp_self_form pq D d M')
-      | a_pi r A B => a_pi r (exp_self_form pq D d A) (exp_self_form pq D (S d) B)
+      | a_pi κd κc A B => a_pi κd κc (exp_self_form pq D d A) (exp_self_form pq D (S d) B)
       | a_fn A M' => a_fn (exp_self_form pq D d A) (exp_self_form pq D (S d) M')
       | a_app M1 M2 => a_app (exp_self_form pq D d M1) (exp_self_form pq D d M2)
       | a_var x => a_var (if x <? d then x else x + ind_ndecl D)
@@ -947,11 +935,16 @@ Inductive ind_nil_at (Θ : gdeps) (Ξ : gstack) (mp : qname) (D : ind_decl) (IsS
     Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort_lvl (ind_sort D) : Level@n ->
     (forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)) ->
     (forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))) ->
-    (forall k Mk Δ1 T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass T :: Δ2 ->
+    (forall k Mk Δ1 κ T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass κ T :: Δ2 ->
        Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
+    (** The non-uniform parameters are of the sort, a universe *)
+    (forall k Mk Δ1 κ T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass κ T :: Δ2 -> κ = ak_relevant) ->
     (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
-         ⊢ A : relevance_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+         ⊢ A : abs_kind_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+    (** No argument of a type of levels *)
+    (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
+       carg_kind r) ->
     (forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
        gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
        Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
@@ -1091,7 +1084,7 @@ Inductive ind_nil_at (Θ : gdeps) (Ξ : gstack) (mp : qname) (D : ind_decl) (IsS
     (** the group's own uniform parameters are types of a universe or types
         of levels, not propositions: [param_sorts] gives their sorts *)
     (forall k, parameter_sort param_level (param_sorts k)) ->
-    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
+    (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ gs_tele Ξ ⊢ T : param_sorts (List.length Δ2)) ->
     ind_nil_at Θ Ξ mp D IsS.
 
 (** The group checked at the instances [IsS] is a well-formed entry. *)
@@ -1109,13 +1102,13 @@ Proof. intros * [] pv; eapply wf_gentry_ind_nil; eassumption. Qed.
 Inductive mdefs_run (Θ : gdeps) (b pv : bool) : list (string * typ * exp) -> gstack -> gstack -> Prop :=
 (** No definition left *)
 | mdefs_nil : forall Ξ, mdefs_run Θ b pv nil Ξ Ξ
-(** The next definition, checked and filed, then the rest *)
-| mdefs_cons : forall x r A M (i : nat) ds Ξ Ξ',
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
-    type_relevance Θ Ξ (gs_tele Ξ) A r ->
+(** The next definition, checked and filed, then the rest.  Its type is a
+    [Π] into a type of a universe ([mdef_defs]), so it is relevant. *)
+| mdefs_cons : forall x A M (i : nat) ds Ξ Ξ',
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
     gs_fresh x Ξ ->
-    mdefs_run Θ b pv ds (gs_add x (gs_def b pv r Ξ A M) Ξ) Ξ' ->
+    mdefs_run Θ b pv ds (gs_add x (gs_def b pv ak_relevant Ξ A M) Ξ) Ξ' ->
     mdefs_run Θ b pv ((x, A, M) :: ds) Ξ Ξ'.
 
 (** ** Merging Filed Units
@@ -1178,10 +1171,11 @@ Qed.
 
 (** The record declared over the frames' parameters with its own
     parameters [Δ], its sort [S] and its fields [fs], all as written over
-    [Δ] and the frames' parameters, and the sorts [rs] of its fields: a
-    field whose type is a proposition is [propositional]. *)
-Definition record_at (Ξ : gstack) (Δ : ctx) (S : typ) (fs : list (string * typ)) (rs : list relevance) : record_decl :=
-  mk_record_decl (Δ ++ gs_tele Ξ) S fs rs.
+    [Δ] and the frames' parameters, each field at the kind the command
+    carries for it (the fill writes it, from the sort its type infers):
+    a field whose type is a proposition is [ak_propositional]. *)
+Definition record_at (Ξ : gstack) (Δ : ctx) (S : typ) (fs : list (string * abs_kind * typ)) : record_decl :=
+  mk_record_decl (Δ ++ gs_tele Ξ) S (List.map (fun f => (fst (fst f), snd f)) fs) (List.map (fun f => snd (fst f)) fs).
 
 (** The type of the field [k], of type [T] over the fields before it and
     the parameters, in the record's module: at the module's parameters and
@@ -1191,12 +1185,13 @@ Definition record_field_ty (R : record_decl) (k : nat) (T : typ) : typ :=
   T[sb_of_list Id (vars_from 1 (List.length (record_params R)) ++ record_pre R k (a_var 0))].
 
 (** The field definitions of the fields [fs] of [R] from the field [k] on:
-    each the field's projection of the module's value, at its type. *)
+    each the field's projection of the module's value, at its type, of
+    the field's kind. *)
 Fixpoint record_fields_cmds (R : record_decl) (k : nat) (fs : list (string * typ)) : list core_cmd :=
   match fs with
   | nil => nil
   | (f, T) :: fs' =>
-      core_cmd_def f true false (record_field_ty R k T) (Some (a_proj f (a_var 0))) :: record_fields_cmds R (S k) fs'
+      core_cmd_def f true false (record_field_kind R k) (record_field_ty R k T) (Some (a_proj f (a_var 0))) :: record_fields_cmds R (S k) fs'
   end.
 
 (** The field definitions of the record [R], the first entries of its
@@ -1235,21 +1230,24 @@ Section Semantics.
 
   (** Running one command; mutually, a list of them and a unit. *)
   Inductive run_cmd : list path -> builtins -> builtins_map -> gdeps -> gstack -> core_cmd -> builtins -> builtins_map -> gdeps -> gstack -> Prop :=
-  (** A definition: its type is a type of a large universe or a
-      proposition, as [r] says, and its body is checked at it. *)
-  | run_cmd_def : forall ch B Rb Θ Ξ x b pv r A M (i : nat),
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
-      type_relevance Θ Ξ (gs_tele Ξ) A r ->
+  (** A definition: its type is a type of the kind [κ] the command
+      carries — of a large universe, a proposition, or a type of levels
+      when every frame parameter is one ([wf_gentry_def]) — and its body
+      is checked at it. *)
+  | run_cmd_def : forall ch B Rb Θ Ξ x b pv κ A M (i : nat),
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort κ Typeω@i ->
+      (κ = ak_level -> level_sorted_parameters (gs_tele Ξ)) ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_def x b pv A (Some M) ⇝ Θ ⍮ gs_add x (gs_def b pv r Ξ A M) Ξ ⍮ B ⍮ Rb
-  (** An axiom: only its type is checked, a type of a large universe or a
-      proposition. *)
-  | run_cmd_axiom : forall ch B Rb Θ Ξ x b pv r A (i : nat),
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i ->
-      type_relevance Θ Ξ (gs_tele Ξ) A r ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_def x b pv κ A (Some M) ⇝ Θ ⍮ gs_add x (gs_def b pv κ Ξ A M) Ξ ⍮ B ⍮ Rb
+  (** An axiom: only its type is checked, a type of the kind [κ] the
+      command carries, a large universe's or a proposition: a level is
+      never assumed. *)
+  | run_cmd_axiom : forall ch B Rb Θ Ξ x b pv κ A (i : nat),
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort κ Typeω@i ->
+      κ <> ak_level ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_def x b pv A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv r Ξ A) Ξ ⍮ B ⍮ Rb
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_def x b pv κ A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv κ Ξ A) Ξ ⍮ B ⍮ Rb
   (** A module's frame is opened, at the path [x] in the frame below and
       with no member, over its parameters, as [wf_gmod_nil] checks a
       frame; its body's commands run in it, and [core_cmd_close] files
@@ -1413,16 +1411,13 @@ Section Semantics.
       ([wf_gentry_record]); its module's frame is opened over the record's
       own parameters and then a value of it, and its field definitions run
       in it at once; its with-area's commands run in it after, and
-      [core_cmd_close] files it.  The sorts [rs] of the fields are those
-      their typings in [wf_gentry_record] give them. *)
-  | run_cmd_record_open : forall ch B Rb Θ Ξ x pv Δ Srt fs rs B1 Rb1 Θ1 Ξ1,
+      [core_cmd_close] files it.  The kinds of the fields are those the
+      command carries, which [wf_gentry_record] checks. *)
+  | run_cmd_record_open : forall ch B Rb Θ Ξ x pv Δ Srt fs B1 Rb1 Θ1 Ξ1,
       gs_fresh x Ξ ->
-      (forall k f T, List.nth_error fs k = Some (f, T) ->
-         type_relevance Θ Ξ (record_fctx (record_at Ξ Δ Srt fs rs) k ++ Δ ++ gs_tele Ξ) T
-           (record_field_rel (record_at Ξ Δ Srt fs rs) k)) ->
-      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs rs) ⋄ ->
-      Θ ⍮ gs_push_record (ind_qname Ξ x) (record_at Ξ Δ Srt fs rs) Δ Ξ ⍮ B ⍮ Rb ⊢[ch]
-        List.map ci_core (record_field_cmds (record_at Ξ Δ Srt fs rs)) ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) ⋄ ->
+      Θ ⍮ gs_push_record (ind_qname Ξ x) (record_at Ξ Δ Srt fs) Δ Ξ ⍮ B ⍮ Rb ⊢[ch]
+        List.map ci_core (record_field_cmds (record_at Ξ Δ Srt fs)) ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_record_open x pv Δ Srt fs ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1
   (** An [eval] changes nothing, but must type-check where it stands, at
       its type, written or inferred by the fill. *)
@@ -1593,7 +1588,7 @@ Qed.
 
 Lemma nbe_tele_functional : forall Θ Ξ Γ Δ Ws Ws', nbe_tele Θ Ξ Γ Δ Ws -> nbe_tele Θ Ξ Γ Δ Ws' -> Ws = Ws'.
 Proof.
-  intros * H; revert Ws'; induction H as [| A Δ W Δ' _ HW _ IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
+  intros * H; revert Ws'; induction H as [| κ A Δ W Δ' _ HW _ IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
   match goal with HW' : nbe_ty _ _ _ A ?W' |- _ => pose proof (functional_nbe_ty _ _ _ _ HW HW') as <- end.
   f_equal; apply IH; assumption.
 Qed.
@@ -1644,28 +1639,9 @@ Proof.
   split; reflexivity.
 Qed.
 
-(** The sorts of a record's fields are fixed by their types' inferred
-    sorts. *)
-Lemma record_at_relevance_functional : forall Θ Ξ Δ Srt fs rs rs', ⊢ᵍ Θ ⍮ Ξ ->
-    List.length rs = List.length fs -> List.length rs' = List.length fs ->
-    (forall k f T, List.nth_error fs k = Some (f, T) ->
-       type_relevance Θ Ξ (record_fctx (record_at Ξ Δ Srt fs rs) k ++ Δ ++ gs_tele Ξ) T (record_field_rel (record_at Ξ Δ Srt fs rs) k)) ->
-    (forall k f T, List.nth_error fs k = Some (f, T) ->
-       type_relevance Θ Ξ (record_fctx (record_at Ξ Δ Srt fs rs') k ++ Δ ++ gs_tele Ξ) T (record_field_rel (record_at Ξ Δ Srt fs rs') k)) ->
-    rs = rs'.
-Proof.
-  intros * Hg Hl Hl' H H'.
-  apply List.nth_ext with (d := relevant) (d' := relevant); [ congruence |].
-  intros k Hk.
-  destruct (List.nth_error fs k) as [[f T] |] eqn:Hf; [| apply List.nth_error_None in Hf; lia ].
-  exact (type_relevance_functional _ _ _ _ _ _ Hg (H _ _ _ Hf) (H' _ _ _ Hf)).
-Qed.
-
 Lemma mdefs_run_functional : forall Θ b pv ds Ξ Ξ1, mdefs_run Θ b pv ds Ξ Ξ1 -> forall Ξ2, mdefs_run Θ b pv ds Ξ Ξ2 -> Ξ1 = Ξ2.
 Proof.
-  induction 1 as [| x r A M i ds Ξ Ξ' HA Hr HM Hfr Hrun IH]; intros Ξ2 Hother; inversion Hother; subst; [ reflexivity |].
-  match goal with Hr' : type_relevance _ _ _ _ ?r' |- _ =>
-    assert (r = r') as <- by (eapply type_relevance_functional; [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) | exact Hr | exact Hr' ]) end.
+  induction 1 as [| x A M i ds Ξ Ξ' HA HM Hfr Hrun IH]; intros Ξ2 Hother; inversion Hother; subst; [ reflexivity |].
   auto.
 Qed.
 
@@ -1752,24 +1728,6 @@ Section Determinism.
         HE : _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ |- _ =>
           assert_fails constr_eq g1 g2;
           pose proof (open_gens_functional _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) H1 H2); subst g2
-      end.
-    (* a definition: its type infers one sort, so it is filed at one
-       relevance; a record: so are its fields *)
-    all: repeat match goal with
-      | HT : ?Θ0 ⍮ ?Ξ0 ⍮ ?G ⊢ ?A : _, H1 : type_relevance ?Θ0 ?Ξ0 ?G ?A ?r1, H2 : type_relevance ?Θ0 ?Ξ0 ?G ?A ?r2 |- _ =>
-          assert_fails constr_eq r1 r2;
-          pose proof (type_relevance_functional _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HT)) H1 H2) as <-
-      end.
-    all: repeat match goal with
-      | HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ (record_at ?Ξ0 ?Δ ?S ?fs ?rs1) _,
-        HE' : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ (record_at ?Ξ0 ?Δ ?S ?fs ?rs2) _ |- _ =>
-          assert_fails constr_eq rs1 rs2;
-          let Ers := fresh "Ers" in
-          first [ pose proof (record_at_relevance_functional _ _ Δ S fs rs1 rs2 (wf_gentry_gctx _ _ _ _ HE)
-                        (typed_relevance_length _ _ _ (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl))
-                        (typed_relevance_length _ _ _ (proj1 wf_record_typed_all _ _ _ _ HE' _ _ _ _ eq_refl))
-                        ltac:(eassumption) ltac:(eassumption)) as Ers ];
-          first [ subst rs2 | subst rs1 ]
       end.
     (* an inductive or a record alias, and a builtin binding: its target
        read as a term is one term, of one inferred type, of one normal
@@ -2006,12 +1964,12 @@ Qed.
 (** A record checked with an empty module has its own parameters, over the
     frames', as assumptions of a well-formed context: those its module is
     opened over, before its value. *)
-Lemma record_nil_entry_params : forall Θ Ξ mp pv pr Δ Srt fs rs,
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs rs) ⋄ ->
+Lemma record_nil_entry_params : forall Θ Ξ mp pv pr Δ Srt fs,
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs) ⋄ ->
     tele_ass Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
 Proof.
   intros * HE.
-  assert (HP : record_params (record_at Ξ Δ Srt fs rs) = Δ ++ gs_tele Ξ) by reflexivity.
+  assert (HP : record_params (record_at Ξ Δ Srt fs) = Δ ++ gs_tele Ξ) by reflexivity.
   inversion HE; subst.
   - split.
     + match goal with Ha : tele_ass (record_params _) |- _ => rewrite HP in Ha; apply Forall_app in Ha; tauto end.
@@ -2024,12 +1982,12 @@ Qed.
 (** The same record's own parameters are types of a universe, at a common
     level: by the premise of [wf_gentry_record], or by (R) of the body of
     its module, one entry out (the value). *)
-Lemma record_nil_entry_params_relevant : forall Θ Ξ mp pv pr Δ Srt fs rs,
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs rs) ⋄ ->
+Lemma record_nil_entry_params_relevant : forall Θ Ξ mp pv pr Δ Srt fs,
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs) ⋄ ->
     exists l, params_relevant Θ Ξ (gs_tele Ξ) Δ l.
 Proof.
   intros * HE.
-  assert (HP : record_params (record_at Ξ Δ Srt fs rs) = Δ ++ gs_tele Ξ) by reflexivity.
+  assert (HP : record_params (record_at Ξ Δ Srt fs) = Δ ++ gs_tele Ξ) by reflexivity.
   inversion HE; subst.
   - match goal with Hp : record_params _ = ?Δ' ++ _ |- _ =>
       rewrite HP in Hp; apply app_inv_tail in Hp; subst Δ' end.
@@ -2404,35 +2362,43 @@ Qed.
 (** A definition or an alias, checked against the frame so far, keeps the
     stack well formed. *)
 Lemma add_def_wf : forall Θ Ξ x b pv r A M (i : nat),
-    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh x Ξ ->
+    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i ->
+    (r = ak_level -> level_sorted_parameters (gs_tele Ξ)) -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh x Ξ ->
     ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv r Ξ A M) Ξ.
 Proof.
-  intros * HΞ HA HM Hfr.
+  intros * HΞ HA Hl HM Hfr.
   destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
   inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | | exact Hfr ].
-  unfold gs_def; eapply wf_gentry_def with (oM := Some M) (Srt := Typeω@i);
-    [ exact HA | constructor | discriminate | intros ? [= <-]; exact HM | discriminate ].
+  unfold gs_def; eapply wf_gentry_def with (oM := Some M);
+    [ exact HA | exact Hl | intros ? [= <-]; exact HM | discriminate ].
 Qed.
 
+(** A relevant definition, of a type of a large universe. *)
+Lemma add_relevant_def_wf : forall Θ Ξ x b pv A M (i : nat),
+    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh x Ξ ->
+    ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv ak_relevant Ξ A M) Ξ.
+Proof. intros * HΞ HA HM Hfr; exact (add_def_wf _ _ _ _ _ ak_relevant _ _ i HΞ HA ltac:(discriminate) HM Hfr). Qed.
+
 Lemma add_axiom_wf : forall Θ Ξ x b pv r A (i : nat),
-    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : relevance_sort r Typeω@i -> gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (gs_axiom b pv r Ξ A) Ξ.
+    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i -> r <> ak_level -> gs_fresh x Ξ ->
+    ⊢ᵍ Θ ⍮ gs_add x (gs_axiom b pv r Ξ A) Ξ.
 Proof.
-  intros * HΞ HA Hfr.
+  intros * HΞ HA Hr Hfr.
   destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
   inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | | exact Hfr ].
-  unfold gs_axiom; eapply wf_gentry_def with (oM := None) (Srt := Typeω@i);
-    [ exact HA | constructor | discriminate | discriminate | intros _; eauto ].
+  unfold gs_axiom; eapply wf_gentry_def with (oM := None);
+    [ exact HA | intros ->; contradiction | discriminate | intros _; exact Hr ].
 Qed.
 
 (** The level condition of an alias over its full telescope gives the
     premises on [lv] of [wf_gentry_alias] and [wf_gentry_def_mod], at some
     [lv]: the converse of [levels_abstractable_of_flag]. *)
 Lemma levels_abstractable_flag : forall Θ Ξ Γ E, levels_abstractable Θ Ξ ⋅ Γ E ->
-    exists lv Rt, (lv = true -> forall Δ1 T Δ2, Γ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ ⋅ ⊢ T : LevelSort) /\
+    exists lv Rt, (lv = true -> level_sorted_parameters Γ) /\
       (lv = false -> mdenote Θ Ξ Γ E Rt) /\ (lv = false -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rt).
 Proof.
   intros * [Hl | (Rt & Hm & Hn)]; rewrite ?app_nil_r in *;
@@ -2523,7 +2489,10 @@ Qed.
 
 (** The definitions of a mutual definition, filed in order, likewise. *)
 Lemma mdefs_run_wf : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
-Proof. induction 1; intros HΞ; [ exact HΞ | apply IHmdefs_run; eapply add_def_wf; eassumption ]. Qed.
+Proof.
+  induction 1; intros HΞ; [ exact HΞ |].
+  apply IHmdefs_run; eapply add_relevant_def_wf; eassumption.
+Qed.
 
 Lemma mdefs_run_shape : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
 Proof. induction 1; rewrite ?IHmdefs_run, ?gs_add_params; reflexivity. Qed.
@@ -2538,7 +2507,7 @@ Qed.
 Lemma mdefs_run_ind_lookup : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
     forall p D0, ind_lookup Θ Ξ p = Some D0 -> ind_lookup Θ Ξ' p = Some D0.
 Proof.
-  induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHmdefs_run; [ eapply add_def_wf; eassumption |].
+  induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHmdefs_run; [ eapply add_relevant_def_wf; eassumption |].
   apply ind_lookup_add; assumption.
 Qed.
 
@@ -2766,7 +2735,7 @@ Section WellFormed.
       runs on embeds into the one it ends with. *)
 
   (** A core definition or axiom. *)
-  Definition cmd_is_def (c : core_cmd) : Prop := match c with core_cmd_def _ _ _ _ _ => True | _ => False end.
+  Definition cmd_is_def (c : core_cmd) : Prop := match c with core_cmd_def _ _ _ _ _ _ => True | _ => False end.
 
   (** What a run of generated commands keeps. *)
   Record gen_run (Θ : gdeps) (Ξ : gstack) (B : builtins) (Rb : builtins_map)
@@ -2830,8 +2799,8 @@ Section WellFormed.
   Qed.
 
   (** A definition or an axiom. *)
-  Lemma def_run_gen : forall ch B Rb Θ Ξ x b pv A oM B' Rb' Θ' Ξ',
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv A oM ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+  Lemma def_run_gen : forall ch B Rb Θ Ξ x b pv κ A oM B' Rb' Θ' Ξ',
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv κ A oM ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
       ⊢ᵍ Θ ⍮ Ξ -> gen_run Θ Ξ B Rb Θ' Ξ' B' Rb'.
   Proof.
     intros * Hr HΞ; inversion Hr; subst; apply gen_run_add; try assumption;
@@ -2848,7 +2817,7 @@ Section WellFormed.
     inversion Hr as [| | ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? H1 H2]; subst.
     inversion Hd as [| ? ? Hc Hds]; subst.
     destruct c; try contradiction.
-    pose proof (def_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ H1 HΞ) as G1.
+    pose proof (def_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H1 HΞ) as G1.
     pose proof G1 as [-> -> -> HΞ1 _ _ _].
     exact (gen_run_trans _ _ _ _ _ _ _ _ _ _ _ _ G1 (IH _ _ _ _ _ _ _ _ H2 Hds HΞ1)).
   Qed.
@@ -2870,7 +2839,7 @@ Section WellFormed.
         apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_nil; eassumption |];
         cbn; exists "Rec"%string; split; [ reflexivity | exact Hfr ] |] end.
     assert (Hd : Forall cmd_is_def (List.map (fun jx => let '(j, Mj, x) := jx in
-                    core_cmd_def x true false (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj)))
+                    core_cmd_def x true false ak_relevant (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj)))
                     (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) (recursor_names Θ0 Ξ0 D))))
       by (apply Forall_forall; intros c0 Hin; apply in_map_iff in Hin as ([[j Mj] x0] & <- & _); exact I).
     destruct (defs_run_gen _ _ _ _ _ _ _ _ _ _ Hdefs Hd Hpush) as [-> -> -> HΞ1 _ Hsh Htl].
@@ -2959,7 +2928,7 @@ Section WellFormed.
   (** A frame of a record's module has the record's parameters and then a
       value of it. *)
   Lemma wf_gmod_record_params : forall Θ Ξ mp R P Φ, Θ ⍮ Ξ ⍮ mp ⍮ fk_record R ⍮ P ⊢ᵍᵐ Φ ->
-      exists Δ, P = ce_ass (record_self mp R) :: Δ /\ record_params R = Δ ++ gs_tele Ξ.
+      exists Δ, P = ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: Δ /\ record_params R = Δ ++ gs_tele Ξ.
   Proof.
     intros Θ Ξ mp R P Φ; revert P; induction Φ as [| Φ IH y E | Φ IH H its]; intros P HΦ; inversion HΦ; subst; eauto.
   Qed.
@@ -3073,16 +3042,16 @@ Section WellFormed.
     - (* a record: checked with an empty module, its module's frame opened
          over its parameters and a value of it, and its field definitions
          run in it *)
-      intros ch B Rb Θ Ξ x pv Δ Srt fs rs B1 Rb1 Θ1 Ξ1 Hfr _ HE Hr1 IH1 HΞ Hc Hst.
+      intros ch B Rb Θ Ξ x pv Δ Srt fs B1 Rb1 Θ1 Ξ1 Hfr HE Hr1 IH1 HΞ Hc Hst.
       destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
-      destruct (record_nil_entry_params _ _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
-      destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ _ HE) as [l HPr].
+      destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
+      destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ HE) as [l HPr].
       destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record (ind_qname ((mq, Kq, Uq) :: Ξ0) x)
-                              (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs rs) Δ ((mq, Kq, Uq) :: Ξ0)).
+                              (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ ((mq, Kq, Uq) :: Ξ0)).
       { apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_record_nil; try eassumption; reflexivity |].
         cbn; exists x; split; [ reflexivity | exact Hfr ]. }
-      pose proof (stack_in_push_record _ x (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs rs) Δ _ Hst Hfr) as Hst'.
+      pose proof (stack_in_push_record _ x (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ _ Hst Hfr) as Hst'.
       exact (IH1 Hpush Hc Hst').
     - intros * _ HΞ Hc Hst; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                                          | exact Hst ].
@@ -3292,17 +3261,17 @@ Section WellFormed.
     - intros; split; [ apply Hadd; assumption | assumption ].
     - (* a record's frame: read in the frame below, then its field
          definitions *)
-      intros ch B Rb Θ Ξ x pv Δ Srt fs rs B1 Rb1 Θ1 Ξ1 Hfr _ HE Hr1 IH1 HΞ Hc Hst Hb HR.
+      intros ch B Rb Θ Ξ x pv Δ Srt fs B1 Rb1 Θ1 Ξ1 Hfr HE Hr1 IH1 HΞ Hc Hst Hb HR.
       destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
-      destruct (record_nil_entry_params _ _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
-      destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ _ HE) as [l HPr].
+      destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
+      destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ HE) as [l HPr].
       destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hff : frame_fresh Θ ((mq, Kq, Uq) :: Ξ0) (ind_qname ((mq, Kq, Uq) :: Ξ0) x))
         by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
       assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record (ind_qname ((mq, Kq, Uq) :: Ξ0) x)
-                              (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs rs) Δ ((mq, Kq, Uq) :: Ξ0))
+                              (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ ((mq, Kq, Uq) :: Ξ0))
         by (apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_record_nil; try eassumption; reflexivity | exact Hff ]).
-      pose proof (stack_in_push_record _ x (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs rs) Δ _ Hst Hfr) as Hst'.
+      pose proof (stack_in_push_record _ x (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ _ Hst Hfr) as Hst'.
       match type of Hpush with ⊢ᵍ _ ⍮ ?Xp =>
         assert (Hb0 : builtins_wf Θ Xp B)
           by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ]
@@ -3598,8 +3567,8 @@ Section Runs.
     - intros; eapply run_cmd_builtin; eassumption.
     - intros; eapply run_cmd_ind_alias; eassumption.
     - intros; eapply run_cmd_record_alias; eassumption.
-    - intros * Hfr Hrel HE Hr1 IH1 ch' Hch.
-      eapply run_cmd_record_open; [ exact Hfr | exact Hrel | exact HE | apply IH1; exact Hch ].
+    - intros * Hfr HE Hr1 IH1 ch' Hch.
+      eapply run_cmd_record_open; [ exact Hfr | exact HE | apply IH1; exact Hch ].
     - intros; apply run_cmd_eval; assumption.
     - intros; constructor.
     - intros * Ha Hfa Hr1 IH1 Hr2 IH2 ch' Hch.
@@ -3825,9 +3794,9 @@ Fixpoint cargs_correspondb (vm : list nat) (gs' gs : list carg) : bool :=
       | None => false
       end
   | ca_arg r' _ :: gs1', ca_arg r _ :: gs1 =>
-      (if relevance_eq_dec r' r then true else false) && cargs_correspondb vm gs1' gs1
+      (if abs_kind_eq_dec r' r then true else false) && cargs_correspondb vm gs1' gs1
   | ca_arg r' _ :: gs1', ca_rec _ :: gs1 =>
-      (if relevance_eq_dec r' relevant then true else false) && cargs_correspondb vm gs1' gs1
+      (if abs_kind_eq_dec r' ak_relevant then true else false) && cargs_correspondb vm gs1' gs1
   | _, _ => false
   end.
 
@@ -3835,9 +3804,9 @@ Lemma cargs_correspondb_sound : forall vm gs' gs, cargs_correspondb vm gs' gs = 
 Proof.
   induction gs' as [| [r' A' | t'] gs' IH]; intros [| [r A | t] gs] H; cbn in H |- *; try discriminate; auto.
   - apply andb_true_iff in H as [H1 H2].
-    destruct (relevance_eq_dec r' r) as [-> |]; [ auto | discriminate ].
+    destruct (abs_kind_eq_dec r' r) as [-> |]; [ auto | discriminate ].
   - apply andb_true_iff in H as [H1 H2].
-    destruct (relevance_eq_dec r' relevant) as [-> |]; [ auto | discriminate ].
+    destruct (abs_kind_eq_dec r' ak_relevant) as [-> |]; [ auto | discriminate ].
   - destruct (List.nth_error vm (ptyp_mem t')) as [j |] eqn:Hj; [| discriminate ].
     apply andb_true_iff in H as [H H3]; apply andb_true_iff in H as [H1 H2].
     apply Nat.eqb_eq in H1, H2; subst; auto.

@@ -14,17 +14,21 @@ Reserved Notation "Γ '⊢aᵇ' Φ ⇝ Φx" (at level 70, Φ at level 69, Φx at
 
 Generalizable All Variables.
 
-(** That a normal form is the type of a type: a universe, whose elements
-    are relevant, or [Prop], whose elements are propositions.  The side
-    condition of every algorithmic rule that asks for a type of either
-    sort.  The universe [u] is the one the type is counted in when a [Π]
-    joins its parts: a proposition counts as the least small universe, as
-    [Prop : Type@0]. *)
-Variant is_sort_nf : nf -> relevance -> universe_nf -> Prop :=
+(** That a normal form is the type of a type: a universe, whose types are
+    relevant, [Prop], whose types are propositions, or [LevelSort], whose
+    types are types of levels; [κ] is the kind of the types it sorts
+    ([sort_kind]).  The side condition of every algorithmic rule that asks
+    for a type of some sort.  The universe [u] is the one the type is
+    counted in when a [Π] joins its parts: a proposition and a type of
+    levels count as the least small universe, as a domain of another kind
+    does not bound the universe of a [Π] ([wf_pi]). *)
+Variant is_sort_nf : nf -> abs_kind -> universe_nf -> Prop :=
 (** A universe: its types are relevant *)
-| is_sort_nf_univ : forall W u, is_univ_nf W u -> is_sort_nf W relevant u
+| is_sort_nf_univ : forall W u, is_univ_nf W u -> is_sort_nf W ak_relevant u
 (** [Prop]: its types are propositions *)
-| is_sort_nf_prop : is_sort_nf Propⁿ propositional (universe_small (ordinal_of_nat 0, nil)).
+| is_sort_nf_prop : is_sort_nf Propⁿ ak_propositional (universe_small (ordinal_of_nat 0, nil))
+(** [LevelSort]: its types are types of levels *)
+| is_sort_nf_level : is_sort_nf LevelSortⁿ ak_level (universe_small (ordinal_of_nat 0, nil)).
 
 #[export]
 Hint Constructors is_sort_nf : mctt.
@@ -32,9 +36,9 @@ Hint Constructors is_sort_nf : mctt.
 (** A normal form is the type of a type of one sort and universe. *)
 Lemma is_sort_nf_functional : forall W r r' u u', is_sort_nf W r u -> is_sort_nf W r' u' -> r = r' /\ u = u'.
 Proof.
-  intros * H H'; destruct H as [W u Hu |]; inversion H'; subst;
+  intros * H H'; destruct H as [W u Hu | |]; inversion H'; subst;
     try solve [ inversion Hu ]; try solve [ match goal with Hu' : is_univ_nf _ _ |- _ => inversion Hu' end ];
-    [ split; [ reflexivity | eapply is_univ_nf_functional; eassumption ] | split; reflexivity ].
+    [ split; [ reflexivity | eapply is_univ_nf_functional; eassumption ] | split; reflexivity | split; reflexivity ].
 Qed.
 
 
@@ -60,13 +64,14 @@ Inductive nfs_agree (Γ : ctx) : list exp -> list exp -> list typ -> Prop :=
 (** [alg_ty_conv Γ A B]: the types [A] and [B] have one normal form. *)
 Definition alg_ty_conv (Γ : ctx) (A B : typ) : Prop := exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ B W.
 
-(** [nbe_ty_relevance Γ A r]: the type [A] is of the relevance [r], read
-    off its value at the initial environment ([domain_relevance]): a type
-    of a universe has a relevant value, a proposition a propositional one.
-    It decides the sort of a type the algorithm has inferred, which is a
-    normal form, not a subterm, so it is not inferred again. *)
-Definition nbe_ty_relevance (Γ : ctx) (A : typ) (r : relevance) : Prop :=
-  exists ρ a, initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ domain_relevance a = r.
+(** [nbe_ty_kind Γ A κ]: the type [A] is of the kind [κ], read off its
+    value at the initial environment ([domain_kind]): a type of a universe
+    has a relevant value, a proposition a propositional one, a type of
+    levels one of levels.  It decides the sort of a type the algorithm has
+    inferred, which is a normal form, not a subterm, so it is not inferred
+    again. *)
+Definition nbe_ty_kind (Γ : ctx) (A : typ) (κ : abs_kind) : Prop :=
+  exists ρ a, initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ domain_kind a = κ.
 
 Inductive alg_type_check : ctx -> typ -> exp -> Prop :=
 | alg_type_check_ati :
@@ -86,9 +91,12 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ⊢a M ⟹ Levelⁿ@n ->
      nbe_ty_f Γ Type⟨succl M⟩ W ->
      Γ ⊢a Type⟨M⟩ ⟹ W )
-(** The closed small types infer the least universe. *)
+(** A type of levels infers the sort of the types of levels, and that
+    sort the least large universe ([wf_level], [wf_level_sort]). *)
 | alg_type_infer_level :
-  `( Γ ⊢a Level@n ⟹ Typeⁿ@0 )
+  `( Γ ⊢a Level@n ⟹ LevelSortⁿ )
+| alg_type_infer_level_sort :
+  `( Γ ⊢a LevelSort ⟹ Typeωⁿ@0 )
 (** A level literal is of the type of levels of its tier, the least one it
     is in; the two operations infer the types of levels of their arguments,
     and are of the larger. *)
@@ -113,25 +121,27 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** [⊥] is a proposition. *)
 | alg_type_infer_False :
   `( Γ ⊢a ⊥ ⟹ Propⁿ )
-(** Ex falso: the target is a type of either sort, the proof is checked
-    at [⊥], and the term infers the target's normal form. *)
+(** Ex falso: the target is a type of a universe or a proposition, never
+    a type of levels ([level_closed_sort]), the proof is checked at [⊥],
+    and the term infers the target's normal form. *)
 | alg_type_infer_absurd :
   `( Γ ⊢a C ⟹ UC ->
      is_sort_nf UC r u ->
+     r <> ak_level ->
      Γ ⊢a M ⟸ ⊥ ->
      nbe_ty_f Γ C W ->
      Γ ⊢a efq M return C ⟹ W )
 (** The dependent conjunction of two propositions is a proposition. *)
 | alg_type_infer_and :
   `( Γ ⊢a P ⟹ Propⁿ ->
-     Γ ▹ P ⊢a Q ⟹ Propⁿ ->
+     Γ ▹{ak_propositional} P ⊢a Q ⟹ Propⁿ ->
      Γ ⊢a Σₚ P Q ⟹ Propⁿ )
 (** A proof of a conjunction: its annotations are propositions, each
     component is checked at its part, and the proof infers the normal form
     of the conjunction. *)
 | alg_type_infer_conj :
   `( Γ ⊢a P ⟹ Propⁿ ->
-     Γ ▹ P ⊢a Q ⟹ Propⁿ ->
+     Γ ▹{ak_propositional} P ⊢a Q ⟹ Propⁿ ->
      Γ ⊢a M ⟸ P ->
      Γ ⊢a N ⟸ Q[Id,,M] ->
      nbe_ty_f Γ (Σₚ P Q) W ->
@@ -193,7 +203,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
         alg_ty_conv (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) (eb_scrutinee_type b)
           (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj)))) ->
      (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-        elim_mctx p D j Mj Us ++ Γ ⊢a eb_motive b ⟸ relevance_sort r Typeω@i) ->
+        elim_mctx p D j Mj Us ++ Γ ⊢a eb_motive b ⟸ abs_kind_sort r Typeω@i) ->
      (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)) ->
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
@@ -201,6 +211,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
         ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
         elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_branch_type p D j Mj c gs (eb_motive b) Us) ->
+     motive_kind r ->
      nbe_ty_f Γ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] T ->
      Γ ⊢a a_elim r p Us m Bks M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([universe_nf_pi_tm]): a
@@ -216,34 +227,38 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     normal form are the sorts of the atoms' types.  (An inferred type is
     already normal, [alg_type_infer_normal], so [UB'] is [UB]; the premise
     is what lets soundness, which that theorem rests on, see it.) *)
-(** The domain is a type of either sort; a proposition counts as the
+(** One rule for every [Π], as [wf_pi]: the domain is a type of the kind
+    [κd] the [Π] carries, the codomain one of the kind [κc], at kinds a
+    [Π] may join ([pi_kinds]), and the [Π] is of the sort of the kind
+    [κc] at that join ([abs_kind_sort]): a type of functions in the join,
+    a universal proposition in [Prop], a type of functions between levels
+    in [LevelSort].  A proposition and a type of levels count as the
     least small universe ([is_sort_nf]). *)
 | alg_type_infer_pi :
   `( Γ ⊢a A ⟹ UA ->
-     Γ ▹ A ⊢a B ⟹ UB ->
-     is_sort_nf UA rA u ->
-     nbe_ty_f (Γ ▹ A) UB UB' ->
-     is_univ_nf UB' v ->
-     nbe_ty_f Γ (universe_nf_pi_tm u v) W ->
-     Γ ⊢a Π A B ⟹ W )
-(** A [∀]: over a type of either sort, into propositions, a proposition. *)
-| alg_type_infer_all :
-  `( Γ ⊢a A ⟹ UA ->
-     is_sort_nf UA rA u ->
-     Γ ▹ A ⊢a B ⟹ Propⁿ ->
-     Γ ⊢a ∀ₚ A B ⟹ Propⁿ )
-(** A λ-abstraction, over a type of either sort: a function, or a proof of
-    a [∀], as the relevance [r] of its body's type is ([nbe_ty_relevance]). *)
+     is_sort_nf UA κd u ->
+     Γ ▹{κd} A ⊢a B ⟹ UB ->
+     nbe_ty_f (Γ ▹{κd} A) UB UB' ->
+     is_sort_nf UB' κc v ->
+     pi_kinds κd κc ->
+     nbe_ty_f Γ (abs_kind_sort κc (universe_nf_pi_tm u v)) W ->
+     Γ ⊢a a_pi κd κc A B ⟹ W )
+(** A λ-abstraction, over a type of the kind [κd] its sort says: a
+    function, a proof of a [∀] or a function between levels, as the kind
+    [κc] of its body's type is ([nbe_ty_kind]), at kinds a [Π] may join
+    ([pi_kinds]). *)
 | alg_type_infer_fn :
   `( Γ ⊢a A ⟹ UA ->
-     is_sort_nf UA rA u ->
-     Γ ▹ A ⊢a M ⟹ B ->
-     nbe_ty_relevance (Γ ▹ A) B r ->
+     is_sort_nf UA κd u ->
+     Γ ▹{κd} A ⊢a M ⟹ B ->
+     nbe_ty_kind (Γ ▹{κd} A) B κc ->
+     pi_kinds κd κc ->
      nbe_ty_f Γ A C ->
-     Γ ⊢a λ A M ⟹ nf_pi r C B )
-(** An application of a function or of a proof of a [∀]. *)
+     Γ ⊢a λ A M ⟹ nf_pi κd κc C B )
+(** An application of a function, of a proof of a [∀] or of a function
+    between levels. *)
 | alg_type_infer_app :
-  `( Γ ⊢a M ⟹ nf_pi r A B ->
+  `( Γ ⊢a M ⟹ nf_pi κd κc A B ->
      Γ ⊢a N ⟸ A ->
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
@@ -311,8 +326,8 @@ with alg_ext : ctx -> ctx -> Prop :=
 | alg_ext_ass :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
-     is_sort_nf UA r u ->
-     Γ ⊢aˣ Ψ ▹ A )
+     is_sort_nf UA κ u ->
+     Γ ⊢aˣ Ψ ▹{κ} A )
 (** A definition of a type of either sort, its body checked against it *)
 | alg_ext_def :
   `( Γ ⊢aˣ Ψ ->
@@ -344,7 +359,7 @@ with alg_params : ctx -> ctx -> Prop :=
   `( Γ ⊢aᵖ Δ ->
      Δ ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
-     Γ ⊢aᵖ Δ ▹ A )
+     Γ ⊢aᵖ Δ ▹{ak_relevant} A )
 where "Γ '⊢aᵖ' Δ" := (alg_params Γ Δ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
 (** A body: its parameters, and its entries, each read as it stands in the
@@ -536,7 +551,7 @@ Inductive user_exp : exp -> Prop :=
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->
-     user_exp (a_pi r A B) )
+     user_exp (a_pi κd κc A B) )
 | user_exp_fn :
   `( user_exp A ->
      user_exp M ->

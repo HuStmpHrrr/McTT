@@ -145,6 +145,10 @@ Fixpoint list_code {A : Set} (f : A -> code_tree) (l : list A) (t : code_tree) :
   | x :: r => code_tree_node 1 (f x) (list_code f r t)
   end.
 
+(** The coding of a kind. *)
+Definition abs_kind_code (κ : abs_kind) : nat :=
+  match κ with ak_relevant => 0 | ak_propositional => 1 | ak_level => 2 end.
+
 (** The coding of the records normal forms hold, given that of what they
     hold.  An atom: its offset, the neutral, then its sort. *)
 Definition atom_code {E : Set} (f : E -> code_tree) (a : level_atom_g E) : code_tree :=
@@ -176,8 +180,9 @@ Fixpoint nf_code (M : nf) (t : code_tree) : code_tree :=
   | nf_False => code_tree_node 9 code_tree_nil t
   | nf_prop => code_tree_node 17 code_tree_nil t
   | nf_and P Q => code_tree_node 19 (nf_code P (nf_code Q code_tree_nil)) t
-  | nf_pi r A B =>
-      code_tree_node (match r with relevant => 10 | propositional => 18 end) (nf_code A (nf_code B code_tree_nil)) t
+  | nf_pi κd κc A B =>
+      code_tree_node 10 (code_tree_node (abs_kind_code κd) (code_tree_node (abs_kind_code κc) code_tree_nil code_tree_nil)
+                           (nf_code A (nf_code B code_tree_nil))) t
   | nf_fn A M' => code_tree_node 11 (nf_code A (nf_code M' code_tree_nil)) t
   | nf_neut m => code_tree_node 12 (ne_code m code_tree_nil) t
   | nf_indty p k Ms =>
@@ -274,7 +279,7 @@ Proof.
                | H : nf_code _ _ = nf_code ?N _ |- _ => destruct N
                | H : ne_code _ _ = ne_code ?N _ |- _ => destruct N
                end.
-  all: repeat match goal with p : o2 |- _ => destruct p | r : relevance |- _ => destruct r end.
+  all: repeat match goal with p : o2 |- _ => destruct p | κ : abs_kind |- _ => destruct κ end.
   all: match goal with
        | H : nf_code _ _ = nf_code _ _ |- _ => cbn in H; injection H as; subst; try discriminate
        | H : ne_code _ _ = ne_code _ _ |- _ => cbn in H; injection H as; subst; try discriminate
@@ -314,7 +319,7 @@ Lemma nf_ne_code_erase :
   (forall M t, nf_code (nf_erase M) t = nf_code M t) /\ (forall m t, ne_code (ne_erase m) t = ne_code m t).
 Proof.
   apply nf_ne_ind; intros; cbn [nf_erase ne_erase];
-    repeat match goal with p : o2 |- _ => destruct p | r : relevance |- _ => destruct r end;
+    repeat match goal with p : o2 |- _ => destruct p | κ : abs_kind |- _ => destruct κ end;
     cbn [nf_code ne_code];
     repeat match goal with
            | IH : forall t, nf_code (nf_erase ?M) t = _ |- context [nf_code (nf_erase ?M) ?t] => rewrite (IH t)

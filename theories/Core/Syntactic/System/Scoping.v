@@ -36,7 +36,7 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
       all_list (exp_scoped n) Us /\
       all_blocks (fun nm Z A Bs => exp_scoped (nm - 1 + n) Z /\ exp_scoped (nm + n) A /\
                                     all_brs (fun k B => exp_scoped (k + n) B) Bs) Bks /\ exp_scoped n M
-  | a_pi _ A B | a_fn A B | a_and A B => exp_scoped n A /\ exp_scoped (S n) B
+  | a_pi _ _ A B | a_fn A B | a_and A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N
   | a_var x => x < n
   | a_let b B => binding_scoped n b /\ exp_scoped (S n) B
@@ -89,7 +89,7 @@ with gentry_scoped (n : nat) (E : gentry) : Prop :=
   end
 with centry_scoped (n : nat) (e : centry) : Prop :=
   match e with
-  | ce_ass A => exp_scoped n A
+  | ce_ass _ A => exp_scoped n A
   | ce_def A M => exp_scoped n A /\ exp_scoped n M
   | ce_mod U => gunit_scoped n U
   | ce_dm A M U => exp_scoped n A /\ exp_scoped n M /\ gunit_scoped n U
@@ -583,7 +583,7 @@ Lemma ctx_pi_mvc : forall r Δ A n,
     tele_ass Δ -> List.Forall (centry_mvc n) Δ -> exp_mvc (List.length Δ + n) A -> exp_mvc n (ctx_pi_at r Δ A).
 Proof.
   induction Δ as [| e Δ IH]; intros * Hass Hm HA; cbn in *; [ exact HA |].
-  inversion Hass as [| ? ? [B ->] Hass']; inversion Hm; subst; cbn in *.
+  inversion Hass as [| ? ? (κ & B & ->) Hass']; inversion Hm; subst; cbn in *.
   apply IH; [ exact Hass' | assumption |]; cbn; split; [| exact HA ].
   eapply exp_mvc_mono; [| eassumption ]; lia.
 Qed.
@@ -1976,20 +1976,20 @@ Qed.
 
 (** A telescope whose entries are each scoped by the ones below it and [n]. *)
 Lemma ctx_scoped_intro : forall Δ n,
-    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> exp_scoped (List.length Δ2 + n) T) ->
+    (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> exp_scoped (List.length Δ2 + n) T) ->
     tele_ass Δ -> ctx_scoped n Δ.
 Proof.
   induction Δ as [| e Δ IH]; intros n H Hass; cbn; [ exact I |].
-  inversion Hass as [| ? ? [A ->] Hass']; subst.
-  split; [ exact (H nil A Δ eq_refl) |].
-  apply IH; [| exact Hass' ]; intros Δ1 T Δ2 ->; exact (H (ce_ass A :: Δ1) T Δ2 eq_refl).
+  inversion Hass as [| ? ? (κ & A & ->) Hass']; subst.
+  split; [ exact (H nil κ A Δ eq_refl) |].
+  apply IH; [| exact Hass' ]; intros Δ1 κ' T Δ2 ->; exact (H (ce_ass κ A :: Δ1) κ' T Δ2 eq_refl).
 Qed.
 
 Lemma member_closed_intro : forall D M,
     tele_ass (ind_uparams D) ->
     (forall j Mj, ind_member D j = Some Mj -> tele_ass (im_nparams Mj)) ->
     tele_ass (im_nparams M) ->
-    (forall Δ1 T Δ2, im_nparams M = Δ1 ++ ce_ass T :: Δ2 -> exp_scoped (List.length (Δ2 ++ ind_uparams D)) T) ->
+    (forall Δ1 κ T Δ2, im_nparams M = Δ1 ++ ce_ass κ T :: Δ2 -> exp_scoped (List.length (Δ2 ++ ind_uparams D)) T) ->
     (forall qc k' Is vm, im_head M = mh_view qc k' Is vm -> List.Forall (exp_scoped (List.length (ind_uparams D))) Is) ->
     (forall qr Is fl, im_head M = mh_record qr Is fl -> List.Forall (exp_scoped (List.length (ind_uparams D))) Is) ->
     (forall qr Is fl, im_head M = mh_record qr Is fl -> im_nparams M = nil) ->
@@ -2010,7 +2010,7 @@ Lemma member_closed_intro : forall D M,
     member_closed D M.
 Proof.
   intros D M HassU HassM Hass HN Hh Hrh Hrn Hrl HA HB Hl HPs; constructor; try assumption.
-  - apply ctx_scoped_intro; [| exact Hass ]; intros * E; specialize (HN _ _ _ E); rewrite length_app in HN; exact HN.
+  - apply ctx_scoped_intro; [| exact Hass ]; intros * E; specialize (HN _ _ _ _ E); rewrite length_app in HN; exact HN.
   - intros * Hin Heq; specialize (HA _ _ _ _ _ _ Hin Heq); rewrite length_app, length_im_params in HA; exact HA.
   - intros * Hin Heq; apply ptyp_scoped_intro.
     + intros Bs1 B Bs2 E; specialize (HB _ _ _ _ _ _ _ _ Hin Heq E).

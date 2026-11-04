@@ -129,18 +129,19 @@ Hint Resolve ctxsub_sub_eq : mctt.
     cycle by taking the equation as a premise; that is precisely what the
     induction hypothesis for the domain supplies at every use site. *)
 
-Lemma wf_sub_eq_q : forall Θ Ξ Γ Δ σ σ' A Srt,
+Lemma wf_sub_eq_q : forall Θ Ξ Γ Δ σ σ' κ A Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Srt ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢ˢ q σ ≈ q σ' : Δ ▹ A.
+    Θ ⍮ Ξ ⍮ Γ ▹{κ} A[σ] ⊢ˢ q σ ≈ q σ' : Δ ▹{κ} A.
 Proof.
   intros * H ? HS ?; saturate_sub_eq.
+  pose proof (sort_kind_type_sort _ _ HS) as HS0.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Srt) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Srt) by mauto 2.
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A[σ]) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢ʷ ↑ : Γ) by mauto 2.
+  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹{κ} A[σ]) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κ} A[σ] ⊢ʷ ↑ : Γ) by mauto 2.
   econstructor; [ mauto 2 | | |].
   - eapply ctxsub_sub; [ eapply wf_sub_id_extend_eq; mauto 2 | mauto 2 ].
   - intros x B Hlk.
@@ -189,14 +190,14 @@ Qed.
 #[export]
 Hint Resolve wf_sub_eq_q wf_sub_eq_q_def : mctt.
 
-Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' A M M' Srt,
+Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' κ A M M' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ'] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A[σ] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,M ≈ σ',,M' : Δ ▹ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,M ≈ σ',,M' : Δ ▹{κ} A.
 Proof.
   intros * H HA HS ? ? ?; saturate_sub_eq.
   econstructor; [ eapply wf_sub_extend; eassumption | eapply wf_sub_extend; eassumption | |].
@@ -210,17 +211,17 @@ Qed.
     equal terms.  Stating it separately is what keeps [exp_sub_id] out of the
     call sites, which would otherwise have to rewrite [A[Id]] to [A] three
     times over. *)
-Corollary wf_sub_eq_id_extend : forall Θ Ξ Γ A M M' Srt,
+Corollary wf_sub_eq_id_extend : forall Θ Ξ Γ κ A M M' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▹ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▹{κ} A.
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2.
-  apply (wf_sub_eq_extend Θ Ξ Γ Γ sb_id sb_id A M M' Srt);
+  apply (wf_sub_eq_extend Θ Ξ Γ Γ sb_id sb_id κ A M M' Srt);
     [ mauto 3 | assumption | assumption
     | rewrite exp_sub_id; assumption
     | rewrite exp_sub_id; assumption
@@ -326,19 +327,21 @@ Qed.
 Ltac lift_sub_eq_step :=
   match goal with
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
+    _ : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ (cons (ce_ass ?κ ?A) ?Δ) _ _ -> _,
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ ?S (exp_sub ?A _) _ |- _ =>
-      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass A) Δ) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass κ (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass κ A) Δ) in
       assert_fails (assert T by assumption);
-      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ S); [ exact Hσ | | constructor | exact (IH _ _ _ Hσ) ]; mauto 2)
+      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ κ _ S); [ exact Hσ | | constructor | exact (IH _ _ _ Hσ) ]; mauto 2)
   (** A domain in a small universe, at a level it is given to be one: both are
       moved into the least large universe. *)
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
+    _ : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ (cons (ce_ass ak_relevant ?A) ?Δ) _ _ -> _,
     HL : wf_exp ?Θ ?Ξ ?Δ (a_level ?n) ?L,
     HA : wf_exp ?Θ ?Ξ ?Δ (a_univ ?L) ?A,
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) _ |- _ =>
-      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass A) Δ) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass ak_relevant (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass ak_relevant A) Δ) in
       assert_fails (assert T by assumption);
-      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ (a_typ 0));
+      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ ak_relevant _ (a_typ 0));
                    [ exact Hσ | exact (wf_exp_suniv_large HL HA) | constructor
                    | eapply wf_exp_eq_suniv_large; [| exact (IH _ _ _ Hσ) ];
                      let HLs := fresh "HLs" in
@@ -395,15 +398,15 @@ Ltac saturate_sub_eq_IH :=
     [A']: the telescopes before, the heads each at its own sort, and each
     head below the other in the left telescope. *)
 #[warnings="-cannot-define-projection"]
-Record ext_eq_ass_head (Θ : gdeps) (Ξ : gstack) (Γ Ψ Ψ' : ctx) (A A' : typ) : Prop := mk_ext_eq_ass_head
+Record ext_eq_ass_head (Θ : gdeps) (Ξ : gstack) (Γ Ψ Ψ' : ctx) (κ : abs_kind) (A A' : typ) : Prop := mk_ext_eq_ass_head
   { (** The sort of the left head *)
     ext_head_sort_left : exp
-    (** It is a sort: a large universe or [Prop] *)
-  ; ext_head_sort_left_ok : type_sort ext_head_sort_left
+    (** It is a sort of the heads' kind *)
+  ; ext_head_sort_left_ok : sort_kind ext_head_sort_left κ
     (** The sort of the right head *)
   ; ext_head_sort_right : exp
-    (** It is a sort: a large universe or [Prop] *)
-  ; ext_head_sort_right_ok : type_sort ext_head_sort_right
+    (** It is a sort of the heads' kind *)
+  ; ext_head_sort_right_ok : sort_kind ext_head_sort_right κ
     (** The telescopes before the heads are equal *)
   ; ext_head_tail : Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'
     (** The left head is of its sort, in the left telescope *)
@@ -416,7 +419,7 @@ Record ext_eq_ass_head (Θ : gdeps) (Ξ : gstack) (Γ Ψ Ψ' : ctx) (A A' : typ)
   ; ext_head_sub_rev : Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A' ⊆ A }.
 
 (** The head of an equation of telescopes of assumptions. *)
-Lemma ext_eq_ass_inv : forall Θ Ξ Γ Ψ Ψ' A A', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' -> ext_eq_ass_head Θ Ξ Γ Ψ Ψ' A A'.
+Lemma ext_eq_ass_inv : forall Θ Ξ Γ Ψ Ψ' κ A A', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹{κ} A ≈ Ψ' ▹{κ} A' -> ext_eq_ass_head Θ Ξ Γ Ψ Ψ' κ A A'.
 Proof.
   intros * H; inversion H; subst.
   (** The sorts are found by the typings, so the choices backtrack. *)
@@ -426,13 +429,13 @@ Qed.
 (** An annotated motive context [T ▹ Z] equal to [T' ▹ Z'] and to the
     motive's context [T ▹ H]: [T ▹ Z'] is equal to the motive's context
     too, the heads chained by [wf_subtyp_trans]. *)
-Lemma ann_ctx_trans : forall Θ Ξ Δ T T' Z Z' H,
-    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z ≈ T' ▹ Z' -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z ≈ T ▹ H -> tele_ass T ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z' ≈ T ▹ H.
+Lemma ann_ctx_trans : forall Θ Ξ Δ T T' κ Z Z' H,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z ≈ T' ▹{κ} Z' -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z ≈ T ▹{κ} H -> tele_ass T ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z' ≈ T ▹{κ} H.
 Proof.
   intros * Ha Hb HT.
-  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Ha) as [S1 HS1 S1' HS1' HTT' HZ HZ' HZZ' HZ'Z].
-  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Hb) as [S2 HS2 S2' HS2' HTT _ HH HZH HHZ].
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ Ha) as [S1 HS1 S1' HS1' HTT' HZ HZ' HZZ' HZ'Z].
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ Hb) as [S2 HS2 S2' HS2' HTT _ HH HZH HHZ].
   pose proof (ctxsub_exp _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ HTT' HT) HZ') as HZ'l.
   eapply wf_ext_eq_ass;
     [ exact HTT | exact HZ'l | exact HS1' | exact HH | exact HS2'
@@ -460,17 +463,17 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) ->
-         Θ ⍮ Ξ ⍮ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) τ ++ Δ0
-           ⊢ˢ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b)) τ
-            ≈ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b)) τ'
-           : (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) ++ Γ /\
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) τ
-           ≈ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) τ') /\
+       (tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) ->
+         Θ ⍮ Ξ ⍮ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b)) τ
+            ≈ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b)) τ'
+           : (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) τ
+           ≈ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) τ') /\
        (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
@@ -479,10 +482,10 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ
            ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ')) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[τ] ≈ (eb_motive b)[τ'] : (relevance_sort r Typeω@i)[τ]) ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[τ] ≈ (eb_motive b)[τ'] : (abs_kind_sort r Typeω@i)[τ]) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk, ind_member D k = Some Mk ->
@@ -532,12 +535,13 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
        ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
+    motive_kind r ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim r p Us m Bks M)[σ] ≈ (a_elim r p Us m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
-  intros * Hl HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
-  pose proof (type_sort_relevance r _ (type_sort_universe i)) as HS.
+  intros * Hl HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hr Hσ.
+  pose proof (type_sort_abs_kind r _ (type_sort_universe i)) as HS.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
   assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HlP; lia).
@@ -547,12 +551,12 @@ Proof.
     by (intros; eapply sub_preserves_exp; eauto).
   assert (HZ1 : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b) σ0
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) σ0
                           ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0)
     by (intros; eapply sub_preserves_ext; eauto).
   assert (HA1 : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
              forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
-             Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : (relevance_sort r Typeω@i)[σ0])
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : (abs_kind_sort r Typeω@i)[σ0])
     by (intros; eapply sub_preserves_exp; eauto).
   assert (HΨ1 : forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
              Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
@@ -593,13 +597,13 @@ Proof.
     pose proof (Hnm _ _ _ HMk Hb0) as Enm; cbn in Enm; subst nm.
     replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia.
     assert (Hlft : Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps)))
-                                  ▹ Z0[sb_qn (im_nn Mk) σ]
+                                  ▹{ak_relevant} Z0[sb_qn (im_nn Mk) σ]
                                 ≈ elim_mctx p D k Mk (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps))).
     { replace (Z0[sb_qn (im_nn Mk) σ]) with (eb_scrutinee_type (eblock_sub (eb_mk (S (im_nn Mk)) Z0 A0 Bs0) σ))
         by (cbn [eblock_sub eb_scrutinee_type]; replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia; reflexivity).
       eapply move_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) Z0 A0 Bs0) σ);
         first [ eassumption | rewrite nth_error_blocks_sub, Hb0; reflexivity ]. }
-    assert (HtZ : tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z0))
+    assert (HtZ : tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} Z0))
       by (constructor; [ eauto | apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption ]).
     destruct (proj1 (IHZ _ _ _ HMk Hb0 _ _ _ Hσ) HtZ) as [_ HZσ].
     cbn [tele_sub centry_sub] in HZσ; rewrite length_tele_sub in HZσ; fold (im_nn Mk) in HZσ.
@@ -641,6 +645,7 @@ Proof.
     rewrite List.firstn_map; erewrite <- elim_branch_type_sub by eassumption.
     replace (im_nn Mk + List.length gs + cargs_nrec D gs) with (cargs_nrec D gs + List.length gs + im_nn Mk) by lia.
     exact (IHB _ _ _ _ _ _ _ HMk Hb0 Hc Hin _ _ _ Hlift).
+  - exact Hr.
 Qed.
 
 (** ** The Module Cases of [sub_eq_preserves_mut]
@@ -682,19 +687,20 @@ Proof.
     injection Hk as <- <-; do 2 eexists; split; [ reflexivity | split; [ exact Hsx0 | eapply body_xp_nopens; exact Hx ] ].
 Qed.
 
-Lemma sub_eq_ext_ass_diag : forall Θ Ξ Δ Ψ A Srt Γ0 σ σ',
+Lemma sub_eq_ext_ass_diag : forall Θ Ξ Δ Ψ κ A Srt Γ0 σ σ',
     Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ0 ⊢ˢ sb_qn (length Ψ) σ ≈ sb_qn (length Ψ) σ' : Ψ ++ Δ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ σ' ->
     ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ ->
     Θ ⍮ Ξ ⍮ Ψ ++ Δ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[τ] ≈ A[τ'] : Srt[τ]) ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ tele_sub (Ψ ▹ A) σ ++ Γ0 ⊢ˢ sb_qn (length (Ψ ▹ A)) σ ≈ sb_qn (length (Ψ ▹ A)) σ' : Ψ ▹ A ++ Δ /\
-    Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub (Ψ ▹ A) σ ≈ tele_sub (Ψ ▹ A) σ'.
+    Θ ⍮ Ξ ⍮ tele_sub (Ψ ▹{κ} A) σ ++ Γ0 ⊢ˢ sb_qn (length (Ψ ▹{κ} A)) σ ≈ sb_qn (length (Ψ ▹{κ} A)) σ' : Ψ ▹{κ} A ++ Δ /\
+    Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub (Ψ ▹{κ} A) σ ≈ tele_sub (Ψ ▹{κ} A) σ'.
 Proof.
   intros * Hl HE HΨ HA HS IHA Hσ.
-  pose proof (IHA _ _ _ Hl) as HAσ; rewrite type_sort_sub in HAσ by exact HS.
+  pose proof (sort_kind_type_sort _ _ HS) as HS0.
+  pose proof (IHA _ _ _ Hl) as HAσ; rewrite type_sort_sub in HAσ by exact HS0.
   split.
   - cbn [tele_sub List.length sb_qn List.app]; eapply wf_sub_eq_q; [ exact Hl | exact HA | exact HS | exact HAσ ].
   - cbn [tele_sub List.length].
@@ -702,11 +708,11 @@ Proof.
       by (apply wf_sub_ext; [ exact (wf_sub_eq_right _ _ _ _ _ _ Hσ) | exact (ext_eq_ctx_right _ _ _ _ _ HE) | exact HΨ ]).
     eapply wf_ext_eq_ass_eq with (Srt := Srt).
     + exact HE.
-    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_left _ _ _ _ _ _ Hl)).
+    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS0 (wf_sub_eq_left _ _ _ _ _ _ Hl)).
     + exact HS.
     + exact HAσ.
-    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_right _ _ _ _ _ _ Hl)).
-    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hr).
+    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS0 (wf_sub_eq_right _ _ _ _ _ _ Hl)).
+    + exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS0 Hr).
 Qed.
 
 (** The parameters [Δu] of a unit, of the sorts [Hps] gives, given as the
@@ -717,7 +723,7 @@ Ltac sub_eq_params_case Hs HΓ HΔ Hps HRp :=
   eapply (move_params_case _ _ (sub_as_sub _ _) (sub_as_sub_ext _ _));
   [ exact Hs | exact HΓ | exact HΔ | exact Hps
   | let E := fresh "E" in let Hσ0 := fresh "Hσ0" in
-    intros ? ? ? E ? ? Hσ0; exact (sub_preserves_exp _ _ _ _ _ _ _ (HRp _ _ _ E) Hσ0) ].
+    intros ? ? ? ? E ? ? Hσ0; exact (sub_preserves_exp _ _ _ _ _ _ _ (HRp _ _ _ _ E) Hσ0) ].
 
 (** The flag premise of an alias, a flatten or a body unit, moved by one
     substitution [Hs]: the level sorts and the description with no member
@@ -730,9 +736,8 @@ Lemma sub_eq_levels_flag : forall Θ Ξ Γ Δu E (lv : bool) Rt Γ0 σ,
     levels_flag Θ Ξ Γ0 (tele_sub Δu σ) E[sb_qn (length Δu) σ]ᵐ lv (mdesc_sub Rt (sb_qn (length Δu) σ)).
 Proof.
   intros * Hs HΓ HΔ HE [Hf1 Hf2 Hf3].
-  eapply sub_levels_flag; [ exact Hs | exact HΓ | exact HΔ | exact HE | | exact Hf2 | ].
-  - intros Hlv * E0 * Hσ0; exact (sub_preserves_exp _ _ _ _ _ _ _ (Hf1 Hlv _ _ _ E0) Hσ0).
-  - intros Hlv * Hσ0; exact (sub_preserves_no_level _ _ _ _ _ _ (Hf3 Hlv) Hσ0).
+  eapply sub_levels_flag; [ exact Hs | exact HΓ | exact HΔ | exact HE | exact Hf1 | exact Hf2 | ].
+  intros Hlv * Hσ0; exact (sub_preserves_no_level _ _ _ _ _ _ (Hf3 Hlv) Hσ0).
 Qed.
 
 (** One side of a body unit, moved by two equivalent substitutions. *)
@@ -744,9 +749,9 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx entry_sort l ps Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δu ≈ body_ctx Φx ++ Δu ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
+       sort_kind (entry_sort y) (entry_kind E)) ->
     (forall k, parameter_sort l (ps k)) ->
-    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
+    (forall Δ1 κ T Δ2, Δu = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : entry_sort y) ->
     (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
@@ -855,7 +860,7 @@ Lemma sub_eq_unit_alias_self : forall Θ Ξ Γ Δu E l ps Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ᵐ E ≈ E ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ E[τ]ᵐ ≈ E[τ']ᵐ) ->
     (forall k, parameter_sort l (ps k)) ->
-    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
+    (forall Δ1 κ T Δ2, Δu = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     forall (lv : bool) Rt, levels_flag Θ Ξ Γ Δu E lv Rt ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δu (md_alias E))[σ]ᵘ ≈ (gu_mk Δu (md_alias E))[σ']ᵘ.
 Proof.
@@ -890,7 +895,7 @@ Lemma sub_eq_unit_flatten_case : forall Θ Ξ Γ Δ Δ' D l ps Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δ ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ (gu_mk Δ' D)[τ]ᵘ ≈ (gu_mk Δ' D)[τ']ᵘ) ->
     (forall k, parameter_sort l (ps k)) ->
-    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
+    (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     forall (lv : bool) Rt, levels_flag Θ Ξ Γ Δ (me_lit (gu_mk Δ' D)) lv Rt ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ]ᵘ ≈ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ']ᵘ /\
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk (Δ' ++ Δ) D)[σ]ᵘ ≈ (gu_mk (Δ' ++ Δ) D)[σ']ᵘ.
@@ -1043,12 +1048,12 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
+       sort_kind (entry_sort y) (entry_kind E)) ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E') Srt) ->
+       sort_kind (entry_sort y) (entry_kind E')) ->
     (forall k, parameter_sort l (ps k)) ->
-    (forall Δ1 T Δ2, Δu = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
-    (forall Δ1 T Δ2, Δu' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
+    (forall Δ1 κ T Δ2, Δu = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
+    (forall Δ1 κ T Δ2, Δu' = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     forall (lv lv' : bool) Rt Rt',
     levels_flag Θ Ξ Γ Δu (me_lit (gu_open nil Φ)) lv Rt ->
     levels_flag Θ Ξ Γ Δu' (me_lit (gu_open nil Φ')) lv' Rt' ->
@@ -1157,26 +1162,26 @@ Proof.
 Qed.
 
 (** A literal given its outermost parameter, both sides moved. *)
-Lemma lit_app_cong : forall Θ Ξ Γ Δ1 X1 D1 Δ2 X2 D2 N1 N2,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ1 ++ ce_ass X1 :: nil) D1 ≈ gu_mk (Δ2 ++ ce_ass X2 :: nil) D2 ->
+Lemma lit_app_cong : forall Θ Ξ Γ Δ1 κ1 X1 D1 Δ2 κ2 X2 D2 N1 N2,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ1 ++ ce_ass κ1 X1 :: nil) D1 ≈ gu_mk (Δ2 ++ ce_ass κ2 X2 :: nil) D2 ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N1 : X1 -> Θ ⍮ Ξ ⍮ Γ ⊢ N1 ≈ N2 : X1 -> Θ ⍮ Ξ ⍮ Γ ⊢ N2 : X2 ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app (me_lit (gu_mk (Δ1 ++ ce_ass X1 :: nil) D1)) N1 ≈ me_app (me_lit (gu_mk (Δ2 ++ ce_ass X2 :: nil) D2)) N2.
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app (me_lit (gu_mk (Δ1 ++ ce_ass κ1 X1 :: nil) D1)) N1 ≈ me_app (me_lit (gu_mk (Δ2 ++ ce_ass κ2 X2 :: nil) D2)) N2.
 Proof.
   intros * HU HN1 HN HN2.
   pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HU))) as Hv.
   pose proof (wf_me_lit _ _ _ _ _ HU) as HH.
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HH) as (_ & (R1 & _ & HR1 & _) & (R2 & _ & HR2 & _)).
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 desc_typed)))))) _ _ _ _ _ HH Hv) as (_ & HK1 & HK2).
-  assert (Ht : forall Δ X D R, mdenote Θ Ξ Γ (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) R -> desc_ok Θ Ξ Γ R ->
-            exists T1, mdesc_mod_tele R = Some (T1 ++ ce_ass X :: nil)).
+  assert (Ht : forall Δ κ X D R, mdenote Θ Ξ Γ (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) R -> desc_ok Θ Ξ Γ R ->
+            exists T1, mdesc_mod_tele R = Some (T1 ++ ce_ass κ X :: nil)).
   { intros * Hm Hok; inversion Hm; subst; try (unfold gc_unit in *; cbn in *; discriminate).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ =>
-      destruct (udenote_last _ _ _ _ _ _ _ Hu) as (R0 & Hu0 & ->);
-      exact (desc_ok_mtele_last _ _ _ _ _ (udenote_is_mod _ _ _ _ _ _ Hu0) Hok) end. }
-  destruct (Ht _ _ _ _ HR1 (HK1 _ HR1)) as (T1 & HT1).
-  destruct (Ht _ _ _ _ HR2 (HK2 _ HR2)) as (T2 & HT2).
+      destruct (udenote_last _ _ _ _ _ _ _ _ Hu) as (R0 & Hu0 & ->);
+      exact (desc_ok_mtele_last _ _ _ _ _ _ (udenote_is_mod _ _ _ _ _ _ Hu0) Hok) end. }
+  destruct (Ht _ _ _ _ _ HR1 (HK1 _ HR1)) as (T1 & HT1).
+  destruct (Ht _ _ _ _ _ HR2 (HK2 _ HR2)) as (T2 & HT2).
   destruct (unit_eq_params_relevant _ _ _ _ _ HU) as [[i HX1] [j HX2]]; cbn [gu_params] in HX1, HX2.
-  specialize (HX1 _ _ _ eq_refl); specialize (HX2 _ _ _ eq_refl); cbn [List.app] in HX1, HX2.
+  specialize (HX1 _ _ _ _ eq_refl); specialize (HX2 _ _ _ _ eq_refl); cbn [List.app] in HX1, HX2.
   (* each argument type is of a universe or of the types of levels *)
   destruct HX1 as [HX1 | HX1], HX2 as [HX2 | HX2].
   all: eapply wf_me_app; [ exact HH | exact HR1 | exact HT1 | apply tele_view_last | exact HX1 | | exact HN1 | exact HN
@@ -1193,12 +1198,13 @@ Lemma sub_eq_record_case : forall Θ Ξ Γ Δ σ σ' p R i,
     ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
     Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
     (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-       Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ) ->
-    List.length (record_field_relevance R) = List.length (record_fields R) ->
+       Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ) ->
+    List.length (record_field_kinds R) = List.length (record_fields R) ->
+    (forall k, field_kind (record_field_kind R k)) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a_record p)[σ] ≈ (a_record p)[σ'] : (record_ty R)[σ].
 Proof.
-  intros * Hl Hnd Hass Hty Hc Hs Hf Hrl Hσ.
+  intros * Hl Hnd Hass Hty Hc Hs Hf Hrl Hfk Hσ.
   pose proof (wf_sub_dom _ _ _ _ _ (wf_sub_eq_left _ _ _ _ _ _ Hσ)) as HΓ.
   rewrite record_ty_sub by (eapply wf_record_closed; [ exact HΓ | exact Hl ]).
   cbn [exp_sub]; eapply wf_exp_eq_record_cong; eassumption.
@@ -1510,12 +1516,12 @@ Proof.
       it. *)
   all: try solve [
     match goal with
-    | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HU : wf_unit_eq _ _ _ (gu_mk (?Δ ++ ce_ass ?X :: nil) ?D) _,
-      IHU : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk (?Δ ++ ce_ass ?X :: nil) ?D) _) _ /\ _,
+    | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HU : wf_unit_eq _ _ _ (gu_mk (?Δ ++ ce_ass ?κ ?X :: nil) ?D) _,
+      IHU : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk (?Δ ++ ce_ass ?κ ?X :: nil) ?D) _) _ /\ _,
       HN : wf_exp _ _ _ ?X ?N, IHN : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?N _) _ |- _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
-        assert (Hred : _ ⍮ _ ⍮ _ ⊢ᵐ modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) N) σ
-                                    ≈ modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) N) σ')
+        assert (Hred : _ ⍮ _ ⍮ _ ⊢ᵐ modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) N) σ
+                                    ≈ modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) N) σ')
           by (cbn [modexp_sub]; pose proof (proj1 (IHU _ _ _ Hσ)) as HUσ; rewrite !gunit_sub_last in HUσ |- *;
               eapply lit_app_cong; [ exact HUσ | eapply sub_preserves_exp; [ exact HN | exact Hl ] | exact (IHN _ _ _ Hσ)
                                    | eapply sub_preserves_exp; [ exact HN | exact Hr ] ]);
@@ -1580,23 +1586,23 @@ Proof.
       entry, at the equation of the entry's type the induction hypothesis
       gives. *)
   all: try solve [ cbn; split; intros _; (split; [ assumption | apply wf_ext_eq_nil; eapply wf_sub_dom, wf_sub_eq_left; eassumption ]) ].
-  all: try solve [ split; intros Hass; inversion Hass as [| ? ? [? Heq] ? ]; discriminate ].
+  all: try solve [ split; intros Hass; inversion Hass as [| ? ? (? & ? & Heq) ? ]; discriminate ].
   all: try solve [
     match goal with
     | HΨ : wf_ext_eq _ _ ?Δ ?Ψ ?Ψ', IHx : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (tele_ass ?Ψ -> _) /\ (tele_ass ?Ψ' -> _),
       HA : wf_exp _ _ (?Ψ ++ ?Δ) ?S ?A,
-      HS : type_sort ?S,
+      HS : sort_kind ?S _,
       IHA : forall _ _ _, wf_sub_eq _ _ _ (?Ψ ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
       HA' : wf_exp _ _ (?Ψ' ++ ?Δ) ?S' ?A',
-      HS' : type_sort ?S',
+      HS' : sort_kind ?S' _,
       IHA' : forall _ _ _, wf_sub_eq _ _ _ (?Ψ' ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A' _) _,
       Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ' |- _ =>
         destruct (IHx _ _ _ Hσ) as [IHl IHr];
         split; intros Hass; inversion_clear Hass as [| ? ? _ Hass'];
         [ destruct (IHl Hass') as [Hl HE];
-          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_left _ _ _ _ _ HΨ) HA HS IHA Hσ)
+          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_left _ _ _ _ _ HΨ) HA HS IHA Hσ)
         | destruct (IHr Hass') as [Hl HE];
-          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_right _ _ _ _ _ HΨ) HA' HS' IHA' Hσ) ]
+          exact (sub_eq_ext_ass_diag _ _ _ _ _ _ _ _ _ _ Hl HE (ext_eq_ctx_right _ _ _ _ _ HΨ) HA' HS' IHA' Hσ) ]
     end ].
   (** The eliminator. *)
   all: try solve [ eapply sub_eq_elim_case; eassumption ].
@@ -1655,17 +1661,33 @@ Proof.
     end ].
   all: try solve [ mauto 3 ].
   (** Applications at a tag: the rule at the tag of the function's [Π]. *)
-  all: try solve [ eapply wf_exp_eq_app_cong with (r := relevant); mauto 3 ].
-  all: try solve [ eapply wf_exp_eq_app_cong with (r := propositional) (Srt' := Typeω@0);
-                   first [ solve [ eassumption | constructor ] | mauto 3 ] ].
-  (** [Π] at a tag: the domain is of the universe or a proposition, the
+  all: try solve [
+    match goal with
+    | HM : wf_exp _ _ _ (a_pi ?kd ?kc _ _) _ |- wf_exp_eq _ _ _ _ (a_app _ _) _ =>
+        eapply wf_exp_eq_app_cong with (κd := kd) (κc := kc);
+        first [ solve [ eassumption | constructor ] | mauto 3 ]
+    end ].
+  (** [Π] at its kinds: the domain is of the sort of its kind, the
       codomain's sort commutes with the lifted substitution. *)
   all: try solve [
     match goal with
-    | |- wf_exp_eq _ _ _ _ (a_pi ?r0 _ _) _ =>
-        eapply wf_exp_eq_pi_cong with (r := r0);
-        [ idtac | first [ eassumption | eapply sub_preserves_exp; eassumption ] | constructor | eassumption
-        | cbn [relevance_sort exp_wk]; try rewrite <- exp_wk_shift_sub_q; eassumption ];
+    | |- wf_exp_eq _ _ _ _ (a_pi ?kd ?kc _ _) _ =>
+        (* a universe is read off the domain or the codomain when either
+           is relevant; a type of levels into propositions or levels reads
+           none, and [Typeω@0] is taken *)
+        let U0 := lazymatch kd with
+                  | ak_relevant => open_constr:(_)
+                  | _ => lazymatch kc with ak_relevant => open_constr:(_) | _ => constr:(Typeω@0) end
+                  end in
+        eapply wf_exp_eq_pi_cong with (U := U0) (κd := kd) (κc := kc);
+        [ idtac
+        | first [ eassumption | eapply sub_preserves_exp; eassumption
+                | match goal with
+                  | HA : wf_exp _ _ _ _ ?A, Hs : wf_sub _ _ _ _ ?s |- wf_exp _ _ _ _ (exp_sub ?A ?s) =>
+                      exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hs)
+                  end ]
+        | eassumption
+        | cbn [abs_kind_sort exp_wk]; try rewrite <- exp_wk_shift_sub_q; eassumption | constructor ];
         first [ eassumption | apply wf_is_univ_large; eassumption
               | match goal with
                 | HL : wf_exp _ _ ?D (a_level _) ?L0, Hs : wf_sub _ _ _ ?D ?s |- _ =>
@@ -1713,16 +1735,16 @@ Proof.
       types of levels: the congruence at the moved domain and codomain. *)
   all: try solve [
     match goal with
-    | HA : wf_exp _ _ ?Γ ?S ?A, HB : wf_exp _ _ (ce_ass ?A :: ?Γ) ?S' ?B,
-      Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hq : wf_sub _ _ _ (ce_ass ?A :: ?Γ) (sb_q ?σ)
+    | HA : wf_exp _ _ ?Γ ?S ?A, HB : wf_exp _ _ (ce_ass ?kd ?A :: ?Γ) ?S' ?B,
+      Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hq : wf_sub _ _ _ (ce_ass ?kd ?A :: ?Γ) (sb_q ?σ)
       |- wf_exp_eq _ _ ?Γ0 _ _ _ =>
+        let kc := kind_of_sort S' in
         let HAl := fresh "HAl" in let HBq := fresh "HBq" in
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hl) as HAl; rewrite (type_sort_sub S σ) in HAl by constructor;
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB Hq) as HBq; rewrite (type_sort_sub S' (sb_q σ)) in HBq by constructor;
-        first [ eapply wf_exp_eq_fn_cong; [ exact HAl | constructor | eassumption | exact HBq | constructor | eassumption ]
-              | eapply wf_exp_eq_app_cong with (r := relevant);
-                [ exact HAl | constructor | exact HBq | constructor | eassumption | eassumption ]
-              | eapply wf_exp_eq_app_cong with (r := propositional) (Srt' := Typeω@0);
+        first [ eapply wf_exp_eq_fn_cong with (κd := kd) (κc := kc);
+                [ exact HAl | constructor | eassumption | exact HBq | constructor | eassumption ]
+              | eapply wf_exp_eq_app_cong with (κd := kd) (κc := kc);
                 [ exact HAl | constructor | exact HBq | constructor | eassumption | eassumption ] ]
     end ].
   (** A local definition whose type is of any sort: the congruence at the
@@ -1923,18 +1945,18 @@ Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : 
 (** [Id ,, #0] and its variable form [sb_extend Id (se_var 0)] substitute the
     same terms, though not the same module expressions; on a well-typed term
     they agree judgmentally. *)
-Lemma wf_sub_eq_var_zero : forall Θ Ξ Γ A Srt,
+Lemma wf_sub_eq_var_zero : forall Θ Ξ Γ κ A Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ Id,,#0 ≈ sb_extend Id (se_var 0) : Γ ▹ A ▹ A[↑]ʷ.
+    sort_kind Srt κ ->
+    Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ˢ Id,,#0 ≈ sb_extend Id (se_var 0) : Γ ▹{κ} A ▹{κ} A[↑]ʷ.
 Proof.
   intros * HA HS.
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
-  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; eassumption).
-  assert (Hv : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
-  assert (Hl : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ Id,,#0 : Γ ▹ A ▹ A[↑]ʷ) by (eapply wf_sub_single; [ exact HA' | exact HS | exact Hv ]).
-  assert (Hr : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ sb_extend Id (se_var 0) : Γ ▹ A ▹ A[↑]ʷ).
+  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹{κ} A) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ʷ ↑ : Γ) by mauto 2.
+  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; mauto 2).
+  assert (Hv : Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ #0 : A[↑]ʷ) by mauto 3.
+  assert (Hl : Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ˢ Id,,#0 : Γ ▹{κ} A ▹{κ} A[↑]ʷ) by (eapply wf_sub_single; [ exact HA' | exact HS | exact Hv ]).
+  assert (Hr : Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ˢ sb_extend Id (se_var 0) : Γ ▹{κ} A ▹{κ} A[↑]ʷ).
   { apply wf_sub_extend_gen; [ mauto 3 | mauto 3 | | |]; intros * Hlk; inversion Hlk; subst; cbn.
     rewrite exp_sub_shift_extend, exp_sub_id; exact Hv. }
   econstructor; [ exact Hl | exact Hr | |].
@@ -1944,38 +1966,50 @@ Proof.
   - intros x U Hlk; inversion Hlk; subst; cbn; eapply wf_me_var; [ mauto 2 | eassumption ].
 Qed.
 
-(** The η-expansion of a function, at the sort of its codomain
-    ([pi_codomain_sort]): a universe, or the types of levels over a type of
-    levels. *)
-Lemma wf_fn_eta_expand : forall Θ Ξ Γ r A B M Srt Srt',
+(** A function over a type of the kind [κd] into a type of the kind [κc]
+    ([pi_kinds]), moved under its domain and applied to the new variable,
+    is of its codomain, at the premises of [wf_exp_eq_fn_eta]. *)
+Lemma wf_app_var0 : forall Θ Ξ Γ κd κc A B M Srt i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
-    pi_codomain_sort Srt Srt' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi r A B ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : a_pi r A B.
+    sort_kind Srt κd ->
+    Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi κd κc A B ->
+    Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ M[↑]ʷ $ #0 : B.
 Proof.
   intros * HA HS HB Hc HM.
-  assert (HSr : type_sort (relevance_sort r Srt'))
-    by (apply type_sort_relevance, (pi_codomain_sort_type_sort _ _ Hc)).
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (a_pi r A B) ↑) as H'
+  assert (HSr : type_sort (abs_kind_sort κc Typeω@i)) by (apply type_sort_abs_kind; constructor).
+  pose proof (sort_kind_type_sort _ _ HS) as HSt.
+  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹{κd} A) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ʷ ↑ : Γ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ exp_wk M ↑ : exp_wk (a_pi κd κc A B) ↑) as H'
       by (eapply wk_preserves_exp; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : a_pi r A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
-  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : relevance_sort r Srt')
-      by (eapply wk_preserves_sort; [ eassumption | exact HSr | eapply (wf_wk_q' _ _ _ _ _ _ Srt); eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0])
-    by (eapply wf_app with (Srt' := Srt'); [ exact HA' | exact HS | eassumption | exact Hc | eassumption | eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : relevance_sort r Srt').
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ M[↑]ʷ : a_pi κd κc A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
+  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ A[↑]ʷ : Srt) by (eapply wk_preserves_sort; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ #0 : A[↑]ʷ) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ▹{κd} A[↑]ʷ ⊢ B[wk_q ↑]ʷ : abs_kind_sort κc Typeω@i)
+      by (eapply wk_preserves_sort; [ eassumption | exact HSr | eapply (wf_wk_q' _ _ _ _ _ _ _ Srt); eassumption ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0])
+    by (eapply wf_app with (i := i); [ exact HA' | exact HS | eassumption | exact Hc | eassumption | eassumption ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : abs_kind_sort κc Typeω@i).
   { rewrite <- (exp_wk_q_shift_single B) at 2.
     eapply sub_eq_preserves_sort; [ eassumption | exact HSr | eapply wf_sub_eq_var_zero; eassumption ]. }
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B).
-  { eapply wf_exp_subtyp'; [ eassumption |].
-    eapply wf_subtyp_refl; [ eassumption | exact HSr | eassumption ]. }
-  eapply wf_fn with (Srt' := Srt'); [ exact HA | exact HS | exact HB | exact Hc | eassumption ].
+  eapply wf_exp_subtyp'; [ eassumption |].
+  eapply wf_subtyp_refl; [ eassumption | exact HSr | eassumption ].
+Qed.
+
+(** The η-expansion of such a function is of the same [Π]. *)
+Lemma wf_fn_eta_expand : forall Θ Ξ Γ κd κc A B M Srt i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
+    sort_kind Srt κd ->
+    Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : a_pi κd κc A B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : a_pi κd κc A B.
+Proof.
+  intros * HA HS HB Hc HM.
+  eapply wf_fn with (i := i); [ exact HA | exact HS | exact HB | exact Hc |].
+  eapply wf_app_var0; eassumption.
 Qed.
 
 #[export]

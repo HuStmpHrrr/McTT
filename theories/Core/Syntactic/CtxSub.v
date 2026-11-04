@@ -27,16 +27,16 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
 | ctx_sub_empty :
     ⊢ᵍ Θ ⍮ Ξ ->
     Θ ⍮ Ξ ⊢ ⋅ ⊆ ⋅
-(** An assumption refines one of a supertype, each a type of its own
-    sort, a large universe or [Prop]. *)
-| ctx_sub_extend : forall Δ Γ A A' Srt Srt',
+(** An assumption refines one of a supertype at the same kind, each a
+    type of its own sort of that kind. *)
+| ctx_sub_extend : forall Δ Γ κ A A' Srt Srt',
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt' ->
-    type_sort Srt' ->
+    sort_kind Srt' κ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
-    Θ ⍮ Ξ ⊢ Δ ▹ A' ⊆ Γ ▹ A
+    Θ ⍮ Ξ ⊢ Δ ▹{κ} A' ⊆ Γ ▹{κ} A
 (** A definition refines a definition of a supertype with an equal body. *)
 | ctx_sub_extend_def : forall Δ Γ A A' M M' Srt Srt',
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
@@ -49,16 +49,17 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
     Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▸ A ≔ M
-(** Knowing a definition refines knowing only its type. *)
-| ctx_sub_forget : forall Δ Γ A A' M' Srt Srt',
+(** Knowing a definition refines knowing only its type, an assumption of
+    the kind of that type's sort. *)
+| ctx_sub_forget : forall Δ Γ κ A A' M' Srt Srt',
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' : Srt' ->
     type_sort Srt' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
-    Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▹ A
+    Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▹{κ} A
 (** A module slot refines a slot of the same unit. *)
 | ctx_sub_extend_mod : forall Δ Γ U,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
@@ -116,9 +117,10 @@ Hint Resolve ctx_sub_escape : mctt.
     [Γ]. *)
 Lemma ctx_sub_refl : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⊢ Γ ⊆ Γ.
 Proof.
-  intros Θ Ξ Γ; induction Γ as [| [A | A M | U | A M U] Γ IH]; intros HΓ; inversion_clear HΓ;
+  intros Θ Ξ Γ; induction Γ as [| [κ A | A M | U | A M U] Γ IH]; intros HΓ; inversion_clear HΓ;
     mauto 3 using presup_exp_ctx.
-  - eapply ctx_sub_extend; [ mauto 3 using presup_exp_ctx | exact H | exact H0 | exact H | exact H0 | eapply wf_subtyp_refl_typ; eassumption ].
+  - eapply ctx_sub_extend; [ mauto 3 using presup_exp_ctx | exact H | exact H0 | exact H | exact H0
+                           | eapply wf_subtyp_refl_typ; [ exact H | exact (sort_kind_type_sort _ _ H0) ] ].
   - eapply ctx_sub_extend_def;
       [ mauto 3 using presup_exp_ctx | exact H | exact H0 | exact H | exact H0 | eapply wf_subtyp_refl_typ; eassumption
       | eassumption | eassumption | mauto 3 ].
@@ -174,15 +176,15 @@ Hint Resolve ctx_sub_trans : mctt.
 Instance ctx_sub_Transitive Θ Ξ : Transitive (ctx_sub Θ Ξ).
 Proof. intros ? ? ?; eauto using ctx_sub_trans. Qed.
 
-Corollary ctx_sub_extend_eq : forall Θ Ξ Γ A A' Srt,
+Corollary ctx_sub_extend_eq : forall Θ Ξ Γ κ A A' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A' : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
-    Θ ⍮ Ξ ⊢ Γ ▹ A' ⊆ Γ ▹ A.
+    Θ ⍮ Ξ ⊢ Γ ▹{κ} A' ⊆ Γ ▹{κ} A.
 Proof.
   intros * HA HA' HS HAA; eapply ctx_sub_extend; [ mauto 3 | exact HA | exact HS | exact HA' | exact HS |].
-  eapply wf_subtyp_refl; [ exact HA | exact HS | apply wf_exp_eq_sym; exact HAA ].
+  eapply wf_subtyp_refl; [ exact HA | exact (sort_kind_type_sort _ _ HS) | apply wf_exp_eq_sym; exact HAA ].
 Qed.
 
 #[export]

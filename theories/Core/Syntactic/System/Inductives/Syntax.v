@@ -109,8 +109,8 @@ Qed.
 
 (** ** Telescopes at Lists of Terms *)
 
-Lemma tele_insts_snoc : forall Δ A σ M Ms,
-    tele_insts (Δ ++ ce_ass A :: nil) σ (M :: Ms) = A[σ] :: tele_insts Δ (σ ,, M) Ms.
+Lemma tele_insts_snoc : forall Δ κ A σ M Ms,
+    tele_insts (Δ ++ ce_ass κ A :: nil) σ (M :: Ms) = A[σ] :: tele_insts Δ (σ ,, M) Ms.
 Proof. intros; unfold tele_insts; rewrite rev_app_distr; reflexivity. Qed.
 
 Lemma tele_insts_sub : forall Δ k σ σ' τ Ms,
@@ -120,7 +120,7 @@ Lemma tele_insts_sub : forall Δ k σ σ' τ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ; [ reflexivity |].
   unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He].
-  inversion_clear He as [| ? ? [A ->] _].
+  apply List.Forall_cons_iff in He as [(κ & A & ->) _].
   apply ctx_scoped_app in HΔ as [HΔ [HA _]]; cbn in HA, HΔ.
   destruct Ms as [| M Ms]; [ unfold tele_insts; rewrite rev_app_distr; reflexivity |].
   cbn [List.map]; rewrite !tele_insts_snoc; cbn [List.map]; f_equal.
@@ -144,7 +144,7 @@ Lemma tele_insts_tele_sub : forall Δ σ τ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros; [ reflexivity |].
   rewrite tele_sub_app; cbn [tele_sub List.length sb_qn].
-  destruct e as [A | A N | U | A N U];
+  destruct e as [κ A | A N | U | A N U];
     [| unfold tele_insts; rewrite !rev_app_distr; reflexivity
      | unfold tele_insts; rewrite !rev_app_distr; reflexivity
      | unfold tele_insts; rewrite !rev_app_distr; reflexivity ].
@@ -153,7 +153,7 @@ Proof.
   apply tele_insts_sb_eq, sb_q_compose_extend.
 Qed.
 
-Lemma ctx_pi_snoc : forall r Δ A B, ctx_pi_at r (Δ ++ ce_ass A :: nil) B = a_pi r A (ctx_pi_at r Δ B).
+Lemma ctx_pi_snoc : forall r Δ κ A B, ctx_pi_at r (Δ ++ ce_ass κ A :: nil) B = a_pi κ r A (ctx_pi_at r Δ B).
 Proof. intros; rewrite ctx_pi_app; reflexivity. Qed.
 
 (** ** Positions in Lists of Terms *)
@@ -241,24 +241,24 @@ Qed.
 (** The instances of a telescope, position by position. *)
 Lemma tele_insts_aux_nth : forall Δr σ Ms k T,
     List.nth_error (tele_insts_aux Δr σ Ms) k = Some T ->
-    exists A, List.nth_error Δr k = Some (ce_ass A) /\ T = A[sb_of_list σ (List.firstn k Ms)].
+    exists κ A, List.nth_error Δr k = Some (ce_ass κ A) /\ T = A[sb_of_list σ (List.firstn k Ms)].
 Proof.
-  induction Δr as [| [A | A N | U | A N U] Δr IH]; intros σ [| M Ms] k T H; cbn in H; try (destruct k; discriminate).
+  induction Δr as [| [κ A | A N | U | A N U] Δr IH]; intros σ [| M Ms] k T H; cbn in H; try (destruct k; discriminate).
   destruct k as [| k]; cbn in H.
-  - injection H as <-; exists A; split; reflexivity.
-  - destruct (IH _ _ _ _ H) as (A' & HA' & ->); exists A'; split; [ exact HA' | reflexivity ].
+  - injection H as <-; exists κ, A; split; reflexivity.
+  - destruct (IH _ _ _ _ H) as (κ' & A' & HA' & ->); exists κ', A'; split; [ exact HA' | reflexivity ].
 Qed.
 
 Lemma tele_insts_nth : forall Δ σ Ms k T,
     List.nth_error (tele_insts Δ σ Ms) k = Some T ->
-    exists A, List.nth_error (List.rev Δ) k = Some (ce_ass A) /\ T = A[sb_of_list σ (List.firstn k Ms)].
+    exists κ A, List.nth_error (List.rev Δ) k = Some (ce_ass κ A) /\ T = A[sb_of_list σ (List.firstn k Ms)].
 Proof. intros; apply tele_insts_aux_nth; assumption. Qed.
 
 Lemma tele_insts_aux_app : forall Δr Δr' σ Ms Ns,
-    List.Forall (fun e => exists A, e = ce_ass A) Δr -> List.length Ms = List.length Δr ->
+    List.Forall (fun e => exists κ A, e = ce_ass κ A) Δr -> List.length Ms = List.length Δr ->
     tele_insts_aux (Δr ++ Δr') σ (Ms ++ Ns) = tele_insts_aux Δr σ Ms ++ tele_insts_aux Δr' (sb_of_list σ Ms) Ns.
 Proof.
-  intros Δr Δr' σ Ms Ns Hr; revert σ Ms; induction Hr as [| e Δr [A ->] Hr IH]; intros σ [| M Ms] Hl;
+  intros Δr Δr' σ Ms Ns Hr; revert σ Ms; induction Hr as [| e Δr (κ & A & ->) Hr IH]; intros σ [| M Ms] Hl;
     cbn in Hl; try lia; [ reflexivity |].
   cbn; f_equal; apply IH; lia.
 Qed.
@@ -293,7 +293,7 @@ Proof.
     rewrite ?List.length_app; cbn; lia.
 Qed.
 
-Lemma cargs_strat_snoc_arg : forall gs r A, cargs_strat (gs ++ ca_arg r A :: nil) = ce_ass A :: cargs_strat gs.
+Lemma cargs_strat_snoc_arg : forall gs r A, cargs_strat (gs ++ ca_arg r A :: nil) = ce_ass r A :: cargs_strat gs.
 Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
 Lemma cargs_strat_snoc_rec : forall gs Ps, cargs_strat (gs ++ ca_rec Ps :: nil) = cargs_strat gs.
@@ -385,7 +385,7 @@ Lemma tele_insts_sub_mvc : forall Δ k σ σ' τ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass Hmv HΔ Hσ; [ reflexivity |].
   unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He].
-  apply List.Forall_cons_iff in He as [[A ->] _].
+  apply List.Forall_cons_iff in He as [(κ & A & ->) _].
   unfold ctx_mvc in Hmv; apply List.Forall_app in Hmv as [Hmv HmA]; apply List.Forall_cons_iff in HmA as [HmA _].
   apply ctx_scoped_app in HΔ as [HΔ [HA _]]; cbn in HA, HΔ, HmA.
   destruct Ms as [| M Ms]; [ unfold tele_insts; rewrite List.rev_app_distr; reflexivity |].

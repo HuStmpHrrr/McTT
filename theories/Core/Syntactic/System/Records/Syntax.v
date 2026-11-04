@@ -43,9 +43,9 @@ Proof.
   assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
   unfold record_fctx in HF; rewrite List.firstn_all in HF.
   rewrite <- (List.firstn_skipn (S k) (record_fields R)), (firstn_succ_nth _ _ _ Hk) in HF.
-  rewrite !List.map_app, !List.rev_app_distr in HF; cbn [List.map List.rev List.app] in HF.
+  rewrite fields_tele_app, fields_tele_snoc in HF.
   apply ctx_scoped_app in HF as [_ HF]; cbn in HF; destruct HF as [HT _].
-  rewrite List.length_rev, List.length_map, List.length_firstn in HT.
+  rewrite length_fields_tele, List.length_firstn in HT.
   replace (Nat.min k (List.length (record_fields R))) with k in HT by lia; exact HT.
 Qed.
 
@@ -81,7 +81,7 @@ Lemma tele_insts_sub_gen : forall Δ k σ σ' τ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * HΔ Hσ; [ reflexivity |].
   apply ctx_scoped_app in HΔ as [HΔ [He _]]; cbn in He, HΔ.
-  destruct e as [A | A N | U | A N U];
+  destruct e as [κ A | A N | U | A N U];
     [| unfold tele_insts; rewrite !List.rev_app_distr; destruct Ms; reflexivity
      | unfold tele_insts; rewrite !List.rev_app_distr; destruct Ms; reflexivity
      | unfold tele_insts; rewrite !List.rev_app_distr; destruct Ms; reflexivity ].

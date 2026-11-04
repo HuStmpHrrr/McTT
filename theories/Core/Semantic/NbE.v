@@ -12,27 +12,28 @@ Generalizable All Variables.
     with a module part is both.  The level of a definition or a slot is
     never given to a neutral.  Every term entry is stored at the value of
     its type.  A definition of a proposition is its body kept as it is
-    written, [⋆ᵈ⟨M, ρ⟩], as relevance-directed evaluation has it; an
+    written, [⋆ᵈ⟨M, ρ⟩], as kind-directed evaluation has it; an
     assumption of a proposition is a neutral proof. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
-(** An assumption: a fresh variable of its type *)
+(** An assumption, of any kind: a fresh variable of its type *)
 | initial_env_cons :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     initial_env Θ Ξ (Γ ▹ A) (ρ ↦ ⇑! a (length Γ) ⦂ entry_type_value a))
-(** A definition of a relevant type: the value of its body *)
+     initial_env Θ Ξ (Γ ▹{κ} A) (ρ ↦ ⇑! a (length Γ) ⦂ entry_type_value a))
+(** A definition of a type of a universe or of levels: the value of its
+    body *)
 | initial_env_cons_def :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_relevance a = relevant ->
+     evaluated_kind (domain_kind a) ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m ⦂ entry_type_value a))
 (** A definition of a proposition: its body kept, not evaluated *)
 | initial_env_cons_def_proof :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_relevance a = propositional ->
+     domain_kind a = ak_propositional ->
      initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a))
 | initial_env_cons_mod :
   `( initial_env Θ Ξ Γ ρ ->
@@ -60,6 +61,7 @@ Proof.
   all: erewrite IHinitial_env in *; try eassumption;
     functional_eval_rewrite_clear;
     try congruence;
+    try solve [ exfalso; eapply evaluated_kind_not_propositional; eassumption ];
     eauto.
 Qed.
 
@@ -68,15 +70,15 @@ Hint Resolve functional_initial_env : mctt.
 
 (** An assumption is a neutral in the initial environment, at its own
     level; a definition is the value of its body. *)
-Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ A,
+Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ κ A,
     initial_env Θ Ξ Γ ρ ->
-    List.nth_error Γ x = Some (ce_ass A) ->
+    List.nth_error Γ x = Some (ce_ass κ A) ->
     exists a, ρ x = ⇑! a (length Γ - x - 1).
 Proof.
   induction x; intros * Hinit Hlookup;
     dependent destruction Hinit; simpl in *; try discriminate.
   1: eexists; cbn; repeat f_equal; lia.
-  all: destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a';
+  all: destruct (IHx _ _ _ _ Hinit Hlookup) as [a' Ha']; exists a';
     rewrite env_var_cons_succ, Ha'; repeat f_equal; lia.
 Qed.
 
@@ -92,18 +94,19 @@ Ltac functional_initial_env_rewrite_clear1 :=
 Ltac functional_initial_env_rewrite_clear := repeat functional_initial_env_rewrite_clear1.
 
 (** The normal form of a term [M] at the value [a] of its type, in the
-    environment [ρ] of [s] variables, relevance-directed: a proof is never
+    environment [ρ] of [s] variables, kind-directed: a proof is never
     evaluated. *)
 Inductive nbe_term (Θ : gdeps) (Ξ : gstack) (s : nat) (ρ : env) (M : exp) (a : domain) : nf -> Prop :=
 (** At a proposition: the term kept as it is, [⋆ᵈ⟨M, ρ⟩], read back
     ([read_nf_proof]): [M] under the definitions of the variables it reads *)
 | nbe_term_proof : forall w,
-    domain_relevance a = propositional ->
+    domain_kind a = ak_propositional ->
     Rnf ⇓ a ⋆ᵈ⟨M, ρ⟩ in Θ ⍮ Ξ ⍮ s ↘ w ->
     nbe_term Θ Ξ s ρ M a w
-(** At a relevant type: the value of the term, read back at the type *)
-| nbe_term_relevant : forall m w,
-    domain_relevance a = relevant ->
+(** At a type of a universe or of levels: the value of the term, read
+    back at the type *)
+| nbe_term_evaluated : forall m w,
+    evaluated_kind (domain_kind a) ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ w ->
     nbe_term Θ Ξ s ρ M a w.
@@ -136,6 +139,7 @@ Lemma functional_nbe_term : forall {Θ Ξ} s ρ M a w w',
     w = w'.
 Proof.
   intros * H H'; destruct H; destruct H'; try congruence;
+    try solve [ exfalso; eapply evaluated_kind_not_propositional; eassumption ];
     functional_eval_rewrite_clear; functional_read_rewrite_clear; reflexivity.
 Qed.
 
@@ -152,24 +156,26 @@ Proof.
   exact (functional_nbe_term _ _ _ _ _ _ Hw Hw').
 Qed.
 
-(** NbE at a relevant type: the term evaluated and read back. *)
-Lemma nbe_relevant_inv : forall {Θ Ξ Γ M A w},
+(** NbE at a type of a universe or of levels: the term evaluated and read
+    back. *)
+Lemma nbe_evaluated_inv : forall {Θ Ξ Γ M A w},
     nbe Θ Ξ Γ M A w ->
-    forall ρ a, initial_env Θ Ξ Γ ρ -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> domain_relevance a = relevant ->
+    forall ρ a, initial_env Θ Ξ Γ ρ -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> evaluated_kind (domain_kind a) ->
     exists m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m /\ Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w.
 Proof.
   intros * [ρ0 a0 Hi Ha Hw] ρ a Hi' Ha' Hr.
   functional_initial_env_rewrite_clear; functional_eval_rewrite_clear.
-  destruct Hw as [w Hp _ | m w Hr' Hm Hw]; [ congruence | exists m; split; assumption ].
+  destruct Hw as [w Hp _ | m w Hr' Hm Hw];
+    [ exfalso; exact (evaluated_kind_not_propositional _ Hr Hp) | exists m; split; assumption ].
 Qed.
 
-(** NbE at a relevant type, from its steps: the environment, the type's
-    value, the term's value and its readback, at a relevant type. *)
-Lemma nbe_relevant_intro : forall {Θ Ξ Γ M A w ρ a m},
+(** NbE at a type of a universe or of levels, from its steps: the
+    environment, the type's value, the term's value and its readback. *)
+Lemma nbe_evaluated_intro : forall {Θ Ξ Γ M A w ρ a m},
     initial_env Θ Ξ Γ ρ -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w -> domain_relevance a = relevant ->
+    Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w -> evaluated_kind (domain_kind a) ->
     nbe Θ Ξ Γ M A w.
-Proof. intros * Hi Ha Hm Hw Hr; econstructor; [ exact Hi | exact Ha | eapply nbe_term_relevant; eassumption ]. Qed.
+Proof. intros * Hi Ha Hm Hw Hr; econstructor; [ exact Hi | exact Ha | eapply nbe_term_evaluated; eassumption ]. Qed.
 
 (** Split every [nbe_term] into its two cases: a proof, discarded when the
     type's value is relevant, and a term evaluated and read back. *)
@@ -192,7 +198,7 @@ Proof.
   (** A universe is no proposition: only the case of a type is left. *)
   destruct Hw as [w Hp _ | m w Hr Hm Hw]; [ cbn in Hp; discriminate |].
   inversion_clear_by_head read_nf; try (cbn in *; discriminate).
-  all: econstructor; [ eassumption | mauto | eapply nbe_term_relevant; [ reflexivity | eassumption | mauto ] ].
+  all: econstructor; [ eassumption | mauto | eapply nbe_term_evaluated; [ cbn; constructor | eassumption | mauto ] ].
 Qed.
 
 Lemma lift_nbe_ge : forall {Θ Ξ Γ A i j W},

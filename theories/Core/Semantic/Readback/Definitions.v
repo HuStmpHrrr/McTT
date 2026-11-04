@@ -50,7 +50,7 @@ Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> l
 | fresh_tele_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Ftele T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ ⍮ S s ↘ vs ->
-     Ftele ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+     Ftele ce_ass κ A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
 where "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fresh_tele Θ Ξ ρ T s vs) : type_scope.
 
 (** The arguments of a constructor of [p] at the uniform parameters [ups]:
@@ -266,7 +266,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
     whatever the proposition.  This is the only rule at a propositional
     type. *)
 | read_nf_proof :
-  `( domain_relevance a = propositional ->
+  `( domain_kind a = ak_propositional ->
      Rprf m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ nf_proof M )
 (** A proposition, as an element of [Prop], reads back as a type. *)
@@ -278,19 +278,22 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ LevelSortᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
 (** A function, η-long: its body applied to a fresh variable of its
-    domain. *)
+    domain.  Its codomain is not a proposition (a function into
+    propositions is a proof, [read_nf_proof]). *)
 | read_nf_fn :
-  `( (** The normal form of the argument type. *)
+  `( (** The codomain's kind is not propositional. *)
+     evaluated_kind κc ->
+     (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      (** The normal form of the η-expanded body. *)
      $| m & ⇑! a s | Θ ⍮ Ξ ↘ m' ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
      Rnf ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
 
-     Rnf ⇓ (Πᵈ a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
+     Rnf ⇓ (d_pi κd κc a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
 (** A neutral at a neutral type that is not a proposition *)
 | read_nf_neut :
-  `( domain_relevance (⇑ a b) = relevant ->
+  `( evaluated_kind (domain_kind (⇑ a b)) ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 (** A constructor at all its parameters and arguments: the parameters are
@@ -474,7 +477,9 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 (** The false proposition *)
 | read_typ_False :
   `( Rtyp ⊥ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊥ⁿ )
-(** A Π type: its codomain under a fresh variable of its domain *)
+(** A Π type at any kinds (a function type, a universal proposition, a
+    function on levels): its codomain under a fresh variable of its
+    domain, the kinds kept *)
 | read_typ_pi :
   `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
@@ -483,18 +488,7 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 
-     Rtyp Πᵈ a ρ B in Θ ⍮ Ξ ⍮ s ↘ Πⁿ A B')
-(** A universal proposition: its body under a fresh variable of its
-    domain, as for Π *)
-| read_typ_all :
-  `( (** The normal form of the domain. *)
-     Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
-
-     (** The normal form of the body. *)
-     ⟦ P ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⦂ entry_type_value a ↘ b ->
-     Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ P' ->
-
-     Rtyp ∀ₚᵈ a ρ P in Θ ⍮ Ξ ⍮ s ↘ ∀ₚⁿ A P')
+     Rtyp d_pi κd κc a ρ B in Θ ⍮ Ξ ⍮ s ↘ nf_pi κd κc A B')
 (** A dependent conjunction: its second component under a fresh
     variable of its first, a proof variable *)
 | read_typ_and :
@@ -547,7 +541,7 @@ with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list doma
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rps vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ entry_type_closure A ρ ⍮ s ↘ Vs ->
-     Rps v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
+     Rps v :: vs at ce_ass κ A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ Ξ s ρ T vs Ms) : type_scope
 (** The fields [fl] of a record value [v], each at its type in [ρ] (the
     type's parameters and the projections of the fields before it), its

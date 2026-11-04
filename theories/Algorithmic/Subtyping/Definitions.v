@@ -7,11 +7,12 @@ Reserved Notation "Γ ⊢a A ⊆ A'" (at level 70, A at level 69, A' at level 69
 Reserved Notation "⊢anf A ⊆ A'" (at level 70, A at level 69, A' at level 69).
 
 (** The normal forms whose subtyping is not syntactic equality: the
-    universes, the types of levels and the relevant [Π].  A propositional
-    [Π] is a proposition, related by equality only. *)
+    universes, the types of levels and the [Π]s into an evaluated kind
+    (into a type of a universe or of levels).  A propositional [Π] is a
+    proposition, related by equality only. *)
 Definition not_univ_pi (A : nf) : Prop :=
   match A with
-  | nf_typ _ | nf_univ _ _ | nf_level _ | nf_pi relevant _ _ => False
+  | nf_typ _ | nf_univ _ _ | nf_level _ | nf_pi _ ak_relevant _ _ | nf_pi _ ak_level _ _ => False
   | _ => True
   end.
 
@@ -38,10 +39,14 @@ Inductive alg_subtyping_nf : nf -> nf -> Prop :=
 | alg_subtyping_nf_level : forall m n,
     m <= n ->
     ⊢anf Levelⁿ@m ⊆ Levelⁿ@n
-| alg_subtyping_nf_pi : forall A B A' B',
+(** A [Π] into an evaluated kind, covariant in the codomain, out of equal
+    domains, at kinds a [Π] may join ([wf_subtyp_pi]) *)
+| alg_subtyping_nf_pi : forall κd κc A B A' B',
+    pi_kinds κd κc ->
+    evaluated_kind κc ->
     A = A' ->
     ⊢anf B ⊆ B' ->
-    ⊢anf Πⁿ A B ⊆ Πⁿ A' B'
+    ⊢anf nf_pi κd κc A B ⊆ nf_pi κd κc A' B'
 where "⊢anf A ⊆ A'" := (alg_subtyping_nf A A') : type_scope.
 
 #[export]

@@ -36,7 +36,7 @@ Section Fixed_GCtx.
       Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps') (List.skipn (ind_nu D) Ps') /\
       blocks_typed Θ Ξ Γ p D (List.firstn (ind_nu D) Ps') Bks r i /\
       Θ ⍮ Ξ ⍮ Γ ⊢ (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]
-                ≈ (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps' ++ M :: nil)] : relevance_sort r Typeω@i.
+                ≈ (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps' ++ M :: nil)] : abs_kind_sort r Typeω@i.
   Proof.
     intros * Hl Hm Hb HPl HPt HPl' HPt' HPP HM HBt.
     assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
@@ -65,7 +65,8 @@ Section Fixed_GCtx.
       exact (HNe _ _ _ _ HN HN' HT). }
     assert (Hδ' : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns' : tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ) by (gen_presups; assumption).
     (* the member's type: at the other non-uniform, then uniform, parameters *)
-    destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hm HΓ HUl HUl' Hσσ) as [S HS _ Hhd Hhh _].
+    destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hm HΓ HUl HUl' Hσσ) as [S HSk _ Hhd Hhh _].
+    pose proof (sort_kind_type_sort _ _ HSk) as HS.
     assert (Ehd : forall Vs Xs, List.length Vs = ind_nu D -> List.length Xs = im_nn Mm ->
                (ind_mty p D m (List.map (fun U => U[wk_shiftn (im_nn Mm)]ʷ) Vs) (vars_from 0 (im_nn Mm)))[sb_of_list Id Xs]
                = ind_mty p D m Vs Xs).
@@ -79,10 +80,10 @@ Section Fixed_GCtx.
     split; [ eapply wf_conv_sort; [ exact HM1 | exact (presup_exp_eq_right HT2) | exact HS | exact HT2 ] | split; [ exact HBt' |] ].
     (* the motive's instance *)
     eapply sub_eq_preserves_sort;
-      [ exact (blocks_typed_motive _ _ _ _ _ _ _ _ _ HBt _ _ _ Hm Hb) | apply type_sort_relevance; constructor |].
+      [ exact (blocks_typed_motive _ _ _ _ _ _ _ _ _ HBt _ _ _ Hm Hb) | apply type_sort_abs_kind; constructor |].
     rewrite !sb_of_list_app; cbn [sb_of_list].
     unfold elim_mctx; cbn [List.app].
-    eapply wf_sub_eq_extend; [ exact Hδδ | exact Hhd | exact HS | rewrite Ehd by assumption; exact HM
+    eapply wf_sub_eq_extend; [ exact Hδδ | exact Hhd | exact HSk | rewrite Ehd by assumption; exact HM
                              | rewrite Ehd by assumption; exact HM1
                              | rewrite Ehd by assumption; apply wf_exp_eq_refl; exact HM ].
   Qed.

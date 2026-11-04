@@ -39,8 +39,9 @@ Section Fixed_GCtx.
   Proof.
     induction Ψ as [| e Ψ IH]; intros * Hass HΨ Hσ.
     - cbn; constructor; exact (wf_sub_dom _ _ _ _ _ (wf_sub_eq_left _ _ _ _ _ _ Hσ)).
-    - inversion Hass as [| ? ? [A ->] Hass']; subst.
-      cbn [List.app] in HΨ; destruct (ctx_decomp HΨ) as [HΨ' [j HS HA]].
+    - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass'].
+      cbn [List.app] in HΨ; destruct (ctx_decomp_sort_kind HΨ) as [HΨ' (j & HSk & HA)].
+      pose proof (sort_kind_type_sort _ _ HSk) as HS.
       pose proof (wf_sub_eq_refl _ _ _ _ _ (wf_sub_eq_left _ _ _ _ _ _ Hσ)) as Hσσ.
       pose proof (wf_sub_eq_refl _ _ _ _ _ (wf_sub_eq_right _ _ _ _ _ _ Hσ)) as Hσσ'.
       pose proof (sb_qn_eq_ext _ _ _ _ _ Hass' HΨ' Hσ) as Hq.
@@ -49,7 +50,7 @@ Section Fixed_GCtx.
       pose proof (wf_sub_eq_left _ _ _ _ _ _ Hq1) as Hs1.
       pose proof (wf_sub_eq_left _ _ _ _ _ _ Hq2) as Hs2.
       cbn [tele_sub centry_sub].
-      eapply wf_ext_eq_ass_eq; [ exact (IH _ _ _ _ Hass' HΨ' Hσ) | exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hs1) | exact HS
+      eapply wf_ext_eq_ass_eq; [ exact (IH _ _ _ _ Hass' HΨ' Hσ) | exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hs1) | exact HSk
                                | exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HA HS Hq)
                                | exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_right _ _ _ _ _ _ Hq))
                                | exact (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hs2) ].
@@ -59,11 +60,11 @@ Section Fixed_GCtx.
       substitutions: equal at one sort, which a telescope equation
       ([wf_ext_eq_ass]) no longer records. *)
   #[warnings="-cannot-define-projection"]
-  Record telescope_heads_eq (Γ Ψ Ψ' : ctx) (A A' : typ) : Prop := mk_telescope_heads_eq
+  Record telescope_heads_eq (Γ Ψ Ψ' : ctx) (κ : abs_kind) (A A' : typ) : Prop := mk_telescope_heads_eq
     { (** The sort both heads are of *)
       heads_eq_sort : exp
-      (** It is a sort: a large universe or [Prop] *)
-    ; heads_eq_sort_ok : type_sort heads_eq_sort
+      (** It is a sort of the heads' kind *)
+    ; heads_eq_sort_ok : sort_kind heads_eq_sort κ
       (** The telescopes before the heads are equal *)
     ; heads_eq_tail : Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'
       (** The left head is of the sort, in the left telescope *)
@@ -75,15 +76,16 @@ Section Fixed_GCtx.
 
   (** A telescope of assumptions with a head, moved by equal
       substitutions: the heads are equal at the head's sort. *)
-  Lemma tele_sub_eq_ext_head : forall Ψ A Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ (Ψ ▹ A) ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-      telescope_heads_eq Γ (tele_sub Ψ σ) (tele_sub Ψ σ') A[sb_qn (List.length Ψ) σ] A[sb_qn (List.length Ψ) σ'].
+  Lemma tele_sub_eq_ext_head : forall Ψ κ A Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ (Ψ ▹{κ} A) ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+      telescope_heads_eq Γ (tele_sub Ψ σ) (tele_sub Ψ σ') κ A[sb_qn (List.length Ψ) σ] A[sb_qn (List.length Ψ) σ'].
   Proof.
     intros * Hass HΨ Hσ.
-    cbn [List.app] in HΨ; destruct (ctx_decomp HΨ) as [HΨ' [j HS HA]].
+    cbn [List.app] in HΨ; destruct (ctx_decomp_sort_kind HΨ) as [HΨ' (j & HSk & HA)].
+    pose proof (sort_kind_type_sort _ _ HSk) as HS.
     pose proof (wf_sub_eq_refl _ _ _ _ _ (wf_sub_eq_right _ _ _ _ _ _ Hσ)) as Hσσ'.
     pose proof (sb_qn_eq_ext _ _ _ _ _ Hass HΨ' Hσ) as Hq.
     pose proof (sb_qn_eq_ext _ _ _ _ _ Hass HΨ' Hσσ') as Hq2.
-    exact (mk_telescope_heads_eq _ _ _ _ _ j HS (tele_sub_eq_ext _ _ _ _ _ Hass HΨ' Hσ)
+    exact (mk_telescope_heads_eq _ _ _ _ _ _ j HSk (tele_sub_eq_ext _ _ _ _ _ Hass HΨ' Hσ)
              (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_left _ _ _ _ _ _ Hq))
              (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HA HS Hq)
              (sub_preserves_sort _ _ _ _ _ _ _ HA HS (wf_sub_eq_left _ _ _ _ _ _ Hq2))).
@@ -97,10 +99,12 @@ Section Fixed_GCtx.
     - destruct Ψ2; [| apply ext_eq_length in H12; discriminate ]; exact H23.
     - destruct Ψ2 as [| e2 Ψ2]; [ apply ext_eq_length in H12; discriminate |].
       destruct Ψ3 as [| e3 Ψ3]; [ apply ext_eq_length in H23; discriminate |].
-      inversion Ha1 as [| ? ? [A1 ->] Ha1']; subst; inversion Ha2 as [| ? ? [A2 ->] Ha2']; subst.
-      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H12) as [S1 HS1 S2 HS2 H12' HA1 HA2 HA12 HA21].
-      assert (exists A3, e3 = ce_ass A3) as [A3 ->] by (inversion H23; subst; eauto).
-      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H23) as [S2' HS2' S3 HS3 H23' HA2b HA3 HA23 HA32].
+      apply List.Forall_cons_iff in Ha1 as [(κ1 & A1 & ->) Ha1'].
+      apply List.Forall_cons_iff in Ha2 as [(κ2 & A2 & ->) Ha2'].
+      assert (κ2 = κ1) as -> by (inversion H12; subst; reflexivity).
+      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ H12) as [S1 HS1 S2 HS2 H12' HA1 HA2 HA12 HA21].
+      assert (exists A3, e3 = ce_ass κ1 A3) as [A3 ->] by (inversion H23; subst; eauto).
+      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ H23) as [S2' HS2' S3 HS3 H23' HA2b HA3 HA23 HA32].
       (** The second step's refinements, read in the first telescope. *)
       pose proof (ctxsub_ext_rev _ _ _ _ _ H12' Ha1') as HId.
       pose proof (ctxsub_subtyp _ _ _ _ _ _ HId HA23) as HA23'.
@@ -164,7 +168,7 @@ Section Fixed_GCtx.
   Lemma elim_mctx_head_us_eq : forall Γ p D k M Us Us', ind_lookup Θ Ξ p = Some D -> ind_member D k = Some M -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Us = ind_nu D -> List.length Us' = ind_nu D ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
-      telescope_heads_eq Γ (tele_sub (im_nparams M) (sb_of_list Id Us)) (tele_sub (im_nparams M) (sb_of_list Id Us'))
+      telescope_heads_eq Γ (tele_sub (im_nparams M) (sb_of_list Id Us)) (tele_sub (im_nparams M) (sb_of_list Id Us')) ak_relevant
         (ind_mty p D k (List.map (fun U => U[wk_shiftn (im_nn M)]ʷ) Us) (vars_from 0 (im_nn M)))
         (ind_mty p D k (List.map (fun U => U[wk_shiftn (im_nn M)]ʷ) Us') (vars_from 0 (im_nn M))).
   Proof.
@@ -249,13 +253,15 @@ Section Fixed_GCtx.
         apply nth_error_map_inv in HN2 as (P1 & HPk1 & ->); rewrite HPk in HPk1; injection HPk1 as <-.
         destruct (Hinst _ _ _ HPk HT) as (T0 & HT0 & ->).
         exact (proj1 sub_eq_preserves_mut _ _ _ _ _ (HP _ _ _ HPk HT0) _ _ _ Hσσ). }
-    destruct (elim_mctx_head_typed _ _ _ _ _ _ _ _ HM) as [S HS Hi].
+    assert (HM' : ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) by exact HM.
+    unfold elim_mctx in HM'; cbn [List.app] in HM'; destruct (ctx_decomp_sort_kind HM') as [_ (S & HSk & Hi)].
+    pose proof (sort_kind_type_sort _ _ HSk) as HS.
     rewrite !sb_of_list_app; cbn [sb_of_list]; unfold elim_mctx; cbn [List.app].
     pose proof Hx as Hx'.
     rewrite <- (ind_head_inst p D j Mj Us (List.map (fun P => P[σ]) Ps) β) in Hx' by (try assumption; rewrite List.length_map; exact HPl).
     pose proof (sub_eq_preserves_sort _ _ _ _ _ _ _ _ Hi HS Hnn) as Hhh.
     eapply wf_sub_eq_extend;
-      [ exact Hnn | exact Hi | exact HS | exact Hx'
+      [ exact Hnn | exact Hi | exact HSk | exact Hx'
       | eapply wf_conv_sort;
           [ exact Hx' | exact (sub_preserves_sort _ _ _ _ _ _ _ Hi HS (wf_sub_eq_right _ _ _ _ _ _ Hnn)) | exact HS | exact Hhh ]
       | apply wf_exp_eq_refl; exact Hx' ].
@@ -281,7 +287,7 @@ Section Fixed_GCtx.
       ⊢ᵍ Θ ⍮ Ξ -> decls_typed Θ Ξ -> ind_lookup Θ Ξ p = Some D -> List.length Us = ind_nu D ->
       (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
       (forall j Mj, ind_member D j = Some Mj -> elim_mctx_head_large Θ Ξ Γ p D j Mj Us) ->
-      motives_typed Θ Ξ Γ p D Us As r i ->
+      motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
       forall n Mk Bs1 Tb t Ψ β σ σ' x Mj l,
       (im_is_rview Mj = true -> ptyp_mem t < n) ->
       ind_member D (ptyp_mem t) = Some Mj -> List.length (ptyp_ps t) = im_nn Mj ->
@@ -291,9 +297,9 @@ Section Fixed_GCtx.
       shape_uc D Us (doms_ctx Bs1 ++ Tb ++ im_params D Mk) σ β ->
       Θ ⍮ Ξ ⍮ Ψ ⊢ x : ptyp_ty_at p D (List.map (fun U => U[β]) Us) σ t ->
       In l (shape_leaves (rview_leaves D) (List.length Bs1 + List.length Tb + im_nn Mk) t) ->
-      exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l ≈ leaf_ihty r As β σ' x l : relevance_sort r Typeω@j.
+      exists j, Θ ⍮ Ξ ⍮ Ψ ⊢ leaf_ihty r As β σ x l ≈ leaf_ihty r As β σ' x l : abs_kind_sort r Typeω@j.
   Proof.
-    intros Γ p D Us As r i Hg HDs Hl HUl HM HMh HA.
+    intros Γ p D Us As r i Hg HDs Hl HUl HM HMh HA Hmk.
     pose proof (HDs _ _ Hl) as HD; pose proof (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl) as Hc.
     intros n; induction n as [n IHn] using Wf_nat.lt_wf_ind.
     intros Mk Bs1 Tb t; revert Bs1; induction t as [j0 Ps | B t IH];
@@ -371,19 +377,19 @@ Section Fixed_GCtx.
           unfold gs1; rewrite length_fields_args; reflexivity.
       + rewrite (rview_leaves_not_rview _ _ _ Hj Hr) in Hin; destruct Hin as [<- | []].
         cbn [leaf_ihty]; exists i.
-        exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ (HA _ _ Hj Hr) (type_sort_relevance r _ (type_sort_universe i))
+        exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ (HA _ _ Hj Hr) (type_sort_abs_kind r _ (type_sort_universe i))
                  (ih_leaf_sub_eq _ _ _ _ _ _ _ _ _ _ _ _ _ HD Hc Hj HUl (HM _ _ Hj) Hβ Hσ Hσσ Huc HPl
                     (shape_leaf_at _ _ _ _ _ _ _ _ HP eq_refl) Hx)).
     - apply List.in_map_iff in Hin as (l' & <- & Hin).
       destruct (HB nil B (ptyp_doms t) eq_refl) as [j1 Hj1]; rewrite List.app_nil_r in Hj1.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hj1 Hσ) as Hj1'; cbn [exp_sub] in Hj1'.
       pose proof (sub_eq_preserves_typ _ _ _ _ _ _ _ _ Hj1 Hσσ) as HBB.
-      assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹ B[σ]) by (eapply wf_ctx_extend; [ exact Hj1' | apply type_sort_universe ]).
-      pose proof (wf_sub_q _ _ _ _ _ _ _ Hσ Hj1 (type_sort_universe _) Hj1') as Hσ'.
-      pose proof (wf_sub_eq_q _ _ _ _ _ _ _ _ Hσσ Hj1 (type_sort_universe _) HBB) as Hσσ'.
-      assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹ B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
+      assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B[σ]) by (eapply wf_ctx_extend; [ exact Hj1' | apply sort_kind_universe ]).
+      pose proof (wf_sub_q _ _ _ _ _ _ _ _ Hσ Hj1 (sort_kind_universe _) Hj1') as Hσ'.
+      pose proof (wf_sub_eq_q _ _ _ _ _ _ _ _ _ Hσσ Hj1 (sort_kind_universe _) HBB) as Hσσ'.
+      assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹{ak_relevant} B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
         by (eapply wf_sub_compose; [ exact Hβ | apply wf_sub_of_wk, wf_wk_shift; exact HΨ' ]).
-      replace ((doms_ctx Bs1 ++ Tb ++ im_params D Mk) ▹ B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) in Hσ', Hσσ'
+      replace ((doms_ctx Bs1 ++ Tb ++ im_params D Mk) ▹{ak_relevant} B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) in Hσ', Hσσ'
         by (rewrite doms_ctx_app_one; reflexivity).
       assert (Huc' : shape_uc D Us (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ im_params D Mk) (q σ) (β ⨟ ι ↑))
         by (rewrite doms_ctx_app_one; apply shape_uc_pi; [ exact (proj2 (length_shape_ctx D Mk Bs1 Tb)) | exact Huc ]).
@@ -399,7 +405,7 @@ Section Fixed_GCtx.
       { rewrite List.length_app; cbn [List.length]; replace (List.length Bs1 + 1 + List.length Tb + im_nn Mk)
           with (S (List.length Bs1 + List.length Tb + im_nn Mk)) by lia; exact Hin. }
       exists (max j1 j3); cbn [leaf_ihty].
-      eapply wf_exp_eq_pi_cong_at_max; [ exact Hj1' | exact HBB | exact H3 ].
+      eapply wf_exp_eq_pi_cong_at_max; [ exact Hj1' | exact HBB | exact H3 | apply motive_kind_pi_kinds; exact Hmk ].
   Qed.
 
   (** The components of a recursive argument in a branch's context, at
@@ -458,16 +464,16 @@ Section Fixed_GCtx.
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
       (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
-      motives_typed Θ Ξ Γ p D Us As r i ->
+      motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
       List.In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
       In l (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) ->
       ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ->
       let T V := leaf_ihty r As (ι (wk_shiftn (List.length E + List.length gs + im_nn Mk)))
                    (ihs_sub (im_nn Mk) V (List.length gs) (cargs_pat gs1) (List.length E))
                    (a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1))) l in
-      exists j, Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T Us ≈ T Us' : relevance_sort r Typeω@j.
+      exists j, Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ T Us ≈ T Us' : abs_kind_sort r Typeω@j.
   Proof.
-    intros * Hl Hk HΓ HUl Hσ Hσσ HM HA Hin Heq Hinl HΨ T.
+    intros * Hl Hk HΓ HUl Hσ Hσσ HM HA Hmk Hin Heq Hinl HΨ T.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
     destruct (rec_arg_inst _ _ _ _ _ _ _ _ _ _ _ _ _ E Hg HDs Hl Hk HΓ HUl Hσ Hin Heq HΨ) as (Hb & Hθ & Huc & Hx).
@@ -475,7 +481,7 @@ Section Fixed_GCtx.
     pose proof (ihs_sub_us_eq _ _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl Hσ Hσσ Hin Heq HΨ) as Hθθ.
     assert (HMh : forall j Mj, ind_member D j = Some Mj -> elim_mctx_head_large Θ Ξ Γ p D j Mj Us)
       by (intros; eapply elim_mctx_head_wf_sub; eassumption).
-    eapply (leaf_ihty_sub_eq _ _ _ _ _ _ _ Hg HDs Hl HUl HM HMh HA (S (ptyp_mem t))); try eassumption.
+    eapply (leaf_ihty_sub_eq _ _ _ _ _ _ _ Hg HDs Hl HUl HM HMh HA Hmk (S (ptyp_mem t))); try eassumption.
     - intros _; lia.
     - cbn [List.length]; rewrite <- pat_nargs_cargs_pat; exact Hinl.
   Qed.
@@ -484,7 +490,7 @@ Section Fixed_GCtx.
   Lemma tele_ass_leaves_ctx : forall r nn As Us na pat ls j, tele_ass (leaves_ctx r nn As Us na pat j ls).
   Proof.
     induction ls as [| l ls IH]; intros j; cbn [leaves_ctx]; [ constructor |].
-    apply List.Forall_app; split; [ apply IH | constructor; [ eexists; reflexivity | constructor ] ].
+    apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ].
   Qed.
 
   Lemma ihs_ctx_us_eq : forall Γ p D k Mk Us Us' As r i c gs,
@@ -495,7 +501,7 @@ Section Fixed_GCtx.
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
       (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
       (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us' ++ Γ) ->
-      motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us' As r i ->
+      motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us' As r i -> motive_kind r ->
       List.In (c, gs) (im_cons Mk) ->
       forall rest gs1 E E', gs = gs1 ++ rest -> List.length E = cargs_nrec D gs1 -> List.length E' = cargs_nrec D gs1 ->
         tele_ass E ->
@@ -505,7 +511,7 @@ Section Fixed_GCtx.
                  ≈ ihs_ctx_aux r (rview_leaves D) (im_nn Mk) As Us' (List.length gs) (cargs_pat gs1) (List.length E) rest
                        ++ E' ++ con_inst_tele p D Mk Us' gs.
   Proof.
-    intros * Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hin rest.
+    intros * Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hmk Hin rest.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
     (** The arguments of a constructor instance are assumptions. *)
@@ -533,24 +539,24 @@ Section Fixed_GCtx.
           by (rewrite con_inst_ctx_con_inst_tele, List.app_assoc; eapply ext_eq_ctx_left; exact HEE0).
         assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ E0' ++ con_inst_ctx Γ p D Mk Us' gs)
           by (rewrite con_inst_ctx_con_inst_tele, List.app_assoc; eapply ext_eq_ctx_right; exact HEE0).
-        destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA HAA Hin Heq Hinl HΨ)
+        destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hg HDs Hl Hk HΓ HUl Hσ HM HA HA HAA Hmk Hin Heq Hinl HΨ)
           as (j1 & Hj & _).
-        destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0' l Hg HDs Hl Hk HΓ HUl' Hσ' HM' HA' HA' HAA' Hin Heq Hinl HΨ')
+        destruct (rec_ih_typed _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0' l Hg HDs Hl Hk HΓ HUl' Hσ' HM' HA' HA' HAA' Hmk Hin Heq Hinl HΨ')
           as (j2 & Hj' & _).
-        destruct (rec_ih_us_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hl Hk HΓ HUl Hσ Hσσ HM HA Hin Heq Hinl HΨ) as (j3 & Hjj).
+        destruct (rec_ih_us_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E0 l Hl Hk HΓ HUl Hσ Hσσ HM HA Hmk Hin Heq Hinl HΨ) as (j3 & Hjj).
         cbv zeta in Hj, Hj', Hjj.
         rewrite <- HlE in Hj'.
         rewrite con_inst_ctx_con_inst_tele, List.app_assoc in Hj, Hj', Hjj.
         rewrite <- !List.app_assoc; cbn [List.app].
-        change (S (List.length E0)) with (List.length (ce_ass (leaf_ihty r As (ι (wk_shiftn (List.length E0 + List.length gs + im_nn Mk)))
+        change (S (List.length E0)) with (List.length (ce_ass r (leaf_ihty r As (ι (wk_shiftn (List.length E0 + List.length gs + im_nn Mk)))
                                             (ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E0))
                                             (a_var (List.length E0 + List.length gs - 1 - List.length (cargs_pat gs1))) l) :: E0)).
         rewrite !List.app_comm_cons, !List.app_assoc; apply IHl;
-          [ intros l' Hl'; apply Hls; right; exact Hl' | cbn; lia | constructor; [ eexists; reflexivity | exact HaE0 ] |].
+          [ intros l' Hl'; apply Hls; right; exact Hl' | cbn; lia | constructor; [ do 2 eexists; reflexivity | exact HaE0 ] |].
         cbn [List.app]; eapply wf_ext_eq_ass_of_exp_eq;
           [ exact HEE0 | apply List.Forall_app; split; [ exact HaE0 | exact Hcta ]
           | exact (lift_rel_ge _ _ _ _ _ j1 (max j1 (max j2 j3)) ltac:(lia) Hj)
-          | apply type_sort_relevance; constructor
+          | apply sort_kind_abs_kind_sort
           | exact (lift_rel_eq_ge _ _ _ _ _ _ j3 (max j1 (max j2 j3)) ltac:(lia) Hjj)
           | exact (lift_rel_ge _ _ _ _ _ j2 (max j1 (max j2 j3)) ltac:(lia) Hj') ]. }
       pose proof (HL ls E E' (List.incl_refl _) ltac:(lia) HaE HEE) as HL'.
@@ -576,11 +582,11 @@ Section Fixed_GCtx.
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
       (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ) ->
       (forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us' ++ Γ) ->
-      motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us' As r i ->
+      motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us' As r i -> motive_kind r ->
       ind_con Mk c = Some gs ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs As Us ≈ elim_bctx r p D Mk gs As Us'.
   Proof.
-    intros * Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hcon.
+    intros * Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hmk Hcon.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
@@ -595,7 +601,7 @@ Section Fixed_GCtx.
       unfold im_params in HΨΓ; rewrite <- !List.app_assoc, (List.app_assoc (cargs_ctx p D Mk gs)) in HΨΓ.
       eapply tele_sub_eq_ext; [| exact HΨΓ | exact Hσσ ].
       apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]. }
-    pose proof (ihs_ctx_us_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hin gs nil nil nil eq_refl eq_refl eq_refl (List.Forall_nil _) H0) as H.
+    pose proof (ihs_ctx_us_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hmk Hin gs nil nil nil eq_refl eq_refl eq_refl (List.Forall_nil _) H0) as H.
     cbn [List.app List.length cargs_pat List.map List.rev] in H; unfold con_inst_tele in H; unfold elim_bctx; exact H.
   Qed.
 
@@ -607,21 +613,21 @@ Section Fixed_GCtx.
       ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Us = ind_nu D ->
       (forall j U T, nth_error Us j = Some U -> nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ U : T) ->
-      motives_typed Θ Ξ Γ p D Us As r i ->
+      motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
       ind_con Mk c = Some gs ->
       let n := im_nn Mk + List.length gs + cargs_nrec D gs in
       Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As Us ++ Γ
         ⊢ˢ sb_of_list (ι (wk_shiftn n)) (vars_from (cargs_nrec D gs + List.length gs) (im_nn Mk) ++ vars_from (cargs_nrec D gs) (List.length gs))
         : con_inst_tele p D Mk Us gs ++ Γ.
   Proof.
-    intros * Hl Hk HΓ HUl HUs HA Hcon n.
+    intros * Hl Hk HΓ HUl HUs HA Hmk Hcon n.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUs) as Hσ.
     assert (HM : forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ)
       by (intros j Mj Hj; exact (elim_mctx_wf _ _ _ _ _ _ _ _ Hg HDs Hl Hj HΓ HUl HUs)).
-    pose proof (elim_bctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hcon) as HΔ.
+    pose proof (elim_bctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hcon) as HΔ.
     destruct (wf_sub_cinst _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ Hσ c gs gs nil Hin (eq_sym (List.app_nil_r gs))) as [Hi _].
     rewrite con_inst_ctx_con_inst_tele in Hi.
     set (IHc := ihs_ctx_aux r (rview_leaves D) (im_nn Mk) As Us (List.length gs) nil 0 gs).
@@ -670,7 +676,7 @@ Section Fixed_GCtx.
       (forall j U T, nth_error Us' j = Some U -> nth_error (tele_insts (ind_uparams D) Id Us') j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ U : T) ->
       (forall j U U' T, nth_error Us j = Some U -> nth_error Us' j = Some U' ->
          nth_error (tele_insts (ind_uparams D) Id Us) j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ U ≈ U' : T) ->
-      motives_typed Θ Ξ Γ p D Us As r i ->
+      motives_typed Θ Ξ Γ p D Us As r i -> motive_kind r ->
       ind_con Mk c = Some gs ->
       let n := im_nn Mk + List.length gs + cargs_nrec D gs in
       let ρ V := sb_of_list (ι (wk_shiftn n))
@@ -681,7 +687,7 @@ Section Fixed_GCtx.
                     :: nil) in
       Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs As Us ++ Γ ⊢ˢ ρ Us ≈ ρ Us' : elim_mctx p D k Mk Us ++ Γ.
   Proof.
-    intros * Hl Hk Hrv HΓ HUl HUs HUl' HUs' HUU HA Hcon n ρ.
+    intros * Hl Hk Hrv HΓ HUl HUs HUl' HUs' HUU HA Hmk Hcon n ρ.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
@@ -689,12 +695,12 @@ Section Fixed_GCtx.
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl' HUs') as Hσ'.
     assert (HM : forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ)
       by (intros j Mj Hj; exact (elim_mctx_wf _ _ _ _ _ _ _ _ Hg HDs Hl Hj HΓ HUl HUs)).
-    pose proof (elim_bctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hcon) as HΔ.
+    pose proof (elim_bctx_wf _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl Hσ HM HA Hmk Hcon) as HΔ.
     set (Δ := elim_bctx r p D Mk gs As Us ++ Γ) in *.
     set (nvars := vars_from (cargs_nrec D gs + List.length gs) (im_nn Mk)) in *.
     set (avars := vars_from (cargs_nrec D gs) (List.length gs)) in *.
     (* the base, at both uniform parameters *)
-    pose proof (bctx_base_typed _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUs HA Hcon) as Hb; cbv zeta in Hb; fold n nvars avars Δ in Hb.
+    pose proof (bctx_base_typed _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUs HA Hmk Hcon) as Hb; cbv zeta in Hb; fold n nvars avars Δ in Hb.
     assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
     { eapply wf_sub_eq_of_list_conv; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
                                      | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUs | exact HUs' | exact HUU ]. }
@@ -811,7 +817,7 @@ Section Fixed_GCtx.
         rewrite List.firstn_skipn in H.
         unfold Ps, Ps' in H; rewrite <- !List.app_assoc in H; exact H. }
     (* the substitutions *)
-    pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hcon) as Hρ; fold n nvars avars Usw Δ in Hρ.
+    pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk Hrv HΓ HUl HUs HM HA Hmk Hcon) as Hρ; fold n nvars avars Usw Δ in Hρ.
     set (conU := apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Usw ++ nvars ++ avars)) in *.
     set (conU' := apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Usw' ++ nvars ++ avars)) in *.
     unfold ρ; fold Usw Usw' conU conU'.
@@ -827,7 +833,8 @@ Section Fixed_GCtx.
     assert (Hcon' : Θ ⍮ Ξ ⍮ Δ ⊢ conU' : ind_mty p D k (List.map (fun U => U[ι (wk_shiftn n)]) Us) nvars).
     { pose proof (wf_con_apps_at _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk Hrv Hcon HΔ HUlw' HUsw' HNl HNs' HAl HAs') as H'.
       fold conU' in H'.
-      destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσσ) as [S HS _ Hhd Hhh _].
+      destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσσ) as [S HSk _ Hhd Hhh _].
+      pose proof (sort_kind_type_sort _ _ HSk) as HS.
       assert (HNΓ : ⊢ Θ ⍮ Ξ ⍮ tele_sub (im_nparams Mk) (sb_of_list Id Us) ++ Γ)
         by (pose proof (HM _ _ Hk) as H0; unfold elim_mctx in H0; cbn [List.app] in H0; exact (proj1 (ctx_decomp H0))).
       assert (Hδ : Θ ⍮ Ξ ⍮ Δ ⊢ˢ sb_of_list (ι (wk_shiftn n)) nvars : tele_sub (im_nparams Mk) (sb_of_list Id Us) ++ Γ).
@@ -874,9 +881,9 @@ Section Fixed_GCtx.
         List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T.
   Proof.
     intros * Hass Hl Hl' Hσ k N N' T HN HN' HT.
-    apply tele_insts_nth in HT as (A & HA & ->).
+    apply tele_insts_nth in HT as (κ & A & HA & ->).
     destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
-    assert (HΔeq : Δ = List.rev l2 ++ ce_ass A :: List.rev l1)
+    assert (HΔeq : Δ = List.rev l2 ++ ce_ass κ A :: List.rev l1)
       by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
     assert (Hlen : List.length Δ = List.length l2 + S k)
       by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
@@ -987,12 +994,12 @@ Section Fixed_GCtx.
 
   (** An annotation equal to the motive's context's head stays so when
       the telescope before it changes to an equal one. *)
-  Lemma ext_eq_ann_move : forall Γ Ψ Ψ' Z A A', tele_ass Ψ -> tele_ass Ψ' ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ Z ≈ Ψ ▹ A -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ' ▹ Z ≈ Ψ' ▹ A'.
+  Lemma ext_eq_ann_move : forall Γ Ψ Ψ' κ Z A A', tele_ass Ψ -> tele_ass Ψ' ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹{κ} Z ≈ Ψ ▹{κ} A -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹{κ} A ≈ Ψ' ▹{κ} A' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ' ▹{κ} Z ≈ Ψ' ▹{κ} A'.
   Proof.
     intros * Ha Ha' H1 H2.
-    destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H1) as [S1 HS1 S1' HS1' _ HZ _ HZA HAZ].
-    destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H2) as [S2 HS2 S2' HS2' H12 _ HA' HAA' HA'A].
+    destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ H1) as [S1 HS1 S1' HS1' _ HZ _ HZA HAZ].
+    destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ H2) as [S2 HS2 S2' HS2' H12 _ HA' HAA' HA'A].
     (** Everything read in the right telescope, the heads chained by
         [wf_subtyp_trans]. *)
     pose proof (ctxsub_ext _ _ _ _ _ H12 Ha) as HId.
@@ -1032,7 +1039,7 @@ Section Fixed_GCtx.
     assert (HMv : forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us' ++ Γ ⊢ˢ Id : elim_mctx p D k Mk Us ++ Γ)
       by (intros k Mk Hk; exact (ctxsub_ext _ _ _ _ _ (HMc _ _ Hk) (elim_mctx_ass _ _ _ _ _ Hc Hk))).
     pose proof (blocks_mctx_wf _ _ _ _ _ _ _ _ _ HBt) as HM.
-    assert (HSi : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+    assert (HSi : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
     assert (HM' : forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us' ++ Γ)
       by (intros j Mj Hj; exact (ext_eq_ctx_right _ _ _ _ _ (HMc _ _ Hj))).
     pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD)) as Hsf.
@@ -1042,8 +1049,9 @@ Section Fixed_GCtx.
       rewrite !exp_sub_id in H; exact H. }
     assert (HBc : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
                Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) Us ≈ elim_bctx r p D Mk gs (blocks_motives Bks) Us')
-      by (intros k Mk c gs Hk Hcon; exact (elim_bctx_us_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' Hcon)).
-    destruct HBt as [HlB Hnm HZ HAb HΨ Hn HΨB Hk HB].
+      by (intros k Mk c gs Hk Hcon;
+          exact (elim_bctx_us_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk HΓ HUl HUl' Hσ Hσ' Hσσ HM HM' HA HA' (blocks_typed_kind _ _ _ _ _ _ _ _ _ HBt) Hcon)).
+    destruct HBt as [HlB Hnm HZ HAb HΨ Hn HΨB Hk HB Hmk].
     constructor; try assumption.
     - intros k Mk b Hk' Hb.
       pose proof (HZ _ _ _ Hk' Hb) as HZ0; pose proof (HMc _ _ Hk') as HMk.
@@ -1059,7 +1067,7 @@ Section Fixed_GCtx.
       pose proof (ctxsub_ext _ _ _ _ _ (HBc _ _ _ _ Hk' Hcon) (elim_bctx_ass _ _ _ _ _ _ _ _ Hc Hk')) as HIdb.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HB _ _ _ _ _ _ _ Hk' Hb Hcon Hin) HIdb) as HB'; rewrite !exp_sub_id in HB'.
       pose proof (wf_branch_type_sub_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk' (block_not_rview _ _ _ _ _ Hsf HlB Hk' Hb) HΓ HUl' HUs' HUl HUs HUU' HA'
-                    Hcon) as Hbs.
+                    Hmk Hcon) as Hbs.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HAb _ _ _ Hk' Hb) (HMv _ _ Hk')) as HA0; rewrite !exp_sub_id in HA0.
       pose proof (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HA0 HSi Hbs) as Hty.
       pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HSi (wf_sub_eq_left _ _ _ _ _ _ Hbs)) as Hty'.
@@ -1099,14 +1107,14 @@ Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D Us' m Mm (Bks Bks' : list eblock) b
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ eb_scrutinee_type b
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : abs_kind_sort r Typeω@i) ->
     (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
-       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : relevance_sort r Typeω@i) ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : abs_kind_sort r Typeω@i) ->
     (forall k Mk, ind_member D k = Some Mk ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -1121,13 +1129,14 @@ Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D Us' m Mm (Bks Bks' : list eblock) b
        ind_con Mk c = Some gs ->
        Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B'
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    motive_kind r ->
     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros * Hl Hm Hbm HlB HlB' HPl HPs HPl' HPs'' HPP HM HM' HMM Hann' Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB.
+  intros * Hl Hm Hbm HlB HlB' HPl HPs HPl' HPs'' HPP HM HM' HMM Hann' Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB Hmk.
   subst Us'.
   pose proof (presup_exp_ctx HM) as HΓ.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
-  pose proof (wf_elim_cong_rhs_blocks _ _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm HlB HlB' HPl HPs Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB)
+  pose proof (wf_elim_cong_rhs_blocks _ _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm HlB HlB' HPl HPs Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB Hmk)
     as HBt.
   (* the right parameters, at the instances at themselves *)
   assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ps ≈ sb_of_list Id Ps' : im_params D Mm ++ Γ).
@@ -1172,7 +1181,8 @@ Proof.
   pose proof (wf_sub_eq_right _ _ _ _ _ _ Hδδ) as Hδ'.
   pose proof (wf_sub_nparams_inst _ _ _ _ _ _ _ _ Hl Hm HΓ HPl' HPs') as Hδ2; fold Us' Ns' in Hδ2.
   (* the member's type: at the right non-uniform, then uniform, parameters *)
-  destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hm HΓ HUl HUl' Hσσu) as [S HS _ Hhd Hhh Hhd'].
+  destruct (elim_mctx_head_us_eq _ _ _ _ _ _ _ Hl Hm HΓ HUl HUl' Hσσu) as [S HSk _ Hhd Hhh Hhd'].
+  pose proof (sort_kind_type_sort _ _ HSk) as HS.
   assert (Ehd : forall Vs Xs, List.length Vs = ind_nu D -> List.length Xs = im_nn Mm ->
              (ind_mty p D m (List.map (fun U => U[wk_shiftn (im_nn Mm)]ʷ) Vs) (vars_from 0 (im_nn Mm)))[sb_of_list Id Xs]
              = ind_mty p D m Vs Xs).
@@ -1195,9 +1205,9 @@ Proof.
   pose proof (wf_elim_inst_sub _ _ _ _ _ _ _ _ _ Hc Hm HPl HPs HM (HMx _ _ Hm)) as Hτ; fold Us Ns in Hτ.
   assert (Hττ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id (Ns ++ M :: nil) ≈ sb_of_list Id (Ns' ++ M' :: nil) : elim_mctx p D m Mm Us ++ Γ).
   { rewrite !sb_of_list_app; cbn [sb_of_list]; unfold elim_mctx; cbn [List.app].
-    eapply wf_sub_eq_extend; [ exact Hδδ | exact Hhd | exact HS | rewrite Ehd by assumption; exact HM | rewrite Ehd by assumption; exact HM1
+    eapply wf_sub_eq_extend; [ exact Hδδ | exact Hhd | exact HSk | rewrite Ehd by assumption; exact HM | rewrite Ehd by assumption; exact HM1
                              | rewrite Ehd by assumption; exact HMM ]. }
-  assert (HSi : type_sort (relevance_sort r Typeω@i)) by (apply type_sort_relevance; constructor).
+  assert (HSi : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
   pose proof (sub_eq_preserves_sort _ _ _ _ _ _ _ _ (HA'' _ _ _ _ Hm Hbm Hbm') HSi Hττ) as H1.
   pose proof (sub_preserves_sort_eq _ _ _ _ _ _ _ _ (HAA _ _ _ _ Hm Hbm Hbm') HSi Hτ) as H2.
   pose proof (sub_preserves_sort _ _ _ _ _ _ _ (HA _ _ _ Hm Hbm) HSi Hτ) as H3.

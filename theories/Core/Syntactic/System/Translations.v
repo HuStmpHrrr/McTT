@@ -41,7 +41,7 @@ Definition raw_decl_self_ty (R : raw_decl) (Mr : raw_member) : typ :=
 Fixpoint raw_decl_selfs_from (R : raw_decl) (j : nat) (ms : list raw_member) : ctx :=
   match ms with
   | nil => nil
-  | Mr :: ms' => raw_decl_selfs_from R (S j) ms' ++ ce_ass (raw_decl_self_ty R Mr)[wk_shiftn j]ʷ :: nil
+  | Mr :: ms' => raw_decl_selfs_from R (S j) ms' ++ ce_ass ak_relevant (raw_decl_self_ty R Mr)[wk_shiftn j]ʷ :: nil
   end.
 
 (** The context of the [Self]s of all declared members, [Self_0]
@@ -60,8 +60,10 @@ Definition raw_decl_uniform_ctx (Ξ : gstack) (R : raw_decl) : ctx :=
 Definition raw_member_args_ctx (Ξ : gstack) (R : raw_decl) (Mr : raw_member) : ctx :=
   tele_wk (raw_member_nparams Mr ++ raw_decl_uparams R) (wk_shiftn (raw_decl_nmembers R)) ++ raw_decl_selfs R ++ gs_tele Ξ.
 
-(** The arguments as written, as a telescope, innermost first. *)
-Definition raw_args_tele (args : list (string * exp)) : ctx := List.rev (List.map (fun a => ce_ass (snd a)) args).
+(** The arguments as filled, as a telescope, innermost first, each at its
+    kind. *)
+Definition raw_args_tele (args : list (string * abs_kind * exp)) : ctx :=
+  List.rev (List.map (fun a => ce_ass (snd (fst a)) (snd a)) args).
 
 (** ** Mutual Definitions
 
@@ -100,7 +102,7 @@ Definition member_scrutinee_type (pq : qname) (D : ind_decl) (j : nat) (M : imem
   ind_mty pq D j (List.map (fun U => U[wk_shiftn (im_nn M)]ʷ) Us) (vars_from 0 (im_nn M)).
 
 Lemma elim_mctx_scrutinee_type : forall pq D j M Us,
-    elim_mctx pq D j M Us = ce_ass (member_scrutinee_type pq D j M Us) :: tele_sub (im_nparams M) (sb_of_list Id Us).
+    elim_mctx pq D j M Us = ce_ass ak_relevant (member_scrutinee_type pq D j M Us) :: tele_sub (im_nparams M) (sb_of_list Id Us).
 Proof. reflexivity. Qed.
 
 (** The block a function makes, under [k] more binders of the function it
@@ -127,10 +129,10 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
   List.map (fun fm =>
               let f := fst fm in
               let k := S (List.length (raw_fun_nparams f)) in
-              (raw_fun_name f, ctx_pi Δ (ctx_pi (raw_fun_nparams f) (a_pi relevant (raw_fun_scrut f) (raw_fun_res f))),
+              (raw_fun_name f, ctx_pi Δ (ctx_pi (raw_fun_nparams f) (a_pi ak_relevant ak_relevant (raw_fun_scrut f) (raw_fun_res f))),
                ctx_fn Δ (ctx_fn (raw_fun_nparams f)
                            (a_fn (raw_fun_scrut f)
-                              (a_elim relevant pq (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
+                              (a_elim ak_relevant pq (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
                                  (mdef_blocks k (ind_nblk D) fs ms) (a_var 0))))))
     (List.combine fs ms).
 

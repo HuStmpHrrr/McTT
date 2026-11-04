@@ -40,7 +40,7 @@ Ltac add_type Θ Ξ Γ A HAi :=
 #[local]
 Ltac invert_wf_ctx1 H :=
   match type of H with
-  | ⊢ ?Θ ⍮ ?Ξ ⍮ ?Γ ▹ ?A =>
+  | ⊢ ?Θ ⍮ ?Ξ ⍮ ?Γ ▹{_} ?A =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof ctx_decomp H as [HΓ HAi];

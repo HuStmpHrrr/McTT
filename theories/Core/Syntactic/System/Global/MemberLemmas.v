@@ -496,7 +496,7 @@ Proof. intros r; induction T as [| [] T IH]; intros; cbn; auto. Qed.
 Lemma ctx_pi_rev_cons : forall r e R A,
     ctx_pi_at r (rev (e :: R)) A =
     match e with
-    | ce_ass B => a_pi r B (ctx_pi_at r (rev R) A)
+    | ce_ass κ B => a_pi κ r B (ctx_pi_at r (rev R) A)
     | ce_def B N => a_let (b_def B N) (ctx_pi_at r (rev R) A)
     | ce_mod U => a_let (b_mod U) (ctx_pi_at r (rev R) A)
     | ce_dm _ N U => (ctx_pi_at r (rev R) A)[Id ,,ᵈ N ‖ me_lit U]
@@ -1180,7 +1180,7 @@ Proof.
   intros * HR HNs Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & r & B & M' & Rm' & -> & -> & Ht & Hm)];
     [ eapply mdesc_ats_scoped; eassumption |].
   destruct HR as (_ & [HA HM] & HRm); cbn [length] in HA, HM.
-  pose proof (mdesc_term_part_ats_scoped _ _ _ _ (conj HA HM : mdesc_scoped n (mdesc_term relevant A (Some M))) HNs Ht) as [HB HM'].
+  pose proof (mdesc_term_part_ats_scoped _ _ _ _ (conj HA HM : mdesc_scoped n (mdesc_term ak_relevant A (Some M))) HNs Ht) as [HB HM'].
   split; [ exact I | split; [ split; assumption | eapply mdesc_ats_scoped; eassumption ] ].
 Qed.
 
@@ -1476,8 +1476,8 @@ Proof.
 Qed.
 
 (** A literal given its outermost parameter, instantiated. *)
-Lemma beta_unit_scoped : forall Δ X D n N,
-    gunit_scoped n (gu_mk (Δ ++ ce_ass X :: nil) D) -> exp_scoped n N ->
+Lemma beta_unit_scoped : forall Δ κ X D n N,
+    gunit_scoped n (gu_mk (Δ ++ ce_ass κ X :: nil) D) -> exp_scoped n N ->
     gunit_scoped n (gu_mk (tele_sub Δ (Id,,N)) (moddef_sub D (sb_qn (length Δ) (Id,,N)))).
 Proof.
   intros * HU HN; rewrite gunit_scoped_mk in *; destruct HU as [HΔX HD].
@@ -1530,7 +1530,7 @@ Ltac ind_pick :=
 Ltac ind_decl_scoped :=
   match goal with
   | Hc : gctx_closed _ _,
-    HN : forall k Mk Δ1 T Δ2, ind_member _ k = Some Mk -> im_nparams Mk = _ -> (_ /\ _) /\ exp_scoped _ T /\ _,
+    HN : forall k Mk Δ1 κ T Δ2, ind_member _ k = Some Mk -> im_nparams Mk = _ -> (_ /\ _) /\ exp_scoped _ T /\ _,
     HA : forall k Mk c gs gs1 r A gs2, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> (_ /\ _) /\ exp_scoped _ A /\ _,
     HB : forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> ptyp_doms t = _ ->
            (_ /\ _) /\ exp_scoped _ B /\ _,
@@ -1807,7 +1807,7 @@ Proof.
   all: try solve [ apply exp_scoped_apps; split; [ apply qname_mod_scoped |];
     match goal with Hs : modexp_scoped _ (me_apps _ ?Ns) |- List.Forall _ ?Ns => exact (proj2 (proj1 (me_apps_scoped_iff _ _ _) Hs)) end ].
   (* a literal given its outermost parameter *)
-  all: try solve [ first [ eapply (beta_unit_scoped _ _ (md_body _ _)) | eapply (beta_unit_scoped _ _ (md_alias _)) ]; eassumption ].
+  all: try solve [ first [ eapply (beta_unit_scoped _ _ _ (md_body _ _)) | eapply (beta_unit_scoped _ _ _ (md_alias _)) ]; eassumption ].
   (* a slot's unit *)
   all: try solve [ match goal with H : ?Γ ∋ # ?x ≔ₘ ?U, HΓ : ctx_scoped 0 ?Γ |- gunit_scoped _ ?U =>
     pose proof (ctx_scoped_lookup_mod _ _ _ _ HΓ H) as Hs; rewrite Nat.add_0_r in Hs; exact Hs end ].
@@ -1847,7 +1847,7 @@ Proof.
   all: try match goal with HU : gunit_scoped ?n (gu_open ?Δ ?Φ) |- gunit_scoped ?n (gu_open ?Δ (gm_expand ?Φ)) =>
          exact (gunit_scoped_expand _ _ HU) end.
   (* the sort of a Π at its tag *)
-  all: match goal with |- exp_scoped _ (relevance_sort ?r _) => destruct r; cbn; first [ exact I | assumption ] end.
+  all: try match goal with |- exp_scoped _ (abs_kind_sort ?r _) => destruct r; cbn; first [ exact I | assumption ] end.
 Qed.
 
 (** ** Consequences *)
@@ -2165,7 +2165,7 @@ Proof.
     try (apply (mdesc_ats_sub _ _ _ σ Ha)).
   (* a definition with a module part: its term part and its module part,
      each given the arguments *)
-  destruct (mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | |] |] eqn:Et; try discriminate.
+  destruct (mdesc_term_part_ats (mdesc_term ak_relevant A (Some M)) Ns) as [[r B [M' |] | | |] |] eqn:Et; try discriminate.
   destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
   cbn [length sb_qn mdesc_sub].
   pose proof (mdesc_term_part_ats_sub _ _ _ σ Et) as Ht'; cbn [mdesc_sub option_map] in Ht'; rewrite Ht', (mdesc_ats_sub _ _ _ σ E); reflexivity.
@@ -2551,18 +2551,18 @@ Qed.
     sends module slots to module slots or to their units. *)
 Lemma tele_split_compat : forall R Γ,
     match tele_split R with
-    | inl (B, T, τ) => sub_mod_compat τ (T ++ ce_ass B :: Γ) (rev R ++ Γ)
+    | inl (B, T, τ) => sub_mod_compat τ (T ++ ce_ass (tele_split_kind R) B :: Γ) (rev R ++ Γ)
     | inr τ => sub_mod_compat τ Γ (rev R ++ Γ)
     end.
 Proof.
-  induction R as [| [B0 | B0 N | U | B0 N U] R IH]; intros Γ; cbn [rev tele_split].
+  induction R as [| [κ0 B0 | B0 N | U | B0 N U] R IH]; intros Γ; cbn [rev tele_split tele_split_kind].
   - intros x U Hl; right; exists x; split; [ reflexivity | rewrite gunit_sub_id; exact Hl ].
   - rewrite <- List.app_assoc; cbn [List.app].
     intros x U Hl; right; exists x; split; [ reflexivity | rewrite gunit_sub_id; exact Hl ].
   - specialize (IH (ce_def B0 N :: Γ)); rewrite <- List.app_assoc; cbn [List.app].
     pose proof (sub_mod_compat_single_term Γ (ce_def B0 N) N ltac:(intros; discriminate) ltac:(intros; discriminate)) as Hs.
     destruct (tele_split R) as [[[B' T'] τ] | τ].
-    + pose proof (sub_mod_compat_ext (T' ++ ce_ass B' :: nil) _ _ _ Hs) as Hx.
+    + pose proof (sub_mod_compat_ext (T' ++ ce_ass (tele_split_kind R) B' :: nil) _ _ _ Hs) as Hx.
       rewrite tele_sub_app, length_app in Hx; cbn [tele_sub centry_sub length] in Hx.
       rewrite <- !List.app_assoc in Hx; cbn [List.app] in Hx.
       replace (length T' + 1) with (S (length T')) in Hx by lia.
@@ -2571,7 +2571,7 @@ Proof.
   - specialize (IH (ce_mod U :: Γ)); rewrite <- List.app_assoc; cbn [List.app].
     pose proof (sub_mod_compat_single_mod Γ U) as Hs.
     destruct (tele_split R) as [[[B' T'] τ] | τ].
-    + pose proof (sub_mod_compat_ext (T' ++ ce_ass B' :: nil) _ _ _ Hs) as Hx.
+    + pose proof (sub_mod_compat_ext (T' ++ ce_ass (tele_split_kind R) B' :: nil) _ _ _ Hs) as Hx.
       rewrite tele_sub_app, length_app in Hx; cbn [tele_sub centry_sub length] in Hx.
       rewrite <- !List.app_assoc in Hx; cbn [List.app] in Hx.
       replace (length T' + 1) with (S (length T')) in Hx by lia.
@@ -2580,7 +2580,7 @@ Proof.
   - specialize (IH (ce_dm B0 N U :: Γ)); rewrite <- List.app_assoc; cbn [List.app].
     pose proof (sub_mod_compat_single_dm Γ B0 N U) as Hs.
     destruct (tele_split R) as [[[B' T'] τ] | τ].
-    + pose proof (sub_mod_compat_ext (T' ++ ce_ass B' :: nil) _ _ _ Hs) as Hx.
+    + pose proof (sub_mod_compat_ext (T' ++ ce_ass (tele_split_kind R) B' :: nil) _ _ _ Hs) as Hx.
       rewrite tele_sub_app, length_app in Hx; cbn [tele_sub centry_sub length] in Hx.
       rewrite <- !List.app_assoc in Hx; cbn [List.app] in Hx.
       replace (length T' + 1) with (S (length T')) in Hx by lia.

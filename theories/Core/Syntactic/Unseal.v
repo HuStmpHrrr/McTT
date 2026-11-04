@@ -400,7 +400,7 @@ Lemma ats_term_unseal : forall Ns r T A0 M0 R1, tele_ass T -> List.length Ns <= 
 Proof.
   induction Ns as [| N Ns IH]; intros * Ha Hl Hats; cbn in Hats |- *; [ injection Hats as <-; eauto |].
   destruct (List.exists_last (l := T)) as (T1 & e & ->); [ intros ->; cbn in Hl; lia |].
-  unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? [C ->] _]; subst.
+  unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? (κ & C & ->) _]; subst.
   rewrite ctx_pi_app in Hats |- *; rewrite ctx_fn_app; cbn [ctx_pi ctx_fn pi_view fn_view] in Hats |- *.
   rewrite ctx_pi_sub in Hats |- *; rewrite ctx_fn_sub.
   apply (IH r (tele_sub T1 (Id,,N))); [ apply tele_ass_sub; exact Ha1 | rewrite length_tele_sub; rewrite length_app in Hl; cbn in Hl; lia | exact Hats ].
@@ -616,7 +616,7 @@ Proof.
              assert (Hnm : forall r0 A0 om, Rm <> mdesc_term r0 A0 om) by (intros r0 A0 om ->; exact Hmm).
              destruct Θd as [| e Θd].
              - cbn [mdesc_ats_read] in Hats |- *.
-               destruct (mdesc_term_part_ats (mdesc_term relevant Ad (Some Md)) Ns) as [[? B [M' |] | | |] |]; try discriminate.
+               destruct (mdesc_term_part_ats (mdesc_term ak_relevant Ad (Some Md)) Ns) as [[? B [M' |] | | |] |]; try discriminate.
                destruct (mdesc_ats Rm Ns) as [Rm1 |] eqn:E; [ injection Hats as <- | discriminate ].
                destruct (mdesc_unsealed_ats _ _ _ _ HdRm Hnm E) as (Rm1' & -> & Hd1).
                eexists; split; [ reflexivity | constructor; [ exact (mdesc_ats_is_mod _ _ _ Hmm E) | exact Hd1 ] ].
@@ -929,10 +929,10 @@ Qed.
 
 (** A term: its type is a type unsealed. *)
 Lemma no_level_term_unseal : forall Θ Ξ Γ r A om i,
-    gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i ->
+    gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i -> r <> ak_level ->
     forall R', mdesc_unsealed (mdesc_term r A om) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
 Proof.
-  intros * HA R' Hd; inversion Hd; subst; eapply wf_no_level_term; exact HA.
+  intros * HA Hr R' Hd; inversion Hd; subst; eapply wf_no_level_term; [ exact HA | exact Hr ].
 Qed.
 
 (** An open body module: unchanged, its module entries denoting unsealed
@@ -943,8 +943,9 @@ Lemma no_level_open_unseal : forall Θ Ξ Γ Δ Φw Φx member_levels member_des
     gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ ->
-       Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : relevance_sort (entry_relevance E) Typeω@(member_levels y) /\
-       gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Δ ++ Γ ⊢ A[σ] : relevance_sort (entry_relevance E) Typeω@(member_levels y)) ->
+       Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : abs_kind_sort (entry_kind E) Typeω@(member_levels y) /\
+       gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Δ ++ Γ ⊢ A[σ] : abs_kind_sort (entry_kind E) Typeω@(member_levels y)) ->
+    (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> entry_kind E <> ak_level) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        udenote Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) None U (member_descs y)) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
@@ -952,11 +953,11 @@ Lemma no_level_open_unseal : forall Θ Ξ Γ Δ Φw Φx member_levels member_des
        forall R', mdesc_unsealed (member_descs y) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ⁿˡ R') ->
     forall R', mdesc_unsealed (mdesc_open Δ Φw Φx) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
 Proof.
-  intros * Hno HX HXu Hty Hu IH R' Hd; inversion Hd; subst.
+  intros * Hno HX HXu Hty Hnl Hu IH R' Hd; inversion Hd; subst.
   assert (Hg : ⊢ᵍ Θ ⍮ Ξ) by exact (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HX)).
   assert (HC : ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ) by (rewrite app_assoc; exact (ext_eq_ctx_left _ _ _ _ _ HX)).
   eapply wf_no_level_open with (member_descs := fun y => mdesc_unseal_struct (member_descs y));
-    [ exact Hno | exact HXu | intros; eapply proj2; eauto
+    [ exact Hno | exact HXu | intros; eapply proj2; eauto | exact Hnl
     | intros y Φ0 E U Hp HU; exact (proj1 (open_entry_udenote_unseal _ _ Hg _ _ _ _ _ _ _ _ HC Hp HU (Hu _ _ _ _ Hp HU)))
     | intros y Φ0 E U Hp HU; apply (proj2 (IH _ _ _ _ Hp HU));
       exact (proj2 (open_entry_udenote_unseal _ _ Hg _ _ _ _ _ _ _ _ HC Hp HU (Hu _ _ _ _ Hp HU))) ].
@@ -970,8 +971,9 @@ Lemma no_level_closed_unseal : forall Θ Ξ Γ Θ' p T Φ Ns member_types member
     (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
        A = ctx_pi_at r T (member_types y)) ->
     (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
-       Θ ⍮ Ξ ⍮ T ⊢ member_types y : relevance_sort r Typeω@(member_levels y) /\
-       gds_unseal Θ ⍮ gs_unseal Ξ ⍮ T ⊢ member_types y : relevance_sort r Typeω@(member_levels y)) ->
+       Θ ⍮ Ξ ⍮ T ⊢ member_types y : abs_kind_sort r Typeω@(member_levels y) /\
+       gds_unseal Θ ⍮ gs_unseal Ξ ⍮ T ⊢ member_types y : abs_kind_sort r Typeω@(member_levels y)) ->
+    (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) -> r <> ak_level) ->
     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
        edenote Θ Ξ ⋅ (Some (qname_in p y)) (ge_read T E) (member_descs y)) ->
     (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
@@ -979,7 +981,7 @@ Lemma no_level_closed_unseal : forall Θ Ξ Γ Θ' p T Φ Ns member_types member
        forall R', mdesc_unsealed (member_descs y) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ⁿˡ R') ->
     forall R', mdesc_unsealed (mdesc_closed Θ' p T Φ Ns) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
 Proof.
-  intros * Hg Hgu Hb Hdef Hty Hed IH R' Hd; inversion Hd; subst.
+  intros * Hg Hgu Hb Hdef Hty Hnl Hed IH R' Hd; inversion Hd; subst.
   assert (Hpre : forall y Φ0' E', gm_prefix_upto (gm_unseal Φ) y = Some (gm_ext Φ0' y E') ->
             exists Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) /\ E' = ge_unseal E).
   { intros y Φ0' E' Hp'; rewrite gm_prefix_upto_unseal in Hp'.
@@ -998,6 +1000,8 @@ Proof.
     destruct (Hdu _ _ _ _ _ _ (eq_sym HE)) as (b0 & oM0 & ->); exact (Hdef _ _ _ _ _ _ _ Hp).
   - intros y Φ0' b pv r A oM Hp'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & HE).
     destruct (Hdu _ _ _ _ _ _ (eq_sym HE)) as (b0 & oM0 & ->); exact (proj2 (Hty _ _ _ _ _ _ _ Hp)).
+  - intros y Φ0' b pv r A oM Hp'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & HE).
+    destruct (Hdu _ _ _ _ _ _ (eq_sym HE)) as (b0 & oM0 & ->); exact (Hnl _ _ _ _ _ _ _ Hp).
   - intros y Φ0' E' Hp' HnE'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & ->).
     pose proof (Hnd _ HnE') as HnE.
     exact (proj1 (closed_entry_edenote_unseal _ _ Hg _ _ _ _ _ _ _ Hb Hp HnE (Hed _ _ _ Hp HnE))).
@@ -1384,7 +1388,7 @@ Definition cmds_no_axioms (cs : list surface_cmd) : Prop := List.Forall cmd_no_a
     commands of its body follow. *)
 Definition core_cmd_no_axioms (c : core_cmd) : Prop :=
   match c with
-  | core_cmd_def _ _ _ _ oM => oM <> None
+  | core_cmd_def _ _ _ _ _ oM => oM <> None
   | _ => True
   end.
 

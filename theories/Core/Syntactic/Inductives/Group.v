@@ -273,9 +273,9 @@ Inductive classified_ptyp : Set :=
 
 (** An argument as classified, its views not yet numbered. *)
 Inductive classified_carg : Set :=
-(** A non-recursive argument, of a [Self]-free type, of the sort the
-    relevance says. *)
-| classified_carg_arg : relevance -> exp -> classified_carg
+(** A non-recursive argument, of a [Self]-free type, of the kind the
+    tag says. *)
+| classified_carg_arg : abs_kind -> exp -> classified_carg
 (** A recursive argument, of a shape. *)
 | classified_carg_rec_case : classified_ptyp -> classified_carg.
 
@@ -283,15 +283,15 @@ Inductive classified_carg : Set :=
     the arguments before the next one. *)
 Definition classified_carg_bit (g : classified_carg) : bool := match g with classified_carg_rec_case _ => true | classified_carg_arg _ _ => false end.
 
-(** A classified argument at the sort [r]: a non-recursive one takes it,
-    a recursive one is relevant and keeps its shape.  The syntactic
-    classification ([classify_arg]) cannot see sorts; the command tags the
-    non-recursive arguments by the sort their types infer to. *)
-Definition classified_carg_tag (r : relevance) (g : classified_carg) : classified_carg :=
-  match g with classified_carg_arg _ A => classified_carg_arg r A | classified_carg_rec_case t => classified_carg_rec_case t end.
+(** A classified argument at the kind [κ]: a non-recursive one takes it,
+    a recursive one keeps its shape.  The syntactic classification
+    ([classify_arg]) cannot see sorts; the command tags the non-recursive
+    arguments by the sort their types infer to. *)
+Definition classified_carg_tag (κ : abs_kind) (g : classified_carg) : classified_carg :=
+  match g with classified_carg_arg _ A => classified_carg_arg κ A | classified_carg_rec_case t => classified_carg_rec_case t end.
 
-Lemma classified_carg_bit_tag : forall r g, classified_carg_bit (classified_carg_tag r g) = classified_carg_bit g.
-Proof. intros r [] ; reflexivity. Qed.
+Lemma classified_carg_bit_tag : forall κ g, classified_carg_bit (classified_carg_tag κ g) = classified_carg_bit g.
+Proof. intros κ [] ; reflexivity. Qed.
 
 (** The views numbered: the view [v] is the member [n + v]. *)
 Fixpoint classified_ptyp_num (n : nat) (Vs : list view_key) (t : classified_ptyp) : option ptyp :=
@@ -304,7 +304,7 @@ Fixpoint classified_ptyp_num (n : nat) (Vs : list view_key) (t : classified_ptyp
 (** A classified argument with its views numbered. *)
 Definition classified_carg_num (n : nat) (Vs : list view_key) (g : classified_carg) : option carg :=
   match g with
-  | classified_carg_arg r A => Some (ca_arg r A)
+  | classified_carg_arg κ A => Some (ca_arg κ A)
   | classified_carg_rec_case t => option_map ca_rec (classified_ptyp_num n Vs t)
   end.
 
@@ -366,7 +366,7 @@ Definition head_takes_selfs (lo n : nat) (h : exp) : bool :=
     crossed), if any. *)
 Fixpoint selfs_neutral_head (lo n : nat) (M : exp) {struct M} : option exp :=
   match M with
-  | a_pi _ A B =>
+  | a_pi _ _ A B =>
       match selfs_neutral_head lo n A with
       | Some h => Some h
       | None => selfs_neutral_head (S lo) n B
@@ -454,7 +454,7 @@ Section Classify.
       instance. *)
   Fixpoint classify_shape (d : nat) (T : exp) : option classified_ptyp :=
     match T with
-    | a_pi relevant B T' =>
+    | a_pi ak_relevant ak_relevant B T' =>
         match image_pat (classify_pat d np n pat) B with
         | Some B0 => option_map (classified_ptyp_pi B0) (classify_shape (S d) T')
         | None => None
@@ -472,7 +472,7 @@ Section Classify.
       it), or recursive of a shape. *)
   Definition classify_arg (T : exp) : option classified_carg :=
     match image_pat (classify_pat 0 np n pat) T with
-    | Some A => Some (classified_carg_arg relevant A)
+    | Some A => Some (classified_carg_arg ak_relevant A)
     | None => option_map classified_carg_rec_case (classify_shape 0 T)
     end.
 End Classify.

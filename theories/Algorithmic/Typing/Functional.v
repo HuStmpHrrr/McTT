@@ -15,10 +15,10 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** A type is of one relevance: the initial environment and evaluation are
+(** A type is of one kind: the initial environment and evaluation are
     functional. *)
-Lemma nbe_ty_relevance_functional : forall {Γ A r r'},
-    nbe_ty_relevance Γ A r -> nbe_ty_relevance Γ A r' -> r = r'.
+Lemma nbe_ty_kind_functional : forall {Γ A κ κ'},
+    nbe_ty_kind Γ A κ -> nbe_ty_kind Γ A κ' -> κ = κ'.
 Proof.
   intros * (ρ & a & Hρ & Ha & <-) (ρ' & a' & Hρ' & Ha' & <-).
   functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; reflexivity.
@@ -100,17 +100,30 @@ Proof.
   - assert (UA = UA0) as <- by intuition.
     assert (UB = UB0) as <- by intuition.
     functional_nbe_rewrite_clear.
-    destruct (is_sort_nf_functional _ _ _ _ _ H H5) as [<- <-].
-    assert (v = v0) as <- by (eapply is_univ_nf_functional; eassumption).
+    match goal with H1 : is_sort_nf UA _ ?u1, H2 : is_sort_nf UA _ ?u2 |- _ =>
+      assert_fails constr_eq u1 u2; destruct (is_sort_nf_functional _ _ _ _ _ H1 H2) as [_ <-] end.
+    match goal with H1 : is_sort_nf UB' _ ?v1, H2 : is_sort_nf UB' _ ?v2 |- _ =>
+      assert_fails constr_eq v1 v2; destruct (is_sort_nf_functional _ _ _ _ _ H1 H2) as [_ <-] end.
     functional_nbe_rewrite_clear.
     reflexivity.
-  (** A function: the codomain's relevance is one. *)
-  - assert (B = B0) as <- by intuition.
-    match goal with H1 : nbe_ty_relevance _ _ _, H2 : nbe_ty_relevance _ _ _ |- _ =>
-      exact (nbe_ty_relevance_functional H1 H2) end.
+  (** A function: the domain is of one kind, so the body infers one type,
+      of one kind. *)
+  - assert (UA = UA0) as <- by intuition.
+    match goal with H1 : is_sort_nf UA _ _, H2 : is_sort_nf UA _ _ |- _ =>
+      exact (proj1 (is_sort_nf_functional _ _ _ _ _ H1 H2)) end.
+  - assert (UA = UA0) as <- by intuition.
+    match goal with H1 : is_sort_nf UA _ _, H2 : is_sort_nf UA _ _ |- _ =>
+      destruct (is_sort_nf_functional _ _ _ _ _ H1 H2) as [<- _] end.
+    assert (B = B0) as <- by intuition.
+    match goal with H1 : nbe_ty_kind _ _ _, H2 : nbe_ty_kind _ _ _ |- _ =>
+      exact (nbe_ty_kind_functional H1 H2) end.
+  - assert (UA = UA0) as <- by intuition.
+    match goal with H1 : is_sort_nf UA _ _, H2 : is_sort_nf UA _ _ |- _ =>
+      destruct (is_sort_nf_functional _ _ _ _ _ H1 H2) as [<- _] end.
+    intuition.
   (** An application: the function infers one [Π]. *)
-  - match goal with IH : forall A'0, _ -> nf_pi _ _ _ = A'0, H : _ ⊢a _ ⟹ nf_pi _ _ _ |- _ =>
-      specialize (IH _ H); injection IH as -> -> -> end.
+  - match goal with IH : forall A'0, _ -> nf_pi _ _ _ _ = A'0, H : _ ⊢a _ ⟹ nf_pi _ _ _ _ |- _ =>
+      specialize (IH _ H); injection IH as -> -> -> -> end.
     functional_nbe_rewrite_clear; reflexivity.
   (** [let]: the same type of the rest. *)
   - assert (C = C0) as <- by eauto.

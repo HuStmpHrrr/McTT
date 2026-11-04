@@ -427,9 +427,45 @@ Definition qname_strip (mp p : qname) : option (list string) :=
     recursive argument, so it occupies no binder of the arguments after
     it. *)
 
+(** The three kinds of abstraction: what a binder ranges over, and of
+    what sort a type is.  A type of a universe ([Typeω@i] or [Type⟨l⟩]),
+    whose elements are compared; a proposition ([Prop]), whose elements
+    are all equal and are kept, not evaluated; a type of levels
+    ([LevelSort]), whose elements are levels.  A binder carries the kind
+    of its domain ([ce_ass], [a_pi]), a [Π] also its codomain's, and a
+    value's kind is read from its head ([domain_kind]).  The typed fill
+    writes every kind, from the sort the typed term infers to. *)
+Inductive abs_kind : Set :=
+(** Over the elements of a type of a universe *)
+| ak_relevant
+(** Over the proofs of a proposition *)
+| ak_propositional
+(** Over the elements of a type of levels *)
+| ak_level.
+
+Definition abs_kind_eq_dec : forall (κ κ' : abs_kind), {κ = κ'} + {κ <> κ'}.
+Proof. decide equality. Defined.
+
+(** The kinds whose elements are evaluated rather than kept: every kind
+    but the propositions'. *)
+Inductive evaluated_kind : abs_kind -> Prop :=
+(** A type of a universe *)
+| evaluated_kind_relevant : evaluated_kind ak_relevant
+(** A type of levels *)
+| evaluated_kind_level : evaluated_kind ak_level.
+
+(** A kind is evaluated, or the propositions'. *)
+Lemma evaluated_kind_or_propositional : forall κ, evaluated_kind κ \/ κ = ak_propositional.
+Proof. intros []; [ left; constructor | right; reflexivity | left; constructor ]. Qed.
+
+(** The propositions' kind is not evaluated. *)
+Lemma evaluated_kind_not_propositional : forall κ, evaluated_kind κ -> κ <> ak_propositional.
+Proof. intros κ H; destruct H; discriminate. Qed.
+
 (** The shape of a recursive argument: the member [k] of the group at its
     non-uniform parameters [Ps] ([pt_self k Ps]), or a function from [A] to
-    a shape ([pt_pi A t]). *)
+    a shape ([pt_pi A t]).  A domain is in the group's sort, a universe
+    ([decl_typed_doms]), so it is of the kind [ak_relevant]. *)
 Inductive ptyp_g (E : Set) : Set :=
 (** The member [k] of the group at the non-uniform parameters [Ps]. *)
 | pt_self : nat -> list E -> ptyp_g E
@@ -456,27 +492,15 @@ Fixpoint ptyp_mem {E : Set} (t : ptyp_g E) : nat :=
     them wherever a list of terms is expected. *)
 Coercion ptyp_ps : ptyp_g >-> list.
 
-(** The two sorts of types: the types of the universes, whose elements
-    are compared, and the propositions, whose elements are all equal.  A
-    type's sort is read from its head ([domain_relevance]). *)
-Inductive relevance : Set :=
-(** A type of a universe *)
-| relevant
-(** A proposition *)
-| propositional.
-
-Definition relevance_eq_dec : forall (r r' : relevance), {r = r'} + {r <> r'}.
-Proof. decide equality. Defined.
-
 (** The arguments of a constructor, as the core command classifies them. *)
 Inductive carg_g (E : Set) : Set :=
-(** A non-recursive argument [ca_arg r A], of the type [A], whose sort
-    is [r]: [relevant] for a type in the group's sort, [propositional]
-    for a proposition (an argument with no induction hypothesis, whose
-    value is always the proof [⋆]).  The core command computes [r]
-    from [A]'s inferred type; the declaration's well-formedness checks
-    it. *)
-| ca_arg : relevance -> E -> carg_g E
+(** A non-recursive argument [ca_arg κ A], of the type [A], whose kind
+    is [κ]: [ak_relevant] for a type in the group's sort,
+    [ak_propositional] for a proposition (an argument with no induction
+    hypothesis, kept as a proof), never [ak_level] ([carg_kind]).  The
+    core command computes [κ] from [A]'s inferred type; the
+    declaration's well-formedness checks it. *)
+| ca_arg : abs_kind -> E -> carg_g E
 (** A recursive argument, of a shape *)
 | ca_rec : ptyp_g E -> carg_g E.
 Arguments ca_arg {E}.
@@ -569,16 +593,17 @@ Record record_decl_g (E C : Set) : Set := mk_record_decl
   (** The fields in order, each named, its type over the fields before it
       (innermost first) and then the parameters. *)
   ; record_fields : list (string * E)
-  (** The sort of each field, parallel to [record_fields] (the [k]-th is
-      the [k]-th field's): [propositional] for a field whose type is a
-      proposition, [relevant] for one in the record's sort.  The core
-      command computes it; the declaration's well-formedness checks it. *)
-  ; record_field_relevance : list relevance }.
+  (** The kind of each field, parallel to [record_fields] (the [k]-th is
+      the [k]-th field's): [ak_propositional] for a field whose type is a
+      proposition, [ak_relevant] for one in the record's sort, never
+      [ak_level] ([field_kind]).  The core command computes it; the
+      declaration's well-formedness checks it. *)
+  ; record_field_kinds : list abs_kind }.
 Arguments mk_record_decl {E C}.
 Arguments record_params {E C}.
 Arguments record_sort {E C}.
 Arguments record_fields {E C}.
-Arguments record_field_relevance {E C}.
+Arguments record_field_kinds {E C}.
 
 (** A block of an eliminator ([a_elim]), one per member of the group, in
     the group's order: [eb_mk nm Z A Bs].  The motive [A] binds [nm]
@@ -695,20 +720,23 @@ Inductive exp : Set :=
 (** The constructor [c] of the member [k] of the group [pq], to be applied
     to the parameters and the arguments. *)
 | a_con : qname -> nat -> string -> exp
-(** [a_elim r pq Us m Bks M] eliminates [M], of the member [m] of the group
+(** [a_elim κ pq Us m Bks M] eliminates [M], of the member [m] of the group
     [pq] of inductive types, by the blocks [Bks], one per member of the
     group in its order ([eblock_g]); the result is the motive of block [m].
-    The motives are of the sort [r]: types of a universe ([relevant]) or
-    propositions ([propositional]); an elimination into propositions is a
-    proof, which evaluation does not reach.  The eliminator carries the
+    The motives are of the kind [κ]: types of a universe ([ak_relevant])
+    or propositions ([ak_propositional]), never types of levels
+    ([motive_kind]); an elimination into propositions is a proof, which
+    evaluation does not reach.  The eliminator carries the
     group's uniform parameters [Us]: a stuck one is read at them.  The
     typed fill writes the group, the parameters and the sort, read off the
     scrutinee's type. *)
-| a_elim : relevance -> qname -> list exp -> nat -> list (eblock_g exp) -> exp -> exp
-(** [a_pi r A B], [B] binding the argument: a type of functions at
-    [relevant], the impredicative universal quantification, a proposition,
-    at [propositional]; the domain [A] may be of either sort *)
-| a_pi : relevance -> exp -> exp -> exp
+| a_elim : abs_kind -> qname -> list exp -> nat -> list (eblock_g exp) -> exp -> exp
+(** [a_pi κd κc A B], [B] binding the argument: the abstraction over a
+    domain [A] of the kind [κd] into a codomain of the kind [κc] — a type
+    of functions at [ak_relevant], the impredicative universal
+    quantification, a proposition, at [ak_propositional], a type of
+    levels, out of a type of levels, at [ak_level] ([pi_kinds]) *)
+| a_pi : abs_kind -> abs_kind -> exp -> exp -> exp
 (** [a_fn A M], [M] binding the argument *)
 | a_fn : exp -> exp -> exp
 (** Application *)
@@ -775,12 +803,12 @@ with gmod : Set :=
     ([gm_expand]). *)
 | gm_open : gmod -> modexp -> list import_item -> gmod -> gmod
 with gentry : Set :=
-(** [ge_def b pv r A B]: [b] says whether the definition is transparent,
-    [pv] whether it is private, [r] the sort of its type [A] (a proof at
-    [propositional]), and [B] is [None] for an axiom.  A filed definition
-    is closed; a definition of a local body is read in the body's
-    context. *)
-| ge_def : bool -> bool -> relevance -> exp -> option exp -> gentry
+(** [ge_def b pv κ A B]: [b] says whether the definition is transparent,
+    [pv] whether it is private, [κ] the kind of its type [A] (a proof at
+    [ak_propositional], a level at [ak_level]), and [B] is [None] for an
+    axiom.  A filed definition is closed; a definition of a local body is
+    read in the body's context. *)
+| ge_def : bool -> bool -> abs_kind -> exp -> option exp -> gentry
 (** [ge_mod pv U]: a submodule, private when [pv] *)
 | ge_mod : bool -> gunit -> gentry
 (** [ge_ind pv pq k D Φ]: the declared member [k] of the group [D] of
@@ -804,8 +832,8 @@ with gentry : Set :=
     [a_record p]. *)
 | ge_record : bool -> qname -> record_decl_g exp centry -> gmod -> gentry
 with centry : Set :=
-(** An assumption of a type *)
-| ce_ass : exp -> centry
+(** [ce_ass κ A]: an assumption of a type [A] of the kind [κ] *)
+| ce_ass : abs_kind -> exp -> centry
 (** [ce_def A M]: a definition of type [A] *)
 | ce_def : exp -> exp -> centry
 (** A module slot, holding the unit *)
@@ -903,12 +931,12 @@ Section syn_mut_ind.
     (case_right : forall M, Pe M -> Pe (a_right M))
     (case_ind : forall p k, Pe (a_ind p k))
     (case_con : forall p k c, Pe (a_con p k c))
-    (case_elim : forall r pq Us m Bks M,
+    (case_elim : forall κ pq Us m Bks M,
         List.Forall Pe Us ->
         List.Forall (fun b => Pe (eb_scrutinee_type b) /\ Pe (eb_motive b) /\
                               List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks ->
-        Pe M -> Pe (a_elim r pq Us m Bks M))
-    (case_pi : forall r A B, Pe A -> Pe B -> Pe (a_pi r A B))
+        Pe M -> Pe (a_elim κ pq Us m Bks M))
+    (case_pi : forall κd κc A B, Pe A -> Pe B -> Pe (a_pi κd κc A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
     (case_var : forall x, Pe (a_var x))
@@ -930,12 +958,12 @@ Section syn_mut_ind.
     (case_gm_nil : Pg gm_nil)
     (case_gm_ext : forall Φ x E, Pg Φ -> Pn E -> Pg (gm_ext Φ x E))
     (case_gm_open : forall Φ H its Φg, Pg Φ -> Pm H -> Pg Φg -> Pg (gm_open Φ H its Φg))
-    (case_ge_def : forall b pv r A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv r A B))
+    (case_ge_def : forall b pv κ A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv κ A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ge_ind : forall pv p k D Φ, Pg Φ -> Pn (ge_ind pv p k D Φ))
     (case_ge_def_mod : forall pv A M U, Pe A -> Pe M -> Pu U -> Pn (ge_def_mod pv A M U))
     (case_ge_record : forall pv p R Φ, Pg Φ -> Pn (ge_record pv p R Φ))
-    (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
+    (case_ce_ass : forall κ A, Pe A -> Pc (ce_ass κ A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U))
     (case_ce_dm : forall A M U, Pe A -> Pe M -> Pu U -> Pc (ce_dm A M U)).
@@ -962,8 +990,8 @@ Section syn_mut_ind.
     | a_right M => case_right M (exp_mut M)
     | a_ind p k => case_ind p k
     | a_con p k c => case_con p k c
-    | a_elim r pq Us0 m Bks M =>
-        case_elim r pq Us0 m Bks M
+    | a_elim κ pq Us0 m Bks M =>
+        case_elim κ pq Us0 m Bks M
           ((fix us_mut (Us : list exp) : List.Forall Pe Us :=
               match Us with
               | nil => List.Forall_nil _
@@ -986,7 +1014,7 @@ Section syn_mut_ind.
                     (blocks_mut Bks')
               end) Bks)
           (exp_mut M)
-    | a_pi r A B => case_pi r A B (exp_mut A) (exp_mut B)
+    | a_pi κd κc A B => case_pi κd κc A B (exp_mut A) (exp_mut B)
     | a_fn A M => case_fn A M (exp_mut A) (exp_mut M)
     | a_app M N => case_app M N (exp_mut M) (exp_mut N)
     | a_var x => case_var x
@@ -1039,8 +1067,8 @@ Section syn_mut_ind.
     end
   with gentry_mut (E : gentry) : Pn E :=
     match E with
-    | ge_def b pv r A B =>
-        case_ge_def b pv r A B (exp_mut A)
+    | ge_def b pv κ A B =>
+        case_ge_def b pv κ A B (exp_mut A)
           (match B as o return (forall M, o = Some M -> Pe M) with
            | Some M0 => fun M e => match e in _ = o' return match o' with Some M => Pe M | None => True end with
                                   | eq_refl => exp_mut M0 end
@@ -1054,7 +1082,7 @@ Section syn_mut_ind.
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
-    | ce_ass A => case_ce_ass A (exp_mut A)
+    | ce_ass κ A => case_ce_ass κ A (exp_mut A)
     | ce_def A M => case_ce_def A M (exp_mut A) (exp_mut M)
     | ce_mod U => case_ce_mod U (gunit_mut U)
     | ce_dm A M U => case_ce_dm A M U (exp_mut A) (exp_mut M) (gunit_mut U)
@@ -1246,7 +1274,11 @@ Module Exp_Notations.
   Notation "'maxl' M N" := (a_maxl M N) (at level 2, M at level 1, N at level 1) : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
-  Notation "'Π' A B" := (a_pi relevant A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  (** The three [Π]s of [a_pi]: into a type of a universe, out of a
+      domain of the kind [κ] ([Π{κ}]); into a proposition ([∀ₚ{κ}]); and
+      between types of levels ([Πₗ]). *)
+  Notation "'Π' '{' κ '}' A B" := (a_pi κ ak_relevant A B) (at level 2, κ at level 0, A at level 1, B at level 60) : mctt_scope.
+  Notation "'Πₗ' A B" := (a_pi ak_level ak_level A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
   Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
   (** A bare [Prop] would be Rocq's own sort, so the notation is decorated. *)
@@ -1254,7 +1286,7 @@ Module Exp_Notations.
   Notation "'⊤'" := a_True : mctt_scope.
   Notation "'⊥'" := a_False : mctt_scope.
   Notation "'efq' M 'return' C" := (a_absurd C M) (at level 2, M at level 60, C at level 60) : mctt_scope.
-  Notation "'∀ₚ' A P" := (a_pi propositional A P) (at level 2, A at level 1, P at level 60) : mctt_scope.
+  Notation "'∀ₚ' '{' κ '}' A P" := (a_pi κ ak_propositional A P) (at level 2, κ at level 0, A at level 1, P at level 60) : mctt_scope.
   Notation "'Σₚ' P Q" := (a_and P Q) (at level 2, P at level 1, Q at level 60) : mctt_scope.
   (** Application needs an explicit operator: a [constr] notation may not be
       pure juxtaposition, which is Rocq's own application. *)
@@ -1298,7 +1330,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' _ (ge_def _ _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_def _ _ _ A None) => cons (ce_ass A) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_def _ _ κ A None) => cons (ce_ass κ A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_ext Φ' y (ge_ind _ pq _ _ _) => cons (ce_mod (gu_mk nil (md_alias (qname_mod (qname_sibling pq y))))) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def_mod _ A M U) => cons (ce_dm A M U) (body_ctx Φ')
@@ -1315,12 +1347,23 @@ Definition entry_tm (E : gentry) : option (exp * exp) :=
   | _ => None
   end.
 
-(** The relevance tag of a body's entry's term part: a definition's own;
-    a definition with a module part is relevant. *)
-Definition entry_relevance (E : gentry) : relevance :=
+(** The kind of the types of a sort written as a term: [Prop]'s are
+    propositions, [LevelSort]'s types of levels, a universe's types of a
+    universe.  The sort of an inductive group or of a record is such a
+    term, so the kind of its elements is read off it. *)
+Definition sort_exp_kind (S : exp) : abs_kind :=
+  match S with
+  | a_prop => ak_propositional
+  | a_level_sort => ak_level
+  | _ => ak_relevant
+  end.
+
+(** The kind of a body's entry's term part: a definition's own; a
+    definition with a module part is of a type of a universe. *)
+Definition entry_kind (E : gentry) : abs_kind :=
   match E with
-  | ge_def _ _ r _ _ => r
-  | _ => relevant
+  | ge_def _ _ κ _ _ => κ
+  | _ => ak_relevant
   end.
 
 (** The module part of a body's entry, its unit: a module, or a definition
@@ -1345,10 +1388,11 @@ Module Ctx_Notations.
   (** Extension is [▹] rather than the paper's comma: a parsing [,] in [constr]
       would steal Rocq's pair notation.  Both are restricted to [centry] so
       that an unrelated [list] does not print as a context.  A definition
-      entry is [Γ ▸ A ≔ M]; it has its own first token because [Γ ▹ A] would
-      otherwise be a proper prefix of it. *)
+      entry is [Γ ▸ A ≔ M]; it has its own first token because [Γ ▹{κ} A]
+      would otherwise be a proper prefix of it.  An assumption names its
+      kind: [Γ ▹{ak_level} Level@0]. *)
   Notation "⋅" := (@nil centry) : mctt_scope.
-  Notation "Γ ▹ A" := (@cons centry (ce_ass A) Γ) (at level 50, left associativity) : mctt_scope.
+  Notation "Γ '▹' '{' κ '}' A" := (@cons centry (ce_ass κ A) Γ) (at level 50, κ at level 0, left associativity) : mctt_scope.
   Notation "Γ ▸ A ≔ M" := (@cons centry (ce_def A M) Γ) (at level 50, left associativity) : mctt_scope.
   Notation "Γ '▹ₘ' U" := (@cons centry (ce_mod U) Γ) (at level 50, left associativity) : mctt_scope.
   Notation "Γ '▸ₘ' A ≔ M ‖ U" := (@cons centry (ce_dm A M U) Γ) (at level 50, left associativity) : mctt_scope.
@@ -1678,8 +1722,9 @@ Inductive nf : Set :=
 (** A proof erased ([nf_erase]): normal forms are compared up to their
     proofs.  Only an erasure builds it. *)
 | nf_proof_erased : nf
-(** A [Π] of normal forms of the sort [r]: a [∀] at [propositional] *)
-| nf_pi : relevance -> nf -> nf -> nf
+(** A [Π] of normal forms, out of a domain of the kind [κd] into a
+    codomain of the kind [κc] ([a_pi]): a [∀] at [ak_propositional] *)
+| nf_pi : abs_kind -> abs_kind -> nf -> nf -> nf
 (** A function, its domain and body normal *)
 | nf_fn : nf -> nf -> nf
 (** A member of a group of inductive types at its parameters *)
@@ -1749,7 +1794,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
   | nf_proof_erased => exp_default
-  | nf_pi r A B => a_pi r (nf_to_exp A) (nf_to_exp B)
+  | nf_pi κd κc A B => a_pi κd κc (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
   | nf_indty p k Ms => apps_exp (a_ind p k) (List.map nf_to_exp Ms)
   | nf_con p k c Ms => apps_exp (a_con p k c) (List.map nf_to_exp Ms)
@@ -1762,7 +1807,7 @@ with ne_to_exp (M : ne) : exp :=
   | ne_absurd A M => a_absurd (nf_to_exp A) M
   | ne_absurd_erased A => a_absurd (nf_to_exp A) exp_default
   | ne_elim p Us m Bks M =>
-      a_elim relevant p (List.map nf_to_exp Us) m
+      a_elim ak_relevant p (List.map nf_to_exp Us) m
         (List.map (fun b => eb_mk (block_arity b) (nf_to_exp (block_scrutinee_type b)) (nf_to_exp (block_motive b))
                               (List.map (fun br => (branch_constructor br, branch_arity br, nf_to_exp (branch_body br)))
                                  (block_branches b))) Bks)
@@ -1797,7 +1842,7 @@ Lemma nf_to_exp_lvl : forall c xs, nf_to_exp (nf_lvl c xs) = lvl_exp_of c (List.
 Proof. reflexivity. Qed.
 
 Lemma ne_to_exp_elim : forall p Us m Bks M,
-    ne_to_exp (ne_elim p Us m Bks M) = a_elim relevant p (List.map nf_to_exp Us) m (List.map block_exp Bks) (ne_to_exp M).
+    ne_to_exp (ne_elim p Us m Bks M) = a_elim ak_relevant p (List.map nf_to_exp Us) m (List.map block_exp Bks) (ne_to_exp M).
 Proof. reflexivity. Qed.
 
 (** * Canonical Levels
@@ -1874,7 +1919,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False
   | nf_proof_erased => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
-  | nf_pi _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_clean Ms
   | nf_neut M => ne_clean M
   | nf_record _ Ms => all_list nf_clean Ms
@@ -1918,7 +1963,7 @@ Section GenericDec.
   Definition carg_eq_dec_g (g g' : carg_g E) : {g = g'} + {g <> g'}.
   Proof.
     destruct g as [r A | t], g' as [r' A' | t']; try (right; discriminate).
-    - destruct (relevance_eq_dec r r') as [<- |]; [| right; congruence ].
+    - destruct (abs_kind_eq_dec r r') as [<- |]; [| right; congruence ].
       destruct (de A A') as [<- |]; [ left; reflexivity | right; congruence ].
     - destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
@@ -2003,7 +2048,7 @@ Section GenericDec.
     destruct (list_eq_dec dc Δ Δ') as [<- |]; [| right; congruence ].
     destruct (de S S') as [<- |]; [| right; congruence ].
     destruct (list_eq_dec named_eq_dec_g fs fs') as [<- |]; [| right; congruence ].
-    destruct (list_eq_dec relevance_eq_dec rs rs') as [<- |]; [ left; reflexivity | right; congruence ].
+    destruct (list_eq_dec abs_kind_eq_dec rs rs') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 End GenericDec.
 
@@ -2071,7 +2116,7 @@ Proof.
       take a string apart character by character. *)
   all: decide equality;
     first [ apply PeanoNat.Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec
-          | apply relevance_eq_dec | apply exp_eq_dec
+          | apply abs_kind_eq_dec | apply exp_eq_dec
           | apply (List.list_eq_dec String.string_dec) | apply (List.list_eq_dec nf_eq_dec)
           | apply (List.list_eq_dec (level_atom_eq_dec_g ne_eq_dec))
           | apply (List.list_eq_dec (normal_block_eq_dec_g nf_eq_dec)) | idtac ].
@@ -2096,7 +2141,7 @@ Fixpoint nf_erase (W : nf) : nf :=
   | nf_proof _ | nf_proof_erased => nf_proof_erased
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_erase P) (nf_erase Q)
-  | nf_pi r A B => nf_pi r (nf_erase A) (nf_erase B)
+  | nf_pi κd κc A B => nf_pi κd κc (nf_erase A) (nf_erase B)
   | nf_fn A M => nf_fn (nf_erase A) (nf_erase M)
   | nf_indty p k Ms => nf_indty p k (List.map nf_erase Ms)
   | nf_con p k c Ms => nf_con p k c (List.map nf_erase Ms)
@@ -2141,10 +2186,10 @@ Proof.
     repeat match goal with H : _ /\ _ |- _ => destruct H end;
     rewrite ?all_list_map; try split; auto;
     try (eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy;
-         first [ solve [ destruct Hx as [n' Z HZ A HA brs Hbrs]; cbn in *; destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
+         first [ solve [ destruct Hx; cbn in *; auto ]
+               | solve [ destruct Hx as [n' Z HZ A HA brs Hbrs]; cbn in *; destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
                          rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
                          intros br Hbr Hy'; destruct Hbr; cbn in *; auto ]
-               | solve [ destruct Hx; cbn in *; auto ]
                | auto ]).
 Qed.
 
@@ -2164,7 +2209,7 @@ Definition nf_equal_up_to_proofs_dec (W W' : nf) : {nf_equal_up_to_proofs W W'} 
 (** ** Notations *)
 Module Nf_Notations.
   Notation "'Propⁿ'" := nf_prop : mctt_scope.
-  Notation "'∀ₚⁿ' A P" := (nf_pi propositional A P) (at level 2, A at level 1, P at level 60) : mctt_scope.
+  Notation "'∀ₚⁿ' '{' κ '}' A P" := (nf_pi κ ak_propositional A P) (at level 2, κ at level 0, A at level 1, P at level 60) : mctt_scope.
   Notation "'Σₚⁿ' P Q" := (nf_and P Q) (at level 2, P at level 1, Q at level 60) : mctt_scope.
   Notation "'⊤ⁿ'" := nf_True : mctt_scope.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
@@ -2176,7 +2221,8 @@ Module Nf_Notations.
   Notation "'LevelSortⁿ'" := nf_level_sort : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
-  Notation "'Πⁿ' A B" := (nf_pi relevant A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  Notation "'Πⁿ' '{' κ '}' A B" := (nf_pi κ ak_relevant A B) (at level 2, κ at level 0, A at level 1, B at level 60) : mctt_scope.
+  Notation "'Πₗⁿ' A B" := (nf_pi ak_level ak_level A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
   Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
   Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
@@ -2263,7 +2309,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
                  (List.map (fun br => (fst br, exp_wk (snd br) (wk_qn (snd (fst br)) φ))) Bs)
            end) Bks)
         (exp_wk M φ)
-  | a_pi r A B => a_pi r (exp_wk A φ) (exp_wk B (wk_q φ))
+  | a_pi κd κc A B => a_pi κd κc (exp_wk A φ) (exp_wk B (wk_q φ))
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
@@ -2320,7 +2366,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
-  | ce_ass A => ce_ass (exp_wk A φ)
+  | ce_ass κ A => ce_ass κ (exp_wk A φ)
   | ce_def A M => ce_def (exp_wk A φ) (exp_wk M φ)
   | ce_mod U => ce_mod (gunit_wk U φ)
   | ce_dm A M U => ce_dm (exp_wk A φ) (exp_wk M φ) (gunit_wk U φ)
@@ -2339,7 +2385,7 @@ Fixpoint exp_free_bound (M : exp) : nat :=
   | a_univ t => exp_free_bound t
   | a_succl M | a_left M | a_right M | a_proj _ M => exp_free_bound M
   | a_maxl M N | a_absurd M N | a_app M N => Nat.max (exp_free_bound M) (exp_free_bound N)
-  | a_and A B | a_pi _ A B | a_fn A B => Nat.max (exp_free_bound A) (exp_free_bound B - 1)
+  | a_and A B | a_pi _ _ A B | a_fn A B => Nat.max (exp_free_bound A) (exp_free_bound B - 1)
   | a_conj P Q M N =>
       Nat.max (Nat.max (exp_free_bound P) (exp_free_bound Q - 1)) (Nat.max (exp_free_bound M) (exp_free_bound N))
   | a_elim _ _ Us _ Bks M =>
@@ -2402,7 +2448,7 @@ with gentry_free_bound (E : gentry) : nat :=
   end
 with centry_free_bound (e : centry) : nat :=
   match e with
-  | ce_ass A => exp_free_bound A
+  | ce_ass _ A => exp_free_bound A
   | ce_def A M => Nat.max (exp_free_bound A) (exp_free_bound M)
   | ce_mod U => gunit_free_bound U
   | ce_dm A M U => Nat.max (exp_free_bound A) (Nat.max (exp_free_bound M) (gunit_free_bound U))
@@ -2549,7 +2595,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
                  (List.map (fun br => (fst br, exp_sub (snd br) (sb_qn (snd (fst br)) σ))) Bs)
            end) Bks)
         (exp_sub M σ)
-  | a_pi r A B => a_pi r (exp_sub A σ) (exp_sub B (sb_q σ))
+  | a_pi κd κc A B => a_pi κd κc (exp_sub A σ) (exp_sub B (sb_q σ))
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
   | a_var x => sentry_exp (σ x)
@@ -2604,7 +2650,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with
-  | ce_ass A => ce_ass (exp_sub A σ)
+  | ce_ass κ A => ce_ass κ (exp_sub A σ)
   | ce_def A M => ce_def (exp_sub A σ) (exp_sub M σ)
   | ce_mod U => ce_mod (gunit_sub U σ)
   | ce_dm A M U => ce_dm (exp_sub A σ) (exp_sub M σ) (gunit_sub U σ)
@@ -2700,26 +2746,28 @@ End Wk_Notations.
     a module part is substituted in, its term for its term uses and the
     literal of its unit for its module uses, as a body's entry is filled in
     ([gm_fill]).  The elaborator only builds parameter telescopes of
-    assumptions. *)
-Fixpoint ctx_pi_at (r : relevance) (Δ : ctx) (A : typ) : typ :=
+    assumptions.  Each binder is at its assumption's kind, into the kind
+    [κc] of the result. *)
+Fixpoint ctx_pi_at (κc : abs_kind) (Δ : ctx) (A : typ) : typ :=
   match Δ with
   | nil => A
-  | cons (ce_ass B) Δ' => ctx_pi_at r Δ' (a_pi r B A)
-  | cons (ce_def B N) Δ' => ctx_pi_at r Δ' (a_let (b_def B N) A)
-  | cons (ce_mod U) Δ' => ctx_pi_at r Δ' (a_let (b_mod U) A)
-  | cons (ce_dm _ N U) Δ' => ctx_pi_at r Δ' (exp_sub A (sb_extend sb_id (se_dm N (me_lit U))))
+  | cons (ce_ass κ B) Δ' => ctx_pi_at κc Δ' (a_pi κ κc B A)
+  | cons (ce_def B N) Δ' => ctx_pi_at κc Δ' (a_let (b_def B N) A)
+  | cons (ce_mod U) Δ' => ctx_pi_at κc Δ' (a_let (b_mod U) A)
+  | cons (ce_dm _ N U) Δ' => ctx_pi_at κc Δ' (exp_sub A (sb_extend sb_id (se_dm N (me_lit U))))
   end.
 
 (** The type of functions over [Δ] into a type of a universe; over a
-    proposition [ctx_pi_at propositional] is the proposition universally
-    quantified over [Δ]. *)
-Abbreviation ctx_pi := (ctx_pi_at relevant).
+    proposition [ctx_pi_at ak_propositional] is the proposition
+    universally quantified over [Δ], and into a type of levels
+    [ctx_pi_at ak_level] the type of levels over [Δ]. *)
+Abbreviation ctx_pi := (ctx_pi_at ak_relevant).
 
 (** The [λ]-counterpart of [ctx_pi]. *)
 Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
   match Δ with
   | nil => M
-  | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
+  | cons (ce_ass _ B) Δ' => ctx_fn Δ' (a_fn B M)
   | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def B N) M)
   | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
   | cons (ce_dm _ N U) Δ' => ctx_fn Δ' (exp_sub M (sb_extend sb_id (se_dm N (me_lit U))))

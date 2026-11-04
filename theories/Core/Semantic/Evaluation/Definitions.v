@@ -62,13 +62,13 @@ Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
 Definition con_param_count (D : ind_decl) (Mk : imember) : nat :=
   match im_head Mk with mh_record _ _ _ => ind_nu D | _ => im_np D Mk end.
 
-(** The sort of the [n]-th argument of the constructor [c] of the member
-    [Mk], as the declaration classifies it; a recursive argument is
-    relevant. *)
-Definition con_arg_relevance (Mk : imember) (c : string) (n : nat) : relevance :=
+(** The kind of the [n]-th argument of the constructor [c] of the member
+    [Mk], as the declaration classifies it; a recursive argument is of a
+    universe. *)
+Definition con_arg_kind (Mk : imember) (c : string) (n : nat) : abs_kind :=
   match ind_con Mk c with
-  | Some gs => match List.nth_error gs n with Some (ca_arg r _) => r | _ => relevant end
-  | None => relevant
+  | Some gs => match List.nth_error gs n with Some (ca_arg r _) => r | _ => ak_relevant end
+  | None => ak_relevant
   end.
 
 (** The global module at [p], given [args], lacks no parameter of its
@@ -78,26 +78,27 @@ Definition con_arg_relevance (Mk : imember) (c : string) (n : nat) : relevance :
 Definition module_saturated (Θ : gdeps) (Ξ : gstack) (p : qname) (args : list domain) : Prop :=
   forall T Φ, gc_loc Θ Ξ p = Some (T, Φ) -> List.length T <= List.length args.
 
-(** The sort of the next argument a function value takes: the sort of a
+(** The kind of the next argument a function value takes: the kind of a
     function's own domain or of a neutral's [Π] domain, and the stored
-    sort of a constructor's next argument.  Every other function value
-    takes relevant arguments only (parameters are relevant). *)
-Definition arg_relevance (Θ : gdeps) (Ξ : gstack) (f : domain) : relevance :=
+    kind of a constructor's next argument.  Every other function value
+    takes arguments that are evaluated ([ak_relevant]: parameters are
+    relevant or levels, both evaluated). *)
+Definition arg_kind (Θ : gdeps) (Ξ : gstack) (f : domain) : abs_kind :=
   match f with
-  | d_fn a _ _ => domain_relevance a
-  | d_neut (d_pi _ a _ _) _ => domain_relevance a
+  | d_fn a _ _ => domain_kind a
+  | d_neut (d_pi _ _ a _ _) _ => domain_kind a
   | d_con p k c vs =>
       match ind_lookup Θ Ξ p with
       | Some D =>
           match ind_member D k with
           | Some Mk =>
-              if Nat.ltb (List.length vs) (con_param_count D Mk) then relevant
-              else con_arg_relevance Mk c (List.length vs - con_param_count D Mk)
-          | None => relevant
+              if Nat.ltb (List.length vs) (con_param_count D Mk) then ak_relevant
+              else con_arg_kind Mk c (List.length vs - con_param_count D Mk)
+          | None => ak_relevant
           end
-      | None => relevant
+      | None => ak_relevant
       end
-  | _ => relevant
+  | _ => ak_relevant
   end.
 (** The proof a member [x] of a saturated module is, kept as its
     selection from the module bound at [#0]: a proof member is never
@@ -529,25 +530,25 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ Us ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ups ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim relevant p Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ a_elim ak_relevant p Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** An eliminator into propositions is a proof, kept as it is. *)
 | eval_exp_elim_proof :
-  `( ⟦ a_elim propositional p Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_elim propositional p Us j Bks M, ρ⟩ )
+  `( ⟦ a_elim ak_propositional p Us j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_elim ak_propositional p Us j Bks M, ρ⟩ )
 (** A [Π] evaluates its domain and closes over its codomain, at its
-    relevance tag. *)
+    kinds. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     ⟦ a_pi r A B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_pi r a ρ B )
+     ⟦ a_pi κd κc A B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_pi κd κc a ρ B )
 (** A function evaluates its domain and closes over its body: it keeps its
     domain, so that its application can tell a proof argument. *)
 | eval_exp_fn :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      ⟦ λ A M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ λᵈ a ρ M )
-(** An application of a function taking a relevant argument applies the
-    value of the function to that of the argument. *)
+(** An application of a function taking an evaluated argument applies
+    the value of the function to that of the argument. *)
 | eval_exp_app :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     arg_relevance Θ Ξ m = relevant ->
+     evaluated_kind (arg_kind Θ Ξ m) ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $| m & n | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
@@ -555,21 +556,22 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
     kept as it is; the argument is not evaluated. *)
 | eval_exp_app_proof :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     arg_relevance Θ Ξ m = propositional ->
+     arg_kind Θ Ξ m = ak_propositional ->
      $| m & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** A local definition at a relevant type extends the environment by the
-    value of its body, at its type; nothing is substituted. *)
+(** A local definition at a type of an evaluated kind extends the
+    environment by the value of its body, at its type; nothing is
+    substituted. *)
 | eval_exp_let :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_relevance a = relevant ->
+     evaluated_kind (domain_kind a) ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** One at a proposition binds its body, a proof, kept as it is. *)
 | eval_exp_let_proof :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_relevance a = propositional ->
+     domain_kind a = ak_propositional ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local module extends it by the unit's closure, at the unit. *)
@@ -599,7 +601,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_tuple :
   `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record p ns ->
      record_lookup Θ Ξ p = Some R ->
-     eval_field_vals Θ Ξ (record_field_relevance R) (List.map snd fs) ρ vs ->
+     eval_field_vals Θ Ξ (record_field_kinds R) (List.map snd fs) ρ vs ->
      ⟦ a_tuple T fs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple (List.combine (List.map fst fs) vs) )
 (** A field: the field of the value. *)
 | eval_exp_proj :
@@ -802,7 +804,7 @@ with eval_shape_type (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env ->
     so its entry is at no type ([entry_type_none]). *)
 | eval_shape_type_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_none) fam_cod )
+     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ{ak_relevant} b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_none) fam_cod )
 where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shape_type Θ Ξ p ups ρ t r)
 (** The types of the recursive results of an argument [v] of shape [t],
     one per leaf path, its components in [ρ], of the group at [p] at the
@@ -836,7 +838,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihty v of pt_pi B t at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ
-       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ entry_type_none) fam_cod)
+       ↘ List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ entry_type_none) fam_cod)
            (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihty' v 'of' t 'at' p ups 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ p ups ρm As ρ t v r)
 (** The types of the recursive results of the fields [vs] of a record
@@ -862,12 +864,14 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 | eval_app_fn :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ m ->
      $| λᵈ a ρ M & n | Θ ⍮ Ξ ↘ m )
-(** A neutral applied, at the codomain's instance.  No rule applies a
-    proof: an application whose function is a proof is at a [∀], hence
-    itself a proof, which relevance-directed evaluation never evaluates. *)
+(** A neutral applied, at the codomain's instance, a [Π] into an
+    evaluated kind.  No rule applies a proof: an application whose
+    function is a proof is at a [∀], hence itself a proof, which
+    kind-directed evaluation never evaluates. *)
 | eval_app_neut :
-  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ b ->
-     $| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
+  `( evaluated_kind κc ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ b ->
+     $| ⇑ (d_pi κd κc a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
 (** The type former takes a parameter it still lacks. *)
 | eval_app_indty :
   `( ind_lookup Θ Ξ p = Some D ->
@@ -962,35 +966,35 @@ with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> dom
 (** No argument: the function itself. *)
 | eval_app_args_nil :
   `( eval_app_args Θ Ξ f nil ρ f )
-(** A relevant argument: its value applied, then the rest. *)
+(** An evaluated argument: its value applied, then the rest. *)
 | eval_app_args_relevant :
-  `( arg_relevance Θ Ξ f = relevant ->
+  `( evaluated_kind (arg_kind Θ Ξ f) ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $| f & n | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
 (** A proof argument: the proof applied, kept as it is, then the rest. *)
 | eval_app_args_proof :
-  `( arg_relevance Θ Ξ f = propositional ->
+  `( arg_kind Θ Ξ f = ak_propositional ->
      $| f & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
 (** [eval_field_vals rs Ms ρ vs]: the values [vs] of the fields [Ms] of a record
-    value, the field at the sort [propositional] in [rs] a proof kept as
-    it is, not evaluated (a sort past [rs] is relevant). *)
-with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> list domain -> Prop :=
+    value, the field at the kind [ak_propositional] in [rs] a proof kept
+    as it is, not evaluated (a kind past [rs] is [ak_relevant]). *)
+with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list abs_kind -> list exp -> env -> list domain -> Prop :=
 (** No field. *)
 | eval_field_vals_nil :
   `( eval_field_vals Θ Ξ rs nil ρ nil )
-(** A relevant field: its value, then the rest. *)
+(** An evaluated field: its value, then the rest. *)
 | eval_field_vals_relevant :
-  `( List.hd relevant rs = relevant ->
+  `( evaluated_kind (List.hd ak_relevant rs) ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
      eval_field_vals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
 (** A propositional field: the proof kept as it is, then the rest. *)
 | eval_field_vals_proof :
-  `( List.hd relevant rs = propositional ->
+  `( List.hd ak_relevant rs = ak_propositional ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
      eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ⟨M, ρ⟩ :: ms) )
 with eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
@@ -1054,7 +1058,7 @@ with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
     environment. *)
 | eval_appm_local :
   `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure A ρ ↘ r ->
-     $ᵐ| dm_local (Δ ++ ce_ass A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
+     $ᵐ| dm_local (Δ ++ ce_ass κ A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
 (** A submodule of an unsaturated module passes it to the module, then selects again. *)
 | eval_appm_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -1087,11 +1091,12 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A relevant opaque definition or axiom of a saturated global module: a
-    neutral, applied to the module's arguments. *)
+(** An opaque definition or axiom of an evaluated kind of a saturated
+    global module: a neutral, applied to the module's arguments. *)
 | eval_sel_global_neut :
   `( module_saturated Θ Ξ p args ->
-     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv relevant A B) ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv κ A B) ->
+     evaluated_kind κ ->
      b = false \/ B = None ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
@@ -1110,7 +1115,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
 | eval_sel_global_proof :
   `( gc_loc Θ Ξ p = Some (T, Φ) ->
      List.length args = List.length T ->
-     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv ak_propositional A B) ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩ )
 (** The module of a member of a group of inductive types, as a term, in a
     saturated global module: the member's type former, applied to the
@@ -1139,7 +1144,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
 | eval_sel_body :
   `( gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
-     entry_relevance E = relevant ->
+     evaluated_kind (entry_kind E) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ r )
@@ -1153,7 +1158,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
 | eval_sel_body_proof :
   `( gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
-     entry_relevance E = propositional ->
+     entry_kind E = ak_propositional ->
      dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
@@ -1230,20 +1235,21 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** The empty body adds nothing. *)
 | eval_body_env_nil :
   `( ⟦ gm_nil ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ )
-(** A definition tagged relevant adds its value.  A body is read by the
-    sorts its definitions are tagged with, as selection reads it
-    ([eval_sel_body]): typing makes a definition's tag the sort of its
+(** A definition tagged an evaluated kind adds its value.  A body is read
+    by the kinds its definitions are tagged with, as selection reads it
+    ([eval_sel_body]): typing makes a definition's tag the kind of its
     type, a definition an open generates included: the core open phase
     gives it the type of the member it names ([items_gen]). *)
 | eval_body_env_def :
-  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+  `( evaluated_kind κ ->
+     ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ entry_type_closure A ρ1 )
+     ⟦ gm_ext Φ y (ge_def b pv κ A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ entry_type_closure A ρ1 )
 (** A definition tagged a proposition, a proof, adds it kept as it is,
     unevaluated. *)
 | eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ entry_type_closure A ρ1 )
+     ⟦ gm_ext Φ y (ge_def b pv ak_propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ entry_type_closure A ρ1 )
 (** A submodule adds its unit's closure, at the unit. *)
 | eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
@@ -1343,7 +1349,7 @@ Proof. intros * <-; apply eval_exp_var. Qed.
     none. *)
 Definition ctx_entry_type (Δ : ctx) (x : nat) : option typ :=
   match List.nth_error Δ x with
-  | Some (ce_ass A) | Some (ce_def A _) | Some (ce_dm A _ _) => Some A
+  | Some (ce_ass _ A) | Some (ce_def A _) | Some (ce_dm A _ _) => Some A
   | _ => None
   end.
 
@@ -1452,7 +1458,7 @@ Record entry_propositional (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρσ : env) (x
   ; entry_propositional_value : domain
   ; entry_propositional_eval : ⟦ entry_propositional_type ⟧ Θ ⍮ Ξ ⍮ entry_propositional_env ↘ entry_propositional_value
     (** The value is a proposition *)
-  ; entry_propositional_prop : domain_relevance entry_propositional_value = propositional }.
+  ; entry_propositional_prop : domain_kind entry_propositional_value = ak_propositional }.
 
 (** Evaluation of a substitution is directed by its target context [Δ]:
     at an entry of [Δ] that is a proposition, the substitution's entry, a

@@ -34,8 +34,8 @@ Record raw_member : Set := mk_rmem
     (** Its sort, over the uniform parameters *)
   ; raw_member_sort : exp
     (** Its constructors, each with its named arguments, outermost
-        first *)
-  ; raw_member_cons : list (string * list (string * exp)) }.
+        first, each at its kind (filled from the sort of its type) *)
+  ; raw_member_cons : list (string * list (string * abs_kind * exp)) }.
 
 (** A group as written: see [raw_member]. *)
 Record raw_decl : Set := mk_raw
@@ -86,10 +86,10 @@ Definition raw_fun_head_of (f : raw_fun) : raw_fun_head :=
     ([core_cmd_mod_open], [core_cmd_record_open]), the commands of its body
     run in it as the commands after it, and [core_cmd_close] files it. *)
 Inductive core_cmd : Set :=
-(** [def x : A := M] and [axiom x : A]: transparency, privacy, type and
-    body.  An axiom has no body; an [abstract] [def] is opaque, not
-    bodiless. *)
-| core_cmd_def : string -> bool -> bool -> typ -> option exp -> core_cmd
+(** [def x : A := M] and [axiom x : A]: transparency, privacy, the kind
+    of the type (filled from its sort), type and body.  An axiom has no
+    body; an [abstract] [def] is opaque, not bodiless. *)
+| core_cmd_def : string -> bool -> bool -> abs_kind -> typ -> option exp -> core_cmd
 (** [core_cmd_mod_open x pv Δ]: open the frame of the module [x], private
     when [pv], under its own parameters [Δ] *)
 | core_cmd_mod_open : string -> bool -> ctx -> core_cmd
@@ -125,9 +125,10 @@ Inductive core_cmd : Set :=
 (** [core_cmd_record_open x pv Δ S fs]: open the frame of the record type
     [x], private when [pv], with its own parameters [Δ] over those of the
     enclosing frames, its sort over them, and its fields in order, each
-    over the fields before it (innermost first) and the parameters; its
-    field definitions run in it at once *)
-| core_cmd_record_open : string -> bool -> ctx -> typ -> list (string * typ) -> core_cmd
+    over the fields before it (innermost first) and the parameters, each
+    at its kind (filled from the sort of its type); its field definitions
+    run in it at once *)
+| core_cmd_record_open : string -> bool -> ctx -> typ -> list (string * abs_kind * typ) -> core_cmd
 (** [core_cmd_close x pv]: file the frame on top, of the module or the
     record [x], private when [pv], in the frame below it *)
 | core_cmd_close : string -> bool -> core_cmd.

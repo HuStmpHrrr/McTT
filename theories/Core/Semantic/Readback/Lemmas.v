@@ -175,13 +175,18 @@ Import Domain_Notations.
     (** The other side is inverted here: every value type admits the proof
         rule [read_nf_proof] too, and a constructor at an inductive type is
         read by one of two rules (a declared member, or a view).  The proof
-        rule excludes every other by the type's head ([domain_relevance]),
+        rule excludes every other by the type's head ([domain_kind]),
         the two constructor rules each other by the member's head. *)
     all: try match goal with
          | H : read_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
          | H : read_ne _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
          end.
-    all: try match goal with H : domain_relevance _ = _ |- _ => cbn in H; discriminate H end.
+    all: try match goal with H : domain_kind _ = _ |- _ => cbn in H; discriminate H end.
+    all: try match goal with H : domain_kind _ = _ |- _ => cbn in H; subst end.
+    all: try match goal with
+         | H : evaluated_kind _ |- _ =>
+             solve [ exfalso; apply (evaluated_kind_not_propositional _ H); first [ reflexivity | assumption | cbn; congruence ] ]
+         end.
     all: functional_fresh_rewrite_clear; functional_eval_rewrite_clear; try congruence.
     all: try solve [ apply nf_univ_of_cong; eauto | repeat f_equal; solve [eauto] ].
     (** A global module's two readbacks are at its one telescope. *)

@@ -100,7 +100,7 @@ Import Domain_Notations.
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
         | H : gc_term Θ Ξ ?p = Some _ |- _ =>
-            destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ?) | (? & ? & ? & ?)]; clear H
+            destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ? & ? & ?) | (? & ? & ? & ?)]; clear H
         | H1 : entry_tm ?E = Some _, H2 : entry_tm ?E = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : entry_unit ?E = Some _, H2 : entry_unit ?E = Some _ |- _ =>
@@ -164,7 +164,7 @@ Import Domain_Notations.
             exfalso; specialize (H1 _ _ H2); lia
         | H1 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ), H2 : Members.gc_loc Θ Ξ ?p = Some (?T', ?Φ') |- _ =>
             assert_fails (constr_eq H1 H2); rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H : _ ++ ce_ass _ :: nil = _ ++ ce_ass _ :: nil |- _ =>
+        | H : _ ++ ce_ass _ _ :: nil = _ ++ ce_ass _ _ :: nil |- _ =>
             apply List.app_inj_tail in H as [? [= ?]]; subst
         | H : 0 < List.length (_ ++ _ :: nil) -> False |- _ =>
             exfalso; apply H; rewrite List.length_app; cbn; lia
@@ -176,6 +176,10 @@ Import Domain_Notations.
         | H : d_record _ _ = d_record _ _ |- _ => injection H; intros; subst; clear H
         | H : (_, _, _) = (_, _, _) |- _ => injection H; intros; subst; clear H
         | H : eval_selc _ _ _ nil _ |- _ => inversion H
+        | H1 : evaluated_kind ?k, H2 : ?k = ak_propositional |- _ =>
+            exfalso; exact (evaluated_kind_not_propositional _ H1 H2)
+        | H : evaluated_kind ak_propositional |- _ =>
+            exfalso; exact (evaluated_kind_not_propositional _ H eq_refl)
         end;
       cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
   Qed.
@@ -302,7 +306,7 @@ Import Domain_Notations.
   Proof.
     all: decide equality;
       first [ apply Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec
-            | apply relevance_eq_dec | apply exp_eq_dec | apply moddef_eq_dec | apply gunit_eq_dec
+            | apply abs_kind_eq_dec | apply exp_eq_dec | apply moddef_eq_dec | apply gunit_eq_dec
             | apply (List.list_eq_dec dentry_eq_dec) | apply (List.list_eq_dec domain_eq_dec)
             | apply (List.list_eq_dec exp_eq_dec) | apply (List.list_eq_dec centry_eq_dec)
             | apply (List.list_eq_dec String.string_dec)

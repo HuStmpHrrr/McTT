@@ -151,7 +151,7 @@ Fact exp_sub_False : forall σ, ⊥[σ] = ⊥.                Proof. reflexivity
     laws below can then cancel against an extension.  They are here so that a
     transported [Π]-type can be recognised as one by [rewrite]. *)
 
-Fact exp_wk_pi : forall φ A B, (Π A B)[φ]ʷ = Π A[φ]ʷ B[wk_q φ]ʷ.
+Fact exp_wk_pi : forall φ κd κc A B, (a_pi κd κc A B)[φ]ʷ = a_pi κd κc A[φ]ʷ B[wk_q φ]ʷ.
 Proof. reflexivity. Qed.
 
 Fact exp_wk_fn : forall φ A M, (λ A M)[φ]ʷ = λ A[φ]ʷ M[wk_q φ]ʷ.
@@ -160,7 +160,7 @@ Proof. reflexivity. Qed.
 Fact exp_wk_app : forall φ M N, (M $ N)[φ]ʷ = M[φ]ʷ $ N[φ]ʷ.
 Proof. reflexivity. Qed.
 
-Fact exp_sub_pi : forall σ A B, (Π A B)[σ] = Π A[σ] B[q σ].
+Fact exp_sub_pi : forall σ κd κc A B, (a_pi κd κc A B)[σ] = a_pi κd κc A[σ] B[q σ].
 Proof. reflexivity. Qed.
 
 Fact exp_sub_fn : forall σ A M, (λ A M)[σ] = λ A[σ] M[q σ].

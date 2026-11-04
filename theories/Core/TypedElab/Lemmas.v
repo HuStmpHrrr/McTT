@@ -161,9 +161,11 @@ Section Functional.
   Lemma fill_fields_functional : forall Γ fs fs1, fill_fields Θ Ξ B Γ fs fs1 ->
       forall fs2, fill_fields Θ Ξ B Γ fs fs2 -> fs1 = fs2.
   Proof.
-    induction 1 as [| Γ f T T1 fs fs1 HT _ IH]; intros fs2 H2; inversion H2; subst; [ reflexivity |].
-    pose proof (proj1 fill_functional_all _ _ _ HT _ H5) as <-.
-    rewrite (IH _ H6); reflexivity.
+    induction 1 as [| Γ f T T1 W fs fs1 HT _ HW _ IH]; intros fs2 H2;
+      inversion H2 as [| ? ? ? T2 W2 ? fs2' HT2 _ HW2 Hfs2]; subst; [ reflexivity |].
+    pose proof (proj1 fill_functional_all _ _ _ HT _ HT2) as <-.
+    pose proof (@functional_alg_type_infer (gc_mk Θ Ξ) _ _ _ _ Hg HW HW2) as <-.
+    rewrite (IH _ Hfs2); reflexivity.
   Qed.
 
   (** Two fills of a group's members, in groups of one set of uniform
@@ -179,7 +181,7 @@ Section Functional.
   Qed.
 
   (** A constructor's arguments have one fill. *)
-  Lemma fill_raw_cons_functional : forall Γ (cs : list (string * list (string * surface_exp))) (cs1 cs2 : list (string * list (string * exp))),
+  Lemma fill_raw_cons_functional : forall Γ (cs : list (string * list (string * surface_exp))) (cs1 cs2 : list (string * list (string * abs_kind * exp))),
       Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs1 ->
       Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs2 -> cs1 = cs2.
   Proof.

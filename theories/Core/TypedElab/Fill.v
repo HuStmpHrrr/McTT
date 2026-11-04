@@ -102,22 +102,24 @@ Section Fill.
     | Some p => glob_ok Θ Ξ (qname_mod p) y
     end.
 
-  (** The tag of a [Π], an eliminator or a definition whose codomain,
-      motive or type infers to the type [W]: [propositional] at [Prop],
-      [relevant] otherwise.  At a type that is neither [Prop] nor a
-      universe the tag is [relevant], and the typing rule rejects the
+  (** The kind of a type whose sort is inferred to be [W]: [ak_propositional]
+      at [Prop], [ak_level] at [LevelSort], [ak_relevant] otherwise.  It is
+      the kind of a binder over the type, of a [Π]'s domain or codomain, of
+      an eliminator's motive and of a definition.  At a sort that is none of
+      these the kind is [ak_relevant], and the typing rule rejects the
       term. *)
-  Definition sort_relevance (W : nf) : relevance :=
+  Definition sort_abs_kind (W : nf) : abs_kind :=
     match W with
-    | nf_prop => propositional
-    | _ => relevant
+    | nf_prop => ak_propositional
+    | nf_level_sort => ak_level
+    | _ => ak_relevant
     end.
 
   (** The binder [k] of [Γ] holds a term only, an assumption or a
       definition, and so reads as a term in module position. *)
   Definition term_binder (Γ : ctx) (k : nat) : Prop :=
     match List.nth_error Γ k with
-    | Some (ce_ass _) | Some (ce_def _ _) => True
+    | Some (ce_ass _ _) | Some (ce_def _ _) => True
     | _ => False
     end.
 
@@ -153,17 +155,21 @@ Section Fill.
   (** [efq M return C] *)
   | fill_exp_absurd : forall Γ C C' M M',
       fill_exp Γ C C' -> fill_exp Γ M M' -> fill_exp Γ (surface_absurd C M) (a_absurd C' M')
-  (** A [Π]: the codomain under the filled domain; its tag the sort the
-      filled codomain infers to *)
-  | fill_exp_pi : forall Γ A A' B B' W,
-      fill_exp Γ A A' -> fill_exp (Γ ▹ A') B B' -> ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A' -> Γ ▹ A' ⊢a B' ⟹ W ->
-      fill_exp Γ (surface_pi A B) (a_pi (sort_relevance W) A' B')
-  (** A conjunction: the second proposition under the filled first *)
-  | fill_exp_and : forall Γ P P' Q Q', fill_exp Γ P P' -> fill_exp (Γ ▹ P') Q Q' -> fill_exp Γ (surface_and P Q) (a_and P' Q')
+  (** A [Π]: the codomain under the filled domain, bound at the kind of
+      the sort the filled domain infers to; its kinds those of the sorts
+      the filled domain and codomain infer to *)
+  | fill_exp_pi : forall Γ A A' B B' WA W,
+      fill_exp Γ A A' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a A' ⟹ WA ->
+      fill_exp (Γ ▹{sort_abs_kind WA} A') B B' -> ⊢ Θ ⍮ Ξ ⍮ Γ ▹{sort_abs_kind WA} A' ->
+      Γ ▹{sort_abs_kind WA} A' ⊢a B' ⟹ W ->
+      fill_exp Γ (surface_pi A B) (a_pi (sort_abs_kind WA) (sort_abs_kind W) A' B')
+  (** A conjunction: the second proposition under the filled first, a
+      proposition *)
+  | fill_exp_and : forall Γ P P' Q Q', fill_exp Γ P P' -> fill_exp (Γ ▹{ak_propositional} P') Q Q' -> fill_exp Γ (surface_and P Q) (a_and P' Q')
   (** A proof of a conjunction with its second proposition written *)
   | fill_exp_conj : forall Γ P P' Q Q' M M' N N',
       Q <> surface_hole ->
-      fill_exp Γ P P' -> fill_exp (Γ ▹ P') Q Q' -> fill_exp Γ M M' -> fill_exp Γ N N' ->
+      fill_exp Γ P P' -> fill_exp (Γ ▹{ak_propositional} P') Q Q' -> fill_exp Γ M M' -> fill_exp Γ N N' ->
       fill_exp Γ (surface_conj P Q M N) (a_conj P' Q' M' N')
   (** A proof of a conjunction as written, [conj (m : P) n]: the second
       proposition is the type the filled second component infers to,
@@ -175,8 +181,11 @@ Section Fill.
   | fill_exp_left : forall Γ M M', fill_exp Γ M M' -> fill_exp Γ (surface_left M) (a_left M')
   (** The second component *)
   | fill_exp_right : forall Γ M M', fill_exp Γ M M' -> fill_exp Γ (surface_right M) (a_right M')
-  (** A [λ]: the body under the filled domain *)
-  | fill_exp_fn : forall Γ A A' M M', fill_exp Γ A A' -> fill_exp (Γ ▹ A') M M' -> fill_exp Γ (surface_fn A M) (a_fn A' M')
+  (** A [λ]: the body under the filled domain, bound at the kind of the
+      sort it infers to *)
+  | fill_exp_fn : forall Γ A A' M M' WA,
+      fill_exp Γ A A' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a A' ⟹ WA -> fill_exp (Γ ▹{sort_abs_kind WA} A') M M' ->
+      fill_exp Γ (surface_fn A M) (a_fn A' M')
   (** An application *)
   | fill_exp_app : forall Γ M M' N N', fill_exp Γ M M' -> fill_exp Γ N N' -> fill_exp Γ (surface_app M N) (a_app M' N')
   (** A [let] with its type written: the rest under the filled
@@ -220,8 +229,8 @@ Section Fill.
       List.nth_error Bks' m = Some bm ->
       ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D m Mm Us ++ Γ ->
       elim_mctx p D m Mm Us ++ Γ ⊢a eb_motive bm ⟹ W ->
-      fill_blocks (sort_relevance W) Γ p D Us (blocks_motives Bks') 0 Bks Bks' ->
-      fill_exp Γ (surface_elim m Bks M) (a_elim (sort_relevance W) p Us m Bks' M')
+      fill_blocks (sort_abs_kind W) Γ p D Us (blocks_motives Bks') 0 Bks Bks' ->
+      fill_exp Γ (surface_elim m Bks M) (a_elim (sort_abs_kind W) p Us m Bks' M')
 
   (** The fields of a record value, each its name and its value *)
   with fill_field_vals : ctx -> list (string * surface_exp) -> list (string * exp) -> Prop :=
@@ -236,7 +245,7 @@ Section Fill.
       scrutinee's type over its member's non-uniform parameters, its motive
       over them and the scrutinee, and its branches, with as many binders
       as [alg_type_infer_elim] asks, at the eliminator's tag [r] *)
-  with fill_blocks : relevance -> ctx -> qname -> ind_decl -> list exp -> list exp -> nat -> list surface_block -> list eblock -> Prop :=
+  with fill_blocks : abs_kind -> ctx -> qname -> ind_decl -> list exp -> list exp -> nat -> list surface_block -> list eblock -> Prop :=
   (** No block *)
   | fill_blocks_nil : forall r Γ p D Us As j, fill_blocks r Γ p D Us As j nil nil
   (** The block of the member [j], then the rest *)
@@ -265,7 +274,7 @@ Section Fill.
 
   (** The branches of a block of the member [Mj], each in its
       constructor's branch context at the tag [r] *)
-  with fill_brs : relevance -> ctx -> qname -> ind_decl -> imember -> list exp -> list exp ->
+  with fill_brs : abs_kind -> ctx -> qname -> ind_decl -> imember -> list exp -> list exp ->
                   list (string * nat * surface_exp) -> list (string * nat * exp) -> Prop :=
   (** No branch *)
   | fill_brs_nil : forall r Γ p D Mj Us As, fill_brs r Γ p D Mj Us As nil nil
@@ -346,21 +355,22 @@ Section Fill.
   with fill_tele : ctx -> list surface_exp -> ctx -> Prop :=
   (** The empty telescope *)
   | fill_tele_nil : forall Γ, fill_tele Γ nil nil
-  (** An assumption *)
-  | fill_tele_ass : forall Γ Δ Δ' A A',
-      fill_tele Γ Δ Δ' -> fill_exp (Δ' ++ Γ) A A' -> fill_tele Γ (A :: Δ) (ce_ass A' :: Δ')
+  (** An assumption, at the kind of the sort its filled type infers to *)
+  | fill_tele_ass : forall Γ Δ Δ' A A' W,
+      fill_tele Γ Δ Δ' -> fill_exp (Δ' ++ Γ) A A' -> ⊢ Θ ⍮ Ξ ⍮ Δ' ++ Γ -> Δ' ++ Γ ⊢a A' ⟹ W ->
+      fill_tele Γ (A :: Δ) (ce_ass (sort_abs_kind W) A' :: Δ')
 
   (** A local body, entry by entry, each in the context of the expansion
       of the filled entries before it *)
   with fill_body : ctx -> surface_body -> gmod -> Prop :=
   (** The empty body *)
   | fill_body_nil : forall Γ, fill_body Γ surface_gm_nil gm_nil
-  (** A definition: its tag the sort its filled type infers to *)
+  (** A definition: its kind that of the sort its filled type infers to *)
   | fill_body_def : forall Γ Φ Φ' Φx x b pv A A' oM oM' W,
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx ->
       fill_exp (body_ctx Φx ++ Γ) A A' -> fill_optional_exp (body_ctx Φx ++ Γ) oM oM' ->
       ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢a A' ⟹ W ->
-      fill_body Γ (surface_gm_ext Φ x (surface_ge_def b pv A oM)) (gm_ext Φ' x (ge_def b pv (sort_relevance W) A' oM'))
+      fill_body Γ (surface_gm_ext Φ x (surface_ge_def b pv A oM)) (gm_ext Φ' x (ge_def b pv (sort_abs_kind W) A' oM'))
   (** A module *)
   | fill_body_mod : forall Γ Φ Φ' Φx x pv U U',
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx -> fill_unit (body_ctx Φx ++ Γ) U U' ->
@@ -393,15 +403,18 @@ Section Fill.
     fill_scrutinee_type_mut_ind, fill_brs_mut_ind, fill_optional_exp_mut_ind, fill_read_mut_ind, fill_mod_mut_ind,
     fill_unit_mut_ind, fill_def_mut_ind, fill_tele_mut_ind, fill_body_mut_ind.
 
-  (** Named types, outermost first, each over the filled ones before it:
-      the fields of a record declaration ([record_fctx]) and the arguments
-      of a constructor ([raw_args_tele]) *)
-  Inductive fill_fields : ctx -> list (string * surface_exp) -> list (string * typ) -> Prop :=
+  (** Named types, outermost first, each over the filled ones before it,
+      each at the kind of the sort its filled type infers to: the fields of
+      a record declaration ([record_fctx]) and the arguments of a
+      constructor ([raw_args_tele]) *)
+  Inductive fill_fields : ctx -> list (string * surface_exp) -> list (string * abs_kind * typ) -> Prop :=
   (** No field *)
   | fill_fields_nil : forall Γ, fill_fields Γ nil nil
   (** The first field, then the rest over it *)
-  | fill_fields_cons : forall Γ f T T' fs fs',
-      fill_exp Γ T T' -> fill_fields (Γ ▹ T') fs fs' -> fill_fields Γ ((f, T) :: fs) ((f, T') :: fs').
+  | fill_fields_cons : forall Γ f T T' W fs fs',
+      fill_exp Γ T T' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a T' ⟹ W ->
+      fill_fields (Γ ▹{sort_abs_kind W} T') fs fs' ->
+      fill_fields Γ ((f, T) :: fs) ((f, sort_abs_kind W, T') :: fs').
 
   (** ** The Fill of Commands
 
@@ -441,7 +454,7 @@ Section Fill.
       (** The clauses, each in its constructor's branch context, are
           filled *)
     ; fill_raw_fun_body_clauses : forall Mm, ind_member D m = Some Mm ->
-        fill_brs relevant Γ pq D Mm Us As (surface_raw_fun_clauses f) (raw_fun_clauses f') }.
+        fill_brs ak_relevant Γ pq D Mm Us As (surface_raw_fun_clauses f) (raw_fun_clauses f') }.
 
   (** A declared member [Mr] of a group whose filled form is [R'], filled
       to [Mr']: its parameters and sort over the uniform parameters, its
@@ -476,10 +489,12 @@ Section Fill.
       body's commands follow as written, filled when they run, and the
       frame is closed. *)
   Inductive fill_cmd : surface_cmd -> list cmd_item -> Prop :=
-  (** A definition: its type and its body *)
-  | fill_cmd_def : forall x b pv A A' oM oM',
-      fill_exp (gs_tele Ξ) A A' -> fill_optional_exp (gs_tele Ξ) oM oM' ->
-      fill_cmd (surface_cmd_def x b pv A oM) (ci_core (core_cmd_def x b pv A' oM') :: nil)
+  (** A definition: its type and its body, at the kind of the sort its
+      filled type infers to *)
+  | fill_cmd_def : forall x b pv A A' W oM oM',
+      fill_exp (gs_tele Ξ) A A' -> ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ -> gs_tele Ξ ⊢a A' ⟹ W ->
+      fill_optional_exp (gs_tele Ξ) oM oM' ->
+      fill_cmd (surface_cmd_def x b pv A oM) (ci_core (core_cmd_def x b pv (sort_abs_kind W) A' oM') :: nil)
   (** A module: its telescope, its frame opened, its commands as written,
       its frame closed *)
   | fill_cmd_mod : forall x pv Δ Δ' cs,

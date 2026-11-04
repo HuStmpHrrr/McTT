@@ -22,14 +22,46 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     sort. *)
 Definition record_ty (R : record_decl) : typ := ctx_pi (record_params R) (record_sort R).
 
-(** The sort of the [k]-th field, as the declaration stores it
-    ([relevant] past the fields). *)
-Definition record_field_rel (R : record_decl) (k : nat) : relevance :=
-  List.nth k (record_field_relevance R) relevant.
+(** The kind of the [k]-th field, as the declaration stores it
+    ([ak_relevant] past the fields). *)
+Definition record_field_kind (R : record_decl) (k : nat) : abs_kind :=
+  List.nth k (record_field_kinds R) ak_relevant.
+
+(** The context of the fields [fs], innermost first, each an assumption
+    at its kind in [κs] (in the same order, [ak_relevant] past them). *)
+Fixpoint fields_tele (fs : list (string * exp)) (κs : list abs_kind) : ctx :=
+  match fs with
+  | nil => nil
+  | fT :: fs' => fields_tele fs' (List.tl κs) ++ ce_ass (List.hd ak_relevant κs) (snd fT) :: nil
+  end.
 
 (** The context of the first [k] fields, innermost first. *)
 Definition record_fctx (R : record_decl) (k : nat) : ctx :=
-  List.rev (List.map (fun fT => ce_ass (snd fT)) (List.firstn k (record_fields R))).
+  fields_tele (List.firstn k (record_fields R)) (record_field_kinds R).
+
+(** The fields' context one field longer: the new one on top, at its
+    kind. *)
+Lemma fields_tele_snoc : forall fs κs fT,
+    fields_tele (fs ++ fT :: nil) κs = ce_ass (List.nth (List.length fs) κs ak_relevant) (snd fT) :: fields_tele fs κs.
+Proof.
+  induction fs as [| gT fs IH]; intros κs fT; cbn [fields_tele List.app List.length].
+  - destruct κs; reflexivity.
+  - rewrite IH; destruct κs as [| κ κs]; cbn; [ destruct (List.length fs); reflexivity | reflexivity ].
+Qed.
+
+(** The fields' context of two lists of fields: the later ones on top, at
+    the kinds past the earlier ones. *)
+Lemma fields_tele_app : forall fs1 fs2 κs,
+    fields_tele (fs1 ++ fs2) κs = fields_tele fs2 (List.skipn (List.length fs1) κs) ++ fields_tele fs1 κs.
+Proof.
+  induction fs1 as [| fT fs1 IH]; intros fs2 κs; cbn [fields_tele List.app List.length List.skipn];
+    [ rewrite List.app_nil_r; reflexivity |].
+  rewrite IH, List.app_assoc; f_equal; f_equal; destruct κs; [ destruct (List.length fs1) |]; reflexivity.
+Qed.
+
+(** As many entries as fields. *)
+Lemma length_fields_tele : forall fs κs, List.length (fields_tele fs κs) = List.length fs.
+Proof. induction fs as [| fT fs IH]; intros κs; cbn; [ reflexivity | rewrite List.length_app, IH; cbn; lia ]. Qed.
 
 (** The projections of [M] at the first [k] fields, outermost first: the
     values of the fields before field [k], at which its type is read. *)
@@ -59,7 +91,7 @@ Fixpoint field_index {A : Type} (fs : list (string * A)) (f : string) : option n
 
 Lemma length_record_fctx : forall R k, k <= List.length (record_fields R) -> List.length (record_fctx R k) = k.
 Proof.
-  intros; unfold record_fctx; rewrite List.length_rev, List.length_map, List.length_firstn; lia.
+  intros; unfold record_fctx; rewrite length_fields_tele, List.length_firstn; lia.
 Qed.
 
 (** The first [k+1] elements: the first [k], then the [k]-th. *)
@@ -71,13 +103,15 @@ Proof.
   change (y :: List.firstn (S k) l = (y :: List.firstn k l) ++ x :: nil); rewrite (IH _ _ H); reflexivity.
 Qed.
 
-(** The context of the first [k+1] fields: field [k]'s type on top of the
-    first [k]. *)
+(** The context of the first [k+1] fields: field [k]'s type, at its
+    kind, on top of the first [k]. *)
 Lemma record_fctx_succ : forall R k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-    record_fctx R (S k) = ce_ass T :: record_fctx R k.
+    record_fctx R (S k) = ce_ass (record_field_kind R k) T :: record_fctx R k.
 Proof.
-  intros R k f T Hk; unfold record_fctx.
-  rewrite (firstn_succ_nth _ _ _ Hk), List.map_app, List.rev_app_distr; reflexivity.
+  intros R k f T Hk; unfold record_fctx, record_field_kind.
+  assert (Hl : List.length (List.firstn k (record_fields R)) = k)
+    by (rewrite List.length_firstn; apply PeanoNat.Nat.min_l, PeanoNat.Nat.lt_le_incl, List.nth_error_Some; congruence).
+  rewrite (firstn_succ_nth _ _ _ Hk), fields_tele_snoc, Hl; reflexivity.
 Qed.
 
 Lemma length_record_pre : forall R k M, k <= List.length (record_fields R) -> List.length (record_pre R k M) = k.

@@ -105,7 +105,7 @@ Definition record_self (p : qname) (R : record_decl) : typ :=
     member is read at a value as [(R Ns e).f].  Its last binding is typed
     at the record's frame only ([record_self]; [frame_params]). *)
 Definition record_mod_tele (p : qname) (R : record_decl) : ctx :=
-  ce_ass (record_self p R) :: record_params R.
+  ce_ass (sort_exp_kind (record_sort R)) (record_self p R) :: record_params R.
 
 (** What a module path resolves to: a body, or an alias. *)
 Inductive modres : Set :=
@@ -602,7 +602,7 @@ Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry := gc
     proof, never evaluated, and it is selected as the proof [⋆ᵈ]. *)
 Definition gc_term (Θ : gdeps) (Ξ : gstack) (p : qname) : option exp :=
   match gc_resolve Θ Ξ p with
-  | Some (ge_def true _ relevant _ (Some M)) => Some M
+  | Some (ge_def true _ ak_relevant _ (Some M)) | Some (ge_def true _ ak_level _ (Some M)) => Some M
   | _ =>
       match gc_entry Θ Ξ p with
       | Some (ge_def_mod _ _ M _) => Some M
@@ -1736,7 +1736,7 @@ Fixpoint me_noargs (H : modexp) : Prop :=
 (** The Π a type is, looking through local definitions and local modules. *)
 Fixpoint pi_view (A : typ) : option (typ * typ)%type :=
   match A with
-  | a_pi _ B C => Some (B, C)
+  | a_pi _ _ B C => Some (B, C)
   | a_let (b_def B N) T =>
       match pi_view T with
       | Some (B', C') => Some (B'[Id,,N], C'[q (Id,,N)])
@@ -1754,13 +1754,14 @@ Fixpoint pi_view (A : typ) : option (typ * typ)%type :=
     domains as a context, innermost first (the last [Π]'s domain at the
     head, the first one's at the end), and the codomain past them, in that
     context.  [Π (A : Typeω@0). A → Typeω@0] gives the context
-    [ce_ass #0 :: ce_ass Typeω@0 :: nil] (the inner domain [A], bound
-    second, at the head) and the codomain [Typeω@0].  Only relevant [Π]s
-    are read: the type of a type former is one, and a [∀] ends in a
-    proposition, no universe. *)
+    [ce_ass κ #0 :: ce_ass κ' Typeω@0 :: nil] (the inner domain [A], bound
+    second, at the head, each at its binder's kind) and the codomain
+    [Typeω@0].  Only the [Π]s into a type of a universe are read: the type
+    of a type former is one, a [∀] ends in a proposition, a [Πₗ] in a type
+    of levels, no universe. *)
 Fixpoint nf_pi_tele (W : nf) : (ctx * nf)%type :=
   match W with
-  | nf_pi relevant B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass (nf_to_exp B) :: nil, C')
+  | nf_pi κ ak_relevant B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass κ (nf_to_exp B) :: nil, C')
   | _ => (nil, W)
   end.
 
@@ -1793,7 +1794,7 @@ Definition exp_applied_to_vars (M : exp) (n : nat) : exp := apps_exp M[wk_shiftn
 Fixpoint tele_open (R : list centry) : option (typ * ctx)%type :=
   match R with
   | nil => None
-  | ce_ass B :: R' => Some (B, rev R')
+  | ce_ass _ B :: R' => Some (B, rev R')
   | ce_def B N :: R' =>
       match tele_open R' with
       | Some (B', T') => Some (B'[Id,,N], tele_sub T' (q (Id,,N)))
@@ -1821,9 +1822,12 @@ Definition tele_inst (T : ctx) (N : exp) : option ctx :=
   | None => None
   end.
 
-(** A module [F (A : Typeω@0) (f : forall (x : A) -> A)] takes [⋅ ▹ Typeω@0 ▹
-    Π #0 #1]; applied to [⊤], it takes [⋅ ▹ Π ⊤ ⊤]. *)
-Example tele_inst_example : tele_inst (⋅ ▹ Typeω@0 ▹ Π #0 #1) a_True = Some (⋅ ▹ Π a_True a_True).
+(** A module [F (A : Typeω@0) (f : forall (x : A) -> A)] takes [⋅ ▹{ak_relevant} Typeω@0
+    ▹{ak_relevant} Π{ak_relevant} #0 #1]; applied to [⊤], it takes
+    [⋅ ▹{ak_relevant} Π{ak_relevant} ⊤ ⊤] (the kinds as written: the typed fill would
+    tag [⊤]'s binder [ak_propositional]). *)
+Example tele_inst_example : tele_inst (⋅ ▹{ak_relevant} Typeω@0 ▹{ak_relevant} Π{ak_relevant} #0 #1) a_True
+                            = Some (⋅ ▹{ak_relevant} Π{ak_relevant} a_True a_True).
 Proof. reflexivity. Qed.
 
 (** ** Descriptions
@@ -1851,8 +1855,9 @@ Proof. reflexivity. Qed.
 
 (** The sort of a member, as evaluation reads it. *)
 Inductive member_kind : Set :=
-(** A definition, tagged with its sort: a relevant one, or a proof *)
-| member_kind_term : relevance -> member_kind
+(** A definition, tagged with its kind: a relevant one, a level, or a
+    proof *)
+| member_kind_term : abs_kind -> member_kind
 (** A module *)
 | member_kind_mod
 (** A member with a term part and a module part: an inductive type, a
@@ -1862,9 +1867,9 @@ Inductive member_kind : Set :=
 (** A member description: what a module expression or an entry denotes
     (see the section header above). *)
 Inductive mdesc : Set :=
-(** A term of the type of the sort [r] (a proof at [propositional]), with
-    its δ-reduct if it is transparent *)
-| mdesc_term : relevance -> typ -> option exp -> mdesc
+(** A term of a type of the kind [κ] (a proof at [ak_propositional]),
+    with its δ-reduct if it is transparent *)
+| mdesc_term : abs_kind -> typ -> option exp -> mdesc
 (** An open body module: its parameters, its written body and its
     expansion *)
 | mdesc_open : ctx -> gmod -> gmod -> mdesc
@@ -1908,12 +1913,12 @@ Definition mdesc_type (R : mdesc) : option typ :=
   | _ => None
   end.
 
-(** The relevance of the term part: a term's tag; a definition with a
-    module part is relevant. *)
-Definition mdesc_relevance (R : mdesc) : relevance :=
+(** The kind of the term part: a term's tag; a definition with a module
+    part is of a type of a universe. *)
+Definition mdesc_kind (R : mdesc) : abs_kind :=
   match R with
-  | mdesc_term r _ _ => r
-  | _ => relevant
+  | mdesc_term κ _ _ => κ
+  | _ => ak_relevant
   end.
 
 (** The δ-reduct of the term part: the body of a transparent definition, or
@@ -1996,7 +2001,7 @@ Fixpoint fn_view (M : exp) : option exp :=
 Fixpoint tele_split (R : list centry) : ((typ * ctx * sub) + sub)%type :=
   match R with
   | nil => inr Id
-  | ce_ass B :: R' => inl (B, rev R', Id)
+  | ce_ass _ B :: R' => inl (B, rev R', Id)
   | ce_def B N :: R' =>
       match tele_split R' with
       | inl (B', T', τ) => inl (B'[Id,,N], tele_sub T' (q (Id,,N)), τ ⨟ sb_qn (S (List.length T')) (Id,,N))
@@ -2013,6 +2018,16 @@ Fixpoint tele_split (R : list centry) : ((typ * ctx * sub) + sub)%type :=
                                 τ ⨟ sb_qn (S (List.length T')) (Id ,,ᵈ N ‖ me_lit U))
       | inr τ => inr (τ ⨟ (Id ,,ᵈ N ‖ me_lit U))
       end
+  end.
+
+(** The kind of the outermost assumption of a telescope, given outermost
+    first ([ak_relevant] when there is none): the binder [tele_split]
+    opens. *)
+Fixpoint tele_split_kind (R : list centry) : abs_kind :=
+  match R with
+  | nil => ak_relevant
+  | ce_ass κ _ :: _ => κ
+  | _ :: R' => tele_split_kind R'
   end.
 
 (** Application "R at N": [N] is the next parameter.  A leading definition
@@ -2216,7 +2231,7 @@ Fixpoint mdesc_term_part_ats (R : mdesc) (Ns : list exp) : option mdesc :=
 Definition mdesc_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
   match R with
   | mdesc_dm nil A M Rm =>
-      match mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns, mdesc_ats Rm Ns with
+      match mdesc_term_part_ats (mdesc_term ak_relevant A (Some M)) Ns, mdesc_ats Rm Ns with
       | Some (mdesc_term _ B (Some M')), Some Rm' => Some (mdesc_dm nil B M' Rm')
       | _, _ => None
       end
@@ -2238,10 +2253,10 @@ Ltac mdesc_dm_read_shape H :=
 Lemma mdesc_ats_read_inv : forall R Ns R', mdesc_ats_read R Ns = Some R' ->
     mdesc_ats R Ns = Some R' \/
     exists A M Rm r B M' Rm', R = mdesc_dm nil A M Rm /\ R' = mdesc_dm nil B M' Rm' /\
-      mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns = Some (mdesc_term r B (Some M')) /\ mdesc_ats Rm Ns = Some Rm'.
+      mdesc_term_part_ats (mdesc_term ak_relevant A (Some M)) Ns = Some (mdesc_term r B (Some M')) /\ mdesc_ats Rm Ns = Some Rm'.
 Proof.
   intros [| | | [| e Θd] A M Rm] Ns R' Ha; cbn [mdesc_ats_read] in Ha; try (left; exact Ha).
-  right; destruct (mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | |] |] eqn:Et; try discriminate.
+  right; destruct (mdesc_term_part_ats (mdesc_term ak_relevant A (Some M)) Ns) as [[r B [M' |] | | |] |] eqn:Et; try discriminate.
   destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
   do 7 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Et | exact E ] ] ].
 Qed.
@@ -2451,7 +2466,7 @@ Qed.
 Inductive generated_item : Set :=
 (** [generated_item_def d pv r A M]: the definition [d] of type [A], of the
     sort [r], equal to [M] *)
-| generated_item_def : string -> bool -> relevance -> typ -> exp -> generated_item
+| generated_item_def : string -> bool -> abs_kind -> typ -> exp -> generated_item
 (** [generated_item_alias d pv E]: the alias [d] of [E] *)
 | generated_item_alias : string -> bool -> modexp -> generated_item
 (** [generated_item_def_mod d pv A M E]: the definition [d] of type [A] equal to [M],
@@ -2651,16 +2666,16 @@ Definition items_ok (its : list import_item) : Prop :=
 
 (** A telescope of parameters has assumptions only: a module's arguments are
     terms.  A unit has members only under such parameters. *)
-Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists A, e = ce_ass A) Δ.
+Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists κ A, e = ce_ass κ A) Δ.
 
 Lemma tele_ass_wk : forall Δ φ, tele_ass Δ -> tele_ass (tele_wk Δ φ).
 Proof.
-  induction 1 as [| e Δ [A ->] HΔ IH]; cbn; constructor; eauto.
+  induction 1 as [| e Δ (κ & A & ->) HΔ IH]; cbn; constructor; eauto.
 Qed.
 
 Lemma tele_ass_sub : forall Δ σ, tele_ass Δ -> tele_ass (tele_sub Δ σ).
 Proof.
-  induction 1 as [| e Δ [A ->] HΔ IH]; cbn; constructor; eauto.
+  induction 1 as [| e Δ (κ & A & ->) HΔ IH]; cbn; constructor; eauto.
 Qed.
 
 (** ** What a Module Expression Denotes
@@ -3175,27 +3190,27 @@ Qed.
 
 (** The term part a path is selected as: the body of a transparent
     definition it resolves to, or the term of a definition with a module
-    part stored there, which resolves to nothing.  The definition is
-    relevant. *)
+    part stored there, which resolves to nothing.  The definition is of
+    an evaluated kind. *)
 Lemma gc_term_inv : forall Θ Ξ p M, gc_term Θ Ξ p = Some M ->
-    (exists pv A, gc_resolve Θ Ξ p = Some (ge_def true pv relevant A (Some M))) \/
+    (exists pv κ A, evaluated_kind κ /\ gc_resolve Θ Ξ p = Some (ge_def true pv κ A (Some M))) \/
     (exists pv A U, gc_entry Θ Ξ p = Some (ge_def_mod pv A M U)).
 Proof.
   intros * Ht; unfold gc_term in Ht.
   destruct (gc_resolve Θ Ξ p) as [E |] eqn:Er.
   - destruct E as [[] pv [] A [M' |] | | | |];
-      try (injection Ht as <-; left; eauto; fail);
+      try (injection Ht as <-; left; do 3 eexists; split; [ constructor | eauto ]; fail);
       rewrite (gc_resolve_entry _ _ _ _ Er) in Ht; cbn in Ht;
       first [ discriminate | injection Ht as <-; right; do 3 eexists; exact (gc_resolve_entry _ _ _ _ Er) ].
   - destruct (gc_entry Θ Ξ p) as [[| | | pv A M' U |] |]; try discriminate.
     injection Ht as <-; right; eauto.
 Qed.
 
-(** A path resolving to a relevant transparent definition is selected as
-    its body. *)
-Lemma gc_term_of_resolve : forall Θ Ξ p pv A M,
-    gc_resolve Θ Ξ p = Some (ge_def true pv relevant A (Some M)) -> gc_term Θ Ξ p = Some M.
-Proof. intros * Hr; unfold gc_term; rewrite Hr; reflexivity. Qed.
+(** A path resolving to a transparent definition of an evaluated kind is
+    selected as its body. *)
+Lemma gc_term_of_resolve : forall Θ Ξ p pv κ A M, evaluated_kind κ ->
+    gc_resolve Θ Ξ p = Some (ge_def true pv κ A (Some M)) -> gc_term Θ Ξ p = Some M.
+Proof. intros * Hκ Hr; unfold gc_term; rewrite Hr; destruct Hκ; reflexivity. Qed.
 
 (** A path storing a definition with a module part is selected as its term. *)
 Lemma gc_term_of_def_mod : forall Θ Ξ p pv A M U,
@@ -3204,7 +3219,7 @@ Proof.
   intros * He; unfold gc_term.
   destruct (gc_resolve Θ Ξ p) as [E |] eqn:Hr; [| rewrite He; reflexivity ].
   destruct E as [[|] pv' [] A' [M' |] | | | |]; try (rewrite He; reflexivity).
-  exfalso; apply (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ Hr); right; right; do 4 eexists; exact He.
+  all: exfalso; apply (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ Hr); right; right; do 4 eexists; exact He.
 Qed.
 
 (** What a term entry stored at [o] describes as a term: a definition; a
@@ -3216,11 +3231,11 @@ Definition entry_term (o : option qname) (E : gentry) : option mdesc :=
   match E with
   | ge_def b _ r A oM => Some (mdesc_term r A (if b then oM else None))
   | ge_ind _ pq k D _ =>
-      option_map (fun Mk => mdesc_term relevant (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
+      option_map (fun Mk => mdesc_term ak_relevant (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
         (ind_member D k)
-  | ge_def_mod _ A M _ => Some (mdesc_term relevant A (Some M))
+  | ge_def_mod _ A M _ => Some (mdesc_term ak_relevant A (Some M))
   | ge_mod _ _ => None
-  | ge_record _ _ R _ => option_map (fun p => mdesc_term relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
+  | ge_record _ _ R _ => option_map (fun p => mdesc_term ak_relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
   end.
 
 (** A stored alias entry as the alias unit it is, over its full telescope:

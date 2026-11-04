@@ -68,26 +68,26 @@ Hint Resolve sub_eq_preserves_subtyp : mctt.
     [wf_sub_eq_extend] builds the equivalence and [sub_eq_preserves_exp]
     transports the type along it. *)
 
-Corollary exp_eq_sub_eq_head : forall Θ Ξ Γ Δ A B M M' σ i,
-    Θ ⍮ Ξ ⍮ Δ ▹ A ⊢ B : Typeω@i ->
+Corollary exp_eq_sub_eq_head : forall Θ Ξ Γ Δ κ A B M M' σ i,
+    Θ ⍮ Ξ ⍮ Δ ▹{κ} A ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ B[σ,,M] ≈ B[σ,,M'] : Typeω@i.
 Proof.
   intros.
-  match goal with HB : _ ⍮ _ ⍮ Δ ▹ A ⊢ B : _ |- _ =>
-    destruct (proj2 (ctx_decomp (presup_exp_ctx HB))) as [SA HSA HA] end.
+  match goal with HB : _ ⍮ _ ⍮ Δ ▹{κ} A ⊢ B : _ |- _ =>
+    destruct (proj2 (ctx_decomp_sort_kind (presup_exp_ctx HB))) as (SA & HSA & HA) end.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ : Δ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,M ≈ σ,,M' : Δ ▹ A) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,M ≈ σ,,M' : Δ ▹{κ} A) by (eapply wf_sub_eq_extend; mauto 2).
   eapply sub_eq_preserves_typ; eassumption.
 Qed.
 
 (** The instance at a single substitution, which is how the [ℕ]- and
     [Π]-eliminators state their types. *)
-Corollary exp_eq_sub_eq_single : forall Θ Ξ Γ A B M M' i,
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
+Corollary exp_eq_sub_eq_single : forall Θ Ξ Γ κ A B M M' i,
+    Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,M] ≈ B[Id,,M'] : Typeω@i.
 Proof.

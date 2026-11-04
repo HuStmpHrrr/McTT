@@ -46,43 +46,42 @@ Import Syntax_Notations Wk_Notations.
 
 (** A [Π] typed, and equal to a [Π] of equal parts, at one sort. *)
 #[warnings="-cannot-define-projection"]
-Record pi_typed_and_congruent (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (r : relevance) (A B A' B' : typ) : Prop :=
+Record pi_typed_and_congruent (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (κd κc : abs_kind) (A B A' B' : typ) : Prop :=
   mk_pi_typed_and_congruent
   { (** The sort both are at *)
     pi_typed_and_congruent_sort : exp
     (** It is a sort of types *)
   ; pi_typed_and_congruent_sort_is_type : type_sort pi_typed_and_congruent_sort
     (** The [Π] is of it *)
-  ; pi_typed_and_congruent_typed : Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B : pi_typed_and_congruent_sort
+  ; pi_typed_and_congruent_typed : Θ ⍮ Ξ ⍮ Γ ⊢ a_pi κd κc A B : pi_typed_and_congruent_sort
     (** The two [Π]s are equal at it *)
-  ; pi_typed_and_congruent_congruent : Θ ⍮ Ξ ⍮ Γ ⊢ a_pi r A B ≈ a_pi r A' B' : pi_typed_and_congruent_sort }.
+  ; pi_typed_and_congruent_congruent : Θ ⍮ Ξ ⍮ Γ ⊢ a_pi κd κc A B ≈ a_pi κd κc A' B' : pi_typed_and_congruent_sort }.
 
-(** A [Π] into a codomain of a sort allowed by [pi_codomain_sort]: a
-    universe at the tag, or, for a relevant [Π] over a type of levels, the
-    types of levels; a propositional one over a type of levels is a
-    proposition. *)
-Lemma wf_pi_codomain_eq_at : forall Θ Ξ Γ r A A' B B' Srt Srt',
+(** A [Π] at the kinds [pi_kinds κd κc], at the premises of [wf_fn]: a
+    type of the sort of [κc]; between types of levels, [LevelSort]. *)
+Lemma wf_pi_cong_at_kinds : forall Θ Ξ Γ κd κc A A' B B' Srt i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
+    sort_kind Srt κd ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Srt' ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : relevance_sort r Srt' ->
-    pi_codomain_sort Srt Srt' ->
-    pi_typed_and_congruent Θ Ξ Γ r A B A' B'.
+    Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊢ B ≈ B' : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    pi_typed_and_congruent Θ Ξ Γ κd κc A B A' B'.
 Proof.
-  intros * HA HS HAA HB HBB Hc.
-  assert (Huniv : forall i, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
-                       Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : relevance_sort r Typeω@i ->
-                       pi_typed_and_congruent Θ Ξ Γ r A B A' B').
-  { intros i HBi HBBi.
-    destruct (wf_pi_sort_at _ _ _ r _ _ _ _ HA HS HBi) as [j Hj].
-    destruct (wf_exp_eq_pi_sort_at _ _ _ r _ _ _ _ _ _ HA HS HAA HBBi) as [k Hk].
-    exists (relevance_sort r Typeω@(max j k));
-      [ apply type_sort_relevance; constructor | exact (lift_rel_max_left _ _ _ _ _ _ _ Hj)
-      | exact (lift_rel_eq_max_right _ _ _ _ _ _ _ _ Hk) ]. }
-  destruct Hc as [? i |]; [ exact (Huniv i HB HBB) |].
-  destruct r; [| exact (Huniv 0 HB HBB) ].
-  exists LevelSort; [ constructor | eapply wf_pi_level; eassumption | eapply wf_exp_eq_pi_cong_level; eassumption ].
+  intros * HA HS HAA HB HBB Hk.
+  destruct (abs_kind_eq_dec κc ak_level) as [-> | Hl].
+  - (* between types of levels: [LevelSort] *)
+    inversion Hk; subst; inversion HS; subst.
+    assert (HU : Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@0) by (apply wf_is_univ_large; eapply presup_exp_ctx, HA).
+    exists LevelSort; [ constructor | |].
+    + eapply wf_pi with (U := Typeω@0) (κd := ak_level) (κc := ak_level); [ exact HU | exact HA | exact HB | constructor ].
+    + eapply wf_exp_eq_pi_cong with (U := Typeω@0) (κd := ak_level) (κc := ak_level);
+        [ exact HU | exact HA | exact HAA | exact HBB | constructor ].
+  - destruct (wf_pi_sort_at _ _ _ _ _ _ _ _ _ HA HS HB Hl) as [j Hj].
+    destruct (wf_exp_eq_pi_sort_at _ _ _ _ _ _ _ _ _ _ _ HA HS HAA HBB Hl) as [k Hk'].
+    exists (abs_kind_sort κc Typeω@(max j k));
+      [ apply type_sort_abs_kind; constructor | exact (lift_rel_max_left _ _ _ _ _ _ _ Hj)
+      | exact (lift_rel_eq_max_right _ _ _ _ _ _ _ _ Hk') ].
 Qed.
 
 Lemma presup_exp_eq_sides : forall {Θ Ξ Γ M M' A},
@@ -137,76 +136,62 @@ Proof.
   all: try solve [ eapply wf_conv_sort;
                    [ eapply wf_absurd; eassumption | eassumption | eassumption | apply wf_exp_eq_sym; eassumption ] ].
 
-  (** [Π] of either tag, right.  Only the codomain has to move, and it
-      moves by context conversion: [Γ ▹ A'] refines [Γ ▹ A], at the sort of
-      types the domain's sort lifts to. *)
+  (** [Π], right.  Only the codomain has to move, and it moves by context
+      conversion: [Γ ▹{κd} A'] refines [Γ ▹{κd} A], at a sort of the
+      domain's kind the domain's sort lifts to ([pi_domain_eq_sort]). *)
   all: try solve [
     match goal with
-    | HU : _ ⍮ _ ⍮ ?G ⊢ᵤ ?U, HD : pi_domain_sort ?U ?S, HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : ?S,
-      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : ?S, HB' : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B' : _
-      |- _ ⍮ _ ⍮ ?G ⊢ a_pi _ ?A' ?B' : _ =>
-        destruct (pi_domain_eq_sort HU HD HA HA' HAA) as (S0 & HS0 & HA0 & HA0' & HAA0);
+    | HU : _ ⍮ _ ⍮ ?G ⊢ᵤ ?U, HA : _ ⍮ _ ⍮ ?G ⊢ ?A : abs_kind_sort ?kd ?U, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : abs_kind_sort ?kd ?U,
+      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : abs_kind_sort ?kd ?U, HB' : _ ⍮ _ ⍮ ?G ▹{?kd} ?A ⊢ ?B' : _,
+      Hk : pi_kinds ?kd ?kc
+      |- _ ⍮ _ ⍮ ?G ⊢ a_pi ?kd ?kc ?A' ?B' : _ =>
+        destruct (pi_domain_eq_sort HU HA HA' HAA) as (S0 & HS0 & HA0 & HA0' & HAA0);
         let HI := fresh "HI" in let HB'' := fresh "HB''" in
-        assert (HI : _ ⍮ _ ⍮ G ▹ A' ⊢ˢ Id : G ▹ A) by (eapply wf_sub_id_extend_eq; eassumption);
+        assert (HI : _ ⍮ _ ⍮ G ▹{kd} A' ⊢ˢ Id : G ▹{kd} A) by (eapply wf_sub_id_extend_eq; eassumption);
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' HI) as HB''; rewrite !exp_sub_id in HB'';
-        eapply wf_pi; [ exact HU | exact HA' | exact HD | exact HB'' ]
+        eapply wf_pi; [ exact HU | exact HA' | exact HB'' | exact Hk ]
     end ].
 
-  (** [Π] between types of levels, right: the codomain moves by context
-      conversion. *)
+  (** [λ], right.  The codomain moves by context conversion; the bridging
+      equation [a_pi κd κc A B ≈ a_pi κd κc A' B] is at a sort the [Π] is
+      of ([wf_pi_cong_at_kinds]). *)
   all: try solve [
     match goal with
-    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : LevelSort, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : LevelSort,
-      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : LevelSort, HB' : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B' : LevelSort
-      |- _ ⍮ _ ⍮ ?G ⊢ Π ?A' ?B' : LevelSort =>
-        let HI := fresh "HI" in let HB'' := fresh "HB''" in
-        assert (HI : _ ⍮ _ ⍮ G ▹ A' ⊢ˢ Id : G ▹ A)
-          by (eapply wf_sub_id_extend_eq; [ exact HA | exact HA' | exact type_sort_level | exact HAA ]);
-        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' HI) as HB''; rewrite !exp_sub_id in HB'';
-        eapply wf_pi_level; [ exact HA' | exact HB'' ]
-    end ].
-
-  (** [λ] of either tag, right.  The codomain moves by context conversion;
-      the bridging equation [a_pi r A B ≈ a_pi r A' B] is at a sort the [Π]
-      is of ([wf_pi_codomain_eq_at]). *)
-  all: try solve [
-    match goal with
-    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HS : type_sort ?S, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : ?S,
-      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : ?S, HB : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B : relevance_sort ?r ?S',
-      Hc : pi_codomain_sort ?S ?S', HM' : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?M' : ?B
-      |- _ ⍮ _ ⍮ ?G ⊢ λ ?A' ?M' : a_pi ?r ?A ?B =>
+    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HS : sort_kind ?S ?kd, HA' : _ ⍮ _ ⍮ ?G ⊢ ?A' : ?S,
+      HAA : _ ⍮ _ ⍮ ?G ⊢ ?A ≈ ?A' : ?S, HB : _ ⍮ _ ⍮ ?G ▹{?kd} ?A ⊢ ?B : abs_kind_sort ?kc Typeω@?i,
+      Hk : pi_kinds ?kd ?kc, HM' : _ ⍮ _ ⍮ ?G ▹{?kd} ?A ⊢ ?M' : ?B
+      |- _ ⍮ _ ⍮ ?G ⊢ λ ?A' ?M' : a_pi ?kd ?kc ?A ?B =>
         let HI := fresh "HI" in
-        assert (HI : _ ⍮ _ ⍮ G ▹ A' ⊢ˢ Id : G ▹ A) by (eapply wf_sub_id_extend_eq; eassumption);
+        assert (HI : _ ⍮ _ ⍮ G ▹{kd} A' ⊢ˢ Id : G ▹{kd} A) by (eapply wf_sub_id_extend_eq; eassumption);
         let HBi := fresh "HBi" in let HMi := fresh "HMi" in
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB HI) as HBi; rewrite !exp_sub_id in HBi;
         pose proof (sub_preserves_exp _ _ _ _ _ _ _ HM' HI) as HMi; rewrite !exp_sub_id in HMi;
         let HF := fresh "HF" in
-        assert (HF : _ ⍮ _ ⍮ G ⊢ λ A' M' : a_pi r A' B)
-          by (eapply wf_fn; [ exact HA' | exact HS | exact HBi | exact Hc | exact HMi ]);
+        assert (HF : _ ⍮ _ ⍮ G ⊢ λ A' M' : a_pi kd kc A' B)
+          by (eapply wf_fn with (i := i); [ exact HA' | exact HS | exact HBi | exact Hk | exact HMi ]);
         let S0 := fresh "S0" in let HS0 := fresh "HS0" in let HP := fresh "HP" in let HPP := fresh "HPP" in
-        destruct (wf_pi_codomain_eq_at _ _ _ r _ _ _ _ _ _ HA HS HAA HB ltac:(apply wf_exp_eq_refl; exact HB) Hc)
+        destruct (wf_pi_cong_at_kinds _ _ _ _ _ _ _ _ _ _ _ HA HS HAA HB ltac:(apply wf_exp_eq_refl; exact HB) Hk)
           as [S0 HS0 HP HPP];
         eapply wf_conv_sort; [ exact HF | exact HP | exact HS0 | apply wf_exp_eq_sym; exact HPP ]
     end ].
 
-  (** Application of either tag, right: the type is the codomain at the
-      argument, and the arguments are equal. *)
+  (** Application, right: the type is the codomain at the argument, and
+      the arguments are equal. *)
   all: try solve [
     match goal with
-    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HS : type_sort ?S, HB : _ ⍮ _ ⍮ ?G ▹ ?A ⊢ ?B : relevance_sort ?r ?S',
-      Hc : pi_codomain_sort ?S ?S',
-      HM' : _ ⍮ _ ⍮ ?G ⊢ ?M' : a_pi ?r ?A ?B, HN : _ ⍮ _ ⍮ ?G ⊢ ?N : ?A, HN' : _ ⍮ _ ⍮ ?G ⊢ ?N' : ?A,
+    | HA : _ ⍮ _ ⍮ ?G ⊢ ?A : ?S, HS : sort_kind ?S ?kd, HB : _ ⍮ _ ⍮ ?G ▹{?kd} ?A ⊢ ?B : abs_kind_sort ?kc Typeω@?i,
+      Hk : pi_kinds ?kd ?kc,
+      HM' : _ ⍮ _ ⍮ ?G ⊢ ?M' : a_pi ?kd ?kc ?A ?B, HN : _ ⍮ _ ⍮ ?G ⊢ ?N : ?A, HN' : _ ⍮ _ ⍮ ?G ⊢ ?N' : ?A,
       HNN : _ ⍮ _ ⍮ ?G ⊢ ?N ≈ ?N' : ?A
       |- _ ⍮ _ ⍮ ?G ⊢ ?M' $ ?N' : ?B[Id,,?N] =>
         let HSr := fresh "HSr" in
-        assert (HSr : type_sort (relevance_sort r S'))
-          by (apply type_sort_relevance, (pi_codomain_sort_type_sort _ _ Hc));
+        assert (HSr : type_sort (abs_kind_sort kc Typeω@i)) by (apply type_sort_abs_kind; constructor);
         let Hs := fresh "Hs" in let Hss := fresh "Hss" in
-        assert (Hs : _ ⍮ _ ⍮ G ⊢ˢ Id,,N : G ▹ A) by (eapply wf_sub_single; [ exact HA | exact HS | exact HN ]);
-        assert (Hss : _ ⍮ _ ⍮ G ⊢ˢ Id,,N' ≈ Id,,N : G ▹ A)
+        assert (Hs : _ ⍮ _ ⍮ G ⊢ˢ Id,,N : G ▹{kd} A) by (eapply wf_sub_single; [ exact HA | exact HS | exact HN ]);
+        assert (Hss : _ ⍮ _ ⍮ G ⊢ˢ Id,,N' ≈ Id,,N : G ▹{kd} A)
           by (eapply wf_sub_eq_id_extend; [ exact HA | exact HS | exact HN' | exact HN | apply wf_exp_eq_sym; exact HNN ]);
         eapply wf_conv_sort;
-          [ eapply wf_app; [ exact HA | exact HS | exact HB | exact Hc | exact HM' | exact HN' ]
+          [ eapply wf_app with (i := i); [ exact HA | exact HS | exact HB | exact Hk | exact HM' | exact HN' ]
           | exact (sub_preserves_sort _ _ _ _ _ _ _ HB HSr Hs) | exact HSr
           | exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HB HSr Hss) ]
     end ].
@@ -215,7 +200,7 @@ Proof.
   all: try solve [ eapply wf_fn_eta_expand; eassumption ].
 
   (** [Σₚ], right: the family moves by context conversion. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ▹ P' ⊢ˢ Id : Γ ▹ P) by mauto 3.
+  - assert (Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P' ⊢ˢ Id : Γ ▹{ak_propositional} P) by mauto 3.
     eapply wf_and; [ eassumption | mauto 3 ].
 
   (** [let], right: as for [λ], the body moves by context conversion, and the
@@ -281,13 +266,13 @@ Proof.
   all: try (match goal with |- ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ᵗ ?A =>
               assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) as (k & Hk) by (eexists; mauto 3);
               exact (mk_wf_type _ (type_sort_universe k) Hk) end).
-  (** The types of levels of a sort, and a [Π] between types of levels:
-      types of levels. *)
-  all: try solve [ apply (mk_wf_type _ type_sort_level); first [ eapply wf_pi_level; eassumption | mauto 3 ] ].
-  (** [Π], its domains of the universe of its codomains or propositions. *)
+  (** The types of levels of a sort: types of levels. *)
+  all: try solve [ apply (mk_wf_type _ type_sort_level); mauto 3 ].
+  (** [Π] at its kinds, at the sort of the codomain's kind next to the
+      universe of its parts. *)
   all: assert (Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@i) by mauto 3.
-  all: apply (mk_wf_type _ (type_sort_universe i));
-         eapply wf_pi with (r := relevant); eassumption.
+  all: apply (mk_wf_type (abs_kind_sort κc Typeω@i)); [ apply type_sort_abs_kind; constructor |].
+  all: eapply wf_pi; [ eassumption | eassumption | rewrite abs_kind_sort_wk; eassumption | eassumption ].
 Qed.
 
 Theorem presup_subtyp : forall {Θ Ξ Γ A A'},

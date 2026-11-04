@@ -174,7 +174,8 @@ Fixpoint gm_coherent (T : ctx) (Φ : gmod) : Prop :=
 (** A record's module telescope extends what its parameters extend, by
     assumptions: the parameters' own and then the value. *)
 Lemma record_mod_tele_split : forall p R Δ T, record_params R = Δ ++ T -> tele_ass Δ ->
-    record_mod_tele p R = (ce_ass (record_self p R) :: Δ) ++ T /\ tele_ass (ce_ass (record_self p R) :: Δ).
+    record_mod_tele p R = (ce_ass (sort_exp_kind (record_sort R)) (record_self p R) :: Δ) ++ T /\
+    tele_ass (ce_ass (sort_exp_kind (record_sort R)) (record_self p R) :: Δ).
 Proof.
   intros * HP HΔ; unfold record_mod_tele; rewrite HP; split; [ reflexivity | constructor; eauto ].
 Qed.
@@ -200,7 +201,7 @@ Proof.
     destruct ip as [| w ip].
     + injection H as <- <-; split; [ exact Hc2 | eauto ].
     + destruct (IH _ _ _ _ _ _ Hc2 H) as (Hc' & Δ' & -> & HΔ').
-      split; [ exact Hc' | exists (Δ' ++ ce_ass (record_self pr Rr) :: Δ); rewrite HT, app_assoc;
+      split; [ exact Hc' | exists (Δ' ++ ce_ass (sort_exp_kind (record_sort Rr)) (record_self pr Rr) :: Δ); rewrite HT, app_assoc;
                            split; [ reflexivity | apply Forall_app; auto ] ].
 Qed.
 
@@ -282,7 +283,7 @@ Proof.
       split; [ exists Δu; split; [ reflexivity | inversion HΔu; assumption ] | exact Hc ] end.
   - split; [ assumption | exact I ].
   - split; [ assumption | exact I ].
-  - split; [ constructor; [ eexists; reflexivity | assumption ] | exact I ].
+  - split; [ constructor; [ do 2 eexists; reflexivity | assumption ] | exact I ].
   - match goal with IH : tele_ass Δ /\ _ |- _ => destruct IH as [HΔ Hc] end.
     split; [ exact HΔ |].
     match goal with IHE : forall _ _ _ _ _, _ = _ -> _ |- _ => specialize (IHE _ _ _ _ _ eq_refl); cbn in IHE end.
@@ -1265,7 +1266,7 @@ Qed.
     a value of it, in an enclosing frame. *)
 Lemma wf_gmod_record_params : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
     forall R, K = fk_record R ->
-    exists Δr, Δ = ce_ass (record_self mp R) :: Δr /\ record_params R = Δr ++ gs_tele Ξ /\ Ξ <> nil.
+    exists Δr, Δ = ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: Δr /\ record_params R = Δr ++ gs_tele Ξ /\ Ξ <> nil.
 Proof.
   induction 1; intros * HK; try discriminate; [ injection HK as ->; eexists; split; [ reflexivity | split; [ assumption | discriminate ] ] | eauto ].
 Qed.
@@ -1345,7 +1346,7 @@ Qed.
     and then a value of it, over the frames outside it. *)
 Lemma frame_record_split : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p R U T0, gs_find_record Ξ p = Some R ->
     gs_find_tele Ξ p = Some (U, nil, T0) ->
-    exists Δr, gu_params U = ce_ass (record_self p R) :: Δr /\ record_params R = Δr ++ T0.
+    exists Δr, gu_params U = ce_ass (sort_exp_kind (record_sort R)) (record_self p R) :: Δr /\ record_params R = Δr ++ T0.
 Proof.
   intros * Hg * Hf Ht; destruct (gs_find_record_split _ _ _ Hf) as (Ξ1 & U' & Ξ0 & HΞ & Ht').
   rewrite Ht in Ht'; injection Ht' as -> ->.
@@ -2450,7 +2451,7 @@ Section Grow.
     - exact (mdesc_grows_ats _ _ _ _ ltac:(apply mdesc_grows_closed; eassumption) Ha).
     - destruct Θd as [| e Θd]; [| exact (mdesc_grows_ats _ _ _ _ (mdesc_grows_dm _ _ _ _ _ _ _ _ _ Hd) Ha) ].
       cbn [mdesc_ats_read] in Ha |- *.
-      destruct (mdesc_term_part_ats (mdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | |] |]; try discriminate.
+      destruct (mdesc_term_part_ats (mdesc_term ak_relevant A (Some M)) Ns) as [[r B [M' |] | | |] |]; try discriminate.
       destruct (mdesc_ats R1 Ns) as [R1a |] eqn:Ea; [| discriminate ]; injection Ha as <-.
       destruct (mdesc_grows_ats _ _ _ _ Hd Ea) as (R2a & -> & Hda); eexists; split; [ reflexivity | apply mdesc_grows_dm; exact Hda ].
   Qed.
