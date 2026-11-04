@@ -406,6 +406,33 @@ Proof.
   apply (IH r (tele_sub T1 (Id,,N))); [ apply tele_ass_sub; exact Ha1 | rewrite length_tele_sub; rewrite length_app in Hl; cbn in Hl; lia | exact Hats ].
 Qed.
 
+(** [mdesc_unseal_struct R]: the unsealing of a description that is no
+    term: a closed module's stored body unsealed, the module part of a
+    definition with a module part unsealed, an open module unchanged.  A
+    term is left as it is: unsealed it may gain its δ-reduct, which its
+    description does not give, so [mdesc_unsealed] is no function at a
+    term.  The member descriptions [⊢ⁿˡ] reads are never terms, so they
+    unseal by this function.  For a closed
+    [M = { def d : ℕ ≔ 0 (opaque); module K ≔ … }] the premises read only
+    [K]'s entry, whose description [mdesc_closed nil q T Φk nil] unseals to
+    [mdesc_closed nil q T (gm_unseal Φk) nil]; [d] is a definition, read
+    by its type. *)
+Fixpoint mdesc_unseal_struct (R : mdesc) : mdesc :=
+  match R with
+  | mdesc_closed Θ p T Φ Ns => mdesc_closed Θ p T (gm_unseal Φ) Ns
+  | mdesc_dm Θd A M Rm => mdesc_dm Θd A M (mdesc_unseal_struct Rm)
+  | _ => R
+  end.
+
+(** At a description that is no term, unsealing is that function. *)
+Lemma mdesc_unsealed_struct_of_non_term : forall R R', mdesc_unsealed R R' ->
+    (forall r A om, R <> mdesc_term r A om) -> R' = mdesc_unseal_struct R.
+Proof.
+  induction 1 as [r A om om' | | | Θd A M Rm Rm' Hm Hu IH]; intros Hn; cbn [mdesc_unseal_struct]; try reflexivity.
+  - exfalso; exact (Hn r A om eq_refl).
+  - rewrite IH; [ reflexivity |]; intros r A0 om E; subst; cbn in Hm; exact Hm.
+Qed.
+
 
 (** ** Lookup under Unsealing
 
@@ -465,6 +492,38 @@ Qed.
 
 Lemma ge_read_def : forall T E b pv r A oM, ge_read T E = ge_def b pv r A oM -> E = ge_def b pv r A oM.
 Proof. intros T [| ? [? [[] ?| ?]] | | |] * H; cbn in H; congruence. Qed.
+
+(** An entry stored at a location, read as it is stored, is read alike
+    unsealed: it is closed and valid there, so a body it holds is closed
+    with no open, and an alias it holds is a well-formed module
+    expression over its parameters, in any well-formed [Γ]. *)
+Lemma closed_entry_unseal_precondition : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ p T Φ y Φ0 E1 R,
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> loc Θ Ξ p T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E1) ->
+    edenote Θ Ξ Γ (Some (qname_in p y)) (ge_read T E1) R ->
+    gentry_unseal_precondition Θ Ξ Γ (Some (qname_in p y)) (ge_read T E1).
+Proof.
+  intros Θ Ξ Hg Γ p T Φ y Φ0 E1 R HΓ Hl Hp Hd.
+  pose proof (gctx_valid_syn _ _ Hg) as Hv.
+  pose proof (loc_closed _ _ Hg _ _ _ Hl) as [_ HcΦ].
+  pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
+  destruct (loc_valid _ _ _ _ _ Hv Hl) as [_ HvΦ].
+  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0.
+  intros pv U HE.
+  destruct E1 as [ | pv' [Ta [sm Φy | E']] | | pvd Ad Md Ud | ]; cbn [ge_read] in HE;
+    destruct HE as [HE | (A0 & M0 & HE)]; try discriminate; try (destruct sm; discriminate).
+  - destruct HcE as (-> & _ & HcΦy); injection HE as <- <-; cbn.
+    split; [ reflexivity | exact (body_closed_noopen _ _ HcΦy) ].
+  - injection HE as <- <-; cbn.
+    cbn [ge_valid syn_V] in HE0; destruct HE0 as (HEw & HΔ & _).
+    rewrite gunit_scoped_mk in HcE; destruct HcE as [HsΔ _].
+    exact (modexp_tele_weaken _ _ _ _ _ _ HEw (closed_tele_wf _ _ _ _ HsΔ HΔ HΓ)).
+  - (* a definition with a module part: its module part, an alias *)
+    injection HE as <- <- <- <-.
+    cbn [ge_read] in Hd; inversion Hd; subst; cbn.
+    cbn [ge_valid syn_V] in HE0; destruct HE0 as [(HEw & HΔ & _) _].
+    destruct HcE as (_ & _ & HsU); rewrite gunit_scoped_mk in HsU; destruct HsU as [HsΔ _].
+    exact (modexp_tele_weaken _ _ _ _ _ _ HEw (closed_tele_wf _ _ _ _ HsΔ HΔ HΓ)).
+Qed.
 
 Lemma mdenote_unseal_all : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     (forall Γ H R, mdenote Θ Ξ Γ H R -> modexp_unseal_precondition Θ Ξ Γ H ->
@@ -544,22 +603,8 @@ Proof.
       pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
       destruct (loc_valid _ _ _ _ _ Hv Hl) as [_ HvΦ].
       pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0.
-      assert (Hep : gentry_unseal_precondition Θ Ξ (nil ++ Γ) (Some (qname_in p y)) (ge_read T E1)).
-      { intros pv U HE; cbn [List.app].
-        destruct E1 as [ | pv' [Ta [sm Φy | E']] | | pvd Ad Md Ud | ]; cbn [ge_read] in HE;
-          destruct HE as [HE | (A0 & M0 & HE)]; try discriminate; try (destruct sm; discriminate).
-        - destruct HcE as (-> & _ & HcΦy); injection HE as <- <-; cbn.
-          split; [ reflexivity | exact (body_closed_noopen _ _ HcΦy) ].
-        - injection HE as <- <-; cbn.
-          cbn [ge_valid syn_V] in HE0; destruct HE0 as (HEw & HΔ & _).
-          rewrite gunit_scoped_mk in HcE; destruct HcE as [HsΔ _].
-          exact (modexp_tele_weaken _ _ _ _ _ _ HEw (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HΘ'))).
-        - (* a definition with a module part: its module part, an alias *)
-          injection HE as <- <- <- <-.
-          cbn [ge_read] in Hd; inversion Hd; subst; cbn.
-          cbn [ge_valid syn_V] in HE0; destruct HE0 as [(HEw & HΔ & _) _].
-          destruct HcE as (_ & _ & HsU); rewrite gunit_scoped_mk in HsU; destruct HsU as [HsΔ _].
-          exact (modexp_tele_weaken _ _ _ _ _ _ HEw (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HΘ'))). }
+      assert (Hep : gentry_unseal_precondition Θ Ξ (nil ++ Γ) (Some (qname_in p y)) (ge_read T E1))
+        by exact (closed_entry_unseal_precondition _ _ Hg _ _ _ _ _ _ _ _ (ctx_app_wf_tail _ _ _ _ HΘ') Hl Hp Hd).
       destruct (IHd Hep) as (R'' & Hd'' & HdR).
       cbn in Hr; destruct (mdesc_ats_read R Ns) as [R1 |] eqn:Hats; cbn in Hr; [ injection Hr as <- | discriminate ].
       assert (Hats' : exists R1', mdesc_ats_read R'' Ns = Some R1' /\ mdesc_unsealed R1 R1').
@@ -646,12 +691,13 @@ Proof.
   - intros; constructor.
   - intros Γ Φ Φx x E Hx IHx Hpre; constructor; apply IHx; intros k Ψ H Hk; apply (Hpre k); exact Hk.
   - (* an open: what it generates is read alike *)
-    intros Γ Φ Φx H its R Rm gs Hx IHx Hm IHm Hmod Hig IHig Hok Hpre.
-    unfold body_unseal_precondition in Hpre; rewrite (body_opens_open _ _ _ _ _ _ _ _ Hig) in Hpre.
+    intros Γ Φ Φx H its Φg R Rm gs Hx IHx Hm IHm Hmod Hig IHig Hok HΦg Hpre.
+    unfold body_unseal_precondition in Hpre; rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hig) in Hpre.
     pose proof (Hpre 0 _ _ eq_refl) as HH.
     destruct (IHm (or_introl HH)) as (R' & Hm' & Hd).
     destruct (mdesc_unsealed_mod _ _ _ Hd Hmod) as (Rm' & Hmod' & _).
-    econstructor; [ apply IHx; intros k Ψ H' Hk; exact (Hpre (S k) _ _ Hk) | exact Hm' | exact Hmod' | exact (IHig HH) | exact Hok ].
+    econstructor; [ apply IHx; intros k Ψ H' Hk; exact (Hpre (S k) _ _ Hk) | exact Hm' | exact Hmod' | exact (IHig HH) | exact Hok
+                  | exact HΦg ].
   - intros; constructor.
   - intros Γ H d pv its gs Hig IHig HH; constructor; exact (IHig HH).
   - intros Γ H n d pv ra A om its gs Hm IHm Hig IHig HH.
@@ -829,6 +875,183 @@ Qed.
 
 (** ** Unsealing Preserves Every Judgment *)
 
+(** ** Descriptions With No Member of a Type of Levels, Unsealed
+
+    The member descriptions [⊢ⁿˡ] reads are no terms, so they are read
+    unsealed as [mdesc_unseal_struct] gives them. *)
+
+(** The unit of a module entry of an expanded body, in a well-formed
+    extension, denotes unsealed the unsealing of what it denotes. *)
+Lemma open_entry_udenote_unseal : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ Φx y Φ0 E U R,
+    ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ -> gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+    udenote Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) None U R ->
+    udenote (gds_unseal Θ) (gs_unseal Ξ) (body_ctx Φ0 ++ Δ ++ Γ) None U (mdesc_unseal_struct R) /\
+    mdesc_unsealed R (mdesc_unseal_struct R).
+Proof.
+  intros Θ Ξ Hg * HC Hp HU Hu.
+  pose proof (body_prefix_mod_wf _ _ _ _ _ _ _ _ _ HC Hp HU) as HUw.
+  destruct (proj1 (proj2 (mdenote_unseal_all _ _ Hg)) _ _ _ _ Hu
+              (gunit_unseal_precondition_full _ _ _ _ (proj1 (unit_full_of_eq _ _ _ _ _ HUw)))) as (R' & Hu' & Hd).
+  rewrite <- (mdesc_unsealed_struct_of_non_term _ _ Hd); [ split; [ exact Hu' | exact Hd ] |].
+  intros r A om ->; exact (udenote_is_mod _ _ _ _ _ _ Hu).
+Qed.
+
+(** A stored entry of a filed body, no definition, read as it is stored,
+    denotes unsealed the unsealing of what it denotes. *)
+Lemma closed_entry_edenote_unseal : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ y Φ0 E R,
+    gc_body Θ Ξ p = Some (T, Φ) -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) ->
+    (forall b pv r A oM, E <> ge_def b pv r A oM) ->
+    edenote Θ Ξ ⋅ (Some (qname_in p y)) (ge_read T E) R ->
+    edenote (gds_unseal Θ) (gs_unseal Ξ) ⋅ (Some (qname_in p y)) (ge_read T (ge_unseal E)) (mdesc_unseal_struct R) /\
+    mdesc_unsealed R (mdesc_unseal_struct R).
+Proof.
+  intros Θ Ξ Hg * Hb Hp Hn Hd.
+  assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (apply wf_ctx_empty; exact Hg).
+  pose proof (closed_entry_unseal_precondition _ _ Hg _ _ _ _ _ _ _ _ HΓ (or_intror Hb) Hp Hd) as Hpre.
+  destruct (proj1 (proj2 (proj2 (mdenote_unseal_all _ _ Hg))) _ _ _ _ Hd Hpre) as (R' & Hd' & Hu).
+  cbn [entry_at] in Hd'; rewrite <- ge_read_unseal in Hd'.
+  rewrite <- (mdesc_unsealed_struct_of_non_term _ _ Hu); [ split; [ exact Hd' | exact Hu ] |].
+  intros r A om ->; destruct (edenote_term_inv _ _ _ _ _ _ _ _ Hd) as (b & pv & oM & HE & _).
+  exact (Hn _ _ _ _ _ (ge_read_def _ _ _ _ _ _ _ HE)).
+Qed.
+
+(** The description a flag premise names, chosen: when the flag is
+    set the premises are vacuous and [R0] serves. *)
+Lemma flag_desc_choice : forall (lv : bool) (R0 : mdesc) (P Q : mdesc -> Prop),
+    (lv = false -> exists R, P R /\ Q R) -> exists R, (lv = false -> P R) /\ (lv = false -> Q R).
+Proof.
+  intros [|] R0 P Q H; [ exists R0; split; discriminate |].
+  destruct (H eq_refl) as (R & HP & HQ); exists R; split; intros _; assumption.
+Qed.
+
+(** The cases of [⊢ⁿˡ] unsealed, from the induction hypotheses of its
+    premises, as the mutual induction gives them. *)
+
+(** A term: its type is a type unsealed. *)
+Lemma no_level_term_unseal : forall Θ Ξ Γ r A om i,
+    gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i ->
+    forall R', mdesc_unsealed (mdesc_term r A om) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
+Proof.
+  intros * HA R' Hd; inversion Hd; subst; eapply wf_no_level_term; exact HA.
+Qed.
+
+(** An open body module: unchanged, its module entries denoting unsealed
+    the unsealings of their descriptions. *)
+Lemma no_level_open_unseal : forall Θ Ξ Γ Δ Φw Φx member_levels member_descs,
+    gm_noopen Φx ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
+    gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
+    (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_fill Φ0 = Some σ ->
+       Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : relevance_sort (entry_relevance E) Typeω@(member_levels y) /\
+       gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Δ ++ Γ ⊢ A[σ] : relevance_sort (entry_relevance E) Typeω@(member_levels y)) ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       udenote Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) None U (member_descs y)) ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ⁿˡ member_descs y /\
+       forall R', mdesc_unsealed (member_descs y) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ⁿˡ R') ->
+    forall R', mdesc_unsealed (mdesc_open Δ Φw Φx) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
+Proof.
+  intros * Hno HX HXu Hty Hu IH R' Hd; inversion Hd; subst.
+  assert (Hg : ⊢ᵍ Θ ⍮ Ξ) by exact (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HX)).
+  assert (HC : ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ) by (rewrite app_assoc; exact (ext_eq_ctx_left _ _ _ _ _ HX)).
+  eapply wf_no_level_open with (member_descs := fun y => mdesc_unseal_struct (member_descs y));
+    [ exact Hno | exact HXu | intros; eapply proj2; eauto
+    | intros y Φ0 E U Hp HU; exact (proj1 (open_entry_udenote_unseal _ _ Hg _ _ _ _ _ _ _ _ HC Hp HU (Hu _ _ _ _ Hp HU)))
+    | intros y Φ0 E U Hp HU; apply (proj2 (IH _ _ _ _ Hp HU));
+      exact (proj2 (open_entry_udenote_unseal _ _ Hg _ _ _ _ _ _ _ _ HC Hp HU (Hu _ _ _ _ Hp HU))) ].
+Qed.
+
+(** A closed module: its stored body unsealed, whose entries are those
+    stored, unsealed. *)
+Lemma no_level_closed_unseal : forall Θ Ξ Γ Θ' p T Φ Ns member_types member_levels member_descs,
+    ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ gds_unseal Θ ⍮ gs_unseal Ξ ->
+    gc_body Θ Ξ p = Some (T, Φ) ->
+    (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
+       A = ctx_pi_at r T (member_types y)) ->
+    (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
+       Θ ⍮ Ξ ⍮ T ⊢ member_types y : relevance_sort r Typeω@(member_levels y) /\
+       gds_unseal Θ ⍮ gs_unseal Ξ ⍮ T ⊢ member_types y : relevance_sort r Typeω@(member_levels y)) ->
+    (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
+       edenote Θ Ξ ⋅ (Some (qname_in p y)) (ge_read T E) (member_descs y)) ->
+    (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
+       Θ ⍮ Ξ ⍮ ⋅ ⊢ⁿˡ member_descs y /\
+       forall R', mdesc_unsealed (member_descs y) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ⁿˡ R') ->
+    forall R', mdesc_unsealed (mdesc_closed Θ' p T Φ Ns) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
+Proof.
+  intros * Hg Hgu Hb Hdef Hty Hed IH R' Hd; inversion Hd; subst.
+  assert (Hpre : forall y Φ0' E', gm_prefix_upto (gm_unseal Φ) y = Some (gm_ext Φ0' y E') ->
+            exists Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) /\ E' = ge_unseal E).
+  { intros y Φ0' E' Hp'; rewrite gm_prefix_upto_unseal in Hp'.
+    destruct (gm_prefix_upto Φ y) as [Φy |] eqn:Hp; cbn in Hp'; [| discriminate ].
+    destruct Φy as [| Φ0 x E | ? ? ?]; cbn in Hp'; try discriminate.
+    injection Hp' as <- <- <-; exists Φ0, E; split; reflexivity. }
+  assert (Hnd : forall E, (forall b pv r A oM, ge_unseal E <> ge_def b pv r A oM) -> forall b pv r A oM, E <> ge_def b pv r A oM)
+    by (intros E HnE b pv r A oM ->; exact (HnE _ _ _ _ _ eq_refl)).
+  assert (Hdu : forall E b pv r A oM, ge_unseal E = ge_def b pv r A oM -> exists b0 oM0, E = ge_def b0 pv r A oM0).
+  { intros [b0 pv0 r0 A0 oM0 | ? [? [? ? | ?]] | | | ] * HE; cbn in HE; try discriminate.
+    injection HE as _ <- <- <- _; eexists; eexists; reflexivity. }
+  eapply wf_no_level_closed with (member_descs := fun y => mdesc_unseal_struct (member_descs y)).
+  - exact Hgu.
+  - rewrite gc_body_unseal, Hb; reflexivity.
+  - intros y Φ0' b pv r A oM Hp'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & HE).
+    destruct (Hdu _ _ _ _ _ _ (eq_sym HE)) as (b0 & oM0 & ->); exact (Hdef _ _ _ _ _ _ _ Hp).
+  - intros y Φ0' b pv r A oM Hp'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & HE).
+    destruct (Hdu _ _ _ _ _ _ (eq_sym HE)) as (b0 & oM0 & ->); exact (proj2 (Hty _ _ _ _ _ _ _ Hp)).
+  - intros y Φ0' E' Hp' HnE'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & ->).
+    pose proof (Hnd _ HnE') as HnE.
+    exact (proj1 (closed_entry_edenote_unseal _ _ Hg _ _ _ _ _ _ _ Hb Hp HnE (Hed _ _ _ Hp HnE))).
+  - intros y Φ0' E' Hp' HnE'; destruct (Hpre _ _ _ Hp') as (Φ0 & E & Hp & ->).
+    pose proof (Hnd _ HnE') as HnE.
+    apply (proj2 (IH _ _ _ Hp HnE)).
+    exact (proj2 (closed_entry_edenote_unseal _ _ Hg _ _ _ _ _ _ _ Hb Hp HnE (Hed _ _ _ Hp HnE))).
+Qed.
+
+(** A definition with a module part: its module part, unsealed. *)
+Lemma no_level_dm_unseal : forall Θ Ξ Γ Θd A M Rm,
+    (forall Rm', mdesc_mod Rm = Some Rm' -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rm' /\
+       forall R', mdesc_unsealed Rm' R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R') ->
+    forall R', mdesc_unsealed (mdesc_dm Θd A M Rm) R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R'.
+Proof.
+  intros * IH R' Hd; inversion Hd as [| | | ? ? ? ? Rm2 Hm Hu]; subst.
+  apply wf_no_level_dm; intros Rm3 Hmod.
+  rewrite (mdesc_is_mod_mod _ (mdesc_unsealed_is_mod _ _ Hu Hm)) in Hmod; injection Hmod as <-.
+  exact (proj2 (IH _ (mdesc_is_mod_mod _ Hm)) _ Hu).
+Qed.
+
+(** The flag premises of a unit rule over a module expression, unsealed:
+    what it denotes, unsealed, has no member of a type of levels. *)
+Lemma modexp_flag_unseal : forall Θ Ξ Γ E E' (lv : bool) Rt,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E' ->
+    (lv = false -> mdenote Θ Ξ Γ E Rt) ->
+    (lv = false -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rt /\ forall R', mdesc_unsealed Rt R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R') ->
+    exists Rt', (lv = false -> mdenote (gds_unseal Θ) (gs_unseal Ξ) Γ E Rt') /\
+           (lv = false -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ Rt').
+Proof.
+  intros * HE Hm IH; apply (flag_desc_choice lv Rt); intros Hlv.
+  destruct (mdenote_unseal _ _ _ _ _ _ HE (Hm Hlv)) as (R' & Hm' & Hd).
+  exists R'; split; [ exact Hm' | exact (proj2 (IH Hlv) _ Hd) ].
+Qed.
+
+(** The same over the literal of a body under no parameter, whose opens
+    are well-formed module expressions. *)
+Lemma body_flag_unseal : forall Θ Ξ Γ Φ Φx (lv : bool) Rt,
+    ⊢ᵍ Θ ⍮ Ξ ->
+    body_xp Θ Ξ Γ Φ Φx -> body_unseal_precondition Θ Ξ Γ Φ Φx ->
+    (lv = false -> mdenote Θ Ξ Γ (me_lit (gu_open nil Φ)) Rt) ->
+    (lv = false -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ Rt /\ forall R', mdesc_unsealed Rt R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R') ->
+    exists Rt', (lv = false -> mdenote (gds_unseal Θ) (gs_unseal Ξ) Γ (me_lit (gu_open nil Φ)) Rt') /\
+           (lv = false -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ Rt').
+Proof.
+  intros * Hg Hx Ho Hm IH; apply (flag_desc_choice lv Rt); intros Hlv.
+  assert (Hu : udenote Θ Ξ Γ None (gu_open nil Φ) Rt) by (pose proof (Hm Hlv) as Hl; inversion Hl; subst; try (cbn in *; discriminate); assumption).
+  assert (Hpre : gunit_unseal_precondition Θ Ξ Γ None (gu_open nil Φ)).
+  { cbn; intros Φx' Hx'.
+    rewrite <- (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hx _ Hx'); exact Ho. }
+  destruct (proj1 (proj2 (mdenote_unseal_all _ _ Hg)) _ _ _ _ Hu Hpre) as (R' & Hu' & Hd).
+  exists R'; split; [ apply mdenote_lit; exact Hu' | exact (proj2 (IH Hlv) _ Hd) ].
+Qed.
+
 (** A premise of a rule, from the hypotheses; an assumption is chosen
     backtracking, since a premise typing a term the conclusion does not
     mention (the domain of an application) may match several. *)
@@ -858,6 +1081,8 @@ Lemma unseal_preserves_wf_all :
   (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' /\ gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ') /\
   (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' /\ gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ᵘ U ≈ U') /\
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' /\ gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ᵐ H ≈ H') /\
+  (forall Θ Ξ Γ R, Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R /\ forall R', mdesc_unsealed R R' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ⁿˡ R') /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ E /\ gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⊢ᵉ ge_unseal E) /\
   (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ /\ gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ gm_unseal Φ) /\
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ /\ ⊢ᵍ gds_unseal Θ ⍮ gs_unseal Ξ).
@@ -922,9 +1147,33 @@ Proof.
       |- gds_unseal ?Θ ⍮ gs_unseal ?Ξ ⍮ ?Γ ⊢ᵐ me_app ?H ?N ≈ me_app ?H' ?N' =>
         destruct (mdenote_unseal _ _ _ _ _ _ HH Hm) as (? & ? & Hd1);
         destruct (mdenote_unseal _ _ _ _ _ _ (wf_modexp_eq_refl_right HH) Hm') as (? & ? & Hd2);
-        eapply wf_me_app; [ eassumption | eassumption | exact (mdesc_unsealed_mtele _ _ _ Hd1 Ht) | eassumption | eassumption | eassumption | eassumption
-                          | eassumption | exact (mdesc_unsealed_mtele _ _ _ Hd2 Ht') | eassumption | eassumption | eassumption ]
+        eapply wf_me_app; [ eassumption | eassumption | exact (mdesc_unsealed_mtele _ _ _ Hd1 Ht) | eassumption | eassumption | eassumption
+                          | eassumption | eassumption | eassumption | exact (mdesc_unsealed_mtele _ _ _ Hd2 Ht')
+                          | eassumption | eassumption | eassumption | eassumption ]
     end.
+  (* no member of a type of levels, unsealed *)
+  all: try match goal with
+    | |- forall R', mdesc_unsealed (mdesc_term _ _ _) R' -> _ => eapply no_level_term_unseal; eassumption
+    | |- forall R', mdesc_unsealed (mdesc_open _ _ _) R' -> _ => eapply no_level_open_unseal; eassumption
+    | |- forall R', mdesc_unsealed (mdesc_closed _ _ _ _ _) R' -> _ => eapply no_level_closed_unseal; eassumption
+    | |- forall R', mdesc_unsealed (mdesc_dm _ _ _ _) R' -> _ => eapply no_level_dm_unseal; eassumption
+    end.
+  (* the flag premises of a unit rule: what is denoted, unsealed *)
+  all: repeat match goal with
+    | HE : ?Θ ⍮ ?Ξ ⍮ ?G ⊢ᵐ ?E ≈ _, Hm : ?lv = false -> mdenote ?Θ ?Ξ ?G ?E ?Rt,
+      IH : ?lv = false -> _ /\ (forall R', mdesc_unsealed ?Rt R' -> _) |- _ =>
+        destruct (modexp_flag_unseal _ _ _ _ _ _ _ HE Hm IH) as (? & ? & ?); clear Hm IH
+    | HU : ?Θ ⍮ ?Ξ ⍮ ?G ⊢ᵘ ?U ≈ _, Hm : ?lv = false -> mdenote ?Θ ?Ξ ?G (me_lit ?U) ?Rt,
+      IH : ?lv = false -> _ /\ (forall R', mdesc_unsealed ?Rt R' -> _) |- _ =>
+        destruct (modexp_flag_unseal _ _ _ _ _ _ _ ltac:(apply wf_me_lit; exact HU) Hm IH) as (? & ? & ?); clear Hm IH
+    | Hx : body_xp ?Θ ?Ξ ?G ?Φ ?Φx,
+      Ho : forall k Ψ H, nth_error (body_opens ?Φ ?Φx) k = Some (Ψ, H) -> ?Θ ⍮ ?Ξ ⍮ Ψ ++ ?G ⊢ᵐ H ≈ H,
+      Hm : ?lv = false -> mdenote ?Θ ?Ξ ?G (me_lit (gu_open nil ?Φ)) ?Rt,
+      IH : ?lv = false -> _ /\ (forall R', mdesc_unsealed ?Rt R' -> _), HX : ?Θ ⍮ ?Ξ ⍮ _ ⊢ˣ _ ≈ _ |- _ =>
+        destruct (body_flag_unseal _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HX)) Hx Ho Hm IH) as (? & ? & ?);
+        clear Hm IH
+    end.
+  all: try solve [ econstructor; rewrite ?gs_tele_unseal; unseal_premise ].
   (* a body: its expansion, unsealed *)
   all: try match goal with
     | Hx : body_xp ?Θ ?Ξ (?Δ ++ ?Γ) ?Φ ?Φx, Hx' : body_xp ?Θ ?Ξ (?Δ' ++ ?Γ) ?Φ' ?Φx',
@@ -952,7 +1201,7 @@ Proof.
         | Hu : record_params _ = _ ++ gs_tele ?X, HE : gds_unseal _ ⍮ gs_unseal ?X ⍮ _ ⊢ᵉ _,
           HC : ⊢ gds_unseal _ ⍮ gs_unseal ?X ⍮ _ |- _ =>
             rewrite <- (gs_tele_unseal X) in Hu, HC;
-            eapply wf_gmod_record_nil; [ assumption | exact HC | unseal_params X | exact HE | exact Hu ]
+            eapply wf_gmod_record_nil; [ assumption | exact HC | eassumption | unseal_params X | exact HE | exact Hu ]
         end
     end.
   (* the module of a member, before its first entry *)
@@ -962,7 +1211,7 @@ Proof.
         | Hu : ind_uparams _ = _ ++ gs_tele ?X, HE : gds_unseal _ ⍮ gs_unseal ?X ⍮ _ ⊢ᵉ _,
           HC : ⊢ gds_unseal _ ⍮ gs_unseal ?X ⍮ _ |- _ =>
             rewrite <- (gs_tele_unseal X) in Hu, HC;
-            eapply wf_gmod_ind_nil; [ assumption | exact HC | unseal_params X | exact HE | exact Hu ]
+            eapply wf_gmod_ind_nil; [ assumption | exact HC | eassumption | unseal_params X | exact HE | exact Hu ]
         end
     end.
   all: first [ eapply wf_gentry_ind_nil; try eassumption
@@ -1000,7 +1249,7 @@ Theorem unseal_preserves_wf :
   (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ gm_unseal Φ) /\
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ gds_unseal Θ ⍮ gs_unseal Ξ).
 Proof.
-  pose proof unseal_preserves_wf_all as (H1 & H2 & H3 & H4 & _ & H6 & H7 & H8 & H9 & H10 & H11).
+  pose proof unseal_preserves_wf_all as (H1 & H2 & H3 & H4 & _ & H6 & H7 & H8 & _ & H9 & H10 & H11).
   repeat split; intros; [ apply H1 | apply H2 | apply H3 | apply H4 | apply H6 | apply H7 | apply H8 | apply H9 | apply H10 | apply H11 ]; assumption.
 Qed.
 
@@ -1052,7 +1301,7 @@ Definition gc_no_axioms (Θ : gdeps) (Ξ : gstack) : Prop := gds_no_axioms Θ /\
 
 Lemma gm_no_axioms_unseal_transparent : forall Φ, gm_no_axioms Φ -> gm_transparent (gm_unseal Φ).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ HΦ) ].
+  fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ (proj1 HΦ)) ].
   destruct HΦ as [HΦ HE]; split; [ exact (IH _ HΦ) |].
   destruct E as [b pv r A [M |] | ? [Δ' [? Φ' | E']] | ? ? ? Φ' | ? ? ? ? | ? ? ?]; cbn in *;
     [ split; congruence | contradiction | exact (IH _ HE) | exact I | exact (IH _ HE) | exact I | exact (IH _ HE) ].
@@ -1090,7 +1339,7 @@ Qed.
 Lemma gm_no_axioms_resolve : forall Φ ip b pv r A B,
     gm_no_axioms Φ -> gm_resolve Φ ip = Some (ge_def b pv r A B) -> B <> None.
 Proof.
-  fix IH 1; intros [| Φ y E | Φ c] ip b pv r A0 B0 HΦ H; cbn in H, HΦ; [ discriminate | | eapply IH; eassumption ].
+  fix IH 1; intros [| Φ y E | Φ c] ip b pv r A0 B0 HΦ H; cbn in H, HΦ; [ discriminate | | eapply IH; [ exact (proj1 HΦ) | exact H ] ].
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
@@ -1116,46 +1365,75 @@ Qed.
     axiom, so every global context it reaches has none: the consistency and
     canonicity theorems at [gc_no_axioms] hold of every such program. *)
 
-(** No axiom, at any depth of nesting. *)
-Fixpoint cmd_no_axioms (c : core_cmd) : Prop :=
+(** A command as written declares no axiom, at any depth of nesting: a
+    definition has a body, and so has every one in the body of a module or
+    the with-area of a record. *)
+Fixpoint cmd_no_axioms (c : surface_cmd) : Prop :=
   match c with
-  | core_cmd_def _ _ _ _ oM => oM <> None
-  | core_cmd_mod _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
-  | core_cmd_record _ _ _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
-  | core_cmd_gen c0 => cmd_no_axioms c0
+  | surface_cmd_def _ _ _ _ oM => oM <> None
+  | surface_cmd_mod _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
+  | surface_cmd_record _ _ _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
   | _ => True
   end.
 
-Definition cmds_no_axioms (cs : list core_cmd) : Prop := List.Forall cmd_no_axioms cs.
+(** Commands as written that declare no axiom. *)
+Definition cmds_no_axioms (cs : list surface_cmd) : Prop := List.Forall cmd_no_axioms cs.
 
-Definition unit_no_axioms (u : core_unit) : Prop :=
+(** A core command declares no axiom: a definition has a body.  Core
+    commands do not nest: a module or a record opens a frame, and the
+    commands of its body follow. *)
+Definition core_cmd_no_axioms (c : core_cmd) : Prop :=
+  match c with
+  | core_cmd_def _ _ _ _ oM => oM <> None
+  | _ => True
+  end.
+
+(** An item of a run declares no axiom: a command as written, or a core
+    one. *)
+Definition item_no_axioms (it : cmd_item) : Prop :=
+  match it with
+  | ci_written c => cmd_no_axioms c
+  | ci_core c => core_cmd_no_axioms c
+  end.
+
+(** Items of a run that declare no axiom. *)
+Definition items_no_axioms (its : list cmd_item) : Prop := List.Forall item_no_axioms its.
+
+(** A unit as written declares no axiom: neither its imports nor its body. *)
+Definition unit_no_axioms (u : surface_compilation_unit) : Prop :=
   let '(imps, _, cs) := u in cmds_no_axioms imps /\ cmds_no_axioms cs.
 
-Lemma cmd_no_axioms_mod : forall x pv Δ cs, cmd_no_axioms (core_cmd_mod x pv Δ cs) <-> cmds_no_axioms cs.
+Lemma cmd_no_axioms_fold : forall cs, List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs <-> cmds_no_axioms cs.
 Proof.
-  intros; cbn; unfold cmds_no_axioms; induction cs as [| c cs IH]; cbn;
+  unfold cmds_no_axioms; induction cs as [| c cs IH]; cbn;
     [ split; constructor | rewrite List.Forall_cons_iff, IH; reflexivity ].
 Qed.
 
-Lemma cmd_no_axioms_record : forall x pv Δ Srt fs cs, cmd_no_axioms (core_cmd_record x pv Δ Srt fs cs) <-> cmds_no_axioms cs.
-Proof.
-  intros; cbn; unfold cmds_no_axioms; induction cs as [| c cs IH]; cbn;
-    [ split; constructor | rewrite List.Forall_cons_iff, IH; reflexivity ].
-Qed.
+(** Commands as written run as items free of axioms. *)
+Lemma items_no_axioms_written : forall cs, cmds_no_axioms cs -> items_no_axioms (List.map ci_written cs).
+Proof. intros cs H; apply List.Forall_map; exact H. Qed.
+
+(** Core commands run as items free of axioms. *)
+Lemma items_no_axioms_core : forall cs, List.Forall core_cmd_no_axioms cs -> items_no_axioms (List.map ci_core cs).
+Proof. intros cs H; apply List.Forall_map; exact H. Qed.
 
 (** A record's field definitions all have bodies. *)
-Lemma record_field_cmds_no_axioms : forall R, cmds_no_axioms (record_field_cmds R).
+Lemma record_field_cmds_no_axioms : forall R, List.Forall core_cmd_no_axioms (record_field_cmds R).
 Proof.
   intros R; unfold record_field_cmds; generalize 0; induction (record_fields R) as [| [f T] fs IH]; intros k;
     cbn; constructor; [ cbn; discriminate | apply IH ].
 Qed.
 
-(** The fill keeps a command free of axioms: a definition keeps its body,
-    a module and a record their commands. *)
-Lemma fill_cmd_no_axioms : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
+(** The fill keeps a command free of axioms: a definition keeps its body;
+    a module and a record open their frame, their commands follow as
+    written, and the frame is closed. *)
+Lemma fill_cmd_no_axioms : forall Θ Ξ B c its, fill_cmd Θ Ξ B c its -> cmd_no_axioms c -> items_no_axioms its.
 Proof.
-  intros * H Hc; destruct H; try exact Hc; cbn in *; try exact I.
-  match goal with Ho : fill_optional_exp _ _ _ _ _ _ |- _ => destruct Ho end; [ contradiction | discriminate ].
+  intros * H Hc; destruct H; cbn in Hc |- *; unfold items_no_axioms;
+    repeat first [ apply List.Forall_cons | apply List.Forall_nil ]; cbn; try exact I.
+  - match goal with Ho : fill_optional_exp _ _ _ _ _ _ |- _ => destruct Ho end; [ contradiction | discriminate ].
+  - apply List.Forall_app; split; [ apply List.Forall_map, cmd_no_axioms_fold, Hc | repeat constructor ].
+  - apply List.Forall_app; split; [ apply List.Forall_map, cmd_no_axioms_fold, Hc | repeat constructor ].
 Qed.
 
 Lemma in_gds_merge : forall Θ Θ' x,
@@ -1210,117 +1488,125 @@ Proof. induction 1; intros HΞ; auto; apply IHgens_run, gs_no_axioms_add; cbn; a
 Lemma mdefs_run_no_axioms : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
 Proof. induction 1; intros HΞ; [ exact HΞ |]; apply IHmdefs_run, gs_no_axioms_add; cbn; [ discriminate | exact HΞ ]. Qed.
 
-(** The recursor module of a group is a module of definitions. *)
-Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, cmds_no_axioms (rec_cmds Θ Ξ R pq D).
+(** The commands of a recursor module: its frame opened, its definitions,
+    each with a body, its frame closed. *)
+Lemma recursor_mod_cmds_no_axioms : forall Θ Ξ pq D Δu, List.Forall core_cmd_no_axioms (recursor_mod_cmds Θ Ξ pq D Δu).
 Proof.
-  intros; unfold rec_cmds; destruct (raw_decl_rec_field R); [| constructor ].
-  constructor; [| constructor ].
-  unfold recursor_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
-    apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
+  intros; unfold recursor_mod_cmds; constructor; [ exact I |].
+  apply List.Forall_app; split; [| repeat constructor ].
+  apply List.Forall_forall; intros c Hin.
   apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
+Qed.
+
+(** The recursor module of a group is a module of definitions. *)
+Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, List.Forall core_cmd_no_axioms (rec_cmds Θ Ξ R pq D).
+Proof.
+  intros; unfold rec_cmds; destruct (raw_decl_rec_field R); [ apply recursor_mod_cmds_no_axioms | constructor ].
 Qed.
 
 (** So are the commands of the module of a declared member: its
     constructors, its recursor and its recursor module. *)
-Lemma ind_mod_cmds_no_axioms : forall Θ Ξ R pq D k M, cmds_no_axioms (ind_mod_cmds Θ Ξ R pq D k M).
+Lemma ind_mod_cmds_no_axioms : forall Θ Ξ R pq D k M, List.Forall core_cmd_no_axioms (ind_mod_cmds Θ Ξ R pq D k M).
 Proof.
-  intros; unfold ind_mod_cmds, ind_rec_cmds, ind_recursor_cmds, cmds_no_axioms.
+  intros; unfold ind_mod_cmds, ind_rec_cmds, ind_recursor_cmds.
   apply List.Forall_app; split; [| apply List.Forall_app; split ].
   - apply List.Forall_forall; intros c Hin; apply List.in_map_iff in Hin as (cg & <- & _); cbn; discriminate.
   - destruct (ind_has_rec D); [ constructor; [ cbn; discriminate | constructor ] | constructor ].
-  - destruct (Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool; [| constructor ].
-    constructor; [| constructor ].
-    unfold recursor_mod_cmd; change (cmd_no_axioms (core_cmd_gen ?c0)) with (cmd_no_axioms c0);
-    apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
-    apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
+  - destruct (Nat.eqb k 0 && negb (raw_decl_rec_field R))%bool; [ apply recursor_mod_cmds_no_axioms | constructor ].
 Qed.
 
 Section Run.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
-            (to_core : Cst.prog -> option core_unit).
+            (to_core : Cst.prog -> option surface_compilation_unit).
   (** Every unit the elaborator gives declares no axiom. *)
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
+  (** A run of a core command, of items or of a unit that declare no
+      axiom, from a global context with none, files none.  The frames a
+      module or a record opens are on the stack, so they too have none. *)
   Theorem run_no_axioms :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-       cmd_no_axioms c -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
+       core_cmd_no_axioms c -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-       cmds_no_axioms cs -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
+       items_no_axioms cs -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
     (forall ch u B Rb Θ U, run_unit load_path read to_core ch u B Rb Θ U ->
        unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U)) /\
     (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members load_path read to_core ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
        gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ').
   Proof.
-    apply run_mut_ind; intros; unfold gc_no_axioms in *.
+    apply run_mut_ind; intros; unfold gc_no_axioms in *; destruct_all.
     (* a definition has a body *)
-    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
+    - split; [ assumption | apply gs_no_axioms_add; cbn; [ discriminate | assumption ] ].
     (* an axiom is not among the commands *)
     - cbn in *; contradiction.
-    (* a module's body is the frame its commands ended on *)
-    - rewrite cmd_no_axioms_mod in *; destruct_all.
-      match goal with IH : cmds_no_axioms _ -> _ |- _ =>
-        destruct (IH ltac:(assumption) ltac:(split; auto with mctt)) as [HΘ HΞ] end.
-      split; [ exact HΘ | apply gs_no_axioms_add; cbn; eauto with mctt ].
-    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto ].
-    - assumption.
+    (* a module's frame is opened with no member *)
+    - split; [ assumption | apply gs_no_axioms_push; assumption ].
+    (* the frame of a module, closed, is filed as its body; so is the
+       frame of a record's module, with the record *)
+    - split; [ assumption | apply gs_no_axioms_add; [ cbn; eapply gs_no_axioms_head; eassumption | eapply gs_no_axioms_tail; eassumption ] ].
+    - split; [ assumption | apply gs_no_axioms_add; [ cbn; eapply gs_no_axioms_head; eassumption | eapply gs_no_axioms_tail; eassumption ] ].
+    (* an alias declares no axiom *)
+    - split; [ assumption | apply gs_no_axioms_add; [ exact I | assumption ] ].
+    (* a unit filed already *)
+    - split; assumption.
     (* a load: the loaded unit is the elaborator's *)
-    - destruct_all.
-      match goal with IH : unit_no_axioms _ -> _ |- _ => destruct (IH ltac:(eapply Hload; eassumption)) end.
-      split; eauto with mctt.
+    - match goal with IH : unit_no_axioms _ -> _ |- _ => destruct (IH ltac:(eapply Hload; eassumption)) end.
+      split; [ apply gds_no_axioms_merge; [ assumption | apply gds_no_axioms_cons; assumption ] | assumption ].
     (* an open declares what it generates *)
-    - destruct_all; split; [ assumption | eapply gens_run_no_axioms; eassumption ].
+    - split; [ assumption | eapply gens_run_no_axioms; eassumption ].
     (* a declaration files its members, with no axiom in their modules:
        the definitions it generates there; then its recursor module, of
        definitions *)
-    - destruct_all.
-      match goal with IHm : _ /\ _ -> _ /\ _ |- _ => destruct (IHm ltac:(split; assumption)) end.
-      match goal with IH : cmds_no_axioms _ -> _ |- _ => apply (IH (rec_cmds_no_axioms _ _ _ _ _)); split; assumption end.
+    - match goal with IHm : _ /\ _ -> _ /\ _ |- _ => destruct (IHm ltac:(split; assumption)) end.
+      match goal with IH : items_no_axioms (List.map ci_core (rec_cmds _ _ _ _ _)) -> _ |- _ =>
+        apply (IH (items_no_axioms_core _ (rec_cmds_no_axioms _ _ _ _ _))); split; assumption end.
     (* a mutual definition files definitions *)
-    - destruct_all; split; [ assumption | eapply mdefs_run_no_axioms; eassumption ].
+    - split; [ assumption | eapply mdefs_run_no_axioms; eassumption ].
     (* a builtin binding files nothing *)
-    - assumption.
+    - split; assumption.
     (* an inductive or a record alias declares no axiom *)
-    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto ].
-    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto ].
-    (* a record's module is its field definitions, then its with-area *)
-    - rewrite cmd_no_axioms_record in *; destruct_all.
-      match goal with IH : cmds_no_axioms (record_field_cmds _) -> _ |- _ =>
-        destruct (IH (record_field_cmds_no_axioms _) ltac:(split; auto with mctt)) as [HΘ1 HΞ1] end.
-      match goal with IH : cmds_no_axioms ?cs -> _, Hcs : cmds_no_axioms ?cs |- _ =>
-        destruct (IH Hcs ltac:(split; assumption)) as [HΘ HΞ] end.
-      split; [ exact HΘ | apply gs_no_axioms_add; cbn; eauto with mctt ].
-    - assumption.
-    - assumption.
-    (* a generated definition has a body *)
-    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
-    (* a generated module: as a module *)
-    - change (cmd_no_axioms (core_cmd_gen ?c)) with (cmd_no_axioms c) in *.
-      rewrite cmd_no_axioms_mod in *; destruct_all.
-      match goal with IH : cmds_no_axioms _ -> _ |- _ =>
-        destruct (IH ltac:(assumption) ltac:(split; auto with mctt)) as [HΘ HΞ] end.
-      split; [ exact HΘ | apply gs_no_axioms_add; cbn; eauto with mctt ].
-    - assumption.
-    (* a command runs filled, which keeps it free of axioms *)
-    - match goal with
-      | Ha : fill_cmd _ _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
-          inversion Hc; subst; pose proof (fill_cmd_no_axioms _ _ _ _ _ Ha ltac:(assumption))
-      end; eauto.
+    - split; [ assumption | apply gs_no_axioms_add; [ exact I | assumption ] ].
+    - split; [ assumption | apply gs_no_axioms_add; [ exact I | assumption ] ].
+    (* a record's frame, with its field definitions run in it *)
+    - match goal with IH : items_no_axioms (List.map ci_core (record_field_cmds _)) -> _ |- _ =>
+        apply (IH (items_no_axioms_core _ (record_field_cmds_no_axioms _))); split;
+          [ assumption | apply gs_no_axioms_push_record; assumption ] end.
+    (* an evaluation files nothing *)
+    - split; assumption.
+    (* no item *)
+    - split; assumption.
+    (* a command as written runs filled, which keeps it free of axioms *)
+    - match goal with Hc : items_no_axioms (_ :: _) |- _ => inversion Hc; subst end.
+      match goal with Ha : fill_cmd _ _ _ _ _, Hw : item_no_axioms (ci_written _) |- _ =>
+        pose proof (fill_cmd_no_axioms _ _ _ _ _ Ha Hw) end.
+      match goal with
+      | IH1 : items_no_axioms ?its -> _ -> _, Hi : items_no_axioms ?its,
+        IH2 : items_no_axioms ?cs -> _ -> _, Hcs : Forall item_no_axioms ?cs |- _ =>
+          apply IH2; [ exact Hcs | apply IH1; [ exact Hi | split; assumption ] ]
+      end.
+    (* a core command runs as it is *)
+    - match goal with Hc : items_no_axioms (_ :: _) |- _ => inversion Hc; subst end.
+      match goal with
+      | IH1 : core_cmd_no_axioms ?c -> _ -> _, Hi : item_no_axioms (ci_core ?c),
+        IH2 : items_no_axioms ?cs -> _ -> _, Hcs : Forall item_no_axioms ?cs |- _ =>
+          apply IH2; [ exact Hcs | apply IH1; [ exact Hi | split; assumption ] ]
+      end.
     (* a unit: its loads from nothing, then its body in its own frame *)
     - cbn in *; destruct_all.
-      match goal with IH1 : cmds_no_axioms ?is -> _ -> _ /\ gs_no_axioms nil, H1 : cmds_no_axioms ?is |- _ =>
-        destruct (IH1 H1 ltac:(split; auto with mctt)) end.
-      match goal with IH2 : cmds_no_axioms ?cs -> _ -> _ /\ gs_no_axioms (_ :: nil), H2 : cmds_no_axioms ?cs |- _ =>
-        destruct (IH2 H2 ltac:(split; auto with mctt)) end.
+      match goal with IH1 : items_no_axioms (List.map ci_written ?is) -> _ -> _ /\ gs_no_axioms nil, H1 : cmds_no_axioms ?is |- _ =>
+        destruct (IH1 (items_no_axioms_written _ H1) ltac:(split; auto with mctt)) end.
+      match goal with IH2 : items_no_axioms (List.map ci_written ?cs) -> _ -> _ /\ gs_no_axioms (_ :: nil), H2 : cmds_no_axioms ?cs |- _ =>
+        destruct (IH2 (items_no_axioms_written _ H2) ltac:(split; [ assumption | apply gs_no_axioms_push; auto with mctt ])) end.
       split; eauto with mctt.
     (* no member left *)
-    - assumption.
+    - split; assumption.
     (* a member: its module's commands, of definitions, then the member
        filed with the body they end with *)
-    - destruct_all.
-      match goal with IH : cmds_no_axioms (ind_mod_cmds _ _ _ _ _ _ _) -> _ |- _ =>
-        destruct (IH (ind_mod_cmds_no_axioms _ _ _ _ _ _ _) ltac:(split; auto with mctt)) as [HΘ1 HΞ1] end.
+    - match goal with IH : items_no_axioms (List.map ci_core (ind_mod_cmds _ _ _ _ _ _ _)) -> _ |- _ =>
+        destruct (IH (items_no_axioms_core _ (ind_mod_cmds_no_axioms _ _ _ _ _ _ _))
+                     ltac:(split; [ assumption | apply gs_no_axioms_push_ind; assumption ])) as [HΘ1 HΞ1] end.
       match goal with IH : _ /\ gs_no_axioms (gs_add _ _ _) -> _ |- _ => apply IH end.
-      split; [ exact HΘ1 | apply gs_no_axioms_add; cbn; eauto with mctt ].
+      split; [ exact HΘ1 | apply gs_no_axioms_add; [ cbn; eapply gs_no_axioms_head; exact HΞ1 | eapply gs_no_axioms_tail; exact HΞ1 ] ].
   Qed.
 
   Corollary run_unit_no_axioms : forall ch u B Rb Θ U,
@@ -1329,7 +1615,7 @@ Section Run.
 
   (** Every state a unit runs through, from nothing, has no axioms. *)
   Corollary run_cmds_no_axioms : forall ch B Rb cs B' Rb' Θ Ξ,
-      nil ⍮ nil ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ ⍮ Ξ ⍮ B' ⍮ Rb' -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
+      nil ⍮ nil ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ ⍮ Ξ ⍮ B' ⍮ Rb' -> items_no_axioms cs -> gc_no_axioms Θ Ξ.
   Proof. intros * H Hc; eapply (proj1 (proj2 run_no_axioms)); [ exact H | exact Hc | split; auto with mctt ]. Qed.
 
   (** What a program files, filed with it. *)

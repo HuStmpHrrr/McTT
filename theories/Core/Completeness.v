@@ -169,3 +169,25 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+(** A typed term has a normal form: completeness of its reflexivity.  No
+    gluing is needed for existence. *)
+Corollary normalization : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    exists W, nbe Θ Ξ Γ M A W.
+Proof.
+  intros * H; destruct (completeness (wf_exp_eq_refl H)) as (W & _ & HW & _); exists W; exact HW.
+Qed.
+
+Section Fixed_GCtx.
+Context {GC : GCtx}.
+
+(** A type of a large universe has a normal form as a type. *)
+Corollary normalization_ty : forall {Γ} {i : nat} {A},
+    Γ ⊢ A : Typeω@i ->
+    exists W, nbe_ty_f Γ A W.
+Proof.
+  intros * H; destruct (completeness_ty (wf_exp_eq_refl H)) as (W & _ & HW & _); exists W; exact HW.
+Qed.
+
+End Fixed_GCtx.
