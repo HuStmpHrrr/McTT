@@ -35,25 +35,18 @@ Lemma eval_var_at_initial_env : forall {Γ x} {i : nat} {ρ a},
 Proof.
   intros * [A Hlookup] Hρ Hev Hx.
   pose proof (initial_env_spec _ _ _ _ Hρ Hlookup) as [b Heq].
-  assert (Ha : a = relevant_value b (⇑! b (length Γ - x - 1)))
+  assert (Ha : a = ⇑! b (length Γ - x - 1))
     by (eapply functional_eval_exp; [ exact Hev | apply eval_exp_var_eq; exact Heq ]).
   split; [ apply List.nth_error_Some; congruence |].
-  exists b.
-  unfold relevant_value in Ha; destruct (domain_relevance b) eqn:Hb; [ exact Ha |].
-  (** A variable of a proposition is the proof [⋆ᵈ], which is no type. *)
-  exfalso.
-  destruct (rel_typ_under_ctx_at_initial_env (completeness_fundamental_exp _ _ _ Hx)) as [ρ' [a1 [a1' [Hρ' [Ha1 [_ [R HR]]]]]]].
-  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
-  assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
-  subst a; invert_per_univ_elem HR.
+  exists b; exact Ha.
 Qed.
 
 Lemma exp_eq_typ_implies_eq_level : forall {Γ} {i : nat} {j k},
     Γ ⊢ Typeω@i ≈ Typeω@j : Typeω@k ->
     i = j.
 Proof.
-  intros * H%completeness_fundamental_exp_eq.
-  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  intros * H.
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) (completeness_fundamental_exp_eq _ _ _ _ H)) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   assert (a = 𝕌ω@i) as ->
       by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ]).
   assert (a' = 𝕌ω@j) as ->
@@ -69,8 +62,8 @@ Lemma exp_eq_universe_index_term_implies_eq : forall {Γ} {u v : universe_index}
     Γ ⊢ universe_index_term u ≈ universe_index_term v : Typeω@k ->
     u = v.
 Proof.
-  intros * H%completeness_fundamental_exp_eq.
-  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  intros * H.
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) (completeness_fundamental_exp_eq _ _ _ _ H)) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   assert (a = universe_index_value u) as ->
       by (eapply functional_eval_exp; [ exact Ha | apply eval_universe_index_term ]).
   assert (a' = universe_index_value v) as ->
@@ -107,8 +100,6 @@ Inductive is_typ_constr : typ -> Prop :=
 | level_is_typ_constr : forall n, is_typ_constr Level@n
 (** The universe of propositions *)
 | prop_is_typ_constr : is_typ_constr Propₘ
-(** The placeholder type *)
-| placeholder_is_typ_constr : is_typ_constr a_placeholder_type
 (** A [Π] *)
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
 (** A variable *)
@@ -195,7 +186,7 @@ Proof.
   assert (Γ ⊢ A : Typeω@i) by mauto 2.
   assert (Γ ⊢ #x : Typeω@i) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env Hsem)
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   destruct (eval_var_at_initial_env Hx Hρ Ha' ltac:(eassumption)) as [Hxlt [b ->]].
   (** Only the variable case survives: [⇑! b _] has no other constructor to be
@@ -216,26 +207,29 @@ Proof.
     | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->]
     | destruct (eval_record_value _ _ _ _ Ha) as [? ->] ];
     invert_per_univ_elem HR.
-  (** Two propositions related in [per_prop] read back to one type: a
-      relevant type or a type former is no neutral variable's. *)
+  (** Two propositions related in [per_prop] read back alike up to their
+      proofs: a relevant type or a type former is no neutral variable's,
+      erased or not. *)
   all: try solve [ match goal with Hp : per_prop _ _ |- _ =>
                      let Hl := fresh "Hl" in let Ht := fresh "Ht" in let HC := fresh "HC" in let HC' := fresh "HC'" in
+                     let HE := fresh "HE" in
                      destruct Hp as [Hl _ Ht];
                      try (match goal with He : ⟦ Π _ _ ⟧ _ ↘ _ |- _ => inversion He; subst end);
                      first [ cbn in Hl; discriminate
-                           | destruct (Ht (length Γ)) as [? [HC HC']]; inversion HC; subst; inversion HC' ] end ].
+                           | destruct (Ht (length Γ)) as [? ? HC HC' HE]; inversion HC; subst; inversion HC'; subst;
+                             cbn in HE; discriminate ] end ].
   (** [Π A B] evaluates to a [Π]-value once its domain does. *)
   all: try solve [ match_by_head eval_exp ltac:(fun H => directed dependent destruction H) ].
   (** Two neutral variables related in [per_bot], or as propositions in
       [per_prop]: read both back at [length Γ] and compare the indices they
-      produce. *)
+      produce, which erasure keeps. *)
   all: match goal with |- #?y = #?z => f_equal; enough (length Γ - y - 1 = length Γ - z - 1) by lia end.
-  all: first [ match_by_head1 per_bot ltac:(fun H => destruct (H (length Γ)) as [? []])
+  all: first [ match_by_head1 per_bot ltac:(fun H => destruct (H (length Γ)) as [? ? ? ? HE])
              | match goal with Hp : per_prop _ _ |- _ =>
-                 let Ht := fresh "Ht" in destruct Hp as [_ _ Ht]; destruct (Ht (length Γ)) as [? []] end;
+                 let Ht := fresh "Ht" in destruct Hp as [_ _ Ht]; destruct (Ht (length Γ)) as [? ? ? ? HE] end;
                match_by_head read_typ ltac:(fun H => directed dependent destruction H) ].
   all: match_by_head read_ne ltac:(fun H => directed dependent destruction H).
-  all: lia.
+  all: cbn in HE; injection HE; lia.
 Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
@@ -248,7 +242,7 @@ Proof.
   intros * Histyp H.
   assert (Γ ⊢ A : Typeω@j) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env Hsem)
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   assert (a' = 𝕌ω@i) as ->
       by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_typ ]).
@@ -282,7 +276,7 @@ Proof.
   intros * Histyp H.
   assert (Γ ⊢ A : Typeω@j) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env Hsem)
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   assert (a' = 𝕌@(domain_level_lit n)) as ->
       by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_univ, eval_exp_llit ]).
@@ -336,7 +330,7 @@ Proof.
   intros * Histyp H.
   assert (Γ ⊢ A : Typeω@j) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env Hsem)
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   inversion Ha'; subst.
   destruct Histyp; try solve [ constructor ];
@@ -380,8 +374,8 @@ Lemma exp_eq_typ_suniv_absurd : forall Γ i t k,
     Γ ⊢ Typeω@i ≈ Type⟨t⟩ : Typeω@k ->
     False.
 Proof.
-  intros * H%completeness_fundamental_exp_eq.
-  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  intros * H.
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) (completeness_fundamental_exp_eq _ _ _ _ H)) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   assert (a = 𝕌ω@i) as -> by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ]).
   inversion Ha'; subst.
   invert_per_univ_elem HR.
@@ -425,14 +419,19 @@ Proof.
   pose proof (completeness_fundamental_subtyp _ _ _ Hs) as [R HR k Hsub].
   pose proof (completeness_fundamental_exp _ _ _ HA) as HAs.
   pose proof (completeness_fundamental_exp _ _ _ HA') as HA's.
-  (** An environment of [Γ], with its proofs as [⋆ᵈ]. *)
-  pose proof (per_ctx_then_per_env_initial_env HR) as [ρ [ρ' [_ [_ Hρ]]]].
+  (** An environment of [Γ]: its initial one, the context being scoped. *)
+  pose proof (proj1 (proj1 (proj1 (proj2 (proj2 (proj2 wf_scoped))) _ _ _ _ _ Hs))) as HsΓ.
+  pose proof (per_ctx_then_per_env_initial_env HR HsΓ HsΓ) as [ρ [ρ' [_ [_ Hρ]]]].
   assert (HPR : PER R) by (eapply per_env_PER; exact HR).
   assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
-  destruct (per_ctx_env_proofs _ _ _ HR _ _ Hρρ) as [Hpf _].
-  destruct (Hsub _ _ HR _ _ (rel_sub_id (ex_intro _ _ HR)) _ _ _ _ Hρρ (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf))
-    as [aσ a a'σ' a' _ Ha _ Ha' _ _ Hsa].
-  pose proof (per_subtyp_relevance _ _ _ Hsa) as Hr.
+  destruct (eval_sub_id_rel HR Hρρ) as [Hid Hid'].
+  (** The values at [Id] are those at [ρ] ([exp_sub_id]), of the relevance
+      of the values at its retagging, which the subtyping relates. *)
+  destruct (Hsub _ _ HR _ _ (rel_sub_id (ex_intro _ _ HR)) _ _ _ _ Hρρ Hid Hid')
+    as [aσ a0 a'σ' a0' Ha _ Ha' _ [Rl Hll] [Rr Hrr] Hsa].
+  rewrite exp_sub_id in Ha, Ha'.
+  pose proof (eq_trans (per_univ_elem_relevance _ _ _ _ Hll)
+                (eq_trans (per_subtyp_relevance _ _ _ Hsa) (eq_sym (per_univ_elem_relevance _ _ _ _ Hrr)))) as Hr.
   (** A type of a large universe is relevant, a type of [Prop] a
       proposition. *)
   assert (Hrel : forall X s (l : nat), Γ ⊨ X : relevance_sort s Typeω@l -> forall x, ⟦ X ⟧ ρ ↘ x -> domain_relevance x = s).

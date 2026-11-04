@@ -9,7 +9,7 @@ From Stdlib Require Import RelationClasses.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
-From Mctt.Core.Completeness Require Import ContextCases.
+From Mctt.Core.Completeness Require Import ContextCases LetCases.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Fixed_Notations.
 
@@ -28,80 +28,85 @@ Qed.
 
 Hint Resolve per_ctx_of_exp_eq : mctt.
 
+(** A term has normal forms in two equal contexts, equal up to their
+    proofs: a proof is kept over each context's initial environment, whose
+    lets bind the entries at each context's types.  The right context is
+    scoped, as the left one is by the typing ([wf_scoped]), for its
+    initial environment to be related ([per_ctx_then_per_env_initial_env]). *)
 Lemma ctxeq_nbe_eq : forall Γ Γ' M A,
     Γ ⊢ M : A ->
+    ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
-    exists W, nbe_f Γ M A W /\ nbe_f Γ' M A W.
+    exists W W', nbe_f Γ M A W /\ nbe_f Γ' M A W' /\ nf_erase W = nf_erase W'.
 Proof.
-  intros * HM%completeness_fundamental_exp HΓΓ'.
+  intros * HM0 HsΓ' HΓΓ'.
+  pose proof (completeness_fundamental_exp _ _ _ HM0) as HM.
+  pose proof (wf_ctx_scoped_exp HM0) as HsΓ.
+  pose proof (exp_scoped_free_bound _ _ (wf_exp_scoped_term _ _ _ _ _ HM0)) as HsM.
   pose proof (per_ctx_respects_length HΓΓ') as Hlen.
-  destruct HM as [env_relΓ HΓ i HMgen].
   destruct HΓΓ' as [env_rel HΓΓ'].
+  pose proof HM as [env_relΓ HΓ _ _].
   assert (Hirrel : env_rel <~> env_relΓ)
     by (eapply per_ctx_env_right_irrel; [ exact HΓΓ' | exact HΓ ]).
+  destruct (rel_exp_under_ctx_simple_full_at HΓ HM) as [i HMi].
   (** The two initial environments are related, so the judgment may be read with
       one on each side. *)
-  pose proof (per_ctx_then_per_env_initial_env HΓΓ') as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
-  rewrite Hirrel in Hrel.
-  destruct (per_ctx_env_proofs _ _ _ HΓ _ _ Hrel) as [Hpf Hpf'].
-  destruct (HMgen _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hrel
-                  (eval_sub_id _ _ Hpf) (eval_sub_id _ _ Hpf')) as [elem_rel [Htyp Hexp]].
-  pose proof (rel_typ_elem_PER Htyp) as HPER.
-  pose proof Htyp as Htyp0.
-  destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
-  assert (Ha : DF a2 ≈ a3 ∈ per_univ_elem i ↘ elem_rel) by pairwise.
-  pose proof (per_univ_elem_relevance _ _ _ _ Ha) as Hra.
-  destruct Hexp as [Hp | Hexp].
-  (** A proof: [⋆ⁿ] on both sides, neither evaluated *)
-  - destruct (rel_typ_prop_any Htyp0 (or_introl Hp)) as (_ & (c & Ec & Hc) & _).
-    functional_eval_rewrite_clear.
-    exists ⋆ⁿ; split; econstructor; try eassumption; apply nbe_term_proof; congruence.
-  - destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-    assert (Hm : Dom m2 ≈ m3 ∈ elem_rel) by pairwise.
-    destruct (domain_relevance a2) eqn:Hr.
-    + destruct (per_elem_then_per_top Ha Hm (length Γ)) as [W [HW HW']].
-      exists W.
-      split.
-      * econstructor; try eassumption; eapply nbe_term_relevant; eassumption.
-      * econstructor; try eassumption; eapply nbe_term_relevant; [ congruence | eassumption |].
-        rewrite <- Hlen; eassumption.
-    + exists ⋆ⁿ; split; econstructor; try eassumption; apply nbe_term_proof; congruence.
+  pose proof (per_ctx_then_per_env_initial_env HΓΓ' HsΓ HsΓ') as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
+  destruct (HMi _ _ (proj1 (Hirrel _ _) Hrel)) as (a & a' & elem_rel & Ha & Ha' & HR & Hexp).
+  pose proof (per_univ_elem_relevance _ _ _ _ HR) as Hra.
+  destruct (domain_relevance a) eqn:Hr.
+  (** A relevant type: both values read back alike *)
+  - destruct Hexp as [Hp | (m & m' & Hm & Hm' & Hmm')]; [ congruence |].
+    destruct (per_elem_then_per_top HR Hmm' (length Γ)) as [W W' HW HW' HE].
+    exists W, W'; repeat split; [ econstructor; [ exact Hρ | exact Ha | eapply nbe_term_relevant; eassumption ] | | exact HE ].
+    econstructor; [ exact Hρ' | exact Ha' | eapply nbe_term_relevant; [ congruence | exact Hm' |] ].
+    rewrite <- Hlen; exact HW'.
+  (** A proposition: the term kept over each environment, read back as a
+      proof term *)
+  - destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓΓ' HsM _ _ Hrel)
+      as [HP HP'].
+    destruct (HP (length Γ)) as [P HPr], (HP' (length Γ')) as [P' HPr'].
+    exists (nf_proof P), (nf_proof P'); refine (conj _ (conj _ eq_refl));
+      econstructor; try eassumption; apply nbe_term_proof; first [ congruence | apply read_nf_proof; first [ congruence | eassumption ] ].
 Qed.
 
+(** A normal form in the left context has one in the right context, equal up
+    to its proofs. *)
 Corollary ctxeq_nbe_eq' : forall Γ Γ' M A W,
     Γ ⊢ M : A ->
+    ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
     nbe_f Γ M A W ->
-    nbe_f Γ' M A W.
+    exists W', nbe_f Γ' M A W' /\ nf_erase W = nf_erase W'.
 Proof.
-  intros.
-  assert (exists W, nbe_f Γ M A W /\ nbe_f Γ' M A W) as [? []] by mauto 3 using ctxeq_nbe_eq.
+  intros * HM HsΓ' HΓΓ' HW.
+  destruct (ctxeq_nbe_eq _ _ _ _ HM HsΓ' HΓΓ') as (W0 & W' & HW0 & HW' & HE).
   functional_nbe_rewrite_clear.
-  eassumption.
+  exists W'; split; assumption.
 Qed.
 
 Corollary ctxeq_nbe_ty_eq : forall Γ Γ' A i,
     Γ ⊢ A : Typeω@i ->
+    ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
-    exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W.
+    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W' /\ nf_erase W = nf_erase W'.
 Proof.
-  intros.
-  assert (exists W, nbe_f Γ A Typeω@i W /\ nbe_f Γ' A Typeω@i W)
-    as [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]] by mauto 3 using ctxeq_nbe_eq.
-  firstorder.
+  intros * HA HsΓ' HΓΓ'.
+  destruct (ctxeq_nbe_eq _ _ _ _ HA HsΓ' HΓΓ') as (W & W' & HW%nbe_type_to_nbe_ty & HW'%nbe_type_to_nbe_ty & HE).
+  exists W, W'; repeat split; assumption.
 Qed.
 
 Corollary ctxeq_nbe_ty_eq' : forall Γ Γ' A i W,
     Γ ⊢ A : Typeω@i ->
+    ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
     nbe_ty_f Γ A W ->
-    nbe_ty_f Γ' A W.
+    exists W', nbe_ty_f Γ' A W' /\ nf_erase W = nf_erase W'.
 Proof.
-  intros.
-  assert (exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W) as [? []]
-      by mauto 3 using ctxeq_nbe_ty_eq.
+  intros * HA HsΓ' HΓΓ' HW.
+  destruct (ctxeq_nbe_ty_eq _ _ _ _ HA HsΓ' HΓΓ') as (W0 & W' & HW0 & HW' & HE).
   functional_nbe_rewrite_clear.
-  eassumption.
+  exists W'; split; assumption.
 Qed.
 
 End Fixed_GCtx.
